@@ -1,4 +1,4 @@
 library(testthat)
-library(outliergatev1)
+library(stimgate)
 
-test_check("outliergatev1")
+test_check("stimgate")
