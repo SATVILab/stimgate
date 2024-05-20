@@ -1,8 +1,8 @@
 #' @title Write FCS files of marker-positive FCS files
-#' 
+#'
 #' @description
 #' Uses the gates to write FCS files of marker-positive FCS files.
-#' 
+#'
 #' @export
 stim_gate_fcs_write <- function(data,
                                 data_name,
@@ -30,11 +30,8 @@ stim_gate_fcs_write <- function(data,
   # Create params list
   # -----------------------------
 
-  # dataset_name
-  # data_name <- deparse(substitute(data))
-
   # chnl_lab
-  chnl_lab_vec <- .get_labs(
+  chnl_lab_vec <- .get_labs( # nolint
     data = data[[1]],
     cut = chnl
   )
@@ -54,7 +51,7 @@ stim_gate_fcs_write <- function(data,
 
   # get base directory
   if (is.null(dir_base)) {
-    dir_base <- stim_gate_dir_base_create(
+    dir_base <- stim_gate_dir_base_create( # nolint
       params = params, dir_base_init = path_project
     ) |>
       dirname()
@@ -62,8 +59,6 @@ stim_gate_fcs_write <- function(data,
 
 
   # get directory to save to
-  # marker_vec <- chnl_lab_vec[chnl]
-  # markers <- paste0(marker_vec, collapse = "_")
   chnls <- paste0(chnl, collapse = "_")
   if (is.null(combn_exc)) {
     exc <- "exc-none"
@@ -92,7 +87,7 @@ stim_gate_fcs_write <- function(data,
   if (is.null(gate_tbl)) {
     gate_tbl <- purrr::map_df(names(params$chnl_lab), function(chnl_curr) {
       # get base directory
-      dir_base <- stim_gate_dir_base_create(
+      dir_base <- stim_gate_dir_base_create( # nolint
         dir_base_init = path_project,
         params = params |> append(list(cut = chnl_curr))
       )
@@ -101,7 +96,7 @@ stim_gate_fcs_write <- function(data,
 
       if (!is.null(gate_name)) {
         gate_tbl <- gate_tbl |>
-          dplyr::filter(gate_name == .env$gate_name)
+          dplyr::filter(gate_name == .env$gate_name) # nolint
       }
     })
   }
@@ -111,11 +106,14 @@ stim_gate_fcs_write <- function(data,
 
   gate_tbl <- gate_tbl |>
     # dplyr::filter(.data$gate_name == .env$gate_name) |>
-    dplyr::filter(chnl %in% .env$chnl)
+    dplyr::filter(chnl %in% .env$chnl) # nolint
 
   gate_tbl <- gate_tbl |>
-    dplyr::mutate(marker = params$chnl_lab[.data$chnl]) |>
-    dplyr::select(chnl, marker, gate_name, batch, ind, gate, gate_cyt, gate_single)
+    dplyr::mutate(marker = params$chnl_lab[.data$chnl]) |> # nolint
+    dplyr::select(
+      chnl, marker, gate_name, # nolint
+      batch, ind, gate, gate_cyt, gate_single # nolint
+    )
 
   if (gate_uns) {
     calc_uns_gate <- switch(gate_uns_method,
@@ -128,36 +126,36 @@ stim_gate_fcs_write <- function(data,
     )
 
     gate_tbl_uns <- gate_tbl |>
-      dplyr::group_by(chnl, marker, gate_name, batch) |>
+      dplyr::group_by(chnl, marker, gate_name, batch) |> # nolint
       dplyr::summarise(
-        gate = calc_uns_gate(gate),
+        gate = calc_uns_gate(gate), # nolint
         gate_cyt = ifelse("gate_cyt" %in% colnames(gate_tbl),
-          calc_uns_gate(gate_cyt),
+          calc_uns_gate(gate_cyt), # nolint
           NA
         ),
         gate_single = ifelse("gate_single" %in% colnames(gate_tbl),
-          calc_uns_gate(gate_single),
+          calc_uns_gate(gate_single), # nolint
           NA
         )
       ) |>
       dplyr::ungroup()
 
     gate_tbl_uns <- gate_tbl_uns |>
-      dplyr::mutate(ind = (batch - 1) * ind_in_batch_uns + ind_in_batch_uns) |>
-      dplyr::select(chnl, marker, gate_name, batch, ind, everything()) |>
-      dplyr::arrange(chnl, marker, gate_name, batch, ind)
+      dplyr::mutate(ind = (batch - 1) * ind_in_batch_uns + ind_in_batch_uns) |> # nolint
+      dplyr::select(chnl, marker, gate_name, batch, ind, everything()) |> # nolint
+      dplyr::arrange(chnl, marker, gate_name, batch, ind) # nolint
 
     if ("gate_cyt" %in% colnames(gate_tbl)) {
       gate_tbl_uns <- gate_tbl_uns |>
-        dplyr::mutate(gate_cyt = pmin(gate, gate_cyt))
+        dplyr::mutate(gate_cyt = pmin(gate, gate_cyt)) # nolint
     } else {
-      gate_tbl_uns <- gate_tbl_uns |> dplyr::select(-gate_cyt)
+      gate_tbl_uns <- gate_tbl_uns |> dplyr::select(-gate_cyt) # nolint
     }
     if ("gate_single" %in% colnames(gate_tbl)) {
       gate_tbl_uns <- gate_tbl_uns |>
-        dplyr::mutate(gate_single = pmax(gate, gate_single))
+        dplyr::mutate(gate_single = pmax(gate, gate_single)) # nolint
     } else {
-      gate_tbl_uns <- gate_tbl_uns |> dplyr::select(-gate_single)
+      gate_tbl_uns <- gate_tbl_uns |> dplyr::select(-gate_single) # nolint
     }
 
     gate_tbl <- gate_tbl |>
@@ -165,8 +163,7 @@ stim_gate_fcs_write <- function(data,
   }
 
   gate_tbl <- gate_tbl |>
-    dplyr::arrange(chnl, marker, gate_name, batch, ind)
-
+    dplyr::arrange(chnl, marker, gate_name, batch, ind) # nolint
 
   # ====================================
   # Apply gates
@@ -174,10 +171,6 @@ stim_gate_fcs_write <- function(data,
 
   ind <- 1
   purrr::walk(seq_along(data), function(ind) {
-    # print(ind)
-    # print(ind)
-    # get which ind in batch
-
     ind_in_batch <- ind %% length(ind_in_batch_lab_vec)
 
     # return if ind in batch is the last one, as that is the unstim ind
@@ -186,15 +179,6 @@ stim_gate_fcs_write <- function(data,
     }
 
     ind_in_batch <- ifelse(ind_in_batch == 0, ind_in_batch_uns, ind_in_batch)
-
-    # get stim
-    stim <- ind_in_batch_lab_vec[[ind_in_batch]]
-
-    # get expression dataframe
-    # ex <- .get_ex(data = data[[ind]], pop = pop_gate,
-    #              cut = cut, high = NULL, ind = ind,
-    #              is_uns = FALSE, stim = stim,
-    #              ind_in_batch = ind_in_batch, data_name = data_name)
 
     fr <- flowWorkspace::gh_pop_get_data(data[[ind]])
     ex <- flowCore::exprs(fr) |> tibble::as_tibble()
@@ -205,24 +189,22 @@ stim_gate_fcs_write <- function(data,
 
     inc_vec <- rep(FALSE, nrow(ex))
 
-    gate_tbl_ind <- gate_tbl |> dplyr::filter(.data$ind == .env$ind)
+    gate_tbl_ind <- gate_tbl |> dplyr::filter(.data$ind == .env$ind) # nolint
 
 
     if (!mult) {
-      inc_vec <- .get_pos_ind(
+      inc_vec <- .get_pos_ind( # nolint
         ex = ex, gate_tbl = gate_tbl_ind, chnl = chnl, chnl_alt = NULL,
         gate_type_cyt_pos = gate_type_cyt_pos,
         gate_type_single_pos = gate_type_single_pos
       )
     } else {
-      inc_vec <- .get_pos_ind_mult(
+      inc_vec <- .get_pos_ind_mult( # nolint
         ex = ex, gate_tbl = gate_tbl_ind, chnl = chnl, chnl_alt = NULL,
         gate_type_cyt_pos = gate_type_cyt_pos
       )
     }
 
-
-    # print(sum(inc_vec)/nrow(ex)*1e2)
     if (sum(inc_vec) == 0) {
       return(invisible(TRUE))
     }
@@ -233,9 +215,8 @@ stim_gate_fcs_write <- function(data,
 
     if (!is.null(combn_exc)) {
       for (chnl_pos in combn_exc) {
-        # print(chnl_pos)
         if (nrow(ex) == 0) next
-        exc_vec <- .get_pos_ind_cyt_combn(
+        exc_vec <- .get_pos_ind_cyt_combn( # nolint
           ex = ex, gate_tbl = gate_tbl_ind,
           chnl_pos = chnl_pos, chnl_neg = setdiff(chnl, chnl_pos),
           chnl_alt = NULL, gate_type_cyt_pos = gate_type_cyt_pos,
@@ -259,11 +240,11 @@ stim_gate_fcs_write <- function(data,
         }
       }
     }
-    exprs(fr) <- as.matrix(ex)
+    flowCore::exprs(fr) <- as.matrix(ex)
 
 
     # save
-    fn <- keyword(fr)[["GUID"]] |> basename()
+    fn <- flowCore::keyword(fr)[["GUID"]] |> basename()
     fn_out <- file.path(dir_save, fn)
     flowCore::write.FCS(x = fr, filename = fn_out)
 
