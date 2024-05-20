@@ -272,7 +272,6 @@ str_detect_any <- function(string, pattern) {
 #' files are saved to are deleted. Default is \code{FALSE}.
 #'
 #' @return String of the base directory
-#' @export
 stim_gate_dir_base_create <- function(params,
                                       dir_base_init = NULL,
                                       empty_dir = FALSE) {
