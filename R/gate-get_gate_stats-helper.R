@@ -184,8 +184,8 @@
   dir_save <- file.path(
     dir_save, paste0(names(params$chnl_lab), collapse = "_"), "tables"
   )
-  fn_rds <- paste0("gate_tbl.rds")
-  fn_csv <- paste0("gate_tbl.csv")
+  fn_rds <- "gate_tbl.rds"
+  fn_csv <- "gate_tbl.csv"
   dir_save_fn_rds <- file.path(dir_save, fn_rds)
   dir_save_fn_csv <- file.path(dir_save, fn_csv)
   if (file.exists(dir_save_fn_rds)) file.remove(dir_save_fn_rds)
