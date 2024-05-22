@@ -54,9 +54,10 @@ get_stats_combn_cp <- function(data,
 
   gate_tbl <- purrr::map_df(cut, function(cut_curr) {
     # get base directory
+     params[["cut"]] <- cut_curr
     dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
-      params = params |> append(list(cut = cut_curr))
+      params = params
     )
     # get stats tbl
     gate_stats <- readRDS(file.path(dir_base, "gate_tbl.rds"))
@@ -337,9 +338,10 @@ get_stats_combn_nb <- function(data,
   # get base directory
   # -----------------------------------
   # get base directory
+  params[["cut"]] <- cut[1]
   dir_base <- stimgate_dir_base_create(
     dir_base_init = path_project,
-    params = params |> append(list(cut = cut[1]))
+    params = params
   )
 
   marker <- chnl_lab_vec[cut[1]]
@@ -356,9 +358,10 @@ get_stats_combn_nb <- function(data,
 
   gate_tbl <- purrr::map_df(cut, function(cut_curr) {
     # get base directory
+    params[["cut"]] <- cut_curr
     dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
-      params = params |> append(list(cut = cut_curr))
+      params = params
     )
     # get stats tbl
     gate_stats <- readRDS(file.path(dir_base, "stats", "gate_stats_tbl"))
@@ -371,9 +374,10 @@ get_stats_combn_nb <- function(data,
 
   gate_tbl_man <- purrr::map_df(cut, function(cut_curr) {
     # get base directory
+    params[["cut"]] <- cut_curr
     dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
-      params = params |> append(list(cut = cut_curr))
+      params = params
     )
     # get stats tbl
     gate_stats <- readRDS(file.path(dir_base, "stats", "gate_stats_tbl"))
@@ -418,7 +422,8 @@ get_stats_combn_nb <- function(data,
 
     probs_tbl <- purrr::map(cut, function(cut_curr) {
       if (debug) print(cut_curr)
-      params_curr <- params |> append(list(cut = cut_curr))
+      params_curr <- params
+      params_curr[["cut"]] <- cut_curr
       dir_base <- stimgate_dir_base_create(
         dir_base_init = path_project,
         params = params_curr
@@ -1030,9 +1035,10 @@ get_stats_combn_nb <- function(data,
   }) |>
     purrr::compact() |>
     dplyr::bind_rows()
+  params[["cut"]] <- cut_curr
   dir_base <- stimgate_dir_base_create(
     dir_base_init = path_project,
-    params = params |> append(list(cut = cut_curr))
+    params = params
   )
   # get stats tbl
   gate_stats <- readRDS(file.path(dir_base, "stats", "gate_stats_tbl"))
@@ -1040,9 +1046,10 @@ get_stats_combn_nb <- function(data,
 
   gate_tbl <- purrr::map_df(cut, function(cut_curr) {
     # get base directory
+    params[["cut"]] <- cut_curr
     dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
-      params = params |> append(list(cut = cut_curr))
+      params = params
     )
     # get stats tbl
     gate_stats <- readRDS(file.path(dir_base, "stats", "gate_stats_tbl"))

@@ -71,11 +71,13 @@ get_gate_tbl <- function(data,
   # ====================================
 
   purrr::map_df(cut, function(cut_curr) {
-    params <- params[-which(names(params) == "cut")]
     # get base directory
+
+    params[["cut"]] <- cut_curr
+
     dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
-      params = params |> append(list(cut = cut_curr))
+      params = params
     )
     # get stats tbl
     gate_stats <- readRDS(file.path(dir_base, "stats", "gate_stats_tbl"))
