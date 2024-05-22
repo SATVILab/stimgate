@@ -36,9 +36,10 @@ plot_cp_all <- function(data,
 
   gate_tbl <- purrr::map_df(names(params$chnl_lab), function(chnl_curr) {
     # get base directory
+    params[["cut"]] <- chnl_curr
     dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
-      params = params |> append(list(cut = chnl_curr))
+      params = params
     )
     # get stats tbl
     gate_tbl <- readRDS(file.path(dir_base, "gate_tbl.rds"))
@@ -60,10 +61,10 @@ plot_cp_all <- function(data,
   if (!"gate_single" %in% colnames(gate_tbl)) {
     gate_tbl <- gate_tbl |> dplyr::mutate(gate_single = gate)
   }
-
+  params[["cut"]] <- gate_tbl$chnl[1]
   dir_base <- stimgate_dir_base_create(
     dir_base_init = path_project,
-    params = params |> append(list(cut = gate_tbl$chnl[1]))
+    params = params
   )
   dir_base <- stringr::str_sub(
     dir_base,

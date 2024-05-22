@@ -261,9 +261,10 @@
   .debug(debug, "Getting gate_tbl") # nolint
   purrr::map_df(chnl_vec, function(chnl_curr) {
     # get base directory
+    params[["cut"]] <- chnl_curr
     dir_base <- stimgate_dir_base_create( # nolint
       dir_base_init = path_project,
-      params = params |> append(list(cut = chnl_curr))
+      params = params
     )
     # get stats tbl
     gate_tbl <- readRDS(file.path(dir_base, "gate_tbl_init.rds"))
