@@ -11,7 +11,7 @@ plot_cp_boot <- function(gate_tbl,
   print("getting boot stats")
 
   if (is.null(gate_tbl)) {
-    dir_base <- stim_gate_dir_base_create(
+    dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project, params = params
     )
     path_tbl <- file.path(dir_base, "stats", "gate_stats_tbl_boot")

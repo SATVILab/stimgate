@@ -385,7 +385,7 @@
                                           unlink = FALSE,
                                           path_project) {
   # create base directory if need be
-  dir_base <- stim_gate_dir_base_create(params = params, dir_base_init = path_project)
+  dir_base <- stimgate_dir_base_create(params = params, dir_base_init = path_project)
   dir_save <- file.path(dir_base, plot_type)
 
   # if(dir.exists(dir_save)) unlink(dir_save, recursive = TRUE)

@@ -63,42 +63,42 @@
 #' @importFrom flowCore exprs<- parameters<-
 #' @import rlang
 #' @export
-stim_gate_gate <- function(data,
-                           data_name,
-                           path_project,
-                           pop_gate,
-                           pop_sub = NULL,
-                           marker,
-                           batch_size = NULL,
-                           ind_in_batch_gate = NULL,
-                           ind_in_batch_uns = NULL,
-                           ind_in_batch_lab_vec = NULL,
-                           plot = TRUE,
-                           noise_sd = 2,
-                           bias_uns = 0,
-                           min_bw = 80,
-                           cp_min = 95,
-                           boot_n = NULL,
-                           boot_sd = NULL,
-                           min_cell = 10,
-                           perm_n = NULL,
-                           ind_skip = NULL,
-                           fcs = NULL,
-                           max_pos_prob_x,
-                           gate_quant = c(0.25, 0.75),
-                           tol_ctrl = NULL,
-                           tol_gate = NULL,
-                           calc_cyt_pos_gates = TRUE,
-                           calc_single_pos_gates = TRUE,
-                           gate_name_plot = NULL,
-                           gate_name_stats = NULL,
-                           tol_gate_single = NULL,
-                           debug_stats = FALSE,
-                           debug = FALSE,
-                           sampleid_lab = NULL,
-                           stim_lab = NULL,
-                           stats_only = FALSE,
-                           plots_only = FALSE) {
+stimgate_gate <- function(data,
+                          data_name,
+                          path_project,
+                          pop_gate,
+                          pop_sub = NULL,
+                          marker,
+                          batch_size = NULL,
+                          ind_in_batch_gate = NULL,
+                          ind_in_batch_uns = NULL,
+                          ind_in_batch_lab_vec = NULL,
+                          plot = TRUE,
+                          noise_sd = 2,
+                          bias_uns = 0,
+                          min_bw = 80,
+                          cp_min = 95,
+                          boot_n = NULL,
+                          boot_sd = NULL,
+                          min_cell = 10,
+                          perm_n = NULL,
+                          ind_skip = NULL,
+                          fcs = NULL,
+                          max_pos_prob_x,
+                          gate_quant = c(0.25, 0.75),
+                          tol_ctrl = NULL,
+                          tol_gate = NULL,
+                          calc_cyt_pos_gates = TRUE,
+                          calc_single_pos_gates = TRUE,
+                          gate_name_plot = NULL,
+                          gate_name_stats = NULL,
+                          tol_gate_single = NULL,
+                          debug_stats = FALSE,
+                          debug = FALSE,
+                          sampleid_lab = NULL,
+                          stim_lab = NULL,
+                          stats_only = FALSE,
+                          plots_only = FALSE) {
   force(data)
   # prep
   debug_stats <- debug_stats || debug
@@ -368,7 +368,7 @@ stim_gate_gate <- function(data,
         debug = debug
       )
 
-      dir_base <- stim_gate_dir_base_create( # nolint
+      dir_base <- stimgate_dir_base_create( # nolint
         dir_base_init = path_project,
         params = gate_obj$params
       )
@@ -461,7 +461,7 @@ stim_gate_gate <- function(data,
         path_project = path_project
       )
 
-      dir_base <- stim_gate_dir_base_create( # nolint
+      dir_base <- stimgate_dir_base_create( # nolint
         dir_base_init = path_project,
         params = gate_obj$params
       )
