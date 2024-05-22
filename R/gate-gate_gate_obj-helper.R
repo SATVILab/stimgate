@@ -322,7 +322,8 @@
   # merge
   gate_tbl <- .get_gate_obj_gate_adj_gates_single_merge( # nolint
     gate_tbl_single = gate_tbl_single,
-    gate_tbl_params = gate_tbl_params
+    gate_tbl_params = gate_tbl_params,
+    cut = cut
   )
 
   # get stats table (if needed)
@@ -356,7 +357,8 @@
 }
 
 .get_gate_obj_gate_adj_gates_single_merge <- function(gate_tbl_single,
-                                                      gate_tbl_params) {
+                                                      gate_tbl_params,
+                                                      cut) {
   gate_tbl_params |>
     dplyr::left_join(
       gate_tbl_single |>
@@ -547,7 +549,7 @@
       dplyr::filter(gate_name == gn) # nolint
 
     gate_tbl_cluster_gn <- .get_cp_cluster( # nolint
-      gs = data,
+      gs = params$data,
       gate_tbl = gate_tbl_gn,
       gate_stats_tbl = gate_stats_tbl_gn,
       gate_tbl_ctrl = gate_tbl_ctrl_clust_gn,
