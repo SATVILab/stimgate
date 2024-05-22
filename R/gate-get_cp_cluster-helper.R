@@ -671,8 +671,9 @@
     dplyr::left_join(
       gate_tbl_ctrl |>
         dplyr::select(ind, gate) |>
-        dplyr::group_by(ind) |>
-        dplyr::filter(gate == min(gate, na.rm = TRUE)) |>
+        dplyr::filter(!is.na(gate)) |>
+        # dplyr::group_by(ind) |>
+        # dplyr::filter(gate == min(gate, na.rm = TRUE)) |>
         dplyr::rename(cp_tg_ctrl = gate),
       by = "ind"
     )
