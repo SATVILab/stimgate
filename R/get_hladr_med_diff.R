@@ -1,4 +1,3 @@
-#' @export
 get_hladr_med_diff <- function(data,
                                data_name,
                                pop_gate,
