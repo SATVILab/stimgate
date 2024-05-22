@@ -11,7 +11,7 @@ render_gate <- function(params_knit, pop_sub, path_project) {
   dir_rmd_in <- here::here("data-raw/gating/gate-render_gate.Rmd")
 
   # get base directory
-  dir_base <- stim_gate_dir_base_create(
+  dir_base <- stimgate_dir_base_create(
     dir_base_init = path_project,
     params = params_knit,
     empty_dir = FALSE
