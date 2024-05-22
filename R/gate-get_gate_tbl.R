@@ -53,7 +53,7 @@ get_gate_tbl <- function(data,
   # ------------------------------
 
   # get base directory
-  dir_base <- stim_gate_dir_base_create(
+  dir_base <- stimgate_dir_base_create(
     dir_base_init = path_project,
     params = params
   )
@@ -73,7 +73,7 @@ get_gate_tbl <- function(data,
   purrr::map_df(cut, function(cut_curr) {
     params <- params[-which(names(params) == "cut")]
     # get base directory
-    dir_base <- stim_gate_dir_base_create(
+    dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
       params = params |> append(list(cut = cut_curr))
     )

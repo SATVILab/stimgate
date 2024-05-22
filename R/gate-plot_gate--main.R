@@ -319,7 +319,7 @@ plot_gate <- function(gate_tbl, params, pop_sub,
   # --------------------------
 
   # create base directory if need be
-  dir_base <- stim_gate_dir_base_create(params = params, dir_base_init = dir_base_init)
+  dir_base <- stimgate_dir_base_create(params = params, dir_base_init = dir_base_init)
   dir_save <- file.path(dir_base, "gating_plots")
   #if(dir.exists(dir_save)) unlink(dir_save, recursive = TRUE, force = TRUE)
   if(!dir.exists(dir_save)) dir.create(dir_save)

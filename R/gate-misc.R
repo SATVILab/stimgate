@@ -272,9 +272,9 @@ str_detect_any <- function(string, pattern) {
 #' files are saved to are deleted. Default is \code{FALSE}.
 #'
 #' @return String of the base directory
-stim_gate_dir_base_create <- function(params,
-                                      dir_base_init = NULL,
-                                      empty_dir = FALSE) {
+stimgate_dir_base_create <- function(params,
+                                     dir_base_init = NULL,
+                                     empty_dir = FALSE) {
   # create a base directory if not provided
   if (is.null(dir_base_init)) dir_base_init <- here::here("data-raw/gating")
 
