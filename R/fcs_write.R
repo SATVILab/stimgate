@@ -86,14 +86,13 @@ stimgate_fcs_write <- function(data,
 
   if (is.null(gate_tbl)) {
     gate_tbl <- purrr::map_df(names(params$chnl_lab), function(chnl_curr) {
-      print(chnl_curr)
       # get base directory
       params[["cut"]] <- chnl_curr
       dir_base <- stimgate_dir_base_create( # nolint
         dir_base_init = path_project,
         params = params
       )
-      print(dir_base)
+
       # get stats tbl
       gate_tbl <- readRDS(file.path(dir_base, "gate_tbl.rds"))
 
