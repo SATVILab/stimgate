@@ -183,6 +183,9 @@ stimgate_fcs_write <- function(data,
     ind_in_batch <- ifelse(ind_in_batch == 0, ind_in_batch_uns, ind_in_batch)
 
     fr <- flowWorkspace::gh_pop_get_data(data[[ind]])
+    if (inherits(fr, "cytoframe")) {
+      fr <- flowWorkspace::cytoframe_to_flowFrame(fr)
+    }
     ex <- flowCore::exprs(fr) |> tibble::as_tibble()
 
     if (is.na(ex[1, chnl[1]]) && nrow(ex) == 1) {
