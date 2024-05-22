@@ -46,7 +46,7 @@ get_hladr_med_diff <- function(data,
       # get base directory
       dir_base <- stimgate_dir_base_create(
         dir_base_init = path_project,
-        params = params |> append(list(cut = chnl_curr))
+        params = params
       )
       # get stats tbl
       gate_tbl <- readRDS(file.path(dir_base, "gate_tbl.rds"))
