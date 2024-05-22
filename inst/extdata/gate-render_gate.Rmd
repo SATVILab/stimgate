@@ -67,7 +67,7 @@ For example, `Uns-based (20) - Min` means that the unstim-based method with an F
 
 ```{r g-setup_objects, eval = TRUE}
 # base dir
-dir_base <- stim_gate_dir_base_create(params = params)
+dir_base <- stimgate_dir_base_create(params = params)
 # pops for which results are plotted
 pop_res <- c("gate", params$pop_sub)
 ```

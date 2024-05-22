@@ -116,7 +116,7 @@ plot_cp <- function(gate_tbl,
     })
     p_gates <- cowplot::plot_grid(plotlist = plot_list, ncol = 2)
 
-    dir_base <- stim_gate_dir_base_create(
+    dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
       params = params
     )
@@ -152,7 +152,7 @@ plot_cp <- function(gate_tbl,
         geom_smooth() +
         facet_wrap(gate_name ~ marker, ncol = 2)
 
-      dir_base <- stim_gate_dir_base_create(
+      dir_base <- stimgate_dir_base_create(
         dir_base_init = path_project,
         params = params
       )
@@ -189,7 +189,7 @@ plot_cp <- function(gate_tbl,
         geom_smooth() +
         facet_wrap(gate_name ~ marker, ncol = 2)
 
-      dir_base <- stim_gate_dir_base_create(
+      dir_base <- stimgate_dir_base_create(
         dir_base_init = path_project,
         params = params
       )

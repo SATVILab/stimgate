@@ -44,7 +44,7 @@ get_hladr_med_diff <- function(data,
   if (is.null(gate_tbl)) {
     gate_tbl <- purrr::map_df(names(params$chnl_lab), function(chnl_curr) {
       # get base directory
-      dir_base <- stim_gate_dir_base_create(
+      dir_base <- stimgate_dir_base_create(
         dir_base_init = path_project,
         params = params |> append(list(cut = chnl_curr))
       )
