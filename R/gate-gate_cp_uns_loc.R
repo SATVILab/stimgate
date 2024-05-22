@@ -975,7 +975,7 @@
                              min_x_pos_prob,
                              path_project){
 
-  dir_base <- stim_gate_dir_base_create(
+  dir_base <- stimgate_dir_base_create(
     params = params, dir_base_init = path_project
   )
   dir_base <- file.path(dir_base, "gating_plots", "gate")

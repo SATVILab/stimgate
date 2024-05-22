@@ -54,7 +54,7 @@ get_stats_combn_cp <- function(data,
 
   gate_tbl <- purrr::map_df(cut, function(cut_curr) {
     # get base directory
-    dir_base <- stim_gate_dir_base_create(
+    dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
       params = params |> append(list(cut = cut_curr))
     )
@@ -337,7 +337,7 @@ get_stats_combn_nb <- function(data,
   # get base directory
   # -----------------------------------
   # get base directory
-  dir_base <- stim_gate_dir_base_create(
+  dir_base <- stimgate_dir_base_create(
     dir_base_init = path_project,
     params = params |> append(list(cut = cut[1]))
   )
@@ -356,7 +356,7 @@ get_stats_combn_nb <- function(data,
 
   gate_tbl <- purrr::map_df(cut, function(cut_curr) {
     # get base directory
-    dir_base <- stim_gate_dir_base_create(
+    dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
       params = params |> append(list(cut = cut_curr))
     )
@@ -371,7 +371,7 @@ get_stats_combn_nb <- function(data,
 
   gate_tbl_man <- purrr::map_df(cut, function(cut_curr) {
     # get base directory
-    dir_base <- stim_gate_dir_base_create(
+    dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
       params = params |> append(list(cut = cut_curr))
     )
@@ -419,7 +419,7 @@ get_stats_combn_nb <- function(data,
     probs_tbl <- purrr::map(cut, function(cut_curr) {
       if (debug) print(cut_curr)
       params_curr <- params |> append(list(cut = cut_curr))
-      dir_base <- stim_gate_dir_base_create(
+      dir_base <- stimgate_dir_base_create(
         dir_base_init = path_project,
         params = params_curr
       )
@@ -1030,7 +1030,7 @@ get_stats_combn_nb <- function(data,
   }) |>
     purrr::compact() |>
     dplyr::bind_rows()
-  dir_base <- stim_gate_dir_base_create(
+  dir_base <- stimgate_dir_base_create(
     dir_base_init = path_project,
     params = params |> append(list(cut = cut_curr))
   )
@@ -1040,7 +1040,7 @@ get_stats_combn_nb <- function(data,
 
   gate_tbl <- purrr::map_df(cut, function(cut_curr) {
     # get base directory
-    dir_base <- stim_gate_dir_base_create(
+    dir_base <- stimgate_dir_base_create(
       dir_base_init = path_project,
       params = params |> append(list(cut = cut_curr))
     )

@@ -4,25 +4,25 @@
 #' Uses the gates to write FCS files of marker-positive FCS files.
 #'
 #' @export
-stim_gate_fcs_write <- function(data,
-                                data_name,
-                                pop_gate,
-                                chnl = NULL,
-                                ind_in_batch_lab_vec,
-                                gate_name = NULL,
-                                ind_in_batch_gate,
-                                dir_base = NULL,
-                                ind_in_batch_uns,
-                                gate_tbl = NULL,
-                                trans_fn = NULL,
-                                trans_chnl = NULL,
-                                combn_exc = NULL,
-                                gate_type_cyt_pos = "cyt",
-                                gate_type_single_pos = "single",
-                                mult = FALSE,
-                                gate_uns = FALSE,
-                                gate_uns_method = "min",
-                                path_project) {
+stimgate_fcs_write <- function(data,
+                               data_name,
+                               pop_gate,
+                               chnl = NULL,
+                               ind_in_batch_lab_vec,
+                               gate_name = NULL,
+                               ind_in_batch_gate,
+                               dir_base = NULL,
+                               ind_in_batch_uns,
+                               gate_tbl = NULL,
+                               trans_fn = NULL,
+                               trans_chnl = NULL,
+                               combn_exc = NULL,
+                               gate_type_cyt_pos = "cyt",
+                               gate_type_single_pos = "single",
+                               mult = FALSE,
+                               gate_uns = FALSE,
+                               gate_uns_method = "min",
+                               path_project) {
   # ==============================
   # Preparation
   # ==============================
@@ -51,7 +51,7 @@ stim_gate_fcs_write <- function(data,
 
   # get base directory
   if (is.null(dir_base)) {
-    dir_base <- stim_gate_dir_base_create( # nolint
+    dir_base <- stimgate_dir_base_create( # nolint
       params = params, dir_base_init = path_project
     ) |>
       dirname()
@@ -87,7 +87,7 @@ stim_gate_fcs_write <- function(data,
   if (is.null(gate_tbl)) {
     gate_tbl <- purrr::map_df(names(params$chnl_lab), function(chnl_curr) {
       # get base directory
-      dir_base <- stim_gate_dir_base_create( # nolint
+      dir_base <- stimgate_dir_base_create( # nolint
         dir_base_init = path_project,
         params = params |> append(list(cut = chnl_curr))
       )
