@@ -3,7 +3,6 @@
 export(.plot_prop_plot)
 export(.print_plots_in_dir)
 export(get_gate_tbl)
-export(get_hladr_med_diff)
 export(get_stats_combn_nb)
 export(plot_heat_map)
 export(stimgate_fcs_write)
