@@ -189,7 +189,8 @@ stimgate_fcs_write <- function(data,
 
     inc_vec <- rep(FALSE, nrow(ex))
 
-    gate_tbl_ind <- gate_tbl |> dplyr::filter(.data$ind == .env$ind) # nolint
+    gate_tbl_ind <- gate_tbl |>
+      dplyr::filter(.data$ind == .env$ind) # nolint
 
 
     if (!mult) {
