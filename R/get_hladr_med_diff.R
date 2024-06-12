@@ -51,12 +51,16 @@ get_hladr_med_diff <- function(data,
       # get stats tbl
       gate_tbl <- readRDS(file.path(dir_base, "gate_tbl.rds"))
 
-      if (!is.null(gate_name)) gate_tbl <- gate_tbl |> dplyr::filter(gate_name == .env$gate_name)
+      if (!is.null(gate_name)) {
+        gate_tbl <- gate_tbl |> dplyr::filter(gate_name == gate_name)
+      }
 
       gate_tbl |>
         # dplyr::filter(.data$gate_name == .env$gate_name) |>
         dplyr::mutate(chnl = chnl_curr, marker = params$chnl_lab[chnl_curr]) |>
-        dplyr::select(chnl, marker, gate_name, batch, ind, gate, gate_cyt, gate_single)
+        dplyr::select(
+          chnl, marker, gate_name, batch, ind, gate, gate_cyt, gate_single # nolint
+        )
     })
   }
 
