@@ -799,7 +799,7 @@
   force(data)
   adf_data <- flowWorkspace::gh_pop_get_data(data) |>
     flowCore::parameters() |>
-    flowCore::pData() # could be ncdfFlow::pData
+    flowCore::pData() 
 
   if (!is.null(high)) {
     cut_lab <- adf_data[["desc"]][[which(adf_data$name == cut)]] |>
