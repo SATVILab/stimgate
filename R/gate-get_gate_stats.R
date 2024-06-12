@@ -65,7 +65,7 @@
     n_chnl <- length(chnl)
     combn_mat_list <-
       .get_gate_stats_combn_mat_list_get( # nolint
-        n_nchnl = n_chnl,
+        n_chnl = n_chnl,
         n_pos = 2 # not sure if it should be 2,
         # but it wasn't really set before
       )
