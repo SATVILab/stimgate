@@ -124,7 +124,15 @@
   )
 }
 
-.read_gate_stats <- function(path_dir_stats) {
-  path_stats <- file.path(path_dir_stats, "gate_stats.rds")
+.read_gate_stats <- function(stats_save_output) {
+  if (inherits(stats_save_output, "data.frame")) {
+    return(stats_save_output)
+  }
+  if (!inherits(stats_save_output, "character")) {
+    stop(
+      "stats_save_output must be a character string if not a data.frame."
+    )
+  }
+  path_stats <- file.path(stats_save_output, "gate_stats.rds")
   readRDS(path_stats)
 }

@@ -206,7 +206,7 @@
                                  params,
                                  chnl) {
   if (!save) {
-    return(invisible(FALSE))
+    return(invisible(stat_tbl))
   }
   params[["cut"]] <- chnl[1]
   dir_base <- stimgate_dir_base_create( # nolint
