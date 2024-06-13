@@ -143,7 +143,7 @@ stimgate_gate <- function(data,
       stim_lab = stim_lab,
       path_project = path_project
     ) |>
-      .read_gate_stats()
+      .read_gate_stats() # nolint
     if (!plots_only) {
       return(invisible(TRUE))
     }
