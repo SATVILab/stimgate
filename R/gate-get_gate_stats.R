@@ -123,3 +123,9 @@
     chnl = chnl
   )
 }
+
+.read_gate_stats <- function(path_dir_stats) {
+  path_dir_stats |>
+    file.path("gate_stats.rds") |>
+    readRDS()
+}
