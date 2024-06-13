@@ -115,6 +115,11 @@
                                   gate_type_cyt_pos_calc,
                                   combn_mat_list,
                                   cyt_combn_vec_list) {
+  # calculate n_cell_[stim/uns] and count_[stim/uns]
+  # for each gate type (gn) for either:
+  # individual cytokines (combn = FALSE) or
+  # combinations of cytokines (combn = TRUE), or
+  # when using only cells positive for other cytokines (filter_other_cyt_pos = TRUE)
   .debug(debug, "Getting gate stats for a batch") # nolint
   .debug(debug, "ind_batch: ", paste0(ind_batch, collapse = "-")) # nolint
 
@@ -170,6 +175,9 @@
   .debug(debug, "gate name: ", gn) # nolint
   gate_tbl_gn <- gate_tbl |> dplyr::filter(gate_name == gn) # nolint
   if (filter_other_cyt_pos || !combn) {
+    # get stats when not calculating cytokine-combinations
+    # or when filtering to yield cells positive
+    # for all other cytokines
     stat_tbl_gn <- .get_gate_stats_batch_gn_filter_or_non_combn(
       debug = debug,
       ex_list = ex_list,
@@ -185,6 +193,11 @@
     )
     return(stat_tbl_gn)
   }
+  # get stats when calculating cytokine-combinations
+  # note: it doesn't make sense to have filter_other_cyt_pos = TRUE
+  # and combn = TRUE, as the cytokine combinations
+  # calculation already involves the other cytokines, so also
+  # filtering for other cytokines doesn't make sense.
   .get_gate_stats_batch_gn_combn_loop_ind(
     ex_list = ex_list,
     ind_in_batch_uns = ind_in_batch_uns,
@@ -212,6 +225,7 @@
   # filter to yield cells negative for all cytokine combinations
   ex_list_stim <- ex_list[-ind_in_batch_uns]
   ex_uns <- ex_list[[ind_in_batch_uns]]
+  n_cell_uns <- nrow(ex_uns)
   purrr::map_df(seq_along(ex_list_stim), function(i) {
     .debug(debug, "i: ", i) # nolint
     ex <- ex_list[-ind_in_batch_uns][[i]]
@@ -231,7 +245,11 @@
         gate_type_cyt_pos_calc = gate_type_cyt_pos_calc,
         gate_type_single_pos_calc = gate_type_single_pos_calc
       )
-    })
+    }) |>
+      dplyr::mutate(
+        n_cell_stim = nrow(ex),
+        n_cell_uns = n_cell_uns
+      )
   })
 }
 
