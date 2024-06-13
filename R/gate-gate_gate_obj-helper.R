@@ -187,7 +187,7 @@
   # =========================
 
   if (!is.null(tol_gate)) {
-    gate_stats_tbl <- .get_gate_stats( # nolint
+    path_dir_stats <- .get_gate_stats( # nolint
       params = params,
       gate_tbl = gate_tbl |> dplyr::mutate(chnl = cut),
       gate_name = NULL,
@@ -203,8 +203,8 @@
       pop_gate = pop_gate,
       data_name = data_name,
       ind_in_batch_uns = ind_in_batch_uns
-    ) |>
-      .read_gate_stats() # nolint
+    )
+    gate_stats_tbl <- path_dir_stats |> .read_gate_stats() # nolint
 
     gate_tbl_cluster <- purrr::map_df(
       unique(gate_tbl$gate_name), function(gn) {
@@ -253,7 +253,7 @@
 
   if (!is.null(tol_ctrl)) {
     if (is.null(tol_gate)) {
-      gate_stats_tbl <- .get_gate_stats( # nolint
+      path_dir_stats <- .get_gate_stats( # nolint
         params = params,
         gate_tbl = gate_tbl,
         pop_sub = pop_sub,
@@ -265,8 +265,8 @@
         pop_gate = pop_gate,
         data_name = data_name,
         ind_in_batch_uns = ind_in_batch_uns
-      ) |>
-        .read_gate_stats() # nolint
+      )
+      gate_stats_tbl <- path_dir_stats |> .read_gate_stats() # nolint
     }
 
     gate_tbl_2 <- .get_cp_adj_tbl( # nolint
