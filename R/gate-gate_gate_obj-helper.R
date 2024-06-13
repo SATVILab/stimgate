@@ -204,7 +204,7 @@
       data_name = data_name,
       ind_in_batch_uns = ind_in_batch_uns
     ) |>
-      .read_gate_stats()
+      .read_gate_stats() # nolint
 
     gate_tbl_cluster <- purrr::map_df(
       unique(gate_tbl$gate_name), function(gn) {
@@ -266,7 +266,7 @@
         data_name = data_name,
         ind_in_batch_uns = ind_in_batch_uns
       ) |>
-        .read_gate_stats()
+        .read_gate_stats() # nolint
     }
 
     gate_tbl_2 <- .get_cp_adj_tbl( # nolint
