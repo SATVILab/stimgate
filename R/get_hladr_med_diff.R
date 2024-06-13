@@ -5,7 +5,7 @@ get_hladr_med_diff <- function(data,
                                mult,
                                gate_tbl = NULL,
                                ind_in_batch_lab_vec,
-                               gate_name,
+                               gate_name = NULL,
                                ind_in_batch_gate,
                                ind_in_batch_uns,
                                gate_type_cyt_pos = "cyt",
@@ -52,7 +52,7 @@ get_hladr_med_diff <- function(data,
       gate_tbl <- readRDS(file.path(dir_base, "gate_tbl.rds"))
 
       if (!is.null(gate_name)) {
-        gate_tbl <- gate_tbl |> dplyr::filter(gate_name == gate_name)
+        gate_tbl <- gate_tbl |> dplyr::filter(gate_name %in% .env$gate_name) # nolint
       }
 
       gate_tbl |>
