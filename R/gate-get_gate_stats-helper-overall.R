@@ -119,7 +119,8 @@
   # for each gate type (gn) for either:
   # individual cytokines (combn = FALSE) or
   # combinations of cytokines (combn = TRUE), or
-  # when using only cells positive for other cytokines (filter_other_cyt_pos = TRUE)
+  # when using only cells positive for other cytokines
+  # (filter_other_cyt_pos = TRUE)
   .debug(debug, "Getting gate stats for a batch") # nolint
   .debug(debug, "ind_batch: ", paste0(ind_batch, collapse = "-")) # nolint
 
