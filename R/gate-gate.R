@@ -119,7 +119,7 @@ stimgate_gate <- function(data,
   )
 
   if (stats_only) {
-    stat_tbl <- .get_gate_stats( # nolint
+    path_dir_stats <- .get_gate_stats( # nolint
       params = NULL, gate_tbl = NULL,
       filter_other_cyt_pos = FALSE,
       gate_name = gate_name_stats, combn = TRUE,
@@ -142,8 +142,8 @@ stimgate_gate <- function(data,
       sampleid_lab = sampleid_lab,
       stim_lab = stim_lab,
       path_project = path_project
-    ) |>
-      .read_gate_stats() # nolint
+    )
+    stats_tbl <- path_dir_stats |> .read_gate_stats() # nolint
     if (!plots_only) {
       return(invisible(TRUE))
     }
