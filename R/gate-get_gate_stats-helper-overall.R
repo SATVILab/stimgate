@@ -470,7 +470,7 @@
                                            stat_tbl,
                                            cut,
                                            chnl_lab) {
-  if (!combn) {
+  if (combn) {
     return(stat_tbl)
   }
   if ((!"chnl" %in% colnames(stat_tbl))) {
