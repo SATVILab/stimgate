@@ -248,7 +248,7 @@
     }) |>
       dplyr::mutate(
         n_cell_stim = nrow(ex),
-        n_cell_uns = .env$n_cell_uns
+        n_cell_uns = .env$n_cell_uns # nolint
       )
   })
 }
