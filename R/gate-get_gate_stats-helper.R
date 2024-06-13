@@ -227,11 +227,11 @@
   }
   fn_rds <- paste0("gate_stats.rds")
   fn_csv <- paste0("gate_stats.csv")
-  dir_save_fn_rds <- file.path(dir_save, fn_rds)
-  dir_save_fn_csv <- file.path(dir_save, fn_csv)
-  if (file.exists(dir_save_fn_rds)) file.remove(dir_save_fn_rds)
-  if (file.exists(dir_save_fn_csv)) file.remove(dir_save_fn_csv)
-  readr::write_csv(stat_tbl, dir_save_fn_csv)
-  saveRDS(stat_tbl, dir_save_fn_rds)
-  invisible(TRUE)
+  path_save_fn_rds <- file.path(dir_save, fn_rds)
+  path_save_fn_csv <- file.path(dir_save, fn_csv)
+  if (file.exists(path_save_fn_rds)) file.remove(path_save_fn_rds)
+  if (file.exists(path_save_fn_csv)) file.remove(path_save_fn_csv)
+  readr::write_csv(stat_tbl, path_save_fn_csv)
+  saveRDS(stat_tbl, path_save_fn_rds)
+  dir_save
 }

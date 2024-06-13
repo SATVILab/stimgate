@@ -122,6 +122,4 @@
     save = save,
     chnl = chnl
   )
-
-  stat_tbl
 }
