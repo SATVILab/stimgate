@@ -250,7 +250,7 @@ stimgate_gate <- function(data,
   print("")
   print("getting cyt combn frequencies")
 
-  stat_tbl <- .gate_stats(
+  path_dir_stats <- .gate_stats(
     data = data,
     params = NULL,
     gate_tbl = NULL,
@@ -297,7 +297,7 @@ stimgate_gate <- function(data,
     )
   }
 
-  invisible(TRUE)
+  path_dir_stats
 }
 
 .gate_init <- function(pop_gate,
