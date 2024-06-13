@@ -225,7 +225,7 @@
   # filter to yield cells negative for all cytokine combinations
   ex_list_stim <- ex_list[-ind_in_batch_uns]
   ex_uns <- ex_list[[ind_in_batch_uns]]
-  n_cell_uns <- nrow(ex_uns)
+  n_cell_uns <- nrow(ex_uns) # nolint
   purrr::map_df(seq_along(ex_list_stim), function(i) {
     .debug(debug, "i: ", i) # nolint
     ex <- ex_list[-ind_in_batch_uns][[i]]
@@ -248,7 +248,7 @@
     }) |>
       dplyr::mutate(
         n_cell_stim = nrow(ex),
-        n_cell_uns = n_cell_uns
+        n_cell_uns = .env$n_cell_uns
       )
   })
 }
