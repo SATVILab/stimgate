@@ -269,3 +269,65 @@ if (plot && FALSE) {
 #  dplyr::mutate(s2n = prop_bs/prop_bs_sd) |>
 #  dplyr::mutate(s2n_marginal = diff(c(0, s2n))) |>
 #  dplyr::select(expr, prop_bs, prop_bs_sd, s2n, s2n_marginal)
+
+.get_cell_specific_response_probs <- function(prob_tbl, nrow_level, params,
+                                              prob_min, cut_stim) {
+  # =====================
+  # Fit model
+  # =====================
+
+  # fit a model to get smoothed probabilities
+  prob_mod <- .get_prob_mod(prob_tbl, nrow_level = nrow_level)
+
+  # if model fails, then return it
+  if ("ultimate error" %in% class(prob_mod)) {
+    out <- list(
+      pred_tbl = NA,
+      prob_mod = NA
+    )
+
+    # out <- FALSE
+    # class(out) <- 'ultimate error'
+    return(out)
+  }
+
+  # =====================
+  # Get predictions
+  # =====================
+
+  # get fitted values
+  pred_vec <- fitted.values(prob_mod)
+
+  # add them to table
+  pred_tbl <- prob_tbl |>
+    dplyr::mutate(pred = pred_vec)
+
+  out <- list(
+    pred_tbl = pred_tbl,
+    prob_mod = prob_mod
+  )
+
+  out
+}
+
+.get_prob_mod <- function(prob_tbl, nrow_level){
+
+  prob_mod <- try(scam::scam(prob_stim_norm ~ s(x_stim, bs = "mpi"),
+                         family = "binomial",
+                         data = prob_tbl |>
+                           dplyr::filter(prob_stim_norm > 0.25)))
+
+  if(inherits(prob_mod, "try-error")){
+    prob_mod <- try(scam::scam(prob_stim_norm ~ s(x_stim, bs = "micx"),
+                               family = "binomial",
+                               data = prob_tbl))
+  } else return(prob_mod)
+
+  if(inherits(prob_mod, "try-error")){
+    prob_mod <- try(mgcv::gam(prob_stim_norm ~ s(x_stim),
+                               family = "binomial",
+                               data = prob_tbl))
+  }
+
+  prob_mod
+}
