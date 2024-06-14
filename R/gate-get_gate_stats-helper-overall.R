@@ -241,6 +241,7 @@
         gate_tbl_gn_ind = gate_tbl_gn_ind,
         gn = gn,
         chnl = chnl,
+        combn_mat_list = combn_mat_list,
         cyt_combn_vec_list = cyt_combn_vec_list,
         gate_type_cyt_pos_calc = gate_type_cyt_pos_calc,
         gate_type_single_pos_calc = gate_type_single_pos_calc
@@ -260,10 +261,12 @@
                                            gate_tbl_gn_ind,
                                            gn,
                                            chnl,
+                                           combn_mat_list,
                                            cyt_combn_vec_list,
                                            gate_type_cyt_pos_calc,
                                            gate_type_single_pos_calc) {
   .debug(debug, "number of cytokines positive: ", j) # nolint
+  combn_mat <- combn_mat_list[[j]]
   cyt_combn <- cyt_combn_vec_list[[j]]
   stat_tbl_gn_ind <- tibble::tibble(
     ind = ex$ind[1],
