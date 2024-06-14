@@ -241,7 +241,6 @@
         gate_tbl_gn_ind = gate_tbl_gn_ind,
         gn = gn,
         chnl = chnl,
-        combn_mat_list = combn_mat_list,
         cyt_combn_vec_list = cyt_combn_vec_list,
         gate_type_cyt_pos_calc = gate_type_cyt_pos_calc,
         gate_type_single_pos_calc = gate_type_single_pos_calc
@@ -261,14 +260,11 @@
                                            gate_tbl_gn_ind,
                                            gn,
                                            chnl,
-                                           combn_mat_list,
                                            cyt_combn_vec_list,
                                            gate_type_cyt_pos_calc,
                                            gate_type_single_pos_calc) {
-  n_pos_nm <- names(combn_mat_list)[j]
   .debug(debug, "n_pos_nm: ", n_pos_nm) # nolint
-  combn_mat <- combn_mat_list[[n_pos_nm]]
-  cyt_combn <- cyt_combn_vec_list[[n_pos_nm]]
+  cyt_combn <- cyt_combn_vec_list[[j]]
   stat_tbl_gn_ind <- tibble::tibble(
     ind = ex$ind[1],
     gate_name = gn,
