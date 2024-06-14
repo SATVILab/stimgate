@@ -509,69 +509,10 @@
   # smooth
   data_mod <- .get_cp_uns_loc_get_prob_smooth(data_mod)
 
-  data_count <- data_mod |>
-    dplyr::filter(expr >= min(.data$expr)) |>
-    dplyr::arrange(expr) |>
-    dplyr::mutate(n_row = seq_len(dplyr::n())) |>
-    dplyr::filter(cumsum(pred > prob_smooth) != n_row)
-
-  count <- sum(data_count$pred)
-
-  prop_bs_est <- count/nrow(orig_list$stim)
-
-  data_threshold <- data_count |>
-    dplyr::arrange(desc(expr)) |>
-    dplyr::mutate(count_stim = seq_len(dplyr::n())) |>
-    dplyr::mutate(
-      prop_stim = count_stim/nrow(orig_list$stim),
-      prop_uns = purrr::map_dbl(expr, function(x){
-        sum((cut_uns$expr - bias) >= x) / nrow(orig_list$uns)
-      }),
-      prop_bs = prop_stim - prop_uns,
-      prop_bs_diff = prop_bs - prop_bs_est,
-      prop_stim_pos = pmax(prop_stim, 0.5 / nrow(orig_list$stim)),
-      prop_uns_pos = pmax(prop_uns, 0.5 / nrow(orig_list$uns)),
-      prop_stim_sd =
-        sqrt(prop_stim_pos * (1 - prop_stim_pos)) /
-          nrow(orig_list$stim),
-      prop_uns_sd =
-        sqrt((prop_uns_pos * (1 - prop_uns_pos)) /
-          nrow(orig_list$uns)),
-      prop_bs_sd =
-        sqrt(prop_stim_sd^2 + prop_uns_sd^2)
-    )
 
 
-  min_diff_tbl <- data_threshold |>
-    dplyr::filter(
-      abs(prop_bs_diff) ==  min(abs(prop_bs_diff))
-    ) |>
-    dplyr::slice(1)
 
-  min_diff <- min_diff_tbl$prop_bs_diff
-  min_diff_bs_sd <- min_diff_tbl$prop_bs_sd
-  min_diff_sd <- min_diff/min_diff_bs_sd
-
-  cp <- min_diff_tbl$expr
-  # min_diff_tbl
-  #min_diff_tbl$prop_bs * 1e2
-
-  # check that marginal gain in signal-to-noise ratio is positive
-  # if not, move back up until a maximum of margin units
-  #data_threshold |>
-  #  dplyr::mutate(prop_bs_sd_std = sqrt(prop_bs_sd * pmin(prop_bs_sd, min_diff_bs_sd))) |>
-  #  dplyr::mutate(prop_bs_diff_sd_std = abs(prop_bs_diff)/prop_bs_sd_std) |>
-  #  dplyr::select(expr, prop_stim, prop_uns, prop_bs, prop_bs_diff, prop_bs_diff_sd_std) |>
-  #  dplyr::filter(prop_bs_diff_sd_std <= min_diff_sd + 0.75 * min_diff_bs_sd) |>
-  #  dplyr::arrange(expr) |>
-  #  dplyr::slice(1)
-
-  # explore s2n
-  #data_threshold |>
-  #  dplyr::mutate(s2n = prop_bs/prop_bs_sd) |>
-  #  dplyr::mutate(s2n_marginal = diff(c(0, s2n))) |>
-  #  dplyr::select(expr, prop_bs, prop_bs_sd, s2n, s2n_marginal)
-
+  cp <- .get_cp_uns_loc_get_cp(data_mod, ex_stim_orig)
 
 
   .debug(debug, "Completed loc gate for single sample")
@@ -891,6 +832,60 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
 .get_cp_uns_loc_get_prob_smooth_actual_third <- function(data_mod) {
   .debug(debug, "Failed to smooth")
   data_mod$prob_smooth - 0.0001
+}
+
+# get cp
+.get_cp_uns_loc_get_cp <- function(data_mod,
+                                   ex_stim_orig) {
+
+  data_threshold <- .get_cp_uns_loc_get_cp_data_threshold(
+    data_mod, ex_stim_orig
+  )
+  .get_cp_uns_loc_get_cp_actual(data_threshold)
+}
+
+.get_cp_uns_loc_get_cp_data_threshold <- function(data_mod,
+                                                  ex_stim_orig) {
+  data_count <- .get_cp_uns_loc_get_cp_data_threshold_count(data_mod)
+  prob_bs_est <- .get_cp_uns_loc_get_cp_data_threshold_prop_bs_est(data_count)
+  .get_cp_uns_loc_get_cp_data_threshold_actual(
+    data_count, prob_bs_est, ex_stim_orig
+  )
+}
+
+.get_cp_uns_loc_get_cp_data_threshold_count <- function(data_mod) {
+  data_mod |>
+    dplyr::filter(expr >= min(.data$expr)) |>
+    dplyr::arrange(expr) |>
+    dplyr::mutate(n_row = seq_len(dplyr::n())) |>
+    dplyr::filter(cumsum(pred > prob_smooth) != n_row) |>
+    dplyr::select(-n_row)
+}
+
+.get_cp_uns_loc_get_cp_data_threshold_prop_bs_est <- function(data_count) {
+  sum(data_count$pred) / nrow(orig_list$stim)
+}
+
+.get_cp_uns_loc_get_cp_data_threshold_actual <- function(data_count,
+                                                         prop_bs_est) {
+  data_count |>
+    dplyr::arrange(desc(expr)) |>
+    dplyr::mutate(count_stim = seq_len(dplyr::n())) |>
+    dplyr::mutate(
+      prop_stim = count_stim/nrow(orig_list$stim),
+      prop_uns = purrr::map_dbl(expr, function(x){
+        sum((cut_uns$expr - bias) >= x) / nrow(orig_list$uns)
+      }),
+      prop_bs = prop_stim - prop_uns,
+      prop_bs_diff = prop_bs - prop_bs_est
+    )
+}
+
+.get_cp_uns_loc_get_cp_actual <- function(data_threshold) {
+  data_threshold |>
+    dplyr::filter(abs(prop_bs_diff) ==  min(abs(prop_bs_diff))) |>
+    dplyr::slice(1) |>
+    dplyr::pull(expr)
 }
 
 #' @title Plot gating plots for local fdr method

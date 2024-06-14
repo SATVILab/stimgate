@@ -189,7 +189,7 @@
             aes(x = expr, y = prop * 1e2, col = type)) +
       geom_line()
   }
-  
+
   if (plot && FALSE) {
     p_list <- .plot_cp_loc_fdr(
       dens_tbl = dens_tbl_raw,
@@ -204,3 +204,23 @@
   } else p_list <- .get_cp_uns_loc_p_list_empty()
 
   #print('done getting loc fdr gate for this single sample')
+
+    # min_diff_tbl
+  #min_diff_tbl$prop_bs * 1e2
+
+  # check that marginal gain in signal-to-noise ratio is positive
+  # if not, move back up until a maximum of margin units
+  #data_threshold |>
+  #  dplyr::mutate(prop_bs_sd_std = sqrt(prop_bs_sd * pmin(prop_bs_sd, min_diff_bs_sd))) |>
+  #  dplyr::mutate(prop_bs_diff_sd_std = abs(prop_bs_diff)/prop_bs_sd_std) |>
+  #  dplyr::select(expr, prop_stim, prop_uns, prop_bs, prop_bs_diff, prop_bs_diff_sd_std) |>
+  #  dplyr::filter(prop_bs_diff_sd_std <= min_diff_sd + 0.75 * min_diff_bs_sd) |>
+  #  dplyr::arrange(expr) |>
+  #  dplyr::slice(1)
+
+  # explore s2n
+  #data_threshold |>
+  #  dplyr::mutate(s2n = prop_bs/prop_bs_sd) |>
+  #  dplyr::mutate(s2n_marginal = diff(c(0, s2n))) |>
+  #  dplyr::select(expr, prop_bs, prop_bs_sd, s2n, s2n_marginal)
+
