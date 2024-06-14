@@ -12,8 +12,8 @@ any of the channels specified in chnl. '}
 positive for at least one. If \code{NULL}, then set to \code{unique(gate_tbl$chnl)}, i.e.
 all channels for which we have gates. Default is \code{chnl}.}
 
-\item{gate_type}{'base', 'cyt' or 'single'. Determines which gate type is used.
-If \code{'base'}, then initial threshold is used. If \code{'cyt'}, then
+\item{gate_type}{"base", "cyt" or 'single'. Determines which gate type is used.
+If \code{"base"}, then initial threshold is used. If \code{"cyt"}, then
 cytokine-positive threshold is used. If \code{'single'}, then single-positive
 threshold is used. No default is set.}
 }

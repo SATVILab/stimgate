@@ -264,9 +264,9 @@ plot_cp <- function(gate_tbl,
     #
     #                                                  single_pos = TRUE,
     #                                                  gate_type_cyt_pos = ifelse(params$calc_cyt_pos_gates,
-    #                                                                             'cyt', 'base'),
-    #                                                  gate_type_single_pos = 'base',
-    #                                                  gate_type_single_pos_calc = 'base',
+    #                                                                             "cyt", "base"),
+    #                                                  gate_type_single_pos = "base",
+    #                                                  gate_type_single_pos_calc = "base",
     #                                                  path_project = path_project
     # )
 
