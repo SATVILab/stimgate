@@ -31,9 +31,9 @@ then set to whatever \code{chnl} is, which is either specified
 by the parameter or set to  \code{setdiff(unique(gate_tbl$chnl), <chnl_crr>)} if \code{chnl} parameter is NULL,
 where \code{<chnl_curr>} is one of the channels in \code{chnl} parameter. Default is \code{NULL}.}
 
-\item{gate_type_cyt_pos}{'base' or 'cyt'. If \code{'base'}, then the initial thresholds are
+\item{gate_type_cyt_pos}{"base" or "cyt". If \code{"base"}, then the initial thresholds are
 used even for cells that are cytokine positive for at least one other cytokine.
-If \code{'cyt'}, then the cytokine+ thresholds are used for cells that are cytokine
+If \code{"cyt"}, then the cytokine+ thresholds are used for cells that are cytokine
 positive for at least one other cytokine.}
 }
 \value{

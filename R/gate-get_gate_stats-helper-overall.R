@@ -372,7 +372,7 @@
         stop(paste0(
           "gate_type_single_pos_calc value of ",
           gate_type_single_pos_calc,
-          " not either 'base' or 'single'."
+          " not either "base" or 'single'."
         ))
       )
       gate_gn_ind_chnl <-

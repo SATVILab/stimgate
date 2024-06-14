@@ -8,8 +8,8 @@
 #' @param chnl character vector. Channels for which cell should be
 #' positive for at least one. If \code{NULL}, then set to \code{unique(gate_tbl$chnl)}, i.e.
 #' all channels for which we have gates. Default is \code{chnl}.
-#' @param gate_type 'base', 'cyt' or 'single'. Determines which gate type is used.
-#' If \code{'base'}, then initial threshold is used. If \code{'cyt'}, then
+#' @param gate_type "base", "cyt" or 'single'. Determines which gate type is used.
+#' If \code{"base"}, then initial threshold is used. If \code{"cyt"}, then
 #' cytokine-positive threshold is used. If \code{'single'}, then single-positive
 #' threshold is used. No default is set.
 .get_pos_ind_simple <- function(ex, gate_tbl, chnl = NULL, gate_type) {
@@ -64,9 +64,9 @@
 #' then set to whatever \code{chnl} is, which is either specified
 #' by the parameter or set to  \code{setdiff(unique(gate_tbl$chnl), <chnl_crr>)} if \code{chnl} parameter is NULL,
 #' where \code{<chnl_curr>} is one of the channels in \code{chnl} parameter. Default is \code{NULL}.
-#' @param gate_type_cyt_pos 'base' or 'cyt'. If \code{'base'}, then the initial thresholds are
+#' @param gate_type_cyt_pos "base" or "cyt". If \code{"base"}, then the initial thresholds are
 #' used even for cells that are cytokine positive for at least one other cytokine.
-#' If \code{'cyt'}, then the cytokine+ thresholds are used for cells that are cytokine
+#' If \code{"cyt"}, then the cytokine+ thresholds are used for cells that are cytokine
 #' positive for at least one other cytokine.
 #'
 #' @return A logical vector with value \code{TRUE} if a cell is positive for
@@ -82,7 +82,7 @@
       "gate_type_cyt_pos value of ", ifelse(missing(gate_type_cyt_pos),
         "blank", gate_type_cyt_pos
       ),
-      " not either 'cyt' or 'base' in function .get_pos_ind_mult."
+      " not either "cyt" or "base" in function .get_pos_ind_mult."
     ))
   }
 
@@ -159,7 +159,7 @@
         # pos_vec_alt_cyt <- .get_pos_ind_simple(ex = ex,
         #                                        gate_tbl = gate_tbl,
         #                                        chnl = setdiff(c(chnl, chnl_alt), c(chnl_curr, chnl_alt_curr),
-        #                                        gate_type = 'cyt')
+        #                                        gate_type = "cyt")
         # positive for chnl_curr using base threshold and any other using cyt+ thresholds
         pos_vec_cyt_pos_mult_curr <- pos_vec_alt_base & pos_vec_curr # & pos_vec_alt_cyt
         pos_vec_cyt_pos_mult <- pos_vec_cyt_pos_mult | pos_vec_cyt_pos_mult_curr
@@ -177,7 +177,7 @@
       # pos_vec_curr <- .get_pos_ind_simple(ex = ex,
       #                                    gate_tbl = gate_tbl,
       #                                    chnl = chnl_curr,
-      #                                    gate_type = 'base')
+      #                                    gate_type = "base")
       # find
       # pos_vec_cyt_pos_mult_curr <- pos_vec_alt & pos_vec_curr
       # pos_vec_cyt_pos_mult <- pos_vec_cyt_pos_mult | pos_vec_cyt_pos_mult_curr
@@ -261,7 +261,7 @@
   if (!gate_type_single_pos %in% c("base", "single")) {
     stop(paste0(
       "gate_type_single_pos value of ", gate_type_single_pos,
-      " not either 'cyt' or 'base' in function .get_pos_ind_mult."
+      " not either "cyt" or "base" in function .get_pos_ind_mult."
     ))
   }
 }
@@ -298,7 +298,7 @@
       "gate_type_cyt_pos value of ", ifelse(missing(gate_type_single_pos),
         "blank", gate_type_single_pos
       ),
-      " not either 'single' or 'base' in function .get_pos_ind"
+      " not either 'single' or "base" in function .get_pos_ind"
     ))
   }
 
@@ -348,7 +348,7 @@
       "gate_type_cyt_pos value of ", ifelse(missing(gate_type_single_pos),
         "blank", gate_type_single_pos
       ),
-      " not either 'single' or 'base' in function .get_pos_ind"
+      " not either 'single' or "base" in function .get_pos_ind"
     ))
   }
   chnl <- unique(c(chnl_pos, chnl_neg, chnl_alt))

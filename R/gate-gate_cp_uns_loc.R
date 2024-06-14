@@ -308,56 +308,26 @@
   cp_uns_loc_obj_list <- purrr::map(seq_along(cut_stim), function(i) {
     .debug(debug, "sample", i)
 
-    if (nrow(cut_stim[[i]]) < min_cell || nrow(cut_uns) < min_cell) {
-      .debug(debug, "Too few cells")
-      p_list <- lapply(1:3, function(x) ggplot()) |>
-        stats::setNames(c("p_loc_dens", "p_loc_prob", "p_loc_ctb"))
-      return(
-        list(p = NA, p_list = p_list)
-      )
+    # return early if there are too few cells
+    too_few_cells_lgl <- .get_cp_uns_loc_sample_check_cell_number(
+      cut_stim = cut_stim[[i]], min_cell = min_cell, cut_uns = cut_uns
+    )
+    if (too_few_cells_lgl) {
+      return(.get_cp_uns_loc_sample_out_cell_number(debug))
     }
 
     # remove any cytokine-positive cells from unstim using gates from
     # sample for which single-positive gates are required
-    if (!is.null(params$gate_tbl)) {
-      .debug(debug, "Removing cytokine-positive cells from unstim")
-
-      ex_uns <- params$ex_uns
-
-      # first filter
-      gate_tbl_gn_ind <- params$gate_tbl |>
-        # filter to use gates from cut_stim
-        dplyr::filter(
-          ind == cut_stim[[i]]$ind[1],
-          gate_name == params$gate_name_curr
-        )
-
-      pos_ind_vec_but_single_pos_curr <-
-        .get_pos_ind_but_single_pos_for_one_cyt(
-          ex = ex_uns,
-          gate_tbl = gate_tbl_gn_ind,
-          chnl_single_exc = params$cut,
-          chnl = NULL,
-          gate_type_cyt_pos = ifelse(
-            params$calc_cyt_pos_gates,
-            'cyt', 'base'
-          ),
-          gate_type_single_pos = 'base'
-        )
-
-      ex_uns <- ex_uns[
-        !pos_ind_vec_but_single_pos_curr, , drop = FALSE
-      ]
-
-      # filter unstim based on this
-      cut_uns <- .get_cut_list(
-        ex_list = stats::setNames(list(ex_uns), ex_uns$ind[1]),
-        ind = ex_uns$ind[1],
-        exc_min = TRUE,
-        bias = bias,
-        noise_sd = NULL
-      )[[1]]
-    }
+    cut_uns <- .get_cp_uns_loc_sample_uns_rm_cyt_pos(
+      debug = debug,
+      ex_uns = params$ex_uns,
+      gate_tbl = params$gate_tbl,
+      cut_stim = cut_stim[[i]],
+      gate_name = params$gate_name_curr,
+      cut = params$cut,
+      calc_cyt_pos_gates = params$calc_cyt_pos_gates,
+      bias = bias
+    )
 
     cp_uns_loc_obj <- .get_cp_uns_loc_ind(
       cut_stim = cut_stim[[i]],
@@ -403,8 +373,8 @@
     )
   } else {
     # name gate indices if not prejoined
-    cp_vec <- stats::setNames(cp_vec, ind_stim) 
-  } 
+    cp_vec <- stats::setNames(cp_vec, ind_stim)
+  }
 
   # add unstim if unstim gate required
   if(ind_uns %in% ind_gate){
@@ -424,6 +394,69 @@
        "p_list" = p_list)
 }
 
+.get_cp_uns_loc_sample_check_cell_number <- function(cut_stim, min_cell, cut_uns) {
+  nrow(cut_stim[[i]]) < min_cell || nrow(cut_uns) < min_cell
+}
+.get_cp_uns_loc_sample_out_cell_number <- function(debug) {
+  .debug(debug, "Too few cells")
+  p_list <- .get_cp_uns_loc_p_list_empty()
+  list(p = NA, p_list = p_list)
+}
+
+.get_cp_uns_loc_sample_uns_rm_cyt_pos <- function(debug,
+                                                  ex_uns,
+                                                  gate_tbl,
+                                                  cut_stim,
+                                                  gate_name,
+                                                  cut,
+                                                  calc_cyt_pos_gates,
+                                                  bias) {
+  if (!is.null(gate_tbl)) {
+    return(cut_uns)
+  }
+  .debug(debug, "Removing cytokine-positive cells from unstim")
+
+  # first filter
+  gate_tbl_gn_ind <- gate_tbl |>
+    # filter to use gates from cut_stim
+    dplyr::filter(
+      ind == cut_stim$ind[1],
+      .data$gate_name == .env$gate_name
+    )
+
+  pos_ind_vec_but_single_pos_curr <-
+    .get_pos_ind_but_single_pos_for_one_cyt(
+      ex = ex_uns,
+      gate_tbl = gate_tbl_gn_ind,
+      chnl_single_exc = cut,
+      chnl = NULL,
+      gate_type_cyt_pos = ifelse(calc_cyt_pos_gates, "cyt", "base"),
+      gate_type_single_pos = "base"
+    )
+
+  ex_uns <- ex_uns[
+    !pos_ind_vec_but_single_pos_curr, , drop = FALSE
+  ]
+
+  # filter unstim based on this
+  .get_cut_list(
+    ex_list = stats::setNames(list(ex_uns), ex_uns$ind[1]),
+    ind = ex_uns$ind[1],
+    exc_min = TRUE,
+    bias = bias,
+    noise_sd = NULL
+  )[[1]]
+}
+
+.get_cp_uns_loc_p_list_empty <- function() {
+  lapply(1:3, function(x) ggplot()) |>
+    stats::setNames(c("p_loc_dens", "p_loc_prob", "p_loc_ctb"))
+}
+
+.get_cp_uns_loc_ind_orig <- function(cut_stim, cut_uns) {
+  max_dens_x <- .get_cp_uns_loc_ind_max_dens_x(cut_stim)
+  list(stim = cut_stim, uns = cut_uns, max_x = max_dens_x)
+}
 .get_cp_uns_loc_ind <- function(cut_uns,
                                 cut_stim,
                                 min_bw,
@@ -438,445 +471,76 @@
 
   .debug(debug, "getting loc gate for single sample")
 
-  p_list_empty <- lapply(1:3, function(x) ggplot()) |>
-    stats::setNames(c("p_loc_dens", "p_loc_prob", "p_loc_ctb"))
-
   # estimate densities for stim and unstim over stim range
-  if (nrow(cut_stim) < min_cell) {
-    .debug(debug, "Too few cells")
-    return(list(
-      cp = max(
-        cp_min,
-        cut_stim$expr +
-          (max(cut_stim$expr) - min(cut_stim$expr)) / 5
-        ),
-      p_list = p_list_empty
+  if (.get_cp_uns_loc_check_early(cut_stim, min_cell, cp_min)) {
+    return(.get_cp_uns_loc_ind_check_out(
+      cp_min, cut_stim, debug, "Too few cells"
     ))
   }
 
-  cut_stim_orig <- cut_stim; cut_uns_orig <- cut_uns
-  max_dens_x <- max(cut_stim$expr) - 0.05 * (diff(range(cut_stim$expr)))
+  orig_list <- .get_cp_uns_loc_ind_orig(cut_stim, cut_uns)
 
-  #max_dens_x <- min(180, max_dens_x)
-  #while(sum(cut_stim_orig > max_dens_x) < 3) max_dens_x <- max_dens_x - 5
+  # stop expr being higher than max_x to prevent really far away values creating modes
+  cut_stim <- get_cp_uns_loc_set_max_expr(cut_stim, orig_list$max_x)
+  cut_uns <- get_cp_uns_loc_set_max_expr(cut_uns, orig_list$max_x)
 
-  if (max_dens_x <= cp_min) {
-    .debug(debug, "Max value less than minimum threshold")
-    return(
-      list(
-        cp = max(
-          cp_min,
-          cut_stim$expr + (max(cut_uns$expr) - min(cut_uns$expr)) / 5
-          ),
-        p_list = p_list_empty
-      )
-    )
-  }
-
-  cut_stim <- cut_stim |>
-    dplyr::mutate(
-      expr = ifelse(
-        .data$expr > max_dens_x, max_dens_x, .data$expr
-      )
-    )
-  cut_uns <- cut_uns |>
-    dplyr::mutate(
-      expr = ifelse(
-        .data$expr > max_dens_x, max_dens_x, .data$expr
-      )
-    )
-
-  # min_bw_x <- max_dens_x
-  # while(
-  #   sum(cut_stim$expr > min_bw_x) <= 2 ||
-  #     sum(cut_stim$expr[cut_stim$expr != max_dens_x] > min_bw_x) <= 2) {
-  #   min_bw_x <- min_bw_x - 1
-  # }
-
-  #bw_stim <-  density(cut_stim$expr[cut_stim$expr > min_bw_x])$bw
-  #bw_uns <-  density(cut_uns$expr[cut_uns$expr > min_bw_x])$bw
-  .debug(debug, "Calculating densities")
-  bw_stim <-  try(density(cut_stim$expr, bw  = "SJ")$bw)
-  bw_stim <- ifelse(class(bw_stim) == 'try-error', min_bw, bw_stim)
-  bw_uns <-  try(density(cut_uns$expr, bw = "SJ")$bw)
-  bw_uns <- ifelse(class(bw_uns) == 'try-error', min_bw, bw_uns)
-  bw <- max(bw_stim, min_bw, bw_uns)
-  dens_stim <- density(cut_stim$expr, bw = bw)
-  dens_uns <- density(
-    cut_uns$expr, from = min(dens_stim$x),
-    to = max(dens_stim$x), bw = bw
+  # get raw densities
+  dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
+    cut_stim, cut_uns, debug, min_bw
   )
 
-  # put raw densities into table
-  dens_tbl_raw <- tibble::tibble(
-    x_stim = dens_stim$x, y_stim = dens_stim$y
-  ) |>
-    dplyr::mutate(
-      y_uns = purrr::map_dbl(
-        x_stim,
-        function(marker) {
-          .interp(
-            val = marker,
-            x = dens_uns$x,
-            y = dens_uns$y
-          )
-        }
-      )
-     ) |>
-    #dplyr::mutate(y_uns = .env$y_uns) |>
-    tidyr::pivot_longer(
-      y_stim:y_uns,
-      names_to = "stim",
-      values_to = "dens"
-      ) |>
-    dplyr::mutate(
-      stim = ifelse(stim == "y_stim", "yes", "no")
-    )
-
-  .debug(debug, "Normalising probabilities")
-
-  # calculate raw and
-  # normed probability based on densities for density measurements
-  prob_tbl <- dens_tbl_raw |>
-    tidyr::pivot_wider(
-      id_cols = x_stim,
-      names_from = stim,
-      values_from = dens
-      ) |>
-    dplyr::mutate(
-      prob_stim = 1 - no/yes,
-      prob_stim = ifelse(yes == 0 & no == 0, 0, prob_stim),
-      prob_stim_norm = pmin(1, prob_stim),
-      prob_stim_norm = pmax(0, prob_stim_norm)
-    ) |>
-    dplyr::filter(x_stim > cp_min)
-
-  .debug(debug, "Filtering before smoothing")
-
-  density_exc_min <- density(cut_stim_orig$expr)
-  dens_tbl <- tibble::tibble(
-    x = density_exc_min$x,
-    y = density_exc_min$y
+  # get probabilities
+  prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
+    dens_tbl_raw, debug, cp_min, ex_stim
   )
-  peak <- dens_tbl |>
-    dplyr::filter(y == max(y)) |>
-    dplyr::pull("x")
 
-  prob_tbl <- prob_tbl |>
-    dplyr::filter(
-      x_stim > peak + 0.02 * diff(range(x_stim))
-    )
-
-  # get range of values for which we'd want to calculate
-  # probability:
-  # - those cells for which the probability
-  # of responding from their position onwards
-  # is 0.025 or more
-  prob_tbl_pos <- prob_tbl |>
-    dplyr::mutate(
-      ge10 = prob_stim_norm >= 0.025,
-      ge10 = cumsum(ge10) > 0
-      ) |>
-    dplyr::filter(ge10)
-
-  # we then look at the minimum protein expression to achieve this
-  min_prob_x <- min(prob_tbl_pos$x_stim)
-
-  # we set the threshold larger than the
-  # maximum observed value if the following conditions are met:
-  # - there are no cells that mark the start of responding in
-  # the way defined above
-  # - the maximum value of the stimulated sample is less
-  # than the minimum probability
-  #   - not clear why we do this?...
-  #     - Well, it just means there's no response, #
-  #       as teh predicted probability is too high
-  # why did we choose the imputed threshold we chose, then?
-  # what is the threshold?
-  # - well, it's a bit to the right of the mximum
-  # - and we set it quite high - half the difference in the
-  # original range!
-  #   - I guess sometimes this could help, and we don't lose out
-  # too much if we gate more aggressively later on
-  #   - I suppose we set it high to avoid the gates being too low
-  if (nrow(prob_tbl_pos) == 0 || max(cut_stim_orig$expr) < min_prob_x) {
-    .debug(debug, "No responding cells")
-    return(list(
-      cp = max(
-        cp_min,
-        max(cut_stim_orig$expr) + 0.5 * diff(range(cut_stim_orig$expr))
-        ),
-      p_list = p_list_empty
+  # check that we have enough responding cells
+  if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, orig_list$stim)) {
+    return(.get_cp_uns_loc_ind_check_early_out(
+      cp_min, orig_list$stim, debug, "No responding cells"
     ))
   }
 
-  # okay, so here get the probability
-  # that was observed at the point
-  # where the protein is lowest and included
-  min_prob <- min(
-    prob_tbl_pos$prob_stim[prob_tbl_pos$x_stim == min_prob_x]
+  # get data to smooth over
+  data_mod <- .get_cp_uns_loc_get_data_mod(
+    orig_list$stim, ex_stim, ex_uns, prob_tbl_list
   )
-  # we then do something funky
-  # - take a 40th of the 6 - what?
-  # okay, so that's just the typical range of expression
-  # for our case, it was 6.
-  # we could probably do differenty.
-  # we then take only values in the probability
-  # table for which the protein measuremnts are
-  # a bit greater than the minimum
-  # probability
-  # we then filter out the
-  # model in
 
-  range_len <- 6; margin <- 0.025 * range_len
-  prob_tbl_pos_margin <- prob_tbl |>
-    dplyr::filter(x_stim > min_prob_x - margin)
-  data_mod <- cut_stim_orig |>
-    dplyr::filter(expr > min(min_prob_x) - margin)
-
-  if (nrow(prob_tbl_pos) == 0) {
-    .debug(debug, "No responding cells")
-    return(
-      list(
-        cp = max(cut_stim_orig$expr) + 0.5 * diff(range(cut_stim_orig$expr)),
-        p_list = p_list_empty
-      )
-    )
-  }
-
-  min_prob_x <- min(data_mod$expr)
-  max_prob_x <- max(data_mod$expr)
-
-  # okay, so this all ties into the `prob_smooth`
-  # values that we actually end up modelling.
-  # presumably there were some issues here.
-  # okay, I think we're just smoothing values
-  # just the mean of all values within a given range around it, I think.
-  # not clear how important this is.
-  # could add a parameter `smooth` for this.
-  # can also add a parameter `monotonic`
-  # for the later smoothing.
-  # I don't know how much this helps, but it's
-  # included for now!
-  # I'm sure we could get a faster smoother, this seems rather
-  # slow as it's a loop.
-  # I think this probably helps prevent odd things happening.
-
-  # this really should get kicked out, can't we just average within
-  # narrow bins?
-  # surely it doesn't change that much anyway?
-  # don't smooth
-  data_mod <- data_mod |>
-    dplyr:::mutate(prob_smooth = expr)
-  if (FALSE) {
-    break_vec <- seq(min(data_mod$expr), max(data_mod_expr$expr), by = margin)
-    break_vec <- c(break_vec, max(data_mod$expr)) |> unique()
-    prob_smooth_vec <- data_mod$expr
-    for (i in seq_len(length(break_vec) - 1)) {
-      if (i == length(break_vec) - 1) {
-        ind_vec <- data_mod$expr >= break_vec[i] &
-          data_mod$expr <= break_vec[i + 1]
-      } else {
-        ind_vec <- data_mod$expr >= break_vec[i] &
-          data_mod$expr < break_vec[i + 1]
-      }
-      if (sum(ind_vec) == 0L) {
-        next
-      }
-      val_vec <- data_mod$expr[ind_vec]
-      prob_smooth_vec[ind_vec] <- mean(val_vec)
-    }
-    data_mod[, "prob_smooth"] <- prob_smooth_vec
-  }
-  if (FALSE) {
-    data_mod <- data_mod |>
-      dplyr::mutate(
-        prob_smooth = purrr::map_dbl(
-          seq_along(expr),
-          function(i) {
-            x <- data_mod$expr[i]
-
-            # swm: smaller within margin
-            # lwm: larger within margin
-            prob_tbl_pos_margin |>
-              dplyr::mutate(
-                swm = x_stim > x - margin & x_stim <= x,
-                lwm = x_stim < x + margin & x_stim >= x
-              ) |>
-              dplyr::filter(swm | lwm) |>
-              dplyr::pull("prob_stim_norm") |>
-              mean()
-        }))
-  }
-  
-
-  if (nrow(data_mod) >= 10){
-    .debug(debug, "Smoothing I")
-
-    # monotonic increasing
-    fit <- try(
-      scam::scam(
-        prob_smooth ~ s(expr, bs = "mpi"),
-        family = "binomial",
-        data = data_mod |>
-          dplyr::mutate(
-            prob_smooth = pmin(prob_smooth, 0.999),
-            prob_smooth = pmax(prob_smooth, 0.001)
-          ),
-        control = scam::scam.control(
-          print.warn = FALSE,
-          trace = FALSE,
-          devtol.fit = 0.5,
-          steptol.fit = 1e-1,
-          maxHalf = 5,
-          bfgs = list(steptol.bfgs = 1e-1),
-          maxit = 1e1
-        )
-      ),
-      silent = TRUE
-    )
-    mean_abs_error <- 0
-    pred_vec <- 0
-
-    if (!inherits(fit, "try-error")){
-      pred_vec <- predict(
-        fit, type = 'response'
-      )
-      mean_abs_error <- mean(
-        abs(pred_vec - data_mod$prob_smooth)
-      )
-    }
-
-    # monotonic increasing and convex
-    if (
-      inherits(fit, "try-error") ||
-        all(pred_vec > 0.99) ||
-        mean_abs_error > 0.3
-      ) {
-      .debug(debug, "Smoothing II")
-      fit <- try(
-        scam::scam(
-          prob_smooth ~ s(expr, bs = "micv"),
-          family = "binomial",
-          data = data_mod,
-          control = scam::scam.control(
-            print.warn = FALSE,
-            trace = FALSE,
-            devtol.fit = 0.01#,
-            #steptol.fit = 1e-3,
-            #bfgs = list(steptol.bfgs = 1e-4),
-            #maxit = 5
-            )),
-            silent = TRUE
-        )
-
-      if (!inherits(fit, "try-error")) {
-        pred_vec <- predict(fit, type = 'response')
-        mean_abs_error <- mean(abs(pred_vec - data_mod$prob_smooth))
-      }
-    }
-
-    # smoothes
-    if (
-      inherits(fit, "try-error") ||
-        all(pred_vec > 0.99) ||
-        mean_abs_error > 0.3) {
-      # .debug(debug, "Smoothing III")
-      .debug(debug, "Skipping mgcv smoothing")
-      # It's very slow, and returned
-      # a WAAAY larger error than scam
-      # when examined.
-      # can try isotonic regression here instead.
-      # (though perhaps could do a moving average first...)
-      # fit <- try(
-      #   mgcv::gam(prob_smooth ~ s(expr),
-      #     family = "binomial",
-      #     data = data_mod
-      #   ),
-      #   silent = TRUE
-      # )
-      if (!inherits(fit, "try-error")) {
-        pred_vec <- predict(fit, type = 'response')
-        mean_abs_error <- mean(abs(pred_vec - data_mod$prob_smooth))
-      }
-    }
-    if (
-      inherits(fit, "try-error") ||
-        all(pred_vec > 0.99) ||
-        mean_abs_error > 0.3) {
-      .debug(debug, "Failed to smooth")
-      data_mod <- data_mod |>
-        dplyr::mutate(pred = prob_smooth - 0.0001)
-    } else {
-      .debug(debug, "Smoothed")
-      data_mod <- data_mod |>
-        dplyr::mutate(pred = pred_vec)
-    }
-  } else {
-    .debug(debug, "Failed to smooth")
-    data_mod <- data_mod |>
-      dplyr::mutate(pred = prob_smooth - 0.0001)
-  } 
-
-  if (FALSE) {
-    data_plot <- data_mod |>
-      dplyr::select(expr, prob_smooth, pred) |>
-      dplyr::rename(x_stim = expr) |>
-      tidyr::pivot_longer(names_to = "type",
-                   values_to = "prob",
-                   -x_stim) |>
-      dplyr::bind_rows(prob_tbl_pos |>
-                  dplyr::select(x_stim, prob_stim_norm) |>
-                  dplyr::mutate(type = 'prob_stim_norm') |>
-                  dplyr::rename(prob = prob_stim_norm))
-
-    ggplot(data_plot, aes(x = x_stim, col = type)) +
-      geom_line(aes(y = prob)) +
-      geom_rug(data = data_plot |>
-                 dplyr::filter(type == 'pred')) +
-      scale_colour_brewer(palette = "Accent")
-  }
+  # smooth
+  data_mod <- .get_cp_uns_loc_get_prob_smooth(data_mod)
 
   data_count <- data_mod |>
-    dplyr::filter(expr >= min_prob_x) |>
+    dplyr::filter(expr >= min(.data$expr)) |>
     dplyr::arrange(expr) |>
     dplyr::mutate(n_row = seq_len(dplyr::n())) |>
     dplyr::filter(cumsum(pred > prob_smooth) != n_row)
 
   count <- sum(data_count$pred)
 
-  prop_bs_est <- count/nrow(cut_stim_orig)
+  prop_bs_est <- count/nrow(orig_list$stim)
 
   data_threshold <- data_count |>
     dplyr::arrange(desc(expr)) |>
     dplyr::mutate(count_stim = seq_len(dplyr::n())) |>
     dplyr::mutate(
-      prop_stim = count_stim/nrow(cut_stim_orig),
+      prop_stim = count_stim/nrow(orig_list$stim),
       prop_uns = purrr::map_dbl(expr, function(x){
-        sum((cut_uns$expr - bias) >= x) / nrow(cut_uns_orig)
+        sum((cut_uns$expr - bias) >= x) / nrow(orig_list$uns)
       }),
       prop_bs = prop_stim - prop_uns,
       prop_bs_diff = prop_bs - prop_bs_est,
-      prop_stim_pos = pmax(prop_stim, 0.5 / nrow(cut_stim_orig)),
-      prop_uns_pos = pmax(prop_uns, 0.5 / nrow(cut_uns_orig)),
+      prop_stim_pos = pmax(prop_stim, 0.5 / nrow(orig_list$stim)),
+      prop_uns_pos = pmax(prop_uns, 0.5 / nrow(orig_list$uns)),
       prop_stim_sd =
         sqrt(prop_stim_pos * (1 - prop_stim_pos)) /
-          nrow(cut_stim_orig),
+          nrow(orig_list$stim),
       prop_uns_sd =
-        sqrt((prop_uns_pos * (1 - prop_uns_pos)) / 
-          nrow(cut_uns_orig)),
+        sqrt((prop_uns_pos * (1 - prop_uns_pos)) /
+          nrow(orig_list$uns)),
       prop_bs_sd =
         sqrt(prop_stim_sd^2 + prop_uns_sd^2)
     )
 
-  if (FALSE) {
-    ggplot(data_threshold |>
-              tidyr::pivot_longer(names_to = "type",
-                          values_to = "prop",
-                          c(prop_stim, prop_uns, prop_bs)),
-            aes(x = expr, y = prop * 1e2, col = type)) +
-      geom_line()
-  }
 
   min_diff_tbl <- data_threshold |>
     dplyr::filter(
@@ -910,27 +574,324 @@
 
 
 
-  if (plot && FALSE) {
-    p_list <- .plot_cp_loc_fdr(
-      dens_tbl = dens_tbl_raw,
-      params = params,
-      prob_tbl = prob_tbl,
-      pred_tbl = all_cell_pred_tbl,
-      cut_stim = cut_stim_orig$expr,
-      sample = cut_stim_orig$sample[1],
-      min_x_pos_prob = min(all_cell_pred_tbl$cut_stim),
-      path_project = path_project
-    )
-  } else p_list <- p_list_empty
-
-  #print('done getting loc fdr gate for this single sample')
-
   .debug(debug, "Completed loc gate for single sample")
 
-  list(cp = cp, p_list = p_list_empty)
-
+  list(cp = cp, p_list = .get_cp_uns_loc_p_list_empty())
 }
 
+# initial checks
+# ---------------------
+.get_cp_uns_loc_ind_check_n_cell <- function(cut_stim, min_cell) {
+  nrow(cut_stim) < min_cell
+}
+
+.get_cp_uns_loc_ind_max_dens_x <- function(cut_stim) {
+  max(cut_stim$expr) - 0.05 * (diff(range(cut_stim$expr)))
+}
+
+.get_cp_uns_loc_ind_check_max_x <- function(cut_stim, cp_min) {
+  .get_cp_uns_loc_ind_max_dens_x(cut_stim) <= cp_min
+}
+
+.get_cp_uns_loc_check_early <- function(cut_stim, min_cell, cp_min) {
+  .get_cp_uns_loc_ind_check_n_cell(cut_stim, min_cell) ||
+    .get_cp_uns_loc_ind_check_max_x(cut_stim, cp_min)
+}
+
+.get_cp_uns_loc_ind_check_out <- function(cp_min,
+                                                cut_stim,
+                                                debug,
+                                                msg) {
+  .debug(debug, msg)
+  list(
+    cp = get_cp_uns_loc_ind_cp_non_loc(cp_min, cut_stim),
+    p_list = .get_cp_uns_loc_p_list_empty()
+  )
+}
+
+.get_cp_uns_loc_ind_cp_non_loc <- function(cp_min, cut_stim) {
+  max(cp_min, cut_stim$expr + (max(cut_stim$expr) - min(cut_stim$expr)) / 5)
+}
+
+.get_cp_uns_loc_set_max_expr <- function(.data, max_x) {
+  .data |> dplyr::mutate(expr = pmin(.data$expr, orig_list$max_x))
+}
+
+# get dens_tbl_raw
+# -----------------------
+.get_cp_uns_loc_get_dens_raw <- function(cut_stim,
+                                         cut_uns,
+                                         debug,
+                                         min_bw) {
+  .debug(debug, "Calculating densities")
+
+  dens_list <- .get_cp_uns_loc_get_dens_raw_densities(
+    cut_stim, cut_uns, debug, min_bw
+  )
+
+  # put raw densities into table
+  get_cp_uns_loc_get_dens_raw_tabulate(dens_list = dens_list)
+}
+
+.get_cp_uns_loc_get_dens_raw_densities <- function(cut_stim,
+                                                   cut_uns,
+                                                   debug,
+                                                   min_bw) {
+  bw <- .get_cp_uns_loc_get_dens_raw_densities_bw(cut_stim, cut_uns, min_bw)
+  dens_stim <- .get_cp_uns_loc_get_dens_raw_densities_stim(cut_stim, bw)
+  dens_uns <- .get_cp_uns_loc_get_dens_raw_densities_uns(cut_uns, dens_stim, bw)
+  list(stim = dens_stim, uns = dens_uns, bw = bw)
+}
+
+.get_cp_uns_loc_get_dens_raw_densities_bw_init <- function(.data, min_bw) {
+  bw_calc <- try(density(.data, bw  = "SJ")$bw)
+  if(inherits(bw_calc, "try-error")) min_bw else bw_calc
+}
+
+.get_cp_uns_loc_get_dens_raw_densities_bw <- function(cut_stim,
+                                                      cut_uns,
+                                                      min_bw) {
+  bw_stim <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(cut_stim$expr, min_bw)
+  bw_uns <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(cut_uns$expr, min_bw)
+  max(bw_stim, min_bw, bw_uns)
+}
+
+.get_cp_uns_loc_get_dens_raw_densities_stim <- function(cut_stim, bw) {
+  density(cut_stim$expr, bw = bw)
+}
+.get_cp_uns_loc_get_dens_raw_densities_uns <- function(cut_uns, dens_stim, bw) {
+  density(cut_uns$expr, from = min(dens_stim$x), to = max(dens_stim$x), bw = bw)
+}
+
+.get_cp_uns_loc_get_dens_raw_tabulate <- function(stim_x,
+                                                  stim_y,
+                                                  uns_x,
+                                                  uns_y) {
+  dens_tbl_raw_stim <- tibble::tibble(x_stim = stim_x, y_stim = stim_y)
+  dens_tbl_raw_wide <- .get_cp_uns_loc_get_dens_raw_tabulate_uns_interp(
+    dens_tbl_raw_stim, uns_x, uns_y
+  )
+  .get_cp_uns_loc_get_dens_raw_tabulate_format(dens_tbl_raw_wide)
+}
+
+.get_cp_uns_loc_get_dens_raw_tabulate_uns_interp <- function(.data, uns_x, uns_y) {
+  .data |>
+    dplyr::mutate(y_uns = purrr::map_dbl(x_stim,
+      function(marker) .interp(val = marker, x = uns_x, y = uns_y)
+    ))
+}
+
+.get_cp_uns_loc_get_dens_raw_tabulate_format <- function(.data) {
+  .data |>
+    tidyr::pivot_longer(y_stim:y_uns, names_to = "stim", values_to = "dens") |>
+    dplyr::mutate(stim = ifelse(stim == "y_stim", "yes", "no"))
+}
+
+#
+.get_cp_uns_loc_get_prob_tbl <- function(dens_tbl_raw,
+                                         debug,
+                                         cp_min,
+                                         ex_stim) {
+  .debug(debug, "Normalising probabilities")
+
+  # calculate raw and
+  # normed probability based on densities for density measurements
+  prob_tbl <- get_cp_uns_loc_get_prob_tbl_init(dens_tbl_raw, cp_min)
+
+  # choose probabilities to right of largest peak and
+  # with sufficient evidence of a response ito probabilities
+  # to be worth taking time smoothing over
+  prob_tbl_pos <- .get_cp_uns_loc_prob_tbl_filter(ex_stim, prob_tbl_init, debug)
+  list(all = prob_tbl, pos = prob_tbl_pos)
+}
+
+.get_cp_uns_loc_get_prob_tbl_init <- function(dens_tbl_raw, cp_min) {
+  dens_tbl_raw |>
+    tidyr::pivot_wider(
+      id_cols = x_stim,
+      names_from = stim,
+      values_from = dens
+      ) |>
+    dplyr::mutate(
+      prob_stim = 1 - no/yes,
+      prob_stim = ifelse(yes == 0 & no == 0, 0, prob_stim),
+      prob_stim_norm = pmin(1, prob_stim),
+      prob_stim_norm = pmax(0, prob_stim_norm)
+    ) |>
+    dplyr::filter(x_stim > cp_min)
+}
+
+.get_cp_uns_loc_prob_tbl_filter <- function(ex_stim,
+                                            prob_tbl,
+                                            debug) {
+  .debug(debug, "Filtering before smoothing")
+  # I don't know why this is ex_stim orig, which
+  # excludes the minimum. Shouldn't it be
+  # ex_stim? (2024 June 14)
+  # changing it to ex_stim_orig.
+
+  # find highest peak (assumed to be the left-most one)
+  density_exc_min <- density(ex_stim)
+  dens_tbl <- tibble::tibble(x = density_exc_min$x, y = density_exc_min$y)
+  peak <- dens_tbl |> dplyr::filter(y == max(y)) |> dplyr::pull("x")
+
+  prob_tbl <- prob_tbl |>
+    dplyr::filter(x_stim > peak + 0.02 * diff(range(x_stim)))
+
+  # get range of values for which we'd want to calculate
+  # probability:
+  # - those cells for which the probability
+  # of responding from their position onwards
+  # is 0.025 or more
+  prob_tbl |>
+    dplyr::mutate(
+      ge10 = prob_stim_norm >= 0.025, ge10 = cumsum(ge10) > 0
+    ) |>
+    dplyr::filter(ge10) |>
+    dplyr::select(-ge10)
+}
+
+.get_cp_uns_loc_get_min_prob_x <- function(prob_tbl_pos) {
+  min(prob_tbl_pos$x_stim)
+}
+
+.get_cp_uns_loc_check_response <- function(prob_tbl_pos, ex_stim_orig) {
+  nrow(prob_tbl_pos) == 0 ||
+    max(ex_stim_orig) < .get_cp_uns_loc_get_min_prob_x(prob_tbl_pos)
+}
+
+.get_cp_uns_loc_get_data_mod <- function(ex_stim_orig, ex_stim, ex_uns, prob_tbl_list) {
+  margin <- get_cp_uns_loc_get_data_mod_margin(ex_stim, ex_uns)
+
+  ex_stim_orig |>
+    dplyr::filter(expr >
+        (min(.get_cp_uns_loc_get_min_prob_x(prob_tbl_list$pos) - margin)))|>
+    dplyr:::mutate(prob_smooth = expr)
+}
+
+get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
+  abs(max(diff(ex_stim$expr), diff(ex_uns$expr))) * 0.05
+}
+
+# smooth
+# ---------------------
+.get_cp_uns_loc_get_prob_smooth <- function(data_mod) {
+  
+  # enough cells to bother smoothing
+  if (!.get_cp_uns_loc_get_prob_smooth_check_n_cell(data_mod)) {
+    return(.get_cp_uns_loc_get_prob_smooth_check_n_cell_out(data_mod))
+  }
+  
+  # get predictions after smoothing
+  pred_vec <- get_cp_uns_loc_get_prob_smooth_actual(data_mod, debug)
+  data_mod |> dplyr::mutate(pred = pred_vec)
+}
+
+.get_cp_uns_loc_get_prob_smooth_check_n_cell <- function(data_mod) {
+  nrow(data_mod) < 10
+}
+
+.get_cp_uns_loc_get_prob_smooth_check_n_cell_out <- function(data_mod) {
+  data_mod |> dplyr::mutate(pred = prob_smooth - 1e-4)
+}
+
+.get_cp_uns_loc_get_prob_smooth_actual <- function(data_mod, debug) {
+  fit_1 <- .get_cp_uns_loc_get_prob_smooth_actual_first(data_mod, debug)
+  .get_cp_uns_loc_get_prob_smooth_actual_first_response(
+    fit_1, data_mod, debug
+  )
+}
+
+.get_cp_uns_loc_get_prob_smooth_actual_first <- function(data_mod, debug) {
+  .debug(debug, "Smoothing I")
+  try(
+    scam::scam(
+      prob_smooth ~ s(expr, bs = "mpi"),
+      family = "binomial",
+      data = data_mod |>
+        dplyr::mutate(
+          prob_smooth = pmin(prob_smooth, 0.999),
+          prob_smooth = pmax(prob_smooth, 0.001)
+        ),
+      control = scam::scam.control(
+        print.warn = FALSE,
+        trace = FALSE,
+        devtol.fit = 0.5,
+        steptol.fit = 1e-1,
+        maxHalf = 5,
+        bfgs = list(steptol.bfgs = 1e-1),
+        maxit = 1e1
+      )
+    ),
+    silent = TRUE
+  )
+}
+
+.get_cp_uns_loc_get_prob_smooth_actual_first_response <- function(fit, 
+                                                                  data_mod,
+                                                                  debug) {
+  # return predictions if success
+  if (.get_cp_uns_loc_get_prob_smooth_actual_check(fit, data_mod)) {
+    .debug(debug, "Smoothed")
+    return(.get_cp_uns_loc_get_prob_smooth_actual_response_success(
+      fit, data_mod
+    )$pred)
+  }
+  # fit again if not a success
+  .get_cp_uns_loc_get_prob_smooth_actual_first_response_failure(
+    debug, data_mod
+  )
+}
+
+.get_cp_uns_loc_get_prob_smooth_actual_check <- function(fit, data_mod) {
+  if (inherits(fit, "try-error")) {
+    return(FALSE)
+  }
+  out_list <- .get_cp_uns_loc_get_prob_smooth_actual_response_success(
+      fit, data_mod
+    )
+  !(all(pred_vec > 0.99) ||  mean_abs_error > 0.3)
+}
+
+.get_cp_uns_loc_get_prob_smooth_actual_response_success <- function(fit, # nolint
+                                                                          data_mod) { # nolint
+    pred_vec <- predict(fit, type = 'response')
+    mean_abs_error <- mean(abs(pred_vec - data_mod$prob_smooth))
+    list("pred" = pred_vec, "mean_abs_error" = mean_abs_error)
+  }
+
+.get_cp_uns_loc_get_prob_smooth_actual_first_response_failure <- function(debug,# nolint
+                                                                          data_mod) {
+    fit_2 <- .get_cp_uns_loc_get_prob_smooth_actual_second(data_mod, debug)
+    if (.get_cp_uns_loc_get_prob_smooth_actual_check(fit_2, data_mod)) {
+      .debug(debug, "Smoothed")
+      return(.get_cp_uns_loc_get_prob_smooth_actual_response_success(
+          fit_2, data_mod
+        )$pred)
+    }
+    .get_cp_uns_loc_get_prob_smooth_actual_third(data_mod, debug)
+  }
+
+.get_cp_uns_loc_get_prob_smooth_actual_second <- function(data_mod, debug) {
+  .debug(debug, "Smoothing II")
+  try(
+    scam::scam(
+      prob_smooth ~ s(expr, bs = "micv"),
+      family = "binomial",
+      data = data_mod,
+      control = scam::scam.control(
+        print.warn = FALSE,
+        trace = FALSE,
+        devtol.fit = 0.01
+        )),
+        silent = TRUE
+    )
+}
+
+.get_cp_uns_loc_get_prob_smooth_actual_third <- function(data_mod) {
+  .debug(debug, "Failed to smooth")
+  data_mod$prob_smooth - 0.0001
+}
 
 #' @title Plot gating plots for local fdr method
 #'
