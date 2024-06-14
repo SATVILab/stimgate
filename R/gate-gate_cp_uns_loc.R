@@ -484,38 +484,13 @@
   cut_stim <- get_cp_uns_loc_set_max_expr(cut_stim, orig_list$max_x)
   cut_uns <- get_cp_uns_loc_set_max_expr(cut_uns, orig_list$max_x)
 
-  # get raw densities
-  dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
-    cut_stim, cut_uns, debug, min_bw
+  # get smoothed probabilities
+  data_mod <- .get_cp_uns_loc_get_prob(
+    orig_list, cut_stim, cut_uns, debug, min_bw
   )
 
-  # get probabilities
-  prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
-    dens_tbl_raw, debug, cp_min, ex_stim
-  )
-
-  # check that we have enough responding cells
-  if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, orig_list$stim)) {
-    return(.get_cp_uns_loc_ind_check_early_out(
-      cp_min, orig_list$stim, debug, "No responding cells"
-    ))
-  }
-
-  # get data to smooth over
-  data_mod <- .get_cp_uns_loc_get_data_mod(
-    orig_list$stim, ex_stim, ex_uns, prob_tbl_list
-  )
-
-  # smooth
-  data_mod <- .get_cp_uns_loc_get_prob_smooth(data_mod)
-
-
-
-
-  cp <- .get_cp_uns_loc_get_cp(data_mod, ex_stim_orig)
-
-
-  .debug(debug, "Completed loc gate for single sample")
+  # get threshold
+  cp <- .get_cp_uns_loc_get_cp(data_mod, orig_list$stim)
 
   list(cp = cp, p_list = .get_cp_uns_loc_p_list_empty())
 }
@@ -702,6 +677,11 @@
 }
 
 .get_cp_uns_loc_get_data_mod <- function(ex_stim_orig, ex_stim, ex_uns, prob_tbl_list) {
+  if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, ex_stim_orig)) {
+    return(.get_cp_uns_loc_ind_check_early_out(
+      cp_min, ex_stim_orig, debug, "No responding cells"
+    ))
+  }
   margin <- get_cp_uns_loc_get_data_mod_margin(ex_stim, ex_uns)
 
   ex_stim_orig |>
@@ -834,14 +814,46 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
   data_mod$prob_smooth - 0.0001
 }
 
+# get probabilities
+.get_cp_uns_loc_get_prob <- function(orig_list,
+                                     cut_stim,
+                                     cut_uns,
+                                     debug,
+                                     min_bw) {
+
+  # get raw densities
+  dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
+    cut_stim, cut_uns, debug, min_bw
+  )
+
+  # get probabilities
+  prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
+    dens_tbl_raw, debug, cp_min, ex_stim
+  )
+
+  # get data to smooth over
+  data_mod <- .get_cp_uns_loc_get_data_mod(
+    orig_list$stim, ex_stim, ex_uns, prob_tbl_list
+  )
+
+  # smooth
+  .get_cp_uns_loc_get_prob_smooth(data_mod)
+}
+
 # get cp
 .get_cp_uns_loc_get_cp <- function(data_mod,
-                                   ex_stim_orig) {
+                                   ex_stim_orig,
+                                   debug) {
+  if (!inherits(data_mod, "data.frame")) {
+    return(data_mod)
+  }
 
   data_threshold <- .get_cp_uns_loc_get_cp_data_threshold(
     data_mod, ex_stim_orig
   )
-  .get_cp_uns_loc_get_cp_actual(data_threshold)
+  cp <- .get_cp_uns_loc_get_cp_actual(data_threshold)
+  .debug(debug, "Completed loc gate for single sample")
+  cp
 }
 
 .get_cp_uns_loc_get_cp_data_threshold <- function(data_mod,
