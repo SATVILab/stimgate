@@ -13,7 +13,7 @@
                             params,
                             plot,
                             path_project,
-                            debug = FALSE){
+                            debug = FALSE) {
 
   # get cutpoints for each level of bias
   .get_cp_uns_loc_bias(
@@ -48,16 +48,15 @@
                                  params,
                                  plot,
                                  path_project,
-                                 debug){
+                                 debug) {
 
   # get ecdf of uns
   purrr::map(bias_uns, function(bias){
-    .debug(debug, "bias_uns", bias)
-    #print('getting loc fdr gate for a given bias')
+    .debug(debug, "bias_uns", bias) # nolint
 
     # get ecdf of uns sample
     # -------------------------------------
-    cut_tbl_uns <- .get_cut_list(
+    cut_tbl_uns <- .get_cut_list( # nolint
       ex_list = ex_list,
       ind = ind_uns,
       exc_min = TRUE,
@@ -68,7 +67,7 @@
     # get gates for given level of bias across gate combination methods
     # --------------------------------------
     cp_uns_gate_combn_obj <- .get_cp_uns_loc_gate_combn(
-      ex_list =  ex_list,
+      ex_list = ex_list,
       cut_uns = cut_tbl_uns,
       ind_uns = ind_uns,
       ind_gate = ind_gate,
@@ -83,49 +82,13 @@
       path_project = path_project,
       debug = debug
     )
-    # extract and save plots
-    # ---------------------------------------
-
-    # save to temp directory
-    if (plot && FALSE){
-      # add bias label
-      cp_uns_plot_list <- cp_uns_gate_combn_obj[['p_list']]
-      for(i in seq_along(cp_uns_plot_list)){
-        for(j in seq_along(cp_uns_plot_list[[i]])){
-          names(cp_uns_plot_list[[i]][[j]]) <- stringr::str_replace(
-            names(cp_uns_plot_list[[i]][[j]]),
-            "loc",
-            paste0("locb", bias)
-          )
-        }
-      }
-
-      dir_save <- file.path(
-        tempdir(),
-        params$data_name,
-        paste0("cp_locb", bias, "_plots")
-      )
-      if(!dir.exists(dir_save)) {
-        dir.create(dir_save, recursive = TRUE)
-      }
-      saveRDS(
-        cp_uns_plot_list,
-        file.path(dir_save, paste0(
-          names(cp_uns_plot_list),
-          ".rds"
-        ))
-      )
-    }
 
     # extract and add bias label to gates
     # ---------------------------------------
-    cp_uns_gate_combn_list <- cp_uns_gate_combn_obj[['cp_uns']]
+    cp_uns_gate_combn_list <- cp_uns_gate_combn_obj[["cp_uns"]]
     names(cp_uns_gate_combn_list) <-
       paste0(names(cp_uns_gate_combn_list), "b", bias)
     cp_uns_gate_combn_list
-
-    #print('done getting loc fd
-    # gate across gate combinations for a given bias')
 
     cp_uns_gate_combn_list
 
@@ -150,11 +113,9 @@
                                        debug = FALSE){
   .debug(debug, "getting gate_combn")
 
-  #print('getting loc fdr gate across gate combinations')
-
   # get cutpoints for prejoin gate combination method
-  if ('prejoin' %in% gate_combn) {
-    .debug(debug, "prejoin")
+  if ("prejoin" %in% gate_combn) {
+    .debug(debug, "prejoin") # nolint
 
     # get marker expression for stim samples,
     # join and then sort into descending order
@@ -185,13 +146,13 @@
       bias = bias,
       path_project = path_project
     ) |>
-      purrr::map(function(x) list('prejoin' = x))
+      purrr::map(function(x) list("prejoin" = x))
 
 
   } else cp_uns_list_prejoin <- list()
 
   # get cutpoint if group method is not only prejoin
-  non_prejoin_combn_vec <- setdiff(gate_combn, 'prejoin')
+  non_prejoin_combn_vec <- setdiff(gate_combn, "prejoin")
 
   if (length(non_prejoin_combn_vec) > 0){
     .debug(debug, "non-prejoin")
@@ -229,7 +190,7 @@
       collapse = "_"
     )
     sample_name_vec <- purrr::map_chr(
-      names(cp_uns_list_nonjoin[['p_list']]),
+      names(cp_uns_list_nonjoin[["p_list"]]),
       function(ind){
         paste0(ex_list[[ind]]$batch_sh[1],
               "_", ex_list[[ind]]$stim[1])
@@ -268,8 +229,7 @@
     }) |>
       stats::setNames(unique(names(combined_list)))
 
-  #print('done getting loc fdr gates across gate combinations')
-  .debug(debug, "done getting gate_combn")
+  .debug(debug, "done getting gate_combn") # nolint
 
   list(
     "cp_uns" = list("loc" = cp_uns_list),
@@ -301,8 +261,7 @@
                                    bias,
                                    path_project,
                                    debug = FALSE){
-  .debug(debug, "getting loc gate at sample level")
-  #print('getting loc fdr gates across sample')
+  .debug(debug, "getting loc gate at sample level") # nolint
 
   # get cutpoints for each sample
   cp_uns_loc_obj_list <- purrr::map(seq_along(cut_stim), function(i) {
@@ -386,8 +345,7 @@
   p_list <- purrr::map(cp_uns_loc_obj_list, function(x) x$p_list) |>
     stats::setNames(ind_stim)
 
-  #print('done getting loc fdr gates for this batch')
-  .debug(debug, "done getting loc gate at sample level")
+  .debug(debug, "done getting loc gate at sample level") # nolint
 
   # collate plots
   list("loc" = cp_vec,
@@ -697,12 +655,12 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
 # smooth
 # ---------------------
 .get_cp_uns_loc_get_prob_smooth <- function(data_mod) {
-  
+
   # enough cells to bother smoothing
   if (!.get_cp_uns_loc_get_prob_smooth_check_n_cell(data_mod)) {
     return(.get_cp_uns_loc_get_prob_smooth_check_n_cell_out(data_mod))
   }
-  
+
   # get predictions after smoothing
   pred_vec <- get_cp_uns_loc_get_prob_smooth_actual(data_mod, debug)
   data_mod |> dplyr::mutate(pred = pred_vec)
@@ -748,7 +706,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
   )
 }
 
-.get_cp_uns_loc_get_prob_smooth_actual_first_response <- function(fit, 
+.get_cp_uns_loc_get_prob_smooth_actual_first_response <- function(fit,
                                                                   data_mod,
                                                                   debug) {
   # return predictions if success
@@ -776,7 +734,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
 
 .get_cp_uns_loc_get_prob_smooth_actual_response_success <- function(fit, # nolint
                                                                           data_mod) { # nolint
-    pred_vec <- predict(fit, type = 'response')
+    pred_vec <- predict(fit, type = "response")
     mean_abs_error <- mean(abs(pred_vec - data_mod$prob_smooth))
     list("pred" = pred_vec, "mean_abs_error" = mean_abs_error)
   }
@@ -992,7 +950,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
   plot_tbl_pred <- pred_tbl |>
     dplyr::rename(x_stim = cut_stim,
            prob = pred) |>
-    dplyr::mutate(prob_type = 'pred') |>
+    dplyr::mutate(prob_type = "pred") |>
     dplyr::select(x_stim, prob_type, prob )
 
   plot_tbl <- plot_tbl_prob |>
@@ -1000,7 +958,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
   p_loc_prob <- ggplot(plot_tbl,
                        aes(x = x_stim, y = prob, linetype = prob_type)) +
     cowplot::theme_cowplot(font_size = 20) +
-    cowplot::background_grid(major = 'y', minor = 'y') +
+    cowplot::background_grid(major = "y", minor = "y") +
     geom_hline(yintercept = 0) +
     geom_line(size = 2) +
     scale_linetype_manual(values = c("pred" = "solid",
@@ -1023,9 +981,6 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
   # -------------------------------
 
   # plot binned contributions to total count by range
-  # new_pred_tbl <- tibble::tibble(x_stim = cut_stim[cut_stim >= min_x_pos_prob])
-  # new_pred_vec <- predict(prob_mod, newdata = new_pred_tbl, type = 'response')
-  # new_pred_tbl <- new_pred_tbl |> dplyr::mutate(pred = new_pred_vec)
 
   #  n_bin <- hist(new_pred_tbl$x_stim, plot = FALSE)$mids |> length
   n_bin <- hist(pred_tbl$cut_stim, plot = FALSE)$mids |> length()
@@ -1060,9 +1015,9 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
   # plot of contribution per bin
   p_loc_ctb <- ggplot(bin_tbl,
                       aes(x = bin_mid, y = ctb)) +
-    geom_bar(stat = 'identity',
-             col = 'gray25',
-             fill = 'gray85')
+    geom_bar(stat = "identity",
+             col = "gray25",
+             fill = "gray85")
 
   dir_save <- file.path(dir_base, "p_loc_ctb")
   if(!dir.exists(dir_save)) dir.create(dir_save, recursive = TRUE)
@@ -1073,66 +1028,6 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
   #     p_loc_ctb = p_loc_ctb)
   list()
 
-}
-
-.get_prob_mod <- function(prob_tbl, nrow_level){
-
-  prob_mod <- try(scam::scam(prob_stim_norm ~ s(x_stim, bs = "mpi"),
-                         family = "binomial",
-                         data = prob_tbl |>
-                           dplyr::filter(prob_stim_norm > 0.25)))
-
-  if(class(prob_mod) == 'try-error'){
-    prob_mod <- try(scam::scam(prob_stim_norm ~ s(x_stim, bs = "micx"),
-                               family = "binomial",
-                               data = prob_tbl))
-  } else return(prob_mod)
-
-  if(class(prob_mod) == 'try-error'){
-    prob_mod <- try(mgcv::gam(prob_stim_norm ~ s(x_stim),
-                               family = "binomial",
-                               data = prob_tbl))
-  }
-
-  prob_mod
-}
-
-.get_cell_specific_response_probs <- function(prob_tbl, nrow_level, params,
-                                              prob_min, cut_stim){
-
-  # =====================
-  # Fit model
-  # =====================
-
-  # fit a model to get smoothed probabilities
-  prob_mod <- .get_prob_mod(prob_tbl, nrow_level = nrow_level)
-
-  # if model fails, then return it
-  if('ultimate error' %in% class(prob_mod)){
-
-    out <- list(pred_tbl = NA,
-                prob_mod = NA)
-
-    # out <- FALSE
-    # class(out) <- 'ultimate error'
-    return(out)
-  }
-
-  # =====================
-  # Get predictions
-  # =====================
-
-  # get fitted values
-  pred_vec <- fitted.values(prob_mod)
-
-  # add them to table
-  pred_tbl <- prob_tbl |>
-    dplyr::mutate(pred = pred_vec)
-
-  out <- list(pred_tbl = pred_tbl,
-              prob_mod = prob_mod)
-
-  out
 }
 
 
