@@ -263,7 +263,7 @@
                                            cyt_combn_vec_list,
                                            gate_type_cyt_pos_calc,
                                            gate_type_single_pos_calc) {
-  .debug(debug, "n_pos_nm: ", n_pos_nm) # nolint
+  .debug(debug, "number of cytokines positive: ", j) # nolint
   cyt_combn <- cyt_combn_vec_list[[j]]
   stat_tbl_gn_ind <- tibble::tibble(
     ind = ex$ind[1],
