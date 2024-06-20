@@ -82,7 +82,7 @@
       "gate_type_cyt_pos value of ", ifelse(missing(gate_type_cyt_pos),
         "blank", gate_type_cyt_pos
       ),
-      " not either "cyt" or "base" in function .get_pos_ind_mult."
+      ' not either "cyt" or "base" in function .get_pos_ind_mult.'
     ))
   }
 
@@ -261,7 +261,7 @@
   if (!gate_type_single_pos %in% c("base", "single")) {
     stop(paste0(
       "gate_type_single_pos value of ", gate_type_single_pos,
-      " not either "cyt" or "base" in function .get_pos_ind_mult."
+      ' not either "cyt" or "base" in function .get_pos_ind_mult.'
     ))
   }
 }
@@ -298,7 +298,7 @@
       "gate_type_cyt_pos value of ", ifelse(missing(gate_type_single_pos),
         "blank", gate_type_single_pos
       ),
-      " not either 'single' or "base" in function .get_pos_ind"
+      " not either 'single' or 'base' in function .get_pos_ind"
     ))
   }
 
@@ -348,7 +348,7 @@
       "gate_type_cyt_pos value of ", ifelse(missing(gate_type_single_pos),
         "blank", gate_type_single_pos
       ),
-      " not either 'single' or "base" in function .get_pos_ind"
+      " not either 'single' or 'base' in function .get_pos_ind"
     ))
   }
   chnl <- unique(c(chnl_pos, chnl_neg, chnl_alt))
