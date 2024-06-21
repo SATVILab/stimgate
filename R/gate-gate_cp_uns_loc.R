@@ -7,7 +7,7 @@
   # get cutpoints for each level of bias
   .get_cp_uns_loc_bias( # nolint
     ex_list = ex_list, ind_gate = ind_gate, ind_uns = ind_uns,
-    data = data, bias_uns = bias_uns, noise_sd = NULL,
+    data = data, bias_uns = bias_uns, noise_sd = noise_sd,
     cp_min = cp_min, gate_combn = gate_combn, min_bw = min_bw,
     min_cell = min_cell, gate_tbl = params$gate_tbl,
     gate_name_curr = params$gate_name_curr, cut = params$cut,
@@ -59,14 +59,16 @@
 
     # extract and add bias label to gates
     # ---------------------------------------
-    cp_uns_gate_combn_list <- cp_uns_gate_combn_obj[["cp_uns"]]
-    names(cp_uns_gate_combn_list) <-
-      paste0(names(cp_uns_gate_combn_list), "b", bias)
-    cp_uns_gate_combn_list
-
-    cp_uns_gate_combn_list
+    .get_cp_uns_loc_gate_label(cp_uns_gate_combn_obj, bias)
   }) |>
     purrr::flatten()
+}
+
+.get_cp_uns_loc_gate_label <- function(cp_uns_gate_combn_obj, bias) {
+  cp_uns_gate_combn_list <- cp_uns_gate_combn_obj[["cp_uns"]]
+  names(cp_uns_gate_combn_list) <-
+    paste0(names(cp_uns_gate_combn_list), "b", bias)
+  cp_uns_gate_combn_list
 }
 
 .get_cp_uns_loc_bias_data_prep <- function(ex_list,
@@ -77,7 +79,7 @@
                                            debug) {
   # rename `cut` column` to `expr`
   # -------------------------------------
-  ex_list_orig <- .get_cut_list(
+  ex_list_orig <- .get_cut_list( # nolint
     ex_list = ex_list, ind = union(ind_gate, ind_uns), exc_min = FALSE,
     bias = 0, noise_sd = NULL, debug = debug
   )
@@ -154,11 +156,25 @@
     bias = bias, path_project = path_project, debug = debug
   )
 
-  .debug(debug, "Getting unstim cutpoints") # nolint
+  # merge above two lists
+  cp_uns_list <- .get_cp_uns_loc_gate_combn_merge(
+    cp_uns_list_prejoin, cp_uns_list_prejoin_non, debug
+  )
+
+  list(
+    "cp_uns" = list("loc" = cp_uns_list),
+    "p_list" = list()
+  )
+}
+
+.get_cp_uns_loc_gate_combn_merge <- function(cp_uns_list_prejoin,
+                                             cp_uns_list_prejoin_non,
+                                             debug) {
+  .debug(debug, "done getting gate_combn") # nolint
 
   combined_list <- cp_uns_list_prejoin |>
     append(cp_uns_list_prejoin_non)
-  cp_uns_list <- purrr::map(
+  purrr::map(
     unique(names(combined_list)),
     function(x) {
       .debug(debug, "cutpoint name", paste0(x, collapse = "-")) # nolint
@@ -167,13 +183,6 @@
     }
   ) |>
     stats::setNames(unique(names(combined_list)))
-
-  .debug(debug, "done getting gate_combn") # nolint
-
-  list(
-    "cp_uns" = list("loc" = cp_uns_list),
-    "p_list" = p_list
-  )
 }
 
 # --------------------------------
@@ -220,7 +229,7 @@
 }
 
 .get_cp_uns_loc_gate_combn_prejoin_not <- function() {
-  list()
+  list("cp" = list(), "p_list" = list())
 }
 
 .get_cp_uns_loc_gate_combn_prejoin_actual <- function(ex_list_no_min,
@@ -307,10 +316,13 @@
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     plot = plot,
     bias = bias,
+    non_prejoin_combn = non_prejoin_combn,
+    path_project = path_project,
+    debug = debug
   )
 }
 .get_cp_uns_loc_gate_combn_prejoin_non_not <- function() {
-  list()
+  list("cp" = list(), "p_list" = list())
 }
 
 .get_cp_uns_loc_gate_combn_prejoin_non_actual <- function(ex_list_no_min_stim,
@@ -328,7 +340,8 @@
                                                           plot,
                                                           bias,
                                                           path_project,
-                                                          debug) {
+                                                          debug,
+                                                          non_prejoin_combn) {
   .debug(debug, "non-prejoin") # nolint
   cp_uns_list_nonjoin <- .get_cp_uns_loc_sample(
     ex_list_orig =
@@ -347,9 +360,10 @@
     .get_cp_uns_loc_gate_combn_prejoin_non_actual_plot_org(
       cp_uns_list_nonjoin, debug, ex_list_orig, path_project
     )
-  .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn(
-    debug, cp_uns_list_nonjoin, non_prejoin_combn_vec
+  cp_uns_list_nonjoin <- .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn(
+    debug, cp_uns_list_nonjoin, non_prejoin_combn
   )
+  list("cp" = cp_uns_list_nonjoin, "p_list" = p_list)
 }
 
 .get_cp_uns_loc_gate_combn_prejoin_non_actual_prep <- function(ex_list_no_min_stim) { # nolint
@@ -360,10 +374,10 @@
     purrr::map(function(x) x |> dplyr::arrange(desc(expr))) # nolint
 }
 
-.get_cp_uns_loc_gate_combn_prejoin_non_actual_plot_org <- function(cp_uns_list_nonjoin,
+.get_cp_uns_loc_gate_combn_prejoin_non_actual_plot_org <- function(cp_uns_list_nonjoin, # nolint
                                                                    debug,
                                                                    ex_list_orig,
-                                                                   path_project) {
+                                                                   path_project) { # nolint
   # get list of plots organised
   # ---------------------------
   .debug(debug, "Organising plots") # nolint
@@ -376,8 +390,8 @@
     names(cp_uns_list_nonjoin[["p_list"]]),
     function(ind) {
       paste0(
-        ex_list[[ind]]$batch_sh[1],
-        "_", ex_list[[ind]]$stim[1]
+        ex_list_orig[[ind]]$batch_sh[1],
+        "_", ex_list_orig[[ind]]$stim[1]
       )
     }
   )
@@ -393,8 +407,8 @@
 }
 
 .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn <- function(debug,
-                                                                cp_uns_list_nonjoin,
-                                                                non_prejoin_combn_vec) {
+                                                                cp_uns_list_nonjoin, # nolint
+                                                                non_prejoin_combn_vec) { # nolint
   # get list of cutpoints combined in the appropriate way
   # ---------------------------
   .debug(debug, "Combining cutpoints") # nolint
@@ -450,8 +464,8 @@
 
     # return early if there are too few cells
     too_few_cells_lgl <- .get_cp_uns_loc_sample_check_cell_number(
-      ex_stim_no_min = ex_list_no_min_stim[[i]],
-      min_cell = min_cell, ex_uns_bias = ex_tbl_uns_bias
+      ex_tbl_stim_no_min = ex_list_no_min_stim[[i]],
+      min_cell = min_cell, ex_tbl_uns_bias = ex_tbl_uns_bias
     )
     if (too_few_cells_lgl) {
       return(.get_cp_uns_loc_sample_out_cell_number(debug))
@@ -472,14 +486,13 @@
     )
 
     cp_uns_loc_obj <- .get_cp_uns_loc_ind( # nolint
-      ex_stim_no_min = ex_list_no_min_stim[[i]],
+      ex_tbl_stim_no_min = ex_list_no_min_stim[[i]],
       ex_tbl_uns_bias = ex_tbl_uns_bias,
-      ex_stim_orig = ex_list_orig[[as.character(ind_gate)[i]]],
-      ex_uns_orig = ex_list_orig[[as.character(ind_uns)]],
+      ex_tbl_stim_orig = ex_list_orig[[as.character(ind_gate)[i]]],
+      ex_tbl_uns_orig = ex_list_orig[[as.character(ind_uns)]],
       min_bw = min_bw,
       cp_min = cp_min,
       min_cell = min_cell,
-      params = params,
       plot = plot,
       bias = bias,
       path_project = path_project,
@@ -489,62 +502,20 @@
 
   # name sample
   # ------------------
-
-  .debug(debug, "Possibly re-using calculated cutpoints") # nolint
-
-  # extract vector of cutpoints
-  cp_vec <- purrr::map_dbl(
-    cp_uns_loc_obj_list,
-    function(cp_uns_loc_obj) {
-      cp_uns_loc_obj$cp
-    }
-  )
-
-  # stimulation indices
-  ind_stim <- setdiff(ind_gate, ind_uns)
-
-  cp_vec <- purrr::map_dbl(
-    cp_uns_loc_obj_list,
-    function(cp_uns_loc_obj) {
-      cp_uns_loc_obj$cp
-    }
-  )
-
-  # Repeat cutpoint if it was prejoined
-  if (length(cp_vec) == 1 && ind_stim != 1) {
-    cp_vec <- stats::setNames(
-      rep(cp_vec, length(ind_stim)), ind_stim
-    )
-  } else {
-    # name gate indices if not prejoined
-    cp_vec <- stats::setNames(cp_vec, ind_stim)
-  }
-
-  # add unstim if unstim gate required
-  if (ind_uns %in% ind_gate) {
-    if (!all(purrr::map_lgl(cp_vec, is.na))) {
-      cp_vec <- c(cp_vec, stats::setNames(mean(cp_vec, na.rm = TRUE), ind_uns))
-    } else {
-      cp_vec <- c(cp_vec, NA)
-    }
-  }
-
-  p_list <- purrr::map(cp_uns_loc_obj_list, function(x) x$p_list) |>
-    stats::setNames(ind_stim)
-
-  .debug(debug, "done getting loc gate at sample level") # nolint
-
-  # collate plots
-  list(
-    "loc" = cp_vec,
-    "p_list" = p_list
+  .get_cp_uns_loc_output(
+    debug = debug, cp_uns_loc_obj_list = cp_uns_loc_obj_list,
+    ind_gate = ind_gate, ind_uns = ind_uns,
+    ind_stim = seq_along(ex_list_no_min_stim)
   )
 }
 
-.get_cp_uns_loc_sample_check_cell_number <- function(cut_stim,
+
+
+.get_cp_uns_loc_sample_check_cell_number <- function(ex_tbl_stim_no_min,
                                                      min_cell,
-                                                     cut_uns) {
-  nrow(cut_stim) < min_cell || nrow(cut_uns) < min_cell
+                                                     ex_tbl_uns_bias) {
+  nrow(ex_tbl_stim_no_min) < min_cell ||
+    nrow(ex_tbl_uns_bias) < min_cell
 }
 
 .get_cp_uns_loc_sample_out_cell_number <- function(debug) {
@@ -606,16 +577,18 @@
     stats::setNames(c("p_loc_dens", "p_loc_prob", "p_loc_ctb"))
 }
 
-.get_cp_uns_loc_ind_orig <- function(cut_stim, cut_uns) {
-  max_dens_x <- .get_cp_uns_loc_ind_max_dens_x(cut_stim)
-  list(stim = cut_stim, uns = cut_uns, max_x = max_dens_x)
+.get_cp_uns_loc_ind_orig <- function(ex_tbl_stim_no_min, ex_tbl_uns_bias) {
+  max_dens_x <- .get_cp_uns_loc_ind_max_dens_x(ex_tbl_stim_no_min)
+  list(stim = ex_tbl_stim_no_min, uns = ex_tbl_uns_bias, max_x = max_dens_x)
 }
-.get_cp_uns_loc_ind <- function(cut_uns,
-                                cut_stim,
+.get_cp_uns_loc_ind <- function(ex_tbl_uns_bias, # was cut_unstim
+                                ex_tbl_stim_no_min, # was cut_stim
                                 min_bw,
                                 cp_min,
                                 min_cell,
-                                params,
+                                # replacement of params
+                                ex_tbl_stim_orig,
+                                ex_tbl_uns_orig,
                                 plot = TRUE,
                                 prob_min = 0.1,
                                 bias,
@@ -624,64 +597,77 @@
   .debug(debug, "getting loc gate for single sample") # nolint
 
   # estimate densities for stim and unstim over stim range
-  if (.get_cp_uns_loc_check_early(cut_stim, min_cell, cp_min)) {
+  if (.get_cp_uns_loc_check_early(ex_tbl_stim_no_min, min_cell, cp_min)) {
     return(.get_cp_uns_loc_ind_check_out(
-      cp_min, cut_stim, debug, "Too few cells"
+      cp_min, ex_tbl_stim_no_min, debug, "Too few cells"
     ))
   }
 
-  orig_list <- .get_cp_uns_loc_ind_orig(cut_stim, cut_uns)
-
   # stop expr being higher than max_x to prevent
   # really far away values creating modes
-  cut_stim <- .get_cp_uns_loc_set_max_expr(cut_stim, orig_list$max_x)
-  cut_uns <- .get_cp_uns_loc_set_max_expr(cut_uns, orig_list$max_x)
+  ex_tbl_stim_threshold <- .get_cp_uns_loc_set_max_expr(
+    ex_tbl_stim_no_min, .get_cp_uns_loc_ind_max_dens_x(ex_tbl_stim_no_min)
+  )
+  ex_tbl_uns_threshold <- .get_cp_uns_loc_set_max_expr(
+    ex_tbl_uns_bias, .get_cp_uns_loc_ind_max_dens_x(ex_tbl_stim_no_min)
+  )
 
   # get smoothed probabilities
   data_mod <- .get_cp_uns_loc_get_prob(
-    ex_stim_orig = orig_list$stim, cut_stim = cut_stim, cut_uns = cut_uns,
+    ex_tbl_stim_no_min = ex_tbl_stim_no_min,
+    ex_tbl_stim_threshold = ex_tbl_stim_threshold,
+    ex_tbl_uns_threshold = ex_tbl_uns_threshold,
     debug = debug, min_bw = min_bw, cp_min = cp_min,
-    ex_uns = params$ex_uns, ex_stim = params$ex_stim
+    ex_tbl_uns_orig = ex_tbl_uns_orig, ex_tbl_stim_orig = ex_tbl_stim_orig
   )
 
   # get threshold
-  cp <- .get_cp_uns_loc_get_cp(data_mod, orig_list$stim)
+  cp <- .get_cp_uns_loc_get_cp(data_mod, ex_tbl_stim_no_min)
 
   list(cp = cp, p_list = .get_cp_uns_loc_p_list_empty())
 }
 
 # initial checks
 # ---------------------
-.get_cp_uns_loc_ind_check_n_cell <- function(cut_stim, min_cell) {
-  nrow(cut_stim) < min_cell
+.get_cp_uns_loc_ind_check_n_cell <- function(ex_tbl_stim_no_min, min_cell) {
+  nrow(ex_tbl_stim_no_min) < min_cell
 }
 
-.get_cp_uns_loc_ind_max_dens_x <- function(cut_stim) {
-  max(cut_stim$expr) - 0.05 * (diff(range(cut_stim$expr)))
+.get_cp_uns_loc_ind_max_dens_x <- function(ex_tbl_stim_no_min) {
+  max(ex_tbl_stim_no_min$expr) - 0.05 * (diff(range(ex_tbl_stim_no_min$expr)))
 }
 
-.get_cp_uns_loc_ind_check_max_x <- function(cut_stim, cp_min) {
-  .get_cp_uns_loc_ind_max_dens_x(cut_stim) <= cp_min
+.get_cp_uns_loc_ind_check_max_x <- function(ex_tbl_stim_no_min, cp_min) {
+  .get_cp_uns_loc_ind_max_dens_x(ex_tbl_stim_no_min) <= cp_min
 }
 
-.get_cp_uns_loc_check_early <- function(cut_stim, min_cell, cp_min) {
-  .get_cp_uns_loc_ind_check_n_cell(cut_stim, min_cell) ||
-    .get_cp_uns_loc_ind_check_max_x(cut_stim, cp_min)
+.get_cp_uns_loc_check_early <- function(ex_tbl_stim_no_min, min_cell, cp_min) {
+  .get_cp_uns_loc_ind_check_n_cell(ex_tbl_stim_no_min, min_cell) ||
+    .get_cp_uns_loc_ind_check_max_x(ex_tbl_stim_no_min, cp_min)
 }
 
 .get_cp_uns_loc_ind_check_out <- function(cp_min,
-                                          cut_stim,
+                                          ex_tbl_stim_no_min,
                                           debug,
                                           msg) {
   .debug(debug, msg) # nolint
   list(
-    cp = get_cp_uns_loc_ind_cp_non_loc(cp_min, cut_stim), # nolint
+    cp = get_cp_uns_loc_ind_cp_non_loc(cp_min, ex_tbl_stim_no_min), # nolint
     p_list = .get_cp_uns_loc_p_list_empty()
   )
 }
 
-.get_cp_uns_loc_ind_cp_non_loc <- function(cp_min, cut_stim) {
-  max(cp_min, cut_stim$expr + (max(cut_stim$expr) - min(cut_stim$expr)) / 5)
+.get_cp_uns_loc_ind_cp_non_loc <- function(cp_min, ex_tbl_stim_no_min) {
+  # get the threshold that is returned
+  # automatically when we decide
+  # we cannot apply this algorithm
+  # (perhaps due to too few cells)
+  max(
+    cp_min,
+    ex_tbl_stim_no_min$expr +
+      (max(ex_tbl_stim_no_min$expr) -
+        min(ex_tbl_stim_no_min$expr)) / 5
+  )
 }
 
 .get_cp_uns_loc_set_max_expr <- function(.data, max_x) {
@@ -690,37 +676,45 @@
 
 # get dens_tbl_raw
 # -----------------------
-.get_cp_uns_loc_get_dens_raw <- function(cut_stim,
-                                         cut_uns,
+.get_cp_uns_loc_get_dens_raw <- function(ex_tbl_stim_no_min,
+                                         ex_tbl_uns_threshold,
                                          debug,
                                          min_bw) {
   .debug(debug, "Calculating densities") # nolint
 
   dens_list <- .get_cp_uns_loc_get_dens_raw_densities(
-    cut_stim, cut_uns, debug, min_bw
+    ex_tbl_stim_no_min, ex_tbl_uns_threshold, debug, min_bw
   )
 
   # put raw densities into table
   get_cp_uns_loc_get_dens_raw_tabulate(dens_list = dens_list) # nolint
 }
 
-.get_cp_uns_loc_get_dens_raw_densities <- function(cut_stim,
-                                                   cut_uns,
+.get_cp_uns_loc_get_dens_raw_densities <- function(ex_tbl_stim_no_min,
+                                                   ex_tbl_uns_threshold,
                                                    debug,
                                                    min_bw) {
-  bw <- .get_cp_uns_loc_get_dens_raw_densities_bw(cut_stim, cut_uns, min_bw)
-  dens_stim <- .get_cp_uns_loc_get_dens_raw_densities_stim(cut_stim, bw)
-  dens_uns <- .get_cp_uns_loc_get_dens_raw_densities_uns(cut_uns, dens_stim, bw)
+  bw <- .get_cp_uns_loc_get_dens_raw_densities_bw(
+    ex_tbl_stim_no_min, ex_tbl_uns_threshold, min_bw
+  )
+  dens_stim <- .get_cp_uns_loc_get_dens_raw_densities_stim(
+    ex_tbl_stim_no_min, bw
+  )
+  dens_uns <- .get_cp_uns_loc_get_dens_raw_densities_uns(
+    ex_tbl_uns_threshold, dens_stim, bw
+  )
   list(stim = dens_stim, uns = dens_uns, bw = bw)
 }
 
-.get_cp_uns_loc_get_dens_raw_densities_bw <- function(cut_stim,
-                                                      cut_uns,
+.get_cp_uns_loc_get_dens_raw_densities_bw <- function(ex_tbl_stim_no_min,
+                                                      ex_tbl_uns_threshold,
                                                       min_bw) {
   bw_stim <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
-    cut_stim$expr, min_bw
+    ex_tbl_stim_no_min$expr, min_bw
   )
-  bw_uns <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(cut_uns$expr, min_bw)
+  bw_uns <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
+    ex_tbl_uns_threshold$expr, min_bw
+  )
   max(bw_stim, min_bw, bw_uns)
 }
 
@@ -729,11 +723,17 @@
   if (inherits(bw_calc, "try-error")) min_bw else bw_calc
 }
 
-.get_cp_uns_loc_get_dens_raw_densities_stim <- function(cut_stim, bw) {
-  density(cut_stim$expr, bw = bw)
+.get_cp_uns_loc_get_dens_raw_densities_stim <- function(ex_tbl_stim_no_min,
+                                                        bw) {
+  density(ex_tbl_stim_no_min$expr, bw = bw)
 }
-.get_cp_uns_loc_get_dens_raw_densities_uns <- function(cut_uns, dens_stim, bw) {
-  density(cut_uns$expr, from = min(dens_stim$x), to = max(dens_stim$x), bw = bw)
+.get_cp_uns_loc_get_dens_raw_densities_uns <- function(ex_tbl_uns_threshold,
+                                                       dens_stim,
+                                                       bw) {
+  density(
+    ex_tbl_uns_threshold$expr,
+    from = min(dens_stim$x), to = max(dens_stim$x), bw = bw
+  )
 }
 
 .get_cp_uns_loc_get_dens_raw_tabulate <- function(stim_x,
@@ -836,25 +836,28 @@
     max(ex_stim_orig) < .get_cp_uns_loc_get_min_prob_x(prob_tbl_pos)
 }
 
-.get_cp_uns_loc_get_data_mod <- function(ex_stim_orig,
-                                         ex_stim,
-                                         ex_uns,
+.get_cp_uns_loc_get_data_mod <- function(ex_tbl_stim_no_min,
+                                         ex_tbl_stim_orig,
+                                         ex_tbl_uns_orig,
                                          prob_tbl_list) {
-  if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, ex_stim_orig)) {
+  if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, ex_tbl_stim_orig)) {
     return(.get_cp_uns_loc_ind_check_out(
-      cp_min, ex_stim_orig, debug, "No responding cells" # nolint
+      cp_min, ex_tbl_stim_orig, debug, "No responding cells" # nolint
     ))
   }
-  margin <- get_cp_uns_loc_get_data_mod_margin(ex_stim, ex_uns)
+  margin <- get_cp_uns_loc_get_data_mod_margin(
+    ex_tbl_stim_orig, ex_tbl_uns_orig
+  )
 
-  ex_stim_orig |>
+  ex_tbl_stim_no_min |>
     dplyr::filter(expr > # nolint
       (min(.get_cp_uns_loc_get_min_prob_x(prob_tbl_list$pos) - margin))) |>
     dplyr:::mutate(prob_smooth = expr)
 }
 
-get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
-  abs(max(diff(ex_stim$expr), diff(ex_uns$expr))) * 0.05
+get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_orig,
+                                               ex_tbl_uns_orig) {
+  abs(max(diff(ex_tbl_stim_orig$expr), diff(ex_tbl_uns_orig$expr))) * 0.05
 }
 
 # smooth
@@ -978,27 +981,27 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
 }
 
 # get probabilities
-.get_cp_uns_loc_get_prob <- function(ex_stim_orig,
-                                     cut_stim,
-                                     cut_uns,
+.get_cp_uns_loc_get_prob <- function(ex_tbl_stim_no_min,
+                                     ex_tbl_stim_threshod,
+                                     ex_tbl_uns_threshold,
                                      debug,
                                      min_bw,
                                      cp_min,
-                                     ex_uns,
-                                     ex_stim) {
+                                     ex_tbl_uns_orig,
+                                     ex_tbl_stim_orig) {
   # get raw densities
   dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
-    cut_stim, ex_uns, debug, min_bw
+    ex_tbl_stim_no_min, ex_tbl_uns_orig, debug, min_bw
   )
 
   # get probabilities
   prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
-    dens_tbl_raw, debug, cp_min, cut_stim$expr
+    dens_tbl_raw, debug, cp_min, ex_tbl_stim_no_min$expr
   )
 
   # get data to smooth over
   data_mod <- .get_cp_uns_loc_get_data_mod(
-    ex_stim_orig, ex_stim, ex_uns, prob_tbl_list
+    ex_tbl_stim_no_min, ex_tbl_stim_orig, ex_tbl_uns_orig, prob_tbl_list
   )
 
   # smooth
@@ -1007,14 +1010,14 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
 
 # get cp
 .get_cp_uns_loc_get_cp <- function(data_mod,
-                                   ex_stim_orig,
+                                   ex_tbl_stim_orig,
                                    debug) {
   if (!inherits(data_mod, "data.frame")) {
     return(data_mod)
   }
 
   data_threshold <- .get_cp_uns_loc_get_cp_data_threshold(
-    data_mod, ex_stim_orig
+    data_mod, ex_tbl_stim_orig
   )
   cp <- .get_cp_uns_loc_get_cp_actual(data_threshold)
   .debug(debug, "Completed loc gate for single sample") # nolint
@@ -1022,14 +1025,18 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
 }
 
 .get_cp_uns_loc_get_cp_data_threshold <- function(data_mod,
-                                                  ex_stim_orig) {
+                                                  ex_tbl_stim_orig,
+                                                  ex_tbl_stim_no_min,
+                                                  ex_tbl_uns_bias,
+                                                  ex_tbl_uns_no_min,
+                                                  bias) {
   data_count <- .get_cp_uns_loc_get_cp_data_threshold_count(data_mod)
   prob_bs_est <- .get_cp_uns_loc_get_cp_data_threshold_prop_bs_est(
-    data_count, ex_stim_orig
+    data_count, ex_tbl_stim_orig
   )
   .get_cp_uns_loc_get_cp_data_threshold_actual(
-    data_count, prob_bs_est, ex_stim_orig,
-    cut_stim, cut_uns, cut_uns_orig, bias # nolint
+    data_count, prob_bs_est, ex_tbl_stim_orig,
+    ex_tbl_stim_no_min, ex_tbl_uns_bias, ex_tbl_uns_no_min, bias # nolint
   )
 }
 
@@ -1043,27 +1050,30 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
 }
 
 .get_cp_uns_loc_get_cp_data_threshold_prop_bs_est <- function(data_count,
-                                                              ex_stim_orig) {
-  sum(data_count$pred) / nrow(ex_stim_orig)
+                                                              ex_tbl_stim_no_min) { # nolint
+  sum(data_count$pred) / nrow(ex_tbl_stim_no_min)
 }
 
 .get_cp_uns_loc_get_cp_data_threshold_actual <- function(data_count,
                                                          prop_bs_est,
-                                                         cut_stim_orig,
-                                                         cut_uns,
-                                                         cut_uns_orig,
+                                                         ex_tbl_stim_orig,
+                                                         ex_tbl_uns_bias,
+                                                         ex_tbl_uns_orig,
                                                          bias) {
   data_count |>
     dplyr::arrange(desc(expr)) |> # nolint
     dplyr::mutate(count_stim = seq_len(dplyr::n())) |>
     dplyr::mutate(
-      prop_stim = count_stim / nrow(cut_stim_orig), # nolint
+      prop_stim = count_stim / nrow(ex_tbl_stim_orig), # nolint
       prop_uns = purrr::map_dbl(expr, function(x) {
         # work out proportion greater than the threshold,
         # adding back the bias that was removed
         # and dividing by the number of unstim cells
-        # (before any were removed due to being cytokine-positive)
-        sum((cut_uns$expr - bias) >= x) / nrow(cut_uns_orig)
+        # (before any were removed due to being cytokine-positive).
+        # TODO: think about how to handle:
+        # - bias
+        # - cytokine-positive cells having been removed
+        sum(ex_tbl_uns_orig$expr >= x) / nrow(ex_tbl_uns_orig)
       }),
       prop_bs = prop_stim - prop_uns, # nolint
       prop_bs_diff = prop_bs - prop_bs_est # nolint
@@ -1075,4 +1085,68 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_stim, ex_uns) {
     dplyr::filter(abs(prop_bs_diff) == min(abs(prop_bs_diff))) |> # nolint
     dplyr::slice(1) |>
     dplyr::pull(expr) # nolint
+}
+
+.get_cp_uns_loc_output <- function(debug,
+                                   cp_uns_loc_obj_list,
+                                   ind_gate,
+                                   ind_uns,
+                                   ind_stim) {
+  cp_vec <- .get_cp_uns_loc_sample_cp_rep(
+    debug, cp_uns_loc_obj_list, ind_gate, ind_uns
+  )
+  p_list <- purrr::map(cp_uns_loc_obj_list, function(x) x$p_list) |>
+    stats::setNames(ind_stim)
+  .debug(debug, "done getting loc gate at sample level") # nolint
+  # collate plots
+  list(
+    "loc" = cp_vec,
+    "p_list" = p_list
+  )
+}
+
+.get_cp_uns_loc_sample_cp_rep <- function(debug,
+                                          cp_uns_loc_obj_list,
+                                          ind_gate,
+                                          ind_uns) {
+  .debug(debug, "Possibly re-using calculated cutpoints") # nolint
+
+  # extract vector of cutpoints
+  cp_vec <- purrr::map_dbl(
+    cp_uns_loc_obj_list,
+    function(cp_uns_loc_obj) {
+      cp_uns_loc_obj$cp
+    }
+  )
+
+  # stimulation indices
+  ind_stim <- setdiff(ind_gate, ind_uns)
+
+  cp_vec <- purrr::map_dbl(
+    cp_uns_loc_obj_list,
+    function(cp_uns_loc_obj) {
+      cp_uns_loc_obj$cp
+    }
+  )
+
+  # Repeat cutpoint if it was prejoined
+  if (length(cp_vec) == 1 && ind_stim != 1) {
+    cp_vec <- stats::setNames(
+      rep(cp_vec, length(ind_stim)), ind_stim
+    )
+  } else {
+    # name gate indices if not prejoined
+    cp_vec <- stats::setNames(cp_vec, ind_stim)
+  }
+
+  # add unstim if unstim gate required
+  if (ind_uns %in% ind_gate) {
+    if (!all(purrr::map_lgl(cp_vec, is.na))) {
+      cp_vec <- c(cp_vec, stats::setNames(mean(cp_vec, na.rm = TRUE), ind_uns))
+    } else {
+      cp_vec <- c(cp_vec, NA)
+    }
+  }
+
+  cp_vec
 }
