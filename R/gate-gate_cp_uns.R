@@ -33,7 +33,7 @@
   # get ecdf of uns
   purrr::map(bias_uns, function(bias) {
     # get ecdf of uns sample
-    cut_vec_uns <- .get_cut_list(
+    cut_vec_uns <- .prepare_ex_list_with_bias_and_noise( # nolint
       ex_list = ex_list, ind = ind_uns,
       exc_min = TRUE, bias = bias,
       noise_sd = noise_sd
@@ -63,7 +63,7 @@
   # get cutpoints for prejoin gate combination method
   if ("prejoin" %in% gate_combn) {
     # get marker expression for stim samples, join and then sort into descending order
-    cut_list_stim <- .get_cut_list(
+    cut_list_stim <- .prepare_ex_list_with_bias_and_noise( # nolint
       ex_list = ex_list, ind = setdiff(ind_gate, ind_uns),
       exc_min = TRUE, bias = 0,
       noise_sd = NULL
@@ -92,7 +92,7 @@
 
   if (length(non_prejoin_combn_vec) > 0) {
     # get marker expression for stim samples, and sort into descending order
-    cut_list_stim <- .get_cut_list(
+    cut_list_stim <- .prepare_ex_list_with_bias_and_noise( # nolint
       ex_list = ex_list, ind = setdiff(ind_gate, ind_uns),
       exc_min = TRUE, bias = 0,
       noise_sd = NULL
@@ -114,7 +114,7 @@
     )
 
     cp_uns_list_nonjoin <- purrr::map(cp_uns_list_nonjoin, function(x) {
-      .combine_cp(cp = x, gate_combn = non_prejoin_combn_vec)
+      .combine_cp(cp = x, gate_combn = non_prejoin_combn_vec) # nolint
     }) |>
       stats::setNames(names(cp_uns_list_nonjoin))
   } else {
@@ -149,7 +149,7 @@
                             ind_gate, ind_uns, min_cell) {
   # get list of q-values
   q_list <- purrr::map(cut_stim, function(cut_vec_stim) {
-    p_vec <- .rep_zero_p_val(1 - ecdf_uns(cut_vec_stim))
+    p_vec <- .rep_zero_p_val(1 - ecdf_uns(cut_vec_stim)) # nolint
     p.adjust(p_vec, method = "BH")
   })
 
