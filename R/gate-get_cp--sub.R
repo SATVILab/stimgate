@@ -333,35 +333,32 @@
 #' as a single numeric vector
 #'
 #' @return A list where each element is a numeric vector.
-.get_cut_list <- function(ex_list,
-                          ind,
-                          exc_min = TRUE,
-                          bias = 0,
-                          debug = FALSE,
-                          noise_sd = NULL) {
+.prepare_ex_list_with_bias_and_noise <- function(ex_list,
+                                                 ind,
+                                                 exc_min = TRUE,
+                                                 bias = 0,
+                                                 debug = FALSE,
+                                                 noise_sd = NULL) {
   purrr::map(ind, function(ind_curr) {
     cut_tbl <- ex_list[[as.character(ind_curr)]] |>
       dplyr::mutate(
-        sample = paste0(batch, "_", stim),
+        sample = paste0(batch, "_", stim), # nolint
         expr = cut
       ) |>
-      # dplyr::select(cut, ind_cell, sample) |>
-      dplyr::select(sample, ind, ind_cell, expr)
-    # cut_tbl <- tibble::tibble(sample = paste0(batch, "_", stim), expr = cut_vec) |>
-    #  dplyr::mutate(ind = seq_len(dplyr::n()))
+      dplyr::select(sample, ind, ind_cell, expr) # nolint
     if (exc_min) {
-      # cut_vec <- cut_vec[cut_vec > min(cut_vec)]
-      cut_tbl <- cut_tbl |> dplyr::filter(.data$expr > min(.data$expr))
+      cut_tbl <- cut_tbl |> dplyr::filter(.data$expr > min(.data$expr)) # nolint
     }
-    cut_tbl <- cut_tbl |> dplyr::mutate(expr = expr + bias)
+    cut_tbl <- cut_tbl |> dplyr::mutate(expr = expr + bias) # nolint
     if (!is.null(noise_sd)) {
       cut_tbl <- purrr::map_df(1:5, function(i) {
         cut_tbl |>
-          dplyr::mutate(expr = expr + rnorm(nrow(cut_tbl), sd = noise_sd))
+          dplyr::mutate(expr = expr + rnorm(nrow(cut_tbl), sd = noise_sd)) # nolint
       })
     }
     cut_tbl
-  })
+  }) |>
+    stats::setNames(as.character(ind))
 }
 
 
@@ -801,7 +798,9 @@
     cut_lab <- adf_data[["desc"]][[which(adf_data$name == cut)]] |>
       stats::setNames(cut)
     high_lab_vec <- purrr::map(seq_along(high), function(i) {
-      high_lab <- adf_data[["desc"]][[which(adf_data$name == names(high)[i])]] |>
+      high_lab <- adf_data[["desc"]][[
+        which(adf_data$name == names(high)[i])
+      ]] |>
         stats::setNames(names(high)[i])
     }) |>
       unlist()

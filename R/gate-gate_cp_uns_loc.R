@@ -79,7 +79,7 @@
                                            debug) {
   # rename `cut` column` to `expr`
   # -------------------------------------
-  ex_list_orig <- .get_cut_list( # nolint
+  ex_list_orig <- .prepare_ex_list_with_bias_and_noise( # nolint
     ex_list = ex_list, ind = union(ind_gate, ind_uns), exc_min = FALSE,
     bias = 0, noise_sd = NULL, debug = debug
   )
@@ -88,7 +88,7 @@
   # `cut` column to `expr` and exclude min
   # values
   # -------------------------------------
-  ex_list_no_min <- .get_cut_list( # nolint
+  ex_list_no_min <- .prepare_ex_list_with_bias_and_noise( # nolint
     ex_list = ex_list, ind = union(ind_gate, ind_uns), exc_min = TRUE,
     bias = 0, noise_sd = NULL, debug = debug
   )
@@ -97,7 +97,7 @@
   # applying bias, excluding the min val
   # and /or adding noise
   # -------------------------------------
-  ex_tbl_uns_bias <- .get_cut_list( # nolint
+  ex_tbl_uns_bias <- .prepare_ex_list_with_bias_and_noise( # nolint
     ex_list = ex_list, ind = ind_uns, exc_min = TRUE,
     bias = bias, debug = debug, noise_sd = NULL
   )[[1]]
@@ -563,7 +563,7 @@
 
   # re-apply bias, noise and exclude minimum after
   # removing cytokine-positive cells
-  .get_cut_list( # nolint
+  .prepare_ex_list_with_bias_and_noise( # nolint
     ex_list = stats::setNames(list(ex_tbl_uns_orig), ex_tbl_uns_orig$ind[1]),
     ind = ex_tbl_uns_orig$ind[1],
     exc_min = TRUE,
