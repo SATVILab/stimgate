@@ -78,7 +78,7 @@
   # rename `cut` column` to `expr`
   # -------------------------------------
   ex_list_orig <- .get_cut_list(
-    ex_list = ex_list, ind = ind_uns, exc_min = FALSE,
+    ex_list = ex_list, ind = union(ind_gate, ind_uns), exc_min = FALSE,
     bias = 0, noise_sd = NULL, debug = debug
   )
 
@@ -87,8 +87,8 @@
   # values
   # -------------------------------------
   ex_list_no_min <- .get_cut_list( # nolint
-    ex_list = ex_list, exc_min = TRUE, bias = 0,
-    noise_sd = NULL, debug = debug
+    ex_list = ex_list, ind = union(ind_gate, ind_uns), exc_min = TRUE,
+    bias = 0, noise_sd = NULL, debug = debug
   )
 
   # adjust expression in unstim,
