@@ -1016,7 +1016,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_orig,
                                      ex_tbl_stim_orig) {
   # get raw densities
   dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
-    ex_tbl_stim_no_min, ex_tbl_uns_orig, debug, min_bw
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, min_bw
   )
 
   # get probabilities
