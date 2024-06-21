@@ -121,7 +121,7 @@ get_hladr_med_diff <- function(data,
     }
 
     ex |>
-      dplyr::select(batch:stim, ind, is_uns, ind_in_batch) |>
+      dplyr::select(batch:stim, ind, is_uns, ind_in_batch) |> # nolint
       dplyr::slice(1) |>
       dplyr::mutate(
         hladr_med_pos = hladr_med_pos,
