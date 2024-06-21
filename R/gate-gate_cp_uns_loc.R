@@ -143,7 +143,7 @@
     bias = bias, path_project = path_project, debug = debug
   )
 
-  # get cutpoint if group method is not only prejoin
+  # get cutpoint for non-prejoin grouping methods
   cp_uns_list_prejoin_non <- .get_cp_uns_loc_gate_combn_prejoin_non(
     non_prejoin_combn = setdiff(gate_combn, "prejoin"),
     ex_list_no_min_stim = ex_list_no_min,
@@ -577,10 +577,6 @@
     stats::setNames(c("p_loc_dens", "p_loc_prob", "p_loc_ctb"))
 }
 
-.get_cp_uns_loc_ind_orig <- function(ex_tbl_stim_no_min, ex_tbl_uns_bias) {
-  max_dens_x <- .get_cp_uns_loc_ind_max_dens_x(ex_tbl_stim_no_min)
-  list(stim = ex_tbl_stim_no_min, uns = ex_tbl_uns_bias, max_x = max_dens_x)
-}
 .get_cp_uns_loc_ind <- function(ex_tbl_uns_bias, # was cut_unstim
                                 ex_tbl_stim_no_min, # was cut_stim
                                 min_bw,
@@ -982,7 +978,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_orig,
 
 # get probabilities
 .get_cp_uns_loc_get_prob <- function(ex_tbl_stim_no_min,
-                                     ex_tbl_stim_threshod,
+                                     ex_tbl_stim_threshold,
                                      ex_tbl_uns_threshold,
                                      debug,
                                      min_bw,
