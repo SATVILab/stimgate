@@ -340,10 +340,6 @@
                           debug = FALSE,
                           noise_sd = NULL) {
   purrr::map(ind, function(ind_curr) {
-    # cut_vec <- ex_list[[as.character(ind_curr)]][['cut']]
-    # fcs <- ex_list[[as.character(ind_curr)]][['fcs']][1]
-    # batch <- ex_list[[as.character(ind_curr)]][['batch']][1]
-    # stim <- ex_list[[as.character(ind_curr)]][['stim']][1]
     cut_tbl <- ex_list[[as.character(ind_curr)]] |>
       dplyr::mutate(
         sample = paste0(batch, "_", stim),
@@ -799,7 +795,7 @@
   force(data)
   adf_data <- flowWorkspace::gh_pop_get_data(data) |>
     flowCore::parameters() |>
-    flowCore::pData() 
+    flowCore::pData()
 
   if (!is.null(high)) {
     cut_lab <- adf_data[["desc"]][[which(adf_data$name == cut)]] |>
