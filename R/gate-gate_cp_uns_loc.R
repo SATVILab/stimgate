@@ -29,7 +29,7 @@
   purrr::map(bias_uns, function(bias) {
     .debug(debug, "bias_uns", bias) # nolint
 
-    ex_list_prep <- .get_cp_uns_loc_bias_data_prep( # nolint
+    ex_list_prep <- .prepare_data_with_bias_and_noise( # nolint
       ex_list = ex_list, ind_gate = ind_gate, ind_uns = ind_uns,
       bias = bias, noise_sd = noise_sd, debug = debug
     )
@@ -71,18 +71,19 @@
   cp_uns_gate_combn_list
 }
 
-.get_cp_uns_loc_bias_data_prep <- function(ex_list,
-                                           ind_gate,
-                                           ind_uns,
-                                           bias,
-                                           noise_sd,
-                                           debug) {
+.prepare_data_with_bias_and_noise <- function(ex_list,
+                                              ind_gate,
+                                              ind_uns,
+                                              bias,
+                                              noise_sd,
+                                              debug) {
   # rename `cut` column` to `expr`
   # -------------------------------------
   ex_list_orig <- .prepare_ex_list_with_bias_and_noise( # nolint
     ex_list = ex_list, ind = union(ind_gate, ind_uns), exc_min = FALSE,
     bias = 0, noise_sd = NULL, debug = debug
-  )
+  ) |>
+    .arrange_samples_by_desc_expr()
 
   # separate stim and uns samples, rename
   # `cut` column to `expr` and exclude min
@@ -91,16 +92,19 @@
   ex_list_no_min <- .prepare_ex_list_with_bias_and_noise( # nolint
     ex_list = ex_list, ind = union(ind_gate, ind_uns), exc_min = TRUE,
     bias = 0, noise_sd = NULL, debug = debug
-  )
+  ) |>
+    .arrange_samples_by_desc_expr()
 
   # adjust expression in unstim,
   # applying bias, excluding the min val
   # and /or adding noise
   # -------------------------------------
-  ex_tbl_uns_bias <- .prepare_ex_list_with_bias_and_noise( # nolint
+  ex_list_bias <- .prepare_ex_list_with_bias_and_noise( # nolint
     ex_list = ex_list, ind = ind_uns, exc_min = TRUE,
     bias = bias, debug = debug, noise_sd = NULL
-  )[[1]]
+  ) |>
+    .arrange_samples_by_desc_expr()
+  ex_tbl_uns_bias <- ex_list_bias[[as.character(ind_uns)]]
 
   list(
     "ex_list_orig" = ex_list_orig,
@@ -232,6 +236,34 @@
   list("cp" = list(), "p_list" = list())
 }
 
+.prepare_data_for_prejoin <- function(ex_list_orig,
+                                      ex_list_no_min,
+                                      ind_uns,
+                                      ind_gate) {
+  ex_list_no_min <- .prepare_data_for_prejoin_ind(
+    ex_list = ex_list_no_min, ind_uns = ind_uns, ind_gate = ind_gate
+  )
+  ex_list_orig <- .prepare_data_for_prejoin_ind(
+    ex_list = ex_list_orig, ind_uns = ind_uns, ind_gate = ind_gate
+  )
+
+  list(
+    "ex_list_orig" = ex_list_orig,
+    "ex_list_no_min" = ex_list_no_min
+  )
+}
+
+.prepare_data_for_prejoin_ind <- function(ex_list, ind_uns, ind_gate) {
+  ex_tbl_stim <- ex_list[names(ex_list) != ind_uns] |>
+    dplyr::bind_rows() |>
+    dplyr::arrange(dplyr::desc(expr)) # nolint
+  list(
+    ex_tbl_stim,
+    ex_list[[as.character(ind_uns)]]
+  ) |>
+    stats::setNames(c(ind_gate[1], ind_uns))
+}
+
 .get_cp_uns_loc_gate_combn_prejoin_actual <- function(ex_list_no_min,
                                                       ex_list_orig,
                                                       ex_tbl_uns_bias,
@@ -252,17 +284,19 @@
 
   # get marker expression for stim samples,
   # join and then sort into descending order
-  ex_list_no_min_stim <- ex_list_no_min[names(ex_list_no_min) != ind_uns] |>
-    purrr::map(function(x) x |> dplyr::arrange(dplyr::desc(expr))) # nolint
+  ex_list_prejoin <- .prepare_data_for_prejoin(
+    ex_list_orig = ex_list_orig, ex_list_no_min = ex_list_no_min,
+    ind_uns = ind_uns, ind_gate = ind_gate
+  )
 
   # get cutpoints for gate combn method for a range of fdr's
   .get_cp_uns_loc_sample(
-    ex_list_orig = ex_list_orig,
-    ex_list_no_min_stim = ex_list_no_min_stim,
+    ex_list_orig = ex_list_prejoin[["ex_list_orig"]],
+    ex_list_no_min_stim = ex_list_prejoin[["ex_list_no_min"]],
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min,
     ind_uns = ind_uns,
-    ind_gate = ind_gate,
+    ind_gate = ind_gate[[1]],
     min_bw = min_bw,
     min_cell = min_cell,
     gate_tbl = gate_tbl,
@@ -344,10 +378,7 @@
                                                           non_prejoin_combn) {
   .debug(debug, "non-prejoin") # nolint
   cp_uns_list_nonjoin <- .get_cp_uns_loc_sample(
-    ex_list_orig =
-      .get_cp_uns_loc_gate_combn_prejoin_non_actual_prep(
-        ex_list_no_min_stim
-      ),
+    ex_list_orig = ex_list_orig,
     ex_list_no_min_stim = ex_list_no_min_stim,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min, ind_uns = ind_uns, ind_gate = ind_gate,
@@ -366,11 +397,9 @@
   list("cp" = cp_uns_list_nonjoin, "p_list" = p_list)
 }
 
-.get_cp_uns_loc_gate_combn_prejoin_non_actual_prep <- function(ex_list_no_min_stim) { # nolint
-  # get marker expression for stim samples,
-  # removing minimum values
-  # and sorting into descending order
-  ex_list_no_min_stim |>
+.arrange_samples_by_desc_expr <- function(ex_list) {
+  # arrange in descending order of expression
+  ex_list |>
     purrr::map(function(x) x |> dplyr::arrange(desc(expr))) # nolint
 }
 
