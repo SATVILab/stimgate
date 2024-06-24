@@ -724,7 +724,12 @@
   )
 
   # put raw densities into table
-  .get_cp_uns_loc_get_dens_raw_tabulate(dens_list = dens_list) # nolint
+  .get_cp_uns_loc_get_dens_raw_tabulate(
+    stim_x = dens_list$stim$x,
+    stim_y = dens_list$stim$y,
+    uns_x = dens_list$uns$x,
+    uns_y = dens_list$uns$y
+  ) # nolint
 }
 
 .get_cp_uns_loc_get_dens_raw_densities <- function(ex_tbl_stim_threshold,
