@@ -652,7 +652,8 @@
   # need to think about what the correct dataframes are
   # for data_threshold)
   cp <- .get_cp_uns_loc_get_cp(
-    data_mod = data_mod, prob_min = prob_min, cp_min = cp_min,
+    data_mod = data_mod,
+    debug = debug,
     ex_tbl_stim_no_min = ex_tbl_stim_no_min,
     ex_tbl_stim_orig = ex_tbl_stim_orig,
     ex_tbl_uns_orig = ex_tbl_uns_orig,
@@ -1068,7 +1069,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     data_mod = data_mod, ex_tbl_stim_orig = ex_tbl_stim_orig,
     ex_tbl_stim_no_min = ex_tbl_stim_no_min,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
-    ex_tbl_uns_no_min = ex_tbl_uns_orig,
+    ex_tbl_uns_orig = ex_tbl_uns_orig,
     bias = bias
   )
   cp <- .get_cp_uns_loc_get_cp_actual(data_threshold)
@@ -1080,21 +1081,30 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                                   ex_tbl_stim_orig,
                                                   ex_tbl_stim_no_min,
                                                   ex_tbl_uns_bias,
-                                                  ex_tbl_uns_no_min,
+                                                  ex_tbl_uns_orig,
                                                   bias) {
   data_count <- .get_cp_uns_loc_get_cp_data_threshold_count(data_mod)
   prob_bs_est <- .get_cp_uns_loc_get_cp_data_threshold_prop_bs_est(
-    data_count, ex_tbl_stim_orig
+    data_count = data_count, ex_tbl_stim_orig = ex_tbl_stim_orig
   )
   .get_cp_uns_loc_get_cp_data_threshold_actual(
-    data_count, prob_bs_est, ex_tbl_stim_orig,
-    ex_tbl_stim_no_min, ex_tbl_uns_bias, ex_tbl_uns_no_min, bias # nolint
+    data_count = data_count,
+    prop_bs_est = prob_bs_est,
+    ex_tbl_stim_orig = ex_tbl_stim_orig,
+    ex_tbl_uns_bias = ex_tbl_uns_bias,
+    ex_tbl_uns_orig = ex_tbl_uns_orig,
+    bias = bias
   )
 }
 
 .get_cp_uns_loc_get_cp_data_threshold_count <- function(data_mod) {
+  if (nrow(data_mod) == 1L) {
+    min_val <- min(data_mod$expr) - 1
+  } else {
+    min_val <- min(data_mod$expr)
+  }
   data_mod |>
-    dplyr::filter(expr >= min(.data$expr)) |> # nolint
+    dplyr::filter(expr > min_val) |> # nolint
     dplyr::arrange(expr) |>
     dplyr::mutate(n_row = seq_len(dplyr::n())) |>
     dplyr::filter(cumsum(pred > prob_smooth) != n_row) |> # nolint
@@ -1102,8 +1112,8 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 }
 
 .get_cp_uns_loc_get_cp_data_threshold_prop_bs_est <- function(data_count,
-                                                              ex_tbl_stim_no_min) { # nolint
-  sum(data_count$pred) / nrow(ex_tbl_stim_no_min)
+                                                              ex_tbl_stim_orig) { # nolint
+  sum(data_count$pred) / nrow(ex_tbl_stim_orig)
 }
 
 .get_cp_uns_loc_get_cp_data_threshold_actual <- function(data_count,
@@ -1134,7 +1144,11 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 .get_cp_uns_loc_get_cp_actual <- function(data_threshold) {
   data_threshold |>
-    dplyr::filter(abs(prop_bs_diff) == min(abs(prop_bs_diff))) |> # nolint
+    # CHANGE FROM BEFORE:
+    # was looking for minimum in difference of absolute values,
+    # but should look for minimum in absolute value of difference.
+    # Hopefully no big effect.
+    dplyr::filter(min(abs(prop_bs_diff - prop_bs_diff))) |> # nolint
     dplyr::slice(1) |>
     dplyr::pull(expr) # nolint
 }
@@ -1145,7 +1159,10 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                    ind_uns,
                                    ind_stim) {
   cp_vec <- .get_cp_uns_loc_sample_cp_rep(
-    debug, cp_uns_loc_obj_list, ind_gate, ind_uns
+    debug = debug,
+    cp_uns_loc_obj_list = cp_uns_loc_obj_list,
+    ind_gate = ind_gate,
+    ind_uns = ind_uns
   )
   p_list <- purrr::map(cp_uns_loc_obj_list, function(x) x$p_list) |>
     stats::setNames(ind_stim)
