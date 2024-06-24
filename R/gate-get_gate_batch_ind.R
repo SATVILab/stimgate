@@ -57,7 +57,6 @@
         ind_gate = ind_batch[ind_in_batch_gate],
         ind_uns = ind_batch[ind_in_batch_uns],
         gate_combn = gate_combn[["loc"]],
-        pop_root = NULL,
         data = data,
         bias_uns = bias_uns,
         noise_sd = NULL,

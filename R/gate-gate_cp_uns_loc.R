@@ -1,9 +1,9 @@
 #' @title Calculate the local fdr-based cut
-.get_cp_uns_loc <- function(ex_list, ind_gate, ind_uns, gate_combn,
-                            pop_root = NULL, data, bias_uns = 0,
-                            noise_sd = NULL, min_bw = 80,
-                            cp_min, min_cell, params, plot,
-                            path_project, debug = FALSE) {
+C <- function(ex_list, ind_gate, ind_uns, gate_combn,
+              data, bias_uns = 0,
+              noise_sd = NULL, min_bw = 80,
+              cp_min, min_cell, params, plot,
+              path_project, debug = FALSE) {
   # get cutpoints for each level of bias
   .get_cp_uns_loc_bias( # nolint
     ex_list = ex_list, ind_gate = ind_gate, ind_uns = ind_uns,
@@ -643,7 +643,7 @@
     ex_tbl_stim_threshold = ex_tbl_stim_threshold,
     ex_tbl_uns_threshold = ex_tbl_uns_threshold,
     debug = debug, min_bw = min_bw, cp_min = cp_min,
-    ex_tbl_uns_orig = ex_tbl_uns_orig, ex_tbl_stim_orig = ex_tbl_stim_orig
+    ex_tbl_uns_orig = ex_tbl_uns_orig
   )
 
   # get threshold
@@ -654,7 +654,12 @@
   cp <- .get_cp_uns_loc_get_cp(
     data_mod = data_mod, prob_min = prob_min, cp_min = cp_min,
     ex_tbl_stim_no_min = ex_tbl_stim_no_min,
+    ex_tbl_stim_orig = ex_tbl_stim_orig,
+    ex_tbl_uns_orig = ex_tbl_uns_orig,
+    ex_tbl_uns_bias = ex_tbl_uns_bias,
+    bias = bias
   )
+
 
   list(cp = cp, p_list = .get_cp_uns_loc_p_list_empty())
 }
