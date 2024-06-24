@@ -1,9 +1,9 @@
 #' @title Calculate the local fdr-based cut
-C <- function(ex_list, ind_gate, ind_uns, gate_combn,
-              data, bias_uns = 0,
-              noise_sd = NULL, min_bw = 80,
-              cp_min, min_cell, params, plot,
-              path_project, debug = FALSE) {
+.get_cp_uns_loc <- function(ex_list, ind_gate, ind_uns, gate_combn,
+                            data, bias_uns = 0,
+                            noise_sd = NULL, min_bw = 80,
+                            cp_min, min_cell, params, plot,
+                            path_project, debug = FALSE) {
   # get cutpoints for each level of bias
   .get_cp_uns_loc_bias( # nolint
     ex_list = ex_list, ind_gate = ind_gate, ind_uns = ind_uns,
