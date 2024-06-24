@@ -1,7 +1,7 @@
 Package: stimgate
 Type: Package
 Title: Identify responding cells as outliers
-Version: 0.2.2.9014
+Version: 0.2.2.9015
 Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-2036-4878"))
 Maintainer: Miguel Rodo <miguel.rodo@uct.ac.za>
 Description: Apply outlier gating function
