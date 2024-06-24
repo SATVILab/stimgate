@@ -647,7 +647,14 @@
   )
 
   # get threshold
-  cp <- .get_cp_uns_loc_get_cp(data_mod, ex_tbl_stim_no_min)
+  # START HERE !!! (not all correct above,
+  # but the parameters here are a mess and
+  # need to think about what the correct dataframes are
+  # for data_threshold)
+  cp <- .get_cp_uns_loc_get_cp(
+    data_mod = data_mod, prob_min = prob_min, cp_min = cp_min,
+    ex_tbl_stim_no_min = ex_tbl_stim_no_min,
+  )
 
   list(cp = cp, p_list = .get_cp_uns_loc_p_list_empty())
 }
@@ -701,29 +708,29 @@
 
 # get dens_tbl_raw
 # -----------------------
-.get_cp_uns_loc_get_dens_raw <- function(ex_tbl_stim_no_min,
+.get_cp_uns_loc_get_dens_raw <- function(ex_tbl_stim_threshold,
                                          ex_tbl_uns_threshold,
                                          debug,
                                          min_bw) {
   .debug(debug, "Calculating densities") # nolint
 
   dens_list <- .get_cp_uns_loc_get_dens_raw_densities(
-    ex_tbl_stim_no_min, ex_tbl_uns_threshold, debug, min_bw
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, min_bw
   )
 
   # put raw densities into table
   get_cp_uns_loc_get_dens_raw_tabulate(dens_list = dens_list) # nolint
 }
 
-.get_cp_uns_loc_get_dens_raw_densities <- function(ex_tbl_stim_no_min,
+.get_cp_uns_loc_get_dens_raw_densities <- function(ex_tbl_stim_threshold,
                                                    ex_tbl_uns_threshold,
                                                    debug,
                                                    min_bw) {
   bw <- .get_cp_uns_loc_get_dens_raw_densities_bw(
-    ex_tbl_stim_no_min, ex_tbl_uns_threshold, min_bw
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, min_bw
   )
   dens_stim <- .get_cp_uns_loc_get_dens_raw_densities_stim(
-    ex_tbl_stim_no_min, bw
+    ex_tbl_stim_threshold, bw
   )
   dens_uns <- .get_cp_uns_loc_get_dens_raw_densities_uns(
     ex_tbl_uns_threshold, dens_stim, bw
@@ -731,11 +738,11 @@
   list(stim = dens_stim, uns = dens_uns, bw = bw)
 }
 
-.get_cp_uns_loc_get_dens_raw_densities_bw <- function(ex_tbl_stim_no_min,
+.get_cp_uns_loc_get_dens_raw_densities_bw <- function(ex_tbl_stim_threshold,
                                                       ex_tbl_uns_threshold,
                                                       min_bw) {
   bw_stim <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
-    ex_tbl_stim_no_min$expr, min_bw
+    ex_tbl_stim_threshold$expr, min_bw
   )
   bw_uns <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
     ex_tbl_uns_threshold$expr, min_bw
@@ -748,9 +755,9 @@
   if (inherits(bw_calc, "try-error")) min_bw else bw_calc
 }
 
-.get_cp_uns_loc_get_dens_raw_densities_stim <- function(ex_tbl_stim_no_min,
+.get_cp_uns_loc_get_dens_raw_densities_stim <- function(ex_tbl_stim_threshold,
                                                         bw) {
-  density(ex_tbl_stim_no_min$expr, bw = bw)
+  density(ex_tbl_stim_threshold$expr, bw = bw)
 }
 .get_cp_uns_loc_get_dens_raw_densities_uns <- function(ex_tbl_uns_threshold,
                                                        dens_stim,
@@ -792,7 +799,7 @@
 .get_cp_uns_loc_get_prob_tbl <- function(dens_tbl_raw,
                                          debug,
                                          cp_min,
-                                         ex_stim) {
+                                         ex_vec_stim_threshold) {
   .debug(debug, "Normalising probabilities") # nolint
 
   # calculate raw and
@@ -802,7 +809,9 @@
   # choose probabilities to right of largest peak and
   # with sufficient evidence of a response ito probabilities
   # to be worth taking time smoothing over
-  prob_tbl_pos <- .get_cp_uns_loc_prob_tbl_filter(ex_stim, prob_tbl, debug)
+  prob_tbl_pos <- .get_cp_uns_loc_prob_tbl_filter(
+    ex_vec_stim_threshold, prob_tbl, debug
+  )
   list(all = prob_tbl, pos = prob_tbl_pos)
 }
 
@@ -820,7 +829,7 @@
     dplyr::filter(x_stim > cp_min)
 }
 
-.get_cp_uns_loc_prob_tbl_filter <- function(ex_stim,
+.get_cp_uns_loc_prob_tbl_filter <- function(ex_vec_stim_threshold,
                                             prob_tbl,
                                             debug) {
   .debug(debug, "Filtering before smoothing") # nolint
@@ -830,7 +839,7 @@
   # changing it to ex_stim_orig.
 
   # find highest peak (assumed to be the left-most one)
-  density_exc_min <- density(ex_stim)
+  density_exc_min <- density(ex_vec_stim_threshold)
   dens_tbl <- tibble::tibble(x = density_exc_min$x, y = density_exc_min$y)
   peak <- dens_tbl |>
     dplyr::filter(y == max(y)) |> # nolint
@@ -861,28 +870,28 @@
     max(ex_stim_orig) < .get_cp_uns_loc_get_min_prob_x(prob_tbl_pos)
 }
 
-.get_cp_uns_loc_get_data_mod <- function(ex_tbl_stim_no_min,
-                                         ex_tbl_stim_orig,
-                                         ex_tbl_uns_orig,
+.get_cp_uns_loc_get_data_mod <- function(ex_tbl_stim_threshold,
+                                         ex_tbl_stim_no_min,
+                                         ex_tbl_uns_threshold,
                                          prob_tbl_list) {
-  if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, ex_tbl_stim_orig)) {
+  if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, ex_tbl_stim_no_min)) {
     return(.get_cp_uns_loc_ind_check_out(
-      cp_min, ex_tbl_stim_orig, debug, "No responding cells" # nolint
+      cp_min, ex_tbl_stim_no_min, debug, "No responding cells" # nolint
     ))
   }
   margin <- get_cp_uns_loc_get_data_mod_margin(
-    ex_tbl_stim_orig, ex_tbl_uns_orig
+    ex_tbl_stim_no_min, ex_tbl_uns_threshold
   )
 
-  ex_tbl_stim_no_min |>
-    dplyr::filter(expr > # nolint
+  ex_tbl_stim_threshold |>
+    dplyr::filter(expr >= # nolint
       (min(.get_cp_uns_loc_get_min_prob_x(prob_tbl_list$pos) - margin))) |>
     dplyr:::mutate(prob_smooth = expr)
 }
 
-get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_orig,
-                                               ex_tbl_uns_orig) {
-  abs(max(diff(ex_tbl_stim_orig$expr), diff(ex_tbl_uns_orig$expr))) * 0.05
+get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
+                                               ex_tbl_uns_no_min) {
+  abs(max(diff(ex_tbl_stim_no_min$expr), diff(ex_tbl_uns_no_min$expr))) * 0.05
 }
 
 # smooth
@@ -1012,8 +1021,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_orig,
                                      debug,
                                      min_bw,
                                      cp_min,
-                                     ex_tbl_uns_orig,
-                                     ex_tbl_stim_orig) {
+                                     ex_tbl_uns_orig) {
   # get raw densities
   dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
     ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, min_bw
@@ -1021,12 +1029,13 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_orig,
 
   # get probabilities
   prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
-    dens_tbl_raw, debug, cp_min, ex_tbl_stim_no_min$expr
+    dens_tbl_raw, debug, cp_min, ex_tbl_stim_threshold$expr
   )
 
   # get data to smooth over
   data_mod <- .get_cp_uns_loc_get_data_mod(
-    ex_tbl_stim_no_min, ex_tbl_stim_orig, ex_tbl_uns_orig, prob_tbl_list
+    ex_tbl_stim_threshold, ex_tbl_stim_no_min, ex_tbl_uns_threshold,
+    prob_tbl_list
   )
 
   # smooth
@@ -1036,13 +1045,21 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_orig,
 # get cp
 .get_cp_uns_loc_get_cp <- function(data_mod,
                                    ex_tbl_stim_orig,
-                                   debug) {
+                                   debug,
+                                   ex_tbl_stim_no_min,
+                                   ex_tbl_uns_orig,
+                                   ex_tbl_uns_bias,
+                                   bias) {
   if (!inherits(data_mod, "data.frame")) {
     return(data_mod)
   }
 
   data_threshold <- .get_cp_uns_loc_get_cp_data_threshold(
-    data_mod, ex_tbl_stim_orig
+    data_mod = data_mod, ex_tbl_stim_orig = ex_tbl_stim_orig,
+    ex_tbl_stim_no_min = ex_tbl_stim_no_min,
+    ex_tbl_uns_bias = ex_tbl_uns_bias,
+    ex_tbl_uns_no_min = ex_tbl_uns_orig,
+    bias = bias
   )
   cp <- .get_cp_uns_loc_get_cp_actual(data_threshold)
   .debug(debug, "Completed loc gate for single sample") # nolint
