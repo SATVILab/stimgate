@@ -1144,11 +1144,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 .get_cp_uns_loc_get_cp_actual <- function(data_threshold) {
   data_threshold |>
-    # CHANGE FROM BEFORE:
-    # was looking for minimum in difference of absolute values,
-    # but should look for minimum in absolute value of difference.
-    # Hopefully no big effect.
-    dplyr::filter(min(abs(prop_bs_diff - prop_bs_diff))) |> # nolint
+    dplyr::filter(abs(prop_bs_diff) == min(abs(prop_bs_diff))) |> # nolint
     dplyr::slice(1) |>
     dplyr::pull(expr) # nolint
 }
