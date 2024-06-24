@@ -846,7 +846,7 @@
   # I don't know why this is ex_stim orig, which
   # excludes the minimum. Shouldn't it be
   # ex_stim? (2024 June 14)
-  # changing it to ex_stim_orig.
+  # changing it to ex_tbl_stim_orig.
 
   # find highest peak (assumed to be the left-most one)
   density_exc_min <- density(ex_vec_stim_threshold)
@@ -875,9 +875,9 @@
   min(prob_tbl_pos$x_stim)
 }
 
-.get_cp_uns_loc_check_response <- function(prob_tbl_pos, ex_stim_orig) {
+.get_cp_uns_loc_check_response <- function(prob_tbl_pos, ex_tbl_stim_orig) {
   nrow(prob_tbl_pos) == 0 ||
-    max(ex_stim_orig) < .get_cp_uns_loc_get_min_prob_x(prob_tbl_pos)
+    max(ex_tbl_stim_orig$expr) < .get_cp_uns_loc_get_min_prob_x(prob_tbl_pos)
 }
 
 .get_cp_uns_loc_get_data_mod <- function(ex_tbl_stim_threshold,
