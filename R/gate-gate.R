@@ -112,6 +112,7 @@ stimgate_gate <- function(data,
   # get unspecified levels in marker elements
   marker <- .complete_marker_list( # nolint
     marker = marker, data_name = data_name,
+    .data = data,
     pop_gate = pop_gate, cut = cut,
     debug = debug, bias_uns = bias_uns,
     bw_min = bw_min, cp_min = cp_min,
