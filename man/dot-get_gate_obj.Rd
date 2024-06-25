@@ -16,7 +16,6 @@ for a given gating population and marker}
   data_name,
   cut,
   high,
-  cps_scp,
   gate_combn,
   pop_man_sub,
   pop_man_match_exact,
@@ -24,7 +23,7 @@ for a given gating population and marker}
   fdr,
   noise_sd,
   bias_uns,
-  min_bw,
+  bw_min,
   cp_min,
   boot_n = NULL,
   boot_sd = NULL,
@@ -54,10 +53,6 @@ Name of channel to get gate for.}
 Names are channel names and values are
 thresholds above which a value for a given cell in this channel is deemed
 'high'.}
-
-\item{cps_scp}{numeric vector. Values at which the
-changepoint for probability of positivity in the cut
-channel is to be checked. Default is 90.}
 
 \item{gate_combn}{named list. Named list where names
 are one of 'pre_join', 'mean', 'median', 'trim20' or

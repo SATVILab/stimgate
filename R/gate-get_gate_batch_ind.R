@@ -6,7 +6,6 @@
                                 pop_gate,
                                 cut,
                                 high,
-                                cps_scp,
                                 gate_combn,
                                 pop_man,
                                 pop_man_match_exact,
@@ -15,7 +14,7 @@
                                 fdr,
                                 noise_sd,
                                 bias_uns,
-                                min_bw,
+                                bw_min,
                                 cp_min,
                                 min_cell,
                                 params,
@@ -60,7 +59,7 @@
         data = data,
         bias_uns = bias_uns,
         noise_sd = NULL,
-        min_bw = min_bw,
+        bw_min = bw_min,
         cp_min = cp_min, min_cell = min_cell,
         params = params,
         plot = plot,
@@ -80,7 +79,7 @@
         exc_min = TRUE,
         min_cell = min_cell,
         cp_min = cp_min,
-        bw = min_bw,
+        bw = bw_min,
         debug = debug
       )
     }
@@ -96,7 +95,7 @@
           exc_min = TRUE,
           min_cell = 0,
           cp_min = 0,
-          bw = min_bw
+          bw = bw_min
         )
       }
     }
@@ -111,7 +110,7 @@
         exc_min = TRUE,
         min_cell = 0,
         cp_min = 0,
-        bw = min_bw
+        bw = bw_min
       )
     }
 
@@ -255,7 +254,7 @@
           exc_min = TRUE,
           min_cell = min_cell,
           cp_min = cp_min,
-          bw = min_bw
+          bw = bw_min
         )
 
         gate_tbl <- tibble::tibble(
@@ -276,7 +275,7 @@
           data = data,
           bias_uns = gate_name_tbl_row$bias,
           noise_sd = NULL,
-          min_bw = min_bw,
+          bw_min = bw_min,
           cp_min = cp_min,
           min_cell = min_cell,
           params = params |> append(list(
@@ -324,7 +323,7 @@
           exc_min = TRUE,
           min_cell = min_cell,
           cp_min = cp_min,
-          bw = min_bw
+          bw = bw_min
         )
 
         gate_tbl_adj <- tibble::tibble(
@@ -346,7 +345,7 @@
           exc_min = TRUE,
           min_cell = min_cell,
           cp_min = cp_min,
-          bw = min_bw
+          bw = bw_min
         )
 
         gate_tbl_clust <- tibble::tibble(

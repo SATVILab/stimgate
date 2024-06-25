@@ -49,7 +49,7 @@
                                                   pop_gate,
                                                   data_name,
                                                   calc_cyt_pos_gates,
-                                                  min_cp,
+                                                  cp_min,
                                                   max_cp,
                                                   gate_stats_tbl,
                                                   filter_other_cyt_pos,
@@ -71,13 +71,13 @@
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     max_cp = max_cp,
     filter_other_cyt_pos = filter_other_cyt_pos,
-    min_cp = min_cp,
+    cp_min = cp_min,
     debug = debug
   )
 
   prop_bs_by_cp_tbl <- .get_prop_bs_by_cp_tbl_actual(
     data_list = data_list_obj[["data_list"]],
-    min_cp = min_cp,
+    cp_min = cp_min,
     max_cp = max_cp,
     gate_stats_tbl = gate_stats_tbl,
     chnl = cut,
@@ -103,7 +103,7 @@
                                              calc_cyt_pos_gates,
                                              max_cp,
                                              filter_other_cyt_pos,
-                                             min_cp,
+                                             cp_min,
                                              debug) {
   .debug(debug, "Getting data list") # nolint
   data_list <- purrr::map(ind_batch_list, function(ind_batch) {
@@ -176,7 +176,7 @@
         x <- x |>
           dplyr::mutate(n_cell = nrow(x))
         x_out <- x |>
-          dplyr::filter(x[[.env$cut]] >= min(.env$min_cp, max(x[[.env$cut]]))) # nolint
+          dplyr::filter(x[[.env$cut]] >= min(.env$cp_min, max(x[[.env$cut]]))) # nolint
         if (nrow(x_out) == 0) {
           x_out <- x[1, ] |>
             dplyr::select(batch:stim) # nolint
@@ -211,13 +211,13 @@
 }
 
 .get_prop_bs_by_cp_tbl_actual <- function(data_list,
-                                          min_cp,
+                                          cp_min,
                                           max_cp,
                                           gate_stats_tbl,
                                           debug,
                                           chnl) {
   .debug(debug, "Getting prop_bs_by_cp_tbl") # nolint
-  cp_range <- c(min_cp, max_cp)
+  cp_range <- c(cp_min, max_cp)
   cp_seq_vec <- seq(cp_range[1], cp_range[2], length.out = 1e2)
   data_list_ind_vec <- purrr::map_dbl(data_list, function(x) x$ind[1])
   purrr::map(seq_along(data_list), function(i) {

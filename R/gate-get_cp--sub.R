@@ -4,23 +4,27 @@
 #' @data_name 'gs_cytof' or `gs_proto`. Name of dataset to be gated in R environment.
 #'
 #' @return
-.complete_marker_list <- function(marker, data_name) {
-  if (!str_detect_any(data_name, c(
+.complete_marker_list <- function(marker,
+                                  data_name,
+                                  bias_uns,
+                                  .data,
+                                  pop_gate,
+                                  cut,
+                                  debug,
+                                  cp_min,
+                                  ind_batch_list,
+                                  ind_in_batch_gate,
+                                  ind_in_batch_uns,
+                                  ind_in_batch_lab_vec) {
+  if (!str_detect_any(data_name, c( # nolint
     "gs_cytof", "gs_proto", "gs_cd8_base",
     "gs_cytof_acs"
   ))) {
     stop("data_name not recognised.")
   }
   purrr::map(marker, function(marker_curr) {
-    # check if a required parameter is missing
-    # missing_ind <- purrr::walk(c("high", "cut", "pop_man_sub"), function(x){
-    #                        if(!(x %in% names(marker_curr))){
-    #                          stop("At least one of high, cut, cp_man_pop, cp_man_pop_match_exact and pop_man_sub not specified")
-    #                        }
-    #                      })
-
     # fill in optionally-specified parameters
-    if ((!"fdr" %in% names(marker_curr)) |
+    if ((!"fdr" %in% names(marker_curr)) ||
       is.null(marker_curr$fdr)) {
       marker_curr$fdr <- NULL
     }
@@ -29,18 +33,15 @@
       marker_curr$min_cell <- 1e2
     }
 
-    if ((!"cps_scp" %in% names(marker_curr)) |
-      is.null(marker_curr$cps_scp)) {
-      marker_curr$cps_scp <- 90
+    if (!is.null(marker[["high"]])) {
+      marker[["high"]] <- marker[["high"]][
+        names(marker[["high"]]) != marker[["cut"]]
+      ]
     }
-    marker[["high"]] <- marker[["high"]][names(marker[["high"]]) != marker[["cut"]]]
-    # if((!"gate_as_grp" %in% names(marker_curr)) |
-    #   is.null(marker_curr$gate_as_grp)){
-    #  marker_curr$gate_as_grp <- 'no'
-    # }
-    if ((!"tol" %in% names(marker_curr)) |
+
+    if ((!"tol" %in% names(marker_curr)) ||
       is.null(marker_curr$tol)) {
-      if (str_detect_any(data_name, c(
+      if (str_detect_any(data_name, c( # nolint
         "gs_cytof", "gs_proto", "gs_cd8_base",
         "gs_cytof_acs"
       ))) {
@@ -60,9 +61,140 @@
       marker_curr$pop_man_match_exact <- TRUE
     }
 
+    marker_curr$bias_uns <- .complete_marker_list_bias_uns(
+      bias_uns = marker_curr$bias_uns,
+      .data = get(data_name),
+      data_name = data_name,
+      pop_gate = marker_curr$pop_gate,
+      cut = marker_curr$cut,
+      debug = marker_curr$debug,
+      ind_batch_list = marker_curr$ind_batch_list,
+      ind_in_batch_gate = marker_curr$ind_in_batch_gate,
+      ind_in_batch_uns = marker_curr$ind_in_batch_uns,
+      ind_in_batch_lab_vec = marker_curr$ind_in_batch_lab_vec
+    )
+
+    marker_curr$bw_min <- .complete_marker_list_min_bw(
+      bw_min = bw_min,
+      bias_uns = max(bias_uns)
+    )
+
+    marker_curr$cp_min <- .complete_marker_list_cp_min(
+      cp_min = cp_min,
+      .data = get(data_name),
+      data_name = data_name,
+      pop_gate = marker_curr$pop_gate,
+      cut = marker_curr$cut,
+      debug = marker_curr$debug,
+      ind_batch_list = marker_curr$ind_batch_list,
+      ind_in_batch_gate = marker_curr$ind_in_batch_gate,
+      ind_in_batch_uns = marker_curr$ind_in_batch_uns,
+      ind_in_batch_lab_vec = marker_curr$ind_in_batch_lab_vec
+    )
+
     marker_curr
   })
 }
+
+.complete_marker_list_bias_uns <- function(bias_uns,
+                                           .data,
+                                           data_name,
+                                           pop_gate,
+                                           cut,
+                                           debug,
+                                           ind_batch_list,
+                                           ind_in_batch_gate,
+                                           ind_in_batch_uns,
+                                           ind_in_batch_lab_vec) {
+  if (!is.null(bias_uns)) {
+    return(bias_uns)
+  }
+  debug("calculating bias_uns automatically")
+  mean_range <- .complete_marker_list_bias_uns_get_mean_range(
+    ind_batch_list = ind_batch_list,
+    data = .data,
+    ind_in_batch_gate = ind_in_batch_gate,
+    ind_in_batch_uns = ind_in_batch_uns,
+    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
+    pop_gate = pop_gate,
+    cut = cut,
+    data_name = data_name
+  )
+  mean_range / 10
+}
+
+.complete_marker_list_bias_uns_get_mean_range <- function(ind_batch_list,
+                                                          data,
+                                                          ind_in_batch_gate,
+                                                          ind_in_batch_uns,
+                                                          ind_in_batch_lab_vec,
+                                                          pop_gate,
+                                                          cut,
+                                                          data_name) {
+  purrr::map(
+    seq_len(min(2, length(ind_batch_list))),
+    function(i) {
+      ex_list <- .get_ex_list(
+        data = data, ind_batch = ind_batch_list[[i]],
+        ind_in_batch_gate = ind_in_batch_gate,
+        ind_in_batch_uns = ind_in_batch_uns,
+        ind_in_batch_lab_vec = ind_in_batch_lab_vec,
+        pop = pop_gate,
+        cut = cut, high = NULL,
+        data_name = data_name
+      )
+      purrr::map_dbl(ex_list, function(ex) {
+        abs(diff(quantile(ex$cut, c(0.99, 0.01)), na.rm = TRUE))[[1]]
+      })
+    }
+  ) |>
+    unlist() |>
+    mean(trim = 0.1)
+}
+
+
+.complete_marker_list_min_bw <- function(bw_min, bias_uns) {
+  if (!is.null(bw_min)) {
+    return(bw_min)
+  }
+  bias_uns * 2
+}
+
+.complete_marker_list_cp_min <- function(cp_min,
+                                         .data,
+                                         data_name,
+                                         pop_gate,
+                                         cut,
+                                         debug,
+                                         ind_batch_list,
+                                         ind_in_batch_gate,
+                                         ind_in_batch_uns,
+                                         ind_in_batch_lab_vec) {
+  if (!is.null(cp_min)) {
+    return(cp_min)
+  }
+  debug("calculating cp_min automatically")
+  purrr::map(
+    seq_len(min(2, length(ind_batch_list))),
+    function(i) {
+      ex_list <- .get_ex_list( # nolint
+        data = data, ind_batch = ind_batch_list[[i]],
+        ind_in_batch_gate = ind_in_batch_gate,
+        ind_in_batch_uns = ind_in_batch_uns,
+        ind_in_batch_lab_vec = ind_in_batch_lab_vec,
+        pop = pop_gate,
+        cut = cut, high = NULL,
+        data_name = data_name
+      )
+      purrr::map_dbl(ex_list, function(ex) {
+        median(ex$cut, na.rm = TRUE)[[1]]
+      })
+    }
+  ) |>
+    unlist() |>
+    mean(trim = 0.1)
+}
+
 
 #' @title Get named vector specifying gate combination method for each cutpoint type
 #'
@@ -83,7 +215,9 @@
   purrr::map(cp_type_vec_full, function(x) {
     gate_combn_vec <- c()
     for (i in seq_along(gate_combn)) {
-      if (x %in% gate_combn[[i]]) gate_combn_vec <- c(gate_combn_vec, names(gate_combn)[i])
+      if (x %in% gate_combn[[i]]) {
+        gate_combn_vec <- c(gate_combn_vec, names(gate_combn)[i])
+      }
     }
     if (!length(gate_combn_vec)) {
       return(stats::setNames(list("no"), x))

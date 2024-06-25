@@ -2,11 +2,13 @@
 local({
 
   # the requested version of renv
-  version <- "1.0.5.9000"
-  attr(version, "sha") <- "5bc089696a96ca372f1f1ecaf0a0a4167891ed36"
+  version <- "1.0.7.9000"
+  attr(version, "sha") <- "1f99d7d8ce7829fa67f3295f5a447e3df09c7a38"
 
   # the project directory
-  project <- Sys.getenv("RENV_PROJECT", unset = getwd())
+  project <- Sys.getenv("RENV_PROJECT")
+  if (!nzchar(project))
+    project <- getwd()
 
   # use start-up diagnostics if enabled
   diagnostics <- Sys.getenv("RENV_STARTUP_DIAGNOSTICS", unset = "FALSE")
@@ -126,6 +128,21 @@ local({
   
     tail <- paste(rep.int(suffix, n), collapse = "")
     paste0(prefix, " ", label, " ", tail)
+  
+  }
+  
+  heredoc <- function(text, leave = 0) {
+  
+    # remove leading, trailing whitespace
+    trimmed <- gsub("^\\s*\\n|\\n\\s*$", "", text)
+  
+    # split into lines
+    lines <- strsplit(trimmed, "\n", fixed = TRUE)[[1L]]
+  
+    # compute common indent
+    indent <- regexpr("[^[:space:]]", lines)
+    common <- min(setdiff(indent, -1L)) - leave
+    paste(substring(lines, common), collapse = "\n")
   
   }
   
@@ -825,16 +842,16 @@ local({
   
     # the loaded version of renv doesn't match the requested version;
     # give the user instructions on how to proceed
-    rtype <- description[["RemoteType"]] %||% "standard"
-    remote <- if (rtype %in% "standard")
-      paste("renv", description[["Version"]], sep = "@")
-    else
+    dev <- identical(description[["RemoteType"]], "github")
+    remote <- if (dev)
       paste("rstudio/renv", description[["RemoteSha"]], sep = "@")
+    else
+      paste("renv", description[["Version"]], sep = "@")
   
     # display both loaded version + sha if available
     friendly <- renv_bootstrap_version_friendly(
       version = description[["Version"]],
-      sha     = if (!rtype %in% "standard") description[["RemoteSha"]]
+      sha     = if (dev) description[["RemoteSha"]]
     )
   
     fmt <- heredoc("

@@ -18,7 +18,7 @@ stimgate_gate(
   plot = TRUE,
   noise_sd = 2,
   bias_uns = 0,
-  min_bw = 80,
+  bw_min = 80,
   cp_min = 95,
   boot_n = NULL,
   boot_sd = NULL,

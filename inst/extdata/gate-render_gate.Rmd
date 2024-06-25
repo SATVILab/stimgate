@@ -14,7 +14,6 @@ params:
   pop_gate: ""
   cut: ""
   high: ""
-  cps_scp: 1
   gate_combn: !r list()
   pop_man_sub: ""
   pop_man_match_exact: true
@@ -24,7 +23,7 @@ params:
   pop_sub: "gate"
   noise_sd: NULL
   bias_uns: 1
-  min_bw: 1
+  bw_min: 1
   cp_min: 1
   boot_sd: NULL
   boot_n: NULL

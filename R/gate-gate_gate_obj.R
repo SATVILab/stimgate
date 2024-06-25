@@ -12,9 +12,6 @@
 #' Names are channel names and values are
 #' thresholds above which a value for a given cell in this channel is deemed
 #' 'high'.
-#' @param cps_scp numeric vector. Values at which the
-#' changepoint for probability of positivity in the cut
-#' channel is to be checked. Default is 90.
 #' @param fdr numeric vector. False discovery rates at
 #' which the unstim-based gate is to be calculated.
 #' Default is \code{c(0.3, 0.2, 0.1)}.
@@ -42,7 +39,6 @@
                           data_name,
                           cut,
                           high,
-                          cps_scp,
                           gate_combn,
                           pop_man_sub,
                           pop_man_match_exact,
@@ -50,7 +46,7 @@
                           fdr,
                           noise_sd,
                           bias_uns,
-                          min_bw,
+                          bw_min,
                           cp_min,
                           boot_n = NULL,
                           boot_sd = NULL,
@@ -95,7 +91,6 @@
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     pop_gate = pop_gate,
     cut = cut, high = high,
-    cps_scp = cps_scp,
     gate_combn = gate_combn,
     pop_man_sub = pop_man_sub,
     pop_man_match_exact = pop_man_match_exact,
@@ -103,7 +98,7 @@
     chnl_lab = chnl_lab_vec,
     noise_sd = noise_sd,
     bias_uns = bias_uns,
-    min_bw = min_bw,
+    bw_min = bw_min,
     cp_min = cp_min,
     boot_sd = boot_sd,
     boot_n = boot_n, min_cell = min_cell,
@@ -137,7 +132,6 @@
     pop_gate = pop_gate,
     cut = cut,
     high = high,
-    cps_scp = cps_scp,
     gate_combn = gate_combn,
     pop_man = pop_man_vec,
     pop_man_match_exact = pop_man_match_exact,
@@ -145,7 +139,7 @@
     fdr = fdr,
     noise_sd = noise_sd,
     bias_uns = bias_uns,
-    min_bw = min_bw,
+    bw_min = bw_min,
     cp_min = cp_min,
     boot_n = boot_n,
     boot_sd = boot_sd,
@@ -180,7 +174,7 @@
     pop_sub = pop_sub,
     params = params,
     cut = cut,
-    min_bw = min_bw,
+    bw_min = bw_min,
     data = data,
     path_project = path_project,
     debug = debug,
