@@ -66,13 +66,13 @@
       bias_uns = marker_curr$bias_uns,
       .data = get(data_name),
       data_name = data_name,
-      pop_gate = marker_curr$pop_gate,
-      cut = marker_curr$cut,
+      pop_gate = pop_gate,
+      cut = cut,
       debug = marker_curr$debug,
-      ind_batch_list = marker_curr$ind_batch_list,
-      ind_in_batch_gate = marker_curr$ind_in_batch_gate,
-      ind_in_batch_uns = marker_curr$ind_in_batch_uns,
-      ind_in_batch_lab_vec = marker_curr$ind_in_batch_lab_vec
+      ind_batch_list = ind_batch_list,
+      ind_in_batch_gate = ind_in_batch_gate,
+      ind_in_batch_uns = ind_in_batch_uns,
+      ind_in_batch_lab_vec = ind_in_batch_lab_vec
     )
 
     marker_curr$bw_min <- .complete_marker_list_min_bw(
@@ -87,10 +87,10 @@
       pop_gate = marker_curr$pop_gate,
       cut = marker_curr$cut,
       debug = marker_curr$debug,
-      ind_batch_list = marker_curr$ind_batch_list,
-      ind_in_batch_gate = marker_curr$ind_in_batch_gate,
-      ind_in_batch_uns = marker_curr$ind_in_batch_uns,
-      ind_in_batch_lab_vec = marker_curr$ind_in_batch_lab_vec
+      ind_batch_list = ind_batch_list,
+      ind_in_batch_gate = ind_in_batch_gate,
+      ind_in_batch_uns = ind_in_batch_uns,
+      ind_in_batch_lab_vec = ind_in_batch_lab_vec
     )
 
     marker_curr
@@ -135,7 +135,7 @@
   purrr::map(
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
-      ex_list <- .get_ex_list(
+      ex_list <- .get_ex_list( # nolint
         data = data, ind_batch = ind_batch_list[[i]],
         ind_in_batch_gate = ind_in_batch_gate,
         ind_in_batch_uns = ind_in_batch_uns,
