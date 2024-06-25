@@ -79,7 +79,6 @@ str_detect_any <- function(string, pattern) {
     ind_in_batch_uns
   )]
   ind_uns <- ind_batch[ind_in_batch_uns]
-  ind_stim <- setdiff(ind_data, ind_uns)
 
   # get the names of the associated fcs files
   purrr::map(ind_data, function(i) {
@@ -96,7 +95,7 @@ str_detect_any <- function(string, pattern) {
       tibble::as_tibble()
 
     ex |>
-      dplyr::mutate(high = .check_if_high(ex = .env$ex, .env$high))
+      dplyr::mutate(high = .check_if_high(ex = .env$ex, .env$high)) # nolint
   }) |>
     stats::setNames(as.character(ind_data))
 }
@@ -410,4 +409,16 @@ stimgate_dir_base_create <- function(params,
   }) |>
     unlist() |>
     stats::setNames(NULL)
+}
+
+.ensure_cytoutils <- function() {
+  if (!requireNamespace("cytoUtils", quietly = TRUE)) {
+    if (!requireNamespace("BiocManager", quietly = TRUE)) {
+      install.packages("BiocManager")
+    }
+    if (!requireNamespace("remotes", quietly = TRUE)) {
+      BiocManager::install("remotes")
+    }
+    remotes::install_github("RGLab/cytoUtils")
+  }
 }

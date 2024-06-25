@@ -34,9 +34,9 @@
       marker_curr$min_cell <- 1e2
     }
 
-    if (!is.null(marker[["high"]])) {
-      marker[["high"]] <- marker[["high"]][
-        names(marker[["high"]]) != marker[["cut"]]
+    if (!is.null(marker_curr[["high"]])) {
+      marker_curr[["high"]] <- marker_curr[["high"]][
+        names(marker_curr[["high"]]) != marker_curr[["cut"]]
       ]
     }
 
@@ -64,11 +64,11 @@
 
     marker_curr$bias_uns <- .complete_marker_list_bias_uns(
       bias_uns = marker_curr$bias_uns,
-      .data = get(data_name),
+      .data = .data,
       data_name = data_name,
       pop_gate = pop_gate,
-      cut = cut,
-      debug = marker_curr$debug,
+      cut = marker_curr$cut,
+      debug = debug,
       ind_batch_list = ind_batch_list,
       ind_in_batch_gate = ind_in_batch_gate,
       ind_in_batch_uns = ind_in_batch_uns,
@@ -77,16 +77,16 @@
 
     marker_curr$bw_min <- .complete_marker_list_min_bw(
       bw_min = bw_min,
-      bias_uns = max(bias_uns)
+      bias_uns = max(marker_curr$bias_uns)
     )
 
     marker_curr$cp_min <- .complete_marker_list_cp_min(
       cp_min = cp_min,
-      .data = get(data_name),
+      .data = .data,
       data_name = data_name,
-      pop_gate = marker_curr$pop_gate,
+      pop_gate = pop_gate,
       cut = marker_curr$cut,
-      debug = marker_curr$debug,
+      debug = debug,
       ind_batch_list = ind_batch_list,
       ind_in_batch_gate = ind_in_batch_gate,
       ind_in_batch_uns = ind_in_batch_uns,
@@ -113,7 +113,7 @@
   .debug(debug, "calculating bias_uns automatically") # nolint
   mean_range <- .complete_marker_list_bias_uns_get_mean_range(
     ind_batch_list = ind_batch_list,
-    data = .data,
+    .data = .data,
     ind_in_batch_gate = ind_in_batch_gate,
     ind_in_batch_uns = ind_in_batch_uns,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
@@ -125,7 +125,7 @@
 }
 
 .complete_marker_list_bias_uns_get_mean_range <- function(ind_batch_list,
-                                                          data,
+                                                          .data,
                                                           ind_in_batch_gate,
                                                           ind_in_batch_uns,
                                                           ind_in_batch_lab_vec,
@@ -136,7 +136,7 @@
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
       ex_list <- .get_ex_list( # nolint
-        data = data, ind_batch = ind_batch_list[[i]],
+        data = .data, ind_batch = ind_batch_list[[i]],
         ind_in_batch_gate = ind_in_batch_gate,
         ind_in_batch_uns = ind_in_batch_uns,
         ind_in_batch_lab_vec = ind_in_batch_lab_vec,
@@ -179,7 +179,7 @@
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
       ex_list <- .get_ex_list( # nolint
-        data = data, ind_batch = ind_batch_list[[i]],
+        data = .data, ind_batch = ind_batch_list[[i]],
         ind_in_batch_gate = ind_in_batch_gate,
         ind_in_batch_uns = ind_in_batch_uns,
         ind_in_batch_lab_vec = ind_in_batch_lab_vec,
@@ -326,7 +326,7 @@
         ind = ind,
         gate_combn = non_prejoin_combn_vec
       ) |>
-        flatten())
+        purrr::flatten())
   }
 
   cp_list
@@ -572,6 +572,7 @@
     } else {
       dens <- density(ex[["cut"]])
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
+      .ensure_cytoutils()
       cp <- cytoUtils:::.cytokine_cutpoint(
         x = ex[["cut"]], num_peaks = 1,
         ref_peak = 1, tol = tol, side = "right",
@@ -612,6 +613,7 @@
       }
       dens <- density(ex[["cut"]])
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
+      .ensure_cytoutils()
       cytoUtils:::.cytokine_cutpoint(
         x = ex[["cut"]], num_peaks = 1,
         ref_peak = 1, tol = tol, side = "right",
