@@ -13,7 +13,7 @@
   noise_sd,
   cp_min,
   gate_combn,
-  min_bw,
+  bw_min,
   min_cell,
   params,
   plot,

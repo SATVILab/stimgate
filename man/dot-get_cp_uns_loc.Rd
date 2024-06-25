@@ -13,7 +13,7 @@
   data,
   bias_uns = 0,
   noise_sd = NULL,
-  min_bw = 80,
+  bw_min = 80,
   cp_min,
   min_cell,
   params,

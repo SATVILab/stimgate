@@ -8,7 +8,7 @@
   cut_stim,
   cut_uns,
   cp_min,
-  min_bw,
+  bw_min,
   ind_uns,
   ind_gate,
   min_cell,

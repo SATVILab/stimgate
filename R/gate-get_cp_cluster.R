@@ -41,7 +41,7 @@
   )
 
   # cp
-  min_cp <- .get_cp_cluster_cp_get_min( # nolint
+  cp_min <- .get_cp_cluster_cp_get_min( # nolint
     gate_tbl, gate_tbl_ctrl
   )
   max_cp <- .get_cp_cluster_cp_get_max( # nolint
@@ -59,7 +59,7 @@
     pop_gate = params$pop_gate,
     data_name = params$data_name,
     calc_cyt_pos_gates = params$calc_cyt_pos_gates,
-    min_cp = min_cp,
+    cp_min = cp_min,
     max_cp = max_cp,
     gate_stats_tbl = gate_stats_tbl,
     filter_other_cyt_pos = filter_other_cyt_pos

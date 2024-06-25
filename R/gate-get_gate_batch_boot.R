@@ -1,7 +1,7 @@
 #' @title Get cutpoints for a single batch
 #'
 #' @inheritParams gate # all except those listed below
-#' @inheritParams .get_gate_list # pop_gate, cut, high, cps_scp, fdr, tol, gate_combn
+#' @inheritParams .get_gate_list # pop_gate, cut, high, fdr, tol, gate_combn
 .get_gate_batch_boot <- function(data,
                                  ind_batch,
                                  ind_in_batch_gate,
@@ -10,7 +10,6 @@
                                  pop_gate,
                                  cut,
                                  high,
-                                 cps_scp,
                                  gate_combn,
                                  pop_man,
                                  pop_man_match_exact,
@@ -19,7 +18,7 @@
                                  fdr,
                                  noise_sd,
                                  bias_uns,
-                                 min_bw,
+                                 bw_min,
                                  cp_min,
                                  boot_sd,
                                  boot_n,
@@ -123,7 +122,6 @@
       pop_gate = pop_gate,
       cut = cut,
       high = high,
-      cps_scp = cps_scp,
       gate_combn = gate_combn,
       pop_man = pop_man,
       pop_man_match_exact = pop_man_match_exact,
@@ -132,7 +130,7 @@
       fdr = fdr,
       noise_sd = noise_sd,
       bias_uns = bias_uns,
-      min_bw = min_bw,
+      bw_min = bw_min,
       cp_min = cp_min,
       min_cell = min_cell,
       params = params,

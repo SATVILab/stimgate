@@ -12,7 +12,7 @@
   exc_min = TRUE,
   gate_combn,
   cp_min,
-  min_bw,
+  bw_min,
   min_cell,
   params,
   plot,

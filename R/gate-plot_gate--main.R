@@ -207,7 +207,6 @@ plot_gate <- function(gate_tbl, params, pop_sub,
 
   # plot first cutpoint log-likelihood
   #plot_ll_scp <- .plot_ll(ll = cp_obj$ll_scp,
-  #                        cps = params$cps_scp,
   #                        cp = cp,
   #                        cut = params$cut,
   #                        axis_lab = params$chnl_lab,

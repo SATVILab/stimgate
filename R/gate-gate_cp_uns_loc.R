@@ -1,14 +1,14 @@
 #' @title Calculate the local fdr-based cut
 .get_cp_uns_loc <- function(ex_list, ind_gate, ind_uns, gate_combn,
                             data, bias_uns = 0,
-                            noise_sd = NULL, min_bw = 80,
+                            noise_sd = NULL, bw_min = 80,
                             cp_min, min_cell, params, plot,
                             path_project, debug = FALSE) {
   # get cutpoints for each level of bias
   .get_cp_uns_loc_bias( # nolint
     ex_list = ex_list, ind_gate = ind_gate, ind_uns = ind_uns,
     data = data, bias_uns = bias_uns, noise_sd = noise_sd,
-    cp_min = cp_min, gate_combn = gate_combn, min_bw = min_bw,
+    cp_min = cp_min, gate_combn = gate_combn, bw_min = bw_min,
     min_cell = min_cell, gate_tbl = params$gate_tbl,
     gate_name_curr = params$gate_name_curr, cut = params$cut,
     calc_cyt_pos_gates = params$calc_cyt_pos_gates, plot = plot,
@@ -21,7 +21,7 @@
 #' @title Get the unstim-based local fdr-method cutpoint for each level of bias
 .get_cp_uns_loc_bias <- function(ex_list, ind_gate, ind_uns, data,
                                  bias_uns, noise_sd, cp_min,
-                                 gate_combn, min_bw, min_cell,
+                                 gate_combn, bw_min, min_cell,
                                  gate_tbl, gate_name_curr, cut,
                                  calc_cyt_pos_gates, plot, path_project,
                                  debug) {
@@ -45,7 +45,7 @@
       exc_min = TRUE,
       gate_combn = gate_combn,
       cp_min = cp_min,
-      min_bw = min_bw,
+      bw_min = bw_min,
       min_cell = min_cell,
       gate_tbl = gate_tbl,
       gate_name_curr = gate_name_curr,
@@ -124,7 +124,7 @@
                                        exc_min = TRUE,
                                        gate_combn,
                                        cp_min,
-                                       min_bw,
+                                       bw_min,
                                        min_cell,
                                        gate_tbl,
                                        gate_name_curr,
@@ -141,7 +141,7 @@
     gate_combn = gate_combn, ex_list_no_min = ex_list_no_min,
     ex_list_orig = ex_list_orig, ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min, ind_uns = ind_uns, ind_gate = ind_gate,
-    min_bw = min_bw, min_cell = min_cell, gate_tbl = gate_tbl,
+    bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, cut = cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates, plot = plot,
     bias = bias, path_project = path_project, debug = debug
@@ -154,7 +154,7 @@
     ex_list_orig = ex_list_orig,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min, ind_uns = ind_uns, ind_gate = ind_gate,
-    min_bw = min_bw, min_cell = min_cell, gate_tbl = gate_tbl,
+    bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, cut = cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates, plot = plot,
     bias = bias, path_project = path_project, debug = debug
@@ -199,7 +199,7 @@
                                                cp_min,
                                                ind_uns,
                                                ind_gate,
-                                               min_bw,
+                                               bw_min,
                                                min_cell,
                                                gate_tbl,
                                                gate_name_curr,
@@ -219,7 +219,7 @@
     cp_min = cp_min,
     ind_uns = ind_uns,
     ind_gate = ind_gate,
-    min_bw = min_bw,
+    bw_min = bw_min,
     min_cell = min_cell,
     gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr,
@@ -270,7 +270,7 @@
                                                       cp_min,
                                                       ind_uns,
                                                       ind_gate,
-                                                      min_bw,
+                                                      bw_min,
                                                       min_cell,
                                                       gate_tbl,
                                                       gate_name_curr,
@@ -297,7 +297,7 @@
     cp_min = cp_min,
     ind_uns = ind_uns,
     ind_gate = ind_gate[[1]],
-    min_bw = min_bw,
+    bw_min = bw_min,
     min_cell = min_cell,
     gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr,
@@ -320,7 +320,7 @@
                                                    cp_min,
                                                    ind_uns,
                                                    ind_gate,
-                                                   min_bw,
+                                                   bw_min,
                                                    min_cell,
                                                    gate_tbl,
                                                    gate_name_curr,
@@ -342,7 +342,7 @@
     cp_min = cp_min,
     ind_uns = ind_uns,
     ind_gate = ind_gate,
-    min_bw = min_bw,
+    bw_min = bw_min,
     min_cell = min_cell,
     gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr,
@@ -365,7 +365,7 @@
                                                           cp_min,
                                                           ind_uns,
                                                           ind_gate,
-                                                          min_bw,
+                                                          bw_min,
                                                           min_cell,
                                                           gate_tbl,
                                                           gate_name_curr,
@@ -382,7 +382,7 @@
     ex_list_no_min_stim = ex_list_no_min_stim,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min, ind_uns = ind_uns, ind_gate = ind_gate,
-    min_bw = min_bw, min_cell = min_cell, gate_tbl = gate_tbl,
+    bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, cut = cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates, plot = plot,
     bias = bias, path_project = path_project
@@ -473,7 +473,7 @@
                                    ex_list_no_min_stim,
                                    ex_tbl_uns_bias,
                                    cp_min,
-                                   min_bw,
+                                   bw_min,
                                    ind_uns,
                                    ind_gate,
                                    min_cell,
@@ -519,7 +519,7 @@
       ex_tbl_uns_bias = ex_tbl_uns_bias,
       ex_tbl_stim_orig = ex_list_orig[[as.character(ind_gate)[i]]],
       ex_tbl_uns_orig = ex_list_orig[[as.character(ind_uns)]],
-      min_bw = min_bw,
+      bw_min = bw_min,
       cp_min = cp_min,
       min_cell = min_cell,
       plot = plot,
@@ -608,7 +608,7 @@
 
 .get_cp_uns_loc_ind <- function(ex_tbl_uns_bias, # was cut_unstim
                                 ex_tbl_stim_no_min, # was cut_stim
-                                min_bw,
+                                bw_min,
                                 cp_min,
                                 min_cell,
                                 # replacement of params
@@ -642,7 +642,7 @@
     ex_tbl_stim_no_min = ex_tbl_stim_no_min,
     ex_tbl_stim_threshold = ex_tbl_stim_threshold,
     ex_tbl_uns_threshold = ex_tbl_uns_threshold,
-    debug = debug, min_bw = min_bw, cp_min = cp_min,
+    debug = debug, bw_min = bw_min, cp_min = cp_min,
     ex_tbl_uns_orig = ex_tbl_uns_orig
   )
 
@@ -717,11 +717,11 @@
 .get_cp_uns_loc_get_dens_raw <- function(ex_tbl_stim_threshold,
                                          ex_tbl_uns_threshold,
                                          debug,
-                                         min_bw) {
+                                         bw_min) {
   .debug(debug, "Calculating densities") # nolint
 
   dens_list <- .get_cp_uns_loc_get_dens_raw_densities(
-    ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, min_bw
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, bw_min
   )
 
   # put raw densities into table
@@ -736,9 +736,9 @@
 .get_cp_uns_loc_get_dens_raw_densities <- function(ex_tbl_stim_threshold,
                                                    ex_tbl_uns_threshold,
                                                    debug,
-                                                   min_bw) {
+                                                   bw_min) {
   bw <- .get_cp_uns_loc_get_dens_raw_densities_bw(
-    ex_tbl_stim_threshold, ex_tbl_uns_threshold, min_bw
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, bw_min
   )
   dens_stim <- .get_cp_uns_loc_get_dens_raw_densities_stim(
     ex_tbl_stim_threshold, bw
@@ -751,19 +751,19 @@
 
 .get_cp_uns_loc_get_dens_raw_densities_bw <- function(ex_tbl_stim_threshold,
                                                       ex_tbl_uns_threshold,
-                                                      min_bw) {
+                                                      bw_min) {
   bw_stim <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
-    ex_tbl_stim_threshold$expr, min_bw
+    ex_tbl_stim_threshold$expr, bw_min
   )
   bw_uns <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
-    ex_tbl_uns_threshold$expr, min_bw
+    ex_tbl_uns_threshold$expr, bw_min
   )
-  max(bw_stim, min_bw, bw_uns)
+  max(bw_stim, bw_min, bw_uns)
 }
 
-.get_cp_uns_loc_get_dens_raw_densities_bw_init <- function(.data, min_bw) {
+.get_cp_uns_loc_get_dens_raw_densities_bw_init <- function(.data, bw_min) {
   bw_calc <- try(density(.data, bw = "SJ")$bw)
-  if (inherits(bw_calc, "try-error")) min_bw else bw_calc
+  if (inherits(bw_calc, "try-error")) bw_min else bw_calc
 }
 
 .get_cp_uns_loc_get_dens_raw_densities_stim <- function(ex_tbl_stim_threshold,
@@ -1030,12 +1030,12 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                      ex_tbl_stim_threshold,
                                      ex_tbl_uns_threshold,
                                      debug,
-                                     min_bw,
+                                     bw_min,
                                      cp_min,
                                      ex_tbl_uns_orig) {
   # get raw densities
   dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
-    ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, min_bw
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, bw_min
   )
 
   # get probabilities
