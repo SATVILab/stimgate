@@ -11,6 +11,7 @@
                                   pop_gate,
                                   cut,
                                   debug,
+                                  bw_min,
                                   cp_min,
                                   ind_batch_list,
                                   ind_in_batch_gate,
