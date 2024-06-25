@@ -110,7 +110,7 @@
   if (!is.null(bias_uns)) {
     return(bias_uns)
   }
-  debug("calculating bias_uns automatically")
+  .debug(debug, "calculating bias_uns automatically") # nolint
   mean_range <- .complete_marker_list_bias_uns_get_mean_range(
     ind_batch_list = ind_batch_list,
     data = .data,
@@ -174,7 +174,7 @@
   if (!is.null(cp_min)) {
     return(cp_min)
   }
-  debug("calculating cp_min automatically")
+  .debug(debug, "calculating cp_min automatically") # nolint
   purrr::map(
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
