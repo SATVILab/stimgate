@@ -176,7 +176,7 @@
         x <- x |>
           dplyr::mutate(n_cell = nrow(x))
         x_out <- x |>
-          dplyr::filter(x[[.env$cut]] >= min(.env$cp_min, max(x[[.env$cut]]))) # nolint
+          dplyr::filter(x[["cut"]] >= min(.env$cp_min, max(x[["cut"]]))) # nolint
         if (nrow(x_out) == 0) {
           x_out <- x[1, ] |>
             dplyr::select(batch:stim) # nolint
