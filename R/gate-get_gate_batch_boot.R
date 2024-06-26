@@ -26,16 +26,13 @@
                                  params,
                                  plot,
                                  debug) {
-  # create bare list
-  gate_list <- list()
-
   # ==========================================
   # Get manual gates
   # ==========================================
 
   # get list of dataframes for manual gating
   if (!is.null(pop_man)) {
-    ex_list_man <- .get_ex_list(
+    ex_list_man <- .get_ex_list( # nolint
       data = data, ind_batch = ind_batch,
       ind_in_batch_gate, ind_in_batch_uns,
       ind_in_batch_lab_vec,
@@ -46,7 +43,7 @@
 
     # calculate manual cutpoint for each sample
     # ---
-    gate_list_man <- .get_cp_man(
+    gate_list_man <- .get_cp_man( # nolint
       data = data, ind = ind_batch[ind_in_batch_gate],
       ex_list = ex_list_man,
       pop_man = pop_man,
@@ -72,7 +69,7 @@
   # ==========================================
 
   # get list of dataframes
-  ex_list <- .get_ex_list(
+  ex_list <- .get_ex_list( # nolint
     data = data, ind_batch = ind_batch,
     ind_in_batch_gate, ind_in_batch_uns,
     ind_in_batch_lab_vec,
