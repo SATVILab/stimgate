@@ -116,17 +116,6 @@ str_detect_any <- function(string, pattern) {
     for (pattern_curr in pattern) str <- str |> stringr::str_remove_all(pattern_curr)
     str
   }
-  .get_batch_from_fn <- function(fn) {
-    purrr::map_chr(fn, function(fn_curr) {
-      stringr::str_remove_all_v(
-        fn_curr,
-        c(
-          "_p4", "_p1", "-pid1", "-pid2", "_mtbaux",
-          "_ebv", "_uns", "-back_transformed.fcs", ".fcs"
-        )
-      )
-    })
-  }
 
   # get data
   fr <- flowWorkspace::gh_pop_get_data(data, y = pop)
@@ -412,13 +401,25 @@ stimgate_dir_base_create <- function(params,
 }
 
 .ensure_cytoutils <- function() {
-  if (!requireNamespace("cytoUtils", quietly = TRUE)) {
-    if (!requireNamespace("BiocManager", quietly = TRUE)) {
-      install.packages("BiocManager")
-    }
-    if (!requireNamespace("remotes", quietly = TRUE)) {
-      BiocManager::install("remotes")
-    }
-    remotes::install_github("RGLab/cytoUtils")
+  if (requireNamespace("cytoUtils", quietly = TRUE)) {
+    return(invisible(FALSE))
   }
+  if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+  }
+  if (!requireNamespace("remotes", quietly = TRUE)) {
+    BiocManager::install("remotes")
+  }
+  remotes::install_github("RGLab/cytoUtils")
+  invisible(TRUE)
+}
+
+.ensure_flowstats <- function() {
+  if (requireNamespace("flowStats", quietly = TRUE)) {
+    return(invisible(FALSE))
+  }
+  if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+  }
+  BiocManager::install("flowStats")
 }

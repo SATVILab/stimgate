@@ -1,7 +1,7 @@
 Package: stimgate
 Type: Package
 Title: Identify responding cells as outliers
-Version: 0.2.3.9003
+Version: 0.2.3.9004
 Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-2036-4878"))
 Maintainer: Miguel Rodo <miguel.rodo@uct.ac.za>
 Description: Apply outlier gating function
@@ -11,22 +11,24 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
 Imports:
-    CytoML,
     cowplot,
     dplyr,
-    flowWorkspace,
     ggplot2,
     ggrepel,
     magrittr,
-    openCyto,
     purrr,
     rlang,
     stringr,
     tibble,
     tidyr,
-    flowCore,
     scam,
     mgcv,
-    gtools
+    gtools,
+    flowCore,
+    CytoML,
+    flowWorkspace,
+    flowStats,
+    cytoUtils,
+    openCyto
 Suggests:
     testthat
