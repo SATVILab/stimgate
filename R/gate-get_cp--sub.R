@@ -121,7 +121,7 @@
     cut = cut,
     data_name = data_name
   )
-  mean_range / 10
+  mean_range / 40
 }
 
 .complete_marker_list_bias_uns_get_mean_range <- function(ind_batch_list,
@@ -163,7 +163,7 @@
   if (!is.null(bw_min)) {
     return(bw_min)
   }
-  bias_uns * 2
+  bias_uns * 1.5
 }
 
 .complete_marker_list_cp_min <- function(cp_min,
