@@ -179,13 +179,13 @@
   ex_list_boot
 }
 
-  .get_get_batch_boot_par <- function(boot_n, boot, boot_sd) {
-    if (is.null(boot_n)) {
-      boot <- FALSE
-      boot_n <- 1
-    } else {
-      boot <- TRUE
-    }
-    if (is.null(boot_sd)) boot_sd <- 0
-    list(boot_n = boot_n, boot = boot, boot_sd = boot_sd)
+.get_get_batch_boot_par <- function(boot_n, boot, boot_sd) {
+  if (is.null(boot_n)) {
+    boot <- FALSE
+    boot_n <- 1
+  } else {
+    boot <- TRUE
   }
+  if (is.null(boot_sd)) boot_sd <- 0
+  list(boot_n = boot_n, boot = boot, boot_sd = boot_sd)
+}
