@@ -61,17 +61,14 @@
   # ==========================================
 
   # set number of bootstrap samples to 1
-  if (is.null(boot_n)) {
-    boot <- FALSE
-    boot_n <- 1
-  } else {
-    boot <- TRUE
-  }
-  if (is.null(boot_sd)) boot_sd <- 0
 
-  gate_tbl_auto <- purrr::map_df(seq_len(boot_n), function(i) {
+
+  par_list_boot <- .get_get_batch_boot_par(boot_n, boot, boot_sd)
+
+  gate_tbl_auto <- purrr::map_df(seq_len(par_list_boot$boot_n), function(i) {
     ex_list_boot <- .get_gate_batch_boot_ex_list(
-      ex_list = ex_list, boot = boot, boot_n = boot_n, boot_sd = boot_sd, i = i
+      ex_list = ex_list, boot = par_list_boot[["boot"]],
+      boot_n = par_list_boot$boot_n, boot_sd = par_list_boot$boot_sd, i = i
     )
 
     .get_gate_batch_ind( # nolint
@@ -98,7 +95,7 @@
       plot = plot,
       debug = debug
     ) |>
-      dplyr::mutate(boot = boot, boot_ind = i) |>
+      dplyr::mutate(boot = par_list_boot[["boot"]], boot_ind = i) |>
       dplyr::select(boot, boot_ind, everything()) # nolint
   })
 
@@ -181,3 +178,14 @@
   }
   ex_list_boot
 }
+
+  .get_get_batch_boot_par <- function(boot_n, boot, boot_sd) {
+    if (is.null(boot_n)) {
+      boot <- FALSE
+      boot_n <- 1
+    } else {
+      boot <- TRUE
+    }
+    if (is.null(boot_sd)) boot_sd <- 0
+    list(boot_n = boot_n, boot = boot, boot_sd = boot_sd)
+  }
