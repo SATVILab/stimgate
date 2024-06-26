@@ -618,7 +618,7 @@
       }
       dens <- density(ex[["cut"]])
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
-      .ensure_cytoutils()
+      .ensure_cytoutils() # nolint
       cytoUtils:::.cytokine_cutpoint(
         x = ex[["cut"]], num_peaks = 1,
         ref_peak = 1, tol = tol, side = "right",
@@ -627,7 +627,7 @@
     }) |>
       stats::setNames(ind_gate)
 
-    .debug(debug, "combining thresholds")
+    .debug(debug, "combining thresholds") # nolint
 
     cp_tg_list <- .combine_cp(
       cp = cp_tg_vec,
