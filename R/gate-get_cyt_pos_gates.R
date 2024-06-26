@@ -36,6 +36,9 @@
     data_name = data_name
   )
 
+  # get max bw_min for densities
+  bw_min <- .gate_cyt_pos_max_bw_min(marker_list)
+
   # get original gates
   gate_tbl <- .get_cyt_pos_gates_gate_tbl_get( # nolint
     chnl_vec = chnl_vec,
@@ -259,4 +262,10 @@
   }
 
   cp_cyt_pos
+}
+
+.gate_cyt_pos_max_bw_min <- function(marker, quant = 0.8) {
+  marker |>
+    purrr::map_dbl(~ .x$bw_min) |>
+    quantile(quant)
 }

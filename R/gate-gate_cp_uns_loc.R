@@ -1020,7 +1020,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   )
 }
 
-.get_cp_uns_loc_get_prob_smooth_actual_third <- function(data_mod) {
+.get_cp_uns_loc_get_prob_smooth_actual_third <- function(data_mod, debug) {
   .debug(debug, "Failed to smooth") # nolint
   data_mod$prob_smooth - 0.0001
 }
