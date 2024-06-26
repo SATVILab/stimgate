@@ -145,7 +145,12 @@
         data_name = data_name
       )
       purrr::map_dbl(ex_list, function(ex) {
-        abs(diff(quantile(ex$cut, c(0.99, 0.01)), na.rm = TRUE))[[1]]
+        abs(diff(
+          quantile(
+            ex$cut[ex$cut > min(ex$cut)], c(0.99, 0.01)
+          ),
+          na.rm = TRUE
+        ))[[1]]
       })
     }
   ) |>
@@ -188,7 +193,7 @@
         data_name = data_name
       )
       purrr::map_dbl(ex_list, function(ex) {
-        median(ex$cut, na.rm = TRUE)[[1]]
+        median(ex$cut[ex$cut > min(ex$cut)], na.rm = TRUE)[[1]]
       })
     }
   ) |>
