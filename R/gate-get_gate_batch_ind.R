@@ -377,7 +377,6 @@
     gate_combn = gate_combn,
     ind = .get_gate_batch_ind_tbl_ind(cp_list, j),
     gate = .get_gate_batch_ind_tbl_gate(cp_list, j),
-    gate_use = .get_gate_batch_ind_tbl_use(gate_type),
     gate_use = .get_gate_batch_ind_tbl_use(gate_type)
   )
 }
@@ -411,5 +410,5 @@
   if (grepl("tg_ctrl_", gate_type)) {
     return("ctrl")
   }
-  if (grepl("tg_clust")) "tg_clust" else "gate"
+  if (grepl("tg_clust", gate_type)) "tg_clust" else "gate"
 }
