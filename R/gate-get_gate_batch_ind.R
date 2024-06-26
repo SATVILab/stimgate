@@ -31,7 +31,6 @@
     # create bare list
     gate_list <- list()
 
-
     # Unstim-based cutpoint - FDR
     # ---
     if ("uns" %in% names(gate_combn)) {
