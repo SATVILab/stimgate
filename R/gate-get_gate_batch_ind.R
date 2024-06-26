@@ -377,7 +377,7 @@
     gate_combn = gate_combn,
     ind = .get_gate_batch_ind_tbl_ind(cp_list, j),
     gate = .get_gate_batch_ind_tbl_gate(cp_list, j),
-    gate_use = .get_gate_batch_ind_tbl_use(gate_type)
+    gate_use = .get_gate_batch_ind_tbl_use(.env$gate_type)
   )
 }
 
