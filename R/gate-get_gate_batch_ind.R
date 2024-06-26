@@ -352,23 +352,23 @@
 
 .get_gate_batch_ind_tbl <- function(gate_list, debug) {
   purrr::map_df(seq_along(gate_list), function(i) {
-    .get_gate_batch_ind_tbl_type(gate_list, i, debug)
+    .get_gate_batch_ind_tbl_along_type(gate_list, i, debug)
   })
 }
 
-.get_gate_batch_ind_tbl_type <- function(gate_list, i, debug) {
+.get_gate_batch_ind_tbl_along_type <- function(gate_list, i, debug) {
   .debug(debug, "gate list index", i) # nolint
   cp_list <- .get_gate_batch_ind_tbl_cp(gate_list[[i]])
   gate_type <- .get_gate_batch_ind_tbl_type(gate_list, i)
   purrr::map_df(seq_along(cp_list), function(j) {
-    .get_gate_batch_ind_tbl_combn(cp_list, gate_type, j, debug)
+    .get_gate_batch_ind_tbl_along_combn(cp_list, gate_type, j, debug)
   })
 }
 
-.get_gate_batch_ind_tbl_combn <- function(cp_list,
-                                          gate_type,
-                                          j,
-                                          debug) {
+.get_gate_batch_ind_tbl_along_combn <- function(cp_list,
+                                                gate_type,
+                                                j,
+                                                debug) {
   .debug(debug, "gate list sub-index", j) # nolint
   gate_combn <- .get_gate_batch_ind_tbl_combn(cp_list, j)
   tibble::tibble(
