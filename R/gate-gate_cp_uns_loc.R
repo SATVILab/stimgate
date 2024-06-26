@@ -150,7 +150,9 @@
   # get cutpoint for non-prejoin grouping methods
   cp_uns_list_prejoin_non <- .get_cp_uns_loc_gate_combn_prejoin_non(
     non_prejoin_combn = setdiff(gate_combn, "prejoin"),
-    ex_list_no_min_stim = ex_list_no_min,
+    ex_list_no_min_stim = ex_list_no_min[
+      -which(names(ex_list_no_min) == as.character(ind_uns))
+    ],
     ex_list_orig = ex_list_orig,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min, ind_uns = ind_uns, ind_gate = ind_gate,
@@ -1177,22 +1179,10 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   .debug(debug, "Possibly re-using calculated cutpoints") # nolint
 
   # extract vector of cutpoints
-  cp_vec <- purrr::map_dbl(
-    cp_uns_loc_obj_list,
-    function(cp_uns_loc_obj) {
-      cp_uns_loc_obj$cp
-    }
-  )
+  cp_vec <- purrr::map_dbl(cp_uns_loc_obj_list, ~ .x[["cp"]])
 
   # stimulation indices
   ind_stim <- setdiff(ind_gate, ind_uns)
-
-  cp_vec <- purrr::map_dbl(
-    cp_uns_loc_obj_list,
-    function(cp_uns_loc_obj) {
-      cp_uns_loc_obj$cp
-    }
-  )
 
   # Repeat cutpoint if it was prejoined
   if (length(cp_vec) == 1 && ind_stim != 1) {
