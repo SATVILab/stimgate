@@ -121,7 +121,7 @@
     cut = cut,
     data_name = data_name
   )
-  mean_range / 40
+  (mean_range / 40) |> signif(3)
 }
 
 .complete_marker_list_bias_uns_get_mean_range <- function(ind_batch_list,
