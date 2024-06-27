@@ -80,7 +80,6 @@
     cp_min = cp_min,
     max_cp = max_cp,
     gate_stats_tbl = gate_stats_tbl,
-    chnl = cut,
     debug = debug,
     ind_batch_list = ind_batch_list,
     ind_in_batch_uns = ind_in_batch_uns
@@ -220,7 +219,6 @@
                                           max_cp,
                                           gate_stats_tbl,
                                           debug,
-                                          chnl,
                                           ind_batch_list,
                                           ind_in_batch_uns) {
   .debug(debug, "Getting prop_bs_by_cp_tbl") # nolint
@@ -232,7 +230,6 @@
       data_list = data_list,
       cp_par_list = cp_par_list,
       gate_stats_tbl = gate_stats_tbl,
-      chnl = chnl,
       ind_batch_list = ind_batch_list,
       ind_in_batch_uns = ind_in_batch_uns
     )
@@ -245,7 +242,6 @@
                                               i,
                                               cp_par_list,
                                               gate_stats_tbl,
-                                              chnl,
                                               ind_batch_list,
                                               ind_in_batch_uns,
                                               data_list) {
@@ -261,7 +257,6 @@
     ex_uns = ex_list$uns,
     cp_seq = cp_par_list[["seq"]],
     gate_stats_tbl = gate_stats_tbl,
-    chnl = chnl,
     debug = debug
   )
 }
@@ -276,13 +271,12 @@
                                        ex_uns,
                                        cp_seq,
                                        gate_stats_tbl,
-                                       chnl,
                                        debug) {
   par_list <- .get_prop_bs_by_cp_tbl_ind_prep(
-    gate_stats_tbl, ex_stim, ex_uns, cp_seq, chnl
+    gate_stats_tbl, ex_stim, ex_uns, cp_seq
   )
 
-  .get_prop_bs_by_cp_tbl_ind_init(ex_stim, ex_uns, par_list, cp_seq, chnl) |>
+  .get_prop_bs_by_cp_tbl_ind_init(ex_stim, ex_uns, par_list, cp_seq) |>
     .get_prop_bs_by_cp_tbl_ind_calc(ex_stim$n_cell[1], ex_uns$n_cell[1])
 }
 
@@ -290,16 +284,15 @@
 .get_prop_bs_by_cp_tbl_ind_prep <- function(gate_stats_tbl,
                                             ex_stim,
                                             ex_uns,
-                                            cp_seq,
-                                            chnl) {
+                                            cp_seq) {
   gate_stats_tbl_curr <- gate_stats_tbl |>
     dplyr::filter(.data$ind == ex_stim$ind[1]) # nolint
   count_stim_vec <- rep(NA, length(cp_seq))
   count_uns_vec <- rep(NA, length(cp_seq))
   for (i in seq_along(cp_seq)) {
     cp <- cp_seq[i]
-    count_stim_vec[i] <- sum(ex_stim[[chnl]] > cp) # nolint
-    count_uns_vec[i] <- sum(ex_uns[[chnl]] > cp) # nolint
+    count_stim_vec[i] <- sum(ex_stim[["chnl"]] > cp) # nolint
+    count_uns_vec[i] <- sum(ex_uns[["chnl"]] > cp) # nolint
   }
   prop_bs_sd <- gate_stats_tbl_curr$prop_bs_sd
   prop_bs_orig <- gate_stats_tbl_curr$prop_bs
@@ -315,12 +308,11 @@
 .get_prop_bs_by_cp_tbl_ind_init <- function(ex_stim,
                                             ex_uns,
                                             par_list,
-                                            cp_seq,
-                                            chnl) {
+                                            cp_seq) {
   tibble::tibble(
     ind = ex_stim$ind[1], stim = ex_stim$stim[1],
     prop_bs_orig = par_list[["bs_orig"]], prop_bs_sd = par_list[["bs_sd"]],
-    cp = cp_seq, max_expr = max(ex_stim[[chnl]], ex_uns[[chnl]]), # nolint
+    cp = cp_seq, max_expr = max(ex_stim[["cut"]], ex_uns[["cyt"]]), # nolint
     count_stim_cp = par_list[["count_stim"]],
     count_uns_cp = par_list[["count_uns"]]
   )
