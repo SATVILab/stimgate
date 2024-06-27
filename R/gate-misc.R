@@ -434,6 +434,8 @@ stimgate_dir_base_create <- function(params,
 .get_batch_from_ind <- function(ind,
                                 ind_batch_list) {
   ind_batch_list[[
-    purrr::map_lgl(ind_batch_list, function(x) ind %in% x)
+    which(
+      purrr::map_lgl(ind_batch_list, function(x) ind %in% x)
+    )
   ]]
 }

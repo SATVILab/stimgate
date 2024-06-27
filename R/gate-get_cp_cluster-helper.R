@@ -224,33 +224,74 @@
                                           ind_batch_list,
                                           ind_in_batch_uns) {
   .debug(debug, "Getting prop_bs_by_cp_tbl") # nolint
-  cp_par_list <- .get_prop_bs_by_cp_tbl_actual_prep_cp(cp_min, max_cp)
+  cp_par_list <- .get_prop_bs_by_cp_tbl_actual_prep(cp_min, max_cp)
   purrr::map(seq_along(data_list), function(i) {
-    .get_prop_bs_by_cp_tbl_actual_progress(debug, i, data_list)
-    ex_list <- .get_prop_bs_by_cp_tbl_actual_ex_get(
-      data_list, i, ind_batch_list, ind_in_batch_uns
-    )
-    if (is.null(ex_list)) {
-      return(NULL)
-    }
-    .get_prop_bs_by_cp_tbl(
-      ex_stim = ex_list$stim,
-      ex_uns = ex_list$uns,
-      cp_seq = cp_par_list[["seq"]],
+    .get_prop_bs_by_cp_tbl_actual_ind(
+      debug = debug,
+      i = i,
+      data_list = data_list,
+      cp_par_list = cp_par_list,
       gate_stats_tbl = gate_stats_tbl,
       chnl = chnl,
-      debug = debug
+      ind_batch_list = ind_batch_list,
+      ind_in_batch_uns = ind_in_batch_uns
     )
   }) |>
     purrr::compact() |>
     dplyr::bind_rows()
 }
 
-.get_prop_bs_by_cp_tbl_prep <- function(gate_stats_tbl,
-                                        ex_stim,
-                                        ex_uns,
-                                        cp_seq,
-                                        chnl) {
+.get_prop_bs_by_cp_tbl_actual_ind <- function(debug,
+                                              i,
+                                              cp_par_list,
+                                              gate_stats_tbl,
+                                              chnl,
+                                              ind_batch_list,
+                                              ind_in_batch_uns,
+                                              data_list) {
+  .get_prop_bs_by_cp_tbl_actual_progress(debug, i, data_list)
+  ex_list <- .get_prop_bs_by_cp_tbl_actual_ex_get(
+    data_list, i, ind_batch_list, ind_in_batch_uns
+  )
+  if (is.null(ex_list)) {
+    return(NULL)
+  }
+  .get_prop_bs_by_cp_tbl_ind(
+    ex_stim = ex_list$stim,
+    ex_uns = ex_list$uns,
+    cp_seq = cp_par_list[["seq"]],
+    gate_stats_tbl = gate_stats_tbl,
+    chnl = chnl,
+    debug = debug
+  )
+}
+
+.get_prop_bs_by_cp_tbl_actual_prep <- function(cp_min, cp_max) {
+  cp_range <- c(cp_min, cp_max)
+  cp_seq_vec <- seq(cp_range[1], cp_range[2], length.out = 1e2)
+  list("range" = cp_range, "seq" = cp_seq_vec)
+}
+
+.get_prop_bs_by_cp_tbl_ind <- function(ex_stim,
+                                       ex_uns,
+                                       cp_seq,
+                                       gate_stats_tbl,
+                                       chnl,
+                                       debug) {
+  par_list <- .get_prop_bs_by_cp_tbl_ind_prep(
+    gate_stats_tbl, ex_stim, ex_uns, cp_seq, chnl
+  )
+
+  .get_prop_bs_by_cp_tbl_ind_init(ex_stim, ex_uns, par_list, cp_seq, chnl) |>
+    .get_prop_bs_by_cp_tbl_ind_calc(ex_stim$n_cell[1], ex_uns$n_cell[1])
+}
+
+
+.get_prop_bs_by_cp_tbl_ind_prep <- function(gate_stats_tbl,
+                                            ex_stim,
+                                            ex_uns,
+                                            cp_seq,
+                                            chnl) {
   gate_stats_tbl_curr <- gate_stats_tbl |>
     dplyr::filter(.data$ind == ex_stim$ind[1]) # nolint
   count_stim_vec <- rep(NA, length(cp_seq))
@@ -271,31 +312,11 @@
   )
 }
 
-.get_prop_bs_by_cp_tbl <- function(ex_stim,
-                                   ex_uns,
-                                   cp_seq,
-                                   gate_stats_tbl,
-                                   chnl,
-                                   debug) {
-  par_list <- .get_prop_bs_by_cp_tbl_prep(
-    gate_stats_tbl, ex_stim, ex_uns, cp_seq, chnl
-  )
-
-  .get_prop_bs_by_cp_tbl_init(ex_stim, ex_uns, par_list, cp_seq, chnl) |>
-    .get_prop_bs_by_cp_tbl_calc(ex_stim$n_cell[1], ex_uns$n_cell[1])
-}
-
-.get_prop_bs_by_cp_tbl_actual_prep_cp <- function(cp_min, cp_max) {
-  cp_range <- c(cp_min, cp_max)
-  cp_seq_vec <- seq(cp_range[1], cp_range[2], length.out = 1e2)
-  list("range" = cp_range, "seq" = cp_seq_vec)
-}
-
-.get_prop_bs_by_cp_tbl_init <- function(ex_stim,
-                                        ex_uns,
-                                        par_list,
-                                        cp_seq,
-                                        chnl) {
+.get_prop_bs_by_cp_tbl_ind_init <- function(ex_stim,
+                                            ex_uns,
+                                            par_list,
+                                            cp_seq,
+                                            chnl) {
   tibble::tibble(
     ind = ex_stim$ind[1], stim = ex_stim$stim[1],
     prop_bs_orig = par_list[["bs_orig"]], prop_bs_sd = par_list[["bs_sd"]],
@@ -305,7 +326,7 @@
   )
 }
 
-.get_prop_bs_by_cp_tbl_calc <- function(.data, n_cell_stim, n_cell_uns) {
+.get_prop_bs_by_cp_tbl_ind_calc <- function(.data, n_cell_stim, n_cell_uns) {
   .data |>
     dplyr::mutate(
       prop_stim_cp = count_stim_cp / n_cell_stim, # nolint
@@ -390,7 +411,9 @@
 .get_cp_cluster_tbl_ex_uns_get <- function(data_list,
                                            ex_uns_ind) {
   data_list[[
-    purrr::map_lgl(data_list, ~ .env$ex_uns_ind == .x$ind)
+    which(
+      purrr::map_lgl(data_list, function(x) x$ind[1] == ex_uns_ind)
+    )
   ]]
 }
 
