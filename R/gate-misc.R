@@ -57,15 +57,21 @@ str_detect_any <- function(string, pattern) {
 #' @title Get expression matrix from multiple
 #'
 #' @description
-#' Takes a GatingSet and returns the expression data for the columns selected in \code{cut} and \code{high} as a tibble for selected samples in the GatingHierarchy.
+#' Takes a GatingSet and returns the expression data for the
+#' columns selected in \code{cut} and \code{high} as a tibble
+#' for selected samples in the GatingHierarchy.
 #'
 #' @inheritParams get_cp
-#' @param ind_data numeric vector. Indices in GatingSet for which data should be drawn.
-#' @param ind_uns numeric. Index in GatingSet of sample containing unstim measurements for this batch.
+#' @param ind_data numeric vector.
+#' Indices in GatingSet for which data should be drawn.
+#' @param ind_uns numeric.
+#' Index in GatingSet of sample containing unstim measurements for this batch.
 #' @param data_name character. Name of GatingSet in workspace.
 #'
-#' @return A list, where each element is a tibble containing the cell expression measurements from
-#' a single sample for the channels named in \code{cut} and \code{high}, as well as the following columns:
+#' @return A list, where each element is a tibble containing the cell
+#' expression measurements from
+#' a single sample for the channels named in \code{cut} and \code{high},
+#' as well as the following columns:
 #' - ind: index of sample in original GatingSet.
 .get_ex_list <- function(data, ind_batch, ind_in_batch_gate,
                          ind_in_batch_uns, ind_in_batch_lab_vec,
@@ -103,17 +109,21 @@ str_detect_any <- function(string, pattern) {
 #' @title Get expression matrix
 #'
 #' @description
-#' Takes a GatingHierarchy and returns the expression data for the columns selected in \code{cut} and \code{high} as a tibble.
+#' Takes a GatingHierarchy and returns the expression data
+#' for the columns selected in \code{cut} and \code{high} as a tibble.
 #'
 #' @inheritParams get_cp
 #'
-#' @return A tibble containing the cell expression measurements from a single sample for the channels named in \code{cut} and \code{high}.
+#' @return A tibble containing the cell expression measurements
+#' from a single sample for the channels named in \code{cut} and \code{high}.
 .get_ex <- function(data, pop, cut, high = NULL, ind = NULL,
                     is_uns = NULL, stim = NULL,
                     ind_in_batch = NULL, data_name) {
   # functions
-  str_remove_all_v <- function(str, pattern) {
-    for (pattern_curr in pattern) str <- str |> stringr::str_remove_all(pattern_curr)
+  str_remove_all_v <- function(str, pattern) { # nolint
+    for (pattern_curr in pattern) {
+      str <- str |> stringr::str_remove_all(pattern_curr)
+    }
     str
   }
 
@@ -130,14 +140,14 @@ str_detect_any <- function(string, pattern) {
   ))) {
     out_tbl <- tibble::as_tibble(ex) |>
       dplyr::mutate(ind_cell = seq_len(dplyr::n())) |>
-      dplyr::select(ind_cell, !!c(
+      dplyr::select(ind_cell, !!c( # nolint
         cut, names(high), "Ce140Di", "Lu175Di",
         "Eu151Di", "Eu153Di", "Ho165Di"
       ))
   } else {
     out_tbl <- tibble::as_tibble(ex) |>
       dplyr::mutate(ind_cell = seq_len(dplyr::n())) |>
-      dplyr::select(ind_cell, !!c(cut, names(high)))
+      dplyr::select(ind_cell, !!c(cut, names(high))) # nolint
   }
 
 
@@ -200,7 +210,7 @@ str_detect_any <- function(string, pattern) {
   out_tbl |>
     dplyr::mutate(batch = batch, batch_sh = batch_sh, fcs = fcs, stim = stim) |>
     dplyr::select(
-      batch, batch_sh, fcs, stim, ind_cell,
+      batch, batch_sh, fcs, stim, ind_cell, # nolint
       !!c(cut, names(high)), cut, dplyr::everything()
     )
 }
@@ -304,7 +314,7 @@ stimgate_dir_base_create <- function(params,
       }
 
       gate_tbl_curr |>
-        dplyr::group_by(gate_name, batch) |>
+        dplyr::group_by(gate_name, batch) |> # nolint
         dplyr::slice(1) |>
         dplyr::ungroup()
     }
@@ -312,10 +322,10 @@ stimgate_dir_base_create <- function(params,
 
   # calculate adjusted gates
   gate_tbl_adj <- gate_tbl_adj |>
-    dplyr::group_by(batch) |>
-    dplyr::arrange(batch, gate) |>
+    dplyr::group_by(batch) |> # nolint
+    dplyr::arrange(batch, gate) |> # nolint
     dplyr::mutate(gate_adj = .spread_nearby_obs(
-      num = gate, width = width, sort = FALSE, batch = .data$batch
+      num = gate, width = width, sort = FALSE, batch = .data$batch # nolint
     )) |>
     dplyr::ungroup()
 
@@ -324,7 +334,6 @@ stimgate_dir_base_create <- function(params,
     dplyr::mutate(name = purrr::map_chr(seq_len(dplyr::n()), function(i) {
       gate_combn <- gate_tbl_adj$gate_combn[i]
       gate_name <- gate_tbl_adj$gate_name[i]
-      gate_type <- gate_tbl_adj$gate_type[i]
       batch <- gate_tbl_adj$batch[i]
       ind <- gate_tbl_adj$ind[i]
       if (gate_combn == "no") {
@@ -332,10 +341,12 @@ stimgate_dir_base_create <- function(params,
       }
       paste0(gate_name, batch)
     })) |>
-    dplyr::group_by(gate_adj) |>
+    dplyr::group_by(gate_adj) |> # nolint
     dplyr::mutate(gate_adj_2 = purrr::map_dbl(dplyr::n(), function(N) {
-      if (N == 1) gate_adj
-      gate_adj + runif(N, -width / 4, max = width / 4)
+      if (N == 1) {
+        return(gate_adj) # nolint
+      }
+      gate_adj + runif(N, -width / 4, max = width / 4) # nolint
     })) |>
     dplyr::ungroup()
 
@@ -349,7 +360,6 @@ stimgate_dir_base_create <- function(params,
       name = purrr::map_chr(seq_len(dplyr::n()), function(i) {
         gate_combn <- gate_tbl$gate_combn[i]
         gate_name <- gate_tbl$gate_name[i]
-        gate_type <- gate_tbl$gate_type[i]
         batch <- gate_tbl$batch[i]
         ind <- gate_tbl$ind[i]
         if (gate_combn == "no") {
@@ -357,12 +367,12 @@ stimgate_dir_base_create <- function(params,
         }
         paste0(gate_name, batch)
       }),
-      gate_adj = gate_lab_vec_adj[.data$name]
+      gate_adj = gate_lab_vec_adj[.data$name] # nolint
     ) |>
     dplyr::select(-name) |>
     dplyr::rename(
-      gate_orig = gate,
-      gate = gate_adj
+      gate_orig = gate, # nolint
+      gate = gate_adj # nolint
     )
 }
 
@@ -374,8 +384,6 @@ stimgate_dir_base_create <- function(params,
     if (i == n) next
     val <- num[i]
     # get maximum index close to this one
-    lower_dist_vec_init <- abs(num[i] - num[1:(i - 1)])
-    # k <- min(which(lower_dist_vec_init) < min(width * 10, 3))
     upper_dist_vec <- abs(val - num[(i + 1):n])
     if (any(upper_dist_vec < width)) {
       num[i] <- num[i] - width
@@ -422,4 +430,10 @@ stimgate_dir_base_create <- function(params,
     install.packages("BiocManager")
   }
   BiocManager::install("flowStats")
+}
+.get_batch_from_ind <- function(ind,
+                                ind_batch_list) {
+  ind_batch_list[[
+    purrr::map_lgl(ind_batch_list, function(x) ind %in% x)
+  ]]
 }
