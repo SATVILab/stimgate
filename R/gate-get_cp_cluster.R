@@ -65,6 +65,7 @@
     filter_other_cyt_pos = filter_other_cyt_pos
   )
 
+
   prop_bs_by_cp_tbl <- prop_bs_by_cp_tbl_obj[["prop_bs_by_cp_tbl"]]
   expr_max <- prop_bs_by_cp_tbl_obj[["expr_max"]]
   expr_min <- prop_bs_by_cp_tbl_obj[["expr_min"]]
