@@ -165,6 +165,7 @@
   # =============================
   # For all cells
   # =============================
+
   .get_gate_obj_get_adj_gates( # nolint
     gate_tbl_params = params$gate_tbl,
     gate_tbl = gate_tbl,
