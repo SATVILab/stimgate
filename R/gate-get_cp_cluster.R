@@ -30,23 +30,16 @@
   # ==================================
 
   # control
-  control <- .get_cp_cluster_control_update( # nolint
-    control
-  )
+  control <- .get_cp_cluster_control_update(control) # nolint
 
   # statistics
   gate_stats_tbl <- .get_cp_cluster_gate_stats_tbl_update( # nolint
-    gate_stats_tbl,
-    debug = debug
+    gate_stats_tbl, debug
   )
 
   # cp
-  cp_min <- .get_cp_cluster_cp_get_min( # nolint
-    gate_tbl, gate_tbl_ctrl
-  )
-  max_cp <- .get_cp_cluster_cp_get_max( # nolint
-    gate_tbl, gate_tbl_ctrl
-  )
+  cp_min <- .get_cp_cluster_cp_get_min(gate_tbl, gate_tbl_ctrl) # nolint
+  max_cp <- .get_cp_cluster_cp_get_max(gate_tbl, gate_tbl_ctrl) # nolint
 
   prop_bs_by_cp_tbl_obj <- .get_cp_cluster_prop_bs_by_cp_tbl_obj( # nolint
     gs = gs,
