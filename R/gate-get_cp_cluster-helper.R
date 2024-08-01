@@ -413,6 +413,56 @@
   is.na(ex_uns$cut[1])
 }
 
+.get_cp_cluster_dens_tbl_get_batch_prep <- function(ind_batch) {
+  .debug(debug, paste0("Processing batch ", ind_batch)) # nolint
+}
+
+.get_cp_cluster_dens_tbl_get_actual_ind_early_return_check <-
+  function(expr_vec) {
+    length(expr_vec[expr_vec > min(expr_vec)]) < 3
+  }
+
+.get_cp_cluster_dens_tbl_get_actual_ind_early_return <- function(batch_sh,
+                                                                 stim,
+                                                                 ind) {
+  tibble::tibble(
+    batch_sh = batch_sh[1], stim = stim[1], ind = ind[1],
+    y = rep(NA, 512), x = paste0("x", seq.int(from = 1, to = 512))
+  ) |>
+    tidyr::pivot_wider(names_from = x, values_from = y) # nolint
+}
+
+.get_cp_cluster_dens_tbl_get_actual_ind <- function(expr_vec,
+                                                    batch_sh,
+                                                    stim,
+                                                    ind,
+                                                    min_threshold,
+                                                    cut,
+                                                    expr_min,
+                                                    expr_max,
+                                                    bw,
+                                                    debug) {
+  if (.get_cp_cluster_dens_tbl_get_actual_ind_early_return_check(expr_vec)) { # nolint
+    return(.get_cp_cluster_dens_tbl_get_actual_ind_early_return(
+      batch_sh, stim, ind
+    ))
+  }
+  dens <- density(
+    expr_vec[expr_vec > min(expr_vec)],
+    from = expr_min, to = expr_max, bw = bw
+  )
+  tibble::tibble(
+    batch_sh = batch_sh[[1]], stim = stim[[1]], ind = ind[[1]],
+    y = dens[["y"]], x = dens[["x"]],
+    x_ind = paste0("x", seq_len(length(dens[["y"]])))
+  ) |>
+    # extract only left-hand size elements
+    dplyr::filter(x <= min_threshold) |> # nolint
+    dplyr::select(-x) |>
+    dplyr::mutate(y = y / sum(y)) |> # normalise size
+    tidyr::pivot_wider(names_from = x_ind, values_from = y) # nolint
+}
+
 .get_cp_cluster_dens_tbl_get <- function(ind_batch_list,
                                          gs,
                                          ind_in_batch_lab_vec,
@@ -431,99 +481,115 @@
                                          debug) {
   .debug(debug, "Getting density table") # nolint
   purrr::map_df(ind_batch_list, function(ind_batch) {
-    .debug(debug, paste0("Processing batch ", ind_batch)) # nolint
-    ex_list <- .get_ex_list( # nolint
-      data = gs, ind_batch = ind_batch,
-      ind_in_batch_gate = seq_along(
-        ind_in_batch_lab_vec
-      ),
-      ind_in_batch_uns = ind_in_batch_uns,
+    ex_list <- .get_cp_cluster_dens_tbl_get_batch_prep_ex_list(
+      gs = gs, data_name = data_name, ind_batch = ind_batch,
       ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-      pop = pop_gate,
-      cut = names(high), high = NULL,
-      data_name = data_name
+      ind_in_batch_uns = ind_in_batch_uns,
+      pop_gate = pop_gate, cut = cut, high = high,
+      filter_other_cyt_pos = filter_other_cyt_pos,
+      gate_tbl = gate_tbl, calc_cyt_pos_gates = calc_cyt_pos_gates,
+      control = control, debug = debug
+    )
+    min_threshold <- .get_cp_cluster_dens_tbl_get_min_threshold(
+      gate_tbl, control
     )
 
-    # filter to yield cells negative for all cytokine combinations
-    # except possible this cytokine single-positive
-    if (filter_other_cyt_pos) {
-      .debug(debug, "Filtering other cytokine positive cells") # nolint
-      ex_list_filter <- purrr::map(seq_along(ex_list), function(i) {
-        if (i == ind_in_batch_uns) {
-          return(ex_list[[i]])
-        }
-
-        gate_tbl_ind <- gate_tbl |>
-          dplyr::filter(ind == ex_list[[i]]$ind[1]) # nolint
-
-        pos_ind_vec_but_single_pos_curr <-
-          .get_pos_ind_but_single_pos_for_one_cyt( # nolint
-            ex = ex_list[[i]],
-            gate_tbl = gate_tbl_ind,
-            chnl_single_exc = cut,
-            chnl = NULL,
-            gate_type_cyt_pos = ifelse(calc_cyt_pos_gates,
-              "cyt", "base"
-            ),
-            gate_type_single_pos = "base"
-          )
-        ex_list[[i]][!pos_ind_vec_but_single_pos_curr, , drop = FALSE]
-      }) |>
-        stats::setNames(names(ex_list))
-    } else {
-      ex_list_filter <- ex_list
-    }
-
-    ex_list_filter <- ex_list_filter[-ind_in_batch_uns]
-
-    # calculate x_ind so as to make filtering
-    # easier later
-    min_threshold_gate_quant <- quantile(
-      gate_tbl$gate, control$min_threshold_quant,
-      na.rm = TRUE
-    )
-    min_threshold <- control$min_threshold_frac * min_threshold_gate_quant
-
-    purrr::map_df(ex_list_filter, function(x) {
-      if (length(x[[cut]][x[[cut]] > min(x[[cut]])]) < 3) { # nolint
-        return(tibble::tibble(
-          batch_sh = x$batch_sh[1],
-          stim = x$stim[1],
-          ind = x$ind[1],
-          y = rep(NA, 512),
-          x = paste0("x", seq.int(from = 1, to = 512))
-        ) |>
-          tidyr::pivot_wider(
-            names_from = x,
-            values_from = y # nolint
-          ))
-      }
-      dens <- density(
-        x[[cut]][x[[cut]] > min(x[[cut]])], # nolint
-        from = expr_min, to = expr_max, bw = bw
+    purrr::map_df(ex_list, function(x) {
+      .get_cp_cluster_dens_tbl_get_actual_ind(
+        expr_vec = x[["cut"]], batch_sh = x$batch_sh, stim = x$stim,
+        ind = x$ind, min_threshold = min_threshold, cut = cut,
+        expr_min = expr_min, expr_max = expr_max, bw = bw, debug = debug
       )
-      tibble::tibble(
-        batch_sh = x$batch_sh[1],
-        stim = x$stim[1],
-        ind = x$ind[1],
-        y = dens$y, # nolint
-        x = dens$x,
-        x_ind = paste0("x", seq_len(length(dens$y)))
-      ) |>
-        dplyr::filter(
-          x <= min_threshold
-        ) |>
-        dplyr::select(-x) |>
-        dplyr::mutate(
-          y = y / sum(y)
-        ) |>
-        tidyr::pivot_wider(
-          names_from = x_ind, # nolint
-          values_from = y
-        )
     })
   }) |>
     dplyr::filter(!is.na(x1)) # nolint
+}
+
+.get_cp_cluster_dens_tbl_get_min_threshold <- function(gate_tbl, control) {
+  # get a low gate value, such that
+  # when we look at clustering samples together
+  # we only use expression levels below this value.
+  # the thinking is that this makes the clustering depend
+  # on the part that's got most of the cells and exhibits
+  # the batch effects, and isn't dependent on how many cells
+  # responded.
+  # could cause problems if >40% of cells respond,
+  # but we can let people switch this off.
+  min_threshold_gate_quant <- quantile(
+    gate_tbl$gate, control$min_threshold_quant,
+    na.rm = TRUE
+  )
+  control$min_threshold_frac * min_threshold_gate_quant
+}
+
+.get_cp_cluster_dens_tbl_get_batch_prep_ex_list <- function(gs,
+                                                            data_name,
+                                                            ind_batch,
+                                                            ind_in_batch_lab_vec, # nolint
+                                                            ind_in_batch_uns,
+                                                            pop_gate,
+                                                            cut,
+                                                            high,
+                                                            filter_other_cyt_pos, # nolint
+                                                            gate_tbl,
+                                                            calc_cyt_pos_gates,
+                                                            control,
+                                                            debug) {
+  ex_list <- .get_ex_list( # nolint
+    data = gs, data_name = data_name, ind_batch = ind_batch,
+    ind_in_batch_gate = seq_along(ind_in_batch_lab_vec),
+    ind_in_batch_uns = ind_in_batch_uns,
+    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
+    pop = pop_gate, cut = names(high), high = NULL
+  )
+
+  if (!filter_other_cyt_pos) {
+    return(ex_list[-ind_in_batch_uns])
+  }
+
+  # filter to yield cells negative for all cytokine combinations
+  # except possible this cytokine single-positive
+  .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter(
+    debug = debug, ex_list = ex_list, ind_in_batch_uns = ind_in_batch_uns,
+    cut = cut, gate_tbl = gate_tbl, calc_cyt_pos_gates = calc_cyt_pos_gates
+  )
+}
+
+.get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter <- function(debug,
+                                                                   ex_list,
+                                                                   ind_in_batch_uns, # nolint
+                                                                   cut,
+                                                                   gate_tbl,
+                                                                   calc_cyt_pos_gates) { # nolint
+  .debug(debug, "Filtering other cytokine positive cells") # nolint
+  ex_list_filter <- purrr::map(seq_along(ex_list), function(i) {
+    if (i == ind_in_batch_uns) {
+      return(ex_list[[i]])
+    }
+    .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter_ind(
+      ex_list[[i]], gate_tbl, cut, calc_cyt_pos_gates
+    )
+  }) |>
+    stats::setNames(names(ex_list))
+
+  ex_list_filter[-ind_in_batch_uns]
+}
+
+.get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter_ind <- function(ex_tbl,
+                                                                       gate_tbl,
+                                                                       cut,
+                                                                       calc_cyt_pos_gates) { # nolint
+
+  pos_ind_vec_but_single_pos_curr <-
+    .get_pos_ind_but_single_pos_for_one_cyt( # nolint
+      ex = ex_tbl,
+      gate_tbl = gate_tbl[gate_tbl[["ind"]] == ex_tbl$ind[1], ],
+      chnl_single_exc = cut,
+      chnl = NULL,
+      gate_type_cyt_pos = if (calc_cyt_pos_gates) "cyt" else "base",
+      gate_type_single_pos = "base"
+    )
+  ex_tbl[!pos_ind_vec_but_single_pos_curr, , drop = FALSE]
 }
 
 .get_cp_cluster_n_clus <- function(dens_tbl) {
