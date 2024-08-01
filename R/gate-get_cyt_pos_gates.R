@@ -178,11 +178,8 @@
     seq_along(chnl_vec),
     function(i) {
       .get_cp_pos_gates_chnl(
-        chnl_curr = chnl_vec[[i]],
-        ex = ex,
-        gate_tbl_ind = gate_tbl_ind,
-        bw_min = bw_min,
-        debug = debug
+        chnl_curr = chnl_vec[[i]], ex = ex, gate_tbl_ind = gate_tbl_ind,
+        bw_min = bw_min, debug = debug
       )
     }
   )
