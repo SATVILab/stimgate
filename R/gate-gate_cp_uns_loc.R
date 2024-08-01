@@ -67,7 +67,7 @@
 .get_cp_uns_loc_gate_label <- function(cp_uns_gate_combn_obj, bias) {
   cp_uns_gate_combn_list <- cp_uns_gate_combn_obj[["cp_uns"]]
   names(cp_uns_gate_combn_list) <-
-    paste0(names(cp_uns_gate_combn_list), "b", bias)
+    paste0(names(cp_uns_gate_combn_list))
   cp_uns_gate_combn_list
 }
 
