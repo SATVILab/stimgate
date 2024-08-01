@@ -266,6 +266,7 @@
       ' not either "cyt" or "base" in function .get_pos_ind_mult.'
     ))
   }
+  invisible(TRUE)
 }
 
 #' @title Identify cells that express at least one cytokine
