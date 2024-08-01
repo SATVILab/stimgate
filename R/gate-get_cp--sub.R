@@ -121,7 +121,7 @@
     cut = cut,
     data_name = data_name
   )
-  (mean_range / 40) |> signif(3)
+  (mean_range / 12) |> signif(3)
 }
 
 .complete_marker_list_bias_uns_get_mean_range <- function(ind_batch_list,
@@ -145,12 +145,11 @@
         data_name = data_name
       )
       purrr::map_dbl(ex_list, function(ex) {
-        abs(diff(
-          quantile(
-            ex$cut[ex$cut > min(ex$cut)], c(0.99, 0.01)
-          ),
-          na.rm = TRUE
-        ))[[1]]
+        abs(
+          diff(quantile(ex$cut[ex$cut > min(ex$cut)], c(0.99, 0.01)),
+            na.rm = TRUE
+          )
+        )[[1]]
       })
     }
   ) |>
@@ -163,7 +162,7 @@
   if (!is.null(bw_min)) {
     return(bw_min)
   }
-  bias_uns * 1.5
+  bias_uns * 2.25
 }
 
 .complete_marker_list_cp_min <- function(cp_min,
