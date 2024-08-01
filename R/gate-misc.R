@@ -88,7 +88,7 @@ str_detect_any <- function(string, pattern) {
 
   # get the names of the associated fcs files
   purrr::map(ind_data, function(i) {
-    ex <- .get_ex(
+    .get_ex(
       data = data[[i]], pop = pop,
       cut = cut,
       high = high,
@@ -98,9 +98,7 @@ str_detect_any <- function(string, pattern) {
       ind_in_batch = which(ind_batch == i),
       data_name = data_name
     ) |>
-      tibble::as_tibble()
-
-    ex |>
+      tibble::as_tibble() |>
       dplyr::mutate(high = .check_if_high(ex = .env$ex, .env$high)) # nolint
   }) |>
     stats::setNames(as.character(ind_data))
