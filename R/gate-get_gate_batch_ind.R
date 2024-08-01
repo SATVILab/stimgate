@@ -174,9 +174,8 @@
       ) |>
         stats::setNames(names(ex_list))
 
-      if ("tg" %in% names(gate_combn)) {
-        # apply method
-        gate_list <- .get_cp_tg( # nolint
+      gate_list <- switch(gate_method,
+        "tg" = .get_cp_tg( # nolint
           ex_list = ex_list_neg_but_single_pos_curr,
           gate_combn = gate_name_tbl_row$gate_combn,
           cut = cut, tol = tol,
@@ -185,25 +184,14 @@
           min_cell = min_cell,
           cp_min = cp_min,
           bw = bw_min
-        )
-
-        gate_tbl <- tibble::tibble(
-          gate_name = gate_name_curr,
-          ind = names(gate_list[[1]]),
-          gate = gate_list[[1]],
-          gate_use = "gate"
-        )
-      }
-
-      if (gate_method == "loc") {
-        gate_list <- .get_cp_uns_loc( # nolint
+        ),
+        "loc" = .get_cp_uns_loc( # nolint
           ex_list = ex_list_neg_but_single_pos_curr,
           ind_gate = ind_batch[ind_in_batch_gate],
           ind_uns = ind_batch[ind_in_batch_uns],
           gate_combn = gate_name_tbl_row$gate_combn,
-          pop_root = NULL,
           data = data,
-          bias_uns = gate_name_tbl_row$bias,
+          bias_uns = bias_uns,
           noise_sd = NULL,
           bw_min = bw_min,
           cp_min = cp_min,
@@ -214,34 +202,28 @@
           )),
           plot = plot,
           path_project = path_project
-        )
-        gate_list <- gate_list[[1]]
-
-        gate_tbl <- tibble::tibble(
-          gate_name = gate_name_curr,
-          ind = names(gate_list[[1]]),
-          gate = gate_list[[1]],
-          gate_use = "gate"
-        )
-      }
-
-      if (gate_method == "uns") {
-        gate_list <- .get_cp_uns( # nolint
+        )[[1]],
+        "uns" = .get_cp_uns( # nolint
           ex_list = ex_list_neg_but_single_pos_curr, # nolint
           ind_gate = ind_batch[ind_in_batch_gate],
           ind_uns = ind_batch[ind_in_batch_uns],
           fdr = fdr, gate_combn = gate_name_tbl_row$gate_combn,
           data = data, noise_sd = noise_sd, bias_uns = gate_name_tbl_row$bias,
           cp_min = cp_min, min_cell = min_cell
-        )
-        gate_list <- gate_list[[1]]
+        )[[1]]
+      )
 
-        gate_tbl <- tibble::tibble(
+      gate_tbl <- switch(gate_method,
+        "tg" = ,
+        "loc" = ,
+        "uns" = tibble::tibble(
           gate_name = gate_name_curr,
           ind = names(gate_list[[1]]),
-          gate = gate_list[[1]]
+          gate = gate_list[[1]],
+          gate_use = "gate"
         )
-      }
+      )
+
 
       if (adj_ind) {
         # apply method
@@ -255,7 +237,6 @@
           cp_min = cp_min,
           bw = bw_min
         )
-
         gate_tbl_adj <- tibble::tibble(
           gate_name = gate_name_curr,
           ind = names(gate_list[[1]]),
