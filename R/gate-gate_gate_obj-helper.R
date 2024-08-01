@@ -384,6 +384,9 @@
     dplyr::select(
       chnl, marker, gate_name, # nolint
       gate_type, gate_combn, everything() # nolint
+    ) |>
+    dplyr::mutate(
+      gate_single = ifelse(is.na(gate_single), gate, gate_single) # nolint
     )
 }
 
