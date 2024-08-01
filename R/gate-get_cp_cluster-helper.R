@@ -115,7 +115,7 @@
       ind_in_batch_uns = ind_in_batch_uns,
       ind_in_batch_lab_vec = ind_in_batch_lab_vec,
       pop = pop_gate,
-      cut = names(high), high = NULL,
+      cut = names(high) |> c(cut) |> unique(), high = NULL,
       data_name = data_name
     )
 
@@ -151,8 +151,6 @@
         }
         gate_tbl_ind <- gate_tbl |>
           dplyr::filter(ind == ex_list[[i]]$ind[1]) # nolint
-
-
 
         pos_ind_vec_but_single_pos_curr <-
           .get_pos_ind_but_single_pos_for_one_cyt( # nolint
