@@ -890,10 +890,16 @@
     ex_tbl_stim_no_min, ex_tbl_uns_threshold
   )
 
-  ex_tbl_stim_threshold |>
+  data_mod <- ex_tbl_stim_threshold |>
     dplyr::filter(expr >= # nolint
       (min(.get_cp_uns_loc_get_min_prob_x(prob_tbl_list$pos) - margin))) |>
     dplyr:::mutate(prob_smooth = expr)
+  if (nrow(data_mod) == 0L) {
+    return(.get_cp_uns_loc_ind_check_out(
+      cp_min, ex_tbl_stim_no_min, debug, "No responding cells" # nolint
+    ))
+  }
+  data_mod
 }
 
 get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
