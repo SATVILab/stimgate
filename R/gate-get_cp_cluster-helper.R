@@ -146,6 +146,7 @@
     # except possible this cytokine single-positive
     if (filter_other_cyt_pos) {
       ex_list_filter <- purrr::map(seq_along(ex_list), function(i) {
+        print(i)
         if (i == ind_in_batch_uns) {
           return(ex_list[[i]])
         }
@@ -540,7 +541,7 @@
     ind_in_batch_gate = seq_along(ind_in_batch_lab_vec),
     ind_in_batch_uns = ind_in_batch_uns,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-    pop = pop_gate, cut = names(high), high = NULL
+    pop = pop_gate, cut = names(high) |> c(cut), high = NULL
   )
 
   if (!filter_other_cyt_pos) {

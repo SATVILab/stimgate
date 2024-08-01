@@ -63,7 +63,7 @@
   # set number of bootstrap samples to 1
 
 
-  par_list_boot <- .get_get_batch_boot_par(boot_n, boot, boot_sd)
+  par_list_boot <- .get_get_batch_boot_par(boot_n, boot, boot_sd) # nolint
 
   gate_tbl_auto <- purrr::map_df(seq_len(par_list_boot$boot_n), function(i) {
     ex_list_boot <- .get_gate_batch_boot_ex_list(
