@@ -882,7 +882,8 @@
 .get_cp_uns_loc_get_data_mod <- function(ex_tbl_stim_threshold,
                                          ex_tbl_stim_no_min,
                                          ex_tbl_uns_threshold,
-                                         prob_tbl_list) {
+                                         prob_tbl_list,
+                                         cp_min) {
   if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, ex_tbl_stim_no_min)) {
     return(.get_cp_uns_loc_ind_check_out(
       cp_min, ex_tbl_stim_no_min, debug, "No responding cells" # nolint
@@ -1044,7 +1045,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   # get data to smooth over
   data_mod <- .get_cp_uns_loc_get_data_mod(
     ex_tbl_stim_threshold, ex_tbl_stim_no_min, ex_tbl_uns_threshold,
-    prob_tbl_list
+    prob_tbl_list, cp_min
   )
 
   # smooth
