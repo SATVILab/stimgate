@@ -688,7 +688,7 @@
                                           msg) {
   .debug(debug, msg) # nolint
   list(
-    cp = get_cp_uns_loc_ind_cp_non_loc(cp_min, ex_tbl_stim_no_min), # nolint
+    cp = .get_cp_uns_loc_ind_cp_non_loc(cp_min, ex_tbl_stim_no_min), # nolint
     p_list = .get_cp_uns_loc_p_list_empty()
   )
 }
