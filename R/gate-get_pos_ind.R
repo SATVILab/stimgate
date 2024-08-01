@@ -246,7 +246,8 @@
 
   # cells positive for any two cytokines
   pos_vec_multi_cyt <- .get_pos_ind_mult(
-    ex = ex, gate_tbl = gate_tbl, chnl = chnl,
+    ex = ex, gate_tbl = gate_tbl,
+    chnl = setdiff(chnl, chnl_single_exc),
     chnl_alt = chnl, gate_type_cyt_pos = gate_type_cyt_pos
   )
 
