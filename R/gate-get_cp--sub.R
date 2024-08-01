@@ -484,9 +484,7 @@
         sample = paste0(batch, "_", stim), # nolint
         expr = cut
       ) |>
-      dplyr::select(sample, ind, ind_cell, expr, everything()) |> # nolint
-      dplyr::select(-cut) # nolint (make sure we don't accidentally
-    # use the unbiased and noised expression values)
+      dplyr::select(sample, ind, ind_cell, expr, everything()) # nolint
     if (exc_min) {
       cut_tbl <- cut_tbl |> dplyr::filter(.data$expr > min(.data$expr)) # nolint
     }
