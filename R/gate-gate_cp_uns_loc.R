@@ -649,7 +649,7 @@
   )
 
   # get threshold
-  cp <- .get_cp_uns_loc_get_cp(
+  .get_cp_uns_loc_get_cp(
     data_mod = data_mod,
     debug = debug,
     ex_tbl_stim_no_min = ex_tbl_stim_no_min,
@@ -658,9 +658,6 @@
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     bias = bias
   )
-
-
-  list(cp = cp, p_list = .get_cp_uns_loc_p_list_empty())
 }
 
 # initial checks
@@ -918,11 +915,19 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 }
 
 .get_cp_uns_loc_get_prob_smooth_check_n_cell <- function(data_mod) {
-  nrow(data_mod) < 10
+  # it's already the cutpoint, possibly, so check
+  # if it's a dataframe first and then that
+  # there are enough cells
+  is.data.frame(data_mod) && nrow(data_mod) > 10
 }
 
 .get_cp_uns_loc_get_prob_smooth_check_n_cell_out <- function(data_mod) {
-  data_mod |> dplyr::mutate(pred = prob_smooth - 1e-4) # nolint
+  if (is.data.frame(data_mod)) {
+    data_mod |> dplyr::mutate(pred = prob_smooth - 1e-4) # nolint
+  } else {
+    # just return the list with the cutpoint
+    data_mod
+  }
 }
 
 .get_cp_uns_loc_get_prob_smooth_actual <- function(data_mod, debug) {
@@ -1060,7 +1065,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                    ex_tbl_uns_orig,
                                    ex_tbl_uns_bias,
                                    bias) {
-  if (!inherits(data_mod, "data.frame")) {
+  if (!is.data.frame(data_mod)) {
     return(data_mod)
   }
 
@@ -1073,7 +1078,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   )
   cp <- .get_cp_uns_loc_get_cp_actual(data_threshold)
   .debug(debug, "Completed loc gate for single sample") # nolint
-  cp
+  list("cp" = cp, "p_list" = .get_cp_uns_loc_p_list_empty())
 }
 
 .get_cp_uns_loc_get_cp_data_threshold <- function(data_mod,
