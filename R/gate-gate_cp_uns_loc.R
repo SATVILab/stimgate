@@ -644,15 +644,11 @@
     ex_tbl_stim_no_min = ex_tbl_stim_no_min,
     ex_tbl_stim_threshold = ex_tbl_stim_threshold,
     ex_tbl_uns_threshold = ex_tbl_uns_threshold,
-    debug = debug, bw_min = bw_min, cp_min = cp_min,
+    debug = debug, bw_min = bw_min, cp_min = cp_min + bias,
     ex_tbl_uns_orig = ex_tbl_uns_orig
   )
 
   # get threshold
-  # START HERE !!! (not all correct above,
-  # but the parameters here are a mess and
-  # need to think about what the correct dataframes are
-  # for data_threshold)
   cp <- .get_cp_uns_loc_get_cp(
     data_mod = data_mod,
     debug = debug,
