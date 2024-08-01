@@ -30,7 +30,8 @@
     )
   } else {
     .get_gate_batch_ind_single(
-      debug, ind_batch, ind_in_batch_gate, ex_list, data, noise_sd,
+      debug, ind_batch, ind_in_batch_gate, ind_in_batch_uns,
+      ex_list, data, noise_sd,
       bias_uns, fdr, cp_min, min_cell, cut, tol, bw_min, params, plot,
       path_project
     )
@@ -55,7 +56,7 @@
                                     params,
                                     plot,
                                     path_project) {
-  debug(debug, "params$gate_tbl is NULL") # nolint
+  .debug(debug, "params$gate_tbl is NULL") # nolint
   .debug( # nolint
     debug, "gating ind_batch_list", paste0(ind_batch, collapse = "-") # nolint
   )
@@ -214,6 +215,7 @@
 .get_gate_batch_ind_single <- function(debug,
                                        ind_batch,
                                        ind_in_batch_gate,
+                                       ind_in_batch_uns,
                                        ex_list,
                                        data,
                                        noise_sd,
@@ -391,9 +393,6 @@
 
     gate_tbl
   }) |>
-    dplyr::mutate(
-      gate_single = ifelse(is.na(gate_single), gate, gate_single) # nolint
-    ) |> # nolint
     dplyr::mutate(
       gate_type = purrr::map_chr(
         gate_name, # nolint
