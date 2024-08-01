@@ -121,49 +121,8 @@
     # get pre-adj and -clust gates for each gate type
     # =================================
 
-    gate_tbl <- params$gate_tbl
 
-    gate_tbl <- gate_tbl |>
-      dplyr::mutate(
-        gate_method = ifelse(
-          stringr::str_detect(gate_name, "loc"), "loc", NA # nolint
-        ),
-        gate_method = ifelse(
-          stringr::str_detect(gate_name, "tg"), "tg", gate_method # nolint
-        ),
-        gate_method = ifelse(
-          stringr::str_detect(gate_name, "uns"), "uns", gate_method
-        )
-      ) |>
-      dplyr::mutate(bias = purrr::map_chr(
-        gate_name,
-        function(x) {
-          split_vec <- stringr::str_split(x, "_")[[1]]
-          rem_vec <- split_vec |>
-            stringr::str_remove("locb|unsb|tg")
-          rem_vec[1]
-        }
-      ) |>
-        as.numeric()) |>
-      dplyr::mutate(gate_combn = purrr::map_chr(gate_name, function(x) {
-        if (stringr::str_detect(x, "_no")) {
-          return("no")
-        }
-        if (stringr::str_detect(x, "_min")) {
-          return("min")
-        }
-        if (stringr::str_detect(x, "_prejoin")) {
-          return("prejoin")
-        }
-      })) |>
-      dplyr::mutate(clust = purrr::map_chr(
-        gate_name,
-        function(x) ifelse(stringr::str_detect(x, "clust"), "clust", "")
-      )) |>
-      dplyr::mutate(adj = purrr::map_chr(
-        gate_name,
-        function(x) ifelse(stringr::str_detect(x, "adj"), "adj", "")
-      ))
+    gate_tbl <- .get_gate_batch_ind_single_tbl_format(params$gate_tbl)
 
     # create bare list
     gate_list <- list()
@@ -174,10 +133,7 @@
     gate_tbl_single <- purrr::map_df(gate_name_vec, function(gate_name_curr) {
       .debug(debug, "getting single-pos gate", gate_name_curr) # nolint
       gate_tbl_gn_marker <- gate_tbl |>
-        dplyr::filter(
-          gate_name == gate_name_curr, # nolint
-          chnl == params$cut # nolint
-        )
+        dplyr::filter(gate_name == gate_name_curr, chnl == params$cut) # nolint
 
       gate_name_tbl_row <- gate_tbl_gn_marker[1, , drop = FALSE]
 
@@ -218,7 +174,7 @@
       ) |>
         stats::setNames(names(ex_list))
 
-      if (gate_method == "tg") {
+      if ("tg" %in% names(gate_combn)) {
         # apply method
         gate_list <- .get_cp_tg( # nolint
           ex_list = ex_list_neg_but_single_pos_curr,
@@ -411,4 +367,48 @@
     return("ctrl")
   }
   if (grepl("tg_clust", gate_type)) "tg_clust" else "gate"
+}
+
+.get_gate_batch_ind_single_tbl_format <- function(gate_tbl) {
+  gate_tbl <- gate_tbl |>
+    dplyr::mutate(
+      gate_method = .get_gate_batch_ind_single_tbl_format_method(gate_name) # nolint
+    ) |>
+    dplyr::mutate(
+      gate_combn = .get_gate_batch_ind_single_tbl_format_combn(gate_name) # nolint
+    ) |>
+    dplyr::mutate(clust = purrr::map_chr(
+      gate_name,
+      function(x) ifelse(stringr::str_detect(x, "clust"), "clust", "")
+    )) |>
+    dplyr::mutate(adj = purrr::map_chr(
+      gate_name,
+      function(x) ifelse(stringr::str_detect(x, "adj"), "adj", "")
+    ))
+}
+
+.get_gate_batch_ind_single_tbl_format_method <- function(gate_name) {
+  gate_method <- ifelse(
+    stringr::str_detect(gate_name, "loc"), "loc", NA # nolint
+  )
+  gate_method <- ifelse(
+    stringr::str_detect(gate_name, "tg"), "tg", gate_method # nolint
+  )
+  ifelse(
+    stringr::str_detect(gate_name, "uns"), "uns", gate_method
+  )
+}
+
+.get_gate_batch_ind_single_tbl_format_combn <- function(gate_name) {
+  purrr::map_chr(gate_name, function(x) {
+    if (stringr::str_detect(x, "_no")) {
+      return("no")
+    }
+    if (stringr::str_detect(x, "_min")) {
+      return("min")
+    }
+    if (stringr::str_detect(x, "_prejoin")) {
+      return("prejoin")
+    }
+  })
 }
