@@ -626,7 +626,7 @@
   # estimate densities for stim and unstim over stim range
   if (.get_cp_uns_loc_check_early(ex_tbl_stim_no_min, min_cell, cp_min)) {
     return(.get_cp_uns_loc_ind_check_out(
-      cp_min, ex_tbl_stim_no_min, debug, "Too few cells"
+      cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias, debug, "Too few cells"
     ))
   }
 
@@ -644,6 +644,7 @@
     ex_tbl_stim_no_min = ex_tbl_stim_no_min,
     ex_tbl_stim_threshold = ex_tbl_stim_threshold,
     ex_tbl_uns_threshold = ex_tbl_uns_threshold,
+    ex_tbl_uns_bias = ex_tbl_uns_bias,
     debug = debug, bw_min = bw_min, cp_min = cp_min + bias,
     ex_tbl_uns_orig = ex_tbl_uns_orig
   )
@@ -656,7 +657,8 @@
     ex_tbl_stim_orig = ex_tbl_stim_orig,
     ex_tbl_uns_orig = ex_tbl_uns_orig,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
-    bias = bias
+    bias = bias,
+    cp_min = cp_min
   )
 }
 
@@ -681,25 +683,32 @@
 
 .get_cp_uns_loc_ind_check_out <- function(cp_min,
                                           ex_tbl_stim_no_min,
+                                          ex_tbl_uns_bias,
                                           debug,
                                           msg) {
   .debug(debug, msg) # nolint
   list(
-    cp = .get_cp_uns_loc_ind_cp_non_loc(cp_min, ex_tbl_stim_no_min), # nolint
+    cp = .get_cp_uns_loc_ind_cp_non_loc(
+      cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias
+      ), # nolint
     p_list = .get_cp_uns_loc_p_list_empty()
   )
 }
 
-.get_cp_uns_loc_ind_cp_non_loc <- function(cp_min, ex_tbl_stim_no_min) {
+.get_cp_uns_loc_ind_cp_non_loc <- function(cp_min,
+                                           ex_tbl_stim_no_min,
+                                           ex_tbl_uns_bias) {
   # get the threshold that is returned
   # automatically when we decide
   # we cannot apply this algorithm
   # (perhaps due to too few cells)
+  range_vec_stim <- range(ex_tbl_stim_no_min$expr)
+  range_vec_uns <- range(ex_tbl_uns_bias$expr)
+  range_len <- max(diff(range_vec_stim), diff(range_vec_uns))
   max(
     cp_min,
-    ex_tbl_stim_no_min$expr +
-      (max(ex_tbl_stim_no_min$expr) -
-        min(ex_tbl_stim_no_min$expr)) / 5
+    range_vec_stim[[2]] + range_len / 5,
+    range_vec_uns[[2]] + range_len / 3
   )
 }
 
@@ -879,11 +888,13 @@
 .get_cp_uns_loc_get_data_mod <- function(ex_tbl_stim_threshold,
                                          ex_tbl_stim_no_min,
                                          ex_tbl_uns_threshold,
+                                         ex_tbl_uns_bias,
                                          prob_tbl_list,
                                          cp_min) {
   if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, ex_tbl_stim_no_min)) {
     return(.get_cp_uns_loc_ind_check_out(
-      cp_min, ex_tbl_stim_no_min, debug, "No responding cells" # nolint
+      cp_min, ex_tbl_stim_no_min,
+      ex_tbl_uns_bias, debug, "No responding cells" # nolint
     ))
   }
   margin <- get_cp_uns_loc_get_data_mod_margin(
@@ -896,7 +907,8 @@
     dplyr:::mutate(prob_smooth = expr)
   if (nrow(data_mod) == 0L) {
     return(.get_cp_uns_loc_ind_check_out(
-      cp_min, ex_tbl_stim_no_min, debug, "No responding cells" # nolint
+      cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias,
+      debug, "No responding cells" # nolint
     ))
   }
   data_mod
@@ -1039,6 +1051,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 .get_cp_uns_loc_get_prob <- function(ex_tbl_stim_no_min,
                                      ex_tbl_stim_threshold,
                                      ex_tbl_uns_threshold,
+                                     ex_tbl_uns_bias,
                                      debug,
                                      bw_min,
                                      cp_min,
@@ -1056,7 +1069,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   # get data to smooth over
   data_mod <- .get_cp_uns_loc_get_data_mod(
     ex_tbl_stim_threshold, ex_tbl_stim_no_min, ex_tbl_uns_threshold,
-    prob_tbl_list, cp_min
+    ex_tbl_uns_bias, prob_tbl_list, cp_min
   )
 
   # smooth
@@ -1070,19 +1083,21 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                    ex_tbl_stim_no_min,
                                    ex_tbl_uns_orig,
                                    ex_tbl_uns_bias,
-                                   bias) {
+                                   bias,
+                                   cp_min) {
   if (!is.data.frame(data_mod)) {
     return(data_mod)
   }
 
-  data_threshold <- .get_cp_uns_loc_get_cp_data_threshold(
-    data_mod = data_mod, ex_tbl_stim_orig = ex_tbl_stim_orig,
+  data_threshold <- .get_cp_uns_loc_get_cp_data_thres.get_cp_uns_loc_get_cp_actual
     ex_tbl_stim_no_min = ex_tbl_stim_no_min,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     ex_tbl_uns_orig = ex_tbl_uns_orig,
     bias = bias
   )
-  cp <- .get_cp_uns_loc_get_cp_actual(data_threshold)
+  cp <- .get_cp_uns_loc_get_cp_actual(
+    data_threshold, ex_tbl_stim_no_min, ex_tbl_uns_bias, cp_min, debug
+  )
   .debug(debug, "Completed loc gate for single sample") # nolint
   list("cp" = cp, "p_list" = .get_cp_uns_loc_p_list_empty())
 }
@@ -1152,7 +1167,17 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     )
 }
 
-.get_cp_uns_loc_get_cp_actual <- function(data_threshold) {
+.get_cp_uns_loc_get_cp_actual <- function(data_threshold,
+                                          ex_tbl_stim_no_min,
+                                          ex_tbl_uns_bias,
+                                          cp_min,
+                                          debug) {
+  if (nrow(data_threshold) == 0L) {
+    return(.get_cp_uns_loc_ind_check_out(
+      cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias, debug,
+      "Too few responding cells"
+    ))
+  }
   data_threshold |>
     dplyr::filter(abs(prop_bs_diff) == min(abs(prop_bs_diff))) |> # nolint
     dplyr::slice(1) |>
