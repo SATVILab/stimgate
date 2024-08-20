@@ -1089,7 +1089,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     return(data_mod)
   }
 
-  data_threshold <- .get_cp_uns_loc_get_cp_data_thres.get_cp_uns_loc_get_cp_actual
+  data_threshold <- .get_cp_uns_loc_get_cp_data_thres.get_cp_uns_loc_get_cp_actual(
     ex_tbl_stim_no_min = ex_tbl_stim_no_min,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     ex_tbl_uns_orig = ex_tbl_uns_orig,
