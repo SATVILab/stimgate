@@ -1177,7 +1177,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     return(.get_cp_uns_loc_ind_check_out(
       cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias, debug,
       "Too few responding cells"
-    ))
+    )[["cp"]])
   }
   data_threshold |>
     dplyr::filter(abs(prop_bs_diff) == min(abs(prop_bs_diff))) |> # nolint
