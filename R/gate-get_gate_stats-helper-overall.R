@@ -232,7 +232,7 @@
     ex <- ex_list[-ind_in_batch_uns][[i]]
     gate_tbl_gn_ind <- gate_tbl_gn |>
       dplyr::filter(ind == ex$ind[1]) # nolint
-    purrr::map_df(names(combn_mat_list), function(j) {
+    combn_tbl <- purrr::map_df(names(combn_mat_list), function(j) {
       .get_gate_stats_batch_gn_combn(
         j = j,
         debug = debug,
@@ -251,6 +251,7 @@
         n_cell_stim = nrow(ex),
         n_cell_uns = .env$n_cell_uns # nolint
       )
+    combn_tbl |> .get_gate_stats_batch_gn_combn_neg(chnl)
   })
 }
 
@@ -305,6 +306,18 @@
     )
   }
   stat_tbl_gn_ind
+}
+
+.get_gate_stats_batch_gn_combn_neg <- function(.data, chnl) {
+  all_neg_row <- .data |>
+    dplyr::mutate(cyt_combn = paste0(chnl, collapse = "~-~")) |>
+    dplyr::group_by(ind, cyt_combn, gate_name) |>
+    dplyr::summarise(
+      count_stim = n_cell_stim[[1]] - sum(count_stim), n_cell_stim = n_cell_stim[[1]],
+      count_uns = n_cell_uns[[1]] - sum(count_uns), n_cell_uns = n_cell_uns[[1]],
+      .groups = "drop"
+    )
+  .data |> dplyr::bind_rows(all_neg_row)
 }
 
 .get_gate_stats_batch_gn_filter_or_non_combn <- function(debug,
