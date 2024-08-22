@@ -310,7 +310,7 @@
 
 .get_gate_stats_batch_gn_combn_neg <- function(.data, chnl) {
   all_neg_row <- .data |>
-    dplyr::mutate(cyt_combn = paste0(chnl, collapse = "~-~")) |>
+    dplyr::mutate(cyt_combn = paste0(paste0(chnl, collapse = "~-~"), "~-~")) |>
     dplyr::group_by(ind, cyt_combn, gate_name) |>
     dplyr::summarise(
       count_stim = n_cell_stim[[1]] - sum(count_stim), n_cell_stim = n_cell_stim[[1]],
