@@ -499,7 +499,10 @@
       min_cell = min_cell, ex_tbl_uns_bias = ex_tbl_uns_bias
     )
     if (too_few_cells_lgl) {
-      return(.get_cp_uns_loc_sample_out_cell_number(debug))
+      return(.get_cp_uns_loc_ind_check_out(
+          cp_min, ex_list_no_min_stim[[i]],
+          ex_tbl_uns_bias, debug, "Too few cells"
+        ))
     }
 
     # remove any cytokine-positive cells from unstim using gates from
@@ -540,19 +543,11 @@
   )
 }
 
-
-
 .get_cp_uns_loc_sample_check_cell_number <- function(ex_tbl_stim_no_min,
                                                      min_cell,
                                                      ex_tbl_uns_bias) {
   nrow(ex_tbl_stim_no_min) < min_cell ||
     nrow(ex_tbl_uns_bias) < min_cell
-}
-
-.get_cp_uns_loc_sample_out_cell_number <- function(debug) {
-  .debug(debug, "Too few cells") # nolint
-  p_list <- .get_cp_uns_loc_p_list_empty()
-  list(p = NA, p_list = p_list)
 }
 
 .get_cp_uns_loc_sample_uns_rm_cyt_pos <- function(debug,
