@@ -77,7 +77,9 @@ stimgate_fcs_write <- function(data,
 
   dir_save <- file.path(dir_base, chnls, exc, gate_name, "fcs")
 
-  if (dir.exists(dir_save)) unlink(dir_save, force = TRUE)
+  if (dir.exists(dir_save)) {
+    unlink(dir_save, force = TRUE, recursive = TRUE)
+  } 
   dir.create(dir_save, recursive = TRUE)
 
   # ====================================
