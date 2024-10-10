@@ -854,21 +854,48 @@
   peak <- dens_tbl |>
     dplyr::filter(y == max(y)) |> # nolint
     dplyr::pull("x") # nolint
+  window_width <- 0.15 * diff(quantile(prob_tbl$x_stim, c(0.05, 0.5)))
+
+  # move to the right of the peak, to handle peak misalignment
 
   prob_tbl <- prob_tbl |>
-    dplyr::filter(x_stim > peak + 0.02 * diff(range(x_stim))) # nolint
+    dplyr::filter(x_stim > peak + window_width) # nolint
+
+  # filter out observations where no observation
+  # to the left of it had a prob greater than 0.025
+  prob_tbl |>
+    dplyr::filter(
+      cumsum(prob_stim_norm >= 0.025) > 0
+    )
 
   # get range of values for which we'd want to calculate
   # probability:
   # - those cells for which the probability
   # of responding from their position onwards
-  # is 0.025 or more
-  prob_tbl |>
-    dplyr::mutate(
-      ge10 = prob_stim_norm >= 0.025, ge10 = cumsum(ge10) > 0 # nolint
-    ) |>
-    dplyr::filter(ge10) |>
-    dplyr::select(-ge10)
+  # is 0.025 or more, within the window to their right
+  # prob_tbl <- prob_tbl |>
+  #   dplyr::mutate(
+  #     minor_response_ind = prob_stim_norm >= 0.025,
+  #     moderate_response_ind = prob_stim_norm >= 0.25,
+  #     # ge10 = cumsum(minor_response_ind) > 0,
+  #     n_remaining = dplyr::n() - seq_len(dplyr::n()) + 1
+  #     # ge10 = (cumsum(ge10) / n_remaining) > 0.25 # nolint
+  #   )
+  # prob_tbl |>
+  #   dplyr::filter(
+  #     cumsum(minor_response_ind) > 0
+  #   ) |>
+  #   dplyr::mutate(
+  #     prob_larger_count = purrr::map_int(x_stim, function(x) {
+  #       sum(prob_tbl$moderate_response_ind[prob_tbl$x_stim >= x]) 
+  #     }),
+  #     prob_larger_prop = prob_larger_count / n_remaining
+  #   ) |>
+  #   print(n = Inf)
+  # 
+# 
+  #   dplyr::filter(ge10) |>
+  #   dplyr::select(-ge10)
 }
 
 .get_cp_uns_loc_get_min_prob_x <- function(prob_tbl_pos) {
