@@ -809,7 +809,8 @@
 .get_cp_uns_loc_get_prob_tbl <- function(dens_tbl_raw,
                                          debug,
                                          cp_min,
-                                         ex_vec_stim_threshold) {
+                                         ex_vec_stim_threshold,
+                                         ex_vec_uns_threshold) {
   .debug(debug, "Normalising probabilities") # nolint
 
   # calculate raw and
@@ -820,7 +821,7 @@
   # with sufficient evidence of a response ito probabilities
   # to be worth taking time smoothing over
   prob_tbl_pos <- .get_cp_uns_loc_prob_tbl_filter(
-    ex_vec_stim_threshold, prob_tbl, debug
+    ex_vec_stim_threshold, ex_vec_unst_threshold, prob_tbl, debug
   )
   list(all = prob_tbl, pos = prob_tbl_pos)
 }
@@ -840,6 +841,7 @@
 }
 
 .get_cp_uns_loc_prob_tbl_filter <- function(ex_vec_stim_threshold,
+                                            ex_vec_uns_threshold,
                                             prob_tbl,
                                             debug) {
   .debug(debug, "Filtering before smoothing") # nolint
@@ -849,11 +851,22 @@
   # changing it to ex_tbl_stim_orig.
 
   # find highest peak (assumed to be the left-most one)
-  density_exc_min <- density(ex_vec_stim_threshold)
-  dens_tbl <- tibble::tibble(x = density_exc_min$x, y = density_exc_min$y)
-  peak <- dens_tbl |>
+  density_exc_min_stim <- density(ex_vec_stim_threshold)
+  dens_tbl_stim <- tibble::tibble(
+    x = density_exc_min_stim$x, y = density_exc_min_stim$y
+    )
+  peak_stim <- dens_tbl_stim |>
     dplyr::filter(y == max(y)) |> # nolint
     dplyr::pull("x") # nolint
+  density_exc_min_uns <- density(ex_vec_uns_threshold)
+  dens_tbl_uns <- tibble::tibble(
+    x = density_exc_min_uns$x, y = density_exc_min_uns$y
+    )
+  peak_uns <- dens_tbl_uns |>
+    dplyr::filter(y == max(y)) |> # nolint
+    dplyr::pull("x") # nolint
+  peak <- max(peak_stim, peak_uns)
+
   window_width <- 0.15 * diff(quantile(prob_tbl$x_stim, c(0.05, 0.5)))
 
   # move to the right of the peak, to handle peak misalignment
@@ -873,29 +886,36 @@
   # - those cells for which the probability
   # of responding from their position onwards
   # is 0.025 or more, within the window to their right
-  # prob_tbl <- prob_tbl |>
-  #   dplyr::mutate(
-  #     minor_response_ind = prob_stim_norm >= 0.025,
-  #     moderate_response_ind = prob_stim_norm >= 0.25,
-  #     # ge10 = cumsum(minor_response_ind) > 0,
-  #     n_remaining = dplyr::n() - seq_len(dplyr::n()) + 1
-  #     # ge10 = (cumsum(ge10) / n_remaining) > 0.25 # nolint
-  #   )
-  # prob_tbl |>
-  #   dplyr::filter(
-  #     cumsum(minor_response_ind) > 0
-  #   ) |>
-  #   dplyr::mutate(
-  #     prob_larger_count = purrr::map_int(x_stim, function(x) {
-  #       sum(prob_tbl$moderate_response_ind[prob_tbl$x_stim >= x]) 
-  #     }),
-  #     prob_larger_prop = prob_larger_count / n_remaining
-  #   ) |>
-  #   print(n = Inf)
-  # 
-# 
-  #   dplyr::filter(ge10) |>
-  #   dplyr::select(-ge10)
+  prob_tbl <- prob_tbl |>
+    dplyr::mutate(
+      minor_response_ind = prob_stim_norm >= 0.025,
+      moderate_response_ind = prob_stim_norm >= 0.075,
+      # ge10 = cumsum(minor_response_ind) > 0,
+      n_remaining = dplyr::n() - seq_len(dplyr::n()) + 1
+      # ge10 = (cumsum(ge10) / n_remaining) > 0.25 # nolint
+    )
+  prob_tbl |>
+    dplyr::filter(
+      # clear out all the near-negatives
+      cumsum(minor_response_ind) > 0 # nolint
+    ) |>
+    # detect places of consistent non-response
+    dplyr::mutate(
+      prob_larger_count = purrr::map_int(x_stim, function(x) {
+        sum(prob_tbl$moderate_response_ind[prob_tbl$x_stim >= x]) 
+      }),
+      prob_larger_prop = prob_larger_count / n_remaining # nolint
+    ) |>
+    dplyr::filter(
+      prob_larger_prop > 0.25 # nolint
+    ) |>
+    dplyr::select(
+      -c(
+        prob_larger_prop, minor_response_ind, moderate_response_ind,
+        n_remaining, prob_larger_count
+        )
+    )
+  
 }
 
 .get_cp_uns_loc_get_min_prob_x <- function(prob_tbl_pos) {
@@ -1085,7 +1105,8 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
   # get probabilities
   prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
-    dens_tbl_raw, debug, cp_min, ex_tbl_stim_threshold$expr
+    dens_tbl_raw, debug, cp_min, ex_tbl_stim_threshold$expr,
+    ex_tbl_uns_threshold$expr
   )
 
   # get data to smooth over
