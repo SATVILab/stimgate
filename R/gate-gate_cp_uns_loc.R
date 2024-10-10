@@ -821,7 +821,7 @@
   # with sufficient evidence of a response ito probabilities
   # to be worth taking time smoothing over
   prob_tbl_pos <- .get_cp_uns_loc_prob_tbl_filter(
-    ex_vec_stim_threshold, ex_vec_unst_threshold, prob_tbl, debug
+    ex_vec_stim_threshold, ex_vec_uns_threshold, prob_tbl, debug
   )
   list(all = prob_tbl, pos = prob_tbl_pos)
 }
