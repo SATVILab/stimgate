@@ -124,6 +124,9 @@
     expr_range_tbl <- purrr::map_df(
       seq_along(ex_list),
       function(i) {
+        if (nrow(ex_list[[i]] == 0)) {
+          return(NULL)
+        }
         purrr::map_df(names(high), function(chnl_ind) {
           if (!chnl_ind %in% colnames(ex_list[[i]])) {
             return(NULL)
@@ -198,10 +201,10 @@
   })
   expr_min_vec <- sapply(data_list, function(x) x$expr_min)
   expr_max_vec <- sapply(data_list, function(x) x$expr_max)
-  expr_min <- min(expr_min_vec)
+  expr_min <- min(expr_min_vec, na.rm = TRUE)
   expr_max <- max(
-    max(expr_max_vec),
-    max_cp + 0.2 * (max(expr_max_vec) - expr_min)
+    max(expr_max_vec, na.rm = TRUE),
+    max_cp + 0.2 * (max(expr_max_vec, na.rm = TRUE) - expr_min)
   )
   data_list <- lapply(data_list, function(x) x$out_tbl) |>
     purrr::flatten()
