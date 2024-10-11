@@ -124,7 +124,7 @@
     expr_range_tbl <- purrr::map_df(
       seq_along(ex_list),
       function(i) {
-        if (nrow(ex_list[[i]] == 0)) {
+        if (nrow(ex_list[[i]]) < 5) {
           return(NULL)
         }
         purrr::map_df(names(high), function(chnl_ind) {
@@ -421,20 +421,55 @@
   .debug(debug, paste0("Processing batch ", ind_batch)) # nolint
 }
 
-.get_cp_cluster_dens_tbl_get_actual_ind_early_return_check <-
-  function(expr_vec) {
-    length(expr_vec[expr_vec > min(expr_vec)]) < 3
-  }
 
-.get_cp_cluster_dens_tbl_get_actual_ind_early_return <- function(batch_sh,
-                                                                 stim,
-                                                                 ind) {
-  tibble::tibble(
-    batch_sh = batch_sh[1], stim = stim[1], ind = ind[1],
-    y = rep(NA, 512), x = paste0("x", seq.int(from = 1, to = 512))
-  ) |>
-    tidyr::pivot_wider(names_from = x, values_from = y) # nolint
+.get_cp_cluster_dens_tbl_get <- function(ind_batch_list,
+                                         gs,
+                                         ind_in_batch_lab_vec,
+                                         ind_in_batch_uns,
+                                         high,
+                                         data_name,
+                                         filter_other_cyt_pos,
+                                         calc_cyt_pos_gates,
+                                         cut,
+                                         expr_min,
+                                         expr_max,
+                                         pop_gate,
+                                         gate_tbl,
+                                         control,
+                                         bw,
+                                         debug) {
+  .debug(debug, "Getting density table") # nolint
+  min_threshold <- .get_cp_cluster_dens_tbl_get_min_threshold(
+    gate_tbl, control
+  )
+  dens_tbl <- purrr::map_df(ind_batch_list, function(ind_batch) {
+    ex_list <- .get_cp_cluster_dens_tbl_get_batch_prep_ex_list(
+      gs = gs, data_name = data_name, ind_batch = ind_batch,
+      ind_in_batch_lab_vec = ind_in_batch_lab_vec,
+      ind_in_batch_uns = ind_in_batch_uns,
+      pop_gate = pop_gate, cut = cut, high = high,
+      filter_other_cyt_pos = filter_other_cyt_pos,
+      gate_tbl = gate_tbl, calc_cyt_pos_gates = calc_cyt_pos_gates,
+      control = control, debug = debug
+    )
+
+    purrr::map_df(ex_list, function(x) {
+      .get_cp_cluster_dens_tbl_get_actual_ind(
+        expr_vec = x[["cut"]], batch_sh = x$batch_sh, stim = x$stim,
+        ind = x$ind, min_threshold = min_threshold, cut = cut,
+        expr_min = expr_min, expr_max = expr_max, bw = bw, debug = debug
+      )
+    })
+  }) |>
+    dplyr::filter(!is.na(x1)) # nolint
+  not_all_na_vec_ind <- purrr::map_lgl(
+    seq_len(ncol(dens_tbl)),
+    function(i) !all(is.na(dens_tbl[[i]]))
+  )
+  dens_tbl[, not_all_na_vec_ind]
 }
+
+
 
 .get_cp_cluster_dens_tbl_get_actual_ind <- function(expr_vec,
                                                     batch_sh,
@@ -467,47 +502,21 @@
     tidyr::pivot_wider(names_from = x_ind, values_from = y) # nolint
 }
 
-.get_cp_cluster_dens_tbl_get <- function(ind_batch_list,
-                                         gs,
-                                         ind_in_batch_lab_vec,
-                                         ind_in_batch_uns,
-                                         high,
-                                         data_name,
-                                         filter_other_cyt_pos,
-                                         calc_cyt_pos_gates,
-                                         cut,
-                                         expr_min,
-                                         expr_max,
-                                         pop_gate,
-                                         gate_tbl,
-                                         control,
-                                         bw,
-                                         debug) {
-  .debug(debug, "Getting density table") # nolint
-  purrr::map_df(ind_batch_list, function(ind_batch) {
-    ex_list <- .get_cp_cluster_dens_tbl_get_batch_prep_ex_list(
-      gs = gs, data_name = data_name, ind_batch = ind_batch,
-      ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-      ind_in_batch_uns = ind_in_batch_uns,
-      pop_gate = pop_gate, cut = cut, high = high,
-      filter_other_cyt_pos = filter_other_cyt_pos,
-      gate_tbl = gate_tbl, calc_cyt_pos_gates = calc_cyt_pos_gates,
-      control = control, debug = debug
-    )
-    min_threshold <- .get_cp_cluster_dens_tbl_get_min_threshold(
-      gate_tbl, control
-    )
+.get_cp_cluster_dens_tbl_get_actual_ind_early_return_check <-
+  function(expr_vec) {
+    length(expr_vec[expr_vec > min(expr_vec)]) < 3
+  }
 
-    purrr::map_df(ex_list, function(x) {
-      .get_cp_cluster_dens_tbl_get_actual_ind(
-        expr_vec = x[["cut"]], batch_sh = x$batch_sh, stim = x$stim,
-        ind = x$ind, min_threshold = min_threshold, cut = cut,
-        expr_min = expr_min, expr_max = expr_max, bw = bw, debug = debug
-      )
-    })
-  }) |>
-    dplyr::filter(!is.na(x1)) # nolint
+.get_cp_cluster_dens_tbl_get_actual_ind_early_return <- function(batch_sh,
+                                                                 stim,
+                                                                 ind) {
+  tibble::tibble(
+    batch_sh = batch_sh[1], stim = stim[1], ind = ind[1],
+    y = rep(NA, 512), x = paste0("x", seq.int(from = 1, to = 512))
+  ) |>
+    tidyr::pivot_wider(names_from = x, values_from = y) # nolint
 }
+
 
 .get_cp_cluster_dens_tbl_get_min_threshold <- function(gate_tbl, control) {
   # get a low gate value, such that
@@ -603,6 +612,12 @@
   if (max_cluster == 1L) {
     return(1L)
   }
+  for (i in seq_len(ncol(dens_tbl))) {
+    if (any(is.na(dens_tbl[[i]]))) {
+      print(i)
+    }
+  }
+  dens_tbl[, 50:51]
   dens_mat <- dens_tbl[, grepl("^x\\d+", colnames(dens_tbl))] |>
     as.matrix()
   clus_gap_obj <- cluster::clusGap(
