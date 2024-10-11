@@ -617,7 +617,6 @@
       print(i)
     }
   }
-  dens_tbl[, 50:51]
   dens_mat <- dens_tbl[, grepl("^x\\d+", colnames(dens_tbl))] |>
     as.matrix()
   clus_gap_obj <- cluster::clusGap(
