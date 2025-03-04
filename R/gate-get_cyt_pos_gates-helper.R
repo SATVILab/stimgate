@@ -260,24 +260,10 @@
                                             chnl_lab_vec) {
   .debug(debug, "Getting gate_tbl") # nolint
   purrr::map_df(chnl_vec, function(chnl_curr) {
-    # get base directory
-    params[["cut"]] <- chnl_curr
-    dir_base <- stimgate_dir_base_create( # nolint
-      dir_base_init = path_project,
-      params = params
-    )
     # get stats tbl
-    gate_tbl <- readRDS(file.path(
+    readRDS(file.path(
       path_project, chnl_curr, "gate_tbl_init.rds"
-    ))
-
-    if (!is.null(gate_name)) {
-      gate_tbl <- gate_tbl |>
-        dplyr::filter(gate_name == .env$gate_name) # nolint
-    }
-
-    gate_tbl |>
-      # dplyr::filter(.data$gate_name == .env$gate_name) |>
+    )) |>
       dplyr::mutate(chnl = chnl_curr, marker = chnl_lab_vec[chnl_curr]) |>
       dplyr::select(chnl, marker, gate_name, batch, ind, gate) # nolint
   })
