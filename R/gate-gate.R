@@ -52,10 +52,6 @@
 #'       population specified above by pop_man is checked for any match with no
 #'       appending. Default is \code{TRUE}.}
 #'   }
-#' # plotting parameters
-#' @param pop_sub character vector. Sub-populations of \code{pop_gate} to plot,
-#'   in addition to pop_gate. These populations are appended to pop_gate, after
-#'   the addition of a forward slash (so do not begin with a forward slash).
 
 #' @importFrom flowCore exprs<- parameters<-
 #' @import rlang
@@ -63,7 +59,6 @@
 stimgate_gate <- function(data,
                           path_project,
                           pop_gate,
-                          pop_sub = NULL,
                           marker,
                           batch_size = NULL,
                           ind_in_batch_gate = NULL,
@@ -190,8 +185,7 @@ stimgate_gate <- function(data,
     tol_gate = tol_gate,
     tol_gate_single = tol_gate_single,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    debug = debug,
-    pop_sub = pop_sub
+    debug = debug
   )
 
   # cytokine-positive gates
@@ -233,7 +227,6 @@ stimgate_gate <- function(data,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
     debug = debug,
-    pop_sub = pop_sub,
     gate_tbl = gate_tbl,
     gate_name_plot = gate_name_plot,
     gate_name_stats = gate_name_stats,
@@ -313,8 +306,7 @@ stimgate_gate <- function(data,
                        tol_gate,
                        tol_gate_single,
                        calc_cyt_pos_gates,
-                       debug,
-                       pop_sub) {
+                       debug) {
   # loop over populations
   print("----")
   print("getting base gates")
@@ -354,7 +346,6 @@ stimgate_gate <- function(data,
         tol_ctrl = tol_ctrl,
         tol_gate = tol_gate,
         tol_gate_single = tol_gate_single,
-        pop_sub = pop_sub,
         calc_cyt_pos_gates = calc_cyt_pos_gates,
         path_project = path_project,
         debug = debug
@@ -389,7 +380,6 @@ stimgate_gate <- function(data,
                          calc_cyt_pos_gates,
                          calc_single_pos_gates,
                          debug,
-                         pop_sub,
                          gate_tbl,
                          gate_name_plot,
                          gate_name_stats,
@@ -452,27 +442,6 @@ stimgate_gate <- function(data,
         file = file.path(path_project, marker_curr$cut, "gate_tbl.rds")
       )
 
-      # get summary html
-      if (plot && FALSE) {
-        print("getting plots")
-        gate_tbl <- gate_obj[["gate_tbl"]]
-        if (!is.null(gate_name_plot)) {
-          gate_tbl <- gate_tbl |>
-            dplyr::filter(gate_name %in% gate_name_plot) # nolint
-        }
-        plot_cp( # nolint
-          gate_tbl = gate_tbl,
-          params = gate_obj[["params"]],
-          pop_sub = pop_sub,
-          plot = plot
-        )
-        print("saving results as rmd")
-        render_gate( # nolint
-          params_knit = gate_obj[["params"]],
-          pop_sub = pop_sub,
-          path_project = path_project
-        )
-      }
     })
   })
 }
