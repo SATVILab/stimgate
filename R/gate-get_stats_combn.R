@@ -54,13 +54,10 @@ get_stats_combn_cp <- function(data,
 
   gate_tbl <- purrr::map_df(cut, function(cut_curr) {
     # get base directory
-     params[["cut"]] <- cut_curr
-    dir_base <- stimgate_dir_base_create(
-      dir_base_init = path_project,
-      params = params
-    )
+    params[["cut"]] <- cut_curr
+
     # get stats tbl
-    gate_stats <- readRDS(file.path(dir_base, "gate_tbl.rds"))
+    gate_stats <- readRDS(file.path(path_project, cut_curr, "gate_tbl.rds"))
 
     gate_stats |>
       dplyr::filter(.data$gate_name == .env$gate_name) |>

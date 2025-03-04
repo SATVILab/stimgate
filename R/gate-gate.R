@@ -61,7 +61,6 @@
 #' @import rlang
 #' @export
 stimgate_gate <- function(data,
-                          data_name,
                           path_project,
                           pop_gate,
                           pop_sub = NULL,
@@ -361,13 +360,11 @@ stimgate_gate <- function(data,
         debug = debug
       )
 
-      dir_base <- stimgate_dir_base_create( # nolint
-        dir_base_init = path_project,
-        params = gate_obj$params
-      )
       saveRDS(
         gate_obj$gate_tbl,
-        file = file.path(path_project, pop_gate_curr, marker_curr$cut, "gate_tbl_init.rds")
+        file = file.path(
+          path_project, marker_curr$cut, "gate_tbl_init.rds"
+        )
       )
     })
   })
@@ -450,14 +447,9 @@ stimgate_gate <- function(data,
         path_project = path_project
       )
 
-      dir_base <- stimgate_dir_base_create( # nolint
-        dir_base_init = path_project,
-        params = gate_obj$params
-      )
-
       saveRDS(
         gate_obj$gate_tbl,
-        file = file.path(dir_base, "gate_tbl.rds")
+        file = file.path(path_project, marker_curr$cut, "gate_tbl.rds")
       )
 
       # get summary html

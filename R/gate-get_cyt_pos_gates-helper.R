@@ -267,7 +267,9 @@
       params = params
     )
     # get stats tbl
-    gate_tbl <- readRDS(file.path(dir_base, "gate_tbl_init.rds"))
+    gate_tbl <- readRDS(file.path(
+      path_project, chnl_curr, "gate_tbl_init.rds"
+    ))
 
     if (!is.null(gate_name)) {
       gate_tbl <- gate_tbl |>

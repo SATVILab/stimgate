@@ -17,12 +17,6 @@
                                   ind_in_batch_gate,
                                   ind_in_batch_uns,
                                   ind_in_batch_lab_vec) {
-  if (!str_detect_any(data_name, c( # nolint
-    "gs_cytof", "gs_proto", "gs_cd8_base",
-    "gs_cytof_acs"
-  ))) {
-    stop("data_name not recognised.")
-  }
   purrr::map(marker, function(marker_curr) {
     # fill in optionally-specified parameters
     if ((!"fdr" %in% names(marker_curr)) ||
