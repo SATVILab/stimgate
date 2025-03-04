@@ -57,9 +57,9 @@ get_stats_combn_cp <- function(data,
     params[["cut"]] <- cut_curr
 
     # get stats tbl
-    gate_stats <- readRDS(file.path(path_project, cut_curr, "gate_tbl.rds"))
+    gate_tbl <- readRDS(file.path(path_project, cut_curr, "gate_tbl.rds"))
 
-    gate_stats |>
+    gate_tbl |>
       dplyr::filter(.data$gate_name == .env$gate_name) |>
       dplyr::mutate(cut = cut_curr, marker = chnl_lab_vec[cut_curr]) |>
       dplyr::select(cut, marker, everything())

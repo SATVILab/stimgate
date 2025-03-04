@@ -195,20 +195,7 @@ k
   if (!save) {
     return(invisible(stat_tbl))
   }
-  params[["cut"]] <- chnl[1]
-  dir_base <- stimgate_dir_base_create( # nolint
-    dir_base_init = path_project,
-    params = params
-  )
-  dir_save <- dir_base |>
-    stringr::str_sub(
-      end = -(stringr::str_length(params$chnl_lab[chnl[1]]) + 2)
-    )
-  dir_save <- file.path(
-    dir_save,
-    paste0(names(params$chnl_lab), collapse = "_"),
-    "tables"
-  )
+  dir_save <- file.path(path_project, chnl[1])
   if (!dir.exists(dir_save)) {
     dir.create(dir_save, recursive = TRUE)
   }
@@ -220,5 +207,5 @@ k
   if (file.exists(path_save_fn_csv)) file.remove(path_save_fn_csv)
   readr::write_csv(stat_tbl, path_save_fn_csv)
   saveRDS(stat_tbl, path_save_fn_rds)
-  dir_save
+  invisible(dir_save)
 }
