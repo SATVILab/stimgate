@@ -115,9 +115,15 @@ str_detect_any <- function(string, pattern) {
 #'
 #' @return A tibble containing the cell expression measurements
 #' from a single sample for the channels named in \code{cut} and \code{high}.
-.get_ex <- function(data, pop, cut, high = NULL, ind = NULL,
-                    is_uns = NULL, stim = NULL,
-                    ind_in_batch = NULL, data_name) {
+.get_ex <- function(data,
+                    pop,
+                    cut,
+                    high = NULL,
+                    ind = NULL,
+                    is_uns = NULL,
+                    stim = NULL,
+                    ind_in_batch = NULL,
+                    data_name) {
   # functions
   str_remove_all_v <- function(str, pattern) { # nolint
     for (pattern_curr in pattern) {

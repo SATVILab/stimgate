@@ -103,22 +103,12 @@ plot_gate <- function(gate_tbl, params, pop_sub,
   #                                   width = max(gate_tbl$gate)/400)
 
   # get plot indices
-  if(params$data_name == "gs_proto" & identical(ind_batch, 26:30)) {
-    ind_in_batch_lab_vec_curr <- params$ind_in_batch_lab_vec[c(3, 2, 1, 4, 5)]
-    ind_plot_list <- stats::setNames(
-      ind_batch,
-      ind_in_batch_lab_vec_curr)[
-        union(params$ind_in_batch_gate, params$ind_in_batch_uns)
-        ] |>
-      as.list()
-  } else{
-    ind_plot_list <- stats::setNames(
-      ind_batch,
-      params$ind_in_batch_lab_vec)[
-        union(params$ind_in_batch_gate, params$ind_in_batch_uns)
-      ] |>
-      as.list()
-  }
+  ind_plot_list <- stats::setNames(
+    ind_batch,
+    params$ind_in_batch_lab_vec)[
+      union(params$ind_in_batch_gate, params$ind_in_batch_uns)
+    ] |>
+    as.list()
 
   ind_plot_list <- ind_plot_list |>
     append(list(grp = ind_plot_list |> stats::setNames(NULL) |> unlist()))
