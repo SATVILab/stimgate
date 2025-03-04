@@ -53,12 +53,9 @@
     function(chnl_curr) {
       # get base directory
       params[["cut"]] <- chnl_curr
-      dir_base <- stimgate_dir_base_create( # nolint
-        dir_base_init = path_project,
-        params = params
-      )
+k
       # get stats tbl
-      gate_tbl <- readRDS(file.path(dir_base, "gate_tbl.rds"))
+      gate_tbl <- readRDS(file.path(path_project, chnl_curr, "gate_tbl.rds"))
 
       if (!is.null(gate_name)) {
         gate_tbl <- gate_tbl |>
@@ -174,17 +171,7 @@
   gate_tbl <- gate_tbl |>
     dplyr::arrange(gate_name, chnl, marker, ind) # nolint
   params[["cut"]] <- chnl[1]
-  dir_base <- stimgate_dir_base_create( # nolint
-    dir_base_init = path_project,
-    params = params
-  )
-  dir_save <- dir_base |>
-    stringr::str_sub(
-      end = -(stringr::str_length(params$chnl_lab[chnl[1]]) + 2)
-    )
-  dir_save <- file.path(
-    dir_save, paste0(names(params$chnl_lab), collapse = "_"), "tables"
-  )
+  dir_save <- file.path(path_project, chnl[1])
   fn_rds <- "gate_tbl.rds"
   fn_csv <- "gate_tbl.csv"
   dir_save_fn_rds <- file.path(dir_save, fn_rds)
