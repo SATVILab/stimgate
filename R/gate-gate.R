@@ -367,7 +367,7 @@ stimgate_gate <- function(data,
       )
       saveRDS(
         gate_obj$gate_tbl,
-        file = file.path(dir_base, "gate_tbl_init.rds")
+        file = file.path(path_project, pop_gate_curr, marker_curr$cut, "gate_tbl_init.rds")
       )
     })
   })
