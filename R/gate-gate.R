@@ -13,7 +13,7 @@
 #' @param ind_in_batch_uns integer. Index within a given batch corresponding to
 #'   unstim. For example, if \code{ind_in_batch_uns} is four, then the fourth
 #'   sample within each batch is regarded as unstim.
-#' @param in_in_batch_gate integer vector. Indices within a given batch for
+#' @param ind_in_batch_gate integer vector. Indices within a given batch for
 #'   which gates need to be calculated.
 #'
 #' # gating parameters
@@ -89,7 +89,6 @@ stimgate_gate <- function(data,
                           gate_name_plot = NULL,
                           gate_name_stats = NULL,
                           tol_gate_single = NULL,
-                          debug_stats = FALSE,
                           debug = FALSE,
                           sampleid_lab = NULL,
                           stim_lab = NULL,
@@ -97,7 +96,7 @@ stimgate_gate <- function(data,
                           plots_only = FALSE) {
   force(data)
   # prep
-  debug_stats <- debug_stats || debug
+  debug_stats <- debug || (debug == "stats")
 
   # get list of batch indices
   ind_batch_list <- .get_ind_batch_list( # nolint
