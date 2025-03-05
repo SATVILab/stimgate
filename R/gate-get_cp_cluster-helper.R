@@ -115,7 +115,7 @@
       ind_in_batch_uns = ind_in_batch_uns,
       ind_in_batch_lab_vec = ind_in_batch_lab_vec,
       pop = pop_gate,
-      cut = names(high) |> c(cut) |> unique(), high = NULL,
+      cut = names(high) |> c(cut) |> unique(),
       data_name = data_name
     )
 
@@ -124,25 +124,19 @@
     expr_range_tbl <- purrr::map_df(
       seq_along(ex_list),
       function(i) {
-        if (nrow(ex_list[[i]]) < 5) {
+        ex <- ex_list[[i]]
+        if (nrow(ex) <= 5) {
           return(NULL)
         }
-        purrr::map_df(names(high), function(chnl_ind) {
-          if (!chnl_ind %in% colnames(ex_list[[i]])) {
-            return(NULL)
-          }
-          quant_vec <- quantile(
-            ex_list[[i]][[chnl_ind]], c(0.0025, 0.999)
-          )
-          tibble::tibble(
-            lb = quant_vec[[1]],
-            ub = quant_vec[[2]]
-          )
-        })
+        quant_vec <- quantile(ex[["cut"]], c(0.0025, 0.999))
+        tibble::tibble(
+          lb = quant_vec[[1]],
+          ub = 3 * quant_vec[[2]]
+        )
       }
     )
 
-    expr_min <- quantile(expr_range_tbl[["lb"]], 0.25)
+    expr_min <- quantile(expr_range_tbl[["cut"]], 0.0025)
     expr_max <- max(expr_range_tbl[["ub"]])
 
     # filter to yield cells negative for all cytokine combinations
@@ -765,9 +759,7 @@
           return(max(data_mod_curr_grp$cp, na.rm = TRUE))
         }
         data_pred <- tibble::tibble(
-          cp = seq(min_cp_permitted, cp_range[2],
-            length.out = 1e5
-          )
+          cp = seq(min_cp_permitted, cp_range[2],length.out = 1e5)
         )
         data_pred <- data_pred |> dplyr::mutate(
           pred = predict(fit, newdata = data_pred, type = "response")
@@ -781,7 +773,7 @@
           )
         # we also then calculate
         # a 1/100th of the range
-        # we divide this into 1/1000t
+        # we divide this into 1/1000
         max_der <- 0.1 / diff(c(expr_max, expr_min))
         # for each one percent change in cp_range,
         # there is allowed a 0.001 change in prob
