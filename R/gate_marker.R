@@ -1,5 +1,5 @@
 
-.get_gate_obj <- function(.data,
+.gate_marker <- function(.data,
                           ind_batch_list,
                           pop_gate,
                           cut,
@@ -55,11 +55,11 @@
   )
 
   # delete locb gates
-  .get_gate_obj_delete_old_gates()
+  .gate_marker_delete_old_gates()
 
   # Initial gates
   # ----------------
-  gate_tbl <- .get_gate_obj_pre_adj_gates_gate( # nolint
+  gate_tbl <- .gate_marker_pre_adj_gates_gate( # nolint
     ind_batch_list = ind_batch_list,
     .data = .data,
     pop_gate = pop_gate,
@@ -92,7 +92,7 @@
   # For all cells
   # =============================
 
-  .get_gate_obj_get_adj_gates( # nolint
+  .gate_marker_get_adj_gates( # nolint
     gate_tbl_params = params$gate_tbl,
     gate_tbl = gate_tbl,
     tol_ctrl = tol_ctrl,
