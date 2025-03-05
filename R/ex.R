@@ -7,11 +7,11 @@ str_detect_any <- function(string, pattern) {
     any()
 }
 
-.get_ex_list <- function(data, ind_batch, pop, cut, extra_chnl = NULL) {
-  # get expression data for each batch
+.get_ex_list <- function(.data, ind_batch, pop, cut, extra_chnl = NULL) {
+  # get expression .data for each batch
   lapply(ind_batch, function(i) {
     .get_ex(
-      data = data[[i]],
+      .data = .data[[i]],
       pop = pop,
       cut = cut,
       extra_chnl = extra_chnl,
@@ -24,15 +24,15 @@ str_detect_any <- function(string, pattern) {
 }
 
 
-.get_ex <- function(data,
+.get_ex <- function(.data,
                     pop,
                     cut,
                     ind,
                     ind_uns,
                     extra_chnl = NULL) {
   # get expression information as a tibble
-  # get data
-  fr <- flowWorkspace::gh_pop_get_data(data, y = pop)
+  # get .data
+  fr <- flowWorkspace::gh_pop_get_data(.data, y = pop)
   ex <- flowCore::exprs(fr)
   ex <- ex[, c(cut, extra_chnl), drop = FALSE] |> tibble::as_tibble()
 
@@ -44,3 +44,6 @@ str_detect_any <- function(string, pattern) {
   ex
 }
 
+.get_cut <- function(ex) {
+  ex[[attr(ex, "cut")]]
+}

@@ -106,10 +106,10 @@
                                              filter_other_cyt_pos,
                                              cp_min,
                                              debug) {
-  .debug(debug, "Getting data list") # nolint
+  .debug(debug, "Getting .data list") # nolint
   data_list <- purrr::map(ind_batch_list, function(ind_batch) {
     ex_list <- .get_ex_list( # nolint
-      data = gs, # nolint
+      .data = gs, # nolint
       ind_batch = ind_batch,
       ind_in_batch_gate = seq_along(ind_in_batch_lab_vec),
       ind_in_batch_uns = ind_in_batch_uns,
@@ -128,7 +128,7 @@
         if (nrow(ex) <= 5) {
           return(NULL)
         }
-        quant_vec <- quantile(ex[[attr(ex, "cut")]], c(0.0025, 0.999))
+        quant_vec <- quantile(.get_cut(ex), c(0.0025, 0.999))
         tibble::tibble(
           lb = quant_vec[[1]],
           ub = 3 * quant_vec[[2]]
@@ -148,7 +148,7 @@
           return(ex_list[[i]])
         }
         gate_tbl_ind <- gate_tbl |>
-          dplyr::filter(ind == ex_list[[i]]$ind[1]) # nolint
+          dplyr::filter(ind == attr(ex_list[[i]], ind)) # nolint
 
         pos_ind_vec_but_single_pos_curr <-
           .get_pos_ind_but_single_pos_for_one_cyt( # nolint
@@ -511,7 +511,7 @@
                                                             control,
                                                             debug) {
   ex_list <- .get_ex_list( # nolint
-    data = gs, data_name = data_name, ind_batch = ind_batch,
+    .data = gs, data_name = data_name, ind_batch = ind_batch,
     ind_in_batch_gate = seq_along(ind_in_batch_lab_vec),
     ind_in_batch_uns = ind_in_batch_uns,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
@@ -701,7 +701,7 @@
         fit <- try(
           suppressWarnings(
             mgcv::gam(prop_l1se ~ s(cp, bs = "cs"),
-              data = data_mod_curr_grp_not_na,
+              .data = data_mod_curr_grp_not_na,
               family = mgcv::betar(link = "logit"),
               maxit = 20
             )
@@ -1252,7 +1252,7 @@
     )
     ind_batch <- params$ind_batch_list[[ind_batch]]
     ex_tbl_all <- .get_ex_list( # nolint
-      data = gs, ind_batch = ind_batch,
+      .data = gs, ind_batch = ind_batch,
       ind_in_batch_gate = 1:5, ind_in_batch_uns = 5,
       ind_in_batch_lab_vec = ind_in_batch_lab_vec,
       pop = "root",

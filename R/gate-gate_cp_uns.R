@@ -4,13 +4,13 @@
 #' @inheritParams get_cp # ind, ind_in_batch_uns, cut, fdr
 #' @inheritParams .get_cp_man # ex_list
 #' @params ind_gate, ind_uns. Numeric vectors. Numeric vectors where
-#' each element specifies the index of samples in \code{data}
+#' each element specifies the index of samples in \code{.data}
 #' for which gates are to be calculated (ind_gate) or is the unstim (ind_uns) in this batch.
 #' @return
 .get_cp_uns <- function(ex_list,
                         ind_gate,
                         ind_uns,
-                        data,
+                        .data,
                         fdr,
                         gate_combn,
                         bias_uns = 5,
@@ -20,7 +20,7 @@
   # get cutpoints for each level of bias
   .get_cp_uns_bias(
     ex_list = ex_list, ind_gate = ind_gate,
-    ind_uns = ind_uns, data = data, bias_uns = bias_uns,
+    ind_uns = ind_uns, .data = .data, bias_uns = bias_uns,
     noise_sd = noise_sd, cp_min = cp_min, gate_combn = gate_combn,
     fdr = fdr, min_cell = min_cell
   )
@@ -28,7 +28,7 @@
 
 #' @title Get the unstim-based FDR-method cutpoint for
 .get_cp_uns_bias <- function(ex_list, ind_gate, ind_uns,
-                             data, bias_uns, noise_sd, cp_min,
+                             .data, bias_uns, noise_sd, cp_min,
                              gate_combn, fdr, min_cell) {
   # get ecdf of uns
   purrr::map(bias_uns, function(bias) {
@@ -200,7 +200,7 @@
     # get expression matrix
     stim_vec <- cut_stim[[i]]
 
-    # get count and frequency data
+    # get count and frequency .data
     count_pos <- sum(q_vec <= fdr)
 
     range_vec <- c(min(stim_vec), max(stim_vec))

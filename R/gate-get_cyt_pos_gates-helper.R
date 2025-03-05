@@ -66,7 +66,7 @@
                             trust_no_or_high_am = FALSE,
                             min_cell = 10,
                             cp_orig) {
-  # data
+  # .data
   ex_pos <- ex[inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
   if (length(ex_pos) < min_cell) {
     return(NA)

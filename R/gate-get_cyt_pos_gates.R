@@ -1,6 +1,6 @@
 .gate_cyt_pos <- function(marker_list,
                           pop_gate,
-                          data,
+                          .data,
                           gate_name = NULL,
                           bw_min,
                           data_name,
@@ -23,7 +23,7 @@
 
   # chnl_lab
   chnl_lab_vec <- .get_labs( # nolint
-    data = data[[1]],
+    .data = .data[[1]],
     cut = chnl_vec
   )
 
@@ -63,7 +63,7 @@
       gate_tbl_gn = gate_tbl |> dplyr::filter(gate_name == gn),
       gn = gn,
       debug = debug,
-      data = data,
+      .data = .data,
       chnl_vec = chnl_vec,
       chnl_lab_vec = chnl_lab_vec,
       pop_gate = pop_gate,
@@ -80,7 +80,7 @@
 .get_cyt_pos_gates_gate_name <- function(debug,
                                          gn,
                                          gate_tbl_gn,
-                                         data,
+                                         .data,
                                          chnl_vec,
                                          chnl_lab_vec,
                                          pop_gate,
@@ -91,10 +91,10 @@
                                          calc_cyt_pos,
                                          path_project) {
   .debug(debug, "Getting cyt+ gates for gate_name: ", gn) # nolint
-  cp_tbl_cyt <- purrr::map_df(seq_along(data), function(ind) {
+  cp_tbl_cyt <- purrr::map_df(seq_along(.data), function(ind) {
     .get_cyt_pos_gates_ind( # nolint
       ind = ind,
-      data = data,
+      .data = .data,
       gate_tbl_gn = gate_tbl_gn,
       chnl_vec = chnl_vec,
       chnl_lab_vec = chnl_lab_vec,
@@ -121,7 +121,7 @@
 }
 
 .get_cyt_pos_gates_ind <- function(ind,
-                                   data,
+                                   .data,
                                    gate_tbl_gn,
                                    chnl_vec,
                                    chnl_lab_vec,
@@ -151,7 +151,7 @@
 
   # get expression dataframe
   ex <- .get_ex( # nolint
-    data = data[[ind]], pop = pop_gate,
+    .data = .data[[ind]], pop = pop_gate,
     cut = chnl_vec, high = NULL, ind = ind,
     is_uns = FALSE, stim = stim,
     ind_in_batch = ind_in_batch, data_name = data_name
@@ -159,7 +159,7 @@
 
   ind_uns <- attr(ex, "ind_uns")
   ex_uns <- .get_ex( # nolint
-    data = data[[ind_uns]], pop = pop_gate, # nolint
+    .data = .data[[ind_uns]], pop = pop_gate, # nolint
     cut = chnl_vec, high = NULL, ind = ind,
     is_uns = FALSE, stim = stim,
     ind_in_batch = ind_in_batch, data_name = data_name

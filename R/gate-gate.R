@@ -2,7 +2,7 @@
 #'
 #' @description
 #'
-#' @param data GatingSet. GatingSet from which to draw the data.
+#' @param .data GatingSet. GatingSet from which to draw the data.
 #' @param pop_gate character vector. Populations for which separate gates are
 #'   to be calculated.
 #' @param path_project character. Path to project directory. Results are saved
@@ -56,67 +56,43 @@
 #' @importFrom flowCore exprs<- parameters<-
 #' @import rlang
 #' @export
-stimgate_gate <- function(data,
+stimgate_gate <- function(.data,
                           path_project,
                           pop_gate,
                           marker,
                           batch_list,
-                          plot = TRUE,
                           bias_uns = NULL,
                           cp_min = NULL,
                           bw_min = NULL,
-                          boot_n = NULL,
-                          boot_sd = NULL,
                           min_cell = 10,
-                          perm_n = NULL,
-                          ind_skip = NULL,
-                          fcs = NULL,
                           max_pos_prob_x,
                           gate_quant = c(0.25, 0.75),
                           tol_ctrl = NULL,
                           tol_gate = NULL,
                           calc_cyt_pos_gates = TRUE,
                           calc_single_pos_gates = TRUE,
-                          gate_name_plot = NULL,
-                          gate_name_stats = NULL,
                           tol_gate_single = NULL,
-                          debug = FALSE,
-                          sampleid_lab = NULL,
-                          stim_lab = NULL,
-                          stats_only = FALSE,
-                          plots_only = FALSE) {
-  force(data)
-  # prep
-  debug_stats <- debug || (debug == "stats")
+                          debug = FALSE) {
+  force(.data)
 
   # get unspecified levels in marker elements
   marker <- .complete_marker_list( # nolint
-    marker = marker, data_name = data_name,
-    .data = data,
+    marker = marker,
+    .data = .data,
     pop_gate = pop_gate, cut = cut,
     debug = debug, bias_uns = bias_uns,
     bw_min = bw_min, cp_min = cp_min,
-    ind_batch_list = batch_list,
-    ind_in_batch_gate = ind_in_batch_gate,
-    ind_in_batch_uns = ind_in_batch_uns,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec
+    ind_batch_list = batch_list
   )
 
   # inital gates
-  # ------------------------------
-
   .gate_init(
     pop_gate = pop_gate,
     marker = marker,
-    data = data,
+    .data = .data,
     ind_batch_list = batch_list,
-    ind_in_batch_gate = ind_in_batch_gate,
-    ind_in_batch_uns = ind_in_batch_uns,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-    data_name = data_name,
     path_project = path_project,
     noise_sd = NULL,
-    plot = plot,
     max_pos_prob_x = max_pos_prob_x,
     gate_quant = gate_quant,
     tol_ctrl = tol_ctrl,
@@ -127,36 +103,23 @@ stimgate_gate <- function(data,
   )
 
   # cytokine-positive gates
-  # -----------------------------
-
   gate_tbl <- .gate_cyt_pos( # nolint
     marker_list = marker,
     pop_gate = pop_gate,
-    data = data,
-    gate_name = NULL,
-    data_name = data_name,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-    ind_in_batch_gate = ind_in_batch_gate,
+    .data = .data,
     calc_cyt_pos = calc_cyt_pos_gates,
     debug = debug,
     path_project = path_project
   )
 
   # single-positive gates
-  # -----------------------------
-
   .gate_single(
     pop_gate = pop_gate,
     marker = marker,
-    data = data,
+    .data = .data,
     ind_batch_list = batch_list,
-    ind_in_batch_gate = ind_in_batch_gate,
-    ind_in_batch_uns = ind_in_batch_uns,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-    data_name = data_name,
     path_project = path_project,
     noise_sd = NULL,
-    plot = plot,
     max_pos_prob_x = max_pos_prob_x,
     gate_quant = gate_quant,
     tol_ctrl = tol_ctrl,
@@ -165,11 +128,7 @@ stimgate_gate <- function(data,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
     debug = debug,
-    gate_tbl = gate_tbl,
-    gate_name_plot = gate_name_plot,
-    gate_name_stats = gate_name_stats,
-    stats_only = stats_only,
-    plots_only = plots_only
+    gate_tbl = gate_tbl
   )
 
   print("")
@@ -178,26 +137,18 @@ stimgate_gate <- function(data,
   print("getting cyt combn frequencies")
 
   path_dir_stats <- .gate_stats(
-    data = data,
+    .data = .data,
     params = NULL,
     gate_tbl = NULL,
     filter_other_cyt_pos = FALSE,
-    gate_name_stats = gate_name_stats,
     combn = TRUE,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
-    debug = debug_stats,
+    debug = debug,
     save = TRUE,
     pop_gate = pop_gate,
     marker = marker,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-    ind_in_batch_gate = ind_in_batch_gate,
-    data_name = data_name,
-    fcs = fcs,
-    ind_in_batch_uns = ind_in_batch_uns,
     ind_batch_list = batch_list,
-    sampleid_lab = sampleid_lab,
-    stim_lab = stim_lab,
     path_project = path_project,
     save_gate_tbl = TRUE
   )
@@ -207,15 +158,10 @@ stimgate_gate <- function(data,
 
 .gate_init <- function(pop_gate,
                        marker,
-                       data,
+                       .data,
                        ind_batch_list,
-                       ind_in_batch_gate,
-                       ind_in_batch_uns,
-                       ind_in_batch_lab_vec,
-                       data_name,
                        path_project,
                        noise_sd,
-                       plot,
                        max_pos_prob_x,
                        gate_quant,
                        tol_ctrl,
@@ -228,58 +174,45 @@ stimgate_gate <- function(data,
   print("getting base gates")
   print("----")
   print("")
-  purrr::walk(pop_gate, function(pop_gate_curr) {
-    print(paste0("pop: ", pop_gate_curr))
-    # loop over markers
-    purrr::walk(marker, function(marker_curr) {
-      print(paste0("chnl: ", marker_curr$cut))
-      # get gates for each sample within each batch
+  # loop over markers
+  purrr::walk(marker, function(marker_curr) {
+    print(paste0("chnl: ", marker_curr$cut))
+    # get gates for each sample within each batch
 
+    gate_obj <- .get_gate_obj( # nolint
+      .data = .data,
+      ind_batch_list = ind_batch_list,
+      pop_gate = pop_gate,
+      cut = marker_curr$cut,
+      gate_combn = marker_curr$gate_combn,
+      tol = marker_curr$tol,
+      noise_sd = NULL,
+      bias_uns = marker_curr$bias_uns,
+      bw_min = marker_curr$bw_min,
+      cp_min = marker_curr$cp_min,
+      min_cell = marker_curr$min_cell,
+      max_pos_prob_x = max_pos_prob_x,
+      gate_quant = gate_quant,
+      tol_ctrl = tol_ctrl,
+      tol_gate = tol_gate,
+      tol_gate_single = tol_gate_single,
+      calc_cyt_pos_gates = calc_cyt_pos_gates,
+      path_project = path_project,
+      debug = debug
+    )
 
-      gate_obj <- .get_gate_obj( # nolint
-        data = data,
-        ind_batch_list = ind_batch_list,
-        ind_in_batch_gate = ind_in_batch_gate,
-        ind_in_batch_uns = ind_in_batch_uns,
-        ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-        pop_gate = pop_gate_curr,
-        data_name = data_name,
-        cut = marker_curr$cut,
-        high = marker_curr$high,
-        gate_combn = marker_curr$gate_combn,
-        pop_man_sub = marker_curr$pop_man_sub,
-        pop_man_match_exact = marker_curr$pop_man_match_exact,
-        tol = marker_curr$tol,
-        fdr = marker_curr$fdr,
-        noise_sd = NULL,
-        bias_uns = marker_curr$bias_uns,
-        bw_min = marker_curr$bw_min,
-        cp_min = marker_curr$cp_min,
-        min_cell = marker_curr$min_cell,
-        plot = plot,
-        max_pos_prob_x = max_pos_prob_x,
-        gate_quant = gate_quant,
-        tol_ctrl = tol_ctrl,
-        tol_gate = tol_gate,
-        tol_gate_single = tol_gate_single,
-        calc_cyt_pos_gates = calc_cyt_pos_gates,
-        path_project = path_project,
-        debug = debug
+    saveRDS(
+      gate_obj$gate_tbl,
+      file = file.path(
+        path_project, marker_curr$cut, "gate_tbl_init.rds"
       )
-
-      saveRDS(
-        gate_obj$gate_tbl,
-        file = file.path(
-          path_project, marker_curr$cut, "gate_tbl_init.rds"
-        )
-      )
-    })
+    )
   })
 }
 
 .gate_single <- function(pop_gate,
                          marker,
-                         data,
+                         .data,
                          ind_batch_list,
                          ind_in_batch_gate,
                          ind_in_batch_uns,
@@ -315,54 +248,42 @@ stimgate_gate <- function(data,
   } else {
     .debug(debug, "Gating single-pos gates") # nolint
   }
-  purrr::walk(pop_gate, function(pop_gate_curr) {
-    print(paste0("pop: ", pop_gate_curr))
-    # loop over markers
-    purrr::walk(marker, function(marker_curr) {
-      print(paste0("chnl: ", marker_curr$cut))
-      # get gates for each sample within each batch
+  # loop over markers
+  purrr::walk(marker, function(marker_curr) {
+    print(paste0("chnl: ", marker_curr$cut))
+    # get gates for each sample within each batch
 
-      gate_obj <- .get_gate_obj( # nolint
-        data = data,
-        ind_batch_list = ind_batch_list,
-        ind_in_batch_gate = ind_in_batch_gate,
-        ind_in_batch_uns = ind_in_batch_uns,
-        ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-        pop_gate = pop_gate_curr,
-        data_name = data_name,
-        cut = marker_curr$cut,
-        high = marker_curr$high,
-        gate_combn = marker_curr$gate_combn,
-        pop_man_sub = marker_curr$pop_man_sub,
-        pop_man_match_exact = marker_curr$pop_man_match_exact,
-        tol = marker_curr$tol,
-        fdr = marker_curr$fdr,
-        noise_sd = NULL,
-        bias_uns = marker_curr$bias_uns,
-        bw_min = marker_curr$bw_min,
-        cp_min = marker_curr$cp_min,
-        min_cell = marker_curr$min_cell,
-        plot = plot,
-        max_pos_prob_x = max_pos_prob_x,
-        gate_quant = gate_quant,
-        tol_ctrl = tol_ctrl,
-        tol_gate = tol_gate,
-        tol_gate_single = tol_gate_single,
-        gate_tbl = gate_tbl,
-        calc_cyt_pos_gates = calc_cyt_pos_gates,
-        path_project = path_project
-      )
+    gate_obj <- .get_gate_obj( # nolint
+      .data = .data,
+      ind_batch_list = ind_batch_list,
+      pop_gate = pop_gate_curr,
+      cut = marker_curr$cut,
+      gate_combn = marker_curr$gate_combn,
+      tol = marker_curr$tol,
+      noise_sd = NULL,
+      bias_uns = marker_curr$bias_uns,
+      bw_min = marker_curr$bw_min,
+      cp_min = marker_curr$cp_min,
+      min_cell = marker_curr$min_cell,
+      max_pos_prob_x = max_pos_prob_x,
+      gate_quant = gate_quant,
+      tol_ctrl = tol_ctrl,
+      tol_gate = tol_gate,
+      tol_gate_single = tol_gate_single,
+      gate_tbl = gate_tbl,
+      calc_cyt_pos_gates = calc_cyt_pos_gates,
+      path_project = path_project
+    )
 
-      saveRDS(
-        gate_obj$gate_tbl,
-        file = file.path(path_project, marker_curr$cut, "gate_tbl.rds")
-      )
+    saveRDS(
+      gate_obj$gate_tbl,
+      file = file.path(path_project, marker_curr$cut, "gate_tbl.rds")
+    )
 
-    })
   })
 }
 
-.gate_stats <- function(data,
+.gate_stats <- function(.data,
                         params = NULL,
                         gate_tbl = NULL,
                         filter_other_cyt_pos = FALSE,
@@ -384,7 +305,7 @@ stimgate_gate <- function(data,
                         stim_lab,
                         path_project,
                         save_gate_tbl = TRUE) {
-  force(data)
+  force(.data)
   .get_gate_stats( # nolint
     params = params,
     gate_tbl = gate_tbl,
@@ -409,7 +330,7 @@ stimgate_gate <- function(data,
     fcs = fcs,
     ind_in_batch_uns = ind_in_batch_uns,
     ind_batch_list = ind_batch_list,
-    data = data,
+    .data = .data,
     save_gate_tbl = save_gate_tbl,
     sampleid_lab = sampleid_lab,
     stim_lab = stim_lab,

@@ -1,5 +1,5 @@
 .get_gate_stats_overall <- function(ind_batch_list,
-                                    data,
+                                    .data,
                                     ind_in_batch_lab,
                                     ind_in_batch_uns,
                                     pop_gate,
@@ -33,7 +33,7 @@
       .get_gate_stats_batch(
         ind_batch = ind_batch_list[[i]],
         debug = debug,
-        data = data,
+        .data = .data,
         ind_in_batch_lab_vec = ind_in_batch_lab,
         ind_in_batch_uns = ind_in_batch_uns,
         pop_gate = pop_gate,
@@ -99,7 +99,7 @@
 
 .get_gate_stats_batch <- function(ind_batch,
                                   debug,
-                                  data,
+                                  .data,
                                   ind_in_batch_lab_vec,
                                   ind_in_batch_uns,
                                   pop_gate,
@@ -124,9 +124,9 @@
   .debug(debug, "Getting gate stats for a batch") # nolint
   .debug(debug, "ind_batch: ", paste0(ind_batch, collapse = "-")) # nolint
 
-  # read in data
+  # read in .data
   ex_list <- .get_ex_list( # nolint
-    data = data,
+    .data = .data,
     ind_batch = ind_batch,
     ind_in_batch_gate = seq_along(ind_in_batch_lab_vec),
     ind_in_batch_uns = ind_in_batch_uns,
@@ -375,7 +375,7 @@
         )
         stat_tbl_gn_ind[j, "count_uns"] <- NA_integer_
         stat_tbl_gn_ind[j, "n_cell_uns"] <-
-          nrow(ex_list[[ind_in_batch_uns]])
+          nrow(ex_list[[length(ex_list)]])
         next
       }
       cn_vec <- colnames(gate_tbl_gn_ind)
@@ -450,7 +450,7 @@
       .get_pos_ind_but_single_pos_for_one_cyt( # nolint
         ex = ex_list[[i]],
         gate_tbl = gate_tbl_gn |>
-          dplyr::filter(ind == ex_list[[i]]$ind[1]), # nolint
+          dplyr::filter(ind == attr(ex_list[[i]], ind)), # nolint
         chnl_single_exc = chnl_curr,
         chnl = NULL,
         gate_type_cyt_pos = gate_type_cyt_pos_filter,
@@ -471,7 +471,7 @@
     return(TRUE)
   }
   gate_tbl_gn_ind <- gate_tbl_gn |>
-    dplyr::filter(ind == ex_list[[i]]$ind[1]) # nolint
+    dplyr::filter(ind == attr(ex_list[[i]], ind)) # nolint
 
   # return early if nothing to filter
   all(is.na(ex_list[[i]][[chnl_curr]])) ||

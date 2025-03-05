@@ -25,13 +25,13 @@
   if (is.null(params$gate_tbl)) {
     .get_gate_batch_ind_all(
       debug, ind_batch, ind_in_batch_gate, ind_in_batch_uns,
-      ex_list, gate_combn, data, noise_sd, bias_uns, fdr, cp_min,
+      ex_list, gate_combn, .data, noise_sd, bias_uns, fdr, cp_min,
       min_cell, cut, tol, bw_min, params, plot, path_project
     )
   } else {
     .get_gate_batch_ind_single(
       debug, ind_batch, ind_in_batch_gate, ind_in_batch_uns,
-      ex_list, data, noise_sd,
+      ex_list, .data, noise_sd,
       bias_uns, fdr, cp_min, min_cell, cut, tol, bw_min, params, plot,
       path_project
     )
@@ -44,7 +44,7 @@
                                     ind_in_batch_uns,
                                     ex_list,
                                     gate_combn,
-                                    data,
+                                    .data,
                                     noise_sd,
                                     bias_uns,
                                     fdr,
@@ -73,7 +73,7 @@
       ind_gate = ind_batch[ind_in_batch_gate],
       ind_uns = ind_batch[ind_in_batch_uns],
       fdr = fdr, gate_combn = gate_combn[["uns"]],
-      data = data, noise_sd = noise_sd, bias_uns = bias_uns,
+      .data = .data, noise_sd = noise_sd, bias_uns = bias_uns,
       cp_min = cp_min, min_cell = min_cell
     )
     gate_list <- gate_list |> append(cp_uns_list)
@@ -88,7 +88,7 @@
       ind_gate = ind_batch[ind_in_batch_gate],
       ind_uns = ind_batch[ind_in_batch_uns],
       gate_combn = gate_combn[["loc"]],
-      data = data,
+      .data = .data,
       bias_uns = bias_uns,
       noise_sd = NULL,
       bw_min = bw_min,
@@ -217,7 +217,7 @@
                                        ind_in_batch_gate,
                                        ind_in_batch_uns,
                                        ex_list,
-                                       data,
+                                       .data,
                                        noise_sd,
                                        bias_uns,
                                        fdr,
@@ -264,7 +264,7 @@
 
         gate_tbl_gn_ind <- gate_tbl |>
           dplyr::filter(
-            ind == ex_list[[i]]$ind[1], # nolint
+            ind == attr(ex_list[[i]], ind), # nolint
             gate_name == gate_name_curr # nolint
           )
 
@@ -300,7 +300,7 @@
         ind_gate = ind_batch[ind_in_batch_gate],
         ind_uns = ind_batch[ind_in_batch_uns],
         gate_combn = gate_name_tbl_row$gate_combn,
-        data = data,
+        .data = .data,
         bias_uns = bias_uns,
         noise_sd = NULL,
         bw_min = bw_min,
@@ -308,7 +308,7 @@
         min_cell = min_cell,
         params = params |> append(list(
           gate_name_curr = gate_name_curr,
-          ex_uns = ex_list[[params$ind_in_batch_uns]]
+          ex_uns = ex_list[[length(ex_list)]]
         )),
         plot = plot,
         path_project = path_project
@@ -318,7 +318,7 @@
         ind_gate = ind_batch[ind_in_batch_gate],
         ind_uns = ind_batch[ind_in_batch_uns],
         fdr = fdr, gate_combn = gate_name_tbl_row$gate_combn,
-        data = data, noise_sd = noise_sd, bias_uns = gate_name_tbl_row$bias,
+        .data = .data, noise_sd = noise_sd, bias_uns = gate_name_tbl_row$bias,
         cp_min = cp_min, min_cell = min_cell
       )[[1]]
     )

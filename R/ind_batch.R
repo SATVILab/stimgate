@@ -1,9 +1,9 @@
 get_batch_list <- function(fn_tbl_info,
-                                                    col_grp,
-                                                    col_stim,
-                                                    uns_chr,
-                                                    col_n_cell,
-                                                    min_cell) {
+                           col_grp,
+                           col_stim,
+                           uns_chr,
+                           col_n_cell,
+                           min_cell) {
   fn_tbl_info[["row_number"]] <- seq_len(nrow(fn_tbl_info))
   grp_vec <- fn_tbl_info[[col_grp[[1]]]]
   for (i in seq_along(col_grp)[-1]) {

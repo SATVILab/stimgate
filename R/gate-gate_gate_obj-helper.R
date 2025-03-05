@@ -23,13 +23,9 @@
   }
 }
 
-.get_gate_obj_ind_uns_vec_get <- function(ind_batch_list, ind_in_batch_uns) {
-  purrr::map(ind_batch_list, function(x) x[ind_in_batch_uns])
-}
-
 # Get gates for each sample within each batch
 .get_gate_obj_pre_adj_gates_gate <- function(ind_batch_list,
-                                             data,
+                                             .data,
                                              ind_in_batch_gate,
                                              ind_in_batch_uns,
                                              ind_in_batch_lab_vec,
@@ -61,7 +57,7 @@
       print(paste0("batch ", i, " of ", length(ind_batch_list)))
     }
     .get_gate_batch_boot( # nolint
-      data = data,
+      .data = .data,
       ind_batch = ind_batch_list[[i]],
       ind_in_batch_gate = ind_in_batch_gate,
       ind_in_batch_uns = ind_in_batch_uns,
@@ -99,7 +95,7 @@
                                         tol_ctrl,
                                         tol_gate,
                                         gate_quant,
-                                        data,
+                                        .data,
                                         params,
                                         cut,
                                         bw_min,
@@ -117,7 +113,7 @@
       gate_tbl = gate_tbl,
       params = params,
       cut = cut,
-      data = data,
+      .data = .data,
       bw_min = bw_min,
       path_project = path_project,
       gate_quant = gate_quant,
@@ -134,7 +130,7 @@
       gate_tbl_params = gate_tbl_params,
       params = params,
       cut = cut,
-      data = data,
+      .data = .data,
       calc_cyt_pos_gates = TRUE,
       path_project = path_project,
       debug = debug,
@@ -152,7 +148,7 @@
                                             gate_tbl,
                                             params,
                                             cut,
-                                            data,
+                                            .data,
                                             bw_min,
                                             path_project,
                                             gate_quant,
@@ -187,7 +183,7 @@
       gate_tbl = gate_tbl |> dplyr::mutate(chnl = cut),
       gate_name = NULL,
       chnl = cut,
-      data = data,
+      .data = .data,
       filter_other_cyt_pos = FALSE,
       combn = FALSE,
       gate_type_single_pos_calc = "base",
@@ -204,7 +200,7 @@
     gate_tbl_cluster <- purrr::map_df(
       unique(gate_tbl$gate_name), function(gn) {
         gate_tbl_cluster <- .get_cp_cluster( # nolint
-          gs = params$data,
+          gs = params$.data,
           gate_tbl = gate_tbl |>
             dplyr::filter(gate_name == gn), # nolint
           gate_stats_tbl = gate_stats_tbl |>
@@ -251,7 +247,7 @@
       path_dir_stats <- .get_gate_stats( # nolint
         params = params,
         gate_tbl = gate_tbl,
-        data = data,
+        .data = .data,
         path_project = path_project,
         debug = debug,
         ind_batch_list = ind_batch_list,
@@ -303,7 +299,7 @@
                                                 params,
                                                 gate_tbl_params,
                                                 cut,
-                                                data,
+                                                .data,
                                                 calc_cyt_pos_gates,
                                                 path_project,
                                                 debug,
@@ -327,7 +323,7 @@
     gate_tbl = gate_tbl,
     params = params,
     cut = cut,
-    data = data,
+    .data = .data,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     path_project = path_project,
     debug = debug,
@@ -389,7 +385,7 @@
 .get_gate_obj_gate_adj_gates_single_stats_tbl_get <- function(gate_tbl,
                                                               params,
                                                               cut,
-                                                              data,
+                                                              .data,
                                                               calc_cyt_pos_gates, # nolint
                                                               path_project,
                                                               debug,
@@ -421,7 +417,7 @@
     chnl = cut,
     filter_other_cyt_pos = TRUE,
     gate_type_cyt_pos_filter = ifelse(calc_cyt_pos_gates, "cyt", "base"),
-    data = data,
+    .data = .data,
     gate_type_single_pos_filter = "base",
     gate_type_single_pos_calc = "base",
     combn = FALSE,
@@ -548,7 +544,7 @@
       dplyr::filter(gate_name == gn) # nolint
 
     gate_tbl_cluster_gn <- .get_cp_cluster( # nolint
-      gs = params$data,
+      gs = params$.data,
       gate_tbl = gate_tbl_gn,
       gate_stats_tbl = gate_stats_tbl_gn,
       gate_tbl_ctrl = gate_tbl_ctrl_clust_gn,
