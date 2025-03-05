@@ -157,7 +157,7 @@
     ind_in_batch = ind_in_batch, data_name = data_name
   )
 
-  ind_uns <- (ind %/% 5 * 5) + 5
+  ind_uns <- attr(ex, "ind_uns")
   ex_uns <- .get_ex( # nolint
     data = data[[ind_uns]], pop = pop_gate, # nolint
     cut = chnl_vec, high = NULL, ind = ind,
@@ -185,7 +185,7 @@
   )
 
   tibble::tibble(
-    ind = ex$ind[1], chnl = chnl_vec, marker = chnl_lab_vec[chnl_vec],
+    ind = attr(ex, "ind"), chnl = chnl_vec, marker = chnl_lab_vec[chnl_vec],
     gate_cyt = cp_vec_cyt_pos
   )
 }

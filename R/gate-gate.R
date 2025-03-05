@@ -60,10 +60,7 @@ stimgate_gate <- function(data,
                           path_project,
                           pop_gate,
                           marker,
-                          batch_size = NULL,
-                          ind_in_batch_gate = NULL,
-                          ind_in_batch_uns = NULL,
-                          ind_in_batch_lab_vec = NULL,
+                          batch_list,
                           plot = TRUE,
                           bias_uns = NULL,
                           cp_min = NULL,
@@ -92,16 +89,6 @@ stimgate_gate <- function(data,
   # prep
   debug_stats <- debug || (debug == "stats")
 
-  # get list of batch indices
-  ind_batch_list <- .get_ind_batch_list( # nolint
-    data = data, batch_size = batch_size,
-    fcs = fcs,
-    ind_skip = ind_skip
-  )
-
-  # get gating indices
-  if (is.null(ind_in_batch_gate)) ind_in_batch_gate <- seq_len(batch_size)
-
   # get unspecified levels in marker elements
   marker <- .complete_marker_list( # nolint
     marker = marker, data_name = data_name,
@@ -109,60 +96,11 @@ stimgate_gate <- function(data,
     pop_gate = pop_gate, cut = cut,
     debug = debug, bias_uns = bias_uns,
     bw_min = bw_min, cp_min = cp_min,
-    ind_batch_list = ind_batch_list,
+    ind_batch_list = batch_list,
     ind_in_batch_gate = ind_in_batch_gate,
     ind_in_batch_uns = ind_in_batch_uns,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec
   )
-
-  if (stats_only) {
-    path_dir_stats <- .get_gate_stats( # nolint
-      params = NULL, gate_tbl = NULL,
-      filter_other_cyt_pos = FALSE,
-      gate_name = gate_name_stats, combn = TRUE,
-      gate_type_cyt_pos_calc =
-        if (calc_cyt_pos_gates) "cyt" else "base",
-      gate_type_single_pos_calc =
-        if (calc_single_pos_gates) "single" else "base",
-      debug = debug_stats,
-      save = TRUE,
-      pop_gate = pop_gate,
-      chnl = purrr::map_chr(marker, function(x) x$cut),
-      ind_in_batch_lab = ind_in_batch_lab_vec,
-      ind_in_batch_gate = ind_in_batch_gate,
-      data_name = data_name,
-      fcs = fcs,
-      ind_in_batch_uns = ind_in_batch_uns,
-      ind_batch_list = ind_batch_list,
-      data = data,
-      save_gate_tbl = FALSE,
-      sampleid_lab = sampleid_lab,
-      stim_lab = stim_lab,
-      path_project = path_project
-    )
-    stats_tbl <- path_dir_stats |> .read_gate_stats() # nolint
-    if (!plots_only) {
-      return(invisible(TRUE))
-    }
-  }
-
-  if (plots_only) {
-    plot_cp_all( # nolint
-      data = data, gate_name = gate_name_plot,
-      chnl_base = c("Nd146Di", "Gd156Di", "Ho165Di"),
-      params = NULL,
-      pop_gate = pop_gate,
-      chnl = purrr::map_chr(marker, function(x) x$cut),
-      ind_in_batch_lab = ind_in_batch_lab_vec,
-      ind_in_batch_gate = ind_in_batch_gate,
-      data_name = data_name,
-      fcs = fcs,
-      ind_in_batch_uns = ind_in_batch_uns,
-      ind_batch_list = ind_batch_list,
-      path_project = path_project
-    )
-    return(invisible(TRUE))
-  }
 
   # inital gates
   # ------------------------------
@@ -171,7 +109,7 @@ stimgate_gate <- function(data,
     pop_gate = pop_gate,
     marker = marker,
     data = data,
-    ind_batch_list = ind_batch_list,
+    ind_batch_list = batch_list,
     ind_in_batch_gate = ind_in_batch_gate,
     ind_in_batch_uns = ind_in_batch_uns,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
@@ -211,7 +149,7 @@ stimgate_gate <- function(data,
     pop_gate = pop_gate,
     marker = marker,
     data = data,
-    ind_batch_list = ind_batch_list,
+    ind_batch_list = batch_list,
     ind_in_batch_gate = ind_in_batch_gate,
     ind_in_batch_uns = ind_in_batch_uns,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
@@ -257,34 +195,12 @@ stimgate_gate <- function(data,
     data_name = data_name,
     fcs = fcs,
     ind_in_batch_uns = ind_in_batch_uns,
-    ind_batch_list = ind_batch_list,
+    ind_batch_list = batch_list,
     sampleid_lab = sampleid_lab,
     stim_lab = stim_lab,
     path_project = path_project,
     save_gate_tbl = TRUE
   )
-
-  if (plot) {
-    print("")
-    print("")
-    print("")
-    print("plotting all 2d plots with final gates")
-
-    plot_cp_all( # nolint
-      data = data, gate_name = gate_name_plot,
-      chnl_base = c("Nd146Di", "Gd156Di", "Ho165Di"),
-      params = NULL,
-      pop_gate = pop_gate,
-      chnl = purrr::map_chr(marker, function(x) x$cut),
-      ind_in_batch_lab = ind_in_batch_lab_vec,
-      ind_in_batch_gate = ind_in_batch_gate,
-      data_name = data_name,
-      fcs = fcs,
-      ind_in_batch_uns = ind_in_batch_uns,
-      ind_batch_list = ind_batch_list,
-      path_project = path_project
-    )
-  }
 
   path_dir_stats
 }
