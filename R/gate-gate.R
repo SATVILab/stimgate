@@ -79,9 +79,12 @@ stimgate_gate <- function(.data,
   marker <- .complete_marker_list( # nolint
     marker = marker,
     .data = .data,
-    pop_gate = pop_gate, cut = cut,
-    debug = debug, bias_uns = bias_uns,
-    bw_min = bw_min, cp_min = cp_min,
+    pop_gate = pop_gate,
+    cut = cut,
+    debug = debug,
+    bias_uns = bias_uns,
+    bw_min = bw_min,
+    cp_min = cp_min,
     ind_batch_list = batch_list
   )
 

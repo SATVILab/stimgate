@@ -10,7 +10,6 @@
                           bw_min,
                           cp_min,
                           min_cell,
-                          plot,
                           max_pos_prob_x,
                           gate_quant,
                           tol_ctrl,
@@ -29,31 +28,23 @@
 
   # named
   chnl_lab_vec <- .get_labs( # nolint
-    .data = .data[[ind_batch_list[[1]][1]]],
+    .data = .data[[ind_batch_list[[1]]]],
     cut = cut
   )
 
   # get parameters
   params <- list(
     .data = .data,
-    data_name = data_name,
     ind_batch_list = ind_batch_list,
-    ind_in_batch_gate = ind_in_batch_gate,
-    ind_in_batch_uns = ind_in_batch_uns,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     pop_gate = pop_gate,
     cut = cut,
     gate_combn = gate_combn,
-    pop_man_sub = pop_man_sub,
-    pop_man_match_exact = pop_man_match_exact,
     tol = tol,
     chnl_lab = chnl_lab_vec,
     noise_sd = noise_sd,
     bias_uns = bias_uns,
     bw_min = bw_min,
     cp_min = cp_min,
-    boot_sd = boot_sd,
-    boot_n = boot_n, min_cell = min_cell,
     max_pos_prob_x = max_pos_prob_x,
     gate_quant = gate_quant,
     tol_ctrl = tol_ctrl,
@@ -68,17 +59,11 @@
     params$bias_uns, params$data_name
   )
 
-  # get indices of
-  ind_uns_vec <- ind_batch_list[length(ind_batch_list)]
-
   # Initial gates
   # ----------------
   gate_tbl <- .get_gate_obj_pre_adj_gates_gate( # nolint
     ind_batch_list = ind_batch_list,
     .data = .data,
-    ind_in_batch_gate = ind_in_batch_gate,
-    ind_in_batch_uns = ind_in_batch_uns,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     pop_gate = pop_gate,
     cut = cut,
     gate_combn = gate_combn,
@@ -87,17 +72,14 @@
     bias_uns = bias_uns,
     bw_min = bw_min,
     cp_min = cp_min,
-    boot_n = boot_n,
-    boot_sd = boot_sd,
     min_cell = min_cell,
-    data_name = data_name,
     params = params,
     plot = plot,
     debug = debug
   )
 
   gate_tbl <- gate_tbl |>
-    dplyr::filter(!ind %in% ind_uns_vec) # nolint
+    dplyr::filter(!ind %in% ind_batch_list[length(ind_batch_list)]) # nolint
 
   # Get adjusted and/or clustered gates
   # ----------------
@@ -124,10 +106,7 @@
     .data = .data,
     path_project = path_project,
     debug = debug,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     pop_gate = pop_gate,
-    ind_batch_list = ind_batch_list,
-    data_name = data_name,
-    ind_in_batch_uns = ind_in_batch_uns
+    ind_batch_list = ind_batch_list
   )
 }
