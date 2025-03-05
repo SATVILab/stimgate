@@ -18,20 +18,8 @@
                                   ind_in_batch_uns,
                                   ind_in_batch_lab_vec) {
   purrr::map(marker, function(marker_curr) {
-    # fill in optionally-specified parameters
-    if ((!"fdr" %in% names(marker_curr)) ||
-      is.null(marker_curr$fdr)) {
-      marker_curr$fdr <- NULL
-    }
-
     if (!"min_cell" %in% names(marker_curr)) {
       marker_curr$min_cell <- 1e2
-    }
-
-    if (!is.null(marker_curr[["high"]])) {
-      marker_curr[["high"]] <- marker_curr[["high"]][
-        names(marker_curr[["high"]]) != marker_curr[["cut"]]
-      ]
     }
 
     if (!"tol" %in% names(marker_curr) ||
@@ -47,21 +35,14 @@
       gate_combn = marker_curr$gate_combn,
       fdr = marker_curr$fdr
     )
-    if (!"pop_man_match_exact" %in% names(marker_curr)) {
-      marker_curr$pop_man_match_exact <- TRUE
-    }
 
     marker_curr$bias_uns <- .complete_marker_list_bias_uns(
       bias_uns = marker_curr$bias_uns,
       .data = .data,
-      data_name = data_name,
       pop_gate = pop_gate,
       cut = marker_curr$cut,
       debug = debug,
-      ind_batch_list = ind_batch_list,
-      ind_in_batch_gate = ind_in_batch_gate,
-      ind_in_batch_uns = ind_in_batch_uns,
-      ind_in_batch_lab_vec = ind_in_batch_lab_vec
+      ind_batch_list = ind_batch_list
     )
 
     marker_curr$bw_min <- .complete_marker_list_min_bw(
@@ -72,14 +53,10 @@
     marker_curr$cp_min <- .complete_marker_list_cp_min(
       cp_min = cp_min,
       .data = .data,
-      data_name = data_name,
       pop_gate = pop_gate,
       cut = marker_curr$cut,
       debug = debug,
-      ind_batch_list = ind_batch_list,
-      ind_in_batch_gate = ind_in_batch_gate,
-      ind_in_batch_uns = ind_in_batch_uns,
-      ind_in_batch_lab_vec = ind_in_batch_lab_vec
+      ind_batch_list = ind_batch_list
     )
 
     marker_curr
@@ -88,14 +65,10 @@
 
 .complete_marker_list_bias_uns <- function(bias_uns,
                                            .data,
-                                           data_name,
                                            pop_gate,
                                            cut,
                                            debug,
-                                           ind_batch_list,
-                                           ind_in_batch_gate,
-                                           ind_in_batch_uns,
-                                           ind_in_batch_lab_vec) {
+                                           ind_batch_list) {
   if (!is.null(bias_uns)) {
     return(bias_uns)
   }
@@ -103,40 +76,27 @@
   mean_range <- .complete_marker_list_bias_uns_get_mean_range(
     ind_batch_list = ind_batch_list,
     .data = .data,
-    ind_in_batch_gate = ind_in_batch_gate,
-    ind_in_batch_uns = ind_in_batch_uns,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     pop_gate = pop_gate,
-    cut = cut,
-    data_name = data_name
+    cut = cut
   )
   (mean_range / 12) |> signif(3)
 }
 
 .complete_marker_list_bias_uns_get_mean_range <- function(ind_batch_list,
                                                           .data,
-                                                          ind_in_batch_gate,
-                                                          ind_in_batch_uns,
-                                                          ind_in_batch_lab_vec,
                                                           pop_gate,
-                                                          cut,
-                                                          data_name) {
+                                                          cut) {
   purrr::map(
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
       ex_list <- .get_ex_list( # nolint
         .data = .data, ind_batch = ind_batch_list[[i]],
-        ind_in_batch_gate = ind_in_batch_gate,
-        ind_in_batch_uns = ind_in_batch_uns,
-        ind_in_batch_lab_vec = ind_in_batch_lab_vec,
         pop = pop_gate,
-        cut = cut, high = NULL,
-        data_name = data_name
+        cut = cut
       )
       purrr::map_dbl(ex_list, function(ex) {
-        chnl_cut <- attr(ex, "cut")
         abs(
-          diff(quantile(ex[[chnl_cut]][ex[[chnl_cut]] > min(ex[[chnl_cut]])], c(0.99, 0.01)),
+          diff(quantile(.get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))], c(0.99, 0.01)),
             na.rm = TRUE
           )
         )[[1]]
@@ -157,14 +117,10 @@
 
 .complete_marker_list_cp_min <- function(cp_min,
                                          .data,
-                                         data_name,
                                          pop_gate,
                                          cut,
                                          debug,
-                                         ind_batch_list,
-                                         ind_in_batch_gate,
-                                         ind_in_batch_uns,
-                                         ind_in_batch_lab_vec) {
+                                         ind_batch_list) {
   if (!is.null(cp_min)) {
     return(cp_min)
   }
@@ -173,17 +129,13 @@
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
       ex_list <- .get_ex_list( # nolint
-        .data = .data, ind_batch = ind_batch_list[[i]],
-        ind_in_batch_gate = ind_in_batch_gate,
-        ind_in_batch_uns = ind_in_batch_uns,
-        ind_in_batch_lab_vec = ind_in_batch_lab_vec,
+        .data = .data,
+        ind_batch = ind_batch_list[[i]],
         pop = pop_gate,
-        cut = cut, high = NULL,
-        data_name = data_name
+        cut = cut
       )
       purrr::map_dbl(ex_list, function(ex) {
-        chnl_cut <- attr(ex, "cut")
-        median(ex[[chnl_cut]][ex[[chnl_cut]] > min(ex[[chnl_cut]])], na.rm = TRUE)[[1]]
+        median(.get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))], na.rm = TRUE)[[1]]
       })
     }
   ) |>
@@ -240,225 +192,6 @@
     "uns", "unsr", "loc"
   )
 }
-
-#' @title Get name vec for unstim-based cuts
-#'
-#' @inheritParams get_cp # fdr
-#'
-#' @return Character vector.
-.get_cp_uns_fdr_name_vec <- function(fdr) {
-  # get cutpoint names
-  cp_name_vec <- as.character(fdr * 100)
-  len_max <- max(stringr::str_length(cp_name_vec))
-  purrr::map_chr(cp_name_vec, function(cp_name) {
-    len_curr <- stringr::str_length(cp_name)
-    if (len_curr == len_max) {
-      return(paste0("uns", cp_name))
-    }
-    cp_name <- paste0(rep("0", len_max - len_curr), cp_name)
-    paste0(cp_name)
-  })
-}
-
-
-
-#' @title Get stats for manual cutpoint
-#'
-#' @description
-#' Get implied manual cutpoint for each sample with index in \code{ind_gate}
-#' within original GatingSet
-#'
-#' @inheritParams get_cp .data, cut, pop_man
-#' @param ex_list list. List where each element is a dataframe corresponding to an expression matrix.
-#' @param ind numeric vector. Each element represents the index of a sample within \code{.data}
-#' for which a gate is required.
-#'
-#' @return A named character vector with elements named \code{"count"},
-#' \code{"freq"} and \code{"cp"} containg the count, frequency and implied cutpoint
-# for the manually gated positive population.
-.get_cp_man <- function(.data, ind,
-                        ex_list,
-                        pop_man,
-                        pop_man_match_exact,
-                        gate_combn) {
-  # get counts for each sample
-  count_man_vec <- purrr::map_dbl(ind, function(ind_curr) {
-    gh <- .data[[ind_curr]]
-
-    # get all .data for specified node
-    man_stats_tbl <- gh_pop_get_stats(gh, xml = FALSE) # was TRUE
-    if (pop_man_match_exact) man_stats_tbl <- man_stats_tbl |> dplyr::filter(pop %in% pop_man)
-    if (!pop_man_match_exact) {
-      for (x in pop_man) {
-        man_stats_tbl <- man_stats_tbl |> dplyr::filter(stringr::str_detect(pop, x))
-      }
-    }
-
-    # return count
-    man_stats_tbl[["count"]] |> sum()
-  }) |>
-    stats::setNames(ind)
-
-  # cutpoints to be calculated as a group
-  cp_list <- list()
-
-
-  if ("prejoin" %in% gate_combn) {
-    cp_list[["man_prejoin"]] <- .get_cp_man_prejoin(
-      count = count_man_vec,
-      ex_list = ex_list,
-      ind = ind
-    )
-  }
-
-  non_prejoin_combn_vec <- setdiff(gate_combn, "prejoin")
-
-  if (length(non_prejoin_combn_vec) > 0) {
-    cp_list <- cp_list |>
-      append(.get_cp_man_non_prejoin(
-        count = count_man_vec,
-        ex_list = ex_list,
-        ind = ind,
-        gate_combn = non_prejoin_combn_vec
-      ) |>
-        purrr::flatten())
-  }
-
-  cp_list
-}
-
-#' @title Get the manual cutpoint based on pre-joining the samples
-#'
-#' @param count numeric vector. Vector of manually-gated counts across samples.
-#' @param ind  numeric vector. Vector of indices of samples in original GatingSet.
-#'
-#' @return A named numeric vector, where the names are the sample indices in the
-#' original GatingSet and the values are the corresponding manual cutpoints.
-.get_cp_man_non_prejoin <- function(count, ex_list, ind, gate_combn) {
-  purrr::map(gate_combn, function(gate_combn_curr) {
-    cp_man_vec_init <- purrr::map_dbl(ind, function(ind_curr) {
-      # get current count
-      count_man <- count[as.character(ind_curr)]
-      # get current expression tibble
-      ex <- ex_list[[as.character(ind_curr)]] |> dplyr::arrange(desc(cut))
-      # get the range to search over
-      chnl_cut <- attr(ex, "cut")
-      cps <- c(ex[[chnl_cut]][nrow(ex)], ex[[chnl_cut]][1])
-      # return max observed value + a fraction of range if count is zero
-      if (count_man == 0) {
-        return(cps[2] + (cps[2] - cps[1]) / 200)
-      }
-
-      # get cutpoint for this sample
-      (ex[[chnl_cut]][count_man] + ex[[chnl_cut]][count_man + 1]) / 2
-    }) |>
-      stats::setNames(ind)
-
-    .combine_cp(cp = cp_man_vec_init, gate_combn = gate_combn_curr)
-  }) |>
-    stats::setNames(gate_combn)
-}
-
-#' @title Get the manual cutpoint based on pre-joining the samples
-#'
-#' @param count numeric vector. Vector of manually-gated counts across samples.
-#' @param ind  numeric vector. Vector of indices of samples in original GatingSet.
-#'
-#' @return A named numeric vector, where the names are the sample indices in the
-#' original GatingSet and the values are the corresponding manual cutpoints.
-.get_cp_man_prejoin <- function(count, ex_list, ind) {
-  # get overall count
-  count_man <- sum(count)
-  # get expression matrix of all the expression matrices joined together
-  ex <- purrr::map(ind, function(ind_curr) ex_list[[as.character(ind_curr)]]) |>
-    dplyr::bind_rows() |>
-    dplyr::arrange(desc(cut))
-  # get the range to search over
-  cps <- c(.get_cut(ex)[nrow(ex)], .get_cut(ex)[1])
-  # find the single cutpoint
-
-  if (count_man == 0) {
-    return(rep(cps[2] + (cps[2] - cps[1]) / 200, length(ind)) |>
-      stats::setNames(ind))
-  }
-  cp_man <- (ex_stim$cut[count_pos] + ex_stim$cut[count_pos + 1]) / 2
-  # repeat the cutpoints
-  rep(cp_man, length(ind)) |>
-    stats::setNames(ind)
-}
-
-#' @title COmbine gates across indices
-#'
-#' @param cp named numeric vector. Values are gates and names are indices within
-#' original GatingSet to which gate applies.
-#' @param gate_combn 'no', 'min', 'mean', 'trim20',  'median' or 'max'. Specifies
-#' method of combining the gates in cp. 'no' and 'prejoin' do not apply common gates,
-#' whereas each of the others do.
-#'
-#' @return named list. Each list corresponds to the gates for the set of indices
-#' for a given gating method and gate grouping method. The name indicates
-#' the gating method and the gate-grouping method, which are separated by an underscore.
-#' The element is a named vector, where values are the gates for the individual samples and
-#' the names are indices of the samples with the original GatingSet to which gates apply.
-.combine_cp <- function(cp, gate_combn) {
-  purrr::map(gate_combn, function(gate_combn_curr) {
-    if (all(purrr::map_lgl(cp, is.na))) {
-      return(stats::setNames(cp, names(cp)))
-    }
-    if (gate_combn_curr %in% c("no", "prejoin")) {
-      return(cp)
-    }
-    if (gate_combn_curr == "min") {
-      return(stats::setNames(
-        rep(
-          min(cp, na.rm = TRUE),
-          length(cp)
-        ),
-        names(cp)
-      ))
-    }
-    if (gate_combn_curr == "mean") {
-      return(stats::setNames(
-        rep(
-          mean(cp, na.rm = TRUE),
-          length(cp)
-        ),
-        names(cp)
-      ))
-    }
-    if (gate_combn_curr == "trim20") {
-      return(stats::setNames(
-        rep(
-          mean(cp, trim = 0.2, na.rm = TRUE),
-          length(cp)
-        ),
-        names(cp)
-      ))
-    }
-    if (gate_combn_curr == "median") {
-      return(stats::setNames(
-        rep(
-          median(cp, na.rm = TRUE),
-          length(cp)
-        ),
-        names(cp)
-      ))
-    }
-    if (gate_combn_curr == "max") {
-      return(stats::setNames(
-        rep(
-          max(cp, na.rm = TRUE),
-          length(cp)
-        ),
-        names(cp)
-      ))
-    }
-  }) |>
-    stats::setNames(gate_combn)
-}
-
-
-
 
 #' @title Get the measurements for a given set of sample(s) for the marker to be cut on
 #' as a single numeric vector
@@ -996,7 +729,7 @@
         col_val <- names(list_elem)
         if (length(col_val) < max_n) col_val <- c(col_val, rep("", max_n - length(col_val)))
         # add column to table to save
-        save_tbl <- save_tbl |> dplyr::mutate(!!ensym(col_name) := col_val)
+        save_tbl[, col_name] <- col_val
       }
 
       # if the param element has names
@@ -1006,7 +739,7 @@
       col_val <- stats::setNames(list_elem, NULL)
       if (length(col_val) < max_n) col_val <- c(col_val, rep("", max_n - length(col_val)))
       # add column to table to save
-      save_tbl <- save_tbl |> dplyr::mutate(!!ensym(col_name) := col_val)
+      save_tbl[, col_name] <- col_val
     }
   }
 
