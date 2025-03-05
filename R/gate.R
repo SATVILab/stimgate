@@ -164,7 +164,7 @@ stimgate_gate <- function(.data,
     print(paste0("chnl: ", marker_curr$cut))
     # get gates for each sample within each batch
 
-    gate_obj <- .get_gate_obj( # nolint
+    gate_obj <- .gate_marker( # nolint
       .data = .data,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate,
@@ -199,13 +199,8 @@ stimgate_gate <- function(.data,
                          marker,
                          .data,
                          ind_batch_list,
-                         ind_in_batch_gate,
-                         ind_in_batch_uns,
-                         ind_in_batch_lab_vec,
-                         data_name,
                          path_project,
                          noise_sd,
-                         plot,
                          max_pos_prob_x,
                          gate_quant,
                          tol_ctrl,
@@ -214,13 +209,8 @@ stimgate_gate <- function(.data,
                          calc_cyt_pos_gates,
                          calc_single_pos_gates,
                          debug,
-                         gate_tbl,
-                         gate_name_plot,
-                         gate_name_stats,
-                         stats_only,
-                         plots_only) {
+                         gate_tbl) {
   # loop over populations
-  print("")
   print("")
   print("")
   print("----")
@@ -238,7 +228,7 @@ stimgate_gate <- function(.data,
     print(paste0("chnl: ", marker_curr$cut))
     # get gates for each sample within each batch
 
-    gate_obj <- .get_gate_obj( # nolint
+    gate_obj <- .gate_marker( # nolint
       .data = .data,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate_curr,
@@ -280,14 +270,7 @@ stimgate_gate <- function(.data,
                         save = TRUE,
                         pop_gate,
                         marker,
-                        ind_in_batch_lab_vec,
-                        ind_in_batch_gate,
-                        data_name,
-                        fcs,
-                        ind_in_batch_uns,
                         ind_batch_list,
-                        sampleid_lab,
-                        stim_lab,
                         path_project,
                         save_gate_tbl = TRUE) {
   force(.data)
@@ -295,7 +278,6 @@ stimgate_gate <- function(.data,
     params = params,
     gate_tbl = gate_tbl,
     filter_other_cyt_pos = filter_other_cyt_pos,
-    gate_name = gate_name_stats,
     combn = combn,
     gate_type_cyt_pos_filter =
       if (calc_cyt_pos_gates) "cyt" else "base",
@@ -309,16 +291,9 @@ stimgate_gate <- function(.data,
     save = save,
     pop_gate = pop_gate,
     chnl = purrr::map_chr(marker, function(x) x$cut),
-    ind_in_batch_lab = ind_in_batch_lab_vec,
-    ind_in_batch_gate = ind_in_batch_gate,
-    data_name = data_name,
-    fcs = fcs,
-    ind_in_batch_uns = ind_in_batch_uns,
     ind_batch_list = ind_batch_list,
     .data = .data,
     save_gate_tbl = save_gate_tbl,
-    sampleid_lab = sampleid_lab,
-    stim_lab = stim_lab,
     path_project = path_project
   )
 }

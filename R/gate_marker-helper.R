@@ -12,7 +12,7 @@
   }
   pop_man_vec
 }
-.get_gate_obj_delete_old_gates <- function() {
+.gate_marker_delete_old_gates <- function() {
   dir_save <- file.path(tempdir(), "stimgate")
   if (!dir.exists(dir_save)) {
     return(invisible(FALSE))
@@ -22,20 +22,20 @@
 }
 
 # Get gates for each sample within each batch
-.get_gate_obj_pre_adj_gates_gate <- function(ind_batch_list,
-                                             .data,
-                                             pop_gate,
-                                             cut,
-                                             gate_combn,
-                                             tol,
-                                             data_name,
-                                             noise_sd,
-                                             bias_uns,
-                                             bw_min,
-                                             cp_min,
-                                             min_cell,
-                                             params,
-                                             debug) {
+.gate_marker_pre_adj_gates_gate <- function(ind_batch_list,
+                                            .data,
+                                            pop_gate,
+                                            cut,
+                                            gate_combn,
+                                            tol,
+                                            data_name,
+                                            noise_sd,
+                                            bias_uns,
+                                            bw_min,
+                                            cp_min,
+                                            min_cell,
+                                            params,
+                                            debug) {
   print("getting pre-adjustment gates")
   purrr::map_df(seq_along(ind_batch_list), function(i) {
     .debug(debug, "ind_batch_list", i) # nolint
@@ -44,7 +44,7 @@
     if (i %% 50 == 0 || i == length(ind_batch_list)) {
       print(paste0("batch ", i, " of ", length(ind_batch_list)))
     }
-    .get_gate_batch_boot( # nolint
+    .gate_batch( # nolint
       .data = .data,
       ind_batch = ind_batch_list[[i]],
       ind_in_batch_gate = ind_in_batch_gate,
@@ -78,7 +78,7 @@
   })
 }
 
-.get_gate_obj_get_adj_gates <- function(gate_tbl,
+.gate_marker_get_adj_gates <- function(gate_tbl,
                                         gate_tbl_params,
                                         tol_ctrl,
                                         tol_gate,
@@ -95,7 +95,7 @@
                                         data_name,
                                         ind_in_batch_uns) {
   if (is.null(gate_tbl_params)) {
-    .get_gate_obj_get_adj_gates_all( # nolint
+    .gate_marker_get_adj_gates_all( # nolint
       tol_ctrl = tol_ctrl,
       tol_gate = tol_gate,
       gate_tbl = gate_tbl,
@@ -113,7 +113,7 @@
       ind_in_batch_uns = ind_in_batch_uns
     )
   } else {
-    .get_gate_obj_gate_adj_gates_single(
+    .gate_marker_gate_adj_gates_single(
       gate_tbl = gate_tbl,
       gate_tbl_params = gate_tbl_params,
       params = params,
@@ -131,7 +131,7 @@
   }
 }
 
-.get_gate_obj_get_adj_gates_all <- function(tol_ctrl,
+.gate_marker_get_adj_gates_all <- function(tol_ctrl,
                                             tol_gate,
                                             gate_tbl,
                                             params,
@@ -283,7 +283,7 @@
   )
 }
 
-.get_gate_obj_gate_adj_gates_single <- function(gate_tbl,
+.gate_marker_gate_adj_gates_single <- function(gate_tbl,
                                                 params,
                                                 gate_tbl_params,
                                                 cut,
@@ -300,14 +300,14 @@
   gate_tbl_single <- gate_tbl
 
   # merge
-  gate_tbl <- .get_gate_obj_gate_adj_gates_single_merge( # nolint
+  gate_tbl <- .gate_marker_gate_adj_gates_single_merge( # nolint
     gate_tbl_single = gate_tbl_single,
     gate_tbl_params = gate_tbl_params,
     cut = cut
   )
 
   # get stats table (if needed)
-  gate_stats_tbl <- .get_gate_obj_gate_adj_gates_single_stats_tbl_get(
+  gate_stats_tbl <- .gate_marker_gate_adj_gates_single_stats_tbl_get(
     gate_tbl = gate_tbl,
     params = params,
     cut = cut,
@@ -322,7 +322,7 @@
     ind_in_batch_uns = ind_in_batch_uns
   )
 
-  gate_tbl_out <- .get_gate_obj_gate_adj_gates_single_out_get(
+  gate_tbl_out <- .gate_marker_gate_adj_gates_single_out_get(
     gate_tbl = gate_tbl,
     gate_stats_tbl = gate_stats_tbl,
     gate_tbl_single = gate_tbl_single,
@@ -336,7 +336,7 @@
   )
 }
 
-.get_gate_obj_gate_adj_gates_single_merge <- function(gate_tbl_single,
+.gate_marker_gate_adj_gates_single_merge <- function(gate_tbl_single,
                                                       gate_tbl_params,
                                                       cut) {
   gate_tbl_params |>
@@ -370,7 +370,7 @@
     )
 }
 
-.get_gate_obj_gate_adj_gates_single_stats_tbl_get <- function(gate_tbl,
+.gate_marker_gate_adj_gates_single_stats_tbl_get <- function(gate_tbl,
                                                               params,
                                                               cut,
                                                               .data,
@@ -383,7 +383,7 @@
                                                               data_name,
                                                               ind_in_batch_uns) { # nolint
   gate_name_vec <- unique(gate_tbl$gate_name)
-  if (!.get_gate_obj_gate_adj_gates_single_stats_tbl_get_check(gate_name_vec)) {
+  if (!.gate_marker_gate_adj_gates_single_stats_tbl_get_check(gate_name_vec)) {
     return(NULL)
   }
 
@@ -419,7 +419,7 @@
   )
 }
 
-.get_gate_obj_gate_adj_gates_single_stats_tbl_get_check <- function(gate_name_vec) { # nolint
+.gate_marker_gate_adj_gates_single_stats_tbl_get_check <- function(gate_name_vec) { # nolint
   any_clust_ind <- any(
     purrr::map_lgl(
       gate_name_vec,
@@ -435,7 +435,7 @@
   any_clust_ind || any_adj_ind
 }
 
-.get_gate_obj_gate_adj_gates_single_out_get <- function(gate_tbl,
+.gate_marker_gate_adj_gates_single_out_get <- function(gate_tbl,
                                                         gate_stats_tbl,
                                                         gate_tbl_single,
                                                         params,
@@ -451,7 +451,7 @@
   # get gate names
   gate_name_vec <- unique(gate_tbl$gate_name)
   purrr::map_df(gate_name_vec, function(gn) {
-    .get_gate_obj_gate_adj_gates_single_out_get_gn(
+    .gate_marker_gate_adj_gates_single_out_get_gn(
       debug = debug,
       gn = gn,
       gate_tbl = gate_tbl,
@@ -466,7 +466,7 @@
     dplyr::mutate(gate_single = pmax(gate, gate_single)) # nolint
 }
 
-.get_gate_obj_gate_adj_gates_single_out_get_gn <- function(debug,
+.gate_marker_gate_adj_gates_single_out_get_gn <- function(debug,
                                                            gn,
                                                            gate_tbl,
                                                            gate_stats_tbl,
