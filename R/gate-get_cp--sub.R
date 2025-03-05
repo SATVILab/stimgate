@@ -125,7 +125,7 @@
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
       ex_list <- .get_ex_list( # nolint
-        data = .data, ind_batch = ind_batch_list[[i]],
+        .data = .data, ind_batch = ind_batch_list[[i]],
         ind_in_batch_gate = ind_in_batch_gate,
         ind_in_batch_uns = ind_in_batch_uns,
         ind_in_batch_lab_vec = ind_in_batch_lab_vec,
@@ -173,7 +173,7 @@
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
       ex_list <- .get_ex_list( # nolint
-        data = .data, ind_batch = ind_batch_list[[i]],
+        .data = .data, ind_batch = ind_batch_list[[i]],
         ind_in_batch_gate = ind_in_batch_gate,
         ind_in_batch_uns = ind_in_batch_uns,
         ind_in_batch_lab_vec = ind_in_batch_lab_vec,
@@ -268,24 +268,24 @@
 #' Get implied manual cutpoint for each sample with index in \code{ind_gate}
 #' within original GatingSet
 #'
-#' @inheritParams get_cp data, cut, pop_man
+#' @inheritParams get_cp .data, cut, pop_man
 #' @param ex_list list. List where each element is a dataframe corresponding to an expression matrix.
-#' @param ind numeric vector. Each element represents the index of a sample within \code{data}
+#' @param ind numeric vector. Each element represents the index of a sample within \code{.data}
 #' for which a gate is required.
 #'
 #' @return A named character vector with elements named \code{"count"},
 #' \code{"freq"} and \code{"cp"} containg the count, frequency and implied cutpoint
 # for the manually gated positive population.
-.get_cp_man <- function(data, ind,
+.get_cp_man <- function(.data, ind,
                         ex_list,
                         pop_man,
                         pop_man_match_exact,
                         gate_combn) {
   # get counts for each sample
   count_man_vec <- purrr::map_dbl(ind, function(ind_curr) {
-    gh <- data[[ind_curr]]
+    gh <- .data[[ind_curr]]
 
-    # get all data for specified node
+    # get all .data for specified node
     man_stats_tbl <- gh_pop_get_stats(gh, xml = FALSE) # was TRUE
     if (pop_man_match_exact) man_stats_tbl <- man_stats_tbl |> dplyr::filter(pop %in% pop_man)
     if (!pop_man_match_exact) {
@@ -374,7 +374,7 @@
     dplyr::bind_rows() |>
     dplyr::arrange(desc(cut))
   # get the range to search over
-  cps <- c(ex[[attr(ex, "cut")]][nrow(ex)], ex[[attr(ex, "cut")]][1])
+  cps <- c(.get_cut(ex)[nrow(ex)], .get_cut(ex)[1])
   # find the single cutpoint
 
   if (count_man == 0) {
@@ -473,10 +473,9 @@
   purrr::map(ind, function(ind_curr) {
     cut_tbl <- ex_list[[as.character(ind_curr)]] |>
       dplyr::mutate(
-        sample = paste0(batch, "_", stim), # nolint
         expr = cut
       ) |>
-      dplyr::select(sample, ind, ind_cell, expr, everything()) # nolint
+      dplyr::select(ind, ind_cell, expr, everything()) # nolint
     if (exc_min) {
       cut_tbl <- cut_tbl |> dplyr::filter(.data$expr > min(.data$expr)) # nolint
     }
@@ -566,20 +565,20 @@
     if (nrow(ex) < max(min_cell, 5)) {
       cp_vec <- stats::setNames(rep(NA, length(ind_gate)), ind_gate)
     } else {
-      dens <- density(ex[[attr(ex, "cut")]])
+      dens <- density(.get_cut(ex))
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
       .ensure_cytoutils()
       cp <- cytoUtils:::.cytokine_cutpoint(
-        x = ex[[attr(ex, "cut")]], num_peaks = 1,
+        x = .get_cut(ex), num_peaks = 1,
         ref_peak = 1, tol = tol, side = "right",
         strict = FALSE, adjust = adjust
       )
       # if(is.na(cp)) cp <- max(ex[['cut']]) + 0.005 * diff(range(ex[['cut']]))
       if (
-        is.na(cp) || length(ex[[attr(ex, "cut")]]) < min_cell
+        is.na(cp) || length(.get_cut(ex)) < min_cell
       ) {
-        cp <- max(cp_min, max(ex[[attr(ex, "cut")]]) +
-          (max(ex[[attr(ex, "cut")]]) - min(ex[[attr(ex, "cut")]])) / 5)
+        cp <- max(cp_min, max(.get_cut(ex)) +
+          (max(.get_cut(ex)) - min(.get_cut(ex))) / 5)
       }
       cp_vec <- stats::setNames(rep(cp, length(ind_gate)), ind_gate)
     }
@@ -601,17 +600,17 @@
       if (nrow(ex) < max(min_cell, 5)) {
         return(NA)
       }
-      if (length(ex[[attr(ex, "cut")]]) < min_cell) {
+      if (length(.get_cut(ex)) < min_cell) {
         return(
-          max(cp_min, max(ex[[attr(ex, "cut")]]) +
-            (max(ex[[attr(ex, "cut")]]) - min(ex[[attr(ex, "cut")]])) / 5)
+          max(cp_min, max(.get_cut(ex)) +
+            (max(.get_cut(ex)) - min(.get_cut(ex))) / 5)
         )
       }
-      dens <- density(ex[[attr(ex, "cut")]])
+      dens <- density(.get_cut(ex))
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
       .ensure_cytoutils() # nolint
       cytoUtils:::.cytokine_cutpoint(
-        x = ex[[attr(ex, "cut")]], num_peaks = 1,
+        x = .get_cut(ex), num_peaks = 1,
         ref_peak = 1, tol = tol, side = "right",
         strict = FALSE, adjust = adjust
       )
@@ -659,7 +658,7 @@
         ind_x_high = as.numeric(cut > cp)
       )
     fit_alt <- glm(high ~ cut + ind_x_high + diff_from_cut,
-      family = binomial, data = high_ind_tbl
+      family = binomial, .data = high_ind_tbl
     )
     (AIC(fit_alt) - 4 * 2) / -2
   }, numeric(1))
@@ -690,7 +689,7 @@
 }
 
 .test_for_changepoint <- function(high_ind_tbl, ll) {
-  fit_h0 <- glm(high ~ 1, family = binomial, data = high_ind_tbl)
+  fit_h0 <- glm(high ~ 1, family = binomial, .data = high_ind_tbl)
   ll0 <- (AIC(fit_h0) - 1 * 2) / -2
 
   # get test stat
@@ -735,8 +734,8 @@
           high_diff_from_cut = high_ind * diff_from_cut,
           low_diff_from_cut = low_ind * diff_from_cut
         )
-      # fit <- lm(count ~ high_ind + high_diff_from_cut + low_diff_from_cut, data = final_mod_tbl)
-      fit <- glm(count ~ high_diff_from_cut + low_diff_from_cut, data = final_mod_tbl, family = "poisson")
+      # fit <- lm(count ~ high_ind + high_diff_from_cut + low_diff_from_cut, .data = final_mod_tbl)
+      fit <- glm(count ~ high_diff_from_cut + low_diff_from_cut, .data = final_mod_tbl, family = "poisson")
     } else if (n_break == 2) {
       final_mod_tbl <- init_mod_tbl |>
         dplyr::mutate(
@@ -747,7 +746,7 @@
           low_diff_from_cut = low_ind * diff_from_cut
         )
       knots <- c((min(final_mod_tbl[["ex"]]) + cut) / 2, cut)
-      fit <- glm(count ~ splines::bs(ex, knots = knots, degree = 1), data = final_mod_tbl, family = "poisson")
+      fit <- glm(count ~ splines::bs(ex, knots = knots, degree = 1), .data = final_mod_tbl, family = "poisson")
     }
 
     # final_mod_tbl$count - predict(fit))^2)
@@ -805,13 +804,13 @@
 #' on a per-sample (rather than grouped) basis.
 #'
 #' @inheritParams .get_cp
-#' @param data GatingSet. Each element corresponds to a single sample to which the cutpoint(s) in
+#' @param .data GatingSet. Each element corresponds to a single sample to which the cutpoint(s) in
 #' a specified \code{cp_obj} output must be applied.
 #' @param pop character vector. Each element fully specifies the parent population of cells which must be
 #' divided into positive/negative cells based on their individual values for the variable specified by \code{cut}
 #' and the cutpoint(s) specified by \code{cp_obj}.
 #' @param ind list. A list, where each element is a numeric vector specifying the indices of the
-#' GatingHierarchy objects in \code{data} to get the counts and frequency for the
+#' GatingHierarchy objects in \code{.data} to get the counts and frequency for the
 #' cutpoints specified by \code{cp} for.
 #' @param cp_obj list. A list, where each element is a list returned by \code{get_cp}.
 #'
@@ -822,14 +821,14 @@
 #' but does not hold in general.
 #'
 #' Note that this differs from .get_cp_stats_tbl_pop_samples_elem in that
-#' it may apply different cutpoints to different sets of samples within \code{data}. \code{.get_cp_stats_tbl_pop_samples_elem}
+#' it may apply different cutpoints to different sets of samples within \code{.data}. \code{.get_cp_stats_tbl_pop_samples_elem}
 #' applies the single set of cutpoints it receives to all specified samples.
 #'
 #' @return
 #' @return A tibble with columns fcs, pop, type, cp, count and freq, with corresponding
 #' values being the fcs file gated on, parent population, cutpoint type,
 #' cutpoint value, count of positive cells and frequency of positive cells.
-.get_cp_stats_tbl_pop_samples <- function(data, ind, pop, wins, cut, high, cp_obj) {
+.get_cp_stats_tbl_pop_samples <- function(.data, ind, pop, wins, cut, high, cp_obj) {
   purrr::map_df(seq_along(cp_obj), function(i) {
     # get cp_obj that provides the cutpoints
     cp_obj_curr <- cp_obj[[i]]
@@ -839,7 +838,7 @@
 
     # get statistics (count and frequency) from different pop(s) from different samples
     cp_stats_tbl_pop_samples <- .get_cp_stats_tbl_pop_samples_elem(
-      data = data,
+      .data = .data,
       ind = ind[[i]],
       pop = pop,
       wins = wins,
@@ -858,7 +857,7 @@
   mod_tbl <- high_ind_tbl |>
     dplyr::filter(cut >= cp_scp)
 
-  # check if too little data to model with here
+  # check if too little .data to model with here
   if (nrow(mod_tbl) < 5 || length(unique(high_ind_tbl$high)) == 1) {
     print("cp_pwmid set to cp_scp + 5 due to too few obs above cp_sc or too few postive obs")
     return(cp_scp + 5)
@@ -867,11 +866,11 @@
   # model the probability of positivity above this point
   if (nrow(mod_tbl) < 40) {
     fit_pw <- glm(high ~ cut,
-      family = binomial, data = mod_tbl
+      family = binomial, .data = mod_tbl
     )
   } else {
     fit_pw <- glm(high ~ splines::ns(cut, df = 3),
-      family = binomial, data = mod_tbl
+      family = binomial, .data = mod_tbl
     )
   }
 
@@ -910,20 +909,20 @@
 
 
 
-#' @title Get axis labels from annotated data frame
+#' @title Get axis labels from annotated .data frame
 #'
 #' @description Get axis labels for cut and high channels
-#' using the annotated data frame.
+#' using the annotated .data frame.
 #'
-#' @param data GatingHierarchy.
+#' @param .data GatingHierarchy.
 #' Code written to take a GatingHierarchy at present, but this can easily be extended.
 #' @param inheritParams get_cp
 #'
 #' @return A named vector, where the names are the channel names and the
 #' values are the corresponding marker (common) names.
-.get_labs <- function(data, cut, high = NULL) {
-  force(data)
-  adf_data <- flowWorkspace::gh_pop_get_data(data) |>
+.get_labs <- function(.data, cut, high = NULL) {
+  force(.data)
+  adf_data <- flowWorkspace::gh_pop_get_data(.data) |>
     flowCore::parameters() |>
     flowCore::pData()
 

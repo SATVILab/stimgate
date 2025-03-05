@@ -11,7 +11,7 @@
                             debug = FALSE,
                             pop_gate,
                             chnl_lab = NULL,
-                            data,
+                            .data,
                             ind_in_batch_lab,
                             ind_in_batch_gate,
                             fcs,
@@ -28,7 +28,7 @@
 
   chnl_lab <- .get_gate_stats_chnl_lab_get( # nolint
     chnl_lab = chnl_lab,
-    data = data,
+    .data = .data,
     chnl = chnl
   )
 
@@ -43,7 +43,7 @@
     fcs = fcs,
     ind_in_batch_uns = ind_in_batch_uns,
     ind_batch_list = ind_batch_list,
-    data = data
+    .data = .data
   )
   gate_tbl <- .get_gate_stats_gate_tbl_get( # nolint
     gate_tbl = gate_tbl,
@@ -101,7 +101,7 @@
     gate_type_cyt_pos_filter = gate_type_cyt_pos_filter,
     gate_type_single_pos_filter = gate_type_single_pos_filter,
     pop_gate = pop_gate,
-    data = data,
+    .data = .data,
     chnl_lab = chnl_lab,
     cut = params$cut,
     ind_in_batch_lab = ind_in_batch_lab,

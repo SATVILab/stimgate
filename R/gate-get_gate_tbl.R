@@ -1,4 +1,4 @@
-#' @param data GatingSet.
+#' @param .data GatingSet.
 #' Original GatingSet algorithm was applied to, with the same name.
 #' @param pop_gate character.
 #' Name of population to gate.
@@ -15,7 +15,7 @@
 #' @return
 #' Gate table with gates for each sample for each marker.
 #' @export
-get_gate_tbl <- function(data,
+get_gate_tbl <- function(.data,
                          pop_gate,
                          cut,
                          ind_in_batch_lab_vec,

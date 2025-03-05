@@ -5,7 +5,7 @@
 #'
 #' @export
 stimgate_fcs_write <- function(path_project, # project directory
-                               data, # gatingset
+                               .data, # gatingset
                                ind_batch_list, # indices by batch
                                path_dir_save, # directory to save to
                                chnl = NULL, # specific channels to gate on
@@ -26,16 +26,16 @@ stimgate_fcs_write <- function(path_project, # project directory
 
   # get gates
   gate_tbl <- .fcs_write_get_gate_tbl(
-    gate_tbl, chnl, data, ind_batch_list, gate_uns_method,
+    gate_tbl, chnl, .data, ind_batch_list, gate_uns_method,
     gate_cyt, gate_single
   )
 
-  n_fn <- length(data)
+  n_fn <- length(.data)
 
-  purrr::walk(seq_along(data), function(ind) {
+  purrr::walk(seq_along(.data), function(ind) {
     message(paste0("Writing ", ind, " of ", n_fn, " files"))
     .fcs_write_impl(
-      data, ind, gate_tbl, path_dir_save, chnl, mult,
+      .data, ind, gate_tbl, path_dir_save, chnl, mult,
       gate_type_cyt_pos, gate_type_single_pos, combn_exc,
       trans_fn, trans_chnl
     )
@@ -52,7 +52,7 @@ stimgate_fcs_write <- function(path_project, # project directory
 
 .fcs_write_get_gate_tbl <- function(gate_tbl,
                                     chnl,
-                                    data,
+                                    .data,
                                     ind_batch_list,
                                     gate_uns_method,
                                     gate_cyt,
@@ -63,7 +63,7 @@ stimgate_fcs_write <- function(path_project, # project directory
       gate_uns_method, gate_cyt, gate_single, ind_batch_list
     ) |>
     .fcs_write_get_gate_tbl_filter_chnl(chnl) |>
-    .fcs_write_get_gate_tbl_add_marker(chnl, data)
+    .fcs_write_get_gate_tbl_add_marker(chnl, .data)
 }
 
 .fcs_write_gate_gate_tbl_gated <- function(gate_tbl,
@@ -173,8 +173,8 @@ stimgate_fcs_write <- function(path_project, # project directory
   gate_tbl |> dplyr::filter(chnl %in% .env$chnl)
 }
 
-.fcs_write_get_gate_tbl_add_marker <- function(gate_tbl, chnl, data) {
-  chnl_lab_vec <- .get_labs(data = data[[1]], cut = chnl) # nolint
+.fcs_write_get_gate_tbl_add_marker <- function(gate_tbl, chnl, .data) {
+  chnl_lab_vec <- .get_labs(.data = .data[[1]], cut = chnl) # nolint
   gate_tbl |>
     dplyr::mutate(marker = chnl_lab_vec[.data$chnl]) |> # nolint
     dplyr::select(
@@ -188,7 +188,7 @@ stimgate_fcs_write <- function(path_project, # project directory
 # Implementation
 # ================
 
-.fcs_write_impl <- function(data,
+.fcs_write_impl <- function(.data,
                             ind,
                             gate_tbl,
                             path_dir_save,
@@ -200,7 +200,7 @@ stimgate_fcs_write <- function(path_project, # project directory
                             trans_fn,
                             trans_chnl) {
 
-  fr <- .fcs_write_impl_load(data, ind)
+  fr <- .fcs_write_impl_load(.data, ind)
   ex <- flowCore::exprs(fr) |> tibble::as_tibble()
 
   if (is.na(ex[1, chnl[1]]) && nrow(ex) == 1) {
@@ -238,8 +238,8 @@ stimgate_fcs_write <- function(path_project, # project directory
   invisible(TRUE)
 }
 
-.fcs_write_impl_load <- function(data, ind) {
-  fr <- flowWorkspace::gh_pop_get_data(data[[ind]])
+.fcs_write_impl_load <- function(.data, ind) {
+  fr <- flowWorkspace::gh_pop_get_data(.data[[ind]])
   if (inherits(fr, "cytoframe")) {
     fr <- flowWorkspace::cytoframe_to_flowFrame(fr)
   }

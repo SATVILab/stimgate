@@ -2,7 +2,7 @@
 #'
 #' @inheritParams gate # all except those listed below
 #' @inheritParams .get_gate_list # pop_gate, cut, high, fdr, tol, gate_combn
-.get_gate_batch_boot <- function(data,
+.get_gate_batch_boot <- function(.data,
                                  ind_batch,
                                  ind_in_batch_gate,
                                  ind_in_batch_uns,
@@ -32,7 +32,7 @@
 
   # get list of dataframes for manual gating
   gate_tbl_man <- .get_gate_batch_boot_man(
-    pop_man = pop_man, data = data, ind_batch = ind_batch,
+    pop_man = pop_man, .data = .data, ind_batch = ind_batch,
     ind_in_batch_gate = ind_in_batch_gate,
     ind_in_batch_uns = ind_in_batch_uns,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
@@ -43,12 +43,12 @@
   )
 
   # ==========================================
-  # Data
+  # .data
   # ==========================================
 
   # get list of dataframes
   ex_list <- .get_ex_list( # nolint
-    data = data, ind_batch = ind_batch,
+    .data = .data, ind_batch = ind_batch,
     ind_in_batch_gate, ind_in_batch_uns,
     ind_in_batch_lab_vec,
     pop = pop_gate,
@@ -108,7 +108,7 @@
 }
 
 .get_gate_batch_boot_man <- function(pop_man,
-                                     data,
+                                     .data,
                                      ind_batch,
                                      ind_in_batch_gate,
                                      ind_in_batch_uns,
@@ -125,7 +125,7 @@
   }
 
   ex_list_man <- .get_ex_list( # nolint
-    data = data, ind_batch = ind_batch,
+    .data = .data, ind_batch = ind_batch,
     ind_in_batch_gate, ind_in_batch_uns,
     ind_in_batch_lab_vec,
     pop = pop_gate,
@@ -136,7 +136,7 @@
   # calculate manual cutpoint for each sample
   # ---
   gate_list_man <- .get_cp_man( # nolint
-    data = data, ind = ind_batch[ind_in_batch_gate],
+    .data = .data, ind = ind_batch[ind_in_batch_gate],
     ex_list = ex_list_man,
     pop_man = pop_man,
     pop_man_match_exact = pop_man_match_exact,

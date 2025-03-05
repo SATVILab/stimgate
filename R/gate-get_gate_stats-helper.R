@@ -1,9 +1,9 @@
 .get_gate_stats_chnl_lab_get <- function(chnl_lab,
-                                         data,
+                                         .data,
                                          chnl) {
   if (is.null(chnl_lab)) {
     chnl_lab <- .get_labs( # nolint
-      data = data[[1]],
+      .data = .data[[1]],
       cut = chnl
     )
   }
@@ -20,7 +20,7 @@
                                        fcs = NULL,
                                        ind_in_batch_uns = NULL,
                                        ind_batch_list = NULL,
-                                       data = NULL) {
+                                       .data = NULL) {
   if (!is.null(params)) {
     return(params)
   }
@@ -36,7 +36,7 @@
     fcs = fcs,
     ind_in_batch_uns = ind_in_batch_uns,
     ind_batch_list = ind_batch_list,
-    data = data
+    .data = .data
   )
 }
 

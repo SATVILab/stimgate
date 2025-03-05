@@ -1,13 +1,13 @@
 #' @title Calculate the local fdr-based cut
 .get_cp_uns_loc <- function(ex_list, ind_gate, ind_uns, gate_combn,
-                            data, bias_uns = 0,
+                            .data, bias_uns = 0,
                             noise_sd = NULL, bw_min = 80,
                             cp_min, min_cell, params, plot,
                             path_project, debug = FALSE) {
   # get cutpoints for each level of bias
   .get_cp_uns_loc_bias( # nolint
     ex_list = ex_list, ind_gate = ind_gate, ind_uns = ind_uns,
-    data = data, bias_uns = bias_uns, noise_sd = noise_sd,
+    .data = .data, bias_uns = bias_uns, noise_sd = noise_sd,
     cp_min = cp_min, gate_combn = gate_combn, bw_min = bw_min,
     min_cell = min_cell, gate_tbl = params$gate_tbl,
     gate_name_curr = params$gate_name_curr, cut = params$cut,
@@ -19,7 +19,7 @@
 
 
 #' @title Get the unstim-based local fdr-method cutpoint for each level of bias
-.get_cp_uns_loc_bias <- function(ex_list, ind_gate, ind_uns, data,
+.get_cp_uns_loc_bias <- function(ex_list, ind_gate, ind_uns, .data,
                                  bias_uns, noise_sd, cp_min,
                                  gate_combn, bw_min, min_cell,
                                  gate_tbl, gate_name_curr, cut,
@@ -192,7 +192,7 @@
 }
 
 # --------------------------------
-# gate using prejoined data
+# gate using prejoined .data
 # --------------------------------
 .get_cp_uns_loc_gate_combn_prejoin <- function(gate_combn,
                                                ex_list_no_min,
@@ -664,7 +664,7 @@
 }
 
 .get_cp_uns_loc_ind_max_dens_x <- function(ex_tbl_stim_no_min) {
-  max(ex_tbl_stim_no_min$expr) - 0.05 * (diff(range(ex_tbl_stim_no_min$expr)))
+  max(ex_tbl_stim_no_min[[attr(ex_tbl_stim_no_min, "cut")]]) - 0.05 * (diff(range(ex_tbl_stim_no_min$expr)))
 }
 
 .get_cp_uns_loc_ind_check_max_x <- function(ex_tbl_stim_no_min, cp_min) {
@@ -1003,7 +1003,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     scam::scam(
       prob_smooth ~ s(expr, bs = "mpi"), # nolint
       family = "binomial",
-      data = data_mod |>
+      .data = data_mod |>
         dplyr::mutate(
           prob_smooth = pmin(prob_smooth, 0.999),
           prob_smooth = pmax(prob_smooth, 0.001)
@@ -1073,7 +1073,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     scam::scam(
       prob_smooth ~ s(expr, bs = "micv"),
       family = "binomial",
-      data = data_mod,
+      .data = data_mod,
       control = scam::scam.control(
         print.warn = FALSE,
         trace = FALSE,
@@ -1109,7 +1109,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     ex_tbl_uns_threshold$expr
   )
 
-  # get data to smooth over
+  # get .data to smooth over
   data_mod <- .get_cp_uns_loc_get_data_mod(
     ex_tbl_stim_threshold, ex_tbl_stim_no_min, ex_tbl_uns_threshold,
     ex_tbl_uns_bias, prob_tbl_list, cp_min
