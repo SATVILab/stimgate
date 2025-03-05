@@ -27,22 +27,6 @@
                                  plot,
                                  debug) {
   # ==========================================
-  # Get manual gates
-  # ==========================================
-
-  # get list of dataframes for manual gating
-  gate_tbl_man <- .get_gate_batch_boot_man(
-    pop_man = pop_man, .data = .data, ind_batch = ind_batch,
-    ind_in_batch_gate = ind_in_batch_gate,
-    ind_in_batch_uns = ind_in_batch_uns,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-    pop_gate = pop_gate, cut = cut, high = high,
-    gate_combn = gate_combn, data_name = data_name,
-    pop_man_match_exact = pop_man_match_exact,
-    boot_n = boot_n
-  )
-
-  # ==========================================
   # .data
   # ==========================================
 

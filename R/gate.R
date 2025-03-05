@@ -22,12 +22,6 @@
 #'   List elements are as follows:
 #'   \describe{
 #'     \item{cut}{character. Name of channel to get gate for.}
-#'     \item{high}{named numeric vector. Names are channel names and values are
-#'       thresholds above which a value for a given cell in this channel is
-#'       deemed 'high'.}
-#'     \item{fdr}{numeric vector. False discovery rates at which the
-#'       unstim-based gate is to be calculated. Default is \code{c(0.3, 0.2,
-#'       0.1)}.}
 #'     \item{tol}{numeric. Tolerance value for the
 #'       \code{cytoUtils:::.cytokine_cutpoint} method. Default is 0.5e-8 for
 #'       CyTOF and flow.}
@@ -40,21 +34,9 @@
 #'       jointly, whereas all of the others do what they sound like. If not
 #'       specified (i.e. \code{NULL}), then all gates are performed
 #'       individually on each sample. Default is \code{NULL}.
-#'     \item{pop_man}{character vector. Population(s) in GatingHierarchy for
-#'       manual count. If \code{pop_man_match_exact} is true, then it is
-#'       appended to pop_gate, after the addition of a forward slash (so do not
-#'       begin with a forward slash). If \code{pop_man_match_exact} is
-#'       \code{FALSE}, then this is passed through as is, and all pops in the
-#'       GatingHierarchy are checked for a match with any of these characters.}
-#'     \item{pop_man_match_exact}{logical. If \code{TRUE}, then the population
-#'       specified above by pop_man is taken to be exact (after appending to
-#'       pop_gate, in the manner specified above). If \code{FALSE}, then the
-#'       population specified above by pop_man is checked for any match with no
-#'       appending. Default is \code{TRUE}.}
 #'   }
 
 #' @importFrom flowCore exprs<- parameters<-
-#' @import rlang
 #' @export
 stimgate_gate <- function(.data,
                           path_project,
