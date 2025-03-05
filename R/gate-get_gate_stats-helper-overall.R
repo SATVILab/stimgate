@@ -224,14 +224,14 @@
                                                     gate_type_single_pos_calc,
                                                     debug) {
   # filter to yield cells negative for all cytokine combinations
-  ex_list_stim <- ex_list[-ind_in_batch_uns]
-  ex_uns <- ex_list[[ind_in_batch_uns]]
+  ex_list_stim <- ex_list[-length(ex_list)]
+  ex_uns <- ex_list[[length(ex_list)]]
   n_cell_uns <- nrow(ex_uns) # nolint
   purrr::map_df(seq_along(ex_list_stim), function(i) {
     .debug(debug, "i: ", i) # nolint
-    ex <- ex_list[-ind_in_batch_uns][[i]]
+    ex <- ex_list_stim[[i]]
     gate_tbl_gn_ind <- gate_tbl_gn |>
-      dplyr::filter(ind == ex$ind[1]) # nolint
+      dplyr::filter(ind == attr(ex, "ind")) # nolint
     combn_tbl <- purrr::map_df(names(combn_mat_list), function(j) {
       .get_gate_stats_batch_gn_combn(
         j = j,
@@ -270,7 +270,7 @@
   combn_mat <- combn_mat_list[[j]]
   cyt_combn <- cyt_combn_vec_list[[j]]
   stat_tbl_gn_ind <- tibble::tibble(
-    ind = ex$ind[1],
+    ind = attr(ex, "ind"),
     gate_name = gn,
     cyt_combn = cyt_combn,
     count_stim = NA_integer_,
@@ -297,7 +297,7 @@
     stat_tbl_gn_ind[i, "count_uns"] <- sum(
       .get_pos_ind_cyt_combn( # nolint
         ex = ex_uns, gate_tbl = gate_tbl_gn_ind |>
-          dplyr::mutate(ind = ex_uns$ind[1]),
+          dplyr::mutate(ind = attr(ex_uns, "ind")),
         chnl_pos = chnl_pos, chnl_neg = chnl_neg,
         chnl_alt = NULL,
         gate_type_cyt_pos = gate_type_cyt_pos_calc,
@@ -363,7 +363,7 @@
       .debug(debug, "j: ", j) # nolint
       ex <- ex_list[[j]]
       gate_tbl_gn_ind <- gate_tbl_gn |>
-        dplyr::filter(ind == ex$ind[1]) # nolint
+        dplyr::filter(ind == attr(ex, "ind")) # nolint
       nothing_to_gate <- nrow(ex) == 0 ||
         nrow(gate_tbl_gn_ind) == 0 ||
         all(is.na(ex[[chnl_curr]]))
@@ -401,7 +401,7 @@
             ex = ex_uns |>
               dplyr::mutate(is_uns = FALSE),
             gate_tbl = gate_tbl_gn_ind |>
-              dplyr::mutate(ind = ex$ind[1]),
+              dplyr::mutate(ind = attr(ex, "ind")),
             chnl_single_exc = chnl_curr,
             chnl = NULL,
             gate_type_cyt_pos = gate_type_cyt_pos_filter,

@@ -256,12 +256,12 @@
 }
 
 .prepare_data_for_prejoin_ind <- function(ex_list, ind_uns, ind_gate) {
-  ex_tbl_stim <- ex_list[names(ex_list) != ind_uns] |>
+  ex_tbl_stim <- ex_list[seq_len(length(ex_list) - 1)] |>
     dplyr::bind_rows() |>
     dplyr::arrange(dplyr::desc(expr)) # nolint
   list(
     ex_tbl_stim,
-    ex_list[[as.character(ind_uns)]]
+    ex_list[[length(ex_list)]]
   ) |>
     stats::setNames(c(ind_gate[1], ind_uns))
 }

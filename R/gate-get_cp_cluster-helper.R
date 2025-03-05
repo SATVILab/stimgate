@@ -128,7 +128,7 @@
         if (nrow(ex) <= 5) {
           return(NULL)
         }
-        quant_vec <- quantile(ex[["cut"]], c(0.0025, 0.999))
+        quant_vec <- quantile(ex[[attr(ex, "cut")]], c(0.0025, 0.999))
         tibble::tibble(
           lb = quant_vec[[1]],
           ub = 3 * quant_vec[[2]]
@@ -284,7 +284,7 @@
                                             ex_uns,
                                             cp_seq) {
   gate_stats_tbl_curr <- gate_stats_tbl |>
-    dplyr::filter(.data$ind == ex_stim$ind[1]) # nolint
+    dplyr::filter(.data$ind == attr(ex_stim, "ind")) # nolint
   count_stim_vec <- rep(NA, length(cp_seq))
   count_uns_vec <- rep(NA, length(cp_seq))
   for (i in seq_along(cp_seq)) {
@@ -308,9 +308,9 @@
                                             par_list,
                                             cp_seq) {
   tibble::tibble(
-    ind = ex_stim$ind[1], stim = ex_stim$stim[1],
+    ind = attr(ex_stim, "ind"),
     prop_bs_orig = par_list[["bs_orig"]], prop_bs_sd = par_list[["bs_sd"]],
-    cp = cp_seq, max_expr = max(ex_stim[["cut"]], ex_uns[["cyt"]]), # nolint
+    cp = cp_seq, max_expr = max(ex_stim[["cut"]], ex_uns[["cut"]]), # nolint
     count_stim_cp = par_list[["count_stim"]],
     count_uns_cp = par_list[["count_uns"]]
   )
@@ -362,11 +362,7 @@
   if (.get_prop_bs_by_cp_return_early_stim(ex)) {
     return(NULL)
   }
-
-  ex_uns <- .get_cp_cluster_tbl_ex_uns(
-    ind_stim = ex$ind[1], ind_batch_list = ind_batch_list,
-    ind_in_batch_uns = ind_in_batch_uns, data_list = data_list
-  )
+  ex_uns <- data_list[[attr(ex, "ind_uns")]]
 
   if (.get_prop_bs_by_cp_return_early_uns(ex_uns)) {
     return(NULL)
@@ -376,35 +372,7 @@
 }
 
 .get_prop_bs_by_cp_return_early_stim <- function(ex_stim) {
-  if (is.na(ex_stim$cut[1])) {
-    return(TRUE)
-  }
-  ex_stim$stim[1] == "uns"
-}
-
-.get_cp_cluster_tbl_ex_uns <- function(ind_stim,
-                                       ind_batch_list,
-                                       ind_in_batch_uns,
-                                       data_list) {
-  ex_uns_ind <- .get_cp_cluster_tbl_ex_uns_ind(
-    ind_stim, ind_batch_list, ind_in_batch_uns
-  )
-  .get_cp_cluster_tbl_ex_uns_get(data_list, ex_uns_ind)
-}
-.get_cp_cluster_tbl_ex_uns_ind <- function(ind_stim,
-                                           ind_batch_list,
-                                           ind_in_batch_uns) {
-  batch_vec <- .get_batch_from_ind(ind_stim, ind_batch_list) # nolint
-  batch_vec[ind_in_batch_uns]
-}
-
-.get_cp_cluster_tbl_ex_uns_get <- function(data_list,
-                                           ex_uns_ind) {
-  data_list[[
-    which(
-      purrr::map_lgl(data_list, function(x) x$ind[1] == ex_uns_ind)
-    )
-  ]]
+  is.na(ex_stim$cut[1]) || attr(ex, "is_uns")
 }
 
 .get_prop_bs_by_cp_return_early_uns <- function(ex_uns) {
