@@ -55,9 +55,7 @@
   )
 
   # delete locb gates
-  .get_gate_obj_delete_old_gates( # nolint
-    params$bias_uns, params$data_name
-  )
+  .get_gate_obj_delete_old_gates()
 
   # Initial gates
   # ----------------

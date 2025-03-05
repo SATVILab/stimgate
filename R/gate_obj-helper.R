@@ -12,41 +12,29 @@
   }
   pop_man_vec
 }
-.get_gate_obj_delete_old_gates <- function(bias_uns,
-                                           data_name) {
-  for (bias in bias_uns) {
-    dir_save <- file.path(
-      tempdir(),
-      data_name, paste0("cp_locb", bias, "_plots")
-    )
-    if (dir.exists(dir_save)) unlink(dir_save, recursive = TRUE)
+.get_gate_obj_delete_old_gates <- function() {
+  dir_save <- file.path(tempdir(), "stimgate")
+  if (!dir.exists(dir_save)) {
+    return(invisible(FALSE))
   }
+  unlink(dir_save, recursive = TRUE)
+  invisible(TRUE)
 }
 
 # Get gates for each sample within each batch
 .get_gate_obj_pre_adj_gates_gate <- function(ind_batch_list,
                                              .data,
-                                             ind_in_batch_gate,
-                                             ind_in_batch_uns,
-                                             ind_in_batch_lab_vec,
                                              pop_gate,
                                              cut,
-                                             high,
                                              gate_combn,
-                                             pop_man,
-                                             pop_man_match_exact,
                                              tol,
                                              data_name,
-                                             fdr,
                                              noise_sd,
                                              bias_uns,
                                              bw_min,
                                              cp_min,
-                                             boot_n,
-                                             boot_sd,
                                              min_cell,
                                              params,
-                                             plot,
                                              debug) {
   print("getting pre-adjustment gates")
   purrr::map_df(seq_along(ind_batch_list), function(i) {
