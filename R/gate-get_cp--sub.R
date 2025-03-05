@@ -34,14 +34,9 @@
       ]
     }
 
-    if ((!"tol" %in% names(marker_curr)) ||
+    if (!"tol" %in% names(marker_curr) ||
       is.null(marker_curr$tol)) {
-      if (str_detect_any(data_name, c( # nolint
-        "gs_cytof", "gs_proto", "gs_cd8_base",
-        "gs_cytof_acs"
-      ))) {
         marker_curr$tol <- 0.5e-8
-      }
     }
 
     if ((!"gate_combn" %in% names(marker_curr)) |
@@ -139,8 +134,9 @@
         data_name = data_name
       )
       purrr::map_dbl(ex_list, function(ex) {
+        chnl_cut <- attr(ex, "cut")
         abs(
-          diff(quantile(ex$cut[ex$cut > min(ex$cut)], c(0.99, 0.01)),
+          diff(quantile(ex[[chnl_cut]][ex[[chnl_cut]] > min(ex[[chnl_cut]])], c(0.99, 0.01)),
             na.rm = TRUE
           )
         )[[1]]
@@ -186,7 +182,8 @@
         data_name = data_name
       )
       purrr::map_dbl(ex_list, function(ex) {
-        median(ex$cut[ex$cut > min(ex$cut)], na.rm = TRUE)[[1]]
+        chnl_cut <- attr(ex, "cut")
+        median(ex[[chnl_cut]][ex[[chnl_cut]] > min(ex[[chnl_cut]])], na.rm = TRUE)[[1]]
       })
     }
   ) |>
@@ -345,14 +342,15 @@
       # get current expression tibble
       ex <- ex_list[[as.character(ind_curr)]] |> dplyr::arrange(desc(cut))
       # get the range to search over
-      cps <- c(ex$cut[nrow(ex)], ex$cut[1])
+      chnl_cut <- attr(ex, "cut")
+      cps <- c(ex[[chnl_cut]][nrow(ex)], ex[[chnl_cut]][1])
       # return max observed value + a fraction of range if count is zero
       if (count_man == 0) {
         return(cps[2] + (cps[2] - cps[1]) / 200)
       }
 
       # get cutpoint for this sample
-      (ex$cut[count_man] + ex$cut[count_man + 1]) / 2
+      (ex[[chnl_cut]][count_man] + ex[[chnl_cut]][count_man + 1]) / 2
     }) |>
       stats::setNames(ind)
 
@@ -376,7 +374,7 @@
     dplyr::bind_rows() |>
     dplyr::arrange(desc(cut))
   # get the range to search over
-  cps <- c(ex$cut[nrow(ex)], ex$cut[1])
+  cps <- c(ex[[attr(ex, "cut")]][nrow(ex)], ex[[attr(ex, "cut")]][1])
   # find the single cutpoint
 
   if (count_man == 0) {
@@ -568,20 +566,20 @@
     if (nrow(ex) < max(min_cell, 5)) {
       cp_vec <- stats::setNames(rep(NA, length(ind_gate)), ind_gate)
     } else {
-      dens <- density(ex[["cut"]])
+      dens <- density(ex[[attr(ex, "cut")]])
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
       .ensure_cytoutils()
       cp <- cytoUtils:::.cytokine_cutpoint(
-        x = ex[["cut"]], num_peaks = 1,
+        x = ex[[attr(ex, "cut")]], num_peaks = 1,
         ref_peak = 1, tol = tol, side = "right",
         strict = FALSE, adjust = adjust
       )
       # if(is.na(cp)) cp <- max(ex[['cut']]) + 0.005 * diff(range(ex[['cut']]))
       if (
-        is.na(cp) || length(ex[["cut"]]) < min_cell
+        is.na(cp) || length(ex[[attr(ex, "cut")]]) < min_cell
       ) {
-        cp <- max(cp_min, max(ex[["cut"]]) +
-          (max(ex[["cut"]]) - min(ex[["cut"]])) / 5)
+        cp <- max(cp_min, max(ex[[attr(ex, "cut")]]) +
+          (max(ex[[attr(ex, "cut")]]) - min(ex[[attr(ex, "cut")]])) / 5)
       }
       cp_vec <- stats::setNames(rep(cp, length(ind_gate)), ind_gate)
     }
@@ -603,17 +601,17 @@
       if (nrow(ex) < max(min_cell, 5)) {
         return(NA)
       }
-      if (length(ex[["cut"]]) < min_cell) {
+      if (length(ex[[attr(ex, "cut")]]) < min_cell) {
         return(
-          max(cp_min, max(ex[["cut"]]) +
-            (max(ex[["cut"]]) - min(ex[["cut"]])) / 5)
+          max(cp_min, max(ex[[attr(ex, "cut")]]) +
+            (max(ex[[attr(ex, "cut")]]) - min(ex[[attr(ex, "cut")]])) / 5)
         )
       }
-      dens <- density(ex[["cut"]])
+      dens <- density(ex[[attr(ex, "cut")]])
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
       .ensure_cytoutils() # nolint
       cytoUtils:::.cytokine_cutpoint(
-        x = ex[["cut"]], num_peaks = 1,
+        x = ex[[attr(ex, "cut")]], num_peaks = 1,
         ref_peak = 1, tol = tol, side = "right",
         strict = FALSE, adjust = adjust
       )
@@ -932,14 +930,7 @@
   if (!is.null(high)) {
     cut_lab <- adf_data[["desc"]][[which(adf_data$name == cut)]] |>
       stats::setNames(cut)
-    high_lab_vec <- purrr::map(seq_along(high), function(i) {
-      high_lab <- adf_data[["desc"]][[
-        which(adf_data$name == names(high)[i])
-      ]] |>
-        stats::setNames(names(high)[i])
-    }) |>
-      unlist()
-    return(c(cut_lab, high_lab_vec))
+    return(cut_lab)
   }
 
   purrr::map_chr(cut, function(cut_curr) {
