@@ -11,7 +11,7 @@ str_detect_any <- function(string, pattern) {
                          ind_batch,
                          batch,
                          pop,
-                         cut,
+                         chnl_cut,
                          extra_chnl = NULL) {
   # get expression .data for each batch
   lapply(ind_batch, function(i) {

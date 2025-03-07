@@ -4,7 +4,7 @@
                                gate_tbl,
                                gate_name,
                                chnl,
-                               cut,
+                               chnl_cut,
                                chnl_lab,
                                filter_other_cyt_pos,
                                combn,
@@ -114,7 +114,7 @@
     .data = .data,
     ind_batch = ind_batch,
     pop = pop_gate,
-    cut = unique(gate_tbl$chnl)
+    chnl_cut = unique(gate_tbl$chnl)
   )
 
   purrr::map_df(gate_name, function(gn) {
@@ -451,7 +451,7 @@
 
 .get_stats_update_combn_n <- function(combn,
                                       stat_tbl,
-                                      cut,
+                                      chnl_cut,
                                       chnl_lab) {
   if (combn) {
     return(stat_tbl)
@@ -459,8 +459,8 @@
   if ((!"chnl" %in% colnames(stat_tbl))) {
     stat_tbl <- stat_tbl |>
       dplyr::mutate(
-        chnl = cut,
-        marker = chnl_lab[cut]
+        chnl = chnl_cut,
+        marker = chnl_lab[chnl_cut]
       )
   }
   if ((!"marker" %in% colnames(stat_tbl))) {

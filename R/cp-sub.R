@@ -54,7 +54,7 @@
     bias_uns = marker_settings$bias_uns,
     .data = .data,
     pop_gate = pop_gate,
-    cut = marker,
+    chnl_cut = marker,
     debug = debug,
     ind_batch_list = ind_batch_list
   )
@@ -68,7 +68,7 @@
     cp_min = marker_settings$cp_min,
     .data = .data,
     pop_gate = pop_gate,
-    cut = marker,
+    chnl_cut = marker,
     debug = debug,
     ind_batch_list = ind_batch_list
   )
@@ -87,7 +87,7 @@
 .complete_marker_list_bias_uns <- function(bias_uns,
                                            .data,
                                            pop_gate,
-                                           cut,
+                                           chnl_cut,
                                            debug,
                                            ind_batch_list) {
   if (!is.null(bias_uns)) {
@@ -98,7 +98,7 @@
     ind_batch_list = ind_batch_list,
     .data = .data,
     pop_gate = pop_gate,
-    cut = cut
+    chnl_cut = chnl_cut
   )
   (mean_range / 12) |> signif(3)
 }
@@ -106,7 +106,7 @@
 .complete_marker_list_bias_uns_get_mean_range <- function(ind_batch_list,
                                                           .data,
                                                           pop_gate,
-                                                          cut) {
+                                                          chnl_cut) {
   purrr::map(
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
@@ -141,7 +141,7 @@
 .complete_marker_list_cp_min <- function(cp_min,
                                          .data,
                                          pop_gate,
-                                         cut,
+                                         chnl_cut,
                                          debug,
                                          ind_batch_list) {
   if (!is.null(cp_min)) {
@@ -200,7 +200,7 @@
   purrr::map(ind, function(ind_curr) {
     cut_tbl <- ex_list[[as.character(ind_curr)]] |>
       dplyr::mutate(
-        expr = cut
+        expr = chnl_cut
       ) |>
       dplyr::select(ind, ind_cell, expr, everything()) # nolint
     if (exc_min) {
@@ -273,7 +273,7 @@
 #' @inheritParams .wins_ex
 .get_cp_tg <- function(ex_list,
                        gate_combn,
-                       cut,
+                       chnl_cut,
                        ind_gate,
                        exc_min,
                        tol,
@@ -287,8 +287,8 @@
   if ("prejoin" %in% gate_combn) {
     .debug(debug, "prejoin")
     ex <- dplyr::bind_rows(ex_list)
-    ex <- ex |> dplyr::filter(!is.na(cut))
-    if (exc_min) ex <- ex |> dplyr::filter(cut > min(cut))
+    ex <- ex |> dplyr::filter(!is.na(chnl_cut))
+    if (exc_min) ex <- ex |> dplyr::filter(chnl_cut > min(chnl_cut))
     if (nrow(ex) < max(min_cell, 5)) {
       cp_vec <- stats::setNames(rep(NA, length(ind_gate)), ind_gate)
     } else {
@@ -300,7 +300,6 @@
         ref_peak = 1, tol = tol, side = "right",
         strict = FALSE, adjust = adjust
       )
-      # if(is.na(cp)) cp <- max(ex[['cut']]) + 0.005 * diff(range(ex[['cut']]))
       if (
         is.na(cp) || length(.get_cut(ex)) < min_cell
       ) {
@@ -322,8 +321,8 @@
       .debug(debug, "ind", ind)
       # print(ind)
       ex <- ex_list[[as.character(ind)]]
-      ex <- ex |> dplyr::filter(!is.na(cut))
-      if (exc_min) ex <- ex |> dplyr::filter(cut > min(cut))
+      ex <- ex |> dplyr::filter(!is.na(chnl_cut))
+      if (exc_min) ex <- ex |> dplyr::filter(chnl_cut > min(chnl_cut))
       if (nrow(ex) < max(min_cell, 5)) {
         return(NA)
       }
@@ -401,7 +400,7 @@
 #' @return A tibble with columns fcs, pop, type, cp, count and freq, with corresponding
 #' values being the fcs file gated on, parent population, cutpoint type,
 #' cutpoint value, count of positive cells and frequency of positive cells.
-.get_cp_stats_tbl_pop_samples <- function(.data, ind, pop, wins, cut, high, cp_obj) {
+.get_cp_stats_tbl_pop_samples <- function(.data, ind, pop, wins, chnl_cut, high, cp_obj) {
   purrr::map_df(seq_along(cp_obj), function(i) {
     # get cp_obj that provides the cutpoints
     cp_obj_curr <- cp_obj[[i]]
@@ -428,7 +427,7 @@
 .get_cp_pwmid <- function(high_ind_tbl, cp_scp) {
   # get table to model - all values above changepoint
   mod_tbl <- high_ind_tbl |>
-    dplyr::filter(cut >= cp_scp)
+    dplyr::filter(chnl_cut >= cp_scp)
 
   # check if too little .data to model with here
   if (nrow(mod_tbl) < 5 || length(unique(high_ind_tbl$high)) == 1) {
@@ -438,7 +437,7 @@
 
   # model the probability of positivity above this point
   if (nrow(mod_tbl) < 40) {
-    fit_pw <- glm(high ~ cut,
+    fit_pw <- glm(high ~ chnl_cut,
       family = binomial, .data = mod_tbl
     )
   } else {
@@ -448,13 +447,13 @@
   }
 
   # get predictions over a range of cut values
-  pred_tbl <- tibble::tibble(cut = seq(min(mod_tbl$cut), max(mod_tbl$cut)))
+  pred_tbl <- tibble::tibble(chnl_cut = seq(min(mod_tbl$chnl_cut), max(mod_tbl$chnl_cut)))
   pred_vec <- predict(fit_pw, pred_tbl, type = "response")
   pred_tbl <- pred_tbl |> dplyr::mutate(pred = pred_vec)
 
   # find prediction in between middle and max
   min <- mean(
-    high_ind_tbl |> dplyr::filter(cut < cp_scp) |> dplyr::pull("high")
+    high_ind_tbl |> dplyr::filter(chnl_cut < cp_scp) |> dplyr::pull("high")
   )
   max <- max(pred_tbl$pred)
   mid_prob <- mean(c(max, min))
@@ -462,17 +461,17 @@
   # find the cutpoint that minimises the difference
   # objective function
   opt_func <- function(x) {
-    pred_tbl <- tibble::tibble(cut = x)
+    pred_tbl <- tibble::tibble(chnl_cut = x)
     pred_vec <- predict(fit_pw, pred_tbl, type = "response")
     (pred_vec - mid_prob)^2
   }
   # initial search parameter
-  init_par <- mean(c(cp_scp, max(high_ind_tbl$cut)))
+  init_par <- mean(c(cp_scp, max(high_ind_tbl$chnl_cut)))
   # optimisation
   optim(init_par,
     fn = opt_func,
     method = "Brent", lower = cp_scp,
-    upper = max(high_ind_tbl$cut)
+    upper = max(high_ind_tbl$chnl_cut)
   )$par
 }
 
@@ -493,21 +492,21 @@
 #'
 #' @return A named vector, where the names are the channel names and the
 #' values are the corresponding marker (common) names.
-.get_labs <- function(.data, cut, high = NULL) {
+.get_labs <- function(.data, chnl_cut, high = NULL) {
   force(.data)
   adf_data <- flowWorkspace::gh_pop_get_data(.data) |>
     flowCore::parameters() |>
     flowCore::pData()
 
   if (!is.null(high)) {
-    cut_lab <- adf_data[["desc"]][[which(adf_data$name == cut)]] |>
-      stats::setNames(cut)
+    cut_lab <- adf_data[["desc"]][[which(adf_data$name == chnl_cut)]] |>
+      stats::setNames(chnl_cut)
     return(cut_lab)
   }
 
   purrr::map_chr(chnl_cut, function(cut_curr) {
     adf_data[["desc"]][[which(adf_data$name == cut_curr)]]
   }) |>
-    stats::setNames(cut)
+    stats::setNames(chnl_cut)
 }
 

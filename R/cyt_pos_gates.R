@@ -22,7 +22,7 @@
   # chnl_lab
   chnl_lab_vec <- .get_labs( # nolint
     .data = .data[[1]],
-    cut = chnl_vec
+    chnl_cut= chnl_vec
   )
 
   # params object
@@ -134,7 +134,7 @@
   ex <- .get_ex( # nolint
     .data = .data[[ind]],
     pop = pop_gate,
-    cut = chnl_vec, ind = ind,
+    chnl_cut = chnl_vec, ind = ind,
     ind_uns = ind_uns,
     batch = batch
   )
@@ -142,7 +142,7 @@
   ex_uns <- .get_ex( # nolint
     .data = .data[[ind_uns]],
     pop = pop_gate, # nolint
-    cut = chnl_vec,
+    chnl_cut = chnl_vec,
     ind = ind,
     ind_uns = ind_uns,
     batch = batch

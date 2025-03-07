@@ -138,7 +138,7 @@
                                bias_uns,
                                cp_min,
                                min_cell,
-                               cut,
+                               chnl_cut,
                                tol,
                                bw_min,
                                params,
@@ -158,7 +158,7 @@
   purrr::map_df(gate_name_vec, function(gate_name_curr) {
     .debug(debug, "getting single-pos gate", gate_name_curr) # nolint
     gate_tbl_gn_marker <- gate_tbl |>
-      dplyr::filter(gate_name == gate_name_curr, chnl == params$cut) # nolint
+      dplyr::filter(gate_name == gate_name_curr, chnl == params$chnl_cut) # nolint
 
     gate_name_tbl_row <- gate_tbl_gn_marker[1, , drop = FALSE]
 
@@ -187,7 +187,7 @@
           .get_pos_ind_but_single_pos_for_one_cyt( # nolint
             ex = ex_list[[i]],
             gate_tbl = gate_tbl_gn_ind,
-            chnl_single_exc = params$cut,
+            chnl_single_exc = params$chnl_cut,
             chnl = NULL,
             gate_type_cyt_pos = ifelse(params$calc_cyt_pos_gates,
               "cyt", "base"
