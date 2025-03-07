@@ -240,8 +240,8 @@
 .prepare_data_for_prejoin_ind <- function(ex_list) {
   ind_uns <- names(ex_list)[length(ex_list)]
   ex_tbl_stim <- ex_list[seq_len(length(ex_list) - 1)] |>
-    dplyr::bind_rows() |>
-    dplyr::arrange(dplyr::desc(expr)) # nolint
+    dplyr::bind_rows()
+  ex_tbl_stim <- ex_tbl_stim[order(.get_cut(ex_tbl_stim)), ]
   list(
     ex_tbl_stim,
     ex_list[[length(ex_list)]]
@@ -368,7 +368,7 @@
 .arrange_samples_by_desc_expr <- function(ex_list) {
   # arrange in descending order of expression
   ex_list |>
-    purrr::map(function(x) x |> dplyr::arrange(desc(expr))) # nolint
+    purrr::map(function(x)  x[order(.get_cut(x)), ]) # nolint
 }
 
 .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn <- function(debug,
@@ -875,10 +875,12 @@
     ex_tbl_stim_no_min, ex_tbl_uns_threshold
   )
 
-  data_mod <- ex_tbl_stim_threshold |>
-    dplyr::filter(expr >= # nolint
-      (min(.get_cp_uns_loc_get_min_prob_x(prob_tbl_list$pos) - margin))) |>
-    dplyr:::mutate(prob_smooth = expr)
+  data_mod <- ex_tbl_stim_threshold
+  data_mod <- data_mod[
+    .get_cut(data_mod) >=
+      (min(.get_cp_uns_loc_get_min_prob_x(prob_tbl_list$pos) - margin)),
+  ]
+  data_mod[, "prob_smooth"] <- .get_cut(data_mod)
   if (nrow(data_mod) == 0L) {
     return(.get_cp_uns_loc_ind_check_out(
       cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias,
@@ -932,8 +934,11 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 .get_cp_uns_loc_get_prob_smooth_actual_first <- function(data_mod, debug) {
   .debug(debug, "Smoothing I") # nolint
   try(
+    fml <- as.formula(paste0(
+      "prob_smooth ~ s(", attr(data_mod, "chnl_cut"), ", bs = 'mpi')"
+    ))
     scam::scam(
-      prob_smooth ~ s(expr, bs = "mpi"), # nolint
+      fml, # nolint
       family = "binomial",
       .data = data_mod |>
         dplyr::mutate(
@@ -1002,8 +1007,11 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 .get_cp_uns_loc_get_prob_smooth_actual_second <- function(data_mod, debug) {
   .debug(debug, "Smoothing II") # nolint
   try(
+    fml <- as.formula(paste0(
+      "prob_smooth ~ s(", attr(data_mod, "chnl_cut"), ", bs = 'micv')"
+    ))
     scam::scam(
-      prob_smooth ~ s(expr, bs = "micv"),
+      fml,
       family = "binomial",
       .data = data_mod,
       control = scam::scam.control(
@@ -1104,9 +1112,9 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   } else {
     min_val <- min(.get_cut(data_mod))
   }
+  data_mod <- data_mod[.get_cut(data_mod) > min_val, ]
+  data_mod <- data_mod[order(.get_cut(data_mod)), ]
   data_mod |>
-    dplyr::filter(expr > min_val) |> # nolint
-    dplyr::arrange(expr) |>
     dplyr::mutate(n_row = seq_len(dplyr::n())) |>
     dplyr::filter(cumsum(pred > prob_smooth) != n_row) |> # nolint
     dplyr::select(-n_row)
@@ -1123,21 +1131,20 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                                          ex_tbl_uns_bias,
                                                          ex_tbl_uns_orig,
                                                          bias) {
-  data_count |>
-    dplyr::arrange(desc(expr)) |> # nolint
+  data_count <- data_count[order(.get_cut(data_count)), ]
+  data_count <- data_count |>
     dplyr::mutate(count_stim = seq_len(dplyr::n())) |>
     dplyr::mutate(
-      prop_stim = count_stim / nrow(ex_tbl_stim_orig), # nolint
-      prop_uns = purrr::map_dbl(expr, function(x) {
-        # work out proportion greater than the threshold,
-        # adding back the bias that was removed
-        # and dividing by the number of unstim cells
-        # (before any were removed due to being cytokine-positive).
-        # TODO: think about how to handle:
-        # - bias
-        # - cytokine-positive cells having been removed
-        sum(.get_cut(ex_tbl_uns_orig) >= x) / nrow(ex_tbl_uns_orig)
-      }),
+      prop_stim = count_stim / nrow(ex_tbl_stim_orig)
+    )
+  prop_uns_vec <- purrr::map_df(.get_cut(data_count), function(x) {
+    sum(.get_cut(ex_tbl_uns_orig) >= x) / nrow(ex_tbl_uns_orig)
+  })
+  data_count <- data_count |>
+    dplyr::mutate(
+      prop_uns = prop_uns_vec,
+    ) |>
+    dplyr::mutate(
       prop_bs = prop_stim - prop_uns, # nolint
       prop_bs_diff = prop_bs - prop_bs_est # nolint
     )
@@ -1154,10 +1161,10 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
       "Too few responding cells"
     )[["cp"]])
   }
-  data_threshold |>
+  data_threshold <- data_threshold |>
     dplyr::filter(abs(prop_bs_diff) == min(abs(prop_bs_diff))) |> # nolint
     dplyr::slice(1) |>
-    dplyr::pull(expr) # nolint
+    .get_cut()
 }
 
 .get_cp_uns_loc_output <- function(debug,

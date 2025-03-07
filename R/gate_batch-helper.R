@@ -144,10 +144,10 @@
                                path_project) {
   .debug(debug, "params$gate_tbl is not NULL") # nolint
   .debug(debug, paste0("Gating batch ", batch))
+
   # =================================
   # get pre-adj and -clust gates for each gate type
   # =================================
-
 
   gate_tbl <- .gate_batch_single_tbl_format(params$gate_tbl)
 

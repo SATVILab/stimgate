@@ -38,7 +38,6 @@
     pop_gate = pop_gate,
     chnl_cut = chnl_cut,
     gate_combn = gate_combn,
-    tol = tol,
     chnl_lab = chnl_lab_vec,
     noise_sd = noise_sd,
     bias_uns = bias_uns,

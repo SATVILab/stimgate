@@ -164,7 +164,7 @@ stimgate_gate <- function(path_project,
   print("")
   # loop over markers
   purrr::walk(marker, function(marker_curr) {
-    print(paste0("chnl: ", marker_curr$chnl_cut))
+    print(paste0("chnl: ", marker_curr))
     # get gates for each sample within each batch
 
     gate_obj <- .gate_marker( # nolint
@@ -228,7 +228,7 @@ stimgate_gate <- function(path_project,
   }
   # loop over markers
   purrr::walk(marker, function(marker_curr) {
-    print(paste0("chnl: ", marker_curr$chnl_cut))
+    print(paste0("chnl: ", marker_curr))
     # get gates for each sample within each batch
 
     gate_obj <- .gate_marker( # nolint
