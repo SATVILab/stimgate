@@ -708,6 +708,7 @@
     .get_cut(ex_tbl_uns_threshold),
     from = min(dens_stim$x), to = max(dens_stim$x), bw = bw
   )
+  dens_obj$y <- dens_obj$y * attr(ex_tbl_uns_threshold, "prob_g_min")
 }
 
 .get_cp_uns_loc_get_dens_raw_tabulate <- function(stim_x,
