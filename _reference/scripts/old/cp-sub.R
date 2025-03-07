@@ -152,3 +152,35 @@
   max_max_pt
 }
 
+#' @title Get named vector specifying gate combination method for each cutpoint type
+#'
+#' @inheritParams get_cp # gate_batch_combn, fdr
+# get gate_batch_combn vec
+#'
+#' @return Named character vector,
+#' where all elements together represent names of all cutpoints.
+#' Each element name is name of a cutpoint,
+#' and corresponding value is name of gate combination
+#' method for that cutpoint.
+.get_gate_combn_list <- function(gate_combn, fdr) {
+  # get all possible cp types
+  cp_type_vec_full <- gate_combn |>
+    unlist() |>
+    unique()
+  # cp_type_vec_full <- .get_full_cp_type_vec(fdr = fdr)
+
+  # get gating method for each type of gate
+  purrr::map(cp_type_vec_full, function(x) {
+    gate_combn_vec <- c()
+    for (i in seq_along(gate_combn)) {
+      if (x %in% gate_combn[[i]]) {
+        gate_combn_vec <- c(gate_combn_vec, names(gate_combn)[i])
+      }
+    }
+    if (!length(gate_combn_vec)) {
+      return(stats::setNames(list("no"), x))
+    }
+    list(gate_combn_vec) |> stats::setNames(x)
+  }) |>
+    flatten()
+}

@@ -42,7 +42,7 @@
 .get_cp_cluster_prop_bs_by_cp_tbl_obj <- function(gs,
                                                   gate_tbl,
                                                   ind_batch_list,
-                                                  cut,
+                                                  chnl_cut,
                                                   pop_gate,
                                                   calc_cyt_pos_gates,
                                                   cp_min,
@@ -58,7 +58,7 @@
     gs = gs,
     gate_tbl = gate_tbl,
     ind_batch_list = ind_batch_list,
-    cut = cut,
+    chnl_cut,
     pop_gate = pop_gate,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     max_cp = max_cp,
@@ -86,7 +86,7 @@
 .get_prop_bs_by_cp_tbl_data_list <- function(gs,
                                              gate_tbl,
                                              ind_batch_list,
-                                             cut,
+                                             chnl_cut,
                                              pop_gate,
                                              calc_cyt_pos_gates,
                                              max_cp,
@@ -94,12 +94,14 @@
                                              cp_min,
                                              debug) {
   .debug(debug, "Getting .data list") # nolint
-  data_list <- purrr::map(ind_batch_list, function(ind_batch) {
+  data_list <- purrr::map(seq_along(ind_batch_list), function(i) {
+    ind_batch <- ind_batch_list[[i]]
     ex_list <- .get_ex_list( # nolint
       .data = gs, # nolint
       ind_batch = ind_batch,
       pop = pop_gate,
-      cut = cut
+      chnl_cut,
+      batch = names(ind_batch_list)[i]
     )
 
     # range of expressions
@@ -119,7 +121,7 @@
       }
     )
 
-    expr_min <- quantile(expr_range_tbl[["cut"]], 0.0025)
+    expr_min <- quantile(expr_range_tbl[["lb"]], 0.0025)
     expr_max <- max(expr_range_tbl[["ub"]])
 
     # filter to yield cells negative for all cytokine combinations
@@ -137,7 +139,7 @@
           .get_pos_ind_but_single_pos_for_one_cyt( # nolint
             ex = ex_list[[i]],
             gate_tbl = gate_tbl_ind,
-            chnl_single_exc = cut,
+            chnl_single_exc = chnl_cut,
             chnl = NULL,
             gate_type_cyt_pos = ifelse(calc_cyt_pos_gates,
               "cyt", "base"
@@ -158,7 +160,7 @@
         x <- x |>
           dplyr::mutate(n_cell = nrow(x))
         x_out <- x |>
-          dplyr::filter(x[["cut"]] >= min(.env$cp_min, max(x[["cut"]]))) # nolint
+          dplyr::filter(.get_cut(x) >= min(.env$cp_min, max(.get_cut(x)))) # nolint
         if (nrow(x_out) == 0) {
           x_out <- x[1, ] |>
             dplyr::select(batch:stim) # nolint
@@ -270,8 +272,8 @@
   count_uns_vec <- rep(NA, length(cp_seq))
   for (i in seq_along(cp_seq)) {
     cp <- cp_seq[i]
-    count_stim_vec[i] <- sum(ex_stim[["chnl"]] > cp) # nolint
-    count_uns_vec[i] <- sum(ex_uns[["chnl"]] > cp) # nolint
+    count_stim_vec[i] <- sum(.get_cut(ex_stim) > cp) # nolint
+    count_uns_vec[i] <- sum(.get_cut(ex_uns) > cp) # nolint
   }
   prop_bs_sd <- gate_stats_tbl_curr$prop_bs_sd
   prop_bs_orig <- gate_stats_tbl_curr$prop_bs
@@ -291,7 +293,7 @@
   tibble::tibble(
     ind = attr(ex_stim, "ind"),
     prop_bs_orig = par_list[["bs_orig"]], prop_bs_sd = par_list[["bs_sd"]],
-    cp = cp_seq, max_expr = max(ex_stim[["cut"]], ex_uns[["cut"]]), # nolint
+    cp = cp_seq, max_expr = max(.get_cut(ex_stim), .get_cut(ex_uns)), # nolint
     count_stim_cp = par_list[["count_stim"]],
     count_uns_cp = par_list[["count_uns"]]
   )
@@ -368,7 +370,7 @@
                                          gs,
                                          filter_other_cyt_pos,
                                          calc_cyt_pos_gates,
-                                         cut,
+                                         chnl_cut,
                                          expr_min,
                                          expr_max,
                                          pop_gate,
@@ -380,19 +382,20 @@
   min_threshold <- .get_cp_cluster_dens_tbl_get_min_threshold(
     gate_tbl, control
   )
-  dens_tbl <- purrr::map_df(ind_batch_list, function(ind_batch) {
+  dens_tbl <- purrr::map(seq_along(ind_batch_list), function(i) {
+    ind_batch <- ind_batch_list[[i]]
     ex_list <- .get_cp_cluster_dens_tbl_get_batch_prep_ex_list(
       gs = gs, ind_batch = ind_batch,
-      pop_gate = pop_gate, cut = cut,
+      pop_gate = pop_gate, chnl_cut,
       filter_other_cyt_pos = filter_other_cyt_pos,
       gate_tbl = gate_tbl, calc_cyt_pos_gates = calc_cyt_pos_gates,
-      control = control, debug = debug
+      control = control, debug = debug, batch = names(ind_batch_list)[i]
     )
 
     purrr::map_df(ex_list, function(x) {
       .get_cp_cluster_dens_tbl_get_actual_ind(
-        expr_vec = x[["cut"]], batch_sh = x$batch_sh,
-        ind = attr(x, "ind"), min_threshold = min_threshold, cut = cut,
+        expr_vec = .get_cut(x), batch = .get_batch_ex,
+        ind = attr(x, "ind"), min_threshold = min_threshold, chnl_cut,
         expr_min = expr_min, expr_max = expr_max, bw = bw, debug = debug
       )
     })
@@ -408,7 +411,7 @@
 
 
 .get_cp_cluster_dens_tbl_get_actual_ind <- function(expr_vec,
-                                                    batch_sh,
+                                                    batch,
                                                     ind,
                                                     min_threshold,
                                                     cut,
@@ -418,7 +421,7 @@
                                                     debug) {
   if (.get_cp_cluster_dens_tbl_get_actual_ind_early_return_check(expr_vec)) { # nolint
     return(.get_cp_cluster_dens_tbl_get_actual_ind_early_return(
-      batch_sh, ind
+      batch, ind
     ))
   }
   dens <- density(
@@ -426,7 +429,7 @@
     from = expr_min, to = expr_max, bw = bw
   )
   tibble::tibble(
-    batch_sh = batch_sh[[1]], stim = stim[[1]], ind = ind[[1]],
+    batch = batch[[1]], stim = stim[[1]], ind = ind[[1]],
     y = dens[["y"]], x = dens[["x"]],
     x_ind = paste0("x", seq_len(length(dens[["y"]])))
   ) |>
@@ -442,10 +445,10 @@
     length(expr_vec[expr_vec > min(expr_vec)]) < 3
   }
 
-.get_cp_cluster_dens_tbl_get_actual_ind_early_return <- function(batch_sh,
+.get_cp_cluster_dens_tbl_get_actual_ind_early_return <- function(batch,
                                                                  ind) {
   tibble::tibble(
-    batch_sh = batch_sh[1], ind = ind[1],
+    batch = batch[1], ind = ind[1],
     y = rep(NA, 512), x = paste0("x", seq.int(from = 1, to = 512))
   ) |>
     tidyr::pivot_wider(names_from = x, values_from = y) # nolint
@@ -471,6 +474,7 @@
 
 .get_cp_cluster_dens_tbl_get_batch_prep_ex_list <- function(gs,
                                                             ind_batch,
+                                                            batch,
                                                             pop_gate,
                                                             cut,
                                                             filter_other_cyt_pos, # nolint
@@ -479,8 +483,8 @@
                                                             control,
                                                             debug) {
   ex_list <- .get_ex_list( # nolint
-    .data = ind_batch = ind_batch,
-    pop = pop_gate, cut = cut
+    .data = gs, ind_batch = ind_batch,
+    pop = pop_gate, chnl_cut, batch = batch
   )
 
   if (!filter_other_cyt_pos) {
@@ -491,13 +495,13 @@
   # except possible this cytokine single-positive
   .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter(
     debug = debug, ex_list = ex_list,
-    cut = cut, gate_tbl = gate_tbl, calc_cyt_pos_gates = calc_cyt_pos_gates
+    chnl_cut, gate_tbl = gate_tbl, calc_cyt_pos_gates = calc_cyt_pos_gates
   )
 }
 
 .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter <- function(debug,
                                                                    ex_list,
-                                                                   cut,
+                                                                   chnl_cut,
                                                                    gate_tbl,
                                                                    calc_cyt_pos_gates) { # nolint
   .debug(debug, "Filtering other cytokine positive cells") # nolint
@@ -506,7 +510,7 @@
       return(ex_list[[i]])
     }
     .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter_ind(
-      ex_list[[i]], gate_tbl, cut, calc_cyt_pos_gates
+      ex_list[[i]], gate_tbl, chnl_cut, calc_cyt_pos_gates
     )
   }) |>
     stats::setNames(names(ex_list))
@@ -516,14 +520,14 @@
 
 .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter_ind <- function(ex_tbl,
                                                                        gate_tbl,
-                                                                       cut,
+                                                                       chnl_cut,
                                                                        calc_cyt_pos_gates) { # nolint
 
   pos_ind_vec_but_single_pos_curr <-
     .get_pos_ind_but_single_pos_for_one_cyt( # nolint
       ex = ex_tbl,
       gate_tbl = gate_tbl[gate_tbl[["ind"]] == attr(ex_tbl, "ind"), ],
-      chnl_single_exc = cut,
+      chnl_single_exc = chnl_cut,
       chnl = NULL,
       gate_type_cyt_pos = if (calc_cyt_pos_gates) "cyt" else "base",
       gate_type_single_pos = "base"
@@ -734,7 +738,7 @@
 }
 
 .get_cp_cluster_gate_summ_stat_tbl_get <- function(gate_tbl,
-                                                   cut,
+                                                   chnl_cut,
                                                    grp_ind_lab_vec,
                                                    debug) {
   .debug( # nolint
@@ -742,7 +746,7 @@
   )
   if ("chnl" %in% names(gate_tbl)) {
     gate_tbl <- gate_tbl |>
-      dplyr::filter(.data$chnl == .env$cut) # nolint
+      dplyr::filter(.data$chnl == .env$chnl_cut) # nolint
   }
   gate_tbl |>
     dplyr::mutate(grp = grp_ind_lab_vec[as.character(ind)]) |> # nolint
@@ -913,7 +917,7 @@
   }
 
 .get_cp_cluster_cp_impute_missing_batch <- function(cp_tbl,
-                                                    cut,
+                                                    chnl_cut,
                                                     gate_tbl,
                                                     dens_tbl,
                                                     debug) {
@@ -987,7 +991,7 @@
 }
 
 .get_cp_cluster_impute_missing_ind <- function(cp_tbl,
-                                               cut,
+                                               chnl_cut,
                                                gate_tbl,
                                                dens_tbl,
                                                debug) {
@@ -1032,7 +1036,7 @@
 }
 
 .get_cp_cluster_impute_missing_final <- function(cp_tbl,
-                                                 cut,
+                                                 chnl_cut,
                                                  gate_tbl,
                                                  dens_tbl,
                                                  debug) {
@@ -1077,7 +1081,7 @@
 }
 
 .get_cp_cluster_impute_missing_final_batch <- function(cp_tbl,
-                                                       cut,
+                                                       chnl_cut,
                                                        gate_tbl,
                                                        dens_tbl,
                                                        debug) {

@@ -45,7 +45,7 @@
     gs = gs,
     gate_tbl = gate_tbl,
     ind_batch_list = params$ind_batch_list,
-    cut = params$cut,
+    chnl_cut = params$chnl_cut,,
     pop_gate = params$pop_gate,
     calc_cyt_pos_gates = params$calc_cyt_pos_gates,
     cp_min = cp_min,
@@ -64,7 +64,7 @@
     gs = gs,
     filter_other_cyt_pos = filter_other_cyt_pos,
     calc_cyt_pos_gates = params$calc_cyt_pos_gates,
-    cut = params$cut,
+    chnl_cut = params$chnl_cut,,
     expr_min = expr_min,
     expr_max = expr_max,
     pop_gate = params$pop_gate,
@@ -99,7 +99,7 @@
   # bind onto the summary statistics the group
   # labels
   dens_tbl_join <- dens_tbl |>
-    dplyr::group_by(batch_sh, stim, ind) |> # nolint
+    dplyr::group_by(batch, ind) |> # nolint
     dplyr::slice(1) |>
     dplyr::ungroup()
   dens_tbl_join <- dens_tbl_join[, c("ind", "grp")]
@@ -128,7 +128,7 @@
 
   gate_summ_stat_tbl <- .get_cp_cluster_gate_summ_stat_tbl_get( # nolint
     gate_tbl = gate_tbl,
-    cut = params$cut,
+    chnl_cut = params$chnl_cut,,
     grp_ind_lab_vec = grp_ind_lab_vec,
     debug = debug
   )
@@ -200,7 +200,7 @@
 
   cp_tbl <- .get_cp_cluster_cp_impute_missing_batch( # nolint
     cp_tbl = cp_tbl,
-    cut = params$cut,
+    chnl_cut = params$chnl_cut,,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl,
     debug = debug
@@ -208,7 +208,7 @@
 
   cp_tbl <- .get_cp_cluster_impute_missing_ind( # nolint
     cp_tbl = cp_tbl,
-    cut = params$cut,
+    chnl_cut = params$chnl_cut,,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl,
     debug = debug
@@ -216,7 +216,7 @@
 
   cp_tbl <- .get_cp_cluster_impute_missing_final( # nolint
     cp_tbl = cp_tbl,
-    cut = params$cut,
+    chnl_cut = params$chnl_cut,,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl,
     debug = debug
@@ -224,7 +224,7 @@
 
   cp_tbl <- .get_cp_cluster_impute_missing_final_batch( # nolint
     cp_tbl = cp_tbl,
-    cut = params$cut,
+    chnl_cut = params$chnl_cut,,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl,
     debug = debug

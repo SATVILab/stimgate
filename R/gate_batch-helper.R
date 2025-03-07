@@ -1,5 +1,6 @@
 .gate_batch_all <- function(debug,
                             ind_batch,
+                            batch,
                             ex_list,
                             gate_combn,
                             .data,
@@ -7,14 +8,13 @@
                             bias_uns,
                             cp_min,
                             min_cell,
-                            cut,
                             tol,
                             bw_min,
                             params,
                             path_project) {
   .debug(debug, "params$gate_tbl is NULL") # nolint
   .debug( # nolint
-    debug, "gating ind_batch_list", paste0(ind_batch, collapse = "-") # nolint
+    debug, "gating ", paste0(ind_batch, collapse = "-") # nolint
   )
 
   # create bare list
@@ -40,7 +40,7 @@
       gate_list[[paste0("tg_ctrl_", tol)]] <- .get_cp_tg( # nolint
         ex_list = ex_list,
         gate_combn = "no",
-        cut = cut,
+        chnl_cut,
         tol = params$tol_ctrl,
         exc_min = TRUE,
         min_cell = 0,
@@ -55,7 +55,7 @@
     gate_list[["tg_clust"]] <- .get_cp_tg( # nolint
       ex_list = ex_list,
       gate_combn = "no",
-      cut = cut, tol = params$tol_gate,
+      chnl_cut, tol = params$tol_gate,
       exc_min = TRUE,
       min_cell = 0,
       cp_min = 0,
@@ -131,6 +131,7 @@
 
 .gate_batch_single <- function(debug,
                                ind_batch,
+                               batch,
                                ex_list,
                                .data,
                                noise_sd,
@@ -143,6 +144,7 @@
                                params,
                                path_project) {
   .debug(debug, "params$gate_tbl is not NULL") # nolint
+  .debug(debug, paste0("Gating batch ", batch))
   # =================================
   # get pre-adj and -clust gates for each gate type
   # =================================
@@ -201,7 +203,7 @@
       "tg" = .get_cp_tg( # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
         gate_combn = gate_name_tbl_row$gate_combn,
-        cut = cut, tol = tol,
+        chnl_cut, tol = tol,
         ind_gate = ind_batch[ind_in_batch_gate],
         exc_min = TRUE,
         min_cell = min_cell,
@@ -245,7 +247,7 @@
       gate_list <- .get_cp_tg( # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
         gate_combn = "no",
-        cut = cut, tol = params$tol_ctrl,
+        chnl_cut, tol = params$tol_ctrl,
         exc_min = TRUE,
         min_cell = min_cell,
         cp_min = cp_min,
@@ -270,7 +272,7 @@
       gate_list <- .get_cp_tg( # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
         gate_combn = "no",
-        cut = cut,
+        chnl_cut,
         tol = params$tol_gate_single,
         exc_min = TRUE,
         min_cell = min_cell,

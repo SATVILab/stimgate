@@ -129,7 +129,7 @@ k
 
   gate_tbl <- gate_tbl |>
     dplyr::arrange(gate_name, chnl, marker, ind) # nolint
-  params[["cut"]] <- chnl[1]
+  params[["chnl_cut"]] <- chnl[1]
   dir_save <- file.path(path_project, chnl[1])
   fn_rds <- "gate_tbl.rds"
   fn_csv <- "gate_tbl.csv"

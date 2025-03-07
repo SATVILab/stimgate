@@ -57,7 +57,7 @@
   stat_tbl <- .get_stats_update_combn_n( # nolint
     combn = combn,
     stat_tbl = stat_tbl,
-    cut = cut,
+    chnl_cut,
     chnl_lab = chnl_lab
   )
 

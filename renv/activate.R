@@ -2,8 +2,8 @@
 local({
 
   # the requested version of renv
-  version <- "1.0.11.9000"
-  attr(version, "sha") <- "12f7d7be5b740428664a99f01157e0173d4d8ca3"
+  version <- "1.1.1"
+  attr(version, "sha") <- NULL
 
   # the project directory
   project <- Sys.getenv("RENV_PROJECT")
@@ -135,12 +135,12 @@ local({
   
     # R help links
     pattern <- "`\\?(renv::(?:[^`])+)`"
-    replacement <- "`\033]8;;ide:help:\\1\a?\\1\033]8;;\a`"
+    replacement <- "`\033]8;;x-r-help:\\1\a?\\1\033]8;;\a`"
     text <- gsub(pattern, replacement, text, perl = TRUE)
   
     # runnable code
     pattern <- "`(renv::(?:[^`])+)`"
-    replacement <- "`\033]8;;ide:run:\\1\a\\1\033]8;;\a`"
+    replacement <- "`\033]8;;x-r-run:\\1\a\\1\033]8;;\a`"
     text <- gsub(pattern, replacement, text, perl = TRUE)
   
     # return ansified text
@@ -559,6 +559,9 @@ local({
   
     # prepare download options
     token <- renv_bootstrap_github_token()
+    if (is.null(token))
+      token <- ""
+  
     if (nzchar(Sys.which("curl")) && nzchar(token)) {
       fmt <- "--location --fail --header \"Authorization: token %s\""
       extra <- sprintf(fmt, token)
@@ -1134,10 +1137,10 @@ local({
   
   renv_bootstrap_exec <- function(project, libpath, version) {
     if (!renv_bootstrap_load(project, libpath, version))
-      renv_bootstrap_run(version, libpath)
+      renv_bootstrap_run(project, libpath, version)
   }
   
-  renv_bootstrap_run <- function(version, libpath) {
+  renv_bootstrap_run <- function(project, libpath, version) {
   
     # perform bootstrap
     bootstrap(version, libpath)
@@ -1148,7 +1151,7 @@ local({
   
     # try again to load
     if (requireNamespace("renv", lib.loc = libpath, quietly = TRUE)) {
-      return(renv::load(project = getwd()))
+      return(renv::load(project = project))
     }
   
     # failed to download or load renv; warn the user

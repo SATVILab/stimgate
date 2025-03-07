@@ -30,19 +30,22 @@
 
 #' @importFrom flowCore exprs<- parameters<-
 #' @export
-stimgate_gate <- function(.data,
-                          path_project,
-                          pop_gate,
-                          marker,
+stimgate_gate <- function(path_project,
+                          .data,
                           batch_list,
+                          marker,
+                          pop_gate = "root",
                           bias_uns = NULL,
                           cp_min = NULL,
                           bw_min = NULL,
-                          min_cell = 10,
-                          max_pos_prob_x,
+                          min_cell = 1e2,
+                          max_pos_prob_x = Inf,
                           gate_quant = c(0.25, 0.75),
+                          tol = 0.5e-8,
+                          gate_combn = NULL,
                           tol_ctrl = NULL,
                           tol_gate = NULL,
+                          marker_settings = NULL,
                           calc_cyt_pos_gates = TRUE,
                           calc_single_pos_gates = TRUE,
                           tol_gate_single = NULL,
@@ -52,15 +55,22 @@ stimgate_gate <- function(.data,
   # get unspecified levels in marker elements
   marker <- .complete_marker_list( # nolint
     marker = marker,
+    bias_uns = bias_uns,
     .data = .data,
     pop_gate = pop_gate,
-    cut = cut,
-    debug = debug,
-    bias_uns = bias_uns,
+    ind_batch_list = batch_list,
     bw_min = bw_min,
     cp_min = cp_min,
-    ind_batch_list = batch_list
+    min_cell = min_cell,
+    tol = tol,
+    max_pos_prob_x = max_pos_prob_x,
+    gate_combn = gate_combn,
+    marker_settings = marker_settings,
+    debug = debug
   )
+
+  batch_list <- batch_list |>
+    stats::setNames(paste0("batch_", seq_along(batch_list)))
 
   # inital gates
   .gate_init(
@@ -169,7 +179,7 @@ stimgate_gate <- function(.data,
       bw_min = marker_curr$bw_min,
       cp_min = marker_curr$cp_min,
       min_cell = marker_curr$min_cell,
-      max_pos_prob_x = max_pos_prob_x,
+      max_pos_prob_x = marker_curr$max_pos_prob_x,
       gate_quant = gate_quant,
       tol_ctrl = tol_ctrl,
       tol_gate = tol_gate,
@@ -233,7 +243,7 @@ stimgate_gate <- function(.data,
       bw_min = marker_curr$bw_min,
       cp_min = marker_curr$cp_min,
       min_cell = marker_curr$min_cell,
-      max_pos_prob_x = max_pos_prob_x,
+      max_pos_prob_x =  marker_curr$max_pos_prob_x,
       gate_quant = gate_quant,
       tol_ctrl = tol_ctrl,
       tol_gate = tol_gate,
