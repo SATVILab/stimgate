@@ -83,6 +83,7 @@
   .debug(debug, "Getting cyt+ gates for gate_name: ", gn) # nolint
   cp_tbl_cyt <- purrr::map_df(seq_along(.data), function(ind) {
     ind_uns <- .get_ind_uns(ind, ind_batch_list)
+    batch <- .get_batch(ind, ind_batch_list)
     .get_cyt_pos_gates_ind( # nolint
       ind = ind,
       .data = .data,
@@ -94,7 +95,8 @@
       bw_min = bw_min,
       debug = debug,
       calc_cyt_pos = calc_cyt_pos,
-      path_project = path_project
+      path_project = path_project,
+      batch = batch
     )
   }) |>
     purrr::compact() |>
@@ -119,6 +121,7 @@
                                    bw_min,
                                    debug,
                                    calc_cyt_pos,
+                                   batch,
                                    path_project) {
   .debug(debug, "Getting cyt+ gates for ind: ", ind) # nolint
 
@@ -129,17 +132,20 @@
 
   # get expression dataframe
   ex <- .get_ex( # nolint
-    .data = .data[[ind]], pop = pop_gate,
+    .data = .data[[ind]],
+    pop = pop_gate,
     cut = chnl_vec, ind = ind,
     ind_uns = ind_uns,
-    data_name = data_name
+    batch = batch
   )
 
   ex_uns <- .get_ex( # nolint
     .data = .data[[ind_uns]],
     pop = pop_gate, # nolint
-    cut = chnl_vec, ind = ind,
-    is_uns = TRUE
+    cut = chnl_vec,
+    ind = ind,
+    ind_uns = ind_uns,
+    batch = batch
   )
 
   # gates

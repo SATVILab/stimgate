@@ -14,7 +14,6 @@
                                             cut,
                                             gate_combn,
                                             tol,
-                                            data_name,
                                             noise_sd,
                                             bias_uns,
                                             bw_min,
@@ -34,19 +33,18 @@
       .data = .data,
       ind_batch = ind_batch_list[[i]],
       pop_gate = pop_gate,
-      cut = cut,
+      chnl_cut = params$chnl_cut,,
       gate_combn = gate_combn,
       tol = tol,
-      data_name = data_name,
       noise_sd = noise_sd,
       bias_uns = bias_uns,
       bw_min = bw_min,
       cp_min = cp_min,
       min_cell = min_cell,
       params = params,
+      batch = names(ind_batch_list)[i],
       debug = debug
     ) |>
-      dplyr::mutate(batch = i) |>
       dplyr::select(
         gate_name, gate_type, gate_combn, # nolint
         batch, ind, gate, everything() # nolint
@@ -73,7 +71,7 @@
       tol_gate = tol_gate,
       gate_tbl = gate_tbl,
       params = params,
-      cut = cut,
+      chnl_cut,
       .data = .data,
       bw_min = bw_min,
       path_project = path_project,
@@ -87,7 +85,7 @@
       gate_tbl = gate_tbl,
       gate_tbl_params = gate_tbl_params,
       params = params,
-      cut = cut,
+      chnl_cut,
       .data = .data,
       calc_cyt_pos_gates = TRUE,
       path_project = path_project,
@@ -265,7 +263,7 @@
   gate_stats_tbl <- .gate_marker_gate_adj_gates_single_stats_tbl_get(
     gate_tbl = gate_tbl,
     params = params,
-    cut = cut,
+    chnl_cut,
     .data = .data,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     path_project = path_project,

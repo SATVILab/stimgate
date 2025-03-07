@@ -24,13 +24,13 @@ get_gate_tbl <- function(.data,
                          ind_in_batch_uns,
                          path_project) {
 
-  purrr::map_df(cut, function(cut_curr) {
+  purrr::map_df(chnl_cut, function(cut_curr) {
     # get stats tbl
     gate_stats <- readRDS(file.path(path_project, cut_curr, "gate_stats_tbl"))
 
     gate_stats <- gate_stats |>
       dplyr::mutate(cut = cut_curr, marker = chnl_lab_vec[cut_curr]) |>
-      dplyr::select(cut, marker, everything())
+      dplyr::select(chnl_cut, marker, everything())
 
     gate_stats
   })

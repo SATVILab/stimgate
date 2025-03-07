@@ -10,8 +10,8 @@
     .data = .data, bias_uns = bias_uns, noise_sd = noise_sd,
     cp_min = cp_min, gate_combn = gate_combn, bw_min = bw_min,
     min_cell = min_cell, gate_tbl = params$gate_tbl,
-    gate_name_curr = params$gate_name_curr, cut = params$cut,
-    calc_cyt_pos_gates = params$calc_cyt_pos_gates,
+    gate_name_curr = params$gate_name_curr, chnl_cut = params$chnl_cut,,
+    calc_cyt_pos_gates = params$calcdd_cyt_pos_gates,
     path_project = path_project, debug = debug
   )
 }
@@ -47,7 +47,7 @@
       min_cell = min_cell,
       gate_tbl = gate_tbl,
       gate_name_curr = gate_name_curr,
-      cut = cut,
+      chnl_cut,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
       bias = bias,
       path_project = path_project,
@@ -134,7 +134,7 @@
     ex_list_orig = ex_list_orig, ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min,
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
-    gate_name_curr = gate_name_curr, cut = cut,
+    gate_name_curr = gate_name_curr, chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias, path_project = path_project, debug = debug
   )
@@ -147,7 +147,7 @@
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min,
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
-    gate_name_curr = gate_name_curr, cut = cut,
+    gate_name_curr = gate_name_curr, chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias, path_project = path_project, debug = debug
   )
@@ -210,7 +210,7 @@
     min_cell = min_cell,
     gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr,
-    cut = cut,
+    chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias,
     path_project = path_project,
@@ -280,7 +280,7 @@
     min_cell = min_cell,
     gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr,
-    cut = cut,
+    chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias,
     path_project = path_project,
@@ -320,7 +320,7 @@
     min_cell = min_cell,
     gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr,
-    cut = cut,
+    chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias,
     non_prejoin_combn = non_prejoin_combn,
@@ -353,57 +353,22 @@
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min,
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
-    gate_name_curr = gate_name_curr, cut = cut,
+    gate_name_curr = gate_name_curr, chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias, path_project = path_project,
     ind_stim = names(ex_list_no_min_stim)[-length(ex_list_no_min_stim)]
   )
-  p_list <-
-    .get_cp_uns_loc_gate_combn_prejoin_non_actual_plot_org(
-      cp_uns_list_nonjoin, debug, ex_list_orig, path_project
-    )
+
   cp_uns_list_nonjoin <- .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn(
     debug, cp_uns_list_nonjoin, non_prejoin_combn
   )
-  list("cp" = cp_uns_list_nonjoin, "p_list" = p_list)
+  list("cp" = cp_uns_list_nonjoin, "p_list" = list())
 }
 
 .arrange_samples_by_desc_expr <- function(ex_list) {
   # arrange in descending order of expression
   ex_list |>
     purrr::map(function(x) x |> dplyr::arrange(desc(expr))) # nolint
-}
-
-.get_cp_uns_loc_gate_combn_prejoin_non_actual_plot_org <- function(cp_uns_list_nonjoin, # nolint
-                                                                   debug,
-                                                                   ex_list_orig,
-                                                                   path_project) { # nolint
-  # get list of plots organised
-  # ---------------------------
-  .debug(debug, "Organising plots") # nolint
-
-  indices_name_vec <- paste0(
-    names(cp_uns_list_nonjoin[["loc"]]),
-    collapse = "_"
-  )
-  sample_name_vec <- purrr::map_chr(
-    names(cp_uns_list_nonjoin[["p_list"]]),
-    function(ind) {
-      paste0(
-        ex_list_orig[[ind]]$batch_sh[1],
-        "_", ex_list_orig[[ind]]$stim[1]
-      )
-    }
-  )
-
-  p_list_sample_level <- stats::setNames(
-    cp_uns_list_nonjoin[["p_list"]],
-    sample_name_vec
-  )
-
-  stats::setNames(
-    list(p_list_sample_level), indices_name_vec
-  )
 }
 
 .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn <- function(debug,
@@ -480,7 +445,7 @@
       gate_tbl = gate_tbl,
       ex_tbl_stim_no_min = ex_list_no_min_stim[[i]],
       gate_name = gate_name_curr,
-      cut = cut,
+      chnl_cut,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
       bias = bias,
       ex_tbl_uns_bias = ex_tbl_uns_bias
@@ -631,7 +596,7 @@
 }
 
 .get_cp_uns_loc_ind_max_dens_x <- function(ex_tbl_stim_no_min) {
-  max(ex_tbl_stim_no_min[[attr(ex_tbl_stim_no_min, "cut")]]) - 0.05 * (diff(range(ex_tbl_stim_no_min$expr)))
+  max(ex_tbl_stim_no_min[[attr(ex_tbl_stim_no_min, "chnl_cut")]]) - 0.05 * (diff(range(ex_tbl_stim_no_min$expr)))
 }
 
 .get_cp_uns_loc_ind_check_max_x <- function(ex_tbl_stim_no_min, cp_min) {

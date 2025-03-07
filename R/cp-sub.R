@@ -4,59 +4,84 @@
 #' @data_name 'gs_cytof' or `gs_proto`. Name of dataset to be gated in R environment.
 #'
 #' @return
+
 .complete_marker_list <- function(marker,
                                   bias_uns,
                                   .data,
                                   pop_gate,
-                                  cut,
-                                  debug,
+                                  ind_batch_list,
                                   bw_min,
                                   cp_min,
-                                  ind_batch_list) {
+                                  min_cell,
+                                  tol,
+                                  max_pos_prob_x,
+                                  gate_combn,
+                                  marker_settings,
+                                  debug) {
+  marker_settings_common <- list(
+    bias_uns = bias_uns, cp_min = cp_min, bw_min = bw_min,
+    min_cell = min_cell, tol = tol, gate_combn = gate_combn,
+    max_pos_prob_x = max_pos_prob_x
+  )
   purrr::map(marker, function(marker_curr) {
-    if (!"min_cell" %in% names(marker_curr)) {
-      marker_curr$min_cell <- 1e2
-    }
-
-    if (!"tol" %in% names(marker_curr) ||
-      is.null(marker_curr$tol)) {
-        marker_curr$tol <- 0.5e-8
-    }
-
-    if ((!"gate_combn" %in% names(marker_curr)) |
-      is.null(marker_curr$gate_combn)) {
-      marker_curr$gate_combn <- NULL
-    }
-    marker_curr$gate_combn <- .get_gate_combn_list(
-      gate_combn = marker_curr$gate_combn,
-      fdr = marker_curr$fdr
-    )
-
-    marker_curr$bias_uns <- .complete_marker_list_bias_uns(
-      bias_uns = marker_curr$bias_uns,
+   .complete_marker_list_ind(
+      marker = marker_curr,
+      marker_settings_common = marker_settings_common,
+      marker_settings_spec = list(cut = marker_curr) |>
+        append(marker_settings[[marker_curr]]),
       .data = .data,
       pop_gate = pop_gate,
-      cut = marker_curr$cut,
       debug = debug,
       ind_batch_list = ind_batch_list
     )
-
-    marker_curr$bw_min <- .complete_marker_list_min_bw(
-      bw_min = bw_min,
-      bias_uns = max(marker_curr$bias_uns)
-    )
-
-    marker_curr$cp_min <- .complete_marker_list_cp_min(
-      cp_min = cp_min,
-      .data = .data,
-      pop_gate = pop_gate,
-      cut = marker_curr$cut,
-      debug = debug,
-      ind_batch_list = ind_batch_list
-    )
-
-    marker_curr
   })
+}
+
+.complete_marker_list_ind <- function(marker_settings_common,
+                                      marker_settings_spec,
+                                      marker,
+                                      .data,
+                                      pop_gate,
+                                      debug,
+                                      ind_batch_list) {
+
+  marker_settings <- .complete_marker_list_add_common(
+    marker_settings_common = marker_settings_common,
+    marker_settings = marker_settings_spec
+  )
+
+  marker_settings$bias_uns <- .complete_marker_list_bias_uns(
+    bias_uns = marker_settings$bias_uns,
+    .data = .data,
+    pop_gate = pop_gate,
+    cut = marker,
+    debug = debug,
+    ind_batch_list = ind_batch_list
+  )
+
+  marker_settings$bw_min <- .complete_marker_list_min_bw(
+    bw_min = marker_settings$bw_min,
+    bias_uns = max(marker_settings$bias_uns)
+  )
+
+  marker_settings$cp_min <- .complete_marker_list_cp_min(
+    cp_min = marker_settings$cp_min,
+    .data = .data,
+    pop_gate = pop_gate,
+    cut = marker,
+    debug = debug,
+    ind_batch_list = ind_batch_list
+  )
+
+  marker_settings
+}
+
+.complete_marker_list_add_common <- function(marker_settings_common,
+                                             marker_settings) {
+  marker_settings |>
+    append(marker_settings_common[
+      setdiff(names(marker_settings_common), names(marker_settings))
+    ])
 }
 
 .complete_marker_list_bias_uns <- function(bias_uns,
@@ -86,9 +111,11 @@
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
       ex_list <- .get_ex_list( # nolint
-        .data = .data, ind_batch = ind_batch_list[[i]],
+        .data = .data,
+        ind_batch = ind_batch_list[[i]],
         pop = pop_gate,
-        cut = cut
+        chnl_cut,
+        batch = names(ind_batch_list)[i]
       )
       purrr::map_dbl(ex_list, function(ex) {
         abs(
@@ -128,7 +155,8 @@
         .data = .data,
         ind_batch = ind_batch_list[[i]],
         pop = pop_gate,
-        cut = cut
+        chnl_cut,
+        batch = names(ind_batch_list)[i]
       )
       purrr::map_dbl(ex_list, function(ex) {
         median(.get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))], na.rm = TRUE)[[1]]
@@ -140,36 +168,6 @@
 }
 
 
-#' @title Get named vector specifying gate combination method for each cutpoint type
-#'
-#' @inheritParams get_cp # gate_batch_combn, fdr
-# get gate_batch_combn vec
-#'
-#' @return Named character vector, where all elements together represent names of all cutpoints.
-#' Each element name is name of a cutpoint, and corresponding value is name of gate combination
-#' method for that cutpoint.
-.get_gate_combn_list <- function(gate_combn, fdr) {
-  # get all possible cp types
-  cp_type_vec_full <- gate_combn |>
-    unlist() |>
-    unique()
-  # cp_type_vec_full <- .get_full_cp_type_vec(fdr = fdr)
-
-  # get gating method for each type of gate
-  purrr::map(cp_type_vec_full, function(x) {
-    gate_combn_vec <- c()
-    for (i in seq_along(gate_combn)) {
-      if (x %in% gate_combn[[i]]) {
-        gate_combn_vec <- c(gate_combn_vec, names(gate_combn)[i])
-      }
-    }
-    if (!length(gate_combn_vec)) {
-      return(stats::setNames(list("no"), x))
-    }
-    list(gate_combn_vec) |> stats::setNames(x)
-  }) |>
-    flatten()
-}
 
 #' @title Get all cp type names
 #'
@@ -417,7 +415,7 @@
       ind = ind[[i]],
       pop = pop,
       wins = wins,
-      cut = cut,
+      chnl_cut,
       high = high,
       cp = cp_vec
     )
@@ -444,7 +442,7 @@
       family = binomial, .data = mod_tbl
     )
   } else {
-    fit_pw <- glm(high ~ splines::ns(cut, df = 3),
+    fit_pw <- glm(high ~ splines::ns(chnl_cut, df = 3),
       family = binomial, .data = mod_tbl
     )
   }
@@ -507,7 +505,7 @@
     return(cut_lab)
   }
 
-  purrr::map_chr(cut, function(cut_curr) {
+  purrr::map_chr(chnl_cut, function(cut_curr) {
     adf_data[["desc"]][[which(adf_data$name == cut_curr)]]
   }) |>
     stats::setNames(cut)
