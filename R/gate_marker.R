@@ -2,7 +2,7 @@
 .gate_marker <- function(.data,
                          ind_batch_list,
                          pop_gate,
-                         cut,
+                         chnl_cut,
                          gate_combn,
                          tol,
                          noise_sd,
@@ -29,7 +29,7 @@
   # named
   chnl_lab_vec <- .get_labs( # nolint
     .data = .data[[ind_batch_list[[1]]]],
-    cut = cut
+    chnl_cut = chnl_cut
   )
 
   # get parameters

@@ -164,14 +164,14 @@ stimgate_gate <- function(path_project,
   print("")
   # loop over markers
   purrr::walk(marker, function(marker_curr) {
-    print(paste0("chnl: ", marker_curr$cut))
+    print(paste0("chnl: ", marker_curr$chnl_cut))
     # get gates for each sample within each batch
 
     gate_obj <- .gate_marker( # nolint
       .data = .data,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate,
-      cut = marker_curr$cut,
+      chnl_cut = marker_curr$chnl_cut,
       gate_combn = marker_curr$gate_combn,
       tol = marker_curr$tol,
       noise_sd = NULL,
@@ -192,7 +192,7 @@ stimgate_gate <- function(path_project,
     saveRDS(
       gate_obj$gate_tbl,
       file = file.path(
-        path_project, marker_curr$cut, "gate_tbl_init.rds"
+        path_project, marker_curr$chnl_cut, "gate_tbl_init.rds"
       )
     )
   })
@@ -228,14 +228,14 @@ stimgate_gate <- function(path_project,
   }
   # loop over markers
   purrr::walk(marker, function(marker_curr) {
-    print(paste0("chnl: ", marker_curr$cut))
+    print(paste0("chnl: ", marker_curr$chnl_cut))
     # get gates for each sample within each batch
 
     gate_obj <- .gate_marker( # nolint
       .data = .data,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate_curr,
-      cut = marker_curr$cut,
+      chnl_cut = marker_curr$chnl_cut,
       gate_combn = marker_curr$gate_combn,
       tol = marker_curr$tol,
       noise_sd = NULL,
@@ -255,7 +255,7 @@ stimgate_gate <- function(path_project,
 
     saveRDS(
       gate_obj$gate_tbl,
-      file = file.path(path_project, marker_curr$cut, "gate_tbl.rds")
+      file = file.path(path_project, marker_curr$chnl_cut, "gate_tbl.rds")
     )
 
   })
@@ -293,7 +293,7 @@ stimgate_gate <- function(path_project,
     debug = debug,
     save = save,
     pop_gate = pop_gate,
-    chnl = purrr::map_chr(marker, function(x) x$cut),
+    chnl = purrr::map_chr(marker, function(x) x$chnl_cut),
     ind_batch_list = ind_batch_list,
     .data = .data,
     save_gate_tbl = save_gate_tbl,

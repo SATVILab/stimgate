@@ -4,7 +4,7 @@
   if (is.null(chnl_lab)) {
     chnl_lab <- .get_labs( # nolint
       .data = .data[[1]],
-      cut = chnl
+      chnl_cut = chnl
     )
   }
   chnl_lab
@@ -117,8 +117,8 @@ k
   }
   if (!"chnl" %in% colnames(gate_tbl)) {
     gate_tbl <- gate_tbl |> dplyr::mutate(
-      chnl = params$cut,
-      marker = params$chnl_lab[params$cut]
+      chnl = params$chnl_cut,
+      marker = params$chnl_lab[params$chnl_cut]
     )
   }
 

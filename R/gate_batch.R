@@ -5,7 +5,7 @@
 .gate_batch <- function(.data,
                         ind_batch,
                         pop_gate,
-                        cut,
+                        chnl_cut,
                         gate_combn,
                         tol,
                         noise_sd,
@@ -30,13 +30,13 @@
     .gate_batch_all(
       debug, ind_batch, batch,
       ex_list, gate_combn, .data, noise_sd, bias_uns, cp_min,
-      min_cell, cut, tol, bw_min, params, path_project
+      min_cell, chnl_cut, tol, bw_min, params, path_project
     )
   } else {
     .gate_batch_single(
       debug, ind_batch, batch,
       ex_list, .data, noise_sd,
-      bias_uns, cp_min, min_cell, cut, tol, bw_min, params,
+      bias_uns, cp_min, min_cell, chnl_cut, tol, bw_min, params,
       path_project
     )
   }

@@ -354,11 +354,11 @@
 }
 
 .get_prop_bs_by_cp_return_early_stim <- function(ex_stim) {
-  is.na(ex_stim$cut[1]) || attr(ex, "is_uns")
+  is.na(.get_cut(ex_stim)[1]) || attr(ex, "is_uns")
 }
 
 .get_prop_bs_by_cp_return_early_uns <- function(ex_uns) {
-  is.na(ex_uns$cut[1])
+  is.na(.get_cut(ex_uns)[1])
 }
 
 .get_cp_cluster_dens_tbl_get_batch_prep <- function(ind_batch) {
@@ -414,7 +414,7 @@
                                                     batch,
                                                     ind,
                                                     min_threshold,
-                                                    cut,
+                                                    chnl_cut,
                                                     expr_min,
                                                     expr_max,
                                                     bw,
@@ -476,7 +476,7 @@
                                                             ind_batch,
                                                             batch,
                                                             pop_gate,
-                                                            cut,
+                                                            chnl_cut,
                                                             filter_other_cyt_pos, # nolint
                                                             gate_tbl,
                                                             calc_cyt_pos_gates,

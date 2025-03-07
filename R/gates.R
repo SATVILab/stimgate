@@ -17,7 +17,7 @@
 #' @export
 get_gate_tbl <- function(.data,
                          pop_gate,
-                         cut,
+                         chnl_cut,
                          ind_in_batch_lab_vec,
                          gate_name,
                          ind_in_batch_gate,
@@ -29,7 +29,7 @@ get_gate_tbl <- function(.data,
     gate_stats <- readRDS(file.path(path_project, cut_curr, "gate_stats_tbl"))
 
     gate_stats <- gate_stats |>
-      dplyr::mutate(cut = cut_curr, marker = chnl_lab_vec[cut_curr]) |>
+      dplyr::mutate(chnl_cut = cut_curr, marker = chnl_lab_vec[cut_curr]) |>
       dplyr::select(chnl_cut, marker, everything())
 
     gate_stats

@@ -11,7 +11,7 @@
 .gate_marker_pre_adj_gates_gate <- function(ind_batch_list,
                                             .data,
                                             pop_gate,
-                                            cut,
+                                            chnl_cut,
                                             gate_combn,
                                             tol,
                                             noise_sd,
@@ -59,7 +59,7 @@
                                        gate_quant,
                                        .data,
                                        params,
-                                       cut,
+                                       chnl_cut,
                                        bw_min,
                                        path_project,
                                        debug,
@@ -100,7 +100,7 @@
                                            tol_gate,
                                            gate_tbl,
                                            params,
-                                           cut,
+                                           chnl_cut,
                                            .data,
                                            bw_min,
                                            path_project,
@@ -130,9 +130,9 @@
   if (!is.null(tol_gate)) {
     path_dir_stats <- .get_stats( # nolint
       params = params,
-      gate_tbl = gate_tbl |> dplyr::mutate(chnl = cut),
+      gate_tbl = gate_tbl |> dplyr::mutate(chnl = chnl_cut),
       gate_name = NULL,
-      chnl = cut,
+      chnl = chnl_cut,
       .data = .data,
       filter_other_cyt_pos = FALSE,
       combn = FALSE,
@@ -153,7 +153,7 @@
           gate_stats_tbl = gate_stats_tbl |>
             dplyr::filter(gate_name == gn),
           gate_tbl_ctrl = gate_tbl_tg_gate,
-          chnl = cut,
+          chnl = chnl_cut,
           bw = bw_min,
           control = list(),
           filter_other_cyt_pos = FALSE,
@@ -242,7 +242,7 @@
 .gate_marker_gate_adj_gates_single <- function(gate_tbl,
                                                params,
                                                gate_tbl_params,
-                                               cut,
+                                               chnl_cut,
                                                .data,
                                                calc_cyt_pos_gates,
                                                path_project,
@@ -256,7 +256,7 @@
   gate_tbl <- .gate_marker_gate_adj_gates_single_merge( # nolint
     gate_tbl_single = gate_tbl_single,
     gate_tbl_params = gate_tbl_params,
-    cut = cut
+    chnl_cut = chnl_cut
   )
 
   # get stats table (if needed)
@@ -288,11 +288,11 @@
 
 .gate_marker_gate_adj_gates_single_merge <- function(gate_tbl_single,
                                                      gate_tbl_params,
-                                                     cut) {
+                                                     chnl_cut) {
   gate_tbl_params |>
     dplyr::left_join(
       gate_tbl_single |>
-        dplyr::mutate(chnl = cut) |>
+        dplyr::mutate(chnl = chnl_cut) |>
         dplyr::rename(gate_single = gate) |> # nolint
         dplyr::filter(gate_use == "gate") |> # nolint
         dplyr::select(
@@ -322,7 +322,7 @@
 
 .gate_marker_gate_adj_gates_single_stats_tbl_get <- function(gate_tbl,
                                                              params,
-                                                             cut,
+                                                             chnl_cut,
                                                              .data,
                                                              calc_cyt_pos_gates, # nolint
                                                              path_project,
@@ -348,7 +348,7 @@
         gate_name %in% c(gate_name_vec_clust, gate_name_vec_adj) # nolint
       ),
     gate_name = NULL,
-    chnl = cut,
+    chnl = chnl_cut,
     filter_other_cyt_pos = TRUE,
     gate_type_cyt_pos_filter = ifelse(calc_cyt_pos_gates, "cyt", "base"),
     .data = .data,
@@ -426,7 +426,7 @@
   clust_ind <- stringr::str_detect(gn, "_clust")
   if (!clust_ind && !adj_ind) {
     return(gate_tbl_gn |>
-      dplyr::filter(chnl == params$cut) |> # nolint
+      dplyr::filter(chnl == params$chnl_cut) |> # nolint
       dplyr::select(
         chnl, marker, gate_name, gate_type, # nolint
         gate_combn, batch, ind, gate, gate_cyt, gate_single # nolint
@@ -479,7 +479,7 @@
       gate_tbl = gate_tbl_gn,
       gate_stats_tbl = gate_stats_tbl_gn,
       gate_tbl_ctrl = gate_tbl_ctrl_clust_gn,
-      chnl = params$cut,
+      chnl = params$chnl_cut,
       bw = params$bw_min,
       control = list(),
       filter_other_cyt_pos = TRUE,
@@ -494,7 +494,7 @@
         gate_tbl |>
           dplyr::filter(
             gate_name == gn, # nolint
-            chnl == params$cut # nolint
+            chnl == params$chnl_cut # nolint
           ) |>
           dplyr::select(
             gate_name, gate_type, gate_combn, # nolint
@@ -503,8 +503,8 @@
         by = c("ind")
       ) |>
       dplyr::mutate(
-        chnl = params$cut,
-        marker = params$chnl_lab[params$cut]
+        chnl = params$chnl_cut,
+        marker = params$chnl_lab[params$chnl_cut]
       ) |>
       dplyr::select(
         chnl, marker, gate_name, gate_type, gate_combn, # nolint

@@ -249,7 +249,7 @@
 
 
 .get_cyt_pos_gates_chnl_vec_from_marker_list <- function(marker_list) {
-  purrr::map_chr(marker_list, function(x) x$cut)
+  purrr::map_chr(marker_list, function(x) x$chnl_cut)
 }
 
 .get_cyt_pos_gates_gate_tbl_get <- function(chnl_vec,
