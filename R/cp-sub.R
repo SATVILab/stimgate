@@ -204,14 +204,14 @@
       ) |>
       dplyr::select(ind, ind_cell, expr, everything()) # nolint
     if (exc_min) {
-      cut_tbl <- cut_tbl |> dplyr::filter(.data$expr > min(.data$expr)) # nolint
+      cut_tbl <- cut_tbl[
+        .get_cut(cut_tbl) > min(.get_cut(cut_tbl)),
+      ] # nolint
     }
-    cut_tbl <- cut_tbl |> dplyr::mutate(expr = expr + bias) # nolint
+    cut_tbl[[attr(cut_tbl, "chnl_cut")]] <- .get_cut(cut_tbl) + bias # nolint
     if (!is.null(noise_sd)) {
-      cut_tbl <- purrr::map_df(1:5, function(i) {
-        cut_tbl |>
-          dplyr::mutate(expr = expr + rnorm(nrow(cut_tbl), sd = noise_sd)) # nolint
-      })
+      cut_tbl <- cut_tbl[[attr(cut_tbl, "chnl_cut")]] +
+        rnorm(nrow(cut_tbl), sd = noise_sd) # nolint
     }
     cut_tbl
   }) |>
