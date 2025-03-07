@@ -1,46 +1,37 @@
-.get_gate_stats_overall <- function(ind_batch_list,
-                                    .data,
-                                    ind_in_batch_lab,
-                                    ind_in_batch_uns,
-                                    pop_gate,
-                                    gate_tbl,
-                                    gate_name,
-                                    chnl,
-                                    cut,
-                                    chnl_lab,
-                                    data_name,
-                                    filter_other_cyt_pos,
-                                    combn,
-                                    gate_type_cyt_pos_filter,
-                                    gate_type_single_pos_filter,
-                                    gate_type_single_pos_calc,
-                                    gate_type_cyt_pos_calc,
-                                    combn_mat_list, # missing
-                                    cyt_combn_vec_list, # missing
-                                    debug,
-                                    sampleid_lab,
-                                    stim_lab) {
+.get_stats_overall <- function(ind_batch_list,
+                               .data,
+                               pop_gate,
+                               gate_tbl,
+                               gate_name,
+                               chnl,
+                               cut,
+                               chnl_lab,
+                               filter_other_cyt_pos,
+                               combn,
+                               gate_type_cyt_pos_filter,
+                               gate_type_single_pos_filter,
+                               gate_type_single_pos_calc,
+                               gate_type_cyt_pos_calc,
+                               combn_mat_list, # missing
+                               cyt_combn_vec_list, # missing
+                               debug) {
   stat_tbl <- purrr::map_df(
     seq_along(ind_batch_list),
     function(i) {
-      .get_gate_stats_overall_progress(
+      .get_stats_overall_progress(
         ind_batch_list = ind_batch_list,
         i = i,
         debug = debug,
         combn = combn,
         filter_other_cyt_pos = filter_other_cyt_pos
       )
-      .get_gate_stats_batch(
+      .get_stats_batch(
         ind_batch = ind_batch_list[[i]],
         debug = debug,
         .data = .data,
-        ind_in_batch_lab_vec = ind_in_batch_lab,
-        ind_in_batch_uns = ind_in_batch_uns,
         pop_gate = pop_gate,
         gate_tbl = gate_tbl,
-        gate_name = gate_name,
         chnl = chnl,
-        data_name = data_name,
         filter_other_cyt_pos = filter_other_cyt_pos,
         combn = combn,
         gate_type_cyt_pos_filter = gate_type_cyt_pos_filter,
@@ -63,7 +54,7 @@
       freq_bs = freq_stim - freq_uns # nolint
     )
 
-  stat_tbl <- .get_gate_stats_update_combn_n( # nolint
+  stat_tbl <- .get_stats_update_combn_n( # nolint
     combn = combn,
     stat_tbl = stat_tbl,
     cut = cut,
@@ -72,18 +63,16 @@
 
   # add SampleID and update stim labels
   # if desired
-  .get_gate_stats_label( # nolint
-    stat_tbl = stat_tbl,
-    sampleid_lab = sampleid_lab,
-    stim_lab = stim_lab
+  .get_stats_label( # nolint
+    stat_tbl = stat_tbl
   )
 }
 
-.get_gate_stats_overall_progress <- function(ind_batch_list,
-                                             i,
-                                             debug,
-                                             combn,
-                                             filter_other_cyt_pos) {
+.get_stats_overall_progress <- function(ind_batch_list,
+                                        i,
+                                        debug,
+                                        combn,
+                                        filter_other_cyt_pos) {
   ind_batch <- ind_batch_list[[i]]
   .debug( # nolint
     debug, "ind_batch: ", paste0(ind_batch, collapse = "-")
@@ -97,24 +86,20 @@
 }
 
 
-.get_gate_stats_batch <- function(ind_batch,
-                                  debug,
-                                  .data,
-                                  ind_in_batch_lab_vec,
-                                  ind_in_batch_uns,
-                                  pop_gate,
-                                  gate_tbl,
-                                  gate_name,
-                                  data_name,
-                                  chnl,
-                                  filter_other_cyt_pos,
-                                  combn,
-                                  gate_type_cyt_pos_filter,
-                                  gate_type_single_pos_filter,
-                                  gate_type_single_pos_calc,
-                                  gate_type_cyt_pos_calc,
-                                  combn_mat_list,
-                                  cyt_combn_vec_list) {
+.get_stats_batch <- function(ind_batch,
+                             debug,
+                             .data,
+                             pop_gate,
+                             gate_tbl,
+                             chnl,
+                             filter_other_cyt_pos,
+                             combn,
+                             gate_type_cyt_pos_filter,
+                             gate_type_single_pos_filter,
+                             gate_type_single_pos_calc,
+                             gate_type_cyt_pos_calc,
+                             combn_mat_list,
+                             cyt_combn_vec_list) {
   # calculate n_cell_[stim/uns] and count_[stim/uns]
   # for each gate type (gn) for either:
   # individual cytokines (combn = FALSE) or
@@ -128,23 +113,17 @@
   ex_list <- .get_ex_list( # nolint
     .data = .data,
     ind_batch = ind_batch,
-    ind_in_batch_gate = seq_along(ind_in_batch_lab_vec),
-    ind_in_batch_uns = ind_in_batch_uns,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     pop = pop_gate,
-    cut = unique(gate_tbl$chnl),
-    high = NULL,
-    data_name = data_name
+    cut = unique(gate_tbl$chnl)
   )
 
   purrr::map_df(gate_name, function(gn) {
-    .get_gate_stats_batch_gn(
+    .get_stats_batch_gn(
       gn = gn,
       debug = debug,
       ex_list = ex_list,
       gate_tbl = gate_tbl,
       chnl = chnl,
-      ind_in_batch_uns = ind_in_batch_uns,
       filter_other_cyt_pos = filter_other_cyt_pos,
       gate_type_cyt_pos_filter = gate_type_cyt_pos_filter,
       gate_type_single_pos_filter = gate_type_single_pos_filter,
@@ -158,28 +137,27 @@
   })
 }
 
-.get_gate_stats_batch_gn <- function(gn,
-                                     debug,
-                                     ex_list,
-                                     gate_tbl,
-                                     chnl,
-                                     ind_in_batch_uns,
-                                     filter_other_cyt_pos,
-                                     gate_type_cyt_pos_filter,
-                                     gate_type_single_pos_filter,
-                                     gate_type_single_pos_calc,
-                                     gate_type_cyt_pos_calc,
-                                     combn,
-                                     combn_mat_list,
-                                     cyt_combn_vec_list,
-                                     ind_batch) {
+.get_stats_batch_gn <- function(gn,
+                                debug,
+                                ex_list,
+                                gate_tbl,
+                                chnl,
+                                filter_other_cyt_pos,
+                                gate_type_cyt_pos_filter,
+                                gate_type_single_pos_filter,
+                                gate_type_single_pos_calc,
+                                gate_type_cyt_pos_calc,
+                                combn,
+                                combn_mat_list,
+                                cyt_combn_vec_list,
+                                ind_batch) {
   .debug(debug, "gate name: ", gn) # nolint
   gate_tbl_gn <- gate_tbl |> dplyr::filter(gate_name == gn) # nolint
   if (filter_other_cyt_pos || !combn) {
     # get stats when not calculating cytokine-combinations
     # or when filtering to yield cells positive
     # for all other cytokines
-    stat_tbl_gn <- .get_gate_stats_batch_gn_filter_or_non_combn(
+    stat_tbl_gn <- .get_stats_batch_gn_filter_or_non_combn(
       debug = debug,
       ex_list = ex_list,
       ind_batch = ind_batch,
@@ -189,8 +167,7 @@
       filter_other_cyt_pos = filter_other_cyt_pos,
       gate_type_single_pos_calc = gate_type_single_pos_calc,
       gate_type_cyt_pos_filter = gate_type_cyt_pos_filter,
-      gate_type_single_pos_filter = gate_type_single_pos_filter,
-      ind_in_batch_uns = ind_in_batch_uns
+      gate_type_single_pos_filter = gate_type_single_pos_filter
     )
     return(stat_tbl_gn)
   }
@@ -199,9 +176,8 @@
   # and combn = TRUE, as the cytokine combinations
   # calculation already involves the other cytokines, so also
   # filtering for other cytokines doesn't make sense.
-  .get_gate_stats_batch_gn_combn_loop_ind(
+  .get_stats_batch_gn_combn_loop_ind(
     ex_list = ex_list,
-    ind_in_batch_uns = ind_in_batch_uns,
     gate_tbl_gn = gate_tbl_gn,
     gn = gn,
     chnl = chnl,
@@ -213,16 +189,15 @@
   )
 }
 
-.get_gate_stats_batch_gn_combn_loop_ind <- function(ex_list,
-                                                    ind_in_batch_uns,
-                                                    gate_tbl_gn,
-                                                    gn,
-                                                    chnl,
-                                                    combn_mat_list,
-                                                    cyt_combn_vec_list,
-                                                    gate_type_cyt_pos_calc,
-                                                    gate_type_single_pos_calc,
-                                                    debug) {
+.get_stats_batch_gn_combn_loop_ind <- function(ex_list,
+                                               gate_tbl_gn,
+                                               gn,
+                                               chnl,
+                                               combn_mat_list,
+                                               cyt_combn_vec_list,
+                                               gate_type_cyt_pos_calc,
+                                               gate_type_single_pos_calc,
+                                               debug) {
   # filter to yield cells negative for all cytokine combinations
   ex_list_stim <- ex_list[-length(ex_list)]
   ex_uns <- ex_list[[length(ex_list)]]
@@ -233,7 +208,7 @@
     gate_tbl_gn_ind <- gate_tbl_gn |>
       dplyr::filter(ind == attr(ex, "ind")) # nolint
     combn_tbl <- purrr::map_df(names(combn_mat_list), function(j) {
-      .get_gate_stats_batch_gn_combn(
+      .get_stats_batch_gn_combn(
         j = j,
         debug = debug,
         ex = ex,
@@ -251,11 +226,11 @@
         n_cell_stim = nrow(ex),
         n_cell_uns = .env$n_cell_uns # nolint
       )
-    combn_tbl |> .get_gate_stats_batch_gn_combn_neg(chnl)
+    combn_tbl |> .get_stats_batch_gn_combn_neg(chnl)
   })
 }
 
-.get_gate_stats_batch_gn_combn <- function(j,
+.get_stats_batch_gn_combn <- function(j,
                                            debug,
                                            ex,
                                            ex_uns,
@@ -308,7 +283,7 @@
   stat_tbl_gn_ind
 }
 
-.get_gate_stats_batch_gn_combn_neg <- function(.data, chnl) {
+.get_stats_batch_gn_combn_neg <- function(.data, chnl) {
   all_neg_row <- .data |>
     dplyr::mutate(cyt_combn = paste0(paste0(chnl, collapse = "~-~"), "~-~")) |>
     dplyr::group_by(ind, cyt_combn, gate_name) |>
@@ -320,7 +295,7 @@
   .data |> dplyr::bind_rows(all_neg_row)
 }
 
-.get_gate_stats_batch_gn_filter_or_non_combn <- function(debug,
+.get_stats_batch_gn_filter_or_non_combn <- function(debug,
                                                          ex_list,
                                                          ind_batch,
                                                          gate_tbl_gn,
@@ -329,8 +304,7 @@
                                                          filter_other_cyt_pos,
                                                          gate_type_single_pos_calc, # nolint
                                                          gate_type_cyt_pos_filter, # nolint
-                                                         gate_type_single_pos_filter, # nolint
-                                                         ind_in_batch_uns) {
+                                                         gate_type_single_pos_filter) {
   .debug(debug, "filtering or not working out combinations") # nolint
   purrr::map_df(chnl, function(chnl_curr) {
     .debug(debug, "chnl_curr: ", chnl_curr) # nolint
@@ -338,20 +312,19 @@
     # remove cells positive for other cytokines
     if (filter_other_cyt_pos) {
       ex_list <-
-        .get_gate_stats_batch_gn_filter_or_non_combn_filter(
+        .get_stats_batch_gn_filter_or_non_combn_filter(
           ex_list = ex_list,
           gate_tbl_gn = gate_tbl_gn,
           chnl_curr = chnl_curr,
           gate_type_cyt_pos_filter = gate_type_cyt_pos_filter,
           gate_type_single_pos_filter = gate_type_single_pos_filter,
-          ind_in_batch_uns = ind_in_batch_uns,
           debug = debug
         )
     }
 
     # get statistics for the individuals
     stat_tbl_gn_ind <- tibble::tibble(
-      ind = ind_batch[-ind_in_batch_uns],
+      ind = ind_batch[-length(ind_batch)],
       gate_name = gn,
       chnl = chnl_curr,
       count_stim = NA,
@@ -394,7 +367,7 @@
         sum(ex[[chnl_curr]] > gate_gn_ind_chnl)
       stat_tbl_gn_ind[j, "n_cell_stim"] <-
         nrow(ex)
-      ex_uns <- ex_list[[ind_in_batch_uns]]
+      ex_uns <- ex_list[[length(ex_list)]]
       if (filter_other_cyt_pos) {
         pos_ind_vec_but_single_pos_curr <-
           .get_pos_ind_but_single_pos_for_one_cyt( # nolint
@@ -419,13 +392,12 @@
 }
 
 
-.get_gate_stats_batch_gn_filter_or_non_combn_filter <- function(ex_list,
-                                                                gate_tbl_gn,
-                                                                chnl_curr,
-                                                                gate_type_cyt_pos_filter, # nolint
-                                                                gate_type_single_pos_filter, # nolint
-                                                                ind_in_batch_uns, # nolint
-                                                                debug) {
+.get_stats_batch_gn_filter_or_non_combn_filter <- function(ex_list,
+                                                           gate_tbl_gn,
+                                                           chnl_curr,
+                                                           gate_type_cyt_pos_filter, # nolint
+                                                           gate_type_single_pos_filter, # nolint
+                                                           debug) {
   .debug(debug, "filtering other cyt pos") # nolint
 
   # loop over individual samples
@@ -434,10 +406,9 @@
 
     # return early if nothing to filter
     return_early <-
-      .get_gate_stats_batch_gn_filter_or_non_combn_filter_check_early(
+      .get_stats_batch_gn_filter_or_non_combn_filter_check_early(
         i = i,
         ex_list = ex_list,
-        ind_in_batch_uns = ind_in_batch_uns,
         chnl_curr = chnl_curr,
         gate_tbl_gn = gate_tbl_gn
       )
@@ -450,7 +421,7 @@
       .get_pos_ind_but_single_pos_for_one_cyt( # nolint
         ex = ex_list[[i]],
         gate_tbl = gate_tbl_gn |>
-          dplyr::filter(ind == attr(ex_list[[i]], ind)), # nolint
+          dplyr::filter(ind == attr(ex_list[[i]], "ind")), # nolint
         chnl_single_exc = chnl_curr,
         chnl = NULL,
         gate_type_cyt_pos = gate_type_cyt_pos_filter,
@@ -462,16 +433,15 @@
     stats::setNames(names(ex_list))
 }
 
-.get_gate_stats_batch_gn_filter_or_non_combn_filter_check_early <- function(i,
-                                                                            ex_list, # nolint
-                                                                            ind_in_batch_uns, # nolint
-                                                                            chnl_curr, # nolint
-                                                                            gate_tbl_gn) { # nolint
-  if (i == ind_in_batch_uns) {
+.get_stats_batch_gn_filter_or_non_combn_filter_check_early <- function(i,
+                                                                       ex_list, # nolint
+                                                                       chnl_curr, # nolint
+                                                                       gate_tbl_gn) { # nolint
+  if (i == length(ex_list)) {
     return(TRUE)
   }
   gate_tbl_gn_ind <- gate_tbl_gn |>
-    dplyr::filter(ind == attr(ex_list[[i]], ind)) # nolint
+    dplyr::filter(ind == attr(ex_list[[i]], "ind")) # nolint
 
   # return early if nothing to filter
   all(is.na(ex_list[[i]][[chnl_curr]])) ||
@@ -479,10 +449,10 @@
     nrow(ex_list[[i]]) == 0
 }
 
-.get_gate_stats_update_combn_n <- function(combn,
-                                           stat_tbl,
-                                           cut,
-                                           chnl_lab) {
+.get_stats_update_combn_n <- function(combn,
+                                      stat_tbl,
+                                      cut,
+                                      chnl_lab) {
   if (combn) {
     return(stat_tbl)
   }
@@ -500,40 +470,11 @@
   stat_tbl
 }
 
-.get_gate_stats_label <- function(stat_tbl,
-                                  sampleid_lab,
-                                  stim_lab) {
+.get_stats_label <- function(stat_tbl) {
   cn_vec_order <- c(
-    "gate_name", "chnl", "marker", "ind", "SampleID", "stim"
+    "gate_name", "chnl", "marker", "ind"
   )
-  if (!is.null(sampleid_lab)) {
-    stat_tbl <- stat_tbl |>
-      dplyr::mutate(SampleID = sampleid_lab[as.character(.data$ind)]) # nolint
-    if (!is.null(stim_lab)) {
-      stat_tbl <- stat_tbl |>
-        dplyr::mutate(stim = stim_lab[as.character(.data$ind)]) # nolint
-      cn_vec_order_curr <- cn_vec_order[cn_vec_order %in% colnames(stat_tbl)]
-      stat_tbl <- stat_tbl |>
-        dplyr::select(
-          all_of(cn_vec_order_curr), everything() # nolint
-        )
-    } else {
-      cn_vec_order_curr <- cn_vec_order[cn_vec_order %in% colnames(stat_tbl)]
-      stat_tbl <- stat_tbl |>
-        dplyr::select(all_of(cn_vec_order_curr), everything()) # nolint
-    }
-  } else {
-    if (!is.null(stim_lab)) {
-      stat_tbl <- stat_tbl |>
-        dplyr::mutate(stim = stim_lab[as.character(.data$ind)]) # nolint
-      cn_vec_order_curr <- cn_vec_order[cn_vec_order %in% colnames(stat_tbl)]
-      stat_tbl <- stat_tbl |>
-        dplyr::select(all_of(cn_vec_order_curr), everything()) # nolint
-    } else {
-      cn_vec_order_curr <- cn_vec_order[cn_vec_order %in% colnames(stat_tbl)]
-      stat_tbl <- stat_tbl |>
-        dplyr::select(all_of(cn_vec_order_curr), everything()) # nolint
-    }
-  }
-  stat_tbl
+  cn_vec_order_curr <- cn_vec_order[cn_vec_order %in% colnames(stat_tbl)]
+  stat_tbl |>
+    dplyr::select(all_of(cn_vec_order_curr), everything()) # nolint
 }

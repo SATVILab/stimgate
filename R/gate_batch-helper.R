@@ -1,21 +1,17 @@
-.get_gate_batch_all <- function(debug,
-                                    ind_batch,
-                                    ind_in_batch_gate,
-                                    ind_in_batch_uns,
-                                    ex_list,
-                                    gate_combn,
-                                    .data,
-                                    noise_sd,
-                                    bias_uns,
-                                    fdr,
-                                    cp_min,
-                                    min_cell,
-                                    cut,
-                                    tol,
-                                    bw_min,
-                                    params,
-                                    plot,
-                                    path_project) {
+.gate_batch_all <- function(debug,
+                            ind_batch,
+                            ex_list,
+                            gate_combn,
+                            .data,
+                            noise_sd,
+                            bias_uns,
+                            cp_min,
+                            min_cell,
+                            cut,
+                            tol,
+                            bw_min,
+                            params,
+                            path_project) {
   .debug(debug, "params$gate_tbl is NULL") # nolint
   .debug( # nolint
     debug, "gating ind_batch_list", paste0(ind_batch, collapse = "-") # nolint
@@ -24,57 +20,19 @@
   # create bare list
   gate_list <- list()
 
-  # Unstim-based cutpoint - FDR
-  # ---
-  if ("uns" %in% names(gate_combn)) {
-    .debug(debug, "getting uns-based cutpoint") # nolint
-    cp_uns_list <- .get_cp_uns( # nolint
-      ex_list = ex_list,
-      ind_gate = ind_batch[ind_in_batch_gate],
-      ind_uns = ind_batch[ind_in_batch_uns],
-      fdr = fdr, gate_combn = gate_combn[["uns"]],
-      .data = .data, noise_sd = noise_sd, bias_uns = bias_uns,
-      cp_min = cp_min, min_cell = min_cell
-    )
-    gate_list <- gate_list |> append(cp_uns_list)
-  }
-
-  # Unstim-based cutpoint - local FDR
-  # ---
-
-  if ("loc" %in% names(gate_combn)) {
-    cp_uns_loc_list <- .get_cp_uns_loc( # nolint
-      ex_list = ex_list,
-      ind_gate = ind_batch[ind_in_batch_gate],
-      ind_uns = ind_batch[ind_in_batch_uns],
-      gate_combn = gate_combn[["loc"]],
-      .data = .data,
-      bias_uns = bias_uns,
-      noise_sd = NULL,
-      bw_min = bw_min,
-      cp_min = cp_min, min_cell = min_cell,
-      params = params,
-      plot = plot,
-      path_project = path_project,
-      debug = debug
-    )
-    gate_list <- gate_list |> append(cp_uns_loc_list)
-  }
-
-  if ("tg" %in% names(gate_combn)) {
-    .debug(debug, "getting straight tg-based cutpoint") # nolint
-    gate_list[["tg"]] <- .get_cp_tg( # nolint
-      ex_list = ex_list,
-      gate_combn = gate_combn[["tg"]],
-      cut = cut, tol = tol,
-      ind_gate = ind_batch[ind_in_batch_gate],
-      exc_min = TRUE,
-      min_cell = min_cell,
-      cp_min = cp_min,
-      bw = bw_min,
-      debug = debug
-    )
-  }
+  cp_uns_loc_list <- .get_cp_uns_loc( # nolint
+    ex_list = ex_list,
+    gate_combn = gate_combn[["loc"]],
+    .data = .data,
+    bias_uns = bias_uns,
+    noise_sd = NULL,
+    bw_min = bw_min,
+    cp_min = cp_min, min_cell = min_cell,
+    params = params,
+    path_project = path_project,
+    debug = debug
+  )
+  gate_list <- cp_uns_loc_list
 
   if (!is.null(params$tol_ctrl)) {
     for (tol in params$tol_ctrl) {
@@ -82,8 +40,8 @@
       gate_list[[paste0("tg_ctrl_", tol)]] <- .get_cp_tg( # nolint
         ex_list = ex_list,
         gate_combn = "no",
-        cut = cut, tol = params$tol_ctrl,
-        ind_gate = ind_batch[ind_in_batch_gate],
+        cut = cut,
+        tol = params$tol_ctrl,
         exc_min = TRUE,
         min_cell = 0,
         cp_min = 0,
@@ -98,7 +56,6 @@
       ex_list = ex_list,
       gate_combn = "no",
       cut = cut, tol = params$tol_gate,
-      ind_gate = ind_batch[ind_in_batch_gate],
       exc_min = TRUE,
       min_cell = 0,
       cp_min = 0,
@@ -106,96 +63,92 @@
     )
   }
 
-  .get_gate_batch_tbl(gate_list, debug) # nolint
+  .gate_batch_tbl(gate_list, debug) # nolint
 }
 
-.get_gate_batch_tbl <- function(gate_list, debug) {
+.gate_batch_tbl <- function(gate_list, debug) {
   purrr::map_df(seq_along(gate_list), function(i) {
-    .get_gate_batch_tbl_along_type(gate_list, i, debug)
+    .gate_batch_tbl_along_type(gate_list, i, debug)
   })
 }
 
-.get_gate_batch_tbl_along_type <- function(gate_list, i, debug) {
+.gate_batch_tbl_along_type <- function(gate_list, i, debug) {
   .debug(debug, "gate list index", i) # nolint
-  cp_list <- .get_gate_batch_tbl_cp(gate_list[[i]])
-  gate_type <- .get_gate_batch_tbl_type(gate_list, i)
+  cp_list <- .gate_batch_tbl_cp(gate_list[[i]])
+  gate_type <- .gate_batch_tbl_type(gate_list, i)
   purrr::map_df(seq_along(cp_list), function(j) {
-    .get_gate_batch_tbl_along_combn(cp_list, gate_type, j, debug)
+    .gate_batch_tbl_along_combn(cp_list, gate_type, j, debug)
   })
 }
 
-.get_gate_batch_tbl_along_combn <- function(cp_list,
-                                                gate_type,
-                                                j,
-                                                debug) {
+.gate_batch_tbl_along_combn <- function(cp_list,
+                                        gate_type,
+                                        j,
+                                        debug) {
   .debug(debug, "gate list sub-index", j) # nolint
-  gate_combn <- .get_gate_batch_tbl_combn(cp_list, j)
+  gate_combn <- .gate_batch_tbl_combn(cp_list, j)
   tibble::tibble(
-    gate_name = .get_gate_batch_tbl_name(gate_type, gate_combn),
+    gate_name = .gate_batch_tbl_name(gate_type, gate_combn),
     gate_type = gate_type,
     gate_combn = gate_combn,
-    ind = .get_gate_batch_tbl(cp_list, j),
-    gate = .get_gate_batch_tbl_gate(cp_list, j),
-    gate_use = .get_gate_batch_tbl_use(.env$gate_type)
+    ind = .gate_batch_tbl(cp_list, j),
+    gate = .gate_batch_tbl_gate(cp_list, j),
+    gate_use = .gate_batch_tbl_use(.env$gate_type)
   )
 }
 
-.get_gate_batch_tbl_name <- function(gate_type, gate_combn) {
+.gate_batch_tbl_name <- function(gate_type, gate_combn) {
   paste0(gate_type, "_", gate_combn)
 }
 
-.get_gate_batch_tbl_cp <- function(gate_list_elem) {
+.gate_batch_tbl_cp <- function(gate_list_elem) {
   if (!"cp" %in% names(gate_list_elem)) {
     return(gate_list_elem)
   }
   gate_list_elem[["cp"]]
 }
 
-.get_gate_batch_tbl_type <- function(gate_list, i) {
+.gate_batch_tbl_type <- function(gate_list, i) {
   names(gate_list)[i]
 }
-.get_gate_batch_tbl_combn <- function(cp_list, j) {
+.gate_batch_tbl_combn <- function(cp_list, j) {
   names(cp_list)[[j]]
 }
 
-.get_gate_batch_tbl <- function(cp_list, j) {
+.gate_batch_tbl <- function(cp_list, j) {
   as.integer(names(cp_list[[j]]))
 }
-.get_gate_batch_tbl_gate <- function(cp_list, j) {
+.gate_batch_tbl_gate <- function(cp_list, j) {
   cp_list[[j]]
 }
 
-.get_gate_batch_tbl_use <- function(gate_type) {
+.gate_batch_tbl_use <- function(gate_type) {
   if (grepl("tg_ctrl_", gate_type)) {
     return("ctrl")
   }
   if (grepl("tg_clust", gate_type)) "tg_clust" else "gate"
 }
 
-.get_gate_batch_single <- function(debug,
-                                       ind_batch,
-                                       ind_in_batch_gate,
-                                       ind_in_batch_uns,
-                                       ex_list,
-                                       .data,
-                                       noise_sd,
-                                       bias_uns,
-                                       fdr,
-                                       cp_min,
-                                       min_cell,
-                                       cut,
-                                       tol,
-                                       bw_min,
-                                       params,
-                                       plot,
-                                       path_project) {
+.gate_batch_single <- function(debug,
+                               ind_batch,
+                               ex_list,
+                               .data,
+                               noise_sd,
+                               bias_uns,
+                               cp_min,
+                               min_cell,
+                               cut,
+                               tol,
+                               bw_min,
+                               params,
+                               path_project) {
   .debug(debug, "params$gate_tbl is not NULL") # nolint
   # =================================
   # get pre-adj and -clust gates for each gate type
   # =================================
 
 
-  gate_tbl <- .get_gate_batch_single_tbl_format(params$gate_tbl)
+  gate_tbl <- .gate_batch_single_tbl_format(params$gate_tbl)
 
   gate_name_vec <- unique(gate_tbl$gate_name)
 
@@ -224,7 +177,7 @@
 
         gate_tbl_gn_ind <- gate_tbl |>
           dplyr::filter(
-            ind == attr(ex_list[[i]], ind), # nolint
+            ind == attr(ex_list[[i]], "ind"), # nolint
             gate_name == gate_name_curr # nolint
           )
 
@@ -257,8 +210,6 @@
       ),
       "loc" = .get_cp_uns_loc( # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
-        ind_gate = ind_batch[ind_in_batch_gate],
-        ind_uns = ind_batch[ind_in_batch_uns],
         gate_combn = gate_name_tbl_row$gate_combn,
         .data = .data,
         bias_uns = bias_uns,
@@ -270,17 +221,8 @@
           gate_name_curr = gate_name_curr,
           ex_uns = ex_list[[length(ex_list)]]
         )),
-        plot = plot,
         path_project = path_project
-      )[[1]][[1]],
-      "uns" = .get_cp_uns( # nolint
-        ex_list = ex_list_neg_but_single_pos_curr, # nolint
-        ind_gate = ind_batch[ind_in_batch_gate],
-        ind_uns = ind_batch[ind_in_batch_uns],
-        fdr = fdr, gate_combn = gate_name_tbl_row$gate_combn,
-        .data = .data, noise_sd = noise_sd, bias_uns = gate_name_tbl_row$bias,
-        cp_min = cp_min, min_cell = min_cell
-      )[[1]]
+      )[[1]][[1]]
     )
 
     if (names(gate_list)[[1]] == "cp") {
@@ -298,14 +240,12 @@
       )
     )
 
-
     if (adj_ind) {
       # apply method
       gate_list <- .get_cp_tg( # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
         gate_combn = "no",
         cut = cut, tol = params$tol_ctrl,
-        ind_gate = ind_batch[ind_in_batch_gate],
         exc_min = TRUE,
         min_cell = min_cell,
         cp_min = cp_min,
@@ -330,8 +270,8 @@
       gate_list <- .get_cp_tg( # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
         gate_combn = "no",
-        cut = cut, tol = params$tol_gate_single,
-        ind_gate = ind_batch[ind_in_batch_gate],
+        cut = cut,
+        tol = params$tol_gate_single,
         exc_min = TRUE,
         min_cell = min_cell,
         cp_min = cp_min,
@@ -348,7 +288,8 @@
         gate = gate_list[[1]],
         gate_use = "tg_clust"
       )
-      gate_tbl <- gate_tbl |> dplyr::bind_rows(gate_tbl_clust)
+      gate_tbl <- gate_tbl |>
+        dplyr::bind_rows(gate_tbl_clust)
     }
 
     gate_tbl
@@ -367,13 +308,13 @@
     dplyr::mutate(ind = as.numeric(ind)) # nolint
 }
 
-.get_gate_batch_single_tbl_format <- function(gate_tbl) {
+.gate_batch_single_tbl_format <- function(gate_tbl) {
   gate_tbl <- gate_tbl |>
     dplyr::mutate(
-      gate_method = .get_gate_batch_single_tbl_format_method(gate_name) # nolint
+      gate_method = .gate_batch_single_tbl_format_method(gate_name) # nolint
     ) |>
     dplyr::mutate(
-      gate_combn = .get_gate_batch_single_tbl_format_combn(gate_name) # nolint
+      gate_combn = .gate_batch_single_tbl_format_combn(gate_name) # nolint
     ) |>
     dplyr::mutate(clust = purrr::map_chr(
       gate_name,
@@ -385,7 +326,7 @@
     ))
 }
 
-.get_gate_batch_single_tbl_format_method <- function(gate_name) {
+.gate_batch_single_tbl_format_method <- function(gate_name) {
   gate_method <- ifelse(
     stringr::str_detect(gate_name, "loc"), "loc", NA # nolint
   )
@@ -397,7 +338,7 @@
   )
 }
 
-.get_gate_batch_single_tbl_format_combn <- function(gate_name) {
+.gate_batch_single_tbl_format_combn <- function(gate_name) {
   purrr::map_chr(gate_name, function(x) {
     if (stringr::str_detect(x, "_no")) {
       return("no")

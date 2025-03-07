@@ -1,17 +1,3 @@
-.get_pop_man_vec <- function(pop_man_sub,
-                             pop_man_match_exact,
-                             pop_gate) {
-  if (!is.null(pop_man_sub)) {
-    if (pop_man_match_exact) {
-      pop_man_vec <- paste0(pop_gate, "/", pop_man_sub)
-    } else {
-      pop_man_vec <- pop_man_sub
-    }
-  } else {
-    pop_man_vec <- NULL
-  }
-  pop_man_vec
-}
 .gate_marker_delete_old_gates <- function() {
   dir_save <- file.path(tempdir(), "stimgate")
   if (!dir.exists(dir_save)) {
@@ -47,27 +33,17 @@
     .gate_batch( # nolint
       .data = .data,
       ind_batch = ind_batch_list[[i]],
-      ind_in_batch_gate = ind_in_batch_gate,
-      ind_in_batch_uns = ind_in_batch_uns,
-      ind_in_batch_lab_vec = ind_in_batch_lab_vec,
       pop_gate = pop_gate,
       cut = cut,
-      high = high,
       gate_combn = gate_combn,
-      pop_man = pop_man,
-      pop_man_match_exact = pop_man_match_exact,
       tol = tol,
       data_name = data_name,
-      fdr = fdr,
       noise_sd = noise_sd,
       bias_uns = bias_uns,
       bw_min = bw_min,
       cp_min = cp_min,
-      boot_n = boot_n,
-      boot_sd = boot_sd,
       min_cell = min_cell,
       params = params,
-      plot = plot,
       debug = debug
     ) |>
       dplyr::mutate(batch = i) |>
@@ -79,21 +55,18 @@
 }
 
 .gate_marker_get_adj_gates <- function(gate_tbl,
-                                        gate_tbl_params,
-                                        tol_ctrl,
-                                        tol_gate,
-                                        gate_quant,
-                                        .data,
-                                        params,
-                                        cut,
-                                        bw_min,
-                                        path_project,
-                                        debug,
-                                        ind_batch_list,
-                                        ind_in_batch_lab_vec,
-                                        pop_gate,
-                                        data_name,
-                                        ind_in_batch_uns) {
+                                       gate_tbl_params,
+                                       tol_ctrl,
+                                       tol_gate,
+                                       gate_quant,
+                                       .data,
+                                       params,
+                                       cut,
+                                       bw_min,
+                                       path_project,
+                                       debug,
+                                       ind_batch_list,
+                                       pop_gate) {
   if (is.null(gate_tbl_params)) {
     .gate_marker_get_adj_gates_all( # nolint
       tol_ctrl = tol_ctrl,
@@ -107,10 +80,7 @@
       gate_quant = gate_quant,
       debug = debug,
       ind_batch_list = ind_batch_list,
-      ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-      pop_gate = pop_gate,
-      data_name = data_name,
-      ind_in_batch_uns = ind_in_batch_uns
+      pop_gate = pop_gate
     )
   } else {
     .gate_marker_gate_adj_gates_single(
@@ -123,29 +93,23 @@
       path_project = path_project,
       debug = debug,
       ind_batch_list = ind_batch_list,
-      ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-      pop_gate = pop_gate,
-      data_name = data_name,
-      ind_in_batch_uns = ind_in_batch_uns
+      pop_gate = pop_gate
     )
   }
 }
 
 .gate_marker_get_adj_gates_all <- function(tol_ctrl,
-                                            tol_gate,
-                                            gate_tbl,
-                                            params,
-                                            cut,
-                                            .data,
-                                            bw_min,
-                                            path_project,
-                                            gate_quant,
-                                            debug,
-                                            ind_batch_list,
-                                            ind_in_batch_lab_vec,
-                                            pop_gate,
-                                            data_name,
-                                            ind_in_batch_uns) {
+                                           tol_gate,
+                                           gate_tbl,
+                                           params,
+                                           cut,
+                                           .data,
+                                           bw_min,
+                                           path_project,
+                                           gate_quant,
+                                           debug,
+                                           ind_batch_list,
+                                           pop_gate) {
   if (!is.null(tol_ctrl)) {
     gate_tbl_ctrl <- gate_tbl |>
       dplyr::filter(gate_use == "ctrl") # nolint
@@ -166,7 +130,7 @@
   # =========================
 
   if (!is.null(tol_gate)) {
-    path_dir_stats <- .get_gate_stats( # nolint
+    path_dir_stats <- .get_stats( # nolint
       params = params,
       gate_tbl = gate_tbl |> dplyr::mutate(chnl = cut),
       gate_name = NULL,
@@ -178,10 +142,7 @@
       path_project = path_project,
       debug = debug,
       ind_batch_list = ind_batch_list,
-      ind_in_batch_lab = ind_in_batch_lab_vec,
-      pop_gate = pop_gate,
-      data_name = data_name,
-      ind_in_batch_uns = ind_in_batch_uns
+      pop_gate = pop_gate
     )
     gate_stats_tbl <- path_dir_stats |> .read_gate_stats() # nolint
 
@@ -232,17 +193,14 @@
 
   if (!is.null(tol_ctrl)) {
     if (is.null(tol_gate)) {
-      path_dir_stats <- .get_gate_stats( # nolint
+      path_dir_stats <- .get_stats( # nolint
         params = params,
         gate_tbl = gate_tbl,
         .data = .data,
         path_project = path_project,
         debug = debug,
         ind_batch_list = ind_batch_list,
-        ind_in_batch_lab = ind_in_batch_lab_vec,
-        pop_gate = pop_gate,
-        data_name = data_name,
-        ind_in_batch_uns = ind_in_batch_uns
+        pop_gate = pop_gate
       )
       gate_stats_tbl <- path_dir_stats |> .read_gate_stats() # nolint
     }
@@ -284,18 +242,15 @@
 }
 
 .gate_marker_gate_adj_gates_single <- function(gate_tbl,
-                                                params,
-                                                gate_tbl_params,
-                                                cut,
-                                                .data,
-                                                calc_cyt_pos_gates,
-                                                path_project,
-                                                debug,
-                                                ind_batch_list,
-                                                ind_in_batch_lab_vec,
-                                                pop_gate,
-                                                data_name,
-                                                ind_in_batch_uns) {
+                                               params,
+                                               gate_tbl_params,
+                                               cut,
+                                               .data,
+                                               calc_cyt_pos_gates,
+                                               path_project,
+                                               debug,
+                                               ind_batch_list,
+                                               pop_gate) {
   # get gates
   gate_tbl_single <- gate_tbl
 
@@ -316,10 +271,7 @@
     path_project = path_project,
     debug = debug,
     ind_batch_list = ind_batch_list,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-    pop_gate = pop_gate,
-    data_name = data_name,
-    ind_in_batch_uns = ind_in_batch_uns
+    pop_gate = pop_gate
   )
 
   gate_tbl_out <- .gate_marker_gate_adj_gates_single_out_get(
@@ -337,8 +289,8 @@
 }
 
 .gate_marker_gate_adj_gates_single_merge <- function(gate_tbl_single,
-                                                      gate_tbl_params,
-                                                      cut) {
+                                                     gate_tbl_params,
+                                                     cut) {
   gate_tbl_params |>
     dplyr::left_join(
       gate_tbl_single |>
@@ -371,17 +323,13 @@
 }
 
 .gate_marker_gate_adj_gates_single_stats_tbl_get <- function(gate_tbl,
-                                                              params,
-                                                              cut,
-                                                              .data,
-                                                              calc_cyt_pos_gates, # nolint
-                                                              path_project,
-                                                              debug,
-                                                              ind_batch_list,
-                                                              ind_in_batch_lab_vec, # nolint
-                                                              pop_gate,
-                                                              data_name,
-                                                              ind_in_batch_uns) { # nolint
+                                                             params,
+                                                             cut,
+                                                             .data,
+                                                             calc_cyt_pos_gates, # nolint
+                                                             path_project,
+                                                             debug,
+                                                             ind_batch_list) { # nolint
   gate_name_vec <- unique(gate_tbl$gate_name)
   if (!.gate_marker_gate_adj_gates_single_stats_tbl_get_check(gate_name_vec)) {
     return(NULL)
@@ -395,7 +343,7 @@
     stringr::str_detect(gate_name_vec, "_adj")
   ]
 
-  .get_gate_stats( # nolint
+  .get_stats( # nolint
     params = params,
     gate_tbl = gate_tbl |>
       dplyr::filter(
@@ -412,10 +360,7 @@
     path_project = path_project,
     debug = debug,
     ind_batch_list = ind_batch_list,
-    ind_in_batch_lab = ind_in_batch_lab_vec,
-    pop_gate = pop_gate,
-    data_name = data_name,
-    ind_in_batch_uns = ind_in_batch_uns
+    pop_gate = pop_gate
   )
 }
 
@@ -436,10 +381,10 @@
 }
 
 .gate_marker_gate_adj_gates_single_out_get <- function(gate_tbl,
-                                                        gate_stats_tbl,
-                                                        gate_tbl_single,
-                                                        params,
-                                                        debug) {
+                                                       gate_stats_tbl,
+                                                       gate_tbl_single,
+                                                       params,
+                                                       debug) {
   # get tail-gate gates
   gate_tbl_ctrl_clust <- gate_tbl_single |>
     dplyr::filter(gate_use == "tg_clust") # nolint
