@@ -16,12 +16,14 @@ test_that("stimgate_gate runs", {
     min_cell_stim = 100,
     col_n_cell = "n_cell_pop"
   )
-  browser()
   batch_list <- batch_list[seq_len(5)]
   path_project <- file.path(tempdir(), "stimgate_gate_run")
   suppressWarnings(unlink(path_project, recursive = TRUE))
   dir.create(path_project, showWarnings = FALSE, recursive = TRUE)
   marker_vec <- c("Lu175Di", "Er168Di")
+  browser()
+  # debugonce(.complete_marker_list)
+  debugonce(.gate_init)
   debugonce(.gate_batch)
   debugonce(.gate_batch_all)
   stimgate_gate(
@@ -31,6 +33,4 @@ test_that("stimgate_gate runs", {
     marker = marker_vec,
     debug = TRUE
   )
-
-
 })
