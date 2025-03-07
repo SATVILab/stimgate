@@ -10,7 +10,7 @@
     .data = .data, bias_uns = bias_uns, noise_sd = noise_sd,
     cp_min = cp_min, gate_combn = gate_combn, bw_min = bw_min,
     min_cell = min_cell, gate_tbl = params$gate_tbl,
-    gate_name_curr = params$gate_name_curr, chnl_cut = params$chnl_cut,,
+    gate_name_curr = params$gate_name_curr, chnl_cut = params$chnl_cut,
     calc_cyt_pos_gates = params$calcdd_cyt_pos_gates,
     path_project = path_project, debug = debug
   )

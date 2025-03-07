@@ -15,7 +15,8 @@
                         min_cell,
                         params,
                         batch,
-                        debug) {
+                        debug,
+                        path_project) {
 
   # get list of dataframes
   ex_list <- .get_ex_list( # nolint

@@ -34,7 +34,6 @@
 
   # get parameters
   params <- list(
-    .data = .data,
     ind_batch_list = ind_batch_list,
     pop_gate = pop_gate,
     chnl_cut,
@@ -72,7 +71,8 @@
     cp_min = cp_min,
     min_cell = min_cell,
     params = params,
-    debug = debug
+    debug = debug,
+    path_project = path_project
   )
 
   gate_tbl <- gate_tbl |>
