@@ -36,7 +36,7 @@
   params <- list(
     ind_batch_list = ind_batch_list,
     pop_gate = pop_gate,
-    chnl_cut,
+    chnl_cut = chnl_cut,
     gate_combn = gate_combn,
     tol = tol,
     chnl_lab = chnl_lab_vec,

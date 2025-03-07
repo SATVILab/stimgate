@@ -34,7 +34,7 @@
       .data = .data,
       ind_batch = ind_batch_list[[i]],
       pop_gate = pop_gate,
-      chnl_cut = params$chnl_cut,
+      chnl_cut = chnl_cut,
       gate_combn = gate_combn,
       tol = tol,
       noise_sd = noise_sd,
