@@ -184,3 +184,73 @@
   }) |>
     flatten()
 }
+
+#' @title COmbine gates across indices
+#'
+#' @param cp named numeric vector. Values are gates and names are indices within
+#' original GatingSet to which gate applies.
+#' @param gate_combn 'no', 'min', 'mean', 'trim20',  'median' or 'max'. Specifies
+#' method of combining the gates in cp. 'no' and 'prejoin' do not apply common gates,
+#' whereas each of the others do.
+#'
+#' @return named list. Each list corresponds to the gates for the set of indices
+#' for a given gating method and gate grouping method. The name indicates
+#' the gating method and the gate-grouping method, which are separated by an underscore.
+#' The element is a named vector, where values are the gates for the individual samples and
+#' the names are indices of the samples with the original GatingSet to which gates apply.
+.combine_cp <- function(cp, gate_combn) {
+  purrr::map(gate_combn, function(gate_combn_curr) {
+    if (all(purrr::map_lgl(cp, is.na))) {
+      return(stats::setNames(cp, names(cp)))
+    }
+    if (gate_combn_curr %in% c("no", "prejoin")) {
+      return(cp)
+    }
+    if (gate_combn_curr == "min") {
+      return(stats::setNames(
+        rep(
+          min(cp, na.rm = TRUE),
+          length(cp)
+        ),
+        names(cp)
+      ))
+    }
+    if (gate_combn_curr == "mean") {
+      return(stats::setNames(
+        rep(
+          mean(cp, na.rm = TRUE),
+          length(cp)
+        ),
+        names(cp)
+      ))
+    }
+    if (gate_combn_curr == "trim20") {
+      return(stats::setNames(
+        rep(
+          mean(cp, trim = 0.2, na.rm = TRUE),
+          length(cp)
+        ),
+        names(cp)
+      ))
+    }
+    if (gate_combn_curr == "median") {
+      return(stats::setNames(
+        rep(
+          median(cp, na.rm = TRUE),
+          length(cp)
+        ),
+        names(cp)
+      ))
+    }
+    if (gate_combn_curr == "max") {
+      return(stats::setNames(
+        rep(
+          max(cp, na.rm = TRUE),
+          length(cp)
+        ),
+        names(cp)
+      ))
+    }
+  }) |>
+    stats::setNames(gate_combn)
+}
