@@ -23,7 +23,7 @@
     .data = .data,
     ind_batch = ind_batch,
     pop = pop_gate,
-    chnl_cut,
+    chnl_cut ,
     batch = batch
   )
   if (is.null(params$gate_tbl)) {
