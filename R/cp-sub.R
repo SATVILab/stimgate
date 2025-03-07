@@ -198,11 +198,10 @@
                                                  debug = FALSE,
                                                  noise_sd = NULL) {
   purrr::map(ind, function(ind_curr) {
-    cut_tbl <- ex_list[[as.character(ind_curr)]] |>
-      dplyr::mutate(
-        expr = chnl_cut
-      ) |>
-      dplyr::select(ind, ind_cell, expr, everything()) # nolint
+    cut_tbl <- ex_list[[as.character(ind_curr)]]
+    cn_vec_start <- c("ind", ind_cell, attr(cut_tbl, "chnl_cut"))
+    cn_vec_end <- setdiff(colnames(cut_tbl), cn_vec_start)
+    cut_tbl <- cut_tbl[, c(cn_vec_start, cn_vec_end)]
     if (exc_min) {
       cut_tbl <- cut_tbl[
         .get_cut(cut_tbl) > min(.get_cut(cut_tbl)),
