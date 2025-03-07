@@ -699,16 +699,25 @@
 
 .get_cp_uns_loc_get_dens_raw_densities_stim <- function(ex_tbl_stim_threshold,
                                                         bw) {
-  density(.get_cut(ex_tbl_stim_threshold), bw = bw)
+  dens_obj <- density(.get_cut(ex_tbl_stim_threshold), bw = bw)
+  if (is.null(attr(ex_tbl_stim_threshold, "prob_g_min"))) {
+    return(dens_obj)
+  }
+  dens_obj$y <- dens_obj$y * attr(ex_tbl_stim_threshold, "prob_g_min")
+  dens_obj
 }
 .get_cp_uns_loc_get_dens_raw_densities_uns <- function(ex_tbl_uns_threshold,
                                                        dens_stim,
                                                        bw) {
-  density(
+  dens_obj <- density(
     .get_cut(ex_tbl_uns_threshold),
     from = min(dens_stim$x), to = max(dens_stim$x), bw = bw
   )
+  if (is.null(attr(ex_tbl_uns_threshold, "prob_g_min"))) {
+    return(dens_obj)
+  }
   dens_obj$y <- dens_obj$y * attr(ex_tbl_uns_threshold, "prob_g_min")
+  dens_obj
 }
 
 .get_cp_uns_loc_get_dens_raw_tabulate <- function(stim_x,
@@ -934,7 +943,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 .get_cp_uns_loc_get_prob_smooth_actual_first <- function(data_mod, debug) {
   .debug(debug, "Smoothing I") # nolint
-  try(
+  try({
     fml <- as.formula(paste0(
       "prob_smooth ~ s(", attr(data_mod, "chnl_cut"), ", bs = 'mpi')"
     ))
@@ -955,8 +964,9 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
         bfgs = list(steptol.bfgs = 1e-1),
         maxit = 1e1
       )
-    ),
-    silent = TRUE
+    )
+  },
+  silent = TRUE
   )
 }
 
@@ -1007,7 +1017,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 .get_cp_uns_loc_get_prob_smooth_actual_second <- function(data_mod, debug) {
   .debug(debug, "Smoothing II") # nolint
-  try(
+  try({
     fml <- as.formula(paste0(
       "prob_smooth ~ s(", attr(data_mod, "chnl_cut"), ", bs = 'micv')"
     ))
@@ -1020,7 +1030,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
         trace = FALSE,
         devtol.fit = 0.01
       )
-    ),
+    )},
     silent = TRUE
   )
 }

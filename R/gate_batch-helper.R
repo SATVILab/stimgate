@@ -20,7 +20,7 @@
   # create bare list
   cp_uns_loc_list <- .get_cp_uns_loc( # nolint
     ex_list = ex_list,
-    gate_combn = gate_combn[["loc"]],
+    gate_combn = gate_combn,
     .data = .data,
     bias_uns = bias_uns,
     noise_sd = NULL,

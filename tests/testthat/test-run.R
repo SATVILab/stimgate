@@ -22,15 +22,19 @@ test_that("stimgate_gate runs", {
   dir.create(path_project, showWarnings = FALSE, recursive = TRUE)
   marker_vec <- c("Lu175Di", "Er168Di")
   browser()
+  browser()
+  browser()
   # debugonce(.complete_marker_list)
-  debugonce(.gate_init)
-  debugonce(.gate_batch)
-  debugonce(.gate_batch_all)
+  # debugonce(.gate_init)
+  # debugonce(.gate_batch)
+  debugonce(.get_ex_list)
+  debugonce(.get_cp_uns_loc_sample)
   stimgate_gate(
     path_project = path_project,
     .data = gs,
     batch_list = batch_list,
     marker = marker_vec,
-    debug = TRUE
+    debug = TRUE,
+    min_cell = 40
   )
 })
