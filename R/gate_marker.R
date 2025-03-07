@@ -1,24 +1,24 @@
 
 .gate_marker <- function(.data,
-                          ind_batch_list,
-                          pop_gate,
-                          cut,
-                          gate_combn,
-                          tol,
-                          noise_sd,
-                          bias_uns,
-                          bw_min,
-                          cp_min,
-                          min_cell,
-                          max_pos_prob_x,
-                          gate_quant,
-                          tol_ctrl,
-                          tol_gate,
-                          gate_tbl = NULL,
-                          tol_gate_single,
-                          calc_cyt_pos_gates,
-                          path_project,
-                          debug) {
+                         ind_batch_list,
+                         pop_gate,
+                         cut,
+                         gate_combn,
+                         tol,
+                         noise_sd,
+                         bias_uns,
+                         bw_min,
+                         cp_min,
+                         min_cell,
+                         max_pos_prob_x,
+                         gate_quant,
+                         tol_ctrl,
+                         tol_gate,
+                         gate_tbl = NULL,
+                         tol_gate_single,
+                         calc_cyt_pos_gates,
+                         path_project,
+                         debug) {
   # print progress
   .debug(debug, "pop_gate: ", pop_gate) # nolint
 
@@ -72,7 +72,6 @@
     cp_min = cp_min,
     min_cell = min_cell,
     params = params,
-    plot = plot,
     debug = debug
   )
 

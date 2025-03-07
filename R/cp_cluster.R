@@ -45,12 +45,8 @@
     gs = gs,
     gate_tbl = gate_tbl,
     ind_batch_list = params$ind_batch_list,
-    ind_in_batch_lab_vec = params$ind_in_batch_lab_vec,
-    ind_in_batch_uns = params$ind_in_batch_uns,
-    high = params$high,
     cut = params$cut,
     pop_gate = params$pop_gate,
-    data_name = params$data_name,
     calc_cyt_pos_gates = params$calc_cyt_pos_gates,
     cp_min = cp_min,
     max_cp = max_cp,
@@ -66,10 +62,6 @@
   dens_tbl <- .get_cp_cluster_dens_tbl_get( # nolint
     ind_batch_list = params$ind_batch_list,
     gs = gs,
-    ind_in_batch_lab_vec = params$ind_in_batch_lab_vec,
-    ind_in_batch_uns = params$ind_in_batch_uns,
-    high = params$high,
-    data_name = params$data_name,
     filter_other_cyt_pos = filter_other_cyt_pos,
     calc_cyt_pos_gates = params$calc_cyt_pos_gates,
     cut = params$cut,
@@ -117,10 +109,6 @@
   # =====================================
   # CALCULATE THRESHOLDS
   # =====================================
-
-  if (FALSE) {
-    .get_cp_cluster_plot_check_1lse(prop_bs_by_cp_tbl)
-  }
 
   # length table,
   # making a column group that contains
@@ -241,21 +229,6 @@
     dens_tbl = dens_tbl,
     debug = debug
   )
-
-  # ================================
-  # PLOT THRESHOLDS
-  # ================================
-
-  if (FALSE) {
-    .get_cp_cluster_plot_thresholds(
-      cp_tbl = cp_tbl,
-      params = params,
-      marker_list = marker_list,
-      chnl = chnl,
-      gs = gs,
-      ind_in_batch_lab_vec = ind_in_batch_lab_vec
-    )
-  }
 
   # =========================
   # OUTPUT

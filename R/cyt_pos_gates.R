@@ -1,11 +1,9 @@
 .gate_cyt_pos <- function(marker_list,
+                          ind_batch_list,
                           pop_gate,
                           .data,
                           gate_name = NULL,
                           bw_min,
-                          data_name,
-                          ind_in_batch_lab_vec,
-                          ind_in_batch_gate,
                           debug = FALSE,
                           calc_cyt_pos = TRUE,
                           path_project) {
@@ -30,10 +28,7 @@
   # params object
   params <- list(
     pop_gate = pop_gate,
-    chnl_lab = chnl_lab_vec,
-    ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-    ind_in_batch_gate = ind_in_batch_gate,
-    data_name = data_name
+    chnl_lab = chnl_lab_vec
   )
 
   # get max bw_min for densities
@@ -44,7 +39,6 @@
     chnl_vec = chnl_vec,
     path_project = path_project,
     params = params,
-    gate_name = gate_name,
     debug = debug,
     chnl_lab_vec = chnl_lab_vec
   )
@@ -64,12 +58,10 @@
       gn = gn,
       debug = debug,
       .data = .data,
+      ind_batch_list = ind_batch_list,
       chnl_vec = chnl_vec,
       chnl_lab_vec = chnl_lab_vec,
       pop_gate = pop_gate,
-      ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-      ind_in_batch_gate = ind_in_batch_gate,
-      data_name = data_name,
       bw_min = bw_min,
       calc_cyt_pos = calc_cyt_pos,
       path_project = path_project
@@ -81,27 +73,24 @@
                                          gn,
                                          gate_tbl_gn,
                                          .data,
+                                         ind_batch_list,
                                          chnl_vec,
                                          chnl_lab_vec,
                                          pop_gate,
-                                         ind_in_batch_lab_vec,
-                                         ind_in_batch_gate,
-                                         data_name,
                                          bw_min,
                                          calc_cyt_pos,
                                          path_project) {
   .debug(debug, "Getting cyt+ gates for gate_name: ", gn) # nolint
   cp_tbl_cyt <- purrr::map_df(seq_along(.data), function(ind) {
+    ind_uns <- .get_ind_uns(ind, ind_batch_list)
     .get_cyt_pos_gates_ind( # nolint
       ind = ind,
       .data = .data,
+      ind_uns = ind_uns,
       gate_tbl_gn = gate_tbl_gn,
       chnl_vec = chnl_vec,
       chnl_lab_vec = chnl_lab_vec,
       pop_gate = pop_gate,
-      ind_in_batch_lab_vec = ind_in_batch_lab_vec,
-      ind_in_batch_gate = ind_in_batch_gate,
-      data_name = data_name,
       bw_min = bw_min,
       debug = debug,
       calc_cyt_pos = calc_cyt_pos,
@@ -122,47 +111,35 @@
 
 .get_cyt_pos_gates_ind <- function(ind,
                                    .data,
+                                   ind_uns,
                                    gate_tbl_gn,
                                    chnl_vec,
                                    chnl_lab_vec,
                                    pop_gate,
-                                   ind_in_batch_lab_vec,
-                                   ind_in_batch_gate,
-                                   data_name,
                                    bw_min,
                                    debug,
                                    calc_cyt_pos,
                                    path_project) {
   .debug(debug, "Getting cyt+ gates for ind: ", ind) # nolint
 
-  # prep
-  # -------------------------------
-
-  # get which ind in batch
-  ind_in_batch <- ind %% length(ind_in_batch_lab_vec)
-
   # return if ind in batch is the last one, as that is the unstim ind
-  if (ind_in_batch == 0) {
+  if (ind == ind_uns) {
     return(NULL)
   }
-
-  # get stim
-  stim <- ind_in_batch_lab_vec[[ind_in_batch]]
 
   # get expression dataframe
   ex <- .get_ex( # nolint
     .data = .data[[ind]], pop = pop_gate,
-    cut = chnl_vec, high = NULL, ind = ind,
-    is_uns = FALSE, stim = stim,
-    ind_in_batch = ind_in_batch, data_name = data_name
+    cut = chnl_vec, ind = ind,
+    ind_uns = ind_uns,
+    data_name = data_name
   )
 
-  ind_uns <- attr(ex, "ind_uns")
   ex_uns <- .get_ex( # nolint
-    .data = .data[[ind_uns]], pop = pop_gate, # nolint
-    cut = chnl_vec, high = NULL, ind = ind,
-    is_uns = FALSE, stim = stim,
-    ind_in_batch = ind_in_batch, data_name = data_name
+    .data = .data[[ind_uns]],
+    pop = pop_gate, # nolint
+    cut = chnl_vec, ind = ind,
+    is_uns = TRUE
   )
 
   # gates

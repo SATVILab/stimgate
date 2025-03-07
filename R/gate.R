@@ -7,14 +7,6 @@
 #'   to be calculated.
 #' @param path_project character. Path to project directory. Results are saved
 #'   here.
-#' @param batch_size numeric. Number of samples per batch. Batches are
-#'   calculated assuming that numbers 1 to \code{batch_size} are batch one,
-#'   (\code{batch_siz} + 1) to 2 * \code{batch_size} are batch two, and so on.
-#' @param ind_in_batch_uns integer. Index within a given batch corresponding to
-#'   unstim. For example, if \code{ind_in_batch_uns} is four, then the fourth
-#'   sample within each batch is regarded as unstim.
-#' @param ind_in_batch_gate integer vector. Indices within a given batch for
-#'   which gates need to be calculated.
 #'
 #' # gating parameters
 #' @param marker list. List where each element specifies the parameters to be
@@ -90,6 +82,7 @@ stimgate_gate <- function(.data,
   # cytokine-positive gates
   gate_tbl <- .gate_cyt_pos( # nolint
     marker_list = marker,
+    ind_batch_list = ind_batch_list,
     pop_gate = pop_gate,
     .data = .data,
     calc_cyt_pos = calc_cyt_pos_gates,
@@ -274,7 +267,7 @@ stimgate_gate <- function(.data,
                         path_project,
                         save_gate_tbl = TRUE) {
   force(.data)
-  .get_gate_stats( # nolint
+  .get_stats( # nolint
     params = params,
     gate_tbl = gate_tbl,
     filter_other_cyt_pos = filter_other_cyt_pos,

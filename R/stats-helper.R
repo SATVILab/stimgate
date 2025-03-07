@@ -1,4 +1,4 @@
-.get_gate_stats_chnl_lab_get <- function(chnl_lab,
+.get_stats_chnl_lab_get <- function(chnl_lab,
                                          .data,
                                          chnl) {
   if (is.null(chnl_lab)) {
@@ -10,15 +10,10 @@
   chnl_lab
 }
 
-.get_gate_stats_params_get <- function(params = NULL,
+.get_stats_params_get <- function(params = NULL,
                                        chnl = NULL,
                                        pop_gate = NULL,
                                        chnl_lab = NULL,
-                                       ind_in_batch_lab = NULL,
-                                       ind_in_batch_gate = NULL,
-                                       data_name = NULL,
-                                       fcs = NULL,
-                                       ind_in_batch_uns = NULL,
                                        ind_batch_list = NULL,
                                        .data = NULL) {
   if (!is.null(params)) {
@@ -30,29 +25,22 @@
   list(
     pop_gate = pop_gate,
     chnl_lab = chnl_lab,
-    ind_in_batch_lab_vec = ind_in_batch_lab,
-    ind_in_batch_gate = ind_in_batch_gate,
-    data_name = data_name,
-    fcs = fcs,
-    ind_in_batch_uns = ind_in_batch_uns,
     ind_batch_list = ind_batch_list,
     .data = .data
   )
 }
 
-.get_gate_stats_gate_tbl_get <- function(gate_tbl,
-                                         chnl_lab,
-                                         path_project,
-                                         params,
-                                         gate_name) {
+.get_stats_gate_tbl_get <- function(gate_tbl,
+                                    chnl_lab,
+                                    path_project,
+                                    params,
+                                    gate_name) {
   if (!is.null(gate_tbl)) {
     return(gate_tbl)
   }
   purrr::map_df(
     names(chnl_lab),
     function(chnl_curr) {
-      # get base directory
-      params[["cut"]] <- chnl_curr
 k
       # get stats tbl
       gate_tbl <- readRDS(file.path(path_project, chnl_curr, "gate_tbl.rds"))
@@ -76,21 +64,21 @@ k
   )
 }
 
-.get_gate_stats_chnl_get <- function(chnl, gate_tbl) {
+.get_stats_chnl_get <- function(chnl, gate_tbl) {
   if (!is.null(chnl)) {
     return(chnl)
   }
   unique(gate_tbl$chnl)
 }
 
-.get_gate_stats_gate_name_get <- function(gate_name, gate_tbl) {
+.get_stats_gate_name_get <- function(gate_name, gate_tbl) {
   if (!is.null(gate_name)) {
     return(gate_name)
   }
   unique(gate_tbl$gate_name)
 }
 
-.get_gate_stats_combn_mat_list_get <- function(n_chnl, n_pos) {
+.get_stats_combn_mat_list_get <- function(n_chnl, n_pos) {
   purrr::map(
     seq_len(n_chnl),
     function(n_pos) gtools::combinations(n = n_chnl, r = n_pos)
@@ -98,8 +86,8 @@ k
     stats::setNames(1:n_chnl)
 }
 
-.get_gate_stats_cyt_combn_vec_list_get <- function(combn_mat_list,
-                                                   chnl) {
+.get_stats_cyt_combn_vec_list_get <- function(combn_mat_list,
+                                              chnl) {
   purrr::map(
     names(combn_mat_list),
     function(n_pos_nm) {
@@ -119,13 +107,11 @@ k
     stats::setNames(names(combn_mat_list))
 }
 
-.get_gate_stats_gate_tbl_save <- function(gate_tbl,
-                                          path_project,
-                                          params,
-                                          chnl,
-                                          sampleid_lab,
-                                          stim_lab,
-                                          save) {
+.get_stats_gate_tbl_save <- function(gate_tbl,
+                                     path_project,
+                                     params,
+                                     chnl,
+                                     save) {
   if (!save) {
     return(invisible(FALSE))
   }
@@ -135,39 +121,12 @@ k
       marker = params$chnl_lab[params$cut]
     )
   }
-  if (!is.null(sampleid_lab)) {
-    gate_tbl <- gate_tbl |>
-      dplyr::mutate(SampleID = sampleid_lab[as.character(ind)]) # nolint
-    if (!is.null(stim_lab)) {
-      gate_tbl <- gate_tbl |>
-        dplyr::mutate(stim = stim_lab[as.character(ind)]) # nolint
-      gate_tbl <- gate_tbl |>
-        dplyr::select(
-          gate_name, chnl, marker, ind, SampleID, stim, everything() # nolint
-        )
-    } else {
-      gate_tbl <- gate_tbl |>
-        dplyr::select(
-          gate_name, chnl, marker, ind, SampleID, everything() # nolint
-        )
-    }
-  } else {
-    if (!is.null(stim_lab)) {
-      gate_tbl <- gate_tbl |>
-        dplyr::mutate(
-          stim = stim_lab[as.character(ind)] # nolint
-        )
-      gate_tbl <- gate_tbl |>
-        dplyr::select(
-          gate_name, chnl, marker, ind, stim, everything() # nolint
-        )
-    } else {
-      gate_tbl <- gate_tbl |>
-        dplyr::select(
-          gate_name, chnl, marker, ind, everything() # nolint
-        )
-    }
-  }
+
+  gate_tbl <- gate_tbl |>
+    dplyr::select(
+      gate_name, chnl, marker, ind, everything() # nolint
+    )
+
   gate_tbl <- gate_tbl |>
     dplyr::arrange(gate_name, chnl, marker, ind) # nolint
   params[["cut"]] <- chnl[1]
@@ -187,11 +146,11 @@ k
 
 
 
-.get_gate_stats_save <- function(save,
-                                 stat_tbl,
-                                 path_project,
-                                 params,
-                                 chnl) {
+.get_stats_save <- function(save,
+                            stat_tbl,
+                            path_project,
+                            params,
+                            chnl) {
   if (!save) {
     return(invisible(stat_tbl))
   }

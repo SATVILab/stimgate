@@ -2,19 +2,19 @@
 #'
 #' @inheritParams gate # all except those listed below
 #' @inheritParams .get_gate_list # pop_gate, cut, high, fdr, tol, gate_combn
-.get_gate_batch <- function(.data,
-                            ind_batch,
-                            pop_gate,
-                            cut,
-                            gate_combn,
-                            tol,
-                            noise_sd,
-                            bias_uns,
-                            bw_min,
-                            cp_min,
-                            min_cell,
-                            params,
-                            debug) {
+.gate_batch <- function(.data,
+                        ind_batch,
+                        pop_gate,
+                        cut,
+                        gate_combn,
+                        tol,
+                        noise_sd,
+                        bias_uns,
+                        bw_min,
+                        cp_min,
+                        min_cell,
+                        params,
+                        debug) {
   # ==========================================
   # .data
   # ==========================================
@@ -28,27 +28,27 @@
   )
 
   if (is.null(params$gate_tbl)) {
-    .get_gate_batch_all(
-      debug, ind_batch, ind_in_batch_gate, ind_in_batch_uns,
-      ex_list, gate_combn, .data, noise_sd, bias_uns, fdr, cp_min,
-      min_cell, cut, tol, bw_min, params, plot, path_project
+    .gate_batch_all(
+      debug, ind_batch,
+      ex_list, gate_combn, .data, noise_sd, bias_uns, cp_min,
+      min_cell, cut, tol, bw_min, params, path_project
     )
   } else {
-    .get_gate_batch_single(
-      debug, ind_batch, ind_in_batch_gate, ind_in_batch_uns,
+    .gate_batch_single(
+      debug, ind_batch,
       ex_list, .data, noise_sd,
-      bias_uns, fdr, cp_min, min_cell, cut, tol, bw_min, params, plot,
+      bias_uns, cp_min, min_cell, cut, tol, bw_min, params,
       path_project
     )
   }
 }
 
 
-.get_gate_batch_ex_list <- function(ex_list,
-                                         boot,
-                                         boot_n,
-                                         boot_sd,
-                                         i) {
+.gate_batch_ex_list <- function(ex_list,
+                                boot,
+                                boot_n,
+                                boot_sd,
+                                i) {
   if (!boot) {
     return(ex_list)
   }

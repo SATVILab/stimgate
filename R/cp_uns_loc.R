@@ -1,17 +1,17 @@
 #' @title Calculate the local fdr-based cut
-.get_cp_uns_loc <- function(ex_list, ind_gate, ind_uns, gate_combn,
+.get_cp_uns_loc <- function(ex_list, gate_combn,
                             .data, bias_uns = 0,
                             noise_sd = NULL, bw_min = 80,
-                            cp_min, min_cell, params, plot,
+                            cp_min, min_cell, params,
                             path_project, debug = FALSE) {
   # get cutpoints for each level of bias
   .get_cp_uns_loc_bias( # nolint
-    ex_list = ex_list, ind_gate = ind_gate, ind_uns = ind_uns,
+    ex_list = ex_list,
     .data = .data, bias_uns = bias_uns, noise_sd = noise_sd,
     cp_min = cp_min, gate_combn = gate_combn, bw_min = bw_min,
     min_cell = min_cell, gate_tbl = params$gate_tbl,
     gate_name_curr = params$gate_name_curr, cut = params$cut,
-    calc_cyt_pos_gates = params$calc_cyt_pos_gates, plot = plot,
+    calc_cyt_pos_gates = params$calc_cyt_pos_gates,
     path_project = path_project, debug = debug
   )
 }
@@ -19,18 +19,18 @@
 
 
 #' @title Get the unstim-based local fdr-method cutpoint for each level of bias
-.get_cp_uns_loc_bias <- function(ex_list, ind_gate, ind_uns, .data,
+.get_cp_uns_loc_bias <- function(ex_list, .data,
                                  bias_uns, noise_sd, cp_min,
                                  gate_combn, bw_min, min_cell,
                                  gate_tbl, gate_name_curr, cut,
-                                 calc_cyt_pos_gates, plot, path_project,
+                                 calc_cyt_pos_gates, path_project,
                                  debug) {
   # get ecdf of uns
   purrr::map(bias_uns, function(bias) {
     .debug(debug, "bias_uns", bias) # nolint
 
     ex_list_prep <- .prepare_data_with_bias_and_noise( # nolint
-      ex_list = ex_list, ind_gate = ind_gate, ind_uns = ind_uns,
+      ex_list = ex_list,
       bias = bias, noise_sd = noise_sd, debug = debug
     )
 
@@ -40,8 +40,6 @@
       ex_list_orig = ex_list_prep[["ex_list_orig"]],
       ex_list_no_min = ex_list_prep[["ex_list_no_min"]],
       ex_tbl_uns_bias = ex_list_prep[["ex_tbl_uns_bias"]],
-      ind_uns = ind_uns,
-      ind_gate = ind_gate,
       exc_min = TRUE,
       gate_combn = gate_combn,
       cp_min = cp_min,
@@ -51,7 +49,6 @@
       gate_name_curr = gate_name_curr,
       cut = cut,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
-      plot = plot,
       bias = bias,
       path_project = path_project,
       debug = debug
@@ -72,15 +69,13 @@
 }
 
 .prepare_data_with_bias_and_noise <- function(ex_list,
-                                              ind_gate,
-                                              ind_uns,
                                               bias,
                                               noise_sd,
                                               debug) {
   # rename `cut` column` to `expr`
   # -------------------------------------
   ex_list_orig <- .prepare_ex_list_with_bias_and_noise( # nolint
-    ex_list = ex_list, ind = union(ind_gate, ind_uns), exc_min = FALSE,
+    ex_list = ex_list, ind = names(ex_list), exc_min = FALSE,
     bias = 0, noise_sd = NULL, debug = debug
   ) |>
     .arrange_samples_by_desc_expr()
@@ -90,7 +85,7 @@
   # values
   # -------------------------------------
   ex_list_no_min <- .prepare_ex_list_with_bias_and_noise( # nolint
-    ex_list = ex_list, ind = union(ind_gate, ind_uns), exc_min = TRUE,
+    ex_list = ex_list, ind = names(ex_list), exc_min = TRUE,
     bias = 0, noise_sd = NULL, debug = debug
   ) |>
     .arrange_samples_by_desc_expr()
@@ -100,11 +95,11 @@
   # and /or adding noise
   # -------------------------------------
   ex_list_bias <- .prepare_ex_list_with_bias_and_noise( # nolint
-    ex_list = ex_list, ind = ind_uns, exc_min = TRUE,
+    ex_list = ex_list, ind = names(ex_list)[length(ex_list)], exc_min = TRUE,
     bias = bias, debug = debug, noise_sd = NULL
   ) |>
     .arrange_samples_by_desc_expr()
-  ex_tbl_uns_bias <- ex_list_bias[[as.character(ind_uns)]]
+  ex_tbl_uns_bias <- ex_list_bias[[1]]
 
   list(
     "ex_list_orig" = ex_list_orig,
@@ -119,8 +114,6 @@
 .get_cp_uns_loc_gate_combn <- function(ex_list_orig,
                                        ex_list_no_min,
                                        ex_tbl_uns_bias,
-                                       ind_uns,
-                                       ind_gate,
                                        exc_min = TRUE,
                                        gate_combn,
                                        cp_min,
@@ -130,7 +123,6 @@
                                        gate_name_curr,
                                        cut,
                                        calc_cyt_pos_gates,
-                                       plot,
                                        bias,
                                        path_project,
                                        debug = FALSE) {
@@ -140,25 +132,23 @@
   cp_uns_list_prejoin <- .get_cp_uns_loc_gate_combn_prejoin( # nolint
     gate_combn = gate_combn, ex_list_no_min = ex_list_no_min,
     ex_list_orig = ex_list_orig, ex_tbl_uns_bias = ex_tbl_uns_bias,
-    cp_min = cp_min, ind_uns = ind_uns, ind_gate = ind_gate,
+    cp_min = cp_min,
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, cut = cut,
-    calc_cyt_pos_gates = calc_cyt_pos_gates, plot = plot,
+    calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias, path_project = path_project, debug = debug
   )
 
   # get cutpoint for non-prejoin grouping methods
   cp_uns_list_prejoin_non <- .get_cp_uns_loc_gate_combn_prejoin_non(
     non_prejoin_combn = setdiff(gate_combn, "prejoin"),
-    ex_list_no_min_stim = ex_list_no_min[
-      -which(names(ex_list_no_min) == as.character(ind_uns))
-    ],
+    ex_list_no_min_stim = ex_list_no_min[-length(ex_list_no_min)],
     ex_list_orig = ex_list_orig,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
-    cp_min = cp_min, ind_uns = ind_uns, ind_gate = ind_gate,
+    cp_min = cp_min,
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, cut = cut,
-    calc_cyt_pos_gates = calc_cyt_pos_gates, plot = plot,
+    calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias, path_project = path_project, debug = debug
   )
 
@@ -199,15 +189,12 @@
                                                ex_list_orig,
                                                ex_tbl_uns_bias,
                                                cp_min,
-                                               ind_uns,
-                                               ind_gate,
                                                bw_min,
                                                min_cell,
                                                gate_tbl,
                                                gate_name_curr,
                                                cut,
                                                calc_cyt_pos_gates,
-                                               plot,
                                                bias,
                                                path_project,
                                                debug) {
@@ -219,15 +206,12 @@
     ex_list_orig = ex_list_orig,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min,
-    ind_uns = ind_uns,
-    ind_gate = ind_gate,
     bw_min = bw_min,
     min_cell = min_cell,
     gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr,
     cut = cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    plot = plot,
     bias = bias,
     path_project = path_project,
     debug = debug
@@ -239,14 +223,12 @@
 }
 
 .prepare_data_for_prejoin <- function(ex_list_orig,
-                                      ex_list_no_min,
-                                      ind_uns,
-                                      ind_gate) {
+                                      ex_list_no_min) {
   ex_list_no_min <- .prepare_data_for_prejoin_ind(
-    ex_list = ex_list_no_min, ind_uns = ind_uns, ind_gate = ind_gate
+    ex_list = ex_list_no_min
   )
   ex_list_orig <- .prepare_data_for_prejoin_ind(
-    ex_list = ex_list_orig, ind_uns = ind_uns, ind_gate = ind_gate
+    ex_list = ex_list_orig
   )
 
   list(
@@ -255,7 +237,8 @@
   )
 }
 
-.prepare_data_for_prejoin_ind <- function(ex_list, ind_uns, ind_gate) {
+.prepare_data_for_prejoin_ind <- function(ex_list) {
+  ind_uns <- names(ex_list)[length(ex_list)]
   ex_tbl_stim <- ex_list[seq_len(length(ex_list) - 1)] |>
     dplyr::bind_rows() |>
     dplyr::arrange(dplyr::desc(expr)) # nolint
@@ -263,22 +246,19 @@
     ex_tbl_stim,
     ex_list[[length(ex_list)]]
   ) |>
-    stats::setNames(c(ind_gate[1], ind_uns))
+    stats::setNames(c(names(ex_list)[1], ind_uns))
 }
 
 .get_cp_uns_loc_gate_combn_prejoin_actual <- function(ex_list_no_min,
                                                       ex_list_orig,
                                                       ex_tbl_uns_bias,
                                                       cp_min,
-                                                      ind_uns,
-                                                      ind_gate,
                                                       bw_min,
                                                       min_cell,
                                                       gate_tbl,
                                                       gate_name_curr,
                                                       cut,
                                                       calc_cyt_pos_gates,
-                                                      plot,
                                                       bias,
                                                       path_project,
                                                       debug) {
@@ -287,8 +267,7 @@
   # get marker expression for stim samples,
   # join and then sort into descending order
   ex_list_prejoin <- .prepare_data_for_prejoin(
-    ex_list_orig = ex_list_orig, ex_list_no_min = ex_list_no_min,
-    ind_uns = ind_uns, ind_gate = ind_gate
+    ex_list_orig = ex_list_orig, ex_list_no_min = ex_list_no_min
   )
 
   # get cutpoints for gate combn method for a range of fdr's
@@ -297,17 +276,15 @@
     ex_list_no_min_stim = ex_list_prejoin[["ex_list_no_min"]],
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min,
-    ind_uns = ind_uns,
-    ind_gate = ind_gate[[1]],
     bw_min = bw_min,
     min_cell = min_cell,
     gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr,
     cut = cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    plot = plot,
     bias = bias,
-    path_project = path_project
+    path_project = path_project,
+    ind_stim = names(ex_list_no_min)[-length(ex_list_no_min)]
   ) |>
     purrr::map(function(x) list("prejoin" = x))
 }
@@ -320,15 +297,12 @@
                                                    ex_list_orig,
                                                    ex_tbl_uns_bias,
                                                    cp_min,
-                                                   ind_uns,
-                                                   ind_gate,
                                                    bw_min,
                                                    min_cell,
                                                    gate_tbl,
                                                    gate_name_curr,
                                                    cut,
                                                    calc_cyt_pos_gates,
-                                                   plot,
                                                    bias,
                                                    path_project,
                                                    debug) {
@@ -342,15 +316,12 @@
     ex_list_orig = ex_list_orig,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
     cp_min = cp_min,
-    ind_uns = ind_uns,
-    ind_gate = ind_gate,
     bw_min = bw_min,
     min_cell = min_cell,
     gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr,
     cut = cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    plot = plot,
     bias = bias,
     non_prejoin_combn = non_prejoin_combn,
     path_project = path_project,
@@ -365,15 +336,12 @@
                                                           ex_list_orig,
                                                           ex_tbl_uns_bias,
                                                           cp_min,
-                                                          ind_uns,
-                                                          ind_gate,
                                                           bw_min,
                                                           min_cell,
                                                           gate_tbl,
                                                           gate_name_curr,
                                                           cut,
                                                           calc_cyt_pos_gates,
-                                                          plot,
                                                           bias,
                                                           path_project,
                                                           debug,
@@ -383,11 +351,12 @@
     ex_list_orig = ex_list_orig,
     ex_list_no_min_stim = ex_list_no_min_stim,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
-    cp_min = cp_min, ind_uns = ind_uns, ind_gate = ind_gate,
+    cp_min = cp_min,
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, cut = cut,
-    calc_cyt_pos_gates = calc_cyt_pos_gates, plot = plot,
-    bias = bias, path_project = path_project
+    calc_cyt_pos_gates = calc_cyt_pos_gates,
+    bias = bias, path_project = path_project,
+    ind_stim = names(ex_list_no_min_stim)[-length(ex_list_no_min_stim)]
   )
   p_list <-
     .get_cp_uns_loc_gate_combn_prejoin_non_actual_plot_org(
@@ -476,17 +445,15 @@
                                    ex_tbl_uns_bias,
                                    cp_min,
                                    bw_min,
-                                   ind_uns,
-                                   ind_gate,
                                    min_cell,
                                    gate_tbl,
                                    gate_name_curr,
                                    cut,
                                    calc_cyt_pos_gates,
-                                   plot = TRUE,
                                    bias,
                                    path_project,
-                                   debug = FALSE) {
+                                   debug = FALSE,
+                                   ind_stim) {
   .debug(debug, "getting loc gate at sample level") # nolint
 
   # get cutpoints for each sample
@@ -509,7 +476,7 @@
     # sample for which single-positive gates are required
     ex_tbl_uns_bias <- .get_cp_uns_loc_sample_uns_rm_cyt_pos(
       debug = debug,
-      ex_tbl_uns_orig = ex_list_orig[[as.character(ind_uns)]],
+      ex_tbl_uns_orig = ex_list_orig[[length(ex_list_orig)]],
       gate_tbl = gate_tbl,
       ex_tbl_stim_no_min = ex_list_no_min_stim[[i]],
       gate_name = gate_name_curr,
@@ -522,24 +489,24 @@
     cp_uns_loc_obj <- .get_cp_uns_loc_ind( # nolint
       ex_tbl_stim_no_min = ex_list_no_min_stim[[i]],
       ex_tbl_uns_bias = ex_tbl_uns_bias,
-      ex_tbl_stim_orig = ex_list_orig[[as.character(ind_gate)[i]]],
-      ex_tbl_uns_orig = ex_list_orig[[as.character(ind_uns)]],
+      ex_tbl_stim_orig = ex_list_orig[[i]],
+      ex_tbl_uns_orig = ex_list_orig[[length(ex_list_orig)]],
       bw_min = bw_min,
       cp_min = cp_min,
       min_cell = min_cell,
-      plot = plot,
       bias = bias,
       path_project = path_project,
       debug = debug
     )
-  })
+  }) |>
+    stats::setNames(names(ex_list_no_min_stim))
 
   # name sample
   # ------------------
   .get_cp_uns_loc_output(
     debug = debug, cp_uns_loc_obj_list = cp_uns_loc_obj_list,
-    ind_gate = ind_gate, ind_uns = ind_uns,
-    ind_stim = seq_along(ex_list_no_min_stim)
+    ind_uns = names(ex_list_orig)[length(ex_list_orig)],
+    ind_stim = ind_stim
   )
 }
 
@@ -590,8 +557,8 @@
   # re-apply bias, noise and exclude minimum after
   # removing cytokine-positive cells
   .prepare_ex_list_with_bias_and_noise( # nolint
-    ex_list = stats::setNames(list(ex_tbl_uns_orig), ex_tbl_uns_orig$ind[1]),
-    ind = ex_tbl_uns_orig$ind[1],
+    ex_list = stats::setNames(list(ex_tbl_uns_orig), attr(ex_tbl_uns_orig, "ind_uns")),
+    ind = attr(ex_tbl_uns_orig, "ind_uns"),
     exc_min = TRUE,
     bias = bias,
     noise_sd = NULL
@@ -1230,39 +1197,32 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 .get_cp_uns_loc_output <- function(debug,
                                    cp_uns_loc_obj_list,
-                                   ind_gate,
                                    ind_uns,
                                    ind_stim) {
   cp_vec <- .get_cp_uns_loc_sample_cp_rep(
     debug = debug,
     cp_uns_loc_obj_list = cp_uns_loc_obj_list,
-    ind_gate = ind_gate,
-    ind_uns = ind_uns
+    ind_uns
   )
-  p_list <- purrr::map(cp_uns_loc_obj_list, function(x) x$p_list) |>
-    stats::setNames(ind_stim)
   .debug(debug, "done getting loc gate at sample level") # nolint
   # collate plots
   list(
     "loc" = cp_vec,
-    "p_list" = p_list
+    "p_list" = list()
   )
 }
 
 .get_cp_uns_loc_sample_cp_rep <- function(debug,
                                           cp_uns_loc_obj_list,
-                                          ind_gate,
-                                          ind_uns) {
+                                          ind_uns,
+                                          ind_stim) {
   .debug(debug, "Possibly re-using calculated cutpoints") # nolint
 
   # extract vector of cutpoints
   cp_vec <- purrr::map_dbl(cp_uns_loc_obj_list, ~ .x[["cp"]])
 
-  # stimulation indices
-  ind_stim <- setdiff(ind_gate, ind_uns)
-
   # Repeat cutpoint if it was prejoined
-  if (length(cp_vec) == 1 && ind_stim != 1) {
+  if (length(cp_vec) != length(ind_stim)) {
     cp_vec <- stats::setNames(
       rep(cp_vec, length(ind_stim)), ind_stim
     )
@@ -1272,12 +1232,10 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   }
 
   # add unstim if unstim gate required
-  if (ind_uns %in% ind_gate) {
-    if (!all(purrr::map_lgl(cp_vec, is.na))) {
-      cp_vec <- c(cp_vec, stats::setNames(mean(cp_vec, na.rm = TRUE), ind_uns))
-    } else {
-      cp_vec <- c(cp_vec, NA)
-    }
+  if (!all(purrr::map_lgl(cp_vec, is.na))) {
+    cp_vec <- c(cp_vec, stats::setNames(mean(cp_vec, na.rm = TRUE), ind_uns))
+  } else {
+    cp_vec <- c(cp_vec, NA)
   }
 
   cp_vec
