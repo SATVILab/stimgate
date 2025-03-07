@@ -11,7 +11,7 @@
     cp_min = cp_min, gate_combn = gate_combn, bw_min = bw_min,
     min_cell = min_cell, gate_tbl = params$gate_tbl,
     gate_name_curr = params$gate_name_curr, chnl_cut = params$chnl_cut,
-    calc_cyt_pos_gates = params$calcdd_cyt_pos_gates,
+    calc_cyt_pos_gates = params$calc_cyt_pos_gates,
     path_project = path_project, debug = debug
   )
 }
@@ -596,7 +596,7 @@
 }
 
 .get_cp_uns_loc_ind_max_dens_x <- function(ex_tbl_stim_no_min) {
-  max(ex_tbl_stim_no_min[[attr(ex_tbl_stim_no_min, "chnl_cut")]]) - 0.05 * (diff(range(ex_tbl_stim_no_min$expr)))
+  max(.get_cut(ex_tbl_stim_no_min)) - 0.05 * (diff(range(.get_cut(ex_tbl_stim_no_min))))
 }
 
 .get_cp_uns_loc_ind_check_max_x <- function(ex_tbl_stim_no_min, cp_min) {
@@ -629,8 +629,8 @@
   # automatically when we decide
   # we cannot apply this algorithm
   # (perhaps due to too few cells)
-  range_vec_stim <- range(ex_tbl_stim_no_min$expr)
-  range_vec_uns <- range(ex_tbl_uns_bias$expr)
+  range_vec_stim <- range(.get_cut(ex_tbl_stim_no_min))
+  range_vec_uns <- range(.get_cut(ex_tbl_uns_bias))
   range_len <- max(diff(range_vec_stim), diff(range_vec_uns))
   max(
     cp_min,
@@ -640,7 +640,7 @@
 }
 
 .get_cp_uns_loc_set_max_expr <- function(.data, max_x) {
-  .data |> dplyr::mutate(expr = pmin(.data$expr, max_x))
+  .data[, attr(.data, "chnl_cut")] <- pmin(.get_cut(.data), max_x)
 }
 
 # get dens_tbl_raw
@@ -684,10 +684,10 @@
                                                       ex_tbl_uns_threshold,
                                                       bw_min) {
   bw_stim <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
-    ex_tbl_stim_threshold$expr, bw_min
+    .get_cut(ex_tbl_stim_threshold), bw_min
   )
   bw_uns <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
-    ex_tbl_uns_threshold$expr, bw_min
+    .get_cut(ex_tbl_uns_threshold), bw_min
   )
   max(bw_stim, bw_min, bw_uns)
 }
@@ -699,13 +699,13 @@
 
 .get_cp_uns_loc_get_dens_raw_densities_stim <- function(ex_tbl_stim_threshold,
                                                         bw) {
-  density(ex_tbl_stim_threshold$expr, bw = bw)
+  density(.get_cut(ex_tbl_stim_threshold), bw = bw)
 }
 .get_cp_uns_loc_get_dens_raw_densities_uns <- function(ex_tbl_uns_threshold,
                                                        dens_stim,
                                                        bw) {
   density(
-    ex_tbl_uns_threshold$expr,
+    .get_cut(ex_tbl_uns_threshold),
     from = min(dens_stim$x), to = max(dens_stim$x), bw = bw
   )
 }
@@ -856,7 +856,7 @@
 
 .get_cp_uns_loc_check_response <- function(prob_tbl_pos, ex_tbl_stim_orig) {
   nrow(prob_tbl_pos) == 0 ||
-    max(ex_tbl_stim_orig$expr) < .get_cp_uns_loc_get_min_prob_x(prob_tbl_pos)
+    max(.get_cut(ex_tbl_stim_orig)) < .get_cp_uns_loc_get_min_prob_x(prob_tbl_pos)
 }
 
 .get_cp_uns_loc_get_data_mod <- function(ex_tbl_stim_threshold,
@@ -890,7 +890,7 @@
 
 get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                                ex_tbl_uns_no_min) {
-  abs(max(diff(ex_tbl_stim_no_min$expr), diff(ex_tbl_uns_no_min$expr))) * 0.05
+  abs(max(diff(.get_cut(ex_tbl_stim_no_min)), diff(.get_cut(ex_tbl_uns_no_min)))) * 0.05
 }
 
 # smooth
@@ -1037,8 +1037,8 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
   # get probabilities
   prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
-    dens_tbl_raw, debug, cp_min, ex_tbl_stim_threshold$expr,
-    ex_tbl_uns_threshold$expr
+    dens_tbl_raw, debug, cp_min, .get_cut(ex_tbl_stim_threshold),
+    .get_cut(ex_tbl_uns_threshold)
   )
 
   # get .data to smooth over
@@ -1100,9 +1100,9 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 .get_cp_uns_loc_get_cp_data_threshold_count <- function(data_mod) {
   if (nrow(data_mod) == 1L) {
-    min_val <- min(data_mod$expr) - 1
+    min_val <- min(.get_cut(data_mod)) - 1
   } else {
-    min_val <- min(data_mod$expr)
+    min_val <- min(.get_cut(data_mod))
   }
   data_mod |>
     dplyr::filter(expr > min_val) |> # nolint
@@ -1136,7 +1136,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
         # TODO: think about how to handle:
         # - bias
         # - cytokine-positive cells having been removed
-        sum(ex_tbl_uns_orig$expr >= x) / nrow(ex_tbl_uns_orig)
+        sum(.get_cut(ex_tbl_uns_orig) >= x) / nrow(ex_tbl_uns_orig)
       }),
       prop_bs = prop_stim - prop_uns, # nolint
       prop_bs_diff = prop_bs - prop_bs_est # nolint

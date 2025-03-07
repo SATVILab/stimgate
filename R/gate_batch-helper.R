@@ -18,8 +18,6 @@
   )
 
   # create bare list
-  gate_list <- list()
-
   cp_uns_loc_list <- .get_cp_uns_loc( # nolint
     ex_list = ex_list,
     gate_combn = gate_combn[["loc"]],

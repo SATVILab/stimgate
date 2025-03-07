@@ -26,12 +26,10 @@
     chnl_cut,
     batch = batch
   )
-
   if (is.null(params$gate_tbl)) {
     .gate_batch_all(
-      debug, ind_batch, batch,
-      ex_list, gate_combn, .data, noise_sd, bias_uns, cp_min,
-      min_cell, chnl_cut, tol, bw_min, params, path_project
+      debug, ind_batch, batch, ex_list, gate_combn, .data, noise_sd,
+      bias_uns, cp_min, min_cell, tol, bw_min, params, path_project
     )
   } else {
     .gate_batch_single(
