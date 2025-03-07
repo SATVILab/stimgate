@@ -12,9 +12,12 @@
   purrr::map(ind, function(ind_curr) {
     cut_tbl <- ex_list[[as.character(ind_curr)]]
     if (exc_min) {
+      n_row_init <- nrow(cut_tbl)
       cut_tbl <- cut_tbl[
         .get_cut(cut_tbl) > min(.get_cut(cut_tbl)),
       ] # nolint
+      n_row_fin <- nrow(cut_tbl)
+      .attr(cut_tbl, "prob_g_min") <- n_row_fin / n_row_init
     }
     cut_tbl[[attr(cut_tbl, "chnl_cut")]] <- .get_cut(cut_tbl) + bias # nolint
     if (!is.null(noise_sd)) {
