@@ -20,7 +20,8 @@
                                             cp_min,
                                             min_cell,
                                             params,
-                                            debug) {
+                                            debug,
+                                            path_project) {
   print("getting pre-adjustment gates")
   purrr::map_df(seq_along(ind_batch_list), function(i) {
     .debug(debug, "ind_batch_list", i) # nolint
@@ -33,7 +34,7 @@
       .data = .data,
       ind_batch = ind_batch_list[[i]],
       pop_gate = pop_gate,
-      chnl_cut = params$chnl_cut,,
+      chnl_cut = params$chnl_cut,
       gate_combn = gate_combn,
       tol = tol,
       noise_sd = noise_sd,
@@ -43,7 +44,8 @@
       min_cell = min_cell,
       params = params,
       batch = names(ind_batch_list)[i],
-      debug = debug
+      debug = debug,
+      path_project = path_project
     ) |>
       dplyr::select(
         gate_name, gate_type, gate_combn, # nolint
@@ -147,7 +149,7 @@
     gate_tbl_cluster <- purrr::map_df(
       unique(gate_tbl$gate_name), function(gn) {
         gate_tbl_cluster <- .get_cp_cluster( # nolint
-          gs = params$.data,
+          gs = .data,
           gate_tbl = gate_tbl |>
             dplyr::filter(gate_name == gn), # nolint
           gate_stats_tbl = gate_stats_tbl |>
@@ -475,7 +477,7 @@
       dplyr::filter(gate_name == gn) # nolint
 
     gate_tbl_cluster_gn <- .get_cp_cluster( # nolint
-      gs = params$.data,
+      gs = .data,
       gate_tbl = gate_tbl_gn,
       gate_stats_tbl = gate_stats_tbl_gn,
       gate_tbl_ctrl = gate_tbl_ctrl_clust_gn,

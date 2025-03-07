@@ -22,7 +22,7 @@ test_that("stimgate_gate runs", {
   suppressWarnings(unlink(path_project, recursive = TRUE))
   dir.create(path_project, showWarnings = FALSE, recursive = TRUE)
   marker_vec <- c("Lu175Di", "Er168Di")
-  debugonce(.gate_marker)
+  debugonce(.gate_marker_pre_adj_gates_gate)
   debugonce(.gate_batch_all)
   stimgate_gate(
     path_project = path_project,

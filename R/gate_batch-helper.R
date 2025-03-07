@@ -27,7 +27,8 @@
     bias_uns = bias_uns,
     noise_sd = NULL,
     bw_min = bw_min,
-    cp_min = cp_min, min_cell = min_cell,
+    cp_min = cp_min,
+    min_cell = min_cell,
     params = params,
     path_project = path_project,
     debug = debug
