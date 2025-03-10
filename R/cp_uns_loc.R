@@ -423,6 +423,7 @@
 
   # get cutpoints for each sample
   cp_uns_loc_obj_list <- purrr::map(seq_along(ex_list_no_min_stim), function(i) { # nolint
+    print(i)
     .debug(debug, "sample", i) # nolint
 
     # return early if there are too few cells
@@ -531,7 +532,7 @@
 }
 
 .get_cp_uns_loc_p_list_empty <- function() {
-  lapply(1:3, function(x) ggplot2::ggplot()) |>
+  lapply(1:3, function(x) list()) |>
     stats::setNames(c("p_loc_dens", "p_loc_prob", "p_loc_ctb"))
 }
 
@@ -641,6 +642,37 @@
 
 .get_cp_uns_loc_set_max_expr <- function(.data, max_x) {
   .data[, attr(.data, "chnl_cut")] <- pmin(.get_cut(.data), max_x)
+  .data
+}
+
+# get probabilities
+.get_cp_uns_loc_get_prob <- function(ex_tbl_stim_no_min,
+                                     ex_tbl_stim_threshold,
+                                     ex_tbl_uns_threshold,
+                                     ex_tbl_uns_bias,
+                                     debug,
+                                     bw_min,
+                                     cp_min,
+                                     ex_tbl_uns_orig) {
+  # get raw densities
+  dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, bw_min
+  )
+
+  # get probabilities
+  prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
+    dens_tbl_raw, debug, cp_min, .get_cut(ex_tbl_stim_threshold),
+    .get_cut(ex_tbl_uns_threshold)
+  )
+
+  # get .data to smooth over
+  data_mod <- .get_cp_uns_loc_get_data_mod(
+    ex_tbl_stim_threshold, ex_tbl_stim_no_min, ex_tbl_uns_threshold,
+    ex_tbl_uns_bias, prob_tbl_list, cp_min
+  )
+
+  # smooth
+  .get_cp_uns_loc_get_prob_smooth(data_mod)
 }
 
 # get dens_tbl_raw
@@ -747,7 +779,10 @@
     dplyr::mutate(stim = ifelse(stim == "y_stim", "yes", "no")) # nolint
 }
 
-#
+# get probabilities
+# -------------------
+
+
 .get_cp_uns_loc_get_prob_tbl <- function(dens_tbl_raw,
                                          debug,
                                          cp_min,
@@ -1040,35 +1075,10 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   data_mod$prob_smooth - 0.0001
 }
 
-# get probabilities
-.get_cp_uns_loc_get_prob <- function(ex_tbl_stim_no_min,
-                                     ex_tbl_stim_threshold,
-                                     ex_tbl_uns_threshold,
-                                     ex_tbl_uns_bias,
-                                     debug,
-                                     bw_min,
-                                     cp_min,
-                                     ex_tbl_uns_orig) {
-  # get raw densities
-  dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
-    ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, bw_min
-  )
 
-  # get probabilities
-  prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
-    dens_tbl_raw, debug, cp_min, .get_cut(ex_tbl_stim_threshold),
-    .get_cut(ex_tbl_uns_threshold)
-  )
 
-  # get .data to smooth over
-  data_mod <- .get_cp_uns_loc_get_data_mod(
-    ex_tbl_stim_threshold, ex_tbl_stim_no_min, ex_tbl_uns_threshold,
-    ex_tbl_uns_bias, prob_tbl_list, cp_min
-  )
 
-  # smooth
-  .get_cp_uns_loc_get_prob_smooth(data_mod)
-}
+
 
 # get cp
 .get_cp_uns_loc_get_cp <- function(data_mod,
@@ -1148,7 +1158,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     dplyr::mutate(
       prop_stim = count_stim / nrow(ex_tbl_stim_orig)
     )
-  prop_uns_vec <- purrr::map_df(.get_cut(data_count), function(x) {
+  prop_uns_vec <- purrr::map_dbl(.get_cut(data_count), function(x) {
     sum(.get_cut(ex_tbl_uns_orig) >= x) / nrow(ex_tbl_uns_orig)
   })
   data_count <- data_count |>
@@ -1185,7 +1195,8 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   cp_vec <- .get_cp_uns_loc_sample_cp_rep(
     debug = debug,
     cp_uns_loc_obj_list = cp_uns_loc_obj_list,
-    ind_uns
+    ind_uns = ind_uns,
+    ind_stim = ind_stim
   )
   .debug(debug, "done getting loc gate at sample level") # nolint
   # collate plots

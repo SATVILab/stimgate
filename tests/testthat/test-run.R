@@ -16,18 +16,27 @@ test_that("stimgate_gate runs", {
     min_cell_stim = 100,
     col_n_cell = "n_cell_pop"
   )
-  batch_list <- batch_list[seq_len(5)]
-  path_project <- file.path(tempdir(), "stimgate_gate_run")
-  suppressWarnings(unlink(path_project, recursive = TRUE))
-  dir.create(path_project, showWarnings = FALSE, recursive = TRUE)
-  marker_vec <- c("Lu175Di", "Er168Di")
+  browser()
+  batch_vec_sort <- lapply(batch_list, function(x) {
+    fn_tbl_info[["n_cell_pop"]][x] |>
+      min()
+  }) |>
+    stats::setNames(seq_along(batch_list)) |>
+    unlist() |>
+    sort() |>
+    rev()
+  batch_vec_sel <- batch_vec_sort[1:5] |>
+    names() |>
+    as.numeric()
+  
+  marker_vec <- c("Er168Di", "Lu175Di")
+
   browser()
   browser()
   browser()
   # debugonce(.complete_marker_list)
   # debugonce(.gate_init)
   # debugonce(.gate_batch)
-  debugonce(.get_ex_list)
   debugonce(.get_cp_uns_loc_sample)
   stimgate_gate(
     path_project = path_project,
