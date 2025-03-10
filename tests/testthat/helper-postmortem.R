@@ -94,3 +94,169 @@ get_batch_list_postmortem <- function(fn_tbl_info,
   ind_batch_list_match <- ind_batch_list[[has_ind]]
   ind_batch_list_match[[length(ind_batch_list_match)]]
 }
+
+plot_raw_data_postmortem <- function() {
+  path_gs <- testthat::test_path(
+    "testdata", "postmortem", "gs", "gs_cytof_acs_cd4"
+  )
+  gs <- flowWorkspace::load_gs(path_gs)
+  fn_tbl_info <- get_fn_tbl_info_postmortem(gs)
+  # debugonce(get_batch_list_postmortem)
+  batch_list <- get_batch_list_postmortem(
+    fn_tbl_info,
+    col_grp = c("pid", "location"),
+    col_stim = "stim",
+    uns_chr = "uns",
+    min_cell_uns = 100,
+    min_cell_stim = 100,
+    col_n_cell = "n_cell_pop"
+  )
+  batch_vec_sort <- lapply(batch_list, function(x) {
+    fn_tbl_info[["n_cell_pop"]][x] |>
+      min()
+  }) |>
+    stats::setNames(seq_along(batch_list)) |>
+    unlist() |>
+    sort()
+  batch_vec_sel <- batch_vec_sort[
+    batch_vec_sort >= 1000
+  ]
+  batch_vec_sel <- batch_vec_sel |>
+    rev() |>
+    names() |>
+    as.numeric()
+  batch_list <- batch_list[batch_vec_sel] |>
+    stats::setNames(paste0("batch_", batch_vec_sel))
+  path_project <- file.path(tempdir(), "stimgate_gate_run")
+  suppressWarnings(unlink(path_project, recursive = TRUE))
+  dir.create(path_project, showWarnings = FALSE, recursive = TRUE)
+  marker_vec <- c("Er168Di", "Lu175Di")
+  path_dir_plot <- here::here("_tmp", "fig", "raw", "tnf_vs_ifng")
+  dir.create(
+    path_dir_plot, recursive = TRUE, showWarnings = FALSE
+  )
+  for (i in seq_along(batch_list)) {
+    batch_vec <- batch_list[[i]]
+    p_list <- lapply(batch_vec, function(ind) {
+      fr <- flowWorkspace::gh_pop_get_data(gs[[ind]])
+      stim <- fn_tbl_info[["stim"]][ind]
+      
+      ex_tbl <- flowCore::exprs(fr) |>
+        tibble::as_tibble()
+      UtilsCytoRSV::plot_cyto(
+        data = ex_tbl,
+        marker = marker_vec,
+        exc_min = TRUE,
+        limits_expand = list(3),
+        limits_equal = TRUE
+      ) +
+        theme(
+          plot.background = element_rect(fill = "white"),
+          panel.background = element_rect(fill = "white")
+        ) +
+        labs(x = "IFNg (Er168Di)", y = "TNF (Lu175Di)") +
+        ggtitle(stim)
+    })
+    plot_tbl_list_uv_ifng <- lapply(batch_vec, function(ind) {
+      stim <- fn_tbl_info[["stim"]][ind] 
+      fr <- flowWorkspace::gh_pop_get_data(gs[[ind]])
+      ex_tbl <- flowCore::exprs(fr) |>
+        tibble::as_tibble()
+      ex_tbl <- ex_tbl |>
+        dplyr::mutate(
+          stim = stim
+        )
+      n_row_init <- nrow(ex_tbl)
+      ex_tbl_ifng <- ex_tbl |>
+        dplyr::filter(Er168Di > min(Er168Di))
+      if (nrow(ex_tbl_ifng) == 0L) {
+        return(NULL)
+      }
+      n_row_fin_ifng <- nrow(ex_tbl_ifng)
+      prob_g_0_ifng <- n_row_fin_ifng / n_row_init
+      dens_obj_ifng <- density(ex_tbl_ifng$Er168Di)
+      dens_obj_ifng_adj <- dens_obj_ifng
+      dens_obj_ifng_adj$y <- dens_obj_ifng_adj$y * prob_g_0_ifng
+      plot_tbl <- tibble::tibble(
+        x = dens_obj_ifng$x, y = dens_obj_ifng$y, stim = stim, type = "raw"
+      )
+      plot_tbl_adj <- tibble::tibble(
+        x = dens_obj_ifng$x, y = dens_obj_ifng_adj$y, stim = stim, type = "adj"
+      )
+      plot_tbl |>
+        dplyr::bind_rows(plot_tbl_adj)
+    })
+    # remove null
+    plot_tbl_list_uv_ifng <- plot_tbl_list_uv_ifng[
+      vapply(plot_tbl_list_uv_ifng, Negate(is.null), logical(1))
+    ]
+    plot_tbl_uv_ifng <- Reduce(rbind, plot_tbl_list_uv_ifng)
+    p_uv_ifn <- ggplot(
+      plot_tbl_uv_ifng,
+      aes(x = x, y = y, col = stim, linetype = type)
+    ) +
+      geom_line() +
+      labs(x = "Ifng", y = "Density") +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "x") +
+      theme(
+        plot.background = element_rect(fill = "white")
+      )
+    plot_tbl_list_uv_tnf <- lapply(batch_vec, function(ind) {
+      stim <- fn_tbl_info[["stim"]][ind] 
+      fr <- flowWorkspace::gh_pop_get_data(gs[[ind]])
+      ex_tbl <- flowCore::exprs(fr) |>
+        tibble::as_tibble()
+      ex_tbl <- ex_tbl |>
+        dplyr::mutate(
+          stim = stim
+        )
+      n_row_init <- nrow(ex_tbl)
+      ex_tbl_tnf <- ex_tbl |>
+        dplyr::filter(Lu175Di > min(Lu175Di))
+      if (nrow(ex_tbl_tnf) == 0L) {
+        return(NULL)
+      }
+      n_row_fin_tnf <- nrow(ex_tbl_tnf)
+      prob_g_0_tnf <- n_row_fin_tnf / n_row_init
+      dens_obj_tnf <- density(ex_tbl_tnf$Lu175Di)
+      dens_obj_tnf_adj <- dens_obj_tnf
+      dens_obj_tnf_adj$y <- dens_obj_tnf_adj$y * prob_g_0_tnf
+      plot_tbl <- tibble::tibble(
+        x = dens_obj_tnf$x, y = dens_obj_tnf$y, stim = stim, type = "raw"
+      )
+      plot_tbl_adj <- tibble::tibble(
+        x = dens_obj_tnf$x, y = dens_obj_tnf_adj$y, stim = stim, type = "adj"
+      )
+      plot_tbl |>
+        dplyr::bind_rows(plot_tbl_adj)
+    })
+    plot_tbl_list_uv_tnf <- plot_tbl_list_uv_tnf[
+      vapply(plot_tbl_list_uv_tnf, Negate(is.null), logical(1))
+    ]
+    plot_tbl_uv_tnf <- Reduce(rbind, plot_tbl_list_uv_tnf)
+    p_uv_tnf <- ggplot(
+      plot_tbl_uv_tnf,
+      aes(x = x, y = y, col = stim, linetype = type)
+    ) +
+      geom_line() +
+      labs(x = "Tnf", y = "Density") +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "x") +
+      theme(
+        plot.background = element_rect(fill = "white")
+      )
+    p_list <- p_list |> append(list(p_uv_ifn, p_uv_tnf))
+    location <- fn_tbl_info[["location"]][batch_vec[1]]
+    path_plot <- file.path(path_dir_plot, paste0(location, "-", names(batch_list)[i] , ".png")) 
+    p_grid <- cowplot::plot_grid(plotlist = p_list, ncol = 2) +
+      theme(
+        plot.background = element_rect(fill = "white"),
+        panel.background = element_rect(fill = "white")
+      ) +
+      ggtitle(location)
+    ggplot2::ggsave(
+      path_plot, width = 15, height = 18, units = "cm"
+    )
+  }
+}
