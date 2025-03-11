@@ -254,17 +254,16 @@
 
 .get_cyt_pos_gates_gate_tbl_get <- function(chnl_vec,
                                             path_project,
-                                            params,
                                             gate_name,
                                             debug,
-                                            chnl_lab_vec) {
+                                            chnl_lab) {
   .debug(debug, "Getting gate_tbl") # nolint
   purrr::map_df(chnl_vec, function(chnl_curr) {
     # get stats tbl
     readRDS(file.path(
       path_project, chnl_curr, "gate_tbl_init.rds"
     )) |>
-      dplyr::mutate(chnl = chnl_curr, marker = chnl_lab_vec[chnl_curr]) |>
+      dplyr::mutate(chnl = chnl_curr, marker = chnl_lab[chnl_curr]) |>
       dplyr::select(chnl, marker, gate_name, batch, ind, gate) # nolint
   })
 }
