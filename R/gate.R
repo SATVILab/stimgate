@@ -90,7 +90,7 @@ stimgate_gate <- function(path_project,
   # cytokine-positive gates
   gate_tbl <- .gate_cyt_pos( # nolint
     marker_list = marker,
-    ind_batch_list = ind_batch_list,
+    ind_batch_list = batch_list,
     pop_gate = pop_gate,
     .data = .data,
     calc_cyt_pos = calc_cyt_pos_gates,
@@ -183,10 +183,12 @@ stimgate_gate <- function(path_project,
       debug = debug
     )
 
+    path_dir_save <- file.path(path_project, marker_curr$chnl_cut)
+    dir.create(path_dir_save, recursive = TRUE, showWarnings = TRUE)
+
     saveRDS(
       gate_obj$gate_tbl,
-      file = file.path(
-        path_project, marker_curr$chnl_cut, "gate_tbl_init.rds"
+      file = file.path(path_dir_save, "gate_tbl_init.rds"
       )
     )
   })

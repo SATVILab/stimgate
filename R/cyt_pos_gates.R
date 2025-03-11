@@ -20,16 +20,7 @@
   )
 
   # chnl_lab
-  chnl_lab_vec <- .get_labs( # nolint
-    .data = .data[[1]],
-    chnl_cut= chnl_vec
-  )
-
-  # params object
-  params <- list(
-    pop_gate = pop_gate,
-    chnl_lab = chnl_lab_vec
-  )
+  chnl_lab_vec <- .get_labs(data = .data[[1]], chnl_cut = chnl_vec)
 
   # get max bw_min for densities
   bw_min <- .gate_cyt_pos_max_bw_min(marker_list)
@@ -38,9 +29,9 @@
   gate_tbl <- .get_cyt_pos_gates_gate_tbl_get( # nolint
     chnl_vec = chnl_vec,
     path_project = path_project,
-    params = params,
+    pop_gate = pop_gate,
     debug = debug,
-    chnl_lab_vec = chnl_lab_vec
+    chnl_lab = chnl_lab
   )
 
   # keep cytokine-positive gates (gate_cyt)
