@@ -13,14 +13,14 @@
                                   bw_min,
                                   cp_min,
                                   min_cell,
-                                  tol,
+                                  tol_clust,
                                   max_pos_prob_x,
                                   gate_combn,
                                   marker_settings,
                                   debug) {
   marker_settings_common <- list(
     bias_uns = bias_uns, cp_min = cp_min, bw_min = bw_min,
-    min_cell = min_cell, tol = tol, gate_combn = gate_combn,
+    min_cell = min_cell, tol_clust = tol_clust, gate_combn = gate_combn,
     max_pos_prob_x = max_pos_prob_x
   )
   purrr::map(marker, function(marker_curr) {

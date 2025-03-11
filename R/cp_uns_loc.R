@@ -355,8 +355,7 @@
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    bias = bias, path_project = path_project,
-    ind_stim = names(ex_list_no_min_stim)[-length(ex_list_no_min_stim)]
+    bias = bias, path_project = path_project
   )
 
   cp_uns_list_nonjoin <- .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn(
@@ -417,13 +416,11 @@
                                    calc_cyt_pos_gates,
                                    bias,
                                    path_project,
-                                   debug = FALSE,
-                                   ind_stim) {
+                                   debug = FALSE) {
   .debug(debug, "getting loc gate at sample level") # nolint
 
   # get cutpoints for each sample
   cp_uns_loc_obj_list <- purrr::map(seq_along(ex_list_no_min_stim), function(i) { # nolint
-    print(i)
     .debug(debug, "sample", i) # nolint
 
     # return early if there are too few cells
@@ -452,7 +449,7 @@
       ex_tbl_uns_bias = ex_tbl_uns_bias
     )
 
-    cp_uns_loc_obj <- .get_cp_uns_loc_ind( # nolint
+    .get_cp_uns_loc_ind( # nolint
       ex_tbl_stim_no_min = ex_list_no_min_stim[[i]],
       ex_tbl_uns_bias = ex_tbl_uns_bias,
       ex_tbl_stim_orig = ex_list_orig[[i]],
@@ -472,7 +469,7 @@
   .get_cp_uns_loc_output(
     debug = debug, cp_uns_loc_obj_list = cp_uns_loc_obj_list,
     ind_uns = names(ex_list_orig)[length(ex_list_orig)],
-    ind_stim = ind_stim
+    ind_stim = names(ex_list_no_min_stim)
   )
 }
 

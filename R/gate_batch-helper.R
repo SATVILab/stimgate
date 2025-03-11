@@ -8,7 +8,7 @@
                             bias_uns,
                             cp_min,
                             min_cell,
-                            tol,
+                            tol_clust,
                             bw_min,
                             params,
                             path_project) {
@@ -18,7 +18,7 @@
   )
 
   # create bare list
-  cp_uns_loc_list <- .get_cp_uns_loc( # nolint
+  gate_list <- .get_cp_uns_loc( # nolint
     ex_list = ex_list,
     gate_combn = gate_combn,
     .data = .data,
@@ -31,8 +31,6 @@
     path_project = path_project,
     debug = debug
   )
-  gate_list <- cp_uns_loc_list
-
   if (!is.null(params$tol_ctrl)) {
     for (tol in params$tol_ctrl) {
       .debug(debug, "getting tg-based cutpoint as a control") # nolint
@@ -49,12 +47,12 @@
     }
   }
 
-  if (!is.null(params$tol_gate)) {
+  if (!is.null(tol_clust)) {
     .debug(debug, "getting tolerance gate") # nolint
     gate_list[["tg_clust"]] <- .get_cp_tg( # nolint
       ex_list = ex_list,
       gate_combn = "no",
-      chnl_cut, tol = params$tol_gate,
+      chnl_cut, tol = tol_clust,
       exc_min = TRUE,
       min_cell = 0,
       cp_min = 0,
@@ -62,26 +60,27 @@
     )
   }
 
-  .gate_batch_tbl(gate_list, debug) # nolint
+  .gate_batch_tbl(gate_list, attr(ex_list[[1]], "batch"), debug) # nolint
 }
 
-.gate_batch_tbl <- function(gate_list, debug) {
+.gate_batch_tbl <- function(gate_list, batch, debug) {
   purrr::map_df(seq_along(gate_list), function(i) {
-    .gate_batch_tbl_along_type(gate_list, i, debug)
+    .gate_batch_tbl_along_type(gate_list, batch, i, debug)
   })
 }
 
-.gate_batch_tbl_along_type <- function(gate_list, i, debug) {
+.gate_batch_tbl_along_type <- function(gate_list, batch, i, debug) {
   .debug(debug, "gate list index", i) # nolint
   cp_list <- .gate_batch_tbl_cp(gate_list[[i]])
   gate_type <- .gate_batch_tbl_type(gate_list, i)
   purrr::map_df(seq_along(cp_list), function(j) {
-    .gate_batch_tbl_along_combn(cp_list, gate_type, j, debug)
+    .gate_batch_tbl_along_combn(cp_list, gate_type, batch, j, debug)
   })
 }
 
 .gate_batch_tbl_along_combn <- function(cp_list,
                                         gate_type,
+                                        batch,
                                         j,
                                         debug) {
   .debug(debug, "gate list sub-index", j) # nolint
@@ -90,7 +89,8 @@
     gate_name = .gate_batch_tbl_name(gate_type, gate_combn),
     gate_type = gate_type,
     gate_combn = gate_combn,
-    ind = .gate_batch_tbl(cp_list, j),
+    batch = batch,
+    ind = .gate_batch_tbl_ind(cp_list, j),
     gate = .gate_batch_tbl_gate(cp_list, j),
     gate_use = .gate_batch_tbl_use(.env$gate_type)
   )
@@ -114,8 +114,8 @@
   names(cp_list)[[j]]
 }
 
-.gate_batch_tbl <- function(cp_list, j) {
-  as.integer(names(cp_list[[j]]))
+.gate_batch_tbl_ind <- function(cp_list, j) {
+  as.character(names(cp_list[[j]]))
 }
 .gate_batch_tbl_gate <- function(cp_list, j) {
   cp_list[[j]]
@@ -138,7 +138,7 @@
                                cp_min,
                                min_cell,
                                chnl_cut,
-                               tol,
+                               tol_clust,
                                bw_min,
                                params,
                                path_project) {
@@ -272,7 +272,7 @@
         ex_list = ex_list_neg_but_single_pos_curr,
         gate_combn = "no",
         chnl_cut,
-        tol = params$tol_gate_single,
+        tol = tol_clust_single,
         exc_min = TRUE,
         min_cell = min_cell,
         cp_min = cp_min,

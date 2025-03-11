@@ -1,20 +1,21 @@
-.get_gate_stats <- function(params = NULL,
-                            gate_tbl = NULL,
-                            chnl = NULL,
-                            filter_other_cyt_pos = FALSE,
-                            combn = TRUE,
-                            gate_type_cyt_pos_filter = "base",
-                            gate_type_single_pos_filter = "base",
-                            gate_type_cyt_pos_calc,
-                            gate_type_single_pos_calc,
-                            debug = FALSE,
-                            pop_gate,
-                            chnl_lab = NULL,
-                            .data,
-                            save = FALSE,
-                            ind_batch_list,
-                            save_gate_tbl = FALSE,
-                            path_project) {
+.get_stats <- function(params = NULL,
+                       gate_tbl = NULL,
+                       chnl = NULL,
+                       filter_other_cyt_pos = FALSE,
+                       combn = TRUE,
+                       gate_type_cyt_pos_filter = "base",
+                       gate_type_single_pos_filter = "base",
+                       gate_type_cyt_pos_calc,
+                       gate_type_single_pos_calc,
+                       debug = FALSE,
+                       pop_gate,
+                       chnl_lab = NULL,
+                       .data,
+                       save = FALSE,
+                       ind_batch_list,
+                       save_gate_tbl = FALSE,
+                       gate_name,
+                       path_project) {
   # prep
   # ---------------
 
@@ -90,11 +91,12 @@
     chnl_cut = params$chnl_cut,
     debug = debug,
     filter_other_cyt_pos = filter_other_cyt_pos,
-    combn_mat_list = combn_mat_list
+    combn_mat_list = combn_mat_list,
+    gate_name = gate_name
   )
 
   # save it
-  .get_stats_save( # nolint
+  .stats_save( # nolint
     stat_tbl = stat_tbl,
     path_project = path_project,
     params = params,
@@ -113,5 +115,12 @@
     )
   }
   path_stats <- file.path(stats_save_output, "gate_stats.rds")
-  readRDS(path_stats)
+  gate_stats_tbl <- readRDS(path_stats)
+  if ("ind" %in% colnames(gate_stats_tbl)) {
+    gate_stats_tbl[, "ind"] <- as.character(gate_stats_tbl[["ind"]])
+  }
+  if ("batch" %in% colnames(gate_stats_tbl)) {
+    gate_stats_tbl[, "batch"] <- as.character(gate_stats_tbl[["batch"]])
+  }
+  gate_stats_tbl
 }

@@ -85,7 +85,6 @@
 .get_cp_tg <- function(ex_list,
                        gate_combn,
                        chnl_cut,
-                       ind_gate,
                        exc_min,
                        tol,
                        min_cell,
@@ -97,15 +96,15 @@
 
   if ("prejoin" %in% gate_combn) {
     .debug(debug, "prejoin")
-    ex <- dplyr::bind_rows(ex_list)
-    ex <- ex |> dplyr::filter(!is.na(chnl_cut))
-    if (exc_min) ex <- ex |> dplyr::filter(chnl_cut > min(chnl_cut))
+    ind_gate <- names(ex_list)[-length(ex_list)]
+    ex <- dplyr::bind_rows(ex_list[ind_gate])
+    ex <- ex[!is.na(.get_cut(ex)), ]
+    if (exc_min) ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
     if (nrow(ex) < max(min_cell, 5)) {
       cp_vec <- stats::setNames(rep(NA, length(ind_gate)), ind_gate)
     } else {
       dens <- density(.get_cut(ex))
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
-      .ensure_cytoutils()
       cp <- cytoUtils:::.cytokine_cutpoint(
         x = .get_cut(ex), num_peaks = 1,
         ref_peak = 1, tol = tol, side = "right",
@@ -128,16 +127,14 @@
 
   if (length(non_prejoin_combn_vec) > 0) {
     .debug(debug, "non-prejoin")
+    ind_gate <- names(ex_list)[-length(ex_list)]
     cp_tg_vec <- purrr::map_dbl(ind_gate, function(ind) {
       .debug(debug, "ind", ind)
       # print(ind)
       ex <- ex_list[[as.character(ind)]]
-      ex <- ex |> dplyr::filter(!is.na(chnl_cut))
-      if (exc_min) ex <- ex |> dplyr::filter(chnl_cut > min(chnl_cut))
+      ex <- ex[!is.na(.get_cut(ex)), ]
+      if (exc_min) ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
       if (nrow(ex) < max(min_cell, 5)) {
-        return(NA)
-      }
-      if (length(.get_cut(ex)) < min_cell) {
         return(
           max(cp_min, max(.get_cut(ex)) +
             (max(.get_cut(ex)) - min(.get_cut(ex))) / 5)
@@ -145,10 +142,9 @@
       }
       dens <- density(.get_cut(ex))
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
-      .ensure_cytoutils() # nolint
       cytoUtils:::.cytokine_cutpoint(
         x = .get_cut(ex), num_peaks = 1,
-        ref_peak = 1, tol = tol, side = "right",
+        ref_peak = 1, tol = tol * 1e3, side = "right",
         strict = FALSE, adjust = adjust
       )
     }) |>
@@ -321,3 +317,60 @@
     stats::setNames(chnl_cut)
 }
 
+
+.combine_cp <- function(cp, gate_combn) {
+  purrr::map(gate_combn, function(gate_combn_curr) {
+    if (all(purrr::map_lgl(cp, is.na))) {
+      return(stats::setNames(cp, names(cp)))
+    }
+    if (gate_combn_curr %in% c("no", "prejoin")) {
+      return(cp)
+    }
+    if (gate_combn_curr == "min") {
+      return(stats::setNames(
+        rep(
+          min(cp, na.rm = TRUE),
+          length(cp)
+        ),
+        names(cp)
+      ))
+    }
+    if (gate_combn_curr == "mean") {
+      return(stats::setNames(
+        rep(
+          mean(cp, na.rm = TRUE),
+          length(cp)
+        ),
+        names(cp)
+      ))
+    }
+    if (gate_combn_curr == "trim20") {
+      return(stats::setNames(
+        rep(
+          mean(cp, trim = 0.2, na.rm = TRUE),
+          length(cp)
+        ),
+        names(cp)
+      ))
+    }
+    if (gate_combn_curr == "median") {
+      return(stats::setNames(
+        rep(
+          median(cp, na.rm = TRUE),
+          length(cp)
+        ),
+        names(cp)
+      ))
+    }
+    if (gate_combn_curr == "max") {
+      return(stats::setNames(
+        rep(
+          max(cp, na.rm = TRUE),
+          length(cp)
+        ),
+        names(cp)
+      ))
+    }
+  }) |>
+    stats::setNames(gate_combn)
+}

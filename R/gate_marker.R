@@ -12,8 +12,7 @@
                          min_cell,
                          max_pos_prob_x,
                          gate_quant,
-                         tol_ctrl,
-                         tol_gate,
+                         tol_clust,
                          gate_tbl = NULL,
                          tol_gate_single,
                          calc_cyt_pos_gates,
@@ -21,7 +20,6 @@
                          debug) {
   # print progress
   .debug(debug, "pop_gate: ", pop_gate) # nolint
-
 
   # Parameters list
   # ----------------
@@ -45,8 +43,7 @@
     cp_min = cp_min,
     max_pos_prob_x = max_pos_prob_x,
     gate_quant = gate_quant,
-    tol_ctrl = tol_ctrl,
-    tol_gate = tol_gate,
+    tol_clust = tol_clust,
     tol_gate_single = tol_gate_single,
     gate_tbl = gate_tbl,
     calc_cyt_pos_gates = calc_cyt_pos_gates
@@ -63,7 +60,7 @@
     pop_gate = pop_gate,
     chnl_cut,
     gate_combn = gate_combn,
-    tol = tol,
+    tol_clust = tol_clust,
     noise_sd = noise_sd,
     bias_uns = bias_uns,
     bw_min = bw_min,
@@ -75,7 +72,11 @@
   )
 
   gate_tbl <- gate_tbl |>
-    dplyr::filter(!ind %in% ind_batch_list[length(ind_batch_list)]) # nolint
+    dplyr::filter(
+      !ind %in% vapply(
+        ind_batch_list, function(x) as.character(x[length(x)]), character(1)
+      )
+    ) # nolint
 
   # Get adjusted and/or clustered gates
   # ----------------
@@ -93,8 +94,7 @@
   .gate_marker_get_adj_gates( # nolint
     gate_tbl_params = params$gate_tbl,
     gate_tbl = gate_tbl,
-    tol_ctrl = tol_ctrl,
-    tol_gate = tol_gate,
+    tol_clust = tol_clust,
     gate_quant = gate_quant,
     params = params,
     chnl_cut,

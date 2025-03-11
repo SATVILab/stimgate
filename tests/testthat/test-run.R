@@ -16,7 +16,9 @@ test_that("stimgate_gate runs", {
     min_cell_stim = 100,
     col_n_cell = "n_cell_pop"
   )
-  browser()
+  batch_list <- batch_list |>
+    stats::setNames(paste0("batch_", seq_along(batch_list)))
+
   batch_vec_sort <- lapply(batch_list, function(x) {
     fn_tbl_info[["n_cell_pop"]][x] |>
       min()
@@ -28,22 +30,23 @@ test_that("stimgate_gate runs", {
   batch_vec_sel <- batch_vec_sort[1:5] |>
     names() |>
     as.numeric()
+  batch_list <- batch_list[batch_vec_sel]
   
   marker_vec <- c("Er168Di", "Lu175Di")
+  path_project <- setup_project_postmortem()
 
   browser()
   browser()
   browser()
-  # debugonce(.complete_marker_list)
-  # debugonce(.gate_init)
-  # debugonce(.gate_batch)
-  debugonce(.get_cp_uns_loc_sample)
+  debugonce(.get_cp_cluster_prop_bs_by_cp_tbl_obj)
+  debugonce(stimgate_gate)
   stimgate_gate(
     path_project = path_project,
     .data = gs,
     batch_list = batch_list,
     marker = marker_vec,
     debug = TRUE,
+    tol_clust = 1e-6,
     min_cell = 40
   )
 })
