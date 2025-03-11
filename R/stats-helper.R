@@ -11,11 +11,11 @@
 }
 
 .get_stats_params_get <- function(params = NULL,
-                                       chnl = NULL,
-                                       pop_gate = NULL,
-                                       chnl_lab = NULL,
-                                       ind_batch_list = NULL,
-                                       .data = NULL) {
+                                  chnl = NULL,
+                                  pop_gate = NULL,
+                                  chnl_lab = NULL,
+                                  ind_batch_list = NULL,
+                                  .data = NULL) {
   if (!is.null(params)) {
     return(params)
   }
@@ -126,6 +126,7 @@ k
     dplyr::select(
       gate_name, chnl, marker, ind, everything() # nolint
     )
+  gate_tbl[, "ind"] <- as.character(gate_tbl[["ind"]])
 
   gate_tbl <- gate_tbl |>
     dplyr::arrange(gate_name, chnl, marker, ind) # nolint
@@ -146,7 +147,7 @@ k
 
 
 
-.get_stats_save <- function(save,
+.stats_save <- function(save,
                             stat_tbl,
                             path_project,
                             params,
@@ -157,6 +158,12 @@ k
   dir_save <- file.path(path_project, chnl[1])
   if (!dir.exists(dir_save)) {
     dir.create(dir_save, recursive = TRUE)
+  }
+  if ("ind" %in% colnames(stat_tbl)) {
+    stat_tbl[, "ind"] <- as.character(stat_tbl[["ind"]])
+  }
+  if ("batch" %in% colnames(stat_tbl)) {
+    stat_tbl[, "batch"] <- as.character(stat_tbl[["batch"]])
   }
   fn_rds <- paste0("gate_stats.rds")
   fn_csv <- paste0("gate_stats.csv")

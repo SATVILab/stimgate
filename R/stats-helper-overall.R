@@ -27,6 +27,7 @@
       )
       .get_stats_batch(
         ind_batch = ind_batch_list[[i]],
+        batch = names(ind_batch_list)[i],
         debug = debug,
         .data = .data,
         pop_gate = pop_gate,
@@ -39,7 +40,8 @@
         gate_type_single_pos_calc = gate_type_single_pos_calc,
         gate_type_cyt_pos_calc = gate_type_cyt_pos_calc,
         combn_mat_list = combn_mat_list,
-        cyt_combn_vec_list = cyt_combn_vec_list
+        cyt_combn_vec_list = cyt_combn_vec_list,
+        gate_name = gate_name
       )
     }
   )
@@ -60,6 +62,10 @@
     chnl_cut,
     chnl_lab = chnl_lab
   )
+
+  if ("ind" %in% colnames(stat_tbl)) {
+    stat_tbl[, "ind"] <- as.character(stat_tbl[["ind"]])
+  }
 
   # add SampleID and update stim labels
   # if desired
@@ -87,6 +93,7 @@
 
 
 .get_stats_batch <- function(ind_batch,
+                             batch,
                              debug,
                              .data,
                              pop_gate,
@@ -99,7 +106,8 @@
                              gate_type_single_pos_calc,
                              gate_type_cyt_pos_calc,
                              combn_mat_list,
-                             cyt_combn_vec_list) {
+                             cyt_combn_vec_list,
+                             gate_name) {
   # calculate n_cell_[stim/uns] and count_[stim/uns]
   # for each gate type (gn) for either:
   # individual cytokines (combn = FALSE) or
@@ -113,6 +121,7 @@
   ex_list <- .get_ex_list( # nolint
     .data = .data,
     ind_batch = ind_batch,
+    batch = batch,
     pop = pop_gate,
     chnl_cut = unique(gate_tbl$chnl)
   )

@@ -1,4 +1,4 @@
-#' @param gs GatingSet.
+#' @param .data GatingSet.
 #' @param gate_stats_tbl dataframe.
 #' Contains gates and bs_freq info. Must only contain
 #' info using "base" threshold to use.
@@ -14,7 +14,7 @@
 #' - bw - numeric. bandwidth for density estimates
 #' - n_grp - integer vector of length two. Specifies the numbers of groups
 #' to cluster densities into. Default is seq(6, 24, by = 2).
-.get_cp_cluster <- function(gs,
+.get_cp_cluster <- function(.data,
                             gate_tbl,
                             gate_stats_tbl,
                             gate_tbl_ctrl,
@@ -42,7 +42,7 @@
   max_cp <- .get_cp_cluster_cp_get_max(gate_tbl, gate_tbl_ctrl) # nolint
 
   prop_bs_by_cp_tbl_obj <- .get_cp_cluster_prop_bs_by_cp_tbl_obj( # nolint
-    gs = gs,
+    .data = .data,
     gate_tbl = gate_tbl,
     ind_batch_list = params$ind_batch_list,
     chnl_cut = params$chnl_cut,
@@ -61,7 +61,7 @@
 
   dens_tbl <- .get_cp_cluster_dens_tbl_get( # nolint
     ind_batch_list = params$ind_batch_list,
-    gs = gs,
+    .data = .data,
     filter_other_cyt_pos = filter_other_cyt_pos,
     calc_cyt_pos_gates = params$calc_cyt_pos_gates,
     chnl_cut = params$chnl_cut,

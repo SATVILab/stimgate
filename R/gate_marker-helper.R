@@ -13,7 +13,7 @@
                                             pop_gate,
                                             chnl_cut,
                                             gate_combn,
-                                            tol,
+                                            tol_clust,
                                             noise_sd,
                                             bias_uns,
                                             bw_min,
@@ -36,7 +36,7 @@
       pop_gate = pop_gate,
       chnl_cut = chnl_cut,
       gate_combn = gate_combn,
-      tol = tol,
+      tol_clust = tol_clust,
       noise_sd = noise_sd,
       bias_uns = bias_uns,
       bw_min = bw_min,
@@ -56,8 +56,7 @@
 
 .gate_marker_get_adj_gates <- function(gate_tbl,
                                        gate_tbl_params,
-                                       tol_ctrl,
-                                       tol_gate,
+                                       tol_clust,
                                        gate_quant,
                                        .data,
                                        params,
@@ -69,8 +68,7 @@
                                        pop_gate) {
   if (is.null(gate_tbl_params)) {
     .gate_marker_get_adj_gates_all( # nolint
-      tol_ctrl = tol_ctrl,
-      tol_gate = tol_gate,
+      tol_clust = tol_clust,
       gate_tbl = gate_tbl,
       params = params,
       chnl_cut,
@@ -98,8 +96,7 @@
   }
 }
 
-.gate_marker_get_adj_gates_all <- function(tol_ctrl,
-                                           tol_gate,
+.gate_marker_get_adj_gates_all <- function(tol_clust,
                                            gate_tbl,
                                            params,
                                            chnl_cut,
@@ -110,14 +107,10 @@
                                            debug,
                                            ind_batch_list,
                                            pop_gate) {
-  if (!is.null(tol_ctrl)) {
-    gate_tbl_ctrl <- gate_tbl |>
-      dplyr::filter(gate_use == "ctrl") # nolint
-  } else {
-    gate_tbl_ctrl <- NULL
-  }
-  if (!is.null(tol_gate)) {
-    gate_tbl_tg_gate <- gate_tbl |> dplyr::filter(gate_use == "tg_clust") # nolint
+  # START HERE!!!
+  if (!is.null(tol_clust)) {
+    gate_tbl_tg_gate <- gate_tbl |>
+      dplyr::filter(gate_use == "tg_clust") # nolint
   } else {
     gate_tbl_tg_gate <- NULL
   }
@@ -129,7 +122,7 @@
   # Cluster-based gating
   # =========================
 
-  if (!is.null(tol_gate)) {
+  if (!is.null(tol_clust)) {
     path_dir_stats <- .get_stats( # nolint
       params = params,
       gate_tbl = gate_tbl |> dplyr::mutate(chnl = chnl_cut),
@@ -144,12 +137,13 @@
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
-    gate_stats_tbl <- path_dir_stats |> .read_gate_stats() # nolint
+    gate_stats_tbl <- path_dir_stats |>
+      .read_gate_stats() # nolint
 
     gate_tbl_cluster <- purrr::map_df(
       unique(gate_tbl$gate_name), function(gn) {
         gate_tbl_cluster <- .get_cp_cluster( # nolint
-          gs = .data,
+          .data = .data,
           gate_tbl = gate_tbl |>
             dplyr::filter(gate_name == gn), # nolint
           gate_stats_tbl = gate_stats_tbl |>
@@ -171,13 +165,13 @@
               dplyr::filter(gate_name == gn) |> # nolint
               dplyr::select(
                 gate_name, gate_type, gate_combn, # nolint
-                boot, boot_ind, batch, ind # nolint
+                batch, ind # nolint
               ),
             by = c("ind")
           ) |>
           dplyr::select(
             gate_name, gate_type, gate_combn,
-            batch, ind, gate, boot, boot_ind # nolint
+            batch, ind, gate # nolint
           ) |>
           dplyr::mutate(
             gate_combn = paste0(gate_combn, "_clust"),
@@ -185,52 +179,9 @@
           )
       }
     )
-  }
-
-  # =========================
-  # Tail-gate controlled gating
-  # =========================
-
-  if (!is.null(tol_ctrl)) {
-    if (is.null(tol_gate)) {
-      path_dir_stats <- .get_stats( # nolint
-        params = params,
-        gate_tbl = gate_tbl,
-        .data = .data,
-        path_project = path_project,
-        debug = debug,
-        ind_batch_list = ind_batch_list,
-        pop_gate = pop_gate
-      )
-      gate_stats_tbl <- path_dir_stats |> .read_gate_stats() # nolint
-    }
-
-    gate_tbl_2 <- .get_cp_adj_tbl( # nolint
-      gate_stats_tbl = gate_stats_tbl,
-      gate_quant = gate_quant,
-      gate_tbl_ctrl = gate_tbl_ctrl
-    )
-
-    gate_tbl_2 <- gate_tbl_2 |>
-      dplyr::select(-c(batch, boot)) # nolint
-    gate_tbl_2 <- gate_tbl_2 |>
-      dplyr::left_join(
-        gate_tbl |>
-          dplyr::select(batch, ind) |> # nolint
-          dplyr::group_by(batch, ind) |>
-          dplyr::slice(1) |>
-          dplyr::ungroup(),
-        by = c("ind")
-      )
-
-    gate_tbl <- gate_tbl_2
-  }
-
-  if (!is.null(tol_gate)) {
     gate_tbl <- gate_tbl |>
       dplyr::bind_rows(gate_tbl_cluster)
   }
-
   # Output
   # ------------------
 
@@ -240,6 +191,7 @@
     gate_tbl = gate_tbl
   )
 }
+
 
 .gate_marker_gate_adj_gates_single <- function(gate_tbl,
                                                params,
@@ -450,14 +402,9 @@
       gate_quant = params$gate_quant,
       gate_tbl_ctrl = gate_tbl_ctrl_ctrl
     )
-    gate_tbl_gn_2 <- gate_tbl_gn_2 |> dplyr::select(-c(batch, boot)) # nolint
     gate_tbl_gn_2 <- gate_tbl_gn_2 |>
       dplyr::left_join(
-        gate_tbl_single_gn |>
-          dplyr::select(batch, ind) |> # nolint
-          dplyr::group_by(batch, ind) |>
-          dplyr::slice(1) |>
-          dplyr::ungroup(),
+        gate_tbl_single_gn,
         by = c("ind")
       ) |>
       dplyr::rename(gate_single = gate) # nolint
@@ -477,7 +424,7 @@
       dplyr::filter(gate_name == gn) # nolint
 
     gate_tbl_cluster_gn <- .get_cp_cluster( # nolint
-      gs = .data,
+      .data = .data,
       gate_tbl = gate_tbl_gn,
       gate_stats_tbl = gate_stats_tbl_gn,
       gate_tbl_ctrl = gate_tbl_ctrl_clust_gn,

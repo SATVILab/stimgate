@@ -1,3 +1,9 @@
+setup_project_postmortem <- function() {
+  path_project <- file.path(tempdir(), "stimgate_gate_run")
+  suppressWarnings(unlink(path_project, recursive = TRUE))
+  dir.create(path_project, showWarnings = FALSE, recursive = TRUE)
+  path_project
+}
 
 get_fn_tbl_info_postmortem <- function(gs) {
   
