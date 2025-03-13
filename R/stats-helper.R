@@ -145,9 +145,7 @@
   if (file.exists(dir_save_fn_rds)) file.remove(dir_save_fn_rds)
   if (file.exists(dir_save_fn_csv)) file.remove(dir_save_fn_csv)
   if (!dir.exists(dir_save)) dir.create(dir_save, recursive = TRUE)
-  readr::write_csv(
-    gate_tbl, dir_save_fn_csv
-  )
+  write.csv(gate_tbl, dir_save_fn_csv)
   saveRDS(gate_tbl, dir_save_fn_rds)
 }
 
