@@ -126,3 +126,20 @@
   }
   gate_stats_tbl
 }
+
+#' @title Get gating statistics
+#' @params path_project character. Path to the project directory.
+#' @return A data frame with gating statistics.
+#' @export
+get_stats <- function(path_project) {
+  path_stats_partial <- file.path(path_project, "gate_stats")
+  if (file.exists(paste0(path_stats_partial, ".rds"))) {
+    readRDS(paste0(path_stats_partial, ".rds"))
+  } else if (file.exists(paste0(path_stats_partial, ".csv"))) {
+    read.csv(paste0(path_stats_partial, ".csv"))
+  } else {
+    stop(
+      "No stats file found"
+    )
+  }
+}
