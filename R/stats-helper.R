@@ -34,20 +34,26 @@
                                     chnl_lab,
                                     path_project,
                                     params,
-                                    gate_name) {
+                                    gate_name = NULL,
+                                    tol_clust = NULL) {
   if (!is.null(gate_tbl)) {
     return(gate_tbl)
   }
   purrr::map_df(
     names(chnl_lab),
     function(chnl_curr) {
-k
       # get stats tbl
       gate_tbl <- readRDS(file.path(path_project, chnl_curr, "gate_tbl.rds"))
 
       if (!is.null(gate_name)) {
         gate_tbl <- gate_tbl |>
           dplyr::filter(gate_name == .env$gate_name) # nolint
+      }
+      if (!is.null(tol_clust)) {
+        if (tol_clust) {
+          gate_tbl <- gate_tbl |>
+            dplyr::filter(grepl("_clust$", gate_name))
+        }
       }
 
       gate_tbl |>
@@ -155,7 +161,6 @@ k
   if (!save) {
     return(invisible(stat_tbl))
   }
-  dir_save <- file.path(path_project, chnl[1])
   if (!dir.exists(dir_save)) {
     dir.create(dir_save, recursive = TRUE)
   }

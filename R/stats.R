@@ -14,7 +14,8 @@
                        save = FALSE,
                        ind_batch_list,
                        save_gate_tbl = FALSE,
-                       gate_name,
+                       gate_name = NULL,
+                       tol_clust = NULL,
                        path_project) {
   # prep
   # ---------------
@@ -38,7 +39,8 @@
     chnl_lab = chnl_lab,
     path_project = path_project,
     params = params,
-    gate_name = gate_name
+    gate_name = gate_name,
+    tol_clust = tol_clust
   )
   chnl <- .get_stats_chnl_get( # nolint
     chnl = chnl,

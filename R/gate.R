@@ -45,9 +45,14 @@ stimgate_gate <- function(path_project,
                           gate_combn = "min",
                           marker_settings = NULL,
                           calc_cyt_pos_gates = TRUE,
-                          calc_single_pos_gates = TRUE,
+                          calc_single_pos_gates = FALSE,
                           debug = FALSE) {
   force(.data)
+
+  if (is.null(names(batch_list))) {
+    batch_list <- batch_list |>
+      stats::setNames(paste0("batch_", seq_along(batch_list)))
+  }
 
   # get unspecified levels in marker elements
   marker <- .complete_marker_list( # nolint
@@ -65,11 +70,6 @@ stimgate_gate <- function(path_project,
     marker_settings = marker_settings,
     debug = debug
   )
-
-  if (is.null(names(batch_list))) {
-    batch_list <- batch_list |>
-      stats::setNames(paste0("batch_", seq_along(batch_list)))
-  }
 
   # inital gates
   .gate_init(
@@ -135,6 +135,7 @@ stimgate_gate <- function(path_project,
     marker = marker,
     ind_batch_list = batch_list,
     path_project = path_project,
+    tol_clust = tol_clust,
     save_gate_tbl = TRUE
   )
 
@@ -160,7 +161,7 @@ stimgate_gate <- function(path_project,
   print("")
   # loop over markers
   purrr::walk(marker, function(marker_curr) {
-    print(paste0("chnl: ", marker_curr))
+    print(paste0("chnl: ", marker_curr$chnl_cut))
     # get gates for each sample within each batch
 
     gate_obj <- .gate_marker( # nolint
@@ -217,13 +218,21 @@ stimgate_gate <- function(path_project,
   print("")
   if (!calc_single_pos_gates) {
     .debug(debug, "Not gating single-pos gates") # nolint
+    purrr::walk(marker, function(marker_curr) {
+      saveRDS(
+        gate_tbl |>
+          dplyr::filter(chnl == marker_curr$chnl_cut) |>
+          dplyr::mutate(gate_single = gate),
+        file.path(path_project, marker_curr$chnl_cut, "gate_tbl.rds")
+      )
+    })
     return(invisible(TRUE))
   } else {
     .debug(debug, "Gating single-pos gates") # nolint
   }
   # loop over markers
   purrr::walk(marker, function(marker_curr) {
-    print(paste0("chnl: ", marker_curr))
+    print(paste0("chnl: ", marker_curr$chnl_cut))
     # get gates for each sample within each batch
 
     gate_obj <- .gate_marker( # nolint
@@ -259,7 +268,6 @@ stimgate_gate <- function(path_project,
                         params = NULL,
                         gate_tbl = NULL,
                         filter_other_cyt_pos = FALSE,
-                        gate_name_stats,
                         combn = TRUE,
                         calc_cyt_pos_gates,
                         calc_single_pos_gates,
@@ -269,6 +277,7 @@ stimgate_gate <- function(path_project,
                         marker,
                         ind_batch_list,
                         path_project,
+                        tol_clust,
                         save_gate_tbl = TRUE) {
   force(.data)
   .get_stats( # nolint
@@ -291,6 +300,7 @@ stimgate_gate <- function(path_project,
     ind_batch_list = ind_batch_list,
     .data = .data,
     save_gate_tbl = save_gate_tbl,
-    path_project = path_project
+    path_project = path_project,
+    tol_clust = tol_clust
   )
 }

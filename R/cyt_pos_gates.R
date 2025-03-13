@@ -20,7 +20,7 @@
   )
 
   # chnl_lab
-  chnl_lab_vec <- .get_labs(data = .data[[1]], chnl_cut = chnl_vec)
+  chnl_lab_vec <- .get_labs(.data = .data[[1]], chnl_cut = chnl_vec)
 
   # get max bw_min for densities
   bw_min <- .gate_cyt_pos_max_bw_min(marker_list)
@@ -29,9 +29,8 @@
   gate_tbl <- .get_cyt_pos_gates_gate_tbl_get( # nolint
     chnl_vec = chnl_vec,
     path_project = path_project,
-    pop_gate = pop_gate,
     debug = debug,
-    chnl_lab = chnl_lab
+    chnl_lab = chnl_lab_vec
   )
 
   # keep cytokine-positive gates (gate_cyt)
@@ -43,10 +42,18 @@
   }
 
   # get cyt+ gates for each of the different gate types
-  purrr::map_df(unique(gate_tbl$gate_name), function(gn) {
+  gn_vec <- unique(gate_tbl$gate_name)
+  if (any(grepl("_clust$", gn_vec))) {
+    gn_vec <- gn_vec[grepl("_clust$", gn_vec)]
+  } else if (any(grepl("_adj$", gn_vec))) {
+    gn_vec <- gn_vec[grepl("_adj$", gn_vec)]
+  }
+  
+  purrr::map_df(gn_vec, function(gn) {
+    gate_tbl_gn <- gate_tbl |> dplyr::filter(gate_name == gn)
+    force(gate_tbl_gn)
     .get_cyt_pos_gates_gate_name( # nolint
-      gate_tbl_gn = gate_tbl |> dplyr::filter(gate_name == gn),
-      gn = gn,
+      gate_tbl_gn = gate_tbl_gn,
       debug = debug,
       .data = .data,
       ind_batch_list = ind_batch_list,
@@ -61,7 +68,6 @@
 }
 
 .get_cyt_pos_gates_gate_name <- function(debug,
-                                         gn,
                                          gate_tbl_gn,
                                          .data,
                                          ind_batch_list,
@@ -71,8 +77,17 @@
                                          bw_min,
                                          calc_cyt_pos,
                                          path_project) {
-  .debug(debug, "Getting cyt+ gates for gate_name: ", gn) # nolint
-  cp_tbl_cyt <- purrr::map_df(seq_along(.data), function(ind) {
+  .debug(
+    debug,
+    "Getting cyt+ gates for gate_name: ",
+    gate_tbl_gn$gate_name[[1]]
+  ) # nolint
+  # ind_batch_list <- ind_batch_list |>
+  #   lapply(function(x) x[-length(x)]) |>
+  #   stats::setNames(names(ind_batch_list))
+  ind_vec <- unlist(ind_batch_list)
+  
+  cp_tbl_cyt <- purrr::map_df(ind_vec, function(ind) {
     ind_uns <- .get_ind_uns(ind, ind_batch_list)
     batch <- .get_batch(ind, ind_batch_list)
     .get_cyt_pos_gates_ind( # nolint
@@ -97,8 +112,8 @@
   gate_tbl_gn |>
     dplyr::left_join(
       cp_tbl_cyt |>
-        dplyr::select(ind, chnl, marker, gate_cyt), # nolint
-      by = c("ind", "chnl", "marker")
+        dplyr::select(batch, ind, chnl, marker, gate_cyt), # nolint
+      by = c("batch", "ind", "chnl", "marker")
     )
 }
 
@@ -159,7 +174,10 @@
   )
 
   tibble::tibble(
-    ind = attr(ex, "ind"), chnl = chnl_vec, marker = chnl_lab_vec[chnl_vec],
+    batch = batch,
+    ind = attr(ex, "ind"),
+    chnl = chnl_vec,
+    marker = chnl_lab_vec[chnl_vec],
     gate_cyt = cp_vec_cyt_pos
   )
 }

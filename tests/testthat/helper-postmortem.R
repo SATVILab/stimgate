@@ -1,5 +1,6 @@
-setup_project_postmortem <- function() {
-  path_project <- file.path(tempdir(), "stimgate_gate_run")
+setup_project_postmortem <- function(min_cell = TRUE) {
+  filter_method <- if (min_cell) "min_cell" else "min_uns"
+  path_project <- file.path(tempdir(), "stimgate_gate_run", filter_method)
   suppressWarnings(unlink(path_project, recursive = TRUE))
   dir.create(path_project, showWarnings = FALSE, recursive = TRUE)
   path_project
@@ -45,7 +46,8 @@ get_batch_list_postmortem <- function(fn_tbl_info,
                                       uns_chr,
                                       col_n_cell,
                                       min_cell_uns,
-                                      min_cell_stim) {
+                                      min_cell_stim,
+                                      filter_method) {
   fn_tbl_info[["row_number"]] <- seq_len(nrow(fn_tbl_info))
   grp_vec <- fn_tbl_info[[col_grp[[1]]]]
   for (i in seq_along(col_grp)[-1]) {
@@ -85,7 +87,36 @@ get_batch_list_postmortem <- function(fn_tbl_info,
   # remove stim-and-unstim sets with no stim
   # with sufficient cells and/or no unstim with sufficient
   # cells
-  out_list[!vapply(out_list, is.null, logical(1))]
+  out_list <- out_list[!vapply(out_list, is.null, logical(1))]
+  out_list <- out_list |>
+    stats::setNames(paste0("batch_", seq_along(out_list)))
+
+  choose_most_min_cell <- filter_method == "min_cell"
+  if (choose_most_min_cell) {
+    batch_vec_min_cell <- lapply(out_list, function(x) {
+      fn_tbl_info[["n_cell_pop"]][x] |>
+        min()
+    }) |>
+      stats::setNames(seq_along(out_list)) |>
+      unlist() |>
+      sort() |>
+      rev() |>
+      names() |>
+      as.numeric()
+    out_list <- out_list[batch_vec_min_cell]
+  } else {
+    batch_vec_filter_uns <- lapply(out_list, function(x) {
+      n_cell_vec <- fn_tbl_info[["n_cell_pop"]][x]
+      n_cell_vec[length(n_cell_vec)] >= 1e2
+    }) |>
+      stats::setNames(seq_along(out_list)) |>
+      unlist()
+    batch_vec_filter_uns <- batch_vec_filter_uns[batch_vec_filter_uns] |>
+      names() |>
+      as.numeric()
+    out_list <- out_list[batch_vec_filter_uns]
+  }
+  out_list
 }
 
 .get_ind_uns <- function(ind, ind_batch_list) {
@@ -97,11 +128,13 @@ get_batch_list_postmortem <- function(fn_tbl_info,
     # in more than one batch
     return(ind)
   }
-  ind_batch_list_match <- ind_batch_list[[has_ind]]
-  ind_batch_list_match[[length(ind_batch_list_match)]]
+  has_ind <- which(has_ind)
+  ind_batch <- ind_batch_list[has_ind] |>
+    unlist()
+  ind_batch[[length(ind_batch)]]
 }
 
-plot_raw_data_postmortem <- function() {
+plot_raw_data_postmortem <- function(filter_method = "min_cell") {
   path_gs <- testthat::test_path(
     "testdata", "postmortem", "gs", "gs_cytof_acs_cd4"
   )
@@ -115,7 +148,8 @@ plot_raw_data_postmortem <- function() {
     uns_chr = "uns",
     min_cell_uns = 100,
     min_cell_stim = 100,
-    col_n_cell = "n_cell_pop"
+    col_n_cell = "n_cell_pop",
+    filter_method = filter_method
   )
   batch_vec_sort <- lapply(batch_list, function(x) {
     fn_tbl_info[["n_cell_pop"]][x] |>
@@ -137,7 +171,10 @@ plot_raw_data_postmortem <- function() {
   suppressWarnings(unlink(path_project, recursive = TRUE))
   dir.create(path_project, showWarnings = FALSE, recursive = TRUE)
   marker_vec <- c("Er168Di", "Lu175Di")
-  path_dir_plot <- here::here("_tmp", "fig", "raw", "tnf_vs_ifng")
+  path_dir_plot <- here::here("_tmp", "fig", "raw", "tnf_vs_ifng", filter_method)
+  if (dir.exists(path_dir_plot)) {
+    unlink(path_dir_plot, recursive = TRUE)
+  }
   dir.create(
     path_dir_plot, recursive = TRUE, showWarnings = FALSE
   )
