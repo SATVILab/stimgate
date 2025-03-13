@@ -33,8 +33,7 @@ test_that("stimgate_gate runs", {
   batch_list <- batch_list[batch_vec_sel]
   
   marker_vec <- c("Er168Di", "Lu175Di")
-  path_project <- setup_project_postmortem()
-
+  path_project <- setup_project_postmortem(min_cell)
   browser()
   browser()
   browser()
