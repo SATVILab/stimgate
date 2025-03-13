@@ -58,6 +58,36 @@
 }
 
 
+
+.get_cp_pos <- function(ex,
+                        inc,
+                        chnl,
+                        bw_min,
+                        trust_no_or_high_am = FALSE,
+                        min_cell = 10,
+                        cp_orig, n_loop = 5) {
+  cp_pos <- .get_cp_pos_ind(
+    ex = ex, inc = inc, chnl = chnl, bw_min = bw_min, adjust = 1,
+    trust_no_or_high_am = FALSE, min_cell = 10,
+    cp_orig = cp_orig
+  )
+
+  k <- 1
+  while (is.na(cp_pos) && k <= n_loop) {
+    if (is.na(cp_pos)) {
+      cp_pos <- .get_cp_pos_ind(
+        ex = ex, inc = inc, chnl = chnl, bw_min = bw_min, adjust = 0.5^k,
+        trust_no_or_high_am = FALSE, min_cell = 10,
+        cp_orig = cp_orig
+      )
+    }
+    k <- k + 1
+  }
+
+  cp_pos
+}
+
+
 .get_cp_pos_ind <- function(ex,
                             inc,
                             chnl,
@@ -219,34 +249,6 @@
   max_left_am
 }
 
-.get_cp_pos <- function(ex,
-                        inc,
-                        chnl,
-                        bw_min,
-                        trust_no_or_high_am = FALSE,
-                        min_cell = 10,
-                        cp_orig, n_loop = 5) {
-  cp_pos <- .get_cp_pos_ind(
-    ex = ex, inc = inc, chnl = chnl, bw_min = bw_min, adjust = 1,
-    trust_no_or_high_am = FALSE, min_cell = 10,
-    cp_orig = cp_orig
-  )
-
-  k <- 1
-  while (is.na(cp_pos) && k <= n_loop) {
-    if (is.na(cp_pos)) {
-      cp_pos <- .get_cp_pos_ind(
-        ex = ex, inc = inc, chnl = chnl, bw_min = bw_min, adjust = 0.5^k,
-        trust_no_or_high_am = FALSE, min_cell = 10,
-        cp_orig = cp_orig
-      )
-    }
-    k <- k + 1
-  }
-
-  cp_pos
-}
-
 
 .get_cyt_pos_gates_chnl_vec_from_marker_list <- function(marker_list) {
   purrr::map_chr(marker_list, function(x) x$chnl_cut)
@@ -254,7 +256,6 @@
 
 .get_cyt_pos_gates_gate_tbl_get <- function(chnl_vec,
                                             path_project,
-                                            gate_name,
                                             debug,
                                             chnl_lab) {
   .debug(debug, "Getting gate_tbl") # nolint

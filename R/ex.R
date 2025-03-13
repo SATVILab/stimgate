@@ -59,3 +59,25 @@ str_detect_any <- function(string, pattern) {
 .get_batch_ex <- function(ex) {
   attr(ex, "batch")
 }
+
+.get_ind_uns <- function(ind, ind_batch_list) {
+  has_ind <- vapply(
+    ind_batch_list, function(x) ind %in% x, logical(1)
+  )
+  if (sum(has_ind) > 1L) {
+    # this is an unstim, as it appears
+    # in more than one batch
+    return(ind)
+  }
+  has_ind <- which(has_ind)
+  ind_batch <- ind_batch_list[has_ind] |>
+    unlist()
+  ind_batch[[length(ind_batch)]]
+}
+
+.get_batch <- function(ind, ind_batch_list) {
+  has_ind <- vapply(
+    ind_batch_list, function(x) ind %in% x, logical(1)
+  )
+  names(ind_batch_list)[has_ind]
+}

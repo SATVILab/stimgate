@@ -7,6 +7,10 @@ test_that("stimgate_gate runs", {
   gs <- flowWorkspace::load_gs(path_gs)
   fn_tbl_info <- get_fn_tbl_info_postmortem(gs)
   # debugonce(get_batch_list_postmortem)
+  UtilsCytoRSV::chnl_lab(gs[[1]])
+  browser()
+  min_cell <- TRUE
+  filter_method <- if (min_cell) "min_cell" else "min_uns"
   batch_list <- get_batch_list_postmortem(
     fn_tbl_info,
     col_grp = c("pid", "location"),
@@ -14,31 +18,21 @@ test_that("stimgate_gate runs", {
     uns_chr = "uns",
     min_cell_uns = 100,
     min_cell_stim = 100,
-    col_n_cell = "n_cell_pop"
+    col_n_cell = "n_cell_pop",
+    filter_method = filter_method
   )
-  batch_list <- batch_list |>
-    stats::setNames(paste0("batch_", seq_along(batch_list)))
+  
 
-  batch_vec_sort <- lapply(batch_list, function(x) {
-    fn_tbl_info[["n_cell_pop"]][x] |>
-      min()
-  }) |>
-    stats::setNames(seq_along(batch_list)) |>
-    unlist() |>
-    sort() |>
-    rev()
-  batch_vec_sel <- batch_vec_sort[1:5] |>
-    names() |>
-    as.numeric()
-  batch_list <- batch_list[batch_vec_sel]
   
   marker_vec <- c("Er168Di", "Lu175Di")
+  marker_vec <- c("Er168Di", "Lu175Di", "Er166Di", "Yb172Di", "Nd150Di")
   path_project <- setup_project_postmortem(min_cell)
   browser()
   browser()
   browser()
-  debugonce(.get_cp_cluster_prop_bs_by_cp_tbl_obj)
   debugonce(stimgate_gate)
+  debugonce(.gate_stats)
+
   stimgate_gate(
     path_project = path_project,
     .data = gs,
