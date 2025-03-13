@@ -174,7 +174,7 @@
   path_save_fn_csv <- file.path(path_project, fn_csv)
   if (file.exists(path_save_fn_rds)) file.remove(path_save_fn_rds)
   if (file.exists(path_save_fn_csv)) file.remove(path_save_fn_csv)
-  readr::write_csv(stat_tbl, path_save_fn_csv)
+  write.csv(stat_tbl, path_save_fn_csv)
   saveRDS(stat_tbl, path_save_fn_rds)
   invisible(path_project)
 }
