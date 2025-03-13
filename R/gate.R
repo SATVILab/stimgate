@@ -139,7 +139,7 @@ stimgate_gate <- function(path_project,
     save_gate_tbl = TRUE
   )
 
-  path_dir_stats
+  path_project
 }
 
 .gate_init <- function(pop_gate,
