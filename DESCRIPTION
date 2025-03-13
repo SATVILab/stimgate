@@ -1,7 +1,7 @@
 Package: stimgate
 Type: Package
 Title: Identify responding cells as outliers
-Version: 0.3.0.9000
+Version: 0.3.0.9001
 Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-2036-4878"))
 Maintainer: Miguel Rodo <miguel.rodo@uct.ac.za>
 Description: Apply outlier gating function
@@ -9,7 +9,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Imports:
     cowplot,
     dplyr,
