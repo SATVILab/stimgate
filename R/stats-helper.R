@@ -152,15 +152,15 @@
 
 
 .stats_save <- function(save,
-                            stat_tbl,
-                            path_project,
-                            params,
-                            chnl) {
+                        stat_tbl,
+                        path_project,
+                        params,
+                        chnl) {
   if (!save) {
     return(invisible(stat_tbl))
   }
-  if (!dir.exists(dir_save)) {
-    dir.create(dir_save, recursive = TRUE)
+  if (!dir.exists(path_project)) {
+    dir.create(path_project, recursive = TRUE)
   }
   if ("ind" %in% colnames(stat_tbl)) {
     stat_tbl[, "ind"] <- as.character(stat_tbl[["ind"]])
@@ -170,11 +170,11 @@
   }
   fn_rds <- paste0("gate_stats.rds")
   fn_csv <- paste0("gate_stats.csv")
-  path_save_fn_rds <- file.path(dir_save, fn_rds)
-  path_save_fn_csv <- file.path(dir_save, fn_csv)
+  path_save_fn_rds <- file.path(path_project, fn_rds)
+  path_save_fn_csv <- file.path(path_project, fn_csv)
   if (file.exists(path_save_fn_rds)) file.remove(path_save_fn_rds)
   if (file.exists(path_save_fn_csv)) file.remove(path_save_fn_csv)
   readr::write_csv(stat_tbl, path_save_fn_csv)
   saveRDS(stat_tbl, path_save_fn_rds)
-  invisible(dir_save)
+  invisible(path_project)
 }
