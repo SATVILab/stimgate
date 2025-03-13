@@ -5,15 +5,11 @@
 \title{Write FCS files of marker-positive FCS files}
 \usage{
 stimgate_fcs_write(
-  data,
-  data_name,
-  pop_gate,
+  path_project,
+  .data,
+  ind_batch_list,
+  path_dir_save,
   chnl = NULL,
-  ind_in_batch_lab_vec,
-  gate_name = NULL,
-  ind_in_batch_gate,
-  dir_base = NULL,
-  ind_in_batch_uns,
   gate_tbl = NULL,
   trans_fn = NULL,
   trans_chnl = NULL,
@@ -21,9 +17,7 @@ stimgate_fcs_write(
   gate_type_cyt_pos = "cyt",
   gate_type_single_pos = "single",
   mult = FALSE,
-  gate_uns = FALSE,
-  gate_uns_method = "min",
-  path_project
+  gate_uns_method = "min"
 )
 }
 \description{
