@@ -20,14 +20,10 @@ test_that("stimgate_gate runs", {
     col_n_cell = "n_cell_pop",
     filter_method = filter_method
   )
-  
 
-  
   marker_vec <- c("Er168Di", "Lu175Di")
   # marker_vec <- c("Er168Di", "Lu175Di", "Er166Di", "Yb172Di", "Nd150Di")
   path_project <- setup_project_postmortem(min_cell)
-  # browser()
-  # browser()
   # browser()
   # debugonce(stimgate_gate)
   # debugonce(.gate_stats)
