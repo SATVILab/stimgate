@@ -303,3 +303,23 @@ plot_raw_data_postmortem <- function(filter_method = "min_cell") {
     )
   }
 }
+
+.get_chnl_lab <- function(gs) {
+  chnl_lab <- UtilsCytoRSV::chnl_lab(
+    flowWorkspace::gh_pop_get_data(gs[[1]])
+  )
+  for (i in seq_along(chnl_lab)) {
+    chnl_lab[[i]] <- gsub("^.*_", "", chnl_lab[[i]])
+  }
+  chnl_lab
+}
+
+.get_ind_lab <- function(info_tbl) {
+  paste0(
+    info_tbl$location, "_",
+    info_tbl$pid |> gsub("pid_", "", x = _), "_",
+    info_tbl$stim
+  ) |>
+    stats::setNames(seq_len(nrow(info_tbl)))
+}
+  

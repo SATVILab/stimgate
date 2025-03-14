@@ -13,12 +13,8 @@ get_gate_tbl <- function(path_project) {
     basename()
   purrr::map_df(dir_vec, function(dir_curr) {
     # get stats tbl
-    gate_tbl <- readRDS(file.path(path_project, dir_curr, "gate_tbl.rds"))
-
-    gate_stats <- gate_stats |>
-      dplyr::mutate(chnl_cut = dir_curr) |>
-      dplyr::select(chnl_cut, everything())
-
-    gate_stats
+    readRDS(file.path(path_project, dir_curr, "gate_tbl.rds")) |>
+      dplyr::filter(chnl == dir_curr)
   })
 }
+
