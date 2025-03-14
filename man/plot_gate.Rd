@@ -16,7 +16,8 @@ plot_gate(
   limits_equal = FALSE,
   grid = TRUE,
   grid_n_col = 2,
-  show_gate = TRUE
+  show_gate = TRUE,
+  min_cell = 10
 )
 }
 \arguments{
@@ -59,6 +60,11 @@ Number of columns in grid layout.}
 \item{show_gate}{Logical.
 If \code{TRUE}, overlays gate lines on the plots.|>
 Default is \code{TRUE}.}
+
+\item{min_cell}{integer.
+Minimum number of cells to be plotted.
+Will skip plots with fewer cells.
+Default is 10.}
 }
 \value{
 A grid of plots if \code{grid} is TRUE, otherwise a list of ggplot objects.

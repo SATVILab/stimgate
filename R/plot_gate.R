@@ -318,7 +318,8 @@ plot_gate <- function(ind,
                                               min_cell) {
   plot_tbl_list <- lapply(seq_along(ind), function(i) {
     plot_tbl <- .plot_gate_uv_marker_get_plot_tbl_ind(
-      ind = ind[[i]], .data = .data, marker = marker, exc_min = exc_min
+      ind = ind[[i]], .data = .data, marker = marker, exc_min = exc_min,
+      min_cell = min_cell
     )
     if (is.null(plot_tbl)) {
       return(NULL)
