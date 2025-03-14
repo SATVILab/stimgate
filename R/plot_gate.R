@@ -31,6 +31,10 @@
 #' @param show_gate Logical.
 #' If `TRUE`, overlays gate lines on the plots.|>
 #' Default is `TRUE`.
+#' @param min_cell integer.
+#' Minimum number of cells to be plotted.
+#' Will skip plots with fewer cells.
+#' Default is 10.
 #'
 #' @return A grid of plots if `grid` is TRUE, otherwise a list of ggplot objects.
 #'
@@ -59,13 +63,14 @@ plot_gate <- function(ind,
                       limits_equal = FALSE,
                       grid = TRUE,
                       grid_n_col = 2,
-                      show_gate = TRUE) {
+                      show_gate = TRUE,
+                      min_cell = 10) {
   p_list <- .plot_gate(
     ind = ind, ind_lab = ind_lab, .data = .data,
     marker = marker, marker_lab = marker_lab,
     path_project = path_project, exc_min = exc_min,
     limits_expand = limits_expand, limits_equal = limits_equal,
-    show_gate = show_gate
+    show_gate = show_gate, min_cell = min_cell
   )
   if (length(p_list) == 0L) {
     return(NULL)
@@ -82,21 +87,23 @@ plot_gate <- function(ind,
                        exc_min,
                        limits_expand,
                        limits_equal,
-                       show_gate) {
+                       show_gate,
+                       min_cell) {
   # bv
   p_list_bv <- .plot_gate_bv(
     marker = marker, ind = ind, ind_lab = ind_lab,
     .data = .data, marker_lab = marker_lab,
     path_project = path_project, exc_min = exc_min,
     limits_expand = limits_expand, limits_equal = limits_equal,
-    show_gate = show_gate
+    show_gate = show_gate, min_cell = min_cell
   )
 
   # uv
   p_list_uv <- .plot_gate_uv(
     ind = ind, ind_lab = ind_lab, .data = .data,
     marker = marker, exc_min = exc_min, marker_lab = marker_lab,
-    show_gate = show_gate, path_project = path_project
+    show_gate = show_gate, path_project = path_project,
+    min_cell = min_cell
   )
 
   p_list_bv |> append(p_list_uv)
@@ -111,14 +118,15 @@ plot_gate <- function(ind,
                           exc_min,
                           limits_expand,
                           limits_equal,
-                          show_gate) {
+                          show_gate,
+                          min_cell) {
   if (length(marker) == 1L) {
     return(NULL)
   }
   p_list <- lapply(seq_along(ind), function(i) {
     ind_curr <- ind[[i]]
     ex_tbl <- .plot_get_ex_tbl(ind_curr, .data, marker, exc_min = FALSE)
-    if (nrow(ex_tbl) == 0L) {
+    if (nrow(ex_tbl)  < min_cell) {
       return(NULL)
     }
     p <- UtilsCytoRSV::plot_cyto(
@@ -259,13 +267,14 @@ plot_gate <- function(ind,
                           exc_min,
                           marker_lab,
                           show_gate,
-                          path_project) {
+                          path_project,
+                          min_cell) {
   p_list <- lapply(marker, function(m) {
     .plot_gate_uv_marker(
       marker = m, ind = ind, .data = .data,
       exc_min = exc_min, ind_lab = ind_lab,
       marker_lab = marker_lab, show_gate = show_gate,
-      path_project = path_project
+      path_project = path_project, min_cell = min_cell
     )
   }) |>
     stats::setNames(.plot_get_lab(marker, marker_lab))
@@ -283,11 +292,15 @@ plot_gate <- function(ind,
                                  ind_lab,
                                  marker_lab,
                                  show_gate,
-                                 path_project) {
+                                 path_project,
+                                 min_cell) {
   plot_tbl <- .plot_gate_uv_marker_get_plot_tbl(
     ind = ind, .data = .data, marker = marker, exc_min = exc_min,
-    ind_lab = ind_lab
+    ind_lab = ind_lab, min_cell = min_cell
   )
+  if (is.null(plot_tbl)) {
+    return(NULL)
+  }
   .plot_gate_uv_marker_plot(
     plot_tbl = plot_tbl, exc_min = exc_min,
     ind = ind, i = i, ind_lab = ind_lab,
@@ -301,23 +314,37 @@ plot_gate <- function(ind,
                                               .data,
                                               marker,
                                               exc_min,
-                                              ind_lab) {
-  lapply(seq_along(ind), function(i) {
+                                              ind_lab,
+                                              min_cell) {
+  plot_tbl_list <- lapply(seq_along(ind), function(i) {
     plot_tbl <- .plot_gate_uv_marker_get_plot_tbl_ind(
       ind = ind[[i]], .data = .data, marker = marker, exc_min = exc_min
     )
+    if (is.null(plot_tbl)) {
+      return(NULL)
+    }
     plot_tbl[, "ind"] <- ind[[i]]
     plot_tbl[, "ind_lab"] <- .plot_get_lab(ind[[i]], ind_lab, i)
     plot_tbl
-  }) |>
-    Reduce(rbind, x = _)
+  })
+  plot_tbl_list <- plot_tbl_list[
+    vapply(plot_tbl_list, Negate(is.null), logical(1))
+    ]
+  if (length(plot_tbl_list) == 0L) {
+    return(NULL)
+  }
+  Reduce(rbind, plot_tbl_list)
 }
 
 .plot_gate_uv_marker_get_plot_tbl_ind <- function(ind,
                                                   .data,
-                                                 marker,
-                                                 exc_min) {
+                                                  marker,
+                                                  exc_min,
+                                                  min_cell) {
   ex_tbl <- .plot_get_ex_tbl(ind, .data, marker, exc_min)
+  if (nrow(ex_tbl) < min_cell) {
+    return(NULL)
+  }
   dens_obj_raw <- density(ex_tbl[[marker]], na.rm = TRUE)
   plot_tbl <- tibble::tibble(x = dens_obj_raw$x, y = dens_obj_raw$y)
   .plot_gate_uv_marker_add_adj(
