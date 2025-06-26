@@ -917,9 +917,9 @@
     ex_tbl_stim_no_min, ex_tbl_uns_threshold
   )
 
-  data_mod <- prob_tbl_list$all
+  data_mod <- ex_tbl_stim_threshold
   data_mod <- data_mod[
-    data_mod[["x_stim"]] >=
+    .get_cut(data_mod) >=
       (min(.get_cp_uns_loc_get_min_prob_x(prob_tbl_list$pos) - margin)),
   ]
   if (nrow(data_mod) == 0L) {
@@ -928,11 +928,17 @@
       debug, "No responding cells" # nolint
     ))
   }
-  data_mod <- data_mod |>
-    dplyr::rename(prob_smooth = prob_stim_norm)
-  attr(data_mod, "chnl_cut") <- attr(ex_tbl_stim_no_min, "chnl_cut")
-  data_mod[, attr(data_mod, "chnl_cut")] <- data_mod[["x_stim"]]
-  data_mod
+  prob_vec <- approx(
+      x = prob_tbl_list$pos$x_stim,
+      y = prob_tbl_list$pos$prob_stim_norm,
+      xout = data_mod[[1]],
+      method = "linear",
+      f = 0.5,    # midpoint rule → nearest
+      rule = 2    # outside range: use end‐points
+    )$y
+
+  data_mod |>
+    dplyr::rename(prob_smooth = prob_vec)
 }
 
 get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
@@ -1153,16 +1159,20 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                                          ex_tbl_uns_orig,
                                                          bias) {
   data_count <- data_count[order(.get_cut(data_count)), ]
-  data_count <- data_count |>
-    dplyr::mutate(count_stim = seq_len(dplyr::n())) |>
-    dplyr::mutate(
-      prop_stim = count_stim / nrow(ex_tbl_stim_orig)
-    )
+  # data_count <- data_count |>
+  #   dplyr::mutate(count_stim = seq_len(dplyr::n())) |>
+  #   dplyr::mutate(
+  #     prop_stim = count_stim / nrow(ex_tbl_stim_orig)
+  #   )
+  prop_stim_vec <- purrr::map_dbl(.get_cut(data_count), function(x) {
+    sum(.get_cut(ex_tbl_stim_orig) >= x) / nrow(ex_tbl_stim_orig)
+  })
   prop_uns_vec <- purrr::map_dbl(.get_cut(data_count), function(x) {
     sum(.get_cut(ex_tbl_uns_orig) >= x) / nrow(ex_tbl_uns_orig)
   })
-  data_count <- data_count |>
+  data_count |>
     dplyr::mutate(
+      prop_stim = prop_stim_vec,
       prop_uns = prop_uns_vec,
     ) |>
     dplyr::mutate(
