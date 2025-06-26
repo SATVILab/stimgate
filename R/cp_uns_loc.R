@@ -938,7 +938,7 @@
     )$y
 
   data_mod |>
-    dplyr::rename(prob_smooth = prob_vec)
+    dplyr::mutate(prob_smooth = prob_vec)
 }
 
 get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
