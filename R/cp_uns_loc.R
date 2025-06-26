@@ -917,19 +917,19 @@
     ex_tbl_stim_no_min, ex_tbl_uns_threshold
   )
 
-  data_mod <- ex_tbl_stim_threshold
+  data_mod <- prob_tbl_list$all
   data_mod <- data_mod[
-    .get_cut(data_mod) >=
+    data_mod[["x_stim"]] >=
       (min(.get_cp_uns_loc_get_min_prob_x(prob_tbl_list$pos) - margin)),
   ]
-  data_mod[, "prob_smooth"] <- .get_cut(data_mod)
   if (nrow(data_mod) == 0L) {
     return(.get_cp_uns_loc_ind_check_out(
       cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias,
       debug, "No responding cells" # nolint
     ))
   }
-  data_mod
+  data_mod |>
+    dplyr::rename(prob_smooth = prob_stim_norm)
 }
 
 get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
@@ -977,7 +977,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   .debug(debug, "Smoothing I") # nolint
   try({
     fml <- as.formula(paste0(
-      "prob_smooth ~ s(", attr(data_mod, "chnl_cut"), ", bs = 'mpi')"
+      "prob_smooth ~ s(x_stim), bs = 'mpi')"
     ))
     scam::scam(
       fml, # nolint
@@ -1051,7 +1051,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   .debug(debug, "Smoothing II") # nolint
   try({
     fml <- as.formula(paste0(
-      "prob_smooth ~ s(", attr(data_mod, "chnl_cut"), ", bs = 'micv')"
+      "prob_smooth ~ s(x_stim), bs = 'micv')"
     ))
     scam::scam(
       fml,
