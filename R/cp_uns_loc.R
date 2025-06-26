@@ -928,8 +928,11 @@
       debug, "No responding cells" # nolint
     ))
   }
-  data_mod |>
+  data_mod <- data_mod |>
     dplyr::rename(prob_smooth = prob_stim_norm)
+  attr(data_mod, "chnl_cut") <- attr(ex_tbl_stim_no_min, "chnl_cut")
+  data_mod[, attr(data_mod, "chnl_cut")] <- data_mod[["x_stim"]]
+  data_mod
 }
 
 get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
