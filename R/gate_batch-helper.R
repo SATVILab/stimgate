@@ -24,6 +24,7 @@
     gate_combn = gate_combn,
     .data = .data,
     bias_uns = bias_uns,
+    exc_min = exc_min,
     noise_sd = NULL,
     bw_min = bw_min,
     cp_min = cp_min,
