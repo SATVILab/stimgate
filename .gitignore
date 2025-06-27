@@ -9,3 +9,4 @@ R/test3.R
 SCRATCH.R
 tests/testthat/testdata/postmortem
 _tmp
+.gitignore

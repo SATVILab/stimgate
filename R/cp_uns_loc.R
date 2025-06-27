@@ -146,7 +146,7 @@
 
   # get cutpoint for non-prejoin grouping methods
   cp_uns_list_prejoin_non <- .get_cp_uns_loc_gate_combn_prejoin_non(
-    non_prejoin_combn = setdiff(gate_combn, "prejoin"),k
+    non_prejoin_combn = setdiff(gate_combn, "prejoin"),
     ex_list_no_min_stim = ex_list_no_min[-length(ex_list_no_min)],
     ex_list_orig = ex_list_orig,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
