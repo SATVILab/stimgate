@@ -22,7 +22,8 @@
                                   path_project,
                                   debug) {
   marker_settings_common <- list(
-    bias_uns = bias_uns, exc_min = exc_min, cp_min = cp_min, bw_min = bw_min,
+    bias_uns = bias_uns, bias_uns_factor = bias_uns_factor,
+    exc_min = exc_min, cp_min = cp_min, bw_min = bw_min,
     min_cell = min_cell, tol_clust = tol_clust, gate_combn = gate_combn,
     max_pos_prob_x = max_pos_prob_x
   )
