@@ -323,7 +323,7 @@
     if (all(purrr::map_lgl(cp, is.na))) {
       return(stats::setNames(cp, names(cp)))
     }
-    if (gate_combn_curr %in% c("no", "prejoin")) {
+    if (is.null(gate_combn_curr) || gate_combn_curr %in% c("no", "prejoin")) {
       return(cp)
     }
     if (gate_combn_curr == "min") {
