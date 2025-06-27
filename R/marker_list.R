@@ -7,6 +7,7 @@
 
 .complete_marker_list <- function(marker,
                                   bias_uns,
+                                  bias_uns_factor,
                                   exc_min,
                                   .data,
                                   pop_gate,
@@ -18,13 +19,14 @@
                                   max_pos_prob_x,
                                   gate_combn,
                                   marker_settings,
+                                  path_project,
                                   debug) {
   marker_settings_common <- list(
     bias_uns = bias_uns, exc_min = exc_min, cp_min = cp_min, bw_min = bw_min,
     min_cell = min_cell, tol_clust = tol_clust, gate_combn = gate_combn,
     max_pos_prob_x = max_pos_prob_x
   )
-  purrr::map(marker, function(marker_curr) {
+  marker_list <- purrr::map(marker, function(marker_curr) {
    .complete_marker_list_ind(
       marker = marker_curr,
       marker_settings_common = marker_settings_common,
@@ -36,6 +38,13 @@
       ind_batch_list = ind_batch_list
     )
   })
+
+  .complete_marker_list_save(
+    marker_list = marker_list,
+    path_project = attr(.data, "path_project")
+  )
+
+  marker_list
 }
 
 .complete_marker_list_ind <- function(marker_settings_common,
@@ -53,15 +62,7 @@
 
   marker_settings$bias_uns <- .complete_marker_list_bias_uns(
     bias_uns = marker_settings$bias_uns,
-    .data = .data,
-    pop_gate = pop_gate,
-    chnl_cut = marker,
-    debug = debug,
-    ind_batch_list = ind_batch_list
-  )
-
-  marker_settings$bias_uns <- .complete_marker_list_bias_uns(
-    bias_uns = marker_settings$bias_uns,
+    bias_uns_factor = marker_settings$bias_uns_factor,
     .data = .data,
     pop_gate = pop_gate,
     chnl_cut = marker,
@@ -95,6 +96,7 @@
 }
 
 .complete_marker_list_bias_uns <- function(bias_uns,
+                                           bias_uns_factor,
                                            .data,
                                            pop_gate,
                                            chnl_cut,
@@ -110,7 +112,7 @@
     pop_gate = pop_gate,
     chnl_cut = chnl_cut
   )
-  (mean_range / 12) |> signif(3)
+  (mean_range / 12 * bias_uns_factor) |> signif(3)
 }
 
 .complete_marker_list_bias_uns_get_mean_range <- function(ind_batch_list,
@@ -194,5 +196,19 @@
   c(
     "man", "tg", "dcp", "midp", "scp",
     "uns", "unsr", "loc"
+  )
+}
+
+.complete_marker_list_save <- function(marker_list, path_project) {
+  path_save <- file.path(path_project, "marker_list.rds")
+  if (file.exists(path_save)) {
+    invisible(file.remove(path_save))
+  }
+  if (!dir.exists(dirname(path_save))) {
+    dir.create(dirname(path_save), recursive = TRUE)
+  }
+  saveRDS(
+    marker_list,
+    file = path_save
   )
 }
