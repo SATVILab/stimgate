@@ -42,7 +42,7 @@
 
   .complete_marker_list_save(
     marker_list = marker_list,
-    path_project = attr(.data, "path_project")
+    path_project = path_project
   )
 
   marker_list
@@ -205,8 +205,8 @@
   if (file.exists(path_save)) {
     invisible(file.remove(path_save))
   }
-  if (!dir.exists(dirname(path_save))) {
-    dir.create(dirname(path_save), recursive = TRUE)
+  if (!dir.exists(path_project)) {
+    dir.create(path_project, recursive = TRUE)
   }
   saveRDS(
     marker_list,
