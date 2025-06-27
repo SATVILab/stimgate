@@ -7,6 +7,7 @@
 
 .complete_marker_list <- function(marker,
                                   bias_uns,
+                                  exc_min,
                                   .data,
                                   pop_gate,
                                   ind_batch_list,
@@ -19,7 +20,7 @@
                                   marker_settings,
                                   debug) {
   marker_settings_common <- list(
-    bias_uns = bias_uns, cp_min = cp_min, bw_min = bw_min,
+    bias_uns = bias_uns, exc_min = exc_min, cp_min = cp_min, bw_min = bw_min,
     min_cell = min_cell, tol_clust = tol_clust, gate_combn = gate_combn,
     max_pos_prob_x = max_pos_prob_x
   )
@@ -48,6 +49,15 @@
   marker_settings <- .complete_marker_list_add_common(
     marker_settings_common = marker_settings_common,
     marker_settings = marker_settings_spec
+  )
+
+  marker_settings$bias_uns <- .complete_marker_list_bias_uns(
+    bias_uns = marker_settings$bias_uns,
+    .data = .data,
+    pop_gate = pop_gate,
+    chnl_cut = marker,
+    debug = debug,
+    ind_batch_list = ind_batch_list
   )
 
   marker_settings$bias_uns <- .complete_marker_list_bias_uns(

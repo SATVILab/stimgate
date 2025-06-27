@@ -5,7 +5,7 @@
 #' @return A list where each element is a numeric vector.
 .prepare_ex_list_with_bias_and_noise <- function(ex_list,
                                                  ind,
-                                                 exc_min = TRUE,
+                                                 exc_min,
                                                  bias = 0,
                                                  debug = FALSE,
                                                  noise_sd = NULL) {

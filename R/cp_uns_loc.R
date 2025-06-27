@@ -1,13 +1,13 @@
 #' @title Calculate the local fdr-based cut
 .get_cp_uns_loc <- function(ex_list, gate_combn,
-                            .data, bias_uns = 0,
+                            .data, bias_uns = 0, exc_min,
                             noise_sd = NULL, bw_min = 80,
                             cp_min, min_cell, params,
                             path_project, debug = FALSE) {
   # get cutpoints for each level of bias
   .get_cp_uns_loc_bias( # nolint
     ex_list = ex_list,
-    .data = .data, bias_uns = bias_uns, noise_sd = noise_sd,
+    .data = .data, bias_uns = bias_uns, exc_min = exc_min, noise_sd = noise_sd,
     cp_min = cp_min, gate_combn = gate_combn, bw_min = bw_min,
     min_cell = min_cell, gate_tbl = params$gate_tbl,
     gate_name_curr = params$gate_name_curr, chnl_cut = params$chnl_cut,
@@ -20,7 +20,7 @@
 
 #' @title Get the unstim-based local fdr-method cutpoint for each level of bias
 .get_cp_uns_loc_bias <- function(ex_list, .data,
-                                 bias_uns, noise_sd, cp_min,
+                                 bias_uns, exc_min, noise_sd, cp_min,
                                  gate_combn, bw_min, min_cell,
                                  gate_tbl, gate_name_curr, chnl_cut,
                                  calc_cyt_pos_gates, path_project,
@@ -31,7 +31,7 @@
 
     ex_list_prep <- .prepare_data_with_bias_and_noise( # nolint
       ex_list = ex_list,
-      bias = bias, noise_sd = noise_sd, debug = debug
+      bias = bias, noise_sd = noise_sd, exc_min = exc_min, debug = debug
     )
 
     # get gates for given level of bias across gate combination methods
@@ -40,7 +40,7 @@
       ex_list_orig = ex_list_prep[["ex_list_orig"]],
       ex_list_no_min = ex_list_prep[["ex_list_no_min"]],
       ex_tbl_uns_bias = ex_list_prep[["ex_tbl_uns_bias"]],
-      exc_min = TRUE,
+      exc_min = exc_min,
       gate_combn = gate_combn,
       cp_min = cp_min,
       bw_min = bw_min,
@@ -50,6 +50,7 @@
       chnl_cut,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
       bias = bias,
+      exc_min = exc_min,
       path_project = path_project,
       debug = debug
     )
@@ -70,11 +71,14 @@
 
 .prepare_data_with_bias_and_noise <- function(ex_list,
                                               bias,
+                                              exc_min,
                                               noise_sd,
                                               debug) {
   # rename `cut` column` to `expr`
   # -------------------------------------
   ex_list_orig <- .prepare_ex_list_with_bias_and_noise( # nolint
+    # exc_min should always be FALSE here, as we're trying
+    # to keep all the original data
     ex_list = ex_list, ind = names(ex_list), exc_min = FALSE,
     bias = 0, noise_sd = NULL, debug = debug
   ) |>
@@ -84,8 +88,10 @@
   # `cut` column to `expr` and exclude min
   # values
   # -------------------------------------
+
   ex_list_no_min <- .prepare_ex_list_with_bias_and_noise( # nolint
-    ex_list = ex_list, ind = names(ex_list), exc_min = TRUE,
+    # exc_min will be whatever the user wanted it to be.
+    ex_list = ex_list, ind = names(ex_list), exc_min = exc_min,
     bias = 0, noise_sd = NULL, debug = debug
   ) |>
     .arrange_samples_by_desc_expr()
@@ -95,7 +101,7 @@
   # and /or adding noise
   # -------------------------------------
   ex_list_bias <- .prepare_ex_list_with_bias_and_noise( # nolint
-    ex_list = ex_list, ind = names(ex_list)[length(ex_list)], exc_min = TRUE,
+    ex_list = ex_list, ind = names(ex_list)[length(ex_list)], exc_min = exc_min,
     bias = bias, debug = debug, noise_sd = NULL
   ) |>
     .arrange_samples_by_desc_expr()
@@ -114,7 +120,7 @@
 .get_cp_uns_loc_gate_combn <- function(ex_list_orig,
                                        ex_list_no_min,
                                        ex_tbl_uns_bias,
-                                       exc_min = TRUE,
+                                       exc_min,
                                        gate_combn,
                                        cp_min,
                                        bw_min,
@@ -124,6 +130,7 @@
                                        chnl_cut,
                                        calc_cyt_pos_gates,
                                        bias,
+                                       exc_min,
                                        path_project,
                                        debug = FALSE) {
   .debug(debug, "getting gate_combn") # nolint
@@ -141,7 +148,7 @@
 
   # get cutpoint for non-prejoin grouping methods
   cp_uns_list_prejoin_non <- .get_cp_uns_loc_gate_combn_prejoin_non(
-    non_prejoin_combn = setdiff(gate_combn, "prejoin"),
+    non_prejoin_combn = setdiff(gate_combn, "prejoin"),k
     ex_list_no_min_stim = ex_list_no_min[-length(ex_list_no_min)],
     ex_list_orig = ex_list_orig,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
@@ -149,7 +156,7 @@
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    bias = bias, path_project = path_project, debug = debug
+    bias = bias, exc_min = exc_min, path_project = path_project, debug = debug
   )
 
   # merge above two lists
@@ -304,6 +311,7 @@
                                                    chnl_cut,
                                                    calc_cyt_pos_gates,
                                                    bias,
+                                                   exc_min,
                                                    path_project,
                                                    debug) {
   if (length(non_prejoin_combn) == 0L) {
@@ -323,6 +331,7 @@
     chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias,
+    exc_min = exc_min,
     non_prejoin_combn = non_prejoin_combn,
     path_project = path_project,
     debug = debug
@@ -343,6 +352,7 @@
                                                           chnl_cut,
                                                           calc_cyt_pos_gates,
                                                           bias,
+                                                          exc_min,
                                                           path_project,
                                                           debug,
                                                           non_prejoin_combn) {
@@ -355,7 +365,7 @@
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    bias = bias, path_project = path_project
+    bias = bias, exc_min = exc_min, path_project = path_project
   )
 
   cp_uns_list_nonjoin <- .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn(
@@ -415,6 +425,7 @@
                                    chnl_cut,
                                    calc_cyt_pos_gates,
                                    bias,
+                                   exc_min,
                                    path_project,
                                    debug = FALSE) {
   .debug(debug, "getting loc gate at sample level") # nolint
@@ -446,6 +457,7 @@
       chnl_cut,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
       bias = bias,
+      exc_min = exc_min,
       ex_tbl_uns_bias = ex_tbl_uns_bias
     )
 
@@ -488,6 +500,7 @@
                                                   chnl_cut,
                                                   calc_cyt_pos_gates,
                                                   bias,
+                                                  exc_min,
                                                   ex_tbl_uns_bias) {
   if (is.null(gate_tbl)) {
     return(ex_tbl_uns_bias)
@@ -520,9 +533,11 @@
   # re-apply bias, noise and exclude minimum after
   # removing cytokine-positive cells
   .prepare_ex_list_with_bias_and_noise( # nolint
-    ex_list = stats::setNames(list(ex_tbl_uns_orig), attr(ex_tbl_uns_orig, "ind_uns")),
+    ex_list = stats::setNames(
+      list(ex_tbl_uns_orig), attr(ex_tbl_uns_orig, "ind_uns")
+      ),
     ind = attr(ex_tbl_uns_orig, "ind_uns"),
-    exc_min = TRUE,
+    exc_min = exc_min,
     bias = bias,
     noise_sd = NULL
   )[[1]]

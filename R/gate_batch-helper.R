@@ -6,6 +6,7 @@
                             .data,
                             noise_sd,
                             bias_uns,
+                            exc_min,
                             cp_min,
                             min_cell,
                             tol_clust,
@@ -39,7 +40,7 @@
         gate_combn = "no",
         chnl_cut,
         tol = params$tol_ctrl,
-        exc_min = TRUE,
+        exc_min = exc_min,
         min_cell = 0,
         cp_min = 0,
         bw = bw_min
@@ -53,7 +54,7 @@
       ex_list = ex_list,
       gate_combn = "no",
       chnl_cut, tol = tol_clust,
-      exc_min = TRUE,
+      exc_min = exc_min,
       min_cell = 0,
       cp_min = 0,
       bw = bw_min
@@ -135,6 +136,7 @@
                                .data,
                                noise_sd,
                                bias_uns,
+                               exc_min,
                                cp_min,
                                min_cell,
                                chnl_cut,
@@ -204,7 +206,7 @@
         gate_combn = gate_name_tbl_row$gate_combn,
         chnl_cut, tol = tol,
         ind_gate = ind_batch[ind_in_batch_gate],
-        exc_min = TRUE,
+        exc_min = exc_min,
         min_cell = min_cell,
         cp_min = cp_min,
         bw = bw_min
@@ -214,6 +216,7 @@
         gate_combn = gate_name_tbl_row$gate_combn,
         .data = .data,
         bias_uns = bias_uns,
+        exc_min = exc_min,
         noise_sd = NULL,
         bw_min = bw_min,
         cp_min = cp_min,
@@ -247,7 +250,7 @@
         ex_list = ex_list_neg_but_single_pos_curr,
         gate_combn = "no",
         chnl_cut, tol = params$tol_ctrl,
-        exc_min = TRUE,
+        exc_min = exc_min,
         min_cell = min_cell,
         cp_min = cp_min,
         bw = bw_min
@@ -273,7 +276,7 @@
         gate_combn = "no",
         chnl_cut,
         tol = tol_clust_single,
-        exc_min = TRUE,
+        exc_min = exc_min,
         min_cell = min_cell,
         cp_min = cp_min,
         bw = bw_min
