@@ -7,7 +7,6 @@
 #'   to be calculated.
 #' @param path_project character. Path to project directory. Results are saved
 #'   here.
-#'
 #' # gating parameters
 #' @param marker list. List where each element specifies the parameters to be
 #'   used to gate a given marker (including the name of the marker itself).
@@ -27,7 +26,6 @@
 #'       specified (i.e. \code{NULL}), then all gates are performed
 #'       individually on each sample. Default is \code{"min"}.
 #'   }
-
 #' @importFrom flowCore exprs<- parameters<-
 #' @export
 stimgate_gate <- function(path_project,

@@ -731,7 +731,11 @@
   bw_uns <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
     .get_cut(ex_tbl_uns_threshold), bw_min
   )
-  max(bw_stim, bw_min, bw_uns)
+  bw_init <- max(bw_stim, bw_min, bw_uns)
+  # don't allow bandwidth to be too large, as otherwise
+  # we can push up the negative pop's right side
+  # by smoothing the positive pop into it.
+  min(bw_min * 1.5, bw_init)
 }
 
 .get_cp_uns_loc_get_dens_raw_densities_bw_init <- function(.data, bw_min) {
