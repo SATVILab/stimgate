@@ -40,7 +40,6 @@
       ex_list_orig = ex_list_prep[["ex_list_orig"]],
       ex_list_no_min = ex_list_prep[["ex_list_no_min"]],
       ex_tbl_uns_bias = ex_list_prep[["ex_tbl_uns_bias"]],
-      exc_min = exc_min,
       gate_combn = gate_combn,
       cp_min = cp_min,
       bw_min = bw_min,
@@ -130,7 +129,6 @@
                                        chnl_cut,
                                        calc_cyt_pos_gates,
                                        bias,
-                                       exc_min,
                                        path_project,
                                        debug = FALSE) {
   .debug(debug, "getting gate_combn") # nolint
