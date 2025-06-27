@@ -25,7 +25,7 @@
 #'       subset of the automated gating methods. \code{'grp'} means to gate
 #'       jointly, whereas all of the others do what they sound like. If not
 #'       specified (i.e. \code{NULL}), then all gates are performed
-#'       individually on each sample. Default is \code{NULL}.
+#'       individually on each sample. Default is \code{"min"}.
 #'   }
 
 #' @importFrom flowCore exprs<- parameters<-
@@ -36,6 +36,7 @@ stimgate_gate <- function(path_project,
                           marker,
                           pop_gate = "root",
                           bias_uns = NULL,
+                          bias_uns_factor = 1,
                           exc_min = TRUE,
                           cp_min = NULL,
                           bw_min = NULL,
@@ -59,6 +60,7 @@ stimgate_gate <- function(path_project,
   marker <- .complete_marker_list( # nolint
     marker = marker,
     bias_uns = bias_uns,
+    bias_uns_factor = bias_uns_factor,
     exc_min = exc_min,
     .data = .data,
     pop_gate = pop_gate,
@@ -70,6 +72,7 @@ stimgate_gate <- function(path_project,
     max_pos_prob_x = max_pos_prob_x,
     gate_combn = gate_combn,
     marker_settings = marker_settings,
+    path_project = path_project,
     debug = debug
   )
 
