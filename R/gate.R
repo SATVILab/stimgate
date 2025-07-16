@@ -48,7 +48,7 @@ stimgate_gate <- function(path_project,
                           calc_single_pos_gates = FALSE,
                           debug = FALSE) {
   force(.data)
-  # capture and force-evaluate the debug flag into a local .debug object
+  # capture and force-evaluate the .debug flag into a local .debug object
   .debug <- debug
 
   if (is.null(names(batch_list))) {
@@ -187,7 +187,7 @@ stimgate_gate <- function(path_project,
       tol_gate_single = tol_gate_single,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
       path_project = path_project,
-      debug = debug
+      .debug = .debug
     )
 
     path_dir_save <- file.path(path_project, marker_curr$chnl_cut)

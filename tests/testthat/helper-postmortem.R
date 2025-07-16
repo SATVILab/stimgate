@@ -140,7 +140,7 @@ plot_raw_data_postmortem <- function(filter_method = "min_cell") {
   )
   gs <- flowWorkspace::load_gs(path_gs)
   fn_tbl_info <- get_fn_tbl_info_postmortem(gs)
-  # debugonce(get_batch_list_postmortem)
+  # .debugonce(get_batch_list_postmortem)
   batch_list <- get_batch_list_postmortem(
     fn_tbl_info,
     col_grp = c("pid", "location"),

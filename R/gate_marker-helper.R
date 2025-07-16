@@ -156,7 +156,7 @@
           control = list(),
           filter_other_cyt_pos = FALSE,
           params = params,
-          debug = debug
+          .debug = .debug
         )
 
         gate_tbl_cluster |>
@@ -233,7 +233,7 @@
     gate_stats_tbl = gate_stats_tbl,
     gate_tbl_single = gate_tbl_single,
     params = params,
-    debug = debug
+    .debug = .debug
   )
 
   list(
@@ -435,7 +435,7 @@
       control = list(),
       filter_other_cyt_pos = TRUE,
       params = params,
-      debug = debug
+      .debug = .debug
     )
 
     gate_tbl_cluster_gn <- gate_tbl_cluster_gn |>

@@ -23,7 +23,7 @@
                             bw,
                             params,
                             filter_other_cyt_pos,
-                            debug = FALSE) {
+                            .debug = FALSE) {
   .debug_msg(.debug, "Adjusting thresholds within clusters") # nolint
   # ==================================
   # PREPARATION
@@ -34,7 +34,7 @@
 
   # statistics
   gate_stats_tbl <- .get_cp_cluster_gate_stats_tbl_update( # nolint
-    gate_stats_tbl, debug
+    gate_stats_tbl, .debug
   )
 
   # cp
@@ -71,7 +71,7 @@
     gate_tbl = gate_tbl,
     control = control,
     bw = bw,
-    debug = debug
+    .debug = .debug
   )
 
   n_clus <- .get_cp_cluster_n_clus( # nolint
@@ -123,14 +123,14 @@
     prop_bs_by_cp_tbl = prop_bs_by_cp_tbl,
     expr_max = expr_max,
     expr_min = expr_min,
-    debug = debug
+    .debug = .debug
   )
 
   gate_summ_stat_tbl <- .get_cp_cluster_gate_summ_stat_tbl_get( # nolint
     gate_tbl = gate_tbl,
     chnl_cut = params$chnl_cut,
     grp_ind_lab_vec = grp_ind_lab_vec,
-    debug = debug
+    .debug = .debug
   )
 
   # calculate thresholds
@@ -141,7 +141,7 @@
   cp_tbl <- .get_cp_cluster_cp_join_get( # nolint
     prop_bs_by_cp_tbl = prop_bs_by_cp_tbl,
     cp_grp_lab_vec = cp_grp_lab_vec,
-    debug = debug
+    .debug = .debug
   )
 
   gate_tbl_chnl <- .get_cp_cluster_gate_tbl_chnl_get( # nolint
@@ -156,25 +156,25 @@
     gate_summ_stat_tbl = gate_summ_stat_tbl,
     gate_tbl_ctrl = gate_tbl_ctrl,
     gate_tbl_chnl = gate_tbl_chnl,
-    debug = debug
+    .debug = .debug
   )
 
   cp_tbl <- .get_cp_cluster_cp_tbl_add_orig_quant_min( # nolint
     cp_tbl = cp_tbl,
-    debug = debug
+    .debug = .debug
   )
 
   # calculate for each individual cp_lse (less than 0.01 standard errors)
   cp_tbl <- .get_cp_cluster_cp_join_lse_get( # nolint
     cp_tbl = cp_tbl,
-    debug = debug
+    .debug = .debug
   )
 
   # add tail-gate-based thresholds
 
   cp_tbl <- .get_cp_cluster_cp_join_tg_get( # nolint
     cp_tbl = cp_tbl,
-    debug = debug
+    .debug = .debug
   )
 
   # calculate cp where you don't go all the way to the new cp,
@@ -203,7 +203,7 @@
     chnl_cut = params$chnl_cut,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl,
-    debug = debug
+    .debug = .debug
   )
 
   cp_tbl <- .get_cp_cluster_impute_missing_ind( # nolint
@@ -211,7 +211,7 @@
     chnl_cut = params$chnl_cut,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl,
-    debug = debug
+    .debug = .debug
   )
 
   cp_tbl <- .get_cp_cluster_impute_missing_final( # nolint
@@ -219,7 +219,7 @@
     chnl_cut = params$chnl_cut,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl,
-    debug = debug
+    .debug = .debug
   )
 
   cp_tbl <- .get_cp_cluster_impute_missing_final_batch( # nolint
@@ -227,7 +227,7 @@
     chnl_cut = params$chnl_cut,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl,
-    debug = debug
+    .debug = .debug
   )
 
   # =========================
