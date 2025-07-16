@@ -35,7 +35,7 @@
         append(marker_settings[[marker_curr]]),
       .data = .data,
       pop_gate = pop_gate,
-      debug = debug,
+      .debug = .debug,
       ind_batch_list = ind_batch_list
     )
   })
@@ -53,7 +53,7 @@
                                       marker,
                                       .data,
                                       pop_gate,
-                                      debug,
+                                      .debug,
                                       ind_batch_list) {
 
   marker_settings <- .complete_marker_list_add_common(
@@ -67,7 +67,7 @@
     .data = .data,
     pop_gate = pop_gate,
     chnl_cut = marker,
-    debug = debug,
+    .debug = .debug,
     ind_batch_list = ind_batch_list
   )
 
@@ -81,7 +81,7 @@
     .data = .data,
     pop_gate = pop_gate,
     chnl_cut = marker,
-    debug = debug,
+    .debug = .debug,
     ind_batch_list = ind_batch_list
   )
 
@@ -101,12 +101,12 @@
                                            .data,
                                            pop_gate,
                                            chnl_cut,
-                                           debug,
+                                           .debug,
                                            ind_batch_list) {
   if (!is.null(bias_uns)) {
     return(bias_uns)
   }
-  .debug(debug, "calculating bias_uns automatically") # nolint
+  .debug_msg(.debug, "calculating bias_uns automatically") # nolint
   mean_range <- .complete_marker_list_bias_uns_get_mean_range(
     ind_batch_list = ind_batch_list,
     .data = .data,
@@ -155,12 +155,12 @@
                                          .data,
                                          pop_gate,
                                          chnl_cut,
-                                         debug,
+                                         .debug,
                                          ind_batch_list) {
   if (!is.null(cp_min)) {
     return(cp_min)
   }
-  .debug(debug, "calculating cp_min automatically") # nolint
+  .debug_msg(.debug, "calculating cp_min automatically") # nolint
   purrr::map(
     seq_len(min(2, length(ind_batch_list))),
     function(i) {

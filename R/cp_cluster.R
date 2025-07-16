@@ -24,7 +24,7 @@
                             params,
                             filter_other_cyt_pos,
                             debug = FALSE) {
-  .debug(debug, "Adjusting thresholds within clusters") # nolint
+  .debug_msg(.debug, "Adjusting thresholds within clusters") # nolint
   # ==================================
   # PREPARATION
   # ==================================

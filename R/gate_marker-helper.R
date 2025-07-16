@@ -21,11 +21,11 @@
                                             cp_min,
                                             min_cell,
                                             params,
-                                            debug,
+                                            .debug,
                                             path_project) {
   print("getting pre-adjustment gates")
   purrr::map_df(seq_along(ind_batch_list), function(i) {
-    .debug(debug, "ind_batch_list", i) # nolint
+    .debug_msg(.debug, "ind_batch_list", i) # nolint
 
     # print progress
     if (i %% 50 == 0 || i == length(ind_batch_list)) {
@@ -46,7 +46,7 @@
       min_cell = min_cell,
       params = params,
       batch = names(ind_batch_list)[i],
-      debug = debug,
+      .debug = .debug,
       path_project = path_project
     ) |>
       dplyr::select(
@@ -65,7 +65,7 @@
                                        chnl_cut,
                                        bw_min,
                                        path_project,
-                                       debug,
+                                       .debug,
                                        ind_batch_list,
                                        pop_gate) {
   if (is.null(gate_tbl_params)) {
@@ -78,7 +78,7 @@
       bw_min = bw_min,
       path_project = path_project,
       gate_quant = gate_quant,
-      debug = debug,
+      .debug = .debug,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
@@ -91,7 +91,7 @@
       .data = .data,
       calc_cyt_pos_gates = TRUE,
       path_project = path_project,
-      debug = debug,
+      .debug = .debug,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
@@ -106,7 +106,7 @@
                                            bw_min,
                                            path_project,
                                            gate_quant,
-                                           debug,
+                                           .debug,
                                            ind_batch_list,
                                            pop_gate) {
   # START HERE!!!
@@ -135,7 +135,7 @@
       combn = FALSE,
       gate_type_single_pos_calc = "base",
       path_project = path_project,
-      debug = debug,
+      .debug = .debug,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
@@ -202,7 +202,7 @@
                                                .data,
                                                calc_cyt_pos_gates,
                                                path_project,
-                                               debug,
+                                               .debug,
                                                ind_batch_list,
                                                pop_gate) {
   # get gates
@@ -223,7 +223,7 @@
     .data = .data,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     path_project = path_project,
-    debug = debug,
+    .debug = .debug,
     ind_batch_list = ind_batch_list,
     pop_gate = pop_gate
   )
@@ -282,7 +282,7 @@
                                                              .data,
                                                              calc_cyt_pos_gates, # nolint
                                                              path_project,
-                                                             debug,
+                                                             .debug,
                                                              ind_batch_list) { # nolint
   gate_name_vec <- unique(gate_tbl$gate_name)
   if (!.gate_marker_gate_adj_gates_single_stats_tbl_get_check(gate_name_vec)) {
@@ -312,7 +312,7 @@
     gate_type_single_pos_calc = "base",
     combn = FALSE,
     path_project = path_project,
-    debug = debug,
+    .debug = .debug,
     ind_batch_list = ind_batch_list,
     pop_gate = pop_gate
   )
@@ -351,7 +351,7 @@
   gate_name_vec <- unique(gate_tbl$gate_name)
   purrr::map_df(gate_name_vec, function(gn) {
     .gate_marker_gate_adj_gates_single_out_get_gn(
-      debug = debug,
+      .debug = .debug,
       gn = gn,
       gate_tbl = gate_tbl,
       gate_stats_tbl = gate_stats_tbl,
@@ -365,7 +365,7 @@
     dplyr::mutate(gate_single = pmax(gate, gate_single)) # nolint
 }
 
-.gate_marker_gate_adj_gates_single_out_get_gn <- function(debug,
+.gate_marker_gate_adj_gates_single_out_get_gn <- function(.debug,
                                                            gn,
                                                            gate_tbl,
                                                            gate_stats_tbl,
@@ -373,7 +373,7 @@
                                                            gate_tbl_ctrl_ctrl,
                                                            gate_tbl_single_gn,
                                                            params) {
-  .debug(debug, "gate_name_vec", gn) # nolint
+  .debug_msg(.debug, "gate_name_vec", gn) # nolint
   gate_tbl_gn <- gate_tbl |>
     dplyr::filter(gate_name == gn) # nolint
 

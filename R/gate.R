@@ -48,6 +48,8 @@ stimgate_gate <- function(path_project,
                           calc_single_pos_gates = FALSE,
                           debug = FALSE) {
   force(.data)
+  # capture and force-evaluate the debug flag into a local .debug object
+  .debug <- debug
 
   if (is.null(names(batch_list))) {
     batch_list <- batch_list |>
@@ -71,7 +73,7 @@ stimgate_gate <- function(path_project,
     gate_combn = gate_combn,
     marker_settings = marker_settings,
     path_project = path_project,
-    debug = debug
+    .debug = .debug
   )
 
   # inital gates
@@ -87,7 +89,7 @@ stimgate_gate <- function(path_project,
     tol_clust = tol_clust,
     tol_gate_single = tol_clust * 1e-1,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    debug = debug
+    .debug = .debug
   )
 
   # cytokine-positive gates
@@ -97,7 +99,7 @@ stimgate_gate <- function(path_project,
     pop_gate = pop_gate,
     .data = .data,
     calc_cyt_pos = calc_cyt_pos_gates,
-    debug = debug,
+    .debug = .debug,
     path_project = path_project
   )
 
@@ -115,7 +117,7 @@ stimgate_gate <- function(path_project,
     tol_gate_single = tol_gate_single,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
-    debug = debug,
+    .debug = .debug,
     gate_tbl = gate_tbl
   )
 
@@ -132,7 +134,7 @@ stimgate_gate <- function(path_project,
     combn = TRUE,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
-    debug = debug,
+    .debug = .debug,
     save = TRUE,
     pop_gate = pop_gate,
     marker = marker,
@@ -211,7 +213,7 @@ stimgate_gate <- function(path_project,
                          tol_gate_single,
                          calc_cyt_pos_gates,
                          calc_single_pos_gates,
-                         debug,
+                         .debug,
                          gate_tbl) {
   # loop over populations
   print("")
@@ -221,7 +223,7 @@ stimgate_gate <- function(path_project,
   print("----")
   print("")
   if (!calc_single_pos_gates) {
-    .debug(debug, "Not gating single-pos gates") # nolint
+    .debug_msg(.debug, "Not gating single-pos gates") # nolint
     purrr::walk(marker, function(marker_curr) {
       saveRDS(
         gate_tbl |>
@@ -232,7 +234,7 @@ stimgate_gate <- function(path_project,
     })
     return(invisible(TRUE))
   } else {
-    .debug(debug, "Gating single-pos gates") # nolint
+    .debug_msg(.debug, "Gating single-pos gates") # nolint
   }
   # loop over markers
   purrr::walk(marker, function(marker_curr) {
@@ -276,7 +278,7 @@ stimgate_gate <- function(path_project,
                         combn = TRUE,
                         calc_cyt_pos_gates,
                         calc_single_pos_gates,
-                        debug,
+                        .debug,
                         save = TRUE,
                         pop_gate,
                         marker,
@@ -298,7 +300,7 @@ stimgate_gate <- function(path_project,
       if (calc_cyt_pos_gates) "cyt" else "base",
     gate_type_single_pos_calc =
       if (calc_single_pos_gates) "single" else "base",
-    debug = debug,
+    .debug = .debug,
     save = save,
     pop_gate = pop_gate,
     chnl = purrr::map_chr(marker, function(x) x$chnl_cut),

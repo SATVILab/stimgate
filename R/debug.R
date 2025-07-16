@@ -1,4 +1,4 @@
-.debug <- function(debug, msg, val = NULL) {
+.debug_msg <- function(.debug, msg, val = NULL) {
   if (!debug) {
     return(invisible(FALSE))
   }

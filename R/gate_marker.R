@@ -20,7 +20,7 @@
                          path_project,
                          debug) {
   # print progress
-  .debug(debug, "pop_gate: ", pop_gate) # nolint
+  .debug_msg(.debug, "pop_gate: ", pop_gate) # nolint
 
   # Parameters list
   # ----------------
@@ -69,7 +69,7 @@
     cp_min = cp_min,
     min_cell = min_cell,
     params = params,
-    debug = debug,
+    .debug = .debug,
     path_project = path_project
   )
 
@@ -103,7 +103,7 @@
     bw_min = bw_min,
     .data = .data,
     path_project = path_project,
-    debug = debug,
+    .debug = .debug,
     pop_gate = pop_gate,
     ind_batch_list = ind_batch_list
   )

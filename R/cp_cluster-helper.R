@@ -10,7 +10,7 @@
 
 .get_cp_cluster_gate_stats_tbl_update <- function(gate_stats_tbl,
                                                   debug = FALSE) {
-  .debug(debug, "Updating gate statistics table") # nolint
+  .debug_msg(.debug, "Updating gate statistics table") # nolint
   gate_stats_tbl |>
     dplyr::mutate(
       prop_stim_pos = pmax(count_stim, 1) / n_cell_stim, # nolint
@@ -50,7 +50,7 @@
                                                   gate_stats_tbl,
                                                   filter_other_cyt_pos,
                                                   debug) {
-  .debug(debug, "Getting prop_bs_by_cp_tbl object") # nolint
+  .debug_msg(.debug, "Getting prop_bs_by_cp_tbl object") # nolint
   # statistics
   # ----------------
 
@@ -72,7 +72,7 @@
     cp_min = cp_min,
     max_cp = max_cp,
     gate_stats_tbl = gate_stats_tbl,
-    debug = debug,
+    .debug = .debug,
     ind_batch_list = ind_batch_list
   )
 
@@ -95,7 +95,7 @@
                                              filter_other_cyt_pos,
                                              cp_min,
                                              debug) {
-  .debug(debug, "Getting .data list") # nolint
+  .debug_msg(.debug, "Getting .data list") # nolint
   data_list <- .get_prop_bs_by_cp_tbl_data_list_init(
     ind_batch_list = ind_batch_list, .data = .data, pop_gate = pop_gate,
     chnl_cut = chnl_cut, filter_other_cyt_pos = filter_other_cyt_pos,
@@ -239,14 +239,14 @@
                                           cp_min,
                                           max_cp,
                                           gate_stats_tbl,
-                                          debug,
+                                          .debug,
                                           ind_batch_list,
                                           ind_in_batch_uns) {
-  .debug(debug, "Getting prop_bs_by_cp_tbl") # nolint
+  .debug_msg(.debug, "Getting prop_bs_by_cp_tbl") # nolint
   cp_par_list <- .get_prop_bs_by_cp_tbl_actual_prep(cp_min, max_cp)
   purrr::map(seq_along(data_list), function(i) {
     .get_prop_bs_by_cp_tbl_actual_ind(
-      debug = debug,
+      .debug = .debug,
       i = i,
       data_list = data_list,
       cp_par_list = cp_par_list,
@@ -258,13 +258,13 @@
     dplyr::bind_rows()
 }
 
-.get_prop_bs_by_cp_tbl_actual_ind <- function(debug,
+.get_prop_bs_by_cp_tbl_actual_ind <- function(.debug,
                                               i,
                                               cp_par_list,
                                               gate_stats_tbl,
                                               ind_batch_list,
                                               data_list) {
-  .get_prop_bs_by_cp_tbl_actual_progress(debug, i, data_list)
+  .get_prop_bs_by_cp_tbl_actual_progress(.debug, i, data_list)
   ex_list <- .get_prop_bs_by_cp_tbl_actual_ex_get(
     data_list, i, ind_batch_list
   )
@@ -365,15 +365,15 @@
     )
 }
 
-.get_prop_bs_by_cp_tbl_actual_progress <- function(debug, i, data_list) {
+.get_prop_bs_by_cp_tbl_actual_progress <- function(.debug, i, data_list) {
   if (i %% 20 == 0) {
-    .debug(debug, paste0("Processing ", i, " of ", length(data_list))) # nolint
+    .debug_msg(.debug, paste0("Processing ", i, " of ", length(data_list))) # nolint
   }
 }
 
-.get_prop_bs_by_cp_tbl_actual_progress <- function(debug, i, data_list) {
+.get_prop_bs_by_cp_tbl_actual_progress <- function(.debug, i, data_list) {
   if (i %% 20 == 0) {
-    .debug(debug, paste0("Processing ", i, " of ", length(data_list))) # nolint
+    .debug_msg(.debug, paste0("Processing ", i, " of ", length(data_list))) # nolint
   }
 }
 
@@ -402,7 +402,7 @@
 }
 
 .get_cp_cluster_dens_tbl_get_batch_prep <- function(ind_batch) {
-  .debug(debug, paste0("Processing batch ", ind_batch)) # nolint
+  .debug_msg(.debug, paste0("Processing batch ", ind_batch)) # nolint
 }
 
 
@@ -418,7 +418,7 @@
                                          control,
                                          bw,
                                          debug) {
-  .debug(debug, "Getting density table") # nolint
+  .debug_msg(.debug, "Getting density table") # nolint
   min_threshold <- .get_cp_cluster_dens_tbl_get_min_threshold(
     gate_tbl, control
   )
@@ -429,7 +429,7 @@
       pop_gate = pop_gate, chnl_cut,
       filter_other_cyt_pos = filter_other_cyt_pos,
       gate_tbl = gate_tbl, calc_cyt_pos_gates = calc_cyt_pos_gates,
-      control = control, debug = debug, batch = names(ind_batch_list)[i]
+      control = control, .debug = .debug, batch = names(ind_batch_list)[i]
     )
 
     purrr::map_df(ex_list, function(x) {
@@ -534,17 +534,17 @@
   # filter to yield cells negative for all cytokine combinations
   # except possible this cytokine single-positive
   .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter(
-    debug = debug, ex_list = ex_list,
+    .debug = .debug, ex_list = ex_list,
     chnl_cut, gate_tbl = gate_tbl, calc_cyt_pos_gates = calc_cyt_pos_gates
   )
 }
 
-.get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter <- function(debug,
+.get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter <- function(.debug,
                                                                    ex_list,
                                                                    chnl_cut,
                                                                    gate_tbl,
                                                                    calc_cyt_pos_gates) { # nolint
-  .debug(debug, "Filtering other cytokine positive cells") # nolint
+  .debug_msg(.debug, "Filtering other cytokine positive cells") # nolint
   ex_list_filter <- purrr::map(seq_along(ex_list), function(i) {
     if (i == length(ex_list)) {
       return(ex_list[[i]])
@@ -694,7 +694,7 @@
     prop_bs_by_cp_tbl = prop_bs_by_cp_tbl
   )
   purrr::map(unique(data_mod$grp), function(n_grp_curr) {
-    .debug(debug, paste0("Processing cluster ", n_grp_curr)) # nolint
+    .debug_msg(.debug, paste0("Processing cluster ", n_grp_curr)) # nolint
     data_mod_curr <- data_mod |>
       dplyr::filter(.data$grp == n_grp_curr) # nolint
     purrr::map( # nolint
@@ -781,8 +781,8 @@
                                                    chnl_cut,
                                                    grp_ind_lab_vec,
                                                    debug) {
-  .debug( # nolint
-    debug, "Getting quantiles of original gates per clustered observations" # nolint
+  .debug_msg( # nolint
+    .debug, "Getting quantiles of original gates per clustered observations" # nolint
   )
   if ("chnl" %in% names(gate_tbl)) {
     gate_tbl <- gate_tbl |>
@@ -806,7 +806,7 @@
 .get_cp_cluster_cp_join_get <- function(prop_bs_by_cp_tbl,
                                         cp_grp_lab_vec,
                                         debug) {
-  .debug(debug, "Getting cp_join") # nolint
+  .debug_msg(.debug, "Getting cp_join") # nolint
   prop_bs_by_cp_tbl |>
     dplyr::group_by(ind) |> # nolint
     dplyr::mutate(
@@ -831,7 +831,7 @@
                                             gate_tbl_ctrl,
                                             gate_tbl_chnl,
                                             debug) {
-  .debug(debug, "Adding information to cp table") # nolint
+  .debug_msg(.debug, "Adding information to cp table") # nolint
   cp_tbl |>
     dplyr::left_join(
       gate_tbl_chnl |>
@@ -863,14 +863,14 @@
 }
 
 .get_cp_cluster_cp_tbl_add_orig_quant_min <- function(cp_tbl, debug) {
-  .debug(debug, "Adding original and minimum quantile threshold") # nolint
+  .debug_msg(.debug, "Adding original and minimum quantile threshold") # nolint
   cp_tbl |>
     dplyr::mutate(
       cp_orig_quant_min = pmax(pmin(cp_orig, max_expr), gate_05) # nolint
     )
 }
 .get_cp_cluster_cp_join_lse_get <- function(cp_tbl, debug) {
-  .debug(debug, "Getting cp_join_lse") # nolint
+  .debug_msg(.debug, "Getting cp_join_lse") # nolint
   cp_tbl <- cp_tbl |>
     dplyr::group_by(ind) |> # nolint
     dplyr::mutate(
@@ -882,7 +882,7 @@
 }
 
 .get_cp_cluster_cp_join_tg_get <- function(cp_tbl, debug) {
-  .debug(debug, "Getting cp_join_tg") # nolint
+  .debug_msg(.debug, "Getting cp_join_tg") # nolint
   cp_tbl |>
     dplyr::group_by(ind) |> # nolint
     dplyr::mutate(
@@ -899,7 +899,7 @@
 }
 
 .get_cp_cluster_cp_lse_orig_mean <- function(cp_tbl, debug) {
-  .debug(debug, "Getting cp_join_lse_orig_mean") # nolint
+  .debug_msg(.debug, "Getting cp_join_lse_orig_mean") # nolint
   cp_tbl |>
     dplyr::mutate(
       cp_join_lse_orig_mean = pmin(
@@ -911,7 +911,7 @@
 }
 
 .get_cp_cluster_cp_join_tg_orig_mean <- function(cp_tbl, debug) {
-  .debug(debug, "Getting cp_join_tg_orig_mean") # nolint
+  .debug_msg(.debug, "Getting cp_join_tg_orig_mean") # nolint
   cp_tbl |>
     dplyr::mutate(
       cp_join_tg_orig_mean = pmin(
@@ -922,7 +922,7 @@
 }
 
 .get_cp_cluster_cp_join_lse_orig_mean_tg <- function(cp_tbl, debug) {
-  .debug(debug, "Getting cp_join_lse_orig_mean_tg") # nolint
+  .debug_msg(.debug, "Getting cp_join_lse_orig_mean_tg") # nolint
   cp_tbl |>
     dplyr::mutate(
       cp_join_lse_orig_mean_tg = pmin(
@@ -933,8 +933,8 @@
 
 .get_cp_cluster_cp_filter_above_cp_join_lse_orig_mean_tg <-
   function(cp_tbl, debug) {
-    .debug( # nolint
-      debug, "Filtering above cp_join_lse_orig_mean_tg"
+    .debug_msg( # nolint
+      .debug, "Filtering above cp_join_lse_orig_mean_tg"
     ) # nolint
     cp_tbl |>
       dplyr::filter(cp >= cp_join_lse_orig_mean_tg) |> # nolint
@@ -961,8 +961,8 @@
                                                     gate_tbl,
                                                     dens_tbl,
                                                     debug) {
-  .debug( # nolint
-    debug, "considering imputing missing thresholds by batch"
+  .debug_msg( # nolint
+    .debug, "considering imputing missing thresholds by batch"
   ) # nolint
   ind_with_missing_gates <- setdiff(
     gate_tbl$ind, cp_tbl$ind[!is.na(cp_tbl$cp_join_tg_orig)]
@@ -971,10 +971,10 @@
     !is.na(ind_with_missing_gates)
   ]
   if (length(ind_with_missing_gates) == 0L) {
-    .debug(debug, "no missing thresholds by batch") # nolint
+    .debug_msg(.debug, "no missing thresholds by batch") # nolint
     return(cp_tbl)
   }
-  .debug(debug, "imputing missing thresholds by batch") # nolint
+  .debug_msg(.debug, "imputing missing thresholds by batch") # nolint
   for (ind_curr in ind_with_missing_gates) {
     batch <- gate_tbl |>
       dplyr::filter(ind == ind_curr) |> # nolint
@@ -1035,7 +1035,7 @@
                                                gate_tbl,
                                                dens_tbl,
                                                debug) {
-  .debug(debug, "considering imputing missing thresholds individually") # nolint
+  .debug_msg(.debug, "considering imputing missing thresholds individually") # nolint
   ind_with_missing_gates <- setdiff(
     gate_tbl$ind, cp_tbl$ind[!is.na(cp_tbl$cp_join_tg_orig)]
   )
@@ -1043,10 +1043,10 @@
     !is.na(ind_with_missing_gates)
   ]
   if (length(ind_with_missing_gates) == 0L) {
-    .debug(debug, "no missing thresholds individually") # nolint
+    .debug_msg(.debug, "no missing thresholds individually") # nolint
     return(cp_tbl)
   }
-  .debug(debug, "imputing missing thresholds individually") # nolint
+  .debug_msg(.debug, "imputing missing thresholds individually") # nolint
   for (ind_curr in ind_with_missing_gates) {
     dens_tbl_ind <- dens_tbl |>
       dplyr::select(ind, grp) |> # nolint
@@ -1080,7 +1080,7 @@
                                                  gate_tbl,
                                                  dens_tbl,
                                                  debug) {
-  .debug(debug, "considering imputing missing thresholds finally") # nolint
+  .debug_msg(.debug, "considering imputing missing thresholds finally") # nolint
   ind_with_missing_gates <- setdiff(
     gate_tbl$ind, cp_tbl$ind[!is.na(cp_tbl$cp_join_tg_orig)]
   )
@@ -1088,10 +1088,10 @@
     !is.na(ind_with_missing_gates)
   ]
   if (length(ind_with_missing_gates) == 0L) {
-    .debug(debug, "no missing thresholds finally") # nolint
+    .debug_msg(.debug, "no missing thresholds finally") # nolint
     return(cp_tbl)
   }
-  .debug(debug, "imputing missing thresholds finally") # nolint
+  .debug_msg(.debug, "imputing missing thresholds finally") # nolint
   for (ind_curr in ind_with_missing_gates) {
     dens_tbl_ind <- dens_tbl |>
       dplyr::select(ind, grp) |> # nolint
@@ -1125,8 +1125,8 @@
                                                        gate_tbl,
                                                        dens_tbl,
                                                        debug) {
-  .debug( # nolint
-    debug, "considering imputing missing thresholds finally by batch"
+  .debug_msg( # nolint
+    .debug, "considering imputing missing thresholds finally by batch"
   )
   ind_with_missing_gates <- setdiff(
     gate_tbl$ind, cp_tbl$ind[!is.na(cp_tbl$cp_join_tg_orig)]
@@ -1135,10 +1135,10 @@
     !is.na(ind_with_missing_gates)
   ]
   if (length(ind_with_missing_gates) == 0L) { # nolint
-    .debug(debug, "no missing thresholds finally by batch") # nolint
+    .debug_msg(.debug, "no missing thresholds finally by batch") # nolint
     return(cp_tbl)
   }
-  .debug(debug, "imputing missing thresholds finally by batch") # nolint
+  .debug_msg(.debug, "imputing missing thresholds finally by batch") # nolint
   for (ind_curr in ind_with_missing_gates) {
     gate_tbl_ind <- gate_tbl |> dplyr::filter(ind == ind_curr) # nolint
     batch <- gate_tbl_ind |>
