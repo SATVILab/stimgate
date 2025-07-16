@@ -7,9 +7,9 @@
                           debug = FALSE,
                           calc_cyt_pos = TRUE,
                           path_project) {
-  .debug(debug, "-------------") # nolint
-  .debug(debug, "getting cytokine-positive gates") # nolint
-  .debug(debug, "-------------") # nolint
+  .debug_msg(.debug, "-------------") # nolint
+  .debug_msg(.debug, "getting cytokine-positive gates") # nolint
+  .debug_msg(.debug, "-------------") # nolint
 
   # prep
   # -------------------------------
@@ -29,7 +29,7 @@
   gate_tbl <- .get_cyt_pos_gates_gate_tbl_get( # nolint
     chnl_vec = chnl_vec,
     path_project = path_project,
-    debug = debug,
+    .debug = .debug,
     chnl_lab = chnl_lab_vec
   )
 
@@ -37,7 +37,7 @@
   # as the original gates, if not actually
   # gating on cytokine-positive-only cells
   if (!calc_cyt_pos) {
-    .debug(debug, "Returning original gates as cyt+ gates") # nolint
+    .debug_msg(.debug, "Returning original gates as cyt+ gates") # nolint
     return(gate_tbl |> dplyr::mutate(gate_cyt = gate)) # nolint
   }
 
@@ -54,7 +54,7 @@
     force(gate_tbl_gn)
     .get_cyt_pos_gates_gate_name( # nolint
       gate_tbl_gn = gate_tbl_gn,
-      debug = debug,
+      .debug = .debug,
       .data = .data,
       ind_batch_list = ind_batch_list,
       chnl_vec = chnl_vec,
@@ -67,7 +67,7 @@
   })
 }
 
-.get_cyt_pos_gates_gate_name <- function(debug,
+.get_cyt_pos_gates_gate_name <- function(.debug,
                                          gate_tbl_gn,
                                          .data,
                                          ind_batch_list,
@@ -77,8 +77,8 @@
                                          bw_min,
                                          calc_cyt_pos,
                                          path_project) {
-  .debug(
-    debug,
+  .debug_msg(
+    .debug,
     "Getting cyt+ gates for gate_name: ",
     gate_tbl_gn$gate_name[[1]]
   ) # nolint
@@ -99,7 +99,7 @@
       chnl_lab_vec = chnl_lab_vec,
       pop_gate = pop_gate,
       bw_min = bw_min,
-      debug = debug,
+      .debug = .debug,
       calc_cyt_pos = calc_cyt_pos,
       path_project = path_project,
       batch = batch
@@ -125,11 +125,11 @@
                                    chnl_lab_vec,
                                    pop_gate,
                                    bw_min,
-                                   debug,
+                                   .debug,
                                    calc_cyt_pos,
                                    batch,
                                    path_project) {
-  .debug(debug, "Getting cyt+ gates for ind: ", ind) # nolint
+  .debug_msg(.debug, "Getting cyt+ gates for ind: ", ind) # nolint
 
   # return if ind in batch is the last one, as that is the unstim ind
   if (ind == ind_uns) {
@@ -187,7 +187,7 @@
                                    gate_tbl_ind,
                                    bw_min,
                                    debug) {
-  .debug(debug, "chnl_curr: ", chnl_curr) # nolint
+  .debug_msg(.debug, "chnl_curr: ", chnl_curr) # nolint
   if (is.na(gate_tbl_ind$gate[gate_tbl_ind$chnl == chnl_curr])) {
     return(NA)
   }

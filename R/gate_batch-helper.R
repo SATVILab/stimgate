@@ -1,4 +1,4 @@
-.gate_batch_all <- function(debug,
+.gate_batch_all <- function(.debug,
                             ind_batch,
                             batch,
                             ex_list,
@@ -13,9 +13,9 @@
                             bw_min,
                             params,
                             path_project) {
-  .debug(debug, "params$gate_tbl is NULL") # nolint
-  .debug( # nolint
-    debug, "gating ", paste0(ind_batch, collapse = "-") # nolint
+  .debug_msg(.debug, "params$gate_tbl is NULL") # nolint
+  .debug_msg( # nolint
+    .debug, "gating ", paste0(ind_batch, collapse = "-") # nolint
   )
 
   # create bare list
@@ -35,7 +35,7 @@
   )
   if (!is.null(params$tol_ctrl)) {
     for (tol in params$tol_ctrl) {
-      .debug(debug, "getting tg-based cutpoint as a control") # nolint
+      .debug_msg(.debug, "getting tg-based cutpoint as a control") # nolint
       gate_list[[paste0("tg_ctrl_", tol)]] <- .get_cp_tg( # nolint
         ex_list = ex_list,
         gate_combn = "no",
@@ -50,7 +50,7 @@
   }
 
   if (!is.null(tol_clust)) {
-    .debug(debug, "getting tolerance gate") # nolint
+    .debug_msg(.debug, "getting tolerance gate") # nolint
     gate_list[["tg_clust"]] <- .get_cp_tg( # nolint
       ex_list = ex_list,
       gate_combn = "no",
@@ -72,7 +72,7 @@
 }
 
 .gate_batch_tbl_along_type <- function(gate_list, batch, i, debug) {
-  .debug(debug, "gate list index", i) # nolint
+  .debug_msg(.debug, "gate list index", i) # nolint
   cp_list <- .gate_batch_tbl_cp(gate_list[[i]])
   gate_type <- .gate_batch_tbl_type(gate_list, i)
   purrr::map_df(seq_along(cp_list), function(j) {
@@ -85,7 +85,7 @@
                                         batch,
                                         j,
                                         debug) {
-  .debug(debug, "gate list sub-index", j) # nolint
+  .debug_msg(.debug, "gate list sub-index", j) # nolint
   gate_combn <- .gate_batch_tbl_combn(cp_list, j)
   tibble::tibble(
     gate_name = .gate_batch_tbl_name(gate_type, gate_combn),
@@ -130,7 +130,7 @@
   if (grepl("tg_clust", gate_type)) "tg_clust" else "gate"
 }
 
-.gate_batch_single <- function(debug,
+.gate_batch_single <- function(.debug,
                                ind_batch,
                                batch,
                                ex_list,
@@ -145,8 +145,8 @@
                                bw_min,
                                params,
                                path_project) {
-  .debug(debug, "params$gate_tbl is not NULL") # nolint
-  .debug(debug, paste0("Gating batch ", batch))
+  .debug_msg(.debug, "params$gate_tbl is not NULL") # nolint
+  .debug_msg(.debug, paste0("Gating batch ", batch))
 
   # =================================
   # get pre-adj and -clust gates for each gate type
@@ -158,7 +158,7 @@
 
   # get single-pos gates for each of the gate types already done
   purrr::map_df(gate_name_vec, function(gate_name_curr) {
-    .debug(debug, "getting single-pos gate", gate_name_curr) # nolint
+    .debug_msg(.debug, "getting single-pos gate", gate_name_curr) # nolint
     gate_tbl_gn_marker <- gate_tbl |>
       dplyr::filter(gate_name == gate_name_curr, chnl == params$chnl_cut) # nolint
 

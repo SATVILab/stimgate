@@ -27,7 +27,7 @@
                                  debug) {
   # get ecdf of uns
   purrr::map(bias_uns, function(bias) {
-    .debug(debug, "bias_uns", bias) # nolint
+    .debug_msg(.debug, "bias_uns", bias) # nolint
 
     ex_list_prep <- .prepare_data_with_bias_and_noise( # nolint
       ex_list = ex_list,
@@ -101,7 +101,7 @@
   # -------------------------------------
   ex_list_bias <- .prepare_ex_list_with_bias_and_noise( # nolint
     ex_list = ex_list, ind = names(ex_list)[length(ex_list)], exc_min = exc_min,
-    bias = bias, debug = debug, noise_sd = NULL
+    bias = bias, .debug = .debug, noise_sd = NULL
   ) |>
     .arrange_samples_by_desc_expr()
   ex_tbl_uns_bias <- ex_list_bias[[1]]
@@ -131,7 +131,7 @@
                                        bias,
                                        path_project,
                                        debug = FALSE) {
-  .debug(debug, "getting gate_combn") # nolint
+  .debug_msg(.debug, "getting gate_combn") # nolint
 
   # get cutpoints for prejoin gate combination method
   cp_uns_list_prejoin <- .get_cp_uns_loc_gate_combn_prejoin( # nolint
@@ -171,14 +171,14 @@
 .get_cp_uns_loc_gate_combn_merge <- function(cp_uns_list_prejoin,
                                              cp_uns_list_prejoin_non,
                                              debug) {
-  .debug(debug, "done getting gate_combn") # nolint
+  .debug_msg(.debug, "done getting gate_combn") # nolint
 
   combined_list <- cp_uns_list_prejoin |>
     append(cp_uns_list_prejoin_non)
   purrr::map(
     unique(names(combined_list)),
     function(x) {
-      .debug(debug, "cutpoint name", paste0(x, collapse = "-")) # nolint
+      .debug_msg(.debug, "cutpoint name", paste0(x, collapse = "-")) # nolint
       cp_uns_list_prejoin[[x]] |>
         append(cp_uns_list_prejoin_non[[x]])
     }
@@ -267,7 +267,7 @@
                                                       bias,
                                                       path_project,
                                                       debug) {
-  .debug(debug, "prejoin") # nolint
+  .debug_msg(.debug, "prejoin") # nolint
 
   # get marker expression for stim samples,
   # join and then sort into descending order
@@ -352,9 +352,9 @@
                                                           bias,
                                                           exc_min,
                                                           path_project,
-                                                          debug,
+                                                          .debug,
                                                           non_prejoin_combn) {
-  .debug(debug, "non-prejoin") # nolint
+  .debug_msg(.debug, "non-prejoin") # nolint
   cp_uns_list_nonjoin <- .get_cp_uns_loc_sample(
     ex_list_orig = ex_list_orig,
     ex_list_no_min_stim = ex_list_no_min_stim,
@@ -367,7 +367,7 @@
   )
 
   cp_uns_list_nonjoin <- .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn(
-    debug, cp_uns_list_nonjoin, non_prejoin_combn
+    .debug, cp_uns_list_nonjoin, non_prejoin_combn
   )
   list("cp" = cp_uns_list_nonjoin, "p_list" = list())
 }
@@ -378,12 +378,12 @@
     purrr::map(function(x)  x[order(.get_cut(x)), ]) # nolint
 }
 
-.get_cp_uns_loc_gate_combn_prejoin_non_actual_combn <- function(debug,
+.get_cp_uns_loc_gate_combn_prejoin_non_actual_combn <- function(.debug,
                                                                 cp_uns_list_nonjoin, # nolint
                                                                 non_prejoin_combn_vec) { # nolint
   # get list of cutpoints combined in the appropriate way
   # ---------------------------
-  .debug(debug, "Combining cutpoints") # nolint
+  .debug_msg(.debug, "Combining cutpoints") # nolint
   .combine_cp( # nolint
     cp = cp_uns_list_nonjoin[["loc"]],
     gate_combn = non_prejoin_combn_vec
@@ -426,11 +426,11 @@
                                    exc_min,
                                    path_project,
                                    debug = FALSE) {
-  .debug(debug, "getting loc gate at sample level") # nolint
+  .debug_msg(.debug, "getting loc gate at sample level") # nolint
 
   # get cutpoints for each sample
   cp_uns_loc_obj_list <- purrr::map(seq_along(ex_list_no_min_stim), function(i) { # nolint
-    .debug(debug, "sample", i) # nolint
+    .debug_msg(.debug, "sample", i) # nolint
 
     # return early if there are too few cells
     too_few_cells_lgl <- .get_cp_uns_loc_sample_check_cell_number(
@@ -440,14 +440,14 @@
     if (too_few_cells_lgl) {
       return(.get_cp_uns_loc_ind_check_out(
           cp_min, ex_list_no_min_stim[[i]],
-          ex_tbl_uns_bias, debug, "Too few cells"
+          ex_tbl_uns_bias, .debug, "Too few cells"
         ))
     }
 
     # remove any cytokine-positive cells from unstim using gates from
     # sample for which single-positive gates are required
     ex_tbl_uns_bias <- .get_cp_uns_loc_sample_uns_rm_cyt_pos(
-      debug = debug,
+      .debug = .debug,
       ex_tbl_uns_orig = ex_list_orig[[length(ex_list_orig)]],
       gate_tbl = gate_tbl,
       ex_tbl_stim_no_min = ex_list_no_min_stim[[i]],
@@ -477,7 +477,7 @@
   # name sample
   # ------------------
   .get_cp_uns_loc_output(
-    debug = debug, cp_uns_loc_obj_list = cp_uns_loc_obj_list,
+    .debug = .debug, cp_uns_loc_obj_list = cp_uns_loc_obj_list,
     ind_uns = names(ex_list_orig)[length(ex_list_orig)],
     ind_stim = names(ex_list_no_min_stim)
   )
@@ -490,7 +490,7 @@
     nrow(ex_tbl_uns_bias) < min_cell
 }
 
-.get_cp_uns_loc_sample_uns_rm_cyt_pos <- function(debug,
+.get_cp_uns_loc_sample_uns_rm_cyt_pos <- function(.debug,
                                                   ex_tbl_uns_orig,
                                                   gate_tbl,
                                                   ex_tbl_stim_no_min,
@@ -503,7 +503,7 @@
   if (is.null(gate_tbl)) {
     return(ex_tbl_uns_bias)
   }
-  .debug(debug, "Removing cytokine-positive cells from unstim") # nolint
+  .debug_msg(.debug, "Removing cytokine-positive cells from unstim") # nolint
 
   # first filter
   gate_tbl_gn_ind <- gate_tbl |>
@@ -559,12 +559,12 @@
                                 bias,
                                 path_project,
                                 debug = FALSE) {
-  .debug(debug, "getting loc gate for single sample") # nolint
+  .debug_msg(.debug, "getting loc gate for single sample") # nolint
 
   # estimate densities for stim and unstim over stim range
   if (.get_cp_uns_loc_check_early(ex_tbl_stim_no_min, min_cell, cp_min)) {
     return(.get_cp_uns_loc_ind_check_out(
-      cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias, debug, "Too few cells"
+      cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias, .debug, "Too few cells"
     ))
   }
 
@@ -583,14 +583,14 @@
     ex_tbl_stim_threshold = ex_tbl_stim_threshold,
     ex_tbl_uns_threshold = ex_tbl_uns_threshold,
     ex_tbl_uns_bias = ex_tbl_uns_bias,
-    debug = debug, bw_min = bw_min, cp_min = cp_min + bias,
+    .debug = .debug, bw_min = bw_min, cp_min = cp_min + bias,
     ex_tbl_uns_orig = ex_tbl_uns_orig
   )
 
   # get threshold
   .get_cp_uns_loc_get_cp(
     data_mod = data_mod,
-    debug = debug,
+    .debug = .debug,
     ex_tbl_stim_no_min = ex_tbl_stim_no_min,
     ex_tbl_stim_orig = ex_tbl_stim_orig,
     ex_tbl_uns_orig = ex_tbl_uns_orig,
@@ -622,9 +622,9 @@
 .get_cp_uns_loc_ind_check_out <- function(cp_min,
                                           ex_tbl_stim_no_min,
                                           ex_tbl_uns_bias,
-                                          debug,
+                                          .debug,
                                           msg) {
-  .debug(debug, msg) # nolint
+  .debug_msg(.debug, msg) # nolint
   list(
     cp = .get_cp_uns_loc_ind_cp_non_loc(
       cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias
@@ -660,18 +660,18 @@
                                      ex_tbl_stim_threshold,
                                      ex_tbl_uns_threshold,
                                      ex_tbl_uns_bias,
-                                     debug,
+                                     .debug,
                                      bw_min,
                                      cp_min,
                                      ex_tbl_uns_orig) {
   # get raw densities
   dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
-    ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, bw_min
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, .debug, bw_min
   )
 
   # get probabilities
   prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
-    dens_tbl_raw, debug, cp_min, .get_cut(ex_tbl_stim_threshold),
+    dens_tbl_raw, .debug, cp_min, .get_cut(ex_tbl_stim_threshold),
     .get_cut(ex_tbl_uns_threshold)
   )
 
@@ -689,12 +689,12 @@
 # -----------------------
 .get_cp_uns_loc_get_dens_raw <- function(ex_tbl_stim_threshold,
                                          ex_tbl_uns_threshold,
-                                         debug,
+                                         .debug,
                                          bw_min) {
-  .debug(debug, "Calculating densities") # nolint
+  .debug_msg(.debug, "Calculating densities") # nolint
 
   dens_list <- .get_cp_uns_loc_get_dens_raw_densities(
-    ex_tbl_stim_threshold, ex_tbl_uns_threshold, debug, bw_min
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, .debug, bw_min
   )
 
   # put raw densities into table
@@ -708,7 +708,7 @@
 
 .get_cp_uns_loc_get_dens_raw_densities <- function(ex_tbl_stim_threshold,
                                                    ex_tbl_uns_threshold,
-                                                   debug,
+                                                   .debug,
                                                    bw_min) {
   bw <- .get_cp_uns_loc_get_dens_raw_densities_bw(
     ex_tbl_stim_threshold, ex_tbl_uns_threshold, bw_min
@@ -798,11 +798,11 @@
 
 
 .get_cp_uns_loc_get_prob_tbl <- function(dens_tbl_raw,
-                                         debug,
+                                         .debug,
                                          cp_min,
                                          ex_vec_stim_threshold,
                                          ex_vec_uns_threshold) {
-  .debug(debug, "Normalising probabilities") # nolint
+  .debug_msg(.debug, "Normalising probabilities") # nolint
 
   # calculate raw and
   # normed probability based on densities for density measurements
@@ -835,7 +835,7 @@
                                             ex_vec_uns_threshold,
                                             prob_tbl,
                                             debug) {
-  .debug(debug, "Filtering before smoothing") # nolint
+  .debug_msg(.debug, "Filtering before smoothing") # nolint
   # I don't know why this is ex_stim orig, which
   # excludes the minimum. Shouldn't it be
   # ex_stim? (2024 June 14)
@@ -927,7 +927,7 @@
   if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, ex_tbl_stim_no_min)) {
     return(.get_cp_uns_loc_ind_check_out(
       cp_min, ex_tbl_stim_no_min,
-      ex_tbl_uns_bias, debug, "No responding cells" # nolint
+      ex_tbl_uns_bias, .debug, "No responding cells" # nolint
     ))
   }
   margin <- get_cp_uns_loc_get_data_mod_margin(
@@ -942,7 +942,7 @@
   if (nrow(data_mod) == 0L) {
     return(.get_cp_uns_loc_ind_check_out(
       cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias,
-      debug, "No responding cells" # nolint
+      .debug, "No responding cells" # nolint
     ))
   }
   prob_vec <- approx(
@@ -1000,7 +1000,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 }
 
 .get_cp_uns_loc_get_prob_smooth_actual_first <- function(data_mod, debug) {
-  .debug(debug, "Smoothing I") # nolint
+  .debug_msg(.debug, "Smoothing I") # nolint
   try({
     fml <- as.formula(paste0(
       "prob_smooth ~ s(x_stim), bs = 'mpi')"
@@ -1033,14 +1033,14 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                                                   debug) {
   # return predictions if success
   if (.get_cp_uns_loc_get_prob_smooth_actual_check(fit, data_mod)) {
-    .debug(debug, "Smoothed") # nolint
+    .debug_msg(.debug, "Smoothed") # nolint
     return(.get_cp_uns_loc_get_prob_smooth_actual_response_success(
       fit, data_mod
     )$pred)
   }
   # fit again if not a success
   .get_cp_uns_loc_get_prob_smooth_actual_first_response_failure(
-    debug, data_mod
+    .debug, data_mod
   )
 }
 
@@ -1061,11 +1061,11 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   list("pred" = pred_vec, "mean_abs_error" = mean_abs_error)
 }
 
-.get_cp_uns_loc_get_prob_smooth_actual_first_response_failure <- function(debug, # nolint
+.get_cp_uns_loc_get_prob_smooth_actual_first_response_failure <- function(.debug, # nolint
                                                                           data_mod) { # nolint
   fit_2 <- .get_cp_uns_loc_get_prob_smooth_actual_second(data_mod, debug)
   if (.get_cp_uns_loc_get_prob_smooth_actual_check(fit_2, data_mod)) {
-    .debug(debug, "Smoothed") # nolint
+    .debug_msg(.debug, "Smoothed") # nolint
     return(.get_cp_uns_loc_get_prob_smooth_actual_response_success(
       fit_2, data_mod
     )$pred)
@@ -1074,7 +1074,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 }
 
 .get_cp_uns_loc_get_prob_smooth_actual_second <- function(data_mod, debug) {
-  .debug(debug, "Smoothing II") # nolint
+  .debug_msg(.debug, "Smoothing II") # nolint
   try({
     fml <- as.formula(paste0(
       "prob_smooth ~ s(x_stim), bs = 'micv')"
@@ -1094,7 +1094,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 }
 
 .get_cp_uns_loc_get_prob_smooth_actual_third <- function(data_mod, debug) {
-  .debug(debug, "Failed to smooth") # nolint
+  .debug_msg(.debug, "Failed to smooth") # nolint
   data_mod$prob_smooth - 0.0001
 }
 
@@ -1106,7 +1106,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 # get cp
 .get_cp_uns_loc_get_cp <- function(data_mod,
                                    ex_tbl_stim_orig,
-                                   debug,
+                                   .debug,
                                    ex_tbl_stim_no_min,
                                    ex_tbl_uns_orig,
                                    ex_tbl_uns_bias,
@@ -1126,7 +1126,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   cp <- .get_cp_uns_loc_get_cp_actual(
     data_threshold, ex_tbl_stim_no_min, ex_tbl_uns_bias, cp_min, debug
   )
-  .debug(debug, "Completed loc gate for single sample") # nolint
+  .debug_msg(.debug, "Completed loc gate for single sample") # nolint
   list("cp" = cp, "p_list" = .get_cp_uns_loc_p_list_empty())
 }
 
@@ -1205,7 +1205,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                           debug) {
   if (nrow(data_threshold) == 0L) {
     return(.get_cp_uns_loc_ind_check_out(
-      cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias, debug,
+      cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias, .debug,
       "Too few responding cells"
     )[["cp"]])
   }
@@ -1215,17 +1215,17 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     .get_cut()
 }
 
-.get_cp_uns_loc_output <- function(debug,
+.get_cp_uns_loc_output <- function(.debug,
                                    cp_uns_loc_obj_list,
                                    ind_uns,
                                    ind_stim) {
   cp_vec <- .get_cp_uns_loc_sample_cp_rep(
-    debug = debug,
+    .debug = .debug,
     cp_uns_loc_obj_list = cp_uns_loc_obj_list,
     ind_uns = ind_uns,
     ind_stim = ind_stim
   )
-  .debug(debug, "done getting loc gate at sample level") # nolint
+  .debug_msg(.debug, "done getting loc gate at sample level") # nolint
   # collate plots
   list(
     "loc" = cp_vec,
@@ -1233,11 +1233,11 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   )
 }
 
-.get_cp_uns_loc_sample_cp_rep <- function(debug,
+.get_cp_uns_loc_sample_cp_rep <- function(.debug,
                                           cp_uns_loc_obj_list,
                                           ind_uns,
                                           ind_stim) {
-  .debug(debug, "Possibly re-using calculated cutpoints") # nolint
+  .debug_msg(.debug, "Possibly re-using calculated cutpoints") # nolint
 
   # extract vector of cutpoints
   cp_vec <- purrr::map_dbl(cp_uns_loc_obj_list, ~ .x[["cp"]])

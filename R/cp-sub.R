@@ -91,11 +91,11 @@
                        cp_min,
                        bw,
                        debug) {
-  .debug(debug, "Getting tg cutpoint")
+  .debug_msg(.debug, "Getting tg cutpoint")
   cp_list <- list()
 
   if ("prejoin" %in% gate_combn) {
-    .debug(debug, "prejoin")
+    .debug_msg(.debug, "prejoin")
     ind_gate <- names(ex_list)[-length(ex_list)]
     ex <- dplyr::bind_rows(ex_list[ind_gate])
     ex <- ex[!is.na(.get_cut(ex)), ]
@@ -126,10 +126,10 @@
   non_prejoin_combn_vec <- setdiff(gate_combn, "prejoin")
 
   if (length(non_prejoin_combn_vec) > 0) {
-    .debug(debug, "non-prejoin")
+    .debug_msg(.debug, "non-prejoin")
     ind_gate <- names(ex_list)[-length(ex_list)]
     cp_tg_vec <- purrr::map_dbl(ind_gate, function(ind) {
-      .debug(debug, "ind", ind)
+      .debug_msg(.debug, "ind", ind)
       # print(ind)
       ex <- ex_list[[as.character(ind)]]
       ex <- ex[!is.na(.get_cut(ex)), ]
@@ -150,7 +150,7 @@
     }) |>
       stats::setNames(ind_gate)
 
-    .debug(debug, "combining thresholds") # nolint
+    .debug_msg(.debug, "combining thresholds") # nolint
 
     cp_tg_list <- .combine_cp(
       cp = cp_tg_vec,
@@ -160,7 +160,7 @@
 
     cp_list <- cp_list |> append(cp_tg_list)
   }
-  .debug(debug, "Done tg cutpoint")
+  .debug_msg(.debug, "Done tg cutpoint")
 
   cp_list
 }
