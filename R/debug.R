@@ -1,5 +1,5 @@
 .debug_msg <- function(.debug, msg, val = NULL) {
-  if (!debug) {
+  if (!.debug) {
     return(invisible(FALSE))
   }
   if (!is.null(val)) {
