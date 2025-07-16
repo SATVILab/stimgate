@@ -1,0 +1,42 @@
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    # ⬇️ Tell Copilot to run *inside* your custom container image
+    container:
+      image: ghcr.io/satvilab/comp24stimgate-main:latest
+      # If that image is private, you can also supply credentials:
+      # credentials:
+      #   username: ${{ github.actor }}
+      #   password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      # 1. Get the code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 5. Ensure renv is available
+      - name: Install renv
+        run: |
+          Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
+
+      # 6. Restore exactly the package versions in renv.lock
+      - name: Restore R package dependencies
+        run: |
+          Rscript -e "renv::restore()"
