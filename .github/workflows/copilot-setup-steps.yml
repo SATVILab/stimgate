@@ -34,7 +34,7 @@ jobs:
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version: "4.2"
+          r-version: "4.4"
 
       # 4. Cache renv’s library for faster runs
       - name: Cache renv library
