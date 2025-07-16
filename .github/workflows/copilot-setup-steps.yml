@@ -19,29 +19,17 @@ jobs:
     permissions:
       contents: read
 
+    # ⬇️ Tell Copilot to run *inside* your custom container image
+    container:
+      image: ghcr.io/satvilab/comp24stimgate-main:latest
+      # If that image is private, you can also supply credentials:
+      # credentials:
+      #   username: ${{ github.actor }}
+      #   password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       # 1. Get the code
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      # 2. Install system libs often needed by R packages
-      - name: Install apt dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libxml2-dev libssl-dev libcurl4-openssl-dev
-
-      # 3. Set up R itself
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: "4.4"
-
-      # 4. Cache renv’s library for faster runs
-      - name: Cache renv library
-        uses: actions/cache@v3
-        with:
-          path: .renv/library
-          key: ${{ runner.os }}-renv-${{ hashFiles('renv.lock') }}
 
       # 5. Ensure renv is available
       - name: Install renv
