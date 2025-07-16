@@ -6,7 +6,7 @@ test_that("stimgate_gate runs", {
   )
   gs <- flowWorkspace::load_gs(path_gs)
   fn_tbl_info <- get_fn_tbl_info_postmortem(gs)
-  # debugonce(get_batch_list_postmortem)
+  # .debugonce(get_batch_list_postmortem)
   # browser()
   min_cell <- TRUE
   filter_method <- if (min_cell) "min_cell" else "min_uns"
@@ -25,15 +25,15 @@ test_that("stimgate_gate runs", {
   # marker_vec <- c("Er168Di", "Lu175Di", "Er166Di", "Yb172Di", "Nd150Di")
   path_project <- setup_project_postmortem(min_cell)
   # browser()
-  # debugonce(stimgate_gate)
-  # debugonce(.gate_stats)
+  # .debugonce(stimgate_gate)
+  # .debugonce(.gate_stats)
 
   stimgate_gate(
     path_project = path_project,
     .data = gs,
     batch_list = batch_list,
     marker = marker_vec,
-    debug = TRUE,
+    .debug = TRUE,
     tol_clust = 1e-6,
     min_cell = 40
   )
@@ -43,13 +43,13 @@ test_that("stimgate_gate runs", {
 
   chnl_lab <- .get_chnl_lab(gs)
   ind_lab <- .get_ind_lab(fn_tbl_info)
-  # debugonce(.plot_get_gate_tbl)
+  # .debugonce(.plot_get_gate_tbl)
   # START HERE:
   # Handle multiple gates for multiple indices,
   # all to be plotted, for the uv plots
   # (and add an alpha parameter, so that they can
   # all be seenk)
-  # debug(.plot_add_gate)
+  # .debug(.plot_add_gate)
 
   p_grid <- plot_gate(
     ind = batch_list[[1]],

@@ -9,7 +9,7 @@
 }
 
 .get_cp_cluster_gate_stats_tbl_update <- function(gate_stats_tbl,
-                                                  debug = FALSE) {
+                                                  .debug = FALSE) {
   .debug_msg(.debug, "Updating gate statistics table") # nolint
   gate_stats_tbl |>
     dplyr::mutate(
@@ -64,7 +64,7 @@
     max_cp = max_cp,
     filter_other_cyt_pos = filter_other_cyt_pos,
     cp_min = cp_min,
-    debug = debug
+    .debug = .debug
   )
 
   prop_bs_by_cp_tbl <- .get_prop_bs_by_cp_tbl_actual(
@@ -99,7 +99,7 @@
   data_list <- .get_prop_bs_by_cp_tbl_data_list_init(
     ind_batch_list = ind_batch_list, .data = .data, pop_gate = pop_gate,
     chnl_cut = chnl_cut, filter_other_cyt_pos = filter_other_cyt_pos,
-    calc_cyt_pos_gates = calc_cyt_pos_gates, cp_min = cp_min, debug = debug
+    calc_cyt_pos_gates = calc_cyt_pos_gates, cp_min = cp_min, .debug = .debug
   )
   .get_prop_bs_by_cp_tbl_data_list_final(data_list, max_cp)
 }
@@ -276,7 +276,7 @@
     ex_uns = ex_list$uns,
     cp_seq = cp_par_list[["seq"]],
     gate_stats_tbl = gate_stats_tbl,
-    debug = debug
+    .debug = .debug
   )
 }
 
@@ -436,7 +436,7 @@
       .get_cp_cluster_dens_tbl_get_actual_ind(
         expr_vec = .get_cut(x), batch = attr(x, "batch"),
         ind = attr(x, "ind"), min_threshold = min_threshold, chnl_cut,
-        expr_min = expr_min, expr_max = expr_max, bw = bw, debug = debug
+        expr_min = expr_min, expr_max = expr_max, bw = bw, .debug = .debug
       )
     })
   }) |>
@@ -689,7 +689,7 @@
 .get_cp_cluster_cp_grp_lab_vec_get <- function(prop_bs_by_cp_tbl,
                                                expr_min,
                                                expr_max,
-                                               debug = FALSE) {
+                                               .debug = FALSE) {
   data_mod <- .get_cp_cluster_data_mod_pre(
     prop_bs_by_cp_tbl = prop_bs_by_cp_tbl
   )

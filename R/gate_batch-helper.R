@@ -31,7 +31,7 @@
     min_cell = min_cell,
     params = params,
     path_project = path_project,
-    debug = debug
+    .debug = .debug
   )
   if (!is.null(params$tol_ctrl)) {
     for (tol in params$tol_ctrl) {

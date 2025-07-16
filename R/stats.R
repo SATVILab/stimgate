@@ -7,7 +7,7 @@
                        gate_type_single_pos_filter = "base",
                        gate_type_cyt_pos_calc,
                        gate_type_single_pos_calc,
-                       debug = FALSE,
+                       .debug = FALSE,
                        pop_gate,
                        chnl_lab = NULL,
                        .data,

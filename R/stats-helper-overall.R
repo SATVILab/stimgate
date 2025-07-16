@@ -194,7 +194,7 @@
     cyt_combn_vec_list = cyt_combn_vec_list,
     gate_type_cyt_pos_calc = gate_type_cyt_pos_calc,
     gate_type_single_pos_calc = gate_type_single_pos_calc,
-    debug = debug
+    .debug = .debug
   )
 }
 
@@ -327,7 +327,7 @@
           chnl_curr = chnl_curr,
           gate_type_cyt_pos_filter = gate_type_cyt_pos_filter,
           gate_type_single_pos_filter = gate_type_single_pos_filter,
-          debug = debug
+          .debug = .debug
         )
     }
 

@@ -7,7 +7,7 @@
                                                  ind,
                                                  exc_min,
                                                  bias = 0,
-                                                 debug = FALSE,
+                                                 .debug = FALSE,
                                                  noise_sd = NULL) {
   purrr::map(ind, function(ind_curr) {
     cut_tbl <- ex_list[[as.character(ind_curr)]]

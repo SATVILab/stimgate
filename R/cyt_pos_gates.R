@@ -4,7 +4,7 @@
                           .data,
                           gate_name = NULL,
                           bw_min,
-                          debug = FALSE,
+                          .debug = FALSE,
                           calc_cyt_pos = TRUE,
                           path_project) {
   .debug_msg(.debug, "-------------") # nolint
@@ -168,7 +168,7 @@
     function(i) {
       .get_cp_pos_gates_chnl(
         chnl_curr = chnl_vec[[i]], ex = ex, gate_tbl_ind = gate_tbl_ind,
-        bw_min = bw_min, debug = debug
+        bw_min = bw_min, .debug = .debug
       )
     }
   )

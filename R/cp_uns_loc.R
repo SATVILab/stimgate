@@ -3,7 +3,7 @@
                             .data, bias_uns = 0, exc_min,
                             noise_sd = NULL, bw_min = 80,
                             cp_min, min_cell, params,
-                            path_project, debug = FALSE) {
+                            path_project, .debug = FALSE) {
   # get cutpoints for each level of bias
   .get_cp_uns_loc_bias( # nolint
     ex_list = ex_list,
@@ -12,7 +12,7 @@
     min_cell = min_cell, gate_tbl = params$gate_tbl,
     gate_name_curr = params$gate_name_curr, chnl_cut = params$chnl_cut,
     calc_cyt_pos_gates = params$calc_cyt_pos_gates,
-    path_project = path_project, debug = debug
+    path_project = path_project, .debug = .debug
   )
 }
 
@@ -31,7 +31,7 @@
 
     ex_list_prep <- .prepare_data_with_bias_and_noise( # nolint
       ex_list = ex_list,
-      bias = bias, noise_sd = noise_sd, exc_min = exc_min, debug = debug
+      bias = bias, noise_sd = noise_sd, exc_min = exc_min, .debug = .debug
     )
 
     # get gates for given level of bias across gate combination methods
@@ -51,7 +51,7 @@
       bias = bias,
       exc_min = exc_min,
       path_project = path_project,
-      debug = debug
+      .debug = .debug
     )
 
     # extract and add bias label to gates
@@ -79,7 +79,7 @@
     # exc_min should always be FALSE here, as we're trying
     # to keep all the original data
     ex_list = ex_list, ind = names(ex_list), exc_min = FALSE,
-    bias = 0, noise_sd = NULL, debug = debug
+    bias = 0, noise_sd = NULL, .debug = .debug
   ) |>
     .arrange_samples_by_desc_expr()
 
@@ -91,7 +91,7 @@
   ex_list_no_min <- .prepare_ex_list_with_bias_and_noise( # nolint
     # exc_min will be whatever the user wanted it to be.
     ex_list = ex_list, ind = names(ex_list), exc_min = exc_min,
-    bias = 0, noise_sd = NULL, debug = debug
+    bias = 0, noise_sd = NULL, .debug = .debug
   ) |>
     .arrange_samples_by_desc_expr()
 
@@ -130,7 +130,7 @@
                                        calc_cyt_pos_gates,
                                        bias,
                                        path_project,
-                                       debug = FALSE) {
+                                       .debug = FALSE) {
   .debug_msg(.debug, "getting gate_combn") # nolint
 
   # get cutpoints for prejoin gate combination method
@@ -141,7 +141,7 @@
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    bias = bias, path_project = path_project, debug = debug
+    bias = bias, path_project = path_project, .debug = .debug
   )
 
   # get cutpoint for non-prejoin grouping methods
@@ -154,12 +154,12 @@
     bw_min = bw_min, min_cell = min_cell, gate_tbl = gate_tbl,
     gate_name_curr = gate_name_curr, chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    bias = bias, exc_min = exc_min, path_project = path_project, debug = debug
+    bias = bias, exc_min = exc_min, path_project = path_project, .debug = .debug
   )
 
   # merge above two lists
   cp_uns_list <- .get_cp_uns_loc_gate_combn_merge(
-    cp_uns_list_prejoin, cp_uns_list_prejoin_non, debug
+    cp_uns_list_prejoin, cp_uns_list_prejoin_non, .debug
   )
 
   list(
@@ -219,7 +219,7 @@
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias,
     path_project = path_project,
-    debug = debug
+    .debug = .debug
   )
 }
 
@@ -332,7 +332,7 @@
     exc_min = exc_min,
     non_prejoin_combn = non_prejoin_combn,
     path_project = path_project,
-    debug = debug
+    .debug = .debug
   )
 }
 .get_cp_uns_loc_gate_combn_prejoin_non_not <- function() {
@@ -425,7 +425,7 @@
                                    bias,
                                    exc_min,
                                    path_project,
-                                   debug = FALSE) {
+                                   .debug = FALSE) {
   .debug_msg(.debug, "getting loc gate at sample level") # nolint
 
   # get cutpoints for each sample
@@ -469,7 +469,7 @@
       min_cell = min_cell,
       bias = bias,
       path_project = path_project,
-      debug = debug
+      .debug = .debug
     )
   }) |>
     stats::setNames(names(ex_list_no_min_stim))
@@ -558,7 +558,7 @@
                                 prob_min = 0.1,
                                 bias,
                                 path_project,
-                                debug = FALSE) {
+                                .debug = FALSE) {
   .debug_msg(.debug, "getting loc gate for single sample") # nolint
 
   # estimate densities for stim and unstim over stim range
@@ -812,7 +812,7 @@
   # with sufficient evidence of a response ito probabilities
   # to be worth taking time smoothing over
   prob_tbl_pos <- .get_cp_uns_loc_prob_tbl_filter(
-    ex_vec_stim_threshold, ex_vec_uns_threshold, prob_tbl, debug
+    ex_vec_stim_threshold, ex_vec_uns_threshold, prob_tbl, .debug
   )
   list(all = prob_tbl, pos = prob_tbl_pos)
 }
@@ -995,7 +995,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 .get_cp_uns_loc_get_prob_smooth_actual <- function(data_mod, .debug) {
   fit_1 <- .get_cp_uns_loc_get_prob_smooth_actual_first(data_mod, .debug)
   .get_cp_uns_loc_get_prob_smooth_actual_first_response(
-    fit_1, data_mod, debug
+    fit_1, data_mod, .debug
   )
 }
 
@@ -1124,7 +1124,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     bias = bias
   )
   cp <- .get_cp_uns_loc_get_cp_actual(
-    data_threshold, ex_tbl_stim_no_min, ex_tbl_uns_bias, cp_min, debug
+    data_threshold, ex_tbl_stim_no_min, ex_tbl_uns_bias, cp_min, .debug
   )
   .debug_msg(.debug, "Completed loc gate for single sample") # nolint
   list("cp" = cp, "p_list" = .get_cp_uns_loc_p_list_empty())
