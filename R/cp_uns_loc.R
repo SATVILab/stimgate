@@ -24,7 +24,7 @@
                                  gate_combn, bw_min, min_cell,
                                  gate_tbl, gate_name_curr, chnl_cut,
                                  calc_cyt_pos_gates, path_project,
-                                 debug) {
+                                 .debug) {
   # get ecdf of uns
   purrr::map(bias_uns, function(bias) {
     .debug_msg(.debug, "bias_uns", bias) # nolint
@@ -72,7 +72,7 @@
                                               bias,
                                               exc_min,
                                               noise_sd,
-                                              debug) {
+                                              .debug) {
   # rename `cut` column` to `expr`
   # -------------------------------------
   ex_list_orig <- .prepare_ex_list_with_bias_and_noise( # nolint
@@ -170,7 +170,7 @@
 
 .get_cp_uns_loc_gate_combn_merge <- function(cp_uns_list_prejoin,
                                              cp_uns_list_prejoin_non,
-                                             debug) {
+                                             .debug) {
   .debug_msg(.debug, "done getting gate_combn") # nolint
 
   combined_list <- cp_uns_list_prejoin |>
@@ -202,7 +202,7 @@
                                                calc_cyt_pos_gates,
                                                bias,
                                                path_project,
-                                               debug) {
+                                               .debug) {
   if (!"prejoin" %in% gate_combn) {
     return(.get_cp_uns_loc_gate_combn_prejoin_not())
   }
@@ -266,7 +266,7 @@
                                                       calc_cyt_pos_gates,
                                                       bias,
                                                       path_project,
-                                                      debug) {
+                                                      .debug) {
   .debug_msg(.debug, "prejoin") # nolint
 
   # get marker expression for stim samples,
@@ -311,7 +311,7 @@
                                                    bias,
                                                    exc_min,
                                                    path_project,
-                                                   debug) {
+                                                   .debug) {
   if (length(non_prejoin_combn) == 0L) {
     return(
       .get_cp_uns_loc_gate_combn_prejoin_non_not()
@@ -834,7 +834,7 @@
 .get_cp_uns_loc_prob_tbl_filter <- function(ex_vec_stim_threshold,
                                             ex_vec_uns_threshold,
                                             prob_tbl,
-                                            debug) {
+                                            .debug) {
   .debug_msg(.debug, "Filtering before smoothing") # nolint
   # I don't know why this is ex_stim orig, which
   # excludes the minimum. Shouldn't it be
@@ -972,7 +972,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   }
 
   # get predictions after smoothing
-  pred_vec <- .get_cp_uns_loc_get_prob_smooth_actual(data_mod, debug)
+  pred_vec <- .get_cp_uns_loc_get_prob_smooth_actual(data_mod, .debug)
   data_mod |> dplyr::mutate(pred = pred_vec)
 }
 
@@ -992,14 +992,14 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   }
 }
 
-.get_cp_uns_loc_get_prob_smooth_actual <- function(data_mod, debug) {
-  fit_1 <- .get_cp_uns_loc_get_prob_smooth_actual_first(data_mod, debug)
+.get_cp_uns_loc_get_prob_smooth_actual <- function(data_mod, .debug) {
+  fit_1 <- .get_cp_uns_loc_get_prob_smooth_actual_first(data_mod, .debug)
   .get_cp_uns_loc_get_prob_smooth_actual_first_response(
     fit_1, data_mod, debug
   )
 }
 
-.get_cp_uns_loc_get_prob_smooth_actual_first <- function(data_mod, debug) {
+.get_cp_uns_loc_get_prob_smooth_actual_first <- function(data_mod, .debug) {
   .debug_msg(.debug, "Smoothing I") # nolint
   try({
     fml <- as.formula(paste0(
@@ -1030,7 +1030,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 .get_cp_uns_loc_get_prob_smooth_actual_first_response <- function(fit,
                                                                   data_mod,
-                                                                  debug) {
+                                                                  .debug) {
   # return predictions if success
   if (.get_cp_uns_loc_get_prob_smooth_actual_check(fit, data_mod)) {
     .debug_msg(.debug, "Smoothed") # nolint
@@ -1063,17 +1063,17 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 .get_cp_uns_loc_get_prob_smooth_actual_first_response_failure <- function(.debug, # nolint
                                                                           data_mod) { # nolint
-  fit_2 <- .get_cp_uns_loc_get_prob_smooth_actual_second(data_mod, debug)
+  fit_2 <- .get_cp_uns_loc_get_prob_smooth_actual_second(data_mod, .debug)
   if (.get_cp_uns_loc_get_prob_smooth_actual_check(fit_2, data_mod)) {
     .debug_msg(.debug, "Smoothed") # nolint
     return(.get_cp_uns_loc_get_prob_smooth_actual_response_success(
       fit_2, data_mod
     )$pred)
   }
-  .get_cp_uns_loc_get_prob_smooth_actual_third(data_mod, debug)
+  .get_cp_uns_loc_get_prob_smooth_actual_third(data_mod, .debug)
 }
 
-.get_cp_uns_loc_get_prob_smooth_actual_second <- function(data_mod, debug) {
+.get_cp_uns_loc_get_prob_smooth_actual_second <- function(data_mod, .debug) {
   .debug_msg(.debug, "Smoothing II") # nolint
   try({
     fml <- as.formula(paste0(
@@ -1093,7 +1093,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   )
 }
 
-.get_cp_uns_loc_get_prob_smooth_actual_third <- function(data_mod, debug) {
+.get_cp_uns_loc_get_prob_smooth_actual_third <- function(data_mod, .debug) {
   .debug_msg(.debug, "Failed to smooth") # nolint
   data_mod$prob_smooth - 0.0001
 }
@@ -1202,7 +1202,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                           ex_tbl_stim_no_min,
                                           ex_tbl_uns_bias,
                                           cp_min,
-                                          debug) {
+                                          .debug) {
   if (nrow(data_threshold) == 0L) {
     return(.get_cp_uns_loc_ind_check_out(
       cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias, .debug,
