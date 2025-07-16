@@ -1,0 +1,54 @@
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # 1. Get the code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Install system libs often needed by R packages
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev libssl-dev libcurl4-openssl-dev
+
+      # 3. Set up R itself
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.2"
+
+      # 4. Cache renv’s library for faster runs
+      - name: Cache renv library
+        uses: actions/cache@v3
+        with:
+          path: .renv/library
+          key: ${{ runner.os }}-renv-${{ hashFiles('renv.lock') }}
+
+      # 5. Ensure renv is available
+      - name: Install renv
+        run: |
+          Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
+
+      # 6. Restore exactly the package versions in renv.lock
+      - name: Restore R package dependencies
+        run: |
+          Rscript -e "renv::restore()"
