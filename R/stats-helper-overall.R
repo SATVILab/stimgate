@@ -14,7 +14,7 @@
                                gate_type_cyt_pos_calc,
                                combn_mat_list, # missing
                                cyt_combn_vec_list, # missing
-                               debug) {
+                               .debug) {
   stat_tbl <- purrr::map_df(
     seq_along(ind_batch_list),
     function(i) {
@@ -206,7 +206,7 @@
                                                cyt_combn_vec_list,
                                                gate_type_cyt_pos_calc,
                                                gate_type_single_pos_calc,
-                                               debug) {
+                                               .debug) {
   # filter to yield cells negative for all cytokine combinations
   ex_list_stim <- ex_list[-length(ex_list)]
   ex_uns <- ex_list[[length(ex_list)]]
@@ -406,7 +406,7 @@
                                                            chnl_curr,
                                                            gate_type_cyt_pos_filter, # nolint
                                                            gate_type_single_pos_filter, # nolint
-                                                           debug) {
+                                                           .debug) {
   .debug_msg(.debug, "filtering other cyt pos") # nolint
 
   # loop over individual samples

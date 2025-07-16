@@ -18,7 +18,7 @@
                          tol_gate_single,
                          calc_cyt_pos_gates,
                          path_project,
-                         debug) {
+                         .debug) {
   # print progress
   .debug_msg(.debug, "pop_gate: ", pop_gate) # nolint
 

@@ -90,7 +90,7 @@
                        min_cell,
                        cp_min,
                        bw,
-                       debug) {
+                       .debug) {
   .debug_msg(.debug, "Getting tg cutpoint")
   cp_list <- list()
 

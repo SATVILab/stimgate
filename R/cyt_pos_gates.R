@@ -186,7 +186,7 @@
                                    ex,
                                    gate_tbl_ind,
                                    bw_min,
-                                   debug) {
+                                   .debug) {
   .debug_msg(.debug, "chnl_curr: ", chnl_curr) # nolint
   if (is.na(gate_tbl_ind$gate[gate_tbl_ind$chnl == chnl_curr])) {
     return(NA)

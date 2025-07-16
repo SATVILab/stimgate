@@ -62,21 +62,21 @@
     )
   }
 
-  .gate_batch_tbl(gate_list, attr(ex_list[[1]], "batch"), debug) # nolint
+  .gate_batch_tbl(gate_list, attr(ex_list[[1]], "batch"), .debug) # nolint
 }
 
-.gate_batch_tbl <- function(gate_list, batch, debug) {
+.gate_batch_tbl <- function(gate_list, batch, .debug) {
   purrr::map_df(seq_along(gate_list), function(i) {
-    .gate_batch_tbl_along_type(gate_list, batch, i, debug)
+    .gate_batch_tbl_along_type(gate_list, batch, i, .debug)
   })
 }
 
-.gate_batch_tbl_along_type <- function(gate_list, batch, i, debug) {
+.gate_batch_tbl_along_type <- function(gate_list, batch, i, .debug) {
   .debug_msg(.debug, "gate list index", i) # nolint
   cp_list <- .gate_batch_tbl_cp(gate_list[[i]])
   gate_type <- .gate_batch_tbl_type(gate_list, i)
   purrr::map_df(seq_along(cp_list), function(j) {
-    .gate_batch_tbl_along_combn(cp_list, gate_type, batch, j, debug)
+    .gate_batch_tbl_along_combn(cp_list, gate_type, batch, j, .debug)
   })
 }
 
@@ -84,7 +84,7 @@
                                         gate_type,
                                         batch,
                                         j,
-                                        debug) {
+                                        .debug) {
   .debug_msg(.debug, "gate list sub-index", j) # nolint
   gate_combn <- .gate_batch_tbl_combn(cp_list, j)
   tibble::tibble(

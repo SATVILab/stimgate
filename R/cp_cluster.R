@@ -181,19 +181,19 @@
   # but only halfway from original cp
   # (if original cp higher)
   cp_tbl <- cp_tbl |>
-    .get_cp_cluster_cp_lse_orig_mean(debug = debug) # nolint
+    .get_cp_cluster_cp_lse_orig_mean(.debug = .debug) # nolint
 
   cp_tbl <- cp_tbl |>
-    .get_cp_cluster_cp_join_tg_orig_mean(debug = debug) # nolint
+    .get_cp_cluster_cp_join_tg_orig_mean(.debug = .debug) # nolint
 
   # calculate cp that is the minimum of lse_orig_mean and tg_orig
   cp_tbl <- cp_tbl |>
-    .get_cp_cluster_cp_join_lse_orig_mean_tg(debug = debug) # nolint
+    .get_cp_cluster_cp_join_lse_orig_mean_tg(.debug = .debug) # nolint
 
   # filter at cp just above cp_join_lse_orig_mean_tg, in order
   # to get the prop_bs_cp_diff closest to it
   cp_tbl <- cp_tbl |>
-    .get_cp_cluster_cp_filter_above_cp_join_lse_orig_mean_tg(debug = debug) # nolint
+    .get_cp_cluster_cp_filter_above_cp_join_lse_orig_mean_tg(.debug = .debug) # nolint
 
   # if no gate found above, then set it to base threshold OR
   # impute based on group. Not going to work when original threshold is NA.

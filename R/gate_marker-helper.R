@@ -338,7 +338,7 @@
                                                        gate_stats_tbl,
                                                        gate_tbl_single,
                                                        params,
-                                                       debug) {
+                                                       .debug) {
   # get tail-gate gates
   gate_tbl_ctrl_clust <- gate_tbl_single |>
     dplyr::filter(gate_use == "tg_clust") # nolint

@@ -158,7 +158,7 @@ stimgate_gate <- function(path_project,
                        tol_clust,
                        tol_gate_single,
                        calc_cyt_pos_gates,
-                       debug) {
+                       .debug) {
   # loop over populations
   print("----")
   print("getting base gates")
