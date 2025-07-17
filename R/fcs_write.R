@@ -3,6 +3,30 @@
 #' @description
 #' Uses the gates to write FCS files of marker-positive FCS files.
 #'
+#' @param path_project character. Path to project directory.
+#' @param .data GatingSet. GatingSet object containing the flow cytometry data.
+#' @param ind_batch_list list. List of indices grouped by batch.
+#' @param path_dir_save character. Directory path to save the FCS files to.
+#' @param chnl character vector. Specific channels to gate on.
+#' @param gate_tbl data.frame. Pre-computed gate table, if available.
+#' @param trans_fn function. Transformation function to apply.
+#' @param trans_chnl character vector. Columns to transform.
+#' @param combn_exc list. Combinations of channels to exclude.
+#' @param gate_type_cyt_pos character. Gate type to use for cytokine-positive cells.
+#' @param gate_type_single_pos character. Gate type to use for single-positive cells.
+#' @param mult logical. Whether cells must be multi-positive.
+#' @param gate_uns_method character. Method to calculate unstimulated thresholds.
+#'
+#' @examples
+#' \dontrun{
+#'   # Write FCS files of cytokine-positive cells
+#'   stimgate_fcs_write(
+#'     path_project = "/path/to/project",
+#'     .data = gs,
+#'     ind_batch_list = list(batch1 = 1:10, batch2 = 11:20),
+#'     path_dir_save = "/path/to/output"
+#'   )
+#' }
 #' @export
 stimgate_fcs_write <- function(path_project, # project directory
                                .data, # gatingset

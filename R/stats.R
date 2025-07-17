@@ -130,6 +130,11 @@
 #' @title Get gating statistics
 #' @param path_project character. Path to the project directory.
 #' @return A data frame with gating statistics.
+#' @examples
+#' \dontrun{
+#'   # Get gating statistics from project directory
+#'   stats_tbl <- get_stats("/path/to/project")
+#' }
 #' @export
 get_stats <- function(path_project) {
   path_stats_partial <- file.path(path_project, "gate_stats")
