@@ -17,7 +17,7 @@
 #'       CyTOF and flow.}
 #'     \item{gate_combn}{named list. Named list where names are one of "grp",
 #'       "mean", "median", "trim20", "min" or "max", and elements are character
-#'       vectors of "scp", "dcp", "tg", "midp", "uns#" and "uns#r" (where # are
+#'       vectors of "scp", "dcp", "tg", "midp", "uns\\#" and "uns\\#r" (where \\# are
 #'       FDRs expressed as percentages). Each element therefore specifies the
 #'       method of combining gates from individual samples within a group for a
 #'       subset of the automated gating methods. \code{"grp"} means to gate
