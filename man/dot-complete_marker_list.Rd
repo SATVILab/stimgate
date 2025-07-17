@@ -7,6 +7,8 @@
 .complete_marker_list(
   marker,
   bias_uns,
+  bias_uns_factor,
+  exc_min,
   .data,
   pop_gate,
   ind_batch_list,
@@ -17,7 +19,8 @@
   max_pos_prob_x,
   gate_combn,
   marker_settings,
-  debug
+  path_project,
+  .debug
 )
 }
 \description{

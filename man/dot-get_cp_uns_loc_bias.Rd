@@ -8,6 +8,7 @@
   ex_list,
   .data,
   bias_uns,
+  exc_min,
   noise_sd,
   cp_min,
   gate_combn,
@@ -18,7 +19,7 @@
   chnl_cut,
   calc_cyt_pos_gates,
   path_project,
-  debug
+  .debug
 )
 }
 \description{

@@ -8,9 +8,9 @@ as a single numeric vector}
 .prepare_ex_list_with_bias_and_noise(
   ex_list,
   ind,
-  exc_min = TRUE,
+  exc_min,
   bias = 0,
-  debug = FALSE,
+  .debug = FALSE,
   noise_sd = NULL
 )
 }

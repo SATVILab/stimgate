@@ -9,7 +9,7 @@ cutpoint for a given bias across gate combination methods}
   ex_list_orig,
   ex_list_no_min,
   ex_tbl_uns_bias,
-  exc_min = TRUE,
+  exc_min,
   gate_combn,
   cp_min,
   bw_min,
@@ -20,7 +20,7 @@ cutpoint for a given bias across gate combination methods}
   calc_cyt_pos_gates,
   bias,
   path_project,
-  debug = FALSE
+  .debug = FALSE
 )
 }
 \description{
