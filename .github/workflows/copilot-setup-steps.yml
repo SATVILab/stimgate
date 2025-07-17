@@ -2,6 +2,11 @@ name: "Copilot Setup Steps"
 
 on:
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Which branch to run on'
+        required: true
+        default: 'dev'
 
 jobs:
   copilot-setup-steps:
