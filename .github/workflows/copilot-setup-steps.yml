@@ -21,7 +21,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-              software-properties-common dirmngr ca-certificates gnupg curl
+              software-properties-common dirmngr ca-certificates gnupg curl \
+              libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev libgit2-dev \
+              libjpeg-dev libpng-dev libx11-dev pandoc
 
           # 1. Fetch and install the rig GPG key
           curl -fsSL https://rig.r-pkg.org/deb/rig.gpg \
