@@ -9,24 +9,30 @@ jobs:
     permissions:
       contents: read
 
-    # ⬇️ Tell Copilot to run *inside* your custom container image
-    container:
-      image: ghcr.io/satvilab/comp24stimgate-main:latest
-      # If that image is private, you can also supply credentials:
-      # credentials:
-      #   username: ${{ github.actor }}
-      #   password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       # 1. Get the code
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: dev
 
-      # 5. Ensure renv is available
-      # - name: Install renv
-      # run: |
-      #    Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
+      # 2. Set up R
+      - name: Install R
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends r-base
 
-      # 6. Restore exactly the package versions in renv.lock
+      # 3. Cache R packages
+      - name: Cache R packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/renv
+          key: ${{ runner.os }}-renv-${{ hashFiles('renv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-renv-
+
+      # 4. Restore R package dependencies
       - name: Restore R package dependencies
         run: |
           Rscript -e "renv::restore()"
+
