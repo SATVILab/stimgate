@@ -9,13 +9,14 @@
   gate_combn,
   .data,
   bias_uns = 0,
+  exc_min,
   noise_sd = NULL,
   bw_min = 80,
   cp_min,
   min_cell,
   params,
   path_project,
-  debug = FALSE
+  .debug = FALSE
 )
 }
 \description{

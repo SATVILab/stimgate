@@ -16,8 +16,9 @@
   chnl_cut,
   calc_cyt_pos_gates,
   bias,
+  exc_min,
   path_project,
-  debug = FALSE
+  .debug = FALSE
 )
 }
 \arguments{
