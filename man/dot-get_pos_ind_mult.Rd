@@ -50,3 +50,7 @@ must express at least one of (using \code{chnl_alt} parameter). The
 default is to consider a cell multi-functional if it expresses any cytokine
 in conjunction with any other cytokine.
 }
+\examples{
+# Example usage would require data setup
+
+}

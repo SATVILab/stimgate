@@ -128,7 +128,7 @@
 }
 
 #' @title Get gating statistics
-#' @params path_project character. Path to the project directory.
+#' @param path_project character. Path to the project directory.
 #' @return A data frame with gating statistics.
 #' @export
 get_stats <- function(path_project) {

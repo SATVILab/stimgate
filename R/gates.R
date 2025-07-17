@@ -1,12 +1,10 @@
 #' @title Get gates
 #' 
-#' @description
-#' Get all the gates for each of the markers gated.
+#' @description Get all the gates for each of the markers gated.
 #' 
 #' @param path_project character. Path to the project directory.
 #' 
-#' @return
-#' Gate table with gates for each sample for each marker.
+#' @return Gate table with gates for each sample for each marker.
 #' @export
 get_gate_tbl <- function(path_project) {
   dir_vec <- list.dirs(path_project, recursive = FALSE) |>

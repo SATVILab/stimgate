@@ -6,6 +6,9 @@
 \usage{
 get_stats(path_project)
 }
+\arguments{
+\item{path_project}{character. Path to the project directory.}
+}
 \value{
 A data frame with gating statistics.
 }

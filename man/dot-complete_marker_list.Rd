@@ -23,6 +23,12 @@
   .debug
 )
 }
+\arguments{
+\item{data_name}{character. Name of dataset to be gated ('gs_cytof' or 'gs_proto').}
+}
+\value{
+A completed marker list with all required parameters.
+}
 \description{
 Check that parameters for each marker for which a gate is required are complete
 }
