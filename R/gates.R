@@ -5,6 +5,11 @@
 #' @param path_project character. Path to the project directory.
 #' 
 #' @return Gate table with gates for each sample for each marker.
+#' @examples
+#' \dontrun{
+#'   # Get gate table from project directory
+#'   gate_tbl <- get_gate_tbl("/path/to/project")
+#' }
 #' @export
 get_gate_tbl <- function(path_project) {
   dir_vec <- list.dirs(path_project, recursive = FALSE) |>
