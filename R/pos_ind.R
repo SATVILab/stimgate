@@ -77,7 +77,8 @@
 #' at least one cytokine in \code{chnl} and any cytokine in \code{chnl_alt}, and
 #' \code{FALSE} otherwise.
 #'
-#' @example
+#' @examples
+#' # Example usage would require data setup
 #'
 .get_pos_ind_mult <- function(ex, gate_tbl, chnl = NULL, chnl_alt = NULL,
                               gate_type_cyt_pos) {
@@ -275,8 +276,6 @@
 #' @description Returns a logical vector specifying whether each cell produces at least one
 #' of the cytokines specified, with the ability to use base, cytokine-positive and single-positive
 #' thresholds.
-#'
-#' @description
 #' @param ex dataframe. Expression data.
 #' @param gate_tbl dataframe. Contains gates for specific sample for specific gate method only (but for
 #' all markers of interest).

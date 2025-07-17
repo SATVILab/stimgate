@@ -9,7 +9,7 @@ get_fs <- function() {
     # clearly handling such an error
     suppressWarnings(readRDS(
       testthat::test_path(
-        "../inst/extdata/bodenmiller_bcr_xl_fs.rds"
+        "../../inst/extdata/bodenmiller_bcr_xl_fs.rds"
         ))),
     error = function(e) {
       path_hub <- file.path(Sys.getenv("HOME"), ".cache/R/ExperimentHub")

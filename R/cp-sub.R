@@ -204,7 +204,7 @@
 #' applies the single set of cutpoints it receives to all specified samples.
 #'
 #' @return
-#' @return A tibble with columns fcs, pop, type, cp, count and freq, with corresponding
+#' A tibble with columns fcs, pop, type, cp, count and freq, with corresponding
 #' values being the fcs file gated on, parent population, cutpoint type,
 #' cutpoint value, count of positive cells and frequency of positive cells.
 .get_cp_stats_tbl_pop_samples <- function(.data, ind, pop, wins, chnl_cut, high, cp_obj) {
@@ -229,8 +229,6 @@
 }
 
 #' @title Get mid-probability cut
-#'
-#'
 .get_cp_pwmid <- function(high_ind_tbl, cp_scp) {
   # get table to model - all values above changepoint
   mod_tbl <- high_ind_tbl |>
