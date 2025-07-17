@@ -4,7 +4,16 @@ get_fs <- function() {
   if (!dir.exists(path_hub)) {
     dir.create(path_hub, recursive = TRUE)
   }
-  HDCytoData::Bodenmiller_BCR_XL_flowSet()
+  tryCatch(
+    readRDS("inst/extdata/bodenmiller_bcr_xl_fs.rds"),
+    error = function(e) {
+      path_hub <- file.path(Sys.getenv("HOME"), ".cache/R/ExperimentHub")
+      if (!dir.exists(path_hub)) {
+        dir.create(path_hub, recursive = TRUE)
+      }
+      HDCytoData::Bodenmiller_BCR_XL_flowSet()
+    }
+  )
 }
 # chnl_list.R
 get_chnl_list <- function(fs) {
