@@ -27,7 +27,15 @@ jobs:
         with:
           r-version: '4.4.2' # The R version to download (if necessary) and use.
           # Use "renv" to retrieve R version recorded in renv.lock file.
+
+      # 3. Set up pak
+      - name: Install pak and BiocManager before using pak
+        run: |
+          Rscript -e 'if (!requireNamespace("pak", quietly = TRUE)) utils::install.packages("pak")'
+          Rscript -e 'if (!requireNamespace("BiocManager", quietly = TRUE)) utils::install.packages("BiocManager")'
       - uses: r-lib/actions/setup-renv@v2
+        env:
+          RENV_CONFIG_PAK_ENABLED: "TRUE"
         with:
           profile: '"non_bioc_container"'
           bypass-cache: "never" # cache is not used otherwise
