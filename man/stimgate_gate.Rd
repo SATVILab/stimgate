@@ -28,7 +28,7 @@ stimgate_gate(
 }
 \arguments{
 \item{path_project}{character. Path to project directory. Results are saved
-here.gating parameters}
+here.}
 
 \item{.data}{GatingSet. GatingSet from which to draw the data.}
 
@@ -36,5 +36,5 @@ here.gating parameters}
 to be calculated.}
 }
 \description{
-Get gates and stats and plots based thereon
+Main function to identify cytokine-positive cells by gating and generate associated statistics and plots.
 }

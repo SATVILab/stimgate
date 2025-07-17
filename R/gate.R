@@ -1,32 +1,33 @@
 #' @title Get gates and stats and plots based thereon
 #'
-#' @description
+#' @description Main function to identify cytokine-positive cells by gating and generate associated statistics and plots.
 #'
 #' @param .data GatingSet. GatingSet from which to draw the data.
 #' @param pop_gate character vector. Populations for which separate gates are
 #'   to be calculated.
 #' @param path_project character. Path to project directory. Results are saved
 #'   here.
-#' # gating parameters
 #' @param marker list. List where each element specifies the parameters to be
 #'   used to gate a given marker (including the name of the marker itself).
-#'   List elements are as follows:
+#'   Gating parameters. List elements are as follows:
 #'   \describe{
 #'     \item{cut}{character. Name of channel to get gate for.}
 #'     \item{tol}{numeric. Tolerance value for the
 #'       \code{cytoUtils:::.cytokine_cutpoint} method. Default is 0.5e-8 for
 #'       CyTOF and flow.}
-#'     \item{gate_combn}{named list. Named list where names are one of 'grp',
-#'       'mean', 'median', 'trim20', 'min' or 'max', and elements are character
-#'       vectors of 'scp', 'dcp', 'tg', 'midp', 'uns#' and 'uns#r' (where # are
+#'     \item{gate_combn}{named list. Named list where names are one of "grp",
+#'       "mean", "median", "trim20", "min" or "max", and elements are character
+#'       vectors of "scp", "dcp", "tg", "midp", "uns\\#" and "uns\\#r" (where \\# are
 #'       FDRs expressed as percentages). Each element therefore specifies the
 #'       method of combining gates from individual samples within a group for a
-#'       subset of the automated gating methods. \code{'grp'} means to gate
+#'       subset of the automated gating methods. \code{"grp"} means to gate
 #'       jointly, whereas all of the others do what they sound like. If not
 #'       specified (i.e. \code{NULL}), then all gates are performed
 #'       individually on each sample. Default is \code{"min"}.
 #'   }
 #' @importFrom flowCore exprs<- parameters<-
+#' @importFrom stats approx as.formula binomial density glm kmeans median optim predict quantile rnorm sd
+#' @importFrom utils read.csv write.csv
 #' @export
 stimgate_gate <- function(path_project,
                           .data,

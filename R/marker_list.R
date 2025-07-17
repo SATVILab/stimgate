@@ -1,9 +1,9 @@
 #' @title Check that parameters for each marker for which a gate is required are complete
 #'
-#' @inheritParams gate # marker
-#' @data_name 'gs_cytof' or `gs_proto`. Name of dataset to be gated in R environment.
+#' @inheritParams gate
+#' @param data_name character. Name of dataset to be gated ('gs_cytof' or 'gs_proto').
 #'
-#' @return
+#' @return A completed marker list with all required parameters.
 
 .complete_marker_list <- function(marker,
                                   bias_uns,
