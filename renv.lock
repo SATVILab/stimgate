@@ -36,6 +36,129 @@
     "Version": "3.20"
   },
   "Packages": {
+    "AnnotationDbi": {
+      "Package": "AnnotationDbi",
+      "Version": "1.68.0",
+      "Source": "Bioconductor",
+      "Title": "Manipulation of SQLite-based annotations in Bioconductor",
+      "Description": "Implements a user-friendly interface for querying SQLite-based annotation data packages.",
+      "biocViews": "Annotation, Microarray, Sequencing, GenomeAnnotation",
+      "URL": "https://bioconductor.org/packages/AnnotationDbi",
+      "Video": "https://www.youtube.com/watch?v=8qvGNTVz3Ik",
+      "BugReports": "https://github.com/Bioconductor/AnnotationDbi/issues",
+      "License": "Artistic-2.0",
+      "Encoding": "UTF-8",
+      "Author": "Hervé Pagès, Marc Carlson, Seth Falcon, Nianhua Li",
+      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>",
+      "Depends": [
+        "R (>= 2.7.0)",
+        "methods",
+        "stats4",
+        "BiocGenerics (>= 0.29.2)",
+        "Biobase (>= 1.17.0)",
+        "IRanges"
+      ],
+      "Imports": [
+        "DBI",
+        "RSQLite",
+        "S4Vectors (>= 0.9.25)",
+        "stats",
+        "KEGGREST"
+      ],
+      "Suggests": [
+        "utils",
+        "hgu95av2.db",
+        "GO.db",
+        "org.Sc.sgd.db",
+        "org.At.tair.db",
+        "RUnit",
+        "TxDb.Hsapiens.UCSC.hg19.knownGene",
+        "org.Hs.eg.db",
+        "reactome.db",
+        "AnnotationForge",
+        "graph",
+        "EnsDb.Hsapiens.v75",
+        "BiocStyle",
+        "knitr"
+      ],
+      "VignetteBuilder": "knitr",
+      "Collate": "00RTobjs.R AllGenerics.R AllClasses.R unlist2.R utils.R SQL.R FlatBimap.R AnnDbObj-lowAPI.R Bimap.R GOTerms.R BimapFormatting.R Bimap-envirAPI.R flatten.R methods-AnnotationDb.R methods-SQLiteConnection.R methods-geneCentricDbs.R methods-geneCentricDbs-keys.R methods-ReactomeDb.R methods-OrthologyDb.R loadDb.R createAnnObjs-utils.R createAnnObjs.NCBIORG_DBs.R createAnnObjs.NCBICHIP_DBs.R createAnnObjs.ORGANISM_DB.R createAnnObjs.YEASTCHIP_DB.R createAnnObjs.COELICOLOR_DB.R createAnnObjs.ARABIDOPSISCHIP_DB.R createAnnObjs.MALARIA_DB.R createAnnObjs.YEAST_DB.R createAnnObjs.YEASTNCBI_DB.R createAnnObjs.ARABIDOPSIS_DB.R createAnnObjs.GO_DB.R createAnnObjs.KEGG_DB.R createAnnObjs.PFAM_DB.R AnnDbPkg-templates-common.R AnnDbPkg-checker.R print.probetable.R makeMap.R inpIDMapper.R test_AnnotationDbi_package.R",
+      "git_url": "https://git.bioconductor.org/packages/AnnotationDbi",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "6a2aa33",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no"
+    },
+    "AnnotationHub": {
+      "Package": "AnnotationHub",
+      "Version": "3.14.0",
+      "Source": "Bioconductor",
+      "Type": "Package",
+      "Title": "Client to access AnnotationHub resources",
+      "Authors@R": "c(person(\"Bioconductor Package\", \"Maintainer\", email=\"maintainer@bioconductor.org\", role=\"cre\"), person(\"Martin\", \"Morgan\", role=\"aut\"), person(\"Marc\", \"Carlson\", role=\"ctb\"), person(\"Dan\", \"Tenenbaum\", role=\"ctb\"), person(\"Sonali\", \"Arora\", role=\"ctb\"), person(\"Valerie\", \"Oberchain\", role=\"ctb\"), person(\"Kayla\", \"Morrell\", role=\"ctb\"), person(\"Lori\", \"Shepherd\", role=\"aut\"))",
+      "biocViews": "Infrastructure, DataImport, GUI, ThirdPartyClient",
+      "Description": "This package provides a client for the Bioconductor AnnotationHub web resource. The AnnotationHub web resource provides a central location where genomic files (e.g., VCF, bed, wig) and other resources from standard locations (e.g., UCSC, Ensembl) can be discovered. The resource includes metadata about each resource, e.g., a textual description, tags, and date of modification. The client creates and manages a local cache of files retrieved by the user, helping with quick and reproducible access.",
+      "License": "Artistic-2.0",
+      "Depends": [
+        "BiocGenerics (>= 0.15.10)",
+        "BiocFileCache (>= 1.5.1)"
+      ],
+      "Imports": [
+        "utils",
+        "methods",
+        "grDevices",
+        "RSQLite",
+        "BiocManager",
+        "BiocVersion",
+        "curl",
+        "rappdirs",
+        "AnnotationDbi (>= 1.31.19)",
+        "S4Vectors",
+        "httr",
+        "yaml",
+        "dplyr"
+      ],
+      "Suggests": [
+        "IRanges",
+        "GenomicRanges",
+        "GenomeInfoDb",
+        "VariantAnnotation",
+        "Rsamtools",
+        "rtracklayer",
+        "BiocStyle",
+        "knitr",
+        "AnnotationForge",
+        "rBiopaxParser",
+        "RUnit",
+        "txdbmaker",
+        "MSnbase",
+        "mzR",
+        "Biostrings",
+        "CompoundDb",
+        "keras",
+        "ensembldb",
+        "SummarizedExperiment",
+        "ExperimentHub",
+        "gdsfmt",
+        "rmarkdown",
+        "HubPub"
+      ],
+      "Enhances": [
+        "AnnotationHubData"
+      ],
+      "Collate": "AnnotationHubOption.R AllGenerics.R Hub-class.R db-utils.R AnnotationHub-class.R AnnotationHubResource-class.R BEDResource-class.R ProteomicsResource-class.R EpigenomeResource-class.R EnsDbResource-class.R utilities.R sql-utils.R Hub-utils.R cache-utils.R zzz.R",
+      "VignetteBuilder": "knitr",
+      "BugReports": "https://github.com/Bioconductor/AnnotationHub/issues",
+      "NeedsCompilation": "yes",
+      "git_url": "https://git.bioconductor.org/packages/AnnotationHub",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "f93a396",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "Author": "Bioconductor Package Maintainer [cre], Martin Morgan [aut], Marc Carlson [ctb], Dan Tenenbaum [ctb], Sonali Arora [ctb], Valerie Oberchain [ctb], Kayla Morrell [ctb], Lori Shepherd [aut]",
+      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
+    },
     "BH": {
       "Package": "BH",
       "Version": "1.87.0-1",
@@ -94,6 +217,51 @@
       "NeedsCompilation": "yes",
       "Author": "R. Gentleman [aut], V. Carey [aut], M. Morgan [aut], S. Falcon [aut], Haleema Khan [ctb] ('esApply' and 'BiobaseDevelopment' vignette translation from Sweave to Rmarkdown / HTML), Bioconductor Package Maintainer [cre]",
       "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
+    },
+    "BiocFileCache": {
+      "Package": "BiocFileCache",
+      "Version": "2.14.0",
+      "Source": "Bioconductor",
+      "Title": "Manage Files Across Sessions",
+      "Authors@R": "c(person(\"Lori\", \"Shepherd\", email = \"lori.shepherd@roswellpark.org\", role = c(\"aut\", \"cre\")), person(\"Martin\", \"Morgan\", email = \"martin.morgan@roswellpark.org\", role = \"aut\"))",
+      "Description": "This package creates a persistent on-disk cache of files that the user can add, update, and retrieve. It is useful for managing resources (such as custom Txdb objects) that are costly or difficult to create, web resources, and data files used across sessions.",
+      "Depends": [
+        "R (>= 3.4.0)",
+        "dbplyr (>= 1.0.0)"
+      ],
+      "Imports": [
+        "methods",
+        "stats",
+        "utils",
+        "dplyr",
+        "RSQLite",
+        "DBI",
+        "filelock",
+        "curl",
+        "httr"
+      ],
+      "BugReports": "https://github.com/Bioconductor/BiocFileCache/issues",
+      "DevelopmentURL": "https://github.com/Bioconductor/BiocFileCache",
+      "License": "Artistic-2.0",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.2.3",
+      "biocViews": "DataImport",
+      "VignetteBuilder": "knitr",
+      "Suggests": [
+        "testthat",
+        "knitr",
+        "BiocStyle",
+        "rmarkdown",
+        "rtracklayer"
+      ],
+      "git_url": "https://git.bioconductor.org/packages/BiocFileCache",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "66862c5",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no",
+      "Author": "Lori Shepherd [aut, cre], Martin Morgan [aut]",
+      "Maintainer": "Lori Shepherd <lori.shepherd@roswellpark.org>"
     },
     "BiocGenerics": {
       "Package": "BiocGenerics",
@@ -393,6 +561,55 @@
         "R (>= 3.5.0)"
       ]
     },
+    "DBI": {
+      "Package": "DBI",
+      "Version": "1.2.3",
+      "Source": "Repository",
+      "Title": "R Database Interface",
+      "Date": "2024-06-02",
+      "Authors@R": "c( person(\"R Special Interest Group on Databases (R-SIG-DB)\", role = \"aut\"), person(\"Hadley\", \"Wickham\", role = \"aut\"), person(\"Kirill\", \"Müller\", , \"kirill@cynkra.com\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-1416-3412\")), person(\"R Consortium\", role = \"fnd\") )",
+      "Description": "A database interface definition for communication between R and relational database management systems.  All classes in this package are virtual and need to be extended by the various R/DBMS implementations.",
+      "License": "LGPL (>= 2.1)",
+      "URL": "https://dbi.r-dbi.org, https://github.com/r-dbi/DBI",
+      "BugReports": "https://github.com/r-dbi/DBI/issues",
+      "Depends": [
+        "methods",
+        "R (>= 3.0.0)"
+      ],
+      "Suggests": [
+        "arrow",
+        "blob",
+        "covr",
+        "DBItest",
+        "dbplyr",
+        "downlit",
+        "dplyr",
+        "glue",
+        "hms",
+        "knitr",
+        "magrittr",
+        "nanoarrow (>= 0.3.0.1)",
+        "RMariaDB",
+        "rmarkdown",
+        "rprojroot",
+        "RSQLite (>= 1.1-2)",
+        "testthat (>= 3.0.0)",
+        "vctrs",
+        "xml2"
+      ],
+      "VignetteBuilder": "knitr",
+      "Config/autostyle/scope": "line_breaks",
+      "Config/autostyle/strict": "false",
+      "Config/Needs/check": "r-dbi/DBItest",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.3.1",
+      "Config/Needs/website": "r-dbi/DBItest, r-dbi/dbitemplate, adbi, AzureKusto, bigrquery, DatabaseConnector, dittodb, duckdb, implyr, lazysf, odbc, pool, RAthena, IMSMWU/RClickhouse, RH2, RJDBC, RMariaDB, RMySQL, RPostgres, RPostgreSQL, RPresto, RSQLite, sergeant, sparklyr, withr",
+      "Config/testthat/edition": "3",
+      "NeedsCompilation": "no",
+      "Author": "R Special Interest Group on Databases (R-SIG-DB) [aut], Hadley Wickham [aut], Kirill Müller [aut, cre] (<https://orcid.org/0000-0002-1416-3412>), R Consortium [fnd]",
+      "Maintainer": "Kirill Müller <kirill@cynkra.com>",
+      "Repository": "RSPM"
+    },
     "DEoptimR": {
       "Package": "DEoptimR",
       "Version": "1.1-3-1",
@@ -495,6 +712,50 @@
       "Author": "Andrew Clausen [aut], Serguei Sokol [aut, cre] (ORCID: <https://orcid.org/0000-0002-5674-3327>), Andreas Rappold [ctb]",
       "Maintainer": "Serguei Sokol <sokol@insa-toulouse.fr>",
       "Repository": "CRAN"
+    },
+    "ExperimentHub": {
+      "Package": "ExperimentHub",
+      "Version": "2.14.0",
+      "Source": "Bioconductor",
+      "Type": "Package",
+      "Title": "Client to access ExperimentHub resources",
+      "Authors@R": "c(person(\"Bioconductor Package\", \"Maintainer\", email=\"maintainer@bioconductor.org\", role=\"cre\"), person(\"Martin\", \"Morgan\", role=\"aut\"), person(\"Marc\", \"Carlson\", role=\"ctb\"), person(\"Dan\", \"Tenenbaum\", role=\"ctb\"), person(\"Sonali\", \"Arora\", role=\"ctb\"), person(\"Valerie\", \"Oberchain\", role=\"ctb\"), person(\"Kayla\", \"Morrell\", role=\"ctb\"), person(\"Lori\", \"Shepherd\", role=\"aut\"))",
+      "Description": "This package provides a client for the Bioconductor ExperimentHub web resource. ExperimentHub provides a central location where curated data from experiments, publications or training courses can be accessed. Each resource has associated metadata, tags and date of modification. The client creates and manages a local cache of files retrieved enabling quick and reproducible access.",
+      "License": "Artistic-2.0",
+      "biocViews": "Infrastructure, DataImport, GUI, ThirdPartyClient",
+      "Depends": [
+        "methods",
+        "BiocGenerics (>= 0.15.10)",
+        "AnnotationHub (>= 3.3.6)",
+        "BiocFileCache (>= 1.5.1)"
+      ],
+      "Imports": [
+        "utils",
+        "S4Vectors",
+        "BiocManager",
+        "rappdirs"
+      ],
+      "Suggests": [
+        "knitr",
+        "BiocStyle",
+        "rmarkdown",
+        "HubPub",
+        "GenomicAlignments"
+      ],
+      "Enhances": [
+        "ExperimentHubData"
+      ],
+      "BugReports": "https://github.com/Bioconductor/ExperimentHub/issues",
+      "VignetteBuilder": "knitr",
+      "RoxygenNote": "7.0.0",
+      "git_url": "https://git.bioconductor.org/packages/ExperimentHub",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "2bac493",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no",
+      "Author": "Bioconductor Package Maintainer [cre], Martin Morgan [aut], Marc Carlson [ctb], Dan Tenenbaum [ctb], Sonali Arora [ctb], Valerie Oberchain [ctb], Kayla Morrell [ctb], Lori Shepherd [aut]",
+      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
     },
     "FNN": {
       "Package": "FNN",
@@ -667,6 +928,47 @@
       "Author": "Patrick Aboyoun [aut], Hervé Pagès [aut, cre], Michael Lawrence [aut], Sonali Arora [ctb], Martin Morgan [ctb], Kayla Morrell [ctb], Valerie Obenchain [ctb], Marcel Ramos [ctb], Lori Shepherd [ctb], Dan Tenenbaum [ctb], Daniel van Twisk [ctb]",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
     },
+    "HDCytoData": {
+      "Package": "HDCytoData",
+      "Version": "1.26.0",
+      "Source": "Bioconductor",
+      "Title": "Collection of high-dimensional cytometry benchmark datasets in Bioconductor object formats",
+      "Description": "Data package containing a set of publicly available high-dimensional cytometry benchmark datasets, formatted into SummarizedExperiment and flowSet Bioconductor object formats, including all required metadata. Row metadata includes sample IDs, group IDs, patient IDs, reference cell population or cluster labels (where available), and labels identifying 'spiked in' cells (where available). Column metadata includes channel names, protein marker names, and protein marker classes (cell type or cell state).",
+      "Authors@R": "c(person(\"Lukas M.\", \"Weber\", email = \"lmweberedu@gmail.com\", role = c(\"aut\", \"cre\")), person(\"Charlotte\", \"Soneson\", email = \"charlottesoneson@gmail.com\", role = \"aut\"))",
+      "URL": "https://github.com/lmweber/HDCytoData",
+      "BugReports": "https://github.com/lmweber/HDCytoData/issues",
+      "License": "MIT + file LICENSE",
+      "biocViews": "ExperimentHub, ExperimentData, ExpressionData, FlowCytometryData, SingleCellData, Homo_sapiens_Data, ImmunoOncologyData",
+      "Depends": [
+        "ExperimentHub",
+        "SummarizedExperiment",
+        "flowCore"
+      ],
+      "Imports": [
+        "utils",
+        "methods"
+      ],
+      "VignetteBuilder": "knitr",
+      "Suggests": [
+        "BiocStyle",
+        "knitr",
+        "rmarkdown",
+        "Rtsne",
+        "umap",
+        "ggplot2",
+        "FlowSOM",
+        "mclust"
+      ],
+      "RoxygenNote": "7.0.0",
+      "git_url": "https://git.bioconductor.org/packages/HDCytoData",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "c60da57",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no",
+      "Author": "Lukas M. Weber [aut, cre], Charlotte Soneson [aut]",
+      "Maintainer": "Lukas M. Weber <lmweberedu@gmail.com>"
+    },
     "IDPmisc": {
       "Package": "IDPmisc",
       "Version": "1.1.21",
@@ -742,6 +1044,45 @@
       "NeedsCompilation": "yes",
       "Author": "Hervé Pagès [aut, cre], Patrick Aboyoun [aut], Michael Lawrence [aut]",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
+    },
+    "KEGGREST": {
+      "Package": "KEGGREST",
+      "Version": "1.46.0",
+      "Source": "Bioconductor",
+      "Title": "Client-side REST access to the Kyoto Encyclopedia of Genes and Genomes (KEGG)",
+      "Authors@R": "c( person(\"Dan\", \"Tenenbaum\", role = \"aut\"), person(\"Bioconductor Package\", \"Maintainer\", role = c(\"aut\", \"cre\"), email = \"maintainer@bioconductor.org\"), person(\"Martin\", \"Morgan\", role = \"ctb\"), person(\"Kozo\", \"Nishida\", role = \"ctb\"), person(\"Marcel\", \"Ramos\", role = \"ctb\"), person(\"Kristina\", \"Riemer\", role = \"ctb\"), person(\"Lori\", \"Shepherd\", role = \"ctb\"), person(\"Jeremy\", \"Volkening\", role = \"ctb\") )",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "Imports": [
+        "methods",
+        "httr",
+        "png",
+        "Biostrings"
+      ],
+      "Suggests": [
+        "RUnit",
+        "BiocGenerics",
+        "BiocStyle",
+        "knitr",
+        "markdown"
+      ],
+      "Description": "A package that provides a client interface to the Kyoto Encyclopedia of Genes and Genomes (KEGG) REST API. Only for academic use by academic users belonging to academic institutions (see <https://www.kegg.jp/kegg/rest/>). Note that KEGGREST is based on KEGGSOAP by J. Zhang, R. Gentleman, and Marc Carlson, and KEGG (python package) by Aurelien Mazurie.",
+      "URL": "https://bioconductor.org/packages/KEGGREST",
+      "BugReports": "https://github.com/Bioconductor/KEGGREST/issues",
+      "License": "Artistic-2.0",
+      "VignetteBuilder": "knitr",
+      "biocViews": "Annotation, Pathways, ThirdPartyClient, KEGG",
+      "RoxygenNote": "7.1.1",
+      "Date": "2024-06-17",
+      "git_url": "https://git.bioconductor.org/packages/KEGGREST",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "b34820c",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no",
+      "Author": "Dan Tenenbaum [aut], Bioconductor Package Maintainer [aut, cre], Martin Morgan [ctb], Kozo Nishida [ctb], Marcel Ramos [ctb], Kristina Riemer [ctb], Lori Shepherd [ctb], Jeremy Volkening [ctb]",
+      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
     },
     "KernSmooth": {
       "Package": "KernSmooth",
@@ -1024,6 +1365,62 @@
       "git_last_commit_date": "2024-10-29",
       "Repository": "Bioconductor 3.20",
       "NeedsCompilation": "yes"
+    },
+    "RSQLite": {
+      "Package": "RSQLite",
+      "Version": "2.4.1",
+      "Source": "Repository",
+      "Title": "SQLite Interface for R",
+      "Date": "2025-06-08",
+      "Authors@R": "c( person(\"Kirill\", \"Müller\", , \"kirill@cynkra.com\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-1416-3412\")), person(\"Hadley\", \"Wickham\", role = \"aut\"), person(c(\"David\", \"A.\"), \"James\", role = \"aut\"), person(\"Seth\", \"Falcon\", role = \"aut\"), person(\"D. Richard\", \"Hipp\", role = \"ctb\", comment = \"for the included SQLite sources\"), person(\"Dan\", \"Kennedy\", role = \"ctb\", comment = \"for the included SQLite sources\"), person(\"Joe\", \"Mistachkin\", role = \"ctb\", comment = \"for the included SQLite sources\"), person(, \"SQLite Authors\", role = \"ctb\", comment = \"for the included SQLite sources\"), person(\"Liam\", \"Healy\", role = \"ctb\", comment = \"for the included SQLite sources\"), person(\"R Consortium\", role = \"fnd\"), person(, \"RStudio\", role = \"cph\") )",
+      "Description": "Embeds the SQLite database engine in R and provides an interface compliant with the DBI package. The source for the SQLite engine and for various extensions in a recent version is included. System libraries will never be consulted because this package relies on static linking for the plugins it includes; this also ensures a consistent experience across all installations.",
+      "License": "LGPL (>= 2.1)",
+      "URL": "https://rsqlite.r-dbi.org, https://github.com/r-dbi/RSQLite",
+      "BugReports": "https://github.com/r-dbi/RSQLite/issues",
+      "Depends": [
+        "R (>= 3.1.0)"
+      ],
+      "Imports": [
+        "bit64",
+        "blob (>= 1.2.0)",
+        "DBI (>= 1.2.0)",
+        "memoise",
+        "methods",
+        "pkgconfig",
+        "rlang"
+      ],
+      "Suggests": [
+        "callr",
+        "cli",
+        "DBItest (>= 1.8.0)",
+        "decor",
+        "gert",
+        "gh",
+        "hms",
+        "knitr",
+        "magrittr",
+        "rmarkdown",
+        "rvest",
+        "testthat (>= 3.0.0)",
+        "withr",
+        "xml2"
+      ],
+      "LinkingTo": [
+        "plogr (>= 0.2.0)",
+        "cpp11 (>= 0.4.0)"
+      ],
+      "VignetteBuilder": "knitr",
+      "Config/Needs/website": "r-dbi/dbitemplate",
+      "Config/autostyle/scope": "line_breaks",
+      "Config/autostyle/strict": "false",
+      "Config/testthat/edition": "3",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.3.2.9000",
+      "Collate": "'SQLiteConnection.R' 'SQLKeywords_SQLiteConnection.R' 'SQLiteDriver.R' 'SQLite.R' 'SQLiteResult.R' 'coerce.R' 'compatRowNames.R' 'copy.R' 'cpp11.R' 'datasetsDb.R' 'dbAppendTable_SQLiteConnection.R' 'dbBeginTransaction.R' 'dbBegin_SQLiteConnection.R' 'dbBind_SQLiteResult.R' 'dbClearResult_SQLiteResult.R' 'dbColumnInfo_SQLiteResult.R' 'dbCommit_SQLiteConnection.R' 'dbConnect_SQLiteConnection.R' 'dbConnect_SQLiteDriver.R' 'dbDataType_SQLiteConnection.R' 'dbDataType_SQLiteDriver.R' 'dbDisconnect_SQLiteConnection.R' 'dbExistsTable_SQLiteConnection_Id.R' 'dbExistsTable_SQLiteConnection_character.R' 'dbFetch_SQLiteResult.R' 'dbGetException_SQLiteConnection.R' 'dbGetInfo_SQLiteConnection.R' 'dbGetInfo_SQLiteDriver.R' 'dbGetPreparedQuery.R' 'dbGetPreparedQuery_SQLiteConnection_character_data.frame.R' 'dbGetRowCount_SQLiteResult.R' 'dbGetRowsAffected_SQLiteResult.R' 'dbGetStatement_SQLiteResult.R' 'dbHasCompleted_SQLiteResult.R' 'dbIsValid_SQLiteConnection.R' 'dbIsValid_SQLiteDriver.R' 'dbIsValid_SQLiteResult.R' 'dbListResults_SQLiteConnection.R' 'dbListTables_SQLiteConnection.R' 'dbQuoteIdentifier_SQLiteConnection_SQL.R' 'dbQuoteIdentifier_SQLiteConnection_character.R' 'dbReadTable_SQLiteConnection_character.R' 'dbRemoveTable_SQLiteConnection_character.R' 'dbRollback_SQLiteConnection.R' 'dbSendPreparedQuery.R' 'dbSendPreparedQuery_SQLiteConnection_character_data.frame.R' 'dbSendQuery_SQLiteConnection_character.R' 'dbUnloadDriver_SQLiteDriver.R' 'dbUnquoteIdentifier_SQLiteConnection_SQL.R' 'dbWriteTable_SQLiteConnection_character_character.R' 'dbWriteTable_SQLiteConnection_character_data.frame.R' 'db_bind.R' 'deprecated.R' 'export.R' 'fetch_SQLiteResult.R' 'import-standalone-check_suggested.R' 'import-standalone-purrr.R' 'initExtension.R' 'initRegExp.R' 'isSQLKeyword_SQLiteConnection_character.R' 'make.db.names_SQLiteConnection_character.R' 'pkgconfig.R' 'show_SQLiteConnection.R' 'sqlData_SQLiteConnection.R' 'table.R' 'transactions.R' 'utils.R' 'version.R' 'zzz.R'",
+      "NeedsCompilation": "yes",
+      "Author": "Kirill Müller [aut, cre] (ORCID: <https://orcid.org/0000-0002-1416-3412>), Hadley Wickham [aut], David A. James [aut], Seth Falcon [aut], D. Richard Hipp [ctb] (for the included SQLite sources), Dan Kennedy [ctb] (for the included SQLite sources), Joe Mistachkin [ctb] (for the included SQLite sources), SQLite Authors [ctb] (for the included SQLite sources), Liam Healy [ctb] (for the included SQLite sources), R Consortium [fnd], RStudio [cph]",
+      "Maintainer": "Kirill Müller <kirill@cynkra.com>",
+      "Repository": "RSPM"
     },
     "Rcpp": {
       "Package": "Rcpp",
@@ -1744,6 +2141,73 @@
       "Repository": "CRAN",
       "Encoding": "UTF-8"
     },
+    "bit": {
+      "Package": "bit",
+      "Version": "4.6.0",
+      "Source": "Repository",
+      "Title": "Classes and Methods for Fast Memory-Efficient Boolean Selections",
+      "Authors@R": "c( person(\"Michael\", \"Chirico\", email = \"MichaelChirico4@gmail.com\", role = c(\"aut\", \"cre\")), person(\"Jens\", \"Oehlschlägel\", role = \"aut\"), person(\"Brian\", \"Ripley\", role = \"ctb\") )",
+      "Depends": [
+        "R (>= 3.4.0)"
+      ],
+      "Suggests": [
+        "testthat (>= 3.0.0)",
+        "roxygen2",
+        "knitr",
+        "markdown",
+        "rmarkdown",
+        "microbenchmark",
+        "bit64 (>= 4.0.0)",
+        "ff (>= 4.0.0)"
+      ],
+      "Description": "Provided are classes for boolean and skewed boolean vectors, fast boolean methods, fast unique and non-unique integer sorting, fast set operations on sorted and unsorted sets of integers, and foundations for ff (range index, compression, chunked processing).",
+      "License": "GPL-2 | GPL-3",
+      "LazyLoad": "yes",
+      "ByteCompile": "yes",
+      "Encoding": "UTF-8",
+      "URL": "https://github.com/r-lib/bit",
+      "VignetteBuilder": "knitr, rmarkdown",
+      "RoxygenNote": "7.3.2",
+      "Config/testthat/edition": "3",
+      "NeedsCompilation": "yes",
+      "Author": "Michael Chirico [aut, cre], Jens Oehlschlägel [aut], Brian Ripley [ctb]",
+      "Maintainer": "Michael Chirico <MichaelChirico4@gmail.com>",
+      "Repository": "RSPM"
+    },
+    "bit64": {
+      "Package": "bit64",
+      "Version": "4.6.0-1",
+      "Source": "Repository",
+      "Title": "A S3 Class for Vectors of 64bit Integers",
+      "Authors@R": "c( person(\"Michael\", \"Chirico\", email = \"michaelchirico4@gmail.com\", role = c(\"aut\", \"cre\")), person(\"Jens\", \"Oehlschlägel\", role = \"aut\"), person(\"Leonardo\", \"Silvestri\", role = \"ctb\"), person(\"Ofek\", \"Shilon\", role = \"ctb\") )",
+      "Depends": [
+        "R (>= 3.4.0)",
+        "bit (>= 4.0.0)"
+      ],
+      "Description": "Package 'bit64' provides serializable S3 atomic 64bit (signed) integers. These are useful for handling database keys and exact counting in +-2^63. WARNING: do not use them as replacement for 32bit integers, integer64 are not supported for subscripting by R-core and they have different semantics when combined with double, e.g. integer64 + double => integer64. Class integer64 can be used in vectors, matrices, arrays and data.frames. Methods are available for coercion from and to logicals, integers, doubles, characters and factors as well as many elementwise and summary functions. Many fast algorithmic operations such as 'match' and 'order' support inter- active data exploration and manipulation and optionally leverage caching.",
+      "License": "GPL-2 | GPL-3",
+      "LazyLoad": "yes",
+      "ByteCompile": "yes",
+      "URL": "https://github.com/r-lib/bit64",
+      "Encoding": "UTF-8",
+      "Imports": [
+        "graphics",
+        "methods",
+        "stats",
+        "utils"
+      ],
+      "Suggests": [
+        "testthat (>= 3.0.3)",
+        "withr"
+      ],
+      "Config/testthat/edition": "3",
+      "Config/needs/development": "testthat",
+      "RoxygenNote": "7.3.2",
+      "NeedsCompilation": "yes",
+      "Author": "Michael Chirico [aut, cre], Jens Oehlschlägel [aut], Leonardo Silvestri [ctb], Ofek Shilon [ctb]",
+      "Maintainer": "Michael Chirico <michaelchirico4@gmail.com>",
+      "Repository": "RSPM"
+    },
     "bitops": {
       "Package": "bitops",
       "Version": "1.0-9",
@@ -1760,6 +2224,37 @@
       "Maintainer": "Martin Maechler <maechler@stat.math.ethz.ch>",
       "Repository": "RSPM",
       "Encoding": "UTF-8"
+    },
+    "blob": {
+      "Package": "blob",
+      "Version": "1.2.4",
+      "Source": "Repository",
+      "Title": "A Simple S3 Class for Representing Vectors of Binary Data ('BLOBS')",
+      "Authors@R": "c( person(\"Hadley\", \"Wickham\", role = \"aut\"), person(\"Kirill\", \"Müller\", , \"kirill@cynkra.com\", role = \"cre\"), person(\"RStudio\", role = c(\"cph\", \"fnd\")) )",
+      "Description": "R's raw vector is useful for storing a single binary object. What if you want to put a vector of them in a data frame? The 'blob' package provides the blob object, a list of raw vectors, suitable for use as a column in data frame.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://blob.tidyverse.org, https://github.com/tidyverse/blob",
+      "BugReports": "https://github.com/tidyverse/blob/issues",
+      "Imports": [
+        "methods",
+        "rlang",
+        "vctrs (>= 0.2.1)"
+      ],
+      "Suggests": [
+        "covr",
+        "crayon",
+        "pillar (>= 1.2.1)",
+        "testthat"
+      ],
+      "Config/autostyle/scope": "line_breaks",
+      "Config/autostyle/strict": "false",
+      "Config/Needs/website": "tidyverse/tidytemplate",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.2.3",
+      "NeedsCompilation": "no",
+      "Author": "Hadley Wickham [aut], Kirill Müller [cre], RStudio [cph, fnd]",
+      "Maintainer": "Kirill Müller <kirill@cynkra.com>",
+      "Repository": "RSPM"
     },
     "brew": {
       "Package": "brew",
@@ -2552,6 +3047,67 @@
       "Maintainer": "Tyson Barrett <t.barrett88@gmail.com>",
       "Repository": "https://p3m.dev/cran/latest"
     },
+    "dbplyr": {
+      "Package": "dbplyr",
+      "Version": "2.5.0",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "A 'dplyr' Back End for Databases",
+      "Authors@R": "c( person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = c(\"aut\", \"cre\")), person(\"Maximilian\", \"Girlich\", role = \"aut\"), person(\"Edgar\", \"Ruiz\", role = \"aut\"), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
+      "Description": "A 'dplyr' back end for databases that allows you to work with remote database tables as if they are in-memory data frames.  Basic features works with any database that has a 'DBI' back end; more advanced features require 'SQL' translation to be provided by the package author.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://dbplyr.tidyverse.org/, https://github.com/tidyverse/dbplyr",
+      "BugReports": "https://github.com/tidyverse/dbplyr/issues",
+      "Depends": [
+        "R (>= 3.6)"
+      ],
+      "Imports": [
+        "blob (>= 1.2.0)",
+        "cli (>= 3.6.1)",
+        "DBI (>= 1.1.3)",
+        "dplyr (>= 1.1.2)",
+        "glue (>= 1.6.2)",
+        "lifecycle (>= 1.0.3)",
+        "magrittr",
+        "methods",
+        "pillar (>= 1.9.0)",
+        "purrr (>= 1.0.1)",
+        "R6 (>= 2.2.2)",
+        "rlang (>= 1.1.1)",
+        "tibble (>= 3.2.1)",
+        "tidyr (>= 1.3.0)",
+        "tidyselect (>= 1.2.1)",
+        "utils",
+        "vctrs (>= 0.6.3)",
+        "withr (>= 2.5.0)"
+      ],
+      "Suggests": [
+        "bit64",
+        "covr",
+        "knitr",
+        "Lahman",
+        "nycflights13",
+        "odbc (>= 1.4.2)",
+        "RMariaDB (>= 1.2.2)",
+        "rmarkdown",
+        "RPostgres (>= 1.4.5)",
+        "RPostgreSQL",
+        "RSQLite (>= 2.3.1)",
+        "testthat (>= 3.1.10)"
+      ],
+      "VignetteBuilder": "knitr",
+      "Config/Needs/website": "tidyverse/tidytemplate",
+      "Config/testthat/edition": "3",
+      "Config/testthat/parallel": "TRUE",
+      "Encoding": "UTF-8",
+      "Language": "en-gb",
+      "RoxygenNote": "7.3.1",
+      "Collate": "'db-sql.R' 'utils-check.R' 'import-standalone-types-check.R' 'import-standalone-obj-type.R' 'utils.R' 'sql.R' 'escape.R' 'translate-sql-cut.R' 'translate-sql-quantile.R' 'translate-sql-string.R' 'translate-sql-paste.R' 'translate-sql-helpers.R' 'translate-sql-window.R' 'translate-sql-conditional.R' 'backend-.R' 'backend-access.R' 'backend-hana.R' 'backend-hive.R' 'backend-impala.R' 'verb-copy-to.R' 'backend-mssql.R' 'backend-mysql.R' 'backend-odbc.R' 'backend-oracle.R' 'backend-postgres.R' 'backend-postgres-old.R' 'backend-redshift.R' 'backend-snowflake.R' 'backend-spark-sql.R' 'backend-sqlite.R' 'backend-teradata.R' 'build-sql.R' 'data-cache.R' 'data-lahman.R' 'data-nycflights13.R' 'db-escape.R' 'db-io.R' 'db.R' 'dbplyr.R' 'explain.R' 'ident.R' 'import-standalone-s3-register.R' 'join-by-compat.R' 'join-cols-compat.R' 'lazy-join-query.R' 'lazy-ops.R' 'lazy-query.R' 'lazy-select-query.R' 'lazy-set-op-query.R' 'memdb.R' 'optimise-utils.R' 'pillar.R' 'progress.R' 'sql-build.R' 'query-join.R' 'query-select.R' 'query-semi-join.R' 'query-set-op.R' 'query.R' 'reexport.R' 'remote.R' 'rows.R' 'schema.R' 'simulate.R' 'sql-clause.R' 'sql-expr.R' 'src-sql.R' 'src_dbi.R' 'table-name.R' 'tbl-lazy.R' 'tbl-sql.R' 'test-frame.R' 'testthat.R' 'tidyeval-across.R' 'tidyeval.R' 'translate-sql.R' 'utils-format.R' 'verb-arrange.R' 'verb-compute.R' 'verb-count.R' 'verb-distinct.R' 'verb-do-query.R' 'verb-do.R' 'verb-expand.R' 'verb-fill.R' 'verb-filter.R' 'verb-group_by.R' 'verb-head.R' 'verb-joins.R' 'verb-mutate.R' 'verb-pivot-longer.R' 'verb-pivot-wider.R' 'verb-pull.R' 'verb-select.R' 'verb-set-ops.R' 'verb-slice.R' 'verb-summarise.R' 'verb-uncount.R' 'verb-window.R' 'zzz.R'",
+      "NeedsCompilation": "no",
+      "Author": "Hadley Wickham [aut, cre], Maximilian Girlich [aut], Edgar Ruiz [aut], Posit Software, PBC [cph, fnd]",
+      "Maintainer": "Hadley Wickham <hadley@posit.co>",
+      "Repository": "RSPM"
+    },
     "deSolve": {
       "Package": "deSolve",
       "Version": "1.40",
@@ -3075,6 +3631,33 @@
       "NeedsCompilation": "no",
       "Repository": "RSPM",
       "Encoding": "UTF-8"
+    },
+    "filelock": {
+      "Package": "filelock",
+      "Version": "1.0.3",
+      "Source": "Repository",
+      "Title": "Portable File Locking",
+      "Authors@R": "c( person(\"Gábor\", \"Csárdi\", , \"csardi.gabor@gmail.com\", role = c(\"aut\", \"cre\")), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
+      "Description": "Place an exclusive or shared lock on a file. It uses 'LockFile' on Windows and 'fcntl' locks on Unix-like systems.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://r-lib.github.io/filelock/, https://github.com/r-lib/filelock",
+      "BugReports": "https://github.com/r-lib/filelock/issues",
+      "Depends": [
+        "R (>= 3.4)"
+      ],
+      "Suggests": [
+        "callr (>= 2.0.0)",
+        "covr",
+        "testthat (>= 3.0.0)"
+      ],
+      "Config/Needs/website": "tidyverse/tidytemplate",
+      "Config/testthat/edition": "3",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.2.3",
+      "NeedsCompilation": "yes",
+      "Author": "Gábor Csárdi [aut, cre], Posit Software, PBC [cph, fnd]",
+      "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
+      "Repository": "RSPM"
     },
     "flowClust": {
       "Package": "flowClust",
@@ -5934,6 +6517,28 @@
       "Author": "Hadley Wickham [aut], Winston Chang [aut], Jim Hester [aut], Lionel Henry [aut, cre], Posit Software, PBC [cph, fnd], R Core team [ctb] (Some namespace and vignette code extracted from base R)",
       "Maintainer": "Lionel Henry <lionel@posit.co>",
       "Repository": "CRAN"
+    },
+    "plogr": {
+      "Package": "plogr",
+      "Version": "0.2.0",
+      "Source": "Repository",
+      "Title": "The 'plog' C++ Logging Library",
+      "Date": "2018-03-24",
+      "Authors@R": "c( person(\"Kirill\", \"Müller\", role = c(\"aut\", \"cre\"), email = \"krlmlr+r@mailbox.org\"), person(\"Sergey\", \"Podobry\", role = \"cph\", comment = \"Author of the bundled plog library\"))",
+      "Description": "A simple header-only logging library for C++. Add 'LinkingTo: plogr' to 'DESCRIPTION', and '#include <plogr.h>' in your C++ modules to use it.",
+      "Suggests": [
+        "Rcpp"
+      ],
+      "License": "MIT + file LICENSE",
+      "Encoding": "UTF-8",
+      "LazyData": "true",
+      "URL": "https://github.com/krlmlr/plogr#readme",
+      "BugReports": "https://github.com/krlmlr/plogr/issues",
+      "RoxygenNote": "6.0.1.9000",
+      "NeedsCompilation": "no",
+      "Author": "Kirill Müller [aut, cre], Sergey Podobry [cph] (Author of the bundled plog library)",
+      "Maintainer": "Kirill Müller <krlmlr+r@mailbox.org>",
+      "Repository": "RSPM"
     },
     "plyr": {
       "Package": "plyr",
