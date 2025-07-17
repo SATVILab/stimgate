@@ -32,9 +32,9 @@ jobs:
         uses: actions/checkout@v4
 
       # 5. Ensure renv is available
-      - name: Install renv
-        run: |
-          Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
+      # - name: Install renv
+      # run: |
+      #    Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
 
       # 6. Restore exactly the package versions in renv.lock
       - name: Restore R package dependencies
