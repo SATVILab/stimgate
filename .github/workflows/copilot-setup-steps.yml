@@ -20,7 +20,25 @@ jobs:
       - name: Install R
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends r-base
+          sudo apt-get install -y --no-install-recommends \
+              software-properties-common dirmngr ca-certificates gnupg curl
+
+          # 1. Fetch and install the rig GPG key
+          curl -fsSL https://rig.r-pkg.org/deb/rig.gpg \
+            | sudo tee /etc/apt/trusted.gpg.d/rig.gpg > /dev/null
+
+          # 2. Add the rig APT repository
+          echo "deb [arch=$(dpkg --print-architecture)] http://rig.r-pkg.org/deb rig main" \
+            | sudo tee /etc/apt/sources.list.d/rig.list
+
+          # 3. Update and install the rig manager
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends r-rig
+
+          # 4. Use rig to install R 4.4.2 and make it the default
+          rig add 4.4.2
+          rig default 4.4.2
+
 
       # 3. Cache R packages
       - name: Cache R packages
