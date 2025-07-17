@@ -22,7 +22,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: dev
+          ref: "dev"
+          # Prevents Agent bugging out if you make
+          # changes while it's working
+          fetch-depth: 0
 
       # 2. Set up R
       - uses: r-lib/actions/setup-r@v2
