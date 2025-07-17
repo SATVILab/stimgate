@@ -32,8 +32,41 @@ here.}
 
 \item{.data}{GatingSet. GatingSet from which to draw the data.}
 
+\item{batch_list}{list. List of indices grouped by batch.}
+
+\item{marker}{list. List where each element specifies the parameters to be
+used to gate a given marker including the name of the marker itself.}
+
 \item{pop_gate}{character vector. Populations for which separate gates are
-to be calculated.}
+to be calculated. Default is "root".}
+
+\item{bias_uns}{numeric. Bias for unstimulated data. Default is NULL.}
+
+\item{bias_uns_factor}{numeric. Factor for unstimulated bias. Default is 1.}
+
+\item{exc_min}{logical. Whether to exclude minimum values. Default is TRUE.}
+
+\item{cp_min}{numeric. Minimum cutpoint value. Default is NULL.}
+
+\item{bw_min}{numeric. Minimum bandwidth. Default is NULL.}
+
+\item{min_cell}{numeric. Minimum number of cells required. Default is 1e2.}
+
+\item{max_pos_prob_x}{numeric. Maximum positive probability x-value. Default is Inf.}
+
+\item{gate_quant}{numeric vector. Quantiles for gating. Default is c(0.25, 0.75).}
+
+\item{tol_clust}{numeric. Tolerance for clustering. Default is 1e-7.}
+
+\item{gate_combn}{character. Method for combining gates. Default is "min".}
+
+\item{marker_settings}{list. Additional marker settings. Default is NULL.}
+
+\item{calc_cyt_pos_gates}{logical. Whether to calculate cytokine-positive gates. Default is TRUE.}
+
+\item{calc_single_pos_gates}{logical. Whether to calculate single-positive gates. Default is FALSE.}
+
+\item{debug}{logical. Whether to enable debug output. Default is FALSE.}
 }
 \description{
 Main function to identify cytokine-positive cells by gating and generate associated statistics and plots.
