@@ -8,5 +8,5 @@ R/test2.R
 R/test3.R
 SCRATCH.R
 tests/testthat/testdata/postmortem
-_tmp
+_tmp/**/*
 .gitignore
