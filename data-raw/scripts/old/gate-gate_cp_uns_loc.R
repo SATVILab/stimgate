@@ -1,38 +1,3 @@
-# extract and save plots
-# ---------------------------------------
-
-# save to temp directory
-if (plot && FALSE) {
-  # add bias label
-  cp_uns_plot_list <- cp_uns_gate_combn_obj[["p_list"]]
-  for (i in seq_along(cp_uns_plot_list)) {
-    for (j in seq_along(cp_uns_plot_list[[i]])) {
-      names(cp_uns_plot_list[[i]][[j]]) <- stringr::str_replace(
-        names(cp_uns_plot_list[[i]][[j]]),
-        "loc",
-        paste0("locb", bias)
-      )
-    }
-  }
-
-  dir_save <- file.path(
-    tempdir(),
-    params$data_name,
-    paste0("cp_locb", bias, "_plots")
-  )
-  if (!dir.exists(dir_save)) {
-    dir.create(dir_save, recursive = TRUE)
-  }
-  saveRDS(
-    cp_uns_plot_list,
-    file.path(dir_save, paste0(
-      names(cp_uns_plot_list),
-      ".rds"
-    ))
-  )
-}
-
-
 # okay, so this all ties into the `prob_smooth`
 # values that we actually end up modelling.
 # presumably there were some issues here.
@@ -118,7 +83,7 @@ if (FALSE) {
 }
 
 if (nrow(data_mod) >= 10) {
-  .debug(debug, "Smoothing I")
+  .debug_msg(.debug, "Smoothing I")
 
   # monotonic increasing
   fit <- try(
@@ -155,7 +120,7 @@ if (nrow(data_mod) >= 10) {
       all(pred_vec > 0.99) ||
       mean_abs_error > 0.3
   ) {
-    .debug(debug, "Smoothing II")
+    .debug_msg(.debug, "Smoothing II")
     fit <- try(
       scam::scam(
         prob_smooth ~ s(expr, bs = "micv"),
@@ -184,8 +149,8 @@ if (nrow(data_mod) >= 10) {
     inherits(fit, "try-error") ||
       all(pred_vec > 0.99) ||
       mean_abs_error > 0.3) {
-    # .debug(debug, "Smoothing III")
-    .debug(debug, "Skipping mgcv smoothing")
+    # .debug_msg(.debug, "Smoothing III")
+    .debug_msg(.debug, "Skipping mgcv smoothing")
     # It's very slow, and returned
     # a WAAAY larger error than scam
     # when examined.
@@ -207,16 +172,16 @@ if (nrow(data_mod) >= 10) {
     inherits(fit, "try-error") ||
       all(pred_vec > 0.99) ||
       mean_abs_error > 0.3) {
-    .debug(debug, "Failed to smooth")
+    .debug_msg(.debug, "Failed to smooth")
     data_mod <- data_mod |>
       dplyr::mutate(pred = prob_smooth - 0.0001)
   } else {
-    .debug(debug, "Smoothed")
+    .debug_msg(.debug, "Smoothed")
     data_mod <- data_mod |>
       dplyr::mutate(pred = pred_vec)
   }
 } else {
-  .debug(debug, "Failed to smooth")
+  .debug_msg(.debug, "Failed to smooth")
   data_mod <- data_mod |>
     dplyr::mutate(pred = prob_smooth - 1e-4)
 }
@@ -331,177 +296,3 @@ if (plot && FALSE) {
 
   prob_mod
 }
-
-#' @title Plot gating plots for local fdr method
-#'
-#' @description
-#' Plot the following three plots:
-#' \describe{
-#'   \item{p_loc_dens}{Density of the stim and unstim (pos and neg) distributions.}
-#'   \item{p_loc_prob}{Raw, normalised and smoothed probability of positivty by marker value.}
-#'   \item{p_loc_ctb}{Contribution to total count by binned marker values}.
-#' }
-#'
-#' @param dens_tbl dataframe. Dataframe equal to \code{dens_tbl_raw}
-#' in the \code{.get_cp_uns_loc_ind} function.
-#' @inheritParams plot_cp
-#' @param prob_mod object of class \code{glm}. Models probability of positivity
-#' as a function of \code{x_stim}. Created within \code{.get_cp_uns_loc_ind}
-#' function.
-#' @param prob_tbl dataframe. Dataframe contains columns x_stim,
-#' prob_stim, prob_stim_norm and pred, where x_stim are marker values
-#' and prob_stim, prob_stim_norm and pred are the raw, normalised and
-#' smoothed probabilities of posititivity, respectively. Dataframe is
-#' produced appropriately within \code{.get_cp_uns_loc_ind} function.
-#' @param cut_stim numeric vector. Each element is an observed value of the marker
-#' in the stim condition.
-#' @param min_x_pos_prob numeric. Minimum value for \code{cut_stim} such that
-#' the probability of positivity is greater than the value specified by the
-#' \code{prob_min} parameter in the \code{.get_cp_uns_loc_ind} function.
-#'
-#' @return A list with elements named p_loc_dens, p_loc_prob and
-#' p_loc_ctb, where each element is a ggplot2 plot.
-#'
-#' @examples
-#' For example of use, set \code{debugonce(:::.get_cp_uns_loc_ind)}
-#' before running \code{::gate}. Step through the debuggec function
-#' until near the end.
-.plot_cp_loc_fdr <- function(dens_tbl,
-                             params,
-                             prob_tbl,
-                             pred_tbl,
-                             cut_stim,
-                             sample,
-                             min_x_pos_prob,
-                             path_project){
-
-  dir_base <- stimgate_dir_base_create( # nolint
-    params = params, dir_base_init = path_project
-  )
-  dir_base <- file.path(dir_base, "gating_plots", "gate")
-  dir_len <- stringr::str_length(dir_base) + 10
-  underscore_loc <- stringr::str_locate(sample, "_")[1,"start"][[1]]
-  subject_visittype <- stringr::str_sub(sample, end = underscore_loc - 1)
-  stim <- stringr::str_sub(sample, underscore_loc + 1)
-  subjectid_visittype_len <- 255 - dir_len - 4 - 4
-  subjectid_visittype_len <- min(
-    stringr::str_length(subject_visittype), subjectid_visittype_len
-  )
-  subject_visittype <- stringr::str_sub(
-    subject_visittype,
-    end = subjectid_visittype_len
-  )
-  fn <- paste0(subject_visittype, "-", stim, ".png")
-
-  # Plot densities
-  # -------------------------------
-  p_loc_dens <- ggplot(dens_tbl |>
-                         dplyr::filter(x_stim > min(min_x_pos_prob, 100)),
-                       aes(x = x_stim, y = dens, linetype = stim)) +
-    cowplot::theme_cowplot(font_size = 20) +
-    geom_line() +
-    scale_linetype_manual(values = c("yes" = "solid",
-                                     "no" = "dotted"),
-                          labels = c("yes" = "stim",
-                                     "no" = "unstim")) +
-    labs(x = params$chnl_lab[params$cut], y = "Density") +
-    theme(legend.title = element_blank())
-
-  dir_save <- file.path(dir_base, "p_loc_dens")
-  if(!dir.exists(dir_save)) dir.create(dir_save, recursive = TRUE)
-  cowplot::ggsave2(filename = file.path(file.path(dir_save, fn)),
-                   height = 10, width = 10)
-
-  # Plot probabilities of being stim-induced
-  # -------------------------------
-
-  plot_tbl_prob <- prob_tbl |>
-    tidyr::pivot_longer(prob_stim:prob_stim_norm,
-                 names_to = "prob_type",
-                 values_to = "prob") |>
-    dplyr::select(x_stim, prob_type, prob)
-
-  plot_tbl_pred <- pred_tbl |>
-    dplyr::rename(x_stim = cut_stim,
-           prob = pred) |>
-    dplyr::mutate(prob_type = "pred") |>
-    dplyr::select(x_stim, prob_type, prob )
-
-  plot_tbl <- plot_tbl_prob |>
-    dplyr::bind_rows(plot_tbl_pred)
-  p_loc_prob <- ggplot(plot_tbl,
-                       aes(x = x_stim, y = prob, linetype = prob_type)) +
-    cowplot::theme_cowplot(font_size = 20) +
-    cowplot::background_grid(major = "y", minor = "y") +
-    geom_hline(yintercept = 0) +
-    geom_line(size = 2) +
-    scale_linetype_manual(values = c("pred" = "solid",
-                                     "prob_stim_norm" = "dotted",
-                                     "prob_stim" = "dashed"),
-                          labels = c("pred" = "Smoothed - Model",
-                                     "prob_stim" = "Raw",
-                                     "prob_stim_norm" = "Smoothed - Raw")) +
-    lims(y = c(-1, 1)) +
-    theme(legend.title = element_blank()) +
-    labs(x = params$chnl_lab[params$cut],
-         y = "Probability of being stimulation-induced")
-
-  dir_save <- file.path(dir_base, "p_loc_prob")
-  if(!dir.exists(dir_save)) dir.create(dir_save, recursive = TRUE)
-  cowplot::ggsave2(filename = file.path(file.path(dir_save, fn)),
-                   height = 10, width = 10)
-
-  # Plot contribution to count by bin
-  # -------------------------------
-
-  # plot binned contributions to total count by range
-
-  #  n_bin <- hist(new_pred_tbl$x_stim, plot = FALSE)$mids |> length
-  n_bin <- hist(pred_tbl$cut_stim, plot = FALSE)$mids |> length()
-  if(n_bin == 1){
-    bin_tbl <- pred_tbl |>
-      dplyr::mutate(bin = paste0("(", cut_stim, ",", cut_stim, "]"),
-             ctb = pred)
-  } else {
-    bin_tbl <- pred_tbl |>
-      dplyr::mutate(bin = cut(.data$cut_stim, breaks = n_bin)) |>
-      dplyr::group_by(bin) |>
-      dplyr::summarise(ctb = sum(pred))
-  }
-
-  #' @title Get the midpoint of a bin returned by base::cut
-  .get_bin_mid <- function(bin) {
-    purrr::map_dbl(bin, function(bin_curr){
-      comma_loc <- stringr::str_locate(bin_curr, ",")[1, "start"][[1]]
-      num_1 <- stringr::str_sub(bin_curr, 2, comma_loc - 1) |>
-        as.numeric()
-      num_2 <- stringr::str_sub(
-        bin_curr, comma_loc + 1, stringr::str_length(bin_curr) - 1
-        ) |>
-        as.numeric()
-      mean(c(num_1, num_2))
-    })
-  }
-
-  bin_tbl <- bin_tbl |>
-    dplyr::mutate(bin_mid = .get_bin_mid(bin))
-
-  # plot of contribution per bin
-  p_loc_ctb <- ggplot(bin_tbl,
-                      aes(x = bin_mid, y = ctb)) +
-    geom_bar(stat = "identity",
-             col = "gray25",
-             fill = "gray85")
-
-  dir_save <- file.path(dir_base, "p_loc_ctb")
-  if (!dir.exists(dir_save)) dir.create(dir_save, recursive = TRUE)
-  cowplot::ggsave2(filename = file.path(file.path(dir_save, fn)),
-                   height = 10, width = 10)
-
-  #list(p_loc_dens = p_loc_dens, p_loc_prob = p_loc_prob,
-  #     p_loc_ctb = p_loc_ctb)
-  list()
-
-}
-
-

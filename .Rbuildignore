@@ -3,3 +3,8 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
+^_tmp$
+^_reference$
+^\.github$
+^data-raw$
+^_dependencies\.R$
