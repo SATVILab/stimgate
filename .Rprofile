@@ -25,6 +25,6 @@ if (Sys.getenv("BIOCONDUCTOR_NAME") == "bioconductor_docker") {
   # such as GitHub Actions, but we'll see
   # (building from source may be an issue
   # whether or not we use pak)
-  options("renv.config.pak.enabled" = TRUE)
+  # options("renv.config.pak.enabled" = TRUE)
 }
 source("renv/activate.R")
