@@ -32,13 +32,7 @@ jobs:
       - name: Install pak and BiocManager before using pak
         run: |
           Rscript -e 'if (!requireNamespace("pak", quietly = TRUE)) utils::install.packages("pak")'
-          Rscript -e 'if (!requireNamespace("pak", quietly = TRUE)) utils::install.packages("pak")'
-          Rscript -e 'utils::install.packages("BiocManager")'
-          Rscript -e 'utils::install.packages("BiocManager")'
-          Rscript -e 'if (!requireNamespace("pak", quietly = TRUE)) utils::install.packages("pak")'
-          Rscript -e 'if (!requireNamespace("pak", quietly = TRUE)) utils::install.packages("pak")'
-          Rscript -e 'utils::install.packages("BiocManager")'
-          Rscript -e 'utils::install.packages("BiocManager")'
+          Rscript -e 'if (!requireNamespace("BiocManager", quietly = TRUE)) utils::install.packages("BiocManager")'
       - uses: r-lib/actions/setup-renv@v2
         env:
           RENV_CONFIG_PAK_ENABLED: "TRUE"
