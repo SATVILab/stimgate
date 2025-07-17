@@ -2,16 +2,6 @@ name: "Copilot Setup Steps"
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - dev
-    paths:
-      - .github/workflows/copilot-setup-steps.yml
-  pull_request:
-    branches:
-      - dev
-    paths:
-      - .github/workflows/copilot-setup-steps.yml
 
 jobs:
   copilot-setup-steps:
@@ -30,13 +20,10 @@ jobs:
       # 1. Get the code
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: dev
 
-      # 5. Ensure renv is available
-      - name: Install renv
-        run: |
-          Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
-
-      # 6. Restore exactly the package versions in renv.lock
+      # 2. Restore exactly the package versions in renv.lock
       - name: Restore R package dependencies
         run: |
           Rscript -e "renv::restore()"
