@@ -27,7 +27,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   # get gates
   gate_tbl <- .fcs_write_get_gate_tbl(
     gate_tbl, chnl, .data, ind_batch_list, gate_uns_method,
-    gate_cyt, gate_single
+    gate_type_cyt_pos, gate_type_single_pos
   )
 
   n_fn <- length(.data)
@@ -55,12 +55,12 @@ stimgate_fcs_write <- function(path_project, # project directory
                                     .data,
                                     ind_batch_list,
                                     gate_uns_method,
-                                    gate_cyt,
-                                    gate_single) {
+                                    gate_type_cyt_pos,
+                                    gate_type_single_pos) {
   gate_tbl |>
     .fcs_write_gate_gate_tbl_gated(chnl) |>
     .fcs_write_get_gate_tbl_add_uns(
-      gate_uns_method, gate_cyt, gate_single, ind_batch_list
+      gate_uns_method, gate_type_cyt_pos, gate_type_single_pos, ind_batch_list
     ) |>
     .fcs_write_get_gate_tbl_filter_chnl(chnl) |>
     .fcs_write_get_gate_tbl_add_marker(chnl, .data)
@@ -78,8 +78,8 @@ stimgate_fcs_write <- function(path_project, # project directory
 
 .fcs_write_get_gate_tbl_add_uns <- function(gate_tbl,
                                             gate_uns_method,
-                                            gate_cyt,
-                                            gate_single,
+                                            gate_type_cyt_pos,
+                                            gate_type_single_pos,
                                             ind_batch_list) {
   gate_tbl_uns <- .fcs_write_get_gate_tbl_add_uns_get_uns(
     gate_uns_method, ind_batch_list

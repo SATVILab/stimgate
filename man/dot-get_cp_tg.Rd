@@ -13,7 +13,7 @@
   min_cell,
   cp_min,
   bw,
-  debug
+  .debug
 )
 }
 \description{

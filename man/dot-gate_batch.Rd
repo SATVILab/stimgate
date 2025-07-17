@@ -13,12 +13,13 @@
   tol_clust,
   noise_sd,
   bias_uns,
+  exc_min,
   bw_min,
   cp_min,
   min_cell,
   params,
   batch,
-  debug,
+  .debug,
   path_project
 )
 }

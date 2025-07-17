@@ -11,6 +11,8 @@ stimgate_gate(
   marker,
   pop_gate = "root",
   bias_uns = NULL,
+  bias_uns_factor = 1,
+  exc_min = TRUE,
   cp_min = NULL,
   bw_min = NULL,
   min_cell = 100,
