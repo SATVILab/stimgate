@@ -678,11 +678,11 @@
   # get .data to smooth over
   data_mod <- .get_cp_uns_loc_get_data_mod(
     ex_tbl_stim_threshold, ex_tbl_stim_no_min, ex_tbl_uns_threshold,
-    ex_tbl_uns_bias, prob_tbl_list, cp_min
+    ex_tbl_uns_bias, prob_tbl_list, cp_min, .debug
   )
 
   # smooth
-  .get_cp_uns_loc_get_prob_smooth(data_mod)
+  .get_cp_uns_loc_get_prob_smooth(data_mod, .debug)
 }
 
 # get dens_tbl_raw
@@ -923,7 +923,8 @@
                                          ex_tbl_uns_threshold,
                                          ex_tbl_uns_bias,
                                          prob_tbl_list,
-                                         cp_min) {
+                                         cp_min,
+                                         .debug) {
   if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, ex_tbl_stim_no_min)) {
     return(.get_cp_uns_loc_ind_check_out(
       cp_min, ex_tbl_stim_no_min,
@@ -965,7 +966,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 # smooth
 # ---------------------
-.get_cp_uns_loc_get_prob_smooth <- function(data_mod) {
+.get_cp_uns_loc_get_prob_smooth <- function(data_mod, .debug) {
   # enough cells to bother smoothing
   if (!.get_cp_uns_loc_get_prob_smooth_check_n_cell(data_mod)) {
     return(.get_cp_uns_loc_get_prob_smooth_check_n_cell_out(data_mod))
