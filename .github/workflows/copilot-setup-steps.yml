@@ -14,15 +14,18 @@ jobs:
       - name: Set up environment
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y \
+          sudo apt-get install --no-install-recommends -y \
             libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev \
             libgit2-dev libjpeg-dev libpng-dev libx11-dev pandoc
-    
+
       # 1. Get the code
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: dev
+          ref: "dev"
+          # Prevents Agent bugging out if you make
+          # changes while it's working
+          fetch-depth: 0
 
       # 2. Set up R
       - uses: r-lib/actions/setup-r@v2
