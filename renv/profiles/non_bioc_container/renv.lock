@@ -3937,6 +3937,26 @@
         "R (>= 3.5.0)"
       ]
     },
+    "flowWorkspaceData": {
+      "Package": "flowWorkspaceData",
+      "Version": "3.18.0",
+      "Source": "Bioconductor",
+      "Type": "Package",
+      "Title": "A data package containing two flowJo, one diva xml workspace and the associated fcs files as well as three GatingSets for testing the flowWorkspace, openCyto and CytoML packages.",
+      "Date": "2011-03-31",
+      "Author": "Greg Finak",
+      "Maintainer": "Mike Jiang <wjiang2@fhcrc.org>",
+      "Description": "The necessary external data to run the flowWorkspace and openCyto vignette is found in this package.",
+      "biocViews": "ExperimentData, FlowCytometryData",
+      "License": "GPL-2",
+      "LazyLoad": "yes",
+      "git_url": "https://git.bioconductor.org/packages/flowWorkspaceData",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "f551320",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no"
+    },
     "fontawesome": {
       "Package": "fontawesome",
       "Version": "0.5.3",
