@@ -51,7 +51,8 @@
     cp_min = cp_min,
     max_cp = max_cp,
     gate_stats_tbl = gate_stats_tbl,
-    filter_other_cyt_pos = filter_other_cyt_pos
+    filter_other_cyt_pos = filter_other_cyt_pos,
+    .debug = .debug
   )
 
 

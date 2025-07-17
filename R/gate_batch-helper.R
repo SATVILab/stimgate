@@ -44,7 +44,8 @@
         exc_min = exc_min,
         min_cell = 0,
         cp_min = 0,
-        bw = bw_min
+        bw = bw_min,
+        .debug = .debug
       )
     }
   }
@@ -58,7 +59,8 @@
       exc_min = exc_min,
       min_cell = 0,
       cp_min = 0,
-      bw = bw_min
+      bw = bw_min,
+      .debug = .debug
     )
   }
 
@@ -210,7 +212,8 @@
         exc_min = exc_min,
         min_cell = min_cell,
         cp_min = cp_min,
-        bw = bw_min
+        bw = bw_min,
+        .debug = .debug
       ),
       "loc" = .get_cp_uns_loc( # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
@@ -254,7 +257,8 @@
         exc_min = exc_min,
         min_cell = min_cell,
         cp_min = cp_min,
-        bw = bw_min
+        bw = bw_min,
+        .debug = .debug
       )
 
       if (names(gate_list)[[1]] == "cp") {
@@ -280,7 +284,8 @@
         exc_min = exc_min,
         min_cell = min_cell,
         cp_min = cp_min,
-        bw = bw_min
+        bw = bw_min,
+        .debug = .debug
       )
 
       if (names(gate_list)[[1]] == "cp") {
