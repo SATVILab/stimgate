@@ -7,9 +7,17 @@ We want to identify cells that have possibly responded to stimulation, by compar
 
 ### Required before each commit
 
-- Not sure what to put here
+- Run `devtools::test()` to ensure all tests pass
+- Run `styler::style_pkg()` to ensure consistent code formatting
+- Run `lintr::lint_package()` to check for linting violations
 
 ### Development flow
+
+- Build and reload: Use `devtools::load_all()` to reload the package in your R session
+- Test: Run `devtools::test()` to execute all unit tests
+- Coverage: Run `covr::report()` to check test coverage
+- Documentation: Run `devtools::document()` to update documentation
+- Full check: Run `devtools::check()` to perform a comprehensive package check
 
 ## Repository structure
 
