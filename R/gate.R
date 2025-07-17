@@ -260,7 +260,8 @@ stimgate_gate <- function(path_project,
       tol_gate_single = tol_gate_single,
       gate_tbl = gate_tbl,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
-      path_project = path_project
+      path_project = path_project,
+      .debug = .debug
     )
 
     saveRDS(
