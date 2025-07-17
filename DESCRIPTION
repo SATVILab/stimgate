@@ -4,12 +4,17 @@ Title: Identify responding cells as outliers
 Version: 0.3.1.9013
 Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-2036-4878"))
 Maintainer: Miguel Rodo <miguel.rodo@uct.ac.za>
-Description: Apply outlier gating function
+Description: Apply outlier gating function to identify cells that have possibly
+    responded to stimulation, by comparing the unstimulated and stimulated tubes
+    from the same sample.
+URL: https://github.com/SATVILab/stimgate
+BugReports: https://github.com/SATVILab/stimgate/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
+Depends: R (>= 3.5.0)
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
+biocViews: FlowCytometry, SingleCell, CellBasedAssays, ImmunoOncology
 Imports:
     cowplot,
     dplyr,
@@ -31,4 +36,4 @@ Imports:
     cytoUtils,
     openCyto
 Suggests:
-    testthat
+    testthat (>= 3.0.0)

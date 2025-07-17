@@ -1,0 +1,64 @@
+---
+title: "Getting Started with stimgate"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with stimgate}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(stimgate)
+```
+
+# Introduction
+
+The `stimgate` package provides tools to identify cells that have possibly responded to stimulation by comparing unstimulated and stimulated tubes from the same sample.
+
+## Main Functions
+
+The package provides several key functions:
+
+- `stimgate_gate()`: Main function to identify cytokine-positive cells by gating
+- `get_stats()`: Generate statistics from gating results
+- `plot_gate()`: Visualize identified gates
+- `get_gate_tbl()`: Extract gate information
+- `stimgate_fcs_write()`: Write FCS files of cytokine-positive cells
+
+## Basic Usage
+
+```{r eval=FALSE}
+# Basic gating workflow
+result <- stimgate_gate(
+  path_project = "/path/to/project",
+  .data = gs,  # GatingSet object
+  batch_list = list(batch1 = 1:10, batch2 = 11:20),
+  marker = list(
+    list(cut = "IL2", tol = 0.5e-8),
+    list(cut = "TNFa", tol = 0.5e-8)
+  )
+)
+
+# Get statistics
+stats <- get_stats("/path/to/project")
+
+# Get gate table
+gates <- get_gate_tbl("/path/to/project")
+
+# Plot gates
+plots <- plot_gate(
+  ind = 1:3,
+  .data = gs,
+  path_project = "/path/to/project",
+  marker = c("IL2", "TNFa")
+)
+```
+
+For more detailed examples and advanced usage, please refer to the function documentation.

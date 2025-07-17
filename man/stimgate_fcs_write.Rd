@@ -20,6 +20,44 @@ stimgate_fcs_write(
   gate_uns_method = "min"
 )
 }
+\arguments{
+\item{path_project}{character. Path to project directory.}
+
+\item{.data}{GatingSet. GatingSet object containing the flow cytometry data.}
+
+\item{ind_batch_list}{list. List of indices grouped by batch.}
+
+\item{path_dir_save}{character. Directory path to save the FCS files to.}
+
+\item{chnl}{character vector. Specific channels to gate on.}
+
+\item{gate_tbl}{data.frame. Pre-computed gate table, if available.}
+
+\item{trans_fn}{function. Transformation function to apply.}
+
+\item{trans_chnl}{character vector. Columns to transform.}
+
+\item{combn_exc}{list. Combinations of channels to exclude.}
+
+\item{gate_type_cyt_pos}{character. Gate type to use for cytokine-positive cells.}
+
+\item{gate_type_single_pos}{character. Gate type to use for single-positive cells.}
+
+\item{mult}{logical. Whether cells must be multi-positive.}
+
+\item{gate_uns_method}{character. Method to calculate unstimulated thresholds.}
+}
 \description{
 Uses the gates to write FCS files of marker-positive FCS files.
+}
+\examples{
+\dontrun{
+  # Write FCS files of cytokine-positive cells
+  stimgate_fcs_write(
+    path_project = "/path/to/project",
+    .data = gs,
+    ind_batch_list = list(batch1 = 1:10, batch2 = 11:20),
+    path_dir_save = "/path/to/output"
+  )
+}
 }

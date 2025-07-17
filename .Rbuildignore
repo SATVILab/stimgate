@@ -8,3 +8,5 @@
 ^\.github$
 ^data-raw$
 ^_dependencies\.R$
+^vignettes/
+^BIOCONDUCTOR_PREPARATION\.md$
