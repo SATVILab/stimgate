@@ -5,13 +5,20 @@ get_fs <- function() {
     dir.create(path_hub, recursive = TRUE)
   }
   tryCatch(
-    readRDS("inst/extdata/bodenmiller_bcr_xl_fs.rds"),
+    # don't want a package warning if file does not exist,
+    # clearly handling such an error
+    suppressWarnings(readRDS(
+      testthat::test_path(
+        "..inst/extdata/bodenmiller_bcr_xl_fs.rds"
+        ))),
     error = function(e) {
       path_hub <- file.path(Sys.getenv("HOME"), ".cache/R/ExperimentHub")
       if (!dir.exists(path_hub)) {
         dir.create(path_hub, recursive = TRUE)
       }
-      HDCytoData::Bodenmiller_BCR_XL_flowSet()
+      # get an odd flowSet slot droppig warning,
+      # which is unrelated to our functionality
+      suppressWarnings(HDCytoData::Bodenmiller_BCR_XL_flowSet())
     }
   )
 }
