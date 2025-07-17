@@ -14,7 +14,7 @@ jobs:
       - name: Set up environment
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y \
+          sudo apt-get install --no-install-recommends -y \
             libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev \
             libgit2-dev libjpeg-dev libpng-dev libx11-dev pandoc
 
