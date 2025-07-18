@@ -29,7 +29,8 @@ Imports:
     gtools,
     flowCore,
     flowWorkspace,
-    cluster
+    cluster,
+    ks
 Suggests:
     testthat (>= 3.0.0),
     HDCytoData,
