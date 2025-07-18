@@ -160,6 +160,7 @@
 }
 
 
+
 #' @title Get mid-probability cut
 .get_cp_pwmid <- function(high_ind_tbl, cp_scp) {
   # get table to model - all values above changepoint

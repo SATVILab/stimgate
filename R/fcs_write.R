@@ -235,7 +235,6 @@ stimgate_fcs_write <- function(path_project, # project directory
     dplyr::filter(.data$ind == .env$ind) # nolint
 
   ex <- .fcs_write_impl_filter_inc(
-    ex, gate_tbl_ind, mult, chnl,
     gate_type_cyt_pos, gate_type_single_pos
   )
 
