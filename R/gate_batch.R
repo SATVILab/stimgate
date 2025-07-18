@@ -1,6 +1,4 @@
-#' @title Get cutpoints for a single batch
-#'
-#' @inheritParams stimgate_gate
+# Get cutpoints for a single batch
 .gate_batch <- function(.data,
                         ind_batch,
                         pop_gate,

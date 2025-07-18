@@ -20,7 +20,6 @@
 #' @aliases marker_lab, chnl_to_marker, marker_to_chnl, get_marker, get_chnl
 #' @export
 chnl_lab <- function(data) {
-  .install_pkg_bioc("flowCore") # nolint
   adf <- switch(class(data)[1],
     "flowFrame" = flowCore::parameters(data)@data,
     "flowSet" = flowCore::parameters(data[[1]])@data,
