@@ -24,6 +24,39 @@
 )
 }
 \arguments{
+\item{marker}{list. List where each element specifies the parameters to be
+used to gate a given marker including the name of the marker itself.}
+
+\item{bias_uns}{numeric. Bias for unstimulated data. Default is NULL.}
+
+\item{bias_uns_factor}{numeric. Factor for unstimulated bias. Default is 1.}
+
+\item{exc_min}{logical. Whether to exclude minimum values. Default is TRUE.}
+
+\item{.data}{GatingSet. GatingSet from which to draw the data.}
+
+\item{pop_gate}{character vector. Populations for which separate gates are
+to be calculated. Default is "root".}
+
+\item{bw_min}{numeric. Minimum bandwidth. Default is NULL.}
+
+\item{cp_min}{numeric. Minimum cutpoint value. Default is NULL.}
+
+\item{min_cell}{numeric. Minimum number of cells required. Default is 1e2.}
+
+\item{tol_clust}{numeric. Tolerance for clustering. Default is 1e-7.}
+
+\item{max_pos_prob_x}{numeric. Maximum positive probability x-value. Default is Inf.}
+
+\item{gate_combn}{character. Method for combining gates. Default is "min".}
+
+\item{marker_settings}{list. Additional marker settings. Default is NULL.}
+
+\item{path_project}{character. Path to project directory. Results are saved
+here.}
+
+\item{.debug}{logical. Whether to enable debug output. Default is FALSE.}
+
 \item{data_name}{character. Name of dataset to be gated ('gs_cytof' or 'gs_proto').}
 }
 \value{

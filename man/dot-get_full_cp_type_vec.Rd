@@ -6,6 +6,9 @@
 \usage{
 .get_full_cp_type_vec(fdr)
 }
+\arguments{
+\item{fdr}{numeric. False discovery rate threshold.}
+}
 \value{
 Character vector, where each element is name of a
 cutpoint, and all elements together represent names of all cutpoints.
