@@ -19,6 +19,7 @@ globalVariables(c(
   "dir_save", "is.null_gate_tbl", "path_project", "exc_min", "prop_bs_diff",
   "prop_stim", "prop_uns", "prop_bs", "prob_smooth", "n_row", "y_stim", 
   "y_uns", "stim", "x_stim", "prob", "x_uns", "prop_lab", "type", "line_id",
+  "dens", "no", "yes", "prob_stim", "prob_stim_norm", "prop_pos",
   # Variables used in plots and ggplot2 context
   ".debug", "prop_l1se"
 ))
