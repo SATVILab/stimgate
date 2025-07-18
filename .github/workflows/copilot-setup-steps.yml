@@ -33,7 +33,6 @@ jobs:
         run: |
           RHOME=$(R RHOME | tr -d '"')
           f=${RHOME}/etc/Rprofile.site
-          f="${{ steps.findpath.outputs.rprofile_site }}"
           echo "Appending CRAN mirror to: $f"
           sudo mkdir -p "$(dirname "$f")"
           sudo touch "$f"
