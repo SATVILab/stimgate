@@ -73,15 +73,15 @@ Main function to identify cytokine-positive cells by gating and generate associa
 }
 \examples{
 \dontrun{
-  # Basic usage
-  result <- stimgate_gate(
-    path_project = "/path/to/project",
-    .data = gs,
-    batch_list = list(batch1 = 1:10, batch2 = 11:20),
-    marker = list(
-      list(cut = "IL2", tol = 0.5e-8),
-      list(cut = "TNFa", tol = 0.5e-8)
-    )
+# Basic usage
+result <- stimgate_gate(
+  path_project = "/path/to/project",
+  .data = gs,
+  batch_list = list(batch1 = 1:10, batch2 = 11:20),
+  marker = list(
+    list(cut = "IL2", tol = 0.5e-8),
+    list(cut = "TNFa", tol = 0.5e-8)
   )
+)
 }
 }
