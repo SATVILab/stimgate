@@ -1,4 +1,3 @@
-
 # Prepare expression data list with bias and noise adjustments
 # Gets measurements for samples and applies bias and noise modifications
 # Returns a list where each element is a numeric vector
@@ -207,10 +206,10 @@
 
 
 # Get axis labels from annotated .data frame
-# 
+#
 # Get axis labels for cut and high channels
 # using the annotated .data frame.
-# 
+#
 # Get channel labels from GatingHierarchy
 # Returns a named vector mapping channel names to marker names
 .get_labs <- function(.data, chnl_cut, high = NULL) {

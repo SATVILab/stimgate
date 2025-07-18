@@ -11,7 +11,7 @@ globalVariables(c(
   "chnl_cut", "tol", "ind_in_batch_gate", "tol_clust_single", "ind_batch_gate",
   "cp", "grp", "cp_join_lse_orig_mean_tg", "cp_orig_quant_min", "cp_join",
   "cp_join_lse", "cp_join_lse_orig", "cp_join_lse_orig_mean", "cp_join_tg_orig",
-  "cp_join_tg_orig_mean", "prop_bs_orig", 
+  "cp_join_tg_orig_mean", "prop_bs_orig",
   "prop_bs_cp_diff", "prop_bs_cp_diff_sd",
   "prop_bs_cp", "prop_l1se", "pred", "der", "cp_orig", "max_expr", "gate_05",
   "prop_bs_cp_diff_sd_max", "grp_level", "ind_vec", "x1", "x", "y", "x_ind",
@@ -20,15 +20,15 @@ globalVariables(c(
   "freq_stim", "pop_gate_curr", "cp_join_tg", "cp_orig_quant_min", "lse_orig",
   "cp_tg_ctrl", "cp_join_lse_orig_mean", "cp_join_tg_orig", "chnl_pos",
   "dir_save", "is.null_gate_tbl", "path_project", "exc_min", "prop_bs_diff",
-  "prop_stim", "prop_uns", "prop_bs", "prob_smooth", "n_row", "y_stim", 
+  "prop_stim", "prop_uns", "prop_bs", "prob_smooth", "n_row", "y_stim",
   "y_uns", "stim", "x_stim", "prob", "x_uns", "prop_lab", "type", "line_id",
   "dens", "no", "yes", "prob_stim", "prob_stim_norm", "prop_pos",
   # Variables from .get_cp_uns_loc_prob_tbl_filter
-  "minor_response_ind", "moderate_response_ind", "n_remaining", 
+  "minor_response_ind", "moderate_response_ind", "n_remaining",
   "prob_larger_count", "prob_larger_prop",
   # Variables from .get_prop_bs_by_cp_tbl_ind_calc
-  "count_stim_cp", "count_uns_cp", "prop_stim_cp", "prop_uns_cp", 
-  "prop_bs_sd", "prop_stim_pos_cp", "prop_uns_pos_cp", "prop_stim_sd_cp", 
+  "count_stim_cp", "count_uns_cp", "prop_stim_cp", "prop_uns_cp",
+  "prop_bs_sd", "prop_stim_pos_cp", "prop_uns_pos_cp", "prop_stim_sd_cp",
   "prop_uns_sd_cp", "prop_bs_sd_cp",
   # Variables from other functions
   "cyt_combn", "freq_uns", "V1", "V2", "i", "tol_gate_single",

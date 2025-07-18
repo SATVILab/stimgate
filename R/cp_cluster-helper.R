@@ -300,7 +300,7 @@
   .get_prop_bs_by_cp_tbl_ind_init(ex_stim, ex_uns, par_list, cp_seq) |>
     .get_prop_bs_by_cp_tbl_ind_calc(
       attr(ex_stim, "n_cell"), attr(ex_uns, "n_cell")
-      )
+    )
 }
 
 
@@ -471,7 +471,7 @@
     from = expr_min, to = expr_max, bw = bw
   )
   tibble::tibble(
-    batch = batch[[1]],ind = ind[[1]],
+    batch = batch[[1]], ind = ind[[1]],
     y = dens[["y"]], x = dens[["x"]],
     x_ind = paste0("x", seq_len(length(dens[["y"]])))
   ) |>
@@ -737,7 +737,7 @@
           return(max(data_mod_curr_grp$cp, na.rm = TRUE))
         }
         data_pred <- tibble::tibble(
-          cp = seq(min_cp_permitted, cp_range[2],length.out = 1e5)
+          cp = seq(min_cp_permitted, cp_range[2], length.out = 1e5)
         )
         data_pred <- data_pred |> dplyr::mutate(
           pred = predict(fit, newdata = data_pred, type = "response")
@@ -1187,4 +1187,3 @@
   }
   cp_tbl <- cp_tbl |> dplyr::arrange(ind) # nolint
 }
-

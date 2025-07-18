@@ -375,7 +375,7 @@
 .arrange_samples_by_desc_expr <- function(ex_list) {
   # arrange in descending order of expression
   ex_list |>
-    purrr::map(function(x)  x[order(.get_cut(x)), ]) # nolint
+    purrr::map(function(x) x[order(.get_cut(x)), ]) # nolint
 }
 
 .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn <- function(.debug,
@@ -395,7 +395,7 @@
 # ------------------------------------------
 
 # Get cutpoint for a range of samples given the q-value and fdr
-# 
+#
 # Calculate the cutpoint for each
 # Get unstim-based cutpoint for samples using local FDR
 .get_cp_uns_loc_sample <- function(ex_list_orig,
@@ -425,9 +425,9 @@
     )
     if (too_few_cells_lgl) {
       return(.get_cp_uns_loc_ind_check_out(
-          cp_min, ex_list_no_min_stim[[i]],
-          ex_tbl_uns_bias, .debug, "Too few cells"
-        ))
+        cp_min, ex_list_no_min_stim[[i]],
+        ex_tbl_uns_bias, .debug, "Too few cells"
+      ))
     }
 
     # remove any cytokine-positive cells from unstim using gates from
@@ -519,7 +519,7 @@
   .prepare_ex_list_with_bias_and_noise( # nolint
     ex_list = stats::setNames(
       list(ex_tbl_uns_orig), attr(ex_tbl_uns_orig, "ind_uns")
-      ),
+    ),
     ind = attr(ex_tbl_uns_orig, "ind_uns"),
     exc_min = exc_min,
     bias = bias,
@@ -614,7 +614,7 @@
   list(
     cp = .get_cp_uns_loc_ind_cp_non_loc(
       cp_min, ex_tbl_stim_no_min, ex_tbl_uns_bias
-      ), # nolint
+    ), # nolint
     p_list = .get_cp_uns_loc_p_list_empty()
   )
 }
@@ -831,14 +831,14 @@
   density_exc_min_stim <- density(ex_vec_stim_threshold)
   dens_tbl_stim <- tibble::tibble(
     x = density_exc_min_stim$x, y = density_exc_min_stim$y
-    )
+  )
   peak_stim <- dens_tbl_stim |>
     dplyr::filter(y == max(y)) |> # nolint
     dplyr::pull("x") # nolint
   density_exc_min_uns <- density(ex_vec_uns_threshold)
   dens_tbl_uns <- tibble::tibble(
     x = density_exc_min_uns$x, y = density_exc_min_uns$y
-    )
+  )
   peak_uns <- dens_tbl_uns |>
     dplyr::filter(y == max(y)) |> # nolint
     dplyr::pull("x") # nolint
@@ -879,7 +879,7 @@
     # detect places of consistent non-response
     dplyr::mutate(
       prob_larger_count = purrr::map_int(x_stim, function(x) {
-        sum(prob_tbl$moderate_response_ind[prob_tbl$x_stim >= x]) 
+        sum(prob_tbl$moderate_response_ind[prob_tbl$x_stim >= x])
       }),
       prob_larger_prop = prob_larger_count / n_remaining # nolint
     ) |>
@@ -890,9 +890,8 @@
       -c(
         prob_larger_prop, minor_response_ind, moderate_response_ind,
         n_remaining, prob_larger_count
-        )
+      )
     )
-  
 }
 
 .get_cp_uns_loc_get_min_prob_x <- function(prob_tbl_pos) {
@@ -933,13 +932,13 @@
     ))
   }
   prob_vec <- approx(
-      x = prob_tbl_list$pos$x_stim,
-      y = prob_tbl_list$pos$prob_stim_norm,
-      xout = data_mod[[1]],
-      method = "linear",
-      f = 0.5,    # midpoint rule → nearest
-      rule = 2    # outside range: use end‐points
-    )$y
+    x = prob_tbl_list$pos$x_stim,
+    y = prob_tbl_list$pos$prob_stim_norm,
+    xout = data_mod[[1]],
+    method = "linear",
+    f = 0.5, # midpoint rule → nearest
+    rule = 2 # outside range: use end‐points
+  )$y
 
   data_mod |>
     dplyr::mutate(prob_smooth = prob_vec)
@@ -988,30 +987,31 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 .get_cp_uns_loc_get_prob_smooth_actual_first <- function(data_mod, .debug) {
   .debug_msg(.debug, "Smoothing I") # nolint
-  try({
-    fml <- as.formula(paste0(
-      "prob_smooth ~ s(x_stim), bs = 'mpi')"
-    ))
-    scam::scam(
-      fml, # nolint
-      family = "binomial",
-      .data = data_mod |>
-        dplyr::mutate(
-          prob_smooth = pmin(prob_smooth, 0.999),
-          prob_smooth = pmax(prob_smooth, 0.001)
-        ),
-      control = scam::scam.control(
-        print.warn = FALSE,
-        trace = FALSE,
-        devtol.fit = 0.5,
-        steptol.fit = 1e-1,
-        maxHalf = 5,
-        bfgs = list(steptol.bfgs = 1e-1),
-        maxit = 1e1
+  try(
+    {
+      fml <- as.formula(paste0(
+        "prob_smooth ~ s(x_stim), bs = 'mpi')"
+      ))
+      scam::scam(
+        fml, # nolint
+        family = "binomial",
+        .data = data_mod |>
+          dplyr::mutate(
+            prob_smooth = pmin(prob_smooth, 0.999),
+            prob_smooth = pmax(prob_smooth, 0.001)
+          ),
+        control = scam::scam.control(
+          print.warn = FALSE,
+          trace = FALSE,
+          devtol.fit = 0.5,
+          steptol.fit = 1e-1,
+          maxHalf = 5,
+          bfgs = list(steptol.bfgs = 1e-1),
+          maxit = 1e1
+        )
       )
-    )
-  },
-  silent = TRUE
+    },
+    silent = TRUE
   )
 }
 
@@ -1062,20 +1062,22 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 .get_cp_uns_loc_get_prob_smooth_actual_second <- function(data_mod, .debug) {
   .debug_msg(.debug, "Smoothing II") # nolint
-  try({
-    fml <- as.formula(paste0(
-      "prob_smooth ~ s(x_stim), bs = 'micv')"
-    ))
-    scam::scam(
-      fml,
-      family = "binomial",
-      .data = data_mod,
-      control = scam::scam.control(
-        print.warn = FALSE,
-        trace = FALSE,
-        devtol.fit = 0.01
+  try(
+    {
+      fml <- as.formula(paste0(
+        "prob_smooth ~ s(x_stim), bs = 'micv')"
+      ))
+      scam::scam(
+        fml,
+        family = "binomial",
+        .data = data_mod,
+        control = scam::scam.control(
+          print.warn = FALSE,
+          trace = FALSE,
+          devtol.fit = 0.01
+        )
       )
-    )},
+    },
     silent = TRUE
   )
 }

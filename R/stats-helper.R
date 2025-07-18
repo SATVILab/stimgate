@@ -1,6 +1,6 @@
 .get_stats_chnl_lab_get <- function(chnl_lab,
-                                         .data,
-                                         chnl) {
+                                    .data,
+                                    chnl) {
   if (is.null(chnl_lab)) {
     chnl_lab <- .get_labs( # nolint
       .data = .data[[1]],

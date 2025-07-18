@@ -19,13 +19,13 @@
 #'
 #' @examples
 #' \dontrun{
-#'   # Write FCS files of cytokine-positive cells
-#'   stimgate_fcs_write(
-#'     path_project = "/path/to/project",
-#'     .data = gs,
-#'     ind_batch_list = list(batch1 = 1:10, batch2 = 11:20),
-#'     path_dir_save = "/path/to/output"
-#'   )
+#' # Write FCS files of cytokine-positive cells
+#' stimgate_fcs_write(
+#'   path_project = "/path/to/project",
+#'   .data = gs,
+#'   ind_batch_list = list(batch1 = 1:10, batch2 = 11:20),
+#'   path_dir_save = "/path/to/output"
+#' )
 #' }
 #' @export
 stimgate_fcs_write <- function(path_project, # project directory
@@ -109,7 +109,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   gate_tbl_uns <- .fcs_write_get_gate_tbl_add_uns_get_uns(
     gate_uns_method, ind_batch_list
   )
-  
+
   if ("gate_cyt" %in% colnames(gate_tbl)) {
     gate_tbl_uns <- gate_tbl_uns |>
       dplyr::mutate(gate_cyt = pmin(gate, gate_cyt)) # nolint
@@ -173,7 +173,9 @@ stimgate_fcs_write <- function(path_project, # project directory
 .fcs_write_get_gate_tbl_add_uns_get_uns_ind <- function(gate_tbl,
                                                         ind_batch_list) {
   ind_batch_vec <- lapply(ind_batch_list, function(x) {
-    (x[-length(x)]) |> sort() |> paste0(collapse = "_")
+    (x[-length(x)]) |>
+      sort() |>
+      paste0(collapse = "_")
   }) |>
     unlist()
   ind_uns_vec <- lapply(ind_batch_list, function(x) x[length(x)]) |>
@@ -224,7 +226,6 @@ stimgate_fcs_write <- function(path_project, # project directory
                             combn_exc,
                             trans_fn,
                             trans_chnl) {
-
   fr <- .fcs_write_impl_load(.data, ind)
   ex <- flowCore::exprs(fr) |> tibble::as_tibble()
 
@@ -319,7 +320,7 @@ stimgate_fcs_write <- function(path_project, # project directory
 .fcs_write_impl_trans <- function(ex,
                                   trans_fn,
                                   trans_chnl) {
-      # transform
+  # transform
   if (is.null(trans_fn)) {
     return(ex)
   }
@@ -332,7 +333,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   }
   ex
 }
-.fcs_write_impl_write <- function(ex, 
+.fcs_write_impl_write <- function(ex,
                                   fr,
                                   path_dir_save) {
   flowCore::exprs(fr) <- as.matrix(ex)

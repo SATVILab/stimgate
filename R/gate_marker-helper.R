@@ -366,13 +366,13 @@
 }
 
 .gate_marker_gate_adj_gates_single_out_get_gn <- function(.debug,
-                                                           gn,
-                                                           gate_tbl,
-                                                           gate_stats_tbl,
-                                                           gate_tbl_ctrl_clust,
-                                                           gate_tbl_ctrl_ctrl,
-                                                           gate_tbl_single_gn,
-                                                           params) {
+                                                          gn,
+                                                          gate_tbl,
+                                                          gate_stats_tbl,
+                                                          gate_tbl_ctrl_clust,
+                                                          gate_tbl_ctrl_ctrl,
+                                                          gate_tbl_single_gn,
+                                                          params) {
   .debug_msg(.debug, "gate_name_vec", gn) # nolint
   gate_tbl_gn <- gate_tbl |>
     dplyr::filter(gate_name == gn) # nolint
@@ -478,6 +478,6 @@
   unique_ind <- unique(gate_stats_tbl$ind)
   tibble::tibble(
     ind = unique_ind,
-    gate = rep(0.5, length(unique_ind))  # placeholder gate values
+    gate = rep(0.5, length(unique_ind)) # placeholder gate values
   )
 }

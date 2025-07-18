@@ -1,4 +1,3 @@
-
 .gate_marker <- function(.data,
                          ind_batch_list,
                          pop_gate,

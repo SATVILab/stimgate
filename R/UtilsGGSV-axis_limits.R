@@ -74,7 +74,6 @@
 axis_limits <- function(p,
                         limits_expand = NULL,
                         limits_equal = FALSE) {
-
   # initial check
   # ------------------------
 
