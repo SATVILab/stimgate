@@ -11,7 +11,7 @@ jobs:
 
     steps:
       # 0. Set up the environment
-      - name: Set up environment
+      - name: Install system dependencies setup-r does not
         run: |
           sudo apt-get update -y
           sudo apt-get install --no-install-recommends -y \
@@ -28,19 +28,16 @@ jobs:
           r-version: '4.4.2' # The R version to download (if necessary) and use.
           # Use "renv" to retrieve R version recorded in renv.lock file.
 
-      - name: Locate system Rprofile.site
-        id: findpath
-        run: |
-          RHOME=$(R RHOME | tr -d '"')
-          echo "rprofile_site=${RHOME}/etc/Rprofile.site" >>$GITHUB_OUTPUT
-
+      # 3. Set up CRAN mirror
       - name: Ensure and set CRAN mirror
         run: |
-          echo "Appending CRAN mirror to: ${{ steps.findpath.outputs.rprofile_site }}"
-          sudo mkdir -p "$(dirname "${{ steps.findpath.outputs.rprofile_site }}")"
-          sudo touch "${{ steps.findpath.outputs.rprofile_site }}"
-          echo 'options(repos = c(CRAN = "https://cran.rstudio.com"))' |
-            sudo tee -a "${{ steps.findpath.outputs.rprofile_site }}"
+          RHOME=$(R RHOME | tr -d '"')
+          f=${RHOME}/etc/Rprofile.site
+          f="${{ steps.findpath.outputs.rprofile_site }}"
+          echo "Appending CRAN mirror to: $f"
+          sudo mkdir -p "$(dirname "$f")"
+          sudo touch "$f"
+          echo 'if (is.null(getOption("repos")[["CRAN"]])) options(repos = c(getOption("repos"), CRAN = "https://cran.rstudio.com"))' | sudo tee -a "$f"
 
       # 4. Set up pak
       - name: Install pak and BiocManager before using pak
@@ -52,7 +49,6 @@ jobs:
       - uses: r-lib/actions/setup-renv@v2
         env:
           RENV_CONFIG_PAK_ENABLED: "FALSE"
-          R_CRAN_MIRROR: "https://cran.r-project.org"
         with:
           profile: '"non_bioc_container"'
           bypass-cache: "never" # cache is not used otherwise
