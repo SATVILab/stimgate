@@ -57,6 +57,10 @@ if (!.is_ci()) {
   )), silent = TRUE)
 }
 
+if (!nzchar(getOption("repos"))){
+  options(repos = "https://cloud.r-project.org/")
+}
+
 try(suppressWarnings(rm(
   .set_renv_profile, .is_ci,
   .is_bioc_container, .is_devcontainer_config_r_feature
