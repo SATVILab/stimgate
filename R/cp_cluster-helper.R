@@ -220,8 +220,8 @@
 }
 
 .get_prop_bs_by_cp_tbl_data_list_final <- function(data_list, max_cp) {
-  expr_min_vec <- sapply(data_list, function(x) x$expr_min)
-  expr_max_vec <- sapply(data_list, function(x) x$expr_max)
+  expr_min_vec <- vapply(data_list, function(x) x$expr_min, numeric(1))
+  expr_max_vec <- vapply(data_list, function(x) x$expr_max, numeric(1))
   expr_min <- min(expr_min_vec, na.rm = TRUE)
   expr_max <- max(
     max(expr_max_vec, na.rm = TRUE),
