@@ -178,7 +178,7 @@ The function implements a multi-step workflow for identifying cytokine-positive 
 }
 }
 \examples{
-\dontrun{
+\donttest{
   # Load required libraries
   library(flowWorkspace)
   library(stimgate)

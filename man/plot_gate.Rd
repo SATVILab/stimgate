@@ -74,7 +74,7 @@ Plot bivariate hex and univariate density plots for batches of samples, along
 with their gates.
 }
 \examples{
-\dontrun{
+\donttest{
 plots <- plot_gate(
   ind = 20:22, # indices in `gs` to plot
   .data = gs, # GatingSet

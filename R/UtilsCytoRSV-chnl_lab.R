@@ -17,6 +17,16 @@
 #'
 #' @return A named character vector.
 #'
+#' @examples
+#' \donttest{
+#' # Create example flowFrame-like data structure
+#' data(GvHD, package = "flowCore") 
+#' fs <- GvHD[1:2]
+#' 
+#' # Get channel to marker mapping
+#' chnl_lab(fs[[1]])
+#' }
+#'
 #' @aliases marker_lab, chnl_to_marker, marker_to_chnl, get_marker, get_chnl
 #' @export
 chnl_lab <- function(data) {
