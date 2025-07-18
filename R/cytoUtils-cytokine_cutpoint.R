@@ -31,8 +31,9 @@
 #' @param auto_tol when TRUE, it tries to set the tolerance automatically.
 #' @param adjust the scaling adjustment applied to the bandwidth used in the
 #' first derivative of the kernel density estimate
+#' @param side character specifying the side of the gate, either
+#'  \code{'right'} (default) or \code{'left'}
 #' @param plot logical specifying whether to plot the peaks found
-#'  \code{'right'} (default) or \code{'left'}?
 #' @param ... additional arguments passed to \code{.deriv_density}
 #' @return the cutpoint along the x-axis
 .cytokine_cutpoint <- function(x, num_peaks = 1, ref_peak = 1,
