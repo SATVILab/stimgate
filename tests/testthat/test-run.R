@@ -25,8 +25,8 @@ test_that("stimgate_gate runs", {
   ))
 })
 
-test_that("stim_gate_plot function exists", {
+test_that("stimgate_plot function exists", {
   # Just test that the function exists and is callable
-  expect_true(exists("stim_gate_plot", envir = asNamespace("stimgate")))
-  expect_true(is.function(stimgate::stim_gate_plot))
+  expect_true(exists("stimgate_plot", envir = asNamespace("stimgate")))
+  expect_true(is.function(stimgate::stimgate_plot))
 })

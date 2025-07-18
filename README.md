@@ -64,7 +64,7 @@ stats <- get_stats("/path/to/project")
 gates <- get_gate_tbl("/path/to/project")
 
 # Visualize results
-plots <- stim_gate_plot(
+plots <- stimgate_plot(
   ind = seq_len(3),
   .data = gs,
   path_project = "/path/to/project",
@@ -97,7 +97,7 @@ plots <- stim_gate_plot(
 
 - `stimgate_gate()`: Main gating function to identify cytokine-positive cells
 - `get_stats()`: Generate comprehensive statistics from gating results  
-- `stim_gate_plot()`: Create bivariate hex and univariate density plots with gate overlays
+- `stimgate_plot()`: Create bivariate hex and univariate density plots with gate overlays
 - `get_gate_tbl()`: Extract gate thresholds and parameters
 - `stimgate_fcs_write()`: Export cytokine-positive cells as FCS files
 

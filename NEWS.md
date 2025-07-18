@@ -4,7 +4,7 @@
 
 * Main gating functionality via `stimgate_gate()` to identify responding cells
 * Statistics generation with `get_stats()` 
-* Visualization capabilities through `stim_gate_plot()`
+* Visualization capabilities through `stimgate_plot()`
 * FCS file writing with `stimgate_fcs_write()`
 * Gate table extraction via `get_gate_tbl()`
 
