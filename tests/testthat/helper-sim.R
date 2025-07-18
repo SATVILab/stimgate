@@ -1,9 +1,5 @@
 # fs
 get_fs <- function() {
-  path_hub <- file.path(Sys.getenv("HOME"), ".cache/R/ExperimentHub")
-  if (!dir.exists(path_hub)) {
-    dir.create(path_hub, recursive = TRUE)
-  }
   tryCatch(
     # don't want a package warning if file does not exist,
     # clearly handling such an error
