@@ -17,7 +17,6 @@
   if (is.null(chnl)) chnl <- unique(gate_tbl$chnl)
   pos_vec <- rep(FALSE, nrow(ex))
   for (chnl_curr in chnl) {
-    # print(chnl_curr)
     gate_tbl_chnl_ind <- which(gate_tbl$chnl == chnl_curr)
     gate_tbl_col_name <- switch(gate_type,
       "base" = "gate",

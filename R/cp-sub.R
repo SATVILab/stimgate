@@ -112,7 +112,6 @@
     ind_gate <- names(ex_list)[-length(ex_list)]
     cp_tg_vec <- purrr::map_dbl(ind_gate, function(ind) {
       .debug_msg(.debug, "ind", ind)
-      # print(ind)
       ex <- ex_list[[as.character(ind)]]
       ex <- ex[!is.na(.get_cut(ex)), ]
       if (exc_min) ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
@@ -157,7 +156,7 @@
 
   # check if too little .data to model with here
   if (nrow(mod_tbl) < 5 || length(unique(high_ind_tbl$high)) == 1) {
-    print("cp_pwmid set to cp_scp + 5 due to too few obs above cp_sc or too few postive obs")
+    message("cp_pwmid set to cp_scp + 5 due to too few obs above cp_sc or too few postive obs")
     return(cp_scp + 5)
   }
 

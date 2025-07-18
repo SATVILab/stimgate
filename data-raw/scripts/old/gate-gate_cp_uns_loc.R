@@ -214,8 +214,6 @@ if (plot && FALSE) {
   p_list <- .get_cp_uns_loc_p_list_empty()
 }
 
-# print('done getting loc fdr gate for this single sample')
-
 # min_diff_tbl
 # min_diff_tbl$prop_bs * 1e2
 
