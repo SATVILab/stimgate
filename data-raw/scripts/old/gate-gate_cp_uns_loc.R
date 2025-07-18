@@ -214,8 +214,6 @@ if (plot && FALSE) {
   p_list <- .get_cp_uns_loc_p_list_empty()
 }
 
-# print('done getting loc fdr gate for this single sample')
-
 # min_diff_tbl
 # min_diff_tbl$prop_bs * 1e2
 
@@ -275,23 +273,27 @@ if (plot && FALSE) {
   out
 }
 
-.get_prob_mod <- function(prob_tbl, nrow_level){
-
+.get_prob_mod <- function(prob_tbl, nrow_level) {
   prob_mod <- try(scam::scam(prob_stim_norm ~ s(x_stim, bs = "mpi"), #
-                         family = "binomial",
-                         data = prob_tbl |>
-                           dplyr::filter(prob_stim_norm > 0.25)))
+    family = "binomial",
+    data = prob_tbl |>
+      dplyr::filter(prob_stim_norm > 0.25)
+  ))
 
-  if(inherits(prob_mod, "try-error")){
+  if (inherits(prob_mod, "try-error")) {
     prob_mod <- try(scam::scam(prob_stim_norm ~ s(x_stim, bs = "micx"),
-                               family = "binomial",
-                               data = prob_tbl))
-  } else return(prob_mod)
+      family = "binomial",
+      data = prob_tbl
+    ))
+  } else {
+    return(prob_mod)
+  }
 
-  if(inherits(prob_mod, "try-error")){
+  if (inherits(prob_mod, "try-error")) {
     prob_mod <- try(mgcv::gam(prob_stim_norm ~ s(x_stim),
-                               family = "binomial",
-                               data = prob_tbl))
+      family = "binomial",
+      data = prob_tbl
+    ))
   }
 
   prob_mod

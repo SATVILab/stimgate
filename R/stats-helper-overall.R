@@ -83,10 +83,11 @@
   .debug_msg( # nolint
     .debug, "ind_batch: ", paste0(ind_batch, collapse = "-")
   )
-  # print progress
+  # message progress
   if (i %% 10 == 0 || i == length(ind_batch_list)) {
     if (combn && !filter_other_cyt_pos) {
-      print(paste0("batch ", i, " of ", length(ind_batch_list)))
+      txt <- paste0("batch ", i, " of ", length(ind_batch_list))
+      message(txt)
     }
   }
 }
@@ -240,16 +241,16 @@
 }
 
 .get_stats_batch_gn_combn <- function(j,
-                                           .debug,
-                                           ex,
-                                           ex_uns,
-                                           gate_tbl_gn_ind,
-                                           gn,
-                                           chnl,
-                                           combn_mat_list,
-                                           cyt_combn_vec_list,
-                                           gate_type_cyt_pos_calc,
-                                           gate_type_single_pos_calc) {
+                                      .debug,
+                                      ex,
+                                      ex_uns,
+                                      gate_tbl_gn_ind,
+                                      gn,
+                                      chnl,
+                                      combn_mat_list,
+                                      cyt_combn_vec_list,
+                                      gate_type_cyt_pos_calc,
+                                      gate_type_single_pos_calc) {
   .debug_msg(.debug, "number of cytokines positive: ", j) # nolint
   combn_mat <- combn_mat_list[[j]]
   cyt_combn <- cyt_combn_vec_list[[j]]
@@ -305,15 +306,15 @@
 }
 
 .get_stats_batch_gn_filter_or_non_combn <- function(.debug,
-                                                         ex_list,
-                                                         ind_batch,
-                                                         gate_tbl_gn,
-                                                         gn,
-                                                         chnl,
-                                                         filter_other_cyt_pos,
-                                                         gate_type_single_pos_calc, # nolint
-                                                         gate_type_cyt_pos_filter, # nolint
-                                                         gate_type_single_pos_filter) {
+                                                    ex_list,
+                                                    ind_batch,
+                                                    gate_tbl_gn,
+                                                    gn,
+                                                    chnl,
+                                                    filter_other_cyt_pos,
+                                                    gate_type_single_pos_calc, # nolint
+                                                    gate_type_cyt_pos_filter, # nolint
+                                                    gate_type_single_pos_filter) {
   .debug_msg(.debug, "filtering or not working out combinations") # nolint
   purrr::map_df(chnl, function(chnl_curr) {
     .debug_msg(.debug, "chnl_curr: ", chnl_curr) # nolint

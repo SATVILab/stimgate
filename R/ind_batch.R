@@ -25,11 +25,11 @@ get_batch_list <- function(fn_tbl_info,
     if (!uns_chr %in% sel_vec_stim_final) {
       return(NULL)
     }
-    
+
     fn_tbl_sel <- fn_tbl_info[sel_vec_ind, ]
     row_number_uns <- fn_tbl_sel[["row_number"]][
       fn_tbl_sel[[col_stim]] == uns_chr
-      ]
+    ]
     c(
       setdiff(fn_tbl_sel[["row_number"]], row_number_uns),
       row_number_uns

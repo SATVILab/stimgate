@@ -24,7 +24,7 @@
     max_pos_prob_x = max_pos_prob_x
   )
   marker_list <- purrr::map(marker, function(marker_curr) {
-   .complete_marker_list_ind(
+    .complete_marker_list_ind(
       marker = marker_curr,
       marker_settings_common = marker_settings_common,
       marker_settings_spec = list(chnl_cut = marker_curr) |>
@@ -51,7 +51,6 @@
                                       pop_gate,
                                       .debug,
                                       ind_batch_list) {
-
   marker_settings <- .complete_marker_list_add_common(
     marker_settings_common = marker_settings_common,
     marker_settings = marker_settings_spec

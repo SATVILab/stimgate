@@ -1,14 +1,14 @@
 #' @title Get gates
-#' 
+#'
 #' @description Get all the gates for each of the markers gated.
-#' 
+#'
 #' @param path_project character. Path to the project directory.
-#' 
+#'
 #' @return Gate table with gates for each sample for each marker.
 #' @examples
 #' \dontrun{
-#'   # Get gate table from project directory
-#'   gate_tbl <- get_gate_tbl("/path/to/project")
+#' # Get gate table from project directory
+#' gate_tbl <- get_gate_tbl("/path/to/project")
 #' }
 #' @export
 get_gate_tbl <- function(path_project) {
@@ -20,4 +20,3 @@ get_gate_tbl <- function(path_project) {
       dplyr::filter(chnl == dir_curr)
   })
 }
-

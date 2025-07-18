@@ -38,7 +38,7 @@ The package provides several key functions:
 # Basic gating workflow
 result <- stimgate_gate(
   path_project = "/path/to/project",
-  .data = gs,  # GatingSet object
+  .data = gs, # GatingSet object
   batch_list = list(batch1 = 1:10, batch2 = 11:20),
   marker = list(
     list(cut = "IL2", tol = 0.5e-8),
@@ -62,3 +62,7 @@ plots <- plot_gate(
 ```
 
 For more detailed examples and advanced usage, please refer to the function documentation.
+
+```{r}
+sessionInfo()
+```

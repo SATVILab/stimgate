@@ -1,4 +1,3 @@
-
 .gate_marker <- function(.data,
                          ind_batch_list,
                          pop_gate,
@@ -19,7 +18,7 @@
                          calc_cyt_pos_gates,
                          path_project,
                          .debug) {
-  # print progress
+  # message progress
   .debug_msg(.debug, "pop_gate: ", pop_gate) # nolint
 
   # Parameters list
@@ -83,7 +82,7 @@
   # Get adjusted and/or clustered gates
   # ----------------
 
-  print("getting clustered and/or controlled gates")
+  message("getting clustered and/or controlled gates")
 
   # =================================================
   # Cluster-based or tail-gate controlled gating

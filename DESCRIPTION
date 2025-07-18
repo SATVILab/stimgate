@@ -1,20 +1,20 @@
 Package: stimgate
 Type: Package
 Title: Identify responding cells as outliers
-Version: 0.3.1.9014
+Version: 0.99.0
 Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-2036-4878"))
-Maintainer: Miguel Rodo <miguel.rodo@uct.ac.za>
 Description: Apply outlier gating function to identify cells that have possibly
     responded to stimulation, by comparing the unstimulated and stimulated tubes
     from the same sample.
 URL: https://github.com/SATVILab/stimgate
 BugReports: https://github.com/SATVILab/stimgate/issues
-License: GPL (>= 2) + file LICENSE
+License: GPL (>= 2)
 Encoding: UTF-8
 Depends: R (>= 3.5.0)
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 biocViews: FlowCytometry, SingleCell, CellBasedAssays, ImmunoOncology
+VignetteEngine: knitr
 Imports:
     cowplot,
     dplyr,
@@ -34,4 +34,5 @@ Suggests:
     testthat (>= 3.0.0),
     HDCytoData,
     here,
-    BiocManager
+    BiocManager,
+    knitr

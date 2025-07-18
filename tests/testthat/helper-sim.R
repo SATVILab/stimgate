@@ -6,7 +6,8 @@ get_fs <- function() {
     suppressWarnings(readRDS(
       testthat::test_path(
         "../../inst/extdata/bodenmiller_bcr_xl_fs.rds"
-        ))),
+      )
+    )),
     error = function(e) {
       path_hub <- file.path(Sys.getenv("HOME"), ".cache/R/ExperimentHub")
       if (!dir.exists(path_hub)) {
@@ -23,7 +24,7 @@ get_chnl_list <- function(fs) {
   set.seed(123)
   batch_list <- lapply(1:8, function(i) seq((i - 1) * 2 + 1, i * 2))
   chnl_vec <- c("BC1(La139)Dd", "BC2(Pr141)Dd")
-  args_list_bc1  <- list(
+  args_list_bc1 <- list(
     batch_list = batch_list,
     chnl = "BC1(La139)Dd",
     prop_mean_pos = 0.05,
@@ -38,7 +39,7 @@ get_chnl_list <- function(fs) {
     batch_list = batch_list,
     chnl = "BC2(Pr141)Dd",
     prop_mean_pos = 0.01,
-    prop_sd_pos = 0.01, 
+    prop_sd_pos = 0.01,
     prop_mean_neg = 0.005,
     prop_sd_neg = 0.0075,
     expr_mean_neg = 0,
@@ -100,7 +101,6 @@ sample_chnl <- function(fs,
     prop_pos = rep(NA_real_, length(fs)),
   )
   for (i in seq_along(batch_list)) {
-
     ind_uns <- batch_list[[i]][length(batch_list[[i]])]
     ind_stim_vec <- setdiff(batch_list[[i]], ind_uns)
     for (ind_stim in ind_stim_vec) {
@@ -135,7 +135,7 @@ sample_chnl <- function(fs,
       expr_mean_neg = expr_mean_neg,
       expr_mean_pos = expr_mean_pos,
       expr_sd_pos = expr_sd_pos,
-      expr_sd_neg = expr_sd_neg   
+      expr_sd_neg = expr_sd_neg
     )
     ex_mat_uns[, chnl] <- response_uns$expr_vec
     flowCore::exprs(fr_uns) <- ex_mat_uns
@@ -187,11 +187,11 @@ sample_n_pos <- function(n, prop_mean, prop_sd, eps = 1e-8) {
   # Compute the maximum SD and force prop_sd < max_sd
   max_sd <- sqrt(prop_mean * (1 - prop_mean))
   prop_sd <- min(prop_sd, max_sd * (1 - eps))
-  
-  nu    <- prop_mean * (1 - prop_mean) / prop_sd^2 - 1
+
+  nu <- prop_mean * (1 - prop_mean) / prop_sd^2 - 1
   alpha <- prop_mean * nu
-  beta  <- (1 - prop_mean) * nu
-  
+  beta <- (1 - prop_mean) * nu
+
   round(n * rbeta(n = 1, shape1 = alpha, shape2 = beta))
 }
 
@@ -240,7 +240,7 @@ calc_resp_combn <- function(chnl_list) {
       n_pos_chnl, chnl, batch, sample_ind, n_cell, ind, prop_pos, prop_bs,
       everything()
     )
- }
+}
 calc_resp_combn_get_combn_pos <- function(chnl_list) {
   chnl_vec <- names(chnl_list)
   # get combinations
