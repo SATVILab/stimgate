@@ -29,17 +29,3 @@ between channel names and marker names (e.g. chnl_to_marker).
 Note that chnl_lab is equivalent to chnl_to_marker,
 and marker_lab is equivalent to marker_to_chnl.
 }
-\examples{
-\donttest{
-# Create a simple flowFrame for demonstration
-library(flowCore)
-# Simple example with simulated data
-mat <- matrix(rnorm(1000), ncol = 4)
-colnames(mat) <- c("FSC-A", "SSC-A", "CD3-PE", "CD4-APC")
-ff <- flowFrame(mat)
-
-# Get channel to marker mapping
-chnl_mapping <- chnl_lab(ff)
-print(chnl_mapping)
-}
-}

@@ -71,9 +71,6 @@ Default is \code{"histogram"}.}
 \item{...}{arguments passed to \code{ggplot2::geom_hex} (for bivariate data)
 or whichever geom is used for univariate data.}
 }
-\value{
-A ggplot object containing the hexagonal binned plot for the specified cytometry data.
-}
 \description{
 Plot a hex-plot with suitable default for a single
 sample for cytometry (CyTOF, flow) data.
@@ -87,20 +84,5 @@ Uses the following defaults:
 \item If a hex plot, then fill colour is defined by
 \code{scale_fill_viridis_c} with params \code{trans = 'log10'}.
 \item axis units are equal between the axes
-}
-}
-\examples{
-\donttest{
-# Create sample data for demonstration
-library(flowCore)
-mat <- matrix(rnorm(1000), ncol = 4)
-colnames(mat) <- c("FSC-A", "SSC-A", "CD3-PE", "CD4-APC")
-ff <- flowFrame(mat)
-
-# Plot single marker
-plot_cyto(ff, marker = "CD3-PE")
-
-# Plot two markers as hex plot
-plot_cyto(ff, marker = c("CD3-PE", "CD4-APC"))
 }
 }
