@@ -17,7 +17,7 @@ Get all the gates for each of the markers gated.
 }
 \examples{
 \dontrun{
-  # Get gate table from project directory
-  gate_tbl <- get_gate_tbl("/path/to/project")
+# Get gate table from project directory
+gate_tbl <- get_gate_tbl("/path/to/project")
 }
 }
