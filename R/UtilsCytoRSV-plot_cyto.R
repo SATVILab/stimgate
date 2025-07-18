@@ -61,27 +61,6 @@
 #' }
 #'
 #' @import ggplot2
-#'
-#' @examples
-#' if (!requireNamespace("flowCore", quietly = TRUE)) {
-#'   if (!requireNamespace("BiocManager", quietly = TRUE)) {
-#'     install.packages("BiocManager")
-#'   }
-#'   BiocManager::install("flowCore")
-#' }
-#' data("GvHD", package = "flowCore")
-#' ex_tbl <- flowCore::exprs(GvHD[[1]])
-#' marker <- c("FL2-H", "FL3-H")
-#' plot_cyto(
-#'   data = ex_tbl,
-#'   marker = marker
-#' )
-#' lab_vec <- chnl_lab(data = GvHD)
-#' plot_cyto(
-#'   data = ex_tbl,
-#'   marker = marker,
-#'   lab = lab_vec
-#' )
 plot_cyto <- function(data, marker, lab = NULL,
                       coord_equal = TRUE,
                       limits_expand = NULL, limits_equal = FALSE,
@@ -118,9 +97,6 @@ plot_cyto <- function(data, marker, lab = NULL,
   }
   if (!is.numeric(font_size)) {
     stop("font_size must be numeric")
-  }
-  if (!requireNamespace("hexbin", quietly = TRUE)) {
-    .install_pkg_cran("hexbin") # nolint
   }
   invisible(TRUE)
 }

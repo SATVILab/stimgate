@@ -18,13 +18,6 @@
 #' @return A named character vector.
 #'
 #' @aliases marker_lab, chnl_to_marker, marker_to_chnl, get_marker, get_chnl
-#'
-#' @examples
-#' data("GvHD", package = "flowCore")
-#' chnl_lab(GvHD)
-#' marker_lab(GvHD)
-#' fr <- GvHD[[1]]
-#' chnl_lab(fr)
 chnl_lab <- function(data) {
   .install_pkg_bioc("flowCore") # nolint
   adf <- switch(class(data)[1],
