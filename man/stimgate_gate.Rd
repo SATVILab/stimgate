@@ -240,7 +240,7 @@ The function implements a multi-step workflow for identifying cytokine-positive 
   )
   
   # Access results
-  gates <- get_gate_tbl(result_path)     # Get gate table
+  gates <- stimgate_gate_get(result_path)     # Get gate table
   stats <- get_stats(result_path)        # Get statistics
   
   # Create visualizations
@@ -253,7 +253,7 @@ The function implements a multi-step workflow for identifying cytokine-positive 
 }
 }
 \seealso{
-\code{\link{get_gate_tbl}} for extracting gate information,
+\code{\link{stimgate_gate_get}} for extracting gate information,
 \code{\link{get_stats}} for generating statistics from results,
 \code{\link{plot_gate}} for visualizing identified gates,
 \code{\link{stimgate_fcs_write}} for exporting cytokine-positive cells,

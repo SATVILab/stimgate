@@ -6,7 +6,7 @@
 * Statistics generation with `get_stats()` 
 * Visualization capabilities through `plot_gate()`
 * FCS file writing with `stimgate_fcs_write()`
-* Gate table extraction via `get_gate_tbl()`
+* Gate table extraction via `stimgate_gate_get()`
 
 ## Minor improvements and bug fixes
 

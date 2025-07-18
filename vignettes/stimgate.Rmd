@@ -29,7 +29,7 @@ The package provides several key functions:
 - `stimgate_gate()`: Main function to identify cytokine-positive cells by gating
 - `get_stats()`: Generate statistics from gating results
 - `plot_gate()`: Visualize identified gates
-- `get_gate_tbl()`: Extract gate information
+- `stimgate_gate_get()`: Extract gate information
 - `stimgate_fcs_write()`: Write FCS files of cytokine-positive cells
 
 ## Basic Usage
@@ -50,7 +50,7 @@ result <- stimgate_gate(
 stats <- get_stats("/path/to/project")
 
 # Get gate table
-gates <- get_gate_tbl("/path/to/project")
+gates <- stimgate_gate_get("/path/to/project")
 
 # Plot gates
 plots <- plot_gate(
