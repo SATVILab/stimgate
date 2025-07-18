@@ -14,6 +14,7 @@
       "gate_tbl$ind has ", length(unique(gate_tbl$ind)),
       " unique entries when it should have 1."
     )
+    stop(txt)
   }
   if (is.null(chnl)) chnl <- unique(gate_tbl$chnl)
   pos_vec <- rep(FALSE, nrow(ex))
