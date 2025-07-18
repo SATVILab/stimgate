@@ -1,4 +1,4 @@
-#' @title Calculate the local fdr-based cut
+# Calculate the local fdr-based cut
 .get_cp_uns_loc <- function(ex_list, gate_combn,
                             .data, bias_uns = 0, exc_min,
                             noise_sd = NULL, bw_min = 80,
@@ -18,7 +18,7 @@
 
 
 
-#' @title Get the unstim-based local fdr-method cutpoint for each level of bias
+# Get the unstim-based local fdr-method cutpoint for each level of bias
 .get_cp_uns_loc_bias <- function(ex_list, .data,
                                  bias_uns, exc_min, noise_sd, cp_min,
                                  gate_combn, bw_min, min_cell,
@@ -114,8 +114,8 @@
 }
 
 
-#' @title Get the unstim-based local fdr-method
-#' cutpoint for a given bias across gate combination methods
+# Get the unstim-based local fdr-method
+# cutpoint for a given bias across gate combination methods
 .get_cp_uns_loc_gate_combn <- function(ex_list_orig,
                                        ex_list_no_min,
                                        ex_tbl_uns_bias,
@@ -394,24 +394,23 @@
 # get cutpoints for a range of samples, and then individual samples
 # ------------------------------------------
 
-#' @title Get cutpoint for a range of samples given the q-value and fdr
-#'
-#' @description Calculate the cutpoint for each
-#' sample in a batch at a given FDR.
-#'
-#' @param cut_stim list.
-#' List where each element are the marker expression readings
-#' of the marker to be cut on for the cells in a sample.
-#' Note that the i-th element
-#' in \code{cut_stim} must correspond to the i-th element in
-#' \code{q_list}, i.e.
-#' must be related to the same marker in same cell population
-#' from the same blood sample and stimulation.
-#' @param fdr numeric. A value between 0 and 1 specifying the
-#' false discovery rate
-#' the sample should be cut at.
-#'
-#' @return Numeric vector. A cutpoint for each sample.
+# Get cutpoint for a range of samples given the q-value and fdr
+# 
+# Calculate the cutpoint for each
+# sample in a batch at a given FDR.
+# 
+# @param cut_stim list.
+# List where each element are the marker expression readings
+# of the marker to be cut on for the cells in a sample.
+# Note that the i-th element
+# in cut_stim must correspond to the i-th element in
+# q_list, i.e.
+# must be related to the same marker in same cell population
+# from the same blood sample and stimulation.
+# @param fdr numeric. A value between 0 and 1 specifying the
+# false discovery rate
+# the sample should be cut at.
+# @return Numeric vector. A cutpoint for each sample.
 .get_cp_uns_loc_sample <- function(ex_list_orig,
                                    ex_list_no_min_stim,
                                    ex_tbl_uns_bias,

@@ -23,6 +23,15 @@ globalVariables(c(
   "prop_stim", "prop_uns", "prop_bs", "prob_smooth", "n_row", "y_stim", 
   "y_uns", "stim", "x_stim", "prob", "x_uns", "prop_lab", "type", "line_id",
   "dens", "no", "yes", "prob_stim", "prob_stim_norm", "prop_pos",
+  # Variables from .get_cp_uns_loc_prob_tbl_filter
+  "minor_response_ind", "moderate_response_ind", "n_remaining", 
+  "prob_larger_count", "prob_larger_prop",
+  # Variables from .get_prop_bs_by_cp_tbl_ind_calc
+  "count_stim_cp", "count_uns_cp", "prop_stim_cp", "prop_uns_cp", 
+  "prop_bs_sd", "prop_stim_pos_cp", "prop_uns_pos_cp", "prop_stim_sd_cp", 
+  "prop_uns_sd_cp", "prop_bs_sd_cp",
+  # Variables from other functions
+  "cyt_combn", "freq_uns", "V1", "V2", "i", "tol_gate_single",
   # Variables used in plots and ggplot2 context
   ".debug", "prop_l1se"
 ))
