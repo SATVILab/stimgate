@@ -48,6 +48,24 @@
 #' @param ... arguments passed to \code{ggplot2::geom_hex} (for bivariate data)
 #' or whichever geom is used for univariate data.
 #'
+#' @return A ggplot object showing cytometry data visualization.
+#'
+#' @examples
+#' \donttest{
+#' # Create example data
+#' set.seed(123)
+#' data <- data.frame(
+#'   CD4 = rnorm(1000, 5, 2),
+#'   CD8 = rnorm(1000, 3, 1.5)
+#' )
+#' 
+#' # Create bivariate plot
+#' plot_cyto(data, marker = c("CD4", "CD8"))
+#' 
+#' # Create univariate plot
+#' plot_cyto(data, marker = "CD4")
+#' }
+#'
 #' @import ggplot2
 #'
 #' @details Uses the following defaults:

@@ -20,6 +20,9 @@ with the elements again being numeric vectors that must be included in plot.}
 \item{limits_equal}{logical. If \code{TRUE}, then the ranges on the x- and y-axes # nolint
 must be equal. Effectively applied after expand_grid is applied. Default is \code{FALSE}. # nolint}
 }
+\value{
+A ggplot object with adjusted axis limits.
+}
 \description{
 Manage axis limits.
 Fix axis limits to be equal between x- and y-axes,
