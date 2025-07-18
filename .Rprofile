@@ -57,7 +57,7 @@ if (!.is_ci()) {
   )), silent = TRUE)
 }
 
-if (!nzchar(getOption("repos"))){
+if (length(getOption("repos")) == 0L){
   options(repos = "https://cloud.r-project.org/")
 }
 
