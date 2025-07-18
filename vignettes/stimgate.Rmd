@@ -62,3 +62,7 @@ plots <- plot_gate(
 ```
 
 For more detailed examples and advanced usage, please refer to the function documentation.
+
+```{r}
+sessionInfo()
+```
