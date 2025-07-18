@@ -1,8 +1,7 @@
 
-#' @title Get the measurements for a given set of sample(s) for the marker to be cut on
-#' as a single numeric vector
-#'
-#' @return A list where each element is a numeric vector.
+# Prepare expression data list with bias and noise adjustments
+# Gets measurements for samples and applies bias and noise modifications
+# Returns a list where each element is a numeric vector
 .prepare_ex_list_with_bias_and_noise <- function(ex_list,
                                                  ind,
                                                  exc_min,
@@ -31,15 +30,9 @@
 
 
 
-#' @title Replace zero p-values
-#'
-#' @description
-#' Replaces zero p-values with equally spaced p-values from 0 (exclusive) to the
-#' minimum positive p-value (exclusive).
-#'
-#' @param p numeric vector. Vector of p-values.
-#'
-#' @return Numeric vector.
+# Replace zero p-values with equally spaced values
+# Replaces zero p-values with equally spaced p-values from 0 (exclusive) to the
+# minimum positive p-value (exclusive)
 .rep_zero_p_val <- function(p) {
   if (!sum(p)) {
     return("No p-values are non-zero. Will not work.")
@@ -56,13 +49,8 @@
 
 
 
-#' @title Linearly interpolate
-#'
-#' @param val numeric. A single numeric value that represents the input
-#' for which the value of the function needs to be interpolated at.
-#' @param x,y numeric vector. Input and corresponding output values of function.
-#'
-#' @return Interpolated value of function at \code{val}.
+# Linear interpolation function
+# Interpolates a value from input and output vectors
 .interp <- function(val, x, y) {
   x_low <- x[x <= val] |> max()
   if (x_low == val) {
@@ -161,7 +149,7 @@
 
 
 
-#' @title Get mid-probability cut
+# Get mid-probability cut
 .get_cp_pwmid <- function(high_ind_tbl, cp_scp) {
   # get table to model - all values above changepoint
   mod_tbl <- high_ind_tbl |>
@@ -219,17 +207,13 @@
 
 
 
-#' @title Get axis labels from annotated .data frame
-#'
-#' @description Get axis labels for cut and high channels
-#' using the annotated .data frame.
-#'
-#' @param .data GatingHierarchy.
-#' Code written to take a GatingHierarchy at present, but this can easily be extended.
-#' @param inheritParams get_cp
-#'
-#' @return A named vector, where the names are the channel names and the
-#' values are the corresponding marker (common) names.
+# Get axis labels from annotated .data frame
+# 
+# Get axis labels for cut and high channels
+# using the annotated .data frame.
+# 
+# Get channel labels from GatingHierarchy
+# Returns a named vector mapping channel names to marker names
 .get_labs <- function(.data, chnl_cut, high = NULL) {
   force(.data)
   adf_data <- flowWorkspace::gh_pop_get_data(.data) |>

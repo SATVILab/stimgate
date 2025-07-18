@@ -485,5 +485,5 @@
   )
   cn_vec_order_curr <- cn_vec_order[cn_vec_order %in% colnames(stat_tbl)]
   stat_tbl |>
-    dplyr::select(all_of(cn_vec_order_curr), everything()) # nolint
+    dplyr::select(dplyr::all_of(cn_vec_order_curr), dplyr::everything()) # nolint
 }

@@ -1,9 +1,5 @@
-#' @title Check that parameters for each marker for which a gate is required are complete
-#'
-#' @inheritParams stimgate_gate
-#' @param data_name character. Name of dataset to be gated ('gs_cytof' or 'gs_proto').
-#'
-#' @return A completed marker list with all required parameters.
+# Complete marker parameter list with all required settings
+# Ensures all parameters for each marker requiring a gate are properly defined
 
 .complete_marker_list <- function(marker,
                                   bias_uns,
@@ -182,12 +178,8 @@
 
 
 
-#' @title Get all cp type names
-#'
-#' @param fdr numeric. False discovery rate threshold.
-#'
-#' @return Character vector, where each element is name of a
-#' cutpoint, and all elements together represent names of all cutpoints.
+# Get all cutpoint type names
+# Returns character vector of all available cutpoint names
 .get_full_cp_type_vec <- function(fdr) {
   # Get cutpoint names for unstim-based cuts
   # cp_name_vec_uns <- .get_cp_uns_name_vec(fdr)
