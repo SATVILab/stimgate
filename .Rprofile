@@ -47,18 +47,29 @@
 
 
 if (!.is_ci()) {
-  # only use renv when not in GitHub Actions
   .set_renv_profile()
   source("renv/activate.R")
 } else {
-  try(options(repos = c(
-    suppressMessages(BiocManager::repositories()),
-    getOption("repos")
-  )), silent = TRUE)
+  try({
+    bioc_vec <- if (requireNamespace("BiocManager", quietly = TRUE)) {
+      suppressWarnings(BiocManager::repositories())
+    } else NULL
+    repos_vec <- c(bioc_vec, getOption("repos"))
+    if (isFALSE("CRAN" %in% names(repos_vec))) {
+      repos_vec <- c(repos_vec, CRAN = "https://cloud.r-project.org/")
+    }
+    options(repos = repos_vec)
+  }, silent = TRUE)
 }
 
 if (length(getOption("repos")) == 0L){
-  options(repos = "https://cloud.r-project.org/")
+  options(repos = c("CRAN" = "https://cloud.r-project.org/"))
+}
+
+if (is.null(names(getOption("repos")))) {
+  options(
+    repos = c(getOption("repos"), "CRAN" = "https://cloud.r-project.org/")
+  )
 }
 
 try(suppressWarnings(rm(
