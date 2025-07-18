@@ -39,6 +39,15 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
+
+      - name: Install system dependencies
+        if: matrix.config.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install --no-install-recommends -y \
+            libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev \
+            libgit2-dev libjpeg-dev libpng-dev libx11-dev pandoc
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
