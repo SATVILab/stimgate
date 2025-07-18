@@ -52,12 +52,12 @@ Uses the gates to write FCS files of marker-positive FCS files.
 }
 \examples{
 \dontrun{
-  # Write FCS files of cytokine-positive cells
-  stimgate_fcs_write(
-    path_project = "/path/to/project",
-    .data = gs,
-    ind_batch_list = list(batch1 = 1:10, batch2 = 11:20),
-    path_dir_save = "/path/to/output"
-  )
+# Write FCS files of cytokine-positive cells
+stimgate_fcs_write(
+  path_project = "/path/to/project",
+  .data = gs,
+  ind_batch_list = list(batch1 = 1:10, batch2 = 11:20),
+  path_dir_save = "/path/to/output"
+)
 }
 }

@@ -17,7 +17,7 @@ Get gating statistics
 }
 \examples{
 \dontrun{
-  # Get gating statistics from project directory
-  stats_tbl <- get_stats("/path/to/project")
+# Get gating statistics from project directory
+stats_tbl <- get_stats("/path/to/project")
 }
 }
