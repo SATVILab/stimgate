@@ -72,3 +72,4 @@ We want to identify cells that have possibly responded to stimulation, by compar
 6. Explicitly refer to all packages used, rather than using `@import` or `@importFrom`, with the exception of `ggplot2` functions, the `flowCore::exprs` function.
 7. Use `@export` for functions that should be available to users
 8. When running code from the project, you must always have as your working directory the root of the project, i.e. the directory containing the `DESCRIPTION` file. This is especially important when the project uses `renv`, as otherwise the `.Rprofile` will not be sourced and the package environment will not be set up correctly.
+8. Never update `.Rd` files manually; use `devtools::document()` to regenerate them.
