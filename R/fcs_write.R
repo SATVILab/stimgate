@@ -57,7 +57,8 @@ stimgate_fcs_write <- function(path_project, # project directory
   n_fn <- length(.data)
 
   purrr::walk(seq_along(.data), function(ind) {
-    message(paste0("Writing ", ind, " of ", n_fn, " files"))
+    txt <- paste0("Writing ", ind, " of ", n_fn, " files")
+    message(txt)
     .fcs_write_impl(
       .data, ind, gate_tbl, path_dir_save, chnl, mult,
       gate_type_cyt_pos, gate_type_single_pos, combn_exc,
@@ -239,7 +240,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   )
 
   if (nrow(ex) == 0) {
-    message(paste0("No stimulation-positive cells. No FCS file written."))
+    message("No stimulation-positive cells. No FCS file written.")
     return(invisible(FALSE))
   }
 
@@ -249,9 +250,9 @@ stimgate_fcs_write <- function(path_project, # project directory
   )
 
   if (nrow(ex) == 0) {
-    message(paste0(
+    message(
       "No cells after excluding particular combinations. No FCS file written."
-    ))
+    )
     return(invisible(FALSE))
   }
 
@@ -341,6 +342,7 @@ stimgate_fcs_write <- function(path_project, # project directory
     invisible(file.remove(fn_out))
   }
   flowCore::write.FCS(x = fr, filename = fn_out)
-  message(paste0("Wrote ", fn))
+  txt <- paste0("Wrote ", fn)
+  message(txt)
   invisible(TRUE)
 }

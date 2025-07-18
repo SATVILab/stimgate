@@ -23,13 +23,14 @@
                                             params,
                                             .debug,
                                             path_project) {
-  print("getting pre-adjustment gates")
+  message("getting pre-adjustment gates")
   purrr::map_df(seq_along(ind_batch_list), function(i) {
     .debug_msg(.debug, "ind_batch_list", i) # nolint
 
-    # print progress
+    # message progress
     if (i %% 50 == 0 || i == length(ind_batch_list)) {
-      print(paste0("batch ", i, " of ", length(ind_batch_list)))
+      txt <- paste0("batch ", i, " of ", length(ind_batch_list))
+      message(txt)
     }
     .gate_batch( # nolint
       .data = .data,

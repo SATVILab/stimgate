@@ -63,7 +63,7 @@
     deriv_out <- .deriv_density(x = x, adjust = adjust, deriv = 1, ...)
     if(auto_tol){
       #Try to set the tolerance automatigically.
-      tol = 0.01*max(abs(deriv_out$y))
+      tol <- 0.01*max(abs(deriv_out$y))
     }
     if (side == "right") {
       

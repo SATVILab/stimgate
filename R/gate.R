@@ -137,10 +137,10 @@ stimgate_gate <- function(path_project,
     gate_tbl = gate_tbl
   )
 
-  print("")
-  print("")
-  print("")
-  print("getting cyt combn frequencies")
+  message("")
+  message("")
+  message("")
+  message("getting cyt combn frequencies")
 
   path_dir_stats <- .gate_stats(
     .data = .data,
@@ -176,13 +176,14 @@ stimgate_gate <- function(path_project,
                        calc_cyt_pos_gates,
                        .debug) {
   # loop over populations
-  print("----")
-  print("getting base gates")
-  print("----")
-  print("")
+  message("----")
+  message("getting base gates")
+  message("----")
+  message("")
   # loop over markers
   purrr::walk(marker, function(marker_curr) {
-    print(paste0("chnl: ", marker_curr$chnl_cut))
+    txt <- paste0("chnl: ", marker_curr$chnl_cut)
+    message(txt)
     # get gates for each sample within each batch
 
     gate_obj <- .gate_marker( # nolint
@@ -232,12 +233,12 @@ stimgate_gate <- function(path_project,
                          .debug,
                          gate_tbl) {
   # loop over populations
-  print("")
-  print("")
-  print("----")
-  print("getting single+ gates")
-  print("----")
-  print("")
+  message("")
+  message("")
+  message("----")
+  message("getting single+ gates")
+  message("----")
+  message("")
   if (!calc_single_pos_gates) {
     .debug_msg(.debug, "Not gating single-pos gates") # nolint
     purrr::walk(marker, function(marker_curr) {
@@ -254,7 +255,8 @@ stimgate_gate <- function(path_project,
   }
   # loop over markers
   purrr::walk(marker, function(marker_curr) {
-    print(paste0("chnl: ", marker_curr$chnl_cut))
+    txt <- paste0("chnl: ", marker_curr$chnl_cut)
+    message(txt)
     # get gates for each sample within each batch
 
     gate_obj <- .gate_marker( # nolint
