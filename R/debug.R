@@ -1,5 +1,6 @@
 #' @importFrom rlang .data .env
-#' @importFrom("utils", "head")
+#' @importFrom stats setNames
+#' @importFrom  utils head
 
 # Global variable bindings to avoid R CMD check notes
 # These are primarily used in dplyr and ggplot2 contexts
@@ -10,7 +11,8 @@ globalVariables(c(
   "chnl_cut", "tol", "ind_in_batch_gate", "tol_clust_single", "ind_batch_gate",
   "cp", "grp", "cp_join_lse_orig_mean_tg", "cp_orig_quant_min", "cp_join",
   "cp_join_lse", "cp_join_lse_orig", "cp_join_lse_orig_mean", "cp_join_tg_orig",
-  "cp_join_tg_orig_mean", "prop_bs_orig", "prop_bs_cp_diff", "prop_bs_cp_diff_sd",
+  "cp_join_tg_orig_mean", "prop_bs_orig", 
+  "prop_bs_cp_diff", "prop_bs_cp_diff_sd",
   "prop_bs_cp", "prop_l1se", "pred", "der", "cp_orig", "max_expr", "gate_05",
   "prop_bs_cp_diff_sd_max", "grp_level", "ind_vec", "x1", "x", "y", "x_ind",
   "count_stim", "n_cell_stim", "count_uns", "n_cell_uns", "prop_stim_pos",

@@ -86,24 +86,3 @@ Uses the following defaults:
 \item axis units are equal between the axes
 }
 }
-\examples{
-if (!requireNamespace("flowCore", quietly = TRUE)) {
-  if (!requireNamespace("BiocManager", quietly = TRUE)) {
-    install.packages("BiocManager")
-  }
-  BiocManager::install("flowCore")
-}
-data("GvHD", package = "flowCore")
-ex_tbl <- flowCore::exprs(GvHD[[1]])
-marker <- c("FL2-H", "FL3-H")
-plot_cyto(
-  data = ex_tbl,
-  marker = marker
-)
-lab_vec <- chnl_lab(data = GvHD)
-plot_cyto(
-  data = ex_tbl,
-  marker = marker,
-  lab = lab_vec
-)
-}
