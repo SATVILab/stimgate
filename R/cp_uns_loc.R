@@ -288,8 +288,8 @@
     chnl_cut,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     bias = bias,
-    path_project = path_project,
-    ind_stim = names(ex_list_no_min)[-length(ex_list_no_min)]
+    exc_min = exc_min,
+    path_project = path_project
   ) |>
     purrr::map(function(x) list("prejoin" = x))
 }
