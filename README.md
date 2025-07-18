@@ -14,20 +14,19 @@
 ## 📦 Installation
 
 ```r
-# Development version from GitHub
-install.packages("devtools")
+# Install BiocManager and devtools if needed
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+if (!requireNamespace("devtools", quietly = TRUE)) {
+  install.packages("devtools")
+}
+
+# Install all dependencies using Bioconductor and CRAN repos
+devtools::install_deps(repos = BiocManager::repositories())
+
+# Install stimgate from GitHub
 devtools::install_github("SATVILab/stimgate")
-
-# Using renv (recommended for reproducible environments)
-renv::install("bioc::flowCore")
-renv::install("bioc::CytoML") 
-renv::install("bioc::flowWorkspace")
-renv::install("SATVILab/stimgate")
-
-# (Planned) From Bioconductor
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install("stimgate")
 ```
 
 ---
@@ -42,7 +41,7 @@ library(stimgate)
 
 # Define batch structure and markers to gate
 batch_list <- list(
-  batch1 = seq_len(10),   # Sample indices for batch 1
+  batch1 = seq(1, 10),   # Sample indices for batch 1
   batch2 = seq(11, 20)   # Sample indices for batch 2
 )
 
