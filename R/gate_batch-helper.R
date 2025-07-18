@@ -208,7 +208,6 @@
         ex_list = ex_list_neg_but_single_pos_curr,
         gate_combn = gate_name_tbl_row$gate_combn,
         chnl_cut, tol = tol,
-        ind_gate = ind_batch[ind_in_batch_gate],
         exc_min = exc_min,
         min_cell = min_cell,
         cp_min = cp_min,

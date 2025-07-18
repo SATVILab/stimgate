@@ -1,3 +1,5 @@
+#' @title Get cutpoints using clustering approach
+#'
 #' @param .data GatingSet.
 #' @param gate_stats_tbl dataframe.
 #' Contains gates and bs_freq info. Must only contain
