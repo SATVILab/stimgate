@@ -69,3 +69,4 @@ We want to identify cells that have possibly responded to stimulation, by compar
 5. Validate inputs and provide meaningful error messages
 6. Explicitly refer to all packages used, rather than using `@import` or `@importFrom`
 7. Use `@export` for functions that should be available to users
+8. Never update `.Rd` files manually; use `devtools::document()` to regenerate them.
