@@ -31,8 +31,8 @@ jobs:
       # 3. Set up pak
       - name: Install pak and BiocManager before using pak
         run: |
-          Rscript -e 'if (!requireNamespace("pak", quietly = TRUE)) utils::install.packages("pak")'
-          Rscript -e 'if (!requireNamespace("BiocManager", quietly = TRUE)) utils::install.packages("BiocManager")'
+          Rscript -e 'if (!requireNamespace("pak", quietly = TRUE)) utils::install.packages("pak", repos = "https://cran.r-project.org")'
+          Rscript -e 'if (!requireNamespace("BiocManager", quietly = TRUE)) utils::install.packages("BiocManager", repos = "https://cran.r-project.org")'
       # 4. Restore R packages
       - uses: r-lib/actions/setup-renv@v2
         env:
