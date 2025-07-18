@@ -42,8 +42,8 @@ library(stimgate)
 
 # Define batch structure and markers to gate
 batch_list <- list(
-  batch1 = 1:10,   # Sample indices for batch 1
-  batch2 = 11:20   # Sample indices for batch 2
+  batch1 = seq_len(10),   # Sample indices for batch 1
+  batch2 = seq(11, 20)   # Sample indices for batch 2
 )
 
 # Channel names to gate on
@@ -66,7 +66,7 @@ gates <- get_gate_tbl("/path/to/project")
 
 # Visualize results
 plots <- plot_gate(
-  ind = 1:3,
+  ind = seq_len(3),
   .data = gs,
   path_project = "/path/to/project",
   marker = c("IL2", "TNFa")

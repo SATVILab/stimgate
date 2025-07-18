@@ -528,7 +528,7 @@
 }
 
 .get_cp_uns_loc_p_list_empty <- function() {
-  lapply(1:3, function(x) list()) |>
+  lapply(seq_len(3), function(x) list()) |>
     stats::setNames(c("p_loc_dens", "p_loc_prob", "p_loc_ctb"))
 }
 

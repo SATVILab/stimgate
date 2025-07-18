@@ -207,10 +207,12 @@
       x_out <- x |>
         dplyr::filter(.get_cut(x) >= min(.env$cp_min, max(.get_cut(x)))) # nolint
       if (nrow(x_out) == 0) {
-        x_out <- x[1, ] |>
-          dplyr::select(batch:stim) # nolint
-        x_add <- x[1, ] |>
-          dplyr::select(-c(batch:stim)) # nolint
+        all_cols <- colnames(x)
+        batch_idx <- which(all_cols == "batch")
+        stim_idx <- which(all_cols == "stim")
+        sel_idx <- seq(batch_idx, stim_idx)
+        x_out <- x[1, sel_idx, drop = FALSE]
+        x_add <- x[1, setdiff(seq_along(x), sel_idx)]
         x_add[1, ] <- NA
         x_out <- x_out |>
           dplyr::bind_cols(x_add)
@@ -584,7 +586,7 @@
   }
   for (i in seq_len(ncol(dens_tbl))) {
     if (any(is.na(dens_tbl[[i]]))) {
-      print(i)
+      message(i)
     }
   }
   dens_mat <- dens_tbl[, grepl("^x\\d+", colnames(dens_tbl))] |>

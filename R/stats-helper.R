@@ -89,7 +89,7 @@
     seq_len(n_chnl),
     function(n_pos) gtools::combinations(n = n_chnl, r = n_pos)
   ) |>
-    stats::setNames(1:n_chnl)
+    stats::setNames(seq_len(n_chnl))
 }
 
 .get_stats_cyt_combn_vec_list_get <- function(combn_mat_list,

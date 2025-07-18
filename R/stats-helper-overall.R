@@ -83,10 +83,10 @@
   .debug_msg( # nolint
     .debug, "ind_batch: ", paste0(ind_batch, collapse = "-")
   )
-  # print progress
+  # message progress
   if (i %% 10 == 0 || i == length(ind_batch_list)) {
     if (combn && !filter_other_cyt_pos) {
-      print(paste0("batch ", i, " of ", length(ind_batch_list)))
+      message(paste0("batch ", i, " of ", length(ind_batch_list)))
     }
   }
 }
