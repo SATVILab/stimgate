@@ -1,5 +1,12 @@
 ## 🧬 `stimgate`: Identify Responding Cells via Outlier Gating
 
+
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/SATVILab/stimgate/graph/badge.svg)](https://app.codecov.io/gh/SATVILab/stimgate)
+<!-- badges: end -->
+
+
 `stimgate` is an R package for identifying cell populations that have responded to stimulation. It applies outlier gating functions to flow cytometry data, comparing unstimulated and stimulated tubes from the same sample to isolate stimulation-specific responses.
 
 ---
