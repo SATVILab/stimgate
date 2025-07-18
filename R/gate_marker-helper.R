@@ -224,8 +224,7 @@
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     path_project = path_project,
     .debug = .debug,
-    ind_batch_list = ind_batch_list,
-    pop_gate = pop_gate
+    ind_batch_list = ind_batch_list
   )
 
   gate_tbl_out <- .gate_marker_gate_adj_gates_single_out_get(
