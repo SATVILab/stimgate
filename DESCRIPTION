@@ -19,8 +19,6 @@ Imports:
     cowplot,
     dplyr,
     ggplot2,
-    ggrepel,
-    magrittr,
     purrr,
     rlang,
     stringr,
@@ -30,11 +28,10 @@ Imports:
     mgcv,
     gtools,
     flowCore,
-    CytoML,
     flowWorkspace,
-    flowStats,
     cytoUtils,
-    openCyto
+    UtilsCytoRSV,
+    cluster
 Suggests:
     testthat (>= 3.0.0),
     HDCytoData
