@@ -50,9 +50,14 @@ if (!.is_ci()) {
   # only use renv when not in GitHub Actions
   .set_renv_profile()
   source("renv/activate.R")
+} else {
+  try(options(repos = c(
+    suppressMessages(BiocManager::repositories()),
+    getOption("repos")
+  )), silent = TRUE)
 }
 
-try(rm(
+try(suppressWarnings(rm(
   .set_renv_profile, .is_ci,
   .is_bioc_container, .is_devcontainer_config_r_feature
-))
+)), silent = TRUE)
