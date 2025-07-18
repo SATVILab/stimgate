@@ -1,19 +1,6 @@
-# Get logical indicator for whether each cell is positive
-# for any of the channels specified in chnl.
-# 
-# Returns a logical vector specifying whether each
-# cell produces at least one of the cytokines specified, but only
-# using a single type of threshold (i.e. base, cytokine-positive or single).
-# 
-# @inheritParams .get_pos_ind_simple
-# @param chnl character vector. Channels for which cell should be
-# positive for at least one. If NULL, then set to
-# unique(gate_tbl$chnl), i.e. all channels for which we
-# have gates. Default is chnl.
-# @param gate_type "base", "cyt" or 'single'. Determines which gate
-# type is used. If "base", then initial threshold is used.
-# If "cyt", then cytokine-positive threshold is used. If
-# 'single', then single-positive threshold is used. No default is set.
+# Get logical indicator for cytokine-positive cells
+# Returns a logical vector indicating whether each cell is positive
+# for any of the specified channels using a single threshold type
 .get_pos_ind_simple <- function(ex, gate_tbl, chnl = NULL, gate_type) {
   if (length(unique(gate_tbl$gate_name)) != 1) {
     stop(paste0(
@@ -50,32 +37,8 @@
 # Identify cells that are positive for at least two cytokines.
 # 
 # Identify cells that express multiple cytokines. May
-# force each cytokine combination to contain at least one of a set of
-# cytokines (using chnl parameter) and specify which cytokines a cell
-# must express at least one of (using chnl_alt parameter). The
-# default is to consider a cell multi-functional if it expresses any cytokine
-# in conjunction with any other cytokine.
-# 
-# @inheritParams .get_pos_ind_but_single_pos_for_one_cyt
-# 
-# @param chnl character vector. Cytokines that a cell must be positive for
-# in any combination (exclusively, i.e. a cell need not be positive for both
-# simultaneously if both are placed here). If NULL,
-# then set to unique(gate_tbl$chnl). Default is NULL.
-# @param chnl_alt character vector. Cytokine(s) that a cell must be positive
-# for in conjunction with at least one cytokine in chnl. If NULL,
-# then set to whatever chnl is, which is either specified
-# by the parameter or set to  setdiff(unique(gate_tbl$chnl), <chnl_crr>)
-# if chnl parameter is NULL, where <chnl_curr> is one of the
-# channels in chnl parameter. Default is NULL.
-# @param gate_type_cyt_pos "base" or "cyt". If "base", then the initial thresholds are
-# used even for cells that are cytokine positive for at least one other cytokine.
-# If "cyt", then the cytokine+ thresholds are used for cells that are cytokine
-# positive for at least one other cytokine.
-# 
-# @return A logical vector with value TRUE if a cell is positive for
-# at least one cytokine in chnl and any cytokine in chnl_alt, and
-# FALSE otherwise.
+# Get logical indicator for multi-functional cells
+# Identifies cells positive for multiple cytokines with customizable requirements
 # 
 # Example usage would require data setup
 
@@ -189,33 +152,8 @@
   pos_vec_cyt_pos_mult
 }
 
-# Identify cells that are positive for every cytokine except one
-# 
-# Identify cells that are positive for every
-# cytokine except one,
-# for which they may be single-positive.
-# 
-# @param ex dataframe. Expression data.
-# @param gate_tbl dataframe.
-# Contains gates for specific
-# sample for specific gate method only (but for
-# all markers of interest).
-# @param chnl_single_exc character.
-# Channel that is the only one that a cell
-# may be left positive for and single-positive (i.e.
-# a cell cannot be positive for any other channel
-# on its own or this channel with any other channel).
-# @param chnl character.
-# Channels for which the cells
-# may be positive for. Default is NULL,
-# in which case every chnl in unique(gate_tbl$chnl)
-# other than chnl_single_exc will be considered a channel that
-# a cell can be positive for.
-# 
-# @return A logical vector, with TRUE for every cell that
-# is negative for every other cytokine and for the cytokine
-# in question with
-# any other cytokine. FALSE otherwise.
+# Identify cells positive for all cytokines except one
+# Finds cells positive for every cytokine except one specified channel
 .get_pos_ind_but_single_pos_for_one_cyt <- function(ex,
                                                     gate_tbl,
                                                     chnl_single_exc,
@@ -271,27 +209,7 @@
 }
 
 # Identify cells that express at least one cytokine
-# 
-# Returns a logical vector specifying whether each cell produces at least one
-# of the cytokines specified, with the ability to use base, cytokine-positive and single-positive
-# thresholds.
-# @param ex dataframe. Expression data.
-# @param gate_tbl dataframe. Contains gates for specific sample for specific gate method only (but for
-# all markers of interest).
-# @param chnl character vector. Specifies channel(s) for which the cell must be positive.
-# @param chnl_alt character vector. Specifies channel(s) for which the cytokine-positive cutpoint for the channels
-# in chnl may be used, if the cells are positive for these cytokines. If NULL,
-# then all channels in unique(gate_tbl$chnl) besides those in chnl are used. If "",
-# then no channels are used for chnl_alt (but cytokine-positive thresholds
-# may be used if gate_type_cyt_pos = TRUE and length(chnl>2). Default is NULL.
-# @details
-# For example, if chnl is 'Ho165Di' and chnl_alt is c('Nd146Di', 'Gd156Di'), then
-# only cells that are positive for Ho165Di are returned, where positivity for Ho165Di is calculated using
-# the gate_type_single_pos threshold if a cell is negative for both Nd146Di and Gd156di using base thresholds,
-# but using gate_type_cyt_pos threshold if the cell is positive for either Nd146Di or Gd156Di.
-# 
-# @return A logical vector, with TRUE for every cell that is negative for every other cytokine and for the cytokine in question with
-# any other cytokine. FALSE otherwise.
+# Returns a logical vector indicating cytokine-positive cells using flexible thresholds
 .get_pos_ind <- function(ex, gate_tbl, chnl, chnl_alt = NULL, gate_type_cyt_pos,
                          gate_type_single_pos) {
   # must specify types of gates to use for single+ cells

@@ -1,21 +1,5 @@
 # Get cutpoints using clustering approach
-# 
-# @param .data GatingSet.
-# @param gate_stats_tbl dataframe.
-# Contains gates and bs_freq info. Must only contain
-# info using "base" threshold to use.
-# @param gate_tbl_ctrl dataframe. Control gates.
-# @param chnl character. Name of channel to get thresholds for.
-# @param bw numeric. Bandwidth for density estimates.
-# @param fcs_vec character. Specifies FCS file names.
-# @param control list. Named list of the following control parameters:
-# - min_threshold_frac -
-# Proportion of minimum threshold to gate on. Default is 0.8.
-# - min_threshold_quant -
-# Quantile of all thresholds to cluster with. Default is 0.1.
-# - bw - numeric. bandwidth for density estimates
-# - n_grp - integer vector of length two. Specifies the numbers of groups
-# to cluster densities into. Default is seq(6, 24, by = 2).
+# Clusters thresholds from similar distributions to identify optimal cutpoints
 .get_cp_cluster <- function(.data,
                             gate_tbl,
                             gate_stats_tbl,
