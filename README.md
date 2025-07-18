@@ -3,9 +3,7 @@
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml)
-[![Codecov test coverage](https://codecov.io/gh/SATVILab/stimgate/graph/badge.svg)](https://app.codecov.io/gh/SATVILab/stimgate)
 [![Codecov test coverage](https://codecov.io/gh/SATVILab/stimgate/branch/master/graph/badge.svg)](https://app.codecov.io/gh/SATVILab/stimgate)
-[![Codecov test coverage](https://codecov.io/gh/SATVILab/stimgate/graph/badge.svg?branch=master)](https://app.codecov.io/gh/SATVILab/stimgate)
 <!-- badges: end -->
 
 
