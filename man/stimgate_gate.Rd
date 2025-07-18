@@ -244,7 +244,7 @@ The function implements a multi-step workflow for identifying cytokine-positive 
   stats <- get_stats(result_path)        # Get statistics
   
   # Create visualizations
-  plots <- plot_gate(
+  plots <- stim_gate_plot(
     ind = 1:3,
     .data = gs,
     path_project = result_path,
@@ -255,7 +255,7 @@ The function implements a multi-step workflow for identifying cytokine-positive 
 \seealso{
 \code{\link{get_gate_tbl}} for extracting gate information,
 \code{\link{get_stats}} for generating statistics from results,
-\code{\link{plot_gate}} for visualizing identified gates,
+\code{\link{stim_gate_plot}} for visualizing identified gates,
 \code{\link{stimgate_fcs_write}} for exporting cytokine-positive cells,
 \code{\link[flowWorkspace]{GatingSet}} for GatingSet documentation
 }
