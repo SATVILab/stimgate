@@ -198,7 +198,7 @@ stimgate_fcs_write <- function(path_project, # project directory
 }
 
 .fcs_write_get_gate_tbl_add_marker <- function(gate_tbl, chnl, .data) {
-  chnl_lab_vec <- .get_labs(.data = .data[[1]], cut = chnl) # nolint
+  chnl_lab_vec <- .get_labs(.data = .data[[1]], chnl_cut = chnl) # nolint
   gate_tbl |>
     dplyr::mutate(marker = chnl_lab_vec[.data$chnl]) |> # nolint
     dplyr::select(
