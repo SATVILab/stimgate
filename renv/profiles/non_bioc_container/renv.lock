@@ -993,13 +993,7 @@
       "Repository": "Bioconductor 3.20",
       "NeedsCompilation": "no",
       "Author": "Lukas M. Weber [aut, cre], Charlotte Soneson [aut]",
-      "Maintainer": "Lukas M. Weber <lmweberedu@gmail.com>",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::HDCytoData@1.26.0",
-      "RemoteRef": "bioc::HDCytoData@1.26.0",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/data/experiment",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "1.26.0"
+      "Maintainer": "Lukas M. Weber <lmweberedu@gmail.com>"
     },
     "IDPmisc": {
       "Package": "IDPmisc",
