@@ -37,7 +37,7 @@ devtools::install_github("SATVILab/stimgate")
 library(stimgate)
 
 # Load your GatingSet (flow cytometry data)
-# gs <- flowWorkspace::load_gs("path/to/gatingset")
+gs <- flowWorkspace::load_gs("path/to/gatingset")
 
 # Define batch structure and markers to gate
 batch_list <- list(
