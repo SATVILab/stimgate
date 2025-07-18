@@ -28,6 +28,10 @@ jobs:
           r-version: '4.4.2' # The R version to download (if necessary) and use.
           # Use "renv" to retrieve R version recorded in renv.lock file.
 
+      - name: Set CRAN mirror in system-wide Rprofile.site
+        run: |
+          echo 'options(repos = c(CRAN = "https://cran.rstudio.com"))' | sudo tee -a /etc/R/Rprofile.site
+
       # 4. Set up pak
       - name: Install pak and BiocManager before using pak
         run: |
