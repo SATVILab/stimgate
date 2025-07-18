@@ -129,7 +129,7 @@ plot_gate <- function(ind,
     if (nrow(ex_tbl)  < min_cell) {
       return(NULL)
     }
-    p <- UtilsCytoRSV::plot_cyto(
+    p <- plot_cyto(
       data = ex_tbl,
       marker = marker,
       exc_min = exc_min,

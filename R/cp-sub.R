@@ -99,11 +99,11 @@
     } else {
       dens <- density(.get_cut(ex))
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
-      cp <- cytoUtils:::.cytokine_cutpoint(
+      cp <- suppressWarnings(.cytokine_cutpoint(
         x = .get_cut(ex), num_peaks = 1,
         ref_peak = 1, tol = tol, side = "right",
         strict = FALSE, adjust = adjust
-      )
+      ))
       if (
         is.na(cp) || length(.get_cut(ex)) < min_cell
       ) {
@@ -136,11 +136,11 @@
       }
       dens <- density(.get_cut(ex))
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
-      cytoUtils:::.cytokine_cutpoint(
+      suppressWarnings(.cytokine_cutpoint(
         x = .get_cut(ex), num_peaks = 1,
         ref_peak = 1, tol = tol * 1e3, side = "right",
         strict = FALSE, adjust = adjust
-      )
+      ))
     }) |>
       stats::setNames(ind_gate)
 
