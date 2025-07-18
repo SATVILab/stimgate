@@ -207,10 +207,12 @@
       x_out <- x |>
         dplyr::filter(.get_cut(x) >= min(.env$cp_min, max(.get_cut(x)))) # nolint
       if (nrow(x_out) == 0) {
-        x_out <- x[1, ] |>
-          dplyr::select(batch:stim) # nolint
-        x_add <- x[1, ] |>
-          dplyr::select(-c(batch:stim)) # nolint
+        all_cols <- colnames(x)
+        batch_idx <- which(all_cols == "batch")
+        stim_idx <- which(all_cols == "stim")
+        sel_idx <- seq(batch_idx, stim_idx)
+        x_out <- x[1, sel_idx, drop = FALSE]
+        x_add <- x[1, setdiff(seq_along(x), sel_idx)]
         x_add[1, ] <- NA
         x_out <- x_out |>
           dplyr::bind_cols(x_add)
@@ -220,8 +222,8 @@
 }
 
 .get_prop_bs_by_cp_tbl_data_list_final <- function(data_list, max_cp) {
-  expr_min_vec <- sapply(data_list, function(x) x$expr_min)
-  expr_max_vec <- sapply(data_list, function(x) x$expr_max)
+  expr_min_vec <- vapply(data_list, function(x) x$expr_min, numeric(1))
+  expr_max_vec <- vapply(data_list, function(x) x$expr_max, numeric(1))
   expr_min <- min(expr_min_vec, na.rm = TRUE)
   expr_max <- max(
     max(expr_max_vec, na.rm = TRUE),
@@ -298,7 +300,7 @@
   .get_prop_bs_by_cp_tbl_ind_init(ex_stim, ex_uns, par_list, cp_seq) |>
     .get_prop_bs_by_cp_tbl_ind_calc(
       attr(ex_stim, "n_cell"), attr(ex_uns, "n_cell")
-      )
+    )
 }
 
 
@@ -469,7 +471,7 @@
     from = expr_min, to = expr_max, bw = bw
   )
   tibble::tibble(
-    batch = batch[[1]],ind = ind[[1]],
+    batch = batch[[1]], ind = ind[[1]],
     y = dens[["y"]], x = dens[["x"]],
     x_ind = paste0("x", seq_len(length(dens[["y"]])))
   ) |>
@@ -584,7 +586,7 @@
   }
   for (i in seq_len(ncol(dens_tbl))) {
     if (any(is.na(dens_tbl[[i]]))) {
-      print(i)
+      message(i)
     }
   }
   dens_mat <- dens_tbl[, grepl("^x\\d+", colnames(dens_tbl))] |>
@@ -735,7 +737,7 @@
           return(max(data_mod_curr_grp$cp, na.rm = TRUE))
         }
         data_pred <- tibble::tibble(
-          cp = seq(min_cp_permitted, cp_range[2],length.out = 1e5)
+          cp = seq(min_cp_permitted, cp_range[2], length.out = 1e5)
         )
         data_pred <- data_pred |> dplyr::mutate(
           pred = predict(fit, newdata = data_pred, type = "response")
@@ -1185,4 +1187,3 @@
   }
   cp_tbl <- cp_tbl |> dplyr::arrange(ind) # nolint
 }
-

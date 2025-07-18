@@ -40,16 +40,16 @@
 #'
 #' @examples
 #' \dontrun{
-#'   plots <- plot_gate(
-#'     ind = 20:22, # indices in `gs` to plot
-#'     .data = gs, # GatingSet
-#'     path_project = "/path/to/project",
-#'     marker = c("marker1", "marker2"),
-#'     ind_lab = c("20" = "Mtb", "21" = "PHA", "22" = "Unstim"),
-#'     marker_lab = c("marker1" = "Nice Name 1", "marker2" = "Nice Name 2"),
-#'     limits_expand = list(4),
-#'     limits_equal = TRUE
-#'   )
+#' plots <- plot_gate(
+#'   ind = 20:22, # indices in `gs` to plot
+#'   .data = gs, # GatingSet
+#'   path_project = "/path/to/project",
+#'   marker = c("marker1", "marker2"),
+#'   ind_lab = c("20" = "Mtb", "21" = "PHA", "22" = "Unstim"),
+#'   marker_lab = c("marker1" = "Nice Name 1", "marker2" = "Nice Name 2"),
+#'   limits_expand = list(4),
+#'   limits_equal = TRUE
+#' )
 #' }
 #' @export
 plot_gate <- function(ind,
@@ -126,7 +126,7 @@ plot_gate <- function(ind,
   p_list <- lapply(seq_along(ind), function(i) {
     ind_curr <- ind[[i]]
     ex_tbl <- .plot_get_ex_tbl(ind_curr, .data, marker, exc_min = FALSE)
-    if (nrow(ex_tbl)  < min_cell) {
+    if (nrow(ex_tbl) < min_cell) {
       return(NULL)
     }
     p <- plot_cyto(
@@ -251,13 +251,13 @@ plot_gate <- function(ind,
     dplyr::group_by(gate_name, chnl, marker, ind, batch) |>
     dplyr::slice(1) |>
     dplyr::ungroup()
-  gate_tbl <- gate_tbl[gate_tbl[["ind"]] %in% ind,]
+  gate_tbl <- gate_tbl[gate_tbl[["ind"]] %in% ind, ]
   ind_vec <- NULL
   for (i in seq_along(marker)) {
     ind_vec[[i]] <- which(gate_tbl[["chnl"]] == marker[i])
   }
   ind_vec <- ind_vec |> unlist()
-  gate_tbl[ind_vec,]
+  gate_tbl[ind_vec, ]
 }
 
 .plot_gate_uv <- function(ind,
@@ -307,7 +307,6 @@ plot_gate <- function(ind,
     marker = marker, marker_lab = marker_lab,
     show_gate = show_gate, path_project = path_project
   )
-
 }
 
 .plot_gate_uv_marker_get_plot_tbl <- function(ind,
@@ -330,7 +329,7 @@ plot_gate <- function(ind,
   })
   plot_tbl_list <- plot_tbl_list[
     vapply(plot_tbl_list, Negate(is.null), logical(1))
-    ]
+  ]
   if (length(plot_tbl_list) == 0L) {
     return(NULL)
   }
@@ -404,7 +403,7 @@ plot_gate <- function(ind,
       ggplot(plot_tbl, aes(x = x, y = y))
     }
   }
-  p + 
+  p +
     geom_line() +
     cowplot::theme_cowplot() +
     cowplot::background_grid(major = "x") +
