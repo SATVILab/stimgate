@@ -37,6 +37,7 @@ jobs:
       - uses: r-lib/actions/setup-renv@v2
         env:
           RENV_CONFIG_PAK_ENABLED: "FALSE"
+          CRAN: "https://cran.r-project.org"
         with:
           profile: '"non_bioc_container"'
           bypass-cache: "never" # cache is not used otherwise
