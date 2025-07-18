@@ -1,7 +1,6 @@
 #' @title Get cutpoints for a single batch
 #'
-#' @inheritParams gate # all except those listed below
-#' @inheritParams .get_gate_list # pop_gate, cut, high, fdr, tol, gate_combn
+#' @inheritParams stimgate_gate
 .gate_batch <- function(.data,
                         ind_batch,
                         pop_gate,

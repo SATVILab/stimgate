@@ -160,34 +160,6 @@
 }
 
 
-
-
-
-
-.get_cp_stats_tbl_pop_samples <- function(.data, ind, pop, wins, chnl_cut, high, cp_obj) {
-  # Returns tibble with columns fcs, pop, type, cp, count and freq, with corresponding
-  # values being the fcs file gated on, parent population, cutpoint type,
-  # cutpoint value, count of positive cells and frequency of positive cells.
-  purrr::map_df(seq_along(cp_obj), function(i) {
-    # get cp_obj that provides the cutpoints
-    cp_obj_curr <- cp_obj[[i]]
-
-    # get initial cp_vec
-    cp_vec <- stats::setNames(cp_obj_curr[["cp_stats"]][["cp"]], cp_obj_curr[["cp_stats"]][["type"]])
-
-    # get statistics (count and frequency) from different pop(s) from different samples
-    cp_stats_tbl_pop_samples <- .get_cp_stats_tbl_pop_samples_elem(
-      .data = .data,
-      ind = ind[[i]],
-      pop = pop,
-      wins = wins,
-      chnl_cut,
-      high = high,
-      cp = cp_vec
-    )
-  })
-}
-
 #' @title Get mid-probability cut
 .get_cp_pwmid <- function(high_ind_tbl, cp_scp) {
   # get table to model - all values above changepoint
