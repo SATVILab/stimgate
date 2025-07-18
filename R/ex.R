@@ -1,3 +1,13 @@
+#' Detect if any pattern matches a string
+#'
+#' @description Helper function to check if any of multiple patterns match a given string
+#'
+#' @param string character. String to search in
+#' @param pattern character vector. Patterns to search for
+#'
+#' @return logical. TRUE if any pattern matches, FALSE otherwise
+#'
+#' @keywords internal
 str_detect_any <- function(string, pattern) {
   vapply(
     pattern,
@@ -7,6 +17,21 @@ str_detect_any <- function(string, pattern) {
     any()
 }
 
+#' Get list of expression matrices for specified samples
+#'
+#' @description Internal helper function to extract expression matrices from GatingSet
+#' for specified samples and populations
+#'
+#' @param .data GatingSet. Source data
+#' @param ind_batch numeric vector. Indices of samples in batch
+#' @param batch character. Batch identifier  
+#' @param pop character. Population to extract
+#' @param chnl_cut character vector. Channels to include
+#' @param extra_chnl character vector. Additional channels to include (optional)
+#'
+#' @return list of expression matrices for each sample
+#'
+#' @keywords internal
 .get_ex_list <- function(.data,
                          ind_batch,
                          batch,

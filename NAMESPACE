@@ -2,6 +2,7 @@
 
 export(axis_limits)
 export(chnl_lab)
+export(get_batch_list)
 export(get_gate_tbl)
 export(get_stats)
 export(plot_gate)
