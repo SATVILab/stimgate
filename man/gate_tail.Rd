@@ -36,11 +36,13 @@ default, the peak farthest to the left is used.}
 \item{adjust}{the scaling adjustment applied to the bandwidth used in the
 first derivative of the kernel density estimate}
 
+\item{side}{character specifying the side of the gate, either
+\code{'right'} (default) or \code{'left'}}
+
 \item{strict}{\code{logical} when the actual number of peaks detected is less than \code{ref_peak}.
 an error is reported by default. But if \code{strict} is set to FALSE, then the reference peak will be reset to the peak of the far right.}
 
-\item{plot}{logical specifying whether to plot the peaks found
-\code{'right'} (default) or \code{'left'}?}
+\item{plot}{logical specifying whether to plot the peaks found}
 
 \item{auto_tol}{when TRUE, it tries to set the tolerance automatically.}
 
