@@ -109,5 +109,20 @@
 }
 
 .deriv_density <- function(x, deriv = 1L, adjust = 1, n = 2048L, ...) {
-}
+  # 1) Compute a fine KDE on [min(x), max(x)]
+  dens <- stats::density(x, adjust = adjust, n = n, ...)
+  xx  <- dens$x
+  yy  <- dens$y
 
+  # 2) Approximate derivatives by repeated central differences
+  for (k in seq_len(deriv)) {
+    # central difference: f'(x_i) ≈ (y_{i+1} - y_{i-1}) / (x_{i+1} - x_{i-1})
+    dx <- diff(xx, lag = 2)
+    dy <- yy[-1] - yy[-length(yy)]
+    # but dy is length n−1; for central we align:
+    yy <- dy[-1] / dx
+    xx <- xx[-c(1, length(xx))]
+  }
+
+  list(x = xx, y = yy)
+}
