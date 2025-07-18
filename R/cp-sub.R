@@ -176,14 +176,14 @@
     cp_vec <- stats::setNames(cp_obj_curr[["cp_stats"]][["cp"]], cp_obj_curr[["cp_stats"]][["type"]])
 
     # get statistics (count and frequency) from different pop(s) from different samples
-    cp_stats_tbl_pop_samples <- .get_cp_stats_tbl_pop_samples_elem(
+    cp_stats_tbl_pop_samples <- .get_cp_stats_tbl_pop_samples(
       .data = .data,
       ind = ind[[i]],
       pop = pop,
       wins = wins,
       chnl_cut,
       high = high,
-      cp = cp_vec
+      cp_obj = cp_vec
     )
   })
 }

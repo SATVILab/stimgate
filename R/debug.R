@@ -17,7 +17,8 @@ globalVariables(c(
   "freq_stim", "pop_gate_curr", "cp_join_tg", "cp_orig_quant_min", "lse_orig",
   "cp_tg_ctrl", "cp_join_lse_orig_mean", "cp_join_tg_orig", "chnl_pos",
   "dir_save", "is.null_gate_tbl", "path_project", "exc_min", "prop_bs_diff",
-  "prop_stim",
+  "prop_stim", "prop_uns", "prop_bs", "prob_smooth", "n_row", "y_stim", 
+  "y_uns", "stim", "x_stim", "prob", "x_uns", "prop_lab", "type", "line_id",
   # Variables used in plots and ggplot2 context
   ".debug", "prop_l1se"
 ))
