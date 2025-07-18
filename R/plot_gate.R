@@ -39,7 +39,7 @@
 #' @return A grid of plots if `grid` is TRUE, otherwise a list of ggplot objects.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' plots <- plot_gate(
 #'   ind = 20:22, # indices in `gs` to plot
 #'   .data = gs, # GatingSet
