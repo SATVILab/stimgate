@@ -214,6 +214,97 @@
       "Author": "R. Gentleman [aut], V. Carey [aut], M. Morgan [aut], S. Falcon [aut], Haleema Khan [ctb] ('esApply' and 'BiobaseDevelopment' vignette translation from Sweave to Rmarkdown / HTML), Bioconductor Package Maintainer [cre]",
       "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
     },
+    "BiocBaseUtils": {
+      "Package": "BiocBaseUtils",
+      "Version": "1.8.0",
+      "Source": "Bioconductor",
+      "Title": "General utility functions for developing Bioconductor packages",
+      "Authors@R": "c( person(\"Marcel\", \"Ramos\", , \"marcel.ramos@sph.cuny.edu\", c(\"aut\", \"cre\"), c(ORCID = \"0000-0002-3242-0582\") ), person(\"Martin\", \"Morgan\", , \"martin.morgan@roswellpark.org\", \"ctb\" ), person(\"Hervé\", \"Pagès\", , \"hpages.on.github@gmail.com\", \"ctb\") )",
+      "Description": "The package provides utility functions related to package development. These include functions that replace slots, and selectors for show methods. It aims to coalesce the various helper functions often re-used throughout the Bioconductor ecosystem.",
+      "Imports": [
+        "methods",
+        "utils"
+      ],
+      "Depends": [
+        "R (>= 4.2.0)"
+      ],
+      "Suggests": [
+        "knitr",
+        "rmarkdown",
+        "BiocStyle",
+        "tinytest"
+      ],
+      "License": "Artistic-2.0",
+      "Encoding": "UTF-8",
+      "biocViews": "Software, Infrastructure",
+      "BugReports": "https://www.github.com/Bioconductor/BiocBaseUtils/issues",
+      "Roxygen": "list(markdown = TRUE)",
+      "RoxygenNote": "7.3.2",
+      "VignetteBuilder": "knitr",
+      "Date": "2024-08-22",
+      "git_url": "https://git.bioconductor.org/packages/BiocBaseUtils",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "ad54d83",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no",
+      "Author": "Marcel Ramos [aut, cre] (<https://orcid.org/0000-0002-3242-0582>), Martin Morgan [ctb], Hervé Pagès [ctb]",
+      "Maintainer": "Marcel Ramos <marcel.ramos@sph.cuny.edu>"
+    },
+    "BiocCheck": {
+      "Package": "BiocCheck",
+      "Version": "1.42.1",
+      "Source": "Bioconductor",
+      "Title": "Bioconductor-specific package checks",
+      "Date": "2024-12-23",
+      "Authors@R": "c( person(\"Bioconductor\", \"Package Maintainer\", , \"maintainer@bioconductor.org\", \"aut\"), person(\"Lori\", \"Shepherd\", role = \"aut\"), person(\"Daniel\", \"von Twisk\", role = \"ctb\"), person(\"Kevin\", \"Rue\", role = \"ctb\"), person(\"Marcel\", \"Ramos\", , \"marcel.ramos@sph.cuny.edu\", c(\"aut\", \"cre\"), c(ORCID = \"0000-0002-3242-0582\")), person(\"Leonardo\", \"Collado-Torres\", role = \"ctb\"), person(\"Federico\", \"Marini\", role = \"ctb\") )",
+      "Description": "BiocCheck guides maintainers through Bioconductor best practicies. It runs Bioconductor-specific package checks by searching through package code, examples, and vignettes. Maintainers are required to address all errors, warnings, and most notes produced.",
+      "License": "Artistic-2.0",
+      "URL": "https://github.com/Bioconductor/BiocCheck",
+      "BugReports": "https://github.com/Bioconductor/BiocCheck/issues",
+      "Depends": [
+        "R (>= 4.4.0)"
+      ],
+      "Imports": [
+        "BiocBaseUtils",
+        "BiocFileCache",
+        "BiocManager",
+        "biocViews",
+        "callr",
+        "cli",
+        "codetools",
+        "graph",
+        "httr2",
+        "knitr",
+        "methods",
+        "rvest",
+        "stringdist",
+        "tools",
+        "utils"
+      ],
+      "Suggests": [
+        "BiocStyle",
+        "devtools",
+        "gert",
+        "jsonlite",
+        "rmarkdown",
+        "tinytest",
+        "usethis"
+      ],
+      "VignetteBuilder": "knitr",
+      "biocViews": "Infrastructure",
+      "Encoding": "UTF-8",
+      "Roxygen": "list(markdown = TRUE)",
+      "RoxygenNote": "7.3.2",
+      "git_url": "https://git.bioconductor.org/packages/BiocCheck",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "0af65bc",
+      "git_last_commit_date": "2024-12-23",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no",
+      "Author": "Bioconductor Package Maintainer [aut], Lori Shepherd [aut], Daniel von Twisk [ctb], Kevin Rue [ctb], Marcel Ramos [aut, cre] (<https://orcid.org/0000-0002-3242-0582>), Leonardo Collado-Torres [ctb], Federico Marini [ctb]",
+      "Maintainer": "Marcel Ramos <marcel.ramos@sph.cuny.edu>"
+    },
     "BiocFileCache": {
       "Package": "BiocFileCache",
       "Version": "2.14.0",
@@ -997,6 +1088,118 @@
       "Author": "Constantin Ahlmann-Eltze [aut] (<https://orcid.org/0000-0002-3762-068X>), Peter Hickey [aut, cre] (<https://orcid.org/0000-0002-8153-6258>), Hervé Pagès [aut]",
       "Maintainer": "Peter Hickey <peter.hickey@gmail.com>"
     },
+    "R.cache": {
+      "Package": "R.cache",
+      "Version": "0.17.0",
+      "Source": "Repository",
+      "Depends": [
+        "R (>= 2.14.0)"
+      ],
+      "Imports": [
+        "utils",
+        "R.methodsS3 (>= 1.8.1)",
+        "R.oo (>= 1.24.0)",
+        "R.utils (>= 2.10.1)",
+        "digest (>= 0.6.13)"
+      ],
+      "Title": "Fast and Light-Weight Caching (Memoization) of Objects and Results to Speed Up Computations",
+      "Authors@R": "c(person(\"Henrik\", \"Bengtsson\", role=c(\"aut\", \"cre\", \"cph\"), email = \"henrikb@braju.com\"))",
+      "Author": "Henrik Bengtsson [aut, cre, cph]",
+      "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
+      "Description": "Memoization can be used to speed up repetitive and computational expensive function calls.  The first time a function that implements memoization is called the results are stored in a cache memory.  The next time the function is called with the same set of parameters, the results are momentarily retrieved from the cache avoiding repeating the calculations.  With this package, any R object can be cached in a key-value storage where the key can be an arbitrary set of R objects.  The cache memory is persistent (on the file system).",
+      "License": "LGPL (>= 2.1)",
+      "LazyLoad": "TRUE",
+      "URL": "https://github.com/HenrikBengtsson/R.cache",
+      "BugReports": "https://github.com/HenrikBengtsson/R.cache/issues",
+      "Encoding": "UTF-8",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN"
+    },
+    "R.methodsS3": {
+      "Package": "R.methodsS3",
+      "Version": "1.8.2",
+      "Source": "Repository",
+      "Depends": [
+        "R (>= 2.13.0)"
+      ],
+      "Imports": [
+        "utils"
+      ],
+      "Suggests": [
+        "codetools"
+      ],
+      "Title": "S3 Methods Simplified",
+      "Authors@R": "c(person(\"Henrik\", \"Bengtsson\", role=c(\"aut\", \"cre\", \"cph\"), email = \"henrikb@braju.com\"))",
+      "Author": "Henrik Bengtsson [aut, cre, cph]",
+      "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
+      "Description": "Methods that simplify the setup of S3 generic functions and S3 methods.  Major effort has been made in making definition of methods as simple as possible with a minimum of maintenance for package developers.  For example, generic functions are created automatically, if missing, and naming conflict are automatically solved, if possible.  The method setMethodS3() is a good start for those who in the future may want to migrate to S4.  This is a cross-platform package implemented in pure R that generates standard S3 methods.",
+      "License": "LGPL (>= 2.1)",
+      "LazyLoad": "TRUE",
+      "URL": "https://github.com/HenrikBengtsson/R.methodsS3",
+      "BugReports": "https://github.com/HenrikBengtsson/R.methodsS3/issues",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
+    },
+    "R.oo": {
+      "Package": "R.oo",
+      "Version": "1.27.1",
+      "Source": "Repository",
+      "Depends": [
+        "R (>= 2.13.0)",
+        "R.methodsS3 (>= 1.8.2)"
+      ],
+      "Imports": [
+        "methods",
+        "utils"
+      ],
+      "Suggests": [
+        "tools"
+      ],
+      "Title": "R Object-Oriented Programming with or without References",
+      "Authors@R": "c(person(\"Henrik\", \"Bengtsson\", role=c(\"aut\", \"cre\", \"cph\"), email = \"henrikb@braju.com\"))",
+      "Author": "Henrik Bengtsson [aut, cre, cph]",
+      "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
+      "Description": "Methods and classes for object-oriented programming in R with or without references.  Large effort has been made on making definition of methods as simple as possible with a minimum of maintenance for package developers.  The package has been developed since 2001 and is now considered very stable.  This is a cross-platform package implemented in pure R that defines standard S3 classes without any tricks.",
+      "License": "LGPL (>= 2.1)",
+      "LazyLoad": "TRUE",
+      "URL": "https://henrikbengtsson.github.io/R.oo/, https://github.com/HenrikBengtsson/R.oo",
+      "BugReports": "https://github.com/HenrikBengtsson/R.oo/issues",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
+    },
+    "R.utils": {
+      "Package": "R.utils",
+      "Version": "2.13.0",
+      "Source": "Repository",
+      "Depends": [
+        "R (>= 2.14.0)",
+        "R.oo"
+      ],
+      "Imports": [
+        "methods",
+        "utils",
+        "tools",
+        "R.methodsS3"
+      ],
+      "Suggests": [
+        "datasets",
+        "digest (>= 0.6.10)"
+      ],
+      "Title": "Various Programming Utilities",
+      "Authors@R": "c(person(\"Henrik\", \"Bengtsson\", role=c(\"aut\", \"cre\", \"cph\"), email = \"henrikb@braju.com\"))",
+      "Author": "Henrik Bengtsson [aut, cre, cph]",
+      "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
+      "Description": "Utility functions useful when programming and developing R packages.",
+      "License": "LGPL (>= 2.1)",
+      "LazyLoad": "TRUE",
+      "URL": "https://henrikbengtsson.github.io/R.utils/, https://github.com/HenrikBengtsson/R.utils",
+      "BugReports": "https://github.com/HenrikBengtsson/R.utils/issues",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
+    },
     "R6": {
       "Package": "R6",
       "Version": "2.6.1",
@@ -1077,6 +1280,32 @@
       "Description": "Provides color schemes for maps (and other graphics) designed by Cynthia Brewer as described at http://colorbrewer2.org.",
       "License": "Apache License 2.0",
       "NeedsCompilation": "no",
+      "Repository": "RSPM",
+      "Encoding": "UTF-8"
+    },
+    "RCurl": {
+      "Package": "RCurl",
+      "Version": "1.98-1.17",
+      "Source": "Repository",
+      "Title": "General Network (HTTP/FTP/...) Client Interface for R",
+      "Authors@R": "c(person(\"CRAN Team\", role = c('ctb', 'cre'), email = \"CRAN@r-project.org\", comment = \"de facto maintainer since 2013\"), person(\"Duncan\", \"Temple Lang\", role = \"aut\", email = \"duncan@r-project.org\", comment = c(ORCID = \"0000-0003-0159-1546\")))",
+      "SystemRequirements": "GNU make, libcurl",
+      "Description": "A wrapper for 'libcurl' <https://curl.se/libcurl/> Provides functions to allow one to compose general HTTP requests and provides convenient functions to fetch URIs, get & post forms, etc. and process the results returned by the Web server. This provides a great deal of control over the HTTP/FTP/... connection and the form of the request while providing a higher-level interface than is available just using R socket connections.  Additionally, the underlying implementation is robust and extensive, supporting FTP/FTPS/TFTP (uploads and downloads), SSL/HTTPS, telnet, dict, ldap, and also supports cookies, redirects, authentication, etc.",
+      "License": "BSD_3_clause + file LICENSE",
+      "Depends": [
+        "R (>= 3.4.0)",
+        "methods"
+      ],
+      "Imports": [
+        "bitops"
+      ],
+      "Suggests": [
+        "XML"
+      ],
+      "Collate": "aclassesEnums.R bitClasses.R xbits.R base64.R binary.S classes.S curl.S curlAuthConstants.R curlEnums.R curlError.R curlInfo.S dynamic.R form.S getFormParams.R getURLContent.R header.R http.R httpError.R httpErrors.R iconv.R info.S mime.R multi.S options.S scp.R support.S upload.R urlExists.R zclone.R zzz.R",
+      "NeedsCompilation": "yes",
+      "Author": "CRAN Team [ctb, cre] (de facto maintainer since 2013), Duncan Temple Lang [aut] (<https://orcid.org/0000-0003-0159-1546>)",
+      "Maintainer": "CRAN Team <CRAN@r-project.org>",
       "Repository": "RSPM",
       "Encoding": "UTF-8"
     },
@@ -1161,6 +1390,31 @@
       "Author": "Kirill Müller [aut, cre] (ORCID: <https://orcid.org/0000-0002-1416-3412>), Hadley Wickham [aut], David A. James [aut], Seth Falcon [aut], D. Richard Hipp [ctb] (for the included SQLite sources), Dan Kennedy [ctb] (for the included SQLite sources), Joe Mistachkin [ctb] (for the included SQLite sources), SQLite Authors [ctb] (for the included SQLite sources), Liam Healy [ctb] (for the included SQLite sources), R Consortium [fnd], RStudio [cph]",
       "Maintainer": "Kirill Müller <kirill@cynkra.com>",
       "Repository": "RSPM"
+    },
+    "RUnit": {
+      "Package": "RUnit",
+      "Version": "0.4.33.1",
+      "Source": "Repository",
+      "Date": "2024-02-09",
+      "Title": "R Unit Test Framework",
+      "Authors@R": "c(person(given = \"Matthias\", family = \"Burger\", role = \"aut\", email = \"burgerm@users.sourceforge.net\"), person(given = \"Klaus\", family = \"Juenemann\", role = \"aut\", email = \"k.junemann@gmx.net\"), person(given = \"Thomas\", family = \"Koenig\", role = \"aut\", email = \"thomas.koenig@epigenomics.com\"), person(given = \"Roman\", family = \"Zenka\", role = \"cre\", email = \"zenka.roman@mayo.edu\"))",
+      "LazyLoad": "yes",
+      "Depends": [
+        "R (>= 2.5.0)",
+        "utils (>= 2.5.0)",
+        "methods (>= 2.5.0)",
+        "graphics (>= 2.5.0)"
+      ],
+      "Suggests": [
+        "XML (>= 3.1.0)"
+      ],
+      "Description": "R functions implementing a standard Unit Testing framework, with additional code inspection and report generation tools.",
+      "License": "GPL-2",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN",
+      "Author": "Matthias Burger [aut], Klaus Juenemann [aut], Thomas Koenig [aut], Roman Zenka [cre]",
+      "Maintainer": "Roman Zenka <zenka.roman@mayo.edu>",
+      "Encoding": "UTF-8"
     },
     "Rcpp": {
       "Package": "Rcpp",
@@ -1630,6 +1884,28 @@
       "Maintainer": "Jeroen Ooms <jeroenooms@gmail.com>",
       "Repository": "RSPM"
     },
+    "backports": {
+      "Package": "backports",
+      "Version": "1.5.0",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Reimplementations of Functions Introduced Since R-3.0.0",
+      "Authors@R": "c( person(\"Michel\", \"Lang\", NULL, \"michellang@gmail.com\", role = c(\"cre\", \"aut\"), comment = c(ORCID = \"0000-0001-9754-0393\")), person(\"Duncan\", \"Murdoch\", NULL, \"murdoch.duncan@gmail.com\", role = c(\"aut\")), person(\"R Core Team\", role = \"aut\"))",
+      "Maintainer": "Michel Lang <michellang@gmail.com>",
+      "Description": "Functions introduced or changed since R v3.0.0 are re-implemented in this package. The backports are conditionally exported in order to let R resolve the function name to either the implemented backport, or the respective base version, if available. Package developers can make use of new functions or arguments by selectively importing specific backports to support older installations.",
+      "URL": "https://github.com/r-lib/backports",
+      "BugReports": "https://github.com/r-lib/backports/issues",
+      "License": "GPL-2 | GPL-3",
+      "NeedsCompilation": "yes",
+      "ByteCompile": "yes",
+      "Depends": [
+        "R (>= 3.0.0)"
+      ],
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.3.1",
+      "Author": "Michel Lang [cre, aut] (<https://orcid.org/0000-0001-9754-0393>), Duncan Murdoch [aut], R Core Team [aut]",
+      "Repository": "CRAN"
+    },
     "base64enc": {
       "Package": "base64enc",
       "Version": "0.1-3",
@@ -1649,6 +1925,48 @@
       "NeedsCompilation": "yes",
       "Repository": "RSPM",
       "Encoding": "UTF-8"
+    },
+    "biocViews": {
+      "Package": "biocViews",
+      "Version": "1.74.0",
+      "Source": "Bioconductor",
+      "Title": "Categorized views of R package repositories",
+      "Description": "Infrastructure to support 'views' used to classify Bioconductor packages. 'biocViews' are directed acyclic graphs of terms from a controlled vocabulary. There are three major classifications, corresponding to 'software', 'annotation', and 'experiment data' packages.",
+      "biocViews": "Infrastructure",
+      "URL": "http://bioconductor.org/packages/biocViews",
+      "BugReports": "https://github.com/Bioconductor/biocViews/issues",
+      "License": "Artistic-2.0",
+      "Author": "VJ Carey <stvjc@channing.harvard.edu>, BJ Harshfield <rebjh@channing.harvard.edu>, S Falcon <sfalcon@fhcrc.org> , Sonali Arora, Lori Shepherd <lori.shepherd@roswellpark.org>",
+      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>",
+      "Depends": [
+        "R (>= 3.6.0)"
+      ],
+      "Imports": [
+        "Biobase",
+        "graph (>= 1.9.26)",
+        "methods",
+        "RBGL (>= 1.13.5)",
+        "tools",
+        "utils",
+        "XML",
+        "RCurl",
+        "RUnit",
+        "BiocManager"
+      ],
+      "Suggests": [
+        "BiocGenerics",
+        "knitr",
+        "commonmark",
+        "BiocStyle"
+      ],
+      "Collate": "AllClasses.R AllGenerics.R as-methods.R htmlDoc-methods.R htmlFilename-methods.R htmlValue-methods.R show-methods.R getPackNames.R packageDetails.R pump.R repository.R showvoc.R getPackageNEWS.R validation_tests.R recommendBiocViews.R dump_concept.R",
+      "VignetteBuilder": "knitr",
+      "git_url": "https://git.bioconductor.org/packages/biocViews",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "d2e3148",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no"
     },
     "bit": {
       "Package": "bit",
@@ -1716,6 +2034,23 @@
       "Author": "Michael Chirico [aut, cre], Jens Oehlschlägel [aut], Leonardo Silvestri [ctb], Ofek Shilon [ctb]",
       "Maintainer": "Michael Chirico <michaelchirico4@gmail.com>",
       "Repository": "RSPM"
+    },
+    "bitops": {
+      "Package": "bitops",
+      "Version": "1.0-9",
+      "Source": "Repository",
+      "Date": "2024-10-03",
+      "Authors@R": "c( person(\"Steve\", \"Dutky\", role = \"aut\", email = \"sdutky@terpalum.umd.edu\", comment = \"S original; then (after MM's port) revised and modified\"), person(\"Martin\", \"Maechler\", role = c(\"cre\", \"aut\"), email = \"maechler@stat.math.ethz.ch\", comment = c(\"Initial R port; tweaks\", ORCID = \"0000-0002-8685-9910\")))",
+      "Title": "Bitwise Operations",
+      "Description": "Functions for bitwise operations on integer vectors.",
+      "License": "GPL (>= 2)",
+      "URL": "https://github.com/mmaechler/R-bitops",
+      "BugReports": "https://github.com/mmaechler/R-bitops/issues",
+      "NeedsCompilation": "yes",
+      "Author": "Steve Dutky [aut] (S original; then (after MM's port) revised and modified), Martin Maechler [cre, aut] (Initial R port; tweaks, <https://orcid.org/0000-0002-8685-9910>)",
+      "Maintainer": "Martin Maechler <maechler@stat.math.ethz.ch>",
+      "Repository": "RSPM",
+      "Encoding": "UTF-8"
     },
     "blob": {
       "Package": "blob",
@@ -4280,6 +4615,32 @@
       "Repository": "RSPM",
       "Encoding": "UTF-8"
     },
+    "lazyeval": {
+      "Package": "lazyeval",
+      "Version": "0.2.2",
+      "Source": "Repository",
+      "Title": "Lazy (Non-Standard) Evaluation",
+      "Description": "An alternative approach to non-standard evaluation using formulas. Provides a full implementation of LISP style 'quasiquotation', making it easier to generate code with other code.",
+      "Authors@R": "c( person(\"Hadley\", \"Wickham\", ,\"hadley@rstudio.com\", c(\"aut\", \"cre\")), person(\"RStudio\", role = \"cph\") )",
+      "License": "GPL-3",
+      "LazyData": "true",
+      "Depends": [
+        "R (>= 3.1.0)"
+      ],
+      "Suggests": [
+        "knitr",
+        "rmarkdown (>= 0.2.65)",
+        "testthat",
+        "covr"
+      ],
+      "VignetteBuilder": "knitr",
+      "RoxygenNote": "6.1.1",
+      "NeedsCompilation": "yes",
+      "Author": "Hadley Wickham [aut, cre], RStudio [cph]",
+      "Maintainer": "Hadley Wickham <hadley@rstudio.com>",
+      "Repository": "RSPM",
+      "Encoding": "UTF-8"
+    },
     "lifecycle": {
       "Package": "lifecycle",
       "Version": "1.0.4",
@@ -4320,6 +4681,61 @@
       "Author": "Lionel Henry [aut, cre], Hadley Wickham [aut] (<https://orcid.org/0000-0003-4757-117X>), Posit Software, PBC [cph, fnd]",
       "Maintainer": "Lionel Henry <lionel@posit.co>",
       "Repository": "RSPM"
+    },
+    "lintr": {
+      "Package": "lintr",
+      "Version": "3.2.0",
+      "Source": "Repository",
+      "Title": "A 'Linter' for R Code",
+      "Authors@R": "c( person(\"Jim\", \"Hester\", , role = \"aut\"), person(\"Florent\", \"Angly\", role = \"aut\", comment = \"fangly\"), person(\"Russ\", \"Hyde\", role = \"aut\"), person(\"Michael\", \"Chirico\", email = \"michaelchirico4@gmail.com\", role = c(\"aut\", \"cre\")), person(\"Kun\", \"Ren\", role = \"aut\"), person(\"Alexander\", \"Rosenstock\", role = \"aut\", comment = \"AshesITR\"), person(\"Indrajeet\", \"Patil\", , \"patilindrajeet.science@gmail.com\", role = \"aut\", comment = c(ORCID = \"0000-0003-1995-6531\", Twitter = \"@patilindrajeets\")) )",
+      "Description": "Checks adherence to a given style, syntax errors and possible semantic issues.  Supports on the fly checking of R code edited with 'RStudio IDE', 'Emacs', 'Vim', 'Sublime Text', 'Atom' and 'Visual Studio Code'.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://lintr.r-lib.org, https://github.com/r-lib/lintr",
+      "BugReports": "https://github.com/r-lib/lintr/issues",
+      "Depends": [
+        "R (>= 4.0)"
+      ],
+      "Imports": [
+        "backports (>= 1.4.0)",
+        "cli (>= 3.4.0)",
+        "codetools",
+        "digest",
+        "glue",
+        "knitr",
+        "rex",
+        "stats",
+        "utils",
+        "xml2 (>= 1.0.0)",
+        "xmlparsedata (>= 1.0.5)"
+      ],
+      "Suggests": [
+        "bookdown",
+        "cyclocomp",
+        "jsonlite",
+        "patrick (>= 0.2.0)",
+        "rlang",
+        "rmarkdown",
+        "rstudioapi (>= 0.2)",
+        "testthat (>= 3.2.1)",
+        "tibble",
+        "tufte",
+        "withr (>= 2.5.0)"
+      ],
+      "Enhances": [
+        "data.table"
+      ],
+      "VignetteBuilder": "knitr",
+      "Config/Needs/website": "tidyverse/tidytemplate",
+      "Config/Needs/development": "pkgload, cli, testthat, patrick",
+      "Config/testthat/edition": "3",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.3.2",
+      "Collate": "'make_linter_from_xpath.R' 'xp_utils.R' 'utils.R' 'AAA.R' 'T_and_F_symbol_linter.R' 'absolute_path_linter.R' 'actions.R' 'addins.R' 'any_duplicated_linter.R' 'any_is_na_linter.R' 'assignment_linter.R' 'backport_linter.R' 'boolean_arithmetic_linter.R' 'brace_linter.R' 'cache.R' 'class_equals_linter.R' 'commas_linter.R' 'commented_code_linter.R' 'comparison_negation_linter.R' 'condition_call_linter.R' 'condition_message_linter.R' 'conjunct_test_linter.R' 'consecutive_assertion_linter.R' 'consecutive_mutate_linter.R' 'cyclocomp_linter.R' 'declared_functions.R' 'deprecated.R' 'duplicate_argument_linter.R' 'empty_assignment_linter.R' 'equals_na_linter.R' 'exclude.R' 'expect_comparison_linter.R' 'expect_identical_linter.R' 'expect_length_linter.R' 'expect_lint.R' 'expect_named_linter.R' 'expect_not_linter.R' 'expect_null_linter.R' 'expect_s3_class_linter.R' 'expect_s4_class_linter.R' 'expect_true_false_linter.R' 'expect_type_linter.R' 'extract.R' 'fixed_regex_linter.R' 'for_loop_index_linter.R' 'function_argument_linter.R' 'function_left_parentheses_linter.R' 'function_return_linter.R' 'get_source_expressions.R' 'ids_with_token.R' 'if_not_else_linter.R' 'if_switch_linter.R' 'ifelse_censor_linter.R' 'implicit_assignment_linter.R' 'implicit_integer_linter.R' 'indentation_linter.R' 'infix_spaces_linter.R' 'inner_combine_linter.R' 'is_lint_level.R' 'is_numeric_linter.R' 'keyword_quote_linter.R' 'length_levels_linter.R' 'length_test_linter.R' 'lengths_linter.R' 'library_call_linter.R' 'line_length_linter.R' 'lint.R' 'linter_tag_docs.R' 'linter_tags.R' 'lintr-deprecated.R' 'lintr-package.R' 'list_comparison_linter.R' 'literal_coercion_linter.R' 'make_linter_from_regex.R' 'matrix_apply_linter.R' 'methods.R' 'missing_argument_linter.R' 'missing_package_linter.R' 'namespace.R' 'namespace_linter.R' 'nested_ifelse_linter.R' 'nested_pipe_linter.R' 'nonportable_path_linter.R' 'shared_constants.R' 'nrow_subset_linter.R' 'numeric_leading_zero_linter.R' 'nzchar_linter.R' 'object_length_linter.R' 'object_name_linter.R' 'object_overwrite_linter.R' 'object_usage_linter.R' 'one_call_pipe_linter.R' 'outer_negation_linter.R' 'package_hooks_linter.R' 'paren_body_linter.R' 'paste_linter.R' 'path_utils.R' 'pipe_call_linter.R' 'pipe_consistency_linter.R' 'pipe_continuation_linter.R' 'pipe_return_linter.R' 'print_linter.R' 'quotes_linter.R' 'redundant_equals_linter.R' 'redundant_ifelse_linter.R' 'regex_subset_linter.R' 'rep_len_linter.R' 'repeat_linter.R' 'return_linter.R' 'routine_registration_linter.R' 'sample_int_linter.R' 'scalar_in_linter.R' 'semicolon_linter.R' 'seq_linter.R' 'settings.R' 'settings_utils.R' 'sort_linter.R' 'source_utils.R' 'spaces_inside_linter.R' 'spaces_left_parentheses_linter.R' 'sprintf_linter.R' 'stopifnot_all_linter.R' 'string_boundary_linter.R' 'strings_as_factors_linter.R' 'system_file_linter.R' 'terminal_close_linter.R' 'todo_comment_linter.R' 'trailing_blank_lines_linter.R' 'trailing_whitespace_linter.R' 'tree_utils.R' 'undesirable_function_linter.R' 'undesirable_operator_linter.R' 'unnecessary_concatenation_linter.R' 'unnecessary_lambda_linter.R' 'unnecessary_nesting_linter.R' 'unnecessary_placeholder_linter.R' 'unreachable_code_linter.R' 'unused_import_linter.R' 'use_lintr.R' 'vector_logic_linter.R' 'which_grepl_linter.R' 'whitespace_linter.R' 'with.R' 'with_id.R' 'xml_nodes_to_lints.R' 'xml_utils.R' 'yoda_test_linter.R' 'zzz.R'",
+      "Language": "en-US",
+      "NeedsCompilation": "no",
+      "Author": "Jim Hester [aut], Florent Angly [aut] (fangly), Russ Hyde [aut], Michael Chirico [aut, cre], Kun Ren [aut], Alexander Rosenstock [aut] (AshesITR), Indrajeet Patil [aut] (<https://orcid.org/0000-0003-1995-6531>, @patilindrajeets)",
+      "Maintainer": "Michael Chirico <michaelchirico4@gmail.com>",
+      "Repository": "CRAN"
     },
     "listenv": {
       "Package": "listenv",
@@ -5562,6 +5978,42 @@
       "Maintainer": "Kevin Ushey <kevin@rstudio.com>",
       "Repository": "RSPM"
     },
+    "rex": {
+      "Package": "rex",
+      "Version": "1.2.1",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Friendly Regular Expressions",
+      "Authors@R": "c( person(\"Kevin\", \"Ushey\", , \"kevinushey@gmail.com\", role = c(\"aut\", \"cre\")), person(\"Jim\", \"Hester\", , \"james.f.hester@gmail.com\", role = \"aut\"), person(\"Robert\", \"Krzyzanowski\", , \"rkrzyzanowski@gmail.com\", role = \"aut\") )",
+      "Description": "A friendly interface for the construction of regular expressions.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://github.com/kevinushey/rex",
+      "BugReports": "https://github.com/kevinushey/rex/issues",
+      "Imports": [
+        "lazyeval"
+      ],
+      "Suggests": [
+        "covr",
+        "dplyr",
+        "ggplot2",
+        "Hmisc",
+        "knitr",
+        "magrittr",
+        "rmarkdown",
+        "roxygen2",
+        "rvest",
+        "stringr",
+        "testthat"
+      ],
+      "VignetteBuilder": "knitr",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.1.2",
+      "Collate": "'aaa.R' 'utils.R' 'escape.R' 'capture.R' 'character_class.R' 'counts.R' 'lookarounds.R' 'match.R' 'or.R' 'rex-mode.R' 'rex.R' 'shortcuts.R' 'wildcards.R' 'zzz.R'",
+      "NeedsCompilation": "no",
+      "Author": "Kevin Ushey [aut, cre], Jim Hester [aut], Robert Krzyzanowski [aut]",
+      "Maintainer": "Kevin Ushey <kevinushey@gmail.com>",
+      "Repository": "CRAN"
+    },
     "rlang": {
       "Package": "rlang",
       "Version": "1.1.6",
@@ -5809,6 +6261,55 @@
       "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
       "Repository": "CRAN"
     },
+    "rvest": {
+      "Package": "rvest",
+      "Version": "1.0.4",
+      "Source": "Repository",
+      "Title": "Easily Harvest (Scrape) Web Pages",
+      "Authors@R": "c( person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = c(\"aut\", \"cre\")), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
+      "Description": "Wrappers around the 'xml2' and 'httr' packages to make it easy to download, then manipulate, HTML and XML.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://rvest.tidyverse.org/, https://github.com/tidyverse/rvest",
+      "BugReports": "https://github.com/tidyverse/rvest/issues",
+      "Depends": [
+        "R (>= 3.6)"
+      ],
+      "Imports": [
+        "cli",
+        "glue",
+        "httr (>= 0.5)",
+        "lifecycle (>= 1.0.3)",
+        "magrittr",
+        "rlang (>= 1.1.0)",
+        "selectr",
+        "tibble",
+        "xml2 (>= 1.3)"
+      ],
+      "Suggests": [
+        "chromote",
+        "covr",
+        "knitr",
+        "R6",
+        "readr",
+        "repurrrsive",
+        "rmarkdown",
+        "spelling",
+        "stringi (>= 0.3.1)",
+        "testthat (>= 3.0.2)",
+        "webfakes"
+      ],
+      "VignetteBuilder": "knitr",
+      "Config/Needs/website": "tidyverse/tidytemplate",
+      "Config/testthat/edition": "3",
+      "Config/testthat/parallel": "true",
+      "Encoding": "UTF-8",
+      "Language": "en-US",
+      "RoxygenNote": "7.3.1",
+      "NeedsCompilation": "no",
+      "Author": "Hadley Wickham [aut, cre], Posit Software, PBC [cph, fnd]",
+      "Maintainer": "Hadley Wickham <hadley@posit.co>",
+      "Repository": "CRAN"
+    },
     "sass": {
       "Package": "sass",
       "Version": "0.4.10",
@@ -5917,6 +6418,37 @@
       "NeedsCompilation": "yes",
       "Author": "Natalya Pya [aut, cre]",
       "Repository": "RSPM",
+      "Encoding": "UTF-8"
+    },
+    "selectr": {
+      "Package": "selectr",
+      "Version": "0.4-2",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Translate CSS Selectors to XPath Expressions",
+      "Date": "2019-11-20",
+      "Authors@R": "c(person(\"Simon\", \"Potter\", role = c(\"aut\", \"trl\", \"cre\"), email = \"simon@sjp.co.nz\"), person(\"Simon\", \"Sapin\", role = \"aut\"), person(\"Ian\", \"Bicking\", role = \"aut\"))",
+      "License": "BSD_3_clause + file LICENCE",
+      "Depends": [
+        "R (>= 3.0)"
+      ],
+      "Imports": [
+        "methods",
+        "stringr",
+        "R6"
+      ],
+      "Suggests": [
+        "testthat",
+        "XML",
+        "xml2"
+      ],
+      "URL": "https://sjp.co.nz/projects/selectr",
+      "BugReports": "https://github.com/sjp/selectr/issues",
+      "Description": "Translates a CSS3 selector into an equivalent XPath expression. This allows us to use CSS selectors when working with the XML package as it can only evaluate XPath expressions. Also provided are convenience functions useful for using CSS selectors on XML nodes. This package is a port of the Python package 'cssselect' (<https://cssselect.readthedocs.io/>).",
+      "NeedsCompilation": "no",
+      "Author": "Simon Potter [aut, trl, cre], Simon Sapin [aut], Ian Bicking [aut]",
+      "Maintainer": "Simon Potter <simon@sjp.co.nz>",
+      "Repository": "CRAN",
       "Encoding": "UTF-8"
     },
     "sessioninfo": {
@@ -6048,6 +6580,34 @@
       "NeedsCompilation": "yes",
       "Repository": "RSPM"
     },
+    "stringdist": {
+      "Package": "stringdist",
+      "Version": "0.9.15",
+      "Source": "Repository",
+      "Maintainer": "Mark van der Loo <mark.vanderloo@gmail.com>",
+      "License": "GPL-3",
+      "Title": "Approximate String Matching, Fuzzy Text Search, and String Distance Functions",
+      "Type": "Package",
+      "LazyLoad": "yes",
+      "Authors@R": "c( person(\"Mark\", \"van der Loo\", role=c(\"aut\",\"cre\") , email=\"mark.vanderloo@gmail.com\" , comment= c(ORCID=\"0000-0002-9807-4686\")) , person(\"Jan\", \"van der Laan\", role=\"ctb\") , person(\"R Core Team\",\"\"     , role=\"ctb\") , person(\"Nick\",\"Logan\"       , role=\"ctb\") , person(\"Chris\",\"Muir\"       , role=\"ctb\") , person(\"Johannes\", \"Gruber\" , role=\"ctb\") , person(\"Brian\",\"Ripley\"     , role=\"ctb\"))",
+      "Description": "Implements an approximate string matching version of R's native 'match' function. Also offers fuzzy text search based on various string distance measures. Can calculate various string distances based on edits (Damerau-Levenshtein, Hamming, Levenshtein, optimal sting alignment), qgrams (q- gram, cosine, jaccard distance) or heuristic metrics (Jaro, Jaro-Winkler). An implementation of soundex is provided as well. Distances can be computed between character vectors while taking proper care of encoding or between integer vectors representing generic sequences. This package is built for speed and runs in parallel by using 'openMP'. An API for C or C++ is exposed as well. Reference: MPJ van der Loo (2014) <doi:10.32614/RJ-2014-011>.",
+      "Depends": [
+        "R (>= 2.15.3)"
+      ],
+      "URL": "https://github.com/markvanderloo/stringdist",
+      "BugReports": "https://github.com/markvanderloo/stringdist/issues",
+      "Suggests": [
+        "tinytest"
+      ],
+      "Imports": [
+        "parallel"
+      ],
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.3.2",
+      "NeedsCompilation": "yes",
+      "Author": "Mark van der Loo [aut, cre] (<https://orcid.org/0000-0002-9807-4686>), Jan van der Laan [ctb], R Core Team [ctb], Nick Logan [ctb], Chris Muir [ctb], Johannes Gruber [ctb], Brian Ripley [ctb]",
+      "Repository": "CRAN"
+    },
     "stringi": {
       "Package": "stringi",
       "Version": "1.8.7",
@@ -6121,6 +6681,54 @@
       "Author": "Hadley Wickham [aut, cre, cph], Posit Software, PBC [cph, fnd]",
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
       "Repository": "RSPM"
+    },
+    "styler": {
+      "Package": "styler",
+      "Version": "1.10.3",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Non-Invasive Pretty Printing of R Code",
+      "Authors@R": "c(person(given = \"Kirill\", family = \"Müller\", role = \"aut\", email = \"kirill@cynkra.com\", comment = c(ORCID = \"0000-0002-1416-3412\")), person(given = \"Lorenz\", family = \"Walthert\", role = c(\"cre\", \"aut\"), email = \"lorenz.walthert@icloud.com\"), person(given = \"Indrajeet\", family = \"Patil\", role = \"ctb\", email = \"patilindrajeet.science@gmail.com\", comment = c(ORCID = \"0000-0003-1995-6531\", Twitter = \"@patilindrajeets\")))",
+      "Description": "Pretty-prints R code without changing the user's formatting intent.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://github.com/r-lib/styler, https://styler.r-lib.org",
+      "BugReports": "https://github.com/r-lib/styler/issues",
+      "Depends": [
+        "R (>= 3.6.0)"
+      ],
+      "Imports": [
+        "cli (>= 3.1.1)",
+        "magrittr (>= 2.0.0)",
+        "purrr (>= 0.2.3)",
+        "R.cache (>= 0.15.0)",
+        "rlang (>= 1.0.0)",
+        "rprojroot (>= 1.1)",
+        "tools",
+        "vctrs (>= 0.4.1)",
+        "withr (>= 2.3.0)"
+      ],
+      "Suggests": [
+        "data.tree (>= 0.1.6)",
+        "digest",
+        "here",
+        "knitr",
+        "prettycode",
+        "rmarkdown",
+        "roxygen2",
+        "rstudioapi (>= 0.7)",
+        "tibble (>= 1.4.2)",
+        "testthat (>= 3.0.0)"
+      ],
+      "VignetteBuilder": "knitr",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.3.1",
+      "Config/testthat/edition": "3",
+      "Config/testthat/parallel": "true",
+      "Collate": "'addins.R' 'communicate.R' 'compat-dplyr.R' 'compat-tidyr.R' 'detect-alignment-utils.R' 'detect-alignment.R' 'environments.R' 'expr-is.R' 'indent.R' 'initialize.R' 'io.R' 'nest.R' 'nested-to-tree.R' 'parse.R' 'reindent.R' 'token-define.R' 'relevel.R' 'roxygen-examples-add-remove.R' 'roxygen-examples-find.R' 'roxygen-examples-parse.R' 'roxygen-examples.R' 'rules-indention.R' 'rules-line-breaks.R' 'rules-spaces.R' 'rules-tokens.R' 'serialize.R' 'set-assert-args.R' 'style-guides.R' 'styler-package.R' 'stylerignore.R' 'testing-mocks.R' 'testing-public-api.R' 'ui-caching.R' 'testing.R' 'token-create.R' 'transform-block.R' 'transform-code.R' 'transform-files.R' 'ui-styling.R' 'unindent.R' 'utils-cache.R' 'utils-files.R' 'utils-navigate-nest.R' 'utils-strings.R' 'utils.R' 'vertical.R' 'visit.R' 'zzz.R'",
+      "NeedsCompilation": "no",
+      "Author": "Kirill Müller [aut] (<https://orcid.org/0000-0002-1416-3412>), Lorenz Walthert [cre, aut], Indrajeet Patil [ctb] (<https://orcid.org/0000-0003-1995-6531>, @patilindrajeets)",
+      "Maintainer": "Lorenz Walthert <lorenz.walthert@icloud.com>",
+      "Repository": "CRAN"
     },
     "sys": {
       "Package": "sys",
@@ -6886,6 +7494,31 @@
       "NeedsCompilation": "yes",
       "Author": "Hadley Wickham [aut], Jim Hester [aut], Jeroen Ooms [aut, cre], Posit Software, PBC [cph, fnd], R Foundation [ctb] (Copy of R-project homepage cached as example)",
       "Maintainer": "Jeroen Ooms <jeroenooms@gmail.com>",
+      "Repository": "CRAN"
+    },
+    "xmlparsedata": {
+      "Package": "xmlparsedata",
+      "Version": "1.0.5",
+      "Source": "Repository",
+      "Title": "Parse Data of 'R' Code as an 'XML' Tree",
+      "Author": "Gábor Csárdi",
+      "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
+      "Description": "Convert the output of 'utils::getParseData()' to an 'XML' tree, that one can search via 'XPath', and easier to manipulate in general.",
+      "License": "MIT + file LICENSE",
+      "LazyData": "true",
+      "URL": "https://github.com/r-lib/xmlparsedata#readme",
+      "BugReports": "https://github.com/r-lib/xmlparsedata/issues",
+      "RoxygenNote": "6.0.1",
+      "Suggests": [
+        "covr",
+        "testthat",
+        "xml2"
+      ],
+      "Depends": [
+        "R (>= 3.0.0)"
+      ],
+      "Encoding": "UTF-8",
+      "NeedsCompilation": "no",
       "Repository": "CRAN"
     },
     "xopen": {
