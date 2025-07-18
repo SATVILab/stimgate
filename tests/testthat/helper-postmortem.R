@@ -186,7 +186,7 @@ plot_raw_data_postmortem <- function(filter_method = "min_cell") {
       
       ex_tbl <- flowCore::exprs(fr) |>
         tibble::as_tibble()
-      UtilsCytoRSV::plot_cyto(
+      plot_cyto(
         data = ex_tbl,
         marker = marker_vec,
         exc_min = TRUE,
@@ -305,7 +305,7 @@ plot_raw_data_postmortem <- function(filter_method = "min_cell") {
 }
 
 .get_chnl_lab <- function(gs) {
-  chnl_lab <- UtilsCytoRSV::chnl_lab(
+  chnl_lab <- chnl_lab(
     flowWorkspace::gh_pop_get_data(gs[[1]])
   )
   for (i in seq_along(chnl_lab)) {

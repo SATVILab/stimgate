@@ -15,8 +15,6 @@ devtools::install_github("SATVILab/stimgate")
 renv::install("bioc::flowCore")
 renv::install("bioc::CytoML") 
 renv::install("bioc::flowWorkspace")
-renv::install("bioc::flowStats")
-renv::install("RGLab/cytoUtils")
 renv::install("SATVILab/stimgate")
 
 # (Planned) From Bioconductor
