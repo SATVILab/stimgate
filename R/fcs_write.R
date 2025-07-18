@@ -51,7 +51,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   # get gates
   gate_tbl <- .fcs_write_get_gate_tbl(
     gate_tbl, chnl, .data, ind_batch_list, gate_uns_method,
-    gate_type_cyt_pos, gate_type_single_pos
+    gate_type_cyt_pos, gate_type_single_pos, path_project
   )
 
   n_fn <- length(.data)
@@ -81,19 +81,37 @@ stimgate_fcs_write <- function(path_project, # project directory
                                     ind_batch_list,
                                     gate_uns_method,
                                     gate_type_cyt_pos,
-                                    gate_type_single_pos) {
-  gate_tbl |>
-    .fcs_write_gate_gate_tbl_gated(chnl) |>
-    .fcs_write_get_gate_tbl_add_uns(
-      gate_uns_method, gate_type_cyt_pos, gate_type_single_pos, ind_batch_list
-    ) |>
+                                    gate_type_single_pos,
+                                    path_project) {
+  # Get gate table if not provided
+  if (is.null(gate_tbl)) {
+    gate_tbl <- .fcs_write_gate_gate_tbl_gated(NULL, chnl, path_project)
+  }
+  
+  # Check if gate_tbl already contains all required information
+  # (i.e., it has both stimulated and unstimulated gates)
+  has_all_samples <- length(unique(gate_tbl$ind)) >= length(unlist(ind_batch_list))
+  
+  # Only process unstimulated gates if needed
+  if (!has_all_samples) {
+    gate_tbl <- gate_tbl |>
+      .fcs_write_get_gate_tbl_add_uns(
+        gate_uns_method, gate_type_cyt_pos, gate_type_single_pos, ind_batch_list
+      )
+  }
+  
+  # Apply remaining processing
+  gate_tbl <- gate_tbl |>
     .fcs_write_get_gate_tbl_filter_chnl(chnl) |>
     .fcs_write_get_gate_tbl_add_marker(chnl, .data)
+  
+  return(gate_tbl)
 }
 
 .fcs_write_gate_gate_tbl_gated <- function(gate_tbl,
-                                           chnl) {
-  if (!is.null_gate_tbl) {
+                                           chnl,
+                                           path_project) {
+  if (!is.null(gate_tbl)) {
     return(gate_tbl)
   }
   purrr::map_df(chnl, function(chnl_curr) {
@@ -107,19 +125,19 @@ stimgate_fcs_write <- function(path_project, # project directory
                                             gate_type_single_pos,
                                             ind_batch_list) {
   gate_tbl_uns <- .fcs_write_get_gate_tbl_add_uns_get_uns(
-    gate_uns_method, ind_batch_list
+    gate_tbl, gate_uns_method, ind_batch_list
   )
 
   if ("gate_cyt" %in% colnames(gate_tbl)) {
     gate_tbl_uns <- gate_tbl_uns |>
       dplyr::mutate(gate_cyt = pmin(gate, gate_cyt)) # nolint
-  } else {
+  } else if ("gate_cyt" %in% colnames(gate_tbl_uns)) {
     gate_tbl_uns <- gate_tbl_uns |> dplyr::select(-gate_cyt) # nolint
   }
   if ("gate_single" %in% colnames(gate_tbl)) {
     gate_tbl_uns <- gate_tbl_uns |>
       dplyr::mutate(gate_single = pmax(gate, gate_single)) # nolint
-  } else {
+  } else if ("gate_single" %in% colnames(gate_tbl_uns)) {
     gate_tbl_uns <- gate_tbl_uns |> dplyr::select(-gate_single) # nolint
   }
 
@@ -127,7 +145,8 @@ stimgate_fcs_write <- function(path_project, # project directory
     dplyr::bind_rows(gate_tbl_uns)
 }
 
-.fcs_write_get_gate_tbl_add_uns_get_uns <- function(gate_uns_method,
+.fcs_write_get_gate_tbl_add_uns_get_uns <- function(gate_tbl,
+                                                    gate_uns_method,
                                                     ind_batch_list) {
   calc_uns_gate <- .fcs_write_get_gate_tbl_add_uns_get_uns_calc(
     gate_uns_method
@@ -157,16 +176,16 @@ stimgate_fcs_write <- function(path_project, # project directory
     dplyr::summarise(
       ind_stim = paste0(ind |> sort(), collapse = "_"),
       gate = calc(gate), # nolint
-      gate_cyt = ifelse("gate_cyt" %in% colnames(gate_tbl),
+      gate_cyt = ifelse("gate_cyt" %in% colnames(.data),
         calc(gate_cyt), # nolint
         NA
       ),
-      gate_single = ifelse("gate_single" %in% colnames(gate_tbl),
+      gate_single = ifelse("gate_single" %in% colnames(.data),
         calc(gate_single), # nolint
         NA
-      )
+      ),
+      .groups = "drop"
     ) |>
-    dplyr::ungroup() |>
     .fcs_write_get_gate_tbl_add_uns_get_uns_ind(ind_batch_list)
 }
 
@@ -202,13 +221,20 @@ stimgate_fcs_write <- function(path_project, # project directory
 
 .fcs_write_get_gate_tbl_add_marker <- function(gate_tbl, chnl, .data) {
   chnl_lab_vec <- .get_labs(.data = .data[[1]], chnl_cut = chnl) # nolint
+  
+  # Base columns that should always be present
+  base_cols <- c("chnl", "marker", "batch", "ind", "gate")
+  
+  # Optional columns that may or may not be present
+  optional_cols <- c("gate_cyt", "gate_single", "gate_name")
+  
+  # Only select columns that exist
+  cols_to_select <- c(base_cols, optional_cols[optional_cols %in% colnames(gate_tbl)])
+  
   gate_tbl |>
     dplyr::mutate(marker = chnl_lab_vec[.data$chnl]) |> # nolint
-    dplyr::select(
-      chnl, marker,
-      batch, ind, gate, gate_cyt, gate_single # nolint
-    ) |>
-    dplyr::arrange(chnl, marker, gate_name, batch, ind)
+    dplyr::select(dplyr::any_of(cols_to_select)) |>
+    dplyr::arrange(chnl, marker, batch, ind)
 }
 
 # ===============
@@ -237,6 +263,7 @@ stimgate_fcs_write <- function(path_project, # project directory
     dplyr::filter(.data$ind == .env$ind) # nolint
 
   ex <- .fcs_write_impl_filter_inc(
+    ex, gate_tbl_ind, mult, chnl,
     gate_type_cyt_pos, gate_type_single_pos
   )
 
@@ -246,7 +273,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   }
 
   ex <- .fcs_write_impl_filter_exc(
-    ex, combn_exc, gate_tbl_ind, chnl_pos, chnl,
+    ex, combn_exc, gate_tbl_ind, chnl,
     gate_type_cyt_pos, gate_type_single_pos
   )
 
@@ -297,7 +324,6 @@ stimgate_fcs_write <- function(path_project, # project directory
 .fcs_write_impl_filter_exc <- function(ex,
                                        combn_exc,
                                        gate_tbl_ind,
-                                       chnl_pos,
                                        chnl,
                                        gate_type_cyt_pos,
                                        gate_type_single_pos) {
@@ -338,7 +364,7 @@ stimgate_fcs_write <- function(path_project, # project directory
                                   path_dir_save) {
   flowCore::exprs(fr) <- as.matrix(ex)
   fn <- flowCore::keyword(fr)[["GUID"]] |> basename()
-  fn_out <- file.path(dir_save, fn)
+  fn_out <- file.path(path_dir_save, fn)
   if (file.exists(fn_out)) {
     invisible(file.remove(fn_out))
   }
