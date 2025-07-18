@@ -1,3 +1,26 @@
+#' Gate all samples in a batch
+#'
+#' @description Internal helper function to perform gating on all samples within a specific batch
+#'
+#' @param .debug logical. Enable debug output
+#' @param ind_batch numeric vector. Indices of samples in current batch
+#' @param batch character. Batch identifier
+#' @param ex_list list. Expression matrices for each sample
+#' @param gate_combn character. Gate combination method
+#' @param .data GatingSet. Source data
+#' @param noise_sd numeric. Noise standard deviation
+#' @param bias_uns numeric. Unstimulated bias
+#' @param exc_min logical. Exclude minimum values
+#' @param cp_min numeric. Minimum cutpoint
+#' @param min_cell numeric. Minimum number of cells
+#' @param tol_clust numeric. Clustering tolerance
+#' @param bw_min numeric. Minimum bandwidth
+#' @param params list. Additional parameters
+#' @param path_project character. Project path
+#'
+#' @return list containing gating results for the batch
+#'
+#' @keywords internal
 .gate_batch_all <- function(.debug,
                             ind_batch,
                             batch,

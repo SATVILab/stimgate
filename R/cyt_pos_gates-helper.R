@@ -1,3 +1,16 @@
+#' Get inclusion vector for cytokine-positive cells
+#'
+#' @description Internal helper function to determine which cells are positive
+#' for other cytokines (excluding the current channel being analyzed)
+#'
+#' @param chnl_curr character. Current channel being analyzed
+#' @param chnl_vec character vector. All channels to consider
+#' @param ex data.frame. Expression matrix
+#' @param gate_tbl_ind data.frame. Gate table for current indices
+#'
+#' @return logical vector indicating which cells are positive for other cytokines
+#'
+#' @keywords internal
 .get_inc_vec <- function(chnl_curr,
                          chnl_vec,
                          ex,
@@ -14,6 +27,18 @@
   inc_vec
 }
 
+#' Get cytokine-negative cutpoint
+#'
+#' @description Internal helper function to calculate cutpoint for cytokine-negative cells
+#'
+#' @param ex data.frame. Expression matrix  
+#' @param inc logical vector. Inclusion vector for other cytokines
+#' @param chnl character. Channel name
+#' @param bw_min numeric. Minimum bandwidth
+#'
+#' @return numeric. Cutpoint value for cytokine-negative cells
+#'
+#' @keywords internal
 .get_cp_neg <- function(ex,
                         inc,
                         chnl,

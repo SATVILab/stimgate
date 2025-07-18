@@ -85,6 +85,38 @@
       stop("Unrecognized 'side' argument (was '", side, "'.")
     }
     
+    # Validation: Check that the first_deriv cutpoint is reasonable using second derivative
+    if (!is.na(cutpoint)) {
+      deriv2_out <- .deriv_density(x = x, adjust = adjust, deriv = 2, ...)
+      # Get second derivative peaks
+      if (side == "right") {
+        deriv2_peaks <- with(deriv2_out, .find_peaks(x, y, adjust = adjust)[, "x"])
+        deriv2_peaks <- deriv2_peaks[deriv2_peaks > peaks[ref_peak]]
+        if (length(deriv2_peaks) > 0) {
+          # Check if our cutpoint is reasonably close to the first second-derivative peak
+          closest_peak <- sort(deriv2_peaks)[1]
+          # If our cutpoint is too far from the second-derivative validation, issue a warning
+          if (abs(cutpoint - closest_peak) > (max(x) - min(x)) * 0.1) {
+            warning("First-derivative cutpoint validation: cutpoint may be suboptimal. ",
+                   "Consider using method='second_deriv' for more robust results.",
+                   call. = FALSE)
+          }
+        }
+      } else if (side == "left") {
+        deriv2_out$y <- -deriv2_out$y  # Flip for left-side analysis
+        deriv2_peaks <- with(deriv2_out, .find_peaks(x, y, adjust = adjust)[, "x"])
+        deriv2_peaks <- deriv2_peaks[deriv2_peaks < peaks[ref_peak]]
+        if (length(deriv2_peaks) > 0) {
+          closest_peak <- sort(deriv2_peaks, decreasing=TRUE)[1]
+          if (abs(cutpoint - closest_peak) > (max(x) - min(x)) * 0.1) {
+            warning("First-derivative cutpoint validation: cutpoint may be suboptimal. ",
+                   "Consider using method='second_deriv' for more robust results.",
+                   call. = FALSE)
+          }
+        }
+      }
+    }
+    
   } else {
     # The cutpoint is selected as the first peak from the second derivative
     # density which is to the right of the reference peak.

@@ -23,7 +23,7 @@
 #'
 #' @export
 #'
-#' @import ggplot2
+
 #'
 #' @examples
 #' data("cars", package = "datasets")
@@ -197,7 +197,7 @@ axis_limits <- function(p,
   }) |>
     paste0(collapse = ", ")
 
-  parse_text <- paste0("p <- p + expand_limits(", limits_expand_arg, ")")
+  parse_text <- paste0("p <- p + ggplot2::expand_limits(", limits_expand_arg, ")")
   env <- environment()
   eval(parse(text = parse_text), envir = env)
 

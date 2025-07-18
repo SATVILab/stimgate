@@ -1,3 +1,14 @@
+#' Get channel labels for statistics
+#'
+#' @description Internal helper function to get or generate channel labels for statistics output
+#'
+#' @param chnl_lab character vector. Existing channel labels (if any)
+#' @param .data GatingSet. Data source for label extraction
+#' @param chnl character vector. Channel names to get labels for
+#'
+#' @return character vector of channel labels
+#'
+#' @keywords internal
 .get_stats_chnl_lab_get <- function(chnl_lab,
                                          .data,
                                          chnl) {
@@ -10,6 +21,20 @@
   chnl_lab
 }
 
+#' Get and validate statistics parameters
+#'
+#' @description Internal helper function to get and validate parameters for statistics generation
+#'
+#' @param params list. Existing parameters (if any)
+#' @param chnl character vector. Channel names
+#' @param pop_gate character. Population gate
+#' @param chnl_lab character vector. Channel labels
+#' @param ind_batch_list list. Batch index list
+#' @param .data GatingSet. Data source
+#'
+#' @return list of validated parameters
+#'
+#' @keywords internal
 .get_stats_params_get <- function(params = NULL,
                                   chnl = NULL,
                                   pop_gate = NULL,

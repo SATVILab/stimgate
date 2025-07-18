@@ -48,7 +48,6 @@
 #' @param ... arguments passed to \code{ggplot2::geom_hex} (for bivariate data)
 #' or whichever geom is used for univariate data.
 #'
-#' @import ggplot2
 #'
 #' @details Uses the following defaults:
 #' \itemize{
@@ -59,8 +58,6 @@
 #'    \code{scale_fill_viridis_c} with params \code{trans = 'log10'}.
 #'    \item axis units are equal between the axes
 #' }
-#'
-#' @import ggplot2
 plot_cyto <- function(data, marker, lab = NULL,
                       coord_equal = TRUE,
                       limits_expand = NULL, limits_equal = FALSE,
@@ -231,13 +228,13 @@ plot_cyto <- function(data, marker, lab = NULL,
                                      font_size,
                                      marker,
                                      geom_uni_gg) {
-  ggplot( # nolint
+  ggplot2::ggplot( # nolint
     plot_tbl, # nolint
-    aes(x = V1) # nolint
+    ggplot2::aes(x = V1) # nolint
   ) +
     cowplot::theme_cowplot(font_size) +
     cowplot::background_grid(major = "x") +
-    labs(x = marker[1]) + # nolint
+    ggplot2::labs(x = marker[1]) + # nolint
     geom_uni_gg
 }
 
@@ -284,28 +281,28 @@ plot_cyto <- function(data, marker, lab = NULL,
                                      font_size,
                                      marker,
                                      ...) {
-  ggplot( # nolint
-    plot_tbl, aes(x = V1, y = V2) # nolint
+  ggplot2::ggplot( # nolint
+    plot_tbl, ggplot2::aes(x = V1, y = V2) # nolint
   ) +
     cowplot::theme_cowplot(font_size) +
-    theme( # nolint
-      plot.background = element_rect(fill = "white"), # nolint
-      panel.background = element_rect(fill = "white") # nolint
+    ggplot2::theme( # nolint
+      plot.background = ggplot2::element_rect(fill = "white"), # nolint
+      panel.background = ggplot2::element_rect(fill = "white") # nolint
     ) +
-    geom_hex(...) + # nolint
-    scale_fill_viridis_c( # nolint
+    ggplot2::geom_hex(...) + # nolint
+    ggplot2::scale_fill_viridis_c( # nolint
       trans = "log10",
       name = "Count"
     ) +
     cowplot::background_grid(major = "xy") +
-    labs(x = marker[1], y = marker[2]) # nolint
+    ggplot2::labs(x = marker[1], y = marker[2]) # nolint
 }
 
 .plot_cyto_biv_axes <- function(p,
                                 coord_equal,
                                 limits_expand,
                                 limits_equal) {
-  if (coord_equal) p <- p + coord_equal()
+  if (coord_equal) p <- p + ggplot2::coord_equal()
 
   # return now if axis_limits fn not required
   if (is.null(limits_expand) && !limits_equal) {
