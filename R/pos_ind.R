@@ -34,11 +34,11 @@
 }
 
 # Identify cells that are positive for at least two cytokines.
-# 
+#
 # Identify cells that express multiple cytokines. May
 # Get logical indicator for multi-functional cells
 # Identifies cells positive for multiple cytokines with customizable requirements
-# 
+#
 # Example usage would require data setup
 
 .get_pos_ind_mult <- function(ex, gate_tbl, chnl = NULL, chnl_alt = NULL,

@@ -26,16 +26,16 @@
 #' @param debug logical. Whether to enable debug output. Default is FALSE.
 #' @examples
 #' \dontrun{
-#'   # Basic usage
-#'   result <- stimgate_gate(
-#'     path_project = "/path/to/project",
-#'     .data = gs,
-#'     batch_list = list(batch1 = 1:10, batch2 = 11:20),
-#'     marker = list(
-#'       list(cut = "IL2", tol = 0.5e-8),
-#'       list(cut = "TNFa", tol = 0.5e-8)
-#'     )
+#' # Basic usage
+#' result <- stimgate_gate(
+#'   path_project = "/path/to/project",
+#'   .data = gs,
+#'   batch_list = list(batch1 = 1:10, batch2 = 11:20),
+#'   marker = list(
+#'     list(cut = "IL2", tol = 0.5e-8),
+#'     list(cut = "TNFa", tol = 0.5e-8)
 #'   )
+#' )
 #' }
 #' @importFrom flowCore exprs<- parameters<-
 #' @importFrom stats approx as.formula binomial density glm kmeans median optim predict quantile rnorm sd
@@ -212,8 +212,7 @@ stimgate_gate <- function(path_project,
 
     saveRDS(
       gate_obj$gate_tbl,
-      file = file.path(path_dir_save, "gate_tbl_init.rds"
-      )
+      file = file.path(path_dir_save, "gate_tbl_init.rds")
     )
   })
 }
@@ -272,7 +271,7 @@ stimgate_gate <- function(path_project,
       bw_min = marker_curr$bw_min,
       cp_min = marker_curr$cp_min,
       min_cell = marker_curr$min_cell,
-      max_pos_prob_x =  marker_curr$max_pos_prob_x,
+      max_pos_prob_x = marker_curr$max_pos_prob_x,
       gate_quant = gate_quant,
       tol_clust = tol_clust,
       tol_gate_single = tol_gate_single,
@@ -286,7 +285,6 @@ stimgate_gate <- function(path_project,
       gate_obj$gate_tbl,
       file = file.path(path_project, marker_curr$chnl_cut, "gate_tbl.rds")
     )
-
   })
 }
 

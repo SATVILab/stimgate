@@ -15,13 +15,12 @@
                         batch,
                         .debug,
                         path_project) {
-
   # get list of dataframes
   ex_list <- .get_ex_list( # nolint
     .data = .data,
     ind_batch = ind_batch,
     pop = pop_gate,
-    chnl_cut ,
+    chnl_cut,
     batch = batch
   )
   if (is.null(params$gate_tbl)) {
@@ -38,4 +37,3 @@
     )
   }
 }
-

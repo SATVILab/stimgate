@@ -7,7 +7,6 @@ setup_project_postmortem <- function(min_cell = TRUE) {
 }
 
 get_fn_tbl_info_postmortem <- function(gs) {
-  
   fn_vec_orig <- NULL
   n_cell_vec <- NULL
   for (i in seq_along(gs)) {
@@ -58,7 +57,7 @@ get_batch_list_postmortem <- function(fn_tbl_info,
     sel_vec_ind <- which(grp_vec == grp)
     sel_vec_ind_uns <- sel_vec_ind[
       which(fn_tbl_info[[col_stim]][sel_vec_ind] == uns_chr)
-      ]
+    ]
     # check only one unstim sample
     if (length(sel_vec_ind_uns) > 1L) {
       stop(paste0("Multiple unstim samples for group ", grp))
@@ -176,14 +175,15 @@ plot_raw_data_postmortem <- function(filter_method = "min_cell") {
     unlink(path_dir_plot, recursive = TRUE)
   }
   dir.create(
-    path_dir_plot, recursive = TRUE, showWarnings = FALSE
+    path_dir_plot,
+    recursive = TRUE, showWarnings = FALSE
   )
   for (i in seq_along(batch_list)) {
     batch_vec <- batch_list[[i]]
     p_list <- lapply(batch_vec, function(ind) {
       fr <- flowWorkspace::gh_pop_get_data(gs[[ind]])
       stim <- fn_tbl_info[["stim"]][ind]
-      
+
       ex_tbl <- flowCore::exprs(fr) |>
         tibble::as_tibble()
       plot_cyto(
@@ -201,7 +201,7 @@ plot_raw_data_postmortem <- function(filter_method = "min_cell") {
         ggtitle(stim)
     })
     plot_tbl_list_uv_ifng <- lapply(batch_vec, function(ind) {
-      stim <- fn_tbl_info[["stim"]][ind] 
+      stim <- fn_tbl_info[["stim"]][ind]
       fr <- flowWorkspace::gh_pop_get_data(gs[[ind]])
       ex_tbl <- flowCore::exprs(fr) |>
         tibble::as_tibble()
@@ -246,7 +246,7 @@ plot_raw_data_postmortem <- function(filter_method = "min_cell") {
         plot.background = element_rect(fill = "white")
       )
     plot_tbl_list_uv_tnf <- lapply(batch_vec, function(ind) {
-      stim <- fn_tbl_info[["stim"]][ind] 
+      stim <- fn_tbl_info[["stim"]][ind]
       fr <- flowWorkspace::gh_pop_get_data(gs[[ind]])
       ex_tbl <- flowCore::exprs(fr) |>
         tibble::as_tibble()
@@ -291,7 +291,7 @@ plot_raw_data_postmortem <- function(filter_method = "min_cell") {
       )
     p_list <- p_list |> append(list(p_uv_ifn, p_uv_tnf))
     location <- fn_tbl_info[["location"]][batch_vec[1]]
-    path_plot <- file.path(path_dir_plot, paste0(location, "-", names(batch_list)[i] , ".png")) 
+    path_plot <- file.path(path_dir_plot, paste0(location, "-", names(batch_list)[i], ".png"))
     p_grid <- cowplot::plot_grid(plotlist = p_list, ncol = 2) +
       theme(
         plot.background = element_rect(fill = "white"),
@@ -299,7 +299,8 @@ plot_raw_data_postmortem <- function(filter_method = "min_cell") {
       ) +
       ggtitle(location)
     ggplot2::ggsave(
-      path_plot, width = 15, height = 18, units = "cm"
+      path_plot,
+      width = 15, height = 18, units = "cm"
     )
   }
 }
@@ -322,4 +323,3 @@ plot_raw_data_postmortem <- function(filter_method = "min_cell") {
   ) |>
     stats::setNames(seq_len(nrow(info_tbl)))
 }
-  

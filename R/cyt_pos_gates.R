@@ -48,7 +48,7 @@
   } else if (any(grepl("_adj$", gn_vec))) {
     gn_vec <- gn_vec[grepl("_adj$", gn_vec)]
   }
-  
+
   purrr::map_df(gn_vec, function(gn) {
     gate_tbl_gn <- gate_tbl |> dplyr::filter(gate_name == gn)
     force(gate_tbl_gn)
@@ -86,7 +86,7 @@
   #   lapply(function(x) x[-length(x)]) |>
   #   stats::setNames(names(ind_batch_list))
   ind_vec <- unlist(ind_batch_list)
-  
+
   cp_tbl_cyt <- purrr::map_df(ind_vec, function(ind) {
     ind_uns <- .get_ind_uns(ind, ind_batch_list)
     batch <- .get_batch(ind, ind_batch_list)

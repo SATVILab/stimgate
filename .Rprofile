@@ -25,18 +25,18 @@
 }
 
 .is_devcontainer_config_r_feature <- function() {
-   # undo system-wide .Renviron settings
-   # used in the devcontainer feature config-r
-   # to enable global cache accessible after
-   # image build.
-   # just use renv defaults now.
-   renv_paths_cache_match <- Sys.getenv("RENV_PATHS_CACHE") == "/renv/cache"
-   renv_paths_library_root_match <- Sys.getenv("RENV_PATHS_LIBRARY_ROOT") ==
-     "/workspaces/.local/lib/R/library"
-   renv_paths_root_match <- Sys.getenv("RENV_PATHS_ROOT") == "/renv/local"
-   renv_paths_cache_match &&
-     renv_paths_library_root_match &&
-     renv_paths_root_match
+  # undo system-wide .Renviron settings
+  # used in the devcontainer feature config-r
+  # to enable global cache accessible after
+  # image build.
+  # just use renv defaults now.
+  renv_paths_cache_match <- Sys.getenv("RENV_PATHS_CACHE") == "/renv/cache"
+  renv_paths_library_root_match <- Sys.getenv("RENV_PATHS_LIBRARY_ROOT") ==
+    "/workspaces/.local/lib/R/library"
+  renv_paths_root_match <- Sys.getenv("RENV_PATHS_ROOT") == "/renv/local"
+  renv_paths_cache_match &&
+    renv_paths_library_root_match &&
+    renv_paths_root_match
 }
 
 .is_ci <- function() {
