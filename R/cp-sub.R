@@ -28,26 +28,6 @@
 }
 
 
-
-# Replace zero p-values with equally spaced values
-# Replaces zero p-values with equally spaced p-values from 0 (exclusive) to the
-# minimum positive p-value (exclusive)
-.rep_zero_p_val <- function(p) {
-  if (!sum(p)) {
-    return("No p-values are non-zero. Will not work.")
-  }
-  p_zero_ind_vec <- which(p == 0)
-  if (!length(p_zero_ind_vec)) {
-    return(p)
-  }
-  min_non_zero_p <- min(p[p > 0])
-  p_rep_vec <- seq(0, min_non_zero_p, length.out = length(p_zero_ind_vec) + 2)
-  p[p_zero_ind_vec] <- p_rep_vec[-c(1, length(p_rep_vec))]
-  p
-}
-
-
-
 # Linear interpolation function
 # Interpolates a value from input and output vectors
 .interp <- function(val, x, y) {
