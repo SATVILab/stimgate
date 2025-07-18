@@ -87,7 +87,7 @@
   if (i %% 10 == 0 || i == length(ind_batch_list)) {
     if (combn && !filter_other_cyt_pos) {
       txt <- paste0("batch ", i, " of ", length(ind_batch_list))
-      msg(txt)
+      message(txt)
     }
   }
 }

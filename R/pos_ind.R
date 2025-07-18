@@ -3,16 +3,17 @@
 # for any of the specified channels using a single threshold type
 .get_pos_ind_simple <- function(ex, gate_tbl, chnl = NULL, gate_type) {
   if (length(unique(gate_tbl$gate_name)) != 1) {
-    stop(paste0(
+    txt <- paste0(
       "gate_tbl$gate_name has ", length(unique(gate_tbl$gate_name)),
       " unique entries when it should have 1."
-    ))
+    )
+    stop(txt)
   }
   if (length(unique(gate_tbl$ind)) != 1) {
-    stop(paste0(
+    txt <- paste0(
       "gate_tbl$ind has ", length(unique(gate_tbl$ind)),
       " unique entries when it should have 1."
-    ))
+    )
   }
   if (is.null(chnl)) chnl <- unique(gate_tbl$chnl)
   pos_vec <- rep(FALSE, nrow(ex))
