@@ -84,13 +84,7 @@
       "git_last_commit": "6a2aa33",
       "git_last_commit_date": "2024-10-29",
       "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::AnnotationDbi@1.68.0",
-      "RemoteRef": "bioc::AnnotationDbi@1.68.0",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/bioc",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "1.68.0"
+      "NeedsCompilation": "no"
     },
     "AnnotationHub": {
       "Package": "AnnotationHub",
@@ -159,13 +153,7 @@
       "git_last_commit_date": "2024-10-29",
       "Repository": "Bioconductor 3.20",
       "Author": "Bioconductor Package Maintainer [cre], Martin Morgan [aut], Marc Carlson [ctb], Dan Tenenbaum [ctb], Sonali Arora [ctb], Valerie Oberchain [ctb], Kayla Morrell [ctb], Lori Shepherd [aut]",
-      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::AnnotationHub@3.14.0",
-      "RemoteRef": "bioc::AnnotationHub@3.14.0",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/bioc",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "3.14.0"
+      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
     },
     "BH": {
       "Package": "BH",
@@ -611,13 +599,7 @@
       "Repository": "Bioconductor 3.20",
       "NeedsCompilation": "no",
       "Author": "Bioconductor Package Maintainer [cre], Martin Morgan [aut], Marc Carlson [ctb], Dan Tenenbaum [ctb], Sonali Arora [ctb], Valerie Oberchain [ctb], Kayla Morrell [ctb], Lori Shepherd [aut]",
-      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::ExperimentHub@2.14.0",
-      "RemoteRef": "bioc::ExperimentHub@2.14.0",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/bioc",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "2.14.0"
+      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
     },
     "GenomeInfoDb": {
       "Package": "GenomeInfoDb",
@@ -1013,13 +995,7 @@
       "Repository": "Bioconductor 3.20",
       "NeedsCompilation": "no",
       "Author": "Constantin Ahlmann-Eltze [aut] (<https://orcid.org/0000-0002-3762-068X>), Peter Hickey [aut, cre] (<https://orcid.org/0000-0002-8153-6258>), Hervé Pagès [aut]",
-      "Maintainer": "Peter Hickey <peter.hickey@gmail.com>",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::MatrixGenerics@1.18.1",
-      "RemoteRef": "bioc::MatrixGenerics@1.18.1",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/bioc",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "1.18.1"
+      "Maintainer": "Peter Hickey <peter.hickey@gmail.com>"
     },
     "R6": {
       "Package": "R6",
@@ -1084,13 +1060,7 @@
       "Repository": "Bioconductor 3.20",
       "NeedsCompilation": "yes",
       "Author": "Vince Carey [aut], Li Long [aut], R. Gentleman [aut], Emmanuel Taiwo [ctb] (Converted RBGL vignette from Sweave to RMarkdown / HTML.), Bioconductor Package Maintainer [cre]",
-      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::RBGL@1.82.0",
-      "RemoteRef": "bioc::RBGL@1.82.0",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/bioc",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "1.82.0"
+      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
     },
     "RColorBrewer": {
       "Package": "RColorBrewer",
@@ -2120,7 +2090,8 @@
       "URL": "https://gitlab.com/luke-tierney/codetools",
       "License": "GPL",
       "NeedsCompilation": "no",
-      "Repository": "CRAN"
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
     },
     "commonmark": {
       "Package": "commonmark",
@@ -2378,13 +2349,7 @@
       "git_last_commit": "77ce963",
       "git_last_commit_date": "2025-01-20",
       "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "yes",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::cytolib@2.18.2",
-      "RemoteRef": "bioc::cytolib@2.18.2",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/bioc",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "2.18.2"
+      "NeedsCompilation": "yes"
     },
     "data.table": {
       "Package": "data.table",
@@ -3072,13 +3037,7 @@
       "git_last_commit": "f551320",
       "git_last_commit_date": "2024-10-29",
       "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::flowWorkspaceData@3.18.0",
-      "RemoteRef": "bioc::flowWorkspaceData@3.18.0",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/data/experiment",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "3.18.0"
+      "NeedsCompilation": "no"
     },
     "fontawesome": {
       "Package": "fontawesome",
