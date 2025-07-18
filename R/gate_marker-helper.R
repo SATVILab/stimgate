@@ -468,3 +468,15 @@
 
   gate_tbl_cluster_gn
 }
+
+# Placeholder function for adjustment table - this may need proper implementation
+.get_cp_adj_tbl <- function(gate_stats_tbl, gate_quant, gate_tbl_ctrl) {
+  # This is a placeholder implementation
+  # The actual implementation for tail-gate controlled gating may be missing
+  # For now, return a basic structure to avoid errors
+  unique_ind <- unique(gate_stats_tbl$ind)
+  tibble::tibble(
+    ind = unique_ind,
+    gate = rep(0.5, length(unique_ind))  # placeholder gate values
+  )
+}
