@@ -21,6 +21,8 @@
 #' @param limits_equal logical. If \code{TRUE}, then the ranges on the x- and y-axes # nolint
 #' must be equal. Effectively applied after expand_grid is applied. Default is \code{FALSE}. # nolint
 #'
+#' @return A ggplot object with adjusted axis limits.
+#'
 #' @export
 #'
 #' @import ggplot2

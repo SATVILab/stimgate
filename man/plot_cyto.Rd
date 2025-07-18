@@ -71,6 +71,9 @@ Default is \code{"histogram"}.}
 \item{...}{arguments passed to \code{ggplot2::geom_hex} (for bivariate data)
 or whichever geom is used for univariate data.}
 }
+\value{
+A ggplot object showing cytometry data visualization.
+}
 \description{
 Plot a hex-plot with suitable default for a single
 sample for cytometry (CyTOF, flow) data.
@@ -85,4 +88,21 @@ Uses the following defaults:
 \code{scale_fill_viridis_c} with params \code{trans = 'log10'}.
 \item axis units are equal between the axes
 }
+}
+\examples{
+\donttest{
+# Create example data
+set.seed(123)
+data <- data.frame(
+  CD4 = rnorm(1000, 5, 2),
+  CD8 = rnorm(1000, 3, 1.5)
+)
+
+# Create bivariate plot
+plot_cyto(data, marker = c("CD4", "CD8"))
+
+# Create univariate plot
+plot_cyto(data, marker = "CD4")
+}
+
 }

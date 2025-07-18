@@ -16,7 +16,7 @@ A data frame with gating statistics.
 Get gating statistics
 }
 \examples{
-\dontrun{
+\donttest{
 # Get gating statistics from project directory
 stats_tbl <- get_stats("/path/to/project")
 }

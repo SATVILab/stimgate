@@ -16,7 +16,7 @@ Gate table with gates for each sample for each marker.
 Get all the gates for each of the markers gated.
 }
 \examples{
-\dontrun{
+\donttest{
 # Get gate table from project directory
 gate_tbl <- get_gate_tbl("/path/to/project")
 }
