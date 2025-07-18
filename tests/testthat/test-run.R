@@ -23,4 +23,5 @@ test_that("stimgate_gate runs", {
     batch_list = batch_list,
     marker = names(chnl_list)
   ))
+  expect_true(file.exists(file.path(path_project, "gate_stats.rds")))
 })
