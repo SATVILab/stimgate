@@ -3,6 +3,10 @@
     "Version": "4.4.2",
     "Repositories": [
       {
+        "Name": "BioCcontainers",
+        "URL": "https://bioconductor.org/packages/3.20/container-binaries/bioconductor_docker"
+      },
+      {
         "Name": "BioCsoft",
         "URL": "https://bioconductor.org/packages/3.20/bioc"
       },
@@ -21,10 +25,6 @@
       {
         "Name": "BioCbooks",
         "URL": "https://bioconductor.org/packages/3.20/books"
-      },
-      {
-        "Name": "BioCcontainers",
-        "URL": "https://bioconductor.org/packages/3.20/container-binaries/bioconductor_docker"
       },
       {
         "Name": "CRAN",
@@ -348,64 +348,6 @@
       "Maintainer": "Marcel Ramos <marcel.ramos@sph.cuny.edu>",
       "Repository": "CRAN"
     },
-    "BiocParallel": {
-      "Package": "BiocParallel",
-      "Version": "1.40.2",
-      "Source": "Bioconductor",
-      "Type": "Package",
-      "Title": "Bioconductor facilities for parallel evaluation",
-      "Authors@R": "c( person(\"Martin\", \"Morgan\", email = \"mtmorgan.bioc@gmail.com\", role=c(\"aut\", \"cre\")), person(\"Jiefei\", \"Wang\", role = \"aut\"), person(\"Valerie\", \"Obenchain\", role=\"aut\"), person(\"Michel\", \"Lang\", email=\"michellang@gmail.com\", role=\"aut\"), person(\"Ryan\", \"Thompson\", email=\"rct@thompsonclan.org\", role=\"aut\"), person(\"Nitesh\", \"Turaga\", role=\"aut\"), person(\"Aaron\", \"Lun\", role = \"ctb\"), person(\"Henrik\", \"Bengtsson\", role = \"ctb\"), person(\"Madelyn\", \"Carlson\", role = \"ctb\", comment = \"Translated 'Random Numbers' vignette from Sweave to RMarkdown / HTML.\" ), person(\"Phylis\", \"Atieno\", role = \"ctb\", comment = \"Translated 'Introduction to BiocParallel' vignette from Sweave to Rmarkdown / HTML.\" ), person( \"Sergio\", \"Oller\", role = \"ctb\", comment = c( \"Improved bpmapply() efficiency.\", \"ORCID\" = \"0000-0002-8994-1549\" ) ))",
-      "Description": "This package provides modified versions and novel implementation of functions for parallel evaluation, tailored to use with Bioconductor objects.",
-      "URL": "https://github.com/Bioconductor/BiocParallel",
-      "BugReports": "https://github.com/Bioconductor/BiocParallel/issues",
-      "biocViews": "Infrastructure",
-      "License": "GPL-2 | GPL-3",
-      "SystemRequirements": "C++11",
-      "Depends": [
-        "methods",
-        "R (>= 3.5.0)"
-      ],
-      "Imports": [
-        "stats",
-        "utils",
-        "futile.logger",
-        "parallel",
-        "snow",
-        "codetools"
-      ],
-      "Suggests": [
-        "BiocGenerics",
-        "tools",
-        "foreach",
-        "BBmisc",
-        "doParallel",
-        "GenomicRanges",
-        "RNAseqData.HNRNPC.bam.chr14",
-        "TxDb.Hsapiens.UCSC.hg19.knownGene",
-        "VariantAnnotation",
-        "Rsamtools",
-        "GenomicAlignments",
-        "ShortRead",
-        "RUnit",
-        "BiocStyle",
-        "knitr",
-        "batchtools",
-        "data.table"
-      ],
-      "Enhances": [
-        "Rmpi"
-      ],
-      "Collate": "AllGenerics.R DeveloperInterface.R prototype.R bploop.R ErrorHandling.R log.R bpbackend-methods.R bpisup-methods.R bplapply-methods.R bpiterate-methods.R bpstart-methods.R bpstop-methods.R BiocParallelParam-class.R bpmapply-methods.R bpschedule-methods.R bpvec-methods.R bpvectorize-methods.R bpworkers-methods.R bpaggregate-methods.R bpvalidate.R SnowParam-class.R MulticoreParam-class.R TransientMulticoreParam-class.R register.R SerialParam-class.R DoparParam-class.R SnowParam-utils.R BatchtoolsParam-class.R progress.R ipcmutex.R worker-number.R utilities.R rng.R bpinit.R reducer.R worker.R bpoptions.R cpp11.R BiocParallel-defunct.R",
-      "LinkingTo": [
-        "BH",
-        "cpp11"
-      ],
-      "VignetteBuilder": "knitr",
-      "RoxygenNote": "7.1.2",
-      "NeedsCompilation": "yes",
-      "Author": "Martin Morgan [aut, cre], Jiefei Wang [aut], Valerie Obenchain [aut], Michel Lang [aut], Ryan Thompson [aut], Nitesh Turaga [aut], Aaron Lun [ctb], Henrik Bengtsson [ctb], Madelyn Carlson [ctb] (Translated 'Random Numbers' vignette from Sweave to RMarkdown / HTML.), Phylis Atieno [ctb] (Translated 'Introduction to BiocParallel' vignette from Sweave to Rmarkdown / HTML.), Sergio Oller [ctb] (Improved bpmapply() efficiency., <https://orcid.org/0000-0002-8994-1549>)",
-      "Maintainer": "Martin Morgan <mtmorgan.bioc@gmail.com>"
-    },
     "BiocVersion": {
       "Package": "BiocVersion",
       "Version": "3.20.0",
@@ -491,75 +433,6 @@
       "NeedsCompilation": "yes",
       "Author": "Hervé Pagès [aut, cre], Patrick Aboyoun [aut], Robert Gentleman [aut], Saikat DebRoy [aut], Vince Carey [ctb], Nicolas Delhomme [ctb], Felix Ernst [ctb], Wolfgang Huber [ctb] ('matchprobes' vignette), Beryl Kanali [ctb] (Converted 'MultipleAlignments' vignette from Sweave to RMarkdown), Haleema Khan [ctb] (Converted 'matchprobes' vignette from Sweave to RMarkdown), Aidan Lakshman [ctb], Kieran O'Neill [ctb], Valerie Obenchain [ctb], Marcel Ramos [ctb], Albert Vill [ctb], Jen Wokaty [ctb] (Converted 'matchprobes' vignette from Sweave to RMarkdown), Erik Wright [ctb]",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
-    },
-    "CytoML": {
-      "Package": "CytoML",
-      "Version": "2.18.3",
-      "Source": "Bioconductor",
-      "Type": "Package",
-      "Title": "A GatingML Interface for Cross Platform Cytometry Data Sharing",
-      "Date": "2016-04-15",
-      "Author": "Mike Jiang, Jake Wagner",
-      "Maintainer": "Mike Jiang <mike@ozette.com>",
-      "Description": "Uses platform-specific implemenations of the GatingML2.0 standard  to exchange gated cytometry data with other software platforms.",
-      "License": "AGPL-3.0-only",
-      "License_restricts_use": "no",
-      "Imports": [
-        "cytolib(>= 2.3.10)",
-        "flowCore (>= 1.99.10)",
-        "flowWorkspace (>= 4.1.8)",
-        "openCyto (>= 1.99.2)",
-        "XML",
-        "data.table",
-        "jsonlite",
-        "RBGL",
-        "Rgraphviz",
-        "Biobase",
-        "methods",
-        "graph",
-        "graphics",
-        "utils",
-        "jsonlite",
-        "dplyr",
-        "grDevices",
-        "methods",
-        "ggcyto (>= 1.11.4)",
-        "yaml",
-        "stats",
-        "tibble"
-      ],
-      "biocViews": "ImmunoOncology, FlowCytometry, DataImport, DataRepresentation",
-      "LinkingTo": [
-        "cpp11",
-        "BH(>= 1.62.0-1)",
-        "RProtoBufLib",
-        "cytolib",
-        "Rhdf5lib",
-        "flowWorkspace"
-      ],
-      "Suggests": [
-        "testthat",
-        "flowWorkspaceData",
-        "knitr",
-        "rmarkdown",
-        "parallel"
-      ],
-      "VignetteBuilder": "knitr",
-      "RoxygenNote": "7.2.3",
-      "BugReports": "https://github.com/RGLab/CytoML/issues",
-      "URL": "https://github.com/RGLab/CytoML",
-      "Collate": "'AllClasses.R' 'GatingSet2cytobank.R' 'GatingSet2flowJo.R' 'gate-methods.R' 'compensation.R' 'cpp11.R' 'cytobank2GatingSet.R' 'cytobankExperiment.R' 'cytolibml_bin_path.R' 'flowJoWorkspace_Methods.R' 'diva2GatingSet.R' 'flowUtils_functions.R' 'gatingML.R' 'read.gatingML.cytobank.R' 'graphGML_methods.R' 'helperFunctions.R' 'parameter-methods.R' 'transforms.R' 'utils.R' 'writeGatingML.R'",
-      "SystemRequirements": "xml2, GNU make, C++11",
-      "Encoding": "UTF-8",
-      "git_url": "https://git.bioconductor.org/packages/CytoML",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "fee1f6f",
-      "git_last_commit_date": "2025-03-06",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "yes",
-      "Depends": [
-        "R (>= 3.5.0)"
-      ]
     },
     "DBI": {
       "Package": "DBI",
@@ -1657,48 +1530,6 @@
       "Author": "Hervé Pagès [aut, cre], Michael Lawrence [aut], Patrick Aboyoun [aut], Aaron Lun [ctb], Beryl Kanali [ctb] (Converted vignettes from Sweave to RMarkdown)",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
     },
-    "SingleCellExperiment": {
-      "Package": "SingleCellExperiment",
-      "Version": "1.28.1",
-      "Source": "Bioconductor",
-      "Date": "2024-11-08",
-      "Title": "S4 Classes for Single Cell Data",
-      "Authors@R": "c( person(\"Aaron\", \"Lun\", role=c(\"aut\", \"cph\"), email=\"infinite.monkeys.with.keyboards@gmail.com\"), person(\"Davide\",\"Risso\", role=c(\"aut\",\"cre\", \"cph\"), email=\"risso.davide@gmail.com\"), person(\"Keegan\", \"Korthauer\", role=\"ctb\"), person(\"Kevin\", \"Rue-Albrecht\", role=\"ctb\"), person(\"Luke\", \"Zappia\", role = \"ctb\", comment = c(ORCID = \"0000-0001-7744-8565\", github = \"lazappi\")))",
-      "Depends": [
-        "SummarizedExperiment"
-      ],
-      "Imports": [
-        "methods",
-        "utils",
-        "stats",
-        "S4Vectors",
-        "BiocGenerics",
-        "GenomicRanges",
-        "DelayedArray"
-      ],
-      "Suggests": [
-        "testthat",
-        "BiocStyle",
-        "knitr",
-        "rmarkdown",
-        "Matrix",
-        "scRNAseq (>= 2.9.1)",
-        "Rtsne"
-      ],
-      "biocViews": "ImmunoOncology, DataRepresentation, DataImport, Infrastructure, SingleCell",
-      "Description": "Defines a S4 class for storing data from single-cell experiments. This includes specialized methods to store and retrieve spike-in information, dimensionality reduction coordinates and size factors for each cell, along with the usual metadata for genes and libraries.",
-      "License": "GPL-3",
-      "VignetteBuilder": "knitr",
-      "RoxygenNote": "7.3.1",
-      "git_url": "https://git.bioconductor.org/packages/SingleCellExperiment",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "f3e30fb",
-      "git_last_commit_date": "2024-11-08",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "Author": "Aaron Lun [aut, cph], Davide Risso [aut, cre, cph], Keegan Korthauer [ctb], Kevin Rue-Albrecht [ctb], Luke Zappia [ctb] (<https://orcid.org/0000-0001-7744-8565>, lazappi)",
-      "Maintainer": "Davide Risso <risso.davide@gmail.com>"
-    },
     "SparseArray": {
       "Package": "SparseArray",
       "Version": "1.6.2",
@@ -1812,57 +1643,6 @@
       "Author": "Martin Morgan [aut], Valerie Obenchain [aut], Jim Hester [aut], Hervé Pagès [aut, cre]",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
     },
-    "TreeSummarizedExperiment": {
-      "Package": "TreeSummarizedExperiment",
-      "Version": "2.14.0",
-      "Source": "Bioconductor",
-      "Type": "Package",
-      "Title": "TreeSummarizedExperiment: a S4 Class for Data with Tree Structures",
-      "Date": "2021-01-01",
-      "Authors@R": "c(person(\"Ruizhu\", \"Huang\", email = \"ruizhuRH@gmail.com\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0003-3285-1945\")), person(\"Felix G.M.\", \"Ernst\", email = \"felix.gm.ernst@outlook.com\", role = c(\"ctb\"), comment = c(ORCID = \"0000-0001-5064-0928\")))",
-      "Description": "TreeSummarizedExperiment has extended SingleCellExperiment to  include hierarchical information on the rows or columns of the rectangular  data.",
-      "Depends": [
-        "R(>= 3.6.0)",
-        "SingleCellExperiment",
-        "S4Vectors (>= 0.23.18)",
-        "Biostrings"
-      ],
-      "License": "GPL (>=2)",
-      "Encoding": "UTF-8",
-      "LazyData": "true",
-      "biocViews": "DataRepresentation, Infrastructure",
-      "Imports": [
-        "methods",
-        "BiocGenerics",
-        "utils",
-        "ape",
-        "rlang",
-        "dplyr",
-        "SummarizedExperiment",
-        "BiocParallel",
-        "IRanges",
-        "treeio"
-      ],
-      "VignetteBuilder": "knitr",
-      "Suggests": [
-        "ggtree",
-        "ggplot2",
-        "BiocStyle",
-        "knitr",
-        "rmarkdown",
-        "testthat"
-      ],
-      "RoxygenNote": "7.1.1",
-      "Collate": "'TreeSummarizedExperiment.R' 'aboutLoop.R' 'allClass.R' 'aggTSE.R' 'allGenerics.R' 'changeTree.R' 'classAccessor.R' 'classValid.R' 'coercion.R' 'combine.R' 'data.R' 'deprecate_Fun.R' 'internal_utils.R' 'makeTSE.R' 'tree_addLabel.R' 'tree_asLeaf.R' 'tree_asPhylo.R' 'tree_convertNode.R' 'tree_countLeaf.R' 'tree_countNode.R' 'tree_distNode.R' 'tree_findAncestor.R' 'tree_findChild.R' 'tree_findDescendant.R' 'tree_findSibling.R' 'tree_isLeaf.R' 'tree_joinNode.R' 'tree_matTree.R' 'tree_printNode.R' 'tree_shareNode.R' 'tree_showNode.R' 'tree_toTree.R' 'tree_trackNode.R' 'tree_unionLeaf.R' 'updateObject.R'",
-      "git_url": "https://git.bioconductor.org/packages/TreeSummarizedExperiment",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "99bc934",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "Author": "Ruizhu Huang [aut, cre] (<https://orcid.org/0000-0003-3285-1945>), Felix G.M. Ernst [ctb] (<https://orcid.org/0000-0001-5064-0928>)",
-      "Maintainer": "Ruizhu Huang <ruizhuRH@gmail.com>"
-    },
     "UCSC.utils": {
       "Package": "UCSC.utils",
       "Version": "1.2.0",
@@ -1901,50 +1681,6 @@
       "NeedsCompilation": "no",
       "Author": "Hervé Pagès [aut, cre]",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
-    },
-    "UtilsCytoRSV": {
-      "Package": "UtilsCytoRSV",
-      "Version": "0.1.5",
-      "Source": "GitHub",
-      "Type": "Package",
-      "Title": "Utility functions for working with cytometry data",
-      "Author": "Miguel Rodo",
-      "Maintainer": "Miguel Rodo <rdxmig002@myuct.ac.za>",
-      "Description": "Utility functions for working with cytometry data",
-      "License": "MIT + file LICENSE",
-      "Encoding": "UTF-8",
-      "LazyData": "true",
-      "Config/testthat/edition": "3",
-      "Imports": [
-        "tibble",
-        "purrr",
-        "ggplot2",
-        "cowplot",
-        "dplyr",
-        "stringr"
-      ],
-      "Suggests": [
-        "UtilsCompassSV",
-        "here",
-        "remotes",
-        "BiocManager",
-        "UtilsGGSV",
-        "flowCore",
-        "flowWorkspace",
-        "testthat (>= 3.0.0)",
-        "usethis",
-        "DataTidyACSCyTOFCytokinesTCells"
-      ],
-      "RoxygenNote": "7.3.2",
-      "Depends": [
-        "R (>= 2.10)"
-      ],
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteUsername": "SATVILab",
-      "RemoteRepo": "UtilsCytoRSV",
-      "RemoteRef": "main",
-      "RemoteSha": "d7e3ff298e2979d88b4458589e187ed9302322c8"
     },
     "XML": {
       "Package": "XML",
@@ -2039,48 +1775,6 @@
       "Author": "Tony Plate [aut, cre], Richard Heiberger [aut]",
       "Repository": "RSPM",
       "Encoding": "UTF-8"
-    },
-    "ape": {
-      "Package": "ape",
-      "Version": "5.8-1",
-      "Source": "Repository",
-      "Date": "2024-12-10",
-      "Title": "Analyses of Phylogenetics and Evolution",
-      "Authors@R": "c(person(\"Emmanuel\", \"Paradis\", role = c(\"aut\", \"cre\", \"cph\"), email = \"Emmanuel.Paradis@ird.fr\", comment = c(ORCID = \"0000-0003-3092-2199\")), person(\"Simon\", \"Blomberg\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0003-1062-0839\")), person(\"Ben\", \"Bolker\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-2127-0443\")), person(\"Joseph\", \"Brown\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-3835-8062\")), person(\"Santiago\", \"Claramunt\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-8926-5974\")), person(\"Julien\", \"Claude\", role = c(\"aut\", \"cph\"), , comment = c(ORCID = \"0000-0002-9267-1228\")), person(\"Hoa Sien\", \"Cuong\", role = c(\"aut\", \"cph\")), person(\"Richard\", \"Desper\", role = c(\"aut\", \"cph\")), person(\"Gilles\", \"Didier\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0003-0596-9112\")), person(\"Benoit\", \"Durand\", role = c(\"aut\", \"cph\")), person(\"Julien\", \"Dutheil\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0001-7753-4121\")), person(\"RJ\", \"Ewing\", role = c(\"aut\", \"cph\")), person(\"Olivier\", \"Gascuel\", role = c(\"aut\", \"cph\")), person(\"Thomas\", \"Guillerme\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0003-4325-1275\")), person(\"Christoph\", \"Heibl\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-7655-3299\")), person(\"Anthony\", \"Ives\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0001-9375-9523\")), person(\"Bradley\", \"Jones\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0003-4498-1069\")), person(\"Franz\", \"Krah\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0001-7866-7508\")), person(\"Daniel\", \"Lawson\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-5311-6213\")), person(\"Vincent\", \"Lefort\", role = c(\"aut\", \"cph\")), person(\"Pierre\", \"Legendre\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-3838-3305\")), person(\"Jim\", \"Lemon\", role = c(\"aut\", \"cph\")), person(\"Guillaume\", \"Louvel\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-7745-0785\")), person(\"Federico\", \"Marotta\", role = c(\"aut\", \"cph\")), person(\"Eric\", \"Marcon\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-5249-321X\")), person(\"Rosemary\", \"McCloskey\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-9772-8553\")), person(\"Johan\", \"Nylander\", role = c(\"aut\", \"cph\")), person(\"Rainer\", \"Opgen-Rhein\", role = c(\"aut\", \"cph\")), person(\"Andrei-Alin\", \"Popescu\", role = c(\"aut\", \"cph\")), person(\"Manuela\", \"Royer-Carenzi\", role = c(\"aut\", \"cph\")), person(\"Klaus\", \"Schliep\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0003-2941-0161\")), person(\"Korbinian\", \"Strimmer\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0001-7917-2056\")), person(\"Damien\", \"de Vienne\", role = c(\"aut\", \"cph\"), comment = c(ORCID = \"0000-0001-9532-5251\")))",
-      "Depends": [
-        "R (>= 3.2.0)"
-      ],
-      "Suggests": [
-        "gee",
-        "expm",
-        "igraph",
-        "phangorn",
-        "xml2"
-      ],
-      "Imports": [
-        "nlme",
-        "lattice",
-        "graphics",
-        "methods",
-        "stats",
-        "utils",
-        "parallel",
-        "Rcpp (>= 0.12.0)",
-        "digest"
-      ],
-      "LinkingTo": [
-        "Rcpp"
-      ],
-      "ZipData": "no",
-      "Description": "Functions for reading, writing, plotting, and manipulating phylogenetic trees, analyses of comparative data in a phylogenetic framework, ancestral character analyses, analyses of diversification and macroevolution, computing distances from DNA sequences, reading and writing nucleotide sequences as well as importing from BioConductor, and several tools such as Mantel's test, generalized skyline plots, graphical exploration of phylogenetic data (alex, trex, kronoviz), estimation of absolute evolutionary rates and clock-like trees using mean path lengths and penalized likelihood, dating trees with non-contemporaneous sequences, translating DNA into AA sequences, and assessing sequence alignments. Phylogeny estimation can be done with the NJ, BIONJ, ME, MVR, SDM, and triangle methods, and several methods handling incomplete distance matrices (NJ*, BIONJ*, MVR*, and the corresponding triangle method). Some functions call external applications (PhyML, Clustal, T-Coffee, Muscle) whose results are returned into R.",
-      "License": "GPL-2 | GPL-3",
-      "URL": "https://github.com/emmanuelparadis/ape",
-      "BugReports": "https://github.com/emmanuelparadis/ape/issues",
-      "Encoding": "UTF-8",
-      "NeedsCompilation": "yes",
-      "Author": "Emmanuel Paradis [aut, cre, cph] (<https://orcid.org/0000-0003-3092-2199>), Simon Blomberg [aut, cph] (<https://orcid.org/0000-0003-1062-0839>), Ben Bolker [aut, cph] (<https://orcid.org/0000-0002-2127-0443>), Joseph Brown [aut, cph] (<https://orcid.org/0000-0002-3835-8062>), Santiago Claramunt [aut, cph] (<https://orcid.org/0000-0002-8926-5974>), Julien Claude [aut, cph] (<https://orcid.org/0000-0002-9267-1228>), Hoa Sien Cuong [aut, cph], Richard Desper [aut, cph], Gilles Didier [aut, cph] (<https://orcid.org/0000-0003-0596-9112>), Benoit Durand [aut, cph], Julien Dutheil [aut, cph] (<https://orcid.org/0000-0001-7753-4121>), RJ Ewing [aut, cph], Olivier Gascuel [aut, cph], Thomas Guillerme [aut, cph] (<https://orcid.org/0000-0003-4325-1275>), Christoph Heibl [aut, cph] (<https://orcid.org/0000-0002-7655-3299>), Anthony Ives [aut, cph] (<https://orcid.org/0000-0001-9375-9523>), Bradley Jones [aut, cph] (<https://orcid.org/0000-0003-4498-1069>), Franz Krah [aut, cph] (<https://orcid.org/0000-0001-7866-7508>), Daniel Lawson [aut, cph] (<https://orcid.org/0000-0002-5311-6213>), Vincent Lefort [aut, cph], Pierre Legendre [aut, cph] (<https://orcid.org/0000-0002-3838-3305>), Jim Lemon [aut, cph], Guillaume Louvel [aut, cph] (<https://orcid.org/0000-0002-7745-0785>), Federico Marotta [aut, cph], Eric Marcon [aut, cph] (<https://orcid.org/0000-0002-5249-321X>), Rosemary McCloskey [aut, cph] (<https://orcid.org/0000-0002-9772-8553>), Johan Nylander [aut, cph], Rainer Opgen-Rhein [aut, cph], Andrei-Alin Popescu [aut, cph], Manuela Royer-Carenzi [aut, cph], Klaus Schliep [aut, cph] (<https://orcid.org/0000-0003-2941-0161>), Korbinian Strimmer [aut, cph] (<https://orcid.org/0000-0001-7917-2056>), Damien de Vienne [aut, cph] (<https://orcid.org/0000-0001-9532-5251>)",
-      "Maintainer": "Emmanuel Paradis <Emmanuel.Paradis@ird.fr>",
-      "Repository": "CRAN"
     },
     "ash": {
       "Package": "ash",
@@ -2935,43 +2629,6 @@
       "Maintainer": "Jeroen Ooms <jeroenooms@gmail.com>",
       "Repository": "CRAN"
     },
-    "cytoUtils": {
-      "Package": "cytoUtils",
-      "Version": "0.1.1",
-      "Source": "GitHub",
-      "Type": "Package",
-      "Title": "extending openCyto framework",
-      "Author": "Mike Jiang",
-      "Maintainer": "Mike Jiang <wjiang2@fhcrc.org>",
-      "Description": "extending openCyto framework",
-      "License": "GPL2",
-      "LazyData": "TRUE",
-      "Suggests": [
-        "testthat",
-        "flowWorkspaceData",
-        "openCyto"
-      ],
-      "Imports": [
-        "flowWorkspace",
-        "flowCore",
-        "ncdfFlow",
-        "data.table",
-        "SummarizedExperiment",
-        "SingleCellExperiment",
-        "ks",
-        "TreeSummarizedExperiment"
-      ],
-      "LinkingTo": [
-        "cpp11"
-      ],
-      "RoxygenNote": "7.2.1",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteUsername": "RGLab",
-      "RemoteRepo": "cytoUtils",
-      "RemoteRef": "master",
-      "RemoteSha": "5e144bebd82ef73020c5d0a5585d3a9c6cc981e8"
-    },
     "cytolib": {
       "Package": "cytolib",
       "Version": "2.18.2",
@@ -3658,49 +3315,6 @@
       "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
       "Repository": "RSPM"
     },
-    "flowClust": {
-      "Package": "flowClust",
-      "Version": "3.44.0",
-      "Source": "Bioconductor",
-      "Type": "Package",
-      "Title": "Clustering for Flow Cytometry",
-      "Author": "Raphael Gottardo, Kenneth Lo <c.lo@stat.ubc.ca>, Greg Finak <greg@ozette.ai>",
-      "Maintainer": "Greg Finak <greg@ozette.ai>, Mike Jiang <mike@ozette.ai>",
-      "Depends": [
-        "R(>= 2.5.0)"
-      ],
-      "Imports": [
-        "BiocGenerics",
-        "methods",
-        "Biobase",
-        "graph",
-        "flowCore",
-        "parallel"
-      ],
-      "Suggests": [
-        "testthat",
-        "flowWorkspace",
-        "flowWorkspaceData",
-        "knitr",
-        "rmarkdown",
-        "openCyto",
-        "flowStats(>= 4.7.1)"
-      ],
-      "Description": "Robust model-based clustering using a t-mixture model with Box-Cox transformation. Note: users should have GSL installed. Windows users: 'consult the README file available in the inst directory of the source distribution for necessary configuration instructions'.",
-      "Collate": "'SetClasses.R' 'SetMethods.R' 'flowClust.R' 'coerce.R' 'flowClust-package.R' 'hist.R' 'miscellaneous.R' 'plot.R' 'split.R'",
-      "License": "MIT",
-      "biocViews": "ImmunoOncology, Clustering, Visualization, FlowCytometry",
-      "SystemRequirements": "GNU make",
-      "Encoding": "UTF-8",
-      "RoxygenNote": "7.1.1",
-      "VignetteBuilder": "knitr",
-      "git_url": "https://git.bioconductor.org/packages/flowClust",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "7fe1c3c",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "yes"
-    },
     "flowCore": {
       "Package": "flowCore",
       "Version": "2.18.0",
@@ -3943,6 +3557,26 @@
         "R (>= 3.5.0)"
       ]
     },
+    "flowWorkspaceData": {
+      "Package": "flowWorkspaceData",
+      "Version": "3.18.0",
+      "Source": "Bioconductor",
+      "Type": "Package",
+      "Title": "A data package containing two flowJo, one diva xml workspace and the associated fcs files as well as three GatingSets for testing the flowWorkspace, openCyto and CytoML packages.",
+      "Date": "2011-03-31",
+      "Author": "Greg Finak",
+      "Maintainer": "Mike Jiang <wjiang2@fhcrc.org>",
+      "Description": "The necessary external data to run the flowWorkspace and openCyto vignette is found in this package.",
+      "biocViews": "ExperimentData, FlowCytometryData",
+      "License": "GPL-2",
+      "LazyLoad": "yes",
+      "git_url": "https://git.bioconductor.org/packages/flowWorkspaceData",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "f551320",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no"
+    },
     "fontawesome": {
       "Package": "fontawesome",
       "Version": "0.5.3",
@@ -3977,35 +3611,6 @@
       "Author": "Richard Iannone [aut, cre] (<https://orcid.org/0000-0003-3925-190X>), Christophe Dervieux [ctb] (<https://orcid.org/0000-0003-4474-2498>), Winston Chang [ctb], Dave Gandy [ctb, cph] (Font-Awesome font), Posit Software, PBC [cph, fnd]",
       "Maintainer": "Richard Iannone <rich@posit.co>",
       "Repository": "CRAN"
-    },
-    "formatR": {
-      "Package": "formatR",
-      "Version": "1.14",
-      "Source": "Repository",
-      "Type": "Package",
-      "Title": "Format R Code Automatically",
-      "Authors@R": "c( person(\"Yihui\", \"Xie\", role = c(\"aut\", \"cre\"), email = \"xie@yihui.name\", comment = c(ORCID = \"0000-0003-0645-5666\")), person(\"Ed\", \"Lee\", role = \"ctb\"), person(\"Eugene\", \"Ha\", role = \"ctb\"), person(\"Kohske\", \"Takahashi\", role = \"ctb\"), person(\"Pavel\", \"Krivitsky\", role = \"ctb\"), person() )",
-      "Description": "Provides a function tidy_source() to format R source code. Spaces and indent will be added to the code automatically, and comments will be preserved under certain conditions, so that R code will be more human-readable and tidy. There is also a Shiny app as a user interface in this package (see tidy_app()).",
-      "Depends": [
-        "R (>= 3.2.3)"
-      ],
-      "Suggests": [
-        "rstudioapi",
-        "shiny",
-        "testit",
-        "rmarkdown",
-        "knitr"
-      ],
-      "License": "GPL",
-      "URL": "https://github.com/yihui/formatR",
-      "BugReports": "https://github.com/yihui/formatR/issues",
-      "VignetteBuilder": "knitr",
-      "RoxygenNote": "7.2.3",
-      "Encoding": "UTF-8",
-      "NeedsCompilation": "no",
-      "Author": "Yihui Xie [aut, cre] (<https://orcid.org/0000-0003-0645-5666>), Ed Lee [ctb], Eugene Ha [ctb], Kohske Takahashi [ctb], Pavel Krivitsky [ctb]",
-      "Maintainer": "Yihui Xie <xie@yihui.name>",
-      "Repository": "RSPM"
     },
     "fs": {
       "Package": "fs",
@@ -4090,56 +3695,6 @@
       "Author": "Davis Vaughan [aut, cre], Matt Dancho [aut], RStudio [cph, fnd]",
       "Maintainer": "Davis Vaughan <davis@rstudio.com>",
       "Repository": "RSPM"
-    },
-    "futile.logger": {
-      "Package": "futile.logger",
-      "Version": "1.4.3",
-      "Source": "Repository",
-      "Type": "Package",
-      "Title": "A Logging Utility for R",
-      "Date": "2016-07-10",
-      "Author": "Brian Lee Yung Rowe",
-      "Maintainer": "Brian Lee Yung Rowe <r@zatonovo.com>",
-      "Depends": [
-        "R (>= 3.0.0)"
-      ],
-      "Imports": [
-        "utils",
-        "lambda.r (>= 1.1.0)",
-        "futile.options"
-      ],
-      "Suggests": [
-        "testthat",
-        "jsonlite"
-      ],
-      "Description": "Provides a simple yet powerful logging utility. Based loosely on log4j, futile.logger takes advantage of R idioms to make logging a convenient and easy to use replacement for cat and print statements.",
-      "License": "LGPL-3",
-      "LazyLoad": "yes",
-      "NeedsCompilation": "no",
-      "ByteCompile": "yes",
-      "Collate": "'options.R' 'appender.R' 'constants.R' 'layout.R' 'logger.R' 'scat.R' 'futile.logger-package.R'",
-      "RoxygenNote": "5.0.1",
-      "Repository": "RSPM",
-      "Encoding": "UTF-8"
-    },
-    "futile.options": {
-      "Package": "futile.options",
-      "Version": "1.0.1",
-      "Source": "Repository",
-      "Type": "Package",
-      "Title": "Futile Options Management",
-      "Date": "2018-04-20",
-      "Author": "Brian Lee Yung Rowe",
-      "Maintainer": "Brian Lee Yung Rowe <r@zatonovo.com>",
-      "Depends": [
-        "R (>= 2.8.0)"
-      ],
-      "Description": "A scoped options management framework. Used in other packages.",
-      "License": "LGPL-3",
-      "LazyLoad": "yes",
-      "NeedsCompilation": "no",
-      "Repository": "RSPM",
-      "Encoding": "UTF-8"
     },
     "future": {
       "Package": "future",
@@ -4245,57 +3800,6 @@
       "Author": "Jeroen Ooms [aut, cre] (<https://orcid.org/0000-0002-4035-0289>), Jennifer Bryan [ctb] (<https://orcid.org/0000-0002-6983-2759>)",
       "Maintainer": "Jeroen Ooms <jeroenooms@gmail.com>",
       "Repository": "CRAN"
-    },
-    "ggcyto": {
-      "Package": "ggcyto",
-      "Version": "1.34.0",
-      "Source": "Bioconductor",
-      "Type": "Package",
-      "Title": "Visualize Cytometry data with ggplot",
-      "Date": "2015-11-02",
-      "Author": "Mike Jiang",
-      "Maintainer": "Mike Jiang <mike@ozette.com>",
-      "Description": "With the dedicated fortify method implemented for flowSet, ncdfFlowSet and GatingSet classes, both raw and gated flow cytometry data can be plotted directly with ggplot. ggcyto wrapper and some customed layers also make it easy to add gates and population statistics to the plot.",
-      "VignetteBuilder": "knitr",
-      "Depends": [
-        "methods",
-        "ggplot2(>= 3.5.0)",
-        "flowCore(>= 1.41.5)",
-        "ncdfFlow(>= 2.17.1)",
-        "flowWorkspace(>= 4.3.1)"
-      ],
-      "Imports": [
-        "plyr",
-        "scales",
-        "hexbin",
-        "data.table",
-        "RColorBrewer",
-        "gridExtra",
-        "rlang"
-      ],
-      "Suggests": [
-        "testthat",
-        "flowWorkspaceData",
-        "knitr",
-        "rmarkdown",
-        "flowStats",
-        "openCyto",
-        "flowViz",
-        "ggridges",
-        "vdiffr"
-      ],
-      "License": "file LICENSE",
-      "URL": "https://github.com/RGLab/ggcyto/issues",
-      "biocViews": "ImmunoOncology, FlowCytometry, CellBasedAssays, Infrastructure, Visualization",
-      "Collate": "'AllClasses.R' 'autoplot.R' 'axis_inverse_trans.R' 'compute_stats.R' 'faust_gating_plot.R' 'fortify.R' 'fortify_fs.R' 'geom_gate.R' 'geom_hvline.R' 'geom_multi_range.R' 'geom_overlay.R' 'geom_stats.R' 'getFlowFrame.R' 'ggcyto.R' 'ggcyto_GatingLayout.R' 'ggcyto_GatingSet.R' 'ggcyto_flowSet.R' 'labs.R' 'ggcyto_par.R' 'ggplot_data_frame.R' 'merge.quad.gates.R' 'replace_data.R' 'scales_flowCore_fasinh.R' 'scales_flowJo_biexp.R' 'scales_flowJo_fasinh.R' 'scales_logicle.R' 'stat_position.R' 'transform_gate.R' 'utility.R'",
-      "RoxygenNote": "7.2.1",
-      "Roxygen": "list(markdown=TRUE)",
-      "git_url": "https://git.bioconductor.org/packages/ggcyto",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "a13f21f",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no"
     },
     "ggforce": {
       "Package": "ggforce",
@@ -4656,37 +4160,6 @@
       "NeedsCompilation": "yes",
       "Author": "R Gentleman [aut], Elizabeth Whalen [aut], W Huber [aut], S Falcon [aut], Jeff Gentry [aut], Paul Shannon [aut], Halimat C. Atanda [ctb] (Converted 'MultiGraphClass' and 'GraphClass' vignettes from Sweave to RMarkdown / HTML.), Paul Villafuerte [ctb] (Converted vignettes from Sweave to RMarkdown / HTML.), Aliyu Atiku Mustapha [ctb] (Converted 'Graph' vignette from Sweave to RMarkdown / HTML.), Bioconductor Package Maintainer [cre]",
       "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
-    },
-    "gridExtra": {
-      "Package": "gridExtra",
-      "Version": "2.3",
-      "Source": "Repository",
-      "Authors@R": "c(person(\"Baptiste\", \"Auguie\", email = \"baptiste.auguie@gmail.com\", role = c(\"aut\", \"cre\")), person(\"Anton\", \"Antonov\", email = \"tonytonov@gmail.com\", role = c(\"ctb\")))",
-      "License": "GPL (>= 2)",
-      "Title": "Miscellaneous Functions for \"Grid\" Graphics",
-      "Type": "Package",
-      "Description": "Provides a number of user-level functions to work with \"grid\" graphics, notably to arrange multiple grid-based plots on a page, and draw tables.",
-      "VignetteBuilder": "knitr",
-      "Imports": [
-        "gtable",
-        "grid",
-        "grDevices",
-        "graphics",
-        "utils"
-      ],
-      "Suggests": [
-        "ggplot2",
-        "egg",
-        "lattice",
-        "knitr",
-        "testthat"
-      ],
-      "RoxygenNote": "6.0.1",
-      "NeedsCompilation": "no",
-      "Author": "Baptiste Auguie [aut, cre], Anton Antonov [ctb]",
-      "Maintainer": "Baptiste Auguie <baptiste.auguie@gmail.com>",
-      "Repository": "RSPM",
-      "Encoding": "UTF-8"
     },
     "gtable": {
       "Package": "gtable",
@@ -5427,31 +4900,6 @@
       "Repository": "RSPM",
       "Encoding": "UTF-8"
     },
-    "lambda.r": {
-      "Package": "lambda.r",
-      "Version": "1.2.4",
-      "Source": "Repository",
-      "Type": "Package",
-      "Title": "Modeling Data with Functional Programming",
-      "Date": "2019-09-15",
-      "Depends": [
-        "R (>= 3.0.0)"
-      ],
-      "Imports": [
-        "formatR"
-      ],
-      "Suggests": [
-        "testit"
-      ],
-      "Author": "Brian Lee Yung Rowe",
-      "Maintainer": "Brian Lee Yung Rowe <r@zatonovo.com>",
-      "Description": "A language extension to efficiently write functional programs in R. Syntax extensions include multi-part function definitions, pattern matching, guard statements, built-in (optional) type safety.",
-      "License": "LGPL-3",
-      "LazyLoad": "yes",
-      "NeedsCompilation": "no",
-      "Repository": "RSPM",
-      "Encoding": "UTF-8"
-    },
     "later": {
       "Package": "later",
       "Version": "1.4.2",
@@ -5562,32 +5010,6 @@
       "LazyData": "yes",
       "License": "GPL (>= 2)",
       "NeedsCompilation": "no",
-      "Repository": "RSPM",
-      "Encoding": "UTF-8"
-    },
-    "lazyeval": {
-      "Package": "lazyeval",
-      "Version": "0.2.2",
-      "Source": "Repository",
-      "Title": "Lazy (Non-Standard) Evaluation",
-      "Description": "An alternative approach to non-standard evaluation using formulas. Provides a full implementation of LISP style 'quasiquotation', making it easier to generate code with other code.",
-      "Authors@R": "c( person(\"Hadley\", \"Wickham\", ,\"hadley@rstudio.com\", c(\"aut\", \"cre\")), person(\"RStudio\", role = \"cph\") )",
-      "License": "GPL-3",
-      "LazyData": "true",
-      "Depends": [
-        "R (>= 3.1.0)"
-      ],
-      "Suggests": [
-        "knitr",
-        "rmarkdown (>= 0.2.65)",
-        "testthat",
-        "covr"
-      ],
-      "VignetteBuilder": "knitr",
-      "RoxygenNote": "6.1.1",
-      "NeedsCompilation": "yes",
-      "Author": "Hadley Wickham [aut, cre], RStudio [cph]",
-      "Maintainer": "Hadley Wickham <hadley@rstudio.com>",
       "Repository": "RSPM",
       "Encoding": "UTF-8"
     },
@@ -6068,64 +5490,6 @@
       "Repository": "CRAN",
       "Encoding": "UTF-8"
     },
-    "openCyto": {
-      "Package": "openCyto",
-      "Version": "2.18.0",
-      "Source": "Bioconductor",
-      "Type": "Package",
-      "Title": "Hierarchical Gating Pipeline for flow cytometry data",
-      "Date": "2012-06-11",
-      "Author": "Mike Jiang, John Ramey, Greg Finak, Raphael Gottardo",
-      "Maintainer": "Mike Jiang <mike@ozette.com>",
-      "Description": "This package is designed to facilitate the automated gating methods in sequential way to mimic the manual gating strategy.",
-      "License": "AGPL-3.0-only",
-      "LazyLoad": "yes",
-      "Imports": [
-        "methods",
-        "Biobase",
-        "BiocGenerics",
-        "flowCore(>= 1.99.17)",
-        "flowViz",
-        "ncdfFlow(>= 2.11.34)",
-        "flowWorkspace(>= 3.99.1)",
-        "flowClust(>= 3.11.4)",
-        "RBGL",
-        "graph",
-        "data.table",
-        "RColorBrewer"
-      ],
-      "Suggests": [
-        "flowWorkspaceData",
-        "knitr",
-        "rmarkdown",
-        "markdown",
-        "testthat",
-        "utils",
-        "tools",
-        "parallel",
-        "ggcyto",
-        "CytoML",
-        "flowStats(>= 4.5.2)",
-        "MASS"
-      ],
-      "biocViews": "ImmunoOncology, FlowCytometry, DataImport, Preprocessing, DataRepresentation",
-      "Encoding": "UTF-8",
-      "VignetteBuilder": "knitr",
-      "LinkingTo": [
-        "cpp11",
-        "BH"
-      ],
-      "RoxygenNote": "7.2.1",
-      "git_url": "https://git.bioconductor.org/packages/openCyto",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "dc6d560",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "yes",
-      "Depends": [
-        "R (>= 3.5.0)"
-      ]
-    },
     "openssl": {
       "Package": "openssl",
       "Version": "2.3.3",
@@ -6537,43 +5901,6 @@
       "NeedsCompilation": "no",
       "Author": "Kirill Müller [aut, cre], Sergey Podobry [cph] (Author of the bundled plog library)",
       "Maintainer": "Kirill Müller <krlmlr+r@mailbox.org>",
-      "Repository": "RSPM"
-    },
-    "plyr": {
-      "Package": "plyr",
-      "Version": "1.8.9",
-      "Source": "Repository",
-      "Title": "Tools for Splitting, Applying and Combining Data",
-      "Authors@R": "person(\"Hadley\", \"Wickham\", , \"hadley@rstudio.com\", role = c(\"aut\", \"cre\"))",
-      "Description": "A set of tools that solves a common set of problems: you need to break a big problem down into manageable pieces, operate on each piece and then put all the pieces back together.  For example, you might want to fit a model to each spatial location or time point in your study, summarise data by panels or collapse high-dimensional arrays to simpler summary statistics. The development of 'plyr' has been generously supported by 'Becton Dickinson'.",
-      "License": "MIT + file LICENSE",
-      "URL": "http://had.co.nz/plyr, https://github.com/hadley/plyr",
-      "BugReports": "https://github.com/hadley/plyr/issues",
-      "Depends": [
-        "R (>= 3.1.0)"
-      ],
-      "Imports": [
-        "Rcpp (>= 0.11.0)"
-      ],
-      "Suggests": [
-        "abind",
-        "covr",
-        "doParallel",
-        "foreach",
-        "iterators",
-        "itertools",
-        "tcltk",
-        "testthat"
-      ],
-      "LinkingTo": [
-        "Rcpp"
-      ],
-      "Encoding": "UTF-8",
-      "LazyData": "true",
-      "RoxygenNote": "7.2.3",
-      "NeedsCompilation": "yes",
-      "Author": "Hadley Wickham [aut, cre]",
-      "Maintainer": "Hadley Wickham <hadley@rstudio.com>",
       "Repository": "RSPM"
     },
     "png": {
@@ -7748,29 +7075,6 @@
       "Maintainer": "Winston Chang <winston@posit.co>",
       "Repository": "CRAN"
     },
-    "snow": {
-      "Package": "snow",
-      "Version": "0.4-4",
-      "Source": "Repository",
-      "Title": "Simple Network of Workstations",
-      "Author": "Luke Tierney, A. J. Rossini, Na Li, H. Sevcikova",
-      "Description": "Support for simple parallel computing in R.",
-      "Maintainer": "Luke Tierney <luke-tierney@uiowa.edu>",
-      "Suggests": [
-        "rlecuyer"
-      ],
-      "Enhances": [
-        "Rmpi"
-      ],
-      "License": "GPL",
-      "Depends": [
-        "R (>= 2.13.1)",
-        "utils"
-      ],
-      "NeedsCompilation": "no",
-      "Repository": "RSPM",
-      "Encoding": "UTF-8"
-    },
     "sourcetools": {
       "Package": "sourcetools",
       "Version": "0.1.7-1",
@@ -8196,49 +7500,6 @@
       "Maintainer": "Lionel Henry <lionel@posit.co>",
       "Repository": "RSPM"
     },
-    "tidytree": {
-      "Package": "tidytree",
-      "Version": "0.4.6",
-      "Source": "Repository",
-      "Title": "A Tidy Tool for Phylogenetic Tree Data Manipulation",
-      "Authors@R": "c( person(\"Guangchuang\", \"Yu\",   email = \"guangchuangyu@gmail.com\", role = c(\"aut\", \"cre\", \"cph\"), comment = c(ORCID = \"0000-0002-6485-8781\")), person(\"Bradley\", \"Jones\",    email = \"brj1@sfu.ca\",             role = \"ctb\"), person(\"Zebulun\", \"Arendsee\", email = \"zbwrnz@gmail.com\",        role = \"ctb\") )",
-      "Description": "Phylogenetic tree generally contains multiple components including node, edge, branch and associated data. 'tidytree' provides an approach to convert tree object to tidy data frame as well as provides tidy interfaces to manipulate tree data.",
-      "Depends": [
-        "R (>= 3.4.0)"
-      ],
-      "Imports": [
-        "ape",
-        "dplyr",
-        "lazyeval",
-        "magrittr",
-        "methods",
-        "rlang",
-        "tibble",
-        "tidyr",
-        "tidyselect",
-        "yulab.utils (>= 0.0.4)",
-        "pillar",
-        "cli"
-      ],
-      "Suggests": [
-        "knitr",
-        "rmarkdown",
-        "prettydoc",
-        "testthat",
-        "utils"
-      ],
-      "VignetteBuilder": "knitr",
-      "ByteCompile": "true",
-      "License": "Artistic-2.0",
-      "URL": "https://www.amazon.com/Integration-Manipulation-Visualization-Phylogenetic-Computational-ebook/dp/B0B5NLZR1Z/",
-      "BugReports": "https://github.com/YuLab-SMU/tidytree/issues",
-      "Encoding": "UTF-8",
-      "RoxygenNote": "7.2.3",
-      "NeedsCompilation": "no",
-      "Author": "Guangchuang Yu [aut, cre, cph] (<https://orcid.org/0000-0002-6485-8781>), Bradley Jones [ctb], Zebulun Arendsee [ctb]",
-      "Maintainer": "Guangchuang Yu <guangchuangyu@gmail.com>",
-      "Repository": "RSPM"
-    },
     "tinytex": {
       "Package": "tinytex",
       "Version": "0.57",
@@ -8263,63 +7524,6 @@
       "Author": "Yihui Xie [aut, cre, cph] (<https://orcid.org/0000-0003-0645-5666>), Posit Software, PBC [cph, fnd], Christophe Dervieux [ctb] (<https://orcid.org/0000-0003-4474-2498>), Devon Ryan [ctb] (<https://orcid.org/0000-0002-8549-0971>), Ethan Heinzen [ctb], Fernando Cagua [ctb]",
       "Maintainer": "Yihui Xie <xie@yihui.name>",
       "Repository": "RSPM"
-    },
-    "treeio": {
-      "Package": "treeio",
-      "Version": "1.30.0",
-      "Source": "Bioconductor",
-      "Title": "Base Classes and Functions for Phylogenetic Tree Input and Output",
-      "Authors@R": "c( person(\"Guangchuang\", \"Yu\",     email = \"guangchuangyu@gmail.com\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-6485-8781\")), person(\"Tommy Tsan-Yuk\", \"Lam\", email = \"tylam.tommy@gmail.com\",   role = c(\"ctb\", \"ths\")), person(\"Shuangbin\", \"Xu\",       email = \"xshuangbin@163.com\",      role = \"ctb\",           comment = c(ORCID=\"0000-0003-3513-5362\")), person(\"Bradley\", \"Jones\",      email = \"brj1@sfu.ca\",             role = \"ctb\"), person(\"Casey\", \"Dunn\",         email = \"casey_dunn@brown.edu\",    role = \"ctb\"), person(\"Tyler\", \"Bradley\",      email = \"tcb85@drexel.edu\",        role = \"ctb\"), person(\"Konstantinos\", \"Geles\", email = \"konstantinos.geles@studenti.unicz.it\", role = \"ctb\") )",
-      "Description": "'treeio' is an R package to make it easier to import and store phylogenetic tree with associated data; and to link external data from different sources to phylogeny. It also supports exporting phylogenetic tree with heterogeneous associated data to a single tree file and can be served as a platform for merging tree with associated data and converting file formats.",
-      "Depends": [
-        "R (>= 3.6.0)"
-      ],
-      "Imports": [
-        "ape",
-        "dplyr",
-        "jsonlite",
-        "magrittr",
-        "methods",
-        "rlang",
-        "stats",
-        "tibble",
-        "tidytree (>= 0.4.5)",
-        "utils",
-        "yulab.utils (>= 0.1.6)"
-      ],
-      "Suggests": [
-        "Biostrings",
-        "cli",
-        "ggplot2",
-        "ggtree",
-        "igraph",
-        "knitr",
-        "rmarkdown",
-        "phangorn",
-        "prettydoc",
-        "purrr",
-        "testthat",
-        "tidyr",
-        "vroom",
-        "xml2",
-        "yaml"
-      ],
-      "VignetteBuilder": "knitr",
-      "ByteCompile": "true",
-      "License": "Artistic-2.0",
-      "Encoding": "UTF-8",
-      "URL": "https://yulab-smu.top/contribution-tree-data/",
-      "BugReports": "https://github.com/YuLab-SMU/treeio/issues",
-      "biocViews": "Software, Annotation, Clustering, DataImport, DataRepresentation, Alignment, MultipleSequenceAlignment, Phylogenetics",
-      "RoxygenNote": "7.3.2",
-      "git_url": "https://git.bioconductor.org/packages/treeio",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "c824ca4",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "Author": "Guangchuang Yu [aut, cre] (<https://orcid.org/0000-0002-6485-8781>), Tommy Tsan-Yuk Lam [ctb, ths], Shuangbin Xu [ctb] (<https://orcid.org/0000-0003-3513-5362>), Bradley Jones [ctb], Casey Dunn [ctb], Tyler Bradley [ctb], Konstantinos Geles [ctb]",
-      "Maintainer": "Guangchuang Yu <guangchuangyu@gmail.com>"
     },
     "tweenr": {
       "Package": "tweenr",
@@ -8810,41 +8014,6 @@
       "NeedsCompilation": "yes",
       "Repository": "CRAN",
       "Encoding": "UTF-8"
-    },
-    "yulab.utils": {
-      "Package": "yulab.utils",
-      "Version": "0.2.0",
-      "Source": "Repository",
-      "Title": "Supporting Functions for Packages Maintained by 'YuLab-SMU'",
-      "Authors@R": "c(person(\"Guangchuang\", \"Yu\", email = \"guangchuangyu@gmail.com\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-6485-8781\")))",
-      "Description": "Miscellaneous functions commonly used by 'YuLab-SMU'.",
-      "Depends": [
-        "R (>= 4.2.0)"
-      ],
-      "Imports": [
-        "cli",
-        "digest",
-        "fs",
-        "rlang",
-        "tools",
-        "utils"
-      ],
-      "Suggests": [
-        "httr2",
-        "jsonlite",
-        "openssl",
-        "rappdirs"
-      ],
-      "ByteCompile": "true",
-      "License": "Artistic-2.0",
-      "URL": "https://yulab-smu.top/",
-      "BugReports": "https://github.com/YuLab-SMU/yulab.utils/issues",
-      "Encoding": "UTF-8",
-      "RoxygenNote": "7.3.2",
-      "NeedsCompilation": "no",
-      "Author": "Guangchuang Yu [aut, cre] (<https://orcid.org/0000-0002-6485-8781>)",
-      "Maintainer": "Guangchuang Yu <guangchuangyu@gmail.com>",
-      "Repository": "CRAN"
     },
     "zip": {
       "Package": "zip",
