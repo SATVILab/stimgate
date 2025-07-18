@@ -1,6 +1,6 @@
 #' @title Check that parameters for each marker for which a gate is required are complete
 #'
-#' @inheritParams gate
+#' @inheritParams stimgate_gate
 #' @param data_name character. Name of dataset to be gated ('gs_cytof' or 'gs_proto').
 #'
 #' @return A completed marker list with all required parameters.
@@ -184,7 +184,7 @@
 
 #' @title Get all cp type names
 #'
-#' @inheritParams get_cp #fdr
+#' @param fdr numeric. False discovery rate threshold.
 #'
 #' @return Character vector, where each element is name of a
 #' cutpoint, and all elements together represent names of all cutpoints.
