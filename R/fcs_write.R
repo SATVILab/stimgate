@@ -378,7 +378,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   if (is.null(combn_exc)) {
     return(ex)
   }
-  for (chnl_pos in combn_exc) {r2dtable()
+  for (chnl_pos in combn_exc) {
     if (nrow(ex) == 0) break
     exc_vec <- .get_pos_ind_cyt_combn( # nolint
       ex = ex, gate_tbl = gate_tbl_ind,
