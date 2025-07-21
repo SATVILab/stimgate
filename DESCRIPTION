@@ -36,4 +36,5 @@ Suggests:
     here,
     BiocManager,
     knitr,
-    rmarkdown
+    rmarkdown,
+    hexbin
