@@ -41,7 +41,6 @@ test_that("stimgate_fcs_write runs with basic parameters", {
   path_dir_save <- file.path(tempdir(), "fcs_output_test")
 
   # Function should create the directory before failing on missing gates
-  # debugonce(.fcs_write_get_gate_tbl_add_uns)
   result <- stimgate::stimgate_fcs_write(
     path_project = path_project,
     .data = gs,
@@ -491,72 +490,8 @@ test_that("stimgate_fcs_write validates parameter types", {
   )
 })
 
-test_that("stimgate_fcs_write respects working directory", {
-  # Change working directory temporarily
-  original_wd <- getwd()
-  temp_wd <- tempdir()
 
-  tryCatch({
-    setwd(temp_wd)
 
-    # Use relative path for output
-    path_dir_save <- "fcs_output_wd_test"
-
-    result <- stimgate::stimgate_fcs_write(
-      path_project = path_project,
-      .data = gs,
-      ind_batch_list = example_data$batch_list,
-      path_dir_save = path_dir_save,
-      chnl = example_data$marker[[1]]
-    )
-
-    # Should create directory relative to current working directory
-    expect_true(dir.exists(file.path(temp_wd, path_dir_save)))
-    expect_equal(result, path_dir_save)
-
-  }, finally = {
-    setwd(original_wd)
-  })
-  unlink(file.path(temp_wd, path_dir_save), recursive = TRUE)
-})
-
-test_that("stimgate_fcs_write handles transformation edge cases", {
-  # Test with transformation function but no trans_chnl (should apply to all columns)
-  path_dir_save <- file.path(tempdir(), "fcs_output_transform_all")
-
-  # Identity transformation (should not change values but test the pathway)
-  identity_transform <- function(x) x
-
-  result <- stimgate::stimgate_fcs_write(
-    path_project = path_project,
-    .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$marker[[1]],
-    trans_fn = identity_transform,
-    trans_chnl = NULL  # Should apply to all columns
-  )
-
-  expect_equal(result, path_dir_save)
-  expect_true(dir.exists(path_dir_save))
-
-  # Test with NULL transformation function
-  path_dir_save_null <- file.path(tempdir(), "fcs_output_transform_null")
-
-  result_null <- stimgate::stimgate_fcs_write(
-    path_project = path_project,
-    .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save_null,
-    chnl = example_data$marker[[1]],
-    trans_fn = NULL,
-    trans_chnl = example_data$marker[[1]]
-  )
-
-  expect_equal(result_null, path_dir_save_null)
-  expect_true(dir.exists(path_dir_save_null))
-  unlink(path_dir_save, recursive = TRUE)
-})
 
 test_that("stimgate_fcs_write integrates with stimgate workflow", {
   # Test full integration: gate -> fcs_write -> verify output
@@ -599,9 +534,10 @@ test_that("stimgate_fcs_write integrates with stimgate workflow", {
     ff <- flowCore::read.FCS(fcs_file)
     expect_true(inherits(ff, "flowFrame"))
     expect_true(nrow(ff) >= 0)
+    ex_mat <- flowCore::exprs(ff)
 
     # Verify that all gated channels are present
-    expect_true(all(example_data$marker %in% colnames(ff)))
+    expect_true(all(example_data$marker %in% colnames(ex_mat)))
   }
   unlink(path_dir_save, recursive = TRUE)
 })
@@ -609,3 +545,94 @@ test_that("stimgate_fcs_write integrates with stimgate workflow", {
 if (dir.exists(example_data$path_gs)) {
   unlink(example_data$path_gs, recursive = TRUE)
 }
+
+test_that("stimgate_fcs_write respects working directory", {
+  # Change working directory temporarily
+  original_wd <- getwd()
+  temp_wd <- tempdir()
+
+  example_data <- get_example_data()
+  gs <- flowWorkspace::load_gs(example_data$path_gs)
+  path_project_2 <- file.path(dirname(example_data$path_gs), "stimgate")
+  invisible(stimgate::stimgate_gate(
+    .data = gs,
+    path_project = path_project_2,
+    pop_gate = "root",
+    batch_list = example_data$batch_list,
+    marker = example_data$marker
+  ))
+
+  tryCatch({
+    setwd(temp_wd)
+
+    # Use relative path for output
+    path_dir_save <- "fcs_output_wd_test"
+
+    result <- stimgate::stimgate_fcs_write(
+      path_project = path_project_2,
+      .data = gs,
+      ind_batch_list = example_data$batch_list,
+      path_dir_save = path_dir_save,
+      chnl = example_data$marker[[1]]
+    )
+
+    # Should create directory relative to current working directory
+    expect_true(dir.exists(file.path(temp_wd, path_dir_save)))
+    expect_equal(result, path_dir_save)
+
+  }, finally = {
+    setwd(original_wd)
+  })
+  unlink(file.path(temp_wd, path_dir_save), recursive = TRUE)
+})
+
+
+test_that("stimgate_fcs_write handles transformation edge cases", {
+
+  example_data <- get_example_data()
+  gs <- flowWorkspace::load_gs(example_data$path_gs)
+  path_project_2 <- file.path(dirname(example_data$path_gs), "stimgate")
+  invisible(stimgate::stimgate_gate(
+    .data = gs,
+    path_project = path_project_2,
+    pop_gate = "root",
+    batch_list = example_data$batch_list,
+    marker = example_data$marker
+  ))
+
+  # Test with transformation function but no trans_chnl (should apply to all columns)
+  path_dir_save <- file.path(tempdir(), "fcs_output_transform_all")
+
+  # Identity transformation (should not change values but test the pathway)
+  identity_transform <- function(x) x
+
+  result <- stimgate::stimgate_fcs_write(
+    path_project = path_project,
+    .data = gs,
+    ind_batch_list = example_data$batch_list,
+    path_dir_save = path_dir_save,
+    chnl = example_data$marker[[1]],
+    trans_fn = identity_transform,
+    trans_chnl = NULL  # Should apply to all columns
+  )
+
+  expect_equal(result, path_dir_save)
+  expect_true(dir.exists(path_dir_save))
+
+  # Test with NULL transformation function
+  path_dir_save_null <- file.path(tempdir(), "fcs_output_transform_null")
+
+  result_null <- stimgate::stimgate_fcs_write(
+    path_project = path_project,
+    .data = gs,
+    ind_batch_list = example_data$batch_list,
+    path_dir_save = path_dir_save_null,
+    chnl = example_data$marker[[1]],
+    trans_fn = NULL,
+    trans_chnl = example_data$marker[[1]]
+  )
+
+  expect_equal(result_null, path_dir_save_null)
+  expect_true(dir.exists(path_dir_save_null))
+  unlink(path_dir_save, recursive = TRUE)
+})

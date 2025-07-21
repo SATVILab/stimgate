@@ -160,10 +160,12 @@ stimgate_fcs_write <- function(path_project, # project directory
   gate_tbl <- gate_tbl |>
     .fcs_write_get_gate_tbl_filter_chnl(chnl) |>
     .fcs_write_get_gate_tbl_add_marker(chnl, .data) |>
-    # Remove any duplicate rows that might have been introduced
+    # duplicates are not a possible issue,
+    # as the gates must be the same for all duplicates
+    # as we separate them if they are not
     dplyr::distinct()
   
-  return(gate_tbl)
+  gate_tbl
 }
 
 .fcs_write_gate_gate_tbl_gated <- function(gate_tbl,
@@ -233,9 +235,31 @@ stimgate_fcs_write <- function(path_project, # project directory
 .fcs_write_get_gate_tbl_add_uns_get_uns_impl <- function(gate_tbl,
                                                          calc,
                                                          ind_batch_list) {
-  gate_tbl |>
-    # Remove duplicates first to handle cases where same (chnl, marker, batch, ind) appears multiple times
-    dplyr::distinct(chnl, marker, batch, ind, .keep_all = TRUE) |>
+  gate_tbl_distinct <- gate_tbl |>
+    dplyr::distinct(chnl, marker, batch, ind, .keep_all = TRUE)
+  if (nrow(gate_tbl_distinct) != nrow(gate_tbl)) {
+    # check that gates are the same for all duplicates
+    cn_vec <- c("chnl", "marker", "batch", "ind")
+    cn_vec_concate <- NULL
+    for (i in seq_along(cn_vec)) {
+      cn_vec_concate <- paste(cn_vec_concate, gate_tbl[[cn_vec[i]]], sep = "_")
+    }
+    gate_tbl$concat <- cn_vec_concate
+    gate_tbl <- gate_tbl |>
+      dplyr::group_by(concat) |>
+      dplyr::filter(dplyr::n() > 1) |>
+      dplyr::ungroup()
+    gate_vec <- paste0(gate_tbl$gate, gate_tbl$gate_cyt, gate_tbl$gate_single)
+    gate_tbl$gate_concat <- gate_vec
+    is_error <- nrow(gate_tbl |>
+      dplyr::group_by(chnl, marker, batch, ind) |>
+      dplyr::filter(length(unique(gate_concat)) > 1) |>
+      dplyr::ungroup()) > 0
+    if(is_error) {
+      stop("Gates are not the same for all duplicates in gate_tbl.")
+    }
+  }
+  gate_tbl_distinct |>
     dplyr::group_by(chnl, marker, batch) |> # nolint
     dplyr::summarise(
       ind_stim = paste0(ind |> sort(), collapse = "_"),
