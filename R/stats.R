@@ -130,10 +130,22 @@
 #' @title Get gating statistics
 #' @param path_project character. Path to the project directory.
 #' @return A data frame with gating statistics.
-#' @examples
-#' \donttest{
-#' # Get gating statistics from project directory
-#' stats_tbl <- get_stats("/path/to/project")
+#' @examples{
+#' # Get example dataset
+#' example_data <- get_example_data()
+#' gs <- flowWorkspace::load_gs(example_data$path_gs)
+#'
+#' # Run the stimgate pipeline
+#' path_project <- stimgate_gate(
+#'   path_project = file.path(tempdir(), "stimgate_example"),
+#'   .data = gs,
+#'   batch_list = example_data$batch_list,
+#'   marker = example_data$marker,
+#'   pop_gate = "root"
+#' )
+#'
+#' # Get statistics for the identified gates
+#' stats <- get_stats(path_project)
 #' }
 #' @export
 get_stats <- function(path_project) {

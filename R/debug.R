@@ -33,7 +33,8 @@ globalVariables(c(
   # Variables from other functions
   "cyt_combn", "freq_uns", "V1", "V2", "i", "tol_gate_single",
   # Variables used in plots and ggplot2 context
-  ".debug", "prop_l1se"
+  ".debug", "prop_l1se",
+  "rbeta"
 ))
 
 .debug_msg <- function(.debug, msg, val = NULL) {
