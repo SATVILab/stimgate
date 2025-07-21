@@ -45,4 +45,7 @@ test_that("stimgate_gate_get returns gate table after stimgate_gate", {
   if (dir.exists(path_project)) {
     unlink(path_project, recursive = TRUE)
   }
+  if (dir.exists(example_data$path_gs)) {
+    unlink(example_data$path_gs, recursive = TRUE)
+  }
 })
