@@ -165,7 +165,7 @@ stimgate_fcs_write <- function(path_project, # project directory
     # as we separate them if they are not
     dplyr::distinct()
   
-  gate_tbl_distinct
+  gate_tbl
 }
 
 .fcs_write_gate_gate_tbl_gated <- function(gate_tbl,
