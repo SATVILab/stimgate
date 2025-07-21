@@ -35,12 +35,19 @@
 #' @param plot logical specifying whether to plot the peaks found
 #' @param ... additional arguments passed to \code{.deriv_density}
 #' @return the cutpoint along the x-axis
-.cytokine_cutpoint <- function(
-    x, num_peaks = 1, ref_peak = 1,
-    method = c("first_deriv", "second_deriv"),
-    tol = 1e-2, adjust = 1, side = "right", strict = TRUE, plot = FALSE, auto_tol = FALSE, ...) {
+.cytokine_cutpoint <- function(x,
+                               num_peaks = 1,
+                               ref_peak = 1,
+                               method = c("first_deriv", "second_deriv"),
+                               tol = 1e-2,
+                               adjust = 1,
+                               side = "right",
+                               strict = TRUE,
+                               plot = FALSE,
+                               auto_tol = FALSE,
+                               ...) {
   method <- match.arg(method)
-  peaks <- sort(.find_peaks(x, num_peaks = num_peaks, adjust = adjust, plot = plot)[, "x"])
+  peaks <- sort(.find_peaks(x, num_peaks = num_peaks, adjust = adjust)[, "x"])
 
   # update peak count since it can be less than num_peaks
   num_peaks <- length(peaks)
@@ -66,14 +73,14 @@
       tol <- 0.01 * max(abs(deriv_out$y))
     }
     if (side == "right") {
-      deriv_valleys <- with(deriv_out, .find_valleys(x = x, y = y, adjust = adjust))
+      deriv_valleys <- with(deriv_out, .find_valleys(x = x, adjust = adjust))
       deriv_valleys <- deriv_valleys[deriv_valleys > peaks[ref_peak]]
       deriv_valleys <- sort(deriv_valleys)[1]
       cutpoint <- with(deriv_out, x[x > deriv_valleys & abs(y) < tol])
       cutpoint <- cutpoint[1]
     } else if (side == "left") {
       deriv_out$y <- -deriv_out$y
-      deriv_valleys <- with(deriv_out, .find_valleys(x = x, y = y, adjust = adjust))
+      deriv_valleys <- with(deriv_out, .find_valleys(x = x, adjust = adjust))
       deriv_valleys <- deriv_valleys[deriv_valleys < peaks[ref_peak]]
       deriv_valleys <- sort(deriv_valleys, decreasing = TRUE)[1]
       cutpoint <- with(deriv_out, x[x < deriv_valleys & abs(y) < tol])
@@ -87,12 +94,12 @@
     deriv_out <- .deriv_density(x = x, adjust = adjust, deriv = 2, ...)
 
     if (side == "right") {
-      deriv_peaks <- with(deriv_out, .find_peaks(x, y, adjust = adjust)[, "x"])
+      deriv_peaks <- with(deriv_out, .find_peaks(x, adjust = adjust)[, "x"])
       deriv_peaks <- deriv_peaks[deriv_peaks > peaks[ref_peak]]
       cutpoint <- sort(deriv_peaks)[1]
     } else if (side == "left") {
       deriv_out$y <- -deriv_out$y
-      deriv_peaks <- with(deriv_out, .find_peaks(x, y, adjust = adjust)[, "x"])
+      deriv_peaks <- with(deriv_out, .find_peaks(x, adjust = adjust)[, "x"])
       deriv_peaks <- deriv_peaks[deriv_peaks < peaks[ref_peak]]
       cutpoint <- sort(deriv_peaks, decreasing = TRUE)[length(deriv_peaks)]
     } else {

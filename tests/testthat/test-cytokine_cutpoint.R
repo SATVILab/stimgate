@@ -1,8 +1,3 @@
-library(testthat)
-
-# Source the functions we need to test
-source("../../R/cytoUtils-cytokine_cutpoint.R")
-source("../../R/openCyto-find_peaks_and_valleys.R")
 
 test_that(".cytokine_cutpoint handles ref_peak > num_peaks with strict=TRUE", {
   # Create simple bimodal data where we can control the number of peaks

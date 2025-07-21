@@ -82,6 +82,7 @@ test_that("hexbin installation check works", {
 })
 
 test_that("plot functions handle min_cell threshold correctly", {
+
   # Test with very high min_cell to trigger early return
   result <- stimgate:::.plot_gate_bv(
     marker = example_data$marker,
@@ -108,7 +109,7 @@ test_that(".plot_get_lab handles various val_lab configurations", {
     i = NULL
   )
   expect_equal(result1, c("A", "B"))
-  
+
   # Test with named val_lab
   result2 <- stimgate:::.plot_get_lab(
     val = c("A", "B"),
@@ -117,7 +118,7 @@ test_that(".plot_get_lab handles various val_lab configurations", {
   )
   expect_equal(result2, c("Label A", "Label B"))
   expect_null(names(result2))
-  
+
   # Test with unnamed val_lab and i NULL
   result3 <- stimgate:::.plot_get_lab(
     val = c("A", "B"),
@@ -126,7 +127,7 @@ test_that(".plot_get_lab handles various val_lab configurations", {
   )
   expect_equal(result3, c("Label A", "Label B"))
   expect_null(names(result3))
-  
+
   # Test with unnamed val_lab and i non-null
   result4 <- stimgate:::.plot_get_lab(
     val = c("A", "B"),
@@ -138,6 +139,7 @@ test_that(".plot_get_lab handles various val_lab configurations", {
 })
 
 test_that(".plot_gate_uv returns NULL when all markers return NULL", {
+
   # Test with empty ind to generate NULL results
   result <- stimgate:::.plot_gate_uv(
     ind = list(),
@@ -154,6 +156,7 @@ test_that(".plot_gate_uv returns NULL when all markers return NULL", {
 })
 
 test_that(".plot_gate_uv_marker returns NULL when plot_tbl is NULL", {
+
   # Test with empty ind list to generate NULL plot_tbl
   result <- stimgate:::.plot_gate_uv_marker(
     marker = example_data$marker[1],
@@ -170,7 +173,7 @@ test_that(".plot_gate_uv_marker returns NULL when plot_tbl is NULL", {
 })
 
 test_that(".plot_gate_uv_marker_get_plot_tbl returns NULL for insufficient cells", {
-  # Test with very high min_cell
+
   result <- stimgate:::.plot_gate_uv_marker_get_plot_tbl(
     ind = example_data$batch_list[[1]],
     .data = gs,
@@ -190,7 +193,7 @@ test_that(".plot_gate_uv_marker_plot_init handles different condition branches",
     type = rep(c("raw", "adj"), 5),
     ind_lab = rep(c("Sample1", "Sample2"), 5)
   )
-  
+
   # Test exc_min = TRUE, multiple ind
   p1 <- stimgate:::.plot_gate_uv_marker_plot_init(
     plot_tbl = plot_tbl,
@@ -199,7 +202,7 @@ test_that(".plot_gate_uv_marker_plot_init handles different condition branches",
     ind_lab = c("Sample1", "Sample2")
   )
   expect_s3_class(p1, "ggplot")
-  
+
   # Test exc_min = TRUE, single ind
   p2 <- stimgate:::.plot_gate_uv_marker_plot_init(
     plot_tbl = plot_tbl,
@@ -208,7 +211,7 @@ test_that(".plot_gate_uv_marker_plot_init handles different condition branches",
     ind_lab = c("Sample1")
   )
   expect_s3_class(p2, "ggplot")
-  
+
   # Test exc_min = FALSE, multiple ind
   p3 <- stimgate:::.plot_gate_uv_marker_plot_init(
     plot_tbl = plot_tbl,
@@ -217,7 +220,7 @@ test_that(".plot_gate_uv_marker_plot_init handles different condition branches",
     ind_lab = c("Sample1", "Sample2")
   )
   expect_s3_class(p3, "ggplot")
-  
+
   # Test exc_min = FALSE, single ind
   p4 <- stimgate:::.plot_gate_uv_marker_plot_init(
     plot_tbl = plot_tbl,
@@ -234,7 +237,7 @@ test_that(".plot_grid returns p_list when plot = FALSE", {
     plot1 = ggplot2::ggplot() + ggplot2::geom_point(ggplot2::aes(x = 1, y = 1)),
     plot2 = ggplot2::ggplot() + ggplot2::geom_point(ggplot2::aes(x = 2, y = 2))
   )
-  
+
   # Test with plot = FALSE
   result <- stimgate:::.plot_grid(
     plot = FALSE,
@@ -242,7 +245,7 @@ test_that(".plot_grid returns p_list when plot = FALSE", {
     n_col = 2
   )
   expect_identical(result, p_list)
-  
+
   # Test with plot = TRUE (should return combined plot)
   result2 <- stimgate:::.plot_grid(
     plot = TRUE,
@@ -254,6 +257,7 @@ test_that(".plot_grid returns p_list when plot = FALSE", {
 
 # Additional comprehensive edge case tests
 test_that("comprehensive edge case coverage for plot_gate functions", {
+
   # Test .plot_gate_uv_marker_get_plot_tbl_ind with insufficient cells
   expect_null(stimgate:::.plot_gate_uv_marker_get_plot_tbl_ind(
     ind = c(1),  # Single index
@@ -262,7 +266,7 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
     exc_min = TRUE,
     min_cell = 999999  # Impossible threshold
   ))
-  
+
   # Test .plot_get_ex_tbl with single index
   ex_tbl <- stimgate:::.plot_get_ex_tbl(
     ind = c(1),
@@ -272,19 +276,19 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
   )
   expect_true(is.data.frame(ex_tbl))
   expect_true(nrow(ex_tbl) > 0)
-  
+
   # Test .plot_add_axis_title with single and multiple markers
   p_base <- ggplot2::ggplot() + ggplot2::geom_point(ggplot2::aes(x = 1, y = 1))
   p_single <- stimgate:::.plot_add_axis_title(p_base, example_data$marker[1], NULL)
   expect_s3_class(p_single, "ggplot")
-  
+
   p_double <- stimgate:::.plot_add_axis_title(p_base, example_data$marker, NULL)
   expect_s3_class(p_double, "ggplot")
-  
+
   # Test .plot_add_title
   p_titled <- stimgate:::.plot_add_title(p_base, c(1, 2), 1, NULL)
   expect_s3_class(p_titled, "ggplot")
-  
+
   # Test .plot_add_gate when show_gate = FALSE
   p_no_gate <- stimgate:::.plot_add_gate(
     p_base, gs, c(1), example_data$marker[1], path_project, show_gate = FALSE
@@ -295,7 +299,7 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
 test_that("test plot_cyto import and dependencies", {
   # Test that plot_cyto function is accessible
   expect_true(exists("plot_cyto", envir = asNamespace("stimgate")))
-  
+
   # Test hexbin namespace checking
   hexbin_available <- requireNamespace("hexbin", quietly = TRUE)
   expect_true(is.logical(hexbin_available))
