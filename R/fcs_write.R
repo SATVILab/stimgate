@@ -249,7 +249,9 @@ stimgate_fcs_write <- function(path_project, # project directory
     ind_match <- which(ind_batch_vec == gate_tbl$ind_stim[[x]])
     stopifnot(length(ind_match) == 1L)
     ind_uns_vec[ind_match]
-  })
+  }) |>
+    unlist() |>
+    as.character()
   gate_tbl |>
     dplyr::mutate(ind = ind_vec) |>
     dplyr::select(chnl, marker, batch, ind, everything()) |> # nolint
@@ -376,7 +378,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   if (is.null(combn_exc)) {
     return(ex)
   }
-  for (chnl_pos in combn_exc) {
+  for (chnl_pos in combn_exc) {r2dtable()
     if (nrow(ex) == 0) break
     exc_vec <- .get_pos_ind_cyt_combn( # nolint
       ex = ex, gate_tbl = gate_tbl_ind,
