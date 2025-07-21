@@ -1,15 +1,15 @@
 #' Get example GatingSet
-#' 
+#'
 #' Create and save a complete example GatingSet for testing and examples.
 #' This function internally creates a flowSet, samples channels, and saves the GatingSet.
-#' 
+#'
 #' @param dir_cache Directory to save the GatingSet. If NULL, uses a temporary directory.
 #' @return A list containing the path to the saved GatingSet, batch_list, and marker names
 #' @export
-get_gatingset_example <- function(dir_cache = NULL) {
+get_example_data <- function(dir_cache = NULL) {
   # Set seed for reproducibility
   set.seed(123)
-  
+
   if (is.null(dir_cache)) {
     dir_cache <- file.path(tempdir(), "stimgate_example")
   }
@@ -17,17 +17,17 @@ get_gatingset_example <- function(dir_cache = NULL) {
     unlink(dir_cache, recursive = TRUE)
   }
   dir.create(dir_cache, recursive = TRUE)
-  
+
   # Get flowSet
   fs <- .get_fs()
-  
+
   # Get channel list
   chnl_list <- .get_chnl_list(fs = fs)
-  
+
   # Extract processed flowSet and batch list
   batch_list <- chnl_list[[1]]$batch_list
   fs_gate <- chnl_list[[length(chnl_list)]]$fs
-  
+
   # Create and save GatingSet
   frames_list <- lapply(seq_along(fs_gate), function(i) fs_gate[[i]])
   fs2 <- flowCore::flowSet(frames = frames_list)
@@ -37,7 +37,7 @@ get_gatingset_example <- function(dir_cache = NULL) {
     gs,
     path = path_save
   )
-  
+
   list(
     path_gs = path_save,
     batch_list = batch_list,
@@ -236,7 +236,7 @@ get_gatingset_example <- function(dir_cache = NULL) {
   alpha <- prop_mean * nu
   beta <- (1 - prop_mean) * nu
 
-  round(n * rbeta(n = 1, shape1 = alpha, shape2 = beta))
+  round(n * stats::rbeta(n = 1, shape1 = alpha, shape2 = beta))
 }
 
 .sample_ind_pos <- function(n, n_cell_pos) {
