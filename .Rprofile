@@ -42,7 +42,8 @@
 .is_ci <- function() {
   is_gha <- Sys.getenv("GITHUB_ACTIONS") == "true"
   is_ci <- Sys.getenv("CI") == "true"
-  is_gha || is_ci
+  is_github_agent <- nzchar(Sys.getenv("COPILOT_AGENT_START_TIME_SEC"))
+  is_gha || is_ci || is_github_agent
 }
 
 
@@ -55,8 +56,11 @@ if (!.is_ci()) {
       suppressWarnings(BiocManager::repositories())
     } else NULL
     repos_vec <- c(bioc_vec, getOption("repos"))
+    # Use Posit Package Manager for CRAN, with fallback
     if (isFALSE("CRAN" %in% names(repos_vec))) {
-      repos_vec <- c(repos_vec, CRAN = "https://cloud.r-project.org/")
+      repos_vec <- c(
+        repos_vec, CRAN = "https://packagemanager.posit.co/cran/latest"
+      )
     }
     options(repos = repos_vec)
   }, silent = TRUE)
