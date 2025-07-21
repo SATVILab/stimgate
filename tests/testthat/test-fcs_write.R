@@ -351,7 +351,6 @@ test_that("stimgate_fcs_write preserves file metadata", {
 })
 
 test_that("stimgate_fcs_write handles combination exclusions", {
-  skip()
   path_dir_save <- file.path(tempdir(), "fcs_output_exclusions")
 
   # Test with combination exclusions (if we have multiple markers)
@@ -434,15 +433,16 @@ test_that("stimgate_fcs_write message output", {
 })
 
 test_that("stimgate_fcs_write handles edge case: empty data", {
-  skip()
   # Create gate table with very high thresholds (should result in no positive cells)
   gate_tbl <- data.frame(
     chnl = rep(example_data$marker[[1]], length(unlist(example_data$batch_list))),
-    marker = rep(example_data$marker[[1]], length(unlist(example_data$batch_list))),
-    batch = rep(seq_along(example_data$batch_list),
-                times = sapply(example_data$batch_list, length)),
-    ind = unlist(example_data$batch_list),
+    marker = rep("BC1", length(unlist(example_data$batch_list))),
+    batch = paste0("batch_", rep(seq_along(example_data$batch_list),
+                                times = sapply(example_data$batch_list, length))),
+    ind = as.character(unlist(example_data$batch_list)),
     gate = rep(999999, length(unlist(example_data$batch_list))), # Very high threshold
+    gate_cyt = rep(999999, length(unlist(example_data$batch_list))),
+    gate_single = rep(999999, length(unlist(example_data$batch_list))),
     stringsAsFactors = FALSE
   )
 
@@ -492,7 +492,6 @@ test_that("stimgate_fcs_write validates parameter types", {
 })
 
 test_that("stimgate_fcs_write respects working directory", {
-  skip()
   # Change working directory temporarily
   original_wd <- getwd()
   temp_wd <- tempdir()
@@ -522,7 +521,6 @@ test_that("stimgate_fcs_write respects working directory", {
 })
 
 test_that("stimgate_fcs_write handles transformation edge cases", {
-  skip()
   # Test with transformation function but no trans_chnl (should apply to all columns)
   path_dir_save <- file.path(tempdir(), "fcs_output_transform_all")
 
@@ -561,7 +559,6 @@ test_that("stimgate_fcs_write handles transformation edge cases", {
 })
 
 test_that("stimgate_fcs_write integrates with stimgate workflow", {
-  skip()
   # Test full integration: gate -> fcs_write -> verify output
   example_data <- get_example_data()
   gs <- flowWorkspace::load_gs(example_data$path_gs)
