@@ -31,6 +31,6 @@ path_project <- stimgate_gate(
 )
 
 # Get statistics for the identified gates
-stats <- get_stats(path_project)
+gates <- get_gate_tbl(path_project)
 }
 }

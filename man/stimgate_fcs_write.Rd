@@ -47,20 +47,63 @@ stimgate_fcs_write(
 
 \item{gate_uns_method}{character. Method to calculate unstimulated thresholds.}
 }
-\value{
-Character string. Path to the directory where FCS files were saved.
-}
 \description{
 Uses the gates to write FCS files of marker-positive FCS files.
 }
+\details{
+This function processes flow cytometry data to identify and export cytokine-positive
+cells to FCS files. It requires that gates have been pre-computed using
+\code{\link{stimgate_gate}} or that a complete gate table is provided.
+
+The function will create the output directory and write FCS files for samples
+that contain cytokine-positive cells. If no positive cells are found in a sample,
+no FCS file will be written for that sample.
+}
 \examples{
-\donttest{
-# Write FCS files of cytokine-positive cells
-stimgate_fcs_write(
-  path_project = "/path/to/project",
-  .data = gs,
-  ind_batch_list = list(batch1 = 1:10, batch2 = 11:20),
-  path_dir_save = "/path/to/output"
-)
+\dontrun{
+# Complete workflow example
+library(stimgate)
+
+# Load your GatingSet (gs) and define batch structure
+# batch_list <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
+# where the last element in each batch is the unstimulated sample
+
+# First, run gating to create gates
+path_project <- tempfile("stimgate_project")
+# stimgate_gate(
+#   .data = gs,
+#   path_project = path_project,
+#   pop_gate = "root",
+#   batch_list = batch_list,
+#   marker = c("IL2", "IFNg")  # your cytokine markers
+# )
+
+# Then write FCS files of cytokine-positive cells
+path_output <- tempfile("fcs_output")
+# stimgate_fcs_write(
+#   path_project = path_project,
+#   .data = gs,
+#   ind_batch_list = batch_list,
+#   path_dir_save = path_output,
+#   chnl = c("IL2", "IFNg")
+# )
+
+# Alternative: provide your own gate table
+# gate_tbl <- data.frame(
+#   chnl = c("IL2", "IFNg"),
+#   marker = c("IL2", "IFNg"),
+#   batch = c(1, 1),
+#   ind = c(1, 1),
+#   gate = c(0.5, 0.3),
+#   gate_name = c("gate", "gate")
+# )
+# stimgate_fcs_write(
+#   path_project = path_project,
+#   .data = gs,
+#   ind_batch_list = batch_list,
+#   path_dir_save = path_output,
+#   chnl = c("IL2", "IFNg"),
+#   gate_tbl = gate_tbl
+# )
 }
 }
