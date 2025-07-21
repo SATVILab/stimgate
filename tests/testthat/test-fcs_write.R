@@ -125,7 +125,6 @@ test_that("stimgate_fcs_write works with different gate_uns_method options", {
 })
 
 test_that("stimgate_fcs_write works with mult parameter", {
-  skip()
 
   # Test with mult = FALSE (default)
   path_dir_save_single <- file.path(tempdir(), "fcs_output_single")

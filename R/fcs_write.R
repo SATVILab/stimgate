@@ -149,7 +149,9 @@ stimgate_fcs_write <- function(path_project, # project directory
   # Apply remaining processing
   gate_tbl <- gate_tbl |>
     .fcs_write_get_gate_tbl_filter_chnl(chnl) |>
-    .fcs_write_get_gate_tbl_add_marker(chnl, .data)
+    .fcs_write_get_gate_tbl_add_marker(chnl, .data) |>
+    # Remove any duplicate rows that might have been introduced
+    dplyr::distinct()
   
   return(gate_tbl)
 }
@@ -222,18 +224,14 @@ stimgate_fcs_write <- function(path_project, # project directory
                                                          calc,
                                                          ind_batch_list) {
   gate_tbl |>
+    # Remove duplicates first to handle cases where same (chnl, marker, batch, ind) appears multiple times
+    dplyr::distinct(chnl, marker, batch, ind, .keep_all = TRUE) |>
     dplyr::group_by(chnl, marker, batch) |> # nolint
     dplyr::summarise(
       ind_stim = paste0(ind |> sort(), collapse = "_"),
       gate = calc(gate), # nolint
-      gate_cyt = ifelse("gate_cyt" %in% colnames(.data),
-        calc(gate_cyt), # nolint
-        NA
-      ),
-      gate_single = ifelse("gate_single" %in% colnames(.data),
-        calc(gate_single), # nolint
-        NA
-      ),
+      gate_cyt = calc(gate_cyt), # nolint
+      gate_single = calc(gate_single), # nolint
       .groups = "drop"
     ) |>
     .fcs_write_get_gate_tbl_add_uns_get_uns_ind(ind_batch_list)
