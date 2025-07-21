@@ -42,7 +42,8 @@
 .is_ci <- function() {
   is_gha <- Sys.getenv("GITHUB_ACTIONS") == "true"
   is_ci <- Sys.getenv("CI") == "true"
-  is_gha || is_ci
+  is_github_agent <- nzchar(Sys.getenv("COPILOT_AGENT_START_TIME_SEC"))
+  is_gha || is_ci || is_github_agent
 }
 
 
