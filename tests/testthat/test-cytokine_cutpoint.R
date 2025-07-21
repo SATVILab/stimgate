@@ -6,8 +6,6 @@ test_that(".cytokine_cutpoint handles ref_peak > num_peaks with strict=TRUE", {
   
   # Test with ref_peak > num_peaks and strict=TRUE (should error)
   # Remove plot parameter to avoid warnings
-  browser()
-  debugonce(.find_peaks)
   expect_error(
     .cytokine_cutpoint(x, num_peaks = 1, ref_peak = 2, strict = TRUE, plot = FALSE),
     "The reference peak is larger than the number of peaks found"
