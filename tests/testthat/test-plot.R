@@ -1,5 +1,18 @@
 library(testthat)
 
+example_data <- get_example_data()
+gs <- flowWorkspace::load_gs(example_data$path_gs)
+path_project <- file.path(dirname(example_data$path_gs), "stimgate")
+
+# First run gating to create necessary gate data
+invisible(stimgate::stimgate_gate(
+  .data = gs,
+  path_project = path_project,
+  pop_gate = "root",
+  batch_list = example_data$batch_list,
+  marker = example_data$marker
+))
+
 test_that("stimgate_plot function exists", {
   # Just test that the function exists and is callable
   expect_true(exists("stimgate_plot", envir = asNamespace("stimgate")))
@@ -7,16 +20,6 @@ test_that("stimgate_plot function exists", {
 })
 
 test_that("stimgate_gate runs", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-  invisible(stimgate::stimgate_gate(
-    .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    marker = example_data$marker
-  ))
   p <- stimgate_plot(
     ind = example_data$batch_list[[1]], # indices in `gs` to plot
     .data = gs, # GatingSet
@@ -27,13 +30,7 @@ test_that("stimgate_gate runs", {
   expect_true(inherits(p, "ggplot"))
 })
 
-# Test edge cases for plot_gate functionality
-
 test_that("stimgate_plot returns NULL when p_list is empty", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-  
   # Test with empty ind list to generate empty p_list
   result <- stimgate_plot(
     ind = list(),
@@ -46,10 +43,6 @@ test_that("stimgate_plot returns NULL when p_list is empty", {
 })
 
 test_that(".plot_gate_bv returns NULL for single marker", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-  
   # Test single marker scenario
   single_marker <- example_data$marker[1]
   result <- stimgate:::.plot_gate_bv(
@@ -69,19 +62,6 @@ test_that(".plot_gate_bv returns NULL for single marker", {
 })
 
 test_that("hexbin installation check works", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-  
-  # First run gating to create necessary gate data
-  invisible(stimgate::stimgate_gate(
-    .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    marker = example_data$marker
-  ))
-  
   # Test with two markers to trigger hexbin requirement
   # The function should handle hexbin installation automatically
   expect_no_error({
@@ -102,19 +82,6 @@ test_that("hexbin installation check works", {
 })
 
 test_that("plot functions handle min_cell threshold correctly", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-  
-  # First run gating to create necessary gate data
-  invisible(stimgate::stimgate_gate(
-    .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    marker = example_data$marker
-  ))
-  
   # Test with very high min_cell to trigger early return
   result <- stimgate:::.plot_gate_bv(
     marker = example_data$marker,
@@ -171,19 +138,6 @@ test_that(".plot_get_lab handles various val_lab configurations", {
 })
 
 test_that(".plot_gate_uv returns NULL when all markers return NULL", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-  
-  # First run gating to create necessary gate data
-  invisible(stimgate::stimgate_gate(
-    .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    marker = example_data$marker
-  ))
-  
   # Test with empty ind to generate NULL results
   result <- stimgate:::.plot_gate_uv(
     ind = list(),
@@ -200,19 +154,6 @@ test_that(".plot_gate_uv returns NULL when all markers return NULL", {
 })
 
 test_that(".plot_gate_uv_marker returns NULL when plot_tbl is NULL", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-  
-  # First run gating to create necessary gate data  
-  invisible(stimgate::stimgate_gate(
-    .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    marker = example_data$marker
-  ))
-  
   # Test with empty ind list to generate NULL plot_tbl
   result <- stimgate:::.plot_gate_uv_marker(
     marker = example_data$marker[1],
@@ -229,9 +170,6 @@ test_that(".plot_gate_uv_marker returns NULL when plot_tbl is NULL", {
 })
 
 test_that(".plot_gate_uv_marker_get_plot_tbl returns NULL for insufficient cells", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  
   # Test with very high min_cell
   result <- stimgate:::.plot_gate_uv_marker_get_plot_tbl(
     ind = example_data$batch_list[[1]],
@@ -316,19 +254,6 @@ test_that(".plot_grid returns p_list when plot = FALSE", {
 
 # Additional comprehensive edge case tests
 test_that("comprehensive edge case coverage for plot_gate functions", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-  
-  # Run gating once for multiple tests
-  invisible(stimgate::stimgate_gate(
-    .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    marker = example_data$marker
-  ))
-  
   # Test .plot_gate_uv_marker_get_plot_tbl_ind with insufficient cells
   expect_null(stimgate:::.plot_gate_uv_marker_get_plot_tbl_ind(
     ind = c(1),  # Single index
@@ -375,3 +300,7 @@ test_that("test plot_cyto import and dependencies", {
   hexbin_available <- requireNamespace("hexbin", quietly = TRUE)
   expect_true(is.logical(hexbin_available))
 })
+
+if (dir.exists(example_data$path_gs)) {
+  unlink(example_data$path_gs, recursive = TRUE)
+}
