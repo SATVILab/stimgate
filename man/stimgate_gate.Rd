@@ -178,78 +178,31 @@ The function implements a multi-step workflow for identifying cytokine-positive 
 }
 }
 \examples{
-\donttest{
-  # Load required libraries
-  library(flowWorkspace)
-  library(stimgate)
-  
-  # Basic usage with cytokine markers
-  # Assuming 'gs' is a GatingSet with samples 1-20
-  batch_list <- list(
-    donor1 = c(1:3, 11:13),   # unstim=1:3, stim=11:13 for donor 1
-    donor2 = c(4:6, 14:16),   # unstim=4:6, stim=14:16 for donor 2  
-    donor3 = c(7:9, 17:19)    # unstim=7:9, stim=17:19 for donor 3
-  )
-  
-  # Define markers to gate
-  markers <- list(
-    list(cut = "IL2"),        # Basic IL2 gating
-    list(cut = "TNFa"),       # Basic TNF-alpha gating
-    list(cut = "IFNg")        # Basic IFN-gamma gating
-  )
-  
-  # Run basic gating
-  result_path <- stimgate_gate(
-    path_project = "/path/to/results",
-    .data = gs,
-    batch_list = batch_list,
-    marker = markers
-  )
-  
-  # Advanced usage with parameter customization
-  markers_advanced <- list(
-    list(cut = "IL2", tol = 0.5e-8),     # Custom tolerance for IL2
-    list(cut = "TNFa", bias_uns = 0.2),  # Background bias for TNF-alpha
-    list(cut = "IFNg", cp_min = 0.1)     # Minimum cutpoint for IFN-gamma
-  )
-  
-  result_path <- stimgate_gate(
-    path_project = "/path/to/results_advanced",
-    .data = gs,
-    batch_list = batch_list,
-    marker = markers_advanced,
-    pop_gate = "CD3+",                    # Gate within CD3+ population
-    bias_uns = 0.1,                      # Global background bias
-    min_cell = 200,                      # Require more cells for gating
-    calc_cyt_pos_gates = TRUE,           # Use refined gating algorithms
-    calc_single_pos_gates = TRUE,        # Calculate single-positive gates
-    debug = TRUE                         # Enable debug output
-  )
-  
-  # Example with quality control parameters
-  result_path <- stimgate_gate(
-    path_project = "/path/to/results_qc",
-    .data = gs,
-    batch_list = batch_list,
-    marker = markers,
-    exc_min = TRUE,                      # Exclude minimum values
-    bw_min = 0.05,                       # Minimum bandwidth for density
-    max_pos_prob_x = 6,                  # Exclude very high expression
-    gate_quant = c(0.1, 0.9),           # More extreme quantiles
-    gate_combn = "min"                   # Conservative gate combination
-  )
-  
-  # Access results
-  gates <- stimgate_gate_get(result_path)     # Get gate table
-  stats <- get_stats(result_path)        # Get statistics
-  
-  # Create visualizations
-  plots <- stimgate_plot(
-    ind = 1:3,
-    .data = gs,
-    path_project = result_path,
-    marker = c("IL2", "TNFa")
-  )
+{
+example_data <- get_example_data()
+gs <- flowWorkspace::load_gs(example_data$path_gs)
+path_project <- file.path(tempdir(), "demonstration")
+
+# Run gating
+stimgate::stimgate_gate(
+  .data = gs,
+  path_project = path_project,
+  pop_gate = "root",
+  batch_list = example_data$batch_list,
+  marker = example_data$marker
+)
+
+# Create plots
+plots <- stimgate_plot(
+  ind = example_data$batch_list[[1]], # indices in `gs` to plot
+  .data = gs, # GatingSet
+  path_project = path_project,
+  marker = example_data$marker,
+  grid = TRUE
+)
+
+# Advanced usage with parameter customization
+
 }
 }
 \seealso{
