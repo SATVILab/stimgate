@@ -84,3 +84,4 @@ We want to identify cells that have possibly responded to stimulation, by compar
 10. Always make sure there is no unnecessary trailing whitespace, including for blank lines.
 11. Always make sure that any edited files have a final newline at the end of the file.
 12. Tests written should not simply test whether it errors out correctly, but should also test that the output is as expected.
+13. Never use `return` for the last line of a function, but only when you want to return early from a function.

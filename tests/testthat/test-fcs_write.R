@@ -41,7 +41,6 @@ test_that("stimgate_fcs_write runs with basic parameters", {
   path_dir_save <- file.path(tempdir(), "fcs_output_test")
 
   # Function should create the directory before failing on missing gates
-  # debugonce(.fcs_write_get_gate_tbl_add_uns)
   result <- stimgate::stimgate_fcs_write(
     path_project = path_project,
     .data = gs,
