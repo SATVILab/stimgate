@@ -20,10 +20,10 @@
 #' )
 #'
 #' # Get statistics for the identified gates
-#' gates <- get_gate_tbl(path_project)
+#' gates <- stimgate_gate_get(path_project)
 #' }
 #' @export
-get_gate_tbl <- function(path_project) {
+stimgate_gate_get <- function(path_project) {
   dir_vec <- list.dirs(path_project, recursive = FALSE) |>
     basename()
   purrr::map_df(dir_vec, function(dir_curr) {
