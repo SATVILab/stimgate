@@ -47,9 +47,6 @@ stimgate_fcs_write(
 
 \item{gate_uns_method}{character. Method to calculate unstimulated thresholds.}
 }
-\value{
-Character string. Path to the directory where FCS files were saved.
-}
 \description{
 Uses the gates to write FCS files of marker-positive FCS files.
 }
