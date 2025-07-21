@@ -605,3 +605,7 @@ test_that("stimgate_fcs_write integrates with stimgate workflow", {
   }
   unlink(path_dir_save, recursive = TRUE)
 })
+
+if (dir.exists(example_data$path_gs)) {
+  unlink(example_data$path_gs, recursive = TRUE)
+}
