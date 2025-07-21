@@ -80,3 +80,5 @@ We want to identify cells that have possibly responded to stimulation, by compar
   - If there is a default specified, it should be stated at the end in the documentation of that parameter, e.g. `Default is "automatic".`.
   - Where longer parameter descriptionsa are required, usually you should describe overall what the parameter is for, and then list the options with a short description of each.
   - If there are really nitty-gritty details, then you can use `@details` to provide more information and refer to it in the parameter description.
+10. Always make sure there is no unnecessary trailing whitespace.
+11. Always make sure that any edited files have a final newline at the end of the file.
