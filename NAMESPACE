@@ -2,11 +2,12 @@
 
 export(axis_limits)
 export(chnl_lab)
+export(get_example_data)
 export(get_gate_tbl)
 export(get_stats)
-export(plot_gate)
 export(stimgate_fcs_write)
 export(stimgate_gate)
+export(stimgate_plot)
 import(ggplot2)
 importFrom(cluster,clusGap)
 importFrom(cluster,maxSE)

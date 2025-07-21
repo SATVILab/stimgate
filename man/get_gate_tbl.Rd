@@ -16,8 +16,21 @@ Gate table with gates for each sample for each marker.
 Get all the gates for each of the markers gated.
 }
 \examples{
-\donttest{
-# Get gate table from project directory
-gate_tbl <- get_gate_tbl("/path/to/project")
+{
+# Get example dataset
+example_data <- get_example_data()
+gs <- flowWorkspace::load_gs(example_data$path_gs)
+
+# Run the stimgate pipeline
+path_project <- stimgate_gate(
+  path_project = file.path(tempdir(), "stimgate_example"),
+  .data = gs,
+  batch_list = example_data$batch_list,
+  marker = example_data$marker,
+  pop_gate = "root"
+)
+
+# Get statistics for the identified gates
+stats <- get_stats(path_project)
 }
 }

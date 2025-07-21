@@ -73,3 +73,12 @@ We want to identify cells that have possibly responded to stimulation, by compar
 7. Use `@export` for functions that should be available to users
 8. When running code from the project, you must always have as your working directory the root of the project, i.e. the directory containing the `DESCRIPTION` file. This is especially important when the project uses `renv`, as otherwise the `.Rprofile` will not be sourced and the package environment will not be set up correctly.
 8. Never update `.Rd` files manually; use `devtools::document()` to regenerate them.
+9. Documentation in `.R` files for parameters must always have the format `@param param_name <type_of_input> <info>`.
+  - For example, `@param path_project character Path to project.`,
+  - Of course, the information can be longer, and where there are multiple options, it can be be mentioned:
+    - For example, `logical or character`, or `"always", "never" or "automatic"`.
+  - If there is a default specified, it should be stated at the end in the documentation of that parameter, e.g. `Default is "automatic".`.
+  - Where longer parameter descriptionsa are required, usually you should describe overall what the parameter is for, and then list the options with a short description of each.
+  - If there are really nitty-gritty details, then you can use `@details` to provide more information and refer to it in the parameter description.
+10. Always make sure there is no unnecessary trailing whitespace.
+11. Always make sure that any edited files have a final newline at the end of the file.

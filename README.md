@@ -36,39 +36,31 @@ devtools::install_github("SATVILab/stimgate")
 ```r
 library(stimgate)
 
-# Load your GatingSet (flow cytometry data)
-gs <- flowWorkspace::load_gs("path/to/gatingset")
-
-# Define batch structure and markers to gate
-batch_list <- list(
-  batch1 = seq(1, 10),   # Sample indices for batch 1
-  batch2 = seq(11, 20)   # Sample indices for batch 2
-)
-
-# Channel names to gate on
-marker_channels <- c("IL2", "TNFa", "IFNg")
+# Get example dataset
+example_data <- get_example_data()
+gs <- flowWorkspace::load_gs(example_data$path_gs)
 
 # Run the stimgate pipeline
-result <- stimgate_gate(
-  path_project = "/path/to/project",
+path_project <- stimgate_gate(
+  path_project = file.path(tempdir(), "stimgate_example"),
   .data = gs,
-  batch_list = batch_list,
-  marker = marker_channels,
+  batch_list = example_data$batch_list,
+  marker = example_data$marker,
   pop_gate = "root"
 )
 
 # Get statistics for the identified gates
-stats <- get_stats("/path/to/project")
+stats <- get_stats(path_project)
 
 # Extract gate information
-gates <- get_gate_tbl("/path/to/project")
+gates <- get_gate_tbl(path_project)
 
 # Visualize results
-plots <- plot_gate(
-  ind = seq_len(3),
+plots <- stimgate_plot(
+  ind = seq_len(2),
   .data = gs,
-  path_project = "/path/to/project",
-  marker = c("IL2", "TNFa")
+  path_project = path_project,
+  marker = example_data$marker,
 )
 ```
 
@@ -97,7 +89,7 @@ plots <- plot_gate(
 
 - `stimgate_gate()`: Main gating function to identify cytokine-positive cells
 - `get_stats()`: Generate comprehensive statistics from gating results  
-- `plot_gate()`: Create bivariate hex and univariate density plots with gate overlays
+- `stimgate_plot()`: Create bivariate hex and univariate density plots with gate overlays
 - `get_gate_tbl()`: Extract gate thresholds and parameters
 - `stimgate_fcs_write()`: Export cytokine-positive cells as FCS files
 
