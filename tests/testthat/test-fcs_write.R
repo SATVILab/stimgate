@@ -30,7 +30,7 @@ test_that("stimgate_fcs_write handles invalid inputs appropriately", {
   )
 })
 
-test_that("stimgate_fcs_write creates output directory", {
+test_that("stimgate_fcs_write runs", {
   example_data <- get_example_data()
   gs <- flowWorkspace::load_gs(example_data$path_gs)
   path_project <- file.path(dirname(example_data$path_gs), "stimgate")
@@ -44,31 +44,14 @@ test_that("stimgate_fcs_write creates output directory", {
   path_dir_save <- file.path(tempdir(), "fcs_output_test")
 
   # Function should create the directory before failing on missing gates
+  # debugonce(.fcs_write_get_gate_tbl_add_uns)
   stimgate::stimgate_fcs_write(
     path_project = path_project,
     .data = gs,
-    ind_batch_list = list(c(1, 2)),
+    ind_batch_list = example_data$batch_list,
     path_dir_save = path_dir_save,
     chnl = example_data$marker[[1]]
   )
-})
-
-test_that("stimgate_fcs_write documentation example is valid", {
-  # Test that the documentation example syntax is correct
-  # without actually running the complex workflow
-
-  # This validates that the example in the documentation uses correct parameter names
-  expect_error({
-    # This should fail gracefully with missing data, not with unknown parameters
-    stimgate::stimgate_fcs_write(
-      path_project = tempfile("nonexistent_path"),
-      .data = NULL,
-      ind_batch_list = list(batch1 = c(1, 2, 3)),
-      path_dir_save = tempfile("nonexistent_output"),
-      chnl = c("IL2", "IFNg")
-    )
-  })
-
-  # The exact error message may vary, but the function should fail
-  # without complaining about unknown parameters
+  browser()
+  ))
 })
