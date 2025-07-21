@@ -1,4 +1,4 @@
-#' Plot gate
+#' Plot stimulation gate
 #'
 #' Plot bivariate hex and univariate density plots for batches of samples, along
 #' with their gates.
@@ -39,20 +39,30 @@
 #' @return A grid of plots if `grid` is TRUE, otherwise a list of ggplot objects.
 #'
 #' @examples
-#' \donttest{
-#' plots <- plot_gate(
-#'   ind = 20:22, # indices in `gs` to plot
-#'   .data = gs, # GatingSet
-#'   path_project = "/path/to/project",
-#'   marker = c("marker1", "marker2"),
-#'   ind_lab = c("20" = "Mtb", "21" = "PHA", "22" = "Unstim"),
-#'   marker_lab = c("marker1" = "Nice Name 1", "marker2" = "Nice Name 2"),
-#'   limits_expand = list(4),
-#'   limits_equal = TRUE
+#' # Create example data and run gating
+#' example_data <- get_gatingset_example()
+#' gs <- flowWorkspace::load_gs(example_data$path_gs)
+#' path_project <- file.path(dirname(example_data$path_gs), "stimgate")
+#' 
+#' # Run gating
+#' stimgate::stimgate_gate(
+#'   .data = gs,
+#'   path_project = path_project,
+#'   pop_gate = "root",
+#'   batch_list = example_data$batch_list,
+#'   marker = example_data$marker
 #' )
-#' }
+#' 
+#' # Create plots
+#' plots <- stimgate_plot(
+#'   ind = example_data$batch_list[[1]], # indices in `gs` to plot
+#'   .data = gs, # GatingSet
+#'   path_project = path_project,
+#'   marker = example_data$marker,
+#'   grid = TRUE
+#' )
 #' @export
-plot_gate <- function(ind,
+stimgate_plot <- function(ind,
                       .data,
                       path_project,
                       marker,
