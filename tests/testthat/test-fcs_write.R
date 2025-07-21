@@ -177,7 +177,6 @@ test_that("stimgate_fcs_write works with different gate types", {
 })
 
 test_that("stimgate_fcs_write validates output file contents", {
-  browser()
   path_dir_save <- file.path(tempdir(), "fcs_output_validation")
 
   stimgate::stimgate_fcs_write(
