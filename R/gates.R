@@ -5,10 +5,22 @@
 #' @param path_project character. Path to the project directory.
 #'
 #' @return Gate table with gates for each sample for each marker.
-#' @examples
-#' \donttest{
-#' # Get gate table from project directory
-#' gate_tbl <- get_gate_tbl("/path/to/project")
+#' @examples{
+#' # Get example dataset
+#' example_data <- get_example_data()
+#' gs <- flowWorkspace::load_gs(example_data$path_gs)
+#'
+#' # Run the stimgate pipeline
+#' path_project <- stimgate_gate(
+#'   path_project = file.path(tempdir(), "stimgate_example"),
+#'   .data = gs,
+#'   batch_list = example_data$batch_list,
+#'   marker = example_data$marker,
+#'   pop_gate = "root"
+#' )
+#'
+#' # Get statistics for the identified gates
+#' gates <- get_gate_tbl(path_project)
 #' }
 #' @export
 get_gate_tbl <- function(path_project) {
