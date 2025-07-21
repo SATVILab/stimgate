@@ -17,8 +17,10 @@
 #' @param mult logical. Whether cells must be multi-positive.
 #' @param gate_uns_method character. Method to calculate unstimulated thresholds.
 #'
+#' @return Character string. Path to the directory where FCS files were saved.
+#'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Write FCS files of cytokine-positive cells
 #' stimgate_fcs_write(
 #'   path_project = "/path/to/project",

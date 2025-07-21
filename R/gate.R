@@ -138,7 +138,7 @@
 #' \code{\link[flowWorkspace]{GatingSet}} for GatingSet documentation
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   # Load required libraries
 #'   library(flowWorkspace)
 #'   library(stimgate)
