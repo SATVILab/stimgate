@@ -260,7 +260,7 @@ stimgate_plot <- function(ind,
 }
 
 .plot_get_gate_tbl <- function(ind, marker, path_project) {
-  gate_tbl <- get_gate_tbl(path_project) |>
+  gate_tbl <- stimgate_gate_get(path_project) |>
     dplyr::group_by(gate_name, chnl, marker, ind, batch) |>
     dplyr::slice(1) |>
     dplyr::ungroup()
