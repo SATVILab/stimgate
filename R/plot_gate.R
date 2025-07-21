@@ -133,6 +133,9 @@ stimgate_plot <- function(ind,
   if (length(marker) == 1L) {
     return(NULL)
   }
+  if (!requireNamespace("hexbin", quietly = TRUE)) {
+    install.packages("hexbin")
+  }
   p_list <- lapply(seq_along(ind), function(i) {
     ind_curr <- ind[[i]]
     ex_tbl <- .plot_get_ex_tbl(ind_curr, .data, marker, exc_min = FALSE)
