@@ -82,3 +82,4 @@ We want to identify cells that have possibly responded to stimulation, by compar
   - If there are really nitty-gritty details, then you can use `@details` to provide more information and refer to it in the parameter description.
 10. Always make sure there is no unnecessary trailing whitespace.
 11. Always make sure that any edited files have a final newline at the end of the file.
+12. Tests written should not simply test whether it errors out correctly, but should also test that the output is as expected.
