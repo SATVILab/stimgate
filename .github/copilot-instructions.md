@@ -30,7 +30,7 @@ We want to identify cells that have possibly responded to stimulation, by compar
   - `cp-sub.R`: Auxiliary functions for getting clusters
   - `cp_cut_pos_gates-helper.R`: Helper functions for getting more aggressive gates when applied to just the cytokine-positive cells.
   - `cyt_pos_gates.R`: Functions for getting more aggressive gates when applied to just the cytokine-positive cells.
-  - `debug.R`: Debugging utilities
+  - `debug.R`: Debugging utilities and specifies global variables
   - `ex.R`: Extract expression matrices from GatingSets
   - `fcs_write.R`: Write FCS files of just cytokine-positive cels
   - `gate_batch-helper.R`: Helper functions for gating batches of samples
@@ -39,6 +39,7 @@ We want to identify cells that have possibly responded to stimulation, by compar
   - `gate_marker.R`: Gate markers (within each marker, we gate all the batches)
   - `gate.R`: Main entry point for gating
   - `gates.R`: Extract the identified gates (thresholds)
+  - `helper-data.R`: Creates example GatingSet for examples and testing
   - `ind_batch.R`: Get the list of indices grouped by batch
   - `marker_list.R`: Get full parameters used for each marker
   - `plot_gate.R`: Plot the identified gates
