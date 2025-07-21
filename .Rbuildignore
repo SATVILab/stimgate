@@ -10,3 +10,4 @@
 ^_dependencies\.R$
 ^vignettes/
 ^BIOCONDUCTOR_PREPARATION\.md$
+^scripts/
