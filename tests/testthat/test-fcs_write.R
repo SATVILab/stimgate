@@ -406,8 +406,13 @@ test_that("stimgate_fcs_write creates consistent file names", {
   expect_true(all(grepl("\\.fcs$", fcs_files)))
 
   # Check that files are in the correct directory
-  full_paths <- list.files(path_dir_save, pattern = "\\.fcs$", full.names = TRUE)
-  expect_true(all(dirname(full_paths) == path_dir_save))
+  full_paths <- list.files(
+    path_dir_save,
+    pattern = "\\.fcs$", full.names = TRUE
+  )
+  expect_true(
+    all(normalizePath(dirname(full_paths)) == normalizePath(path_dir_save))
+  )
   unlink(path_dir_save, recursive = TRUE)
 })
 
