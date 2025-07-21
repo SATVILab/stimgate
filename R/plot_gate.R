@@ -40,10 +40,10 @@
 #'
 #' @examples
 #' # Create example data and run gating
-#' example_data <- get_gatingset_example()
+#' example_data <- get_example_data()
 #' gs <- flowWorkspace::load_gs(example_data$path_gs)
 #' path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-#' 
+#'
 #' # Run gating
 #' stimgate::stimgate_gate(
 #'   .data = gs,
@@ -52,7 +52,7 @@
 #'   batch_list = example_data$batch_list,
 #'   marker = example_data$marker
 #' )
-#' 
+#'
 #' # Create plots
 #' plots <- stimgate_plot(
 #'   ind = example_data$batch_list[[1]], # indices in `gs` to plot
@@ -63,18 +63,18 @@
 #' )
 #' @export
 stimgate_plot <- function(ind,
-                      .data,
-                      path_project,
-                      marker,
-                      ind_lab = NULL,
-                      marker_lab = NULL,
-                      exc_min = TRUE,
-                      limits_expand = NULL,
-                      limits_equal = FALSE,
-                      grid = TRUE,
-                      grid_n_col = 2,
-                      show_gate = TRUE,
-                      min_cell = 10) {
+                          .data,
+                          path_project,
+                          marker,
+                          ind_lab = NULL,
+                          marker_lab = NULL,
+                          exc_min = TRUE,
+                          limits_expand = NULL,
+                          limits_equal = FALSE,
+                          grid = TRUE,
+                          grid_n_col = 2,
+                          show_gate = TRUE,
+                          min_cell = 10) {
   p_list <- .plot_gate(
     ind = ind, ind_lab = ind_lab, .data = .data,
     marker = marker, marker_lab = marker_lab,
@@ -313,7 +313,7 @@ stimgate_plot <- function(ind,
   }
   .plot_gate_uv_marker_plot(
     plot_tbl = plot_tbl, exc_min = exc_min,
-    ind = ind, i = i, ind_lab = ind_lab,
+    ind = ind, ind_lab = ind_lab,
     marker = marker, marker_lab = marker_lab,
     show_gate = show_gate, path_project = path_project
   )
@@ -382,7 +382,6 @@ stimgate_plot <- function(ind,
 .plot_gate_uv_marker_plot <- function(plot_tbl,
                                       exc_min,
                                       ind,
-                                      i,
                                       ind_lab,
                                       marker,
                                       marker_lab,
@@ -390,7 +389,7 @@ stimgate_plot <- function(ind,
                                       path_project) {
   p <- .plot_gate_uv_marker_plot_init(plot_tbl, exc_min, ind, ind_lab)
   p <- .plot_add_axis_title(p, marker, marker_lab)
-  p <- p + labs(y = "Density")
+  p <- p + ggplot2::labs(y = "Density")
   p <- .plot_add_title(p, marker, NULL, marker_lab)
   p <- .plot_add_gate(p, .data, ind, marker, path_project, show_gate)
   p
@@ -400,17 +399,22 @@ stimgate_plot <- function(ind,
                                            exc_min,
                                            ind,
                                            ind_lab) {
+  alpha_lab_vec <- c("raw" = 0.5, "adj" = 1)
   p <- if (exc_min) {
     if (length(ind) > 1L) {
-      ggplot(plot_tbl, aes(x = x, y = y, linetype = type, color = ind_lab))
+      ggplot(plot_tbl, aes(x = x, y = y, alpha = type, color = ind_lab)) +
+        scale_alpha_manual(values = alpha_lab_vec)
     } else {
-      ggplot(plot_tbl, aes(x = x, y = y, linetype = type))
+      ggplot(plot_tbl, aes(x = x, y = y, alpha = type)) +
+        scale_alpha_manual(values = alpha_lab_vec)
     }
   } else {
     if (length(ind) > 1L) {
-      ggplot(plot_tbl, aes(x = x, y = y, linetype = ind_lab))
+      ggplot(plot_tbl, aes(x = x, y = y, colour = ind_lab)) +
+        scale_alpha_manual(values = alpha_lab_vec)
     } else {
-      ggplot(plot_tbl, aes(x = x, y = y))
+      ggplot(plot_tbl, aes(x = x, y = y)) +
+        scale_alpha_manual(values = alpha_lab_vec)
     }
   }
   p +

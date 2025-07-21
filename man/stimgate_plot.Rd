@@ -75,7 +75,7 @@ with their gates.
 }
 \examples{
 # Create example data and run gating
-example_data <- get_gatingset_example()
+example_data <- get_example_data()
 gs <- flowWorkspace::load_gs(example_data$path_gs)
 path_project <- file.path(dirname(example_data$path_gs), "stimgate")
 
