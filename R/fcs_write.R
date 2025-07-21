@@ -131,6 +131,16 @@ stimgate_fcs_write <- function(path_project, # project directory
                                     path_project) {
   # Get gate table if not provided
   if (is.null(gate_tbl)) {
+    # If chnl is NULL, determine available channels from project directory
+    if (is.null(chnl)) {
+      available_dirs <- list.dirs(path_project, recursive = FALSE)
+      chnl <- basename(available_dirs[sapply(available_dirs, function(dir) {
+        file.exists(file.path(dir, "gate_tbl.rds"))
+      })])
+      if (length(chnl) == 0) {
+        stop("No gate tables found in project directory when chnl = NULL")
+      }
+    }
     gate_tbl <- .fcs_write_gate_gate_tbl_gated(NULL, chnl, path_project)
   }
   
