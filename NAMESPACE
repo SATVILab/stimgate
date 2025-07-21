@@ -3,7 +3,7 @@
 export(axis_limits)
 export(chnl_lab)
 export(get_example_data)
-export(get_gate_tbl)
+export(stimgate_gate_get)
 export(get_stats)
 export(stimgate_fcs_write)
 export(stimgate_gate)
