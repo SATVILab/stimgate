@@ -1,10 +1,53 @@
-#' Get example flowSet
+#' Get example GatingSet
 #' 
-#' Get an example flowSet for testing and examples.
+#' Create and save a complete example GatingSet for testing and examples.
+#' This function internally creates a flowSet, samples channels, and saves the GatingSet.
 #' 
-#' @return A flowSet object
+#' @param dir_cache Directory to save the GatingSet. If NULL, uses a temporary directory.
+#' @return A list containing the path to the saved GatingSet, batch_list, and marker names
 #' @export
-get_fs <- function() {
+get_gatingset_example <- function(dir_cache = NULL) {
+  # Set seed for reproducibility
+  set.seed(123)
+  
+  if (is.null(dir_cache)) {
+    dir_cache <- file.path(tempdir(), "stimgate_example")
+  }
+  if (dir.exists(dir_cache)) {
+    unlink(dir_cache, recursive = TRUE)
+  }
+  dir.create(dir_cache, recursive = TRUE)
+  
+  # Get flowSet
+  fs <- .get_fs()
+  
+  # Get channel list
+  chnl_list <- .get_chnl_list(fs = fs)
+  
+  # Extract processed flowSet and batch list
+  batch_list <- chnl_list[[1]]$batch_list
+  fs_gate <- chnl_list[[length(chnl_list)]]$fs
+  
+  # Create and save GatingSet
+  frames_list <- lapply(seq_along(fs_gate), function(i) fs_gate[[i]])
+  fs2 <- flowCore::flowSet(frames = frames_list)
+  gs <- flowWorkspace::GatingSet(fs2)
+  path_save <- file.path(dir_cache, "gs")
+  flowWorkspace::save_gs(
+    gs,
+    path = path_save
+  )
+  
+  list(
+    path_gs = path_save,
+    batch_list = batch_list,
+    marker = names(chnl_list)
+  )
+}
+
+# Internal helper functions (not exported)
+
+.get_fs <- function() {
   tryCatch(
     # don't want a package warning if file does not exist,
     # clearly handling such an error
@@ -23,15 +66,7 @@ get_fs <- function() {
   )
 }
 
-#' Get example channel list
-#' 
-#' Get an example channel list for testing and examples.
-#' 
-#' @param fs A flowSet object
-#' @return A list of channel objects
-#' @export
-get_chnl_list <- function(fs) {
-  set.seed(123)
+.get_chnl_list <- function(fs) {
   batch_list <- lapply(1:8, function(i) seq((i - 1) * 2 + 1, i * 2))
   chnl_vec <- c("BC1(La139)Dd", "BC2(Pr141)Dd")
   args_list_bc1 <- list(
@@ -61,26 +96,6 @@ get_chnl_list <- function(fs) {
   )
 
   .sample_chnls(args_list = args_list, fs = fs)
-}
-
-#' Get example GatingSet path
-#' 
-#' Create and save a GatingSet from a flowSet for testing and examples.
-#' 
-#' @param fs A flowSet object
-#' @param dir_cache Directory to save the GatingSet
-#' @return Path to the saved GatingSet
-#' @export
-get_gatingset <- function(fs, dir_cache) {
-  frames_list <- lapply(seq_along(fs), function(i) fs[[i]])
-  fs2 <- flowCore::flowSet(frames = frames_list)
-  gs <- flowWorkspace::GatingSet(fs2)
-  path_save <- file.path(dir_cache, "gs")
-  flowWorkspace::save_gs(
-    gs,
-    path = path_save
-  )
-  path_save
 }
 
 # Internal helper functions (not exported)
