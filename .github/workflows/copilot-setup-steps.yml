@@ -25,29 +25,11 @@ jobs:
       # 2. Set up R
       - uses: r-lib/actions/setup-r@v2
         with:
-          r-version: '4.4.2' # The R version to download (if necessary) and use.
+          r-version: 'release' # The R version to download (if necessary) and use.
           # Use "renv" to retrieve R version recorded in renv.lock file.
+          use-public-rspm: true
 
-      # 3. Set up CRAN mirror
-      - name: Ensure and set CRAN mirror
-        run: |
-          RHOME="$(R RHOME | tr -d '"')"
-          f="${RHOME}/etc/Rprofile.site"
-          echo "Appending CRAN mirror to: $f"
-          sudo mkdir -p "$(dirname "$f")"
-          sudo touch "$f"
-          echo 'if (is.null(getOption("repos")[["CRAN"]])) options(repos = c(getOption("repos"), CRAN = "https://cran.rstudio.com"))' | sudo tee -a "$f"
-
-      # 4. Set up pak
-      - name: Install pak and BiocManager before using pak
-        run: |
-          Rscript -e 'if (!requireNamespace("pak", quietly = TRUE)) utils::install.packages("pak", repos = "https://cran.r-project.org")'
-          Rscript -e 'if (!requireNamespace("BiocManager", quietly = TRUE)) utils::install.packages("BiocManager", repos = "https://cran.r-project.org")'
-      
-      # 5. Restore R packages
-      - uses: r-lib/actions/setup-renv@v2
-        env:
-          RENV_CONFIG_PAK_ENABLED: "FALSE"
+      - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          profile: '"non_bioc_container"'
-          bypass-cache: "never" # cache is not used otherwise
+          extra-packages: any::rcmdcheck
+          needs: check
