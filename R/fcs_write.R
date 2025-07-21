@@ -161,6 +161,10 @@ stimgate_fcs_write <- function(path_project, # project directory
     return(gate_tbl)
   }
   purrr::map_df(chnl, function(chnl_curr) {
+    path_curr <- file.path(path_project, chnl_curr, "gate_tbl.rds")
+    if (!file.exists(path_curr)) {
+      stop(paste0("Gate table not found for channel: ", chnl_curr))
+    }
     readRDS(file.path(path_project, chnl_curr, "gate_tbl.rds"))
   })
 }
