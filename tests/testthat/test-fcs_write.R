@@ -213,15 +213,16 @@ test_that("stimgate_fcs_write validates output file contents", {
 })
 
 test_that("stimgate_fcs_write works with pre-provided gate table", {
-  skip()
   # Create a simple gate table
   gate_tbl <- data.frame(
     chnl = rep(example_data$marker[[1]], length(unlist(example_data$batch_list))),
-    marker = rep(example_data$marker[[1]], length(unlist(example_data$batch_list))),
-    batch = rep(seq_along(example_data$batch_list),
-                times = sapply(example_data$batch_list, length)),
-    ind = unlist(example_data$batch_list),
+    marker = rep("BC1", length(unlist(example_data$batch_list))),
+    batch = paste0("batch_", rep(seq_along(example_data$batch_list),
+                                times = sapply(example_data$batch_list, length))),
+    ind = as.character(unlist(example_data$batch_list)),
     gate = rep(0.5, length(unlist(example_data$batch_list))),
+    gate_cyt = rep(0.5, length(unlist(example_data$batch_list))),
+    gate_single = rep(0.5, length(unlist(example_data$batch_list))),
     stringsAsFactors = FALSE
   )
 
@@ -259,7 +260,6 @@ test_that("stimgate_fcs_write handles invalid gate_uns_method", {
 })
 
 test_that("stimgate_fcs_write works with channel filtering", {
-  skip()
   # Test with specific channel subset
   path_dir_save <- file.path(tempdir(), "fcs_output_filtered")
 
