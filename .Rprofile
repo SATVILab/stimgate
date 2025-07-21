@@ -56,8 +56,11 @@ if (!.is_ci()) {
       suppressWarnings(BiocManager::repositories())
     } else NULL
     repos_vec <- c(bioc_vec, getOption("repos"))
+    # Use Posit Package Manager for CRAN, with fallback
     if (isFALSE("CRAN" %in% names(repos_vec))) {
-      repos_vec <- c(repos_vec, CRAN = "https://cloud.r-project.org/")
+      repos_vec <- c(
+        repos_vec, CRAN = "https://packagemanager.posit.co/cran/latest"
+      )
     }
     options(repos = repos_vec)
   }, silent = TRUE)
