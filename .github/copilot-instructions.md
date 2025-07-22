@@ -85,3 +85,5 @@ We want to identify cells that have possibly responded to stimulation, by compar
 11. Always make sure that any edited files have a final newline at the end of the file.
 12. Tests written should not simply test whether it errors out correctly, but should also test that the output is as expected.
 13. Never use `return` for the last line of a function, but only when you want to return early from a function.
+14. For testing, never add source commands at the top to source files in the `R` folder, as these are automatically sourced (effectively) by the `testthat` package.
+15. The tests need to pass on Mac, Windows and Ubuntu, so be aware of that (e.g. file path avaibility and specificiation (forward or backward slahses, root directories, etc.), case sensitivity, etc.). You do not run the tests on all three platforms, but you should think about them passing on all three platforms.
