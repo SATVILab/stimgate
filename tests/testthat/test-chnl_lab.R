@@ -1,9 +1,6 @@
 library(testthat)
 library(flowCore)
 
-# Source the function to test
-source("/home/runner/work/stimgate/stimgate/R/UtilsCytoRSV-chnl_lab.R")
-
 test_that("chnl_lab works with flowFrame objects", {
   # Load test data
   data(GvHD, package = "flowCore")
