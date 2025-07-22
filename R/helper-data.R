@@ -59,6 +59,9 @@ get_example_data <- function(dir_cache = NULL) {
       if (!dir.exists(path_hub)) {
         dir.create(path_hub, recursive = TRUE)
       }
+      if (!requireNamespace("HDCytoData", quietly = TRUE)) {
+        utils::install.packages("HDCytoData")
+      }
       # get an odd flowSet slot dropping warning,
       # which is unrelated to our functionality
       suppressWarnings(HDCytoData::Bodenmiller_BCR_XL_flowSet())
