@@ -23,10 +23,10 @@ if (!requireNamespace("devtools", quietly = TRUE)) {
 }
 
 # Install all dependencies using Bioconductor and CRAN repos
-devtools::install_deps(repos = BiocManager::repositories())
-
-# Install stimgate from GitHub
-devtools::install_github("SATVILab/stimgate")
+devtools::install_github(
+  "SATVILab/stimgate",
+  repos = BiocManager::repositories(), dependencies = TRUE
+)
 ```
 
 ---
