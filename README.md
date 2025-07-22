@@ -56,7 +56,7 @@ stats <- get_stats(path_project)
 gates <- get_gate_tbl(path_project)
 
 # Visualize results
-plots <- stimgate_plot(
+stimgate_plot(
   ind = seq_len(2),
   .data = gs,
   path_project = path_project,
