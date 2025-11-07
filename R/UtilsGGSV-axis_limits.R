@@ -87,11 +87,8 @@ axis_limits <- function(p,
   # checks
   # ----------------------------
 
-  if (!identical(
-    class(p),
-    c("gg", "ggplot")
-  )) {
-    stop("p must be of class c('gg', 'ggplot')")
+  if (!length(intersect(class(p), c("gg", "ggplot"))) == 2) {
+    stop("p must be of class 'ggplot' and 'gg'")
   }
 
   if (!is.null(limits_expand)) {
