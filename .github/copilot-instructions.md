@@ -1,7 +1,11 @@
 # stimgate
 
-This is an R package intended for eventual submission to BioConductor.
-We want to identify cells that have possibly responded to stimulation, by comparing the unstimulated and stimulated tubes from the same sample.
+This is an R package for flow cytometry analysis, intended for eventual submission to BioConductor.
+The package identifies cells that have possibly responded to stimulation by comparing the unstimulated and stimulated tubes from the same sample using outlier-based gating methods.
+
+## Package Overview
+
+`stimgate` applies statistical methods to flow cytometry data from the `flowCore` and `flowWorkspace` ecosystem to identify stimulation-specific cell responses. The package is particularly useful for analyzing immune cell activation assays where stimulated and unstimulated conditions are compared.
 
 ## Code standards
 
@@ -18,8 +22,15 @@ We want to identify cells that have possibly responded to stimulation, by compar
 - Test: Run `devtools::test()` to execute all unit tests
 - Documentation: Use `devtools::document()` to update package documentation
 - Coverage: Run `covr::report()` to check test coverage
-- Documentation: Run `devtools::document()` to update documentation
 - Full check: Run `devtools::check()` to perform a comprehensive package check
+
+### Environment setup
+
+This package uses `renv` for dependency management:
+- The `.Rprofile` file automatically activates `renv` when you start R in the project directory
+- Always ensure your working directory is the project root (containing `DESCRIPTION`) when running R code
+- Dependencies are locked in `renv.lock` and managed through `renv::restore()`
+- If dependencies are missing, run `renv::restore()` to install them
 
 ## Repository structure
 
@@ -32,10 +43,10 @@ We want to identify cells that have possibly responded to stimulation, by compar
   - `cyt_pos_gates.R`: Functions for getting more aggressive gates when applied to just the cytokine-positive cells.
   - `debug.R`: Debugging utilities and specifies global variables
   - `ex.R`: Extract expression matrices from GatingSets
-  - `fcs_write.R`: Write FCS files of just cytokine-positive cels
+  - `fcs_write.R`: Write FCS files of just cytokine-positive cells
   - `gate_batch-helper.R`: Helper functions for gating batches of samples
   - `gate_batch.R`: Gate batches of samples
-  - `gate_marker-herlper`: Helper functions for gating markers (within each marker, we gate all the batches)
+  - `gate_marker-helper.R`: Helper functions for gating markers (within each marker, we gate all the batches)
   - `gate_marker.R`: Gate markers (within each marker, we gate all the batches)
   - `gate.R`: Main entry point for gating
   - `gates.R`: Extract the identified gates (thresholds)
@@ -54,7 +65,7 @@ We want to identify cells that have possibly responded to stimulation, by compar
 - `man/`: Automatically generated documentation files
 - `renv/`: R package environment management files
 - `tests/`: Unit tests for the package
-- `_dependencies.R`: Explicitly listed dependences for `renv` to pick up via `implicit` dependencies
+- `_dependencies.R`: Explicitly listed dependencies for `renv` to pick up via `implicit` dependencies
 - `.gitignore`: Git ignore file to exclude unnecessary files from version control
 - `.Rbuildignore`: R build ignore file to exclude unnecessary files from package builds
 - `DESCRIPTION`: Package metadata file
@@ -70,20 +81,20 @@ We want to identify cells that have possibly responded to stimulation, by compar
 3. Use `.debug_msg()` for debug messages, which takes a boolean, a message and an optional value
 4. Add unit tests using `testthat` for all new functionality
 5. Validate inputs and provide meaningful error messages
-6. Explicitly refer to all packages used, rather than using `@import` or `@importFrom`, with the exception of `ggplot2` functions, the `flowCore::exprs` function.
+6. Explicitly refer to all packages used, rather than using `@import` or `@importFrom`, with the exception of `ggplot2` functions and the `flowCore::exprs` function
 7. Use `@export` for functions that should be available to users
-8. When running code from the project, you must always have as your working directory the root of the project, i.e. the directory containing the `DESCRIPTION` file. This is especially important when the project uses `renv`, as otherwise the `.Rprofile` will not be sourced and the package environment will not be set up correctly.
-8. Never update `.Rd` files manually; use `devtools::document()` to regenerate them.
-9. Documentation in `.R` files for parameters must always have the format `@param param_name <type_of_input> <info>`.
-  - For example, `@param path_project character Path to project.`,
-  - Of course, the information can be longer, and where there are multiple options, it can be be mentioned:
-    - For example, `logical or character`, or `"always", "never" or "automatic"`.
-  - If there is a default specified, it should be stated at the end in the documentation of that parameter, e.g. `Default is "automatic".`.
-  - Where longer parameter descriptionsa are required, usually you should describe overall what the parameter is for, and then list the options with a short description of each.
-  - If there are really nitty-gritty details, then you can use `@details` to provide more information and refer to it in the parameter description.
-10. Always make sure there is no unnecessary trailing whitespace, including for blank lines.
-11. Always make sure that any edited files have a final newline at the end of the file.
-12. Tests written should not simply test whether it errors out correctly, but should also test that the output is as expected.
-13. Never use `return` for the last line of a function, but only when you want to return early from a function.
-14. For testing, never add source commands at the top to source files in the `R` folder, as these are automatically sourced (effectively) by the `testthat` package.
-15. The tests need to pass on Mac, Windows and Ubuntu, so be aware of that (e.g. file path avaibility and specificiation (forward or backward slahses, root directories, etc.), case sensitivity, etc.). You do not run the tests on all three platforms, but you should think about them passing on all three platforms.
+8. When running code from the project, you must always have as your working directory the root of the project, i.e. the directory containing the `DESCRIPTION` file. This is especially important when the project uses `renv`, as otherwise the `.Rprofile` will not be sourced and the package environment will not be set up correctly
+9. Never update `.Rd` files manually; use `devtools::document()` to regenerate them
+10. Documentation in `.R` files for parameters must always have the format `@param param_name <type_of_input> <info>`
+  - For example, `@param path_project character Path to project.`
+  - Of course, the information can be longer, and where there are multiple options, it can be mentioned:
+    - For example, `logical or character`, or `"always", "never" or "automatic"`
+  - If there is a default specified, it should be stated at the end in the documentation of that parameter, e.g. `Default is "automatic".`
+  - Where longer parameter descriptions are required, usually you should describe overall what the parameter is for, and then list the options with a short description of each
+  - If there are really nitty-gritty details, then you can use `@details` to provide more information and refer to it in the parameter description
+11. Always make sure there is no unnecessary trailing whitespace, including for blank lines
+12. Always make sure that any edited files have a final newline at the end of the file
+13. Tests written should not simply test whether it errors out correctly, but should also test that the output is as expected
+14. Never use `return` for the last line of a function, but only when you want to return early from a function
+15. For testing, never add source commands at the top to source files in the `R` folder, as these are automatically sourced (effectively) by the `testthat` package
+16. The tests need to pass on Mac, Windows and Ubuntu, so be aware of that (e.g. file path availability and specification (forward or backward slashes, root directories, etc.), case sensitivity, etc.). You do not run the tests on all three platforms, but you should think about them passing on all three platforms
