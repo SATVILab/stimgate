@@ -11,3 +11,4 @@ tests/testthat/testdata/postmortem
 _tmp/**/*
 .gitignore
 ..Rcheck
+*.tar.gz
