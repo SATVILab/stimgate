@@ -26,10 +26,12 @@ test_that("stimgate_fcs_write function exists and has correct signature", {
 
   # Test function signature by checking for argument names
   args <- names(formals(stimgate::stimgate_fcs_write))
-  expected_args <- c("path_project", ".data", "ind_batch_list", "path_dir_save",
-                     "chnl", "gate_tbl", "trans_fn", "trans_chnl", "combn_exc",
-                     "gate_type_cyt_pos", "gate_type_single_pos", "mult",
-                     "gate_uns_method")
+  expected_args <- c(
+    "path_project", ".data", "ind_batch_list", "path_dir_save",
+    "chnl", "gate_tbl", "trans_fn", "trans_chnl", "combn_exc",
+    "gate_type_cyt_pos", "gate_type_single_pos", "mult",
+    "gate_uns_method"
+  )
 
   expect_true(all(expected_args %in% args))
 })
@@ -98,7 +100,6 @@ test_that("stimgate_fcs_write handles directory creation and cleanup", {
 })
 
 test_that("stimgate_fcs_write works with different gate_uns_method options", {
-
   gate_methods <- c("min", "max", "mean", "tmean", "med")
 
   for (method in gate_methods) {
@@ -122,7 +123,6 @@ test_that("stimgate_fcs_write works with different gate_uns_method options", {
 })
 
 test_that("stimgate_fcs_write works with mult parameter", {
-
   # Test with mult = FALSE (default)
   path_dir_save_single <- file.path(tempdir(), "fcs_output_single")
   result_single <- stimgate::stimgate_fcs_write(
@@ -154,7 +154,6 @@ test_that("stimgate_fcs_write works with mult parameter", {
 })
 
 test_that("stimgate_fcs_write works with different gate types", {
-
   path_dir_save <- file.path(tempdir(), "fcs_output_gate_types")
 
   result <- stimgate::stimgate_fcs_write(
@@ -215,7 +214,8 @@ test_that("stimgate_fcs_write works with pre-provided gate table", {
     chnl = rep(example_data$marker[[1]], length(unlist(example_data$batch_list))),
     marker = rep("BC1", length(unlist(example_data$batch_list))),
     batch = paste0("batch_", rep(seq_along(example_data$batch_list),
-                                times = sapply(example_data$batch_list, length))),
+      times = sapply(example_data$batch_list, length)
+    )),
     ind = as.character(unlist(example_data$batch_list)),
     gate = rep(0.5, length(unlist(example_data$batch_list))),
     gate_cyt = rep(0.5, length(unlist(example_data$batch_list))),
@@ -314,7 +314,6 @@ test_that("stimgate_fcs_write handles transformation parameters", {
 })
 
 test_that("stimgate_fcs_write preserves file metadata", {
-
   path_dir_save <- file.path(tempdir(), "fcs_output_metadata")
 
   stimgate::stimgate_fcs_write(
@@ -383,7 +382,6 @@ test_that("stimgate_fcs_write handles combination exclusions", {
 })
 
 test_that("stimgate_fcs_write creates consistent file names", {
-
   path_dir_save <- file.path(tempdir(), "fcs_output_naming")
 
   stimgate::stimgate_fcs_write(
@@ -412,7 +410,6 @@ test_that("stimgate_fcs_write creates consistent file names", {
 })
 
 test_that("stimgate_fcs_write message output", {
-
   path_dir_save <- file.path(tempdir(), "fcs_output_messages")
 
   # Capture messages
@@ -435,7 +432,8 @@ test_that("stimgate_fcs_write handles edge case: empty data", {
     chnl = rep(example_data$marker[[1]], length(unlist(example_data$batch_list))),
     marker = rep("BC1", length(unlist(example_data$batch_list))),
     batch = paste0("batch_", rep(seq_along(example_data$batch_list),
-                                times = sapply(example_data$batch_list, length))),
+      times = sapply(example_data$batch_list, length)
+    )),
     ind = as.character(unlist(example_data$batch_list)),
     gate = rep(999999, length(unlist(example_data$batch_list))), # Very high threshold
     gate_cyt = rep(999999, length(unlist(example_data$batch_list))),
@@ -464,7 +462,6 @@ test_that("stimgate_fcs_write handles edge case: empty data", {
 })
 
 test_that("stimgate_fcs_write validates parameter types", {
-
   # Test with invalid .data type (should fail gracefully)
   expect_error(
     stimgate::stimgate_fcs_write(
@@ -487,8 +484,6 @@ test_that("stimgate_fcs_write validates parameter types", {
     )
   )
 })
-
-
 
 
 test_that("stimgate_fcs_write integrates with stimgate workflow", {
@@ -517,7 +512,7 @@ test_that("stimgate_fcs_write integrates with stimgate workflow", {
     .data = gs,
     ind_batch_list = example_data$batch_list,
     path_dir_save = path_dir_save,
-    chnl = example_data$marker  # Use all markers
+    chnl = example_data$marker # Use all markers
   )
 
   # Step 3: Verify integration worked
@@ -573,7 +568,6 @@ test_that("stimgate_fcs_write respects working directory", {
     # Should create directory relative to current working directory
     expect_true(dir.exists(file.path(temp_wd, path_dir_save)))
     expect_equal(result, path_dir_save)
-
   }, finally = {
     setwd(original_wd)
   })
@@ -582,7 +576,6 @@ test_that("stimgate_fcs_write respects working directory", {
 
 
 test_that("stimgate_fcs_write handles transformation edge cases", {
-
   example_data <- get_example_data()
   gs <- flowWorkspace::load_gs(example_data$path_gs)
   path_project_2 <- file.path(dirname(example_data$path_gs), "stimgate")
@@ -607,7 +600,7 @@ test_that("stimgate_fcs_write handles transformation edge cases", {
     path_dir_save = path_dir_save,
     chnl = example_data$marker[[1]],
     trans_fn = identity_transform,
-    trans_chnl = NULL  # Should apply to all columns
+    trans_chnl = NULL # Should apply to all columns
   )
 
   expect_equal(result, path_dir_save)
