@@ -98,3 +98,42 @@ This package uses `renv` for dependency management:
 14. Never use `return` for the last line of a function, but only when you want to return early from a function
 15. For testing, never add source commands at the top to source files in the `R` folder, as these are automatically sourced (effectively) by the `testthat` package
 16. The tests need to pass on Mac, Windows and Ubuntu, so be aware of that (e.g. file path availability and specification (forward or backward slashes, root directories, etc.), case sensitivity, etc.). You do not run the tests on all three platforms, but you should think about them passing on all three platforms
+
+## Testing Best Practices
+
+When writing tests with `testthat`, follow these important practices:
+
+1. **Avoid library() calls in test files**: Never use `library(testthat)` or similar calls at the top of test files. The testthat package is automatically loaded when tests are run.
+
+2. **Keep tests independent**: Each test should be self-contained and not rely on global state created outside of test blocks. If you need setup data:
+   - Create it within each test that needs it, OR
+   - Use shared setup only when all tests in the file require it, AND
+   - Ensure cleanup happens within the test or use `withr::defer()` for automatic cleanup
+
+3. **Variable scope in tests**: When a test creates its own test data and variables (like `example_data`, `gs`, `path_project_2`), always use those local variables throughout that test. Never mix local and global variables from different scopes.
+
+4. **Avoid code outside test blocks**: Do not place cleanup code (like `unlink()`) or other operations outside of `test_that()` blocks. Such code:
+   - Executes in an unpredictable order relative to tests
+   - Can interfere with tests that run after it
+   - Makes the test file harder to understand and maintain
+   - May cause race conditions in parallel test execution
+
+5. **Cleanup within tests**: Each test should clean up its own temporary files and directories:
+   ```r
+   test_that("example test", {
+     temp_dir <- file.path(tempdir(), "test_output")
+     # ... test code ...
+     unlink(temp_dir, recursive = TRUE)
+   })
+   ```
+
+6. **Shared test fixtures**: If multiple tests need the same setup data:
+   - Either create the data in each test (preferred for independence)
+   - OR create it once at the top of the file, but document that all tests depend on it
+   - Never delete shared fixtures until the very end of the file (if at all)
+
+7. **Test file structure**: A well-structured test file should have:
+   - Optional shared setup code at the top (clearly documented)
+   - All test cases in `test_that()` blocks
+   - Each test responsible for its own cleanup
+   - Optional final cleanup at the very end (only for shared resources)
