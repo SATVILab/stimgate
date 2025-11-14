@@ -1,5 +1,3 @@
-library(testthat)
-
 example_data <- get_example_data()
 gs <- flowWorkspace::load_gs(example_data$path_gs)
 path_project <- file.path(dirname(example_data$path_gs), "stimgate")
@@ -542,10 +540,6 @@ test_that("stimgate_fcs_write integrates with stimgate workflow", {
   unlink(path_dir_save, recursive = TRUE)
 })
 
-if (dir.exists(example_data$path_gs)) {
-  unlink(example_data$path_gs, recursive = TRUE)
-}
-
 test_that("stimgate_fcs_write respects working directory", {
   # Change working directory temporarily
   original_wd <- getwd()
@@ -607,7 +601,7 @@ test_that("stimgate_fcs_write handles transformation edge cases", {
   identity_transform <- function(x) x
 
   result <- stimgate::stimgate_fcs_write(
-    path_project = path_project,
+    path_project = path_project_2,
     .data = gs,
     ind_batch_list = example_data$batch_list,
     path_dir_save = path_dir_save,
@@ -623,7 +617,7 @@ test_that("stimgate_fcs_write handles transformation edge cases", {
   path_dir_save_null <- file.path(tempdir(), "fcs_output_transform_null")
 
   result_null <- stimgate::stimgate_fcs_write(
-    path_project = path_project,
+    path_project = path_project_2,
     .data = gs,
     ind_batch_list = example_data$batch_list,
     path_dir_save = path_dir_save_null,
