@@ -32,6 +32,12 @@ This package uses `renv` for dependency management:
 - Dependencies are locked in `renv.lock` and managed through `renv::restore()`
 - If dependencies are missing, run `renv::restore()` to install them
 
+### Test data files
+
+- Test data files (`.rds` files in `tests/testthat/`) may need to be regenerated when major package dependencies are updated, especially when upgrading to new major versions of packages like `ggplot2`
+- If tests fail with objects behaving unexpectedly after a dependency upgrade, check if the test data was created with an older version and needs regeneration
+- Regenerate test data files using the current package versions to ensure compatibility
+
 ## Repository structure
 
 - `R/`: Core R source code
@@ -98,3 +104,4 @@ This package uses `renv` for dependency management:
 14. Never use `return` for the last line of a function, but only when you want to return early from a function
 15. For testing, never add source commands at the top to source files in the `R` folder, as these are automatically sourced (effectively) by the `testthat` package
 16. The tests need to pass on Mac, Windows and Ubuntu, so be aware of that (e.g. file path availability and specification (forward or backward slashes, root directories, etc.), case sensitivity, etc.). You do not run the tests on all three platforms, but you should think about them passing on all three platforms
+17. Always update this copilot-instructions.md file when you identify new coding patterns, guidelines, or best practices during issue resolution. This ensures future agents benefit from your learnings and the instructions stay current with the evolving codebase
