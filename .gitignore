@@ -12,3 +12,4 @@ _tmp/**/*
 .gitignore
 ..Rcheck
 *.tar.gz
+
