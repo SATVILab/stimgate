@@ -1,4 +1,5 @@
 library(testthat)
+library(stimgate)
 
 example_data <- get_example_data()
 gs <- flowWorkspace::load_gs(example_data$path_gs)
