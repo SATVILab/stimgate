@@ -1,5 +1,3 @@
-library(testthat)
-
 example_data <- get_example_data()
 gs <- flowWorkspace::load_gs(example_data$path_gs)
 path_project <- file.path(dirname(example_data$path_gs), "stimgate")

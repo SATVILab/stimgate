@@ -104,7 +104,8 @@ This package uses `renv` for dependency management:
 14. Never use `return` for the last line of a function, but only when you want to return early from a function
 15. For testing, never add source commands at the top to source files in the `R` folder, as these are automatically sourced (effectively) by the `testthat` package
 16. The tests need to pass on Mac, Windows and Ubuntu, so be aware of that (e.g. file path availability and specification (forward or backward slashes, root directories, etc.), case sensitivity, etc.). You do not run the tests on all three platforms, but you should think about them passing on all three platforms
-17. Always update this copilot-instructions.md file when you identify new coding patterns, guidelines, or best practices during issue resolution. This ensures future agents benefit from your learnings and the instructions stay current with the evolving codebase
+17. Tests should verify observable behavior and outputs, not internal implementation details. Avoid testing for the existence of internal functions or variables (those starting with `.`). Focus on testing that functions produce the correct output, handle errors appropriately, and have the expected side effects
+18. Always update this copilot-instructions.md file when you identify new coding patterns, guidelines, or best practices during issue resolution. This ensures future agents benefit from your learnings and the instructions stay current with the evolving codebase
 
 ## Testing Best Practices
 
