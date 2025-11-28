@@ -1,0 +1,51 @@
+url: https://satvilab.github.io/stimgate/
+template:
+  bootstrap: 5
+
+reference:
+- title: Gating Functions
+  desc: Main functions for identifying cytokine-positive cells
+  contents:
+  - stimgate_gate
+  - stimgate_gate_get
+
+- title: Statistics and Results
+  desc: Functions for extracting gating results and statistics
+  contents:
+  - get_stats
+
+- title: Visualization
+  desc: Functions for plotting gates and results
+  contents:
+  - stimgate_plot
+
+- title: Data Export
+  desc: Functions for exporting gated data
+  contents:
+  - stimgate_fcs_write
+
+- title: Utilities
+  desc: Helper and utility functions
+  contents:
+  - chnl_lab
+  - get_example_data
+
+navbar:
+  structure:
+    left:
+    - intro
+    - reference
+    - articles
+    - news
+    right:
+    - search
+    - github
+  components:
+    github:
+      icon: fa-github
+      href: https://github.com/SATVILab/stimgate
+      aria-label: GitHub
+
+authors:
+  Miguel Rodo:
+    href: https://github.com/miguelrodo
