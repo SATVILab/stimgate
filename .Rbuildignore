@@ -11,3 +11,6 @@
 ^vignettes/
 ^BIOCONDUCTOR_PREPARATION\.md$
 ^scripts/
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
