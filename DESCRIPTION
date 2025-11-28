@@ -6,13 +6,14 @@ Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "
 Description: Apply outlier gating function to identify cells that have possibly
     responded to stimulation, by comparing the unstimulated and stimulated tubes
     from the same sample.
-URL: https://github.com/SATVILab/stimgate
+URL: https://satvilab.github.io/stimgate/,
+    https://github.com/SATVILab/stimgate
 BugReports: https://github.com/SATVILab/stimgate/issues
 License: GPL (>= 2)
 Encoding: UTF-8
 Depends: R (>= 4.4.0)
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 biocViews: FlowCytometry, SingleCell, CellBasedAssays, ImmunoOncology
 VignetteEngine: knitr::rmarkdown
 Imports:
