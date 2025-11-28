@@ -67,3 +67,4 @@ select a cutpoint from the second derivative of the KDE. Specifically, we
 choose the cutpoint as the largest peak of the second derivative of the KDE
 density which is greater than the reference peak.
 }
+\keyword{internal}
