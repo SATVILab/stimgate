@@ -35,6 +35,7 @@
 #' @param plot logical specifying whether to plot the peaks found
 #' @param ... additional arguments passed to \code{.deriv_density}
 #' @return the cutpoint along the x-axis
+#' @keywords internal
 .cytokine_cutpoint <- function(x,
                                num_peaks = 1,
                                ref_peak = 1,

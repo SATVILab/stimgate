@@ -9,8 +9,8 @@ R/test3.R
 SCRATCH.R
 tests/testthat/testdata/postmortem
 _tmp/**/*
-.gitignore
 ..Rcheck
 *.tar.gz
 
-temp change
+# pkgdown local build output
+docs/
