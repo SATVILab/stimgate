@@ -142,7 +142,8 @@
     pop = pop_gate,
     chnl_cut = chnl_vec, ind = ind,
     ind_uns = ind_uns,
-    batch = batch
+    batch = batch,
+    path_project = path_project
   )
 
   ex_uns <- .get_ex( # nolint
@@ -151,7 +152,8 @@
     chnl_cut = chnl_vec,
     ind = ind,
     ind_uns = ind_uns,
-    batch = batch
+    batch = batch,
+    path_project = path_project
   )
 
   # gates

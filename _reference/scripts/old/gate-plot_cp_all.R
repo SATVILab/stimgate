@@ -97,7 +97,8 @@ plot_cp_all <- function(data,
         cut = names(params$chnl_lab),
         high = NULL, ind = ind,
         is_uns = FALSE, stim = stim,
-        ind_in_batch = ind_in_batch, data_name = params$data_name
+        ind_in_batch = ind_in_batch, data_name = params$data_name,
+        path_project = params$path_project
       )
 
       ind_uns <- (ind %/% 5 * 5) + 5
@@ -107,7 +108,8 @@ plot_cp_all <- function(data,
         high = NULL, ind = ind,
         is_uns = FALSE, stim = stim,
         ind_in_batch = ind_in_batch,
-        data_name = params$data_name
+        data_name = params$data_name,
+        path_project = params$path_project
       )
       gate_tbl_ind <- gate_tbl |>
         dplyr::filter(.data$ind == .env$ind) #|>

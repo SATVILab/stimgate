@@ -86,7 +86,8 @@ get_stats_combn_cp <- function(data,
         data = data[[ind]], pop = pop_gate,
         cut = cut, high = NULL, ind = ind,
         is_uns = FALSE, stim = stim,
-        ind_in_batch = ind_in_batch, data_name = data_name
+        ind_in_batch = ind_in_batch, data_name = data_name,
+        path_project = path_project
       )
 
       gate_tbl_ind <- gate_tbl |> dplyr::filter(.data$ind == .env$ind)
@@ -119,7 +120,8 @@ get_stats_combn_cp <- function(data,
           data = data[[ind_uns]], pop = pop_gate,
           cut = cut, high = NULL, ind = ind_uns,
           is_uns = TRUE, stim = "uns",
-          ind_in_batch = ind_in_batch, data_name = data_name
+          ind_in_batch = ind_in_batch, data_name = data_name,
+          path_project = path_project
         )
 
         count_vec_uns <- purrr::map_dbl(cut, function(chnl_curr) {
@@ -256,7 +258,8 @@ get_stats_combn_cp <- function(data,
       data = data[[ind_uns]], pop = pop_gate,
       cut = cut, high = NULL, ind = ind_uns,
       is_uns = TRUE, stim = "uns",
-      ind_in_batch = ind_in_batch, data_name = data_name
+      ind_in_batch = ind_in_batch, data_name = data_name,
+      path_project = path_project
     )
 
     stat_tbl_uns <- .get_stat_combn(
@@ -410,7 +413,8 @@ get_stats_combn_nb <- function(data,
       data = data[[ind]], pop = pop_gate,
       cut = cut, high = NULL, ind = ind,
       is_uns = FALSE, stim = stim,
-      ind_in_batch = ind_in_batch, data_name = data_name
+      ind_in_batch = ind_in_batch, data_name = data_name,
+      path_project = path_project
     )
 
     n_cell <- nrow(ex)
