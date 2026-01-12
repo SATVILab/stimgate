@@ -43,7 +43,7 @@ str_detect_any <- function(string, pattern) {
                     ind_uns,
                     batch,
                     extra_chnl = NULL,
-                    path_projecvt) {
+                    path_project) {
   # collect all the channels we need
   # get expression information as a tibble
   # get .data
