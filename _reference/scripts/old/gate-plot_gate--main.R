@@ -119,7 +119,8 @@ plot_gate <- function(gate_tbl, params, pop_sub,
                           ind_in_batch_uns = params$ind_in_batch_uns,
                           ind_in_batch_lab_vec = params$ind_in_batch_lab_vec,
                           pop = pop_res, cut = params$cut, high = params$high,
-                          data_name = params$data_name)
+                          data_name = params$data_name,
+                          path_project = params$path_project)
 
   # create combined ex
   ex <- dplyr::bind_rows(ex_list) |> tibble::as_tibble()

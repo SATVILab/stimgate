@@ -46,7 +46,8 @@
     tol_clust = tol_clust,
     tol_gate_single = tol_gate_single,
     gate_tbl = gate_tbl,
-    calc_cyt_pos_gates = calc_cyt_pos_gates
+    calc_cyt_pos_gates = calc_cyt_pos_gates,
+    path_project = path_project
   )
 
   # delete locb gates

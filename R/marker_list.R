@@ -32,7 +32,8 @@
       .data = .data,
       pop_gate = pop_gate,
       .debug = .debug,
-      ind_batch_list = ind_batch_list
+      ind_batch_list = ind_batch_list,
+      path_project = path_project
     )
   })
 
@@ -50,7 +51,8 @@
                                       .data,
                                       pop_gate,
                                       .debug,
-                                      ind_batch_list) {
+                                      ind_batch_list,
+                                      path_project) {
   marker_settings <- .complete_marker_list_add_common(
     marker_settings_common = marker_settings_common,
     marker_settings = marker_settings_spec
@@ -63,7 +65,8 @@
     pop_gate = pop_gate,
     chnl_cut = marker,
     .debug = .debug,
-    ind_batch_list = ind_batch_list
+    ind_batch_list = ind_batch_list,
+    path_project = path_project
   )
 
   marker_settings$bw_min <- .complete_marker_list_min_bw(
@@ -97,7 +100,8 @@
                                            pop_gate,
                                            chnl_cut,
                                            .debug,
-                                           ind_batch_list) {
+                                           ind_batch_list,
+                                           path_project) {
   if (!is.null(bias_uns)) {
     return(bias_uns)
   }
@@ -106,7 +110,8 @@
     ind_batch_list = ind_batch_list,
     .data = .data,
     pop_gate = pop_gate,
-    chnl_cut = chnl_cut
+    chnl_cut = chnl_cut,
+    path_project = path_project
   )
   (mean_range / 12 * bias_uns_factor) |> signif(3)
 }
@@ -114,7 +119,8 @@
 .complete_marker_list_bias_uns_get_mean_range <- function(ind_batch_list,
                                                           .data,
                                                           pop_gate,
-                                                          chnl_cut) {
+                                                          chnl_cut,
+                                                          path_project) {
   purrr::map(
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
@@ -123,7 +129,8 @@
         ind_batch = ind_batch_list[[i]],
         pop = pop_gate,
         chnl_cut,
-        batch = names(ind_batch_list)[i]
+        batch = names(ind_batch_list)[i],
+        path_project = path_project
       )
       purrr::map_dbl(ex_list, function(ex) {
         abs(

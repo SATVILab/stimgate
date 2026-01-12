@@ -30,7 +30,8 @@ plot_cp_all <- function(data,
       fcs = fcs,
       ind_in_batch_uns = ind_in_batch_uns,
       ind_batch_list = ind_batch_list,
-      data = data
+      data = data,
+      path_project = path_project
     )
   }
 

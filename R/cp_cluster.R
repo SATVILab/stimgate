@@ -38,6 +38,7 @@
     max_cp = max_cp,
     gate_stats_tbl = gate_stats_tbl,
     filter_other_cyt_pos = filter_other_cyt_pos,
+    path_project = params$path_project,
     .debug = .debug
   )
 
@@ -58,6 +59,7 @@
     gate_tbl = gate_tbl,
     control = control,
     bw = bw,
+    path_project = params$path_project,
     .debug = .debug
   )
 

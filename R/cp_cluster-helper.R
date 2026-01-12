@@ -49,6 +49,7 @@
                                                   max_cp,
                                                   gate_stats_tbl,
                                                   filter_other_cyt_pos,
+                                                  path_project,
                                                   .debug) {
   .debug_msg(.debug, "Getting prop_bs_by_cp_tbl object") # nolint
   # statistics
@@ -64,6 +65,7 @@
     max_cp = max_cp,
     filter_other_cyt_pos = filter_other_cyt_pos,
     cp_min = cp_min,
+    path_project = path_project,
     .debug = .debug
   )
 
@@ -94,12 +96,14 @@
                                              max_cp,
                                              filter_other_cyt_pos,
                                              cp_min,
+                                             path_project,
                                              .debug) {
   .debug_msg(.debug, "Getting .data list") # nolint
   data_list <- .get_prop_bs_by_cp_tbl_data_list_init(
     ind_batch_list = ind_batch_list, .data = .data, pop_gate = pop_gate,
     chnl_cut = chnl_cut, filter_other_cyt_pos = filter_other_cyt_pos,
-    calc_cyt_pos_gates = calc_cyt_pos_gates, cp_min = cp_min, .debug = .debug
+    calc_cyt_pos_gates = calc_cyt_pos_gates, cp_min = cp_min,
+    path_project = path_project, .debug = .debug
   )
   .get_prop_bs_by_cp_tbl_data_list_final(data_list, max_cp)
 }
@@ -111,12 +115,14 @@
                                                   filter_other_cyt_pos,
                                                   calc_cyt_pos_gates,
                                                   cp_min,
+                                                  path_project,
                                                   .debug) {
   purrr::map(seq_along(ind_batch_list), function(i) {
     ind_batch <- ind_batch_list[[i]]
     ex_list <- .get_ex_list( # nolint
       .data = .data, ind_batch = ind_batch, pop = pop_gate,
-      chnl_cut = chnl_cut, batch = names(ind_batch_list)[i]
+      chnl_cut = chnl_cut, batch = names(ind_batch_list)[i],
+      path_project = path_project
     )
 
     # get min and max expression across batch
@@ -419,6 +425,7 @@
                                          gate_tbl,
                                          control,
                                          bw,
+                                         path_project,
                                          .debug) {
   .debug_msg(.debug, "Getting density table") # nolint
   min_threshold <- .get_cp_cluster_dens_tbl_get_min_threshold(
@@ -431,7 +438,8 @@
       pop_gate = pop_gate, chnl_cut,
       filter_other_cyt_pos = filter_other_cyt_pos,
       gate_tbl = gate_tbl, calc_cyt_pos_gates = calc_cyt_pos_gates,
-      control = control, .debug = .debug, batch = names(ind_batch_list)[i]
+      control = control, .debug = .debug, batch = names(ind_batch_list)[i],
+      path_project = path_project
     )
 
     purrr::map_df(ex_list, function(x) {
@@ -523,10 +531,12 @@
                                                             gate_tbl,
                                                             calc_cyt_pos_gates,
                                                             control,
+                                                            path_project,
                                                             .debug) {
   ex_list <- .get_ex_list( # nolint
     .data = .data, ind_batch = ind_batch,
-    pop = pop_gate, chnl_cut = chnl_cut, batch = batch
+    pop = pop_gate, chnl_cut = chnl_cut, batch = batch,
+    path_project = path_project
   )
 
   if (!filter_other_cyt_pos) {

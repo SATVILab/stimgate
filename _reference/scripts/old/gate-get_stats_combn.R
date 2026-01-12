@@ -45,7 +45,8 @@ get_stats_combn_cp <- function(data,
     chnl_lab = chnl_lab_vec,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     ind_in_batch_gate = ind_in_batch_gate,
-    data_name = data_name
+    data_name = data_name,
+    path_project = path_project
   )
 
   # ====================================
@@ -329,7 +330,8 @@ get_stats_combn_nb <- function(data,
     chnl_lab = chnl_lab_vec,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     ind_in_batch_gate = ind_in_batch_gate,
-    data_name = data_name
+    data_name = data_name,
+    path_project = path_project
   )
 
   # get base directory
