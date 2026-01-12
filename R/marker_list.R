@@ -202,7 +202,7 @@
 }
 
 .complete_marker_list_save <- function(marker_list, path_project) {
-  path_save <- file.path(path_project, "marker_list.rds")
+  path_save <- file.path(path_project, "meta_data", "marker_list.rds")
   if (file.exists(path_save)) {
     invisible(file.remove(path_save))
   }
