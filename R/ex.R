@@ -133,7 +133,6 @@ str_detect_any <- function(string, pattern) {
     tibble::as_tibble()
   .get_ex_new_chnl_save(
     ex = ex,
-    chnl = chnl,
     ind = ind,
     pop = pop,
     path_project = path_project
