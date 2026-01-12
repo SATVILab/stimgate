@@ -80,7 +80,8 @@
     pop_gate = pop_gate,
     chnl_cut = marker,
     .debug = .debug,
-    ind_batch_list = ind_batch_list
+    ind_batch_list = ind_batch_list,
+    path_project = path_project
   )
 
   marker_settings
@@ -158,7 +159,8 @@
                                          pop_gate,
                                          chnl_cut,
                                          .debug,
-                                         ind_batch_list) {
+                                         ind_batch_list,
+                                         path_project) {
   if (!is.null(cp_min)) {
     return(cp_min)
   }
@@ -171,7 +173,8 @@
         ind_batch = ind_batch_list[[i]],
         pop = pop_gate,
         chnl_cut,
-        batch = names(ind_batch_list)[i]
+        batch = names(ind_batch_list)[i],
+        path_project = path_project
       )
       purrr::map_dbl(ex_list, function(ex) {
         median(.get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))], na.rm = TRUE)[[1]]
