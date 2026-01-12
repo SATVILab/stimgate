@@ -21,7 +21,8 @@
     ind_batch = ind_batch,
     pop = pop_gate,
     chnl_cut,
-    batch = batch
+    batch = batch,
+    path_project = path_project
   )
   if (is.null(params$gate_tbl)) {
     .gate_batch_all(

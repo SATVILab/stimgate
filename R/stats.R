@@ -32,7 +32,8 @@
     pop_gate = pop_gate,
     chnl_lab = chnl_lab,
     ind_batch_list = ind_batch_list,
-    .data = .data
+    .data = .data,
+    path_project = path_project
   )
   gate_tbl <- .get_stats_gate_tbl_get( # nolint
     gate_tbl = gate_tbl,

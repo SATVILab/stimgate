@@ -15,7 +15,8 @@
                                   pop_gate = NULL,
                                   chnl_lab = NULL,
                                   ind_batch_list = NULL,
-                                  .data = NULL) {
+                                  .data = NULL,
+                                  path_project) {
   if (!is.null(params)) {
     return(params)
   }
@@ -26,7 +27,8 @@
     pop_gate = pop_gate,
     chnl_lab = chnl_lab,
     ind_batch_list = ind_batch_list,
-    .data = .data
+    .data = .data,
+    path_project = path_project
   )
 }
 
