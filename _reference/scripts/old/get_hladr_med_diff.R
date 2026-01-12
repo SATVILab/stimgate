@@ -88,7 +88,8 @@ get_hladr_med_diff <- function(data,
       data = data[[ind]], pop = pop_gate,
       cut = chnl, high = NULL, ind = ind,
       is_uns = FALSE, stim = stim,
-      ind_in_batch = ind_in_batch, data_name = data_name
+      ind_in_batch = ind_in_batch, data_name = data_name,
+      path_project = path_project
     )
 
 
