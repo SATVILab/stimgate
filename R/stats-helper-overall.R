@@ -14,6 +14,7 @@
                                gate_type_cyt_pos_calc,
                                combn_mat_list, # missing
                                cyt_combn_vec_list, # missing
+                               path_project,
                                .debug) {
   stat_tbl <- purrr::map_df(
     seq_along(ind_batch_list),
@@ -41,7 +42,8 @@
         gate_type_cyt_pos_calc = gate_type_cyt_pos_calc,
         combn_mat_list = combn_mat_list,
         cyt_combn_vec_list = cyt_combn_vec_list,
-        gate_name = gate_name
+        gate_name = gate_name,
+        path_project = path_project
       )
     }
   )
@@ -108,7 +110,8 @@
                              gate_type_cyt_pos_calc,
                              combn_mat_list,
                              cyt_combn_vec_list,
-                             gate_name) {
+                             gate_name,
+                             path_roject) {
   # calculate n_cell_[stim/uns] and count_[stim/uns]
   # for each gate type (gn) for either:
   # individual cytokines (combn = FALSE) or
@@ -124,7 +127,8 @@
     ind_batch = ind_batch,
     batch = batch,
     pop = pop_gate,
-    chnl_cut = unique(gate_tbl$chnl)
+    chnl_cut = unique(gate_tbl$chnl),
+    path_project = path_project
   )
 
   purrr::map_df(gate_name, function(gn) {
