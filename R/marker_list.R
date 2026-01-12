@@ -23,11 +23,15 @@
     min_cell = min_cell, tol_clust = tol_clust, gate_combn = gate_combn,
     max_pos_prob_x = max_pos_prob_x
   )
+  chnl_lab <- stimgate_meta_settings_get_chnl_lab(path_project)
   marker_list <- purrr::map(marker, function(marker_curr) {
     .complete_marker_list_ind(
       marker = marker_curr,
       marker_settings_common = marker_settings_common,
-      marker_settings_spec = list(chnl_cut = marker_curr) |>
+      marker_settings_spec = list(
+        marker = chnl_lab[[marker_curr]],
+        chnl_cut = marker_curr
+      ) |>
         append(marker_settings[[marker_curr]]),
       .data = .data,
       pop_gate = pop_gate,
@@ -35,7 +39,8 @@
       ind_batch_list = ind_batch_list,
       path_project = path_project
     )
-  })
+  }) |>
+    stats::setNames(chnl_lab[marker])
 
   .complete_marker_list_save(
     marker_list = marker_list,
@@ -212,5 +217,155 @@
   saveRDS(
     marker_list,
     file = path_save
+  )
+}
+
+.chnl_lab <- function(.data) {
+  .install_pkg_bioc("flowCore") # nolint
+  adf <- switch(class(.data)[1],
+    "flowFrame" = flowCore::parameters(.data)@data,
+    "flowSet" = flowCore::parameters(.data[[1]])@data,
+    "cytoframe" = flowCore::parameters(.data)@data,
+    "cytoset" = flowCore::parameters(.data[[1]])@data,
+    stop("class of data not recognised")
+  )
+
+  lab_vec <- setNames(adf$desc, adf$name)
+  for (i in seq_along(lab_vec)) {
+    if (is.na(lab_vec[i])) {
+      lab_vec[i] <- names(lab_vec)[i]
+    }
+  }
+
+  lab_vec
+}
+
+#' @title Read marker settings from project
+#' @description Read the saved marker settings list from the project's meta_data folder.
+#' @param path_project character Path to project.
+#' @return A named list of marker settings (as saved by .complete_marker_list_save()).
+#' @examples
+#' \dontrun{
+#' tmp <- tempdir()
+#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
+#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
+#' stimgate_meta_settings_get_markers(tmp)
+#' }
+#' @export
+stimgate_meta_settings_get_markers <- function(path_project) {
+  path_marker_list <- file.path(path_project, "meta_data", "marker_list.rds")
+  if (!file.exists(path_marker_list)) {
+    stop("Marker list file not found in project meta_data folder")
+  }
+  readRDS(path_marker_list)
+}
+# ...existing code...
+#' @title Read marker list with channel labels
+#' @description Read the project's marker list and return it with element names
+#'   replaced by channel labels (from chnl_lab).
+#' @param path_project character Path to project.
+#' @return A named list of marker settings where names are channel labels.
+#' @examples
+#' \dontrun{
+#' tmp <- tempdir()
+#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
+#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
+#' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "meta_data", "chnl_lab.rds"))
+#' stimgate_meta_settings_get_chnls(tmp)
+#' }
+#' @export
+stimgate_meta_settings_get_chnls <- function(path_project) {
+  marker_list <- stimgate_meta_settings_get_markers(path_project)
+  chnl_lab <- stimgate_meta_settings_get_chnl_lab(path_project)
+  # chnl_lab maps channel code -> label; rename marker_list elements using labels
+  names(marker_list) <- chnl_lab[names(marker_list)]
+  marker_list
+}
+# ...existing code...
+#' @title Get marker settings for a single channel
+#' @description Retrieve the marker settings for a single channel. The function
+#'   accepts either a channel label (as returned by stimgate_meta_settings_get_chnl_lab)
+#'   or the original channel name/key used in marker_list.
+#' @param path_project character Path to project.
+#' @param chnl character Channel label or channel name.
+#' @return A list of settings for the requested channel.
+#' @examples
+#' \dontrun{
+#' tmp <- tempdir()
+#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
+#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
+#' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "meta_data", "chnl_lab.rds"))
+#' stimgate_meta_settings_get_chnl(tmp, "BC1 label")
+#' stimgate_meta_settings_get_chnl(tmp, "BC1")
+#' }
+#' @export
+stimgate_meta_settings_get_chnl <- function(path_project, chnl) {
+  chnl_list <- stimgate_meta_settings_get_chnls(path_project)
+  # If user supplied the label (names of chnl_list)
+  if (chnl %in% names(chnl_list)) {
+    return(chnl_list[[chnl]])
+  }
+  # If user supplied the original channel key/name, map via chnl_lab
+  marker_list_orig <- stimgate_meta_settings_get_markers(path_project)
+  if (chnl %in% names(marker_list_orig)) {
+    chnl_lab <- stimgate_meta_settings_get_chnl_lab(path_project)
+    label <- chnl_lab[[chnl]]
+    if (!is.null(label) && label %in% names(chnl_list)) {
+      return(chnl_list[[label]])
+    }
+  }
+  stop(sprintf("Channel %s not found in marker list", chnl))
+}
+
+#' @title Get settings for a named marker
+#' @description Retrieve the settings for a marker by its original name/key.
+#' @param path_project character Path to project.
+#' @param marker character Marker name/key as stored in marker_list.
+#' @return A list of settings for the requested marker.
+#' @examples
+#' \dontrun{
+#' tmp <- tempdir()
+#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
+#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
+#' stimgate_meta_settings_get_marker(tmp, "BC1")
+#' }
+#' @export
+stimgate_meta_settings_get_marker <- function(path_project, marker) {
+  marker_list <- stimgate_meta_settings_get_markers(path_project)
+  if (!marker %in% names(marker_list)) {
+    stop(paste0("Marker ", marker, " not found in marker list"))
+  }
+  marker_list[[marker]]
+}
+
+#' @title Read channel label mapping
+#' @description Read the saved channel label mapping (chnl_lab.rds) from the project's meta_data folder.
+#' @param path_project character Path to project.
+#' @return Named character vector mapping channel names to labels.
+#' @examples
+#' \dontrun{
+#' tmp <- tempdir()
+#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
+#' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "meta_data", "chnl_lab.rds"))
+#' stimgate_meta_settings_get_chnl_lab(tmp)
+#' }
+#' @export
+stimgate_meta_settings_get_chnl_lab <- function(path_project) {
+  path_chnl_lab <- file.path(path_project, "meta_data", "chnl_lab.rds")
+  if (!file.exists(path_chnl_lab)) {
+    stop("Channel label file not found in project meta_data folder")
+  }
+  readRDS(path_chnl_lab)
+}
+
+.save_meta_data <- function(.data, path_project) {
+  path_dir_meta_data <- file.path(path_project, "meta_data")
+  if (!dir.exists(path_dir_meta_data)) {
+    dir.create(path_dir_meta_data, recursive = TRUE)
+  }
+  chnl_lab <- .chnl_lab(.data)
+  saveRDS(
+    chnl_lab,
+    file = file.path(path_dir_meta_data, "chnl_lab.rds")
   )
 }
