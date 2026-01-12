@@ -111,7 +111,7 @@
                              combn_mat_list,
                              cyt_combn_vec_list,
                              gate_name,
-                             path_roject) {
+                             path_project) {
   # calculate n_cell_[stim/uns] and count_[stim/uns]
   # for each gate type (gn) for either:
   # individual cytokines (combn = FALSE) or
