@@ -199,7 +199,7 @@ stimgate_gate <- function(path_project,
   }
 
   # get unspecified levels in marker elements
-  save_meta_data(.data, path_project)
+  .save_meta_data(.data, path_project)
   marker <- .complete_marker_list( # nolint
     marker = marker,
     bias_uns = bias_uns,
