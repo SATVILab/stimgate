@@ -237,6 +237,7 @@ str_detect_any <- function(string, pattern) {
 #' @param pop character or NULL Population name(s). Default is detected from project sample_data.
 #' @param ind character or NULL Index/indices of samples. Default is detected from project sample_data.
 #' @param chnl character or NULL Channel name(s) to return. Default is detected from project sample_data.
+#' @param bias logical. Whether to add bias to unstimulated sample used in the gating. Default is `FALSE`.
 #' @return A tibble with columns `pop`, `ind` and one column per requested channel. Rows correspond to cells.
 #' @examples
 #' \dontrun{
@@ -251,7 +252,8 @@ str_detect_any <- function(string, pattern) {
 stimgate_data_get_ex <- function(path_project,
                                  pop = NULL,
                                  ind = NULL,
-                                 chnl = NULL) {
+                                 chnl = NULL,
+                                 bias = FALSE) {
   .assert_string(path_project)
   pop <- pop %||% .get_project_pop(path_project)
   .assert_string_vector(pop)
@@ -266,6 +268,12 @@ stimgate_data_get_ex <- function(path_project,
         chnl = chnl,
         ind = ind_curr,
         path_project = path_project
+      )
+      ex <- .data_get_ex_bias(
+        ex,
+        ind = ind_curr,
+        path_project = path_project,
+        bias = bias
       )
       meta_df <- tibble::tibble(
         pop = pop_curr,
@@ -319,4 +327,27 @@ stimgate_data_get_ex <- function(path_project,
     sub("^chnl_(.*)\\.rds$", "\\1", x = _)
   .assert_string_vector(chnl_vec)
   chnl_vec
+}
+
+.data_get_ex_bias <- function(ex,
+                              ind,
+                              path_project,
+                              bias) {
+  if (!bias) {
+    return(ex)
+  }
+  ind_batch_list <- stimgate_meta_read_batch_list(path_project)
+  ind_uns <- .get_ind_uns(ind, ind_batch_list)
+  # only apply bias to unstim
+  is_uns <- ind == ind_uns
+  if (!is_uns) {
+    return(ex)
+  }
+  # apply bias
+  chnl_list <- stimgate_meta_read_settings_chnls(path_project)
+  for (chnl in colnames(ex)) {
+    bias <- chnl_list[[chnl]][["bias_uns"]]
+    ex[[chnl]] <- ex[[chnl]] + bias
+  }
+  ex
 }

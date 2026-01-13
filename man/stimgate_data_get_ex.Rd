@@ -4,7 +4,13 @@
 \alias{stimgate_data_get_ex}
 \title{Read saved expression data from project}
 \usage{
-stimgate_data_get_ex(path_project, pop = NULL, ind = NULL, chnl = NULL)
+stimgate_data_get_ex(
+  path_project,
+  pop = NULL,
+  ind = NULL,
+  chnl = NULL,
+  bias = FALSE
+)
 }
 \arguments{
 \item{path_project}{character Path to project.}
@@ -14,6 +20,8 @@ stimgate_data_get_ex(path_project, pop = NULL, ind = NULL, chnl = NULL)
 \item{ind}{character or NULL Index/indices of samples. Default is detected from project sample_data.}
 
 \item{chnl}{character or NULL Channel name(s) to return. Default is detected from project sample_data.}
+
+\item{bias}{logical. Whether to add bias to unstimulated sample used in the gating. Default is \code{FALSE}.}
 }
 \value{
 A tibble with columns \code{pop}, \code{ind} and one column per requested channel. Rows correspond to cells.

@@ -257,17 +257,17 @@
 #' tmp <- tempdir()
 #' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
 #' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
-#' stimgate_meta_settings_get_markers(tmp)
+#' stimgate_meta_read_settings_markers(tmp)
 #' }
 #' @export
-stimgate_meta_settings_get_markers <- function(path_project) {
+stimgate_meta_read_settings_markers <- function(path_project) {
   path_marker_list <- file.path(path_project, "meta_data", "marker_list.rds")
   if (!file.exists(path_marker_list)) {
     stop("Marker list file not found in project meta_data folder")
   }
   readRDS(path_marker_list)
 }
-# ...existing code...
+
 #' @title Read marker list with channel labels
 #' @description Read the project's marker list and return it with element names
 #'   replaced by channel labels (from chnl_lab).
@@ -279,20 +279,20 @@ stimgate_meta_settings_get_markers <- function(path_project) {
 #' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
 #' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
 #' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "meta_data", "chnl_lab.rds"))
-#' stimgate_meta_settings_get_chnls(tmp)
+#' stimgate_meta_read_settings_chnls(tmp)
 #' }
 #' @export
-stimgate_meta_settings_get_chnls <- function(path_project) {
-  marker_list <- stimgate_meta_settings_get_markers(path_project)
-  chnl_lab <- stimgate_meta_settings_get_chnl_lab(path_project)
+stimgate_meta_read_settings_chnls <- function(path_project) {
+  marker_list <- stimgate_meta_read_settings_markers(path_project)
+  chnl_lab <- stimgate_meta_read_chnl_lab(path_project)
   # chnl_lab maps channel code -> label; rename marker_list elements using labels
   names(marker_list) <- chnl_lab[names(marker_list)]
   marker_list
 }
-# ...existing code...
+
 #' @title Get marker settings for a single channel
 #' @description Retrieve the marker settings for a single channel. The function
-#'   accepts either a channel label (as returned by stimgate_meta_settings_get_chnl_lab)
+#'   accepts either a channel label (as returned by stimgate_meta_read_chnl_lab)
 #'   or the original channel name/key used in marker_list.
 #' @param path_project character Path to project.
 #' @param chnl character Channel label or channel name.
@@ -303,20 +303,20 @@ stimgate_meta_settings_get_chnls <- function(path_project) {
 #' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
 #' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
 #' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "meta_data", "chnl_lab.rds"))
-#' stimgate_meta_settings_get_chnl(tmp, "BC1 label")
-#' stimgate_meta_settings_get_chnl(tmp, "BC1")
+#' stimgate_meta_read_settings_chnl(tmp, "BC1 label")
+#' stimgate_meta_read_settings_chnl(tmp, "BC1")
 #' }
 #' @export
-stimgate_meta_settings_get_chnl <- function(path_project, chnl) {
-  chnl_list <- stimgate_meta_settings_get_chnls(path_project)
+stimgate_meta_read_settings_chnl <- function(path_project, chnl) {
+  chnl_list <- stimgate_meta_read_settings_chnls(path_project)
   # If user supplied the label (names of chnl_list)
   if (chnl %in% names(chnl_list)) {
     return(chnl_list[[chnl]])
   }
   # If user supplied the original channel key/name, map via chnl_lab
-  marker_list_orig <- stimgate_meta_settings_get_markers(path_project)
+  marker_list_orig <- stimgate_meta_read_settings_markers(path_project)
   if (chnl %in% names(marker_list_orig)) {
-    chnl_lab <- stimgate_meta_settings_get_chnl_lab(path_project)
+    chnl_lab <- stimgate_meta_read_chnl_lab(path_project)
     label <- chnl_lab[[chnl]]
     if (!is.null(label) && label %in% names(chnl_list)) {
       return(chnl_list[[label]])
@@ -335,11 +335,11 @@ stimgate_meta_settings_get_chnl <- function(path_project, chnl) {
 #' tmp <- tempdir()
 #' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
 #' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
-#' stimgate_meta_settings_get_marker(tmp, "BC1")
+#' stimgate_meta_read_settings_marker(tmp, "BC1")
 #' }
 #' @export
-stimgate_meta_settings_get_marker <- function(path_project, marker) {
-  marker_list <- stimgate_meta_settings_get_markers(path_project)
+stimgate_meta_read_settings_marker <- function(path_project, marker) {
+  marker_list <- stimgate_meta_read_settings_markers(path_project)
   if (!marker %in% names(marker_list)) {
     stop(paste0("Marker ", marker, " not found in marker list"))
   }
@@ -355,10 +355,10 @@ stimgate_meta_settings_get_marker <- function(path_project, marker) {
 #' tmp <- tempdir()
 #' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
 #' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "meta_data", "chnl_lab.rds"))
-#' stimgate_meta_settings_get_chnl_lab(tmp)
+#' stimgate_meta_read_chnl_lab(tmp)
 #' }
 #' @export
-stimgate_meta_settings_get_chnl_lab <- function(path_project) {
+stimgate_meta_read_chnl_lab <- function(path_project) {
   path_chnl_lab <- file.path(path_project, "meta_data", "chnl_lab.rds")
   if (!file.exists(path_chnl_lab)) {
     stop("Channel label file not found in project meta_data folder")
@@ -366,14 +366,49 @@ stimgate_meta_settings_get_chnl_lab <- function(path_project) {
   readRDS(path_chnl_lab)
 }
 
-.save_meta_data <- function(.data, path_project) {
+.save_meta_data <- function(.data,
+                            batch_list,
+                            path_project) {
   path_dir_meta_data <- file.path(path_project, "meta_data")
   if (!dir.exists(path_dir_meta_data)) {
     dir.create(path_dir_meta_data, recursive = TRUE)
   }
+  .save_meta_data_chnl_lab(.data, path_dir_meta_data)
+  .save_meta_data_batch_list(batch_list, path_dir_meta_data)
+}
+
+.save_meta_data_chnl_lab <- function(.data, path_dir) {
   chnl_lab <- .chnl_lab(.data)
   saveRDS(
     chnl_lab,
-    file = file.path(path_dir_meta_data, "chnl_lab.rds")
+    file = file.path(path_dir, "chnl_lab.rds")
   )
+}
+
+.save_meta_data_batch_list <- function(batch_list,
+                                       path_dir) {
+  saveRDS(
+    batch_list,
+    file = file.path(path_dir, "batch_list.rds")
+  )
+}
+
+#' @title Read batch list from project
+#' @description Read the saved batch_list object from the project's meta_data folder.
+#' @param path_project character Path to project.
+#' @return A list describing sample grouping into batches (as saved by .save_meta_data_batch_list()).
+#' @examples
+#' \dontrun{
+#' tmp <- tempdir()
+#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
+#' saveRDS(list(batch1 = c(1,2)), file.path(tmp, "meta_data", "batch_list.rds"))
+#' stimgate_meta_read_batch_list(tmp)
+#' }
+#' @export
+stimgate_meta_read_batch_list <- function(path_project) {
+  path_batch_list <- file.path(path_project, "meta_data", "batch_list.rds")
+  if (!file.exists(path_batch_list)) {
+    stop("Batch list file not found in project meta_data folder")
+  }
+  readRDS(path_batch_list)
 }
