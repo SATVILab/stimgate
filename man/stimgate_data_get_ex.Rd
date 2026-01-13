@@ -9,7 +9,8 @@ stimgate_data_get_ex(
   pop = NULL,
   ind = NULL,
   chnl = NULL,
-  bias = FALSE
+  bias = FALSE,
+  exc_min = FALSE
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ stimgate_data_get_ex(
 \item{chnl}{character or NULL Channel name(s) to return. Default is detected from project sample_data.}
 
 \item{bias}{logical. Whether to add bias to unstimulated sample used in the gating. Default is \code{FALSE}.}
+
+\item{exc_min}{logical. Whether to exclude cells with the minimum expression for any channels.}
 }
 \value{
 A tibble with columns \code{pop}, \code{ind} and one column per requested channel. Rows correspond to cells.

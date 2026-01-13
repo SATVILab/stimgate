@@ -238,6 +238,7 @@ str_detect_any <- function(string, pattern) {
 #' @param ind character or NULL Index/indices of samples. Default is detected from project sample_data.
 #' @param chnl character or NULL Channel name(s) to return. Default is detected from project sample_data.
 #' @param bias logical. Whether to add bias to unstimulated sample used in the gating. Default is `FALSE`.
+#' @param exc_min logical. Whether to exclude cells with the minimum expression for any channels.
 #' @return A tibble with columns `pop`, `ind` and one column per requested channel. Rows correspond to cells.
 #' @examples
 #' \dontrun{
@@ -253,7 +254,8 @@ stimgate_data_get_ex <- function(path_project,
                                  pop = NULL,
                                  ind = NULL,
                                  chnl = NULL,
-                                 bias = FALSE) {
+                                 bias = FALSE,
+                                 exc_min = FALSE) {
   .assert_string(path_project)
   pop <- pop %||% .get_project_pop(path_project)
   .assert_string_vector(pop)
@@ -275,6 +277,7 @@ stimgate_data_get_ex <- function(path_project,
         path_project = path_project,
         bias = bias
       )
+      ex <- .data_get_ex_exc_min(ex, exc_min)
       meta_df <- tibble::tibble(
         pop = pop_curr,
         ind = ind_curr
@@ -348,6 +351,24 @@ stimgate_data_get_ex <- function(path_project,
   for (chnl in colnames(ex)) {
     bias <- chnl_list[[chnl]][["bias_uns"]]
     ex[[chnl]] <- ex[[chnl]] + bias
+  }
+  ex
+}
+
+.data_get_ex_exc_min <- function(ex, exc_min) {
+  if (!exc_min) {
+    return(ex)
+  }
+  cn_vec <- setdiff(colnames(ex), c("pop", "ind"))
+  min_vec <- vapply(
+    cn_vec,
+    function(x) min(ex[[x]], na.rm = TRUE),
+    numeric(1)
+  ) |>
+    stats::setNames(cn_vec)
+  for (cn in cn_vec) {
+    inc_vec <- ex[[cn]] > min_vec[[cn]]
+    ex <- ex[inc_vec, ]
   }
   ex
 }

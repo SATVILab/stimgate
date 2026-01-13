@@ -54,3 +54,20 @@ test_that("stimgate_data_get_ex applies bias only to unstim sample", {
   expect_equal(res_stim$BC1, c(1, 2, 3))
   expect_equal(res_stim$BC2, c(4, 5, 6))
 })
+
+test_that("stimgate_data_get_ex excludes minimum observed values when exc_min = TRUE", {
+  tmp <- tempfile("stimgate_ex_excmin_")
+  dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"), recursive = TRUE)
+
+  # BC1 min is 1, BC2 min is 4; after exclusion only the row (3,6) should remain
+  saveRDS(c(1, 2, 3), file = file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds"))
+  saveRDS(c(4, 4, 6), file = file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds"))
+
+  res_noexc <- stimgate_data_get_ex(tmp, ind = "1", exc_min = FALSE)
+  expect_equal(nrow(res_noexc), 3)
+
+  res_exc <- stimgate_data_get_ex(tmp, ind = "1", exc_min = TRUE)
+  expect_equal(nrow(res_exc), 1)
+  expect_equal(res_exc$BC1, 3)
+  expect_equal(res_exc$BC2, 6)
+})
