@@ -3,6 +3,7 @@
 export(chnl_lab)
 export(get_example_data)
 export(get_stats)
+export(stimgate_data_get_ex)
 export(stimgate_fcs_write)
 export(stimgate_gate)
 export(stimgate_gate_get)
