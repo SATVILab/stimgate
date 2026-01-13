@@ -55,7 +55,6 @@ str_detect_any <- function(string, pattern) {
   )
   ex <- if (all_saved) {
     .get_ex_old(
-      .data = .data,
       pop = pop,
       chnl = c(chnl_cut, extra_chnl),
       ind = ind,
@@ -93,8 +92,7 @@ str_detect_any <- function(string, pattern) {
   all(req_vec %in% fn_vec)
 }
 
-.get_ex_old <- function(.data,
-                        pop,
+.get_ex_old <- function(pop,
                         chnl,
                         ind,
                         path_project) {
@@ -230,4 +228,95 @@ str_detect_any <- function(string, pattern) {
     ind_batch_list, function(x) ind %in% x, logical(1)
   )
   names(ind_batch_list)[has_ind]
+}
+
+#' @title Read saved expression data from project
+#' @description Read channel expression vectors saved under a project's sample_data
+#'   directory and return them as a tibble with sample metadata columns.
+#' @param path_project character Path to project.
+#' @param pop character or NULL Population name(s). Default is detected from project sample_data.
+#' @param ind character or NULL Index/indices of samples. Default is detected from project sample_data.
+#' @param chnl character or NULL Channel name(s) to return. Default is detected from project sample_data.
+#' @return A tibble with columns `pop`, `ind` and one column per requested channel. Rows correspond to cells.
+#' @examples
+#' \dontrun{
+#' tmp <- tempdir()
+#' dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"), recursive = TRUE)
+#' saveRDS(c(1, 2, 3), file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds"))
+#' saveRDS(c(4, 5, 6), file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds"))
+#' stimgate_data_get_ex(tmp)
+#' stimgate_data_get_ex(tmp, chnl = "BC1")
+#' }
+#' @export
+stimgate_data_get_ex <- function(path_project,
+                                 pop = NULL,
+                                 ind = NULL,
+                                 chnl = NULL) {
+  .assert_string(path_project)
+  pop <- pop %||% .get_project_pop(path_project)
+  .assert_string_vector(pop)
+  purrr::map_df(pop, function(pop_curr) {
+    ind <- ind %||% .get_project_ind(path_project, pop_curr)
+    .assert_string_vector(ind)
+    purrr::map_df(ind, function(ind_curr) {
+      chnl <- chnl %||% .get_project_chnl(path_project, pop_curr, ind_curr)
+      .assert_string_vector(chnl)
+      ex <- .get_ex_old(
+        pop = pop_curr,
+        chnl = chnl,
+        ind = ind_curr,
+        path_project = path_project
+      )
+      meta_df <- tibble::tibble(
+        pop = pop_curr,
+        ind = ind_curr
+      )
+      tibble::as_tibble(cbind(meta_df, ex))
+    })
+  })
+}
+
+.get_project_pop <- function(path_project) {
+  .assert_string(path_project)
+  pop_vec <- list.dirs(
+    file.path(path_project, "sample_data"),
+    recursive = FALSE
+  ) |>
+    basename()
+  .assert_string_vector(pop_vec)
+  pop_vec
+}
+
+.get_project_ind <- function(path_project, pop = NULL) {
+  pop <- pop %||% .get_project_pop(path_project)
+  pop <- pop[[1]]
+  .assert_string(pop)
+  ind_vec <- list.dirs(
+    file.path(path_project, "sample_data", pop),
+    recursive = FALSE
+  ) |>
+    basename() |>
+    sub("^ind_", "", x = _)
+  .assert_string_vector(ind_vec)
+  ind_vec
+}
+
+.get_project_chnl <- function(path_project, pop = NULL, ind = NULL) {
+  pop <- pop %||% .get_project_pop(path_project)
+  pop <- pop[[1]]
+  .assert_string(pop)
+  ind <- ind %||% .get_project_ind(path_project, pop)
+  ind <- ind[[1]]
+  .assert_string(ind)
+  path_chnl_dir <- file.path(
+    path_project,
+    "sample_data",
+    pop,
+    paste0("ind_", ind)
+  )
+  .assert_string(path_chnl_dir)
+  chnl_vec <- list.files(path_chnl_dir) |>
+    sub("^chnl_(.*)\\.rds$", "\\1", x = _)
+  .assert_string_vector(chnl_vec)
+  chnl_vec
 }
