@@ -37,6 +37,13 @@ globalVariables(c(
   "rbeta"
 ))
 
+#' Print debug message conditionally
+#'
+#' @param .debug logical Whether to print debug messages
+#' @param msg character Message to print
+#' @param val object Optional value to append to message. Default is NULL.
+#' @return logical invisibly TRUE if message was printed, FALSE otherwise
+#' @keywords internal
 .debug_msg <- function(.debug, msg, val = NULL) {
   if (!.debug) {
     return(invisible(FALSE))
