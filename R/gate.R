@@ -218,9 +218,13 @@ stimgate_gate <- function(path_project,
   marker_lab <- stimgate_meta_read_marker_lab(path_project)
   chnl <- chnl %||% (marker_lab[marker] |> stats::setNames(NULL))
   chnl_settings <- chnl_settings %||% {
-    chnl_settings <- marker_settings
-    names(chnl_settings) <- marker_lab[marker]
-    chnl_settings
+    if (!is.null(marker_settings)) {
+      chnl_settings <- marker_settings
+      names(chnl_settings) <- marker_lab[marker]
+      chnl_settings
+    } else {
+      NULL
+    }
   }
   chnl_settings <- .complete_chnl_list( # nolint
     chnl = chnl,
@@ -259,7 +263,7 @@ stimgate_gate <- function(path_project,
 
   # cytokine-positive gates
   gate_tbl <- .gate_cyt_pos( # nolint
-    marker_list = marker,
+    chnl_settings = chnl_settings,
     ind_batch_list = batch_list,
     pop_gate = pop_gate,
     .data = .data,
@@ -271,7 +275,7 @@ stimgate_gate <- function(path_project,
   # single-positive gates
   .gate_single(
     pop_gate = pop_gate,
-    marker = marker,
+    chnl_settings = chnl_settings,
     .data = .data,
     ind_batch_list = batch_list,
     path_project = path_project,
@@ -302,7 +306,7 @@ stimgate_gate <- function(path_project,
     .debug = .debug,
     save = TRUE,
     pop_gate = pop_gate,
-    marker = marker,
+    chnl_settings = chnl_settings,
     ind_batch_list = batch_list,
     path_project = path_project,
     tol_clust = tol_clust,
@@ -472,7 +476,7 @@ stimgate_gate <- function(path_project,
                         .debug,
                         save = TRUE,
                         pop_gate,
-                        marker,
+                        chnl_settings,
                         ind_batch_list,
                         path_project,
                         tol_clust,
@@ -494,7 +498,7 @@ stimgate_gate <- function(path_project,
     .debug = .debug,
     save = save,
     pop_gate = pop_gate,
-    chnl = purrr::map_chr(marker, function(x) x$chnl_cut),
+    chnl = purrr::map_chr(chnl_settings, function(x) x$chnl_cut),
     ind_batch_list = ind_batch_list,
     .data = .data,
     save_gate_tbl = save_gate_tbl,

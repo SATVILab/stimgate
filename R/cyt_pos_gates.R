@@ -15,7 +15,7 @@
   # -------------------------------
 
   # vector of chanls
-  chnl_vec <- .get_cyt_pos_gates_chnl_vec_from_chnl_settings( # nolint
+  chnl_vec <- .get_cyt_pos_gates_chnl_vec_from_chnl_list( # nolint
     chnl_settings
   )
 
