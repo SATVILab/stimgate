@@ -66,7 +66,8 @@ str_detect_any <- function(string, pattern) {
       chnl = c(chnl_cut, extra_chnl),
       ind = ind,
       pop = pop,
-      path_project = path_project
+      path_project = path_project,
+      save = TRUE
     )
   }
   .get_ex_add_attributes(
@@ -123,7 +124,8 @@ str_detect_any <- function(string, pattern) {
                         pop,
                         chnl,
                         ind,
-                        path_project) {
+                        path_project,
+                        save) {
   # get expression information as a tibble
   # get .data
   fr <- flowWorkspace::gh_pop_get_data(.data, y = pop)
@@ -133,7 +135,8 @@ str_detect_any <- function(string, pattern) {
     ex = ex,
     ind = ind,
     pop = pop,
-    path_project = path_project
+    path_project = path_project,
+    save = save
   )
   ex
 }
@@ -141,7 +144,11 @@ str_detect_any <- function(string, pattern) {
 .get_ex_new_chnl_save <- function(ex,
                                   ind,
                                   pop,
-                                  path_project) {
+                                  path_project,
+                                  save) {
+  if (!save) {
+    return(invisible(FALSE))
+  }
   for (chnl_curr in colnames(ex)) {
     .get_ex_new_chnl_save_ind(
       ex = ex,
@@ -179,7 +186,7 @@ str_detect_any <- function(string, pattern) {
   file.path(
     path_project,
     "sample_data",
-    pop,
+    paste0("pop_", pop),
     paste0("ind_", ind)
   )
 }
@@ -255,15 +262,22 @@ stimgate_data_get_ex <- function(path_project,
                                  ind = NULL,
                                  chnl = NULL,
                                  bias = FALSE,
-                                 exc_min = FALSE) {
+                                 exc_min = FALSE,
+                                 combn_exc = NULL,
+                                 cyt_pos = FALSE,
+                                 gate_type_cyt_pos = "cyt",
+                                 gate_type_single_pos = "single",
+                                 mult = FALSE,
+                                 gate_uns_method = "min") {
   .assert_string(path_project)
-  pop <- pop %||% .get_project_pop(path_project)
+  pop <- pop %||% .get_ex_project_pop(path_project)
   .assert_string_vector(pop)
   purrr::map_df(pop, function(pop_curr) {
-    ind <- ind %||% .get_project_ind(path_project, pop_curr)
+    ind <- ind %||% .get_ex_project_ind(path_project, pop_curr)
     .assert_string_vector(ind)
     purrr::map_df(ind, function(ind_curr) {
-      chnl <- chnl %||% .get_project_chnl(path_project, pop_curr, ind_curr)
+      chnl <- chnl %||%
+        .get_ex_project_chnl(path_project, pop_curr, ind_curr)
       .assert_string_vector(chnl)
       ex <- .get_ex_old(
         pop = pop_curr,
@@ -271,13 +285,22 @@ stimgate_data_get_ex <- function(path_project,
         ind = ind_curr,
         path_project = path_project
       )
+      ex <- .data_get_ex_exc_min(ex, exc_min)
+      ex <- .data_get_ex_cyt_pos(
+        ex,
+        cyt_pos = cyt_pos,
+        chnl = chnl,
+        combn_exc = combn_exc,
+        gate_type_cyt_pos = gate_type_cyt_pos,
+        gate_type_single_pos = gate_type_single_pos,
+        mult = mult
+      )
       ex <- .data_get_ex_bias(
         ex,
         ind = ind_curr,
         path_project = path_project,
         bias = bias
       )
-      ex <- .data_get_ex_exc_min(ex, exc_min)
       meta_df <- tibble::tibble(
         pop = pop_curr,
         ind = ind_curr
@@ -287,23 +310,24 @@ stimgate_data_get_ex <- function(path_project,
   })
 }
 
-.get_project_pop <- function(path_project) {
+.get_ex_project_pop <- function(path_project) {
   .assert_string(path_project)
   pop_vec <- list.dirs(
     file.path(path_project, "sample_data"),
     recursive = FALSE
   ) |>
-    basename()
+    basename() |>
+    sub("^pop_(.*)$", "\\1", x = _)
   .assert_string_vector(pop_vec)
   pop_vec
 }
 
-.get_project_ind <- function(path_project, pop = NULL) {
-  pop <- pop %||% .get_project_pop(path_project)
+.get_ex_project_ind <- function(path_project, pop = NULL) {
+  pop <- pop %||% .get_ex_project_pop(path_project)
   pop <- pop[[1]]
   .assert_string(pop)
   ind_vec <- list.dirs(
-    file.path(path_project, "sample_data", pop),
+    file.path(path_project, "sample_data", paste0("pop_", pop)),
     recursive = FALSE
   ) |>
     basename() |>
@@ -312,17 +336,17 @@ stimgate_data_get_ex <- function(path_project,
   ind_vec
 }
 
-.get_project_chnl <- function(path_project, pop = NULL, ind = NULL) {
-  pop <- pop %||% .get_project_pop(path_project)
+.get_ex_project_chnl <- function(path_project, pop = NULL, ind = NULL) {
+  pop <- pop %||% .get_ex_project_pop(path_project)
   pop <- pop[[1]]
   .assert_string(pop)
-  ind <- ind %||% .get_project_ind(path_project, pop)
+  ind <- ind %||% .get_ex_project_ind(path_project, pop)
   ind <- ind[[1]]
   .assert_string(ind)
   path_chnl_dir <- file.path(
     path_project,
     "sample_data",
-    pop,
+    paste0("pop_", pop),
     paste0("ind_", ind)
   )
   .assert_string(path_chnl_dir)
@@ -371,4 +395,65 @@ stimgate_data_get_ex <- function(path_project,
     ex <- ex[inc_vec, ]
   }
   ex
+}
+
+.data_get_ex_cyt_pos <- function(ex,
+                                 cyt_pos,
+                                 chnl = NULL,
+                                 combn_exc = NULL,
+                                 gate_type_cyt_pos = "cyt",
+                                 gate_type_single_pos = "single",
+                                 mult = FALSE) {
+  if (!cyt_pos) {
+    return(ex)
+  }
+  cn_vec <- setdiff(colnames(ex), c("pop", "ind"))
+  exc_vec <- vapply(
+    cn_vec,
+    function(x) {
+      is_cyt <- str_detect_any(
+        x,
+        pattern = gate_type_cyt_pos
+      )
+      is_single <- str_detect_any(
+        x,
+        pattern = gate_type_single_pos
+      )
+      if (is_cyt) {
+        return(TRUE)
+      }
+      if (is_single) {
+        return(FALSE)
+      }
+      stop(
+        "Channel name '", x,
+        "' does not contain either '",
+        gate_type_cyt_pos,
+        "' or '",
+        gate_type_single_pos,
+        "' to determine its gate type."
+      )
+    },
+    logical(1)
+  ) |>
+    stats::setNames(cn_vec)
+  exc_mat <- vapply(
+    combn_exc,
+    function(x) exc_vec[[x]],
+    logical(n = 1)
+  ) |>
+    t() |>
+    matrix(nrow = length(combn_exc), ncol = length(cn_vec)) |>
+    stats::setDimnames(
+      list(
+        NULL,
+        cn_vec
+      )
+    )
+  if (mult) {
+    inc_vec <- apply(exc_mat, 2, all)
+  } else {
+    inc_vec <- apply(exc_mat, 2, any)
+  }
+  ex[, inc_vec, drop = FALSE]
 }

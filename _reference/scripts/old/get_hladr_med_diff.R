@@ -50,7 +50,10 @@ get_hladr_med_diff <- function(data,
         params = params
       )
       # get stats tbl
-      gate_tbl <- readRDS(file.path(dir_base, "gate_tbl.rds"))
+      gate_tbl <- .gates_get_path_all(
+        path_project, pop_gate, chnl_curr, FALSE
+        ) |>
+        readRDS()
 
       if (!is.null(gate_name)) {
         gate_tbl <- gate_tbl |> dplyr::filter(gate_name %in% .env$gate_name) # nolint

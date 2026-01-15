@@ -23,9 +23,9 @@
 #'   belonging to the same batch/donor. Names will be used for batch identification.
 #'   Example: list(donor1 = 1:10, donor2 = 11:20). Proper batching is crucial for
 #'   accurate background subtraction and gate identification.
-#' @param marker list. List where each element specifies parameters for gating a
-#'   specific marker. Each element should be a list containing at minimum the channel
-#'   name (e.g., list(cut = "IL2")). Additional marker-specific parameters can
+#' @param chnl list. List where each element specifies parameters for gating a
+#'   specific channel Each element should be a list containing at minimum the channel
+#'   name (e.g., list(cut = "IL2")). Additional channel-specific parameters can
 #'   override global defaults. The marker name should match channel names in the GatingSet.
 #' @param pop_gate character vector. Population(s) within which to perform gating.
 #'   Default is "root" to gate on all cells. Can specify other populations like
@@ -173,7 +173,8 @@
 stimgate_gate <- function(path_project,
                           .data,
                           batch_list,
-                          marker,
+                          chnl = NULL,
+                          marker = NULL,
                           pop_gate = "root",
                           bias_uns = NULL,
                           bias_uns_factor = 1,
@@ -186,6 +187,7 @@ stimgate_gate <- function(path_project,
                           tol_clust = 1e-7,
                           gate_combn = "min",
                           marker_settings = NULL,
+                          chnl_settings = NULL,
                           calc_cyt_pos_gates = TRUE,
                           calc_single_pos_gates = FALSE,
                           debug = FALSE) {
@@ -198,10 +200,30 @@ stimgate_gate <- function(path_project,
       stats::setNames(paste0("batch_", seq_along(batch_list)))
   }
 
+  if (!is.null(chnl) && !is.null(marker)) {
+    stop("Specify only one of 'chnl' or 'marker', not both.")
+  }
+  if (is.null(chnl) && is.null(marker)) {
+    stop("Must specify one of 'chnl' or 'marker'.")
+  }
+  if (!is.null(chnl) && !is.null(marker_settings)) {
+    stop("When 'chnl' is specified, 'marker_settings' must be NULL.")
+  }
+  if (!is.null(marker) && !is.null(chnl_settings)) {
+    stop("When 'marker' is specified, 'chnl_settings' must be NULL.")
+  }
+
   # get unspecified levels in marker elements
-  .save_meta_data(.data, path_project)
-  marker <- .complete_marker_list( # nolint
-    marker = marker,
+  .save_meta_data(.data, batch_list, path_project)
+  marker_lab <- stimgate_meta_read_marker_lab(path_project)
+  chnl <- chnl %||% (marker_lab[marker] |> stats::setNames(NULL))
+  chnl_settings <- chnl_settings %||% {
+    chnl_settings <- marker_settings
+    names(chnl_settings) <- marker_lab[marker]
+    chnl_settings
+  }
+  chnl_settings <- .complete_chnl_list( # nolint
+    chnl = chnl,
     bias_uns = bias_uns,
     bias_uns_factor = bias_uns_factor,
     exc_min = exc_min,
@@ -214,7 +236,7 @@ stimgate_gate <- function(path_project,
     tol_clust = tol_clust,
     max_pos_prob_x = max_pos_prob_x,
     gate_combn = gate_combn,
-    marker_settings = marker_settings,
+    chnl_settings = chnl_settings,
     path_project = path_project,
     .debug = .debug
   )
@@ -222,7 +244,7 @@ stimgate_gate <- function(path_project,
   # inital gates
   .gate_init(
     pop_gate = pop_gate,
-    marker = marker,
+    chnl = chnl_settings,
     .data = .data,
     ind_batch_list = batch_list,
     path_project = path_project,
@@ -291,7 +313,7 @@ stimgate_gate <- function(path_project,
 }
 
 .gate_init <- function(pop_gate,
-                       marker,
+                       chnl_settings,
                        .data,
                        ind_batch_list,
                        path_project,
@@ -308,8 +330,8 @@ stimgate_gate <- function(path_project,
   message("----")
   message("")
   # loop over markers
-  purrr::walk(marker, function(marker_curr) {
-    txt <- paste0("chnl: ", marker_curr$chnl_cut)
+  purrr::walk(chnl_settings, function(chnl_settings_curr) {
+    txt <- paste0("chnl: ", chnl_settings_curr$chnl_cut)
     message(txt)
     # get gates for each sample within each batch
 
@@ -317,15 +339,15 @@ stimgate_gate <- function(path_project,
       .data = .data,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate,
-      chnl_cut = marker_curr$chnl_cut,
-      gate_combn = marker_curr$gate_combn,
+      chnl_cut = chnl_settings_curr$chnl_cut,
+      gate_combn = chnl_settings_curr$gate_combn,
       noise_sd = NULL,
-      bias_uns = marker_curr$bias_uns,
-      exc_min = marker_curr$exc_min,
-      bw_min = marker_curr$bw_min,
-      cp_min = marker_curr$cp_min,
-      min_cell = marker_curr$min_cell,
-      max_pos_prob_x = marker_curr$max_pos_prob_x,
+      bias_uns = chnl_settings_curr$bias_uns,
+      exc_min = chnl_settings_curr$exc_min,
+      bw_min = chnl_settings_curr$bw_min,
+      cp_min = chnl_settings_curr$cp_min,
+      min_cell = chnl_settings_curr$min_cell,
+      max_pos_prob_x = chnl_settings_curr$max_pos_prob_x,
       gate_quant = gate_quant,
       tol_clust = tol_clust,
       tol_gate_single = tol_gate_single,
@@ -334,18 +356,24 @@ stimgate_gate <- function(path_project,
       .debug = .debug
     )
 
-    path_dir_save <- file.path(path_project, marker_curr$chnl_cut)
-    dir.create(path_dir_save, recursive = TRUE, showWarnings = TRUE)
-
-    saveRDS(
-      gate_obj$gate_tbl,
-      file = file.path(path_dir_save, "gate_tbl_init.rds")
+    .gate_init_save(
+      path_project, pop_gate, chnl_settings_curr$chnl_cut, gate_obj$gate_tbl
     )
   })
 }
 
+.gate_init_save <- function(path_project, pop, chnl, gate_tbl) {
+  path_save <- .gates_get_path_all(
+    path_project, pop, chnl, TRUE
+  )
+  if (!dir.exists(dirname(path_save))) {
+    dir.create(dirname(path_save), recursive = TRUE, showWarnings = TRUE)
+  }
+
+  saveRDS(gate_tbl, path_save)
+}
 .gate_single <- function(pop_gate,
-                         marker,
+                         chnl_settings,
                          .data,
                          ind_batch_list,
                          path_project,
@@ -367,12 +395,18 @@ stimgate_gate <- function(path_project,
   message("")
   if (!calc_single_pos_gates) {
     .debug_msg(.debug, "Not gating single-pos gates") # nolint
-    purrr::walk(marker, function(marker_curr) {
+    purrr::walk(chnl_settings, function(chnl_settings_curr) {
+      path_save <- .gates_get_path_all(
+        path_project, pop_gate, chnl_settings_curr$chnl_cut, FALSE
+      )
+      if (!dir.exists(dirname(path_save))) {
+        dir.create(dirname(path_save), recursive = TRUE, showWarnings = TRUE)
+      }
       saveRDS(
         gate_tbl |>
-          dplyr::filter(chnl == marker_curr$chnl_cut) |>
+          dplyr::filter(chnl == chnl_settings_curr$chnl_cut) |>
           dplyr::mutate(gate_single = gate),
-        file.path(path_project, marker_curr$chnl_cut, "gate_tbl.rds")
+        path_save
       )
     })
     return(invisible(TRUE))
@@ -380,25 +414,25 @@ stimgate_gate <- function(path_project,
     .debug_msg(.debug, "Gating single-pos gates") # nolint
   }
   # loop over markers
-  purrr::walk(marker, function(marker_curr) {
-    txt <- paste0("chnl: ", marker_curr$chnl_cut)
+  purrr::walk(chnl_settings, function(chnl_settings_curr) {
+    txt <- paste0("chnl: ", chnl_settings_curr$chnl_cut)
     message(txt)
     # get gates for each sample within each batch
 
     gate_obj <- .gate_marker( # nolint
       .data = .data,
       ind_batch_list = ind_batch_list,
-      pop_gate = pop_gate_curr,
-      chnl_cut = marker_curr$chnl_cut,
-      gate_combn = marker_curr$gate_combn,
-      tol = marker_curr$tol,
+      pop_gate = pop_gate,
+      chnl_cut = chnl_settings_curr$chnl_cut,
+      gate_combn = chnl_settings_curr$gate_combn,
+      tol = chnl_settings_curr$tol,
       noise_sd = NULL,
-      bias_uns = marker_curr$bias_uns,
-      exc_min = marker_curr$exc_min,
-      bw_min = marker_curr$bw_min,
-      cp_min = marker_curr$cp_min,
-      min_cell = marker_curr$min_cell,
-      max_pos_prob_x = marker_curr$max_pos_prob_x,
+      bias_uns = chnl_settings_curr$bias_uns,
+      exc_min = chnl_settings_curr$exc_min,
+      bw_min = chnl_settings_curr$bw_min,
+      cp_min = chnl_settings_curr$cp_min,
+      min_cell = chnl_settings_curr$min_cell,
+      max_pos_prob_x = chnl_settings_curr$max_pos_prob_x,
       gate_quant = gate_quant,
       tol_clust = tol_clust,
       tol_gate_single = tol_gate_single,
@@ -408,12 +442,25 @@ stimgate_gate <- function(path_project,
       .debug = .debug
     )
 
-    saveRDS(
-      gate_obj$gate_tbl,
-      file = file.path(path_project, marker_curr$chnl_cut, "gate_tbl.rds")
+    .gate_single_save(
+      path_project, pop_gate, chnl_settings_curr$chnl_cut, gate_obj$gate_tbl
     )
+    
+
   })
 }
+
+.gate_single_save <- function(path_project, pop, chnl, gate_tbl) {
+  path_save <- .gates_get_path_all(
+    path_project, pop, chnl, FALSE
+  )
+  if (!dir.exists(dirname(path_save))) {
+    dir.create(dirname(path_save), recursive = TRUE, showWarnings = TRUE)
+  }
+
+  saveRDS(gate_tbl, path_save)
+}
+
 
 .gate_stats <- function(.data,
                         params = NULL,

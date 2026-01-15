@@ -4,7 +4,7 @@
 \alias{stimgate_gate_get}
 \title{Get gates}
 \usage{
-stimgate_gate_get(path_project)
+stimgate_gate_get(path_project, pop = NULL, marker = NULL, chnl = NULL)
 }
 \arguments{
 \item{path_project}{character. Path to the project directory.}

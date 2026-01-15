@@ -1,12 +1,30 @@
 test_that("stimgate_data_get_ex reads saved channel data and filters correctly", {
   tmp <- tempfile("stimgate_ex_")
-  dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"), recursive = TRUE)
-  dir.create(file.path(tmp, "sample_data", "POP1", "ind_2"), recursive = TRUE)
+  dir.create(
+    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    recursive = TRUE
+  )
+  dir.create(
+    file.path(tmp, "sample_data", "pop_POP1", "ind_2"),
+    recursive = TRUE
+  )
 
-  saveRDS(c(1, 2, 3), file = file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds"))
-  saveRDS(c(4, 5, 6), file = file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds"))
-  saveRDS(c(7, 8), file = file.path(tmp, "sample_data", "POP1", "ind_2", "chnl_BC1.rds"))
-  saveRDS(c(9, 10), file = file.path(tmp, "sample_data", "POP1", "ind_2", "chnl_BC2.rds"))
+  saveRDS(
+    c(1, 2, 3),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+  )
+  saveRDS(
+    c(4, 5, 6),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+  )
+  saveRDS(
+    c(7, 8),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_2", "chnl_BC1.rds")
+  )
+  saveRDS(
+    c(9, 10),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_2", "chnl_BC2.rds")
+  )
   res <- stimgate_data_get_ex(tmp)
   expect_equal(nrow(res), 5)
   expect_true(all(c("pop", "ind", "BC1", "BC2") %in% names(res)))
@@ -26,13 +44,31 @@ test_that("stimgate_data_get_ex reads saved channel data and filters correctly",
 
 test_that("stimgate_data_get_ex applies bias only to unstim sample", {
   tmp <- tempfile("stimgate_ex_bias_")
-  dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"), recursive = TRUE)
-  dir.create(file.path(tmp, "sample_data", "POP1", "ind_2"), recursive = TRUE)
+  dir.create(
+    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    recursive = TRUE
+  )
+  dir.create(
+    file.path(tmp, "sample_data", "pop_POP1", "ind_2"),
+    recursive = TRUE
+  )
 
-  saveRDS(c(1, 2, 3), file = file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds"))
-  saveRDS(c(4, 5, 6), file = file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds"))
-  saveRDS(c(7, 8), file = file.path(tmp, "sample_data", "POP1", "ind_2", "chnl_BC1.rds"))
-  saveRDS(c(9, 10), file = file.path(tmp, "sample_data", "POP1", "ind_2", "chnl_BC2.rds"))
+  saveRDS(
+    c(1, 2, 3),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+  )
+  saveRDS(
+    c(4, 5, 6),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+  )
+  saveRDS(
+    c(7, 8),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_2", "chnl_BC1.rds")
+  )
+  saveRDS(
+    c(9, 10),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_2", "chnl_BC2.rds")
+  )
 
   # Create meta_data with matching names so chnl lookup works
   marker_list <- list(BC1 = list(bias_uns = 10), BC2 = list(bias_uns = -2))
@@ -57,11 +93,20 @@ test_that("stimgate_data_get_ex applies bias only to unstim sample", {
 
 test_that("stimgate_data_get_ex excludes minimum observed values when exc_min = TRUE", {
   tmp <- tempfile("stimgate_ex_excmin_")
-  dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"), recursive = TRUE)
+  dir.create(
+    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    recursive = TRUE
+  )
 
   # BC1 min is 1, BC2 min is 4; after exclusion only the row (3,6) should remain
-  saveRDS(c(1, 2, 3), file = file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds"))
-  saveRDS(c(4, 4, 6), file = file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds"))
+  saveRDS(
+    c(1, 2, 3),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+  )
+  saveRDS(
+    c(4, 4, 6),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+  )
 
   res_noexc <- stimgate_data_get_ex(tmp, ind = "1", exc_min = FALSE)
   expect_equal(nrow(res_noexc), 3)

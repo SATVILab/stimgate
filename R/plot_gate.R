@@ -5,14 +5,22 @@
 #'
 #' @param ind numeric vector. Specifies indices in `.data` to plot.
 #' @param .data GatingSet. Same GatingSet passed to `stimgate_gate`.
-#' @param path_project character. Path to the project directory used for `stimgate_gate`.
-#' @param marker character vector of length one or two. Specifies markers (channels, really)
+#' @param path_project character.
+#' Path to the project directory used for `stimgate_gate`.
+#' @param marker character vector of length one or two. Specifies markers
 #' to be plotted. If only one is passed, then only univariate plots are created.
+#' @param chnl character vector of length one or two. Specifies channels
+#' to be plotted. Ignored if `marker` is provided.
+#' @param pop character. Specifies population within GatingSet that
+#' gates were calculated on. If `NULL`, defaults to population specified
+#' by folder name in `project_path/gates/pop_<pop>`, but throws
+#' an error if more than one population is detected (i.e. more
+#' than one directory in `gates/`). Default is `NULL`.
 #' @param ind_lab named character vector.
 #' Labels for `ind` used in plot.
 #' Optional.
-#' @param marker_lab named character vector.
-#' Labels for `marker` used in plot.
+#' @param axis_lab named character vector.
+#' Labels for axis titles, applied to `marker` or `chnl`.
 #' Optional.
 #' @param exc_min Logical.
 #' If `TRUE`, excludes the minimum expression values when processing the data.
@@ -67,9 +75,11 @@
 stimgate_plot <- function(ind,
                           .data,
                           path_project,
-                          marker,
+                          marker = NULL,
+                          chnl = NULL,
+                          pop = NULL,
                           ind_lab = NULL,
-                          marker_lab = NULL,
+                          axis_lab = NULL,
                           exc_min = TRUE,
                           limits_expand = NULL,
                           limits_equal = FALSE,
@@ -77,9 +87,19 @@ stimgate_plot <- function(ind,
                           grid_n_col = 2,
                           show_gate = TRUE,
                           min_cell = 10) {
+  if (is.null(marker) && is.null(chnl)) {
+    stop("Must specify one of marker or chnl")
+  }
+  pop <- pop %||% .gate_get_pop(path_project)
+  if (length(pop) > 1L) {
+    stop("Cannot plot gates for multiple populations")
+  }
+  if (length(pop) == 0L || !nzchar(pop)) {
+    stop("No population found for plotting gates")
+  }
   p_list <- .plot_gate(
     ind = ind, ind_lab = ind_lab, .data = .data,
-    marker = marker, marker_lab = marker_lab,
+    marker = marker, chnl = chnl, pop = pop, axis_lab = axis_lab,
     path_project = path_project, exc_min = exc_min,
     limits_expand = limits_expand, limits_equal = limits_equal,
     show_gate = show_gate, min_cell = min_cell
@@ -91,20 +111,24 @@ stimgate_plot <- function(ind,
 }
 
 .plot_gate <- function(marker,
+                       chnl,
+                       pop,
                        ind,
                        ind_lab,
                        .data,
-                       marker_lab,
+                       axis_lab,
                        path_project,
                        exc_min,
                        limits_expand,
                        limits_equal,
                        show_gate,
                        min_cell) {
+
   # bv
   p_list_bv <- .plot_gate_bv(
-    marker = marker, ind = ind, ind_lab = ind_lab,
-    .data = .data, marker_lab = marker_lab,
+    marker = marker, chnl = chnl, pop = pop,
+    ind = ind, ind_lab = ind_lab,
+    .data = .data, axis_lab = axis_lab,
     path_project = path_project, exc_min = exc_min,
     limits_expand = limits_expand, limits_equal = limits_equal,
     show_gate = show_gate, min_cell = min_cell
@@ -113,7 +137,8 @@ stimgate_plot <- function(ind,
   # uv
   p_list_uv <- .plot_gate_uv(
     ind = ind, ind_lab = ind_lab, .data = .data,
-    marker = marker, exc_min = exc_min, marker_lab = marker_lab,
+    marker = marker, chnl = chnl, pop = pop,
+    exc_min = exc_min, axis_lab = axis_lab,
     show_gate = show_gate, path_project = path_project,
     min_cell = min_cell
   )
@@ -122,32 +147,55 @@ stimgate_plot <- function(ind,
 }
 
 .plot_gate_bv <- function(marker,
+                          chnl,
+                          pop,
                           ind,
                           ind_lab,
                           .data,
-                          marker_lab,
+                          axis_lab,
                           path_project,
                           exc_min,
                           limits_expand,
                           limits_equal,
                           show_gate,
                           min_cell) {
-  if (length(marker) == 1L) {
+  one_chnl <- is.null(marker) && !is.null(chnl) && length(chnl) == 1L
+  one_marker <- is.null(chnl) && !is.null(marker) && length(marker) == 1L
+  one_var <- one_chnl || one_marker
+  if (one_var) {
     return(NULL)
   }
   if (!requireNamespace("hexbin", quietly = TRUE)) {
-    utils::install.packages("hexbin")
+    if (interactive()) {
+      prompt_answer <- readline(
+        prompt = paste0(
+          "The 'hexbin' package is required for bivariate plots. ", # nolint linter_line_length_linter
+          "Do you want to install it now? [y/n]: "
+        )
+      )
+      if (tolower(prompt_answer) != "y") {
+        stop("Cannot proceed without installing 'hexbin' package.")
+      }
+      utils::install.packages("hexbin")
+    } else {
+      stop("The 'hexbin' package is required but not installed.")
+    }
   }
   p_list <- lapply(seq_along(ind), function(i) {
     ind_curr <- ind[[i]]
-    ex_tbl <- .plot_get_ex_tbl(ind_curr, .data, marker, exc_min = FALSE)
+    ex_tbl <- .plot_get_ex_tbl(
+      ind_curr,
+      .data, pop, marker, chnl,
+      exc_min = exc_min,
+      path_project
+    )
     if (nrow(ex_tbl) < min_cell) {
       return(NULL)
     }
     p <- plot_cyto(
       data = ex_tbl,
-      marker = marker,
-      exc_min = exc_min,
+      marker = chnl %||% marker,
+      exc_min = FALSE,
       limits_expand = limits_expand,
       limits_equal = limits_equal
     ) +
@@ -155,9 +203,11 @@ stimgate_plot <- function(ind,
         plot.background = element_rect(fill = "white"),
         panel.background = element_rect(fill = "white")
       )
-    p <- .plot_add_axis_title(p, marker, marker_lab)
+    p <- .plot_add_axis_title(p, marker, chnl, axis_lab)
     p <- .plot_add_title(p, ind_curr, i, ind_lab)
-    p <- .plot_add_gate(p, .data, ind_curr, marker, path_project, show_gate)
+    p <- .plot_add_gate(
+      p, ind_curr, marker, chnl, pop, path_project, show_gate
+    )
     p
   }) |>
     stats::setNames(.plot_get_lab(ind, ind_lab))
@@ -168,34 +218,74 @@ stimgate_plot <- function(ind,
   p_list
 }
 
-.plot_get_ex_tbl <- function(ind, .data, marker, exc_min) {
+.plot_get_ex_tbl <- function(ind,
+                             .data,
+                             pop,
+                             marker,
+                             chnl,
+                             exc_min,
+                             path_project) {
+  if (!is.null(marker)) {
+    chnl <- stimgate_meta_read_marker_lab(path_project)[marker]
+    chnl_lab <- stimgate_meta_read_chnl_lab(path_project)
+  } else {
+    chnl_lab <- NULL
+  }
   lapply(ind, function(x) {
-    .plot_get_ex_tbl_ind(x, .data, marker, exc_min) |>
+    .plot_get_ex_tbl_ind(
+      x, .data, pop, chnl, chnl_lab, exc_min, path_project
+     ) |>
       dplyr::mutate(ind = x)
   }) |>
     Reduce(rbind, x = _)
 }
 
 
-.plot_get_ex_tbl_ind <- function(ind, .data, marker, exc_min) {
-  fr <- flowWorkspace::gh_pop_get_data(.data[[ind]])
-  ex_tbl <- flowCore::exprs(fr) |> tibble::as_tibble()
-  ex_tbl <- ex_tbl[, marker, drop = FALSE]
-  ex_tbl <- .plot_get_ex_tbl_ind_exc_min(ex_tbl, exc_min, marker)
-  ex_tbl
+.plot_get_ex_tbl_ind <- function(ind,
+                                 .data,
+                                 pop,
+                                 chnl,
+                                 chnl_lab,
+                                 exc_min,
+                                 path_project) {
+  ex <- if (!is.null(.data)) {
+    .get_ex_new(.data, pop, chnl, ind, path_project, FALSE)
+  } else {
+    .get_ex_old(pop, chnl, ind, path_project)
+  }
+  ex <- .plot_get_ex_tbl_ind_exc_min(ex, exc_min, chnl)
+  if (!is.null(chnl_lab)) {
+    colnames(ex) <- chnl_lab[colnames(ex)]
+  }
+  ex
 }
 
-.plot_get_ex_tbl_ind_exc_min <- function(ex_tbl, exc_min, marker) {
+.plot_get_ex_tbl_ind_new <- function(ind,
+                                     .data,
+                                     pop,
+                                     chnl) {
+  fr <- flowWorkspace::gh_pop_get_data(.data[[ind]], y = pop)
+  ex_tbl <- flowCore::exprs(fr) |> tibble::as_tibble()
+  ex_tbl[, chnl, drop = FALSE]
+}
+
+.plot_get_ex_tbl_ind_old <- function(ind,
+                                     pop,
+                                     chnl) {
+
+}
+
+.plot_get_ex_tbl_ind_exc_min <- function(ex_tbl, exc_min, chnl) {
   if (!exc_min) {
     return(ex_tbl)
   }
   n_row_init <- nrow(ex_tbl)
   attr(ex_tbl, "n_row_init") <- n_row_init
   min_val_vec <- vapply(
-    marker, function(x) min(ex_tbl[[x]], na.rm = TRUE), numeric(1)
+    chnl, function(x) min(ex_tbl[[x]], na.rm = TRUE), numeric(1)
   )
-  for (i in seq_along(marker)) {
-    ex_tbl <- ex_tbl[ex_tbl[[marker[i]]] > min_val_vec[i], ]
+  for (i in seq_along(chnl)) {
+    ex_tbl <- ex_tbl[ex_tbl[[chnl[i]]] > min_val_vec[i], ]
   }
   n_row_final <- nrow(ex_tbl)
   attr(ex_tbl, "prob_g_min") <- n_row_final / n_row_init
@@ -203,7 +293,12 @@ stimgate_plot <- function(ind,
   ex_tbl
 }
 
-.plot_add_axis_title <- function(p, val, val_lab) {
+.plot_add_axis_title <- function(p, val1, val2, val_lab) {
+  val <- if (!is.null(val1)) {
+    val1
+  } else {
+    val2
+  }
   lab <- .plot_get_lab(val, val_lab)
   p <- p + labs(x = lab[[1]])
   if (length(lab) > 1L) {
@@ -228,13 +323,29 @@ stimgate_plot <- function(ind,
   lab |> stats::setNames(NULL)
 }
 
-.plot_add_gate <- function(p, .data, ind, marker, path_project, show_gate) {
+.plot_add_gate <- function(p,
+                           ind,
+                           marker,
+                           chnl,
+                           pop,
+                           path_project,
+                           show_gate) {
   if (!show_gate) {
     return(p)
   }
-  gate_tbl <- .plot_get_gate_tbl(ind, marker, path_project)
-  for (i in seq_along(marker)) {
-    gate_vec <- gate_tbl[["gate"]][gate_tbl[["chnl"]] == marker[i]]
+  marker <- marker %||% stimgate_meta_read_chnl_lab(path_project)[chnl]
+  chnl <- chnl %||% stimgate_meta_read_marker_lab(path_project)[marker]
+  pop <- pop %||% .gate_get_pop(path_project)
+  if (length(pop) > 1L) {
+    stop("Cannot plot gates for multiple populations")
+  }
+  if (length(pop) == 0L || !nzchar(pop)) {
+    stop("No population found for plotting gates")
+  }
+  gate_tbl <- .plot_get_gate_tbl(ind, pop, marker, chnl, path_project)
+  chnl_gate <- chnl %in% .gate_get_chnl(path_project, pop)
+  for (i in seq_along(chnl_gate)) {
+    gate_vec <- gate_tbl[["gate"]][gate_tbl[["chnl"]] == chnl_gate[i]]
     for (j in seq_along(gate_vec)) {
       gate <- gate_vec[[j]]
       if (i == 1) {
@@ -261,15 +372,26 @@ stimgate_plot <- function(ind,
   p
 }
 
-.plot_get_gate_tbl <- function(ind, marker, path_project) {
-  gate_tbl <- stimgate_gate_get(path_project) |>
+.plot_get_gate_tbl <- function(ind, pop, marker, chnl, path_project) {
+  gate_tbl <- stimgate_gate_get(
+    path_project,
+    pop,
+    chnl = chnl,
+    marker = marker
+  ) |>
     dplyr::group_by(gate_name, chnl, marker, ind, batch) |>
     dplyr::slice(1) |>
     dplyr::ungroup()
   gate_tbl <- gate_tbl[gate_tbl[["ind"]] %in% ind, ]
   ind_vec <- NULL
-  for (i in seq_along(marker)) {
-    ind_vec[[i]] <- which(gate_tbl[["chnl"]] == marker[i])
+  if (!is.null(marker)) {
+    for (i in seq_along(marker)) {
+      ind_vec[[i]] <- which(gate_tbl[["marker"]] == marker[i])
+    }
+  } else {
+    for (i in seq_along(chnl)) {
+      ind_vec[[i]] <- which(gate_tbl[["chnl"]] == chnl[i])
+    }
   }
   ind_vec <- ind_vec |> unlist()
   gate_tbl[ind_vec, ]
@@ -279,20 +401,26 @@ stimgate_plot <- function(ind,
                           ind_lab,
                           .data,
                           marker,
+                          chnl,
+                          pop,
                           exc_min,
-                          marker_lab,
+                          axis_lab,
                           show_gate,
                           path_project,
                           min_cell) {
-  p_list <- lapply(marker, function(m) {
+  var_loop <- if (!is.null(marker)) marker else chnl
+  p_list <- lapply(var_loop, function(v) {
+    marker_curr <- if (!is.null(marker)) v else NULL
+    chnl_curr <- if (!is.null(chnl)) v else NULL
     .plot_gate_uv_marker(
-      marker = m, ind = ind, .data = .data,
+      marker = marker_curr, chnl = chnl_curr,
+      ind = ind, .data = .data, pop = pop,
       exc_min = exc_min, ind_lab = ind_lab,
-      marker_lab = marker_lab, show_gate = show_gate,
+      axis_lab = axis_lab, show_gate = show_gate,
       path_project = path_project, min_cell = min_cell
     )
   }) |>
-    stats::setNames(.plot_get_lab(marker, marker_lab))
+    stats::setNames(.plot_get_lab(var_loop, axis_lab))
   p_list <- p_list[vapply(p_list, Negate(is.null), logical(1))]
   if (length(p_list) == 0L) {
     return(NULL)
@@ -301,25 +429,29 @@ stimgate_plot <- function(ind,
 }
 
 .plot_gate_uv_marker <- function(marker,
+                                 chnl,
+                                 pop,
                                  ind,
                                  .data,
                                  exc_min,
                                  ind_lab,
-                                 marker_lab,
+                                 axis_lab,
                                  show_gate,
                                  path_project,
                                  min_cell) {
   plot_tbl <- .plot_gate_uv_marker_get_plot_tbl(
-    ind = ind, .data = .data, marker = marker, exc_min = exc_min,
-    ind_lab = ind_lab, min_cell = min_cell
+    marker = marker, chnl = chnl, pop = pop,
+    ind = ind, .data = .data, exc_min = exc_min,
+    ind_lab = ind_lab, min_cell = min_cell,
+    path_project = path_project
   )
   if (is.null(plot_tbl)) {
     return(NULL)
   }
   .plot_gate_uv_marker_plot(
     plot_tbl = plot_tbl, exc_min = exc_min,
-    ind = ind, ind_lab = ind_lab,
-    marker = marker, marker_lab = marker_lab,
+    ind = ind, ind_lab = ind_lab, pop = pop,
+    marker = marker, chnl = chnl, axis_lab = axis_lab,
     show_gate = show_gate, path_project = path_project
   )
 }
@@ -327,13 +459,17 @@ stimgate_plot <- function(ind,
 .plot_gate_uv_marker_get_plot_tbl <- function(ind,
                                               .data,
                                               marker,
+                                              chnl,
+                                              pop,
                                               exc_min,
                                               ind_lab,
-                                              min_cell) {
+                                              min_cell,
+                                              path_project) {
   plot_tbl_list <- lapply(seq_along(ind), function(i) {
     plot_tbl <- .plot_gate_uv_marker_get_plot_tbl_ind(
-      ind = ind[[i]], .data = .data, marker = marker, exc_min = exc_min,
-      min_cell = min_cell
+      ind = ind[[i]], .data = .data, pop = pop,
+      marker = marker, chnl = chnl, exc_min = exc_min,
+      min_cell = min_cell, path_project = path_project
     )
     if (is.null(plot_tbl)) {
       return(NULL)
@@ -354,13 +490,19 @@ stimgate_plot <- function(ind,
 .plot_gate_uv_marker_get_plot_tbl_ind <- function(ind,
                                                   .data,
                                                   marker,
+                                                  chnl,
+                                                  pop,
                                                   exc_min,
-                                                  min_cell) {
-  ex_tbl <- .plot_get_ex_tbl(ind, .data, marker, exc_min)
+                                                  min_cell,
+                                                  path_project) {
+  ex_tbl <- .plot_get_ex_tbl(
+    ind, .data, pop, marker, chnl, exc_min, path_project
+  )
   if (nrow(ex_tbl) < min_cell) {
     return(NULL)
   }
-  dens_obj_raw <- density(ex_tbl[[marker]], na.rm = TRUE)
+  .var <- if (!is.null(marker)) marker else chnl
+  dens_obj_raw <- density(ex_tbl[[.var]], na.rm = TRUE)
   plot_tbl <- tibble::tibble(x = dens_obj_raw$x, y = dens_obj_raw$y)
   .plot_gate_uv_marker_add_adj(
     exc_min, plot_tbl, dens_obj_raw, attr(ex_tbl, "prob_g_min")
@@ -389,14 +531,17 @@ stimgate_plot <- function(ind,
                                       ind,
                                       ind_lab,
                                       marker,
-                                      marker_lab,
+                                      chnl,
+                                      pop,
+                                      axis_lab,
                                       show_gate,
                                       path_project) {
   p <- .plot_gate_uv_marker_plot_init(plot_tbl, exc_min, ind, ind_lab)
-  p <- .plot_add_axis_title(p, marker, marker_lab)
+  p <- .plot_add_axis_title(p, marker, chnl, axis_lab)
   p <- p + ggplot2::labs(y = "Density")
-  p <- .plot_add_title(p, marker, NULL, marker_lab)
-  p <- .plot_add_gate(p, .data, ind, marker, path_project, show_gate)
+  .var <- if (!is.null(marker)) marker else chnl
+  p <- .plot_add_title(p, .var, NULL, axis_lab)
+  p <- .plot_add_gate(p, ind, marker, chnl, pop, path_project, show_gate)
   p
 }
 

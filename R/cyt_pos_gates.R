@@ -1,4 +1,4 @@
-.gate_cyt_pos <- function(marker_list,
+.gate_cyt_pos <- function(chnl_settings,
                           ind_batch_list,
                           pop_gate,
                           .data,
@@ -15,19 +15,20 @@
   # -------------------------------
 
   # vector of chanls
-  chnl_vec <- .get_cyt_pos_gates_chnl_vec_from_marker_list( # nolint
-    marker_list
+  chnl_vec <- .get_cyt_pos_gates_chnl_vec_from_chnl_settings( # nolint
+    chnl_settings
   )
 
   # chnl_lab
   chnl_lab_vec <- .get_labs(.data = .data[[1]], chnl_cut = chnl_vec)
 
   # get max bw_min for densities
-  bw_min <- .gate_cyt_pos_max_bw_min(marker_list)
+  bw_min <- .gate_cyt_pos_max_bw_min(chnl_settings)
 
   # get original gates
   gate_tbl <- .get_cyt_pos_gates_gate_tbl_get( # nolint
     chnl_vec = chnl_vec,
+    pop = pop_gate,
     path_project = path_project,
     .debug = .debug,
     chnl_lab = chnl_lab_vec
@@ -255,8 +256,8 @@
   cp_cyt_pos
 }
 
-.gate_cyt_pos_max_bw_min <- function(marker, quant = 0.8) {
-  marker |>
+.gate_cyt_pos_max_bw_min <- function(chnl, quant = 0.8) {
+  chnl |>
     purrr::map_dbl(~ .x$bw_min) |>
     quantile(quant)
 }

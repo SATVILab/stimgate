@@ -14,6 +14,6 @@
 
 .assert_string_vector <- function(x) {
   if (!.is_string_vector(x)) {
-    stop(paste0("Expected a non-empty character vector, got: ", class(x)))
+    stop(paste0("Expected a non-empty character vector, got class: ", class(x)))
   }
 }

@@ -8,9 +8,11 @@ stimgate_plot(
   ind,
   .data,
   path_project,
-  marker,
+  marker = NULL,
+  chnl = NULL,
+  pop = NULL,
   ind_lab = NULL,
-  marker_lab = NULL,
+  axis_lab = NULL,
   exc_min = TRUE,
   limits_expand = NULL,
   limits_equal = FALSE,
@@ -25,17 +27,27 @@ stimgate_plot(
 
 \item{.data}{GatingSet. Same GatingSet passed to \code{stimgate_gate}.}
 
-\item{path_project}{character. Path to the project directory used for \code{stimgate_gate}.}
+\item{path_project}{character.
+Path to the project directory used for \code{stimgate_gate}.}
 
-\item{marker}{character vector of length one or two. Specifies markers (channels, really)
+\item{marker}{character vector of length one or two. Specifies markers
 to be plotted. If only one is passed, then only univariate plots are created.}
+
+\item{chnl}{character vector of length one or two. Specifies channels
+to be plotted. Ignored if \code{marker} is provided.}
+
+\item{pop}{character. Specifies population within GatingSet that
+gates were calculated on. If \code{NULL}, defaults to population specified
+by folder name in \verb{project_path/gates/pop_<pop>}, but throws
+an error if more than one population is detected (i.e. more
+than one directory in \verb{gates/}). Default is \code{NULL}.}
 
 \item{ind_lab}{named character vector.
 Labels for \code{ind} used in plot.
 Optional.}
 
-\item{marker_lab}{named character vector.
-Labels for \code{marker} used in plot.
+\item{axis_lab}{named character vector.
+Labels for axis titles, applied to \code{marker} or \code{chnl}.
 Optional.}
 
 \item{exc_min}{Logical.
