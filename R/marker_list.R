@@ -1,6 +1,7 @@
 # Complete marker parameter list with all required settings
 # Ensures all parameters for each marker requiring a gate are properly defined
 
+#' @keywords internal
 .complete_chnl_list <- function(chnl,
                                 bias_uns,
                                 bias_uns_factor,
@@ -50,6 +51,7 @@
   chnl_list
 }
 
+#' @keywords internal
 .complete_chnl_list_ind <- function(chnl_settings_common,
                                       chnl_settings_spec,
                                       chnl,
@@ -92,6 +94,7 @@
   chnl_settings
 }
 
+#' @keywords internal
 .complete_chnl_list_add_common <- function(chnl_settings_common,
                                              chnl_settings) {
   chnl_settings |>
@@ -100,6 +103,7 @@
     ])
 }
 
+#' @keywords internal
 .complete_chnl_list_bias_uns <- function(bias_uns,
                                            bias_uns_factor,
                                            .data,
@@ -122,6 +126,7 @@
   (mean_range / 12 * bias_uns_factor) |> signif(3)
 }
 
+#' @keywords internal
 .complete_chnl_list_bias_uns_get_mean_range <- function(ind_batch_list,
                                                           .data,
                                                           pop_gate,
@@ -152,6 +157,7 @@
 }
 
 
+#' @keywords internal
 .complete_chnl_list_min_bw <- function(bw_min, bias_uns) {
   if (!is.null(bw_min)) {
     return(bw_min)
@@ -159,6 +165,7 @@
   bias_uns * 2.25
 }
 
+#' @keywords internal
 .complete_chnl_list_cp_min <- function(cp_min,
                                          .data,
                                          pop_gate,
@@ -194,6 +201,7 @@
 
 # Get all cutpoint type names
 # Returns character vector of all available cutpoint names
+#' @keywords internal
 .get_full_cp_type_vec <- function(fdr) {
   # Get cutpoint names for unstim-based cuts
   # cp_name_vec_uns <- .get_cp_uns_name_vec(fdr)
@@ -206,6 +214,7 @@
   )
 }
 
+#' @keywords internal
 .complete_chnl_list_save <- function(chnl_list, path_project) {
   path_save <- file.path(path_project, "meta_data", "chnl_list.rds")
   if (file.exists(path_save)) {
@@ -220,6 +229,7 @@
   )
 }
 
+#' @keywords internal
 .chnl_lab <- function(.data) {
   adf <- switch(class(.data)[1],
     "GatingSet" = {
@@ -364,6 +374,7 @@ stimgate_meta_read_marker_lab <- function(path_project) {
   stats::setNames(names(chnl_lab), chnl_lab)
 }
 
+#' @keywords internal
 .save_meta_data <- function(.data,
                             batch_list,
                             path_project) {
@@ -375,6 +386,7 @@ stimgate_meta_read_marker_lab <- function(path_project) {
   .save_meta_data_batch_list(batch_list, path_dir_meta_data)
 }
 
+#' @keywords internal
 .save_meta_data_chnl_lab <- function(.data, path_dir) {
   chnl_lab <- .chnl_lab(.data)
   saveRDS(
@@ -383,6 +395,7 @@ stimgate_meta_read_marker_lab <- function(path_project) {
   )
 }
 
+#' @keywords internal
 .save_meta_data_batch_list <- function(batch_list,
                                        path_dir) {
   saveRDS(

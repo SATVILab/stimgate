@@ -1,3 +1,4 @@
+#' @keywords internal
 .get_stats_chnl_lab_get <- function(chnl_lab,
                                     .data,
                                     chnl) {
@@ -10,6 +11,7 @@
   chnl_lab
 }
 
+#' @keywords internal
 .get_stats_params_get <- function(params = NULL,
                                   chnl = NULL,
                                   pop_gate = NULL,
@@ -32,6 +34,7 @@
   )
 }
 
+#' @keywords internal
 .get_stats_gate_tbl_get <- function(gate_tbl,
                                     chnl_lab,
                                     path_project,
@@ -74,6 +77,7 @@
   )
 }
 
+#' @keywords internal
 .get_stats_chnl_get <- function(chnl, gate_tbl) {
   if (!is.null(chnl)) {
     return(chnl)
@@ -81,6 +85,7 @@
   unique(gate_tbl$chnl)
 }
 
+#' @keywords internal
 .get_stats_gate_name_get <- function(gate_name, gate_tbl) {
   if (!is.null(gate_name)) {
     return(gate_name)
@@ -88,6 +93,7 @@
   unique(gate_tbl$gate_name)
 }
 
+#' @keywords internal
 .get_stats_combn_mat_list_get <- function(n_chnl, n_pos) {
   purrr::map(
     seq_len(n_chnl),
@@ -96,6 +102,7 @@
     stats::setNames(seq_len(n_chnl))
 }
 
+#' @keywords internal
 .get_stats_cyt_combn_vec_list_get <- function(combn_mat_list,
                                               chnl) {
   purrr::map(
@@ -117,6 +124,7 @@
     stats::setNames(names(combn_mat_list))
 }
 
+#' @keywords internal
 .get_stats_gate_tbl_save <- function(gate_tbl,
                                      path_project,
                                      params,
@@ -155,6 +163,7 @@
 
 
 
+#' @keywords internal
 .stats_save <- function(save,
                         stat_tbl,
                         path_project,

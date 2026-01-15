@@ -1,3 +1,4 @@
+#' @keywords internal
 .gate_cyt_pos <- function(chnl_settings,
                           ind_batch_list,
                           pop_gate,
@@ -68,6 +69,7 @@
   })
 }
 
+#' @keywords internal
 .get_cyt_pos_gates_gate_name <- function(.debug,
                                          gate_tbl_gn,
                                          .data,
@@ -118,6 +120,7 @@
     )
 }
 
+#' @keywords internal
 .get_cyt_pos_gates_ind <- function(ind,
                                    .data,
                                    ind_uns,
@@ -185,6 +188,7 @@
   )
 }
 
+#' @keywords internal
 .get_cp_pos_gates_chnl <- function(chnl_curr,
                                    ex,
                                    gate_tbl_ind,
@@ -256,6 +260,7 @@
   cp_cyt_pos
 }
 
+#' @keywords internal
 .gate_cyt_pos_max_bw_min <- function(chnl, quant = 0.8) {
   chnl |>
     purrr::map_dbl(~ .x$bw_min) |>

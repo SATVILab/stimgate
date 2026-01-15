@@ -1,3 +1,4 @@
+#' @keywords internal
 .gate_marker_delete_old_gates <- function() {
   dir_save <- file.path(tempdir(), "stimgate")
   if (!dir.exists(dir_save)) {
@@ -8,6 +9,7 @@
 }
 
 # Get gates for each sample within each batch
+#' @keywords internal
 .gate_marker_pre_adj_gates_gate <- function(ind_batch_list,
                                             .data,
                                             pop_gate,
@@ -57,6 +59,7 @@
   })
 }
 
+#' @keywords internal
 .gate_marker_get_adj_gates <- function(gate_tbl,
                                        gate_tbl_params,
                                        tol_clust,
@@ -99,6 +102,7 @@
   }
 }
 
+#' @keywords internal
 .gate_marker_get_adj_gates_all <- function(tol_clust,
                                            gate_tbl,
                                            params,
@@ -195,6 +199,7 @@
 }
 
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single <- function(gate_tbl,
                                                params,
                                                gate_tbl_params,
@@ -241,6 +246,7 @@
   )
 }
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single_merge <- function(gate_tbl_single,
                                                      gate_tbl_params,
                                                      chnl_cut) {
@@ -275,6 +281,7 @@
     )
 }
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single_stats_tbl_get <- function(gate_tbl,
                                                              params,
                                                              chnl_cut,
@@ -317,6 +324,7 @@
   )
 }
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single_stats_tbl_get_check <- function(gate_name_vec) { # nolint
   any_clust_ind <- any(
     purrr::map_lgl(
@@ -333,6 +341,7 @@
   any_clust_ind || any_adj_ind
 }
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single_out_get <- function(gate_tbl,
                                                        gate_stats_tbl,
                                                        gate_tbl_single,
@@ -364,6 +373,7 @@
     dplyr::mutate(gate_single = pmax(gate, gate_single)) # nolint
 }
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single_out_get_gn <- function(.debug,
                                                           gn,
                                                           gate_tbl,
@@ -470,6 +480,7 @@
 }
 
 # Placeholder function for adjustment table - this may need proper implementation
+#' @keywords internal
 .get_cp_adj_tbl <- function(gate_stats_tbl, gate_quant, gate_tbl_ctrl) {
   # This is a placeholder implementation
   # The actual implementation for tail-gate controlled gating may be missing

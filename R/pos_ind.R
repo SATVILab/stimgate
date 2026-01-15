@@ -1,6 +1,7 @@
 # Get logical indicator for cytokine-positive cells
 # Returns a logical vector indicating whether each cell is positive
 # for any of the specified channels using a single threshold type
+#' @keywords internal
 .get_pos_ind_simple <- function(ex, gate_tbl, chnl = NULL, gate_type) {
   if (is.null(chnl)) chnl <- unique(gate_tbl$chnl)
   pos_vec <- rep(FALSE, nrow(ex))
@@ -29,6 +30,7 @@
 #
 # Example usage would require data setup
 
+#' @keywords internal
 .get_pos_ind_mult <- function(ex, gate_tbl, chnl = NULL, chnl_alt = NULL,
                               gate_type_cyt_pos) {
   # must specify types of gates to use for cyt+ cells
@@ -141,6 +143,7 @@
 
 # Identify cells positive for all cytokines except one
 # Finds cells positive for every cytokine except one specified channel
+#' @keywords internal
 .get_pos_ind_but_single_pos_for_one_cyt <- function(ex,
                                                     gate_tbl,
                                                     chnl_single_exc,
@@ -179,6 +182,7 @@
   pos_vec_single_ind_any_cyt_but_curr | pos_vec_multi_cyt
 }
 
+#' @keywords internal
 .get_pos_ind_but_single_pos_for_one_cyt_check <- function(gate_type_single_pos) {
   # must specify types of gates to use for single+ cells
   if (missing(gate_type_single_pos)) {
@@ -197,6 +201,7 @@
 
 # Identify cells that express at least one cytokine
 # Returns a logical vector indicating cytokine-positive cells using flexible thresholds
+#' @keywords internal
 .get_pos_ind <- function(ex, gate_tbl, chnl, chnl_alt = NULL, gate_type_cyt_pos,
                          gate_type_single_pos) {
   # must specify types of gates to use for single+ cells
@@ -248,6 +253,7 @@
 }
 
 
+#' @keywords internal
 .get_pos_ind_cyt_combn <- function(ex, gate_tbl, chnl_pos, chnl_neg, chnl_alt, gate_type_cyt_pos, gate_type_single_pos) {
   # must specify types of gates to use for single+ cells
   if (!gate_type_single_pos %in% c("base", "single")) {

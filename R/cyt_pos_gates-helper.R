@@ -1,3 +1,4 @@
+#' @keywords internal
 .get_inc_vec <- function(chnl_curr,
                          chnl_vec,
                          ex,
@@ -14,6 +15,7 @@
   inc_vec
 }
 
+#' @keywords internal
 .get_cp_neg <- function(ex,
                         inc,
                         chnl,
@@ -59,6 +61,7 @@
 
 
 
+#' @keywords internal
 .get_cp_pos <- function(ex,
                         inc,
                         chnl,
@@ -88,6 +91,7 @@
 }
 
 
+#' @keywords internal
 .get_cp_pos_ind <- function(ex,
                             inc,
                             chnl,
@@ -250,10 +254,12 @@
 }
 
 
+#' @keywords internal
 .get_cyt_pos_gates_chnl_vec_from_chnl_list <- function(chnl_settings) {
   purrr::map_chr(chnl_settings, function(x) x$chnl_cut)
 }
 
+#' @keywords internal
 .get_cyt_pos_gates_gate_tbl_get <- function(chnl_vec,
                                             pop,
                                             path_project,

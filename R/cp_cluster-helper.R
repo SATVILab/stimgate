@@ -1,3 +1,4 @@
+#' @keywords internal
 .get_cp_cluster_control_update <- function(control) {
   if (!"min_threshold_frac" %in% names(control)) {
     control[["min_threshold_frac"]] <- 0.8
@@ -8,6 +9,7 @@
   control
 }
 
+#' @keywords internal
 .get_cp_cluster_gate_stats_tbl_update <- function(gate_stats_tbl,
                                                   .debug = FALSE) {
   .debug_msg(.debug, "Updating gate statistics table") # nolint
@@ -27,18 +29,21 @@
     )
 }
 
+#' @keywords internal
 .get_cp_cluster_cp_get_min <- function(gate_tbl, gate_tbl_ctrl) {
   suppressWarnings(
     min(gate_tbl$gate_cyt, gate_tbl$gate, gate_tbl_ctrl$gate, na.rm = TRUE)
   )
 }
 
+#' @keywords internal
 .get_cp_cluster_cp_get_max <- function(gate_tbl, gate_tbl_ctrl) {
   suppressWarnings(
     max(gate_tbl$gate, gate_tbl$gate_single, gate_tbl_ctrl$gate, na.rm = TRUE)
   )
 }
 
+#' @keywords internal
 .get_cp_cluster_prop_bs_by_cp_tbl_obj <- function(.data,
                                                   gate_tbl,
                                                   ind_batch_list,
@@ -87,6 +92,7 @@
 
 
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_data_list <- function(.data,
                                              gate_tbl,
                                              ind_batch_list,
@@ -108,6 +114,7 @@
   .get_prop_bs_by_cp_tbl_data_list_final(data_list, max_cp)
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_data_list_init <- function(ind_batch_list,
                                                   .data,
                                                   pop_gate,
@@ -151,6 +158,7 @@
   })
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_data_list_minmax <- function(ex_list) {
   # range of expressions
   # (used later when calculating how "flat" a derivative is)
@@ -175,6 +183,7 @@
   c("min" = expr_min, "max" = expr_max)
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_data_list_filter_cyt_pos <- function(filter_other_cyt_pos,
                                                             ex_list,
                                                             gate_tbl,
@@ -205,6 +214,7 @@
     stats::setNames(names(ex_list))
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_data_list_filter_above_min <- function(ex_list_filter,
                                                               cp_min) {
   ex_list_filter |>
@@ -227,6 +237,7 @@
     })
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_data_list_final <- function(data_list, max_cp) {
   expr_min_vec <- vapply(data_list, function(x) x$expr_min, numeric(1))
   expr_max_vec <- vapply(data_list, function(x) x$expr_max, numeric(1))
@@ -243,6 +254,7 @@
 }
 
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_actual <- function(data_list,
                                           cp_min,
                                           max_cp,
@@ -266,6 +278,7 @@
     dplyr::bind_rows()
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_actual_ind <- function(.debug,
                                               i,
                                               cp_par_list,
@@ -288,12 +301,14 @@
   )
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_actual_prep <- function(cp_min, cp_max) {
   cp_range <- c(cp_min, cp_max)
   cp_seq_vec <- seq(cp_range[1], cp_range[2], length.out = 1e2)
   list("range" = cp_range, "seq" = cp_seq_vec)
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_ind <- function(ex_stim,
                                        ex_uns,
                                        cp_seq,
@@ -310,6 +325,7 @@
 }
 
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_ind_prep <- function(gate_stats_tbl,
                                             ex_stim,
                                             ex_uns,
@@ -334,6 +350,7 @@
   )
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_ind_init <- function(ex_stim,
                                             ex_uns,
                                             par_list,
@@ -347,6 +364,7 @@
   )
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_ind_calc <- function(.data, n_cell_stim, n_cell_uns) {
   .data |>
     dplyr::mutate(
@@ -373,18 +391,21 @@
     )
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_actual_progress <- function(.debug, i, data_list) {
   if (i %% 20 == 0) {
     .debug_msg(.debug, paste0("Processing ", i, " of ", length(data_list))) # nolint
   }
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_actual_progress <- function(.debug, i, data_list) {
   if (i %% 20 == 0) {
     .debug_msg(.debug, paste0("Processing ", i, " of ", length(data_list))) # nolint
   }
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_tbl_actual_ex_get <- function(data_list,
                                                  i,
                                                  ind_batch_list) {
@@ -401,19 +422,23 @@
   list("stim" = ex, "uns" = ex_uns)
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_return_early_stim <- function(ex) {
   is.na(.get_cut(ex)[1]) || attr(ex, "is_uns")
 }
 
+#' @keywords internal
 .get_prop_bs_by_cp_return_early_uns <- function(ex) {
   is.na(.get_cut(ex)[1])
 }
 
+#' @keywords internal
 .get_cp_cluster_dens_tbl_get_batch_prep <- function(ind_batch) {
   .debug_msg(.debug, paste0("Processing batch ", ind_batch)) # nolint
 }
 
 
+#' @keywords internal
 .get_cp_cluster_dens_tbl_get <- function(ind_batch_list,
                                          .data,
                                          filter_other_cyt_pos,
@@ -460,6 +485,7 @@
 
 
 
+#' @keywords internal
 .get_cp_cluster_dens_tbl_get_actual_ind <- function(expr_vec,
                                                     batch,
                                                     ind,
@@ -495,6 +521,7 @@
     length(expr_vec[expr_vec > min(expr_vec)]) < 3
   }
 
+#' @keywords internal
 .get_cp_cluster_dens_tbl_get_actual_ind_early_return <- function(batch,
                                                                  ind) {
   tibble::tibble(
@@ -505,6 +532,7 @@
 }
 
 
+#' @keywords internal
 .get_cp_cluster_dens_tbl_get_min_threshold <- function(gate_tbl, control) {
   # get a low gate value, such that
   # when we look at clustering samples together
@@ -522,6 +550,7 @@
   control$min_threshold_frac * min_threshold_gate_quant
 }
 
+#' @keywords internal
 .get_cp_cluster_dens_tbl_get_batch_prep_ex_list <- function(.data,
                                                             ind_batch,
                                                             batch,
@@ -551,6 +580,7 @@
   )
 }
 
+#' @keywords internal
 .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter <- function(.debug,
                                                                    ex_list,
                                                                    chnl_cut,
@@ -570,6 +600,7 @@
   ex_list_filter[-length(ex_list_filter)]
 }
 
+#' @keywords internal
 .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter_ind <- function(ex_tbl,
                                                                        gate_tbl,
                                                                        chnl_cut,
@@ -587,6 +618,7 @@
   ex_tbl[!pos_ind_vec_but_single_pos_curr, , drop = FALSE]
 }
 
+#' @keywords internal
 .get_cp_cluster_n_clus <- function(dens_tbl) {
   max_cluster <- min(6, nrow(dens_tbl) / 3) |>
     floor() |>
@@ -612,6 +644,7 @@
   )
 }
 
+#' @keywords internal
 .get_cp_cluster_plot_check_1 <- function(dens_tbl) {
   dens_plot <- dens_tbl |>
     # dplyr::group_by(grp) |>
@@ -634,6 +667,7 @@
     geom_line() # nolint
 }
 
+#' @keywords internal
 .get_cp_cluster_plot_check_1lse <- function(prop_bs_by_cp_tbl) {
   data_plot <- prop_bs_by_cp_tbl |>
     dplyr::group_by(grp, cp) |> # nolint
@@ -651,12 +685,14 @@
     )
 }
 
+#' @keywords internal
 .get_cp_cluster_clus <- function(dens_tbl, n_clus) {
   dens_mat <- dens_tbl[, grepl("^x\\d+", colnames(dens_tbl))] |>
     as.matrix()
   stats::kmeans(dens_mat, centers = n_clus)$cluster
 }
 
+#' @keywords internal
 .get_cp_cluster_data_mod_pre <- function(prop_bs_by_cp_tbl) {
   data_mod_pre <- prop_bs_by_cp_tbl |>
     tidyr::pivot_longer(-c(ind:prop_bs_cp_diff_sd_max), # nolint
@@ -698,6 +734,7 @@
     dplyr::ungroup()
 }
 
+#' @keywords internal
 .get_cp_cluster_cp_grp_lab_vec_get <- function(prop_bs_by_cp_tbl,
                                                expr_min,
                                                expr_max,
@@ -789,6 +826,7 @@
     unlist()
 }
 
+#' @keywords internal
 .get_cp_cluster_gate_summ_stat_tbl_get <- function(gate_tbl,
                                                    chnl_cut,
                                                    grp_ind_lab_vec,
@@ -815,6 +853,7 @@
     )
 }
 
+#' @keywords internal
 .get_cp_cluster_cp_join_get <- function(prop_bs_by_cp_tbl,
                                         cp_grp_lab_vec,
                                         .debug) {
@@ -827,6 +866,7 @@
     dplyr::ungroup()
 }
 
+#' @keywords internal
 .get_cp_cluster_gate_tbl_chnl_get <- function(gate_tbl, chnl) {
   if ("chnl" %in% colnames(gate_tbl)) {
     gate_tbl_chnl <- gate_tbl |>
@@ -837,6 +877,7 @@
   gate_tbl_chnl
 }
 
+#' @keywords internal
 .get_cp_cluster_cp_tbl_add_info <- function(cp_tbl,
                                             gate_stats_tbl,
                                             gate_summ_stat_tbl,
@@ -874,6 +915,7 @@
     )
 }
 
+#' @keywords internal
 .get_cp_cluster_cp_tbl_add_orig_quant_min <- function(cp_tbl, .debug) {
   .debug_msg(.debug, "Adding original and minimum quantile threshold") # nolint
   cp_tbl |>
@@ -881,6 +923,7 @@
       cp_orig_quant_min = pmax(pmin(cp_orig, max_expr), gate_05) # nolint
     )
 }
+#' @keywords internal
 .get_cp_cluster_cp_join_lse_get <- function(cp_tbl, .debug) {
   .debug_msg(.debug, "Getting cp_join_lse") # nolint
   cp_tbl <- cp_tbl |>
@@ -893,6 +936,7 @@
     dplyr::ungroup()
 }
 
+#' @keywords internal
 .get_cp_cluster_cp_join_tg_get <- function(cp_tbl, .debug) {
   .debug_msg(.debug, "Getting cp_join_tg") # nolint
   cp_tbl |>
@@ -910,6 +954,7 @@
     dplyr::ungroup()
 }
 
+#' @keywords internal
 .get_cp_cluster_cp_lse_orig_mean <- function(cp_tbl, .debug) {
   .debug_msg(.debug, "Getting cp_join_lse_orig_mean") # nolint
   cp_tbl |>
@@ -922,6 +967,7 @@
     )
 }
 
+#' @keywords internal
 .get_cp_cluster_cp_join_tg_orig_mean <- function(cp_tbl, .debug) {
   .debug_msg(.debug, "Getting cp_join_tg_orig_mean") # nolint
   cp_tbl |>
@@ -933,6 +979,7 @@
     )
 }
 
+#' @keywords internal
 .get_cp_cluster_cp_join_lse_orig_mean_tg <- function(cp_tbl, .debug) {
   .debug_msg(.debug, "Getting cp_join_lse_orig_mean_tg") # nolint
   cp_tbl |>
@@ -968,6 +1015,7 @@
       dplyr::ungroup()
   }
 
+#' @keywords internal
 .get_cp_cluster_cp_impute_missing_batch <- function(cp_tbl,
                                                     chnl_cut,
                                                     gate_tbl,
@@ -1042,6 +1090,7 @@
   cp_tbl
 }
 
+#' @keywords internal
 .get_cp_cluster_impute_missing_ind <- function(cp_tbl,
                                                chnl_cut,
                                                gate_tbl,
@@ -1087,6 +1136,7 @@
   cp_tbl |> dplyr::arrange(ind) # nolint
 }
 
+#' @keywords internal
 .get_cp_cluster_impute_missing_final <- function(cp_tbl,
                                                  chnl_cut,
                                                  gate_tbl,
@@ -1132,6 +1182,7 @@
   cp_tbl |> dplyr::arrange(ind) # nolint
 }
 
+#' @keywords internal
 .get_cp_cluster_impute_missing_final_batch <- function(cp_tbl,
                                                        chnl_cut,
                                                        gate_tbl,

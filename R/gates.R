@@ -49,6 +49,7 @@ stimgate_gate_get <- function(path_project,
   })
 }
 
+#' @keywords internal
 .gate_get_pop <- function(path_project) {
   path_dir <- file.path(path_project, "gates")
   if (!dir.exists(path_dir)) {
@@ -59,6 +60,7 @@ stimgate_gate_get <- function(path_project,
   pop_vec
 }
 
+#' @keywords internal
 .gate_get_chnl <- function(path_project, pop) {
   path_dir <- file.path(path_project, "gates", paste0("pop_", pop))
   if (!dir.exists(path_dir)) {
@@ -69,6 +71,7 @@ stimgate_gate_get <- function(path_project,
   chnl_vec
 }
 
+#' @keywords internal
 .gates_get_path_all <- function(path_project,
                                 pop,
                                 chnl,
