@@ -34,7 +34,9 @@ globalVariables(c(
   "cyt_combn", "freq_uns", "V1", "V2", "i", "tol_gate_single",
   # Variables used in plots and ggplot2 context
   ".debug", "prop_l1se",
-  "rbeta"
+  "rbeta",
+  # Variables from fcs_write.R
+  "concat", "gate_concat"
 ))
 
 #' Print debug message conditionally

@@ -467,16 +467,14 @@ stimgate_data_get_ex <- function(path_project,
   exc_mat <- vapply(
     combn_exc,
     function(x) exc_vec[[x]],
-    logical(n = 1)
+    logical(1)
   ) |>
     t() |>
-    matrix(nrow = length(combn_exc), ncol = length(cn_vec)) |>
-    stats::setDimnames(
-      list(
-        NULL,
-        cn_vec
-      )
-    )
+    matrix(nrow = length(combn_exc), ncol = length(cn_vec))
+  dimnames(exc_mat) <- list(
+    NULL,
+    cn_vec
+  )
   if (mult) {
     inc_vec <- apply(exc_mat, 2, all)
   } else {

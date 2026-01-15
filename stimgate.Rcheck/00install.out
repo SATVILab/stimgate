@@ -3,7 +3,6 @@
 ** using staged installation
 ** R
 ** byte-compile and prepare package for lazy loading
-Note: possible error in 'logical(n = 1)': unused argument (n = 1) 
 ** help
 *** installing help indices
 ** building package indices
