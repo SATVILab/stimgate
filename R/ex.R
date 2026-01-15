@@ -7,6 +7,7 @@ str_detect_any <- function(string, pattern) {
     any()
 }
 
+#' @keywords internal
 .get_ex_list <- function(.data,
                          ind_batch,
                          batch,
@@ -36,6 +37,7 @@ str_detect_any <- function(string, pattern) {
 }
 
 
+#' @keywords internal
 .get_ex <- function(.data,
                     pop,
                     chnl_cut,
@@ -80,6 +82,7 @@ str_detect_any <- function(string, pattern) {
   )
 }
 
+#' @keywords internal
 .get_ex_check_chnl_saved <- function(chnl,
                                      ind,
                                      pop,
@@ -93,6 +96,7 @@ str_detect_any <- function(string, pattern) {
   all(req_vec %in% fn_vec)
 }
 
+#' @keywords internal
 .get_ex_old <- function(pop,
                         chnl,
                         ind,
@@ -112,6 +116,7 @@ str_detect_any <- function(string, pattern) {
   ex
 }
 
+#' @keywords internal
 .get_ex_old_chnl_read_ind <- function(chnl,
                                       ind,
                                       pop,
@@ -120,6 +125,7 @@ str_detect_any <- function(string, pattern) {
   readRDS(path_chnl)
 }
 
+#' @keywords internal
 .get_ex_new <- function(.data,
                         pop,
                         chnl,
@@ -141,6 +147,7 @@ str_detect_any <- function(string, pattern) {
   ex
 }
 
+#' @keywords internal
 .get_ex_new_chnl_save <- function(ex,
                                   ind,
                                   pop,
@@ -161,6 +168,7 @@ str_detect_any <- function(string, pattern) {
   invisible(TRUE)
 }
 
+#' @keywords internal
 .get_ex_new_chnl_save_ind <- function(ex,
                                       chnl,
                                       ind,
@@ -176,12 +184,14 @@ str_detect_any <- function(string, pattern) {
   saveRDS(ex[[chnl]], path_chnl)
 }
 
+#' @keywords internal
 .get_ex_chnl_path <- function(chnl, ind, pop, path_project) {
   file.path(
     .get_ex_chnl_path_dir(ind, pop, path_project),
     paste0("chnl_", chnl, ".rds")
   )
 }
+#' @keywords internal
 .get_ex_chnl_path_dir <- function(ind, pop, path_project) {
   file.path(
     path_project,
@@ -191,6 +201,7 @@ str_detect_any <- function(string, pattern) {
   )
 }
 
+#' @keywords internal
 .get_ex_add_attributes <- function(ex,
                                    ind,
                                    ind_uns,
@@ -207,14 +218,17 @@ str_detect_any <- function(string, pattern) {
   ex
 }
 
+#' @keywords internal
 .get_cut <- function(ex) {
   ex[[attr(ex, "chnl_cut")]]
 }
 
+#' @keywords internal
 .get_batch_ex <- function(ex) {
   attr(ex, "batch")
 }
 
+#' @keywords internal
 .get_ind_uns <- function(ind, ind_batch_list) {
   has_ind <- vapply(
     ind_batch_list, function(x) ind %in% x, logical(1)
@@ -230,6 +244,7 @@ str_detect_any <- function(string, pattern) {
   ind_batch[[length(ind_batch)]]
 }
 
+#' @keywords internal
 .get_batch <- function(ind, ind_batch_list) {
   has_ind <- vapply(
     ind_batch_list, function(x) ind %in% x, logical(1)
@@ -310,6 +325,7 @@ stimgate_data_get_ex <- function(path_project,
   })
 }
 
+#' @keywords internal
 .get_ex_project_pop <- function(path_project) {
   .assert_string(path_project)
   pop_vec <- list.dirs(
@@ -322,6 +338,7 @@ stimgate_data_get_ex <- function(path_project,
   pop_vec
 }
 
+#' @keywords internal
 .get_ex_project_ind <- function(path_project, pop = NULL) {
   pop <- pop %||% .get_ex_project_pop(path_project)
   pop <- pop[[1]]
@@ -336,6 +353,7 @@ stimgate_data_get_ex <- function(path_project,
   ind_vec
 }
 
+#' @keywords internal
 .get_ex_project_chnl <- function(path_project, pop = NULL, ind = NULL) {
   pop <- pop %||% .get_ex_project_pop(path_project)
   pop <- pop[[1]]
@@ -356,6 +374,7 @@ stimgate_data_get_ex <- function(path_project,
   chnl_vec
 }
 
+#' @keywords internal
 .data_get_ex_bias <- function(ex,
                               ind,
                               path_project,
@@ -379,6 +398,7 @@ stimgate_data_get_ex <- function(path_project,
   ex
 }
 
+#' @keywords internal
 .data_get_ex_exc_min <- function(ex, exc_min) {
   if (!exc_min) {
     return(ex)
@@ -397,6 +417,7 @@ stimgate_data_get_ex <- function(path_project,
   ex
 }
 
+#' @keywords internal
 .data_get_ex_cyt_pos <- function(ex,
                                  cyt_pos,
                                  chnl = NULL,

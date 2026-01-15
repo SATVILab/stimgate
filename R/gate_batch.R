@@ -1,4 +1,5 @@
 # Get cutpoints for a single batch
+#' @keywords internal
 .gate_batch <- function(.data,
                         ind_batch,
                         pop_gate,

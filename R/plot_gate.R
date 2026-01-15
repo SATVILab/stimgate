@@ -110,6 +110,7 @@ stimgate_plot <- function(ind,
   .plot_grid(plot = grid, p_list = p_list, n_col = grid_n_col)
 }
 
+#' @keywords internal
 .plot_gate <- function(marker,
                        chnl,
                        pop,
@@ -146,6 +147,7 @@ stimgate_plot <- function(ind,
   p_list_bv |> append(p_list_uv)
 }
 
+#' @keywords internal
 .plot_gate_bv <- function(marker,
                           chnl,
                           pop,
@@ -218,6 +220,7 @@ stimgate_plot <- function(ind,
   p_list
 }
 
+#' @keywords internal
 .plot_get_ex_tbl <- function(ind,
                              .data,
                              pop,
@@ -241,6 +244,7 @@ stimgate_plot <- function(ind,
 }
 
 
+#' @keywords internal
 .plot_get_ex_tbl_ind <- function(ind,
                                  .data,
                                  pop,
@@ -260,6 +264,7 @@ stimgate_plot <- function(ind,
   ex
 }
 
+#' @keywords internal
 .plot_get_ex_tbl_ind_new <- function(ind,
                                      .data,
                                      pop,
@@ -269,12 +274,14 @@ stimgate_plot <- function(ind,
   ex_tbl[, chnl, drop = FALSE]
 }
 
+#' @keywords internal
 .plot_get_ex_tbl_ind_old <- function(ind,
                                      pop,
                                      chnl) {
 
 }
 
+#' @keywords internal
 .plot_get_ex_tbl_ind_exc_min <- function(ex_tbl, exc_min, chnl) {
   if (!exc_min) {
     return(ex_tbl)
@@ -293,6 +300,7 @@ stimgate_plot <- function(ind,
   ex_tbl
 }
 
+#' @keywords internal
 .plot_add_axis_title <- function(p, val1, val2, val_lab) {
   val <- if (!is.null(val1)) {
     val1
@@ -307,10 +315,12 @@ stimgate_plot <- function(ind,
   p
 }
 
+#' @keywords internal
 .plot_add_title <- function(p, ind, i, ind_lab) {
   p + ggtitle(.plot_get_lab(ind, ind_lab, i))
 }
 
+#' @keywords internal
 .plot_get_lab <- function(val, val_lab, i = NULL) {
   if (is.null(val_lab)) {
     return(val)
@@ -323,6 +333,7 @@ stimgate_plot <- function(ind,
   lab |> stats::setNames(NULL)
 }
 
+#' @keywords internal
 .plot_add_gate <- function(p,
                            ind,
                            marker,
@@ -372,6 +383,7 @@ stimgate_plot <- function(ind,
   p
 }
 
+#' @keywords internal
 .plot_get_gate_tbl <- function(ind, pop, marker, chnl, path_project) {
   gate_tbl <- stimgate_gate_get(
     path_project,
@@ -397,6 +409,7 @@ stimgate_plot <- function(ind,
   gate_tbl[ind_vec, ]
 }
 
+#' @keywords internal
 .plot_gate_uv <- function(ind,
                           ind_lab,
                           .data,
@@ -428,6 +441,7 @@ stimgate_plot <- function(ind,
   p_list
 }
 
+#' @keywords internal
 .plot_gate_uv_marker <- function(marker,
                                  chnl,
                                  pop,
@@ -456,6 +470,7 @@ stimgate_plot <- function(ind,
   )
 }
 
+#' @keywords internal
 .plot_gate_uv_marker_get_plot_tbl <- function(ind,
                                               .data,
                                               marker,
@@ -487,6 +502,7 @@ stimgate_plot <- function(ind,
   Reduce(rbind, plot_tbl_list)
 }
 
+#' @keywords internal
 .plot_gate_uv_marker_get_plot_tbl_ind <- function(ind,
                                                   .data,
                                                   marker,
@@ -509,6 +525,7 @@ stimgate_plot <- function(ind,
   )
 }
 
+#' @keywords internal
 .plot_gate_uv_marker_add_adj <- function(exc_min,
                                          plot_tbl,
                                          dens_obj_raw,
@@ -526,6 +543,7 @@ stimgate_plot <- function(ind,
     dplyr::bind_rows(plot_tbl_adj)
 }
 
+#' @keywords internal
 .plot_gate_uv_marker_plot <- function(plot_tbl,
                                       exc_min,
                                       ind,
@@ -545,6 +563,7 @@ stimgate_plot <- function(ind,
   p
 }
 
+#' @keywords internal
 .plot_gate_uv_marker_plot_init <- function(plot_tbl,
                                            exc_min,
                                            ind,
@@ -577,6 +596,7 @@ stimgate_plot <- function(ind,
     )
 }
 
+#' @keywords internal
 .plot_grid <- function(plot,
                        p_list,
                        n_col) {

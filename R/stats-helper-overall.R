@@ -1,3 +1,4 @@
+#' @keywords internal
 .get_stats_overall <- function(ind_batch_list,
                                .data,
                                pop_gate,
@@ -76,6 +77,7 @@
   )
 }
 
+#' @keywords internal
 .get_stats_overall_progress <- function(ind_batch_list,
                                         i,
                                         .debug,
@@ -95,6 +97,7 @@
 }
 
 
+#' @keywords internal
 .get_stats_batch <- function(ind_batch,
                              batch,
                              .debug,
@@ -151,6 +154,7 @@
   })
 }
 
+#' @keywords internal
 .get_stats_batch_gn <- function(gn,
                                 .debug,
                                 ex_list,
@@ -203,6 +207,7 @@
   )
 }
 
+#' @keywords internal
 .get_stats_batch_gn_combn_loop_ind <- function(ex_list,
                                                gate_tbl_gn,
                                                gn,
@@ -244,6 +249,7 @@
   })
 }
 
+#' @keywords internal
 .get_stats_batch_gn_combn <- function(j,
                                       .debug,
                                       ex,
@@ -297,6 +303,7 @@
   stat_tbl_gn_ind
 }
 
+#' @keywords internal
 .get_stats_batch_gn_combn_neg <- function(.data, chnl) {
   all_neg_row <- .data |>
     dplyr::mutate(cyt_combn = paste0(paste0(chnl, collapse = "~-~"), "~-~")) |>
@@ -309,6 +316,7 @@
   .data |> dplyr::bind_rows(all_neg_row)
 }
 
+#' @keywords internal
 .get_stats_batch_gn_filter_or_non_combn <- function(.debug,
                                                     ex_list,
                                                     ind_batch,
@@ -406,6 +414,7 @@
 }
 
 
+#' @keywords internal
 .get_stats_batch_gn_filter_or_non_combn_filter <- function(ex_list,
                                                            gate_tbl_gn,
                                                            chnl_curr,
@@ -447,6 +456,7 @@
     stats::setNames(names(ex_list))
 }
 
+#' @keywords internal
 .get_stats_batch_gn_filter_or_non_combn_filter_check_early <- function(i,
                                                                        ex_list, # nolint
                                                                        chnl_curr, # nolint
@@ -463,6 +473,7 @@
     nrow(ex_list[[i]]) == 0
 }
 
+#' @keywords internal
 .get_stats_update_combn_n <- function(combn,
                                       stat_tbl,
                                       chnl_cut,
@@ -484,6 +495,7 @@
   stat_tbl
 }
 
+#' @keywords internal
 .get_stats_label <- function(stat_tbl) {
   cn_vec_order <- c(
     "gate_name", "chnl", "marker", "ind"

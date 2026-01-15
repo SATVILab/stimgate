@@ -312,6 +312,7 @@ stimgate_gate <- function(path_project,
   path_project
 }
 
+#' @keywords internal
 .gate_init <- function(pop_gate,
                        chnl_settings,
                        .data,
@@ -362,6 +363,7 @@ stimgate_gate <- function(path_project,
   })
 }
 
+#' @keywords internal
 .gate_init_save <- function(path_project, pop, chnl, gate_tbl) {
   path_save <- .gates_get_path_all(
     path_project, pop, chnl, TRUE
@@ -372,6 +374,7 @@ stimgate_gate <- function(path_project,
 
   saveRDS(gate_tbl, path_save)
 }
+#' @keywords internal
 .gate_single <- function(pop_gate,
                          chnl_settings,
                          .data,
@@ -450,6 +453,7 @@ stimgate_gate <- function(path_project,
   })
 }
 
+#' @keywords internal
 .gate_single_save <- function(path_project, pop, chnl, gate_tbl) {
   path_save <- .gates_get_path_all(
     path_project, pop, chnl, FALSE
@@ -462,6 +466,7 @@ stimgate_gate <- function(path_project,
 }
 
 
+#' @keywords internal
 .gate_stats <- function(.data,
                         params = NULL,
                         gate_tbl = NULL,

@@ -110,6 +110,7 @@
   cutpoint
 }
 
+#' @keywords internal
 .deriv_density <- function(x, deriv = 1L, adjust = 1, n = 2048L, ...) {
   # 1) Compute a fine KDE on [min(x), max(x)]
   dens <- stats::density(x, adjust = adjust, n = n, ...)
