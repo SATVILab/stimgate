@@ -75,6 +75,7 @@ plot_cyto <- function(data, marker, lab = NULL,
   )
 }
 
+#' @keywords internal
 .plot_cyto_check <- function(data, lab, font_size) {
   if (!is.data.frame(data)) stop("data must be a dataframe")
   if (!is.null(lab)) {
@@ -88,6 +89,7 @@ plot_cyto <- function(data, marker, lab = NULL,
   invisible(TRUE)
 }
 
+#' @keywords internal
 .plot_cyto_prep <- function(marker,
                             lab,
                             data,
@@ -114,6 +116,7 @@ plot_cyto <- function(data, marker, lab = NULL,
   )
 }
 
+#' @keywords internal
 .plot_cyto_prep_plot_tbl <- function(marker,
                                      data,
                                      n_marker,
@@ -128,6 +131,7 @@ plot_cyto <- function(data, marker, lab = NULL,
   )
 }
 
+#' @keywords internal
 .plot_cyto_prep_plot_tbl_exc_min <- function(exc_min,
                                              plot_tbl,
                                              n_marker) {
@@ -147,6 +151,7 @@ plot_cyto <- function(data, marker, lab = NULL,
   plot_tbl
 }
 
+#' @keywords internal
 .plot_cyto_plot <- function(n_marker,
                             plot_tbl,
                             marker,
@@ -179,6 +184,7 @@ plot_cyto <- function(data, marker, lab = NULL,
 }
 
 
+#' @keywords internal
 .plot_cyto_plot_uni <- function(geom_uni,
                                 plot_tbl,
                                 font_size,
@@ -200,6 +206,7 @@ plot_cyto <- function(data, marker, lab = NULL,
   )
 }
 
+#' @keywords internal
 .plot_cyto_plot_uni_geom <- function(geom_uni, ...) {
   switch(geom_uni,
     "histogram" = do.call(
@@ -214,6 +221,7 @@ plot_cyto <- function(data, marker, lab = NULL,
   )
 }
 
+#' @keywords internal
 .plot_cyto_plot_uni_base <- function(plot_tbl,
                                      font_size,
                                      marker,
@@ -229,12 +237,14 @@ plot_cyto <- function(data, marker, lab = NULL,
 }
 
 
+#' @keywords internal
 .plot_cyto_plot_uni_axes <- function(p, limits_expand) {
   .plot_cyto_plot_uni_axes_expand(
     p = p, limits_expand = limits_expand
   )
 }
 
+#' @keywords internal
 .plot_cyto_plot_uni_axes_expand <- function(p, limits_expand) {
   # return now if axis_limits fn not required
   if (is.null(limits_expand)) {
@@ -245,6 +255,7 @@ plot_cyto <- function(data, marker, lab = NULL,
   )
 }
 
+#' @keywords internal
 .plot_cyto_plot_biv <- function(plot_tbl,
                                 font_size,
                                 marker,
@@ -267,6 +278,7 @@ plot_cyto <- function(data, marker, lab = NULL,
   )
 }
 
+#' @keywords internal
 .plot_cyto_plot_biv_base <- function(plot_tbl,
                                      font_size,
                                      marker,
@@ -288,6 +300,7 @@ plot_cyto <- function(data, marker, lab = NULL,
     labs(x = marker[1], y = marker[2]) # nolint
 }
 
+#' @keywords internal
 .plot_cyto_biv_axes <- function(p,
                                 coord_equal,
                                 limits_expand,
@@ -306,6 +319,7 @@ plot_cyto <- function(data, marker, lab = NULL,
   )
 }
 
+#' @keywords internal
 .plot_cyto_biv_axes_expand <- function(p,
                                        limits_equal,
                                        limits_expand) {

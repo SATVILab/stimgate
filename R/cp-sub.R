@@ -1,6 +1,7 @@
 # Prepare expression data list with bias and noise adjustments
 # Gets measurements for samples and applies bias and noise modifications
 # Returns a list where each element is a numeric vector
+#' @keywords internal
 .prepare_ex_list_with_bias_and_noise <- function(ex_list,
                                                  ind,
                                                  exc_min,
@@ -30,6 +31,7 @@
 
 # Linear interpolation function
 # Interpolates a value from input and output vectors
+#' @keywords internal
 .interp <- function(val, x, y) {
   x_low <- x[x <= val] |> max()
   if (x_low == val) {
@@ -42,6 +44,7 @@
   y[x_low_ind] + (val - x_low) * (y[x_high_ind] - y[x_low_ind]) / (x_high - x_low)
 }
 
+#' @keywords internal
 .get_cp_tg <- function(ex_list,
                        gate_combn,
                        chnl_cut,
@@ -128,6 +131,7 @@
 
 
 # Get mid-probability cut
+#' @keywords internal
 .get_cp_pwmid <- function(high_ind_tbl, cp_scp) {
   # get table to model - all values above changepoint
   mod_tbl <- high_ind_tbl |>
@@ -192,6 +196,7 @@
 #
 # Get channel labels from GatingHierarchy
 # Returns a named vector mapping channel names to marker names
+#' @keywords internal
 .get_labs <- function(.data, chnl_cut, high = NULL) {
   force(.data)
   adf_data <- flowWorkspace::gh_pop_get_data(.data) |>
@@ -211,6 +216,7 @@
 }
 
 
+#' @keywords internal
 .combine_cp <- function(cp, gate_combn) {
   purrr::map(gate_combn, function(gate_combn_curr) {
     if (all(purrr::map_lgl(cp, is.na))) {

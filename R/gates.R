@@ -3,6 +3,9 @@
 #' @description Get all the gates for each of the markers gated.
 #'
 #' @param path_project character. Path to the project directory.
+#' @param pop character. Optional population name(s) to filter gates by. Default is NULL (all populations).
+#' @param marker character. Optional marker name(s) to filter gates by. Default is NULL (all markers).
+#' @param chnl character. Optional channel name(s) to filter gates by. Default is NULL (all channels).
 #'
 #' @return Gate table with gates for each sample for each marker.
 #' @examples{
@@ -49,6 +52,7 @@ stimgate_gate_get <- function(path_project,
   })
 }
 
+#' @keywords internal
 .gate_get_pop <- function(path_project) {
   path_dir <- file.path(path_project, "gates")
   if (!dir.exists(path_dir)) {
@@ -59,6 +63,7 @@ stimgate_gate_get <- function(path_project,
   pop_vec
 }
 
+#' @keywords internal
 .gate_get_chnl <- function(path_project, pop) {
   path_dir <- file.path(path_project, "gates", paste0("pop_", pop))
   if (!dir.exists(path_dir)) {
@@ -69,6 +74,7 @@ stimgate_gate_get <- function(path_project,
   chnl_vec
 }
 
+#' @keywords internal
 .gates_get_path_all <- function(path_project,
                                 pop,
                                 chnl,

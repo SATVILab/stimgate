@@ -59,6 +59,7 @@ get_example_data <- function(dir_cache = NULL) {
 
 # Internal helper functions (not exported)
 
+#' @keywords internal
 .get_fs <- function() {
   tryCatch(
     # don't want a package warning if file does not exist,
@@ -110,6 +111,7 @@ get_example_data <- function(dir_cache = NULL) {
   )
 }
 
+#' @keywords internal
 .get_chnl_list <- function(fs) {
   batch_list <- lapply(1:8, function(i) seq((i - 1) * 2 + 1, i * 2))
   chnl_vec <- c("BC1(La139)Dd", "BC2(Pr141)Dd")
@@ -144,6 +146,7 @@ get_example_data <- function(dir_cache = NULL) {
 
 # Internal helper functions (not exported)
 
+#' @keywords internal
 .sample_chnls <- function(args_list, fs) {
   chnl_obj_list <- lapply(seq_along(args_list), function(x) NULL) |>
     stats::setNames(names(args_list))
@@ -170,6 +173,7 @@ get_example_data <- function(dir_cache = NULL) {
   chnl_obj_list
 }
 
+#' @keywords internal
 .sample_chnl <- function(fs,
                         batch_list,
                         chnl,
@@ -242,6 +246,7 @@ get_example_data <- function(dir_cache = NULL) {
   )
 }
 
+#' @keywords internal
 .sample_response <- function(n,
                             prop_mean,
                             prop_sd,
@@ -271,6 +276,7 @@ get_example_data <- function(dir_cache = NULL) {
   )
 }
 
+#' @keywords internal
 .sample_n_pos <- function(n, prop_mean, prop_sd, eps = 1e-8) {
   # Compute the maximum SD and force prop_sd < max_sd
   max_sd <- sqrt(prop_mean * (1 - prop_mean))
@@ -283,10 +289,12 @@ get_example_data <- function(dir_cache = NULL) {
   round(n * stats::rbeta(n = 1, shape1 = alpha, shape2 = beta))
 }
 
+#' @keywords internal
 .sample_ind_pos <- function(n, n_cell_pos) {
   sample.int(n, n_cell_pos)
 }
 
+#' @keywords internal
 .sample_expr <- function(n,
                         n_pos,
                         ind_pos,

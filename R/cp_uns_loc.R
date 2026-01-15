@@ -1,4 +1,5 @@
 # Calculate local FDR-based cutpoint
+#' @keywords internal
 .get_cp_uns_loc <- function(ex_list, gate_combn,
                             .data, bias_uns = 0, exc_min,
                             noise_sd = NULL, bw_min = 80,
@@ -19,6 +20,7 @@
 
 
 # Get unstim-based local FDR cutpoint for each bias level
+#' @keywords internal
 .get_cp_uns_loc_bias <- function(ex_list, .data,
                                  bias_uns, exc_min, noise_sd, cp_min,
                                  gate_combn, bw_min, min_cell,
@@ -61,6 +63,7 @@
     purrr::flatten()
 }
 
+#' @keywords internal
 .get_cp_uns_loc_gate_label <- function(cp_uns_gate_combn_obj, bias) {
   cp_uns_gate_combn_list <- cp_uns_gate_combn_obj[["cp_uns"]]
   names(cp_uns_gate_combn_list) <-
@@ -68,6 +71,7 @@
   cp_uns_gate_combn_list
 }
 
+#' @keywords internal
 .prepare_data_with_bias_and_noise <- function(ex_list,
                                               bias,
                                               exc_min,
@@ -116,6 +120,7 @@
 
 # Get the unstim-based local fdr-method
 # cutpoint for a given bias across gate combination methods
+#' @keywords internal
 .get_cp_uns_loc_gate_combn <- function(ex_list_orig,
                                        ex_list_no_min,
                                        ex_tbl_uns_bias,
@@ -168,6 +173,7 @@
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_gate_combn_merge <- function(cp_uns_list_prejoin,
                                              cp_uns_list_prejoin_non,
                                              .debug) {
@@ -189,6 +195,7 @@
 # --------------------------------
 # gate using prejoined .data
 # --------------------------------
+#' @keywords internal
 .get_cp_uns_loc_gate_combn_prejoin <- function(gate_combn,
                                                ex_list_no_min,
                                                ex_list_orig,
@@ -223,10 +230,12 @@
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_gate_combn_prejoin_not <- function() {
   list("cp" = list(), "p_list" = list())
 }
 
+#' @keywords internal
 .prepare_data_for_prejoin <- function(ex_list_orig,
                                       ex_list_no_min) {
   ex_list_no_min <- .prepare_data_for_prejoin_ind(
@@ -242,6 +251,7 @@
   )
 }
 
+#' @keywords internal
 .prepare_data_for_prejoin_ind <- function(ex_list) {
   ind_uns <- names(ex_list)[length(ex_list)]
   ex_tbl_stim <- ex_list[seq_len(length(ex_list) - 1)] |>
@@ -254,6 +264,7 @@
     stats::setNames(c(names(ex_list)[1], ind_uns))
 }
 
+#' @keywords internal
 .get_cp_uns_loc_gate_combn_prejoin_actual <- function(ex_list_no_min,
                                                       ex_list_orig,
                                                       ex_tbl_uns_bias,
@@ -297,6 +308,7 @@
 # --------------------------------
 # gate each sample individually
 # --------------------------------
+#' @keywords internal
 .get_cp_uns_loc_gate_combn_prejoin_non <- function(non_prejoin_combn,
                                                    ex_list_no_min_stim,
                                                    ex_list_orig,
@@ -335,10 +347,12 @@
     .debug = .debug
   )
 }
+#' @keywords internal
 .get_cp_uns_loc_gate_combn_prejoin_non_not <- function() {
   list("cp" = list(), "p_list" = list())
 }
 
+#' @keywords internal
 .get_cp_uns_loc_gate_combn_prejoin_non_actual <- function(ex_list_no_min_stim,
                                                           ex_list_orig,
                                                           ex_tbl_uns_bias,
@@ -372,12 +386,14 @@
   list("cp" = cp_uns_list_nonjoin, "p_list" = list())
 }
 
+#' @keywords internal
 .arrange_samples_by_desc_expr <- function(ex_list) {
   # arrange in descending order of expression
   ex_list |>
     purrr::map(function(x) x[order(.get_cut(x)), ]) # nolint
 }
 
+#' @keywords internal
 .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn <- function(.debug,
                                                                 cp_uns_list_nonjoin, # nolint
                                                                 non_prejoin_combn_vec) { # nolint
@@ -398,6 +414,7 @@
 #
 # Calculate the cutpoint for each
 # Get unstim-based cutpoint for samples using local FDR
+#' @keywords internal
 .get_cp_uns_loc_sample <- function(ex_list_orig,
                                    ex_list_no_min_stim,
                                    ex_tbl_uns_bias,
@@ -469,6 +486,7 @@
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_sample_check_cell_number <- function(ex_tbl_stim_no_min,
                                                      min_cell,
                                                      ex_tbl_uns_bias) {
@@ -476,6 +494,7 @@
     nrow(ex_tbl_uns_bias) < min_cell
 }
 
+#' @keywords internal
 .get_cp_uns_loc_sample_uns_rm_cyt_pos <- function(.debug,
                                                   ex_tbl_uns_orig,
                                                   gate_tbl,
@@ -527,11 +546,13 @@
   )[[1]]
 }
 
+#' @keywords internal
 .get_cp_uns_loc_p_list_empty <- function() {
   lapply(seq_len(3), function(x) list()) |>
     stats::setNames(c("p_loc_dens", "p_loc_prob", "p_loc_ctb"))
 }
 
+#' @keywords internal
 .get_cp_uns_loc_ind <- function(ex_tbl_uns_bias, # was cut_unstim
                                 ex_tbl_stim_no_min, # was cut_stim
                                 bw_min,
@@ -588,23 +609,28 @@
 
 # initial checks
 # ---------------------
+#' @keywords internal
 .get_cp_uns_loc_ind_check_n_cell <- function(ex_tbl_stim_no_min, min_cell) {
   nrow(ex_tbl_stim_no_min) < min_cell
 }
 
+#' @keywords internal
 .get_cp_uns_loc_ind_max_dens_x <- function(ex_tbl_stim_no_min) {
   max(.get_cut(ex_tbl_stim_no_min)) - 0.05 * (diff(range(.get_cut(ex_tbl_stim_no_min))))
 }
 
+#' @keywords internal
 .get_cp_uns_loc_ind_check_max_x <- function(ex_tbl_stim_no_min, cp_min) {
   .get_cp_uns_loc_ind_max_dens_x(ex_tbl_stim_no_min) <= cp_min
 }
 
+#' @keywords internal
 .get_cp_uns_loc_check_early <- function(ex_tbl_stim_no_min, min_cell, cp_min) {
   .get_cp_uns_loc_ind_check_n_cell(ex_tbl_stim_no_min, min_cell) ||
     .get_cp_uns_loc_ind_check_max_x(ex_tbl_stim_no_min, cp_min)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_ind_check_out <- function(cp_min,
                                           ex_tbl_stim_no_min,
                                           ex_tbl_uns_bias,
@@ -619,6 +645,7 @@
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_ind_cp_non_loc <- function(cp_min,
                                            ex_tbl_stim_no_min,
                                            ex_tbl_uns_bias) {
@@ -636,12 +663,14 @@
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_set_max_expr <- function(.data, max_x) {
   .data[, attr(.data, "chnl_cut")] <- pmin(.get_cut(.data), max_x)
   .data
 }
 
 # get probabilities
+#' @keywords internal
 .get_cp_uns_loc_get_prob <- function(ex_tbl_stim_no_min,
                                      ex_tbl_stim_threshold,
                                      ex_tbl_uns_threshold,
@@ -673,6 +702,7 @@
 
 # get dens_tbl_raw
 # -----------------------
+#' @keywords internal
 .get_cp_uns_loc_get_dens_raw <- function(ex_tbl_stim_threshold,
                                          ex_tbl_uns_threshold,
                                          .debug,
@@ -692,6 +722,7 @@
   ) # nolint
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_dens_raw_densities <- function(ex_tbl_stim_threshold,
                                                    ex_tbl_uns_threshold,
                                                    .debug,
@@ -708,6 +739,7 @@
   list(stim = dens_stim, uns = dens_uns, bw = bw)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_dens_raw_densities_bw <- function(ex_tbl_stim_threshold,
                                                       ex_tbl_uns_threshold,
                                                       bw_min) {
@@ -724,11 +756,13 @@
   min(bw_min * 1.5, bw_init)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_dens_raw_densities_bw_init <- function(.data, bw_min) {
   bw_calc <- try(density(.data, bw = "SJ")$bw)
   if (inherits(bw_calc, "try-error")) bw_min else bw_calc
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_dens_raw_densities_stim <- function(ex_tbl_stim_threshold,
                                                         bw) {
   dens_obj <- density(.get_cut(ex_tbl_stim_threshold), bw = bw)
@@ -738,6 +772,7 @@
   dens_obj$y <- dens_obj$y * attr(ex_tbl_stim_threshold, "prob_g_min")
   dens_obj
 }
+#' @keywords internal
 .get_cp_uns_loc_get_dens_raw_densities_uns <- function(ex_tbl_uns_threshold,
                                                        dens_stim,
                                                        bw) {
@@ -752,6 +787,7 @@
   dens_obj
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_dens_raw_tabulate <- function(stim_x,
                                                   stim_y,
                                                   uns_x,
@@ -763,6 +799,7 @@
   .get_cp_uns_loc_get_dens_raw_tabulate_format(dens_tbl_raw_wide)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_dens_raw_tabulate_uns_interp <- function(.data,
                                                              uns_x,
                                                              uns_y) {
@@ -773,6 +810,7 @@
     ))
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_dens_raw_tabulate_format <- function(.data) {
   .data |>
     tidyr::pivot_longer(y_stim:y_uns, names_to = "stim", values_to = "dens") |> # nolint
@@ -783,6 +821,7 @@
 # -------------------
 
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_tbl <- function(dens_tbl_raw,
                                          .debug,
                                          cp_min,
@@ -803,6 +842,7 @@
   list(all = prob_tbl, pos = prob_tbl_pos)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_tbl_init <- function(dens_tbl_raw, cp_min) {
   dens_tbl_raw |>
     tidyr::pivot_wider(
@@ -817,6 +857,7 @@
     dplyr::filter(x_stim > cp_min)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_prob_tbl_filter <- function(ex_vec_stim_threshold,
                                             ex_vec_uns_threshold,
                                             prob_tbl,
@@ -894,15 +935,18 @@
     )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_min_prob_x <- function(prob_tbl_pos) {
   min(prob_tbl_pos$x_stim)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_check_response <- function(prob_tbl_pos, ex_tbl_stim_orig) {
   nrow(prob_tbl_pos) == 0 ||
     max(.get_cut(ex_tbl_stim_orig)) < .get_cp_uns_loc_get_min_prob_x(prob_tbl_pos)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_data_mod <- function(ex_tbl_stim_threshold,
                                          ex_tbl_stim_no_min,
                                          ex_tbl_uns_threshold,
@@ -951,6 +995,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 # smooth
 # ---------------------
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth <- function(data_mod, .debug) {
   # enough cells to bother smoothing
   if (!.get_cp_uns_loc_get_prob_smooth_check_n_cell(data_mod)) {
@@ -962,6 +1007,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   data_mod |> dplyr::mutate(pred = pred_vec)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth_check_n_cell <- function(data_mod) {
   # it's already the cutpoint, possibly, so check
   # if it's a dataframe first and then that
@@ -969,6 +1015,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   is.data.frame(data_mod) && nrow(data_mod) > 10
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth_check_n_cell_out <- function(data_mod) {
   if (is.data.frame(data_mod)) {
     data_mod |> dplyr::mutate(pred = prob_smooth - 1e-4) # nolint
@@ -978,6 +1025,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   }
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth_actual <- function(data_mod, .debug) {
   fit_1 <- .get_cp_uns_loc_get_prob_smooth_actual_first(data_mod, .debug)
   .get_cp_uns_loc_get_prob_smooth_actual_first_response(
@@ -985,6 +1033,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth_actual_first <- function(data_mod, .debug) {
   .debug_msg(.debug, "Smoothing I") # nolint
   try(
@@ -1015,6 +1064,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth_actual_first_response <- function(fit,
                                                                   data_mod,
                                                                   .debug) {
@@ -1031,6 +1081,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth_actual_check <- function(fit, data_mod) {
   if (inherits(fit, "try-error")) {
     return(FALSE)
@@ -1041,6 +1092,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   !(all(out_list$pred > 0.99) || out_list$mean_abs_error > 0.3) # nolint
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth_actual_response_success <- function(fit, # nolint
                                                                     data_mod) { # nolint
   pred_vec <- predict(fit, type = "response")
@@ -1048,6 +1100,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   list("pred" = pred_vec, "mean_abs_error" = mean_abs_error)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth_actual_first_response_failure <- function(.debug, # nolint
                                                                           data_mod) { # nolint
   fit_2 <- .get_cp_uns_loc_get_prob_smooth_actual_second(data_mod, .debug)
@@ -1060,6 +1113,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   .get_cp_uns_loc_get_prob_smooth_actual_third(data_mod, .debug)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth_actual_second <- function(data_mod, .debug) {
   .debug_msg(.debug, "Smoothing II") # nolint
   try(
@@ -1082,6 +1136,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_prob_smooth_actual_third <- function(data_mod, .debug) {
   .debug_msg(.debug, "Failed to smooth") # nolint
   data_mod$prob_smooth - 0.0001
@@ -1093,6 +1148,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 
 
 # get cp
+#' @keywords internal
 .get_cp_uns_loc_get_cp <- function(data_mod,
                                    ex_tbl_stim_orig,
                                    .debug,
@@ -1119,6 +1175,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   list("cp" = cp, "p_list" = .get_cp_uns_loc_p_list_empty())
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_cp_data_threshold <- function(data_mod,
                                                   ex_tbl_stim_orig,
                                                   ex_tbl_stim_no_min,
@@ -1139,6 +1196,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_cp_data_threshold_count <- function(data_mod) {
   if (nrow(data_mod) == 1L) {
     min_val <- min(.get_cut(data_mod)) - 1
@@ -1153,11 +1211,13 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     dplyr::select(-n_row)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_cp_data_threshold_prop_bs_est <- function(data_count,
                                                               ex_tbl_stim_orig) { # nolint
   sum(data_count$pred) / nrow(ex_tbl_stim_orig)
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_cp_data_threshold_actual <- function(data_count,
                                                          prop_bs_est,
                                                          ex_tbl_stim_orig,
@@ -1187,6 +1247,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_get_cp_actual <- function(data_threshold,
                                           ex_tbl_stim_no_min,
                                           ex_tbl_uns_bias,
@@ -1204,6 +1265,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     .get_cut()
 }
 
+#' @keywords internal
 .get_cp_uns_loc_output <- function(.debug,
                                    cp_uns_loc_obj_list,
                                    ind_uns,
@@ -1222,6 +1284,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   )
 }
 
+#' @keywords internal
 .get_cp_uns_loc_sample_cp_rep <- function(.debug,
                                           cp_uns_loc_obj_list,
                                           ind_uns,

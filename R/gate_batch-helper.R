@@ -1,3 +1,4 @@
+#' @keywords internal
 .gate_batch_all <- function(.debug,
                             ind_batch,
                             batch,
@@ -67,12 +68,14 @@
   .gate_batch_tbl(gate_list, attr(ex_list[[1]], "batch"), .debug) # nolint
 }
 
+#' @keywords internal
 .gate_batch_tbl <- function(gate_list, batch, .debug) {
   purrr::map_df(seq_along(gate_list), function(i) {
     .gate_batch_tbl_along_type(gate_list, batch, i, .debug)
   })
 }
 
+#' @keywords internal
 .gate_batch_tbl_along_type <- function(gate_list, batch, i, .debug) {
   .debug_msg(.debug, "gate list index", i) # nolint
   cp_list <- .gate_batch_tbl_cp(gate_list[[i]])
@@ -82,6 +85,7 @@
   })
 }
 
+#' @keywords internal
 .gate_batch_tbl_along_combn <- function(cp_list,
                                         gate_type,
                                         batch,
@@ -100,10 +104,12 @@
   )
 }
 
+#' @keywords internal
 .gate_batch_tbl_name <- function(gate_type, gate_combn) {
   paste0(gate_type, "_", gate_combn)
 }
 
+#' @keywords internal
 .gate_batch_tbl_cp <- function(gate_list_elem) {
   if (!"cp" %in% names(gate_list_elem)) {
     return(gate_list_elem)
@@ -111,20 +117,25 @@
   gate_list_elem[["cp"]]
 }
 
+#' @keywords internal
 .gate_batch_tbl_type <- function(gate_list, i) {
   names(gate_list)[i]
 }
+#' @keywords internal
 .gate_batch_tbl_combn <- function(cp_list, j) {
   names(cp_list)[[j]]
 }
 
+#' @keywords internal
 .gate_batch_tbl_ind <- function(cp_list, j) {
   as.character(names(cp_list[[j]]))
 }
+#' @keywords internal
 .gate_batch_tbl_gate <- function(cp_list, j) {
   cp_list[[j]]
 }
 
+#' @keywords internal
 .gate_batch_tbl_use <- function(gate_type) {
   if (grepl("tg_ctrl_", gate_type)) {
     return("ctrl")
@@ -132,6 +143,7 @@
   if (grepl("tg_clust", gate_type)) "tg_clust" else "gate"
 }
 
+#' @keywords internal
 .gate_batch_single <- function(.debug,
                                ind_batch,
                                batch,
@@ -317,6 +329,7 @@
     dplyr::mutate(ind = as.numeric(ind)) # nolint
 }
 
+#' @keywords internal
 .gate_batch_single_tbl_format <- function(gate_tbl) {
   gate_tbl <- gate_tbl |>
     dplyr::mutate(
@@ -335,6 +348,7 @@
     ))
 }
 
+#' @keywords internal
 .gate_batch_single_tbl_format_method <- function(gate_name) {
   gate_method <- ifelse(
     stringr::str_detect(gate_name, "loc"), "loc", NA # nolint
@@ -347,6 +361,7 @@
   )
 }
 
+#' @keywords internal
 .gate_batch_single_tbl_format_combn <- function(gate_name) {
   purrr::map_chr(gate_name, function(x) {
     if (stringr::str_detect(x, "_no")) {
