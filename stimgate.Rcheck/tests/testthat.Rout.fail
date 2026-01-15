@@ -1,0 +1,636 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(testthat)
+> library(stimgate)
+> 
+> test_check("stimgate")
+Saving _problems/test-axis_limits-15.R
+Saving _problems/test-axis_limits-22.R
+Saving _problems/test-axis_limits-43.R
+Saving _problems/test-axis_limits-55.R
+Saving _problems/test-axis_limits-65.R
+Saving _problems/test-axis_limits-81.R
+Saving _problems/test-axis_limits-111.R
+Saving _problems/test-axis_limits-117.R
+Saving _problems/test-axis_limits-130.R
+Saving _problems/test-axis_limits-136.R
+Saving _problems/test-axis_limits-149.R
+Saving _problems/test-axis_limits-155.R
+Saving _problems/test-fcs_write-50.R
+Saving _problems/test-fcs_write-79.R
+Saving _problems/test-fcs_write-116.R
+Saving _problems/test-fcs_write-137.R
+Saving _problems/test-fcs_write-170.R
+Saving _problems/test-fcs_write-186.R
+Saving _problems/test-fcs_write-237.R
+Saving _problems/test-fcs_write-257.R
+Saving _problems/test-fcs_write-271.R
+Saving _problems/test-fcs_write-307.R
+Saving _problems/test-fcs_write-328.R
+Saving _problems/test-fcs_write-366.R
+Saving _problems/test-fcs_write-397.R
+Saving _problems/test-fcs_write-430.R
+Saving _problems/test-fcs_write-461.R
+Saving _problems/test-fcs_write-523.R
+Saving _problems/test-fcs_write-617.R
+Saving _problems/test-gate-get-29.R
+Saving _problems/test-gate-get-33.R
+Saving _problems/test-gate-get-36.R
+Saving _problems/test-gate-get-39.R
+Saving _problems/test-gate-get-42.R
+debugging in: .chnl_lab(.data)
+debug: {
+    adf <- switch(class(.data)[1], GatingSet = {
+        gh <- .data[[1]]
+        fr <- flowWorkspace::gh_pop_get_data(gh)
+        flowCore::parameters(fr)@data
+    }, GatingHierarchy = {
+        fr <- flowWorkspace::gh_pop_get_data(.data)
+        flowCore::parameters(fr)@data
+    }, flowFrame = flowCore::parameters(.data)@data, flowSet = flowCore::parameters(.data[[1]])@data, 
+        cytoframe = flowCore::parameters(.data)@data, cytoset = flowCore::parameters(.data[[1]])@data, 
+        stop(paste0("Unsupported data class: ", class(.data)[1])))
+    lab_vec <- setNames(adf$desc, adf$name)
+    for (i in seq_along(lab_vec)) {
+        if (is.na(lab_vec[i])) {
+            lab_vec[i] <- names(lab_vec)[i]
+        }
+    }
+    lab_vec
+}
+Saving _problems/test-run-14.R
+[ FAIL 36 | WARN 4 | SKIP 1 | PASS 158 ]
+
+══ Skipped tests (1) ═══════════════════════════════════════════════════════════
+• prejoin gate combination has a bug causing 'object count_stim not found'
+  error (1): 'test-coverage-gaps.R:57:3'
+
+══ Warnings ════════════════════════════════════════════════════════════════════
+── Warning ('test-coverage-gaps.R:63:3'): stimgate_gate runs with gate_combn = 'mean' ──
+replacing previous import 'S4Arrays::makeNindexFromArrayViewport' by 'DelayedArray::makeNindexFromArrayViewport' when loading 'SummarizedExperiment'
+Backtrace:
+     ▆
+  1. └─testthat::skip_if_not_installed("HDCytoData") at test-coverage-gaps.R:63:3
+  2.   └─base::requireNamespace(pkg, quietly = TRUE)
+  3.     ├─base::tryCatch(loadNamespace(package, ...), error = function(e) e)
+  4.     │ └─base (local) tryCatchList(expr, classes, parentenv, handlers)
+  5.     │   └─base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+  6.     │     └─base (local) doTryCatch(return(expr), name, parentenv, handler)
+  7.     └─base::loadNamespace(package, ...)
+  8.       ├─base::namespaceImportFrom(...)
+  9.       │ └─base::asNamespace(ns)
+ 10.       └─base::loadNamespace(j <- i[[1L]], c(lib.loc, .libPaths()), versionCheck = vI[[j]])
+ 11.         └─base::namespaceImport(...)
+ 12.           └─base::namespaceImportFrom(...)
+── Warning ('test-gate-get.R:36:3'): stimgate_gate_get returns gate table after stimgate_gate ──
+Unknown or uninitialised column: `gate`.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_true(is.numeric(gate_tbl$gate)) at test-gate-get.R:36:3
+ 2. │ └─testthat::quasi_label(enquo(object), label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. ├─gate_tbl$gate
+ 5. └─tibble:::`$.tbl_df`(gate_tbl, gate)
+── Warning ('test-gate-get.R:39:3'): stimgate_gate_get returns gate table after stimgate_gate ──
+Unknown or uninitialised column: `chnl`.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_true(all(example_data$marker %in% gate_tbl$chnl)) at test-gate-get.R:39:3
+ 2. │ └─testthat::quasi_label(enquo(object), label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. ├─example_data$marker %in% gate_tbl$chnl
+ 5. ├─gate_tbl$chnl
+ 6. └─tibble:::`$.tbl_df`(gate_tbl, chnl)
+── Warning ('test-gate-get.R:42:3'): stimgate_gate_get returns gate table after stimgate_gate ──
+Unknown or uninitialised column: `ind`.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_true(length(unique(gate_tbl$ind)) > 1) at test-gate-get.R:42:3
+ 2. │ └─testthat::quasi_label(enquo(object), label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. ├─base::unique(gate_tbl$ind)
+ 5. ├─gate_tbl$ind
+ 6. └─tibble:::`$.tbl_df`(gate_tbl, ind)
+
+══ Failed tests ════════════════════════════════════════════════════════════════
+── Failure ('test-axis_limits.R:12:3'): axis_limits works ──────────────────────
+Expected `length(p_adj$layers)` to be identical to 2L.
+Differences:
+1/1 mismatches
+[1] 0 - 2 == -2
+── Failure ('test-axis_limits.R:16:3'): axis_limits works ──────────────────────
+Expected `p_adj$layers[[2]]$data` to be identical to `data.frame(x = c(-10000, -10000), y = c(-10000, -10000))`.
+Differences:
+target is NULL, current is data.frame
+── Failure ('test-axis_limits.R:37:3'): axis_limits works ──────────────────────
+Expected `p_adj$layers[[2]]$data` to be identical to `data.frame(x = c(-500, 10000), y = c(-500, 10000))`.
+Differences:
+target is NULL, current is data.frame
+── Failure ('test-axis_limits.R:50:3'): axis_limits works ──────────────────────
+Expected `p_adj$layers[[2]]$data` to be identical to `data.frame(x = c(-500, 10000))`.
+Differences:
+target is NULL, current is data.frame
+── Failure ('test-axis_limits.R:60:3'): axis_limits works ──────────────────────
+Expected `p_adj$layers[[2]]$data` to be identical to `data.frame(y = c(-500, 10000))`.
+Differences:
+target is NULL, current is data.frame
+── Failure ('test-axis_limits.R:75:3'): axis_limits works ──────────────────────
+Expected `p_adj$layers[[2]]$data` to be identical to `data.frame(y = c(-500, 10000), x = c(-10000, 20000))`.
+Differences:
+target is NULL, current is data.frame
+── Failure ('test-axis_limits.R:107:3'): axis_limits works ─────────────────────
+Expected `as.numeric(p_adj$layers[[2]]$data[1, ])` to be identical to `c(-10000, -10000)`.
+Differences:
+Lengths differ: 0 is not 2
+── Failure ('test-axis_limits.R:112:3'): axis_limits works ─────────────────────
+Expected `round(as.numeric(p_adj$layers[[2]]$data[2, ]))` to be identical to `c(9222, 9222)`.
+Differences:
+Lengths differ: 0 is not 2
+── Failure ('test-axis_limits.R:126:3'): axis_limits works ─────────────────────
+Expected `as.numeric(p_adj$layers[[2]]$data[1, ])` to be identical to `c(1, 1)`.
+Differences:
+Lengths differ: 0 is not 2
+── Failure ('test-axis_limits.R:131:3'): axis_limits works ─────────────────────
+Expected `round(as.numeric(p_adj$layers[[2]]$data[2, ]))` to be identical to `c(10000, 9222)`.
+Differences:
+Lengths differ: 0 is not 2
+── Failure ('test-axis_limits.R:145:3'): axis_limits works ─────────────────────
+Expected `as.numeric(p_adj$layers[[2]]$data[1, ])` to be identical to `c(1, 1)`.
+Differences:
+Lengths differ: 0 is not 2
+── Failure ('test-axis_limits.R:150:3'): axis_limits works ─────────────────────
+Expected `round(as.numeric(p_adj$layers[[2]]$data[2, ]))` to be identical to `c(10000, 9222)`.
+Differences:
+Lengths differ: 0 is not 2
+── Error ('test-fcs_write.R:44:3'): stimgate_fcs_write runs with basic parameters ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:44:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:73:3'): stimgate_fcs_write handles directory creation and cleanup ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:73:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:109:5'): stimgate_fcs_write works with different gate_uns_method options ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:109:5
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:130:3'): stimgate_fcs_write works with mult parameter ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:130:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:162:3'): stimgate_fcs_write works with different gate types ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:162:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:180:3'): stimgate_fcs_write validates output file contents ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:180:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:230:3'): stimgate_fcs_write works with pre-provided gate table ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `purrr::map_chr(chnl_cut, function(cut_curr) {     adf_data[["desc"]][[which(adf_data$name == cut_curr)]] })`: ℹ In index: 1.
+Caused by error in `adf_data[["desc"]][[which(adf_data$name == cut_curr)]]`:
+! attempt to select less than one element in get1index
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:230:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   ├─dplyr::distinct(...)
+  4. │   └─stimgate:::.fcs_write_get_gate_tbl_add_marker(...)
+  5. │     └─stimgate:::.get_labs(.data = .data[[1]], chnl_cut = chnl)
+  6. │       ├─stats::setNames(...)
+  7. │       └─purrr::map_chr(...)
+  8. │         └─purrr:::map_("character", .x, .f, ..., .progress = .progress)
+  9. │           ├─purrr:::with_indexed_errors(...)
+ 10. │           │ └─base::withCallingHandlers(...)
+ 11. │           ├─purrr:::call_with_cleanup(...)
+ 12. │           └─stimgate (local) .f(.x[[i]], ...)
+ 13. └─base::.handleSimpleError(...)
+ 14.   └─purrr (local) h(simpleError(msg, call))
+ 15.     └─cli::cli_abort(...)
+ 16.       └─rlang::abort(...)
+── Failure ('test-fcs_write.R:247:3'): stimgate_fcs_write handles invalid gate_uns_method ──
+`stimgate::stimgate_fcs_write(...)` threw an error with unexpected message.
+Expected match: "gate_uns_method not recognised"
+Actual message: "ℹ In index: 1.\nCaused by error in `.f()`:\n! Gate table not found for channel: BC1"
+Backtrace:
+     ▆
+  1. ├─testthat::expect_error(...) at test-fcs_write.R:247:3
+  2. │ └─testthat:::quasi_capture(...)
+  3. │   ├─testthat (local) .capture(...)
+  4. │   │ └─base::withCallingHandlers(...)
+  5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+  6. ├─stimgate::stimgate_fcs_write(...)
+  7. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  8. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  9. │     └─purrr::map_df(...)
+ 10. │       └─purrr::map(.x, .f, ...)
+ 11. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+ 12. │           ├─purrr:::with_indexed_errors(...)
+ 13. │           │ └─base::withCallingHandlers(...)
+ 14. │           ├─purrr:::call_with_cleanup(...)
+ 15. │           └─stimgate (local) .f(.x[[i]], ...)
+ 16. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 17. └─base::.handleSimpleError(...)
+ 18.   └─purrr (local) h(simpleError(msg, call))
+ 19.     └─cli::cli_abort(...)
+ 20.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:265:3'): stimgate_fcs_write works with channel filtering ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:265:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:299:3'): stimgate_fcs_write handles transformation parameters ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:299:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:322:3'): stimgate_fcs_write preserves file metadata ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:322:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:359:5'): stimgate_fcs_write handles combination exclusions ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:359:5
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:391:3'): stimgate_fcs_write creates consistent file names ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:391:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:421:3'): stimgate_fcs_write message output ─────────
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─testthat::expect_message(...) at test-fcs_write.R:421:3
+  2. │ └─testthat:::quasi_capture(enquo(object), label, capture_messages)
+  3. │   ├─testthat (local) .capture(...)
+  4. │   │ └─base::withCallingHandlers(...)
+  5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+  6. ├─stimgate::stimgate_fcs_write(...)
+  7. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  8. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  9. │     └─purrr::map_df(...)
+ 10. │       └─purrr::map(.x, .f, ...)
+ 11. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+ 12. │           ├─purrr:::with_indexed_errors(...)
+ 13. │           │ └─base::withCallingHandlers(...)
+ 14. │           ├─purrr:::call_with_cleanup(...)
+ 15. │           └─stimgate (local) .f(.x[[i]], ...)
+ 16. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 17. └─base::.handleSimpleError(...)
+ 18.   └─purrr (local) h(simpleError(msg, call))
+ 19.     └─cli::cli_abort(...)
+ 20.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:451:3'): stimgate_fcs_write handles edge case: empty data ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `purrr::map_chr(chnl_cut, function(cut_curr) {     adf_data[["desc"]][[which(adf_data$name == cut_curr)]] })`: ℹ In index: 1.
+Caused by error in `adf_data[["desc"]][[which(adf_data$name == cut_curr)]]`:
+! attempt to select less than one element in get1index
+Backtrace:
+     ▆
+  1. ├─testthat::expect_message(...) at test-fcs_write.R:451:3
+  2. │ └─testthat:::quasi_capture(enquo(object), label, capture_messages)
+  3. │   ├─testthat (local) .capture(...)
+  4. │   │ └─base::withCallingHandlers(...)
+  5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+  6. ├─stimgate::stimgate_fcs_write(...)
+  7. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  8. │   ├─dplyr::distinct(...)
+  9. │   └─stimgate:::.fcs_write_get_gate_tbl_add_marker(...)
+ 10. │     └─stimgate:::.get_labs(.data = .data[[1]], chnl_cut = chnl)
+ 11. │       ├─stats::setNames(...)
+ 12. │       └─purrr::map_chr(...)
+ 13. │         └─purrr:::map_("character", .x, .f, ..., .progress = .progress)
+ 14. │           ├─purrr:::with_indexed_errors(...)
+ 15. │           │ └─base::withCallingHandlers(...)
+ 16. │           ├─purrr:::call_with_cleanup(...)
+ 17. │           └─stimgate (local) .f(.x[[i]], ...)
+ 18. └─base::.handleSimpleError(...)
+ 19.   └─purrr (local) h(simpleError(msg, call))
+ 20.     └─cli::cli_abort(...)
+ 21.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:517:3'): stimgate_fcs_write integrates with stimgate workflow ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:517:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:571:5'): stimgate_fcs_write respects working directory ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─base::tryCatch(...) at test-fcs_write.R:565:3
+  2. │ └─base (local) tryCatchList(expr, classes, parentenv, handlers)
+  3. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:571:5
+  4. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  5. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  6. │     └─purrr::map_df(...)
+  7. │       └─purrr::map(.x, .f, ...)
+  8. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  9. │           ├─purrr:::with_indexed_errors(...)
+ 10. │           │ └─base::withCallingHandlers(...)
+ 11. │           ├─purrr:::call_with_cleanup(...)
+ 12. │           └─stimgate (local) .f(.x[[i]], ...)
+ 13. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 14. └─base::.handleSimpleError(...)
+ 15.   └─purrr (local) h(simpleError(msg, call))
+ 16.     └─cli::cli_abort(...)
+ 17.       └─rlang::abort(...)
+── Error ('test-fcs_write.R:609:3'): stimgate_fcs_write handles transformation edge cases ──
+<purrr_error_indexed/rlang_error/error/condition>
+Error in `map(.x, .f, ...)`: ℹ In index: 1.
+Caused by error in `.f()`:
+! Gate table not found for channel: BC1
+Backtrace:
+     ▆
+  1. ├─stimgate::stimgate_fcs_write(...) at test-fcs_write.R:609:3
+  2. │ └─stimgate:::.fcs_write_get_gate_tbl(...)
+  3. │   └─stimgate:::.fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+  4. │     └─purrr::map_df(...)
+  5. │       └─purrr::map(.x, .f, ...)
+  6. │         └─purrr:::map_("list", .x, .f, ..., .progress = .progress)
+  7. │           ├─purrr:::with_indexed_errors(...)
+  8. │           │ └─base::withCallingHandlers(...)
+  9. │           ├─purrr:::call_with_cleanup(...)
+ 10. │           └─stimgate (local) .f(.x[[i]], ...)
+ 11. │             └─base::stop(paste0("Gate table not found for channel: ", chnl_curr))
+ 12. └─base::.handleSimpleError(...)
+ 13.   └─purrr (local) h(simpleError(msg, call))
+ 14.     └─cli::cli_abort(...)
+ 15.       └─rlang::abort(...)
+── Failure ('test-gate-get.R:29:3'): stimgate_gate_get returns gate table after stimgate_gate ──
+Expected `nrow(gate_tbl) > 0` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+── Failure ('test-gate-get.R:33:3'): stimgate_gate_get returns gate table after stimgate_gate ──
+Expected `all(expected_cols %in% colnames(gate_tbl))` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+── Failure ('test-gate-get.R:36:3'): stimgate_gate_get returns gate table after stimgate_gate ──
+Expected `is.numeric(gate_tbl$gate)` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+── Failure ('test-gate-get.R:39:3'): stimgate_gate_get returns gate table after stimgate_gate ──
+Expected `all(example_data$marker %in% gate_tbl$chnl)` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+── Failure ('test-gate-get.R:42:3'): stimgate_gate_get returns gate table after stimgate_gate ──
+Expected `length(unique(gate_tbl$ind)) > 1` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+── Error ('test-run.R:8:3'): stimgate_gate runs ────────────────────────────────
+Error in `.chnl_lab(.data)`: non-interactive browser() -- left over from debugging?
+Backtrace:
+    ▆
+ 1. └─stimgate::stimgate_gate(...) at test-run.R:8:3
+ 2.   └─stimgate:::.save_meta_data(.data, batch_list, path_project)
+ 3.     └─stimgate:::.save_meta_data_chnl_lab(.data, path_dir_meta_data)
+ 4.       └─stimgate:::.chnl_lab(.data)
+
+[ FAIL 36 | WARN 4 | SKIP 1 | PASS 158 ]
+Error:
+! Test failures.
+Execution halted

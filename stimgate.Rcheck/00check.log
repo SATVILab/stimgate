@@ -1,0 +1,146 @@
+* using log directory ‘/home/runner/work/stimgate/stimgate/stimgate.Rcheck’
+* using R version 4.5.2 (2025-10-31)
+* using platform: x86_64-pc-linux-gnu
+* R was compiled by
+    gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0
+    GNU Fortran (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0
+* running under: Ubuntu 24.04.3 LTS
+* using session charset: UTF-8
+* using option ‘--as-cran’
+* checking for file ‘stimgate/DESCRIPTION’ ... OK
+* checking extension type ... Package
+* this is package ‘stimgate’ version ‘0.99.2-4’
+* package encoding: UTF-8
+* checking CRAN incoming feasibility ... NOTE
+Maintainer: ‘Miguel Rodo <miguel.rodo@uct.ac.za>’
+
+New submission
+
+Unknown, possibly misspelled, fields in DESCRIPTION:
+  ‘VignetteEngine’
+
+Package has a FOSS license but eventually depends on the following
+package which may restrict use:
+  ncdfFlow
+
+Found the following (possibly) invalid URLs:
+  URL: https://app.codecov.io/gh/SATVILab/stimgate
+    From: README.md
+    Status: Error
+    Message: libcurl error code 6:
+      	Could not resolve host: app.codecov.io
+
+Found the following (possibly) invalid ORCID iD:
+  iD: 0000-0002-2036-4878	(from: DESCRIPTION)
+
+The Title field should be in title case. Current version is:
+  ‘Identify responding cells as outliers’
+In title case that is:
+  ‘Identify Responding Cells as Outliers’
+* checking package namespace information ... OK
+* checking package dependencies ... OK
+* checking if this is a source package ... OK
+* checking if there is a namespace ... OK
+* checking for executable files ... OK
+* checking for hidden files and directories ... OK
+* checking for portable file names ... OK
+* checking for sufficient/correct file permissions ... OK
+* checking whether package ‘stimgate’ can be installed ... WARNING
+Found the following significant warnings:
+  Note: possible error in 'logical(n = 1)': unused argument (n = 1) 
+See ‘/home/runner/work/stimgate/stimgate/stimgate.Rcheck/00install.out’ for details.
+Information on the location(s) of code generating the ‘Note’s can be
+obtained by re-running with environment variable R_KEEP_PKG_SOURCE set
+to ‘yes’.
+* checking installed package size ... OK
+* checking package directory ... OK
+* checking for future file timestamps ... OK
+* checking DESCRIPTION meta-information ... OK
+* checking top-level files ... OK
+* checking for left-over files ... OK
+* checking index information ... OK
+* checking package subdirectories ... OK
+* checking code files for non-ASCII characters ... OK
+* checking R files for syntax errors ... OK
+* checking whether the package can be loaded ... OK
+* checking whether the package can be loaded with stated dependencies ... OK
+* checking whether the package can be unloaded cleanly ... OK
+* checking whether the namespace can be loaded with stated dependencies ... OK
+* checking whether the namespace can be unloaded cleanly ... OK
+* checking loading without being on the library search path ... OK
+* checking use of S3 registration ... OK
+* checking dependencies in R code ... WARNING
+Missing or unexported object: ‘stats::setDimnames’
+* checking S3 generic/method consistency ... OK
+* checking replacement functions ... OK
+* checking foreign function calls ... OK
+* checking R code for possible problems ... [18s/14s] NOTE
+stimgate_gate: warning in .gate_init(pop_gate = pop_gate, chnl =
+  chnl_settings, .data = .data, ind_batch_list = batch_list,
+  path_project = path_project, noise_sd = NULL, max_pos_prob_x =
+  max_pos_prob_x, gate_quant = gate_quant, tol_clust = tol_clust,
+  tol_gate_single = tol_clust * 0.1, calc_cyt_pos_gates =
+  calc_cyt_pos_gates, .debug = .debug): partial argument match of
+  'chnl' to 'chnl_settings'
+.data_get_ex_cyt_pos: possible error in logical(n = 1): unused argument
+  (n = 1)
+.fcs_write_get_gate_tbl_add_uns_get_uns_impl: no visible binding for
+  global variable ‘concat’
+.fcs_write_get_gate_tbl_add_uns_get_uns_impl: no visible binding for
+  global variable ‘gate_concat’
+get_example_data: no visible global function definition for
+  ‘parameters’
+Undefined global functions or variables:
+  concat gate_concat parameters
+* checking Rd files ... OK
+* checking Rd metadata ... OK
+* checking Rd line widths ... OK
+* checking Rd cross-references ... OK
+* checking for missing documentation entries ... OK
+* checking for code/documentation mismatches ... OK
+* checking Rd \usage sections ... OK
+* checking Rd contents ... OK
+* checking for unstated dependencies in examples ... OK
+* checking examples ... [43s/48s] NOTE
+Examples with CPU (user + system) or elapsed time > 5s
+                    user system elapsed
+get_stats         15.319  0.645  19.351
+stimgate_gate      5.465  0.167   6.179
+stimgate_plot      5.195  0.188   5.925
+stimgate_gate_get  4.376  0.177   5.085
+* checking examples with --run-donttest ... [43s/45s] OK
+* checking for unstated dependencies in ‘tests’ ... OK
+* checking tests ... [79s/85s] ERROR
+  Running ‘testthat.R’ [79s/84s]
+Running the tests in ‘tests/testthat.R’ failed.
+Last 13 lines of output:
+  `expected`: TRUE 
+  
+  ── Error ('test-run.R:8:3'): stimgate_gate runs ────────────────────────────────
+  Error in `.chnl_lab(.data)`: non-interactive browser() -- left over from debugging?
+  Backtrace:
+      ▆
+   1. └─stimgate::stimgate_gate(...) at test-run.R:8:3
+   2.   └─stimgate:::.save_meta_data(.data, batch_list, path_project)
+   3.     └─stimgate:::.save_meta_data_chnl_lab(.data, path_dir_meta_data)
+   4.       └─stimgate:::.chnl_lab(.data)
+  
+  [ FAIL 36 | WARN 4 | SKIP 1 | PASS 158 ]
+  Error:
+  ! Test failures.
+  Execution halted
+* checking PDF version of manual ... WARNING
+LaTeX errors when creating PDF version.
+This typically indicates Rd problems.
+* checking PDF version of manual without index ... ERROR
+Re-running with no redirection of stdout/stderr.
+* checking HTML version of manual ... NOTE
+Skipping checking HTML validation: no command 'tidy' found.
+Please obtain a recent version of HTML Tidy by downloading a binary
+release or compiling the source code from <https://www.html-tidy.org/>.
+* checking for non-standard things in the check directory ... NOTE
+Found the following files/directories:
+  ‘stimgate-manual.tex’
+* checking for detritus in the temp directory ... OK
+* DONE
+Status: 2 ERRORs, 3 WARNINGs, 5 NOTEs

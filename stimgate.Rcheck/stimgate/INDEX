@@ -1,0 +1,23 @@
+.cytokine_cutpoint      Constructs a cutpoint for a flowFrame by using
+                        a derivative of the kernel density estimate
+chnl_lab                Get markers and channels
+get_example_data        Get example GatingSet
+get_stats               Get gating statistics
+stimgate_data_get_ex    Read saved expression data from project
+stimgate_fcs_write      Write FCS files of marker-positive FCS files
+stimgate_gate           Identify cytokine-positive cells through
+                        automated gating
+stimgate_gate_get       Get gates
+stimgate_meta_read_batch_list
+                        Read batch list from project
+stimgate_meta_read_chnl_lab
+                        Read channel or marker label mapping
+stimgate_meta_read_settings_chnl
+                        Get marker settings for a single channel
+stimgate_meta_read_settings_chnls
+                        Read marker settings from project
+stimgate_meta_read_settings_marker
+                        Get settings for a named marker
+stimgate_meta_read_settings_markers
+                        Read marker list with channel labels
+stimgate_plot           Plot stimulation gate
