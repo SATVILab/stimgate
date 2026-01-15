@@ -37,11 +37,23 @@ get_example_data <- function(dir_cache = NULL) {
     gs,
     path = path_save
   )
+  desc_df <- parameters(frames_list[[1]])@data
+  chnl_vec <- names(chnl_list)
+  marker_vec <- NULL
+  for (chnl_curr in chnl_vec) {
+    marker_vec <- c(
+      marker_vec,
+      desc_df$desc[which(desc_df$name == chnl_curr)]
+    )
+  }
+
+
 
   list(
     path_gs = path_save,
     batch_list = batch_list,
-    marker = names(chnl_list)
+    chnl = chnl_vec,
+    marker = marker_vec
   )
 }
 
@@ -59,8 +71,37 @@ get_example_data <- function(dir_cache = NULL) {
       if (!dir.exists(path_hub)) {
         dir.create(path_hub, recursive = TRUE)
       }
+      if (!requireNamespace("BiocManager", quietly = TRUE)) {
+        if (interactive()) {
+          prompt_answer <- readline(
+            prompt = paste0(
+              "The 'BiocManager' package is required to download the example data. ", # nolint linter_line_length_linter
+              "Do you want to install it now? [y/n]: "
+            )
+          )
+          if (tolower(prompt_answer) != "y") {
+            stop("Cannot proceed without installing 'BiocManager' package.")
+          }
+        } else {
+          stop("Cannot proceed without installing 'BiocManager' package.")
+        }
+        utils::install.packages("BiocManager")
+      }
       if (!requireNamespace("HDCytoData", quietly = TRUE)) {
-        utils::install.packages("HDCytoData")
+        if (interactive()) {
+          prompt_answer <- readline(
+            prompt = paste0(
+              "The 'HDCytoData' package is required to download the example data. ", # nolint linter_line_length_linter
+              "Do you want to install it now? [y/n]: "
+            )
+          )
+          if (tolower(prompt_answer) != "y") {
+            stop("Cannot proceed without installing 'HDCytoData' package.")
+          }
+          BiocManager::install("HDCytoData")
+        } else {
+          stop("Cannot proceed without installing 'HDCytoData' package.")
+        }
       }
       # get an odd flowSet slot dropping warning,
       # which is unrelated to our functionality

@@ -2,9 +2,12 @@
 % Please edit documentation in R/marker_list.R
 \name{stimgate_meta_read_chnl_lab}
 \alias{stimgate_meta_read_chnl_lab}
-\title{Read channel label mapping}
+\alias{stimgate_meta_read_marker_lab}
+\title{Read channel or marker label mapping}
 \usage{
 stimgate_meta_read_chnl_lab(path_project)
+
+stimgate_meta_read_marker_lab(path_project)
 }
 \arguments{
 \item{path_project}{character Path to project.}

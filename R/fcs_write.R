@@ -7,6 +7,7 @@
 #' @param .data GatingSet. GatingSet object containing the flow cytometry data.
 #' @param ind_batch_list list. List of indices grouped by batch.
 #' @param path_dir_save character. Directory path to save the FCS files to.
+#' @param pop character. Population that was gated on.
 #' @param chnl character vector. Specific channels to gate on.
 #' @param gate_tbl data.frame. Pre-computed gate table, if available.
 #' @param trans_fn function. Transformation function to apply.
@@ -76,6 +77,7 @@
 #' @export
 stimgate_fcs_write <- function(path_project, # project directory
                                .data, # gatingset
+                               pop = NULL, # population that was gated on
                                ind_batch_list, # indices by batch
                                path_dir_save, # directory to save to
                                chnl = NULL, # specific channels to gate on
@@ -87,7 +89,6 @@ stimgate_fcs_write <- function(path_project, # project directory
                                gate_type_single_pos = "single", # gate type to use for single-pos cells # nolint
                                mult = FALSE, # whether cells must be multi-positive
                                gate_uns_method = "min") { # how to calculate unstim thresholds # nolint
-
   # clear and create directory to save to
   if (dir.exists(path_dir_save)) {
     unlink(path_dir_save, force = TRUE, recursive = TRUE)
@@ -96,7 +97,7 @@ stimgate_fcs_write <- function(path_project, # project directory
 
   # get gates
   gate_tbl <- .fcs_write_get_gate_tbl(
-    gate_tbl, chnl, .data, ind_batch_list, gate_uns_method,
+    gate_tbl, chnl, pop, .data, ind_batch_list, gate_uns_method,
     gate_type_cyt_pos, gate_type_single_pos, path_project
   )
 
@@ -123,6 +124,7 @@ stimgate_fcs_write <- function(path_project, # project directory
 
 .fcs_write_get_gate_tbl <- function(gate_tbl,
                                     chnl,
+                                    pop,
                                     .data,
                                     ind_batch_list,
                                     gate_uns_method,
@@ -131,22 +133,32 @@ stimgate_fcs_write <- function(path_project, # project directory
                                     path_project) {
   # Get gate table if not provided
   if (is.null(gate_tbl)) {
-    # If chnl is NULL, determine available channels from project directory
-    if (is.null(chnl)) {
-      available_dirs <- list.dirs(path_project, recursive = FALSE)
-      chnl <- basename(available_dirs[sapply(available_dirs, function(dir) {
-        file.exists(file.path(dir, "gate_tbl.rds"))
-      })])
-      if (length(chnl) == 0) {
-        stop("No gate tables found in project directory when chnl = NULL")
-      }
+    pop_unspecified <- is.null(pop)
+    pop <- pop %||% .gate_get_pop(path_project)
+    if (is.null(pop) || length(pop) == 0) {
+      stop("No population provided and no populations found in project directory.")
     }
-    gate_tbl <- .fcs_write_gate_gate_tbl_gated(NULL, chnl, path_project)
+    if (length(pop) > 1) {
+      stop("Multiple populations found in project directory. Please specify 'pop' parameter.")
+    }
+    if (pop_unspecified) {
+      message(paste0("Using population '", pop, "' from project directory."))
+    }
+    chnl_unspecified <- is.null(chnl)
+    chnl <- chnl %||% .gate_get_chnl(path_project, pop)
+    if (is.null(chnl) || length(chnl) == 0) {
+      stop("No channels provided and no channels found in project directory.")
+    }
+    if (chnl_unspecified) {
+      message(paste0("Using channels '", paste(chnl, collapse = ", "), "' from project directory."))
+    }
+    gate_tbl <- .fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
   }
   
   # Check if gate_tbl already contains all required information
   # (i.e., it has both stimulated and unstimulated gates)
-  has_all_samples <- length(unique(gate_tbl$ind)) >= length(unlist(ind_batch_list))
+  has_all_samples <- length(unique(gate_tbl$ind)) >=
+    length(unlist(ind_batch_list))
   
   # Only process unstimulated gates if needed
   if (!has_all_samples) {
@@ -169,17 +181,18 @@ stimgate_fcs_write <- function(path_project, # project directory
 }
 
 .fcs_write_gate_gate_tbl_gated <- function(gate_tbl,
+                                           pop,
                                            chnl,
                                            path_project) {
   if (!is.null(gate_tbl)) {
     return(gate_tbl)
   }
   purrr::map_df(chnl, function(chnl_curr) {
-    path_curr <- file.path(path_project, chnl_curr, "gate_tbl.rds")
+    path_curr <- .gate_get_path(path_project, pop, chnl_curr)
     if (!file.exists(path_curr)) {
       stop(paste0("Gate table not found for channel: ", chnl_curr))
     }
-    readRDS(file.path(path_project, chnl_curr, "gate_tbl.rds"))
+    readRDS(path_curr)
   })
 }
 

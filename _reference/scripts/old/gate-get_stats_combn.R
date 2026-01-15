@@ -58,7 +58,7 @@ get_stats_combn_cp <- function(data,
     params[["cut"]] <- cut_curr
 
     # get stats tbl
-    gate_tbl <- readRDS(file.path(path_project, cut_curr, "gate_tbl.rds"))
+    gate_tbl <- readRDS(.gates_get_path(path_project, pop_gate, cut_curr))
 
     gate_tbl |>
       dplyr::filter(.data$gate_name == .env$gate_name) |>

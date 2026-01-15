@@ -45,8 +45,10 @@
     names(chnl_lab),
     function(chnl_curr) {
       # get stats tbl
-      gate_tbl <- readRDS(file.path(path_project, chnl_curr, "gate_tbl.rds"))
-
+      gate_tbl <- .gates_get_path_all(
+        path_project, params$pop_gate, chnl_curr, FALSE
+      ) |>
+        readRDS()
       if (!is.null(gate_name)) {
         gate_tbl <- gate_tbl |>
           dplyr::filter(gate_name == .env$gate_name) # nolint
@@ -138,17 +140,17 @@
 
   gate_tbl <- gate_tbl |>
     dplyr::arrange(gate_name, chnl, marker, ind) # nolint
-  params[["chnl_cut"]] <- chnl[1]
-  dir_save <- file.path(path_project, chnl[1])
-  fn_rds <- "gate_tbl.rds"
-  fn_csv <- "gate_tbl.csv"
-  dir_save_fn_rds <- file.path(dir_save, fn_rds)
-  dir_save_fn_csv <- file.path(dir_save, fn_csv)
-  if (file.exists(dir_save_fn_rds)) file.remove(dir_save_fn_rds)
-  if (file.exists(dir_save_fn_csv)) file.remove(dir_save_fn_csv)
-  if (!dir.exists(dir_save)) dir.create(dir_save, recursive = TRUE)
-  write.csv(gate_tbl, dir_save_fn_csv)
-  saveRDS(gate_tbl, dir_save_fn_rds)
+  path_save_rds <- .gates_get_path_all(
+    path_project, params[["pop_gate"]], chnl[1], FALSE
+  )
+  path_save_csv <- sub("\\.rds$", ".csv", path_save_rds)
+  if (file.exists(path_save_rds)) file.remove(path_save_rds)
+  if (file.exists(path_save_csv)) file.remove(path_save_csv)
+  if (!dir.exists(dirname(path_save_csv))) {
+    dir.create(dirname(path_save_csv), recursive = TRUE)
+  }
+  write.csv(gate_tbl, path_save_csv)
+  saveRDS(gate_tbl, path_save_rds)
 }
 
 

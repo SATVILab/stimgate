@@ -110,7 +110,6 @@
                                            .debug,
                                            ind_batch_list,
                                            pop_gate) {
-  # START HERE!!!
   if (!is.null(tol_clust)) {
     gate_tbl_tg_gate <- gate_tbl |>
       dplyr::filter(gate_use == "tg_clust") # nolint

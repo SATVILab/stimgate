@@ -2,7 +2,7 @@
 % Please edit documentation in R/marker_list.R
 \name{stimgate_meta_read_settings_markers}
 \alias{stimgate_meta_read_settings_markers}
-\title{Read marker settings from project}
+\title{Read marker list with channel labels}
 \usage{
 stimgate_meta_read_settings_markers(path_project)
 }
@@ -10,16 +10,18 @@ stimgate_meta_read_settings_markers(path_project)
 \item{path_project}{character Path to project.}
 }
 \value{
-A named list of marker settings (as saved by .complete_marker_list_save()).
+A named list of marker settings where names are channel labels.
 }
 \description{
-Read the saved marker settings list from the project's meta_data folder.
+Read the project's marker list and return it with element names
+replaced by channel labels (from chnl_lab).
 }
 \examples{
 \dontrun{
 tmp <- tempdir()
 dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
 saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
-stimgate_meta_read_settings_markers(tmp)
+saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "meta_data", "chnl_lab.rds"))
+stimgate_meta_read_settings_chnls(tmp)
 }
 }

@@ -8,7 +8,8 @@ stimgate_gate(
   path_project,
   .data,
   batch_list,
-  marker,
+  chnl = NULL,
+  marker = NULL,
   pop_gate = "root",
   bias_uns = NULL,
   bias_uns_factor = 1,
@@ -21,6 +22,7 @@ stimgate_gate(
   tol_clust = 1e-07,
   gate_combn = "min",
   marker_settings = NULL,
+  chnl_settings = NULL,
   calc_cyt_pos_gates = TRUE,
   calc_single_pos_gates = FALSE,
   debug = FALSE
@@ -40,9 +42,9 @@ belonging to the same batch/donor. Names will be used for batch identification.
 Example: list(donor1 = 1:10, donor2 = 11:20). Proper batching is crucial for
 accurate background subtraction and gate identification.}
 
-\item{marker}{list. List where each element specifies parameters for gating a
-specific marker. Each element should be a list containing at minimum the channel
-name (e.g., list(cut = "IL2")). Additional marker-specific parameters can
+\item{chnl}{list. List where each element specifies parameters for gating a
+specific channel Each element should be a list containing at minimum the channel
+name (e.g., list(cut = "IL2")). Additional channel-specific parameters can
 override global defaults. The marker name should match channel names in the GatingSet.}
 
 \item{pop_gate}{character vector. Population(s) within which to perform gating.

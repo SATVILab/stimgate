@@ -10,7 +10,13 @@ stimgate_data_get_ex(
   ind = NULL,
   chnl = NULL,
   bias = FALSE,
-  exc_min = FALSE
+  exc_min = FALSE,
+  combn_exc = NULL,
+  cyt_pos = FALSE,
+  gate_type_cyt_pos = "cyt",
+  gate_type_single_pos = "single",
+  mult = FALSE,
+  gate_uns_method = "min"
 )
 }
 \arguments{

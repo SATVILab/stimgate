@@ -250,20 +250,22 @@
 }
 
 
-.get_cyt_pos_gates_chnl_vec_from_marker_list <- function(marker_list) {
-  purrr::map_chr(marker_list, function(x) x$chnl_cut)
+.get_cyt_pos_gates_chnl_vec_from_chnl_list <- function(chnl_settings) {
+  purrr::map_chr(chnl_settings, function(x) x$chnl_cut)
 }
 
 .get_cyt_pos_gates_gate_tbl_get <- function(chnl_vec,
+                                            pop,
                                             path_project,
                                             .debug,
                                             chnl_lab) {
   .debug_msg(.debug, "Getting gate_tbl") # nolint
   purrr::map_df(chnl_vec, function(chnl_curr) {
     # get stats tbl
-    readRDS(file.path(
-      path_project, chnl_curr, "gate_tbl_init.rds"
-    )) |>
+    .gates_get_path_all(
+      path_project, pop, chnl_curr, init = TRUE
+    ) |>
+      readRDS() |>
       dplyr::mutate(chnl = chnl_curr, marker = chnl_lab[chnl_curr]) |>
       dplyr::select(chnl, marker, gate_name, batch, ind, gate) # nolint
   })
