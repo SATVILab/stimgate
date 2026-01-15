@@ -47,6 +47,10 @@ specific channel Each element should be a list containing at minimum the channel
 name (e.g., list(cut = "IL2")). Additional channel-specific parameters can
 override global defaults. The marker name should match channel names in the GatingSet.}
 
+\item{marker}{character vector. Alternative way to specify markers to gate on.
+When provided, this is used instead of chnl to determine which markers to analyze.
+Default is NULL.}
+
 \item{pop_gate}{character vector. Population(s) within which to perform gating.
 Default is "root" to gate on all cells. Can specify other populations like
 "CD3+" or "CD4+" if these gates already exist in the GatingSet.}
@@ -95,6 +99,10 @@ include "median" or "max" depending on the desired stringency.}
 \item{marker_settings}{list. Optional list of additional marker-specific settings
 that override global defaults. Each element should be named with the marker name
 and contain parameter overrides. Default is NULL.}
+
+\item{chnl_settings}{list. Optional list of channel-specific settings that override
+global defaults. Similar to marker_settings but keyed by channel names.
+Default is NULL.}
 
 \item{calc_cyt_pos_gates}{logical. Whether to calculate refined cytokine-positive
 gates using more sophisticated algorithms. Default is TRUE. When FALSE, only
