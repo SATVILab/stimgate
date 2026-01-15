@@ -3,6 +3,9 @@
 #' @description Get all the gates for each of the markers gated.
 #'
 #' @param path_project character. Path to the project directory.
+#' @param pop character. Optional population name(s) to filter gates by. Default is NULL (all populations).
+#' @param marker character. Optional marker name(s) to filter gates by. Default is NULL (all markers).
+#' @param chnl character. Optional channel name(s) to filter gates by. Default is NULL (all channels).
 #'
 #' @return Gate table with gates for each sample for each marker.
 #' @examples{

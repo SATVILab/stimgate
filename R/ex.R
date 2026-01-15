@@ -261,6 +261,12 @@ str_detect_any <- function(string, pattern) {
 #' @param chnl character or NULL Channel name(s) to return. Default is detected from project sample_data.
 #' @param bias logical. Whether to add bias to unstimulated sample used in the gating. Default is `FALSE`.
 #' @param exc_min logical. Whether to exclude cells with the minimum expression for any channels.
+#' @param combn_exc list. Combinations of channels to exclude. Default is NULL.
+#' @param cyt_pos logical. Whether to return only cytokine-positive cells. Default is FALSE.
+#' @param gate_type_cyt_pos character. Gate type to use for cytokine-positive cells. Default is "cyt".
+#' @param gate_type_single_pos character. Gate type to use for single-positive cells. Default is "single".
+#' @param mult logical. Whether to return only multi-functional cells (positive for multiple markers). Default is FALSE.
+#' @param gate_uns_method character. Method for gating unstimulated cells. Default is "min".
 #' @return A tibble with columns `pop`, `ind` and one column per requested channel. Rows correspond to cells.
 #' @examples
 #' \dontrun{
