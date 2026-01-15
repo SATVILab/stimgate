@@ -1,3 +1,4 @@
+#' @keywords internal
 .get_stats <- function(params = NULL,
                        gate_tbl = NULL,
                        chnl = NULL,
@@ -109,6 +110,7 @@
   )
 }
 
+#' @keywords internal
 .read_gate_stats <- function(stats_save_output) {
   if (inherits(stats_save_output, "data.frame")) {
     return(stats_save_output)

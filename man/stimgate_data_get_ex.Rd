@@ -31,6 +31,18 @@ stimgate_data_get_ex(
 \item{bias}{logical. Whether to add bias to unstimulated sample used in the gating. Default is \code{FALSE}.}
 
 \item{exc_min}{logical. Whether to exclude cells with the minimum expression for any channels.}
+
+\item{combn_exc}{list. Combinations of channels to exclude. Default is NULL.}
+
+\item{cyt_pos}{logical. Whether to return only cytokine-positive cells. Default is FALSE.}
+
+\item{gate_type_cyt_pos}{character. Gate type to use for cytokine-positive cells. Default is "cyt".}
+
+\item{gate_type_single_pos}{character. Gate type to use for single-positive cells. Default is "single".}
+
+\item{mult}{logical. Whether to return only multi-functional cells (positive for multiple markers). Default is FALSE.}
+
+\item{gate_uns_method}{character. Method for gating unstimulated cells. Default is "min".}
 }
 \value{
 A tibble with columns \code{pop}, \code{ind} and one column per requested channel. Rows correspond to cells.

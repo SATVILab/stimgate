@@ -122,6 +122,7 @@ stimgate_fcs_write <- function(path_project, # project directory
 # Get Gates
 # ================
 
+#' @keywords internal
 .fcs_write_get_gate_tbl <- function(gate_tbl,
                                     chnl,
                                     pop,
@@ -180,6 +181,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   gate_tbl
 }
 
+#' @keywords internal
 .fcs_write_gate_gate_tbl_gated <- function(gate_tbl,
                                            pop,
                                            chnl,
@@ -196,6 +198,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   })
 }
 
+#' @keywords internal
 .fcs_write_get_gate_tbl_add_uns <- function(gate_tbl,
                                             gate_uns_method,
                                             gate_type_cyt_pos,
@@ -222,6 +225,7 @@ stimgate_fcs_write <- function(path_project, # project directory
     dplyr::bind_rows(gate_tbl_uns)
 }
 
+#' @keywords internal
 .fcs_write_get_gate_tbl_add_uns_get_uns <- function(gate_tbl,
                                                     gate_uns_method,
                                                     ind_batch_list) {
@@ -234,6 +238,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   )
 }
 
+#' @keywords internal
 .fcs_write_get_gate_tbl_add_uns_get_uns_calc <- function(gate_uns_method) {
   switch(gate_uns_method,
     "min" = min,
@@ -245,6 +250,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   )
 }
 
+#' @keywords internal
 .fcs_write_get_gate_tbl_add_uns_get_uns_impl <- function(gate_tbl,
                                                          calc,
                                                          ind_batch_list) {
@@ -284,6 +290,7 @@ stimgate_fcs_write <- function(path_project, # project directory
     .fcs_write_get_gate_tbl_add_uns_get_uns_ind(ind_batch_list)
 }
 
+#' @keywords internal
 .fcs_write_get_gate_tbl_add_uns_get_uns_ind <- function(gate_tbl,
                                                         ind_batch_list) {
   ind_batch_vec <- lapply(ind_batch_list, function(x) {
@@ -309,6 +316,7 @@ stimgate_fcs_write <- function(path_project, # project directory
 
 
 
+#' @keywords internal
 .fcs_write_get_gate_tbl_filter_chnl <- function(gate_tbl, chnl) {
   if (is.null(chnl)) {
     return(gate_tbl)
@@ -316,6 +324,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   gate_tbl |> dplyr::filter(chnl %in% .env$chnl)
 }
 
+#' @keywords internal
 .fcs_write_get_gate_tbl_add_marker <- function(gate_tbl, chnl, .data) {
   chnl_lab_vec <- .get_labs(.data = .data[[1]], chnl_cut = chnl) # nolint
   
@@ -338,6 +347,7 @@ stimgate_fcs_write <- function(path_project, # project directory
 # Implementation
 # ================
 
+#' @keywords internal
 .fcs_write_impl <- function(.data,
                             ind,
                             gate_tbl,
@@ -387,6 +397,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   invisible(TRUE)
 }
 
+#' @keywords internal
 .fcs_write_impl_load <- function(.data, ind) {
   fr <- flowWorkspace::gh_pop_get_data(.data[[ind]])
   if (inherits(fr, "cytoframe")) {
@@ -395,6 +406,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   fr
 }
 
+#' @keywords internal
 .fcs_write_impl_filter_inc <- function(ex,
                                        gate_tbl_ind,
                                        mult,
@@ -418,6 +430,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   ex[inc_vec, , drop = FALSE]
 }
 
+#' @keywords internal
 .fcs_write_impl_filter_exc <- function(ex,
                                        combn_exc,
                                        gate_tbl_ind,
@@ -440,6 +453,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   ex
 }
 
+#' @keywords internal
 .fcs_write_impl_trans <- function(ex,
                                   trans_fn,
                                   trans_chnl) {
@@ -456,6 +470,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   }
   ex
 }
+#' @keywords internal
 .fcs_write_impl_write <- function(ex,
                                   fr,
                                   path_dir_save) {

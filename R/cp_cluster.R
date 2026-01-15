@@ -1,5 +1,6 @@
 # Get cutpoints using clustering approach
 # Clusters thresholds from similar distributions to identify optimal cutpoints
+#' @keywords internal
 .get_cp_cluster <- function(.data,
                             gate_tbl,
                             gate_stats_tbl,
