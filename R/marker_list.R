@@ -40,7 +40,7 @@
       path_project = path_project
     )
   }) |>
-    stats::setNames(chnl_lab[chnl_curr])
+    stats::setNames(chnl_lab[chnl])
 
   .complete_chnl_list_save(
     chnl_list = chnl_list,
