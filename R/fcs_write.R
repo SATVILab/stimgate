@@ -188,7 +188,7 @@ stimgate_fcs_write <- function(path_project, # project directory
     return(gate_tbl)
   }
   purrr::map_df(chnl, function(chnl_curr) {
-    path_curr <- .gate_get_path(path_project, pop, chnl_curr)
+    path_curr <- .gates_get_path_all(path_project, pop, chnl_curr, FALSE)
     if (!file.exists(path_curr)) {
       stop(paste0("Gate table not found for channel: ", chnl_curr))
     }

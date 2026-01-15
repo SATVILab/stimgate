@@ -71,12 +71,12 @@ test_that("stimgate_data_get_ex applies bias only to unstim sample", {
   )
 
   # Create meta_data with matching names so chnl lookup works
-  marker_list <- list(BC1 = list(bias_uns = 10), BC2 = list(bias_uns = -2))
+  chnl_list <- list(BC1 = list(bias_uns = 10), BC2 = list(bias_uns = -2))
   chnl_lab <- c(BC1 = "BC1", BC2 = "BC2")
   batch_list <- list(batch1 = c("1", "2"))
 
   dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
-  saveRDS(marker_list, file.path(tmp, "meta_data", "marker_list.rds"))
+  saveRDS(chnl_list, file.path(tmp, "meta_data", "chnl_list.rds"))
   saveRDS(chnl_lab, file.path(tmp, "meta_data", "chnl_lab.rds"))
   saveRDS(batch_list, file.path(tmp, "meta_data", "batch_list.rds"))
 
