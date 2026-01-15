@@ -1,6 +1,6 @@
 Package: stimgate
 Type: Package
-Title: Identify responding cells as outliers
+Title: Identify Responding Cells as Outliers
 Version: 0.99.2-4
 Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-2036-4878"))
 Description: Apply outlier gating function to identify cells that have possibly
@@ -14,13 +14,13 @@ Depends: R (>= 4.4.0)
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 biocViews: FlowCytometry, SingleCell, CellBasedAssays, ImmunoOncology
-VignetteEngine: knitr::rmarkdown
+VignetteBuilder: knitr
 Imports: cowplot, dplyr, ggplot2, purrr, rlang, stringr, tibble, tidyr,
         scam, mgcv, gtools, flowCore, flowWorkspace, cluster
 Suggests: testthat (>= 3.0.0), HDCytoData, here, BiocManager, knitr,
         rmarkdown, hexbin
 NeedsCompilation: no
-Packaged: 2026-01-15 20:20:07 UTC; runner
+Packaged: 2026-01-15 20:28:47 UTC; runner
 Author: Miguel Rodo [aut, cre] (ORCID: <https://orcid.org/0000-0002-2036-4878>)
 Maintainer: Miguel Rodo <miguel.rodo@uct.ac.za>
-Built: R 4.5.2; ; 2026-01-15 20:20:23 UTC; unix
+Built: R 4.5.2; ; 2026-01-15 20:34:02 UTC; unix

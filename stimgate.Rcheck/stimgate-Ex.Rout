@@ -583,7 +583,7 @@ getting single+ gates
 
 getting cyt combn frequencies
 batch 8 of 8
-[1] "/tmp/RtmppL33di/working_dir/RtmpuE4FiD/stimgate_example/stimgate"
+[1] "/tmp/RtmprlSBEL/working_dir/RtmpMMeAXY/stimgate_example/stimgate"
 > 
 > # Create plots
 > plots <- stimgate_plot(
@@ -612,7 +612,7 @@ detaching ‘package:HDCytoData’, ‘package:flowCore’,
 
 > options(digits = 7L)
 > base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
-Time elapsed:  40.775 1.186 44.325 0 0 
+Time elapsed:  41.395 1.18 45.121 0 0 
 > grDevices::dev.off()
 null device 
           1 
