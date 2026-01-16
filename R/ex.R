@@ -303,11 +303,16 @@ str_detect_any <- function(string, pattern) {
 #' \dontrun{
 #' tmp <- tempdir()
 #' dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"),
-#'   recursive = TRUE)
-#' saveRDS(c(1, 2, 3),
-#'   file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds"))
-#' saveRDS(c(4, 5, 6),
-#'   file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds"))
+#'   recursive = TRUE
+#' )
+#' saveRDS(
+#'   c(1, 2, 3),
+#'   file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds")
+#' )
+#' saveRDS(
+#'   c(4, 5, 6),
+#'   file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds")
+#' )
 #' stimgate_data_get_ex(tmp)
 #' stimgate_data_get_ex(tmp, chnl = "BC1")
 #' }
@@ -390,7 +395,6 @@ stimgate_data_get_ex <- function(path_project,
     .data, pop, chnl_cut, ind, NULL, NULL,
     extra_chnl, path_project, FALSE
   )
-
 }
 
 #' @keywords internal
@@ -530,7 +534,7 @@ stimgate_data_get_ex <- function(path_project,
   )
 
   if (nrow(ex) == 0L) {
-    message("No stimulation-positive cells after excluding specified cytokine combinations.") # nolint 
+    message("No stimulation-positive cells after excluding specified cytokine combinations.") # nolint
     return(.data_get_ex_zero_tbl(cn_vec))
   }
 
