@@ -92,11 +92,16 @@ columns.
 \dontrun{
 tmp <- tempdir()
 dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"),
-  recursive = TRUE)
-saveRDS(c(1, 2, 3),
-  file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds"))
-saveRDS(c(4, 5, 6),
-  file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds"))
+  recursive = TRUE
+)
+saveRDS(
+  c(1, 2, 3),
+  file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds")
+)
+saveRDS(
+  c(4, 5, 6),
+  file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds")
+)
 stimgate_data_get_ex(tmp)
 stimgate_data_get_ex(tmp, chnl = "BC1")
 }
