@@ -4,7 +4,6 @@ test_that("stimgate_gate runs", {
   example_data <- get_example_data()
   gs <- flowWorkspace::load_gs(example_data$path_gs)
   path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-  debugonce(.chnl_lab)
   invisible(stimgate_gate(
     .data = gs,
     path_project = path_project,
@@ -48,4 +47,3 @@ test_that("stimgate_gate runs with debug = TRUE", {
     unlink(path_project, recursive = TRUE)
   }
 })
-
