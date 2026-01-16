@@ -458,8 +458,6 @@ stimgate_gate <- function(path_project,
     .gate_single_save(
       path_project, pop_gate, chnl_settings_curr$chnl_cut, gate_obj$gate_tbl
     )
-    
-
   })
 }
 

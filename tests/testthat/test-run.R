@@ -47,4 +47,3 @@ test_that("stimgate_gate runs with debug = TRUE", {
     unlink(path_project, recursive = TRUE)
   }
 })
-
