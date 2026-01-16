@@ -262,17 +262,23 @@ str_detect_any <- function(string, pattern) {
 #' @description Read channel expression vectors saved under a project's sample_data
 #'   directory and return them as a tibble with sample metadata columns.
 #' @param path_project character Path to project.
+#' @param .data GatingSet or NULL GatingSet object to extract expression data from. Default is NULL.
 #' @param pop character or NULL Population name(s). Default is detected from project sample_data.
 #' @param ind character or NULL Index/indices of samples. Default is detected from project sample_data.
 #' @param chnl character or NULL Channel name(s) to return. Default is detected from project sample_data.
-#' @param bias logical. Whether to add bias to unstimulated sample used in the gating. Default is `FALSE`.
-#' @param exc_min logical. Whether to exclude cells with the minimum expression for any channels.
-#' @param combn_exc list. Combinations of channels to exclude. Default is NULL.
-#' @param cyt_pos logical. Whether to return only cytokine-positive cells. Default is FALSE.
-#' @param gate_type_cyt_pos character. Gate type to use for cytokine-positive cells. Default is "cyt".
-#' @param gate_type_single_pos character. Gate type to use for single-positive cells. Default is "single".
-#' @param mult logical. Whether to return only multi-functional cells (positive for multiple markers). Default is FALSE.
-#' @param gate_uns_method character. Method for gating unstimulated cells. Default is "min".
+#' @param marker character or NULL Marker name(s) to return. Cannot be specified with `chnl`. Default is NULL.
+#' @param bias logical Whether to add bias to unstimulated sample used in the gating. Default is `FALSE`.
+#' @param exc_min logical Whether to exclude cells with the minimum expression for any channels. Default is FALSE.
+#' @param combn_exc list or NULL Combinations of channels to exclude. Default is NULL.
+#' @param chnl_gate character or NULL Channel name(s) to use for gating. Cannot be specified with `marker_gate`. Default is NULL.
+#' @param marker_gate character or NULL Marker name(s) to use for gating. Cannot be specified with `chnl_gate`. Default is NULL.
+#' @param gate_type_cyt_pos character Gate type to use for cytokine-positive cells. Default is "cyt".
+#' @param gate_type_single_pos character Gate type to use for single-positive cells. Default is "single".
+#' @param mult logical Whether to return only multi-functional cells (positive for multiple markers). Default is FALSE.
+#' @param gate_uns_method character Method for gating unstimulated cells. Default is "min".
+#' @param trans_fn function or NULL Transformation function to apply to expression values. Default is NULL.
+#' @param trans_chnl character or NULL Channel name(s) to transform when using channel names. Default is NULL (transforms all channels).
+#' @param trans_marker character or NULL Marker name(s) to transform when using marker names. Default is NULL (transforms all markers).
 #' @return A tibble with columns `pop`, `ind` and one column per requested channel. Rows correspond to cells.
 #' @examples
 #' \dontrun{
@@ -343,8 +349,8 @@ stimgate_data_get_ex <- function(path_project,
         bias = bias
       )
       ex <- .data_get_ex_renamed(ex, is_marker, path_project)
-      trans_chnl <- if (is_marker) trans_chnl else trans_marker
-      ex <- .data_get_ex_trans(ex, trans_fn, trans_marker)
+      trans_chnl_final <- if (is_marker) trans_marker else trans_chnl
+      ex <- .data_get_ex_trans(ex, trans_fn, trans_chnl_final)
       .data_get_ex_meta(ex, pop_curr, ind_curr)
     })
   })
@@ -598,8 +604,8 @@ stimgate_data_get_ex <- function(path_project,
 #' @keywords internal
 .data_get_ex_meta <- function(ex, pop, ind) {
   meta_df <- tibble::tibble(
-    pop = pop_curr,
-    ind = ind_curr
+    pop = pop,
+    ind = ind
   )
   tibble::as_tibble(cbind(meta_df, ex))
 }
