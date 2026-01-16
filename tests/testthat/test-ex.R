@@ -116,3 +116,108 @@ test_that("stimgate_data_get_ex excludes minimum observed values when exc_min = 
   expect_equal(res_exc$BC1, 3)
   expect_equal(res_exc$BC2, 6)
 })
+
+test_that("stimgate_data_get_ex uses marker parameter to rename channels", {
+  tmp <- tempfile("stimgate_ex_marker_")
+  dir.create(
+    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    recursive = TRUE
+  )
+
+  saveRDS(
+    c(1, 2, 3),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+  )
+  saveRDS(
+    c(4, 5, 6),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+  )
+
+  # Create chnl_lab mapping (channel -> marker name)
+  chnl_lab <- c(BC1 = "IFNg", BC2 = "IL2")
+  dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
+  saveRDS(chnl_lab, file.path(tmp, "meta_data", "chnl_lab.rds"))
+
+  res <- stimgate_data_get_ex(tmp, marker = "IFNg")
+  expect_true("IFNg" %in% names(res))
+  expect_false("BC1" %in% names(res))
+  expect_equal(res$IFNg, c(1, 2, 3))
+})
+
+test_that("stimgate_data_get_ex errors when both marker and chnl specified", {
+  tmp <- tempfile("stimgate_ex_marker_chnl_conflict_")
+  dir.create(
+    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    recursive = TRUE
+  )
+
+  saveRDS(
+    c(1, 2, 3),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+  )
+
+  expect_error(
+    stimgate_data_get_ex(tmp, marker = "IFNg", chnl = "BC1"),
+    "Must not specify both marker and chnl"
+  )
+})
+
+test_that("stimgate_data_get_ex applies trans_fn to specified channels", {
+  tmp <- tempfile("stimgate_ex_trans_")
+  dir.create(
+    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    recursive = TRUE
+  )
+
+  saveRDS(
+    c(1, 2, 3),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+  )
+  saveRDS(
+    c(4, 5, 6),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+  )
+
+  # Test transforming all channels
+  trans_fn_double <- function(x) x * 2
+  res_all <- stimgate_data_get_ex(tmp, trans_fn = trans_fn_double)
+  expect_equal(res_all$BC1, c(2, 4, 6))
+  expect_equal(res_all$BC2, c(8, 10, 12))
+
+  # Test transforming only BC1
+  res_bc1 <- stimgate_data_get_ex(tmp, trans_fn = trans_fn_double, trans_chnl = "BC1")
+  expect_equal(res_bc1$BC1, c(2, 4, 6))
+  expect_equal(res_bc1$BC2, c(4, 5, 6))
+})
+
+test_that("stimgate_data_get_ex applies trans_fn to markers when using marker parameter", {
+  tmp <- tempfile("stimgate_ex_trans_marker_")
+  dir.create(
+    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    recursive = TRUE
+  )
+
+  saveRDS(
+    c(1, 2, 3),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+  )
+  saveRDS(
+    c(4, 5, 6),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+  )
+
+  # Create chnl_lab mapping (channel -> marker name)
+  chnl_lab <- c(BC1 = "IFNg", BC2 = "IL2")
+  dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
+  saveRDS(chnl_lab, file.path(tmp, "meta_data", "chnl_lab.rds"))
+
+  trans_fn_double <- function(x) x * 2
+  res <- stimgate_data_get_ex(
+    tmp,
+    marker = c("IFNg", "IL2"),
+    trans_fn = trans_fn_double,
+    trans_marker = "IFNg"
+  )
+  expect_equal(res$IFNg, c(2, 4, 6))
+  expect_equal(res$IL2, c(4, 5, 6))
+})

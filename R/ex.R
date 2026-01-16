@@ -577,7 +577,7 @@ stimgate_data_get_ex <- function(path_project,
   if (!is_marker) {
     return(ex)
   }
-  colnames(ex) <- stimgate_meta_read_marker_lab(path_project)[
+  colnames(ex) <- stimgate_meta_read_chnl_lab(path_project)[
     colnames(ex)
   ]
   ex
