@@ -19,7 +19,7 @@ Read the saved batch_list object from the project's meta_data folder.
 \dontrun{
 tmp <- tempdir()
 dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
-saveRDS(list(batch1 = c(1,2)), file.path(tmp, "meta_data", "batch_list.rds"))
+saveRDS(list(batch1 = c(1, 2)), file.path(tmp, "meta_data", "batch_list.rds"))
 stimgate_meta_read_batch_list(tmp)
 }
 }

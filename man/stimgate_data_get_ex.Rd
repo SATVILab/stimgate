@@ -6,17 +6,23 @@
 \usage{
 stimgate_data_get_ex(
   path_project,
+  .data = NULL,
   pop = NULL,
   ind = NULL,
   chnl = NULL,
+  marker = NULL,
   bias = FALSE,
   exc_min = FALSE,
   combn_exc = NULL,
-  cyt_pos = FALSE,
+  chnl_gate = NULL,
+  marker_gate = NULL,
   gate_type_cyt_pos = "cyt",
   gate_type_single_pos = "single",
   mult = FALSE,
-  gate_uns_method = "min"
+  gate_uns_method = "min",
+  trans_fn = NULL,
+  trans_chnl = NULL,
+  trans_marker = NULL
 )
 }
 \arguments{
@@ -34,8 +40,6 @@ stimgate_data_get_ex(
 
 \item{combn_exc}{list. Combinations of channels to exclude. Default is NULL.}
 
-\item{cyt_pos}{logical. Whether to return only cytokine-positive cells. Default is FALSE.}
-
 \item{gate_type_cyt_pos}{character. Gate type to use for cytokine-positive cells. Default is "cyt".}
 
 \item{gate_type_single_pos}{character. Gate type to use for single-positive cells. Default is "single".}
@@ -43,6 +47,8 @@ stimgate_data_get_ex(
 \item{mult}{logical. Whether to return only multi-functional cells (positive for multiple markers). Default is FALSE.}
 
 \item{gate_uns_method}{character. Method for gating unstimulated cells. Default is "min".}
+
+\item{cyt_pos}{logical. Whether to return only cytokine-positive cells. Default is FALSE.}
 }
 \value{
 A tibble with columns \code{pop}, \code{ind} and one column per requested channel. Rows correspond to cells.
