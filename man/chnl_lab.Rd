@@ -32,7 +32,7 @@ and marker_lab is equivalent to marker_to_chnl.
 \examples{
 \donttest{
 # Create example flowFrame-like data structure
-data(GvHD, package = "flowCore") 
+data(GvHD, package = "flowCore")
 fs <- GvHD[1:2]
 
 # Get channel to marker mapping

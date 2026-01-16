@@ -153,7 +153,7 @@ stimgate_fcs_write <- function(path_project, # project directory
     if (chnl_unspecified) {
       message(paste0("Using channels '", paste(chnl, collapse = ", "), "' from project directory."))
     }
-    gate_tbl <- .fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
+    gate_tbl <- .gate_get_gate_tbl_all(NULL, pop, chnl, path_project)
   }
 
   # Check if gate_tbl already contains all required information
@@ -182,10 +182,10 @@ stimgate_fcs_write <- function(path_project, # project directory
 }
 
 #' @keywords internal
-.fcs_write_gate_gate_tbl_gated <- function(gate_tbl,
-                                           pop,
-                                           chnl,
-                                           path_project) {
+.gate_get_gate_tbl_all <- function(gate_tbl,
+                                   pop,
+                                   chnl,
+                                   path_project) {
   if (!is.null(gate_tbl)) {
     return(gate_tbl)
   }
@@ -369,7 +369,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   gate_tbl_ind <- gate_tbl |>
     dplyr::filter(.data$ind == .env$ind) # nolint
 
-  ex <- .fcs_write_impl_filter_inc(
+  ex <- .data_get_ex_cyt_pos_inc(
     ex, gate_tbl_ind, mult, chnl,
     gate_type_cyt_pos, gate_type_single_pos
   )
@@ -379,7 +379,7 @@ stimgate_fcs_write <- function(path_project, # project directory
     return(invisible(FALSE))
   }
 
-  ex <- .fcs_write_impl_filter_exc(
+  ex <- .data_get_ex_cyt_pos_exc(
     ex, combn_exc, gate_tbl_ind, chnl,
     gate_type_cyt_pos, gate_type_single_pos
   )
@@ -391,7 +391,7 @@ stimgate_fcs_write <- function(path_project, # project directory
     return(invisible(FALSE))
   }
 
-  ex <- .fcs_write_impl_trans(ex, trans_fn, trans_chnl)
+  ex <- .data_get_ex_trans(ex, trans_fn, trans_chnl)
 
   .fcs_write_impl_write(ex, fr, path_dir_save)
   invisible(TRUE)
@@ -406,70 +406,7 @@ stimgate_fcs_write <- function(path_project, # project directory
   fr
 }
 
-#' @keywords internal
-.fcs_write_impl_filter_inc <- function(ex,
-                                       gate_tbl_ind,
-                                       mult,
-                                       chnl,
-                                       gate_type_cyt_pos,
-                                       gate_type_single_pos) {
-  inc_vec <- rep(FALSE, nrow(ex))
 
-  if (!mult) {
-    inc_vec <- .get_pos_ind( # nolint
-      ex = ex, gate_tbl = gate_tbl_ind, chnl = chnl, chnl_alt = NULL,
-      gate_type_cyt_pos = gate_type_cyt_pos,
-      gate_type_single_pos = gate_type_single_pos
-    )
-  } else {
-    inc_vec <- .get_pos_ind_mult( # nolint
-      ex = ex, gate_tbl = gate_tbl_ind, chnl = chnl, chnl_alt = NULL,
-      gate_type_cyt_pos = gate_type_cyt_pos
-    )
-  }
-  ex[inc_vec, , drop = FALSE]
-}
-
-#' @keywords internal
-.fcs_write_impl_filter_exc <- function(ex,
-                                       combn_exc,
-                                       gate_tbl_ind,
-                                       chnl,
-                                       gate_type_cyt_pos,
-                                       gate_type_single_pos) {
-  if (is.null(combn_exc)) {
-    return(ex)
-  }
-  for (chnl_pos in combn_exc) {
-    if (nrow(ex) == 0) break
-    exc_vec <- .get_pos_ind_cyt_combn( # nolint
-      ex = ex, gate_tbl = gate_tbl_ind,
-      chnl_pos = chnl_pos, chnl_neg = setdiff(chnl, chnl_pos),
-      chnl_alt = NULL, gate_type_cyt_pos = gate_type_cyt_pos,
-      gate_type_single_pos = gate_type_single_pos
-    )
-    ex <- ex[!exc_vec, , drop = FALSE]
-  }
-  ex
-}
-
-#' @keywords internal
-.fcs_write_impl_trans <- function(ex,
-                                  trans_fn,
-                                  trans_chnl) {
-  # transform
-  if (is.null(trans_fn)) {
-    return(ex)
-  }
-  if (is.null(trans_chnl)) {
-    ex <- trans_fn(ex)
-  } else {
-    for (nm in trans_chnl) {
-      ex[, nm] <- trans_fn(ex[, nm])
-    }
-  }
-  ex
-}
 #' @keywords internal
 .fcs_write_impl_write <- function(ex,
                                   fr,
