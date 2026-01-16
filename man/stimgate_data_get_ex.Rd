@@ -28,41 +28,80 @@ stimgate_data_get_ex(
 \arguments{
 \item{path_project}{character Path to project.}
 
-\item{pop}{character or NULL Population name(s). Default is detected from project sample_data.}
+\item{.data}{GatingSet or NULL GatingSet object to extract expression data
+from. Default is NULL.}
 
-\item{ind}{character or NULL Index/indices of samples. Default is detected from project sample_data.}
+\item{pop}{character or NULL Population name(s). Default is detected from
+project sample_data.}
 
-\item{chnl}{character or NULL Channel name(s) to return. Default is detected from project sample_data.}
+\item{ind}{character or NULL Index/indices of samples. Default is detected
+from project sample_data.}
 
-\item{bias}{logical. Whether to add bias to unstimulated sample used in the gating. Default is \code{FALSE}.}
+\item{chnl}{character or NULL Channel name(s) to return. Default is
+detected from project sample_data.}
 
-\item{exc_min}{logical. Whether to exclude cells with the minimum expression for any channels.}
+\item{marker}{character or NULL Marker name(s) to return. Cannot be
+specified with \code{chnl}. Default is NULL.}
 
-\item{combn_exc}{list. Combinations of channels to exclude. Default is NULL.}
+\item{bias}{logical Whether to add bias to unstimulated sample used in the
+gating. Default is \code{FALSE}.}
 
-\item{gate_type_cyt_pos}{character. Gate type to use for cytokine-positive cells. Default is "cyt".}
+\item{exc_min}{logical Whether to exclude cells with the minimum
+expression for any channels. Default is FALSE.}
 
-\item{gate_type_single_pos}{character. Gate type to use for single-positive cells. Default is "single".}
+\item{combn_exc}{list or NULL Combinations of channels to exclude. Default
+is NULL.}
 
-\item{mult}{logical. Whether to return only multi-functional cells (positive for multiple markers). Default is FALSE.}
+\item{chnl_gate}{character or NULL Channel name(s) to use for gating.
+Cannot be specified with \code{marker_gate}. Default is NULL.}
 
-\item{gate_uns_method}{character. Method for gating unstimulated cells. Default is "min".}
+\item{marker_gate}{character or NULL Marker name(s) to use for gating.
+Cannot be specified with \code{chnl_gate}. Default is NULL.}
 
-\item{cyt_pos}{logical. Whether to return only cytokine-positive cells. Default is FALSE.}
+\item{gate_type_cyt_pos}{character Gate type to use for cytokine-positive
+cells. Default is "cyt".}
+
+\item{gate_type_single_pos}{character Gate type to use for single-positive
+cells. Default is "single".}
+
+\item{mult}{logical Whether to return only multi-functional cells (positive
+for multiple markers). Default is FALSE.}
+
+\item{gate_uns_method}{character Method for gating unstimulated cells.
+Default is "min".}
+
+\item{trans_fn}{function or NULL Transformation function to apply to
+expression values. Default is NULL.}
+
+\item{trans_chnl}{character or NULL Channel name(s) to transform when using
+channel names. Default is NULL (transforms all channels).}
+
+\item{trans_marker}{character or NULL Marker name(s) to transform when
+using marker names. Default is NULL (transforms all markers).}
 }
 \value{
-A tibble with columns \code{pop}, \code{ind} and one column per requested channel. Rows correspond to cells.
+A tibble with columns \code{pop}, \code{ind} and one column per requested
+channel. Rows correspond to cells.
 }
 \description{
-Read channel expression vectors saved under a project's sample_data
-directory and return them as a tibble with sample metadata columns.
+Read channel expression vectors saved under a project's
+sample_data directory and return them as a tibble with sample metadata
+columns.
 }
 \examples{
 \dontrun{
 tmp <- tempdir()
-dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"), recursive = TRUE)
-saveRDS(c(1, 2, 3), file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds"))
-saveRDS(c(4, 5, 6), file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds"))
+dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"),
+  recursive = TRUE
+)
+saveRDS(
+  c(1, 2, 3),
+  file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds")
+)
+saveRDS(
+  c(4, 5, 6),
+  file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds")
+)
 stimgate_data_get_ex(tmp)
 stimgate_data_get_ex(tmp, chnl = "BC1")
 }
