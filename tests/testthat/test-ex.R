@@ -221,3 +221,26 @@ test_that("stimgate_data_get_ex applies trans_fn to markers when using marker pa
   expect_equal(res$IFNg, c(2, 4, 6))
   expect_equal(res$IL2, c(4, 5, 6))
 })
+
+test_that("stimgate_data_get_ex errors when both chnl_gate and marker_gate specified", {
+  tmp <- tempfile("stimgate_ex_gate_conflict_")
+  dir.create(
+    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    recursive = TRUE
+  )
+
+  saveRDS(
+    c(1, 2, 3),
+    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+  )
+
+  # Create chnl_lab mapping for marker_gate
+  chnl_lab <- c(BC1 = "IFNg")
+  dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
+  saveRDS(chnl_lab, file.path(tmp, "meta_data", "chnl_lab.rds"))
+
+  expect_error(
+    stimgate_data_get_ex(tmp, chnl_gate = "BC1", marker_gate = "IFNg"),
+    "Must not specify both chnl_gate and marker_gate"
+  )
+})
