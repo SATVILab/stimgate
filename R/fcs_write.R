@@ -22,7 +22,7 @@
 #' This function processes flow cytometry data to identify and export cytokine-positive
 #' cells to FCS files. It requires that gates have been pre-computed using
 #' \code{\link{stimgate_gate}} or that a complete gate table is provided.
-#' 
+#'
 #' The function will create the output directory and write FCS files for samples
 #' that contain cytokine-positive cells. If no positive cells are found in a sample,
 #' no FCS file will be written for that sample.
@@ -31,11 +31,11 @@
 #' \dontrun{
 #' # Complete workflow example
 #' library(stimgate)
-#' 
+#'
 #' # Load your GatingSet (gs) and define batch structure
 #' # batch_list <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
 #' # where the last element in each batch is the unstimulated sample
-#' 
+#'
 #' # First, run gating to create gates
 #' path_project <- tempfile("stimgate_project")
 #' # stimgate_gate(
@@ -45,7 +45,7 @@
 #' #   batch_list = batch_list,
 #' #   marker = c("IL2", "IFNg")  # your cytokine markers
 #' # )
-#' 
+#'
 #' # Then write FCS files of cytokine-positive cells
 #' path_output <- tempfile("fcs_output")
 #' # stimgate_fcs_write(
@@ -55,7 +55,7 @@
 #' #   path_dir_save = path_output,
 #' #   chnl = c("IL2", "IFNg")
 #' # )
-#' 
+#'
 #' # Alternative: provide your own gate table
 #' # gate_tbl <- data.frame(
 #' #   chnl = c("IL2", "IFNg"),
@@ -155,12 +155,12 @@ stimgate_fcs_write <- function(path_project, # project directory
     }
     gate_tbl <- .fcs_write_gate_gate_tbl_gated(NULL, pop, chnl, path_project)
   }
-  
+
   # Check if gate_tbl already contains all required information
   # (i.e., it has both stimulated and unstimulated gates)
   has_all_samples <- length(unique(gate_tbl$ind)) >=
     length(unlist(ind_batch_list))
-  
+
   # Only process unstimulated gates if needed
   if (!has_all_samples) {
     gate_tbl <- gate_tbl |>
@@ -168,7 +168,7 @@ stimgate_fcs_write <- function(path_project, # project directory
         gate_uns_method, gate_type_cyt_pos, gate_type_single_pos, ind_batch_list
       )
   }
-  
+
   # Apply remaining processing
   gate_tbl <- gate_tbl |>
     .fcs_write_get_gate_tbl_filter_chnl(chnl) |>
@@ -177,7 +177,7 @@ stimgate_fcs_write <- function(path_project, # project directory
     # as the gates must be the same for all duplicates
     # as we separate them if they are not
     dplyr::distinct()
-  
+
   gate_tbl
 }
 
@@ -274,7 +274,7 @@ stimgate_fcs_write <- function(path_project, # project directory
       dplyr::group_by(chnl, marker, batch, ind) |>
       dplyr::filter(length(unique(gate_concat)) > 1) |>
       dplyr::ungroup()) > 0
-    if(is_error) {
+    if (is_error) {
       stop("Gates are not the same for all duplicates in gate_tbl.")
     }
   }
@@ -327,16 +327,16 @@ stimgate_fcs_write <- function(path_project, # project directory
 #' @keywords internal
 .fcs_write_get_gate_tbl_add_marker <- function(gate_tbl, chnl, .data) {
   chnl_lab_vec <- .get_labs(.data = .data[[1]], chnl_cut = chnl) # nolint
-  
+
   # Base columns that should always be present
   base_cols <- c("chnl", "marker", "batch", "ind", "gate")
-  
+
   # Optional columns that may or may not be present
   optional_cols <- c("gate_cyt", "gate_single", "gate_name")
-  
+
   # Only select columns that exist
   cols_to_select <- c(base_cols, optional_cols[optional_cols %in% colnames(gate_tbl)])
-  
+
   gate_tbl |>
     dplyr::mutate(marker = chnl_lab_vec[.data$chnl]) |> # nolint
     dplyr::select(dplyr::any_of(cols_to_select)) |>

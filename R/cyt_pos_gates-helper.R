@@ -269,7 +269,8 @@
   purrr::map_df(chnl_vec, function(chnl_curr) {
     # get stats tbl
     .gates_get_path_all(
-      path_project, pop, chnl_curr, init = TRUE
+      path_project, pop, chnl_curr,
+      init = TRUE
     ) |>
       readRDS() |>
       dplyr::mutate(chnl = chnl_curr, marker = chnl_lab[chnl_curr]) |>

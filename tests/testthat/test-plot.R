@@ -63,7 +63,6 @@ test_that(".plot_gate_bv returns NULL for single marker", {
 })
 
 test_that("plot functions handle min_cell threshold correctly", {
-
   # Test with very high min_cell to trigger early return
   # debugonce(.get_ex_new)
   result <- stimgate:::.plot_gate_bv(
@@ -79,7 +78,7 @@ test_that("plot functions handle min_cell threshold correctly", {
     limits_expand = NULL,
     limits_equal = FALSE,
     show_gate = TRUE,
-    min_cell = 999999  # Very high threshold
+    min_cell = 999999 # Very high threshold
   )
   # Should return a list with NULLs filtered out, or NULL
   expect_true(is.null(result) || (is.list(result) && length(result) == 0))
@@ -123,7 +122,6 @@ test_that(".plot_get_lab handles various val_lab configurations", {
 })
 
 test_that(".plot_gate_uv returns NULL when all markers return NULL", {
-
   # Test with empty ind to generate NULL results
   result <- stimgate:::.plot_gate_uv(
     ind = list(),
@@ -141,7 +139,6 @@ test_that(".plot_gate_uv returns NULL when all markers return NULL", {
 })
 
 test_that(".plot_gate_uv_marker returns NULL when plot_tbl is NULL", {
-
   # Test with empty ind list to generate NULL plot_tbl
   result <- stimgate:::.plot_gate_uv_marker(
     chnl = example_data$chnl[1],
@@ -160,7 +157,6 @@ test_that(".plot_gate_uv_marker returns NULL when plot_tbl is NULL", {
 })
 
 test_that(".plot_gate_uv_marker_get_plot_tbl returns NULL for insufficient cells", {
-
   result <- stimgate:::.plot_gate_uv_marker_get_plot_tbl(
     ind = example_data$batch_list[[1]],
     .data = gs,
@@ -169,7 +165,7 @@ test_that(".plot_gate_uv_marker_get_plot_tbl returns NULL for insufficient cells
     pop = "root",
     exc_min = TRUE,
     ind_lab = NULL,
-    min_cell = 999999  # Very high threshold
+    min_cell = 999999 # Very high threshold
   )
   expect_null(result)
 })
@@ -223,8 +219,10 @@ test_that(".plot_gate_uv_marker_plot_init handles different condition branches",
 test_that(".plot_grid returns p_list when plot = FALSE", {
   # Create mock plot list
   p_list <- list(
-    plot1 = ggplot2::ggplot() + ggplot2::geom_point(ggplot2::aes(x = 1, y = 1)),
-    plot2 = ggplot2::ggplot() + ggplot2::geom_point(ggplot2::aes(x = 2, y = 2))
+    plot1 = ggplot2::ggplot() +
+      ggplot2::geom_point(ggplot2::aes(x = 1, y = 1)),
+    plot2 = ggplot2::ggplot() +
+      ggplot2::geom_point(ggplot2::aes(x = 2, y = 2))
   )
 
   # Test with plot = FALSE
@@ -246,16 +244,15 @@ test_that(".plot_grid returns p_list when plot = FALSE", {
 
 # Additional comprehensive edge case tests
 test_that("comprehensive edge case coverage for plot_gate functions", {
-
   # Test .plot_gate_uv_marker_get_plot_tbl_ind with insufficient cells
   expect_null(stimgate:::.plot_gate_uv_marker_get_plot_tbl_ind(
-    ind = c(1),  # Single index
+    ind = c(1), # Single index
     .data = gs,
     chnl = example_data$chnl[1],
     marker = NULL,
     pop = "root",
     exc_min = TRUE,
-    min_cell = 999999  # Impossible threshold
+    min_cell = 999999 # Impossible threshold
   ))
 
   # Test .plot_get_ex_tbl with single index
@@ -271,7 +268,8 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
   expect_true(nrow(ex_tbl) > 0)
 
   # Test .plot_add_axis_title with single and multiple markers
-  p_base <- ggplot2::ggplot() + ggplot2::geom_point(ggplot2::aes(x = 1, y = 1))
+  p_base <- ggplot2::ggplot() +
+    ggplot2::geom_point(ggplot2::aes(x = 1, y = 1))
   p_single <- stimgate:::.plot_add_axis_title(
     p_base, example_data$chnl[1], NULL, NULL
   )
