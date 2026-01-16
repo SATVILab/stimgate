@@ -367,7 +367,8 @@ stimgate_data_get_ex <- function(path_project,
         combn_exc = combn_exc,
         gate_type_cyt_pos = gate_type_cyt_pos,
         gate_type_single_pos = gate_type_single_pos,
-        mult = mult
+        mult = mult,
+        path_project = path_project
       )
       ex <- .data_get_ex_bias(
         ex,
