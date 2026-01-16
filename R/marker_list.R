@@ -53,13 +53,13 @@
 
 #' @keywords internal
 .complete_chnl_list_ind <- function(chnl_settings_common,
-                                      chnl_settings_spec,
-                                      chnl,
-                                      .data,
-                                      pop_gate,
-                                      .debug,
-                                      ind_batch_list,
-                                      path_project) {
+                                    chnl_settings_spec,
+                                    chnl,
+                                    .data,
+                                    pop_gate,
+                                    .debug,
+                                    ind_batch_list,
+                                    path_project) {
   chnl_settings <- .complete_chnl_list_add_common(
     chnl_settings_common = chnl_settings_common,
     chnl_settings = chnl_settings_spec
@@ -96,7 +96,7 @@
 
 #' @keywords internal
 .complete_chnl_list_add_common <- function(chnl_settings_common,
-                                             chnl_settings) {
+                                           chnl_settings) {
   chnl_settings |>
     append(chnl_settings_common[
       setdiff(names(chnl_settings_common), names(chnl_settings))
@@ -105,13 +105,13 @@
 
 #' @keywords internal
 .complete_chnl_list_bias_uns <- function(bias_uns,
-                                           bias_uns_factor,
-                                           .data,
-                                           pop_gate,
-                                           chnl_cut,
-                                           .debug,
-                                           ind_batch_list,
-                                           path_project) {
+                                         bias_uns_factor,
+                                         .data,
+                                         pop_gate,
+                                         chnl_cut,
+                                         .debug,
+                                         ind_batch_list,
+                                         path_project) {
   if (!is.null(bias_uns)) {
     return(bias_uns)
   }
@@ -128,10 +128,10 @@
 
 #' @keywords internal
 .complete_chnl_list_bias_uns_get_mean_range <- function(ind_batch_list,
-                                                          .data,
-                                                          pop_gate,
-                                                          chnl_cut,
-                                                          path_project) {
+                                                        .data,
+                                                        pop_gate,
+                                                        chnl_cut,
+                                                        path_project) {
   purrr::map(
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
@@ -167,12 +167,12 @@
 
 #' @keywords internal
 .complete_chnl_list_cp_min <- function(cp_min,
-                                         .data,
-                                         pop_gate,
-                                         chnl_cut,
-                                         .debug,
-                                         ind_batch_list,
-                                         path_project) {
+                                       .data,
+                                       pop_gate,
+                                       chnl_cut,
+                                       .debug,
+                                       ind_batch_list,
+                                       path_project) {
   if (!is.null(cp_min)) {
     return(cp_min)
   }
@@ -412,7 +412,7 @@ stimgate_meta_read_marker_lab <- function(path_project) {
 #' \dontrun{
 #' tmp <- tempdir()
 #' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
-#' saveRDS(list(batch1 = c(1,2)), file.path(tmp, "meta_data", "batch_list.rds"))
+#' saveRDS(list(batch1 = c(1, 2)), file.path(tmp, "meta_data", "batch_list.rds"))
 #' stimgate_meta_read_batch_list(tmp)
 #' }
 #' @export

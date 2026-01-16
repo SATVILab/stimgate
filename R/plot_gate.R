@@ -124,7 +124,6 @@ stimgate_plot <- function(ind,
                        limits_equal,
                        show_gate,
                        min_cell) {
-
   # bv
   p_list_bv <- .plot_gate_bv(
     marker = marker, chnl = chnl, pop = pop,
@@ -237,7 +236,7 @@ stimgate_plot <- function(ind,
   lapply(ind, function(x) {
     .plot_get_ex_tbl_ind(
       x, .data, pop, chnl, chnl_lab, exc_min, path_project
-     ) |>
+    ) |>
       dplyr::mutate(ind = x)
   }) |>
     Reduce(rbind, x = _)

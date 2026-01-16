@@ -175,16 +175,16 @@ get_example_data <- function(dir_cache = NULL) {
 
 #' @keywords internal
 .sample_chnl <- function(fs,
-                        batch_list,
-                        chnl,
-                        prop_mean_pos,
-                        prop_sd_pos,
-                        prop_mean_neg,
-                        prop_sd_neg = NULL,
-                        expr_mean_neg,
-                        expr_mean_pos,
-                        expr_sd_pos,
-                        expr_sd_neg = NULL) {
+                         batch_list,
+                         chnl,
+                         prop_mean_pos,
+                         prop_sd_pos,
+                         prop_mean_neg,
+                         prop_sd_neg = NULL,
+                         expr_mean_neg,
+                         expr_mean_pos,
+                         expr_sd_pos,
+                         expr_sd_neg = NULL) {
   ind_list <- lapply(seq_along(fs), function(x) NULL)
   resp_tbl <- tibble::tibble(
     chnl = chnl,
@@ -248,12 +248,12 @@ get_example_data <- function(dir_cache = NULL) {
 
 #' @keywords internal
 .sample_response <- function(n,
-                            prop_mean,
-                            prop_sd,
-                            expr_mean_neg,
-                            expr_mean_pos,
-                            expr_sd_pos,
-                            expr_sd_neg = NULL) {
+                             prop_mean,
+                             prop_sd,
+                             expr_mean_neg,
+                             expr_mean_pos,
+                             expr_sd_pos,
+                             expr_sd_neg = NULL) {
   n_pos <- .sample_n_pos(
     n = n,
     prop_mean = prop_mean,
@@ -296,12 +296,12 @@ get_example_data <- function(dir_cache = NULL) {
 
 #' @keywords internal
 .sample_expr <- function(n,
-                        n_pos,
-                        ind_pos,
-                        mean_neg,
-                        mean_pos,
-                        sd_pos,
-                        sd_neg = NULL) {
+                         n_pos,
+                         ind_pos,
+                         mean_neg,
+                         mean_pos,
+                         sd_pos,
+                         sd_neg = NULL) {
   n_neg <- n - n_pos
   expr_vec <- rep(NA_real_, n)
   # only simulate when group has members

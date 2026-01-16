@@ -37,7 +37,7 @@ stimgate_gate_get <- function(path_project,
       chnl <- marker_lab[marker] |>
         stats::setNames(NULL)
     } else {
-      chnl %||% .gate_get_chnl(path_project, pop_curr)
+      chnl <- chnl %||% .gate_get_chnl(path_project, pop_curr)
     }
     purrr::map_df(chnl, function(chnl_curr) {
       marker_curr <- stimgate_meta_read_chnl_lab(path_project)[chnl_curr] |>
