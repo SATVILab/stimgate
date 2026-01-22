@@ -23,11 +23,10 @@
                                             cp_min,
                                             min_cell,
                                             params,
-                                            .debug,
                                             path_project) {
   message("getting pre-adjustment gates")
   purrr::map_df(seq_along(ind_batch_list), function(i) {
-    .debug_msg(.debug, "ind_batch_list", i) # nolint
+    .debug("ind_batch_list", i) # nolint
 
     # message progress
     if (i %% 50 == 0 || i == length(ind_batch_list)) {
@@ -49,7 +48,6 @@
       min_cell = min_cell,
       params = params,
       batch = names(ind_batch_list)[i],
-      .debug = .debug,
       path_project = path_project
     ) |>
       dplyr::select(
@@ -69,10 +67,10 @@
                                        chnl_cut,
                                        bw_min,
                                        path_project,
-                                       .debug,
+                                       stage,
                                        ind_batch_list,
                                        pop_gate) {
-  if (is.null(gate_tbl_params)) {
+  if (stage == "init") {
     .gate_marker_get_adj_gates_all( # nolint
       tol_clust = tol_clust,
       gate_tbl = gate_tbl,
@@ -82,11 +80,11 @@
       bw_min = bw_min,
       path_project = path_project,
       gate_quant = gate_quant,
-      .debug = .debug,
+      stagae = params$stage,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
-  } else {
+  } else if (stage == "single") {
     .gate_marker_gate_adj_gates_single(
       gate_tbl = gate_tbl,
       gate_tbl_params = gate_tbl_params,
@@ -99,6 +97,8 @@
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
+  } else {
+    stop("stage not recognized")
   }
 }
 
@@ -111,7 +111,7 @@
                                            bw_min,
                                            path_project,
                                            gate_quant,
-                                           .debug,
+                                           stage,
                                            ind_batch_list,
                                            pop_gate) {
   if (!is.null(tol_clust)) {
@@ -139,7 +139,6 @@
       combn = FALSE,
       gate_type_single_pos_calc = "base",
       path_project = path_project,
-      .debug = .debug,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
@@ -382,7 +381,7 @@
                                                           gate_tbl_ctrl_ctrl,
                                                           gate_tbl_single_gn,
                                                           params) {
-  .debug_msg(.debug, "gate_name_vec", gn) # nolint
+  .debug("gate_name_vec", gn) # nolint
   gate_tbl_gn <- gate_tbl |>
     dplyr::filter(gate_name == gn) # nolint
 
