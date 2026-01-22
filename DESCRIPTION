@@ -38,4 +38,5 @@ Suggests:
     knitr,
     rmarkdown,
     hexbin,
-    gh
+    gh,
+    gitcreds
