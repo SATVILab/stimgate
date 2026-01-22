@@ -23,6 +23,7 @@
                                             cp_min,
                                             min_cell,
                                             params,
+                                            stage,
                                             path_project) {
   message("getting pre-adjustment gates")
   purrr::map_df(seq_along(ind_batch_list), function(i) {
@@ -48,6 +49,7 @@
       min_cell = min_cell,
       params = params,
       batch = names(ind_batch_list)[i],
+      stage = stage,
       path_project = path_project
     ) |>
       dplyr::select(
@@ -80,7 +82,7 @@
       bw_min = bw_min,
       path_project = path_project,
       gate_quant = gate_quant,
-      stagae = params$stage,
+      stage = params$stage,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
