@@ -162,7 +162,6 @@
 }
 
 
-
 #' @keywords internal
 .stats_save <- function(save,
                         stat_tbl,

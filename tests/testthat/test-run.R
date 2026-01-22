@@ -14,21 +14,24 @@ test_that("stimgate_gate runs", {
   expect_true(file.exists(file.path(path_project, "gate_stats.rds")))
 })
 
-test_that("stimgate_gate runs with debug = TRUE", {
-  # Run stimgate_gate with debug = TRUE to ensure it works without error
+test_that("stimgate_gate runs with STIMGATE_DEBUG environment variable", {
+  # Run stimgate_gate with STIMGATE_DEBUG environment variable to ensure it works without error
   example_data <- get_example_data()
   gs <- flowWorkspace::load_gs(example_data$path_gs)
   path_project <- file.path(dirname(example_data$path_gs), "stimgate_debug")
 
-  # Test that the function can be called with debug = TRUE without error
+  # Set the environment variable for debug mode
+  Sys.setenv("STIMGATE_DEBUG" = "TRUE")
+  on.exit(Sys.unsetenv("STIMGATE_DEBUG"))
+
+  # Test that the function can be called with debug enabled without error
   # and that it returns the expected path
   result_path <- stimgate_gate(
     .data = gs,
     path_project = path_project,
     pop_gate = "root",
     batch_list = example_data$batch_list,
-    marker = example_data$marker,
-    debug = TRUE
+    marker = example_data$marker
   )
 
   # Verify the function returns the expected path

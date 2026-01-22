@@ -127,7 +127,6 @@
 }
 
 
-
 # Get mid-probability cut
 #' @keywords internal
 .get_cp_pwmid <- function(high_ind_tbl, cp_scp) {
@@ -180,11 +179,6 @@
     upper = max(high_ind_tbl$chnl_cut)
   )$par
 }
-
-
-
-
-
 
 
 # Get axis labels from annotated .data frame

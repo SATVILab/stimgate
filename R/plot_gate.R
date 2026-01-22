@@ -325,9 +325,7 @@ stimgate_plot <- function(ind,
 #' @keywords internal
 .plot_get_ex_tbl_ind_old <- function(ind,
                                      pop,
-                                     chnl) {
-
-}
+                                     chnl) {}
 
 #' @keywords internal
 .plot_get_ex_tbl_ind_exc_min <- function(ex_tbl, exc_min, chnl) {

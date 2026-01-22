@@ -24,8 +24,7 @@ stimgate_gate(
   marker_settings = NULL,
   chnl_settings = NULL,
   calc_cyt_pos_gates = TRUE,
-  calc_single_pos_gates = FALSE,
-  .debug = FALSE
+  calc_single_pos_gates = FALSE
 )
 }
 \arguments{

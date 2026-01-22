@@ -6,6 +6,7 @@
                           gate_name = NULL,
                           bw_min,
                           calc_cyt_pos = TRUE,
+                          stage,
                           path_project) {
   .debug("-------------") # nolint
   .debug("getting cytokine-positive gates") # nolint
@@ -61,6 +62,7 @@
       pop_gate = pop_gate,
       bw_min = bw_min,
       calc_cyt_pos = calc_cyt_pos,
+      stage = stage,
       path_project = path_project
     )
   })
@@ -75,6 +77,7 @@
                                          pop_gate,
                                          bw_min,
                                          calc_cyt_pos,
+                                         stage,
                                          path_project) {
   .debug(
     "Getting cyt+ gates for gate_name: ",
@@ -98,6 +101,7 @@
       pop_gate = pop_gate,
       bw_min = bw_min,
       calc_cyt_pos = calc_cyt_pos,
+      stage = stage,
       path_project = path_project,
       batch = batch
     )
@@ -124,6 +128,7 @@
                                    pop_gate,
                                    bw_min,
                                    calc_cyt_pos,
+                                   stage,
                                    batch,
                                    path_project) {
   .debug("Getting cyt+ gates for ind: ", ind) # nolint
@@ -167,7 +172,7 @@
     function(i) {
       .get_cp_pos_gates_chnl(
         chnl_curr = chnl_vec[[i]], ex = ex, gate_tbl_ind = gate_tbl_ind,
-        bw_min = bw_min, ind = ind, path_project = path_project
+        bw_min = bw_min, ind = ind, stage = stage, path_project = path_project
       )
     }
   )
@@ -187,6 +192,7 @@
                                    gate_tbl_ind,
                                    bw_min,
                                    ind,
+                                   stage,
                                    path_project) {
   .debug("chnl_curr: ", chnl_curr) # nolint
   if (is.na(gate_tbl_ind$gate[gate_tbl_ind$chnl == chnl_curr])) {
@@ -209,7 +215,7 @@
   )
   .int_save_nm(
     paste0(chnl, "_inc_vec"), inc_vec,
-    ind, "cyt_pos", path_project
+    ind, stage, path_project
   )
 
   # subset expression matrix to only cells positive for
@@ -222,7 +228,7 @@
 
   .int_save_nm(
     paste0(chnl_curr, "_cp_orig"), cp_orig,
-    ind, "cyt_pos", path_project
+    ind, stage, path_project
   )
 
   # =====================
@@ -236,7 +242,7 @@
     )
     .int_save_nm(
       paste0(chnl_curr, "_cp_neg"), cp_neg,
-      ind, "cyt_pos", path_project
+      ind, stage, path_project
     )
   }
 
@@ -255,7 +261,7 @@
   )
   .int_save_nm(
     paste0(chnl_curr, "_cp_pos"), cp_pos,
-    ind, "cyt_pos", path_project
+    ind, stage, path_project
   )
 
   # =====================
@@ -268,7 +274,7 @@
   }
   .int_save_nm(
     paste0(chnl_curr, "_cp_cyt_pos_final"), cp_cyt_pos,
-    ind, "cyt_pos", path_project
+    ind, stage, path_project
   )
 
   cp_cyt_pos

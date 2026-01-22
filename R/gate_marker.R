@@ -71,6 +71,7 @@
     cp_min = cp_min,
     min_cell = min_cell,
     params = params,
+    stage = stage,
     path_project = path_project
   )
 

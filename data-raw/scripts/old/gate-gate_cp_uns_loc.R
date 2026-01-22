@@ -110,9 +110,7 @@ if (nrow(data_mod) >= 10) {
   mean_abs_error <- 0
   pred_vec <- 0
 
-  if (!inherits(fit, "try-error")) {
-
-  }
+  if (!inherits(fit, "try-error")) {}
 
   # monotonic increasing and convex
   if (

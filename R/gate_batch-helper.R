@@ -12,6 +12,7 @@
                             tol_clust,
                             bw_min,
                             params,
+                            stage,
                             path_project) {
   .debug("params$gate_tbl is NULL") # nolint
   .debug( # nolint
@@ -30,6 +31,7 @@
     cp_min = cp_min,
     min_cell = min_cell,
     params = params,
+    stage = stage,
     path_project = path_project
   )
   if (!is.null(params$tol_ctrl)) {
@@ -153,6 +155,7 @@
                                tol_clust,
                                bw_min,
                                params,
+                               stage,
                                path_project) {
   .debug("params$gate_tbl is not NULL") # nolint
   .debug(paste0("Gating batch ", batch))
