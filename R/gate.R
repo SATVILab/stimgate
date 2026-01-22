@@ -195,12 +195,12 @@ stimgate_gate <- function(path_project,
                           marker_settings = NULL,
                           chnl_settings = NULL,
                           calc_cyt_pos_gates = TRUE,
-                          calc_single_pos_gates = FALSE,
-                          .debug = FALSE) {
+                          calc_single_pos_gates = FALSE) {
   force(.data)
-  if (.debug) {
-    Sys.setenv("STIMGATE_DEBUG" = "TRUE")
-    on.exit(Sys.unsetenv("STIMGATE_DEBUG"))
+  if (Sys.getenv("STIMGATE_DEBUG") == "") {
+    Sys.setenv("STIMGATE_DEBUG" = "FALSE")
+  }
+  if (Sys.getenv("STIMGATE_DEBUG") == "TRUE") {
     .debug_file_create()
     path_debug <- .debug_file_create()
     message(paste0("Saving debug output to ", path_debug))
@@ -296,7 +296,6 @@ stimgate_gate <- function(path_project,
     tol_gate_single = tol_gate_single,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
-    .debug = .debug,
     gate_tbl = gate_tbl
   )
 
@@ -313,7 +312,6 @@ stimgate_gate <- function(path_project,
     combn = TRUE,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
-    .debug = .debug,
     save = TRUE,
     pop_gate = pop_gate,
     chnl_settings = chnl_settings,
@@ -484,7 +482,6 @@ stimgate_gate <- function(path_project,
                         combn = TRUE,
                         calc_cyt_pos_gates,
                         calc_single_pos_gates,
-                        .debug,
                         save = TRUE,
                         pop_gate,
                         chnl_settings,
@@ -506,7 +503,6 @@ stimgate_gate <- function(path_project,
       if (calc_cyt_pos_gates) "cyt" else "base",
     gate_type_single_pos_calc =
       if (calc_single_pos_gates) "single" else "base",
-    .debug = .debug,
     save = save,
     pop_gate = pop_gate,
     chnl = purrr::map_chr(chnl_settings, function(x) x$chnl_cut),

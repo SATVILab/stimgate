@@ -93,7 +93,6 @@
       .data = .data,
       calc_cyt_pos_gates = TRUE,
       path_project = path_project,
-      .debug = .debug,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
@@ -158,8 +157,7 @@
           bw = bw_min,
           control = list(),
           filter_other_cyt_pos = FALSE,
-          params = params,
-          .debug = .debug
+          params = params
         )
 
         gate_tbl_cluster |>
@@ -227,7 +225,6 @@
     .data = .data,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     path_project = path_project,
-    .debug = .debug,
     ind_batch_list = ind_batch_list
   )
 
@@ -235,8 +232,7 @@
     gate_tbl = gate_tbl,
     gate_stats_tbl = gate_stats_tbl,
     gate_tbl_single = gate_tbl_single,
-    params = params,
-    .debug = .debug
+    params = params
   )
 
   list(
@@ -317,7 +313,6 @@
     gate_type_single_pos_calc = "base",
     combn = FALSE,
     path_project = path_project,
-    .debug = .debug,
     ind_batch_list = ind_batch_list,
     pop_gate = pop_gate
   )
@@ -358,7 +353,6 @@
   gate_name_vec <- unique(gate_tbl$gate_name)
   purrr::map_df(gate_name_vec, function(gn) {
     .gate_marker_gate_adj_gates_single_out_get_gn(
-      .debug = .debug,
       gn = gn,
       gate_tbl = gate_tbl,
       gate_stats_tbl = gate_stats_tbl,
@@ -373,8 +367,7 @@
 }
 
 #' @keywords internal
-.gate_marker_gate_adj_gates_single_out_get_gn <- function(.debug,
-                                                          gn,
+.gate_marker_gate_adj_gates_single_out_get_gn <- function(gn,
                                                           gate_tbl,
                                                           gate_stats_tbl,
                                                           gate_tbl_ctrl_clust,
@@ -442,8 +435,7 @@
       bw = params$bw_min,
       control = list(),
       filter_other_cyt_pos = TRUE,
-      params = params,
-      .debug = .debug
+      params = params
     )
 
     gate_tbl_cluster_gn <- gate_tbl_cluster_gn |>
