@@ -279,6 +279,7 @@ stimgate_gate <- function(path_project,
     pop_gate = pop_gate,
     .data = .data,
     calc_cyt_pos = calc_cyt_pos_gates,
+    stage = "cyt_pos",
     path_project = path_project
   )
 
