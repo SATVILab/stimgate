@@ -131,7 +131,7 @@ stimgate::stimgate_gate(
 #> 
 #> getting cyt combn frequencies
 #> batch 8 of 8
-#> [1] "/tmp/RtmpMKL4eh/stimgate_example/stimgate"
+#> [1] "/tmp/RtmpoHBUk6/stimgate_example/stimgate"
 
 # Create plots
 plots <- stimgate_plot(

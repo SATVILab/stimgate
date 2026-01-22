@@ -92,7 +92,7 @@ stimgate_plot(
   [github.com/SATVILab/stimgate](https://github.com/SATVILab/stimgate)
 - 📦 **Bioconductor**: *URL to be added upon release*
 - 🔧 **Function reference**:
-  [`help(package = "stimgate")`](https://rdrr.io/pkg/stimgate/man)
+  [`help(package = "stimgate")`](https://satvilab.github.io/stimgate/reference)
 
 ### Key Functions
 

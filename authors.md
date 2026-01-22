@@ -8,15 +8,15 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/SATVILab/stimgate/blob/master/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/SATVILab/stimgate/blob/test_data/DESCRIPTION)
 
-Rodo M (2025). *stimgate: Identify responding cells as outliers*. R
+Rodo M (2026). *stimgate: Identify responding cells as outliers*. R
 package version 0.99.1-1, <https://satvilab.github.io/stimgate/>.
 
     @Manual{,
       title = {stimgate: Identify responding cells as outliers},
       author = {Miguel Rodo},
-      year = {2025},
+      year = {2026},
       note = {R package version 0.99.1-1},
       url = {https://satvilab.github.io/stimgate/},
     }
