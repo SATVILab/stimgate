@@ -18,7 +18,6 @@
 }
 
 
-
 # Get unstim-based local FDR cutpoint for each bias level
 #' @keywords internal
 .get_cp_uns_loc_bias <- function(ex_list, .data,
@@ -476,7 +475,7 @@
       stage = stage
     )
     .int_save(ind, stage, path_project, ex_tbl_uns_bias)
-    
+
     .get_cp_uns_loc_ind( # nolint
       ex_tbl_stim_no_min = ex_tbl_no_min_stim,
       ex_tbl_uns_bias = ex_tbl_uns_bias,
@@ -1227,10 +1226,6 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   .debug("Failed to smooth") # nolint
   data_mod$prob_smooth - 0.0001
 }
-
-
-
-
 
 
 # get cp
