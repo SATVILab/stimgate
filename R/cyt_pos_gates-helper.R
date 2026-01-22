@@ -60,7 +60,6 @@
 }
 
 
-
 #' @keywords internal
 .get_cp_pos <- function(ex,
                         inc,

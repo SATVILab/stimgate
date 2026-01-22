@@ -217,4 +217,3 @@ stimgate_debug_print <- function() {
   }
   path_save
 }
-

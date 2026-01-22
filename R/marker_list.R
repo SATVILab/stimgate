@@ -192,7 +192,6 @@
 }
 
 
-
 # Get all cutpoint type names
 # Returns character vector of all available cutpoint names
 #' @keywords internal

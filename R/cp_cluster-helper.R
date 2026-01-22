@@ -87,7 +87,6 @@
 }
 
 
-
 #' @keywords internal
 .get_prop_bs_by_cp_tbl_data_list <- function(.data,
                                              gate_tbl,
@@ -472,7 +471,6 @@
   )
   dens_tbl[, not_all_na_vec_ind]
 }
-
 
 
 #' @keywords internal
