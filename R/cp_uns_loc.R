@@ -433,6 +433,7 @@
                                    path_project,
                                    stage) {
   .debug("getting loc gate at sample level") # nolint
+  force(path_project)
 
   # get cutpoints for each sample
   cp_uns_loc_obj_list <- purrr::map(seq_along(ex_list_no_min_stim), function(i) { # nolint
@@ -493,11 +494,13 @@
 
   # name sample
   # ------------------
+  .path_project <- path_project
   .get_cp_uns_loc_output(
-    stage = stage, cp_uns_loc_obj_list = cp_uns_loc_obj_list,
+    cp_uns_loc_obj_list = cp_uns_loc_obj_list,
     ind_uns = names(ex_list_orig)[length(ex_list_orig)],
     ind_stim = names(ex_list_no_min_stim),
-    path_project = path_project
+    stage = stage,
+    path_project = .path_project
   )
 }
 
