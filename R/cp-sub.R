@@ -9,6 +9,7 @@
                                                  noise_sd = NULL) {
   purrr::map(ind, function(ind_curr) {
     cut_tbl <- ex_list[[as.character(ind_curr)]]
+    attr_list <- attributes(cut_tbl)
     if (exc_min) {
       n_row_init <- nrow(cut_tbl)
       cut_tbl <- cut_tbl[
@@ -22,9 +23,21 @@
       cut_tbl <- cut_tbl[[attr(cut_tbl, "chnl_cut")]] +
         rnorm(nrow(cut_tbl), sd = noise_sd) # nolint
     }
-    cut_tbl
+    cut_tbl |>
+      .prepare_ex_list_with_bias_and_noise_add_attr(attr_list)
   }) |>
     stats::setNames(as.character(ind))
+}
+
+.prepare_ex_list_with_bias_and_noise_add_attr <- function(ex,
+                                                          attr_list) {
+  attr_vec_nm_orig <- names(attr_list)
+  attr_vec_nm_add <- c("ind", "ind_uns", "is_uns", "chnl_cut", "batch", "pop")
+  attr_vec_nm_add <- intersect(attr_vec_nm_add, attr_vec_nm_orig)
+  for (i in seq_along(attr_vec_nm_add)) {
+    attr(ex, attr_vec_nm_add[i]) <- attr_list[[attr_vec_nm_add[i]]]
+  }
+  ex
 }
 
 
