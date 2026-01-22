@@ -69,10 +69,9 @@
                                        chnl_cut,
                                        bw_min,
                                        path_project,
-                                       stage,
                                        ind_batch_list,
                                        pop_gate) {
-  if (stage == "init") {
+  if (params$stage == "init") {
     .gate_marker_get_adj_gates_all( # nolint
       tol_clust = tol_clust,
       gate_tbl = gate_tbl,
@@ -86,7 +85,7 @@
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
-  } else if (stage == "single") {
+  } else if (params$stage == "single") {
     .gate_marker_gate_adj_gates_single(
       gate_tbl = gate_tbl,
       gate_tbl_params = gate_tbl_params,
@@ -206,7 +205,6 @@
                                                .data,
                                                calc_cyt_pos_gates,
                                                path_project,
-                                               .debug,
                                                ind_batch_list,
                                                pop_gate) {
   # get gates
@@ -285,7 +283,6 @@
                                                              .data,
                                                              calc_cyt_pos_gates, # nolint
                                                              path_project,
-                                                             .debug,
                                                              ind_batch_list) { # nolint
   gate_name_vec <- unique(gate_tbl$gate_name)
   if (!.gate_marker_gate_adj_gates_single_stats_tbl_get_check(gate_name_vec)) {
@@ -341,8 +338,7 @@
 .gate_marker_gate_adj_gates_single_out_get <- function(gate_tbl,
                                                        gate_stats_tbl,
                                                        gate_tbl_single,
-                                                       params,
-                                                       .debug) {
+                                                       params) {
   # get tail-gate gates
   gate_tbl_ctrl_clust <- gate_tbl_single |>
     dplyr::filter(gate_use == "tg_clust") # nolint
