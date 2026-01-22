@@ -225,7 +225,7 @@ str_detect_any <- function(string, pattern) {
 }
 
 .get_ind <- function(ex) {
-  ex[[attr(ex, "ind")]]
+  attr(ex, "ind")
 }
 
 #' @keywords internal
