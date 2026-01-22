@@ -224,6 +224,10 @@ str_detect_any <- function(string, pattern) {
   ex
 }
 
+.get_ind <- function(ex) {
+  ex[[attr(ex, "ind")]]
+}
+
 #' @keywords internal
 .get_cut <- function(ex) {
   ex[[attr(ex, "chnl_cut")]]

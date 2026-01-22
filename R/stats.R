@@ -93,7 +93,6 @@
     .data = .data,
     chnl_lab = chnl_lab,
     chnl_cut = params$chnl_cut,
-    .debug = .debug,
     filter_other_cyt_pos = filter_other_cyt_pos,
     combn_mat_list = combn_mat_list,
     gate_name = gate_name,

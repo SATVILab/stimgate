@@ -37,11 +37,6 @@ test_that("stimgate_gate runs with debug = TRUE", {
   # Verify basic output files still exist (same as non-debug version)
   expect_true(file.exists(file.path(path_project, "gate_stats.rds")))
 
-  # Verify that debug parameter is correctly handled by testing
-  # that the .debug_msg function works as expected
-  expect_true(exists(".debug_msg"))
-  expect_true(is.function(.debug_msg))
-
   # Clean up debug test directory
   if (dir.exists(path_project)) {
     unlink(path_project, recursive = TRUE)

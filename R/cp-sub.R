@@ -6,7 +6,6 @@
                                                  ind,
                                                  exc_min,
                                                  bias = 0,
-                                                 .debug = FALSE,
                                                  noise_sd = NULL) {
   purrr::map(ind, function(ind_curr) {
     cut_tbl <- ex_list[[as.character(ind_curr)]]
@@ -52,14 +51,13 @@
                        tol,
                        min_cell,
                        cp_min,
-                       bw,
-                       .debug) {
+                       bw) {
   # get cytoUtils tailgate cutpoint
-  .debug_msg(.debug, "Getting tg cutpoint")
+  .debug("Getting tg cutpoint")
   cp_list <- list()
 
   if ("prejoin" %in% gate_combn) {
-    .debug_msg(.debug, "prejoin")
+    .debug("prejoin")
     ind_gate <- names(ex_list)[-length(ex_list)]
     ex <- dplyr::bind_rows(ex_list[ind_gate])
     ex <- ex[!is.na(.get_cut(ex)), ]
@@ -90,10 +88,10 @@
   non_prejoin_combn_vec <- setdiff(gate_combn, "prejoin")
 
   if (length(non_prejoin_combn_vec) > 0) {
-    .debug_msg(.debug, "non-prejoin")
+    .debug("non-prejoin")
     ind_gate <- names(ex_list)[-length(ex_list)]
     cp_tg_vec <- purrr::map_dbl(ind_gate, function(ind) {
-      .debug_msg(.debug, "ind", ind)
+      .debug("ind", ind)
       ex <- ex_list[[as.character(ind)]]
       ex <- ex[!is.na(.get_cut(ex)), ]
       if (exc_min) ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
@@ -113,7 +111,7 @@
     }) |>
       stats::setNames(ind_gate)
 
-    .debug_msg(.debug, "combining thresholds") # nolint
+    .debug("combining thresholds") # nolint
 
     cp_tg_list <- .combine_cp(
       cp = cp_tg_vec,
@@ -123,7 +121,7 @@
 
     cp_list <- cp_list |> append(cp_tg_list)
   }
-  .debug_msg(.debug, "Done tg cutpoint")
+  .debug("Done tg cutpoint")
 
   cp_list
 }

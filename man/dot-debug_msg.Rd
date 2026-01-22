@@ -4,7 +4,7 @@
 \alias{.debug_msg}
 \title{Print debug message conditionally}
 \usage{
-.debug_msg(.debug, msg, val = NULL)
+.debug(msg, val = NULL)
 }
 \arguments{
 \item{.debug}{logical Whether to print debug messages}

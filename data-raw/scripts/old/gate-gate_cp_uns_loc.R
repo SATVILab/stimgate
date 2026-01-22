@@ -83,7 +83,7 @@ if (FALSE) {
 }
 
 if (nrow(data_mod) >= 10) {
-  .debug_msg(.debug, "Smoothing I")
+  .debug("Smoothing I")
 
   # monotonic increasing
   fit <- try(
@@ -120,7 +120,7 @@ if (nrow(data_mod) >= 10) {
       all(pred_vec > 0.99) ||
       mean_abs_error > 0.3
   ) {
-    .debug_msg(.debug, "Smoothing II")
+    .debug("Smoothing II")
     fit <- try(
       scam::scam(
         prob_smooth ~ s(expr, bs = "micv"),
@@ -149,8 +149,8 @@ if (nrow(data_mod) >= 10) {
     inherits(fit, "try-error") ||
       all(pred_vec > 0.99) ||
       mean_abs_error > 0.3) {
-    # .debug_msg(.debug, "Smoothing III")
-    .debug_msg(.debug, "Skipping mgcv smoothing")
+    # .debug("Smoothing III")
+    .debug("Skipping mgcv smoothing")
     # It's very slow, and returned
     # a WAAAY larger error than scam
     # when examined.
@@ -172,16 +172,16 @@ if (nrow(data_mod) >= 10) {
     inherits(fit, "try-error") ||
       all(pred_vec > 0.99) ||
       mean_abs_error > 0.3) {
-    .debug_msg(.debug, "Failed to smooth")
+    .debug("Failed to smooth")
     data_mod <- data_mod |>
       dplyr::mutate(pred = prob_smooth - 0.0001)
   } else {
-    .debug_msg(.debug, "Smoothed")
+    .debug("Smoothed")
     data_mod <- data_mod |>
       dplyr::mutate(pred = pred_vec)
   }
 } else {
-  .debug_msg(.debug, "Failed to smooth")
+  .debug("Failed to smooth")
   data_mod <- data_mod |>
     dplyr::mutate(pred = prob_smooth - 1e-4)
 }
