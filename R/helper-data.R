@@ -37,7 +37,7 @@ get_example_data <- function(dir_cache = NULL) {
     gs,
     path = path_save
   )
-  desc_df <- parameters(frames_list[[1]])@data
+  desc_df <- flowCore::parameters(frames_list[[1]])@data
   chnl_vec <- names(chnl_list)
   marker_vec <- NULL
   for (chnl_curr in chnl_vec) {

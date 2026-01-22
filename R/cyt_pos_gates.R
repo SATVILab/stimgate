@@ -214,7 +214,7 @@
     gate_type_single_pos = "base"
   )
   .int_save_nm(
-    paste0(chnl, "_inc_vec"), inc_vec,
+    paste0(chnl_curr, "_inc_vec"), inc_vec,
     ind, stage, path_project
   )
 
