@@ -150,7 +150,6 @@
 
 #' @keywords internal
 .get_stats_batch_gn <- function(gn,
-                                .debug,
                                 ex_list,
                                 gate_tbl,
                                 chnl,
@@ -207,8 +206,7 @@
                                                combn_mat_list,
                                                cyt_combn_vec_list,
                                                gate_type_cyt_pos_calc,
-                                               gate_type_single_pos_calc,
-                                               .debug) {
+                                               gate_type_single_pos_calc) {
   # filter to yield cells negative for all cytokine combinations
   ex_list_stim <- ex_list[-length(ex_list)]
   ex_uns <- ex_list[[length(ex_list)]]
@@ -242,7 +240,6 @@
 
 #' @keywords internal
 .get_stats_batch_gn_combn <- function(j,
-                                      .debug,
                                       ex,
                                       ex_uns,
                                       gate_tbl_gn_ind,
@@ -408,8 +405,7 @@
                                                            gate_tbl_gn,
                                                            chnl_curr,
                                                            gate_type_cyt_pos_filter, # nolint
-                                                           gate_type_single_pos_filter, # nolint
-                                                           .debug) {
+                                                           gate_type_single_pos_filter) { # nolint line_length_limit
   .debug("filtering other cyt pos") # nolint
 
   # loop over individual samples

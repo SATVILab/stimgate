@@ -252,7 +252,6 @@
                                           cp_min,
                                           max_cp,
                                           gate_stats_tbl,
-                                          .debug,
                                           ind_batch_list,
                                           ind_in_batch_uns) {
   .debug("Getting prop_bs_by_cp_tbl") # nolint
@@ -381,14 +380,7 @@
 }
 
 #' @keywords internal
-.get_prop_bs_by_cp_tbl_actual_progress <- function(.debug, i, data_list) {
-  if (i %% 20 == 0) {
-    .debug(paste0("Processing ", i, " of ", length(data_list))) # nolint
-  }
-}
-
-#' @keywords internal
-.get_prop_bs_by_cp_tbl_actual_progress <- function(.debug, i, data_list) {
+.get_prop_bs_by_cp_tbl_actual_progress <- function(i, data_list) {
   if (i %% 20 == 0) {
     .debug(paste0("Processing ", i, " of ", length(data_list))) # nolint
   }
@@ -439,8 +431,7 @@
                                          gate_tbl,
                                          control,
                                          bw,
-                                         path_project,
-                                         .debug) {
+                                         path_project) {
   .debug("Getting density table") # nolint
   min_threshold <- .get_cp_cluster_dens_tbl_get_min_threshold(
     gate_tbl, control
@@ -567,8 +558,7 @@
 }
 
 #' @keywords internal
-.get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter <- function(.debug,
-                                                                   ex_list,
+.get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter <- function(ex_list,
                                                                    chnl_cut,
                                                                    gate_tbl,
                                                                    calc_cyt_pos_gates) { # nolint
@@ -815,8 +805,7 @@
 #' @keywords internal
 .get_cp_cluster_gate_summ_stat_tbl_get <- function(gate_tbl,
                                                    chnl_cut,
-                                                   grp_ind_lab_vec,
-                                                   .debug) {
+                                                   grp_ind_lab_vec) {
   .debug( # nolint
     "Getting quantiles of original gates per clustered observations" # nolint
   )
@@ -841,8 +830,7 @@
 
 #' @keywords internal
 .get_cp_cluster_cp_join_get <- function(prop_bs_by_cp_tbl,
-                                        cp_grp_lab_vec,
-                                        .debug) {
+                                        cp_grp_lab_vec) {
   .debug("Getting cp_join") # nolint
   prop_bs_by_cp_tbl |>
     dplyr::group_by(ind) |> # nolint
@@ -868,8 +856,7 @@
                                             gate_stats_tbl,
                                             gate_summ_stat_tbl,
                                             gate_tbl_ctrl,
-                                            gate_tbl_chnl,
-                                            .debug) {
+                                            gate_tbl_chnl) {
   .debug("Adding information to cp table") # nolint
   cp_tbl |>
     dplyr::left_join(
@@ -977,7 +964,7 @@
 }
 
 .get_cp_cluster_cp_filter_above_cp_join_lse_orig_mean_tg <-
-  function(cp_tbl, .debug) {
+  function(cp_tbl) {
     .debug( # nolint
       "Filtering above cp_join_lse_orig_mean_tg"
     ) # nolint
@@ -1079,8 +1066,7 @@
 .get_cp_cluster_impute_missing_ind <- function(cp_tbl,
                                                chnl_cut,
                                                gate_tbl,
-                                               dens_tbl,
-                                               .debug) {
+                                               dens_tbl) {
   .debug("considering imputing missing thresholds individually") # nolint
   ind_with_missing_gates <- setdiff(
     gate_tbl$ind, cp_tbl$ind[!is.na(cp_tbl$cp_join_tg_orig)]
@@ -1125,8 +1111,7 @@
 .get_cp_cluster_impute_missing_final <- function(cp_tbl,
                                                  chnl_cut,
                                                  gate_tbl,
-                                                 dens_tbl,
-                                                 .debug) {
+                                                 dens_tbl) {
   .debug("considering imputing missing thresholds finally") # nolint
   ind_with_missing_gates <- setdiff(
     gate_tbl$ind, cp_tbl$ind[!is.na(cp_tbl$cp_join_tg_orig)]

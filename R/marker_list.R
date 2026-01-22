@@ -164,7 +164,6 @@
                                        .data,
                                        pop_gate,
                                        chnl_cut,
-                                       .debug,
                                        ind_batch_list,
                                        path_project) {
   if (!is.null(cp_min)) {
