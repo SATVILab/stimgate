@@ -19,7 +19,15 @@ stimgate_plot(
   grid = TRUE,
   grid_n_col = 2,
   show_gate = TRUE,
-  min_cell = 10
+  min_cell = 10,
+  bias = FALSE,
+  combn_exc = NULL,
+  chnl_gate = NULL,
+  marker_gate = NULL,
+  gate_type_cyt_pos = "cyt",
+  gate_type_single_pos = "single",
+  mult = FALSE,
+  gate_uns_method = "min"
 )
 }
 \arguments{
@@ -77,6 +85,30 @@ Default is \code{TRUE}.}
 Minimum number of cells to be plotted.
 Will skip plots with fewer cells.
 Default is 10.}
+
+\item{bias}{logical Whether to add bias to unstimulated sample used in the
+gating. Default is \code{FALSE}.}
+
+\item{combn_exc}{list or NULL Combinations of channels to exclude. Default
+is NULL.}
+
+\item{chnl_gate}{character or NULL Channel name(s) to use for gating.
+Cannot be specified with \code{marker_gate}. Default is NULL.}
+
+\item{marker_gate}{character or NULL Marker name(s) to use for gating.
+Cannot be specified with \code{chnl_gate}. Default is NULL.}
+
+\item{gate_type_cyt_pos}{character Gate type to use for cytokine-positive
+cells. Default is "cyt".}
+
+\item{gate_type_single_pos}{character Gate type to use for single-positive
+cells. Default is "single".}
+
+\item{mult}{logical Whether to return only multi-functional cells (positive
+for multiple markers). Default is FALSE.}
+
+\item{gate_uns_method}{character Method for gating unstimulated cells.
+Default is "min".}
 }
 \value{
 A grid of plots if \code{grid} is TRUE, otherwise a list of ggplot objects.
