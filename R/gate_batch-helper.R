@@ -236,8 +236,7 @@
           gate_name_curr = gate_name_curr,
           ex_uns = ex_list[[length(ex_list)]]
         )),
-        path_project = path_project,
-        stage = params$stage,
+        path_project = path_project
       )[[1]][[1]]
     )
 
