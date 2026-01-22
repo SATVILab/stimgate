@@ -496,7 +496,8 @@
   .get_cp_uns_loc_output(
     stage = stage, cp_uns_loc_obj_list = cp_uns_loc_obj_list,
     ind_uns = names(ex_list_orig)[length(ex_list_orig)],
-    ind_stim = names(ex_list_no_min_stim)
+    ind_stim = names(ex_list_no_min_stim),
+    path_project = path_project
   )
 }
 
@@ -1365,7 +1366,9 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     stage = stage,
     path_project = path_project
   )
-  .int_save(ind_stim, stage, path_project, cp_vec)
+  # Use combined identifier for batch-level data when ind_stim is a vector
+  ind_combined <- paste(ind_stim, collapse = "_")
+  .int_save(ind_combined, stage, path_project, cp_vec)
   .debug("done getting loc gate at sample level") # nolint
   # collate plots
   list(
@@ -1381,18 +1384,21 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                           ind_stim,
                                           path_project) {
   .debug("Possibly re-using calculated cutpoints") # nolint
+  # Use combined identifier for batch-level data when ind_stim is a vector
+  ind_combined <- paste(ind_stim, collapse = "_")
+
   # extract vector of cutpoints
   cp_vec <- purrr::map_dbl(cp_uns_loc_obj_list, ~ .x[["cp"]])
   .int_save_nm(
     "cp_vec_before_rep", cp_vec,
-    ind_stim, stage, path_project
+    ind_combined, stage, path_project
   )
 
   # Repeat cutpoint if it was prejoined
   if (length(cp_vec) != length(ind_stim)) {
     .int_save_nm(
       "prejoined_cp_used", NULL,
-      ind_stim, stage, path_project
+      ind_combined, stage, path_project
     )
     cp_vec <- stats::setNames(
       rep(cp_vec, length(ind_stim)), ind_stim
@@ -1400,33 +1406,33 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   } else {
     .int_save_nm(
       "individual_cp_used", NULL,
-      ind_stim, stage, path_project
+      ind_combined, stage, path_project
     )
     # name gate indices if not prejoined
     cp_vec <- stats::setNames(cp_vec, ind_stim)
   }
   .int_save_nm(
     "cp_vec_after_rep", cp_vec,
-    ind_stim, stage, path_project
+    ind_combined, stage, path_project
   )
 
   # add unstim if unstim gate required
   if (!all(purrr::map_lgl(cp_vec, is.na))) {
     .int_save_nm(
       "adding_uns_cp", NULL,
-      ind_stim, stage, path_project
+      ind_combined, stage, path_project
     )
     cp_vec <- c(cp_vec, stats::setNames(mean(cp_vec, na.rm = TRUE), ind_uns))
   } else {
     .int_save_nm(
       "add_na_for_uns_cp", NULL,
-      ind_stim, stage, path_project
+      ind_combined, stage, path_project
     )
     cp_vec <- c(cp_vec, NA)
   }
   .int_save_nm(
     "cp_vec_after_uns_added", cp_vec,
-    ind_stim, stage, path_project
+    ind_combined, stage, path_project
   )
 
   cp_vec
