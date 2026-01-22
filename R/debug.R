@@ -185,9 +185,14 @@ stimgate_debug_print <- function() {
   invisible(TRUE)
 }
 
+#' @keywords internal
+.is_invalid_ind <- function(ind) {
+  is.null(ind) || length(ind) == 0 || all(is.na(ind))
+}
+
 .int_save_check <- function(ind) {
   # Return FALSE if ind is NULL or invalid
-  if (is.null(ind) || length(ind) == 0 || all(is.na(ind))) {
+  if (.is_invalid_ind(ind)) {
     return(FALSE)
   }
 

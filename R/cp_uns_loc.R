@@ -1354,6 +1354,15 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 }
 
 #' @keywords internal
+.create_combined_identifier <- function(ind_stim) {
+  if (is.null(ind_stim) || length(ind_stim) == 0) {
+    "empty_batch"
+  } else {
+    paste(ind_stim, collapse = "_")
+  }
+}
+
+#' @keywords internal
 .get_cp_uns_loc_output <- function(cp_uns_loc_obj_list,
                                    ind_uns,
                                    ind_stim,
@@ -1367,12 +1376,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     path_project = path_project
   )
   # Use combined identifier for batch-level data when ind_stim is a vector
-  # Handle empty ind_stim case
-  if (is.null(ind_stim) || length(ind_stim) == 0) {
-    ind_combined <- "empty_batch"
-  } else {
-    ind_combined <- paste(ind_stim, collapse = "_")
-  }
+  ind_combined <- .create_combined_identifier(ind_stim)
   .int_save(ind_combined, stage, path_project, cp_vec)
   .debug("done getting loc gate at sample level") # nolint
   # collate plots
@@ -1390,12 +1394,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                           path_project) {
   .debug("Possibly re-using calculated cutpoints") # nolint
   # Use combined identifier for batch-level data when ind_stim is a vector
-  # Handle empty ind_stim case
-  if (is.null(ind_stim) || length(ind_stim) == 0) {
-    ind_combined <- "empty_batch"
-  } else {
-    ind_combined <- paste(ind_stim, collapse = "_")
-  }
+  ind_combined <- .create_combined_identifier(ind_stim)
 
   # extract vector of cutpoints
   cp_vec <- purrr::map_dbl(cp_uns_loc_obj_list, ~ .x[["cp"]])
