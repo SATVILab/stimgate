@@ -523,7 +523,7 @@
     ex_tbl_uns_bias, stage, "Too few cells"
   )
   .int_save_nm(
-    "cp_ind", obj_out$cp, ex_tbl_no_min_stim,
+    "cp_ind", obj_out$cp, .get_ind(ex_tbl_no_min_stim),
     stage, path_project
   )
   obj_out
@@ -1087,7 +1087,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   data_mod_out <- data_mod |> dplyr::mutate(pred = pred_vec)
   .int_save_nm(
     "prob_smooth_out", data_mod_out,
-    .get_ind(data_mod), stage
+    .get_ind(data_mod), stage, path_project
   )
   data_mod_out
 }
