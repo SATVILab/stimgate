@@ -132,7 +132,6 @@
   purrr::map_df(gate_name, function(gn) {
     .get_stats_batch_gn(
       gn = gn,
-      .debug = .debug,
       ex_list = ex_list,
       gate_tbl = gate_tbl,
       chnl = chnl,
@@ -171,7 +170,6 @@
     # or when filtering to yield cells positive
     # for all other cytokines
     stat_tbl_gn <- .get_stats_batch_gn_filter_or_non_combn(
-      .debug = .debug,
       ex_list = ex_list,
       ind_batch = ind_batch,
       gate_tbl_gn = gate_tbl_gn,
@@ -197,8 +195,7 @@
     combn_mat_list = combn_mat_list,
     cyt_combn_vec_list = cyt_combn_vec_list,
     gate_type_cyt_pos_calc = gate_type_cyt_pos_calc,
-    gate_type_single_pos_calc = gate_type_single_pos_calc,
-    .debug = .debug
+    gate_type_single_pos_calc = gate_type_single_pos_calc
   )
 }
 
@@ -224,7 +221,6 @@
     combn_tbl <- purrr::map_df(names(combn_mat_list), function(j) {
       .get_stats_batch_gn_combn(
         j = j,
-        .debug = .debug,
         ex = ex,
         ex_uns = ex_uns,
         gate_tbl_gn_ind = gate_tbl_gn_ind,
@@ -312,8 +308,7 @@
 }
 
 #' @keywords internal
-.get_stats_batch_gn_filter_or_non_combn <- function(.debug,
-                                                    ex_list,
+.get_stats_batch_gn_filter_or_non_combn <- function(ex_list,
                                                     ind_batch,
                                                     gate_tbl_gn,
                                                     gn,
@@ -334,8 +329,7 @@
           gate_tbl_gn = gate_tbl_gn,
           chnl_curr = chnl_curr,
           gate_type_cyt_pos_filter = gate_type_cyt_pos_filter,
-          gate_type_single_pos_filter = gate_type_single_pos_filter,
-          .debug = .debug
+          gate_type_single_pos_filter = gate_type_single_pos_filter
         )
     }
 

@@ -116,8 +116,6 @@ stimgate_fcs_write <- function(path_project, # project directory
 }
 
 
-
-
 # ================
 # Get Gates
 # ================
@@ -313,7 +311,6 @@ stimgate_fcs_write <- function(path_project, # project directory
     dplyr::select(chnl, marker, batch, ind, everything()) |> # nolint
     dplyr::arrange(chnl, marker, batch, ind)
 }
-
 
 
 #' @keywords internal

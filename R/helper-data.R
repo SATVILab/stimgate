@@ -48,7 +48,6 @@ get_example_data <- function(dir_cache = NULL) {
   }
 
 
-
   list(
     path_gs = path_save,
     batch_list = batch_list,
