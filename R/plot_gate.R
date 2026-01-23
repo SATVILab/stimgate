@@ -274,15 +274,9 @@ stimgate_plot <- function(ind,
                              gate_type_single_pos,
                              mult,
                              gate_uns_method) {
-  if (!is.null(marker)) {
-    chnl <- stimgate_meta_read_marker_lab(path_project)[marker]
-    chnl_lab <- stimgate_meta_read_chnl_lab(path_project)
-  } else {
-    chnl_lab <- NULL
-  }
-  lapply(ind, function(x) {
+  lapply(ind, function(ind_curr) {
     stimgate_data_get_ex(
-      path_project, .data, pop, ind, chnl,
+      path_project, .data, pop, ind_curr, chnl,
       marker, bias, exc_min, combn_exc, chnl_gate,
       marker_gate, gate_type_cyt_pos,
       gate_type_single_pos, mult, gate_uns_method
