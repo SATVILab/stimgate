@@ -13,14 +13,16 @@
 #' @param p object of class 'ggplot' Limits are adjusted for this plot.
 #' @param limits_expand list or NULL If not NULL,
 #' then it is (effectively) passed onto ggplot2::expand_limits to
-#' ensure that certain values are included in the plot (such as, for example, 0
-#' if that is the minimum value possible but it may not be plotted). If not named, then
-#' must consist of one numeric vector that will then force all values in the numeric value
-#' to be included in the plot. If named, then must have names x and/or y,
-#' with the elements again being numeric vectors that must be included in plot.
+#' ensure that certain values are included in the plot (such as, for
+#' example, 0 if that is the minimum value possible but it may not be
+#' plotted). If not named, then must consist of one numeric vector
+#' that will then force all values in the numeric value to be included
+#' in the plot. If named, then must have names x and/or y, with the
+#' elements again being numeric vectors that must be included in plot.
 #' Default is NULL.
-#' @param limits_equal logical If TRUE, then the ranges on the x- and y-axes
-#' must be equal. Effectively applied after expand_grid is applied. Default is FALSE.
+#' @param limits_equal logical If TRUE, then the ranges on the x- and
+#' y-axes must be equal. Effectively applied after expand_grid is
+#' applied. Default is FALSE.
 #'
 #' @return A ggplot object with adjusted axis limits.
 #'
@@ -62,7 +64,8 @@
 #' )
 #'
 #' # note that when fixing range and expanding, range is fixed
-#' # after expansions are applied, so effectively the larger expansions apply to both.
+#' # after expansions are applied, so effectively the larger
+#' # expansions apply to both.
 #' # compare the following output to the previous output:
 #' axis_limits(
 #'   p,
@@ -193,7 +196,11 @@ axis_limits <- function(p,
   }) |>
     paste0(collapse = ", ")
 
-  parse_text <- paste0("p <- p + ggplot2::expand_limits(", limits_expand_arg, ")")
+  parse_text <- paste0(
+    "p <- p + ggplot2::expand_limits(",
+    limits_expand_arg,
+    ")"
+  )
   env <- environment()
   eval(parse(text = parse_text), envir = env)
 
