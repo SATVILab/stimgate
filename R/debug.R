@@ -39,20 +39,193 @@ globalVariables(c(
   "concat", "gate_concat"
 ))
 
+#' Create a debug file in tempdir()
+#'
+#' @return character Path to the created debug file (invisibly).
+#' @keywords internal
+.debug_file_create <- function() {
+  dir_path <- file.path(tempdir(), "stimgate")
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
+  }
+  timestamp <- format(Sys.time(), "%Y-%m-%d-%H%M%S")
+  file_path <- file.path(dir_path, paste0("stimgate_", timestamp, ".txt"))
+  file.create(file_path, showWarnings = FALSE)
+  invisible(file_path)
+}
+
+#' Get the most recent debug file path
+#'
+#' @return character Path to the most recent debug file, or NULL if none.
+#' @keywords internal
+.debug_file_get_path <- function() {
+  dir_path <- file.path(tempdir(), "stimgate")
+  if (!dir.exists(dir_path)) {
+    return(NULL)
+  }
+  files <- list.files(
+    dir_path,
+    pattern = "^stimgate_\\d{4}-\\d{2}-\\d{2}-\\d{6}\\.txt$",
+    full.names = TRUE
+  )
+  if (length(files) == 0) {
+    return(NULL)
+  }
+  files[which.max(file.info(files)$mtime)]
+}
+
 #' Print debug message conditionally
 #'
-#' @param .debug logical Whether to print debug messages
+#' Writes debug output to the most recent stimgate debug file when
+#' STIMGATE_DEBUG is enabled.
+#'
 #' @param msg character Message to print
 #' @param val object Optional value to append to message. Default is NULL.
-#' @return logical invisibly TRUE if message was printed, FALSE otherwise
+#' @return logical invisibly TRUE if message was written, FALSE otherwise
 #' @keywords internal
-.debug_msg <- function(.debug, msg, val = NULL) {
-  if (!.debug) {
+.debug <- function(msg, val = NULL) {
+  must_debug <- tolower(trimws(Sys.getenv("STIMGATE_DEBUG"))) %in%
+    c("y", "true", "yes", "1")
+  if (!must_debug) {
     return(invisible(FALSE))
   }
   if (!is.null(val)) {
     msg <- paste0(msg, ": ", val)
   }
-  message(msg)
+  path_debug <- .debug_file_get_path()
+  if (is.null(path_debug)) {
+    path_debug <- .debug_file_create()
+  }
+  cat(msg, file = path_debug, sep = "\n", append = TRUE)
   invisible(TRUE)
+}
+
+#' Copy the latest stimgate debug file to the working directory
+#'
+#' @description Copies the most recent debug file created by stimgate
+#' to the current working directory. The copied file uses the same
+#' filename as the source.
+#' @param path_dir character. Directory to copy the debug file to.
+#' Default is `getwd()` (i.e. the working directory).
+#'
+#' @return character Path to the copied file (invisibly), or NULL if no
+#'   debug file exists.
+#' @export
+stimgate_debug_copy <- function(path_dir = getwd()) {
+  src <- .debug_file_get_path()
+  if (is.null(src)) {
+    message("No stimgate debug file found.")
+    return(invisible(NULL))
+  }
+  if (!dir.exists(path_dir)) {
+    dir.create(path_dir, recursive = TRUE)
+  }
+  dest <- file.path(path_dir, basename(src))
+  ok <- file.copy(src, dest, overwrite = TRUE)
+  if (!ok) {
+    message("Failed to copy debug file to working directory.")
+    return(invisible(NULL))
+  }
+  invisible(dest)
+}
+
+#' Print the latest stimgate debug file to the console
+#'
+#' @description Prints the most recent debug file created by stimgate
+#' to the console.
+#'
+#' @return character The debug text (invisibly), or NULL if no debug file exists.
+#' @export
+stimgate_debug_print <- function() {
+  src <- .debug_file_get_path()
+  if (is.null(src)) {
+    message("No stimgate debug file found.")
+    return(invisible(NULL))
+  }
+  txt <- readLines(src, warn = FALSE)
+  cat(txt, sep = "\n")
+  invisible(txt)
+}
+
+.int_save_nm <- function(name, obj, ind, stage, path_project) {
+  if (!.int_save_check(ind)) {
+    return(invisible(FALSE))
+  }
+  path_save <- .int_save_path_save(path_project, stage, ind, name)
+  saveRDS(obj, path_save)
+  invisible(TRUE)
+}
+
+.int_save <- function(ind,
+                      stage,
+                      path_project,
+                      ...) {
+  if (!.int_save_check(ind)) {
+    return(invisible(FALSE))
+  }
+
+  dots <- list(...)
+  dot_names <- names(dots)
+
+  call_names <- as.list(substitute(list(...)))[-1]
+  call_names <- vapply(
+    call_names,
+    function(x) paste(deparse(x), collapse = ""),
+    character(1)
+  )
+
+  if (is.null(dot_names)) {
+    dot_names <- call_names
+  } else {
+    dot_names[dot_names == ""] <- call_names[dot_names == ""]
+  }
+
+  for (i in seq_along(dots)) {
+    .int_save_nm(dot_names[[i]], dots[[i]], ind, stage, path_project)
+  }
+
+  invisible(TRUE)
+}
+
+#' @keywords internal
+.is_invalid_ind <- function(ind) {
+  is.null(ind) || length(ind) == 0 || all(is.na(ind))
+}
+
+.int_save_check <- function(ind) {
+  # Return FALSE if ind is NULL or invalid
+  if (.is_invalid_ind(ind)) {
+    return(FALSE)
+  }
+
+  env_var <- Sys.getenv("STIMGATE_INTERMEDIATE") |>
+    trimws() |>
+    tolower()
+  if (is.null(env_var) || length(env_var) == 0 || env_var == "") {
+    return(FALSE)
+  }
+  if (env_var %in% c("y", "true", "yes", "all")) {
+    return(TRUE)
+  }
+  env_var_split <- strsplit(env_var, ",|;") |>
+    unlist() |>
+    trimws()
+  any(as.character(ind) %in% env_var_split)
+}
+
+.int_save_path_save <- function(path_project, stage, ind, name) {
+  name <- paste0(name, ".rds")
+  name <- gsub("\\.rds(\\.rds)*$", ".rds", name, ignore.case = TRUE)
+  path_save <- file.path(
+    path_project,
+    "intermediate_data",
+    stage,
+    "ind",
+    as.character(ind),
+    name
+  )
+  if (!dir.exists(dirname(path_save))) {
+    dir.create(dirname(path_save), recursive = TRUE, showWarnings = FALSE)
+  }
+  path_save
 }

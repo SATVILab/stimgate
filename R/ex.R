@@ -224,6 +224,10 @@ str_detect_any <- function(string, pattern) {
   ex
 }
 
+.get_ind <- function(ex) {
+  attr(ex, "ind")
+}
+
 #' @keywords internal
 .get_cut <- function(ex) {
   ex[[attr(ex, "chnl_cut")]]
@@ -336,28 +340,29 @@ stimgate_data_get_ex <- function(path_project,
                                  trans_chnl = NULL,
                                  trans_marker = NULL) {
   .assert_string(path_project)
-  pop <- pop %||% .get_ex_project_pop(path_project)
+  pop <- pop %|c|% .get_ex_project_pop(path_project)
   if (!is.null(chnl) && !is.null(marker)) {
     stop("Must not specify both marker and chnl")
   }
   .assert_string_vector(pop)
-  purrr::map_df(pop, function(pop_curr) {
-    ind <- ind %||% .get_ex_project_ind(path_project, pop_curr)
+  ex_list <- purrr::map(pop, function(pop_curr) {
+    ind <- ind %|c|% .get_ex_project_ind(path_project, pop_curr)
     .assert_string_vector(ind)
-    purrr::map_df(ind, function(ind_curr) {
+    purrr::map(ind, function(ind_curr) {
       chnl <- if (!is.null(marker)) {
         is_marker <- TRUE
+        marker <- as.character(marker)
         stimgate_meta_read_marker_lab(path_project)[marker]
       } else {
         is_marker <- FALSE
-        chnl %||%
+        chnl %|c|%
           .get_ex_project_chnl(path_project, pop_curr, ind_curr)
       }
       .assert_string_vector(chnl)
       ex <- .data_get_ex_init(
         .data, pop_curr, chnl, ind_curr, path_project
       )
-      ex <- .data_get_ex_exc_min(ex, exc_min)
+      ex <- .data_get_ex_exc_min(ex, exc_min, pop, chnl, ind_curr)
       ex <- .data_get_ex_cyt_pos(
         ex = ex,
         chnl_gate = chnl_gate,
@@ -379,9 +384,34 @@ stimgate_data_get_ex <- function(path_project,
       ex <- .data_get_ex_renamed(ex, is_marker, path_project)
       trans_chnl_final <- if (is_marker) trans_marker else trans_chnl
       ex <- .data_get_ex_trans(ex, trans_fn, trans_chnl_final)
-      .data_get_ex_meta(ex, pop_curr, ind_curr)
-    })
-  })
+      attr(ex, "chnl") <- paste0(chnl, collapse = "&*&")
+      ex <- .data_get_ex_meta(ex, pop_curr, ind_curr)
+      ex
+    }) |>
+      stats::setNames(ind)
+  }) |>
+    stats::setNames(pop)
+  ex_df <- ex_list |> purrr::map_df(function(x) x |> dplyr::bind_rows())
+  prob_g_min_list <- purrr::map(
+    ex_list,
+    function(ex_ind_list) {
+      purrr::map(
+        ex_ind_list,
+        function(ex) {
+          prob_g_min <- attr(ex, "prob_g_min") %||% 1
+          if (is.null(prob_g_min)) {
+            return(1.0)
+          }
+          chnl <- attr(ex, "chnl")
+          list(prob_g_min) |> stats::setNames(chnl)
+        }
+      ) |>
+        stats::setNames(names(ex_ind_list))
+    }
+  ) |>
+    stats::setNames(names(ex_list))
+  attr(ex_df, "prob_g_min") <- prob_g_min_list
+  ex_df
 }
 
 .data_get_ex_init <- function(.data,
@@ -472,10 +502,16 @@ stimgate_data_get_ex <- function(path_project,
 }
 
 #' @keywords internal
-.data_get_ex_exc_min <- function(ex, exc_min) {
+.data_get_ex_exc_min <- function(ex,
+                                 exc_min,
+                                 pop = NULL,
+                                 chnl = NULL,
+                                 ind = NULL) {
   if (!exc_min) {
+    attr(ex, "prob_g_min") <- NULL
     return(ex)
   }
+  n_cell_init <- nrow(ex)
   cn_vec <- setdiff(colnames(ex), c("pop", "ind"))
   min_vec <- vapply(
     cn_vec,
@@ -487,6 +523,7 @@ stimgate_data_get_ex <- function(path_project,
     inc_vec <- ex[[cn]] > min_vec[[cn]]
     ex <- ex[inc_vec, ]
   }
+  attr(ex, "prob_g_min") <- nrow(ex) / n_cell_init
   ex
 }
 
@@ -634,5 +671,15 @@ stimgate_data_get_ex <- function(path_project,
     pop = pop,
     ind = ind
   )
-  tibble::as_tibble(cbind(meta_df, ex))
+  attr_list <- attributes(ex)
+  attr_vec_nm_orig <- names(attr_list)
+  attr_vec_nm_add <- c(
+    "is_uns", "prob_g_min", "chnl"
+  )
+  attr_vec_nm_add <- intersect(attr_vec_nm_add, attr_vec_nm_orig)
+  ex <- tibble::as_tibble(cbind(meta_df, ex))
+  for (i in seq_along(attr_vec_nm_add)) {
+    attr(ex, attr_vec_nm_add[i]) <- attr_list[[attr_vec_nm_add[i]]]
+  }
+  ex
 }

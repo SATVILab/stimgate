@@ -60,7 +60,6 @@
 }
 
 
-
 #' @keywords internal
 .get_cp_pos <- function(ex,
                         inc,
@@ -263,9 +262,8 @@
 .get_cyt_pos_gates_gate_tbl_get <- function(chnl_vec,
                                             pop,
                                             path_project,
-                                            .debug,
                                             chnl_lab) {
-  .debug_msg(.debug, "Getting gate_tbl") # nolint
+  .debug("Getting gate_tbl") # nolint
   purrr::map_df(chnl_vec, function(chnl_curr) {
     # get stats tbl
     .gates_get_path_all(

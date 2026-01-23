@@ -16,8 +16,7 @@
                                 max_pos_prob_x,
                                 gate_combn,
                                 chnl_settings,
-                                path_project,
-                                .debug) {
+                                path_project) {
   chnl_settings_common <- list(
     bias_uns = bias_uns, bias_uns_factor = bias_uns_factor,
     exc_min = exc_min, cp_min = cp_min, bw_min = bw_min,
@@ -36,7 +35,6 @@
         append(chnl_settings[[chnl_curr]]),
       .data = .data,
       pop_gate = pop_gate,
-      .debug = .debug,
       ind_batch_list = ind_batch_list,
       path_project = path_project
     )
@@ -57,7 +55,6 @@
                                     chnl,
                                     .data,
                                     pop_gate,
-                                    .debug,
                                     ind_batch_list,
                                     path_project) {
   chnl_settings <- .complete_chnl_list_add_common(
@@ -71,7 +68,6 @@
     .data = .data,
     pop_gate = pop_gate,
     chnl_cut = chnl,
-    .debug = .debug,
     ind_batch_list = ind_batch_list,
     path_project = path_project
   )
@@ -86,7 +82,6 @@
     .data = .data,
     pop_gate = pop_gate,
     chnl_cut = chnl,
-    .debug = .debug,
     ind_batch_list = ind_batch_list,
     path_project = path_project
   )
@@ -109,13 +104,12 @@
                                          .data,
                                          pop_gate,
                                          chnl_cut,
-                                         .debug,
                                          ind_batch_list,
                                          path_project) {
   if (!is.null(bias_uns)) {
     return(bias_uns)
   }
-  .debug_msg(.debug, "calculating bias_uns automatically") # nolint
+  .debug("calculating bias_uns automatically") # nolint
   mean_range <- .complete_chnl_list_bias_uns_get_mean_range(
     ind_batch_list = ind_batch_list,
     .data = .data,
@@ -170,13 +164,12 @@
                                        .data,
                                        pop_gate,
                                        chnl_cut,
-                                       .debug,
                                        ind_batch_list,
                                        path_project) {
   if (!is.null(cp_min)) {
     return(cp_min)
   }
-  .debug_msg(.debug, "calculating cp_min automatically") # nolint
+  .debug("calculating cp_min automatically") # nolint
   purrr::map(
     seq_len(min(2, length(ind_batch_list))),
     function(i) {
@@ -189,14 +182,13 @@
         path_project = path_project
       )
       purrr::map_dbl(ex_list, function(ex) {
-        median(.get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))], na.rm = TRUE)[[1]]
+        median(.get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))], na.rm = TRUE)[[1]] # nolint
       })
     }
   ) |>
     unlist() |>
     mean(trim = 0.1)
 }
-
 
 
 # Get all cutpoint type names
