@@ -1,5 +1,4 @@
 library(testthat)
-
 example_data <- get_example_data()
 gs <- flowWorkspace::load_gs(example_data$path_gs)
 path_project <- file.path(dirname(example_data$path_gs), "stimgate")
@@ -20,6 +19,7 @@ test_that("stimgate_plot function exists", {
 })
 
 test_that("stimgate_plot runs", {
+  # debugonce(.plot_gate_bv)
   p <- stimgate_plot(
     ind = example_data$batch_list[[1]], # indices in `gs` to plot
     .data = gs, # GatingSet
@@ -78,6 +78,7 @@ test_that("plot functions handle min_cell threshold correctly", {
     limits_expand = NULL,
     limits_equal = FALSE,
     show_gate = TRUE,
+    chnl_gate = NULL,
     min_cell = 999999 # Very high threshold
   )
   # Should return a list with NULLs filtered out, or NULL
@@ -301,6 +302,6 @@ test_that("test plot_cyto import and dependencies", {
   expect_true(is.logical(hexbin_available))
 })
 
-if (dir.exists(example_data$path_gs)) {
-  unlink(example_data$path_gs, recursive = TRUE)
-}
+# if (dir.exists(example_data$path_gs)) {
+#   unlink(example_data$path_gs, recursive = TRUE)
+# }

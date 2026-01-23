@@ -19,7 +19,7 @@ get_example_data <- function(dir_cache = NULL) {
   dir.create(dir_cache, recursive = TRUE)
 
   # Get flowSet
-  fs <- .get_fs()
+  fs <- .get_fs(dir_cache)
 
   # Get channel list
   chnl_list <- .get_chnl_list(fs = fs)
@@ -48,7 +48,6 @@ get_example_data <- function(dir_cache = NULL) {
   }
 
 
-
   list(
     path_gs = path_save,
     batch_list = batch_list,
@@ -60,55 +59,132 @@ get_example_data <- function(dir_cache = NULL) {
 # Internal helper functions (not exported)
 
 #' @keywords internal
-.get_fs <- function() {
+#' @keywords internal
+.get_fs <- function(dir_cache) {
+  if (!dir.exists(dir_cache)) {
+    dir.create(dir_cache, recursive = TRUE)
+  }
+  # Try to load from installed package location first
+  rds_path <- file.path(dir_cache, "bodenmiller_bcr_xl_fs.rds")
+  if (file.exists(rds_path)) {
+    return(readRDS(rds_path))
+  }
+
+  # If not found, try to download from GitHub release
+  message("Test data not found locally. Attempting to download from GitHub release...")
+
   tryCatch(
-    # don't want a package warning if file does not exist,
-    # clearly handling such an error
-    suppressWarnings(readRDS(
-      system.file("extdata", "bodenmiller_bcr_xl_fs.rds", package = "stimgate")
-    )),
-    error = function(e) {
-      path_hub <- file.path(Sys.getenv("HOME"), ".cache/R/ExperimentHub")
-      if (!dir.exists(path_hub)) {
-        dir.create(path_hub, recursive = TRUE)
-      }
-      if (!requireNamespace("BiocManager", quietly = TRUE)) {
-        if (interactive()) {
-          prompt_answer <- readline(
-            prompt = paste0(
-              "The 'BiocManager' package is required to download the example data. ", # nolint linter_line_length_linter
-              "Do you want to install it now? [y/n]: "
-            )
+    {
+      .download_fs_from_github(dir_cache)
+    },
+    error = function(e_github) {
+      message("Failed to download from GitHub: ", conditionMessage(e_github))
+      message("Falling back to HDCytoData...")
+
+      # Fall back to HDCytoData
+      tryCatch(
+        {
+          .download_fs_from_hdcytodata()
+        },
+        error = function(e_hdc) {
+          stop(
+            "Failed to obtain test data from all sources.\n",
+            "GitHub error: ", conditionMessage(e_github), "\n",
+            "HDCytoData error: ", conditionMessage(e_hdc)
           )
-          if (tolower(prompt_answer) != "y") {
-            stop("Cannot proceed without installing 'BiocManager' package.")
-          }
-        } else {
-          stop("Cannot proceed without installing 'BiocManager' package.")
         }
-        utils::install.packages("BiocManager")
-      }
-      if (!requireNamespace("HDCytoData", quietly = TRUE)) {
-        if (interactive()) {
-          prompt_answer <- readline(
-            prompt = paste0(
-              "The 'HDCytoData' package is required to download the example data. ", # nolint linter_line_length_linter
-              "Do you want to install it now? [y/n]: "
-            )
-          )
-          if (tolower(prompt_answer) != "y") {
-            stop("Cannot proceed without installing 'HDCytoData' package.")
-          }
-          BiocManager::install("HDCytoData")
-        } else {
-          stop("Cannot proceed without installing 'HDCytoData' package.")
-        }
-      }
-      # get an odd flowSet slot dropping warning,
-      # which is unrelated to our functionality
-      suppressWarnings(HDCytoData::Bodenmiller_BCR_XL_flowSet())
+      )
     }
   )
+}
+
+#' @keywords internal
+.download_fs_from_github <- function(dir_cache) {
+  repo <- "SATVILab/stimgate"
+  tag <- "test_data"
+  filename <- "bodenmiller_bcr_xl_fs.rds"
+
+  # Build download URL (no authentication needed for public releases)
+  download_url <- sprintf(
+    "https://github.com/%s/releases/download/%s/%s",
+    repo, tag, filename
+  )
+
+  temp_file <- file.path(dir_cache, filename)
+  message("Downloading ", filename, " from GitHub release...")
+
+  result <- tryCatch(
+    {
+      utils::download.file(
+        url = download_url,
+        destfile = temp_file,
+        mode = "wb",
+        quiet = FALSE
+      )
+      TRUE
+    },
+    error = function(e) {
+      message("Download failed: ", conditionMessage(e))
+      FALSE
+    }
+  )
+
+  if (!result || !file.exists(temp_file)) {
+    stop("Failed to download test data from GitHub")
+  }
+
+  # Read and return
+  fs <- readRDS(temp_file)
+  unlink(temp_file)
+
+  message("Successfully downloaded test data from GitHub")
+  fs
+}
+
+#' @keywords internal
+.download_fs_from_hdcytodata <- function() {
+  path_hub <- file.path(Sys.getenv("HOME"), ".cache/R/ExperimentHub")
+  if (!dir.exists(path_hub)) {
+    dir.create(path_hub, recursive = TRUE)
+  }
+
+  if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    if (interactive()) {
+      prompt_answer <- readline(
+        prompt = paste0(
+          "The 'BiocManager' package is required to download the example data. ",
+          "Do you want to install it now? [y/n]: "
+        )
+      )
+      if (tolower(prompt_answer) != "y") {
+        stop("Cannot proceed without installing 'BiocManager' package.")
+      }
+    } else {
+      stop("Cannot proceed without installing 'BiocManager' package.")
+    }
+    utils::install.packages("BiocManager")
+  }
+
+  if (!requireNamespace("HDCytoData", quietly = TRUE)) {
+    if (interactive()) {
+      prompt_answer <- readline(
+        prompt = paste0(
+          "The 'HDCytoData' package is required to download the example data. ",
+          "Do you want to install it now? [y/n]: "
+        )
+      )
+      if (tolower(prompt_answer) != "y") {
+        stop("Cannot proceed without installing 'HDCytoData' package.")
+      }
+      BiocManager::install("HDCytoData")
+    } else {
+      stop("Cannot proceed without installing 'HDCytoData' package.")
+    }
+  }
+
+  # Get an odd flowSet slot dropping warning,
+  # which is unrelated to our functionality
+  suppressWarnings(HDCytoData::Bodenmiller_BCR_XL_flowSet())
 }
 
 #' @keywords internal

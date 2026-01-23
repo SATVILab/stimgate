@@ -488,8 +488,6 @@ test_that("stimgate_fcs_write validates parameter types", {
 })
 
 
-
-
 test_that("stimgate_fcs_write integrates with stimgate workflow", {
   # Test full integration: gate -> fcs_write -> verify output
   example_data <- get_example_data()

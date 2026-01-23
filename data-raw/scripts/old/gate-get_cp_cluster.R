@@ -18,7 +18,6 @@ max_cluster <- min(6, length(gs) / 3) |>
   max(1)
 
 
-
 n_clus <- x |>
   stats::setNames(1:max_cluster) |>
   purrr::map_dbl("gap")

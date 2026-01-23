@@ -18,9 +18,9 @@
                          tol_gate_single,
                          calc_cyt_pos_gates,
                          path_project,
-                         .debug) {
+                         stage) {
   # message progress
-  .debug_msg(.debug, "pop_gate: ", pop_gate) # nolint
+  .debug("pop_gate: ", pop_gate) # nolint
 
   # Parameters list
   # ----------------
@@ -48,7 +48,8 @@
     tol_gate_single = tol_gate_single,
     gate_tbl = gate_tbl,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
-    path_project = path_project
+    path_project = path_project,
+    stage = stage
   )
 
   # delete locb gates
@@ -70,7 +71,7 @@
     cp_min = cp_min,
     min_cell = min_cell,
     params = params,
-    .debug = .debug,
+    stage = stage,
     path_project = path_project
   )
 
@@ -104,7 +105,6 @@
     bw_min = bw_min,
     .data = .data,
     path_project = path_project,
-    .debug = .debug,
     pop_gate = pop_gate,
     ind_batch_list = ind_batch_list
   )

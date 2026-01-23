@@ -11,3 +11,4 @@
 ^vignettes/
 ^BIOCONDUCTOR_PREPARATION\.md$
 ^scripts/
+^CHANGES_SUMMARY\.md$
