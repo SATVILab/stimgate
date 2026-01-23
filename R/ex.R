@@ -340,21 +340,22 @@ stimgate_data_get_ex <- function(path_project,
                                  trans_chnl = NULL,
                                  trans_marker = NULL) {
   .assert_string(path_project)
-  pop <- pop %||% .get_ex_project_pop(path_project)
+  pop <- pop %|c|% .get_ex_project_pop(path_project)
   if (!is.null(chnl) && !is.null(marker)) {
     stop("Must not specify both marker and chnl")
   }
   .assert_string_vector(pop)
   purrr::map_df(pop, function(pop_curr) {
-    ind <- ind %||% .get_ex_project_ind(path_project, pop_curr)
+    ind <- ind %|c|% .get_ex_project_ind(path_project, pop_curr)
     .assert_string_vector(ind)
     purrr::map_df(ind, function(ind_curr) {
       chnl <- if (!is.null(marker)) {
         is_marker <- TRUE
+        marker <- as.character(marker)
         stimgate_meta_read_marker_lab(path_project)[marker]
       } else {
         is_marker <- FALSE
-        chnl %||%
+        chnl %|c|%
           .get_ex_project_chnl(path_project, pop_curr, ind_curr)
       }
       .assert_string_vector(chnl)
