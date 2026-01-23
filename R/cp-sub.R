@@ -32,7 +32,10 @@
 .prepare_ex_list_with_bias_and_noise_add_attr <- function(ex,
                                                           attr_list) {
   attr_vec_nm_orig <- names(attr_list)
-  attr_vec_nm_add <- c("ind", "ind_uns", "is_uns", "chnl_cut", "batch", "pop")
+  attr_vec_nm_add <- c(
+    "ind", "ind_uns", "is_uns", "chnl_cut",
+    "batch", "pop", "prob_g_min"
+  )
   attr_vec_nm_add <- intersect(attr_vec_nm_add, attr_vec_nm_orig)
   for (i in seq_along(attr_vec_nm_add)) {
     attr(ex, attr_vec_nm_add[i]) <- attr_list[[attr_vec_nm_add[i]]]

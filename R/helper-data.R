@@ -19,7 +19,7 @@ get_example_data <- function(dir_cache = NULL) {
   dir.create(dir_cache, recursive = TRUE)
 
   # Get flowSet
-  fs <- .get_fs()
+  fs <- .get_fs(dir_cache)
 
   # Get channel list
   chnl_list <- .get_chnl_list(fs = fs)
@@ -60,10 +60,12 @@ get_example_data <- function(dir_cache = NULL) {
 
 #' @keywords internal
 #' @keywords internal
-.get_fs <- function() {
+.get_fs <- function(dir_cache) {
+  if (!dir.exists(dir_cache)) {
+    dir.create(dir_cache, recursive = TRUE)
+  }
   # Try to load from installed package location first
-  rds_path <- system.file("extdata", "bodenmiller_bcr_xl_fs.rds", package = "stimgate")
-
+  rds_path <- file.path(dir_cache, "bodenmiller_bcr_xl_fs.rds")
   if (file.exists(rds_path)) {
     return(readRDS(rds_path))
   }
@@ -73,7 +75,7 @@ get_example_data <- function(dir_cache = NULL) {
 
   tryCatch(
     {
-      .download_fs_from_github()
+      .download_fs_from_github(dir_cache)
     },
     error = function(e_github) {
       message("Failed to download from GitHub: ", conditionMessage(e_github))
@@ -97,7 +99,7 @@ get_example_data <- function(dir_cache = NULL) {
 }
 
 #' @keywords internal
-.download_fs_from_github <- function() {
+.download_fs_from_github <- function(dir_cache) {
   repo <- "SATVILab/stimgate"
   tag <- "test_data"
   filename <- "bodenmiller_bcr_xl_fs.rds"
@@ -108,8 +110,7 @@ get_example_data <- function(dir_cache = NULL) {
     repo, tag, filename
   )
 
-  # Download to temp file
-  temp_file <- tempfile(fileext = ".rds")
+  temp_file <- file.path(dir_cache, filename)
   message("Downloading ", filename, " from GitHub release...")
 
   result <- tryCatch(

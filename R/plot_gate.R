@@ -608,7 +608,7 @@ stimgate_plot <- function(ind,
   dens_obj_raw <- density(ex_tbl[[.var]], na.rm = TRUE)
   plot_tbl <- tibble::tibble(x = dens_obj_raw$x, y = dens_obj_raw$y)
   .plot_gate_uv_marker_add_adj(
-    exc_min, plot_tbl, dens_obj_raw, attr(ex_tbl, "prob_g_min")
+    exc_min, plot_tbl, dens_obj_raw, ex_tbl
   )
 }
 
@@ -616,10 +616,11 @@ stimgate_plot <- function(ind,
 .plot_gate_uv_marker_add_adj <- function(exc_min,
                                          plot_tbl,
                                          dens_obj_raw,
-                                         prob_g_min) {
+                                         ex_tbl) {
   if (!exc_min) {
-    return(plot_tbl)
+    return(NULL)
   }
+  prob_g_min <- attr(ex_tbl, "prob_g_min")[[1]][[1]][[1]]
   plot_tbl[, "type"] <- "raw"
   dens_obj_adj <- dens_obj_raw
   dens_obj_adj$y <- dens_obj_adj$y * prob_g_min
