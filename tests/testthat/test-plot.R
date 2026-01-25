@@ -79,6 +79,13 @@ test_that("plot functions handle min_cell threshold correctly", {
     limits_equal = FALSE,
     show_gate = TRUE,
     chnl_gate = NULL,
+    marker_gate = NULL,
+    bias = FALSE,
+    combn_exc = NULL,
+    gate_type_cyt_pos = "cyt",
+    gate_type_single_pos = "single",
+    mult = FALSE,
+    gate_uns_method = "min",
     min_cell = 999999 # Very high threshold
   )
   # Should return a list with NULLs filtered out, or NULL
@@ -166,6 +173,15 @@ test_that(".plot_gate_uv_marker_get_plot_tbl returns NULL for insufficient cells
     pop = "root",
     exc_min = TRUE,
     ind_lab = NULL,
+    path_project = path_project,
+    bias = FALSE,
+    combn_exc = NULL,
+    chnl_gate = NULL,
+    marker_gate = NULL,
+    gate_type_cyt_pos = "cyt",
+    gate_type_single_pos = "single",
+    mult = FALSE,
+    gate_uns_method = "min",
     min_cell = 999999 # Very high threshold
   )
   expect_null(result)
@@ -253,6 +269,15 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
     marker = NULL,
     pop = "root",
     exc_min = TRUE,
+    path_project = path_project,
+    bias = FALSE,
+    combn_exc = NULL,
+    chnl_gate = NULL,
+    marker_gate = NULL,
+    gate_type_cyt_pos = "cyt",
+    gate_type_single_pos = "single",
+    mult = FALSE,
+    gate_uns_method = "min",
     min_cell = 999999 # Impossible threshold
   ))
 
@@ -263,7 +288,16 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
     chnl = example_data$chnl[1],
     marker = NULL,
     pop = "root",
-    exc_min = TRUE
+    exc_min = TRUE,
+    path_project = path_project,
+    bias = FALSE,
+    combn_exc = NULL,
+    chnl_gate = NULL,
+    marker_gate = NULL,
+    gate_type_cyt_pos = "cyt",
+    gate_type_single_pos = "single",
+    mult = FALSE,
+    gate_uns_method = "min"
   )
   expect_true(is.data.frame(ex_tbl))
   expect_true(nrow(ex_tbl) > 0)

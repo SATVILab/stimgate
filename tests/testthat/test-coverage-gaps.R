@@ -75,8 +75,7 @@ test_that("stimgate_gate runs with gate_combn = 'mean'", {
       pop_gate = "root",
       batch_list = example_data$batch_list,
       marker = example_data$marker,
-      gate_combn = "mean",
-      debug = FALSE
+      gate_combn = "mean"
     )
   })
 
@@ -106,8 +105,7 @@ test_that("stimgate_gate runs with gate_combn = 'trim20'", {
       pop_gate = "root",
       batch_list = example_data$batch_list,
       marker = example_data$marker,
-      gate_combn = "trim20",
-      debug = FALSE
+      gate_combn = "trim20"
     )
   })
 
@@ -137,8 +135,7 @@ test_that("stimgate_gate runs with gate_combn = 'median'", {
       pop_gate = "root",
       batch_list = example_data$batch_list,
       marker = example_data$marker,
-      gate_combn = "median",
-      debug = FALSE
+      gate_combn = "median"
     )
   })
 
@@ -168,8 +165,7 @@ test_that("stimgate_gate runs with gate_combn = 'max'", {
       pop_gate = "root",
       batch_list = example_data$batch_list,
       marker = example_data$marker,
-      gate_combn = "max",
-      debug = FALSE
+      gate_combn = "max"
     )
   })
 
