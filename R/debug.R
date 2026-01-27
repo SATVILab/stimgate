@@ -221,7 +221,7 @@ stimgate_debug_print <- function() {
     "intermediate_data",
     stage,
     "ind",
-    as.character(ind),
+    paste0(as.character(ind), collapse = "_"),
     name
   )
   if (!dir.exists(dirname(path_save))) {

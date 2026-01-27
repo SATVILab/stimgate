@@ -44,7 +44,10 @@
         exc_min = exc_min,
         min_cell = 0,
         cp_min = 0,
-        bw = bw_min
+        bw = bw_min,
+        tg_type = "tol",
+        stage = stage,
+        path_project = path_project
       )
     }
   }
@@ -59,7 +62,10 @@
       exc_min = exc_min,
       min_cell = 0,
       cp_min = 0,
-      bw = bw_min
+      bw = bw_min,
+      tg_type = "tol_clust",
+      stage = stage,
+      path_project = path_project
     )
   }
 
@@ -220,7 +226,10 @@
         exc_min = exc_min,
         min_cell = min_cell,
         cp_min = cp_min,
-        bw = bw_min
+        bw = bw_min,
+        tg_type = "tg",
+        stage = stage,
+        path_project = path_project
       ),
       "loc" = .get_cp_uns_loc( # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
@@ -264,7 +273,10 @@
         exc_min = exc_min,
         min_cell = min_cell,
         cp_min = cp_min,
-        bw = bw_min
+        bw = bw_min,
+        tg_type = "adj",
+        stage = stage,
+        path_project = path_project
       )
 
       if (names(gate_list)[[1]] == "cp") {
@@ -290,7 +302,10 @@
         exc_min = exc_min,
         min_cell = min_cell,
         cp_min = cp_min,
-        bw = bw_min
+        bw = bw_min,
+        tg_type = "clust",
+        stage = stage,
+        path_project = path_project
       )
 
       if (names(gate_list)[[1]] == "cp") {
