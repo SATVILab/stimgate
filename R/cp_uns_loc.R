@@ -434,7 +434,7 @@
                                    stage) {
   .debug("getting loc gate at sample level") # nolint
   force(path_project)
-  .browse(sapply(ex_list_orig, function(x) .get_ind(x))) # nolint
+ 
 
   # get cutpoints for each sample
   cp_uns_loc_obj_list <- purrr::map(seq_along(ex_list_no_min_stim), function(i) { # nolint
@@ -442,6 +442,7 @@
 
     ex_tbl_no_min_stim <- ex_list_no_min_stim[[i]]
     ind <- .get_ind(ex_tbl_no_min_stim)
+    .debug("ind", ind) # nolint
     ex_tbl_uns_orig <- ex_list_orig[[length(ex_list_orig)]]
     ex_tbl_stim_orig <- ex_list_orig[[i]]
     .int_save(
@@ -607,6 +608,9 @@
                                 path_project,
                                 stage) {
   .debug("getting loc gate for single sample") # nolint
+  ind <- .get_ind(ex_tbl_stim_no_min)
+  .debug("ind", ind) # nolint
+  .browse(ind) # nolint
 
   # estimate densities for stim and unstim over stim range
   if (.get_cp_uns_loc_check_early(ex_tbl_stim_no_min, min_cell, cp_min)) {
@@ -754,7 +758,7 @@
   ind <- .get_ind(ex_tbl_stim_no_min)
   # get raw densities
   dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
-    ex_tbl_stim_threshold, ex_tbl_uns_threshold, stage, bw_min
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, stage, path_project, bw_min
   )
   .int_save(ind, stage, path_project, dens_tbl_raw)
 
@@ -782,11 +786,13 @@
 .get_cp_uns_loc_get_dens_raw <- function(ex_tbl_stim_threshold,
                                          ex_tbl_uns_threshold,
                                          stage,
+                                         path_project,
                                          bw_min) {
   .debug("Calculating densities") # nolint
 
   dens_list <- .get_cp_uns_loc_get_dens_raw_densities(
-    ex_tbl_stim_threshold, ex_tbl_uns_threshold, stage, bw_min
+    ex_tbl_stim_threshold, ex_tbl_uns_threshold, stage,
+    path_project, bw_min
   )
 
   # put raw densities into table
@@ -802,9 +808,14 @@
 .get_cp_uns_loc_get_dens_raw_densities <- function(ex_tbl_stim_threshold,
                                                    ex_tbl_uns_threshold,
                                                    stage,
+                                                   path_project,
                                                    bw_min) {
   bw <- .get_cp_uns_loc_get_dens_raw_densities_bw(
     ex_tbl_stim_threshold, ex_tbl_uns_threshold, bw_min
+  )
+  .int_save_nm(
+    "bw_cp_uns_loc", bw, .get_ind(ex_tbl_stim_threshold),
+    stage, path_project
   )
   dens_stim <- .get_cp_uns_loc_get_dens_raw_densities_stim(
     ex_tbl_stim_threshold, bw
