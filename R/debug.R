@@ -229,3 +229,33 @@ stimgate_debug_print <- function() {
   }
   path_save
 }
+
+.browse <- function(ind) {
+  if (!.browse_check(ind)) {
+    return(invisible(FALSE))
+  }
+  browser()
+  invisible(TRUE)
+}
+
+
+.browse_check <- function(ind) {
+  # Return FALSE if ind is NULL or invalid
+  if (.is_invalid_ind(ind)) {
+    return(FALSE)
+  }
+
+  env_var <- Sys.getenv("STIMGATE_BROWSE") |>
+    trimws() |>
+    tolower()
+  if (is.null(env_var) || length(env_var) == 0 || env_var == "") {
+    return(FALSE)
+  }
+  if (env_var %in% c("y", "true", "yes", "all")) {
+    return(TRUE)
+  }
+  env_var_split <- strsplit(env_var, ",|;") |>
+    unlist() |>
+    trimws()
+  any(as.character(ind) %in% env_var_split)
+}
