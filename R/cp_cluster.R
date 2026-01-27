@@ -14,6 +14,7 @@
   # ==================================
   # PREPARATION
   # ==================================
+  .browse(seq_along(.data)) # nolint
 
   # control
   control <- .get_cp_cluster_control_update(control) # nolint
