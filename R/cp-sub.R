@@ -73,6 +73,7 @@
                        path_project) {
   # get cytoUtils tailgate cutpoint
   .debug("Getting tg cutpoint")
+  stage_chnl <- file.path(stage, chnl_cut)
   cp_list <- list()
 
   if ("prejoin" %in% gate_combn) {
@@ -83,9 +84,9 @@
     if (exc_min) ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
     if (nrow(ex) < max(min_cell, 5)) {
       .int_save_nm(
-        file.path(chnl_cut, tg_type, "cp_tg_prejoin too few to cut reliably"),
+        file.path(tg_type, "cp_tg_prejoin too few to cut reliably"),
         cp_min, paste0(ind_gate, collapse = ","),
-        stage, path_project
+        stage_chnl, path_project
       )
       cp_vec <- stats::setNames(rep(NA, length(ind_gate)), ind_gate)
     } else {
@@ -97,25 +98,25 @@
         strict = FALSE, adjust = adjust
       ))
       .int_save_nm(
-        file.path(chnl_cut, tg_type, "cp_tg_prejoin_init"),
+        file.path(tg_type, "cp_tg_prejoin_init"),
         cp, paste0(ind_gate, collapse = ","),
-        stage, path_project
+        stage_chnl, path_project
       )
       if (
         is.na(cp) || length(.get_cut(ex)) < min_cell
       ) {
         .int_save_nm(
-          file.path(chnl_cut, tg_type, "cp_tg_prejoin is NA or too few to cut reliably"),
+          file.path(tg_type, "cp_tg_prejoin is NA or too few to cut reliably"),
           cp, paste0(ind_gate, collapse = ","),
-          stage, path_project
+          stage_chnl, path_project
         )
         cp <- max(cp_min, max(.get_cut(ex)) +
           (max(.get_cut(ex)) - min(.get_cut(ex))) / 5)
       }
       .int_save_nm(
-        file.path(chnl_cut, tg_type, "cp_tg_prejoin final"),
+        file.path(tg_type, "cp_tg_prejoin final"),
         cp, paste0(ind_gate, collapse = ","),
-        stage, path_project
+        stage_chnl, path_project
       )
       cp_vec <- stats::setNames(rep(cp, length(ind_gate)), ind_gate)
     }
@@ -148,8 +149,8 @@
         strict = FALSE, adjust = adjust
       ))
       .int_save_nm(
-        file.path(chnl_cut, tg_type, "cp_tg_ind_init"), cp, ind,
-        stage, path_project
+        file.path(tg_type, "cp_tg_ind_init"), cp, ind,
+        stage_chnl, path_project
       )
       cp
     }) |>
@@ -164,9 +165,9 @@
       stats::setNames(gate_combn)
 
     .int_save_nm(
-      file.path(chnl_cut, tg_type, "cp_tg_list"),
+      file.path(tg_type, "cp_tg_list"),
       cp_tg_list, names(cp_tg_list),
-      stage, path_project
+      stage_chnl, path_project
     )
 
     cp_list <- cp_list |> append(cp_tg_list)

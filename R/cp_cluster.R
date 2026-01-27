@@ -9,12 +9,21 @@
                             chnl,
                             bw,
                             params,
-                            filter_other_cyt_pos) {
+                            filter_other_cyt_pos,
+                            stage = NULL) {
   .debug("Adjusting thresholds within clusters") # nolint
   # ==================================
   # PREPARATION
   # ==================================
   .browse(seq_along(.data)) # nolint
+
+  stage_use <- stage %||% params$stage %||% "unknown_stage"
+  chnl_use <- params$chnl_cut %||% chnl
+  if (is.null(chnl_use) || !nzchar(chnl_use)) {
+    chnl_use <- "unknown_chnl"
+  }
+  stage_chnl <- file.path(stage_use, chnl_use)
+  path_project <- params$path_project
 
   # control
   control <- .get_cp_cluster_control_update(control) # nolint
@@ -47,6 +56,8 @@
   expr_max <- prop_bs_by_cp_tbl_obj[["expr_max"]]
   expr_min <- prop_bs_by_cp_tbl_obj[["expr_min"]]
 
+  .int_save("all", stage_chnl, path_project, prop_bs_by_cp_tbl)
+
   dens_tbl <- .get_cp_cluster_dens_tbl_get( # nolint
     ind_batch_list = params$ind_batch_list,
     .data = .data,
@@ -62,12 +73,16 @@
     path_project = params$path_project
   )
 
+  .int_save("all", stage_chnl, path_project, dens_tbl)
+
   n_clus <- .get_cp_cluster_n_clus( # nolint
     dens_tbl
   )
   clus_vec <- .get_cp_cluster_clus( # nolint
     dens_tbl, n_clus
   )
+
+  .int_save("all", stage_chnl, path_project, n_clus, clus_vec)
 
   dens_tbl <- dens_tbl |>
     dplyr::mutate(grp = as.character(clus_vec))
@@ -206,6 +221,8 @@
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl
   )
+
+  .int_save("all", stage_chnl, path_project, cp_tbl)
 
   # =========================
   # OUTPUT
