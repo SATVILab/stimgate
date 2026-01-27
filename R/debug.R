@@ -234,7 +234,7 @@ stimgate_debug_print <- function() {
   if (!.browse_check(ind)) {
     return(invisible(FALSE))
   }
-  browser()
+  eval(quote(browser()), envir = parent.frame())
   invisible(TRUE)
 }
 
