@@ -260,7 +260,7 @@ stimgate_gate <- function(path_project,
   # inital gates
   .gate_init(
     pop_gate = pop_gate,
-    chnl = chnl_settings,
+    chnl_settings = chnl_settings,
     .data = .data,
     ind_batch_list = batch_list,
     path_project = path_project,
