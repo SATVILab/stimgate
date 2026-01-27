@@ -110,6 +110,10 @@ basic gates are calculated, which may be less accurate but faster.}
 \item{calc_single_pos_gates}{logical. Whether to calculate single-positive gates
 for individual markers in addition to combination gates. Default is FALSE.
 Useful for detailed analysis of individual marker responses.}
+
+\item{debug}{logical. Whether to enable detailed debug output and save intermediate
+results. Default is FALSE. When TRUE, additional files and verbose output are
+generated, useful for troubleshooting and method development.}
 }
 \value{
 character. Returns the path to the project directory where all results
