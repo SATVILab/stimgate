@@ -434,7 +434,6 @@
                                    stage) {
   .debug("getting loc gate at sample level") # nolint
   force(path_project)
- 
 
   # get cutpoints for each sample
   cp_uns_loc_obj_list <- purrr::map(seq_along(ex_list_no_min_stim), function(i) { # nolint
@@ -445,8 +444,9 @@
     .debug("ind", ind) # nolint
     ex_tbl_uns_orig <- ex_list_orig[[length(ex_list_orig)]]
     ex_tbl_stim_orig <- ex_list_orig[[i]]
+    chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_no_min_stim)
     .int_save(
-      ind, stage, path_project,
+      ind, file.path(stage, chnl), path_project,
       ex_tbl_no_min_stim, ex_tbl_uns_orig, ex_tbl_stim_orig
     )
 
@@ -497,12 +497,14 @@
   # name sample
   # ------------------
   .path_project <- path_project
+  chnl <- .get_cp_uns_loc_get_chnl(ex_list_no_min_stim[[1]])
   .get_cp_uns_loc_output(
     cp_uns_loc_obj_list = cp_uns_loc_obj_list,
     ind_uns = names(ex_list_orig)[length(ex_list_orig)],
     ind_stim = names(ex_list_no_min_stim),
     stage = stage,
-    path_project = .path_project
+    path_project = .path_project,
+    chnl = chnl
   )
 }
 
@@ -520,8 +522,10 @@
                                            ex_tbl_no_min_stim,
                                            ex_tbl_uns_bias,
                                            cp_min) {
+  chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_no_min_stim)
   .int_save_nm(
-    "too_few_cells_sample_fn", NULL, .get_ind(ex_tbl_no_min_stim),
+    file.path(chnl, "too_few_cells_sample_fn"), NULL,
+    .get_ind(ex_tbl_no_min_stim),
     stage, path_project
   ) # nolint
   obj_out <- .get_cp_uns_loc_ind_check_out(
@@ -529,7 +533,7 @@
     ex_tbl_uns_bias, stage, "Too few cells"
   )
   .int_save_nm(
-    "cp_ind", obj_out$cp, .get_ind(ex_tbl_no_min_stim),
+    file.path(chnl, "cp_ind"), obj_out$cp, .get_ind(ex_tbl_no_min_stim),
     stage, path_project
   )
   obj_out
@@ -591,6 +595,31 @@
 .get_cp_uns_loc_p_list_empty <- function() {
   lapply(seq_len(3), function(x) list()) |>
     stats::setNames(c("p_loc_dens", "p_loc_prob", "p_loc_ctb"))
+}
+
+#' @keywords internal
+.get_cp_uns_loc_get_chnl <- function(ex_tbl) {
+  if (is.null(ex_tbl) || !is.data.frame(ex_tbl)) {
+    return("unknown_chnl")
+  }
+  chnl <- attr(ex_tbl, "chnl_cut")
+  if (!is.null(chnl) && nzchar(chnl)) {
+    return(chnl)
+  }
+  cut_vec <- .get_cut(ex_tbl)
+  cn_vec <- colnames(ex_tbl)
+  if (is.null(cn_vec) || length(cn_vec) == 0L) {
+    return("unknown_chnl")
+  }
+  match_ind <- vapply(
+    cn_vec,
+    function(nm) identical(ex_tbl[[nm]], cut_vec),
+    logical(1)
+  )
+  if (any(match_ind)) {
+    return(cn_vec[match_ind][1])
+  }
+  cn_vec[1]
 }
 
 #' @keywords internal
@@ -668,15 +697,16 @@
                                         ex_tbl_no_min_stim,
                                         ex_tbl_uns_bias,
                                         cp_min) {
+  chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_no_min_stim)
   .int_save_nm(
-    "too_few_cells_ind_fn", NULL, .get_ind(ex_tbl_no_min_stim),
+    file.path(chnl, "too_few_cells_ind_fn"), NULL, .get_ind(ex_tbl_no_min_stim),
     stage, path_project
   ) # nolint
   obj_out <- .get_cp_uns_loc_ind_check_out(
     cp_min, ex_tbl_no_min_stim, ex_tbl_uns_bias, stage, "Too few cells"
   )
   .int_save_nm(
-    "cp_ind", obj_out$cp, ex_tbl_no_min_stim,
+    file.path(chnl, "cp_ind"), obj_out$cp, ex_tbl_no_min_stim,
     stage, path_project
   )
   return(obj_out)
@@ -756,6 +786,7 @@
                                      stage,
                                      path_project) {
   ind <- .get_ind(ex_tbl_stim_no_min)
+  chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_stim_no_min)
   # get raw densities
   dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
     ex_tbl_stim_threshold, ex_tbl_uns_threshold, stage, path_project, bw_min
@@ -777,7 +808,7 @@
   .int_save(ind, stage, path_project, data_mod)
 
   # smooth
-  .get_cp_uns_loc_get_prob_smooth(data_mod, stage, path_project)
+  .get_cp_uns_loc_get_prob_smooth(data_mod, stage, path_project, chnl)
 }
 
 # get dens_tbl_raw
@@ -813,8 +844,9 @@
   bw <- .get_cp_uns_loc_get_dens_raw_densities_bw(
     ex_tbl_stim_threshold, ex_tbl_uns_threshold, bw_min
   )
+  chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_stim_threshold)
   .int_save_nm(
-    "bw_cp_uns_loc", bw, .get_ind(ex_tbl_stim_threshold),
+    file.path(chnl, "bw_cp_uns_loc"), bw, .get_ind(ex_tbl_stim_threshold),
     stage, path_project
   )
   dens_stim <- .get_cp_uns_loc_get_dens_raw_densities_stim(
@@ -1083,16 +1115,16 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
 # smooth
 # ---------------------
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth <- function(data_mod, stage, path_project) {
+.get_cp_uns_loc_get_prob_smooth <- function(data_mod, stage, path_project, chnl) {
   # enough cells to bother smoothing
   if (!.get_cp_uns_loc_get_prob_smooth_check_n_cell(data_mod)) {
     .int_save_nm(
-      "not_enough_cells_to_smooth", NULL,
+      file.path(chnl, "not_enough_cells_to_smooth"), NULL,
       .get_ind(data_mod), stage, path_project
     )
     data_mod_out <- .get_cp_uns_loc_get_prob_smooth_check_n_cell_out(data_mod)
     .int_save_nm(
-      "prob_smooth_out", data_mod_out,
+      file.path(chnl, "prob_smooth_out"), data_mod_out,
       .get_ind(data_mod), stage, path_project
     )
     return(data_mod_out)
@@ -1102,7 +1134,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   pred_vec <- .get_cp_uns_loc_get_prob_smooth_actual(data_mod, stage)
   data_mod_out <- data_mod |> dplyr::mutate(pred = pred_vec)
   .int_save_nm(
-    "prob_smooth_out", data_mod_out,
+    file.path(chnl, "prob_smooth_out"), data_mod_out,
     .get_ind(data_mod), stage, path_project
   )
   data_mod_out
@@ -1256,9 +1288,10 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                    stage,
                                    path_project) {
   ind <- .get_ind(ex_tbl_stim_no_min)
+  chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_stim_no_min)
   if (!is.data.frame(data_mod)) {
-    .int_save_nm("no_data_mod_df", NULL, ind, stage, path_project)
-    .int_save_nm("cp_ind", data_mod, ind, stage, path_project)
+    .int_save_nm(file.path(chnl, "no_data_mod_df"), NULL, ind, stage, path_project)
+    .int_save_nm(file.path(chnl, "cp_ind"), data_mod, ind, stage, path_project)
     return(data_mod)
   }
 
@@ -1366,6 +1399,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     dplyr::filter(abs(prop_bs_diff) == min(abs(prop_bs_diff))) |> # nolint
     dplyr::slice(1) |>
     .get_cut()
+  data_threshold
 }
 
 #' @keywords internal
@@ -1382,13 +1416,15 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                    ind_uns,
                                    ind_stim,
                                    stage,
-                                   path_project) {
+                                   path_project,
+                                   chnl) {
   cp_vec <- .get_cp_uns_loc_sample_cp_rep(
     cp_uns_loc_obj_list = cp_uns_loc_obj_list,
     ind_uns = ind_uns,
     ind_stim = ind_stim,
     stage = stage,
-    path_project = path_project
+    path_project = path_project,
+    chnl = chnl
   )
   # Use combined identifier for batch-level data when ind_stim is a vector
   ind_combined <- .create_combined_identifier(ind_stim)
@@ -1406,7 +1442,8 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
                                           cp_uns_loc_obj_list,
                                           ind_uns,
                                           ind_stim,
-                                          path_project) {
+                                          path_project,
+                                          chnl) {
   .debug("Possibly re-using calculated cutpoints") # nolint
   # Use combined identifier for batch-level data when ind_stim is a vector
   ind_combined <- .create_combined_identifier(ind_stim)
@@ -1414,14 +1451,14 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
   # extract vector of cutpoints
   cp_vec <- purrr::map_dbl(cp_uns_loc_obj_list, ~ .x[["cp"]])
   .int_save_nm(
-    "cp_vec_before_rep", cp_vec,
+    file.path(chnl, "cp_vec_before_rep"), cp_vec,
     ind_combined, stage, path_project
   )
 
   # Repeat cutpoint if it was prejoined
   if (length(cp_vec) != length(ind_stim)) {
     .int_save_nm(
-      "prejoined_cp_used", NULL,
+      file.path(chnl, "prejoined_cp_used"), NULL,
       ind_combined, stage, path_project
     )
     cp_vec <- stats::setNames(
@@ -1429,33 +1466,33 @@ get_cp_uns_loc_get_data_mod_margin <- function(ex_tbl_stim_no_min,
     )
   } else {
     .int_save_nm(
-      "individual_cp_used", NULL,
+      file.path(chnl, "individual_cp_used"), NULL,
       ind_combined, stage, path_project
     )
     # name gate indices if not prejoined
     cp_vec <- stats::setNames(cp_vec, ind_stim)
   }
   .int_save_nm(
-    "cp_vec_after_rep", cp_vec,
+    file.path(chnl, "cp_vec_after_rep"), cp_vec,
     ind_combined, stage, path_project
   )
 
   # add unstim if unstim gate required
   if (!all(purrr::map_lgl(cp_vec, is.na))) {
     .int_save_nm(
-      "adding_uns_cp", NULL,
+      file.path(chnl, "adding_uns_cp"), NULL,
       ind_combined, stage, path_project
     )
     cp_vec <- c(cp_vec, stats::setNames(mean(cp_vec, na.rm = TRUE), ind_uns))
   } else {
     .int_save_nm(
-      "add_na_for_uns_cp", NULL,
+      file.path(chnl, "add_na_for_uns_cp"), NULL,
       ind_combined, stage, path_project
     )
     cp_vec <- c(cp_vec, NA)
   }
   .int_save_nm(
-    "cp_vec_after_uns_added", cp_vec,
+    file.path(chnl, "cp_vec_after_uns_added"), cp_vec,
     ind_combined, stage, path_project
   )
 
