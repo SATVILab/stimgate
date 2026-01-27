@@ -83,7 +83,7 @@
     if (exc_min) ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
     if (nrow(ex) < max(min_cell, 5)) {
       .int_save_nm(
-        file.path(tg_type, "cp_tg_prejoin too few to cut reliably"),
+        file.path(chnl_cut, tg_type, "cp_tg_prejoin too few to cut reliably"),
         cp_min, paste0(ind_gate, collapse = ","),
         stage, path_project
       )
@@ -97,7 +97,7 @@
         strict = FALSE, adjust = adjust
       ))
       .int_save_nm(
-        file.path(tg_type, "cp_tg_prejoin_init"),
+        file.path(chnl_cut, tg_type, "cp_tg_prejoin_init"),
         cp, paste0(ind_gate, collapse = ","),
         stage, path_project
       )
@@ -105,7 +105,7 @@
         is.na(cp) || length(.get_cut(ex)) < min_cell
       ) {
         .int_save_nm(
-          file.path(tg_type, "cp_tg_prejoin is NA or too few to cut reliably"),
+          file.path(chnl_cut, tg_type, "cp_tg_prejoin is NA or too few to cut reliably"),
           cp, paste0(ind_gate, collapse = ","),
           stage, path_project
         )
@@ -113,7 +113,7 @@
           (max(.get_cut(ex)) - min(.get_cut(ex))) / 5)
       }
       .int_save_nm(
-        file.path(tg_type, "cp_tg_prejoin final"),
+        file.path(chnl_cut, tg_type, "cp_tg_prejoin final"),
         cp, paste0(ind_gate, collapse = ","),
         stage, path_project
       )
@@ -148,7 +148,7 @@
         strict = FALSE, adjust = adjust
       ))
       .int_save_nm(
-        file.path(tg_type, "cp_tg_ind_init"), cp, ind,
+        file.path(chnl_cut, tg_type, "cp_tg_ind_init"), cp, ind,
         stage, path_project
       )
       cp
@@ -164,7 +164,7 @@
       stats::setNames(gate_combn)
 
     .int_save_nm(
-      file.path(tg_type, "cp_tg_list"),
+      file.path(chnl_cut, tg_type, "cp_tg_list"),
       cp_tg_list, names(cp_tg_list),
       stage, path_project
     )
