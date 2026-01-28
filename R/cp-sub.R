@@ -143,9 +143,10 @@
       }
       dens <- density(.get_cut(ex))
       adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
+
       cp <- suppressWarnings(.cytokine_cutpoint(
         x = .get_cut(ex), num_peaks = 1,
-        ref_peak = 1, tol = tol * 1e3, side = "right",
+        ref_peak = 1, tol = tol, side = "right",
         strict = FALSE, adjust = adjust
       ))
       .int_save_nm(
