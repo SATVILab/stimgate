@@ -36,11 +36,11 @@
 #' @param ... additional arguments passed to \code{.deriv_density}
 #' @return the cutpoint along the x-axis
 .cytokine_cutpoint <- function(x,
+                               adjust,
                                num_peaks = 1,
                                ref_peak = 1,
                                method = c("first_deriv", "second_deriv"),
                                tol = 1e-2,
-                               adjust = 1,
                                side = "right",
                                strict = TRUE,
                                plot = FALSE,
@@ -61,71 +61,54 @@
     ref_peak <- num_peaks
   }
 
-  # TODO: Double-check that a cutpoint minimum found via 'first_deriv'
-  # passes the second-derivative test.
-
-  if (method == "first_deriv") {
-    # Finds the deepest valleys from the kernel density and sorts them.
-    # The number of valleys identified is determined by 'num_peaks'
-    deriv_out <- .deriv_density(x = x, adjust = adjust, deriv = 1, ...)
-    if (auto_tol) {
-      # Try to set the tolerance automatigically.
-      tol <- 0.01 * max(abs(deriv_out$y))
-    }
-    if (side == "right") {
-      deriv_valleys <- with(deriv_out, .find_valleys(x = x, adjust = adjust))
-      deriv_valleys <- deriv_valleys[deriv_valleys > peaks[ref_peak]]
-      deriv_valleys <- sort(deriv_valleys)[1]
-      cutpoint <- with(deriv_out, x[x > deriv_valleys & abs(y) < tol])
-      cutpoint <- cutpoint[1]
-    } else if (side == "left") {
-      deriv_out$y <- -deriv_out$y
-      deriv_valleys <- with(deriv_out, .find_valleys(x = x, adjust = adjust))
-      deriv_valleys <- deriv_valleys[deriv_valleys < peaks[ref_peak]]
-      deriv_valleys <- sort(deriv_valleys, decreasing = TRUE)[1]
-      cutpoint <- with(deriv_out, x[x < deriv_valleys & abs(y) < tol])
-      cutpoint <- cutpoint[length(cutpoint)]
-    } else {
-      stop("Unrecognized 'side' argument (was '", side, "'.")
-    }
+  # Finds the deepest valleys from the kernel density and sorts them.
+  # The number of valleys identified is determined by 'num_peaks'
+  deriv_out <- .deriv_density(x = x, adjust = adjust, deriv = 1, ...)
+  if (auto_tol) {
+    # Try to set the tolerance automatigically.
+    tol <- 0.01 * max(abs(deriv_out$y))
+  }
+  if (side == "right") {
+    deriv_valleys <- with(deriv_out, .find_valleys(x = x, adjust = adjust))
+    deriv_valleys <- deriv_valleys[deriv_valleys > peaks[ref_peak]]
+    deriv_valleys <- sort(deriv_valleys)[1]
+    cutpoint <- with(deriv_out, x[x > deriv_valleys & abs(y) < tol])
+    cutpoint <- cutpoint[1]
+  } else if (side == "left") {
+    deriv_out$y <- -deriv_out$y
+    deriv_valleys <- with(deriv_out, .find_valleys(x = x, adjust = adjust))
+    deriv_valleys <- deriv_valleys[deriv_valleys < peaks[ref_peak]]
+    deriv_valleys <- sort(deriv_valleys, decreasing = TRUE)[1]
+    cutpoint <- with(deriv_out, x[x < deriv_valleys & abs(y) < tol])
+    cutpoint <- cutpoint[length(cutpoint)]
   } else {
-    # The cutpoint is selected as the first peak from the second derivative
-    # density which is to the right of the reference peak.
-    deriv_out <- .deriv_density(x = x, adjust = adjust, deriv = 2, ...)
-
-    if (side == "right") {
-      deriv_peaks <- with(deriv_out, .find_peaks(x, adjust = adjust)[, "x"])
-      deriv_peaks <- deriv_peaks[deriv_peaks > peaks[ref_peak]]
-      cutpoint <- sort(deriv_peaks)[1]
-    } else if (side == "left") {
-      deriv_out$y <- -deriv_out$y
-      deriv_peaks <- with(deriv_out, .find_peaks(x, adjust = adjust)[, "x"])
-      deriv_peaks <- deriv_peaks[deriv_peaks < peaks[ref_peak]]
-      cutpoint <- sort(deriv_peaks, decreasing = TRUE)[length(deriv_peaks)]
-    } else {
-      stop("Unrecognized 'side' argument (was '", side, "'.")
-    }
+    stop("Unrecognized 'side' argument (was '", side, "'.")
   }
 
   cutpoint
 }
 
 #' @keywords internal
-.deriv_density <- function(x, deriv = 1L, adjust = 1, n = 2048L, ...) {
-  # 1) Compute a fine KDE on [min(x), max(x)]
-  dens <- stats::density(x, adjust = adjust, n = n, ...)
-  xx <- dens$x
-  yy <- dens$y
+.deriv_density <- function(x, deriv = 1, bandwidth = NULL, adjust = 1,
+                           num_points = 10000, ...) {
 
-  # 2) Approximate derivatives by repeated central differences
-  for (k in seq_len(deriv)) {
-    # central difference: f'(x_i) ≈ (y_{i+1} - y_{i-1}) / (x_{i+1} - x_{i-1})
-    dx <- diff(xx, lag = 2)
-    dy <- yy[-1] - yy[-length(yy)]
-    # but dy is length n−1; for central we align:
-    yy <- dy[-1] / dx
-    xx <- xx[-c(1, length(xx))]
+  # 1. Bandwidth Selection
+  # ks::hpi is the standard plugin selector (likely what you were using before)
+  if (is.null(bandwidth)) {
+    bandwidth <- ks::hpi(x, deriv.order = deriv)
   }
 
-  list(x = xx, y = yy)
+  # 2. Compute Derivative using ks::kdde
+  # We MUST pass 'gridsize' to maintain the high resolution
+  # your cutpoint logic needs
+  kde_obj <- ks::kdde(
+    x = x,  deriv.order = deriv,
+    h = bandwidth * adjust, gridsize = num_points,
+    ...
+  )
+
+  # 3. Format Output
+  # ks::kdde returns 'eval.points' (x) and 'estimate' (y)
+  # We map them to 'x' and 'y' so cytokine_cutpoint doesn't break
+  list(x = kde_obj$eval.points, y = kde_obj$estimate)
 }

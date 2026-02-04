@@ -90,8 +90,9 @@
       )
       cp_vec <- stats::setNames(rep(NA, length(ind_gate)), ind_gate)
     } else {
-      dens <- density(.get_cut(ex))
-      adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
+      bw_est <- ks::hpi(.get_cut(ex), deriv.order = 1)
+      bw_tg <- max(bw, bw_est)
+      adjust <- bw_tg / bw_est
       cp <- suppressWarnings(.cytokine_cutpoint(
         x = .get_cut(ex), num_peaks = 1,
         ref_peak = 1, tol = tol, side = "right",
@@ -141,8 +142,9 @@
             (max(.get_cut(ex)) - min(.get_cut(ex))) / 5)
         )
       }
-      dens <- density(.get_cut(ex))
-      adjust <- ifelse(dens$bw < bw, bw / dens$bw, 1)
+      bw_est <- ks::hpi(.get_cut(ex), deriv.order = 1)
+      bw_tg <- max(bw, bw_est)
+      adjust <- bw_tg / bw_est
 
       cp <- suppressWarnings(.cytokine_cutpoint(
         x = .get_cut(ex), num_peaks = 1,

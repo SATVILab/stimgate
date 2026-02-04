@@ -13,3 +13,4 @@ _tmp/**/*
 ..Rcheck
 *.Rcheck
 *.tar.gz
+tests/testthat/cache/
