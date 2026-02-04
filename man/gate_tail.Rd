@@ -7,11 +7,11 @@ density estimate}
 \usage{
 .cytokine_cutpoint(
   x,
+  adjust,
   num_peaks = 1,
   ref_peak = 1,
   method = c("first_deriv", "second_deriv"),
   tol = 0.01,
-  adjust = 1,
   side = "right",
   strict = TRUE,
   plot = FALSE,
@@ -21,6 +21,9 @@ density estimate}
 }
 \arguments{
 \item{x}{a \code{numeric} vector used as input data}
+
+\item{adjust}{the scaling adjustment applied to the bandwidth used in the
+first derivative of the kernel density estimate}
 
 \item{num_peaks}{the number of peaks expected to see. This effectively removes
 any peaks that are artifacts of smoothing}
@@ -32,9 +35,6 @@ default, the peak farthest to the left is used.}
 \item{method}{the method used to select the cutpoint. See details.}
 
 \item{tol}{the tolerance value}
-
-\item{adjust}{the scaling adjustment applied to the bandwidth used in the
-first derivative of the kernel density estimate}
 
 \item{side}{character specifying the side of the gate, either
 \code{'right'} (default) or \code{'left'}}
