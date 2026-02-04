@@ -45,7 +45,7 @@
         min_cell = 0,
         cp_min = 0,
         bw = bw_min,
-        tg_type = "tol",
+        tg_type = "tol_ctrl",
         stage = stage,
         path_project = path_project
       )

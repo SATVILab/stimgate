@@ -139,7 +139,10 @@
       )
       purrr::map_dbl(ex_list, function(ex) {
         abs(
-          diff(quantile(.get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))], c(0.99, 0.01)),
+          diff(
+            quantile(.get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))],
+            c(0.99, 0.01)
+          ),
             na.rm = TRUE
           )
         )[[1]]

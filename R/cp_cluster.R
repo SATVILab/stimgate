@@ -168,7 +168,6 @@
   )
 
   # add tail-gate-based thresholds
-
   cp_tbl <- .get_cp_cluster_cp_join_tg_get( # nolint
     cp_tbl = cp_tbl
   )
