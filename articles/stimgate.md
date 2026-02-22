@@ -83,20 +83,20 @@ sessionInfo()
 #> [1] stimgate_0.99.1-1
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] gtable_0.3.6        jsonlite_2.0.0      dplyr_1.1.4        
+#>  [1] gtable_0.3.6        jsonlite_2.0.0      dplyr_1.2.0        
 #>  [4] compiler_4.5.2      BiocManager_1.30.27 tidyselect_1.2.1   
 #>  [7] Biobase_2.70.0      cytolib_2.22.0      cluster_2.1.8.1    
 #> [10] jquerylib_0.1.4     systemfonts_1.3.1   scales_1.4.0       
 #> [13] textshaping_1.0.4   yaml_2.3.12         fastmap_1.2.0      
-#> [16] RProtoBufLib_2.22.0 ggplot2_4.0.1       R6_2.6.1           
+#> [16] RProtoBufLib_2.22.0 ggplot2_4.0.2       R6_2.6.1           
 #> [19] generics_0.1.4      knitr_1.51          BiocGenerics_0.56.0
-#> [22] tibble_3.3.1        desc_1.4.3          bslib_0.9.0        
+#> [22] tibble_3.3.1        desc_1.4.3          bslib_0.10.0       
 #> [25] pillar_1.11.1       RColorBrewer_1.1-3  rlang_1.1.7        
 #> [28] cachem_1.1.0        flowCore_2.22.1     xfun_0.56          
 #> [31] fs_1.6.6            sass_0.4.10         S7_0.2.1           
 #> [34] cli_3.6.5           pkgdown_2.2.0       magrittr_2.0.4     
 #> [37] digest_0.6.39       grid_4.5.2          lifecycle_1.0.5    
-#> [40] S4Vectors_0.48.0    vctrs_0.7.0         evaluate_1.0.5     
+#> [40] S4Vectors_0.48.0    vctrs_0.7.1         evaluate_1.0.5     
 #> [43] glue_1.8.0          farver_2.1.2        ragg_1.5.0         
 #> [46] stats4_4.5.2        rmarkdown_2.30      matrixStats_1.5.0  
 #> [49] tools_4.5.2         pkgconfig_2.0.3     htmltools_0.5.9

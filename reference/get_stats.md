@@ -38,7 +38,6 @@ path_project <- stimgate_gate(
 # Get statistics for the identified gates
 stats <- get_stats(path_project)
 }
-#> Warning: replacing previous import ‘S4Arrays::makeNindexFromArrayViewport’ by ‘DelayedArray::makeNindexFromArrayViewport’ when loading ‘SummarizedExperiment’
 #> 
 #> see ?HDCytoData and browseVignettes('HDCytoData') for documentation
 #> downloading 1 resources
