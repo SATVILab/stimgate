@@ -4,6 +4,7 @@
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml)
 [![Codecov test coverage](https://codecov.io/gh/SATVILab/stimgate/branch/master/graph/badge.svg)](https://app.codecov.io/gh/SATVILab/stimgate)
+[![pkgdown](https://github.com/SATVILab/stimgate/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/SATVILab/stimgate/actions/workflows/pkgdown.yaml)
 <!-- badges: end -->
 
 
@@ -81,6 +82,7 @@ stimgate_plot(
 ## 📖 Documentation
 
 * 📘 **Vignette**: `vignette("stimgate")` - Getting started guide
+* 🌐 **Website**: [satvilab.github.io/stimgate](https://satvilab.github.io/stimgate/)
 * 🔗 **GitHub**: [github.com/SATVILab/stimgate](https://github.com/SATVILab/stimgate)
 * 📦 **Bioconductor**: *URL to be added upon release*
 * 🔧 **Function reference**: `help(package = "stimgate")`
