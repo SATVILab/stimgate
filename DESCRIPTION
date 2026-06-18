@@ -13,7 +13,6 @@ License: GPL (>= 2)
 Encoding: UTF-8
 Depends: R (>= 4.4.0)
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 biocViews: FlowCytometry, SingleCell, CellBasedAssays, ImmunoOncology
 VignetteBuilder: knitr
 Imports:
@@ -41,3 +40,4 @@ Suggests:
     hexbin,
     gh,
     gitcreds
+Config/roxygen2/version: 8.0.0
