@@ -1,0 +1,355 @@
+---
+title: Simulate best bandwidth
+format:
+  html:
+    embed-resources: true
+    toc: true
+---
+
+```{r}
+#| include: false
+library(ggplot2)
+library(tibble)
+
+# Find the build directory root
+root_dir <- here::here() |> fs::path_abs()
+desc_path <- file.path(root_dir, "DESCRIPTION")
+out_vec <- c(paste0("root_dir: ", root_dir), paste0("desc_path: ", desc_path))
+path_debug_file <- "/workspaces/stimgate/stimgate/analysis/build_debug.txt"
+writeLines(out_vec, con = path_debug_file)
+
+if (file.exists(desc_path) && grepl("Package: stimgate", readLines(desc_path, n = 1))) {
+  cat("use_devtools", "\n", file = path_debug_file, append = TRUE)
+  devtools::load_all(root_dir)
+} else {
+  cat("use_source", "\n", file = path_debug_file, append = TRUE)
+  fn_vec <- list.files(file.path(root_dir, "R"), full.names = TRUE)
+  for (fn in fn_vec) {
+    source(fn)
+  }
+}
+```
+
+## Checks
+
+### Simulations
+
+```{r}
+#| eval: false
+# debugonce(simCytCondition)
+for (trans in c("gaussian", "gamma")) {
+    transFunc <- switch(trans,
+      "gamma" = function(x) gamma(1 + abs(x / 4)),
+      "gaussian" = function(x) x,
+      stop("transformation not recognised")
+    )
+    limits_expand <- switch(trans,
+      "gamma" = list(c(0, 4)),
+      "gaussian" = list(c(-4, 12)),
+      stop("transformation not recognised")
+    )
+    outListCondition <- simCytCondition(
+      nMarker = 2,
+      nCell = 1e4,
+      transformationFunc = transFunc,
+      mixtureType = "gaussianOnly",
+      meanExprMat = matrix(
+        c(c(8, 8), c(8, 0), c(0, 8), c(0, 0)),
+        byrow = TRUE,
+        ncol = 2
+      ),
+      clusterLabelVec = c("gp2p", "gp2n", "gn2p", "gn2n"),
+      probVecSample = c(0.05, 0.02, 0.075, 0.855)
+    )
+    plot_tbl <- tibble::tibble(
+      pop = outListCondition$conditionLabels
+    ) |>
+      dplyr::bind_cols(
+        outListCondition$conditionMatrix
+      )
+    pop_vec <- unique(plot_tbl$pop)
+    p_list <- lapply(pop_vec, function(x) {
+      UtilsCytoRSV::plot_cyto(
+        plot_tbl |>
+          dplyr::filter(pop == x),
+        marker = c("F1", "F2"),
+        limits_expand = limits_expand
+      ) +
+      labs(title = x) +
+      geom_hline(yintercept = transFunc(c(0, 8)), col = "red", alpha = 0.4) +
+      geom_vline(xintercept = transFunc(c(0, 8)), col = "red", alpha = 0.4)
+    })
+    plot_grid <- cowplot::plot_grid(plotlist = p_list, ncol = 2) +
+      theme(
+        panel.background = element_rect(fill = "white", colour = NA),
+        plot.background = element_rect(fill = "white", colour = NA)
+        )
+    path_save <- projr::projr_path_get(
+      "cache", "sim-bandwidth", "check", "condition", paste0("p-condition-", trans, ".png")
+    )
+    ggplot2::ggsave(
+      path_save,
+      units = "cm",
+      width = 16,
+      height = 16
+    )
+}
+```
+
+```{r}
+#| eval: false
+for (trans in c("gaussian", "gamma")) {
+  transFunc <- switch(trans,
+    "gamma" = function(x) gamma(1 + abs(x / 4)),
+    "gaussian" = function(x) x,
+    stop("transformation not recognised")
+  )
+  limits_expand <- switch(trans,
+    "gamma" = list(c(0, 4)),
+    "gaussian" = list(c(-4, 12)),
+    stop("transformation not recognised")
+  )
+  # debugonce(simCytSample)
+  outListSample <- simCytSample(
+    nMarker = 2L,
+    nCondition = 3L,
+    nCluster = 4L,
+    nCellByCondition = c(1e4, 1e4, 1e4),
+    transformationFunc = transFunc,
+    mixtureType = "gaussianOnly",
+    meanExprMat = matrix(
+      c(c(8, 8), c(8, 0), c(0, 8), c(0, 0)),
+      byrow = TRUE,
+      ncol = 2
+    ),
+    clusterLabelVec = c("gp2p", "gp2n", "gn2p", "gn2n"),
+    probResponseVecByStimCondition = list(
+      c(0.1, 0.05, 0.0025, 0.8425),
+      c(0.00001, 0.0001, 0.0001, 0.99978)
+    ),
+    probVecUns = c(0.05, 0.02, 0.075, 0.855),
+    conditionPerturbationSd = 0,
+    clusterPerturbationSd = 0
+  )
+  for (i in seq_along(outListSample$flowFrameList)) {
+    stim <- names(outListSample$flowFrameList)[[i]]
+    plot_tbl <- tibble::tibble(
+      pop = outListSample$conditionLabelsList[[i]]
+    ) |>
+      dplyr::bind_cols(
+        as.data.frame(flowCore::exprs(outListSample$flowFrameList[[i]]))
+      )
+    pop_vec <- unique(plot_tbl$pop)
+    p_list <- lapply(pop_vec, function(x) {
+      UtilsCytoRSV::plot_cyto(
+        plot_tbl |>
+          dplyr::filter(pop == x),
+        marker = c("F1", "F2"),
+        limits_expand = limits_expand
+      ) +
+      labs(title = x) +
+      geom_hline(yintercept = transFunc(c(0, 8)), col = "red", alpha = 0.4) +
+      geom_vline(xintercept = transFunc(c(0, 8)), col = "red", alpha = 0.4)
+    })
+    plot_grid <- cowplot::plot_grid(plotlist = p_list, ncol = 2) +
+      theme(
+        panel.background = element_rect(fill = "white", colour = NA),
+        plot.background = element_rect(fill = "white", colour = NA)
+      )
+    path_save <- projr::projr_path_get(
+      "cache", "sim-bandwidth", "check", "sample", paste0("p-sample-", trans, "-", stim, ".png")
+    )
+    ggplot2::ggsave(
+      path_save,
+      units = "cm",
+      width = 16, 
+      height = 16
+    )
+  }
+}
+```
+
+```{r}
+#| eval: false
+for (trans in c("gaussian", "gamma")) {
+  transFunc <- switch(trans,
+    "gamma" = function(x) gamma(1 + abs(x / 4)),
+    "gaussian" = function(x) x,
+    stop("transformation not recognised")
+  )
+  limits_expand <- switch(trans,
+    "gamma" = list(c(0, 4)),
+    "gaussian" = list(c(-4, 12)),
+    stop("transformation not recognised")
+  )
+  outListExperiment <- simCytExperiment(
+    nSample = 2L,
+    nMarker = 2L,
+    nCondition = 3L,
+    nCluster = 4L,
+    nCellByCondition = c(1e4, 1e4, 1e4),
+    transformationFunc = transFunc,
+    mixtureType = "gaussianOnly",
+    meanExprMat = matrix(
+      c(c(8, 8), c(8, 0), c(0, 8), c(0, 0)),
+      byrow = TRUE,
+      ncol = 2
+    ),
+    clusterLabelVec = c("gp2p", "gp2n", "gn2p", "gn2n"),
+    probResponseVecByStimCondition = list(
+      c(0.1, 0.05, 0.0025, 0.8425),
+      c(0.00001, 0.0001, 0.0001, 0.99978)
+    ),
+    probVecUns = c(0.05, 0.02, 0.075, 0.855),
+    samplePerturbationSd = 0.1,
+    conditionPerturbationSd = 0.1,
+    clusterPerturbationSd = 0.1
+  )
+  for (i in seq_along(outListExperiment$flowFrameList)) {
+    smpl_cond <- names(outListExperiment$flowFrameList)[[i]]
+    plot_tbl <- tibble::tibble(
+      pop = outListExperiment$conditionLabelsList[[i]]
+    ) |>
+      dplyr::bind_cols(
+        as.data.frame(flowCore::exprs(outListExperiment$flowFrameList[[i]]))
+      )
+    pop_vec <- unique(plot_tbl$pop)
+    p_list <- lapply(pop_vec, function(x) {
+      UtilsCytoRSV::plot_cyto(
+        plot_tbl |>
+          dplyr::filter(pop == x),
+        marker = c("F1", "F2"),
+        limits_expand = limits_expand
+      ) +
+      labs(title = x) +
+      geom_hline(yintercept = transFunc(c(0, 8)), col = "red", alpha = 0.4) +
+      geom_vline(xintercept = transFunc(c(0, 8)), col = "red", alpha = 0.4)
+    })
+    plot_grid <- cowplot::plot_grid(plotlist = p_list, ncol = 2) +
+      theme(
+        panel.background = element_rect(fill = "white", colour = NA),
+        plot.background = element_rect(fill = "white", colour = NA)
+      )
+    path_save <- projr::projr_path_get(
+      "cache", "sim-bandwidth", "check", "experiment", paste0("p-experiment-", trans, "-", smpl_cond, ".png")
+    )
+    ggplot2::ggsave(
+      path_save,
+      units = "cm",
+      width = 16, 
+      height = 16
+    )
+  }
+}
+```
+
+### Analysis
+
+```{r}
+# simulation settings
+nCellStimVec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)
+probResponseVec <- c(1/5e5, 1/2e5, 1/1e5, 1/5e4, 1/2e4, 1/1e4, 1/5e3, 1/2e3, 1/1e3, 1/5e2, 1/2e2, 1/1e2, 1/5e1, 1/2e1, 1/1e1, 1/5, 1/2)
+meanPosVec <- seq_len(8)
+transformationVec <- c("gaussian", "gamma")
+samplePerturbationSd = c(0, sqrt(1/4), sqrt(1/2), 1, sqrt(2), 2)
+conditionPerturbationSd = c(0, sqrt(1/4), sqrt(1/2), 1, sqrt(2), 2)
+clusterPerturbationSd = c(0, sqrt(1/4), sqrt(1/2), 1, sqrt(2), 2)
+backgroundRelativeToResponseVec <- c(2, 1, 1/2, 0.2, 0.1, 0.05, 0.01, 0.001)
+nCellUnsRelativeToStimVec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)
+
+# bandwidth settings
+bandwidthMethodVec <- c("hpi_0", "hpi_1", "hpi_2", "hpi_3", "sj", "nrd0")
+bandwidthNCellUpperVec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
+bandwithNCellLowerVec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
+biasUnsVec <- seq(0, 2, by = 0.2)
+```
+
+```{r}
+# loop parameters
+nCellStim <- 1e5
+probResponse <- 0.02
+meanPos <- 8
+transformation <- "gaussian"
+samplePerturbationSd <- 0
+conditionPerturbationSd <- 0
+clusterPerturbationSd <- 0
+backgroundRelativeToResponse <- 0.2
+nCellUnsRelativeToStim <- 1
+
+# stimgate parameters
+biasUns <- 0.2
+
+# calculated parameters
+nCellUns <- round(nCellStim * nCellUnsRelativeToStim)
+nCellByCondition <- c(nCellUns, nCellStim)
+transformationFunc <- switch(transformation,
+    "gamma" = function(x) gamma(1 + abs(x / 4)),
+    "gaussian" = function(x) x,
+    stop("transformation not recognised")
+  )
+meanExprMat <- matrix(
+  c(0, 8),
+  byrow = TRUE,
+  ncol = 1
+)
+clusterLabelVec <- c("gn", "gp")
+probResponseUns <- probResponse * backgroundRelativeToResponse
+probVecUns <- c(1 - probResponseUns, probResponseUns)
+probResponseVecByStimCondition <- list(c(-probResponse, probResponse))
+iterNum <- 1
+
+nSample <- 1L
+nMarker <- 1L
+nCondition <- 2L
+nCluster <- 2L
+
+print(paste0("iter ", iterNum))
+# debugonce(simCytCondition)
+outListExperiment <- simCytExperiment(
+  nSample = nSample,
+  nMarker = nMarker,
+  nCondition = nCondition,
+  nCluster = nCluster,
+  nCellByCondition = nCellByCondition,
+  transformationFunc = transformationFunc,
+  mixtureType = "gaussianOnly",
+  meanExprMat = meanExprMat,
+  clusterLabelVec = clusterLabelVec,
+  probVecUns = probVecUns,
+  probResponseVecByStimCondition = probResponseVecByStimCondition,
+  conditionPerturbationSd = conditionPerturbationSd,
+  clusterPerturbationSd = clusterPerturbationSd,
+  samplePerturbationSd = samplePerturbationSd
+)
+
+# apply stimgate
+fs <- as(outListExperiment[["flowFrameList"]], "flowSet")
+gs <- flowWorkspace::GatingSet(fs)
+
+path_project <- projr::projr_path_get(
+  "cache", "sim-bandwidth", "check", "gate", paste0("iter_", iterNum)
+)
+unlink(path_project, recursive = TRUE)
+dir.create(path_project, recursive = TRUE)
+batch_list <- lapply(seq(nSample), function(i) {
+  seq((i - 1) * nCondition + 1, i * nCondition)
+})
+chnl_list_stimgate <- list(
+  list("cut" = "F1")
+)
+
+# debugonce(stimgate:::.complete_chnl_list)
+stimgate_gate(
+  path_project = path_project,
+  chnl = "F1",
+  .data = gs,
+  batch_list = batch_list,
+  chnl_settings = chnl_list_stimgate,
+  bias_uns = biasUns
+)
+
+stats_tbl <- readRDS(
+  file.path(path_project, "gate_stats.rds")
+)
+stats_tbl
+```
