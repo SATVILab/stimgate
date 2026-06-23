@@ -1,0 +1,10 @@
+directories:
+  raw-data:
+    path: analysis/_raw_data
+  output:
+    path: analysis/_output
+  docs:
+    path: analysis/docs
+build:
+  scripts: analysis/Simulation-Bandwidth.qmd
+

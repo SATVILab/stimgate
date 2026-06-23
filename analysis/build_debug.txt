@@ -1,0 +1,3 @@
+root_dir: /workspaces/stimgate/stimgate
+desc_path: /workspaces/stimgate/stimgate/DESCRIPTION
+use_devtools 

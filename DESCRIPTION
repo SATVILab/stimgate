@@ -3,11 +3,9 @@ Type: Package
 Title: Identify Responding Cells as Outliers
 Version: 0.99.2-15
 Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-2036-4878"))
-Description: Apply outlier gating function to identify cells that have possibly
-    responded to stimulation, by comparing the unstimulated and stimulated tubes
-    from the same sample.
-URL: https://satvilab.github.io/stimgate/,
-    https://github.com/SATVILab/stimgate
+Description: Apply outlier gating function to identify cells that have possibly responded to stimulation, by comparing the
+               unstimulated and stimulated tubes from the same sample.
+URL: https://satvilab.github.io/stimgate/, https://github.com/SATVILab/stimgate
 BugReports: https://github.com/SATVILab/stimgate/issues
 License: GPL (>= 2)
 Encoding: UTF-8
@@ -15,33 +13,7 @@ Depends: R (>= 4.4.0)
 Roxygen: list(markdown = TRUE)
 biocViews: FlowCytometry, SingleCell, CellBasedAssays, ImmunoOncology
 VignetteBuilder: knitr
-Imports:
-    cowplot,
-    dplyr,
-    ggplot2,
-    purrr,
-    rlang,
-    stringr,
-    tibble,
-    tidyr,
-    scam,
-    mgcv,
-    ks,
-    gtools,
-    splines,
-    stats,
-    utils,
-    flowCore,
-    flowWorkspace,
-    cluster
-Suggests:
-    testthat (>= 3.0.0),
-    HDCytoData,
-    here,
-    BiocManager,
-    knitr,
-    rmarkdown,
-    hexbin,
-    gh,
-    gitcreds
+Imports: cowplot, dplyr, ggplot2, purrr, rlang, stringr, tibble, tidyr, scam, mgcv, ks, gtools, splines, stats, utils, flowCore,
+               flowWorkspace, cluster
+Suggests: testthat (>= 3.0.0), HDCytoData, here, BiocManager, knitr, rmarkdown, hexbin, gh, gitcreds
 Config/roxygen2/version: 8.0.0

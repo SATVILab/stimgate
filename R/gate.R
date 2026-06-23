@@ -76,9 +76,6 @@
 #' @param calc_single_pos_gates logical. Whether to calculate single-positive gates
 #'   for individual markers in addition to combination gates. Default is FALSE.
 #'   Useful for detailed analysis of individual marker responses.
-#' @param debug logical. Whether to enable detailed debug output and save intermediate
-#'   results. Default is FALSE. When TRUE, additional files and verbose output are
-#'   generated, useful for troubleshooting and method development.
 #' @return character. Returns the path to the project directory where all results
 #'   have been saved. The directory structure created includes:
 #'   \itemize{
