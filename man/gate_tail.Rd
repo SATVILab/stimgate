@@ -7,7 +7,7 @@ density estimate}
 \usage{
 .cytokine_cutpoint(
   x,
-  adjust,
+  adjust = 1,
   num_peaks = 1,
   ref_peak = 1,
   method = c("first_deriv", "second_deriv"),
@@ -25,22 +25,22 @@ density estimate}
 \item{adjust}{the scaling adjustment applied to the bandwidth used in the
 first derivative of the kernel density estimate}
 
-\item{num_peaks}{the number of peaks expected to see. This effectively removes
-any peaks that are artifacts of smoothing}
+\item{num_peaks}{the number of peaks expected to see. This effectively
+removes any peaks that are artifacts of smoothing}
 
 \item{ref_peak}{After \code{num_peaks} are found, this argument provides the
 index of the reference population from which a gate will be obtained. By
 default, the peak farthest to the left is used.}
-
-\item{method}{the method used to select the cutpoint. See details.}
 
 \item{tol}{the tolerance value}
 
 \item{side}{character specifying the side of the gate, either
 \code{'right'} (default) or \code{'left'}}
 
-\item{strict}{\code{logical} when the actual number of peaks detected is less than \code{ref_peak}.
-an error is reported by default. But if \code{strict} is set to FALSE, then the reference peak will be reset to the peak of the far right.}
+\item{strict}{\code{logical} when the actual number of peaks detected is
+less than \code{ref_peak}, an error is reported by default. But if
+\code{strict} is set to FALSE, then the reference peak will be reset to
+the peak of the far right.}
 
 \item{plot}{logical specifying whether to plot the peaks found}
 
@@ -57,9 +57,10 @@ the kernel density estimate (KDE) of the \code{x}.
 }
 \details{
 By default, we compute the first derivative of the kernel density estimate.
-Next, we determine the lowest valley from the derivative, which corresponds to the
-density's mode for cytokines. We then contruct a gating cutpoint as the value
-less than the tolerance value \code{tol} in magnitude and is also greater
+Next, we determine the lowest valley from the derivative, which corresponds
+to the density's mode for cytokines. We then contruct a gating cutpoint as
+the value less than the tolerance value \code{tol} in magnitude and is also
+greater than the lowest valley.
 than the lowest valley.
 
 Alternatively, if the \code{method} is selected as \code{second_deriv}, we

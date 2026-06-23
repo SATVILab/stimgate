@@ -6,9 +6,10 @@
 #' the kernel density estimate (KDE) of the \code{x}.
 #'
 #' By default, we compute the first derivative of the kernel density estimate.
-#' Next, we determine the lowest valley from the derivative, which corresponds to the
-#' density's mode for cytokines. We then contruct a gating cutpoint as the value
-#' less than the tolerance value \code{tol} in magnitude and is also greater
+#' Next, we determine the lowest valley from the derivative, which corresponds
+#' to the density's mode for cytokines. We then contruct a gating cutpoint as
+#' the value less than the tolerance value \code{tol} in magnitude and is also
+#' greater than the lowest valley.
 #' than the lowest valley.
 #'
 #' Alternatively, if the \code{method} is selected as \code{second_deriv}, we
@@ -19,13 +20,15 @@
 #' @rdname gate_tail
 #' @param x a \code{numeric} vector used as input data
 #' @param num_peaks the number of peaks expected to see. This effectively removes
-#' any peaks that are artifacts of smoothing
+#' @param num_peaks the number of peaks expected to see. This effectively
+#' removes any peaks that are artifacts of smoothing
 #' @param ref_peak After \code{num_peaks} are found, this argument provides the
 #' index of the reference population from which a gate will be obtained. By
 #' default, the peak farthest to the left is used.
-#' @param strict \code{logical} when the actual number of peaks detected is less than \code{ref_peak}.
-#'                               an error is reported by default. But if \code{strict} is set to FALSE, then the reference peak will be reset to the peak of the far right.
-#' @param method the method used to select the cutpoint. See details.
+#' @param strict \code{logical} when the actual number of peaks detected is
+#' less than \code{ref_peak}, an error is reported by default. But if
+#' \code{strict} is set to FALSE, then the reference peak will be reset to
+#' the peak of the far right.
 #' @param tol the tolerance value
 #' @param auto_tol when TRUE, it tries to set the tolerance automatically.
 #' @param adjust the scaling adjustment applied to the bandwidth used in the
@@ -37,7 +40,7 @@
 #' @return the cutpoint along the x-axis
 #' @keywords internal
 .cytokine_cutpoint <- function(x,
-                               adjust,
+                               adjust = 1,
                                num_peaks = 1,
                                ref_peak = 1,
                                method = c("first_deriv", "second_deriv"),
@@ -54,8 +57,8 @@
   num_peaks <- length(peaks)
 
   if (ref_peak > num_peaks) {
-    outFunc <- ifelse(strict, stop, warning)
-    outFunc("The reference peak is larger than the number of peaks found.",
+    out_func <- ifelse(strict, stop, warning)
+    out_func("The reference peak is larger than the number of peaks found.",
       "Setting the reference peak to 'num_peaks'...",
       call. = FALSE
     )
@@ -92,7 +95,6 @@
 #' @keywords internal
 .deriv_density <- function(x, deriv = 1, bandwidth = NULL, adjust = 1,
                            num_points = 10000, ...) {
-
   # 1. Bandwidth Selection
   # ks::hpi is the standard plugin selector (likely what you were using before)
   if (is.null(bandwidth)) {
@@ -103,7 +105,7 @@
   # We MUST pass 'gridsize' to maintain the high resolution
   # your cutpoint logic needs
   kde_obj <- ks::kdde(
-    x = x,  deriv.order = deriv,
+    x = x, deriv.order = deriv,
     h = bandwidth * adjust, gridsize = num_points,
     ...
   )
