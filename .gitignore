@@ -17,3 +17,13 @@ tests/testthat/cache/
 # pkgdown local build output
 docs/
 
+inst/doc
+# Start of projr section: do not edit by hand (update with projr_ignore_auto())
+analysis/_raw_data/**
+analysis/_output/**
+analysis/docs/**
+_tmp/**
+AGENTS.md
+CHANGES_SUMMARY.md
+# End of projr section
+

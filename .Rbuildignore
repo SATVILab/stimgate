@@ -8,7 +8,6 @@
 ^\.github$
 ^data-raw$
 ^_dependencies\.R$
-^vignettes/
 ^BIOCONDUCTOR_PREPARATION\.md$
 ^scripts/
 ^CHANGES_SUMMARY\.md$
@@ -16,3 +15,25 @@
 ^docs$
 ^pkgdown$
 ^AGENTS\.md$
+^analysis$
+# Start of projr section: do not edit by hand (update with projr_ignore_auto())
+^analysis/_raw_data/
+^analysis/_raw_data$
+^analysis/_output/
+^analysis/_output$
+^analysis/docs/
+^analysis/docs$
+^_tmp/
+^_tmp$
+^_projr\.yml$
+^README\.Rmd$
+^_dependencies\.R$
+^_pkgdown\.yml$
+^AGENTS\.md$
+^CHANGES_SUMMARY\.md$
+^LICENSE\.md$
+^NEWS\.md$
+^\.github/
+^\.github$
+# End of projr section
+
