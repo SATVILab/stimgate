@@ -1,4 +1,4 @@
-#' @internal
+#' @keywords internal
 .find_peaks <- function(x, y = NULL, num_peaks = NULL, adjust = 2, plot = FALSE, ...) {
   x <- as.vector(x)
 
@@ -51,7 +51,7 @@
   peaks 
 }
 
-#' @internal
+#' @keywords internal
 .find_valleys <- function(x, y = NULL, num_valleys = NULL, adjust = 2, ...) {
 
   x <- as.vector(x)
