@@ -4,7 +4,6 @@
                          pop_gate,
                          chnl_cut,
                          gate_combn,
-                         tol,
                          noise_sd,
                          bias_uns,
                          exc_min,
@@ -77,7 +76,7 @@
 
   gate_tbl <- gate_tbl |>
     dplyr::filter(
-      !ind %in% vapply(
+      !as.character(ind) %in% vapply(
         ind_batch_list, function(x) as.character(x[length(x)]), character(1)
       )
     ) # nolint

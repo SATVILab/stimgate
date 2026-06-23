@@ -39,19 +39,27 @@
       deriv_valleys <- deriv_valleys[deriv_valleys > peaks[ref_peak]]
       deriv_valleys <- sort(deriv_valleys)[1]
       
-      cutpoint_candidates <- deriv_out$x[deriv_out$x > deriv_valleys & abs(deriv_out$y) < tol]
-      cutpoint <- if (length(cutpoint_candidates) > 0) cutpoint_candidates[1] else NA_real_
+      # Safe NA Check
+      if (is.na(deriv_valleys)) {
+        cutpoint <- NA_real_
+      } else {
+        cutpoint_candidates <- deriv_out$x[deriv_out$x > deriv_valleys & abs(deriv_out$y) < tol]
+        cutpoint <- if (length(cutpoint_candidates) > 0) cutpoint_candidates[1] else NA_real_
+      }
       
     } else if (side == "left") {
       deriv_out$y <- -deriv_out$y
-      
       deriv_valleys <- .find_valleys(x = deriv_out$x, y = deriv_out$y, adjust = adjust)
       deriv_valleys <- deriv_valleys[deriv_valleys < peaks[ref_peak]]
       deriv_valleys <- sort(deriv_valleys, decreasing = TRUE)[1]
       
-      cutpoint_candidates <- deriv_out$x[deriv_out$x < deriv_valleys & abs(deriv_out$y) < tol]
-      cutpoint <- if (length(cutpoint_candidates) > 0) cutpoint_candidates[length(cutpoint_candidates)] else NA_real_
-      
+      # Safe NA Check
+      if (is.na(deriv_valleys)) {
+        cutpoint <- NA_real_
+      } else {
+        cutpoint_candidates <- deriv_out$x[deriv_out$x < deriv_valleys & abs(deriv_out$y) < tol]
+        cutpoint <- if (length(cutpoint_candidates) > 0) cutpoint_candidates[length(cutpoint_candidates)] else NA_real_
+      }
     } else {
       stop("Unrecognized 'side' argument (was '", side, "').")
     }

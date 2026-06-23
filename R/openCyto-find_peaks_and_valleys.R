@@ -29,24 +29,26 @@
   # Next, we sort the peaks in descending order based on the density heights.
   which_maxima <- which_maxima[order(dens$y[which_maxima], decreasing = TRUE)]
   
-  # Returns the local maxima. If there are none, we return 'NA' instead.
+  # Safely construct the return dataframe
   if (length(which_maxima) > 0) {
-    peaks <- dens$x[which_maxima]
-    if (is.null(num_peaks) || num_peaks > length(peaks)) {
-      num_peaks <- length(peaks)
+    peaks_x <- dens$x[which_maxima]
+    if (is.null(num_peaks) || num_peaks > length(peaks_x)) {
+      num_peaks <- length(peaks_x)
     }
-    peaks <- peaks[seq_len(num_peaks)]
+    peaks <- data.frame(
+      x = peaks_x[seq_len(num_peaks)], 
+      y = dens$y[which_maxima][seq_len(num_peaks)]
+    )
   } else {
-    peaks <- NA
+    peaks <- data.frame(x = NA_real_, y = NA_real_)
   }
   
-  peaks <- data.frame(x = peaks, y = dens$y[which_maxima][seq_len(num_peaks)])
-  if(plot){
-    plot(dens, main = paste("adjust =" ,  adjust))
-    points(peaks, ,col = "red")  
+  if (plot) {
+    plot(dens, main = paste("adjust =", adjust))
+    points(peaks$x, peaks$y, col = "red") # Fixed plotting syntax
   }
   
-  peaks  
+  peaks 
 }
 
 #' @internal
