@@ -11,6 +11,7 @@
 ^vignettes/
 ^BIOCONDUCTOR_PREPARATION\.md$
 ^scripts/
+^CHANGES_SUMMARY\.md$
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$

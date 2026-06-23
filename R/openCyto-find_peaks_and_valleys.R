@@ -1,60 +1,95 @@
-#' Find local maxima (“peaks”) in a numeric vector via KDE
-#'
-#' @param x Numeric vector.
-#' @param num_peaks Integer: how many of the highest peaks to return.
-#' @param adjust Bandwidth multiplier, as in stats::density().
-#' @return A data.frame with columns x, y (peak locations and heights).
-#' @noRd
-.find_peaks <- function(x, num_peaks = NULL, adjust = 2, ...) {
-  x <- as.numeric(x)
+#' @internal
+.find_peaks <- function(x, y = NULL, num_peaks = NULL, adjust = 2, plot = FALSE, ...) {
+  x <- as.vector(x)
+
   if (length(x) < 2) {
-    return(data.frame(x = NA_real_, y = NA_real_))
+    warning("At least 2 observations must be given in 'x' to find peaks.")
+    return(NA)
   }
 
-  dens <- stats::density(x, adjust = adjust, ...)
-  # second discrete derivative:
-  sd2 <- diff(sign(diff(dens$y)))
-  idx <- which(sd2 == -2) + 1L
-  idx <- idx[findInterval(dens$x[idx], range(x)) == 1L]
-  heights <- dens$y[idx]
-  if (length(idx) == 0) {
-    return(data.frame(x = NA_real_, y = NA_real_))
+  if (is.null(y)) {
+    dens <- density(x, adjust = adjust, ...)
+  } else {
+    y <- as.vector(y)
+    if (length(x) != length(y)) {
+      stop("The lengths of 'x' and 'y' must be equal.")
+    }
+    dens <- list(x = x, y = y)
   }
 
-  ord <- order(heights, decreasing = TRUE)
-  if (!is.null(num_peaks)) ord <- head(ord, num_peaks)
-  idx <- idx[ord]
+  # Discrete analogue to a second derivative applied to the KDE. See details.
+  second_deriv <- diff(sign(diff(dens$y)))
+  which_maxima <- which(second_deriv == -2) + 1
 
-  data.frame(
-    x = dens$x[idx],
-    y = dens$y[idx],
-    row.names = NULL
-  )
+  # The 'density' function can consider observations outside the observed range.
+  # In rare cases, this can actually yield peaks outside this range.  We remove
+  # any such peaks.
+  which_maxima <- which_maxima[findInterval(dens$x[which_maxima], range(x)) == 1]
+
+  # Next, we sort the peaks in descending order based on the density heights.
+  which_maxima <- which_maxima[order(dens$y[which_maxima], decreasing = TRUE)]
+  
+  # Returns the local maxima. If there are none, we return 'NA' instead.
+  if (length(which_maxima) > 0) {
+    peaks <- dens$x[which_maxima]
+    if (is.null(num_peaks) || num_peaks > length(peaks)) {
+      num_peaks <- length(peaks)
+    }
+    peaks <- peaks[seq_len(num_peaks)]
+  } else {
+    peaks <- NA
+  }
+  
+  peaks <- data.frame(x = peaks, y = dens$y[which_maxima][seq_len(num_peaks)])
+  if(plot){
+    plot(dens, main = paste("adjust =" ,  adjust))
+    points(peaks, ,col = "red")  
+  }
+  
+  peaks  
 }
 
-#' Find local minima (“valleys”) in a numeric vector via KDE
-#'
-#' @param x Numeric vector.
-#' @param num_valleys Integer: how many of the lowest valleys to return.
-#' @param adjust Bandwidth multiplier, as in stats::density().
-#' @return Numeric vector of valley locations.
-#' @noRd
-.find_valleys <- function(x, num_valleys = NULL, adjust = 2, ...) {
-  x <- as.numeric(x)
+#' @internal
+.find_valleys <- function(x, y = NULL, num_valleys = NULL, adjust = 2, ...) {
+
+  x <- as.vector(x)
+
   if (length(x) < 2) {
-    return(NA_real_)
+    warning("At least 2 observations must be given in 'x' to find valleys.")
+    return(NA)
+  }
+  
+  if (is.null(y)) {
+    dens <- density(x, adjust = adjust, ...)
+  } else {
+    y <- as.vector(y)
+    if (length(x) != length(y)) {
+      stop("The lengths of 'x' and 'y' must be equal.")
+    }
+    dens <- list(x = x, y = y)
   }
 
-  dens <- stats::density(x, adjust = adjust, ...)
-  sd2 <- diff(sign(diff(dens$y)))
-  idx <- which(sd2 == 2) + 1L
-  idx <- idx[findInterval(dens$x[idx], range(x)) == 1L]
-  vals <- dens$x[idx]
-  if (length(vals) == 0) {
-    return(NA_real_)
-  }
+  # Discrete analogue to a second derivative applied to the KDE. See details.
+  second_deriv <- diff(sign(diff(dens$y)))
+  which_minima <- which(second_deriv == 2) + 1
 
-  ord <- order(dens$y[idx], decreasing = FALSE)
-  if (!is.null(num_valleys)) ord <- head(ord, num_valleys)
-  vals[ord]
+  # The 'density' function can consider observations outside the observed range.
+  # In rare cases, this can actually yield valleys outside this range. We remove
+  # any such valleys.
+  which_minima <- which_minima[findInterval(dens$x[which_minima], range(x)) == 1]
+
+  # Next, we sort the valleys in descending order based on the density heights.
+  which_minima <- which_minima[order(dens$y[which_minima], decreasing = FALSE)]
+
+  # Returns the local minima. If there are none, we return 'NA' instead.
+  if (length(which_minima) > 0) {
+    valleys <- dens$x[which_minima]
+    if (is.null(num_valleys) || num_valleys > length(valleys)) {
+      num_valleys <- length(valleys)
+    }
+    valleys <- valleys[seq_len(num_valleys)]
+  } else {
+    valleys <- NA
+  }
+  valleys
 }

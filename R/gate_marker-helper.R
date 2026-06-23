@@ -1,3 +1,4 @@
+#' @keywords internal
 .gate_marker_delete_old_gates <- function() {
   dir_save <- file.path(tempdir(), "stimgate")
   if (!dir.exists(dir_save)) {
@@ -8,6 +9,7 @@
 }
 
 # Get gates for each sample within each batch
+#' @keywords internal
 .gate_marker_pre_adj_gates_gate <- function(ind_batch_list,
                                             .data,
                                             pop_gate,
@@ -21,11 +23,11 @@
                                             cp_min,
                                             min_cell,
                                             params,
-                                            .debug,
+                                            stage,
                                             path_project) {
   message("getting pre-adjustment gates")
   purrr::map_df(seq_along(ind_batch_list), function(i) {
-    .debug_msg(.debug, "ind_batch_list", i) # nolint
+    .debug("ind_batch_list", i) # nolint
 
     # message progress
     if (i %% 50 == 0 || i == length(ind_batch_list)) {
@@ -47,7 +49,7 @@
       min_cell = min_cell,
       params = params,
       batch = names(ind_batch_list)[i],
-      .debug = .debug,
+      stage = stage,
       path_project = path_project
     ) |>
       dplyr::select(
@@ -57,6 +59,7 @@
   })
 }
 
+#' @keywords internal
 .gate_marker_get_adj_gates <- function(gate_tbl,
                                        gate_tbl_params,
                                        tol_clust,
@@ -66,10 +69,9 @@
                                        chnl_cut,
                                        bw_min,
                                        path_project,
-                                       .debug,
                                        ind_batch_list,
                                        pop_gate) {
-  if (is.null(gate_tbl_params)) {
+  if (params$stage == "init") {
     .gate_marker_get_adj_gates_all( # nolint
       tol_clust = tol_clust,
       gate_tbl = gate_tbl,
@@ -79,11 +81,11 @@
       bw_min = bw_min,
       path_project = path_project,
       gate_quant = gate_quant,
-      .debug = .debug,
+      stage = params$stage,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
-  } else {
+  } else if (params$stage == "single") {
     .gate_marker_gate_adj_gates_single(
       gate_tbl = gate_tbl,
       gate_tbl_params = gate_tbl_params,
@@ -92,13 +94,15 @@
       .data = .data,
       calc_cyt_pos_gates = TRUE,
       path_project = path_project,
-      .debug = .debug,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
+  } else {
+    stop("stage not recognized")
   }
 }
 
+#' @keywords internal
 .gate_marker_get_adj_gates_all <- function(tol_clust,
                                            gate_tbl,
                                            params,
@@ -107,10 +111,9 @@
                                            bw_min,
                                            path_project,
                                            gate_quant,
-                                           .debug,
+                                           stage,
                                            ind_batch_list,
                                            pop_gate) {
-  # START HERE!!!
   if (!is.null(tol_clust)) {
     gate_tbl_tg_gate <- gate_tbl |>
       dplyr::filter(gate_use == "tg_clust") # nolint
@@ -136,7 +139,6 @@
       combn = FALSE,
       gate_type_single_pos_calc = "base",
       path_project = path_project,
-      .debug = .debug,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate
     )
@@ -156,8 +158,7 @@
           bw = bw_min,
           control = list(),
           filter_other_cyt_pos = FALSE,
-          params = params,
-          .debug = .debug
+          params = params
         )
 
         gate_tbl_cluster |>
@@ -196,6 +197,7 @@
 }
 
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single <- function(gate_tbl,
                                                params,
                                                gate_tbl_params,
@@ -203,7 +205,6 @@
                                                .data,
                                                calc_cyt_pos_gates,
                                                path_project,
-                                               .debug,
                                                ind_batch_list,
                                                pop_gate) {
   # get gates
@@ -224,7 +225,6 @@
     .data = .data,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     path_project = path_project,
-    .debug = .debug,
     ind_batch_list = ind_batch_list
   )
 
@@ -232,8 +232,7 @@
     gate_tbl = gate_tbl,
     gate_stats_tbl = gate_stats_tbl,
     gate_tbl_single = gate_tbl_single,
-    params = params,
-    .debug = .debug
+    params = params
   )
 
   list(
@@ -242,6 +241,7 @@
   )
 }
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single_merge <- function(gate_tbl_single,
                                                      gate_tbl_params,
                                                      chnl_cut) {
@@ -276,13 +276,13 @@
     )
 }
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single_stats_tbl_get <- function(gate_tbl,
                                                              params,
                                                              chnl_cut,
                                                              .data,
                                                              calc_cyt_pos_gates, # nolint
                                                              path_project,
-                                                             .debug,
                                                              ind_batch_list) { # nolint
   gate_name_vec <- unique(gate_tbl$gate_name)
   if (!.gate_marker_gate_adj_gates_single_stats_tbl_get_check(gate_name_vec)) {
@@ -312,12 +312,12 @@
     gate_type_single_pos_calc = "base",
     combn = FALSE,
     path_project = path_project,
-    .debug = .debug,
     ind_batch_list = ind_batch_list,
     pop_gate = pop_gate
   )
 }
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single_stats_tbl_get_check <- function(gate_name_vec) { # nolint
   any_clust_ind <- any(
     purrr::map_lgl(
@@ -334,11 +334,11 @@
   any_clust_ind || any_adj_ind
 }
 
+#' @keywords internal
 .gate_marker_gate_adj_gates_single_out_get <- function(gate_tbl,
                                                        gate_stats_tbl,
                                                        gate_tbl_single,
-                                                       params,
-                                                       .debug) {
+                                                       params) {
   # get tail-gate gates
   gate_tbl_ctrl_clust <- gate_tbl_single |>
     dplyr::filter(gate_use == "tg_clust") # nolint
@@ -351,7 +351,6 @@
   gate_name_vec <- unique(gate_tbl$gate_name)
   purrr::map_df(gate_name_vec, function(gn) {
     .gate_marker_gate_adj_gates_single_out_get_gn(
-      .debug = .debug,
       gn = gn,
       gate_tbl = gate_tbl,
       gate_stats_tbl = gate_stats_tbl,
@@ -365,15 +364,15 @@
     dplyr::mutate(gate_single = pmax(gate, gate_single)) # nolint
 }
 
-.gate_marker_gate_adj_gates_single_out_get_gn <- function(.debug,
-                                                          gn,
+#' @keywords internal
+.gate_marker_gate_adj_gates_single_out_get_gn <- function(gn,
                                                           gate_tbl,
                                                           gate_stats_tbl,
                                                           gate_tbl_ctrl_clust,
                                                           gate_tbl_ctrl_ctrl,
                                                           gate_tbl_single_gn,
                                                           params) {
-  .debug_msg(.debug, "gate_name_vec", gn) # nolint
+  .debug("gate_name_vec", gn) # nolint
   gate_tbl_gn <- gate_tbl |>
     dplyr::filter(gate_name == gn) # nolint
 
@@ -434,8 +433,7 @@
       bw = params$bw_min,
       control = list(),
       filter_other_cyt_pos = TRUE,
-      params = params,
-      .debug = .debug
+      params = params
     )
 
     gate_tbl_cluster_gn <- gate_tbl_cluster_gn |>
@@ -471,6 +469,7 @@
 }
 
 # Placeholder function for adjustment table - this may need proper implementation
+#' @keywords internal
 .get_cp_adj_tbl <- function(gate_stats_tbl, gate_quant, gate_tbl_ctrl) {
   # This is a placeholder implementation
   # The actual implementation for tail-gate controlled gating may be missing

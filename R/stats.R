@@ -1,3 +1,4 @@
+#' @keywords internal
 .get_stats <- function(params = NULL,
                        gate_tbl = NULL,
                        chnl = NULL,
@@ -7,7 +8,6 @@
                        gate_type_single_pos_filter = "base",
                        gate_type_cyt_pos_calc,
                        gate_type_single_pos_calc,
-                       .debug = FALSE,
                        pop_gate,
                        chnl_lab = NULL,
                        .data,
@@ -32,7 +32,8 @@
     pop_gate = pop_gate,
     chnl_lab = chnl_lab,
     ind_batch_list = ind_batch_list,
-    .data = .data
+    .data = .data,
+    path_project = path_project
   )
   gate_tbl <- .get_stats_gate_tbl_get( # nolint
     gate_tbl = gate_tbl,
@@ -91,10 +92,10 @@
     .data = .data,
     chnl_lab = chnl_lab,
     chnl_cut = params$chnl_cut,
-    .debug = .debug,
     filter_other_cyt_pos = filter_other_cyt_pos,
     combn_mat_list = combn_mat_list,
-    gate_name = gate_name
+    gate_name = gate_name,
+    path_project = path_project
   )
 
   # save it
@@ -107,6 +108,7 @@
   )
 }
 
+#' @keywords internal
 .read_gate_stats <- function(stats_save_output) {
   if (inherits(stats_save_output, "data.frame")) {
     return(stats_save_output)

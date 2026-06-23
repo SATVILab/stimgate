@@ -7,6 +7,7 @@
 stimgate_fcs_write(
   path_project,
   .data,
+  pop = NULL,
   ind_batch_list,
   path_dir_save,
   chnl = NULL,
@@ -24,6 +25,8 @@ stimgate_fcs_write(
 \item{path_project}{character. Path to project directory.}
 
 \item{.data}{GatingSet. GatingSet object containing the flow cytometry data.}
+
+\item{pop}{character. Population that was gated on.}
 
 \item{ind_batch_list}{list. List of indices grouped by batch.}
 

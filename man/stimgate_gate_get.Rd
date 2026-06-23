@@ -4,10 +4,16 @@
 \alias{stimgate_gate_get}
 \title{Get gates}
 \usage{
-stimgate_gate_get(path_project)
+stimgate_gate_get(path_project, pop = NULL, marker = NULL, chnl = NULL)
 }
 \arguments{
 \item{path_project}{character. Path to the project directory.}
+
+\item{pop}{character. Optional population name(s) to filter gates by. Default is NULL (all populations).}
+
+\item{marker}{character. Optional marker name(s) to filter gates by. Default is NULL (all markers).}
+
+\item{chnl}{character. Optional channel name(s) to filter gates by. Default is NULL (all channels).}
 }
 \value{
 Gate table with gates for each sample for each marker.

@@ -30,7 +30,8 @@ plot_cp_all <- function(data,
       fcs = fcs,
       ind_in_batch_uns = ind_in_batch_uns,
       ind_batch_list = ind_batch_list,
-      data = data
+      data = data,
+      path_project = path_project
     )
   }
 
@@ -42,7 +43,8 @@ plot_cp_all <- function(data,
       params = params
     )
     # get stats tbl
-    gate_tbl <- readRDS(file.path(dir_base, "gate_tbl.rds"))
+    gate_tbl <- .gates_get_path(path_project, pop_gate, chnl_curr) |>
+      readRDS()
 
     if (!is.null(gate_name)) {
       gate_tbl <- gate_tbl |>
@@ -96,7 +98,8 @@ plot_cp_all <- function(data,
         cut = names(params$chnl_lab),
         high = NULL, ind = ind,
         is_uns = FALSE, stim = stim,
-        ind_in_batch = ind_in_batch, data_name = params$data_name
+        ind_in_batch = ind_in_batch, data_name = params$data_name,
+        path_project = params$path_project
       )
 
       ind_uns <- (ind %/% 5 * 5) + 5
@@ -106,7 +109,8 @@ plot_cp_all <- function(data,
         high = NULL, ind = ind,
         is_uns = FALSE, stim = stim,
         ind_in_batch = ind_in_batch,
-        data_name = params$data_name
+        data_name = params$data_name,
+        path_project = params$path_project
       )
       gate_tbl_ind <- gate_tbl |>
         dplyr::filter(.data$ind == .env$ind) #|>
