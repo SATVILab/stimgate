@@ -39,7 +39,7 @@
       path_project = path_project
     )
   }) |>
-    stats::setNames(chnl_lab[chnl])
+    stats::setNames(chnl_lab[vapply(chnl, function(x) x[["cut"]], character(1L))])
 
   .complete_chnl_list_save(
     chnl_list = chnl_list,
