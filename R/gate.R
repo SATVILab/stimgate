@@ -23,17 +23,20 @@
 #'   belonging to the same batch/donor. Names will be used for batch identification.
 #'   Example: list(donor1 = 1:10, donor2 = 11:20). Proper batching is crucial for
 #'   accurate background subtraction and gate identification.
-#' @param marker list. List where each element specifies parameters for gating a
-#'   specific marker. Each element should be a list containing at minimum the channel
-#'   name (e.g., list(cut = "IL2")). Additional marker-specific parameters can
+#' @param chnl list. List where each element specifies parameters for gating a
+#'   specific channel Each element should be a list containing at minimum the channel
+#'   name (e.g., list(cut = "IL2")). Additional channel-specific parameters can
 #'   override global defaults. The marker name should match channel names in the GatingSet.
+#' @param marker character vector. Alternative way to specify markers to gate on.
+#'   When provided, this is used instead of chnl to determine which markers to analyze.
+#'   Default is NULL.
 #' @param pop_gate character vector. Population(s) within which to perform gating.
 #'   Default is "root" to gate on all cells. Can specify other populations like
 #'   "CD3+" or "CD4+" if these gates already exist in the GatingSet.
 #' @param bias_uns numeric. Bias adjustment for unstimulated samples to account for
 #'   background cytokine production. When NULL (default), no bias correction is applied.
 #'   Positive values shift the unstimulated distribution higher, making gates more
-#'   conservative. Typically ranges from 0.1 to 1.0 when used.
+#'   conservative.
 #' @param bias_uns_factor numeric. Multiplicative factor applied to bias_uns.
 #'   Default is 1. Values > 1 increase the bias effect, values < 1 decrease it.
 #'   This provides fine-tuning of the bias correction.
@@ -45,7 +48,7 @@
 #'   technical thresholds or background levels.
 #' @param bw_min numeric. Minimum bandwidth for density estimation. When NULL (default),
 #'   bandwidth is estimated automatically. Smaller values create more detailed density
-#'   estimates but may be noisier. Typical range is 0.01 to 0.1 on log-transformed data.
+#'   estimates but may be noisier.
 #' @param min_cell numeric. Minimum number of cells required for reliable gating.
 #'   Default is 100. Samples with fewer cells will be skipped as they don't provide
 #'   sufficient statistical power for accurate gate identification.
@@ -64,6 +67,9 @@
 #' @param marker_settings list. Optional list of additional marker-specific settings
 #'   that override global defaults. Each element should be named with the marker name
 #'   and contain parameter overrides. Default is NULL.
+#' @param chnl_settings list. Optional list of channel-specific settings that override
+#'   global defaults. Similar to marker_settings but keyed by channel names.
+#'   Default is NULL.
 #' @param calc_cyt_pos_gates logical. Whether to calculate refined cytokine-positive
 #'   gates using more sophisticated algorithms. Default is TRUE. When FALSE, only
 #'   basic gates are calculated, which may be less accurate but faster.
@@ -173,7 +179,8 @@
 stimgate_gate <- function(path_project,
                           .data,
                           batch_list,
-                          marker,
+                          chnl = NULL,
+                          marker = NULL,
                           pop_gate = "root",
                           bias_uns = NULL,
                           bias_uns_factor = 1,
@@ -186,21 +193,54 @@ stimgate_gate <- function(path_project,
                           tol_clust = 1e-7,
                           gate_combn = "min",
                           marker_settings = NULL,
+                          chnl_settings = NULL,
                           calc_cyt_pos_gates = TRUE,
-                          calc_single_pos_gates = FALSE,
-                          debug = FALSE) {
+                          calc_single_pos_gates = FALSE) {
   force(.data)
-  # capture and force-evaluate the .debug flag into a local .debug object
-  .debug <- debug
+  if (Sys.getenv("STIMGATE_DEBUG") == "") {
+    Sys.setenv("STIMGATE_DEBUG" = "FALSE")
+  }
+  if (Sys.getenv("STIMGATE_DEBUG") == "TRUE") {
+    .debug_file_create()
+    path_debug <- .debug_file_create()
+    message(paste0("Saving debug output to ", path_debug))
+    message("Can copy it after the run to working directory with stimgate_debug_copy()") # nolint
+    message("Can print the output after the run to console with stimgate_debug_print()") # nolint
+  }
 
   if (is.null(names(batch_list))) {
     batch_list <- batch_list |>
       stats::setNames(paste0("batch_", seq_along(batch_list)))
   }
 
+  if (!is.null(chnl) && !is.null(marker)) {
+    stop("Specify only one of 'chnl' or 'marker', not both.")
+  }
+  if (is.null(chnl) && is.null(marker)) {
+    stop("Must specify one of 'chnl' or 'marker'.")
+  }
+  if (!is.null(chnl) && !is.null(marker_settings)) {
+    stop("When 'chnl' is specified, 'marker_settings' must be NULL.")
+  }
+  if (!is.null(marker) && !is.null(chnl_settings)) {
+    stop("When 'marker' is specified, 'chnl_settings' must be NULL.")
+  }
+
   # get unspecified levels in marker elements
-  marker <- .complete_marker_list( # nolint
-    marker = marker,
+  .save_meta_data(.data, batch_list, path_project)
+  marker_lab <- stimgate_meta_read_marker_lab(path_project)
+  chnl <- chnl %||% (marker_lab[marker] |> stats::setNames(NULL))
+  chnl_settings <- chnl_settings %||% {
+    if (!is.null(marker_settings)) {
+      chnl_settings <- marker_settings
+      names(chnl_settings) <- marker_lab[marker]
+      chnl_settings
+    } else {
+      NULL
+    }
+  }
+  chnl_settings <- .complete_chnl_list( # nolint
+    chnl = chnl,
     bias_uns = bias_uns,
     bias_uns_factor = bias_uns_factor,
     exc_min = exc_min,
@@ -213,15 +253,14 @@ stimgate_gate <- function(path_project,
     tol_clust = tol_clust,
     max_pos_prob_x = max_pos_prob_x,
     gate_combn = gate_combn,
-    marker_settings = marker_settings,
-    path_project = path_project,
-    .debug = .debug
+    chnl_settings = chnl_settings,
+    path_project = path_project
   )
 
   # inital gates
   .gate_init(
     pop_gate = pop_gate,
-    marker = marker,
+    chnl_settings = chnl_settings,
     .data = .data,
     ind_batch_list = batch_list,
     path_project = path_project,
@@ -230,25 +269,24 @@ stimgate_gate <- function(path_project,
     gate_quant = gate_quant,
     tol_clust = tol_clust,
     tol_gate_single = tol_clust * 1e-1,
-    calc_cyt_pos_gates = calc_cyt_pos_gates,
-    .debug = .debug
+    calc_cyt_pos_gates = calc_cyt_pos_gates
   )
 
   # cytokine-positive gates
   gate_tbl <- .gate_cyt_pos( # nolint
-    marker_list = marker,
+    chnl_settings = chnl_settings,
     ind_batch_list = batch_list,
     pop_gate = pop_gate,
     .data = .data,
     calc_cyt_pos = calc_cyt_pos_gates,
-    .debug = .debug,
+    stage = "cyt_pos",
     path_project = path_project
   )
 
   # single-positive gates
   .gate_single(
     pop_gate = pop_gate,
-    marker = marker,
+    chnl_settings = chnl_settings,
     .data = .data,
     ind_batch_list = batch_list,
     path_project = path_project,
@@ -259,7 +297,6 @@ stimgate_gate <- function(path_project,
     tol_gate_single = tol_gate_single,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
-    .debug = .debug,
     gate_tbl = gate_tbl
   )
 
@@ -276,10 +313,9 @@ stimgate_gate <- function(path_project,
     combn = TRUE,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
-    .debug = .debug,
     save = TRUE,
     pop_gate = pop_gate,
-    marker = marker,
+    chnl_settings = chnl_settings,
     ind_batch_list = batch_list,
     path_project = path_project,
     tol_clust = tol_clust,
@@ -289,8 +325,9 @@ stimgate_gate <- function(path_project,
   path_project
 }
 
+#' @keywords internal
 .gate_init <- function(pop_gate,
-                       marker,
+                       chnl_settings,
                        .data,
                        ind_batch_list,
                        path_project,
@@ -299,16 +336,15 @@ stimgate_gate <- function(path_project,
                        gate_quant,
                        tol_clust,
                        tol_gate_single,
-                       calc_cyt_pos_gates,
-                       .debug) {
+                       calc_cyt_pos_gates) {
   # loop over populations
   message("----")
   message("getting base gates")
   message("----")
   message("")
   # loop over markers
-  purrr::walk(marker, function(marker_curr) {
-    txt <- paste0("chnl: ", marker_curr$chnl_cut)
+  purrr::walk(chnl_settings, function(chnl_settings_curr) {
+    txt <- paste0("chnl: ", chnl_settings_curr$chnl_cut)
     message(txt)
     # get gates for each sample within each batch
 
@@ -316,35 +352,43 @@ stimgate_gate <- function(path_project,
       .data = .data,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate,
-      chnl_cut = marker_curr$chnl_cut,
-      gate_combn = marker_curr$gate_combn,
+      chnl_cut = chnl_settings_curr$chnl_cut,
+      gate_combn = chnl_settings_curr$gate_combn,
       noise_sd = NULL,
-      bias_uns = marker_curr$bias_uns,
-      exc_min = marker_curr$exc_min,
-      bw_min = marker_curr$bw_min,
-      cp_min = marker_curr$cp_min,
-      min_cell = marker_curr$min_cell,
-      max_pos_prob_x = marker_curr$max_pos_prob_x,
+      bias_uns = chnl_settings_curr$bias_uns,
+      exc_min = chnl_settings_curr$exc_min,
+      bw_min = chnl_settings_curr$bw_min,
+      cp_min = chnl_settings_curr$cp_min,
+      min_cell = chnl_settings_curr$min_cell,
+      max_pos_prob_x = chnl_settings_curr$max_pos_prob_x,
       gate_quant = gate_quant,
       tol_clust = tol_clust,
       tol_gate_single = tol_gate_single,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
       path_project = path_project,
-      .debug = .debug
+      stage = "init"
     )
 
-    path_dir_save <- file.path(path_project, marker_curr$chnl_cut)
-    dir.create(path_dir_save, recursive = TRUE, showWarnings = TRUE)
-
-    saveRDS(
-      gate_obj$gate_tbl,
-      file = file.path(path_dir_save, "gate_tbl_init.rds")
+    .gate_init_save(
+      path_project, pop_gate, chnl_settings_curr$chnl_cut, gate_obj$gate_tbl
     )
   })
 }
 
+#' @keywords internal
+.gate_init_save <- function(path_project, pop, chnl, gate_tbl) {
+  path_save <- .gates_get_path_all(
+    path_project, pop, chnl, TRUE
+  )
+  if (!dir.exists(dirname(path_save))) {
+    dir.create(dirname(path_save), recursive = TRUE, showWarnings = TRUE)
+  }
+
+  saveRDS(gate_tbl, path_save)
+}
+#' @keywords internal
 .gate_single <- function(pop_gate,
-                         marker,
+                         chnl_settings,
                          .data,
                          ind_batch_list,
                          path_project,
@@ -355,7 +399,6 @@ stimgate_gate <- function(path_project,
                          tol_gate_single,
                          calc_cyt_pos_gates,
                          calc_single_pos_gates,
-                         .debug,
                          gate_tbl) {
   # loop over populations
   message("")
@@ -365,55 +408,74 @@ stimgate_gate <- function(path_project,
   message("----")
   message("")
   if (!calc_single_pos_gates) {
-    .debug_msg(.debug, "Not gating single-pos gates") # nolint
-    purrr::walk(marker, function(marker_curr) {
+    .debug("Not gating single-pos gates") # nolint
+    purrr::walk(chnl_settings, function(chnl_settings_curr) {
+      path_save <- .gates_get_path_all(
+        path_project, pop_gate, chnl_settings_curr$chnl_cut, FALSE
+      )
+      if (!dir.exists(dirname(path_save))) {
+        dir.create(dirname(path_save), recursive = TRUE, showWarnings = TRUE)
+      }
       saveRDS(
         gate_tbl |>
-          dplyr::filter(chnl == marker_curr$chnl_cut) |>
+          dplyr::filter(chnl == chnl_settings_curr$chnl_cut) |>
           dplyr::mutate(gate_single = gate),
-        file.path(path_project, marker_curr$chnl_cut, "gate_tbl.rds")
+        path_save
       )
     })
     return(invisible(TRUE))
   } else {
-    .debug_msg(.debug, "Gating single-pos gates") # nolint
+    .debug("Gating single-pos gates") # nolint
   }
   # loop over markers
-  purrr::walk(marker, function(marker_curr) {
-    txt <- paste0("chnl: ", marker_curr$chnl_cut)
+  purrr::walk(chnl_settings, function(chnl_settings_curr) {
+    txt <- paste0("chnl: ", chnl_settings_curr$chnl_cut)
     message(txt)
     # get gates for each sample within each batch
 
     gate_obj <- .gate_marker( # nolint
       .data = .data,
       ind_batch_list = ind_batch_list,
-      pop_gate = pop_gate_curr,
-      chnl_cut = marker_curr$chnl_cut,
-      gate_combn = marker_curr$gate_combn,
-      tol = marker_curr$tol,
+      pop_gate = pop_gate,
+      chnl_cut = chnl_settings_curr$chnl_cut,
+      gate_combn = chnl_settings_curr$gate_combn,
+      tol = chnl_settings_curr$tol,
       noise_sd = NULL,
-      bias_uns = marker_curr$bias_uns,
-      exc_min = marker_curr$exc_min,
-      bw_min = marker_curr$bw_min,
-      cp_min = marker_curr$cp_min,
-      min_cell = marker_curr$min_cell,
-      max_pos_prob_x = marker_curr$max_pos_prob_x,
+      bias_uns = chnl_settings_curr$bias_uns,
+      exc_min = chnl_settings_curr$exc_min,
+      bw_min = chnl_settings_curr$bw_min,
+      cp_min = chnl_settings_curr$cp_min,
+      min_cell = chnl_settings_curr$min_cell,
+      max_pos_prob_x = chnl_settings_curr$max_pos_prob_x,
       gate_quant = gate_quant,
       tol_clust = tol_clust,
       tol_gate_single = tol_gate_single,
       gate_tbl = gate_tbl,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
       path_project = path_project,
-      .debug = .debug
+      stage = "single"
     )
 
-    saveRDS(
-      gate_obj$gate_tbl,
-      file = file.path(path_project, marker_curr$chnl_cut, "gate_tbl.rds")
+    .gate_single_save(
+      path_project, pop_gate, chnl_settings_curr$chnl_cut, gate_obj$gate_tbl
     )
   })
 }
 
+#' @keywords internal
+.gate_single_save <- function(path_project, pop, chnl, gate_tbl) {
+  path_save <- .gates_get_path_all(
+    path_project, pop, chnl, FALSE
+  )
+  if (!dir.exists(dirname(path_save))) {
+    dir.create(dirname(path_save), recursive = TRUE, showWarnings = TRUE)
+  }
+
+  saveRDS(gate_tbl, path_save)
+}
+
+
+#' @keywords internal
 .gate_stats <- function(.data,
                         params = NULL,
                         gate_tbl = NULL,
@@ -421,10 +483,9 @@ stimgate_gate <- function(path_project,
                         combn = TRUE,
                         calc_cyt_pos_gates,
                         calc_single_pos_gates,
-                        .debug,
                         save = TRUE,
                         pop_gate,
-                        marker,
+                        chnl_settings,
                         ind_batch_list,
                         path_project,
                         tol_clust,
@@ -443,10 +504,9 @@ stimgate_gate <- function(path_project,
       if (calc_cyt_pos_gates) "cyt" else "base",
     gate_type_single_pos_calc =
       if (calc_single_pos_gates) "single" else "base",
-    .debug = .debug,
     save = save,
     pop_gate = pop_gate,
-    chnl = purrr::map_chr(marker, function(x) x$chnl_cut),
+    chnl = purrr::map_chr(chnl_settings, function(x) x$chnl_cut),
     ind_batch_list = ind_batch_list,
     .data = .data,
     save_gate_tbl = save_gate_tbl,

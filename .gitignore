@@ -10,7 +10,10 @@ SCRATCH.R
 tests/testthat/testdata/postmortem
 _tmp/**/*
 ..Rcheck
+*.Rcheck
 *.tar.gz
+tests/testthat/cache/
 
 # pkgdown local build output
 docs/
+

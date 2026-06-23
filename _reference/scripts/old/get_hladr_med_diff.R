@@ -33,7 +33,8 @@ get_hladr_med_diff <- function(data,
     chnl_lab = chnl_lab_vec,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     ind_in_batch_gate = ind_in_batch_gate,
-    data_name = data_name
+    data_name = data_name,
+    path_project = path_project
   )
 
   # ====================================
@@ -49,7 +50,10 @@ get_hladr_med_diff <- function(data,
         params = params
       )
       # get stats tbl
-      gate_tbl <- readRDS(file.path(dir_base, "gate_tbl.rds"))
+      gate_tbl <- .gates_get_path_all(
+        path_project, pop_gate, chnl_curr, FALSE
+        ) |>
+        readRDS()
 
       if (!is.null(gate_name)) {
         gate_tbl <- gate_tbl |> dplyr::filter(gate_name %in% .env$gate_name) # nolint
@@ -87,7 +91,8 @@ get_hladr_med_diff <- function(data,
       data = data[[ind]], pop = pop_gate,
       cut = chnl, high = NULL, ind = ind,
       is_uns = FALSE, stim = stim,
-      ind_in_batch = ind_in_batch, data_name = data_name
+      ind_in_batch = ind_in_batch, data_name = data_name,
+      path_project = path_project
     )
 
 

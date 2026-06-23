@@ -51,22 +51,28 @@ if (!.is_ci()) {
   .set_renv_profile()
   source("renv/activate.R")
 } else {
-  try({
-    bioc_vec <- if (requireNamespace("BiocManager", quietly = TRUE)) {
-      suppressWarnings(BiocManager::repositories())
-    } else NULL
-    repos_vec <- c(bioc_vec, getOption("repos"))
-    # Use Posit Package Manager for CRAN, with fallback
-    if (isFALSE("CRAN" %in% names(repos_vec))) {
-      repos_vec <- c(
-        repos_vec, CRAN = "https://packagemanager.posit.co/cran/latest"
-      )
-    }
-    options(repos = repos_vec)
-  }, silent = TRUE)
+  try(
+    {
+      bioc_vec <- if (requireNamespace("BiocManager", quietly = TRUE)) {
+        suppressWarnings(BiocManager::repositories())
+      } else {
+        NULL
+      }
+      repos_vec <- c(bioc_vec, getOption("repos"))
+      # Use Posit Package Manager for CRAN, with fallback
+      if (isFALSE("CRAN" %in% names(repos_vec))) {
+        repos_vec <- c(
+          repos_vec,
+          CRAN = "https://packagemanager.posit.co/cran/latest"
+        )
+      }
+      options(repos = repos_vec)
+    },
+    silent = TRUE
+  )
 }
 
-if (length(getOption("repos")) == 0L){
+if (length(getOption("repos")) == 0L) {
   options(repos = c("CRAN" = "https://cloud.r-project.org/"))
 }
 

@@ -11,9 +11,9 @@ The package identifies cells that have possibly responded to stimulation by comp
 
 ### Required before each commit
 
-- Run `devtools::test()` to ensure all tests pass
 - Run `devtools::document()` to update documentation
 - Run `styler::style_pkg()` to ensure consistent code formatting
+- Run `devtools::test()` to ensure all tests pass
 - Run `lintr::lint_package()` to check for linting violations
 
 ### Development flow
@@ -83,8 +83,8 @@ This package uses `renv` for dependency management:
 ## Key Guidelines
 
 1. Begin each internal function with a `.`
-2. Use `.debug` as the parameter name for debugging flags in internal functions
-3. Use `.debug_msg()` for debug messages, which takes a boolean, a message and an optional value
+2. Use the `.debug()` function for debug messages, which takes a message and an optional value. Debug output is controlled by the `STIMGATE_DEBUG` environment variable (set to "true", "yes", "y", or "1" to enable). Never add `.debug` as a function parameter.
+3. Use the `stage` parameter to track algorithm stages ("init", "cyt_pos", or "single"). Pass the stage parameter through function calls to enable intermediate data saving via `.int_save()` or `.int_save_nm()` functions. Intermediate saving is controlled by the `STIMGATE_INTERMEDIATE` environment variable.
 4. Add unit tests using `testthat` for all new functionality
 5. Validate inputs and provide meaningful error messages
 6. Explicitly refer to all packages used, rather than using `@import` or `@importFrom`, with the exception of `ggplot2` functions and the `flowCore::exprs` function

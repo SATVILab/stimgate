@@ -8,7 +8,8 @@ stimgate_gate(
   path_project,
   .data,
   batch_list,
-  marker,
+  chnl = NULL,
+  marker = NULL,
   pop_gate = "root",
   bias_uns = NULL,
   bias_uns_factor = 1,
@@ -21,9 +22,9 @@ stimgate_gate(
   tol_clust = 1e-07,
   gate_combn = "min",
   marker_settings = NULL,
+  chnl_settings = NULL,
   calc_cyt_pos_gates = TRUE,
-  calc_single_pos_gates = FALSE,
-  debug = FALSE
+  calc_single_pos_gates = FALSE
 )
 }
 \arguments{
@@ -40,10 +41,14 @@ belonging to the same batch/donor. Names will be used for batch identification.
 Example: list(donor1 = 1:10, donor2 = 11:20). Proper batching is crucial for
 accurate background subtraction and gate identification.}
 
-\item{marker}{list. List where each element specifies parameters for gating a
-specific marker. Each element should be a list containing at minimum the channel
-name (e.g., list(cut = "IL2")). Additional marker-specific parameters can
+\item{chnl}{list. List where each element specifies parameters for gating a
+specific channel Each element should be a list containing at minimum the channel
+name (e.g., list(cut = "IL2")). Additional channel-specific parameters can
 override global defaults. The marker name should match channel names in the GatingSet.}
+
+\item{marker}{character vector. Alternative way to specify markers to gate on.
+When provided, this is used instead of chnl to determine which markers to analyze.
+Default is NULL.}
 
 \item{pop_gate}{character vector. Population(s) within which to perform gating.
 Default is "root" to gate on all cells. Can specify other populations like
@@ -52,7 +57,7 @@ Default is "root" to gate on all cells. Can specify other populations like
 \item{bias_uns}{numeric. Bias adjustment for unstimulated samples to account for
 background cytokine production. When NULL (default), no bias correction is applied.
 Positive values shift the unstimulated distribution higher, making gates more
-conservative. Typically ranges from 0.1 to 1.0 when used.}
+conservative.}
 
 \item{bias_uns_factor}{numeric. Multiplicative factor applied to bias_uns.
 Default is 1. Values > 1 increase the bias effect, values < 1 decrease it.
@@ -68,7 +73,7 @@ technical thresholds or background levels.}
 
 \item{bw_min}{numeric. Minimum bandwidth for density estimation. When NULL (default),
 bandwidth is estimated automatically. Smaller values create more detailed density
-estimates but may be noisier. Typical range is 0.01 to 0.1 on log-transformed data.}
+estimates but may be noisier.}
 
 \item{min_cell}{numeric. Minimum number of cells required for reliable gating.
 Default is 100. Samples with fewer cells will be skipped as they don't provide
@@ -93,6 +98,10 @@ include "median" or "max" depending on the desired stringency.}
 \item{marker_settings}{list. Optional list of additional marker-specific settings
 that override global defaults. Each element should be named with the marker name
 and contain parameter overrides. Default is NULL.}
+
+\item{chnl_settings}{list. Optional list of channel-specific settings that override
+global defaults. Similar to marker_settings but keyed by channel names.
+Default is NULL.}
 
 \item{calc_cyt_pos_gates}{logical. Whether to calculate refined cytokine-positive
 gates using more sophisticated algorithms. Default is TRUE. When FALSE, only

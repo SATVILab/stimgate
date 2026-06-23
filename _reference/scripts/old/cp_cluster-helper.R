@@ -73,7 +73,8 @@
       .data = gs, ind_batch = ind_batch,
       pop = "root",
       cut = purrr::map_chr(marker_list, function(x) x$cut), high = NULL,
-      data_name = purrr::map
+      data_name = purrr::map,
+      path_project = params$path_project
     ) |>
       dplyr::bind_rows()
     ex_uns <- ex_tbl_all |> dplyr::filter(stim == "uns") # nolint
