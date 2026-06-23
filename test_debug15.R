@@ -1,0 +1,5 @@
+source("R/cytoUtils-cytokine_cutpoint.R")
+source("R/openCyto-find_peaks_and_valleys.R")
+x_small <- c(1, 2, 3)
+res <- tryCatch(.cytokine_cutpoint(x_small, plot = FALSE, strict=FALSE), warning=function(w) "warning", error=function(e) "error")
+print(res)

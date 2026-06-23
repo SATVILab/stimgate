@@ -37,7 +37,7 @@
 #' @return the cutpoint along the x-axis
 #' @keywords internal
 .cytokine_cutpoint <- function(x,
-                               adjust,
+                               adjust = 1.5,
                                num_peaks = 1,
                                ref_peak = 1,
                                method = c("first_deriv", "second_deriv"),
@@ -51,14 +51,15 @@
   peaks <- sort(.find_peaks(x, num_peaks = num_peaks, adjust = adjust)[, "x"])
 
   # update peak count since it can be less than num_peaks
+  peaks <- peaks[!is.na(peaks)]
   num_peaks <- length(peaks)
 
   if (ref_peak > num_peaks) {
-    outFunc <- ifelse(strict, stop, warning)
-    outFunc("The reference peak is larger than the number of peaks found.",
-      "Setting the reference peak to 'num_peaks'...",
-      call. = FALSE
-    )
+    if (strict) {
+      stop("The reference peak is larger than the number of peaks found. Setting the reference peak to 'num_peaks'...", call. = FALSE)
+    } else {
+      warning("The reference peak is larger than the number of peaks found. Setting the reference peak to 'num_peaks'...", call. = FALSE)
+    }
     ref_peak <- num_peaks
   }
 
@@ -70,15 +71,21 @@
     tol <- 0.01 * max(abs(deriv_out$y))
   }
   if (side == "right") {
-    deriv_valleys <- with(deriv_out, .find_valleys(x = x, adjust = adjust))
-    deriv_valleys <- deriv_valleys[deriv_valleys > peaks[ref_peak]]
+    idx <- which(diff(sign(diff(deriv_out$y))) == 2) + 1L
+    deriv_valleys <- deriv_out$x[idx]
+    if (length(peaks) > 0 && length(deriv_valleys) > 0) {
+      deriv_valleys <- deriv_valleys[deriv_valleys > peaks[ref_peak]]
+    }
     deriv_valleys <- sort(deriv_valleys)[1]
     cutpoint <- with(deriv_out, x[x > deriv_valleys & abs(y) < tol])
     cutpoint <- cutpoint[1]
   } else if (side == "left") {
     deriv_out$y <- -deriv_out$y
-    deriv_valleys <- with(deriv_out, .find_valleys(x = x, adjust = adjust))
-    deriv_valleys <- deriv_valleys[deriv_valleys < peaks[ref_peak]]
+    idx <- which(diff(sign(diff(deriv_out$y))) == 2) + 1L
+    deriv_valleys <- deriv_out$x[idx]
+    if (length(peaks) > 0 && length(deriv_valleys) > 0) {
+      deriv_valleys <- deriv_valleys[deriv_valleys < peaks[ref_peak]]
+    }
     deriv_valleys <- sort(deriv_valleys, decreasing = TRUE)[1]
     cutpoint <- with(deriv_out, x[x < deriv_valleys & abs(y) < tol])
     cutpoint <- cutpoint[length(cutpoint)]

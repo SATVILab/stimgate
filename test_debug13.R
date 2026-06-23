@@ -1,0 +1,5 @@
+source("R/cytoUtils-cytokine_cutpoint.R")
+source("R/openCyto-find_peaks_and_valleys.R")
+x_small <- c(1, 2, 3)
+peaks <- sort(.find_peaks(x_small, num_peaks = 1, adjust = 1.5)[, "x"])
+print(peaks)

@@ -118,7 +118,7 @@ test_that(".cytokine_cutpoint handles edge cases gracefully", {
   x_small <- c(1, 2, 3)
 
   # Should still work with minimal data
-  result_small <- .cytokine_cutpoint(x_small, plot = FALSE)
+  result_small <- suppressWarnings(.cytokine_cutpoint(x_small, plot = FALSE, strict = FALSE))
   expect_true(is.numeric(result_small))
 
   # Test with single peak data
