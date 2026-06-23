@@ -75,7 +75,7 @@ test_that(".cytokine_cutpoint errors with unrecognized side argument for first_d
   # Test with unrecognized side argument and first_deriv method
   expect_error(
     .cytokine_cutpoint(x, method = "first_deriv", side = "invalid_side", plot = FALSE),
-    "Unrecognized 'side' argument \\(was 'invalid_side'\\."
+    "Unrecognized 'side' argument \\(was 'invalid_side'\\)\\."
   )
 })
 
@@ -88,7 +88,7 @@ test_that(".cytokine_cutpoint errors with unrecognized side argument for second_
   # Note: second_deriv method has implementation issues, but error handling should work
   expect_error(
     .cytokine_cutpoint(x, method = "second_deriv", side = "invalid_side", plot = FALSE),
-    "Unrecognized 'side' argument \\(was 'invalid_side'\\."
+    "Unrecognized 'side' argument \\(was 'invalid_side'\\)\\."
   )
 })
 
