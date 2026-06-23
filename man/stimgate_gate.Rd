@@ -57,7 +57,7 @@ Default is "root" to gate on all cells. Can specify other populations like
 \item{bias_uns}{numeric. Bias adjustment for unstimulated samples to account for
 background cytokine production. When NULL (default), no bias correction is applied.
 Positive values shift the unstimulated distribution higher, making gates more
-conservative. Typically ranges from 0.1 to 1.0 when used.}
+conservative.}
 
 \item{bias_uns_factor}{numeric. Multiplicative factor applied to bias_uns.
 Default is 1. Values > 1 increase the bias effect, values < 1 decrease it.
@@ -73,7 +73,7 @@ technical thresholds or background levels.}
 
 \item{bw_min}{numeric. Minimum bandwidth for density estimation. When NULL (default),
 bandwidth is estimated automatically. Smaller values create more detailed density
-estimates but may be noisier. Typical range is 0.01 to 0.1 on log-transformed data.}
+estimates but may be noisier.}
 
 \item{min_cell}{numeric. Minimum number of cells required for reliable gating.
 Default is 100. Samples with fewer cells will be skipped as they don't provide
