@@ -2,8 +2,11 @@
 # Ensures all parameters for each marker requiring a gate are properly defined
 
 #' @keywords internal
-.complete_chnl_list <- function(
+.complete_chnl_settings <- function(
   chnl,
+  marker,
+  chnl_settings,
+  marker_settings,
   bias_uns,
   bias_uns_factor,
   exc_min,
@@ -23,9 +26,15 @@
   max_pos_prob_x,
   gate_combn,
   gate_quant,
-  chnl_settings,
   path_project
 ) {
+  chnl_settings <- .extract_chnl_settings(
+    chnl = chnl,
+    marker = marker,
+    chnl_settings = chnl_settings,
+    marker_settings = marker_settings,
+    path_project = path_project
+  )
   chnl_settings_common <- list(
     bias_uns = bias_uns,
     bias_uns_factor = bias_uns_factor,
@@ -52,8 +61,8 @@
     ) |>
       append(chnl_settings[[chnl_curr]])
 
-    .verify_chnl_settings(chnl_curr, chnl_settings_spec_curr)
-    .complete_chnl_list_ind(
+    .verify_chnl_settings_chnl(chnl_curr, chnl_settings_spec_curr)
+    .complete_chnl_settings_ind(
       chnl = chnl_curr,
       chnl_settings_common = chnl_settings_common,
       chnl_settings_spec = chnl_settings_spec_curr,
@@ -65,7 +74,7 @@
   }) |>
     stats::setNames(chnl_lab[chnl])
 
-  .complete_chnl_list_save(
+  .complete_chnl_settings_save(
     chnl_list = chnl_list,
     path_project = path_project
   )
@@ -74,7 +83,7 @@
 }
 
 #' @keywords internal
-.complete_chnl_list_ind <- function(
+.complete_chnl_settings_ind <- function(
   chnl_settings_common,
   chnl_settings_spec,
   chnl,
@@ -83,12 +92,12 @@
   ind_batch_list,
   path_project
 ) {
-  chnl_settings <- .complete_chnl_list_add_common(
+  chnl_settings <- .complete_chnl_settings_add_common(
     chnl_settings_common = chnl_settings_common,
     chnl_settings = chnl_settings_spec
   )
 
-  chnl_settings$bias_uns <- .complete_chnl_list_bias_uns(
+  chnl_settings$bias_uns <- .complete_chnl_settings_bias_uns(
     bias_uns = chnl_settings$bias_uns,
     bias_uns_factor = chnl_settings$bias_uns_factor,
     .data = .data,
@@ -98,12 +107,12 @@
     path_project = path_project
   )
 
-  chnl_settings$bw_min <- .complete_chnl_list_min_bw(
+  chnl_settings$bw_min <- .complete_chnl_settings_min_bw(
     bw_min = chnl_settings$bw_min,
     bias_uns = max(chnl_settings$bias_uns)
   )
 
-  chnl_settings$cp_min <- .complete_chnl_list_cp_min(
+  chnl_settings$cp_min <- .complete_chnl_settings_cp_min(
     cp_min = chnl_settings$cp_min,
     .data = .data,
     pop_gate = pop_gate,
@@ -116,7 +125,7 @@
 }
 
 #' @keywords internal
-.complete_chnl_list_add_common <- function(
+.complete_chnl_settings_add_common <- function(
   chnl_settings_common,
   chnl_settings
 ) {
@@ -127,7 +136,7 @@
 }
 
 #' @keywords internal
-.complete_chnl_list_bias_uns <- function(
+.complete_chnl_settings_bias_uns <- function(
   bias_uns,
   bias_uns_factor,
   .data,
@@ -140,7 +149,7 @@
     return(bias_uns)
   }
   .debug("calculating bias_uns automatically") # nolint
-  mean_range <- .complete_chnl_list_bias_uns_get_mean_range(
+  mean_range <- .complete_chnl_settings_bias_uns_get_mean_range(
     ind_batch_list = ind_batch_list,
     .data = .data,
     pop_gate = pop_gate,
@@ -151,7 +160,7 @@
 }
 
 #' @keywords internal
-.complete_chnl_list_bias_uns_get_mean_range <- function(
+.complete_chnl_settings_bias_uns_get_mean_range <- function(
   ind_batch_list,
   .data,
   pop_gate,
@@ -189,7 +198,7 @@
 
 
 #' @keywords internal
-.complete_chnl_list_min_bw <- function(bw_min, bias_uns) {
+.complete_chnl_settings_min_bw <- function(bw_min, bias_uns) {
   if (!is.null(bw_min)) {
     return(bw_min)
   }
@@ -197,7 +206,7 @@
 }
 
 #' @keywords internal
-.complete_chnl_list_cp_min <- function(
+.complete_chnl_settings_cp_min <- function(
   cp_min,
   .data,
   pop_gate,
@@ -255,7 +264,7 @@
 }
 
 #' @keywords internal
-.complete_chnl_list_save <- function(chnl_list, path_project) {
+.complete_chnl_settings_save <- function(chnl_list, path_project) {
   path_save <- file.path(path_project, "meta_data", "chnl_list.rds")
   if (file.exists(path_save)) {
     invisible(file.remove(path_save))
@@ -302,7 +311,7 @@
 #' @title Read marker settings from project
 #' @description Read the saved marker settings list from the project's meta_data folder.
 #' @param path_project character Path to project.
-#' @return A named list of marker settings (as saved by .complete_chnl_list_save()).
+#' @return A named list of marker settings (as saved by .complete_chnl_settings_save()).
 #' @examples
 #' \dontrun{
 #' tmp <- tempdir()
@@ -460,4 +469,55 @@ stimgate_meta_read_batch_list <- function(path_project) {
     stop("Batch list file not found in project meta_data folder")
   }
   readRDS(path_batch_list)
+}
+
+.extract_chnl <- function() {
+  if (!is.null(chnl)) {
+    if (!length(chnl) == length(unique(chnl))) {
+      stop(
+        "Duplicate channel names found in `chnl`. Please ensure that each channel is unique."
+      )
+    }
+    return(chnl)
+  }
+  marker_lab <- stimgate_meta_read_marker_lab(path_project)
+  chnl_vec <- marker_lab[marker] |> stats::setNames(NULL)
+  if (!length(chnl_vec) == length(unique(chnl_vec))) {
+    stop(
+      "Duplicate channel labels found for the specified markers. ",
+      "Please ensure that each marker has a unique channel label. ",
+      "Otherwise, simply specify `chnl` instead of `marker` ",
+      "(and then also `chnl_settings` instead of `marker_settings` if applicable). "
+    )
+  }
+  chnl_vec
+}
+
+.extract_chnl_settings <- function(
+  chnl_settings,
+  marker_settings,
+  chnl,
+  marker,
+  path_project
+) {
+  .verify_chnl_settings(
+    chnl_settings = chnl_settings,
+    marker_settings = marker_settings,
+    chnl = chnl,
+    marker = marker
+  )
+  if (!is.null(chnl_settings)) {
+    return(chnl_settings)
+  }
+  if (is.null(marker_settings)) {
+    return(lapply(chnl, function(x) list()) |> stats::setNames(chnl))
+  }
+  marker_lab <- stimgate_meta_read_marker_lab(path_project)
+  chnl_settings <- marker_settings
+  names(chnl_settings) <- marker_lab[names(marker_settings)]
+  for (i in seq_along(chnl_settings)) {
+    chnl_settings[[i]]$chnl_cut <- marker_lab[[chnl_settings[[i]]$marker_cut]]
+    chnl_settings[[i]]$marker_cut <- NULL
+  }
+  chnl_settings
 }
