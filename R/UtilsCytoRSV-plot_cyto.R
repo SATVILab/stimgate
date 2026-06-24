@@ -1,8 +1,15 @@
-plot_cyto <- function(data, marker, lab = NULL,
-                      coord_equal = TRUE,
-                      limits_expand = NULL, limits_equal = FALSE,
-                      font_size = 14, exc_min = FALSE,
-                      geom_uni = "histogram", ...) {
+plot_cyto <- function(
+  data,
+  marker,
+  lab = NULL,
+  coord_equal = TRUE,
+  limits_expand = NULL,
+  limits_equal = FALSE,
+  font_size = 14,
+  exc_min = FALSE,
+  geom_uni = "histogram",
+  ...
+) {
   # @description Plot a hex-plot with suitable default for a single
   # sample for cytometry (CyTOF, flow) data.
   #
@@ -58,8 +65,10 @@ plot_cyto <- function(data, marker, lab = NULL,
 
   # prep
   prep_list <- .plot_cyto_prep(
-    marker = marker, lab = lab,
-    data = data, exc_min = exc_min
+    marker = marker,
+    lab = lab,
+    data = data,
+    exc_min = exc_min
   )
 
   .plot_cyto_plot(
@@ -77,7 +86,9 @@ plot_cyto <- function(data, marker, lab = NULL,
 
 #' @keywords internal
 .plot_cyto_check <- function(data, lab, font_size) {
-  if (!is.data.frame(data)) stop("data must be a dataframe")
+  if (!is.data.frame(data)) {
+    stop("data must be a dataframe")
+  }
   if (!is.null(lab)) {
     if (!is.character(lab) || is.null(names(lab))) {
       stop("lab must be a named character vector (if not NULL)")
@@ -90,10 +101,7 @@ plot_cyto <- function(data, marker, lab = NULL,
 }
 
 #' @keywords internal
-.plot_cyto_prep <- function(marker,
-                            lab,
-                            data,
-                            exc_min) {
+.plot_cyto_prep <- function(marker, lab, data, exc_min) {
   n_marker <- min(2, length(marker))
   marker <- marker[seq_len(n_marker)]
 
@@ -117,10 +125,7 @@ plot_cyto <- function(data, marker, lab = NULL,
 }
 
 #' @keywords internal
-.plot_cyto_prep_plot_tbl <- function(marker,
-                                     data,
-                                     n_marker,
-                                     exc_min) {
+.plot_cyto_prep_plot_tbl <- function(marker, data, n_marker, exc_min) {
   # plot_tbl
   plot_tbl <- data[, marker, drop = FALSE]
   colnames(plot_tbl) <- c("V1", "V2")[seq_len(n_marker)]
@@ -132,9 +137,7 @@ plot_cyto <- function(data, marker, lab = NULL,
 }
 
 #' @keywords internal
-.plot_cyto_prep_plot_tbl_exc_min <- function(exc_min,
-                                             plot_tbl,
-                                             n_marker) {
+.plot_cyto_prep_plot_tbl_exc_min <- function(exc_min, plot_tbl, n_marker) {
   if (!exc_min) {
     return(plot_tbl)
   }
@@ -152,17 +155,20 @@ plot_cyto <- function(data, marker, lab = NULL,
 }
 
 #' @keywords internal
-.plot_cyto_plot <- function(n_marker,
-                            plot_tbl,
-                            marker,
-                            font_size,
-                            coord_equal,
-                            limits_expand,
-                            limits_equal,
-                            geom_uni,
-                            ...) {
+.plot_cyto_plot <- function(
+  n_marker,
+  plot_tbl,
+  marker,
+  font_size,
+  coord_equal,
+  limits_expand,
+  limits_equal,
+  geom_uni,
+  ...
+) {
   # base plot
-  switch(n_marker,
+  switch(
+    n_marker,
     .plot_cyto_plot_uni(
       geom_uni = geom_uni,
       plot_tbl = plot_tbl,
@@ -185,13 +191,15 @@ plot_cyto <- function(data, marker, lab = NULL,
 
 
 #' @keywords internal
-.plot_cyto_plot_uni <- function(geom_uni,
-                                plot_tbl,
-                                font_size,
-                                marker,
-                                geom_uni_gg,
-                                limits_expand,
-                                ...) {
+.plot_cyto_plot_uni <- function(
+  geom_uni,
+  plot_tbl,
+  font_size,
+  marker,
+  geom_uni_gg,
+  limits_expand,
+  ...
+) {
   geom_uni_gg <- .plot_cyto_plot_uni_geom(geom_uni, ...)
 
   p <- .plot_cyto_plot_uni_base(
@@ -202,13 +210,15 @@ plot_cyto <- function(data, marker, lab = NULL,
   )
 
   .plot_cyto_plot_uni_axes(
-    p = p, limits_expand = limits_expand
+    p = p,
+    limits_expand = limits_expand
   )
 }
 
 #' @keywords internal
 .plot_cyto_plot_uni_geom <- function(geom_uni, ...) {
-  switch(geom_uni,
+  switch(
+    geom_uni,
     "histogram" = do.call(
       ggplot2::geom_histogram,
       list(...)
@@ -222,11 +232,9 @@ plot_cyto <- function(data, marker, lab = NULL,
 }
 
 #' @keywords internal
-.plot_cyto_plot_uni_base <- function(plot_tbl,
-                                     font_size,
-                                     marker,
-                                     geom_uni_gg) {
-  ggplot( # nolint
+.plot_cyto_plot_uni_base <- function(plot_tbl, font_size, marker, geom_uni_gg) {
+  ggplot(
+    # nolint
     plot_tbl, # nolint
     aes(x = V1) # nolint
   ) +
@@ -240,7 +248,8 @@ plot_cyto <- function(data, marker, lab = NULL,
 #' @keywords internal
 .plot_cyto_plot_uni_axes <- function(p, limits_expand) {
   .plot_cyto_plot_uni_axes_expand(
-    p = p, limits_expand = limits_expand
+    p = p,
+    limits_expand = limits_expand
   )
 }
 
@@ -251,18 +260,21 @@ plot_cyto <- function(data, marker, lab = NULL,
     return(p)
   }
   axis_limits(
-    p = p, limits_expand = limits_expand
+    p = p,
+    limits_expand = limits_expand
   )
 }
 
 #' @keywords internal
-.plot_cyto_plot_biv <- function(plot_tbl,
-                                font_size,
-                                marker,
-                                coord_equal,
-                                limits_expand,
-                                limits_equal,
-                                ...) {
+.plot_cyto_plot_biv <- function(
+  plot_tbl,
+  font_size,
+  marker,
+  coord_equal,
+  limits_expand,
+  limits_equal,
+  ...
+) {
   p <- .plot_cyto_plot_biv_base(
     plot_tbl = plot_tbl,
     font_size = font_size,
@@ -279,20 +291,21 @@ plot_cyto <- function(data, marker, lab = NULL,
 }
 
 #' @keywords internal
-.plot_cyto_plot_biv_base <- function(plot_tbl,
-                                     font_size,
-                                     marker,
-                                     ...) {
-  ggplot( # nolint
-    plot_tbl, aes(x = V1, y = V2) # nolint
+.plot_cyto_plot_biv_base <- function(plot_tbl, font_size, marker, ...) {
+  ggplot(
+    # nolint
+    plot_tbl,
+    aes(x = V1, y = V2) # nolint
   ) +
     cowplot::theme_cowplot(font_size) +
-    theme( # nolint
+    theme(
+      # nolint
       plot.background = element_rect(fill = "white"), # nolint
       panel.background = element_rect(fill = "white") # nolint
     ) +
     geom_hex(...) + # nolint
-    scale_fill_viridis_c( # nolint
+    scale_fill_viridis_c(
+      # nolint
       trans = "log10",
       name = "Count"
     ) +
@@ -301,11 +314,10 @@ plot_cyto <- function(data, marker, lab = NULL,
 }
 
 #' @keywords internal
-.plot_cyto_biv_axes <- function(p,
-                                coord_equal,
-                                limits_expand,
-                                limits_equal) {
-  if (coord_equal) p <- p + coord_equal()
+.plot_cyto_biv_axes <- function(p, coord_equal, limits_expand, limits_equal) {
+  if (coord_equal) {
+    p <- p + coord_equal()
+  }
 
   # return now if axis_limits fn not required
   if (is.null(limits_expand) && !limits_equal) {
@@ -320,10 +332,10 @@ plot_cyto <- function(data, marker, lab = NULL,
 }
 
 #' @keywords internal
-.plot_cyto_biv_axes_expand <- function(p,
-                                       limits_equal,
-                                       limits_expand) {
+.plot_cyto_biv_axes_expand <- function(p, limits_equal, limits_expand) {
   axis_limits(
-    p = p, limits_expand = limits_expand, limits_equal = limits_equal
+    p = p,
+    limits_expand = limits_expand,
+    limits_equal = limits_equal
   )
 }

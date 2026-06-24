@@ -185,7 +185,11 @@ test_that("stimgate_data_get_ex applies trans_fn to specified channels", {
   expect_equal(res_all$BC2, c(8, 10, 12))
 
   # Test transforming only BC1
-  res_bc1 <- stimgate_data_get_ex(tmp, trans_fn = trans_fn_double, trans_chnl = "BC1")
+  res_bc1 <- stimgate_data_get_ex(
+    tmp,
+    trans_fn = trans_fn_double,
+    trans_chnl = "BC1"
+  )
   expect_equal(res_bc1$BC1, c(2, 4, 6))
   expect_equal(res_bc1$BC2, c(4, 5, 6))
 })

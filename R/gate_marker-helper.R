@@ -1,5 +1,5 @@
 #' @keywords internal
-.gate_marker_delete_old_gates <- function() {
+.gate_chnl_delete_old_gates <- function() {
   dir_save <- file.path(tempdir(), "stimgate")
   if (!dir.exists(dir_save)) {
     return(invisible(FALSE))
@@ -10,21 +10,15 @@
 
 # Get gates for each sample within each batch
 #' @keywords internal
-.gate_marker_pre_adj_gates_gate <- function(ind_batch_list,
-                                            .data,
-                                            pop_gate,
-                                            chnl_cut,
-                                            gate_combn,
-                                            tol_clust,
-                                            noise_sd,
-                                            bias_uns,
-                                            exc_min,
-                                            bw_min,
-                                            cp_min,
-                                            min_cell,
-                                            params,
-                                            stage,
-                                            path_project) {
+.gate_chnl_pre_adj_gates_gate <- function(
+  ind_batch_list,
+  .data,
+  pop_gate,
+  chnl_cut,
+  chnl_settings,
+  stage,
+  path_project
+) {
   message("getting pre-adjustment gates")
   purrr::map_df(seq_along(ind_batch_list), function(i) {
     .debug("ind_batch_list", i) # nolint
@@ -34,7 +28,8 @@
       txt <- paste0("batch ", i, " of ", length(ind_batch_list))
       message(txt)
     }
-    .gate_batch( # nolint
+    .gate_batch(
+      # nolint
       .data = .data,
       ind_batch = ind_batch_list[[i]],
       pop_gate = pop_gate,
@@ -53,26 +48,34 @@
       path_project = path_project
     ) |>
       dplyr::select(
-        gate_name, gate_type, gate_combn, # nolint
-        batch, ind, gate, everything() # nolint
+        gate_name,
+        gate_type,
+        gate_combn, # nolint
+        batch,
+        ind,
+        gate,
+        everything() # nolint
       )
   })
 }
 
 #' @keywords internal
-.gate_marker_get_adj_gates <- function(gate_tbl,
-                                       gate_tbl_params,
-                                       tol_clust,
-                                       gate_quant,
-                                       .data,
-                                       params,
-                                       chnl_cut,
-                                       bw_min,
-                                       path_project,
-                                       ind_batch_list,
-                                       pop_gate) {
+.gate_chnl_get_adj_gates <- function(
+  gate_tbl,
+  gate_tbl_params,
+  tol_clust,
+  gate_quant,
+  .data,
+  params,
+  chnl_cut,
+  bw_min,
+  path_project,
+  ind_batch_list,
+  pop_gate
+) {
   if (params$stage == "init") {
-    .gate_marker_get_adj_gates_all( # nolint
+    .gate_chnl_get_adj_gates_all(
+      # nolint
       tol_clust = tol_clust,
       gate_tbl = gate_tbl,
       params = params,
@@ -86,7 +89,7 @@
       pop_gate = pop_gate
     )
   } else if (params$stage == "single") {
-    .gate_marker_gate_adj_gates_single(
+    .gate_chnl_gate_adj_gates_single(
       gate_tbl = gate_tbl,
       gate_tbl_params = gate_tbl_params,
       params = params,
@@ -103,17 +106,19 @@
 }
 
 #' @keywords internal
-.gate_marker_get_adj_gates_all <- function(tol_clust,
-                                           gate_tbl,
-                                           params,
-                                           chnl_cut,
-                                           .data,
-                                           bw_min,
-                                           path_project,
-                                           gate_quant,
-                                           stage,
-                                           ind_batch_list,
-                                           pop_gate) {
+.gate_chnl_get_adj_gates_all <- function(
+  tol_clust,
+  gate_tbl,
+  params,
+  chnl_cut,
+  .data,
+  bw_min,
+  path_project,
+  gate_quant,
+  stage,
+  ind_batch_list,
+  pop_gate
+) {
   if (!is.null(tol_clust)) {
     gate_tbl_tg_gate <- gate_tbl |>
       dplyr::filter(gate_use == "tg_clust") # nolint
@@ -129,7 +134,8 @@
   # =========================
 
   if (!is.null(tol_clust)) {
-    path_dir_stats <- .get_stats( # nolint
+    path_dir_stats <- .get_stats(
+      # nolint
       params = params,
       gate_tbl = gate_tbl |> dplyr::mutate(chnl = chnl_cut),
       gate_name = NULL,
@@ -146,8 +152,10 @@
       .read_gate_stats() # nolint
 
     gate_tbl_cluster <- purrr::map_df(
-      unique(gate_tbl$gate_name), function(gn) {
-        gate_tbl_cluster <- .get_cp_cluster( # nolint
+      unique(gate_tbl$gate_name),
+      function(gn) {
+        gate_tbl_cluster <- .get_cp_cluster(
+          # nolint
           .data = .data,
           gate_tbl = gate_tbl |>
             dplyr::filter(gate_name == gn), # nolint
@@ -168,14 +176,21 @@
             gate_tbl |>
               dplyr::filter(gate_name == gn) |> # nolint
               dplyr::select(
-                gate_name, gate_type, gate_combn, # nolint
-                batch, ind # nolint
+                gate_name,
+                gate_type,
+                gate_combn, # nolint
+                batch,
+                ind # nolint
               ),
             by = c("ind")
           ) |>
           dplyr::select(
-            gate_name, gate_type, gate_combn,
-            batch, ind, gate # nolint
+            gate_name,
+            gate_type,
+            gate_combn,
+            batch,
+            ind,
+            gate # nolint
           ) |>
           dplyr::mutate(
             gate_combn = paste0(gate_combn, "_clust"),
@@ -198,27 +213,30 @@
 
 
 #' @keywords internal
-.gate_marker_gate_adj_gates_single <- function(gate_tbl,
-                                               params,
-                                               gate_tbl_params,
-                                               chnl_cut,
-                                               .data,
-                                               calc_cyt_pos_gates,
-                                               path_project,
-                                               ind_batch_list,
-                                               pop_gate) {
+.gate_chnl_gate_adj_gates_single <- function(
+  gate_tbl,
+  params,
+  gate_tbl_params,
+  chnl_cut,
+  .data,
+  calc_cyt_pos_gates,
+  path_project,
+  ind_batch_list,
+  pop_gate
+) {
   # get gates
   gate_tbl_single <- gate_tbl
 
   # merge
-  gate_tbl <- .gate_marker_gate_adj_gates_single_merge( # nolint
+  gate_tbl <- .gate_chnl_gate_adj_gates_single_merge(
+    # nolint
     gate_tbl_single = gate_tbl_single,
     gate_tbl_params = gate_tbl_params,
     chnl_cut = chnl_cut
   )
 
   # get stats table (if needed)
-  gate_stats_tbl <- .gate_marker_gate_adj_gates_single_stats_tbl_get(
+  gate_stats_tbl <- .gate_chnl_gate_adj_gates_single_stats_tbl_get(
     gate_tbl = gate_tbl,
     params = params,
     chnl_cut,
@@ -228,7 +246,7 @@
     ind_batch_list = ind_batch_list
   )
 
-  gate_tbl_out <- .gate_marker_gate_adj_gates_single_out_get(
+  gate_tbl_out <- .gate_chnl_gate_adj_gates_single_out_get(
     gate_tbl = gate_tbl,
     gate_stats_tbl = gate_stats_tbl,
     gate_tbl_single = gate_tbl_single,
@@ -242,9 +260,11 @@
 }
 
 #' @keywords internal
-.gate_marker_gate_adj_gates_single_merge <- function(gate_tbl_single,
-                                                     gate_tbl_params,
-                                                     chnl_cut) {
+.gate_chnl_gate_adj_gates_single_merge <- function(
+  gate_tbl_single,
+  gate_tbl_params,
+  chnl_cut
+) {
   gate_tbl_params |>
     dplyr::left_join(
       gate_tbl_single |>
@@ -252,7 +272,10 @@
         dplyr::rename(gate_single = gate) |> # nolint
         dplyr::filter(gate_use == "gate") |> # nolint
         dplyr::select(
-          chnl, gate_name, ind, gate_single # nolint
+          chnl,
+          gate_name,
+          ind,
+          gate_single # nolint
         ),
       by = c("chnl", "ind", "gate_name")
     ) |>
@@ -268,8 +291,12 @@
         stringr::str_remove("_")
     ) |>
     dplyr::select(
-      chnl, marker, gate_name, # nolint
-      gate_type, gate_combn, everything() # nolint
+      chnl,
+      marker,
+      gate_name, # nolint
+      gate_type,
+      gate_combn,
+      everything() # nolint
     ) |>
     dplyr::mutate(
       gate_single = ifelse(is.na(gate_single), gate, gate_single) # nolint
@@ -277,18 +304,20 @@
 }
 
 #' @keywords internal
-.gate_marker_gate_adj_gates_single_stats_tbl_get <- function(gate_tbl,
-                                                             params,
-                                                             chnl_cut,
-                                                             .data,
-                                                             calc_cyt_pos_gates, # nolint
-                                                             path_project,
-                                                             ind_batch_list) { # nolint
+.gate_chnl_gate_adj_gates_single_stats_tbl_get <- function(
+  gate_tbl,
+  params,
+  chnl_cut,
+  .data,
+  calc_cyt_pos_gates, # nolint
+  path_project,
+  ind_batch_list
+) {
+  # nolint
   gate_name_vec <- unique(gate_tbl$gate_name)
-  if (!.gate_marker_gate_adj_gates_single_stats_tbl_get_check(gate_name_vec)) {
+  if (!.gate_chnl_gate_adj_gates_single_stats_tbl_get_check(gate_name_vec)) {
     return(NULL)
   }
-
 
   gate_name_vec_clust <- gate_name_vec[
     stringr::str_detect(gate_name_vec, "_clust")
@@ -297,7 +326,8 @@
     stringr::str_detect(gate_name_vec, "_adj")
   ]
 
-  .get_stats( # nolint
+  .get_stats(
+    # nolint
     params = params,
     gate_tbl = gate_tbl |>
       dplyr::filter(
@@ -318,7 +348,10 @@
 }
 
 #' @keywords internal
-.gate_marker_gate_adj_gates_single_stats_tbl_get_check <- function(gate_name_vec) { # nolint
+.gate_chnl_gate_adj_gates_single_stats_tbl_get_check <- function(
+  gate_name_vec
+) {
+  # nolint
   any_clust_ind <- any(
     purrr::map_lgl(
       gate_name_vec,
@@ -335,10 +368,12 @@
 }
 
 #' @keywords internal
-.gate_marker_gate_adj_gates_single_out_get <- function(gate_tbl,
-                                                       gate_stats_tbl,
-                                                       gate_tbl_single,
-                                                       params) {
+.gate_chnl_gate_adj_gates_single_out_get <- function(
+  gate_tbl,
+  gate_stats_tbl,
+  gate_tbl_single,
+  params
+) {
   # get tail-gate gates
   gate_tbl_ctrl_clust <- gate_tbl_single |>
     dplyr::filter(gate_use == "tg_clust") # nolint
@@ -350,7 +385,7 @@
   # get gate names
   gate_name_vec <- unique(gate_tbl$gate_name)
   purrr::map_df(gate_name_vec, function(gn) {
-    .gate_marker_gate_adj_gates_single_out_get_gn(
+    .gate_chnl_gate_adj_gates_single_out_get_gn(
       gn = gn,
       gate_tbl = gate_tbl,
       gate_stats_tbl = gate_stats_tbl,
@@ -365,13 +400,15 @@
 }
 
 #' @keywords internal
-.gate_marker_gate_adj_gates_single_out_get_gn <- function(gn,
-                                                          gate_tbl,
-                                                          gate_stats_tbl,
-                                                          gate_tbl_ctrl_clust,
-                                                          gate_tbl_ctrl_ctrl,
-                                                          gate_tbl_single_gn,
-                                                          params) {
+.gate_chnl_gate_adj_gates_single_out_get_gn <- function(
+  gn,
+  gate_tbl,
+  gate_stats_tbl,
+  gate_tbl_ctrl_clust,
+  gate_tbl_ctrl_ctrl,
+  gate_tbl_single_gn,
+  params
+) {
   .debug("gate_name_vec", gn) # nolint
   gate_tbl_gn <- gate_tbl |>
     dplyr::filter(gate_name == gn) # nolint
@@ -380,12 +417,22 @@
 
   clust_ind <- stringr::str_detect(gn, "_clust")
   if (!clust_ind && !adj_ind) {
-    return(gate_tbl_gn |>
-      dplyr::filter(chnl == params$chnl_cut) |> # nolint
-      dplyr::select(
-        chnl, marker, gate_name, gate_type, # nolint
-        gate_combn, batch, ind, gate, gate_cyt, gate_single # nolint
-      ))
+    return(
+      gate_tbl_gn |>
+        dplyr::filter(chnl == params$chnl_cut) |> # nolint
+        dplyr::select(
+          chnl,
+          marker,
+          gate_name,
+          gate_type, # nolint
+          gate_combn,
+          batch,
+          ind,
+          gate,
+          gate_cyt,
+          gate_single # nolint
+        )
+    )
   }
 
   # =========================
@@ -398,7 +445,8 @@
     gate_tbl_ctrl_ctrl <- gate_tbl_ctrl_ctrl |>
       dplyr::filter(gate_name == gn) # nolint
 
-    gate_tbl_gn_2 <- .get_cp_adj_tbl( # nolint
+    gate_tbl_gn_2 <- .get_cp_adj_tbl(
+      # nolint
       gate_stats_tbl = gate_stats_tbl_gn,
       gate_quant = params$gate_quant,
       gate_tbl_ctrl = gate_tbl_ctrl_ctrl
@@ -424,7 +472,8 @@
     gate_tbl_ctrl_clust_gn <- gate_tbl_ctrl_clust |>
       dplyr::filter(gate_name == gn) # nolint
 
-    gate_tbl_cluster_gn <- .get_cp_cluster( # nolint
+    gate_tbl_cluster_gn <- .get_cp_cluster(
+      # nolint
       .data = .data,
       gate_tbl = gate_tbl_gn,
       gate_stats_tbl = gate_stats_tbl_gn,
@@ -446,8 +495,13 @@
             chnl == params$chnl_cut # nolint
           ) |>
           dplyr::select(
-            gate_name, gate_type, gate_combn, # nolint
-            batch, ind, gate, gate_cyt # nolint
+            gate_name,
+            gate_type,
+            gate_combn, # nolint
+            batch,
+            ind,
+            gate,
+            gate_cyt # nolint
           ),
         by = c("ind")
       ) |>
@@ -456,8 +510,16 @@
         marker = params$chnl_lab[params$chnl_cut]
       ) |>
       dplyr::select(
-        chnl, marker, gate_name, gate_type, gate_combn, # nolint
-        batch, ind, gate, gate_cyt, gate_single # nolint
+        chnl,
+        marker,
+        gate_name,
+        gate_type,
+        gate_combn, # nolint
+        batch,
+        ind,
+        gate,
+        gate_cyt,
+        gate_single # nolint
       ) |>
       dplyr::mutate(
         gate_combn = paste0(gate_combn, "_clust"),

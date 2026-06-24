@@ -1,32 +1,36 @@
 #' @keywords internal
-.get_stats <- function(params = NULL,
-                       gate_tbl = NULL,
-                       chnl = NULL,
-                       filter_other_cyt_pos = FALSE,
-                       combn = TRUE,
-                       gate_type_cyt_pos_filter = "base",
-                       gate_type_single_pos_filter = "base",
-                       gate_type_cyt_pos_calc,
-                       gate_type_single_pos_calc,
-                       pop_gate,
-                       chnl_lab = NULL,
-                       .data,
-                       save = FALSE,
-                       ind_batch_list,
-                       save_gate_tbl = FALSE,
-                       gate_name = NULL,
-                       tol_clust = NULL,
-                       path_project) {
+.get_stats <- function(
+  params = NULL,
+  gate_tbl = NULL,
+  chnl = NULL,
+  filter_other_cyt_pos = FALSE,
+  combn = TRUE,
+  gate_type_cyt_pos_filter = "base",
+  gate_type_single_pos_filter = "base",
+  gate_type_cyt_pos_calc,
+  gate_type_single_pos_calc,
+  pop_gate,
+  chnl_lab = NULL,
+  .data,
+  save = FALSE,
+  ind_batch_list,
+  save_gate_tbl = FALSE,
+  gate_name = NULL,
+  tol_clust = NULL,
+  path_project
+) {
   # prep
   # ---------------
 
-  chnl_lab <- .get_stats_chnl_lab_get( # nolint
+  chnl_lab <- .get_stats_chnl_lab_get(
+    # nolint
     chnl_lab = chnl_lab,
     .data = .data,
     chnl = chnl
   )
 
-  params <- .get_stats_params_get( # nolint
+  params <- .get_stats_params_get(
+    # nolint
     params = params,
     chnl = chnl,
     pop_gate = pop_gate,
@@ -35,7 +39,8 @@
     .data = .data,
     path_project = path_project
   )
-  gate_tbl <- .get_stats_gate_tbl_get( # nolint
+  gate_tbl <- .get_stats_gate_tbl_get(
+    # nolint
     gate_tbl = gate_tbl,
     chnl_lab = chnl_lab,
     path_project = path_project,
@@ -43,11 +48,13 @@
     gate_name = gate_name,
     tol_clust = tol_clust
   )
-  chnl <- .get_stats_chnl_get( # nolint
+  chnl <- .get_stats_chnl_get(
+    # nolint
     chnl = chnl,
     gate_tbl = gate_tbl
   )
-  gate_name <- .get_stats_gate_name_get( # nolint
+  gate_name <- .get_stats_gate_name_get(
+    # nolint
     gate_name = gate_name,
     gate_tbl = gate_tbl
   )
@@ -55,13 +62,15 @@
   if ((!filter_other_cyt_pos) && combn) {
     n_chnl <- length(chnl)
     combn_mat_list <-
-      .get_stats_combn_mat_list_get( # nolint
+      .get_stats_combn_mat_list_get(
+        # nolint
         n_chnl = n_chnl,
         n_pos = 2 # not sure if it should be 2,
         # but it wasn't really set before
       )
     cyt_combn_vec_list <-
-      .get_stats_cyt_combn_vec_list_get( # nolint
+      .get_stats_cyt_combn_vec_list_get(
+        # nolint
         combn_mat_list = combn_mat_list,
         chnl = chnl
       )
@@ -70,7 +79,8 @@
     cyt_combn_vec_list <- NULL
   }
 
-  .get_stats_gate_tbl_save( # nolint
+  .get_stats_gate_tbl_save(
+    # nolint
     gate_tbl = gate_tbl,
     path_project = path_project,
     params = params,
@@ -78,7 +88,8 @@
     save = save_gate_tbl
   )
 
-  stat_tbl <- .get_stats_overall( # nolint
+  stat_tbl <- .get_stats_overall(
+    # nolint
     ind_batch_list = ind_batch_list,
     gate_tbl = gate_tbl,
     chnl = chnl,
@@ -99,7 +110,8 @@
   )
 
   # save it
-  .stats_save( # nolint
+  .stats_save(
+    # nolint
     stat_tbl = stat_tbl,
     path_project = path_project,
     params = params,

@@ -27,9 +27,18 @@ test_that("stimgate_fcs_write function exists and has correct signature", {
   # Test function signature by checking for argument names
   args <- names(formals(stimgate_fcs_write))
   expected_args <- c(
-    "path_project", ".data", "ind_batch_list", "path_dir_save",
-    "chnl", "gate_tbl", "trans_fn", "trans_chnl", "combn_exc",
-    "gate_type_cyt_pos", "gate_type_single_pos", "mult",
+    "path_project",
+    ".data",
+    "ind_batch_list",
+    "path_dir_save",
+    "chnl",
+    "gate_tbl",
+    "trans_fn",
+    "trans_chnl",
+    "combn_exc",
+    "gate_type_cyt_pos",
+    "gate_type_single_pos",
+    "mult",
     "gate_uns_method"
   )
 
@@ -213,9 +222,13 @@ test_that("stimgate_fcs_write works with pre-provided gate table", {
   gate_tbl <- data.frame(
     chnl = rep(example_data$chnl[[1]], length(unlist(example_data$batch_list))),
     marker = rep("BC1", length(unlist(example_data$batch_list))),
-    batch = paste0("batch_", rep(seq_along(example_data$batch_list),
-      times = sapply(example_data$batch_list, length)
-    )),
+    batch = paste0(
+      "batch_",
+      rep(
+        seq_along(example_data$batch_list),
+        times = sapply(example_data$batch_list, length)
+      )
+    ),
     ind = as.character(unlist(example_data$batch_list)),
     gate = rep(0.5, length(unlist(example_data$batch_list))),
     gate_cyt = rep(0.5, length(unlist(example_data$batch_list))),
@@ -401,7 +414,8 @@ test_that("stimgate_fcs_write creates consistent file names", {
   # Check that files are in the correct directory
   full_paths <- list.files(
     path_dir_save,
-    pattern = "\\.fcs$", full.names = TRUE
+    pattern = "\\.fcs$",
+    full.names = TRUE
   )
   expect_true(
     all(normalizePath(dirname(full_paths)) == normalizePath(path_dir_save))
@@ -431,9 +445,13 @@ test_that("stimgate_fcs_write handles edge case: empty data", {
   gate_tbl <- data.frame(
     chnl = rep(example_data$chnl[[1]], length(unlist(example_data$batch_list))),
     marker = rep("BC1", length(unlist(example_data$batch_list))),
-    batch = paste0("batch_", rep(seq_along(example_data$batch_list),
-      times = sapply(example_data$batch_list, length)
-    )),
+    batch = paste0(
+      "batch_",
+      rep(
+        seq_along(example_data$batch_list),
+        times = sapply(example_data$batch_list, length)
+      )
+    ),
     ind = as.character(unlist(example_data$batch_list)),
     gate = rep(999999, length(unlist(example_data$batch_list))), # Very high threshold
     gate_cyt = rep(999999, length(unlist(example_data$batch_list))),
@@ -551,26 +569,29 @@ test_that("stimgate_fcs_write respects working directory", {
     chnl = example_data$chnl
   ))
 
-  tryCatch({
-    setwd(temp_wd)
+  tryCatch(
+    {
+      setwd(temp_wd)
 
-    # Use relative path for output
-    path_dir_save <- "fcs_output_wd_test"
+      # Use relative path for output
+      path_dir_save <- "fcs_output_wd_test"
 
-    result <- stimgate_fcs_write(
-      path_project = path_project_2,
-      .data = gs,
-      ind_batch_list = example_data$batch_list,
-      path_dir_save = path_dir_save,
-      chnl = example_data$chnl[[1]]
-    )
+      result <- stimgate_fcs_write(
+        path_project = path_project_2,
+        .data = gs,
+        ind_batch_list = example_data$batch_list,
+        path_dir_save = path_dir_save,
+        chnl = example_data$chnl[[1]]
+      )
 
-    # Should create directory relative to current working directory
-    expect_true(dir.exists(file.path(temp_wd, path_dir_save)))
-    expect_equal(result, path_dir_save)
-  }, finally = {
-    setwd(original_wd)
-  })
+      # Should create directory relative to current working directory
+      expect_true(dir.exists(file.path(temp_wd, path_dir_save)))
+      expect_equal(result, path_dir_save)
+    },
+    finally = {
+      setwd(original_wd)
+    }
+  )
   unlink(file.path(temp_wd, path_dir_save), recursive = TRUE)
 })
 
