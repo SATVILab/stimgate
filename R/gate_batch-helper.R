@@ -3,54 +3,39 @@
   ind_batch,
   batch,
   ex_list,
-  gate_combn,
   .data,
-  noise_sd,
-  bias_uns,
-  exc_min,
-  cp_min,
-  min_cell,
-  tol_clust,
-  bw_min,
-  params,
+  chnl_settings,
   stage,
   path_project
 ) {
-  .debug("params$gate_tbl is NULL") # nolint
+  .debug("chnl_settings$gate_tbl is NULL") # nolint
   .debug(
-    # nolint
     "gating ",
     paste0(ind_batch, collapse = "-") # nolint
   )
 
+  # Extract clear scoping variables from chnl_settings
+  chnl_cut <- chnl_settings$chnl_cut
+  exc_min <- chnl_settings$exc_min
+  bw_min <- chnl_settings$bw_min
+  tol_ctrl <- chnl_settings$tol_ctrl
+  tol_clust <- chnl_settings$tol_clust
+
   # create bare list
   gate_list <- .get_cp_uns_loc(
-    # nolint
     ex_list = ex_list,
-    gate_combn = gate_combn,
     .data = .data,
-    bias_uns = bias_uns,
-    exc_min = exc_min,
-    noise_sd = NULL,
-    bw_min = bw_min,
-    cp_min = cp_min,
-    min_cell = min_cell,
-    params = params,
+    chnl_settings = chnl_settings,
+    stage = stage,
     path_project = path_project
   )
-  if (!is.null(params$tol_ctrl)) {
-    for (tol in params$tol_ctrl) {
+
+  if (!is.null(tol_ctrl)) {
+    for (tol in tol_ctrl) {
       .debug("getting tg-based cutpoint as a control") # nolint
       gate_list[[paste0("tg_ctrl_", tol)]] <- .get_cp_tg(
-        # nolint
         ex_list = ex_list,
-        gate_combn = "no",
-        chnl_cut = params$chnl_cut,
-        tol = params$tol_ctrl,
-        exc_min = exc_min,
-        min_cell = 0,
-        cp_min = 0,
-        bw = bw_min,
+        chnl_settings = chnl_settings,
         tg_type = "tol_ctrl",
         stage = stage,
         path_project = path_project
@@ -61,15 +46,8 @@
   if (!is.null(tol_clust)) {
     .debug("getting tolerance gate") # nolint
     gate_list[["tg_clust"]] <- .get_cp_tg(
-      # nolint
       ex_list = ex_list,
-      gate_combn = "no",
-      chnl_cut = params$chnl_cut,
-      tol = tol_clust,
-      exc_min = exc_min,
-      min_cell = 0,
-      cp_min = 0,
-      bw = bw_min,
+      chnl_settings = chnl_settings,
       tg_type = "tol_clust",
       stage = stage,
       path_project = path_project
@@ -156,49 +134,43 @@
   batch,
   ex_list,
   .data,
-  noise_sd,
-  bias_uns,
-  exc_min,
-  cp_min,
-  min_cell,
   chnl_cut,
-  tol_clust,
-  bw_min,
-  params,
+  chnl_settings,
   stage,
   path_project
 ) {
-  .debug("params$gate_tbl is not NULL") # nolint
+  .debug("chnl_settings$gate_tbl is not NULL") # nolint
   .debug(paste0("Gating batch ", batch))
 
   # =================================
   # get pre-adj and -clust gates for each gate type
   # =================================
-
-  gate_tbl <- .gate_batch_single_tbl_format(params$gate_tbl)
-
+  gate_tbl <- .gate_batch_single_tbl_format(chnl_settings$gate_tbl)
   gate_name_vec <- unique(gate_tbl$gate_name)
+  
+  # Scoped extraction to replace old signature variables
+  ind_in_batch_uns <- chnl_settings$ind_in_batch_uns
+  calc_cyt_pos_gates <- chnl_settings$calc_cyt_pos_gates
+  tol_ctrl <- chnl_settings$tol_ctrl
+  tol_clust_single <- chnl_settings$tol_clust_single
 
   # get single-pos gates for each of the gate types already done
   purrr::map_df(gate_name_vec, function(gate_name_curr) {
     .debug("getting single-pos gate", gate_name_curr) # nolint
     gate_tbl_gn_marker <- gate_tbl |>
-      dplyr::filter(gate_name == gate_name_curr, chnl == params$chnl_cut) # nolint
+      dplyr::filter(gate_name == gate_name_curr, chnl == chnl_cut) # nolint
 
     gate_name_tbl_row <- gate_tbl_gn_marker[1, , drop = FALSE]
-
     gate_method <- gate_name_tbl_row$gate_method
-
     adj_ind <- stringr::str_detect(gate_name_curr, "_adj")
-
     clust_ind <- stringr::str_detect(gate_name_curr, "_clust")
 
     # filter to yield cells negative for all cytokine combinations
-    # except possible this cytokine single-positive
+    # except possibly this cytokine single-positive
     ex_list_neg_but_single_pos_curr <- purrr::map(
       seq_along(ex_list),
       function(i) {
-        if (i == params$ind_in_batch_uns) {
+        if (i == ind_in_batch_uns) {
           return(ex_list[[i]])
         }
 
@@ -210,13 +182,12 @@
 
         pos_ind_vec_but_single_pos_curr <-
           .get_pos_ind_but_single_pos_for_one_cyt(
-            # nolint
             ex = ex_list[[i]],
             gate_tbl = gate_tbl_gn_ind,
-            chnl_single_exc = params$chnl_cut,
+            chnl_single_exc = chnl_cut,
             chnl = NULL,
             gate_type_cyt_pos = ifelse(
-              params$calc_cyt_pos_gates,
+              calc_cyt_pos_gates,
               "cyt",
               "base"
             ),
@@ -227,47 +198,37 @@
     ) |>
       stats::setNames(names(ex_list))
 
+    # Temporarily overlay single execution scope overrides into local settings clone
+    chnl_settings_exec <- chnl_settings
+    chnl_settings_exec$gate_combn <- gate_name_tbl_row$gate_combn
+
     gate_list <- switch(
       gate_method,
       "tg" = .get_cp_tg(
-        # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
-        gate_combn = gate_name_tbl_row$gate_combn,
-        chnl_cut,
-        tol = tol,
-        exc_min = exc_min,
-        min_cell = min_cell,
-        cp_min = cp_min,
-        bw = bw_min,
+        chnl_settings = chnl_settings_exec,
         tg_type = "tg",
         stage = stage,
         path_project = path_project
       ),
-      "loc" = .get_cp_uns_loc(
-        # nolint
-        ex_list = ex_list_neg_but_single_pos_curr,
-        gate_combn = gate_name_tbl_row$gate_combn,
-        .data = .data,
-        bias_uns = bias_uns,
-        exc_min = exc_min,
-        noise_sd = NULL,
-        bw_min = bw_min,
-        cp_min = cp_min,
-        min_cell = min_cell,
-        params = params |>
-          append(list(
-            gate_name_curr = gate_name_curr,
-            ex_uns = ex_list[[length(ex_list)]]
-          )),
-        path_project = path_project
-      )[[1]][[1]]
+      "loc" = {
+        chnl_settings_exec$gate_name_curr <- gate_name_curr
+        chnl_settings_exec$ex_uns <- ex_list[[length(ex_list)]]
+        .get_cp_uns_loc(
+          ex_list = ex_list_neg_but_single_pos_curr,
+          .data = .data,
+          chnl_settings = chnl_settings_exec,
+          stage = stage,
+          path_project = path_project
+        )[[1]][[1]]
+      }
     )
 
     if (names(gate_list)[[1]] == "cp") {
       gate_list <- gate_list[["cp"]]
     }
 
-    gate_tbl <- switch(
+    gate_tbl_out <- switch(
       gate_method,
       "tg" = ,
       "loc" = ,
@@ -280,17 +241,13 @@
     )
 
     if (adj_ind) {
-      # apply method
+      chnl_settings_adj <- chnl_settings
+      chnl_settings_adj$gate_combn <- "no"
+      chnl_settings_adj$tol <- tol_ctrl
+
       gate_list <- .get_cp_tg(
-        # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
-        gate_combn = "no",
-        chnl_cut,
-        tol = params$tol_ctrl,
-        exc_min = exc_min,
-        min_cell = min_cell,
-        cp_min = cp_min,
-        bw = bw_min,
+        chnl_settings = chnl_settings_adj,
         tg_type = "adj",
         stage = stage,
         path_project = path_project
@@ -306,21 +263,17 @@
         gate = gate_list[[1]],
         gate_use = "ctrl"
       )
-      gate_tbl <- gate_tbl |> dplyr::bind_rows(gate_tbl_adj)
+      gate_tbl_out <- gate_tbl_out |> dplyr::bind_rows(gate_tbl_adj)
     }
 
     if (clust_ind) {
-      # apply method
+      chnl_settings_clust <- chnl_settings
+      chnl_settings_clust$gate_combn <- "no"
+      chnl_settings_clust$tol <- tol_clust_single
+
       gate_list <- .get_cp_tg(
-        # nolint
         ex_list = ex_list_neg_but_single_pos_curr,
-        gate_combn = "no",
-        chnl_cut,
-        tol = tol_clust_single,
-        exc_min = exc_min,
-        min_cell = min_cell,
-        cp_min = cp_min,
-        bw = bw_min,
+        chnl_settings = chnl_settings_clust,
         tg_type = "clust",
         stage = stage,
         path_project = path_project
@@ -336,11 +289,13 @@
         gate = gate_list[[1]],
         gate_use = "tg_clust"
       )
-      gate_tbl <- gate_tbl |>
+      gate_tbl_out_final <- gate_tbl_out |>
         dplyr::bind_rows(gate_tbl_clust)
+    } else {
+      gate_tbl_out_final <- gate_tbl_out
     }
 
-    gate_tbl
+    gate_tbl_out_final
   }) |>
     dplyr::mutate(
       gate_type = purrr::map_chr(
@@ -358,7 +313,7 @@
 
 #' @keywords internal
 .gate_batch_single_tbl_format <- function(gate_tbl) {
-  gate_tbl <- gate_tbl |>
+  gate_tbl |>
     dplyr::mutate(
       gate_method = .gate_batch_single_tbl_format_method(gate_name) # nolint
     ) |>

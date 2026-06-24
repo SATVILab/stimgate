@@ -1,6 +1,5 @@
 #' @keywords internal
 .get_stats <- function(
-  params = NULL,
   gate_tbl = NULL,
   chnl = NULL,
   filter_other_cyt_pos = FALSE,
@@ -21,75 +20,56 @@
 ) {
   # prep
   # ---------------
-
   chnl_lab <- .get_stats_chnl_lab_get(
-    # nolint
     chnl_lab = chnl_lab,
     .data = .data,
     chnl = chnl
   )
 
-  params <- .get_stats_params_get(
-    # nolint
-    params = params,
-    chnl = chnl,
-    pop_gate = pop_gate,
-    chnl_lab = chnl_lab,
-    ind_batch_list = ind_batch_list,
-    .data = .data,
-    path_project = path_project
-  )
   gate_tbl <- .get_stats_gate_tbl_get(
-    # nolint
     gate_tbl = gate_tbl,
     chnl_lab = chnl_lab,
     path_project = path_project,
-    params = params,
+    pop_gate = pop_gate,
     gate_name = gate_name,
     tol_clust = tol_clust
   )
+
   chnl <- .get_stats_chnl_get(
-    # nolint
     chnl = chnl,
     gate_tbl = gate_tbl
   )
+
   gate_name <- .get_stats_gate_name_get(
-    # nolint
     gate_name = gate_name,
     gate_tbl = gate_tbl
   )
 
   if ((!filter_other_cyt_pos) && combn) {
     n_chnl <- length(chnl)
-    combn_mat_list <-
-      .get_stats_combn_mat_list_get(
-        # nolint
-        n_chnl = n_chnl,
-        n_pos = 2 # not sure if it should be 2,
-        # but it wasn't really set before
-      )
-    cyt_combn_vec_list <-
-      .get_stats_cyt_combn_vec_list_get(
-        # nolint
-        combn_mat_list = combn_mat_list,
-        chnl = chnl
-      )
+    combn_mat_list <- .get_stats_combn_mat_list_get(
+      n_chnl = n_chnl,
+      n_pos = 2
+    )
+    cyt_combn_vec_list <- .get_stats_cyt_combn_vec_list_get(
+      combn_mat_list = combn_mat_list,
+      chnl = chnl
+    )
   } else {
     combn_mat_list <- NULL
     cyt_combn_vec_list <- NULL
   }
 
   .get_stats_gate_tbl_save(
-    # nolint
     gate_tbl = gate_tbl,
     path_project = path_project,
-    params = params,
+    pop_gate = pop_gate,
+    chnl_lab = chnl_lab,
     chnl = chnl,
     save = save_gate_tbl
   )
 
   stat_tbl <- .get_stats_overall(
-    # nolint
     ind_batch_list = ind_batch_list,
     gate_tbl = gate_tbl,
     chnl = chnl,
@@ -102,7 +82,6 @@
     pop_gate = pop_gate,
     .data = .data,
     chnl_lab = chnl_lab,
-    chnl_cut = params$chnl_cut,
     filter_other_cyt_pos = filter_other_cyt_pos,
     combn_mat_list = combn_mat_list,
     gate_name = gate_name,
@@ -111,12 +90,9 @@
 
   # save it
   .stats_save(
-    # nolint
-    stat_tbl = stat_tbl,
-    path_project = path_project,
-    params = params,
     save = save,
-    chnl = chnl
+    stat_tbl = stat_tbl,
+    path_project = path_project
   )
 }
 
@@ -144,23 +120,6 @@
 #' @title Get gating statistics
 #' @param path_project character. Path to the project directory.
 #' @return A data frame with gating statistics.
-#' @examples{
-#' # Get example dataset
-#' example_data <- get_example_data()
-#' gs <- flowWorkspace::load_gs(example_data$path_gs)
-#'
-#' # Run the stimgate pipeline
-#' path_project <- stimgate_gate(
-#'   path_project = file.path(tempdir(), "stimgate_example"),
-#'   .data = gs,
-#'   batch_list = example_data$batch_list,
-#'   marker = example_data$marker,
-#'   pop_gate = "root"
-#' )
-#'
-#' # Get statistics for the identified gates
-#' stats <- get_stats(path_project)
-#' }
 #' @export
 get_stats <- function(path_project) {
   path_stats_partial <- file.path(path_project, "gate_stats")

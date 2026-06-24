@@ -572,7 +572,7 @@ stimgate_data_get_ex <- function(
     ex,
     combn_exc,
     gate_tbl_ind,
-    chnl,
+    chnl_gate,
     gate_type_cyt_pos,
     gate_type_single_pos
   )

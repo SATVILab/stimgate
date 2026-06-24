@@ -37,7 +37,7 @@
 #' @param grid_n_col Integer.
 #' Number of columns in grid layout.
 #' @param show_gate Logical.
-#' If `TRUE`, overlays gate lines on the plots.|>
+#' If `TRUE`, overlays gate lines on the plots.
 #' Default is `TRUE`.
 #' @param min_cell integer.
 #' Minimum number of cells to be plotted.
@@ -246,7 +246,7 @@ stimgate_plot <- function(
     if (interactive()) {
       prompt_answer <- readline(
         prompt = paste0(
-          "The 'hexbin' package is required for bivariate plots. ", # nolint linter_line_length_linter
+          "The 'hexbin' package is required for bivariate plots. ",
           "Do you want to install it now? [y/n]: "
         )
       )
@@ -261,21 +261,21 @@ stimgate_plot <- function(
   p_list <- lapply(seq_along(ind), function(i) {
     ind_curr <- ind[[i]]
     ex_tbl <- .plot_get_ex_tbl(
-      ind_curr,
-      .data,
-      pop,
-      marker,
-      chnl,
-      exc_min,
-      path_project,
-      bias,
-      combn_exc,
-      chnl_gate,
-      marker_gate,
-      gate_type_cyt_pos,
-      gate_type_single_pos,
-      mult,
-      gate_uns_method
+      ind = ind_curr,
+      .data = .data,
+      pop = pop,
+      marker = marker,
+      chnl = chnl,
+      exc_min = exc_min,
+      path_project = path_project,
+      bias = bias,
+      combn_exc = combn_exc,
+      chnl_gate = chnl_gate,
+      marker_gate = marker_gate,
+      gate_type_cyt_pos = gate_type_cyt_pos,
+      gate_type_single_pos = gate_type_single_pos,
+      mult = mult,
+      gate_uns_method = gate_uns_method
     )
     if (nrow(ex_tbl) < min_cell) {
       return(NULL)
@@ -294,13 +294,13 @@ stimgate_plot <- function(
     p <- .plot_add_axis_title(p, marker, chnl, axis_lab)
     p <- .plot_add_title(p, ind_curr, i, ind_lab)
     p <- .plot_add_gate(
-      p,
-      ind_curr,
-      marker,
-      chnl,
-      pop,
-      path_project,
-      show_gate
+      p = p,
+      ind = ind_curr,
+      marker = marker,
+      chnl = chnl,
+      pop = pop,
+      path_project = path_project,
+      show_gate = show_gate
     )
     p
   }) |>
@@ -332,78 +332,24 @@ stimgate_plot <- function(
 ) {
   lapply(ind, function(ind_curr) {
     stimgate_data_get_ex(
-      path_project,
-      .data,
-      pop,
-      ind_curr,
-      chnl,
-      marker,
-      bias,
-      exc_min,
-      combn_exc,
-      chnl_gate,
-      marker_gate,
-      gate_type_cyt_pos,
-      gate_type_single_pos,
-      mult,
-      gate_uns_method
+      path_project = path_project,
+      .data = .data,
+      pop = pop,
+      ind = ind_curr,
+      chnl = chnl,
+      marker = marker,
+      bias = bias,
+      exc_min = exc_min,
+      combn_exc = combn_exc,
+      chnl_gate = chnl_gate,
+      marker_gate = marker_gate,
+      gate_type_cyt_pos = gate_type_cyt_pos,
+      gate_type_single_pos = gate_type_single_pos,
+      mult = mult,
+      gate_uns_method = gate_uns_method
     )
   }) |>
     Reduce(rbind, x = _)
-}
-
-
-#' @keywords internal
-.plot_get_ex_tbl_ind <- function(
-  ind,
-  .data,
-  pop,
-  chnl,
-  chnl_lab,
-  exc_min,
-  path_project
-) {
-  ex <- if (!is.null(.data)) {
-    .get_ex_new(.data, pop, chnl, ind, path_project, FALSE)
-  } else {
-    .get_ex_old(pop, chnl, ind, path_project)
-  }
-  ex <- .plot_get_ex_tbl_ind_exc_min(ex, exc_min, chnl)
-  if (!is.null(chnl_lab)) {
-    colnames(ex) <- chnl_lab[colnames(ex)]
-  }
-  ex
-}
-
-#' @keywords internal
-.plot_get_ex_tbl_ind_new <- function(ind, .data, pop, chnl) {
-  fr <- flowWorkspace::gh_pop_get_data(.data[[ind]], y = pop)
-  ex_tbl <- flowCore::exprs(fr) |> tibble::as_tibble()
-  ex_tbl[, chnl, drop = FALSE]
-}
-
-#' @keywords internal
-.plot_get_ex_tbl_ind_old <- function(ind, pop, chnl) {}
-
-#' @keywords internal
-.plot_get_ex_tbl_ind_exc_min <- function(ex_tbl, exc_min, chnl) {
-  if (!exc_min) {
-    return(ex_tbl)
-  }
-  n_row_init <- nrow(ex_tbl)
-  attr(ex_tbl, "n_row_init") <- n_row_init
-  min_val_vec <- vapply(
-    chnl,
-    function(x) min(ex_tbl[[x]], na.rm = TRUE),
-    numeric(1)
-  )
-  for (i in seq_along(chnl)) {
-    ex_tbl <- ex_tbl[ex_tbl[[chnl[i]]] > min_val_vec[i], ]
-  }
-  n_row_final <- nrow(ex_tbl)
-  attr(ex_tbl, "prob_g_min") <- n_row_final / n_row_init
-
-  ex_tbl
 }
 
 #' @keywords internal
@@ -446,7 +392,7 @@ stimgate_plot <- function(
   }
   marker <- marker %||% stimgate_meta_read_chnl_lab(path_project)[chnl]
   chnl <- chnl %||% stimgate_meta_read_marker_lab(path_project)[marker]
-  pop <- pop %||% .gate_get_pop(path_project)
+  pop = pop %||% .gate_get_pop(path_project)
   if (length(pop) > 1L) {
     stop("Cannot plot gates for multiple populations")
   }
@@ -486,8 +432,8 @@ stimgate_plot <- function(
 #' @keywords internal
 .plot_get_gate_tbl <- function(ind, pop, marker, chnl, path_project) {
   gate_tbl <- stimgate_gate_get(
-    path_project,
-    pop,
+    path_project = path_project,
+    pop = pop,
     chnl = chnl,
     marker = marker
   ) |>
@@ -698,21 +644,21 @@ stimgate_plot <- function(
   gate_uns_method
 ) {
   ex_tbl <- stimgate_data_get_ex(
-    path_project,
-    .data,
-    pop,
-    ind,
-    chnl,
-    marker,
-    bias,
-    exc_min,
-    combn_exc,
-    chnl_gate,
-    marker_gate,
-    gate_type_cyt_pos,
-    gate_type_single_pos,
-    mult,
-    gate_uns_method
+    path_project = path_project,
+    .data = .data,
+    pop = pop,
+    ind = ind,
+    chnl = chnl,
+    marker = marker,
+    bias = bias,
+    exc_min = exc_min,
+    combn_exc = combn_exc,
+    chnl_gate = chnl_gate,
+    marker_gate = marker_gate,
+    gate_type_cyt_pos = gate_type_cyt_pos,
+    gate_type_single_pos = gate_type_single_pos,
+    mult = mult,
+    gate_uns_method = gate_uns_method
   )
   if (nrow(ex_tbl) < min_cell) {
     return(NULL)
@@ -721,10 +667,10 @@ stimgate_plot <- function(
   dens_obj_raw <- density(ex_tbl[[.var]], na.rm = TRUE)
   plot_tbl <- tibble::tibble(x = dens_obj_raw$x, y = dens_obj_raw$y)
   .plot_gate_uv_marker_add_adj(
-    exc_min,
-    plot_tbl,
-    dens_obj_raw,
-    ex_tbl
+    exc_min = exc_min,
+    plot_tbl = plot_tbl,
+    dens_obj_raw = dens_obj_raw,
+    ex_tbl = ex_tbl
   )
 }
 

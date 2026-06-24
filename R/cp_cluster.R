@@ -6,33 +6,31 @@
   gate_tbl,
   gate_stats_tbl,
   gate_tbl_ctrl,
+  chnl_settings,
+  stage,
+  path_project,
   control = list(),
   chnl,
   bw,
-  params,
-  filter_other_cyt_pos,
-  stage = NULL
+  filter_other_cyt_pos
 ) {
-  .debug("Adjusting thresholds within clusters") # nolint
   # ==================================
   # PREPARATION
   # ==================================
   .browse(seq_along(.data)) # nolint
 
-  stage_use <- stage %||% params$stage %||% "unknown_stage"
-  chnl_use <- params$chnl_cut %||% chnl
+  stage_use <- stage %||% "unknown_stage"
+  chnl_use <- chnl_settings$chnl_cut %||% chnl
   if (is.null(chnl_use) || !nzchar(chnl_use)) {
     chnl_use <- "unknown_chnl"
   }
   stage_chnl <- file.path(stage_use, chnl_use)
-  path_project <- params$path_project
 
   # control
   control <- .get_cp_cluster_control_update(control) # nolint
 
   # statistics
   gate_stats_tbl <- .get_cp_cluster_gate_stats_tbl_update(
-    # nolint
     gate_stats_tbl
   )
 
@@ -41,18 +39,17 @@
   max_cp <- .get_cp_cluster_cp_get_max(gate_tbl, gate_tbl_ctrl) # nolint
 
   prop_bs_by_cp_tbl_obj <- .get_cp_cluster_prop_bs_by_cp_tbl_obj(
-    # nolint
     .data = .data,
     gate_tbl = gate_tbl,
-    ind_batch_list = params$ind_batch_list,
-    chnl_cut = params$chnl_cut,
-    pop_gate = params$pop_gate,
-    calc_cyt_pos_gates = params$calc_cyt_pos_gates,
+    ind_batch_list = chnl_settings$ind_batch_list,
+    chnl_cut = chnl_settings$chnl_cut,
+    pop_gate = chnl_settings$pop_gate,
+    calc_cyt_pos_gates = chnl_settings$calc_cyt_pos_gates,
     cp_min = cp_min,
     max_cp = max_cp,
     gate_stats_tbl = gate_stats_tbl,
     filter_other_cyt_pos = filter_other_cyt_pos,
-    path_project = params$path_project
+    path_project = path_project
   )
 
   prop_bs_by_cp_tbl <- prop_bs_by_cp_tbl_obj[["prop_bs_by_cp_tbl"]]
@@ -62,29 +59,26 @@
   .int_save("all", stage_chnl, path_project, prop_bs_by_cp_tbl)
 
   dens_tbl <- .get_cp_cluster_dens_tbl_get(
-    # nolint
-    ind_batch_list = params$ind_batch_list,
+    ind_batch_list = chnl_settings$ind_batch_list,
     .data = .data,
     filter_other_cyt_pos = filter_other_cyt_pos,
-    calc_cyt_pos_gates = params$calc_cyt_pos_gates,
-    chnl_cut = params$chnl_cut,
+    calc_cyt_pos_gates = chnl_settings$calc_cyt_pos_gates,
+    chnl_cut = chnl_settings$chnl_cut,
     expr_min = expr_min,
     expr_max = expr_max,
-    pop_gate = params$pop_gate,
+    pop_gate = chnl_settings$pop_gate,
     gate_tbl = gate_tbl,
     control = control,
     bw = bw,
-    path_project = params$path_project
+    path_project = path_project
   )
 
   .int_save("all", stage_chnl, path_project, dens_tbl)
 
   n_clus <- .get_cp_cluster_n_clus(
-    # nolint
     dens_tbl
   )
   clus_vec <- .get_cp_cluster_clus(
-    # nolint
     dens_tbl,
     n_clus
   )
@@ -106,8 +100,7 @@
     .get_cp_cluster_plot_check_1(dens_tbl)
   }
 
-  # bind onto the summary statistics the group
-  # labels
+  # bind onto the summary statistics the group labels
   dens_tbl_join <- dens_tbl |>
     dplyr::group_by(batch, ind) |> # nolint
     dplyr::slice(1) |>
@@ -120,26 +113,15 @@
   # CALCULATE THRESHOLDS
   # =====================================
 
-  # length table,
-  # making a column group that contains
-  # the total number of groups
-  # and are the group allocations
-  # but this makes no sense, given the "grp" column
-  # above?
-  # fit smoothed models to proportion with se <= 1
-  # --------------------------
-
   cp_grp_lab_vec <- .get_cp_cluster_cp_grp_lab_vec_get(
-    # nolint
     prop_bs_by_cp_tbl = prop_bs_by_cp_tbl,
     expr_max = expr_max,
     expr_min = expr_min
   )
 
   gate_summ_stat_tbl <- .get_cp_cluster_gate_summ_stat_tbl_get(
-    # nolint
     gate_tbl = gate_tbl,
-    chnl_cut = params$chnl_cut,
+    chnl_cut = chnl_settings$chnl_cut,
     grp_ind_lab_vec = grp_ind_lab_vec
   )
 
@@ -147,23 +129,18 @@
   # ---------------------------
 
   # calculate cp_join for each ind
-
   cp_tbl <- .get_cp_cluster_cp_join_get(
-    # nolint
     prop_bs_by_cp_tbl = prop_bs_by_cp_tbl,
     cp_grp_lab_vec = cp_grp_lab_vec
   )
 
   gate_tbl_chnl <- .get_cp_cluster_gate_tbl_chnl_get(
-    # nolint
     gate_tbl,
     chnl
   )
 
-  # add other tables with useful information
-  # for creating new gates
+  # add other tables with useful information for creating new gates
   cp_tbl <- .get_cp_cluster_cp_tbl_add_info(
-    # nolint
     cp_tbl = cp_tbl,
     gate_stats_tbl = gate_stats_tbl,
     gate_summ_stat_tbl = gate_summ_stat_tbl,
@@ -172,25 +149,21 @@
   )
 
   cp_tbl <- .get_cp_cluster_cp_tbl_add_orig_quant_min(
-    # nolint
     cp_tbl = cp_tbl
   )
 
   # calculate for each individual cp_lse (less than 0.01 standard errors)
   cp_tbl <- .get_cp_cluster_cp_join_lse_get(
-    # nolint
     cp_tbl = cp_tbl
   )
 
   # add tail-gate-based thresholds
   cp_tbl <- .get_cp_cluster_cp_join_tg_get(
-    # nolint
     cp_tbl = cp_tbl
   )
 
   # calculate cp where you don't go all the way to the new cp,
-  # but only halfway from original cp
-  # (if original cp higher)
+  # but only halfway from original cp (if original cp higher)
   cp_tbl <- cp_tbl |>
     .get_cp_cluster_cp_lse_orig_mean() # nolint
 
@@ -207,36 +180,31 @@
     .get_cp_cluster_cp_filter_above_cp_join_lse_orig_mean_tg() # nolint
 
   # if no gate found above, then set it to base threshold OR
-  # impute based on group. Not going to work when original threshold is NA.
-
+  # impute based on group.
   cp_tbl <- .get_cp_cluster_cp_impute_missing_batch(
-    # nolint
     cp_tbl = cp_tbl,
-    chnl_cut = params$chnl_cut,
+    chnl_cut = chnl_settings$chnl_cut,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl
   )
 
   cp_tbl <- .get_cp_cluster_impute_missing_ind(
-    # nolint
     cp_tbl = cp_tbl,
-    chnl_cut = params$chnl_cut,
+    chnl_cut = chnl_settings$chnl_cut,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl
   )
 
   cp_tbl <- .get_cp_cluster_impute_missing_final(
-    # nolint
     cp_tbl = cp_tbl,
-    chnl_cut = params$chnl_cut,
+    chnl_cut = chnl_settings$chnl_cut,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl
   )
 
   cp_tbl <- .get_cp_cluster_impute_missing_final_batch(
-    # nolint
     cp_tbl = cp_tbl,
-    chnl_cut = params$chnl_cut,
+    chnl_cut = chnl_settings$chnl_cut,
     gate_tbl = gate_tbl,
     dens_tbl = dens_tbl
   )
@@ -246,6 +214,5 @@
   # =========================
   # OUTPUT
   # =========================
-
   cp_tbl
 }

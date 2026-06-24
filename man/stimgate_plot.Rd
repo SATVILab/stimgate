@@ -78,7 +78,7 @@ Default is \code{TRUE}.}
 Number of columns in grid layout.}
 
 \item{show_gate}{Logical.
-If \code{TRUE}, overlays gate lines on the plots.|>
+If \code{TRUE}, overlays gate lines on the plots.
 Default is \code{TRUE}.}
 
 \item{min_cell}{integer.

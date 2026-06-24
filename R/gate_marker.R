@@ -65,13 +65,13 @@
 
   .gate_chnl_get_adj_gates(
     # nolint
-    gate_tbl_params = params$gate_tbl,
+    gate_tbl_params = chnl_settings$gate_tbl,
     gate_tbl = gate_tbl,
-    tol_clust = tol_clust,
-    gate_quant = gate_quant,
-    params = params,
-    chnl_cut,
-    bw_min = bw_min,
+    tol_clust = chnl_settings$tol_clust,
+    gate_quant = chnl_settings$gate_quant,
+    chnl_settings = chnl_settings,
+    chnl_cut = chnl_cut,
+    bw_min = chnl_settings$bw_min,
     .data = .data,
     path_project = path_project,
     pop_gate = pop_gate,
