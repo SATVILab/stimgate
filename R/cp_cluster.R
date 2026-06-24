@@ -10,21 +10,16 @@
   stage,
   path_project,
   control = list(),
-  chnl,
-  bw,
-  filter_other_cyt_pos
+  filter_other_cyt_pos,
+  calc_cyt_pos_gates,
+  ind_batch_list
 ) {
   # ==================================
   # PREPARATION
   # ==================================
   .browse(seq_along(.data)) # nolint
 
-  stage_use <- stage %||% "unknown_stage"
-  chnl_use <- chnl_settings$chnl_cut %||% chnl
-  if (is.null(chnl_use) || !nzchar(chnl_use)) {
-    chnl_use <- "unknown_chnl"
-  }
-  stage_chnl <- file.path(stage_use, chnl_use)
+  stage_chnl <- file.path(stage,  chnl_settings$chnl_cut)
 
   # control
   control <- .get_cp_cluster_control_update(control) # nolint
@@ -41,15 +36,14 @@
   prop_bs_by_cp_tbl_obj <- .get_cp_cluster_prop_bs_by_cp_tbl_obj(
     .data = .data,
     gate_tbl = gate_tbl,
-    ind_batch_list = chnl_settings$ind_batch_list,
-    chnl_cut = chnl_settings$chnl_cut,
-    pop_gate = chnl_settings$pop_gate,
-    calc_cyt_pos_gates = chnl_settings$calc_cyt_pos_gates,
+    ind_batch_list = ind_batch_list,
+    calc_cyt_pos_gates = calc_cyt_pos_gates,
     cp_min = cp_min,
     max_cp = max_cp,
     gate_stats_tbl = gate_stats_tbl,
     filter_other_cyt_pos = filter_other_cyt_pos,
-    path_project = path_project
+    path_project = path_project,
+    chnl_settings = chnl_settings
   )
 
   prop_bs_by_cp_tbl <- prop_bs_by_cp_tbl_obj[["prop_bs_by_cp_tbl"]]
@@ -59,17 +53,15 @@
   .int_save("all", stage_chnl, path_project, prop_bs_by_cp_tbl)
 
   dens_tbl <- .get_cp_cluster_dens_tbl_get(
-    ind_batch_list = chnl_settings$ind_batch_list,
+    ind_batch_list = ind_batch_list,
     .data = .data,
     filter_other_cyt_pos = filter_other_cyt_pos,
-    calc_cyt_pos_gates = chnl_settings$calc_cyt_pos_gates,
-    chnl_cut = chnl_settings$chnl_cut,
+    calc_cyt_pos_gates = calc_cyt_pos_gates,
+    chnl_settings = chnl_settings,
     expr_min = expr_min,
     expr_max = expr_max,
-    pop_gate = chnl_settings$pop_gate,
     gate_tbl = gate_tbl,
     control = control,
-    bw = bw,
     path_project = path_project
   )
 

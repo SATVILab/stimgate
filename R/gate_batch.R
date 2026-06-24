@@ -3,8 +3,6 @@
 .gate_batch <- function(
   .data,
   ind_batch,
-  pop_gate,
-  chnl_cut,
   chnl_settings,
   batch,
   stage,
@@ -15,8 +13,8 @@
     # nolint
     .data = .data,
     ind_batch = ind_batch,
-    pop = pop_gate,
-    chnl_cut = chnl_cut,
+    pop = chnl_settings$pop_gate,
+    chnl_cut = chnl_settings$chnl_cut,
     batch = batch,
     path_project = path_project
   )
@@ -38,6 +36,7 @@
       ex_list = ex_list,
       .data = .data,
       chnl_settings = chnl_settings,
+      calc_cyt_pos_gates = calc_cyt_pos_gates,
       stage = stage,
       path_project = path_project
     )
