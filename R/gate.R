@@ -251,20 +251,13 @@ stimgate_gate <- function(
 
   # get unspecified levels in marker elements
   .save_meta_data(.data, batch_list, path_project)
-  marker_lab <- stimgate_meta_read_marker_lab(path_project)
-  chnl <- chnl %||% (marker_lab[marker] |> stats::setNames(NULL))
-  chnl_settings <- chnl_settings %||%
-    {
-      if (!is.null(marker_settings)) {
-        chnl_settings <- marker_settings
-        names(chnl_settings) <- marker_lab[marker]
-        chnl_settings
-      } else {
-        NULL
-      }
-    }
-  chnl_settings <- .complete_chnl_list(
+  chnl <- .extract_chnl(chnl, marker, path_project)
+
+  chnl_settings <- .complete_chnl_settings(
     chnl = chnl,
+    marker = marker,
+    chnl_settings = chnl_settings,
+    marker_settings = marker_settings,
     bias_uns = bias_uns,
     bias_uns_factor = bias_uns_factor,
     exc_min = exc_min,
@@ -284,7 +277,6 @@ stimgate_gate <- function(
     max_pos_prob_x = max_pos_prob_x,
     gate_combn = gate_combn,
     gate_quant = gate_quant,
-    chnl_settings = chnl_settings,
     path_project = path_project
   )
 
@@ -489,7 +481,11 @@ stimgate_gate <- function(
     filter_other_cyt_pos = FALSE,
     combn = TRUE,
     gate_type_cyt_pos_filter = if (calc_cyt_pos_gates) "cyt" else "base",
-    gate_type_single_pos_filter = if (calc_single_pos_gates) "single" else "base",
+    gate_type_single_pos_filter = if (calc_single_pos_gates) {
+      "single"
+    } else {
+      "base"
+    },
     gate_type_cyt_pos_calc = if (calc_cyt_pos_gates) "cyt" else "base",
     gate_type_single_pos_calc = if (calc_single_pos_gates) "single" else "base",
     save = TRUE,
