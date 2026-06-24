@@ -13,8 +13,7 @@
 #     - ind_list: indices of positive cells per sample
 #     - resp_tbl: metadata about proportions and cell counts
 #     - batch_list: batch groupings
-sample_fs <- function(args_list,
-                      fs) {
+sample_fs <- function(args_list, fs) {
   # Initialize output list with channel names
   chnl_obj_list <- lapply(seq_along(args_list), function(x) NULL) |>
     stats::setNames(names(args_list))
@@ -69,20 +68,22 @@ sample_fs <- function(args_list,
 #     - ind_list: list of indices identifying positive cells in each sample
 #     - resp_tbl: tibble with metadata (batch, n_cell, prop_pos per sample)
 #     - batch_list: the input batch_list (passed through)
-sample_chnl <- function(fs,
-                        batch_list,
-                        chnl,
-                        ind_list_pos_already = NULL,
-                        prop_mean_pos,
-                        prop_sd_pos,
-                        prop_mean_neg,
-                        prop_sd_neg = NULL,
-                        expr_mean_neg,
-                        expr_mean_pos,
-                        expr_sd_pos,
-                        expr_sd_neg = NULL,
-                        prop_mean_pos_ctrb_from_pos = NULL,
-                        prop_sd_pos_ctrb_from_pos = NULL) {
+sample_chnl <- function(
+  fs,
+  batch_list,
+  chnl,
+  ind_list_pos_already = NULL,
+  prop_mean_pos,
+  prop_sd_pos,
+  prop_mean_neg,
+  prop_sd_neg = NULL,
+  expr_mean_neg,
+  expr_mean_pos,
+  expr_sd_pos,
+  expr_sd_neg = NULL,
+  prop_mean_pos_ctrb_from_pos = NULL,
+  prop_sd_pos_ctrb_from_pos = NULL
+) {
   # Initialize storage for positive cell indices
   ind_list <- lapply(seq_along(fs), function(x) NULL)
   ind_list_pos_already <- if (!is.null(ind_list_pos_already)) {
@@ -192,16 +193,18 @@ sample_chnl <- function(fs,
 #     - n_pos: number of positive cells
 #     - ind_pos: indices of positive cells
 #     - expr_vec: vector of expression values for all cells
-sample_response <- function(n,
-                            prop_mean,
-                            prop_sd,
-                            expr_mean_neg,
-                            expr_mean_pos,
-                            expr_sd_pos,
-                            expr_sd_neg = NULL,
-                            ind_pos_already = NULL,
-                            prop_mean_ctrb_from_pos = NULL,
-                            prop_sd_ctrb_from_pos = NULL) {
+sample_response <- function(
+  n,
+  prop_mean,
+  prop_sd,
+  expr_mean_neg,
+  expr_mean_pos,
+  expr_sd_pos,
+  expr_sd_neg = NULL,
+  ind_pos_already = NULL,
+  prop_mean_ctrb_from_pos = NULL,
+  prop_sd_ctrb_from_pos = NULL
+) {
   ind_pos_already <- ind_pos_already %||% integer(0L)
   n_pos_already <- length(ind_pos_already)
   prop_mean_ctrb_from_pos <- prop_mean_ctrb_from_pos %||% 0L
@@ -215,7 +218,8 @@ sample_response <- function(n,
   # must first sample what the contribution is,
   # so the split isn't the same every time:
   prop_ctrb_from_pos <- sample_prop_mean(
-    prop_mean_ctrb_from_pos, prop_sd_ctrb_from_pos
+    prop_mean_ctrb_from_pos,
+    prop_sd_ctrb_from_pos
   )
   # now we have those counts, and that's actually
   # all we need since we're returning indices]
@@ -234,7 +238,8 @@ sample_response <- function(n,
   # as at most all those can be positive
   # and we're choosing from there
   ind_pos_among_already <- sample_ind_pos_map(
-    ind_pos_among_already_ind, ind_pos_already
+    ind_pos_among_already_ind,
+    ind_pos_already
   )
   # Randomly select from not-yet-positive cells
   # which will be positive for this marker
@@ -309,9 +314,9 @@ sample_prop_mean <- function(prop_mean, prop_sd) {
     return(prop_mean)
   }
   # Convert mean and SD to beta distribution parameters
-  nu    <- prop_mean * (1 - prop_mean) / prop_sd^2 - 1
+  nu <- prop_mean * (1 - prop_mean) / prop_sd^2 - 1
   alpha <- prop_mean * nu
-  beta  <- (1 - prop_mean) * nu
+  beta <- (1 - prop_mean) * nu
   # Sample proportion
   rbeta(n = 1, shape1 = alpha, shape2 = beta)
 }
@@ -348,13 +353,15 @@ sample_ind_pos <- function(n, n_cell_pos) {
 #
 # Returns:
 #   Numeric vector of expression values for all n cells
-sample_expr <- function(n,
-                        n_pos,
-                        ind_pos,
-                        mean_neg,
-                        mean_pos,
-                        sd_pos,
-                        sd_neg = NULL) {
+sample_expr <- function(
+  n,
+  n_pos,
+  ind_pos,
+  mean_neg,
+  mean_pos,
+  sd_pos,
+  sd_neg = NULL
+) {
   n_neg <- n - n_pos
   expr_vec <- rep(NA_real_, n)
   # Generate expression values for positive cells if any exist
@@ -408,10 +415,17 @@ calc_resp_combn <- function(chnl_list) {
       n_pos_chnl = stringr::str_count(chnl, stringr::fixed("~+~")),
     ) |>
     dplyr::select(
-      n_pos_chnl, chnl, batch, sample_ind, n_cell, ind, prop_pos, prop_bs,
+      n_pos_chnl,
+      chnl,
+      batch,
+      sample_ind,
+      n_cell,
+      ind,
+      prop_pos,
+      prop_bs,
       everything()
     )
- }
+}
 
 # Generate all possible marker combinations (positive/negative patterns).
 # For n markers, generates 2^n combinations (including all-negative).
@@ -470,15 +484,21 @@ calc_resp_combn_ind <- function(chnl_pos, chnl_list) {
     }) |>
       stats::setNames(names(chnl_list))
     # Find cells positive for ALL required markers (intersection)
-    pos_vec_ind <- Reduce(intersect, lapply(chnl_pos, function(chnl) {
-      ind_list_sample[[chnl]]
-    }))
+    pos_vec_ind <- Reduce(
+      intersect,
+      lapply(chnl_pos, function(chnl) {
+        ind_list_sample[[chnl]]
+      })
+    )
     # Remove cells that are positive for any negative markers
     if (length(chnl_neg) > 0L && length(pos_vec_ind) > 0L) {
       # Union of negative markers (remove if positive for ANY)
-      neg_vec_ind <- Reduce(union, lapply(chnl_neg, function(chnl) {
-        ind_list_sample[[chnl]]
-      }))
+      neg_vec_ind <- Reduce(
+        union,
+        lapply(chnl_neg, function(chnl) {
+          ind_list_sample[[chnl]]
+        })
+      )
       # Subtract negative indices from positive
       pos_vec_ind <- setdiff(pos_vec_ind, neg_vec_ind)
     }
@@ -489,16 +509,16 @@ calc_resp_combn_ind <- function(chnl_pos, chnl_list) {
   resp_tbl
 }
 
-  # Map back to original indices
-  sample_ind_pos_map <- function(ind_subset, ind_full) {
-    if (length(ind_subset) == 0L) {
-      return(integer(0))
-    }
-    if (length(ind_subset) > length(ind_full)) {
-      stop("ind_subset cannot be longer than ind_full")
-    }
-    if (length(ind_full) == 0L) {
-      stop("ind_full cannot be empty")
-    }
-    ind_full[ind_subset]
+# Map back to original indices
+sample_ind_pos_map <- function(ind_subset, ind_full) {
+  if (length(ind_subset) == 0L) {
+    return(integer(0))
   }
+  if (length(ind_subset) > length(ind_full)) {
+    stop("ind_subset cannot be longer than ind_full")
+  }
+  if (length(ind_full) == 0L) {
+    stop("ind_full cannot be empty")
+  }
+  ind_full[ind_subset]
+}

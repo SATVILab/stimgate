@@ -1,9 +1,8 @@
 #' @keywords internal
-.get_stats_chnl_lab_get <- function(chnl_lab,
-                                    .data,
-                                    chnl) {
+.get_stats_chnl_lab_get <- function(chnl_lab, .data, chnl) {
   if (is.null(chnl_lab)) {
-    chnl_lab <- .get_labs( # nolint
+    chnl_lab <- .get_labs(
+      # nolint
       .data = .data[[1]],
       chnl_cut = chnl
     )
@@ -12,13 +11,15 @@
 }
 
 #' @keywords internal
-.get_stats_params_get <- function(params = NULL,
-                                  chnl = NULL,
-                                  pop_gate = NULL,
-                                  chnl_lab = NULL,
-                                  ind_batch_list = NULL,
-                                  .data = NULL,
-                                  path_project) {
+.get_stats_params_get <- function(
+  params = NULL,
+  chnl = NULL,
+  pop_gate = NULL,
+  chnl_lab = NULL,
+  ind_batch_list = NULL,
+  .data = NULL,
+  path_project
+) {
   if (!is.null(params)) {
     return(params)
   }
@@ -35,12 +36,14 @@
 }
 
 #' @keywords internal
-.get_stats_gate_tbl_get <- function(gate_tbl,
-                                    chnl_lab,
-                                    path_project,
-                                    params,
-                                    gate_name = NULL,
-                                    tol_clust = NULL) {
+.get_stats_gate_tbl_get <- function(
+  gate_tbl,
+  chnl_lab,
+  path_project,
+  params,
+  gate_name = NULL,
+  tol_clust = NULL
+) {
   if (!is.null(gate_tbl)) {
     return(gate_tbl)
   }
@@ -49,7 +52,10 @@
     function(chnl_curr) {
       # get stats tbl
       gate_tbl <- .gates_get_path_all(
-        path_project, params$pop_gate, chnl_curr, FALSE
+        path_project,
+        params$pop_gate,
+        chnl_curr,
+        FALSE
       ) |>
         readRDS()
       if (!is.null(gate_name)) {
@@ -70,8 +76,14 @@
           marker = chnl_lab[chnl_curr]
         ) |>
         dplyr::select(
-          chnl, marker, gate_name, # nolint
-          batch, ind, gate, gate_cyt, gate_single # nolint
+          chnl,
+          marker,
+          gate_name, # nolint
+          batch,
+          ind,
+          gate,
+          gate_cyt,
+          gate_single # nolint
         )
     }
   )
@@ -103,8 +115,7 @@
 }
 
 #' @keywords internal
-.get_stats_cyt_combn_vec_list_get <- function(combn_mat_list,
-                                              chnl) {
+.get_stats_cyt_combn_vec_list_get <- function(combn_mat_list, chnl) {
   purrr::map(
     names(combn_mat_list),
     function(n_pos_nm) {
@@ -125,35 +136,49 @@
 }
 
 #' @keywords internal
-.get_stats_gate_tbl_save <- function(gate_tbl,
-                                     path_project,
-                                     params,
-                                     chnl,
-                                     save) {
+.get_stats_gate_tbl_save <- function(
+  gate_tbl,
+  path_project,
+  params,
+  chnl,
+  save
+) {
   if (!save) {
     return(invisible(FALSE))
   }
   if (!"chnl" %in% colnames(gate_tbl)) {
-    gate_tbl <- gate_tbl |> dplyr::mutate(
-      chnl = params$chnl_cut,
-      marker = params$chnl_lab[params$chnl_cut]
-    )
+    gate_tbl <- gate_tbl |>
+      dplyr::mutate(
+        chnl = params$chnl_cut,
+        marker = params$chnl_lab[params$chnl_cut]
+      )
   }
 
   gate_tbl <- gate_tbl |>
     dplyr::select(
-      gate_name, chnl, marker, ind, everything() # nolint
+      gate_name,
+      chnl,
+      marker,
+      ind,
+      everything() # nolint
     )
   gate_tbl[, "ind"] <- as.character(gate_tbl[["ind"]])
 
   gate_tbl <- gate_tbl |>
     dplyr::arrange(gate_name, chnl, marker, ind) # nolint
   path_save_rds <- .gates_get_path_all(
-    path_project, params[["pop_gate"]], chnl[1], FALSE
+    path_project,
+    params[["pop_gate"]],
+    chnl[1],
+    FALSE
   )
   path_save_csv <- sub("\\.rds$", ".csv", path_save_rds)
-  if (file.exists(path_save_rds)) file.remove(path_save_rds)
-  if (file.exists(path_save_csv)) file.remove(path_save_csv)
+  if (file.exists(path_save_rds)) {
+    file.remove(path_save_rds)
+  }
+  if (file.exists(path_save_csv)) {
+    file.remove(path_save_csv)
+  }
   if (!dir.exists(dirname(path_save_csv))) {
     dir.create(dirname(path_save_csv), recursive = TRUE)
   }
@@ -163,11 +188,7 @@
 
 
 #' @keywords internal
-.stats_save <- function(save,
-                        stat_tbl,
-                        path_project,
-                        params,
-                        chnl) {
+.stats_save <- function(save, stat_tbl, path_project, params, chnl) {
   if (!save) {
     return(invisible(stat_tbl))
   }
@@ -184,8 +205,12 @@
   fn_csv <- paste0("gate_stats.csv")
   path_save_fn_rds <- file.path(path_project, fn_rds)
   path_save_fn_csv <- file.path(path_project, fn_csv)
-  if (file.exists(path_save_fn_rds)) file.remove(path_save_fn_rds)
-  if (file.exists(path_save_fn_csv)) file.remove(path_save_fn_csv)
+  if (file.exists(path_save_fn_rds)) {
+    file.remove(path_save_fn_rds)
+  }
+  if (file.exists(path_save_fn_csv)) {
+    file.remove(path_save_fn_csv)
+  }
   write.csv(stat_tbl, path_save_fn_csv)
   saveRDS(stat_tbl, path_save_fn_rds)
   invisible(path_project)

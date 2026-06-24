@@ -1,13 +1,15 @@
 #' @keywords internal
-.gate_cyt_pos <- function(chnl_settings,
-                          ind_batch_list,
-                          pop_gate,
-                          .data,
-                          gate_name = NULL,
-                          bw_min,
-                          calc_cyt_pos = TRUE,
-                          stage,
-                          path_project) {
+.gate_cyt_pos <- function(
+  chnl_settings,
+  ind_batch_list,
+  pop_gate,
+  .data,
+  gate_name = NULL,
+  bw_min,
+  calc_cyt_pos = TRUE,
+  stage,
+  path_project
+) {
   .debug("-------------") # nolint
   .debug("getting cytokine-positive gates") # nolint
   .debug("-------------") # nolint
@@ -16,7 +18,8 @@
   # -------------------------------
 
   # vector of chanls
-  chnl_vec <- .get_cyt_pos_gates_chnl_vec_from_chnl_list( # nolint
+  chnl_vec <- .get_cyt_pos_gates_chnl_vec_from_chnl_list(
+    # nolint
     chnl_settings
   )
 
@@ -27,7 +30,8 @@
   bw_min <- .gate_cyt_pos_max_bw_min(chnl_settings)
 
   # get original gates
-  gate_tbl <- .get_cyt_pos_gates_gate_tbl_get( # nolint
+  gate_tbl <- .get_cyt_pos_gates_gate_tbl_get(
+    # nolint
     chnl_vec = chnl_vec,
     pop = pop_gate,
     path_project = path_project,
@@ -53,7 +57,8 @@
   purrr::map_df(gn_vec, function(gn) {
     gate_tbl_gn <- gate_tbl |> dplyr::filter(gate_name == gn)
     force(gate_tbl_gn)
-    .get_cyt_pos_gates_gate_name( # nolint
+    .get_cyt_pos_gates_gate_name(
+      # nolint
       gate_tbl_gn = gate_tbl_gn,
       .data = .data,
       ind_batch_list = ind_batch_list,
@@ -69,16 +74,18 @@
 }
 
 #' @keywords internal
-.get_cyt_pos_gates_gate_name <- function(gate_tbl_gn,
-                                         .data,
-                                         ind_batch_list,
-                                         chnl_vec,
-                                         chnl_lab_vec,
-                                         pop_gate,
-                                         bw_min,
-                                         calc_cyt_pos,
-                                         stage,
-                                         path_project) {
+.get_cyt_pos_gates_gate_name <- function(
+  gate_tbl_gn,
+  .data,
+  ind_batch_list,
+  chnl_vec,
+  chnl_lab_vec,
+  pop_gate,
+  bw_min,
+  calc_cyt_pos,
+  stage,
+  path_project
+) {
   .debug(
     "Getting cyt+ gates for gate_name: ",
     gate_tbl_gn$gate_name[[1]]
@@ -91,7 +98,8 @@
   cp_tbl_cyt <- purrr::map_df(ind_vec, function(ind) {
     ind_uns <- .get_ind_uns(ind, ind_batch_list)
     batch <- .get_batch(ind, ind_batch_list)
-    .get_cyt_pos_gates_ind( # nolint
+    .get_cyt_pos_gates_ind(
+      # nolint
       ind = ind,
       .data = .data,
       ind_uns = ind_uns,
@@ -119,18 +127,20 @@
 }
 
 #' @keywords internal
-.get_cyt_pos_gates_ind <- function(ind,
-                                   .data,
-                                   ind_uns,
-                                   gate_tbl_gn,
-                                   chnl_vec,
-                                   chnl_lab_vec,
-                                   pop_gate,
-                                   bw_min,
-                                   calc_cyt_pos,
-                                   stage,
-                                   batch,
-                                   path_project) {
+.get_cyt_pos_gates_ind <- function(
+  ind,
+  .data,
+  ind_uns,
+  gate_tbl_gn,
+  chnl_vec,
+  chnl_lab_vec,
+  pop_gate,
+  bw_min,
+  calc_cyt_pos,
+  stage,
+  batch,
+  path_project
+) {
   .debug("Getting cyt+ gates for ind: ", ind) # nolint
 
   # return if ind in batch is the last one, as that is the unstim ind
@@ -139,16 +149,19 @@
   }
 
   # get expression dataframe
-  ex <- .get_ex( # nolint
+  ex <- .get_ex(
+    # nolint
     .data = .data[[ind]],
     pop = pop_gate,
-    chnl_cut = chnl_vec, ind = ind,
+    chnl_cut = chnl_vec,
+    ind = ind,
     ind_uns = ind_uns,
     batch = batch,
     path_project = path_project
   )
 
-  ex_uns <- .get_ex( # nolint
+  ex_uns <- .get_ex(
+    # nolint
     .data = .data[[ind_uns]],
     pop = pop_gate, # nolint
     chnl_cut = chnl_vec,
@@ -171,8 +184,13 @@
     seq_along(chnl_vec),
     function(i) {
       .get_cp_pos_gates_chnl(
-        chnl_curr = chnl_vec[[i]], ex = ex, gate_tbl_ind = gate_tbl_ind,
-        bw_min = bw_min, ind = ind, stage = stage, path_project = path_project
+        chnl_curr = chnl_vec[[i]],
+        ex = ex,
+        gate_tbl_ind = gate_tbl_ind,
+        bw_min = bw_min,
+        ind = ind,
+        stage = stage,
+        path_project = path_project
       )
     }
   )
@@ -187,25 +205,27 @@
 }
 
 #' @keywords internal
-.get_cp_pos_gates_chnl <- function(chnl_curr,
-                                   ex,
-                                   gate_tbl_ind,
-                                   bw_min,
-                                   ind,
-                                   stage,
-                                   path_project) {
+.get_cp_pos_gates_chnl <- function(
+  chnl_curr,
+  ex,
+  gate_tbl_ind,
+  bw_min,
+  ind,
+  stage,
+  path_project
+) {
   .debug("chnl_curr: ", chnl_curr) # nolint
   if (is.na(gate_tbl_ind$gate[gate_tbl_ind$chnl == chnl_curr])) {
     return(NA)
   }
-
 
   # subset only cells pos for at least one other cyt
   # --------------
   non_na_chnl_vec <- gate_tbl_ind |>
     dplyr::filter(!is.na(gate)) |> # nolint
     dplyr::pull("chnl")
-  inc_vec <- .get_pos_ind( # nolint
+  inc_vec <- .get_pos_ind(
+    # nolint
     ex = ex,
     gate_tbl = gate_tbl_ind,
     chnl = setdiff(non_na_chnl_vec, chnl_curr),
@@ -214,8 +234,11 @@
     gate_type_single_pos = "base"
   )
   .int_save_nm(
-    paste0(chnl_curr, "_inc_vec"), inc_vec,
-    ind, stage, path_project
+    paste0(chnl_curr, "_inc_vec"),
+    inc_vec,
+    ind,
+    stage,
+    path_project
   )
 
   # subset expression matrix to only cells positive for
@@ -227,8 +250,11 @@
     dplyr::pull("gate")
 
   .int_save_nm(
-    paste0(chnl_curr, "_cp_orig"), cp_orig,
-    ind, stage, path_project
+    paste0(chnl_curr, "_cp_orig"),
+    cp_orig,
+    ind,
+    stage,
+    path_project
   )
 
   # =====================
@@ -237,12 +263,17 @@
 
   if (FALSE) {
     cp_neg <- .get_cp_neg(
-      ex = ex, inc = inc_vec, chnl = chnl_curr,
+      ex = ex,
+      inc = inc_vec,
+      chnl = chnl_curr,
       bw_min = bw_min
     )
     .int_save_nm(
-      paste0(chnl_curr, "_cp_neg"), cp_neg,
-      ind, stage, path_project
+      paste0(chnl_curr, "_cp_neg"),
+      cp_neg,
+      ind,
+      stage,
+      path_project
     )
   }
 
@@ -250,18 +281,23 @@
   # Cutpoint - based on cyt+ cells
   # =====================
 
-  cp_pos <- .get_cp_pos( # nolint
+  cp_pos <- .get_cp_pos(
+    # nolint
     ex = ex,
     inc = inc_vec,
     chnl = chnl_curr,
     bw_min = bw_min,
     trust_no_or_high_am = FALSE,
     min_cell = 10,
-    cp_orig = cp_orig, n_loop = 5
+    cp_orig = cp_orig,
+    n_loop = 5
   )
   .int_save_nm(
-    paste0(chnl_curr, "_cp_pos"), cp_pos,
-    ind, stage, path_project
+    paste0(chnl_curr, "_cp_pos"),
+    cp_pos,
+    ind,
+    stage,
+    path_project
   )
 
   # =====================
@@ -273,8 +309,11 @@
     cp_cyt_pos <- min(cp_cyt_pos, cp_neg, na.rm = TRUE)
   }
   .int_save_nm(
-    paste0(chnl_curr, "_cp_cyt_pos_final"), cp_cyt_pos,
-    ind, stage, path_project
+    paste0(chnl_curr, "_cp_cyt_pos_final"),
+    cp_cyt_pos,
+    ind,
+    stage,
+    path_project
   )
 
   cp_cyt_pos

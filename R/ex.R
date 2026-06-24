@@ -8,13 +8,15 @@ str_detect_any <- function(string, pattern) {
 }
 
 #' @keywords internal
-.get_ex_list <- function(.data,
-                         ind_batch,
-                         batch,
-                         pop,
-                         chnl_cut,
-                         extra_chnl = NULL,
-                         path_project) {
+.get_ex_list <- function(
+  .data,
+  ind_batch,
+  batch,
+  pop,
+  chnl_cut,
+  extra_chnl = NULL,
+  path_project
+) {
   is_path_given <- is.character(path_project) && nzchar(path_project)
   if (!is_path_given) {
     stop("path_project must be a non-empty character string.")
@@ -38,15 +40,17 @@ str_detect_any <- function(string, pattern) {
 
 
 #' @keywords internal
-.get_ex <- function(.data,
-                    pop,
-                    chnl_cut,
-                    ind,
-                    ind_uns,
-                    batch,
-                    extra_chnl = NULL,
-                    path_project,
-                    add_attributes = TRUE) {
+.get_ex <- function(
+  .data,
+  pop,
+  chnl_cut,
+  ind,
+  ind_uns,
+  batch,
+  extra_chnl = NULL,
+  path_project,
+  add_attributes = TRUE
+) {
   # collect all the channels we need
   # get expression information as a tibble
   # get .data
@@ -85,10 +89,7 @@ str_detect_any <- function(string, pattern) {
 }
 
 #' @keywords internal
-.get_ex_check_chnl_saved <- function(chnl,
-                                     ind,
-                                     pop,
-                                     path_project) {
+.get_ex_check_chnl_saved <- function(chnl, ind, pop, path_project) {
   path_chnl_dir <- .get_ex_chnl_path_dir(ind, pop, path_project)
   if (!dir.exists(path_chnl_dir)) {
     return(FALSE)
@@ -99,10 +100,7 @@ str_detect_any <- function(string, pattern) {
 }
 
 #' @keywords internal
-.get_ex_old <- function(pop,
-                        chnl,
-                        ind,
-                        path_project) {
+.get_ex_old <- function(pop, chnl, ind, path_project) {
   # get expression information as a tibble
   # get .data
   ex <- tibble::tibble(
@@ -119,21 +117,13 @@ str_detect_any <- function(string, pattern) {
 }
 
 #' @keywords internal
-.get_ex_old_chnl_read_ind <- function(chnl,
-                                      ind,
-                                      pop,
-                                      path_project) {
+.get_ex_old_chnl_read_ind <- function(chnl, ind, pop, path_project) {
   path_chnl <- .get_ex_chnl_path(chnl, ind, pop, path_project)
   readRDS(path_chnl)
 }
 
 #' @keywords internal
-.get_ex_new <- function(.data,
-                        pop,
-                        chnl,
-                        ind,
-                        path_project,
-                        save) {
+.get_ex_new <- function(.data, pop, chnl, ind, path_project, save) {
   # get expression information as a tibble
   # get .data
   fr <- flowWorkspace::gh_pop_get_data(.data, y = pop)
@@ -150,11 +140,7 @@ str_detect_any <- function(string, pattern) {
 }
 
 #' @keywords internal
-.get_ex_new_chnl_save <- function(ex,
-                                  ind,
-                                  pop,
-                                  path_project,
-                                  save) {
+.get_ex_new_chnl_save <- function(ex, ind, pop, path_project, save) {
   if (!save) {
     return(invisible(FALSE))
   }
@@ -171,11 +157,7 @@ str_detect_any <- function(string, pattern) {
 }
 
 #' @keywords internal
-.get_ex_new_chnl_save_ind <- function(ex,
-                                      chnl,
-                                      ind,
-                                      pop,
-                                      path_project) {
+.get_ex_new_chnl_save_ind <- function(ex, chnl, ind, pop, path_project) {
   path_chnl <- .get_ex_chnl_path(chnl, ind, pop, path_project)
   if (file.exists(path_chnl)) {
     return(invisible(FALSE))
@@ -204,13 +186,15 @@ str_detect_any <- function(string, pattern) {
 }
 
 #' @keywords internal
-.get_ex_add_attributes <- function(ex,
-                                   ind,
-                                   ind_uns,
-                                   batch,
-                                   chnl_cut,
-                                   pop,
-                                   add_attributes) {
+.get_ex_add_attributes <- function(
+  ex,
+  ind,
+  ind_uns,
+  batch,
+  chnl_cut,
+  pop,
+  add_attributes
+) {
   if (!add_attributes) {
     return(ex)
   }
@@ -241,7 +225,9 @@ str_detect_any <- function(string, pattern) {
 #' @keywords internal
 .get_ind_uns <- function(ind, ind_batch_list) {
   has_ind <- vapply(
-    ind_batch_list, function(x) ind %in% x, logical(1)
+    ind_batch_list,
+    function(x) ind %in% x,
+    logical(1)
   )
   if (sum(has_ind) > 1L) {
     # this is an unstim, as it appears
@@ -257,7 +243,9 @@ str_detect_any <- function(string, pattern) {
 #' @keywords internal
 .get_batch <- function(ind, ind_batch_list) {
   has_ind <- vapply(
-    ind_batch_list, function(x) ind %in% x, logical(1)
+    ind_batch_list,
+    function(x) ind %in% x,
+    logical(1)
   )
   names(ind_batch_list)[has_ind]
 }
@@ -321,24 +309,26 @@ str_detect_any <- function(string, pattern) {
 #' stimgate_data_get_ex(tmp, chnl = "BC1")
 #' }
 #' @export
-stimgate_data_get_ex <- function(path_project,
-                                 .data = NULL,
-                                 pop = NULL,
-                                 ind = NULL,
-                                 chnl = NULL,
-                                 marker = NULL,
-                                 bias = FALSE,
-                                 exc_min = FALSE,
-                                 combn_exc = NULL,
-                                 chnl_gate = NULL,
-                                 marker_gate = NULL,
-                                 gate_type_cyt_pos = "cyt",
-                                 gate_type_single_pos = "single",
-                                 mult = FALSE,
-                                 gate_uns_method = "min",
-                                 trans_fn = NULL,
-                                 trans_chnl = NULL,
-                                 trans_marker = NULL) {
+stimgate_data_get_ex <- function(
+  path_project,
+  .data = NULL,
+  pop = NULL,
+  ind = NULL,
+  chnl = NULL,
+  marker = NULL,
+  bias = FALSE,
+  exc_min = FALSE,
+  combn_exc = NULL,
+  chnl_gate = NULL,
+  marker_gate = NULL,
+  gate_type_cyt_pos = "cyt",
+  gate_type_single_pos = "single",
+  mult = FALSE,
+  gate_uns_method = "min",
+  trans_fn = NULL,
+  trans_chnl = NULL,
+  trans_marker = NULL
+) {
   .assert_string(path_project)
   pop <- pop %|c|% .get_ex_project_pop(path_project)
   if (!is.null(chnl) && !is.null(marker)) {
@@ -360,7 +350,11 @@ stimgate_data_get_ex <- function(path_project,
       }
       .assert_string_vector(chnl)
       ex <- .data_get_ex_init(
-        .data, pop_curr, chnl, ind_curr, path_project
+        .data,
+        pop_curr,
+        chnl,
+        ind_curr,
+        path_project
       )
       ex <- .data_get_ex_exc_min(ex, exc_min, pop, chnl, ind_curr)
       ex <- .data_get_ex_cyt_pos(
@@ -414,17 +408,20 @@ stimgate_data_get_ex <- function(path_project,
   ex_df
 }
 
-.data_get_ex_init <- function(.data,
-                              pop,
-                              chnl,
-                              ind,
-                              path_project) {
+.data_get_ex_init <- function(.data, pop, chnl, ind, path_project) {
   chnl_cut <- chnl[[1]]
   extra_chnl <- setdiff(chnl, chnl_cut)
   extra_chnl <- if (length(extra_chnl) == 0L) NULL else extra_chnl
   .get_ex(
-    .data, pop, chnl_cut, ind, NULL, NULL,
-    extra_chnl, path_project, FALSE
+    .data,
+    pop,
+    chnl_cut,
+    ind,
+    NULL,
+    NULL,
+    extra_chnl,
+    path_project,
+    FALSE
   )
 }
 
@@ -478,10 +475,7 @@ stimgate_data_get_ex <- function(path_project,
 }
 
 #' @keywords internal
-.data_get_ex_bias <- function(ex,
-                              ind,
-                              path_project,
-                              bias) {
+.data_get_ex_bias <- function(ex, ind, path_project, bias) {
   if (!bias) {
     return(ex)
   }
@@ -502,11 +496,13 @@ stimgate_data_get_ex <- function(path_project,
 }
 
 #' @keywords internal
-.data_get_ex_exc_min <- function(ex,
-                                 exc_min,
-                                 pop = NULL,
-                                 chnl = NULL,
-                                 ind = NULL) {
+.data_get_ex_exc_min <- function(
+  ex,
+  exc_min,
+  pop = NULL,
+  chnl = NULL,
+  ind = NULL
+) {
   if (!exc_min) {
     attr(ex, "prob_g_min") <- NULL
     return(ex)
@@ -528,16 +524,18 @@ stimgate_data_get_ex <- function(path_project,
 }
 
 #' @keywords internal
-.data_get_ex_cyt_pos <- function(ex,
-                                 chnl_gate,
-                                 marker_gate,
-                                 pop,
-                                 ind,
-                                 combn_exc = NULL,
-                                 gate_type_cyt_pos = "cyt",
-                                 gate_type_single_pos = "single",
-                                 mult = FALSE,
-                                 path_project) {
+.data_get_ex_cyt_pos <- function(
+  ex,
+  chnl_gate,
+  marker_gate,
+  pop,
+  ind,
+  combn_exc = NULL,
+  gate_type_cyt_pos = "cyt",
+  gate_type_single_pos = "single",
+  mult = FALSE,
+  path_project
+) {
   if (is.null(chnl_gate) && is.null(marker_gate)) {
     return(ex)
   }
@@ -557,8 +555,12 @@ stimgate_data_get_ex <- function(path_project,
     dplyr::filter(.data$ind == .env$ind) # nolint
 
   ex <- .data_get_ex_cyt_pos_inc(
-    ex, gate_tbl_ind, mult, chnl_gate,
-    gate_type_cyt_pos, gate_type_single_pos
+    ex,
+    gate_tbl_ind,
+    mult,
+    chnl_gate,
+    gate_type_cyt_pos,
+    gate_type_single_pos
   )
 
   if (nrow(ex) == 0L) {
@@ -567,12 +569,18 @@ stimgate_data_get_ex <- function(path_project,
   }
 
   ex <- .data_get_ex_cyt_pos_exc(
-    ex, combn_exc, gate_tbl_ind, chnl,
-    gate_type_cyt_pos, gate_type_single_pos
+    ex,
+    combn_exc,
+    gate_tbl_ind,
+    chnl,
+    gate_type_cyt_pos,
+    gate_type_single_pos
   )
 
   if (nrow(ex) == 0L) {
-    message("No stimulation-positive cells after excluding specified cytokine combinations.") # nolint
+    message(
+      "No stimulation-positive cells after excluding specified cytokine combinations."
+    ) # nolint
     return(.data_get_ex_zero_tbl(cn_vec))
   }
 
@@ -586,23 +594,33 @@ stimgate_data_get_ex <- function(path_project,
 }
 
 #' @keywords internal
-.data_get_ex_cyt_pos_inc <- function(ex,
-                                     gate_tbl_ind,
-                                     mult,
-                                     chnl,
-                                     gate_type_cyt_pos,
-                                     gate_type_single_pos) {
+.data_get_ex_cyt_pos_inc <- function(
+  ex,
+  gate_tbl_ind,
+  mult,
+  chnl,
+  gate_type_cyt_pos,
+  gate_type_single_pos
+) {
   inc_vec <- rep(FALSE, nrow(ex))
 
   if (!mult) {
-    inc_vec <- .get_pos_ind( # nolint
-      ex = ex, gate_tbl = gate_tbl_ind, chnl = chnl, chnl_alt = NULL,
+    inc_vec <- .get_pos_ind(
+      # nolint
+      ex = ex,
+      gate_tbl = gate_tbl_ind,
+      chnl = chnl,
+      chnl_alt = NULL,
       gate_type_cyt_pos = gate_type_cyt_pos,
       gate_type_single_pos = gate_type_single_pos
     )
   } else {
-    inc_vec <- .get_pos_ind_mult( # nolint
-      ex = ex, gate_tbl = gate_tbl_ind, chnl = chnl, chnl_alt = NULL,
+    inc_vec <- .get_pos_ind_mult(
+      # nolint
+      ex = ex,
+      gate_tbl = gate_tbl_ind,
+      chnl = chnl,
+      chnl_alt = NULL,
       gate_type_cyt_pos = gate_type_cyt_pos
     )
   }
@@ -610,21 +628,29 @@ stimgate_data_get_ex <- function(path_project,
 }
 
 #' @keywords internal
-.data_get_ex_cyt_pos_exc <- function(ex,
-                                     combn_exc,
-                                     gate_tbl_ind,
-                                     chnl_gate,
-                                     gate_type_cyt_pos,
-                                     gate_type_single_pos) {
+.data_get_ex_cyt_pos_exc <- function(
+  ex,
+  combn_exc,
+  gate_tbl_ind,
+  chnl_gate,
+  gate_type_cyt_pos,
+  gate_type_single_pos
+) {
   if (is.null(combn_exc)) {
     return(ex)
   }
   for (chnl_pos in combn_exc) {
-    if (nrow(ex) == 0) break
-    exc_vec <- .get_pos_ind_cyt_combn( # nolint
-      ex = ex, gate_tbl = gate_tbl_ind,
-      chnl_pos = chnl_pos, chnl_neg = setdiff(chnl_gate, chnl_pos),
-      chnl_alt = NULL, gate_type_cyt_pos = gate_type_cyt_pos,
+    if (nrow(ex) == 0) {
+      break
+    }
+    exc_vec <- .get_pos_ind_cyt_combn(
+      # nolint
+      ex = ex,
+      gate_tbl = gate_tbl_ind,
+      chnl_pos = chnl_pos,
+      chnl_neg = setdiff(chnl_gate, chnl_pos),
+      chnl_alt = NULL,
+      gate_type_cyt_pos = gate_type_cyt_pos,
       gate_type_single_pos = gate_type_single_pos
     )
     ex <- ex[!exc_vec, , drop = FALSE]
@@ -633,9 +659,7 @@ stimgate_data_get_ex <- function(path_project,
 }
 
 #' @keywords internal
-.data_get_ex_renamed <- function(ex,
-                                 is_marker,
-                                 path_project) {
+.data_get_ex_renamed <- function(ex, is_marker, path_project) {
   # if user specified markers, then give them back a table
   # with column names as markers
   if (!is_marker) {
@@ -648,9 +672,7 @@ stimgate_data_get_ex <- function(path_project,
 }
 
 #' @keywords internal
-.data_get_ex_trans <- function(ex,
-                               trans_fn,
-                               trans_chnl) {
+.data_get_ex_trans <- function(ex, trans_fn, trans_chnl) {
   # transform
   if (is.null(trans_fn)) {
     return(ex)
@@ -674,7 +696,9 @@ stimgate_data_get_ex <- function(path_project,
   attr_list <- attributes(ex)
   attr_vec_nm_orig <- names(attr_list)
   attr_vec_nm_add <- c(
-    "is_uns", "prob_g_min", "chnl"
+    "is_uns",
+    "prob_g_min",
+    "chnl"
   )
   attr_vec_nm_add <- intersect(attr_vec_nm_add, attr_vec_nm_orig)
   ex <- tibble::as_tibble(cbind(meta_df, ex))

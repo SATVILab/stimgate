@@ -9,14 +9,14 @@ Posdef <- function(n, ev = runif(n, 1, 2)) {
     if (n == 1) {
         return(matrix(ev, 1, 1))
     }
-    
+
     Z <- matrix(ncol = n, rnorm(n^2))
     decomp <- qr(Z)
     Q <- qr.Q(decomp)
     R <- qr.R(decomp)
     d <- diag(R)
     ph <- d / abs(d)
-    
+
     # ensure that `diag` always returns a diagonal
     # matrix of dim n x n, even when n = 1
     O <- Q %*% diag(ph, nrow = n)

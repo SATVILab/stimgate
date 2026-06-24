@@ -2,11 +2,13 @@
 # Gets measurements for samples and applies bias and noise modifications
 # Returns a list where each element is a numeric vector
 #' @keywords internal
-.prepare_ex_list_with_bias_and_noise <- function(ex_list,
-                                                 ind,
-                                                 exc_min,
-                                                 bias = 0,
-                                                 noise_sd = NULL) {
+.prepare_ex_list_with_bias_and_noise <- function(
+  ex_list,
+  ind,
+  exc_min,
+  bias = 0,
+  noise_sd = NULL
+) {
   purrr::map(ind, function(ind_curr) {
     cut_tbl <- ex_list[[as.character(ind_curr)]]
     attr_list <- attributes(cut_tbl)
@@ -29,12 +31,16 @@
     stats::setNames(as.character(ind))
 }
 
-.prepare_ex_list_with_bias_and_noise_add_attr <- function(ex,
-                                                          attr_list) {
+.prepare_ex_list_with_bias_and_noise_add_attr <- function(ex, attr_list) {
   attr_vec_nm_orig <- names(attr_list)
   attr_vec_nm_add <- c(
-    "ind", "ind_uns", "is_uns", "chnl_cut",
-    "batch", "pop", "prob_g_min"
+    "ind",
+    "ind_uns",
+    "is_uns",
+    "chnl_cut",
+    "batch",
+    "pop",
+    "prob_g_min"
   )
   attr_vec_nm_add <- intersect(attr_vec_nm_add, attr_vec_nm_orig)
   for (i in seq_along(attr_vec_nm_add)) {
@@ -56,21 +62,24 @@
   x_low_ind <- which(x == x_low)
   x_high_ind <- which(x == x_high)
 
-  y[x_low_ind] + (val - x_low) * (y[x_high_ind] - y[x_low_ind]) / (x_high - x_low)
+  y[x_low_ind] +
+    (val - x_low) * (y[x_high_ind] - y[x_low_ind]) / (x_high - x_low)
 }
 
 #' @keywords internal
-.get_cp_tg <- function(ex_list,
-                       gate_combn,
-                       chnl_cut,
-                       exc_min,
-                       tol,
-                       min_cell,
-                       cp_min,
-                       bw,
-                       tg_type,
-                       stage,
-                       path_project) {
+.get_cp_tg <- function(
+  ex_list,
+  gate_combn,
+  chnl_cut,
+  exc_min,
+  tol,
+  min_cell,
+  cp_min,
+  bw,
+  tg_type,
+  stage,
+  path_project
+) {
   # get cytoUtils tailgate cutpoint
   .debug("Getting tg cutpoint")
   stage_chnl <- file.path(stage, chnl_cut)
@@ -81,12 +90,16 @@
     ind_gate <- names(ex_list)[-length(ex_list)]
     ex <- dplyr::bind_rows(ex_list[ind_gate])
     ex <- ex[!is.na(.get_cut(ex)), ]
-    if (exc_min) ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
+    if (exc_min) {
+      ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
+    }
     if (nrow(ex) < max(min_cell, 5)) {
       .int_save_nm(
         file.path(tg_type, "cp_tg_prejoin too few to cut reliably"),
-        cp_min, paste0(ind_gate, collapse = ","),
-        stage_chnl, path_project
+        cp_min,
+        paste0(ind_gate, collapse = ","),
+        stage_chnl,
+        path_project
       )
       cp_vec <- stats::setNames(rep(NA, length(ind_gate)), ind_gate)
     } else {
@@ -94,30 +107,41 @@
       bw_tg <- max(bw, bw_est)
       adjust <- bw_tg / bw_est
       cp <- suppressWarnings(.cytokine_cutpoint(
-        x = .get_cut(ex), num_peaks = 1,
-        ref_peak = 1, tol = tol, side = "right",
-        strict = FALSE, adjust = adjust
+        x = .get_cut(ex),
+        num_peaks = 1,
+        ref_peak = 1,
+        tol = tol,
+        side = "right",
+        strict = FALSE,
+        adjust = adjust
       ))
       .int_save_nm(
         file.path(tg_type, "cp_tg_prejoin_init"),
-        cp, paste0(ind_gate, collapse = ","),
-        stage_chnl, path_project
+        cp,
+        paste0(ind_gate, collapse = ","),
+        stage_chnl,
+        path_project
       )
-      if (
-        is.na(cp) || length(.get_cut(ex)) < min_cell
-      ) {
+      if (is.na(cp) || length(.get_cut(ex)) < min_cell) {
         .int_save_nm(
           file.path(tg_type, "cp_tg_prejoin is NA or too few to cut reliably"),
-          cp, paste0(ind_gate, collapse = ","),
-          stage_chnl, path_project
+          cp,
+          paste0(ind_gate, collapse = ","),
+          stage_chnl,
+          path_project
         )
-        cp <- max(cp_min, max(.get_cut(ex)) +
-          (max(.get_cut(ex)) - min(.get_cut(ex))) / 5)
+        cp <- max(
+          cp_min,
+          max(.get_cut(ex)) +
+            (max(.get_cut(ex)) - min(.get_cut(ex))) / 5
+        )
       }
       .int_save_nm(
         file.path(tg_type, "cp_tg_prejoin final"),
-        cp, paste0(ind_gate, collapse = ","),
-        stage_chnl, path_project
+        cp,
+        paste0(ind_gate, collapse = ","),
+        stage_chnl,
+        path_project
       )
       cp_vec <- stats::setNames(rep(cp, length(ind_gate)), ind_gate)
     }
@@ -135,11 +159,16 @@
       .debug("ind", ind)
       ex <- ex_list[[as.character(ind)]]
       ex <- ex[!is.na(.get_cut(ex)), ]
-      if (exc_min) ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
+      if (exc_min) {
+        ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
+      }
       if (nrow(ex) < max(min_cell, 5)) {
         return(
-          max(cp_min, max(.get_cut(ex)) +
-            (max(.get_cut(ex)) - min(.get_cut(ex))) / 5)
+          max(
+            cp_min,
+            max(.get_cut(ex)) +
+              (max(.get_cut(ex)) - min(.get_cut(ex))) / 5
+          )
         )
       }
       bw_est <- ks::hpi(.get_cut(ex), deriv.order = 1)
@@ -147,13 +176,20 @@
       adjust <- bw_tg / bw_est
 
       cp <- suppressWarnings(.cytokine_cutpoint(
-        x = .get_cut(ex), num_peaks = 1,
-        ref_peak = 1, tol = tol, side = "right",
-        strict = FALSE, adjust = adjust
+        x = .get_cut(ex),
+        num_peaks = 1,
+        ref_peak = 1,
+        tol = tol,
+        side = "right",
+        strict = FALSE,
+        adjust = adjust
       ))
       .int_save_nm(
-        file.path(tg_type, "cp_tg_ind_init"), cp, ind,
-        stage_chnl, path_project
+        file.path(tg_type, "cp_tg_ind_init"),
+        cp,
+        ind,
+        stage_chnl,
+        path_project
       )
       cp
     }) |>
@@ -169,8 +205,10 @@
 
     .int_save_nm(
       file.path(tg_type, "cp_tg_list"),
-      cp_tg_list, names(cp_tg_list),
-      stage_chnl, path_project
+      cp_tg_list,
+      names(cp_tg_list),
+      stage_chnl,
+      path_project
     )
 
     cp_list <- cp_list |> append(cp_tg_list)
@@ -190,23 +228,27 @@
 
   # check if too little .data to model with here
   if (nrow(mod_tbl) < 5 || length(unique(high_ind_tbl$high)) == 1) {
-    message("cp_pwmid set to cp_scp + 5 due to too few obs above cp_sc or too few postive obs")
+    message(
+      "cp_pwmid set to cp_scp + 5 due to too few obs above cp_sc or too few postive obs"
+    )
     return(cp_scp + 5)
   }
 
   # model the probability of positivity above this point
   if (nrow(mod_tbl) < 40) {
-    fit_pw <- glm(high ~ chnl_cut,
-      family = binomial, .data = mod_tbl
-    )
+    fit_pw <- glm(high ~ chnl_cut, family = binomial, .data = mod_tbl)
   } else {
-    fit_pw <- glm(high ~ splines::ns(chnl_cut, df = 3),
-      family = binomial, .data = mod_tbl
+    fit_pw <- glm(
+      high ~ splines::ns(chnl_cut, df = 3),
+      family = binomial,
+      .data = mod_tbl
     )
   }
 
   # get predictions over a range of cut values
-  pred_tbl <- tibble::tibble(chnl_cut = seq(min(mod_tbl$chnl_cut), max(mod_tbl$chnl_cut)))
+  pred_tbl <- tibble::tibble(
+    chnl_cut = seq(min(mod_tbl$chnl_cut), max(mod_tbl$chnl_cut))
+  )
   pred_vec <- predict(fit_pw, pred_tbl, type = "response")
   pred_tbl <- pred_tbl |> dplyr::mutate(pred = pred_vec)
 
@@ -227,9 +269,11 @@
   # initial search parameter
   init_par <- mean(c(cp_scp, max(high_ind_tbl$chnl_cut)))
   # optimisation
-  optim(init_par,
+  optim(
+    init_par,
     fn = opt_func,
-    method = "Brent", lower = cp_scp,
+    method = "Brent",
+    lower = cp_scp,
     upper = max(high_ind_tbl$chnl_cut)
   )$par
 }

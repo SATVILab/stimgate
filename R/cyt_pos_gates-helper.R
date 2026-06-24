@@ -1,8 +1,5 @@
 #' @keywords internal
-.get_inc_vec <- function(chnl_curr,
-                         chnl_vec,
-                         ex,
-                         gate_tbl_ind) {
+.get_inc_vec <- function(chnl_curr, chnl_vec, ex, gate_tbl_ind) {
   inc_vec <- rep(FALSE, nrow(ex))
 
   for (chnl_alt in setdiff(chnl_vec, chnl_curr)) {
@@ -16,12 +13,14 @@
 }
 
 #' @keywords internal
-.get_cp_neg <- function(ex,
-                        inc,
-                        chnl,
-                        bw_min,
-                        min_cell = 1e3,
-                        max_peak_ratio = 1e3) {
+.get_cp_neg <- function(
+  ex,
+  inc,
+  chnl,
+  bw_min,
+  min_cell = 1e3,
+  max_peak_ratio = 1e3
+) {
   # get cytokine-negative cells
   ex_neg <- ex[!inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
 
@@ -32,7 +31,9 @@
 
   # calculate density
   dens_neg <- density(ex_neg, bw = "SJ")
-  if (dens_neg$bw < bw_min) dens_neg <- density(ex_neg, bw = bw_min)
+  if (dens_neg$bw < bw_min) {
+    dens_neg <- density(ex_neg, bw = bw_min)
+  }
 
   # calculate mode furthest to the right
   dens_len <- length(dens_neg$x)
@@ -61,16 +62,24 @@
 
 
 #' @keywords internal
-.get_cp_pos <- function(ex,
-                        inc,
-                        chnl,
-                        bw_min,
-                        trust_no_or_high_am = FALSE,
-                        min_cell = 10,
-                        cp_orig, n_loop = 5) {
+.get_cp_pos <- function(
+  ex,
+  inc,
+  chnl,
+  bw_min,
+  trust_no_or_high_am = FALSE,
+  min_cell = 10,
+  cp_orig,
+  n_loop = 5
+) {
   cp_pos <- .get_cp_pos_ind(
-    ex = ex, inc = inc, chnl = chnl, bw_min = bw_min, adjust = 1,
-    trust_no_or_high_am = FALSE, min_cell = 10,
+    ex = ex,
+    inc = inc,
+    chnl = chnl,
+    bw_min = bw_min,
+    adjust = 1,
+    trust_no_or_high_am = FALSE,
+    min_cell = 10,
     cp_orig = cp_orig
   )
 
@@ -78,8 +87,13 @@
   while (is.na(cp_pos) && k <= n_loop) {
     if (is.na(cp_pos)) {
       cp_pos <- .get_cp_pos_ind(
-        ex = ex, inc = inc, chnl = chnl, bw_min = bw_min, adjust = 0.5^k,
-        trust_no_or_high_am = FALSE, min_cell = 10,
+        ex = ex,
+        inc = inc,
+        chnl = chnl,
+        bw_min = bw_min,
+        adjust = 0.5^k,
+        trust_no_or_high_am = FALSE,
+        min_cell = 10,
         cp_orig = cp_orig
       )
     }
@@ -91,14 +105,16 @@
 
 
 #' @keywords internal
-.get_cp_pos_ind <- function(ex,
-                            inc,
-                            chnl,
-                            bw_min,
-                            adjust = 1,
-                            trust_no_or_high_am = FALSE,
-                            min_cell = 10,
-                            cp_orig) {
+.get_cp_pos_ind <- function(
+  ex,
+  inc,
+  chnl,
+  bw_min,
+  adjust = 1,
+  trust_no_or_high_am = FALSE,
+  min_cell = 10,
+  cp_orig
+) {
   # .data
   ex_pos <- ex[inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
   if (length(ex_pos) < min_cell) {
@@ -115,9 +131,12 @@
   # ------------------
 
   dens_pos <- density(ex_pos, bw = bw_final, adjust = adjust)
-  dens_neg <- density(ex_neg,
-    bw = bw_final, adjust = adjust,
-    from = min(dens_pos$x), to = max(dens_pos$x)
+  dens_neg <- density(
+    ex_neg,
+    bw = bw_final,
+    adjust = adjust,
+    from = min(dens_pos$x),
+    to = max(dens_pos$x)
   )
 
   # calculate modes and antimodes
@@ -183,7 +202,8 @@
   am_vec_more_than_cp_orig <- am_vec[am_vec > cp_orig]
   am_right_min_ind <- ifelse(
     length(am_vec_more_than_cp_orig) > 0,
-    which(am_vec == min(am_vec_more_than_cp_orig)), NA
+    which(am_vec == min(am_vec_more_than_cp_orig)),
+    NA
   )
   am_right_min <- am_vec[am_right_min_ind]
   # return am between cp_orig and mode to the right of cp_orig as
@@ -204,7 +224,8 @@
   am_vec_less_than_cp_orig <- am_vec[am_vec < cp_orig]
   max_left_am_ind <- ifelse(
     length(am_vec_less_than_cp_orig) > 0,
-    which(am_vec == max(am_vec_less_than_cp_orig)), NA
+    which(am_vec == max(am_vec_less_than_cp_orig)),
+    NA
   )
   max_left_am <- am_vec[max_left_am_ind]
   max_left_am_height <- am_vec_height[max_left_am_ind]
@@ -259,15 +280,19 @@
 }
 
 #' @keywords internal
-.get_cyt_pos_gates_gate_tbl_get <- function(chnl_vec,
-                                            pop,
-                                            path_project,
-                                            chnl_lab) {
+.get_cyt_pos_gates_gate_tbl_get <- function(
+  chnl_vec,
+  pop,
+  path_project,
+  chnl_lab
+) {
   .debug("Getting gate_tbl") # nolint
   purrr::map_df(chnl_vec, function(chnl_curr) {
     # get stats tbl
     .gates_get_path_all(
-      path_project, pop, chnl_curr,
+      path_project,
+      pop,
+      chnl_curr,
       init = TRUE
     ) |>
       readRDS() |>

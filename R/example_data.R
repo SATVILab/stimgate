@@ -47,7 +47,6 @@ get_example_data <- function(dir_cache = NULL) {
     )
   }
 
-
   list(
     path_gs = path_save,
     batch_list = batch_list,
@@ -71,7 +70,9 @@ get_example_data <- function(dir_cache = NULL) {
   }
 
   # If not found, try to download from GitHub release
-  message("Test data not found locally. Attempting to download from GitHub release...")
+  message(
+    "Test data not found locally. Attempting to download from GitHub release..."
+  )
 
   tryCatch(
     {
@@ -89,8 +90,11 @@ get_example_data <- function(dir_cache = NULL) {
         error = function(e_hdc) {
           stop(
             "Failed to obtain test data from all sources.\n",
-            "GitHub error: ", conditionMessage(e_github), "\n",
-            "HDCytoData error: ", conditionMessage(e_hdc)
+            "GitHub error: ",
+            conditionMessage(e_github),
+            "\n",
+            "HDCytoData error: ",
+            conditionMessage(e_hdc)
           )
         }
       )
@@ -107,7 +111,9 @@ get_example_data <- function(dir_cache = NULL) {
   # Build download URL (no authentication needed for public releases)
   download_url <- sprintf(
     "https://github.com/%s/releases/download/%s/%s",
-    repo, tag, filename
+    repo,
+    tag,
+    filename
   )
 
   temp_file <- file.path(dir_cache, filename)
@@ -214,7 +220,8 @@ get_example_data <- function(dir_cache = NULL) {
     expr_sd_pos = 0.1
   )
   args_list <- list(
-    "BC1(La139)Dd" = args_list_bc1, "BC2(Pr141)Dd" = args_list_bc2
+    "BC1(La139)Dd" = args_list_bc1,
+    "BC2(Pr141)Dd" = args_list_bc2
   )
 
   .sample_chnls(args_list = args_list, fs = fs)
@@ -250,17 +257,19 @@ get_example_data <- function(dir_cache = NULL) {
 }
 
 #' @keywords internal
-.sample_chnl <- function(fs,
-                         batch_list,
-                         chnl,
-                         prop_mean_pos,
-                         prop_sd_pos,
-                         prop_mean_neg,
-                         prop_sd_neg = NULL,
-                         expr_mean_neg,
-                         expr_mean_pos,
-                         expr_sd_pos,
-                         expr_sd_neg = NULL) {
+.sample_chnl <- function(
+  fs,
+  batch_list,
+  chnl,
+  prop_mean_pos,
+  prop_sd_pos,
+  prop_mean_neg,
+  prop_sd_neg = NULL,
+  expr_mean_neg,
+  expr_mean_pos,
+  expr_sd_pos,
+  expr_sd_neg = NULL
+) {
   ind_list <- lapply(seq_along(fs), function(x) NULL)
   resp_tbl <- tibble::tibble(
     chnl = chnl,
@@ -323,13 +332,15 @@ get_example_data <- function(dir_cache = NULL) {
 }
 
 #' @keywords internal
-.sample_response <- function(n,
-                             prop_mean,
-                             prop_sd,
-                             expr_mean_neg,
-                             expr_mean_pos,
-                             expr_sd_pos,
-                             expr_sd_neg = NULL) {
+.sample_response <- function(
+  n,
+  prop_mean,
+  prop_sd,
+  expr_mean_neg,
+  expr_mean_pos,
+  expr_sd_pos,
+  expr_sd_neg = NULL
+) {
   n_pos <- .sample_n_pos(
     n = n,
     prop_mean = prop_mean,
@@ -371,13 +382,15 @@ get_example_data <- function(dir_cache = NULL) {
 }
 
 #' @keywords internal
-.sample_expr <- function(n,
-                         n_pos,
-                         ind_pos,
-                         mean_neg,
-                         mean_pos,
-                         sd_pos,
-                         sd_neg = NULL) {
+.sample_expr <- function(
+  n,
+  n_pos,
+  ind_pos,
+  mean_neg,
+  mean_pos,
+  sd_pos,
+  sd_neg = NULL
+) {
   n_neg <- n - n_pos
   expr_vec <- rep(NA_real_, n)
   # only simulate when group has members

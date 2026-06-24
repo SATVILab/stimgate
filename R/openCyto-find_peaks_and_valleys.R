@@ -1,5 +1,12 @@
 #' @keywords internal
-.find_peaks <- function(x, y = NULL, num_peaks = NULL, adjust = 2, plot = FALSE, ...) {
+.find_peaks <- function(
+  x,
+  y = NULL,
+  num_peaks = NULL,
+  adjust = 2,
+  plot = FALSE,
+  ...
+) {
   x <- as.vector(x)
 
   if (length(x) < 2) {
@@ -24,11 +31,13 @@
   # The 'density' function can consider observations outside the observed range.
   # In rare cases, this can actually yield peaks outside this range.  We remove
   # any such peaks.
-  which_maxima <- which_maxima[findInterval(dens$x[which_maxima], range(x)) == 1]
+  which_maxima <- which_maxima[
+    findInterval(dens$x[which_maxima], range(x)) == 1
+  ]
 
   # Next, we sort the peaks in descending order based on the density heights.
   which_maxima <- which_maxima[order(dens$y[which_maxima], decreasing = TRUE)]
-  
+
   # Safely construct the return dataframe
   if (length(which_maxima) > 0) {
     peaks_x <- dens$x[which_maxima]
@@ -36,31 +45,30 @@
       num_peaks <- length(peaks_x)
     }
     peaks <- data.frame(
-      x = peaks_x[seq_len(num_peaks)], 
+      x = peaks_x[seq_len(num_peaks)],
       y = dens$y[which_maxima][seq_len(num_peaks)]
     )
   } else {
     peaks <- data.frame(x = NA_real_, y = NA_real_)
   }
-  
+
   if (plot) {
     plot(dens, main = paste("adjust =", adjust))
     points(peaks$x, peaks$y, col = "red") # Fixed plotting syntax
   }
-  
-  peaks 
+
+  peaks
 }
 
 #' @keywords internal
 .find_valleys <- function(x, y = NULL, num_valleys = NULL, adjust = 2, ...) {
-
   x <- as.vector(x)
 
   if (length(x) < 2) {
     warning("At least 2 observations must be given in 'x' to find valleys.")
     return(NA)
   }
-  
+
   if (is.null(y)) {
     dens <- density(x, adjust = adjust, ...)
   } else {
@@ -78,7 +86,9 @@
   # The 'density' function can consider observations outside the observed range.
   # In rare cases, this can actually yield valleys outside this range. We remove
   # any such valleys.
-  which_minima <- which_minima[findInterval(dens$x[which_minima], range(x)) == 1]
+  which_minima <- which_minima[
+    findInterval(dens$x[which_minima], range(x)) == 1
+  ]
 
   # Next, we sort the valleys in descending order based on the density heights.
   which_minima <- which_minima[order(dens$y[which_minima], decreasing = FALSE)]

@@ -73,29 +73,31 @@
 #'   grid = TRUE
 #' )
 #' @export
-stimgate_plot <- function(ind,
-                          .data,
-                          path_project,
-                          marker = NULL,
-                          chnl = NULL,
-                          pop = NULL,
-                          ind_lab = NULL,
-                          axis_lab = NULL,
-                          exc_min = TRUE,
-                          limits_expand = NULL,
-                          limits_equal = FALSE,
-                          grid = TRUE,
-                          grid_n_col = 2,
-                          show_gate = TRUE,
-                          min_cell = 10,
-                          bias = FALSE,
-                          combn_exc = NULL,
-                          chnl_gate = NULL,
-                          marker_gate = NULL,
-                          gate_type_cyt_pos = "cyt",
-                          gate_type_single_pos = "single",
-                          mult = FALSE,
-                          gate_uns_method = "min") {
+stimgate_plot <- function(
+  ind,
+  .data,
+  path_project,
+  marker = NULL,
+  chnl = NULL,
+  pop = NULL,
+  ind_lab = NULL,
+  axis_lab = NULL,
+  exc_min = TRUE,
+  limits_expand = NULL,
+  limits_equal = FALSE,
+  grid = TRUE,
+  grid_n_col = 2,
+  show_gate = TRUE,
+  min_cell = 10,
+  bias = FALSE,
+  combn_exc = NULL,
+  chnl_gate = NULL,
+  marker_gate = NULL,
+  gate_type_cyt_pos = "cyt",
+  gate_type_single_pos = "single",
+  mult = FALSE,
+  gate_uns_method = "min"
+) {
   if (is.null(marker) && is.null(chnl)) {
     stop("Must specify one of marker or chnl")
   }
@@ -107,14 +109,26 @@ stimgate_plot <- function(ind,
     stop("No population found for plotting gates")
   }
   p_list <- .plot_gate(
-    ind = ind, ind_lab = ind_lab, .data = .data,
-    marker = marker, chnl = chnl, pop = pop, axis_lab = axis_lab,
-    path_project = path_project, exc_min = exc_min,
-    limits_expand = limits_expand, limits_equal = limits_equal,
-    show_gate = show_gate, min_cell = min_cell,
-    bias = bias, combn_exc = combn_exc, chnl_gate = chnl_gate,
-    marker_gate = marker_gate, gate_type_cyt_pos = gate_type_cyt_pos,
-    gate_type_single_pos = gate_type_single_pos, mult = mult,
+    ind = ind,
+    ind_lab = ind_lab,
+    .data = .data,
+    marker = marker,
+    chnl = chnl,
+    pop = pop,
+    axis_lab = axis_lab,
+    path_project = path_project,
+    exc_min = exc_min,
+    limits_expand = limits_expand,
+    limits_equal = limits_equal,
+    show_gate = show_gate,
+    min_cell = min_cell,
+    bias = bias,
+    combn_exc = combn_exc,
+    chnl_gate = chnl_gate,
+    marker_gate = marker_gate,
+    gate_type_cyt_pos = gate_type_cyt_pos,
+    gate_type_single_pos = gate_type_single_pos,
+    mult = mult,
     gate_uns_method = gate_uns_method
   )
   if (length(p_list) == 0L) {
@@ -124,51 +138,74 @@ stimgate_plot <- function(ind,
 }
 
 #' @keywords internal
-.plot_gate <- function(marker,
-                       chnl,
-                       pop,
-                       ind,
-                       ind_lab,
-                       .data,
-                       axis_lab,
-                       path_project,
-                       exc_min,
-                       limits_expand,
-                       limits_equal,
-                       show_gate,
-                       min_cell,
-                       bias,
-                       combn_exc,
-                       chnl_gate,
-                       marker_gate,
-                       gate_type_cyt_pos,
-                       gate_type_single_pos,
-                       mult,
-                       gate_uns_method) {
+.plot_gate <- function(
+  marker,
+  chnl,
+  pop,
+  ind,
+  ind_lab,
+  .data,
+  axis_lab,
+  path_project,
+  exc_min,
+  limits_expand,
+  limits_equal,
+  show_gate,
+  min_cell,
+  bias,
+  combn_exc,
+  chnl_gate,
+  marker_gate,
+  gate_type_cyt_pos,
+  gate_type_single_pos,
+  mult,
+  gate_uns_method
+) {
   # bv
   p_list_bv <- .plot_gate_bv(
-    marker = marker, chnl = chnl, pop = pop,
-    ind = ind, ind_lab = ind_lab,
-    .data = .data, axis_lab = axis_lab,
-    path_project = path_project, exc_min = exc_min,
-    limits_expand = limits_expand, limits_equal = limits_equal,
-    show_gate = show_gate, min_cell = min_cell,
-    bias = bias, combn_exc = combn_exc, chnl_gate = chnl_gate,
-    marker_gate = marker_gate, gate_type_cyt_pos = gate_type_cyt_pos,
-    gate_type_single_pos = gate_type_single_pos, mult = mult,
+    marker = marker,
+    chnl = chnl,
+    pop = pop,
+    ind = ind,
+    ind_lab = ind_lab,
+    .data = .data,
+    axis_lab = axis_lab,
+    path_project = path_project,
+    exc_min = exc_min,
+    limits_expand = limits_expand,
+    limits_equal = limits_equal,
+    show_gate = show_gate,
+    min_cell = min_cell,
+    bias = bias,
+    combn_exc = combn_exc,
+    chnl_gate = chnl_gate,
+    marker_gate = marker_gate,
+    gate_type_cyt_pos = gate_type_cyt_pos,
+    gate_type_single_pos = gate_type_single_pos,
+    mult = mult,
     gate_uns_method = gate_uns_method
   )
 
   # uv
   p_list_uv <- .plot_gate_uv(
-    ind = ind, ind_lab = ind_lab, .data = .data,
-    marker = marker, chnl = chnl, pop = pop,
-    exc_min = exc_min, axis_lab = axis_lab,
-    show_gate = show_gate, path_project = path_project,
+    ind = ind,
+    ind_lab = ind_lab,
+    .data = .data,
+    marker = marker,
+    chnl = chnl,
+    pop = pop,
+    exc_min = exc_min,
+    axis_lab = axis_lab,
+    show_gate = show_gate,
+    path_project = path_project,
     min_cell = min_cell,
-    bias = bias, combn_exc = combn_exc, chnl_gate = chnl_gate,
-    marker_gate = marker_gate, gate_type_cyt_pos = gate_type_cyt_pos,
-    gate_type_single_pos = gate_type_single_pos, mult = mult,
+    bias = bias,
+    combn_exc = combn_exc,
+    chnl_gate = chnl_gate,
+    marker_gate = marker_gate,
+    gate_type_cyt_pos = gate_type_cyt_pos,
+    gate_type_single_pos = gate_type_single_pos,
+    mult = mult,
     gate_uns_method = gate_uns_method
   )
 
@@ -176,27 +213,29 @@ stimgate_plot <- function(ind,
 }
 
 #' @keywords internal
-.plot_gate_bv <- function(marker,
-                          chnl,
-                          pop,
-                          ind,
-                          ind_lab,
-                          .data,
-                          axis_lab,
-                          path_project,
-                          exc_min,
-                          limits_expand,
-                          limits_equal,
-                          show_gate,
-                          min_cell,
-                          bias,
-                          combn_exc,
-                          chnl_gate,
-                          marker_gate,
-                          gate_type_cyt_pos,
-                          gate_type_single_pos,
-                          mult,
-                          gate_uns_method) {
+.plot_gate_bv <- function(
+  marker,
+  chnl,
+  pop,
+  ind,
+  ind_lab,
+  .data,
+  axis_lab,
+  path_project,
+  exc_min,
+  limits_expand,
+  limits_equal,
+  show_gate,
+  min_cell,
+  bias,
+  combn_exc,
+  chnl_gate,
+  marker_gate,
+  gate_type_cyt_pos,
+  gate_type_single_pos,
+  mult,
+  gate_uns_method
+) {
   one_chnl <- is.null(marker) && !is.null(chnl) && length(chnl) == 1L
   one_marker <- is.null(chnl) && !is.null(marker) && length(marker) == 1L
   one_var <- one_chnl || one_marker
@@ -223,11 +262,20 @@ stimgate_plot <- function(ind,
     ind_curr <- ind[[i]]
     ex_tbl <- .plot_get_ex_tbl(
       ind_curr,
-      .data, pop, marker, chnl,
-      exc_min, path_project, bias,
-      combn_exc, chnl_gate, marker_gate,
-      gate_type_cyt_pos, gate_type_single_pos,
-      mult, gate_uns_method
+      .data,
+      pop,
+      marker,
+      chnl,
+      exc_min,
+      path_project,
+      bias,
+      combn_exc,
+      chnl_gate,
+      marker_gate,
+      gate_type_cyt_pos,
+      gate_type_single_pos,
+      mult,
+      gate_uns_method
     )
     if (nrow(ex_tbl) < min_cell) {
       return(NULL)
@@ -246,7 +294,13 @@ stimgate_plot <- function(ind,
     p <- .plot_add_axis_title(p, marker, chnl, axis_lab)
     p <- .plot_add_title(p, ind_curr, i, ind_lab)
     p <- .plot_add_gate(
-      p, ind_curr, marker, chnl, pop, path_project, show_gate
+      p,
+      ind_curr,
+      marker,
+      chnl,
+      pop,
+      path_project,
+      show_gate
     )
     p
   }) |>
@@ -259,27 +313,40 @@ stimgate_plot <- function(ind,
 }
 
 #' @keywords internal
-.plot_get_ex_tbl <- function(ind,
-                             .data,
-                             pop,
-                             marker,
-                             chnl,
-                             exc_min,
-                             path_project,
-                             bias,
-                             combn_exc,
-                             chnl_gate,
-                             marker_gate,
-                             gate_type_cyt_pos,
-                             gate_type_single_pos,
-                             mult,
-                             gate_uns_method) {
+.plot_get_ex_tbl <- function(
+  ind,
+  .data,
+  pop,
+  marker,
+  chnl,
+  exc_min,
+  path_project,
+  bias,
+  combn_exc,
+  chnl_gate,
+  marker_gate,
+  gate_type_cyt_pos,
+  gate_type_single_pos,
+  mult,
+  gate_uns_method
+) {
   lapply(ind, function(ind_curr) {
     stimgate_data_get_ex(
-      path_project, .data, pop, ind_curr, chnl,
-      marker, bias, exc_min, combn_exc, chnl_gate,
-      marker_gate, gate_type_cyt_pos,
-      gate_type_single_pos, mult, gate_uns_method
+      path_project,
+      .data,
+      pop,
+      ind_curr,
+      chnl,
+      marker,
+      bias,
+      exc_min,
+      combn_exc,
+      chnl_gate,
+      marker_gate,
+      gate_type_cyt_pos,
+      gate_type_single_pos,
+      mult,
+      gate_uns_method
     )
   }) |>
     Reduce(rbind, x = _)
@@ -287,13 +354,15 @@ stimgate_plot <- function(ind,
 
 
 #' @keywords internal
-.plot_get_ex_tbl_ind <- function(ind,
-                                 .data,
-                                 pop,
-                                 chnl,
-                                 chnl_lab,
-                                 exc_min,
-                                 path_project) {
+.plot_get_ex_tbl_ind <- function(
+  ind,
+  .data,
+  pop,
+  chnl,
+  chnl_lab,
+  exc_min,
+  path_project
+) {
   ex <- if (!is.null(.data)) {
     .get_ex_new(.data, pop, chnl, ind, path_project, FALSE)
   } else {
@@ -307,19 +376,14 @@ stimgate_plot <- function(ind,
 }
 
 #' @keywords internal
-.plot_get_ex_tbl_ind_new <- function(ind,
-                                     .data,
-                                     pop,
-                                     chnl) {
+.plot_get_ex_tbl_ind_new <- function(ind, .data, pop, chnl) {
   fr <- flowWorkspace::gh_pop_get_data(.data[[ind]], y = pop)
   ex_tbl <- flowCore::exprs(fr) |> tibble::as_tibble()
   ex_tbl[, chnl, drop = FALSE]
 }
 
 #' @keywords internal
-.plot_get_ex_tbl_ind_old <- function(ind,
-                                     pop,
-                                     chnl) {}
+.plot_get_ex_tbl_ind_old <- function(ind, pop, chnl) {}
 
 #' @keywords internal
 .plot_get_ex_tbl_ind_exc_min <- function(ex_tbl, exc_min, chnl) {
@@ -329,7 +393,9 @@ stimgate_plot <- function(ind,
   n_row_init <- nrow(ex_tbl)
   attr(ex_tbl, "n_row_init") <- n_row_init
   min_val_vec <- vapply(
-    chnl, function(x) min(ex_tbl[[x]], na.rm = TRUE), numeric(1)
+    chnl,
+    function(x) min(ex_tbl[[x]], na.rm = TRUE),
+    numeric(1)
   )
   for (i in seq_along(chnl)) {
     ex_tbl <- ex_tbl[ex_tbl[[chnl[i]]] > min_val_vec[i], ]
@@ -374,13 +440,7 @@ stimgate_plot <- function(ind,
 }
 
 #' @keywords internal
-.plot_add_gate <- function(p,
-                           ind,
-                           marker,
-                           chnl,
-                           pop,
-                           path_project,
-                           show_gate) {
+.plot_add_gate <- function(p, ind, marker, chnl, pop, path_project, show_gate) {
   if (!show_gate) {
     return(p)
   }
@@ -450,38 +510,50 @@ stimgate_plot <- function(ind,
 }
 
 #' @keywords internal
-.plot_gate_uv <- function(ind,
-                          ind_lab,
-                          .data,
-                          marker,
-                          chnl,
-                          pop,
-                          exc_min,
-                          axis_lab,
-                          show_gate,
-                          path_project,
-                          min_cell,
-                          bias,
-                          combn_exc,
-                          chnl_gate,
-                          marker_gate,
-                          gate_type_cyt_pos,
-                          gate_type_single_pos,
-                          mult,
-                          gate_uns_method) {
+.plot_gate_uv <- function(
+  ind,
+  ind_lab,
+  .data,
+  marker,
+  chnl,
+  pop,
+  exc_min,
+  axis_lab,
+  show_gate,
+  path_project,
+  min_cell,
+  bias,
+  combn_exc,
+  chnl_gate,
+  marker_gate,
+  gate_type_cyt_pos,
+  gate_type_single_pos,
+  mult,
+  gate_uns_method
+) {
   var_loop <- if (!is.null(marker)) marker else chnl
   p_list <- lapply(var_loop, function(v) {
     marker_curr <- if (!is.null(marker)) v else NULL
     chnl_curr <- if (!is.null(chnl)) v else NULL
     .plot_gate_uv_marker(
-      marker = marker_curr, chnl = chnl_curr,
-      ind = ind, .data = .data, pop = pop,
-      exc_min = exc_min, ind_lab = ind_lab,
-      axis_lab = axis_lab, show_gate = show_gate,
-      path_project = path_project, min_cell = min_cell,
-      bias = bias, combn_exc = combn_exc, chnl_gate = chnl_gate,
-      marker_gate = marker_gate, gate_type_cyt_pos = gate_type_cyt_pos,
-      gate_type_single_pos = gate_type_single_pos, mult = mult,
+      marker = marker_curr,
+      chnl = chnl_curr,
+      ind = ind,
+      .data = .data,
+      pop = pop,
+      exc_min = exc_min,
+      ind_lab = ind_lab,
+      axis_lab = axis_lab,
+      show_gate = show_gate,
+      path_project = path_project,
+      min_cell = min_cell,
+      bias = bias,
+      combn_exc = combn_exc,
+      chnl_gate = chnl_gate,
+      marker_gate = marker_gate,
+      gate_type_cyt_pos = gate_type_cyt_pos,
+      gate_type_single_pos = gate_type_single_pos,
+      mult = mult,
       gate_uns_method = gate_uns_method
     )
   }) |>
@@ -494,72 +566,100 @@ stimgate_plot <- function(ind,
 }
 
 #' @keywords internal
-.plot_gate_uv_marker <- function(marker,
-                                 chnl,
-                                 pop,
-                                 ind,
-                                 .data,
-                                 exc_min,
-                                 ind_lab,
-                                 axis_lab,
-                                 show_gate,
-                                 path_project,
-                                 min_cell,
-                                 bias,
-                                 combn_exc,
-                                 chnl_gate,
-                                 marker_gate,
-                                 gate_type_cyt_pos,
-                                 gate_type_single_pos,
-                                 mult,
-                                 gate_uns_method) {
+.plot_gate_uv_marker <- function(
+  marker,
+  chnl,
+  pop,
+  ind,
+  .data,
+  exc_min,
+  ind_lab,
+  axis_lab,
+  show_gate,
+  path_project,
+  min_cell,
+  bias,
+  combn_exc,
+  chnl_gate,
+  marker_gate,
+  gate_type_cyt_pos,
+  gate_type_single_pos,
+  mult,
+  gate_uns_method
+) {
   plot_tbl <- .plot_gate_uv_marker_get_plot_tbl(
-    marker = marker, chnl = chnl, pop = pop,
-    ind = ind, .data = .data, exc_min = exc_min,
-    ind_lab = ind_lab, min_cell = min_cell,
+    marker = marker,
+    chnl = chnl,
+    pop = pop,
+    ind = ind,
+    .data = .data,
+    exc_min = exc_min,
+    ind_lab = ind_lab,
+    min_cell = min_cell,
     path_project = path_project,
-    bias = bias, combn_exc = combn_exc, chnl_gate = chnl_gate,
-    marker_gate = marker_gate, gate_type_cyt_pos = gate_type_cyt_pos,
-    gate_type_single_pos = gate_type_single_pos, mult = mult,
+    bias = bias,
+    combn_exc = combn_exc,
+    chnl_gate = chnl_gate,
+    marker_gate = marker_gate,
+    gate_type_cyt_pos = gate_type_cyt_pos,
+    gate_type_single_pos = gate_type_single_pos,
+    mult = mult,
     gate_uns_method = gate_uns_method
   )
   if (is.null(plot_tbl)) {
     return(NULL)
   }
   .plot_gate_uv_marker_plot(
-    plot_tbl = plot_tbl, exc_min = exc_min,
-    ind = ind, ind_lab = ind_lab, pop = pop,
-    marker = marker, chnl = chnl, axis_lab = axis_lab,
-    show_gate = show_gate, path_project = path_project
+    plot_tbl = plot_tbl,
+    exc_min = exc_min,
+    ind = ind,
+    ind_lab = ind_lab,
+    pop = pop,
+    marker = marker,
+    chnl = chnl,
+    axis_lab = axis_lab,
+    show_gate = show_gate,
+    path_project = path_project
   )
 }
 
 #' @keywords internal
-.plot_gate_uv_marker_get_plot_tbl <- function(ind,
-                                              .data,
-                                              marker,
-                                              chnl,
-                                              pop,
-                                              exc_min,
-                                              ind_lab,
-                                              min_cell,
-                                              path_project,
-                                              bias,
-                                              combn_exc,
-                                              chnl_gate,
-                                              marker_gate,
-                                              gate_type_cyt_pos,
-                                              gate_type_single_pos,
-                                              mult,
-                                              gate_uns_method) {
+.plot_gate_uv_marker_get_plot_tbl <- function(
+  ind,
+  .data,
+  marker,
+  chnl,
+  pop,
+  exc_min,
+  ind_lab,
+  min_cell,
+  path_project,
+  bias,
+  combn_exc,
+  chnl_gate,
+  marker_gate,
+  gate_type_cyt_pos,
+  gate_type_single_pos,
+  mult,
+  gate_uns_method
+) {
   plot_tbl_list <- lapply(seq_along(ind), function(i) {
     plot_tbl <- .plot_gate_uv_marker_get_plot_tbl_ind(
-      ind = ind[[i]], .data = .data, pop = pop,
-      marker = marker, chnl = chnl, exc_min = exc_min,
-      min_cell = min_cell, path_project = path_project,
-      bias = bias, combn_exc = combn_exc, chnl_gate = chnl_gate,
-      marker_gate = marker_gate, gate_type_cyt_pos = gate_type_cyt_pos,
-      gate_type_single_pos = gate_type_single_pos, mult = mult,
+      ind = ind[[i]],
+      .data = .data,
+      pop = pop,
+      marker = marker,
+      chnl = chnl,
+      exc_min = exc_min,
+      min_cell = min_cell,
+      path_project = path_project,
+      bias = bias,
+      combn_exc = combn_exc,
+      chnl_gate = chnl_gate,
+      marker_gate = marker_gate,
+      gate_type_cyt_pos = gate_type_cyt_pos,
+      gate_type_single_pos = gate_type_single_pos,
+      mult = mult,
       gate_uns_method = gate_uns_method
     )
     if (is.null(plot_tbl)) {
@@ -579,27 +679,40 @@ stimgate_plot <- function(ind,
 }
 
 #' @keywords internal
-.plot_gate_uv_marker_get_plot_tbl_ind <- function(ind,
-                                                  .data,
-                                                  marker,
-                                                  chnl,
-                                                  pop,
-                                                  exc_min,
-                                                  min_cell,
-                                                  path_project,
-                                                  bias,
-                                                  combn_exc,
-                                                  chnl_gate,
-                                                  marker_gate,
-                                                  gate_type_cyt_pos,
-                                                  gate_type_single_pos,
-                                                  mult,
-                                                  gate_uns_method) {
+.plot_gate_uv_marker_get_plot_tbl_ind <- function(
+  ind,
+  .data,
+  marker,
+  chnl,
+  pop,
+  exc_min,
+  min_cell,
+  path_project,
+  bias,
+  combn_exc,
+  chnl_gate,
+  marker_gate,
+  gate_type_cyt_pos,
+  gate_type_single_pos,
+  mult,
+  gate_uns_method
+) {
   ex_tbl <- stimgate_data_get_ex(
-    path_project, .data, pop, ind, chnl,
-    marker, bias, exc_min, combn_exc, chnl_gate,
-    marker_gate, gate_type_cyt_pos,
-    gate_type_single_pos, mult, gate_uns_method
+    path_project,
+    .data,
+    pop,
+    ind,
+    chnl,
+    marker,
+    bias,
+    exc_min,
+    combn_exc,
+    chnl_gate,
+    marker_gate,
+    gate_type_cyt_pos,
+    gate_type_single_pos,
+    mult,
+    gate_uns_method
   )
   if (nrow(ex_tbl) < min_cell) {
     return(NULL)
@@ -608,15 +721,20 @@ stimgate_plot <- function(ind,
   dens_obj_raw <- density(ex_tbl[[.var]], na.rm = TRUE)
   plot_tbl <- tibble::tibble(x = dens_obj_raw$x, y = dens_obj_raw$y)
   .plot_gate_uv_marker_add_adj(
-    exc_min, plot_tbl, dens_obj_raw, ex_tbl
+    exc_min,
+    plot_tbl,
+    dens_obj_raw,
+    ex_tbl
   )
 }
 
 #' @keywords internal
-.plot_gate_uv_marker_add_adj <- function(exc_min,
-                                         plot_tbl,
-                                         dens_obj_raw,
-                                         ex_tbl) {
+.plot_gate_uv_marker_add_adj <- function(
+  exc_min,
+  plot_tbl,
+  dens_obj_raw,
+  ex_tbl
+) {
   if (!exc_min) {
     return(NULL)
   }
@@ -625,23 +743,27 @@ stimgate_plot <- function(ind,
   dens_obj_adj <- dens_obj_raw
   dens_obj_adj$y <- dens_obj_adj$y * prob_g_min
   plot_tbl_adj <- tibble::tibble(
-    x = dens_obj_adj$x, y = dens_obj_adj$y, type = "adj"
+    x = dens_obj_adj$x,
+    y = dens_obj_adj$y,
+    type = "adj"
   )
   plot_tbl |>
     dplyr::bind_rows(plot_tbl_adj)
 }
 
 #' @keywords internal
-.plot_gate_uv_marker_plot <- function(plot_tbl,
-                                      exc_min,
-                                      ind,
-                                      ind_lab,
-                                      marker,
-                                      chnl,
-                                      pop,
-                                      axis_lab,
-                                      show_gate,
-                                      path_project) {
+.plot_gate_uv_marker_plot <- function(
+  plot_tbl,
+  exc_min,
+  ind,
+  ind_lab,
+  marker,
+  chnl,
+  pop,
+  axis_lab,
+  show_gate,
+  path_project
+) {
   p <- .plot_gate_uv_marker_plot_init(plot_tbl, exc_min, ind, ind_lab)
   p <- .plot_add_axis_title(p, marker, chnl, axis_lab)
   p <- p + ggplot2::labs(y = "Density")
@@ -652,10 +774,7 @@ stimgate_plot <- function(ind,
 }
 
 #' @keywords internal
-.plot_gate_uv_marker_plot_init <- function(plot_tbl,
-                                           exc_min,
-                                           ind,
-                                           ind_lab) {
+.plot_gate_uv_marker_plot_init <- function(plot_tbl, exc_min, ind, ind_lab) {
   alpha_lab_vec <- c("raw" = 0.5, "adj" = 1)
   p <- if (exc_min) {
     if (length(ind) > 1L) {
@@ -685,14 +804,13 @@ stimgate_plot <- function(ind,
 }
 
 #' @keywords internal
-.plot_grid <- function(plot,
-                       p_list,
-                       n_col) {
+.plot_grid <- function(plot, p_list, n_col) {
   if (!plot) {
     return(p_list)
   }
   cowplot::plot_grid(
-    plotlist = p_list, ncol = n_col,
+    plotlist = p_list,
+    ncol = n_col,
     align = "hv"
   ) +
     theme(

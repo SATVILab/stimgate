@@ -22,7 +22,8 @@ saveRDS(fs, rds_path)
 # Check if release exists, create if not
 release_info <- tryCatch(
   {
-    gh::gh("GET /repos/{owner}/{repo}/releases/tags/{tag}",
+    gh::gh(
+      "GET /repos/{owner}/{repo}/releases/tags/{tag}",
       owner = strsplit(repo, "/")[[1]][1],
       repo = strsplit(repo, "/")[[1]][2],
       tag = tag
@@ -30,7 +31,8 @@ release_info <- tryCatch(
   },
   error = function(e) {
     message("Creating release 'test_data'")
-    gh::gh("POST /repos/{owner}/{repo}/releases",
+    gh::gh(
+      "POST /repos/{owner}/{repo}/releases",
       owner = strsplit(repo, "/")[[1]][1],
       repo = strsplit(repo, "/")[[1]][2],
       tag_name = tag,

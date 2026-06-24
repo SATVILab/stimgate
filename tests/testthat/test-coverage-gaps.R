@@ -54,7 +54,9 @@ test_that(".interp function works when x_low == val (exact match case)", {
 # Note: prejoin gate combination test is skipped due to a bug in the current implementation
 # that causes: "object 'count_stim' not found" error. This may need investigation in the main codebase.
 test_that("stimgate_gate runs with gate_combn = 'prejoin' (currently skipped)", {
-  skip("prejoin gate combination has a bug causing 'object count_stim not found' error")
+  skip(
+    "prejoin gate combination has a bug causing 'object count_stim not found' error"
+  )
 })
 
 test_that("stimgate_gate runs with gate_combn = 'mean'", {
