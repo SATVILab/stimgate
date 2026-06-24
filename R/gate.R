@@ -317,8 +317,7 @@ stimgate_gate <- function(
     pop_gate = pop_gate,
     chnl_settings = chnl_settings,
     ind_batch_list = batch_list,
-    path_project = path_project,
-    tol_clust = tol_clust
+    path_project = path_project
   )
 
   path_project
@@ -463,8 +462,7 @@ stimgate_gate <- function(
   pop_gate,
   chnl_settings,
   ind_batch_list,
-  path_project,
-  tol_clust
+  path_project
 ) {
   force(.data)
   .get_stats(
@@ -485,7 +483,6 @@ stimgate_gate <- function(
     ind_batch_list = ind_batch_list,
     .data = .data,
     save_gate_tbl = TRUE,
-    path_project = path_project,
-    tol_clust = tol_clust
+    path_project = path_project
   )
 }
