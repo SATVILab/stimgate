@@ -26,10 +26,12 @@
 #' gates <- stimgate_gate_get(path_project)
 #' }
 #' @export
-stimgate_gate_get <- function(path_project,
-                              pop = NULL,
-                              marker = NULL,
-                              chnl = NULL) {
+stimgate_gate_get <- function(
+  path_project,
+  pop = NULL,
+  marker = NULL,
+  chnl = NULL
+) {
   pop <- pop %||% .gate_get_pop(path_project)
   purrr::map_df(pop, function(pop_curr) {
     if (!is.null(marker)) {
@@ -75,10 +77,7 @@ stimgate_gate_get <- function(path_project,
 }
 
 #' @keywords internal
-.gates_get_path_all <- function(path_project,
-                                pop,
-                                chnl,
-                                init) {
+.gates_get_path_all <- function(path_project, pop, chnl, init) {
   file.path(
     path_project,
     "gates",

@@ -6,10 +6,12 @@
 #' @param dir_cache Directory to save the GatingSet. If NULL, uses a temporary directory.
 #' @return A list containing the path to the saved GatingSet, batch_list, and marker names
 #' @export
-get_test_data <- function(scenario = "default",
-                          dir_cache = NULL,
-                          clear = FALSE,
-                          n_ind = 8) {
+get_test_data <- function(
+  scenario = "default",
+  dir_cache = NULL,
+  clear = FALSE,
+  n_ind = 8
+) {
   # Set seed for reproducibility
   set.seed(123)
 
@@ -48,9 +50,11 @@ get_test_data <- function(scenario = "default",
   path_chnl <- file.path(dir_cache, "chnl.rds")
   path_marker <- file.path(dir_cache, "marker.rds")
   path_batch_list <- file.path(dir_cache, "batch_list.rds")
-  if (!file.exists(path_chnl) ||
+  if (
+    !file.exists(path_chnl) ||
       !file.exists(path_marker) ||
-      !file.exists(path_batch_list)) {
+      !file.exists(path_batch_list)
+  ) {
     stop("Incomplete cached test data at: ", dir_cache)
   }
   list(
@@ -65,7 +69,8 @@ get_test_data <- function(scenario = "default",
   fs <- .get_fs_test(dir_cache)
 
   # Get flowSet
-  fs_list_sim <- switch(scenario,
+  fs_list_sim <- switch(
+    scenario,
     "default" = sim_fs_default(fs, n_ind),
     "easy" = sim_fs_easy(fs, n_ind),
     "poor_separation" = sim_fs_poor_separation(fs, n_ind),
@@ -84,9 +89,7 @@ get_test_data <- function(scenario = "default",
 
   desc_df <- flowCore::parameters(fs_list_sim[[1]][[1]][[1]])@data
   chnl_vec <- names(fs_list_sim)
-  saveRDS(chnl_vec,
-    file = file.path(dir_cache, "chnl.rds")
-  )
+  saveRDS(chnl_vec, file = file.path(dir_cache, "chnl.rds"))
   marker_vec <- NULL
   for (chnl_curr in chnl_vec) {
     marker_vec <- c(
@@ -94,14 +97,9 @@ get_test_data <- function(scenario = "default",
       desc_df$desc[which(desc_df$name == chnl_curr)]
     )
   }
-  saveRDS(marker_vec,
-    file = file.path(dir_cache, "marker.rds")
-  )
+  saveRDS(marker_vec, file = file.path(dir_cache, "marker.rds"))
   batch_list <- fs_list_sim[[1]]$batch_list
-  saveRDS(batch_list,
-    file = file.path(dir_cache, "batch_list.rds")
-  )
-
+  saveRDS(batch_list, file = file.path(dir_cache, "batch_list.rds"))
 
   list(
     path_gs = path_gs,
@@ -126,7 +124,9 @@ get_test_data <- function(scenario = "default",
   }
 
   # If not found, try to download from GitHub release
-  message("Test data not found locally. Attempting to download from GitHub release...")
+  message(
+    "Test data not found locally. Attempting to download from GitHub release..."
+  )
 
   tryCatch(
     {
@@ -144,8 +144,11 @@ get_test_data <- function(scenario = "default",
         error = function(e_hdc) {
           stop(
             "Failed to obtain test data from all sources.\n",
-            "GitHub error: ", conditionMessage(e_github), "\n",
-            "HDCytoData error: ", conditionMessage(e_hdc)
+            "GitHub error: ",
+            conditionMessage(e_github),
+            "\n",
+            "HDCytoData error: ",
+            conditionMessage(e_hdc)
           )
         }
       )
@@ -162,7 +165,9 @@ get_test_data <- function(scenario = "default",
   # Build download URL (no authentication needed for public releases)
   download_url <- sprintf(
     "https://github.com/%s/releases/download/%s/%s",
-    repo, tag, filename
+    repo,
+    tag,
+    filename
   )
 
   temp_file <- file.path(dir_fs, filename)
@@ -269,7 +274,8 @@ get_test_data <- function(scenario = "default",
     expr_sd_pos = 0.1
   )
   args_list <- list(
-    "BC1(La139)Dd" = args_list_bc1, "BC2(Pr141)Dd" = args_list_bc2
+    "BC1(La139)Dd" = args_list_bc1,
+    "BC2(Pr141)Dd" = args_list_bc2
   )
 
   .sample_chnls(args_list = args_list, fs = fs)
@@ -305,17 +311,19 @@ get_test_data <- function(scenario = "default",
 }
 
 #' @keywords internal
-.sample_chnl <- function(fs,
-                         batch_list,
-                         chnl,
-                         prop_mean_pos,
-                         prop_sd_pos,
-                         prop_mean_neg,
-                         prop_sd_neg = NULL,
-                         expr_mean_neg,
-                         expr_mean_pos,
-                         expr_sd_pos,
-                         expr_sd_neg = NULL) {
+.sample_chnl <- function(
+  fs,
+  batch_list,
+  chnl,
+  prop_mean_pos,
+  prop_sd_pos,
+  prop_mean_neg,
+  prop_sd_neg = NULL,
+  expr_mean_neg,
+  expr_mean_pos,
+  expr_sd_pos,
+  expr_sd_neg = NULL
+) {
   ind_list <- lapply(seq_along(fs), function(x) NULL)
   resp_tbl <- tibble::tibble(
     chnl = chnl,
@@ -378,13 +386,15 @@ get_test_data <- function(scenario = "default",
 }
 
 #' @keywords internal
-.sample_response <- function(n,
-                             prop_mean,
-                             prop_sd,
-                             expr_mean_neg,
-                             expr_mean_pos,
-                             expr_sd_pos,
-                             expr_sd_neg = NULL) {
+.sample_response <- function(
+  n,
+  prop_mean,
+  prop_sd,
+  expr_mean_neg,
+  expr_mean_pos,
+  expr_sd_pos,
+  expr_sd_neg = NULL
+) {
   n_pos <- .sample_n_pos(
     n = n,
     prop_mean = prop_mean,
@@ -426,13 +436,15 @@ get_test_data <- function(scenario = "default",
 }
 
 #' @keywords internal
-.sample_expr <- function(n,
-                         n_pos,
-                         ind_pos,
-                         mean_neg,
-                         mean_pos,
-                         sd_pos,
-                         sd_neg = NULL) {
+.sample_expr <- function(
+  n,
+  n_pos,
+  ind_pos,
+  mean_neg,
+  mean_pos,
+  sd_pos,
+  sd_neg = NULL
+) {
   n_neg <- n - n_pos
   expr_vec <- rep(NA_real_, n)
   # only simulate when group has members

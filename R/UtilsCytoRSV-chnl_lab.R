@@ -30,7 +30,8 @@
 #' @aliases marker_lab, chnl_to_marker, marker_to_chnl, get_marker, get_chnl
 #' @export
 chnl_lab <- function(data) {
-  adf <- switch(class(data)[1],
+  adf <- switch(
+    class(data)[1],
     "flowFrame" = flowCore::parameters(data)@data,
     "flowSet" = flowCore::parameters(data[[1]])@data,
     "cytoframe" = flowCore::parameters(data)@data,

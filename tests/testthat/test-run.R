@@ -49,7 +49,10 @@ test_that("stimgate_gate runs with STIMGATE_INTERMEDIATE environment variable", 
   # intermediate data is saved correctly
   example_data <- get_example_data()
   gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate_intermediate")
+  path_project <- file.path(
+    dirname(example_data$path_gs),
+    "stimgate_intermediate"
+  )
 
   # Set the environment variable for intermediate data saving
   Sys.setenv("STIMGATE_INTERMEDIATE" = "true")
@@ -79,7 +82,10 @@ test_that("stimgate_gate runs with STIMGATE_INTERMEDIATE environment variable", 
   expect_true(length(intermediate_files) > 0)
 
   # Verify that files exist for the "init" stage
-  init_files <- list.files(file.path(intermediate_dir, "init"), recursive = TRUE)
+  init_files <- list.files(
+    file.path(intermediate_dir, "init"),
+    recursive = TRUE
+  )
   expect_true(length(init_files) > 0)
 
   # Clean up intermediate test directory

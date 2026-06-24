@@ -306,12 +306,18 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
   p_base <- ggplot2::ggplot() +
     ggplot2::geom_point(ggplot2::aes(x = 1, y = 1))
   p_single <- stimgate:::.plot_add_axis_title(
-    p_base, example_data$chnl[1], NULL, NULL
+    p_base,
+    example_data$chnl[1],
+    NULL,
+    NULL
   )
   expect_s3_class(p_single, "ggplot")
 
   p_double <- stimgate:::.plot_add_axis_title(
-    p_base, example_data$chnl, NULL, NULL
+    p_base,
+    example_data$chnl,
+    NULL,
+    NULL
   )
   expect_s3_class(p_double, "ggplot")
 
@@ -321,7 +327,11 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
 
   # Test .plot_add_gate when show_gate = FALSE
   p_no_gate <- stimgate:::.plot_add_gate(
-    p_base, gs, c(1), example_data$chnl[1], path_project,
+    p_base,
+    gs,
+    c(1),
+    example_data$chnl[1],
+    path_project,
     show_gate = FALSE
   )
   expect_identical(p_no_gate, p_base)

@@ -75,9 +75,7 @@
 #'   ),
 #'   limits_equal = TRUE
 #' )
-axis_limits <- function(p,
-                        limits_expand = NULL,
-                        limits_equal = FALSE) {
+axis_limits <- function(p, limits_expand = NULL, limits_equal = FALSE) {
   # initial check
   # ------------------------
 
@@ -120,7 +118,6 @@ axis_limits <- function(p,
 
   # prep
   # -------------------
-
 
   # ===================
   # adjustments

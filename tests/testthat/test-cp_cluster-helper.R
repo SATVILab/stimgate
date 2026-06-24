@@ -8,8 +8,14 @@ library(testthat)
   ex[[attr(ex, "chnl_cut")]]
 }
 
-.get_pos_ind_but_single_pos_for_one_cyt <- function(ex, gate_tbl, chnl_single_exc,
-                                                    chnl, gate_type_cyt_pos, gate_type_single_pos) {
+.get_pos_ind_but_single_pos_for_one_cyt <- function(
+  ex,
+  gate_tbl,
+  chnl_single_exc,
+  chnl,
+  gate_type_cyt_pos,
+  gate_type_single_pos
+) {
   # Mock function - returns logical vector for testing
   rep(FALSE, nrow(ex))
 }
@@ -19,7 +25,10 @@ library(testthat)
 source_test_helpers <- function() {
   # For testing purposes, we'll define simplified versions
 
-  .get_prop_bs_by_cp_tbl_data_list_filter_above_min <<- function(ex_list_filter, cp_min) {
+  .get_prop_bs_by_cp_tbl_data_list_filter_above_min <<- function(
+    ex_list_filter,
+    cp_min
+  ) {
     ex_list_filter |>
       purrr::map(function(x) {
         attr(x, "n_cell") <- nrow(x)
@@ -40,10 +49,12 @@ source_test_helpers <- function() {
       })
   }
 
-  .get_prop_bs_by_cp_tbl_data_list_filter_cyt_pos <<- function(filter_other_cyt_pos,
-                                                               ex_list,
-                                                               gate_tbl,
-                                                               calc_cyt_pos_gates) {
+  .get_prop_bs_by_cp_tbl_data_list_filter_cyt_pos <<- function(
+    filter_other_cyt_pos,
+    ex_list,
+    gate_tbl,
+    calc_cyt_pos_gates
+  ) {
     if (!filter_other_cyt_pos) {
       return(ex_list)
     }
@@ -68,10 +79,15 @@ source_test_helpers <- function() {
       stats::setNames(names(ex_list))
   }
 
-  .get_cp_cluster_dens_tbl_get_actual_ind_early_return <<- function(batch, ind) {
+  .get_cp_cluster_dens_tbl_get_actual_ind_early_return <<- function(
+    batch,
+    ind
+  ) {
     tibble::tibble(
-      batch = batch[1], ind = ind[1],
-      y = rep(NA, 512), x = paste0("x", seq.int(from = 1, to = 512))
+      batch = batch[1],
+      ind = ind[1],
+      y = rep(NA, 512),
+      x = paste0("x", seq.int(from = 1, to = 512))
     ) |>
       tidyr::pivot_wider(names_from = x, values_from = y)
   }
@@ -110,7 +126,10 @@ test_that(".get_prop_bs_by_cp_tbl_data_list_filter_above_min handles zero rows c
   cp_min <- 1.0
 
   # Test the function - this should handle the edge case gracefully
-  result <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min(ex_list_filter, cp_min)
+  result <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min(
+    ex_list_filter,
+    cp_min
+  )
 
   # Verify results - the function should handle this gracefully
   expect_length(result, 1)
@@ -127,7 +146,10 @@ test_that(".get_prop_bs_by_cp_tbl_data_list_filter_above_min zero row reconstruc
   library(purrr)
 
   # Create a custom version that forces zero rows for testing
-  .get_prop_bs_by_cp_tbl_data_list_filter_above_min_test <- function(ex_list_filter, cp_min) {
+  .get_prop_bs_by_cp_tbl_data_list_filter_above_min_test <- function(
+    ex_list_filter,
+    cp_min
+  ) {
     ex_list_filter |>
       purrr::map(function(x) {
         original_n_cell <- nrow(x)
@@ -165,7 +187,10 @@ test_that(".get_prop_bs_by_cp_tbl_data_list_filter_above_min zero row reconstruc
   ex_list_filter <- list(test_data)
   cp_min <- 1.0
 
-  result <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min_test(ex_list_filter, cp_min)
+  result <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min_test(
+    ex_list_filter,
+    cp_min
+  )
 
   # Verify the zero-row reconstruction worked correctly
   expect_length(result, 1)
@@ -201,7 +226,10 @@ test_that(".get_prop_bs_by_cp_tbl_data_list_filter_above_min handles normal case
 
   cp_min <- 2.0 # Low enough that rows will pass
 
-  result <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min(ex_list_filter, cp_min)
+  result <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min(
+    ex_list_filter,
+    cp_min
+  )
 
   expect_length(result, 1)
   expect_true(is.data.frame(result[[1]]))
@@ -340,7 +368,10 @@ test_that(".get_prop_bs_by_cp_tbl_data_list_filter_above_min handles edge cases 
   ex_list_filter <- list()
   cp_min <- 1.0
 
-  result <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min(ex_list_filter, cp_min)
+  result <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min(
+    ex_list_filter,
+    cp_min
+  )
   expect_length(result, 0)
 
   # Test with single row data
@@ -354,7 +385,10 @@ test_that(".get_prop_bs_by_cp_tbl_data_list_filter_above_min handles edge cases 
   ex_list_filter_single <- list(test_data_single)
   cp_min <- 1.0
 
-  result_single <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min(ex_list_filter_single, cp_min)
+  result_single <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min(
+    ex_list_filter_single,
+    cp_min
+  )
   expect_length(result_single, 1)
   expect_equal(nrow(result_single[[1]]), 1)
   expect_equal(attr(result_single[[1]], "n_cell"), 1)
