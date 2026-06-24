@@ -36,6 +36,7 @@
     path_project = path_project
   )
   chnl_settings_common <- list(
+    pop_gate = pop_gate,
     bias_uns = bias_uns,
     bias_uns_factor = bias_uns_factor,
     exc_min = exc_min,
@@ -61,22 +62,21 @@
     ) |>
       append(chnl_settings[[chnl_curr]])
 
-    .verify_chnl_settings_chnl(chnl_curr, chnl_settings_spec_curr)
-    .complete_chnl_settings_ind(
+    chnl_out <- .complete_chnl_settings_ind(
       chnl = chnl_curr,
       chnl_settings_common = chnl_settings_common,
       chnl_settings_spec = chnl_settings_spec_curr,
       .data = .data,
-      pop_gate = pop_gate,
       ind_batch_list = ind_batch_list,
       path_project = path_project
     )
+    .verify_chnl_settings_chnl(chnl_curr, chnl_out)
+    chnl_out
   }) |>
     stats::setNames(chnl_lab[chnl])
 
   .complete_chnl_settings_save(
-    chnl_list = chnl_list,
-    path_project = path_project
+    chnl_list = chnl_list, path_project = path_project
   )
 
   chnl_list
@@ -88,7 +88,6 @@
   chnl_settings_spec,
   chnl,
   .data,
-  pop_gate,
   ind_batch_list,
   path_project
 ) {
@@ -101,7 +100,7 @@
     bias_uns = chnl_settings$bias_uns,
     bias_uns_factor = chnl_settings$bias_uns_factor,
     .data = .data,
-    pop_gate = pop_gate,
+    pop_gate = chnl_settings$pop_gate,
     chnl_cut = chnl,
     ind_batch_list = ind_batch_list,
     path_project = path_project
@@ -112,10 +111,19 @@
     bias_uns = max(chnl_settings$bias_uns)
   )
 
+  chnl_settings$bw_cluster <- .complete_chnl_settings_bw_cluster(
+    ind_batch_list = ind_batch_list,
+    .data = .data,
+    pop_gate = chnl_settings$pop_gate,
+    chnl_cut = chnl,
+    path_project = path_project,
+    bw_cluster = chnl_settings$bw_cluster
+  )
+
   chnl_settings$cp_min <- .complete_chnl_settings_cp_min(
     cp_min = chnl_settings$cp_min,
     .data = .data,
-    pop_gate = pop_gate,
+    pop_gate = chnl_settings$pop_gate,
     chnl_cut = chnl,
     ind_batch_list = ind_batch_list,
     path_project = path_project
@@ -168,7 +176,7 @@
   path_project
 ) {
   purrr::map(
-    seq_len(min(2, length(ind_batch_list))),
+    seq_len(min(5, length(ind_batch_list))),
     function(i) {
       ex_list <- .get_ex_list(
         # nolint
@@ -203,6 +211,43 @@
     return(bw_min)
   }
   bias_uns * 2.25
+}
+
+.complete_chnl_settings_bw_cluster <- function(
+  ind_batch_list,
+  .data,
+  pop_gate,
+  chnl_cut,
+  path_project,
+  bw_cluster
+) {
+  if (!is.null(bw_cluster)) {
+    return(bw_cluster)
+  }
+  purrr::map(
+    seq_len(min(5, length(ind_batch_list))),
+    function(i) {
+      ex_list <- .get_ex_list(
+        # nolint
+        .data = .data,
+        ind_batch = ind_batch_list[[i]],
+        pop = pop_gate,
+        chnl_cut,
+        batch = names(ind_batch_list)[i],
+        path_project = path_project
+      )
+      purrr::map_dbl(ex_list, function(ex) {
+        x_vec <- .get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))]
+        iqr_x <- diff(quantile(x_vec, c(0.75, 0.25), na.rm = TRUE))
+        sd_x <- abs(iqr_x) / 1.5
+        x_vec <- sample(x_vec, replace = TRUE, size = 1e4) +
+          rnorm(1e4, mean = 0, sd = sd_x / 10)
+        ks::hpi(x = x_vec, deriv.order = 1)
+      })
+    }
+  ) |>
+    unlist() |>
+    mean(trim = 0.1)
 }
 
 #' @keywords internal
@@ -517,6 +562,7 @@ stimgate_meta_read_batch_list <- function(path_project) {
   names(chnl_settings) <- marker_lab[names(marker_settings)]
   for (i in seq_along(chnl_settings)) {
     chnl_settings[[i]]$chnl_cut <- marker_lab[[chnl_settings[[i]]$marker_cut]]
+    chnl_settings[[i]]$marker_cut <- NULL
   }
   chnl_settings
 }

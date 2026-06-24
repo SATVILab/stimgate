@@ -47,14 +47,13 @@
   .data,
   gate_tbl,
   ind_batch_list,
-  chnl_cut,
-  pop_gate,
   calc_cyt_pos_gates,
   cp_min,
   max_cp,
   gate_stats_tbl,
   filter_other_cyt_pos,
-  path_project
+  path_project,
+  chnl_settings
 ) {
   .debug("Getting prop_bs_by_cp_tbl object") # nolint
 
@@ -62,8 +61,7 @@
     .data = .data,
     gate_tbl = gate_tbl,
     ind_batch_list = ind_batch_list,
-    chnl_cut = chnl_cut,
-    pop_gate = pop_gate,
+    chnl_settings = chnl_settings,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     max_cp = max_cp,
     filter_other_cyt_pos = filter_other_cyt_pos,
@@ -92,8 +90,7 @@
   .data,
   gate_tbl,
   ind_batch_list,
-  chnl_cut,
-  pop_gate,
+  chnl_settings,
   calc_cyt_pos_gates,
   max_cp,
   filter_other_cyt_pos,
@@ -104,8 +101,7 @@
   data_list <- .get_prop_bs_by_cp_tbl_data_list_init(
     ind_batch_list = ind_batch_list,
     .data = .data,
-    pop_gate = pop_gate,
-    chnl_cut = chnl_cut,
+    chnl_settings = chnl_settings,
     filter_other_cyt_pos = filter_other_cyt_pos,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     cp_min = cp_min,
@@ -118,8 +114,7 @@
 .get_prop_bs_by_cp_tbl_data_list_init <- function(
   ind_batch_list,
   .data,
-  pop_gate,
-  chnl_cut,
+  chnl_settings,
   filter_other_cyt_pos,
   calc_cyt_pos_gates,
   cp_min,
@@ -130,8 +125,8 @@
     ex_list <- .get_ex_list(
       .data = .data,
       ind_batch = ind_batch,
-      pop = pop_gate,
-      chnl_cut = chnl_cut,
+      pop = chnl_settings$pop_gate,
+      chnl_cut = chnl_settings$chnl_cut,
       batch = names(ind_batch_list)[i],
       path_project = path_project
     )
@@ -445,27 +440,24 @@
   .data,
   filter_other_cyt_pos,
   calc_cyt_pos_gates,
-  chnl_cut,
   expr_min,
   expr_max,
-  pop_gate,
   gate_tbl,
   control,
-  bw,
-  path_project
+  path_project,
+  chnl_settings
 ) {
   .debug("Getting density table") # nolint
   min_threshold <- .get_cp_cluster_dens_tbl_get_min_threshold(
-    gate_tbl = gate_tbl,
-    control = control
+    gate_tbl = gate_tbl, control = control
   )
   dens_tbl <- purrr::map_df(seq_along(ind_batch_list), function(i) {
     ind_batch <- ind_batch_list[[i]]
     ex_list <- .get_cp_cluster_dens_tbl_get_batch_prep_ex_list(
       .data = .data,
       ind_batch = ind_batch,
-      pop_gate = pop_gate,
-      chnl_cut = chnl_cut,
+      pop_gate = chnl_settings$pop_gate,
+      chnl_cut = chnl_settings$chnl_cut,
       filter_other_cyt_pos = filter_other_cyt_pos,
       gate_tbl = gate_tbl,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
@@ -480,10 +472,10 @@
         batch = attr(x, "batch"),
         ind = attr(x, "ind"),
         min_threshold = min_threshold,
-        chnl_cut = chnl_cut,
+        chnl_cut = chnl_settings$chnl_cut,
         expr_min = expr_min,
         expr_max = expr_max,
-        bw = bw
+        bw = chnl_settings$bw_cluster
       )
     })
   }) |>

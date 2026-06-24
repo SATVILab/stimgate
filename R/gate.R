@@ -53,6 +53,7 @@
 #' @param bw_adj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
 #' @param bw_ncell_min numeric. Minimum number of cells required for bandwidth estimation. If a sample has fewer cells than `bw_ncell_min`, cells are sampled with replacement to reach the minimum, with noise subsequently added. Ignored if `bw` is set. Default is 100.
 #' @param bw_ncell_max numeric. Maximum number of cells used for bandwidth estimation. If a sample has more cells than `bw_ncell_max`, cells are sampled without replacement to reach the maximum. Ignored if `bw` is set. Default is 100 000.
+#' @param bw_cluster numeric. Optional bandwidth for clustering-based gate refinement. If NULL (default), the bandwidth is estimated automatically based on the data. Default is `NULL`.
 #' @param min_cell numeric. Minimum number of cells required for reliable gating.
 #'   Default is 100. Samples with fewer cells will be skipped as they don't provide
 #'   sufficient statistical power for accurate gate identification.
@@ -190,6 +191,7 @@ stimgate_gate <- function(
   bw_adj = 1,
   bw_ncell_min = 1e2,
   bw_ncell_max = 1e5,
+  bw_cluster = NULL,
   min_cell = 1e2,
   max_pos_prob_x = Inf,
   gate_quant = c(0.25, 0.75),
@@ -232,6 +234,7 @@ stimgate_gate <- function(
     gate_quant = gate_quant,
     bw_ncell_min = bw_ncell_min,
     bw_ncell_max = bw_ncell_max,
+    bw_cluster = bw_cluster,
     min_cell = min_cell,
     tol_clust = tol_clust
   )
@@ -274,7 +277,6 @@ stimgate_gate <- function(
 
   # inital gates
   .gate_init(
-    pop_gate = pop_gate,
     chnl_settings = chnl_settings,
     .data = .data,
     ind_batch_list = batch_list,
@@ -285,7 +287,6 @@ stimgate_gate <- function(
   gate_tbl <- .gate_cyt_pos(
     chnl_settings = chnl_settings,
     ind_batch_list = batch_list,
-    pop_gate = pop_gate,
     .data = .data,
     calc_cyt_pos = calc_cyt_pos_gates,
     stage = "cyt_pos",
@@ -294,7 +295,6 @@ stimgate_gate <- function(
 
   # single-positive gates
   .gate_single(
-    pop_gate = pop_gate,
     chnl_settings = chnl_settings,
     .data = .data,
     ind_batch_list = batch_list,
@@ -314,7 +314,6 @@ stimgate_gate <- function(
     gate_tbl = gate_tbl,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
-    pop_gate = pop_gate,
     chnl_settings = chnl_settings,
     ind_batch_list = batch_list,
     path_project = path_project
@@ -325,7 +324,6 @@ stimgate_gate <- function(
 
 #' @keywords internal
 .gate_init <- function(
-  pop_gate,
   chnl_settings,
   .data,
   ind_batch_list,
@@ -343,27 +341,26 @@ stimgate_gate <- function(
     gate_obj <- .gate_chnl(
       .data = .data,
       ind_batch_list = ind_batch_list,
-      pop_gate = pop_gate,
       chnl_settings = chnl_settings_curr,
       path_project = path_project,
-      stage = "init"
+      stage = "init",
+      calc_cyt_pos_gates = FALSE
     )
 
     .gate_init_save(
       path_project = path_project,
-      pop = pop_gate,
-      chnl_cut = chnl_settings_curr$chnl_cut,
+      chnl_settings = chnl_settings_curr,
       gate_tbl = gate_obj$gate_tbl
     )
   })
 }
 
 #' @keywords internal
-.gate_init_save <- function(path_project, pop, chnl_cut, gate_tbl) {
+.gate_init_save <- function(path_project, chnl_settings, gate_tbl) {
   path_save <- .gates_get_path_all(
     path_project = path_project,
-    pop = pop,
-    chnl_cut = chnl_cut,
+    pop = chnl_settings$pop_gate,
+    chnl_cut = chnl_settings$chnl_cut,
     init = TRUE
   )
   if (!dir.exists(dirname(path_save))) {
@@ -374,7 +371,6 @@ stimgate_gate <- function(
 
 #' @keywords internal
 .gate_single <- function(
-  pop_gate,
   chnl_settings,
   .data,
   ind_batch_list,
@@ -395,7 +391,7 @@ stimgate_gate <- function(
     purrr::walk(chnl_settings, function(chnl_settings_curr) {
       path_save <- .gates_get_path_all(
         path_project = path_project,
-        pop = pop_gate,
+        pop = chnl_settings$pop_gate,
         chnl_cut = chnl_settings_curr$chnl_cut,
         init = FALSE
       )
@@ -421,8 +417,6 @@ stimgate_gate <- function(
     gate_obj <- .gate_chnl(
       .data = .data,
       ind_batch_list = ind_batch_list,
-      pop_gate = pop_gate,
-      chnl_cut = chnl_settings_curr$chnl_cut,
       chnl_settings = chnl_settings_curr,
       gate_tbl = gate_tbl,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
@@ -432,19 +426,18 @@ stimgate_gate <- function(
 
     .gate_single_save(
       path_project = path_project,
-      pop = pop_gate,
-      chnl = chnl_settings_curr$chnl_cut,
+      chnl_settings = chnl_settings,
       gate_tbl = gate_obj$gate_tbl
     )
   })
 }
 
 #' @keywords internal
-.gate_single_save <- function(path_project, pop, chnl, gate_tbl) {
+.gate_single_save <- function(path_project, chnl_settings, gate_tbl) {
   path_save <- .gates_get_path_all(
     path_project = path_project,
-    pop = pop,
-    chnl_cut = chnl,
+    pop = chnl_settings$pop_gate,
+    chnl_cut = chnl_settings$chnl_cut,
     init = FALSE
   )
   if (!dir.exists(dirname(path_save))) {
@@ -459,7 +452,6 @@ stimgate_gate <- function(
   gate_tbl = NULL,
   calc_cyt_pos_gates,
   calc_single_pos_gates,
-  pop_gate,
   chnl_settings,
   ind_batch_list,
   path_project
@@ -478,7 +470,7 @@ stimgate_gate <- function(
     gate_type_cyt_pos_calc = if (calc_cyt_pos_gates) "cyt" else "base",
     gate_type_single_pos_calc = if (calc_single_pos_gates) "single" else "base",
     save = TRUE,
-    pop_gate = pop_gate,
+    pop_gate = chnl_settings[[1]]$pop_gate,
     chnl = purrr::map_chr(chnl_settings, function(x) x$chnl_cut),
     ind_batch_list = ind_batch_list,
     .data = .data,
