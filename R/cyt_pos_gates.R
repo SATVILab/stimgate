@@ -2,7 +2,6 @@
 .gate_cyt_pos <- function(
   chnl_settings,
   ind_batch_list,
-  pop_gate,
   .data,
   gate_name = NULL,
   calc_cyt_pos = TRUE,
@@ -30,7 +29,7 @@
   # get original gates
   gate_tbl <- .get_cyt_pos_gates_gate_tbl_get(
     chnl_vec = chnl_vec,
-    pop = pop_gate,
+    pop = chnl_settings[[1]]$pop_gate,
     path_project = path_project,
     chnl_lab = chnl_lab_vec
   )
@@ -60,7 +59,7 @@
       ind_batch_list = ind_batch_list,
       chnl_vec = chnl_vec,
       chnl_lab_vec = chnl_lab_vec,
-      pop_gate = pop_gate,
+      pop_gate = chnl_settings[[1]]$pop_gate,
       bw_min = bw_min,
       calc_cyt_pos = calc_cyt_pos,
       stage = stage,

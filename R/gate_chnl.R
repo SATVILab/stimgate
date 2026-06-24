@@ -2,12 +2,10 @@
 .gate_chnl <- function(
   .data,
   ind_batch_list,
-  pop_gate,
-  chnl_cut,
   chnl_settings,
   gate_tbl = NULL,
   tol_gate_single = NULL,
-  calc_cyt_pos_gates = NULL,
+  calc_cyt_pos_gates,
   path_project,
   stage
 ) {
@@ -21,7 +19,7 @@
   chnl_lab_vec <- .get_labs(
     # nolint
     .data = .data[[ind_batch_list[[1]]]],
-    chnl_cut = chnl_cut
+    chnl_cut = chnl_settings$chnl_cut
   )
 
   # delete locb gates
@@ -33,8 +31,6 @@
     # nolint
     ind_batch_list = ind_batch_list,
     .data = .data,
-    pop_gate = pop_gate,
-    chnl_cut = chnl_cut,
     chnl_settings = chnl_settings,
     stage = stage,
     path_project = path_project
@@ -68,11 +64,10 @@
     gate_tbl = gate_tbl,
     gate_tbl_params = chnl_settings$gate_tbl,
     chnl_settings = chnl_settings,
-    chnl_cut = chnl_cut,
     .data = .data,
     path_project = path_project,
-    pop_gate = pop_gate,
     ind_batch_list = ind_batch_list,
-    stage = stage
+    stage = stage,
+    calc_cyt_pos_gates = calc_cyt_pos_gates
   )
 }

@@ -14,13 +14,6 @@
     paste0(ind_batch, collapse = "-") # nolint
   )
 
-  # Extract clear scoping variables from chnl_settings
-  chnl_cut <- chnl_settings$chnl_cut
-  exc_min <- chnl_settings$exc_min
-  bw_min <- chnl_settings$bw_min
-  tol_ctrl <- chnl_settings$tol_ctrl
-  tol_clust <- chnl_settings$tol_clust
-
   # create bare list
   gate_list <- .get_cp_uns_loc(
     ex_list = ex_list,
@@ -30,8 +23,8 @@
     path_project = path_project
   )
 
-  if (!is.null(tol_ctrl)) {
-    for (tol in tol_ctrl) {
+  if (!is.null(chnl_settings$tol_ctrl)) {
+    for (tol in chnl_settings$tol_ctrl) {
       .debug("getting tg-based cutpoint as a control") # nolint
       gate_list[[paste0("tg_ctrl_", tol)]] <- .get_cp_tg(
         ex_list = ex_list,
@@ -43,7 +36,7 @@
     }
   }
 
-  if (!is.null(tol_clust)) {
+  if (!is.null(chnl_settings$tol_clust)) {
     .debug("getting tolerance gate") # nolint
     gate_list[["tg_clust"]] <- .get_cp_tg(
       ex_list = ex_list,
@@ -134,8 +127,8 @@
   batch,
   ex_list,
   .data,
-  chnl_cut,
   chnl_settings,
+  calc_cyt_pos_gates,
   stage,
   path_project
 ) {
@@ -147,18 +140,12 @@
   # =================================
   gate_tbl <- .gate_batch_single_tbl_format(chnl_settings$gate_tbl)
   gate_name_vec <- unique(gate_tbl$gate_name)
-  
-  # Scoped extraction to replace old signature variables
-  ind_in_batch_uns <- chnl_settings$ind_in_batch_uns
-  calc_cyt_pos_gates <- chnl_settings$calc_cyt_pos_gates
-  tol_ctrl <- chnl_settings$tol_ctrl
-  tol_clust_single <- chnl_settings$tol_clust_single
 
   # get single-pos gates for each of the gate types already done
   purrr::map_df(gate_name_vec, function(gate_name_curr) {
     .debug("getting single-pos gate", gate_name_curr) # nolint
     gate_tbl_gn_marker <- gate_tbl |>
-      dplyr::filter(gate_name == gate_name_curr, chnl == chnl_cut) # nolint
+      dplyr::filter(gate_name == gate_name_curr, chnl == chnl_settings$chnl_cut) # nolint
 
     gate_name_tbl_row <- gate_tbl_gn_marker[1, , drop = FALSE]
     gate_method <- gate_name_tbl_row$gate_method
@@ -184,13 +171,9 @@
           .get_pos_ind_but_single_pos_for_one_cyt(
             ex = ex_list[[i]],
             gate_tbl = gate_tbl_gn_ind,
-            chnl_single_exc = chnl_cut,
+            chnl_single_exc = chnl_settings$chnl_cut,
             chnl = NULL,
-            gate_type_cyt_pos = ifelse(
-              calc_cyt_pos_gates,
-              "cyt",
-              "base"
-            ),
+            gate_type_cyt_pos = if (calc_cyt_pos_gates) "cyt" else "base",
             gate_type_single_pos = "base"
           )
         ex_list[[i]][!pos_ind_vec_but_single_pos_curr, , drop = FALSE]

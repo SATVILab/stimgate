@@ -13,8 +13,6 @@
 .gate_chnl_pre_adj_gates_gate <- function(
   ind_batch_list,
   .data,
-  pop_gate,
-  chnl_cut,
   chnl_settings,
   stage,
   path_project
@@ -33,8 +31,6 @@
       .data = .data,
       ind_batch = ind_batch_list[[i]],
       batch = names(ind_batch_list)[i],
-      pop_gate = pop_gate,
-      chnl_cut = chnl_cut,
       chnl_settings = chnl_settings,
       stage = stage,
       path_project = path_project
@@ -55,13 +51,12 @@
 .gate_chnl_get_adj_gates <- function(
   gate_tbl,
   gate_tbl_params,
-  chnl_cut,
   chnl_settings,
   .data,
-  pop_gate,
   stage,
   path_project,
-  ind_batch_list
+  ind_batch_list,
+  calc_cyt_pos_gates
 ) {
   if (stage == "init") {
     .gate_chnl_get_adj_gates_all(
@@ -71,8 +66,8 @@
       path_project = path_project,
       stage = stage,
       ind_batch_list = ind_batch_list,
-      pop_gate = pop_gate,
-      chnl_settings = chnl_settings
+      chnl_settings = chnl_settings,
+      calc_cyt_pos_gates = calc_cyt_pos_gates
     )
   } else if (stage == "single") {
     .gate_chnl_gate_adj_gates_single(
@@ -82,7 +77,6 @@
       calc_cyt_pos_gates = TRUE,
       path_project = path_project,
       ind_batch_list = ind_batch_list,
-      pop_gate = pop_gate,
       stage = stage,
       chnl_settings = chnl_settings
     )
@@ -98,8 +92,8 @@
   path_project,
   stage,
   ind_batch_list,
-  pop_gate,
-  chnl_settings
+  chnl_settings,
+  calc_cyt_pos_gates
 ) {
   if (!is.null(chnl_settings$tol_clust)) {
     gate_tbl_tg_gate <- gate_tbl |>
@@ -127,7 +121,7 @@
       gate_type_single_pos_calc = "base",
       path_project = path_project,
       ind_batch_list = ind_batch_list,
-      pop_gate = pop_gate,
+      pop_gate = chnl_settings$pop_gate,
       tol_clust = chnl_settings$tol_clust
     )
     gate_stats_tbl <- path_dir_stats |>
@@ -144,14 +138,12 @@
           gate_stats_tbl = gate_stats_tbl |>
             dplyr::filter(gate_name == gn),
           gate_tbl_ctrl = gate_tbl_tg_gate,
-          chnl = chnl_settings$chnl_cut,
-          bw = chnl_settings$bw_min,
-          control = list(),
+          chnl_settings = chnl_settings,
           filter_other_cyt_pos = FALSE,
           stage = stage,
           path_project = path_project,
-          gate_quant = gate_quant,
-          tol_clust = chnl_settings$tol_clust
+          calc_cyt_pos_gates = calc_cyt_pos_gates,
+          ind_batch_list = ind_batch_list
         )
 
         gate_tbl_cluster |>
@@ -202,9 +194,7 @@
   calc_cyt_pos_gates,
   path_project,
   ind_batch_list,
-  pop_gate,
   stage,
-  gate_quant,
   chnl_settings
 ) {
   # get gates
@@ -221,12 +211,11 @@
   # get stats table (if needed)
   gate_stats_tbl <- .gate_chnl_gate_adj_gates_single_stats_tbl_get(
     gate_tbl = gate_tbl,
-    chnl_cut = chnl_settings$chnl_cut,
     .data = .data,
+    chnl_settings = chnl_settings,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     path_project = path_project,
-    ind_batch_list = ind_batch_list,
-    pop_gate = pop_gate
+    ind_batch_list = ind_batch_list
   )
 
   gate_tbl_out <- .gate_chnl_gate_adj_gates_single_out_get(
@@ -292,12 +281,11 @@
 #' @keywords internal
 .gate_chnl_gate_adj_gates_single_stats_tbl_get <- function(
   gate_tbl,
-  chnl_cut,
+  chnl_settings,
   .data,
   calc_cyt_pos_gates,
   path_project,
-  ind_batch_list,
-  pop_gate
+  ind_batch_list
 ) {
   gate_name_vec <- unique(gate_tbl$gate_name)
   if (!.gate_chnl_gate_adj_gates_single_stats_tbl_get_check(gate_name_vec)) {
@@ -318,16 +306,16 @@
         gate_name %in% c(gate_name_vec_clust, gate_name_vec_adj) # nolint
       ),
     gate_name = NULL,
-    chnl = chnl_cut,
+    chnl = chnl_settings$chnl_cut,
     filter_other_cyt_pos = TRUE,
-    gate_type_cyt_pos_filter = ifelse(calc_cyt_pos_gates, "cyt", "base"),
+    gate_type_cyt_pos_filter = if (calc_cyt_pos_gates) "cyt" else "base",
     .data = .data,
     gate_type_single_pos_filter = "base",
     gate_type_single_pos_calc = "base",
     combn = FALSE,
     path_project = path_project,
     ind_batch_list = ind_batch_list,
-    pop_gate = pop_gate
+    pop_gate = chnl_settings$chnl_cutpop_gate
   )
 }
 
@@ -474,14 +462,9 @@
       gate_tbl = gate_tbl_gn,
       gate_stats_tbl = gate_stats_tbl_gn,
       gate_tbl_ctrl = gate_tbl_ctrl_clust_gn,
-      chnl = chnl_settings$chnl_cut,
-      bw = chnl_settings$bw_min,
-      control = list(),
       filter_other_cyt_pos = TRUE,
       stage = stage,
-      path_project = path_project,
-      gate_quant = gate_quant,
-      tol_clust = chnl_settings$tol_clust
+      path_project = path_project
     )
 
     gate_tbl_cluster_gn <- gate_tbl_cluster_gn |>

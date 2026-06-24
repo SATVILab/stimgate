@@ -2,8 +2,8 @@ test_that("stimgate_gate runs", {
   example_data <- get_example_data()
   gs <- flowWorkspace::load_gs(example_data$path_gs)
   path_project <- file.path(dirname(example_data$path_gs), "stimgate")
+  debugonce(.get_cyt_pos_gates_gate_tbl_get)
   # debugonce(stimgate_gate)
-  debugonce(.gate_batch)
   # browser()
   invisible(stimgate_gate(
     .data = gs,

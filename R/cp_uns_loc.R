@@ -26,18 +26,15 @@
   stage,
   path_project
 ) {
-  bias_uns <- chnl_settings$bias_uns
-  exc_min <- chnl_settings$exc_min
-
   # get ecdf of uns
-  purrr::map(bias_uns, function(bias) {
+  purrr::map(chnl_settings$bias_uns, function(bias) {
     .debug("bias_uns", bias) # nolint
 
     ex_list_prep <- .prepare_data_with_bias_and_noise(
       ex_list = ex_list,
       bias = bias,
-      noise_sd = chnl_settings$noise_sd,
-      exc_min = exc_min
+      noise_sd = NULL,
+      exc_min = chnl_settings$exc_min
     )
 
     # get gates for given level of bias across gate combination methods

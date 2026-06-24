@@ -15,6 +15,7 @@
   gate_quant,
   bw_ncell_min,
   bw_ncell_max,
+  bw_cluster,
   min_cell,
   tol_clust
 ) {
@@ -115,6 +116,9 @@
   if (!is.numeric(tol_clust) || tol_clust <= 0) {
     stop("`tol_clust` must be a positive numeric threshold.")
   }
+  if (!is.null(bw_cluster) && (!is.numeric(bw_cluster) || bw_cluster <= 0)) {
+    stop("`bw_cluster` must be a positive numeric value if specified.")
+  }
   chnl_lab <- .chnl_lab(.data)
   if (!is.null(chnl)) {
     all_chnl_valid <- all(chnl %in% names(chnl_lab))
@@ -153,8 +157,21 @@
     "min_cell",
     "tol_clust",
     "cp_min",
-    "max_pos_prob_x"
+    "max_pos_prob_x",
+    "bw_cluster"
   )
+  if (!is.null(chnl_settings) && !all(names(chnl_settings) %in% permissible_settings)) {
+    stop(
+      "Invalid channel settings detected. The invalid settings are: ",
+      paste(setdiff(names(chnl_settings), permissible_settings), collapse = ", ")
+    )
+  }
+  if (!is.null(marker_settings) && !all(names(marker_settings) %in% permissible_settings)) {
+    stop(
+      "Invalid marker settings detected. The invalid settings are: ",
+      paste(setdiff(names(marker_settings), permissible_settings), collapse = ", ")
+    )
+  }
   if (!is.null(chnl_settings) && !is.null(marker_settings)) {
     stop("Specify only one of `chnl_settings` or `marker_settings`, not both.")
   }
@@ -271,6 +288,12 @@
         length(settings$max_pos_prob_x) != 1)
   ) {
     stop(paste0(prefix, "`max_pos_prob_x` must be a single numeric value."))
+  }
+  if (!"pop_gate" %in% names(settings)) {
+    stop(paste0(prefix, "`pop_gate` must be specified in the settings."))
+  }
+  if (!is.character(settings$pop_gate) || length(settings$pop_gate) != 1) {
+    stop(paste0(prefix, "`pop_gate` must be a single character string."))
   }
 
   invisible(TRUE)
