@@ -471,7 +471,7 @@ stimgate_meta_read_batch_list <- function(path_project) {
   readRDS(path_batch_list)
 }
 
-.extract_chnl <- function() {
+.extract_chnl <- function(chnl, marker, path_project) {
   if (!is.null(chnl)) {
     if (!length(chnl) == length(unique(chnl))) {
       stop(

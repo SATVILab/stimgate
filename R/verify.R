@@ -117,20 +117,20 @@
   }
   chnl_lab <- .chnl_lab(.data)
   if (!is.null(chnl)) {
-    all_chnl_valid <- all(chnl %in% chnl_lab)
+    all_chnl_valid <- all(chnl %in% names(chnl_lab))
     if (!all_chnl_valid) {
       stop(
         "The following channels are not found in the GatingSet: ",
-        paste(setdiff(chnl, chnl_lab), collapse = ", ")
+        paste(setdiff(chnl, names(chnl_lab)), collapse = ", ")
       )
     }
   }
   if (!is.null(marker)) {
-    all_marker_valid <- all(marker %in% names(chnl_lab))
+    all_marker_valid <- all(marker %in% chnl_lab)
     if (!all_marker_valid) {
       stop(
         "The following markers are not found in the GatingSet: ",
-        paste(setdiff(marker, names(chnl_lab)), collapse = ", ")
+        paste(setdiff(marker, chnl_lab), collapse = ", ")
       )
     }
   }

@@ -3,7 +3,7 @@ test_that("stimgate_gate runs", {
   gs <- flowWorkspace::load_gs(example_data$path_gs)
   path_project <- file.path(dirname(example_data$path_gs), "stimgate")
   debugonce(stimgate_gate)
-  browser()
+  # browser()
   invisible(stimgate_gate(
     .data = gs,
     path_project = path_project,
