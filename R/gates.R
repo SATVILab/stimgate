@@ -32,19 +32,26 @@ stimgate_gate_get <- function(
   marker = NULL,
   chnl = NULL
 ) {
-  pop <- pop %||% .gate_get_pop(path_project)
+  pop <- pop %|c|% .gate_get_pop(path_project)
+  
   purrr::map_df(pop, function(pop_curr) {
-    if (!is.null(marker)) {
+    chnl_vec <- if (!is.null(marker)) {
       marker_lab <- stimgate_meta_read_marker_lab(path_project)
-      chnl <- marker_lab[marker] |>
-        stats::setNames(NULL)
+      marker_lab[marker] |> stats::setNames(NULL)
     } else {
-      chnl <- chnl %||% .gate_get_chnl(path_project, pop_curr)
+      chnl %|c|% .gate_get_chnl(path_project, pop_curr)
     }
-    purrr::map_df(chnl, function(chnl_curr) {
+    
+    purrr::map_df(chnl_vec, function(chnl_curr) {
       marker_curr <- stimgate_meta_read_chnl_lab(path_project)[chnl_curr] |>
         stats::setNames(NULL)
-      .gates_get_path_all(path_project, pop_curr, chnl_curr, FALSE) |>
+        
+      .gates_get_path_all(
+        path_project = path_project, 
+        pop = pop_curr, 
+        chnl = chnl_curr, 
+        init = FALSE
+      ) |>
         readRDS() |>
         dplyr::filter(chnl == chnl_curr) |>
         dplyr::mutate(marker = marker_curr) |>

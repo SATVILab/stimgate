@@ -171,7 +171,7 @@ simCytExperiment <- function(
 #'   - `conditionMatrix`: Numeric matrix of simulated data (nCell x nMarker).
 #'   - `conditionLabels`: Character vector of cluster labels for each cell.
 #'
-#' @internal
+#' @keywords internal
 simCytSample <- function(
   nMarker,
   nCondition,

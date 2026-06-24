@@ -264,7 +264,6 @@ stimgate_gate <- function(
       }
     }
   chnl_settings <- .complete_chnl_list(
-    # nolint
     chnl = chnl,
     bias_uns = bias_uns,
     bias_uns_factor = bias_uns_factor,
@@ -300,7 +299,6 @@ stimgate_gate <- function(
 
   # cytokine-positive gates
   gate_tbl <- .gate_cyt_pos(
-    # nolint
     chnl_settings = chnl_settings,
     ind_batch_list = batch_list,
     pop_gate = pop_gate,
@@ -317,10 +315,6 @@ stimgate_gate <- function(
     .data = .data,
     ind_batch_list = batch_list,
     path_project = path_project,
-    max_pos_prob_x = max_pos_prob_x,
-    gate_quant = gate_quant,
-    tol_clust = tol_clust,
-    tol_gate_single = tol_gate_single,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
     gate_tbl = gate_tbl
@@ -331,21 +325,16 @@ stimgate_gate <- function(
   message("")
   message("getting cyt combn frequencies")
 
-  path_dir_stats <- .gate_stats(
+  .gate_stats(
     .data = .data,
-    params = NULL,
-    gate_tbl = NULL,
-    filter_other_cyt_pos = FALSE,
-    combn = TRUE,
+    gate_tbl = gate_tbl,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     calc_single_pos_gates = calc_single_pos_gates,
-    save = TRUE,
     pop_gate = pop_gate,
     chnl_settings = chnl_settings,
     ind_batch_list = batch_list,
     path_project = path_project,
-    tol_clust = tol_clust,
-    save_gate_tbl = TRUE
+    tol_clust = tol_clust
   )
 
   path_project
@@ -359,19 +348,16 @@ stimgate_gate <- function(
   ind_batch_list,
   path_project
 ) {
-  # loop over populations
   message("----")
   message("getting base gates")
   message("----")
   message("")
-  # loop over markers
+
   purrr::walk(chnl_settings, function(chnl_settings_curr) {
     txt <- paste0("chnl: ", chnl_settings_curr$chnl_cut)
     message(txt)
-    # get gates for each sample within each batch
 
     gate_obj <- .gate_chnl(
-      # nolint
       .data = .data,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate,
@@ -382,10 +368,10 @@ stimgate_gate <- function(
     )
 
     .gate_init_save(
-      path_project,
-      pop_gate,
-      chnl_settings_curr$chnl_cut,
-      gate_obj$gate_tbl
+      path_project = path_project,
+      pop = pop_gate,
+      chnl = chnl_settings_curr$chnl_cut,
+      gate_tbl = gate_obj$gate_tbl
     )
   })
 }
@@ -393,17 +379,17 @@ stimgate_gate <- function(
 #' @keywords internal
 .gate_init_save <- function(path_project, pop, chnl, gate_tbl) {
   path_save <- .gates_get_path_all(
-    path_project,
-    pop,
-    chnl,
-    TRUE
+    path_project = path_project,
+    pop = pop,
+    chnl = chnl,
+    init = TRUE
   )
   if (!dir.exists(dirname(path_save))) {
     dir.create(dirname(path_save), recursive = TRUE, showWarnings = TRUE)
   }
-
   saveRDS(gate_tbl, path_save)
 }
+
 #' @keywords internal
 .gate_single <- function(
   pop_gate,
@@ -411,29 +397,25 @@ stimgate_gate <- function(
   .data,
   ind_batch_list,
   path_project,
-  max_pos_prob_x,
-  gate_quant,
-  tol_clust,
-  tol_gate_single,
   calc_cyt_pos_gates,
   calc_single_pos_gates,
   gate_tbl
 ) {
-  # loop over populations
   message("")
   message("")
   message("----")
   message("getting single+ gates")
   message("----")
   message("")
+
   if (!calc_single_pos_gates) {
-    .debug("Not gating single-pos gates") # nolint
+    .debug("Not gating single-pos gates")
     purrr::walk(chnl_settings, function(chnl_settings_curr) {
       path_save <- .gates_get_path_all(
-        path_project,
-        pop_gate,
-        chnl_settings_curr$chnl_cut,
-        FALSE
+        path_project = path_project,
+        pop = pop_gate,
+        chnl = chnl_settings_curr$chnl_cut,
+        init = FALSE
       )
       if (!dir.exists(dirname(path_save))) {
         dir.create(dirname(path_save), recursive = TRUE, showWarnings = TRUE)
@@ -447,30 +429,19 @@ stimgate_gate <- function(
     })
     return(invisible(TRUE))
   } else {
-    .debug("Gating single-pos gates") # nolint
+    .debug("Gating single-pos gates")
   }
-  # loop over markers
+
   purrr::walk(chnl_settings, function(chnl_settings_curr) {
     txt <- paste0("chnl: ", chnl_settings_curr$chnl_cut)
     message(txt)
-    # get gates for each sample within each batch
 
     gate_obj <- .gate_chnl(
-      # nolint
       .data = .data,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate,
       chnl_cut = chnl_settings_curr$chnl_cut,
-      gate_combn = chnl_settings_curr$gate_combn,
-      bias_uns = chnl_settings_curr$bias_uns,
-      exc_min = chnl_settings_curr$exc_min,
-      bw_min = chnl_settings_curr$bw_min,
-      cp_min = chnl_settings_curr$cp_min,
-      min_cell = chnl_settings_curr$min_cell,
-      max_pos_prob_x = chnl_settings_curr$max_pos_prob_x,
-      gate_quant = gate_quant,
-      tol_clust = tol_clust,
-      tol_gate_single = tol_gate_single,
+      chnl_settings = chnl_settings_curr,
       gate_tbl = gate_tbl,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
       path_project = path_project,
@@ -478,10 +449,10 @@ stimgate_gate <- function(
     )
 
     .gate_single_save(
-      path_project,
-      pop_gate,
-      chnl_settings_curr$chnl_cut,
-      gate_obj$gate_tbl
+      path_project = path_project,
+      pop = pop_gate,
+      chnl = chnl_settings_curr$chnl_cut,
+      gate_tbl = gate_obj$gate_tbl
     )
   })
 }
@@ -489,57 +460,44 @@ stimgate_gate <- function(
 #' @keywords internal
 .gate_single_save <- function(path_project, pop, chnl, gate_tbl) {
   path_save <- .gates_get_path_all(
-    path_project,
-    pop,
-    chnl,
-    FALSE
+    path_project = path_project,
+    pop = pop,
+    chnl = chnl,
+    init = FALSE
   )
   if (!dir.exists(dirname(path_save))) {
     dir.create(dirname(path_save), recursive = TRUE, showWarnings = TRUE)
   }
-
   saveRDS(gate_tbl, path_save)
 }
-
 
 #' @keywords internal
 .gate_stats <- function(
   .data,
-  params = NULL,
   gate_tbl = NULL,
-  filter_other_cyt_pos = FALSE,
-  combn = TRUE,
   calc_cyt_pos_gates,
   calc_single_pos_gates,
-  save = TRUE,
   pop_gate,
   chnl_settings,
   ind_batch_list,
   path_project,
-  tol_clust,
-  save_gate_tbl = TRUE
+  tol_clust
 ) {
   force(.data)
   .get_stats(
-    # nolint
-    params = params,
     gate_tbl = gate_tbl,
-    filter_other_cyt_pos = filter_other_cyt_pos,
-    combn = combn,
+    filter_other_cyt_pos = FALSE,
+    combn = TRUE,
     gate_type_cyt_pos_filter = if (calc_cyt_pos_gates) "cyt" else "base",
-    gate_type_single_pos_filter = if (calc_single_pos_gates) {
-      "single"
-    } else {
-      "base"
-    },
+    gate_type_single_pos_filter = if (calc_single_pos_gates) "single" else "base",
     gate_type_cyt_pos_calc = if (calc_cyt_pos_gates) "cyt" else "base",
     gate_type_single_pos_calc = if (calc_single_pos_gates) "single" else "base",
-    save = save,
+    save = TRUE,
     pop_gate = pop_gate,
     chnl = purrr::map_chr(chnl_settings, function(x) x$chnl_cut),
     ind_batch_list = ind_batch_list,
     .data = .data,
-    save_gate_tbl = save_gate_tbl,
+    save_gate_tbl = TRUE,
     path_project = path_project,
     tol_clust = tol_clust
   )

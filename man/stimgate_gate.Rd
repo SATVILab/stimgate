@@ -7,24 +7,30 @@
 stimgate_gate(
   path_project,
   .data,
+  pop_gate = "root",
   batch_list,
   chnl = NULL,
   marker = NULL,
-  pop_gate = "root",
+  calc_cyt_pos_gates = TRUE,
+  calc_single_pos_gates = FALSE,
   bias_uns = NULL,
   bias_uns_factor = 1,
   exc_min = TRUE,
   cp_min = NULL,
+  bw = NULL,
   bw_min = NULL,
+  bw_max = NULL,
+  bw_mtd = "hpi_1",
+  bw_adj = 1,
+  bw_ncell_min = 100,
+  bw_ncell_max = 1e+05,
   min_cell = 100,
   max_pos_prob_x = Inf,
   gate_quant = c(0.25, 0.75),
   tol_clust = 1e-07,
   gate_combn = "min",
   marker_settings = NULL,
-  chnl_settings = NULL,
-  calc_cyt_pos_gates = TRUE,
-  calc_single_pos_gates = FALSE
+  chnl_settings = NULL
 )
 }
 \arguments{
@@ -35,6 +41,10 @@ statistics, and plots. The directory will be created if it doesn't exist.}
 \item{.data}{GatingSet. A flowWorkspace GatingSet object containing the flow cytometry
 data with both stimulated and unstimulated samples. The GatingSet should have
 consistent channel names across all samples and include proper sample annotations.}
+
+\item{pop_gate}{character vector. Population(s) within which to perform gating.
+Default is "root" to gate on all cells. Can specify other populations like
+"CD3+" or "CD4+" if these gates already exist in the GatingSet.}
 
 \item{batch_list}{list. Named list where each element contains indices of samples
 belonging to the same batch/donor. Names will be used for batch identification.
@@ -50,9 +60,13 @@ override global defaults. The marker name should match channel names in the Gati
 When provided, this is used instead of chnl to determine which markers to analyze.
 Default is NULL.}
 
-\item{pop_gate}{character vector. Population(s) within which to perform gating.
-Default is "root" to gate on all cells. Can specify other populations like
-"CD3+" or "CD4+" if these gates already exist in the GatingSet.}
+\item{calc_cyt_pos_gates}{logical. Whether to calculate refined cytokine-positive
+gates using more sophisticated algorithms. Default is TRUE. When FALSE, only
+basic gates are calculated, which may be less accurate but faster.}
+
+\item{calc_single_pos_gates}{logical. Whether to calculate single-positive gates
+for individual markers in addition to combination gates. Default is FALSE.
+Useful for detailed analysis of individual marker responses.}
 
 \item{bias_uns}{numeric. Bias adjustment for unstimulated samples to account for
 background cytokine production. When NULL (default), no bias correction is applied.
@@ -71,9 +85,19 @@ or compensation spillover and should typically be excluded.}
 no minimum is enforced. Useful for ensuring gates don't fall below known
 technical thresholds or background levels.}
 
-\item{bw_min}{numeric. Minimum bandwidth for density estimation. When NULL (default),
-bandwidth is estimated automatically. Smaller values create more detailed density
-estimates but may be noisier.}
+\item{bw}{numeric. Specify the bandwith for density estimation. When NULL (default), bandwidth is estimated automatically. Default is \code{NULL}.}
+
+\item{bw_min}{numeric. Minimum bandwidth for density estimation. Ignored if \code{bw} is set. Default is \code{NULL}.}
+
+\item{bw_max}{numeric. Maximum bandwidth for density estimation. Ignored if \code{bw} is set. Default is \code{NULL}.}
+
+\item{bw_mtd}{character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi_0", "hpi_1", "hpi_2" and "hpi_3", which corresponds to the Silverman rule of thumbg (\code{"nrd0"}), the Sheather-Jones plug-in estimator (\code{"sj"}) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (\code{"hpi_1"}, \code{"hpi_1"}, \code{"hpi_2"} and \code{"hpi_3"}). Default is "nrd0". Ignored if \code{bw} is set. Default is \code{"hpi_1"}.}
+
+\item{bw_adj}{numeric. Adjustment factor for bandwidth. Default is 1. Ignored if \code{bw} is set. Default is 1.}
+
+\item{bw_ncell_min}{numeric. Minimum number of cells required for bandwidth estimation. If a sample has fewer cells than \code{bw_ncell_min}, cells are sampled with replacement to reach the minimum, with noise subsequently added. Ignored if \code{bw} is set. Default is 100.}
+
+\item{bw_ncell_max}{numeric. Maximum number of cells used for bandwidth estimation. If a sample has more cells than \code{bw_ncell_max}, cells are sampled without replacement to reach the maximum. Ignored if \code{bw} is set. Default is 100 000.}
 
 \item{min_cell}{numeric. Minimum number of cells required for reliable gating.
 Default is 100. Samples with fewer cells will be skipped as they don't provide
@@ -102,14 +126,6 @@ and contain parameter overrides. Default is NULL.}
 \item{chnl_settings}{list. Optional list of channel-specific settings that override
 global defaults. Similar to marker_settings but keyed by channel names.
 Default is NULL.}
-
-\item{calc_cyt_pos_gates}{logical. Whether to calculate refined cytokine-positive
-gates using more sophisticated algorithms. Default is TRUE. When FALSE, only
-basic gates are calculated, which may be less accurate but faster.}
-
-\item{calc_single_pos_gates}{logical. Whether to calculate single-positive gates
-for individual markers in addition to combination gates. Default is FALSE.
-Useful for detailed analysis of individual marker responses.}
 }
 \value{
 character. Returns the path to the project directory where all results

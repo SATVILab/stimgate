@@ -237,15 +237,22 @@ stimgate_debug_print <- function() {
   invisible(txt)
 }
 
+#' @keywords internal
 .int_save_nm <- function(name, obj, ind, stage, path_project) {
   if (!.int_save_check(ind)) {
     return(invisible(FALSE))
   }
-  path_save <- .int_save_path_save(path_project, stage, ind, name)
+  path_save <- .int_save_path_save(
+    path_project = path_project,
+    stage = stage,
+    ind = ind,
+    name = name
+  )
   saveRDS(obj, path_save)
   invisible(TRUE)
 }
 
+#' @keywords internal
 .int_save <- function(ind, stage, path_project, ...) {
   if (!.int_save_check(ind)) {
     return(invisible(FALSE))
@@ -268,7 +275,13 @@ stimgate_debug_print <- function() {
   }
 
   for (i in seq_along(dots)) {
-    .int_save_nm(dot_names[[i]], dots[[i]], ind, stage, path_project)
+    .int_save_nm(
+      name = dot_names[[i]],
+      obj = dots[[i]],
+      ind = ind,
+      stage = stage,
+      path_project = path_project
+    )
   }
 
   invisible(TRUE)
@@ -279,8 +292,8 @@ stimgate_debug_print <- function() {
   is.null(ind) || length(ind) == 0 || all(is.na(ind))
 }
 
+#' @keywords internal
 .int_save_check <- function(ind) {
-  # Return FALSE if ind is NULL or invalid
   if (.is_invalid_ind(ind)) {
     return(FALSE)
   }
@@ -300,6 +313,7 @@ stimgate_debug_print <- function() {
   any(as.character(ind) %in% env_var_split)
 }
 
+#' @keywords internal
 .int_save_path_save <- function(path_project, stage, ind, name) {
   name <- paste0(name, ".rds")
   name <- gsub("\\.rds(\\.rds)*$", ".rds", name, ignore.case = TRUE)
@@ -317,6 +331,7 @@ stimgate_debug_print <- function() {
   path_save
 }
 
+#' @keywords internal
 .browse <- function(ind) {
   if (!.browse_check(ind)) {
     return(invisible(FALSE))
@@ -325,9 +340,8 @@ stimgate_debug_print <- function() {
   invisible(TRUE)
 }
 
-
+#' @keywords internal
 .browse_check <- function(ind) {
-  # Return FALSE if ind is NULL or invalid
   if (.is_invalid_ind(ind)) {
     return(FALSE)
   }

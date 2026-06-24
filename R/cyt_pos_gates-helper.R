@@ -55,8 +55,7 @@
       dens_neg$x >= max(mode_vec)
   ]
 
-  # return NA if no such no low
-  # neg dens points found, other return left-most such point
+  # return NA if no such no low neg dens points found, other return left-most such point
   ifelse(length(low_neg_dens_pts_vec) == 0, NA, min(low_neg_dens_pts_vec))
 }
 
@@ -129,7 +128,6 @@
 
   # calculate density
   # ------------------
-
   dens_pos <- density(ex_pos, bw = bw_final, adjust = adjust)
   dens_neg <- density(
     ex_neg,
@@ -141,7 +139,6 @@
 
   # calculate modes and antimodes
   # -----------------------------
-
   dens_len <- length(dens_pos$y)
 
   # antimodes
@@ -177,8 +174,6 @@
 
   # calculate cp_shape
   # -------------------
-
-  # if no antimode
   if (length(am_vec) == 0) {
     if (!trust_no_or_high_am) {
       return(NA)
@@ -192,13 +187,11 @@
   # nearest mode to cp_orig
   mode_vec_above_cp_orig <- mode_vec[mode_vec > cp_orig]
 
-  # return NA there are none
   if (length(mode_vec_above_cp_orig) == 0) {
     return(NA)
   }
   mode_above_cp_orig_min <- min(mode_vec_above_cp_orig)
 
-  # now there is one mode above cp_orig
   am_vec_more_than_cp_orig <- am_vec[am_vec > cp_orig]
   am_right_min_ind <- ifelse(
     length(am_vec_more_than_cp_orig) > 0,
@@ -206,19 +199,12 @@
     NA
   )
   am_right_min <- am_vec[am_right_min_ind]
-  # return am between cp_orig and mode to the right of cp_orig as
-  # cp_shape if there is one
+  
   if (!is.na(am_right_min[1])) {
     if (am_right_min < mode_above_cp_orig_min) {
       return(am_right_min)
     }
   }
-
-  # now we know that there is no antimode between nearest mode to
-  # cp_orig on right and cp_orig
-  # so now we want to
-  # if the am is deep enough, then use it to return it
-  # get peak on left and right of am
 
   # get left-most antimode of antimodes less than cp_orig
   am_vec_less_than_cp_orig <- am_vec[am_vec < cp_orig]
@@ -230,16 +216,11 @@
   max_left_am <- am_vec[max_left_am_ind]
   max_left_am_height <- am_vec_height[max_left_am_ind]
 
-  # if there are none, then if
-  # trust no am then return peak_neg_dens_x, else return NA
   if (length(max_left_am) == 0 || all(is.na(max_left_am))) {
     cp_shape <- ifelse(trust_no_or_high_am, highest_mode_neg, NA)
     return(cp_shape)
   }
 
-  # if there is one, but it's too small
-  # (relative to mode immediately to left of it)
-  # and it's not trust_no_or_high_am, then return NA
   max_mode_less_than_cp_orig <- max(mode_vec[mode_vec < cp_orig])
   max_mode_less_than_cp_orig_height <- mode_vec_height[
     which(mode_vec == max_mode_less_than_cp_orig)
@@ -268,8 +249,6 @@
     }
   }
 
-  # return max_left_am
-  # this only happens if there is a left-most antimode and it is deep enough
   max_left_am
 }
 
@@ -288,11 +267,10 @@
 ) {
   .debug("Getting gate_tbl") # nolint
   purrr::map_df(chnl_vec, function(chnl_curr) {
-    # get stats tbl
     .gates_get_path_all(
-      path_project,
-      pop,
-      chnl_curr,
+      path_project = path_project,
+      pop = pop,
+      chnl = chnl_curr,
       init = TRUE
     ) |>
       readRDS() |>

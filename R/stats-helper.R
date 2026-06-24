@@ -2,7 +2,6 @@
 .get_stats_chnl_lab_get <- function(chnl_lab, .data, chnl) {
   if (is.null(chnl_lab)) {
     chnl_lab <- .get_labs(
-      # nolint
       .data = .data[[1]],
       chnl_cut = chnl
     )
@@ -11,36 +10,11 @@
 }
 
 #' @keywords internal
-.get_stats_params_get <- function(
-  params = NULL,
-  chnl = NULL,
-  pop_gate = NULL,
-  chnl_lab = NULL,
-  ind_batch_list = NULL,
-  .data = NULL,
-  path_project
-) {
-  if (!is.null(params)) {
-    return(params)
-  }
-  if (is.null(chnl)) {
-    stop("chnl must be provided if params is NULL")
-  }
-  list(
-    pop_gate = pop_gate,
-    chnl_lab = chnl_lab,
-    ind_batch_list = ind_batch_list,
-    .data = .data,
-    path_project = path_project
-  )
-}
-
-#' @keywords internal
 .get_stats_gate_tbl_get <- function(
   gate_tbl,
   chnl_lab,
   path_project,
-  params,
+  pop_gate,
   gate_name = NULL,
   tol_clust = NULL
 ) {
@@ -50,27 +24,25 @@
   purrr::map_df(
     names(chnl_lab),
     function(chnl_curr) {
-      # get stats tbl
-      gate_tbl <- .gates_get_path_all(
-        path_project,
-        params$pop_gate,
-        chnl_curr,
-        FALSE
+      gate_tbl_curr <- .gates_get_path_all(
+        path_project = path_project,
+        pop = pop_gate,
+        chnl = chnl_curr,
+        init = FALSE
       ) |>
         readRDS()
       if (!is.null(gate_name)) {
-        gate_tbl <- gate_tbl |>
+        gate_tbl_curr <- gate_tbl_curr |>
           dplyr::filter(gate_name == .env$gate_name) # nolint
       }
       if (!is.null(tol_clust)) {
         if (tol_clust) {
-          gate_tbl <- gate_tbl |>
+          gate_tbl_curr <- gate_tbl_curr |>
             dplyr::filter(grepl("_clust$", gate_name))
         }
       }
 
-      gate_tbl |>
-        # dplyr::filter(.data$gate_name == .env$gate_name) |>
+      gate_tbl_curr |>
         dplyr::mutate(
           chnl = chnl_curr,
           marker = chnl_lab[chnl_curr]
@@ -139,7 +111,8 @@
 .get_stats_gate_tbl_save <- function(
   gate_tbl,
   path_project,
-  params,
+  pop_gate,
+  chnl_lab,
   chnl,
   save
 ) {
@@ -149,8 +122,8 @@
   if (!"chnl" %in% colnames(gate_tbl)) {
     gate_tbl <- gate_tbl |>
       dplyr::mutate(
-        chnl = params$chnl_cut,
-        marker = params$chnl_lab[params$chnl_cut]
+        chnl = chnl[[1]],
+        marker = chnl_lab[chnl[[1]]]
       )
   }
 
@@ -160,17 +133,17 @@
       chnl,
       marker,
       ind,
-      everything() # nolint
+      dplyr::everything() # nolint
     )
   gate_tbl[, "ind"] <- as.character(gate_tbl[["ind"]])
 
   gate_tbl <- gate_tbl |>
     dplyr::arrange(gate_name, chnl, marker, ind) # nolint
   path_save_rds <- .gates_get_path_all(
-    path_project,
-    params[["pop_gate"]],
-    chnl[1],
-    FALSE
+    path_project = path_project,
+    pop = pop_gate,
+    chnl = chnl[1],
+    init = FALSE
   )
   path_save_csv <- sub("\\.rds$", ".csv", path_save_rds)
   if (file.exists(path_save_rds)) {
@@ -182,13 +155,12 @@
   if (!dir.exists(dirname(path_save_csv))) {
     dir.create(dirname(path_save_csv), recursive = TRUE)
   }
-  write.csv(gate_tbl, path_save_csv)
+  utils::write.csv(gate_tbl, path_save_csv, row.names = FALSE)
   saveRDS(gate_tbl, path_save_rds)
 }
 
-
 #' @keywords internal
-.stats_save <- function(save, stat_tbl, path_project, params, chnl) {
+.stats_save <- function(save, stat_tbl, path_project) {
   if (!save) {
     return(invisible(stat_tbl))
   }
@@ -201,8 +173,8 @@
   if ("batch" %in% colnames(stat_tbl)) {
     stat_tbl[, "batch"] <- as.character(stat_tbl[["batch"]])
   }
-  fn_rds <- paste0("gate_stats.rds")
-  fn_csv <- paste0("gate_stats.csv")
+  fn_rds <- "gate_stats.rds"
+  fn_csv <- "gate_stats.csv"
   path_save_fn_rds <- file.path(path_project, fn_rds)
   path_save_fn_csv <- file.path(path_project, fn_csv)
   if (file.exists(path_save_fn_rds)) {
@@ -211,7 +183,7 @@
   if (file.exists(path_save_fn_csv)) {
     file.remove(path_save_fn_csv)
   }
-  write.csv(stat_tbl, path_save_fn_csv)
+  utils::write.csv(stat_tbl, path_save_fn_csv, row.names = FALSE)
   saveRDS(stat_tbl, path_save_fn_rds)
   invisible(path_project)
 }
