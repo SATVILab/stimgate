@@ -139,6 +139,22 @@
 }
 
 .verify_chnl_settings <- function(chnl_settings, chnl, marker_settings, marker) {
+  permissible_settings <- c(
+    "bias_uns",
+    "bias_uns_factor",
+    "exc_min",
+    "cp_min",
+    "bw",
+    "bw_max",
+    "bw_mtd",
+    "bw_adj",
+    "bw_ncell_min",
+    "bw_ncell_max",
+    "min_cell",
+    "tol_clust",
+    "cp_min",
+    "max_pos_prob_x"
+  )
   if (!is.null(chnl_settings) && !is.null(marker_settings)) {
     stop("Specify only one of `chnl_settings` or `marker_settings`, not both.")
   }
@@ -149,20 +165,64 @@
     stop("`marker_settings` must be a list of marker-specific settings.")
   }
   if (!is.null(chnl_settings) && length(chnl_settings) > 0L) {
-    chnl_vec_from_settings <- sapply(chnl_settings, function(x) x$chnl_cut)
+    chnl_vec_from_settings <- names(chnl_settings)
+    if (length(chnl_vec_from_settings) == 0L) {
+      stop("`chnl_settings` must have named elements corresponding to channels.")
+    }
+    if (!length(chnl_vec_from_settings) == length(unique(chnl_vec_from_settings))) {
+      stop("`chnl_settings` must have unique channel names.")
+    }
+    if (!length(chnl_vec_from_settings) == length(chnl_settings)) {
+      stop("`chnl_settings` must have a name for each element.")
+    }
     if (!all(chnl_vec_from_settings %in% chnl)) {
       stop(
         "All channels specified in `chnl_settings` must be included in `chnl`"
       )
     }
   } else if (!is.null(marker_settings) && length(marker_settings) > 0L) {
-    marker_vec_from_settings <- sapply(marker_settings, function(x) x$marker_cut)
+    marker_vec_from_settings <- names(marker_settings)
+    if (length(marker_vec_from_settings) == 0L) {
+      stop("`marker_settings` must have named elements corresponding to markers.")
+    }
+    if (!length(marker_vec_from_settings) == length(unique(marker_vec_from_settings))) {
+      stop("`marker_settings` must have unique marker names.")
+    }
+    if (!length(marker_vec_from_settings) == length(marker_settings)) {
+      stop("`marker_settings` must have a name for each element.")
+    }
     if (!all(marker_vec_from_settings %in% marker)) {
       stop(
         "All markers specified in `marker_settings` must be included in `marker`"
       )
     }
   }
+  if (is.null(chnl_settings) && is.null(marker_settings)) {
+    return(invisible(TRUE))
+  }
+  if (is.list(chnl_settings) && length(chnl_settings) == 0L) {
+    return(invisible(TRUE))
+  }
+  if (is.list(marker_settings) && length(marker_settings) == 0L) {
+    return(invisible(TRUE))
+  }
+  if (!is.null(chnl_settings)) {
+    lapply(
+      names(chnl_settings),
+      function(chnl_curr) {
+        .verify_chnl_settings_chnl(chnl_curr, chnl_settings[[chnl_curr]])
+      }
+    )
+  }
+  if (!is.null(marker_settings)) {
+    lapply(
+      names(marker_settings),
+      function(marker_curr) {
+        .verify_chnl_settings_chnl(marker_curr, marker_settings[[marker_curr]])
+      }
+    )
+  }
+  invisible(TRUE)
 }
 
 #' @keywords internal

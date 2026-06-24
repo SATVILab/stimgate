@@ -27,7 +27,7 @@
       gate_tbl_curr <- .gates_get_path_all(
         path_project = path_project,
         pop = pop_gate,
-        chnl = chnl_curr,
+        chnl_cut = chnl_curr,
         init = FALSE
       ) |>
         readRDS()
@@ -142,7 +142,7 @@
   path_save_rds <- .gates_get_path_all(
     path_project = path_project,
     pop = pop_gate,
-    chnl = chnl[1],
+    chnl_cut = chnl[1],
     init = FALSE
   )
   path_save_csv <- sub("\\.rds$", ".csv", path_save_rds)

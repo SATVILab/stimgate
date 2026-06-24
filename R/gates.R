@@ -49,7 +49,7 @@ stimgate_gate_get <- function(
       .gates_get_path_all(
         path_project = path_project, 
         pop = pop_curr, 
-        chnl = chnl_curr, 
+        chnl_cut = chnl_curr, 
         init = FALSE
       ) |>
         readRDS() |>
@@ -84,12 +84,12 @@ stimgate_gate_get <- function(
 }
 
 #' @keywords internal
-.gates_get_path_all <- function(path_project, pop, chnl, init) {
+.gates_get_path_all <- function(path_project, pop, chnl_cut, init) {
   file.path(
     path_project,
     "gates",
     paste0("pop_", pop),
-    paste0("chnl_", chnl),
+    paste0("chnl_", chnl_cut),
     "all",
     if (init) "gate_tbl_init.rds" else "gate_tbl.rds"
   )

@@ -517,7 +517,6 @@ stimgate_meta_read_batch_list <- function(path_project) {
   names(chnl_settings) <- marker_lab[names(marker_settings)]
   for (i in seq_along(chnl_settings)) {
     chnl_settings[[i]]$chnl_cut <- marker_lab[[chnl_settings[[i]]$marker_cut]]
-    chnl_settings[[i]]$marker_cut <- NULL
   }
   chnl_settings
 }

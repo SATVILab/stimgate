@@ -270,7 +270,7 @@
     .gates_get_path_all(
       path_project = path_project,
       pop = pop,
-      chnl = chnl_curr,
+      chnl_cut = chnl_curr,
       init = TRUE
     ) |>
       readRDS() |>

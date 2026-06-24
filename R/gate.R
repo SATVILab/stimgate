@@ -353,7 +353,6 @@ stimgate_gate <- function(
       .data = .data,
       ind_batch_list = ind_batch_list,
       pop_gate = pop_gate,
-      chnl_cut = chnl_settings_curr$chnl_cut,
       chnl_settings = chnl_settings_curr,
       path_project = path_project,
       stage = "init"
@@ -362,18 +361,18 @@ stimgate_gate <- function(
     .gate_init_save(
       path_project = path_project,
       pop = pop_gate,
-      chnl = chnl_settings_curr$chnl_cut,
+      chnl_cut = chnl_settings_curr$chnl_cut,
       gate_tbl = gate_obj$gate_tbl
     )
   })
 }
 
 #' @keywords internal
-.gate_init_save <- function(path_project, pop, chnl, gate_tbl) {
+.gate_init_save <- function(path_project, pop, chnl_cut, gate_tbl) {
   path_save <- .gates_get_path_all(
     path_project = path_project,
     pop = pop,
-    chnl = chnl,
+    chnl_cut = chnl_cut,
     init = TRUE
   )
   if (!dir.exists(dirname(path_save))) {
@@ -406,7 +405,7 @@ stimgate_gate <- function(
       path_save <- .gates_get_path_all(
         path_project = path_project,
         pop = pop_gate,
-        chnl = chnl_settings_curr$chnl_cut,
+        chnl_cut = chnl_settings_curr$chnl_cut,
         init = FALSE
       )
       if (!dir.exists(dirname(path_save))) {
@@ -454,7 +453,7 @@ stimgate_gate <- function(
   path_save <- .gates_get_path_all(
     path_project = path_project,
     pop = pop,
-    chnl = chnl,
+    chnl_cut = chnl,
     init = FALSE
   )
   if (!dir.exists(dirname(path_save))) {
