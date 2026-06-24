@@ -69,19 +69,23 @@
 #' @keywords internal
 .get_cp_tg <- function(
   ex_list,
-  gate_combn,
-  chnl_cut,
-  exc_min,
-  tol,
-  min_cell,
-  cp_min,
-  bw,
+  chnl_settings,
   tg_type,
   stage,
   path_project
 ) {
   # get cytoUtils tailgate cutpoint
   .debug("Getting tg cutpoint")
+  
+  # Extract explicit parameters cleanly from chnl_settings at local execution scope
+  chnl_cut <- chnl_settings$chnl_cut
+  gate_combn <- chnl_settings$gate_combn
+  exc_min <- chnl_settings$exc_min
+  min_cell <- chnl_settings$min_cell
+  cp_min <- chnl_settings$cp_min
+  bw <- chnl_settings$bw
+  tol <- chnl_settings$tol %||% 1e-2 # fallback internal tolerance constant if absent
+  
   stage_chnl <- file.path(stage, chnl_cut)
   cp_list <- list()
 
@@ -253,19 +257,19 @@
   pred_tbl <- pred_tbl |> dplyr::mutate(pred = pred_vec)
 
   # find prediction in between middle and max
-  min <- mean(
+  min_val <- mean(
     high_ind_tbl |> dplyr::filter(chnl_cut < cp_scp) |> dplyr::pull("high")
   )
-  max <- max(pred_tbl$pred)
-  mid_prob <- mean(c(max, min))
+  max_val <- max(pred_tbl$pred)
+  mid_prob <- mean(c(max_val, min_val))
 
-  # find the cutpoint that minimises the difference
-  # objective function
+  # find the cutpoint that minimises the difference objective function
   opt_func <- function(x) {
     pred_tbl <- tibble::tibble(chnl_cut = x)
     pred_vec <- predict(fit_pw, pred_tbl, type = "response")
     (pred_vec - mid_prob)^2
   }
+  
   # initial search parameter
   init_par <- mean(c(cp_scp, max(high_ind_tbl$chnl_cut)))
   # optimisation
@@ -279,13 +283,7 @@
 }
 
 
-# Get axis labels from annotated .data frame
-#
-# Get axis labels for cut and high channels
-# using the annotated .data frame.
-#
-# Get channel labels from GatingHierarchy
-# Returns a named vector mapping channel names to marker names
+# Get axis labels from annotated data frame
 #' @keywords internal
 .get_labs <- function(.data, chnl_cut, high = NULL) {
   force(.data)

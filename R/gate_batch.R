@@ -5,15 +5,7 @@
   ind_batch,
   pop_gate,
   chnl_cut,
-  gate_combn,
-  tol_clust,
-  noise_sd,
-  bias_uns,
-  exc_min,
-  bw_min,
-  cp_min,
-  min_cell,
-  params,
+  chnl_settings,
   batch,
   stage,
   path_project
@@ -24,45 +16,30 @@
     .data = .data,
     ind_batch = ind_batch,
     pop = pop_gate,
-    chnl_cut,
+    chnl_cut = chnl_cut,
     batch = batch,
     path_project = path_project
   )
-  if (is.null(params$gate_tbl)) {
+
+  if (is.null(chnl_settings$gate_tbl)) {
     .gate_batch_all(
-      ind_batch,
-      batch,
-      ex_list,
-      gate_combn,
-      .data,
-      noise_sd,
-      bias_uns,
-      exc_min,
-      cp_min,
-      min_cell,
-      tol_clust,
-      bw_min,
-      params,
-      stage,
-      path_project
+      ind_batch = ind_batch,
+      batch = batch,
+      ex_list = ex_list,
+      .data = .data,
+      chnl_settings = chnl_settings,
+      stage = stage,
+      path_project = path_project
     )
   } else {
     .gate_batch_single(
-      ind_batch,
-      batch,
-      ex_list,
-      .data,
-      noise_sd,
-      bias_uns,
-      exc_min,
-      cp_min,
-      min_cell,
-      chnl_cut,
-      tol_clust,
-      bw_min,
-      params,
-      stage,
-      path_project
+      ind_batch = ind_batch,
+      batch = batch,
+      ex_list = ex_list,
+      .data = .data,
+      chnl_settings = chnl_settings,
+      stage = stage,
+      path_project = path_project
     )
   }
 }

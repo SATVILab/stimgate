@@ -57,14 +57,12 @@
   path_project
 ) {
   .debug("Getting prop_bs_by_cp_tbl object") # nolint
-  # statistics
-  # ----------------
 
   data_list_obj <- .get_prop_bs_by_cp_tbl_data_list(
     .data = .data,
     gate_tbl = gate_tbl,
     ind_batch_list = ind_batch_list,
-    chnl_cut,
+    chnl_cut = chnl_cut,
     pop_gate = pop_gate,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
     max_cp = max_cp,
@@ -130,7 +128,6 @@
   purrr::map(seq_along(ind_batch_list), function(i) {
     ind_batch <- ind_batch_list[[i]]
     ex_list <- .get_ex_list(
-      # nolint
       .data = .data,
       ind_batch = ind_batch,
       pop = pop_gate,
@@ -139,13 +136,8 @@
       path_project = path_project
     )
 
-    # get min and max expression across batch
-    # (used downstream, and only cells with
-    # expr above min are used for clustering)
     min_max_vec <- .get_prop_bs_by_cp_tbl_data_list_minmax(ex_list)
 
-    # filter to yield cells negative for all cytokine combinations
-    # except possible this cytokine single-positive
     ex_list_filter <- .get_prop_bs_by_cp_tbl_data_list_filter_cyt_pos(
       filter_other_cyt_pos = filter_other_cyt_pos,
       gate_tbl = gate_tbl,
@@ -153,11 +145,9 @@
       calc_cyt_pos_gates = calc_cyt_pos_gates
     )
 
-    # this is just to save memory
-    # for when calculating the per-threshold performance
     out_tbl <- .get_prop_bs_by_cp_tbl_data_list_filter_above_min(
-      ex_list_filter,
-      cp_min
+      ex_list_filter = ex_list_filter,
+      cp_min = cp_min
     )
 
     list(
@@ -170,8 +160,6 @@
 
 #' @keywords internal
 .get_prop_bs_by_cp_tbl_data_list_minmax <- function(ex_list) {
-  # range of expressions
-  # (used later when calculating how "flat" a derivative is)
   expr_range_tbl <- purrr::map_df(
     seq_along(ex_list),
     function(i) {
@@ -212,7 +200,6 @@
 
     pos_ind_vec_but_single_pos_curr <-
       .get_pos_ind_but_single_pos_for_one_cyt(
-        # nolint
         ex = ex_list[[i]],
         gate_tbl = gate_tbl_ind,
         chnl_single_exc = attr(ex_list[[i]], "chnl_cut"),
@@ -303,9 +290,9 @@
 ) {
   .get_prop_bs_by_cp_tbl_actual_progress(i, data_list)
   ex_list <- .get_prop_bs_by_cp_tbl_actual_ex_get(
-    data_list,
-    i,
-    ind_batch_list
+    data_list = data_list,
+    i = i,
+    ind_batch_list = ind_batch_list
   )
   if (is.null(ex_list)) {
     return(NULL)
@@ -333,16 +320,16 @@
   gate_stats_tbl
 ) {
   par_list <- .get_prop_bs_by_cp_tbl_ind_prep(
-    gate_stats_tbl,
-    ex_stim,
-    ex_uns,
-    cp_seq
+    gate_stats_tbl = gate_stats_tbl,
+    ex_stim = ex_stim,
+    ex_uns = ex_uns,
+    cp_seq = cp_seq
   )
 
   .get_prop_bs_by_cp_tbl_ind_init(ex_stim, ex_uns, par_list, cp_seq) |>
     .get_prop_bs_by_cp_tbl_ind_calc(
-      attr(ex_stim, "n_cell"),
-      attr(ex_uns, "n_cell")
+      n_cell_stim = attr(ex_stim, "n_cell"),
+      n_cell_uns = attr(ex_uns, "n_cell")
     )
 }
 
@@ -469,8 +456,8 @@
 ) {
   .debug("Getting density table") # nolint
   min_threshold <- .get_cp_cluster_dens_tbl_get_min_threshold(
-    gate_tbl,
-    control
+    gate_tbl = gate_tbl,
+    control = control
   )
   dens_tbl <- purrr::map_df(seq_along(ind_batch_list), function(i) {
     ind_batch <- ind_batch_list[[i]]
@@ -478,7 +465,7 @@
       .data = .data,
       ind_batch = ind_batch,
       pop_gate = pop_gate,
-      chnl_cut,
+      chnl_cut = chnl_cut,
       filter_other_cyt_pos = filter_other_cyt_pos,
       gate_tbl = gate_tbl,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
@@ -493,7 +480,7 @@
         batch = attr(x, "batch"),
         ind = attr(x, "ind"),
         min_threshold = min_threshold,
-        chnl_cut,
+        chnl_cut = chnl_cut,
         expr_min = expr_min,
         expr_max = expr_max,
         bw = bw
@@ -521,10 +508,9 @@
   bw
 ) {
   if (.get_cp_cluster_dens_tbl_get_actual_ind_early_return_check(expr_vec)) {
-    # nolint
     return(.get_cp_cluster_dens_tbl_get_actual_ind_early_return(
-      batch,
-      ind
+      batch = batch,
+      ind = ind
     ))
   }
   dens <- density(
@@ -540,10 +526,9 @@
     x = dens[["x"]],
     x_ind = paste0("x", seq_len(length(dens[["y"]])))
   ) |>
-    # extract only left-hand size elements
     dplyr::filter(x <= min_threshold) |> # nolint
     dplyr::select(-x) |>
-    dplyr::mutate(y = y / sum(y)) |> # normalise size
+    dplyr::mutate(y = y / sum(y)) |> 
     tidyr::pivot_wider(names_from = x_ind, values_from = y) # nolint
 }
 
@@ -566,15 +551,6 @@
 
 #' @keywords internal
 .get_cp_cluster_dens_tbl_get_min_threshold <- function(gate_tbl, control) {
-  # get a low gate value, such that
-  # when we look at clustering samples together
-  # we only use expression levels below this value.
-  # the thinking is that this makes the clustering depend
-  # on the part that's got most of the cells and exhibits
-  # the batch effects, and isn't dependent on how many cells
-  # responded.
-  # could cause problems if >40% of cells respond,
-  # but we can let people switch this off.
   min_threshold_gate_quant <- quantile(
     gate_tbl$gate,
     control$min_threshold_quant,
@@ -590,14 +566,13 @@
   batch,
   pop_gate,
   chnl_cut,
-  filter_other_cyt_pos, # nolint
+  filter_other_cyt_pos,
   gate_tbl,
   calc_cyt_pos_gates,
   control,
   path_project
 ) {
   ex_list <- .get_ex_list(
-    # nolint
     .data = .data,
     ind_batch = ind_batch,
     pop = pop_gate,
@@ -610,11 +585,9 @@
     return(ex_list[-length(ex_list)])
   }
 
-  # filter to yield cells negative for all cytokine combinations
-  # except possible this cytokine single-positive
   .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter(
     ex_list = ex_list,
-    chnl_cut,
+    chnl_cut = chnl_cut,
     gate_tbl = gate_tbl,
     calc_cyt_pos_gates = calc_cyt_pos_gates
   )
@@ -627,17 +600,16 @@
   gate_tbl,
   calc_cyt_pos_gates
 ) {
-  # nolint
   .debug("Filtering other cytokine positive cells") # nolint
   ex_list_filter <- purrr::map(seq_along(ex_list), function(i) {
     if (i == length(ex_list)) {
       return(ex_list[[i]])
     }
     .get_cp_cluster_dens_tbl_get_batch_prep_ex_list_filter_ind(
-      ex_list[[i]],
-      gate_tbl,
-      chnl_cut,
-      calc_cyt_pos_gates
+      ex_tbl = ex_list[[i]],
+      gate_tbl = gate_tbl,
+      chnl_cut = chnl_cut,
+      calc_cyt_pos_gates = calc_cyt_pos_gates
     )
   }) |>
     stats::setNames(names(ex_list))
@@ -652,11 +624,8 @@
   chnl_cut,
   calc_cyt_pos_gates
 ) {
-  # nolint
-
   pos_ind_vec_but_single_pos_curr <-
     .get_pos_ind_but_single_pos_for_one_cyt(
-      # nolint
       ex = ex_tbl,
       gate_tbl = gate_tbl[gate_tbl[["ind"]] == attr(ex_tbl, "ind"), ],
       chnl_single_exc = chnl_cut,
@@ -697,9 +666,6 @@
 #' @keywords internal
 .get_cp_cluster_plot_check_1 <- function(dens_tbl) {
   dens_plot <- dens_tbl |>
-    # dplyr::group_by(grp) |>
-    # dplyr::slice(1) |>
-    # dplyr::ungroup() |>
     tidyr::pivot_longer(
       names_to = "x",
       values_to = "y",
@@ -710,7 +676,6 @@
     dplyr::ungroup()
 
   ggplot(
-    # nolint
     dens_plot,
     aes(x, y, col = grp, group = ind) # nolint
   ) +
@@ -729,7 +694,6 @@
   ggplot(data_plot, aes(x = cp, y = prop_l1se, col = grp)) + # nolint
     geom_line() + # nolint
     geom_smooth(
-      # nolint
       method = "gam",
       formula = y ~ s(x, bs = "cs"),
       se = FALSE
@@ -752,10 +716,6 @@
       values_to = "grp_level"
     )
 
-  # so here we just get each individual's
-  # group for each number of groups.
-  # I wonder if the need to slice is coming
-  # from
   data_mod_filter_vec <- data_mod_pre |>
     dplyr::group_by(ind, grp, grp_level) |> # nolint
     dplyr::slice(1) |>
@@ -772,7 +732,7 @@
   data_mod <- data_mod_pre |>
     dplyr::filter(
       paste0(grp, "_", grp_level) %in% data_mod_filter_vec # nolint
-    ) |> # nolint
+    ) |> 
     dplyr::group_by(grp, grp_level, cp) |> # nolint
     dplyr::summarise(
       prop_l1se = sum(prop_bs_cp_diff_sd < 1, na.rm = TRUE) / # nolint
@@ -801,7 +761,6 @@
     data_mod_curr <- data_mod |>
       dplyr::filter(.data$grp == n_grp_curr) # nolint
     purrr::map(
-      # nolint
       unique(data_mod_curr$grp_level),
       function(grp_level) {
         data_mod_curr_grp <- data_mod_curr |>
@@ -848,23 +807,12 @@
           dplyr::mutate(
             pred = predict(fit, newdata = data_pred, type = "response")
           )
-        # okay, so we calculate the rate of
-        # increase of the derivative
         data_pred_der <- data_pred[-1, ] |>
           dplyr::mutate(
             der = (pred - data_pred$pred[-nrow(data_pred)]) / # nolint
               (cp - data_pred$cp[-nrow(data_pred)]) # nolint
           )
-        # we also then calculate
-        # a 1/100th of the range
-        # we divide this into 1/1000
         max_der <- 0.1 / diff(c(expr_max, expr_min))
-        # for each one percent change in cp_range,
-        # there is allowed a 0.001 change in prob
-        # issue may occur if cp_range is
-        # very limited - perhaps better to use expression range?
-        # we then choose any parts where the derivative is
-        # positive and is sufficiently flat.
         cp_der <- data_pred_der |>
           dplyr::filter(der > 0) |> # nolint
           dplyr::filter(der < max_der) |>
@@ -875,8 +823,6 @@
           dplyr::pull("cp") |>
           min()
         min(cp_der, cp_cdf)
-        # need to decide what to do if it doesn't work
-        # cluster hierarchically, and then  adjust?
       }
     ) |>
       stats::setNames(paste0(n_grp_curr, "_", unique(data_mod_curr$grp_level)))
@@ -892,7 +838,6 @@
   grp_ind_lab_vec
 ) {
   .debug(
-    # nolint
     "Getting quantiles of original gates per clustered observations" # nolint
   )
   if ("chnl" %in% names(gate_tbl)) {
@@ -966,8 +911,6 @@
       gate_tbl_ctrl |>
         dplyr::select(ind, gate) |>
         dplyr::filter(!is.na(gate)) |>
-        # dplyr::group_by(ind) |>
-        # dplyr::filter(gate == min(gate, na.rm = TRUE)) |>
         dplyr::rename(cp_tg_ctrl = gate),
       by = "ind"
     )
@@ -984,7 +927,7 @@
 #' @keywords internal
 .get_cp_cluster_cp_join_lse_get <- function(cp_tbl) {
   .debug("Getting cp_join_lse") # nolint
-  cp_tbl <- cp_tbl |>
+  cp_tbl |>
     dplyr::group_by(ind) |> # nolint
     dplyr::mutate(
       lse_orig = prop_bs_cp_diff_sd < 0.01, # nolint
@@ -1001,7 +944,6 @@
     dplyr::group_by(ind) |> # nolint
     dplyr::mutate(
       cp_join_tg = min(cp[
-        # nolint
         cp >= cp_join &
           cp >= cp_tg_ctrl & # nolint
           prop_bs_cp_diff_sd <= 2 # nolint
@@ -1056,7 +998,6 @@
 .get_cp_cluster_cp_filter_above_cp_join_lse_orig_mean_tg <-
   function(cp_tbl) {
     .debug(
-      # nolint
       "Filtering above cp_join_lse_orig_mean_tg"
     ) # nolint
     cp_tbl |>
@@ -1094,7 +1035,6 @@
   dens_tbl
 ) {
   .debug(
-    # nolint
     "considering imputing missing thresholds by batch"
   ) # nolint
   ind_with_missing_gates <- setdiff(
@@ -1132,7 +1072,6 @@
     dens_tbl_ind <- dens_tbl |>
       dplyr::filter(ind == ind_curr) # nolint
 
-    # this means no samples had estimates for this batch
     cp_vec_imp <- cp_tbl_batch$cp_join_tg_orig[
       !is.na(cp_tbl_batch$cp_join_tg_orig)
     ]
@@ -1142,7 +1081,6 @@
     }
 
     gate_impute <- .combine_cp(
-      # nolint
       stats::setNames(cp_vec_imp, paste0("a", seq_along(cp_vec_imp))),
       gate_tbl$gate_combn[1]
     )[[1]][[1]]
@@ -1162,7 +1100,6 @@
       )
 
     cp_tbl <- cp_tbl |> dplyr::filter(ind != ind_curr) # nolint
-
     cp_tbl <- cp_tbl |> dplyr::bind_rows(cp_tbl_add)
   }
   cp_tbl <- cp_tbl |> dplyr::arrange(ind) # nolint
@@ -1193,7 +1130,6 @@
     dens_tbl_ind <- dens_tbl |>
       dplyr::select(ind, grp) |> # nolint
       dplyr::filter(ind == ind_curr)
-    # this means that there was no density estimates for this sample
     if (nrow(dens_tbl_ind) == 0) {
       next
     }
@@ -1213,7 +1149,6 @@
       )
 
     cp_tbl <- cp_tbl |> dplyr::filter(ind != ind_curr) # nolint
-
     cp_tbl <- cp_tbl |> dplyr::bind_rows(cp_tbl_add)
   }
   cp_tbl |> dplyr::arrange(ind) # nolint
@@ -1243,7 +1178,6 @@
     dens_tbl_ind <- dens_tbl |>
       dplyr::select(ind, grp) |> # nolint
       dplyr::filter(ind == ind_curr)
-    # this means that there was no density estimates for this sample
     if (nrow(dens_tbl_ind) == 0) {
       next
     }
@@ -1263,7 +1197,6 @@
       )
 
     cp_tbl <- cp_tbl |> dplyr::filter(ind != ind_curr) # nolint
-
     cp_tbl <- cp_tbl |> dplyr::bind_rows(cp_tbl_add)
   }
   cp_tbl |> dplyr::arrange(ind) # nolint
@@ -1277,7 +1210,6 @@
   dens_tbl
 ) {
   .debug(
-    # nolint
     "considering imputing missing thresholds finally by batch"
   )
   ind_with_missing_gates <- setdiff(
@@ -1288,7 +1220,6 @@
     !is.na(ind_with_missing_gates)
   ]
   if (length(ind_with_missing_gates) == 0L) {
-    # nolint
     .debug("no missing thresholds finally by batch") # nolint
     return(cp_tbl)
   }
@@ -1311,7 +1242,6 @@
     dens_tbl_ind <- dens_tbl |>
       dplyr::filter(ind == ind_curr) # nolint
 
-    # this means no samples had estimates for this batch
     cp_vec_imp <- cp_tbl_batch$cp_join_tg_orig[
       !is.na(cp_tbl_batch$cp_join_tg_orig)
     ]
@@ -1321,7 +1251,6 @@
     }
 
     gate_impute <- .combine_cp(
-      # nolint
       stats::setNames(cp_vec_imp, paste0("a", seq_along(cp_vec_imp))),
       gate_tbl$gate_combn[1]
     )[[1]][[1]]
@@ -1337,7 +1266,6 @@
       )
 
     cp_tbl <- cp_tbl |> dplyr::filter(ind != ind_curr) # nolint
-
     cp_tbl <- cp_tbl |> dplyr::bind_rows(cp_tbl_add)
   }
   cp_tbl <- cp_tbl |> dplyr::arrange(ind) # nolint
