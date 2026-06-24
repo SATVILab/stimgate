@@ -127,7 +127,8 @@
       gate_type_single_pos_calc = "base",
       path_project = path_project,
       ind_batch_list = ind_batch_list,
-      pop_gate = pop_gate
+      pop_gate = pop_gate,
+      tol_clust = chnl_settings$tol_clust
     )
     gate_stats_tbl <- path_dir_stats |>
       .read_gate_stats() # nolint
