@@ -115,12 +115,58 @@
   if (!is.numeric(tol_clust) || tol_clust <= 0) {
     stop("`tol_clust` must be a positive numeric threshold.")
   }
+  chnl_lab <- .chnl_lab(.data)
+  if (!is.null(chnl)) {
+    all_chnl_valid <- all(chnl %in% chnl_lab)
+    if (!all_chnl_valid) {
+      stop(
+        "The following channels are not found in the GatingSet: ",
+        paste(setdiff(chnl, chnl_lab), collapse = ", ")
+      )
+    }
+  }
+  if (!is.null(marker)) {
+    all_marker_valid <- all(marker %in% names(chnl_lab))
+    if (!all_marker_valid) {
+      stop(
+        "The following markers are not found in the GatingSet: ",
+        paste(setdiff(marker, names(chnl_lab)), collapse = ", ")
+      )
+    }
+  }
 
   invisible(TRUE)
 }
 
+.verify_chnl_settings <- function(chnl_settings, chnl, marker_settings, marker) {
+  if (!is.null(chnl_settings) && !is.null(marker_settings)) {
+    stop("Specify only one of `chnl_settings` or `marker_settings`, not both.")
+  }
+  if (!is.null(chnl_settings) && !is.list(chnl_settings)) {
+    stop("`chnl_settings` must be a list of channel-specific settings.")
+  }
+  if (!is.null(marker_settings) && !is.list(marker_settings)) {
+    stop("`marker_settings` must be a list of marker-specific settings.")
+  }
+  if (!is.null(chnl_settings) && length(chnl_settings) > 0L) {
+    chnl_vec_from_settings <- sapply(chnl_settings, function(x) x$chnl_cut)
+    if (!all(chnl_vec_from_settings %in% chnl)) {
+      stop(
+        "All channels specified in `chnl_settings` must be included in `chnl`"
+      )
+    }
+  } else if (!is.null(marker_settings) && length(marker_settings) > 0L) {
+    marker_vec_from_settings <- sapply(marker_settings, function(x) x$marker_cut)
+    if (!all(marker_vec_from_settings %in% marker)) {
+      stop(
+        "All markers specified in `marker_settings` must be included in `marker`"
+      )
+    }
+  }
+}
+
 #' @keywords internal
-.verify_chnl_settings <- function(chnl_curr, settings) {
+.verify_chnl_settings_chnl <- function(chnl_curr, settings) {
   prefix <- sprintf("Channel '%s' setting error: ", chnl_curr)
 
   # Validate logic flags if present
