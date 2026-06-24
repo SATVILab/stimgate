@@ -128,14 +128,6 @@
 #'   \item Saves results in structured format for downstream analysis
 #' }
 #'
-#' \strong{Important Considerations:}
-#' \itemize{
-#'   \item Ensure stimulated and unstimulated samples are properly paired by batch
-#'   \item Channel names in marker specifications must match GatingSet channels exactly
-#'   \item Sufficient cell numbers (min_cell) are crucial for reliable gate identification
-#'   \item Background bias correction (bias_uns) should be used cautiously and validated
-#'   \item Debug mode generates extensive output useful for method validation
-#' }
 #'
 #' @seealso
 #' \code{\link{stimgate_gate_get}} for extracting gate information,
