@@ -268,7 +268,7 @@
     inc = incVec,
     chnl = chnlCurr,
     bwMin = bwMin,
-    minCell = 10 
+    minCell = 10
   )
 
   # =====================
@@ -278,7 +278,7 @@
   if (!is.na(cpNeg)) {
     cpCytPos <- min(cpCytPos, cpNeg, na.rm = TRUE)
   }
-  
+
   .intSaveNm(
     paste0(chnlCurr, "_cpCytPosFinal"),
     cpCytPos,

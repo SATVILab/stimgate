@@ -259,7 +259,7 @@
         gateName,
         function(gn) {
           stringr::str_remove(gn, "Adj") |>
-          stringr::str_remove("Clust")
+            stringr::str_remove("Clust")
         }
       ),
       gateCombn = gateName |>
@@ -279,7 +279,7 @@
     dplyr::mutate(
       gateSingle = ifelse(is.na(gateSingle), gate, gateSingle) # nolint
     )
-        }
+}
 
 #' @keywords internal
 .gateChnlGateAdjGatesSingleStatsTblGet <- function(

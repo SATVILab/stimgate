@@ -91,7 +91,7 @@
 
   if ("prejoin" %in% gateCombn) {
     .debug("prejoin")
-    indGate <- names(exList)[-length(exList)]
+    indGate <- names(exList)[-1]
     ex <- dplyr::bind_rows(exList[indGate])
     ex <- ex[!is.na(.getCut(ex)), ]
     if (excMin) {
@@ -158,7 +158,7 @@
 
   if (length(nonPrejoinCombnVec) > 0) {
     .debug("non-prejoin")
-    indGate <- names(exList)[-length(exList)]
+    indGate <- names(exList)[-1]
     cpTgVec <- purrr::map_dbl(indGate, function(ind) {
       .debug("ind", ind)
       ex <- exList[[as.character(ind)]]
