@@ -71,9 +71,7 @@
   if (!is.logical(calcCytPosGates) || length(calcCytPosGates) != 1) {
     stop("`calcCytPosGates` must be a single logical value (TRUE/FALSE).")
   }
-  if (
-    !is.logical(calcSinglePosGates) || length(calcSinglePosGates) != 1
-  ) {
+  if (!is.logical(calcSinglePosGates) || length(calcSinglePosGates) != 1) {
     stop("`calcSinglePosGates` must be a single logical value (TRUE/FALSE).")
   }
 
@@ -160,16 +158,24 @@
     "maxPosProbX",
     "bwCluster"
   )
-  if (!is.null(chnlSettings) && !all(names(chnlSettings) %in% permissibleSettings)) {
+  if (
+    !is.null(chnlSettings) && !all(names(chnlSettings) %in% permissibleSettings)
+  ) {
     stop(
       "Invalid channel settings detected. The invalid settings are: ",
       paste(setdiff(names(chnlSettings), permissibleSettings), collapse = ", ")
     )
   }
-  if (!is.null(markerSettings) && !all(names(markerSettings) %in% permissibleSettings)) {
+  if (
+    !is.null(markerSettings) &&
+      !all(names(markerSettings) %in% permissibleSettings)
+  ) {
     stop(
       "Invalid marker settings detected. The invalid settings are: ",
-      paste(setdiff(names(markerSettings), permissibleSettings), collapse = ", ")
+      paste(
+        setdiff(names(markerSettings), permissibleSettings),
+        collapse = ", "
+      )
     )
   }
   if (!is.null(chnlSettings) && !is.null(markerSettings)) {
@@ -200,9 +206,13 @@
   } else if (!is.null(markerSettings) && length(markerSettings) > 0L) {
     markerVecFromSettings <- names(markerSettings)
     if (length(markerVecFromSettings) == 0L) {
-      stop("`markerSettings` must have named elements corresponding to markers.")
+      stop(
+        "`markerSettings` must have named elements corresponding to markers."
+      )
     }
-    if (!length(markerVecFromSettings) == length(unique(markerVecFromSettings))) {
+    if (
+      !length(markerVecFromSettings) == length(unique(markerVecFromSettings))
+    ) {
       stop("`markerSettings` must have unique marker names.")
     }
     if (!length(markerVecFromSettings) == length(markerSettings)) {

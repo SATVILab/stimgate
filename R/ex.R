@@ -30,7 +30,7 @@ strDetectAny <- function(string, pattern) {
       extraChnl = extraChnl,
       ind = i,
       # specify corresponding unstim
-      indUns = indBatch[length(indBatch)],
+      indUns = indBatch[[1]],
       batch = batch,
       pathProject = pathProject
     )
@@ -237,7 +237,7 @@ strDetectAny <- function(string, pattern) {
   hasInd <- which(hasInd)
   indBatch <- indBatchList[hasInd] |>
     unlist()
-  indBatch[[length(indBatch)]]
+  indBatch[[1]]
 }
 
 #' @keywords internal

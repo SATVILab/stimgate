@@ -33,6 +33,7 @@ if (
 ### Transformations
 
 ```{r}
+#| eval: false
 calc_gamma <- function(x) {
   gamma(1 + abs(x / 4))
 }
@@ -83,7 +84,7 @@ for (trans in c("gaussian", "gamma", "skew")) {
     "skew" = list(c(-4, 12)),
     stop("transformation not recognised")
   )
-  out_list_doncition <- simCytCondition(
+  out_list_condition <- simCytCondition(
     nMarker = 2,
     nCell = 1e4,
     transformationFunc = trans_func,
@@ -252,7 +253,9 @@ for (trans in c("gaussian", "gamma", "skew")) {
     probVecUns = c(0.05, 0.02, 0.075, 0.855),
     samplePerturbationSd = 0.1,
     conditionPerturbationSd = 0.1,
-    clusterPerturbationSd = 0.1
+    clusterPerturbationSd = 0.1,
+    covEvMin = 2,
+    covEvMax = 2
   )
   for (i in seq_along(out_list_experiment$flowFrameList)) {
     smpl_cond <- names(out_list_experiment$flowFrameList)[[i]]
@@ -298,47 +301,10 @@ for (trans in c("gaussian", "gamma", "skew")) {
 
 ### Analysis
 
-```{r}
-# simulation settings
-n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)
-prob_response_vec <- c(
-  1 / 5e5,
-  1 / 2e5,
-  1 / 1e5,
-  1 / 5e4,
-  1 / 2e4,
-  1 / 1e4,
-  1 / 5e3,
-  1 / 2e3,
-  1 / 1e3,
-  1 / 5e2,
-  1 / 2e2,
-  1 / 1e2,
-  1 / 5e1,
-  1 / 2e1,
-  1 / 1e1,
-  1 / 5,
-  1 / 2
-)
-mean_pos_vec <- seq_len(8)
-transformation_vec <- c("gaussian", "gamma", "skew")
-sample_perturbation_sd <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)
-condition_perturbation_sd <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)
-cluster_perturbation_sd <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)
-background_relative_to_response <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.001)
-n_cell_uns_relative_to_stim <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)
-
-# bandwidth settings
-bandwidth_method_vec <- c("hpi_0", "hpi_1", "hpi_2", "hpi_3", "sj", "nrd0")
-bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
-bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
-bias_uns_vec <- seq(0, 2, by = 0.2)
-
-# fix the bandwidth
-bandwidth_value_vec <- c(0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5)
-```
+#### Run gateStim
 
 ```{r}
+#| eval: false
 # loop parameters
 n_cell_stim <- 1e5
 prob_response <- 0.02
@@ -369,15 +335,15 @@ mean_expr_mat <- matrix(
   ncol = 1
 )
 cluster_label_vec <- c("gn", "gp")
-prob_responseUns <- prob_response * background_relative_to_response
-prob_vec_uns <- c(1 - prob_responseUns, prob_responseUns)
+prob_response_uns <- prob_response * background_relative_to_response
+prob_vec_uns <- c(1 - prob_response_uns, prob_response_uns)
 prob_response_vec_by_stim_condition <- list(c(-prob_response, prob_response))
 iter_num <- 1
 
 n_sample <- 1L
 n_marker <- 1L
 n_condition <- 2L
-nCluster <- 2L
+n_cluster <- 2L
 
 print(paste0("iter ", iter_num))
 # debugonce(simCytCondition)
@@ -385,7 +351,7 @@ out_list_experiment <- simCytExperiment(
   nSample = n_sample,
   nMarker = n_marker,
   nCondition = n_condition,
-  nCluster = nCluster,
+  nCluster = n_cluster,
   nCellByCondition = n_cell_by_condition,
   transformationFunc = transformation_func,
   mixtureType = "gaussianOnly",
@@ -395,41 +361,40 @@ out_list_experiment <- simCytExperiment(
   probResponseVecByStimCondition = prob_response_vec_by_stim_condition,
   conditionPerturbationSd = condition_perturbation_sd,
   clusterPerturbationSd = cluster_perturbation_sd,
-  samplePerturbationSd = sample_perturbation_sd
+  samplePerturbationSd = sample_perturbation_sd,
+  covEvMin = 2,
+  covEvMax = 2
 )
 
 # apply stimgate
 fs <- as(out_list_experiment[["flowFrameList"]], "flowSet")
 gs <- flowWorkspace::GatingSet(fs)
 
-pathProject <- projr::projr_path_get(
+path_project <- projr::projr_path_get(
   "cache",
   "sim-bandwidth",
   "check",
   "gate",
   paste0("iter_", iter_num)
 )
-unlink(pathProject, recursive = TRUE)
-dir.create(pathProject, recursive = TRUE)
-batchList <- lapply(seq(n_sample), function(i) {
+unlink(path_project, recursive = TRUE)
+dir.create(path_project, recursive = TRUE)
+batch_list <- lapply(seq(n_sample), function(i) {
   seq((i - 1) * n_condition + 1, i * n_condition)
 })
-chnl_list_stimgate <- list(
-  list("cut" = "F1")
-)
 
 # debugonce(stimgate:::.complete_chnl_list)
 gateStim(
-  pathProject = pathProject,
+  pathProject = path_project,
   chnl = "F1",
   .data = gs,
-  batchList = batchList,
-  chnlSettings = chnl_list_stimgate,
+  batchList = batch_list,
+  chnlSettings = list(),
   biasUns = bias_uns
 )
 
 stats_tbl <- readRDS(
-  file.path(pathProject, "gateStats.rds")
+  file.path(path_project, "gateStats.rds")
 )
 stats_tbl
 ```
@@ -439,50 +404,103 @@ stats_tbl
 This is for when we're varying the bandwidth manually.
 
 ```{r}
-n_cell_sim_check_bw <- 1e4
-test_data <- simCytExperiment(
-  nSample = 10L,
-  nMarker = 1L,
-  nCondition = 2L,
-  nCluster = 2L,
-  nCellByCondition = c(n_cell_sim_check_bw, n_cell_sim_check_bw),
-  transformationFunc = calc_gaussian,
+# loop parameters
+n_cell_stim <- 1e3
+prob_response <- 0.02
+mean_pos <- 8
+transformation <- "gaussian"
+sample_perturbation_sd <- 0
+condition_perturbation_sd <- 0
+cluster_perturbation_sd <- 0
+background_relative_to_response <- 0.2
+ncell_uns_relative_to_stim <- 1
+
+# stimgate parameters
+bias_uns <- 0.2
+
+# calculated parameters
+n_cell_uns <- round(n_cell_stim * ncell_uns_relative_to_stim)
+n_cell_by_condition <- c(n_cell_uns, n_cell_stim)
+transformation_func <- switch(
+  transformation,
+  "gamma" = calc_gamma,
+  "gaussian" = calc_gaussian,
+  "skew" = calc_skew,
+  stop("transformation not recognised")
+)
+mean_expr_mat <- matrix(
+  c(0, 8),
+  byrow = TRUE,
+  ncol = 1
+)
+cluster_label_vec <- c("gn", "gp")
+prob_response_uns <- prob_response * background_relative_to_response
+prob_vec_uns <- c(1 - prob_response_uns, prob_response_uns)
+prob_response_vec_by_stim_condition <- list(c(-prob_response, prob_response))
+iter_num <- 1
+
+n_sample <- 1L
+n_marker <- 1L
+n_condition <- 2L
+n_cluster <- 2L
+
+print(paste0("iter ", iter_num))
+# debugonce(simCytCondition)
+out_list_experiment <- simCytExperiment(
+  nSample = n_sample,
+  nMarker = n_marker,
+  nCondition = n_condition,
+  nCluster = n_cluster,
+  nCellByCondition = n_cell_by_condition,
+  transformationFunc = transformation_func,
   mixtureType = "gaussianOnly",
-  meanExprMat = matrix(
-    c(0, 8),
-    byrow = TRUE,
-    ncol = 1
-  ),
-  clusterLabelVec = c("gn", "gp"),
-  probVecUns = c(0.98, 0.02),
-  probResponseVecByStimCondition = list(c(-0.02, 0.02)),
+  meanExprMat = mean_expr_mat,
+  clusterLabelVec = cluster_label_vec,
+  probVecUns = prob_vec_uns,
+  probResponseVecByStimCondition = prob_response_vec_by_stim_condition,
+  conditionPerturbationSd = condition_perturbation_sd,
+  clusterPerturbationSd = cluster_perturbation_sd,
+  samplePerturbationSd = sample_perturbation_sd,
   covEvMin = 2,
   covEvMax = 2
 )
+# 4. Construct flowSet and GatingSet
+fs <- as(out_list_experiment[["flowFrameList"]], "flowSet")
+gs <- flowWorkspace::GatingSet(fs)
 
-labelsList <- file.path(test_data$path_cache, "labelsList.rds") |>
-  readRDS()
-gs <- flowWorkspace::load_gs(test_data$path_gs)
-pathProject <- file.path(test_data$path_cache, "stimgate")
-# debugonce(.get_cp_uns_loc_get_prob)
+path_project <- projr::projr_path_get(
+  "cache",
+  "sim-bandwidth",
+  "check",
+  "gate",
+  paste0("iter_", iter_num)
+)
+unlink(path_project, recursive = TRUE)
+dir.create(path_project, recursive = TRUE)
+batch_list <- lapply(seq(n_sample), function(i) {
+  seq((i - 1) * n_condition + 1, i * n_condition)
+})
+
 Sys.setenv("STIMGATE_INTERMEDIATE" = "TRUE")
+# debugonce(.getCpCluster)
 invisible(gateStim(
   .data = gs,
-  pathProject = pathProject,
+  pathProject = path_project,
   popGate = "root",
-  batchList = test_data$batchList,
-  marker = test_data$marker,
-  bwAdj = 2
+  batchList = batch_list,
+  marker = paste0("MarkerF", seq_len(n_marker)),
+  bw = 11
 ))
+```
 
-n_sample <- length(labelsList) / 2
-n_condition <- 2
+```{r}
+
 # truth table
 prob_bs_tbl_truth <- purrr::map_df(seq_len(n_sample), function(sampleCurr) {
   labelsIdx <- (sampleCurr - 1) * n_condition + seq(1, n_condition)
   purrr::map_df(labelsIdx, function(i) {
-    labelVec <- labelsList[[i]]
-    stimCondition <- ifelse(i %% 2 == 0, "stim", "unstim")
+    labelVec <- labels_list[[i]]
+    stimCondition <- ifelse(i %% n_condition == 0, "unstim", "stim")
     f1p <- sum(grepl("^pos", labelVec)) / length(labelVec)
     f2p <- sum(grepl("pos$", labelVec)) / length(labelVec)
     tibble::tibble(
@@ -516,24 +534,16 @@ prob_bs_tbl_truth <- purrr::map_df(seq_len(n_sample), function(sampleCurr) {
     chnl = gsub("p_bs", "", chnl)
   )
 
-path_dir_int_init <- file.path(pathProject, "intermediateData", "init")
+path_dir_int_init <- file.path(path_project, "intermediateData", "init")
 chnl_vec <- list.dirs(path_dir_int_init, full.names = FALSE, recursive = FALSE)
 chnl <- chnl_vec[[1]]
-ind <- n_sample * n_condition
+ind <- 1
 prob_bs_tbl_est <- purrr::map_df(chnl_vec, function(chnl) {
-  ind_vec_stim <- seq(2, n_sample * n_condition, by = 2) |>
+  ind_vec_stim <- seq(1, n_sample * n_condition, by = 2) |>
     as.character()
   purrr::map_df(ind_vec_stim, function(ind) {
     path_ind <- file.path(path_dir_int_init, chnl, "ind", ind)
-    prob_tbl_list <- file.path(path_ind, "prob_tbl_list.rds") |>
-      readRDS()
-    prob_norm <- prob_tbl_list[["pos"]]
-    ncell_resp_norm <- if (nrow(prob_norm) > 0L) {
-      sum(prob_norm$probStimNorm)
-    } else {
-      0
-    }
-    prob_smooth <- file.path(path_ind, "prob_smooth_out.rds") |>
+    prob_smooth <- file.path(path_ind, "dataMod.rds") |>
       readRDS()
     ncell_resp_smooth <- if (nrow(prob_smooth) > 0L) {
       sum(prob_smooth$prob_smooth)
@@ -591,7 +601,7 @@ comparison_tbl |>
     pearson = cor(prop_resp_truth, prop_resp, method = "pearson"),
     spearman = cor(prop_resp_truth, prop_resp, method = "spearman")
   )
-chnlSettings <- stimgate_meta_read_settings_chnls(pathProject)
+chnlSettings <- stimgate_meta_read_settings_chnls(path_project)
 chnlSettings |>
   lapply(
     calc_gaussian[c("bwMin", "bwMax", "bwCluster", "bias_uns")] |>
@@ -604,7 +614,7 @@ plotlist <- lapply(1:8, function(i) {
   plotStim(
     ind = ind_vec,
     .data = gs,
-    pathProject = pathProject,
+    pathProject = path_project,
     chnl = "BC1(La139)Dd"
   )
 })
@@ -636,5 +646,41 @@ Okay, we've got the code working above. Now we'll vary the fixed bandwidth from 
 And we'll do this for varying numbers of cells. 
 
 ```{r}
+# simulation settings
+n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)
+prob_response_vec <- c(
+  1 / 5e5,
+  1 / 2e5,
+  1 / 1e5,
+  1 / 5e4,
+  1 / 2e4,
+  1 / 1e4,
+  1 / 5e3,
+  1 / 2e3,
+  1 / 1e3,
+  1 / 5e2,
+  1 / 2e2,
+  1 / 1e2,
+  1 / 5e1,
+  1 / 2e1,
+  1 / 1e1,
+  1 / 5,
+  1 / 2
+)
+mean_pos_vec <- seq_len(8)
+transformation_vec <- c("gaussian", "gamma", "skew")
+sample_perturbation_sd <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)
+condition_perturbation_sd <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)
+cluster_perturbation_sd <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)
+background_relative_to_response <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.001)
+n_cell_uns_relative_to_stim <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)
 
+# bandwidth settings
+bandwidth_method_vec <- c("hpi_0", "hpi_1", "hpi_2", "hpi_3", "sj", "nrd0")
+bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
+bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
+bias_uns_vec <- seq(0, 2, by = 0.2)
+
+# fix the bandwidth
+bandwidth_value_vec <- c(0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5)
 ```

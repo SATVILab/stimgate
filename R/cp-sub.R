@@ -76,7 +76,7 @@
 ) {
   # get cytoUtils tailgate cutpoint
   .debug("Getting tg cutpoint")
-  
+
   # Extract explicit parameters cleanly from chnlSettings at local execution scope
   chnlCut <- chnlSettings$chnlCut
   gateCombn <- chnlSettings$gateCombn
@@ -85,7 +85,7 @@
   cpMin <- chnlSettings$cpMin
   bw <- chnlSettings$bw
   tol <- chnlSettings$tol %||% 1e-2 # fallback internal tolerance constant if absent
-  
+
   stageChnl <- file.path(stage, chnlCut)
   cpList <- list()
 
@@ -269,7 +269,7 @@
     predVec <- predict(fitPw, predTbl, type = "response")
     (predVec - midProb)^2
   }
-  
+
   # initial search parameter
   initPar <- mean(c(cpScp, max(highIndTbl$chnlCut)))
   # optimisation
