@@ -3,7 +3,7 @@
 #' Manage axis limits.
 #'  Fix axis limits to be equal between x- and y-axes,
 #' and/or expand axis coordinates.
-#' The primary use of `axis_limits`
+#' The primary use of `axisLimits`
 #' is forcing the x- and y-axes
 #' to have the same limits "automatically"
 #' (i.e. by inspecting the `ggplot` object,
@@ -11,7 +11,7 @@
 #' calculate limits to pass to `ggplot2::expand_limits`).
 #'
 #' @param p object of class 'ggplot' Limits are adjusted for this plot.
-#' @param limits_expand list or NULL If not NULL,
+#' @param limitsExpand list or NULL If not NULL,
 #' then it is (effectively) passed onto ggplot2::expand_limits to
 #' ensure that certain values are included in the plot (such as, for
 #' example, 0 if that is the minimum value possible but it may not be
@@ -20,7 +20,7 @@
 #' in the plot. If named, then must have names x and/or y, with the
 #' elements again being numeric vectors that must be included in plot.
 #' Default is NULL.
-#' @param limits_equal logical If TRUE, then the ranges on the x- and
+#' @param limitsEqual logical If TRUE, then the ranges on the x- and
 #' y-axes must be equal. Effectively applied after expand_grid is
 #' applied. Default is FALSE.
 #'
@@ -34,30 +34,30 @@
 #' p <- ggplot(cars, aes(speed, dist)) +
 #'   geom_point()
 #'
-#' axis_limits(
+#' axisLimits(
 #'   p,
-#'   limits_equal = TRUE
+#'   limitsEqual = TRUE
 #' )
 #'
 #' # both axes
-#' axis_limits(
+#' axisLimits(
 #'   p,
-#'   limits_expand = list(200)
+#'   limitsExpand = list(200)
 #' )
 #' # x only
-#' axis_limits(
+#' axisLimits(
 #'   p,
-#'   limits_expand = list(x = 75)
+#'   limitsExpand = list(x = 75)
 #' )
 #' # y only
-#' axis_limits(
+#' axisLimits(
 #'   p,
-#'   limits_expand = list(y = 200)
+#'   limitsExpand = list(y = 200)
 #' )
 #' # lower and upper expansion
-#' axis_limits(
+#' axisLimits(
 #'   p,
-#'   limits_expand = list(
+#'   limitsExpand = list(
 #'     y = c(-50, 200),
 #'     x = c(-10, 75)
 #'   )
@@ -67,24 +67,24 @@
 #' # after expansions are applied, so effectively the larger
 #' # expansions apply to both.
 #' # compare the following output to the previous output:
-#' axis_limits(
+#' axisLimits(
 #'   p,
-#'   limits_expand = list(
+#'   limitsExpand = list(
 #'     y = c(-50, 200),
 #'     x = c(-10, 75)
 #'   ),
-#'   limits_equal = TRUE
+#'   limitsEqual = TRUE
 #' )
-axis_limits <- function(p, limits_expand = NULL, limits_equal = FALSE) {
+axisLimits <- function(p, limitsExpand = NULL, limitsEqual = FALSE) {
   # initial check
   # ------------------------
 
-  if (!is.logical(limits_equal)) {
-    stop("limits_equal must be logical")
+  if (!is.logical(limitsEqual)) {
+    stop("limitsEqual must be logical")
   }
 
   # do nothing
-  if (is.null(limits_expand) && !limits_equal) {
+  if (is.null(limitsExpand) && !limitsEqual) {
     return(p)
   }
 
@@ -95,24 +95,24 @@ axis_limits <- function(p, limits_expand = NULL, limits_equal = FALSE) {
     stop("p must be of class 'ggplot' and 'gg'")
   }
 
-  if (!is.null(limits_expand)) {
-    if (!is.list(limits_expand)) {
-      stop("limits_expand must be a list (if not NULL)")
+  if (!is.null(limitsExpand)) {
+    if (!is.list(limitsExpand)) {
+      stop("limitsExpand must be a list (if not NULL)")
     }
-    if (length(limits_expand) == 2 && is.null(names(limits_expand))) {
-      stop("limits_expand must be named if of length 2")
+    if (length(limitsExpand) == 2 && is.null(names(limitsExpand))) {
+      stop("limitsExpand must be named if of length 2")
     }
-    if (length(limits_expand) > 2) {
-      stop("limits_expand must have length 1 or 2 (if not NULL)")
+    if (length(limitsExpand) > 2) {
+      stop("limitsExpand must have length 1 or 2 (if not NULL)")
     }
-    if (!is.null(names(limits_expand))) {
-      if (length(setdiff(names(limits_expand), c("x", "y"))) > 0) {
-        stop("limits_expand must have names of 'x' and/or 'y' (if named)")
+    if (!is.null(names(limitsExpand))) {
+      if (length(setdiff(names(limitsExpand), c("x", "y"))) > 0) {
+        stop("limitsExpand must have names of 'x' and/or 'y' (if named)")
       }
     }
-    class_input <- purrr::map_lgl(limits_expand, is.numeric) |> all()
-    if (!class_input) {
-      stop("input to limits_expand must be numeric (if limits_expand not NULL)")
+    classInput <- purrr::map_lgl(limitsExpand, is.numeric) |> all()
+    if (!classInput) {
+      stop("input to limitsExpand must be numeric (if limitsExpand not NULL)")
     }
   }
 
@@ -125,81 +125,81 @@ axis_limits <- function(p, limits_expand = NULL, limits_equal = FALSE) {
 
   # calc ranges in advance if needed
   # --------------------
-  if (limits_equal) {
-    plot_tbl <- p$data
-    x_var <- as.character(rlang::get_expr(p$mapping$x))
-    y_var <- as.character(rlang::get_expr(p$mapping$y))
-    range_x <- range(plot_tbl[[x_var]])
-    range_y <- range(plot_tbl[[y_var]])
+  if (limitsEqual) {
+    plotTbl <- p$data
+    xVar <- as.character(rlang::get_expr(p$mapping$x))
+    yVar <- as.character(rlang::get_expr(p$mapping$y))
+    rangeX <- range(plotTbl[[xVar]])
+    rangeY <- range(plotTbl[[yVar]])
     range <- c(
-      min(range_x[1], range_y[1]),
-      c(max(range_x[2], range_y[2]))
+      min(rangeX[1], rangeY[1]),
+      c(max(rangeX[2], rangeY[2]))
     )
   }
 
-  # tidy limits_expand if provided
+  # tidy limitsExpand if provided
   # ------------------
 
-  # ensure that limits_expand is named if
+  # ensure that limitsExpand is named if
   # it's specified
-  if (!is.null(limits_expand)) {
-    if (is.null(names(limits_expand))) {
-      limits_expand <- list(
-        x = limits_expand[[1]],
-        y = limits_expand[[1]]
+  if (!is.null(limitsExpand)) {
+    if (is.null(names(limitsExpand))) {
+      limitsExpand <- list(
+        x = limitsExpand[[1]],
+        y = limitsExpand[[1]]
       )
     }
-    # ensure that limits_expand consists of
+    # ensure that limitsExpand consists of
     # two sorted (not strictly) variables
-    for (i in seq_along(limits_expand)) {
-      limits_expand[[i]] <- c(
-        min(limits_expand[[i]]),
-        max(limits_expand[[i]])
+    for (i in seq_along(limitsExpand)) {
+      limitsExpand[[i]] <- c(
+        min(limitsExpand[[i]]),
+        max(limitsExpand[[i]])
       )
     }
   }
 
-  # put limits_expand together with limits_equal,
+  # put limitsExpand together with limitsEqual,
   # if provided
-  if (is.null(limits_expand)) {
-    # we know now that limits_equal is true
-    limits_expand <- list(
+  if (is.null(limitsExpand)) {
+    # we know now that limitsEqual is true
+    limitsExpand <- list(
       x = range,
       y = range
     )
   } else {
-    # limits_equal may or may not be true
-    if (limits_equal) {
-      limits_expand_all <- limits_expand |>
+    # limitsEqual may or may not be true
+    if (limitsEqual) {
+      limitsExpandAll <- limitsExpand |>
         unlist()
       lims <- c(
-        min(range, limits_expand_all),
-        max(range, limits_expand_all)
+        min(range, limitsExpandAll),
+        max(range, limitsExpandAll)
       )
-      for (i in seq_along(limits_expand)) {
-        limits_expand[[i]] <- lims
+      for (i in seq_along(limitsExpand)) {
+        limitsExpand[[i]] <- lims
       }
-      if (length(limits_expand) == 1) {
-        nm <- setdiff(c("x", "y"), names(limits_expand))
-        limits_expand <- limits_expand |>
+      if (length(limitsExpand) == 1) {
+        nm <- setdiff(c("x", "y"), names(limitsExpand))
+        limitsExpand <- limitsExpand |>
           append(list(range) |> stats::setNames(nm))
       }
     }
   }
 
-  limits_expand_arg <- purrr::map_chr(seq_along(limits_expand), function(i) {
-    vals <- paste0(limits_expand[[i]], collapse = ", ")
-    paste0(names(limits_expand)[i], " = c(", vals, ")")
+  limitsExpandArg <- purrr::map_chr(seq_along(limitsExpand), function(i) {
+    vals <- paste0(limitsExpand[[i]], collapse = ", ")
+    paste0(names(limitsExpand)[i], " = c(", vals, ")")
   }) |>
     paste0(collapse = ", ")
 
-  parse_text <- paste0(
+  parseText <- paste0(
     "p <- p + ggplot2::expand_limits(",
-    limits_expand_arg,
+    limitsExpandArg,
     ")"
   )
   env <- environment()
-  eval(parse(text = parse_text), envir = env)
+  eval(parse(text = parseText), envir = env)
 
   p
 }

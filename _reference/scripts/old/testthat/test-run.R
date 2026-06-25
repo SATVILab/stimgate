@@ -23,13 +23,13 @@ test_that("stimgate_gate runs", {
 
   marker_vec <- c("Er168Di", "Lu175Di")
   # marker_vec <- c("Er168Di", "Lu175Di", "Er166Di", "Yb172Di", "Nd150Di")
-  path_project <- setup_project_postmortem(min_cell)
+  pathProject <- setup_project_postmortem(min_cell)
   # browser()
   # .debugonce(stimgate_gate)
   # .debugonce(.gate_stats)
 
   stimgate_gate(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
     batch_list = batch_list,
     marker = marker_vec,
@@ -55,7 +55,7 @@ test_that("stimgate_gate runs", {
     ind = batch_list[[1]],
     ind_lab = ind_lab,
     .data = gs,
-    path_project = path_project,
+    pathProject = pathProject,
     marker = marker_vec,
     limits_expand = list(c(0, 4)),
     limits_equal = TRUE,

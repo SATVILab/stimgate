@@ -1,5 +1,5 @@
 #' @title Create an R Markdown HTML doc based on output from get_cp and plot_cp
-render_gate <- function(params_knit, pop_sub, path_project) {
+render_gate <- function(params_knit, pop_sub, pathProject) {
   # --------------------------
   # Preparation
   # --------------------------
@@ -12,7 +12,7 @@ render_gate <- function(params_knit, pop_sub, path_project) {
 
   # get base directory
   dir_base <- stimgate_dir_base_create(
-    dir_base_init = path_project,
+    dir_base_init = pathProject,
     params = params_knit,
     empty_dir = FALSE
   )
@@ -21,13 +21,13 @@ render_gate <- function(params_knit, pop_sub, path_project) {
   # ------------------
 
   # get node
-  pop_gate <- params_knit$pop_gate
-  pop_gate_last_slash_mat <- stringr::str_locate_all(pop_gate, "/")[[1]]
-  pop_gate_last_slash_loc <- pop_gate_last_slash_mat[, "end"][nrow(pop_gate_last_slash_mat)]
-  pop_gate_final <- stringr::str_sub(pop_gate, pop_gate_last_slash_loc + 1)
+  popGate <- params_knit$popGate
+  popGate_last_slash_mat <- stringr::str_locate_all(popGate, "/")[[1]]
+  popGate_last_slash_loc <- popGate_last_slash_mat[, "end"][nrow(popGate_last_slash_mat)]
+  popGate_final <- stringr::str_sub(popGate, popGate_last_slash_loc + 1)
 
   # file save name
-  dir_html_out <- file.path(dir_base, paste0(pop_gate_final, " - ", params_knit$chnl_lab[params_knit$cut], ".html"))
+  dir_html_out <- file.path(dir_base, paste0(popGate_final, " - ", params_knit$chnl_lab[params_knit$cut], ".html"))
 
   # --------------------------
   # Create RMD

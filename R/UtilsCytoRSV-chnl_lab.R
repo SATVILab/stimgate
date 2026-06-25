@@ -1,19 +1,19 @@
-#' @rdname chnl_lab
+#' @rdname chnlLab
 #'
 #' @title Get markers and channels
 #'
 #' @description From a cytometry object (e.g. flowFrame or flowSet),
 #' either get a character vector of markers
-#' or channels (get_chnl and get_marker),
+#' or channels (getChnl and getMarker),
 #' or get a named vector that converts
-#' between channel names and marker names (e.g. chnl_to_marker).
+#' between channel names and marker names (e.g. chnlToMarker).
 #'
 #' @param data object of class flowFrame, flowSet. Channel and corresponding
 #' marker names are drawn from here.
 #'
 #' @details
-#' Note that chnl_lab is equivalent to chnl_to_marker,
-#' and marker_lab is equivalent to marker_to_chnl.
+#' Note that chnlLab is equivalent to chnlToMarker,
+#' and markerLab is equivalent to markerToChnl.
 #'
 #' @return A named character vector.
 #'
@@ -24,12 +24,12 @@
 #' fs <- GvHD[1:2]
 #'
 #' # Get channel to marker mapping
-#' chnl_lab(fs[[1]])
+#' chnlLab(fs[[1]])
 #' }
 #'
-#' @aliases marker_lab, chnl_to_marker, marker_to_chnl, get_marker, get_chnl
+#' @aliases markerLab, chnlToMarker, markerToChnl, getMarker, getChnl
 #' @export
-chnl_lab <- function(data) {
+chnlLab <- function(data) {
   adf <- switch(
     class(data)[1],
     "flowFrame" = flowCore::parameters(data)@data,
@@ -39,12 +39,12 @@ chnl_lab <- function(data) {
     stop("class of data not recognised")
   )
 
-  lab_vec <- setNames(adf$desc, adf$name)
-  for (i in seq_along(lab_vec)) {
-    if (is.na(lab_vec[i])) {
-      lab_vec[i] <- names(lab_vec)[i]
+  labVec <- setNames(adf$desc, adf$name)
+  for (i in seq_along(labVec)) {
+    if (is.na(labVec[i])) {
+      labVec[i] <- names(labVec)[i]
     }
   }
 
-  lab_vec
+  labVec
 }

@@ -35,7 +35,7 @@
 #
 #' @return A list with two elements:
 #'   - `flowFrameList`: A named list of `flowCore::flowFrame` objects.
-#'   - `conditionLabelsList`: A named list of character vectors of per-cell cluster labels.
+#'   - `labelsList`: A named list of character vectors of per-cell cluster labels.
 #'   Names of list elements are formatted as `sampleXXX_unstim`, `sampleXXX_stim1`, etc.
 #
 #' @export
@@ -53,7 +53,9 @@ simCytExperiment <- function(
   probResponseVecByStimCondition = NULL,
   samplePerturbationSd = 0,
   conditionPerturbationSd = 0,
-  clusterPerturbationSd = 0
+  clusterPerturbationSd = 0,
+  covEvMin = 1,
+  covEvMax = 2 
 ) {
   # Coerce inputs
   stopifnot(is.numeric(nSample))
@@ -63,7 +65,7 @@ simCytExperiment <- function(
   nCluster <- as.integer(nCluster)
 
   # Validate inputs using helper
-  validate_experiment_inputs(
+  validateExperimentInputs(
     nSample,
     nMarker,
     nCondition,
@@ -93,7 +95,7 @@ simCytExperiment <- function(
     stats::setNames(sampleConditionLabelVec)
 
   lapply(seq_len(nSample), function(sampleInd) {
-    idx_lower <- (sampleInd - 1) * nCondition + 1
+    idxLower <- (sampleInd - 1) * nCondition + 1
     meanExprMatCurrent <- if (samplePerturbationSd == 0L) {
       meanExprMat
     } else {
@@ -121,15 +123,17 @@ simCytExperiment <- function(
       probVecUns = probVecUns,
       probResponseVecByStimCondition = probResponseVecByStimCondition,
       conditionPerturbationSd = conditionPerturbationSd,
-      clusterPerturbationSd = clusterPerturbationSd
+      clusterPerturbationSd = clusterPerturbationSd,
+      covEvMin = covEvMin,
+      covEvMax = covEvMax
     )
 
     for (condInd in seq_len(nCondition)) {
-      flowFrameList[[idx_lower + condInd - 1]] <<- outListSample$flowFrameList[[
+      flowFrameList[[idxLower + condInd - 1]] <<- outListSample$flowFrameList[[
         condInd
       ]]
       labelsList[[
-        idx_lower + condInd - 1
+        idxLower + condInd - 1
       ]] <<- outListSample$conditionLabelsList[[condInd]]
     }
     NULL
@@ -137,7 +141,7 @@ simCytExperiment <- function(
 
   list(
     flowFrameList = flowFrameList,
-    conditionLabelsList = labelsList
+    labelsList = labelsList
   )
 }
 
@@ -184,10 +188,12 @@ simCytSample <- function(
   probVecUns,
   probResponseVecByStimCondition = NULL,
   conditionPerturbationSd = 0,
-  clusterPerturbationSd = 0
+  clusterPerturbationSd = 0,
+  covEvMin = 1,
+  covEvMax = 2 
 ) {
   # Validate inputs using helper
-  validate_sample_inputs(
+  validateSampleInputs(
     nCondition,
     nMarker,
     nCluster,
@@ -246,21 +252,23 @@ simCytSample <- function(
       meanExprMat = meanExprMat,
       clusterLabelVec = clusterLabelVec,
       probVec = probVecByCondition[[i]],
-      clusterPerturbationSd = clusterPerturbationSd
+      clusterPerturbationSd = clusterPerturbationSd,
+      covEvMin = covEvMin,
+      covEvMax = covEvMax
     )
 
     # Create annotated data frame
-    param_meta <- data.frame(
+    paramMeta <- data.frame(
       name = paste0("F", seq_len(nMarker)),
       desc = paste0("MarkerF", seq_len(nMarker)),
       range = apply(outListCondition$conditionMatrix, 2, max),
       minRange = apply(outListCondition$conditionMatrix, 2, min),
       maxRange = apply(outListCondition$conditionMatrix, 2, max)
     )
-    rownames(param_meta) <- paste0("$P", seq_len(nMarker))
+    rownames(paramMeta) <- paste0("$P", seq_len(nMarker))
 
-    param_annotated <- Biobase::AnnotatedDataFrame(
-      data = param_meta,
+    paramAnnotated <- Biobase::AnnotatedDataFrame(
+      data = paramMeta,
       varMetadata = data.frame(
         labelDescription = c(
           "Name of instrument channel",
@@ -275,7 +283,7 @@ simCytSample <- function(
 
     ff <- flowCore::flowFrame(
       exprs = outListCondition$conditionMatrix,
-      parameters = param_annotated
+      parameters = paramAnnotated
     )
     flowList[[i]] <<- ff
     labelsList[[i]] <<- outListCondition$conditionLabels
@@ -312,7 +320,9 @@ simCytCondition <- function(
   meanExprMat = NA,
   clusterLabelVec = NA,
   probVec,
-  clusterPerturbationSd = 0
+  clusterPerturbationSd = 0,
+  covEvMin = 1,
+  covEvMax = 2
 ) {
   numClusters <- nrow(meanExprMat)
 
@@ -354,7 +364,9 @@ simCytCondition <- function(
       meanExprVec = meanExprVec,
       perturbationSd = clusterPerturbationSd,
       mixtureType = mixtureType,
-      clusterNumber = clusterNumber
+      clusterNumber = clusterNumber,
+      covEvMin = covEvMin,
+      covEvMax = covEvMax
     )
     if (nMarker == 1L) {
       outData[outDataIndClusterVec] <- simData |> as.numeric()
@@ -363,15 +375,15 @@ simCytCondition <- function(
     }
   }
   outData <- transformationFunc(outData)
-  reorder_vec <- sample.int(nCell)
+  reorderVec <- sample.int(nCell)
   if (nMarker == 1L) {
-    outData <- outData[reorder_vec]
+    outData <- outData[reorderVec]
     outData <- matrix(outData, ncol = 1)
   } else {
-    outData <- outData[reorder_vec, ]
+    outData <- outData[reorderVec, ]
   }
   colnames(outData) <- paste0("F", seq_len(nMarker))
-  cellLabelVec <- cellLabelVec[reorder_vec]
+  cellLabelVec <- cellLabelVec[reorderVec]
   list(
     conditionMatrix = outData,
     conditionLabels = cellLabelVec
@@ -398,14 +410,16 @@ simCytCluster <- function(
   meanExprVec,
   perturbationSd = 0,
   mixtureType,
-  clusterNumber
+  clusterNumber,
+  covEvMin = 1,
+  covEvMax = 2
 ) {
   conditionPerturbationVec <- if (perturbationSd == 0L) {
     meanExprVec
   } else {
     meanExprVec + rnorm(nMarker, mean = 0, sd = perturbationSd)
   }
-  currentSigma <- Posdef(nMarker)
+  currentSigma <- Posdef(nMarker, covEvMin, covEvMax)
   simCytClusterData(
     mixtureType = mixtureType,
     clusterNumber = clusterNumber,
@@ -468,7 +482,7 @@ simCytClusterData <- function(
 
 #' @title Validate inputs for simCytExperiment
 #' @keywords internal
-validate_experiment_inputs <- function(
+validateExperimentInputs <- function(
   nSample,
   nMarker,
   nCondition,
@@ -489,7 +503,7 @@ validate_experiment_inputs <- function(
 
 #' @title Validate inputs for simCytSample
 #' @keywords internal
-validate_sample_inputs <- function(
+validateSampleInputs <- function(
   nCondition,
   nMarker,
   nCluster,

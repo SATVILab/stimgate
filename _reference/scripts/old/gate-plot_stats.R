@@ -4,7 +4,7 @@
                              stat = NULL,
                              col = NULL,
                              gate_lab = NULL,
-                             path_project) {
+                             pathProject) {
   # get marker name
   marker <- params$chnl_lab[params$cut][[1]]
 
@@ -15,7 +15,7 @@
     col = col,
     gate_lab = gate_lab,
     marker = marker,
-    pop_gate = params$pop_gate
+    popGate = params$popGate
   )
 
   # save
@@ -24,7 +24,7 @@
     plot_list = plot_list,
     params = params,
     plot_type = "stats",
-    path_project = path_project
+    pathProject = pathProject
   )
 
   invisible(TRUE)
@@ -37,14 +37,14 @@
                                       col,
                                       gate_lab,
                                       marker,
-                                      pop_gate) {
+                                      popGate) {
   if (is.null(stat)) stat <- c("count", "freq", "count_bs", "freq_bs")
 
   plot_list <- list()
 
   # print("auto vs man plots")
   purrr::map(unique(gate_stats$pop), function(pop_curr) {
-    pop_title <- ifelse(pop_curr == "gate", pop_gate, paste0(pop_gate, "/", pop_curr))
+    pop_title <- ifelse(pop_curr == "gate", popGate, paste0(popGate, "/", pop_curr))
     # print(pop_curr)
     stat_auto_vs_man_list <- purrr::map(stat, function(stat_curr) {
       # print(stat_curr)
@@ -383,9 +383,9 @@
                                           params,
                                           plot_type,
                                           unlink = FALSE,
-                                          path_project) {
+                                          pathProject) {
   # create base directory if need be
-  dir_base <- stimgate_dir_base_create(params = params, dir_base_init = path_project)
+  dir_base <- stimgate_dir_base_create(params = params, dir_base_init = pathProject)
   dir_save <- file.path(dir_base, plot_type)
 
   # if(dir.exists(dir_save)) unlink(dir_save, recursive = TRUE)

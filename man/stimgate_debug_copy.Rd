@@ -4,10 +4,10 @@
 \alias{stimgate_debug_copy}
 \title{Copy the latest stimgate debug file to the working directory}
 \usage{
-stimgate_debug_copy(path_dir = getwd())
+stimgate_debug_copy(pathDir = getwd())
 }
 \arguments{
-\item{path_dir}{character. Directory to copy the debug file to.
+\item{pathDir}{character. Directory to copy the debug file to.
 Default is \code{getwd()} (i.e. the working directory).}
 }
 \value{

@@ -6,14 +6,14 @@
 #'
 #' @examples
 #' get_stats_combn(
-#'   data = gs, pop_gate = "/CD3+/CD4 T Cells",
+#'   data = gs, popGate = "/CD3+/CD4 T Cells",
 #'   cut = c("Ho165Di", "Nd146Di"),
 #'   ind_in_batch_lab_vec = c("1" = "ebv", "2" = "mtb", "3" = "uns"),
 #'   ind_in_batch_gate = 1:3,
 #'   gate_name = "locb5_no"
 #' )
 get_stats_combn_cp <- function(data,
-                               pop_gate,
+                               popGate,
                                cut,
                                ind_in_batch_lab_vec,
                                gate_name,
@@ -22,7 +22,7 @@ get_stats_combn_cp <- function(data,
                                debug = FALSE,
                                use_cyt_pos = TRUE,
                                use_single_pos = TRUE,
-                               path_project) {
+                               pathProject) {
   # ==============================
   # Preparation
   # ==============================
@@ -41,12 +41,12 @@ get_stats_combn_cp <- function(data,
 
   # params object
   params <- list(
-    pop_gate = pop_gate,
+    popGate = popGate,
     chnl_lab = chnl_lab_vec,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     ind_in_batch_gate = ind_in_batch_gate,
     data_name = data_name,
-    path_project = path_project
+    pathProject = pathProject
   )
 
   # ====================================
@@ -58,7 +58,7 @@ get_stats_combn_cp <- function(data,
     params[["cut"]] <- cut_curr
 
     # get stats tbl
-    gate_tbl <- readRDS(.gates_get_path(path_project, pop_gate, cut_curr))
+    gate_tbl <- readRDS(.gates_get_path(pathProject, popGate, cut_curr))
 
     gate_tbl |>
       dplyr::filter(.data$gate_name == .env$gate_name) |>
@@ -83,11 +83,11 @@ get_stats_combn_cp <- function(data,
 
       # get expression dataframe
       ex <- .get_ex(
-        data = data[[ind]], pop = pop_gate,
+        data = data[[ind]], pop = popGate,
         cut = cut, high = NULL, ind = ind,
         is_uns = FALSE, stim = stim,
         ind_in_batch = ind_in_batch, data_name = data_name,
-        path_project = path_project
+        pathProject = pathProject
       )
 
       gate_tbl_ind <- gate_tbl |> dplyr::filter(.data$ind == .env$ind)
@@ -117,11 +117,11 @@ get_stats_combn_cp <- function(data,
           length(ind_in_batch_lab_vec) +
           ind_in_batch_uns
         ex_uns <- .get_ex(
-          data = data[[ind_uns]], pop = pop_gate,
+          data = data[[ind_uns]], pop = popGate,
           cut = cut, high = NULL, ind = ind_uns,
           is_uns = TRUE, stim = "uns",
           ind_in_batch = ind_in_batch, data_name = data_name,
-          path_project = path_project
+          pathProject = pathProject
         )
 
         count_vec_uns <- purrr::map_dbl(cut, function(chnl_curr) {
@@ -255,11 +255,11 @@ get_stats_combn_cp <- function(data,
       length(ind_in_batch_lab_vec) +
       ind_in_batch_uns
     ex_uns <- .get_ex(
-      data = data[[ind_uns]], pop = pop_gate,
+      data = data[[ind_uns]], pop = popGate,
       cut = cut, high = NULL, ind = ind_uns,
       is_uns = TRUE, stim = "uns",
       ind_in_batch = ind_in_batch, data_name = data_name,
-      path_project = path_project
+      pathProject = pathProject
     )
 
     stat_tbl_uns <- .get_stat_combn(
@@ -285,7 +285,7 @@ get_stats_combn_cp <- function(data,
 
     stat_tbl |>
       dplyr::mutate(
-        pop = pop_gate, gate_name = gate_name,
+        pop = popGate, gate_name = gate_name,
         batch = ex$batch[1], batch_sh = ex$batch_sh[1],
         fcs = ex$fcs[1], stim = ex$stim[1],
         ind = ex$ind[1], is_uns = ex$is_uns[1],
@@ -303,14 +303,14 @@ get_stats_combn_cp <- function(data,
 
 #' @export
 get_stats_combn_nb <- function(data,
-                               pop_gate,
+                               popGate,
                                cut,
                                ind_in_batch_lab_vec,
                                gate_name,
                                ind_in_batch_gate,
                                ind_in_batch_uns,
                                debug = FALSE,
-                               path_project) {
+                               pathProject) {
   # ==============================
   # Preparation
   # ==============================
@@ -329,12 +329,12 @@ get_stats_combn_nb <- function(data,
 
   # params object
   params <- list(
-    pop_gate = pop_gate,
+    popGate = popGate,
     chnl_lab = chnl_lab_vec,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     ind_in_batch_gate = ind_in_batch_gate,
     data_name = data_name,
-    path_project = path_project
+    pathProject = pathProject
   )
 
   # get base directory
@@ -342,7 +342,7 @@ get_stats_combn_nb <- function(data,
   # get base directory
   params[["cut"]] <- cut[1]
   dir_base <- stimgate_dir_base_create(
-    dir_base_init = path_project,
+    dir_base_init = pathProject,
     params = params
   )
 
@@ -362,7 +362,7 @@ get_stats_combn_nb <- function(data,
     # get base directory
     params[["cut"]] <- cut_curr
     dir_base <- stimgate_dir_base_create(
-      dir_base_init = path_project,
+      dir_base_init = pathProject,
       params = params
     )
     # get stats tbl
@@ -378,7 +378,7 @@ get_stats_combn_nb <- function(data,
     # get base directory
     params[["cut"]] <- cut_curr
     dir_base <- stimgate_dir_base_create(
-      dir_base_init = path_project,
+      dir_base_init = pathProject,
       params = params
     )
     # get stats tbl
@@ -410,11 +410,11 @@ get_stats_combn_nb <- function(data,
 
     # get expression dataframe
     ex <- .get_ex(
-      data = data[[ind]], pop = pop_gate,
+      data = data[[ind]], pop = popGate,
       cut = cut, high = NULL, ind = ind,
       is_uns = FALSE, stim = stim,
       ind_in_batch = ind_in_batch, data_name = data_name,
-      path_project = path_project
+      pathProject = pathProject
     )
 
     n_cell <- nrow(ex)
@@ -428,7 +428,7 @@ get_stats_combn_nb <- function(data,
       params_curr <- params
       params_curr[["cut"]] <- cut_curr
       dir_base <- stimgate_dir_base_create(
-        dir_base_init = path_project,
+        dir_base_init = pathProject,
         params = params_curr
       )
       # wd <- getwd()
@@ -975,7 +975,7 @@ get_stats_combn_nb <- function(data,
     combn_tbl <- tibble::tibble(combn = .get_all_combn(length(cut))) |>
       dplyr::mutate(
         ind = ind, cut = paste0(cut, collapse = "_"),
-        pop = pop_gate, gate_name = gate_name
+        pop = popGate, gate_name = gate_name
       )
 
     .add_pos_col_2 <- function(data, cut, chnl_lab) {
@@ -1040,7 +1040,7 @@ get_stats_combn_nb <- function(data,
     dplyr::bind_rows()
   params[["cut"]] <- cut_curr
   dir_base <- stimgate_dir_base_create(
-    dir_base_init = path_project,
+    dir_base_init = pathProject,
     params = params
   )
   # get stats tbl
@@ -1051,7 +1051,7 @@ get_stats_combn_nb <- function(data,
     # get base directory
     params[["cut"]] <- cut_curr
     dir_base <- stimgate_dir_base_create(
-      dir_base_init = path_project,
+      dir_base_init = pathProject,
       params = params
     )
     # get stats tbl

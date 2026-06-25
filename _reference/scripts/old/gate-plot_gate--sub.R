@@ -92,12 +92,12 @@
 #'
 #' @param gate_list
 #'
-.get_gate_tbl <- function(gate_list, ind_batch_list) {
+.get_gate_tbl <- function(gate_list, indBatchList) {
   ind_batch_lab_vec <- c()
-  for (i in seq_along(ind_batch_list)) {
+  for (i in seq_along(indBatchList)) {
     ind_batch_lab_vec <- c(ind_batch_lab_vec, stats::setNames(
-      rep(i, length(ind_batch_list[[i]])),
-      ind_batch_list[[i]]
+      rep(i, length(indBatchList[[i]])),
+      indBatchList[[i]]
     ))
   }
   purrr::map_df(names(gate_list), function(gate_type) {

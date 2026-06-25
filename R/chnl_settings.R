@@ -2,247 +2,206 @@
 # Ensures all parameters for each marker requiring a gate are properly defined
 
 #' @keywords internal
-.complete_chnl_settings <- function(
+.completeChnlSettings <- function(
   chnl,
   marker,
-  chnl_settings,
-  marker_settings,
-  bias_uns,
-  bias_uns_factor,
-  exc_min,
+  chnlSettings,
+  markerSettings,
+  biasUns,
+  biasUnsFactor,
+  excMin,
   .data,
-  pop_gate,
-  ind_batch_list,
+  popGate,
+  indBatchList,
   bw,
-  bw_min,
-  bw_max,
-  bw_mtd,
-  bw_adj,
-  bw_ncell_min,
-  bw_ncell_max,
-  cp_min,
-  min_cell,
-  tol_clust,
-  max_pos_prob_x,
-  gate_combn,
-  gate_quant,
-  path_project
+  bwMin,
+  bwMax,
+  bwMtd,
+  bwAdj,
+  bwNcellMin,
+  bwNcellMax,
+  cpMin,
+  minCell,
+  tolClust,
+  maxPosProbX,
+  gateCombn,
+  gateQuant,
+  pathProject
 ) {
-  chnl_settings <- .extract_chnl_settings(
+  chnlSettings <- .extractChnlSettings(
     chnl = chnl,
     marker = marker,
-    chnl_settings = chnl_settings,
-    marker_settings = marker_settings,
-    path_project = path_project
+    chnlSettings = chnlSettings,
+    markerSettings = markerSettings,
+    pathProject = pathProject
   )
-  chnl_settings_common <- list(
-    pop_gate = pop_gate,
-    bias_uns = bias_uns,
-    bias_uns_factor = bias_uns_factor,
-    exc_min = exc_min,
-    cp_min = cp_min,
-    bw_min = bw_min,
+  chnlSettingsCommon <- list(
+    popGate = popGate,
+    biasUns = biasUns,
+    biasUnsFactor = biasUnsFactor,
+    excMin = excMin,
+    cpMin = cpMin,
+    bwMin = bwMin,
     bw = bw,
-    bw_max = bw_max,
-    bw_mtd = bw_mtd,
-    bw_adj = bw_adj,
-    bw_ncell_min = bw_ncell_min,
-    bw_ncell_max = bw_ncell_max,
-    min_cell = min_cell,
-    tol_clust = tol_clust,
-    gate_combn = gate_combn,
-    max_pos_prob_x = max_pos_prob_x,
-    gate_quant = gate_quant
+    bwMax = bwMax,
+    bwMtd = bwMtd,
+    bwAdj = bwAdj,
+    bwNcellMin = bwNcellMin,
+    bwNcellMax = bwNcellMax,
+    minCell = minCell,
+    tolClust = tolClust,
+    gateCombn = gateCombn,
+    maxPosProbX = maxPosProbX,
+    gateQuant = gateQuant
   )
-  chnl_lab <- stimgate_meta_read_chnl_lab(path_project)
-  chnl_list <- purrr::map(chnl, function(chnl_curr) {
-    chnl_settings_spec_curr <- list(
-      marker = chnl_lab[[chnl_curr]],
-      chnl_cut = chnl_curr
+  chnlLab <- stimgateMetaReadChnlLab(pathProject)
+  chnlList <- purrr::map(chnl, function(chnlCurr) {
+    chnlSettingsSpecCurr <- list(
+      marker = chnlLab[[chnlCurr]],
+      chnlCut = chnlCurr
     ) |>
-      append(chnl_settings[[chnl_curr]])
+      append(chnlSettings[[chnlCurr]])
 
-    chnl_out <- .complete_chnl_settings_ind(
-      chnl = chnl_curr,
-      chnl_settings_common = chnl_settings_common,
-      chnl_settings_spec = chnl_settings_spec_curr,
+    chnlOut <- .completeChnlSettingsInd(
+      chnl = chnlCurr,
+      chnlSettingsCommon = chnlSettingsCommon,
+      chnlSettingsSpec = chnlSettingsSpecCurr,
       .data = .data,
-      ind_batch_list = ind_batch_list,
-      path_project = path_project
+      indBatchList = indBatchList,
+      pathProject = pathProject
     )
-    .verify_chnl_settings_chnl(chnl_curr, chnl_out)
-    chnl_out
+    .verifyChnlSettingsChnl(chnlCurr, chnlOut)
+    chnlOut
   }) |>
-    stats::setNames(chnl_lab[chnl])
+    stats::setNames(chnlLab[chnl])
 
-  .complete_chnl_settings_save(
-    chnl_list = chnl_list, path_project = path_project
+  .completeChnlSettingsSave(
+    chnlList = chnlList, pathProject = pathProject
   )
 
-  chnl_list
+  chnlList
 }
 
 #' @keywords internal
-.complete_chnl_settings_ind <- function(
-  chnl_settings_common,
-  chnl_settings_spec,
+.completeChnlSettingsInd <- function(
+  chnlSettingsCommon,
+  chnlSettingsSpec,
   chnl,
   .data,
-  ind_batch_list,
-  path_project
+  indBatchList,
+  pathProject
 ) {
-  chnl_settings <- .complete_chnl_settings_add_common(
-    chnl_settings_common = chnl_settings_common,
-    chnl_settings = chnl_settings_spec
+
+  chnlSettings <- .completeChnlSettingsAddCommon(
+    chnlSettingsCommon = chnlSettingsCommon,
+    chnlSettings = chnlSettingsSpec
   )
 
-  chnl_settings$bias_uns <- .complete_chnl_settings_bias_uns(
-    bias_uns = chnl_settings$bias_uns,
-    bias_uns_factor = chnl_settings$bias_uns_factor,
+  chnlSettings$bwMin <- .completeChnlSettingsBwMin(
+    bwMin = chnlSettings$bwMin,
+    indBatchList = indBatchList,
     .data = .data,
-    pop_gate = chnl_settings$pop_gate,
-    chnl_cut = chnl,
-    ind_batch_list = ind_batch_list,
-    path_project = path_project
+    popGate = chnlSettings$popGate,
+    chnlCut = chnl,
+    pathProject = pathProject,
+    bwAdj = chnlSettings$bwAdj
   )
 
-  chnl_settings$bw_min <- .complete_chnl_settings_min_bw(
-    bw_min = chnl_settings$bw_min,
-    bias_uns = max(chnl_settings$bias_uns)
-  )
-
-  chnl_settings$bw_cluster <- .complete_chnl_settings_bw_cluster(
-    ind_batch_list = ind_batch_list,
+  chnlSettings$bwMax <- .completeChnlSettingsBwMax(
+    bwMax = chnlSettings$bwMax,
+    indBatchList = indBatchList,
     .data = .data,
-    pop_gate = chnl_settings$pop_gate,
-    chnl_cut = chnl,
-    path_project = path_project,
-    bw_cluster = chnl_settings$bw_cluster
+    popGate = chnlSettings$popGate,
+    chnlCut = chnl,
+    pathProject = pathProject,
+    bwAdj = chnlSettings$bwAdj
   )
 
-  chnl_settings$cp_min <- .complete_chnl_settings_cp_min(
-    cp_min = chnl_settings$cp_min,
+  chnlSettings$biasUns <- .completeChnlSettingsBiasUns(
+    biasUns = chnlSettings$biasUns,
+    biasUnsFactor = chnlSettings$biasUnsFactor,
+    bwMin = chnlSettings$bwMin,
+    bwMax = chnlSettings$bwMax
+  )
+
+  chnlSettings$bwCluster <- .completeChnlSettingsBwCluster(
+    indBatchList = indBatchList,
     .data = .data,
-    pop_gate = chnl_settings$pop_gate,
-    chnl_cut = chnl,
-    ind_batch_list = ind_batch_list,
-    path_project = path_project
+    popGate = chnlSettings$popGate,
+    chnlCut = chnl,
+    pathProject = pathProject,
+    bwCluster = chnlSettings$bwCluster,
+    bwAdj = chnlSettings$bwAdj
   )
 
-  chnl_settings
+  chnlSettings$cpMin <- .completeChnlSettingsCpMin(
+    cpMin = chnlSettings$cpMin,
+    .data = .data,
+    popGate = chnlSettings$popGate,
+    chnlCut = chnl,
+    indBatchList = indBatchList,
+    pathProject = pathProject
+  )
+
+  chnlSettings
 }
 
 #' @keywords internal
-.complete_chnl_settings_add_common <- function(
-  chnl_settings_common,
-  chnl_settings
+.completeChnlSettingsAddCommon <- function(
+  chnlSettingsCommon,
+  chnlSettings
 ) {
-  chnl_settings |>
-    append(chnl_settings_common[
-      setdiff(names(chnl_settings_common), names(chnl_settings))
+  chnlSettings |>
+    append(chnlSettingsCommon[
+      setdiff(names(chnlSettingsCommon), names(chnlSettings))
     ])
 }
 
 #' @keywords internal
-.complete_chnl_settings_bias_uns <- function(
-  bias_uns,
-  bias_uns_factor,
-  .data,
-  pop_gate,
-  chnl_cut,
-  ind_batch_list,
-  path_project
+.completeChnlSettingsBiasUns <- function(
+  biasUns,
+  biasUnsFactor,
+  bwMin,
+  bwMax
 ) {
-  if (!is.null(bias_uns)) {
-    return(bias_uns)
+  if (!is.null(biasUns)) {
+    return(biasUns)
   }
-  .debug("calculating bias_uns automatically") # nolint
-  mean_range <- .complete_chnl_settings_bias_uns_get_mean_range(
-    ind_batch_list = ind_batch_list,
-    .data = .data,
-    pop_gate = pop_gate,
-    chnl_cut = chnl_cut,
-    path_project = path_project
-  )
-  (mean_range / 12 * bias_uns_factor) |> signif(3)
+  mean(bwMin, bwMax) * biasUnsFactor
 }
 
 #' @keywords internal
-.complete_chnl_settings_bias_uns_get_mean_range <- function(
-  ind_batch_list,
+.completeChnlSettingsBwMax <- function(
+  bwMax,
+  indBatchList,
   .data,
-  pop_gate,
-  chnl_cut,
-  path_project
+  popGate,
+  chnlCut,
+  pathProject,
+  bwAdj
 ) {
-  purrr::map(
-    seq_len(min(5, length(ind_batch_list))),
-    function(i) {
-      ex_list <- .get_ex_list(
-        # nolint
-        .data = .data,
-        ind_batch = ind_batch_list[[i]],
-        pop = pop_gate,
-        chnl_cut,
-        batch = names(ind_batch_list)[i],
-        path_project = path_project
-      )
-      purrr::map_dbl(ex_list, function(ex) {
-        abs(
-          diff(
-            quantile(
-              .get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))],
-              c(0.99, 0.01)
-            ),
-            na.rm = TRUE
-          )
-        )[[1]]
-      })
-    }
-  ) |>
-    unlist() |>
-    mean(trim = 0.1)
-}
-
-
-#' @keywords internal
-.complete_chnl_settings_min_bw <- function(bw_min, bias_uns) {
-  if (!is.null(bw_min)) {
-    return(bw_min)
-  }
-  bias_uns * 2.25
-}
-
-.complete_chnl_settings_bw_cluster <- function(
-  ind_batch_list,
-  .data,
-  pop_gate,
-  chnl_cut,
-  path_project,
-  bw_cluster
-) {
-  if (!is.null(bw_cluster)) {
-    return(bw_cluster)
+  if (!is.null(bwMax)) {
+    return(bwMax)
   }
   purrr::map(
-    seq_len(min(5, length(ind_batch_list))),
+    seq_len(min(5, length(indBatchList))),
     function(i) {
-      ex_list <- .get_ex_list(
+      exList <- .getExList(
         # nolint
         .data = .data,
-        ind_batch = ind_batch_list[[i]],
-        pop = pop_gate,
-        chnl_cut,
-        batch = names(ind_batch_list)[i],
-        path_project = path_project
+        indBatch = indBatchList[[i]],
+        pop = popGate,
+        chnlCut,
+        batch = names(indBatchList)[i],
+        pathProject = pathProject
       )
-      purrr::map_dbl(ex_list, function(ex) {
-        x_vec <- .get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))]
-        iqr_x <- diff(quantile(x_vec, c(0.75, 0.25), na.rm = TRUE))
-        sd_x <- abs(iqr_x) / 1.5
-        x_vec <- sample(x_vec, replace = TRUE, size = 1e4) +
-          rnorm(1e4, mean = 0, sd = sd_x / 10)
-        ks::hpi(x = x_vec, deriv.order = 1)
+      purrr::map_dbl(exList, function(ex) {
+        xVec <- .getCut(ex)[.getCut(ex) > min(.getCut(ex))]
+        iqrX <- diff(quantile(xVec, c(0.75, 0.25), na.rm = TRUE))
+        sdX <- abs(iqrX) / 1.5
+        xVec <- sample(xVec, replace = TRUE, size = 1e2) +
+          rnorm(1e2, mean = 0, sd = sdX / 10)
+        ks::hpi(x = xVec, deriv.order = 1) * bwAdj
       })
     }
   ) |>
@@ -251,32 +210,110 @@
 }
 
 #' @keywords internal
-.complete_chnl_settings_cp_min <- function(
-  cp_min,
+.completeChnlSettingsBwMin <- function(
+  bwMin,
+  indBatchList,
   .data,
-  pop_gate,
-  chnl_cut,
-  ind_batch_list,
-  path_project
+  popGate,
+  chnlCut,
+  pathProject,
+  bwAdj
 ) {
-  if (!is.null(cp_min)) {
-    return(cp_min)
+  if (!is.null(bwMin)) {
+    return(bwMin)
   }
-  .debug("calculating cp_min automatically") # nolint
   purrr::map(
-    seq_len(min(2, length(ind_batch_list))),
+    seq_len(min(5, length(indBatchList))),
     function(i) {
-      ex_list <- .get_ex_list(
+      exList <- .getExList(
         # nolint
         .data = .data,
-        ind_batch = ind_batch_list[[i]],
-        pop = pop_gate,
-        chnl_cut,
-        batch = names(ind_batch_list)[i],
-        path_project = path_project
+        indBatch = indBatchList[[i]],
+        pop = popGate,
+        chnlCut,
+        batch = names(indBatchList)[i],
+        pathProject = pathProject
       )
-      purrr::map_dbl(ex_list, function(ex) {
-        median(.get_cut(ex)[.get_cut(ex) > min(.get_cut(ex))], na.rm = TRUE)[[
+      purrr::map_dbl(exList, function(ex) {
+        xVec <- .getCut(ex)[.getCut(ex) > min(.getCut(ex))]
+        iqrX <- diff(quantile(xVec, c(0.75, 0.25), na.rm = TRUE))
+        sdX <- abs(iqrX) / 1.5
+        xVec <- sample(xVec, replace = TRUE, size = 1e5) +
+          rnorm(1e5, mean = 0, sd = sdX / 10)
+        ks::hpi(x = xVec, deriv.order = 1) * bwAdj
+      })
+    }
+  ) |>
+    unlist() |>
+    mean(trim = 0.1)
+}
+
+#' @keywords internal
+.completeChnlSettingsBwCluster <- function(
+  indBatchList,
+  .data,
+  popGate,
+  chnlCut,
+  pathProject,
+  bwCluster,
+  bwAdj
+) {
+  if (!is.null(bwCluster)) {
+    return(bwCluster)
+  }
+  purrr::map(
+    seq_len(min(5, length(indBatchList))),
+    function(i) {
+      exList <- .getExList(
+        # nolint
+        .data = .data,
+        indBatch = indBatchList[[i]],
+        pop = popGate,
+        chnlCut,
+        batch = names(indBatchList)[i],
+        pathProject = pathProject
+      )
+      purrr::map_dbl(exList, function(ex) {
+        xVec <- .getCut(ex)[.getCut(ex) > min(.getCut(ex))]
+        iqrX <- diff(quantile(xVec, c(0.75, 0.25), na.rm = TRUE))
+        sdX <- abs(iqrX) / 1.5
+        xVec <- sample(xVec, replace = TRUE, size = 1e4) +
+          rnorm(1e4, mean = 0, sd = sdX / 10)
+        ks::hpi(x = xVec, deriv.order = 1) * bwAdj
+      })
+    }
+  ) |>
+    unlist() |>
+    mean(trim = 0.1)
+}
+
+#' @keywords internal
+.completeChnlSettingsCpMin <- function(
+  cpMin,
+  .data,
+  popGate,
+  chnlCut,
+  indBatchList,
+  pathProject
+) {
+  if (!is.null(cpMin)) {
+    return(cpMin)
+  }
+  .debug("calculating cpMin automatically") # nolint
+  purrr::map(
+    seq_len(min(2, length(indBatchList))),
+    function(i) {
+      exList <- .getExList(
+        # nolint
+        .data = .data,
+        indBatch = indBatchList[[i]],
+        pop = popGate,
+        chnlCut,
+        batch = names(indBatchList)[i],
+        pathProject = pathProject
+      )
+      purrr::map_dbl(exList, function(ex) {
+        median(.getCut(ex)[.getCut(ex) > min(.getCut(ex))], na.rm = TRUE)[[
           1
         ]] # nolint
       })
@@ -286,16 +323,10 @@
     mean(trim = 0.1)
 }
 
-
 # Get all cutpoint type names
 # Returns character vector of all available cutpoint names
 #' @keywords internal
-.get_full_cp_type_vec <- function(fdr) {
-  # Get cutpoint names for unstim-based cuts
-  # cp_name_vec_uns <- .get_cp_uns_name_vec(fdr)
-  # cp_name_vec_uns_root <- paste0(cp_name_vec_uns, 'root')
-
-  # output all cutpoint names
+.getFullCpTypeVec <- function(fdr) {
   c(
     "man",
     "tg",
@@ -309,22 +340,22 @@
 }
 
 #' @keywords internal
-.complete_chnl_settings_save <- function(chnl_list, path_project) {
-  path_save <- file.path(path_project, "meta_data", "chnl_list.rds")
-  if (file.exists(path_save)) {
-    invisible(file.remove(path_save))
+.completeChnlSettingsSave <- function(chnlList, pathProject) {
+  pathSave <- file.path(pathProject, "metaData", "chnlSettings.rds")
+  if (file.exists(pathSave)) {
+    invisible(file.remove(pathSave))
   }
-  if (!dir.exists(path_project)) {
-    dir.create(path_project, recursive = TRUE)
+  if (!dir.exists(pathProject)) {
+    dir.create(pathProject, recursive = TRUE)
   }
   saveRDS(
-    chnl_list,
-    file = path_save
+    chnlList,
+    file = pathSave
   )
 }
 
 #' @keywords internal
-.chnl_lab <- function(.data) {
+.chnlLab <- function(.data) {
   adf <- switch(
     class(.data)[1],
     "GatingSet" = {
@@ -343,180 +374,179 @@
     stop(paste0("Unsupported data class: ", class(.data)[1]))
   )
 
-  lab_vec <- setNames(adf$desc, adf$name)
-  for (i in seq_along(lab_vec)) {
-    if (is.na(lab_vec[i])) {
-      lab_vec[i] <- names(lab_vec)[i]
+  labVec <- setNames(adf$desc, adf$name)
+  for (i in seq_along(labVec)) {
+    if (is.na(labVec[i])) {
+      labVec[i] <- names(labVec)[i]
     }
   }
 
-  lab_vec
+  labVec
 }
 
 #' @title Read marker settings from project
 #' @description Read the saved marker settings list from the project's meta_data folder.
-#' @param path_project character Path to project.
-#' @return A named list of marker settings (as saved by .complete_chnl_settings_save()).
+#' @param pathProject character Path to project.
+#' @return A named list of marker settings (as saved by .completeChnlSettingsSave()).
 #' @examples
 #' \dontrun{
 #' tmp <- tempdir()
-#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
-#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
-#' stimgate_meta_read_settings_markers(tmp)
+#' dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
+#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "metaData", "markerList.rds"))
+#' stimgateMetaReadSettingsChnls(tmp)
 #' }
 #' @export
-stimgate_meta_read_settings_chnls <- function(path_project) {
-  path_chnl_list <- file.path(path_project, "meta_data", "chnl_list.rds")
-  if (!file.exists(path_chnl_list)) {
+stimgateMetaReadSettingsChnls <- function(pathProject) {
+  pathChnlList <- file.path(pathProject, "metaData", "chnlSettings.rds")
+  if (!file.exists(pathChnlList)) {
     stop("Channel list file not found in project meta_data folder")
   }
-  readRDS(path_chnl_list)
+  readRDS(pathChnlList)
 }
 
 #' @title Read marker list with channel labels
 #' @description Read the project's marker list and return it with element names
-#'   replaced by channel labels (from chnl_lab).
-#' @param path_project character Path to project.
+#'   replaced by channel labels (from chnlLab).
+#' @param pathProject character Path to project.
 #' @return A named list of marker settings where names are channel labels.
 #' @examples
 #' \dontrun{
 #' tmp <- tempdir()
-#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
-#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
-#' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "meta_data", "chnl_lab.rds"))
-#' stimgate_meta_read_settings_chnls(tmp)
+#' dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
+#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "metaData", "markerList.rds"))
+#' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "metaData", "chnlLab.rds"))
+#' stimgateMetaReadSettingsChnls(tmp)
 #' }
 #' @export
-stimgate_meta_read_settings_markers <- function(path_project) {
-  marker_list <- stimgate_meta_read_settings_chnls(path_project)
-  chnl_lab <- stimgate_meta_read_chnl_lab(path_project)
-  # chnl_lab maps channel code -> label; rename marker_list elements using labels
-  names(marker_list) <- chnl_lab[names(marker_list)]
-  marker_list
+stimgateMetaReadSettingsMarkers <- function(pathProject) {
+  markerList <- stimgateMetaReadSettingsChnls(pathProject)
+  chnlLab <- stimgateMetaReadChnlLab(pathProject)
+  names(markerList) <- chnlLab[names(markerList)]
+  markerList
 }
 
 #' @title Get marker settings for a single channel
 #' @description Retrieve the marker settings for a single channel. The function
-#'   accepts either a channel label (as returned by stimgate_meta_read_chnl_lab)
-#'   or the original channel name/key used in marker_list.
-#' @param path_project character Path to project.
+#'   accepts either a channel label (as returned by stimgateMetaReadChnlLab)
+#'   or the original channel name/key used in markerList.
+#' @param pathProject character Path to project.
 #' @param chnl character Channel label or channel name.
 #' @return A list of settings for the requested channel.
 #' @examples
 #' \dontrun{
 #' tmp <- tempdir()
-#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
-#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
-#' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "meta_data", "chnl_lab.rds"))
-#' stimgate_meta_read_settings_chnl(tmp, "BC1 label")
-#' stimgate_meta_read_settings_chnl(tmp, "BC1")
+#' dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
+#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "metaData", "markerList.rds"))
+#' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "metaData", "chnlLab.rds"))
+#' stimgateMetaReadSettingsChnl(tmp, "BC1 label")
+#' stimgateMetaReadSettingsChnl(tmp, "BC1")
 #' }
 #' @export
-stimgate_meta_read_settings_chnl <- function(path_project, chnl) {
-  chnl_list <- stimgate_meta_read_settings_chnls(path_project)
-  # If user supplied the label (names of chnl_list)
-  if (!chnl %in% names(chnl_list)) {
+stimgateMetaReadSettingsChnl <- function(pathProject, chnl) {
+  chnlList <- stimgateMetaReadSettingsChnls(pathProject)
+  if (!chnl %in% names(chnlList)) {
     stop(sprintf("Channel %s not found in marker list", chnl))
   }
-  chnl_list[[chnl]]
+  chnlList[[chnl]]
 }
 
 #' @title Get settings for a named marker
 #' @description Retrieve the settings for a marker by its original name/key.
-#' @param path_project character Path to project.
-#' @param marker character Marker name/key as stored in marker_list.
+#' @param pathProject character Path to project.
+#' @param marker character Marker name/key as stored in markerList.
 #' @return A list of settings for the requested marker.
 #' @examples
 #' \dontrun{
 #' tmp <- tempdir()
-#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
-#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "meta_data", "marker_list.rds"))
-#' stimgate_meta_read_settings_marker(tmp, "BC1")
+#' dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
+#' saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "metaData", "markerList.rds"))
+#' stimgateMetaReadSettingsMarker(tmp, "BC1")
 #' }
 #' @export
-stimgate_meta_read_settings_marker <- function(path_project, marker) {
-  marker_list <- stimgate_meta_read_settings_chnls(path_project)
-  if (!marker %in% names(marker_list)) {
+stimgateMetaReadSettingsMarker <- function(pathProject, marker) {
+  markerList <- stimgateMetaReadSettingsChnls(pathProject)
+  if (!marker %in% names(markerList)) {
     stop(sprintf("Marker %s not found in marker list", marker))
   }
-  marker_list[[marker]]
+  markerList[[marker]]
 }
 
-#' @rdname stimgate_meta_read_lab
+#' @rdname stimgateMetaReadLab
 #' @title Read channel or marker label mapping
 #' @description Read the saved channel label mapping (chnl_lab.rds) from the project's meta_data folder.
-#' @param path_project character Path to project.
+#' @param pathProject character Path to project.
 #' @return Named character vector mapping channel names to labels.
 #' @examples
 #' \dontrun{
 #' tmp <- tempdir()
-#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
-#' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "meta_data", "chnl_lab.rds"))
-#' stimgate_meta_read_chnl_lab(tmp)
+#' dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
+#' saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "metaData", "chnlLab.rds"))
+#' stimgateMetaReadChnlLab(tmp)
 #' }
 #' @export
-stimgate_meta_read_chnl_lab <- function(path_project) {
-  path_chnl_lab <- file.path(path_project, "meta_data", "chnl_lab.rds")
-  if (!file.exists(path_chnl_lab)) {
+stimgateMetaReadChnlLab <- function(pathProject) {
+  pathChnlLab <- file.path(pathProject, "metaData", "chnlLab.rds")
+  if (!file.exists(pathChnlLab)) {
     stop("Channel label file not found in project meta_data folder")
   }
-  readRDS(path_chnl_lab)
+  readRDS(pathChnlLab)
 }
 
-#' @rdname stimgate_meta_read_lab
-stimgate_meta_read_marker_lab <- function(path_project) {
-  chnl_lab <- stimgate_meta_read_chnl_lab(path_project)
-  stats::setNames(names(chnl_lab), chnl_lab)
+#' @rdname stimgateMetaReadLab
+#' @export
+stimgateMetaReadMarkerLab <- function(pathProject) {
+  chnlLab <- stimgateMetaReadChnlLab(pathProject)
+  stats::setNames(names(chnlLab), chnlLab)
 }
 
 #' @keywords internal
-.save_meta_data <- function(.data, batch_list, path_project) {
-  path_dir_meta_data <- file.path(path_project, "meta_data")
-  if (!dir.exists(path_dir_meta_data)) {
-    dir.create(path_dir_meta_data, recursive = TRUE)
+.saveMetaData <- function(.data, batchList, pathProject) {
+  pathDirMetaData <- file.path(pathProject, "metaData")
+  if (!dir.exists(pathDirMetaData)) {
+    dir.create(pathDirMetaData, recursive = TRUE)
   }
-  .save_meta_data_chnl_lab(.data, path_dir_meta_data)
-  .save_meta_data_batch_list(batch_list, path_dir_meta_data)
+  .saveMetaDataChnlLab(.data, pathDirMetaData)
+  .saveMetaDataBatchList(batchList, pathDirMetaData)
 }
 
 #' @keywords internal
-.save_meta_data_chnl_lab <- function(.data, path_dir) {
-  chnl_lab <- .chnl_lab(.data)
+.saveMetaDataChnlLab <- function(.data, pathDir) {
+  chnlLab <- .chnlLab(.data)
   saveRDS(
-    chnl_lab,
-    file = file.path(path_dir, "chnl_lab.rds")
+    chnlLab,
+    file = file.path(pathDir, "chnlLab.rds")
   )
 }
 
 #' @keywords internal
-.save_meta_data_batch_list <- function(batch_list, path_dir) {
+.saveMetaDataBatchList <- function(batchList, pathDir) {
   saveRDS(
-    batch_list,
-    file = file.path(path_dir, "batch_list.rds")
+    batchList,
+    file = file.path(pathDir, "batchList.rds")
   )
 }
 
 #' @title Read batch list from project
-#' @description Read the saved batch_list object from the project's meta_data folder.
-#' @param path_project character Path to project.
-#' @return A list describing sample grouping into batches (as saved by .save_meta_data_batch_list()).
+#' @description Read the saved batchList object from the project's meta_data folder.
+#' @param pathProject character Path to project.
+#' @return A list describing sample grouping into batches (as saved by .saveMetaDataBatchList()).
 #' @examples
 #' \dontrun{
 #' tmp <- tempdir()
-#' dir.create(file.path(tmp, "meta_data"), showWarnings = FALSE)
-#' saveRDS(list(batch1 = c(1, 2)), file.path(tmp, "meta_data", "batch_list.rds"))
-#' stimgate_meta_read_batch_list(tmp)
+#' dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
+#' saveRDS(list(batch1 = c(1, 2)), file.path(tmp, "metaData", "batchList.rds"))
+#' stimgateMetaReadBatchList(tmp)
 #' }
 #' @export
-stimgate_meta_read_batch_list <- function(path_project) {
-  path_batch_list <- file.path(path_project, "meta_data", "batch_list.rds")
-  if (!file.exists(path_batch_list)) {
+stimgateMetaReadBatchList <- function(pathProject) {
+  pathBatchList <- file.path(pathProject, "metaData", "batchList.rds")
+  if (!file.exists(pathBatchList)) {
     stop("Batch list file not found in project meta_data folder")
   }
-  readRDS(path_batch_list)
+  readRDS(pathBatchList)
 }
 
-.extract_chnl <- function(chnl, marker, path_project) {
+.extractChnl <- function(chnl, marker, pathProject) {
   if (!is.null(chnl)) {
     if (!length(chnl) == length(unique(chnl))) {
       stop(
@@ -525,44 +555,44 @@ stimgate_meta_read_batch_list <- function(path_project) {
     }
     return(chnl)
   }
-  marker_lab <- stimgate_meta_read_marker_lab(path_project)
-  chnl_vec <- marker_lab[marker] |> stats::setNames(NULL)
-  if (!length(chnl_vec) == length(unique(chnl_vec))) {
+  markerLab <- stimgateMetaReadMarkerLab(pathProject)
+  chnlVec <- markerLab[marker] |> stats::setNames(NULL)
+  if (!length(chnlVec) == length(unique(chnlVec))) {
     stop(
       "Duplicate channel labels found for the specified markers. ",
       "Please ensure that each marker has a unique channel label. ",
       "Otherwise, simply specify `chnl` instead of `marker` ",
-      "(and then also `chnl_settings` instead of `marker_settings` if applicable). "
+      "(and then also `chnlSettings` instead of `markerSettings` if applicable). "
     )
   }
-  chnl_vec
+  chnlVec
 }
 
-.extract_chnl_settings <- function(
-  chnl_settings,
-  marker_settings,
+.extractChnlSettings <- function(
+  chnlSettings,
+  markerSettings,
   chnl,
   marker,
-  path_project
+  pathProject
 ) {
-  .verify_chnl_settings(
-    chnl_settings = chnl_settings,
-    marker_settings = marker_settings,
+  .verifyChnlSettings(
+    chnlSettings = chnlSettings,
+    markerSettings = markerSettings,
     chnl = chnl,
     marker = marker
   )
-  if (!is.null(chnl_settings)) {
-    return(chnl_settings)
+  if (!is.null(chnlSettings)) {
+    return(chnlSettings)
   }
-  if (is.null(marker_settings)) {
+  if (is.null(markerSettings)) {
     return(lapply(chnl, function(x) list()) |> stats::setNames(chnl))
   }
-  marker_lab <- stimgate_meta_read_marker_lab(path_project)
-  chnl_settings <- marker_settings
-  names(chnl_settings) <- marker_lab[names(marker_settings)]
-  for (i in seq_along(chnl_settings)) {
-    chnl_settings[[i]]$chnl_cut <- marker_lab[[chnl_settings[[i]]$marker_cut]]
-    chnl_settings[[i]]$marker_cut <- NULL
+  markerLab <- stimgateMetaReadMarkerLab(pathProject)
+  chnlSettings <- markerSettings
+  names(chnlSettings) <- markerLab[names(markerSettings)]
+  for (i in seq_along(chnlSettings)) {
+    chnlSettings[[i]]$chnlCut <- markerLab[[chnlSettings[[i]]$markerCut]]
+    chnlSettings[[i]]$markerCut <- NULL
   }
-  chnl_settings
+  chnlSettings
 }

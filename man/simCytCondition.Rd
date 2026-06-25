@@ -12,7 +12,9 @@ simCytCondition(
   meanExprMat = NA,
   clusterLabelVec = NA,
   probVec,
-  clusterPerturbationSd = 0
+  clusterPerturbationSd = 0,
+  covEvMin = 1,
+  covEvMax = 2
 )
 }
 \arguments{

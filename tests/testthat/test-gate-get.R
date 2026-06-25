@@ -8,47 +8,47 @@ test_that("stimgate_gate_get returns gate table after stimgate_gate", {
   library(stimgate)
 
   # Get example data
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(
-    dirname(example_data$path_gs),
+  exampleData <- get_example_data()
+  gs <- flowWorkspace::load_gs(exampleData$path_gs)
+  pathProject <- file.path(
+    dirname(exampleData$path_gs),
     "stimgate_gate_get_test"
   )
 
   # Run stimgate_gate first to create the project structure
   invisible(stimgate_gate(
     .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    marker = example_data$marker
+    pathProject = pathProject,
+    popGate = "root",
+    batch_list = exampleData$batch_list,
+    marker = exampleData$marker
   ))
 
   # Test that stimgate_gate_get function works
-  gate_tbl <- stimgate_gate_get(path_project)
+  gateTbl <- stimgate_gate_get(pathProject)
 
   # Verify the gate table has expected structure
-  expect_true(is.data.frame(gate_tbl))
-  expect_true(nrow(gate_tbl) > 0)
+  expect_true(is.data.frame(gateTbl))
+  expect_true(nrow(gateTbl) > 0)
 
   # Verify expected columns exist
-  expected_cols <- c("chnl", "marker", "batch", "ind", "gate")
-  expect_true(all(expected_cols %in% colnames(gate_tbl)))
+  expectedCols <- c("chnl", "marker", "batch", "ind", "gate")
+  expect_true(all(expectedCols %in% colnames(gateTbl)))
 
   # Verify that gate column contains numeric values
-  expect_true(is.numeric(gate_tbl$gate))
+  expect_true(is.numeric(gateTbl$gate))
 
   # Verify that the gate table contains data for the expected markers
-  expect_true(all(example_data$chnl %in% gate_tbl$chnl))
+  expect_true(all(exampleData$chnl %in% gateTbl$chnl))
 
   # Verify that we have gate data for multiple samples
-  expect_true(length(unique(gate_tbl$ind)) > 1)
+  expect_true(length(unique(gateTbl$ind)) > 1)
 
   # Clean up
-  if (dir.exists(path_project)) {
-    unlink(path_project, recursive = TRUE)
+  if (dir.exists(pathProject)) {
+    unlink(pathProject, recursive = TRUE)
   }
-  if (dir.exists(example_data$path_gs)) {
-    unlink(example_data$path_gs, recursive = TRUE)
+  if (dir.exists(exampleData$path_gs)) {
+    unlink(exampleData$path_gs, recursive = TRUE)
   }
 })

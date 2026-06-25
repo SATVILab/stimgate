@@ -1,132 +1,132 @@
 #' @keywords internal
-.get_stats <- function(
-  gate_tbl = NULL,
+.getStats <- function(
+  gateTbl = NULL,
   chnl = NULL,
-  filter_other_cyt_pos = FALSE,
+  filterOtherCytPos = FALSE,
   combn = TRUE,
-  gate_type_cyt_pos_filter = "base",
-  gate_type_single_pos_filter = "base",
-  gate_type_cyt_pos_calc,
-  gate_type_single_pos_calc,
-  pop_gate,
-  chnl_lab = NULL,
+  gateTypeCytPosFilter = "base",
+  gateTypeSinglePosFilter = "base",
+  gateTypeCytPosCalc,
+  gateTypeSinglePosCalc,
+  popGate,
+  chnlLab = NULL,
   .data,
   save = FALSE,
-  ind_batch_list,
-  save_gate_tbl = FALSE,
-  gate_name = NULL,
-  tol_clust = NULL,
-  path_project
+  indBatchList,
+  saveGateTbl = FALSE,
+  gateName = NULL,
+  tolClust = NULL,
+  pathProject
 ) {
   # prep
   # ---------------
-  chnl_lab <- .get_stats_chnl_lab_get(
-    chnl_lab = chnl_lab,
+  chnlLab <- .getStatsChnlLabGet(
+    chnlLab = chnlLab,
     .data = .data,
     chnl = chnl
   )
 
-  gate_tbl <- .get_stats_gate_tbl_get(
-    gate_tbl = gate_tbl,
-    chnl_lab = chnl_lab,
-    path_project = path_project,
-    pop_gate = pop_gate,
-    gate_name = gate_name,
-    tol_clust = tol_clust
+  gateTbl <- .getStatsGateTblGet(
+    gateTbl = gateTbl,
+    chnlLab = chnlLab,
+    pathProject = pathProject,
+    popGate = popGate,
+    gateName = gateName,
+    tolClust = tolClust
   )
 
-  chnl <- .get_stats_chnl_get(
+  chnl <- .getStatsChnlGet(
     chnl = chnl,
-    gate_tbl = gate_tbl
+    gateTbl = gateTbl
   )
 
-  gate_name <- .get_stats_gate_name_get(
-    gate_name = gate_name,
-    gate_tbl = gate_tbl
+  gateName <- .getStatsGateNameGet(
+    gateName = gateName,
+    gateTbl = gateTbl
   )
 
-  if ((!filter_other_cyt_pos) && combn) {
-    n_chnl <- length(chnl)
-    combn_mat_list <- .get_stats_combn_mat_list_get(
-      n_chnl = n_chnl,
-      n_pos = 2
+  if ((!filterOtherCytPos) && combn) {
+    nChnl <- length(chnl)
+    combnMatList <- .getStatsCombnMatListGet(
+      nChnl = nChnl,
+      nPos = 2
     )
-    cyt_combn_vec_list <- .get_stats_cyt_combn_vec_list_get(
-      combn_mat_list = combn_mat_list,
+    cytCombnVecList <- .getStatsCytCombnVecListGet(
+      combnMatList = combnMatList,
       chnl = chnl
     )
   } else {
-    combn_mat_list <- NULL
-    cyt_combn_vec_list <- NULL
+    combnMatList <- NULL
+    cytCombnVecList <- NULL
   }
 
-  .get_stats_gate_tbl_save(
-    gate_tbl = gate_tbl,
-    path_project = path_project,
-    pop_gate = pop_gate,
-    chnl_lab = chnl_lab,
+  .getStatsGateTblSave(
+    gateTbl = gateTbl,
+    pathProject = pathProject,
+    popGate = popGate,
+    chnlLab = chnlLab,
     chnl = chnl,
-    save = save_gate_tbl
+    save = saveGateTbl
   )
 
-  stat_tbl <- .get_stats_overall(
-    ind_batch_list = ind_batch_list,
-    gate_tbl = gate_tbl,
+  statTbl <- .getStatsOverall(
+    indBatchList = indBatchList,
+    gateTbl = gateTbl,
     chnl = chnl,
     combn = combn,
-    cyt_combn_vec_list = cyt_combn_vec_list,
-    gate_type_cyt_pos_calc = gate_type_cyt_pos_calc,
-    gate_type_single_pos_calc = gate_type_single_pos_calc,
-    gate_type_cyt_pos_filter = gate_type_cyt_pos_filter,
-    gate_type_single_pos_filter = gate_type_single_pos_filter,
-    pop_gate = pop_gate,
+    cytCombnVecList = cytCombnVecList,
+    gateTypeCytPosCalc = gateTypeCytPosCalc,
+    gateTypeSinglePosCalc = gateTypeSinglePosCalc,
+    gateTypeCytPosFilter = gateTypeCytPosFilter,
+    gateTypeSinglePosFilter = gateTypeSinglePosFilter,
+    popGate = popGate,
     .data = .data,
-    chnl_lab = chnl_lab,
-    filter_other_cyt_pos = filter_other_cyt_pos,
-    combn_mat_list = combn_mat_list,
-    gate_name = gate_name,
-    path_project = path_project
+    chnlLab = chnlLab,
+    filterOtherCytPos = filterOtherCytPos,
+    combnMatList = combnMatList,
+    gateName = gateName,
+    pathProject = pathProject
   )
 
   # save it
-  .stats_save(
+  .statsSave(
     save = save,
-    stat_tbl = stat_tbl,
-    path_project = path_project
+    statTbl = statTbl,
+    pathProject = pathProject
   )
 }
 
 #' @keywords internal
-.read_gate_stats <- function(stats_save_output) {
-  if (inherits(stats_save_output, "data.frame")) {
-    return(stats_save_output)
+.readGateStats <- function(statsSaveOutput) {
+  if (inherits(statsSaveOutput, "data.frame")) {
+    return(statsSaveOutput)
   }
-  if (!inherits(stats_save_output, "character")) {
+  if (!inherits(statsSaveOutput, "character")) {
     stop(
-      "stats_save_output must be a character string if not a data.frame."
+      "statsSaveOutput must be a character string if not a data.frame."
     )
   }
-  path_stats <- file.path(stats_save_output, "gate_stats.rds")
-  gate_stats_tbl <- readRDS(path_stats)
-  if ("ind" %in% colnames(gate_stats_tbl)) {
-    gate_stats_tbl[, "ind"] <- as.character(gate_stats_tbl[["ind"]])
+  pathStats <- file.path(statsSaveOutput, "gate_stats.rds")
+  gateStatsTbl <- readRDS(pathStats)
+  if ("ind" %in% colnames(gateStatsTbl)) {
+    gateStatsTbl[, "ind"] <- as.character(gateStatsTbl[["ind"]])
   }
-  if ("batch" %in% colnames(gate_stats_tbl)) {
-    gate_stats_tbl[, "batch"] <- as.character(gate_stats_tbl[["batch"]])
+  if ("batch" %in% colnames(gateStatsTbl)) {
+    gateStatsTbl[, "batch"] <- as.character(gateStatsTbl[["batch"]])
   }
-  gate_stats_tbl
+  gateStatsTbl
 }
 
 #' @title Get gating statistics
-#' @param path_project character. Path to the project directory.
+#' @param pathProject character. Path to the project directory.
 #' @return A data frame with gating statistics.
 #' @export
-get_stats <- function(path_project) {
-  path_stats_partial <- file.path(path_project, "gate_stats")
-  if (file.exists(paste0(path_stats_partial, ".rds"))) {
-    readRDS(paste0(path_stats_partial, ".rds"))
-  } else if (file.exists(paste0(path_stats_partial, ".csv"))) {
-    read.csv(paste0(path_stats_partial, ".csv"))
+getStimGates <- function(pathProject) {
+  pathStatsPartial <- file.path(pathProject, "gate_stats")
+  if (file.exists(paste0(pathStatsPartial, ".rds"))) {
+    readRDS(paste0(pathStatsPartial, ".rds"))
+  } else if (file.exists(paste0(pathStatsPartial, ".csv"))) {
+    read.csv(paste0(pathStatsPartial, ".csv"))
   } else {
     stop(
       "No stats file found"

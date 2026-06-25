@@ -3,81 +3,89 @@
 #' Create and save a complete synthetic GatingSet for testing and examples
 #' using the simCytExperiment functions, avoiding external data dependencies.
 #'
-#' @param scenario Character specifying the simulation scenario ("default", "easy", "poor_separation", "cyt_pos").
-#' @param dir_cache Directory to save the GatingSet. If NULL, uses a temporary directory.
+#' @param scenario Character specifying the simulation scenario ("default", "easy", "poorSeparation", "cytPos").
+#' @param dirCache Directory to save the GatingSet. If NULL, uses a temporary directory.
 #' @param clear Logical indicating whether to force cache clearing.
-#' @param n_ind Integer. Number of biological samples to simulate.
-#' @return A list containing the path to the saved GatingSet, batch_list, chnl, and marker names.
+#' @param nInd Integer. Number of biological samples to simulate.
+#' @return A list containing the path to the saved GatingSet, batchList, chnl, and marker names.
 #' @export
-get_example_data <- function(
+getExampleData <- function(
   scenario = "default",
-  dir_cache = NULL,
+  dirCache = NULL,
   clear = FALSE,
-  n_ind = 8
+  nCell = 1e4,
+  nInd = 8
 ) {
   # Set seed for reproducibility
   set.seed(123)
 
-  if (is.null(dir_cache)) {
-    dir_cache <- testthat::test_path("cache", "test_data", scenario)
+  if (is.null(dirCache)) {
+    dirCache <- tempfile(pattern = "dir_")
+    dir.create(dirCache)
   }
 
-  if (dir.exists(dir_cache)) {
+  if (dir.exists(dirCache)) {
     if (clear) {
-      unlink(dir_cache, recursive = TRUE)
+      unlink(dirCache, recursive = TRUE)
     } else {
-      path_gs <- file.path(dir_cache, "gs")
-      path_chnl <- file.path(dir_cache, "chnl.rds")
-      path_marker <- file.path(dir_cache, "marker.rds")
-      path_batch <- file.path(dir_cache, "batch_list.rds")
-      
+      pathGs <- file.path(dirCache, "gs")
+      pathChnl <- file.path(dirCache, "chnl.rds")
+      pathMarker <- file.path(dirCache, "marker.rds")
+      pathBatch <- file.path(dirCache, "batchList.rds")
+
       if (
-        dir.exists(path_gs) &&
-        file.exists(path_chnl) &&
-        file.exists(path_marker) &&
-        file.exists(path_batch)
+        dir.exists(pathGs) &&
+          file.exists(pathChnl) &&
+          file.exists(pathMarker) &&
+          file.exists(pathBatch)
       ) {
         return(list(
-          path_gs = path_gs,
-          chnl = readRDS(path_chnl),
-          marker = readRDS(path_marker),
-          batch_list = readRDS(path_batch)
+          pathGs = pathGs,
+          chnl = readRDS(pathChnl),
+          marker = readRDS(pathMarker),
+          batchList = readRDS(pathBatch)
         ))
       } else {
         message("Cache incomplete, regenerating synthetic test data...")
-        unlink(dir_cache, recursive = TRUE)
+        unlink(dirCache, recursive = TRUE)
       }
     }
   }
-  dir.create(dir_cache, recursive = TRUE)
+  dir.create(dirCache, recursive = TRUE)
 
-  # 1. Define Simulation Matrix Parameters 
+  # 1. Define Simulation Matrix Parameters
   nMarker <- 2L
   nCondition <- 2L
   nCluster <- 4L
-  nCellByCondition <- 1000L # Can be adjusted for speed vs depth
+  nCellByCondition <- nCell # Can be adjusted for speed vs depth
   transformationFunc <- function(x) x
-  clusterLabelVec <- c("neg_neg", "neg_pos", "pos_neg", "pos_pos")
-  
+  clusterLabelVec <- c("negNeg", "negPos", "posNeg", "posPos")
+
   # Base probability of a cell falling into each of the 4 clusters in an Unstimulated state
   probVecUns <- c(0.90, 0.04, 0.04, 0.02)
   # Shift in probabilities under Stimulated conditions
-  probResponseVec <- list(c(-0.10, 0.05, 0.04, 0.01))
+  probResponseVec <- list(c(-0.25, 0.2, 0.04, 0.01))
 
   # Adjust scenario means and perturbations
   if (scenario %in% c("default", "easy")) {
-    meanExprMat <- matrix(c(0,0, 0,2, 2,0, 2,2), nrow = nCluster, byrow = TRUE)
-    clusterPerturbationSd <- 0.1
-  } else if (scenario == "poor_separation" || scenario == "cyt_pos") {
-    meanExprMat <- matrix(c(0,0, 0,0.5, 0.5,0, 0.5,0.5), nrow = nCluster, byrow = TRUE)
-    clusterPerturbationSd <- 0.2
+    meanExprMat <- matrix(
+      c(0, 0, 0, 8, 8, 0, 8, 8),
+      nrow = nCluster,
+      byrow = TRUE
+    )
+  } else if (scenario == "poorSeparation" || scenario == "cytPos") {
+    meanExprMat <- matrix(
+      c(0, 0, 0, 4, 4, 0, 4, 4),
+      nrow = nCluster,
+      byrow = TRUE
+    )
   } else {
     stop("Unknown scenario: ", scenario)
   }
 
-  # 2. Run simCytExperiment 
-  sim_res <- simCytExperiment(
-    nSample = as.integer(n_ind),
+  # 2. Run simCytExperiment
+  simRes <- simCytExperiment(
+    nSample = as.integer(nInd),
     nMarker = nMarker,
     nCondition = nCondition,
     nCluster = nCluster,
@@ -88,54 +96,58 @@ get_example_data <- function(
     clusterLabelVec = clusterLabelVec,
     probVecUns = probVecUns,
     probResponseVecByStimCondition = probResponseVec,
-    clusterPerturbationSd = clusterPerturbationSd
+    clusterPerturbationSd = 0
   )
 
+  saveRDS(simRes[["labelsList"]], file = file.path(dirCache, "labelsList.rds"))
+  saveRDS(simRes[["flowFrameList"]], file = file.path(dirCache, "flowFrameList.rds"))
+
   # 3. Format generated FlowFrames to mimic historical test channels
-  chnl_vec <- c("BC1(La139)Dd", "BC2(Pr141)Dd")
-  marker_vec <- paste0("MarkerF", seq_len(nMarker))
-  
-  fs_list <- lapply(sim_res$flowFrameList, function(ff) {
+  chnlVec <- c("BC1(La139)Dd", "BC2(Pr141)Dd")
+  markerVec <- paste0("MarkerF", seq_len(nMarker))
+
+  fsList <- lapply(simRes$flowFrameList, function(ff) {
     # Update matrix col names
-    flowCore::colnames(ff) <- chnl_vec
+    flowCore::colnames(ff) <- chnlVec
     # Update Parameter Annotations
     p <- flowCore::parameters(ff)
-    pData_new <- flowCore::pData(p)
-    pData_new$name <- chnl_vec
-    pData_new$desc <- marker_vec
-    flowCore::pData(p) <- pData_new
+    pDataNew <- flowCore::pData(p)
+    pDataNew$name <- chnlVec
+    pDataNew$desc <- markerVec
+    flowCore::pData(p) <- pDataNew
     ff
   })
 
   # 4. Construct flowSet and GatingSet
-  fs <- flowCore::flowSet(fs_list)
+  fs <- flowCore::flowSet(fsList)
   gs <- flowWorkspace::GatingSet(fs)
-  
-  path_gs <- file.path(dir_cache, "gs")
-  flowWorkspace::save_gs(gs, path = path_gs)
 
-  # 5. Build matching batch_list mapping
+  pathGs <- file.path(dirCache, "gs")
+  flowWorkspace::save_gs(gs, path = pathGs)
+
+  # 5. Build matching batchList mapping
   # simCytExperiment returns sequence as: [Unstim_1, Stim_1, Unstim_2, Stim_2...]
   # The historical test structure requires the LAST element in a batch vector to be the Unstim index.
-  batch_list <- lapply(seq_len(n_ind), function(i) {
-    idx_unstim <- (i - 1) * nCondition + 1
-    idx_stim <- (i - 1) * nCondition + 2
-    c(idx_stim, idx_unstim)
+  batchList <- lapply(seq_len(nInd), function(i) {
+    idxUnstim <- (i - 1) * nCondition + 1
+    idxStim <- (i - 1) * nCondition + 2
+    c(idxStim, idxUnstim)
   })
 
   # Save cache states
-  saveRDS(chnl_vec, file = file.path(dir_cache, "chnl.rds"))
-  saveRDS(marker_vec, file = file.path(dir_cache, "marker.rds"))
-  saveRDS(batch_list, file = file.path(dir_cache, "batch_list.rds"))
+  saveRDS(chnlVec, file = file.path(dirCache, "chnl.rds"))
+  saveRDS(markerVec, file = file.path(dirCache, "marker.rds"))
+  saveRDS(batchList, file = file.path(dirCache, "batchList.rds"))
 
   list(
-    path_gs = path_gs,
-    batch_list = batch_list,
-    chnl = chnl_vec,
-    marker = marker_vec
+    pathGs = pathGs,
+    batchList = batchList,
+    chnl = chnlVec,
+    marker = markerVec,
+    pathCache = dirCache
   )
 }
 
-#' @rdname get_example_data
+#' @rdname getExampleData
 #' @export
-get_test_data <- get_example_data
+getTestData <- getExampleData

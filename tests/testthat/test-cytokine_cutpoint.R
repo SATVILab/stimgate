@@ -1,15 +1,15 @@
-test_that(".cytokine_cutpoint handles ref_peak > num_peaks with strict=TRUE", {
+test_that(".cytokineCutpoint handles refPeak > numPeaks with strict=TRUE", {
   # Create simple bimodal data where we can control the number of peaks
   set.seed(123)
   x <- c(rnorm(50, mean = 1, sd = 0.3), rnorm(50, mean = 4, sd = 0.3))
 
-  # Test with ref_peak > num_peaks and strict=TRUE (should error)
+  # Test with refPeak > numPeaks and strict=TRUE (should error)
   # Remove plot parameter to avoid warnings
   expect_error(
-    .cytokine_cutpoint(
+    .cytokineCutpoint(
       x,
-      num_peaks = 1,
-      ref_peak = 2,
+      numPeaks = 1,
+      refPeak = 2,
       strict = TRUE,
       plot = FALSE
     ),
@@ -17,17 +17,17 @@ test_that(".cytokine_cutpoint handles ref_peak > num_peaks with strict=TRUE", {
   )
 })
 
-test_that(".cytokine_cutpoint handles ref_peak > num_peaks with strict=FALSE", {
+test_that(".cytokineCutpoint handles refPeak > numPeaks with strict=FALSE", {
   # Create simple bimodal data
   set.seed(123)
   x <- c(rnorm(50, mean = 1, sd = 0.3), rnorm(50, mean = 4, sd = 0.3))
 
-  # Test with ref_peak > num_peaks and strict=FALSE (should warn and adjust)
+  # Test with refPeak > numPeaks and strict=FALSE (should warn and adjust)
   expect_warning(
-    result <- .cytokine_cutpoint(
+    result <- .cytokineCutpoint(
       x,
-      num_peaks = 1,
-      ref_peak = 2,
+      numPeaks = 1,
+      refPeak = 2,
       strict = FALSE,
       plot = FALSE
     ),
@@ -39,32 +39,32 @@ test_that(".cytokine_cutpoint handles ref_peak > num_peaks with strict=FALSE", {
   expect_length(result, 1)
 })
 
-test_that(".cytokine_cutpoint sets tolerance automatically when auto_tol=TRUE", {
+test_that(".cytokineCutpoint sets tolerance automatically when autoTol=TRUE", {
   # Create data with known characteristics
   set.seed(123)
   x <- c(rnorm(100, mean = 2, sd = 0.5))
 
-  # Test with auto_tol=TRUE for first_deriv method
-  result_auto <- .cytokine_cutpoint(
+  # Test with autoTol=TRUE for firstDeriv method
+  resultAuto <- .cytokineCutpoint(
     x,
     method = "first_deriv",
-    auto_tol = TRUE,
+    autoTol = TRUE,
     plot = FALSE
   )
 
   # Should return a valid cutpoint
-  expect_true(is.numeric(result_auto))
-  expect_length(result_auto, 1)
-  expect_false(is.na(result_auto))
+  expect_true(is.numeric(resultAuto))
+  expect_length(resultAuto, 1)
+  expect_false(is.na(resultAuto))
 })
 
-test_that(".cytokine_cutpoint works with side='left' for first_deriv method", {
+test_that(".cytokineCutpoint works with side='left' for firstDeriv method", {
   # Create data that will work with left side gating
   set.seed(123)
   x <- c(rnorm(50, mean = 1, sd = 0.3), rnorm(50, mean = 4, sd = 0.3))
 
-  # Test with side='left' and first_deriv method
-  result_left <- .cytokine_cutpoint(
+  # Test with side='left' and firstDeriv method
+  resultLeft <- .cytokineCutpoint(
     x,
     method = "first_deriv",
     side = "left",
@@ -72,17 +72,17 @@ test_that(".cytokine_cutpoint works with side='left' for first_deriv method", {
   )
 
   # Should return a valid cutpoint
-  expect_true(is.numeric(result_left))
-  expect_length(result_left, 1)
+  expect_true(is.numeric(resultLeft))
+  expect_length(resultLeft, 1)
 })
 
-test_that(".cytokine_cutpoint works with side='left' for first_deriv method only", {
+test_that(".cytokineCutpoint works with side='left' for firstDeriv method only", {
   # Create data that will work with left side gating
   set.seed(123)
   x <- c(rnorm(50, mean = 1, sd = 0.3), rnorm(50, mean = 4, sd = 0.3))
 
-  # Test with side='left' and first_deriv method only (second_deriv has issues)
-  result_left <- .cytokine_cutpoint(
+  # Test with side='left' and firstDeriv method only (second_deriv has issues)
+  resultLeft <- .cytokineCutpoint(
     x,
     method = "first_deriv",
     side = "left",
@@ -90,18 +90,18 @@ test_that(".cytokine_cutpoint works with side='left' for first_deriv method only
   )
 
   # Should return a valid cutpoint
-  expect_true(is.numeric(result_left))
-  expect_length(result_left, 1)
+  expect_true(is.numeric(resultLeft))
+  expect_length(resultLeft, 1)
 })
 
-test_that(".cytokine_cutpoint errors with unrecognized side argument for first_deriv", {
+test_that(".cytokineCutpoint errors with unrecognized side argument for firstDeriv", {
   # Create simple data
   set.seed(123)
   x <- rnorm(100, mean = 2, sd = 0.5)
 
-  # Test with unrecognized side argument and first_deriv method
+  # Test with unrecognized side argument and firstDeriv method
   expect_error(
-    .cytokine_cutpoint(
+    .cytokineCutpoint(
       x,
       method = "first_deriv",
       side = "invalid_side",
@@ -111,15 +111,15 @@ test_that(".cytokine_cutpoint errors with unrecognized side argument for first_d
   )
 })
 
-test_that(".cytokine_cutpoint errors with unrecognized side argument for second_deriv", {
+test_that(".cytokineCutpoint errors with unrecognized side argument for secondDeriv", {
   # Create simple data
   set.seed(123)
   x <- rnorm(100, mean = 2, sd = 0.5)
 
-  # Test with unrecognized side argument and second_deriv method
+  # Test with unrecognized side argument and secondDeriv method
   # Note: second_deriv method has implementation issues, but error handling should work
   expect_error(
-    .cytokine_cutpoint(
+    .cytokineCutpoint(
       x,
       method = "second_deriv",
       side = "invalid_side",
@@ -129,7 +129,7 @@ test_that(".cytokine_cutpoint errors with unrecognized side argument for second_
   )
 })
 
-test_that(".cytokine_cutpoint works with first_deriv method and both sides", {
+test_that(".cytokineCutpoint works with firstDeriv method and both sides", {
   # Create more complex multimodal data to ensure peaks and valleys are found
   set.seed(123)
   x <- c(
@@ -138,14 +138,14 @@ test_that(".cytokine_cutpoint works with first_deriv method and both sides", {
     rnorm(30, mean = 5, sd = 0.2)
   )
 
-  # Test first_deriv method with both sides (avoid second_deriv due to implementation issues)
-  result_first_right <- .cytokine_cutpoint(
+  # Test firstDeriv method with both sides (avoid second_deriv due to implementation issues)
+  resultFirstRight <- .cytokineCutpoint(
     x,
     method = "first_deriv",
     side = "right",
     plot = FALSE
   )
-  result_first_left <- .cytokine_cutpoint(
+  resultFirstLeft <- .cytokineCutpoint(
     x,
     method = "first_deriv",
     side = "left",
@@ -153,26 +153,26 @@ test_that(".cytokine_cutpoint works with first_deriv method and both sides", {
   )
 
   # Both should return valid numeric cutpoints
-  expect_true(is.numeric(result_first_right))
-  expect_true(is.numeric(result_first_left))
+  expect_true(is.numeric(resultFirstRight))
+  expect_true(is.numeric(resultFirstLeft))
 
-  expect_length(result_first_right, 1)
-  expect_length(result_first_left, 1)
+  expect_length(resultFirstRight, 1)
+  expect_length(resultFirstLeft, 1)
 })
 
-test_that(".cytokine_cutpoint handles edge cases gracefully", {
+test_that(".cytokineCutpoint handles edge cases gracefully", {
   # Test with minimal data
-  x_small <- c(1, 2, 3)
+  xSmall <- c(1, 2, 3)
 
   # Should still work with minimal data
-  result_small <- .cytokine_cutpoint(x_small, plot = FALSE)
-  expect_true(is.numeric(result_small))
+  resultSmall <- .cytokineCutpoint(xSmall, plot = FALSE)
+  expect_true(is.numeric(resultSmall))
 
   # Test with single peak data
   set.seed(123)
-  x_single <- rnorm(50, mean = 1, sd = 0.2)
+  xSingle <- rnorm(50, mean = 1, sd = 0.2)
 
-  result_single <- .cytokine_cutpoint(x_single, num_peaks = 1, plot = FALSE)
-  expect_true(is.numeric(result_single))
-  expect_length(result_single, 1)
+  resultSingle <- .cytokineCutpoint(xSingle, numPeaks = 1, plot = FALSE)
+  expect_true(is.numeric(resultSingle))
+  expect_length(resultSingle, 1)
 })

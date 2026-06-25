@@ -3,7 +3,7 @@ plot_cp <- function(gate_tbl,
                     params,
                     pop_sub = NULL,
                     plot = TRUE,
-                    path_project) {
+                    pathProject) {
   # plot histogram of gates
   if (plot || TRUE) {
     # ========================
@@ -117,7 +117,7 @@ plot_cp <- function(gate_tbl,
     p_gates <- cowplot::plot_grid(plotlist = plot_list, ncol = 2)
 
     dir_base <- stimgate_dir_base_create(
-      dir_base_init = path_project,
+      dir_base_init = pathProject,
       params = params
     )
     dir_save <- file.path(
@@ -153,7 +153,7 @@ plot_cp <- function(gate_tbl,
         facet_wrap(gate_name ~ marker, ncol = 2)
 
       dir_base <- stimgate_dir_base_create(
-        dir_base_init = path_project,
+        dir_base_init = pathProject,
         params = params
       )
       dir_save <- file.path(
@@ -190,7 +190,7 @@ plot_cp <- function(gate_tbl,
         facet_wrap(gate_name ~ marker, ncol = 2)
 
       dir_base <- stimgate_dir_base_create(
-        dir_base_init = path_project,
+        dir_base_init = pathProject,
         params = params
       )
       dir_save <- file.path(
@@ -263,11 +263,11 @@ plot_cp <- function(gate_tbl,
     #                                                  pop_sub = NULL,
     #
     #                                                  single_pos = TRUE,
-    #                                                  gate_type_cyt_pos = ifelse(params$calc_cyt_pos_gates,
+    #                                                  gate_type_cyt_pos = ifelse(params$calcCytPosGates,
     #                                                                             "cyt", "base"),
     #                                                  gate_type_single_pos = "base",
     #                                                  gate_type_single_pos_calc = "base",
-    #                                                  path_project = path_project
+    #                                                  pathProject = pathProject
     # )
 
     # .plot_gate_stats(gate_stats = gate_stats_tbl,
@@ -287,7 +287,7 @@ plot_cp <- function(gate_tbl,
     # print("getting perf")
     # gate_perf_tbl <- .get_gate_perf(gate_stats = gate_stats_tbl,
     #                                                params = params,
-    #                                 path_project = path_project)
+    #                                 pathProject = pathProject)
 
     # plots
     # print("getting perf plots")

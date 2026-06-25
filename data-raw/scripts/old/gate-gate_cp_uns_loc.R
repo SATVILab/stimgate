@@ -206,7 +206,7 @@ if (plot && FALSE) {
     cut_stim = orig_list$stim$expr,
     sample = orig_list$stim$sample[1],
     min_x_pos_prob = min(all_cell_pred_tbl$cut_stim),
-    path_project = path_project
+    pathProject = pathProject
   )
 } else {
   p_list <- .get_cp_uns_loc_p_list_empty()
