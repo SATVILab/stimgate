@@ -18,7 +18,9 @@ simCytExperiment(
   probResponseVecByStimCondition = NULL,
   samplePerturbationSd = 0,
   conditionPerturbationSd = 0,
-  clusterPerturbationSd = 0
+  clusterPerturbationSd = 0,
+  covEvMin = 1,
+  covEvMax = 2
 )
 }
 \arguments{
@@ -66,7 +68,7 @@ perturbations applied during cell-level simulation. Default is 0.}
 A list with two elements:
 \itemize{
 \item \code{flowFrameList}: A named list of \code{flowCore::flowFrame} objects.
-\item \code{conditionLabelsList}: A named list of character vectors of per-cell cluster labels.
+\item \code{labelsList}: A named list of character vectors of per-cell cluster labels.
 Names of list elements are formatted as \code{sampleXXX_unstim}, \code{sampleXXX_stim1}, etc.
 }
 }

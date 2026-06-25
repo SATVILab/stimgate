@@ -27,7 +27,7 @@ plot_gate <- function(gate_tbl, params, pop_sub,
 
   # get populations to get results for
   pop_res_vec_full <- c(
-    params$pop_gate, paste0(params$pop_gate, pop_sub)
+    params$popGate, paste0(params$popGate, pop_sub)
   ) |> unique()
   pop_res_name_vec <- c("gate", pop_sub)
 
@@ -38,8 +38,8 @@ plot_gate <- function(gate_tbl, params, pop_sub,
   plot_list <- purrr::walk(seq_along(pop_res_vec_full), function(i) {
     pop_res_full_curr <- pop_res_vec_full[i]
     print("saving plots")
-    purrr::walk(seq_along(params$ind_batch_list), function(j) {
-      batch_curr <- params$ind_batch_list[[j]]
+    purrr::walk(seq_along(params$indBatchList), function(j) {
+      batch_curr <- params$indBatchList[[j]]
 
       plot_list_plots <- .plot_gate_batch(ind_batch = batch_curr,
                                           gate_tbl = gate_tbl |>
@@ -57,7 +57,7 @@ plot_gate <- function(gate_tbl, params, pop_sub,
       .save_plot_gate(plot_list = plot_list_plots_batch_pop,
                       params = params)
     }) #|>
-      #stats::setNames(purrr::map_chr(params$ind_batch_list, function(x) paste0(x, collapse = "_"))
+      #stats::setNames(purrr::map_chr(params$indBatchList, function(x) paste0(x, collapse = "_"))
   }) #|>
   #stats::setNames(pop_res_name_vec)
 
@@ -120,7 +120,7 @@ plot_gate <- function(gate_tbl, params, pop_sub,
                           ind_in_batch_lab_vec = params$ind_in_batch_lab_vec,
                           pop = pop_res, cut = params$cut, high = params$high,
                           data_name = params$data_name,
-                          path_project = params$path_project)
+                          pathProject = params$pathProject)
 
   # create combined ex
   ex <- dplyr::bind_rows(ex_list) |> tibble::as_tibble()
@@ -279,7 +279,7 @@ plot_gate <- function(gate_tbl, params, pop_sub,
 #'   \item{chnl_lab}{named character vector. Names are channel names
 #'   and values are channel descriptions (typically markers), e.g.
 #'   \code{c("Nd146Di" = "TNFa", "Lu175Di" = "Perforin")}.
-#'   \item{pop_gate}{character. Full name of population in \code{GatingSet} on
+#'   \item{popGate}{character. Full name of population in \code{GatingSet} on
 #'   which to set the gate.}
 #'   \item{data_name}{character. Name of \code{GatingSet}.}
 #'   \item{ind_in_batch_gate}{numeric vector. For a given batch, specifies the indices
@@ -293,7 +293,7 @@ plot_gate <- function(gate_tbl, params, pop_sub,
 #'
 #' @examples
 #' params <- list(cut = "Ho165Di", chnl_lab = c("Ho165Di" = "IFNg", "Nd146Di" = "TNFa"),
-#'                pop_gate = "/CD33- CD3+/CD20-/CD14-/TCRgd-/NKT-/CD4 T Cells",
+#'                popGate = "/CD33- CD3+/CD20-/CD14-/TCRgd-/NKT-/CD4 T Cells",
 #'                data_name = "gs_cytof",
 #'                ind_in_batch_gate = 1:3,
 #'                ind_in_batch_lab_vec  = c("mtbaux", "ebv", "uns"))

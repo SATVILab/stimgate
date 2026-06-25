@@ -10,7 +10,9 @@ simCytCluster(
   meanExprVec,
   perturbationSd = 0,
   mixtureType,
-  clusterNumber
+  clusterNumber,
+  covEvMin = 1,
+  covEvMax = 2
 )
 }
 \arguments{

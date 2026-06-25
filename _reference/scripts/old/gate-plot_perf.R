@@ -1,4 +1,4 @@
-.get_gate_perf <- function(gate_stats, set_to_zero = TRUE, params, path_project) {
+.get_gate_perf <- function(gate_stats, set_to_zero = TRUE, params, pathProject) {
   # ================================
   # Preparation
   # ================================\
@@ -99,7 +99,7 @@
   # ==========================
 
   # create base directory if need be
-  dir_base <- stimgate_dir_base_create(params = params, dir_base_init = path_project)
+  dir_base <- stimgate_dir_base_create(params = params, dir_base_init = pathProject)
   dir_save <- file.path(dir_base, "perf")
   # if(dir.exists(dir_save)) unlink(dir_save, recursive = FALSE)
   if (!dir.exists(dir_save)) dir.create(dir_save, recursive = FALSE)
@@ -148,7 +148,7 @@
 }
 
 #' @title Plot PCC and CCC for each pop, stat and cutpoint method
-.plot_gate_perf <- function(gate_perf, gate_lab, params, path_project) {
+.plot_gate_perf <- function(gate_perf, gate_lab, params, pathProject) {
   # ================================
   # Preparation
   # ================================
@@ -163,7 +163,7 @@
 
 
   plot_list <- purrr::map(unique(gate_perf$pop), function(pop) {
-    title <- ifelse(pop == "gate", params$pop_gate, pop)
+    title <- ifelse(pop == "gate", params$popGate, pop)
     purrr::map(unique(gate_perf$measure), function(measure) {
       if (measure %in% c("ccc", "pcc")) {
         p <- ggplot(
@@ -263,7 +263,7 @@
     stats::setNames(unique(gate_perf$pop))
 
   plot_list_add <- purrr::map(unique(gate_perf$pop), function(pop) {
-    title <- ifelse(pop == "gate", params$pop_gate, pop)
+    title <- ifelse(pop == "gate", params$popGate, pop)
     purrr::map(unique(gate_perf$measure), function(measure) {
       if (stringr::str_detect(measure, "std_diff_ind")) {
         plot_tbl <- gate_perf |>
@@ -331,7 +331,7 @@
     plot_list = plot_list,
     params = params,
     plot_type = "perf",
-    path_project = path_project
+    pathProject = pathProject
   )
 
 

@@ -1,6 +1,6 @@
 get_hladr_med_diff <- function(data,
                                data_name,
-                               pop_gate,
+                               popGate,
                                chnl,
                                mult,
                                gate_tbl = NULL,
@@ -10,7 +10,7 @@ get_hladr_med_diff <- function(data,
                                ind_in_batch_uns,
                                gate_type_cyt_pos = "cyt",
                                gate_type_single_pos = "single",
-                               path_project) {
+                               pathProject) {
   # ==============================
   # Preparation
   # ==============================
@@ -29,12 +29,12 @@ get_hladr_med_diff <- function(data,
 
   # params object
   params <- list(
-    pop_gate = pop_gate,
+    popGate = popGate,
     chnl_lab = chnl_lab_vec,
     ind_in_batch_lab_vec = ind_in_batch_lab_vec,
     ind_in_batch_gate = ind_in_batch_gate,
     data_name = data_name,
-    path_project = path_project
+    pathProject = pathProject
   )
 
   # ====================================
@@ -46,12 +46,12 @@ get_hladr_med_diff <- function(data,
       params[["cut"]] <- chnl_curr
       # get base directory
       dir_base <- stimgate_dir_base_create(
-        dir_base_init = path_project,
+        dir_base_init = pathProject,
         params = params
       )
       # get stats tbl
       gate_tbl <- .gates_get_path_all(
-        path_project, pop_gate, chnl_curr, FALSE
+        pathProject, popGate, chnl_curr, FALSE
         ) |>
         readRDS()
 
@@ -88,11 +88,11 @@ get_hladr_med_diff <- function(data,
 
     # get expression dataframe
     ex <- .get_ex(
-      data = data[[ind]], pop = pop_gate,
+      data = data[[ind]], pop = popGate,
       cut = chnl, high = NULL, ind = ind,
       is_uns = FALSE, stim = stim,
       ind_in_batch = ind_in_batch, data_name = data_name,
-      path_project = path_project
+      pathProject = pathProject
     )
 
 

@@ -1,27 +1,24 @@
-Posdef <- function(n, ev = runif(n, 1, 2)) {
-    #function written by Ravi Varadhan, from r-help mailing list
-    #Thu Feb 7, 20:02:30 CET 2008
-    #Generates a positive a positive definine matrix of dimension n
-    #ev bounds the covariance by 2
-    #adapted slightly.
+posDef <- function(n, covEvMin = 1, covEvMax = 2) {
+    # Generates a positive definite matrix of dimension n
+    # Upper and lower bounds control the range of the variance eigenvalues.
+    
+    # Generate the bounded eigenvalues before matrix decomposition
+    ev <- runif(n, min = covEvMin, max = covEvMax)
 
-    # no QR decomposition for n=1 case
     if (n == 1) {
         return(matrix(ev, 1, 1))
     }
 
-    Z <- matrix(ncol = n, rnorm(n^2))
-    decomp <- qr(Z)
-    Q <- qr.Q(decomp)
-    R <- qr.R(decomp)
-    d <- diag(R)
+    z <- matrix(ncol = n, rnorm(n^2))
+    decomp <- qr(z)
+    q <- qr.Q(decomp)
+    r <- qr.R(decomp)
+    d <- diag(r)
     ph <- d / abs(d)
 
-    # ensure that `diag` always returns a diagonal
-    # matrix of dim n x n, even when n = 1
-    O <- Q %*% diag(ph, nrow = n)
-    Z <- t(O) %*% diag(ev, nrow = n) %*% O
-    return(Z)
+    o <- q %*% diag(ph, nrow = n)
+    z <- t(o) %*% diag(ev, nrow = n) %*% o
+    return(z)
 }
 
 labelMeanVector <- function(meanVector) {
@@ -72,7 +69,9 @@ simSample <- function(
     sRegime = 0,
     targetRanks = c(length(probVecSample) - 1, length(probVecSample)),
     hasBatchEffect = FALSE,
-    batchEffect = 0
+    batchEffect = 0,
+    covEvMin = 1,
+    covEvMax = 2
 ) {
     #
     #helper function, used to generate simulation samples according to a variety of
@@ -80,7 +79,7 @@ simSample <- function(
     #
     numClusters <- nrow(fixedMeanMatrix)
     probVec <- probVecSample
-    knockoutStatus <- "No knockout"
+    knockoutStatus <- "noKnockout"
     if (isKnockout) {
         #select a cluster with median probability and zero it out
         targetProbs <- sort(probVec)
@@ -151,7 +150,7 @@ simSample <- function(
             outLabel,
             rep(currentLabel, sampleSizeVec[clusterNumber])
         )
-        currentSigma <- Posdef(sampleDim)
+        currentSigma <- posDef(sampleDim, covEvMin = covEvMin, covEvMax = covEvMax)
         #the next logic determines if the sample is only contains samples from multivariate gaussian
         #multivariate T, or alternatig.
         if (mixtureType == "tPlusGauss") {
@@ -189,7 +188,7 @@ simSample <- function(
         }
         #if the simulation has nuisance variables, sample them and bind them to the sample.
         if (noiseDim > 0) {
-            currentSigma <- Posdef(noiseDim)
+            currentSigma <- posDef(noiseDim)
             noiseSample <- mvrnorm(
                 nrow(currentSample),
                 mu = rep(5, noiseDim),
@@ -322,7 +321,9 @@ simulateExperiment <- function(
     useBatchFlag = FALSE, #is there a batch effect
     batchEffectShift = 0.75,
     fixedResFlag = FALSE, #TRUE if a responder always has the spiked phenotype
-    responderStatusVec = c(NA)
+    responderStatusVec = c(NA),
+    covEvMin = 1,
+    covEvMax = 2 
 ) {
     #
     #simulate an experimental dataset according to a variety of assumptions.
@@ -389,7 +390,9 @@ simulateExperiment <- function(
             sRegime = nextRegime,
             targetRanks = targetRanks,
             hasBatchEffect = useBatchFlag,
-            batchEffect = nextBatchEffect
+            batchEffect = nextBatchEffect,
+            covEvMin = covEvMin,
+            covEvMax = covEvMax
         )
         #record results
 
@@ -412,13 +415,13 @@ simulateExperiment <- function(
     truthMat <- getSimTrueCountMatrix(truthList)
 
     outputList <- list(
-        "flowFrameList" = flowList,
-        "truthValueList" = truthList,
-        "truthMat" = truthMat,
-        "labelsList" = labelsList,
-        "knockoutList" = knockoutList,
-        "spikedPop" = sampleSpecs$fixedLabelVector[targetRanks[2]],
-        "spikedInPopList" = regimeList
+        flowFrameList = flowList,
+        truthValueList = truthList,
+        truthMat = truthMat,
+        labelsList = labelsList,
+        knockoutList = knockoutList,
+        spikedPop = sampleSpecs$fixedLabelVector[targetRanks[2]],
+        spikedInPopList = regimeList
     )
     return(outputList)
 }

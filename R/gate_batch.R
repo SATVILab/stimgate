@@ -1,44 +1,44 @@
 # Get cutpoints for a single batch
 #' @keywords internal
-.gate_batch <- function(
+.gateBatch <- function(
   .data,
-  ind_batch,
-  chnl_settings,
+  indBatch,
+  chnlSettings,
   batch,
   stage,
-  path_project
+  pathProject
 ) {
   # get list of dataframes
-  ex_list <- .get_ex_list(
+  exList <- .getExList(
     # nolint
     .data = .data,
-    ind_batch = ind_batch,
-    pop = chnl_settings$pop_gate,
-    chnl_cut = chnl_settings$chnl_cut,
+    indBatch = indBatch,
+    pop = chnlSettings$popGate,
+    chnlCut = chnlSettings$chnlCut,
     batch = batch,
-    path_project = path_project
+    pathProject = pathProject
   )
 
-  if (is.null(chnl_settings$gate_tbl)) {
-    .gate_batch_all(
-      ind_batch = ind_batch,
+  if (is.null(chnlSettings$gateTbl)) {
+    .gateBatchAll(
+      indBatch = indBatch,
       batch = batch,
-      ex_list = ex_list,
+      exList = exList,
       .data = .data,
-      chnl_settings = chnl_settings,
+      chnlSettings = chnlSettings,
       stage = stage,
-      path_project = path_project
+      pathProject = pathProject
     )
   } else {
-    .gate_batch_single(
-      ind_batch = ind_batch,
+    .gateBatchSingle(
+      indBatch = indBatch,
       batch = batch,
-      ex_list = ex_list,
+      exList = exList,
       .data = .data,
-      chnl_settings = chnl_settings,
-      calc_cyt_pos_gates = calc_cyt_pos_gates,
+      chnlSettings = chnlSettings,
+      calcCytPosGates = calcCytPosGates,
       stage = stage,
-      path_project = path_project
+      pathProject = pathProject
     )
   }
 }

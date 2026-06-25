@@ -1,13 +1,13 @@
-plot_cyto <- function(
+plotCyto <- function(
   data,
   marker,
   lab = NULL,
-  coord_equal = TRUE,
-  limits_expand = NULL,
-  limits_equal = FALSE,
-  font_size = 14,
-  exc_min = FALSE,
-  geom_uni = "histogram",
+  coordEqual = TRUE,
+  limitsExpand = NULL,
+  limitsEqual = FALSE,
+  fontSize = 14,
+  excMin = FALSE,
+  geomUni = "histogram",
   ...
 ) {
   # @description Plot a hex-plot with suitable default for a single
@@ -19,8 +19,8 @@ plot_cyto <- function(
   # element is plotted on the x-axis.
   # @param lab named character vector. If not \code{NULL}, then
   # the axis titles for marker are selected using it.
-  # @param limits_expand list. If not \code{NULL},
-  # then it is (effectively) passed onto \code{ggplot2::limits_expand} to
+  # @param limitsExpand list. If not \code{NULL},
+  # then it is (effectively) passed onto \code{ggplot2::limitsExpand} to
   # ensure that certain values are included in the plot (such as, for example, 0
   # if that is the minimum value possible
   # but it may not be plotted).
@@ -31,26 +31,26 @@ plot_cyto <- function(
   # must have names \code{x} and/or \code{y},
   # with the elements again being numeric vectors
   # that must be included in plot.
-  # @param limits_equal logical. If \code{TRUE},
+  # @param limitsEqual logical. If \code{TRUE},
   # then the ranges on the x- and y-axes
   # must be equal. Effectively applied after
   # expand_grid is applied. Default is \code{FALSE}.
-  # @param font_size integer. Font size to be passed on to
-  # \code{cowplot::theme_cowplot(font_size = <font_size>)}.
-  # @param coord_equal logical. If \code{TRUE},
-  # then the \code{coord_equal} ggplot2 function is applied to
+  # @param fontSize integer. Font size to be passed on to
+  # \code{cowplot::theme_cowplot(fontSize = <fontSize>)}.
+  # @param coordEqual logical. If \code{TRUE},
+  # then the \code{coordEqual} ggplot2 function is applied to
   # the plot, making units take up the same visual space on the x-
   # and y-axes.
   # Note that this will cause plots to note be able to be aligned
   # using functions like \code{cowplot::plot_grid} and
   # \code{patchwork::align_plots}.
   # Default is \code{TRUE}.
-  # @param exc_min logical.
+  # @param excMin logical.
   # If \code{TRUE}, then cells with expression equal to the minimum
   # value of one or both of the variables plotted are excluded.
   # Useful for CyTOF data.
   # Default is \code{FALSE}.
-  # @param geom_uni
+  # @param geomUni
   # "density" or "histogram".
   # Specifies ggplot2 geom to use
   # for univariate data.
@@ -61,31 +61,31 @@ plot_cyto <- function(
   #
   # @return A ggplot object showing cytometry data visualization.
   # checks
-  .plot_cyto_check(data = data, lab = lab, font_size = font_size)
+  .plotCytoCheck(data = data, lab = lab, fontSize = fontSize)
 
   # prep
-  prep_list <- .plot_cyto_prep(
+  prepList <- .plotCytoPrep(
     marker = marker,
     lab = lab,
     data = data,
-    exc_min = exc_min
+    excMin = excMin
   )
 
-  .plot_cyto_plot(
-    n_marker = prep_list$n_marker,
-    plot_tbl = prep_list$plot_tbl,
-    marker = prep_list$marker,
-    font_size = font_size,
-    coord_equal = coord_equal,
-    limits_expand = limits_expand,
-    limits_equal = limits_equal,
-    geom_uni = geom_uni,
+  .plotCytoPlot(
+    nMarker = prepList$nMarker,
+    plotTbl = prepList$plotTbl,
+    marker = prepList$marker,
+    fontSize = fontSize,
+    coordEqual = coordEqual,
+    limitsExpand = limitsExpand,
+    limitsEqual = limitsEqual,
+    geomUni = geomUni,
     ...
   )
 }
 
 #' @keywords internal
-.plot_cyto_check <- function(data, lab, font_size) {
+.plotCytoCheck <- function(data, lab, fontSize) {
   if (!is.data.frame(data)) {
     stop("data must be a dataframe")
   }
@@ -94,22 +94,22 @@ plot_cyto <- function(
       stop("lab must be a named character vector (if not NULL)")
     }
   }
-  if (!is.numeric(font_size)) {
-    stop("font_size must be numeric")
+  if (!is.numeric(fontSize)) {
+    stop("fontSize must be numeric")
   }
   invisible(TRUE)
 }
 
 #' @keywords internal
-.plot_cyto_prep <- function(marker, lab, data, exc_min) {
-  n_marker <- min(2, length(marker))
-  marker <- marker[seq_len(n_marker)]
+.plotCytoPrep <- function(marker, lab, data, excMin) {
+  nMarker <- min(2, length(marker))
+  marker <- marker[seq_len(nMarker)]
 
-  plot_tbl <- .plot_cyto_prep_plot_tbl(
+  plotTbl <- .plotCytoPrepPlotTbl(
     marker = marker,
     data = data,
-    n_marker = n_marker,
-    exc_min = exc_min
+    nMarker = nMarker,
+    excMin = excMin
   )
 
   # axis labels
@@ -118,72 +118,72 @@ plot_cyto <- function(
   }
 
   list(
-    "n_marker" = n_marker,
+    "nMarker" = nMarker,
     "marker" = marker,
-    "plot_tbl" = plot_tbl
+    "plotTbl" = plotTbl
   )
 }
 
 #' @keywords internal
-.plot_cyto_prep_plot_tbl <- function(marker, data, n_marker, exc_min) {
-  # plot_tbl
-  plot_tbl <- data[, marker, drop = FALSE]
-  colnames(plot_tbl) <- c("V1", "V2")[seq_len(n_marker)]
-  .plot_cyto_prep_plot_tbl_exc_min(
-    exc_min = exc_min,
-    plot_tbl = plot_tbl,
-    n_marker = n_marker
+.plotCytoPrepPlotTbl <- function(marker, data, nMarker, excMin) {
+  # plotTbl
+  plotTbl <- data[, marker, drop = FALSE]
+  colnames(plotTbl) <- c("V1", "V2")[seq_len(nMarker)]
+  .plotCytoPrepPlotTblExcMin(
+    excMin = excMin,
+    plotTbl = plotTbl,
+    nMarker = nMarker
   )
 }
 
 #' @keywords internal
-.plot_cyto_prep_plot_tbl_exc_min <- function(exc_min, plot_tbl, n_marker) {
-  if (!exc_min) {
-    return(plot_tbl)
+.plotCytoPrepPlotTblExcMin <- function(excMin, plotTbl, nMarker) {
+  if (!excMin) {
+    return(plotTbl)
   }
-  plot_tbl <- plot_tbl |>
+  plotTbl <- plotTbl |>
     dplyr::filter(
       V1 > min(V1) # nolint
     )
-  if (n_marker == 2) {
-    plot_tbl <- plot_tbl |>
+  if (nMarker == 2) {
+    plotTbl <- plotTbl |>
       dplyr::filter(
         V2 > min(V2) # nolint
       )
   }
-  plot_tbl
+  plotTbl
 }
 
 #' @keywords internal
-.plot_cyto_plot <- function(
-  n_marker,
-  plot_tbl,
+.plotCytoPlot <- function(
+  nMarker,
+  plotTbl,
   marker,
-  font_size,
-  coord_equal,
-  limits_expand,
-  limits_equal,
-  geom_uni,
+  fontSize,
+  coordEqual,
+  limitsExpand,
+  limitsEqual,
+  geomUni,
   ...
 ) {
   # base plot
   switch(
-    n_marker,
-    .plot_cyto_plot_uni(
-      geom_uni = geom_uni,
-      plot_tbl = plot_tbl,
-      font_size = font_size,
+    nMarker,
+    .plotCytoPlotUni(
+      geomUni = geomUni,
+      plotTbl = plotTbl,
+      fontSize = fontSize,
       marker = marker,
-      limits_expand = limits_expand,
+      limitsExpand = limitsExpand,
       ...
     ),
-    .plot_cyto_plot_biv(
-      plot_tbl = plot_tbl,
-      font_size = font_size,
+    .plotCytoPlotBiv(
+      plotTbl = plotTbl,
+      fontSize = fontSize,
       marker = marker,
-      coord_equal = coord_equal,
-      limits_expand = limits_expand,
-      limits_equal = limits_equal,
+      coordEqual = coordEqual,
+      limitsExpand = limitsExpand,
+      limitsEqual = limitsEqual,
       ...
     )
   )
@@ -191,34 +191,34 @@ plot_cyto <- function(
 
 
 #' @keywords internal
-.plot_cyto_plot_uni <- function(
-  geom_uni,
-  plot_tbl,
-  font_size,
+.plotCytoPlotUni <- function(
+  geomUni,
+  plotTbl,
+  fontSize,
   marker,
-  geom_uni_gg,
-  limits_expand,
+  geomUniGg,
+  limitsExpand,
   ...
 ) {
-  geom_uni_gg <- .plot_cyto_plot_uni_geom(geom_uni, ...)
+  geomUniGg <- .plotCytoPlotUniGeom(geomUni, ...)
 
-  p <- .plot_cyto_plot_uni_base(
-    plot_tbl = plot_tbl,
-    font_size = font_size,
+  p <- .plotCytoPlotUniBase(
+    plotTbl = plotTbl,
+    fontSize = fontSize,
     marker = marker,
-    geom_uni_gg = geom_uni_gg
+    geomUniGg = geomUniGg
   )
 
-  .plot_cyto_plot_uni_axes(
+  .plotCytoPlotUniAxes(
     p = p,
-    limits_expand = limits_expand
+    limitsExpand = limitsExpand
   )
 }
 
 #' @keywords internal
-.plot_cyto_plot_uni_geom <- function(geom_uni, ...) {
+.plotCytoPlotUniGeom <- function(geomUni, ...) {
   switch(
-    geom_uni,
+    geomUni,
     "histogram" = do.call(
       ggplot2::geom_histogram,
       list(...)
@@ -227,77 +227,77 @@ plot_cyto <- function(
       ggplot2::geom_density,
       list(...)
     ),
-    stop("geom_unit value of ", geom_uni, " not recognised")
+    stop("geom_unit value of ", geomUni, " not recognised")
   )
 }
 
 #' @keywords internal
-.plot_cyto_plot_uni_base <- function(plot_tbl, font_size, marker, geom_uni_gg) {
+.plotCytoPlotUniBase <- function(plotTbl, fontSize, marker, geomUniGg) {
   ggplot(
     # nolint
-    plot_tbl, # nolint
+    plotTbl, # nolint
     aes(x = V1) # nolint
   ) +
-    cowplot::theme_cowplot(font_size) +
+    cowplot::theme_cowplot(fontSize) +
     cowplot::background_grid(major = "x") +
     labs(x = marker[1]) + # nolint
-    geom_uni_gg
+    geomUniGg
 }
 
 
 #' @keywords internal
-.plot_cyto_plot_uni_axes <- function(p, limits_expand) {
-  .plot_cyto_plot_uni_axes_expand(
+.plotCytoPlotUniAxes <- function(p, limitsExpand) {
+  .plotCytoPlotUniAxesExpand(
     p = p,
-    limits_expand = limits_expand
+    limitsExpand = limitsExpand
   )
 }
 
 #' @keywords internal
-.plot_cyto_plot_uni_axes_expand <- function(p, limits_expand) {
-  # return now if axis_limits fn not required
-  if (is.null(limits_expand)) {
+.plotCytoPlotUniAxesExpand <- function(p, limitsExpand) {
+  # return now if axisLimits fn not required
+  if (is.null(limitsExpand)) {
     return(p)
   }
-  axis_limits(
+  axisLimits(
     p = p,
-    limits_expand = limits_expand
+    limitsExpand = limitsExpand
   )
 }
 
 #' @keywords internal
-.plot_cyto_plot_biv <- function(
-  plot_tbl,
-  font_size,
+.plotCytoPlotBiv <- function(
+  plotTbl,
+  fontSize,
   marker,
-  coord_equal,
-  limits_expand,
-  limits_equal,
+  coordEqual,
+  limitsExpand,
+  limitsEqual,
   ...
 ) {
-  p <- .plot_cyto_plot_biv_base(
-    plot_tbl = plot_tbl,
-    font_size = font_size,
+  p <- .plotCytoPlotBivBase(
+    plotTbl = plotTbl,
+    fontSize = fontSize,
     marker = marker,
     ...
   )
 
-  .plot_cyto_biv_axes(
+  .plotCytoBivAxes(
     p = p,
-    coord_equal = coord_equal,
-    limits_expand = limits_expand,
-    limits_equal = limits_equal
+    coordEqual = coordEqual,
+    limitsExpand = limitsExpand,
+    limitsEqual = limitsEqual
   )
 }
 
 #' @keywords internal
-.plot_cyto_plot_biv_base <- function(plot_tbl, font_size, marker, ...) {
+.plotCytoPlotBivBase <- function(plotTbl, fontSize, marker, ...) {
   ggplot(
     # nolint
-    plot_tbl,
+    plotTbl,
     aes(x = V1, y = V2) # nolint
   ) +
-    cowplot::theme_cowplot(font_size) +
+    cowplot::theme_cowplot(fontSize) +
     theme(
       # nolint
       plot.background = element_rect(fill = "white"), # nolint
@@ -314,28 +314,28 @@ plot_cyto <- function(
 }
 
 #' @keywords internal
-.plot_cyto_biv_axes <- function(p, coord_equal, limits_expand, limits_equal) {
-  if (coord_equal) {
+.plotCytoBivAxes <- function(p, coordEqual, limitsExpand, limitsEqual) {
+  if (coordEqual) {
     p <- p + coord_equal()
   }
 
-  # return now if axis_limits fn not required
-  if (is.null(limits_expand) && !limits_equal) {
+  # return now if axisLimits fn not required
+  if (is.null(limitsExpand) && !limitsEqual) {
     return(p)
   }
 
-  .plot_cyto_biv_axes_expand(
+  .plotCytoBivAxesExpand(
     p = p,
-    limits_expand = limits_expand,
-    limits_equal = limits_equal
+    limitsExpand = limitsExpand,
+    limitsEqual = limitsEqual
   )
 }
 
 #' @keywords internal
-.plot_cyto_biv_axes_expand <- function(p, limits_equal, limits_expand) {
-  axis_limits(
+.plotCytoBivAxesExpand <- function(p, limitsEqual, limitsExpand) {
+  axisLimits(
     p = p,
-    limits_expand = limits_expand,
-    limits_equal = limits_equal
+    limitsExpand = limitsExpand,
+    limitsEqual = limitsEqual
   )
 }

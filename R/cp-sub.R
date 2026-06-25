@@ -2,49 +2,49 @@
 # Gets measurements for samples and applies bias and noise modifications
 # Returns a list where each element is a numeric vector
 #' @keywords internal
-.prepare_ex_list_with_bias_and_noise <- function(
-  ex_list,
+.prepareExListWithBiasAndNoise <- function(
+  exList,
   ind,
-  exc_min,
+  excMin,
   bias = 0,
-  noise_sd = NULL
+  noiseSd = NULL
 ) {
-  purrr::map(ind, function(ind_curr) {
-    cut_tbl <- ex_list[[as.character(ind_curr)]]
-    attr_list <- attributes(cut_tbl)
-    if (exc_min) {
-      n_row_init <- nrow(cut_tbl)
-      cut_tbl <- cut_tbl[
-        .get_cut(cut_tbl) > min(.get_cut(cut_tbl)),
+  purrr::map(ind, function(indCurr) {
+    cutTbl <- exList[[as.character(indCurr)]]
+    attrList <- attributes(cutTbl)
+    if (excMin) {
+      nRowInit <- nrow(cutTbl)
+      cutTbl <- cutTbl[
+        .getCut(cutTbl) > min(.getCut(cutTbl)),
       ] # nolint
-      n_row_fin <- nrow(cut_tbl)
-      attr(cut_tbl, "prob_g_min") <- n_row_fin / n_row_init
+      nRowFin <- nrow(cutTbl)
+      attr(cutTbl, "probGMin") <- nRowFin / nRowInit
     }
-    cut_tbl[[attr(cut_tbl, "chnl_cut")]] <- .get_cut(cut_tbl) + bias # nolint
-    if (!is.null(noise_sd)) {
-      cut_tbl <- cut_tbl[[attr(cut_tbl, "chnl_cut")]] +
-        rnorm(nrow(cut_tbl), sd = noise_sd) # nolint
+    cutTbl[[attr(cutTbl, "chnlCut")]] <- .getCut(cutTbl) + bias # nolint
+    if (!is.null(noiseSd)) {
+      cutTbl <- cutTbl[[attr(cutTbl, "chnlCut")]] +
+        rnorm(nrow(cutTbl), sd = noiseSd) # nolint
     }
-    cut_tbl |>
-      .prepare_ex_list_with_bias_and_noise_add_attr(attr_list)
+    cutTbl |>
+      .prepareExListWithBiasAndNoiseAddAttr(attrList)
   }) |>
     stats::setNames(as.character(ind))
 }
 
-.prepare_ex_list_with_bias_and_noise_add_attr <- function(ex, attr_list) {
-  attr_vec_nm_orig <- names(attr_list)
-  attr_vec_nm_add <- c(
+.prepareExListWithBiasAndNoiseAddAttr <- function(ex, attrList) {
+  attrVecNmOrig <- names(attrList)
+  attrVecNmAdd <- c(
     "ind",
-    "ind_uns",
-    "is_uns",
-    "chnl_cut",
+    "indUns",
+    "isUns",
+    "chnlCut",
     "batch",
     "pop",
-    "prob_g_min"
+    "probGMin"
   )
-  attr_vec_nm_add <- intersect(attr_vec_nm_add, attr_vec_nm_orig)
-  for (i in seq_along(attr_vec_nm_add)) {
-    attr(ex, attr_vec_nm_add[i]) <- attr_list[[attr_vec_nm_add[i]]]
+  attrVecNmAdd <- intersect(attrVecNmAdd, attrVecNmOrig)
+  for (i in seq_along(attrVecNmAdd)) {
+    attr(ex, attrVecNmAdd[i]) <- attrList[[attrVecNmAdd[i]]]
   }
   ex
 }
@@ -54,266 +54,266 @@
 # Interpolates a value from input and output vectors
 #' @keywords internal
 .interp <- function(val, x, y) {
-  x_low <- x[x <= val] |> max()
-  if (x_low == val) {
-    return(y[which(x == x_low)])
+  xLow <- x[x <= val] |> max()
+  if (xLow == val) {
+    return(y[which(x == xLow)])
   }
-  x_high <- x[x >= val] |> min()
-  x_low_ind <- which(x == x_low)
-  x_high_ind <- which(x == x_high)
+  xHigh <- x[x >= val] |> min()
+  xLowInd <- which(x == xLow)
+  xHighInd <- which(x == xHigh)
 
-  y[x_low_ind] +
-    (val - x_low) * (y[x_high_ind] - y[x_low_ind]) / (x_high - x_low)
+  y[xLowInd] +
+    (val - xLow) * (y[xHighInd] - y[xLowInd]) / (xHigh - xLow)
 }
 
 #' @keywords internal
-.get_cp_tg <- function(
-  ex_list,
-  chnl_settings,
-  tg_type,
+.getCpTg <- function(
+  exList,
+  chnlSettings,
+  tgType,
   stage,
-  path_project
+  pathProject
 ) {
   # get cytoUtils tailgate cutpoint
   .debug("Getting tg cutpoint")
   
-  # Extract explicit parameters cleanly from chnl_settings at local execution scope
-  chnl_cut <- chnl_settings$chnl_cut
-  gate_combn <- chnl_settings$gate_combn
-  exc_min <- chnl_settings$exc_min
-  min_cell <- chnl_settings$min_cell
-  cp_min <- chnl_settings$cp_min
-  bw <- chnl_settings$bw
-  tol <- chnl_settings$tol %||% 1e-2 # fallback internal tolerance constant if absent
+  # Extract explicit parameters cleanly from chnlSettings at local execution scope
+  chnlCut <- chnlSettings$chnlCut
+  gateCombn <- chnlSettings$gateCombn
+  excMin <- chnlSettings$excMin
+  minCell <- chnlSettings$minCell
+  cpMin <- chnlSettings$cpMin
+  bw <- chnlSettings$bw
+  tol <- chnlSettings$tol %||% 1e-2 # fallback internal tolerance constant if absent
   
-  stage_chnl <- file.path(stage, chnl_cut)
-  cp_list <- list()
+  stageChnl <- file.path(stage, chnlCut)
+  cpList <- list()
 
-  if ("prejoin" %in% gate_combn) {
+  if ("prejoin" %in% gateCombn) {
     .debug("prejoin")
-    ind_gate <- names(ex_list)[-length(ex_list)]
-    ex <- dplyr::bind_rows(ex_list[ind_gate])
-    ex <- ex[!is.na(.get_cut(ex)), ]
-    if (exc_min) {
-      ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
+    indGate <- names(exList)[-length(exList)]
+    ex <- dplyr::bind_rows(exList[indGate])
+    ex <- ex[!is.na(.getCut(ex)), ]
+    if (excMin) {
+      ex <- ex[.getCut(ex) > min(.getCut(ex)), ]
     }
-    if (nrow(ex) < max(min_cell, 5)) {
-      .int_save_nm(
-        file.path(tg_type, "cp_tg_prejoin too few to cut reliably"),
-        cp_min,
-        paste0(ind_gate, collapse = ","),
-        stage_chnl,
-        path_project
+    if (nrow(ex) < max(minCell, 5)) {
+      .intSaveNm(
+        file.path(tgType, "cpTgPrejoinTooFewToCutReliably"),
+        cpMin,
+        paste0(indGate, collapse = ","),
+        stageChnl,
+        pathProject
       )
-      cp_vec <- stats::setNames(rep(NA, length(ind_gate)), ind_gate)
+      cpVec <- stats::setNames(rep(NA, length(indGate)), indGate)
     } else {
-      bw_est <- ks::hpi(.get_cut(ex), deriv.order = 1)
-      bw_tg <- max(bw, bw_est)
-      adjust <- bw_tg / bw_est
-      cp <- suppressWarnings(.cytokine_cutpoint(
-        x = .get_cut(ex),
-        num_peaks = 1,
-        ref_peak = 1,
+      bwEst <- ks::hpi(.getCut(ex), deriv.order = 1)
+      bwTg <- max(bw, bwEst)
+      adjust <- bwTg / bwEst
+      cp <- suppressWarnings(.cytokineCutpoint(
+        x = .getCut(ex),
+        numPeaks = 1,
+        refPeak = 1,
         tol = tol,
         side = "right",
         strict = FALSE,
         adjust = adjust
       ))
-      .int_save_nm(
-        file.path(tg_type, "cp_tg_prejoin_init"),
+      .intSaveNm(
+        file.path(tgType, "cpTgPrejoinInit"),
         cp,
-        paste0(ind_gate, collapse = ","),
-        stage_chnl,
-        path_project
+        paste0(indGate, collapse = ","),
+        stageChnl,
+        pathProject
       )
-      if (is.na(cp) || length(.get_cut(ex)) < min_cell) {
-        .int_save_nm(
-          file.path(tg_type, "cp_tg_prejoin is NA or too few to cut reliably"),
+      if (is.na(cp) || length(.getCut(ex)) < minCell) {
+        .intSaveNm(
+          file.path(tgType, "cpTgPrejoinIsNaOrTooFewToCutReliably"),
           cp,
-          paste0(ind_gate, collapse = ","),
-          stage_chnl,
-          path_project
+          paste0(indGate, collapse = ","),
+          stageChnl,
+          pathProject
         )
         cp <- max(
-          cp_min,
-          max(.get_cut(ex)) +
-            (max(.get_cut(ex)) - min(.get_cut(ex))) / 5
+          cpMin,
+          max(.getCut(ex)) +
+            (max(.getCut(ex)) - min(.getCut(ex))) / 5
         )
       }
-      .int_save_nm(
-        file.path(tg_type, "cp_tg_prejoin final"),
+      .intSaveNm(
+        file.path(tgType, "cpTgPrejoinFinal"),
         cp,
-        paste0(ind_gate, collapse = ","),
-        stage_chnl,
-        path_project
+        paste0(indGate, collapse = ","),
+        stageChnl,
+        pathProject
       )
-      cp_vec <- stats::setNames(rep(cp, length(ind_gate)), ind_gate)
+      cpVec <- stats::setNames(rep(cp, length(indGate)), indGate)
     }
 
-    cp_list <- cp_list |> append(list(prejoin = cp_vec))
+    cpList <- cpList |> append(list(prejoin = cpVec))
   }
 
   # get cutpoint if group method is not prejoin
-  non_prejoin_combn_vec <- setdiff(gate_combn, "prejoin")
+  nonPrejoinCombnVec <- setdiff(gateCombn, "prejoin")
 
-  if (length(non_prejoin_combn_vec) > 0) {
+  if (length(nonPrejoinCombnVec) > 0) {
     .debug("non-prejoin")
-    ind_gate <- names(ex_list)[-length(ex_list)]
-    cp_tg_vec <- purrr::map_dbl(ind_gate, function(ind) {
+    indGate <- names(exList)[-length(exList)]
+    cpTgVec <- purrr::map_dbl(indGate, function(ind) {
       .debug("ind", ind)
-      ex <- ex_list[[as.character(ind)]]
-      ex <- ex[!is.na(.get_cut(ex)), ]
-      if (exc_min) {
-        ex <- ex[.get_cut(ex) > min(.get_cut(ex)), ]
+      ex <- exList[[as.character(ind)]]
+      ex <- ex[!is.na(.getCut(ex)), ]
+      if (excMin) {
+        ex <- ex[.getCut(ex) > min(.getCut(ex)), ]
       }
-      if (nrow(ex) < max(min_cell, 5)) {
+      if (nrow(ex) < max(minCell, 5)) {
         return(
           max(
-            cp_min,
-            max(.get_cut(ex)) +
-              (max(.get_cut(ex)) - min(.get_cut(ex))) / 5
+            cpMin,
+            max(.getCut(ex)) +
+              (max(.getCut(ex)) - min(.getCut(ex))) / 5
           )
         )
       }
-      bw_est <- ks::hpi(.get_cut(ex), deriv.order = 1)
-      bw_tg <- max(bw, bw_est)
-      adjust <- bw_tg / bw_est
+      bwEst <- ks::hpi(.getCut(ex), deriv.order = 1)
+      bwTg <- max(bw, bwEst)
+      adjust <- bwTg / bwEst
 
-      cp <- suppressWarnings(.cytokine_cutpoint(
-        x = .get_cut(ex),
-        num_peaks = 1,
-        ref_peak = 1,
+      cp <- suppressWarnings(.cytokineCutpoint(
+        x = .getCut(ex),
+        numPeaks = 1,
+        refPeak = 1,
         tol = tol,
         side = "right",
         strict = FALSE,
         adjust = adjust
       ))
-      .int_save_nm(
-        file.path(tg_type, "cp_tg_ind_init"),
+      .intSaveNm(
+        file.path(tgType, "cpTgIndInit"),
         cp,
         ind,
-        stage_chnl,
-        path_project
+        stageChnl,
+        pathProject
       )
       cp
     }) |>
-      stats::setNames(ind_gate)
+      stats::setNames(indGate)
 
     .debug("combining thresholds") # nolint
 
-    cp_tg_list <- .combine_cp(
-      cp = cp_tg_vec,
-      gate_combn = gate_combn
+    cpTgList <- .combineCp(
+      cp = cpTgVec,
+      gateCombn = gateCombn
     ) |>
-      stats::setNames(gate_combn)
+      stats::setNames(gateCombn)
 
-    .int_save_nm(
-      file.path(tg_type, "cp_tg_list"),
-      cp_tg_list,
-      names(cp_tg_list),
-      stage_chnl,
-      path_project
+    .intSaveNm(
+      file.path(tgType, "cpTgList"),
+      cpTgList,
+      names(cpTgList),
+      stageChnl,
+      pathProject
     )
 
-    cp_list <- cp_list |> append(cp_tg_list)
+    cpList <- cpList |> append(cpTgList)
   }
   .debug("Done tg cutpoint")
 
-  cp_list
+  cpList
 }
 
 
 # Get mid-probability cut
 #' @keywords internal
-.get_cp_pwmid <- function(high_ind_tbl, cp_scp) {
+.getCpPwmid <- function(highIndTbl, cpScp) {
   # get table to model - all values above changepoint
-  mod_tbl <- high_ind_tbl |>
-    dplyr::filter(chnl_cut >= cp_scp)
+  modTbl <- highIndTbl |>
+    dplyr::filter(chnlCut >= cpScp)
 
   # check if too little .data to model with here
-  if (nrow(mod_tbl) < 5 || length(unique(high_ind_tbl$high)) == 1) {
+  if (nrow(modTbl) < 5 || length(unique(highIndTbl$high)) == 1) {
     message(
-      "cp_pwmid set to cp_scp + 5 due to too few obs above cp_sc or too few postive obs"
+      "cpPwmid set to cpScp + 5 due to too few obs above cpSc or too few postive obs"
     )
-    return(cp_scp + 5)
+    return(cpScp + 5)
   }
 
   # model the probability of positivity above this point
-  if (nrow(mod_tbl) < 40) {
-    fit_pw <- glm(high ~ chnl_cut, family = binomial, .data = mod_tbl)
+  if (nrow(modTbl) < 40) {
+    fitPw <- glm(high ~ chnlCut, family = binomial, .data = modTbl)
   } else {
-    fit_pw <- glm(
-      high ~ splines::ns(chnl_cut, df = 3),
+    fitPw <- glm(
+      high ~ splines::ns(chnlCut, df = 3),
       family = binomial,
-      .data = mod_tbl
+      .data = modTbl
     )
   }
 
   # get predictions over a range of cut values
-  pred_tbl <- tibble::tibble(
-    chnl_cut = seq(min(mod_tbl$chnl_cut), max(mod_tbl$chnl_cut))
+  predTbl <- tibble::tibble(
+    chnlCut = seq(min(modTbl$chnlCut), max(modTbl$chnlCut))
   )
-  pred_vec <- predict(fit_pw, pred_tbl, type = "response")
-  pred_tbl <- pred_tbl |> dplyr::mutate(pred = pred_vec)
+  predVec <- predict(fitPw, predTbl, type = "response")
+  predTbl <- predTbl |> dplyr::mutate(pred = predVec)
 
   # find prediction in between middle and max
-  min_val <- mean(
-    high_ind_tbl |> dplyr::filter(chnl_cut < cp_scp) |> dplyr::pull("high")
+  minVal <- mean(
+    highIndTbl |> dplyr::filter(chnlCut < cpScp) |> dplyr::pull("high")
   )
-  max_val <- max(pred_tbl$pred)
-  mid_prob <- mean(c(max_val, min_val))
+  maxVal <- max(predTbl$pred)
+  midProb <- mean(c(maxVal, minVal))
 
   # find the cutpoint that minimises the difference objective function
-  opt_func <- function(x) {
-    pred_tbl <- tibble::tibble(chnl_cut = x)
-    pred_vec <- predict(fit_pw, pred_tbl, type = "response")
-    (pred_vec - mid_prob)^2
+  optFunc <- function(x) {
+    predTbl <- tibble::tibble(chnlCut = x)
+    predVec <- predict(fitPw, predTbl, type = "response")
+    (predVec - midProb)^2
   }
   
   # initial search parameter
-  init_par <- mean(c(cp_scp, max(high_ind_tbl$chnl_cut)))
+  initPar <- mean(c(cpScp, max(highIndTbl$chnlCut)))
   # optimisation
   optim(
-    init_par,
-    fn = opt_func,
+    initPar,
+    fn = optFunc,
     method = "Brent",
-    lower = cp_scp,
-    upper = max(high_ind_tbl$chnl_cut)
+    lower = cpScp,
+    upper = max(highIndTbl$chnlCut)
   )$par
 }
 
 
 # Get axis labels from annotated data frame
 #' @keywords internal
-.get_labs <- function(.data, chnl_cut, high = NULL) {
+.getLabs <- function(.data, chnlCut, high = NULL) {
   force(.data)
-  adf_data <- flowWorkspace::gh_pop_get_data(.data) |>
+  adfData <- flowWorkspace::gh_pop_get_data(.data) |>
     flowCore::parameters() |>
     flowCore::pData()
 
   if (!is.null(high)) {
-    cut_lab <- adf_data[["desc"]][[which(adf_data$name == chnl_cut)]] |>
-      stats::setNames(chnl_cut)
-    return(cut_lab)
+    cutLab <- adfData[["desc"]][[which(adfData$name == chnlCut)]] |>
+      stats::setNames(chnlCut)
+    return(cutLab)
   }
 
-  purrr::map_chr(chnl_cut, function(cut_curr) {
-    adf_data[["desc"]][[which(adf_data$name == cut_curr)]]
+  purrr::map_chr(chnlCut, function(cutCurr) {
+    adfData[["desc"]][[which(adfData$name == cutCurr)]]
   }) |>
-    stats::setNames(chnl_cut)
+    stats::setNames(chnlCut)
 }
 
 
 #' @keywords internal
-.combine_cp <- function(cp, gate_combn) {
-  purrr::map(gate_combn, function(gate_combn_curr) {
+.combineCp <- function(cp, gateCombn) {
+  purrr::map(gateCombn, function(gateCombnCurr) {
     if (all(purrr::map_lgl(cp, is.na))) {
       return(stats::setNames(cp, names(cp)))
     }
-    if (is.null(gate_combn_curr) || gate_combn_curr %in% c("no", "prejoin")) {
+    if (is.null(gateCombnCurr) || gateCombnCurr %in% c("no", "prejoin")) {
       return(cp)
     }
-    if (gate_combn_curr == "min") {
+    if (gateCombnCurr == "min") {
       return(stats::setNames(
         rep(
           min(cp, na.rm = TRUE),
@@ -322,7 +322,7 @@
         names(cp)
       ))
     }
-    if (gate_combn_curr == "mean") {
+    if (gateCombnCurr == "mean") {
       return(stats::setNames(
         rep(
           mean(cp, na.rm = TRUE),
@@ -331,7 +331,7 @@
         names(cp)
       ))
     }
-    if (gate_combn_curr == "trim20") {
+    if (gateCombnCurr == "trim20") {
       return(stats::setNames(
         rep(
           mean(cp, trim = 0.2, na.rm = TRUE),
@@ -340,7 +340,7 @@
         names(cp)
       ))
     }
-    if (gate_combn_curr == "median") {
+    if (gateCombnCurr == "median") {
       return(stats::setNames(
         rep(
           median(cp, na.rm = TRUE),
@@ -349,7 +349,7 @@
         names(cp)
       ))
     }
-    if (gate_combn_curr == "max") {
+    if (gateCombnCurr == "max") {
       return(stats::setNames(
         rep(
           max(cp, na.rm = TRUE),
@@ -359,5 +359,5 @@
       ))
     }
   }) |>
-    stats::setNames(gate_combn)
+    stats::setNames(gateCombn)
 }

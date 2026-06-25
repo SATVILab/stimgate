@@ -3,7 +3,7 @@
                                             marker_list,
                                             chnl,
                                             gs,
-                                            ind_batch_list,
+                                            indBatchList,
                                             debug) {
   # diff by cp
   sel_tbl <- cp_tbl |>
@@ -64,17 +64,17 @@
   plot_list <- purrr::map(sel_tbl$ind, function(i) {
     ind_batch <- which(
       purrr::map_lgl(
-        params$ind_batch_list,
+        params$indBatchList,
         function(ind_batch) i %in% ind_batch
       )
     )
-    ind_batch <- params$ind_batch_list[[ind_batch]]
+    ind_batch <- params$indBatchList[[ind_batch]]
     ex_tbl_all <- .get_ex_list( # nolint
       .data = gs, ind_batch = ind_batch,
       pop = "root",
       cut = purrr::map_chr(marker_list, function(x) x$cut), high = NULL,
       data_name = purrr::map,
-      path_project = params$path_project
+      pathProject = params$pathProject
     ) |>
       dplyr::bind_rows()
     ex_uns <- ex_tbl_all |> dplyr::filter(stim == "uns") # nolint

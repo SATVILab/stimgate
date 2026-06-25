@@ -1,280 +1,280 @@
 #' @keywords internal
-.get_inc_vec <- function(chnl_curr, chnl_vec, ex, gate_tbl_ind) {
-  inc_vec <- rep(FALSE, nrow(ex))
+.getIncVec <- function(chnlCurr, chnlVec, ex, gateTblInd) {
+  incVec <- rep(FALSE, nrow(ex))
 
-  for (chnl_alt in setdiff(chnl_vec, chnl_curr)) {
-    cp <- gate_tbl_ind |>
-      dplyr::filter(.data$chnl == chnl_alt) |> # nolint
+  for (chnlAlt in setdiff(chnlVec, chnlCurr)) {
+    cp <- gateTblInd |>
+      dplyr::filter(.data$chnl == chnlAlt) |> # nolint
       dplyr::pull("gate")
-    inc_vec <- inc_vec | ex[[chnl_alt]] > cp
+    incVec <- incVec | ex[[chnlAlt]] > cp
   }
 
-  inc_vec
+  incVec
 }
 
 #' @keywords internal
-.get_cp_neg <- function(
+.getCpNeg <- function(
   ex,
   inc,
   chnl,
-  bw_min,
-  min_cell = 1e3,
-  max_peak_ratio = 1e3
+  bwMin,
+  minCell = 1e3,
+  maxPeakRatio = 1e3
 ) {
   # get cytokine-negative cells
-  ex_neg <- ex[!inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
+  exNeg <- ex[!inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
 
   # if too few, then return
-  if (length(ex_neg) <= min_cell) {
+  if (length(exNeg) <= minCell) {
     return(NA)
   }
 
   # calculate density
-  dens_neg <- density(ex_neg, bw = "SJ")
-  if (dens_neg$bw < bw_min) {
-    dens_neg <- density(ex_neg, bw = bw_min)
+  densNeg <- density(exNeg, bw = "SJ")
+  if (densNeg$bw < bwMin) {
+    densNeg <- density(exNeg, bw = bwMin)
   }
 
   # calculate mode furthest to the right
-  dens_len <- length(dens_neg$x)
+  densLen <- length(densNeg$x)
 
-  mode_ind_vec <- (2:(dens_len - 1))[
-    (dens_neg$y[-1] > dens_neg$y[-dens_len])[-(dens_len - 1)] &
-      (dens_neg$y[-dens_len] > dens_neg$y[-1])[-1]
+  modeIndVec <- (2:(densLen - 1))[
+    (densNeg$y[-1] > densNeg$y[-densLen])[-(densLen - 1)] &
+      (densNeg$y[-densLen] > densNeg$y[-1])[-1]
   ]
-  mode_vec <- dens_neg$x[mode_ind_vec]
-  mode_vec_y <- dens_neg$y[mode_ind_vec]
-  mode_ind_vec <- mode_ind_vec[mode_vec_y > 0.01 * max(mode_vec_y)]
-  mode_vec <- dens_neg$x[mode_ind_vec]
+  modeVec <- densNeg$x[modeIndVec]
+  modeVecY <- densNeg$y[modeIndVec]
+  modeIndVec <- modeIndVec[modeVecY > 0.01 * max(modeVecY)]
+  modeVec <- densNeg$x[modeIndVec]
 
   # get all points that are to the
   # right of the right-most mode that
   # also are much smaller than peak
-  low_neg_dens_pts_vec <- dens_neg$x[
-    dens_neg$y < max(dens_neg$y) / max_peak_ratio &
-      dens_neg$x >= max(mode_vec)
+  lowNegDensPtsVec <- densNeg$x[
+    densNeg$y < max(densNeg$y) / maxPeakRatio &
+      densNeg$x >= max(modeVec)
   ]
 
   # return NA if no such no low neg dens points found, other return left-most such point
-  ifelse(length(low_neg_dens_pts_vec) == 0, NA, min(low_neg_dens_pts_vec))
+  ifelse(length(lowNegDensPtsVec) == 0, NA, min(lowNegDensPtsVec))
 }
 
 
 #' @keywords internal
-.get_cp_pos <- function(
+.getCpPos <- function(
   ex,
   inc,
   chnl,
-  bw_min,
-  trust_no_or_high_am = FALSE,
-  min_cell = 10,
-  cp_orig,
-  n_loop = 5
+  bwMin,
+  trustNoOrHighAm = FALSE,
+  minCell = 10,
+  cpOrig,
+  nLoop = 5
 ) {
-  cp_pos <- .get_cp_pos_ind(
+  cpPos <- .getCpPosInd(
     ex = ex,
     inc = inc,
     chnl = chnl,
-    bw_min = bw_min,
+    bwMin = bwMin,
     adjust = 1,
-    trust_no_or_high_am = FALSE,
-    min_cell = 10,
-    cp_orig = cp_orig
+    trustNoOrHighAm = FALSE,
+    minCell = 10,
+    cpOrig = cpOrig
   )
 
   k <- 1
-  while (is.na(cp_pos) && k <= n_loop) {
-    if (is.na(cp_pos)) {
-      cp_pos <- .get_cp_pos_ind(
+  while (is.na(cpPos) && k <= nLoop) {
+    if (is.na(cpPos)) {
+      cpPos <- .getCpPosInd(
         ex = ex,
         inc = inc,
         chnl = chnl,
-        bw_min = bw_min,
+        bwMin = bwMin,
         adjust = 0.5^k,
-        trust_no_or_high_am = FALSE,
-        min_cell = 10,
-        cp_orig = cp_orig
+        trustNoOrHighAm = FALSE,
+        minCell = 10,
+        cpOrig = cpOrig
       )
     }
     k <- k + 1
   }
 
-  cp_pos
+  cpPos
 }
 
 
 #' @keywords internal
-.get_cp_pos_ind <- function(
+.getCpPosInd <- function(
   ex,
   inc,
   chnl,
-  bw_min,
+  bwMin,
   adjust = 1,
-  trust_no_or_high_am = FALSE,
-  min_cell = 10,
-  cp_orig
+  trustNoOrHighAm = FALSE,
+  minCell = 10,
+  cpOrig
 ) {
   # .data
-  ex_pos <- ex[inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
-  if (length(ex_pos) < min_cell) {
+  exPos <- ex[inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
+  if (length(exPos) < minCell) {
     return(NA)
   }
-  ex_neg <- ex[!inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
+  exNeg <- ex[!inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
 
   # bw
-  bw_dens <- density(ex_pos, bw = "SJ")$bw
-  bw_sd <- sd(ex_neg)
-  bw_final <- max(bw_dens, bw_sd, bw_min)
+  bwDens <- density(exPos, bw = "SJ")$bw
+  bwSd <- sd(exNeg)
+  bwFinal <- max(bwDens, bwSd, bwMin)
 
   # calculate density
   # ------------------
-  dens_pos <- density(ex_pos, bw = bw_final, adjust = adjust)
-  dens_neg <- density(
-    ex_neg,
-    bw = bw_final,
+  densPos <- density(exPos, bw = bwFinal, adjust = adjust)
+  densNeg <- density(
+    exNeg,
+    bw = bwFinal,
     adjust = adjust,
-    from = min(dens_pos$x),
-    to = max(dens_pos$x)
+    from = min(densPos$x),
+    to = max(densPos$x)
   )
 
   # calculate modes and antimodes
   # -----------------------------
-  dens_len <- length(dens_pos$y)
+  densLen <- length(densPos$y)
 
   # antimodes
-  am_ind_vec <- (2:(dens_len - 1))[
-    (dens_pos$y[-1] < dens_pos$y[-dens_len])[-(dens_len - 1)] &
-      (dens_pos$y[-dens_len] < dens_pos$y[-1])[-1]
+  amIndVec <- (2:(densLen - 1))[
+    (densPos$y[-1] < densPos$y[-densLen])[-(densLen - 1)] &
+      (densPos$y[-densLen] < densPos$y[-1])[-1]
   ]
-  am_vec <- dens_pos$x[am_ind_vec]
-  am_vec_height <- dens_pos$y[am_ind_vec]
+  amVec <- densPos$x[amIndVec]
+  amVecHeight <- densPos$y[amIndVec]
 
   # modes
-  mode_ind_vec <- (2:(dens_len - 1))[
-    (dens_pos$y[-1] > dens_pos$y[-dens_len])[-(dens_len - 1)] &
-      (dens_pos$y[-dens_len] > dens_pos$y[-1])[-1]
+  modeIndVec <- (2:(densLen - 1))[
+    (densPos$y[-1] > densPos$y[-densLen])[-(densLen - 1)] &
+      (densPos$y[-densLen] > densPos$y[-1])[-1]
   ]
-  mode_vec <- dens_pos$x[mode_ind_vec]
-  mode_vec_height <- dens_pos$y[mode_ind_vec]
-  mode_ind_vec <- mode_ind_vec[mode_vec_height > 0.01 * max(mode_vec_height)]
-  mode_vec <- dens_pos$x[mode_ind_vec]
-  mode_vec_height <- dens_pos$y[mode_ind_vec]
+  modeVec <- densPos$x[modeIndVec]
+  modeVecHeight <- densPos$y[modeIndVec]
+  modeIndVec <- modeIndVec[modeVecHeight > 0.01 * max(modeVecHeight)]
+  modeVec <- densPos$x[modeIndVec]
+  modeVecHeight <- densPos$y[modeIndVec]
 
   # calculate lowest mode for cyt-neg cells
   # --------------------------
-  mode_ind_vec_neg <- (2:(dens_len - 1))[
-    (dens_neg$y[-1] > dens_neg$y[-dens_len])[-(dens_len - 1)] &
-      (dens_neg$y[-dens_len] > dens_neg$y[-1])[-1]
+  modeIndVecNeg <- (2:(densLen - 1))[
+    (densNeg$y[-1] > densNeg$y[-densLen])[-(densLen - 1)] &
+      (densNeg$y[-densLen] > densNeg$y[-1])[-1]
   ]
-  mode_vec_height_neg <- dens_neg$y[mode_ind_vec_neg]
-  mode_ind_vec_neg <- mode_ind_vec_neg[
-    mode_vec_height_neg > 0.01 * max(mode_vec_height_neg)
+  modeVecHeightNeg <- densNeg$y[modeIndVecNeg]
+  modeIndVecNeg <- modeIndVecNeg[
+    modeVecHeightNeg > 0.01 * max(modeVecHeightNeg)
   ]
-  highest_mode_neg <- max(dens_neg$x[mode_ind_vec_neg])
+  highestModeNeg <- max(densNeg$x[modeIndVecNeg])
 
-  # calculate cp_shape
+  # calculate cpShape
   # -------------------
-  if (length(am_vec) == 0) {
-    if (!trust_no_or_high_am) {
+  if (length(amVec) == 0) {
+    if (!trustNoOrHighAm) {
       return(NA)
     }
-    if (trust_no_or_high_am) {
-      cp_shape <- ifelse(cp_orig < max(mode_vec), highest_mode_neg, NA)
-      return(cp_shape)
+    if (trustNoOrHighAm) {
+      cpShape <- ifelse(cpOrig < max(modeVec), highestModeNeg, NA)
+      return(cpShape)
     }
   }
 
-  # nearest mode to cp_orig
-  mode_vec_above_cp_orig <- mode_vec[mode_vec > cp_orig]
+  # nearest mode to cpOrig
+  modeVecAboveCpOrig <- modeVec[modeVec > cpOrig]
 
-  if (length(mode_vec_above_cp_orig) == 0) {
+  if (length(modeVecAboveCpOrig) == 0) {
     return(NA)
   }
-  mode_above_cp_orig_min <- min(mode_vec_above_cp_orig)
+  modeAboveCpOrigMin <- min(modeVecAboveCpOrig)
 
-  am_vec_more_than_cp_orig <- am_vec[am_vec > cp_orig]
-  am_right_min_ind <- ifelse(
-    length(am_vec_more_than_cp_orig) > 0,
-    which(am_vec == min(am_vec_more_than_cp_orig)),
+  amVecMoreThanCpOrig <- amVec[amVec > cpOrig]
+  amRightMinInd <- ifelse(
+    length(amVecMoreThanCpOrig) > 0,
+    which(amVec == min(amVecMoreThanCpOrig)),
     NA
   )
-  am_right_min <- am_vec[am_right_min_ind]
+  amRightMin <- amVec[amRightMinInd]
   
-  if (!is.na(am_right_min[1])) {
-    if (am_right_min < mode_above_cp_orig_min) {
-      return(am_right_min)
+  if (!is.na(amRightMin[1])) {
+    if (amRightMin < modeAboveCpOrigMin) {
+      return(amRightMin)
     }
   }
 
-  # get left-most antimode of antimodes less than cp_orig
-  am_vec_less_than_cp_orig <- am_vec[am_vec < cp_orig]
-  max_left_am_ind <- ifelse(
-    length(am_vec_less_than_cp_orig) > 0,
-    which(am_vec == max(am_vec_less_than_cp_orig)),
+  # get left-most antimode of antimodes less than cpOrig
+  amVecLessThanCpOrig <- amVec[amVec < cpOrig]
+  maxLeftAmInd <- ifelse(
+    length(amVecLessThanCpOrig) > 0,
+    which(amVec == max(amVecLessThanCpOrig)),
     NA
   )
-  max_left_am <- am_vec[max_left_am_ind]
-  max_left_am_height <- am_vec_height[max_left_am_ind]
+  maxLeftAm <- amVec[maxLeftAmInd]
+  maxLeftAmHeight <- amVecHeight[maxLeftAmInd]
 
-  if (length(max_left_am) == 0 || all(is.na(max_left_am))) {
-    cp_shape <- ifelse(trust_no_or_high_am, highest_mode_neg, NA)
-    return(cp_shape)
+  if (length(maxLeftAm) == 0 || all(is.na(maxLeftAm))) {
+    cpShape <- ifelse(trustNoOrHighAm, highestModeNeg, NA)
+    return(cpShape)
   }
 
-  max_mode_less_than_cp_orig <- max(mode_vec[mode_vec < cp_orig])
-  max_mode_less_than_cp_orig_height <- mode_vec_height[
-    which(mode_vec == max_mode_less_than_cp_orig)
+  maxModeLessThanCpOrig <- max(modeVec[modeVec < cpOrig])
+  maxModeLessThanCpOrigHeight <- modeVecHeight[
+    which(modeVec == maxModeLessThanCpOrig)
   ]
-  if (max_left_am_height > 0.5 * max_mode_less_than_cp_orig_height) {
-    if (trust_no_or_high_am) {
-      min_mode_above_cp_orig_ind <- which(
-        mode_vec == min(mode_vec[mode_vec > cp_orig])
+  if (maxLeftAmHeight > 0.5 * maxModeLessThanCpOrigHeight) {
+    if (trustNoOrHighAm) {
+      minModeAboveCpOrigInd <- which(
+        modeVec == min(modeVec[modeVec > cpOrig])
       )
-      min_mode_above_cp_orig_height <- mode_vec_height[
-        min_mode_above_cp_orig_ind
+      minModeAboveCpOrigHeight <- modeVecHeight[
+        minModeAboveCpOrigInd
       ]
-      min_mode_above_cp_orig <- mode_vec[min_mode_above_cp_orig_ind]
+      minModeAboveCpOrig <- modeVec[minModeAboveCpOrigInd]
 
-      prop_move_to_right <- max_mode_less_than_cp_orig_height /
-        (max_mode_less_than_cp_orig_height + min_mode_above_cp_orig_height)
-      cp_shape <- max(
-        max_left_am,
-        max_mode_less_than_cp_orig +
-          prop_move_to_right *
-            (min_mode_above_cp_orig - max_mode_less_than_cp_orig)
+      propMoveToRight <- maxModeLessThanCpOrigHeight /
+        (maxModeLessThanCpOrigHeight + minModeAboveCpOrigHeight)
+      cpShape <- max(
+        maxLeftAm,
+        maxModeLessThanCpOrig +
+          propMoveToRight *
+            (minModeAboveCpOrig - maxModeLessThanCpOrig)
       )
-      return(cp_shape)
+      return(cpShape)
     } else {
       return(NA)
     }
   }
 
-  max_left_am
+  maxLeftAm
 }
 
 
 #' @keywords internal
-.get_cyt_pos_gates_chnl_vec_from_chnl_list <- function(chnl_settings) {
-  purrr::map_chr(chnl_settings, function(x) x$chnl_cut)
+.getCytPosGatesChnlVecFromChnlList <- function(chnlSettings) {
+  purrr::map_chr(chnlSettings, function(x) x$chnlCut)
 }
 
 #' @keywords internal
-.get_cyt_pos_gates_gate_tbl_get <- function(
-  chnl_vec,
+.getCytPosGatesGateTblGet <- function(
+  chnlVec,
   pop,
-  path_project,
-  chnl_lab
+  pathProject,
+  chnlLab
 ) {
-  .debug("Getting gate_tbl") # nolint
-  purrr::map_df(chnl_vec, function(chnl_curr) {
-    .gates_get_path_all(
-      path_project = path_project,
+  .debug("Getting gateTbl") # nolint
+  purrr::map_df(chnlVec, function(chnlCurr) {
+    .gatesGetPathAll(
+      pathProject = pathProject,
       pop = pop,
-      chnl_cut = chnl_curr,
+      chnlCut = chnlCurr,
       init = TRUE
     ) |>
       readRDS() |>
-      dplyr::mutate(chnl = chnl_curr, marker = chnl_lab[chnl_curr]) |>
-      dplyr::select(chnl, marker, gate_name, batch, ind, gate) # nolint
+      dplyr::mutate(chnl = chnlCurr, marker = chnlLab[chnlCurr]) |>
+      dplyr::select(chnl, marker, gateName, batch, ind, gate) # nolint
   })
 }

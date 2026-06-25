@@ -1,84 +1,84 @@
 #' @keywords internal
-.cytokine_cutpoint <- function(
+.cytokineCutpoint <- function(
   x,
   adjust = 1,
-  num_peaks = 1,
-  ref_peak = 1,
-  method = c("first_deriv", "second_deriv"),
+  numPeaks = 1,
+  refPeak = 1,
+  method = c("firstDeriv", "secondDeriv"),
   tol = 1e-2,
   side = "right",
   strict = TRUE,
   plot = FALSE,
-  auto_tol = FALSE,
+  autoTol = FALSE,
   ...
 ) {
   method <- match.arg(method)
 
-  peaks <- sort(.find_peaks(x, num_peaks = num_peaks, adjust = adjust)[, "x"])
-  num_peaks <- length(peaks)
+  peaks <- sort(.findPeaks(x, numPeaks = numPeaks, adjust = adjust)[, "x"])
+  numPeaks <- length(peaks)
 
-  if (ref_peak > num_peaks) {
+  if (refPeak > numPeaks) {
     msg <- paste(
       "The reference peak is larger than the number of peaks found.",
-      "Setting the reference peak to 'num_peaks'..."
+      "Setting the reference peak to 'numPeaks'..."
     )
     if (strict) {
       stop(msg, call. = FALSE)
     } else {
       warning(msg, call. = FALSE)
     }
-    ref_peak <- num_peaks
+    refPeak <- numPeaks
   }
 
-  if (method == "first_deriv") {
+  if (method == "firstDeriv") {
     # Calculate the first derivative
-    deriv_out <- .deriv_density(x = x, adjust = adjust, deriv = 1, ...)
+    derivOut <- .derivDensity(x = x, adjust = adjust, deriv = 1, ...)
 
-    if (auto_tol) {
-      tol <- 0.01 * max(abs(deriv_out$y))
+    if (autoTol) {
+      tol <- 0.01 * max(abs(derivOut$y))
     }
 
     if (side == "right") {
-      deriv_valleys <- .find_valleys(
-        x = deriv_out$x,
-        y = deriv_out$y,
+      derivValleys <- .findValleys(
+        x = derivOut$x,
+        y = derivOut$y,
         adjust = adjust
       )
-      deriv_valleys <- deriv_valleys[deriv_valleys > peaks[ref_peak]]
-      deriv_valleys <- sort(deriv_valleys)[1]
+      derivValleys <- derivValleys[derivValleys > peaks[refPeak]]
+      derivValleys <- sort(derivValleys)[1]
 
       # Safe NA Check
-      if (is.na(deriv_valleys)) {
+      if (is.na(derivValleys)) {
         cutpoint <- NA_real_
       } else {
-        cutpoint_candidates <- deriv_out$x[
-          deriv_out$x > deriv_valleys & abs(deriv_out$y) < tol
+        cutpointCandidates <- derivOut$x[
+          derivOut$x > derivValleys & abs(derivOut$y) < tol
         ]
-        cutpoint <- if (length(cutpoint_candidates) > 0) {
-          cutpoint_candidates[1]
+        cutpoint <- if (length(cutpointCandidates) > 0) {
+          cutpointCandidates[1]
         } else {
           NA_real_
         }
       }
     } else if (side == "left") {
-      deriv_out$y <- -deriv_out$y
-      deriv_valleys <- .find_valleys(
-        x = deriv_out$x,
-        y = deriv_out$y,
+      derivOut$y <- -derivOut$y
+      derivValleys <- .findValleys(
+        x = derivOut$x,
+        y = derivOut$y,
         adjust = adjust
       )
-      deriv_valleys <- deriv_valleys[deriv_valleys < peaks[ref_peak]]
-      deriv_valleys <- sort(deriv_valleys, decreasing = TRUE)[1]
+      derivValleys <- derivValleys[derivValleys < peaks[refPeak]]
+      derivValleys <- sort(derivValleys, decreasing = TRUE)[1]
 
       # Safe NA Check
-      if (is.na(deriv_valleys)) {
+      if (is.na(derivValleys)) {
         cutpoint <- NA_real_
       } else {
-        cutpoint_candidates <- deriv_out$x[
-          deriv_out$x < deriv_valleys & abs(deriv_out$y) < tol
+        cutpointCandidates <- derivOut$x[
+          derivOut$x < derivValleys & abs(derivOut$y) < tol
         ]
-        cutpoint <- if (length(cutpoint_candidates) > 0) {
-          cutpoint_candidates[length(cutpoint_candidates)]
+        cutpoint <- if (length(cutpointCandidates) > 0) {
+          cutpointCandidates[length(cutpointCandidates)]
         } else {
           NA_real_
         }
@@ -87,26 +87,26 @@
       stop("Unrecognized 'side' argument (was '", side, "').")
     }
   } else {
-    # second_deriv method
-    deriv_out <- .deriv_density(x = x, adjust = adjust, deriv = 2, ...)
+    # secondDeriv method
+    derivOut <- .derivDensity(x = x, adjust = adjust, deriv = 2, ...)
 
     if (side == "right") {
-      deriv_peaks <- .find_peaks(
-        x = deriv_out$x,
-        y = deriv_out$y,
+      derivPeaks <- .findPeaks(
+        x = derivOut$x,
+        y = derivOut$y,
         adjust = adjust
       )[, "x"]
-      deriv_peaks <- deriv_peaks[deriv_peaks > peaks[ref_peak]]
-      cutpoint <- sort(deriv_peaks)[1]
+      derivPeaks <- derivPeaks[derivPeaks > peaks[refPeak]]
+      cutpoint <- sort(derivPeaks)[1]
     } else if (side == "left") {
-      deriv_out$y <- -deriv_out$y
-      deriv_peaks <- .find_peaks(
-        x = deriv_out$x,
-        y = deriv_out$y,
+      derivOut$y <- -derivOut$y
+      derivPeaks <- .findPeaks(
+        x = derivOut$x,
+        y = derivOut$y,
         adjust = adjust
       )[, "x"]
-      deriv_peaks <- deriv_peaks[deriv_peaks < peaks[ref_peak]]
-      cutpoint <- sort(deriv_peaks, decreasing = TRUE)[length(deriv_peaks)]
+      derivPeaks <- derivPeaks[derivPeaks < peaks[refPeak]]
+      cutpoint <- sort(derivPeaks, decreasing = TRUE)[length(derivPeaks)]
     } else {
       stop("Unrecognized 'side' argument (was '", side, "').")
     }
@@ -116,23 +116,23 @@
 }
 
 #' @keywords internal
-.deriv_density <- function(
+.derivDensity <- function(
   x,
   deriv = 1,
   bandwidth = NULL,
   adjust = 1,
-  num_points = 10000,
+  numPoints = 10000,
   ...
 ) {
   if (is.null(bandwidth)) {
     bandwidth <- ks::hpi(x, deriv.order = deriv)
   }
-  kde_obj <- ks::kdde(
+  kdeObj <- ks::kdde(
     x = x,
     deriv.order = deriv,
     h = bandwidth * adjust,
-    gridsize = num_points,
+    gridsize = numPoints,
     ...
   )
-  list(x = kde_obj$eval.points, y = kde_obj$estimate)
+  list(x = kdeObj$eval.points, y = kdeObj$estimate)
 }
