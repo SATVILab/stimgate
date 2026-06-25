@@ -331,7 +331,7 @@
     }
 
     statTblGnInd <- tibble::tibble(
-      ind = indBatch[-length(indBatch)],
+      ind = indBatch[-1],
       gateName = gn,
       chnl = chnlCurr,
       countStim = NA,

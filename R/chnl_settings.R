@@ -301,7 +301,7 @@
   }
   .debug("calculating cpMin automatically") # nolint
   purrr::map(
-    seq_len(min(2, length(indBatchList))),
+    seq_len(min(5, length(indBatchList))),
     function(i) {
       exList <- .getExList(
         # nolint
