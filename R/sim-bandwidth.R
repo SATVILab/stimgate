@@ -17,5 +17,5 @@
   conditionPerturbationSd,
   clusterPerturbationSd,
   backgroundRelativeToResponse,
-  ncellUnsRelativeToStim,
+  ncellUnsRelativeToStim
 ) {}
