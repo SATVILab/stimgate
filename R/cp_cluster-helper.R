@@ -1,5 +1,5 @@
 #' @keywords internal
-.getCPClusterControlUpdate <- function(control) {
+.getCpClusterControlUpdate <- function(control) {
   if (!"minThresholdFrac" %in% names(control)) {
     control[["minThresholdFrac"]] <- 0.8
   }
@@ -10,7 +10,7 @@
 }
 
 #' @keywords internal
-.getCPClusterGateStatsTblUpdate <- function(gateStatsTbl) {
+.getCpClusterGateStatsTblUpdate <- function(gateStatsTbl) {
   .debug("Updating gate statistics table") # nolint
   gateStatsTbl |>
     dplyr::mutate(
@@ -29,21 +29,21 @@
 }
 
 #' @keywords internal
-.getCPClusterCPGetMin <- function(gateTbl, gateTblCtrl) {
+.getCpClusterCpGetMin <- function(gateTbl, gateTblCtrl) {
   suppressWarnings(
     min(gateTbl$gateCyt, gateTbl$gate, gateTblCtrl$gate, na.rm = TRUE)
   )
 }
 
 #' @keywords internal
-.getCPClusterCPGetMax <- function(gateTbl, gateTblCtrl) {
+.getCpClusterCpGetMax <- function(gateTbl, gateTblCtrl) {
   suppressWarnings(
     max(gateTbl$gate, gateTbl$gateSingle, gateTblCtrl$gate, na.rm = TRUE)
   )
 }
 
 #' @keywords internal
-.getCPClusterPropBSByCPTblObj <- function(
+.getCpClusterPropBsByCpTblObj <- function(
   .data,
   gateTbl,
   indBatchList,
@@ -55,9 +55,9 @@
   pathProject,
   chnlSettings
 ) {
-  .debug("Getting prop_bs_by_cp_tbl object") # nolint
+  .debug("Getting propBsByCpTbl object") # nolint
 
-  dataListObj <- .getPropBSByCPTblDataList(
+  dataListObj <- .getPropBsByCpTblDataList(
     .data = .data,
     gateTbl = gateTbl,
     indBatchList = indBatchList,
@@ -69,7 +69,7 @@
     pathProject = pathProject
   )
 
-  propBSByCPTbl <- .getPropBSByCPTblActual(
+  propBsByCpTbl <- .getPropBsByCpTblActual(
     dataList = dataListObj[["dataList"]],
     cpMin = cpMin,
     maxCp = maxCp,
@@ -78,7 +78,7 @@
   )
 
   list(
-    "propBSByCPTbl" = propBSByCPTbl,
+    "propBsByCpTbl" = propBsByCpTbl,
     "exprMax" = dataListObj[["exprMax"]],
     "exprMin" = dataListObj[["exprMin"]]
   )
@@ -86,7 +86,7 @@
 
 
 #' @keywords internal
-.getPropBSByCPTblDataList <- function(
+.getPropBsByCpTblDataList <- function(
   .data,
   gateTbl,
   indBatchList,
@@ -98,7 +98,7 @@
   pathProject
 ) {
   .debug("Getting .data list") # nolint
-  dataList <- .getPropBSByCPTblDataListInit(
+  dataList <- .getPropBsByCpTblDataListInit(
     indBatchList = indBatchList,
     .data = .data,
     chnlSettings = chnlSettings,
@@ -107,11 +107,11 @@
     cpMin = cpMin,
     pathProject = pathProject
   )
-  .getPropBSByCPTblDataListFinal(dataList, maxCp)
+  .getPropBsByCpTblDataListFinal(dataList, maxCp)
 }
 
 #' @keywords internal
-.getPropBSByCPTblDataListInit <- function(
+.getPropBsByCpTblDataListInit <- function(
   indBatchList,
   .data,
   chnlSettings,
@@ -122,25 +122,25 @@
 ) {
   purrr::map(seq_along(indBatchList), function(i) {
     indBatch <- indBatchList[[i]]
-    exList <- .get_ex_list(
+    exList <- .getExList(
       .data = .data,
-      ind_batch = indBatch,
+      indBatch = indBatch,
       pop = chnlSettings$popGate,
-      chnl_cut = chnlSettings$chnlCut,
+      chnlCut = chnlSettings$chnlCut,
       batch = names(indBatchList)[i],
       pathProject = pathProject
     )
 
-    minMaxVec <- .getPropBSByCPTblDataListMinmax(exList)
+    minMaxVec <- .getPropBsByCpTblDataListMinmax(exList)
 
-    exListFilter <- .getPropBSByCPTblDataListFilterCytPos(
+    exListFilter <- .getPropBsByCpTblDataListFilterCytPos(
       filterOtherCytPos = filterOtherCytPos,
       gateTbl = gateTbl,
       exList = exList,
       calcCytPosGates = calcCytPosGates
     )
 
-    outTbl <- .getPropBSByCPTblDataListFilterAboveMin(
+    outTbl <- .getPropBsByCpTblDataListFilterAboveMin(
       exListFilter = exListFilter,
       cpMin = cpMin
     )
@@ -154,7 +154,7 @@
 }
 
 #' @keywords internal
-.getPropBSByCPTblDataListMinmax <- function(exList) {
+.getPropBsByCpTblDataListMinmax <- function(exList) {
   exprRangeTbl <- purrr::map_df(
     seq_along(exList),
     function(i) {
@@ -162,7 +162,7 @@
       if (nrow(ex) <= 5) {
         return(NULL)
       }
-      quantVec <- quantile(.get_cut(ex), c(0.0025, 0.999))
+      quantVec <- quantile(.getCut(ex), c(0.0025, 0.999))
       tibble::tibble(
         lb = quantVec[[1]],
         ub = 3 * quantVec[[2]]
@@ -177,7 +177,7 @@
 }
 
 #' @keywords internal
-.getPropBSByCPTblDataListFilterCytPos <- function(
+.getPropBsByCpTblDataListFilterCytPos <- function(
   filterOtherCytPos,
   exList,
   gateTbl,
@@ -196,11 +196,11 @@
     posIndVecButSinglePosCurr <-
       .get_pos_ind_but_single_pos_for_one_cyt(
         ex = exList[[i]],
-        gate_tbl = gateTblInd,
-        chnl_single_exc = attr(exList[[i]], "chnl_cut"),
+        gateTbl = gateTblInd,
+        chnlSingleExc = attr(exList[[i]], "chnlCut"),
         chnl = NULL,
-        gate_type_cyt_pos = ifelse(calcCytPosGates, "cyt", "base"),
-        gate_type_single_pos = "base"
+        gateTypeCytPos = ifelse(calcCytPosGates, "cyt", "base"),
+        gateTypeSinglePos = "base"
       )
     exList[[i]][!posIndVecButSinglePosCurr, , drop = FALSE]
   }) |>
@@ -208,7 +208,7 @@
 }
 
 #' @keywords internal
-.getPropBSByCPTblDataListFilterAboveMin <- function(
+.getPropBsByCpTblDataListFilterAboveMin <- function(
   exListFilter,
   cpMin
 ) {
@@ -216,7 +216,7 @@
     purrr::map(function(x) {
       attr(x, "nCell") <- nrow(x)
       xOut <- x |>
-        dplyr::filter(.get_cut(x) >= min(.env$cpMin, max(.get_cut(x)))) # nolint
+        dplyr::filter(.getCut(x) >= min(.env$cpMin, max(.getCut(x)))) # nolint
       if (nrow(xOut) == 0) {
         allCols <- colnames(x)
         batchIdx <- which(allCols == "batch")
@@ -233,7 +233,7 @@
 }
 
 #' @keywords internal
-.getPropBSByCPTblDataListFinal <- function(dataList, maxCp) {
+.getPropBsByCpTblDataListFinal <- function(dataList, maxCp) {
   exprMinVec <- vapply(dataList, function(x) x$exprMin, numeric(1))
   exprMaxVec <- vapply(dataList, function(x) x$exprMax, numeric(1))
   exprMin <- min(exprMinVec, na.rm = TRUE)
@@ -252,7 +252,7 @@
 
 
 #' @keywords internal
-.getPropBSByCPTblActual <- function(
+.getPropBsByCpTblActual <- function(
   dataList,
   cpMin,
   maxCp,
@@ -260,10 +260,10 @@
   indBatchList,
   indInBatchUns
 ) {
-  .debug("Getting prop_bs_by_cp_tbl") # nolint
-  cpParList <- .getPropBSByCPTblActualPrep(cpMin, maxCp)
+  .debug("Getting propBsByCpTbl") # nolint
+  cpParList <- .getPropBsByCpTblActualPrep(cpMin, maxCp)
   purrr::map(seq_along(dataList), function(i) {
-    .getPropBSByCPTblActualInd(
+    .getPropBsByCpTblActualInd(
       i = i,
       dataList = dataList,
       cpParList = cpParList,
@@ -276,15 +276,15 @@
 }
 
 #' @keywords internal
-.getPropBSByCPTblActualInd <- function(
+.getPropBsByCpTblActualInd <- function(
   i,
   cpParList,
   gateStatsTbl,
   indBatchList,
   dataList
 ) {
-  .getPropBSByCPTblActualProgress(i, dataList)
-  exList <- .getPropBSByCPTblActualExGet(
+  .getPropBsByCpTblActualProgress(i, dataList)
+  exList <- .getPropBsByCpTblActualExGet(
     dataList = dataList,
     i = i,
     indBatchList = indBatchList
@@ -292,7 +292,7 @@
   if (is.null(exList)) {
     return(NULL)
   }
-  .getPropBSByCPTblInd(
+  .getPropBsByCpTblInd(
     exStim = exList$stim,
     exUns = exList$uns,
     cpSeq = cpParList[["seq"]],
@@ -301,28 +301,28 @@
 }
 
 #' @keywords internal
-.getPropBSByCPTblActualPrep <- function(cpMin, cpMax) {
+.getPropBsByCpTblActualPrep <- function(cpMin, cpMax) {
   cpRange <- c(cpMin, cpMax)
   cpSeqVec <- seq(cpRange[1], cpRange[2], length.out = 1e2)
   list("range" = cpRange, "seq" = cpSeqVec)
 }
 
 #' @keywords internal
-.getPropBSByCPTblInd <- function(
+.getPropBsByCpTblInd <- function(
   exStim,
   exUns,
   cpSeq,
   gateStatsTbl
 ) {
-  parList <- .getPropBSByCPTblIndPrep(
+  parList <- .getPropBsByCpTblIndPrep(
     gateStatsTbl = gateStatsTbl,
     exStim = exStim,
     exUns = exUns,
     cpSeq = cpSeq
   )
 
-  .getPropBSByCPTblIndInit(exStim, exUns, parList, cpSeq) |>
-    .getPropBSByCPTblIndCalc(
+  .getPropBsByCpTblIndInit(exStim, exUns, parList, cpSeq) |>
+    .getPropBsByCpTblIndCalc(
       nCellStim = attr(exStim, "nCell"),
       nCellUns = attr(exUns, "nCell")
     )
@@ -330,7 +330,7 @@
 
 
 #' @keywords internal
-.getPropBSByCPTblIndPrep <- function(
+.getPropBsByCpTblIndPrep <- function(
   gateStatsTbl,
   exStim,
   exUns,
@@ -342,8 +342,8 @@
   countUnsVec <- rep(NA, length(cpSeq))
   for (i in seq_along(cpSeq)) {
     cp <- cpSeq[i]
-    countStimVec[i] <- sum(.get_cut(exStim) > cp) # nolint
-    countUnsVec[i] <- sum(.get_cut(exUns) > cp) # nolint
+    countStimVec[i] <- sum(.getCut(exStim) > cp) # nolint
+    countUnsVec[i] <- sum(.getCut(exUns) > cp) # nolint
   }
   propBsSd <- gateStatsTblCurr$propBsSd
   propBsOrig <- gateStatsTblCurr$propBs
@@ -357,20 +357,20 @@
 }
 
 #' @keywords internal
-.getPropBSByCPTblIndInit <- function(exStim, exUns, parList, cpSeq) {
+.getPropBsByCpTblIndInit <- function(exStim, exUns, parList, cpSeq) {
   tibble::tibble(
     ind = attr(exStim, "ind"),
     propBsOrig = parList[["bsOrig"]],
     propBsSd = parList[["bsSd"]],
     cp = cpSeq,
-    maxExpr = max(.get_cut(exStim), .get_cut(exUns)), # nolint
+    maxExpr = max(.getCut(exStim), .getCut(exUns)), # nolint
     countStimCp = parList[["countStim"]],
     countUnsCp = parList[["countUns"]]
   )
 }
 
 #' @keywords internal
-.getPropBSByCPTblIndCalc <- function(.data, nCellStim, nCellUns) {
+.getPropBsByCpTblIndCalc <- function(.data, nCellStim, nCellUns) {
   .data |>
     dplyr::mutate(
       propStimCp = countStimCp / nCellStim, # nolint
@@ -397,21 +397,21 @@
 }
 
 #' @keywords internal
-.getPropBSByCPTblActualProgress <- function(i, dataList) {
+.getPropBsByCpTblActualProgress <- function(i, dataList) {
   if (i %% 20 == 0) {
     .debug(paste0("Processing ", i, " of ", length(dataList))) # nolint
   }
 }
 
 #' @keywords internal
-.getPropBSByCPTblActualExGet <- function(dataList, i, indBatchList) {
+.getPropBsByCpTblActualExGet <- function(dataList, i, indBatchList) {
   ex <- dataList[[i]]
-  if (.getPropBSByCPReturnEarlyStim(ex)) {
+  if (.getPropBsByCpReturnEarlyStim(ex)) {
     return(NULL)
   }
   exUns <- dataList[[attr(ex, "indUns")]]
 
-  if (.getPropBSByCPReturnEarlyUns(exUns)) {
+  if (.getPropBsByCpReturnEarlyUns(exUns)) {
     return(NULL)
   }
 
@@ -419,23 +419,23 @@
 }
 
 #' @keywords internal
-.getPropBSByCPReturnEarlyStim <- function(ex) {
-  is.na(.get_cut(ex)[1]) || attr(ex, "isUns")
+.getPropBsByCpReturnEarlyStim <- function(ex) {
+  is.na(.getCut(ex)[1]) || attr(ex, "isUns")
 }
 
 #' @keywords internal
-.getPropBSByCPReturnEarlyUns <- function(ex) {
-  is.na(.get_cut(ex)[1])
+.getPropBsByCpReturnEarlyUns <- function(ex) {
+  is.na(.getCut(ex)[1])
 }
 
 #' @keywords internal
-.getCPClusterDensTblGetBatchPrep <- function(indBatch) {
+.getCpClusterDensTblGetBatchPrep <- function(indBatch) {
   .debug(paste0("Processing batch ", indBatch)) # nolint
 }
 
 
 #' @keywords internal
-.getCPClusterDensTblGet <- function(
+.getCpClusterDensTblGet <- function(
   indBatchList,
   .data,
   filterOtherCytPos,
@@ -448,12 +448,12 @@
   chnlSettings
 ) {
   .debug("Getting density table") # nolint
-  minThreshold <- .getCPClusterDensTblGetMinThreshold(
+  minThreshold <- .getCpClusterDensTblGetMinThreshold(
     gateTbl = gateTbl, control = control
   )
   densTbl <- purrr::map_df(seq_along(indBatchList), function(i) {
     indBatch <- indBatchList[[i]]
-    exList <- .getCPClusterDensTblGetBatchPrepExList(
+    exList <- .getCpClusterDensTblGetBatchPrepExList(
       .data = .data,
       indBatch = indBatch,
       popGate = chnlSettings$popGate,
@@ -467,8 +467,8 @@
     )
 
     purrr::map_df(exList, function(x) {
-      .getCPClusterDensTblGetActualInd(
-        exprVec = .get_cut(x),
+      .getCpClusterDensTblGetActualInd(
+        exprVec = .getCut(x),
         batch = attr(x, "batch"),
         ind = attr(x, "ind"),
         minThreshold = minThreshold,
@@ -489,7 +489,7 @@
 
 
 #' @keywords internal
-.getCPClusterDensTblGetActualInd <- function(
+.getCpClusterDensTblGetActualInd <- function(
   exprVec,
   batch,
   ind,
@@ -499,8 +499,8 @@
   exprMax,
   bw
 ) {
-  if (.getCPClusterDensTblGetActualIndEarlyReturnCheck(exprVec)) {
-    return(.getCPClusterDensTblGetActualIndEarlyReturn(
+  if (.getCpClusterDensTblGetActualIndEarlyReturnCheck(exprVec)) {
+    return(.getCpClusterDensTblGetActualIndEarlyReturn(
       batch = batch,
       ind = ind
     ))
@@ -524,13 +524,13 @@
     tidyr::pivot_wider(names_from = xInd, values_from = y) # nolint
 }
 
-.getCPClusterDensTblGetActualIndEarlyReturnCheck <-
+.getCpClusterDensTblGetActualIndEarlyReturnCheck <-
   function(exprVec) {
     length(exprVec[exprVec > min(exprVec)]) < 3
   }
 
 #' @keywords internal
-.getCPClusterDensTblGetActualIndEarlyReturn <- function(batch, ind) {
+.getCpClusterDensTblGetActualIndEarlyReturn <- function(batch, ind) {
   tibble::tibble(
     batch = batch[1],
     ind = ind[1],
@@ -542,7 +542,7 @@
 
 
 #' @keywords internal
-.getCPClusterDensTblGetMinThreshold <- function(gateTbl, control) {
+.getCpClusterDensTblGetMinThreshold <- function(gateTbl, control) {
   minThresholdGateQuant <- quantile(
     gateTbl$gate,
     control$minThresholdQuant,
@@ -552,7 +552,7 @@
 }
 
 #' @keywords internal
-.getCPClusterDensTblGetBatchPrepExList <- function(
+.getCpClusterDensTblGetBatchPrepExList <- function(
   .data,
   indBatch,
   batch,
@@ -564,11 +564,11 @@
   control,
   pathProject
 ) {
-  exList <- .get_ex_list(
+  exList <- .getExList(
     .data = .data,
-    ind_batch = indBatch,
+    indBatch = indBatch,
     pop = popGate,
-    chnl_cut = chnlCut,
+    chnlCut = chnlCut,
     batch = batch,
     pathProject = pathProject
   )
@@ -577,7 +577,7 @@
     return(exList[-length(exList)])
   }
 
-  .getCPClusterDensTblGetBatchPrepExListFilter(
+  .getCpClusterDensTblGetBatchPrepExListFilter(
     exList = exList,
     chnlCut = chnlCut,
     gateTbl = gateTbl,
@@ -586,7 +586,7 @@
 }
 
 #' @keywords internal
-.getCPClusterDensTblGetBatchPrepExListFilter <- function(
+.getCpClusterDensTblGetBatchPrepExListFilter <- function(
   exList,
   chnlCut,
   gateTbl,
@@ -597,7 +597,7 @@
     if (i == length(exList)) {
       return(exList[[i]])
     }
-    .getCPClusterDensTblGetBatchPrepExListFilterInd(
+    .getCpClusterDensTblGetBatchPrepExListFilterInd(
       exTbl = exList[[i]],
       gateTbl = gateTbl,
       chnlCut = chnlCut,
@@ -610,7 +610,7 @@
 }
 
 #' @keywords internal
-.getCPClusterDensTblGetBatchPrepExListFilterInd <- function(
+.getCpClusterDensTblGetBatchPrepExListFilterInd <- function(
   exTbl,
   gateTbl,
   chnlCut,
@@ -619,17 +619,17 @@
   posIndVecButSinglePosCurr <-
     .get_pos_ind_but_single_pos_for_one_cyt(
       ex = exTbl,
-      gate_tbl = gateTbl[gateTbl[["ind"]] == attr(exTbl, "ind"), ],
-      chnl_single_exc = chnlCut,
+      gateTbl = gateTbl[gateTbl[["ind"]] == attr(exTbl, "ind"), ],
+      chnlSingleExc = chnlCut,
       chnl = NULL,
-      gate_type_cyt_pos = if (calcCytPosGates) "cyt" else "base",
-      gate_type_single_pos = "base"
+      gateTypeCytPos = if (calcCytPosGates) "cyt" else "base",
+      gateTypeSinglePos = "base"
     )
   exTbl[!posIndVecButSinglePosCurr, , drop = FALSE]
 }
 
 #' @keywords internal
-.getCPClusterNClus <- function(densTbl) {
+.getCpClusterNClus <- function(densTbl) {
   maxCluster <- min(6, nrow(densTbl) / 3) |>
     floor() |>
     max(1)
@@ -656,7 +656,7 @@
 }
 
 #' @keywords internal
-.getCPClusterPlotCheck1 <- function(densTbl) {
+.getCpClusterPlotCheck1 <- function(densTbl) {
   densPlot <- densTbl |>
     tidyr::pivot_longer(
       names_to = "x",
@@ -675,8 +675,8 @@
 }
 
 #' @keywords internal
-.getCPClusterPlotCheck1lse <- function(propBSByCPTbl) {
-  dataPlot <- propBSByCPTbl |>
+.getCpClusterPlotCheck1lse <- function(propBsByCpTbl) {
+  dataPlot <- propBsByCpTbl |>
     dplyr::group_by(grp, cp) |> # nolint
     dplyr::summarise(
       propL1se = sum(propBsCpDiffSd < 1) / dplyr::n() # nolint
@@ -693,15 +693,15 @@
 }
 
 #' @keywords internal
-.getCPClusterClus <- function(densTbl, nClus) {
+.getCpClusterClus <- function(densTbl, nClus) {
   densMat <- densTbl[, grepl("^x\\d+", colnames(densTbl))] |>
     as.matrix()
   stats::kmeans(densMat, centers = nClus)$cluster
 }
 
 #' @keywords internal
-.getCPClusterDataModPre <- function(propBSByCPTbl) {
-  dataModPre <- propBSByCPTbl |>
+.getCpClusterDataModPre <- function(propBsByCpTbl) {
+  dataModPre <- propBsByCpTbl |>
     tidyr::pivot_longer(
       -c(ind:propBsCpDiffSdMax), # nolint
       names_to = "grp",
@@ -718,12 +718,12 @@
     dplyr::ungroup() |>
     dplyr::group_by(indVec) |> # nolint
     dplyr::slice(1) |>
-    dplyr::mutate(grpGrpLevel = paste0(grp, "_", grpLevel)) |>
+    dplyr::mutate(grpGrpLevel = paste0(grp, grpLevel)) |>
     dplyr::pull("grpGrpLevel")
 
   dataMod <- dataModPre |>
     dplyr::filter(
-      paste0(grp, "_", grpLevel) %in% dataModFilterVec # nolint
+      paste0(grp, grpLevel) %in% dataModFilterVec # nolint
     ) |> 
     dplyr::group_by(grp, grpLevel, cp) |> # nolint
     dplyr::summarise(
@@ -739,14 +739,14 @@
 }
 
 #' @keywords internal
-.getCPClusterCPGrpLabVecGet <- function(
-  propBSByCPTbl,
+.getCpClusterCpGrpLabVecGet <- function(
+  propBsByCpTbl,
   exprMin,
   exprMax,
   .debug = FALSE
 ) {
-  dataMod <- .getCPClusterDataModPre(
-    propBSByCPTbl = propBSByCPTbl
+  dataMod <- .getCpClusterDataModPre(
+    propBsByCpTbl = propBsByCpTbl
   )
   purrr::map(unique(dataMod$grp), function(nGrpCurr) {
     .debug(paste0("Processing cluster ", nGrpCurr)) # nolint
@@ -817,14 +817,14 @@
         min(cpDer, cpCdf)
       }
     ) |>
-      stats::setNames(paste0(nGrpCurr, "_", unique(dataModCurr$grpLevel)))
+      stats::setNames(paste0(nGrpCurr, unique(dataModCurr$grpLevel)))
   }) |>
     purrr::flatten() |>
     unlist()
 }
 
 #' @keywords internal
-.getCPClusterGateSummStatTblGet <- function(
+.getCpClusterGateSummStatTblGet <- function(
   gateTbl,
   chnlCut,
   grpIndLabVec
@@ -852,18 +852,18 @@
 }
 
 #' @keywords internal
-.getCPClusterCPJoinGet <- function(propBSByCPTbl, cpGrpLabVec) {
-  .debug("Getting cp_join") # nolint
-  propBSByCPTbl |>
+.getCpClusterCpJoinGet <- function(propBsByCpTbl, cpGrpLabVec) {
+  .debug("Getting cpJoin") # nolint
+  propBsByCpTbl |>
     dplyr::group_by(ind) |> # nolint
     dplyr::mutate(
-      cpJoin = cpGrpLabVec[paste0("grp_", grp)] # nolint
+      cpJoin = cpGrpLabVec[paste0("grp", grp)] # nolint
     ) |>
     dplyr::ungroup()
 }
 
 #' @keywords internal
-.getCPClusterGateTblChnlGet <- function(gateTbl, chnl) {
+.getCpClusterGateTblChnlGet <- function(gateTbl, chnl) {
   if ("chnl" %in% colnames(gateTbl)) {
     gateTblChnl <- gateTbl |>
       dplyr::filter(.data$chnl == .env$chnl) # nolint
@@ -874,7 +874,7 @@
 }
 
 #' @keywords internal
-.getCPClusterCPTblAddInfo <- function(
+.getCpClusterCpTblAddInfo <- function(
   cpTbl,
   gateStatsTbl,
   gateSummStatTbl,
@@ -909,7 +909,7 @@
 }
 
 #' @keywords internal
-.getCPClusterCPTblAddOrigQuantMin <- function(cpTbl) {
+.getCpClusterCpTblAddOrigQuantMin <- function(cpTbl) {
   .debug("Adding original and minimum quantile threshold") # nolint
   cpTbl |>
     dplyr::mutate(
@@ -918,8 +918,8 @@
 }
 
 #' @keywords internal
-.getCPClusterCPJoinLseGet <- function(cpTbl) {
-  .debug("Getting cp_join_lse") # nolint
+.getCpClusterCpJoinLseGet <- function(cpTbl) {
+  .debug("Getting cpJoinLse") # nolint
   cpTbl |>
     dplyr::group_by(ind) |> # nolint
     dplyr::mutate(
@@ -931,8 +931,8 @@
 }
 
 #' @keywords internal
-.getCPClusterCPJoinTgGet <- function(cpTbl) {
-  .debug("Getting cp_join_tg") # nolint
+.getCpClusterCpJoinTgGet <- function(cpTbl) {
+  .debug("Getting cpJoinTg") # nolint
   cpTbl |>
     dplyr::group_by(ind) |> # nolint
     dplyr::mutate(
@@ -952,8 +952,8 @@
 }
 
 #' @keywords internal
-.getCPClusterCPLseOrigMean <- function(cpTbl) {
-  .debug("Getting cp_join_lse_orig_mean") # nolint
+.getCpClusterCpLseOrigMean <- function(cpTbl) {
+  .debug("Getting cpJoinLseOrigMean") # nolint
   cpTbl |>
     dplyr::mutate(
       cpJoinLseOrigMean = pmin(
@@ -965,8 +965,8 @@
 }
 
 #' @keywords internal
-.getCPClusterCPJoinTgOrigMean <- function(cpTbl) {
-  .debug("Getting cp_join_tg_orig_mean") # nolint
+.getCpClusterCpJoinTgOrigMean <- function(cpTbl) {
+  .debug("Getting cpJoinTgOrigMean") # nolint
   cpTbl |>
     dplyr::mutate(
       cpJoinTgOrigMean = pmin(
@@ -977,8 +977,8 @@
 }
 
 #' @keywords internal
-.getCPClusterCPJoinLseOrigMeanTg <- function(cpTbl) {
-  .debug("Getting cp_join_lse_orig_mean_tg") # nolint
+.getCpClusterCpJoinLseOrigMeanTg <- function(cpTbl) {
+  .debug("Getting cpJoinLseOrigMean_tg") # nolint
   cpTbl |>
     dplyr::mutate(
       cpJoinLseOrigMeanTg = pmin(
@@ -988,10 +988,10 @@
     )
 }
 
-.getCPClusterCPFilterAboveCPJoinLseOrigMeanTg <-
+.getCpClusterCpFilterAboveCpJoinLseOrigMeanTg <-
   function(cpTbl) {
     .debug(
-      "Filtering above cp_join_lse_orig_mean_tg"
+      "Filtering above cpJoinLseOrigMean_tg"
     ) # nolint
     cpTbl |>
       dplyr::filter(cp >= cpJoinLseOrigMeanTg) |> # nolint
@@ -1021,7 +1021,7 @@
   }
 
 #' @keywords internal
-.getCPClusterCPImputeMissingBatch <- function(
+.getCpClusterCpImputeMissingBatch <- function(
   cpTbl,
   chnlCut,
   gateTbl,
@@ -1100,7 +1100,7 @@
 }
 
 #' @keywords internal
-.getCPClusterImputeMissingInd <- function(
+.getCpClusterImputeMissingInd <- function(
   cpTbl,
   chnlCut,
   gateTbl,
@@ -1132,7 +1132,7 @@
       quantile(0.75)
 
     cpTblAdd <- cpTbl[1, ] |>
-      tidyr::pivot_longer(cols = -grp) |> # nolint
+      tidyr::pivot_longer(cols = -c(ind, grp)) |> # nolint
       dplyr::mutate(value = NA_real_) |>
       tidyr::pivot_wider(id_cols = grp) |>
       dplyr::mutate(
@@ -1148,7 +1148,7 @@
 }
 
 #' @keywords internal
-.getCPClusterImputeMissingFinal <- function(
+.getCpClusterImputeMissingFinal <- function(
   cpTbl,
   chnlCut,
   gateTbl,
@@ -1180,7 +1180,7 @@
       quantile(0.75)
 
     cpTblAdd <- cpTbl[1, ] |>
-      tidyr::pivot_longer(cols = -grp) |> # nolint
+      tidyr::pivot_longer(cols = -c(ind, grp)) |> # nolint
       dplyr::mutate(value = NA_real_) |>
       tidyr::pivot_wider(id_cols = grp) |>
       dplyr::mutate(
@@ -1196,7 +1196,7 @@
 }
 
 #' @keywords internal
-.getCPClusterImputeMissingFinalBatch <- function(
+.getCpClusterImputeMissingFinalBatch <- function(
   cpTbl,
   chnlCut,
   gateTbl,
@@ -1249,7 +1249,7 @@
     )[[1]][[1]]
 
     cpTblAdd <- cpTbl[1, ] |>
-      tidyr::pivot_longer(cols = -grp) |> # nolint
+      tidyr::pivot_longer(cols = -c(ind, grp)) |> # nolint
       dplyr::mutate(value = NA_real_) |>
       tidyr::pivot_wider(id_cols = grp) |>
       dplyr::mutate(

@@ -1,6 +1,6 @@
 library(testthat)
 
-# Test helper functions for cp_cluster-helper.R
+# Test helper functions for cpCluster-helper.R
 # These tests focus on edge cases and specific functionality mentioned in the issue
 
 # Mock helper functions to make tests work independently

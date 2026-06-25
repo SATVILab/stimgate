@@ -49,7 +49,7 @@
 #' @param bw numeric. Specify the bandwith for density estimation. When NULL (default), bandwidth is estimated automatically. Default is `NULL`.
 #' @param bwMin numeric. Minimum bandwidth for density estimation. Ignored if `bw` is set. Default is `NULL`.
 #' @param bwMax numeric. Maximum bandwidth for density estimation. Ignored if `bw` is set. Default is `NULL`.
-#' @param bwMtd character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi_0", "hpi_1", "hpi_2" and "hpi_3", which corresponds to the Silverman rule of thumbg (`"nrd0"`), the Sheather-Jones plug-in estimator (`"sj"`) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (`"hpi_1"`, `"hpi_1"`, `"hpi_2"` and `"hpi_3"`). Default is "nrd0". Ignored if `bw` is set. Default is `"hpi_1"`.
+#' @param bwMtd character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi0", "hpi1", "hpi2" and "hpi3", which corresponds to the Silverman rule of thumbg (`"nrd0"`), the Sheather-Jones plug-in estimator (`"sj"`) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (`"hpi1"`, `"hpi1"`, `"hpi2"` and `"hpi3"`). Default is "nrd0". Ignored if `bw` is set. Default is `"hpi1"`.
 #' @param bwAdj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
 #' @param bwNcellMin numeric. Minimum number of cells required for bandwidth estimation. If a sample has fewer cells than `bwNcellMin`, cells are sampled with replacement to reach the minimum, with noise subsequently added. Ignored if `bw` is set. Default is 100.
 #' @param bwNcellMax numeric. Maximum number of cells used for bandwidth estimation. If a sample has more cells than `bwNcellMax`, cells are sampled without replacement to reach the maximum. Ignored if `bw` is set. Default is 100 000.
@@ -84,7 +84,7 @@
 #' @return character. Returns the path to the project directory where all results
 #'   have been saved. The directory structure created includes:
 #'   \itemize{
-#'     \item \code{pathProject/[marker_name]/}: Directory for each marker containing:
+#'     \item \code{pathProject/[markerName]/}: Directory for each marker containing:
 #'     \item \code{gateTblInit.rds}: Initial gate table with preliminary gates
 #'     \item \code{gateTbl.rds}: Final refined gate table
 #'     \item \code{stats/}: Directory containing statistics files
@@ -131,32 +131,32 @@
 #'
 #'
 #' @seealso
-#' \code{\link{stimgate_gate_get}} for extracting gate information,
-#' \code{\link{get_stats}} for generating statistics from results,
-#' \code{\link{stimgate_plot}} for visualizing identified gates,
+#' \code{\link{getStimGates}} for extracting gate information,
+#' \code{\link{getStimStats}} for generating statistics from results,
+#' \code{\link{plotStim}} for visualizing identified gates,
 #' \code{\link{writeStimFCS}} for exporting cytokine-positive cells,
 #' \code{\link[flowWorkspace]{GatingSet}} for GatingSet documentation
 #'
 #' @examples{
-#' example_data <- getExampleData()
-#' gs <- flowWorkspace::load_gs(example_data$path_gs)
+#' exampleData <- getExampleData()
+#' gs <- flowWorkspace::load_gs(exampleData$path_gs)
 #' pathProject <- file.path(tempdir(), "demonstration")
 #'
 #' # Run gating
-#' stimgate::stimgate_gate(
+#' gateStim(
 #'   .data = gs,
 #'   pathProject = pathProject,
 #'   popGate = "root",
-#'   batchList = example_data$batchList,
-#'   marker = example_data$marker
+#'   batchList = exampleData$batchList,
+#'   marker = exampleData$marker
 #' )
 #'
 #' # Create plots
-#' plots <- stimgate_plot(
-#'   ind = example_data$batchList[[1]], # indices in `gs` to plot
+#' plots <- plotStim(
+#'   ind = exampleData$batchList[[1]], # indices in `gs` to plot
 #'   .data = gs, # GatingSet
 #'   pathProject = pathProject,
-#'   marker = example_data$marker,
+#'   marker = exampleData$marker,
 #'   grid = TRUE
 #' )
 #'
@@ -187,7 +187,7 @@ gateStim <- function(
   bw = NULL,
   bwMin = NULL,
   bwMax = NULL,
-  bwMtd = "hpi_1",
+  bwMtd = "hpi1",
   bwAdj = 1,
   bwNcellMin = 1e2,
   bwNcellMax = 1e5,
@@ -210,7 +210,7 @@ gateStim <- function(
     pathDebug <- .debugFileCreate()
     message(paste0("Saving debug output to ", pathDebug))
     message(
-      "Can copy it after the run to working directory with stimgate_debug_copy()"
+      "Can copy it after the run to working directory with stimgateDebugCopy()"
     ) # nolint
     message(
       "Can print the output after the run to console with stimgate_debug_print()"
@@ -241,7 +241,7 @@ gateStim <- function(
 
   if (is.null(names(batchList))) {
     batchList <- batchList |>
-      stats::setNames(paste0("batch_", seq_along(batchList)))
+      stats::setNames(paste0("batch", seq_along(batchList)))
   }
 
   # get unspecified levels in marker elements
@@ -289,7 +289,7 @@ gateStim <- function(
     indBatchList = batchList,
     .data = .data,
     calcCytPos = calcCytPosGates,
-    stage = "cyt_pos",
+    stage = "cytPos",
     pathProject = pathProject
   )
 
@@ -457,7 +457,7 @@ gateStim <- function(
   pathProject
 ) {
   force(.data)
-  .getStimStats(
+  .getStats(
     gateTbl = gateTbl,
     filterOtherCytPos = FALSE,
     combn = TRUE,

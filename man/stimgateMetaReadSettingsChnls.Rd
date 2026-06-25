@@ -13,7 +13,7 @@ stimgateMetaReadSettingsChnls(pathProject)
 A named list of marker settings (as saved by .completeChnlSettingsSave()).
 }
 \description{
-Read the saved marker settings list from the project's meta_data folder.
+Read the saved marker settings list from the project's metaData folder.
 }
 \examples{
 \dontrun{

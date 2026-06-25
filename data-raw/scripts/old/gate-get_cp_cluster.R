@@ -1,7 +1,7 @@
 # old determination of the # of clusters
 
 dens_mat <- dens_tbl |>
-  dplyr::select(-c(batch_sh, stim, ind)) |>
+  dplyr::select(-c(batchSh, stim, ind)) |>
   as.matrix()
 dist_mat <- dist(
   dens_mat,
@@ -13,17 +13,17 @@ height_vec_diff <- diff(height_vec)
 max_height_ind <- max(which(height_vec_diff < 0.5 * max(height_vec_diff)))
 height <- height_vec[max_height_ind + 1]
 cut_vec <- cutree(hclust_obj, h = height)
-max_cluster <- min(6, length(gs) / 3) |>
+maxCluster <- min(6, length(gs) / 3) |>
   floor() |>
   max(1)
 
 
 n_clus <- x |>
-  stats::setNames(1:max_cluster) |>
+  stats::setNames(1:maxCluster) |>
   purrr::map_dbl("gap")
 
-if (length(unique(cut_vec)) > max_cluster) {
-  cut_vec <- cutree(hclust_obj, k = max_cluster)
+if (length(unique(cut_vec)) > maxCluster) {
+  cut_vec <- cutree(hclust_obj, k = maxCluster)
 }
 
 n_grp <- length(unique(cut_vec))

@@ -54,7 +54,7 @@ if (FALSE) {
               lwm = x_stim < x + margin & x_stim >= x
             ) |>
             dplyr::filter(swm | lwm) |>
-            dplyr::pull("prob_stim_norm") |>
+            dplyr::pull("probStimNorm") |>
             mean()
         }
       )
@@ -71,9 +71,9 @@ if (FALSE) {
       -x_stim
     ) |>
     dplyr::bind_rows(prob_tbl_pos |>
-      dplyr::select(x_stim, prob_stim_norm) |>
-      dplyr::mutate(type = "prob_stim_norm") |>
-      dplyr::rename(prob = prob_stim_norm))
+      dplyr::select(x_stim, probStimNorm) |>
+      dplyr::mutate(type = "probStimNorm") |>
+      dplyr::rename(prob = probStimNorm))
 
   ggplot(data_plot, aes(x = x_stim, col = type)) +
     geom_line(aes(y = prob)) +
@@ -272,14 +272,14 @@ if (plot && FALSE) {
 }
 
 .get_prob_mod <- function(prob_tbl, nrow_level) {
-  prob_mod <- try(scam::scam(prob_stim_norm ~ s(x_stim, bs = "mpi"), #
+  prob_mod <- try(scam::scam(probStimNorm ~ s(x_stim, bs = "mpi"), #
     family = "binomial",
     data = prob_tbl |>
-      dplyr::filter(prob_stim_norm > 0.25)
+      dplyr::filter(probStimNorm > 0.25)
   ))
 
   if (inherits(prob_mod, "try-error")) {
-    prob_mod <- try(scam::scam(prob_stim_norm ~ s(x_stim, bs = "micx"),
+    prob_mod <- try(scam::scam(probStimNorm ~ s(x_stim, bs = "micx"),
       family = "binomial",
       data = prob_tbl
     ))
@@ -288,7 +288,7 @@ if (plot && FALSE) {
   }
 
   if (inherits(prob_mod, "try-error")) {
-    prob_mod <- try(mgcv::gam(prob_stim_norm ~ s(x_stim),
+    prob_mod <- try(mgcv::gam(probStimNorm ~ s(x_stim),
       family = "binomial",
       data = prob_tbl
     ))

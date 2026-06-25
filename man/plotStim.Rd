@@ -128,13 +128,13 @@ stimgate::stimgate_gate(
   .data = gs,
   pathProject = pathProject,
   popGate = "root",
-  batch_list = exampleData$batch_list,
+  batchList = exampleData$batchList,
   marker = exampleData$marker
 )
 
 # Create plots
 plots <- stimgate_plot(
-  ind = exampleData$batch_list[[1]], # indices in `gs` to plot
+  ind = exampleData$batchList[[1]], # indices in `gs` to plot
   .data = gs, # GatingSet
   pathProject = pathProject,
   marker = exampleData$marker,

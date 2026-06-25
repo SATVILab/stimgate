@@ -38,7 +38,7 @@
       if (!is.null(tolClust)) {
         if (tolClust) {
           gateTblCurr <- gateTblCurr |>
-            dplyr::filter(grepl("_clust$", gateName))
+            dplyr::filter(grepl("Clust$", gateName))
         }
       }
 
@@ -173,8 +173,8 @@
   if ("batch" %in% colnames(statTbl)) {
     statTbl[, "batch"] <- as.character(statTbl[["batch"]])
   }
-  fnRds <- "gate_stats.rds"
-  fnCsv <- "gate_stats.csv"
+  fnRds <- "gateStats.rds"
+  fnCsv <- "gateStats.csv"
   pathSaveFnRds <- file.path(pathProject, fnRds)
   pathSaveFnCsv <- file.path(pathProject, fnCsv)
   if (file.exists(pathSaveFnRds)) {

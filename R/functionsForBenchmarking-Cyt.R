@@ -36,7 +36,7 @@
 #' @return A list with two elements:
 #'   - `flowFrameList`: A named list of `flowCore::flowFrame` objects.
 #'   - `labelsList`: A named list of character vectors of per-cell cluster labels.
-#'   Names of list elements are formatted as `sampleXXX_unstim`, `sampleXXX_stim1`, etc.
+#'   Names of list elements are formatted as `sampleXXxUnstim`, `sampleXXX_stim1`, etc.
 #
 #' @export
 simCytExperiment <- function(
@@ -419,7 +419,7 @@ simCytCluster <- function(
   } else {
     meanExprVec + rnorm(nMarker, mean = 0, sd = perturbationSd)
   }
-  currentSigma <- Posdef(nMarker, covEvMin, covEvMax)
+  currentSigma <- posDef(nMarker, covEvMin, covEvMax)
   simCytClusterData(
     mixtureType = mixtureType,
     clusterNumber = clusterNumber,

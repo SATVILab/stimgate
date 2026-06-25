@@ -13,7 +13,7 @@ stimgateMetaReadBatchList(pathProject)
 A list describing sample grouping into batches (as saved by .saveMetaDataBatchList()).
 }
 \description{
-Read the saved batchList object from the project's meta_data folder.
+Read the saved batchList object from the project's metaData folder.
 }
 \examples{
 \dontrun{
