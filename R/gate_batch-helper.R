@@ -157,7 +157,7 @@
     exListNegButSinglePosCurr <- purrr::map(
       seq_along(exList),
       function(i) {
-        if (i == indInBatchUns) {
+        if (i == 1) {
           return(exList[[i]])
         }
 
@@ -196,7 +196,7 @@
       ),
       "loc" = {
         chnlSettingsExec$gateNameCurr <- gateNameCurr
-        chnlSettingsExec$exUns <- exList[[length(exList)]]
+        chnlSettingsExec$exUns <- exList[[1]]
         .getCpUnsLoc(
           exList = exListNegButSinglePosCurr,
           .data = .data,

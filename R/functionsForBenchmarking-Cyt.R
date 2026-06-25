@@ -55,7 +55,7 @@ simCytExperiment <- function(
   conditionPerturbationSd = 0,
   clusterPerturbationSd = 0,
   covEvMin = 1,
-  covEvMax = 2 
+  covEvMax = 2
 ) {
   # Coerce inputs
   stopifnot(is.numeric(nSample))
@@ -190,7 +190,7 @@ simCytSample <- function(
   conditionPerturbationSd = 0,
   clusterPerturbationSd = 0,
   covEvMin = 1,
-  covEvMax = 2 
+  covEvMax = 2
 ) {
   # Validate inputs using helper
   validateSampleInputs(

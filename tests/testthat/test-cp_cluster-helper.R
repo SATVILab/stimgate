@@ -59,7 +59,7 @@ sourceTestHelpers <- function() {
       return(exList)
     }
     purrr::map(seq_along(exList), function(i) {
-      if (i == length(exList)) {
+      if (i == 1) {
         return(exList[[i]])
       }
       gateTblInd <- gateTbl |>

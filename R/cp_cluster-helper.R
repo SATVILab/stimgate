@@ -187,7 +187,7 @@
     return(exList)
   }
   purrr::map(seq_along(exList), function(i) {
-    if (i == length(exList)) {
+    if (i == 1) {
       return(exList[[i]])
     }
     gateTblInd <- gateTbl |>
@@ -257,8 +257,7 @@
   cpMin,
   maxCp,
   gateStatsTbl,
-  indBatchList,
-  indInBatchUns
+  indBatchList
 ) {
   .debug("Getting propBsByCpTbl") # nolint
   cpParList <- .getPropBsByCpTblActualPrep(cpMin, maxCp)
@@ -449,7 +448,8 @@
 ) {
   .debug("Getting density table") # nolint
   minThreshold <- .getCpClusterDensTblGetMinThreshold(
-    gateTbl = gateTbl, control = control
+    gateTbl = gateTbl,
+    control = control
   )
   densTbl <- purrr::map_df(seq_along(indBatchList), function(i) {
     indBatch <- indBatchList[[i]]
@@ -520,7 +520,7 @@
   ) |>
     dplyr::filter(x <= minThreshold) |> # nolint
     dplyr::select(-x) |>
-    dplyr::mutate(y = y / sum(y)) |> 
+    dplyr::mutate(y = y / sum(y)) |>
     tidyr::pivot_wider(names_from = xInd, values_from = y) # nolint
 }
 
@@ -574,7 +574,7 @@
   )
 
   if (!filterOtherCytPos) {
-    return(exList[-length(exList)])
+    return(exList[-1])
   }
 
   .getCpClusterDensTblGetBatchPrepExListFilter(
@@ -594,7 +594,7 @@
 ) {
   .debug("Filtering other cytokine positive cells") # nolint
   exListFilter <- purrr::map(seq_along(exList), function(i) {
-    if (i == length(exList)) {
+    if (i == 1) {
       return(exList[[i]])
     }
     .getCpClusterDensTblGetBatchPrepExListFilterInd(
@@ -606,7 +606,7 @@
   }) |>
     stats::setNames(names(exList))
 
-  exListFilter[-length(exListFilter)]
+  exListFilter[-1]
 }
 
 #' @keywords internal
@@ -724,7 +724,7 @@
   dataMod <- dataModPre |>
     dplyr::filter(
       paste0(grp, grpLevel) %in% dataModFilterVec # nolint
-    ) |> 
+    ) |>
     dplyr::group_by(grp, grpLevel, cp) |> # nolint
     dplyr::summarise(
       propL1se = sum(propBsCpDiffSd < 1, na.rm = TRUE) / # nolint

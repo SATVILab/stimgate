@@ -1,7 +1,7 @@
 posDef <- function(n, covEvMin = 1, covEvMax = 2) {
     # Generates a positive definite matrix of dimension n
     # Upper and lower bounds control the range of the variance eigenvalues.
-    
+
     # Generate the bounded eigenvalues before matrix decomposition
     ev <- runif(n, min = covEvMin, max = covEvMax)
 
@@ -150,7 +150,11 @@ simSample <- function(
             outLabel,
             rep(currentLabel, sampleSizeVec[clusterNumber])
         )
-        currentSigma <- posDef(sampleDim, covEvMin = covEvMin, covEvMax = covEvMax)
+        currentSigma <- posDef(
+            sampleDim,
+            covEvMin = covEvMin,
+            covEvMax = covEvMax
+        )
         #the next logic determines if the sample is only contains samples from multivariate gaussian
         #multivariate T, or alternatig.
         if (mixtureType == "tPlusGauss") {
@@ -323,7 +327,7 @@ simulateExperiment <- function(
     fixedResFlag = FALSE, #TRUE if a responder always has the spiked phenotype
     responderStatusVec = c(NA),
     covEvMin = 1,
-    covEvMax = 2 
+    covEvMax = 2
 ) {
     #
     #simulate an experimental dataset according to a variety of assumptions.

@@ -103,7 +103,7 @@
   # -------------------------------------
   exListBias <- .prepareExListWithBiasAndNoise(
     exList = exList,
-    ind = names(exList)[length(exList)],
+    ind = names(exList)[1],
     excMin = excMin,
     bias = bias,
     noiseSd = NULL
@@ -146,7 +146,7 @@
   # get cutpoint for non-prejoin grouping methods
   cpUnsListPrejoinNon <- .getCpUnsLocGateCombnPrejoinNon(
     nonPrejoinCombn = setdiff(chnlSettings$gateCombn, "prejoin"),
-    exListNoMinStim = exListNoMin[-length(exListNoMin)],
+    exListNoMinStim = exListNoMin[-1],
     exListOrig = exListOrig,
     exTblUnsBias = exTblUnsBias,
     chnlSettings = chnlSettings,
@@ -238,15 +238,15 @@
 
 #' @keywords internal
 .prepareDataForPrejoinInd <- function(exList) {
-  indUns <- names(exList)[length(exList)]
-  exTblStim <- exList[seq_len(length(exList) - 1)] |>
+  indUns <- names(exList)[1]
+  exTblStim <- exList[seq.int(2, length(exList))] |>
     dplyr::bind_rows()
   exTblStim <- exTblStim[order(.getCut(exTblStim)), ]
   list(
-    exTblStim,
-    exList[[length(exList)]]
+    exList[[1]],
+    exTblStim
   ) |>
-    stats::setNames(c(names(exList)[1], indUns))
+    stats::setNames(c(indUns, names(exList)[seq(2, length(exList))]))
 }
 
 #' @keywords internal
@@ -394,8 +394,8 @@
       exTblNoMinStim <- exListNoMinStim[[i]]
       ind <- .getInd(exTblNoMinStim)
       .debug("ind", ind) # nolint
-      exTblUnsOrig <- exListOrig[[length(exListOrig)]]
-      exTblStimOrig <- exListOrig[[i]]
+      exTblUnsOrig <- exListOrig[[1]]
+      exTblStimOrig <- exListOrig[[i + 1]]
       chnl <- chnlSettings$chnlCut %||%
         .getCpUnsLocGetChnl(exTblNoMinStim)
       stageChnl <- file.path(stage, chnl)
@@ -455,7 +455,7 @@
   chnl <- .getCpUnsLocGetChnl(exListNoMinStim[[1]])
   .getCpUnsLocOutput(
     cpUnsLocObjList = cpUnsLocObjList,
-    indUns = names(exListOrig)[length(exListOrig)],
+    indUns = names(exListOrig)[1],
     indStim = names(exListNoMinStim),
     stage = stage,
     pathProject = .pathProject,
@@ -706,7 +706,7 @@
   .intSaveNm(
     "cpInd",
     objOut$cp,
-    .getInd(exTblNoMinStim), 
+    .getInd(exTblNoMinStim),
     stageChnl,
     pathProject
   )
@@ -1161,8 +1161,7 @@
 #' @keywords internal
 .getCpUnsLocCheckResponse <- function(probTblPos, exTblStimOrig) {
   nrow(probTblPos) == 0 ||
-    max(.getCut(exTblStimOrig)) <
-      .getCpUnsLocGetMinProbX(probTblPos)
+    max(.getCut(exTblStimOrig)) < .getCpUnsLocGetMinProbX(probTblPos)
 }
 
 #' @keywords internal

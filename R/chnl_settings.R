@@ -76,7 +76,8 @@
     stats::setNames(chnlLab[chnl])
 
   .completeChnlSettingsSave(
-    chnlList = chnlList, pathProject = pathProject
+    chnlList = chnlList,
+    pathProject = pathProject
   )
 
   chnlList
@@ -91,7 +92,6 @@
   indBatchList,
   pathProject
 ) {
-
   chnlSettings <- .completeChnlSettingsAddCommon(
     chnlSettingsCommon = chnlSettingsCommon,
     chnlSettings = chnlSettingsSpec

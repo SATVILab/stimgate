@@ -33,7 +33,7 @@ getStimGates <- function(
   chnl = NULL
 ) {
   pop <- pop %|c|% .gateGetPop(pathProject)
-  
+
   purrr::map_df(pop, function(popCurr) {
     chnlVec <- if (!is.null(marker)) {
       markerLab <- stimgateMetReadMarkerLab(pathProject)
@@ -41,15 +41,15 @@ getStimGates <- function(
     } else {
       chnl %|c|% .gateGetChnl(pathProject, popCurr)
     }
-    
+
     purrr::map_df(chnlVec, function(chnlCurr) {
       markerCurr <- stimgateMetReadChnlLab(pathProject)[chnlCurr] |>
         stats::setNames(NULL)
-        
+
       .gatesGetPathAll(
-        pathProject = pathProject, 
-        pop = popCurr, 
-        chnlCut = chnlCurr, 
+        pathProject = pathProject,
+        pop = popCurr,
+        chnlCut = chnlCurr,
         init = FALSE
       ) |>
         readRDS() |>

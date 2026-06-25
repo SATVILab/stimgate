@@ -199,10 +199,10 @@
   gateTypeCytPosCalc,
   gateTypeSinglePosCalc
 ) {
-  exListStim <- exList[-length(exList)]
-  exUns <- exList[[length(exList)]]
+  exListStim <- exList[-1]
+  exUns <- exList[[1]]
   nCellUns <- nrow(exUns) # nolint
-  
+
   purrr::map_df(seq_along(exListStim), function(i) {
     .debug("i: ", i) # nolint
     ex <- exListStim[[i]]
@@ -341,7 +341,7 @@
     )
     for (j in seq_len(nrow(statTblGnInd))) {
       .debug("j: ", j) # nolint
-      ex <- exList[[j]]
+      ex <- exList[[j + 1]]
       gateTblGnInd <- gateTblGn |>
         dplyr::filter(ind == attr(ex, "ind")) # nolint
       nothingToGate <- nrow(ex) == 0 ||
@@ -354,7 +354,7 @@
           sum((!is.na(ex[[chnlCurr]])) & (!is.nan(ex[[chnlCurr]])))
         )
         statTblGnInd[j, "countUns"] <- NA_integer_
-        statTblGnInd[j, "nCellUns"] <- nrow(exList[[length(exList)]])
+        statTblGnInd[j, "nCellUns"] <- nrow(exList[[1]])
         next
       }
       cnVec <- colnames(gateTblGnInd)
@@ -371,8 +371,8 @@
       gateGnIndChnl <- gateTblGnInd[[gateColInd]][gateTblGnInd$chnl == chnlCurr]
       statTblGnInd[j, "countStim"] <- sum(ex[[chnlCurr]] > gateGnIndChnl)
       statTblGnInd[j, "nCellStim"] <- nrow(ex)
-      
-      exUns <- exList[[length(exList)]]
+
+      exUns <- exList[[1]]
       if (filterOtherCytPos) {
         posIndVecButSinglePosCurr <- .getPosIndButSinglePosForOneCyt(
           ex = exUns |> dplyr::mutate(isUns = FALSE),
@@ -435,7 +435,7 @@
   chnlCurr,
   gateTblGn
 ) {
-  if (i == length(exList)) {
+  if (i == 1) {
     return(TRUE)
   }
   gateTblGnInd <- gateTblGn |>
