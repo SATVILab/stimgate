@@ -41,7 +41,7 @@
       !as.character(ind) %in%
         vapply(
           indBatchList,
-          function(x) as.character(x[length(x)]),
+          function(x) as.character(x[1]),
           character(1)
         )
     ) # nolint

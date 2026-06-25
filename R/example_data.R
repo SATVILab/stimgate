@@ -100,7 +100,10 @@ getExampleData <- function(
   )
 
   saveRDS(simRes[["labelsList"]], file = file.path(dirCache, "labelsList.rds"))
-  saveRDS(simRes[["flowFrameList"]], file = file.path(dirCache, "flowFrameList.rds"))
+  saveRDS(
+    simRes[["flowFrameList"]],
+    file = file.path(dirCache, "flowFrameList.rds")
+  )
 
   # 3. Format generated FlowFrames to mimic historical test channels
   chnlVec <- c("BC1(La139)Dd", "BC2(Pr141)Dd")

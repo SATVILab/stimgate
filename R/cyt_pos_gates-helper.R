@@ -199,7 +199,7 @@
     NA
   )
   amRightMin <- amVec[amRightMinInd]
-  
+
   if (!is.na(amRightMin[1])) {
     if (amRightMin < modeAboveCpOrigMin) {
       return(amRightMin)

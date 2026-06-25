@@ -14,12 +14,20 @@
   calcCytPosGates,
   indBatchList
 ) {
+
+  # if (length(indBatchList) < 5) {
+  #   message(
+  #     "Less than 5 individuals in batch, skipping clustering-based cutpoint"
+  #   )
+  #   cpTbl <- 
+  #   return(NULL)
+  # }
   # ==================================
   # PREPARATION
   # ==================================
   .browse(seq_along(.data)) # nolint
 
-  stageChnl <- file.path(stage,  chnlSettings$chnlCut)
+  stageChnl <- file.path(stage, chnlSettings$chnlCut)
 
   # control
   control <- .getCpClusterControlUpdate(control) # nolint
