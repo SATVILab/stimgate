@@ -33,7 +33,7 @@
 #' library(stimgate)
 #'
 #' # Load your GatingSet (gs) and define batch structure
-#' # batch_list <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
+#' # batchList <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
 #' # where the last element in each batch is the unstimulated sample
 #'
 #' # First, run gating to create gates
@@ -42,17 +42,17 @@
 #' #   .data = gs,
 #' #   pathProject = pathProject,
 #' #   popGate = "root",
-#' #   batch_list = batch_list,
+#' #   batchList = batchList,
 #' #   marker = c("IL2", "IFNg")  # your cytokine markers
 #' # )
 #'
 #' # Then write FCS files of cytokine-positive cells
-#' path_output <- tempfile("fcs_output")
+#' pathOutput <- tempfile("fcs_output")
 #' # writeStimFCS(
 #' #   pathProject = pathProject,
 #' #   .data = gs,
-#' #   indBatchList = batch_list,
-#' #   pathDirSave = path_output,
+#' #   indBatchList = batchList,
+#' #   pathDirSave = pathOutput,
 #' #   chnl = c("IL2", "IFNg")
 #' # )
 #'
@@ -68,8 +68,8 @@
 #' # writeStimFCS(
 #' #   pathProject = pathProject,
 #' #   .data = gs,
-#' #   indBatchList = batch_list,
-#' #   pathDirSave = path_output,
+#' #   indBatchList = batchList,
+#' #   pathDirSave = pathOutput,
 #' #   chnl = c("IL2", "IFNg"),
 #' #   gateTbl = gateTbl
 #' # )
@@ -238,17 +238,17 @@ writeStimFCS <- function(
     indBatchList = indBatchList
   )
 
-  if ("gate_cyt" %in% colnames(gateTbl)) {
+  if ("gateCyt" %in% colnames(gateTbl)) {
     gateTblUns <- gateTblUns |>
-      dplyr::mutate(gate_cyt = pmin(gate, gate_cyt)) # nolint
-  } else if ("gate_cyt" %in% colnames(gateTblUns)) {
-    gateTblUns <- gateTblUns |> dplyr::select(-gate_cyt) # nolint
+      dplyr::mutate(gateCyt = pmin(gate, gateCyt)) # nolint
+  } else if ("gateCyt" %in% colnames(gateTblUns)) {
+    gateTblUns <- gateTblUns |> dplyr::select(-gateCyt) # nolint
   }
-  if ("gate_single" %in% colnames(gateTbl)) {
+  if ("gateSingle" %in% colnames(gateTbl)) {
     gateTblUns <- gateTblUns |>
-      dplyr::mutate(gate_single = pmax(gate, gate_single)) # nolint
-  } else if ("gate_single" %in% colnames(gateTblUns)) {
-    gateTblUns <- gateTblUns |> dplyr::select(-gate_single) # nolint
+      dplyr::mutate(gateSingle = pmax(gate, gateSingle)) # nolint
+  } else if ("gateSingle" %in% colnames(gateTblUns)) {
+    gateTblUns <- gateTblUns |> dplyr::select(-gateSingle) # nolint
   }
 
   gateTbl |>
@@ -305,7 +305,7 @@ writeStimFCS <- function(
       dplyr::group_by(concat) |>
       dplyr::filter(dplyr::n() > 1) |>
       dplyr::ungroup()
-    gateVec <- paste0(gateTbl$gate, gateTbl$gate_cyt, gateTbl$gate_single)
+    gateVec <- paste0(gateTbl$gate, gateTbl$gateCyt, gateTbl$gateSingle)
     gateTbl$gateConcat <- gateVec
     isError <- nrow(
       gateTbl |>
@@ -323,8 +323,8 @@ writeStimFCS <- function(
     dplyr::summarise(
       indStim = paste0(ind |> sort(), collapse = "_"),
       gate = calc(gate), # nolint
-      gate_cyt = calc(gate_cyt), # nolint
-      gate_single = calc(gate_single), # nolint
+      gateCyt = calc(gateCyt), # nolint
+      gateSingle = calc(gateSingle), # nolint
       .groups = "drop"
     ) |>
     .fcsWriteGetGateTblAddUnsGetUnsInd(indBatchList)
@@ -373,7 +373,7 @@ writeStimFCS <- function(
   baseCols <- c("chnl", "marker", "batch", "ind", "gate")
 
   # Optional columns that may or may not be present
-  optionalCols <- c("gate_cyt", "gate_single", "gate_name")
+  optionalCols <- c("gateCyt", "gateSingle", "gateName")
 
   # Only select columns that exist
   colsToSelect <- c(

@@ -12,8 +12,8 @@
     gateTblColName <- switch(
       gateType,
       "base" = "gate",
-      "cyt" = "gate_cyt",
-      "single" = "gate_single",
+      "cyt" = "gateCyt",
+      "single" = "gateSingle",
       stop(paste0(
         "gateType ",
         gateType,

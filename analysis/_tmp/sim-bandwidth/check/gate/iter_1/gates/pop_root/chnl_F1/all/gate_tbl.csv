@@ -1,2 +1,2 @@
-"","gate_name","chnl","marker","ind","batch","gate","gate_cyt","gate_single"
-"1","loc_min_clust","F1","MarkerF1","1","batch_1",18.0312156995138,18.0312156995138,18.0312156995138
+"","gateName","chnl","marker","ind","batch","gate","gateCyt","gateSingle"
+"1","loc_minClust","F1","MarkerF1","1","batch_1",18.0312156995138,18.0312156995138,18.0312156995138

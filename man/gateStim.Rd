@@ -20,7 +20,7 @@ gateStim(
   bw = NULL,
   bwMin = NULL,
   bwMax = NULL,
-  bwMtd = "hpi_1",
+  bwMtd = "hpi1",
   bwAdj = 1,
   bwNcellMin = 100,
   bwNcellMax = 1e+05,
@@ -92,7 +92,7 @@ technical thresholds or background levels.}
 
 \item{bwMax}{numeric. Maximum bandwidth for density estimation. Ignored if \code{bw} is set. Default is \code{NULL}.}
 
-\item{bwMtd}{character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi_0", "hpi_1", "hpi_2" and "hpi_3", which corresponds to the Silverman rule of thumbg (\code{"nrd0"}), the Sheather-Jones plug-in estimator (\code{"sj"}) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (\code{"hpi_1"}, \code{"hpi_1"}, \code{"hpi_2"} and \code{"hpi_3"}). Default is "nrd0". Ignored if \code{bw} is set. Default is \code{"hpi_1"}.}
+\item{bwMtd}{character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi0", "hpi1", "hpi2" and "hpi3", which corresponds to the Silverman rule of thumbg (\code{"nrd0"}), the Sheather-Jones plug-in estimator (\code{"sj"}) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (\code{"hpi1"}, \code{"hpi1"}, \code{"hpi2"} and \code{"hpi3"}). Default is "nrd0". Ignored if \code{bw} is set. Default is \code{"hpi1"}.}
 
 \item{bwAdj}{numeric. Adjustment factor for bandwidth. Default is 1. Ignored if \code{bw} is set. Default is 1.}
 
@@ -134,7 +134,7 @@ Default is NULL.}
 character. Returns the path to the project directory where all results
 have been saved. The directory structure created includes:
 \itemize{
-\item \code{pathProject/[marker_name]/}: Directory for each marker containing:
+\item \code{pathProject/[markerName]/}: Directory for each marker containing:
 \item \code{gateTblInit.rds}: Initial gate table with preliminary gates
 \item \code{gateTbl.rds}: Final refined gate table
 \item \code{stats/}: Directory containing statistics files
@@ -194,25 +194,25 @@ The function implements a multi-step workflow for identifying cytokine-positive 
 }
 \examples{
 {
-example_data <- getExampleData()
-gs <- flowWorkspace::load_gs(example_data$path_gs)
+exampleData <- getExampleData()
+gs <- flowWorkspace::load_gs(exampleData$path_gs)
 pathProject <- file.path(tempdir(), "demonstration")
 
 # Run gating
-stimgate::stimgate_gate(
+gateStim(
   .data = gs,
   pathProject = pathProject,
   popGate = "root",
-  batchList = example_data$batchList,
-  marker = example_data$marker
+  batchList = exampleData$batchList,
+  marker = exampleData$marker
 )
 
 # Create plots
-plots <- stimgate_plot(
-  ind = example_data$batchList[[1]], # indices in `gs` to plot
+plots <- plotStim(
+  ind = exampleData$batchList[[1]], # indices in `gs` to plot
   .data = gs, # GatingSet
   pathProject = pathProject,
-  marker = example_data$marker,
+  marker = exampleData$marker,
   grid = TRUE
 )
 
@@ -221,9 +221,9 @@ plots <- stimgate_plot(
 }
 }
 \seealso{
-\code{\link{stimgate_gate_get}} for extracting gate information,
-\code{\link{get_stats}} for generating statistics from results,
-\code{\link{stimgate_plot}} for visualizing identified gates,
+\code{\link{getStimGates}} for extracting gate information,
+\code{\link{getStimStats}} for generating statistics from results,
+\code{\link{plotStim}} for visualizing identified gates,
 \code{\link{writeStimFCS}} for exporting cytokine-positive cells,
 \code{\link[flowWorkspace]{GatingSet}} for GatingSet documentation
 }

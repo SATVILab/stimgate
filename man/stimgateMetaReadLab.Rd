@@ -16,7 +16,7 @@ stimgateMetaReadMarkerLab(pathProject)
 Named character vector mapping channel names to labels.
 }
 \description{
-Read the saved channel label mapping (chnl_lab.rds) from the project's meta_data folder.
+Read the saved channel label mapping (chnlLab.rds) from the project's metaData folder.
 }
 \examples{
 \dontrun{

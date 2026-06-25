@@ -5,7 +5,7 @@ invisible(stimgate_gate(
   .data = gs,
   pathProject = pathProject,
   popGate = "root",
-  batch_list = exampleData$batch_list,
+  batchList = exampleData$batchList,
   chnl = exampleData$chnl
 ))
 
@@ -53,7 +53,7 @@ test_that("stimgate_fcs_write runs with basic parameters", {
   result <- stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]]
   )
@@ -82,7 +82,7 @@ test_that("stimgate_fcs_write handles directory creation and cleanup", {
   stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]]
   )
@@ -99,7 +99,7 @@ test_that("stimgate_fcs_write handles directory creation and cleanup", {
   stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]]
   )
@@ -117,7 +117,7 @@ test_that("stimgate_fcs_write works with different gateUnsMethod options", {
     result <- stimgate_fcs_write(
       pathProject = pathProject,
       .data = gs,
-      indBatchList = exampleData$batch_list,
+      indBatchList = exampleData$batchList,
       pathDirSave = pathDirSave,
       chnl = exampleData$chnl[[1]],
       gateUnsMethod = method
@@ -137,7 +137,7 @@ test_that("stimgate_fcs_write works with mult parameter", {
   resultSingle <- stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSaveSingle,
     chnl = exampleData$chnl,
     mult = FALSE
@@ -148,7 +148,7 @@ test_that("stimgate_fcs_write works with mult parameter", {
   resultMult <- stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSaveMult,
     chnl = exampleData$chnl,
     mult = TRUE
@@ -168,7 +168,7 @@ test_that("stimgate_fcs_write works with different gate types", {
   result <- stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]],
     gateTypeCytPos = "cyt",
@@ -186,7 +186,7 @@ test_that("stimgate_fcs_write validates output file contents", {
   stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]]
   )
@@ -220,19 +220,19 @@ test_that("stimgate_fcs_write validates output file contents", {
 test_that("stimgate_fcs_write works with pre-provided gate table", {
   # Create a simple gate table
   gateTbl <- data.frame(
-    chnl = rep(exampleData$chnl[[1]], length(unlist(exampleData$batch_list))),
-    marker = rep("BC1", length(unlist(exampleData$batch_list))),
+    chnl = rep(exampleData$chnl[[1]], length(unlist(exampleData$batchList))),
+    marker = rep("BC1", length(unlist(exampleData$batchList))),
     batch = paste0(
       "batch_",
       rep(
-        seq_along(exampleData$batch_list),
-        times = sapply(exampleData$batch_list, length)
+        seq_along(exampleData$batchList),
+        times = sapply(exampleData$batchList, length)
       )
     ),
-    ind = as.character(unlist(exampleData$batch_list)),
-    gate = rep(0.5, length(unlist(exampleData$batch_list))),
-    gate_cyt = rep(0.5, length(unlist(exampleData$batch_list))),
-    gate_single = rep(0.5, length(unlist(exampleData$batch_list))),
+    ind = as.character(unlist(exampleData$batchList)),
+    gate = rep(0.5, length(unlist(exampleData$batchList))),
+    gateCyt = rep(0.5, length(unlist(exampleData$batchList))),
+    gateSingle = rep(0.5, length(unlist(exampleData$batchList))),
     stringsAsFactors = FALSE
   )
 
@@ -241,7 +241,7 @@ test_that("stimgate_fcs_write works with pre-provided gate table", {
   result <- stimgate_fcs_write(
     pathProject = tempdir(), # Not used when gateTbl provided
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]],
     gateTbl = gateTbl
@@ -259,7 +259,7 @@ test_that("stimgate_fcs_write handles invalid gateUnsMethod", {
     stimgate_fcs_write(
       pathProject = pathProject,
       .data = gs,
-      indBatchList = exampleData$batch_list,
+      indBatchList = exampleData$batchList,
       pathDirSave = pathDirSave,
       chnl = exampleData$chnl[[1]],
       gateUnsMethod = "invalid_method"
@@ -276,7 +276,7 @@ test_that("stimgate_fcs_write works with channel filtering", {
   result <- stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]] # Only first marker
   )
@@ -290,7 +290,7 @@ test_that("stimgate_fcs_write works with channel filtering", {
   resultAll <- stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSaveAll,
     chnl = NULL
   )
@@ -310,7 +310,7 @@ test_that("stimgate_fcs_write handles transformation parameters", {
   result <- stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]],
     transFn = logTransform,
@@ -332,7 +332,7 @@ test_that("stimgate_fcs_write preserves file metadata", {
   stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]]
   )
@@ -369,7 +369,7 @@ test_that("stimgate_fcs_write handles combination exclusions", {
     result <- stimgate_fcs_write(
       pathProject = pathProject,
       .data = gs,
-      indBatchList = exampleData$batch_list,
+      indBatchList = exampleData$batchList,
       pathDirSave = pathDirSave,
       chnl = exampleData$chnl,
       combnExc = combnExc
@@ -382,7 +382,7 @@ test_that("stimgate_fcs_write handles combination exclusions", {
     result <- stimgate_fcs_write(
       pathProject = pathProject,
       .data = gs,
-      indBatchList = exampleData$batch_list,
+      indBatchList = exampleData$batchList,
       pathDirSave = pathDirSave,
       chnl = exampleData$chnl[[1]],
       combnExc = NULL
@@ -400,7 +400,7 @@ test_that("stimgate_fcs_write creates consistent file names", {
   stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]]
   )
@@ -431,7 +431,7 @@ test_that("stimgate_fcs_write message output", {
     stimgate_fcs_write(
       pathProject = pathProject,
       .data = gs,
-      indBatchList = exampleData$batch_list,
+      indBatchList = exampleData$batchList,
       pathDirSave = pathDirSave,
       chnl = exampleData$chnl[[1]]
     ),
@@ -443,19 +443,19 @@ test_that("stimgate_fcs_write message output", {
 test_that("stimgate_fcs_write handles edge case: empty data", {
   # Create gate table with very high thresholds (should result in no positive cells)
   gateTbl <- data.frame(
-    chnl = rep(exampleData$chnl[[1]], length(unlist(exampleData$batch_list))),
-    marker = rep("BC1", length(unlist(exampleData$batch_list))),
+    chnl = rep(exampleData$chnl[[1]], length(unlist(exampleData$batchList))),
+    marker = rep("BC1", length(unlist(exampleData$batchList))),
     batch = paste0(
       "batch_",
       rep(
-        seq_along(exampleData$batch_list),
-        times = sapply(exampleData$batch_list, length)
+        seq_along(exampleData$batchList),
+        times = sapply(exampleData$batchList, length)
       )
     ),
-    ind = as.character(unlist(exampleData$batch_list)),
-    gate = rep(999999, length(unlist(exampleData$batch_list))), # Very high threshold
-    gate_cyt = rep(999999, length(unlist(exampleData$batch_list))),
-    gate_single = rep(999999, length(unlist(exampleData$batch_list))),
+    ind = as.character(unlist(exampleData$batchList)),
+    gate = rep(999999, length(unlist(exampleData$batchList))), # Very high threshold
+    gateCyt = rep(999999, length(unlist(exampleData$batchList))),
+    gateSingle = rep(999999, length(unlist(exampleData$batchList))),
     stringsAsFactors = FALSE
   )
 
@@ -466,7 +466,7 @@ test_that("stimgate_fcs_write handles edge case: empty data", {
     result <- stimgate_fcs_write(
       pathProject = tempdir(),
       .data = gs,
-      indBatchList = exampleData$batch_list,
+      indBatchList = exampleData$batchList,
       pathDirSave = pathDirSave,
       chnl = exampleData$chnl[[1]],
       gateTbl = gateTbl
@@ -485,7 +485,7 @@ test_that("stimgate_fcs_write validates parameter types", {
     stimgate_fcs_write(
       pathProject = tempdir(),
       .data = "not_a_gatingset",
-      indBatchList = exampleData$batch_list,
+      indBatchList = exampleData$batchList,
       pathDirSave = tempdir(),
       chnl = exampleData$chnl[[1]]
     )
@@ -515,12 +515,12 @@ test_that("stimgate_fcs_write integrates with stimgate workflow", {
     .data = gs,
     pathProject = pathProject,
     popGate = "root",
-    batch_list = exampleData$batch_list,
+    batchList = exampleData$batchList,
     chnl = exampleData$chnl
   ))
 
   # Verify gating created expected files
-  expect_true(file.exists(file.path(pathProject, "gate_stats.rds")))
+  expect_true(file.exists(file.path(pathProject, "gateStats.rds")))
 
   # Step 2: Run FCS writing using gates from step 1
   pathDirSave <- file.path(tempdir(), "fcs_output_integration")
@@ -528,7 +528,7 @@ test_that("stimgate_fcs_write integrates with stimgate workflow", {
   result <- stimgate_fcs_write(
     pathProject = pathProject,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl # Use all markers
   )
@@ -565,7 +565,7 @@ test_that("stimgate_fcs_write respects working directory", {
     .data = gs,
     pathProject = pathProject2,
     popGate = "root",
-    batch_list = exampleData$batch_list,
+    batchList = exampleData$batchList,
     chnl = exampleData$chnl
   ))
 
@@ -579,7 +579,7 @@ test_that("stimgate_fcs_write respects working directory", {
       result <- stimgate_fcs_write(
         pathProject = pathProject2,
         .data = gs,
-        indBatchList = exampleData$batch_list,
+        indBatchList = exampleData$batchList,
         pathDirSave = pathDirSave,
         chnl = exampleData$chnl[[1]]
       )
@@ -604,7 +604,7 @@ test_that("stimgate_fcs_write handles transformation edge cases", {
     .data = gs,
     pathProject = pathProject2,
     popGate = "root",
-    batch_list = exampleData$batch_list,
+    batchList = exampleData$batchList,
     chnl = exampleData$chnl
   ))
 
@@ -617,7 +617,7 @@ test_that("stimgate_fcs_write handles transformation edge cases", {
   result <- stimgate::stimgate_fcs_write(
     pathProject = pathProject2,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]],
     transFn = identityTransform,
@@ -633,7 +633,7 @@ test_that("stimgate_fcs_write handles transformation edge cases", {
   resultNull <- stimgate::stimgate_fcs_write(
     pathProject = pathProject2,
     .data = gs,
-    indBatchList = exampleData$batch_list,
+    indBatchList = exampleData$batchList,
     pathDirSave = pathDirSaveNull,
     chnl = exampleData$chnl[[1]],
     transFn = NULL,

@@ -39,7 +39,7 @@
     "isUns",
     "chnlCut",
     "batch",
-    "pop",
+    "popGate",
     "probGMin"
   )
   attrVecNmAdd <- intersect(attrVecNmAdd, attrVecNmOrig)

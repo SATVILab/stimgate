@@ -1,8 +1,8 @@
 library(testthat)
 
-test_that("cyt_pos gates actually happen", {
+test_that("cytPos gates actually happen", {
   testData <- getTestData(
-    scenario = "cyt_pos",
+    scenario = "cytPos",
     dir_cache = testthat::test_path("cache", "test_data", "default"),
     clear = TRUE,
     n_ind = 1
@@ -13,8 +13,8 @@ test_that("cyt_pos gates actually happen", {
     .data = gs,
     pathProject = pathProject,
     popGate = "root",
-    batchList = testData$batch_list,
+    batchList = testData$batchList,
     marker = testData$marker
   ))
-  expect_true(file.exists(file.path(pathProject, "gate_stats.rds")))
+  expect_true(file.exists(file.path(pathProject, "gateStats.rds")))
 })

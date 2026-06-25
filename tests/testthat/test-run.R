@@ -1,10 +1,11 @@
 test_that("stimgateGateRuns", {
-  exampleData <- getExampleData()
+  exampleData <- getExampleData(nCell = 1e3)
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
   # debugonce(.getCpUnsLocGetProb)
   # debugonce(stimgate_gate)
   # browser()
+  # debugonce(.getCpCluster)
   Sys.setenv("stimgateIntermediate" = "true")
   invisible(gateStim(
     .data = gs,
@@ -13,6 +14,7 @@ test_that("stimgateGateRuns", {
     batchList = exampleData$batchList,
     marker = exampleData$marker
   ))
+  # browser()
   expect_true(file.exists(file.path(pathProject, "gateStats.rds")))
 })
 

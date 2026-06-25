@@ -377,7 +377,7 @@ iter_num <- 1
 n_sample <- 1L
 n_marker <- 1L
 n_condition <- 2L
-n_cluster <- 2L
+nCluster <- 2L
 
 print(paste0("iter ", iter_num))
 # debugonce(simCytCondition)
@@ -385,7 +385,7 @@ out_list_experiment <- simCytExperiment(
   nSample = n_sample,
   nMarker = n_marker,
   nCondition = n_condition,
-  nCluster = n_cluster,
+  nCluster = nCluster,
   nCellByCondition = n_cell_by_condition,
   transformationFunc = transformation_func,
   mixtureType = "gaussianOnly",
@@ -412,14 +412,14 @@ pathProject <- projr::projr_path_get(
 unlink(pathProject, recursive = TRUE)
 dir.create(pathProject, recursive = TRUE)
 batchList <- lapply(seq(n_sample), function(i) {
-  seq((i - 1) * nCondition + 1, i * nCondition)
+  seq((i - 1) * n_condition + 1, i * n_condition)
 })
 chnl_list_stimgate <- list(
   list("cut" = "F1")
 )
 
 # debugonce(stimgate:::.complete_chnl_list)
-stimgate_gate(
+gateStim(
   pathProject = pathProject,
   chnl = "F1",
   .data = gs,
@@ -429,7 +429,7 @@ stimgate_gate(
 )
 
 stats_tbl <- readRDS(
-  file.path(pathProject, "gate_stats.rds")
+  file.path(pathProject, "gateStats.rds")
 )
 stats_tbl
 ```
@@ -439,25 +439,6 @@ stats_tbl
 This is for when we're varying the bandwidth manually.
 
 ```{r}
-# if (!exists("dir_cache_check_bw")) {
-#   dir_cache_check_bw <- projr::projr_path_get(
-#     "cache",
-#     "sim-bandwidth",
-#     "check",
-#     "bw"
-#   )
-# }
-# 
-# if (dir.exists(dir_cache_check_bw)) {
-#   unlink(dir_cache_check_bw, recursive = TRUE)
-# }
-# dir.create(dir_cache_check_bw, recursive = TRUE)
-# 
-# 
-# example_data <- getExampleData(
-#   dir_cache = dir_cache_check_bw,
-#   n_cell = n_cell_sim_check_bw
-# )
 n_cell_sim_check_bw <- 1e4
 test_data <- simCytExperiment(
   nSample = 10L,
@@ -479,26 +460,26 @@ test_data <- simCytExperiment(
   covEvMax = 2
 )
 
-labelsList <- file.path(example_data$path_cache, "labelsList.rds") |>
+labelsList <- file.path(test_data$path_cache, "labelsList.rds") |>
   readRDS()
-gs <- flowWorkspace::load_gs(example_data$path_gs)
-pathProject <- file.path(example_data$path_cache, "stimgate")
+gs <- flowWorkspace::load_gs(test_data$path_gs)
+pathProject <- file.path(test_data$path_cache, "stimgate")
 # debugonce(.get_cp_uns_loc_get_prob)
 Sys.setenv("STIMGATE_INTERMEDIATE" = "TRUE")
-invisible(stimgate_gate(
+invisible(gateStim(
   .data = gs,
   pathProject = pathProject,
   popGate = "root",
-  batchList = example_data$batchList,
-  marker = example_data$marker,
+  batchList = test_data$batchList,
+  marker = test_data$marker,
   bwAdj = 2
 ))
 
 n_sample <- length(labelsList) / 2
-nCondition <- 2
+n_condition <- 2
 # truth table
 prob_bs_tbl_truth <- purrr::map_df(seq_len(n_sample), function(sampleCurr) {
-  labelsIdx <- (sampleCurr - 1) * nCondition + seq(1, nCondition)
+  labelsIdx <- (sampleCurr - 1) * n_condition + seq(1, n_condition)
   purrr::map_df(labelsIdx, function(i) {
     labelVec <- labelsList[[i]]
     stimCondition <- ifelse(i %% 2 == 0, "stim", "unstim")
@@ -535,10 +516,10 @@ prob_bs_tbl_truth <- purrr::map_df(seq_len(n_sample), function(sampleCurr) {
     chnl = gsub("p_bs", "", chnl)
   )
 
-path_dir_int_init <- file.path(pathProject, "intermediate_data", "init")
+path_dir_int_init <- file.path(pathProject, "intermediateData", "init")
 chnl_vec <- list.dirs(path_dir_int_init, full.names = FALSE, recursive = FALSE)
 chnl <- chnl_vec[[1]]
-ind <- n_sample * nCondition
+ind <- n_sample * n_condition
 prob_bs_tbl_est <- purrr::map_df(chnl_vec, function(chnl) {
   ind_vec_stim <- seq(2, n_sample * n_condition, by = 2) |>
     as.character()
@@ -548,7 +529,7 @@ prob_bs_tbl_est <- purrr::map_df(chnl_vec, function(chnl) {
       readRDS()
     prob_norm <- prob_tbl_list[["pos"]]
     ncell_resp_norm <- if (nrow(prob_norm) > 0L) {
-      sum(prob_norm$prob_stim_norm)
+      sum(prob_norm$probStimNorm)
     } else {
       0
     }
@@ -566,7 +547,7 @@ prob_bs_tbl_est <- purrr::map_df(chnl_vec, function(chnl) {
     }
     ncell_condition <- n_cell_sim_check_bw
     tibble::tibble(
-      sample = as.character(as.numeric(ind) / nCondition),
+      sample = as.character(as.numeric(ind) / n_condition),
       ind = ind,
       chnl = chnl,
       ncell_condition = ncell_condition,
@@ -619,8 +600,8 @@ chnlSettings |>
 
 # let's plot it
 plotlist <- lapply(1:8, function(i) {
-  ind_vec <- c((i - 1) * nCondition + 1, i * nCondition)
-  stimgate_plot(
+  ind_vec <- c((i - 1) * n_condition + 1, i * n_condition)
+  plotStim(
     ind = ind_vec,
     .data = gs,
     pathProject = pathProject,

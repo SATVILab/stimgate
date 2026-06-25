@@ -68,7 +68,7 @@ no FCS file will be written for that sample.
 library(stimgate)
 
 # Load your GatingSet (gs) and define batch structure
-# batch_list <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
+# batchList <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
 # where the last element in each batch is the unstimulated sample
 
 # First, run gating to create gates
@@ -77,17 +77,17 @@ pathProject <- tempfile("stimgate_project")
 #   .data = gs,
 #   pathProject = pathProject,
 #   popGate = "root",
-#   batch_list = batch_list,
+#   batchList = batchList,
 #   marker = c("IL2", "IFNg")  # your cytokine markers
 # )
 
 # Then write FCS files of cytokine-positive cells
-path_output <- tempfile("fcs_output")
+pathOutput <- tempfile("fcs_output")
 # writeStimFCS(
 #   pathProject = pathProject,
 #   .data = gs,
-#   indBatchList = batch_list,
-#   pathDirSave = path_output,
+#   indBatchList = batchList,
+#   pathDirSave = pathOutput,
 #   chnl = c("IL2", "IFNg")
 # )
 
@@ -103,8 +103,8 @@ path_output <- tempfile("fcs_output")
 # writeStimFCS(
 #   pathProject = pathProject,
 #   .data = gs,
-#   indBatchList = batch_list,
-#   pathDirSave = path_output,
+#   indBatchList = batchList,
+#   pathDirSave = pathOutput,
 #   chnl = c("IL2", "IFNg"),
 #   gateTbl = gateTbl
 # )

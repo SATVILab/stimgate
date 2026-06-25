@@ -1,29 +1,29 @@
 test_that("stimgateDataGetEx reads saved channel data and filters correctly", {
   tmp <- tempfile("stimgate_ex_")
   dir.create(
-    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
     recursive = TRUE
   )
   dir.create(
-    file.path(tmp, "sample_data", "pop_POP1", "ind_2"),
+    file.path(tmp, "sampleData", "pop_POP1", "ind_2"),
     recursive = TRUE
   )
 
   saveRDS(
     c(1, 2, 3),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC1.rds")
   )
   saveRDS(
     c(4, 5, 6),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC2.rds")
   )
   saveRDS(
     c(7, 8),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_2", "chnl_BC1.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_2", "chnl_BC1.rds")
   )
   saveRDS(
     c(9, 10),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_2", "chnl_BC2.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_2", "chnl_BC2.rds")
   )
   res <- stimgateDataGetEx(tmp)
   expect_equal(nrow(res), 5)
@@ -45,32 +45,32 @@ test_that("stimgateDataGetEx reads saved channel data and filters correctly", {
 test_that("stimgateDataGetEx applies bias only to unstim sample", {
   tmp <- tempfile("stimgate_ex_bias_")
   dir.create(
-    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
     recursive = TRUE
   )
   dir.create(
-    file.path(tmp, "sample_data", "pop_POP1", "ind_2"),
+    file.path(tmp, "sampleData", "pop_POP1", "ind_2"),
     recursive = TRUE
   )
 
   saveRDS(
     c(1, 2, 3),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC1.rds")
   )
   saveRDS(
     c(4, 5, 6),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC2.rds")
   )
   saveRDS(
     c(7, 8),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_2", "chnl_BC1.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_2", "chnl_BC1.rds")
   )
   saveRDS(
     c(9, 10),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_2", "chnl_BC2.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_2", "chnl_BC2.rds")
   )
 
-  # Create meta_data with matching names so chnl lookup works
+  # Create metaData with matching names so chnl lookup works
   chnlList <- list(BC1 = list(biasUns = 10), BC2 = list(biasUns = -2))
   chnlLab <- c(BC1 = "BC1", BC2 = "BC2")
   batchList <- list(batch1 = c("1", "2"))
@@ -94,18 +94,18 @@ test_that("stimgateDataGetEx applies bias only to unstim sample", {
 test_that("stimgateDataGetEx excludes minimum observed values when excMin = TRUE", {
   tmp <- tempfile("stimgate_ex_excmin_")
   dir.create(
-    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
     recursive = TRUE
   )
 
   # BC1 min is 1, BC2 min is 4; after exclusion only the row (3,6) should remain
   saveRDS(
     c(1, 2, 3),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC1.rds")
   )
   saveRDS(
     c(4, 4, 6),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC2.rds")
   )
 
   resNoexc <- stimgateDataGetEx(tmp, ind = "1", excMin = FALSE)
@@ -120,17 +120,17 @@ test_that("stimgateDataGetEx excludes minimum observed values when excMin = TRUE
 test_that("stimgateDataGetEx uses marker parameter to rename channels", {
   tmp <- tempfile("stimgate_ex_marker_")
   dir.create(
-    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
     recursive = TRUE
   )
 
   saveRDS(
     c(1, 2, 3),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC1.rds")
   )
   saveRDS(
     c(4, 5, 6),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC2.rds")
   )
 
   # Create chnlLab mapping (channel -> marker name)
@@ -147,13 +147,13 @@ test_that("stimgateDataGetEx uses marker parameter to rename channels", {
 test_that("stimgateDataGetEx errors when both marker and chnl specified", {
   tmp <- tempfile("stimgate_ex_marker_chnl_conflict_")
   dir.create(
-    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
     recursive = TRUE
   )
 
   saveRDS(
     c(1, 2, 3),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC1.rds")
   )
 
   expect_error(
@@ -165,17 +165,17 @@ test_that("stimgateDataGetEx errors when both marker and chnl specified", {
 test_that("stimgateDataGetEx applies transFn to specified channels", {
   tmp <- tempfile("stimgate_ex_trans_")
   dir.create(
-    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
     recursive = TRUE
   )
 
   saveRDS(
     c(1, 2, 3),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC1.rds")
   )
   saveRDS(
     c(4, 5, 6),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC2.rds")
   )
 
   # Test transforming all channels
@@ -197,17 +197,17 @@ test_that("stimgateDataGetEx applies transFn to specified channels", {
 test_that("stimgateDataGetEx applies transFn to markers when using marker parameter", {
   tmp <- tempfile("stimgate_ex_trans_marker_")
   dir.create(
-    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
     recursive = TRUE
   )
 
   saveRDS(
     c(1, 2, 3),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC1.rds")
   )
   saveRDS(
     c(4, 5, 6),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC2.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC2.rds")
   )
 
   # Create chnlLab mapping (channel -> marker name)
@@ -229,13 +229,13 @@ test_that("stimgateDataGetEx applies transFn to markers when using marker parame
 test_that("stimgateDataGetEx errors when both chnlGate and markerGate specified", {
   tmp <- tempfile("stimgate_ex_gate_conflict_")
   dir.create(
-    file.path(tmp, "sample_data", "pop_POP1", "ind_1"),
+    file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
     recursive = TRUE
   )
 
   saveRDS(
     c(1, 2, 3),
-    file = file.path(tmp, "sample_data", "pop_POP1", "ind_1", "chnl_BC1.rds")
+    file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC1.rds")
   )
 
   # Create chnlLab mapping for markerGate
@@ -253,14 +253,14 @@ test_that("stimgateDataGetEx extracts cytokine-positive cells with gating", {
   # Use example data and run gating
   example_data <- get_example_data()
   gs <- flowWorkspace::load_gs(example_data$path_gs)
-  pathProject <- file.path(tempdir(), "stimgate_ex_cyt_pos_test")
+  pathProject <- file.path(tempdir(), "stimgate_ex_cytPos_test")
 
   # Run gating
   invisible(stimgate_gate(
     .data = gs,
     pathProject = pathProject,
     popGate = "root",
-    batchList = example_data$batch_list,
+    batchList = example_data$batchList,
     marker = example_data$marker
   ))
 

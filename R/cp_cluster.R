@@ -22,10 +22,10 @@
   stageChnl <- file.path(stage,  chnlSettings$chnlCut)
 
   # control
-  control <- .get_cp_cluster_control_update(control) # nolint
+  control <- .getCpClusterControlUpdate(control) # nolint
 
   # statistics
-  gateStatsTbl <- .get_cp_cluster_gate_stats_tbl_update(
+  gateStatsTbl <- .getCpClusterGateStatsTblUpdate(
     gateStatsTbl
   )
 

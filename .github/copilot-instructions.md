@@ -41,12 +41,12 @@ This package uses `renv` for dependency management:
 ## Repository structure
 
 - `R/`: Core R source code
-  - `cp_cluster-helper.R`: Helper functions for getting thresholds lower by grouping thresholds from like distributions
-  - `cp_cluster.R`: Gets thresholds lower by grouping thresholds from like distributions
+  - `cpCluster-helper.R`: Helper functions for getting thresholds lower by grouping thresholds from like distributions
+  - `cpCluster.R`: Gets thresholds lower by grouping thresholds from like distributions
   - `cp_uns_loc.R`: Gets thresholds by comparing the stim and unstim distributions to identify the point at which cells start appearing to have responded with some probability
   - `cp-sub.R`: Auxiliary functions for getting clusters
   - `cp_cut_pos_gates-helper.R`: Helper functions for getting more aggressive gates when applied to just the cytokine-positive cells.
-  - `cyt_pos_gates.R`: Functions for getting more aggressive gates when applied to just the cytokine-positive cells.
+  - `cytPos_gates.R`: Functions for getting more aggressive gates when applied to just the cytokine-positive cells.
   - `debug.R`: Debugging utilities and specifies global variables
   - `ex.R`: Extract expression matrices from GatingSets
   - `fcs_write.R`: Write FCS files of just cytokine-positive cells
@@ -84,7 +84,7 @@ This package uses `renv` for dependency management:
 
 1. Begin each internal function with a `.`
 2. Use the `.debug()` function for debug messages, which takes a message and an optional value. Debug output is controlled by the `STIMGATE_DEBUG` environment variable (set to "true", "yes", "y", or "1" to enable). Never add `.debug` as a function parameter.
-3. Use the `stage` parameter to track algorithm stages ("init", "cyt_pos", or "single"). Pass the stage parameter through function calls to enable intermediate data saving via `.int_save()` or `.int_save_nm()` functions. Intermediate saving is controlled by the `STIMGATE_INTERMEDIATE` environment variable.
+3. Use the `stage` parameter to track algorithm stages ("init", "cytPos", or "single"). Pass the stage parameter through function calls to enable intermediate data saving via `.int_save()` or `.int_save_nm()` functions. Intermediate saving is controlled by the `STIMGATE_INTERMEDIATE` environment variable.
 4. Add unit tests using `testthat` for all new functionality
 5. Validate inputs and provide meaningful error messages
 6. Explicitly refer to all packages used, rather than using `@import` or `@importFrom`, with the exception of `ggplot2` functions and the `flowCore::exprs` function

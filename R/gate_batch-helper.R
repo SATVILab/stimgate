@@ -29,7 +29,7 @@
       gateList[[paste0("tgCtrl_", tol)]] <- .getCpTg(
         exList = exList,
         chnlSettings = chnlSettings,
-        tgType = "tol_ctrl",
+        tgType = "tolCtrl",
         stage = stage,
         pathProject = pathProject
       )
@@ -41,7 +41,7 @@
     gateList[["tgClust"]] <- .getCpTg(
       exList = exList,
       chnlSettings = chnlSettings,
-      tgType = "tol_clust",
+      tgType = "tolClust",
       stage = stage,
       pathProject = pathProject
     )
@@ -149,8 +149,8 @@
 
     gateNameTblRow <- gateTblGnMarker[1, , drop = FALSE]
     gateMethod <- gateNameTblRow$gateMethod
-    adjInd <- stringr::str_detect(gateNameCurr, "_adj")
-    clustInd <- stringr::str_detect(gateNameCurr, "_clust")
+    adjInd <- stringr::str_detect(gateNameCurr, "Adj")
+    clustInd <- stringr::str_detect(gateNameCurr, "Clust")
 
     # filter to yield cells negative for all cytokine combinations
     # except possibly this cytokine single-positive
@@ -231,7 +231,7 @@
       gateList <- .getCpTg(
         exList = exListNegButSinglePosCurr,
         chnlSettings = chnlSettingsAdj,
-        tgType = "adj",
+        tgType = "Adj",
         stage = stage,
         pathProject = pathProject
       )
@@ -257,7 +257,7 @@
       gateList <- .getCpTg(
         exList = exListNegButSinglePosCurr,
         chnlSettings = chnlSettingsClust,
-        tgType = "clust",
+        tgType = "Clust",
         stage = stage,
         pathProject = pathProject
       )
@@ -286,8 +286,8 @@
         function(gn) stringr::str_split(gn, "_")[[1]][1]
       ),
       gateCombn = gateName |>
-        stringr::str_remove("_adj") |>
-        stringr::str_remove("_clust") |>
+        stringr::str_remove("Adj") |>
+        stringr::str_remove("Clust") |>
         stringr::str_remove(gateType) |> # nolint
         stringr::str_remove("_")
     ) |>
@@ -306,13 +306,13 @@
     dplyr::mutate(
       clust = purrr::map_chr(
         gateName,
-        function(x) ifelse(stringr::str_detect(x, "clust"), "clust", "")
+        function(x) ifelse(stringr::str_detect(x, "Clust"), "Clust", "")
       )
     ) |>
     dplyr::mutate(
       adj = purrr::map_chr(
         gateName,
-        function(x) ifelse(stringr::str_detect(x, "adj"), "adj", "")
+        function(x) ifelse(stringr::str_detect(x, "Adj"), "Adj", "")
       )
     )
 }
@@ -339,13 +339,13 @@
 #' @keywords internal
 .gateBatchSingleTblFormatCombn <- function(gateName) {
   purrr::map_chr(gateName, function(x) {
-    if (stringr::str_detect(x, "_no")) {
+    if (stringr::str_detect(x, "No")) {
       return("no")
     }
-    if (stringr::str_detect(x, "_min")) {
+    if (stringr::str_detect(x, "Min")) {
       return("min")
     }
-    if (stringr::str_detect(x, "_prejoin")) {
+    if (stringr::str_detect(x, "Prejoin")) {
       return("prejoin")
     }
   })

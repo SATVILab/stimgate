@@ -119,7 +119,7 @@
   if (!is.null(bwCluster) && (!is.numeric(bwCluster) || bwCluster <= 0)) {
     stop("`bwCluster` must be a positive numeric value if specified.")
   }
-  chnlLab <- .chnl_lab(.data)
+  chnlLab <- .chnlLab(.data)
   if (!is.null(chnl)) {
     allChnlValid <- all(chnl %in% names(chnlLab))
     if (!allChnlValid) {

@@ -60,13 +60,13 @@
 #'   .data = gs,
 #'   pathProject = pathProject,
 #'   popGate = "root",
-#'   batch_list = exampleData$batch_list,
+#'   batchList = exampleData$batchList,
 #'   marker = exampleData$marker
 #' )
 #'
 #' # Create plots
 #' plots <- stimgate_plot(
-#'   ind = exampleData$batch_list[[1]], # indices in `gs` to plot
+#'   ind = exampleData$batchList[[1]], # indices in `gs` to plot
 #'   .data = gs, # GatingSet
 #'   pathProject = pathProject,
 #'   marker = exampleData$marker,
@@ -390,8 +390,8 @@ plotStim <- function(
   if (!showGate) {
     return(p)
   }
-  marker <- marker %||% stimgate_meta_read_chnl_lab(pathProject)[chnl]
-  chnl <- chnl %||% stimgate_meta_read_marker_lab(pathProject)[marker]
+  marker <- marker %||% stimgateMetaReadchnlLab(pathProject)[chnl]
+  chnl <- chnl %||% stimgateMetaReadmarkerLab(pathProject)[marker]
   pop <- pop %||% .gateGetPop(pathProject)
   if (length(pop) > 1L) {
     stop("Cannot plot gates for multiple populations")
@@ -437,7 +437,7 @@ plotStim <- function(
     chnl = chnl,
     marker = marker
   ) |>
-    dplyr::group_by(gate_name, chnl, marker, ind, batch) |>
+    dplyr::group_by(gateName, chnl, marker, ind, batch) |>
     dplyr::slice(1) |>
     dplyr::ungroup()
   gateTbl <- gateTbl[gateTbl[["ind"]] %in% ind, ]
@@ -535,7 +535,7 @@ plotStim <- function(
 ) {
   pathBwProject <- file.path(
     pathProject,
-    "intermediate_data",
+    "intermediateData",
     "init",
     chnl,
     "ind",
@@ -698,7 +698,7 @@ plotStim <- function(
   if (!excMin) {
     return(NULL)
   }
-  probGMin <- attr(exTbl, "prob_g_min")[[1]][[1]][[1]]
+  probGMin <- attr(exTbl, "probGMin")[[1]][[1]][[1]]
   plotTbl[, "type"] <- "raw"
   densObjAdj <- densObjRaw
   densObjAdj$y <- densObjAdj$y * probGMin
@@ -708,7 +708,7 @@ plotStim <- function(
     type = "adj"
   )
   plotTbl |>
-    dplyr::bind_rows(plotTbl_adj)
+    dplyr::bind_rows(plotTblAdj)
 }
 
 #' @keywords internal

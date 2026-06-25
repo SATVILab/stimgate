@@ -171,7 +171,7 @@
           ) |>
           dplyr::mutate(
             gateCombn = paste0(gateCombn, "Clust"),
-            gateName = paste0(gateType, "_", gateCombn)
+            gateName = paste0(gateType, gateCombn)
           )
       }
     )
@@ -257,7 +257,10 @@
     dplyr::mutate(
       gateType = purrr::map_chr(
         gateName,
-        function(gn) stringr::str_split(gn, "_")[[1]][1]
+        function(gn) {
+          stringr::str_remove(gn, "Adj") |>
+          stringr::str_remove("Clust")
+        }
       ),
       gateCombn = gateName |>
         stringr::str_remove("Adj") |>
@@ -276,7 +279,7 @@
     dplyr::mutate(
       gateSingle = ifelse(is.na(gateSingle), gate, gateSingle) # nolint
     )
-}
+        }
 
 #' @keywords internal
 .gateChnlGateAdjGatesSingleStatsTblGet <- function(
@@ -505,7 +508,7 @@
       ) |>
       dplyr::mutate(
         gateCombn = paste0(gateCombn, "Clust"),
-        gateName = paste0(gateType, "_", gateCombn)
+        gateName = paste0(gateType, gateCombn)
       )
   }
 

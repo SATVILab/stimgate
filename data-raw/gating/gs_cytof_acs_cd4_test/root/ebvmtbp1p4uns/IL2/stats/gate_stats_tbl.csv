@@ -1,4 +1,4 @@
-"","pop","gate_name","gate_type","gate_combn","batch","ind","gate","boot","boot_ind","n_cell_stim","n_cell_uns","cp","count","count_bs","freq","freq_bs","fcs","batch_sh","stim"
+"","pop","gateName","gate_type","gate_combn","batch","ind","gate","boot","boot_ind","n_cell_stim","n_cell_uns","cp","count","count_bs","freq","freq_bs","fcs","batchSh","stim"
 "1","gate","locb0.15_no","locb0.15","no","010673d0090462d011",1,2.04685407236855,FALSE,1,31038,80261,2.04685407236855,0,-4,0,-0.00498374054646715,"010673_D0_435d_Progressor_ebv.fcs","010673_D0","ebv"
 "2","gate","locb0.15_min","locb0.15","min","010673d0090462d011",1,1.60606060606061,FALSE,1,31038,80261,1.60606060606061,3,-6,0.00966557123526,-0.00154784499429109,"010673_D0_435d_Progressor_ebv.fcs","010673_D0","ebv"
 "3","gate","tg_prejoin","tg","prejoin","010673d0090462d011",1,1.55356939089275,FALSE,1,31038,80261,1.55356939089275,3,-7,0.00966557123526,-0.00279378013090787,"010673_D0_435d_Progressor_ebv.fcs","010673_D0","ebv"
