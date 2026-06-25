@@ -3,20 +3,20 @@
 #' @description
 #' Uses the gates to write FCS files of marker-positive FCS files.
 #'
-#' @param path_project character. Path to project directory.
+#' @param pathProject character. Path to project directory.
 #' @param .data GatingSet. GatingSet object containing the flow cytometry data.
-#' @param ind_batch_list list. List of indices grouped by batch.
-#' @param path_dir_save character. Directory path to save the FCS files to.
+#' @param indBatchList list. List of indices grouped by batch.
+#' @param pathDirSave character. Directory path to save the FCS files to.
 #' @param pop character. Population that was gated on.
 #' @param chnl character vector. Specific channels to gate on.
-#' @param gate_tbl data.frame. Pre-computed gate table, if available.
-#' @param trans_fn function. Transformation function to apply.
-#' @param trans_chnl character vector. Columns to transform.
-#' @param combn_exc list. Combinations of channels to exclude.
-#' @param gate_type_cyt_pos character. Gate type to use for cytokine-positive cells.
-#' @param gate_type_single_pos character. Gate type to use for single-positive cells.
+#' @param gateTbl data.frame. Pre-computed gate table, if available.
+#' @param transFn function. Transformation function to apply.
+#' @param transChnl character vector. Columns to transform.
+#' @param combnExc list. Combinations of channels to exclude.
+#' @param gateTypeCytPos character. Gate type to use for cytokine-positive cells.
+#' @param gateTypeSinglePos character. Gate type to use for single-positive cells.
 #' @param mult logical. Whether cells must be multi-positive.
-#' @param gate_uns_method character. Method to calculate unstimulated thresholds.
+#' @param gateUnsMethod character. Method to calculate unstimulated thresholds.
 #'
 #' @details
 #' This function processes flow cytometry data to identify and export cytokine-positive
@@ -37,100 +37,100 @@
 #' # where the last element in each batch is the unstimulated sample
 #'
 #' # First, run gating to create gates
-#' path_project <- tempfile("stimgate_project")
+#' pathProject <- tempfile("stimgate_project")
 #' # stimgate_gate(
 #' #   .data = gs,
-#' #   path_project = path_project,
-#' #   pop_gate = "root",
+#' #   pathProject = pathProject,
+#' #   popGate = "root",
 #' #   batch_list = batch_list,
 #' #   marker = c("IL2", "IFNg")  # your cytokine markers
 #' # )
 #'
 #' # Then write FCS files of cytokine-positive cells
 #' path_output <- tempfile("fcs_output")
-#' # stimgate_fcs_write(
-#' #   path_project = path_project,
+#' # writeStimFCS(
+#' #   pathProject = pathProject,
 #' #   .data = gs,
-#' #   ind_batch_list = batch_list,
-#' #   path_dir_save = path_output,
+#' #   indBatchList = batch_list,
+#' #   pathDirSave = path_output,
 #' #   chnl = c("IL2", "IFNg")
 #' # )
 #'
 #' # Alternative: provide your own gate table
-#' # gate_tbl <- data.frame(
+#' # gateTbl <- data.frame(
 #' #   chnl = c("IL2", "IFNg"),
 #' #   marker = c("IL2", "IFNg"),
 #' #   batch = c(1, 1),
 #' #   ind = c(1, 1),
 #' #   gate = c(0.5, 0.3),
-#' #   gate_name = c("gate", "gate")
+#' #   gateName = c("gate", "gate")
 #' # )
-#' # stimgate_fcs_write(
-#' #   path_project = path_project,
+#' # writeStimFCS(
+#' #   pathProject = pathProject,
 #' #   .data = gs,
-#' #   ind_batch_list = batch_list,
-#' #   path_dir_save = path_output,
+#' #   indBatchList = batch_list,
+#' #   pathDirSave = path_output,
 #' #   chnl = c("IL2", "IFNg"),
-#' #   gate_tbl = gate_tbl
+#' #   gateTbl = gateTbl
 #' # )
 #' }
 #' @export
-stimgate_fcs_write <- function(
-  path_project, # project directory
+writeStimFCS <- function(
+  pathProject, # project directory
   .data, # gatingset
   pop = NULL, # population that was gated on
-  ind_batch_list, # indices by batch
-  path_dir_save, # directory to save to
+  indBatchList, # indices by batch
+  pathDirSave, # directory to save to
   chnl = NULL, # specific channels to gate on
-  gate_tbl = NULL, # whether gate_tbl is pre-available
-  trans_fn = NULL, # transformation to apply
-  trans_chnl = NULL, # columns to transform
-  combn_exc = NULL, # combinations of chnl to exclude
-  gate_type_cyt_pos = "cyt", # gate type to use for cyt-pos cells # nolint
-  gate_type_single_pos = "single", # gate type to use for single-pos cells # nolint
+  gateTbl = NULL, # whether gateTbl is pre-available
+  transFn = NULL, # transformation to apply
+  transChnl = NULL, # columns to transform
+  combnExc = NULL, # combinations of chnl to exclude
+  gateTypeCytPos = "cyt", # gate type to use for cyt-pos cells # nolint
+  gateTypeSinglePos = "single", # gate type to use for single-pos cells # nolint
   mult = FALSE, # whether cells must be multi-positive
-  gate_uns_method = "min"
+  gateUnsMethod = "min"
 ) {
   # how to calculate unstim thresholds # nolint
   # clear and create directory to save to
-  if (dir.exists(path_dir_save)) {
-    unlink(path_dir_save, force = TRUE, recursive = TRUE)
+  if (dir.exists(pathDirSave)) {
+    unlink(pathDirSave, force = TRUE, recursive = TRUE)
   }
-  dir.create(path_dir_save, recursive = TRUE)
+  dir.create(pathDirSave, recursive = TRUE)
 
   # get gates
-  gate_tbl <- .fcs_write_get_gate_tbl(
-    gate_tbl,
-    chnl,
-    pop,
-    .data,
-    ind_batch_list,
-    gate_uns_method,
-    gate_type_cyt_pos,
-    gate_type_single_pos,
-    path_project
+  gateTbl <- .fcsWriteGetGateTbl(
+    gateTbl = gateTbl,
+    chnl = chnl,
+    pop = pop,
+    .data = .data,
+    indBatchList = indBatchList,
+    gateUnsMethod = gateUnsMethod,
+    gateTypeCytPos = gateTypeCytPos,
+    gateTypeSinglePos = gateTypeSinglePos,
+    pathProject = pathProject
   )
 
-  n_fn <- length(.data)
+  nFn <- length(.data)
 
   purrr::walk(seq_along(.data), function(ind) {
-    txt <- paste0("Writing ", ind, " of ", n_fn, " files")
+    txt <- paste0("Writing ", ind, " of ", nFn, " files")
     message(txt)
-    .fcs_write_impl(
-      .data,
-      ind,
-      gate_tbl,
-      path_dir_save,
-      chnl,
-      mult,
-      gate_type_cyt_pos,
-      gate_type_single_pos,
-      combn_exc,
-      trans_fn,
-      trans_chnl
+    .fcsWriteImpl(
+      .data = .data,
+      ind = ind,
+      gateTbl = gateTbl,
+      pathDirSave = pathDirSave,
+      chnl = chnl,
+      mult = mult,
+      gateTypeCytPos = gateTypeCytPos,
+      gateTypeSinglePos = gateTypeSinglePos,
+      combnExc = combnExc,
+      transFn = transFn,
+      transChnl = transChnl
     )
   })
-  invisible(path_dir_save)
+  invisible(pathDirSave)
 }
 
 
@@ -139,21 +139,21 @@ stimgate_fcs_write <- function(
 # ================
 
 #' @keywords internal
-.fcs_write_get_gate_tbl <- function(
-  gate_tbl,
+.fcsWriteGetGateTbl <- function(
+  gateTbl,
   chnl,
   pop,
   .data,
-  ind_batch_list,
-  gate_uns_method,
-  gate_type_cyt_pos,
-  gate_type_single_pos,
-  path_project
+  indBatchList,
+  gateUnsMethod,
+  gateTypeCytPos,
+  gateTypeSinglePos,
+  pathProject
 ) {
   # Get gate table if not provided
-  if (is.null(gate_tbl)) {
-    pop_unspecified <- is.null(pop)
-    pop <- pop %||% .gate_get_pop(path_project)
+  if (is.null(gateTbl)) {
+    popUnspecified <- is.null(pop)
+    pop <- pop %||% .gateGetPop(pathProject)
     if (is.null(pop) || length(pop) == 0) {
       stop(
         "No population provided and no populations found in project directory."
@@ -164,116 +164,116 @@ stimgate_fcs_write <- function(
         "Multiple populations found in project directory. Please specify 'pop' parameter."
       )
     }
-    if (pop_unspecified) {
+    if (popUnspecified) {
       message(paste0("Using population '", pop, "' from project directory."))
     }
-    chnl_unspecified <- is.null(chnl)
-    chnl <- chnl %||% .gate_get_chnl(path_project, pop)
+    chnlUnspecified <- is.null(chnl)
+    chnl <- chnl %||% .gateGetChnl(pathProject, pop)
     if (is.null(chnl) || length(chnl) == 0) {
       stop("No channels provided and no channels found in project directory.")
     }
-    if (chnl_unspecified) {
+    if (chnlUnspecified) {
       message(paste0(
         "Using channels '",
         paste(chnl, collapse = ", "),
         "' from project directory."
       ))
     }
-    gate_tbl <- .gate_get_gate_tbl_all(NULL, pop, chnl, path_project)
+    gateTbl <- .gateGetGateTblAll(NULL, pop, chnl, pathProject)
   }
 
-  # Check if gate_tbl already contains all required information
+  # Check if gateTbl already contains all required information
   # (i.e., it has both stimulated and unstimulated gates)
-  has_all_samples <- length(unique(gate_tbl$ind)) >=
-    length(unlist(ind_batch_list))
+  hasAllSamples <- length(unique(gateTbl$ind)) >=
+    length(unlist(indBatchList))
 
   # Only process unstimulated gates if needed
-  if (!has_all_samples) {
-    gate_tbl <- gate_tbl |>
-      .fcs_write_get_gate_tbl_add_uns(
-        gate_uns_method,
-        gate_type_cyt_pos,
-        gate_type_single_pos,
-        ind_batch_list
+  if (!hasAllSamples) {
+    gateTbl <- gateTbl |>
+      .fcsWriteGetGateTblAddUns(
+        gateUnsMethod = gateUnsMethod,
+        gateTypeCytPos = gateTypeCytPos,
+        gateTypeSinglePos = gateTypeSinglePos,
+        indBatchList = indBatchList
       )
   }
 
   # Apply remaining processing
-  gate_tbl <- gate_tbl |>
-    .fcs_write_get_gate_tbl_filter_chnl(chnl) |>
-    .fcs_write_get_gate_tbl_add_marker(chnl, .data) |>
+  gateTbl <- gateTbl |>
+    .fcsWriteGetGateTblFilterChnl(chnl) |>
+    .fcsWriteGetGateTblAddMarker(chnl, .data) |>
     # duplicates are not a possible issue,
     # as the gates must be the same for all duplicates
     # as we separate them if they are not
     dplyr::distinct()
 
-  gate_tbl
+  gateTbl
 }
 
 #' @keywords internal
-.gate_get_gate_tbl_all <- function(gate_tbl, pop, chnl, path_project) {
-  if (!is.null(gate_tbl)) {
-    return(gate_tbl)
+.gateGetGateTblAll <- function(gateTbl, pop, chnl, pathProject) {
+  if (!is.null(gateTbl)) {
+    return(gateTbl)
   }
-  purrr::map_df(chnl, function(chnl_curr) {
-    path_curr <- .gates_get_path_all(path_project, pop, chnl_curr, FALSE)
-    if (!file.exists(path_curr)) {
-      stop(paste0("Gate table not found for channel: ", chnl_curr))
+  purrr::map_df(chnl, function(chnlCurr) {
+    pathCurr <- .gatesGetPathAll(pathProject, pop, chnlCurr, FALSE)
+    if (!file.exists(pathCurr)) {
+      stop(paste0("Gate table not found for channel: ", chnlCurr))
     }
-    readRDS(path_curr)
+    readRDS(pathCurr)
   })
 }
 
 #' @keywords internal
-.fcs_write_get_gate_tbl_add_uns <- function(
-  gate_tbl,
-  gate_uns_method,
-  gate_type_cyt_pos,
-  gate_type_single_pos,
-  ind_batch_list
+.fcsWriteGetGateTblAddUns <- function(
+  gateTbl,
+  gateUnsMethod,
+  gateTypeCytPos,
+  gateTypeSinglePos,
+  indBatchList
 ) {
-  gate_tbl_uns <- .fcs_write_get_gate_tbl_add_uns_get_uns(
-    gate_tbl,
-    gate_uns_method,
-    ind_batch_list
+  gateTblUns <- .fcsWriteGetGateTblAddUnsGetUns(
+    gateTbl = gateTbl,
+    gateUnsMethod = gateUnsMethod,
+    indBatchList = indBatchList
   )
 
-  if ("gate_cyt" %in% colnames(gate_tbl)) {
-    gate_tbl_uns <- gate_tbl_uns |>
+  if ("gate_cyt" %in% colnames(gateTbl)) {
+    gateTblUns <- gateTblUns |>
       dplyr::mutate(gate_cyt = pmin(gate, gate_cyt)) # nolint
-  } else if ("gate_cyt" %in% colnames(gate_tbl_uns)) {
-    gate_tbl_uns <- gate_tbl_uns |> dplyr::select(-gate_cyt) # nolint
+  } else if ("gate_cyt" %in% colnames(gateTblUns)) {
+    gateTblUns <- gateTblUns |> dplyr::select(-gate_cyt) # nolint
   }
-  if ("gate_single" %in% colnames(gate_tbl)) {
-    gate_tbl_uns <- gate_tbl_uns |>
+  if ("gate_single" %in% colnames(gateTbl)) {
+    gateTblUns <- gateTblUns |>
       dplyr::mutate(gate_single = pmax(gate, gate_single)) # nolint
-  } else if ("gate_single" %in% colnames(gate_tbl_uns)) {
-    gate_tbl_uns <- gate_tbl_uns |> dplyr::select(-gate_single) # nolint
+  } else if ("gate_single" %in% colnames(gateTblUns)) {
+    gateTblUns <- gateTblUns |> dplyr::select(-gate_single) # nolint
   }
 
-  gate_tbl |>
-    dplyr::bind_rows(gate_tbl_uns)
+  gateTbl |>
+    dplyr::bind_rows(gateTblUns)
 }
 
 #' @keywords internal
-.fcs_write_get_gate_tbl_add_uns_get_uns <- function(
-  gate_tbl,
-  gate_uns_method,
-  ind_batch_list
+.fcsWriteGetGateTblAddUnsGetUns <- function(
+  gateTbl,
+  gateUnsMethod,
+  indBatchList
 ) {
-  calc_uns_gate <- .fcs_write_get_gate_tbl_add_uns_get_uns_calc(
-    gate_uns_method
+  calcUnsGate <- .fcsWriteGetGateTblAddUnsGetUnsCalc(
+    gateUnsMethod = gateUnsMethod
   )
 
-  .fcs_write_get_gate_tbl_add_uns_get_uns_impl(
-    gate_tbl,
-    calc_uns_gate,
-    ind_batch_list
+  .fcsWriteGetGateTblAddUnsGetUnsImpl(
+    gateTbl = gateTbl,
+    calc = calcUnsGate,
+    indBatchList = indBatchList
   )
 }
 
 #' @keywords internal
-.fcs_write_get_gate_tbl_add_uns_get_uns_calc <- function(gate_uns_method) {
+.fcsWriteGetGateTblAddUnsGetUnsCalc <- function(gateUnsMethod) {
   switch(
     gate_uns_method,
     "min" = min,
@@ -281,109 +281,109 @@ stimgate_fcs_write <- function(
     "mean" = mean,
     "tmean" = function(x) mean(x, trim = 0.2),
     "med" = median,
-    stop("gate_uns_method not recognised")
+    stop("gateUnsMethod not recognised")
   )
 }
 
 #' @keywords internal
-.fcs_write_get_gate_tbl_add_uns_get_uns_impl <- function(
-  gate_tbl,
+.fcsWriteGetGateTblAddUnsGetUnsImpl <- function(
+  gateTbl,
   calc,
-  ind_batch_list
+  indBatchList
 ) {
-  gate_tbl_distinct <- gate_tbl |>
+  gateTblDistinct <- gateTbl |>
     dplyr::distinct(chnl, marker, batch, ind, .keep_all = TRUE)
-  if (nrow(gate_tbl_distinct) != nrow(gate_tbl)) {
+  if (nrow(gateTblDistinct) != nrow(gateTbl)) {
     # check that gates are the same for all duplicates
-    cn_vec <- c("chnl", "marker", "batch", "ind")
-    cn_vec_concate <- NULL
-    for (i in seq_along(cn_vec)) {
-      cn_vec_concate <- paste(cn_vec_concate, gate_tbl[[cn_vec[i]]], sep = "_")
+    cnVec <- c("chnl", "marker", "batch", "ind")
+    cnVecConcate <- NULL
+    for (i in seq_along(cnVec)) {
+      cnVecConcate <- paste(cnVecConcate, gateTbl[[cnVec[i]]], sep = "_")
     }
-    gate_tbl$concat <- cn_vec_concate
-    gate_tbl <- gate_tbl |>
+    gateTbl$concat <- cnVecConcate
+    gateTbl <- gateTbl |>
       dplyr::group_by(concat) |>
       dplyr::filter(dplyr::n() > 1) |>
       dplyr::ungroup()
-    gate_vec <- paste0(gate_tbl$gate, gate_tbl$gate_cyt, gate_tbl$gate_single)
-    gate_tbl$gate_concat <- gate_vec
-    is_error <- nrow(
-      gate_tbl |>
+    gateVec <- paste0(gateTbl$gate, gateTbl$gate_cyt, gateTbl$gate_single)
+    gateTbl$gateConcat <- gateVec
+    isError <- nrow(
+      gateTbl |>
         dplyr::group_by(chnl, marker, batch, ind) |>
-        dplyr::filter(length(unique(gate_concat)) > 1) |>
+        dplyr::filter(length(unique(gateConcat)) > 1) |>
         dplyr::ungroup()
     ) >
       0
-    if (is_error) {
-      stop("Gates are not the same for all duplicates in gate_tbl.")
+    if (isError) {
+      stop("Gates are not the same for all duplicates in gateTbl.")
     }
   }
-  gate_tbl_distinct |>
+  gateTblDistinct |>
     dplyr::group_by(chnl, marker, batch) |> # nolint
     dplyr::summarise(
-      ind_stim = paste0(ind |> sort(), collapse = "_"),
+      indStim = paste0(ind |> sort(), collapse = "_"),
       gate = calc(gate), # nolint
       gate_cyt = calc(gate_cyt), # nolint
       gate_single = calc(gate_single), # nolint
       .groups = "drop"
     ) |>
-    .fcs_write_get_gate_tbl_add_uns_get_uns_ind(ind_batch_list)
+    .fcsWriteGetGateTblAddUnsGetUnsInd(indBatchList)
 }
 
 #' @keywords internal
-.fcs_write_get_gate_tbl_add_uns_get_uns_ind <- function(
-  gate_tbl,
-  ind_batch_list
+.fcsWriteGetGateTblAddUnsGetUnsInd <- function(
+  gateTbl,
+  indBatchList
 ) {
-  ind_batch_vec <- lapply(ind_batch_list, function(x) {
+  indBatchVec <- lapply(indBatchList, function(x) {
     (x[-length(x)]) |>
       sort() |>
       paste0(collapse = "_")
   }) |>
     unlist()
-  ind_uns_vec <- lapply(ind_batch_list, function(x) x[length(x)]) |>
+  indUnsVec <- lapply(indBatchList, function(x) x[length(x)]) |>
     unlist()
-  ind_vec <- lapply(seq_len(nrow(gate_tbl)), function(x) {
-    ind_match <- which(ind_batch_vec == gate_tbl$ind_stim[[x]])
-    stopifnot(length(ind_match) == 1L)
-    ind_uns_vec[ind_match]
+  indVec <- lapply(seq_len(nrow(gateTbl)), function(x) {
+    indMatch <- which(indBatchVec == gateTbl$indStim[[x]])
+    stopifnot(length(indMatch) == 1L)
+    indUnsVec[indMatch]
   }) |>
     unlist() |>
     as.character()
-  gate_tbl |>
-    dplyr::mutate(ind = ind_vec) |>
+  gateTbl |>
+    dplyr::mutate(ind = indVec) |>
     dplyr::select(chnl, marker, batch, ind, everything()) |> # nolint
     dplyr::arrange(chnl, marker, batch, ind)
 }
 
 
 #' @keywords internal
-.fcs_write_get_gate_tbl_filter_chnl <- function(gate_tbl, chnl) {
+.fcsWriteGetGateTblFilterChnl <- function(gateTbl, chnl) {
   if (is.null(chnl)) {
-    return(gate_tbl)
+    return(gateTbl)
   }
-  gate_tbl |> dplyr::filter(chnl %in% .env$chnl)
+  gateTbl |> dplyr::filter(chnl %in% .env$chnl)
 }
 
 #' @keywords internal
-.fcs_write_get_gate_tbl_add_marker <- function(gate_tbl, chnl, .data) {
-  chnl_lab_vec <- .get_labs(.data = .data[[1]], chnl_cut = chnl) # nolint
+.fcsWriteGetGateTblAddMarker <- function(gateTbl, chnl, .data) {
+  chnlLabVec <- .getLabs(.data = .data[[1]], chnlCut = chnl) # nolint
 
   # Base columns that should always be present
-  base_cols <- c("chnl", "marker", "batch", "ind", "gate")
+  baseCols <- c("chnl", "marker", "batch", "ind", "gate")
 
   # Optional columns that may or may not be present
-  optional_cols <- c("gate_cyt", "gate_single", "gate_name")
+  optionalCols <- c("gate_cyt", "gate_single", "gate_name")
 
   # Only select columns that exist
-  cols_to_select <- c(
-    base_cols,
-    optional_cols[optional_cols %in% colnames(gate_tbl)]
+  colsToSelect <- c(
+    baseCols,
+    optionalCols[optionalCols %in% colnames(gateTbl)]
   )
 
-  gate_tbl |>
-    dplyr::mutate(marker = chnl_lab_vec[.data$chnl]) |> # nolint
-    dplyr::select(dplyr::any_of(cols_to_select)) |>
+  gateTbl |>
+    dplyr::mutate(marker = chnlLabVec[.data$chnl]) |> # nolint
+    dplyr::select(dplyr::any_of(colsToSelect)) |>
     dplyr::arrange(chnl, marker, batch, ind)
 }
 
@@ -392,36 +392,36 @@ stimgate_fcs_write <- function(
 # ================
 
 #' @keywords internal
-.fcs_write_impl <- function(
+.fcsWriteImpl <- function(
   .data,
   ind,
-  gate_tbl,
-  path_dir_save,
+  gateTbl,
+  pathDirSave,
   chnl,
   mult,
-  gate_type_cyt_pos,
-  gate_type_single_pos,
-  combn_exc,
-  trans_fn,
-  trans_chnl
+  gateTypeCytPos,
+  gateTypeSinglePos,
+  combnExc,
+  transFn,
+  transChnl
 ) {
-  fr <- .fcs_write_impl_load(.data, ind)
+  fr <- .fcsWriteImplLoad(.data, ind)
   ex <- flowCore::exprs(fr) |> tibble::as_tibble()
 
   if (is.na(ex[1, chnl[1]]) && nrow(ex) == 1) {
     return(invisible(FALSE))
   }
 
-  gate_tbl_ind <- gate_tbl |>
+  gateTblInd <- gateTbl |>
     dplyr::filter(.data$ind == .env$ind) # nolint
 
-  ex <- .data_get_ex_cyt_pos_inc(
-    ex,
-    gate_tbl_ind,
-    mult,
-    chnl,
-    gate_type_cyt_pos,
-    gate_type_single_pos
+  ex <- .dataGetExCytPosInc(
+    ex = ex,
+    gateTblInd = gateTblInd,
+    mult = mult,
+    chnl = chnl,
+    gateTypeCytPos = gateTypeCytPos,
+    gateTypeSinglePos = gateTypeSinglePos
   )
 
   if (nrow(ex) == 0) {
@@ -429,13 +429,13 @@ stimgate_fcs_write <- function(
     return(invisible(FALSE))
   }
 
-  ex <- .data_get_ex_cyt_pos_exc(
-    ex,
-    combn_exc,
-    gate_tbl_ind,
-    chnl,
-    gate_type_cyt_pos,
-    gate_type_single_pos
+  ex <- .dataGetExCytPosExc(
+    ex = ex,
+    combnExc = combnExc,
+    gateTblInd = gateTblInd,
+    chnl = chnl,
+    gateTypeCytPos = gateTypeCytPos,
+    gateTypeSinglePos = gateTypeSinglePos
   )
 
   if (nrow(ex) == 0) {
@@ -445,14 +445,14 @@ stimgate_fcs_write <- function(
     return(invisible(FALSE))
   }
 
-  ex <- .data_get_ex_trans(ex, trans_fn, trans_chnl)
+  ex <- .dataGetExTrans(ex, transFn, transChnl)
 
-  .fcs_write_impl_write(ex, fr, path_dir_save)
+  .fcsWriteImplWrite(ex, fr, pathDirSave)
   invisible(TRUE)
 }
 
 #' @keywords internal
-.fcs_write_impl_load <- function(.data, ind) {
+.fcsWriteImplLoad <- function(.data, ind) {
   fr <- flowWorkspace::gh_pop_get_data(.data[[ind]])
   if (inherits(fr, "cytoframe")) {
     fr <- flowWorkspace::cytoframe_to_flowFrame(fr)
@@ -462,14 +462,14 @@ stimgate_fcs_write <- function(
 
 
 #' @keywords internal
-.fcs_write_impl_write <- function(ex, fr, path_dir_save) {
+.fcsWriteImplWrite <- function(ex, fr, pathDirSave) {
   flowCore::exprs(fr) <- as.matrix(ex)
   fn <- flowCore::keyword(fr)[["GUID"]] |> basename()
-  fn_out <- file.path(path_dir_save, fn)
-  if (file.exists(fn_out)) {
-    invisible(file.remove(fn_out))
+  fnOut <- file.path(pathDirSave, fn)
+  if (file.exists(fnOut)) {
+    invisible(file.remove(fnOut))
   }
-  flowCore::write.FCS(x = fr, filename = fn_out)
+  flowCore::write.FCS(x = fr, filename = fnOut)
   txt <- paste0("Wrote ", fn)
   message(txt)
   invisible(TRUE)

@@ -3,7 +3,7 @@
 #' @param x object Object to check
 #' @return logical TRUE if x is a character vector of length 1 with non-zero characters
 #' @keywords internal
-.is_string <- function(x) {
+.isString <- function(x) {
   is.character(x) && length(x) == 1 && nzchar(x)
 }
 
@@ -12,8 +12,8 @@
 #' @param x object Object to check
 #' @return invisible NULL if check passes, otherwise throws an error
 #' @keywords internal
-.assert_string <- function(x) {
-  if (!.is_string(x)) {
+.assertString <- function(x) {
+  if (!.isString(x)) {
     stop(paste0("Expected a non-empty string, got: ", class(x)))
   }
 }
@@ -23,7 +23,7 @@
 #' @param x object Object to check
 #' @return logical TRUE if x is a character vector of length >= 1 with all non-zero character elements
 #' @keywords internal
-.is_string_vector <- function(x) {
+.isStringVector <- function(x) {
   is.character(x) && length(x) >= 1 && all(nzchar(x))
 }
 
@@ -32,8 +32,8 @@
 #' @param x object Object to check
 #' @return invisible NULL if check passes, otherwise throws an error
 #' @keywords internal
-.assert_string_vector <- function(x) {
-  if (!.is_string_vector(x)) {
+.assertStringVector <- function(x) {
+  if (!.isStringVector(x)) {
     stop(paste0("Expected a non-empty character vector, got class: ", class(x)))
   }
 }

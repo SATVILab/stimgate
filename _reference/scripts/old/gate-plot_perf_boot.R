@@ -3,7 +3,7 @@ plot_cp_boot <- function(gate_tbl,
                          params,
                          pop_sub,
                          plot = TRUE,
-                         path_project) {
+                         pathProject) {
   # =========================
   # Get stats
   # =========================
@@ -12,7 +12,7 @@ plot_cp_boot <- function(gate_tbl,
 
   if (is.null(gate_tbl)) {
     dir_base <- stimgate_dir_base_create(
-      dir_base_init = path_project, params = params
+      dir_base_init = pathProject, params = params
     )
     path_tbl <- file.path(dir_base, "stats", "gate_stats_tbl_boot")
     if (!file.exists(path_tbl)) {
@@ -27,7 +27,7 @@ plot_cp_boot <- function(gate_tbl,
       gate_tbl = gate_tbl,
       pop_sub = pop_sub,
       boot = TRUE,
-      path_project = path_project
+      pathProject = pathProject
     )
   }
 
@@ -48,7 +48,7 @@ plot_cp_boot <- function(gate_tbl,
       gate_stats = gate_stats_tbl,
       params = params,
       gate_lab = gate_lab_vec,
-      path_project = path_project
+      pathProject = pathProject
     )
   }
 
@@ -58,7 +58,7 @@ plot_cp_boot <- function(gate_tbl,
 .plot_gate_perf_boot <- function(gate_stats,
                                  params,
                                  gate_lab,
-                                 path_project) {
+                                 pathProject) {
   # Calculate signal-to-noise
   # ---------------------
   .get_s2n <- function(stat, type = "mean") {
@@ -241,6 +241,6 @@ plot_cp_boot <- function(gate_tbl,
     params = params,
     plot_type = "perf",
     unlink = TRUE,
-    path_project = path_project
+    pathProject = pathProject
   )
 }

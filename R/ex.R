@@ -1,184 +1,184 @@
-str_detect_any <- function(string, pattern) {
+strDetectAny <- function(string, pattern) {
   vapply(
     pattern,
-    function(pattern_curr) grepl(pattern_curr, string),
+    function(patternCurr) grepl(patternCurr, string),
     logical(1)
   ) |>
     any()
 }
 
 #' @keywords internal
-.get_ex_list <- function(
+.getExList <- function(
   .data,
-  ind_batch,
+  indBatch,
   batch,
   pop,
-  chnl_cut,
-  extra_chnl = NULL,
-  path_project
+  chnlCut,
+  extraChnl = NULL,
+  pathProject
 ) {
-  is_path_given <- is.character(path_project) && nzchar(path_project)
-  if (!is_path_given) {
-    stop("path_project must be a non-empty character string.")
+  isPathGiven <- is.character(pathProject) && nzchar(pathProject)
+  if (!isPathGiven) {
+    stop("pathProject must be a non-empty character string.")
   }
   # get expression .data for each batch
-  lapply(ind_batch, function(i) {
-    .get_ex(
+  lapply(indBatch, function(i) {
+    .getEx(
       .data = .data[[i]],
       pop = pop,
-      chnl_cut = chnl_cut,
-      extra_chnl = extra_chnl,
+      chnlCut = chnlCut,
+      extraChnl = extraChnl,
       ind = i,
       # specify corresponding unstim
-      ind_uns = ind_batch[length(ind_batch)],
+      indUns = indBatch[length(indBatch)],
       batch = batch,
-      path_project = path_project
+      pathProject = pathProject
     )
   }) |>
-    stats::setNames(as.character(ind_batch))
+    stats::setNames(as.character(indBatch))
 }
 
 
 #' @keywords internal
-.get_ex <- function(
+.getEx <- function(
   .data,
   pop,
-  chnl_cut,
+  chnlCut,
   ind,
-  ind_uns,
+  indUns,
   batch,
-  extra_chnl = NULL,
-  path_project,
-  add_attributes = TRUE
+  extraChnl = NULL,
+  pathProject,
+  addAttributes = TRUE
 ) {
   # collect all the channels we need
   # get expression information as a tibble
   # get .data
-  all_saved <- .get_ex_check_chnl_saved(
-    chnl = c(chnl_cut, extra_chnl),
+  allSaved <- .getExCheckChnlSaved(
+    chnl = c(chnlCut, extraChnl),
     ind = ind,
     pop = pop,
-    path_project = path_project
+    pathProject = pathProject
   )
-  ex <- if (all_saved) {
-    .get_ex_old(
+  ex <- if (allSaved) {
+    .getExOld(
       pop = pop,
-      chnl = c(chnl_cut, extra_chnl),
+      chnl = c(chnlCut, extraChnl),
       ind = ind,
-      path_project = path_project
+      pathProject = pathProject
     )
   } else {
-    .get_ex_new(
+    .getExNew(
       .data = .data,
-      chnl = c(chnl_cut, extra_chnl),
+      chnl = c(chnlCut, extraChnl),
       ind = ind,
       pop = pop,
-      path_project = path_project,
+      pathProject = pathProject,
       save = TRUE
     )
   }
-  .get_ex_add_attributes(
+  .getExAddAttributes(
     ex = ex,
     ind = ind,
-    ind_uns = ind_uns,
+    indUns = indUns,
     batch = batch,
-    chnl_cut = chnl_cut,
+    chnlCut = chnlCut,
     pop = pop,
-    add_attributes = add_attributes
+    addAttributes = addAttributes
   )
 }
 
 #' @keywords internal
-.get_ex_check_chnl_saved <- function(chnl, ind, pop, path_project) {
-  path_chnl_dir <- .get_ex_chnl_path_dir(ind, pop, path_project)
-  if (!dir.exists(path_chnl_dir)) {
+.getExCheckChnlSaved <- function(chnl, ind, pop, pathProject) {
+  pathChnlDir <- .getExChnlPathDir(ind, pop, pathProject)
+  if (!dir.exists(pathChnlDir)) {
     return(FALSE)
   }
-  fn_vec <- list.files(path_chnl_dir)
-  req_vec <- paste0("chnl_", chnl, ".rds")
-  all(req_vec %in% fn_vec)
+  fnVec <- list.files(pathChnlDir)
+  reqVec <- paste0("chnl_", chnl, ".rds")
+  all(reqVec %in% fnVec)
 }
 
 #' @keywords internal
-.get_ex_old <- function(pop, chnl, ind, path_project) {
+.getExOld <- function(pop, chnl, ind, pathProject) {
   # get expression information as a tibble
   # get .data
   ex <- tibble::tibble(
-    V1 = .get_ex_old_chnl_read_ind(chnl[[1]], ind, pop, path_project)
+    V1 = .getExOldChnlReadInd(chnl[[1]], ind, pop, pathProject)
   )
   names(ex) <- chnl[[1]]
-  chnl_remaining <- chnl[-1]
-  for (i in seq_along(chnl_remaining)) {
-    chnl_curr <- chnl_remaining[[i]]
-    ex[[chnl_curr]] <-
-      .get_ex_old_chnl_read_ind(chnl_curr, ind, pop, path_project)
+  chnlRemaining <- chnl[-1]
+  for (i in seq_along(chnlRemaining)) {
+    chnlCurr <- chnlRemaining[[i]]
+    ex[[chnlCurr]] <-
+      .getExOldChnlReadInd(chnlCurr, ind, pop, pathProject)
   }
   ex
 }
 
 #' @keywords internal
-.get_ex_old_chnl_read_ind <- function(chnl, ind, pop, path_project) {
-  path_chnl <- .get_ex_chnl_path(chnl, ind, pop, path_project)
-  readRDS(path_chnl)
+.getExOldChnlReadInd <- function(chnl, ind, pop, pathProject) {
+  pathChnl <- .getExChnlPath(chnl, ind, pop, pathProject)
+  readRDS(pathChnl)
 }
 
 #' @keywords internal
-.get_ex_new <- function(.data, pop, chnl, ind, path_project, save) {
+.getExNew <- function(.data, pop, chnl, ind, pathProject, save) {
   # get expression information as a tibble
   # get .data
   fr <- flowWorkspace::gh_pop_get_data(.data, y = pop)
   ex <- flowCore::exprs(fr)[, chnl, drop = FALSE] |>
     tibble::as_tibble()
-  .get_ex_new_chnl_save(
+  .getExNewChnlSave(
     ex = ex,
     ind = ind,
     pop = pop,
-    path_project = path_project,
+    pathProject = pathProject,
     save = save
   )
   ex
 }
 
 #' @keywords internal
-.get_ex_new_chnl_save <- function(ex, ind, pop, path_project, save) {
+.getExNewChnlSave <- function(ex, ind, pop, pathProject, save) {
   if (!save) {
     return(invisible(FALSE))
   }
-  for (chnl_curr in colnames(ex)) {
-    .get_ex_new_chnl_save_ind(
+  for (chnlCurr in colnames(ex)) {
+    .getExNewChnlSaveInd(
       ex = ex,
-      chnl = chnl_curr,
+      chnl = chnlCurr,
       ind = ind,
       pop = pop,
-      path_project = path_project
+      pathProject = pathProject
     )
   }
   invisible(TRUE)
 }
 
 #' @keywords internal
-.get_ex_new_chnl_save_ind <- function(ex, chnl, ind, pop, path_project) {
-  path_chnl <- .get_ex_chnl_path(chnl, ind, pop, path_project)
-  if (file.exists(path_chnl)) {
+.getExNewChnlSaveInd <- function(ex, chnl, ind, pop, pathProject) {
+  pathChnl <- .getExChnlPath(chnl, ind, pop, pathProject)
+  if (file.exists(pathChnl)) {
     return(invisible(FALSE))
   }
-  if (!dir.exists(dirname(path_chnl))) {
-    dir.create(dirname(path_chnl), recursive = TRUE)
+  if (!dir.exists(dirname(pathChnl))) {
+    dir.create(dirname(pathChnl), recursive = TRUE)
   }
-  saveRDS(ex[[chnl]], path_chnl)
+  saveRDS(ex[[chnl]], pathChnl)
 }
 
 #' @keywords internal
-.get_ex_chnl_path <- function(chnl, ind, pop, path_project) {
+.getExChnlPath <- function(chnl, ind, pop, pathProject) {
   file.path(
-    .get_ex_chnl_path_dir(ind, pop, path_project),
+    .getExChnlPathDir(ind, pop, pathProject),
     paste0("chnl_", chnl, ".rds")
   )
 }
 #' @keywords internal
-.get_ex_chnl_path_dir <- function(ind, pop, path_project) {
+.getExChnlPathDir <- function(ind, pop, pathProject) {
   file.path(
-    path_project,
+    pathProject,
     "sample_data",
     paste0("pop_", pop),
     paste0("ind_", ind)
@@ -186,75 +186,75 @@ str_detect_any <- function(string, pattern) {
 }
 
 #' @keywords internal
-.get_ex_add_attributes <- function(
+.getExAddAttributes <- function(
   ex,
   ind,
-  ind_uns,
+  indUns,
   batch,
-  chnl_cut,
+  chnlCut,
   pop,
-  add_attributes
+  addAttributes
 ) {
-  if (!add_attributes) {
+  if (!addAttributes) {
     return(ex)
   }
   attr(ex, "ind") <- ind |> as.character()
-  attr(ex, "ind_uns") <- ind_uns |> as.character()
-  attr(ex, "is_uns") <- ind == ind_uns
-  attr(ex, "chnl_cut") <- chnl_cut
+  attr(ex, "ind_uns") <- indUns |> as.character()
+  attr(ex, "is_uns") <- ind == indUns
+  attr(ex, "chnl_cut") <- chnlCut
   attr(ex, "batch") <- batch
   attr(ex, "pop") <- pop
 
   ex
 }
 
-.get_ind <- function(ex) {
+.getInd <- function(ex) {
   attr(ex, "ind")
 }
 
 #' @keywords internal
-.get_cut <- function(ex) {
+.getCut <- function(ex) {
   ex[[attr(ex, "chnl_cut")]]
 }
 
 #' @keywords internal
-.get_batch_ex <- function(ex) {
+.getBatchEx <- function(ex) {
   attr(ex, "batch")
 }
 
 #' @keywords internal
-.get_ind_uns <- function(ind, ind_batch_list) {
-  has_ind <- vapply(
-    ind_batch_list,
+.getIndUns <- function(ind, indBatchList) {
+  hasInd <- vapply(
+    indBatchList,
     function(x) ind %in% x,
     logical(1)
   )
-  if (sum(has_ind) > 1L) {
+  if (sum(hasInd) > 1L) {
     # this is an unstim, as it appears
     # in more than one batch
     return(ind)
   }
-  has_ind <- which(has_ind)
-  ind_batch <- ind_batch_list[has_ind] |>
+  hasInd <- which(hasInd)
+  indBatch <- indBatchList[hasInd] |>
     unlist()
-  ind_batch[[length(ind_batch)]]
+  indBatch[[length(indBatch)]]
 }
 
 #' @keywords internal
-.get_batch <- function(ind, ind_batch_list) {
-  has_ind <- vapply(
-    ind_batch_list,
+.getBatch <- function(ind, indBatchList) {
+  hasInd <- vapply(
+    indBatchList,
     function(x) ind %in% x,
     logical(1)
   )
-  names(ind_batch_list)[has_ind]
+  names(indBatchList)[hasInd]
 }
 
 #' @title Read saved expression data from project
 #' @description Read channel expression vectors saved under a project's
 #'   sample_data directory and return them as a tibble with sample metadata
 #'   columns.
-#' @param path_project character Path to project.
+#' @param pathProject character Path to project.
 #' @param .data GatingSet or NULL GatingSet object to extract expression data
 #'   from. Default is NULL.
 #' @param pop character or NULL Population name(s). Default is detected from
@@ -267,27 +267,27 @@ str_detect_any <- function(string, pattern) {
 #'   specified with `chnl`. Default is NULL.
 #' @param bias logical Whether to add bias to unstimulated sample used in the
 #'   gating. Default is `FALSE`.
-#' @param exc_min logical Whether to exclude cells with the minimum
+#' @param excMin logical Whether to exclude cells with the minimum
 #'   expression for any channels. Default is FALSE.
-#' @param combn_exc list or NULL Combinations of channels to exclude. Default
+#' @param combnExc list or NULL Combinations of channels to exclude. Default
 #'   is NULL.
-#' @param chnl_gate character or NULL Channel name(s) to use for gating.
+#' @param chnlGate character or NULL Channel name(s) to use for gating.
 #'   Cannot be specified with `marker_gate`. Default is NULL.
-#' @param marker_gate character or NULL Marker name(s) to use for gating.
+#' @param markerGate character or NULL Marker name(s) to use for gating.
 #'   Cannot be specified with `chnl_gate`. Default is NULL.
-#' @param gate_type_cyt_pos character Gate type to use for cytokine-positive
+#' @param gateTypeCytPos character Gate type to use for cytokine-positive
 #'   cells. Default is "cyt".
-#' @param gate_type_single_pos character Gate type to use for single-positive
+#' @param gateTypeSinglePos character Gate type to use for single-positive
 #'   cells. Default is "single".
 #' @param mult logical Whether to return only multi-functional cells (positive
 #'   for multiple markers). Default is FALSE.
-#' @param gate_uns_method character Method for gating unstimulated cells.
+#' @param gateUnsMethod character Method for gating unstimulated cells.
 #'   Default is "min".
-#' @param trans_fn function or NULL Transformation function to apply to
+#' @param transFn function or NULL Transformation function to apply to
 #'   expression values. Default is NULL.
-#' @param trans_chnl character or NULL Channel name(s) to transform when using
+#' @param transChnl character or NULL Channel name(s) to transform when using
 #'   channel names. Default is NULL (transforms all channels).
-#' @param trans_marker character or NULL Marker name(s) to transform when
+#' @param transMarker character or NULL Marker name(s) to transform when
 #'   using marker names. Default is NULL (transforms all markers).
 #' @return A tibble with columns `pop`, `ind` and one column per requested
 #'   channel. Rows correspond to cells.
@@ -305,405 +305,405 @@ str_detect_any <- function(string, pattern) {
 #'   c(4, 5, 6),
 #'   file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds")
 #' )
-#' stimgate_data_get_ex(tmp)
-#' stimgate_data_get_ex(tmp, chnl = "BC1")
+#' getStimExpr(tmp)
+#' getStimExpr(tmp, chnl = "BC1")
 #' }
 #' @export
-stimgate_data_get_ex <- function(
-  path_project,
+getStimExpr <- function(
+  pathProject,
   .data = NULL,
   pop = NULL,
   ind = NULL,
   chnl = NULL,
   marker = NULL,
   bias = FALSE,
-  exc_min = FALSE,
-  combn_exc = NULL,
-  chnl_gate = NULL,
-  marker_gate = NULL,
-  gate_type_cyt_pos = "cyt",
-  gate_type_single_pos = "single",
+  excMin = FALSE,
+  combnExc = NULL,
+  chnlGate = NULL,
+  markerGate = NULL,
+  gateTypeCytPos = "cyt",
+  gateTypeSinglePos = "single",
   mult = FALSE,
-  gate_uns_method = "min",
-  trans_fn = NULL,
-  trans_chnl = NULL,
-  trans_marker = NULL
+  gateUnsMethod = "min",
+  transFn = NULL,
+  transChnl = NULL,
+  transMarker = NULL
 ) {
-  .assert_string(path_project)
-  pop <- pop %|c|% .get_ex_project_pop(path_project)
+  .assertString(pathProject)
+  pop <- pop %|c|% .getExProjectPop(pathProject)
   if (!is.null(chnl) && !is.null(marker)) {
     stop("Must not specify both marker and chnl")
   }
-  .assert_string_vector(pop)
-  ex_list <- purrr::map(pop, function(pop_curr) {
-    ind <- ind %|c|% .get_ex_project_ind(path_project, pop_curr)
-    .assert_string_vector(ind)
-    purrr::map(ind, function(ind_curr) {
+  .assertStringVector(pop)
+  exList <- purrr::map(pop, function(popCurr) {
+    ind <- ind %|c|% .getExProjectInd(pathProject, popCurr)
+    .assertStringVector(ind)
+    purrr::map(ind, function(indCurr) {
       chnl <- if (!is.null(marker)) {
-        is_marker <- TRUE
+        isMarker <- TRUE
         marker <- as.character(marker)
-        stimgate_meta_read_marker_lab(path_project)[marker]
+        stimgateMetaReadMarkerLab(pathProject)[marker]
       } else {
-        is_marker <- FALSE
+        isMarker <- FALSE
         chnl %|c|%
-          .get_ex_project_chnl(path_project, pop_curr, ind_curr)
+          .getExProjectChnl(pathProject, popCurr, indCurr)
       }
-      .assert_string_vector(chnl)
-      ex <- .data_get_ex_init(
+      .assertStringVector(chnl)
+      ex <- .dataGetExInit(
         .data,
-        pop_curr,
+        popCurr,
         chnl,
-        ind_curr,
-        path_project
+        indCurr,
+        pathProject
       )
-      ex <- .data_get_ex_exc_min(ex, exc_min, pop, chnl, ind_curr)
-      ex <- .data_get_ex_cyt_pos(
+      ex <- .dataGetExExcMin(ex, excMin, pop, chnl, indCurr)
+      ex <- .dataGetExCytPos(
         ex = ex,
-        chnl_gate = chnl_gate,
-        marker_gate = marker_gate,
-        pop = pop_curr,
-        ind = ind_curr,
-        combn_exc = combn_exc,
-        gate_type_cyt_pos = gate_type_cyt_pos,
-        gate_type_single_pos = gate_type_single_pos,
+        chnlGate = chnlGate,
+        markerGate = markerGate,
+        pop = popCurr,
+        ind = indCurr,
+        combnExc = combnExc,
+        gateTypeCytPos = gateTypeCytPos,
+        gateTypeSinglePos = gateTypeSinglePos,
         mult = mult,
-        path_project = path_project
+        pathProject = pathProject
       )
-      ex <- .data_get_ex_bias(
+      ex <- .dataGetExBias(
         ex,
-        ind = ind_curr,
-        path_project = path_project,
+        ind = indCurr,
+        pathProject = pathProject,
         bias = bias
       )
-      ex <- .data_get_ex_renamed(ex, is_marker, path_project)
-      trans_chnl_final <- if (is_marker) trans_marker else trans_chnl
-      ex <- .data_get_ex_trans(ex, trans_fn, trans_chnl_final)
+      ex <- .dataGetExRenamed(ex, isMarker, pathProject)
+      transChnlFinal <- if (isMarker) transMarker else transChnl
+      ex <- .dataGetExTrans(ex, transFn, transChnlFinal)
       attr(ex, "chnl") <- paste0(chnl, collapse = "&*&")
-      ex <- .data_get_ex_meta(ex, pop_curr, ind_curr)
+      ex <- .dataGetExMeta(ex, popCurr, indCurr)
       ex
     }) |>
       stats::setNames(ind)
   }) |>
     stats::setNames(pop)
-  ex_df <- ex_list |> purrr::map_df(function(x) x |> dplyr::bind_rows())
-  prob_g_min_list <- purrr::map(
-    ex_list,
-    function(ex_ind_list) {
+  exDf <- exList |> purrr::map_df(function(x) x |> dplyr::bind_rows())
+  probGMinList <- purrr::map(
+    exList,
+    function(exIndList) {
       purrr::map(
-        ex_ind_list,
+        exIndList,
         function(ex) {
-          prob_g_min <- attr(ex, "prob_g_min") %||% 1
-          if (is.null(prob_g_min)) {
+          probGMin <- attr(ex, "probGMin") %||% 1
+          if (is.null(probGMin)) {
             return(1.0)
           }
           chnl <- attr(ex, "chnl")
-          list(prob_g_min) |> stats::setNames(chnl)
+          list(probGMin) |> stats::setNames(chnl)
         }
       ) |>
-        stats::setNames(names(ex_ind_list))
+        stats::setNames(names(exIndList))
     }
   ) |>
-    stats::setNames(names(ex_list))
-  attr(ex_df, "prob_g_min") <- prob_g_min_list
-  ex_df
+    stats::setNames(names(exList))
+  attr(exDf, "probGMin") <- probGMinList
+  exDf
 }
 
-.data_get_ex_init <- function(.data, pop, chnl, ind, path_project) {
-  chnl_cut <- chnl[[1]]
-  extra_chnl <- setdiff(chnl, chnl_cut)
-  extra_chnl <- if (length(extra_chnl) == 0L) NULL else extra_chnl
-  .get_ex(
+.dataGetExInit <- function(.data, pop, chnl, ind, pathProject) {
+  chnlCut <- chnl[[1]]
+  extraChnl <- setdiff(chnl, chnl_cut)
+  extraChnl <- if (length(extraChnl) == 0L) NULL else extraChnl
+  .getEx(
     .data,
     pop,
-    chnl_cut,
+    chnlCut,
     ind,
     NULL,
     NULL,
-    extra_chnl,
-    path_project,
+    extraChnl,
+    pathProject,
     FALSE
   )
 }
 
 #' @keywords internal
-.get_ex_project_pop <- function(path_project) {
-  .assert_string(path_project)
-  pop_vec <- list.dirs(
-    file.path(path_project, "sample_data"),
+.getExProjectPop <- function(pathProject) {
+  .assertString(pathProject)
+  popVec <- list.dirs(
+    file.path(pathProject, "sample_data"),
     recursive = FALSE
   ) |>
     basename() |>
     sub("^pop_(.*)$", "\\1", x = _)
-  .assert_string_vector(pop_vec)
-  pop_vec
+  .assertStringVector(popVec)
+  popVec
 }
 
 #' @keywords internal
-.get_ex_project_ind <- function(path_project, pop = NULL) {
-  pop <- pop %||% .get_ex_project_pop(path_project)
+.getExProjectInd <- function(pathProject, pop = NULL) {
+  pop <- pop %||% .getExProjectPop(pathProject)
   pop <- pop[[1]]
-  .assert_string(pop)
-  ind_vec <- list.dirs(
-    file.path(path_project, "sample_data", paste0("pop_", pop)),
+  .assertString(pop)
+  indVec <- list.dirs(
+    file.path(pathProject, "sample_data", paste0("pop_", pop)),
     recursive = FALSE
   ) |>
     basename() |>
     sub("^ind_", "", x = _)
-  .assert_string_vector(ind_vec)
-  ind_vec
+  .assertStringVector(indVec)
+  indVec
 }
 
 #' @keywords internal
-.get_ex_project_chnl <- function(path_project, pop = NULL, ind = NULL) {
-  pop <- pop %||% .get_ex_project_pop(path_project)
+.getExProjectChnl <- function(pathProject, pop = NULL, ind = NULL) {
+  pop <- pop %||% .getExProjectPop(pathProject)
   pop <- pop[[1]]
-  .assert_string(pop)
-  ind <- ind %||% .get_ex_project_ind(path_project, pop)
+  .assertString(pop)
+  ind <- ind %||% .getExProjectInd(pathProject, pop)
   ind <- ind[[1]]
-  .assert_string(ind)
-  path_chnl_dir <- file.path(
-    path_project,
+  .assertString(ind)
+  pathChnlDir <- file.path(
+    pathProject,
     "sample_data",
     paste0("pop_", pop),
     paste0("ind_", ind)
   )
-  .assert_string(path_chnl_dir)
-  chnl_vec <- list.files(path_chnl_dir) |>
+  .assertString(pathChnlDir)
+  chnlVec <- list.files(pathChnlDir) |>
     sub("^chnl_(.*)\\.rds$", "\\1", x = _)
-  .assert_string_vector(chnl_vec)
-  chnl_vec
+  .assertStringVector(chnlVec)
+  chnlVec
 }
 
 #' @keywords internal
-.data_get_ex_bias <- function(ex, ind, path_project, bias) {
+.dataGetExBias <- function(ex, ind, pathProject, bias) {
   if (!bias) {
     return(ex)
   }
-  ind_batch_list <- stimgate_meta_read_batch_list(path_project)
-  ind_uns <- .get_ind_uns(ind, ind_batch_list)
+  indBatchList <- stimgateMetaReadBatchList(pathProject)
+  indUns <- .getIndUns(ind, indBatchList)
   # only apply bias to unstim
-  is_uns <- ind == ind_uns
-  if (!is_uns) {
+  isUns <- ind == indUns
+  if (!isUns) {
     return(ex)
   }
   # apply bias
-  chnl_list <- stimgate_meta_read_settings_chnls(path_project)
+  chnlList <- stimgateMetaReadSettingsChnls(pathProject)
   for (chnl in colnames(ex)) {
-    bias <- chnl_list[[chnl]][["bias_uns"]]
+    bias <- chnlList[[chnl]][["biasUns"]]
     ex[[chnl]] <- ex[[chnl]] + bias
   }
   ex
 }
 
 #' @keywords internal
-.data_get_ex_exc_min <- function(
+.dataGetExExcMin <- function(
   ex,
-  exc_min,
+  excMin,
   pop = NULL,
   chnl = NULL,
   ind = NULL
 ) {
-  if (!exc_min) {
-    attr(ex, "prob_g_min") <- NULL
+  if (!excMin) {
+    attr(ex, "probGMin") <- NULL
     return(ex)
   }
-  n_cell_init <- nrow(ex)
-  cn_vec <- setdiff(colnames(ex), c("pop", "ind"))
-  min_vec <- vapply(
-    cn_vec,
+  nCellInit <- nrow(ex)
+  cnVec <- setdiff(colnames(ex), c("pop", "ind"))
+  minVec <- vapply(
+    cnVec,
     function(x) min(ex[[x]], na.rm = TRUE),
     numeric(1)
   ) |>
-    stats::setNames(cn_vec)
-  for (cn in cn_vec) {
-    inc_vec <- ex[[cn]] > min_vec[[cn]]
-    ex <- ex[inc_vec, ]
+    stats::setNames(cnVec)
+  for (cn in cnVec) {
+    incVec <- ex[[cn]] > minVec[[cn]]
+    ex <- ex[incVec, ]
   }
-  attr(ex, "prob_g_min") <- nrow(ex) / n_cell_init
+  attr(ex, "probGMin") <- nrow(ex) / nCellInit
   ex
 }
 
 #' @keywords internal
-.data_get_ex_cyt_pos <- function(
+.dataGetExCytPos <- function(
   ex,
-  chnl_gate,
-  marker_gate,
+  chnlGate,
+  markerGate,
   pop,
   ind,
-  combn_exc = NULL,
-  gate_type_cyt_pos = "cyt",
-  gate_type_single_pos = "single",
+  combnExc = NULL,
+  gateTypeCytPos = "cyt",
+  gateTypeSinglePos = "single",
   mult = FALSE,
-  path_project
+  pathProject
 ) {
-  if (is.null(chnl_gate) && is.null(marker_gate)) {
+  if (is.null(chnlGate) && is.null(markerGate)) {
     return(ex)
   }
-  if (!is.null(chnl_gate) && !is.null(marker_gate)) {
-    stop("Must not specify both chnl_gate and marker_gate")
+  if (!is.null(chnlGate) && !is.null(markerGate)) {
+    stop("Must not specify both chnlGate and markerGate")
   }
-  cn_vec <- colnames(ex)
-  chnl_gate <- if (!is.null(marker_gate)) {
-    is_marker <- TRUE
-    stimgate_meta_read_marker_lab(path_project)[marker_gate]
+  cnVec <- colnames(ex)
+  chnlGate <- if (!is.null(markerGate)) {
+    isMarker <- TRUE
+    stimgateMetaReadMarkerLab(pathProject)[markerGate]
   } else {
-    is_marker <- FALSE
-    chnl_gate %||%
-      .get_ex_project_chnl(path_project, pop, ind)
+    isMarker <- FALSE
+    chnlGate %||%
+      .getExProjectChnl(pathProject, pop, ind)
   }
-  gate_tbl_ind <- .gate_get_gate_tbl_all(NULL, pop, chnl_gate, path_project) |>
+  gateTblInd <- .gateGetGateTblAll(NULL, pop, chnlGate, pathProject) |>
     dplyr::filter(.data$ind == .env$ind) # nolint
 
-  ex <- .data_get_ex_cyt_pos_inc(
+  ex <- .dataGetExCytPosInc(
     ex,
-    gate_tbl_ind,
+    gateTblInd,
     mult,
-    chnl_gate,
-    gate_type_cyt_pos,
-    gate_type_single_pos
+    chnlGate,
+    gateTypeCytPos,
+    gateTypeSinglePos
   )
 
   if (nrow(ex) == 0L) {
     message("No stimulation-positive cells.")
-    return(.data_get_ex_zero_tbl(cn_vec))
+    return(.dataGetExZeroTbl(cnVec))
   }
 
-  ex <- .data_get_ex_cyt_pos_exc(
+  ex <- .dataGetExCytPosExc(
     ex,
-    combn_exc,
-    gate_tbl_ind,
-    chnl_gate,
-    gate_type_cyt_pos,
-    gate_type_single_pos
+    combnExc,
+    gateTblInd,
+    chnlGate,
+    gateTypeCytPos,
+    gateTypeSinglePos
   )
 
   if (nrow(ex) == 0L) {
     message(
       "No stimulation-positive cells after excluding specified cytokine combinations."
     ) # nolint
-    return(.data_get_ex_zero_tbl(cn_vec))
+    return(.dataGetExZeroTbl(cnVec))
   }
 
   ex
 }
 
-.data_get_ex_zero_tbl <- function(cn) {
-  out_df <- matrix(rep(NA_real_, length(cn)), ncol = length(cn))
-  colnames(out_df) <- cn
-  tibble::as_tibble(out_df)
+.dataGetExZeroTbl <- function(cn) {
+  outDf <- matrix(rep(NA_real_, length(cn)), ncol = length(cn))
+  colnames(outDf) <- cn
+  tibble::as_tibble(outDf)
 }
 
 #' @keywords internal
-.data_get_ex_cyt_pos_inc <- function(
+.dataGetExCytPosInc <- function(
   ex,
-  gate_tbl_ind,
+  gateTblInd,
   mult,
   chnl,
-  gate_type_cyt_pos,
-  gate_type_single_pos
+  gateTypeCytPos,
+  gateTypeSinglePos
 ) {
-  inc_vec <- rep(FALSE, nrow(ex))
+  incVec <- rep(FALSE, nrow(ex))
 
   if (!mult) {
-    inc_vec <- .get_pos_ind(
+    incVec <- .getPosInd(
       # nolint
       ex = ex,
-      gate_tbl = gate_tbl_ind,
+      gateTbl = gateTblInd,
       chnl = chnl,
-      chnl_alt = NULL,
-      gate_type_cyt_pos = gate_type_cyt_pos,
-      gate_type_single_pos = gate_type_single_pos
+      chnlAlt = NULL,
+      gateTypeCytPos = gateTypeCytPos,
+      gateTypeSinglePos = gateTypeSinglePos
     )
   } else {
-    inc_vec <- .get_pos_ind_mult(
+    incVec <- .getPosIndMult(
       # nolint
       ex = ex,
-      gate_tbl = gate_tbl_ind,
+      gateTbl = gateTblInd,
       chnl = chnl,
-      chnl_alt = NULL,
-      gate_type_cyt_pos = gate_type_cyt_pos
+      chnlAlt = NULL,
+      gateTypeCytPos = gateTypeCytPos
     )
   }
-  ex[inc_vec, , drop = FALSE]
+  ex[incVec, , drop = FALSE]
 }
 
 #' @keywords internal
-.data_get_ex_cyt_pos_exc <- function(
+.dataGetExCytPosExc <- function(
   ex,
-  combn_exc,
-  gate_tbl_ind,
-  chnl_gate,
-  gate_type_cyt_pos,
-  gate_type_single_pos
+  combnExc,
+  gateTblInd,
+  chnlGate,
+  gateTypeCytPos,
+  gateTypeSinglePos
 ) {
-  if (is.null(combn_exc)) {
+  if (is.null(combnExc)) {
     return(ex)
   }
-  for (chnl_pos in combn_exc) {
+  for (chnlPos in combnExc) {
     if (nrow(ex) == 0) {
       break
     }
-    exc_vec <- .get_pos_ind_cyt_combn(
+    excVec <- .getPosIndCytCombn(
       # nolint
       ex = ex,
-      gate_tbl = gate_tbl_ind,
-      chnl_pos = chnl_pos,
-      chnl_neg = setdiff(chnl_gate, chnl_pos),
-      chnl_alt = NULL,
-      gate_type_cyt_pos = gate_type_cyt_pos,
-      gate_type_single_pos = gate_type_single_pos
+      gateTbl = gateTblInd,
+      chnlPos = chnlPos,
+      chnlNeg = setdiff(chnlGate, chnlPos),
+      chnlAlt = NULL,
+      gateTypeCytPos = gateTypeCytPos,
+      gateTypeSinglePos = gateTypeSinglePos
     )
-    ex <- ex[!exc_vec, , drop = FALSE]
+    ex <- ex[!excVec, , drop = FALSE]
   }
   ex
 }
 
 #' @keywords internal
-.data_get_ex_renamed <- function(ex, is_marker, path_project) {
+.dataGetExRenamed <- function(ex, isMarker, pathProject) {
   # if user specified markers, then give them back a table
   # with column names as markers
-  if (!is_marker) {
+  if (!isMarker) {
     return(ex)
   }
-  colnames(ex) <- stimgate_meta_read_chnl_lab(path_project)[
+  colnames(ex) <- stimgateMetaReadChnlLab(pathProject)[
     colnames(ex)
   ]
   ex
 }
 
 #' @keywords internal
-.data_get_ex_trans <- function(ex, trans_fn, trans_chnl) {
+.dataGetExTrans <- function(ex, transFn, transChnl) {
   # transform
-  if (is.null(trans_fn)) {
+  if (is.null(transFn)) {
     return(ex)
   }
-  if (is.null(trans_chnl)) {
-    ex <- trans_fn(ex)
+  if (is.null(transChnl)) {
+    ex <- transFn(ex)
   } else {
-    for (nm in trans_chnl) {
-      ex[, nm] <- trans_fn(ex[, nm])
+    for (nm in transChnl) {
+      ex[, nm] <- transFn(ex[, nm])
     }
   }
   ex
 }
 
 #' @keywords internal
-.data_get_ex_meta <- function(ex, pop, ind) {
-  meta_df <- tibble::tibble(
+.dataGetExMeta <- function(ex, pop, ind) {
+  metaDf <- tibble::tibble(
     pop = pop,
     ind = ind
   )
-  attr_list <- attributes(ex)
-  attr_vec_nm_orig <- names(attr_list)
-  attr_vec_nm_add <- c(
-    "is_uns",
-    "prob_g_min",
+  attrList <- attributes(ex)
+  attrVecNmOrig <- names(attrList)
+  attrVecNmAdd <- c(
+    "isUns",
+    "probGMin",
     "chnl"
   )
-  attr_vec_nm_add <- intersect(attr_vec_nm_add, attr_vec_nm_orig)
-  ex <- tibble::as_tibble(cbind(meta_df, ex))
-  for (i in seq_along(attr_vec_nm_add)) {
-    attr(ex, attr_vec_nm_add[i]) <- attr_list[[attr_vec_nm_add[i]]]
+  attrVecNmAdd <- intersect(attrVecNmAdd, attrVecNmOrig)
+  ex <- tibble::as_tibble(cbind(metaDf, ex))
+  for (i in seq_along(attrVecNmAdd)) {
+    attr(ex, attr_vec_nm_add[i]) <- attrList[[attrVecNmAdd[i]]]
   }
   ex
 }

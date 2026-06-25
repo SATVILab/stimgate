@@ -92,7 +92,7 @@ This package uses `renv` for dependency management:
 8. When running code from the project, you must always have as your working directory the root of the project, i.e. the directory containing the `DESCRIPTION` file. This is especially important when the project uses `renv`, as otherwise the `.Rprofile` will not be sourced and the package environment will not be set up correctly
 9. Never update `.Rd` files manually; use `devtools::document()` to regenerate them
 10. Documentation in `.R` files for parameters must always have the format `@param param_name <type_of_input> <info>`
-  - For example, `@param path_project character Path to project.`
+  - For example, `@param pathProject character Path to project.`
   - Of course, the information can be longer, and where there are multiple options, it can be mentioned:
     - For example, `logical or character`, or `"always", "never" or "automatic"`
   - If there is a default specified, it should be stated at the end in the documentation of that parameter, e.g. `Default is "automatic".`
@@ -119,7 +119,7 @@ When writing tests with `testthat`, follow these important practices:
    - Use shared setup only when all tests in the file require it, AND
    - Ensure cleanup happens within the test or use `withr::defer()` for automatic cleanup
 
-3. **Variable scope in tests**: When a test creates its own test data and variables (like `example_data`, `gs`, `path_project_2`), always use those local variables throughout that test. Never mix local and global variables from different scopes.
+3. **Variable scope in tests**: When a test creates its own test data and variables (like `example_data`, `gs`, `pathProject_2`), always use those local variables throughout that test. Never mix local and global variables from different scopes.
 
 4. **Avoid code outside test blocks**: Do not place cleanup code (like `unlink()`) or other operations outside of `test_that()` blocks. Such code:
    - Executes in an unpredictable order relative to tests

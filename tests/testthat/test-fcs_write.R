@@ -1,12 +1,12 @@
-example_data <- get_example_data()
-gs <- flowWorkspace::load_gs(example_data$path_gs)
-path_project <- file.path(dirname(example_data$path_gs), "stimgate")
+exampleData <- get_example_data()
+gs <- flowWorkspace::load_gs(exampleData$path_gs)
+pathProject <- file.path(dirname(exampleData$path_gs), "stimgate")
 invisible(stimgate_gate(
   .data = gs,
-  path_project = path_project,
-  pop_gate = "root",
-  batch_list = example_data$batch_list,
-  chnl = example_data$chnl
+  pathProject = pathProject,
+  popGate = "root",
+  batch_list = exampleData$batch_list,
+  chnl = exampleData$chnl
 ))
 
 # Comprehensive test suite for stimgate_fcs_write function
@@ -26,479 +26,479 @@ test_that("stimgate_fcs_write function exists and has correct signature", {
 
   # Test function signature by checking for argument names
   args <- names(formals(stimgate_fcs_write))
-  expected_args <- c(
-    "path_project",
+  expectedArgs <- c(
+    "pathProject",
     ".data",
-    "ind_batch_list",
-    "path_dir_save",
+    "indBatchList",
+    "pathDirSave",
     "chnl",
-    "gate_tbl",
-    "trans_fn",
-    "trans_chnl",
-    "combn_exc",
-    "gate_type_cyt_pos",
-    "gate_type_single_pos",
+    "gateTbl",
+    "transFn",
+    "transChnl",
+    "combnExc",
+    "gateTypeCytPos",
+    "gateTypeSinglePos",
     "mult",
-    "gate_uns_method"
+    "gateUnsMethod"
   )
 
-  expect_true(all(expected_args %in% args))
+  expect_true(all(expectedArgs %in% args))
 })
 
 
 test_that("stimgate_fcs_write runs with basic parameters", {
-  path_dir_save <- file.path(tempdir(), "fcs_output_test")
+  pathDirSave <- file.path(tempdir(), "fcs_output_test")
 
   # Function should create the directory before failing on missing gates
   result <- stimgate_fcs_write(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]]
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]]
   )
 
   # Test output validation
-  expect_true(length(list.files(path_dir_save)) > 0)
+  expect_true(length(list.files(pathDirSave)) > 0)
   expect_true(inherits(
-    flowCore::read.FCS(file.path(path_dir_save, "V1.fcs")),
+    flowCore::read.FCS(file.path(pathDirSave, "V1.fcs")),
     "flowFrame"
   ))
 
   # Test return value
-  expect_equal(result, path_dir_save)
+  expect_equal(result, pathDirSave)
 
   # Test directory was created
-  expect_true(dir.exists(path_dir_save))
+  expect_true(dir.exists(pathDirSave))
 
-  unlink(path_dir_save, recursive = TRUE)
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write handles directory creation and cleanup", {
   # Test with non-existent directory
-  path_dir_save <- file.path(tempdir(), "new_fcs_dir", "subdir")
-  expect_false(dir.exists(path_dir_save))
+  pathDirSave <- file.path(tempdir(), "new_fcs_dir", "subdir")
+  expect_false(dir.exists(pathDirSave))
 
   stimgate_fcs_write(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]]
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]]
   )
 
-  expect_true(dir.exists(path_dir_save))
+  expect_true(dir.exists(pathDirSave))
 
   # Test that existing directory is cleaned
   # Create a dummy file
-  dummy_file <- file.path(path_dir_save, "dummy.txt")
-  writeLines("test", dummy_file)
-  expect_true(file.exists(dummy_file))
+  dummyFile <- file.path(pathDirSave, "dummy.txt")
+  writeLines("test", dummyFile)
+  expect_true(file.exists(dummyFile))
 
   # Run again - should clean directory
   stimgate_fcs_write(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]]
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]]
   )
 
-  expect_false(file.exists(dummy_file))
-  unlink(path_dir_save, recursive = TRUE)
+  expect_false(file.exists(dummyFile))
+  unlink(pathDirSave, recursive = TRUE)
 })
 
-test_that("stimgate_fcs_write works with different gate_uns_method options", {
-  gate_methods <- c("min", "max", "mean", "tmean", "med")
+test_that("stimgate_fcs_write works with different gateUnsMethod options", {
+  gateMethods <- c("min", "max", "mean", "tmean", "med")
 
-  for (method in gate_methods) {
-    path_dir_save <- file.path(tempdir(), paste0("fcs_output_", method))
+  for (method in gateMethods) {
+    pathDirSave <- file.path(tempdir(), paste0("fcs_output_", method))
 
     result <- stimgate_fcs_write(
-      path_project = path_project,
+      pathProject = pathProject,
       .data = gs,
-      ind_batch_list = example_data$batch_list,
-      path_dir_save = path_dir_save,
-      chnl = example_data$chnl[[1]],
-      gate_uns_method = method
+      indBatchList = exampleData$batch_list,
+      pathDirSave = pathDirSave,
+      chnl = exampleData$chnl[[1]],
+      gateUnsMethod = method
     )
 
-    expect_equal(result, path_dir_save)
-    expect_true(dir.exists(path_dir_save))
+    expect_equal(result, pathDirSave)
+    expect_true(dir.exists(pathDirSave))
     # Should have some files (at least one sample should have positive cells)
-    expect_true(length(list.files(path_dir_save, pattern = "\\.fcs$")) >= 0)
-    unlink(path_dir_save, recursive = TRUE)
+    expect_true(length(list.files(pathDirSave, pattern = "\\.fcs$")) >= 0)
+    unlink(pathDirSave, recursive = TRUE)
   }
 })
 
 test_that("stimgate_fcs_write works with mult parameter", {
   # Test with mult = FALSE (default)
-  path_dir_save_single <- file.path(tempdir(), "fcs_output_single")
-  result_single <- stimgate_fcs_write(
-    path_project = path_project,
+  pathDirSaveSingle <- file.path(tempdir(), "fcs_output_single")
+  resultSingle <- stimgate_fcs_write(
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save_single,
-    chnl = example_data$chnl,
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSaveSingle,
+    chnl = exampleData$chnl,
     mult = FALSE
   )
 
   # Test with mult = TRUE
-  path_dir_save_mult <- file.path(tempdir(), "fcs_output_mult")
-  result_mult <- stimgate_fcs_write(
-    path_project = path_project,
+  pathDirSaveMult <- file.path(tempdir(), "fcs_output_mult")
+  resultMult <- stimgate_fcs_write(
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save_mult,
-    chnl = example_data$chnl,
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSaveMult,
+    chnl = exampleData$chnl,
     mult = TRUE
   )
 
-  expect_equal(result_single, path_dir_save_single)
-  expect_equal(result_mult, path_dir_save_mult)
-  expect_true(dir.exists(path_dir_save_single))
-  expect_true(dir.exists(path_dir_save_mult))
-  unlink(path_dir_save_single, recursive = TRUE)
-  unlink(path_dir_save_mult, recursive = TRUE)
+  expect_equal(resultSingle, pathDirSaveSingle)
+  expect_equal(resultMult, pathDirSaveMult)
+  expect_true(dir.exists(pathDirSaveSingle))
+  expect_true(dir.exists(pathDirSaveMult))
+  unlink(pathDirSaveSingle, recursive = TRUE)
+  unlink(pathDirSaveMult, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write works with different gate types", {
-  path_dir_save <- file.path(tempdir(), "fcs_output_gate_types")
+  pathDirSave <- file.path(tempdir(), "fcs_output_gate_types")
 
   result <- stimgate_fcs_write(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]],
-    gate_type_cyt_pos = "cyt",
-    gate_type_single_pos = "single"
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]],
+    gateTypeCytPos = "cyt",
+    gateTypeSinglePos = "single"
   )
 
-  expect_equal(result, path_dir_save)
-  expect_true(dir.exists(path_dir_save))
-  unlink(path_dir_save, recursive = TRUE)
+  expect_equal(result, pathDirSave)
+  expect_true(dir.exists(pathDirSave))
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write validates output file contents", {
-  path_dir_save <- file.path(tempdir(), "fcs_output_validation")
+  pathDirSave <- file.path(tempdir(), "fcs_output_validation")
 
   stimgate_fcs_write(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]]
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]]
   )
 
   # Get list of FCS files
-  fcs_files <- list.files(path_dir_save, pattern = "\\.fcs$", full.names = TRUE)
+  fcsFiles <- list.files(pathDirSave, pattern = "\\.fcs$", full.names = TRUE)
 
   # Test that we can read each file and it has the expected structure
-  for (fcs_file in fcs_files) {
-    ff <- flowCore::read.FCS(fcs_file)
+  for (fcsFile in fcsFiles) {
+    ff <- flowCore::read.FCS(fcsFile)
 
     # Check that it's a valid flowFrame
     expect_true(inherits(ff, "flowFrame"))
 
-    expr_mat <- flowCore::exprs(ff)
+    exprMat <- flowCore::exprs(ff)
 
     # Check that it has data
-    expect_true(nrow(expr_mat) >= 0)
+    expect_true(nrow(exprMat) >= 0)
 
     # Check that it has the expected channels
-    expect_true(all(example_data$chnl[[1]] %in% colnames(expr_mat)))
+    expect_true(all(exampleData$chnl[[1]] %in% colnames(exprMat)))
 
     # Check that expression matrix can be extracted
-    expr_mat <- flowCore::exprs(ff)
-    expect_true(is.matrix(expr_mat))
-    expect_true(ncol(expr_mat) > 0)
+    exprMat <- flowCore::exprs(ff)
+    expect_true(is.matrix(exprMat))
+    expect_true(ncol(exprMat) > 0)
   }
-  unlink(path_dir_save, recursive = TRUE)
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write works with pre-provided gate table", {
   # Create a simple gate table
-  gate_tbl <- data.frame(
-    chnl = rep(example_data$chnl[[1]], length(unlist(example_data$batch_list))),
-    marker = rep("BC1", length(unlist(example_data$batch_list))),
+  gateTbl <- data.frame(
+    chnl = rep(exampleData$chnl[[1]], length(unlist(exampleData$batch_list))),
+    marker = rep("BC1", length(unlist(exampleData$batch_list))),
     batch = paste0(
       "batch_",
       rep(
-        seq_along(example_data$batch_list),
-        times = sapply(example_data$batch_list, length)
+        seq_along(exampleData$batch_list),
+        times = sapply(exampleData$batch_list, length)
       )
     ),
-    ind = as.character(unlist(example_data$batch_list)),
-    gate = rep(0.5, length(unlist(example_data$batch_list))),
-    gate_cyt = rep(0.5, length(unlist(example_data$batch_list))),
-    gate_single = rep(0.5, length(unlist(example_data$batch_list))),
+    ind = as.character(unlist(exampleData$batch_list)),
+    gate = rep(0.5, length(unlist(exampleData$batch_list))),
+    gate_cyt = rep(0.5, length(unlist(exampleData$batch_list))),
+    gate_single = rep(0.5, length(unlist(exampleData$batch_list))),
     stringsAsFactors = FALSE
   )
 
-  path_dir_save <- file.path(tempdir(), "fcs_output_custom_gate")
+  pathDirSave <- file.path(tempdir(), "fcs_output_custom_gate")
 
   result <- stimgate_fcs_write(
-    path_project = tempdir(), # Not used when gate_tbl provided
+    pathProject = tempdir(), # Not used when gateTbl provided
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]],
-    gate_tbl = gate_tbl
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]],
+    gateTbl = gateTbl
   )
 
-  expect_equal(result, path_dir_save)
-  expect_true(dir.exists(path_dir_save))
-  unlink(path_dir_save, recursive = TRUE)
+  expect_equal(result, pathDirSave)
+  expect_true(dir.exists(pathDirSave))
+  unlink(pathDirSave, recursive = TRUE)
 })
 
-test_that("stimgate_fcs_write handles invalid gate_uns_method", {
-  path_dir_save <- file.path(tempdir(), "fcs_output_invalid")
+test_that("stimgate_fcs_write handles invalid gateUnsMethod", {
+  pathDirSave <- file.path(tempdir(), "fcs_output_invalid")
 
   expect_error(
     stimgate_fcs_write(
-      path_project = path_project,
+      pathProject = pathProject,
       .data = gs,
-      ind_batch_list = example_data$batch_list,
-      path_dir_save = path_dir_save,
-      chnl = example_data$chnl[[1]],
-      gate_uns_method = "invalid_method"
+      indBatchList = exampleData$batch_list,
+      pathDirSave = pathDirSave,
+      chnl = exampleData$chnl[[1]],
+      gateUnsMethod = "invalid_method"
     ),
-    "gate_uns_method not recognised"
+    "gateUnsMethod not recognised"
   )
-  unlink(path_dir_save, recursive = TRUE)
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write works with channel filtering", {
   # Test with specific channel subset
-  path_dir_save <- file.path(tempdir(), "fcs_output_filtered")
+  pathDirSave <- file.path(tempdir(), "fcs_output_filtered")
 
   result <- stimgate_fcs_write(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]] # Only first marker
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]] # Only first marker
   )
 
-  expect_equal(result, path_dir_save)
-  expect_true(dir.exists(path_dir_save))
+  expect_equal(result, pathDirSave)
+  expect_true(dir.exists(pathDirSave))
 
   # Test with NULL chnl (should use all available)
-  path_dir_save_all <- file.path(tempdir(), "fcs_output_all")
+  pathDirSaveAll <- file.path(tempdir(), "fcs_output_all")
 
-  result_all <- stimgate_fcs_write(
-    path_project = path_project,
+  resultAll <- stimgate_fcs_write(
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save_all,
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSaveAll,
     chnl = NULL
   )
 
-  expect_equal(result_all, path_dir_save_all)
-  expect_true(dir.exists(path_dir_save_all))
-  unlink(path_dir_save, recursive = TRUE)
+  expect_equal(resultAll, pathDirSaveAll)
+  expect_true(dir.exists(pathDirSaveAll))
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write handles transformation parameters", {
   # Test with transformation function
-  path_dir_save <- file.path(tempdir(), "fcs_output_transform")
+  pathDirSave <- file.path(tempdir(), "fcs_output_transform")
 
   # Simple log transformation
-  log_transform <- function(x) log10(x + 1)
+  logTransform <- function(x) log10(x + 1)
 
   result <- stimgate_fcs_write(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]],
-    trans_fn = log_transform,
-    trans_chnl = example_data$chnl[[1]]
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]],
+    transFn = logTransform,
+    transChnl = exampleData$chnl[[1]]
   )
 
-  expect_equal(result, path_dir_save)
-  expect_true(dir.exists(path_dir_save))
+  expect_equal(result, pathDirSave)
+  expect_true(dir.exists(pathDirSave))
 
   # Verify files were created
-  fcs_files <- list.files(path_dir_save, pattern = "\\.fcs$")
-  expect_true(length(fcs_files) >= 0)
-  unlink(path_dir_save, recursive = TRUE)
+  fcsFiles <- list.files(pathDirSave, pattern = "\\.fcs$")
+  expect_true(length(fcsFiles) >= 0)
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write preserves file metadata", {
-  path_dir_save <- file.path(tempdir(), "fcs_output_metadata")
+  pathDirSave <- file.path(tempdir(), "fcs_output_metadata")
 
   stimgate_fcs_write(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]]
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]]
   )
 
   # Get original and output files
-  fcs_files <- list.files(path_dir_save, pattern = "\\.fcs$", full.names = TRUE)
+  fcsFiles <- list.files(pathDirSave, pattern = "\\.fcs$", full.names = TRUE)
 
-  if (length(fcs_files) > 0) {
+  if (length(fcsFiles) > 0) {
     # Check first file
-    output_ff <- flowCore::read.FCS(fcs_files[1])
-    original_ff <- flowWorkspace::gh_pop_get_data(gs[[1]])
-    if (inherits(original_ff, "cytoframe")) {
-      original_ff <- flowWorkspace::cytoframe_to_flowFrame(original_ff)
+    outputFf <- flowCore::read.FCS(fcsFiles[1])
+    originalFf <- flowWorkspace::gh_pop_get_data(gs[[1]])
+    if (inherits(originalFf, "cytoframe")) {
+      originalFf <- flowWorkspace::cytoframe_to_flowFrame(originalFf)
     }
 
     # Check that basic metadata is preserved
-    expect_true(inherits(output_ff, "flowFrame"))
+    expect_true(inherits(outputFf, "flowFrame"))
 
     # Check that parameters are preserved (at least the gated channels)
-    ex_mat <- flowCore::exprs(output_ff)
-    output_params <- colnames(ex_mat)
-    expect_true(all(example_data$chnl[[1]] %in% colnames(ex_mat)))
+    exMat <- flowCore::exprs(outputFf)
+    outputParams <- colnames(exMat)
+    expect_true(all(exampleData$chnl[[1]] %in% colnames(exMat)))
   }
-  unlink(path_dir_save, recursive = TRUE)
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write handles combination exclusions", {
-  path_dir_save <- file.path(tempdir(), "fcs_output_exclusions")
+  pathDirSave <- file.path(tempdir(), "fcs_output_exclusions")
 
   # Test with combination exclusions (if we have multiple markers)
-  if (length(example_data$chnl) > 1) {
-    combn_exc <- list(example_data$chnl[[1]])
+  if (length(exampleData$chnl) > 1) {
+    combnExc <- list(exampleData$chnl[[1]])
 
     result <- stimgate_fcs_write(
-      path_project = path_project,
+      pathProject = pathProject,
       .data = gs,
-      ind_batch_list = example_data$batch_list,
-      path_dir_save = path_dir_save,
-      chnl = example_data$chnl,
-      combn_exc = combn_exc
+      indBatchList = exampleData$batch_list,
+      pathDirSave = pathDirSave,
+      chnl = exampleData$chnl,
+      combnExc = combnExc
     )
 
-    expect_equal(result, path_dir_save)
-    expect_true(dir.exists(path_dir_save))
+    expect_equal(result, pathDirSave)
+    expect_true(dir.exists(pathDirSave))
   } else {
     # Test with NULL exclusions
     result <- stimgate_fcs_write(
-      path_project = path_project,
+      pathProject = pathProject,
       .data = gs,
-      ind_batch_list = example_data$batch_list,
-      path_dir_save = path_dir_save,
-      chnl = example_data$chnl[[1]],
-      combn_exc = NULL
+      indBatchList = exampleData$batch_list,
+      pathDirSave = pathDirSave,
+      chnl = exampleData$chnl[[1]],
+      combnExc = NULL
     )
 
-    expect_equal(result, path_dir_save)
-    expect_true(dir.exists(path_dir_save))
+    expect_equal(result, pathDirSave)
+    expect_true(dir.exists(pathDirSave))
   }
-  unlink(path_dir_save, recursive = TRUE)
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write creates consistent file names", {
-  path_dir_save <- file.path(tempdir(), "fcs_output_naming")
+  pathDirSave <- file.path(tempdir(), "fcs_output_naming")
 
   stimgate_fcs_write(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]]
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]]
   )
 
   # Check file naming pattern
-  fcs_files <- list.files(path_dir_save, pattern = "\\.fcs$")
+  fcsFiles <- list.files(pathDirSave, pattern = "\\.fcs$")
 
   # Files should be named based on GUID
-  expect_true(all(grepl("\\.fcs$", fcs_files)))
+  expect_true(all(grepl("\\.fcs$", fcsFiles)))
 
   # Check that files are in the correct directory
-  full_paths <- list.files(
-    path_dir_save,
+  fullPaths <- list.files(
+    pathDirSave,
     pattern = "\\.fcs$",
     full.names = TRUE
   )
   expect_true(
-    all(normalizePath(dirname(full_paths)) == normalizePath(path_dir_save))
+    all(normalizePath(dirname(fullPaths)) == normalizePath(pathDirSave))
   )
-  unlink(path_dir_save, recursive = TRUE)
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write message output", {
-  path_dir_save <- file.path(tempdir(), "fcs_output_messages")
+  pathDirSave <- file.path(tempdir(), "fcs_output_messages")
 
   # Capture messages
   expect_message(
     stimgate_fcs_write(
-      path_project = path_project,
+      pathProject = pathProject,
       .data = gs,
-      ind_batch_list = example_data$batch_list,
-      path_dir_save = path_dir_save,
-      chnl = example_data$chnl[[1]]
+      indBatchList = exampleData$batch_list,
+      pathDirSave = pathDirSave,
+      chnl = exampleData$chnl[[1]]
     ),
     "Writing.*files"
   )
-  unlink(path_dir_save, recursive = TRUE)
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write handles edge case: empty data", {
   # Create gate table with very high thresholds (should result in no positive cells)
-  gate_tbl <- data.frame(
-    chnl = rep(example_data$chnl[[1]], length(unlist(example_data$batch_list))),
-    marker = rep("BC1", length(unlist(example_data$batch_list))),
+  gateTbl <- data.frame(
+    chnl = rep(exampleData$chnl[[1]], length(unlist(exampleData$batch_list))),
+    marker = rep("BC1", length(unlist(exampleData$batch_list))),
     batch = paste0(
       "batch_",
       rep(
-        seq_along(example_data$batch_list),
-        times = sapply(example_data$batch_list, length)
+        seq_along(exampleData$batch_list),
+        times = sapply(exampleData$batch_list, length)
       )
     ),
-    ind = as.character(unlist(example_data$batch_list)),
-    gate = rep(999999, length(unlist(example_data$batch_list))), # Very high threshold
-    gate_cyt = rep(999999, length(unlist(example_data$batch_list))),
-    gate_single = rep(999999, length(unlist(example_data$batch_list))),
+    ind = as.character(unlist(exampleData$batch_list)),
+    gate = rep(999999, length(unlist(exampleData$batch_list))), # Very high threshold
+    gate_cyt = rep(999999, length(unlist(exampleData$batch_list))),
+    gate_single = rep(999999, length(unlist(exampleData$batch_list))),
     stringsAsFactors = FALSE
   )
 
-  path_dir_save <- file.path(tempdir(), "fcs_output_empty")
+  pathDirSave <- file.path(tempdir(), "fcs_output_empty")
 
   # Should handle case where no cells meet criteria
   expect_message(
     result <- stimgate_fcs_write(
-      path_project = tempdir(),
+      pathProject = tempdir(),
       .data = gs,
-      ind_batch_list = example_data$batch_list,
-      path_dir_save = path_dir_save,
-      chnl = example_data$chnl[[1]],
-      gate_tbl = gate_tbl
+      indBatchList = exampleData$batch_list,
+      pathDirSave = pathDirSave,
+      chnl = exampleData$chnl[[1]],
+      gateTbl = gateTbl
     ),
     "No stimulation-positive cells"
   )
 
-  expect_equal(result, path_dir_save)
-  expect_true(dir.exists(path_dir_save))
-  unlink(path_dir_save, recursive = TRUE)
+  expect_equal(result, pathDirSave)
+  expect_true(dir.exists(pathDirSave))
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write validates parameter types", {
   # Test with invalid .data type (should fail gracefully)
   expect_error(
     stimgate_fcs_write(
-      path_project = tempdir(),
+      pathProject = tempdir(),
       .data = "not_a_gatingset",
-      ind_batch_list = example_data$batch_list,
-      path_dir_save = tempdir(),
-      chnl = example_data$chnl[[1]]
+      indBatchList = exampleData$batch_list,
+      pathDirSave = tempdir(),
+      chnl = exampleData$chnl[[1]]
     )
   )
 
-  # Test with invalid ind_batch_list type
+  # Test with invalid indBatchList type
   expect_error(
     stimgate_fcs_write(
-      path_project = tempdir(),
+      pathProject = tempdir(),
       .data = gs,
-      ind_batch_list = "not_a_list",
-      path_dir_save = tempdir(),
-      chnl = example_data$chnl[[1]]
+      indBatchList = "not_a_list",
+      pathDirSave = tempdir(),
+      chnl = exampleData$chnl[[1]]
     )
   )
 })
@@ -506,141 +506,141 @@ test_that("stimgate_fcs_write validates parameter types", {
 
 test_that("stimgate_fcs_write integrates with stimgate workflow", {
   # Test full integration: gate -> fcs_write -> verify output
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate")
+  exampleData <- get_example_data()
+  gs <- flowWorkspace::load_gs(exampleData$path_gs)
+  pathProject <- file.path(dirname(exampleData$path_gs), "stimgate")
 
   # Step 1: Run gating
   invisible(stimgate_gate(
     .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    chnl = example_data$chnl
+    pathProject = pathProject,
+    popGate = "root",
+    batch_list = exampleData$batch_list,
+    chnl = exampleData$chnl
   ))
 
   # Verify gating created expected files
-  expect_true(file.exists(file.path(path_project, "gate_stats.rds")))
+  expect_true(file.exists(file.path(pathProject, "gate_stats.rds")))
 
   # Step 2: Run FCS writing using gates from step 1
-  path_dir_save <- file.path(tempdir(), "fcs_output_integration")
+  pathDirSave <- file.path(tempdir(), "fcs_output_integration")
 
   result <- stimgate_fcs_write(
-    path_project = path_project,
+    pathProject = pathProject,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl # Use all markers
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl # Use all markers
   )
 
   # Step 3: Verify integration worked
-  expect_equal(result, path_dir_save)
-  expect_true(dir.exists(path_dir_save))
+  expect_equal(result, pathDirSave)
+  expect_true(dir.exists(pathDirSave))
 
   # Verify that gate information was properly used
-  fcs_files <- list.files(path_dir_save, pattern = "\\.fcs$", full.names = TRUE)
+  fcsFiles <- list.files(pathDirSave, pattern = "\\.fcs$", full.names = TRUE)
 
   # Should have created files for samples with positive cells
-  for (fcs_file in fcs_files) {
-    ff <- flowCore::read.FCS(fcs_file)
+  for (fcsFile in fcsFiles) {
+    ff <- flowCore::read.FCS(fcsFile)
     expect_true(inherits(ff, "flowFrame"))
     expect_true(nrow(ff) >= 0)
-    ex_mat <- flowCore::exprs(ff)
+    exMat <- flowCore::exprs(ff)
 
     # Verify that all gated channels are present
-    expect_true(all(example_data$chnl %in% colnames(ex_mat)))
+    expect_true(all(exampleData$chnl %in% colnames(exMat)))
   }
-  unlink(path_dir_save, recursive = TRUE)
+  unlink(pathDirSave, recursive = TRUE)
 })
 
 test_that("stimgate_fcs_write respects working directory", {
   # Change working directory temporarily
-  original_wd <- getwd()
-  temp_wd <- tempdir()
+  originalWd <- getwd()
+  tempWd <- tempdir()
 
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project_2 <- file.path(dirname(example_data$path_gs), "stimgate")
+  exampleData <- get_example_data()
+  gs <- flowWorkspace::load_gs(exampleData$path_gs)
+  pathProject2 <- file.path(dirname(exampleData$path_gs), "stimgate")
   invisible(stimgate_gate(
     .data = gs,
-    path_project = path_project_2,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    chnl = example_data$chnl
+    pathProject = pathProject2,
+    popGate = "root",
+    batch_list = exampleData$batch_list,
+    chnl = exampleData$chnl
   ))
 
   tryCatch(
     {
-      setwd(temp_wd)
+      setwd(tempWd)
 
       # Use relative path for output
-      path_dir_save <- "fcs_output_wd_test"
+      pathDirSave <- "fcs_output_wd_test"
 
       result <- stimgate_fcs_write(
-        path_project = path_project_2,
+        pathProject = pathProject2,
         .data = gs,
-        ind_batch_list = example_data$batch_list,
-        path_dir_save = path_dir_save,
-        chnl = example_data$chnl[[1]]
+        indBatchList = exampleData$batch_list,
+        pathDirSave = pathDirSave,
+        chnl = exampleData$chnl[[1]]
       )
 
       # Should create directory relative to current working directory
-      expect_true(dir.exists(file.path(temp_wd, path_dir_save)))
-      expect_equal(result, path_dir_save)
+      expect_true(dir.exists(file.path(tempWd, pathDirSave)))
+      expect_equal(result, pathDirSave)
     },
     finally = {
-      setwd(original_wd)
+      setwd(originalWd)
     }
   )
-  unlink(file.path(temp_wd, path_dir_save), recursive = TRUE)
+  unlink(file.path(tempWd, pathDirSave), recursive = TRUE)
 })
 
 
 test_that("stimgate_fcs_write handles transformation edge cases", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project_2 <- file.path(dirname(example_data$path_gs), "stimgate")
+  exampleData <- get_example_data()
+  gs <- flowWorkspace::load_gs(exampleData$path_gs)
+  pathProject2 <- file.path(dirname(exampleData$path_gs), "stimgate")
   invisible(stimgate_gate(
     .data = gs,
-    path_project = path_project_2,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    chnl = example_data$chnl
+    pathProject = pathProject2,
+    popGate = "root",
+    batch_list = exampleData$batch_list,
+    chnl = exampleData$chnl
   ))
 
-  # Test with transformation function but no trans_chnl (should apply to all columns)
-  path_dir_save <- file.path(tempdir(), "fcs_output_transform_all")
+  # Test with transformation function but no transChnl (should apply to all columns)
+  pathDirSave <- file.path(tempdir(), "fcs_output_transform_all")
 
   # Identity transformation (should not change values but test the pathway)
-  identity_transform <- function(x) x
+  identityTransform <- function(x) x
 
   result <- stimgate::stimgate_fcs_write(
-    path_project = path_project_2,
+    pathProject = pathProject2,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save,
-    chnl = example_data$chnl[[1]],
-    trans_fn = identity_transform,
-    trans_chnl = NULL # Should apply to all columns
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl[[1]],
+    transFn = identityTransform,
+    transChnl = NULL # Should apply to all columns
   )
 
-  expect_equal(result, path_dir_save)
-  expect_true(dir.exists(path_dir_save))
+  expect_equal(result, pathDirSave)
+  expect_true(dir.exists(pathDirSave))
 
   # Test with NULL transformation function
-  path_dir_save_null <- file.path(tempdir(), "fcs_output_transform_null")
+  pathDirSaveNull <- file.path(tempdir(), "fcs_output_transform_null")
 
-  result_null <- stimgate::stimgate_fcs_write(
-    path_project = path_project_2,
+  resultNull <- stimgate::stimgate_fcs_write(
+    pathProject = pathProject2,
     .data = gs,
-    ind_batch_list = example_data$batch_list,
-    path_dir_save = path_dir_save_null,
-    chnl = example_data$chnl[[1]],
-    trans_fn = NULL,
-    trans_chnl = example_data$chnl[[1]]
+    indBatchList = exampleData$batch_list,
+    pathDirSave = pathDirSaveNull,
+    chnl = exampleData$chnl[[1]],
+    transFn = NULL,
+    transChnl = exampleData$chnl[[1]]
   )
 
-  expect_equal(result_null, path_dir_save_null)
-  expect_true(dir.exists(path_dir_save_null))
-  unlink(path_dir_save, recursive = TRUE)
+  expect_equal(resultNull, pathDirSaveNull)
+  expect_true(dir.exists(pathDirSaveNull))
+  unlink(pathDirSave, recursive = TRUE)
 })

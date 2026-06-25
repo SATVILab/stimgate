@@ -1,15 +1,15 @@
 library(testthat)
-example_data <- get_example_data()
-gs <- flowWorkspace::load_gs(example_data$path_gs)
-path_project <- file.path(dirname(example_data$path_gs), "stimgate")
+exampleData <- getExampleData()
+gs <- flowWorkspace::load_gs(exampleData$path_gs)
+pathProject <- file.path(dirname(exampleData$path_gs), "stimgate")
 
 # First run gating to create necessary gate data
-invisible(stimgate::stimgate_gate(
+invisible(gateStim(
   .data = gs,
-  path_project = path_project,
-  pop_gate = "root",
-  batch_list = example_data$batch_list,
-  chnl = example_data$chnl
+  pathProject = pathProject,
+  popGate = "root",
+  batchList = exampleData$batchList,
+  chnl = exampleData$chnl
 ))
 
 test_that("stimgate_plot function exists", {
@@ -19,223 +19,223 @@ test_that("stimgate_plot function exists", {
 })
 
 test_that("stimgate_plot runs", {
-  # debugonce(.plot_gate_bv)
+  # debugonce(.plotGateBv)
   p <- stimgate_plot(
-    ind = example_data$batch_list[[1]], # indices in `gs` to plot
+    ind = exampleData$batchList[[1]], # indices in `gs` to plot
     .data = gs, # GatingSet
-    path_project = path_project,
-    chnl = example_data$chnl,
+    pathProject = pathProject,
+    chnl = exampleData$chnl,
     grid = TRUE
   )
   expect_true(inherits(p, "ggplot"))
 })
 
-test_that("stimgate_plot returns NULL when p_list is empty", {
-  # Test with empty ind list to generate empty p_list
+test_that("stimgate_plot returns NULL when pList is empty", {
+  # Test with empty ind list to generate empty pList
   result <- stimgate_plot(
     ind = list(),
     .data = gs,
-    path_project = path_project,
-    chnl = example_data$chnl,
+    pathProject = pathProject,
+    chnl = exampleData$chnl,
     grid = TRUE
   )
   expect_null(result)
 })
 
-test_that(".plot_gate_bv returns NULL for single marker", {
+test_that(".plotGateBv returns NULL for single marker", {
   # Test single marker scenario
-  single_marker <- example_data$chnl[1]
-  result <- stimgate:::.plot_gate_bv(
-    chnl = single_marker,
+  singleMarker <- exampleData$chnl[1]
+  result <- stimgate:::.plotGateBv(
+    chnl = singleMarker,
     marker = NULL,
-    ind = example_data$batch_list[[1]],
-    ind_lab = NULL,
+    ind = exampleData$batchList[[1]],
+    indLab = NULL,
     .data = gs,
-    axis_lab = NULL,
-    path_project = path_project,
-    exc_min = TRUE,
-    limits_expand = NULL,
-    limits_equal = FALSE,
-    show_gate = TRUE,
-    min_cell = 10
+    axisLab = NULL,
+    pathProject = pathProject,
+    excMin = TRUE,
+    limitsExpand = NULL,
+    limitsEqual = FALSE,
+    showGate = TRUE,
+    minCell = 10
   )
   expect_null(result)
 })
 
-test_that("plot functions handle min_cell threshold correctly", {
-  # Test with very high min_cell to trigger early return
-  # debugonce(.get_ex_new)
-  result <- stimgate:::.plot_gate_bv(
-    chnl = example_data$chnl,
+test_that("plot functions handle minCell threshold correctly", {
+  # Test with very high minCell to trigger early return
+  # debugonce(.getExNew)
+  result <- stimgate:::.plotGateBv(
+    chnl = exampleData$chnl,
     pop = "root",
     marker = NULL,
-    ind = example_data$batch_list[[1]],
-    ind_lab = NULL,
+    ind = exampleData$batchList[[1]],
+    indLab = NULL,
     .data = gs,
-    axis_lab = NULL,
-    path_project = path_project,
-    exc_min = TRUE,
-    limits_expand = NULL,
-    limits_equal = FALSE,
-    show_gate = TRUE,
-    chnl_gate = NULL,
-    marker_gate = NULL,
+    axisLab = NULL,
+    pathProject = pathProject,
+    excMin = TRUE,
+    limitsExpand = NULL,
+    limitsEqual = FALSE,
+    showGate = TRUE,
+    chnlGate = NULL,
+    markerGate = NULL,
     bias = FALSE,
-    combn_exc = NULL,
-    gate_type_cyt_pos = "cyt",
-    gate_type_single_pos = "single",
+    combnExc = NULL,
+    gateTypeCytPos = "cyt",
+    gateTypeSinglePos = "single",
     mult = FALSE,
-    gate_uns_method = "min",
-    min_cell = 999999 # Very high threshold
+    gateUnsMethod = "min",
+    minCell = 999999 # Very high threshold
   )
   # Should return a list with NULLs filtered out, or NULL
   expect_true(is.null(result) || (is.list(result) && length(result) == 0))
 })
 
-test_that(".plot_get_lab handles various val_lab configurations", {
-  # Test with NULL val_lab
-  result1 <- stimgate:::.plot_get_lab(
+test_that(".plotGetLab handles various valLab configurations", {
+  # Test with NULL valLab
+  result1 <- stimgate:::.plotGetLab(
     val = c("A", "B"),
-    val_lab = NULL,
+    valLab = NULL,
     i = NULL
   )
   expect_equal(result1, c("A", "B"))
 
-  # Test with named val_lab
-  result2 <- stimgate:::.plot_get_lab(
+  # Test with named valLab
+  result2 <- stimgate:::.plotGetLab(
     val = c("A", "B"),
-    val_lab = c("A" = "Label A", "B" = "Label B"),
+    valLab = c("A" = "Label A", "B" = "Label B"),
     i = NULL
   )
   expect_equal(result2, c("Label A", "Label B"))
   expect_null(names(result2))
 
-  # Test with unnamed val_lab and i NULL
-  result3 <- stimgate:::.plot_get_lab(
+  # Test with unnamed valLab and i NULL
+  result3 <- stimgate:::.plotGetLab(
     val = c("A", "B"),
-    val_lab = c("Label A", "Label B"),
+    valLab = c("Label A", "Label B"),
     i = NULL
   )
   expect_equal(result3, c("Label A", "Label B"))
   expect_null(names(result3))
 
-  # Test with unnamed val_lab and i non-null
-  result4 <- stimgate:::.plot_get_lab(
+  # Test with unnamed valLab and i non-null
+  result4 <- stimgate:::.plotGetLab(
     val = c("A", "B"),
-    val_lab = c("Label A", "Label B"),
+    valLab = c("Label A", "Label B"),
     i = 1
   )
   expect_equal(result4, "Label A")
   expect_null(names(result4))
 })
 
-test_that(".plot_gate_uv returns NULL when all markers return NULL", {
+test_that(".plotGateUv returns NULL when all markers return NULL", {
   # Test with empty ind to generate NULL results
-  result <- stimgate:::.plot_gate_uv(
+  result <- stimgate:::.plotGateUv(
     ind = list(),
-    ind_lab = NULL,
+    indLab = NULL,
     .data = gs,
-    chnl = example_data$chnl,
+    chnl = exampleData$chnl,
     marker = NULL,
-    exc_min = TRUE,
-    axis_lab = NULL,
-    show_gate = TRUE,
-    path_project = path_project,
-    min_cell = 10
+    excMin = TRUE,
+    axisLab = NULL,
+    showGate = TRUE,
+    pathProject = pathProject,
+    minCell = 10
   )
   expect_null(result)
 })
 
-test_that(".plot_gate_uv_marker returns NULL when plot_tbl is NULL", {
-  # Test with empty ind list to generate NULL plot_tbl
-  result <- stimgate:::.plot_gate_uv_marker(
-    chnl = example_data$chnl[1],
+test_that(".plotGateUvMarker returns NULL when plotTbl is NULL", {
+  # Test with empty ind list to generate NULL plotTbl
+  result <- stimgate:::.plotGateUvMarker(
+    chnl = exampleData$chnl[1],
     marker = NULL,
     pop = "root",
     ind = list(),
     .data = gs,
-    exc_min = TRUE,
-    ind_lab = NULL,
-    axis_lab = NULL,
-    show_gate = TRUE,
-    path_project = path_project,
-    min_cell = 10
+    excMin = TRUE,
+    indLab = NULL,
+    axisLab = NULL,
+    showGate = TRUE,
+    pathProject = pathProject,
+    minCell = 10
   )
   expect_null(result)
 })
 
-test_that(".plot_gate_uv_marker_get_plot_tbl returns NULL for insufficient cells", {
-  result <- stimgate:::.plot_gate_uv_marker_get_plot_tbl(
-    ind = example_data$batch_list[[1]],
+test_that(".plotGateUvMarkerGetPlotTbl returns NULL for insufficient cells", {
+  result <- stimgate:::.plotGateUvMarkerGetPlotTbl(
+    ind = exampleData$batchList[[1]],
     .data = gs,
-    chnl = example_data$chnl[1],
+    chnl = exampleData$chnl[1],
     marker = NULL,
     pop = "root",
-    exc_min = TRUE,
-    ind_lab = NULL,
-    path_project = path_project,
+    excMin = TRUE,
+    indLab = NULL,
+    pathProject = pathProject,
     bias = FALSE,
-    combn_exc = NULL,
-    chnl_gate = NULL,
-    marker_gate = NULL,
-    gate_type_cyt_pos = "cyt",
-    gate_type_single_pos = "single",
+    combnExc = NULL,
+    chnlGate = NULL,
+    markerGate = NULL,
+    gateTypeCytPos = "cyt",
+    gateTypeSinglePos = "single",
     mult = FALSE,
-    gate_uns_method = "min",
-    min_cell = 999999 # Very high threshold
+    gateUnsMethod = "min",
+    minCell = 999999 # Very high threshold
   )
   expect_null(result)
 })
 
-test_that(".plot_gate_uv_marker_plot_init handles different condition branches", {
-  # Create mock plot_tbl for testing
-  plot_tbl <- data.frame(
+test_that(".plotGateUvMarkerPlotInit handles different condition branches", {
+  # Create mock plotTbl for testing
+  plotTbl <- data.frame(
     x = 1:10,
     y = 1:10,
     type = rep(c("raw", "adj"), 5),
-    ind_lab = rep(c("Sample1", "Sample2"), 5)
+    indLab = rep(c("Sample1", "Sample2"), 5)
   )
 
-  # Test exc_min = TRUE, multiple ind
-  p1 <- stimgate:::.plot_gate_uv_marker_plot_init(
-    plot_tbl = plot_tbl,
-    exc_min = TRUE,
+  # Test excMin = TRUE, multiple ind
+  p1 <- stimgate:::.plotGateUvMarkerPlotInit(
+    plotTbl = plotTbl,
+    excMin = TRUE,
     ind = c(1, 2),
-    ind_lab = c("Sample1", "Sample2")
+    indLab = c("Sample1", "Sample2")
   )
   expect_s3_class(p1, "ggplot")
 
-  # Test exc_min = TRUE, single ind
-  p2 <- stimgate:::.plot_gate_uv_marker_plot_init(
-    plot_tbl = plot_tbl,
-    exc_min = TRUE,
+  # Test excMin = TRUE, single ind
+  p2 <- stimgate:::.plotGateUvMarkerPlotInit(
+    plotTbl = plotTbl,
+    excMin = TRUE,
     ind = c(1),
-    ind_lab = c("Sample1")
+    indLab = c("Sample1")
   )
   expect_s3_class(p2, "ggplot")
 
-  # Test exc_min = FALSE, multiple ind
-  p3 <- stimgate:::.plot_gate_uv_marker_plot_init(
-    plot_tbl = plot_tbl,
-    exc_min = FALSE,
+  # Test excMin = FALSE, multiple ind
+  p3 <- stimgate:::.plotGateUvMarkerPlotInit(
+    plotTbl = plotTbl,
+    excMin = FALSE,
     ind = c(1, 2),
-    ind_lab = c("Sample1", "Sample2")
+    indLab = c("Sample1", "Sample2")
   )
   expect_s3_class(p3, "ggplot")
 
-  # Test exc_min = FALSE, single ind
-  p4 <- stimgate:::.plot_gate_uv_marker_plot_init(
-    plot_tbl = plot_tbl,
-    exc_min = FALSE,
+  # Test excMin = FALSE, single ind
+  p4 <- stimgate:::.plotGateUvMarkerPlotInit(
+    plotTbl = plotTbl,
+    excMin = FALSE,
     ind = c(1),
-    ind_lab = c("Sample1")
+    indLab = c("Sample1")
   )
   expect_s3_class(p4, "ggplot")
 })
 
-test_that(".plot_grid returns p_list when plot = FALSE", {
+test_that(".plotGrid returns pList when plot = FALSE", {
   # Create mock plot list
-  p_list <- list(
+  pList <- list(
     plot1 = ggplot2::ggplot() +
       ggplot2::geom_point(ggplot2::aes(x = 1, y = 1)),
     plot2 = ggplot2::ggplot() +
@@ -243,98 +243,98 @@ test_that(".plot_grid returns p_list when plot = FALSE", {
   )
 
   # Test with plot = FALSE
-  result <- stimgate:::.plot_grid(
+  result <- stimgate:::.plotGrid(
     plot = FALSE,
-    p_list = p_list,
-    n_col = 2
+    pList = pList,
+    nCol = 2
   )
-  expect_identical(result, p_list)
+  expect_identical(result, pList)
 
   # Test with plot = TRUE (should return combined plot)
-  result2 <- stimgate:::.plot_grid(
+  result2 <- stimgate:::.plotGrid(
     plot = TRUE,
-    p_list = p_list,
-    n_col = 2
+    pList = pList,
+    nCol = 2
   )
   expect_s3_class(result2, "ggplot")
 })
 
 # Additional comprehensive edge case tests
 test_that("comprehensive edge case coverage for plot_gate functions", {
-  # Test .plot_gate_uv_marker_get_plot_tbl_ind with insufficient cells
-  expect_null(stimgate:::.plot_gate_uv_marker_get_plot_tbl_ind(
+  # Test .plotGateUvMarkerGetPlotTblInd with insufficient cells
+  expect_null(stimgate:::.plotGateUvMarkerGetPlotTblInd(
     ind = c(1), # Single index
     .data = gs,
-    chnl = example_data$chnl[1],
+    chnl = exampleData$chnl[1],
     marker = NULL,
     pop = "root",
-    exc_min = TRUE,
-    path_project = path_project,
+    excMin = TRUE,
+    pathProject = pathProject,
     bias = FALSE,
-    combn_exc = NULL,
-    chnl_gate = NULL,
-    marker_gate = NULL,
-    gate_type_cyt_pos = "cyt",
-    gate_type_single_pos = "single",
+    combnExc = NULL,
+    chnlGate = NULL,
+    markerGate = NULL,
+    gateTypeCytPos = "cyt",
+    gateTypeSinglePos = "single",
     mult = FALSE,
-    gate_uns_method = "min",
-    min_cell = 999999 # Impossible threshold
+    gateUnsMethod = "min",
+    minCell = 999999 # Impossible threshold
   ))
 
-  # Test .plot_get_ex_tbl with single index
-  ex_tbl <- stimgate:::.plot_get_ex_tbl(
+  # Test .plotGetExTbl with single index
+  exTbl <- stimgate:::.plotGetExTbl(
     ind = c(1),
     .data = gs,
-    chnl = example_data$chnl[1],
+    chnl = exampleData$chnl[1],
     marker = NULL,
     pop = "root",
-    exc_min = TRUE,
-    path_project = path_project,
+    excMin = TRUE,
+    pathProject = pathProject,
     bias = FALSE,
-    combn_exc = NULL,
-    chnl_gate = NULL,
-    marker_gate = NULL,
-    gate_type_cyt_pos = "cyt",
-    gate_type_single_pos = "single",
+    combnExc = NULL,
+    chnlGate = NULL,
+    markerGate = NULL,
+    gateTypeCytPos = "cyt",
+    gateTypeSinglePos = "single",
     mult = FALSE,
-    gate_uns_method = "min"
+    gateUnsMethod = "min"
   )
-  expect_true(is.data.frame(ex_tbl))
-  expect_true(nrow(ex_tbl) > 0)
+  expect_true(is.data.frame(exTbl))
+  expect_true(nrow(exTbl) > 0)
 
-  # Test .plot_add_axis_title with single and multiple markers
-  p_base <- ggplot2::ggplot() +
+  # Test .plotAddAxisTitle with single and multiple markers
+  pBase <- ggplot2::ggplot() +
     ggplot2::geom_point(ggplot2::aes(x = 1, y = 1))
-  p_single <- stimgate:::.plot_add_axis_title(
-    p_base,
-    example_data$chnl[1],
+  pSingle <- stimgate:::.plotAddAxisTitle(
+    pBase,
+    exampleData$chnl[1],
     NULL,
     NULL
   )
-  expect_s3_class(p_single, "ggplot")
+  expect_s3_class(pSingle, "ggplot")
 
-  p_double <- stimgate:::.plot_add_axis_title(
-    p_base,
-    example_data$chnl,
+  pDouble <- stimgate:::.plotAddAxisTitle(
+    pBase,
+    exampleData$chnl,
     NULL,
     NULL
   )
-  expect_s3_class(p_double, "ggplot")
+  expect_s3_class(pDouble, "ggplot")
 
-  # Test .plot_add_title
-  p_titled <- stimgate:::.plot_add_title(p_base, c(1, 2), 1, NULL)
-  expect_s3_class(p_titled, "ggplot")
+  # Test .plotAddTitle
+  pTitled <- stimgate:::.plotAddTitle(pBase, c(1, 2), 1, NULL)
+  expect_s3_class(pTitled, "ggplot")
 
-  # Test .plot_add_gate when show_gate = FALSE
-  p_no_gate <- stimgate:::.plot_add_gate(
-    p_base,
+  # Test .plotAddGate when showGate = FALSE
+  pNoGate <- stimgate:::.plotAddGate(
+    pBase,
     gs,
     c(1),
-    example_data$chnl[1],
-    path_project,
-    show_gate = FALSE
+    exampleData$chnl[1],
+    pathProject,
+    showGate = FALSE
   )
-  expect_identical(p_no_gate, p_base)
+  expect_identical(pNoGate, pBase)
 })
 
 test_that("test plot_cyto import and dependencies", {
@@ -342,10 +342,10 @@ test_that("test plot_cyto import and dependencies", {
   expect_true(exists("plot_cyto", envir = asNamespace("stimgate")))
 
   # Test hexbin namespace checking
-  hexbin_available <- requireNamespace("hexbin", quietly = TRUE)
-  expect_true(is.logical(hexbin_available))
+  hexbinAvailable <- requireNamespace("hexbin", quietly = TRUE)
+  expect_true(is.logical(hexbinAvailable))
 })
 
-# if (dir.exists(example_data$path_gs)) {
-#   unlink(example_data$path_gs, recursive = TRUE)
+# if (dir.exists(exampleData$path_gs)) {
+#   unlink(exampleData$path_gs, recursive = TRUE)
 # }

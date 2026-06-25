@@ -1,46 +1,46 @@
 #' @keywords internal
-.gate_chnl <- function(
+.gateChnl <- function(
   .data,
-  ind_batch_list,
-  chnl_settings,
-  gate_tbl = NULL,
-  tol_gate_single = NULL,
-  calc_cyt_pos_gates,
-  path_project,
+  indBatchList,
+  chnlSettings,
+  gateTbl = NULL,
+  tolGateSingle = NULL,
+  calcCytPosGates,
+  pathProject,
   stage
 ) {
   # message progress
-  .debug("pop_gate: ", pop_gate) # nolint
+  .debug("popGate: ", popGate) # nolint
 
   # Parameters list
   # ----------------
 
   # named
-  chnl_lab_vec <- .get_labs(
+  chnlLabVec <- .getLabs(
     # nolint
-    .data = .data[[ind_batch_list[[1]]]],
-    chnl_cut = chnl_settings$chnl_cut
+    .data = .data[[indBatchList[[1]]]],
+    chnlCut = chnlSettings$chnlCut
   )
 
   # delete locb gates
-  .gate_chnl_delete_old_gates()
+  .gateChnlDeleteOldGates()
 
   # Initial gates
   # ----------------
-  gate_tbl <- .gate_chnl_pre_adj_gates_gate(
+  gateTbl <- .gateChnlPreAdjGatesGate(
     # nolint
-    ind_batch_list = ind_batch_list,
+    indBatchList = indBatchList,
     .data = .data,
-    chnl_settings = chnl_settings,
+    chnlSettings = chnlSettings,
     stage = stage,
-    path_project = path_project
+    pathProject = pathProject
   )
 
-  gate_tbl <- gate_tbl |>
+  gateTbl <- gateTbl |>
     dplyr::filter(
       !as.character(ind) %in%
         vapply(
-          ind_batch_list,
+          indBatchList,
           function(x) as.character(x[length(x)]),
           character(1)
         )
@@ -59,15 +59,15 @@
   # For all cells
   # =============================
 
-  .gate_chnl_get_adj_gates(
+  .gateChnlGetAdjGates(
     # nolint
-    gate_tbl = gate_tbl,
-    gate_tbl_params = chnl_settings$gate_tbl,
-    chnl_settings = chnl_settings,
+    gateTbl = gateTbl,
+    gateTblParams = chnlSettings$gateTbl,
+    chnlSettings = chnlSettings,
     .data = .data,
-    path_project = path_project,
-    ind_batch_list = ind_batch_list,
+    pathProject = pathProject,
+    indBatchList = indBatchList,
     stage = stage,
-    calc_cyt_pos_gates = calc_cyt_pos_gates
+    calcCytPosGates = calcCytPosGates
   )
 }

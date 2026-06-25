@@ -2529,11 +2529,11 @@ vertical-align: -.125em;
 <span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>fs <span class="ot">&lt;-</span> <span class="fu">as</span>(outListExperiment[[<span class="st">&quot;flowFrameList&quot;</span>]], <span class="st">&quot;flowSet&quot;</span>)</span>
 <span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>gs <span class="ot">&lt;-</span> flowWorkspace<span class="sc">::</span><span class="fu">GatingSet</span>(fs)</span>
 <span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>path_project <span class="ot">&lt;-</span> projr<span class="sc">::</span><span class="fu">projr_path_get</span>(</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>pathProject <span class="ot">&lt;-</span> projr<span class="sc">::</span><span class="fu">projr_path_get</span>(</span>
 <span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;cache&quot;</span>, <span class="st">&quot;sim-bandwidth&quot;</span>, <span class="st">&quot;check&quot;</span>, <span class="st">&quot;gate&quot;</span>, <span class="fu">paste0</span>(<span class="st">&quot;iter_&quot;</span>, iterNum)</span>
 <span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a><span class="fu">unlink</span>(path_project, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="fu">dir.create</span>(path_project, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a><span class="fu">unlink</span>(pathProject, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="fu">dir.create</span>(pathProject, <span class="at">recursive =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>batch_list <span class="ot">&lt;-</span> <span class="fu">lapply</span>(<span class="fu">seq</span>(nSample), <span class="cf">function</span>(i) {</span>
 <span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">seq</span>((i <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">*</span> nCondition <span class="sc">+</span> <span class="dv">1</span>, i <span class="sc">*</span> nCondition)</span>
 <span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>})</span>
@@ -2543,7 +2543,7 @@ vertical-align: -.125em;
 <span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a><span class="co"># debugonce(stimgate:::.complete_chnl_list)</span></span>
 <span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a><span class="fu">stimgate_gate</span>(</span>
-<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>  <span class="at">path_project =</span> path_project,</span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>  <span class="at">pathProject =</span> pathProject,</span>
 <span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>  <span class="at">chnl =</span> <span class="st">&quot;F1&quot;</span>,</span>
 <span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>  <span class="at">.data =</span> gs,</span>
 <span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>  <span class="at">batch_list =</span> batch_list,</span>
@@ -2611,7 +2611,7 @@ vertical-align: -.125em;
 <pre><code>[1] &quot;_tmp/sim-bandwidth/check/gate/iter_1&quot;</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>stats_tbl <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(</span>
-<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">file.path</span>(path_project, <span class="st">&quot;gate_stats.rds&quot;</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">file.path</span>(pathProject, <span class="st">&quot;gate_stats.rds&quot;</span>)</span>
 <span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>stats_tbl</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">

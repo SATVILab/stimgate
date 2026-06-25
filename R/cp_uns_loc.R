@@ -1,282 +1,282 @@
 # Calculate local FDR-based cutpoint
 #' @keywords internal
-.get_cp_uns_loc <- function(
-  ex_list,
+.getCpUnsLoc <- function(
+  exList,
   .data,
-  chnl_settings,
+  chnlSettings,
   stage,
-  path_project
+  pathProject
 ) {
   # get cutpoints for each level of bias
-  .get_cp_uns_loc_bias(
-    ex_list = ex_list,
+  .getCpUnsLocBias(
+    exList = exList,
     .data = .data,
-    chnl_settings = chnl_settings,
+    chnlSettings = chnlSettings,
     stage = stage,
-    path_project = path_project
+    pathProject = pathProject
   )
 }
 
 # Get unstim-based local FDR cutpoint for each bias level
 #' @keywords internal
-.get_cp_uns_loc_bias <- function(
-  ex_list,
+.getCpUnsLocBias <- function(
+  exList,
   .data,
-  chnl_settings,
+  chnlSettings,
   stage,
-  path_project
+  pathProject
 ) {
   # get ecdf of uns
-  purrr::map(chnl_settings$bias_uns, function(bias) {
-    .debug("bias_uns", bias) # nolint
+  purrr::map(chnlSettings$biasUns, function(bias) {
+    .debug("biasUns", bias) # nolint
 
-    ex_list_prep <- .prepare_data_with_bias_and_noise(
-      ex_list = ex_list,
+    exListPrep <- .prepareDataWithBiasAndNoise(
+      exList = exList,
       bias = bias,
-      noise_sd = NULL,
-      exc_min = chnl_settings$exc_min
+      noiseSd = NULL,
+      excMin = chnlSettings$excMin
     )
 
     # get gates for given level of bias across gate combination methods
     # --------------------------------------
-    cp_uns_gate_combn_obj <- .get_cp_uns_loc_gate_combn(
-      ex_list_orig = ex_list_prep[["ex_list_orig"]],
-      ex_list_no_min = ex_list_prep[["ex_list_no_min"]],
-      ex_tbl_uns_bias = ex_list_prep[["ex_tbl_uns_bias"]],
-      chnl_settings = chnl_settings,
+    cpUnsGateCombnObj <- .getCpUnsLocGateCombn(
+      exListOrig = exListPrep[["exListOrig"]],
+      exListNoMin = exListPrep[["exListNoMin"]],
+      exTblUnsBias = exListPrep[["exTblUnsBias"]],
+      chnlSettings = chnlSettings,
       bias = bias,
-      path_project = path_project,
+      pathProject = pathProject,
       stage = stage
     )
 
     # extract and add bias label to gates
     # ---------------------------------------
-    .get_cp_uns_loc_gate_label(cp_uns_gate_combn_obj, bias)
+    .getCpUnsLocGateLabel(cpUnsGateCombnObj, bias)
   }) |>
     purrr::flatten()
 }
 
 #' @keywords internal
-.get_cp_uns_loc_gate_label <- function(cp_uns_gate_combn_obj, bias) {
-  cp_uns_gate_combn_list <- cp_uns_gate_combn_obj[["cp_uns"]]
-  names(cp_uns_gate_combn_list) <-
-    paste0(names(cp_uns_gate_combn_list))
-  cp_uns_gate_combn_list
+.getCpUnsLocGateLabel <- function(cpUnsGateCombnObj, bias) {
+  cpUnsGateCombnList <- cpUnsGateCombnObj[["cpUns"]]
+  names(cpUnsGateCombnList) <-
+    paste0(names(cpUnsGateCombnList))
+  cpUnsGateCombnList
 }
 
 #' @keywords internal
-.prepare_data_with_bias_and_noise <- function(
-  ex_list,
+.prepareDataWithBiasAndNoise <- function(
+  exList,
   bias,
-  exc_min,
-  noise_sd
+  excMin,
+  noiseSd
 ) {
   # rename `cut` column` to `expr`
   # -------------------------------------
-  ex_list_orig <- .prepare_ex_list_with_bias_and_noise(
-    # exc_min should always be FALSE here, as we're trying
+  exListOrig <- .prepareExListWithBiasAndNoise(
+    # excMin should always be FALSE here, as we're trying
     # to keep all the original data
-    ex_list = ex_list,
-    ind = names(ex_list),
-    exc_min = FALSE,
+    exList = exList,
+    ind = names(exList),
+    excMin = FALSE,
     bias = 0,
-    noise_sd = NULL
+    noiseSd = NULL
   ) |>
-    .arrange_samples_by_desc_expr()
+    .arrangeSamplesByDescExpr()
 
   # separate stim and uns samples, rename
   # `cut` column to `expr` and exclude min
   # values
   # -------------------------------------
-  ex_list_no_min <- .prepare_ex_list_with_bias_and_noise(
-    ex_list = ex_list,
-    ind = names(ex_list),
-    exc_min = exc_min,
+  exListNoMin <- .prepareExListWithBiasAndNoise(
+    exList = exList,
+    ind = names(exList),
+    excMin = excMin,
     bias = 0,
-    noise_sd = NULL
+    noiseSd = NULL
   ) |>
-    .arrange_samples_by_desc_expr()
+    .arrangeSamplesByDescExpr()
 
   # adjust expression in unstim,
   # applying bias, excluding the min val
   # and /or adding noise
   # -------------------------------------
-  ex_list_bias <- .prepare_ex_list_with_bias_and_noise(
-    ex_list = ex_list,
-    ind = names(ex_list)[length(ex_list)],
-    exc_min = exc_min,
+  exListBias <- .prepareExListWithBiasAndNoise(
+    exList = exList,
+    ind = names(exList)[length(exList)],
+    excMin = excMin,
     bias = bias,
-    noise_sd = NULL
+    noiseSd = NULL
   ) |>
-    .arrange_samples_by_desc_expr()
-  ex_tbl_uns_bias <- ex_list_bias[[1]]
+    .arrangeSamplesByDescExpr()
+  exTblUnsBias <- exListBias[[1]]
 
   list(
-    "ex_list_orig" = ex_list_orig,
-    "ex_list_no_min" = ex_list_no_min,
-    "ex_tbl_uns_bias" = ex_tbl_uns_bias
+    "exListOrig" = exListOrig,
+    "exListNoMin" = exListNoMin,
+    "exTblUnsBias" = exTblUnsBias
   )
 }
 
 # Get the unstim-based local fdr-method
 # cutpoint for a given bias across gate combination methods
 #' @keywords internal
-.get_cp_uns_loc_gate_combn <- function(
-  ex_list_orig,
-  ex_list_no_min,
-  ex_tbl_uns_bias,
-  chnl_settings,
+.getCpUnsLocGateCombn <- function(
+  exListOrig,
+  exListNoMin,
+  exTblUnsBias,
+  chnlSettings,
   bias,
-  path_project,
+  pathProject,
   stage
 ) {
-  .debug("getting gate_combn") # nolint
+  .debug("getting gateCombn") # nolint
 
   # get cutpoints for prejoin gate combination method
-  cp_uns_list_prejoin <- .get_cp_uns_loc_gate_combn_prejoin(
-    ex_list_no_min = ex_list_no_min,
-    ex_list_orig = ex_list_orig,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
-    chnl_settings = chnl_settings,
+  cpUnsListPrejoin <- .getCpUnsLocGateCombnPrejoin(
+    exListNoMin = exListNoMin,
+    exListOrig = exListOrig,
+    exTblUnsBias = exTblUnsBias,
+    chnlSettings = chnlSettings,
     bias = bias,
-    path_project = path_project,
+    pathProject = pathProject,
     stage = stage
   )
 
   # get cutpoint for non-prejoin grouping methods
-  cp_uns_list_prejoin_non <- .get_cp_uns_loc_gate_combn_prejoin_non(
-    non_prejoin_combn = setdiff(chnl_settings$gate_combn, "prejoin"),
-    ex_list_no_min_stim = ex_list_no_min[-length(ex_list_no_min)],
-    ex_list_orig = ex_list_orig,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
-    chnl_settings = chnl_settings,
+  cpUnsListPrejoinNon <- .getCpUnsLocGateCombnPrejoinNon(
+    nonPrejoinCombn = setdiff(chnlSettings$gateCombn, "prejoin"),
+    exListNoMinStim = exListNoMin[-length(exListNoMin)],
+    exListOrig = exListOrig,
+    exTblUnsBias = exTblUnsBias,
+    chnlSettings = chnlSettings,
     bias = bias,
-    path_project = path_project,
+    pathProject = pathProject,
     stage = stage
   )
 
   # merge above two lists
-  cp_uns_list <- .get_cp_uns_loc_gate_combn_merge(
-    cp_uns_list_prejoin,
-    cp_uns_list_prejoin_non,
+  cpUnsList <- .getCpUnsLocGateCombnMerge(
+    cpUnsListPrejoin,
+    cpUnsListPrejoinNon,
     stage
   )
 
   list(
-    "cp_uns" = list("loc" = cp_uns_list),
-    "p_list" = list()
+    "cpUns" = list("loc" = cp_uns_list),
+    "pList" = list()
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_gate_combn_merge <- function(
-  cp_uns_list_prejoin,
-  cp_uns_list_prejoin_non,
+.getCpUnsLocGateCombnMerge <- function(
+  cpUnsListPrejoin,
+  cpUnsListPrejoinNon,
   stage
 ) {
-  .debug("done getting gate_combn") # nolint
+  .debug("done getting gateCombn") # nolint
 
-  combined_list <- cp_uns_list_prejoin |>
-    append(cp_uns_list_prejoin_non)
+  combinedList <- cpUnsListPrejoin |>
+    append(cpUnsListPrejoinNon)
   purrr::map(
-    unique(names(combined_list)),
+    unique(names(combinedList)),
     function(x) {
       .debug("cutpoint name", paste0(x, collapse = "-")) # nolint
-      cp_uns_list_prejoin[[x]] |>
-        append(cp_uns_list_prejoin_non[[x]])
+      cpUnsListPrejoin[[x]] |>
+        append(cpUnsListPrejoinNon[[x]])
     }
   ) |>
-    stats::setNames(unique(names(combined_list)))
+    stats::setNames(unique(names(combinedList)))
 }
 
 # --------------------------------
 # gate using prejoined .data
 # --------------------------------
 #' @keywords internal
-.get_cp_uns_loc_gate_combn_prejoin <- function(
-  ex_list_no_min,
-  ex_list_orig,
-  ex_tbl_uns_bias,
-  chnl_settings,
+.getCpUnsLocGateCombnPrejoin <- function(
+  exListNoMin,
+  exListOrig,
+  exTblUnsBias,
+  chnlSettings,
   bias,
-  path_project,
+  pathProject,
   stage
 ) {
-  if (!"prejoin" %in% chnl_settings$gate_combn) {
-    return(.get_cp_uns_loc_gate_combn_prejoin_not())
+  if (!"prejoin" %in% chnlSettings$gateCombn) {
+    return(.getCpUnsLocGateCombnPrejoinNot())
   }
-  .get_cp_uns_loc_gate_combn_prejoin_actual(
-    ex_list_no_min = ex_list_no_min,
-    ex_list_orig = ex_list_orig,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
-    chnl_settings = chnl_settings,
+  .getCpUnsLocGateCombnPrejoinActual(
+    exListNoMin = exListNoMin,
+    exListOrig = exListOrig,
+    exTblUnsBias = exTblUnsBias,
+    chnlSettings = chnlSettings,
     bias = bias,
-    path_project = path_project,
+    pathProject = pathProject,
     stage = stage
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_gate_combn_prejoin_not <- function() {
-  list("cp" = list(), "p_list" = list())
+.getCpUnsLocGateCombnPrejoinNot <- function() {
+  list("cp" = list(), "pList" = list())
 }
 
 #' @keywords internal
-.prepare_data_for_prejoin <- function(ex_list_orig, ex_list_no_min) {
-  ex_list_no_min <- .prepare_data_for_prejoin_ind(
-    ex_list = ex_list_no_min
+.prepareDataForPrejoin <- function(exListOrig, exListNoMin) {
+  exListNoMin <- .prepareDataForPrejoinInd(
+    exList = exListNoMin
   )
-  ex_list_orig <- .prepare_data_for_prejoin_ind(
-    ex_list = ex_list_orig
+  exListOrig <- .prepareDataForPrejoinInd(
+    exList = exListOrig
   )
 
   list(
-    "ex_list_orig" = ex_list_orig,
-    "ex_list_no_min" = ex_list_no_min
+    "exListOrig" = exListOrig,
+    "exListNoMin" = exListNoMin
   )
 }
 
 #' @keywords internal
-.prepare_data_for_prejoin_ind <- function(ex_list) {
-  ind_uns <- names(ex_list)[length(ex_list)]
-  ex_tbl_stim <- ex_list[seq_len(length(ex_list) - 1)] |>
+.prepareDataForPrejoinInd <- function(exList) {
+  indUns <- names(exList)[length(exList)]
+  exTblStim <- exList[seq_len(length(exList) - 1)] |>
     dplyr::bind_rows()
-  ex_tbl_stim <- ex_tbl_stim[order(.get_cut(ex_tbl_stim)), ]
+  exTblStim <- exTblStim[order(.getCut(exTblStim)), ]
   list(
-    ex_tbl_stim,
-    ex_list[[length(ex_list)]]
+    exTblStim,
+    exList[[length(exList)]]
   ) |>
-    stats::setNames(c(names(ex_list)[1], ind_uns))
+    stats::setNames(c(names(exList)[1], indUns))
 }
 
 #' @keywords internal
-.get_cp_uns_loc_gate_combn_prejoin_actual <- function(
-  ex_list_no_min,
-  ex_list_orig,
-  ex_tbl_uns_bias,
-  chnl_settings,
+.getCpUnsLocGateCombnPrejoinActual <- function(
+  exListNoMin,
+  exListOrig,
+  exTblUnsBias,
+  chnlSettings,
   bias,
-  path_project,
+  pathProject,
   stage
 ) {
   .debug("prejoin") # nolint
 
   # get marker expression for stim samples,
   # join and then sort into descending order
-  ex_list_prejoin <- .prepare_data_for_prejoin(
-    ex_list_orig = ex_list_orig,
-    ex_list_no_min = ex_list_no_min
+  exListPrejoin <- .prepareDataForPrejoin(
+    exListOrig = exListOrig,
+    exListNoMin = exListNoMin
   )
 
   # get cutpoints for gate combn method for a range of fdr's
-  .get_cp_uns_loc_sample(
-    ex_list_orig = ex_list_prejoin[["ex_list_orig"]],
-    ex_list_no_min_stim = ex_list_prejoin[["ex_list_no_min"]],
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
-    chnl_settings = chnl_settings,
+  .getCpUnsLocSample(
+    exListOrig = exListPrejoin[["exListOrig"]],
+    exListNoMinStim = exListPrejoin[["exListNoMin"]],
+    exTblUnsBias = exTblUnsBias,
+    chnlSettings = chnlSettings,
     bias = bias,
     stage = stage,
-    path_project = path_project
+    pathProject = pathProject
   ) |>
     purrr::map(function(x) list("prejoin" = x))
 }
@@ -285,85 +285,85 @@
 # gate each sample individually
 # --------------------------------
 #' @keywords internal
-.get_cp_uns_loc_gate_combn_prejoin_non <- function(
-  non_prejoin_combn,
-  ex_list_no_min_stim,
-  ex_list_orig,
-  ex_tbl_uns_bias,
-  chnl_settings,
+.getCpUnsLocGateCombnPrejoinNon <- function(
+  nonPrejoinCombn,
+  exListNoMinStim,
+  exListOrig,
+  exTblUnsBias,
+  chnlSettings,
   bias,
-  path_project,
+  pathProject,
   stage
 ) {
-  if (length(non_prejoin_combn) == 0L) {
+  if (length(nonPrejoinCombn) == 0L) {
     return(
-      .get_cp_uns_loc_gate_combn_prejoin_non_not()
+      .getCpUnsLocGateCombnPrejoinNonNot()
     )
   }
-  .get_cp_uns_loc_gate_combn_prejoin_non_actual(
-    ex_list_no_min_stim = ex_list_no_min_stim,
-    ex_list_orig = ex_list_orig,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
-    chnl_settings = chnl_settings,
+  .getCpUnsLocGateCombnPrejoinNonActual(
+    exListNoMinStim = exListNoMinStim,
+    exListOrig = exListOrig,
+    exTblUnsBias = exTblUnsBias,
+    chnlSettings = chnlSettings,
     bias = bias,
-    non_prejoin_combn = non_prejoin_combn,
-    path_project = path_project,
+    nonPrejoinCombn = nonPrejoinCombn,
+    pathProject = pathProject,
     stage = stage
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_gate_combn_prejoin_non_not <- function() {
-  list("cp" = list(), "p_list" = list())
+.getCpUnsLocGateCombnPrejoinNonNot <- function() {
+  list("cp" = list(), "pList" = list())
 }
 
 #' @keywords internal
-.get_cp_uns_loc_gate_combn_prejoin_non_actual <- function(
-  ex_list_no_min_stim,
-  ex_list_orig,
-  ex_tbl_uns_bias,
-  chnl_settings,
+.getCpUnsLocGateCombnPrejoinNonActual <- function(
+  exListNoMinStim,
+  exListOrig,
+  exTblUnsBias,
+  chnlSettings,
   bias,
-  path_project,
+  pathProject,
   stage,
-  non_prejoin_combn
+  nonPrejoinCombn
 ) {
   .debug("non-prejoin") # nolint
-  cp_uns_list_nonjoin <- .get_cp_uns_loc_sample(
-    ex_list_orig = ex_list_orig,
-    ex_list_no_min_stim = ex_list_no_min_stim,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
-    chnl_settings = chnl_settings,
+  cpUnsListNonjoin <- .getCpUnsLocSample(
+    exListOrig = exListOrig,
+    exListNoMinStim = exListNoMinStim,
+    exTblUnsBias = exTblUnsBias,
+    chnlSettings = chnlSettings,
     bias = bias,
     stage = stage,
-    path_project = path_project
+    pathProject = pathProject
   )
 
-  cp_uns_list_nonjoin <- .get_cp_uns_loc_gate_combn_prejoin_non_actual_combn(
+  cpUnsListNonjoin <- .getCpUnsLocGateCombnPrejoinNonActualCombn(
     stage,
-    cp_uns_list_nonjoin,
-    non_prejoin_combn
+    cpUnsListNonjoin,
+    nonPrejoinCombn
   )
-  list("cp" = cp_uns_list_nonjoin, "p_list" = list())
+  list("cp" = cpUnsListNonjoin, "pList" = list())
 }
 
 #' @keywords internal
-.arrange_samples_by_desc_expr <- function(ex_list) {
+.arrangeSamplesByDescExpr <- function(exList) {
   # arrange in descending order of expression
-  ex_list |>
-    purrr::map(function(x) x[order(.get_cut(x)), ]) # nolint
+  exList |>
+    purrr::map(function(x) x[order(.getCut(x)), ]) # nolint
 }
 
 #' @keywords internal
-.get_cp_uns_loc_gate_combn_prejoin_non_actual_combn <- function(
+.getCpUnsLocGateCombnPrejoinNonActualCombn <- function(
   stage,
-  cp_uns_list_nonjoin, # nolint
-  non_prejoin_combn_vec
+  cpUnsListNonjoin, # nolint
+  nonPrejoinCombnVec
 ) {
   .debug("Combining cutpoints") # nolint
-  .combine_cp(
-    cp = cp_uns_list_nonjoin[["loc"]],
-    gate_combn = non_prejoin_combn_vec
+  .combineCp(
+    cp = cpUnsListNonjoin[["loc"]],
+    gateCombn = nonPrejoinCombnVec
   )
 }
 
@@ -373,604 +373,674 @@
 
 # Get cutpoint for a range of samples given the q-value and fdr
 #' @keywords internal
-.get_cp_uns_loc_sample <- function(
-  ex_list_orig,
-  ex_list_no_min_stim,
-  ex_tbl_uns_bias,
-  chnl_settings,
+.getCpUnsLocSample <- function(
+  exListOrig,
+  exListNoMinStim,
+  exTblUnsBias,
+  chnlSettings,
   bias,
-  path_project,
+  pathProject,
   stage
 ) {
   .debug("getting loc gate at sample level") # nolint
-  force(path_project)
+  force(pathProject)
 
   # get cutpoints for each sample
-  cp_uns_loc_obj_list <- purrr::map(
-    seq_along(ex_list_no_min_stim),
+  cpUnsLocObjList <- purrr::map(
+    seq_along(exListNoMinStim),
     function(i) {
       .debug("sample", i) # nolint
 
-      ex_tbl_no_min_stim <- ex_list_no_min_stim[[i]]
-      ind <- .get_ind(ex_tbl_no_min_stim)
+      exTblNoMinStim <- exListNoMinStim[[i]]
+      ind <- .getInd(exTblNoMinStim)
       .debug("ind", ind) # nolint
-      ex_tbl_uns_orig <- ex_list_orig[[length(ex_list_orig)]]
-      ex_tbl_stim_orig <- ex_list_orig[[i]]
-      chnl <- chnl_settings$chnl_cut %||% .get_cp_uns_loc_get_chnl(ex_tbl_no_min_stim)
-      stage_chnl <- file.path(stage, chnl)
-      .int_save(
+      exTblUnsOrig <- exListOrig[[length(exListOrig)]]
+      exTblStimOrig <- exListOrig[[i]]
+      chnl <- chnlSettings$chnlCut %||%
+        .getCpUnsLocGetChnl(exTblNoMinStim)
+      stageChnl <- file.path(stage, chnl)
+      .intSave(
         ind,
-        stage_chnl,
-        path_project,
-        ex_tbl_no_min_stim,
-        ex_tbl_uns_orig,
-        ex_tbl_stim_orig
+        stageChnl,
+        pathProject,
+        exTblNoMinStim,
+        exTblUnsOrig,
+        exTblStimOrig
       )
 
       # return early if there are too few cells
-      too_few_cells_lgl <- .get_cp_uns_loc_sample_check_cell_number(
-        ex_tbl_stim_no_min = ex_tbl_no_min_stim,
-        min_cell = chnl_settings$min_cell,
-        ex_tbl_uns_bias = ex_tbl_uns_bias
+      tooFewCellsLgl <- .getCpUnsLocSampleCheckCellNumber(
+        exTblStimNoMin = exTblNoMinStim,
+        minCell = chnlSettings$minCell,
+        exTblUnsBias = exTblUnsBias
       )
-      if (too_few_cells_lgl) {
-        obj_out <- .get_cp_uns_loc_sample_too_few(
+      if (tooFewCellsLgl) {
+        objOut <- .getCpUnsLocSampleTooFew(
           stage = stage,
-          path_project = path_project,
-          ex_tbl_no_min_stim = ex_tbl_no_min_stim,
-          ex_tbl_uns_bias = ex_tbl_uns_bias,
-          cp_min = chnl_settings$cp_min
+          pathProject = pathProject,
+          exTblNoMinStim = exTblNoMinStim,
+          exTblUnsBias = exTblUnsBias,
+          cpMin = chnlSettings$cpMin
         )
-        return(obj_out)
+        return(objOut)
       }
 
       # remove any cytokine-positive cells from unstim using gates from
       # sample for which single-positive gates are required
-      ex_tbl_uns_bias <- .get_cp_uns_loc_sample_uns_rm_cyt_pos(
-        ex_tbl_uns_orig = ex_tbl_uns_orig,
-        chnl_settings = chnl_settings,
-        ex_tbl_stim_no_min = ex_tbl_no_min_stim,
+      exTblUnsBias <- .getCpUnsLocSampleUnsRmCytPos(
+        exTblUnsOrig = exTblUnsOrig,
+        chnlSettings = chnlSettings,
+        exTblStimNoMin = exTblNoMinStim,
         bias = bias,
-        ex_tbl_uns_bias = ex_tbl_uns_bias,
+        exTblUnsBias = exTblUnsBias,
         stage = stage
       )
-      .int_save(ind, stage_chnl, path_project, ex_tbl_uns_bias)
+      .intSave(ind, stageChnl, pathProject, exTblUnsBias)
 
-      .get_cp_uns_loc_ind(
-        ex_tbl_uns_bias = ex_tbl_uns_bias,
-        ex_tbl_stim_no_min = ex_tbl_no_min_stim,
-        chnl_settings = chnl_settings,
-        ex_tbl_stim_orig = ex_tbl_stim_orig,
-        ex_tbl_uns_orig = ex_tbl_uns_orig,
+      .getCpUnsLocInd(
+        exTblUnsBias = exTblUnsBias,
+        exTblStimNoMin = exTblNoMinStim,
+        chnlSettings = chnlSettings,
+        exTblStimOrig = exTblStimOrig,
+        exTblUnsOrig = exTblUnsOrig,
         bias = bias,
-        path_project = path_project,
+        pathProject = pathProject,
         stage = stage
       )
     }
   ) |>
-    stats::setNames(names(ex_list_no_min_stim))
+    stats::setNames(names(exListNoMinStim))
 
-  .path_project <- path_project
-  chnl <- .get_cp_uns_loc_get_chnl(ex_list_no_min_stim[[1]])
-  .get_cp_uns_loc_output(
-    cp_uns_loc_obj_list = cp_uns_loc_obj_list,
-    ind_uns = names(ex_list_orig)[length(ex_list_orig)],
-    ind_stim = names(ex_list_no_min_stim),
+  .pathProject <- pathProject
+  chnl <- .getCpUnsLocGetChnl(exListNoMinStim[[1]])
+  .getCpUnsLocOutput(
+    cpUnsLocObjList = cpUnsLocObjList,
+    indUns = names(exListOrig)[length(exListOrig)],
+    indStim = names(exListNoMinStim),
     stage = stage,
-    path_project = .path_project,
+    pathProject = .pathProject,
     chnl = chnl
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_sample_check_cell_number <- function(
-  ex_tbl_stim_no_min,
-  min_cell,
-  ex_tbl_uns_bias
+.getCpUnsLocSampleCheckCellNumber <- function(
+  exTblStimNoMin,
+  minCell,
+  exTblUnsBias
 ) {
-  nrow(ex_tbl_stim_no_min) < min_cell ||
-    nrow(ex_tbl_uns_bias) < min_cell
+  nrow(exTblStimNoMin) < minCell ||
+    nrow(exTblUnsBias) < minCell
 }
 
 #' @keywords internal
-.get_cp_uns_loc_sample_too_few <- function(
+.getCpUnsLocSampleTooFew <- function(
   stage,
-  path_project,
-  ex_tbl_no_min_stim,
-  ex_tbl_uns_bias,
-  cp_min
+  pathProject,
+  exTblNoMinStim,
+  exTblUnsBias,
+  cpMin
 ) {
-  chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_no_min_stim)
-  stage_chnl <- file.path(stage, chnl)
-  .int_save_nm(
+  chnl <- .getCpUnsLocGetChnl(exTblNoMinStim)
+  stageChnl <- file.path(stage, chnl)
+  .intSaveNm(
     "too_few_cells_sample_fn",
     NULL,
-    .get_ind(ex_tbl_no_min_stim),
-    stage_chnl,
-    path_project
+    .getInd(exTblNoMinStim),
+    stageChnl,
+    pathProject
   ) # nolint
-  obj_out <- .get_cp_uns_loc_ind_check_out(
-    cp_min = cp_min,
-    ex_tbl_stim_no_min = ex_tbl_no_min_stim,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
+  objOut <- .getCpUnsLocIndCheckOut(
+    cpMin = cpMin,
+    exTblStimNoMin = exTblNoMinStim,
+    exTblUnsBias = exTblUnsBias,
     stage = stage,
     msg = "Too few cells"
   )
-  .int_save_nm(
-    "cp_ind",
-    obj_out$cp,
-    .get_ind(ex_tbl_no_min_stim),
-    stage_chnl,
-    path_project
+  .intSaveNm(
+    "cpInd",
+    objOut$cp,
+    .getInd(exTblNoMinStim),
+    stageChnl,
+    pathProject
   )
-  obj_out
+  objOut
 }
 
 #' @keywords internal
-.get_cp_uns_loc_sample_uns_rm_cyt_pos <- function(
-  ex_tbl_uns_orig,
-  chnl_settings,
-  ex_tbl_stim_no_min,
+.getCpUnsLocSampleUnsRmCytPos <- function(
+  exTblUnsOrig,
+  chnlSettings,
+  exTblStimNoMin,
   bias,
-  ex_tbl_uns_bias,
+  exTblUnsBias,
   stage
 ) {
   if (stage == "init") {
-    return(ex_tbl_uns_bias)
+    return(exTblUnsBias)
   }
   .debug("Removing cytokine-positive cells from unstim") # nolint
 
   # first filter
-  gate_tbl_gn_ind <- chnl_settings$gate_tbl |>
+  gateTblGnInd <- chnlSettings$gateTbl |>
     dplyr::filter(
-      ind == ex_tbl_stim_no_min$ind[1], # nolint
-      .data$gate_name == .env$chnl_settings$gate_name_curr # nolint
+      ind == exTblStimNoMin$ind[1], # nolint
+      .data$gate_name == .env$chnlSettings$gateNameCurr # nolint
     )
 
-  pos_ind_vec_but_single_pos_curr <-
-    .get_pos_ind_but_single_pos_for_one_cyt(
-      ex = ex_tbl_uns_orig,
-      gate_tbl = gate_tbl_gn_ind,
-      chnl_single_exc = chnl_settings$chnl_cut,
+  posIndVecButSinglePosCurr <-
+    .getPosIndButSinglePosForOneCyt(
+      ex = exTblUnsOrig,
+      gateTbl = gateTblGnInd,
+      chnlSingleExc = chnlSettings$chnlCut,
       chnl = NULL,
-      gate_type_cyt_pos = ifelse(chnl_settings$calc_cyt_pos_gates, "cyt", "base"),
-      gate_type_single_pos = "base"
+      gateTypeCytPos = ifelse(
+        chnlSettings$calcCytPosGates,
+        "cyt",
+        "base"
+      ),
+      gateTypeSinglePos = "base"
     )
 
-  ex_tbl_uns_orig <- ex_tbl_uns_orig[
-    !pos_ind_vec_but_single_pos_curr,
+  exTblUnsOrig <- exTblUnsOrig[
+    !posIndVecButSinglePosCurr,
     ,
     drop = FALSE
   ]
 
   # re-apply bias, noise and exclude minimum after removing cytokine-positive cells
-  .prepare_ex_list_with_bias_and_noise(
-    ex_list = stats::setNames(
-      list(ex_tbl_uns_orig),
-      attr(ex_tbl_uns_orig, "ind_uns")
+  .prepareExListWithBiasAndNoise(
+    exList = stats::setNames(
+      list(exTblUnsOrig),
+      attr(exTblUnsOrig, "indUns")
     ),
-    ind = attr(ex_tbl_uns_orig, "ind_uns"),
-    exc_min = chnl_settings$exc_min,
+    ind = attr(exTblUnsOrig, "indUns"),
+    excMin = chnlSettings$excMin,
     bias = bias,
-    noise_sd = NULL
+    noiseSd = NULL
   )[[1]]
 }
 
 #' @keywords internal
-.get_cp_uns_loc_p_list_empty <- function() {
+.getCpUnsLocPListEmpty <- function() {
   lapply(seq_len(3), function(x) list()) |>
-    stats::setNames(c("p_loc_dens", "p_loc_prob", "p_loc_ctb"))
+    stats::setNames(c("pLocDens", "pLocProb", "pLocCtb"))
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_chnl <- function(ex_tbl) {
-  if (is.null(ex_tbl) || !is.data.frame(ex_tbl)) {
+.getCpUnsLocGetChnl <- function(exTbl) {
+  if (is.null(exTbl) || !is.data.frame(exTbl)) {
     return("unknown_chnl")
   }
-  chnl <- attr(ex_tbl, "chnl_cut")
+  chnl <- attr(exTbl, "chnlCut")
   if (!is.null(chnl) && nzchar(chnl)) {
     return(chnl)
   }
-  cut_vec <- .get_cut(ex_tbl)
-  cn_vec <- colnames(ex_tbl)
-  if (is.null(cn_vec) || length(cn_vec) == 0L) {
+  cutVec <- .getCut(exTbl)
+  cnVec <- colnames(exTbl)
+  if (is.null(cnVec) || length(cnVec) == 0L) {
     return("unknown_chnl")
   }
-  match_ind <- vapply(
-    cn_vec,
-    function(nm) identical(ex_tbl[[nm]], cut_vec),
+  matchInd <- vapply(
+    cnVec,
+    function(nm) identical(exTbl[[nm]], cutVec),
     logical(1)
   )
-  if (any(match_ind)) {
-    return(cn_vec[match_ind][1])
+  if (any(matchInd)) {
+    return(cnVec[matchInd][1])
   }
-  cn_vec[1]
+  cnVec[1]
 }
 
 #' @keywords internal
-.get_cp_uns_loc_ind <- function(
-  ex_tbl_uns_bias,
-  ex_tbl_stim_no_min,
-  chnl_settings,
-  ex_tbl_stim_orig,
-  ex_tbl_uns_orig,
+.getCpUnsLocInd <- function(
+  exTblUnsBias,
+  exTblStimNoMin,
+  chnlSettings,
+  exTblStimOrig,
+  exTblUnsOrig,
   plot = TRUE,
-  prob_min = 0.1,
+  probMin = 0.1,
   bias,
-  path_project,
+  pathProject,
   stage
 ) {
   .debug("getting loc gate for single sample") # nolint
-  ind <- .get_ind(ex_tbl_stim_no_min)
-  chnl <- chnl_settings$chnl_cut %||% .get_cp_uns_loc_get_chnl(ex_tbl_stim_no_min)
-  stage_chnl <- file.path(stage, chnl)
+  ind <- .getInd(exTblStimNoMin)
+  chnl <- chnlSettings$chnlCut %||%
+    .getCpUnsLocGetChnl(exTblStimNoMin)
+  stageChnl <- file.path(stage, chnl)
   .debug("ind", ind) # nolint
 
   # estimate densities for stim and unstim over stim range
-  if (.get_cp_uns_loc_check_early(ex_tbl_stim_no_min, chnl_settings$min_cell, chnl_settings$cp_min)) {
-    obj_out <- .get_cp_uns_loc_ind_too_few(
-      stage = stage,
-      path_project = path_project,
-      ex_tbl_no_min_stim = ex_tbl_stim_no_min,
-      ex_tbl_uns_bias = ex_tbl_uns_bias,
-      cp_min = chnl_settings$cp_min
+  if (
+    .getCpUnsLocCheckEarly(
+      exTblStimNoMin,
+      chnlSettings$minCell,
+      chnlSettings$cpMin
     )
-    return(obj_out)
+  ) {
+    objOut <- .getCpUnsLocIndTooFew(
+      stage = stage,
+      pathProject = pathProject,
+      exTblNoMinStim = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias,
+      cpMin = chnlSettings$cpMin
+    )
+    return(objOut)
   }
 
-  # stop expr being higher than max_x to prevent really far away values creating modes
-  ex_tbl_stim_threshold <- .get_cp_uns_loc_set_max_expr(
-    ex_tbl_stim_no_min,
-    .get_cp_uns_loc_ind_max_dens_x(ex_tbl_stim_no_min)
+  # stop expr being higher than maxX to prevent really far away values creating modes
+  exTblStimThreshold <- .getCpUnsLocSetMaxExpr(
+    exTblStimNoMin,
+    .getCpUnsLocIndMaxDensX(exTblStimNoMin)
   )
-  ex_tbl_uns_threshold <- .get_cp_uns_loc_set_max_expr(
-    ex_tbl_uns_bias,
-    .get_cp_uns_loc_ind_max_dens_x(ex_tbl_stim_no_min)
+  exTblUnsThreshold <- .getCpUnsLocSetMaxExpr(
+    exTblUnsBias,
+    .getCpUnsLocIndMaxDensX(exTblStimNoMin)
   )
-  .int_save(
-    .get_ind(ex_tbl_stim_no_min),
-    stage_chnl,
-    path_project,
-    ex_tbl_stim_threshold,
-    ex_tbl_uns_threshold
+  .intSave(
+    .getInd(exTblStimNoMin),
+    stageChnl,
+    pathProject,
+    exTblStimThreshold,
+    exTblUnsThreshold
   )
 
   # get smoothed probabilities
-  data_mod <- .get_cp_uns_loc_get_prob(
-    ex_tbl_stim_no_min = ex_tbl_stim_no_min,
-    ex_tbl_stim_threshold = ex_tbl_stim_threshold,
-    ex_tbl_uns_threshold = ex_tbl_uns_threshold,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
+  dataMod <- .getCpUnsLocGetProb(
+    exTblStimNoMin = exTblStimNoMin,
+    exTblStimThreshold = exTblStimThreshold,
+    exTblUnsThreshold = exTblUnsThreshold,
+    exTblUnsBias = exTblUnsBias,
     stage = stage,
-    bw_min = chnl_settings$bw_min,
-    cp_min = chnl_settings$cp_min + bias,
-    ex_tbl_uns_orig = ex_tbl_uns_orig,
-    path_project = path_project
+    bias = bias,
+    exTblUnsOrig = exTblUnsOrig,
+    pathProject = pathProject,
+    chnlSettings = chnlSettings
   )
-  .int_save(
-    .get_ind(ex_tbl_stim_no_min),
-    stage_chnl,
-    path_project,
-    data_mod
+  .intSave(
+    .getInd(exTblStimNoMin),
+    stageChnl,
+    pathProject,
+    dataMod
   )
 
   # get threshold
-  .get_cp_uns_loc_get_cp(
-    data_mod = data_mod,
-    ex_tbl_stim_no_min = ex_tbl_stim_no_min,
-    ex_tbl_stim_orig = ex_tbl_stim_orig,
-    ex_tbl_uns_orig = ex_tbl_uns_orig,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
+  .getCpUnsLocGetCp(
+    dataMod = dataMod,
+    exTblStimNoMin = exTblStimNoMin,
+    exTblStimOrig = exTblStimOrig,
+    exTblUnsOrig = exTblUnsOrig,
+    exTblUnsBias = exTblUnsBias,
     bias = bias,
-    cp_min = chnl_settings$cp_min,
+    cpMin = chnlSettings$cpMin,
     stage = stage,
-    path_project = path_project
+    pathProject = pathProject
   )
 }
 
-.get_cp_uns_loc_ind_too_few <- function(
+.getCpUnsLocIndTooFew <- function(
   stage,
-  path_project,
-  ex_tbl_no_min_stim,
-  ex_tbl_uns_bias,
-  cp_min
+  pathProject,
+  exTblNoMinStim,
+  exTblUnsBias,
+  cpMin
 ) {
-  chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_no_min_stim)
-  stage_chnl <- file.path(stage, chnl)
-  .int_save_nm(
+  chnl <- .getCpUnsLocGetChnl(exTblNoMinStim)
+  stageChnl <- file.path(stage, chnl)
+  .intSaveNm(
     "too_few_cells_ind_fn",
     NULL,
-    .get_ind(ex_tbl_no_min_stim),
-    stage_chnl,
-    path_project
+    .getInd(exTblNoMinStim),
+    stageChnl,
+    pathProject
   ) # nolint
-  obj_out <- .get_cp_uns_loc_ind_check_out(
-    cp_min = cp_min,
-    ex_tbl_stim_no_min = ex_tbl_no_min_stim,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
+  objOut <- .getCpUnsLocIndCheckOut(
+    cpMin = cpMin,
+    exTblStimNoMin = exTblNoMinStim,
+    exTblUnsBias = exTblUnsBias,
     stage = stage,
     msg = "Too few cells"
   )
-  .int_save_nm(
-    "cp_ind",
-    obj_out$cp,
-    .get_ind(ex_tbl_no_min_stim), # BUG FIX: Get IND, don't pass whole tbl
-    stage_chnl,
-    path_project
+  .intSaveNm(
+    "cpInd",
+    objOut$cp,
+    .getInd(exTblNoMinStim), 
+    stageChnl,
+    pathProject
   )
-  return(obj_out)
+  return(objOut)
 }
 
 # initial checks
 # ---------------------
 #' @keywords internal
-.get_cp_uns_loc_ind_check_n_cell <- function(ex_tbl_stim_no_min, min_cell) {
-  nrow(ex_tbl_stim_no_min) < min_cell
+.getCpUnsLocIndCheckNCell <- function(exTblStimNoMin, minCell) {
+  nrow(exTblStimNoMin) < minCell
 }
 
 #' @keywords internal
-.get_cp_uns_loc_ind_max_dens_x <- function(ex_tbl_stim_no_min) {
-  max(.get_cut(ex_tbl_stim_no_min)) -
-    0.05 * (diff(range(.get_cut(ex_tbl_stim_no_min))))
+.getCpUnsLocIndMaxDensX <- function(exTblStimNoMin) {
+  max(.getCut(exTblStimNoMin)) -
+    0.05 * (diff(range(.getCut(exTblStimNoMin))))
 }
 
 #' @keywords internal
-.get_cp_uns_loc_ind_check_max_x <- function(ex_tbl_stim_no_min, cp_min) {
-  .get_cp_uns_loc_ind_max_dens_x(ex_tbl_stim_no_min) <= cp_min
+.getCpUnsLocIndCheckMaxX <- function(exTblStimNoMin, cpMin) {
+  .getCpUnsLocIndMaxDensX(exTblStimNoMin) <= cpMin
 }
 
 #' @keywords internal
-.get_cp_uns_loc_check_early <- function(ex_tbl_stim_no_min, min_cell, cp_min) {
-  .get_cp_uns_loc_ind_check_n_cell(ex_tbl_stim_no_min, min_cell) ||
-    .get_cp_uns_loc_ind_check_max_x(ex_tbl_stim_no_min, cp_min)
+.getCpUnsLocCheckEarly <- function(exTblStimNoMin, minCell, cpMin) {
+  .getCpUnsLocIndCheckNCell(exTblStimNoMin, minCell) ||
+    .getCpUnsLocIndCheckMaxX(exTblStimNoMin, cpMin)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_ind_check_out <- function(
-  cp_min,
-  ex_tbl_stim_no_min,
-  ex_tbl_uns_bias,
+.getCpUnsLocIndCheckOut <- function(
+  cpMin,
+  exTblStimNoMin,
+  exTblUnsBias,
   stage,
   msg
 ) {
   .debug(msg) # nolint
   list(
-    cp = .get_cp_uns_loc_ind_cp_non_loc(
-      cp_min = cp_min,
-      ex_tbl_stim_no_min = ex_tbl_stim_no_min,
-      ex_tbl_uns_bias = ex_tbl_uns_bias
+    cp = .getCpUnsLocIndCpNonLoc(
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias
     ),
-    p_list = .get_cp_uns_loc_p_list_empty()
+    pList = .getCpUnsLocPListEmpty()
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_ind_cp_non_loc <- function(
-  cp_min,
-  ex_tbl_stim_no_min,
-  ex_tbl_uns_bias
+.getCpUnsLocIndCpNonLoc <- function(
+  cpMin,
+  exTblStimNoMin,
+  exTblUnsBias
 ) {
-  range_vec_stim <- range(.get_cut(ex_tbl_stim_no_min))
-  range_vec_uns <- range(.get_cut(ex_tbl_uns_bias))
-  range_len <- max(diff(range_vec_stim), diff(range_vec_uns))
+  rangeVecStim <- range(.getCut(exTblStimNoMin))
+  rangeVecUns <- range(.getCut(exTblUnsBias))
+  rangeLen <- max(diff(rangeVecStim), diff(rangeVecUns))
   max(
-    cp_min,
-    range_vec_stim[[2]] + range_len / 5,
-    range_vec_uns[[2]] + range_len / 3
+    cpMin,
+    rangeVecStim[[2]] + rangeLen / 5,
+    rangeVecUns[[2]] + rangeLen / 3
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_set_max_expr <- function(.data, max_x) {
-  .data[, attr(.data, "chnl_cut")] <- pmin(.get_cut(.data), max_x)
+.getCpUnsLocSetMaxExpr <- function(.data, maxX) {
+  .data[, attr(.data, "chnlCut")] <- pmin(.getCut(.data), maxX)
   .data
 }
 
 # get probabilities
 #' @keywords internal
-.get_cp_uns_loc_get_prob <- function(
-  ex_tbl_stim_no_min,
-  ex_tbl_stim_threshold,
-  ex_tbl_uns_threshold,
-  ex_tbl_uns_bias,
-  bw_min,
-  cp_min,
-  ex_tbl_uns_orig,
+.getCpUnsLocGetProb <- function(
+  exTblStimNoMin,
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  exTblUnsBias,
+  bias,
+  exTblUnsOrig,
   stage,
-  path_project
+  pathProject,
+  chnlSettings
 ) {
-  ind <- .get_ind(ex_tbl_stim_no_min)
-  chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_stim_no_min)
-  stage_chnl <- file.path(stage, chnl)
-  
+  ind <- .getInd(exTblStimNoMin)
+  chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
+  stageChnl <- file.path(stage, chnl)
+
   # get raw densities
-  dens_tbl_raw <- .get_cp_uns_loc_get_dens_raw(
-    ex_tbl_stim_threshold = ex_tbl_stim_threshold,
-    ex_tbl_uns_threshold = ex_tbl_uns_threshold,
+  densTblRaw <- .getCpUnsLocGetDensRaw(
+    exTblStimThreshold = exTblStimThreshold,
+    exTblUnsThreshold = exTblUnsThreshold,
     stage = stage,
-    path_project = path_project,
-    bw_min = bw_min
+    pathProject = pathProject,
+    chnlSettings = chnlSettings
   )
-  .int_save(ind, stage_chnl, path_project, dens_tbl_raw)
+  .intSave(ind, stageChnl, pathProject, densTblRaw)
 
   # get probabilities
-  prob_tbl_list <- .get_cp_uns_loc_get_prob_tbl(
-    dens_tbl_raw = dens_tbl_raw,
+  probTblList <- .getCpUnsLocGetProbTbl(
+    densTblRaw = densTblRaw,
     stage = stage,
-    cp_min = cp_min,
-    ex_vec_stim_threshold = .get_cut(ex_tbl_stim_threshold),
-    ex_vec_uns_threshold = .get_cut(ex_tbl_uns_threshold)
+    cpMin = chnlSettings$cpMin + bias,
+    exVecStimThreshold = .getCut(exTblStimThreshold),
+    exVecUnsThreshold = .getCut(exTblUnsThreshold)
   )
-  .int_save(ind, stage_chnl, path_project, prob_tbl_list)
+  .intSave(ind, stageChnl, pathProject, probTblList)
 
   # get .data to smooth over
-  data_mod <- .get_cp_uns_loc_get_data_mod(
-    ex_tbl_stim_threshold = ex_tbl_stim_threshold,
-    ex_tbl_stim_no_min = ex_tbl_stim_no_min,
-    ex_tbl_uns_threshold = ex_tbl_uns_threshold,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
-    prob_tbl_list = prob_tbl_list,
-    cp_min = cp_min,
+  dataMod <- .getCpUnsLocGetDataMod(
+    exTblStimThreshold = exTblStimThreshold,
+    exTblStimNoMin = exTblStimNoMin,
+    exTblUnsThreshold = exTblUnsThreshold,
+    exTblUnsBias = exTblUnsBias,
+    probTblList = probTblList,
+    cpMin = chnlSettings$cpMin + bias,
     stage = stage
   )
-  .int_save(ind, stage_chnl, path_project, data_mod)
+  .intSave(ind, stageChnl, pathProject, dataMod)
 
   # smooth
-  .get_cp_uns_loc_get_prob_smooth(data_mod, stage, path_project, chnl)
+  .getCpUnsLocGetProbSmooth(dataMod, stage, pathProject, chnl)
 }
 
-# get dens_tbl_raw
+# get densTblRaw
 # -----------------------
 #' @keywords internal
-.get_cp_uns_loc_get_dens_raw <- function(
-  ex_tbl_stim_threshold,
-  ex_tbl_uns_threshold,
+.getCpUnsLocGetDensRaw <- function(
+  exTblStimThreshold,
+  exTblUnsThreshold,
   stage,
-  path_project,
-  bw_min
+  pathProject,
+  chnlSettings
 ) {
   .debug("Calculating densities") # nolint
 
-  dens_list <- .get_cp_uns_loc_get_dens_raw_densities(
-    ex_tbl_stim_threshold = ex_tbl_stim_threshold,
-    ex_tbl_uns_threshold = ex_tbl_uns_threshold,
+  densList <- .getCpUnsLocGetDensRawDensities(
+    exTblStimThreshold = exTblStimThreshold,
+    exTblUnsThreshold = exTblUnsThreshold,
     stage = stage,
-    path_project = path_project,
-    bw_min = bw_min
+    pathProject = pathProject,
+    chnlSettings = chnlSettings
   )
 
   # put raw densities into table
-  .get_cp_uns_loc_get_dens_raw_tabulate(
-    stim_x = dens_list$stim$x,
-    stim_y = dens_list$stim$y,
-    uns_x = dens_list$uns$x,
-    uns_y = dens_list$uns$y
+  .getCpUnsLocGetDensRawTabulate(
+    stimX = densList$stim$x,
+    stimY = densList$stim$y,
+    unsX = densList$uns$x,
+    unsY = densList$uns$y
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_dens_raw_densities <- function(
-  ex_tbl_stim_threshold,
-  ex_tbl_uns_threshold,
+.getCpUnsLocGetDensRawDensities <- function(
+  exTblStimThreshold,
+  exTblUnsThreshold,
   stage,
-  path_project,
-  bw_min
+  pathProject,
+  chnlSettings
 ) {
-  bw <- .get_cp_uns_loc_get_dens_raw_densities_bw(
-    ex_tbl_stim_threshold = ex_tbl_stim_threshold,
-    ex_tbl_uns_threshold = ex_tbl_uns_threshold,
-    bw_min = bw_min
+  bw <- .getCpUnsLocGetDensRawDensitiesBw(
+    exTblStimThreshold = exTblStimThreshold,
+    exTblUnsThreshold = exTblUnsThreshold,
+    bw = chnlSettings$bw,
+    bwMin = chnlSettings$bwMin,
+    bwMax = chnlSettings$bwMax,
+    bwMtd = chnlSettings$bwMtd,
+    bwAdj = chnlSettings$bwAdj,
+    bwNcellMin = chnlSettings$bwNcellMin,
+    bwNcellMax = chnlSettings$bwNcellMax
   )
-  chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_stim_threshold)
-  stage_chnl <- file.path(stage, chnl)
-  .int_save_nm(
-    "bw_cp_uns_loc",
+  chnl <- .getCpUnsLocGetChnl(exTblStimThreshold)
+  stageChnl <- file.path(stage, chnl)
+  .intSaveNm(
+    "bwCpUnsLoc",
     bw,
-    .get_ind(ex_tbl_stim_threshold),
-    stage_chnl,
-    path_project
+    .getInd(exTblStimThreshold),
+    stageChnl,
+    pathProject
   )
-  dens_stim <- .get_cp_uns_loc_get_dens_raw_densities_stim(
-    ex_tbl_stim_threshold = ex_tbl_stim_threshold,
+  densStim <- .getCpUnsLocGetDensRawDensitiesStim(
+    exTblStimThreshold = exTblStimThreshold,
     bw = bw
   )
-  dens_uns <- .get_cp_uns_loc_get_dens_raw_densities_uns(
-    ex_tbl_uns_threshold = ex_tbl_uns_threshold,
-    dens_stim = dens_stim,
+  densUns <- .getCpUnsLocGetDensRawDensitiesUns(
+    exTblUnsThreshold = exTblUnsThreshold,
+    densStim = densStim,
     bw = bw
   )
-  list(stim = dens_stim, uns = dens_uns, bw = bw)
+  list(stim = densStim, uns = densUns, bw = bw)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_dens_raw_densities_bw <- function(
-  ex_tbl_stim_threshold,
-  ex_tbl_uns_threshold,
-  bw_min
+.getCpUnsLocGetDensRawDensitiesBw <- function(
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  bw,
+  bwMin,
+  bwMax,
+  bwMtd,
+  bwAdj,
+  bwNcellMin,
+  bwNcellMax
 ) {
-  bw_stim <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
-    .data = .get_cut(ex_tbl_stim_threshold),
-    bw_min = bw_min
-  )
-  bw_uns <- .get_cp_uns_loc_get_dens_raw_densities_bw_init(
-    .data = .get_cut(ex_tbl_uns_threshold),
-    bw_min = bw_min
-  )
-  bw_init <- max(bw_stim, bw_min, bw_uns)
-  min(bw_min * 1.5, bw_init)
-}
-
-#' @keywords internal
-.get_cp_uns_loc_get_dens_raw_densities_bw_init <- function(.data, bw_min) {
-  bw_calc <- try(density(.data, bw = "SJ")$bw)
-  if (inherits(bw_calc, "try-error")) bw_min else bw_calc
-}
-
-#' @keywords internal
-.get_cp_uns_loc_get_dens_raw_densities_stim <- function(
-  ex_tbl_stim_threshold,
-  bw
-) {
-  dens_obj <- density(.get_cut(ex_tbl_stim_threshold), bw = bw)
-  if (is.null(attr(ex_tbl_stim_threshold, "prob_g_min"))) {
-    return(dens_obj)
+  if (!is.null(bw)) {
+    return(bw)
   }
-  dens_obj$y <- dens_obj$y * attr(ex_tbl_stim_threshold, "prob_g_min")
-  dens_obj
-}
-
-#' @keywords internal
-.get_cp_uns_loc_get_dens_raw_densities_uns <- function(
-  ex_tbl_uns_threshold,
-  dens_stim,
-  bw
-) {
-  dens_obj <- density(
-    .get_cut(ex_tbl_uns_threshold),
-    from = min(dens_stim$x),
-    to = max(dens_stim$x),
-    bw = bw
+  bwStim <- .getCpUnsLocGetDensRawDensitiesBwInit(
+    .data = .getCut(exTblStimThreshold),
+    bwMin = bwMin,
+    bwMax = bwMax,
+    bwMtd = bwMtd,
+    bwAdj = bwAdj,
+    bwNcellMin = bwNcellMin,
+    bwNcellMax = bwNcellMax
   )
-  if (is.null(attr(ex_tbl_uns_threshold, "prob_g_min"))) {
-    return(dens_obj)
-  }
-  dens_obj$y <- dens_obj$y * attr(ex_tbl_uns_threshold, "prob_g_min")
-  dens_obj
-}
-
-#' @keywords internal
-.get_cp_uns_loc_get_dens_raw_tabulate <- function(
-  stim_x,
-  stim_y,
-  uns_x,
-  uns_y
-) {
-  dens_tbl_raw_stim <- tibble::tibble(x_stim = stim_x, y_stim = stim_y)
-  dens_tbl_raw_wide <- .get_cp_uns_loc_get_dens_raw_tabulate_uns_interp(
-    .data = dens_tbl_raw_stim,
-    uns_x = uns_x,
-    uns_y = uns_y
+  bwUns <- .getCpUnsLocGetDensRawDensitiesBwInit(
+    .data = .getCut(exTblUnsThreshold),
+    bwMin = bwMin,
+    bwMax = bwMax,
+    bwMtd = bwMtd,
+    bwAdj = bwAdj,
+    bwNcellMin = bwNcellMin,
+    bwNcellMax = bwNcellMax
   )
-  .get_cp_uns_loc_get_dens_raw_tabulate_format(dens_tbl_raw_wide)
+  min(bwUns, bwStim)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_dens_raw_tabulate_uns_interp <- function(
+.getCpUnsLocGetDensRawDensitiesBwInit <- function(
   .data,
-  uns_x,
-  uns_y
+  bwMin,
+  bwMax,
+  bwMtd,
+  bwAdj,
+  bwNcellMin,
+  bwNcellMax
+) {
+  if (!is.null(bwNcellMin) && length(.data) < bwNcellMin) {
+    iqrX <- diff(quantile(.data, c(0.75, 0.25), na.rm = TRUE))
+    sdX <- abs(.data) / 1.5
+    .data <- sample(.data, replace = TRUE, size = bwNcellMin) +
+      rnorm(bwNcellMin, mean = 0, sd = sdX / 10)
+  }
+  if (!is.null(bwNcellMax) && length(.data) > bwNcellMax) {
+    .data <- sample(.data, size = bwNcellMax, replace = FALSE)
+  }
+  bwCalc <- switch(
+    bwMtd,
+    "ndr0" = try(
+      suppressWarnings(stats::density(.data, "nrd0")),
+      silent = TRUE
+    ),
+    "sj" = try(suppressWarnings(stats::density(.data, "SJ")), silent = TRUE),
+    try(
+      suppressWarnings(
+        ks::hpi(.data, deriv.order = as.numeric(gsub("hpi", "", bwMtd)))
+      ),
+      silent = TRUE
+    )
+  )
+  if (inherits(bwCalc, "try-error")) {
+    bwMin
+  } else {
+    max(bwMin, min(bwCalc * bwAdj, bwMax))
+  }
+}
+
+#' @keywords internal
+.getCpUnsLocGetDensRawDensitiesStim <- function(
+  exTblStimThreshold,
+  bw
+) {
+  densObj <- density(.getCut(exTblStimThreshold), bw = bw)
+  if (is.null(attr(exTblStimThreshold, "probGMin"))) {
+    return(densObj)
+  }
+  densObj$y <- densObj$y * attr(exTblStimThreshold, "probGMin")
+  densObj
+}
+
+#' @keywords internal
+.getCpUnsLocGetDensRawDensitiesUns <- function(
+  exTblUnsThreshold,
+  densStim,
+  bw
+) {
+  densObj <- density(
+    .getCut(exTblUnsThreshold),
+    from = min(densStim$x),
+    to = max(densStim$x),
+    bw = bw
+  )
+  if (is.null(attr(exTblUnsThreshold, "probGMin"))) {
+    return(densObj)
+  }
+  densObj$y <- densObj$y * attr(exTblUnsThreshold, "probGMin")
+  densObj
+}
+
+#' @keywords internal
+.getCpUnsLocGetDensRawTabulate <- function(
+  stimX,
+  stimY,
+  unsX,
+  unsY
+) {
+  densTblRawStim <- tibble::tibble(x_stim = stimX, y_stim = stimY)
+  densTblRawWide <- .getCpUnsLocGetDensRawTabulateUnsInterp(
+    .data = densTblRawStim,
+    unsX = unsX,
+    unsY = unsY
+  )
+  .getCpUnsLocGetDensRawTabulateFormat(densTblRawWide)
+}
+
+#' @keywords internal
+.getCpUnsLocGetDensRawTabulateUnsInterp <- function(
+  .data,
+  unsX,
+  unsY
 ) {
   .data |>
     dplyr::mutate(
       y_uns = purrr::map_dbl(
         x_stim, # nolint
-        function(marker) .interp(val = marker, x = uns_x, y = uns_y) # nolint
+        function(marker) .interp(val = marker, x = unsX, y = unsY) # nolint
       )
     )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_dens_raw_tabulate_format <- function(.data) {
+.getCpUnsLocGetDensRawTabulateFormat <- function(.data) {
   .data |>
     tidyr::pivot_longer(y_stim:y_uns, names_to = "stim", values_to = "dens") |> # nolint
     dplyr::mutate(stim = ifelse(stim == "y_stim", "yes", "no")) # nolint
@@ -979,29 +1049,29 @@
 # get probabilities
 # -------------------
 #' @keywords internal
-.get_cp_uns_loc_get_prob_tbl <- function(
-  dens_tbl_raw,
+.getCpUnsLocGetProbTbl <- function(
+  densTblRaw,
   stage,
-  cp_min,
-  ex_vec_stim_threshold,
-  ex_vec_uns_threshold
+  cpMin,
+  exVecStimThreshold,
+  exVecUnsThreshold
 ) {
   .debug("Normalising probabilities") # nolint
 
-  prob_tbl <- .get_cp_uns_loc_get_prob_tbl_init(dens_tbl_raw, cp_min)
+  probTbl <- .getCpUnsLocGetProbTblInit(densTblRaw, cpMin)
 
-  prob_tbl_pos <- .get_cp_uns_loc_prob_tbl_filter(
-    ex_vec_stim_threshold = ex_vec_stim_threshold,
-    ex_vec_uns_threshold = ex_vec_uns_threshold,
-    prob_tbl = prob_tbl,
+  probTblPos <- .getCpUnsLocProbTblFilter(
+    exVecStimThreshold = exVecStimThreshold,
+    exVecUnsThreshold = exVecUnsThreshold,
+    probTbl = probTbl,
     stage = stage
   )
-  list(all = prob_tbl, pos = prob_tbl_pos)
+  list(all = probTbl, pos = probTblPos)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_tbl_init <- function(dens_tbl_raw, cp_min) {
-  dens_tbl_raw |>
+.getCpUnsLocGetProbTblInit <- function(densTblRaw, cpMin) {
+  densTblRaw |>
     tidyr::pivot_wider(
       id_cols = x_stim,
       names_from = stim,
@@ -1013,146 +1083,146 @@
       prob_stim_norm = pmin(1, prob_stim), # nolint
       prob_stim_norm = pmax(0, prob_stim_norm) # nolint
     ) |>
-    dplyr::filter(x_stim > cp_min)
+    dplyr::filter(x_stim > cpMin)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_prob_tbl_filter <- function(
-  ex_vec_stim_threshold,
-  ex_vec_uns_threshold,
-  prob_tbl,
+.getCpUnsLocProbTblFilter <- function(
+  exVecStimThreshold,
+  exVecUnsThreshold,
+  probTbl,
   stage
 ) {
   .debug("Filtering before smoothing") # nolint
 
-  density_exc_min_stim <- density(ex_vec_stim_threshold)
-  dens_tbl_stim <- tibble::tibble(
-    x = density_exc_min_stim$x,
-    y = density_exc_min_stim$y
+  densityExcMinStim <- density(exVecStimThreshold)
+  densTblStim <- tibble::tibble(
+    x = densityExcMinStim$x,
+    y = densityExcMinStim$y
   )
-  peak_stim <- dens_tbl_stim |>
+  peakStim <- densTblStim |>
     dplyr::filter(y == max(y)) |> # nolint
     dplyr::pull("x") # nolint
-  density_exc_min_uns <- density(ex_vec_uns_threshold)
-  dens_tbl_uns <- tibble::tibble(
-    x = density_exc_min_uns$x,
-    y = density_exc_min_uns$y
+  densityExcMinUns <- density(exVecUnsThreshold)
+  densTblUns <- tibble::tibble(
+    x = densityExcMinUns$x,
+    y = densityExcMinUns$y
   )
-  peak_uns <- dens_tbl_uns |>
+  peakUns <- densTblUns |>
     dplyr::filter(y == max(y)) |> # nolint
     dplyr::pull("x") # nolint
-  peak <- max(peak_stim, peak_uns)
+  peak <- max(peakStim, peakUns)
 
-  window_width <- 0.15 * diff(quantile(prob_tbl$x_stim, c(0.05, 0.5)))
+  windowWidth <- 0.15 * diff(quantile(probTbl$x_stim, c(0.05, 0.5)))
 
-  prob_tbl <- prob_tbl |>
-    dplyr::filter(x_stim > peak + window_width) # nolint
+  probTbl <- probTbl |>
+    dplyr::filter(x_stim > peak + windowWidth) # nolint
 
-  prob_tbl |>
+  probTbl |>
     dplyr::filter(
       cumsum(prob_stim_norm >= 0.025) > 0
     )
 
-  prob_tbl <- prob_tbl |>
+  probTbl <- probTbl |>
     dplyr::mutate(
-      minor_response_ind = prob_stim_norm >= 0.025,
-      moderate_response_ind = prob_stim_norm >= 0.075,
-      n_remaining = dplyr::n() - seq_len(dplyr::n()) + 1
+      minorResponseInd = prob_stim_norm >= 0.025,
+      moderateResponseInd = prob_stim_norm >= 0.075,
+      nRemaining = dplyr::n() - seq_len(dplyr::n()) + 1
     )
-  prob_tbl |>
+  probTbl |>
     dplyr::filter(
-      cumsum(minor_response_ind) > 0 # nolint
+      cumsum(minorResponseInd) > 0 # nolint
     ) |>
     dplyr::mutate(
-      prob_larger_count = purrr::map_int(x_stim, function(x) {
-        sum(prob_tbl$moderate_response_ind[prob_tbl$x_stim >= x])
+      probLargerCount = purrr::map_int(x_stim, function(x) {
+        sum(probTbl$moderateResponseInd[probTbl$x_stim >= x])
       }),
-      prob_larger_prop = prob_larger_count / n_remaining # nolint
+      probLargerProp = probLargerCount / nRemaining # nolint
     ) |>
     dplyr::filter(
-      prob_larger_prop > 0.25 # nolint
+      probLargerProp > 0.25 # nolint
     ) |>
     dplyr::select(
       -c(
-        prob_larger_prop,
-        minor_response_ind,
-        moderate_response_ind,
-        n_remaining,
-        prob_larger_count
+        probLargerProp,
+        minorResponseInd,
+        moderateResponseInd,
+        nRemaining,
+        probLargerCount
       )
     )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_min_prob_x <- function(prob_tbl_pos) {
-  min(prob_tbl_pos$x_stim)
+.getCpUnsLocGetMinProbX <- function(probTblPos) {
+  min(probTblPos$x_stim)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_check_response <- function(prob_tbl_pos, ex_tbl_stim_orig) {
-  nrow(prob_tbl_pos) == 0 ||
-    max(.get_cut(ex_tbl_stim_orig)) <
-      .get_cp_uns_loc_get_min_prob_x(prob_tbl_pos)
+.getCpUnsLocCheckResponse <- function(probTblPos, exTblStimOrig) {
+  nrow(probTblPos) == 0 ||
+    max(.getCut(exTblStimOrig)) <
+      .getCpUnsLocGetMinProbX(probTblPos)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_data_mod <- function(
-  ex_tbl_stim_threshold,
-  ex_tbl_stim_no_min,
-  ex_tbl_uns_threshold,
-  ex_tbl_uns_bias,
-  prob_tbl_list,
-  cp_min,
+.getCpUnsLocGetDataMod <- function(
+  exTblStimThreshold,
+  exTblStimNoMin,
+  exTblUnsThreshold,
+  exTblUnsBias,
+  probTblList,
+  cpMin,
   stage
 ) {
-  if (.get_cp_uns_loc_check_response(prob_tbl_list$pos, ex_tbl_stim_no_min)) {
-    return(.get_cp_uns_loc_ind_check_out(
-      cp_min = cp_min,
-      ex_tbl_stim_no_min = ex_tbl_stim_no_min,
-      ex_tbl_uns_bias = ex_tbl_uns_bias,
+  if (.getCpUnsLocCheckResponse(probTblList$pos, exTblStimNoMin)) {
+    return(.getCpUnsLocIndCheckOut(
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias,
       stage = stage,
       msg = "No responding cells" # nolint
     ))
   }
-  margin <- get_cp_uns_loc_get_data_mod_margin(
-    ex_tbl_stim_no_min = ex_tbl_stim_no_min,
-    ex_tbl_uns_no_min = ex_tbl_uns_threshold
+  margin <- getCpUnsLocGetDataModMargin(
+    exTblStimNoMin = exTblStimNoMin,
+    exTblUnsNoMin = exTblUnsThreshold
   )
 
-  data_mod <- ex_tbl_stim_threshold
-  data_mod <- data_mod[
-    .get_cut(data_mod) >=
-      (min(.get_cp_uns_loc_get_min_prob_x(prob_tbl_list$pos) - margin)),
+  dataMod <- exTblStimThreshold
+  dataMod <- dataMod[
+    .getCut(dataMod) >=
+      (min(.getCpUnsLocGetMinProbX(probTblList$pos) - margin)),
   ]
-  if (nrow(data_mod) == 0L) {
-    return(.get_cp_uns_loc_ind_check_out(
-      cp_min = cp_min,
-      ex_tbl_stim_no_min = ex_tbl_stim_no_min,
-      ex_tbl_uns_bias = ex_tbl_uns_bias,
+  if (nrow(dataMod) == 0L) {
+    return(.getCpUnsLocIndCheckOut(
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias,
       stage = stage,
       msg = "No responding cells" # nolint
     ))
   }
-  prob_vec <- approx(
-    x = prob_tbl_list$pos$x_stim,
-    y = prob_tbl_list$pos$prob_stim_norm,
-    xout = data_mod[[1]],
+  probVec <- approx(
+    x = probTblList$pos$x_stim,
+    y = probTblList$pos$prob_stim_norm,
+    xout = dataMod[[1]],
     method = "linear",
     f = 0.5,
     rule = 2
   )$y
 
-  data_mod |>
-    dplyr::mutate(prob_smooth = prob_vec)
+  dataMod |>
+    dplyr::mutate(prob_smooth = probVec)
 }
 
-get_cp_uns_loc_get_data_mod_margin <- function(
-  ex_tbl_stim_no_min,
-  ex_tbl_uns_no_min
+getCpUnsLocGetDataModMargin <- function(
+  exTblStimNoMin,
+  exTblUnsNoMin
 ) {
   abs(max(
-    diff(.get_cut(ex_tbl_stim_no_min)),
-    diff(.get_cut(ex_tbl_uns_no_min))
+    diff(.getCut(exTblStimNoMin)),
+    diff(.getCut(exTblUnsNoMin))
   )) *
     0.05
 }
@@ -1160,71 +1230,71 @@ get_cp_uns_loc_get_data_mod_margin <- function(
 # smooth
 # ---------------------
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth <- function(
-  data_mod,
+.getCpUnsLocGetProbSmooth <- function(
+  dataMod,
   stage,
-  path_project,
+  pathProject,
   chnl
 ) {
-  stage_chnl <- file.path(stage, chnl)
-  
-  if (!.get_cp_uns_loc_get_prob_smooth_check_n_cell(data_mod)) {
-    .int_save_nm(
+  stageChnl <- file.path(stage, chnl)
+
+  if (!.getCpUnsLocGetProbSmoothCheckNCell(dataMod)) {
+    .intSaveNm(
       "not_enough_cells_to_smooth",
       NULL,
-      .get_ind(data_mod),
-      stage_chnl,
-      path_project
+      .getInd(dataMod),
+      stageChnl,
+      pathProject
     )
-    data_mod_out <- .get_cp_uns_loc_get_prob_smooth_check_n_cell_out(data_mod)
-    .int_save_nm(
+    dataModOut <- .getCpUnsLocGetProbSmoothCheckNCellOut(dataMod)
+    .intSaveNm(
       "prob_smooth_out",
-      data_mod_out,
-      .get_ind(data_mod),
-      stage_chnl,
-      path_project
+      dataModOut,
+      .getInd(dataMod),
+      stageChnl,
+      pathProject
     )
-    return(data_mod_out)
+    return(dataModOut)
   }
 
-  pred_vec <- .get_cp_uns_loc_get_prob_smooth_actual(data_mod, stage)
-  data_mod_out <- data_mod |> dplyr::mutate(pred = pred_vec)
-  .int_save_nm(
+  predVec <- .getCpUnsLocGetProbSmoothActual(dataMod, stage)
+  dataModOut <- dataMod |> dplyr::mutate(pred = predVec)
+  .intSaveNm(
     "prob_smooth_out",
-    data_mod_out,
-    .get_ind(data_mod),
-    stage_chnl,
-    path_project
+    dataModOut,
+    .getInd(dataMod),
+    stageChnl,
+    pathProject
   )
-  data_mod_out
+  dataModOut
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth_check_n_cell <- function(data_mod) {
-  is.data.frame(data_mod) && nrow(data_mod) > 10
+.getCpUnsLocGetProbSmoothCheckNCell <- function(dataMod) {
+  is.data.frame(dataMod) && nrow(dataMod) > 10
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth_check_n_cell_out <- function(data_mod) {
-  if (is.data.frame(data_mod)) {
-    data_mod |> dplyr::mutate(pred = prob_smooth - 1e-4) # nolint
+.getCpUnsLocGetProbSmoothCheckNCellOut <- function(dataMod) {
+  if (is.data.frame(dataMod)) {
+    dataMod |> dplyr::mutate(pred = prob_smooth - 1e-4) # nolint
   } else {
-    data_mod
+    dataMod
   }
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth_actual <- function(data_mod, stage) {
-  fit_1 <- .get_cp_uns_loc_get_prob_smooth_actual_first(data_mod, stage)
-  .get_cp_uns_loc_get_prob_smooth_actual_first_response(
-    fit = fit_1,
-    data_mod = data_mod,
+.getCpUnsLocGetProbSmoothActual <- function(dataMod, stage) {
+  fit1 <- .getCpUnsLocGetProbSmoothActualFirst(dataMod, stage)
+  .getCpUnsLocGetProbSmoothActualFirstResponse(
+    fit = fit1,
+    dataMod = dataMod,
     stage = stage
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth_actual_first <- function(data_mod, stage) {
+.getCpUnsLocGetProbSmoothActualFirst <- function(dataMod, stage) {
   .debug("Smoothing I") # nolint
   try(
     {
@@ -1234,7 +1304,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(
       scam::scam(
         fml, # nolint
         family = "binomial",
-        .data = data_mod |>
+        .data = dataMod |>
           dplyr::mutate(
             prob_smooth = pmin(prob_smooth, 0.999),
             prob_smooth = pmax(prob_smooth, 0.001)
@@ -1255,68 +1325,68 @@ get_cp_uns_loc_get_data_mod_margin <- function(
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth_actual_first_response <- function(
+.getCpUnsLocGetProbSmoothActualFirstResponse <- function(
   fit,
-  data_mod,
+  dataMod,
   stage
 ) {
-  if (.get_cp_uns_loc_get_prob_smooth_actual_check(fit, data_mod)) {
+  if (.getCpUnsLocGetProbSmoothActualCheck(fit, dataMod)) {
     .debug("Smoothed") # nolint
     return(
-      .get_cp_uns_loc_get_prob_smooth_actual_response_success(
+      .getCpUnsLocGetProbSmoothActualResponseSuccess(
         fit = fit,
-        data_mod = data_mod
+        dataMod = dataMod
       )$pred
     )
   }
-  .get_cp_uns_loc_get_prob_smooth_actual_first_response_failure(
+  .getCpUnsLocGetProbSmoothActualFirstResponseFailure(
     stage = stage,
-    data_mod = data_mod
+    dataMod = dataMod
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth_actual_check <- function(fit, data_mod) {
+.getCpUnsLocGetProbSmoothActualCheck <- function(fit, dataMod) {
   if (inherits(fit, "try-error")) {
     return(FALSE)
   }
-  out_list <- .get_cp_uns_loc_get_prob_smooth_actual_response_success(
+  outList <- .getCpUnsLocGetProbSmoothActualResponseSuccess(
     fit = fit,
-    data_mod = data_mod
+    dataMod = dataMod
   )
-  !(all(out_list$pred > 0.99) || out_list$mean_abs_error > 0.3) # nolint
+  !(all(outList$pred > 0.99) || outList$meanAbsError > 0.3) # nolint
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth_actual_response_success <- function(
+.getCpUnsLocGetProbSmoothActualResponseSuccess <- function(
   fit,
-  data_mod
+  dataMod
 ) {
-  pred_vec <- predict(fit, type = "response")
-  mean_abs_error <- mean(abs(pred_vec - data_mod$prob_smooth))
-  list("pred" = pred_vec, "mean_abs_error" = mean_abs_error)
+  predVec <- predict(fit, type = "response")
+  meanAbsError <- mean(abs(predVec - dataMod$prob_smooth))
+  list("pred" = predVec, "meanAbsError" = meanAbsError)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth_actual_first_response_failure <- function(
+.getCpUnsLocGetProbSmoothActualFirstResponseFailure <- function(
   stage,
-  data_mod
+  dataMod
 ) {
-  fit_2 <- .get_cp_uns_loc_get_prob_smooth_actual_second(data_mod, stage)
-  if (.get_cp_uns_loc_get_prob_smooth_actual_check(fit_2, data_mod)) {
+  fit2 <- .getCpUnsLocGetProbSmoothActualSecond(dataMod, stage)
+  if (.getCpUnsLocGetProbSmoothActualCheck(fit2, dataMod)) {
     .debug("Smoothed") # nolint
     return(
-      .get_cp_uns_loc_get_prob_smooth_actual_response_success(
-        fit = fit_2,
-        data_mod = data_mod
+      .getCpUnsLocGetProbSmoothActualResponseSuccess(
+        fit = fit2,
+        dataMod = dataMod
       )$pred
     )
   }
-  .get_cp_uns_loc_get_prob_smooth_actual_third(data_mod, stage)
+  .getCpUnsLocGetProbSmoothActualThird(dataMod, stage)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth_actual_second <- function(data_mod, stage) {
+.getCpUnsLocGetProbSmoothActualSecond <- function(dataMod, stage) {
   .debug("Smoothing II") # nolint
   try(
     {
@@ -1326,7 +1396,7 @@ get_cp_uns_loc_get_data_mod_margin <- function(
       scam::scam(
         fml,
         family = "binomial",
-        .data = data_mod,
+        .data = dataMod,
         control = scam::scam.control(
           print.warn = FALSE,
           trace = FALSE,
@@ -1339,267 +1409,267 @@ get_cp_uns_loc_get_data_mod_margin <- function(
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_prob_smooth_actual_third <- function(data_mod, stage) {
+.getCpUnsLocGetProbSmoothActualThird <- function(dataMod, stage) {
   .debug("Failed to smooth") # nolint
-  data_mod$prob_smooth - 0.0001
+  dataMod$prob_smooth - 0.0001
 }
 
 
 # get cp
 #' @keywords internal
-.get_cp_uns_loc_get_cp <- function(
-  data_mod,
-  ex_tbl_stim_orig,
-  ex_tbl_stim_no_min,
-  ex_tbl_uns_orig,
-  ex_tbl_uns_bias,
+.getCpUnsLocGetCp <- function(
+  dataMod,
+  exTblStimOrig,
+  exTblStimNoMin,
+  exTblUnsOrig,
+  exTblUnsBias,
   bias,
-  cp_min,
+  cpMin,
   stage,
-  path_project
+  pathProject
 ) {
-  ind <- .get_ind(ex_tbl_stim_no_min)
-  chnl <- .get_cp_uns_loc_get_chnl(ex_tbl_stim_no_min)
-  stage_chnl <- file.path(stage, chnl)
-  if (!is.data.frame(data_mod)) {
-    .int_save_nm("no_data_mod_df", NULL, ind, stage_chnl, path_project)
-    .int_save_nm("cp_ind", data_mod, ind, stage_chnl, path_project)
-    return(data_mod)
+  ind <- .getInd(exTblStimNoMin)
+  chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
+  stageChnl <- file.path(stage, chnl)
+  if (!is.data.frame(dataMod)) {
+    .intSaveNm("noDataModDf", NULL, ind, stageChnl, pathProject)
+    .intSaveNm("cpInd", dataMod, ind, stageChnl, pathProject)
+    return(dataMod)
   }
 
-  data_threshold <- .get_cp_uns_loc_get_cp_data_threshold(
-    data_mod = data_mod,
-    ex_tbl_stim_orig = ex_tbl_stim_orig,
-    ex_tbl_stim_no_min = ex_tbl_stim_no_min,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
-    ex_tbl_uns_orig = ex_tbl_uns_orig,
+  dataThreshold <- .getCpUnsLocGetCpDataThreshold(
+    dataMod = dataMod,
+    exTblStimOrig = exTblStimOrig,
+    exTblStimNoMin = exTblStimNoMin,
+    exTblUnsBias = exTblUnsBias,
+    exTblUnsOrig = exTblUnsOrig,
     bias = bias
   )
-  .int_save(ind, stage_chnl, path_project, data_threshold)
-  cp_ind <- .get_cp_uns_loc_get_cp_actual(
-    data_threshold = data_threshold,
-    ex_tbl_stim_no_min = ex_tbl_stim_no_min,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
-    cp_min = cp_min,
+  .intSave(ind, stageChnl, pathProject, dataThreshold)
+  cpInd <- .getCpUnsLocGetCpActual(
+    dataThreshold = dataThreshold,
+    exTblStimNoMin = exTblStimNoMin,
+    exTblUnsBias = exTblUnsBias,
+    cpMin = cpMin,
     stage = stage
   )
-  .int_save(ind, stage_chnl, path_project, cp_ind)
+  .intSave(ind, stageChnl, pathProject, cpInd)
   .debug("Completed loc gate for single sample") # nolint
-  list("cp" = cp_ind, "p_list" = .get_cp_uns_loc_p_list_empty())
+  list("cp" = cpInd, "pList" = .getCpUnsLocPListEmpty())
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_cp_data_threshold <- function(
-  data_mod,
-  ex_tbl_stim_orig,
-  ex_tbl_stim_no_min,
-  ex_tbl_uns_bias,
-  ex_tbl_uns_orig,
+.getCpUnsLocGetCpDataThreshold <- function(
+  dataMod,
+  exTblStimOrig,
+  exTblStimNoMin,
+  exTblUnsBias,
+  exTblUnsOrig,
   bias
 ) {
-  data_count <- .get_cp_uns_loc_get_cp_data_threshold_count(data_mod)
-  prob_bs_est <- .get_cp_uns_loc_get_cp_data_threshold_prop_bs_est(
-    data_count = data_count,
-    ex_tbl_stim_orig = ex_tbl_stim_orig
+  dataCount <- .getCpUnsLocGetCpDataThresholdCount(dataMod)
+  probBsEst <- .getCpUnsLocGetCpDataThresholdPropBsEst(
+    dataCount = dataCount,
+    exTblStimOrig = exTblStimOrig
   )
-  .get_cp_uns_loc_get_cp_data_threshold_actual(
-    data_count = data_count,
-    prop_bs_est = prob_bs_est,
-    ex_tbl_stim_orig = ex_tbl_stim_orig,
-    ex_tbl_uns_bias = ex_tbl_uns_bias,
-    ex_tbl_uns_orig = ex_tbl_uns_orig,
+  .getCpUnsLocGetCpDataThresholdActual(
+    dataCount = dataCount,
+    propBsEst = probBsEst,
+    exTblStimOrig = exTblStimOrig,
+    exTblUnsBias = exTblUnsBias,
+    exTblUnsOrig = exTblUnsOrig,
     bias = bias
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_cp_data_threshold_count <- function(data_mod) {
-  if (nrow(data_mod) == 1L) {
-    min_val <- min(.get_cut(data_mod)) - 1
+.getCpUnsLocGetCpDataThresholdCount <- function(dataMod) {
+  if (nrow(dataMod) == 1L) {
+    minVal <- min(.getCut(data_mod)) - 1
   } else {
-    min_val <- min(.get_cut(data_mod))
+    minVal <- min(.getCut(data_mod))
   }
-  data_mod <- data_mod[.get_cut(data_mod) > min_val, ]
-  data_mod <- data_mod[order(.get_cut(data_mod)), ]
-  data_mod |>
-    dplyr::mutate(n_row = seq_len(dplyr::n())) |>
-    dplyr::filter(cumsum(pred > prob_smooth) != n_row) |> # nolint
-    dplyr::select(-n_row)
+  dataMod <- dataMod[.getCut(dataMod) > minVal, ]
+  dataMod <- dataMod[order(.getCut(dataMod)), ]
+  dataMod |>
+    dplyr::mutate(nRow = seq_len(dplyr::n())) |>
+    dplyr::filter(cumsum(pred > prob_smooth) != nRow) |> # nolint
+    dplyr::select(-nRow)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_cp_data_threshold_prop_bs_est <- function(
-  data_count,
-  ex_tbl_stim_orig
+.getCpUnsLocGetCpDataThresholdPropBsEst <- function(
+  dataCount,
+  exTblStimOrig
 ) {
-  sum(data_count$pred) / nrow(ex_tbl_stim_orig)
+  sum(dataCount$pred) / nrow(exTblStimOrig)
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_cp_data_threshold_actual <- function(
-  data_count,
-  prop_bs_est,
-  ex_tbl_stim_orig,
-  ex_tbl_uns_bias,
-  ex_tbl_uns_orig,
+.getCpUnsLocGetCpDataThresholdActual <- function(
+  dataCount,
+  propBsEst,
+  exTblStimOrig,
+  exTblUnsBias,
+  exTblUnsOrig,
   bias
 ) {
-  data_count <- data_count[order(.get_cut(data_count)), ]
-  prop_stim_vec <- purrr::map_dbl(.get_cut(data_count), function(x) {
-    sum(.get_cut(ex_tbl_stim_orig) >= x) / nrow(ex_tbl_stim_orig)
+  dataCount <- dataCount[order(.getCut(data_count)), ]
+  propStimVec <- purrr::map_dbl(.getCut(dataCount), function(x) {
+    sum(.getCut(exTblStimOrig) >= x) / nrow(exTblStimOrig)
   })
-  prop_uns_vec <- purrr::map_dbl(.get_cut(data_count), function(x) {
-    sum(.get_cut(ex_tbl_uns_orig) >= x) / nrow(ex_tbl_uns_orig)
+  propUnsVec <- purrr::map_dbl(.getCut(dataCount), function(x) {
+    sum(.getCut(exTblUnsOrig) >= x) / nrow(exTblUnsOrig)
   })
-  data_count |>
+  dataCount |>
     dplyr::mutate(
-      prop_stim = prop_stim_vec,
-      prop_uns = prop_uns_vec,
+      propStim = propStimVec,
+      propUns = propUnsVec,
     ) |>
     dplyr::mutate(
-      prop_bs = prop_stim - prop_uns, # nolint
-      prop_bs_diff = prop_bs - prop_bs_est # nolint
+      propBs = propStim - propUns, # nolint
+      propBsDiff = propBs - propBsEst # nolint
     )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_get_cp_actual <- function(
-  data_threshold,
-  ex_tbl_stim_no_min,
-  ex_tbl_uns_bias,
-  cp_min,
+.getCpUnsLocGetCpActual <- function(
+  dataThreshold,
+  exTblStimNoMin,
+  exTblUnsBias,
+  cpMin,
   stage
 ) {
-  if (nrow(data_threshold) == 0L) {
-    return(.get_cp_uns_loc_ind_check_out(
-      cp_min = cp_min,
-      ex_tbl_stim_no_min = ex_tbl_stim_no_min,
-      ex_tbl_uns_bias = ex_tbl_uns_bias,
+  if (nrow(dataThreshold) == 0L) {
+    return(.getCpUnsLocIndCheckOut(
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias,
       stage = stage,
       msg = "Too few responding cells"
     )[["cp"]])
   }
-  data_threshold <- data_threshold |>
-    dplyr::filter(abs(prop_bs_diff) == min(abs(prop_bs_diff))) |> # nolint
+  dataThreshold <- dataThreshold |>
+    dplyr::filter(abs(propBsDiff) == min(abs(propBsDiff))) |> # nolint
     dplyr::slice(1) |>
-    .get_cut()
-  data_threshold
+    .getCut()
+  dataThreshold
 }
 
 #' @keywords internal
-.create_combined_identifier <- function(ind_stim) {
-  if (is.null(ind_stim) || length(ind_stim) == 0) {
+.createCombinedIdentifier <- function(indStim) {
+  if (is.null(indStim) || length(indStim) == 0) {
     "empty_batch"
   } else {
-    paste(ind_stim, collapse = "_")
+    paste(indStim, collapse = "_")
   }
 }
 
 #' @keywords internal
-.get_cp_uns_loc_output <- function(
-  cp_uns_loc_obj_list,
-  ind_uns,
-  ind_stim,
+.getCpUnsLocOutput <- function(
+  cpUnsLocObjList,
+  indUns,
+  indStim,
   stage,
-  path_project,
+  pathProject,
   chnl
 ) {
-  stage_chnl <- file.path(stage, chnl)
-  cp_vec <- .get_cp_uns_loc_sample_cp_rep(
+  stageChnl <- file.path(stage, chnl)
+  cpVec <- .getCpUnsLocSampleCpRep(
     stage = stage,
-    cp_uns_loc_obj_list = cp_uns_loc_obj_list,
-    ind_uns = ind_uns,
-    ind_stim = ind_stim,
-    path_project = path_project,
+    cpUnsLocObjList = cpUnsLocObjList,
+    indUns = indUns,
+    indStim = indStim,
+    pathProject = pathProject,
     chnl = chnl
   )
-  ind_combined <- .create_combined_identifier(ind_stim)
-  .int_save(ind_combined, stage_chnl, path_project, cp_vec)
+  indCombined <- .createCombinedIdentifier(indStim)
+  .intSave(indCombined, stageChnl, pathProject, cpVec)
   .debug("done getting loc gate at sample level") # nolint
   list(
-    "loc" = cp_vec,
-    "p_list" = list()
+    "loc" = cpVec,
+    "pList" = list()
   )
 }
 
 #' @keywords internal
-.get_cp_uns_loc_sample_cp_rep <- function(
+.getCpUnsLocSampleCpRep <- function(
   stage,
-  cp_uns_loc_obj_list,
-  ind_uns,
-  ind_stim,
-  path_project,
+  cpUnsLocObjList,
+  indUns,
+  indStim,
+  pathProject,
   chnl
 ) {
   .debug("Possibly re-using calculated cutpoints") # nolint
-  ind_combined <- .create_combined_identifier(ind_stim)
-  stage_chnl <- file.path(stage, chnl)
+  indCombined <- .createCombinedIdentifier(indStim)
+  stageChnl <- file.path(stage, chnl)
 
-  cp_vec <- purrr::map_dbl(cp_uns_loc_obj_list, ~ .x[["cp"]])
-  .int_save_nm(
-    "cp_vec_before_rep",
-    cp_vec,
-    ind_combined,
-    stage_chnl,
-    path_project
+  cpVec <- purrr::map_dbl(cpUnsLocObjList, ~ .x[["cp"]])
+  .intSaveNm(
+    "cpVecBeforeRep",
+    cpVec,
+    indCombined,
+    stageChnl,
+    pathProject
   )
 
-  if (length(cp_vec) != length(ind_stim)) {
-    .int_save_nm(
-      "prejoined_cp_used",
+  if (length(cpVec) != length(indStim)) {
+    .intSaveNm(
+      "prejoinedCpUsed",
       NULL,
-      ind_combined,
-      stage_chnl,
-      path_project
+      indCombined,
+      stageChnl,
+      pathProject
     )
-    cp_vec <- stats::setNames(
-      rep(cp_vec, length(ind_stim)),
-      ind_stim
+    cpVec <- stats::setNames(
+      rep(cpVec, length(indStim)),
+      indStim
     )
   } else {
-    .int_save_nm(
-      "individual_cp_used",
+    .intSaveNm(
+      "individualCpUsed",
       NULL,
-      ind_combined,
-      stage_chnl,
-      path_project
+      indCombined,
+      stageChnl,
+      pathProject
     )
-    cp_vec <- stats::setNames(cp_vec, ind_stim)
+    cpVec <- stats::setNames(cpVec, indStim)
   }
-  .int_save_nm(
-    "cp_vec_after_rep",
-    cp_vec,
-    ind_combined,
-    stage_chnl,
-    path_project
+  .intSaveNm(
+    "cpVecAfterRep",
+    cpVec,
+    indCombined,
+    stageChnl,
+    pathProject
   )
 
-  if (!all(purrr::map_lgl(cp_vec, is.na))) {
-    .int_save_nm(
-      "adding_uns_cp",
+  if (!all(purrr::map_lgl(cpVec, is.na))) {
+    .intSaveNm(
+      "addingUnsCp",
       NULL,
-      ind_combined,
-      stage_chnl,
-      path_project
+      indCombined,
+      stageChnl,
+      pathProject
     )
-    cp_vec <- c(cp_vec, stats::setNames(mean(cp_vec, na.rm = TRUE), ind_uns))
+    cpVec <- c(cpVec, stats::setNames(mean(cpVec, na.rm = TRUE), ind_uns))
   } else {
-    .int_save_nm(
-      "add_na_for_uns_cp",
+    .intSaveNm(
+      "addNaForUnsCp",
       NULL,
-      ind_combined,
-      stage_chnl,
-      path_project
+      indCombined,
+      stageChnl,
+      pathProject
     )
-    cp_vec <- c(cp_vec, NA)
+    cpVec <- c(cpVec, NA)
   }
-  .int_save_nm(
-    "cp_vec_after_uns_added",
-    cp_vec,
-    ind_combined,
-    stage_chnl,
-    path_project
+  .intSaveNm(
+    "cpVecAfterUnsAdded",
+    cpVec,
+    indCombined,
+    stageChnl,
+    pathProject
   )
 
-  cp_vec
+  cpVec
 }

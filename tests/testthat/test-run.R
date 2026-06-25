@@ -1,100 +1,101 @@
-test_that("stimgate_gate runs", {
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate")
-  debugonce(.get_cyt_pos_gates_gate_tbl_get)
+test_that("stimgateGateRuns", {
+  exampleData <- getExampleData()
+  gs <- flowWorkspace::load_gs(exampleData$pathGs)
+  pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
+  # debugonce(.getCpUnsLocGetProb)
   # debugonce(stimgate_gate)
   # browser()
-  invisible(stimgate_gate(
+  Sys.setenv("stimgateIntermediate" = "true")
+  invisible(gateStim(
     .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    marker = example_data$marker
+    pathProject = pathProject,
+    popGate = "root",
+    batchList = exampleData$batchList,
+    marker = exampleData$marker
   ))
-  expect_true(file.exists(file.path(path_project, "gate_stats.rds")))
+  expect_true(file.exists(file.path(pathProject, "gateStats.rds")))
 })
 
-test_that("stimgate_gate runs with STIMGATE_DEBUG environment variable", {
+test_that("stimgateGateRunsWithStimgateDebugEnvironmentVariable", {
   skip()
-  # Run stimgate_gate with STIMGATE_DEBUG environment variable to ensure it works without error
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(dirname(example_data$path_gs), "stimgate_debug")
+  # Run stimgateGate with stimgateDebug environment variable to ensure it works without error
+  exampleData <- getExampleData()
+  gs <- flowWorkspace::load_gs(exampleData$pathGs)
+  pathProject <- file.path(dirname(exampleData$pathGs), "stimgateDebug")
 
   # Set the environment variable for debug mode
-  Sys.setenv("STIMGATE_DEBUG" = "TRUE")
-  on.exit(Sys.unsetenv("STIMGATE_DEBUG"))
+  Sys.setenv("stimgateDebug" = "true")
+  on.exit(Sys.unsetenv("stimgateDebug"))
 
   # Test that the function can be called with debug enabled without error
   # and that it returns the expected path
-  result_path <- stimgate_gate(
+  resultPath <- stimgateGate(
     .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    marker = example_data$marker
+    pathProject = pathProject,
+    popGate = "root",
+    batchList = exampleData$batchList,
+    marker = exampleData$marker
   )
 
   # Verify the function returns the expected path
-  expect_equal(result_path, path_project)
+  expect_equal(resultPath, pathProject)
 
   # Verify basic output files still exist (same as non-debug version)
-  expect_true(file.exists(file.path(path_project, "gate_stats.rds")))
+  expect_true(file.exists(file.path(pathProject, "gateStats.rds")))
 
   # Clean up debug test directory
-  if (dir.exists(path_project)) {
-    unlink(path_project, recursive = TRUE)
+  if (dir.exists(pathProject)) {
+    unlink(pathProject, recursive = TRUE)
   }
 })
 
-test_that("stimgate_gate runs with STIMGATE_INTERMEDIATE environment variable", {
+test_that("stimgateGateRunsWithStimgateIntermediateEnvironmentVariable", {
   skip()
-  # Run stimgate_gate with STIMGATE_INTERMEDIATE environment variable to ensure
+  # Run stimgateGate with stimgateIntermediate environment variable to ensure
   # intermediate data is saved correctly
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
-  path_project <- file.path(
-    dirname(example_data$path_gs),
-    "stimgate_intermediate"
+  exampleData <- getExampleData()
+  gs <- flowWorkspace::load_gs(exampleData$pathGs)
+  pathProject <- file.path(
+    dirname(exampleData$pathGs),
+    "stimgateIntermediate"
   )
 
   # Set the environment variable for intermediate data saving
-  Sys.setenv("STIMGATE_INTERMEDIATE" = "true")
-  on.exit(Sys.unsetenv("STIMGATE_INTERMEDIATE"))
+  Sys.setenv("stimgateIntermediate" = "true")
+  on.exit(Sys.unsetenv("stimgateIntermediate"))
 
   # Test that the function can be called with intermediate saving enabled
-  result_path <- stimgate_gate(
+  resultPath <- stimgateGate(
     .data = gs,
-    path_project = path_project,
-    pop_gate = "root",
-    batch_list = example_data$batch_list,
-    marker = example_data$marker
+    pathProject = pathProject,
+    popGate = "root",
+    batchList = exampleData$batchList,
+    marker = exampleData$marker
   )
 
   # Verify the function returns the expected path
-  expect_equal(result_path, path_project)
+  expect_equal(resultPath, pathProject)
 
   # Verify basic output files exist
-  expect_true(file.exists(file.path(path_project, "gate_stats.rds")))
+  expect_true(file.exists(file.path(pathProject, "gateStats.rds")))
 
   # Verify intermediate data directory exists
-  intermediate_dir <- file.path(path_project, "intermediate_data")
-  expect_true(dir.exists(intermediate_dir))
+  intermediateDir <- file.path(pathProject, "intermediateData")
+  expect_true(dir.exists(intermediateDir))
 
   # Verify that intermediate files were created
-  intermediate_files <- list.files(intermediate_dir, recursive = TRUE)
-  expect_true(length(intermediate_files) > 0)
+  intermediateFiles <- list.files(intermediateDir, recursive = TRUE)
+  expect_true(length(intermediateFiles) > 0)
 
   # Verify that files exist for the "init" stage
-  init_files <- list.files(
-    file.path(intermediate_dir, "init"),
+  initFiles <- list.files(
+    file.path(intermediateDir, "init"),
     recursive = TRUE
   )
-  expect_true(length(init_files) > 0)
+  expect_true(length(initFiles) > 0)
 
   # Clean up intermediate test directory
-  if (dir.exists(path_project)) {
-    unlink(path_project, recursive = TRUE)
+  if (dir.exists(pathProject)) {
+    unlink(pathProject, recursive = TRUE)
   }
 })

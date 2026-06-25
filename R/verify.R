@@ -1,23 +1,23 @@
 #' @keywords internal
-.verify_gate_inputs <- function(
-  path_project,
+.verifyGateInputs <- function(
+  pathProject,
   .data,
-  batch_list,
-  pop_gate,
+  batchList,
+  popGate,
   chnl,
   marker,
-  chnl_settings,
-  marker_settings,
-  calc_cyt_pos_gates,
-  calc_single_pos_gates,
-  bw_mtd,
-  gate_combn,
-  gate_quant,
-  bw_ncell_min,
-  bw_ncell_max,
-  bw_cluster,
-  min_cell,
-  tol_clust
+  chnlSettings,
+  markerSettings,
+  calcCytPosGates,
+  calcSinglePosGates,
+  bwMtd,
+  gateCombn,
+  gateQuant,
+  bwNcellMin,
+  bwNcellMax,
+  bwCluster,
+  minCell,
+  tolClust
 ) {
   # 1. Channel / Marker Mutual Exclusivity Checks
   if (!is.null(chnl) && !is.null(marker)) {
@@ -26,25 +26,25 @@
   if (is.null(chnl) && is.null(marker)) {
     stop("Must specify one of 'chnl' or 'marker'.")
   }
-  if (!is.null(chnl) && !is.null(marker_settings)) {
-    stop("When 'chnl' is specified, 'marker_settings' must be NULL.")
+  if (!is.null(chnl) && !is.null(markerSettings)) {
+    stop("When 'chnl' is specified, 'markerSettings' must be NULL.")
   }
-  if (!is.null(marker) && !is.null(chnl_settings)) {
-    stop("When 'marker' is specified, 'chnl_settings' must be NULL.")
+  if (!is.null(marker) && !is.null(chnlSettings)) {
+    stop("When 'marker' is specified, 'chnlSettings' must be NULL.")
   }
 
   # 2. Structural & Type Checks
   if (
-    !is.character(path_project) ||
-      length(path_project) != 1 ||
-      path_project == ""
+    !is.character(pathProject) ||
+      length(pathProject) != 1 ||
+      pathProject == ""
   ) {
     stop(
-      "`path_project` must be a single, non-empty character string specifying a directory."
+      "`pathProject` must be a single, non-empty character string specifying a directory."
     )
   }
-  if (!is.character(pop_gate) || length(pop_gate) != 1) {
-    stop("`pop_gate` must be a single character string (e.g., 'root').")
+  if (!is.character(popGate) || length(popGate) != 1) {
+    stop("`popGate` must be a single character string (e.g., 'root').")
   }
   if (
     !inherits(
@@ -63,78 +63,78 @@
       "`.data` must be a valid flow core/workspace object (e.g., GatingSet, flowFrame)."
     )
   }
-  if (!is.list(batch_list) || length(batch_list) == 0) {
-    stop("`batch_list` must be a non-empty list of sample indices.")
+  if (!is.list(batchList) || length(batchList) == 0) {
+    stop("`batchList` must be a non-empty list of sample indices.")
   }
 
   # 3. Logical & Hyperparameter Checks
-  if (!is.logical(calc_cyt_pos_gates) || length(calc_cyt_pos_gates) != 1) {
-    stop("`calc_cyt_pos_gates` must be a single logical value (TRUE/FALSE).")
+  if (!is.logical(calcCytPosGates) || length(calcCytPosGates) != 1) {
+    stop("`calcCytPosGates` must be a single logical value (TRUE/FALSE).")
   }
   if (
-    !is.logical(calc_single_pos_gates) || length(calc_single_pos_gates) != 1
+    !is.logical(calcSinglePosGates) || length(calcSinglePosGates) != 1
   ) {
-    stop("`calc_single_pos_gates` must be a single logical value (TRUE/FALSE).")
+    stop("`calcSinglePosGates` must be a single logical value (TRUE/FALSE).")
   }
 
-  valid_bw_mtds <- c("nrd0", "sj", "hpi_0", "hpi_1", "hpi_2", "hpi_3")
-  if (!bw_mtd %in% valid_bw_mtds) {
+  validBwMtds <- c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
+  if (!bwMtd %in% validBwMtds) {
     stop(sprintf(
-      "`bw_mtd` must be one of: %s",
-      paste(valid_bw_mtds, collapse = ", ")
+      "`bwMtd` must be one of: %s",
+      paste(validBwMtds, collapse = ", ")
     ))
   }
 
-  valid_gate_combns <- c("min", "median", "max")
-  if (!gate_combn %in% valid_gate_combns) {
+  validGateCombns <- c("min", "median", "max")
+  if (!gateCombn %in% validGateCombns) {
     stop(sprintf(
-      "`gate_combn` must be one of: %s",
-      paste(valid_gate_combns, collapse = ", ")
+      "`gateCombn` must be one of: %s",
+      paste(validGateCombns, collapse = ", ")
     ))
   }
 
   if (
-    !is.numeric(gate_quant) ||
-      length(gate_quant) != 2 ||
-      any(gate_quant < 0 | gate_quant > 1)
+    !is.numeric(gateQuant) ||
+      length(gateQuant) != 2 ||
+      any(gateQuant < 0 | gateQuant > 1)
   ) {
     stop(
-      "`gate_quant` must be a numeric vector of two probabilities between 0 and 1."
+      "`gateQuant` must be a numeric vector of two probabilities between 0 and 1."
     )
   }
-  if (!is.numeric(bw_ncell_min) || bw_ncell_min <= 0) {
-    stop("`bw_ncell_min` must be a positive number.")
+  if (!is.numeric(bwNcellMin) || bwNcellMin <= 0) {
+    stop("`bwNcellMin` must be a positive number.")
   }
-  if (!is.numeric(bw_ncell_max) || bw_ncell_max < bw_ncell_min) {
+  if (!is.numeric(bwNcellMax) || bwNcellMax < bwNcellMin) {
     stop(
-      "`bw_ncell_max` must be a positive number greater than or equal to `bw_ncell_min`."
+      "`bwNcellMax` must be a positive number greater than or equal to `bwNcellMin`."
     )
   }
-  if (!is.numeric(min_cell) || min_cell <= 0) {
-    stop("`min_cell` must be a positive number.")
+  if (!is.numeric(minCell) || minCell <= 0) {
+    stop("`minCell` must be a positive number.")
   }
-  if (!is.numeric(tol_clust) || tol_clust <= 0) {
-    stop("`tol_clust` must be a positive numeric threshold.")
+  if (!is.numeric(tolClust) || tolClust <= 0) {
+    stop("`tolClust` must be a positive numeric threshold.")
   }
-  if (!is.null(bw_cluster) && (!is.numeric(bw_cluster) || bw_cluster <= 0)) {
-    stop("`bw_cluster` must be a positive numeric value if specified.")
+  if (!is.null(bwCluster) && (!is.numeric(bwCluster) || bwCluster <= 0)) {
+    stop("`bwCluster` must be a positive numeric value if specified.")
   }
-  chnl_lab <- .chnl_lab(.data)
+  chnlLab <- .chnl_lab(.data)
   if (!is.null(chnl)) {
-    all_chnl_valid <- all(chnl %in% names(chnl_lab))
-    if (!all_chnl_valid) {
+    allChnlValid <- all(chnl %in% names(chnlLab))
+    if (!allChnlValid) {
       stop(
         "The following channels are not found in the GatingSet: ",
-        paste(setdiff(chnl, names(chnl_lab)), collapse = ", ")
+        paste(setdiff(chnl, names(chnlLab)), collapse = ", ")
       )
     }
   }
   if (!is.null(marker)) {
-    all_marker_valid <- all(marker %in% chnl_lab)
-    if (!all_marker_valid) {
+    allMarkerValid <- all(marker %in% chnlLab)
+    if (!allMarkerValid) {
       stop(
         "The following markers are not found in the GatingSet: ",
-        paste(setdiff(marker, chnl_lab), collapse = ", ")
+        paste(setdiff(marker, chnlLab), collapse = ", ")
       )
     }
   }
@@ -142,100 +142,100 @@
   invisible(TRUE)
 }
 
-.verify_chnl_settings <- function(chnl_settings, chnl, marker_settings, marker) {
-  permissible_settings <- c(
-    "bias_uns",
-    "bias_uns_factor",
-    "exc_min",
-    "cp_min",
+#' @keywords internal
+.verifyChnlSettings <- function(chnlSettings, chnl, markerSettings, marker) {
+  permissibleSettings <- c(
+    "biasUns",
+    "biasUnsFactor",
+    "excMin",
+    "cpMin",
     "bw",
-    "bw_max",
-    "bw_mtd",
-    "bw_adj",
-    "bw_ncell_min",
-    "bw_ncell_max",
-    "min_cell",
-    "tol_clust",
-    "cp_min",
-    "max_pos_prob_x",
-    "bw_cluster"
+    "bwMax",
+    "bwMtd",
+    "bwAdj",
+    "bwNcellMin",
+    "bwNcellMax",
+    "minCell",
+    "tolClust",
+    "maxPosProbX",
+    "bwCluster"
   )
-  if (!is.null(chnl_settings) && !all(names(chnl_settings) %in% permissible_settings)) {
+  if (!is.null(chnlSettings) && !all(names(chnlSettings) %in% permissibleSettings)) {
     stop(
       "Invalid channel settings detected. The invalid settings are: ",
-      paste(setdiff(names(chnl_settings), permissible_settings), collapse = ", ")
+      paste(setdiff(names(chnlSettings), permissibleSettings), collapse = ", ")
     )
   }
-  if (!is.null(marker_settings) && !all(names(marker_settings) %in% permissible_settings)) {
+  if (!is.null(markerSettings) && !all(names(markerSettings) %in% permissibleSettings)) {
     stop(
       "Invalid marker settings detected. The invalid settings are: ",
-      paste(setdiff(names(marker_settings), permissible_settings), collapse = ", ")
+      paste(setdiff(names(markerSettings), permissibleSettings), collapse = ", ")
     )
   }
-  if (!is.null(chnl_settings) && !is.null(marker_settings)) {
-    stop("Specify only one of `chnl_settings` or `marker_settings`, not both.")
+  if (!is.null(chnlSettings) && !is.null(markerSettings)) {
+    stop("Specify only one of `chnlSettings` or `markerSettings`, not both.")
   }
-  if (!is.null(chnl_settings) && !is.list(chnl_settings)) {
-    stop("`chnl_settings` must be a list of channel-specific settings.")
+  if (!is.null(chnlSettings) && !is.list(chnlSettings)) {
+    stop("`chnlSettings` must be a list of channel-specific settings.")
   }
-  if (!is.null(marker_settings) && !is.list(marker_settings)) {
-    stop("`marker_settings` must be a list of marker-specific settings.")
+  if (!is.null(markerSettings) && !is.list(markerSettings)) {
+    stop("`markerSettings` must be a list of marker-specific settings.")
   }
-  if (!is.null(chnl_settings) && length(chnl_settings) > 0L) {
-    chnl_vec_from_settings <- names(chnl_settings)
-    if (length(chnl_vec_from_settings) == 0L) {
-      stop("`chnl_settings` must have named elements corresponding to channels.")
+  if (!is.null(chnlSettings) && length(chnlSettings) > 0L) {
+    chnlVecFromSettings <- names(chnlSettings)
+    if (length(chnlVecFromSettings) == 0L) {
+      stop("`chnlSettings` must have named elements corresponding to channels.")
     }
-    if (!length(chnl_vec_from_settings) == length(unique(chnl_vec_from_settings))) {
-      stop("`chnl_settings` must have unique channel names.")
+    if (!length(chnlVecFromSettings) == length(unique(chnlVecFromSettings))) {
+      stop("`chnlSettings` must have unique channel names.")
     }
-    if (!length(chnl_vec_from_settings) == length(chnl_settings)) {
-      stop("`chnl_settings` must have a name for each element.")
+    if (!length(chnlVecFromSettings) == length(chnlSettings)) {
+      stop("`chnlSettings` must have a name for each element.")
     }
-    if (!all(chnl_vec_from_settings %in% chnl)) {
+    if (!all(chnlVecFromSettings %in% chnl)) {
       stop(
-        "All channels specified in `chnl_settings` must be included in `chnl`"
+        "All channels specified in `chnlSettings` must be included in `chnl`"
       )
     }
-  } else if (!is.null(marker_settings) && length(marker_settings) > 0L) {
-    marker_vec_from_settings <- names(marker_settings)
-    if (length(marker_vec_from_settings) == 0L) {
-      stop("`marker_settings` must have named elements corresponding to markers.")
+  } else if (!is.null(markerSettings) && length(markerSettings) > 0L) {
+    markerVecFromSettings <- names(markerSettings)
+    if (length(markerVecFromSettings) == 0L) {
+      stop("`markerSettings` must have named elements corresponding to markers.")
     }
-    if (!length(marker_vec_from_settings) == length(unique(marker_vec_from_settings))) {
-      stop("`marker_settings` must have unique marker names.")
+    if (!length(markerVecFromSettings) == length(unique(markerVecFromSettings))) {
+      stop("`markerSettings` must have unique marker names.")
     }
-    if (!length(marker_vec_from_settings) == length(marker_settings)) {
-      stop("`marker_settings` must have a name for each element.")
+    if (!length(markerVecFromSettings) == length(markerSettings)) {
+      stop("`markerSettings` must have a name for each element.")
     }
-    if (!all(marker_vec_from_settings %in% marker)) {
+    if (!all(markerVecFromSettings %in% marker)) {
       stop(
-        "All markers specified in `marker_settings` must be included in `marker`"
+        "All markers specified in `markerSettings` must be included in `marker`"
       )
     }
   }
-  if (is.null(chnl_settings) && is.null(marker_settings)) {
+  if (is.null(chnlSettings) && is.null(markerSettings)) {
     return(invisible(TRUE))
   }
-  if (is.list(chnl_settings) && length(chnl_settings) == 0L) {
+  if (is.list(chnlSettings) && length(chnlSettings) == 0L) {
     return(invisible(TRUE))
   }
-  if (is.list(marker_settings) && length(marker_settings) == 0L) {
+  if (is.list(markerSettings) && length(markerSettings) == 0L) {
     return(invisible(TRUE))
   }
-  if (!is.null(chnl_settings)) {
+  if (!is.null(chnlSettings)) {
     lapply(
-      names(chnl_settings),
-      function(chnl_curr) {
-        .verify_chnl_settings_chnl(chnl_curr, chnl_settings[[chnl_curr]])
+      names(chnlSettings),
+      function(chnlCurr) {
+        .verifyChnlSettingsChnl(chnlCurr, chnlSettings[[chnlCurr]])
       }
     )
   }
-  if (!is.null(marker_settings)) {
+  if (!is.null(markerSettings)) {
     lapply(
-      names(marker_settings),
-      function(marker_curr) {
-        .verify_chnl_settings_chnl(marker_curr, marker_settings[[marker_curr]])
+      names(markerSettings),
+      function(markerCurr) {
+        .verifyChnlSettingsChnl(markerCurr, markerSettings[[markerCurr]])
       }
     )
   }
@@ -243,57 +243,57 @@
 }
 
 #' @keywords internal
-.verify_chnl_settings_chnl <- function(chnl_curr, settings) {
-  prefix <- sprintf("Channel '%s' setting error: ", chnl_curr)
+.verifyChnlSettingsChnl <- function(chnlCurr, settings) {
+  prefix <- sprintf("Channel '%s' setting error: ", chnlCurr)
 
   # Validate logic flags if present
   if (
-    !is.null(settings$exc_min) &&
-      (!is.logical(settings$exc_min) || length(settings$exc_min) != 1)
+    !is.null(settings$excMin) &&
+      (!is.logical(settings$excMin) || length(settings$excMin) != 1)
   ) {
-    stop(paste0(prefix, "`exc_min` must be a single logical value."))
+    stop(paste0(prefix, "`excMin` must be a single logical value."))
   }
 
   # Validate numeric limits and hyper-parameters
   if (
-    !is.null(settings$bias_uns) &&
-      (!is.numeric(settings$bias_uns) || length(settings$bias_uns) != 1)
+    !is.null(settings$biasUns) &&
+      (!is.numeric(settings$biasUns) || length(settings$biasUns) != 1)
   ) {
-    stop(paste0(prefix, "`bias_uns` must be a single numeric value."))
+    stop(paste0(prefix, "`biasUns` must be a single numeric value."))
   }
   if (
-    !is.null(settings$bias_uns_factor) &&
-      (!is.numeric(settings$bias_uns_factor) || settings$bias_uns_factor <= 0)
+    !is.null(settings$biasUnsFactor) &&
+      (!is.numeric(settings$biasUnsFactor) || settings$biasUnsFactor <= 0)
   ) {
-    stop(paste0(prefix, "`bias_uns_factor` must be a positive number."))
+    stop(paste0(prefix, "`biasUnsFactor` must be a positive number."))
   }
   if (!is.null(settings$bw) && (!is.numeric(settings$bw) || settings$bw <= 0)) {
     stop(paste0(prefix, "`bw` must be a positive numeric value."))
   }
   if (
-    !is.null(settings$bw_adj) &&
-      (!is.numeric(settings$bw_adj) || settings$bw_adj <= 0)
+    !is.null(settings$bwAdj) &&
+      (!is.numeric(settings$bwAdj) || settings$bwAdj <= 0)
   ) {
-    stop(paste0(prefix, "`bw_adj` must be a positive numeric multiplier."))
+    stop(paste0(prefix, "`bwAdj` must be a positive numeric multiplier."))
   }
   if (
-    !is.null(settings$cp_min) &&
-      (!is.numeric(settings$cp_min) || length(settings$cp_min) != 1)
+    !is.null(settings$cpMin) &&
+      (!is.numeric(settings$cpMin) || length(settings$cpMin) != 1)
   ) {
-    stop(paste0(prefix, "`cp_min` must be a single numeric value."))
+    stop(paste0(prefix, "`cpMin` must be a single numeric value."))
   }
   if (
-    !is.null(settings$max_pos_prob_x) &&
-      (!is.numeric(settings$max_pos_prob_x) ||
-        length(settings$max_pos_prob_x) != 1)
+    !is.null(settings$maxPosProbX) &&
+      (!is.numeric(settings$maxPosProbX) ||
+        length(settings$maxPosProbX) != 1)
   ) {
-    stop(paste0(prefix, "`max_pos_prob_x` must be a single numeric value."))
+    stop(paste0(prefix, "`maxPosProbX` must be a single numeric value."))
   }
-  if (!"pop_gate" %in% names(settings)) {
-    stop(paste0(prefix, "`pop_gate` must be specified in the settings."))
+  if (!"popGate" %in% names(settings)) {
+    stop(paste0(prefix, "`popGate` must be specified in the settings."))
   }
-  if (!is.character(settings$pop_gate) || length(settings$pop_gate) != 1) {
-    stop(paste0(prefix, "`pop_gate` must be a single character string."))
+  if (!is.character(settings$popGate) || length(settings$popGate) != 1) {
+    stop(paste0(prefix, "`popGate` must be a single character string."))
   }
 
   invisible(TRUE)

@@ -10,151 +10,147 @@ globalVariables(c(
   "batch",
   "ind",
   "gate",
-  "gate_cyt",
-  "gate_single",
-  "gate_name",
+  "gateCyt",
+  "gateSingle",
+  "gateName",
   "chnl",
-  "gate_use",
-  "gate_type",
-  "gate_combn",
-  "pop_gate",
-  "gate_tbl",
-  "chnl_cut",
+  "gateUse",
+  "gateType",
+  "gateCombn",
+  "popGate",
+  "gateTbl",
+  "chnlCut",
   "tol",
-  "ind_in_batch_gate",
-  "tol_clust_single",
-  "ind_batch_gate",
+  "indInBatchGate",
+  "tolClustSingle",
+  "indBatchGate",
   "cp",
   "grp",
-  "cp_join_lse_orig_mean_tg",
-  "cp_orig_quant_min",
-  "cp_join",
-  "cp_join_lse",
-  "cp_join_lse_orig",
-  "cp_join_lse_orig_mean",
-  "cp_join_tg_orig",
-  "cp_join_tg_orig_mean",
-  "prop_bs_orig",
-  "prop_bs_cp_diff",
-  "prop_bs_cp_diff_sd",
-  "prop_bs_cp",
-  "prop_l1se",
+  "cpJoinLseOrigMeanTg",
+  "cpOrigQuantMin",
+  "cpJoin",
+  "cpJoinLse",
+  "cpJoinLseOrig",
+  "cpJoinLseOrigMean",
+  "cpJoinTgOrig",
+  "cpJoinTgOrigMean",
+  "propBsOrig",
+  "propBsCpDiff",
+  "propBsCpDiffSd",
+  "propBsCp",
+  "propL1se",
   "pred",
   "der",
-  "cp_orig",
-  "max_expr",
-  "gate_05",
-  "prop_bs_cp_diff_sd_max",
-  "grp_level",
-  "ind_vec",
+  "cpOrig",
+  "maxExpr",
+  "gate05",
+  "propBsCpDiffSdMax",
+  "grpLevel",
+  "indVec",
   "x1",
   "x",
   "y",
-  "x_ind",
-  "count_stim",
-  "n_cell_stim",
-  "count_uns",
-  "n_cell_uns",
-  "prop_stim_pos",
-  "prop_uns_pos",
-  "prop_stim_sd",
-  "prop_uns_sd",
+  "xInd",
+  "countStim",
+  "nCellStim",
+  "countUns",
+  "nCellUns",
+  "propStimPos",
+  "propUnsPos",
+  "propStimSd",
+  "propUnsSd",
   "x512",
-  "x_vec",
-  "freq_bs",
-  "freq_stim",
-  "pop_gate_curr",
-  "cp_join_tg",
-  "cp_orig_quant_min",
-  "lse_orig",
-  "cp_tg_ctrl",
-  "cp_join_lse_orig_mean",
-  "cp_join_tg_orig",
-  "chnl_pos",
-  "dir_save",
-  "is.null_gate_tbl",
-  "path_project",
-  "exc_min",
-  "prop_bs_diff",
-  "prop_stim",
-  "prop_uns",
-  "prop_bs",
-  "prob_smooth",
-  "n_row",
-  "y_stim",
-  "y_uns",
+  "xVec",
+  "freqBs",
+  "freqStim",
+  "popGateCurr",
+  "cpJoinTg",
+  "lseOrig",
+  "cpTgCtrl",
+  "chnlPos",
+  "dirSave",
+  "isNullGateTbl",
+  "pathProject",
+  "excMin",
+  "propBsDiff",
+  "propStim",
+  "propUns",
+  "propBs",
+  "probSmooth",
+  "nRow",
+  "yStim",
+  "yUns",
   "stim",
-  "x_stim",
+  "xStim",
   "prob",
-  "x_uns",
-  "prop_lab",
+  "xUns",
+  "propLab",
   "type",
-  "line_id",
+  "lineId",
   "dens",
   "no",
   "yes",
-  "prob_stim",
-  "prob_stim_norm",
-  "prop_pos",
+  "probStim",
+  "probStimNorm",
+  "propPos",
   # Variables from .get_cp_uns_loc_prob_tbl_filter
-  "minor_response_ind",
-  "moderate_response_ind",
-  "n_remaining",
-  "prob_larger_count",
-  "prob_larger_prop",
+  "minorResponseInd",
+  "moderateResponseInd",
+  "nRemaining",
+  "probLargerCount",
+  "probLargerProp",
   # Variables from .get_prop_bs_by_cp_tbl_ind_calc
-  "count_stim_cp",
-  "count_uns_cp",
-  "prop_stim_cp",
-  "prop_uns_cp",
-  "prop_bs_sd",
-  "prop_stim_pos_cp",
-  "prop_uns_pos_cp",
-  "prop_stim_sd_cp",
-  "prop_uns_sd_cp",
-  "prop_bs_sd_cp",
+  "countStimCp",
+  "countUnsCp",
+  "propStimCp",
+  "propUnsCp",
+  "propBsSd",
+  "propStimPosCp",
+  "propUnsPosCp",
+  "propStimSdCp",
+  "propUnsSdCp",
+  "propBsSdCp",
   # Variables from other functions
-  "cyt_combn",
-  "freq_uns",
+  "cytCombn",
+  "freqUns",
   "V1",
   "V2",
   "i",
-  "tol_gate_single",
+  "tolGateSingle",
   # Variables used in plots and ggplot2 context
   ".debug",
-  "prop_l1se",
   "rbeta",
   # Variables from fcs_write.R
   "concat",
-  "gate_concat"
+  "gateConcat"
 ))
 
 #' Create a debug file in tempdir()
 #'
 #' @return character Path to the created debug file (invisibly).
 #' @keywords internal
-.debug_file_create <- function() {
-  dir_path <- file.path(tempdir(), "stimgate")
-  if (!dir.exists(dir_path)) {
-    dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
+.debugFileCreate <- function() {
+  dirPath <- file.path(tempdir(), "stimgate")
+  if (!dir.exists(dirPath)) {
+    dir.create(dirPath, recursive = TRUE, showWarnings = FALSE)
   }
   timestamp <- format(Sys.time(), "%Y-%m-%d-%H%M%S")
-  file_path <- file.path(dir_path, paste0("stimgate_", timestamp, ".txt"))
-  file.create(file_path, showWarnings = FALSE)
-  invisible(file_path)
+  filePath <- file.path(dirPath, paste0("stimgate_", timestamp, ".txt"))
+  file.create(filePath, showWarnings = FALSE)
+  invisible(filePath)
 }
 
 #' Get the most recent debug file path
 #'
 #' @return character Path to the most recent debug file, or NULL if none.
 #' @keywords internal
-.debug_file_get_path <- function() {
-  dir_path <- file.path(tempdir(), "stimgate")
-  if (!dir.exists(dir_path)) {
+.debugFileGetPath <- function() {
+  dirPath <- file.path(tempdir(), "stimgate")
+  if (!dir.exists(dirPath)) {
     return(NULL)
   }
   files <- list.files(
-    dir_path,
+    dirPath,
     pattern = "^stimgate_\\d{4}-\\d{2}-\\d{2}-\\d{6}\\.txt$",
     full.names = TRUE
   )
@@ -174,19 +170,19 @@ globalVariables(c(
 #' @return logical invisibly TRUE if message was written, FALSE otherwise
 #' @keywords internal
 .debug <- function(msg, val = NULL) {
-  must_debug <- tolower(trimws(Sys.getenv("STIMGATE_DEBUG"))) %in%
+  mustDebug <- tolower(trimws(Sys.getenv("STIMGATE_DEBUG"))) %in%
     c("y", "true", "yes", "1")
-  if (!must_debug) {
+  if (!mustDebug) {
     return(invisible(FALSE))
   }
   if (!is.null(val)) {
     msg <- paste0(msg, ": ", val)
   }
-  path_debug <- .debug_file_get_path()
-  if (is.null(path_debug)) {
-    path_debug <- .debug_file_create()
+  pathDebug <- .debugFileGetPath()
+  if (is.null(pathDebug)) {
+    pathDebug <- .debugFileCreate()
   }
-  cat(msg, file = path_debug, sep = "\n", append = TRUE)
+  cat(msg, file = pathDebug, sep = "\n", append = TRUE)
   invisible(TRUE)
 }
 
@@ -195,22 +191,22 @@ globalVariables(c(
 #' @description Copies the most recent debug file created by stimgate
 #' to the current working directory. The copied file uses the same
 #' filename as the source.
-#' @param path_dir character. Directory to copy the debug file to.
+#' @param pathDir character. Directory to copy the debug file to.
 #' Default is `getwd()` (i.e. the working directory).
 #'
 #' @return character Path to the copied file (invisibly), or NULL if no
 #'   debug file exists.
 #' @export
-stimgate_debug_copy <- function(path_dir = getwd()) {
-  src <- .debug_file_get_path()
+stimgate_debug_copy <- function(pathDir = getwd()) {
+  src <- .debugFileGetPath()
   if (is.null(src)) {
     message("No stimgate debug file found.")
     return(invisible(NULL))
   }
-  if (!dir.exists(path_dir)) {
-    dir.create(path_dir, recursive = TRUE)
+  if (!dir.exists(pathDir)) {
+    dir.create(pathDir, recursive = TRUE)
   }
-  dest <- file.path(path_dir, basename(src))
+  dest <- file.path(pathDir, basename(src))
   ok <- file.copy(src, dest, overwrite = TRUE)
   if (!ok) {
     message("Failed to copy debug file to working directory.")
@@ -227,7 +223,7 @@ stimgate_debug_copy <- function(path_dir = getwd()) {
 #' @return character The debug text (invisibly), or NULL if no debug file exists.
 #' @export
 stimgate_debug_print <- function() {
-  src <- .debug_file_get_path()
+  src <- .debugFileGetPath()
   if (is.null(src)) {
     message("No stimgate debug file found.")
     return(invisible(NULL))
@@ -238,49 +234,49 @@ stimgate_debug_print <- function() {
 }
 
 #' @keywords internal
-.int_save_nm <- function(name, obj, ind, stage, path_project) {
-  if (!.int_save_check(ind)) {
+.intSaveNm <- function(name, obj, ind, stage, pathProject) {
+  if (!.intSaveCheck(ind)) {
     return(invisible(FALSE))
   }
-  path_save <- .int_save_path_save(
-    path_project = path_project,
+  pathSave <- .intSavePathSave(
+    pathProject = pathProject,
     stage = stage,
     ind = ind,
     name = name
   )
-  saveRDS(obj, path_save)
+  saveRDS(obj, pathSave)
   invisible(TRUE)
 }
 
 #' @keywords internal
-.int_save <- function(ind, stage, path_project, ...) {
-  if (!.int_save_check(ind)) {
+.intSave <- function(ind, stage, pathProject, ...) {
+  if (!.intSaveCheck(ind)) {
     return(invisible(FALSE))
   }
 
   dots <- list(...)
-  dot_names <- names(dots)
+  dotNames <- names(dots)
 
-  call_names <- as.list(substitute(list(...)))[-1]
-  call_names <- vapply(
-    call_names,
+  callNames <- as.list(substitute(list(...)))[-1]
+  callNames <- vapply(
+    callNames,
     function(x) paste(deparse(x), collapse = ""),
     character(1)
   )
 
-  if (is.null(dot_names)) {
-    dot_names <- call_names
+  if (is.null(dotNames)) {
+    dotNames <- callNames
   } else {
-    dot_names[dot_names == ""] <- call_names[dot_names == ""]
+    dotNames[dotNames == ""] <- callNames[dotNames == ""]
   }
 
   for (i in seq_along(dots)) {
-    .int_save_nm(
-      name = dot_names[[i]],
+    .intSaveNm(
+      name = dotNames[[i]],
       obj = dots[[i]],
       ind = ind,
       stage = stage,
-      path_project = path_project
+      pathProject = pathProject
     )
   }
 
@@ -288,52 +284,52 @@ stimgate_debug_print <- function() {
 }
 
 #' @keywords internal
-.is_invalid_ind <- function(ind) {
+.isInvalidInd <- function(ind) {
   is.null(ind) || length(ind) == 0 || all(is.na(ind))
 }
 
 #' @keywords internal
-.int_save_check <- function(ind) {
-  if (.is_invalid_ind(ind)) {
+.intSaveCheck <- function(ind) {
+  if (.isInvalidInd(ind)) {
     return(FALSE)
   }
 
-  env_var <- Sys.getenv("STIMGATE_INTERMEDIATE") |>
+  envVar <- Sys.getenv("STIMGATE_INTERMEDIATE") |>
     trimws() |>
     tolower()
-  if (is.null(env_var) || length(env_var) == 0 || env_var == "") {
+  if (is.null(envVar) || length(envVar) == 0 || envVar == "") {
     return(FALSE)
   }
-  if (env_var %in% c("y", "true", "yes", "all")) {
+  if (envVar %in% c("y", "true", "yes", "all")) {
     return(TRUE)
   }
-  env_var_split <- strsplit(env_var, ",|;") |>
+  envVarSplit <- strsplit(envVar, ",|;") |>
     unlist() |>
     trimws()
-  any(as.character(ind) %in% env_var_split)
+  any(as.character(ind) %in% envVarSplit)
 }
 
 #' @keywords internal
-.int_save_path_save <- function(path_project, stage, ind, name) {
+.intSavePathSave <- function(pathProject, stage, ind, name) {
   name <- paste0(name, ".rds")
   name <- gsub("\\.rds(\\.rds)*$", ".rds", name, ignore.case = TRUE)
-  path_save <- file.path(
-    path_project,
+  pathSave <- file.path(
+    pathProject,
     "intermediate_data",
     stage,
     "ind",
     paste0(as.character(ind), collapse = "_"),
     name
   )
-  if (!dir.exists(dirname(path_save))) {
-    dir.create(dirname(path_save), recursive = TRUE, showWarnings = FALSE)
+  if (!dir.exists(dirname(pathSave))) {
+    dir.create(dirname(pathSave), recursive = TRUE, showWarnings = FALSE)
   }
-  path_save
+  pathSave
 }
 
 #' @keywords internal
 .browse <- function(ind) {
-  if (!.browse_check(ind)) {
+  if (!.browseCheck(ind)) {
     return(invisible(FALSE))
   }
   eval(quote(browser()), envir = parent.frame())
@@ -341,22 +337,22 @@ stimgate_debug_print <- function() {
 }
 
 #' @keywords internal
-.browse_check <- function(ind) {
-  if (.is_invalid_ind(ind)) {
+.browseCheck <- function(ind) {
+  if (.isInvalidInd(ind)) {
     return(FALSE)
   }
 
-  env_var <- Sys.getenv("STIMGATE_BROWSE") |>
+  envVar <- Sys.getenv("STIMGATE_BROWSE") |>
     trimws() |>
     tolower()
-  if (is.null(env_var) || length(env_var) == 0 || env_var == "") {
+  if (is.null(envVar) || length(envVar) == 0 || envVar == "") {
     return(FALSE)
   }
-  if (env_var %in% c("y", "true", "yes", "all")) {
+  if (envVar %in% c("y", "true", "yes", "all")) {
     return(TRUE)
   }
-  env_var_split <- strsplit(env_var, ",|;") |>
+  envVarSplit <- strsplit(envVar, ",|;") |>
     unlist() |>
     trimws()
-  any(as.character(ind) %in% env_var_split)
+  any(as.character(ind) %in% envVarSplit)
 }

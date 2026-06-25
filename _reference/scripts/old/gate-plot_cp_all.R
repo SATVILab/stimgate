@@ -3,14 +3,14 @@ plot_cp_all <- function(data,
                         chnl_base = NULL,
                         params = NULL,
                         chnl = NULL,
-                        pop_gate,
+                        popGate,
                         chnl_lab = NULL,
                         ind_in_batch_lab,
                         ind_in_batch_gate,
                         fcs, data_name,
                         ind_in_batch_uns,
-                        ind_batch_list,
-                        path_project) {
+                        indBatchList,
+                        pathProject) {
   if (is.null(params)) {
     if (is.null(chnl)) {
       stop("chnl must be specified if params is NULL in plot_cp_all")
@@ -22,16 +22,16 @@ plot_cp_all <- function(data,
       )
     }
     params <- list(
-      pop_gate = pop_gate,
+      popGate = popGate,
       chnl_lab = chnl_lab,
       ind_in_batch_lab_vec = ind_in_batch_lab,
       ind_in_batch_gate = ind_in_batch_gate,
       data_name = data_name,
       fcs = fcs,
       ind_in_batch_uns = ind_in_batch_uns,
-      ind_batch_list = ind_batch_list,
+      indBatchList = indBatchList,
       data = data,
-      path_project = path_project
+      pathProject = pathProject
     )
   }
 
@@ -39,11 +39,11 @@ plot_cp_all <- function(data,
     # get base directory
     params[["cut"]] <- chnl_curr
     dir_base <- stimgate_dir_base_create(
-      dir_base_init = path_project,
+      dir_base_init = pathProject,
       params = params
     )
     # get stats tbl
-    gate_tbl <- .gates_get_path(path_project, pop_gate, chnl_curr) |>
+    gate_tbl <- .gates_get_path(pathProject, popGate, chnl_curr) |>
       readRDS()
 
     if (!is.null(gate_name)) {
@@ -65,7 +65,7 @@ plot_cp_all <- function(data,
   }
   params[["cut"]] <- gate_tbl$chnl[1]
   dir_base <- stimgate_dir_base_create(
-    dir_base_init = path_project,
+    dir_base_init = pathProject,
     params = params
   )
   dir_base <- stringr::str_sub(
@@ -79,7 +79,7 @@ plot_cp_all <- function(data,
 
 
   # all data
-  purrr::walk(params$ind_batch_list, function(ind_batch) {
+  purrr::walk(params$indBatchList, function(ind_batch) {
     purrr::walk(ind_batch, function(ind) {
       # print(ind)
       ind_in_batch <- ind %% length(params$ind_in_batch_lab_vec)
@@ -94,23 +94,23 @@ plot_cp_all <- function(data,
 
       # get expression dataframe
       ex <- .get_ex(
-        data = data[[ind]], pop = params$pop_gate,
+        data = data[[ind]], pop = params$popGate,
         cut = names(params$chnl_lab),
         high = NULL, ind = ind,
         is_uns = FALSE, stim = stim,
         ind_in_batch = ind_in_batch, data_name = params$data_name,
-        path_project = params$path_project
+        pathProject = params$pathProject
       )
 
       ind_uns <- (ind %/% 5 * 5) + 5
       ex_uns <- .get_ex(
-        data = data[[ind_uns]], pop = params$pop_gate,
+        data = data[[ind_uns]], pop = params$popGate,
         cut = names(params$chnl_lab),
         high = NULL, ind = ind,
         is_uns = FALSE, stim = stim,
         ind_in_batch = ind_in_batch,
         data_name = params$data_name,
-        path_project = params$path_project
+        pathProject = params$pathProject
       )
       gate_tbl_ind <- gate_tbl |>
         dplyr::filter(.data$ind == .env$ind) #|>
