@@ -19,10 +19,7 @@
 #' @param .data GatingSet. A flowWorkspace GatingSet object containing the flow cytometry
 #'   data with both stimulated and unstimulated samples. The GatingSet should have
 #'   consistent channel names across all samples and include proper sample annotations.
-#' @param batchList list. Named list where each element contains indices of samples
-#'   belonging to the same batch/donor. Names will be used for batch identification.
-#'   Example: list(donor1 = 1:10, donor2 = 11:20). Proper batching is crucial for
-#'   accurate background subtraction and gate identification.
+#' @param batchList list. List where each element contains indices of samples belonging to the same batch/donor. Last index per element is the unstimulated vector, e.g. if `batchList = list(1:3, 4:6)`, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If `batchList` is named, e.g. `list(pid1 = 1:3, pid2 = 4:6)`, then these names will be used for batch identification.
 #' @param chnl list. List where each element specifies parameters for gating a
 #'   specific channel Each element should be a list containing at minimum the channel
 #'   name (e.g., list(cut = "IL2")). Additional channel-specific parameters can
