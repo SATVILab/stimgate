@@ -47,10 +47,7 @@ consistent channel names across all samples and include proper sample annotation
 Default is "root" to gate on all cells. Can specify other populations like
 "CD3+" or "CD4+" if these gates already exist in the GatingSet.}
 
-\item{batchList}{list. Named list where each element contains indices of samples
-belonging to the same batch/donor. Names will be used for batch identification.
-Example: list(donor1 = 1:10, donor2 = 11:20). Proper batching is crucial for
-accurate background subtraction and gate identification.}
+\item{batchList}{list. List where each element contains indices of samples belonging to the same batch/donor. Last index per element is the unstimulated vector, e.g. if \code{batchList = list(1:3, 4:6)}, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If \code{batchList} is named, e.g. \code{list(pid1 = 1:3, pid2 = 4:6)}, then these names will be used for batch identification.}
 
 \item{chnl}{list. List where each element specifies parameters for gating a
 specific channel Each element should be a list containing at minimum the channel
