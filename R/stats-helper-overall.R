@@ -260,7 +260,7 @@
     .debug("i: ", i) # nolint
     chnlPos <- chnl[combnMat[i, , drop = TRUE]]
     chnlNeg <- chnl[
-      setdiff(seq_along(chnl), combn_mat[i, , drop = TRUE])
+      setdiff(seq_along(chnl), combnMat[i, , drop = TRUE])
     ]
     statTblGnInd[i, "countStim"] <- sum(
       .getPosIndCytCombn(
@@ -361,7 +361,7 @@
       gateColInd <- switch(
         gateTypeSinglePosCalc,
         "base" = which(cnVec == "gate"),
-        "single" = which(cnVec == "gate_single"),
+        "single" = which(cnVec == "gateSingle"),
         stop(paste0(
           "gateTypeSinglePosCalc value of ",
           gateTypeSinglePosCalc,

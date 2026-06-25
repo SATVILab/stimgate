@@ -106,7 +106,7 @@
       "statsSaveOutput must be a character string if not a data.frame."
     )
   }
-  pathStats <- file.path(statsSaveOutput, "gate_stats.rds")
+  pathStats <- file.path(statsSaveOutput, "gateStats.rds")
   gateStatsTbl <- readRDS(pathStats)
   if ("ind" %in% colnames(gateStatsTbl)) {
     gateStatsTbl[, "ind"] <- as.character(gateStatsTbl[["ind"]])
@@ -122,7 +122,7 @@
 #' @return A data frame with gating statistics.
 #' @export
 getStimGates <- function(pathProject) {
-  pathStatsPartial <- file.path(pathProject, "gate_stats")
+  pathStatsPartial <- file.path(pathProject, "gateStats")
   if (file.exists(paste0(pathStatsPartial, ".rds"))) {
     readRDS(paste0(pathStatsPartial, ".rds"))
   } else if (file.exists(paste0(pathStatsPartial, ".csv"))) {

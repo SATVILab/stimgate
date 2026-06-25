@@ -179,7 +179,7 @@ strDetectAny <- function(string, pattern) {
 .getExChnlPathDir <- function(ind, pop, pathProject) {
   file.path(
     pathProject,
-    "sample_data",
+    "sampleData",
     paste0("pop_", pop),
     paste0("ind_", ind)
   )
@@ -199,11 +199,11 @@ strDetectAny <- function(string, pattern) {
     return(ex)
   }
   attr(ex, "ind") <- ind |> as.character()
-  attr(ex, "ind_uns") <- indUns |> as.character()
-  attr(ex, "is_uns") <- ind == indUns
-  attr(ex, "chnl_cut") <- chnlCut
+  attr(ex, "indUns") <- indUns |> as.character()
+  attr(ex, "isUns") <- ind == indUns
+  attr(ex, "chnlCut") <- chnlCut
   attr(ex, "batch") <- batch
-  attr(ex, "pop") <- pop
+  attr(ex, "popGate") <- pop
 
   ex
 }
@@ -214,7 +214,7 @@ strDetectAny <- function(string, pattern) {
 
 #' @keywords internal
 .getCut <- function(ex) {
-  ex[[attr(ex, "chnl_cut")]]
+  ex[[attr(ex, "chnlCut")]]
 }
 
 #' @keywords internal
@@ -252,17 +252,17 @@ strDetectAny <- function(string, pattern) {
 
 #' @title Read saved expression data from project
 #' @description Read channel expression vectors saved under a project's
-#'   sample_data directory and return them as a tibble with sample metadata
+#'   sampleData directory and return them as a tibble with sample metadata
 #'   columns.
 #' @param pathProject character Path to project.
 #' @param .data GatingSet or NULL GatingSet object to extract expression data
 #'   from. Default is NULL.
 #' @param pop character or NULL Population name(s). Default is detected from
-#'   project sample_data.
+#'   project sampleData.
 #' @param ind character or NULL Index/indices of samples. Default is detected
-#'   from project sample_data.
+#'   from project sampleData.
 #' @param chnl character or NULL Channel name(s) to return. Default is
-#'   detected from project sample_data.
+#'   detected from project sampleData.
 #' @param marker character or NULL Marker name(s) to return. Cannot be
 #'   specified with `chnl`. Default is NULL.
 #' @param bias logical Whether to add bias to unstimulated sample used in the
@@ -294,16 +294,16 @@ strDetectAny <- function(string, pattern) {
 #' @examples
 #' \dontrun{
 #' tmp <- tempdir()
-#' dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"),
+#' dir.create(file.path(tmp, "sampleData", "POP1", "ind_1"),
 #'   recursive = TRUE
 #' )
 #' saveRDS(
 #'   c(1, 2, 3),
-#'   file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds")
+#'   file.path(tmp, "sampleData", "POP1", "ind_1", "chnl_BC1.rds")
 #' )
 #' saveRDS(
 #'   c(4, 5, 6),
-#'   file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds")
+#'   file.path(tmp, "sampleData", "POP1", "ind_1", "chnl_BC2.rds")
 #' )
 #' getStimExpr(tmp)
 #' getStimExpr(tmp, chnl = "BC1")
@@ -410,7 +410,7 @@ getStimExpr <- function(
 
 .dataGetExInit <- function(.data, pop, chnl, ind, pathProject) {
   chnlCut <- chnl[[1]]
-  extraChnl <- setdiff(chnl, chnl_cut)
+  extraChnl <- setdiff(chnl, chnlCut)
   extraChnl <- if (length(extraChnl) == 0L) NULL else extraChnl
   .getEx(
     .data,
@@ -429,7 +429,7 @@ getStimExpr <- function(
 .getExProjectPop <- function(pathProject) {
   .assertString(pathProject)
   popVec <- list.dirs(
-    file.path(pathProject, "sample_data"),
+    file.path(pathProject, "sampleData"),
     recursive = FALSE
   ) |>
     basename() |>
@@ -444,7 +444,7 @@ getStimExpr <- function(
   pop <- pop[[1]]
   .assertString(pop)
   indVec <- list.dirs(
-    file.path(pathProject, "sample_data", paste0("pop_", pop)),
+    file.path(pathProject, "sampleData", paste0("pop_", pop)),
     recursive = FALSE
   ) |>
     basename() |>
@@ -463,7 +463,7 @@ getStimExpr <- function(
   .assertString(ind)
   pathChnlDir <- file.path(
     pathProject,
-    "sample_data",
+    "sampleData",
     paste0("pop_", pop),
     paste0("ind_", ind)
   )
@@ -703,7 +703,7 @@ getStimExpr <- function(
   attrVecNmAdd <- intersect(attrVecNmAdd, attrVecNmOrig)
   ex <- tibble::as_tibble(cbind(metaDf, ex))
   for (i in seq_along(attrVecNmAdd)) {
-    attr(ex, attr_vec_nm_add[i]) <- attrList[[attrVecNmAdd[i]]]
+    attr(ex, attrVecNmAdd[i]) <- attrList[[attrVecNmAdd[i]]]
   }
   ex
 }

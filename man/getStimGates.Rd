@@ -32,7 +32,7 @@ exampleData <- get_example_data()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
 
 # Run the stimgate pipeline
-pathProject <- stimgate_gate(
+pathProject <- gateStim(
   pathProject = file.path(tempdir(), "getGateExample"),
   .data = gs,
   batchList = exampleData$batchList,

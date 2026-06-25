@@ -14,7 +14,7 @@
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
 #'
 #' # Run the stimgate pipeline
-#' pathProject <- stimgate_gate(
+#' pathProject <- gateStim(
 #'   pathProject = file.path(tempdir(), "getGateExample"),
 #'   .data = gs,
 #'   batchList = exampleData$batchList,
@@ -36,14 +36,14 @@ getStimGates <- function(
   
   purrr::map_df(pop, function(popCurr) {
     chnlVec <- if (!is.null(marker)) {
-      markerLab <- stimgate_meta_read_marker_lab(pathProject)
+      markerLab <- stimgateMetReadMarkerLab(pathProject)
       markerLab[marker] |> stats::setNames(NULL)
     } else {
       chnl %|c|% .gateGetChnl(pathProject, popCurr)
     }
     
     purrr::map_df(chnlVec, function(chnlCurr) {
-      markerCurr <- stimgate_meta_read_chnl_lab(pathProject)[chnlCurr] |>
+      markerCurr <- stimgateMetReadChnlLab(pathProject)[chnlCurr] |>
         stats::setNames(NULL)
         
       .gatesGetPathAll(
@@ -68,18 +68,18 @@ getStimGates <- function(
     return(character(0))
   }
   dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
-  popVec <- unique(sub("^pop_(.*)$", "\\1", dirVec))
+  popVec <- unique(sub("^pop(.*)$", "\\1", dirVec))
   popVec
 }
 
 #' @keywords internal
 .gateGetChnl <- function(pathProject, pop) {
-  pathDir <- file.path(pathProject, "gates", paste0("pop_", pop))
+  pathDir <- file.path(pathProject, "gates", paste0("pop", pop))
   if (!dir.exists(pathDir)) {
     return(character(0))
   }
   dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
-  chnlVec <- unique(sub("^chnl_(.*)$", "\\1", dirVec))
+  chnlVec <- unique(sub("^chnl(.*)$", "\\1", dirVec))
   chnlVec
 }
 
@@ -88,8 +88,8 @@ getStimGates <- function(
   file.path(
     pathProject,
     "gates",
-    paste0("pop_", pop),
-    paste0("chnl_", chnlCut),
+    paste0("pop", pop),
+    paste0("chnl", chnlCut),
     "all",
     if (init) "gateTblInit.rds" else "gateTbl.rds"
   )

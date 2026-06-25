@@ -20,7 +20,7 @@ test_that("stimgate_gate_get returns gate table after stimgate_gate", {
     .data = gs,
     pathProject = pathProject,
     popGate = "root",
-    batch_list = exampleData$batch_list,
+    batchList = exampleData$batchList,
     marker = exampleData$marker
   ))
 

@@ -315,7 +315,7 @@ stimgate_debug_print <- function() {
   name <- gsub("\\.rds(\\.rds)*$", ".rds", name, ignore.case = TRUE)
   pathSave <- file.path(
     pathProject,
-    "intermediate_data",
+    "intermediateData",
     stage,
     "ind",
     paste0(as.character(ind), collapse = "_"),

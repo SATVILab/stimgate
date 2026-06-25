@@ -44,10 +44,10 @@
 
   # get cyt+ gates for each of the different gate types
   gnVec <- unique(gateTbl$gateName)
-  if (any(grepl("_clust$", gnVec))) {
-    gnVec <- gnVec[grepl("_clust$", gnVec)]
-  } else if (any(grepl("_adj$", gnVec))) {
-    gnVec <- gnVec[grepl("_adj$", gnVec)]
+  if (any(grepl("Clust$", gnVec))) {
+    gnVec <- gnVec[grepl("Clust$", gnVec)]
+  } else if (any(grepl("Adj$", gnVec))) {
+    gnVec <- gnVec[grepl("Adj$", gnVec)]
   }
 
   purrr::map_df(gnVec, function(gn) {

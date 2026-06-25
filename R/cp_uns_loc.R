@@ -163,7 +163,7 @@
   )
 
   list(
-    "cpUns" = list("loc" = cp_uns_list),
+    "cpUns" = list("loc" = cpUnsList),
     "pList" = list()
   )
 }
@@ -525,7 +525,7 @@
   gateTblGnInd <- chnlSettings$gateTbl |>
     dplyr::filter(
       ind == exTblStimNoMin$ind[1], # nolint
-      .data$gate_name == .env$chnlSettings$gateNameCurr # nolint
+      .data$gateName == .env$chnlSettings$gateNameCurr # nolint
     )
 
   posIndVecButSinglePosCurr <-
@@ -1015,7 +1015,7 @@
   unsX,
   unsY
 ) {
-  densTblRawStim <- tibble::tibble(x_stim = stimX, y_stim = stimY)
+  densTblRawStim <- tibble::tibble(xStim = stimX, yStim = stimY)
   densTblRawWide <- .getCpUnsLocGetDensRawTabulateUnsInterp(
     .data = densTblRawStim,
     unsX = unsX,
@@ -1032,8 +1032,8 @@
 ) {
   .data |>
     dplyr::mutate(
-      y_uns = purrr::map_dbl(
-        x_stim, # nolint
+      yUns = purrr::map_dbl(
+        xStim, # nolint
         function(marker) .interp(val = marker, x = unsX, y = unsY) # nolint
       )
     )
@@ -1042,8 +1042,8 @@
 #' @keywords internal
 .getCpUnsLocGetDensRawTabulateFormat <- function(.data) {
   .data |>
-    tidyr::pivot_longer(y_stim:y_uns, names_to = "stim", values_to = "dens") |> # nolint
-    dplyr::mutate(stim = ifelse(stim == "y_stim", "yes", "no")) # nolint
+    tidyr::pivot_longer(yStim:yUns, names_to = "stim", values_to = "dens") |> # nolint
+    dplyr::mutate(stim = ifelse(stim == "yStim", "yes", "no")) # nolint
 }
 
 # get probabilities
@@ -1073,17 +1073,17 @@
 .getCpUnsLocGetProbTblInit <- function(densTblRaw, cpMin) {
   densTblRaw |>
     tidyr::pivot_wider(
-      id_cols = x_stim,
+      id_cols = xStim,
       names_from = stim,
       values_from = dens # nolint
     ) |>
     dplyr::mutate(
-      prob_stim = 1 - no / yes, # nolint
-      prob_stim = ifelse(yes == 0 & no == 0, 0, prob_stim), # nolint
-      prob_stim_norm = pmin(1, prob_stim), # nolint
-      prob_stim_norm = pmax(0, prob_stim_norm) # nolint
+      probStim = 1 - no / yes, # nolint
+      probStim = ifelse(yes == 0 & no == 0, 0, probStim), # nolint
+      probStimNorm = pmin(1, probStim), # nolint
+      probStimNorm = pmax(0, probStimNorm) # nolint
     ) |>
-    dplyr::filter(x_stim > cpMin)
+    dplyr::filter(xStim > cpMin)
 }
 
 #' @keywords internal
@@ -1113,20 +1113,20 @@
     dplyr::pull("x") # nolint
   peak <- max(peakStim, peakUns)
 
-  windowWidth <- 0.15 * diff(quantile(probTbl$x_stim, c(0.05, 0.5)))
+  windowWidth <- 0.15 * diff(quantile(probTbl$xStim, c(0.05, 0.5)))
 
   probTbl <- probTbl |>
-    dplyr::filter(x_stim > peak + windowWidth) # nolint
+    dplyr::filter(xStim > peak + windowWidth) # nolint
 
   probTbl |>
     dplyr::filter(
-      cumsum(prob_stim_norm >= 0.025) > 0
+      cumsum(probStimNorm >= 0.025) > 0
     )
 
   probTbl <- probTbl |>
     dplyr::mutate(
-      minorResponseInd = prob_stim_norm >= 0.025,
-      moderateResponseInd = prob_stim_norm >= 0.075,
+      minorResponseInd = probStimNorm >= 0.025,
+      moderateResponseInd = probStimNorm >= 0.075,
       nRemaining = dplyr::n() - seq_len(dplyr::n()) + 1
     )
   probTbl |>
@@ -1134,8 +1134,8 @@
       cumsum(minorResponseInd) > 0 # nolint
     ) |>
     dplyr::mutate(
-      probLargerCount = purrr::map_int(x_stim, function(x) {
-        sum(probTbl$moderateResponseInd[probTbl$x_stim >= x])
+      probLargerCount = purrr::map_int(xStim, function(x) {
+        sum(probTbl$moderateResponseInd[probTbl$xStim >= x])
       }),
       probLargerProp = probLargerCount / nRemaining # nolint
     ) |>
@@ -1155,7 +1155,7 @@
 
 #' @keywords internal
 .getCpUnsLocGetMinProbX <- function(probTblPos) {
-  min(probTblPos$x_stim)
+  min(probTblPos$xStim)
 }
 
 #' @keywords internal
@@ -1204,8 +1204,8 @@
     ))
   }
   probVec <- approx(
-    x = probTblList$pos$x_stim,
-    y = probTblList$pos$prob_stim_norm,
+    x = probTblList$pos$xStim,
+    y = probTblList$pos$probStimNorm,
     xout = dataMod[[1]],
     method = "linear",
     f = 0.5,
@@ -1213,7 +1213,7 @@
   )$y
 
   dataMod |>
-    dplyr::mutate(prob_smooth = probVec)
+    dplyr::mutate(probSmooth = probVec)
 }
 
 getCpUnsLocGetDataModMargin <- function(
@@ -1248,7 +1248,7 @@ getCpUnsLocGetDataModMargin <- function(
     )
     dataModOut <- .getCpUnsLocGetProbSmoothCheckNCellOut(dataMod)
     .intSaveNm(
-      "prob_smooth_out",
+      "probSmoothOut",
       dataModOut,
       .getInd(dataMod),
       stageChnl,
@@ -1260,7 +1260,7 @@ getCpUnsLocGetDataModMargin <- function(
   predVec <- .getCpUnsLocGetProbSmoothActual(dataMod, stage)
   dataModOut <- dataMod |> dplyr::mutate(pred = predVec)
   .intSaveNm(
-    "prob_smooth_out",
+    "probSmoothOut",
     dataModOut,
     .getInd(dataMod),
     stageChnl,
@@ -1277,7 +1277,7 @@ getCpUnsLocGetDataModMargin <- function(
 #' @keywords internal
 .getCpUnsLocGetProbSmoothCheckNCellOut <- function(dataMod) {
   if (is.data.frame(dataMod)) {
-    dataMod |> dplyr::mutate(pred = prob_smooth - 1e-4) # nolint
+    dataMod |> dplyr::mutate(pred = probSmooth - 1e-4) # nolint
   } else {
     dataMod
   }
@@ -1299,15 +1299,15 @@ getCpUnsLocGetDataModMargin <- function(
   try(
     {
       fml <- as.formula(paste0(
-        "prob_smooth ~ s(x_stim), bs = 'mpi')"
+        "probSmooth ~ s(xStim), bs = 'mpi')"
       ))
       scam::scam(
         fml, # nolint
         family = "binomial",
         .data = dataMod |>
           dplyr::mutate(
-            prob_smooth = pmin(prob_smooth, 0.999),
-            prob_smooth = pmax(prob_smooth, 0.001)
+            probSmooth = pmin(probSmooth, 0.999),
+            probSmooth = pmax(probSmooth, 0.001)
           ),
         control = scam::scam.control(
           print.warn = FALSE,
@@ -1363,7 +1363,7 @@ getCpUnsLocGetDataModMargin <- function(
   dataMod
 ) {
   predVec <- predict(fit, type = "response")
-  meanAbsError <- mean(abs(predVec - dataMod$prob_smooth))
+  meanAbsError <- mean(abs(predVec - dataMod$probSmooth))
   list("pred" = predVec, "meanAbsError" = meanAbsError)
 }
 
@@ -1391,7 +1391,7 @@ getCpUnsLocGetDataModMargin <- function(
   try(
     {
       fml <- as.formula(paste0(
-        "prob_smooth ~ s(x_stim), bs = 'micv')"
+        "probSmooth ~ s(xStim), bs = 'micv')"
       ))
       scam::scam(
         fml,
@@ -1411,7 +1411,7 @@ getCpUnsLocGetDataModMargin <- function(
 #' @keywords internal
 .getCpUnsLocGetProbSmoothActualThird <- function(dataMod, stage) {
   .debug("Failed to smooth") # nolint
-  dataMod$prob_smooth - 0.0001
+  dataMod$probSmooth - 0.0001
 }
 
 
@@ -1485,15 +1485,15 @@ getCpUnsLocGetDataModMargin <- function(
 #' @keywords internal
 .getCpUnsLocGetCpDataThresholdCount <- function(dataMod) {
   if (nrow(dataMod) == 1L) {
-    minVal <- min(.getCut(data_mod)) - 1
+    minVal <- min(.getCut(dataMod)) - 1
   } else {
-    minVal <- min(.getCut(data_mod))
+    minVal <- min(.getCut(dataMod))
   }
   dataMod <- dataMod[.getCut(dataMod) > minVal, ]
   dataMod <- dataMod[order(.getCut(dataMod)), ]
   dataMod |>
     dplyr::mutate(nRow = seq_len(dplyr::n())) |>
-    dplyr::filter(cumsum(pred > prob_smooth) != nRow) |> # nolint
+    dplyr::filter(cumsum(pred > probSmooth) != nRow) |> # nolint
     dplyr::select(-nRow)
 }
 
@@ -1514,7 +1514,7 @@ getCpUnsLocGetDataModMargin <- function(
   exTblUnsOrig,
   bias
 ) {
-  dataCount <- dataCount[order(.getCut(data_count)), ]
+  dataCount <- dataCount[order(.getCut(dataCount)), ]
   propStimVec <- purrr::map_dbl(.getCut(dataCount), function(x) {
     sum(.getCut(exTblStimOrig) >= x) / nrow(exTblStimOrig)
   })
@@ -1652,7 +1652,7 @@ getCpUnsLocGetDataModMargin <- function(
       stageChnl,
       pathProject
     )
-    cpVec <- c(cpVec, stats::setNames(mean(cpVec, na.rm = TRUE), ind_uns))
+    cpVec <- c(cpVec, stats::setNames(mean(cpVec, na.rm = TRUE), indUns))
   } else {
     .intSaveNm(
       "addNaForUnsCp",

@@ -32,13 +32,13 @@ getStimExpr(
 from. Default is NULL.}
 
 \item{pop}{character or NULL Population name(s). Default is detected from
-project sample_data.}
+project sampleData.}
 
 \item{ind}{character or NULL Index/indices of samples. Default is detected
-from project sample_data.}
+from project sampleData.}
 
 \item{chnl}{character or NULL Channel name(s) to return. Default is
-detected from project sample_data.}
+detected from project sampleData.}
 
 \item{marker}{character or NULL Marker name(s) to return. Cannot be
 specified with \code{chnl}. Default is NULL.}
@@ -85,22 +85,22 @@ channel. Rows correspond to cells.
 }
 \description{
 Read channel expression vectors saved under a project's
-sample_data directory and return them as a tibble with sample metadata
+sampleData directory and return them as a tibble with sample metadata
 columns.
 }
 \examples{
 \dontrun{
 tmp <- tempdir()
-dir.create(file.path(tmp, "sample_data", "POP1", "ind_1"),
+dir.create(file.path(tmp, "sampleData", "POP1", "ind_1"),
   recursive = TRUE
 )
 saveRDS(
   c(1, 2, 3),
-  file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC1.rds")
+  file.path(tmp, "sampleData", "POP1", "ind_1", "chnl_BC1.rds")
 )
 saveRDS(
   c(4, 5, 6),
-  file.path(tmp, "sample_data", "POP1", "ind_1", "chnl_BC2.rds")
+  file.path(tmp, "sampleData", "POP1", "ind_1", "chnl_BC2.rds")
 )
 getStimExpr(tmp)
 getStimExpr(tmp, chnl = "BC1")

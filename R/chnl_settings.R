@@ -385,7 +385,7 @@
 }
 
 #' @title Read marker settings from project
-#' @description Read the saved marker settings list from the project's meta_data folder.
+#' @description Read the saved marker settings list from the project's metaData folder.
 #' @param pathProject character Path to project.
 #' @return A named list of marker settings (as saved by .completeChnlSettingsSave()).
 #' @examples
@@ -399,7 +399,7 @@
 stimgateMetaReadSettingsChnls <- function(pathProject) {
   pathChnlList <- file.path(pathProject, "metaData", "chnlSettings.rds")
   if (!file.exists(pathChnlList)) {
-    stop("Channel list file not found in project meta_data folder")
+    stop("Channel list file not found in project metaData folder")
   }
   readRDS(pathChnlList)
 }
@@ -473,7 +473,7 @@ stimgateMetaReadSettingsMarker <- function(pathProject, marker) {
 
 #' @rdname stimgateMetaReadLab
 #' @title Read channel or marker label mapping
-#' @description Read the saved channel label mapping (chnl_lab.rds) from the project's meta_data folder.
+#' @description Read the saved channel label mapping (chnlLab.rds) from the project's metaData folder.
 #' @param pathProject character Path to project.
 #' @return Named character vector mapping channel names to labels.
 #' @examples
@@ -487,7 +487,7 @@ stimgateMetaReadSettingsMarker <- function(pathProject, marker) {
 stimgateMetaReadChnlLab <- function(pathProject) {
   pathChnlLab <- file.path(pathProject, "metaData", "chnlLab.rds")
   if (!file.exists(pathChnlLab)) {
-    stop("Channel label file not found in project meta_data folder")
+    stop("Channel label file not found in project metaData folder")
   }
   readRDS(pathChnlLab)
 }
@@ -527,7 +527,7 @@ stimgateMetaReadMarkerLab <- function(pathProject) {
 }
 
 #' @title Read batch list from project
-#' @description Read the saved batchList object from the project's meta_data folder.
+#' @description Read the saved batchList object from the project's metaData folder.
 #' @param pathProject character Path to project.
 #' @return A list describing sample grouping into batches (as saved by .saveMetaDataBatchList()).
 #' @examples
@@ -541,7 +541,7 @@ stimgateMetaReadMarkerLab <- function(pathProject) {
 stimgateMetaReadBatchList <- function(pathProject) {
   pathBatchList <- file.path(pathProject, "metaData", "batchList.rds")
   if (!file.exists(pathBatchList)) {
-    stop("Batch list file not found in project meta_data folder")
+    stop("Batch list file not found in project metaData folder")
   }
   readRDS(pathBatchList)
 }
