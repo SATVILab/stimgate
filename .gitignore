@@ -27,3 +27,5 @@ AGENTS.md
 CHANGES_SUMMARY.md
 # End of projr section
 
+_tmp/log/sbatch/projr_build_output
+
