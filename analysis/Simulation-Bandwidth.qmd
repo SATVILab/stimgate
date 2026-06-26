@@ -441,14 +441,14 @@ Generate the grid of parameters to simulate.
 ```{r}
 # 2. Flatten your nested loops into a single combination grid
 sim_grid <- expand_grid(
-  transformation = "gaussian",
+  transformation = transformation_vec,
   prob_response  = prob_response_vec,
   n_cell         = n_cell_stim_vec,
   mean_pos       = mean_pos_vec,
   bw             = bandwidth_value_vec
 ) |>
   dplyr::filter(
-    !(n_cell * prob_response < 5 | prob_response > 0.04)
+    !(n_cell * prob_response < 5 & prob_response < 0.04)
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
@@ -672,14 +672,14 @@ Get the parameters over which we simulate.
 
 ```{r}
 sim_grid <- expand_grid(
-  transformation = "gaussian",
+  transformation = transformation_vec,
   prob_response  = prob_response_vec,
   n_cell         = n_cell_stim_vec,
   mean_pos       = mean_pos_vec,
   bw_mtd         = bandwidth_method_vec
 ) |>
   dplyr::filter(
-    !(n_cell * prob_response < 5 | prob_response > 0.04)
+    !(n_cell * prob_response < 5 & prob_response < 0.04)
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
@@ -702,6 +702,9 @@ for (i in seq_len(nrow(sim_grid))) {
     nIter = 10,
     biasUns = 0.05,
     bwMtd = sim_grid$bw_mtd[i],
+    bwMin = 1e-10,
+    bwMax = 1e10,
+    bwCluster = 0.5,
     nCellStim = sim_grid$n_cell[i],
     probResponse = sim_grid$prob_response[i],
     probExact = TRUE,
