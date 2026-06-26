@@ -204,7 +204,9 @@ simCytSample <- function(
     conditionPerturbationSd,
     clusterPerturbationSd,
     meanExprMat,
-    clusterLabelVec
+    clusterLabelVec,
+    covEvMin,
+    covEvMax
   )
 
   # Begin Simulation Logic
@@ -514,7 +516,9 @@ validateSampleInputs <- function(
   conditionPerturbationSd,
   clusterPerturbationSd,
   meanExprMat,
-  clusterLabelVec
+  clusterLabelVec,
+  covEvMin,
+  covEvMax
 ) {
   stopifnot(is.integer(nCondition))
   stopifnot(is.integer(nMarker))
