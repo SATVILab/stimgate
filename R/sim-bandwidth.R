@@ -1,4 +1,4 @@
-.simBandwidth <- function(
+.simBandwidthBsFreq <- function(
   nSample,
   nMarker,
   nCondition,
@@ -67,7 +67,7 @@
     pathProject <- file.path(
       tempdir(),
       "stimgate",
-      "sim-bandwidth",
+      "sim-bw",
       paste0("iter-", iterNum, "-", format(Sys.time(), "%Y%m%d%H%M%S"))
     )
     on.exit({
@@ -194,6 +194,144 @@
         by = c("sample", "chnl")
       )
     comparisonTbl |>
+      dplyr::mutate(
+        iter = iterNum
+      ) |>
+      dplyr::select(iter, chnl, dplyr::everything())
+  })
+}
+
+.simBandwidthEstBw <- function(
+  nSample,
+  nMarker,
+  nCondition,
+  nCluster,
+  nIter,
+  biasUns,
+  bw = NULL,
+  bwMtd = "hpi1",
+  bwMin = NULL,
+  bwMax = NULL,
+  bwAdj = 1,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL,
+  bwCluster = NULL,
+  probExact = FALSE,
+  nCellStim,
+  probResponse,
+  meanPos,
+  transformation,
+  samplePerturbationSd,
+  conditionPerturbationSd,
+  clusterPerturbationSd,
+  backgroundRelativeToResponse,
+  ncellUnsRelativeToStim,
+  covEvMin = 1,
+  covEvMax = 2,
+  tolClust = 1e-7
+) {
+  purrr::map_df(seq_len(nIter), function(iterNum) {
+    nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
+    nCellByCondition <- c(nCellUns, nCellStim)
+    transformationFunc <- .simMiscGetTrans(transformation)
+    meanExprMat <- matrix(
+      c(0, meanPos),
+      byrow = TRUE,
+      ncol = 1
+    )
+    clusterLabelVec <- c("gn", "gp")
+    probResponseUns <- probResponse * backgroundRelativeToResponse
+    probVecUns <- c(1 - probResponseUns, probResponseUns)
+    probResponseVecByStimCondition <- list(c(-probResponse, probResponse))
+
+    outListExperiment <- simCytExperiment(
+      nSample = nSample,
+      nMarker = nMarker,
+      nCondition = nCondition,
+      nCluster = nCluster,
+      nCellByCondition = nCellByCondition,
+      transformationFunc = transformationFunc,
+      mixtureType = "gaussianOnly",
+      meanExprMat = meanExprMat,
+      clusterLabelVec = clusterLabelVec,
+      probVecUns = probVecUns,
+      probExact = probExact,
+      probResponseVecByStimCondition = probResponseVecByStimCondition,
+      conditionPerturbationSd = conditionPerturbationSd,
+      clusterPerturbationSd = clusterPerturbationSd,
+      samplePerturbationSd = samplePerturbationSd,
+      covEvMin = covEvMin,
+      covEvMax = covEvMax
+    )
+
+    fs <- as(outListExperiment[["flowFrameList"]], "flowSet") # Fixed case
+    gs <- flowWorkspace::GatingSet(fs)
+    labelsList <- outListExperiment[["labelsList"]] # Fixed case
+
+    pathProject <- file.path(
+      tempdir(),
+      "stimgate",
+      "sim-bw",
+      paste0("iter-", iterNum, "-", format(Sys.time(), "%Y%m%d%H%M%S"))
+    )
+    on.exit({
+      if (dir.exists(pathProject)) {
+        unlink(pathProject, recursive = TRUE)
+      }
+    })
+    if (dir.exists(pathProject)) {
+      unlink(pathProject, recursive = TRUE)
+    }
+    dir.create(pathProject, recursive = TRUE)
+
+    batchList <- lapply(seq(nSample), function(i) {
+      seq((i - 1) * nCondition + 1, i * nCondition)
+    })
+
+    # gate
+    Sys.setenv("STIMGATE_INTERMEDIATE" = "TRUE")
+    invisible(gateStim(
+      .data = gs,
+      pathProject = pathProject,
+      popGate = "root",
+      batchList = batchList,
+      marker = paste0("MarkerF", seq_len(nMarker)),
+      bwMtd = bwMtd,
+      tolClust = tolClust
+    ))
+
+    stopifnot(file.exists(file.path(pathProject, "gateStats.rds")))
+
+    pathDirIntInit <- file.path(pathProject, "intermediateData", "init")
+    chnlVec <- list.dirs(pathDirIntInit, full.names = FALSE, recursive = FALSE)
+    chnl <- chnlVec[[1]]
+    ind <- 2
+
+    bwTbl <- purrr::map_df(chnlVec, function(chnl) {
+      indVecStim <- seq(2, nSample * nCondition, by = 2) |>
+        as.character()
+      purrr::map_df(indVecStim, function(ind) {
+        pathInd <- file.path(pathDirIntInit, chnl, "ind", ind)
+        bwEst <- file.path(pathInd, "bwCpUnsLoc.rds") |>
+          readRDS()
+        if (!is.numeric(bwEst)) {
+          # it's zero if it doesn't inherit anything
+          return(tibble::tibble(
+            sample = as.character(as.numeric(ind) / nCondition),
+            ind = ind,
+            chnl = chnl,
+            bw = bwEst
+          ))
+        }
+
+        tibble::tibble(
+          sample = as.character(as.numeric(ind) / nCondition),
+          ind = ind,
+          chnl = chnl,
+          bw = bwEst
+        )
+      })
+    }) |>
       dplyr::mutate(
         iter = iterNum
       ) |>
