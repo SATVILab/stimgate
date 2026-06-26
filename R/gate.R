@@ -226,14 +226,25 @@ gateStim <- function(
     markerSettings = markerSettings,
     calcCytPosGates = calcCytPosGates,
     calcSinglePosGates = calcSinglePosGates,
+
+    # NEWLY ADDED TO PASS TO VERIFIER:
+    biasUns = biasUns,
+    biasUnsFactor = biasUnsFactor,
+    excMin = excMin,
+    cpMin = cpMin,
+    bw = bw,
+    bwMin = bwMin,
+    bwMax = bwMax,
     bwMtd = bwMtd,
-    gateCombn = gateCombn,
-    gateQuant = gateQuant,
+    bwAdj = bwAdj,
     bwNcellMin = bwNcellMin,
     bwNcellMax = bwNcellMax,
     bwCluster = bwCluster,
     minCell = minCell,
-    tolClust = tolClust
+    maxPosProbX = maxPosProbX,
+    gateQuant = gateQuant,
+    tolClust = tolClust,
+    gateCombn = gateCombn
   )
 
   if (is.null(names(batchList))) {

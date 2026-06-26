@@ -12,6 +12,7 @@
   bwNcellMin = NULL,
   bwNcellMax = NULL,
   bwCluster = NULL,
+  probExact = FALSE,
   nCellStim,
   probResponse,
   meanPos,
@@ -22,9 +23,9 @@
   backgroundRelativeToResponse,
   ncellUnsRelativeToStim,
   covEvMin = 1,
-  covEvMax = 2
+  covEvMax = 2,
+  tolClust = 1e-7
 ) {
-
   purrr::map_df(seq_len(nIter), function(iterNum) {
     nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
     nCellByCondition <- c(nCellUns, nCellStim)
@@ -50,6 +51,7 @@
       meanExprMat = meanExprMat,
       clusterLabelVec = clusterLabelVec,
       probVecUns = probVecUns,
+      probExact = probExact,
       probResponseVecByStimCondition = probResponseVecByStimCondition,
       conditionPerturbationSd = conditionPerturbationSd,
       clusterPerturbationSd = clusterPerturbationSd,
@@ -63,7 +65,9 @@
     labelsList <- outListExperiment[["labelsList"]] # Fixed case
 
     pathProject <- file.path(
-      tempdir(), "stimgate", "sim-bandwidth",
+      tempdir(),
+      "stimgate",
+      "sim-bandwidth",
       paste0("iter-", iterNum, "-", format(Sys.time(), "%Y%m%d%H%M%S"))
     )
     on.exit({
@@ -75,8 +79,7 @@
       unlink(pathProject, recursive = TRUE)
     }
     dir.create(pathProject, recursive = TRUE)
-    
-    # FIXED: Corrected parenthesis and variable name 'nSample'
+
     batchList <- lapply(seq(nSample), function(i) {
       seq((i - 1) * nCondition + 1, i * nCondition)
     })
@@ -89,7 +92,8 @@
       popGate = "root",
       batchList = batchList,
       marker = paste0("MarkerF", seq_len(nMarker)),
-      bw = bw
+      bw = bw,
+      tolClust = tolClust
     ))
 
     stopifnot(file.exists(file.path(pathProject, "gateStats.rds")))
@@ -109,34 +113,47 @@
             F1 = f1p
           )
         })
-      }) |>
-        tidyr::pivot_wider(
-          names_from = stim,
-          values_from = F1
-        ) |>
-        dplyr::mutate(
-          propRespTruth = stim - unstim
-        ) |>
-        dplyr::rename(
-          sample = ind
-        ) |>
-        dplyr::select(
-          all_of(c("chnl", "sample", "propRespTruth"))
-        )
-      
-      # FIXED: Swapped out snake_case to match pathProject and camelCase consistency
-      pathDirIntInit <- file.path(pathProject, "intermediateData", "init")
-      chnlVec <- list.dirs(pathDirIntInit, full.names = FALSE, recursive = FALSE)
-      chnl <- chnlVec[[1]]
-      ind <- 2
+      }
+    ) |>
+      tidyr::pivot_wider(
+        names_from = stim,
+        values_from = F1
+      ) |>
+      dplyr::mutate(
+        propRespTruth = stim - unstim
+      ) |>
+      dplyr::rename(
+        sample = ind
+      ) |>
+      dplyr::select(
+        all_of(c("chnl", "sample", "propRespTruth"))
+      )
 
-    probBsTblEst <- purrr::map_df(chnlVec, function(chnl) {
+    pathDirIntInit <- file.path(pathProject, "intermediateData", "init")
+    chnlVec <- list.dirs(pathDirIntInit, full.names = FALSE, recursive = FALSE)
+    chnl <- chnlVec[[1]]
+    ind <- 2
+
+    propBsTblEst <- purrr::map_df(chnlVec, function(chnl) {
       indVecStim <- seq(2, nSample * nCondition, by = 2) |>
         as.character()
       purrr::map_df(indVecStim, function(ind) {
         pathInd <- file.path(pathDirIntInit, chnl, "ind", ind)
         probSmooth <- file.path(pathInd, "dataMod.rds") |>
           readRDS()
+        if (!inherits(probSmooth, "data.frame")) {
+          # it's zero if it doesn't inherit anything
+          return(tibble::tibble(
+            sample = as.character(as.numeric(ind) / nCondition),
+            ind = ind,
+            chnl = chnl,
+            ncellCondition = nCellStim,
+            ncellRespSmooth = 0,
+            ncellRespPred = 0,
+            propRespSmooth = 0,
+            propRespPred = 0
+          ))
+        }
         ncellRespSmooth <- if (nrow(probSmooth) > 0L) {
           sum(probSmooth$probSmooth)
         } else {
@@ -168,12 +185,12 @@
       tidyr::pivot_longer(
         cols = c(propRespSmooth, propRespPred),
         names_to = "method",
-        values_to = "propResp"
+        values_to = "propRespEst"
       )
-    
-    comparisonTbl <- probBsTblTruth |>
+
+    comparisonTbl <- propBsTblTruth |>
       dplyr::left_join(
-        probBsTblEst,
+        propBsTblEst,
         by = c("sample", "chnl")
       )
     comparisonTbl |>

@@ -1202,14 +1202,26 @@
       msg = "No responding cells" # nolint
     ))
   }
-  probVec <- approx(
-    x = probTblList$pos$xStim,
-    y = probTblList$pos$probStimNorm,
-    xout = dataMod[[1]],
-    method = "linear",
-    f = 0.5,
-    rule = 2
-  )$y
+  probVec <- try(
+    approx(
+      x = probTblList$pos$xStim,
+      y = probTblList$pos$probStimNorm,
+      xout = dataMod[[1]],
+      method = "linear",
+      f = 0.5,
+      rule = 2
+    )$y,
+    silent = TRUE
+  )
+  if (inherits(probVec, "try-error")) {
+    return(.getCpUnsLocIndCheckOut(
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias,
+      stage = stage,
+      msg = "No responding cells" # nolint
+    ))
+  }
 
   dataMod |>
     dplyr::mutate(probSmooth = probVec)

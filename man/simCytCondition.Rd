@@ -12,6 +12,7 @@ simCytCondition(
   meanExprMat = NA,
   clusterLabelVec = NA,
   probVec,
+  probExact = FALSE,
   clusterPerturbationSd = 0,
   covEvMin = 1,
   covEvMax = 2
@@ -28,7 +29,10 @@ simCytCondition(
 
 \item{meanExprMat}{Numeric matrix. Cluster mean vectors.}
 
-\item{probVec}{Numeric vector. Probability of sampling from each cluster.}
+\item{probVec}{Character vector. Cluster labels.}
+
+\item{probExact}{Logical. If TRUE, use exact probabilities for cluster assignment; if FALSE, sample from a multinomial distribution.
+Default is \code{FALSE}.}
 
 \item{clusterPerturbationSd}{Numeric. Cluster-level perturbation SD.}
 }

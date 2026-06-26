@@ -22,6 +22,7 @@
 #' @param clusterLabelVec Character vector. Cluster labels of length `nCluster`.
 #' @param probVecUns Numeric vector. Baseline cluster probabilities for the
 #'   unstimulated condition. Must have length `nCluster` and sum to 1.
+#' @param probExact Logical. If TRUE, use exact probabilities for cluster assignment; if FALSE, sample from a multinomial distribution. Default is `FALSE`.
 #' @param probResponseVecByStimCondition NULL or list. If provided, must be a list
 #'   of length `nCondition - 1`, where each element is a numeric vector of
 #'   length `nCluster`. Each vector is added to `probVecUns` to construct the
@@ -50,6 +51,7 @@ simCytExperiment <- function(
   meanExprMat = NA,
   clusterLabelVec = NA,
   probVecUns,
+  probExact = FALSE,
   probResponseVecByStimCondition = NULL,
   samplePerturbationSd = 0,
   conditionPerturbationSd = 0,
@@ -121,6 +123,7 @@ simCytExperiment <- function(
       meanExprMat = meanExprMatCurrent,
       clusterLabelVec = clusterLabelVec,
       probVecUns = probVecUns,
+      probExact = probExact,
       probResponseVecByStimCondition = probResponseVecByStimCondition,
       conditionPerturbationSd = conditionPerturbationSd,
       clusterPerturbationSd = clusterPerturbationSd,
@@ -163,6 +166,8 @@ simCytExperiment <- function(
 #' @param clusterLabelVec Character vector. Labels for each cluster (length nCluster).
 #' @param probVecUns Numeric vector. Probability distribution for unstimulated condition
 #'   (length nCluster, sums to 1).
+#' @param probExact Logical. If TRUE, use exact probabilities for cluster assignment; if FALSE, sample from a multinomial distribution.
+#' Default is `FALSE`.
 #' @param probResponseVecByStimCondition List. Probability response vectors for each stimulated
 #'   condition (length nCondition - 1, each of length nCluster).
 #' @param conditionPerturbationSd Numeric. Standard deviation of condition-level perturbations
@@ -186,6 +191,7 @@ simCytSample <- function(
   meanExprMat = NA,
   clusterLabelVec = NA,
   probVecUns,
+  probExact,
   probResponseVecByStimCondition = NULL,
   conditionPerturbationSd = 0,
   clusterPerturbationSd = 0,
@@ -201,6 +207,7 @@ simCytSample <- function(
     transformationFunc,
     probResponseVecByStimCondition,
     probVecUns,
+    probExact,
     conditionPerturbationSd,
     clusterPerturbationSd,
     meanExprMat,
@@ -254,6 +261,7 @@ simCytSample <- function(
       meanExprMat = meanExprMat,
       clusterLabelVec = clusterLabelVec,
       probVec = probVecByCondition[[i]],
+      probExact = probExact,
       clusterPerturbationSd = clusterPerturbationSd,
       covEvMin = covEvMin,
       covEvMax = covEvMax
@@ -308,7 +316,8 @@ simCytSample <- function(
 #' @param mixtureType Character. Type of mixture distribution.
 #' @param meanExprMat Numeric matrix. Cluster mean vectors.
 #' @param probVec Character vector. Cluster labels.
-#' @param probVec Numeric vector. Probability of sampling from each cluster.
+#' @param probExact Logical. If TRUE, use exact probabilities for cluster assignment; if FALSE, sample from a multinomial distribution.
+#' Default is `FALSE`.
 #' @param clusterPerturbationSd Numeric. Cluster-level perturbation SD.
 #'
 #' @return A list with `conditionMatrix` and `conditionLabels`.
@@ -322,13 +331,34 @@ simCytCondition <- function(
   meanExprMat = NA,
   clusterLabelVec = NA,
   probVec,
+  probExact = FALSE,
   clusterPerturbationSd = 0,
   covEvMin = 1,
   covEvMax = 2
 ) {
   numClusters <- nrow(meanExprMat)
 
-  nCellVec <- as.vector(t(stats::rmultinom(1, nCell, probVec)))
+  nCellVec <- if (probExact) {
+    initAllocVec <- round(nCell * probVec)
+    nAlloc <- sum(initAllocVec)
+    if (nAlloc != nCell) {
+      diffAlloc <- nCell - nAlloc
+      if (diffAlloc > 0) {
+        probOrder <- order(probVec, decreasing = TRUE)
+        for (i in seq_len(diffAlloc)) {
+          initAllocVec[probOrder[i]] <- initAllocVec[probOrder[i]] + 1
+        }
+      } else {
+        probOrder <- order(probVec, decreasing = FALSE)
+        for (i in seq_len(-diffAlloc)) {
+          initAllocVec[probOrder[i]] <- initAllocVec[probOrder[i]] - 1
+        }
+      }
+    }
+    initAllocVec
+  } else {
+    as.vector(t(stats::rmultinom(1, nCell, probVec)))
+  }
   nCellVecCum <- cumsum(nCellVec)
 
   nCellVecObserved <- nCellVec[nCellVec > 0L]
@@ -513,6 +543,7 @@ validateSampleInputs <- function(
   transformationFunc,
   probResponseVecByStimCondition,
   probVecUns,
+  probExact,
   conditionPerturbationSd,
   clusterPerturbationSd,
   meanExprMat,
@@ -520,6 +551,7 @@ validateSampleInputs <- function(
   covEvMin,
   covEvMax
 ) {
+  stopifnot(is.logical(probExact))
   stopifnot(is.integer(nCondition))
   stopifnot(is.integer(nMarker))
   stopifnot(nCondition > 1L)

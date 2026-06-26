@@ -14,6 +14,7 @@ simCytSample(
   meanExprMat = NA,
   clusterLabelVec = NA,
   probVecUns,
+  probExact,
   probResponseVecByStimCondition = NULL,
   conditionPerturbationSd = 0,
   clusterPerturbationSd = 0,
@@ -43,6 +44,9 @@ gamma transformation).}
 
 \item{probVecUns}{Numeric vector. Probability distribution for unstimulated condition
 (length nCluster, sums to 1).}
+
+\item{probExact}{Logical. If TRUE, use exact probabilities for cluster assignment; if FALSE, sample from a multinomial distribution.
+Default is \code{FALSE}.}
 
 \item{probResponseVecByStimCondition}{List. Probability response vectors for each stimulated
 condition (length nCondition - 1, each of length nCluster).}
