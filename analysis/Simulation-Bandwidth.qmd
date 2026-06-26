@@ -7,6 +7,7 @@ format:
 ---
 
 ```{r}
+#| label: setup
 #| include: false
 library(ggplot2)
 library(tibble)
@@ -38,6 +39,7 @@ if (
 
 ```{r}
 #| eval: false
+#| label: check-transformations
 
 mean_vec <- c(0, 8)
 plot_tbl <- purrr::map_df(mean_vec, function(mean_curr) {
@@ -57,6 +59,7 @@ ggplot(plot_tbl, aes(x = sim, col = trans)) +
 
 ```{r}
 #| eval: false
+#| label: check-simulations
 # debugonce(simCytCondition)
 for (trans in c("gaussian", "gamma", "skew")) {
   trans_func <- switch(
@@ -127,6 +130,7 @@ for (trans in c("gaussian", "gamma", "skew")) {
 
 ```{r}
 #| eval: false
+#| label: check-sample
 for (trans in c("gaussian", "gamma", "skew")) {
   trans_func <- switch(
     trans,
@@ -207,6 +211,7 @@ for (trans in c("gaussian", "gamma", "skew")) {
 
 ```{r}
 #| eval: false
+#| label: check-experiment
 for (trans in c("gaussian", "gamma", "skew")) {
   trans_func <- switch(
     trans,
@@ -294,6 +299,7 @@ for (trans in c("gaussian", "gamma", "skew")) {
 
 ```{r}
 #| eval: false
+#| label: check-bs-freqs
 # test indices
 std_check <- FALSE
 if (std_check) {
@@ -338,6 +344,7 @@ sim_res <- .simBandwidthBsFreq(
 
 ```{r}
 #| eval: false
+#| label: check-bandwidths
 # test indices
 std_check <- TRUE
 if (std_check) {
@@ -381,6 +388,7 @@ sim_res <- .simBandwidthEstBw(
 ## Actual
 
 ```{r}
+#| label: actual-settings
 # simulation settings
 n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)[c(1, 3, 5, 7)]
 prob_response_vec <- c(
@@ -439,6 +447,7 @@ And we'll do this for varying numbers of cells.
 Generate the grid of parameters to simulate.
 
 ```{r}
+#| label: bw-manual-grid
 # 2. Flatten your nested loops into a single combination grid
 sim_grid <- expand_grid(
   transformation = transformation_vec,
@@ -461,6 +470,7 @@ sim_grid <- sim_grid |>
 A loop we only run when we want to see why particular runs failed.
 
 ```{r}
+#| label: bw-manual-loop
 #| eval: false
 for (i in seq_len(nrow(sim_grid))) {
   sim_res <- stimgate:::.simBandwidthBsFreq(
@@ -502,6 +512,7 @@ for (i in seq_len(nrow(sim_grid))) {
 Run the simulations in parallel, with progress reporting.
 
 ```{r}
+#| label: bw-manual-parallel
 # Activate global progress bars in your console
 if (interactive()) {
   handlers(global = TRUE)
@@ -615,6 +626,7 @@ saveRDS(
 Collate the results and calculate the metrics of interest.
 
 ```{r}
+#| label: bw-manual-collate
 #| error: true
 bw_list_raw <- readRDS(
   file = projr::projr_path_get(
@@ -644,6 +656,7 @@ bw_tbl |>
 ```
 
 ```{r}
+#| label: bw-manual-collate-1
 #| error: true
 bw_1 <- bw_list_raw[[1]] |>
   dplyr::filter(
@@ -674,6 +687,7 @@ bw_1 |>
 Get the parameters over which we simulate.
 
 ```{r}
+#| label: bw-estimate-grid
 sim_grid <- expand_grid(
   transformation = transformation_vec,
   prob_response  = prob_response_vec,
@@ -695,6 +709,7 @@ sim_grid <- sim_grid |>
 A loop we only run when we want to see why particular runs failed.
 
 ```{r}
+#| label: bw-estimate-loop
 #| eval: false
 for (i in seq_len(nrow(sim_grid))) {
   sim_res <- stimgate:::.simBandwidthEstBw(
@@ -739,6 +754,7 @@ for (i in seq_len(nrow(sim_grid))) {
 Run the simulations in parallel, with progress reporting.
 
 ```{r}
+#| label: bw-estimate-parallel
 if (interactive()) {
   handlers(global = TRUE)
 }
@@ -876,6 +892,7 @@ saveRDS(
 Collate the results.
 
 ```{r}
+#| label: bw-estimate-collate
 bw_list_raw_mtd <- readRDS(
   file = projr::projr_path_get(
     "cache",
