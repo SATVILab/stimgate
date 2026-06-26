@@ -15,6 +15,7 @@ simCytExperiment(
   meanExprMat = NA,
   clusterLabelVec = NA,
   probVecUns,
+  probExact = FALSE,
   probResponseVecByStimCondition = NULL,
   samplePerturbationSd = 0,
   conditionPerturbationSd = 0,
@@ -49,6 +50,8 @@ Supported values are "gaussianOnly", "tOnly", and "tPlusGauss".}
 
 \item{probVecUns}{Numeric vector. Baseline cluster probabilities for the
 unstimulated condition. Must have length \code{nCluster} and sum to 1.}
+
+\item{probExact}{Logical. If TRUE, use exact probabilities for cluster assignment; if FALSE, sample from a multinomial distribution. Default is \code{FALSE}.}
 
 \item{probResponseVecByStimCondition}{NULL or list. If provided, must be a list
 of length \code{nCondition - 1}, where each element is a numeric vector of
