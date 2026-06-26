@@ -503,7 +503,10 @@ Run the simulations in parallel, with progress reporting.
 
 ```{r}
 # Activate global progress bars in your console
-handlers(global = TRUE) 
+if (interactive()) {
+  handlers(global = TRUE)
+}
+
 
 path_progress_file <- projr::projr_path_get(
   "cache", "sim-bw", "init", "progress.txt"
@@ -736,7 +739,9 @@ for (i in seq_len(nrow(sim_grid))) {
 Run the simulations in parallel, with progress reporting.
 
 ```{r}
-handlers(global = TRUE)
+if (interactive()) {
+  handlers(global = TRUE)
+}
 
 path_progress_file <- projr::projr_path_get(
   "cache",
@@ -787,6 +792,9 @@ bw_list_raw_mtd <- with_progress({
             nIter = 10,
             biasUns = 0.05,
             bwMtd = bw_mtd,
+            bwMin = 1e-10,
+            bwMax = 1e10,
+            bwCluster = 0.5,
             nCellStim = n_cell,
             probResponse = prob_response,
             probExact = TRUE,
