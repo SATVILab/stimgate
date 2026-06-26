@@ -12,10 +12,13 @@ validateSampleInputs(
   transformationFunc,
   probResponseVecByStimCondition,
   probVecUns,
+  probExact,
   conditionPerturbationSd,
   clusterPerturbationSd,
   meanExprMat,
-  clusterLabelVec
+  clusterLabelVec,
+  covEvMin,
+  covEvMax
 )
 }
 \description{
