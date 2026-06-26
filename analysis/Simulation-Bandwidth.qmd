@@ -404,6 +404,7 @@ stats_tbl
 This is for when we're varying the bandwidth manually.
 
 ```{r}
+#| eval: false
 # loop parameters
 n_cell_stim <- 1e3
 prob_response <- 0.2
@@ -660,4 +661,78 @@ bias_uns_vec <- seq(0, 2, by = 0.2)
 
 # fix the bandwidth
 bandwidth_value_vec <- c(0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5)
+```
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(purrr)
+library(furrr)
+
+# 1. Set up the parallel backend (uses all available cores minus one)
+plan(multisession, workers = availableCores() - 1)
+
+path_progress_file <- projr::projr_path_get(
+  "cache", "sim-bandwidth", "check", "progress.txt"
+)
+
+# Clear or initialize the progress file
+writeLines("Starting parallel simulations...", path_progress_file)
+
+# 2. Flatten your nested loops into a single combination grid
+sim_grid <- expand_grid(
+  transformation = transformation_vec,
+  prob_response  = prob_response_vec,
+  n_cell         = n_cell_stim_vec,
+  mean_pos       = mean_pos_vec,
+  bw             = bandwidth_value_vec
+)
+
+# 3. Use future_pmap to run the grid rows in parallel
+bw_list_raw <- future_pmap(sim_grid, function(transformation, prob_response, n_cell, mean_pos, bw) {
+  
+  # Safe logging: since multiple workers write at once, construct the line in one go
+  log_msg <- paste0(
+    "Running: trans=", transformation, 
+    " | prob=", prob_response, 
+    " | n_cell=", n_cell, 
+    " | mean=", mean_pos, 
+    " | bw=", bw, "\n"
+  )
+  cat(log_msg, file = path_progress_file, append = TRUE)
+  
+  # Run the simulation
+  out <- tryCatch({
+    .simBandwidth(
+      nSample = 10,
+      nMarker = 1,
+      nCondition = 2,
+      nCluster = 2,
+      nIter = 10,
+      biasUns = 0.05,
+      bw = bw,
+      nCellStim = n_cell,
+      probResponse = prob_response,
+      meanPos = mean_pos,
+      transformation = transformation,
+      samplePerturbationSd = 0,
+      conditionPerturbationSd = 0,
+      clusterPerturbationSd = 0,
+      backgroundRelativeToResponse = 0.2, 
+      ncellUnsRelativeToStim = 1,
+      covEvMin = 2, 
+      covEvMax = 2
+    )
+  }, error = function(e) {
+    # Keep error logging self-contained per worker
+    err_msg <- paste0("Error [bw=", bw, ", n_cell=", n_cell, "]: ", conditionMessage(e), "\n")
+    cat(err_msg, file = path_progress_file, append = TRUE)
+    return(paste0("Error: ", conditionMessage(e)))
+  })
+  
+  return(out)
+}, .options = furrr_options(seed = TRUE)) # Crucial if .simBandwidth uses random numbers
+
+# Close the parallel workers when done
+plan(sequential)
 ```
