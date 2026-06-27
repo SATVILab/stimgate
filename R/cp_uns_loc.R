@@ -676,7 +676,8 @@
     bias = bias,
     cpMin = chnlSettings$cpMin,
     stage = stage,
-    pathProject = pathProject
+    pathProject = pathProject,
+    chnlSettings = chnlSettings
   )
 }
 
@@ -1477,7 +1478,8 @@
   bias,
   cpMin,
   stage,
-  pathProject
+  pathProject,
+  chnlSettings = list()
 ) {
   ind <- .getInd(exTblStimNoMin)
   chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
@@ -1486,6 +1488,36 @@
     .intSaveNm("noDataModDf", NULL, ind, stageChnl, pathProject)
     .intSaveNm("cpInd", dataMod, ind, stageChnl, pathProject)
     return(dataMod)
+  }
+
+  trimObj <- .getCpUnsLocGetCpTrimBeforeThreshold(
+    dataMod = dataMod,
+    exTblStimNoMin = exTblStimNoMin,
+    exTblUnsBias = exTblUnsBias,
+    cpMin = cpMin,
+    stage = stage,
+    chnlSettings = chnlSettings
+  )
+  .intSaveNm("dataModTrimInfo", trimObj$info, ind, stageChnl, pathProject)
+  .intSaveNm("dataModTrim", trimObj$dataMod, ind, stageChnl, pathProject)
+
+  if (!is.null(trimObj$cp)) {
+    cpInd <- trimObj$cp
+    .intSave(ind, stageChnl, pathProject, cpInd)
+    .debug("Completed loc gate for single sample") # nolint
+    return(list("cp" = cpInd, "pList" = .getCpUnsLocPListEmpty()))
+  }
+
+  dataMod <- trimObj$dataMod
+  if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
+    cpInd <- .getCpUnsLocIndCpNonLoc(
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias
+    )
+    .intSave(ind, stageChnl, pathProject, cpInd)
+    .debug("Completed loc gate for single sample") # nolint
+    return(list("cp" = cpInd, "pList" = .getCpUnsLocPListEmpty()))
   }
 
   dataThreshold <- .getCpUnsLocGetCpDataThreshold(
@@ -1507,6 +1539,533 @@
   .intSave(ind, stageChnl, pathProject, cpInd)
   .debug("Completed loc gate for single sample") # nolint
   list("cp" = cpInd, "pList" = .getCpUnsLocPListEmpty())
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimBeforeThreshold <- function(
+  dataMod,
+  exTblStimNoMin,
+  exTblUnsBias,
+  cpMin,
+  stage,
+  chnlSettings
+) {
+  info <- list(
+    applied = FALSE,
+    reason = "not_trimmed"
+  )
+
+  if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
+    info$reason <- "no_data_mod"
+    return(list("dataMod" = dataMod, "cp" = NULL, "info" = info))
+  }
+
+  dataMod <- dataMod[order(.getCut(dataMod)), , drop = FALSE]
+  probCol <- .getCpUnsLocGetCpTrimProbCol(dataMod, chnlSettings)
+  probVec <- .getCpUnsLocGetCpTrimProbVec(dataMod, probCol)
+  maxProb <- suppressWarnings(max(probVec, na.rm = TRUE))
+  minPeakProb <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locMinPeakProb",
+    0.25
+  )
+
+  info$probCol <- probCol
+  info$maxProb <- maxProb
+  info$minPeakProb <- minPeakProb
+
+  if (!is.finite(maxProb) || maxProb < minPeakProb) {
+    info$applied <- TRUE
+    info$reason <- "max_response_probability_below_minimum"
+    return(list(
+      "dataMod" = dataMod[0, , drop = FALSE],
+      "cp" = .getCpUnsLocIndCpNonLoc(
+        cpMin = cpMin,
+        exTblStimNoMin = exTblStimNoMin,
+        exTblUnsBias = exTblUnsBias
+      ),
+      "info" = info
+    ))
+  }
+
+  antiObj <- .getCpUnsLocGetCpTrimAntimode(
+    dataMod = dataMod,
+    exTblStimNoMin = exTblStimNoMin,
+    chnlSettings = chnlSettings,
+    probCol = probCol
+  )
+  dataMod <- antiObj$dataMod
+  info$antimode <- antiObj$info
+
+  if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
+    info$applied <- TRUE
+    info$reason <- "all_cells_removed_by_antimode_trim"
+    return(list(
+      "dataMod" = dataMod,
+      "cp" = .getCpUnsLocIndCpNonLoc(
+        cpMin = cpMin,
+        exTblStimNoMin = exTblStimNoMin,
+        exTblUnsBias = exTblUnsBias
+      ),
+      "info" = info
+    ))
+  }
+
+  flatObj <- .getCpUnsLocGetCpTrimFlatLeft(
+    dataMod = dataMod,
+    exTblStimNoMin = exTblStimNoMin,
+    chnlSettings = chnlSettings,
+    probCol = probCol
+  )
+  dataMod <- flatObj$dataMod
+  info$flatLeft <- flatObj$info
+
+  info$applied <- isTRUE(antiObj$info$applied) ||
+    isTRUE(flatObj$info$applied)
+  if (isTRUE(info$applied)) {
+    info$reason <- "trimmed_before_threshold"
+  }
+
+  if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
+    info$reason <- "all_cells_removed_by_left_flat_trim"
+    return(list(
+      "dataMod" = dataMod,
+      "cp" = .getCpUnsLocIndCpNonLoc(
+        cpMin = cpMin,
+        exTblStimNoMin = exTblStimNoMin,
+        exTblUnsBias = exTblUnsBias
+      ),
+      "info" = info
+    ))
+  }
+
+  list("dataMod" = dataMod, "cp" = NULL, "info" = info)
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimSetting <- function(
+  chnlSettings,
+  nm,
+  default
+) {
+  if (!is.null(chnlSettings) && !is.null(chnlSettings[[nm]])) {
+    return(chnlSettings[[nm]])
+  }
+  default
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimAsFiniteNumeric <- function(x, positive = FALSE) {
+  x <- suppressWarnings(as.numeric(x))
+  x <- x[is.finite(x)]
+  if (isTRUE(positive)) {
+    x <- x[x > 0]
+  }
+  if (length(x) == 0L) {
+    return(NA_real_)
+  }
+  min(x)
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimProbCol <- function(dataMod, chnlSettings) {
+  probCol <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locProbCol",
+    "pred"
+  )
+  if (probCol %in% names(dataMod)) {
+    return(probCol)
+  }
+  if ("pred" %in% names(dataMod)) {
+    return("pred")
+  }
+  "probSmooth"
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimProbVec <- function(dataMod, probCol) {
+  probVec <- dataMod[[probCol]]
+  probVec <- pmin(1, pmax(0, probVec))
+  probVec[!is.finite(probVec)] <- NA_real_
+  probVec
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimAntimode <- function(
+  dataMod,
+  exTblStimNoMin,
+  chnlSettings,
+  probCol
+) {
+  info <- list(
+    applied = FALSE,
+    reason = "not_multimodal"
+  )
+
+  exprVec <- .getCut(exTblStimNoMin)
+  exprVec <- exprVec[is.finite(exprVec)]
+  if (length(exprVec) < 5L || length(unique(exprVec)) < 3L) {
+    info$reason <- "too_few_expression_values"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  dipP <- .getCpUnsLocGetCpTrimDipP(exprVec)
+  dipAlpha <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locDipAlpha",
+    0.2
+  )
+  info$dipP <- dipP
+  info$dipAlpha <- dipAlpha
+
+  if (!is.finite(dipP) || dipP >= dipAlpha) {
+    info$reason <- "dip_test_not_significant"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  densObj <- .getCpUnsLocGetCpTrimDensity(
+    exprVec = exprVec,
+    chnlSettings = chnlSettings
+  )
+  if (is.null(densObj)) {
+    info$reason <- "density_failed"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  minObj <- .getCpUnsLocGetCpTrimAntimodes(
+    densObj = densObj,
+    chnlSettings = chnlSettings
+  )
+  info$bw <- attr(densObj, "bw")
+  info$peakHeight <- minObj$peakHeight
+  info$antimodeHeightFrac <- minObj$heightFrac
+  info$antimodeX <- minObj$antimodeX
+
+  if (length(minObj$antimodeX) == 0L) {
+    info$reason <- "no_deep_antimodes"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  regionObj <- .getCpUnsLocGetCpTrimAntimodeRegions(
+    dataMod = dataMod,
+    antimodeX = minObj$antimodeX,
+    probCol = probCol,
+    chnlSettings = chnlSettings
+  )
+  info <- c(info, regionObj$info)
+  if (!isTRUE(regionObj$info$applied)) {
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  list("dataMod" = regionObj$dataMod, "info" = info)
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimDipP <- function(exprVec) {
+  if (!requireNamespace("diptest", quietly = TRUE)) {
+    return(NA_real_)
+  }
+  dipObj <- try(
+    suppressWarnings(diptest::dip.test(exprVec)),
+    silent = TRUE
+  )
+  if (inherits(dipObj, "try-error")) {
+    return(NA_real_)
+  }
+  dipObj$p.value
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimDensity <- function(exprVec, chnlSettings) {
+  bw <- .getCpUnsLocGetCpTrimDensityBw(
+    exprVec = exprVec,
+    chnlSettings = chnlSettings
+  )
+  densObj <- try(
+    suppressWarnings(stats::density(exprVec, bw = bw, n = 512)),
+    silent = TRUE
+  )
+  if (inherits(densObj, "try-error")) {
+    return(NULL)
+  }
+  attr(densObj, "bw") <- densObj$bw
+  densObj
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimDensityBw <- function(exprVec, chnlSettings) {
+  hpiBw <- try(
+    suppressWarnings(ks::hpi(x = exprVec)),
+    silent = TRUE
+  )
+  hpiBw <- if (inherits(hpiBw, "try-error")) NA_real_ else hpiBw
+  hpiBw <- .getCpUnsLocGetCpTrimAsFiniteNumeric(hpiBw, positive = TRUE)
+
+  preCalcBw <- .getCpUnsLocGetCpTrimAsFiniteNumeric(
+    .getCpUnsLocGetCpTrimSetting(
+      chnlSettings,
+      "bwCluster",
+      NA_real_
+    ),
+    positive = TRUE
+  )
+  if (!is.finite(preCalcBw)) {
+    preCalcBw <- .getCpUnsLocGetCpTrimAsFiniteNumeric(
+      .getCpUnsLocGetCpTrimSetting(
+        chnlSettings,
+        "bw",
+        NA_real_
+      ),
+      positive = TRUE
+    )
+  }
+  if (!is.finite(preCalcBw)) {
+    preCalcBw <- .getCpUnsLocGetCpTrimAsFiniteNumeric(
+      .getCpUnsLocGetCpTrimSetting(
+        chnlSettings,
+        "bwMax",
+        NA_real_
+      ),
+      positive = TRUE
+    )
+  }
+
+  bwVec <- c(hpiBw, preCalcBw / 4)
+  bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
+  if (length(bwVec) == 0L) {
+    return("nrd0")
+  }
+  min(bwVec)
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimAntimodes <- function(densObj, chnlSettings) {
+  y <- densObj$y
+  x <- densObj$x
+  heightFrac <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locAntimodeHeightFrac",
+    1 / 6
+  )
+  peakHeight <- max(y, na.rm = TRUE)
+  if (!is.finite(peakHeight) || length(y) < 3L) {
+    return(list(
+      "antimodeX" = numeric(0),
+      "peakHeight" = peakHeight,
+      "heightFrac" = heightFrac
+    ))
+  }
+
+  idx <- seq.int(2L, length(y) - 1L)
+  minIdx <- idx[y[idx] <= y[idx - 1L] & y[idx] < y[idx + 1L]]
+  minIdx <- minIdx[y[minIdx] < peakHeight * heightFrac]
+
+  list(
+    "antimodeX" = sort(unique(x[minIdx])),
+    "peakHeight" = peakHeight,
+    "heightFrac" = heightFrac
+  )
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimAntimodeRegions <- function(
+  dataMod,
+  antimodeX,
+  probCol,
+  chnlSettings
+) {
+  info <- list(
+    applied = FALSE,
+    reason = "no_low_left_antimode_region"
+  )
+  x <- .getCut(dataMod)
+  probVec <- .getCpUnsLocGetCpTrimProbVec(dataMod, probCol)
+  region <- findInterval(
+    x,
+    c(-Inf, antimodeX, Inf),
+    rightmost.closed = TRUE
+  )
+  regionId <- sort(unique(region))
+  regionMean <- purrr::map_dbl(regionId, function(id) {
+    mean(probVec[region == id], na.rm = TRUE)
+  })
+  regionN <- purrr::map_int(regionId, function(id) sum(region == id))
+  regionXMin <- purrr::map_dbl(regionId, function(id) min(x[region == id]))
+  regionXMax <- purrr::map_dbl(regionId, function(id) max(x[region == id]))
+
+  if (length(regionId) == 0L || all(!is.finite(regionMean))) {
+    info$reason <- "no_regions_with_probability"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  peakRegion <- regionId[which.max(regionMean)]
+  peakRegionProb <- max(regionMean, na.rm = TRUE)
+  lowRel <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locAntimodeLowRel",
+    0.25
+  )
+  lowAbs <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locAntimodeLowAbs",
+    0.15
+  )
+  dropLgl <- regionId < peakRegion &
+    is.finite(regionMean) &
+    (regionMean < peakRegionProb * lowRel | regionMean < lowAbs)
+  dropLgl[is.na(dropLgl)] <- FALSE
+  dropRegion <- regionId[dropLgl]
+
+  regionSummary <- tibble::tibble(
+    region = regionId,
+    meanProb = regionMean,
+    n = regionN,
+    xMin = regionXMin,
+    xMax = regionXMax,
+    drop = regionId %in% dropRegion
+  )
+
+  info$regionSummary <- regionSummary
+  info$peakRegion <- peakRegion
+  info$peakRegionProb <- peakRegionProb
+  info$lowRel <- lowRel
+  info$lowAbs <- lowAbs
+  info$dropRegion <- dropRegion
+
+  if (length(dropRegion) == 0L) {
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  keep <- !region %in% dropRegion
+  info$applied <- TRUE
+  info$reason <- "dropped_low_probability_left_antimode_regions"
+  list("dataMod" = dataMod[keep, , drop = FALSE], "info" = info)
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimFlatLeft <- function(
+  dataMod,
+  exTblStimNoMin,
+  chnlSettings,
+  probCol
+) {
+  info <- list(
+    applied = FALSE,
+    reason = "no_long_low_flat_left_region"
+  )
+
+  if (!is.data.frame(dataMod) || nrow(dataMod) < 4L) {
+    info$reason <- "too_few_cells_for_derivative_trim"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  dataMod <- dataMod[order(.getCut(dataMod)), , drop = FALSE]
+  x <- .getCut(dataMod)
+  probVec <- .getCpUnsLocGetCpTrimProbVec(dataMod, probCol)
+  probData <- tibble::tibble(x = x, prob = probVec) |>
+    dplyr::filter(is.finite(x), is.finite(prob)) |>
+    dplyr::group_by(x) |>
+    dplyr::summarise(prob = mean(prob), .groups = "drop") |>
+    dplyr::arrange(x)
+
+  if (nrow(probData) < 4L || diff(range(probData$x)) <= 0) {
+    info$reason <- "insufficient_unique_x_for_derivative_trim"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  deriv <- diff(probData$prob) / diff(probData$x)
+  deriv[!is.finite(deriv)] <- 0
+  deriv <- pmax(0, deriv)
+  peakDeriv <- max(deriv, na.rm = TRUE)
+  if (!is.finite(peakDeriv) || peakDeriv <= 0) {
+    info$reason <- "no_positive_probability_derivative"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  derivFrac <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locFlatDerivFrac",
+    0.1
+  )
+  derivThreshold <- peakDeriv * derivFrac
+  incIdx <- which(deriv >= derivThreshold)
+  if (length(incIdx) == 0L) {
+    info$reason <- "no_derivative_above_flat_threshold"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  startX <- probData$x[min(incIdx)]
+  lowMask <- is.finite(x) & x < startX
+  highMask <- is.finite(x) & x >= startX
+  if (sum(lowMask) == 0L || sum(highMask) == 0L) {
+    info$reason <- "left_flat_region_too_short"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  lowMean <- mean(probVec[lowMask], na.rm = TRUE)
+  peakProb <- max(probVec, na.rm = TRUE)
+  lowRel <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locLeftLowRel",
+    0.25
+  )
+  lowAbs <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locLeftLowAbs",
+    0.15
+  )
+  lowEnough <- is.finite(lowMean) &&
+    (lowMean < peakProb * lowRel || lowMean < lowAbs)
+
+  exprVec <- .getCut(exTblStimNoMin)
+  exprVec <- exprVec[is.finite(exprVec)]
+  nLow <- sum(exprVec < startX)
+  nHigh <- sum(exprVec >= startX)
+  cellFrac <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locLeftCellFrac",
+    0.5
+  )
+  manyCells <- nHigh > 0L && nLow > cellFrac * nHigh
+
+  minProbX <- probData$x[which.min(probData$prob)]
+  maxProbX <- probData$x[which.max(probData$prob)]
+  transitionLength <- abs(maxProbX - minProbX)
+  lowLength <- startX - min(x, na.rm = TRUE)
+  lengthFrac <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locLeftLengthFrac",
+    0.5
+  )
+  longRegion <- is.finite(transitionLength) &&
+    transitionLength > 0 &&
+    is.finite(lowLength) &&
+    lowLength > lengthFrac * transitionLength
+
+  info$startX <- startX
+  info$lowMean <- lowMean
+  info$peakProb <- peakProb
+  info$lowRel <- lowRel
+  info$lowAbs <- lowAbs
+  info$nLow <- nLow
+  info$nHigh <- nHigh
+  info$cellFrac <- cellFrac
+  info$manyCells <- manyCells
+  info$lowLength <- lowLength
+  info$transitionLength <- transitionLength
+  info$lengthFrac <- lengthFrac
+  info$longRegion <- longRegion
+  info$peakDeriv <- peakDeriv
+  info$derivThreshold <- derivThreshold
+
+  if (!lowEnough || !(manyCells || longRegion)) {
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  info$applied <- TRUE
+  info$reason <- "dropped_long_low_probability_left_region"
+  list("dataMod" = dataMod[highMask, , drop = FALSE], "info" = info)
 }
 
 #' @keywords internal
