@@ -22,6 +22,5 @@ calc_skew <- function(x, epsilon = 2, delta = 1) {
   out <- sinh(epsilon + delta * asinh(x))
   gamma_divisor <- rgamma(length(x), shape = 5, rate = 5)
   out_fat <- out / sqrt(gamma_divisor)
-  (out - mean(out)) / sd(out) * sd(x) + cluster_mean
+  (out_fat - mean(out_fat)) / sd(out_fat) * sd(x) + cluster_mean
 }
-

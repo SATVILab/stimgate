@@ -401,12 +401,13 @@ simCytCondition <- function(
       covEvMax = covEvMax
     )
     if (nMarker == 1L) {
-      outData[outDataIndClusterVec] <- simData |> as.numeric()
+      outData[outDataIndClusterVec] <- simData |>
+        as.numeric() |>
+        transformationFunc()
     } else {
-      outData[outDataIndClusterVec, ] <- simData
+      outData[outDataIndClusterVec, ] <- apply(simData, 2, transformationFunc)
     }
   }
-  outData <- transformationFunc(outData)
   reorderVec <- sample.int(nCell)
   if (nMarker == 1L) {
     outData <- outData[reorderVec]

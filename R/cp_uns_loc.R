@@ -948,7 +948,7 @@
 ) {
   if (!is.null(bwNcellMin) && length(.data) < bwNcellMin) {
     iqrX <- diff(quantile(.data, c(0.75, 0.25), na.rm = TRUE))
-    sdX <- abs(.data) / 1.5
+    sdX <- abs(iqrX) / 1.5
     .data <- sample(.data, replace = TRUE, size = bwNcellMin) +
       rnorm(bwNcellMin, mean = 0, sd = sdX / 10)
   }
@@ -1118,11 +1118,6 @@
   probTbl <- probTbl |>
     dplyr::filter(xStim > peak + windowWidth) # nolint
 
-  probTbl |>
-    dplyr::filter(
-      cumsum(probStimNorm >= 0.025) > 0
-    )
-
   probTbl <- probTbl |>
     dplyr::mutate(
       minorResponseInd = probStimNorm >= 0.025,
@@ -1187,6 +1182,9 @@
     exTblStimNoMin = exTblStimNoMin,
     exTblUnsNoMin = exTblUnsThreshold
   )
+  binVec <- density(
+    c(.getCut(exTblStimThreshold), .getCut(exTblUnsThreshold))
+  )$x
 
   dataMod <- exTblStimThreshold
   dataMod <- dataMod[
@@ -1222,12 +1220,16 @@
       msg = "No responding cells" # nolint
     ))
   }
+  attr(dataMod, "binVec") <- binVec
 
-  dataMod |>
+  dataMod <- dataMod |>
     dplyr::mutate(probSmooth = probVec)
+
+  .thinDataMod(dataMod, maxCellsPerBin = 20)
 }
 
-getCpUnsLocGetDataModMargin <- function(
+#' @keywords internal
+.getCpUnsLocGetDataModMargin <- function(
   exTblStimNoMin,
   exTblUnsNoMin
 ) {
@@ -1304,33 +1306,49 @@ getCpUnsLocGetDataModMargin <- function(
   )
 }
 
-#' @keywords internal
 .getCpUnsLocGetProbSmoothActualFirst <- function(dataMod, stage) {
-  .debug("Smoothing I") # nolint
+  .debug("Smoothing I")
+
+  idxMod <- attr(dataMod, "idxMod") %||% seq_len(nrow(dataMod))
+  chnl <- .getCpUnsLocGetChnl(dataMod)
+
+  dataMod <- dataMod[idxMod, ] |>
+    dplyr::mutate(
+      probSmooth = pmin(probSmooth, 0.999),
+      probSmooth = pmax(probSmooth, 0.001)
+    )
+
+  n <- nrow(dataMod)
+
+  if (n <= 4L) {
+    return(try(stop(), silent = TRUE)) # nolint
+  }
+
+  k <- min(n - 1L, 20L)
+
+  fml <- as.formula(paste0(
+    "probSmooth ~ s(`",
+    chnl,
+    "`, bs = 'mpi', k = ",
+    k,
+    ", m = c(2, 1))"
+  ))
+
   try(
-    {
-      fml <- as.formula(paste0(
-        "probSmooth ~ s(xStim), bs = 'mpi')"
-      ))
-      scam::scam(
-        fml, # nolint
-        family = "binomial",
-        .data = dataMod |>
-          dplyr::mutate(
-            probSmooth = pmin(probSmooth, 0.999),
-            probSmooth = pmax(probSmooth, 0.001)
-          ),
-        control = scam::scam.control(
-          print.warn = FALSE,
-          trace = FALSE,
-          devtol.fit = 0.5,
-          steptol.fit = 1e-1,
-          maxHalf = 5,
-          bfgs = list(steptol.bfgs = 1e-1),
-          maxit = 1e1
-        )
+    scam::scam(
+      fml,
+      family = "quasibinomial",
+      data = dataMod,
+      control = scam::scam.control(
+        print.warn = FALSE,
+        trace = FALSE,
+        devtol.fit = 0.5,
+        steptol.fit = 1e-1,
+        maxHalf = 5,
+        bfgs = list(steptol.bfgs = 1e-1),
+        maxit = 1e1
       )
-    },
+    ),
     silent = TRUE
   )
 }
@@ -1373,7 +1391,8 @@ getCpUnsLocGetDataModMargin <- function(
   fit,
   dataMod
 ) {
-  predVec <- predict(fit, type = "response")
+  # predict on full dataset
+  predVec <- predict(fit, newdata = dataMod, type = "response")
   meanAbsError <- mean(abs(predVec - dataMod$probSmooth))
   list("pred" = predVec, "meanAbsError" = meanAbsError)
 }
@@ -1399,22 +1418,43 @@ getCpUnsLocGetDataModMargin <- function(
 #' @keywords internal
 .getCpUnsLocGetProbSmoothActualSecond <- function(dataMod, stage) {
   .debug("Smoothing II") # nolint
+
+  idxMod <- attr(dataMod, "idxMod") %||% seq_len(nrow(dataMod))
+  chnl <- .getCpUnsLocGetChnl(dataMod)
+
+  dataMod <- dataMod[idxMod, ] |>
+    dplyr::mutate(
+      probSmooth = pmin(probSmooth, 0.999),
+      probSmooth = pmax(probSmooth, 0.001)
+    )
+
+  n <- nrow(dataMod)
+
+  if (n <= 4L) {
+    return(NULL)
+  }
+
+  k <- min(n - 1L, 20L)
+
+  fml <- as.formula(paste0(
+    "probSmooth ~ s(`",
+    chnl,
+    "`, bs = 'micv', k = ",
+    k,
+    ", m = c(2, 1))"
+  ))
+
   try(
-    {
-      fml <- as.formula(paste0(
-        "probSmooth ~ s(xStim), bs = 'micv')"
-      ))
-      scam::scam(
-        fml,
-        family = "binomial",
-        .data = dataMod,
-        control = scam::scam.control(
-          print.warn = FALSE,
-          trace = FALSE,
-          devtol.fit = 0.01
-        )
+    suppressWarnings(scam::scam(
+      fml,
+      family = "binomial",
+      data = dataMod,
+      control = scam::scam.control(
+        print.warn = FALSE,
+        trace = FALSE,
+        devtol.fit = 0.01
       )
-    },
+    )),
     silent = TRUE
   )
 }
@@ -1478,6 +1518,7 @@ getCpUnsLocGetDataModMargin <- function(
   exTblUnsOrig,
   bias
 ) {
+  # final filtering step
   dataCount <- .getCpUnsLocGetCpDataThresholdCount(dataMod)
   probBsEst <- .getCpUnsLocGetCpDataThresholdPropBsEst(
     dataCount = dataCount,
@@ -1535,7 +1576,7 @@ getCpUnsLocGetDataModMargin <- function(
   dataCount |>
     dplyr::mutate(
       propStim = propStimVec,
-      propUns = propUnsVec,
+      propUns = propUnsVec
     ) |>
     dplyr::mutate(
       propBs = propStim - propUns, # nolint
@@ -1683,4 +1724,30 @@ getCpUnsLocGetDataModMargin <- function(
   )
 
   cpVec
+}
+
+#' @keywords internal
+.thinDataMod <- function(dataMod, maxCellsPerBin = 20) {
+  binVec <- attr(dataMod, "binVec")
+  if (is.null(binVec)) {
+    return(dataMod)
+  }
+
+  breaks <- c(-Inf, binVec[-length(binVec)] + diff(binVec) / 2, Inf)
+
+  x_vals <- .getCut(dataMod)
+  bin_indices <- findInterval(x_vals, breaks)
+
+  # Sample down if a bin has too many cells
+  idxMod <- unlist(lapply(split(seq_along(x_vals), bin_indices), function(idx) {
+    if (length(idx) > maxCellsPerBin) {
+      sample(idx, size = maxCellsPerBin, replace = FALSE)
+    } else {
+      idx
+    }
+  }))
+
+  attr(dataMod, "idxMod") <- sort(unname(idxMod))
+
+  dataMod
 }
