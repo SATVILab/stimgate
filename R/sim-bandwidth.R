@@ -338,3 +338,164 @@
       dplyr::select(iter, chnl, dplyr::everything())
   })
 }
+
+.simPlotGate <- function(
+  nSample,
+  nMarker,
+  nCondition,
+  nCluster,
+  nIter,
+  biasUns,
+  bw = NULL,
+  bwMtd = "hpi1",
+  bwMin = NULL,
+  bwMax = NULL,
+  bwAdj = 1,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL,
+  bwCluster = NULL,
+  probExact = FALSE,
+  nCellStim,
+  probResponse,
+  meanPos,
+  transformation,
+  samplePerturbationSd,
+  conditionPerturbationSd,
+  clusterPerturbationSd,
+  backgroundRelativeToResponse,
+  ncellUnsRelativeToStim,
+  covEvMin = 1,
+  covEvMax = 2,
+  tolClust = 1e-7,
+  markerToPlot = "MarkerF1" # Specify univariate marker here
+) {
+  allPlots <- lapply(seq_len(nIter), function(iterNum) {
+    # 1. Setup Simulation Parameters
+    nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
+    nCellByCondition <- c(nCellUns, nCellStim)
+    transformationFunc <- .simMiscGetTrans(transformation)
+    meanExprMat <- matrix(
+      c(0, meanPos),
+      byrow = TRUE,
+      ncol = 1
+    )
+    clusterLabelVec <- c("gn", "gp")
+    probResponseUns <- probResponse * backgroundRelativeToResponse
+    probVecUns <- c(1 - probResponseUns, probResponseUns)
+    probResponseVecByStimCondition <- list(c(-probResponse, probResponse))
+
+    # 2. Simulate Cytometry Experiment
+    outListExperiment <- simCytExperiment(
+      nSample = nSample,
+      nMarker = nMarker,
+      nCondition = nCondition,
+      nCluster = nCluster,
+      nCellByCondition = nCellByCondition,
+      transformationFunc = transformationFunc,
+      mixtureType = "gaussianOnly",
+      meanExprMat = meanExprMat,
+      clusterLabelVec = clusterLabelVec,
+      probVecUns = probVecUns,
+      probExact = probExact,
+      probResponseVecByStimCondition = probResponseVecByStimCondition,
+      conditionPerturbationSd = conditionPerturbationSd,
+      clusterPerturbationSd = clusterPerturbationSd,
+      samplePerturbationSd = samplePerturbationSd,
+      covEvMin = covEvMin,
+      covEvMax = covEvMax
+    )
+
+    fs <- as(outListExperiment[["flowFrameList"]], "flowSet")
+    gs <- flowWorkspace::GatingSet(fs)
+
+    # 3. Setup Project Directory for gating
+    pathProject <- file.path(
+      tempdir(),
+      "stimgate",
+      "sim-plot",
+      paste0("iter-", iterNum, "-", format(Sys.time(), "%Y%m%d%H%M%S"))
+    )
+
+    on.exit(
+      {
+        if (dir.exists(pathProject)) {
+          unlink(pathProject, recursive = TRUE)
+        }
+      },
+      add = TRUE
+    )
+
+    if (dir.exists(pathProject)) {
+      unlink(pathProject, recursive = TRUE)
+    }
+    dir.create(pathProject, recursive = TRUE)
+
+    batchList <- lapply(seq(nSample), function(i) {
+      seq((i - 1) * nCondition + 1, i * nCondition)
+    })
+
+    # 4. Execute Gating
+    Sys.setenv("STIMGATE_INTERMEDIATE" = "TRUE")
+    invisible(gateStim(
+      .data = gs,
+      pathProject = pathProject,
+      popGate = "root",
+      batchList = batchList,
+      marker = paste0("MarkerF", seq_len(nMarker)),
+      bw = bw,
+      bwMtd = bwMtd,
+      bwMin = bwMin,
+      bwMax = bwMax,
+      bwAdj = bwAdj,
+      bwNcellMin = bwNcellMin,
+      bwNcellMax = bwNcellMax,
+      bwCluster = bwCluster,
+      tolClust = tolClust
+    ))
+
+    # 5. Extract plots for each sample
+    samplePlots <- lapply(seq_along(batchList), function(sampleIdx) {
+      # batchList[[sampleIdx]] grabs both unstim and stim conditions
+      indCurr <- batchList[[sampleIdx]]
+
+      # Assuming condition 1 is unstim and condition 2 is stim based on setup
+      conditionLabels <- c("Unstimulated", "Stimulated")
+      names(conditionLabels) <- indCurr
+
+      # Generate the overlaid plot
+      pList <- plotStim(
+        ind = indCurr,
+        .data = gs,
+        pathProject = pathProject,
+        marker = markerToPlot,
+        indLab = conditionLabels,
+        grid = FALSE, # Return raw list of ggplots instead of rendering a cowplot grid
+        showGate = TRUE, # Overlay gates
+        excMin = TRUE
+      )
+
+      # plotStim returns a list (length 1 if univariate). Extract it.
+      if (!is.null(pList) && length(pList) > 0) {
+        p <- pList[[1]]
+        # Update title to track iteration and sample
+        p <- p +
+          ggplot2::ggtitle(
+            sprintf(
+              "Iter: %d | Sample: %d | %s",
+              iterNum,
+              sampleIdx,
+              markerToPlot
+            )
+          )
+        return(p)
+      } else {
+        return(NULL)
+      }
+    })
+
+    return(samplePlots)
+  })
+
+  # Flatten the nested lists so you get a single continuous list of ggplot objects
+  do.call(c, allPlots)
+}
