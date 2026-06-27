@@ -274,6 +274,7 @@ gateStim <- function(
     bwAdj = bwAdj,
     bwNcellMin = bwNcellMin,
     bwNcellMax = bwNcellMax,
+    bwCluster = bwCluster,
     cpMin = cpMin,
     minCell = minCell,
     tolClust = tolClust,
