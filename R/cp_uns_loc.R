@@ -1652,7 +1652,9 @@
     exTblStimNoMin = exTblStimNoMin,
     exTblUnsBias = exTblUnsBias,
     exTblUnsOrig = exTblUnsOrig,
-    bias = bias
+    bias = bias,
+    stage = stage,
+    pathProject = pathProject
   )
   .intSave(ind, stageChnl, pathProject, dataThreshold)
   cpObj <- .getCpUnsLocGetCpActual(
@@ -2232,7 +2234,9 @@
   exTblStimNoMin,
   exTblUnsBias,
   exTblUnsOrig,
-  bias
+  bias,
+  pathProject,
+  stage
 ) {
   # final filtering step
   dataCount <- .getCpUnsLocGetCpDataThresholdCount(dataMod)
@@ -2244,8 +2248,8 @@
     "probBsEst",
     probBsEst,
     .getInd(exTblStimNoMin),
-    file.path(.getStage(exTblStimNoMin), .getCpUnsLocGetChnl(exTblStimNoMin)),
-    .getPathProject(exTblStimNoMin)
+    file.path(stage, .getCpUnsLocGetChnl(exTblStimNoMin)),
+    pathProject
   )
   .getCpUnsLocGetCpDataThresholdActual(
     dataCount = dataCount,
