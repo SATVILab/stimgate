@@ -24,6 +24,18 @@
   bwCluster,
   minCell,
   tolClust,
+  locProbCol,
+  locMinPeakProb,
+  locDipAlpha,
+  locAntimodeHeightFrac,
+  locAntimodeLowRel,
+  locAntimodeLowAbs,
+  locFlatDerivFrac,
+  locLeftLowRel,
+  locLeftLowAbs,
+  locLeftCellFrac,
+  locLeftLengthFrac,
+  locTolRefPeak,
   maxPosProbX,
   gateCombn,
   gateQuant
@@ -156,13 +168,35 @@
     !is.null(tolClust) &&
       (!is.numeric(tolClust) || length(tolClust) != 1 || tolClust <= 0)
   ) {
-    stop("`tolClust` must be a positive numeric threshold.")
+    stop("`tolClust` must be a positive numeric value, or NULL.")
   }
 
-  validGateCombns <- c("min", "median", "max")
-  if (!gateCombn %in% validGateCombns) {
+  .verifyLocSettings(
+    settings = list(
+      locProbCol = locProbCol,
+      locMinPeakProb = locMinPeakProb,
+      locDipAlpha = locDipAlpha,
+      locAntimodeHeightFrac = locAntimodeHeightFrac,
+      locAntimodeLowRel = locAntimodeLowRel,
+      locAntimodeLowAbs = locAntimodeLowAbs,
+      locFlatDerivFrac = locFlatDerivFrac,
+      locLeftLowRel = locLeftLowRel,
+      locLeftLowAbs = locLeftLowAbs,
+      locLeftCellFrac = locLeftCellFrac,
+      locLeftLengthFrac = locLeftLengthFrac,
+      locTolRefPeak = locTolRefPeak
+    ),
+    prefix = ""
+  )
+
+  validGateCombns <- c("no", "min", "median", "max", "prejoin")
+  if (
+    !is.character(gateCombn) ||
+      length(gateCombn) == 0L ||
+      !all(gateCombn %in% validGateCombns)
+  ) {
     stop(sprintf(
-      "`gateCombn` must be one of: %s",
+      "`gateCombn` must contain only: %s",
       paste(validGateCombns, collapse = ", ")
     ))
   }
@@ -215,6 +249,18 @@
     "bwNcellMax",
     "minCell",
     "tolClust",
+    "locProbCol",
+    "locMinPeakProb",
+    "locDipAlpha",
+    "locAntimodeHeightFrac",
+    "locAntimodeLowRel",
+    "locAntimodeLowAbs",
+    "locFlatDerivFrac",
+    "locLeftLowRel",
+    "locLeftLowAbs",
+    "locLeftCellFrac",
+    "locLeftLengthFrac",
+    "locTolRefPeak",
     "maxPosProbX",
     "bwCluster",
     "popGate",
@@ -222,26 +268,6 @@
     "gateQuant"
   )
 
-  if (
-    !is.null(chnlSettings) && !all(names(chnlSettings) %in% permissibleSettings)
-  ) {
-    stop(
-      "Invalid channel settings detected: ",
-      paste(setdiff(names(chnlSettings), permissibleSettings), collapse = ", ")
-    )
-  }
-  if (
-    !is.null(markerSettings) &&
-      !all(names(markerSettings) %in% permissibleSettings)
-  ) {
-    stop(
-      "Invalid marker settings detected: ",
-      paste(
-        setdiff(names(markerSettings), permissibleSettings),
-        collapse = ", "
-      )
-    )
-  }
   if (!is.null(chnlSettings) && !is.null(markerSettings)) {
     stop("Specify only one of `chnlSettings` or `markerSettings`, not both.")
   }
@@ -280,18 +306,34 @@
 
   if (!is.null(chnlSettings)) {
     purrr::walk(names(chnlSettings), function(chnlCurr) {
-      if (!is.list(chnlSettings[[chnlCurr]])) {
+      settingsCurr <- chnlSettings[[chnlCurr]]
+      if (!is.list(settingsCurr)) {
         stop(sprintf("Channel '%s' setting must be a list.", chnlCurr))
       }
-      .verifyChnlSettingsChnl(chnlCurr, chnlSettings[[chnlCurr]])
+      invalidSettings <- setdiff(names(settingsCurr), permissibleSettings)
+      if (length(invalidSettings) > 0L) {
+        stop(
+          sprintf("Invalid settings for channel '%s': ", chnlCurr),
+          paste(invalidSettings, collapse = ", ")
+        )
+      }
+      .verifyChnlSettingsChnl(chnlCurr, settingsCurr)
     })
   }
   if (!is.null(markerSettings)) {
     purrr::walk(names(markerSettings), function(markerCurr) {
-      if (!is.list(markerSettings[[markerCurr]])) {
+      settingsCurr <- markerSettings[[markerCurr]]
+      if (!is.list(settingsCurr)) {
         stop(sprintf("Marker '%s' setting must be a list.", markerCurr))
       }
-      .verifyChnlSettingsChnl(markerCurr, markerSettings[[markerCurr]])
+      invalidSettings <- setdiff(names(settingsCurr), permissibleSettings)
+      if (length(invalidSettings) > 0L) {
+        stop(
+          sprintf("Invalid settings for marker '%s': ", markerCurr),
+          paste(invalidSettings, collapse = ", ")
+        )
+      }
+      .verifyChnlSettingsChnl(markerCurr, settingsCurr)
     })
   }
   invisible(TRUE)
@@ -380,6 +422,121 @@
       (!is.character(settings$popGate) || length(settings$popGate) != 1)
   ) {
     stop(paste0(prefix, "`popGate` must be a single character string."))
+  }
+
+  validBwMtds <- c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
+  if (
+    !is.null(settings$bwMtd) &&
+      (!is.character(settings$bwMtd) ||
+        length(settings$bwMtd) != 1 ||
+        !settings$bwMtd %in% validBwMtds)
+  ) {
+    stop(paste0(
+      prefix,
+      "`bwMtd` must be one of: ",
+      paste(validBwMtds, collapse = ", "),
+      "."
+    ))
+  }
+
+  if (
+    !is.null(settings$bwCluster) &&
+      (!is.numeric(settings$bwCluster) ||
+        length(settings$bwCluster) != 1 ||
+        settings$bwCluster <= 0)
+  ) {
+    stop(paste0(prefix, "`bwCluster` must be a single positive numeric value."))
+  }
+
+  if (
+    !is.null(settings$tolClust) &&
+      (!is.numeric(settings$tolClust) ||
+        length(settings$tolClust) != 1 ||
+        settings$tolClust <= 0)
+  ) {
+    stop(paste0(
+      prefix,
+      "`tolClust` must be a positive numeric value, or NULL."
+    ))
+  }
+
+  validGateCombns <- c("no", "min", "median", "max", "prejoin")
+  if (
+    !is.null(settings$gateCombn) &&
+      (!is.character(settings$gateCombn) ||
+        length(settings$gateCombn) == 0L ||
+        !all(settings$gateCombn %in% validGateCombns))
+  ) {
+    stop(paste0(
+      prefix,
+      "`gateCombn` must contain only: ",
+      paste(validGateCombns, collapse = ", "),
+      "."
+    ))
+  }
+
+  if (
+    !is.null(settings$gateQuant) &&
+      (!is.numeric(settings$gateQuant) ||
+        length(settings$gateQuant) != 2 ||
+        any(settings$gateQuant < 0 | settings$gateQuant > 1))
+  ) {
+    stop(paste0(
+      prefix,
+      "`gateQuant` must be two probabilities between 0 and 1."
+    ))
+  }
+
+  .verifyLocSettings(settings = settings, prefix = prefix)
+
+  invisible(TRUE)
+}
+
+
+#' @keywords internal
+.verifyLocSettings <- function(settings, prefix = "") {
+  if (
+    !is.null(settings$locProbCol) &&
+      (!is.character(settings$locProbCol) ||
+        length(settings$locProbCol) != 1 ||
+        !settings$locProbCol %in% c("pred", "probSmooth"))
+  ) {
+    stop(paste0(prefix, "`locProbCol` must be either 'pred' or 'probSmooth'."))
+  }
+
+  probSettings <- c(
+    "locMinPeakProb",
+    "locDipAlpha",
+    "locAntimodeHeightFrac",
+    "locAntimodeLowRel",
+    "locAntimodeLowAbs",
+    "locFlatDerivFrac",
+    "locLeftLowRel",
+    "locLeftLowAbs",
+    "locLeftCellFrac",
+    "locLeftLengthFrac"
+  )
+  purrr::walk(probSettings, function(nm) {
+    val <- settings[[nm]]
+    if (is.null(val)) {
+      return(invisible(TRUE))
+    }
+    if (!is.numeric(val) || length(val) != 1 || !is.finite(val)) {
+      stop(paste0(prefix, "`", nm, "` must be a single finite numeric value."))
+    }
+    if (val < 0 || val > 1) {
+      stop(paste0(prefix, "`", nm, "` must be between 0 and 1."))
+    }
+    invisible(TRUE)
+  })
+
+  if (
+    !is.null(settings$locTolRefPeak) &&
+      (!is.character(settings$locTolRefPeak) ||
+        length(settings$locTolRefPeak) != 1 ||
+        !settings$locTolRefPeak %in% c("highest", "first"))
+  ) {
+    stop(paste0(prefix, "`locTolRefPeak` must be either 'highest' or 'first'."))
   }
 
   invisible(TRUE)

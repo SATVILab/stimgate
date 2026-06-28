@@ -50,7 +50,7 @@
 #' @param bwAdj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
 #' @param bwNcellMin numeric. Minimum number of cells required for bandwidth estimation. If a sample has fewer cells than `bwNcellMin`, cells are sampled with replacement to reach the minimum, with noise subsequently added. Ignored if `bw` is set. Default is 100.
 #' @param bwNcellMax numeric. Maximum number of cells used for bandwidth estimation. If a sample has more cells than `bwNcellMax`, cells are sampled without replacement to reach the maximum. Ignored if `bw` is set. Default is 100 000.
-#' @param bwCluster numeric. Optional bandwidth for clustering-based gate refinement. If NULL (default), the bandwidth is estimated automatically based on the data. Default is `NULL`.
+#' @param bwCluster numeric. Optional fallback bandwidth for cluster-based local-FDR imputation. The current cluster step first tries to use a common bandwidth calculated as the median bandwidth across samples with generated local-FDR thresholds. `bwCluster` is used as a fallback when that common bandwidth cannot be estimated. Default is `NULL`.
 #' @param minCell numeric. Minimum number of cells required for reliable gating.
 #'   Default is 100. Samples with fewer cells will be skipped as they don't provide
 #'   sufficient statistical power for accurate gate identification.
@@ -60,12 +60,50 @@
 #' @param gateQuant numeric vector. Quantiles used for gate combination when multiple
 #'   gates are identified. Default is c(0.25, 0.75). The method specified in gateCombn
 #'   determines how these quantiles are used (e.g., minimum of 25th percentiles).
-#' @param tolClust numeric. Convergence tolerance for clustering algorithms used in
-#'   gate refinement. Default is 1e-7. Smaller values require more precise convergence
-#'   but may increase computation time.
-#' @param gateCombn character. Method for combining multiple gate candidates.
-#'   Default is "min" to use the most conservative (lowest) gate. Other options may
-#'   include "median" or "max" depending on the desired stringency.
+#' @param tolClust numeric or NULL. Backwards-compatible switch for calculating
+#'   cluster-adjusted local-FDR gates. When `NULL`, cluster adjustment is skipped.
+#'   When non-NULL, samples without a generated local-FDR threshold may receive an
+#'   imputed threshold from similar conditions using cluster-level equivalent
+#'   tolerance values. The numeric value is retained for compatibility and is not
+#'   used as the derivative tolerance in the current local-FDR cluster imputation.
+#' @param locProbCol character. Probability column used by the local-FDR trimming
+#'   step. Defaults to `"pred"`, the monotone smoothed response-probability
+#'   estimate. Use `"probSmooth"` to force the raw/interpolated probability.
+#' @param locMinPeakProb numeric. Minimum peak estimated response probability
+#'   required before a local-FDR gate is considered credible. If the maximum
+#'   probability is below this value, no true local-FDR threshold is marked as
+#'   generated.
+#' @param locDipAlpha numeric. Liberal dip-test p-value cutoff used to decide
+#'   whether to inspect expression-density antimodes before thresholding.
+#' @param locAntimodeHeightFrac numeric. Maximum allowed antimode height as a
+#'   fraction of the highest density peak when identifying deep antimodes.
+#' @param locAntimodeLowRel numeric. Antimode-separated regions to the left of the
+#'   highest-response region are excluded when their mean response probability is
+#'   below this fraction of the highest region's mean probability.
+#' @param locAntimodeLowAbs numeric. Absolute response-probability cutoff for
+#'   excluding low-response antimode-separated regions to the left of the
+#'   highest-response region.
+#' @param locFlatDerivFrac numeric. Fraction of the maximum positive derivative
+#'   used to identify where the smoothed response probability begins its main rise.
+#' @param locLeftLowRel numeric. Candidate left-tail regions not separated by an
+#'   antimode are considered low response when their mean response probability is
+#'   below this fraction of the peak response probability.
+#' @param locLeftLowAbs numeric. Absolute response-probability cutoff for the
+#'   non-antimode left-tail trimming rule.
+#' @param locLeftCellFrac numeric. Minimum size of the candidate low-response
+#'   left-tail region, expressed as a fraction of the number of cells to the right
+#'   of the start of the main probability rise.
+#' @param locLeftLengthFrac numeric. Minimum length of the candidate low-response
+#'   left-tail region, expressed as a fraction of the expression interval over
+#'   which the response probability rises from its minimum to its maximum.
+#' @param locTolRefPeak character. Reference peak used by cluster imputation when
+#'   calculating signed equivalent tolerance values from generated local-FDR
+#'   thresholds. Default is `"highest"`.
+#' @param gateCombn character vector. Method(s) for combining condition-level
+#'   local-FDR gates within a batch. Supported values are `"no"`, `"min"`,
+#'   `"median"`, `"max"`, and `"prejoin"`. Combination uses only thresholds that
+#'   were actually generated by the local-FDR procedure, not fallback above-range
+#'   cutpoints.
 #' @param markerSettings list. Optional list of additional marker-specific settings
 #'   that override global defaults. Each element should be named with the marker name
 #'   and contain parameter overrides. Default is NULL.
@@ -193,6 +231,18 @@ gateStim <- function(
   maxPosProbX = Inf,
   gateQuant = c(0.25, 0.75),
   tolClust = 1e-7,
+  locProbCol = "pred",
+  locMinPeakProb = 0.25,
+  locDipAlpha = 0.2,
+  locAntimodeHeightFrac = 1 / 6,
+  locAntimodeLowRel = 0.25,
+  locAntimodeLowAbs = 0.15,
+  locFlatDerivFrac = 0.1,
+  locLeftLowRel = 0.25,
+  locLeftLowAbs = 0.15,
+  locLeftCellFrac = 0.5,
+  locLeftLengthFrac = 0.5,
+  locTolRefPeak = "highest",
   gateCombn = "min",
   markerSettings = NULL,
   chnlSettings = NULL
@@ -244,6 +294,18 @@ gateStim <- function(
     maxPosProbX = maxPosProbX,
     gateQuant = gateQuant,
     tolClust = tolClust,
+    locProbCol = locProbCol,
+    locMinPeakProb = locMinPeakProb,
+    locDipAlpha = locDipAlpha,
+    locAntimodeHeightFrac = locAntimodeHeightFrac,
+    locAntimodeLowRel = locAntimodeLowRel,
+    locAntimodeLowAbs = locAntimodeLowAbs,
+    locFlatDerivFrac = locFlatDerivFrac,
+    locLeftLowRel = locLeftLowRel,
+    locLeftLowAbs = locLeftLowAbs,
+    locLeftCellFrac = locLeftCellFrac,
+    locLeftLengthFrac = locLeftLengthFrac,
+    locTolRefPeak = locTolRefPeak,
     gateCombn = gateCombn
   )
 
@@ -278,6 +340,18 @@ gateStim <- function(
     cpMin = cpMin,
     minCell = minCell,
     tolClust = tolClust,
+    locProbCol = locProbCol,
+    locMinPeakProb = locMinPeakProb,
+    locDipAlpha = locDipAlpha,
+    locAntimodeHeightFrac = locAntimodeHeightFrac,
+    locAntimodeLowRel = locAntimodeLowRel,
+    locAntimodeLowAbs = locAntimodeLowAbs,
+    locFlatDerivFrac = locFlatDerivFrac,
+    locLeftLowRel = locLeftLowRel,
+    locLeftLowAbs = locLeftLowAbs,
+    locLeftCellFrac = locLeftCellFrac,
+    locLeftLengthFrac = locLeftLengthFrac,
+    locTolRefPeak = locTolRefPeak,
     maxPosProbX = maxPosProbX,
     gateCombn = gateCombn,
     gateQuant = gateQuant,
