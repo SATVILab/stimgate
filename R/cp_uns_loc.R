@@ -361,11 +361,95 @@
   nonPrejoinCombnVec
 ) {
   .debug("Combining cutpoints") # nolint
-  .combineCp(
+  .getCpUnsLocCombineCpWithMeta(
     cp = cpUnsListNonjoin[["loc"]],
     gateCombn = nonPrejoinCombnVec
   )
 }
+
+#' @keywords internal
+.getCpUnsLocCombineCpWithMeta <- function(cp, gateCombn) {
+  meta <- .getCpUnsLocMetaFromCp(cp)
+  locGenerated <- meta$locGenerated %in% TRUE
+  stimGenerated <- locGenerated & !(meta$locSource %in% "unstim_summary")
+  cpReal <- cp
+  cpReal[!stimGenerated] <- NA_real_
+
+  purrr::map(gateCombn, function(gateCombnCurr) {
+    if (is.null(gateCombnCurr) || gateCombnCurr %in% c("no", "prejoin")) {
+      return(.getCpUnsLocCpAttachMeta(cp, meta))
+    }
+
+    if (any(stimGenerated, na.rm = TRUE)) {
+      cpCombined <- .combineCp(
+        cp = cpReal,
+        gateCombn = gateCombnCurr
+      )[[1]]
+      metaOut <- meta
+      stimRow <- !(metaOut$locSource %in% "unstim_summary")
+      metaOut$locGenerated[stimRow] <- TRUE
+      metaOut$locGeneratedDirect[stimRow] <- meta$locGeneratedDirect[
+        stimRow
+      ] %in%
+        TRUE
+      metaOut$locSource[stimRow & !(metaOut$locGeneratedDirect %in% TRUE)] <-
+        "combined"
+      metaOut$locReason[stimRow & !(metaOut$locGeneratedDirect %in% TRUE)] <-
+        "combined_from_generated_local_fdr_thresholds"
+      metaOut$locGenerated[!stimRow] <- any(stimGenerated, na.rm = TRUE)
+      metaOut$locGeneratedDirect[!stimRow] <- FALSE
+      metaOut$locSource[!stimRow] <- "unstim_summary"
+      metaOut$locReason[!stimRow] <-
+        "summary_of_combined_generated_local_fdr_thresholds"
+      return(.getCpUnsLocCpAttachMeta(cpCombined, metaOut))
+    }
+
+    cpCombined <- .combineCp(
+      cp = cp,
+      gateCombn = gateCombnCurr
+    )[[1]]
+    metaOut <- meta
+    metaOut$locGenerated[] <- FALSE
+    metaOut$locGeneratedDirect[] <- FALSE
+    metaOut$locSource[] <- "not_calculated"
+    metaOut$locReason[] <- "no_generated_local_fdr_threshold_to_combine"
+    .getCpUnsLocCpAttachMeta(cpCombined, metaOut)
+  }) |>
+    stats::setNames(gateCombn)
+}
+
+#' @keywords internal
+.getCpUnsLocMetaFromCp <- function(cp) {
+  n <- length(cp)
+  nm <- names(cp)
+  if (is.null(nm)) {
+    nm <- rep(NA_character_, n)
+  }
+  tibble::tibble(
+    ind = as.character(nm),
+    locGenerated = attr(cp, "locGenerated") %||% rep(FALSE, n),
+    locGeneratedDirect = attr(cp, "locGeneratedDirect") %||% rep(FALSE, n),
+    locSource = attr(cp, "locSource") %||% rep("not_calculated", n),
+    locReason = attr(cp, "locReason") %||% rep(NA_character_, n)
+  ) |>
+    dplyr::mutate(
+      locGenerated = .data$locGenerated %in% TRUE,
+      locGeneratedDirect = .data$locGeneratedDirect %in% TRUE
+    )
+}
+
+#' @keywords internal
+.getCpUnsLocCpAttachMeta <- function(cp, meta) {
+  if (nrow(meta) != length(cp)) {
+    stop("Local-FDR metadata length does not match cutpoint vector length")
+  }
+  attr(cp, "locGenerated") <- meta$locGenerated %in% TRUE
+  attr(cp, "locGeneratedDirect") <- meta$locGeneratedDirect %in% TRUE
+  attr(cp, "locSource") <- as.character(meta$locSource)
+  attr(cp, "locReason") <- as.character(meta$locReason)
+  cp
+}
+
 
 # ------------------------------------------
 # get cutpoints for a range of samples, and then individual samples
@@ -437,7 +521,7 @@
       )
       .intSave(ind, stageChnl, pathProject, exTblUnsBias)
 
-      .getCpUnsLocInd(
+      .getCpUnsLocCondition(
         exTblUnsBias = exTblUnsBias,
         exTblStimNoMin = exTblNoMinStim,
         chnlSettings = chnlSettings,
@@ -490,7 +574,7 @@
     stageChnl,
     pathProject
   ) # nolint
-  objOut <- .getCpUnsLocIndCheckOut(
+  objOut <- .getCpUnsLocConditionCheckOut(
     cpMin = cpMin,
     exTblStimNoMin = exTblNoMinStim,
     exTblUnsBias = exTblUnsBias,
@@ -593,7 +677,7 @@
 }
 
 #' @keywords internal
-.getCpUnsLocInd <- function(
+.getCpUnsLocCondition <- function(
   exTblUnsBias,
   exTblStimNoMin,
   chnlSettings,
@@ -620,7 +704,7 @@
       chnlSettings$cpMin
     )
   ) {
-    objOut <- .getCpUnsLocIndTooFew(
+    objOut <- .getCpUnsLocConditionTooFew(
       stage = stage,
       pathProject = pathProject,
       exTblNoMinStim = exTblStimNoMin,
@@ -633,11 +717,11 @@
   # stop expr being higher than maxX to prevent really far away values creating modes
   exTblStimThreshold <- .getCpUnsLocSetMaxExpr(
     exTblStimNoMin,
-    .getCpUnsLocIndMaxDensX(exTblStimNoMin)
+    .getCpUnsLocConditionMaxDensX(exTblStimNoMin)
   )
   exTblUnsThreshold <- .getCpUnsLocSetMaxExpr(
     exTblUnsBias,
-    .getCpUnsLocIndMaxDensX(exTblStimNoMin)
+    .getCpUnsLocConditionMaxDensX(exTblStimNoMin)
   )
   .intSave(
     .getInd(exTblStimNoMin),
@@ -681,7 +765,7 @@
   )
 }
 
-.getCpUnsLocIndTooFew <- function(
+.getCpUnsLocConditionTooFew <- function(
   stage,
   pathProject,
   exTblNoMinStim,
@@ -697,7 +781,7 @@
     stageChnl,
     pathProject
   ) # nolint
-  objOut <- .getCpUnsLocIndCheckOut(
+  objOut <- .getCpUnsLocConditionCheckOut(
     cpMin = cpMin,
     exTblStimNoMin = exTblNoMinStim,
     exTblUnsBias = exTblUnsBias,
@@ -717,29 +801,29 @@
 # initial checks
 # ---------------------
 #' @keywords internal
-.getCpUnsLocIndCheckNCell <- function(exTblStimNoMin, minCell) {
+.getCpUnsLocConditionCheckNCell <- function(exTblStimNoMin, minCell) {
   nrow(exTblStimNoMin) < minCell
 }
 
 #' @keywords internal
-.getCpUnsLocIndMaxDensX <- function(exTblStimNoMin) {
+.getCpUnsLocConditionMaxDensX <- function(exTblStimNoMin) {
   max(.getCut(exTblStimNoMin)) -
     0.05 * (diff(range(.getCut(exTblStimNoMin))))
 }
 
 #' @keywords internal
-.getCpUnsLocIndCheckMaxX <- function(exTblStimNoMin, cpMin) {
-  .getCpUnsLocIndMaxDensX(exTblStimNoMin) <= cpMin
+.getCpUnsLocConditionCheckMaxX <- function(exTblStimNoMin, cpMin) {
+  .getCpUnsLocConditionMaxDensX(exTblStimNoMin) <= cpMin
 }
 
 #' @keywords internal
 .getCpUnsLocCheckEarly <- function(exTblStimNoMin, minCell, cpMin) {
-  .getCpUnsLocIndCheckNCell(exTblStimNoMin, minCell) ||
-    .getCpUnsLocIndCheckMaxX(exTblStimNoMin, cpMin)
+  .getCpUnsLocConditionCheckNCell(exTblStimNoMin, minCell) ||
+    .getCpUnsLocConditionCheckMaxX(exTblStimNoMin, cpMin)
 }
 
 #' @keywords internal
-.getCpUnsLocIndCheckOut <- function(
+.getCpUnsLocConditionCheckOut <- function(
   cpMin,
   exTblStimNoMin,
   exTblUnsBias,
@@ -747,18 +831,41 @@
   msg
 ) {
   .debug(msg) # nolint
-  list(
-    cp = .getCpUnsLocIndCpNonLoc(
+  .getCpUnsLocConditionOut(
+    cp = .getCpUnsLocConditionCpNonLoc(
       cpMin = cpMin,
       exTblStimNoMin = exTblStimNoMin,
       exTblUnsBias = exTblUnsBias
     ),
-    pList = .getCpUnsLocPListEmpty()
+    locGenerated = FALSE,
+    locGeneratedDirect = FALSE,
+    locSource = "not_calculated",
+    locReason = msg
   )
 }
 
 #' @keywords internal
-.getCpUnsLocIndCpNonLoc <- function(
+.getCpUnsLocConditionOut <- function(
+  cp,
+  locGenerated,
+  locGeneratedDirect,
+  locSource,
+  locReason,
+  pList = .getCpUnsLocPListEmpty()
+) {
+  list(
+    cp = cp,
+    pList = pList,
+    locGenerated = isTRUE(locGenerated),
+    locGeneratedDirect = isTRUE(locGeneratedDirect),
+    locSource = locSource,
+    locReason = locReason
+  )
+}
+
+
+#' @keywords internal
+.getCpUnsLocConditionCpNonLoc <- function(
   cpMin,
   exTblStimNoMin,
   exTblUnsBias
@@ -1171,7 +1278,7 @@
   stage
 ) {
   if (.getCpUnsLocCheckResponse(probTblList$pos, exTblStimNoMin)) {
-    return(.getCpUnsLocIndCheckOut(
+    return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,
       exTblStimNoMin = exTblStimNoMin,
       exTblUnsBias = exTblUnsBias,
@@ -1179,7 +1286,7 @@
       msg = "No responding cells" # nolint
     ))
   }
-  margin <- getCpUnsLocGetDataModMargin(
+  margin <- .getCpUnsLocGetDataModMargin(
     exTblStimNoMin = exTblStimNoMin,
     exTblUnsNoMin = exTblUnsThreshold
   )
@@ -1193,7 +1300,7 @@
       (min(.getCpUnsLocGetMinProbX(probTblList$pos) - margin)),
   ]
   if (nrow(dataMod) == 0L) {
-    return(.getCpUnsLocIndCheckOut(
+    return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,
       exTblStimNoMin = exTblStimNoMin,
       exTblUnsBias = exTblUnsBias,
@@ -1213,7 +1320,7 @@
     silent = TRUE
   )
   if (inherits(probVec, "try-error")) {
-    return(.getCpUnsLocIndCheckOut(
+    return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,
       exTblStimNoMin = exTblStimNoMin,
       exTblUnsBias = exTblUnsBias,
@@ -1487,7 +1594,14 @@
   if (!is.data.frame(dataMod)) {
     .intSaveNm("noDataModDf", NULL, ind, stageChnl, pathProject)
     .intSaveNm("cpInd", dataMod, ind, stageChnl, pathProject)
-    return(dataMod)
+    return(.getCpUnsLocGetCpEnsureMeta(
+      obj = dataMod,
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias,
+      stage = stage,
+      reason = "data_mod_not_available"
+    ))
   }
 
   trimObj <- .getCpUnsLocGetCpTrimBeforeThreshold(
@@ -1505,19 +1619,31 @@
     cpInd <- trimObj$cp
     .intSave(ind, stageChnl, pathProject, cpInd)
     .debug("Completed loc gate for single sample") # nolint
-    return(list("cp" = cpInd, "pList" = .getCpUnsLocPListEmpty()))
+    return(.getCpUnsLocConditionOut(
+      cp = cpInd,
+      locGenerated = FALSE,
+      locGeneratedDirect = FALSE,
+      locSource = "not_calculated",
+      locReason = trimObj$info$reason %||% "trim_returned_non_local_cutpoint"
+    ))
   }
 
   dataMod <- trimObj$dataMod
   if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
-    cpInd <- .getCpUnsLocIndCpNonLoc(
+    cpInd <- .getCpUnsLocConditionCpNonLoc(
       cpMin = cpMin,
       exTblStimNoMin = exTblStimNoMin,
       exTblUnsBias = exTblUnsBias
     )
     .intSave(ind, stageChnl, pathProject, cpInd)
     .debug("Completed loc gate for single sample") # nolint
-    return(list("cp" = cpInd, "pList" = .getCpUnsLocPListEmpty()))
+    return(.getCpUnsLocConditionOut(
+      cp = cpInd,
+      locGenerated = FALSE,
+      locGeneratedDirect = FALSE,
+      locSource = "not_calculated",
+      locReason = "empty_data_mod_after_trimming"
+    ))
   }
 
   dataThreshold <- .getCpUnsLocGetCpDataThreshold(
@@ -1529,17 +1655,48 @@
     bias = bias
   )
   .intSave(ind, stageChnl, pathProject, dataThreshold)
-  cpInd <- .getCpUnsLocGetCpActual(
+  cpObj <- .getCpUnsLocGetCpActual(
     dataThreshold = dataThreshold,
     exTblStimNoMin = exTblStimNoMin,
     exTblUnsBias = exTblUnsBias,
     cpMin = cpMin,
     stage = stage
   )
-  .intSave(ind, stageChnl, pathProject, cpInd)
+  .intSave(ind, stageChnl, pathProject, cpObj$cp)
   .debug("Completed loc gate for single sample") # nolint
-  list("cp" = cpInd, "pList" = .getCpUnsLocPListEmpty())
+  cpObj
 }
+
+#' @keywords internal
+.getCpUnsLocGetCpEnsureMeta <- function(
+  obj,
+  cpMin,
+  exTblStimNoMin,
+  exTblUnsBias,
+  stage,
+  reason
+) {
+  if (is.list(obj) && "cp" %in% names(obj)) {
+    obj$locGenerated <- obj$locGenerated %||% FALSE
+    obj$locGeneratedDirect <- obj$locGeneratedDirect %||% FALSE
+    obj$locSource <- obj$locSource %||% "not_calculated"
+    obj$locReason <- obj$locReason %||% reason
+    obj$pList <- obj$pList %||% .getCpUnsLocPListEmpty()
+    return(obj)
+  }
+  .getCpUnsLocConditionOut(
+    cp = .getCpUnsLocConditionCpNonLoc(
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias
+    ),
+    locGenerated = FALSE,
+    locGeneratedDirect = FALSE,
+    locSource = "not_calculated",
+    locReason = reason
+  )
+}
+
 
 #' @keywords internal
 .getCpUnsLocGetCpTrimBeforeThreshold <- function(
@@ -1579,7 +1736,7 @@
     info$reason <- "max_response_probability_below_minimum"
     return(list(
       "dataMod" = dataMod[0, , drop = FALSE],
-      "cp" = .getCpUnsLocIndCpNonLoc(
+      "cp" = .getCpUnsLocConditionCpNonLoc(
         cpMin = cpMin,
         exTblStimNoMin = exTblStimNoMin,
         exTblUnsBias = exTblUnsBias
@@ -1602,7 +1759,7 @@
     info$reason <- "all_cells_removed_by_antimode_trim"
     return(list(
       "dataMod" = dataMod,
-      "cp" = .getCpUnsLocIndCpNonLoc(
+      "cp" = .getCpUnsLocConditionCpNonLoc(
         cpMin = cpMin,
         exTblStimNoMin = exTblStimNoMin,
         exTblUnsBias = exTblUnsBias
@@ -1630,7 +1787,7 @@
     info$reason <- "all_cells_removed_by_left_flat_trim"
     return(list(
       "dataMod" = dataMod,
-      "cp" = .getCpUnsLocIndCpNonLoc(
+      "cp" = .getCpUnsLocConditionCpNonLoc(
         cpMin = cpMin,
         exTblStimNoMin = exTblStimNoMin,
         exTblUnsBias = exTblUnsBias
@@ -2083,6 +2240,13 @@
     dataCount = dataCount,
     exTblStimOrig = exTblStimOrig
   )
+  .intSaveNm(
+    "probBsEst",
+    probBsEst,
+    .getInd(exTblStimNoMin),
+    file.path(.getStage(exTblStimNoMin), .getCpUnsLocGetChnl(exTblStimNoMin)),
+    .getPathProject(exTblStimNoMin)
+  )
   .getCpUnsLocGetCpDataThresholdActual(
     dataCount = dataCount,
     propBsEst = probBsEst,
@@ -2152,20 +2316,38 @@
   stage
 ) {
   if (nrow(dataThreshold) == 0L) {
-    return(.getCpUnsLocIndCheckOut(
+    return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,
       exTblStimNoMin = exTblStimNoMin,
       exTblUnsBias = exTblUnsBias,
       stage = stage,
       msg = "Too few responding cells"
-    )[["cp"]])
+    ))
   }
   dataThreshold <- dataThreshold |>
     dplyr::filter(abs(propBsDiff) == min(abs(propBsDiff))) |> # nolint
     dplyr::slice(1) |>
     .getCut()
-  dataThreshold
+
+  if (!is.finite(dataThreshold)) {
+    return(.getCpUnsLocConditionCheckOut(
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias,
+      stage = stage,
+      msg = "No finite local-FDR threshold"
+    ))
+  }
+
+  .getCpUnsLocConditionOut(
+    cp = dataThreshold,
+    locGenerated = TRUE,
+    locGeneratedDirect = TRUE,
+    locSource = "direct",
+    locReason = "local_fdr_threshold_selected"
+  )
 }
+
 
 #' @keywords internal
 .createCombinedIdentifier <- function(indStim) {
@@ -2196,12 +2378,20 @@
   )
   indCombined <- .createCombinedIdentifier(indStim)
   .intSave(indCombined, stageChnl, pathProject, cpVec)
+  .intSaveNm(
+    "cpUnsLocMeta",
+    .getCpUnsLocMetaFromCp(cpVec),
+    indCombined,
+    stageChnl,
+    pathProject
+  )
   .debug("done getting loc gate at sample level") # nolint
   list(
     "loc" = cpVec,
     "pList" = list()
   )
 }
+
 
 #' @keywords internal
 .getCpUnsLocSampleCpRep <- function(
@@ -2217,9 +2407,20 @@
   stageChnl <- file.path(stage, chnl)
 
   cpVec <- purrr::map_dbl(cpUnsLocObjList, ~ .x[["cp"]])
+  meta <- .getCpUnsLocSampleMeta(
+    cpUnsLocObjList = cpUnsLocObjList,
+    ind = names(cpUnsLocObjList)
+  )
   .intSaveNm(
     "cpVecBeforeRep",
     cpVec,
+    indCombined,
+    stageChnl,
+    pathProject
+  )
+  .intSaveNm(
+    "cpMetaBeforeRep",
+    meta,
     indCombined,
     stageChnl,
     pathProject
@@ -2237,6 +2438,11 @@
       rep(cpVec, length(indStim)),
       indStim
     )
+    meta <- .getCpUnsLocSampleMetaRep(
+      meta = meta,
+      indStim = indStim,
+      source = "prejoin"
+    )
   } else {
     .intSaveNm(
       "individualCpUsed",
@@ -2246,6 +2452,7 @@
       pathProject
     )
     cpVec <- stats::setNames(cpVec, indStim)
+    meta$ind <- as.character(indStim)
   }
   .intSaveNm(
     "cpVecAfterRep",
@@ -2254,8 +2461,16 @@
     stageChnl,
     pathProject
   )
+  .intSaveNm(
+    "cpMetaAfterRep",
+    meta,
+    indCombined,
+    stageChnl,
+    pathProject
+  )
 
-  if (!all(purrr::map_lgl(cpVec, is.na))) {
+  locGenerated <- meta$locGenerated %in% TRUE
+  if (any(locGenerated, na.rm = TRUE)) {
     .intSaveNm(
       "addingUnsCp",
       NULL,
@@ -2263,7 +2478,16 @@
       stageChnl,
       pathProject
     )
-    cpVec <- c(cpVec, stats::setNames(mean(cpVec, na.rm = TRUE), indUns))
+    cpUns <- mean(cpVec[locGenerated], na.rm = TRUE)
+    metaUns <- tibble::tibble(
+      ind = as.character(indUns),
+      locGenerated = TRUE,
+      locGeneratedDirect = FALSE,
+      locSource = "unstim_summary",
+      locReason = "mean_of_generated_local_fdr_thresholds"
+    )
+    cpVec <- c(cpVec, stats::setNames(cpUns, indUns))
+    meta <- dplyr::bind_rows(meta, metaUns)
   } else {
     .intSaveNm(
       "addNaForUnsCp",
@@ -2272,7 +2496,17 @@
       stageChnl,
       pathProject
     )
-    cpVec <- c(cpVec, NA)
+    cpVec <- c(cpVec, stats::setNames(NA_real_, indUns))
+    meta <- dplyr::bind_rows(
+      meta,
+      tibble::tibble(
+        ind = as.character(indUns),
+        locGenerated = FALSE,
+        locGeneratedDirect = FALSE,
+        locSource = "unstim_summary",
+        locReason = "no_generated_local_fdr_thresholds"
+      )
+    )
   }
   .intSaveNm(
     "cpVecAfterUnsAdded",
@@ -2281,9 +2515,62 @@
     stageChnl,
     pathProject
   )
+  .intSaveNm(
+    "cpMetaAfterUnsAdded",
+    meta,
+    indCombined,
+    stageChnl,
+    pathProject
+  )
 
-  cpVec
+  .getCpUnsLocCpAttachMeta(cpVec, meta)
 }
+
+#' @keywords internal
+.getCpUnsLocSampleMeta <- function(cpUnsLocObjList, ind) {
+  tibble::tibble(
+    ind = as.character(ind),
+    locGenerated = purrr::map_lgl(
+      cpUnsLocObjList,
+      ~ .x[["locGenerated"]] %||% FALSE
+    ),
+    locGeneratedDirect = purrr::map_lgl(
+      cpUnsLocObjList,
+      ~ .x[["locGeneratedDirect"]] %||% FALSE
+    ),
+    locSource = purrr::map_chr(
+      cpUnsLocObjList,
+      ~ .x[["locSource"]] %||% "not_calculated"
+    ),
+    locReason = purrr::map_chr(
+      cpUnsLocObjList,
+      ~ .x[["locReason"]] %||% NA_character_
+    )
+  )
+}
+
+#' @keywords internal
+.getCpUnsLocSampleMetaRep <- function(meta, indStim, source) {
+  if (nrow(meta) == 0L) {
+    return(tibble::tibble(
+      ind = as.character(indStim),
+      locGenerated = FALSE,
+      locGeneratedDirect = FALSE,
+      locSource = "not_calculated",
+      locReason = "no_local_fdr_objects"
+    ))
+  }
+  metaOne <- meta[1, , drop = FALSE]
+  metaOut <- metaOne[rep(1, length(indStim)), , drop = FALSE]
+  metaOut$ind <- as.character(indStim)
+  metaOut$locSource <- ifelse(
+    metaOut$locGenerated %in% TRUE,
+    source,
+    metaOut$locSource
+  )
+  metaOut
+}
+
 
 #' @keywords internal
 .thinDataMod <- function(dataMod, maxCellsPerBin = 20) {

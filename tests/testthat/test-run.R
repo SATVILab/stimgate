@@ -5,7 +5,7 @@ test_that("stimgateGateRuns", {
   # debugonce(.getCpUnsLocGetProb)
   # debugonce(stimgate_gate)
   # browser()
-  # debugonce(.getCpCluster)
+  debugonce(.getCpCluster)
   Sys.setenv("stimgateIntermediate" = "true")
   invisible(gateStim(
     .data = gs,
