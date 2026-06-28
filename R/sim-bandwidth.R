@@ -443,6 +443,7 @@
       batchList = batchList,
       marker = paste0("MarkerF", seq_len(nMarker)),
       bw = bw,
+      biasUns = biasUns,
       bwMtd = bwMtd,
       bwMin = bwMin,
       bwMax = bwMax,
