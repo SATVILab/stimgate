@@ -936,7 +936,13 @@
   .intSave(ind, stageChnl, pathProject, dataMod)
 
   # smooth
-  .getCpUnsLocGetProbSmooth(dataMod, stage, pathProject, chnl)
+  .getCpUnsLocGetProbSmooth(
+    dataMod = dataMod,
+    stage = stage,
+    pathProject = pathProject,
+    chnl = chnl,
+    chnlSettings = chnlSettings
+  )
 }
 
 # get densTblRaw
@@ -1355,7 +1361,8 @@
   dataMod,
   stage,
   pathProject,
-  chnl
+  chnl,
+  chnlSettings = list()
 ) {
   stageChnl <- file.path(stage, chnl)
 
@@ -1378,8 +1385,17 @@
     return(dataModOut)
   }
 
-  predVec <- .getCpUnsLocGetProbSmoothActual(dataMod, stage)
+  smoothObj <- .getCpUnsLocGetProbSmoothActual(
+    dataMod = dataMod,
+    stage = stage,
+    chnlSettings = chnlSettings
+  )
+  predVec <- .getCpUnsLocGetProbSmoothObjPred(smoothObj)
   dataModOut <- dataMod |> dplyr::mutate(pred = predVec)
+  dataModOut <- .getCpUnsLocGetProbSmoothAttachDeriv(
+    dataMod = dataModOut,
+    smoothObj = smoothObj
+  )
   .intSaveNm(
     "probSmoothOut",
     dataModOut,
@@ -1405,12 +1421,39 @@
 }
 
 #' @keywords internal
-.getCpUnsLocGetProbSmoothActual <- function(dataMod, stage) {
+.getCpUnsLocGetProbSmoothObjPred <- function(smoothObj) {
+  if (is.list(smoothObj) && "pred" %in% names(smoothObj)) {
+    return(smoothObj$pred)
+  }
+  smoothObj
+}
+
+#' @keywords internal
+.getCpUnsLocGetProbSmoothAttachDeriv <- function(dataMod, smoothObj) {
+  if (!is.list(smoothObj)) {
+    return(dataMod)
+  }
+  if (!is.null(smoothObj$derivTbl)) {
+    attr(dataMod, "locProbDerivTbl") <- smoothObj$derivTbl
+  }
+  if (!is.null(smoothObj$method)) {
+    attr(dataMod, "locProbSmoothMethod") <- smoothObj$method
+  }
+  dataMod
+}
+
+#' @keywords internal
+.getCpUnsLocGetProbSmoothActual <- function(
+  dataMod,
+  stage,
+  chnlSettings = list()
+) {
   fit1 <- .getCpUnsLocGetProbSmoothActualFirst(dataMod, stage)
   .getCpUnsLocGetProbSmoothActualFirstResponse(
     fit = fit1,
     dataMod = dataMod,
-    stage = stage
+    stage = stage,
+    chnlSettings = chnlSettings
   )
 }
 
@@ -1465,26 +1508,30 @@
 .getCpUnsLocGetProbSmoothActualFirstResponse <- function(
   fit,
   dataMod,
-  stage
+  stage,
+  chnlSettings = list()
 ) {
   if (.getCpUnsLocGetProbSmoothActualCheck(fit, dataMod)) {
     .debug("Smoothed") # nolint
     return(
       .getCpUnsLocGetProbSmoothActualResponseSuccess(
         fit = fit,
-        dataMod = dataMod
-      )$pred
+        dataMod = dataMod,
+        chnlSettings = chnlSettings,
+        method = "scam_mpi"
+      )
     )
   }
   .getCpUnsLocGetProbSmoothActualFirstResponseFailure(
     stage = stage,
-    dataMod = dataMod
+    dataMod = dataMod,
+    chnlSettings = chnlSettings
   )
 }
 
 #' @keywords internal
 .getCpUnsLocGetProbSmoothActualCheck <- function(fit, dataMod) {
-  if (inherits(fit, "try-error")) {
+  if (inherits(fit, "try-error") || is.null(fit)) {
     return(FALSE)
   }
   outList <- .getCpUnsLocGetProbSmoothActualResponseSuccess(
@@ -1497,18 +1544,116 @@
 #' @keywords internal
 .getCpUnsLocGetProbSmoothActualResponseSuccess <- function(
   fit,
-  dataMod
+  dataMod,
+  chnlSettings = list(),
+  method = NA_character_
 ) {
   # predict on full dataset
   predVec <- predict(fit, newdata = dataMod, type = "response")
   meanAbsError <- mean(abs(predVec - dataMod$probSmooth))
-  list("pred" = predVec, "meanAbsError" = meanAbsError)
+  derivTbl <- .getCpUnsLocGetProbSmoothDerivativeTbl(
+    fit = fit,
+    dataMod = dataMod,
+    chnlSettings = chnlSettings
+  )
+  list(
+    "pred" = predVec,
+    "meanAbsError" = meanAbsError,
+    "derivTbl" = derivTbl,
+    "method" = method
+  )
+}
+
+#' @keywords internal
+.getCpUnsLocGetProbSmoothDerivativeTbl <- function(
+  fit,
+  dataMod,
+  chnlSettings = list()
+) {
+  chnl <- .getCpUnsLocGetChnl(dataMod)
+  x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+  x <- x[is.finite(x)]
+  if (length(x) < 4L || diff(range(x)) <= 0) {
+    return(NULL)
+  }
+
+  nGrid <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locFlatDerivGridN",
+    512L
+  )
+  nGrid <- suppressWarnings(as.integer(nGrid[1]))
+  if (!is.finite(nGrid) || nGrid < 25L) {
+    nGrid <- 512L
+  }
+
+  epsFrac <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locFlatDerivEpsFrac",
+    1e-5
+  )
+  epsFrac <- suppressWarnings(as.numeric(epsFrac[1]))
+  if (!is.finite(epsFrac) || epsFrac <= 0) {
+    epsFrac <- 1e-5
+  }
+
+  xRange <- range(x, na.rm = TRUE)
+  xWidth <- diff(xRange)
+  xGrid <- seq(xRange[1], xRange[2], length.out = nGrid)
+  eps <- max(
+    xWidth * epsFrac,
+    sqrt(.Machine$double.eps) * max(abs(xRange), 1, na.rm = TRUE)
+  )
+  if (!is.finite(eps) || eps <= 0) {
+    return(NULL)
+  }
+
+  xLeft <- pmax(xRange[1], xGrid - eps)
+  xRight <- pmin(xRange[2], xGrid + eps)
+  denom <- xRight - xLeft
+  if (any(!is.finite(denom) | denom <= 0)) {
+    return(NULL)
+  }
+
+  newData <- dataMod[rep(1L, length(xGrid)), , drop = FALSE]
+  newData[[chnl]] <- xGrid
+  predGrid <- try(
+    predict(fit, newdata = newData, type = "response"),
+    silent = TRUE
+  )
+  newData[[chnl]] <- xLeft
+  predLeft <- try(
+    predict(fit, newdata = newData, type = "response"),
+    silent = TRUE
+  )
+  newData[[chnl]] <- xRight
+  predRight <- try(
+    predict(fit, newdata = newData, type = "response"),
+    silent = TRUE
+  )
+  if (
+    inherits(predGrid, "try-error") ||
+      inherits(predLeft, "try-error") ||
+      inherits(predRight, "try-error")
+  ) {
+    return(NULL)
+  }
+
+  deriv <- (as.numeric(predRight) - as.numeric(predLeft)) / denom
+  deriv[!is.finite(deriv)] <- 0
+  deriv <- pmax(0, deriv)
+  tibble::tibble(
+    x = xGrid,
+    pred = as.numeric(predGrid),
+    deriv = deriv
+  )
 }
 
 #' @keywords internal
 .getCpUnsLocGetProbSmoothActualFirstResponseFailure <- function(
   stage,
-  dataMod
+  dataMod,
+  chnlSettings = list()
 ) {
   fit2 <- .getCpUnsLocGetProbSmoothActualSecond(dataMod, stage)
   if (.getCpUnsLocGetProbSmoothActualCheck(fit2, dataMod)) {
@@ -1516,8 +1661,10 @@
     return(
       .getCpUnsLocGetProbSmoothActualResponseSuccess(
         fit = fit2,
-        dataMod = dataMod
-      )$pred
+        dataMod = dataMod,
+        chnlSettings = chnlSettings,
+        method = "scam_micv"
+      )
     )
   }
   .getCpUnsLocGetProbSmoothActualThird(dataMod, stage)
@@ -1570,7 +1717,12 @@
 #' @keywords internal
 .getCpUnsLocGetProbSmoothActualThird <- function(dataMod, stage) {
   .debug("Failed to smooth") # nolint
-  dataMod$probSmooth - 0.0001
+  list(
+    "pred" = dataMod$probSmooth - 0.0001,
+    "meanAbsError" = NA_real_,
+    "derivTbl" = NULL,
+    "method" = "probSmooth_fallback"
+  )
 }
 
 
@@ -2102,6 +2254,82 @@
   list("dataMod" = dataMod[keep, , drop = FALSE], "info" = info)
 }
 
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimFlatLeftDerivData <- function(
+  probData,
+  dataMod,
+  probCol
+) {
+  derivData <- .getCpUnsLocGetCpTrimFlatLeftDerivFitted(
+    probData = probData,
+    dataMod = dataMod,
+    probCol = probCol
+  )
+  if (!is.null(derivData)) {
+    return(derivData)
+  }
+  .getCpUnsLocGetCpTrimFlatLeftDerivObserved(probData)
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimFlatLeftDerivFitted <- function(
+  probData,
+  dataMod,
+  probCol
+) {
+  if (!identical(probCol, "pred")) {
+    return(NULL)
+  }
+  derivTbl <- attr(dataMod, "locProbDerivTbl")
+  if (
+    is.null(derivTbl) ||
+      !all(c("x", "deriv") %in% names(derivTbl)) ||
+      nrow(derivTbl) < 2L
+  ) {
+    return(NULL)
+  }
+  derivTbl <- derivTbl |>
+    dplyr::filter(is.finite(.data$x), is.finite(.data$deriv)) |>
+    dplyr::arrange(.data$x)
+  if (nrow(derivTbl) < 2L || diff(range(derivTbl$x)) <= 0) {
+    return(NULL)
+  }
+
+  derivVec <- try(
+    stats::approx(
+      x = derivTbl$x,
+      y = derivTbl$deriv,
+      xout = probData$x,
+      rule = 2
+    )$y,
+    silent = TRUE
+  )
+  if (inherits(derivVec, "try-error")) {
+    return(NULL)
+  }
+  tibble::tibble(
+    x = probData$x,
+    deriv = pmax(0, as.numeric(derivVec)),
+    source = "fitted_pred_derivative"
+  )
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimFlatLeftDerivObserved <- function(probData) {
+  if (nrow(probData) < 4L || diff(range(probData$x)) <= 0) {
+    return(NULL)
+  }
+  deriv <- diff(probData$prob) / diff(probData$x)
+  deriv[!is.finite(deriv)] <- 0
+  deriv <- pmax(0, deriv)
+  tibble::tibble(
+    x = probData$x[-nrow(probData)],
+    deriv = deriv,
+    source = "observed_probability_slope"
+  )
+}
+
 #' @keywords internal
 .getCpUnsLocGetCpTrimFlatLeft <- function(
   dataMod,
@@ -2133,7 +2361,17 @@
     return(list("dataMod" = dataMod, "info" = info))
   }
 
-  deriv <- diff(probData$prob) / diff(probData$x)
+  derivData <- .getCpUnsLocGetCpTrimFlatLeftDerivData(
+    probData = probData,
+    dataMod = dataMod,
+    probCol = probCol
+  )
+  if (is.null(derivData) || nrow(derivData) == 0L) {
+    info$reason <- "no_probability_derivative_available"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  deriv <- derivData$deriv
   deriv[!is.finite(deriv)] <- 0
   deriv <- pmax(0, deriv)
   peakDeriv <- max(deriv, na.rm = TRUE)
@@ -2154,7 +2392,7 @@
     return(list("dataMod" = dataMod, "info" = info))
   }
 
-  startX <- probData$x[min(incIdx)]
+  startX <- derivData$x[min(incIdx)]
   lowMask <- is.finite(x) & x < startX
   highMask <- is.finite(x) & x >= startX
   if (sum(lowMask) == 0L || sum(highMask) == 0L) {
@@ -2217,6 +2455,8 @@
   info$longRegion <- longRegion
   info$peakDeriv <- peakDeriv
   info$derivThreshold <- derivThreshold
+  info$derivSource <- unique(derivData$source)[1]
+  info$nDerivPoint <- nrow(derivData)
 
   if (!lowEnough || !(manyCells || longRegion)) {
     return(list("dataMod" = dataMod, "info" = info))
