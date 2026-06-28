@@ -96,6 +96,18 @@
 #' @param locLeftLengthFrac numeric. Minimum length of the candidate low-response
 #'   left-tail region, expressed as a fraction of the expression interval over
 #'   which the response probability rises from its minimum to its maximum.
+#' @param locMarginalPurityRel numeric. Minimum allowed purity of each additional
+#'   leftward bin, expressed as a fraction of the average response probability
+#'   among cells to the right of the initial derivative-based local-FDR boundary.
+#'   Default is 0.5.
+#' @param locMarginalCellBinRatio numeric. Maximum number of cells allowed in each
+#'   additional leftward bin, expressed as a multiple of the average number of
+#'   cells per bin in the right-side reference interval. Empty reference bins are
+#'   counted. Default is 2.
+#' @param locMarginalRefQuantile numeric. Upper quantile of cells to the right of
+#'   the initial derivative-based boundary used to define the reference interval
+#'   for cells-per-bin calculations. Purity is still calculated using all cells to
+#'   the right of the initial boundary. Default is 0.75.
 #' @param locTolRefPeak character. Reference peak used by cluster imputation when
 #'   calculating signed equivalent tolerance values from generated local-FDR
 #'   thresholds. Default is `"highest"`.
@@ -237,11 +249,14 @@ gateStim <- function(
   locAntimodeHeightFrac = 1 / 6,
   locAntimodeLowRel = 0.25,
   locAntimodeLowAbs = 0.15,
-  locFlatDerivFrac = 1 / 2,
+  locFlatDerivFrac = 1 / 3,
   locLeftLowRel = 0.25,
   locLeftLowAbs = 0.15,
   locLeftCellFrac = 0.5,
   locLeftLengthFrac = 0.5,
+  locMarginalPurityRel = 0.5,
+  locMarginalCellBinRatio = 2,
+  locMarginalRefQuantile = 0.75,
   locTolRefPeak = "highest",
   gateCombn = "min",
   markerSettings = NULL,
@@ -305,6 +320,9 @@ gateStim <- function(
     locLeftLowAbs = locLeftLowAbs,
     locLeftCellFrac = locLeftCellFrac,
     locLeftLengthFrac = locLeftLengthFrac,
+    locMarginalPurityRel = locMarginalPurityRel,
+    locMarginalCellBinRatio = locMarginalCellBinRatio,
+    locMarginalRefQuantile = locMarginalRefQuantile,
     locTolRefPeak = locTolRefPeak,
     gateCombn = gateCombn
   )
@@ -351,6 +369,9 @@ gateStim <- function(
     locLeftLowAbs = locLeftLowAbs,
     locLeftCellFrac = locLeftCellFrac,
     locLeftLengthFrac = locLeftLengthFrac,
+    locMarginalPurityRel = locMarginalPurityRel,
+    locMarginalCellBinRatio = locMarginalCellBinRatio,
+    locMarginalRefQuantile = locMarginalRefQuantile,
     locTolRefPeak = locTolRefPeak,
     maxPosProbX = maxPosProbX,
     gateCombn = gateCombn,

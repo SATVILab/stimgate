@@ -2330,6 +2330,246 @@
   )
 }
 
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimMarginalLeft <- function(
+  dataMod,
+  chnlSettings,
+  probCol,
+  startX
+) {
+  info <- list(
+    applied = FALSE,
+    reason = "marginal_left_trim_not_run",
+    startX = startX
+  )
+
+  if (!is.data.frame(dataMod) || nrow(dataMod) < 4L) {
+    info$reason <- "too_few_cells_for_marginal_trim"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  dataMod <- dataMod[order(.getCut(dataMod)), , drop = FALSE]
+  x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+  probVec <- .getCpUnsLocGetCpTrimProbVec(dataMod, probCol)
+  dm <- tibble::tibble(x = x, prob = probVec) |>
+    dplyr::filter(is.finite(.data$x), is.finite(.data$prob)) |>
+    dplyr::mutate(prob = pmin(1, pmax(0, .data$prob))) |>
+    dplyr::arrange(.data$x)
+
+  if (
+    nrow(dm) < 4L ||
+      !is.finite(startX) ||
+      diff(range(dm$x, na.rm = TRUE)) <= 0
+  ) {
+    info$reason <- "insufficient_data_for_marginal_trim"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  xRight <- dm$x[dm$x >= startX]
+  if (length(xRight) == 0L) {
+    info$reason <- "no_cells_right_of_marginal_start"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  refQuantile <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locMarginalRefQuantile",
+    0.75
+  )
+  refQuantile <- suppressWarnings(as.numeric(refQuantile[1]))
+  if (!is.finite(refQuantile) || refQuantile <= 0 || refQuantile > 1) {
+    refQuantile <- 0.75
+  }
+
+  xRefHi <- suppressWarnings(stats::quantile(
+    xRight,
+    probs = refQuantile,
+    na.rm = TRUE,
+    names = FALSE
+  ))
+  if (!is.finite(xRefHi) || xRefHi <= startX) {
+    xRefHi <- max(xRight, na.rm = TRUE)
+  }
+  if (!is.finite(xRefHi) || xRefHi <= startX) {
+    info$reason <- "right_reference_interval_too_short"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  breaks <- .getCpUnsLocGetCpTrimMarginalBreaks(
+    dataMod = dataMod,
+    xMin = min(dm$x, na.rm = TRUE),
+    xMax = max(dm$x, na.rm = TRUE),
+    startX = startX,
+    xRefHi = xRefHi
+  )
+  if (length(breaks) < 2L) {
+    info$reason <- "insufficient_bins_for_marginal_trim"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  binTbl <- tibble::tibble(
+    left = breaks[-length(breaks)],
+    right = breaks[-1]
+  ) |>
+    dplyr::filter(.data$right > .data$left)
+
+  rightRefBins <- binTbl |>
+    dplyr::filter(
+      .data$right > .env$startX,
+      .data$left < .env$xRefHi
+    )
+  refNBin <- nrow(rightRefBins)
+  if (refNBin == 0L) {
+    info$reason <- "no_right_reference_bins_for_marginal_trim"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  rightMaskForBinDensity <- dm$x >= startX & dm$x <= xRefHi
+  rightMaskForPurity <- dm$x >= startX
+  refNCellBinRegion <- sum(rightMaskForBinDensity, na.rm = TRUE)
+  refNCell <- sum(rightMaskForPurity, na.rm = TRUE)
+  refExpectedResp <- sum(dm$prob[rightMaskForPurity], na.rm = TRUE)
+  if (refNCell == 0L || !is.finite(refExpectedResp)) {
+    info$reason <- "no_right_reference_cells_for_marginal_trim"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  refCellsPerBin <- refNCellBinRegion / refNBin
+  refPurity <- refExpectedResp / refNCell
+  if (
+    !is.finite(refCellsPerBin) ||
+      refCellsPerBin < 0 ||
+      !is.finite(refPurity) ||
+      refPurity <= 0
+  ) {
+    info$reason <- "invalid_right_reference_for_marginal_trim"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  cellBinRatio <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locMarginalCellBinRatio",
+    2
+  )
+  cellBinRatio <- suppressWarnings(as.numeric(cellBinRatio[1]))
+  if (!is.finite(cellBinRatio) || cellBinRatio <= 0) {
+    cellBinRatio <- 2
+  }
+
+  purityRel <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locMarginalPurityRel",
+    0.5
+  )
+  purityRel <- suppressWarnings(as.numeric(purityRel[1]))
+  if (!is.finite(purityRel) || purityRel < 0 || purityRel > 1) {
+    purityRel <- 0.5
+  }
+
+  maxLeftBinCells <- cellBinRatio * refCellsPerBin
+  minLeftBinPurity <- purityRel * refPurity
+
+  leftBins <- binTbl |>
+    dplyr::filter(.data$right <= .env$startX) |>
+    dplyr::arrange(dplyr::desc(.data$right))
+  if (nrow(leftBins) == 0L) {
+    info$reason <- "no_left_bins_for_marginal_trim"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  currentCut <- startX
+  scanList <- vector("list", nrow(leftBins))
+  stopReason <- "accepted_all_left_bins"
+
+  for (i in seq_len(nrow(leftBins))) {
+    left <- leftBins$left[[i]]
+    right <- leftBins$right[[i]]
+    mask <- dm$x >= left & dm$x < right
+    nCell <- sum(mask, na.rm = TRUE)
+    expectedResp <- sum(dm$prob[mask], na.rm = TRUE)
+    purity <- if (nCell > 0L) expectedResp / nCell else NA_real_
+
+    acceptBin <- nCell == 0L ||
+      (is.finite(purity) &&
+        nCell <= maxLeftBinCells &&
+        purity >= minLeftBinPurity)
+
+    scanList[[i]] <- tibble::tibble(
+      left = left,
+      right = right,
+      nCell = nCell,
+      expectedResp = expectedResp,
+      purity = purity,
+      refNBin = refNBin,
+      refCellsPerBin = refCellsPerBin,
+      refPurity = refPurity,
+      maxLeftBinCells = maxLeftBinCells,
+      minLeftBinPurity = minLeftBinPurity,
+      relCellsPerBin = ifelse(refCellsPerBin > 0, nCell / refCellsPerBin, Inf),
+      relPurity = purity / refPurity,
+      acceptBin = acceptBin
+    )
+
+    if (!isTRUE(acceptBin)) {
+      stopReason <- "stopped_at_low_purity_or_high_cell_bin"
+      break
+    }
+    currentCut <- left
+  }
+
+  scanTbl <- dplyr::bind_rows(scanList)
+  finalStartX <- currentCut
+  keep <- is.finite(x) & x >= finalStartX
+
+  info$applied <- sum(!keep, na.rm = TRUE) > 0L
+  info$reason <- if (isTRUE(info$applied)) {
+    "dropped_left_region_by_marginal_purity_cell_trim"
+  } else {
+    "marginal_purity_cell_trim_kept_all_cells"
+  }
+  info$stopReason <- stopReason
+  info$finalStartX <- finalStartX
+  info$xRefHi <- xRefHi
+  info$refQuantile <- refQuantile
+  info$refNBin <- refNBin
+  info$refNCell <- refNCell
+  info$refNCellBinRegion <- refNCellBinRegion
+  info$refExpectedResp <- refExpectedResp
+  info$refCellsPerBin <- refCellsPerBin
+  info$refPurity <- refPurity
+  info$cellBinRatio <- cellBinRatio
+  info$purityRel <- purityRel
+  info$maxLeftBinCells <- maxLeftBinCells
+  info$minLeftBinPurity <- minLeftBinPurity
+  info$scanTbl <- scanTbl
+
+  list("dataMod" = dataMod[keep, , drop = FALSE], "info" = info)
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimMarginalBreaks <- function(
+  dataMod,
+  xMin,
+  xMax,
+  startX,
+  xRefHi
+) {
+  binVec <- attr(dataMod, "binVec")
+  if (is.null(binVec)) {
+    binVec <- stats::pretty(.getCut(dataMod), n = 80)
+  }
+  binVec <- suppressWarnings(as.numeric(binVec))
+  binVec <- binVec[is.finite(binVec)]
+  breaks <- sort(unique(c(xMin, xMax, startX, xRefHi, binVec)))
+  breaks <- breaks[
+    is.finite(breaks) &
+      breaks >= xMin &
+      breaks <= xMax
+  ]
+  sort(unique(breaks))
+}
+
 #' @keywords internal
 .getCpUnsLocGetCpTrimFlatLeft <- function(
   dataMod,
@@ -2383,7 +2623,7 @@
   derivFrac <- .getCpUnsLocGetCpTrimSetting(
     chnlSettings,
     "locFlatDerivFrac",
-    1 / 2
+    1 / 3
   )
   derivThreshold <- peakDeriv * derivFrac
   incIdx <- which(deriv >= derivThreshold)
@@ -2462,9 +2702,18 @@
     return(list("dataMod" = dataMod, "info" = info))
   }
 
+  marginalObj <- .getCpUnsLocGetCpTrimMarginalLeft(
+    dataMod = dataMod,
+    chnlSettings = chnlSettings,
+    probCol = probCol,
+    startX = startX
+  )
+
   info$applied <- TRUE
-  info$reason <- "dropped_long_low_probability_left_region"
-  list("dataMod" = dataMod[highMask, , drop = FALSE], "info" = info)
+  info$reason <- "dropped_left_region_after_flat_and_marginal_trim"
+  info$marginal <- marginalObj$info
+
+  list("dataMod" = marginalObj$dataMod, "info" = info)
 }
 
 #' @keywords internal
