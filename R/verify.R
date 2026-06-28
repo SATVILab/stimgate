@@ -35,6 +35,9 @@
   locLeftLowAbs,
   locLeftCellFrac,
   locLeftLengthFrac,
+  locMarginalPurityRel,
+  locMarginalCellBinRatio,
+  locMarginalRefQuantile,
   locTolRefPeak,
   maxPosProbX,
   gateCombn,
@@ -184,6 +187,9 @@
       locLeftLowAbs = locLeftLowAbs,
       locLeftCellFrac = locLeftCellFrac,
       locLeftLengthFrac = locLeftLengthFrac,
+      locMarginalPurityRel = locMarginalPurityRel,
+      locMarginalCellBinRatio = locMarginalCellBinRatio,
+      locMarginalRefQuantile = locMarginalRefQuantile,
       locTolRefPeak = locTolRefPeak
     ),
     prefix = ""
@@ -260,6 +266,9 @@
     "locLeftLowAbs",
     "locLeftCellFrac",
     "locLeftLengthFrac",
+    "locMarginalPurityRel",
+    "locMarginalCellBinRatio",
+    "locMarginalRefQuantile",
     "locTolRefPeak",
     "maxPosProbX",
     "bwCluster",
@@ -514,7 +523,9 @@
     "locLeftLowRel",
     "locLeftLowAbs",
     "locLeftCellFrac",
-    "locLeftLengthFrac"
+    "locLeftLengthFrac",
+    "locMarginalPurityRel",
+    "locMarginalRefQuantile"
   )
   purrr::walk(probSettings, function(nm) {
     val <- settings[[nm]]
@@ -529,6 +540,16 @@
     }
     invisible(TRUE)
   })
+
+  if (!is.null(settings$locMarginalCellBinRatio)) {
+    val <- settings$locMarginalCellBinRatio
+    if (!is.numeric(val) || length(val) != 1 || !is.finite(val) || val <= 0) {
+      stop(paste0(
+        prefix,
+        "`locMarginalCellBinRatio` must be a single positive finite numeric value."
+      ))
+    }
+  }
 
   if (
     !is.null(settings$locTolRefPeak) &&
