@@ -2579,7 +2579,7 @@
 ) {
   info <- list(
     applied = FALSE,
-    reason = "no_long_low_flat_left_region"
+    reason = "no_derivative_based_left_trim"
   )
 
   if (!is.data.frame(dataMod) || nrow(dataMod) < 4L) {
@@ -2588,7 +2588,7 @@
   }
 
   dataMod <- dataMod[order(.getCut(dataMod)), , drop = FALSE]
-  x <- .getCut(dataMod)
+  x <- suppressWarnings(as.numeric(.getCut(dataMod)))
   probVec <- .getCpUnsLocGetCpTrimProbVec(dataMod, probCol)
   probData <- tibble::tibble(x = x, prob = probVec) |>
     dplyr::filter(is.finite(x), is.finite(prob)) |>
@@ -2620,97 +2620,78 @@
     return(list("dataMod" = dataMod, "info" = info))
   }
 
+  hardDerivFrac <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locFlatHardDerivFrac",
+    1 / 4
+  )
+  hardDerivFrac <- suppressWarnings(as.numeric(hardDerivFrac[1]))
+  if (!is.finite(hardDerivFrac) || hardDerivFrac < 0 || hardDerivFrac > 1) {
+    hardDerivFrac <- 1 / 4
+  }
+
+  hardDerivThreshold <- peakDeriv * hardDerivFrac
+  hardIncIdx <- which(deriv >= hardDerivThreshold)
+  if (length(hardIncIdx) == 0L) {
+    info$reason <- "no_derivative_above_hard_flat_threshold"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+  hardStartX <- derivData$x[min(hardIncIdx)]
+
   derivFrac <- .getCpUnsLocGetCpTrimSetting(
     chnlSettings,
     "locFlatDerivFrac",
-    1 / 3
+    1 / 2
   )
+  derivFrac <- suppressWarnings(as.numeric(derivFrac[1]))
+  if (!is.finite(derivFrac) || derivFrac < 0 || derivFrac > 1) {
+    derivFrac <- 1 / 2
+  }
+
   derivThreshold <- peakDeriv * derivFrac
   incIdx <- which(deriv >= derivThreshold)
   if (length(incIdx) == 0L) {
-    info$reason <- "no_derivative_above_flat_threshold"
+    info$reason <- "no_derivative_above_marginal_flat_threshold"
     return(list("dataMod" = dataMod, "info" = info))
   }
 
   startX <- derivData$x[min(incIdx)]
-  lowMask <- is.finite(x) & x < startX
-  highMask <- is.finite(x) & x >= startX
-  if (sum(lowMask) == 0L || sum(highMask) == 0L) {
-    info$reason <- "left_flat_region_too_short"
-    return(list("dataMod" = dataMod, "info" = info))
+  startX <- max(startX, hardStartX, na.rm = TRUE)
+
+  hardKeep <- is.finite(x) & x >= hardStartX
+  if (sum(hardKeep, na.rm = TRUE) == 0L) {
+    info$reason <- "all_cells_removed_by_hard_derivative_trim"
+    return(list("dataMod" = dataMod[0, , drop = FALSE], "info" = info))
   }
 
-  lowMean <- mean(probVec[lowMask], na.rm = TRUE)
-  peakProb <- max(probVec, na.rm = TRUE)
-  lowRel <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locLeftLowRel",
-    0.25
-  )
-  lowAbs <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locLeftLowAbs",
-    0.15
-  )
-  lowEnough <- is.finite(lowMean) &&
-    (lowMean < peakProb * lowRel || lowMean < lowAbs)
-
-  exprVec <- .getCut(exTblStimNoMin)
-  exprVec <- exprVec[is.finite(exprVec)]
-  nLow <- sum(exprVec < startX)
-  nHigh <- sum(exprVec >= startX)
-  cellFrac <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locLeftCellFrac",
-    0.5
-  )
-  manyCells <- nHigh > 0L && nLow > cellFrac * nHigh
-
-  minProbX <- probData$x[which.min(probData$prob)]
-  maxProbX <- probData$x[which.max(probData$prob)]
-  transitionLength <- abs(maxProbX - minProbX)
-  lowLength <- startX - min(x, na.rm = TRUE)
-  lengthFrac <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locLeftLengthFrac",
-    0.5
-  )
-  longRegion <- is.finite(transitionLength) &&
-    transitionLength > 0 &&
-    is.finite(lowLength) &&
-    lowLength > lengthFrac * transitionLength
-
-  info$startX <- startX
-  info$lowMean <- lowMean
-  info$peakProb <- peakProb
-  info$lowRel <- lowRel
-  info$lowAbs <- lowAbs
-  info$nLow <- nLow
-  info$nHigh <- nHigh
-  info$cellFrac <- cellFrac
-  info$manyCells <- manyCells
-  info$lowLength <- lowLength
-  info$transitionLength <- transitionLength
-  info$lengthFrac <- lengthFrac
-  info$longRegion <- longRegion
-  info$peakDeriv <- peakDeriv
-  info$derivThreshold <- derivThreshold
-  info$derivSource <- unique(derivData$source)[1]
-  info$nDerivPoint <- nrow(derivData)
-
-  if (!lowEnough || !(manyCells || longRegion)) {
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-
+  dataModHard <- dataMod[hardKeep, , drop = FALSE]
   marginalObj <- .getCpUnsLocGetCpTrimMarginalLeft(
-    dataMod = dataMod,
+    dataMod = dataModHard,
     chnlSettings = chnlSettings,
     probCol = probCol,
     startX = startX
   )
 
-  info$applied <- TRUE
-  info$reason <- "dropped_left_region_after_flat_and_marginal_trim"
+  hardDropped <- sum(!hardKeep, na.rm = TRUE) > 0L
+  marginalApplied <- isTRUE(marginalObj$info$applied)
+
+  info$applied <- hardDropped || marginalApplied
+  info$reason <- if (isTRUE(info$applied)) {
+    "dropped_left_region_by_derivative_or_marginal_trim"
+  } else {
+    "derivative_and_marginal_trim_kept_all_cells"
+  }
+  info$hardStartX <- hardStartX
+  info$startX <- startX
+  info$marginalStartX <- startX
+  info$hardDerivFrac <- hardDerivFrac
+  info$derivFrac <- derivFrac
+  info$hardDerivThreshold <- hardDerivThreshold
+  info$derivThreshold <- derivThreshold
+  info$peakDeriv <- peakDeriv
+  info$derivSource <- unique(derivData$source)[1]
+  info$nDerivPoint <- nrow(derivData)
+  info$nHardDropped <- sum(!hardKeep, na.rm = TRUE)
   info$marginal <- marginalObj$info
 
   list("dataMod" = marginalObj$dataMod, "info" = info)
