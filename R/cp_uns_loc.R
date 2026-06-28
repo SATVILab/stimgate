@@ -2145,7 +2145,7 @@
   derivFrac <- .getCpUnsLocGetCpTrimSetting(
     chnlSettings,
     "locFlatDerivFrac",
-    0.1
+    1 / 2
   )
   derivThreshold <- peakDeriv * derivFrac
   incIdx <- which(deriv >= derivThreshold)

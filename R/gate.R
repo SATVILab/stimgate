@@ -237,7 +237,7 @@ gateStim <- function(
   locAntimodeHeightFrac = 1 / 6,
   locAntimodeLowRel = 0.25,
   locAntimodeLowAbs = 0.15,
-  locFlatDerivFrac = 0.1,
+  locFlatDerivFrac = 1 / 2,
   locLeftLowRel = 0.25,
   locLeftLowAbs = 0.15,
   locLeftCellFrac = 0.5,
