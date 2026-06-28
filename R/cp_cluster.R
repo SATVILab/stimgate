@@ -819,8 +819,8 @@
   commonBw,
   reason
 ) {
-  grpUns <- row$grpUns[1] %||% NA_character_
-  grpStim <- row$grpStim[1] %||% NA_character_
+  grpUns <- suppressWarnings(row$grpUns[1]) %||% NA_character_
+  grpStim <- suppressWarnings(row$grpStim[1]) %||% NA_character_
   grp <- ifelse(!is.na(grpStim), grpStim, grpUns)
   cpJoin <- ifelse(is.finite(cpMedianStim), cpMedianStim, cpMedianUns)
   tibble::tibble(
@@ -840,16 +840,16 @@
     cpTolStim = cpStim,
     cpMedianUns = cpMedianUns,
     cpMedianStim = cpMedianStim,
-    locGenerated = row$locGenerated[1] %in% TRUE,
-    locGeneratedDirect = row$locGeneratedDirect[1] %in% TRUE,
-    locSource = row$locSource[1] %||% NA_character_,
-    locReason = row$locReason[1] %||% NA_character_,
+    locGenerated = suppressWarnings(row$locGenerated[1] %in% TRUE),
+    locGeneratedDirect = suppressWarnings(row$locGeneratedDirect[1] %in% TRUE),
+    locSource = suppressWarnings(row$locSource[1]) %||% NA_character_,
+    locReason = suppressWarnings(row$locReason[1]) %||% NA_character_,
     locClusterReason = reason,
     locClusterBw = commonBw,
-    locTolSignedUns = row$locTolSignedUns[1] %||% NA_real_,
-    locTolSignedStim = row$locTolSignedStim[1] %||% NA_real_,
-    locDerivSignUns = row$locDerivSignUns[1] %||% NA_real_,
-    locDerivSignStim = row$locDerivSignStim[1] %||% NA_real_,
+    locTolSignedUns = suppressWarnings(row$locTolSignedUns[1]) %||% NA_real_,
+    locTolSignedStim = suppressWarnings(row$locTolSignedStim[1]) %||% NA_real_,
+    locDerivSignUns = suppressWarnings(row$locDerivSignUns[1]) %||% NA_real_,
+    locDerivSignStim = suppressWarnings(row$locDerivSignStim[1]) %||% NA_real_,
     propBsOrig = NA_real_,
     propBsCpDiff = NA_real_,
     propBsCpDiffSd = NA_real_,
