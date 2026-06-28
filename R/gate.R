@@ -84,18 +84,30 @@
 #'   excluding low-response antimode-separated regions to the left of the
 #'   highest-response region.
 #' @param locFlatDerivFrac numeric. Fraction of the maximum positive derivative
-#'   used to identify where the smoothed response probability begins its main rise.
-#' @param locLeftLowRel numeric. Candidate left-tail regions not separated by an
+#'   used to define the marginal-trimming anchor. The marginal scan then decides
+#'   how far left of this anchor to extend, one bin at a time. Default is 0.5.
+#' @param locFlatHardDerivFrac numeric. Lower derivative fraction used for a
+#'   conservative hard exclusion of the very flat far-left region before the
+#'   marginal bin scan. Default is 0.25.
+#' @param locLeftLowRel numeric. Retained for backwards compatibility. The current
+#'   derivative/marginal left-tail trim no longer uses this overall-region check.
+#'   Candidate left-tail regions not separated by an
 #'   antimode are considered low response when their mean response probability is
 #'   below this fraction of the peak response probability.
-#' @param locLeftLowAbs numeric. Absolute response-probability cutoff for the
-#'   non-antimode left-tail trimming rule.
-#' @param locLeftCellFrac numeric. Minimum size of the candidate low-response
+#' @param locLeftLowAbs numeric. Retained for backwards compatibility. The
+#'   current derivative/marginal left-tail trim no longer uses this overall-region
+#'   check. Absolute response-probability cutoff for the non-antimode left-tail
+#'   trimming rule.
+#' @param locLeftCellFrac numeric. Retained for backwards compatibility. The
+#'   current derivative/marginal left-tail trim no longer uses this overall-region
+#'   check. Minimum size of the candidate low-response
 #'   left-tail region, expressed as a fraction of the number of cells to the right
 #'   of the start of the main probability rise.
-#' @param locLeftLengthFrac numeric. Minimum length of the candidate low-response
-#'   left-tail region, expressed as a fraction of the expression interval over
-#'   which the response probability rises from its minimum to its maximum.
+#' @param locLeftLengthFrac numeric. Retained for backwards compatibility. The
+#'   current derivative/marginal left-tail trim no longer uses this overall-region
+#'   check. Minimum length of the candidate low-response left-tail region,
+#'   expressed as a fraction of the expression interval over which the response
+#'   probability rises from its minimum to its maximum.
 #' @param locMarginalPurityRel numeric. Minimum allowed purity of each additional
 #'   leftward bin, expressed as a fraction of the average response probability
 #'   among cells to the right of the initial derivative-based local-FDR boundary.
@@ -249,7 +261,8 @@ gateStim <- function(
   locAntimodeHeightFrac = 1 / 6,
   locAntimodeLowRel = 0.25,
   locAntimodeLowAbs = 0.15,
-  locFlatDerivFrac = 1 / 3,
+  locFlatDerivFrac = 1 / 2,
+  locFlatHardDerivFrac = 1 / 4,
   locLeftLowRel = 0.25,
   locLeftLowAbs = 0.15,
   locLeftCellFrac = 0.5,
@@ -316,6 +329,7 @@ gateStim <- function(
     locAntimodeLowRel = locAntimodeLowRel,
     locAntimodeLowAbs = locAntimodeLowAbs,
     locFlatDerivFrac = locFlatDerivFrac,
+    locFlatHardDerivFrac = locFlatHardDerivFrac,
     locLeftLowRel = locLeftLowRel,
     locLeftLowAbs = locLeftLowAbs,
     locLeftCellFrac = locLeftCellFrac,
@@ -365,6 +379,7 @@ gateStim <- function(
     locAntimodeLowRel = locAntimodeLowRel,
     locAntimodeLowAbs = locAntimodeLowAbs,
     locFlatDerivFrac = locFlatDerivFrac,
+    locFlatHardDerivFrac = locFlatHardDerivFrac,
     locLeftLowRel = locLeftLowRel,
     locLeftLowAbs = locLeftLowAbs,
     locLeftCellFrac = locLeftCellFrac,
