@@ -487,8 +487,12 @@
     bwAdj = bwAdj
   )
 
-  if (!is.finite(bwOut) || bwOut <= 0) {
-    return(.Machine$double.eps)
+  if (is.na(bwOut) || !is.finite(bwOut) || bwOut <= 0) {
+    stop(
+      "Failed to calculate fallback bandwidth for channel ",
+      chnlCut,
+      ". Specify bwFallback manually."
+    )
   }
 
   bwOut

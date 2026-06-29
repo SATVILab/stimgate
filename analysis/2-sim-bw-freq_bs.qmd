@@ -80,7 +80,6 @@ bandwidth_value_vec <- c(0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2, 5)[c(3:8)
 length(n_cell_stim_vec) * length(prob_response_vec) * length(mean_pos_vec) * length(transformation_vec) * length(bandwidth_value_vec)
 ```
 
-
 ### Varying bandwidth manually
 
 So, now we'll vary the bandwidth from a small value up to to a large value, where "small" is relative to the known spread of the data.
@@ -127,6 +126,9 @@ if ("dev" %in% projr::projr_profile_get()) {
       bw == 0.5
     )
 }
+sim_grid
+print(paste0("Performing ", nrow(sim_grid), " simulations"))
+
 ```
 
 A loop we only run when we want to see why particular runs failed.
@@ -143,6 +145,7 @@ for (i in seq_len(nrow(sim_grid))) {
     nIter = 10,
     biasUns = 0.05,
     bw = sim_grid$bw[i],
+    bwFallback = sim_grid$bw[i],
     nCellStim = sim_grid$n_cell[i],
     probResponse = sim_grid$prob_response[i],
     probExact = TRUE,
@@ -219,6 +222,7 @@ bw_list_raw <- with_progress({
         nIter = 10,
         biasUns = 0.05,
         bw = bw,
+        bwFallback = bw,
         nCellStim = n_cell,
         probResponse = prob_response,
         probExact = TRUE,
