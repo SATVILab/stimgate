@@ -6,6 +6,7 @@
   nIter,
   biasUns,
   bw = NULL,
+  bwFallback = NULL,
   bwMin = NULL,
   bwMax = NULL,
   bwAdj = 1,
@@ -93,6 +94,7 @@
       batchList = batchList,
       marker = paste0("MarkerF", seq_len(nMarker)),
       bw = bw,
+      bwFallback = bwFallback,
       tolClust = tolClust
     ))
 
