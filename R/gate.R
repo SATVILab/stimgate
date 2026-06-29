@@ -44,8 +44,14 @@
 #'   no minimum is enforced. Useful for ensuring gates don't fall below known
 #'   technical thresholds or background levels.
 #' @param bw numeric. Specify the bandwith for density estimation. When NULL (default), bandwidth is estimated automatically. Default is `NULL`.
-#' @param bwMin numeric. Minimum bandwidth for density estimation. Ignored if `bw` is set. Default is `NULL`.
-#' @param bwMax numeric. Maximum bandwidth for density estimation. Ignored if `bw` is set. Default is `NULL`.
+#' @param bwMin numeric or character. Minimum bandwidth for density estimation.
+#'   Ignored if `bw` is set. Use `"auto"` to calculate automatically, `"none"`
+#'   to apply no lower bound, or a numeric value to specify the lower bound.
+#'   Default is `"auto"`.
+#' @param bwMax numeric or character. Maximum bandwidth for density estimation.
+#'   Ignored if `bw` is set. Use `"auto"` to calculate automatically, `"none"`
+#'   to apply no upper bound, or a numeric value to specify the upper bound.
+#'   Default is `"auto"`.
 #' @param bwMtd character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi0", "hpi1", "hpi2" and "hpi3", which corresponds to the Silverman rule of thumbg (`"nrd0"`), the Sheather-Jones plug-in estimator (`"sj"`) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (`"hpi1"`, `"hpi1"`, `"hpi2"` and `"hpi3"`). Default is "nrd0". Ignored if `bw` is set. Default is `"hpi1"`.
 #' @param bwAdj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
 #' @param bwNcellMin numeric. Minimum number of cells required for bandwidth estimation. If a sample has fewer cells than `bwNcellMin`, cells are sampled with replacement to reach the minimum, with noise subsequently added. Ignored if `bw` is set. Default is 100.
@@ -311,8 +317,8 @@ gateStim <- function(
     excMin = excMin,
     cpMin = cpMin,
     bw = bw,
-    bwMin = bwMin,
-    bwMax = bwMax,
+    bwMin = "auto",
+    bwMax = "auto",
     bwMtd = bwMtd,
     bwAdj = bwAdj,
     bwNcellMin = bwNcellMin,
