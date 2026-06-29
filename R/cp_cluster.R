@@ -247,8 +247,14 @@
 .getCpClusterLocBwOne <- function(x, chnlSettings) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
+
+  bwFallback <- suppressWarnings(as.numeric(chnlSettings$bwFallback))[1]
+  if (!is.finite(bwFallback) || bwFallback <= 0) {
+    bwFallback <- NA_real_
+  }
+
   if (length(x) < 5L || length(unique(x)) < 3L) {
-    return(NA_real_)
+    return(bwFallback)
   }
   if (
     !is.null(chnlSettings$bwNcellMax) && length(x) > chnlSettings$bwNcellMax
@@ -260,6 +266,14 @@
   ) {
     iqrX <- diff(stats::quantile(x, c(0.75, 0.25), na.rm = TRUE))
     sdX <- abs(iqrX) / 1.5
+
+    if (!is.finite(sdX) || sdX <= 0) {
+      sdX <- stats::sd(x, na.rm = TRUE)
+    }
+    if (!is.finite(sdX) || sdX <= 0) {
+      sdX <- .Machine$double.eps
+    }
+
     x <- sample(x, replace = TRUE, size = chnlSettings$bwNcellMin) +
       stats::rnorm(chnlSettings$bwNcellMin, mean = 0, sd = sdX / 10)
   }
@@ -269,7 +283,7 @@
   bwMin <- suppressWarnings(as.numeric(chnlSettings$bwMin))[1]
   bwMax <- suppressWarnings(as.numeric(chnlSettings$bwMax))[1]
   if (!is.finite(bwMin) || bwMin <= 0) {
-    bwMin <- .Machine$double.eps
+    bwMin <- -1
   }
   if (!is.finite(bwMax) || bwMax <= 0) {
     bwMax <- Inf
@@ -286,14 +300,18 @@
       silent = TRUE
     )
   )
-  if (inherits(bwCalc, "try-error") || !is.finite(bwCalc) || bwCalc <= 0) {
-    bwCalc <- try(stats::bw.nrd0(x), silent = TRUE)
+
+  if (
+    inherits(bwCalc, "try-error") ||
+      !is.finite(bwCalc) ||
+      bwCalc <= 0
+  ) {
+    return(bwFallback)
   }
-  if (inherits(bwCalc, "try-error") || !is.finite(bwCalc) || bwCalc <= 0) {
-    return(NA_real_)
-  }
-  max(bwMin, min(bwCalc * bwAdj, bwMax))
+
+  max(bwMin, min(as.numeric(bwCalc)[1] * bwAdj, bwMax))
 }
+
 
 #' @keywords internal
 .getCpClusterLocExprRange <- function(exLookup) {
@@ -835,13 +853,28 @@
   if (
     !is.finite(cp) ||
       is.null(exPair) ||
-      is.null(exPair$stim) || is.null(exPair$uns) ||
-      !is.data.frame(exPair$stim) || !is.data.frame(exPair$uns) ||
-      nrow(exPair$stim) == 0L || nrow(exPair$uns) == 0L
+      is.null(exPair$stim) ||
+      is.null(exPair$uns) ||
+      !is.data.frame(exPair$stim) ||
+      !is.data.frame(exPair$uns) ||
+      nrow(exPair$stim) == 0L ||
+      nrow(exPair$uns) == 0L
   ) {
     return(tibble::tibble(
-      locFinalNCellStim = if (!is.null(exPair$stim) && is.data.frame(exPair$stim)) nrow(exPair$stim) else NA_integer_,
-      locFinalNCellUns = if (!is.null(exPair$uns) && is.data.frame(exPair$uns)) nrow(exPair$uns) else NA_integer_,
+      locFinalNCellStim = if (
+        !is.null(exPair$stim) && is.data.frame(exPair$stim)
+      ) {
+        nrow(exPair$stim)
+      } else {
+        NA_integer_
+      },
+      locFinalNCellUns = if (
+        !is.null(exPair$uns) && is.data.frame(exPair$uns)
+      ) {
+        nrow(exPair$uns)
+      } else {
+        NA_integer_
+      },
       locFinalPropStim = NA_real_,
       locFinalPropUns = NA_real_,
       locFinalPropBs = NA_real_

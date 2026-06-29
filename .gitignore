@@ -13,6 +13,8 @@ _tmp/**/*
 *.Rcheck
 *.tar.gz
 tests/testthat/cache/
+analysis/*html
+analysis/*.rmarkdown
 
 # pkgdown local build output
 docs/
@@ -25,9 +27,12 @@ analysis/docs/**
 _tmp/**
 AGENTS.md
 CHANGES_SUMMARY.md
+Rplots.pdf
 # End of projr section
 
 _tmp/log/sbatch/projr_build_output
 
 _tmp/log/sbatch/projr_build_dev
+
+_tmp/log/sbatch/projr_build_dev-1-sim-trans
 

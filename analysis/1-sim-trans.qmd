@@ -1,0 +1,205 @@
+---
+title: Simulated transformation scenarios
+format:
+  html:
+    embed-resources: true
+    toc: true
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(tibble)
+  library(dplyr)
+  library(purrr)
+  library(cowplot)
+})
+
+if (requireNamespace("projr", quietly = TRUE)) {
+  root_dir <- tryCatch(
+    projr::projr_path_get("project"),
+    error = function(e) getwd()
+  )
+} else {
+  root_dir <- getwd()
+}
+
+desc_path <- file.path(root_dir, "DESCRIPTION")
+
+if (
+  file.exists(desc_path) &&
+    grepl("Package: stimgate", readLines(desc_path, n = 1)) &&
+    requireNamespace("devtools", quietly = TRUE)
+) {
+  devtools::load_all(root_dir, quiet = TRUE)
+} else {
+  r_dir <- file.path(root_dir, "R")
+  if (dir.exists(r_dir)) {
+    fn_vec <- list.files(r_dir, full.names = TRUE, pattern = "[.]R$")
+    for (fn in fn_vec) {
+      source(fn)
+    }
+  }
+}
+```
+
+## Aim
+
+This page checks that the simulated expression distributions look sensible under the three transformation settings used in the bandwidth simulations. The main scenario is:
+
+```{r}
+#| label: main-settings
+main_settings <- tibble::tibble(
+  mean_pos = 8,
+  n_cell = 1e5,
+  prob_response = 0.002,
+  background_relative_to_response = 0.2,
+  prob_exact = TRUE,
+  mixture_type = "gaussianOnly",
+  cluster_perturbation_sd = 0,
+  cov_ev_min = 2,
+  cov_ev_max = 2
+)
+
+main_settings
+```
+
+The figures below simulate only one stimulated condition at a time. For the univariate plots, the matching unstimulated condition is also shown for comparison.
+
+```{r}
+#| label: helpers
+#| include: false
+
+transformation_vec <- c("gaussian", "gamma", "skew")
+
+```
+
+## Main univariate transformation check
+
+The first figure shows the univariate scenario for the main settings. The stimulated sample has an excess response probability of `r main_settings$prob_response[[1]]`, while the unstimulated sample has background response probability equal to `prob_response * background_relative_to_response`.
+Positive cells are also shown as rug marks along the x-axis.
+
+```{r}
+#| label: simulate-main-univariate
+#| fig-width: 12
+#| fig-height: 4.8
+#| fig-cap: "Univariate simulated expression under the three transformations. The y-axis is square-root transformed to make the rare response component easier to see. Dotted vertical lines mark the transformed negative and positive component means."
+
+set.seed(1)
+
+uni_tbl <- purrr::map_dfr(
+  transformation_vec,
+  sim_trans_univariate_one
+)
+
+uni_plot_list <- purrr::map(
+  transformation_vec,
+  ~ plot_univariate_transformation(uni_tbl, .x)
+)
+
+p <- cowplot::plot_grid(
+  plotlist = uni_plot_list,
+  nrow = 1,
+  align = "hv"
+)
+path_p <- projr::projr_path_get(
+  "cache",
+  "sim",
+  "trans",
+  "main-univariate.png"
+)
+ggsave(
+  filename = path_p,
+  plot = p,
+  width = 30,
+  height = 15,
+  units = "cm",
+  dpi = 300
+)
+p
+```
+
+```{r}
+#| label: univariate-counts
+uni_tbl |>
+  dplyr::count(
+    .data$transformation,
+    .data$condition,
+    .data$response_class,
+    name = "n_cell"
+  ) |>
+  dplyr::group_by(.data$transformation, .data$condition) |>
+  dplyr::mutate(prop_cell = .data$n_cell / sum(.data$n_cell)) |>
+  dplyr::ungroup()
+```
+
+## Extra 2-by-3 transformation check
+
+The next figure keeps the univariate comparison in the top row and adds a bivariate stimulated condition in the bottom row. In the bivariate stimulated condition, the excess response probability is split equally across F1-only, F2-only and F1/F2 co-expressing cells. The background response probability is also split equally across those three response classes.
+
+```{r}
+#| label: simulate-main-univariate-and-bivariate
+#| fig-width: 12
+#| fig-height: 9
+#| fig-cap: "Top row: univariate stimulated versus unstimulated simulations. Bottom row: bivariate stimulated simulations with equal probability assigned to F1-only, F2-only and F1/F2 co-expressing response classes. For the bivariate row, background cells are down-sampled for display and all response cells are retained."
+
+set.seed(2)
+
+bi_tbl <- purrr::map_dfr(
+  transformation_vec,
+  sim_trans_bivariate_one
+)
+
+top_row <- purrr::map(
+  transformation_vec,
+  ~ plot_univariate_transformation(uni_tbl, .x) +
+    theme(legend.position = "none")
+)
+
+bottom_row <- purrr::map(
+  transformation_vec,
+  ~ plot_bivariate_transformation(bi_tbl, .x) +
+    theme(legend.position = "none")
+)
+
+p <- cowplot::plot_grid(
+  plotlist = c(top_row, bottom_row),
+  ncol = 3,
+  align = "hv"
+)
+path_p <- projr::projr_path_get(
+  "cache",
+  "sim",
+  "trans",
+  "main-univariate-and-bivariate.png"
+)
+ggsave(
+  filename = path_p,
+  plot = p,
+  width = 30,
+  height = 22.5,
+  units = "cm",
+  dpi = 300
+)
+p
+```
+
+```{r}
+#| label: bivariate-counts
+
+bi_tbl |>
+  dplyr::count(
+    .data$transformation,
+    .data$response_class,
+    name = "n_cell"
+  ) |>
+  dplyr::group_by(.data$transformation) |>
+  dplyr::mutate(prop_cell = .data$n_cell / sum(.data$n_cell)) |>
+  dplyr::ungroup()
+```
