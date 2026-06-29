@@ -11,8 +11,6 @@ format:
 #| include: false
 library(ggplot2)
 library(tibble)
-library(tidyr)
-library(purrr)
 library(furrr)
 library(progressr) 
 
@@ -40,7 +38,6 @@ if (
 ```{r}
 #| eval: false
 #| label: check-transformations
-
 mean_vec <- c(0, 8)
 plot_tbl <- purrr::map_df(mean_vec, function(mean_curr) {
   sim_vec <- rnorm(1e3, mean = mean_curr, sd = sqrt(2))
@@ -449,7 +446,7 @@ Generate the grid of parameters to simulate.
 ```{r}
 #| label: bw-manual-grid
 # 2. Flatten your nested loops into a single combination grid
-sim_grid <- expand_grid(
+sim_grid <- tidyr::expand_grid(
   transformation = transformation_vec,
   prob_response  = prob_response_vec,
   n_cell         = n_cell_stim_vec,
@@ -465,6 +462,18 @@ sim_grid <- expand_grid(
 
 sim_grid <- sim_grid |>
   dplyr::arrange(n_cell, dplyr::desc(prob_response))
+
+
+if ("dev" %in% projr::projr_profile_get()) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell == 1e5,
+      prob_response == 0.002,
+      mean_pos == 8,
+      transformation %in% transformation_vec,
+      bw == 0.5
+    )
+}
 ```
 
 A loop we only run when we want to see why particular runs failed.
@@ -637,6 +646,32 @@ bw_list_raw <- readRDS(
 bw_tbl <- bw_list_raw |>
   dplyr::bind_rows() |>
   dplyr::filter(!is.na(iter))
+
+# Extract gates
+bw_gate_detail_tbl <- bw_tbl |>
+  dplyr::filter(grepl("^loc_", .data$method)) |>
+  dplyr::select(
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos,
+    bw,
+    iter,
+    chnl,
+    sample,
+    method,
+    propRespTruth,
+    propRespEst,
+    threshold,
+    thresholdOrigin,
+    locGenerated,
+    locGeneratedDirect,
+    locSource,
+    locReason,
+    detailLevel
+  )
+
+bw_gate_detail_tbl
 
 bw_tbl |>
   dplyr::group_by(

@@ -1,3 +1,4 @@
+Sys.setenv("PROJR_PROFILE" = "dev")
 .set_renv_profile <- function() {
   # set the renv profile based on the environment
   # if using the Bioconductor Docker image,
@@ -82,7 +83,12 @@ if (is.null(names(getOption("repos")))) {
   )
 }
 
-try(suppressWarnings(rm(
-  .set_renv_profile, .is_ci,
-  .is_bioc_container, .is_devcontainer_config_r_feature
-)), silent = TRUE)
+try(
+  suppressWarnings(rm(
+    .set_renv_profile,
+    .is_ci,
+    .is_bioc_container,
+    .is_devcontainer_config_r_feature
+  )),
+  silent = TRUE
+)

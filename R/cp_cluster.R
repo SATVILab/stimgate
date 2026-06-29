@@ -39,6 +39,8 @@
 
   if (nrow(gateTblStim) == 0L) {
     cpTbl <- tibble::tibble()
+    cpTbl <- .getCpClusterLocAddFinalDetail(cpTbl, exLookup)
+    .intSaveNm("locDetailClusterFinal", cpTbl, "all", stageChnl, pathProject)
     .intSave("all", stageChnl, pathProject, cpTbl)
     return(cpTbl)
   }
@@ -48,6 +50,8 @@
       gateTblStim = gateTblStim,
       reason = "all_local_fdr_thresholds_available_skip_cluster"
     )
+    cpTbl <- .getCpClusterLocAddFinalDetail(cpTbl, exLookup)
+    .intSaveNm("locDetailClusterFinal", cpTbl, "all", stageChnl, pathProject)
     .intSave("all", stageChnl, pathProject, cpTbl)
     return(cpTbl)
   }
@@ -57,6 +61,8 @@
       gateTblStim = gateTblStim,
       reason = "no_generated_local_fdr_thresholds_for_tol_imputation"
     )
+    cpTbl <- .getCpClusterLocAddFinalDetail(cpTbl, exLookup)
+    .intSaveNm("locDetailClusterFinal", cpTbl, "all", stageChnl, pathProject)
     .intSave("all", stageChnl, pathProject, cpTbl)
     return(cpTbl)
   }
@@ -121,6 +127,8 @@
   }) |>
     dplyr::arrange(ind)
 
+  cpTbl <- .getCpClusterLocAddFinalDetail(cpTbl, exLookup)
+  .intSaveNm("locDetailClusterFinal", cpTbl, "all", stageChnl, pathProject)
   .intSave("all", stageChnl, pathProject, cpTbl)
   cpTbl
 }
@@ -790,6 +798,86 @@
     dplyr::arrange(.data$dist) |>
     dplyr::slice(1) |>
     dplyr::pull("cp")
+}
+
+
+#' @keywords internal
+.getCpClusterLocThresholdOrigin <- function(row) {
+  reason <- as.character(row$locClusterReason[1] %||% NA_character_)
+  locSource <- as.character(row$locSource[1] %||% NA_character_)
+  locGenerated <- row$locGenerated[1] %in% TRUE
+  locGeneratedDirect <- row$locGeneratedDirect[1] %in% TRUE
+
+  if (reason %in% "imputed_from_cluster_median_signed_tol") {
+    return("cluster_imputed_from_similar_conditions")
+  }
+  if (locGenerated && locGeneratedDirect && locSource %in% "direct") {
+    return("condition_detected_response")
+  }
+  if (locGenerated && locSource %in% "combined") {
+    return("sample_imputed_from_other_stim_conditions")
+  }
+  if (locGenerated && locSource %in% "prejoin") {
+    return("prejoin_generated_from_joined_stim_conditions")
+  }
+  if (reason %in% "local_fdr_available") {
+    return("local_fdr_available")
+  }
+  if (!locGenerated) {
+    return("not_generated_fallback")
+  }
+  "generated_unknown_source"
+}
+
+#' @keywords internal
+.getCpClusterLocPropBsAtCp <- function(cp, exPair) {
+  cp <- suppressWarnings(as.numeric(cp))[1]
+  if (
+    !is.finite(cp) ||
+      is.null(exPair) ||
+      is.null(exPair$stim) || is.null(exPair$uns) ||
+      !is.data.frame(exPair$stim) || !is.data.frame(exPair$uns) ||
+      nrow(exPair$stim) == 0L || nrow(exPair$uns) == 0L
+  ) {
+    return(tibble::tibble(
+      locFinalNCellStim = if (!is.null(exPair$stim) && is.data.frame(exPair$stim)) nrow(exPair$stim) else NA_integer_,
+      locFinalNCellUns = if (!is.null(exPair$uns) && is.data.frame(exPair$uns)) nrow(exPair$uns) else NA_integer_,
+      locFinalPropStim = NA_real_,
+      locFinalPropUns = NA_real_,
+      locFinalPropBs = NA_real_
+    ))
+  }
+  propStim <- sum(.getCut(exPair$stim) >= cp, na.rm = TRUE) / nrow(exPair$stim)
+  propUns <- sum(.getCut(exPair$uns) >= cp, na.rm = TRUE) / nrow(exPair$uns)
+  tibble::tibble(
+    locFinalNCellStim = nrow(exPair$stim),
+    locFinalNCellUns = nrow(exPair$uns),
+    locFinalPropStim = propStim,
+    locFinalPropUns = propUns,
+    locFinalPropBs = propStim - propUns
+  )
+}
+
+#' @keywords internal
+.getCpClusterLocAddFinalDetail <- function(cpTbl, exLookup) {
+  if (!is.data.frame(cpTbl) || nrow(cpTbl) == 0L) {
+    return(cpTbl)
+  }
+  detailTbl <- purrr::map_df(seq_len(nrow(cpTbl)), function(i) {
+    row <- cpTbl[i, , drop = FALSE]
+    cp <- suppressWarnings(as.numeric(row$cpJoinLseOrigMeanTg[1]))
+    if (!is.finite(cp)) {
+      cp <- suppressWarnings(as.numeric(row$cpJoinTgOrig[1]))
+    }
+    exPair <- exLookup[[as.character(row$ind[1])]]
+    .getCpClusterLocPropBsAtCp(cp = cp, exPair = exPair) |>
+      dplyr::mutate(
+        locFinalThreshold = cp,
+        locFinalThresholdOrigin = .getCpClusterLocThresholdOrigin(row),
+        locFinalThresholdGenerated = is.finite(cp)
+      )
+  })
+  dplyr::bind_cols(cpTbl, detailTbl)
 }
 
 #' @keywords internal
