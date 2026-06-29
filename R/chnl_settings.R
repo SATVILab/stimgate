@@ -249,9 +249,10 @@
 
 #' @keywords internal
 .completeChnlSettingsBwFallbackIsAuto <- function(x) {
-  is.character(x) &&
-    length(x) == 1L &&
-    tolower(x) == "auto"
+  is.null(x) ||
+    (is.character(x) &&
+      length(x) == 1L &&
+      tolower(x) == "auto")
 }
 
 #' @keywords internal
@@ -505,40 +506,80 @@
   bwFallback
 ) {
   if (!is.null(bwCluster)) {
-    return(bwCluster)
+    if (
+      is.numeric(bwCluster) &&
+        length(bwCluster) == 1L &&
+        is.finite(bwCluster) &&
+        bwCluster > 0
+    ) {
+      return(bwCluster)
+    }
+    return(bwFallback)
   }
-  purrr::map(
+
+  bwVec <- purrr::map(
     seq_len(min(5, length(indBatchList))),
     function(i) {
-      exList <- try(.getExList(
-        # nolint
-        .data = .data,
-        indBatch = indBatchList[[i]],
-        pop = popGate,
-        chnlCut,
-        batch = names(indBatchList)[i],
-        pathProject = pathProject
-      ))
+      exList <- try(
+        .getExList(
+          .data = .data,
+          indBatch = indBatchList[[i]],
+          pop = popGate,
+          chnlCut,
+          batch = names(indBatchList)[i],
+          pathProject = pathProject
+        ),
+        silent = TRUE
+      )
+
       if (inherits(exList, "try-error")) {
-        return(rep(bwFallback, length(indBatchList[[i]])))
+        return(bwFallback)
       }
+
       purrr::map_dbl(exList, function(ex) {
-        xVec <- .getCut(ex)[.getCut(ex) > min(.getCut(ex))]
-        iqrX <- diff(quantile(xVec, c(0.75, 0.25), na.rm = TRUE))
-        sdX <- abs(iqrX) / 1.5
-        xVec <- sample(xVec, replace = TRUE, size = 1e4) +
-          rnorm(1e4, mean = 0, sd = sdX / 10)
-        tryCatch(
-          {
-            ks::hpi(x = xVec, deriv.order = 1) * bwAdj
-          },
-          error = function(e) bwFallback
+        xVec <- .getCut(ex)
+        xVec <- xVec[is.finite(xVec)]
+
+        if (length(xVec) < 2L) {
+          return(bwFallback)
+        }
+
+        xVec <- xVec[xVec > min(xVec, na.rm = TRUE)]
+
+        if (length(xVec) < 2L || length(unique(xVec)) < 2L) {
+          return(bwFallback)
+        }
+
+        nSampleBw <- 1e4
+        xVec <- sample(
+          xVec,
+          replace = TRUE,
+          size = nSampleBw
         )
+
+        bwOut <- .completeChnlSettingsBwCalcOne(
+          x = xVec,
+          bwMtd = "hpi1",
+          bwAdj = bwAdj
+        )
+
+        if (!is.finite(bwOut) || bwOut <= 0) {
+          return(bwFallback)
+        }
+
+        bwOut
       })
     }
   ) |>
-    unlist() |>
-    mean(trim = 0.1)
+    unlist()
+
+  bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
+
+  if (length(bwVec) == 0L) {
+    return(bwFallback)
+  }
+
+  mean(bwVec, trim = 0.1, na.rm = TRUE)
 }
 
 #' @keywords internal
