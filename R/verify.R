@@ -385,7 +385,7 @@
     error = function(e) stop(paste0(prefix, e$message), call. = FALSE)
   )
   tryCatch(
-    .verifyBwFallback(settings$bwFallback, allow_null = TRUE),
+    .verifyBwFallback(settings$bwFallback, allow_null = FALSE),
     error = function(e) stop(paste0(prefix, e$message), call. = FALSE)
   )
   .verifyBwLimitsOrdered(
@@ -600,7 +600,7 @@
 }
 
 #' @keywords internal
-.verifyBwFallback <- function(x, allow_null = TRUE) {
+.verifyBwFallback <- function(x, allow_null = FALSE) {
   if (is.null(x)) {
     if (allow_null) {
       return(invisible(TRUE))

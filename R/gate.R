@@ -47,16 +47,21 @@
 #' @param bwMin numeric or character. Minimum bandwidth for density estimation.
 #'   Ignored if `bw` is set. Use `"auto"` to calculate automatically, `"none"`
 #'   to apply no lower bound, or a numeric value to specify the lower bound.
-#'   Default is `"auto"`.
+#'   This is only a clipping limit; if automatic bandwidth estimation fails,
+#'   `bwFallback` is used instead. Default is `"auto"`.
 #' @param bwMax numeric or character. Maximum bandwidth for density estimation.
 #'   Ignored if `bw` is set. Use `"auto"` to calculate automatically, `"none"`
 #'   to apply no upper bound, or a numeric value to specify the upper bound.
+#'   This is only a clipping limit; if automatic bandwidth estimation fails,
+#'   `bwFallback` is used instead. Default is `"auto"`.
+#' @param bwFallback numeric or character. Fallback bandwidth used whenever
+#'   `bw` is `NULL` and automatic bandwidth estimation fails for a sample.
+#'   Must be either `"auto"` or a single positive numeric value. Unlike
+#'   `bwMin` and `bwMax`, `bwFallback` cannot be `NULL`, `"none"`, non-finite,
+#'   zero, or negative, because a valid fallback bandwidth is always required.
+#'   When `"auto"`, the fallback is calculated from randomly selected samples,
+#'   drawing a number of cells equal to the median cell count per sample.
 #'   Default is `"auto"`.
-#' @param bwFallback numeric or character. Fallback bandwidth used when `bw` is
-#'   `NULL` and the automatic bandwidth calculation fails for a sample. Use
-#'   `"auto"` to calculate a fallback from randomly selected samples, drawing a
-#'   number of cells equal to the median cell count per sample, or provide a
-#'   single positive numeric value. Default is `"auto"`.
 #' @param bwMtd character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi0", "hpi1", "hpi2" and "hpi3", which corresponds to the Silverman rule of thumbg (`"nrd0"`), the Sheather-Jones plug-in estimator (`"sj"`) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (`"hpi1"`, `"hpi1"`, `"hpi2"` and `"hpi3"`). Default is "nrd0". Ignored if `bw` is set. Default is `"hpi1"`.
 #' @param bwAdj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
 #' @param bwNcellMin numeric. Minimum number of cells required for bandwidth estimation. If a sample has fewer cells than `bwNcellMin`, cells are sampled with replacement to reach the minimum, with noise subsequently added. Ignored if `bw` is set. Default is 100.
@@ -316,7 +321,6 @@ gateStim <- function(
     markerSettings = markerSettings,
     calcCytPosGates = calcCytPosGates,
     calcSinglePosGates = calcSinglePosGates,
-
     biasUns = biasUns,
     biasUnsFactor = biasUnsFactor,
     excMin = excMin,
