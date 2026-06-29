@@ -398,17 +398,7 @@ bw_tbl_results <- bw_list_raw_mtd |>
   dplyr::select(
     any_of(colnames(sim_grid)), mean_bw
   )
-#    transformation prob_response n_cell mean_pos bw_mtd sim_id  mean_bw
-#    <chr>                  <dbl>  <dbl>    <dbl> <chr>   <int>    <dbl>
-#  1 gamma                  0.002   5000        4 hpi0       85 0.00191 
-#  2 gamma                  0.002   5000        4 hpi1       86 0.00320 
-#  3 gamma                  0.002   5000        4 hpi2       87 0.00458 
-#  4 gamma                  0.002   5000        4 hpi3       88 0.00593
-# okay, now, let's plot the results.
-# okay, let's make a facet grid, where we have along the columns
-# the transformations, and along the rows the prob_response.
-# then, we make one plot for each level of mean_pos (that we save to file).
-# then, we plot mean_bw against n_cell, with a log10 scale on the x-axis.
+
 for (mean_pos in unique(bw_tbl_results$mean_pos)) {
   plot_tbl <- bw_tbl_results |>
     dplyr::filter(mean_pos == !!mean_pos)
@@ -420,8 +410,7 @@ for (mean_pos in unique(bw_tbl_results$mean_pos)) {
     geom_point() +
     scale_x_log10() +
     facet_grid(
-      prob_response ~ transformation,
-      scales = "free_y"
+      prob_response ~ transformation
     ) +
     labs(
       title = paste0("Mean Position: ", mean_pos),
