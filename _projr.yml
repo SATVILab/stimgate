@@ -1,4 +1,6 @@
 directories:
+  raw-data-archive-manual:
+    path: analysis/archive_manual
   raw-data:
     path: analysis/_raw_data
   output:
@@ -6,7 +8,12 @@ directories:
   docs:
     path: analysis/docs
 build:
-  scripts:
-  - analysis/1-sim-trans.qmd
-  - analysis/3-sim-bw-est.qmd
+  scripts: analysis/2-sim-bw-freq_bs.qmd
+  local:
+    archive:
+      path: analysis/_archive
+      content:
+      - raw-data
+      - analysis
+      - docs
 
