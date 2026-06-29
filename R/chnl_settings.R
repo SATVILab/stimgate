@@ -168,7 +168,8 @@
     biasUns = chnlSettings$biasUns,
     biasUnsFactor = chnlSettings$biasUnsFactor,
     bwMin = chnlSettings$bwMin,
-    bwMax = chnlSettings$bwMax
+    bwMax = chnlSettings$bwMax,
+    bwFallback = chnlSettings$bwFallback
   )
 
   chnlSettings$bwCluster <- .completeChnlSettingsBwCluster(
@@ -178,7 +179,8 @@
     chnlCut = chnl,
     pathProject = pathProject,
     bwCluster = chnlSettings$bwCluster,
-    bwAdj = chnlSettings$bwAdj
+    bwAdj = chnlSettings$bwAdj,
+    bwFallback = chnlSettings$bwFallback
   )
 
   chnlSettings$cpMin <- .completeChnlSettingsCpMin(
@@ -209,10 +211,14 @@
   biasUns,
   biasUnsFactor,
   bwMin,
-  bwMax
+  bwMax,
+  bwFallback
 ) {
   if (!is.null(biasUns)) {
     return(biasUns)
+  }
+  if (!is.null(bwFallback)) {
+    return(bwFallback * biasUnsFactor)
   }
 
   bwRef <- c(bwMin, bwMax)
@@ -495,7 +501,8 @@
   chnlCut,
   pathProject,
   bwCluster,
-  bwAdj
+  bwAdj,
+  bwFallback
 ) {
   if (!is.null(bwCluster)) {
     return(bwCluster)
@@ -503,7 +510,7 @@
   purrr::map(
     seq_len(min(5, length(indBatchList))),
     function(i) {
-      exList <- .getExList(
+      exList <- try(.getExList(
         # nolint
         .data = .data,
         indBatch = indBatchList[[i]],
@@ -511,14 +518,22 @@
         chnlCut,
         batch = names(indBatchList)[i],
         pathProject = pathProject
-      )
+      ))
+      if (inherits(exList, "try-error")) {
+        return(rep(bwFallback, length(indBatchList[[i]])))
+      }
       purrr::map_dbl(exList, function(ex) {
         xVec <- .getCut(ex)[.getCut(ex) > min(.getCut(ex))]
         iqrX <- diff(quantile(xVec, c(0.75, 0.25), na.rm = TRUE))
         sdX <- abs(iqrX) / 1.5
         xVec <- sample(xVec, replace = TRUE, size = 1e4) +
           rnorm(1e4, mean = 0, sd = sdX / 10)
-        ks::hpi(x = xVec, deriv.order = 1) * bwAdj
+        tryCatch(
+          {
+            ks::hpi(x = xVec, deriv.order = 1) * bwAdj
+          },
+          error = function(e) bwFallback
+        )
       })
     }
   ) |>
