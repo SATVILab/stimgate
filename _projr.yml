@@ -8,5 +8,5 @@ directories:
 build:
   scripts:
   - analysis/1-sim-trans.qmd
-  - analysis/2-sim-bw-freq_bs.qmd
+  - analysis/3-sim-bw-est.qmd
 
