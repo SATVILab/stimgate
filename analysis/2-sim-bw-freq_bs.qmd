@@ -31,7 +31,6 @@ if (
 }
 ```
 
-
 ### Checking what the estimators actually estimate
 
 Get the parameters over which we simulate.
@@ -165,6 +164,8 @@ for (i in seq_len(nrow(sim_grid))) {
     biasUns = sim_grid$bias_uns[i],
     bw = sim_grid$bw[i],
     bwFallback = sim_grid$bw[i],
+    bwMin = "none",
+    bwMax = "none",
     nCellStim = sim_grid$n_cell[i],
     probResponse = sim_grid$prob_response[i],
     probExact = TRUE,
@@ -221,7 +222,7 @@ if (interactive()) {
 }
 
 path_progress_file <- projr::projr_path_get(
-  "cache", "sim-bw", "bs-freq", "progress.txt"
+  "cache", "sim", "bw", "freq_bs", "progress.txt"
 )
 if (file.exists(path_progress_file)) {
   file.remove(path_progress_file)
@@ -282,6 +283,8 @@ bw_list_raw <- progressr::with_progress({
             nIter = 10,
             biasUns = bias_uns,
             bw = bw,
+            bwMin = "none",
+            bwMax = "none",
             bwFallback = bw,
             nCellStim = n_cell,
             probResponse = prob_response,
@@ -398,7 +401,7 @@ future::plan(future::sequential)
 saveRDS(
   bw_list_raw,
   file = projr::projr_path_get(
-    "output", "sim-bw", "bs-freq", "bw_list_raw.rds"
+    "output", "sim", "bw", "freq_bs", "bw_list_raw.rds"
   )
 )
 ```
@@ -410,126 +413,49 @@ Collate the results and calculate the metrics of interest.
 #| error: true
 bw_list_raw <- readRDS(
   file = projr::projr_path_get(
-    "output", "sim-bw", "bs-freq", "bw_list_raw.rds"
+    "output", "sim", "bw", "freq_bs", "bw_list_raw.rds"
   )
 )
 
 bw_tbl <- bw_list_raw |>
-  dplyr::bind_rows() |>
-  dplyr::filter(!is.na(iter))
-
-# Extract the local-FDR gate details at the condition and sample levels.
-bw_gate_detail_tbl <- bw_tbl |>
-  dplyr::filter(grepl("^loc_", .data$method)) |>
-  dplyr::select(
-    dplyr::any_of(c(
-      "transformation",
-      "prob_response",
-      "n_cell",
-      "mean_pos",
-      "bw",
-      "bias_uns",
-      "sample_perturbation_sd",
-      "condition_perturbation_sd",
-      "cluster_perturbation_sd",
-      "background_relative_to_response",
-      "n_cell_uns_relative_to_stim",
-      "sim_id",
-      "iter",
-      "chnl",
-      "sample",
-      "ind",
-      "method",
-      "detailLevel",
-      "propRespTruth",
-      "propRespEst",
-      "propStimTruth",
-      "propUnsTruth",
-      "propStim",
-      "propUns",
-      "propBs",
-      "threshold",
-      "thresholdOrigin",
-      "gateReturnPoint",
-      "locGenerated",
-      "locGeneratedDirect",
-      "locSource",
-      "locReason",
-      "thresholdBeforeSampleCombining",
-      "thresholdChangedBySampleCombining",
-      "thresholdCondition",
-      "thresholdOriginCondition",
-      "locGeneratedCondition",
-      "locSourceCondition",
-      "locReasonCondition",
-      "nCellStim",
-      "nCellUns",
-      "nPosStim",
-      "nPosUns",
-      "propBsEst",
-      "propBsDiff",
-      "bias"
-    ))
-  )
-
-bw_gate_detail_tbl
+  purrr::list_rbind()
 
 bw_tbl |>
-  dplyr::filter(is.finite(.data$propRespEst), is.finite(.data$propRespTruth)) |>
+  dplyr::select(
+    any_of(colnames(sim_grid)),
+    iter,
+    sample,
+    ind,
+    propBsEst,
+    threshold
+  ) |>
+  dplyr::group_by(sim_id, iter, ind) |>
+  dplyr::mutate(
+    threshold = setdiff(unique(threshold), NA)[[1]],
+    propBsEst = setdiff(unique(propBsEst), NA)[[1]]
+  ) |>
+  dplyr::ungroup() |>
   dplyr::group_by(
-    transformation,
-    prob_response,
-    n_cell,
-    mean_pos,
-    bw,
-    bias_uns,
-    condition_perturbation_sd,
-    method,
-    chnl
+    dplyr::pick(dplyr::any_of(colnames(sim_grid))),
+    iter,
+    ind
+  ) |>
+  dplyr::slice(1) |>
+  dplyr::ungroup() |>
+  dplyr::group_by(
+    dplyr::pick(dplyr::any_of(colnames(sim_grid)))
   ) |>
   dplyr::summarise(
-    mean_diff = mean(abs(propRespEst - propRespTruth), na.rm = TRUE),
-    rel_diff = mean(abs(propRespEst - propRespTruth), na.rm = TRUE) /
-      mean(propRespTruth, na.rm = TRUE),
-    ccc = DescTools::CCC(propRespTruth, propRespEst)$rho.c$est,
-    pearson = cor(propRespTruth, propRespEst, method = "pearson"),
-    spearman = cor(propRespTruth, propRespEst, method = "spearman"),
+    across(
+      c(threshold, propBsEst),
+      list(
+        min = ~ min(.x, na.rm = TRUE),
+        max = ~ max(.x, na.rm = TRUE),
+        mean = ~ mean(.x, na.rm = TRUE),
+        median = ~ median(.x, na.rm = TRUE)
+      )
+    ),
     .groups = "drop"
-  ) |>
-  dplyr::arrange(
-    transformation,
-    prob_response,
-    n_cell,
-    mean_pos,
-    bw,
-    bias_uns,
-    condition_perturbation_sd
   )
 ```
 
-```{r}
-#| label: bw-manual-collate-1
-#| error: true
-bw_1 <- bw_list_raw[[1]] |>
-  dplyr::filter(
-    transformation == transformation[[1]],
-    prob_response == max(prob_response),
-    n_cell == n_cell[[1]],
-    mean_pos == max(mean_pos),
-    chnl == chnl[[1]],
-    method == method[[1]]
-  )
-bw_1
-bw_1 |>
-  dplyr::group_by(
-    transformation, prob_response, n_cell, mean_pos,
-    bw, method, chnl
-    ) |>
-  dplyr::summarise(
-    ccc = DescTools::CCC(propRespTruth, propRespEst)$rho.c$est,
-    pearson = cor(propRespTruth, propRespEst, method = "pearson"),
-    spearman = cor(propRespTruth, propRespEst, method = "spearman"),
-    .groups = "drop"
-  ) |>
-  dplyr::arrange(transformation, prob_response, n_cell, mean_pos, bw)
-```
