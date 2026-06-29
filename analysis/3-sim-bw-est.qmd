@@ -358,7 +358,8 @@ bw_list_raw_mtd <- readRDS(
     "sim",
     "bw",
     "est",
-    "bw_list_raw_mtd.rds"
+    "bw_list_raw_mtd.rds",
+    safe = FALSE
   )
 )
 bw_list_raw_mtd |>
