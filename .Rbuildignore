@@ -17,6 +17,8 @@
 ^AGENTS\.md$
 ^analysis$
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
+^analysis/archive_manual/
+^analysis/archive_manual$
 ^analysis/_raw_data/
 ^analysis/_raw_data$
 ^analysis/_output/
@@ -39,5 +41,7 @@
 ^Rplots\.pdf$
 ^\.github/
 ^\.github$
+^analysis/_archive/
+^analysis/_archive$
 # End of projr section
 

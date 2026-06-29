@@ -15,12 +15,14 @@ _tmp/**/*
 tests/testthat/cache/
 analysis/*html
 analysis/*.rmarkdown
+analysis/archive_manual/**
 
 # pkgdown local build output
 docs/
 
 inst/doc
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
+analysis/archive_manual/**
 analysis/_raw_data/**
 analysis/_output/**
 analysis/docs/**
@@ -28,6 +30,7 @@ _tmp/**
 AGENTS.md
 CHANGES_SUMMARY.md
 Rplots.pdf
+analysis/_archive/**
 # End of projr section
 
 _tmp/log/sbatch/projr_build_output
