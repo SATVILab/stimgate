@@ -18,8 +18,9 @@ gateStim(
   excMin = TRUE,
   cpMin = NULL,
   bw = NULL,
-  bwMin = NULL,
-  bwMax = NULL,
+  bwMin = "auto",
+  bwMax = "auto",
+  bwFallback = "auto",
   bwMtd = "hpi1",
   bwAdj = 1,
   bwNcellMin = 100,
@@ -104,11 +105,22 @@ technical thresholds or background levels.}
 \item{bwMin}{numeric or character. Minimum bandwidth for density estimation.
 Ignored if \code{bw} is set. Use \code{"auto"} to calculate automatically, \code{"none"}
 to apply no lower bound, or a numeric value to specify the lower bound.
-Default is \code{"auto"}.}
+This is only a clipping limit; if automatic bandwidth estimation fails,
+\code{bwFallback} is used instead. Default is \code{"auto"}.}
 
 \item{bwMax}{numeric or character. Maximum bandwidth for density estimation.
 Ignored if \code{bw} is set. Use \code{"auto"} to calculate automatically, \code{"none"}
 to apply no upper bound, or a numeric value to specify the upper bound.
+This is only a clipping limit; if automatic bandwidth estimation fails,
+\code{bwFallback} is used instead. Default is \code{"auto"}.}
+
+\item{bwFallback}{numeric or character. Fallback bandwidth used whenever
+\code{bw} is \code{NULL} and automatic bandwidth estimation fails for a sample.
+Must be either \code{"auto"} or a single positive numeric value. Unlike
+\code{bwMin} and \code{bwMax}, \code{bwFallback} cannot be \code{NULL}, \code{"none"}, non-finite,
+zero, or negative, because a valid fallback bandwidth is always required.
+When \code{"auto"}, the fallback is calculated from randomly selected samples,
+drawing a number of cells equal to the median cell count per sample.
 Default is \code{"auto"}.}
 
 \item{bwMtd}{character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi0", "hpi1", "hpi2" and "hpi3", which corresponds to the Silverman rule of thumbg (\code{"nrd0"}), the Sheather-Jones plug-in estimator (\code{"sj"}) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (\code{"hpi1"}, \code{"hpi1"}, \code{"hpi2"} and \code{"hpi3"}). Default is "nrd0". Ignored if \code{bw} is set. Default is \code{"hpi1"}.}
