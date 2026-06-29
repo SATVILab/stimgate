@@ -134,7 +134,7 @@
     chnl <- chnlVec[[1]]
     ind <- 2
 
-    propBsTblEst <- purrr::map_df(chnlVec, function(chnl) {
+    propBsTblEstSmooth <- purrr::map_df(chnlVec, function(chnl) {
       indVecStim <- seq(2, nSample * nCondition, by = 2) |>
         as.character()
       purrr::map_df(indVecStim, function(ind) {
@@ -186,7 +186,57 @@
         cols = c(propRespSmooth, propRespPred),
         names_to = "method",
         values_to = "propRespEst"
+      ) |>
+      dplyr::mutate(
+        threshold = NA_real_,
+        thresholdOrigin = NA_character_,
+        locGenerated = NA,
+        locGeneratedDirect = NA,
+        locSource = NA_character_,
+        locReason = NA_character_,
+        detailLevel = NA_character_
       )
+
+    propBsTblDetailed <- try(
+      getStimGatesDetailed(pathProject),
+      silent = TRUE
+    )
+    propBsTblDetailed <- if (
+      inherits(propBsTblDetailed, "try-error") ||
+        !is.data.frame(propBsTblDetailed) ||
+        nrow(propBsTblDetailed) == 0L
+    ) {
+      tibble::tibble()
+    } else {
+      propBsTblDetailed |>
+        dplyr::filter(
+          .data$detailLevel %in% c("condition", "sample", "cluster_final")
+        ) |>
+        dplyr::filter(is.finite(.data$propBs)) |>
+        dplyr::mutate(
+          sample = as.character(as.numeric(.data$ind) / nCondition),
+          method = paste0("loc_", .data$detailLevel),
+          propRespEst = .data$propBs
+        ) |>
+        dplyr::select(
+          sample,
+          chnl,
+          method,
+          propRespEst,
+          threshold,
+          thresholdOrigin,
+          locGenerated,
+          locGeneratedDirect,
+          locSource,
+          locReason,
+          detailLevel
+        )
+    }
+
+    propBsTblEst <- dplyr::bind_rows(
+      propBsTblEstSmooth,
+      propBsTblDetailed
+    )
 
     comparisonTbl <- propBsTblTruth |>
       dplyr::left_join(
