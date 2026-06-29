@@ -722,7 +722,7 @@ Get the parameters over which we simulate.
 
 ```{r}
 #| label: bw-estimate-grid
-sim_grid <- expand_grid(
+sim_grid <- tidyr::expand_grid(
   transformation = transformation_vec,
   prob_response  = prob_response_vec,
   n_cell         = n_cell_stim_vec,
@@ -738,6 +738,17 @@ sim_grid <- expand_grid(
 
 sim_grid <- sim_grid |>
   dplyr::arrange(n_cell, dplyr::desc(prob_response))
+
+if ("dev" %in% projr::projr_profile_get()) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell == 1e5,
+      prob_response == 0.002,
+      mean_pos == 8,
+      transformation %in% transformation_vec,
+      bw_mtd == "hpi1"
+    )
+}
 ```
 
 A loop we only run when we want to see why particular runs failed.
@@ -745,8 +756,27 @@ A loop we only run when we want to see why particular runs failed.
 ```{r}
 #| label: bw-estimate-loop
 #| eval: false
+bw_list_raw_mtd <- vector("list", nrow(sim_grid))
+
 for (i in seq_len(nrow(sim_grid))) {
-  sim_res <- stimgate:::.simBandwidthEstBw(
+  settings_row <- paste0(
+    "trans = ",
+    sim_grid$transformation[i],
+    " | prob = ",
+    sim_grid$prob_response[i],
+    " | n_cell = ",
+    sim_grid$n_cell[i],
+    " | mean = ",
+    sim_grid$mean_pos[i],
+    " | bw_mtd = ",
+    sim_grid$bw_mtd[i],
+    " | sim_id = ",
+    sim_grid$sim_id[i]
+  )
+
+  message("Running: ", settings_row)
+
+  bw_list_raw_mtd[[i]] <- stimgate:::.simBandwidthEstBwDirect(
     nSample = 10,
     nMarker = 1,
     nCondition = 2,
@@ -762,35 +792,52 @@ for (i in seq_len(nrow(sim_grid))) {
     probExact = TRUE,
     meanPos = sim_grid$mean_pos[i],
     transformation = sim_grid$transformation[i],
-    samplePerturbationSd = 0,
-    conditionPerturbationSd = 0,
-    clusterPerturbationSd = 0,
-    backgroundRelativeToResponse = 0.2, 
+    backgroundRelativeToResponse = 0.2,
     ncellUnsRelativeToStim = 1,
-    covEvMin = 2, 
+    covEvMin = 2,
     covEvMax = 2,
-    tolClust = NULL
+    tolClust = NULL,
+    summarise = FALSE
   ) |>
     dplyr::mutate(
       transformation = sim_grid$transformation[i],
       prob_response = sim_grid$prob_response[i],
       n_cell = sim_grid$n_cell[i],
       mean_pos = sim_grid$mean_pos[i],
-      bw_mtd = sim_grid$bw_mtd[i]
+      bw_mtd = sim_grid$bw_mtd[i],
+      sim_id = sim_grid$sim_id[i]
     ) |>
     dplyr::select(
-      transformation, prob_response, n_cell,
-      mean_pos, bw_mtd, dplyr::everything()
+      transformation,
+      prob_response,
+      n_cell,
+      mean_pos,
+      bw_mtd,
+      sim_id,
+      dplyr::everything()
     )
+
+  message("Completed: ", settings_row)
 }
+
+saveRDS(
+  bw_list_raw_mtd,
+  file = projr::projr_path_get(
+    "output",
+    "sim-bw",
+    "mtd",
+    "bw_list_raw_mtd.rds"
+  )
+)
 ```
 
 Run the simulations in parallel, with progress reporting.
 
 ```{r}
 #| label: bw-estimate-parallel
+
 if (interactive()) {
-  handlers(global = TRUE)
+  progressr::handlers(global = TRUE)
 }
 
 path_progress_file <- projr::projr_path_get(
@@ -799,19 +846,20 @@ path_progress_file <- projr::projr_path_get(
   "mtd",
   "progress.txt"
 )
+
 if (file.exists(path_progress_file)) {
   file.remove(path_progress_file)
 }
 
-# Set up the parallel backend
-plan(multisession, workers = availableCores() - 1)
+future::plan(
+  future::multisession,
+  workers = max(1, future::availableCores() - 1)
+)
 
-# 3. Wrap your parallel execution in with_progress()
-bw_list_raw_mtd <- with_progress({
-  # Create a progressor function with the total number of steps
-  p <- progressor(steps = nrow(sim_grid))
+bw_list_raw_mtd <- progressr::with_progress({
+  p <- progressr::progressor(steps = nrow(sim_grid))
 
-  future_pmap(
+  furrr::future_pmap(
     sim_grid,
     function(transformation, prob_response, n_cell, mean_pos, bw_mtd, sim_id) {
       settings_row <- paste0(
@@ -831,10 +879,10 @@ bw_list_raw_mtd <- with_progress({
 
       log_msg <- paste0("Running: ", settings_row, "\n")
       cat(log_msg, file = path_progress_file, append = TRUE)
-      # Run the simulation
+
       out <- tryCatch(
         {
-          sim_res <- stimgate:::.simBandwidthEstBw(
+          sim_res <- stimgate:::.simBandwidthEstBwDirect(
             nSample = 10,
             nMarker = 1,
             nCondition = 2,
@@ -850,26 +898,30 @@ bw_list_raw_mtd <- with_progress({
             probExact = TRUE,
             meanPos = mean_pos,
             transformation = transformation,
-            samplePerturbationSd = 0,
-            conditionPerturbationSd = 0,
-            clusterPerturbationSd = 0,
             backgroundRelativeToResponse = 0.2,
             ncellUnsRelativeToStim = 1,
             covEvMin = 2,
             covEvMax = 2,
-            tolClust = NULL
+            tolClust = NULL,
+            summarise = FALSE
           ) |>
-          dplyr::mutate(
-            transformation = transformation,
-            prob_response = prob_response,
-            n_cell = n_cell,
-            mean_pos = mean_pos,
-            bw_mtd = bw_mtd
-          ) |>
-          dplyr::select(
-            transformation, prob_response, n_cell,
-            mean_pos, bw_mtd, dplyr::everything()
-          )
+            dplyr::mutate(
+              transformation = transformation,
+              prob_response = prob_response,
+              n_cell = n_cell,
+              mean_pos = mean_pos,
+              bw_mtd = bw_mtd,
+              sim_id = sim_id
+            ) |>
+            dplyr::select(
+              transformation,
+              prob_response,
+              n_cell,
+              mean_pos,
+              bw_mtd,
+              sim_id,
+              dplyr::everything()
+            )
 
           cat(
             "Completed: ",
@@ -879,15 +931,14 @@ bw_list_raw_mtd <- with_progress({
             append = TRUE
           )
 
-          # Signal successful step to the progress bar with a custom message
           p(sprintf("Completed sim_id: %s", sim_id))
 
           sim_res
         },
         error = function(e) {
-          # Signal failed step to the progress bar so it keeps moving
           err_msg <- paste0("Error [", settings_row, "]: ", e$message, "\n")
           cat(err_msg, file = path_progress_file, append = TRUE)
+
           p(sprintf("ERROR on sim_id: %s", sim_id))
 
           tibble::tibble(
@@ -896,21 +947,27 @@ bw_list_raw_mtd <- with_progress({
             n_cell = n_cell,
             mean_pos = mean_pos,
             bw_mtd = bw_mtd,
-            iter = NA,
-            chnl = NA,
-            sample = NA
+            sim_id = sim_id,
+            iter = NA_integer_,
+            chnl = NA_character_,
+            sample = NA_character_,
+            ind = NA_character_,
+            bw_uns = NA_real_,
+            bw_stim = NA_real_,
+            bw = NA_real_,
+            bw_source = NA_character_,
+            error = e$message
           )
         }
       )
 
-      return(out)
+      out
     },
-    .options = furrr_options(seed = TRUE)
+    .options = furrr::furrr_options(seed = TRUE)
   )
 })
 
-# Close the parallel workers when done
-plan(sequential)
+future::plan(future::sequential)
 
 saveRDS(
   bw_list_raw_mtd,
