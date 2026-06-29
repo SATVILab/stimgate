@@ -543,7 +543,8 @@
     indStim = names(exListNoMinStim),
     stage = stage,
     pathProject = .pathProject,
-    chnl = chnl
+    chnl = chnl,
+    exListOrig = exListOrig
   )
 }
 
@@ -1726,6 +1727,210 @@
 }
 
 
+#' @keywords internal
+.getCpUnsLocThresholdOrigin <- function(
+  locGenerated,
+  locGeneratedDirect,
+  locSource,
+  locReason = NA_character_
+) {
+  locGenerated <- locGenerated %in% TRUE
+  locGeneratedDirect <- locGeneratedDirect %in% TRUE
+  locSource <- as.character(locSource %||% NA_character_)
+  locReason <- as.character(locReason %||% NA_character_)
+
+  if (locGenerated && locGeneratedDirect && locSource %in% "direct") {
+    return("condition_detected_response")
+  }
+  if (locGenerated && locSource %in% "combined") {
+    return("sample_imputed_from_other_stim_conditions")
+  }
+  if (locGenerated && locSource %in% "prejoin") {
+    return("prejoin_generated_from_joined_stim_conditions")
+  }
+  if (locGenerated && locSource %in% "unstim_summary") {
+    return("unstim_summary_from_generated_thresholds")
+  }
+  if (!locGenerated) {
+    return("not_generated_fallback")
+  }
+  if (!is.na(locReason) && nzchar(locReason)) {
+    return(paste0("generated_", locReason))
+  }
+  "generated_unknown_source"
+}
+
+#' @keywords internal
+.getCpUnsLocPropBsAtCp <- function(cp, exTblStim, exTblUns) {
+  cp <- suppressWarnings(as.numeric(cp))[1]
+  if (
+    !is.finite(cp) ||
+      is.null(exTblStim) ||
+      !is.data.frame(exTblStim) ||
+      is.null(exTblUns) ||
+      !is.data.frame(exTblUns) ||
+      nrow(exTblStim) == 0L ||
+      nrow(exTblUns) == 0L
+  ) {
+    return(tibble::tibble(
+      nCellStim = if (is.data.frame(exTblStim)) {
+        nrow(exTblStim)
+      } else {
+        NA_integer_
+      },
+      nCellUns = if (is.data.frame(exTblUns)) nrow(exTblUns) else NA_integer_,
+      propStim = NA_real_,
+      propUns = NA_real_,
+      propBs = NA_real_
+    ))
+  }
+  propStim <- sum(.getCut(exTblStim) >= cp, na.rm = TRUE) / nrow(exTblStim)
+  propUns <- sum(.getCut(exTblUns) >= cp, na.rm = TRUE) / nrow(exTblUns)
+  tibble::tibble(
+    nCellStim = nrow(exTblStim),
+    nCellUns = nrow(exTblUns),
+    propStim = propStim,
+    propUns = propUns,
+    propBs = propStim - propUns
+  )
+}
+
+#' @keywords internal
+.getCpUnsLocSelectedThresholdRow <- function(dataThreshold, cp) {
+  if (!is.data.frame(dataThreshold) || nrow(dataThreshold) == 0L) {
+    return(NULL)
+  }
+  cp <- suppressWarnings(as.numeric(cp))[1]
+  if (!is.finite(cp)) {
+    return(NULL)
+  }
+  cutVec <- suppressWarnings(as.numeric(.getCut(dataThreshold)))
+  idx <- which(is.finite(cutVec))
+  if (length(idx) == 0L) {
+    return(NULL)
+  }
+  idx <- idx[which.min(abs(cutVec[idx] - cp))]
+  dataThreshold[idx, , drop = FALSE]
+}
+
+#' @keywords internal
+.getCpUnsLocConditionDetailRow <- function(
+  cpObj,
+  dataThreshold,
+  exTblStimOrig,
+  exTblUnsOrig,
+  exTblStimNoMin,
+  bias,
+  stage,
+  chnl
+) {
+  cp <- suppressWarnings(as.numeric(cpObj$cp))[1]
+  selectedRow <- .getCpUnsLocSelectedThresholdRow(dataThreshold, cp)
+  freqTbl <- .getCpUnsLocPropBsAtCp(
+    cp = cp,
+    exTblStim = exTblStimOrig,
+    exTblUns = exTblUnsOrig
+  )
+
+  propBsEst <- NA_real_
+  propBsDiff <- NA_real_
+  if (!is.null(selectedRow) && "propBsDiff" %in% names(selectedRow)) {
+    propBsDiff <- suppressWarnings(as.numeric(selectedRow$propBsDiff[1]))
+    if (is.finite(propBsDiff) && "propBs" %in% names(selectedRow)) {
+      propBsEst <- suppressWarnings(as.numeric(selectedRow$propBs[1])) -
+        propBsDiff
+    }
+  }
+
+  tibble::tibble(
+    detailLevel = "condition",
+    stage = stage,
+    chnl = chnl,
+    ind = as.character(.getInd(exTblStimNoMin)),
+    threshold = cp,
+    thresholdOrigin = .getCpUnsLocThresholdOrigin(
+      locGenerated = cpObj$locGenerated,
+      locGeneratedDirect = cpObj$locGeneratedDirect,
+      locSource = cpObj$locSource,
+      locReason = cpObj$locReason
+    ),
+    locGenerated = cpObj$locGenerated %in% TRUE,
+    locGeneratedDirect = cpObj$locGeneratedDirect %in% TRUE,
+    locSource = as.character(cpObj$locSource %||% NA_character_),
+    locReason = as.character(cpObj$locReason %||% NA_character_),
+    bias = suppressWarnings(as.numeric(bias))[1],
+    propBsEst = propBsEst,
+    propBsDiff = propBsDiff
+  ) |>
+    dplyr::bind_cols(freqTbl)
+}
+
+#' @keywords internal
+.getCpUnsLocExByInd <- function(exList, ind, pos = NULL) {
+  ind <- as.character(ind)
+  if (!is.null(names(exList)) && ind %in% names(exList)) {
+    return(exList[[ind]])
+  }
+  if (!is.null(pos) && is.finite(pos) && pos >= 1L && pos <= length(exList)) {
+    return(exList[[pos]])
+  }
+  NULL
+}
+
+#' @keywords internal
+.getCpUnsLocSampleDetailTbl <- function(
+  cpVec,
+  exListOrig,
+  indUns,
+  indStim,
+  stage,
+  chnl
+) {
+  meta <- .getCpUnsLocMetaFromCp(cpVec)
+  exTblUns <- .getCpUnsLocExByInd(exListOrig, indUns, pos = 1L)
+
+  purrr::map_df(seq_along(indStim), function(i) {
+    indCurr <- as.character(indStim[[i]])
+    cp <- suppressWarnings(as.numeric(cpVec[indCurr]))[1]
+    metaRow <- meta[meta$ind == indCurr, , drop = FALSE]
+    if (nrow(metaRow) == 0L) {
+      metaRow <- tibble::tibble(
+        ind = indCurr,
+        locGenerated = FALSE,
+        locGeneratedDirect = FALSE,
+        locSource = "not_calculated",
+        locReason = NA_character_
+      )
+    }
+    exTblStim <- .getCpUnsLocExByInd(exListOrig, indCurr, pos = i + 1L)
+    freqTbl <- .getCpUnsLocPropBsAtCp(
+      cp = cp,
+      exTblStim = exTblStim,
+      exTblUns = exTblUns
+    )
+    tibble::tibble(
+      detailLevel = "sample",
+      stage = stage,
+      chnl = chnl,
+      ind = indCurr,
+      threshold = cp,
+      thresholdOrigin = .getCpUnsLocThresholdOrigin(
+        locGenerated = metaRow$locGenerated[1],
+        locGeneratedDirect = metaRow$locGeneratedDirect[1],
+        locSource = metaRow$locSource[1],
+        locReason = metaRow$locReason[1]
+      ),
+      locGenerated = metaRow$locGenerated[1] %in% TRUE,
+      locGeneratedDirect = metaRow$locGeneratedDirect[1] %in% TRUE,
+      locSource = as.character(metaRow$locSource[1] %||% NA_character_),
+      locReason = as.character(metaRow$locReason[1] %||% NA_character_),
+      propBsEst = NA_real_,
+      propBsDiff = NA_real_
+    ) |>
+      dplyr::bind_cols(freqTbl)
+  })
+}
+
 # get cp
 #' @keywords internal
 .getCpUnsLocGetCp <- function(
@@ -1746,14 +1951,32 @@
   if (!is.data.frame(dataMod)) {
     .intSaveNm("noDataModDf", NULL, ind, stageChnl, pathProject)
     .intSaveNm("cpInd", dataMod, ind, stageChnl, pathProject)
-    return(.getCpUnsLocGetCpEnsureMeta(
+    objOut <- .getCpUnsLocGetCpEnsureMeta(
       obj = dataMod,
       cpMin = cpMin,
       exTblStimNoMin = exTblStimNoMin,
       exTblUnsBias = exTblUnsBias,
       stage = stage,
       reason = "data_mod_not_available"
-    ))
+    )
+    locDetailCondition <- .getCpUnsLocConditionDetailRow(
+      cpObj = objOut,
+      dataThreshold = NULL,
+      exTblStimOrig = exTblStimOrig,
+      exTblUnsOrig = exTblUnsOrig,
+      exTblStimNoMin = exTblStimNoMin,
+      bias = bias,
+      stage = stage,
+      chnl = chnl
+    )
+    .intSaveNm(
+      "locDetailCondition",
+      locDetailCondition,
+      ind,
+      stageChnl,
+      pathProject
+    )
+    return(objOut)
   }
 
   trimObj <- .getCpUnsLocGetCpTrimBeforeThreshold(
@@ -1771,13 +1994,31 @@
     cpInd <- trimObj$cp
     .intSave(ind, stageChnl, pathProject, cpInd)
     .debug("Completed loc gate for single sample") # nolint
-    return(.getCpUnsLocConditionOut(
+    objOut <- .getCpUnsLocConditionOut(
       cp = cpInd,
       locGenerated = FALSE,
       locGeneratedDirect = FALSE,
       locSource = "not_calculated",
       locReason = trimObj$info$reason %||% "trim_returned_non_local_cutpoint"
-    ))
+    )
+    locDetailCondition <- .getCpUnsLocConditionDetailRow(
+      cpObj = objOut,
+      dataThreshold = NULL,
+      exTblStimOrig = exTblStimOrig,
+      exTblUnsOrig = exTblUnsOrig,
+      exTblStimNoMin = exTblStimNoMin,
+      bias = bias,
+      stage = stage,
+      chnl = chnl
+    )
+    .intSaveNm(
+      "locDetailCondition",
+      locDetailCondition,
+      ind,
+      stageChnl,
+      pathProject
+    )
+    return(objOut)
   }
 
   dataMod <- trimObj$dataMod
@@ -1789,13 +2030,31 @@
     )
     .intSave(ind, stageChnl, pathProject, cpInd)
     .debug("Completed loc gate for single sample") # nolint
-    return(.getCpUnsLocConditionOut(
+    objOut <- .getCpUnsLocConditionOut(
       cp = cpInd,
       locGenerated = FALSE,
       locGeneratedDirect = FALSE,
       locSource = "not_calculated",
       locReason = "empty_data_mod_after_trimming"
-    ))
+    )
+    locDetailCondition <- .getCpUnsLocConditionDetailRow(
+      cpObj = objOut,
+      dataThreshold = NULL,
+      exTblStimOrig = exTblStimOrig,
+      exTblUnsOrig = exTblUnsOrig,
+      exTblStimNoMin = exTblStimNoMin,
+      bias = bias,
+      stage = stage,
+      chnl = chnl
+    )
+    .intSaveNm(
+      "locDetailCondition",
+      locDetailCondition,
+      ind,
+      stageChnl,
+      pathProject
+    )
+    return(objOut)
   }
 
   dataThreshold <- .getCpUnsLocGetCpDataThreshold(
@@ -1815,6 +2074,23 @@
     exTblUnsBias = exTblUnsBias,
     cpMin = cpMin,
     stage = stage
+  )
+  locDetailCondition <- .getCpUnsLocConditionDetailRow(
+    cpObj = cpObj,
+    dataThreshold = dataThreshold,
+    exTblStimOrig = exTblStimOrig,
+    exTblUnsOrig = exTblUnsOrig,
+    exTblStimNoMin = exTblStimNoMin,
+    bias = bias,
+    stage = stage,
+    chnl = chnl
+  )
+  .intSaveNm(
+    "locDetailCondition",
+    locDetailCondition,
+    ind,
+    stageChnl,
+    pathProject
   )
   .intSave(ind, stageChnl, pathProject, cpObj$cp)
   .debug("Completed loc gate for single sample") # nolint
@@ -2715,7 +2991,7 @@
     exTblStimOrig = exTblStimOrig
   )
   .intSaveNm(
-    "probBsEst",
+    "probBsEstConditionRaw",
     probBsEst,
     .getInd(exTblStimNoMin),
     file.path(stage, .getCpUnsLocGetChnl(exTblStimNoMin)),
@@ -2839,7 +3115,8 @@
   indStim,
   stage,
   pathProject,
-  chnl
+  chnl,
+  exListOrig
 ) {
   stageChnl <- file.path(stage, chnl)
   cpVec <- .getCpUnsLocSampleCpRep(
@@ -2855,6 +3132,21 @@
   .intSaveNm(
     "cpUnsLocMeta",
     .getCpUnsLocMetaFromCp(cpVec),
+    indCombined,
+    stageChnl,
+    pathProject
+  )
+  locDetailSample <- .getCpUnsLocSampleDetailTbl(
+    cpVec = cpVec,
+    exListOrig = exListOrig,
+    indUns = indUns,
+    indStim = indStim,
+    stage = stage,
+    chnl = chnl
+  )
+  .intSaveNm(
+    "locDetailSample",
+    locDetailSample,
     indCombined,
     stageChnl,
     pathProject
