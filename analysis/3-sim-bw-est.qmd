@@ -193,14 +193,6 @@ bw_list_raw_mtd_loop |>
   )
 ```
 
-```{r}
-bw_list_raw_mtd_loop |>
-  dplyr::bind_rows() |>
-  dplyr::filter(transformation == "gamma") |>
-  dplyr::select(bw_uns:bw) |>
-  print(n = Inf)
-```
-
 Run the simulations in parallel, with progress reporting.
 
 ```{r}
