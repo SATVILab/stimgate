@@ -1,0 +1,388 @@
+---
+title: Simulate best bandwidth
+format:
+  html:
+    embed-resources: true
+    toc: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+library(tibble)
+library(furrr)
+library(progressr) 
+
+# Find the build directory root
+root_dir <- projr::projr_path_get("project")
+desc_path <- file.path(root_dir, "DESCRIPTION")
+
+if (
+  file.exists(desc_path) &&
+    grepl("Package: stimgate", readLines(desc_path, n = 1))
+) {
+  devtools::load_all(root_dir)
+} else {
+  fn_vec <- list.files(file.path(root_dir, "R"), full.names = TRUE)
+  for (fn in fn_vec) {
+    source(fn)
+  }
+}
+```
+
+
+### Checking what the estimators actually estimate
+
+Get the parameters over which we simulate.
+
+We mainly need to consider two variations - whether the number of parent population cells is large or small, and whether the size of the responding population is large enough to impact the estimator.
+We can also vary the amount of separation, I suppose.
+
+We'll need to vary over a range of parent population sizes, however, as that will tell us how the estimator behaves over the most crucial dimension (apart from the actual transformation, of course).
+
+Initially, we will ignore setting maximum/minimum number of cells.
+
+```{r}
+#| label: actual-settings
+# simulation settings
+n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)[c(1, 3, 5, 7)]
+prob_response_vec <- c(0.002, 0.2)
+mean_pos_vec <- c(4, 8)
+transformation_vec <- c("gaussian", "gamma", "skew")
+
+# bandwidth settings
+bandwidth_method_vec <- c("hpi0", "hpi1", "hpi2", "hpi3", "sj", "nrd0")
+
+# set this later
+bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
+bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
+bias_uns_vec <- seq(0, 2, by = 0.2)
+```
+
+```{r}
+#| label: bw-estimate-grid
+sim_grid <- tidyr::expand_grid(
+  transformation = transformation_vec,
+  prob_response  = prob_response_vec,
+  n_cell         = n_cell_stim_vec,
+  mean_pos       = mean_pos_vec,
+  bw_mtd         = bandwidth_method_vec
+) |>
+  dplyr::filter(
+    !(n_cell * prob_response < 5 & prob_response < 0.04)
+  ) |>
+  dplyr::mutate(
+    sim_id = dplyr::row_number()
+  )
+
+sim_grid <- sim_grid |>
+  dplyr::arrange(n_cell, dplyr::desc(prob_response))
+
+if ("dev" %in% projr::projr_profile_get()) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell == 1e5,
+      prob_response == 0.002,
+      mean_pos == 8,
+      transformation %in% transformation_vec,
+      bw_mtd == "hpi1"
+    )
+}
+sim_grid
+print(paste0("Performing ", nrow(sim_grid), " simulations"))
+```
+
+A loop we only run when we want to see why particular runs failed.
+
+```{r}
+#| label: bw-estimate-loop
+#| eval: false
+bw_list_raw_mtd_loop <- lapply(seq_len(nrow(sim_grid)), function(i) {
+  NULL
+})
+
+for (i in seq_len(nrow(sim_grid))) {
+  settings_row <- paste0(
+    "trans = ",
+    sim_grid$transformation[i],
+    " | prob = ",
+    sim_grid$prob_response[i],
+    " | n_cell = ",
+    sim_grid$n_cell[i],
+    " | mean = ",
+    sim_grid$mean_pos[i],
+    " | bw_mtd = ",
+    sim_grid$bw_mtd[i],
+    " | sim_id = ",
+    sim_grid$sim_id[i]
+  )
+
+  message("Running: ", settings_row)
+
+  bw_list_raw_mtd_loop[[i]] <- stimgate:::.simBandwidthEstBwDirect(
+    nSample = 10,
+    nMarker = 1,
+    nCondition = 2,
+    nCluster = 2,
+    nIter = 10,
+    biasUns = 0.05,
+    bwMtd = sim_grid$bw_mtd[i],
+    bwMin = -Inf,
+    bwMax = Inf,
+    bwCluster = 0.5,
+    nCellStim = sim_grid$n_cell[i],
+    probResponse = sim_grid$prob_response[i],
+    probExact = TRUE,
+    meanPos = sim_grid$mean_pos[i],
+    transformation = sim_grid$transformation[i],
+    backgroundRelativeToResponse = 0.2,
+    ncellUnsRelativeToStim = 1,
+    covEvMin = 2,
+    covEvMax = 2,
+    tolClust = NULL,
+    summarise = FALSE
+  ) |>
+    dplyr::mutate(
+      transformation = sim_grid$transformation[i],
+      prob_response = sim_grid$prob_response[i],
+      n_cell = sim_grid$n_cell[i],
+      mean_pos = sim_grid$mean_pos[i],
+      bw_mtd = sim_grid$bw_mtd[i],
+      sim_id = sim_grid$sim_id[i]
+    ) |>
+    dplyr::select(
+      transformation,
+      prob_response,
+      n_cell,
+      mean_pos,
+      bw_mtd,
+      sim_id,
+      dplyr::everything()
+    )
+
+  message("Completed: ", settings_row)
+}
+
+saveRDS(
+  bw_list_raw_mtd_loop,
+  file = projr::projr_path_get(
+    "output",
+    "sim",
+    "bw",
+    "est",
+    "bw_list_raw_mtd_loop.rds"
+  )
+)
+
+bw_list_raw_mtd_loop |>
+  dplyr::bind_rows() |>
+  dplyr::group_by(
+    transformation, prob_response, n_cell,
+    mean_pos, bw_mtd, chnl,
+    n_cell_stim, n_cell_uns
+  ) |>
+  dplyr::summarise(
+    mean_bw_stim = mean(bw_stim),
+    mean_bw_uns = mean(bw_uns),
+    mean_bw = mean(bw),
+    .groups = "drop"
+  ) |>
+  dplyr::select(
+    transformation, mean_bw
+  )
+```
+
+```{r}
+bw_list_raw_mtd_loop |>
+  dplyr::bind_rows() |>
+  dplyr::filter(transformation == "gamma") |>
+  dplyr::select(bw_uns:bw) |>
+  print(n = Inf)
+```
+
+Run the simulations in parallel, with progress reporting.
+
+```{r}
+#| label: bw-estimate-parallel
+
+if (interactive()) {
+  progressr::handlers(global = TRUE)
+}
+
+path_progress_file <- projr::projr_path_get(
+  "cache",
+  "sim",
+  "bw",
+  "est",
+  "progress.txt"
+)
+
+if (file.exists(path_progress_file)) {
+  file.remove(path_progress_file)
+}
+
+future::plan(
+  future::multisession,
+  workers = max(1, future::availableCores() - 1)
+)
+
+bw_list_raw_mtd <- progressr::with_progress({
+  p <- progressr::progressor(steps = nrow(sim_grid))
+
+  furrr::future_pmap(
+    sim_grid,
+    function(transformation, prob_response, n_cell, mean_pos, bw_mtd, sim_id) {
+      settings_row <- paste0(
+        "trans = ",
+        transformation,
+        " | prob = ",
+        prob_response,
+        " | n_cell = ",
+        n_cell,
+        " | mean = ",
+        mean_pos,
+        " | bw_mtd = ",
+        bw_mtd,
+        " | sim_id = ",
+        sim_id
+      )
+
+      log_msg <- paste0("Running: ", settings_row, "\n")
+      cat(log_msg, file = path_progress_file, append = TRUE)
+
+      out <- tryCatch(
+        {
+          sim_res <- stimgate:::.simBandwidthEstBwDirect(
+            nSample = 50,
+            nMarker = 1,
+            nCondition = 2,
+            nCluster = 2,
+            nIter = 1,
+            biasUns = 0.05,
+            bwMtd = bw_mtd,
+            bwMin = -Inf,
+            bwMax = Inf,
+            bwCluster = 0.5,
+            nCellStim = n_cell,
+            probResponse = prob_response,
+            probExact = TRUE,
+            meanPos = mean_pos,
+            transformation = transformation,
+            backgroundRelativeToResponse = 0.2,
+            ncellUnsRelativeToStim = 1,
+            covEvMin = 2,
+            covEvMax = 2,
+            tolClust = NULL,
+            summarise = FALSE
+          ) |>
+            dplyr::mutate(
+              transformation = transformation,
+              prob_response = prob_response,
+              n_cell = n_cell,
+              mean_pos = mean_pos,
+              bw_mtd = bw_mtd,
+              sim_id = sim_id
+            ) |>
+            dplyr::select(
+              transformation,
+              prob_response,
+              n_cell,
+              mean_pos,
+              bw_mtd,
+              sim_id,
+              dplyr::everything()
+            )
+
+          cat(
+            "Completed: ",
+            settings_row,
+            "\n",
+            file = path_progress_file,
+            append = TRUE
+          )
+
+          p(sprintf("Completed sim_id: %s", sim_id))
+
+          sim_res
+        },
+        error = function(e) {
+          err_msg <- paste0("Error [", settings_row, "]: ", e$message, "\n")
+          cat(err_msg, file = path_progress_file, append = TRUE)
+
+          p(sprintf("ERROR on sim_id: %s", sim_id))
+
+          tibble::tibble(
+            transformation = transformation,
+            prob_response = prob_response,
+            n_cell = n_cell,
+            mean_pos = mean_pos,
+            bw_mtd = bw_mtd,
+            sim_id = sim_id,
+            iter = NA_integer_,
+            chnl = NA_character_,
+            sample = NA_character_,
+            ind = NA_character_,
+            bw_uns = NA_real_,
+            bw_stim = NA_real_,
+            bw = NA_real_,
+            bw_source = NA_character_,
+            error = e$message
+          )
+        }
+      )
+
+      out
+    },
+    .options = furrr::furrr_options(seed = TRUE)
+  )
+})
+
+future::plan(future::sequential)
+
+saveRDS(
+  bw_list_raw_mtd,
+  file = projr::projr_path_get(
+    "output",
+    "sim",
+    "bw",
+    "est",
+    "bw_list_raw_mtd.rds"
+  )
+)
+```
+
+Collate the results.
+
+```{r}
+#| label: bw-estimate-collate
+#| error: true
+bw_list_raw_mtd <- readRDS(
+  file = projr::projr_path_get(
+    "output",
+    "sim",
+    "bw",
+    "est",
+    "bw_list_raw_mtd.rds"
+  )
+)
+bw_list_raw_mtd |>
+  dplyr::bind_rows() |>
+  dplyr::group_by(
+    transformation, prob_response, n_cell,
+    mean_pos, bw_mtd, chnl,
+    n_cell_stim, n_cell_uns
+  ) |>
+  print(width )
+  dplyr::summarise(
+    mean_bw_stim = mean(bw_stim),
+    mean_bw_uns = mean(bw_uns),
+    mean_bw = mean(bw),
+    .groups = "drop"
+  ) |>
+  dplyr::select(
+    transformation, mean_bw
+  )
+```
+
+

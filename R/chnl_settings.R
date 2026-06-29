@@ -16,6 +16,7 @@
   bw,
   bwMin,
   bwMax,
+  bwFallback,
   bwMtd,
   bwAdj,
   bwNcellMin,
@@ -61,6 +62,7 @@
     bwMin = bwMin,
     bw = bw,
     bwMax = bwMax,
+    bwFallback = bwFallback,
     bwMtd = bwMtd,
     bwAdj = bwAdj,
     bwNcellMin = bwNcellMin,
@@ -151,6 +153,17 @@
     bwAdj = chnlSettings$bwAdj
   )
 
+  chnlSettings$bwFallback <- .completeChnlSettingsBwFallback(
+    bwFallback = chnlSettings$bwFallback,
+    indBatchList = indBatchList,
+    .data = .data,
+    popGate = chnlSettings$popGate,
+    chnlCut = chnl,
+    pathProject = pathProject,
+    bwMtd = chnlSettings$bwMtd,
+    bwAdj = chnlSettings$bwAdj
+  )
+
   chnlSettings$biasUns <- .completeChnlSettingsBiasUns(
     biasUns = chnlSettings$biasUns,
     biasUnsFactor = chnlSettings$biasUnsFactor,
@@ -201,7 +214,155 @@
   if (!is.null(biasUns)) {
     return(biasUns)
   }
-  mean(bwMin, bwMax) * biasUnsFactor
+
+  bwRef <- c(bwMin, bwMax)
+  bwRef <- bwRef[is.finite(bwRef) & bwRef > 0]
+
+  if (length(bwRef) == 0L) {
+    return(0)
+  }
+
+  mean(bwRef) * biasUnsFactor
+}
+
+
+#' @keywords internal
+.completeChnlSettingsBwLimitIsAuto <- function(x) {
+  is.null(x) ||
+    (is.character(x) &&
+      length(x) == 1L &&
+      tolower(x) == "auto")
+}
+
+#' @keywords internal
+.completeChnlSettingsBwLimitIsNone <- function(x) {
+  is.character(x) &&
+    length(x) == 1L &&
+    tolower(x) == "none"
+}
+
+#' @keywords internal
+.completeChnlSettingsBwFallbackIsAuto <- function(x) {
+  is.character(x) &&
+    length(x) == 1L &&
+    tolower(x) == "auto"
+}
+
+#' @keywords internal
+.completeChnlSettingsGetBwExprList <- function(
+  indBatchList,
+  .data,
+  popGate,
+  chnlCut,
+  pathProject
+) {
+  batchInd <- seq_along(indBatchList)
+  batchInd <- sample(batchInd, size = min(5, length(batchInd)))
+
+  purrr::map(
+    batchInd,
+    function(i) {
+      exList <- .getExList(
+        .data = .data,
+        indBatch = indBatchList[[i]],
+        pop = popGate,
+        chnlCut,
+        batch = names(indBatchList)[i],
+        pathProject = pathProject
+      )
+
+      purrr::map(exList, function(ex) {
+        xVec <- .getCut(ex)
+        xVec <- xVec[is.finite(xVec)]
+        xVec <- xVec[xVec > min(xVec, na.rm = TRUE)]
+        xVec
+      })
+    }
+  ) |>
+    purrr::flatten() |>
+    purrr::keep(function(x) length(x) >= 2L && length(unique(x)) >= 2L)
+}
+
+#' @keywords internal
+.completeChnlSettingsBwCalcOne <- function(
+  x,
+  bwMtd,
+  bwAdj
+) {
+  x <- x[is.finite(x)]
+
+  if (length(x) < 2L || length(unique(x)) < 2L) {
+    return(NA_real_)
+  }
+
+  bwCalc <- switch(
+    bwMtd,
+    "nrd0" = try(stats::bw.nrd0(x), silent = TRUE),
+    "sj" = try(stats::bw.SJ(x), silent = TRUE),
+    try(
+      suppressWarnings(
+        ks::hpi(x, deriv.order = as.numeric(gsub("hpi", "", bwMtd)))
+      ),
+      silent = TRUE
+    )
+  )
+
+  if (inherits(bwCalc, "try-error") || !is.finite(bwCalc) || bwCalc <= 0) {
+    bwCalc <- try(stats::bw.nrd0(x), silent = TRUE)
+  }
+
+  if (inherits(bwCalc, "try-error") || !is.finite(bwCalc) || bwCalc <= 0) {
+    return(NA_real_)
+  }
+
+  as.numeric(bwCalc)[1] * bwAdj
+}
+
+#' @keywords internal
+.completeChnlSettingsBwLimitAuto <- function(
+  indBatchList,
+  .data,
+  popGate,
+  chnlCut,
+  pathProject,
+  bwAdj,
+  nSampleBw
+) {
+  xList <- .completeChnlSettingsGetBwExprList(
+    indBatchList = indBatchList,
+    .data = .data,
+    popGate = popGate,
+    chnlCut = chnlCut,
+    pathProject = pathProject
+  )
+
+  bwVec <- purrr::map_dbl(xList, function(xVec) {
+    iqrX <- diff(stats::quantile(xVec, c(0.75, 0.25), na.rm = TRUE))
+    sdX <- abs(iqrX) / 1.5
+
+    if (!is.finite(sdX) || sdX <= 0) {
+      sdX <- stats::sd(xVec, na.rm = TRUE)
+    }
+    if (!is.finite(sdX) || sdX <= 0) {
+      sdX <- .Machine$double.eps
+    }
+
+    xVec <- sample(xVec, replace = TRUE, size = nSampleBw) +
+      stats::rnorm(nSampleBw, mean = 0, sd = sdX / 10)
+
+    .completeChnlSettingsBwCalcOne(
+      x = xVec,
+      bwMtd = "hpi1",
+      bwAdj = bwAdj
+    )
+  })
+
+  bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
+  if (length(bwVec) == 0L) {
+    return(.Machine$double.eps)
+  }
+
+  mean(bwVec, trim = 0.1, na.rm = TRUE)
 }
 
 #' @keywords internal
@@ -214,34 +375,25 @@
   pathProject,
   bwAdj
 ) {
-  if (!is.null(bwMax)) {
+  if (.completeChnlSettingsBwLimitIsNone(bwMax)) {
+    return(Inf)
+  }
+
+  if (!.completeChnlSettingsBwLimitIsAuto(bwMax)) {
     return(bwMax)
   }
-  purrr::map(
-    seq_len(min(5, length(indBatchList))),
-    function(i) {
-      exList <- .getExList(
-        # nolint
-        .data = .data,
-        indBatch = indBatchList[[i]],
-        pop = popGate,
-        chnlCut,
-        batch = names(indBatchList)[i],
-        pathProject = pathProject
-      )
-      purrr::map_dbl(exList, function(ex) {
-        xVec <- .getCut(ex)[.getCut(ex) > min(.getCut(ex))]
-        iqrX <- diff(quantile(xVec, c(0.75, 0.25), na.rm = TRUE))
-        sdX <- abs(iqrX) / 1.5
-        xVec <- sample(xVec, replace = TRUE, size = 1e2) +
-          rnorm(1e2, mean = 0, sd = sdX / 10)
-        ks::hpi(x = xVec, deriv.order = 1) * bwAdj
-      })
-    }
-  ) |>
-    unlist() |>
-    mean(trim = 0.1)
+
+  .completeChnlSettingsBwLimitAuto(
+    indBatchList = indBatchList,
+    .data = .data,
+    popGate = popGate,
+    chnlCut = chnlCut,
+    pathProject = pathProject,
+    bwAdj = bwAdj,
+    nSampleBw = 1e2
+  )
 }
+
 
 #' @keywords internal
 .completeChnlSettingsBwMin <- function(
@@ -253,33 +405,86 @@
   pathProject,
   bwAdj
 ) {
-  if (!is.null(bwMin)) {
+  if (.completeChnlSettingsBwLimitIsNone(bwMin)) {
+    return(-1)
+  }
+
+  if (!.completeChnlSettingsBwLimitIsAuto(bwMin)) {
     return(bwMin)
   }
-  purrr::map(
-    seq_len(min(5, length(indBatchList))),
-    function(i) {
-      exList <- .getExList(
-        # nolint
-        .data = .data,
-        indBatch = indBatchList[[i]],
-        pop = popGate,
-        chnlCut,
-        batch = names(indBatchList)[i],
-        pathProject = pathProject
-      )
-      purrr::map_dbl(exList, function(ex) {
-        xVec <- .getCut(ex)[.getCut(ex) > min(.getCut(ex))]
-        iqrX <- diff(quantile(xVec, c(0.75, 0.25), na.rm = TRUE))
-        sdX <- abs(iqrX) / 1.5
-        xVec <- sample(xVec, replace = TRUE, size = 1e5) +
-          rnorm(1e5, mean = 0, sd = sdX / 10)
-        ks::hpi(x = xVec, deriv.order = 1) * bwAdj
-      })
-    }
-  ) |>
-    unlist() |>
-    mean(trim = 0.1)
+
+  .completeChnlSettingsBwLimitAuto(
+    indBatchList = indBatchList,
+    .data = .data,
+    popGate = popGate,
+    chnlCut = chnlCut,
+    pathProject = pathProject,
+    bwAdj = bwAdj,
+    nSampleBw = 1e5
+  )
+}
+
+
+#' @keywords internal
+.completeChnlSettingsBwFallback <- function(
+  bwFallback,
+  indBatchList,
+  .data,
+  popGate,
+  chnlCut,
+  pathProject,
+  bwMtd,
+  bwAdj
+) {
+  if (!.completeChnlSettingsBwFallbackIsAuto(bwFallback)) {
+    return(bwFallback)
+  }
+
+  xList <- .completeChnlSettingsGetBwExprList(
+    indBatchList = indBatchList,
+    .data = .data,
+    popGate = popGate,
+    chnlCut = chnlCut,
+    pathProject = pathProject
+  )
+
+  if (length(xList) == 0L) {
+    return(.Machine$double.eps)
+  }
+
+  nCellFallback <- stats::median(purrr::map_int(xList, length), na.rm = TRUE)
+  nCellFallback <- max(2L, as.integer(round(nCellFallback)))
+
+  xListFallback <- sample(
+    xList,
+    size = min(length(xList), max(1L, ceiling(sqrt(length(xList))))),
+    replace = FALSE
+  )
+
+  xPool <- unlist(xListFallback, use.names = FALSE)
+  xPool <- xPool[is.finite(xPool)]
+
+  if (length(xPool) < 2L || length(unique(xPool)) < 2L) {
+    return(.Machine$double.eps)
+  }
+
+  xFallback <- sample(
+    xPool,
+    size = nCellFallback,
+    replace = length(xPool) < nCellFallback
+  )
+
+  bwOut <- .completeChnlSettingsBwCalcOne(
+    x = xFallback,
+    bwMtd = bwMtd,
+    bwAdj = bwAdj
+  )
+
+  if (!is.finite(bwOut) || bwOut <= 0) {
+    return(.Machine$double.eps)
+  }
+
+  bwOut
 }
 
 #' @keywords internal
