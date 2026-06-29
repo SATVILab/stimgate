@@ -216,6 +216,7 @@ Run the simulations in parallel, with progress reporting.
 
 ```{r}
 #| label: bw-manual-parallel
+#| results: hide
 # Activate global progress bars in your console
 if (interactive()) {
   progressr::handlers(global = TRUE)
@@ -276,11 +277,11 @@ bw_list_raw <- progressr::with_progress({
       out <- tryCatch(
         {
           sim_res <- stimgate:::.simBandwidthBsFreq(
-            nSample = 10,
+            nSample = 5,
             nMarker = 1,
             nCondition = 2,
             nCluster = 2,
-            nIter = 10,
+            nIter = 5,
             biasUns = bias_uns,
             bw = bw,
             bwMin = "none",
