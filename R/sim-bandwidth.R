@@ -1,3 +1,12 @@
+.simBwMtdColVec <- c(
+  "hpi0" = "#005a32",
+  "hpi1" = "#238b45",
+  "hpi2" = "#74c476",
+  "hpi3" = "#c7e9c0",
+  "nrd0" = "#fe9929",
+  "sj" = "#3d8bb3ff"
+)
+
 .simBandwidthReadRdsOrNull <- function(path) {
   if (!file.exists(path)) {
     return(NULL)
