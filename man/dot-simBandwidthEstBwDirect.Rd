@@ -15,6 +15,7 @@
   bwMtd = "hpi1",
   bwMin = 1e-10,
   bwMax = 1e+10,
+  bwFallback = NULL,
   bwAdj = 1,
   bwNcellMin = NULL,
   bwNcellMax = NULL,
