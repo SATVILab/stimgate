@@ -1,3 +1,230 @@
+.simBandwidthReadRdsOrNull <- function(path) {
+  if (!file.exists(path)) {
+    return(NULL)
+  }
+  tryCatch(
+    readRDS(path),
+    error = function(e) NULL
+  )
+}
+
+.simBandwidthAddMissingColumns <- function(.data, cols) {
+  for (nm in names(cols)) {
+    if (!nm %in% names(.data)) {
+      .data[[nm]] <- cols[[nm]]
+    }
+  }
+  .data
+}
+
+.simBandwidthSampleFromInd <- function(ind, nCondition) {
+  ind_num <- suppressWarnings(as.numeric(ind))
+  as.character(((ind_num - 1) %/% nCondition) + 1)
+}
+
+.simBandwidthLocDetailGatePoint <- function(
+  detailLevel,
+  locGenerated,
+  locGeneratedDirect,
+  locSource
+) {
+  dplyr::case_when(
+    detailLevel %in%
+      "condition" &
+      locGenerated %in% TRUE &
+      locGeneratedDirect %in% TRUE ~ "condition_direct_local_fdr",
+    detailLevel %in%
+      "condition" &
+      !(locGenerated %in% TRUE) ~ "condition_fallback_high_value",
+    detailLevel %in%
+      "sample" &
+      locGenerated %in% TRUE &
+      locSource %in% "combined" ~ "sample_combined_from_other_stim_conditions",
+    detailLevel %in%
+      "sample" &
+      locGenerated %in% TRUE &
+      locSource %in% "prejoin" ~ "sample_prejoin_from_joined_stim_conditions",
+    detailLevel %in%
+      "sample" &
+      locGenerated %in% TRUE ~ "sample_final_local_fdr",
+    detailLevel %in%
+      "sample" &
+      !(locGenerated %in% TRUE) ~ "sample_fallback_high_value",
+    TRUE ~ NA_character_
+  )
+}
+
+.simBandwidthReadLocDetails <- function(
+  pathProject,
+  nSample,
+  nCondition
+) {
+  pathDirIntInit <- file.path(pathProject, "intermediateData", "init")
+  if (!dir.exists(pathDirIntInit)) {
+    return(tibble::tibble())
+  }
+
+  chnlVec <- list.dirs(pathDirIntInit, full.names = FALSE, recursive = FALSE)
+  if (length(chnlVec) == 0L) {
+    return(tibble::tibble())
+  }
+
+  detailTbl <- purrr::map_df(chnlVec, function(chnl) {
+    stageChnl <- file.path(pathDirIntInit, chnl)
+
+    purrr::map_df(seq_len(nSample), function(sampleCurr) {
+      indBatch <- seq(
+        (sampleCurr - 1L) * nCondition + 1L,
+        sampleCurr * nCondition
+      )
+      indStim <- indBatch[-1L]
+      indCombined <- paste0(indStim, collapse = "_")
+
+      conditionTbl <- purrr::map_df(indStim, function(ind) {
+        pathInd <- file.path(stageChnl, "ind", as.character(ind))
+        out <- .simBandwidthReadRdsOrNull(
+          file.path(pathInd, "locDetailCondition.rds")
+        )
+        if (!is.data.frame(out) || nrow(out) == 0L) {
+          return(tibble::tibble())
+        }
+        out
+      })
+
+      sampleTbl <- .simBandwidthReadRdsOrNull(
+        file.path(stageChnl, "ind", indCombined, "locDetailSample.rds")
+      )
+      if (!is.data.frame(sampleTbl) || nrow(sampleTbl) == 0L) {
+        sampleTbl <- tibble::tibble()
+      }
+
+      dplyr::bind_rows(conditionTbl, sampleTbl)
+    })
+  })
+
+  if (!is.data.frame(detailTbl) || nrow(detailTbl) == 0L) {
+    return(tibble::tibble())
+  }
+
+  detailTbl <- .simBandwidthAddMissingColumns(
+    detailTbl,
+    list(
+      detailLevel = NA_character_,
+      stage = NA_character_,
+      chnl = NA_character_,
+      ind = NA_character_,
+      threshold = NA_real_,
+      thresholdOrigin = NA_character_,
+      locGenerated = NA,
+      locGeneratedDirect = NA,
+      locSource = NA_character_,
+      locReason = NA_character_,
+      bias = NA_real_,
+      propBsEst = NA_real_,
+      propBsDiff = NA_real_,
+      nCellStim = NA_integer_,
+      nCellUns = NA_integer_,
+      propStim = NA_real_,
+      propUns = NA_real_,
+      propBs = NA_real_
+    )
+  )
+
+  conditionThresholdTbl <- detailTbl |>
+    dplyr::filter(.data$detailLevel %in% "condition") |>
+    dplyr::transmute(
+      chnl = .data$chnl,
+      ind = as.character(.data$ind),
+      thresholdCondition = suppressWarnings(as.numeric(.data$threshold)),
+      thresholdOriginCondition = .data$thresholdOrigin,
+      locGeneratedCondition = .data$locGenerated %in% TRUE,
+      locSourceCondition = .data$locSource,
+      locReasonCondition = .data$locReason
+    )
+
+  detailTbl |>
+    dplyr::mutate(
+      ind = as.character(.data$ind),
+      sample = .simBandwidthSampleFromInd(.data$ind, nCondition),
+      method = paste0("loc_", .data$detailLevel),
+      propRespEst = .data$propBs,
+      nCellStim = suppressWarnings(as.numeric(.data$nCellStim)),
+      nCellUns = suppressWarnings(as.numeric(.data$nCellUns)),
+      propStim = suppressWarnings(as.numeric(.data$propStim)),
+      propUns = suppressWarnings(as.numeric(.data$propUns)),
+      nPosStim = dplyr::if_else(
+        is.finite(.data$propStim) & is.finite(.data$nCellStim),
+        as.integer(round(.data$propStim * .data$nCellStim)),
+        NA_integer_
+      ),
+      nPosUns = dplyr::if_else(
+        is.finite(.data$propUns) & is.finite(.data$nCellUns),
+        as.integer(round(.data$propUns * .data$nCellUns)),
+        NA_integer_
+      ),
+      gateReturnPoint = .simBandwidthLocDetailGatePoint(
+        detailLevel = .data$detailLevel,
+        locGenerated = .data$locGenerated,
+        locGeneratedDirect = .data$locGeneratedDirect,
+        locSource = .data$locSource
+      )
+    ) |>
+    dplyr::left_join(
+      conditionThresholdTbl,
+      by = c("chnl", "ind")
+    ) |>
+    dplyr::mutate(
+      thresholdBeforeSampleCombining = dplyr::if_else(
+        .data$detailLevel %in% "sample",
+        .data$thresholdCondition,
+        NA_real_
+      ),
+      thresholdChangedBySampleCombining = dplyr::case_when(
+        .data$detailLevel %in%
+          "sample" &
+          is.finite(.data$threshold) &
+          is.finite(.data$thresholdCondition) ~
+          abs(.data$threshold - .data$thresholdCondition) >
+            sqrt(.Machine$double.eps),
+        .data$detailLevel %in% "sample" ~ NA,
+        TRUE ~ FALSE
+      )
+    ) |>
+    dplyr::select(
+      sample,
+      ind,
+      chnl,
+      method,
+      propRespEst,
+      detailLevel,
+      stage,
+      threshold,
+      thresholdOrigin,
+      gateReturnPoint,
+      locGenerated,
+      locGeneratedDirect,
+      locSource,
+      locReason,
+      thresholdBeforeSampleCombining,
+      thresholdChangedBySampleCombining,
+      thresholdCondition,
+      thresholdOriginCondition,
+      locGeneratedCondition,
+      locSourceCondition,
+      locReasonCondition,
+      nCellStim,
+      nCellUns,
+      nPosStim,
+      nPosUns,
+      propStim,
+      propUns,
+      propBs,
+      propBsEst,
+      propBsDiff,
+      bias
+    )
+}
+
 .simBandwidthBsFreq <- function(
   nSample,
   nMarker,
@@ -6,12 +233,13 @@
   nIter,
   biasUns,
   bw = NULL,
-  bwFallback = NULL,
-  bwMin = NULL,
-  bwMax = NULL,
+  bwFallback = "auto",
+  bwMin = "auto",
+  bwMax = "auto",
+  bwMtd = "hpi1",
   bwAdj = 1,
-  bwNcellMin = NULL,
-  bwNcellMax = NULL,
+  bwNcellMin = 1e2,
+  bwNcellMax = 1e5,
   bwCluster = NULL,
   probExact = FALSE,
   nCellStim,
@@ -25,7 +253,29 @@
   ncellUnsRelativeToStim,
   covEvMin = 1,
   covEvMax = 2,
-  tolClust = 1e-7
+  tolClust = NULL,
+  minCell = 1e2,
+  maxPosProbX = Inf,
+  gateQuant = c(0.25, 0.75),
+  locProbCol = "pred",
+  locMinPeakProb = 0.25,
+  locDipAlpha = 0.2,
+  locAntimodeHeightFrac = 1 / 6,
+  locAntimodeLowRel = 0.25,
+  locAntimodeLowAbs = 0.15,
+  locFlatDerivFrac = 1 / 2,
+  locFlatHardDerivFrac = 1 / 4,
+  locLeftLowRel = 0.25,
+  locLeftLowAbs = 0.15,
+  locLeftCellFrac = 0.5,
+  locLeftLengthFrac = 0.5,
+  locMarginalPurityRel = 0.5,
+  locMarginalCellBinRatio = 2,
+  locMarginalRefQuantile = 0.75,
+  locTolRefPeak = "highest",
+  gateCombn = "min",
+  calcCytPosGates = FALSE,
+  calcSinglePosGates = FALSE
 ) {
   purrr::map_df(seq_len(nIter), function(iterNum) {
     nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
@@ -61,31 +311,42 @@
       covEvMax = covEvMax
     )
 
-    fs <- as(outListExperiment[["flowFrameList"]], "flowSet") # Fixed case
+    fs <- as(outListExperiment[["flowFrameList"]], "flowSet")
     gs <- flowWorkspace::GatingSet(fs)
-    labelsList <- outListExperiment[["labelsList"]] # Fixed case
+    labelsList <- outListExperiment[["labelsList"]]
 
     pathProject <- file.path(
       tempdir(),
       "stimgate",
       "sim-bw",
-      paste0("iter-", iterNum, "-", format(Sys.time(), "%Y%m%d%H%M%S"))
+      paste0(
+        "iter-",
+        iterNum,
+        "-",
+        Sys.getpid(),
+        "-",
+        format(Sys.time(), "%Y%m%d%H%M%S"),
+        "-",
+        sample.int(1e7, 1)
+      )
     )
-    on.exit({
-      if (dir.exists(pathProject)) {
-        unlink(pathProject, recursive = TRUE)
-      }
-    })
+    on.exit(
+      {
+        if (dir.exists(pathProject)) {
+          unlink(pathProject, recursive = TRUE)
+        }
+      },
+      add = TRUE
+    )
     if (dir.exists(pathProject)) {
       unlink(pathProject, recursive = TRUE)
     }
-    dir.create(pathProject, recursive = TRUE)
+    dir.create(pathProject, recursive = TRUE, showWarnings = FALSE)
 
-    batchList <- lapply(seq(nSample), function(i) {
+    batchList <- lapply(seq_len(nSample), function(i) {
       seq((i - 1) * nCondition + 1, i * nCondition)
     })
 
-    # gate
     Sys.setenv("STIMGATE_INTERMEDIATE" = "TRUE")
     invisible(gateStim(
       .data = gs,
@@ -93,9 +354,39 @@
       popGate = "root",
       batchList = batchList,
       marker = paste0("MarkerF", seq_len(nMarker)),
+      calcCytPosGates = calcCytPosGates,
+      calcSinglePosGates = calcSinglePosGates,
+      biasUns = biasUns,
       bw = bw,
       bwFallback = bwFallback,
-      tolClust = tolClust
+      bwMin = bwMin,
+      bwMax = bwMax,
+      bwMtd = bwMtd,
+      bwAdj = bwAdj,
+      bwNcellMin = bwNcellMin,
+      bwNcellMax = bwNcellMax,
+      bwCluster = bwCluster,
+      minCell = minCell,
+      maxPosProbX = maxPosProbX,
+      gateQuant = gateQuant,
+      tolClust = tolClust,
+      locProbCol = locProbCol,
+      locMinPeakProb = locMinPeakProb,
+      locDipAlpha = locDipAlpha,
+      locAntimodeHeightFrac = locAntimodeHeightFrac,
+      locAntimodeLowRel = locAntimodeLowRel,
+      locAntimodeLowAbs = locAntimodeLowAbs,
+      locFlatDerivFrac = locFlatDerivFrac,
+      locFlatHardDerivFrac = locFlatHardDerivFrac,
+      locLeftLowRel = locLeftLowRel,
+      locLeftLowAbs = locLeftLowAbs,
+      locLeftCellFrac = locLeftCellFrac,
+      locLeftLengthFrac = locLeftLengthFrac,
+      locMarginalPurityRel = locMarginalPurityRel,
+      locMarginalCellBinRatio = locMarginalCellBinRatio,
+      locMarginalRefQuantile = locMarginalRefQuantile,
+      locTolRefPeak = locTolRefPeak,
+      gateCombn = gateCombn
     ))
 
     stopifnot(file.exists(file.path(pathProject, "gateStats.rds")))
@@ -103,57 +394,63 @@
     propBsTblTruth <- purrr::map_df(
       seq_len(nSample),
       function(sampleCurr) {
-        labelsVec <- (sampleCurr - 1) * nCondition + seq(1, nCondition)
-        purrr::map_df(labelsVec, function(i) {
-          labelVec <- labelsList[[i]]
-          stimCondition <- ifelse(i %% nCondition == 1, "unstim", "stim")
-          f1p <- sum(grepl("^gp$", labelVec)) / length(labelVec)
+        indUns <- (sampleCurr - 1L) * nCondition + 1L
+        indStim <- seq.int(indUns + 1L, sampleCurr * nCondition)
+        labelVecUns <- labelsList[[indUns]]
+        propUnsTruth <- sum(grepl("^gp$", labelVecUns)) / length(labelVecUns)
+
+        purrr::map_df(indStim, function(ind) {
+          labelVecStim <- labelsList[[ind]]
+          propStimTruth <- sum(grepl("^gp$", labelVecStim)) /
+            length(labelVecStim)
           tibble::tibble(
-            ind = sampleCurr |> as.character(),
-            stim = stimCondition,
+            sample = as.character(sampleCurr),
+            ind = as.character(ind),
             chnl = "F1",
-            F1 = f1p
+            propStimTruth = propStimTruth,
+            propUnsTruth = propUnsTruth,
+            propRespTruth = propStimTruth - propUnsTruth
           )
         })
       }
-    ) |>
-      tidyr::pivot_wider(
-        names_from = stim,
-        values_from = F1
-      ) |>
-      dplyr::mutate(
-        propRespTruth = stim - unstim
-      ) |>
-      dplyr::rename(
-        sample = ind
-      ) |>
-      dplyr::select(
-        all_of(c("chnl", "sample", "propRespTruth"))
-      )
+    )
 
     pathDirIntInit <- file.path(pathProject, "intermediateData", "init")
     chnlVec <- list.dirs(pathDirIntInit, full.names = FALSE, recursive = FALSE)
-    chnl <- chnlVec[[1]]
-    ind <- 2
 
     propBsTblEstSmooth <- purrr::map_df(chnlVec, function(chnl) {
-      indVecStim <- seq(2, nSample * nCondition, by = 2) |>
-        as.character()
+      indVecStim <- unlist(lapply(seq_len(nSample), function(sampleCurr) {
+        indUns <- (sampleCurr - 1L) * nCondition + 1L
+        seq.int(indUns + 1L, sampleCurr * nCondition)
+      }))
+
       purrr::map_df(indVecStim, function(ind) {
-        pathInd <- file.path(pathDirIntInit, chnl, "ind", ind)
-        probSmooth <- file.path(pathInd, "dataMod.rds") |>
-          readRDS()
+        pathInd <- file.path(pathDirIntInit, chnl, "ind", as.character(ind))
+        probSmooth <- .simBandwidthReadRdsOrNull(
+          file.path(pathInd, "dataMod.rds")
+        )
         if (!inherits(probSmooth, "data.frame")) {
-          # it's zero if it doesn't inherit anything
           return(tibble::tibble(
-            sample = as.character(as.numeric(ind) / nCondition),
-            ind = ind,
+            sample = .simBandwidthSampleFromInd(ind, nCondition),
+            ind = as.character(ind),
             chnl = chnl,
-            ncellCondition = nCellStim,
-            ncellRespSmooth = 0,
-            ncellRespPred = 0,
-            propRespSmooth = 0,
-            propRespPred = 0
+            method = c("propRespSmooth", "propRespPred"),
+            propRespEst = c(0, 0),
+            nCellStim = nCellStim,
+            nCellUns = nCellUns,
+            nPosStim = NA_integer_,
+            nPosUns = NA_integer_,
+            threshold = NA_real_,
+            thresholdOrigin = NA_character_,
+            gateReturnPoint = NA_character_,
+            locGenerated = NA,
+            locGeneratedDirect = NA,
+            locSource = NA_character_,
+            locReason = NA_character_,
+            detailLevel = NA_character_,
+            stage = NA_character_,
+            thresholdBeforeSampleCombining = NA_real_,
+            thresholdChangedBySampleCombining = NA
           ))
         }
         ncellRespSmooth <- if (nrow(probSmooth) > 0L) {
@@ -167,73 +464,39 @@
           0
         }
         tibble::tibble(
-          sample = as.character(as.numeric(ind) / nCondition),
-          ind = ind,
+          sample = .simBandwidthSampleFromInd(ind, nCondition),
+          ind = as.character(ind),
           chnl = chnl,
-          ncellCondition = nCellStim,
-          ncellRespSmooth = ncellRespSmooth,
-          ncellRespPred = ncellRespPred,
-          propRespSmooth = ncellRespSmooth / ncellCondition,
-          propRespPred = ncellRespPred / ncellCondition
+          method = c("propRespSmooth", "propRespPred"),
+          propRespEst = c(
+            ncellRespSmooth / nCellStim,
+            ncellRespPred / nCellStim
+          ),
+          nCellStim = nCellStim,
+          nCellUns = nCellUns,
+          nPosStim = NA_integer_,
+          nPosUns = NA_integer_,
+          threshold = NA_real_,
+          thresholdOrigin = NA_character_,
+          gateReturnPoint = NA_character_,
+          locGenerated = NA,
+          locGeneratedDirect = NA,
+          locSource = NA_character_,
+          locReason = NA_character_,
+          detailLevel = NA_character_,
+          stage = NA_character_,
+          thresholdBeforeSampleCombining = NA_real_,
+          thresholdChangedBySampleCombining = NA
         )
       })
-    }) |>
-      dplyr::select(
-        sample,
-        chnl,
-        propRespSmooth,
-        propRespPred
-      ) |>
-      tidyr::pivot_longer(
-        cols = c(propRespSmooth, propRespPred),
-        names_to = "method",
-        values_to = "propRespEst"
-      ) |>
-      dplyr::mutate(
-        threshold = NA_real_,
-        thresholdOrigin = NA_character_,
-        locGenerated = NA,
-        locGeneratedDirect = NA,
-        locSource = NA_character_,
-        locReason = NA_character_,
-        detailLevel = NA_character_
-      )
+    })
 
-    propBsTblDetailed <- try(
-      getStimGatesDetailed(pathProject),
-      silent = TRUE
-    )
-    propBsTblDetailed <- if (
-      inherits(propBsTblDetailed, "try-error") ||
-        !is.data.frame(propBsTblDetailed) ||
-        nrow(propBsTblDetailed) == 0L
-    ) {
-      tibble::tibble()
-    } else {
-      propBsTblDetailed |>
-        dplyr::filter(
-          .data$detailLevel %in% c("condition", "sample", "cluster_final")
-        ) |>
-        dplyr::filter(is.finite(.data$propBs)) |>
-        dplyr::mutate(
-          sample = as.character(as.numeric(.data$ind) / nCondition),
-          method = paste0("loc_", .data$detailLevel),
-          propRespEst = .data$propBs
-        ) |>
-        dplyr::select(
-          sample,
-          chnl,
-          method,
-          propRespEst,
-          threshold,
-          thresholdOrigin,
-          locGenerated,
-          locGeneratedDirect,
-          locSource,
-          locReason,
-          detailLevel
-        )
-    }
+    propBsTblDetailed <- .simBandwidthReadLocDetails(
+      pathProject = pathProject,
+      nSample = nSample,
+      nCondition = nCondition
+    ) |>
+      dplyr::filter(.data$detailLevel %in% c("condition", "sample"))
 
     propBsTblEst <- dplyr::bind_rows(
       propBsTblEstSmooth,
@@ -243,15 +506,34 @@
     comparisonTbl <- propBsTblTruth |>
       dplyr::left_join(
         propBsTblEst,
-        by = c("sample", "chnl")
+        by = c("sample", "ind", "chnl")
       )
+
     comparisonTbl |>
       dplyr::mutate(
-        iter = iterNum
+        iter = iterNum,
+        nCellStimSim = nCellStim,
+        nCellUnsSim = nCellUns,
+        biasUns = biasUns,
+        bw = if (is.null(bw)) NA_real_ else bw,
+        bwFallback = bwFallback,
+        bwMin = bwMin,
+        bwMax = bwMax,
+        bwMtd = bwMtd,
+        bwAdj = bwAdj,
+        bwNcellMin = bwNcellMin,
+        bwNcellMax = bwNcellMax,
+        bwCluster = if (is.null(bwCluster)) NA_real_ else bwCluster,
+        samplePerturbationSd = samplePerturbationSd,
+        conditionPerturbationSd = conditionPerturbationSd,
+        clusterPerturbationSd = clusterPerturbationSd,
+        backgroundRelativeToResponse = backgroundRelativeToResponse,
+        ncellUnsRelativeToStim = ncellUnsRelativeToStim
       ) |>
-      dplyr::select(iter, chnl, dplyr::everything())
+      dplyr::select(iter, chnl, sample, ind, dplyr::everything())
   })
 }
+
 
 .simBandwidthEstBw <- function(
   nSample,

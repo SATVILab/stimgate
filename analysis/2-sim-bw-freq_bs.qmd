@@ -152,14 +152,17 @@ A loop we only run when we want to see why particular runs failed.
 ```{r}
 #| label: bw-manual-loop
 #| eval: false
+bw_list_raw <- vector("list", nrow(sim_grid))
+
 for (i in seq_len(nrow(sim_grid))) {
+  message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
   sim_res <- stimgate:::.simBandwidthBsFreq(
     nSample = 10,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
-    nIter = 10,
-    biasUns = 0.05,
+    nIter = 1,
+    biasUns = sim_grid$bias_uns[i],
     bw = sim_grid$bw[i],
     bwFallback = sim_grid$bw[i],
     nCellStim = sim_grid$n_cell[i],
@@ -170,23 +173,41 @@ for (i in seq_len(nrow(sim_grid))) {
     samplePerturbationSd = sim_grid$sample_perturbation_sd[i],
     conditionPerturbationSd = sim_grid$condition_perturbation_sd[i],
     clusterPerturbationSd = sim_grid$cluster_perturbation_sd[i],
-    backgroundRelativeToResponse = sim_grid$background_relative_to_response[i], 
-    ncellUnsRelativeToStim = sim_grid$n_cell_uns_relative_to_stim[i],
-    covEvMin = 2, 
+    backgroundRelativeToResponse =
+      sim_grid$background_relative_to_response[i],
+    ncellUnsRelativeToStim =
+      sim_grid$n_cell_uns_relative_to_stim[i],
+    covEvMin = 2,
     covEvMax = 2,
     tolClust = NULL
   ) |>
     dplyr::mutate(
-      transformation = transformation,
-      prob_response = prob_response,
-      n_cell = n_cell,
-      mean_pos = mean_pos,
-      bw = bw
+      transformation = sim_grid$transformation[i],
+      prob_response = sim_grid$prob_response[i],
+      n_cell = sim_grid$n_cell[i],
+      mean_pos = sim_grid$mean_pos[i],
+      bw = sim_grid$bw[i],
+      bias_uns = sim_grid$bias_uns[i],
+      sample_perturbation_sd = sim_grid$sample_perturbation_sd[i],
+      condition_perturbation_sd =
+        sim_grid$condition_perturbation_sd[i],
+      cluster_perturbation_sd = sim_grid$cluster_perturbation_sd[i],
+      background_relative_to_response =
+        sim_grid$background_relative_to_response[i],
+      n_cell_uns_relative_to_stim =
+        sim_grid$n_cell_uns_relative_to_stim[i],
+      sim_id = sim_grid$sim_id[i]
     ) |>
     dplyr::select(
       transformation, prob_response, n_cell,
-      mean_pos, bw, dplyr::everything()
+      mean_pos, bw, bias_uns,
+      sample_perturbation_sd, condition_perturbation_sd,
+      cluster_perturbation_sd, background_relative_to_response,
+      n_cell_uns_relative_to_stim, sim_id,
+      dplyr::everything()
     )
+
+  bw_list_raw[[i]] <- sim_res
 }
 ```
 
@@ -196,9 +217,8 @@ Run the simulations in parallel, with progress reporting.
 #| label: bw-manual-parallel
 # Activate global progress bars in your console
 if (interactive()) {
-  handlers(global = TRUE)
+  progressr::handlers(global = TRUE)
 }
-
 
 path_progress_file <- projr::projr_path_get(
   "cache", "sim-bw", "bs-freq", "progress.txt"
@@ -208,94 +228,172 @@ if (file.exists(path_progress_file)) {
 }
 
 # Set up the parallel backend
-plan(multisession, workers = availableCores() - 1)
+future::plan(
+  future::multisession,
+  workers = max(1, future::availableCores() - 1)
+)
 
-# 3. Wrap your parallel execution in with_progress()
-bw_list_raw <- with_progress({
-  
-  # Create a progressor function with the total number of steps
-  p <- progressor(steps = nrow(sim_grid))
-  
-  future_pmap(sim_grid, function(transformation, prob_response, n_cell, mean_pos, bw, sim_id) {
+# Wrap the parallel execution in with_progress()
+bw_list_raw <- progressr::with_progress({
+  p <- progressr::progressor(steps = nrow(sim_grid))
 
-    settings_row <- paste0("trans = ", transformation, 
-                           " | prob = ", prob_response, 
-                           " | n_cell = ", n_cell, 
-                           " | mean = ", mean_pos, 
-                           " | bw = ", bw,
-                           " | sim_id = ", sim_id)
-
-    log_msg <- paste0("Running: ", settings_row, "\n")
-    cat(log_msg, file = path_progress_file, append = TRUE)
-    
-    # Run the simulation
-    out <- tryCatch({
-      sim_res <- stimgate:::.simBandwidthBsFreq(
-        nSample = 10,
-        nMarker = 1,
-        nCondition = 2,
-        nCluster = 2,
-        nIter = 10,
-        biasUns = 0.05,
-        bw = bw,
-        bwFallback = bw,
-        nCellStim = n_cell,
-        probResponse = prob_response,
-        probExact = TRUE,
-        meanPos = mean_pos,
-        transformation = transformation,
-        samplePerturbationSd = 0,
-        conditionPerturbationSd = 0,
-        clusterPerturbationSd = 0,
-        backgroundRelativeToResponse = 0.2, 
-        ncellUnsRelativeToStim = 1,
-        covEvMin = 2, 
-        covEvMax = 2,
-        tolClust = NULL
-      ) |>
-        dplyr::mutate(
-          transformation = transformation,
-          prob_response = prob_response,
-          n_cell = n_cell,
-          mean_pos = mean_pos,
-          bw = bw
-        ) |>
-        dplyr::select(
-          transformation, prob_response, n_cell,
-          mean_pos, bw, dplyr::everything()
-        )
-
-      cat("Completed: ", settings_row, "\n", file = path_progress_file, append = TRUE)
-      
-      # Signal successful step to the progress bar with a custom message
-      p(sprintf("Completed sim_id: %s", sim_id))
-      
-      sim_res
-    }, error = function(e) {
-      
-      # Signal failed step to the progress bar so it keeps moving
-      err_msg <- paste0("Error [", settings_row, "]: ", e$message, "\n")
-      cat(err_msg, file = path_progress_file, append = TRUE)
-      p(sprintf("ERROR on sim_id: %s", sim_id))
-      
-      tibble::tibble(
-        transformation = transformation,
-        prob_response = prob_response,
-        n_cell = n_cell,
-        mean_pos = mean_pos,
-        bw = bw,
-        iter = NA,
-        chnl = NA,
-        sample = NA
+  furrr::future_pmap(
+    sim_grid,
+    function(
+      transformation,
+      prob_response,
+      n_cell,
+      mean_pos,
+      bw,
+      bias_uns,
+      sample_perturbation_sd,
+      condition_perturbation_sd,
+      cluster_perturbation_sd,
+      background_relative_to_response,
+      n_cell_uns_relative_to_stim,
+      sim_id
+    ) {
+      settings_row <- paste0(
+        "trans = ", transformation,
+        " | prob = ", prob_response,
+        " | n_cell = ", n_cell,
+        " | mean = ", mean_pos,
+        " | bw = ", bw,
+        " | bias = ", bias_uns,
+        " | sample_sd = ", sample_perturbation_sd,
+        " | condition_sd = ", condition_perturbation_sd,
+        " | cluster_sd = ", cluster_perturbation_sd,
+        " | bg_rel = ", background_relative_to_response,
+        " | n_uns_rel = ", n_cell_uns_relative_to_stim,
+        " | sim_id = ", sim_id
       )
-    })
-    
-    return(out)
-  }, .options = furrr_options(seed = TRUE))
+
+      log_msg <- paste0("Running: ", settings_row, "
+")
+      cat(log_msg, file = path_progress_file, append = TRUE)
+
+      out <- tryCatch(
+        {
+          sim_res <- stimgate:::.simBandwidthBsFreq(
+            nSample = 10,
+            nMarker = 1,
+            nCondition = 2,
+            nCluster = 2,
+            nIter = 10,
+            biasUns = bias_uns,
+            bw = bw,
+            bwFallback = bw,
+            nCellStim = n_cell,
+            probResponse = prob_response,
+            probExact = TRUE,
+            meanPos = mean_pos,
+            transformation = transformation,
+            samplePerturbationSd = sample_perturbation_sd,
+            conditionPerturbationSd = condition_perturbation_sd,
+            clusterPerturbationSd = cluster_perturbation_sd,
+            backgroundRelativeToResponse = background_relative_to_response,
+            ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
+            covEvMin = 2,
+            covEvMax = 2,
+            tolClust = NULL
+          ) |>
+            dplyr::mutate(
+              transformation = transformation,
+              prob_response = prob_response,
+              n_cell = n_cell,
+              mean_pos = mean_pos,
+              bw = bw,
+              bias_uns = bias_uns,
+              sample_perturbation_sd = sample_perturbation_sd,
+              condition_perturbation_sd = condition_perturbation_sd,
+              cluster_perturbation_sd = cluster_perturbation_sd,
+              background_relative_to_response =
+                background_relative_to_response,
+              n_cell_uns_relative_to_stim =
+                n_cell_uns_relative_to_stim,
+              sim_id = sim_id
+            ) |>
+            dplyr::select(
+              transformation,
+              prob_response,
+              n_cell,
+              mean_pos,
+              bw,
+              bias_uns,
+              sample_perturbation_sd,
+              condition_perturbation_sd,
+              cluster_perturbation_sd,
+              background_relative_to_response,
+              n_cell_uns_relative_to_stim,
+              sim_id,
+              dplyr::everything()
+            )
+
+          cat(
+            "Completed: ",
+            settings_row,
+            "
+",
+            file = path_progress_file,
+            append = TRUE
+          )
+
+          p(sprintf("Completed sim_id: %s", sim_id))
+
+          sim_res
+        },
+        error = function(e) {
+          err_msg <- paste0("Error [", settings_row, "]: ", e$message, "
+")
+          cat(err_msg, file = path_progress_file, append = TRUE)
+          p(sprintf("ERROR on sim_id: %s", sim_id))
+
+          tibble::tibble(
+            transformation = transformation,
+            prob_response = prob_response,
+            n_cell = n_cell,
+            mean_pos = mean_pos,
+            bw = bw,
+            bias_uns = bias_uns,
+            sample_perturbation_sd = sample_perturbation_sd,
+            condition_perturbation_sd = condition_perturbation_sd,
+            cluster_perturbation_sd = cluster_perturbation_sd,
+            background_relative_to_response =
+              background_relative_to_response,
+            n_cell_uns_relative_to_stim =
+              n_cell_uns_relative_to_stim,
+            sim_id = sim_id,
+            iter = NA_integer_,
+            chnl = NA_character_,
+            sample = NA_character_,
+            ind = NA_character_,
+            method = NA_character_,
+            propRespTruth = NA_real_,
+            propRespEst = NA_real_,
+            threshold = NA_real_,
+            thresholdOrigin = NA_character_,
+            gateReturnPoint = NA_character_,
+            locGenerated = NA,
+            locGeneratedDirect = NA,
+            locSource = NA_character_,
+            locReason = NA_character_,
+            detailLevel = NA_character_,
+            nCellStim = NA_real_,
+            nCellUns = NA_real_,
+            nPosStim = NA_integer_,
+            nPosUns = NA_integer_
+          )
+        }
+      )
+
+      return(out)
+    },
+    .options = furrr::furrr_options(seed = TRUE)
+  )
 })
 
 # Close the parallel workers when done
-plan(sequential)
+future::plan(future::sequential)
 
 saveRDS(
   bw_list_raw,
@@ -320,46 +418,93 @@ bw_tbl <- bw_list_raw |>
   dplyr::bind_rows() |>
   dplyr::filter(!is.na(iter))
 
-# Extract gates
+# Extract the local-FDR gate details at the condition and sample levels.
 bw_gate_detail_tbl <- bw_tbl |>
   dplyr::filter(grepl("^loc_", .data$method)) |>
   dplyr::select(
-    transformation,
-    prob_response,
-    n_cell,
-    mean_pos,
-    bw,
-    iter,
-    chnl,
-    sample,
-    method,
-    propRespTruth,
-    propRespEst,
-    threshold,
-    thresholdOrigin,
-    locGenerated,
-    locGeneratedDirect,
-    locSource,
-    locReason,
-    detailLevel
+    dplyr::any_of(c(
+      "transformation",
+      "prob_response",
+      "n_cell",
+      "mean_pos",
+      "bw",
+      "bias_uns",
+      "sample_perturbation_sd",
+      "condition_perturbation_sd",
+      "cluster_perturbation_sd",
+      "background_relative_to_response",
+      "n_cell_uns_relative_to_stim",
+      "sim_id",
+      "iter",
+      "chnl",
+      "sample",
+      "ind",
+      "method",
+      "detailLevel",
+      "propRespTruth",
+      "propRespEst",
+      "propStimTruth",
+      "propUnsTruth",
+      "propStim",
+      "propUns",
+      "propBs",
+      "threshold",
+      "thresholdOrigin",
+      "gateReturnPoint",
+      "locGenerated",
+      "locGeneratedDirect",
+      "locSource",
+      "locReason",
+      "thresholdBeforeSampleCombining",
+      "thresholdChangedBySampleCombining",
+      "thresholdCondition",
+      "thresholdOriginCondition",
+      "locGeneratedCondition",
+      "locSourceCondition",
+      "locReasonCondition",
+      "nCellStim",
+      "nCellUns",
+      "nPosStim",
+      "nPosUns",
+      "propBsEst",
+      "propBsDiff",
+      "bias"
+    ))
   )
 
 bw_gate_detail_tbl
 
 bw_tbl |>
+  dplyr::filter(is.finite(.data$propRespEst), is.finite(.data$propRespTruth)) |>
   dplyr::group_by(
-    transformation, prob_response, n_cell, mean_pos,
-    bw, method, chnl
-    ) |>
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos,
+    bw,
+    bias_uns,
+    condition_perturbation_sd,
+    method,
+    chnl
+  ) |>
   dplyr::summarise(
-    mean_diff = mean(abs(propRespEst - propRespTruth)),
-    rel_diff = mean(abs(propRespEst - propRespTruth)) / mean(propRespTruth),
+    mean_diff = mean(abs(propRespEst - propRespTruth), na.rm = TRUE),
+    rel_diff = mean(abs(propRespEst - propRespTruth), na.rm = TRUE) /
+      mean(propRespTruth, na.rm = TRUE),
     ccc = DescTools::CCC(propRespTruth, propRespEst)$rho.c$est,
     pearson = cor(propRespTruth, propRespEst, method = "pearson"),
     spearman = cor(propRespTruth, propRespEst, method = "spearman"),
     .groups = "drop"
-  )  |>
-  dplyr::arrange(transformation, prob_response, n_cell, mean_pos, bw)
+  ) |>
+  dplyr::arrange(
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos,
+    bw,
+    bias_uns,
+    condition_perturbation_sd
+  )
 ```
 
 ```{r}
