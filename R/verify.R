@@ -121,19 +121,9 @@
   if (!is.null(bw) && (!is.numeric(bw) || length(bw) != 1 || bw <= 0)) {
     stop("`bw` must be a single positive numeric value, or NULL.")
   }
-  if (
-    !is.null(bwMin) && (!is.numeric(bwMin) || length(bwMin) != 1 || bwMin <= 0)
-  ) {
-    stop("`bwMin` must be a single positive numeric value, or NULL.")
-  }
-  if (
-    !is.null(bwMax) && (!is.numeric(bwMax) || length(bwMax) != 1 || bwMax <= 0)
-  ) {
-    stop("`bwMax` must be a single positive numeric value, or NULL.")
-  }
-  if (!is.null(bwMin) && !is.null(bwMax) && bwMax < bwMin) {
-    stop("`bwMax` must be greater than or equal to `bwMin`.")
-  }
+  .verifyBwLimit(bwMin, "bwMin")
+  .verifyBwLimit(bwMax, "bwMax")
+  .verifyBwLimitsOrdered(bwMin, bwMax)
   if (!is.numeric(bwAdj) || length(bwAdj) != 1 || bwAdj <= 0) {
     stop("`bwAdj` must be a single positive numeric multiplier.")
   }
@@ -383,29 +373,19 @@
   ) {
     stop(paste0(prefix, "`bw` must be a single positive numeric value."))
   }
-  if (
-    !is.null(settings$bwMin) &&
-      (!is.numeric(settings$bwMin) ||
-        length(settings$bwMin) != 1 ||
-        settings$bwMin <= 0)
-  ) {
-    stop(paste0(prefix, "`bwMin` must be a single positive numeric value."))
-  }
-  if (
-    !is.null(settings$bwMax) &&
-      (!is.numeric(settings$bwMax) ||
-        length(settings$bwMax) != 1 ||
-        settings$bwMax <= 0)
-  ) {
-    stop(paste0(prefix, "`bwMax` must be a single positive numeric value."))
-  }
-  if (
-    !is.null(settings$bwMin) &&
-      !is.null(settings$bwMax) &&
-      settings$bwMax < settings$bwMin
-  ) {
-    stop(paste0(prefix, "`bwMax` must be >= `bwMin`."))
-  }
+  tryCatch(
+    .verifyBwLimit(settings$bwMin, "bwMin"),
+    error = function(e) stop(paste0(prefix, e$message), call. = FALSE)
+  )
+  tryCatch(
+    .verifyBwLimit(settings$bwMax, "bwMax"),
+    error = function(e) stop(paste0(prefix, e$message), call. = FALSE)
+  )
+  .verifyBwLimitsOrdered(
+    bwMin = settings$bwMin,
+    bwMax = settings$bwMax,
+    prefix = prefix
+  )
   if (
     !is.null(settings$bwAdj) &&
       (!is.numeric(settings$bwAdj) ||
@@ -564,5 +544,64 @@
     stop(paste0(prefix, "`locTolRefPeak` must be either 'highest' or 'first'."))
   }
 
+  invisible(TRUE)
+}
+
+#' @keywords internal
+.verifyBwLimit <- function(x, name) {
+  if (is.null(x)) {
+    return(invisible(TRUE))
+  }
+
+  if (is.character(x)) {
+    if (
+      length(x) != 1L ||
+        !tolower(x) %in% c("auto", "none")
+    ) {
+      stop(sprintf(
+        "`%s` must be \"auto\", \"none\", a single numeric value, or NULL.",
+        name
+      ))
+    }
+    return(invisible(TRUE))
+  }
+
+  if (!is.numeric(x) || length(x) != 1L) {
+    stop(sprintf(
+      "`%s` must be \"auto\", \"none\", a single numeric value, or NULL.",
+      name
+    ))
+  }
+
+  if (name == "bwMin") {
+    if (!is.finite(x) || !(x > 0 || identical(x, -1))) {
+      stop(
+        "`bwMin` must be a positive numeric value, -1, \"auto\", \"none\", or NULL."
+      )
+    }
+  }
+
+  if (name == "bwMax") {
+    if (is.na(x) || x <= 0) {
+      stop(
+        "`bwMax` must be a positive numeric value, Inf, \"auto\", \"none\", or NULL."
+      )
+    }
+  }
+
+  invisible(TRUE)
+}
+
+#' @keywords internal
+.verifyBwLimitsOrdered <- function(bwMin, bwMax, prefix = "") {
+  if (is.character(bwMin) || is.character(bwMax)) {
+    return(invisible(TRUE))
+  }
+  if (is.null(bwMin) || is.null(bwMax)) {
+    return(invisible(TRUE))
+  }
+  if (bwMax < bwMin) {
+    stop(paste0(prefix, "`bwMax` must be greater than or equal to `bwMin`."))
+  }
   invisible(TRUE)
 }
