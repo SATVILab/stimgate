@@ -572,6 +572,7 @@
   bwMtd = "hpi1",
   bwMin = 1e-10,
   bwMax = 1e10,
+  bwFallback = NULL,
   bwAdj = 1,
   bwNcellMin = NULL,
   bwNcellMax = NULL,
@@ -671,8 +672,15 @@
         bwMax = bwMax,
         bwAdj = bwAdj,
         bwNcellMin = bwNcellMin,
-        bwNcellMax = bwNcellMax
+        bwNcellMax = bwNcellMax,
+        bwFallback = bwFallback
       )
+
+      bw_stim <- if (bw_stim == bwFallback) {
+        NA_real_
+      } else {
+        bw_stim
+      }
 
       bw_uns <- .simBandwidthBwOne(
         x = x_cap$x_uns,
@@ -681,13 +689,26 @@
         bwMax = bwMax,
         bwAdj = bwAdj,
         bwNcellMin = bwNcellMin,
-        bwNcellMax = bwNcellMax
+        bwNcellMax = bwNcellMax,
+        bwFallback = bwFallback
       )
+
+      bw_uns <- if (bw_uns == bwFallback) {
+        NA_real_
+      } else {
+        bw_uns
+      }
 
       bw_final <- if (!is.null(bw)) {
         bw
       } else {
-        min(bw_uns, bw_stim, na.rm = TRUE)
+        bw_vec <- c(bw_stim, bw_uns)
+        bw_vec <- bw_vec[!is.na(bw_vec)]
+        if (length(bw_vec) == 0) {
+          NA_real_
+        } else {
+          min(bw_vec)
+        }
       }
 
       tibble::tibble(
@@ -880,7 +901,8 @@
   bwMax,
   bwAdj,
   bwNcellMin,
-  bwNcellMax
+  bwNcellMax,
+  bwFallback
 ) {
   x <- x[is.finite(x)]
 
@@ -924,7 +946,10 @@
   bw_calc <- as.numeric(bw_calc)[1]
 
   if (!is.finite(bw_calc)) {
-    return(bwMin %||% NA_real_)
+    if (is.null(bwFallback)) {
+      stop("Bandwidth calculation failed and no bwFallback provided.")
+    }
+    return(bwFallback %||% NA_real_)
   }
 
   bw_calc <- bw_calc * bwAdj

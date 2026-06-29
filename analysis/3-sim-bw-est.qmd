@@ -91,6 +91,8 @@ if ("dev" %in% projr::projr_profile_get()) {
 }
 sim_grid
 print(paste0("Performing ", nrow(sim_grid), " simulations"))
+
+bw_fallback <- 0.23482348792138919129198282389
 ```
 
 A loop we only run when we want to see why particular runs failed.
@@ -119,7 +121,6 @@ for (i in seq_len(nrow(sim_grid))) {
   )
 
   message("Running: ", settings_row)
-
   bw_list_raw_mtd_loop[[i]] <- stimgate:::.simBandwidthEstBwDirect(
     nSample = 10,
     nMarker = 1,
@@ -130,6 +131,7 @@ for (i in seq_len(nrow(sim_grid))) {
     bwMtd = sim_grid$bw_mtd[i],
     bwMin = -Inf,
     bwMax = Inf,
+    bwFallback = bw_fallback,
     bwCluster = 0.5,
     nCellStim = sim_grid$n_cell[i],
     probResponse = sim_grid$prob_response[i],
@@ -183,9 +185,9 @@ bw_list_raw_mtd_loop |>
     n_cell_stim, n_cell_uns
   ) |>
   dplyr::summarise(
-    mean_bw_stim = mean(bw_stim),
-    mean_bw_uns = mean(bw_uns),
-    mean_bw = mean(bw),
+    mean_bw_stim = mean(bw_stim, na.rm = TRUE),
+    mean_bw_uns = mean(bw_uns, na.rm = TRUE),
+    mean_bw = mean(bw, na.rm = TRUE),
     .groups = "drop"
   ) |>
   dplyr::select(
@@ -253,6 +255,7 @@ bw_list_raw_mtd <- progressr::with_progress({
             nIter = 1,
             biasUns = 0.05,
             bwMtd = bw_mtd,
+            bwFallback = bw_fallback,
             bwMin = -Inf,
             bwMax = Inf,
             bwCluster = 0.5,
@@ -365,11 +368,10 @@ bw_list_raw_mtd |>
     mean_pos, bw_mtd, chnl,
     n_cell_stim, n_cell_uns
   ) |>
-  print(width )
   dplyr::summarise(
-    mean_bw_stim = mean(bw_stim),
-    mean_bw_uns = mean(bw_uns),
-    mean_bw = mean(bw),
+    mean_bw_stim = mean(bw_stim, na.rm = TRUE),
+    mean_bw_uns = mean(bw_uns, na.rm = TRUE),
+    mean_bw = mean(bw, na.rm = TRUE),
     .groups = "drop"
   ) |>
   dplyr::select(
