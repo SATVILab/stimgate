@@ -6,7 +6,7 @@ directories:
   docs:
     path: analysis/docs
 build:
-  scripts: analysis/Simulation-Bandwidth.qmd
-dev:
-  scripts: analysis/3-sim-bw-est.qmd
+  scripts:
+  - analysis/1-sim-trans.qmd
+  - analysis/2-sim-bw-freq_bs.qmd
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=10
-#SBATCH --job-name="output_build"
+#SBATCH --job-name="output-patch"
 #SBATCH --partition=ada
 
 # Record the start time
@@ -16,7 +16,7 @@ echo " "
 echo "-------------------"
 echo "Run projr"
 date
-apptainer-rscript -f stimgate -- 'projr::projr_build_minor(msg = "Build first simulations")'
+apptainer-rscript -f stimgate -- 'projr::projr_build_patch(msg = NULL)'
 echo "Completed running projr"
 date
 echo "-------------------"
