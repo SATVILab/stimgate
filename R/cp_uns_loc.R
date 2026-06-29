@@ -1072,7 +1072,7 @@
   }
   bwCalc <- switch(
     bwMtd,
-    "ndr0" = try(
+    "nrd0" = try(
       suppressWarnings(stats::density(.data, "nrd0")),
       silent = TRUE
     ),
