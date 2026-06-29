@@ -1,0 +1,608 @@
+---
+title: Compare background-subtracted frequency approaches
+format:
+  html:
+    embed-resources: true
+    toc: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+library(tibble)
+library(furrr)
+library(progressr)
+
+root_dir <- projr::projr_path_get("project")
+desc_path <- file.path(root_dir, "DESCRIPTION")
+
+if (
+  file.exists(desc_path) &&
+    grepl("Package: stimgate", readLines(desc_path, n = 1))
+) {
+  devtools::load_all(root_dir)
+} else {
+  fn_vec <- list.files(file.path(root_dir, "R"), full.names = TRUE)
+  for (fn in fn_vec) {
+    source(fn)
+  }
+}
+
+path_compare_helpers <- file.path(root_dir, "R", "sim-compare-freq_bs.R")
+if (file.exists(path_compare_helpers)) {
+  source(path_compare_helpers)
+}
+```
+
+### Aim
+
+Compare the fixed-bandwidth StimGate background-subtracted frequency estimate against two alternative thresholding approaches:
+
+1. `fbeta`, which estimates a gate from overlaid unstimulated and stimulated histogram densities.
+2. `tailgate`, which estimates a right-tail cutpoint using the density derivative approach.
+
+For now, the bandwidth is fixed. Once the bandwidth exploration is settled, the same grid can be updated to pass better fixed or estimated bandwidths into the comparison helper.
+
+### Simulation settings
+
+```{r}
+#| label: actual-settings
+n_cell_stim_vec <- c(
+  1e3, 2e3, 5e3, 1e4, 2e4, 5e4,
+  1e5, 2e5, 5e5, 1e6, 2e6, 5e6
+)[c(1, 3, 5, 7)]
+
+prob_response_vec <- c(
+  1 / 5e5,
+  1 / 2e5,
+  1 / 1e5,
+  1 / 5e4,
+  1 / 2e4,
+  1 / 1e4,
+  1 / 5e3,
+  1 / 2e3,
+  1 / 1e3,
+  1 / 5e2,
+  1 / 2e2,
+  1 / 1e2,
+  1 / 5e1,
+  1 / 2e1,
+  1 / 1e1,
+  1 / 5,
+  1 / 2
+)[c(2, 4, 6, 8, 10, 16)]
+
+mean_pos_vec <- seq_len(8)[c(4, 8)]
+transformation_vec <- c("gaussian", "gamma", "skew")
+sample_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
+condition_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1:2]
+cluster_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
+background_relative_to_response_vec <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.001)[4]
+n_cell_uns_relative_to_stim_vec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)[4]
+
+bw_fixed <- 0.5
+bias_uns_vec <- c(0, 0.05, 0.1, seq(0.2, 2, by = 0.2))[c(2, 4)]
+
+fbeta_beta <- 0.8
+fbeta_theta <- 2
+fbeta_width <- 10
+
+# This is deliberately tied to bw_fixed for now.
+# Later, replace this with the bandwidth chosen from the bandwidth-estimation runs.
+tailgate_bandwidth <- bw_fixed
+tailgate_adjust <- 1
+tailgate_method <- "firstDeriv"
+tailgate_tol <- 1e-2
+```
+
+### Simulation grid
+
+```{r}
+#| label: compare-grid
+sim_grid <- tidyr::expand_grid(
+  transformation = transformation_vec,
+  prob_response = prob_response_vec,
+  n_cell = n_cell_stim_vec,
+  mean_pos = mean_pos_vec,
+  bw = bw_fixed,
+  bias_uns = bias_uns_vec,
+  sample_perturbation_sd = sample_perturbation_sd_vec,
+  condition_perturbation_sd = condition_perturbation_sd_vec,
+  cluster_perturbation_sd = cluster_perturbation_sd_vec,
+  background_relative_to_response = background_relative_to_response_vec,
+  n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim_vec
+) |>
+  dplyr::filter(
+    !(n_cell * prob_response < 5 & prob_response < 0.04)
+  ) |>
+  dplyr::mutate(
+    sim_id = dplyr::row_number()
+  ) |>
+  dplyr::arrange(n_cell, dplyr::desc(prob_response))
+
+if ("dev" %in% projr::projr_profile_get()) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell == 1e5,
+      prob_response == 0.002,
+      mean_pos == 8,
+      transformation %in% transformation_vec,
+      bias_uns == 0.05,
+      condition_perturbation_sd == 0
+    )
+}
+
+sim_grid
+print(paste0("Performing ", nrow(sim_grid), " simulations"))
+```
+
+A loop for debugging a single failure or inspecting intermediate objects.
+
+```{r}
+#| label: compare-loop
+#| eval: false
+compare_list_raw_loop <- vector("list", nrow(sim_grid))
+
+for (i in seq_len(nrow(sim_grid))) {
+  message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
+
+  compare_list_raw_loop[[i]] <- stimgate:::.simCompareFreqBs(
+    nSample = 5,
+    nMarker = 1,
+    nCondition = 2,
+    nCluster = 2,
+    nIter = 2,
+    biasUns = sim_grid$bias_uns[i],
+    bw = sim_grid$bw[i],
+    bwFallback = sim_grid$bw[i],
+    bwMin = "none",
+    bwMax = "none",
+    nCellStim = sim_grid$n_cell[i],
+    probResponse = sim_grid$prob_response[i],
+    probExact = TRUE,
+    meanPos = sim_grid$mean_pos[i],
+    transformation = sim_grid$transformation[i],
+    samplePerturbationSd = sim_grid$sample_perturbation_sd[i],
+    conditionPerturbationSd = sim_grid$condition_perturbation_sd[i],
+    clusterPerturbationSd = sim_grid$cluster_perturbation_sd[i],
+    backgroundRelativeToResponse = sim_grid$background_relative_to_response[i],
+    ncellUnsRelativeToStim = sim_grid$n_cell_uns_relative_to_stim[i],
+    covEvMin = 2,
+    covEvMax = 2,
+    tolClust = NULL,
+    includeLocCondition = TRUE,
+    fbetaBeta = fbeta_beta,
+    fbetaTheta = fbeta_theta,
+    fbetaWidth = fbeta_width,
+    tailgateBandwidth = tailgate_bandwidth,
+    tailgateAdjust = tailgate_adjust,
+    tailgateMethod = tailgate_method,
+    tailgateTol = tailgate_tol
+  ) |>
+    dplyr::mutate(
+      transformation = sim_grid$transformation[i],
+      prob_response = sim_grid$prob_response[i],
+      n_cell = sim_grid$n_cell[i],
+      mean_pos = sim_grid$mean_pos[i],
+      bw = sim_grid$bw[i],
+      bias_uns = sim_grid$bias_uns[i],
+      sample_perturbation_sd = sim_grid$sample_perturbation_sd[i],
+      condition_perturbation_sd = sim_grid$condition_perturbation_sd[i],
+      cluster_perturbation_sd = sim_grid$cluster_perturbation_sd[i],
+      background_relative_to_response =
+        sim_grid$background_relative_to_response[i],
+      n_cell_uns_relative_to_stim =
+        sim_grid$n_cell_uns_relative_to_stim[i],
+      sim_id = sim_grid$sim_id[i]
+    ) |>
+    dplyr::select(
+      transformation, prob_response, n_cell,
+      mean_pos, bw, bias_uns,
+      sample_perturbation_sd, condition_perturbation_sd,
+      cluster_perturbation_sd, background_relative_to_response,
+      n_cell_uns_relative_to_stim, sim_id,
+      dplyr::everything()
+    )
+}
+```
+
+Run the simulations in parallel, with progress reporting.
+
+```{r}
+#| label: compare-parallel
+#| results: hide
+if (interactive()) {
+  progressr::handlers(global = TRUE)
+}
+
+path_progress_file <- projr::projr_path_get(
+  "cache", "sim", "compare", "freq_bs", "progress.txt"
+)
+dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+if (file.exists(path_progress_file)) {
+  file.remove(path_progress_file)
+}
+
+future::plan(
+  future::multisession,
+  workers = max(1, future::availableCores() - 1)
+)
+
+compare_list_raw <- progressr::with_progress({
+  p <- progressr::progressor(steps = nrow(sim_grid))
+
+  furrr::future_pmap(
+    sim_grid,
+    function(
+      transformation,
+      prob_response,
+      n_cell,
+      mean_pos,
+      bw,
+      bias_uns,
+      sample_perturbation_sd,
+      condition_perturbation_sd,
+      cluster_perturbation_sd,
+      background_relative_to_response,
+      n_cell_uns_relative_to_stim,
+      sim_id
+    ) {
+      settings_row <- paste0(
+        "trans = ", transformation,
+        " | prob = ", prob_response,
+        " | n_cell = ", n_cell,
+        " | mean = ", mean_pos,
+        " | bw = ", bw,
+        " | bias = ", bias_uns,
+        " | sample_sd = ", sample_perturbation_sd,
+        " | condition_sd = ", condition_perturbation_sd,
+        " | cluster_sd = ", cluster_perturbation_sd,
+        " | bg_rel = ", background_relative_to_response,
+        " | n_uns_rel = ", n_cell_uns_relative_to_stim,
+        " | sim_id = ", sim_id
+      )
+
+      cat(
+        paste0("Running: ", settings_row, "\n"),
+        file = path_progress_file,
+        append = TRUE
+      )
+
+      out <- tryCatch(
+        {
+          sim_res <- stimgate:::.simCompareFreqBs(
+            nSample = 5,
+            nMarker = 1,
+            nCondition = 2,
+            nCluster = 2,
+            nIter = 5,
+            biasUns = bias_uns,
+            bw = bw,
+            bwFallback = bw,
+            bwMin = "none",
+            bwMax = "none",
+            nCellStim = n_cell,
+            probResponse = prob_response,
+            probExact = TRUE,
+            meanPos = mean_pos,
+            transformation = transformation,
+            samplePerturbationSd = sample_perturbation_sd,
+            conditionPerturbationSd = condition_perturbation_sd,
+            clusterPerturbationSd = cluster_perturbation_sd,
+            backgroundRelativeToResponse = background_relative_to_response,
+            ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
+            covEvMin = 2,
+            covEvMax = 2,
+            tolClust = NULL,
+            includeLocCondition = TRUE,
+            fbetaBeta = fbeta_beta,
+            fbetaTheta = fbeta_theta,
+            fbetaWidth = fbeta_width,
+            tailgateBandwidth = tailgate_bandwidth,
+            tailgateAdjust = tailgate_adjust,
+            tailgateMethod = tailgate_method,
+            tailgateTol = tailgate_tol
+          ) |>
+            dplyr::mutate(
+              transformation = transformation,
+              prob_response = prob_response,
+              n_cell = n_cell,
+              mean_pos = mean_pos,
+              bw = bw,
+              bias_uns = bias_uns,
+              sample_perturbation_sd = sample_perturbation_sd,
+              condition_perturbation_sd = condition_perturbation_sd,
+              cluster_perturbation_sd = cluster_perturbation_sd,
+              background_relative_to_response =
+                background_relative_to_response,
+              n_cell_uns_relative_to_stim =
+                n_cell_uns_relative_to_stim,
+              sim_id = sim_id
+            ) |>
+            dplyr::select(
+              transformation,
+              prob_response,
+              n_cell,
+              mean_pos,
+              bw,
+              bias_uns,
+              sample_perturbation_sd,
+              condition_perturbation_sd,
+              cluster_perturbation_sd,
+              background_relative_to_response,
+              n_cell_uns_relative_to_stim,
+              sim_id,
+              dplyr::everything()
+            )
+
+          cat(
+            paste0("Completed: ", settings_row, "\n"),
+            file = path_progress_file,
+            append = TRUE
+          )
+          p(sprintf("Completed sim_id: %s", sim_id))
+
+          sim_res
+        },
+        error = function(e) {
+          cat(
+            paste0("Error [", settings_row, "]: ", e$message, "\n"),
+            file = path_progress_file,
+            append = TRUE
+          )
+          p(sprintf("ERROR on sim_id: %s", sim_id))
+
+          tibble::tibble(
+            transformation = transformation,
+            prob_response = prob_response,
+            n_cell = n_cell,
+            mean_pos = mean_pos,
+            bw = bw,
+            bias_uns = bias_uns,
+            sample_perturbation_sd = sample_perturbation_sd,
+            condition_perturbation_sd = condition_perturbation_sd,
+            cluster_perturbation_sd = cluster_perturbation_sd,
+            background_relative_to_response = background_relative_to_response,
+            n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim,
+            sim_id = sim_id,
+            iter = NA_integer_,
+            chnl = NA_character_,
+            sample = NA_character_,
+            ind = NA_character_,
+            approach = NA_character_,
+            method = NA_character_,
+            propRespTruth = NA_real_,
+            propRespEst = NA_real_,
+            threshold = NA_real_,
+            thresholdOrigin = NA_character_,
+            gateReturnPoint = NA_character_,
+            nCellStim = NA_real_,
+            nCellUns = NA_real_,
+            nPosStim = NA_integer_,
+            nPosUns = NA_integer_,
+            error = e$message
+          )
+        }
+      )
+
+      out
+    },
+    .options = furrr::furrr_options(seed = TRUE)
+  )
+})
+
+future::plan(future::sequential)
+
+path_compare_out <- projr::projr_path_get(
+  "output", "sim", "compare", "freq_bs", "compare_list_raw.rds"
+)
+dir.create(dirname(path_compare_out), recursive = TRUE, showWarnings = FALSE)
+saveRDS(compare_list_raw, file = path_compare_out)
+```
+
+### Collate results
+
+```{r}
+#| label: compare-collate
+#| error: true
+path_vec <- c(
+  projr::projr_path_get(
+    "output",
+    "sim",
+    "compare",
+    "freq_bs",
+    "compare_list_raw.rds",
+    safe = TRUE
+  ),
+  projr::projr_path_get(
+    "output",
+    "sim",
+    "compare",
+    "freq_bs",
+    "compare_list_raw.rds",
+    safe = FALSE
+  ),
+  projr::projr_path_get(
+    "raw-data-archive-manual",
+    "v0.103.0",
+    "output",
+    "sim",
+    "compare",
+    "freq_bs",
+    "compare_list_raw.rds",
+    safe = FALSE
+  )
+)
+path_vec <- path_vec[file.exists(path_vec)][[1]]
+
+compare_list_raw <- readRDS(file = path_vec)
+
+compare_tbl <- compare_list_raw |>
+  purrr::list_rbind()
+
+compare_tbl_focus <- compare_tbl |>
+  dplyr::filter(method %in% c("stimgate_loc_sample", "fbeta", "tailgate")) |>
+  dplyr::mutate(
+    freq_error = propRespEst - propRespTruth,
+    abs_freq_error = abs(freq_error),
+    sq_freq_error = freq_error^2
+  )
+
+compare_summary <- stimgate:::.simCompareSummariseFreqBs(compare_tbl)
+
+compare_summary |>
+  dplyr::arrange(rmse) |>
+  dplyr::select(
+    any_of(colnames(sim_grid)),
+    approach,
+    method,
+    n_est,
+    n_threshold_fallback,
+    propRespTruth_mean,
+    propRespEst_mean,
+    bias,
+    mean_abs_error,
+    rmse,
+    threshold_median
+  )
+```
+
+### Mean absolute error by cell count
+
+```{r}
+#| label: plot-mae-cell-count
+for (mean_pos_curr in unique(compare_summary$mean_pos)) {
+  plot_tbl <- compare_summary |>
+    dplyr::filter(mean_pos == !!mean_pos_curr)
+
+  p <- ggplot(
+    plot_tbl,
+    aes(x = n_cell, y = mean_abs_error, color = method)
+  ) +
+    geom_line() +
+    geom_point() +
+    scale_x_log10() +
+    facet_grid(prob_response ~ transformation) +
+    labs(
+      title = paste0("Mean position: ", mean_pos_curr),
+      x = "Number of stimulated cells",
+      y = "Mean absolute error",
+      color = "Method"
+    ) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy") +
+    theme(
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.background = element_rect(fill = "white", color = NA),
+      legend.position = "bottom"
+    )
+
+  print(p)
+
+  ggsave(
+    filename = projr::projr_path_get(
+      "output",
+      "sim",
+      "compare",
+      "freq_bs",
+      paste0("freq_bs_mae_meanpos_", mean_pos_curr, ".png")
+    ),
+    plot = p,
+    width = 18,
+    height = 15,
+    units = "cm"
+  )
+}
+```
+
+### Estimated versus true response frequency
+
+```{r}
+#| label: plot-est-vs-truth
+plot_tbl <- compare_tbl_focus |>
+  dplyr::filter(is.finite(propRespTruth), is.finite(propRespEst))
+
+p_est_truth <- ggplot(
+  plot_tbl,
+  aes(x = propRespTruth, y = propRespEst, color = method)
+) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_point(alpha = 0.35, size = 1) +
+  facet_grid(mean_pos ~ transformation) +
+  labs(
+    x = "True background-subtracted response frequency",
+    y = "Estimated background-subtracted response frequency",
+    color = "Method"
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    legend.position = "bottom"
+  )
+
+print(p_est_truth)
+
+ggsave(
+  filename = projr::projr_path_get(
+    "output",
+    "sim",
+    "compare",
+    "freq_bs",
+    "freq_bs_est_vs_truth.png"
+  ),
+  plot = p_est_truth,
+  width = 18,
+  height = 15,
+  units = "cm"
+)
+```
+
+### Threshold fallback rate
+
+```{r}
+#| label: plot-threshold-fallback
+fallback_tbl <- compare_summary |>
+  dplyr::mutate(
+    fallback_rate = n_threshold_fallback / n
+  )
+
+p_fallback <- ggplot(
+  fallback_tbl,
+  aes(x = n_cell, y = fallback_rate, color = method)
+) +
+  geom_line() +
+  geom_point() +
+  scale_x_log10() +
+  facet_grid(prob_response ~ transformation) +
+  labs(
+    x = "Number of stimulated cells",
+    y = "Threshold fallback rate",
+    color = "Method"
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    legend.position = "bottom"
+  )
+
+print(p_fallback)
+
+ggsave(
+  filename = projr::projr_path_get(
+    "output",
+    "sim",
+    "compare",
+    "freq_bs",
+    "freq_bs_threshold_fallback_rate.png"
+  ),
+  plot = p_fallback,
+  width = 18,
+  height = 15,
+  units = "cm"
+)
+```
