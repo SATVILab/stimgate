@@ -4,7 +4,16 @@
 \alias{.simBandwidthBwOne}
 \title{Bandwidth estimate for one vector}
 \usage{
-.simBandwidthBwOne(x, bwMtd, bwMin, bwMax, bwAdj, bwNcellMin, bwNcellMax)
+.simBandwidthBwOne(
+  x,
+  bwMtd,
+  bwMin,
+  bwMax,
+  bwAdj,
+  bwNcellMin,
+  bwNcellMax,
+  bwFallback
+)
 }
 \description{
 This is the vector-only equivalent of
