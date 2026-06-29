@@ -109,7 +109,7 @@ p <- cowplot::plot_grid(
   align = "hv"
 )
 path_p <- projr::projr_path_get(
-  "cache",
+  "output",
   "sim",
   "trans",
   "main-univariate.png"
@@ -174,7 +174,7 @@ p <- cowplot::plot_grid(
   align = "hv"
 )
 path_p <- projr::projr_path_get(
-  "cache",
+  "output",
   "sim",
   "trans",
   "main-univariate-and-bivariate.png"
