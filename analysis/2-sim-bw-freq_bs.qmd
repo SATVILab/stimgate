@@ -1,0 +1,370 @@
+---
+title: Simulate best bandwidth
+format:
+  html:
+    embed-resources: true
+    toc: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+library(tibble)
+library(furrr)
+library(progressr) 
+
+# Find the build directory root
+root_dir <- projr::projr_path_get("project")
+desc_path <- file.path(root_dir, "DESCRIPTION")
+
+if (
+  file.exists(desc_path) &&
+    grepl("Package: stimgate", readLines(desc_path, n = 1))
+) {
+  devtools::load_all(root_dir)
+} else {
+  fn_vec <- list.files(file.path(root_dir, "R"), full.names = TRUE)
+  for (fn in fn_vec) {
+    source(fn)
+  }
+}
+```
+
+
+### Checking what the estimators actually estimate
+
+Get the parameters over which we simulate.
+
+```{r}
+#| label: actual-settings
+# simulation settings
+n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)[c(1, 3, 5, 7)]
+prob_response_vec <- c(
+  1 / 5e5,
+  1 / 2e5,
+  1 / 1e5,
+  1 / 5e4,
+  1 / 2e4,
+  1 / 1e4,
+  1 / 5e3,
+  1 / 2e3,
+  1 / 1e3,
+  1 / 5e2,
+  1 / 2e2,
+  1 / 1e2,
+  1 / 5e1,
+  1 / 2e1,
+  1 / 1e1,
+  1 / 5,
+  1 / 2
+)[c(2, 4, 6, 8, 10, 16)]
+mean_pos_vec <- seq_len(8)[c(2, 4, 6, 8)]
+transformation_vec <- c("gaussian", "gamma", "skew")
+sample_perturbation_sd <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)
+condition_perturbation_sd <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)
+cluster_perturbation_sd <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)
+background_relative_to_response <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.001)
+n_cell_uns_relative_to_stim <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)
+
+# bandwidth settings
+bandwidth_method_vec <- c("hpi0", "hpi1", "hpi2", "hpi3", "sj", "nrd0")
+bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
+bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
+bias_uns_vec <- seq(0, 2, by = 0.2)
+
+# fix the bandwidth
+bandwidth_value_vec <- c(0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2, 5)[c(3:8)]
+
+# number of iterations
+length(n_cell_stim_vec) * length(prob_response_vec) * length(mean_pos_vec) * length(transformation_vec) * length(bandwidth_value_vec)
+```
+
+
+### Varying bandwidth manually
+
+So, now we'll vary the bandwidth from a small value up to to a large value, where "small" is relative to the known spread of the data.
+
+The spread of the data (without any batch effects) around the mean is on average 2, and the spread between the means is up to 8.
+So, we can vary the bandwidth from a small number (say 0.1) to a large number (say 10), and see how estimated background-subtracted frequencies compare to actual.
+
+It should be doable with just the `bw` parameter, but ah, we haven't set that yet.
+
+Okay, we've got the code working above. Now we'll vary the fixed bandwidth from 0.01 to 4, along with making the bias_unstim some reasonably large value (we'll have to fix it).
+
+And we'll do this for varying numbers of cells. 
+
+Generate the grid of parameters to simulate.
+
+```{r}
+#| label: bw-manual-grid
+# 2. Flatten your nested loops into a single combination grid
+sim_grid <- tidyr::expand_grid(
+  transformation = transformation_vec,
+  prob_response  = prob_response_vec,
+  n_cell         = n_cell_stim_vec,
+  mean_pos       = mean_pos_vec,
+  bw             = bandwidth_value_vec
+) |>
+  dplyr::filter(
+    !(n_cell * prob_response < 5 & prob_response < 0.04)
+  ) |>
+  dplyr::mutate(
+    sim_id = dplyr::row_number()
+  )
+
+sim_grid <- sim_grid |>
+  dplyr::arrange(n_cell, dplyr::desc(prob_response))
+
+
+if ("dev" %in% projr::projr_profile_get()) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell == 1e5,
+      prob_response == 0.002,
+      mean_pos == 8,
+      transformation %in% transformation_vec,
+      bw == 0.5
+    )
+}
+```
+
+A loop we only run when we want to see why particular runs failed.
+
+```{r}
+#| label: bw-manual-loop
+#| eval: false
+for (i in seq_len(nrow(sim_grid))) {
+  sim_res <- stimgate:::.simBandwidthBsFreq(
+    nSample = 10,
+    nMarker = 1,
+    nCondition = 2,
+    nCluster = 2,
+    nIter = 10,
+    biasUns = 0.05,
+    bw = sim_grid$bw[i],
+    nCellStim = sim_grid$n_cell[i],
+    probResponse = sim_grid$prob_response[i],
+    probExact = TRUE,
+    meanPos = sim_grid$mean_pos[i],
+    transformation = sim_grid$transformation[i],
+    samplePerturbationSd = 0,
+    conditionPerturbationSd = 0,
+    clusterPerturbationSd = 0,
+    backgroundRelativeToResponse = 0.2, 
+    ncellUnsRelativeToStim = 1,
+    covEvMin = 2, 
+    covEvMax = 2,
+    tolClust = NULL
+  ) |>
+    dplyr::mutate(
+      transformation = transformation,
+      prob_response = prob_response,
+      n_cell = n_cell,
+      mean_pos = mean_pos,
+      bw = bw
+    ) |>
+    dplyr::select(
+      transformation, prob_response, n_cell,
+      mean_pos, bw, dplyr::everything()
+    )
+}
+```
+
+Run the simulations in parallel, with progress reporting.
+
+```{r}
+#| label: bw-manual-parallel
+# Activate global progress bars in your console
+if (interactive()) {
+  handlers(global = TRUE)
+}
+
+
+path_progress_file <- projr::projr_path_get(
+  "cache", "sim-bw", "bs-freq", "progress.txt"
+)
+if (file.exists(path_progress_file)) {
+  file.remove(path_progress_file)
+}
+
+# Set up the parallel backend
+plan(multisession, workers = availableCores() - 1)
+
+# 3. Wrap your parallel execution in with_progress()
+bw_list_raw <- with_progress({
+  
+  # Create a progressor function with the total number of steps
+  p <- progressor(steps = nrow(sim_grid))
+  
+  future_pmap(sim_grid, function(transformation, prob_response, n_cell, mean_pos, bw, sim_id) {
+
+    settings_row <- paste0("trans = ", transformation, 
+                           " | prob = ", prob_response, 
+                           " | n_cell = ", n_cell, 
+                           " | mean = ", mean_pos, 
+                           " | bw = ", bw,
+                           " | sim_id = ", sim_id)
+
+    log_msg <- paste0("Running: ", settings_row, "\n")
+    cat(log_msg, file = path_progress_file, append = TRUE)
+    
+    # Run the simulation
+    out <- tryCatch({
+      sim_res <- stimgate:::.simBandwidthBsFreq(
+        nSample = 10,
+        nMarker = 1,
+        nCondition = 2,
+        nCluster = 2,
+        nIter = 10,
+        biasUns = 0.05,
+        bw = bw,
+        nCellStim = n_cell,
+        probResponse = prob_response,
+        probExact = TRUE,
+        meanPos = mean_pos,
+        transformation = transformation,
+        samplePerturbationSd = 0,
+        conditionPerturbationSd = 0,
+        clusterPerturbationSd = 0,
+        backgroundRelativeToResponse = 0.2, 
+        ncellUnsRelativeToStim = 1,
+        covEvMin = 2, 
+        covEvMax = 2,
+        tolClust = NULL
+      ) |>
+        dplyr::mutate(
+          transformation = transformation,
+          prob_response = prob_response,
+          n_cell = n_cell,
+          mean_pos = mean_pos,
+          bw = bw
+        ) |>
+        dplyr::select(
+          transformation, prob_response, n_cell,
+          mean_pos, bw, dplyr::everything()
+        )
+
+      cat("Completed: ", settings_row, "\n", file = path_progress_file, append = TRUE)
+      
+      # Signal successful step to the progress bar with a custom message
+      p(sprintf("Completed sim_id: %s", sim_id))
+      
+      sim_res
+    }, error = function(e) {
+      
+      # Signal failed step to the progress bar so it keeps moving
+      err_msg <- paste0("Error [", settings_row, "]: ", e$message, "\n")
+      cat(err_msg, file = path_progress_file, append = TRUE)
+      p(sprintf("ERROR on sim_id: %s", sim_id))
+      
+      tibble::tibble(
+        transformation = transformation,
+        prob_response = prob_response,
+        n_cell = n_cell,
+        mean_pos = mean_pos,
+        bw = bw,
+        iter = NA,
+        chnl = NA,
+        sample = NA
+      )
+    })
+    
+    return(out)
+  }, .options = furrr_options(seed = TRUE))
+})
+
+# Close the parallel workers when done
+plan(sequential)
+
+saveRDS(
+  bw_list_raw,
+  file = projr::projr_path_get(
+    "output", "sim-bw", "bs-freq", "bw_list_raw.rds"
+  )
+)
+```
+
+Collate the results and calculate the metrics of interest.
+
+```{r}
+#| label: bw-manual-collate
+#| error: true
+bw_list_raw <- readRDS(
+  file = projr::projr_path_get(
+    "output", "sim-bw", "bs-freq", "bw_list_raw.rds"
+  )
+)
+
+bw_tbl <- bw_list_raw |>
+  dplyr::bind_rows() |>
+  dplyr::filter(!is.na(iter))
+
+# Extract gates
+bw_gate_detail_tbl <- bw_tbl |>
+  dplyr::filter(grepl("^loc_", .data$method)) |>
+  dplyr::select(
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos,
+    bw,
+    iter,
+    chnl,
+    sample,
+    method,
+    propRespTruth,
+    propRespEst,
+    threshold,
+    thresholdOrigin,
+    locGenerated,
+    locGeneratedDirect,
+    locSource,
+    locReason,
+    detailLevel
+  )
+
+bw_gate_detail_tbl
+
+bw_tbl |>
+  dplyr::group_by(
+    transformation, prob_response, n_cell, mean_pos,
+    bw, method, chnl
+    ) |>
+  dplyr::summarise(
+    mean_diff = mean(abs(propRespEst - propRespTruth)),
+    rel_diff = mean(abs(propRespEst - propRespTruth)) / mean(propRespTruth),
+    ccc = DescTools::CCC(propRespTruth, propRespEst)$rho.c$est,
+    pearson = cor(propRespTruth, propRespEst, method = "pearson"),
+    spearman = cor(propRespTruth, propRespEst, method = "spearman"),
+    .groups = "drop"
+  )  |>
+  dplyr::arrange(transformation, prob_response, n_cell, mean_pos, bw)
+```
+
+```{r}
+#| label: bw-manual-collate-1
+#| error: true
+bw_1 <- bw_list_raw[[1]] |>
+  dplyr::filter(
+    transformation == transformation[[1]],
+    prob_response == max(prob_response),
+    n_cell == n_cell[[1]],
+    mean_pos == max(mean_pos),
+    chnl == chnl[[1]],
+    method == method[[1]]
+  )
+bw_1
+bw_1 |>
+  dplyr::group_by(
+    transformation, prob_response, n_cell, mean_pos,
+    bw, method, chnl
+    ) |>
+  dplyr::summarise(
+    ccc = DescTools::CCC(propRespTruth, propRespEst)$rho.c$est,
+    pearson = cor(propRespTruth, propRespEst, method = "pearson"),
+    spearman = cor(propRespTruth, propRespEst, method = "spearman"),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(transformation, prob_response, n_cell, mean_pos, bw)
+```

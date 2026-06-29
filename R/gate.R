@@ -52,6 +52,11 @@
 #'   Ignored if `bw` is set. Use `"auto"` to calculate automatically, `"none"`
 #'   to apply no upper bound, or a numeric value to specify the upper bound.
 #'   Default is `"auto"`.
+#' @param bwFallback numeric or character. Fallback bandwidth used when `bw` is
+#'   `NULL` and the automatic bandwidth calculation fails for a sample. Use
+#'   `"auto"` to calculate a fallback from randomly selected samples, drawing a
+#'   number of cells equal to the median cell count per sample, or provide a
+#'   single positive numeric value. Default is `"auto"`.
 #' @param bwMtd character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi0", "hpi1", "hpi2" and "hpi3", which corresponds to the Silverman rule of thumbg (`"nrd0"`), the Sheather-Jones plug-in estimator (`"sj"`) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (`"hpi1"`, `"hpi1"`, `"hpi2"` and `"hpi3"`). Default is "nrd0". Ignored if `bw` is set. Default is `"hpi1"`.
 #' @param bwAdj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
 #' @param bwNcellMin numeric. Minimum number of cells required for bandwidth estimation. If a sample has fewer cells than `bwNcellMin`, cells are sampled with replacement to reach the minimum, with noise subsequently added. Ignored if `bw` is set. Default is 100.
@@ -250,8 +255,9 @@ gateStim <- function(
   excMin = TRUE,
   cpMin = NULL,
   bw = NULL,
-  bwMin = NULL,
-  bwMax = NULL,
+  bwMin = "auto",
+  bwMax = "auto",
+  bwFallback = "auto",
   bwMtd = "hpi1",
   bwAdj = 1,
   bwNcellMin = 1e2,
@@ -311,14 +317,14 @@ gateStim <- function(
     calcCytPosGates = calcCytPosGates,
     calcSinglePosGates = calcSinglePosGates,
 
-    # NEWLY ADDED TO PASS TO VERIFIER:
     biasUns = biasUns,
     biasUnsFactor = biasUnsFactor,
     excMin = excMin,
     cpMin = cpMin,
     bw = bw,
-    bwMin = "auto",
-    bwMax = "auto",
+    bwMin = bwMin,
+    bwMax = bwMax,
+    bwFallback = bwFallback,
     bwMtd = bwMtd,
     bwAdj = bwAdj,
     bwNcellMin = bwNcellMin,
@@ -369,6 +375,7 @@ gateStim <- function(
     indBatchList = batchList,
     bwMin = bwMin,
     bwMax = bwMax,
+    bwFallback = bwFallback,
     bw = bw,
     bwMtd = bwMtd,
     bwAdj = bwAdj,

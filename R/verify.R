@@ -17,6 +17,7 @@
   bw,
   bwMin,
   bwMax,
+  bwFallback,
   bwMtd,
   bwAdj,
   bwNcellMin,
@@ -123,6 +124,7 @@
   }
   .verifyBwLimit(bwMin, "bwMin")
   .verifyBwLimit(bwMax, "bwMax")
+  .verifyBwFallback(bwFallback, allow_null = FALSE)
   .verifyBwLimitsOrdered(bwMin, bwMax)
   if (!is.numeric(bwAdj) || length(bwAdj) != 1 || bwAdj <= 0) {
     stop("`bwAdj` must be a single positive numeric multiplier.")
@@ -241,6 +243,7 @@
     "bw",
     "bwMin",
     "bwMax",
+    "bwFallback",
     "bwMtd",
     "bwAdj",
     "bwNcellMin",
@@ -379,6 +382,10 @@
   )
   tryCatch(
     .verifyBwLimit(settings$bwMax, "bwMax"),
+    error = function(e) stop(paste0(prefix, e$message), call. = FALSE)
+  )
+  tryCatch(
+    .verifyBwFallback(settings$bwFallback, allow_null = TRUE),
     error = function(e) stop(paste0(prefix, e$message), call. = FALSE)
   )
   .verifyBwLimitsOrdered(
@@ -587,6 +594,34 @@
         "`bwMax` must be a positive numeric value, Inf, \"auto\", \"none\", or NULL."
       )
     }
+  }
+
+  invisible(TRUE)
+}
+
+#' @keywords internal
+.verifyBwFallback <- function(x, allow_null = TRUE) {
+  if (is.null(x)) {
+    if (allow_null) {
+      return(invisible(TRUE))
+    }
+    stop("`bwFallback` must be \"auto\" or a single positive numeric value.")
+  }
+
+  if (is.character(x)) {
+    if (length(x) != 1L || tolower(x) != "auto") {
+      stop("`bwFallback` must be \"auto\" or a single positive numeric value.")
+    }
+    return(invisible(TRUE))
+  }
+
+  if (
+    !is.numeric(x) ||
+      length(x) != 1L ||
+      !is.finite(x) ||
+      x <= 0
+  ) {
+    stop("`bwFallback` must be \"auto\" or a single positive numeric value.")
   }
 
   invisible(TRUE)

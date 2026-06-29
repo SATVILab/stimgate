@@ -756,7 +756,9 @@ A loop we only run when we want to see why particular runs failed.
 ```{r}
 #| label: bw-estimate-loop
 #| eval: false
-bw_list_raw_mtd <- vector("list", nrow(sim_grid))
+bw_list_raw_mtd <- lapply(seq_len(nrow(sim_grid)), function(i) {
+  NULL
+})
 
 for (i in seq_len(nrow(sim_grid))) {
   settings_row <- paste0(
@@ -829,6 +831,23 @@ saveRDS(
     "bw_list_raw_mtd.rds"
   )
 )
+
+bw_list_raw_mtd |>
+  dplyr::bind_rows() |>
+  dplyr::group_by(
+    transformation, prob_response, n_cell,
+    mean_pos, bw_mtd, chnl,
+    n_cell_stim, n_cell_uns
+  ) |>
+  dplyr::summarise(
+    mean_bw_stim = mean(bw_stim),
+    mean_bw_uns = mean(bw_uns),
+    mean_bw = mean(bw),
+    .groups = "drop"
+  ) |>
+  dplyr::select(
+    transformation, mean_bw
+  )
 ```
 
 Run the simulations in parallel, with progress reporting.

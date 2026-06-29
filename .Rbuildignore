@@ -33,6 +33,7 @@
 ^CHANGES_SUMMARY\.md$
 ^LICENSE\.md$
 ^NEWS\.md$
+^Rplots\.pdf$
 ^\.github/
 ^\.github$
 # End of projr section

@@ -1,4 +1,3 @@
-Sys.setenv("PROJR_PROFILE" = "dev")
 .set_renv_profile <- function() {
   # set the renv profile based on the environment
   # if using the Bioconductor Docker image,
