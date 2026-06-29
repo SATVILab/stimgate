@@ -30,8 +30,11 @@
 ^_dependencies\.R$
 ^_pkgdown\.yml$
 ^AGENTS\.md$
+^BUILDLOG\.md$
+^CHANGELOG\.md$
 ^CHANGES_SUMMARY\.md$
 ^LICENSE\.md$
+^manifest\.csv$
 ^NEWS\.md$
 ^Rplots\.pdf$
 ^\.github/
