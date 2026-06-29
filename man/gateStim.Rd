@@ -29,6 +29,22 @@ gateStim(
   maxPosProbX = Inf,
   gateQuant = c(0.25, 0.75),
   tolClust = 1e-07,
+  locProbCol = "pred",
+  locMinPeakProb = 0.25,
+  locDipAlpha = 0.2,
+  locAntimodeHeightFrac = 1/6,
+  locAntimodeLowRel = 0.25,
+  locAntimodeLowAbs = 0.15,
+  locFlatDerivFrac = 1/2,
+  locFlatHardDerivFrac = 1/4,
+  locLeftLowRel = 0.25,
+  locLeftLowAbs = 0.15,
+  locLeftCellFrac = 0.5,
+  locLeftLengthFrac = 0.5,
+  locMarginalPurityRel = 0.5,
+  locMarginalCellBinRatio = 2,
+  locMarginalRefQuantile = 0.75,
+  locTolRefPeak = "highest",
   gateCombn = "min",
   markerSettings = NULL,
   chnlSettings = NULL
@@ -85,9 +101,15 @@ technical thresholds or background levels.}
 
 \item{bw}{numeric. Specify the bandwith for density estimation. When NULL (default), bandwidth is estimated automatically. Default is \code{NULL}.}
 
-\item{bwMin}{numeric. Minimum bandwidth for density estimation. Ignored if \code{bw} is set. Default is \code{NULL}.}
+\item{bwMin}{numeric or character. Minimum bandwidth for density estimation.
+Ignored if \code{bw} is set. Use \code{"auto"} to calculate automatically, \code{"none"}
+to apply no lower bound, or a numeric value to specify the lower bound.
+Default is \code{"auto"}.}
 
-\item{bwMax}{numeric. Maximum bandwidth for density estimation. Ignored if \code{bw} is set. Default is \code{NULL}.}
+\item{bwMax}{numeric or character. Maximum bandwidth for density estimation.
+Ignored if \code{bw} is set. Use \code{"auto"} to calculate automatically, \code{"none"}
+to apply no upper bound, or a numeric value to specify the upper bound.
+Default is \code{"auto"}.}
 
 \item{bwMtd}{character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi0", "hpi1", "hpi2" and "hpi3", which corresponds to the Silverman rule of thumbg (\code{"nrd0"}), the Sheather-Jones plug-in estimator (\code{"sj"}) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (\code{"hpi1"}, \code{"hpi1"}, \code{"hpi2"} and \code{"hpi3"}). Default is "nrd0". Ignored if \code{bw} is set. Default is \code{"hpi1"}.}
 
@@ -97,7 +119,7 @@ technical thresholds or background levels.}
 
 \item{bwNcellMax}{numeric. Maximum number of cells used for bandwidth estimation. If a sample has more cells than \code{bwNcellMax}, cells are sampled without replacement to reach the maximum. Ignored if \code{bw} is set. Default is 100 000.}
 
-\item{bwCluster}{numeric. Optional bandwidth for clustering-based gate refinement. If NULL (default), the bandwidth is estimated automatically based on the data. Default is \code{NULL}.}
+\item{bwCluster}{numeric. Optional fallback bandwidth for cluster-based local-FDR imputation. The current cluster step first tries to use a common bandwidth calculated as the median bandwidth across samples with generated local-FDR thresholds. \code{bwCluster} is used as a fallback when that common bandwidth cannot be estimated. Default is \code{NULL}.}
 
 \item{minCell}{numeric. Minimum number of cells required for reliable gating.
 Default is 100. Samples with fewer cells will be skipped as they don't provide
@@ -111,13 +133,91 @@ to exclude extremely high expression values that may represent doublets or artif
 gates are identified. Default is c(0.25, 0.75). The method specified in gateCombn
 determines how these quantiles are used (e.g., minimum of 25th percentiles).}
 
-\item{tolClust}{numeric. Convergence tolerance for clustering algorithms used in
-gate refinement. Default is 1e-7. Smaller values require more precise convergence
-but may increase computation time.}
+\item{tolClust}{numeric or NULL. Backwards-compatible switch for calculating
+cluster-adjusted local-FDR gates. When \code{NULL}, cluster adjustment is skipped.
+When non-NULL, samples without a generated local-FDR threshold may receive an
+imputed threshold from similar conditions using cluster-level equivalent
+tolerance values. The numeric value is retained for compatibility and is not
+used as the derivative tolerance in the current local-FDR cluster imputation.}
 
-\item{gateCombn}{character. Method for combining multiple gate candidates.
-Default is "min" to use the most conservative (lowest) gate. Other options may
-include "median" or "max" depending on the desired stringency.}
+\item{locProbCol}{character. Probability column used by the local-FDR trimming
+step. Defaults to \code{"pred"}, the monotone smoothed response-probability
+estimate. Use \code{"probSmooth"} to force the raw/interpolated probability.}
+
+\item{locMinPeakProb}{numeric. Minimum peak estimated response probability
+required before a local-FDR gate is considered credible. If the maximum
+probability is below this value, no true local-FDR threshold is marked as
+generated.}
+
+\item{locDipAlpha}{numeric. Liberal dip-test p-value cutoff used to decide
+whether to inspect expression-density antimodes before thresholding.}
+
+\item{locAntimodeHeightFrac}{numeric. Maximum allowed antimode height as a
+fraction of the highest density peak when identifying deep antimodes.}
+
+\item{locAntimodeLowRel}{numeric. Antimode-separated regions to the left of the
+highest-response region are excluded when their mean response probability is
+below this fraction of the highest region's mean probability.}
+
+\item{locAntimodeLowAbs}{numeric. Absolute response-probability cutoff for
+excluding low-response antimode-separated regions to the left of the
+highest-response region.}
+
+\item{locFlatDerivFrac}{numeric. Fraction of the maximum positive derivative
+used to define the marginal-trimming anchor. The marginal scan then decides
+how far left of this anchor to extend, one bin at a time. Default is 0.5.}
+
+\item{locFlatHardDerivFrac}{numeric. Lower derivative fraction used for a
+conservative hard exclusion of the very flat far-left region before the
+marginal bin scan. Default is 0.25.}
+
+\item{locLeftLowRel}{numeric. Retained for backwards compatibility. The current
+derivative/marginal left-tail trim no longer uses this overall-region check.
+Candidate left-tail regions not separated by an
+antimode are considered low response when their mean response probability is
+below this fraction of the peak response probability.}
+
+\item{locLeftLowAbs}{numeric. Retained for backwards compatibility. The
+current derivative/marginal left-tail trim no longer uses this overall-region
+check. Absolute response-probability cutoff for the non-antimode left-tail
+trimming rule.}
+
+\item{locLeftCellFrac}{numeric. Retained for backwards compatibility. The
+current derivative/marginal left-tail trim no longer uses this overall-region
+check. Minimum size of the candidate low-response
+left-tail region, expressed as a fraction of the number of cells to the right
+of the start of the main probability rise.}
+
+\item{locLeftLengthFrac}{numeric. Retained for backwards compatibility. The
+current derivative/marginal left-tail trim no longer uses this overall-region
+check. Minimum length of the candidate low-response left-tail region,
+expressed as a fraction of the expression interval over which the response
+probability rises from its minimum to its maximum.}
+
+\item{locMarginalPurityRel}{numeric. Minimum allowed purity of each additional
+leftward bin, expressed as a fraction of the average response probability
+among cells to the right of the initial derivative-based local-FDR boundary.
+Default is 0.5.}
+
+\item{locMarginalCellBinRatio}{numeric. Maximum number of cells allowed in each
+additional leftward bin, expressed as a multiple of the average number of
+cells per bin in the right-side reference interval. Empty reference bins are
+counted. Default is 2.}
+
+\item{locMarginalRefQuantile}{numeric. Upper quantile of cells to the right of
+the initial derivative-based boundary used to define the reference interval
+for cells-per-bin calculations. Purity is still calculated using all cells to
+the right of the initial boundary. Default is 0.75.}
+
+\item{locTolRefPeak}{character. Reference peak used by cluster imputation when
+calculating signed equivalent tolerance values from generated local-FDR
+thresholds. Default is \code{"highest"}.}
+
+\item{gateCombn}{character vector. Method(s) for combining condition-level
+local-FDR gates within a batch. Supported values are \code{"no"}, \code{"min"},
+\code{"median"}, \code{"max"}, and \code{"prejoin"}. Combination uses only thresholds that
+were actually generated by the local-FDR procedure, not fallback above-range
+cutpoints.}
 
 \item{markerSettings}{list. Optional list of additional marker-specific settings
 that override global defaults. Each element should be named with the marker name
