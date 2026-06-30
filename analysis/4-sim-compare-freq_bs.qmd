@@ -39,10 +39,10 @@ if (file.exists(path_compare_helpers)) {
 
 Compare the fixed-bandwidth StimGate background-subtracted frequency estimate against two alternative thresholding approaches:
 
-1. `fbeta`, which estimates a gate from overlaid unstimulated and stimulated histogram densities.
-2. `tailgate`, which estimates a right-tail cutpoint using the density derivative approach.
+1. `fbeta`, called from the Python implementation at `scripts/python/fbeta.py` via `reticulate`.
+2. `tailgate`, called from the cytoUtils/openCyto helper scripts.
 
-For now, the bandwidth is fixed. Once the bandwidth exploration is settled, the same grid can be updated to pass better fixed or estimated bandwidths into the comparison helper.
+For now, the bandwidth is fixed only for StimGate. Tailgate is deliberately left to use its usual automatic bandwidth estimation, because the aim here is to compare StimGate with the alternative methods as they normally run.
 
 ### Simulation settings
 
@@ -87,10 +87,22 @@ bias_uns_vec <- c(0, 0.05, 0.1, seq(0.2, 2, by = 0.2))[c(2, 4)]
 fbeta_beta <- 0.8
 fbeta_theta <- 2
 fbeta_width <- 10
+path_fbeta <- projr::projr_path_get(
+  "project",
+  "scripts",
+  "python",
+  "fbeta.py"
+)
 
-# This is deliberately tied to bw_fixed for now.
-# Later, replace this with the bandwidth chosen from the bandwidth-estimation runs.
-tailgate_bandwidth <- bw_fixed
+path_tailgate_sources <- c(
+  file.path(root_dir, "scripts", "R", "openCyto-find_peaks_and_valleys.R"),
+  file.path(root_dir, "scripts", "R", "cytoUtils-cytokine_cutpoint.R")
+)
+path_tailgate_sources <- path_tailgate_sources[file.exists(path_tailgate_sources)]
+if (length(path_tailgate_sources) == 0L) {
+  path_tailgate_sources <- NULL
+}
+
 tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
 tailgate_tol <- 1e-2
@@ -172,11 +184,13 @@ for (i in seq_len(nrow(sim_grid))) {
     covEvMax = 2,
     tolClust = NULL,
     includeLocCondition = TRUE,
+    pathFbeta = path_fbeta,
     fbetaBeta = fbeta_beta,
     fbetaTheta = fbeta_theta,
     fbetaWidth = fbeta_width,
-    tailgateBandwidth = tailgate_bandwidth,
+    tailgateSourceFiles = path_tailgate_sources,
     tailgateAdjust = tailgate_adjust,
+    tailgateAutoTol = TRUE,
     tailgateMethod = tailgate_method,
     tailgateTol = tailgate_tol
   ) |>
@@ -296,10 +310,11 @@ compare_list_raw <- progressr::with_progress({
             covEvMax = 2,
             tolClust = NULL,
             includeLocCondition = TRUE,
+            pathFbeta = path_fbeta,
             fbetaBeta = fbeta_beta,
             fbetaTheta = fbeta_theta,
             fbetaWidth = fbeta_width,
-            tailgateBandwidth = tailgate_bandwidth,
+            tailgateSourceFiles = path_tailgate_sources,
             tailgateAdjust = tailgate_adjust,
             tailgateMethod = tailgate_method,
             tailgateTol = tailgate_tol
@@ -524,11 +539,18 @@ plot_tbl <- compare_tbl_focus |>
   dplyr::filter(is.finite(propRespTruth), is.finite(propRespEst))
 
 p_est_truth <- ggplot(
-  plot_tbl,
+  plot_tbl, #|>
+    #dplyr::mutate(
+    #  propRespEst = pmax(0, propRespEst),
+   # ),
   aes(x = propRespTruth, y = propRespEst, color = method)
 ) +
+  geom_point(alpha = 0.35, size = 1)  +
+  expand_limits(
+    y = c(0, max(plot_tbl$propRespTruth, na.rm = TRUE) * 2),
+    x = c(0, max(plot_tbl$propRespTruth, na.rm = TRUE) * 2)
+    ) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-  geom_point(alpha = 0.35, size = 1) +
   facet_grid(mean_pos ~ transformation) +
   labs(
     x = "True background-subtracted response frequency",
