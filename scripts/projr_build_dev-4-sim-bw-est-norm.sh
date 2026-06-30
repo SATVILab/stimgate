@@ -17,7 +17,7 @@ echo "-------------------"
 echo "Run projr"
 date
 apptainer-rscript -f stimgate -- 'devtools::install()'
-apptainer-rscript -f stimgate -- 'projr::projr_build_dev(profile = "dev", file = "analysis/4-sim-bw-est-norm.qmd")'
+apptainer-rscript -f stimgate -- 'projr::projr_build_dev(profile = "", file = "analysis/4-sim-bw-est-norm.qmd")'
 echo "Completed running projr"
 date
 echo "-------------------"
