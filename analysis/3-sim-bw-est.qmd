@@ -48,8 +48,10 @@ Initially, we will ignore setting maximum/minimum number of cells.
 # simulation settings
 n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)[c(1, 3, 5, 7)]
 prob_response_vec <- c(0.002, 0.2)
-mean_pos_vec <- c(4, 8)
+mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
+
 transformation_vec <- c("gaussian", "gamma", "skew")
+mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 
 # bandwidth settings
 bandwidth_method_vec <- c("hpi0", "hpi1", "hpi2", "hpi3", "sj", "nrd0")
@@ -63,14 +65,14 @@ bias_uns_vec <- seq(0, 2, by = 0.2)
 ```{r}
 #| label: bw-estimate-grid
 sim_grid <- tidyr::expand_grid(
-  transformation = transformation_vec,
+  mean_pos_settings_tbl,
   prob_response  = prob_response_vec,
   n_cell         = n_cell_stim_vec,
-  mean_pos       = mean_pos_vec,
   bw_mtd         = bandwidth_method_vec
 ) |>
-  dplyr::filter(
-    !(n_cell * prob_response < 5 & prob_response < 0.04)
+  dplyr::select(
+    transformation, prob_response, n_cell,
+    mean_pos_setting, mean_pos, bw_mtd
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
@@ -84,7 +86,7 @@ if ("dev" %in% projr::projr_profile_get()) {
     dplyr::filter(
       n_cell == 1e5,
       prob_response == 0.002,
-      mean_pos == 8,
+      mean_pos_setting == "high",
       transformation %in% transformation_vec,
       bw_mtd == "hpi1"
     )
@@ -140,8 +142,8 @@ for (i in seq_len(nrow(sim_grid))) {
     transformation = sim_grid$transformation[i],
     backgroundRelativeToResponse = 0.2,
     ncellUnsRelativeToStim = 1,
-    covEvMin = 2,
-    covEvMax = 2,
+    covEvMin = 1.5,
+    covEvMax = 1.5,
     tolClust = NULL,
     summarise = FALSE
   ) |>
@@ -149,6 +151,7 @@ for (i in seq_len(nrow(sim_grid))) {
       transformation = sim_grid$transformation[i],
       prob_response = sim_grid$prob_response[i],
       n_cell = sim_grid$n_cell[i],
+      mean_pos_setting = sim_grid$mean_pos_setting[i],
       mean_pos = sim_grid$mean_pos[i],
       bw_mtd = sim_grid$bw_mtd[i],
       sim_id = sim_grid$sim_id[i]
@@ -157,6 +160,7 @@ for (i in seq_len(nrow(sim_grid))) {
       transformation,
       prob_response,
       n_cell,
+      mean_pos_setting,
       mean_pos,
       bw_mtd,
       sim_id,
@@ -226,7 +230,7 @@ bw_list_raw_mtd <- progressr::with_progress({
 
   furrr::future_pmap(
     sim_grid,
-    function(transformation, prob_response, n_cell, mean_pos, bw_mtd, sim_id) {
+    function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos, bw_mtd, sim_id) {
       settings_row <- paste0(
         "trans = ",
         transformation,
@@ -266,8 +270,8 @@ bw_list_raw_mtd <- progressr::with_progress({
             transformation = transformation,
             backgroundRelativeToResponse = 0.2,
             ncellUnsRelativeToStim = 1,
-            covEvMin = 2,
-            covEvMax = 2,
+            covEvMin = 1.5,
+            covEvMax = 1.5,
             tolClust = NULL,
             summarise = FALSE
           ) |>
@@ -275,6 +279,7 @@ bw_list_raw_mtd <- progressr::with_progress({
               transformation = transformation,
               prob_response = prob_response,
               n_cell = n_cell,
+              mean_pos_setting = mean_pos_setting,
               mean_pos = mean_pos,
               bw_mtd = bw_mtd,
               sim_id = sim_id
@@ -283,6 +288,7 @@ bw_list_raw_mtd <- progressr::with_progress({
               transformation,
               prob_response,
               n_cell,
+              mean_pos_setting,
               mean_pos,
               bw_mtd,
               sim_id,
@@ -311,6 +317,7 @@ bw_list_raw_mtd <- progressr::with_progress({
             transformation = transformation,
             prob_response = prob_response,
             n_cell = n_cell,
+            mean_pos_setting = mean_pos_setting,
             mean_pos = mean_pos,
             bw_mtd = bw_mtd,
             sim_id = sim_id,
@@ -399,9 +406,9 @@ bw_tbl_results <- bw_list_raw_mtd |>
     any_of(colnames(sim_grid)), mean_bw
   )
 
-for (mean_pos in unique(bw_tbl_results$mean_pos)) {
+for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
   plot_tbl <- bw_tbl_results |>
-    dplyr::filter(mean_pos == !!mean_pos)
+    dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr)
   p <- ggplot(
     plot_tbl,
     aes(x = n_cell, y = mean_bw, color = bw_mtd)
@@ -413,7 +420,7 @@ for (mean_pos in unique(bw_tbl_results$mean_pos)) {
       prob_response ~ transformation
     ) +
     labs(
-      title = paste0("Mean Position: ", mean_pos),
+      title = paste0("Mean position setting: ", mean_pos_setting_curr),
       x = "Number of Cells",
       y = "Estimated Bandwidth"
     ) +
@@ -433,7 +440,7 @@ for (mean_pos in unique(bw_tbl_results$mean_pos)) {
         "sim",
         "bw",
         "est",
-        paste0("bw_estimate_meanpos_", mean_pos, ".png")
+        paste0("bw_estimate_meanpos_setting_", mean_pos_setting_curr, ".png")
       ),
       plot = p,
       width = 18,
