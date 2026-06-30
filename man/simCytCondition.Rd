@@ -15,7 +15,8 @@ simCytCondition(
   probExact = FALSE,
   clusterPerturbationSd = 0,
   covEvMin = 1,
-  covEvMax = 2
+  covEvMax = 2,
+  meanExprMatReference = NULL
 )
 }
 \arguments{

@@ -19,7 +19,8 @@ simCytSample(
   conditionPerturbationSd = 0,
   clusterPerturbationSd = 0,
   covEvMin = 1,
-  covEvMax = 2
+  covEvMax = 2,
+  meanExprMatReference = NULL
 )
 }
 \arguments{

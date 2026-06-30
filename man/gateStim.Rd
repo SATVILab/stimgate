@@ -119,17 +119,17 @@ This is only a clipping limit; if automatic bandwidth estimation fails,
 Must be either \code{"auto"} or a single positive numeric value. Unlike
 \code{bwMin} and \code{bwMax}, \code{bwFallback} cannot be \code{NULL}, \code{"none"}, non-finite,
 zero, or negative, because a valid fallback bandwidth is always required.
-When \code{"auto"}, the fallback is calculated from randomly selected samples,
-drawing a number of cells equal to the median cell count per sample.
+When \code{"auto"}, the fallback is calculated from randomly selected samples
+using the same bandwidth selector specified by \code{bwMtd}.
 Default is \code{"auto"}.}
 
-\item{bwMtd}{character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi0", "hpi1", "hpi2" and "hpi3", which corresponds to the Silverman rule of thumbg (\code{"nrd0"}), the Sheather-Jones plug-in estimator (\code{"sj"}) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (\code{"hpi1"}, \code{"hpi1"}, \code{"hpi2"} and \code{"hpi3"}). Default is "nrd0". Ignored if \code{bw} is set. Default is \code{"hpi1"}.}
+\item{bwMtd}{character. Method for automated bandwidth selection. Options include \code{"nrd0"}, \code{"sj"}, \code{"hpi0"}, \code{"hpi1"}, \code{"hpi2"} and \code{"hpi3"}, plus background-normalised variants \code{"nrd0Norm"}, \code{"sjNorm"}, \code{"hpi0Norm"}, \code{"hpi1Norm"}, \code{"hpi2Norm"} and \code{"hpi3Norm"}. The normalised variants estimate bandwidth on a Box-Cox-normalised background core with deliberate right-side excess augmentation. The excess augmentation starts to the right of the background-core boundary and preferentially up-samples cells according to one minus the ratio of a deliberately flat univariate density estimate to a more flexible kernel density estimate, then maps the result back to the original expression scale. Ignored if \code{bw} is set. Default is \code{"hpi1"}.}
 
 \item{bwAdj}{numeric. Adjustment factor for bandwidth. Default is 1. Ignored if \code{bw} is set. Default is 1.}
 
-\item{bwNcellMin}{numeric. Minimum number of cells required for bandwidth estimation. If a sample has fewer cells than \code{bwNcellMin}, cells are sampled with replacement to reach the minimum, with noise subsequently added. Ignored if \code{bw} is set. Default is 100.}
+\item{bwNcellMin}{numeric. Minimum number of cells requested by the bandwidth selector. For ordinary methods this controls internal up-sampling with jitter. For \verb{*Norm} methods it is passed into the background-core/right-excess selector so rare right-tail cells are considered before any sampling is done. Ignored if \code{bw} is set. Default is 100.}
 
-\item{bwNcellMax}{numeric. Maximum number of cells used for bandwidth estimation. If a sample has more cells than \code{bwNcellMax}, cells are sampled without replacement to reach the maximum. Ignored if \code{bw} is set. Default is 100 000.}
+\item{bwNcellMax}{numeric. Maximum number of cells requested by the bandwidth selector. For ordinary methods this controls internal down-sampling. For \verb{*Norm} methods it limits the constructed background-core/right-excess bandwidth sample after the full distribution has been inspected. Ignored if \code{bw} is set. Default is 100 000.}
 
 \item{bwCluster}{numeric. Optional fallback bandwidth for cluster-based local-FDR imputation. The current cluster step first tries to use a common bandwidth calculated as the median bandwidth across samples with generated local-FDR thresholds. \code{bwCluster} is used as a fallback when that common bandwidth cannot be estimated. Default is \code{NULL}.}
 

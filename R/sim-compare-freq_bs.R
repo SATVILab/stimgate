@@ -1,18 +1,3 @@
-#' Helpers for comparing background-subtracted frequency estimators
-#'
-#' The functions in this file compare the fixed-bandwidth StimGate estimate
-#' against two alternative gates:
-#'   1. the fbeta implementation in scripts/python/fbeta.py, called via reticulate
-#'   2. the tailgate implementation in the cytoUtils/openCyto helper scripts
-#'
-#' @keywords internal
-
-if (!exists("%||%", mode = "function")) {
-  `%||%` <- function(x, y) {
-    if (is.null(x)) y else x
-  }
-}
-
 .simCompareCacheEnv <- new.env(parent = emptyenv())
 
 #' @keywords internal
@@ -69,7 +54,6 @@ if (!exists("%||%", mode = "function")) {
 
 #' Moving mean with leading NA values, matching fbeta.py
 #'
-#' @keywords internal
 #' Locate the fbeta Python script
 #'
 #' @keywords internal
