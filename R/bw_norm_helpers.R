@@ -29,7 +29,9 @@
   normExtraMax = 1000L,
   normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
-  normDensityN = 512L
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L
 ) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
@@ -54,7 +56,9 @@
       normExtraMax = normExtraMax,
       normExtraJitterFrac = normExtraJitterFrac,
       normLambda = normLambda,
-      normDensityN = normDensityN
+      normDensityN = normDensityN,
+      normExcessBwMtd = normExcessBwMtd,
+      normExcessNcell = normExcessNcell
     )
   } else {
     xBw <- .bwCalcOneSampleOrdinary(
@@ -164,7 +168,9 @@
   normExtraMax = 1000L,
   normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
-  normDensityN = 512L
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L
 ) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
@@ -203,11 +209,13 @@
   xExtra <- .bwNormSampleExcess(
     x = x,
     coreObj = coreObj,
-    boxObj = boxObj,
     normExtraFrac = normExtraFrac,
     normExtraMax = normExtraMax,
     normExtraJitterFrac = normExtraJitterFrac,
-    densityN = normDensityN
+    densityN = normDensityN,
+    normExcessBwMtd = normExcessBwMtd,
+    normExcessNcell = normExcessNcell,
+    normPeakFrac = normPeakFrac
   )
 
   nExtra <- length(xExtra)
@@ -258,10 +266,7 @@
   scaleX <- stats::IQR(xCore, na.rm = TRUE)
   scaleZ <- stats::IQR(zCore, na.rm = TRUE)
 
-  if (
-    !is.finite(scaleX) || scaleX <= 0 ||
-      !is.finite(scaleZ) || scaleZ <= 0
-  ) {
+  if (!is.finite(scaleX) || scaleX <= 0 || !is.finite(scaleZ) || scaleZ <= 0) {
     return(.bwCalcOneBase(x, bwMtd))
   }
 
@@ -477,11 +482,14 @@
 .bwNormSampleExcess <- function(
   x,
   coreObj,
-  boxObj,
   normExtraFrac = 0.1,
   normExtraMax = 1000L,
   normExtraJitterFrac = 0.25,
-  densityN = 512L
+  densityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normPeakFrac = 0.1,
+  normScamK = 30L
 ) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
@@ -495,130 +503,89 @@
     return(numeric(0))
   }
 
-  zAll <- .bwBoxCoxTransform(
+  densObj <- .bwNormExcessDensityDecreasing(
     x = x,
-    lambda = boxObj$lambda,
-    offset = boxObj$offset,
-    eps = boxObj$eps
+    coreObj = coreObj,
+    bwMtd = normExcessBwMtd,
+    nCell = normExcessNcell,
+    densityN = densityN,
+    peakFrac = normPeakFrac,
+    scamK = normScamK
   )
 
-  xCore <- x[x >= coreObj$xLeft & x <= coreObj$xRight]
-  zCore <- .bwBoxCoxTransform(
-    x = xCore,
-    lambda = boxObj$lambda,
-    offset = boxObj$offset,
-    eps = boxObj$eps
-  )
-
-  if (length(zCore) < 20L || length(unique(zCore)) < 5L) {
+  if (is.null(densObj)) {
     return(numeric(0))
   }
 
-  densFull <- try(stats::density(zAll, n = densityN), silent = TRUE)
-  densBg <- try(stats::density(zCore, n = densityN), silent = TRUE)
+  xRightCut <- densObj$xRightCut
 
-  if (inherits(densFull, "try-error") || inherits(densBg, "try-error")) {
-    return(numeric(0))
-  }
-
-  zPeak <- .bwBoxCoxTransform(
-    x = coreObj$xPeak,
-    lambda = boxObj$lambda,
-    offset = boxObj$offset,
-    eps = boxObj$eps
-  )
-
-  fullAtPeak <- stats::approx(
-    x = densFull$x,
-    y = densFull$y,
-    xout = zPeak,
-    rule = 2
-  )$y
-
-  bgAtPeak <- stats::approx(
-    x = densBg$x,
-    y = densBg$y,
-    xout = zPeak,
-    rule = 2
-  )$y
-
-  if (
-    !is.finite(fullAtPeak) ||
-      fullAtPeak <= 0 ||
-      !is.finite(bgAtPeak) ||
-      bgAtPeak <= 0
-  ) {
-    return(numeric(0))
-  }
-
-  bgScale <- fullAtPeak / bgAtPeak
-
-  fullAtCell <- stats::approx(
-    x = densFull$x,
-    y = densFull$y,
-    xout = zAll,
-    rule = 2
-  )$y
-
-  bgAtCell <- stats::approx(
-    x = densBg$x,
-    y = densBg$y,
-    xout = zAll,
-    rule = 2
-  )$y
-
-  probBg <- ifelse(
-    is.finite(fullAtCell) &
-      fullAtCell > 0 &
-      is.finite(bgAtCell) &
-      bgAtCell >= 0,
-    pmin(1, bgScale * bgAtCell / fullAtCell),
-    1
-  )
-
-  probExcess <- pmax(0, 1 - probBg)
-
-  candidate <- x > coreObj$xRight &
-    is.finite(x) &
-    is.finite(probExcess) &
-    probExcess > 0
-
+  candidate <- is.finite(x) & x > xRightCut
   if (!any(candidate)) {
     return(numeric(0))
   }
 
   xCand <- x[candidate]
-  wCand <- probExcess[candidate]
-  wCand <- wCand / sum(wCand, na.rm = TRUE)
 
-  if (any(!is.finite(wCand)) || sum(wCand, na.rm = TRUE) <= 0) {
+  initAtCand <- stats::approx(
+    x = densObj$x,
+    y = densObj$yInit,
+    xout = xCand,
+    rule = 2
+  )$y
+
+  decAtCand <- stats::approx(
+    x = densObj$x,
+    y = densObj$yDec,
+    xout = xCand,
+    rule = 2
+  )$y
+
+  gammaProb <- ifelse(
+    is.finite(initAtCand) &
+      initAtCand > 0 &
+      is.finite(decAtCand) &
+      decAtCand >= 0,
+    pmin(1, pmax(0, decAtCand / initAtCand)),
+    1
+  )
+
+  samplingRate <- pmax(0, 1 - gammaProb)
+
+  if (!any(is.finite(samplingRate) & samplingRate > 0)) {
     return(numeric(0))
   }
 
-  xExtra <- sample(
-    xCand,
-    size = nExtraTarget,
-    replace = TRUE,
-    prob = wCand
+  xExtra <- .bwNormPreferentialUpsample(
+    x = xCand,
+    rate = samplingRate,
+    nTarget = nExtraTarget
   )
 
-  sdExtra <- .bwWeightedSd(xCand, wCand)
-
-  if (!is.finite(sdExtra) || sdExtra <= 0) {
-    sdExtra <- .bwRobustSd(xCand)
+  if (length(xExtra) == 0L) {
+    return(numeric(0))
   }
 
-  if (is.finite(sdExtra) && sdExtra > 0) {
+  sdDensity <- .bwDensitySd(
+    x = densObj$x,
+    y = densObj$yInit
+  )
+
+  if (!is.finite(sdDensity) || sdDensity <= 0) {
+    sdDensity <- .bwRobustSd(x)
+  }
+
+  if (is.finite(sdDensity) && sdDensity > 0) {
     xExtra <- xExtra +
       stats::rnorm(
         length(xExtra),
         mean = 0,
-        sd = normExtraJitterFrac * sdExtra
+        sd = normExtraJitterFrac * sdDensity
       )
   }
 
-  pmax(xExtra, boxObj$offset + boxObj$eps)
+  xExtra
 }
+
 
 #' @keywords internal
 .bwNormCoreTargetN <- function(
@@ -679,4 +646,322 @@
   w <- w / sum(w)
   mu <- sum(w * x)
   sqrt(sum(w * (x - mu)^2))
+}
+
+#' @keywords internal
+.bwNormExcessDensityDecreasing <- function(
+  x,
+  coreObj,
+  bwMtd = "hpi3",
+  nCell = 10000L,
+  densityN = 512L,
+  peakFrac = 0.1,
+  scamK = 30L
+) {
+  x <- suppressWarnings(as.numeric(x))
+  x <- x[is.finite(x)]
+
+  if (length(x) < 20L || length(unique(x)) < 5L) {
+    return(NULL)
+  }
+
+  xBw <- .bwCalcOneSampleOrdinary(
+    x = x,
+    bwNcellMin = nCell,
+    bwNcellMax = nCell
+  )
+
+  bw <- .bwCalcOneBase(
+    x = xBw,
+    bwMtd = bwMtd
+  )
+
+  if (!is.finite(bw) || bw <= 0) {
+    return(NULL)
+  }
+
+  densInit <- try(
+    stats::density(
+      x,
+      bw = bw,
+      n = densityN,
+      from = min(x, na.rm = TRUE),
+      to = max(x, na.rm = TRUE)
+    ),
+    silent = TRUE
+  )
+
+  if (inherits(densInit, "try-error")) {
+    return(NULL)
+  }
+
+  dx <- densInit$x
+  dy <- pmax(densInit$y, .Machine$double.eps)
+
+  peakIdx <- which.min(abs(dx - coreObj$xPeak))
+
+  if (!is.finite(peakIdx) || peakIdx < 1L || peakIdx > length(dx)) {
+    peakIdx <- which.max(dy)
+  }
+
+  xRightCut <- .bwNormRightCutFromDensity(
+    dx = dx,
+    dy = dy,
+    peakIdx = peakIdx,
+    peakFrac = peakFrac
+  )
+
+  yDec <- .bwNormFitDecreasingDensityScam(
+    dx = dx,
+    dy = dy,
+    peakIdx = peakIdx,
+    scamK = scamK
+  )
+
+  if (is.null(yDec)) {
+    yDec <- .bwNormFitDecreasingDensityIso(
+      dx = dx,
+      dy = dy,
+      peakIdx = peakIdx
+    )
+  }
+
+  if (is.null(yDec)) {
+    return(NULL)
+  }
+
+  yDec <- pmin(yDec, dy)
+  yDec <- pmax(yDec, 0)
+
+  list(
+    x = dx,
+    yInit = dy,
+    yDec = yDec,
+    bw = bw,
+    xPeak = dx[peakIdx],
+    peakIdx = peakIdx,
+    xRightCut = xRightCut
+  )
+}
+
+#' @keywords internal
+.bwNormRightCutFromDensity <- function(
+  dx,
+  dy,
+  peakIdx,
+  peakFrac = 0.1
+) {
+  lowHeight <- peakFrac * dy[peakIdx]
+
+  idx <- seq.int(2L, length(dy) - 1L)
+  minIdx <- idx[dy[idx] <= dy[idx - 1L] & dy[idx] < dy[idx + 1L]]
+
+  rightAntimode <- minIdx[minIdx > peakIdx][1]
+  rightLow <- which(seq_along(dy) > peakIdx & dy <= lowHeight)[1]
+
+  rightCandidate <- c(rightAntimode, rightLow)
+  rightCandidate <- rightCandidate[is.finite(rightCandidate)]
+
+  rightIdx <- if (length(rightCandidate) > 0L) {
+    min(rightCandidate)
+  } else {
+    length(dx)
+  }
+
+  dx[rightIdx]
+}
+
+#' @keywords internal
+.bwNormFitDecreasingDensityScam <- function(
+  dx,
+  dy,
+  peakIdx,
+  scamK = 30L
+) {
+  n <- length(dx)
+
+  if (peakIdx >= n - 3L) {
+    return(NULL)
+  }
+
+  fitTbl <- tibble::tibble(
+    x = dx[seq.int(peakIdx, n)],
+    logDens = log(pmax(dy[seq.int(peakIdx, n)], .Machine$double.eps))
+  )
+
+  fitTbl <- .bwNormThinDensityGrid(
+    fitTbl,
+    maxPerBin = 20L
+  )
+
+  if (nrow(fitTbl) < 6L) {
+    return(NULL)
+  }
+
+  k <- min(
+    as.integer(scamK),
+    max(4L, nrow(fitTbl) - 1L)
+  )
+
+  fit <- try(
+    scam::scam(
+      logDens ~ s(x, bs = "mpd", k = k, m = c(2, 1)),
+      data = fitTbl,
+      family = gaussian(),
+      control = scam::scam.control(
+        print.warn = FALSE,
+        trace = FALSE,
+        maxit = 50
+      )
+    ),
+    silent = TRUE
+  )
+
+  if (inherits(fit, "try-error")) {
+    return(NULL)
+  }
+
+  predTbl <- tibble::tibble(
+    x = dx[seq.int(peakIdx, n)]
+  )
+
+  pred <- try(
+    stats::predict(fit, newdata = predTbl, type = "response"),
+    silent = TRUE
+  )
+
+  if (inherits(pred, "try-error") || any(!is.finite(pred))) {
+    return(NULL)
+  }
+
+  yOut <- dy
+  yOut[seq.int(peakIdx, n)] <- exp(pred)
+
+  # Keep the left side as the initial density. The constrained part only matters
+  # to the right of the main peak.
+  yOut
+}
+
+#' @keywords internal
+.bwNormFitDecreasingDensityIso <- function(
+  dx,
+  dy,
+  peakIdx
+) {
+  n <- length(dx)
+
+  if (peakIdx >= n - 3L) {
+    return(NULL)
+  }
+
+  yRight <- log(pmax(dy[seq.int(peakIdx, n)], .Machine$double.eps))
+
+  iso <- try(
+    stats::isoreg(
+      seq_along(yRight),
+      -yRight
+    ),
+    silent = TRUE
+  )
+
+  if (inherits(iso, "try-error")) {
+    return(NULL)
+  }
+
+  yRightDec <- exp(-iso$yf)
+
+  yOut <- dy
+  yOut[seq.int(peakIdx, n)] <- yRightDec
+  yOut
+}
+
+#' @keywords internal
+.bwNormThinDensityGrid <- function(
+  fitTbl,
+  maxPerBin = 20L
+) {
+  if (nrow(fitTbl) <= maxPerBin) {
+    return(fitTbl)
+  }
+
+  bin <- cut(
+    fitTbl$x,
+    breaks = pretty(fitTbl$x, n = ceiling(nrow(fitTbl) / maxPerBin)),
+    include.lowest = TRUE
+  )
+
+  fitTbl$bin <- bin
+
+  fitTbl |>
+    dplyr::group_by(.data$bin) |>
+    dplyr::slice(seq_len(min(dplyr::n(), maxPerBin))) |>
+    dplyr::ungroup() |>
+    dplyr::select(-.data$bin)
+}
+
+#' @keywords internal
+.bwNormPreferentialUpsample <- function(
+  x,
+  rate,
+  nTarget
+) {
+  ok <- is.finite(x) & is.finite(rate) & rate > 0
+  x <- x[ok]
+  rate <- rate[ok]
+
+  if (length(x) == 0L || sum(rate) <= 0) {
+    return(numeric(0))
+  }
+
+  expectedCopies <- rate / sum(rate) * nTarget
+
+  nCopies <- floor(expectedCopies)
+  fracCopies <- expectedCopies - nCopies
+
+  nCopies <- nCopies +
+    stats::rbinom(
+      n = length(nCopies),
+      size = 1L,
+      prob = pmin(1, pmax(0, fracCopies))
+    )
+
+  if (!any(nCopies > 0L)) {
+    return(numeric(0))
+  }
+
+  rep(x, nCopies)
+}
+
+#' @keywords internal
+.bwDensitySd <- function(
+  x,
+  y
+) {
+  ok <- is.finite(x) & is.finite(y) & y >= 0
+  x <- x[ok]
+  y <- y[ok]
+
+  if (length(x) < 2L || sum(y) <= 0) {
+    return(NA_real_)
+  }
+
+  area <- sum(diff(x) * (head(y, -1) + tail(y, -1)) / 2)
+
+  if (!is.finite(area) || area <= 0) {
+    return(NA_real_)
+  }
+
+  y <- y / area
+
+  meanX <- sum(diff(x) * (head(x * y, -1) + tail(x * y, -1)) / 2)
+
+  meanX2 <- sum(diff(x) * (head((x^2) * y, -1) + tail((x^2) * y, -1)) / 2)
+
+  varX <- meanX2 - meanX^2
+
+  if (!is.finite(varX) || varX <= 0) {
+    return(NA_real_)
+  }
+
+  sqrt(varX)
 }
