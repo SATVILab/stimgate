@@ -1,5 +1,11 @@
 .setDev <- function() {
-  Sys.setenv("PROJR_PROFILE" = "dev")
+  profileVec <- projr::projr_profile_get()
+  if (!"dev" %in% profileVec) {
+    profileVec <- c("dev", profileVec)
+    profileVec <- profileVec[profileVec != "default"]
+    profileVec <- paste0(profileVec, collapse = ",")
+    Sys.setenv("PROJR_PROFILE" = profileVec)
+  }
 }
 .devSet <- .setDev
 .unsetDev <- function() {
@@ -12,7 +18,26 @@
   }
 }
 .devUnset <- .unsetDev
-
+.setQuick <- function() {
+  profileVec <- projr::projr_profile_get()
+  if (!"quick" %in% profileVec) {
+    profileVec <- c("quick", profileVec)
+    profileVec <- profileVec[profileVec != "default"]
+    profileVec <- paste0(profileVec, collapse = ",")
+    Sys.setenv("PROJR_PROFILE" = profileVec)
+  }
+}
+.quickSet <- .setQuick
+.unsetQuick <- function() {
+  profileVec <- projr::projr_profile_get()
+  if ("quick" %in% profileVec) {
+    profileVec <- profileVec[profileVec != "quick"]
+    profileVec <- profileVec[profileVec != "default"]
+    profileVec <- paste0(profileVec, collapse = ",")
+    Sys.setenv("PROJR_PROFILE" = profileVec)
+  }
+}
+.quickUnset <- .unsetQuick
 
 .set_renv_profile <- function() {
   # set the renv profile based on the environment

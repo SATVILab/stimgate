@@ -73,8 +73,10 @@ prob_response_vec <- c(
   1 / 2
 )[c(2, 4, 6, 8, 10, 16)]
 
-mean_pos_vec <- seq_len(8)[c(4, 8)]
+mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
+
 transformation_vec <- c("gaussian", "gamma", "skew")
+mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 sample_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
 condition_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1:2]
 cluster_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
@@ -113,10 +115,9 @@ tailgate_tol <- 1e-2
 ```{r}
 #| label: compare-grid
 sim_grid <- tidyr::expand_grid(
-  transformation = transformation_vec,
+  mean_pos_settings_tbl,
   prob_response = prob_response_vec,
   n_cell = n_cell_stim_vec,
-  mean_pos = mean_pos_vec,
   bw = bw_fixed,
   bias_uns = bias_uns_vec,
   sample_perturbation_sd = sample_perturbation_sd_vec,
@@ -125,6 +126,13 @@ sim_grid <- tidyr::expand_grid(
   background_relative_to_response = background_relative_to_response_vec,
   n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim_vec
 ) |>
+  dplyr::select(
+    transformation, prob_response, n_cell,
+    mean_pos_setting, mean_pos, bw, bias_uns,
+    sample_perturbation_sd, condition_perturbation_sd,
+    cluster_perturbation_sd, background_relative_to_response,
+    n_cell_uns_relative_to_stim
+  ) |>
   dplyr::filter(
     !(n_cell * prob_response < 5 & prob_response < 0.04)
   ) |>
@@ -138,7 +146,7 @@ if ("dev" %in% projr::projr_profile_get()) {
     dplyr::filter(
       n_cell == 1e5,
       prob_response == 0.002,
-      mean_pos == 8,
+      mean_pos_setting == "high",
       transformation %in% transformation_vec,
       bias_uns == 0.05,
       condition_perturbation_sd == 0
@@ -180,8 +188,8 @@ for (i in seq_len(nrow(sim_grid))) {
     clusterPerturbationSd = sim_grid$cluster_perturbation_sd[i],
     backgroundRelativeToResponse = sim_grid$background_relative_to_response[i],
     ncellUnsRelativeToStim = sim_grid$n_cell_uns_relative_to_stim[i],
-    covEvMin = 2,
-    covEvMax = 2,
+    covEvMin = 1.5,
+    covEvMax = 1.5,
     tolClust = NULL,
     includeLocCondition = TRUE,
     pathFbeta = path_fbeta,
@@ -198,6 +206,7 @@ for (i in seq_len(nrow(sim_grid))) {
       transformation = sim_grid$transformation[i],
       prob_response = sim_grid$prob_response[i],
       n_cell = sim_grid$n_cell[i],
+      mean_pos_setting = sim_grid$mean_pos_setting[i],
       mean_pos = sim_grid$mean_pos[i],
       bw = sim_grid$bw[i],
       bias_uns = sim_grid$bias_uns[i],
@@ -212,7 +221,7 @@ for (i in seq_len(nrow(sim_grid))) {
     ) |>
     dplyr::select(
       transformation, prob_response, n_cell,
-      mean_pos, bw, bias_uns,
+      mean_pos_setting, mean_pos, bw, bias_uns,
       sample_perturbation_sd, condition_perturbation_sd,
       cluster_perturbation_sd, background_relative_to_response,
       n_cell_uns_relative_to_stim, sim_id,
@@ -252,6 +261,7 @@ compare_list_raw <- progressr::with_progress({
       transformation,
       prob_response,
       n_cell,
+      mean_pos_setting,
       mean_pos,
       bw,
       bias_uns,
@@ -306,8 +316,8 @@ compare_list_raw <- progressr::with_progress({
             clusterPerturbationSd = cluster_perturbation_sd,
             backgroundRelativeToResponse = background_relative_to_response,
             ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
-            covEvMin = 2,
-            covEvMax = 2,
+            covEvMin = 1.5,
+            covEvMax = 1.5,
             tolClust = NULL,
             includeLocCondition = TRUE,
             pathFbeta = path_fbeta,
@@ -323,6 +333,7 @@ compare_list_raw <- progressr::with_progress({
               transformation = transformation,
               prob_response = prob_response,
               n_cell = n_cell,
+              mean_pos_setting = mean_pos_setting,
               mean_pos = mean_pos,
               bw = bw,
               bias_uns = bias_uns,
@@ -339,6 +350,7 @@ compare_list_raw <- progressr::with_progress({
               transformation,
               prob_response,
               n_cell,
+              mean_pos_setting,
               mean_pos,
               bw,
               bias_uns,
@@ -372,6 +384,7 @@ compare_list_raw <- progressr::with_progress({
             transformation = transformation,
             prob_response = prob_response,
             n_cell = n_cell,
+            mean_pos_setting = mean_pos_setting,
             mean_pos = mean_pos,
             bw = bw,
             bias_uns = bias_uns,
@@ -487,9 +500,9 @@ compare_summary |>
 
 ```{r}
 #| label: plot-mae-cell-count
-for (mean_pos_curr in unique(compare_summary$mean_pos)) {
+for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
   plot_tbl <- compare_summary |>
-    dplyr::filter(mean_pos == !!mean_pos_curr)
+    dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr)
 
   p <- ggplot(
     plot_tbl,
@@ -500,7 +513,7 @@ for (mean_pos_curr in unique(compare_summary$mean_pos)) {
     scale_x_log10() +
     facet_grid(prob_response ~ transformation) +
     labs(
-      title = paste0("Mean position: ", mean_pos_curr),
+      title = paste0("Mean position setting: ", mean_pos_setting_curr),
       x = "Number of stimulated cells",
       y = "Mean absolute error",
       color = "Method"
@@ -521,7 +534,7 @@ for (mean_pos_curr in unique(compare_summary$mean_pos)) {
       "sim",
       "compare",
       "freq_bs",
-      paste0("freq_bs_mae_meanpos_", mean_pos_curr, ".png")
+      paste0("freq_bs_mae_meanpos_setting_", mean_pos_setting_curr, ".png")
     ),
     plot = p,
     width = 18,
@@ -551,7 +564,7 @@ p_est_truth <- ggplot(
     x = c(0, max(plot_tbl$propRespTruth, na.rm = TRUE) * 2)
     ) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-  facet_grid(mean_pos ~ transformation) +
+  facet_grid(mean_pos_setting ~ transformation) +
   labs(
     x = "True background-subtracted response frequency",
     y = "Estimated background-subtracted response frequency",
@@ -598,7 +611,7 @@ p_fallback <- ggplot(
   geom_line() +
   geom_point() +
   scale_x_log10() +
-  facet_grid(prob_response ~ transformation) +
+  facet_grid(prob_response + mean_pos_setting ~ transformation) +
   labs(
     x = "Number of stimulated cells",
     y = "Threshold fallback rate",

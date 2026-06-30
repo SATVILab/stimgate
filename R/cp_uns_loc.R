@@ -1058,67 +1058,6 @@
 
 
 #' @keywords internal
-.getCpUnsLocGetDensRawDensitiesBwInit <- function(
-  .data,
-  bwMin,
-  bwMax,
-  bwFallback,
-  bwMtd,
-  bwAdj,
-  bwNcellMin,
-  bwNcellMax
-) {
-  .data <- suppressWarnings(as.numeric(.data))
-  .data <- .data[is.finite(.data)]
-
-  if (length(.data) < 2L || length(unique(.data)) < 2L) {
-    return(bwFallback)
-  }
-
-  if (!is.null(bwNcellMin) && length(.data) < bwNcellMin) {
-    iqrX <- diff(stats::quantile(.data, c(0.75, 0.25), na.rm = TRUE))
-    sdX <- abs(iqrX) / 1.5
-
-    if (!is.finite(sdX) || sdX <= 0) {
-      sdX <- stats::sd(.data, na.rm = TRUE)
-    }
-    if (!is.finite(sdX) || sdX <= 0) {
-      sdX <- .Machine$double.eps
-    }
-
-    .data <- sample(.data, replace = TRUE, size = bwNcellMin) +
-      stats::rnorm(bwNcellMin, mean = 0, sd = sdX / 10)
-  }
-
-  if (!is.null(bwNcellMax) && length(.data) > bwNcellMax) {
-    .data <- sample(.data, size = bwNcellMax, replace = FALSE)
-  }
-
-  bwCalc <- switch(
-    bwMtd,
-    "nrd0" = try(stats::bw.nrd0(.data), silent = TRUE),
-    "sj" = try(stats::bw.SJ(.data), silent = TRUE),
-    try(
-      suppressWarnings(
-        ks::hpi(.data, deriv.order = as.numeric(gsub("hpi", "", bwMtd)))
-      ),
-      silent = TRUE
-    )
-  )
-
-  if (
-    inherits(bwCalc, "try-error") ||
-      !is.finite(bwCalc) ||
-      bwCalc <= 0
-  ) {
-    return(bwFallback)
-  }
-
-  max(bwMin, min(as.numeric(bwCalc)[1] * bwAdj, bwMax))
-}
-
-
-#' @keywords internal
 .getCpUnsLocGetDensRawDensitiesStim <- function(
   exTblStimThreshold,
   bw
@@ -1212,20 +1151,36 @@
 }
 
 #' @keywords internal
-.getCpUnsLocGetProbTblInit <- function(densTblRaw, cpMin) {
-  densTblRaw |>
-    tidyr::pivot_wider(
-      id_cols = xStim,
-      names_from = stim,
-      values_from = dens # nolint
-    ) |>
-    dplyr::mutate(
-      probStim = 1 - no / yes, # nolint
-      probStim = ifelse(yes == 0 & no == 0, 0, probStim), # nolint
-      probStimNorm = pmin(1, probStim), # nolint
-      probStimNorm = pmax(0, probStimNorm) # nolint
-    ) |>
-    dplyr::filter(xStim > cpMin)
+.getCpUnsLocGetDensRawDensitiesBwInit <- function(
+  .data,
+  bwMin,
+  bwMax,
+  bwFallback,
+  bwMtd,
+  bwAdj,
+  bwNcellMin,
+  bwNcellMax
+) {
+  .data <- suppressWarnings(as.numeric(.data))
+  .data <- .data[is.finite(.data)]
+
+  if (length(.data) < 2L || length(unique(.data)) < 2L) {
+    return(bwFallback)
+  }
+
+  bwCalc <- .bwCalcOne(
+    x = .data,
+    bwMtd = bwMtd,
+    bwAdj = bwAdj,
+    bwNcellMin = bwNcellMin,
+    bwNcellMax = bwNcellMax
+  )
+
+  if (!is.finite(bwCalc) || bwCalc <= 0) {
+    return(bwFallback)
+  }
+
+  max(bwMin, min(as.numeric(bwCalc)[1], bwMax))
 }
 
 #' @keywords internal

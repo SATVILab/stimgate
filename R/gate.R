@@ -59,13 +59,13 @@
 #'   Must be either `"auto"` or a single positive numeric value. Unlike
 #'   `bwMin` and `bwMax`, `bwFallback` cannot be `NULL`, `"none"`, non-finite,
 #'   zero, or negative, because a valid fallback bandwidth is always required.
-#'   When `"auto"`, the fallback is calculated from randomly selected samples,
-#'   drawing a number of cells equal to the median cell count per sample.
+#'   When `"auto"`, the fallback is calculated from randomly selected samples
+#'   using the same bandwidth selector specified by `bwMtd`.
 #'   Default is `"auto"`.
-#' @param bwMtd character. Method for automated bandwidth selection. Options include "nrd0", "sj", "hpi0", "hpi1", "hpi2" and "hpi3", which corresponds to the Silverman rule of thumbg (`"nrd0"`), the Sheather-Jones plug-in estimator (`"sj"`) and the Wand & Jones plugin-estimator for the 0-th, 1st, 2nd and 3rd derivatives of the density (`"hpi1"`, `"hpi1"`, `"hpi2"` and `"hpi3"`). Default is "nrd0". Ignored if `bw` is set. Default is `"hpi1"`.
+#' @param bwMtd character. Method for automated bandwidth selection. Options include `"nrd0"`, `"sj"`, `"hpi0"`, `"hpi1"`, `"hpi2"` and `"hpi3"`, plus background-normalised variants `"nrd0Norm"`, `"sjNorm"`, `"hpi0Norm"`, `"hpi1Norm"`, `"hpi2Norm"` and `"hpi3Norm"`. The normalised variants estimate bandwidth on a Box-Cox-normalised background core with deliberate right-tail/excess augmentation, then map the result back to the original expression scale. Ignored if `bw` is set. Default is `"hpi1"`.
 #' @param bwAdj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
-#' @param bwNcellMin numeric. Minimum number of cells required for bandwidth estimation. If a sample has fewer cells than `bwNcellMin`, cells are sampled with replacement to reach the minimum, with noise subsequently added. Ignored if `bw` is set. Default is 100.
-#' @param bwNcellMax numeric. Maximum number of cells used for bandwidth estimation. If a sample has more cells than `bwNcellMax`, cells are sampled without replacement to reach the maximum. Ignored if `bw` is set. Default is 100 000.
+#' @param bwNcellMin numeric. Minimum number of cells requested by the bandwidth selector. For ordinary methods this controls internal up-sampling with jitter. For `*Norm` methods it is passed into the background-core/right-excess selector so rare right-tail cells are considered before any sampling is done. Ignored if `bw` is set. Default is 100.
+#' @param bwNcellMax numeric. Maximum number of cells requested by the bandwidth selector. For ordinary methods this controls internal down-sampling. For `*Norm` methods it limits the constructed background-core/right-excess bandwidth sample after the full distribution has been inspected. Ignored if `bw` is set. Default is 100 000.
 #' @param bwCluster numeric. Optional fallback bandwidth for cluster-based local-FDR imputation. The current cluster step first tries to use a common bandwidth calculated as the median bandwidth across samples with generated local-FDR thresholds. `bwCluster` is used as a fallback when that common bandwidth cannot be estimated. Default is `NULL`.
 #' @param minCell numeric. Minimum number of cells required for reliable gating.
 #'   Default is 100. Samples with fewer cells will be skipped as they don't provide
