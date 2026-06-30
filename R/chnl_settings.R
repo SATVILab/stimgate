@@ -140,7 +140,10 @@
     popGate = chnlSettings$popGate,
     chnlCut = chnl,
     pathProject = pathProject,
-    bwAdj = chnlSettings$bwAdj
+    bwMtd = chnlSettings$bwMtd,
+    bwAdj = chnlSettings$bwAdj,
+    bwNcellMin = chnlSettings$bwNcellMin,
+    bwNcellMax = chnlSettings$bwNcellMax
   )
 
   chnlSettings$bwMax <- .completeChnlSettingsBwMax(
@@ -150,7 +153,10 @@
     popGate = chnlSettings$popGate,
     chnlCut = chnl,
     pathProject = pathProject,
-    bwAdj = chnlSettings$bwAdj
+    bwMtd = chnlSettings$bwMtd,
+    bwAdj = chnlSettings$bwAdj,
+    bwNcellMin = chnlSettings$bwNcellMin,
+    bwNcellMax = chnlSettings$bwNcellMax
   )
 
   chnlSettings$bwFallback <- .completeChnlSettingsBwFallback(
@@ -161,7 +167,9 @@
     chnlCut = chnl,
     pathProject = pathProject,
     bwMtd = chnlSettings$bwMtd,
-    bwAdj = chnlSettings$bwAdj
+    bwAdj = chnlSettings$bwAdj,
+    bwNcellMin = chnlSettings$bwNcellMin,
+    bwNcellMax = chnlSettings$bwNcellMax
   )
 
   chnlSettings$biasUns <- .completeChnlSettingsBiasUns(
@@ -179,7 +187,10 @@
     chnlCut = chnl,
     pathProject = pathProject,
     bwCluster = chnlSettings$bwCluster,
+    bwMtd = chnlSettings$bwMtd,
     bwAdj = chnlSettings$bwAdj,
+    bwNcellMin = chnlSettings$bwNcellMin,
+    bwNcellMax = chnlSettings$bwNcellMax,
     bwFallback = chnlSettings$bwFallback
   )
 
@@ -294,35 +305,17 @@
 .completeChnlSettingsBwCalcOne <- function(
   x,
   bwMtd,
-  bwAdj
+  bwAdj,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL
 ) {
-  x <- x[is.finite(x)]
-
-  if (length(x) < 2L || length(unique(x)) < 2L) {
-    return(NA_real_)
-  }
-
-  bwCalc <- switch(
-    bwMtd,
-    "nrd0" = try(stats::bw.nrd0(x), silent = TRUE),
-    "sj" = try(stats::bw.SJ(x), silent = TRUE),
-    try(
-      suppressWarnings(
-        ks::hpi(x, deriv.order = as.numeric(gsub("hpi", "", bwMtd)))
-      ),
-      silent = TRUE
-    )
+  .bwCalcOne(
+    x = x,
+    bwMtd = bwMtd,
+    bwAdj = bwAdj,
+    bwNcellMin = bwNcellMin,
+    bwNcellMax = bwNcellMax
   )
-
-  if (inherits(bwCalc, "try-error") || !is.finite(bwCalc) || bwCalc <= 0) {
-    bwCalc <- try(stats::bw.nrd0(x), silent = TRUE)
-  }
-
-  if (inherits(bwCalc, "try-error") || !is.finite(bwCalc) || bwCalc <= 0) {
-    return(NA_real_)
-  }
-
-  as.numeric(bwCalc)[1] * bwAdj
 }
 
 #' @keywords internal
@@ -332,6 +325,7 @@
   popGate,
   chnlCut,
   pathProject,
+  bwMtd,
   bwAdj,
   nSampleBw
 ) {
@@ -344,23 +338,12 @@
   )
 
   bwVec <- purrr::map_dbl(xList, function(xVec) {
-    iqrX <- diff(stats::quantile(xVec, c(0.75, 0.25), na.rm = TRUE))
-    sdX <- abs(iqrX) / 1.5
-
-    if (!is.finite(sdX) || sdX <= 0) {
-      sdX <- stats::sd(xVec, na.rm = TRUE)
-    }
-    if (!is.finite(sdX) || sdX <= 0) {
-      sdX <- .Machine$double.eps
-    }
-
-    xVec <- sample(xVec, replace = TRUE, size = nSampleBw) +
-      stats::rnorm(nSampleBw, mean = 0, sd = sdX / 10)
-
     .completeChnlSettingsBwCalcOne(
       x = xVec,
-      bwMtd = "hpi1",
-      bwAdj = bwAdj
+      bwMtd = bwMtd,
+      bwAdj = bwAdj,
+      bwNcellMin = nSampleBw,
+      bwNcellMax = nSampleBw
     )
   })
 
@@ -380,7 +363,10 @@
   popGate,
   chnlCut,
   pathProject,
-  bwAdj
+  bwMtd,
+  bwAdj,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL
 ) {
   if (.completeChnlSettingsBwLimitIsNone(bwMax)) {
     return(Inf)
@@ -396,11 +382,11 @@
     popGate = popGate,
     chnlCut = chnlCut,
     pathProject = pathProject,
+    bwMtd = bwMtd,
     bwAdj = bwAdj,
     nSampleBw = 1e2
   )
 }
-
 
 #' @keywords internal
 .completeChnlSettingsBwMin <- function(
@@ -410,7 +396,10 @@
   popGate,
   chnlCut,
   pathProject,
-  bwAdj
+  bwMtd,
+  bwAdj,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL
 ) {
   if (.completeChnlSettingsBwLimitIsNone(bwMin)) {
     return(-1)
@@ -426,11 +415,11 @@
     popGate = popGate,
     chnlCut = chnlCut,
     pathProject = pathProject,
+    bwMtd = bwMtd,
     bwAdj = bwAdj,
     nSampleBw = 1e5
   )
 }
-
 
 #' @keywords internal
 .completeChnlSettingsBwFallback <- function(
@@ -441,7 +430,9 @@
   chnlCut,
   pathProject,
   bwMtd,
-  bwAdj
+  bwAdj,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL
 ) {
   if (!.completeChnlSettingsBwFallbackIsAuto(bwFallback)) {
     return(bwFallback)
@@ -468,26 +459,18 @@
     replace = FALSE
   )
 
-  xPool <- unlist(xListFallback, use.names = FALSE)
-  xPool <- xPool[is.finite(xPool)]
+  bwVec <- purrr::map_dbl(xListFallback, function(xVec) {
+    .completeChnlSettingsBwCalcOne(
+      x = xVec,
+      bwMtd = bwMtd,
+      bwAdj = bwAdj,
+      bwNcellMin = nCellFallback,
+      bwNcellMax = nCellFallback
+    )
+  })
+  bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
 
-  if (length(xPool) < 2L || length(unique(xPool)) < 2L) {
-    return(.Machine$double.eps)
-  }
-
-  xFallback <- sample(
-    xPool,
-    size = nCellFallback,
-    replace = length(xPool) < nCellFallback
-  )
-
-  bwOut <- .completeChnlSettingsBwCalcOne(
-    x = xFallback,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj
-  )
-
-  if (is.na(bwOut) || !is.finite(bwOut) || bwOut <= 0) {
+  if (length(bwVec) == 0L) {
     stop(
       "Failed to calculate fallback bandwidth for channel ",
       chnlCut,
@@ -495,7 +478,7 @@
     )
   }
 
-  bwOut
+  stats::median(bwVec, na.rm = TRUE)
 }
 
 #' @keywords internal
@@ -506,8 +489,11 @@
   chnlCut,
   pathProject,
   bwCluster,
+  bwMtd,
   bwAdj,
-  bwFallback
+  bwFallback,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL
 ) {
   if (!is.null(bwCluster)) {
     if (
@@ -554,17 +540,12 @@
           return(bwFallback)
         }
 
-        nSampleBw <- 1e4
-        xVec <- sample(
-          xVec,
-          replace = TRUE,
-          size = nSampleBw
-        )
-
         bwOut <- .completeChnlSettingsBwCalcOne(
           x = xVec,
-          bwMtd = "hpi1",
-          bwAdj = bwAdj
+          bwMtd = bwMtd,
+          bwAdj = bwAdj,
+          bwNcellMin = 1e4,
+          bwNcellMax = 1e4
         )
 
         if (!is.finite(bwOut) || bwOut <= 0) {

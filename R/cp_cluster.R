@@ -15,7 +15,6 @@
   calcCytPosGates,
   indBatchList
 ) {
-  .browse(seq_along(.data)) # nolint
   stageChnl <- file.path(stage, chnlSettings$chnlCut)
   control <- .getCpClusterControlUpdate(control) # nolint
 
@@ -39,8 +38,6 @@
 
   if (nrow(gateTblStim) == 0L) {
     cpTbl <- tibble::tibble()
-    cpTbl <- .getCpClusterLocAddFinalDetail(cpTbl, exLookup)
-    .intSaveNm("locDetailClusterFinal", cpTbl, "all", stageChnl, pathProject)
     .intSave("all", stageChnl, pathProject, cpTbl)
     return(cpTbl)
   }
@@ -50,8 +47,6 @@
       gateTblStim = gateTblStim,
       reason = "all_local_fdr_thresholds_available_skip_cluster"
     )
-    cpTbl <- .getCpClusterLocAddFinalDetail(cpTbl, exLookup)
-    .intSaveNm("locDetailClusterFinal", cpTbl, "all", stageChnl, pathProject)
     .intSave("all", stageChnl, pathProject, cpTbl)
     return(cpTbl)
   }
@@ -61,8 +56,6 @@
       gateTblStim = gateTblStim,
       reason = "no_generated_local_fdr_thresholds_for_tol_imputation"
     )
-    cpTbl <- .getCpClusterLocAddFinalDetail(cpTbl, exLookup)
-    .intSaveNm("locDetailClusterFinal", cpTbl, "all", stageChnl, pathProject)
     .intSave("all", stageChnl, pathProject, cpTbl)
     return(cpTbl)
   }
@@ -127,8 +120,6 @@
   }) |>
     dplyr::arrange(ind)
 
-  cpTbl <- .getCpClusterLocAddFinalDetail(cpTbl, exLookup)
-  .intSaveNm("locDetailClusterFinal", cpTbl, "all", stageChnl, pathProject)
   .intSave("all", stageChnl, pathProject, cpTbl)
   cpTbl
 }
@@ -247,71 +238,40 @@
 .getCpClusterLocBwOne <- function(x, chnlSettings) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
-
-  bwFallback <- suppressWarnings(as.numeric(chnlSettings$bwFallback))[1]
-  if (!is.finite(bwFallback) || bwFallback <= 0) {
-    bwFallback <- NA_real_
-  }
-
   if (length(x) < 5L || length(unique(x)) < 3L) {
-    return(bwFallback)
-  }
-  if (
-    !is.null(chnlSettings$bwNcellMax) && length(x) > chnlSettings$bwNcellMax
-  ) {
-    x <- sample(x, size = chnlSettings$bwNcellMax, replace = FALSE)
-  }
-  if (
-    !is.null(chnlSettings$bwNcellMin) && length(x) < chnlSettings$bwNcellMin
-  ) {
-    iqrX <- diff(stats::quantile(x, c(0.75, 0.25), na.rm = TRUE))
-    sdX <- abs(iqrX) / 1.5
-
-    if (!is.finite(sdX) || sdX <= 0) {
-      sdX <- stats::sd(x, na.rm = TRUE)
-    }
-    if (!is.finite(sdX) || sdX <= 0) {
-      sdX <- .Machine$double.eps
-    }
-
-    x <- sample(x, replace = TRUE, size = chnlSettings$bwNcellMin) +
-      stats::rnorm(chnlSettings$bwNcellMin, mean = 0, sd = sdX / 10)
+    return(NA_real_)
   }
 
   bwMtd <- chnlSettings$bwMtd %||% "hpi1"
   bwAdj <- chnlSettings$bwAdj %||% 1
   bwMin <- suppressWarnings(as.numeric(chnlSettings$bwMin))[1]
   bwMax <- suppressWarnings(as.numeric(chnlSettings$bwMax))[1]
-  if (!is.finite(bwMin) || bwMin <= 0) {
-    bwMin <- -1
+  bwFallback <- suppressWarnings(as.numeric(chnlSettings$bwFallback))[1]
+
+  if (!is.finite(bwMin)) {
+    bwMin <- .Machine$double.eps
   }
   if (!is.finite(bwMax) || bwMax <= 0) {
     bwMax <- Inf
   }
 
-  bwCalc <- switch(
-    bwMtd,
-    "nrd0" = try(stats::bw.nrd0(x), silent = TRUE),
-    "sj" = try(stats::bw.SJ(x), silent = TRUE),
-    try(
-      suppressWarnings(
-        ks::hpi(x, deriv.order = as.numeric(gsub("hpi", "", bwMtd)))
-      ),
-      silent = TRUE
-    )
+  bwCalc <- .bwCalcOne(
+    x = x,
+    bwMtd = bwMtd,
+    bwAdj = bwAdj,
+    bwNcellMin = chnlSettings$bwNcellMin,
+    bwNcellMax = chnlSettings$bwNcellMax
   )
 
-  if (
-    inherits(bwCalc, "try-error") ||
-      !is.finite(bwCalc) ||
-      bwCalc <= 0
-  ) {
-    return(bwFallback)
+  if (!is.finite(bwCalc) || bwCalc <= 0) {
+    if (is.finite(bwFallback) && bwFallback > 0) {
+      return(max(bwMin, min(bwFallback, bwMax)))
+    }
+    return(NA_real_)
   }
 
-  max(bwMin, min(as.numeric(bwCalc)[1] * bwAdj, bwMax))
+  max(bwMin, min(bwCalc, bwMax))
 }
-
 
 #' @keywords internal
 .getCpClusterLocExprRange <- function(exLookup) {
@@ -816,101 +776,6 @@
     dplyr::arrange(.data$dist) |>
     dplyr::slice(1) |>
     dplyr::pull("cp")
-}
-
-
-#' @keywords internal
-.getCpClusterLocThresholdOrigin <- function(row) {
-  reason <- as.character(row$locClusterReason[1] %||% NA_character_)
-  locSource <- as.character(row$locSource[1] %||% NA_character_)
-  locGenerated <- row$locGenerated[1] %in% TRUE
-  locGeneratedDirect <- row$locGeneratedDirect[1] %in% TRUE
-
-  if (reason %in% "imputed_from_cluster_median_signed_tol") {
-    return("cluster_imputed_from_similar_conditions")
-  }
-  if (locGenerated && locGeneratedDirect && locSource %in% "direct") {
-    return("condition_detected_response")
-  }
-  if (locGenerated && locSource %in% "combined") {
-    return("sample_imputed_from_other_stim_conditions")
-  }
-  if (locGenerated && locSource %in% "prejoin") {
-    return("prejoin_generated_from_joined_stim_conditions")
-  }
-  if (reason %in% "local_fdr_available") {
-    return("local_fdr_available")
-  }
-  if (!locGenerated) {
-    return("not_generated_fallback")
-  }
-  "generated_unknown_source"
-}
-
-#' @keywords internal
-.getCpClusterLocPropBsAtCp <- function(cp, exPair) {
-  cp <- suppressWarnings(as.numeric(cp))[1]
-  if (
-    !is.finite(cp) ||
-      is.null(exPair) ||
-      is.null(exPair$stim) ||
-      is.null(exPair$uns) ||
-      !is.data.frame(exPair$stim) ||
-      !is.data.frame(exPair$uns) ||
-      nrow(exPair$stim) == 0L ||
-      nrow(exPair$uns) == 0L
-  ) {
-    return(tibble::tibble(
-      locFinalNCellStim = if (
-        !is.null(exPair$stim) && is.data.frame(exPair$stim)
-      ) {
-        nrow(exPair$stim)
-      } else {
-        NA_integer_
-      },
-      locFinalNCellUns = if (
-        !is.null(exPair$uns) && is.data.frame(exPair$uns)
-      ) {
-        nrow(exPair$uns)
-      } else {
-        NA_integer_
-      },
-      locFinalPropStim = NA_real_,
-      locFinalPropUns = NA_real_,
-      locFinalPropBs = NA_real_
-    ))
-  }
-  propStim <- sum(.getCut(exPair$stim) >= cp, na.rm = TRUE) / nrow(exPair$stim)
-  propUns <- sum(.getCut(exPair$uns) >= cp, na.rm = TRUE) / nrow(exPair$uns)
-  tibble::tibble(
-    locFinalNCellStim = nrow(exPair$stim),
-    locFinalNCellUns = nrow(exPair$uns),
-    locFinalPropStim = propStim,
-    locFinalPropUns = propUns,
-    locFinalPropBs = propStim - propUns
-  )
-}
-
-#' @keywords internal
-.getCpClusterLocAddFinalDetail <- function(cpTbl, exLookup) {
-  if (!is.data.frame(cpTbl) || nrow(cpTbl) == 0L) {
-    return(cpTbl)
-  }
-  detailTbl <- purrr::map_df(seq_len(nrow(cpTbl)), function(i) {
-    row <- cpTbl[i, , drop = FALSE]
-    cp <- suppressWarnings(as.numeric(row$cpJoinLseOrigMeanTg[1]))
-    if (!is.finite(cp)) {
-      cp <- suppressWarnings(as.numeric(row$cpJoinTgOrig[1]))
-    }
-    exPair <- exLookup[[as.character(row$ind[1])]]
-    .getCpClusterLocPropBsAtCp(cp = cp, exPair = exPair) |>
-      dplyr::mutate(
-        locFinalThreshold = cp,
-        locFinalThresholdOrigin = .getCpClusterLocThresholdOrigin(row),
-        locFinalThresholdGenerated = is.finite(cp)
-      )
-  })
-  dplyr::bind_cols(cpTbl, detailTbl)
 }
 
 #' @keywords internal

@@ -51,40 +51,43 @@ if (
 
 ## Aim
 
-This page checks that the simulated expression distributions look sensible under the three transformation settings used in the bandwidth simulations. Here, `mean_pos` is varied separately from 4 to 12 so that we can choose low, medium, and high separation settings for each transformation.
+This page checks that the simulated expression distributions look sensible under the three transformation settings used in the bandwidth simulations. Here, `mean_pos` is chosen separately for each transformation, with low and high settings selected after inspecting the transformed distributions.
 
 ```{r}
 #| label: main-settings
 main_settings <- tibble::tibble(
   n_cell = 1e5,
-  prob_response = 0.002,
   background_relative_to_response = 0.2,
   prob_exact = TRUE,
   mixture_type = "gaussianOnly",
   cluster_perturbation_sd = 0,
-  cov_ev_min = 2,
-  cov_ev_max = 2
+  cov_ev_min = 1.5,
+  cov_ev_max = 1.5
 )
 
-mean_pos_vec <- 4:12
+mean_pos_settings_tbl <- .simMiscGetMeanPosTbl() |>
+  dplyr::mutate(
+    prob_response = 0.002
+  )
+
 transformation_vec <- c("gaussian", "gamma", "skew")
+mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 
 main_settings
-````
+```
 
-The figures below simulate one unstimulated and one stimulated condition for each combination of `mean_pos` and transformation. The stimulated sample has an excess response probability of `r main_settings$prob_response[[1]]`, while the unstimulated sample has background response probability equal to `prob_response * background_relative_to_response`.
+The figures below simulate one unstimulated and one stimulated condition for each selected transformation-specific `mean_pos` setting. The stimulated sample has an excess response probability of `r mean_pos_settings_tbl$prob_response[[1]]`, while the unstimulated sample has background response probability equal to `prob_response * background_relative_to_response`.
 
 ```{r}
 #| label: helpers
 #| include: false
-
 sim_trans_univariate_one <- function(
   transformation,
   mean_pos,
+  prob_response,
   settings = main_settings
 ) {
   n_cell <- settings$n_cell[[1]]
-  prob_response <- settings$prob_response[[1]]
   background_relative_to_response <-
     settings$background_relative_to_response[[1]]
 
@@ -139,7 +142,9 @@ sim_trans_univariate_one <- function(
 make_density_tbl <- function(.data, n = 2048) {
   .data |>
     dplyr::group_by(
+      .data$mean_pos_setting,
       .data$mean_pos,
+      .data$prob_response,
       .data$transformation,
       .data$condition
     ) |>
@@ -151,7 +156,12 @@ make_density_tbl <- function(.data, n = 2048) {
         return(tibble::tibble(F1 = numeric(), density = numeric()))
       }
 
-      dens <- stats::density(x, n = n)
+      bw <- switch(as.character(.y$transformation)[[1]],
+      "gamma" = 0.025,
+      0.15
+      )
+
+      dens <- stats::density(x, n = n, bw = bw)
 
       tibble::tibble(
         F1 = dens$x,
@@ -164,29 +174,29 @@ make_density_tbl <- function(.data, n = 2048) {
 
 ## Mean-positive transformation grid
 
-Each row corresponds to one latent `mean_pos` value, and each column corresponds to one transformation. The y-axis is square-root transformed to make rare response components easier to see. Dotted vertical lines mark the realised negative component mean in the unstimulated condition and the realised positive component mean in the stimulated condition.
+Each row corresponds to the low or high transformation-specific `mean_pos` setting, and each column corresponds to one transformation. The y-axis is square-root transformed to make rare response components easier to see. Dotted vertical lines mark the realised negative component mean in the unstimulated condition and the realised positive component mean in the stimulated condition.
 
 ```{r}
 #| label: simulate-mean-pos-grid-univariate
 #| fig-width: 12
 #| fig-height: 18
-#| fig-cap: "Univariate simulated expression for mean_pos from 4 to 12 across transformations. The y-axis is square-root transformed to make the rare response component easier to see."
+#| fig-cap: "Univariate simulated expression for transformation-specific low and high mean_pos settings. The y-axis is square-root transformed to make the rare response component easier to see."
 
 set.seed(1)
 
-uni_grid <- tidyr::expand_grid(
-  mean_pos = mean_pos_vec,
-  transformation = transformation_vec
-)
+uni_grid <- mean_pos_settings_tbl
 
 uni_tbl <- purrr::pmap_dfr(
   uni_grid,
-  function(mean_pos, transformation) {
+  function(transformation, mean_pos_setting, mean_pos, prob_response) {
     sim_trans_univariate_one(
       transformation = transformation,
       mean_pos = mean_pos,
+      prob_response = prob_response,
       settings = main_settings
-    )
+    ) |>
+      dplyr::mutate(mean_pos_setting = mean_pos_setting) |>
+      dplyr::mutate(prob_response = prob_response)
   }
 ) |>
   dplyr::mutate(
@@ -194,9 +204,19 @@ uni_tbl <- purrr::pmap_dfr(
       .data$transformation,
       levels = transformation_vec
     ),
-    mean_pos_lab = factor(
-      paste0("mean_pos = ", .data$mean_pos),
-      levels = paste0("mean_pos = ", mean_pos_vec)
+    mean_pos_setting = factor(
+      .data$mean_pos_setting,
+      levels = c("low", "high")
+    ),
+    mean_pos_lab = paste0(
+      .data$mean_pos_setting,
+      " (mean_pos = ",
+      .data$mean_pos,
+      ")"
+    ),
+    prob_response = factor(
+      .data$prob_response,
+      levels = sort(unique(.data$prob_response))
     ),
     condition = factor(
       .data$condition,
@@ -210,9 +230,19 @@ dens_tbl <- make_density_tbl(uni_tbl) |>
       .data$transformation,
       levels = transformation_vec
     ),
-    mean_pos_lab = factor(
-      paste0("mean_pos = ", .data$mean_pos),
-      levels = paste0("mean_pos = ", mean_pos_vec)
+    mean_pos_setting = factor(
+      .data$mean_pos_setting,
+      levels = c("low", "high")
+    ),
+    mean_pos_lab = paste0(
+      .data$mean_pos_setting,
+      " (mean_pos = ",
+      .data$mean_pos,
+      ")"
+    ),
+    prob_response = factor(
+      .data$prob_response,
+      levels = sort(unique(.data$prob_response))
     ),
     condition = factor(
       .data$condition,
@@ -241,6 +271,7 @@ mean_line_tbl <- uni_tbl |>
     )
   ) |>
   dplyr::group_by(
+    .data$mean_pos_setting,
     .data$mean_pos,
     .data$mean_pos_lab,
     .data$transformation,
@@ -289,13 +320,13 @@ p <- ggplot(
     linewidth = 0.15
   ) +
   facet_grid(
-    rows = vars(.data$mean_pos_lab),
+    rows = vars(.data$mean_pos_setting),
     cols = vars(.data$transformation),
     scales = "free_x"
   ) +
   scale_y_sqrt() +
   labs(
-    x = "F1 expression",
+    x = "Marker expression",
     y = "Density, square-root scale",
     colour = NULL,
     fill = NULL,
@@ -309,7 +340,10 @@ p <- ggplot(
     legend.position = "bottom",
     strip.text.y = element_text(angle = 0)
   ) +
-  coord_cartesian(ylim = c(0, 1))
+  coord_cartesian(ylim = c(0, 1)) +
+  scale_colour_manual(
+    values = .simMiscGetStimColVec()
+  )
 
 path_p <- projr::projr_path_get(
   "output",
@@ -322,7 +356,7 @@ ggsave(
   filename = path_p,
   plot = p,
   width = 30,
-  height = 40,
+  height = 18,
   units = "cm",
   dpi = 300
 )
@@ -334,6 +368,7 @@ p
 #| label: univariate-counts-by-mean-pos
 uni_tbl |>
   dplyr::count(
+    .data$mean_pos_setting,
     .data$mean_pos,
     .data$transformation,
     .data$condition,
@@ -341,6 +376,7 @@ uni_tbl |>
     name = "n_cell"
   ) |>
   dplyr::group_by(
+    .data$mean_pos_setting,
     .data$mean_pos,
     .data$transformation,
     .data$condition
@@ -348,163 +384,5 @@ uni_tbl |>
   dplyr::mutate(
     prop_cell = .data$n_cell / sum(.data$n_cell)
   ) |>
-  dplyr::ungroup()
-```
-
-
-### Test scenarios
-
-```{r}
-
-```
-
-This page checks that the simulated expression distributions look sensible under the three transformation settings used in the bandwidth simulations. The main scenario is:
-
-```{r}
-#| label: main-settings
-main_settings <- tibble::tibble(
-  mean_pos = 4,
-  n_cell = 1e5,
-  prob_response = 0.002,
-  background_relative_to_response = 0.2,
-  prob_exact = TRUE,
-  mixture_type = "gaussianOnly",
-  cluster_perturbation_sd = 0,
-  cov_ev_min = 2,
-  cov_ev_max = 2
-)
-
-main_settings
-```
-
-The figures below simulate only one stimulated condition at a time. For the univariate plots, the matching unstimulated condition is also shown for comparison.
-
-```{r}
-#| label: helpers
-#| include: false
-transformation_vec <- c("gaussian", "gamma", "skew")
-```
-
-## Main univariate transformation check
-
-The first figure shows the univariate scenario for the main settings. The stimulated sample has an excess response probability of `r main_settings$prob_response[[1]]`, while the unstimulated sample has background response probability equal to `prob_response * background_relative_to_response`.
-Positive cells are also shown as rug marks along the x-axis.
-
-```{r}
-#| label: simulate-main-univariate
-#| fig-width: 12
-#| fig-height: 4.8
-#| fig-cap: "Univariate simulated expression under the three transformations. The y-axis is square-root transformed to make the rare response component easier to see. Dotted vertical lines mark the transformed negative and positive component means."
-
-set.seed(1)
-
-uni_tbl <- purrr::map_dfr(
-  transformation_vec,
-  sim_trans_univariate_one
-)
-
-uni_plot_list <- purrr::map(
-  transformation_vec,
-  ~ plot_univariate_transformation(uni_tbl, .x)
-)
-
-p <- cowplot::plot_grid(
-  plotlist = uni_plot_list,
-  nrow = 1,
-  align = "hv"
-)
-path_p <- projr::projr_path_get(
-  "output",
-  "sim",
-  "trans",
-  "main-univariate.png"
-)
-ggsave(
-  filename = path_p,
-  plot = p,
-  width = 30,
-  height = 15,
-  units = "cm",
-  dpi = 300
-)
-p
-```
-
-```{r}
-#| label: univariate-counts
-uni_tbl |>
-  dplyr::count(
-    .data$transformation,
-    .data$condition,
-    .data$response_class,
-    name = "n_cell"
-  ) |>
-  dplyr::group_by(.data$transformation, .data$condition) |>
-  dplyr::mutate(prop_cell = .data$n_cell / sum(.data$n_cell)) |>
-  dplyr::ungroup()
-```
-
-## Extra 2-by-3 transformation check
-
-The next figure keeps the univariate comparison in the top row and adds a bivariate stimulated condition in the bottom row. In the bivariate stimulated condition, the excess response probability is split equally across F1-only, F2-only and F1/F2 co-expressing cells. The background response probability is also split equally across those three response classes.
-
-```{r}
-#| label: simulate-main-univariate-and-bivariate
-#| fig-width: 12
-#| fig-height: 9
-#| fig-cap: "Top row: univariate stimulated versus unstimulated simulations. Bottom row: bivariate stimulated simulations with equal probability assigned to F1-only, F2-only and F1/F2 co-expressing response classes. For the bivariate row, background cells are down-sampled for display and all response cells are retained."
-
-set.seed(2)
-
-bi_tbl <- purrr::map_dfr(
-  transformation_vec,
-  sim_trans_bivariate_one
-)
-
-top_row <- purrr::map(
-  transformation_vec,
-  ~ plot_univariate_transformation(uni_tbl, .x) +
-    theme(legend.position = "none")
-)
-
-bottom_row <- purrr::map(
-  transformation_vec,
-  ~ plot_bivariate_transformation(bi_tbl, .x) +
-    theme(legend.position = "none")
-)
-
-p <- cowplot::plot_grid(
-  plotlist = c(top_row, bottom_row),
-  ncol = length(transformation_vec),
-  align = "hv"
-)
-path_p <- projr::projr_path_get(
-  "output",
-  "sim",
-  "trans",
-  "main-univariate-and-bivariate.png"
-)
-ggsave(
-  filename = path_p,
-  plot = p,
-  width = 30,
-  height = 22.5,
-  units = "cm",
-  dpi = 300
-)
-p
-```
-
-```{r}
-#| label: bivariate-counts
-
-bi_tbl |>
-  dplyr::count(
-    .data$transformation,
-    .data$response_class,
-    name = "n_cell"
-  ) |>
-  dplyr::group_by(.data$transformation) |>
-  dplyr::mutate(prop_cell = .data$n_cell / sum(.data$n_cell)) |>
   dplyr::ungroup()
 ```

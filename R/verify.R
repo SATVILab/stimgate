@@ -122,15 +122,52 @@
   if (!is.null(bw) && (!is.numeric(bw) || length(bw) != 1 || bw <= 0)) {
     stop("`bw` must be a single positive numeric value, or NULL.")
   }
-  .verifyBwLimit(bwMin, "bwMin")
-  .verifyBwLimit(bwMax, "bwMax")
-  .verifyBwFallback(bwFallback, allow_null = FALSE)
-  .verifyBwLimitsOrdered(bwMin, bwMax)
+
+  .verifyBwLimit <- function(x, nm, allow_none = TRUE) {
+    if (is.null(x)) {
+      return(invisible(TRUE))
+    }
+    if (is.character(x) && length(x) == 1L) {
+      validChar <- if (allow_none) c("auto", "none") else "auto"
+      if (tolower(x) %in% validChar) {
+        return(invisible(TRUE))
+      }
+    }
+    if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0) {
+      stop(sprintf(
+        "`%s` must be a single positive numeric value%s.",
+        nm,
+        if (allow_none) ", `auto`, `none`, or NULL" else " or `auto`"
+      ))
+    }
+    invisible(TRUE)
+  }
+
+  .verifyBwLimit(bwMin, "bwMin", allow_none = TRUE)
+  .verifyBwLimit(bwMax, "bwMax", allow_none = TRUE)
+  .verifyBwLimit(bwFallback, "bwFallback", allow_none = FALSE)
+
+  if (is.numeric(bwMin) && is.numeric(bwMax) && bwMax < bwMin) {
+    stop("`bwMax` must be greater than or equal to `bwMin`.")
+  }
   if (!is.numeric(bwAdj) || length(bwAdj) != 1 || bwAdj <= 0) {
     stop("`bwAdj` must be a single positive numeric multiplier.")
   }
 
-  validBwMtds <- c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
+  validBwMtds <- c(
+    "nrd0",
+    "sj",
+    "hpi0",
+    "hpi1",
+    "hpi2",
+    "hpi3",
+    "nrd0Norm",
+    "sjNorm",
+    "hpi0Norm",
+    "hpi1Norm",
+    "hpi2Norm",
+    "hpi3Norm"
+  )
   if (is.null(bw) && !bwMtd %in% validBwMtds) {
     stop(sprintf(
       "`bwMtd` must be one of: %s",
@@ -376,23 +413,29 @@
   ) {
     stop(paste0(prefix, "`bw` must be a single positive numeric value."))
   }
-  tryCatch(
-    .verifyBwLimit(settings$bwMin, "bwMin"),
-    error = function(e) stop(paste0(prefix, e$message), call. = FALSE)
-  )
-  tryCatch(
-    .verifyBwLimit(settings$bwMax, "bwMax"),
-    error = function(e) stop(paste0(prefix, e$message), call. = FALSE)
-  )
-  tryCatch(
-    .verifyBwFallback(settings$bwFallback, allow_null = FALSE),
-    error = function(e) stop(paste0(prefix, e$message), call. = FALSE)
-  )
-  .verifyBwLimitsOrdered(
-    bwMin = settings$bwMin,
-    bwMax = settings$bwMax,
-    prefix = prefix
-  )
+  if (
+    !is.null(settings$bwMin) &&
+      (!is.numeric(settings$bwMin) ||
+        length(settings$bwMin) != 1 ||
+        settings$bwMin <= 0)
+  ) {
+    stop(paste0(prefix, "`bwMin` must be a single positive numeric value."))
+  }
+  if (
+    !is.null(settings$bwMax) &&
+      (!is.numeric(settings$bwMax) ||
+        length(settings$bwMax) != 1 ||
+        settings$bwMax <= 0)
+  ) {
+    stop(paste0(prefix, "`bwMax` must be a single positive numeric value."))
+  }
+  if (
+    !is.null(settings$bwMin) &&
+      !is.null(settings$bwMax) &&
+      settings$bwMax < settings$bwMin
+  ) {
+    stop(paste0(prefix, "`bwMax` must be >= `bwMin`."))
+  }
   if (
     !is.null(settings$bwAdj) &&
       (!is.numeric(settings$bwAdj) ||
@@ -414,6 +457,32 @@
     stop(paste0(prefix, "`maxPosProbX` must be a single numeric value."))
   }
 
+  .verifyBwLimitSetting <- function(x, nm, allow_none = TRUE) {
+    if (is.null(x)) {
+      return(invisible(TRUE))
+    }
+    if (is.character(x) && length(x) == 1L) {
+      validChar <- if (allow_none) c("auto", "none") else "auto"
+      if (tolower(x) %in% validChar) {
+        return(invisible(TRUE))
+      }
+    }
+    if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0) {
+      stop(paste0(
+        prefix,
+        "`",
+        nm,
+        "` must be a positive numeric value",
+        if (allow_none) ", `auto`, `none`, or NULL." else " or `auto`."
+      ))
+    }
+    invisible(TRUE)
+  }
+
+  .verifyBwLimitSetting(settings$bwMin, "bwMin", allow_none = TRUE)
+  .verifyBwLimitSetting(settings$bwMax, "bwMax", allow_none = TRUE)
+  .verifyBwLimitSetting(settings$bwFallback, "bwFallback", allow_none = FALSE)
+
   # Check Character strings
   if (
     "popGate" %in%
@@ -423,7 +492,20 @@
     stop(paste0(prefix, "`popGate` must be a single character string."))
   }
 
-  validBwMtds <- c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
+  validBwMtds <- c(
+    "nrd0",
+    "sj",
+    "hpi0",
+    "hpi1",
+    "hpi2",
+    "hpi3",
+    "nrd0Norm",
+    "sjNorm",
+    "hpi0Norm",
+    "hpi1Norm",
+    "hpi2Norm",
+    "hpi3Norm"
+  )
   if (
     !is.null(settings$bwMtd) &&
       (!is.character(settings$bwMtd) ||
@@ -551,92 +633,5 @@
     stop(paste0(prefix, "`locTolRefPeak` must be either 'highest' or 'first'."))
   }
 
-  invisible(TRUE)
-}
-
-#' @keywords internal
-.verifyBwLimit <- function(x, name) {
-  if (is.null(x)) {
-    return(invisible(TRUE))
-  }
-
-  if (is.character(x)) {
-    if (
-      length(x) != 1L ||
-        !tolower(x) %in% c("auto", "none")
-    ) {
-      stop(sprintf(
-        "`%s` must be \"auto\", \"none\", a single numeric value, or NULL.",
-        name
-      ))
-    }
-    return(invisible(TRUE))
-  }
-
-  if (!is.numeric(x) || length(x) != 1L) {
-    stop(sprintf(
-      "`%s` must be \"auto\", \"none\", a single numeric value, or NULL.",
-      name
-    ))
-  }
-
-  if (name == "bwMin") {
-    if (!is.finite(x) || !(x > 0 || identical(x, -1))) {
-      stop(
-        "`bwMin` must be a positive numeric value, -1, \"auto\", \"none\", or NULL."
-      )
-    }
-  }
-
-  if (name == "bwMax") {
-    if (is.na(x) || x <= 0) {
-      stop(
-        "`bwMax` must be a positive numeric value, Inf, \"auto\", \"none\", or NULL."
-      )
-    }
-  }
-
-  invisible(TRUE)
-}
-
-#' @keywords internal
-.verifyBwFallback <- function(x, allow_null = FALSE) {
-  if (is.null(x)) {
-    if (allow_null) {
-      return(invisible(TRUE))
-    }
-    stop("`bwFallback` must be \"auto\" or a single positive numeric value.")
-  }
-
-  if (is.character(x)) {
-    if (length(x) != 1L || tolower(x) != "auto") {
-      stop("`bwFallback` must be \"auto\" or a single positive numeric value.")
-    }
-    return(invisible(TRUE))
-  }
-
-  if (
-    !is.numeric(x) ||
-      length(x) != 1L ||
-      !is.finite(x) ||
-      x <= 0
-  ) {
-    stop("`bwFallback` must be \"auto\" or a single positive numeric value.")
-  }
-
-  invisible(TRUE)
-}
-
-#' @keywords internal
-.verifyBwLimitsOrdered <- function(bwMin, bwMax, prefix = "") {
-  if (is.character(bwMin) || is.character(bwMax)) {
-    return(invisible(TRUE))
-  }
-  if (is.null(bwMin) || is.null(bwMax)) {
-    return(invisible(TRUE))
-  }
-  if (bwMax < bwMin) {
-    stop(paste0(prefix, "`bwMax` must be greater than or equal to `bwMin`."))
-  }
   invisible(TRUE)
 }

@@ -41,8 +41,30 @@ calc_skew <- function(x, epsilon = 0.5, delta = 1) {
   out / sqrt(gamma_divisor)
 }
 
+.simMiscGetMeanPosTbl <- function() {
+  tibble::tribble(
+    ~transformation , ~mean_pos_setting , ~mean_pos ,
+    "gaussian"      , "low"             , 4.5       ,
+    "gaussian"      , "high"            , 8         ,
+    "skew"          , "low"             , 6         ,
+    "skew"          , "high"            , 8.5       ,
+    "gamma"         , "low"             , 4         ,
+    "gamma"         , "high"            , 7
+  ) |>
+    dplyr::mutate(
+      mean_pos_setting = factor(
+        .data$mean_pos_setting,
+        levels = c("low", "high")
+      )
+    )
+}
 
-set.seed(3)
-rnorm_vec <- rnorm(1e3)
-sample_skew_corrected(rnorm_vec)
-sample_skew_corrected(calc_skew(rnorm_vec))
+.simMiscGetStimColVec <- function() {
+  uns_nm_vec <- c("uns", "unstim", "unstimulated")
+  stim_nm_vec <- c("stim", "stimulated")
+  c(
+    rep("#0072B2", length(uns_nm_vec)), # blue
+    rep("#D55E00", length(stim_nm_vec)) # vermillion
+  ) |>
+    stats::setNames(c(uns_nm_vec, stim_nm_vec))
+}
