@@ -90,7 +90,7 @@ bias_uns_vec <- c(0, 0.05, 0.1, seq(0.2, 2, by = 0.2))[c(2, 4)]
 
 if ("quick" %in% projr::projr_profile_get()) {
   n_cell_stim_vec <- c(1e3, 5e4)
-  prob_respose_vec <-  c(0.002, 0.02)
+  prob_response_vec <- c(0.002, 0.02)
   bandwidth_value_vec <- c(0.01, 0.1, 0.5, 0.5, 1)
   bias_uns_vec <- 0.1
   bandwidth_value_vec <- c(0.05, 0.1, 0.25, 0.5, 0.75)
@@ -395,6 +395,7 @@ bw_list_raw <- progressr::with_progress({
             method = NA_character_,
             propRespTruth = NA_real_,
             propRespEst = NA_real_,
+            propBsEst = NA_real_,
             threshold = NA_real_,
             thresholdOrigin = NA_character_,
             gateReturnPoint = NA_character_,
@@ -432,57 +433,85 @@ Collate the results and calculate the metrics of interest.
 
 ```{r}
 #| label: bw-manual-collate
-#| error: true
-path_vec <- c(
-  projr::projr_path_get(
-    "output",
-    "sim",
-    "bw",
-    "freq_bs",
-    "bw_list_raw.rds",
-    safe = TRUE
-  ),
-  projr::projr_path_get(
-    "output",
-    "sim",
-    "bw",
-    "freq_bs",
-    "bw_list_raw.rds",
-    safe = FALSE
-  ),
-  projr::projr_path_get(
-    "raw-data-archive-manual",
-    "v0.103.0",
-    "output",
-    "sim",
-    "bw",
-    "freq_bs",
-    "bw_list_raw.rds",
-    safe = FALSE
+.add_missing_cols <- function(.data, cols) {
+  for (nm in names(cols)) {
+    if (!nm %in% names(.data)) {
+      .data[[nm]] <- cols[[nm]]
+    }
+  }
+  .data
+}
+
+# Prefer the object just created in this render. If this chunk is re-run alone,
+# fall back to the cached/output RDS. Do not allow a failed collation to be
+# silently swallowed, otherwise later chunks fail with an unhelpful
+# "object not found" error.
+if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
+  bw_list_raw_collate <- bw_list_raw
+} else {
+  path_vec <- c(
+    projr::projr_path_get(
+      "output",
+      "sim",
+      "bw",
+      "freq_bs",
+      "bw_list_raw.rds",
+      safe = TRUE
+    ),
+    projr::projr_path_get(
+      "output",
+      "sim",
+      "bw",
+      "freq_bs",
+      "bw_list_raw.rds",
+      safe = FALSE
+    ),
+    projr::projr_path_get(
+      "raw-data-archive-manual",
+      "v0.103.0",
+      "output",
+      "sim",
+      "bw",
+      "freq_bs",
+      "bw_list_raw.rds",
+      safe = FALSE
+    )
+  )
+  path_vec <- path_vec[file.exists(path_vec)]
+  if (length(path_vec) == 0L) {
+    stop("Could not find bw_list_raw.rds, and bw_list_raw is not available in memory.")
+  }
+  bw_list_raw_collate <- readRDS(file = path_vec[[1]])
+}
+
+bw_tbl <- bw_list_raw_collate |>
+  purrr::list_rbind()
+
+bw_tbl <- .add_missing_cols(
+  bw_tbl,
+  list(
+    iter = NA_integer_,
+    sample = NA_character_,
+    ind = NA_character_,
+    propBsEst = NA_real_,
+    threshold = NA_real_
   )
 )
-path_vec <- path_vec[file.exists(path_vec)][[1]]
-bw_list_raw <- readRDS(
-  file = path_vec
-)
-
-bw_tbl <- bw_list_raw |>
-  purrr::list_rbind()
 
 bw_tbl_results_raw <- bw_tbl |>
   dplyr::select(
-    any_of(colnames(sim_grid)),
+    dplyr::any_of(colnames(sim_grid)),
     iter,
     sample,
     ind,
     propBsEst,
     threshold
   ) |>
-  dplyr::filter(!is.na(threshold) & !is.na(propBsEst)) |>
+  dplyr::filter(is.finite(threshold) & is.finite(propBsEst)) |>
   dplyr::group_by(sim_id, iter, ind) |>
   dplyr::mutate(
-    threshold = setdiff(unique(threshold), NA)[[1]],
-    propBsEst = setdiff(unique(propBsEst), NA)[[1]]
+    threshold = unique(threshold[is.finite(threshold)])[[1]],
+    propBsEst = unique(propBsEst[is.finite(propBsEst)])[[1]]
   ) |>
   dplyr::ungroup() |>
   dplyr::group_by(
@@ -493,33 +522,45 @@ bw_tbl_results_raw <- bw_tbl |>
   dplyr::slice(1) |>
   dplyr::ungroup()
 
+if (nrow(bw_tbl_results_raw) == 0L) {
+  warning(
+    "No valid bandwidth-frequency results were collated. ",
+    "Check the progress log for simulation-level errors."
+  )
+}
+
 bw_tbl_results_summary <- bw_tbl_results_raw |>
   dplyr::group_by(
     dplyr::pick(dplyr::any_of(colnames(sim_grid)))
   ) |>
   dplyr::summarise(
-    across(
+    dplyr::across(
       c(threshold, propBsEst),
       list(
         min = ~ min(.x, na.rm = TRUE),
         max = ~ max(.x, na.rm = TRUE),
         mean = ~ mean(.x, na.rm = TRUE),
-        median = ~ median(.x, na.rm = TRUE)
+        median = ~ stats::median(.x, na.rm = TRUE)
       )
     ),
     .groups = "drop"
   ) |>
   dplyr::mutate(
     propBsEst_median_diff = propBsEst_median - prob_response,
-    propBsEst_median_diff_rel = (propBsEst_median - prob_response) / prob_response
+    propBsEst_median_diff_rel = (propBsEst_median - prob_response) /
+      prob_response
   )
 ```
 
 Okay, now we must plot which bandwidths are best for which scenarios.
 
 ```{r}
-sim_grid |>
-  UtilsDataRSV::view_cols()
+if (requireNamespace("UtilsDataRSV", quietly = TRUE)) {
+  sim_grid |>
+    UtilsDataRSV::view_cols()
+} else {
+  dplyr::glimpse(sim_grid)
+}
 ```
 
 Okay, so we varied the transformation, the prob_response, the n_cell, the mean_pos_setting, the bw.
@@ -585,6 +626,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
     "median",
     paste0("bw_est_vs_n_cell_mean_pos_setting_", mean_pos_setting_curr, ".png")
   )
+  dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
   ggsave(
     filename = path_p,
     plot = p,
@@ -641,6 +683,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
     "raw",
     paste0("actual_freq_vs_n_cell_mean_pos_setting_", mean_pos_setting_curr, ".png")
   )
+  dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
   ggsave(
     filename = path_p,
     plot = p,
@@ -708,6 +751,38 @@ make_bw_linetype_scale <- function(bw_vec, digits = 2) {
   list(
     levels = bw_lab,
     values = stats::setNames(lty, bw_lab)
+  )
+}
+```
+
+```{r}
+# These objects are only needed for the optional density/rug overlay in the
+# threshold plots. Keep the document renderable if they have not been prepared
+# in this run.
+if (!exists("dens_tbl")) {
+  dens_tbl <- tibble::tibble(
+    F1 = numeric(),
+    density = numeric(),
+    condition = character(),
+    prob_response = numeric(),
+    transformation = character(),
+    mean_pos_setting = character()
+  )
+}
+
+if (!exists("rug_tbl")) {
+  rug_tbl <- tibble::tibble(
+    F1 = numeric(),
+    condition = character(),
+    prob_response = numeric(),
+    transformation = character(),
+    mean_pos_setting = character()
+  )
+}
+
+if (!exists("mean_line_tbl")) {
+  mean_line_tbl <- tibble::tibble(
+    mean_pos_setting = character()
   )
 }
 ```
@@ -800,6 +875,7 @@ for (mean_pos_setting in unique(bw_tbl_results_summary$mean_pos_setting)) {
       "median",
       paste0("threshold_vs_n_cell_mean_pos_setting_", mean_pos_setting, ".png")
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       filename = path_p,
       plot = p,
@@ -817,6 +893,9 @@ So, now, we loop not just over mean_pos_settings, but also over the bandwidths.
 ```{r}
 for (mean_pos_setting in unique(bw_tbl_results_raw$mean_pos_setting)) {
   for (bw_curr in unique(bw_tbl_results_raw$bw)) {
+    if (!is.finite(bw_curr)) {
+      next
+    }
     threshold_tbl_curr <- bw_tbl_results_raw |>
       dplyr::filter(
         mean_pos_setting == !!mean_pos_setting,
@@ -936,6 +1015,7 @@ for (mean_pos_setting in unique(bw_tbl_results_raw$mean_pos_setting)) {
         ".png"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       filename = path_p,
       plot = p,
