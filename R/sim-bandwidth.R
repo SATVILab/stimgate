@@ -4,7 +4,13 @@
   "hpi2" = "#74c476",
   "hpi3" = "#c7e9c0",
   "nrd0" = "#fe9929",
-  "sj" = "#3d8bb3ff"
+  "sj" = "#3d8bb3ff",
+  "hpi0Norm" = "#54278f",
+  "hpi1Norm" = "#756bb1",
+  "hpi2Norm" = "#9e9ac8",
+  "hpi3Norm" = "#cbc9e2",
+  "nrd0Norm" = "#d95f0e",
+  "sjNorm" = "#2b8cbe"
 )
 
 .simBandwidthReadRdsOrNull <- function(path) {
@@ -969,11 +975,10 @@
         bwFallback = bwFallback
       )
 
-      bw_stim <- if (bw_stim == bwFallback) {
-        NA_real_
-      } else {
-        bw_stim
-      }
+      bw_stim <- .simBandwidthRemoveFallbackBw(
+        bw = bw_stim,
+        bwFallback = bwFallback
+      )
 
       bw_uns <- .simBandwidthBwOne(
         x = x_cap$x_uns,
@@ -986,11 +991,10 @@
         bwFallback = bwFallback
       )
 
-      bw_uns <- if (bw_uns == bwFallback) {
-        NA_real_
-      } else {
-        bw_uns
-      }
+      bw_uns <- .simBandwidthRemoveFallbackBw(
+        bw = bw_uns,
+        bwFallback = bwFallback
+      )
 
       bw_final <- if (!is.null(bw)) {
         bw
@@ -1024,8 +1028,9 @@
         bw = bw_final,
         bw_source = dplyr::case_when(
           !is.null(bw) ~ "fixed",
-          is.finite(bw_stim) & is.finite(bw_uns) & bw_stim <= bw_uns ~ "stim",
-          is.finite(bw_stim) & is.finite(bw_uns) ~ "unstim",
+          is.finite(bw_stim) &
+            (!is.finite(bw_uns) || bw_stim <= bw_uns) ~ "stim",
+          is.finite(bw_uns) ~ "unstim",
           TRUE ~ NA_character_
         )
       )
@@ -1183,8 +1188,11 @@
 #' Bandwidth estimate for one vector
 #'
 #' This is the vector-only equivalent of
-#' .getCpUnsLocGetDensRawDensitiesBwInit(), but with nrd0 and SJ returning
-#' the numeric density bandwidth via $bw.
+#' .getCpUnsLocGetDensRawDensitiesBwInit(). It intentionally routes through
+#' .bwCalcOne() when available so that the direct bandwidth simulations use the
+#' same ordinary and *Norm bandwidth methods as the gating code. In particular,
+#' hpi0Norm, hpi1Norm, hpi2Norm, hpi3Norm, sjNorm and nrd0Norm are handled by
+#' the shared normalised-bandwidth helper rather than by this wrapper.
 #'
 #' @keywords internal
 .simBandwidthBwOne <- function(
@@ -1197,66 +1205,174 @@
   bwNcellMax,
   bwFallback
 ) {
+  x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
   if (length(x) < 2L || length(unique(x)) < 2L) {
-    return(bwMin %||% NA_real_)
-  }
-
-  if (!is.null(bwNcellMin) && is.finite(bwNcellMin) && length(x) < bwNcellMin) {
-    iqrX <- diff(stats::quantile(x, c(0.75, 0.25), na.rm = TRUE))
-    sdX <- abs(iqrX) / 1.5
-
-    if (!is.finite(sdX) || sdX <= 0) {
-      sdX <- stats::sd(x, na.rm = TRUE)
-    }
-    if (!is.finite(sdX) || sdX <= 0) {
-      sdX <- .Machine$double.eps
-    }
-
-    x <- sample(x, replace = TRUE, size = bwNcellMin) +
-      stats::rnorm(bwNcellMin, mean = 0, sd = sdX / 10)
-  }
-
-  if (!is.null(bwNcellMax) && is.finite(bwNcellMax) && length(x) > bwNcellMax) {
-    x <- sample(x, size = bwNcellMax, replace = FALSE)
+    return(.simBandwidthBwFallbackOrNa(bwFallback))
   }
 
   bw_calc <- tryCatch(
-    switch(
-      bwMtd,
-      "nrd0" = stats::density(x, bw = "nrd0")$bw,
-      "sj" = stats::density(x, bw = "SJ")$bw,
-      "hpi0" = ks::hpi(x = x, deriv.order = 0),
-      "hpi1" = ks::hpi(x = x, deriv.order = 1),
-      "hpi2" = ks::hpi(x = x, deriv.order = 2),
-      "hpi3" = ks::hpi(x = x, deriv.order = 3),
-      stop("Unrecognised bwMtd: ", bwMtd)
-    ),
+    {
+      if (exists(".bwCalcOne", mode = "function")) {
+        .bwCalcOne(
+          x = x,
+          bwMtd = bwMtd,
+          bwAdj = bwAdj,
+          bwNcellMin = bwNcellMin,
+          bwNcellMax = bwNcellMax
+        )
+      } else {
+        .simBandwidthBwOneBaseLegacy(
+          x = x,
+          bwMtd = bwMtd,
+          bwAdj = bwAdj,
+          bwNcellMin = bwNcellMin,
+          bwNcellMax = bwNcellMax
+        )
+      }
+    },
     error = function(e) NA_real_
   )
 
-  bw_calc <- as.numeric(bw_calc)[1]
+  bw_calc <- suppressWarnings(as.numeric(bw_calc)[1])
 
-  if (!is.finite(bw_calc)) {
-    if (is.null(bwFallback)) {
-      stop("Bandwidth calculation failed and no bwFallback provided.")
-    }
-    return(bwFallback %||% NA_real_)
+  if (!is.finite(bw_calc) || bw_calc <= 0) {
+    return(.simBandwidthBwFallbackOrNa(bwFallback))
   }
 
-  bw_calc <- bw_calc * bwAdj
-
-  if (!is.null(bwMin)) {
-    bw_calc <- max(bwMin, bw_calc)
+  if (.simBandwidthIsFiniteScalar(bwMin)) {
+    bw_calc <- max(as.numeric(bwMin)[1], bw_calc)
   }
-  if (!is.null(bwMax)) {
-    bw_calc <- min(bwMax, bw_calc)
+  if (.simBandwidthIsFiniteScalar(bwMax)) {
+    bw_calc <- min(as.numeric(bwMax)[1], bw_calc)
   }
 
   bw_calc
 }
 
+#' @keywords internal
+.simBandwidthRemoveFallbackBw <- function(
+  bw,
+  bwFallback
+) {
+  bw <- suppressWarnings(as.numeric(bw)[1])
+
+  if (!is.finite(bw)) {
+    return(NA_real_)
+  }
+
+  if (!.simBandwidthIsFiniteScalar(bwFallback)) {
+    return(bw)
+  }
+
+  if (isTRUE(all.equal(bw, as.numeric(bwFallback)[1], tolerance = 0))) {
+    return(NA_real_)
+  }
+
+  bw
+}
+
+#' @keywords internal
+.simBandwidthIsFiniteScalar <- function(x) {
+  is.numeric(x) && length(x) == 1L && is.finite(x)
+}
+
+#' @keywords internal
+.simBandwidthBwFallbackOrNa <- function(bwFallback) {
+  if (is.null(bwFallback)) {
+    return(NA_real_)
+  }
+
+  bwFallback <- suppressWarnings(as.numeric(bwFallback)[1])
+
+  if (!is.finite(bwFallback) || bwFallback <= 0) {
+    return(NA_real_)
+  }
+
+  bwFallback
+}
+
+#' @keywords internal
+.simBandwidthBwOneBaseLegacy <- function(
+  x,
+  bwMtd,
+  bwAdj,
+  bwNcellMin,
+  bwNcellMax
+) {
+  x <- suppressWarnings(as.numeric(x))
+  x <- x[is.finite(x)]
+
+  if (length(x) < 2L || length(unique(x)) < 2L) {
+    return(NA_real_)
+  }
+
+  if (.simBandwidthIsFiniteScalar(bwNcellMin) && length(x) < bwNcellMin) {
+    sdX <- .simBandwidthRobustSd(x)
+    x <- sample(x, replace = TRUE, size = bwNcellMin) +
+      stats::rnorm(bwNcellMin, mean = 0, sd = sdX / 10)
+  }
+
+  if (.simBandwidthIsFiniteScalar(bwNcellMax) && length(x) > bwNcellMax) {
+    x <- sample(x, size = bwNcellMax, replace = FALSE)
+  }
+
+  bwMtd <- as.character(bwMtd)[1]
+  if (grepl("Norm$", bwMtd)) {
+    return(NA_real_)
+  }
+
+  bwMtdBase <- bwMtd
+
+  bw_calc <- switch(
+    bwMtdBase,
+    "nrd0" = try(stats::bw.nrd0(x), silent = TRUE),
+    "sj" = try(stats::bw.SJ(x), silent = TRUE),
+    {
+      derivOrder <- suppressWarnings(as.numeric(gsub("^hpi", "", bwMtdBase)))
+
+      if (!is.finite(derivOrder)) {
+        return(NA_real_)
+      }
+
+      try(
+        suppressWarnings(
+          ks::hpi(x = x, deriv.order = derivOrder)
+        ),
+        silent = TRUE
+      )
+    }
+  )
+
+  if (inherits(bw_calc, "try-error") || !is.finite(bw_calc) || bw_calc <= 0) {
+    return(NA_real_)
+  }
+
+  as.numeric(bw_calc)[1] * bwAdj
+}
+
+#' @keywords internal
+.simBandwidthRobustSd <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  x <- x[is.finite(x)]
+
+  if (length(x) < 2L) {
+    return(.Machine$double.eps)
+  }
+
+  iqrX <- diff(stats::quantile(x, c(0.75, 0.25), na.rm = TRUE))
+  sdX <- abs(iqrX) / 1.5
+
+  if (!is.finite(sdX) || sdX <= 0) {
+    sdX <- stats::sd(x, na.rm = TRUE)
+  }
+  if (!is.finite(sdX) || sdX <= 0) {
+    sdX <- .Machine$double.eps
+  }
+
+  sdX
+}
 
 #' @keywords internal
 .simBandwidthExcMin <- function(x) {

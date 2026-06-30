@@ -54,10 +54,10 @@ transformation_vec <- c("gaussian", "gamma", "skew")
 mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 
 # bandwidth settings
-bandwidth_method_vec <- c("hpi0Norm", "hpi1Norm", "hpi2Norm", "hpi3Norm", "sjNorm", "nrd0Norm")
+bandwidth_method_vec <- c("hpi0Norm", "hpi1Norm", "hpi2Norm", "hpi3Norm", "sjNorm", "nrd0Norm", "hpi1", "hpi2", "hpi3", "sj", "nrd0")
 
 # set this later
-bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
+bandwidth_ncell_upper_vec <- c(5e2, 1e3, 2.5e3, 5e3, 1e4, 2e4, 5e4, Inf)
 bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
 bias_uns_vec <- seq(0, 2, by = 0.2)
 ```
@@ -68,11 +68,13 @@ sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
   prob_response  = prob_response_vec,
   n_cell         = n_cell_stim_vec,
-  bw_mtd         = bandwidth_method_vec
+  bw_mtd         = bandwidth_method_vec,
+  bw_ncell_upper = bandwidth_ncell_upper_vec
 ) |>
   dplyr::select(
     transformation, prob_response, n_cell,
-    mean_pos_setting, mean_pos, bw_mtd
+    mean_pos_setting, mean_pos, bw_mtd,
+    bw_ncell_upper
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
@@ -88,7 +90,8 @@ if ("dev" %in% projr::projr_profile_get()) {
       prob_response == 0.002,
       mean_pos_setting == "high",
       transformation %in% transformation_vec,
-      bw_mtd == "hpi1Norm"
+      bw_mtd == "hpi2Norm",
+      bw_ncell_upper == bw_ncell_upper_vec[[1]]
     )
 }
 sim_grid
@@ -118,21 +121,24 @@ for (i in seq_len(nrow(sim_grid))) {
     sim_grid$mean_pos[i],
     " | bw_mtd = ",
     sim_grid$bw_mtd[i],
+    " | bw_ncell_upper = ",
+    sim_grid$bw_ncell_upper[i],
     " | sim_id = ",
     sim_grid$sim_id[i]
   )
 
   message("Running: ", settings_row)
   bw_list_raw_mtd_loop[[i]] <- stimgate:::.simBandwidthEstBwDirect(
-    nSample = 10,
+    nSample = 2,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
-    nIter = 10,
+    nIter = 1,
     biasUns = 0.05,
     bwMtd = sim_grid$bw_mtd[i],
     bwMin = -Inf,
     bwMax = Inf,
+    bwNcellMax = sim_grid$bw_ncell_upper[i],
     bwFallback = bw_fallback,
     bwCluster = 0.5,
     nCellStim = sim_grid$n_cell[i],
@@ -154,6 +160,7 @@ for (i in seq_len(nrow(sim_grid))) {
       mean_pos_setting = sim_grid$mean_pos_setting[i],
       mean_pos = sim_grid$mean_pos[i],
       bw_mtd = sim_grid$bw_mtd[i],
+      bw_ncell_upper = sim_grid$bw_ncell_upper[i],
       sim_id = sim_grid$sim_id[i]
     ) |>
     dplyr::select(
@@ -163,6 +170,7 @@ for (i in seq_len(nrow(sim_grid))) {
       mean_pos_setting,
       mean_pos,
       bw_mtd,
+      bw_ncell_upper,
       sim_id,
       dplyr::everything()
     )
@@ -185,17 +193,18 @@ bw_list_raw_mtd_loop |>
   dplyr::bind_rows() |>
   dplyr::group_by(
     transformation, prob_response, n_cell,
-    mean_pos, bw_mtd, chnl,
+    mean_pos, bw_mtd, bw_ncell_upper, chnl,
     n_cell_stim, n_cell_uns
   ) |>
   dplyr::summarise(
+    n_est = sum(is.finite(bw)),
     mean_bw_stim = mean(bw_stim, na.rm = TRUE),
     mean_bw_uns = mean(bw_uns, na.rm = TRUE),
     mean_bw = mean(bw, na.rm = TRUE),
     .groups = "drop"
   ) |>
   dplyr::select(
-    transformation, mean_bw
+    transformation, bw_mtd, bw_ncell_upper, n_est, mean_bw_stim, mean_bw_uns, mean_bw
   )
 ```
 
@@ -230,7 +239,7 @@ bw_list_raw_mtd <- progressr::with_progress({
 
   furrr::future_pmap(
     sim_grid,
-    function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos, bw_mtd, sim_id) {
+    function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos, bw_mtd, bw_ncell_upper, sim_id) {
       settings_row <- paste0(
         "trans = ",
         transformation,
@@ -242,6 +251,8 @@ bw_list_raw_mtd <- progressr::with_progress({
         mean_pos,
         " | bw_mtd = ",
         bw_mtd,
+        " | bw_ncell_upper = ",
+        bw_ncell_upper,
         " | sim_id = ",
         sim_id
       )
@@ -262,6 +273,7 @@ bw_list_raw_mtd <- progressr::with_progress({
             bwFallback = bw_fallback,
             bwMin = -Inf,
             bwMax = Inf,
+            bwNcellMax = bw_ncell_upper,
             bwCluster = 0.5,
             nCellStim = n_cell,
             probResponse = prob_response,
@@ -282,6 +294,7 @@ bw_list_raw_mtd <- progressr::with_progress({
               mean_pos_setting = mean_pos_setting,
               mean_pos = mean_pos,
               bw_mtd = bw_mtd,
+              bw_ncell_upper = bw_ncell_upper,
               sim_id = sim_id
             ) |>
             dplyr::select(
@@ -291,6 +304,7 @@ bw_list_raw_mtd <- progressr::with_progress({
               mean_pos_setting,
               mean_pos,
               bw_mtd,
+              bw_ncell_upper,
               sim_id,
               dplyr::everything()
             )
@@ -320,6 +334,7 @@ bw_list_raw_mtd <- progressr::with_progress({
             mean_pos_setting = mean_pos_setting,
             mean_pos = mean_pos,
             bw_mtd = bw_mtd,
+            bw_ncell_upper = bw_ncell_upper,
             sim_id = sim_id,
             iter = NA_integer_,
             chnl = NA_character_,
@@ -407,46 +422,47 @@ bw_tbl_results <- bw_list_raw_mtd |>
   )
 
 for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
-  plot_tbl <- bw_tbl_results |>
-    dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr)
-  p <- ggplot(
-    plot_tbl,
-    aes(x = n_cell, y = mean_bw, color = bw_mtd)
-  ) +
-    geom_line() +
-    geom_point() +
-    scale_x_log10() +
-    facet_grid(
-      prob_response ~ transformation
+  for (bw_ncell_upper_curr in unique(bw_tbl_results$bw_ncell_upper)) {
+    plot_tbl <- bw_tbl_results |>
+      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr, bw_ncell_upper == !!bw_ncell_upper_curr)
+    p <- ggplot(
+      plot_tbl,
+      aes(x = n_cell, y = mean_bw, color = bw_mtd)
     ) +
-    labs(
-      title = paste0("Mean position setting: ", mean_pos_setting_curr),
-      x = "Number of Cells",
-      y = "Estimated Bandwidth"
-    ) +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
-    theme(
-      panel.background = element_rect(fill = "white", color = NA),
-      plot.background = element_rect(fill = "white", color = NA),
-      legend.position = "bottom"
-    ) +
-    scale_colour_manual(
-      values = .simBwMtdColVec
-    )
-    ggsave(
-      filename = projr::projr_path_get(
-        "output",
-        "sim",
-        "bw_norm",
-        "est",
-        paste0("bw_estimate_meanpos_setting_", mean_pos_setting_curr, ".png")
-      ),
-      plot = p,
-      width = 18,
-      height = 15,
-      units = "cm"
-    )
+      geom_line() +
+      geom_point() +
+      scale_x_log10() +
+      facet_grid(
+        prob_response ~ transformation
+      ) +
+      labs(
+        title = paste0("Mean position setting: ", mean_pos_setting_curr),
+        x = "Number of Cells",
+        y = "Estimated Bandwidth"
+      ) +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "xy") +
+      theme(
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA),
+        legend.position = "bottom"
+      ) +
+      scale_colour_manual(
+        values = .simBwMtdColVec
+      )
+      ggsave(
+        filename = projr::projr_path_get(
+          "output",
+          "sim",
+          "bw_norm",
+          "est",
+          paste0("bw_estimate_meanpos_setting_", mean_pos_setting_curr, "_ncell_upper_", bw_ncell_upper_curr, ".png")
+        ),
+        plot = p,
+        width = 18,
+        height = 15,
+        units = "cm"
+      )
 }
 ```
 
