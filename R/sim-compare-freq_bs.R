@@ -2,8 +2,8 @@
 #'
 #' The functions in this file compare the fixed-bandwidth StimGate estimate
 #' against two alternative gates:
-#'   1. an R translation of the fbeta histogram method
-#'   2. a tailgate-style density derivative cutpoint
+#'   1. the fbeta implementation in scripts/python/fbeta.py, called via reticulate
+#'   2. the tailgate implementation in the cytoUtils/openCyto helper scripts
 #'
 #' @keywords internal
 
@@ -12,6 +12,8 @@ if (!exists("%||%", mode = "function")) {
     if (is.null(x)) y else x
   }
 }
+
+.simCompareCacheEnv <- new.env(parent = emptyenv())
 
 #' @keywords internal
 .simCompareAddMissingColumns <- function(.data, cols) {
@@ -68,120 +70,117 @@ if (!exists("%||%", mode = "function")) {
 #' Moving mean with leading NA values, matching fbeta.py
 #'
 #' @keywords internal
-.simCompareMoveMean <- function(x, window) {
-  x <- as.numeric(x)
-  window <- as.integer(window)
-  if (length(x) == 0L || window <= 1L) {
-    return(x)
-  }
-  if (length(x) < window) {
-    return(rep(NA_real_, length(x)))
-  }
-  xs <- cumsum(x)
-  x1 <- xs[window:length(x)]
-  x2 <- c(0, xs[seq_len(length(x) - window)])
-  c(rep(NA_real_, window - 1L), (x1 - x2) / window)
-}
-
-#' Calculate the fbeta score from two density vectors
-#'
-#' This is an R translation of calculate_fscore() in fbeta.py.
+#' Locate the fbeta Python script
 #'
 #' @keywords internal
-.simCompareFbetaCalculateFscore <- function(
-  negPdf,
-  posPdf,
-  beta = 0.8,
-  theta = 2
-) {
-  negPdf <- as.numeric(negPdf)
-  posPdf <- as.numeric(posPdf)
-  if (length(negPdf) != length(posPdf)) {
-    stop("negPdf and posPdf must have the same length.")
+.simCompareFbetaPath <- function(pathFbeta = NULL) {
+  if (!is.null(pathFbeta)) {
+    return(pathFbeta)
   }
-
-  n <- length(negPdf)
-  fpos <- ifelse(posPdf > theta * negPdf, posPdf - negPdf, 0)
-  fpos[!is.finite(fpos)] <- 0
-
-  tp <- vapply(
-    seq_len(n),
-    function(i) sum(fpos[i:n], na.rm = FALSE),
-    numeric(1)
-  )
-  fn <- vapply(
-    seq_len(n),
-    function(i) {
-      if (i == 1L) {
-        return(0)
-      }
-      sum(fpos[seq_len(i - 1L)], na.rm = FALSE)
-    },
-    numeric(1)
-  )
-  fp <- vapply(
-    seq_len(n),
-    function(i) sum(negPdf[i:n], na.rm = FALSE),
-    numeric(1)
-  )
-
-  precision <- tp / (tp + fp)
-  precision[tp == 0] <- 0
-  recall <- tp / (tp + fn)
-  recall[recall == 0] <- 0
-
-  fscores <- (1 + beta * beta) *
-    (precision * recall) /
-    (beta * beta * precision + recall)
-  fscores[!is.finite(fscores)] <- 0
-  precision[!is.finite(precision)] <- 0
-  recall[!is.finite(recall)] <- 0
-
-  list(
-    fscores = fscores,
-    precision = precision,
-    recall = recall
-  )
+  if (!requireNamespace("projr", quietly = TRUE)) {
+    stop(
+      "pathFbeta was not supplied and projr is not available. ",
+      "Pass pathFbeta explicitly."
+    )
+  }
+  projr::projr_path_get("project", "scripts", "python", "fbeta.py")
 }
 
-#' @keywords internal
-.simCompareHistDensity <- function(x, bins) {
-  x <- as.numeric(x)
-  x <- x[is.finite(x)]
-  if (length(x) == 0L) {
-    return(rep(0, length(bins) - 1L))
-  }
-
-  # np.histogram ignores values outside the supplied breaks.
-  # Match that behaviour before calling stats::hist().
-  x <- x[x >= bins[1] & x <= bins[length(bins)]]
-  if (length(x) == 0L) {
-    return(rep(0, length(bins) - 1L))
-  }
-
-  stats::hist(
-    x,
-    breaks = bins,
-    plot = FALSE,
-    include.lowest = TRUE,
-    right = FALSE
-  )$density
-}
-
-#' Calculate an fbeta positivity threshold from unstim and stim vectors
+#' Patch a temporary copy of fbeta.py only for Python 3 / NumPy compatibility
 #'
-#' This mirrors get_positivity_threshold() in fbeta.py, with the typo in the
-#' Python function name corrected internally.
+#' The thresholding itself is still called from the fbeta.py implementation.
+#' This wrapper only fixes import/syntax issues that prevent reticulate from
+#' loading the historical script in a modern Python session.
+#'
+#' @keywords internal
+.simCompareFbetaCompatPath <- function(pathFbeta, patchPy2Compat = TRUE) {
+  if (!file.exists(pathFbeta)) {
+    stop("Could not find fbeta.py at: ", pathFbeta)
+  }
+
+  if (!isTRUE(patchPy2Compat)) {
+    return(pathFbeta)
+  }
+
+  pyTxt <- readLines(pathFbeta, warn = FALSE)
+
+  pyTxt <- gsub("normed\\s*=\\s*True", "density=True", pyTxt)
+  pyTxt <- gsub("calculate_fscores", "calculate_fscore", pyTxt, fixed = TRUE)
+
+  # The plotting helpers use Python 2 print syntax. They are not used for the
+  # threshold, but Python 3 still has to parse them on import.
+  pyTxt <- gsub(
+    '^([[:space:]]*)print "([^"]*)"$',
+    '\\1print("\\2")',
+    pyTxt
+  )
+  pyTxt <- gsub(
+    "^([[:space:]]*)print '([^']*)'$",
+    '\\1print("\\2")',
+    pyTxt
+  )
+  pyTxt <- gsub(
+    "^([[:space:]]*)print '([^']*)', (.*)$",
+    '\\1print("\\2", \\3)',
+    pyTxt
+  )
+
+  # fcm is only needed by plotting/tick helpers, not by get_positivity_threshold.
+  pyTxt <- gsub(
+    "^from fcm\\.graphics import bilinear_interpolate$",
+    paste(
+      "try:",
+      "    from fcm.graphics import bilinear_interpolate",
+      "except Exception:",
+      "    bilinear_interpolate = None",
+      sep = "\n"
+    ),
+    pyTxt
+  )
+  pyTxt <- gsub(
+    "^from fcm\\.core\\.transforms import _logicle as logicle$",
+    paste(
+      "try:",
+      "    from fcm.core.transforms import _logicle as logicle",
+      "except Exception:",
+      "    def logicle(x, *args, **kwargs):",
+      "        return x",
+      sep = "\n"
+    ),
+    pyTxt
+  )
+
+  pathTmp <- file.path(
+    tempdir(),
+    paste0(
+      "fbeta_reticulate_",
+      Sys.getpid(),
+      "_",
+      as.integer(stats::runif(1, 1, 1e9)),
+      ".py"
+    )
+  )
+  writeLines(pyTxt, pathTmp)
+  pathTmp
+}
+
+#' Call the fbeta Python implementation via reticulate
 #'
 #' @keywords internal
 .simCompareFbetaThreshold <- function(
   xUns,
   xStim,
+  pathFbeta = NULL,
+  patchPy2Compat = TRUE,
   beta = 0.8,
   theta = 2,
   width = 10,
   numBins = NULL
 ) {
+  if (!requireNamespace("reticulate", quietly = TRUE)) {
+    stop("reticulate is required to call fbeta.py.")
+  }
+
   xUns <- as.numeric(xUns)
   xStim <- as.numeric(xStim)
   xUns <- xUns[is.finite(xUns)]
@@ -191,214 +190,184 @@ if (!exists("%||%", mode = "function")) {
     return(list(
       threshold = NA_real_,
       thresholdMetric = NA_real_,
-      thresholdOrigin = "failed_too_few_cells",
-      pdfx = numeric(),
-      pdfneg = numeric(),
-      pdfpos = numeric(),
-      fscores = numeric(),
-      precision = numeric(),
-      recall = numeric()
+      thresholdOrigin = "failed_too_few_cells"
     ))
   }
 
-  if (is.null(numBins)) {
-    numBins <- floor(sqrt(max(length(xUns), length(xStim))))
+  pathFbeta <- .simCompareFbetaPath(pathFbeta)
+  pathInfo <- file.info(pathFbeta)
+  cacheName <- make.names(paste(
+    "fbeta",
+    normalizePath(pathFbeta, winslash = "/", mustWork = FALSE),
+    patchPy2Compat,
+    pathInfo$mtime,
+    sep = "_"
+  ))
+
+  if (!exists(cacheName, envir = .simCompareCacheEnv, inherits = FALSE)) {
+    pathPyUse <- .simCompareFbetaCompatPath(
+      pathFbeta = pathFbeta,
+      patchPy2Compat = patchPy2Compat
+    )
+
+    pyEnv <- new.env(parent = emptyenv())
+    reticulate::source_python(pathPyUse, envir = pyEnv)
+
+    if (!exists("get_positivity_threshold", envir = pyEnv, inherits = FALSE)) {
+      stop("fbeta.py did not define get_positivity_threshold().")
+    }
+
+    assign(cacheName, pyEnv, envir = .simCompareCacheEnv)
   }
-  numBins <- max(2L, as.integer(numBins))
 
-  rng <- range(xUns, na.rm = TRUE)
-  if (!all(is.finite(rng)) || diff(rng) <= 0) {
-    return(list(
-      threshold = NA_real_,
-      thresholdMetric = NA_real_,
-      thresholdOrigin = "failed_zero_unstim_range",
-      pdfx = numeric(),
-      pdfneg = numeric(),
-      pdfpos = numeric(),
-      fscores = numeric(),
-      precision = numeric(),
-      recall = numeric()
-    ))
-  }
+  pyEnv <- get(cacheName, envir = .simCompareCacheEnv, inherits = FALSE)
 
-  bins <- seq(rng[1], rng[2], length.out = numBins + 1L)
-  pdfNeg <- .simCompareHistDensity(xUns, bins)
-  pdfPos <- .simCompareHistDensity(xStim, bins)
+  negMat <- matrix(xUns, ncol = 1L)
+  posMat <- matrix(xStim, ncol = 1L)
 
-  pdfNeg <- .simCompareMoveMean(pdfNeg, window = width)
-  pdfPos <- .simCompareMoveMean(pdfPos, window = width)
-
-  xs <- (bins[-length(bins)] + bins[-1L]) / 2
-  score <- .simCompareFbetaCalculateFscore(
-    negPdf = pdfNeg,
-    posPdf = pdfPos,
+  out <- pyEnv$get_positivity_threshold(
+    neg = negMat,
+    pos = posMat,
+    channelIndex = 0L,
     beta = beta,
-    theta = theta
+    theta = theta,
+    width = as.integer(width),
+    numBins = if (is.null(numBins)) NULL else as.integer(numBins)
   )
 
-  if (length(score$fscores) == 0L || all(!is.finite(score$fscores))) {
-    threshold <- NA_real_
-    metric <- NA_real_
-    origin <- "failed_no_finite_score"
+  threshold <- suppressWarnings(as.numeric(out[["threshold"]]))[1]
+  fscores <- suppressWarnings(as.numeric(out[["fscores"]]))
+  metric <- if (length(fscores) > 0L && any(is.finite(fscores))) {
+    max(fscores, na.rm = TRUE)
   } else {
-    threshold <- xs[which.max(score$fscores)]
-    metric <- max(score$fscores, na.rm = TRUE)
-    origin <- if (is.finite(metric) && metric > 0) {
-      "calculated"
-    } else {
-      "calculated_zero_fscore"
-    }
+    NA_real_
   }
 
   list(
     threshold = threshold,
     thresholdMetric = metric,
-    thresholdOrigin = origin,
-    pdfx = xs,
-    pdfneg = pdfNeg,
-    pdfpos = pdfPos,
-    fscores = score$fscores,
-    precision = score$precision,
-    recall = score$recall
+    thresholdOrigin = if (is.finite(threshold)) {
+      "calculated"
+    } else {
+      "failed_no_cutpoint"
+    },
+    fbeta = out
   )
 }
 
-#' @keywords internal
-.simCompareFindPeaks <- function(
-  x,
-  y = NULL,
-  numPeaks = NULL,
-  adjust = 2,
-  bandwidth = NULL,
-  ...
-) {
-  x <- as.vector(x)
-
-  if (length(x) < 2L) {
-    return(data.frame(x = NA_real_, y = NA_real_))
-  }
-
-  if (is.null(y)) {
-    dens <- if (is.null(bandwidth)) {
-      stats::density(x, adjust = adjust, ...)
-    } else {
-      stats::density(x, bw = bandwidth, adjust = adjust, ...)
-    }
-  } else {
-    y <- as.vector(y)
-    if (length(x) != length(y)) {
-      stop("The lengths of x and y must be equal.")
-    }
-    dens <- list(x = x, y = y)
-  }
-
-  secondDeriv <- diff(sign(diff(dens$y)))
-  whichMaxima <- which(secondDeriv == -2) + 1L
-  whichMaxima <- whichMaxima[
-    findInterval(dens$x[whichMaxima], range(x, na.rm = TRUE)) == 1L
-  ]
-  whichMaxima <- whichMaxima[order(dens$y[whichMaxima], decreasing = TRUE)]
-
-  if (length(whichMaxima) > 0L) {
-    peaksX <- dens$x[whichMaxima]
-    if (is.null(numPeaks) || numPeaks > length(peaksX)) {
-      numPeaks <- length(peaksX)
-    }
-    data.frame(
-      x = peaksX[seq_len(numPeaks)],
-      y = dens$y[whichMaxima][seq_len(numPeaks)]
-    )
-  } else {
-    data.frame(x = NA_real_, y = NA_real_)
-  }
-}
-
-#' @keywords internal
-.simCompareFindValleys <- function(
-  x,
-  y = NULL,
-  numValleys = NULL,
-  adjust = 2,
-  bandwidth = NULL,
-  ...
-) {
-  x <- as.vector(x)
-
-  if (length(x) < 2L) {
-    return(NA_real_)
-  }
-
-  if (is.null(y)) {
-    dens <- if (is.null(bandwidth)) {
-      stats::density(x, adjust = adjust, ...)
-    } else {
-      stats::density(x, bw = bandwidth, adjust = adjust, ...)
-    }
-  } else {
-    y <- as.vector(y)
-    if (length(x) != length(y)) {
-      stop("The lengths of x and y must be equal.")
-    }
-    dens <- list(x = x, y = y)
-  }
-
-  secondDeriv <- diff(sign(diff(dens$y)))
-  whichMinima <- which(secondDeriv == 2) + 1L
-  whichMinima <- whichMinima[
-    findInterval(dens$x[whichMinima], range(x, na.rm = TRUE)) == 1L
-  ]
-  whichMinima <- whichMinima[order(dens$y[whichMinima], decreasing = FALSE)]
-
-  if (length(whichMinima) > 0L) {
-    valleys <- dens$x[whichMinima]
-    if (is.null(numValleys) || numValleys > length(valleys)) {
-      numValleys <- length(valleys)
-    }
-    valleys[seq_len(numValleys)]
-  } else {
-    NA_real_
-  }
-}
-
-#' @keywords internal
-.simCompareDerivDensity <- function(
-  x,
-  deriv = 1,
-  bandwidth = NULL,
-  adjust = 1,
-  numPoints = 10000,
-  ...
-) {
-  x <- as.numeric(x)
-  x <- x[is.finite(x)]
-
-  if (length(x) < 2L || length(unique(x)) < 2L) {
-    return(list(x = numeric(), y = numeric()))
-  }
-
-  if (is.null(bandwidth)) {
-    bandwidth <- ks::hpi(x, deriv.order = deriv)
-  }
-
-  kdeObj <- ks::kdde(
-    x = x,
-    deriv.order = deriv,
-    h = bandwidth * adjust,
-    gridsize = numPoints,
-    ...
-  )
-
-  list(x = kdeObj$eval.points, y = kdeObj$estimate)
-}
-
-#' Tailgate-style cytokine cutpoint with optional fixed bandwidth
+#' Locate the tailgate helper scripts if they have not already been sourced
 #'
-#' This mirrors cytoUtils:::.cytokineCutpoint(), using the peak and valley logic
-#' from openCyto, but keeps the fixed bandwidth explicit.
+#' @keywords internal
+.simCompareTailgateFindSourceFiles <- function(tailgateSourceFiles = NULL) {
+  if (!is.null(tailgateSourceFiles)) {
+    return(tailgateSourceFiles[file.exists(tailgateSourceFiles)])
+  }
+
+  root <- tryCatch(
+    {
+      if (requireNamespace("projr", quietly = TRUE)) {
+        projr::projr_path_get("project")
+      } else {
+        getwd()
+      }
+    },
+    error = function(e) getwd()
+  )
+
+  candidate <- list.files(
+    root,
+    pattern = "^(openCyto-find_peaks_and_valleys|cytoUtils-cytokine_cutpoint).*\\.R$",
+    recursive = TRUE,
+    full.names = TRUE
+  )
+
+  if (length(candidate) == 0L) {
+    return(character())
+  }
+
+  candidate[order(
+    !grepl("openCyto-find_peaks_and_valleys", basename(candidate))
+  )]
+}
+
+#' Source and return the real tailgate helper environment
+#'
+#' @keywords internal
+.simCompareTailgateEnv <- function(tailgateSourceFiles = NULL) {
+  if (
+    exists(".cytokineCutpoint", mode = "function") &&
+      exists(".findPeaks", mode = "function") &&
+      exists(".findValleys", mode = "function")
+  ) {
+    return(environment(get(".cytokineCutpoint", mode = "function")))
+  }
+
+  tailgateSourceFiles <- .simCompareTailgateFindSourceFiles(tailgateSourceFiles)
+
+  if (length(tailgateSourceFiles) == 0L) {
+    stop(
+      "Could not find the tailgate helper scripts. Either source the ",
+      "openCyto/cytoUtils scripts before calling this helper, or pass ",
+      "tailgateSourceFiles."
+    )
+  }
+
+  cacheName <- make.names(paste(
+    "tailgate",
+    paste(
+      normalizePath(tailgateSourceFiles, winslash = "/", mustWork = FALSE),
+      collapse = "_"
+    ),
+    sep = "_"
+  ))
+  if (exists(cacheName, envir = .simCompareCacheEnv, inherits = FALSE)) {
+    return(get(cacheName, envir = .simCompareCacheEnv, inherits = FALSE))
+  }
+
+  tailgateEnv <- new.env(parent = parent.frame())
+  for (pathCurr in tailgateSourceFiles) {
+    source(pathCurr, local = tailgateEnv)
+  }
+
+  required <- c(
+    ".cytokineCutpoint",
+    ".findPeaks",
+    ".findValleys",
+    ".derivDensity"
+  )
+  missing <- required[
+    !vapply(
+      required,
+      exists,
+      logical(1),
+      envir = tailgateEnv,
+      mode = "function",
+      inherits = TRUE
+    )
+  ]
+
+  if (length(missing) > 0L) {
+    stop(
+      "Tailgate helper scripts were sourced, but the following functions ",
+      "were not found: ",
+      paste(missing, collapse = ", ")
+    )
+  }
+
+  assign(cacheName, tailgateEnv, envir = .simCompareCacheEnv)
+
+  tailgateEnv
+}
+
+#' Call the cytoUtils/openCyto tailgate implementation
+#'
+#' If bandwidth is NULL, .cytokineCutpoint() forwards NULL to .derivDensity(),
+#' whose default behaviour is to estimate the bandwidth with ks::hpi().
 #'
 #' @keywords internal
 .simCompareTailgateThreshold <- function(
   x,
+  tailgateSourceFiles = NULL,
   adjust = 1,
   bandwidth = NULL,
   numPeaks = 1,
@@ -407,8 +376,7 @@ if (!exists("%||%", mode = "function")) {
   tol = 1e-2,
   side = "right",
   strict = FALSE,
-  autoTol = FALSE,
-  numPoints = 10000
+  autoTol = FALSE
 ) {
   method <- match.arg(method)
   x <- as.numeric(x)
@@ -422,137 +390,30 @@ if (!exists("%||%", mode = "function")) {
     ))
   }
 
-  peaks <- .simCompareFindPeaks(
-    x,
-    numPeaks = numPeaks,
+  tailgateEnv <- .simCompareTailgateEnv(tailgateSourceFiles)
+  cytokineCutpoint <- get(
+    ".cytokineCutpoint",
+    envir = tailgateEnv,
+    inherits = TRUE
+  )
+
+  threshold <- cytokineCutpoint(
+    x = x,
     adjust = adjust,
+    numPeaks = numPeaks,
+    refPeak = refPeak,
+    method = method,
+    tol = tol,
+    side = side,
+    strict = strict,
+    autoTol = autoTol,
     bandwidth = bandwidth
-  )[, "x"]
-  peaks <- sort(peaks[is.finite(peaks)])
-
-  if (length(peaks) == 0L) {
-    return(list(
-      threshold = NA_real_,
-      thresholdMetric = NA_real_,
-      thresholdOrigin = "failed_no_peak"
-    ))
-  }
-
-  if (refPeak > length(peaks)) {
-    msg <- paste(
-      "The reference peak is larger than the number of peaks found.",
-      "Setting the reference peak to the last peak."
-    )
-    if (strict) {
-      stop(msg, call. = FALSE)
-    }
-    refPeak <- length(peaks)
-  }
-
-  if (method == "firstDeriv") {
-    derivOut <- .simCompareDerivDensity(
-      x = x,
-      adjust = adjust,
-      bandwidth = bandwidth,
-      deriv = 1,
-      numPoints = numPoints
-    )
-
-    if (length(derivOut$x) == 0L) {
-      cutpoint <- NA_real_
-    } else {
-      if (autoTol) {
-        tol <- 0.01 * max(abs(derivOut$y), na.rm = TRUE)
-      }
-
-      if (side == "right") {
-        derivValleys <- .simCompareFindValleys(
-          x = derivOut$x,
-          y = derivOut$y,
-          adjust = adjust,
-          bandwidth = bandwidth
-        )
-        derivValleys <- derivValleys[derivValleys > peaks[refPeak]]
-        derivValleys <- sort(derivValleys)[1]
-
-        if (is.na(derivValleys)) {
-          cutpoint <- NA_real_
-        } else {
-          cutpointCandidates <- derivOut$x[
-            derivOut$x > derivValleys & abs(derivOut$y) < tol
-          ]
-          cutpoint <- if (length(cutpointCandidates) > 0L) {
-            cutpointCandidates[1]
-          } else {
-            NA_real_
-          }
-        }
-      } else if (side == "left") {
-        derivOut$y <- -derivOut$y
-        derivValleys <- .simCompareFindValleys(
-          x = derivOut$x,
-          y = derivOut$y,
-          adjust = adjust,
-          bandwidth = bandwidth
-        )
-        derivValleys <- derivValleys[derivValleys < peaks[refPeak]]
-        derivValleys <- sort(derivValleys, decreasing = TRUE)[1]
-
-        if (is.na(derivValleys)) {
-          cutpoint <- NA_real_
-        } else {
-          cutpointCandidates <- derivOut$x[
-            derivOut$x < derivValleys & abs(derivOut$y) < tol
-          ]
-          cutpoint <- if (length(cutpointCandidates) > 0L) {
-            cutpointCandidates[length(cutpointCandidates)]
-          } else {
-            NA_real_
-          }
-        }
-      } else {
-        stop("Unrecognised side: ", side)
-      }
-    }
-  } else {
-    derivOut <- .simCompareDerivDensity(
-      x = x,
-      adjust = adjust,
-      bandwidth = bandwidth,
-      deriv = 2,
-      numPoints = numPoints
-    )
-
-    if (length(derivOut$x) == 0L) {
-      cutpoint <- NA_real_
-    } else if (side == "right") {
-      derivPeaks <- .simCompareFindPeaks(
-        x = derivOut$x,
-        y = derivOut$y,
-        adjust = adjust,
-        bandwidth = bandwidth
-      )[, "x"]
-      derivPeaks <- derivPeaks[derivPeaks > peaks[refPeak]]
-      cutpoint <- sort(derivPeaks)[1]
-    } else if (side == "left") {
-      derivOut$y <- -derivOut$y
-      derivPeaks <- .simCompareFindPeaks(
-        x = derivOut$x,
-        y = derivOut$y,
-        adjust = adjust,
-        bandwidth = bandwidth
-      )[, "x"]
-      derivPeaks <- derivPeaks[derivPeaks < peaks[refPeak]]
-      cutpoint <- sort(derivPeaks, decreasing = TRUE)[length(derivPeaks)]
-    } else {
-      stop("Unrecognised side: ", side)
-    }
-  }
+  )
 
   list(
-    threshold = as.numeric(cutpoint)[1],
+    threshold = as.numeric(threshold)[1],
     thresholdMetric = NA_real_,
-    thresholdOrigin = if (is.finite(cutpoint)) {
+    thresholdOrigin = if (is.finite(threshold)) {
       "calculated"
     } else {
       "failed_no_cutpoint"
@@ -560,7 +421,6 @@ if (!exists("%||%", mode = "function")) {
   )
 }
 
-#' @keywords internal
 .simCompareHighValueGate <- function(xStim, xUns, margin = 0.05) {
   x <- c(xStim, xUns)
   x <- x[is.finite(x)]
@@ -660,11 +520,14 @@ if (!exists("%||%", mode = "function")) {
   nCondition,
   chnl = "F1",
   biasUns = 0,
+  pathFbeta = NULL,
+  fbetaPatchPy2Compat = TRUE,
   fbetaBeta = 0.8,
   fbetaTheta = 2,
   fbetaWidth = 10,
   fbetaNumBins = NULL,
   tailgateX = c("unstim", "combined", "stim"),
+  tailgateSourceFiles = NULL,
   tailgateAdjust = 1,
   tailgateBandwidth = NULL,
   tailgateNumPeaks = 1,
@@ -672,8 +535,7 @@ if (!exists("%||%", mode = "function")) {
   tailgateMethod = c("firstDeriv", "secondDeriv"),
   tailgateTol = 1e-2,
   tailgateSide = "right",
-  tailgateAutoTol = FALSE,
-  tailgateNumPoints = 10000,
+  tailgateAutoTol = TRUE,
   fallbackHighValue = TRUE,
   fallbackMargin = 0.05
 ) {
@@ -701,6 +563,8 @@ if (!exists("%||%", mode = "function")) {
         .simCompareFbetaThreshold(
           xUns = xUnsGate,
           xStim = xStim,
+          pathFbeta = pathFbeta,
+          patchPy2Compat = fbetaPatchPy2Compat,
           beta = fbetaBeta,
           theta = fbetaTheta,
           width = fbetaWidth,
@@ -733,6 +597,7 @@ if (!exists("%||%", mode = "function")) {
       tailgateObj <- tryCatch(
         .simCompareTailgateThreshold(
           x = xTail,
+          tailgateSourceFiles = tailgateSourceFiles,
           adjust = tailgateAdjust,
           bandwidth = tailgateBandwidth,
           numPeaks = tailgateNumPeaks,
@@ -741,8 +606,7 @@ if (!exists("%||%", mode = "function")) {
           tol = tailgateTol,
           side = tailgateSide,
           strict = FALSE,
-          autoTol = tailgateAutoTol,
-          numPoints = tailgateNumPoints
+          autoTol = tailgateAutoTol
         ),
         error = function(e) {
           list(
@@ -1101,20 +965,22 @@ if (!exists("%||%", mode = "function")) {
   calcCytPosGates = FALSE,
   calcSinglePosGates = FALSE,
   includeLocCondition = TRUE,
+  pathFbeta = NULL,
+  fbetaPatchPy2Compat = TRUE,
   fbetaBeta = 0.8,
   fbetaTheta = 2,
   fbetaWidth = 10,
   fbetaNumBins = NULL,
   tailgateX = c("unstim", "combined", "stim"),
+  tailgateSourceFiles = NULL,
   tailgateAdjust = 1,
-  tailgateBandwidth = bw,
+  tailgateBandwidth = NULL,
   tailgateNumPeaks = 1,
   tailgateRefPeak = 1,
   tailgateMethod = c("firstDeriv", "secondDeriv"),
   tailgateTol = 1e-2,
   tailgateSide = "right",
   tailgateAutoTol = FALSE,
-  tailgateNumPoints = 10000,
   fallbackHighValue = TRUE,
   fallbackMargin = 0.05
 ) {
@@ -1248,11 +1114,14 @@ if (!exists("%||%", mode = "function")) {
       nCondition = nCondition,
       chnl = "F1",
       biasUns = biasUns,
+      pathFbeta = pathFbeta,
+      fbetaPatchPy2Compat = fbetaPatchPy2Compat,
       fbetaBeta = fbetaBeta,
       fbetaTheta = fbetaTheta,
       fbetaWidth = fbetaWidth,
       fbetaNumBins = fbetaNumBins,
       tailgateX = tailgateX,
+      tailgateSourceFiles = tailgateSourceFiles,
       tailgateAdjust = tailgateAdjust,
       tailgateBandwidth = tailgateBandwidth,
       tailgateNumPeaks = tailgateNumPeaks,
@@ -1261,7 +1130,6 @@ if (!exists("%||%", mode = "function")) {
       tailgateTol = tailgateTol,
       tailgateSide = tailgateSide,
       tailgateAutoTol = tailgateAutoTol,
-      tailgateNumPoints = tailgateNumPoints,
       fallbackHighValue = fallbackHighValue,
       fallbackMargin = fallbackMargin
     )
@@ -1290,9 +1158,11 @@ if (!exists("%||%", mode = "function")) {
         fbetaTheta = fbetaTheta,
         fbetaWidth = fbetaWidth,
         fbetaNumBins = fbetaNumBins %||% NA_integer_,
+        fbetaPatchPy2Compat = fbetaPatchPy2Compat,
         tailgateX = tailgateX,
         tailgateAdjust = tailgateAdjust,
         tailgateBandwidth = tailgateBandwidth %||% NA_real_,
+        tailgateBandwidthEstimated = is.null(tailgateBandwidth),
         tailgateNumPeaks = tailgateNumPeaks,
         tailgateRefPeak = tailgateRefPeak,
         tailgateMethod = tailgateMethod,
