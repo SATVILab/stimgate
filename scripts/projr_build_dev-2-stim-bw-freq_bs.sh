@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=10
+#SBATCH --ntasks=20
 #SBATCH --job-name="dev-2-bw-freq_bs"
 #SBATCH --partition=ada
 
