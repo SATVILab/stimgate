@@ -595,17 +595,39 @@
   bwNcellMin = NULL,
   bwNcellMax = NULL
 ) {
-  if (is.null(bwNcellMax)) {
-    nTarget <- nCore
-  } else {
-    nTarget <- max(20L, as.integer(bwNcellMax) - nExtra)
+  nCore <- as.integer(nCore)
+  nExtra <- as.integer(nExtra)
+  nTotal <- as.integer(nTotal)
+
+  if (!is.finite(nCore) || nCore <= 0L) {
+    return(0L)
   }
 
+  if (!is.finite(nExtra) || nExtra < 0L) {
+    nExtra <- 0L
+  }
+
+  # Start from the actual available core size.
+  # bwNcellMax should never cause upsampling.
+  nTarget <- nCore
+
+  # Downsample core only if core + extra would exceed bwNcellMax.
+  if (!is.null(bwNcellMax)) {
+    bwNcellMax <- as.integer(bwNcellMax)
+    if (is.finite(bwNcellMax) && bwNcellMax > 0L) {
+      nTarget <- min(nTarget, max(20L, bwNcellMax - nExtra))
+    }
+  }
+
+  # Upsample core only if total bandwidth sample would fall below bwNcellMin.
   if (!is.null(bwNcellMin)) {
-    nTarget <- max(nTarget, as.integer(bwNcellMin) - nExtra)
+    bwNcellMin <- as.integer(bwNcellMin)
+    if (is.finite(bwNcellMin) && bwNcellMin > 0L) {
+      nTarget <- max(nTarget, bwNcellMin - nExtra)
+    }
   }
 
-  max(20L, nTarget)
+  max(20L, as.integer(nTarget))
 }
 
 #' @keywords internal
