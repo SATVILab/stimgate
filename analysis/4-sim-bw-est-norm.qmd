@@ -435,7 +435,8 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
       geom_point() +
       scale_x_log10() +
       facet_grid(
-        prob_response ~ transformation
+        transformation ~ prob_response,
+        scales = "free_y"
       ) +
       labs(
         title = paste0("Mean position setting: ", mean_pos_setting_curr),
@@ -461,8 +462,8 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
           paste0("bw_estimate_meanpos_setting_", mean_pos_setting_curr, "_ncell_upper_", bw_ncell_upper_curr, ".png")
         ),
         plot = p,
-        width = 18,
-        height = 15,
+        width = 12,
+        height = 20,
         units = "cm"
       )
   }

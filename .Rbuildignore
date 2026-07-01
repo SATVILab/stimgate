@@ -38,7 +38,6 @@
 ^LICENSE\.md$
 ^manifest\.csv$
 ^NEWS\.md$
-^Rplots\.pdf$
 ^\.github/
 ^\.github$
 ^analysis/_archive/
