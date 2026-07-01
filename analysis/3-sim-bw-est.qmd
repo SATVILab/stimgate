@@ -210,6 +210,8 @@ if (interactive()) {
 
 path_progress_file <- projr::projr_path_get(
   "cache",
+  "log",
+  "analysis",
   "sim",
   "bw",
   "est",

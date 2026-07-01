@@ -55,11 +55,12 @@ mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 
 # bandwidth settings
 bandwidth_method_vec <- c("hpi0Norm", "hpi1Norm", "hpi2Norm", "hpi3Norm", "sjNorm", "nrd0Norm", "hpi1", "hpi2", "hpi3", "sj", "nrd0")
+bandwidth_method_vec <- bandwidth_method_vec[grepl("hpi", bandwidth_method_vec)]
+bandwidth_method_vec <- bandwidth_method_vec[!grepl("hpi0", bandwidth_method_vec)]
 
 # set this later
 bandwidth_ncell_upper_vec <- c(5e2, 1e3, 2.5e3, 5e3, 1e4, 2e4, 5e4, Inf)
 bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
-bias_uns_vec <- seq(0, 2, by = 0.2)
 ```
 
 ```{r}
@@ -69,7 +70,7 @@ sim_grid <- tidyr::expand_grid(
   prob_response  = prob_response_vec,
   n_cell         = n_cell_stim_vec,
   bw_mtd         = bandwidth_method_vec,
-  bw_ncell_upper = bandwidth_ncell_upper_vec
+  bw_ncell_upper = max(n_cell_stim_vec)
 ) |>
   dplyr::select(
     transformation, prob_response, n_cell,
@@ -90,9 +91,8 @@ if ("dev" %in% projr::projr_profile_get()) {
       prob_response == 0.002,
       mean_pos_setting == "high",
       transformation %in% transformation_vec,
-      bw_mtd == "hpi2Norm",
-      bw_ncell_upper == bw_ncell_upper_vec[[1]]
-    )
+      bw_mtd == "hpi2Norm"
+    ) 
 }
 sim_grid
 print(paste0("Performing ", nrow(sim_grid), " simulations"))
@@ -219,6 +219,8 @@ if (interactive()) {
 
 path_progress_file <- projr::projr_path_get(
   "cache",
+  "log",
+  "analysis",
   "sim",
   "bw_norm",
   "est",
@@ -263,7 +265,7 @@ bw_list_raw_mtd <- progressr::with_progress({
       out <- tryCatch(
         {
           sim_res <- stimgate:::.simBandwidthEstBwDirect(
-            nSample = 50,
+            nSample = 25,
             nMarker = 1,
             nCondition = 2,
             nCluster = 2,
@@ -424,15 +426,7 @@ bw_tbl_results <- bw_list_raw_mtd |>
 for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
   for (bw_ncell_upper_curr in unique(bw_tbl_results$bw_ncell_upper)) {
     plot_tbl <- bw_tbl_results |>
-      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr, bw_ncell_upper == !!bw_ncell_upper_curr) |>
-      dplyr::filter(transformation == "gamma") |>
-      dplyr::filter(bw_mtd %in% c("hpi1", "hpi1Norm")) |>
-      dplyr::select(-sim_id) |>
-      tidyr::pivot_wider(
-        names_from = bw_mtd,
-        values_from = mean_bw
-      ) |>
-      as.data.frame()
+      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr, bw_ncell_upper == !!bw_ncell_upper_curr)
     p <- ggplot(
       plot_tbl,
       aes(x = n_cell, y = mean_bw, color = bw_mtd)
