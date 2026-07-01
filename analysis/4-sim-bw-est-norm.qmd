@@ -424,7 +424,15 @@ bw_tbl_results <- bw_list_raw_mtd |>
 for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
   for (bw_ncell_upper_curr in unique(bw_tbl_results$bw_ncell_upper)) {
     plot_tbl <- bw_tbl_results |>
-      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr, bw_ncell_upper == !!bw_ncell_upper_curr)
+      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr, bw_ncell_upper == !!bw_ncell_upper_curr) |>
+      dplyr::filter(transformation == "gamma") |>
+      dplyr::filter(bw_mtd %in% c("hpi1", "hpi1Norm")) |>
+      dplyr::select(-sim_id) |>
+      tidyr::pivot_wider(
+        names_from = bw_mtd,
+        values_from = mean_bw
+      ) |>
+      as.data.frame()
     p <- ggplot(
       plot_tbl,
       aes(x = n_cell, y = mean_bw, color = bw_mtd)
@@ -463,6 +471,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
         height = 15,
         units = "cm"
       )
+  }
 }
 ```
 
