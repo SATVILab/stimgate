@@ -93,6 +93,18 @@
     return(x)
   }
 
+  bwNcellMin <- .bwAsSafeSampleN(
+    bwNcellMin,
+    default = NULL,
+    lower = 2L
+  )
+
+  bwNcellMax <- .bwAsSafeSampleN(
+    bwNcellMax,
+    default = NULL,
+    lower = 2L
+  )
+
   if (!is.null(bwNcellMin) && length(x) < bwNcellMin) {
     sdX <- .bwRobustSd(x)
     x <- sample(x, replace = TRUE, size = bwNcellMin) +
@@ -595,9 +607,9 @@
   bwNcellMin = NULL,
   bwNcellMax = NULL
 ) {
-  nCore <- as.integer(nCore)
-  nExtra <- as.integer(nExtra)
-  nTotal <- as.integer(nTotal)
+  nCore <- .bwAsSafeSampleN(nCore, default = 0L, lower = 0L)
+  nExtra <- .bwAsSafeSampleN(nExtra, default = 0L, lower = 0L)
+  nTotal <- .bwAsSafeSampleN(nTotal, default = nCore + nExtra, lower = 0L)
 
   if (!is.finite(nCore) || nCore <= 0L) {
     return(0L)
@@ -607,27 +619,43 @@
     nExtra <- 0L
   }
 
-  # Start from the actual available core size.
-  # bwNcellMax should never cause upsampling.
+  # Start from the actual core size.
+  # bwNcellMax is a cap, not a target.
   nTarget <- nCore
 
-  # Downsample core only if core + extra would exceed bwNcellMax.
-  if (!is.null(bwNcellMax)) {
-    bwNcellMax <- as.integer(bwNcellMax)
-    if (is.finite(bwNcellMax) && bwNcellMax > 0L) {
-      nTarget <- min(nTarget, max(20L, bwNcellMax - nExtra))
-    }
+  bwNcellMaxSafe <- .bwAsSafeSampleN(
+    bwNcellMax,
+    default = NULL,
+    lower = 20L
+  )
+
+  if (!is.null(bwNcellMaxSafe)) {
+    nTarget <- min(
+      nTarget,
+      max(20L, bwNcellMaxSafe - nExtra)
+    )
   }
 
-  # Upsample core only if total bandwidth sample would fall below bwNcellMin.
-  if (!is.null(bwNcellMin)) {
-    bwNcellMin <- as.integer(bwNcellMin)
-    if (is.finite(bwNcellMin) && bwNcellMin > 0L) {
-      nTarget <- max(nTarget, bwNcellMin - nExtra)
-    }
+  bwNcellMinSafe <- .bwAsSafeSampleN(
+    bwNcellMin,
+    default = NULL,
+    lower = 0L
+  )
+
+  if (!is.null(bwNcellMinSafe)) {
+    nTarget <- max(
+      nTarget,
+      bwNcellMinSafe - nExtra
+    )
   }
 
-  max(20L, as.integer(nTarget))
+  nTarget <- max(20L, nTarget)
+
+  .bwAsSafeSampleN(
+    nTarget,
+    default = 20L,
+    lower = 20L
+  )
 }
 
 #' @keywords internal
@@ -687,10 +715,16 @@
     return(NULL)
   }
 
+  nCellSafe <- .bwAsSafeSampleN(
+    nCell,
+    default = min(length(x), 10000L),
+    lower = 20L
+  )
+
   xBw <- .bwCalcOneSampleOrdinary(
     x = x,
-    bwNcellMin = nCell,
-    bwNcellMax = nCell
+    bwNcellMin = nCellSafe,
+    bwNcellMax = nCellSafe
   )
 
   bw <- .bwCalcOneBase(
@@ -986,4 +1020,27 @@
   }
 
   sqrt(varX)
+}
+
+#' @keywords internal
+.bwAsSafeSampleN <- function(
+  x,
+  default = NULL,
+  lower = 0L,
+  upper = .Machine$integer.max
+) {
+  if (is.null(x) || length(x) == 0L) {
+    return(default)
+  }
+
+  x <- suppressWarnings(as.numeric(x)[1])
+
+  if (!is.finite(x)) {
+    return(default)
+  }
+
+  x <- floor(x)
+  x <- max(as.numeric(lower), min(x, as.numeric(upper)))
+
+  as.integer(x)
 }
