@@ -1,31 +1,56 @@
 .getLocalMaximaIdx <- function(y) {
+  y <- suppressWarnings(as.numeric(y))
   if (length(y) < 3L) {
-    return(integer(0))
+    return(integer(0L))
   }
 
   idx <- seq.int(2L, length(y) - 1L)
-  idx[y[idx] >= y[idx - 1L] & y[idx] > y[idx + 1L]]
+  idx[
+    is.finite(y[idx]) &
+      is.finite(y[idx - 1L]) &
+      is.finite(y[idx + 1L]) &
+      y[idx] >= y[idx - 1L] &
+      y[idx] > y[idx + 1L]
+  ]
 }
 
 .getLocalMinimaIdx <- function(y) {
+  y <- suppressWarnings(as.numeric(y))
   if (length(y) < 3L) {
-    return(integer(0))
+    return(integer(0L))
   }
 
   idx <- seq.int(2L, length(y) - 1L)
-  idx[y[idx] <= y[idx - 1L] & y[idx] < y[idx + 1L]]
+  idx[
+    is.finite(y[idx]) &
+      is.finite(y[idx - 1L]) &
+      is.finite(y[idx + 1L]) &
+      y[idx] <= y[idx - 1L] &
+      y[idx] < y[idx + 1L]
+  ]
 }
 
-.getPeakMainLeftIdx <- function(y, peakMinRel = 0.75) {
-  # get furthest left meaningful peak,
-  # which is meaningful in the sense
-  # that it can't truly be separated from
-  # any peaks afterwards by being after a local minimum that is too low relative to the main peak
-  # function assumes that y is on the ratio scale, i.e. that the minimum value is 0
-  stopifnot(all(y >= 0, na.rm = TRUE))
-  peakIdxAll <- .getLocalMaximaIdx(y)
+#' Return the right-most peak belonging to the left/main modal complex.
+#'
+#' Peaks whose height is at least `peakMinRel * max(y)` are treated as
+#' meaningful. If meaningful peaks are separated by a trough that is low relative
+#' to both adjacent peaks and to the absolute peak, the first such trough ends
+#' the left/main modal complex. Otherwise, shoulders and unresolved peaks are
+#' allowed to belong to the same background complex.
+#'
+#' @keywords internal
+.getPeakMainLeftIdx <- function(
+  y,
+  peakMinRel = 0.75,
+  troughMaxRel = 0.75
+) {
+  y <- suppressWarnings(as.numeric(y))
+  if (length(y) == 0L || all(!is.finite(y))) {
+    return(integer(0L))
+  }
 
-  # return early if there aren't multiple peaks
+  y <- pmax(y, 0)
+  peakIdxAll <- .getLocalMaximaIdx(y)
 
   if (length(peakIdxAll) == 0L) {
     return(which.max(y))
@@ -34,13 +59,15 @@
     return(peakIdxAll)
   }
 
-  peakHeightMax <- max(y, na.rm = TRUE)
+  peakHeightMax <- max(y[peakIdxAll], na.rm = TRUE)
+  if (!is.finite(peakHeightMax) || peakHeightMax <= 0) {
+    return(which.max(y))
+  }
+
   peakIdxMeaningful <- peakIdxAll[
     y[peakIdxAll] >= peakMinRel * peakHeightMax
   ]
 
-  # return early if there aren't multiple
-  # meaningful peaks
   if (length(peakIdxMeaningful) == 0L) {
     return(which.max(y))
   }
@@ -48,66 +75,84 @@
     return(peakIdxMeaningful)
   }
 
-  # multiple peaks, choose right-most
-  # peak that isn't after an antimode (local minimum) that is
-  # too low relative to the main peak
-  nextTroughIdx <- .getPeakIdxNextTrough(
+  nextTroughIdx <- .getPeakIdxNextTroughIdx(
     y = y,
     peakIdxMeaningful = peakIdxMeaningful,
-    peakMinRel = peakMinRel
+    peakMinRel = troughMaxRel,
+    peakHeightRef = peakHeightMax
   )
-  # if no such trough exists, return the right-most meaningful peak
+
   if (length(nextTroughIdx) == 0L) {
     return(peakIdxMeaningful[length(peakIdxMeaningful)])
   }
 
-  # if there is a meaningful trough, return the right-most peak that is before it
-  max(peakIdxMeaningful[peakIdxMeaningful < nextTroughIdx], na.rm = TRUE)
+  peakBefore <- peakIdxMeaningful[peakIdxMeaningful < nextTroughIdx]
+  if (length(peakBefore) == 0L) {
+    return(peakIdxMeaningful[1L])
+  }
+
+  max(peakBefore)
 }
 
+#' Return the first deep trough separating meaningful peaks.
+#'
+#' @keywords internal
 .getPeakIdxNextTroughIdx <- function(
   y,
   peakIdxMeaningful,
-  peakMinRel = 0.75
+  peakMinRel = 0.75,
+  peakHeightRef = NULL
 ) {
-  stopifnot(all(y >= 0, na.rm = TRUE))
-  # get lowest meaningful trough, which is meaningful
-  # in the sense that it is the first trough
-  # that is low relative to the adjacent peaks on either side. If there is no such trough, return integer(0)
-  troughIdxAll <- .getLocalMinimaIdx(y)
+  y <- suppressWarnings(as.numeric(y))
+  y <- pmax(y, 0)
+  peakIdxMeaningful <- sort(unique(as.integer(peakIdxMeaningful)))
+  peakIdxMeaningful <- peakIdxMeaningful[
+    is.finite(peakIdxMeaningful) &
+      peakIdxMeaningful >= 1L &
+      peakIdxMeaningful <= length(y)
+  ]
 
-  # return early if there aren't any troughs
+  if (length(peakIdxMeaningful) < 2L) {
+    return(integer(0L))
+  }
+
+  troughIdxAll <- .getLocalMinimaIdx(y)
   if (length(troughIdxAll) == 0L) {
     return(integer(0L))
   }
 
-  # for each trough, look at the peaks on either side.
-  # take a trough as "meaningful" if it is less than
-  # peakMinRel * the height of the adjacent peaks on either side. If there are no meaningful troughs, return integer(0)
-  troughIdxMeaningful <- NULL
+  if (is.null(peakHeightRef)) {
+    peakHeightRef <- max(y[peakIdxMeaningful], na.rm = TRUE)
+  }
+
   for (troughIdx in troughIdxAll) {
-    leftPeakIdx <- min(
-      peakIdxMeaningful[peakIdxMeaningful < troughIdx],
-      na.rm = TRUE
-    )
-    rightPeakIdx <- max(
-      peakIdxMeaningful[peakIdxMeaningful > troughIdx],
-      na.rm = TRUE
-    )
-    if (is.finite(leftPeakIdx) && is.finite(rightPeakIdx)) {
-      leftPeakHeight <- y[leftPeakIdx]
-      rightPeakHeight <- y[rightPeakIdx]
-      troughHeight <- y[troughIdx]
-      if (
-        troughHeight < 0.75 * leftPeakHeight ||
-          troughHeight < 0.75 * rightPeakHeight
-      ) {
-        troughIdxMeaningful <- c(troughIdxMeaningful, troughIdx)
-      }
+    leftPeak <- peakIdxMeaningful[peakIdxMeaningful < troughIdx]
+    rightPeak <- peakIdxMeaningful[peakIdxMeaningful > troughIdx]
+
+    if (length(leftPeak) == 0L || length(rightPeak) == 0L) {
+      next
+    }
+
+    leftPeakIdx <- max(leftPeak)
+    rightPeakIdx <- min(rightPeak)
+
+    troughHeight <- y[troughIdx]
+    leftPeakHeight <- y[leftPeakIdx]
+    rightPeakHeight <- y[rightPeakIdx]
+
+    lowEnoughAdjacent <-
+      troughHeight <= peakMinRel * leftPeakHeight &&
+      troughHeight <= peakMinRel * rightPeakHeight
+
+    lowEnoughAbsolute <-
+      is.finite(peakHeightRef) &&
+      peakHeightRef > 0 &&
+      troughHeight <= peakMinRel * peakHeightRef
+
+    if (isTRUE(lowEnoughAdjacent) && isTRUE(lowEnoughAbsolute)) {
+      return(troughIdx)
     }
   }
-  if (length(troughIdxMeaningful) == 0L) {
-    return(integer(0L))
-  }
-  min(troughIdxAll, na.rm = TRUE)
+
+  integer(0L)
 }
