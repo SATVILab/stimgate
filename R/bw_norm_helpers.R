@@ -289,7 +289,7 @@
 .bwNormFindBackgroundCore <- function(
   x,
   peakFrac = 0.1,
-  peakMinRel = 0.2,
+  peakMinRel = 0.75,
   densityN = 512L
 ) {
   x <- suppressWarnings(as.numeric(x))
@@ -298,14 +298,20 @@
   if (length(x) < 20L || length(unique(x)) < 5L) {
     return(NULL)
   }
+  
+  xPilot <- if (length(x) > 2e4L) {
+    sample(x, size = 2e4, replace = FALSE)
+  } else {
+    x
+  }
 
-  bwPilot <- try(stats::bw.nrd0(x), silent = TRUE)
+  bwPilot <- try(stats::ks::hpi(xPilot, deriv.order = 0), silent = TRUE)
   if (
     inherits(bwPilot, "try-error") ||
       !is.finite(bwPilot) ||
       bwPilot <= 0
   ) {
-    bwPilot <- stats::IQR(x, na.rm = TRUE) / 20
+    bwPilot <- stats::IQR(xPilot, na.rm = TRUE) / 20
   }
   if (!is.finite(bwPilot) || bwPilot <= 0) {
     return(NULL)
@@ -329,18 +335,48 @@
 
   peakIdxAll <- .bwLocalMaxima(dy)
 
-  if (length(peakIdxAll) == 0L) {
-    peakIdx <- which.max(dy)
+  peakIdx <- if (length(peakIdxAll) == 0L) {
+    which.max(dy)
+  } else if (length(peakIdxAll) == 1L) {
+    peakIdxAll
   } else {
+    # multiple peaks, choose right-most
+    # peak that isn't after an antimode (local minimum) that is
+    # too low relative to the main peak
     peakHeightMax <- max(dy, na.rm = TRUE)
     peakIdxMeaningful <- peakIdxAll[
       dy[peakIdxAll] >= peakMinRel * peakHeightMax
     ]
-
-    peakIdx <- if (length(peakIdxMeaningful) > 0L) {
-      peakIdxMeaningful[1]
+    if (length(peakIdxMeaningful) == 0L) {
+      which.max(dy)
+    } else if (length(peakIdxMeaningful) == 1L) {
+      peakIdxMeaningful
     } else {
-      peakIdxAll[1]
+      troughIdxAll <- .bwLocalMinima(dy)
+      if (length(troughIdxAll) == 0L) {
+        peakIdxMeaningful[length(peakIdxMeaningful)]
+      } else {
+        # for each trough, look at the peaks on either side.
+        # take a trough as "meaningful" if it is less than 0.75 the height of either peak
+        troughIdxMeaningful <- NULL
+        for (troughIdx in troughIdxAll) {
+          leftPeakIdx <- max(peakIdxMeaningful[peakIdxMeaningful < troughIdx], na.rm = TRUE)
+          rightPeakIdx <- min(peakIdxMeaningful[peakIdxMeaningful > troughIdx], na.rm = TRUE)
+          if (is.finite(leftPeakIdx) && is.finite(rightPeakIdx)) {
+            leftPeakHeight <- dy[leftPeakIdx]
+            rightPeakHeight <- dy[rightPeakIdx]
+            troughHeight <- dy[troughIdx]
+            if (
+              troughHeight < 0.75 * leftPeakHeight ||
+                troughHeight < 0.75 * rightPeakHeight
+            ) {
+              troughIdxMeaningful <- c(troughIdxMeaningful, troughIdx)
+            }
+          }
+        }
+        troughIdxFinal <- min(troughIdxAll, na.rm = TRUE)
+        peakIdxMeaningful[peakIdxMeaningful < troughIdxFinal]
+      }
     }
   }
 
