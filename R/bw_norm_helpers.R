@@ -169,6 +169,7 @@
 }
 
 #' @keywords internal
+
 .bwCalcOneNorm <- function(
   x,
   bwMtd,
@@ -177,7 +178,7 @@
   normPeakFrac = 0.1,
   normPeakMinRel = 0.75,
   normExtraFrac = 0.1,
-  normExtraMax = 1000L,
+  normExtraMax = Inf,
   normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
   normDensityN = 512L,
@@ -218,6 +219,8 @@
     return(.bwCalcOneBase(x, bwMtd))
   }
 
+  # Add synthetic high-side values only when the observed number above the
+  # coreset boundary is below the requested high-side fraction.
   xExtra <- .bwNormSampleExcess(
     x = x,
     coreObj = coreObj,
@@ -230,35 +233,40 @@
     normPeakFrac = normPeakFrac
   )
 
-  xCoreBw <- sample(
-    xCore,
-    size = nCoreTarget,
-    replace = length(xCore) < nCoreTarget
+  nExtra <- length(xExtra)
+  nMainTarget <- .bwNormCoreTargetN(
+    nCore = length(x),
+    nExtra = nExtra,
+    nTotal = length(x),
+    bwNcellMin = bwNcellMin,
+    bwNcellMax = bwNcellMax
   )
 
-  xCoreBw <- x + stats::rnorm(
-    length(x),
-    mean = 0,
-    sd = normExtraJitterFrac * .sdSum(
-      x[x > min(x)], .winsorise(xExtra, probs = c(0, 0.95))
-    )
+  if (!is.finite(nMainTarget) || nMainTarget <= 0L) {
+    return(.bwCalcOneBase(x, bwMtd))
+  }
+
+  # The main bandwidth sample is drawn from the full observed distribution,
+  # so observed high values are retained. xExtra only tops up the high side.
+  xMainBw <- sample(
+    x,
+    size = nMainTarget,
+    replace = length(x) < nMainTarget
   )
 
-  xBw <- c(xCoreBw, xExtra)
+  xBw <- c(xMainBw, xExtra)
   xBw <- xBw[is.finite(xBw)]
 
   if (length(xBw) < 20L || length(unique(xBw)) < 5L) {
     return(.bwCalcOneBase(x, bwMtd))
   }
 
-  # transformed data for calculating bandwidth on
   zBw <- .bwBoxCoxTransform(
     x = xBw,
     lambda = boxObj$lambda,
     winsoriseMin = boxObj$winsoriseMin
   )
 
-  # calculate bandwidth on transformed data
   bwZ <- .bwCalcOneBase(
     x = zBw,
     bwMtd = bwMtd
@@ -268,14 +276,12 @@
     return(.bwCalcOneBase(x, bwMtd))
   }
 
-  # bandwidth on just core transformed data
   zCore <- .bwBoxCoxTransform(
     x = xCore,
     lambda = boxObj$lambda,
     winsoriseMin = boxObj$winsoriseMin
   )
 
-  # convert from boxcox scale back to original scale using IQR ratio
   scaleX <- stats::IQR(xCore, na.rm = TRUE)
   scaleZ <- stats::IQR(zCore, na.rm = TRUE)
 
@@ -285,8 +291,6 @@
 
   bwZ * scaleX / scaleZ
 }
-
-#' @keywords internal
 
 #' @keywords internal
 .bwNormFindBackgroundCore <- function(
@@ -556,14 +560,37 @@
   peakX + (1 - moveBackFrac) * (xFlat - peakX)
 }
 
+
 .bwNormChooseBoxCox <- function(
   xCore,
   lambda = seq(-2, 2, length.out = 81)
 ) {
   xCore <- suppressWarnings(as.numeric(xCore))
   xCore <- xCore[is.finite(xCore)]
-  xCore <- xCore[xCore > min(xCore, na.rm = TRUE)]
-  xCoreQuantVec <- quantile(xCore, probs = c(0.01, 0.99), na.rm = TRUE)
+  
+
+  if (length(xCore) < 20L || length(unique(xCore)) < 5L) {
+    return(NULL)
+  }
+
+  xMin <- min(xCore, na.rm = TRUE)
+  xCore <- xCore[xCore > xMin]
+
+  if (length(xCore) < 20L || length(unique(xCore)) < 5L) {
+    return(NULL)
+  }
+
+  xCoreQuantVec <- stats::quantile(
+    xCore,
+    probs = c(0.01, 0.99),
+    na.rm = TRUE,
+    names = FALSE
+  )
+
+  if (any(!is.finite(xCoreQuantVec))) {
+    return(NULL)
+  }
+
   xCore <- .winsorise(xCore, probs = c(0.01, 0.99), na.rm = TRUE)
   winsoriseMin <- max(xCoreQuantVec[[1]], .Machine$double.eps)
   xCore <- pmax(xCore, winsoriseMin)
@@ -571,10 +598,6 @@
   if (length(xCore) < 20L || length(unique(xCore)) < 5L) {
     return(NULL)
   }
-
-  xRange <- diff(range(xCore, na.rm = TRUE))
-  eps <- max(.Machine$double.eps, xRange * 1e-8)
-  offset <- min(xCore, na.rm = TRUE) - eps
 
   scoreVec <- purrr::map_dbl(lambda, function(lambdaCurr) {
     z <- .bwBoxCoxTransform(
@@ -642,11 +665,12 @@
 }
 
 #' @keywords internal
+
 .bwNormSampleExcess <- function(
   x,
   coreObj,
   normExtraFrac = 0.2,
-  normExtraMax = 1000L,
+  normExtraMax = Inf,
   normExtraJitterFrac = 0.25,
   densityN = 512L,
   normExcessBwMtd = "hpi3",
@@ -657,19 +681,24 @@
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
-  nExtraTargetOverall <- normExtraFrac * length(x)
-  nAboveThreshold <- sum(x > coreObj$thresholdX, na.rm = TRUE)
-  nExtraTarget <- nExtraTargetOverall - nAboveThreshold
-
-  # exit early if no additional sampling required
-  # as we already have sufficiently many
-  # cells above the threshold
-  if (nExtraTarget <= 0) {
+  if (length(x) < 20L || length(unique(x)) < 5L) {
     return(numeric(0L))
   }
 
-  if (!is.finite(nExtraTarget) || nExtraTarget <= 0L) {
-    return(numeric(0))
+  nExtraTargetOverall <- ceiling(normExtraFrac * length(x))
+  nAboveThreshold <- sum(x > coreObj$thresholdX, na.rm = TRUE)
+  nExtraTarget <- nExtraTargetOverall - nAboveThreshold
+
+  nExtraTarget <- .bwAsSafeSampleN(
+    min(nExtraTarget, normExtraMax),
+    default = 0L,
+    lower = 0L
+  )
+
+  # If the observed data already contain enough high-side cells, do not add
+  # synthetic high-side values.
+  if (is.null(nExtraTarget) || nExtraTarget <= 0L) {
+    return(numeric(0L))
   }
 
   densObj <- .bwNormExcessDensityDecreasing(
@@ -683,12 +712,12 @@
   )
 
   if (is.null(densObj)) {
-    return(numeric(0))
+    return(numeric(0L))
   }
 
   candidate <- is.finite(x) & x > coreObj$thresholdX
   if (!any(candidate)) {
-    return(numeric(0))
+    return(numeric(0L))
   }
 
   xCand <- x[candidate]
@@ -719,7 +748,7 @@
   samplingRate <- pmax(0, 1 - gammaProb)
 
   if (!any(is.finite(samplingRate) & samplingRate > 0)) {
-    return(numeric(0))
+    return(numeric(0L))
   }
 
   xExtra <- .bwNormPreferentialUpsample(
@@ -729,7 +758,7 @@
   )
 
   if (length(xExtra) == 0L) {
-    return(numeric(0))
+    return(numeric(0L))
   }
 
   sdDensity <- .sdSum(
@@ -738,19 +767,17 @@
   )
 
   if (!is.finite(sdDensity) || sdDensity <= 0) {
+    sdDensity <- .bwRobustSd(x)
+  }
+  if (!is.finite(sdDensity) || sdDensity <= 0) {
     sdDensity <- .Machine$double.eps
   }
 
-  if (is.finite(sdDensity) && sdDensity > 0) {
-    xExtra <- xExtra +
-      stats::rnorm(
-        length(xExtra),
-        mean = 0,
-        sd = normExtraJitterFrac * sdDensity
-      )
-  }
-
-  xExtra
+  xExtra + stats::rnorm(
+    length(xExtra),
+    mean = 0,
+    sd = normExtraJitterFrac * sdDensity
+  )
 }
 
 
@@ -836,13 +863,26 @@
   sdX
 }
 
+
 .winsorise <- function(x, probs = c(0.05, 0.95), na.rm = TRUE) {
-  qs <- stats::quantile(x, probs = probs, na.rm = na.rm, names = FALSE)
-  pmin(pmax(x, qs[1]), qs[2])
+  x <- suppressWarnings(as.numeric(x))
+  if (length(x) == 0L || all(!is.finite(x))) {
+    return(x)
+  }
+
+  qs <- stats::quantile(
+    x,
+    probs = probs,
+    na.rm = na.rm,
+    names = FALSE
+  )
+
+  if (length(qs) != 2L || any(!is.finite(qs))) {
+    return(x)
+  }
+
+  pmin(pmax(x, qs[[1L]]), qs[[2L]])
 }
-
-x_wins <- winsorise(x, c(0.01, 0.99))
-
 #' @keywords internal
 .bwWeightedSd <- function(x, w) {
   x <- suppressWarnings(as.numeric(x))
@@ -862,7 +902,6 @@ x_wins <- winsorise(x, c(0.01, 0.99))
 
 #' @keywords internal
 
-#' @keywords internal
 .bwNormExcessDensityDecreasing <- function(
   x,
   coreObj,
@@ -924,11 +963,8 @@ x_wins <- winsorise(x, c(0.01, 0.99))
     peakIdx <- which.max(dy)
   }
 
-  y <- approx(x = dx, y = dy, xout = x)
-
   yDec <- .bwNormFitDecreasingDensity(
     x = x,
-    y = y,
     dx = dx,
     dy = dy,
     thresholdX = coreObj$thresholdX,
@@ -937,7 +973,7 @@ x_wins <- winsorise(x, c(0.01, 0.99))
     scamK = scamK
   )
 
-  if (is.null(yDec)) {
+  if (is.null(yDec) || length(yDec) != length(dx)) {
     return(NULL)
   }
 
@@ -969,9 +1005,9 @@ x_wins <- winsorise(x, c(0.01, 0.99))
 }
 
 #' @keywords internal
+
 .bwNormFitDecreasingDensity <- function(
   x,
-  y,
   dx,
   dy,
   thresholdX,
@@ -985,26 +1021,46 @@ x_wins <- winsorise(x, c(0.01, 0.99))
     return(NULL)
   }
 
+  x <- suppressWarnings(as.numeric(x))
+  x <- x[is.finite(x)]
+  yAtX <- stats::approx(
+    x = dx,
+    y = dy,
+    xout = x,
+    rule = 2
+  )$y
+
   fitTblInit <- tibble::tibble(
     x = x,
-    logDens = log(pmax(y, 1e2 * .Machine$double.eps))
+    logDens = log(pmax(yAtX, 1e2 * .Machine$double.eps))
   ) |>
-    dplyr::arrange(x) |>
-    dplyr::filter(x >= peakX)
+    dplyr::arrange(.data$x) |>
+    dplyr::filter(.data$x >= .env$peakX)
 
-  logDensRepRegion <- y[x >= peakX & x <= thresholdX]
-  logDensRepVal <- min(
-    log(pmax(logDensRepRegion, 1e2 * .Machine$double.eps)),
-    na.rm = TRUE
-  ) /
-    2
+  if (nrow(fitTblInit) < 6L) {
+    return(NULL)
+  }
+
+  # Values beyond the coreset boundary are allowed to influence where the high
+  # points are, but not to pull the decreasing background continuation upwards.
+  logDensRepRegion <- fitTblInit$logDens[
+    fitTblInit$x >= peakX & fitTblInit$x <= thresholdX
+  ]
+
+  logDensRepVal <- min(logDensRepRegion, na.rm = TRUE)
+  if (!is.finite(logDensRepVal)) {
+    logDensRepVal <- min(fitTblInit$logDens, na.rm = TRUE)
+  }
+  if (!is.finite(logDensRepVal)) {
+    return(NULL)
+  }
 
   fitTblInit <- fitTblInit |>
     dplyr::mutate(
-      logDens = ifelse(
-        x > thresholdX,
-        pmin(logDens, logDensRepVal),
-        logDens
+      logDens = dplyr::if_else(
+        .data$x > .env$thresholdX,
+        pmin(.data$logDens, .env$logDensRepVal),
+        .data$logDens
       )
     )
 
@@ -1014,12 +1070,16 @@ x_wins <- winsorise(x, c(0.01, 0.99))
     dx = dx
   )
 
-  k <- min(as.integer(scamK), nrow(fitTblThin) - 1L)
+  if (nrow(fitTblThin) < 6L) {
+    return(NULL)
+  }
+
+  k <- min(as.integer(scamK), max(4L, nrow(fitTblThin) - 1L))
 
   fit <- try(
     scam::scam(
       logDens ~ s(x, bs = "mpd", k = k, m = c(2, 1)),
-      data = fitTbl,
+      data = fitTblThin,
       family = gaussian(),
       control = scam::scam.control(
         print.warn = FALSE,
@@ -1030,38 +1090,52 @@ x_wins <- winsorise(x, c(0.01, 0.99))
     silent = TRUE
   )
 
-  if (!inherits(fit, "try-error")) {
-    predTbl <- tibble::tibble(x = fitTblInit$x)
+  yOut <- dy
+  predIdx <- dx >= peakX
 
+  if (!inherits(fit, "try-error")) {
     pred <- try(
-      stats::predict(fit, newdata = predTbl, type = "response"),
+      stats::predict(
+        fit,
+        newdata = tibble::tibble(x = dx[predIdx]),
+        type = "response"
+      ),
       silent = TRUE
     )
 
-    if (inherits(pred, "try-error") || any(!is.finite(pred))) {
-      return(NULL)
+    if (!inherits(pred, "try-error") && all(is.finite(pred))) {
+      yOut[predIdx] <- exp(pred)
+      return(yOut)
     }
-
-    return(exp(pred))
   }
 
-  fit <- try(
+  # Isotonic fallback: fit a nonincreasing log-density to the thinned points,
+  # then interpolate it back onto the KDE grid.
+  iso <- try(
     stats::isoreg(
       seq_along(fitTblThin$x),
       -fitTblThin$logDens
     ),
     silent = TRUE
   )
-  if (inherits(fit, "try-error")) {
+  if (inherits(iso, "try-error")) {
     return(NULL)
   }
+
   predFit <- exp(-iso$yf)
-  approx(
+  predIso <- stats::approx(
     x = fitTblThin$x,
     y = predFit,
-    xout = fitTblInit$x,
+    xout = dx[predIdx],
     rule = 2
-  )
+  )$y
+
+  if (any(!is.finite(predIso))) {
+    return(NULL)
+  }
+
+  yOut[predIdx] <- predIso
+  yOut
 }
 
 #' @keywords internal
@@ -1100,26 +1174,46 @@ x_wins <- winsorise(x, c(0.01, 0.99))
 }
 
 #' @keywords internal
+
 .bwNormThinDensityGrid <- function(
   fitTbl,
   maxPerBin = 20L,
-  dx
+  dx = NULL
 ) {
-  bin <- cut(fitTbl$x, breaks = dx, include.lowest = TRUE)
+  if (!is.data.frame(fitTbl) || nrow(fitTbl) == 0L) {
+    return(fitTbl)
+  }
 
-  fitTbl$bin <- bin
+  maxPerBin <- .bwAsSafeSampleN(maxPerBin, default = 20L, lower = 1L)
+
+  if (is.null(dx) || length(dx) < 2L || any(!is.finite(dx))) {
+    breaks <- pretty(fitTbl$x, n = max(2L, ceiling(nrow(fitTbl) / maxPerBin)))
+  } else {
+    breaks <- sort(unique(as.numeric(dx)))
+  }
+
+  if (length(breaks) < 2L) {
+    return(fitTbl)
+  }
+
+  fitTbl$bin <- cut(
+    fitTbl$x,
+    breaks = breaks,
+    include.lowest = TRUE
+  )
 
   fitTbl |>
+    dplyr::filter(!is.na(.data$bin)) |>
     dplyr::group_by(.data$bin) |>
-    dplyr::slice_sample()
-  dplyr::sample_n(n = min(dplyr::n(), maxPerBin), replace = FALSE) |>
+    dplyr::mutate(.bw_rand = stats::runif(dplyr::n())) |>
+    dplyr::arrange(.data$bin, .data$.bw_rand) |>
+    dplyr::slice_head(n = maxPerBin) |>
     dplyr::ungroup() |>
-    dplyr::select(-.data$bin)
+    dplyr::select(-.data$bin, -.data$.bw_rand)
 }
 
 #' @keywords internal
 
-#' @keywords internal
 .bwNormPreferentialUpsample <- function(
   x,
   rate,
@@ -1136,7 +1230,20 @@ x_wins <- winsorise(x, c(0.01, 0.99))
     return(numeric(0L))
   }
 
+  nTarget <- .bwAsSafeSampleN(
+    nTarget,
+    default = 0L,
+    lower = 0L
+  )
+
+  if (is.null(nTarget) || nTarget <= 0L) {
+    return(numeric(0L))
+  }
+
   rate <- pmin(1, pmax(0, rate))
+  if (!any(rate > 0)) {
+    return(numeric(0L))
+  }
 
   sample(
     x = x,
@@ -1169,9 +1276,22 @@ x_wins <- winsorise(x, c(0.01, 0.99))
   as.integer(x)
 }
 
+
 .sdSum <- function(x1, x2) {
-  sqrt(sum(
-    var(x1, na.rm = TRUE),
-    var(x2, na.rm = TRUE)
-  ))
+  .sdOne <- function(x) {
+    x <- suppressWarnings(as.numeric(x))
+    x <- x[is.finite(x)]
+    if (length(x) < 2L) {
+      return(0)
+    }
+    out <- stats::sd(x)
+    if (!is.finite(out) || out < 0) {
+      return(0)
+    }
+    out
+  }
+
+  sd1 <- .sdOne(x1)
+  sd2 <- .sdOne(x2)
+  sqrt(sd1^2 + sd2^2)
 }
