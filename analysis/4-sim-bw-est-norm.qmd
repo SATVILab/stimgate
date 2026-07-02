@@ -87,11 +87,11 @@ sim_grid <- sim_grid |>
 if ("dev" %in% projr::projr_profile_get()) {
   sim_grid <- sim_grid |>
     dplyr::filter(
-      n_cell == 1e5,
+      n_cell c(5e3, 1e4, 2e4),
       prob_response == 0.002,
       mean_pos_setting == "high",
       transformation %in% transformation_vec,
-      bw_mtd == "hpi2Norm"
+      grepl("hpi1", bw_mtd)
     ) 
 }
 sim_grid
@@ -110,6 +110,9 @@ bw_list_raw_mtd_loop <- lapply(seq_len(nrow(sim_grid)), function(i) {
 })
 
 for (i in seq_len(nrow(sim_grid))) {
+  if (!sim_grid$transformation[i] == "gamma") {
+    next
+  }
   settings_row <- paste0(
     "trans = ",
     sim_grid$transformation[i],

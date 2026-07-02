@@ -255,14 +255,18 @@
       winsoriseMin = boxObj$winsoriseMin
     )
   } else {
+    sigmaCore <- sd(xCore)
+    sigmaExtra <- sd(xExtra)
     zBw <- c(
       .bwNormSampleNormalComponent(
-        x = xCore,
-        n = length(x),
+        mu = mean(xCore),
+        sd = sigmaCore,
+        n = length(x) - length(xExtra),
         fallbackSd = .bwRobustSd(x)
       ),
       .bwNormSampleNormalComponent(
-        x = xExtra,
+        mu = mean(xExtra),
+        sd = sigmaExtra,
         n = length(xExtra),
         fallbackSd = .bwRobustSd(xCore)
       )
@@ -800,7 +804,8 @@
 
 #' @keywords internal
 .bwNormSampleNormalComponent <- function(
-  x,
+  mu,
+  sd,
   n = length(x),
   fallbackSd = NULL
 ) {
@@ -809,26 +814,7 @@
     return(numeric(0L))
   }
 
-  x <- suppressWarnings(as.numeric(x))
-  x <- x[is.finite(x)]
-  if (length(x) == 0L) {
-    return(numeric(0L))
-  }
-
-  mu <- mean(x, na.rm = TRUE)
-  sig <- if (length(x) >= 2L) stats::sd(x, na.rm = TRUE) else NA_real_
-
-  if (!is.finite(sig) || sig <= 0) {
-    sig <- suppressWarnings(as.numeric(fallbackSd)[1])
-  }
-  if (!is.finite(sig) || sig <= 0) {
-    sig <- .bwRobustSd(x)
-  }
-  if (!is.finite(sig) || sig <= 0) {
-    sig <- .Machine$double.eps
-  }
-
-  stats::rnorm(n = n, mean = mu, sd = sig)
+  stats::rnorm(n = n, mean = mu, sd = sd)
 }
 
 #' @keywords internal
