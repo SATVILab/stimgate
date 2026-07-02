@@ -24,7 +24,7 @@
   bwNcellMin = NULL,
   bwNcellMax = NULL,
   normPeakFrac = 0.1,
-  normPeakMinRel = 0.2,
+  normPeakMinRel = 0.75,
   normExtraFrac = 0.1,
   normExtraMax = 1000L,
   normExtraJitterFrac = 0.25,
@@ -175,7 +175,7 @@
   bwNcellMin = NULL,
   bwNcellMax = NULL,
   normPeakFrac = 0.1,
-  normPeakMinRel = 0.2,
+  normPeakMinRel = 0.75,
   normExtraFrac = 0.1,
   normExtraMax = 1000L,
   normExtraJitterFrac = 0.25,
@@ -286,6 +286,8 @@
 }
 
 #' @keywords internal
+
+#' @keywords internal
 .bwNormFindBackgroundCore <- function(
   x,
   peakFrac = 0.1,
@@ -298,20 +300,26 @@
   if (length(x) < 20L || length(unique(x)) < 5L) {
     return(NULL)
   }
-  
+
   xPilot <- if (length(x) > 1e5L) {
     sample(x, size = 1e5L, replace = FALSE)
   } else {
     x
   }
 
-  bwPilot <- try(stats::ks::hpi(xPilot, deriv.order = 0), silent = TRUE)
+  bwPilot <- try(
+    suppressWarnings(ks::hpi(xPilot, deriv.order = 0)),
+    silent = TRUE
+  )
   if (
     inherits(bwPilot, "try-error") ||
       !is.finite(bwPilot) ||
       bwPilot <= 0
   ) {
     bwPilot <- stats::IQR(xPilot, na.rm = TRUE) / 20
+  }
+  if (!is.finite(bwPilot) || bwPilot <= 0) {
+    bwPilot <- .bwRobustSd(xPilot) / 5
   }
   if (!is.finite(bwPilot) || bwPilot <= 0) {
     return(NULL)
@@ -326,14 +334,33 @@
     return(NULL)
   }
 
-  dx <- dens$x
-  dy <- dens$y
+  dx <- suppressWarnings(as.numeric(dens$x))
+  dy <- suppressWarnings(as.numeric(dens$y))
+  dy <- pmax(dy, 0)
 
-  if (length(dx) < 5L || all(!is.finite(dy))) {
+  if (
+    length(dx) < 5L ||
+      length(dx) != length(dy) ||
+      all(!is.finite(dy))
+  ) {
     return(NULL)
   }
 
-  peakMainLeftIdx <- .getPeakMainLeftIdx(y = dy, peakMinRel = peakMinRel)
+  peakMainLeftIdx <- .getPeakMainLeftIdx(
+    y = dy,
+    peakMinRel = peakMinRel,
+    troughMaxRel = peakMinRel
+  )
+
+  if (
+    length(peakMainLeftIdx) != 1L ||
+      !is.finite(peakMainLeftIdx) ||
+      peakMainLeftIdx < 1L ||
+      peakMainLeftIdx > length(dx)
+  ) {
+    peakMainLeftIdx <- which.max(dy)
+  }
+
   peakMainLeftX <- dx[peakMainLeftIdx]
   peakHeight <- dy[peakMainLeftIdx]
 
@@ -341,131 +368,193 @@
     return(NULL)
   }
 
-  # now, find first meaningful trough on the right of the chosen peak.
-  # if there is one, then we cut at that point, and treat everything to the left
-  # as the coreset.
-  # if there is not one, then we take the peak, and look at where it has sufficiently flattened
-  # out.
-  # by sufficiently, we mean tail-gate-style - the derivative is less than 1/100 of the peak derivative.
-  # okay, we get the derivative of the density,
-  # and then we take the point at which it has flattened out, and move 1/10 of the distance
-  # between it and the peak on its left, and that is the cut point. Everything to the left of that is the coreset.
-  # no, actually, we look for both the meanignful trough, and we look for this,
-  # and we take the smaller of the two.
-  # but if there's a trough, the derivative is zero, so we don't actually need to do that, as we'll always sample higher.
-  # well, maybe we want that?
-  # yeah, okay, if we can find a point at which it's actually flattened out to zero, that should take precedence, even if it's higher.
   thresholdTrough <- .bwNormFindBackgroundCoreThresholdTrough(
-    y = dy,
+    dx = dx,
+    dy = dy,
     peakMainLeftIdx = peakMainLeftIdx,
-    peakMinRelMain = 0.75,
-    peakMinRelNext = 0.25
+    troughMaxRelMain = peakMinRel,
+    troughMaxRelNext = peakMinRel,
+    troughMaxRelAbs = peakMinRel
   )
 
-  threshold <- if (length(thresholdTrough) == 1L) {
-    thresholdTrough
+  thresholdFlat <- .bwNormFindBackgroundCoreThresholdFlattened(
+    dx = dx,
+    dy = dy,
+    peakMainLeftIdx = peakMainLeftIdx,
+    peakMinRel = peakMinRel
+  )
+
+  thresholdVec <- c(thresholdTrough, thresholdFlat)
+  thresholdVec <- thresholdVec[
+    is.finite(thresholdVec) &
+      thresholdVec > peakMainLeftX &
+      thresholdVec <= max(dx, na.rm = TRUE)
+  ]
+
+  thresholdX <- if (length(thresholdVec) > 0L) {
+    min(thresholdVec)
   } else {
-    .bwNormFindBackgroundCoreThresholdFlattened(
-      x = dx,
-      y = dy,
-      peakMainLeftX = peakMainLeftX,
-      peakMainLeftIdx = peakMainLeftIdx,
-      peakMinRel = 0.75,
-      densityN = densityN
-    )
+    max(dx, na.rm = TRUE)
+  }
+
+  thresholdIdx <- which(dx >= thresholdX)[1]
+  if (!is.finite(thresholdIdx)) {
+    thresholdIdx <- length(dx)
+    thresholdX <- dx[thresholdIdx]
   }
 
   list(
-    thresholdX = threshold,
-    thresholdIdx = min(which(dx >= threshold), na.rm = TRUE),
-    xPeak = dx[peakMainLeftIdx],
-    peakHeight = dy[peakMainLeftIdx],
-    lowHeight = peakFrac * dy[peakMainLeftIdx],
+    thresholdX = thresholdX,
+    thresholdIdx = thresholdIdx,
+    xPeak = peakMainLeftX,
+    peakHeight = peakHeight,
+    lowHeight = peakFrac * peakHeight,
     density = tibble::tibble(x = dx, y = dy)
   )
 }
 
-.bwNormFindBackgroundCoreThresholdTrough <- function(y,
-                                                     peakMainLeftIdx,
-                                                     peakMinRelMain = 0.75,
-                                                     peakMinRelNext = 0.25) {
-  troughIdxAll <- .getLocalMinimaIdx(y)
-  troughIdxAbovePeakMain <- troughIdxAll[troughIdxAll > peakMainLeftIdx]
-  if (length(troughIdxAbovePeakMain) == 0L) {
-    return(integer(0L))
+.bwNormFindBackgroundCoreThresholdTrough <- function(
+  dx,
+  dy,
+  peakMainLeftIdx,
+  troughMaxRelMain = 0.75,
+  troughMaxRelNext = 0.75,
+  troughMaxRelAbs = 0.75
+) {
+  dx <- suppressWarnings(as.numeric(dx))
+  dy <- suppressWarnings(as.numeric(dy))
+  dy <- pmax(dy, 0)
+
+  if (
+    length(dx) != length(dy) ||
+      length(dy) < 5L ||
+      peakMainLeftIdx >= length(dy) - 1L
+  ) {
+    return(numeric(0L))
   }
-  peakHeightMain <- y[peakMainLeftIdx]
-  troughIdxAbovePeakMainMeaningful <- troughIdxAbovePeakMain[
-    y[troughIdxAbovePeakMain] < peakMinRelMain * peakHeightMain
-  ]
-  if (length(troughIdxAbovePeakMainMeaningful) == 0L) {
-    return(integer(0L))
+
+  troughIdxAll <- .getLocalMinimaIdx(dy)
+  troughIdxAll <- troughIdxAll[troughIdxAll > peakMainLeftIdx]
+  if (length(troughIdxAll) == 0L) {
+    return(numeric(0L))
   }
-  peakIdxAll <- .getLocalMaximaIdx(y)
-  peakIdxAbovePeakMain <- peakIdxAll[peakIdxAll > peakMainLeftIdx]
-  if (length(peakIdxAbovePeakMain) == 0L) {
-    return(integer(0L))
+
+  peakIdxAll <- .getLocalMaximaIdx(dy)
+  peakIdxAbove <- peakIdxAll[peakIdxAll > peakMainLeftIdx]
+  if (length(peakIdxAbove) == 0L) {
+    return(numeric(0L))
   }
-  troughIdxOpt <- NULL
-  for (troughIdx in troughIdxAbovePeakMainMeaningful) {
-    peakIdxRight <- min(peakIdxAbovePeakMain[peakIdxAbovePeakMain > troughIdx], na.rm = TRUE)
+
+  peakHeightMain <- dy[peakMainLeftIdx]
+  peakHeightAbs <- max(dy, na.rm = TRUE)
+
+  for (troughIdx in troughIdxAll) {
+    peakIdxRight <- peakIdxAbove[peakIdxAbove > troughIdx][1L]
     if (!is.finite(peakIdxRight)) {
       next
     }
-    peakHeightRight <- y[peakIdxRight]
-    if (y[troughIdx] < peakMinRelNext * peakHeightRight) {
-      troughIdxOpt <- c(troughIdxOpt, troughIdx)
+
+    troughHeight <- dy[troughIdx]
+    peakHeightRight <- dy[peakIdxRight]
+
+    lowEnoughMain <- troughHeight <= troughMaxRelMain * peakHeightMain
+    lowEnoughRight <- troughHeight <= troughMaxRelNext * peakHeightRight
+    lowEnoughAbs <- troughHeight <= troughMaxRelAbs * peakHeightAbs
+
+    if (
+      isTRUE(lowEnoughMain) && isTRUE(lowEnoughRight) && isTRUE(lowEnoughAbs)
+    ) {
+      return(dx[troughIdx])
     }
   }
-  min(troughIdxOpt, na.rm = TRUE)
+
+  numeric(0L)
 }
 
-.bwNormFindBackgroundCoreThresholdFlattened <- function(x,
-                                                        y,
-                                                        peakMainLeftX,
-                                                        peakMainLeftIdx,
-                                                        peakMinRel = 0.75,
-                                                        densityN = 512L,
-                                                        autoTol = TRUE,
-                                                        tol = 1e-8) {
+.bwNormFindBackgroundCoreThresholdFlattened <- function(
+  dx,
+  dy,
+  peakMainLeftIdx,
+  peakMinRel = 0.75,
+  autoTol = TRUE,
+  tol = 1e-8,
+  moveBackFrac = 0.1
+) {
+  dx <- suppressWarnings(as.numeric(dx))
+  dy <- suppressWarnings(as.numeric(dy))
+  dy <- pmax(dy, 0)
 
-  xPilot <- if (length(x) > 1e5L) {
-    sample(x, size = 1e5L, replace = FALSE)
-  } else {
-    x
+  if (
+    length(dx) != length(dy) ||
+      length(dx) < 5L ||
+      peakMainLeftIdx >= length(dx) - 2L
+  ) {
+    return(numeric(0L))
   }
-  bwPilotDeriv <- try(stats::ks::hpi(xPilot, deriv.order = 1), silent = TRUE)
-  densityDeriv <- ks::kdde(x = x, h = bwPilotDeriv, deriv.order = 1, gridsize = densityN)
-  
-  # only look at points after the density
-  # has dropped sufficiently, so that we don't just very
-  # high local minima
-  minRightOfMainLeftX <- min(
-    x[x > peakMainLeftX & y < peakMinRel * y[peakMainLeftIdx]],
-    na.rm = TRUE
-  )
-  xDeriv <- densityDeriv$eval.points[densityDeriv$eval.points > minRightOfMainLeftX]
-  yDeriv <- densityDeriv$estimate[densityDeriv$eval.points > minRightOfMainLeftX]
 
-  # okay, so now we want to find the point at which the derivative
-  # is decreasing rapidly.
-  # we should probably only look from points
-  # onwards that are to the right of non-meaningful peaks
-  # we want to choose the points at which it is decreasing fastest
-  yDerivPeaksIdx <- .getLocalMaximaIdx(-yDeriv)
-  # so, now we just want to the first point to the right of here
-  # such that the density is less than 1/100 of the peak (negative) derivative
-  peakDeriv <- max(-yDeriv[yDerivPeaksIdx], na.rm = TRUE)
-  thresholdDeriv <- if (autoTol) {
+  peakHeight <- dy[peakMainLeftIdx]
+  if (!is.finite(peakHeight) || peakHeight <= 0) {
+    return(numeric(0L))
+  }
+
+  # Only look after the density has dropped enough that a shoulder/local wobble
+  # near the peak is not mistaken for a tail flattening point.
+  rightDropIdx <- which(
+    seq_along(dy) > peakMainLeftIdx &
+      dy <= peakMinRel * peakHeight
+  )[1L]
+
+  if (!is.finite(rightDropIdx) || rightDropIdx >= length(dx) - 1L) {
+    return(numeric(0L))
+  }
+
+  deriv <- c(NA_real_, diff(dy) / diff(dx))
+  derivRight <- deriv[seq.int(rightDropIdx, length(deriv))]
+  xRight <- dx[seq.int(rightDropIdx, length(dx))]
+
+  ok <- is.finite(xRight) & is.finite(derivRight)
+  xRight <- xRight[ok]
+  derivRight <- derivRight[ok]
+
+  if (length(xRight) < 3L) {
+    return(numeric(0L))
+  }
+
+  negDeriv <- pmax(0, -derivRight)
+  if (all(!is.finite(negDeriv)) || max(negDeriv, na.rm = TRUE) <= 0) {
+    return(numeric(0L))
+  }
+
+  maxDropIdx <- which.max(negDeriv)
+  peakDeriv <- negDeriv[maxDropIdx]
+
+  if (!is.finite(peakDeriv) || peakDeriv <= 0) {
+    return(numeric(0L))
+  }
+
+  thresholdDeriv <- if (isTRUE(autoTol)) {
     peakDeriv / 100
   } else {
     tol
   }
-  thresholdDerivIdx <- which(-yDeriv < thresholdDeriv)
-  min(xDeriv[thresholdDerivIdx], na.rm = TRUE)
+
+  flatRelIdx <- which(
+    seq_along(negDeriv) > maxDropIdx &
+      negDeriv <= thresholdDeriv
+  )[1L]
+
+  if (!is.finite(flatRelIdx)) {
+    return(numeric(0L))
+  }
+
+  xFlat <- xRight[flatRelIdx]
+
+  # Move slightly back towards the peak so the coreset includes the main right
+  # tail but not the long flat/excess region.
+  xPeak <- dx[peakMainLeftIdx]
+  xPeak + (1 - moveBackFrac) * (xFlat - xPeak)
 }
 
-#' @keywords internal
 .bwNormChooseBoxCox <- function(
   xCore,
   lambda = seq(-2, 2, length.out = 81)
@@ -759,6 +848,8 @@
 }
 
 #' @keywords internal
+
+#' @keywords internal
 .bwNormExcessDensityDecreasing <- function(
   x,
   coreObj,
@@ -811,8 +902,8 @@
     return(NULL)
   }
 
-  dx <- densInit$x
-  dy <- pmax(densInit$y, .Machine$double.eps)
+  dx <- suppressWarnings(as.numeric(densInit$x))
+  dy <- pmax(suppressWarnings(as.numeric(densInit$y)), .Machine$double.eps)
 
   peakIdx <- which.min(abs(dx - coreObj$xPeak))
 
@@ -820,12 +911,17 @@
     peakIdx <- which.max(dy)
   }
 
-  xRightCut <- .bwNormRightCutFromDensity(
-    dx = dx,
-    dy = dy,
-    peakIdx = peakIdx,
-    peakFrac = peakFrac
-  )
+  # Use the coreset boundary if available so the augmentation starts exactly
+  # where the core-selection logic stops.
+  xRightCut <- coreObj$thresholdX %||% NA_real_
+  if (!is.finite(xRightCut)) {
+    xRightCut <- .bwNormRightCutFromDensity(
+      dx = dx,
+      dy = dy,
+      peakIdx = peakIdx,
+      peakFrac = peakFrac
+    )
+  }
 
   yDec <- .bwNormFitDecreasingDensityScam(
     dx = dx,
@@ -860,7 +956,6 @@
   )
 }
 
-#' @keywords internal
 .bwNormRightCutFromDensity <- function(
   dx,
   dy,
@@ -1016,39 +1111,47 @@
 }
 
 #' @keywords internal
+
+#' @keywords internal
 .bwNormPreferentialUpsample <- function(
   x,
   rate,
-  nTarget
+  nTarget = NULL
 ) {
+  x <- suppressWarnings(as.numeric(x))
+  rate <- suppressWarnings(as.numeric(rate))
+
   ok <- is.finite(x) & is.finite(rate) & rate > 0
   x <- x[ok]
   rate <- rate[ok]
 
-  if (length(x) == 0L || sum(rate) <= 0) {
-    return(numeric(0))
+  if (length(x) == 0L) {
+    return(numeric(0L))
   }
 
-  expectedCopies <- rate / sum(rate) * nTarget
+  rate <- pmin(1, pmax(0, rate))
 
-  nCopies <- floor(expectedCopies)
-  fracCopies <- expectedCopies - nCopies
+  keep <- stats::rbinom(
+    n = length(x),
+    size = 1L,
+    prob = rate
+  ) >
+    0L
 
-  nCopies <- nCopies +
-    stats::rbinom(
-      n = length(nCopies),
-      size = 1L,
-      prob = pmin(1, pmax(0, fracCopies))
-    )
+  xOut <- x[keep]
 
-  if (!any(nCopies > 0L)) {
-    return(numeric(0))
+  if (
+    !is.null(nTarget) &&
+      is.finite(nTarget) &&
+      nTarget > 0L &&
+      length(xOut) > nTarget
+  ) {
+    xOut <- sample(xOut, size = as.integer(nTarget), replace = FALSE)
   }
 
-  rep(x, nCopies)
+  xOut
 }
 
-#' @keywords internal
 .bwDensitySd <- function(
   x,
   y
