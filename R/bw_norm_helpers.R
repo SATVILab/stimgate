@@ -202,7 +202,7 @@
     return(.bwCalcOneBase(x, bwMtd))
   }
 
-  xCore <- x[x >= coreObj$xLeft & x <= coreObj$xRight]
+  xCore <- x[x <= coreObj$thresholdX]
   xCore <- xCore[is.finite(xCore)]
 
   if (length(xCore) < 20L || length(unique(xCore)) < 5L) {
@@ -290,7 +290,7 @@
   x,
   peakFrac = 0.1,
   peakMinRel = 0.75,
-  densityN = 512L
+  densityN = 1024L
 ) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
@@ -299,8 +299,8 @@
     return(NULL)
   }
   
-  xPilot <- if (length(x) > 2e4L) {
-    sample(x, size = 2e4, replace = FALSE)
+  xPilot <- if (length(x) > 1e5L) {
+    sample(x, size = 1e5L, replace = FALSE)
   } else {
     x
   }
@@ -333,112 +333,136 @@
     return(NULL)
   }
 
-  peakIdxAll <- .bwLocalMaxima(dy)
-
-  peakIdx <- if (length(peakIdxAll) == 0L) {
-    which.max(dy)
-  } else if (length(peakIdxAll) == 1L) {
-    peakIdxAll
-  } else {
-    # multiple peaks, choose right-most
-    # peak that isn't after an antimode (local minimum) that is
-    # too low relative to the main peak
-    peakHeightMax <- max(dy, na.rm = TRUE)
-    peakIdxMeaningful <- peakIdxAll[
-      dy[peakIdxAll] >= peakMinRel * peakHeightMax
-    ]
-    if (length(peakIdxMeaningful) == 0L) {
-      which.max(dy)
-    } else if (length(peakIdxMeaningful) == 1L) {
-      peakIdxMeaningful
-    } else {
-      troughIdxAll <- .bwLocalMinima(dy)
-      if (length(troughIdxAll) == 0L) {
-        peakIdxMeaningful[length(peakIdxMeaningful)]
-      } else {
-        # for each trough, look at the peaks on either side.
-        # take a trough as "meaningful" if it is less than 0.75 the height of either peak
-        troughIdxMeaningful <- NULL
-        for (troughIdx in troughIdxAll) {
-          leftPeakIdx <- max(peakIdxMeaningful[peakIdxMeaningful < troughIdx], na.rm = TRUE)
-          rightPeakIdx <- min(peakIdxMeaningful[peakIdxMeaningful > troughIdx], na.rm = TRUE)
-          if (is.finite(leftPeakIdx) && is.finite(rightPeakIdx)) {
-            leftPeakHeight <- dy[leftPeakIdx]
-            rightPeakHeight <- dy[rightPeakIdx]
-            troughHeight <- dy[troughIdx]
-            if (
-              troughHeight < 0.75 * leftPeakHeight ||
-                troughHeight < 0.75 * rightPeakHeight
-            ) {
-              troughIdxMeaningful <- c(troughIdxMeaningful, troughIdx)
-            }
-          }
-        }
-        troughIdxFinal <- min(troughIdxAll, na.rm = TRUE)
-        peakIdxMeaningful[peakIdxMeaningful < troughIdxFinal]
-      }
-    }
-  }
-
-  peakHeight <- dy[peakIdx]
+  peakMainLeftIdx <- .getPeakMainLeftIdx(y = dy, peakMinRel = peakMinRel)
+  peakMainLeftX <- dx[peakMainLeftIdx]
+  peakHeight <- dy[peakMainLeftIdx]
 
   if (!is.finite(peakHeight) || peakHeight <= 0) {
     return(NULL)
   }
 
-  lowHeight <- peakFrac * peakHeight
-  minIdxAll <- .bwLocalMinima(dy)
+  # now, find first meaningful trough on the right of the chosen peak.
+  # if there is one, then we cut at that point, and treat everything to the left
+  # as the coreset.
+  # if there is not one, then we take the peak, and look at where it has sufficiently flattened
+  # out.
+  # by sufficiently, we mean tail-gate-style - the derivative is less than 1/100 of the peak derivative.
+  # okay, we get the derivative of the density,
+  # and then we take the point at which it has flattened out, and move 1/10 of the distance
+  # between it and the peak on its left, and that is the cut point. Everything to the left of that is the coreset.
+  # no, actually, we look for both the meanignful trough, and we look for this,
+  # and we take the smaller of the two.
+  # but if there's a trough, the derivative is zero, so we don't actually need to do that, as we'll always sample higher.
+  # well, maybe we want that?
+  # yeah, okay, if we can find a point at which it's actually flattened out to zero, that should take precedence, even if it's higher.
+  thresholdTrough <- .bwNormFindBackgroundCoreThresholdTrough(
+    y = dy,
+    peakMainLeftIdx = peakMainLeftIdx,
+    peakMinRelMain = 0.75,
+    peakMinRelNext = 0.25
+  )
 
-  leftLowIdx <- rev(which(seq_along(dy) < peakIdx & dy <= lowHeight))[1]
-  leftIdx <- if (is.finite(leftLowIdx)) leftLowIdx else 1L
-
-  rightAntimodeIdx <- minIdxAll[minIdxAll > peakIdx][1]
-  rightLowIdx <- which(seq_along(dy) > peakIdx & dy <= lowHeight)[1]
-
-  rightCandidate <- c(rightAntimodeIdx, rightLowIdx)
-  rightCandidate <- rightCandidate[is.finite(rightCandidate)]
-
-  rightIdx <- if (length(rightCandidate) > 0L) {
-    min(rightCandidate)
+  threshold <- if (length(thresholdTrough) == 1L) {
+    thresholdTrough
   } else {
-    length(dx)
-  }
-
-  if (!is.finite(dx[leftIdx]) || !is.finite(dx[rightIdx])) {
-    return(NULL)
-  }
-  if (dx[rightIdx] <= dx[leftIdx]) {
-    return(NULL)
+    .bwNormFindBackgroundCoreThresholdFlattened(
+      x = dx,
+      y = dy,
+      peakMainLeftX = peakMainLeftX,
+      peakMainLeftIdx = peakMainLeftIdx,
+      peakMinRel = 0.75,
+      densityN = densityN
+    )
   }
 
   list(
-    xLeft = dx[leftIdx],
-    xRight = dx[rightIdx],
-    xPeak = dx[peakIdx],
-    peakHeight = peakHeight,
-    lowHeight = lowHeight,
+    thresholdX = threshold,
+    thresholdIdx = min(which(dx >= threshold), na.rm = TRUE),
+    xPeak = dx[peakMainLeftIdx],
+    peakHeight = dy[peakMainLeftIdx],
+    lowHeight = peakFrac * dy[peakMainLeftIdx],
     density = tibble::tibble(x = dx, y = dy)
   )
 }
 
-#' @keywords internal
-.bwLocalMaxima <- function(y) {
-  if (length(y) < 3L) {
-    return(integer(0))
+.bwNormFindBackgroundCoreThresholdTrough <- function(y,
+                                                     peakMainLeftIdx,
+                                                     peakMinRelMain = 0.75,
+                                                     peakMinRelNext = 0.25) {
+  troughIdxAll <- .getLocalMinimaIdx(y)
+  troughIdxAbovePeakMain <- troughIdxAll[troughIdxAll > peakMainLeftIdx]
+  if (length(troughIdxAbovePeakMain) == 0L) {
+    return(integer(0L))
   }
-
-  idx <- seq.int(2L, length(y) - 1L)
-  idx[y[idx] >= y[idx - 1L] & y[idx] > y[idx + 1L]]
+  peakHeightMain <- y[peakMainLeftIdx]
+  troughIdxAbovePeakMainMeaningful <- troughIdxAbovePeakMain[
+    y[troughIdxAbovePeakMain] < peakMinRelMain * peakHeightMain
+  ]
+  if (length(troughIdxAbovePeakMainMeaningful) == 0L) {
+    return(integer(0L))
+  }
+  peakIdxAll <- .getLocalMaximaIdx(y)
+  peakIdxAbovePeakMain <- peakIdxAll[peakIdxAll > peakMainLeftIdx]
+  if (length(peakIdxAbovePeakMain) == 0L) {
+    return(integer(0L))
+  }
+  troughIdxOpt <- NULL
+  for (troughIdx in troughIdxAbovePeakMainMeaningful) {
+    peakIdxRight <- min(peakIdxAbovePeakMain[peakIdxAbovePeakMain > troughIdx], na.rm = TRUE)
+    if (!is.finite(peakIdxRight)) {
+      next
+    }
+    peakHeightRight <- y[peakIdxRight]
+    if (y[troughIdx] < peakMinRelNext * peakHeightRight) {
+      troughIdxOpt <- c(troughIdxOpt, troughIdx)
+    }
+  }
+  min(troughIdxOpt, na.rm = TRUE)
 }
 
-#' @keywords internal
-.bwLocalMinima <- function(y) {
-  if (length(y) < 3L) {
-    return(integer(0))
-  }
+.bwNormFindBackgroundCoreThresholdFlattened <- function(x,
+                                                        y,
+                                                        peakMainLeftX,
+                                                        peakMainLeftIdx,
+                                                        peakMinRel = 0.75,
+                                                        densityN = 512L,
+                                                        autoTol = TRUE,
+                                                        tol = 1e-8) {
 
-  idx <- seq.int(2L, length(y) - 1L)
-  idx[y[idx] <= y[idx - 1L] & y[idx] < y[idx + 1L]]
+  xPilot <- if (length(x) > 1e5L) {
+    sample(x, size = 1e5L, replace = FALSE)
+  } else {
+    x
+  }
+  bwPilotDeriv <- try(stats::ks::hpi(xPilot, deriv.order = 1), silent = TRUE)
+  densityDeriv <- ks::kdde(x = x, h = bwPilotDeriv, deriv.order = 1, gridsize = densityN)
+  
+  # only look at points after the density
+  # has dropped sufficiently, so that we don't just very
+  # high local minima
+  minRightOfMainLeftX <- min(
+    x[x > peakMainLeftX & y < peakMinRel * y[peakMainLeftIdx]],
+    na.rm = TRUE
+  )
+  xDeriv <- densityDeriv$eval.points[densityDeriv$eval.points > minRightOfMainLeftX]
+  yDeriv <- densityDeriv$estimate[densityDeriv$eval.points > minRightOfMainLeftX]
+
+  # okay, so now we want to find the point at which the derivative
+  # is decreasing rapidly.
+  # we should probably only look from points
+  # onwards that are to the right of non-meaningful peaks
+  # we want to choose the points at which it is decreasing fastest
+  yDerivPeaksIdx <- .getLocalMaximaIdx(-yDeriv)
+  # so, now we just want to the first point to the right of here
+  # such that the density is less than 1/100 of the peak (negative) derivative
+  peakDeriv <- max(-yDeriv[yDerivPeaksIdx], na.rm = TRUE)
+  thresholdDeriv <- if (autoTol) {
+    peakDeriv / 100
+  } else {
+    tol
+  }
+  thresholdDerivIdx <- which(-yDeriv < thresholdDeriv)
+  min(xDeriv[thresholdDerivIdx], na.rm = TRUE)
 }
 
 #' @keywords internal
