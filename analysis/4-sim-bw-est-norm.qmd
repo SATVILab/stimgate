@@ -128,6 +128,7 @@ for (i in seq_len(nrow(sim_grid))) {
   )
 
   message("Running: ", settings_row)
+  debugonce(.bwCalcOneNorm)
   bw_list_raw_mtd_loop[[i]] <- stimgate:::.simBandwidthEstBwDirect(
     nSample = 2,
     nMarker = 1,
