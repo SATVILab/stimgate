@@ -25,13 +25,14 @@
   bwNcellMax = NULL,
   normPeakFrac = 0.1,
   normPeakMinRel = 0.75,
-  normExtraFrac = 0.1,
-  normExtraMax = 1000L,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
   normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
   normDensityN = 512L,
   normExcessBwMtd = "hpi3",
-  normExcessNcell = 10000L
+  normExcessNcell = 10000L,
+  normMtd = "moments"
 ) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
@@ -58,7 +59,8 @@
       normLambda = normLambda,
       normDensityN = normDensityN,
       normExcessBwMtd = normExcessBwMtd,
-      normExcessNcell = normExcessNcell
+      normExcessNcell = normExcessNcell,
+      normMtd = normMtd
     )
   } else {
     xBw <- .bwCalcOneSampleOrdinary(
@@ -177,14 +179,17 @@
   bwNcellMax = NULL,
   normPeakFrac = 0.1,
   normPeakMinRel = 0.75,
-  normExtraFrac = 0.1,
+  normExtraFrac = 0.2,
   normExtraMax = Inf,
   normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
   normDensityN = 512L,
   normExcessBwMtd = "hpi3",
-  normExcessNcell = 10000L
+  normExcessNcell = 10000L,
+  normMtd = c("moments", "boxcox")
 ) {
+  normMtd <- match.arg(normMtd)
+
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -210,13 +215,16 @@
     return(.bwCalcOneBase(x, bwMtd))
   }
 
-  boxObj <- .bwNormChooseBoxCox(
-    xCore = xCore,
-    lambda = normLambda
-  )
+  boxObj <- NULL
+  if (identical(normMtd, "boxcox")) {
+    boxObj <- .bwNormChooseBoxCox(
+      xCore = xCore,
+      lambda = normLambda
+    )
 
-  if (is.null(boxObj)) {
-    return(.bwCalcOneBase(x, bwMtd))
+    if (is.null(boxObj)) {
+      return(.bwCalcOneBase(x, bwMtd))
+    }
   }
 
   # Add synthetic high-side values only when the observed number above the
@@ -233,39 +241,44 @@
     normPeakFrac = normPeakFrac
   )
 
-  nExtra <- length(xExtra)
-  nMainTarget <- .bwNormCoreTargetN(
-    nCore = length(x),
-    nExtra = nExtra,
-    nTotal = length(x),
+  if (identical(normMtd, "boxcox")) {
+    xBw <- c(x, xExtra)
+    xBw <- xBw[is.finite(xBw)]
+
+    if (length(xBw) < 20L || length(unique(xBw)) < 5L) {
+      return(.bwCalcOneBase(x, bwMtd))
+    }
+
+    zBw <- .bwBoxCoxTransform(
+      x = xBw,
+      lambda = boxObj$lambda,
+      winsoriseMin = boxObj$winsoriseMin
+    )
+  } else {
+    zBw <- c(
+      .bwNormSampleNormalComponent(
+        x = xCore,
+        n = length(x),
+        fallbackSd = .bwRobustSd(x)
+      ),
+      .bwNormSampleNormalComponent(
+        x = xExtra,
+        n = length(xExtra),
+        fallbackSd = .bwRobustSd(xCore)
+      )
+    )
+  }
+
+  zBw <- zBw[is.finite(zBw)]
+  zBw <- .bwCalcOneSampleOrdinary(
+    x = zBw,
     bwNcellMin = bwNcellMin,
     bwNcellMax = bwNcellMax
   )
 
-  if (!is.finite(nMainTarget) || nMainTarget <= 0L) {
+  if (length(zBw) < 20L || length(unique(zBw)) < 5L) {
     return(.bwCalcOneBase(x, bwMtd))
   }
-
-  # The main bandwidth sample is drawn from the full observed distribution,
-  # so observed high values are retained. xExtra only tops up the high side.
-  xMainBw <- sample(
-    x,
-    size = nMainTarget,
-    replace = length(x) < nMainTarget
-  )
-
-  xBw <- c(xMainBw, xExtra)
-  xBw <- xBw[is.finite(xBw)]
-
-  if (length(xBw) < 20L || length(unique(xBw)) < 5L) {
-    return(.bwCalcOneBase(x, bwMtd))
-  }
-
-  zBw <- .bwBoxCoxTransform(
-    x = xBw,
-    lambda = boxObj$lambda,
-    winsoriseMin = boxObj$winsoriseMin
-  )
 
   bwZ <- .bwCalcOneBase(
     x = zBw,
@@ -274,6 +287,11 @@
 
   if (!is.finite(bwZ) || bwZ <= 0) {
     return(.bwCalcOneBase(x, bwMtd))
+  }
+
+  # Moment-normalised values are already on the original expression scale.
+  if (identical(normMtd, "moments")) {
+    return(bwZ)
   }
 
   zCore <- .bwBoxCoxTransform(
@@ -685,9 +703,7 @@
     return(numeric(0L))
   }
 
-  nExtraTargetOverall <- ceiling(normExtraFrac * length(x))
-  nAboveThreshold <- sum(x > coreObj$thresholdX, na.rm = TRUE)
-  nExtraTarget <- nExtraTargetOverall - nAboveThreshold
+  nExtraTarget <- ceiling(normExtraFrac * length(x))
 
   nExtraTarget <- .bwAsSafeSampleN(
     min(nExtraTarget, normExtraMax),
@@ -705,7 +721,7 @@
     x = x,
     coreObj = coreObj,
     bwMtd = normExcessBwMtd,
-    nCell = normExcessNcell,
+    nCell = length(x),
     densityN = densityN,
     peakFrac = normPeakFrac,
     scamK = normScamK
@@ -780,6 +796,40 @@
   )
 }
 
+
+
+#' @keywords internal
+.bwNormSampleNormalComponent <- function(
+  x,
+  n = length(x),
+  fallbackSd = NULL
+) {
+  n <- .bwAsSafeSampleN(n, default = 0L, lower = 0L)
+  if (is.null(n) || n <= 0L) {
+    return(numeric(0L))
+  }
+
+  x <- suppressWarnings(as.numeric(x))
+  x <- x[is.finite(x)]
+  if (length(x) == 0L) {
+    return(numeric(0L))
+  }
+
+  mu <- mean(x, na.rm = TRUE)
+  sig <- if (length(x) >= 2L) stats::sd(x, na.rm = TRUE) else NA_real_
+
+  if (!is.finite(sig) || sig <= 0) {
+    sig <- suppressWarnings(as.numeric(fallbackSd)[1])
+  }
+  if (!is.finite(sig) || sig <= 0) {
+    sig <- .bwRobustSd(x)
+  }
+  if (!is.finite(sig) || sig <= 0) {
+    sig <- .Machine$double.eps
+  }
+
+  stats::rnorm(n = n, mean = mu, sd = sig)
+}
 
 #' @keywords internal
 .bwNormCoreTargetN <- function(
@@ -901,7 +951,6 @@
 }
 
 #' @keywords internal
-
 .bwNormExcessDensityDecreasing <- function(
   x,
   coreObj,
@@ -920,15 +969,15 @@
 
   nCellSafe <- .bwAsSafeSampleN(
     nCell,
-    default = min(length(x), 10000L),
+    default = length(x),
     lower = 20L
   )
 
-  xBw <- .bwCalcOneSampleOrdinary(
-    x = x,
-    bwNcellMin = nCellSafe,
-    bwNcellMax = nCellSafe
-  )
+  xBw <- if (!is.null(nCellSafe) && length(x) > nCellSafe) {
+    sample(x, size = nCellSafe, replace = FALSE)
+  } else {
+    x
+  }
 
   bw <- .bwCalcOneBase(
     x = xBw,
