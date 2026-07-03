@@ -23,6 +23,20 @@
   bwNcellMin,
   bwNcellMax,
   bwCluster,
+  bwAdaptive,
+  bwAdaptiveDensityN,
+  bwAdaptivePadFrac,
+  normPeakFrac,
+  normPeakMinRel,
+  normExtraFrac,
+  normExtraMax,
+  normExtraJitterFrac,
+  normLambda,
+  normDensityN,
+  normExcessBwMtd,
+  normExcessNcell,
+  normAdaptiveNcell,
+  normMtd,
   minCell,
   tolClust,
   locProbCol,
@@ -204,6 +218,26 @@
     stop("`tolClust` must be a positive numeric value, or NULL.")
   }
 
+  .verifyNormBwSettings(
+    settings = list(
+      bwAdaptive = bwAdaptive,
+      bwAdaptiveDensityN = bwAdaptiveDensityN,
+      bwAdaptivePadFrac = bwAdaptivePadFrac,
+      normPeakFrac = normPeakFrac,
+      normPeakMinRel = normPeakMinRel,
+      normExtraFrac = normExtraFrac,
+      normExtraMax = normExtraMax,
+      normExtraJitterFrac = normExtraJitterFrac,
+      normLambda = normLambda,
+      normDensityN = normDensityN,
+      normExcessBwMtd = normExcessBwMtd,
+      normExcessNcell = normExcessNcell,
+      normAdaptiveNcell = normAdaptiveNcell,
+      normMtd = normMtd
+    ),
+    prefix = ""
+  )
+
   .verifyLocSettings(
     settings = list(
       locProbCol = locProbCol,
@@ -305,6 +339,20 @@
     "locTolRefPeak",
     "maxPosProbX",
     "bwCluster",
+    "bwAdaptive",
+    "bwAdaptiveDensityN",
+    "bwAdaptivePadFrac",
+    "normPeakFrac",
+    "normPeakMinRel",
+    "normExtraFrac",
+    "normExtraMax",
+    "normExtraJitterFrac",
+    "normLambda",
+    "normDensityN",
+    "normExcessBwMtd",
+    "normExcessNcell",
+    "normAdaptiveNcell",
+    "normMtd",
     "popGate",
     "gateCombn",
     "gateQuant"
@@ -568,11 +616,130 @@
     ))
   }
 
+  .verifyNormBwSettings(settings = settings, prefix = prefix)
+
   .verifyLocSettings(settings = settings, prefix = prefix)
 
   invisible(TRUE)
 }
 
+
+#' @keywords internal
+.verifyNormBwSettings <- function(settings, prefix = "") {
+  if (
+    !is.null(settings$bwAdaptive) &&
+      (!is.logical(settings$bwAdaptive) || length(settings$bwAdaptive) != 1L)
+  ) {
+    stop(paste0(prefix, "`bwAdaptive` must be a single logical value."))
+  }
+
+  .check_positive_n <- function(nm, allow_null = TRUE, allow_inf = FALSE) {
+    val <- settings[[nm]]
+    if (is.null(val) && isTRUE(allow_null)) {
+      return(invisible(TRUE))
+    }
+    if (
+      !is.numeric(val) ||
+        length(val) != 1L ||
+        (!allow_inf && !is.finite(val)) ||
+        (allow_inf && !is.finite(val) && !is.infinite(val)) ||
+        val <= 0
+    ) {
+      stop(paste0(
+        prefix,
+        "`",
+        nm,
+        "` must be a single positive numeric value."
+      ))
+    }
+    invisible(TRUE)
+  }
+
+  .check_prob <- function(nm) {
+    val <- settings[[nm]]
+    if (is.null(val)) {
+      return(invisible(TRUE))
+    }
+    if (
+      !is.numeric(val) ||
+        length(val) != 1L ||
+        !is.finite(val) ||
+        val < 0 ||
+        val > 1
+    ) {
+      stop(paste0(
+        prefix,
+        "`",
+        nm,
+        "` must be a single numeric value between 0 and 1."
+      ))
+    }
+    invisible(TRUE)
+  }
+
+  .check_prob("normPeakFrac")
+  .check_prob("normPeakMinRel")
+  .check_prob("normExtraFrac")
+  .check_prob("normExtraJitterFrac")
+
+  .check_positive_n("normExtraMax", allow_inf = TRUE)
+  .check_positive_n("normDensityN")
+  .check_positive_n("normExcessNcell")
+  .check_positive_n("normAdaptiveNcell")
+  .check_positive_n("bwAdaptiveDensityN")
+
+  if (!is.null(settings$bwAdaptivePadFrac)) {
+    val <- settings$bwAdaptivePadFrac
+    if (!is.numeric(val) || length(val) != 1L || !is.finite(val) || val < 0) {
+      stop(paste0(
+        prefix,
+        "`bwAdaptivePadFrac` must be a single non-negative numeric value."
+      ))
+    }
+  }
+
+  if (!is.null(settings$normLambda)) {
+    val <- settings$normLambda
+    if (!is.numeric(val) || length(val) == 0L || any(!is.finite(val))) {
+      stop(paste0(prefix, "`normLambda` must be a finite numeric vector."))
+    }
+  }
+
+  if (!is.null(settings$normExcessBwMtd)) {
+    validOrdinaryBwMtds <- c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
+    if (
+      !is.character(settings$normExcessBwMtd) ||
+        length(settings$normExcessBwMtd) != 1L ||
+        !settings$normExcessBwMtd %in% validOrdinaryBwMtds
+    ) {
+      stop(paste0(
+        prefix,
+        "`normExcessBwMtd` must be one of: ",
+        paste(validOrdinaryBwMtds, collapse = ", "),
+        "."
+      ))
+    }
+  }
+
+  if (!is.null(settings$normMtd)) {
+    if (
+      !is.character(settings$normMtd) ||
+        length(settings$normMtd) != 1L ||
+        !settings$normMtd %in% c("moments", "boxcox")
+    ) {
+      stop(paste0(prefix, "`normMtd` must be either 'moments' or 'boxcox'."))
+    }
+  }
+
+  if (isTRUE(settings$bwAdaptive) && identical(settings$normMtd, "boxcox")) {
+    stop(paste0(
+      prefix,
+      "`bwAdaptive = TRUE` currently requires `normMtd = 'moments'`."
+    ))
+  }
+
+  invisible(TRUE)
+}
 
 #' @keywords internal
 .verifyLocSettings <- function(settings, prefix = "") {

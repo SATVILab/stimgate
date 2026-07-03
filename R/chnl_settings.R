@@ -22,6 +22,20 @@
   bwNcellMin,
   bwNcellMax,
   bwCluster,
+  bwAdaptive,
+  bwAdaptiveDensityN,
+  bwAdaptivePadFrac,
+  normPeakFrac,
+  normPeakMinRel,
+  normExtraFrac,
+  normExtraMax,
+  normExtraJitterFrac,
+  normLambda,
+  normDensityN,
+  normExcessBwMtd,
+  normExcessNcell,
+  normAdaptiveNcell,
+  normMtd,
   cpMin,
   minCell,
   tolClust,
@@ -68,6 +82,20 @@
     bwNcellMin = bwNcellMin,
     bwNcellMax = bwNcellMax,
     bwCluster = bwCluster,
+    bwAdaptive = bwAdaptive,
+    bwAdaptiveDensityN = bwAdaptiveDensityN,
+    bwAdaptivePadFrac = bwAdaptivePadFrac,
+    normPeakFrac = normPeakFrac,
+    normPeakMinRel = normPeakMinRel,
+    normExtraFrac = normExtraFrac,
+    normExtraMax = normExtraMax,
+    normExtraJitterFrac = normExtraJitterFrac,
+    normLambda = normLambda,
+    normDensityN = normDensityN,
+    normExcessBwMtd = normExcessBwMtd,
+    normExcessNcell = normExcessNcell,
+    normAdaptiveNcell = normAdaptiveNcell,
+    normMtd = normMtd,
     minCell = minCell,
     tolClust = tolClust,
     locProbCol = locProbCol,
@@ -143,7 +171,18 @@
     bwMtd = chnlSettings$bwMtd,
     bwAdj = chnlSettings$bwAdj,
     bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax
+    bwNcellMax = chnlSettings$bwNcellMax,
+    normPeakFrac = chnlSettings$normPeakFrac,
+    normPeakMinRel = chnlSettings$normPeakMinRel,
+    normExtraFrac = chnlSettings$normExtraFrac,
+    normExtraMax = chnlSettings$normExtraMax,
+    normExtraJitterFrac = chnlSettings$normExtraJitterFrac,
+    normLambda = chnlSettings$normLambda,
+    normDensityN = chnlSettings$normDensityN,
+    normExcessBwMtd = chnlSettings$normExcessBwMtd,
+    normExcessNcell = chnlSettings$normExcessNcell,
+    normAdaptiveNcell = chnlSettings$normAdaptiveNcell,
+    normMtd = chnlSettings$normMtd
   )
 
   chnlSettings$bwMax <- .completeChnlSettingsBwMax(
@@ -156,7 +195,18 @@
     bwMtd = chnlSettings$bwMtd,
     bwAdj = chnlSettings$bwAdj,
     bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax
+    bwNcellMax = chnlSettings$bwNcellMax,
+    normPeakFrac = chnlSettings$normPeakFrac,
+    normPeakMinRel = chnlSettings$normPeakMinRel,
+    normExtraFrac = chnlSettings$normExtraFrac,
+    normExtraMax = chnlSettings$normExtraMax,
+    normExtraJitterFrac = chnlSettings$normExtraJitterFrac,
+    normLambda = chnlSettings$normLambda,
+    normDensityN = chnlSettings$normDensityN,
+    normExcessBwMtd = chnlSettings$normExcessBwMtd,
+    normExcessNcell = chnlSettings$normExcessNcell,
+    normAdaptiveNcell = chnlSettings$normAdaptiveNcell,
+    normMtd = chnlSettings$normMtd
   )
 
   chnlSettings$bwFallback <- .completeChnlSettingsBwFallback(
@@ -169,7 +219,18 @@
     bwMtd = chnlSettings$bwMtd,
     bwAdj = chnlSettings$bwAdj,
     bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax
+    bwNcellMax = chnlSettings$bwNcellMax,
+    normPeakFrac = chnlSettings$normPeakFrac,
+    normPeakMinRel = chnlSettings$normPeakMinRel,
+    normExtraFrac = chnlSettings$normExtraFrac,
+    normExtraMax = chnlSettings$normExtraMax,
+    normExtraJitterFrac = chnlSettings$normExtraJitterFrac,
+    normLambda = chnlSettings$normLambda,
+    normDensityN = chnlSettings$normDensityN,
+    normExcessBwMtd = chnlSettings$normExcessBwMtd,
+    normExcessNcell = chnlSettings$normExcessNcell,
+    normAdaptiveNcell = chnlSettings$normAdaptiveNcell,
+    normMtd = chnlSettings$normMtd
   )
 
   chnlSettings$biasUns <- .completeChnlSettingsBiasUns(
@@ -191,7 +252,18 @@
     bwAdj = chnlSettings$bwAdj,
     bwNcellMin = chnlSettings$bwNcellMin,
     bwNcellMax = chnlSettings$bwNcellMax,
-    bwFallback = chnlSettings$bwFallback
+    bwFallback = chnlSettings$bwFallback,
+    normPeakFrac = chnlSettings$normPeakFrac,
+    normPeakMinRel = chnlSettings$normPeakMinRel,
+    normExtraFrac = chnlSettings$normExtraFrac,
+    normExtraMax = chnlSettings$normExtraMax,
+    normExtraJitterFrac = chnlSettings$normExtraJitterFrac,
+    normLambda = chnlSettings$normLambda,
+    normDensityN = chnlSettings$normDensityN,
+    normExcessBwMtd = chnlSettings$normExcessBwMtd,
+    normExcessNcell = chnlSettings$normExcessNcell,
+    normAdaptiveNcell = chnlSettings$normAdaptiveNcell,
+    normMtd = chnlSettings$normMtd
   )
 
   chnlSettings$cpMin <- .completeChnlSettingsCpMin(
@@ -307,15 +379,40 @@
   bwMtd,
   bwAdj,
   bwNcellMin = NULL,
-  bwNcellMax = NULL
+  bwNcellMax = NULL,
+  normPeakFrac = 0.1,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normExtraJitterFrac = 0.25,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  normMtd = "moments"
 ) {
-  .bwCalcOne(
+  bwOut <- .bwCalcOne(
     x = x,
     bwMtd = bwMtd,
     bwAdj = bwAdj,
     bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax
+    bwNcellMax = bwNcellMax,
+    normPeakFrac = normPeakFrac,
+    normPeakMinRel = normPeakMinRel,
+    normExtraFrac = normExtraFrac,
+    normExtraMax = normExtraMax,
+    normExtraJitterFrac = normExtraJitterFrac,
+    normLambda = normLambda,
+    normDensityN = normDensityN,
+    normExcessBwMtd = normExcessBwMtd,
+    normExcessNcell = normExcessNcell,
+    normAdaptiveNcell = normAdaptiveNcell,
+    normMtd = normMtd,
+    adaptive = FALSE
   )
+
+  as.numeric(bwOut)[1]
 }
 
 #' @keywords internal
@@ -327,7 +424,18 @@
   pathProject,
   bwMtd,
   bwAdj,
-  nSampleBw
+  nSampleBw,
+  normPeakFrac = 0.1,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normExtraJitterFrac = 0.25,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  normMtd = "moments"
 ) {
   xList <- .completeChnlSettingsGetBwExprList(
     indBatchList = indBatchList,
@@ -343,7 +451,18 @@
       bwMtd = bwMtd,
       bwAdj = bwAdj,
       bwNcellMin = nSampleBw,
-      bwNcellMax = nSampleBw
+      bwNcellMax = nSampleBw,
+      normPeakFrac = normPeakFrac,
+      normPeakMinRel = normPeakMinRel,
+      normExtraFrac = normExtraFrac,
+      normExtraMax = normExtraMax,
+      normExtraJitterFrac = normExtraJitterFrac,
+      normLambda = normLambda,
+      normDensityN = normDensityN,
+      normExcessBwMtd = normExcessBwMtd,
+      normExcessNcell = normExcessNcell,
+      normAdaptiveNcell = normAdaptiveNcell,
+      normMtd = normMtd
     )
   })
 
@@ -366,7 +485,18 @@
   bwMtd,
   bwAdj,
   bwNcellMin = NULL,
-  bwNcellMax = NULL
+  bwNcellMax = NULL,
+  normPeakFrac = 0.1,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normExtraJitterFrac = 0.25,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  normMtd = "moments"
 ) {
   if (.completeChnlSettingsBwLimitIsNone(bwMax)) {
     return(Inf)
@@ -384,7 +514,18 @@
     pathProject = pathProject,
     bwMtd = bwMtd,
     bwAdj = bwAdj,
-    nSampleBw = 1e2
+    nSampleBw = 1e2,
+    normPeakFrac = normPeakFrac,
+    normPeakMinRel = normPeakMinRel,
+    normExtraFrac = normExtraFrac,
+    normExtraMax = normExtraMax,
+    normExtraJitterFrac = normExtraJitterFrac,
+    normLambda = normLambda,
+    normDensityN = normDensityN,
+    normExcessBwMtd = normExcessBwMtd,
+    normExcessNcell = normExcessNcell,
+    normAdaptiveNcell = normAdaptiveNcell,
+    normMtd = normMtd
   )
 }
 
@@ -399,7 +540,18 @@
   bwMtd,
   bwAdj,
   bwNcellMin = NULL,
-  bwNcellMax = NULL
+  bwNcellMax = NULL,
+  normPeakFrac = 0.1,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normExtraJitterFrac = 0.25,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  normMtd = "moments"
 ) {
   if (.completeChnlSettingsBwLimitIsNone(bwMin)) {
     return(-1)
@@ -417,7 +569,18 @@
     pathProject = pathProject,
     bwMtd = bwMtd,
     bwAdj = bwAdj,
-    nSampleBw = 1e5
+    nSampleBw = 1e5,
+    normPeakFrac = normPeakFrac,
+    normPeakMinRel = normPeakMinRel,
+    normExtraFrac = normExtraFrac,
+    normExtraMax = normExtraMax,
+    normExtraJitterFrac = normExtraJitterFrac,
+    normLambda = normLambda,
+    normDensityN = normDensityN,
+    normExcessBwMtd = normExcessBwMtd,
+    normExcessNcell = normExcessNcell,
+    normAdaptiveNcell = normAdaptiveNcell,
+    normMtd = normMtd
   )
 }
 
@@ -432,7 +595,18 @@
   bwMtd,
   bwAdj,
   bwNcellMin = NULL,
-  bwNcellMax = NULL
+  bwNcellMax = NULL,
+  normPeakFrac = 0.1,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normExtraJitterFrac = 0.25,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  normMtd = "moments"
 ) {
   if (!.completeChnlSettingsBwFallbackIsAuto(bwFallback)) {
     return(bwFallback)
@@ -465,7 +639,18 @@
       bwMtd = bwMtd,
       bwAdj = bwAdj,
       bwNcellMin = nCellFallback,
-      bwNcellMax = nCellFallback
+      bwNcellMax = nCellFallback,
+      normPeakFrac = normPeakFrac,
+      normPeakMinRel = normPeakMinRel,
+      normExtraFrac = normExtraFrac,
+      normExtraMax = normExtraMax,
+      normExtraJitterFrac = normExtraJitterFrac,
+      normLambda = normLambda,
+      normDensityN = normDensityN,
+      normExcessBwMtd = normExcessBwMtd,
+      normExcessNcell = normExcessNcell,
+      normAdaptiveNcell = normAdaptiveNcell,
+      normMtd = normMtd
     )
   })
   bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
@@ -493,7 +678,18 @@
   bwAdj,
   bwFallback,
   bwNcellMin = NULL,
-  bwNcellMax = NULL
+  bwNcellMax = NULL,
+  normPeakFrac = 0.1,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normExtraJitterFrac = 0.25,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  normMtd = "moments"
 ) {
   if (!is.null(bwCluster)) {
     if (
@@ -545,7 +741,18 @@
           bwMtd = bwMtd,
           bwAdj = bwAdj,
           bwNcellMin = 1e4,
-          bwNcellMax = 1e4
+          bwNcellMax = 1e4,
+          normPeakFrac = normPeakFrac,
+          normPeakMinRel = normPeakMinRel,
+          normExtraFrac = normExtraFrac,
+          normExtraMax = normExtraMax,
+          normExtraJitterFrac = normExtraJitterFrac,
+          normLambda = normLambda,
+          normDensityN = normDensityN,
+          normExcessBwMtd = normExcessBwMtd,
+          normExcessNcell = normExcessNcell,
+          normAdaptiveNcell = normAdaptiveNcell,
+          normMtd = normMtd
         )
 
         if (!is.finite(bwOut) || bwOut <= 0) {
