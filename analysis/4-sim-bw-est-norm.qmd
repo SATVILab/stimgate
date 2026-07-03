@@ -110,9 +110,6 @@ bw_list_raw_mtd_loop <- lapply(seq_len(nrow(sim_grid)), function(i) {
 })
 
 for (i in seq_len(nrow(sim_grid))) {
-  if (!sim_grid$transformation[i] == "gamma") {
-    next
-  }
   settings_row <- paste0(
     "trans = ",
     sim_grid$transformation[i],
@@ -221,7 +218,8 @@ bw_list_raw_mtd_loop |>
     mean_bw_stim,
     mean_bw_uns,
     mean_bw
-  )
+  ) |>
+  print(width = Inf)
 ```
 
 Run the simulations in parallel, with progress reporting.
@@ -442,6 +440,12 @@ bw_tbl_results <- bw_list_raw_mtd |>
   dplyr::select(
     any_of(colnames(sim_grid)), mean_bw
   )
+bw_tbl_results <- bw_tbl_results |>
+  dplyr::mutate(
+    bw_mtd_base = gsub("Norm$", "", bw_mtd),
+    bw_mtd_norm = grepl("Norm$", bw_mtd),
+    bw_mtd_norm = ifelse(bw_mtd_norm, "norm", "non-norm")
+  )
 
 for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
   for (bw_ncell_upper_curr in unique(bw_tbl_results$bw_ncell_upper)) {
@@ -449,9 +453,9 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
       dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr, bw_ncell_upper == !!bw_ncell_upper_curr)
     p <- ggplot(
       plot_tbl,
-      aes(x = n_cell, y = mean_bw, color = bw_mtd)
+      aes(x = n_cell, y = mean_bw, color = bw_mtd_base)
     ) +
-      geom_line() +
+      geom_line(mapping = aes(linetype = bw_mtd_norm)) +
       geom_point() +
       scale_x_log10() +
       facet_grid(
