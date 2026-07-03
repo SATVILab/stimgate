@@ -61,6 +61,28 @@ bandwidth_method_vec <- bandwidth_method_vec[!grepl("hpi0", bandwidth_method_vec
 # set this later
 bandwidth_ncell_upper_vec <- c(5e2, 1e3, 2.5e3, 5e3, 1e4, 2e4, 5e4, Inf)
 bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
+bias_uns_settings_tbl <- tibble::tribble(
+  ~bias_uns_setting, ~transformation, ~bias_uns,
+  "none", "gaussian", 0,
+  "none", "gamma", 0,
+  "none", "skew", 0,
+  "low", "gaussian", 0.05,
+  "low", "gamma", 0.00125,
+  "low", "skew", 0.05,
+  "high", "gaussian", 0.25,
+  "high", "gamma", 0.005,
+  "high", "skew", 0.25
+) |>
+  dplyr::mutate(
+    bias_uns_setting = factor(
+      .data$bias_uns_setting,
+      levels = c("none", "low", "high")
+    )
+  ) |>
+  dplyr::filter(
+    bias_uns_setting == "low"
+  )
+bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 ```
 
 ```{r}
@@ -70,12 +92,17 @@ sim_grid <- tidyr::expand_grid(
   prob_response  = prob_response_vec,
   n_cell         = n_cell_stim_vec,
   bw_mtd         = bandwidth_method_vec,
-  bw_ncell_upper = max(n_cell_stim_vec)
+  bw_ncell_upper = bandwidth_ncell_upper_vec,
+  bias_uns       = bias_uns_vec
 ) |>
+  dplyr::inner_join(
+    bias_uns_settings_tbl,
+    by = c("transformation", "bias_uns")
+  ) |>
   dplyr::select(
     transformation, prob_response, n_cell,
     mean_pos_setting, mean_pos, bw_mtd,
-    bw_ncell_upper
+    bw_ncell_upper, bias_uns_setting, bias_uns
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
@@ -123,6 +150,10 @@ for (i in seq_len(nrow(sim_grid))) {
     sim_grid$bw_mtd[i],
     " | bw_ncell_upper = ",
     sim_grid$bw_ncell_upper[i],
+    " | bias_uns_setting = ",
+    sim_grid$bias_uns_setting[i],
+    " | bias_uns = ",
+    sim_grid$bias_uns[i],
     " | sim_id = ",
     sim_grid$sim_id[i]
   )
@@ -134,7 +165,7 @@ for (i in seq_len(nrow(sim_grid))) {
     nCondition = 2,
     nCluster = 2,
     nIter = 1,
-    biasUns = if (sim_grid$transformation[i] == "gamma") 0.005 else 0.05,
+    biasUns = sim_grid$bias_uns[i],
     bwMtd = sim_grid$bw_mtd[i],
     bwMin = -Inf,
     bwMax = Inf,
@@ -161,6 +192,8 @@ for (i in seq_len(nrow(sim_grid))) {
       mean_pos = sim_grid$mean_pos[i],
       bw_mtd = sim_grid$bw_mtd[i],
       bw_ncell_upper = sim_grid$bw_ncell_upper[i],
+      bias_uns_setting = sim_grid$bias_uns_setting[i],
+      bias_uns = sim_grid$bias_uns[i],
       sim_id = sim_grid$sim_id[i]
     ) |>
     dplyr::select(
@@ -171,6 +204,8 @@ for (i in seq_len(nrow(sim_grid))) {
       mean_pos,
       bw_mtd,
       bw_ncell_upper,
+      bias_uns_setting,
+      bias_uns,
       sim_id,
       dplyr::everything()
     )
@@ -196,9 +231,12 @@ bw_list_raw_mtd_loop |>
     transformation,
     prob_response,
     n_cell,
+    mean_pos_setting,
     mean_pos,
     bw_mtd,
     bw_ncell_upper,
+    bias_uns_setting,
+    bias_uns,
     chnl,
     n_cell_stim,
     n_cell_uns
@@ -214,6 +252,8 @@ bw_list_raw_mtd_loop |>
     transformation,
     bw_mtd,
     bw_ncell_upper,
+    bias_uns_setting,
+    bias_uns,
     n_est,
     mean_bw_stim,
     mean_bw_uns,
@@ -242,6 +282,8 @@ path_progress_file <- projr::projr_path_get(
   "progress.txt"
 )
 
+dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+
 if (file.exists(path_progress_file)) {
   file.remove(path_progress_file)
 }
@@ -256,7 +298,7 @@ bw_list_raw_mtd <- progressr::with_progress({
 
   furrr::future_pmap(
     sim_grid,
-    function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos, bw_mtd, bw_ncell_upper, sim_id) {
+    function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos, bw_mtd, bw_ncell_upper, bias_uns_setting, bias_uns, sim_id) {
       settings_row <- paste0(
         "trans = ",
         transformation,
@@ -270,6 +312,10 @@ bw_list_raw_mtd <- progressr::with_progress({
         bw_mtd,
         " | bw_ncell_upper = ",
         bw_ncell_upper,
+        " | bias_uns_setting = ",
+        bias_uns_setting,
+        " | bias_uns = ",
+        bias_uns,
         " | sim_id = ",
         sim_id
       )
@@ -285,7 +331,7 @@ bw_list_raw_mtd <- progressr::with_progress({
             nCondition = 2,
             nCluster = 2,
             nIter = 1,
-            biasUns = if (transformation == "gamma") 0.005 else 0.05,
+            biasUns = bias_uns,
             bwMtd = bw_mtd,
             bwFallback = bw_fallback,
             bwMin = -Inf,
@@ -312,6 +358,8 @@ bw_list_raw_mtd <- progressr::with_progress({
             mean_pos = mean_pos,
             bw_mtd = bw_mtd,
             bw_ncell_upper = bw_ncell_upper,
+            bias_uns_setting = bias_uns_setting,
+            bias_uns = bias_uns,
             sim_id = sim_id,
             error_message = NULL
           ) |>
@@ -323,6 +371,8 @@ bw_list_raw_mtd <- progressr::with_progress({
             mean_pos,
             bw_mtd,
             bw_ncell_upper,
+            bias_uns_setting,
+            bias_uns,
             sim_id,
             dplyr::everything()
           )
@@ -353,6 +403,8 @@ bw_list_raw_mtd <- progressr::with_progress({
             mean_pos = mean_pos,
             bw_mtd = bw_mtd,
             bw_ncell_upper = bw_ncell_upper,
+            bias_uns_setting = bias_uns_setting,
+            bias_uns = bias_uns,
             sim_id = sim_id,
             iter = NA_character_,
             sample = NA_character_,
@@ -379,6 +431,14 @@ bw_list_raw_mtd <- progressr::with_progress({
 })
 
 future::plan(future::sequential)
+
+dir.create(
+  dirname(projr::projr_path_get(
+    "output", "sim", "bw", "est", "norm", "bw_list_raw_mtd.rds"
+  )),
+  recursive = TRUE,
+  showWarnings = FALSE
+)
 
 saveRDS(
   bw_list_raw_mtd,
@@ -418,10 +478,57 @@ path_vec <- c(
     safe = FALSE
   )
 )
-path_vec <- path_vec[file.exists(path_vec)][[1]]
-bw_list_raw_mtd <- readRDS(file = path_vec)
-bw_tbl_results <- bw_list_raw_mtd |>
-  purrr::list_rbind() |>
+path_vec <- path_vec[file.exists(path_vec)]
+if (length(path_vec) == 0L) {
+  stop("Could not find bw_list_raw_mtd.rds. Run the simulation chunk first.")
+}
+
+bw_list_raw_mtd <- readRDS(file = path_vec[[1]])
+
+bw_tbl <- bw_list_raw_mtd |>
+  purrr::list_rbind()
+
+if (!"bias_uns" %in% colnames(bw_tbl)) {
+  bw_tbl$bias_uns <- NA_real_
+}
+if (!"bias_uns_setting" %in% colnames(bw_tbl)) {
+  bw_tbl$bias_uns_setting <- NA_character_
+}
+
+if (all(is.na(bw_tbl$bias_uns_setting)) && any(!is.na(bw_tbl$bias_uns))) {
+  bw_tbl <- bw_tbl |>
+    dplyr::select(-bias_uns_setting) |>
+    dplyr::left_join(
+      bias_uns_settings_tbl,
+      by = c("transformation", "bias_uns")
+    )
+}
+
+bw_tbl <- bw_tbl |>
+  dplyr::filter(!is.na(.data$bias_uns_setting))
+
+if (nrow(bw_tbl) == 0L) {
+  stop("No cached rows contain the current bias_uns settings. Rerun the simulation chunk.")
+}
+
+sim_grid_key_cols <- setdiff(
+  intersect(colnames(sim_grid), colnames(bw_tbl)),
+  "sim_id"
+)
+
+bw_tbl <- bw_tbl |>
+  dplyr::semi_join(
+    sim_grid |>
+      dplyr::select(dplyr::all_of(sim_grid_key_cols)) |>
+      dplyr::distinct(),
+    by = sim_grid_key_cols
+  )
+
+if (nrow(bw_tbl) == 0L) {
+  stop("Cached rows do not match the current simulation grid. Rerun the simulation chunk.")
+}
+
+bw_tbl_results <- bw_tbl |>
   dplyr::group_by(
     dplyr::pick(dplyr::any_of(colnames(sim_grid)))
   ) |>
@@ -432,7 +539,7 @@ bw_tbl_results <- bw_list_raw_mtd |>
     .groups = "drop"
   ) |>
   dplyr::select(
-    any_of(colnames(sim_grid)), mean_bw
+    dplyr::any_of(colnames(sim_grid)), mean_bw
   )
 bw_tbl_results <- bw_tbl_results |>
   dplyr::mutate(
@@ -442,51 +549,71 @@ bw_tbl_results <- bw_tbl_results |>
   )
 
 for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
-  for (bw_ncell_upper_curr in unique(bw_tbl_results$bw_ncell_upper)) {
-    plot_tbl <- bw_tbl_results |>
-      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr, bw_ncell_upper == !!bw_ncell_upper_curr)
-    p <- ggplot(
-      plot_tbl,
-      aes(x = n_cell, y = mean_bw, color = bw_mtd_base)
-    ) +
-      geom_line(mapping = aes(linetype = bw_mtd_norm)) +
-      geom_point() +
-      scale_x_log10() +
-      facet_grid(
-        transformation ~ prob_response,
-        scales = "free_y"
+  for (bias_uns_setting_curr in unique(bw_tbl_results$bias_uns_setting)) {
+    for (bw_ncell_upper_curr in unique(bw_tbl_results$bw_ncell_upper)) {
+      plot_tbl <- bw_tbl_results |>
+        dplyr::filter(
+          mean_pos_setting == !!mean_pos_setting_curr,
+          bias_uns_setting == !!bias_uns_setting_curr,
+          bw_ncell_upper == !!bw_ncell_upper_curr
+        )
+
+      if (nrow(plot_tbl) == 0L) next
+
+      p <- ggplot(
+        plot_tbl,
+        aes(x = n_cell, y = mean_bw, color = bw_mtd_base)
       ) +
-      labs(
-        title = paste0("Mean position setting: ", mean_pos_setting_curr),
-        x = "Number of Cells",
-        y = "Estimated Bandwidth"
-      ) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy") +
-      theme(
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA),
-        legend.position = "bottom"
-      ) +
-      scale_colour_manual(
-        values = .simBwMtdColVec
+        geom_line(mapping = aes(linetype = bw_mtd_norm)) +
+        geom_point() +
+        scale_x_log10() +
+        facet_grid(
+          transformation ~ prob_response,
+          scales = "free_y"
+        ) +
+        labs(
+          title = paste0(
+            "Mean position setting: ", mean_pos_setting_curr,
+            ", bias_uns_setting: ", bias_uns_setting_curr,
+            ", bw_ncell_upper: ", bw_ncell_upper_curr
+          ),
+          x = "Number of Cells",
+          y = "Estimated Bandwidth"
+        ) +
+        cowplot::theme_cowplot() +
+        cowplot::background_grid(major = "xy") +
+        theme(
+          panel.background = element_rect(fill = "white", color = NA),
+          plot.background = element_rect(fill = "white", color = NA),
+          legend.position = "bottom"
+        ) +
+        scale_colour_manual(
+          values = .simBwMtdColVec
+        )
+
+      path_plot <- projr::projr_path_get(
+        "output",
+        "sim",
+        "bw",
+        "est",
+        "norm",
+        paste0(
+          "bw_estimate_meanpos_setting_", mean_pos_setting_curr,
+          "_bias_uns_", bias_uns_setting_curr,
+          "_ncell_upper_", bw_ncell_upper_curr,
+          ".png"
+        )
       )
+      dir.create(dirname(path_plot), recursive = TRUE, showWarnings = FALSE)
+
       ggsave(
-        filename = projr::projr_path_get(
-          "output",
-          "sim",
-          "bw",
-          "est",
-          "norm",
-          paste0("bw_estimate_meanpos_setting_", mean_pos_setting_curr, "_ncell_upper_", bw_ncell_upper_curr, ".png")
-        ),
+        filename = path_plot,
         plot = p,
         width = 12,
         height = 20,
         units = "cm"
       )
+    }
   }
 }
 ```
-
-
