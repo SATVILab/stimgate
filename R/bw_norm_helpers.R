@@ -32,13 +32,14 @@
   normDensityN = 512L,
   normExcessBwMtd = "hpi3",
   normExcessNcell = 10000L,
-  normMtd = "moments"
+  normMtd = "moments",
+  adaptive = FALSE
 ) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
   if (length(x) < 2L || length(unique(x)) < 2L) {
-    return(NA_real_)
+    return(.bwCalcOneFormat(NA_real_, adaptive))
   }
 
   bwMtd <- as.character(bwMtd)[1]
@@ -60,7 +61,8 @@
       normDensityN = normDensityN,
       normExcessBwMtd = normExcessBwMtd,
       normExcessNcell = normExcessNcell,
-      normMtd = normMtd
+      normMtd = normMtd,
+      adaptive = adaptive
     )
   } else {
     xBw <- .bwCalcOneSampleOrdinary(
@@ -73,13 +75,21 @@
       x = xBw,
       bwMtd = bwMtdBase
     )
+    if (!is.finite(bwOut) || bwOut <= 0) {
+      return(.bwCalcOneFormat(NA_real_, FALSE))
+    }
+    bwOut <- .bwCalcOneFormat(as.numeric(bwOut)[1] * bwAdj, FALSE)
   }
+  bwOut
+}
 
-  if (!is.finite(bwOut) || bwOut <= 0) {
-    return(NA_real_)
+.bwCalcOneFormat <- function(bw, adaptive = FALSE) {
+  if (!adaptive) {
+    attr(bw, "adaptive") <- FALSE
+    return(bw)
   }
-
-  as.numeric(bwOut)[1] * bwAdj
+  attr(bw, "adaptive") <- TRUE
+  bw
 }
 
 #' @keywords internal
@@ -186,15 +196,19 @@
   normDensityN = 512L,
   normExcessBwMtd = "hpi3",
   normExcessNcell = 10000L,
-  normMtd = c("moments", "boxcox")
+  normMtd = c("moments", "boxcox"),
+  adaptive = FALSE
 ) {
+  if (adaptive && normMtd[[1]] == "boxcox") {
+    stop("Cannot use adaptive bandwidth with boxcox normalisation method.")
+  }
   normMtd <- match.arg(normMtd)
 
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
   if (length(x) < 20L || length(unique(x)) < 5L) {
-    return(.bwCalcOneBase(x, bwMtd))
+    return(.bwCalcOneFormat(.bwCalcOneBase(x, bwMtd), FALSE))
   }
 
   coreObj <- .bwNormFindBackgroundCore(
@@ -205,14 +219,14 @@
   )
 
   if (is.null(coreObj)) {
-    return(.bwCalcOneBase(x, bwMtd))
+    return(.bwCalcOneFormat(.bwCalcOneBase(x, bwMtd), FALSE))
   }
 
   xCore <- x[x <= coreObj$thresholdX]
   xCore <- xCore[is.finite(xCore)]
 
   if (length(xCore) < 20L || length(unique(xCore)) < 5L) {
-    return(.bwCalcOneBase(x, bwMtd))
+    return(.bwCalcOneFormat(.bwCalcOneBase(x, bwMtd), FALSE))
   }
 
   boxObj <- NULL
@@ -223,7 +237,7 @@
     )
 
     if (is.null(boxObj)) {
-      return(.bwCalcOneBase(x, bwMtd))
+      return(.bwCalcOneFormat(.bwCalcOneBase(x, bwMtd), FALSE))
     }
   }
 
@@ -241,79 +255,190 @@
     normPeakFrac = normPeakFrac
   )
 
+  # get points to calculate bw over
   if (identical(normMtd, "boxcox")) {
-    xBw <- c(x, xExtra)
-    xBw <- xBw[is.finite(xBw)]
+    if (!adaptive) {
+      xBw <- c(x, xExtra)
+      xBw <- xBw[is.finite(xBw)]
 
-    if (length(xBw) < 20L || length(unique(xBw)) < 5L) {
-      return(.bwCalcOneBase(x, bwMtd))
+      if (length(xBw) < 20L || length(unique(xBw)) < 5L) {
+        return(.bwCalcOneFormat(.bwCalcOneBase(x, bwMtd), FALSE))
+      }
+
+      zBw <- .bwBoxCoxTransform(
+        x = xBw,
+        lambda = boxObj$lambda,
+        winsoriseMin = boxObj$winsoriseMin
+      )
+    } else {
+      zBw <- list(
+        "core" = .bwBoxCoxTransform(
+          x = xCore,
+          lambda = boxObj$lambda,
+          winsoriseMin = boxObj$winsoriseMin
+        ),
+        "extra" = .bwBoxCoxTransform(
+          x = xExtra,
+          lambda = boxObj$lambda,
+          winsoriseMin = boxObj$winsoriseMin
+        )
+      )
+    }
+  } else {
+    if (!adaptive) {
+      sigmaCore <- sd(xCore)
+      sigmaExtra <- sd(xExtra)
+      sigmaCoreShrink <- 4 / 5 * sigmaCore + 1 / 5 * sigmaExtra
+      sigmaExtraShrink <- 1 / 2 * sigmaCore + 1 / 2 * sigmaExtra
+      zBw <- c(
+        .bwNormSampleNormalComponent(
+          mu = mean(xCore),
+          sd = sigmaCoreShrink,
+          n = length(x) - length(xExtra),
+          fallbackSd = .bwRobustSd(x)
+        ),
+        .bwNormSampleNormalComponent(
+          mu = mean(xExtra),
+          sd = sigmaExtraShrink,
+          n = length(xExtra),
+          fallbackSd = .bwRobustSd(xCore)
+        )
+      )
+    } else {
+      zBw <- list(
+        "core" = .bwNormSampleNormalComponent(
+          mu = mean(xCore),
+          sd = sd(xCore),
+          n = length(x) - length(xExtra),
+          fallbackSd = .bwRobustSd(x)
+        ),
+        "extra" = .bwNormSampleNormalComponent(
+          mu = mean(xExtra),
+          sd = sd(xExtra),
+          n = length(xExtra),
+          fallbackSd = .bwRobustSd(xCore)
+        )
+      )
+    }
+  }
+
+  if (!adaptive) {
+    zBw <- zBw[is.finite(zBw)]
+    zBw <- .bwCalcOneSampleOrdinary(
+      x = zBw,
+      bwNcellMin = bwNcellMin,
+      bwNcellMax = bwNcellMax
+    )
+  } else {
+    zBw$core <- zBw$core[is.finite(zBw$core)]
+    zBw$extra <- zBw$extra[is.finite(zBw$extra)]
+
+    zBw$core <- .bwCalcOneSampleOrdinary(
+      x = zBw$core,
+      bwNcellMin = bwNcellMin,
+      bwNcellMax = bwNcellMax
+    )
+
+    zBw$extra <- .bwCalcOneSampleOrdinary(
+      x = zBw$extra,
+      bwNcellMin = bwNcellMin,
+      bwNcellMax = bwNcellMax
+    )
+  }
+
+  # now, we calculate the actual bandwidths
+  if (!adaptive) {
+    if (length(zBw) < 20L || length(unique(zBw)) < 5L) {
+      return(.bwCalcOneFormat(.bwCalcOneBase(x, bwMtd), FALSE))
     }
 
-    zBw <- .bwBoxCoxTransform(
-      x = xBw,
+    bwZ <- .bwCalcOneBase(
+      x = zBw,
+      bwMtd = bwMtd
+    )
+
+    if (!is.finite(bwZ) || bwZ <= 0) {
+      return(.bwCalcOneFormat(.bwCalcOneBase(x, bwMtd), FALSE))
+    }
+
+    # Moment-normalised values are already on the original expression scale.
+    if (identical(normMtd, "moments")) {
+      if (!adaptive) {
+        return(.bwCalcOneFormat(as.numeric(bwZ)[1], FALSE))
+      }
+      return(bwZ)
+    }
+
+    zCore <- .bwBoxCoxTransform(
+      x = xCore,
       lambda = boxObj$lambda,
       winsoriseMin = boxObj$winsoriseMin
     )
-  } else {
-    sigmaCore <- sd(xCore)
-    sigmaExtra <- sd(xExtra)
-    sigmaCoreShrink <- 4 / 5 * sigmaCore + 1 / 5 * sigmaExtra
-    sigmaExtraShrink <- 1 / 2 * sigmaCore + 1 / 2 * sigmaExtra
-    zBw <- c(
-      .bwNormSampleNormalComponent(
-        mu = mean(xCore),
-        sd = sigmaCoreShrink,
-        n = length(x) - length(xExtra),
-        fallbackSd = .bwRobustSd(x)
-      ),
-      .bwNormSampleNormalComponent(
-        mu = mean(xExtra),
-        sd = sigmaExtraShrink,
-        n = length(xExtra),
-        fallbackSd = .bwRobustSd(xCore)
-      )
-    )
+
+    scaleX <- stats::IQR(xCore, na.rm = TRUE)
+    scaleZ <- stats::IQR(zCore, na.rm = TRUE)
+
+    if (
+      !is.finite(scaleX) || scaleX <= 0 || !is.finite(scaleZ) || scaleZ <= 0
+    ) {
+      return(.bwCalcOneFormat(.bwCalcOneBase(x, bwMtd), FALSE))
+    }
+
+    bwBox <- bwZ * scaleX / scaleZ
+    if (!adaptive) {
+      return(.bwCalcOneFormat(as.numeric(bwBox)[1], FALSE))
+    }
+    return(bwBox)
   }
 
-  zBw <- zBw[is.finite(zBw)]
-  zBw <- .bwCalcOneSampleOrdinary(
-    x = zBw,
-    bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax
+  # now, we must calculate the bandwidth for each of
+  # core and extra
+  bwZCore <- .bwCalcOneBase(
+    x = zBw$core,
+    bwMtd = bwMtd
   )
-
-  if (length(zBw) < 20L || length(unique(zBw)) < 5L) {
-    return(.bwCalcOneBase(x, bwMtd))
-  }
-
-  bwZ <- .bwCalcOneBase(
-    x = zBw,
+  bwZExtra <- .bwCalcOneBase(
+    x = zBw$extra,
     bwMtd = bwMtd
   )
 
-  if (!is.finite(bwZ) || bwZ <= 0) {
-    return(.bwCalcOneBase(x, bwMtd))
-  }
-
-  # Moment-normalised values are already on the original expression scale.
-  if (identical(normMtd, "moments")) {
-    return(bwZ)
-  }
-
-  zCore <- .bwBoxCoxTransform(
-    x = xCore,
-    lambda = boxObj$lambda,
-    winsoriseMin = boxObj$winsoriseMin
+  # now, we must estimate the pdfs using the bandwidtsh
+  rangeVec <- range(c(zBw$core, zBw$extra), na.rm = TRUE)
+  rangeVec <- rangeVec + c(-1, 1) * diff(rangeVec) / 100
+  binVec <- seq(
+    from = min(rangeVec, na.rm = TRUE),
+    to = max(rangeVec, na.rm = TRUE),
+    length.out = normDensityN
+  )
+  densZCore <- stats::density(
+    x = zBw$core,
+    bw = bwZCore,
+    n = normDensityN,
+    from = min(binVec, na.rm = TRUE),
+    to = max(binVec, na.rm = TRUE)
+  )
+  densZExtra <- stats::density(
+    x = zBw$extra,
+    bw = bwZExtra,
+    n = normDensityN,
+    from = min(binVec, na.rm = TRUE),
+    to = max(binVec, na.rm = TRUE)
   )
 
-  scaleX <- stats::IQR(xCore, na.rm = TRUE)
-  scaleZ <- stats::IQR(zCore, na.rm = TRUE)
+  # now, we must get a per-bin bandwidth,
+  # where the bandwidth is a weighted average of the core and extra bandwidths,
+  # weighted by the estimated density at that bin, with a favouring
+  # of the densZCore (3 to 1)
+  densZCoreY <- pmax(densZCore$y, 0)
+  densZExtraY <- pmax(densZExtra$y, 0)
+  bwVec <- (3 * densZCoreY * bwZCore + densZExtraY * bwZExtra) /
+    (3 * densZCoreY + densZExtraY)
 
-  if (!is.finite(scaleX) || scaleX <= 0 || !is.finite(scaleZ) || scaleZ <= 0) {
-    return(.bwCalcOneBase(x, bwMtd))
-  }
-
-  bwZ * scaleX / scaleZ
+  # okay, now we must return the bins and the bandwidths, which will be used to calculate the bandwidth for each point
+  list(
+    "bin" = binVec,
+    "bw" = bwVec
+  )
 }
 
 #' @keywords internal
