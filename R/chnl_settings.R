@@ -25,6 +25,10 @@
   bwAdaptive,
   bwAdaptiveDensityN,
   bwAdaptivePadFrac,
+  bwAdaptiveCore,
+  bwAdaptiveExtra,
+  bwAdaptiveCrossover,
+  bwAdaptiveTransitionWidth,
   normPeakFrac,
   normPeakMinRel,
   normExtraFrac,
@@ -85,6 +89,10 @@
     bwAdaptive = bwAdaptive,
     bwAdaptiveDensityN = bwAdaptiveDensityN,
     bwAdaptivePadFrac = bwAdaptivePadFrac,
+    bwAdaptiveCore = bwAdaptiveCore,
+    bwAdaptiveExtra = bwAdaptiveExtra,
+    bwAdaptiveCrossover = bwAdaptiveCrossover,
+    bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
     normPeakFrac = normPeakFrac,
     normPeakMinRel = normPeakMinRel,
     normExtraFrac = normExtraFrac,
@@ -554,7 +562,7 @@
   normMtd = "moments"
 ) {
   if (.completeChnlSettingsBwLimitIsNone(bwMin)) {
-    return(-1)
+    return(-Inf)
   }
 
   if (!.completeChnlSettingsBwLimitIsAuto(bwMin)) {

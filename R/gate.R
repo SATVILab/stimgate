@@ -78,6 +78,21 @@
 #' @param bwAdaptivePadFrac numeric. Fraction of the combined expression range by
 #'   which the adaptive density grid is extended on both sides before area
 #'   normalisation. Default is `0.15`.
+#' @param bwAdaptiveCore numeric or NULL. Optional manually specified
+#'   bandwidth for the background-core side of the adaptive local-FDR density
+#'   curve. When supplied, it overrides the estimated core-component bandwidth
+#'   for adaptive bandwidth construction. Default is `NULL`.
+#' @param bwAdaptiveExtra numeric or NULL. Optional manually specified
+#'   bandwidth for the high-expression/extra side of the adaptive local-FDR
+#'   density curve. When supplied, it overrides the estimated extra-component
+#'   bandwidth for adaptive bandwidth construction. Default is `NULL`.
+#' @param bwAdaptiveCrossover numeric or NULL. Optional expression value at
+#'   which the adaptive bandwidth curve crosses from the core bandwidth to the
+#'   extra bandwidth. When `NULL`, component-density weighting is used. Default
+#'   is `NULL`.
+#' @param bwAdaptiveTransitionWidth numeric. Width, in expression units, of the
+#'   optional smooth transition around `bwAdaptiveCrossover`. Use `0` for a hard
+#'   switch at the crossover. Default is `0`.
 #' @param normPeakFrac numeric. Fraction of the selected background-core peak
 #'   height used by normalised bandwidth helpers when identifying low-density tail
 #'   regions. Default is `0.1`.
@@ -310,6 +325,10 @@ gateStim <- function(
   bwAdaptive = FALSE,
   bwAdaptiveDensityN = NULL,
   bwAdaptivePadFrac = 0.15,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
   normPeakFrac = 0.1,
   normPeakMinRel = 0.75,
   normExtraFrac = 0.2,
@@ -390,6 +409,10 @@ gateStim <- function(
     bwAdaptive = bwAdaptive,
     bwAdaptiveDensityN = bwAdaptiveDensityN,
     bwAdaptivePadFrac = bwAdaptivePadFrac,
+    bwAdaptiveCore = bwAdaptiveCore,
+    bwAdaptiveExtra = bwAdaptiveExtra,
+    bwAdaptiveCrossover = bwAdaptiveCrossover,
+    bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
     normPeakFrac = normPeakFrac,
     normPeakMinRel = normPeakMinRel,
     normExtraFrac = normExtraFrac,
@@ -456,6 +479,10 @@ gateStim <- function(
     bwAdaptive = bwAdaptive,
     bwAdaptiveDensityN = bwAdaptiveDensityN,
     bwAdaptivePadFrac = bwAdaptivePadFrac,
+    bwAdaptiveCore = bwAdaptiveCore,
+    bwAdaptiveExtra = bwAdaptiveExtra,
+    bwAdaptiveCrossover = bwAdaptiveCrossover,
+    bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
     normPeakFrac = normPeakFrac,
     normPeakMinRel = normPeakMinRel,
     normExtraFrac = normExtraFrac,

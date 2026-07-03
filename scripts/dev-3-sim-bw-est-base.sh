@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=10
-#SBATCH --job-name="dev-2-bw-freq_bs"
+#SBATCH --ntasks=5
+#SBATCH --job-name="dev-3-est"
 #SBATCH --partition=ada
 
 # Record the start time
@@ -17,7 +17,7 @@ echo "-------------------"
 echo "Run projr"
 date
 apptainer-rscript -f stimgate -- 'devtools::install()'
-apptainer-rscript -f stimgate -- 'projr::projr_build_dev(profile = "", file = "analysis/2-sim-bw-freq_bs.qmd")'
+apptainer-rscript -f stimgate -- 'projr::projr_build_dev(profile = "", file = "analysis/3-sim-bw-est-base.qmd")'
 echo "Completed running projr"
 date
 echo "-------------------"
