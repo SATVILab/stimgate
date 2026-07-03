@@ -84,10 +84,10 @@ sim_grid <- tidyr::expand_grid(
 sim_grid <- sim_grid |>
   dplyr::arrange(n_cell, dplyr::desc(prob_response))
 
-if ("dev" %in% projr::projr_profile_get()) {
+if (.isDev()) {
   sim_grid <- sim_grid |>
     dplyr::filter(
-      n_cell c(5e3, 1e4, 2e4),
+      n_cell %in% c(5e3, 1e4, 2e4),
       prob_response == 0.002,
       mean_pos_setting == "high",
       transformation %in% transformation_vec,
@@ -131,8 +131,9 @@ for (i in seq_len(nrow(sim_grid))) {
   )
 
   message("Running: ", settings_row)
+  # debugonce(.simBandwidthEstBwDirect)
   bw_list_raw_mtd_loop[[i]] <- .simBandwidthEstBwDirect(
-    nSample = 2,
+    nSample = if (.isDev()) 1 else 25,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
@@ -280,7 +281,7 @@ bw_list_raw_mtd <- progressr::with_progress({
       out <- tryCatch(
         {
           sim_res <- stimgate:::.simBandwidthEstBwDirect(
-            nSample = 25,
+            nSample = 1,
             nMarker = 1,
             nCondition = 2,
             nCluster = 2,
@@ -304,27 +305,28 @@ bw_list_raw_mtd <- progressr::with_progress({
             tolClust = NULL,
             summarise = FALSE
           ) |>
-            dplyr::mutate(
-              transformation = transformation,
-              prob_response = prob_response,
-              n_cell = n_cell,
-              mean_pos_setting = mean_pos_setting,
-              mean_pos = mean_pos,
-              bw_mtd = bw_mtd,
-              bw_ncell_upper = bw_ncell_upper,
-              sim_id = sim_id
-            ) |>
-            dplyr::select(
-              transformation,
-              prob_response,
-              n_cell,
-              mean_pos_setting,
-              mean_pos,
-              bw_mtd,
-              bw_ncell_upper,
-              sim_id,
-              dplyr::everything()
-            )
+          dplyr::mutate(
+            transformation = transformation,
+            prob_response = prob_response,
+            n_cell = n_cell,
+            mean_pos_setting = mean_pos_setting,
+            mean_pos = mean_pos,
+            bw_mtd = bw_mtd,
+            bw_ncell_upper = bw_ncell_upper,
+            sim_id = sim_id,
+            error_message = NULL
+          ) |>
+          dplyr::select(
+            transformation,
+            prob_response,
+            n_cell,
+            mean_pos_setting,
+            mean_pos,
+            bw_mtd,
+            bw_ncell_upper,
+            sim_id,
+            dplyr::everything()
+          )
 
           cat(
             "Completed: ",
@@ -343,7 +345,7 @@ bw_list_raw_mtd <- progressr::with_progress({
           cat(err_msg, file = path_progress_file, append = TRUE)
 
           p(sprintf("ERROR on sim_id: %s", sim_id))
-
+# 
           tibble::tibble(
             transformation = transformation,
             prob_response = prob_response,
@@ -353,15 +355,20 @@ bw_list_raw_mtd <- progressr::with_progress({
             bw_mtd = bw_mtd,
             bw_ncell_upper = bw_ncell_upper,
             sim_id = sim_id,
-            iter = NA_integer_,
-            chnl = NA_character_,
+            iter = NA_character_,
             sample = NA_character_,
             ind = NA_character_,
+            chnl = NA_character_,
+            n_cell_uns = NA_integer_,
+            n_cell_stim = NA_integer_,
+            n_uns_bw = NA_integer_,
+            n_stim_bw = NA_integer_,
+            max_dens_x = NA_real_,
             bw_uns = NA_real_,
             bw_stim = NA_real_,
             bw = NA_real_,
             bw_source = NA_character_,
-            error = e$message
+            error_message = e$message
           )
         }
       )
@@ -420,9 +427,7 @@ path_vec <- c(
   )
 )
 path_vec <- path_vec[file.exists(path_vec)][[1]]
-bw_list_raw_mtd <- readRDS(
-  file = path_vec
-)
+bw_list_raw_mtd <- readRDS(file = path_vec)
 bw_tbl_results <- bw_list_raw_mtd |>
   purrr::list_rbind() |>
   dplyr::group_by(
