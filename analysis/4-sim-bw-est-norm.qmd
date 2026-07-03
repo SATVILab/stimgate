@@ -133,7 +133,7 @@ for (i in seq_len(nrow(sim_grid))) {
   message("Running: ", settings_row)
   # debugonce(.simBandwidthEstBwDirect)
   bw_list_raw_mtd_loop[[i]] <- .simBandwidthEstBwDirect(
-    nSample = if (.isDev()) 1 else 25,
+    nSample = if (.isDev()) 1 else 10,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
