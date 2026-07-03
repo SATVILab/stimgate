@@ -7,6 +7,10 @@
     Sys.setenv("PROJR_PROFILE" = profileVec)
   }
 }
+.isDev <- function() {
+  profileVec <- projr::projr_profile_get()
+  "dev" %in% profileVec
+}
 .devSet <- .setDev
 .unsetDev <- function() {
   profileVec <- projr::projr_profile_get()
@@ -38,6 +42,10 @@
   }
 }
 .quickUnset <- .unsetQuick
+isQuick <- function() {
+  profileVec <- projr::projr_profile_get()
+  "quick" %in% profileVec
+}
 
 .set_renv_profile <- function() {
   # set the renv profile based on the environment

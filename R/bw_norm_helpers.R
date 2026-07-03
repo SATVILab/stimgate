@@ -25,13 +25,8 @@
   bwNcellMax = NULL,
   normPeakFrac = 0.1,
   normPeakMinRel = 0.75,
-<<<<<<< HEAD
-  normExtraFrac = 0.1,
-  normExtraMax = 1000L,
-=======
   normExtraFrac = 0.2,
   normExtraMax = Inf,
->>>>>>> refs/remotes/origin/master
   normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
   normDensityN = 512L,
@@ -184,13 +179,8 @@
   bwNcellMax = NULL,
   normPeakFrac = 0.1,
   normPeakMinRel = 0.75,
-<<<<<<< HEAD
-  normExtraFrac = 0.1,
-  normExtraMax = 1000L,
-=======
   normExtraFrac = 0.2,
   normExtraMax = Inf,
->>>>>>> refs/remotes/origin/master
   normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
   normDensityN = 512L,
@@ -267,16 +257,18 @@
   } else {
     sigmaCore <- sd(xCore)
     sigmaExtra <- sd(xExtra)
+    sigmaCoreShrink <- 4 / 5 * sigmaCore + 1 / 5 * sigmaExtra
+    sigmaExtraShrink <- 1 / 2 * sigmaCore + 1 / 2 * sigmaExtra
     zBw <- c(
       .bwNormSampleNormalComponent(
         mu = mean(xCore),
-        sd = sigmaCore,
+        sd = sigmaCoreShrink,
         n = length(x) - length(xExtra),
         fallbackSd = .bwRobustSd(x)
       ),
       .bwNormSampleNormalComponent(
         mu = mean(xExtra),
-        sd = sigmaExtra,
+        sd = sigmaExtraShrink,
         n = length(xExtra),
         fallbackSd = .bwRobustSd(xCore)
       )
@@ -445,11 +437,7 @@
   list(
     thresholdX = thresholdX,
     thresholdIdx = thresholdIdx,
-<<<<<<< HEAD
-    xPeak = peakMainLeftX,
-=======
     peakX = peakMainLeftX,
->>>>>>> refs/remotes/origin/master
     peakHeight = peakHeight,
     lowHeight = peakFrac * peakHeight,
     density = tibble::tibble(x = dx, y = dy)
@@ -512,94 +500,6 @@
   }
 
   numeric(0L)
-<<<<<<< HEAD
-}
-
-.bwNormFindBackgroundCoreThresholdFlattened <- function(
-  dx,
-  dy,
-  peakMainLeftIdx,
-  peakMinRel = 0.75,
-  autoTol = TRUE,
-  tol = 1e-8,
-  moveBackFrac = 0.1
-) {
-  dx <- suppressWarnings(as.numeric(dx))
-  dy <- suppressWarnings(as.numeric(dy))
-  dy <- pmax(dy, 0)
-
-  if (
-    length(dx) != length(dy) ||
-      length(dx) < 5L ||
-      peakMainLeftIdx >= length(dx) - 2L
-  ) {
-    return(numeric(0L))
-  }
-
-  peakHeight <- dy[peakMainLeftIdx]
-  if (!is.finite(peakHeight) || peakHeight <= 0) {
-    return(numeric(0L))
-  }
-
-  # Only look after the density has dropped enough that a shoulder/local wobble
-  # near the peak is not mistaken for a tail flattening point.
-  rightDropIdx <- which(
-    seq_along(dy) > peakMainLeftIdx &
-      dy <= peakMinRel * peakHeight
-  )[1L]
-
-  if (!is.finite(rightDropIdx) || rightDropIdx >= length(dx) - 1L) {
-    return(numeric(0L))
-  }
-
-  deriv <- c(NA_real_, diff(dy) / diff(dx))
-  derivRight <- deriv[seq.int(rightDropIdx, length(deriv))]
-  xRight <- dx[seq.int(rightDropIdx, length(dx))]
-
-  ok <- is.finite(xRight) & is.finite(derivRight)
-  xRight <- xRight[ok]
-  derivRight <- derivRight[ok]
-
-  if (length(xRight) < 3L) {
-    return(numeric(0L))
-  }
-
-  negDeriv <- pmax(0, -derivRight)
-  if (all(!is.finite(negDeriv)) || max(negDeriv, na.rm = TRUE) <= 0) {
-    return(numeric(0L))
-  }
-
-  maxDropIdx <- which.max(negDeriv)
-  peakDeriv <- negDeriv[maxDropIdx]
-
-  if (!is.finite(peakDeriv) || peakDeriv <= 0) {
-    return(numeric(0L))
-  }
-
-  thresholdDeriv <- if (isTRUE(autoTol)) {
-    peakDeriv / 100
-  } else {
-    tol
-  }
-
-  flatRelIdx <- which(
-    seq_along(negDeriv) > maxDropIdx &
-      negDeriv <= thresholdDeriv
-  )[1L]
-
-  if (!is.finite(flatRelIdx)) {
-    return(numeric(0L))
-  }
-
-  xFlat <- xRight[flatRelIdx]
-
-  # Move slightly back towards the peak so the coreset includes the main right
-  # tail but not the long flat/excess region.
-  xPeak <- dx[peakMainLeftIdx]
-  xPeak + (1 - moveBackFrac) * (xFlat - xPeak)
-}
-
-=======
 }
 
 .bwNormFindBackgroundCoreThresholdFlattened <- function(
@@ -687,14 +587,12 @@
 }
 
 
->>>>>>> refs/remotes/origin/master
 .bwNormChooseBoxCox <- function(
   xCore,
   lambda = seq(-2, 2, length.out = 81)
 ) {
   xCore <- suppressWarnings(as.numeric(xCore))
   xCore <- xCore[is.finite(xCore)]
-  
 
   if (length(xCore) < 20L || length(unique(xCore)) < 5L) {
     return(NULL)
@@ -898,13 +796,13 @@
     sdDensity <- .Machine$double.eps
   }
 
-  xExtra + stats::rnorm(
-    length(xExtra),
-    mean = 0,
-    sd = normExtraJitterFrac * sdDensity
-  )
+  xExtra +
+    stats::rnorm(
+      length(xExtra),
+      mean = 0,
+      sd = normExtraJitterFrac * sdDensity
+    )
 }
-
 
 
 #' @keywords internal
@@ -1105,24 +1003,8 @@
     peakIdx <- which.max(dy)
   }
 
-<<<<<<< HEAD
-  # Use the coreset boundary if available so the augmentation starts exactly
-  # where the core-selection logic stops.
-  xRightCut <- coreObj$thresholdX %||% NA_real_
-  if (!is.finite(xRightCut)) {
-    xRightCut <- .bwNormRightCutFromDensity(
-      dx = dx,
-      dy = dy,
-      peakIdx = peakIdx,
-      peakFrac = peakFrac
-    )
-  }
-
-  yDec <- .bwNormFitDecreasingDensityScam(
-=======
   yDec <- .bwNormFitDecreasingDensity(
     x = x,
->>>>>>> refs/remotes/origin/master
     dx = dx,
     dy = dy,
     thresholdX = coreObj$thresholdX,
@@ -1372,10 +1254,6 @@
 
 #' @keywords internal
 
-<<<<<<< HEAD
-#' @keywords internal
-=======
->>>>>>> refs/remotes/origin/master
 .bwNormPreferentialUpsample <- function(
   x,
   rate,
@@ -1392,41 +1270,6 @@
     return(numeric(0L))
   }
 
-<<<<<<< HEAD
-  rate <- pmin(1, pmax(0, rate))
-
-  keep <- stats::rbinom(
-    n = length(x),
-    size = 1L,
-    prob = rate
-  ) >
-    0L
-
-  xOut <- x[keep]
-
-  if (
-    !is.null(nTarget) &&
-      is.finite(nTarget) &&
-      nTarget > 0L &&
-      length(xOut) > nTarget
-  ) {
-    xOut <- sample(xOut, size = as.integer(nTarget), replace = FALSE)
-  }
-
-  xOut
-}
-
-.bwDensitySd <- function(
-  x,
-  y
-) {
-  ok <- is.finite(x) & is.finite(y) & y >= 0
-  x <- x[ok]
-  y <- y[ok]
-
-  if (length(x) < 2L || sum(y) <= 0) {
-    return(NA_real_)
-=======
   nTarget <- .bwAsSafeSampleN(
     nTarget,
     default = 0L,
@@ -1440,7 +1283,6 @@
   rate <- pmin(1, pmax(0, rate))
   if (!any(rate > 0)) {
     return(numeric(0L))
->>>>>>> refs/remotes/origin/master
   }
 
   sample(
