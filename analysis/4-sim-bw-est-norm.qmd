@@ -128,14 +128,13 @@ for (i in seq_len(nrow(sim_grid))) {
   )
 
   message("Running: ", settings_row)
-  # debugonce(.simBandwidthEstBwDirect)
   bw_list_raw_mtd_loop[[i]] <- .simBandwidthEstBwDirect(
     nSample = if (.isDev()) 1 else 10,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
     nIter = 1,
-    biasUns = 0.05,
+    biasUns = if (sim_grid$transformation[i] == "gamma") 0.005 else 0.05,
     bwMtd = sim_grid$bw_mtd[i],
     bwMin = -Inf,
     bwMax = Inf,
@@ -184,8 +183,9 @@ saveRDS(
   file = projr::projr_path_get(
     "output",
     "sim",
-    "bw_norm",
+    "bw",
     "est",
+    "norm",
     "bw_list_raw_mtd_loop.rds"
   )
 )
@@ -236,8 +236,9 @@ path_progress_file <- projr::projr_path_get(
   "log",
   "analysis",
   "sim",
-  "bw_norm",
+  "bw",
   "est",
+  "norm",
   "progress.txt"
 )
 
@@ -284,7 +285,7 @@ bw_list_raw_mtd <- progressr::with_progress({
             nCondition = 2,
             nCluster = 2,
             nIter = 1,
-            biasUns = 0.05,
+            biasUns = if (transformation == "gamma") 0.005 else 0.05,
             bwMtd = bw_mtd,
             bwFallback = bw_fallback,
             bwMin = -Inf,
@@ -384,8 +385,9 @@ saveRDS(
   file = projr::projr_path_get(
     "output",
     "sim",
-    "bw_norm",
+    "bw",
     "est",
+    "norm",
     "bw_list_raw_mtd.rds"
   )
 )
@@ -400,26 +402,18 @@ path_vec <- c(
   projr::projr_path_get(
     "output",
     "sim",
-    "bw_norm",
+    "bw",
     "est",
+    "norm",
     "bw_list_raw_mtd.rds",
     safe = TRUE
   ),
   projr::projr_path_get(
     "output",
     "sim",
-    "bw_norm",
+    "bw",
     "est",
-    "bw_list_raw_mtd.rds",
-    safe = FALSE
-  ),
-  projr::projr_path_get(
-    "raw-data-archive-manual",
-    "v0.103.0",
-    "output",
-    "sim",
-    "bw_norm",
-    "est",
+    "norm",
     "bw_list_raw_mtd.rds",
     safe = FALSE
   )
@@ -481,8 +475,9 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
         filename = projr::projr_path_get(
           "output",
           "sim",
-          "bw_norm",
+          "bw",
           "est",
+          "norm",
           paste0("bw_estimate_meanpos_setting_", mean_pos_setting_curr, "_ncell_upper_", bw_ncell_upper_curr, ".png")
         ),
         plot = p,

@@ -1043,8 +1043,59 @@
 
 #' @keywords internal
 .getCpUnsLocUseAdaptiveBw <- function(chnlSettings) {
-  isTRUE(chnlSettings$bwAdaptive %||% FALSE) &&
+  (isTRUE(chnlSettings$bwAdaptive %||% FALSE) ||
+    .getCpUnsLocHasManualAdaptiveBw(chnlSettings)) &&
     is.null(chnlSettings$bw)
+}
+
+#' @keywords internal
+.getCpUnsLocHasManualAdaptiveBw <- function(chnlSettings) {
+  is.finite(suppressWarnings(as.numeric(chnlSettings$bwAdaptiveCore)[1])) ||
+    is.finite(suppressWarnings(as.numeric(chnlSettings$bwAdaptiveExtra)[1])) ||
+    is.finite(suppressWarnings(as.numeric(chnlSettings$bwAdaptiveCrossover)[1]))
+}
+
+#' @keywords internal
+.getCpUnsLocManualAdaptiveBwOnGrid <- function(chnlSettings, grid) {
+  bwCore <- suppressWarnings(as.numeric(chnlSettings$bwAdaptiveCore)[1])
+  bwExtra <- suppressWarnings(as.numeric(chnlSettings$bwAdaptiveExtra)[1])
+  crossover <- suppressWarnings(as.numeric(chnlSettings$bwAdaptiveCrossover)[1])
+  transitionWidth <- suppressWarnings(
+    as.numeric(chnlSettings$bwAdaptiveTransitionWidth %||% 0)[1]
+  )
+
+  if (
+    !is.finite(bwCore) ||
+      bwCore <= 0 ||
+      !is.finite(bwExtra) ||
+      bwExtra <= 0 ||
+      !is.finite(crossover)
+  ) {
+    return(NULL)
+  }
+
+  bw <- .bwNormBwFromCrossover(
+    bin = grid,
+    bwCore = bwCore,
+    bwExtra = bwExtra,
+    crossover = crossover,
+    transitionWidth = transitionWidth
+  )
+
+  bw <- .getCpUnsLocRepairBwGrid(bw)
+
+  list(
+    bin = grid,
+    bw = bw,
+    bwCore = bwCore,
+    bwExtra = bwExtra,
+    bwAdaptiveCoreManual = bwCore,
+    bwAdaptiveExtraManual = bwExtra,
+    bwAdaptiveCrossover = crossover,
+    bwAdaptiveTransitionWidth = transitionWidth,
+    adaptive = TRUE,
+    manual = TRUE
+  )
 }
 
 #' @keywords internal
@@ -1087,25 +1138,37 @@
     return(NULL)
   }
 
-  bwStimObj <- .getCpUnsLocGetDensRawDensitiesBwAdaptiveOne(
-    x = xStim,
-    chnlSettings = chnlSettings
-  )
-  bwUnsObj <- .getCpUnsLocGetDensRawDensitiesBwAdaptiveOne(
-    x = xUns,
-    chnlSettings = chnlSettings
+  manualBwObj <- .getCpUnsLocManualAdaptiveBwOnGrid(
+    chnlSettings = chnlSettings,
+    grid = grid
   )
 
-  bwStimGrid <- .getCpUnsLocAdaptiveBwOnGrid(
-    bwObj = bwStimObj,
-    grid = grid,
-    fallback = chnlSettings$bwFallback
-  )
-  bwUnsGrid <- .getCpUnsLocAdaptiveBwOnGrid(
-    bwObj = bwUnsObj,
-    grid = grid,
-    fallback = chnlSettings$bwFallback
-  )
+  if (!is.null(manualBwObj)) {
+    bwStimObj <- manualBwObj
+    bwUnsObj <- manualBwObj
+    bwStimGrid <- manualBwObj$bw
+    bwUnsGrid <- manualBwObj$bw
+  } else {
+    bwStimObj <- .getCpUnsLocGetDensRawDensitiesBwAdaptiveOne(
+      x = xStim,
+      chnlSettings = chnlSettings
+    )
+    bwUnsObj <- .getCpUnsLocGetDensRawDensitiesBwAdaptiveOne(
+      x = xUns,
+      chnlSettings = chnlSettings
+    )
+
+    bwStimGrid <- .getCpUnsLocAdaptiveBwOnGrid(
+      bwObj = bwStimObj,
+      grid = grid,
+      fallback = chnlSettings$bwFallback
+    )
+    bwUnsGrid <- .getCpUnsLocAdaptiveBwOnGrid(
+      bwObj = bwUnsObj,
+      grid = grid,
+      fallback = chnlSettings$bwFallback
+    )
+  }
 
   if (
     length(bwStimGrid) != length(grid) ||
@@ -1211,6 +1274,10 @@
     normAdaptiveNcell = chnlSettings$normAdaptiveNcell %||%
       chnlSettings$bwAdaptiveNcell %||%
       2500L,
+    bwAdaptiveCore = chnlSettings$bwAdaptiveCore,
+    bwAdaptiveExtra = chnlSettings$bwAdaptiveExtra,
+    bwAdaptiveCrossover = chnlSettings$bwAdaptiveCrossover,
+    bwAdaptiveTransitionWidth = chnlSettings$bwAdaptiveTransitionWidth %||% 0,
     normMtd = chnlSettings$normMtd %||% "moments",
     adaptive = TRUE
   )
@@ -1559,6 +1626,23 @@
 }
 
 #' @keywords internal
+.getCpUnsLocGetProbTblInit <- function(densTblRaw, cpMin) {
+  densTblRaw |>
+    tidyr::pivot_wider(
+      id_cols = xStim,
+      names_from = stim,
+      values_from = dens # nolint
+    ) |>
+    dplyr::mutate(
+      probStim = 1 - no / yes, # nolint
+      probStim = ifelse(yes == 0 & no == 0, 0, probStim), # nolint
+      probStimNorm = pmin(1, probStim), # nolint
+      probStimNorm = pmax(0, probStimNorm) # nolint
+    ) |>
+    dplyr::filter(xStim > cpMin)
+}
+
+#' @keywords internal
 .getCpUnsLocGetDensRawDensitiesBwInit <- function(
   .data,
   bwMin,
@@ -1596,6 +1680,10 @@
     normAdaptiveNcell = chnlSettings$normAdaptiveNcell %||%
       chnlSettings$bwAdaptiveNcell %||%
       2500L,
+    bwAdaptiveCore = chnlSettings$bwAdaptiveCore,
+    bwAdaptiveExtra = chnlSettings$bwAdaptiveExtra,
+    bwAdaptiveCrossover = chnlSettings$bwAdaptiveCrossover,
+    bwAdaptiveTransitionWidth = chnlSettings$bwAdaptiveTransitionWidth %||% 0,
     normMtd = chnlSettings$normMtd %||% "moments",
     adaptive = FALSE
   )

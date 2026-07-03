@@ -129,7 +129,7 @@ for (i in seq_len(nrow(sim_grid))) {
     nCondition = 2,
     nCluster = 2,
     nIter = 10,
-    biasUns = 0.05,
+    biasUns = if (sim_grid$transformation[i] == "gamma") 0.005 else 0.05,
     bwMtd = sim_grid$bw_mtd[i],
     bwMin = -Inf,
     bwMax = Inf,
@@ -177,6 +177,7 @@ saveRDS(
     "sim",
     "bw",
     "est",
+    "base"
     "bw_list_raw_mtd_loop.rds"
   )
 )
@@ -214,7 +215,7 @@ path_progress_file <- projr::projr_path_get(
   "analysis",
   "sim",
   "bw",
-  "est",
+  "est", "base",
   "progress.txt"
 )
 
@@ -259,7 +260,7 @@ bw_list_raw_mtd <- progressr::with_progress({
             nCondition = 2,
             nCluster = 2,
             nIter = 1,
-            biasUns = 0.05,
+            biasUns = if (sim_grid$transformation[i] == "gamma") 0.005 else 0.05,
             bwMtd = bw_mtd,
             bwFallback = bw_fallback,
             bwMin = -Inf,
@@ -350,7 +351,7 @@ saveRDS(
     "output",
     "sim",
     "bw",
-    "est",
+    "est", "base",
     "bw_list_raw_mtd.rds"
   )
 )
@@ -366,7 +367,7 @@ path_vec <- c(
     "output",
     "sim",
     "bw",
-    "est",
+    "est", "base",
     "bw_list_raw_mtd.rds",
     safe = TRUE
   ),
@@ -374,17 +375,7 @@ path_vec <- c(
     "output",
     "sim",
     "bw",
-    "est",
-    "bw_list_raw_mtd.rds",
-    safe = FALSE
-  ),
-  projr::projr_path_get(
-    "raw-data-archive-manual",
-    "v0.103.0",
-    "output",
-    "sim",
-    "bw",
-    "est",
+    "est", "base",
     "bw_list_raw_mtd.rds",
     safe = FALSE
   )
@@ -441,7 +432,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
         "output",
         "sim",
         "bw",
-        "est",
+        "est", "base",
         paste0("bw_estimate_meanpos_setting_", mean_pos_setting_curr, ".png")
       ),
       plot = p,

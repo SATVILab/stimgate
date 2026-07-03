@@ -1044,6 +1044,178 @@
   .simBandwidthSummariseBw(raw_tbl)
 }
 
+#' Estimate bandwidths directly from simulated data, without running gateStim
+#'
+#' This mirrors the bandwidth-estimation part of cp_uns_loc:
+#'   1. simulate unstim/stim data
+#'   2. optionally exclude the minimum values, as gateStim does by default
+#'   3. optionally cap values at the same max-density x used by cp_uns_loc
+#'   4. estimate bw separately for stim and unstim
+#'   5. return min(bw_stim, bw_uns)
+#'
+#' @keywords internal
+.simBandwidthEstBwDirectAdaptive <- function(
+  nSample = 10L,
+  nMarker = 1L,
+  nCondition = 2L,
+  nCluster = 2L,
+  nIter = 10L,
+  biasUns = 0.05,
+  bw = NULL,
+  bwMtd = "hpi1",
+  bwMin = 1e-10,
+  bwMax = 1e10,
+  bwFallback = NULL,
+  bwAdj = 1,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL,
+  bwCluster = NULL,
+  tolClust = NULL,
+  probExact = TRUE,
+  nCellStim,
+  probResponse,
+  meanPos,
+  transformation,
+  backgroundRelativeToResponse = 0.2,
+  ncellUnsRelativeToStim = 1,
+  covEvMin = 2,
+  covEvMax = 2,
+  excMin = TRUE,
+  capStimRange = TRUE,
+  summarise = TRUE
+) {
+  if (!identical(as.integer(nMarker), 1L)) {
+    stop("This helper currently expects nMarker = 1.")
+  }
+  if (!identical(as.integer(nCondition), 2L)) {
+    stop("This helper currently expects nCondition = 2.")
+  }
+  if (!identical(as.integer(nCluster), 2L)) {
+    stop("This helper currently expects nCluster = 2.")
+  }
+
+  nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
+  nCellByCondition <- c(nCellUns, nCellStim)
+
+  transformationFunc <- .simBandwidthGetTrans(transformation)
+
+  meanExprMat <- matrix(
+    c(0, meanPos),
+    byrow = TRUE,
+    ncol = 1
+  )
+
+  clusterLabelVec <- c("gn", "gp")
+
+  probResponseUns <- probResponse * backgroundRelativeToResponse
+  probVecUns <- c(1 - probResponseUns, probResponseUns)
+
+  probResponseVecByStimCondition <- list(
+    c(-probResponse, probResponse)
+  )
+
+  raw_tbl <- purrr::map_dfr(seq_len(nIter), function(iterNum) {
+    outListExperiment <- simCytExperiment(
+      nSample = nSample,
+      nMarker = nMarker,
+      nCondition = nCondition,
+      nCluster = nCluster,
+      nCellByCondition = nCellByCondition,
+      transformationFunc = transformationFunc,
+      mixtureType = "gaussianOnly",
+      meanExprMat = meanExprMat,
+      clusterLabelVec = clusterLabelVec,
+      probVecUns = probVecUns,
+      probExact = probExact,
+      probResponseVecByStimCondition = probResponseVecByStimCondition,
+      samplePerturbationSd = 0,
+      conditionPerturbationSd = 0,
+      clusterPerturbationSd = 0,
+      covEvMin = covEvMin,
+      covEvMax = covEvMax
+    )
+
+    flowFrameList <- outListExperiment[["flowFrameList"]]
+
+    purrr::map_dfr(seq_len(nSample), function(sampleCurr) {
+      indUns <- (sampleCurr - 1L) * nCondition + 1L
+      indStim <- indUns + 1L
+
+      x_uns <- as.numeric(flowCore::exprs(flowFrameList[[indUns]])[, "F1"])
+      x_stim <- as.numeric(flowCore::exprs(flowFrameList[[indStim]])[, "F1"])
+
+      # cp_uns_loc applies bias to the unstim expression before density work.
+      x_uns <- x_uns + (biasUns %||% 0)
+
+      if (excMin) {
+        x_uns <- .simBandwidthExcMin(x_uns)
+        x_stim <- .simBandwidthExcMin(x_stim)
+      }
+
+      x_cap <- .simBandwidthCapForCpUnsLoc(
+        x_stim = x_stim,
+        x_uns = x_uns,
+        capStimRange = capStimRange
+      )
+
+      exTblStimThreshold <- tibble::tibble(
+        F1 = x_cap$x_stim
+      )
+      attr(exTblStimThreshold, "chnlCut") <- "F1"
+      exTblUnsThreshold <- tibble::tibble(
+        F1 = x_cap$x_uns
+      )
+      attr(exTblUnsThreshold, "chnlCut") <- "F1"
+
+      bwObj <- .getCpUnsLocGetDensRawDensitiesAdaptive(
+        exTblStimThreshold = exTblStimThreshold,
+        exTblUnsThreshold = exTblUnsThreshold,
+        chnlSettings = list(
+          bwMtd = bwMtd,
+          bwMin = bwMin,
+          bwMax = bwMax,
+          bwAdj = bwAdj,
+          bwNcellMin = bwNcellMin,
+          bwNcellMax = bwNcellMax,
+          bwFallback = bwFallback
+        )
+      )
+      bwStimCore <- tryCatch(bwObj$bw$stim$bwCore, error = function(e) NA_real_)
+      bwStimExtra <- tryCatch(bwObj$bw$stim$bwExtra, error = function(e) {
+        NA_real_
+      })
+      bwUnsCore <- tryCatch(bwObj$bw$uns$bwCore, error = function(e) NA_real_)
+      bwUnsExtra <- tryCatch(bwObj$bw$uns$bwExtra, error = function(e) NA_real_)
+      tibble::tibble(
+        transformation = transformation,
+        prob_response = probResponse,
+        n_cell = nCellStim,
+        mean_pos = meanPos,
+        bw_mtd = bwMtd,
+        iter = iterNum,
+        sample = as.character(sampleCurr),
+        ind = as.character(indStim),
+        chnl = "F1",
+        n_cell_uns = nCellUns,
+        n_cell_stim = nCellStim,
+        n_uns_bw_core = length(x_cap$x_uns),
+        n_stim_bw_core = length(x_cap$x_stim),
+        max_dens_x = x_cap$max_dens_x,
+        bw_uns_core = bwUnsCore,
+        bw_stim_core = bwStimCore,
+        bw_uns_extra = bwUnsExtra,
+        bw_stim_extra = bwStimExtra
+      )
+    })
+  })
+
+  if (!summarise) {
+    return(raw_tbl)
+  }
+
+  .simBandwidthSummariseBw(raw_tbl)
+}
+
 
 #' Run the direct bandwidth estimator over a Simulation-Bandwidth sim_grid
 #'
