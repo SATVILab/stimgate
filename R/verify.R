@@ -1,4 +1,15 @@
 #' @keywords internal
+.verifyIsNullOrNa <- function(x) {
+  if (is.null(x)) {
+    return(TRUE)
+  }
+  if (length(x) != 1L || !is.atomic(x)) {
+    return(FALSE)
+  }
+  isTRUE(is.na(x))
+}
+
+#' @keywords internal
 .verifyGateInputs <- function(
   pathProject,
   .data,
@@ -26,6 +37,10 @@
   bwAdaptive,
   bwAdaptiveDensityN,
   bwAdaptivePadFrac,
+  bwAdaptiveCore,
+  bwAdaptiveExtra,
+  bwAdaptiveCrossover,
+  bwAdaptiveTransitionWidth,
   normPeakFrac,
   normPeakMinRel,
   normExtraFrac,
@@ -115,7 +130,10 @@
   if (!is.logical(excMin) || length(excMin) != 1) {
     stop("`excMin` must be a single logical value (TRUE/FALSE).")
   }
-  if (!is.null(biasUns) && (!is.numeric(biasUns) || length(biasUns) != 1)) {
+  if (
+    !.verifyIsNullOrNa(biasUns) &&
+      (!is.numeric(biasUns) || length(biasUns) != 1)
+  ) {
     stop("`biasUns` must be a single numeric value, or NULL.")
   }
   if (
@@ -125,7 +143,7 @@
   ) {
     stop("`biasUnsFactor` must be a positive single numeric value.")
   }
-  if (!is.null(cpMin) && (!is.numeric(cpMin) || length(cpMin) != 1)) {
+  if (!.verifyIsNullOrNa(cpMin) && (!is.numeric(cpMin) || length(cpMin) != 1)) {
     stop("`cpMin` must be a single numeric value, or NULL.")
   }
   if (!is.numeric(maxPosProbX) || length(maxPosProbX) != 1) {
@@ -133,35 +151,26 @@
   }
 
   # Bandwidth checks
-  if (!is.null(bw) && (!is.numeric(bw) || length(bw) != 1 || bw <= 0)) {
+  if (
+    !.verifyIsNullOrNa(bw) &&
+      (!is.numeric(bw) || length(bw) != 1 || !is.finite(bw) || bw <= 0)
+  ) {
     stop("`bw` must be a single positive numeric value, or NULL.")
-  }
-
-  .verifyBwLimit <- function(x, nm, allow_none = TRUE) {
-    if (is.null(x)) {
-      return(invisible(TRUE))
-    }
-    if (is.character(x) && length(x) == 1L) {
-      validChar <- if (allow_none) c("auto", "none") else "auto"
-      if (tolower(x) %in% validChar) {
-        return(invisible(TRUE))
-      }
-    }
-    if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0) {
-      stop(sprintf(
-        "`%s` must be a single positive numeric value%s.",
-        nm,
-        if (allow_none) ", `auto`, `none`, or NULL" else " or `auto`"
-      ))
-    }
-    invisible(TRUE)
   }
 
   .verifyBwLimit(bwMin, "bwMin", allow_none = TRUE)
   .verifyBwLimit(bwMax, "bwMax", allow_none = TRUE)
   .verifyBwLimit(bwFallback, "bwFallback", allow_none = FALSE)
 
-  if (is.numeric(bwMin) && is.numeric(bwMax) && bwMax < bwMin) {
+  if (
+    is.numeric(bwMin) &&
+      length(bwMin) == 1L &&
+      is.finite(bwMin) &&
+      is.numeric(bwMax) &&
+      length(bwMax) == 1L &&
+      is.finite(bwMax) &&
+      bwMax < bwMin
+  ) {
     stop("`bwMax` must be greater than or equal to `bwMin`.")
   }
   if (!is.numeric(bwAdj) || length(bwAdj) != 1 || bwAdj <= 0) {
@@ -182,7 +191,7 @@
     "hpi2Norm",
     "hpi3Norm"
   )
-  if (is.null(bw) && !bwMtd %in% validBwMtds) {
+  if (.verifyIsNullOrNa(bw) && !bwMtd %in% validBwMtds) {
     stop(sprintf(
       "`bwMtd` must be one of: %s",
       paste(validBwMtds, collapse = ", ")
@@ -190,14 +199,25 @@
   }
 
   # Cell limits
-  if (is.null(bw) && !is.null(bwNcellMin) && !is.numeric(bwNcellMin)) {
+  if (
+    .verifyIsNullOrNa(bw) &&
+      !.verifyIsNullOrNa(bwNcellMin) &&
+      !is.numeric(bwNcellMin)
+  ) {
     stop("`bwNcellMin` must be numeric.")
   }
-  if (is.null(bw) && !is.null(bwNcellMax)) {
+  if (.verifyIsNullOrNa(bw) && !.verifyIsNullOrNa(bwNcellMax)) {
     if (!is.numeric(bwNcellMax)) {
       stop("`bwNcellMax` must be numeric.")
     }
-    if (!is.null(bwNcellMin) && bwNcellMax < bwNcellMin) {
+    if (
+      !.verifyIsNullOrNa(bwNcellMin) &&
+        is.numeric(bwNcellMin) &&
+        length(bwNcellMin) == 1L &&
+        is.finite(bwNcellMin) &&
+        is.finite(bwNcellMax) &&
+        bwNcellMax < bwNcellMin
+    ) {
       stop("`bwNcellMax` must be >= `bwNcellMin`.")
     }
   }
@@ -206,14 +226,20 @@
   }
 
   if (
-    !is.null(bwCluster) &&
-      (!is.numeric(bwCluster) || length(bwCluster) != 1 || bwCluster <= 0)
+    !.verifyIsNullOrNa(bwCluster) &&
+      (!is.numeric(bwCluster) ||
+        length(bwCluster) != 1 ||
+        !is.finite(bwCluster) ||
+        bwCluster <= 0)
   ) {
     stop("`bwCluster` must be a single positive numeric value, or NULL.")
   }
   if (
-    !is.null(tolClust) &&
-      (!is.numeric(tolClust) || length(tolClust) != 1 || tolClust <= 0)
+    !.verifyIsNullOrNa(tolClust) &&
+      (!is.numeric(tolClust) ||
+        length(tolClust) != 1 ||
+        !is.finite(tolClust) ||
+        tolClust <= 0)
   ) {
     stop("`tolClust` must be a positive numeric value, or NULL.")
   }
@@ -223,6 +249,10 @@
       bwAdaptive = bwAdaptive,
       bwAdaptiveDensityN = bwAdaptiveDensityN,
       bwAdaptivePadFrac = bwAdaptivePadFrac,
+      bwAdaptiveCore = bwAdaptiveCore,
+      bwAdaptiveExtra = bwAdaptiveExtra,
+      bwAdaptiveCrossover = bwAdaptiveCrossover,
+      bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
       normPeakFrac = normPeakFrac,
       normPeakMinRel = normPeakMinRel,
       normExtraFrac = normExtraFrac,
@@ -342,6 +372,10 @@
     "bwAdaptive",
     "bwAdaptiveDensityN",
     "bwAdaptivePadFrac",
+    "bwAdaptiveCore",
+    "bwAdaptiveExtra",
+    "bwAdaptiveCrossover",
+    "bwAdaptiveTransitionWidth",
     "normPeakFrac",
     "normPeakMinRel",
     "normExtraFrac",
@@ -435,20 +469,20 @@
 
   # Check logical flags
   if (
-    !is.null(settings$excMin) &&
+    !.verifyIsNullOrNa(settings$excMin) &&
       (!is.logical(settings$excMin) || length(settings$excMin) != 1)
   ) {
     stop(paste0(prefix, "`excMin` must be a single logical value."))
   }
   # Check numeric scalars
   if (
-    !is.null(settings$biasUns) &&
+    !.verifyIsNullOrNa(settings$biasUns) &&
       (!is.numeric(settings$biasUns) || length(settings$biasUns) != 1)
   ) {
     stop(paste0(prefix, "`biasUns` must be a single numeric value."))
   }
   if (
-    !is.null(settings$biasUnsFactor) &&
+    !.verifyIsNullOrNa(settings$biasUnsFactor) &&
       (!is.numeric(settings$biasUnsFactor) ||
         length(settings$biasUnsFactor) != 1 ||
         settings$biasUnsFactor <= 0)
@@ -456,36 +490,27 @@
     stop(paste0(prefix, "`biasUnsFactor` must be a single positive number."))
   }
   if (
-    !is.null(settings$bw) &&
-      (!is.numeric(settings$bw) || length(settings$bw) != 1 || settings$bw <= 0)
+    !.verifyIsNullOrNa(settings$bw) &&
+      (!is.numeric(settings$bw) ||
+        length(settings$bw) != 1 ||
+        !is.finite(settings$bw) ||
+        settings$bw <= 0)
   ) {
     stop(paste0(prefix, "`bw` must be a single positive numeric value."))
   }
   if (
-    !is.null(settings$bwMin) &&
-      (!is.numeric(settings$bwMin) ||
-        length(settings$bwMin) != 1 ||
-        settings$bwMin <= 0)
-  ) {
-    stop(paste0(prefix, "`bwMin` must be a single positive numeric value."))
-  }
-  if (
-    !is.null(settings$bwMax) &&
-      (!is.numeric(settings$bwMax) ||
-        length(settings$bwMax) != 1 ||
-        settings$bwMax <= 0)
-  ) {
-    stop(paste0(prefix, "`bwMax` must be a single positive numeric value."))
-  }
-  if (
-    !is.null(settings$bwMin) &&
-      !is.null(settings$bwMax) &&
+    is.numeric(settings$bwMin) &&
+      length(settings$bwMin) == 1L &&
+      is.finite(settings$bwMin) &&
+      is.numeric(settings$bwMax) &&
+      length(settings$bwMax) == 1L &&
+      is.finite(settings$bwMax) &&
       settings$bwMax < settings$bwMin
   ) {
     stop(paste0(prefix, "`bwMax` must be >= `bwMin`."))
   }
   if (
-    !is.null(settings$bwAdj) &&
+    !.verifyIsNullOrNa(settings$bwAdj) &&
       (!is.numeric(settings$bwAdj) ||
         length(settings$bwAdj) != 1 ||
         settings$bwAdj <= 0)
@@ -493,43 +518,38 @@
     stop(paste0(prefix, "`bwAdj` must be a positive numeric multiplier."))
   }
   if (
-    !is.null(settings$cpMin) &&
+    !.verifyIsNullOrNa(settings$cpMin) &&
       (!is.numeric(settings$cpMin) || length(settings$cpMin) != 1)
   ) {
     stop(paste0(prefix, "`cpMin` must be a single numeric value."))
   }
   if (
-    !is.null(settings$maxPosProbX) &&
+    !.verifyIsNullOrNa(settings$maxPosProbX) &&
       (!is.numeric(settings$maxPosProbX) || length(settings$maxPosProbX) != 1)
   ) {
     stop(paste0(prefix, "`maxPosProbX` must be a single numeric value."))
   }
 
-  .verifyBwLimitSetting <- function(x, nm, allow_none = TRUE) {
-    if (is.null(x)) {
-      return(invisible(TRUE))
-    }
-    if (is.character(x) && length(x) == 1L) {
-      validChar <- if (allow_none) c("auto", "none") else "auto"
-      if (tolower(x) %in% validChar) {
-        return(invisible(TRUE))
-      }
-    }
-    if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0) {
-      stop(paste0(
-        prefix,
-        "`",
-        nm,
-        "` must be a positive numeric value",
-        if (allow_none) ", `auto`, `none`, or NULL." else " or `auto`."
-      ))
-    }
-    invisible(TRUE)
-  }
-
-  .verifyBwLimitSetting(settings$bwMin, "bwMin", allow_none = TRUE)
-  .verifyBwLimitSetting(settings$bwMax, "bwMax", allow_none = TRUE)
-  .verifyBwLimitSetting(settings$bwFallback, "bwFallback", allow_none = FALSE)
+  .verifyBwLimitSetting(
+    settings$bwMin,
+    "bwMin",
+    allow_none = TRUE,
+    allow_neg_inf = TRUE,
+    prefix = prefix
+  )
+  .verifyBwLimitSetting(
+    settings$bwMax,
+    "bwMax",
+    allow_none = TRUE,
+    allow_inf = TRUE,
+    prefix = prefix
+  )
+  .verifyBwLimitSetting(
+    settings$bwFallback,
+    "bwFallback",
+    allow_none = FALSE,
+    prefix = prefix
+  )
 
   # Check Character strings
   if (
@@ -555,7 +575,7 @@
     "hpi3Norm"
   )
   if (
-    !is.null(settings$bwMtd) &&
+    !.verifyIsNullOrNa(settings$bwMtd) &&
       (!is.character(settings$bwMtd) ||
         length(settings$bwMtd) != 1 ||
         !settings$bwMtd %in% validBwMtds)
@@ -569,18 +589,20 @@
   }
 
   if (
-    !is.null(settings$bwCluster) &&
+    !.verifyIsNullOrNa(settings$bwCluster) &&
       (!is.numeric(settings$bwCluster) ||
         length(settings$bwCluster) != 1 ||
+        !is.finite(settings$bwCluster) ||
         settings$bwCluster <= 0)
   ) {
     stop(paste0(prefix, "`bwCluster` must be a single positive numeric value."))
   }
 
   if (
-    !is.null(settings$tolClust) &&
+    !.verifyIsNullOrNa(settings$tolClust) &&
       (!is.numeric(settings$tolClust) ||
         length(settings$tolClust) != 1 ||
+        !is.finite(settings$tolClust) ||
         settings$tolClust <= 0)
   ) {
     stop(paste0(
@@ -591,7 +613,7 @@
 
   validGateCombns <- c("no", "min", "median", "max", "prejoin")
   if (
-    !is.null(settings$gateCombn) &&
+    !.verifyIsNullOrNa(settings$gateCombn) &&
       (!is.character(settings$gateCombn) ||
         length(settings$gateCombn) == 0L ||
         !all(settings$gateCombn %in% validGateCombns))
@@ -605,7 +627,7 @@
   }
 
   if (
-    !is.null(settings$gateQuant) &&
+    !.verifyIsNullOrNa(settings$gateQuant) &&
       (!is.numeric(settings$gateQuant) ||
         length(settings$gateQuant) != 2 ||
         any(settings$gateQuant < 0 | settings$gateQuant > 1))
@@ -627,68 +649,28 @@
 #' @keywords internal
 .verifyNormBwSettings <- function(settings, prefix = "") {
   if (
-    !is.null(settings$bwAdaptive) &&
+    !.verifyIsNullOrNa(settings$bwAdaptive) &&
       (!is.logical(settings$bwAdaptive) || length(settings$bwAdaptive) != 1L)
   ) {
     stop(paste0(prefix, "`bwAdaptive` must be a single logical value."))
   }
 
-  .check_positive_n <- function(nm, allow_null = TRUE, allow_inf = FALSE) {
-    val <- settings[[nm]]
-    if (is.null(val) && isTRUE(allow_null)) {
-      return(invisible(TRUE))
-    }
-    if (
-      !is.numeric(val) ||
-        length(val) != 1L ||
-        (!allow_inf && !is.finite(val)) ||
-        (allow_inf && !is.finite(val) && !is.infinite(val)) ||
-        val <= 0
-    ) {
-      stop(paste0(
-        prefix,
-        "`",
-        nm,
-        "` must be a single positive numeric value."
-      ))
-    }
-    invisible(TRUE)
-  }
+  .check_prob("normPeakFrac", settings = settings, prefix = prefix)
+  .check_prob("normPeakMinRel", settings = settings, prefix = prefix)
+  .check_prob("normExtraFrac", settings = settings, prefix = prefix)
+  .check_prob("normExtraJitterFrac", settings = settings, prefix = prefix)
 
-  .check_prob <- function(nm) {
-    val <- settings[[nm]]
-    if (is.null(val)) {
-      return(invisible(TRUE))
-    }
-    if (
-      !is.numeric(val) ||
-        length(val) != 1L ||
-        !is.finite(val) ||
-        val < 0 ||
-        val > 1
-    ) {
-      stop(paste0(
-        prefix,
-        "`",
-        nm,
-        "` must be a single numeric value between 0 and 1."
-      ))
-    }
-    invisible(TRUE)
-  }
-
-  .check_prob("normPeakFrac")
-  .check_prob("normPeakMinRel")
-  .check_prob("normExtraFrac")
-  .check_prob("normExtraJitterFrac")
-
-  .check_positive_n("normExtraMax", allow_inf = TRUE)
-  .check_positive_n("normDensityN")
-  .check_positive_n("normExcessNcell")
-  .check_positive_n("normAdaptiveNcell")
-  .check_positive_n("bwAdaptiveDensityN")
-
-  if (!is.null(settings$bwAdaptivePadFrac)) {
+  .check_positive_n(
+    "normExtraMax",
+    allow_inf = TRUE,
+    settings = settings,
+    prefix = prefix
+  )
+  .check_positive_n("normDensityN", settings = settings, prefix = prefix)
+  .check_positive_n("normExcessNcell", settings = settings, prefix = prefix)
+  .check_positive_n("normAdaptiveNcell", settings = settings, prefix = prefix)
+  .check_positive_n("bwAdaptiveDensityN", settings = settings, prefix = prefix)
+  if (!.verifyIsNullOrNa(settings$bwAdaptivePadFrac)) {
     val <- settings$bwAdaptivePadFrac
     if (!is.numeric(val) || length(val) != 1L || !is.finite(val) || val < 0) {
       stop(paste0(
@@ -698,14 +680,37 @@
     }
   }
 
-  if (!is.null(settings$normLambda)) {
+  .check_positive_n("bwAdaptiveCore", settings = settings, prefix = prefix)
+  .check_positive_n("bwAdaptiveExtra", settings = settings, prefix = prefix)
+
+  if (!.verifyIsNullOrNa(settings$bwAdaptiveCrossover)) {
+    val <- settings$bwAdaptiveCrossover
+    if (!is.numeric(val) || length(val) != 1L || !is.finite(val)) {
+      stop(paste0(
+        prefix,
+        "`bwAdaptiveCrossover` must be a single finite numeric value or NULL."
+      ))
+    }
+  }
+
+  if (!.verifyIsNullOrNa(settings$bwAdaptiveTransitionWidth)) {
+    val <- settings$bwAdaptiveTransitionWidth
+    if (!is.numeric(val) || length(val) != 1L || !is.finite(val) || val < 0) {
+      stop(paste0(
+        prefix,
+        "`bwAdaptiveTransitionWidth` must be a single non-negative numeric value."
+      ))
+    }
+  }
+
+  if (!.verifyIsNullOrNa(settings$normLambda)) {
     val <- settings$normLambda
     if (!is.numeric(val) || length(val) == 0L || any(!is.finite(val))) {
       stop(paste0(prefix, "`normLambda` must be a finite numeric vector."))
     }
   }
 
-  if (!is.null(settings$normExcessBwMtd)) {
+  if (!.verifyIsNullOrNa(settings$normExcessBwMtd)) {
     validOrdinaryBwMtds <- c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
     if (
       !is.character(settings$normExcessBwMtd) ||
@@ -721,7 +726,7 @@
     }
   }
 
-  if (!is.null(settings$normMtd)) {
+  if (!.verifyIsNullOrNa(settings$normMtd)) {
     if (
       !is.character(settings$normMtd) ||
         length(settings$normMtd) != 1L ||
@@ -744,7 +749,7 @@
 #' @keywords internal
 .verifyLocSettings <- function(settings, prefix = "") {
   if (
-    !is.null(settings$locProbCol) &&
+    !.verifyIsNullOrNa(settings$locProbCol) &&
       (!is.character(settings$locProbCol) ||
         length(settings$locProbCol) != 1 ||
         !settings$locProbCol %in% c("pred", "probSmooth"))
@@ -767,9 +772,10 @@
     "locMarginalPurityRel",
     "locMarginalRefQuantile"
   )
+
   purrr::walk(probSettings, function(nm) {
     val <- settings[[nm]]
-    if (is.null(val)) {
+    if (.verifyIsNullOrNa(val)) {
       return(invisible(TRUE))
     }
     if (!is.numeric(val) || length(val) != 1 || !is.finite(val)) {
@@ -781,7 +787,7 @@
     invisible(TRUE)
   })
 
-  if (!is.null(settings$locMarginalCellBinRatio)) {
+  if (!.verifyIsNullOrNa(settings$locMarginalCellBinRatio)) {
     val <- settings$locMarginalCellBinRatio
     if (!is.numeric(val) || length(val) != 1 || !is.finite(val) || val <= 0) {
       stop(paste0(
@@ -792,7 +798,7 @@
   }
 
   if (
-    !is.null(settings$locTolRefPeak) &&
+    !.verifyIsNullOrNa(settings$locTolRefPeak) &&
       (!is.character(settings$locTolRefPeak) ||
         length(settings$locTolRefPeak) != 1 ||
         !settings$locTolRefPeak %in% c("highest", "first"))
@@ -800,5 +806,119 @@
     stop(paste0(prefix, "`locTolRefPeak` must be either 'highest' or 'first'."))
   }
 
+  invisible(TRUE)
+}
+
+.verifyBwLimitSetting <- function(
+  x,
+  nm,
+  allow_none = TRUE,
+  allow_neg_inf = FALSE,
+  allow_inf = FALSE,
+  prefix = ""
+) {
+  if (.verifyIsNullOrNa(x)) {
+    return(invisible(TRUE))
+  }
+  if (is.character(x) && length(x) == 1L) {
+    validChar <- if (allow_none) c("auto", "none") else "auto"
+    if (tolower(x) %in% validChar) {
+      return(invisible(TRUE))
+    }
+  }
+  non_pos_when_shouldnt <- if (allow_neg_inf) {
+    x <= 0 & !is.infinite(x)
+  } else {
+    x <= 0
+  }
+  inf_when_shouldnt <- if (allow_inf) {
+    FALSE
+  } else {
+    is.infinite(x)
+  }
+  if (
+    !is.numeric(x) ||
+      length(x) != 1L ||
+      non_pos_when_shouldnt ||
+      inf_when_shouldnt
+  ) {
+    stop(paste0(
+      prefix,
+      "`",
+      nm,
+      "` must be a positive numeric value",
+      if (allow_none) ", `auto`, `none`, or NULL." else " or `auto`."
+    ))
+  }
+  invisible(TRUE)
+}
+
+.verifyBwLimit <- function(x, nm, allow_none = TRUE) {
+  if (.verifyIsNullOrNa(x)) {
+    return(invisible(TRUE))
+  }
+  if (is.character(x) && length(x) == 1L) {
+    validChar <- if (allow_none) c("auto", "none") else "auto"
+    if (tolower(x) %in% validChar) {
+      return(invisible(TRUE))
+    }
+  }
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0) {
+    stop(sprintf(
+      "`%s` must be a single positive numeric value%s.",
+      nm,
+      if (allow_none) ", `auto`, `none`, or NULL" else " or `auto`"
+    ))
+  }
+  invisible(TRUE)
+}
+
+.check_positive_n <- function(
+  nm,
+  allow_null = TRUE,
+  allow_inf = FALSE,
+  settings,
+  prefix = ""
+) {
+  val <- settings[[nm]]
+  if (.verifyIsNullOrNa(val) && isTRUE(allow_null)) {
+    return(invisible(TRUE))
+  }
+  if (
+    !is.numeric(val) ||
+      length(val) != 1L ||
+      (!allow_inf && !is.finite(val)) ||
+      (allow_inf && !is.finite(val) && !is.infinite(val)) ||
+      val <= 0
+  ) {
+    stop(paste0(
+      prefix,
+      "`",
+      nm,
+      "` must be a single positive numeric value."
+    ))
+  }
+  invisible(TRUE)
+}
+
+.check_prob <- function(nm, settings, prefix = "") {
+  val <- settings[[nm]]
+  if (.verifyIsNullOrNa(val)) {
+    return(invisible(TRUE))
+  }
+  if (
+    !is.numeric(val) ||
+      length(val) != 1L ||
+      !is.finite(val) ||
+      val < 0 ||
+      val > 1
+  ) {
+    stop(paste0(
+      prefix,
+      "`",
+      nm,
+      "` must be a single numeric value between 0 and 1."
+    ))
+  }
   invisible(TRUE)
 }

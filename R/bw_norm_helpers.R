@@ -33,6 +33,10 @@
   normExcessBwMtd = "hpi3",
   normExcessNcell = 10000L,
   normAdaptiveNcell = 2500L,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
   normMtd = "moments",
   adaptive = FALSE
 ) {
@@ -64,6 +68,10 @@
       normExcessBwMtd = normExcessBwMtd,
       normExcessNcell = normExcessNcell,
       normAdaptiveNcell = normAdaptiveNcell,
+      bwAdaptiveCore = bwAdaptiveCore,
+      bwAdaptiveExtra = bwAdaptiveExtra,
+      bwAdaptiveCrossover = bwAdaptiveCrossover,
+      bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
       normMtd = normMtd,
       adaptive = adaptive
     ))
@@ -95,6 +103,57 @@
   }
   attr(bw, "adaptive") <- TRUE
   bw
+}
+
+#' @keywords internal
+.bwNormManualBw <- function(x) {
+  if (is.null(x)) {
+    return(NULL)
+  }
+
+  x <- suppressWarnings(as.numeric(x)[1])
+  if (!is.finite(x) || x <= 0) {
+    return(NULL)
+  }
+
+  x
+}
+
+#' @keywords internal
+.bwNormHasManualCrossover <- function(x) {
+  x <- suppressWarnings(as.numeric(x)[1])
+  is.finite(x)
+}
+
+#' @keywords internal
+.bwNormBwFromCrossover <- function(
+  bin,
+  bwCore,
+  bwExtra,
+  crossover,
+  transitionWidth = 0
+) {
+  bin <- suppressWarnings(as.numeric(bin))
+  bwCore <- suppressWarnings(as.numeric(bwCore)[1])
+  bwExtra <- suppressWarnings(as.numeric(bwExtra)[1])
+  crossover <- suppressWarnings(as.numeric(crossover)[1])
+  transitionWidth <- suppressWarnings(as.numeric(transitionWidth)[1])
+
+  if (
+    length(bin) == 0L ||
+      !is.finite(bwCore) || bwCore <= 0 ||
+      !is.finite(bwExtra) || bwExtra <= 0 ||
+      !is.finite(crossover)
+  ) {
+    return(rep(NA_real_, length(bin)))
+  }
+
+  if (!is.finite(transitionWidth) || transitionWidth <= 0) {
+    return(ifelse(bin <= crossover, bwCore, bwExtra))
+  }
+
+  wExtra <- stats::plogis((bin - crossover) / transitionWidth)
+  (1 - wExtra) * bwCore + wExtra * bwExtra
 }
 
 #' @keywords internal
@@ -203,6 +262,10 @@
   normExcessBwMtd = "hpi3",
   normExcessNcell = 10000L,
   normAdaptiveNcell = 2500L,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
   normMtd = c("moments", "boxcox"),
   adaptive = FALSE
 ) {
@@ -427,6 +490,21 @@
     bwMtd = bwMtd
   )
 
+  bwManualCore <- .bwNormManualBw(bwAdaptiveCore)
+  bwManualExtra <- .bwNormManualBw(bwAdaptiveExtra)
+
+  bwAdjSafe <- suppressWarnings(as.numeric(bwAdj)[1])
+  if (!is.finite(bwAdjSafe) || bwAdjSafe <= 0) {
+    bwAdjSafe <- 1
+  }
+
+  if (!is.null(bwManualCore)) {
+    bwZCore <- bwManualCore / bwAdjSafe
+  }
+  if (!is.null(bwManualExtra)) {
+    bwZExtra <- bwManualExtra / bwAdjSafe
+  }
+
   if (
     !is.finite(bwZCore) || bwZCore <= 0 || !is.finite(bwZExtra) || bwZExtra <= 0
   ) {
@@ -479,12 +557,22 @@
   densZCoreY <- pmax(suppressWarnings(as.numeric(densZCore$y)), 0)
   densZExtraY <- pmax(suppressWarnings(as.numeric(densZExtra$y)), 0)
 
-  denom <- densZCoreY + densZExtraY
-  bwVec <- ifelse(
-    is.finite(denom) & denom > 0,
-    (densZCoreY * bwZCore + densZExtraY * bwZExtra) / denom,
-    mean(c(bwZCore, bwZExtra))
-  )
+  if (.bwNormHasManualCrossover(bwAdaptiveCrossover)) {
+    bwVec <- .bwNormBwFromCrossover(
+      bin = binVec,
+      bwCore = bwZCore,
+      bwExtra = bwZExtra,
+      crossover = bwAdaptiveCrossover,
+      transitionWidth = bwAdaptiveTransitionWidth
+    )
+  } else {
+    denom <- densZCoreY + densZExtraY
+    bwVec <- ifelse(
+      is.finite(denom) & denom > 0,
+      (densZCoreY * bwZCore + densZExtraY * bwZExtra) / denom,
+      mean(c(bwZCore, bwZExtra))
+    )
+  }
 
   bwVec <- pmax(
     suppressWarnings(as.numeric(bwVec)),
@@ -497,6 +585,10 @@
       bw = bwVec,
       bwCore = bwZCore,
       bwExtra = bwZExtra,
+      bwAdaptiveCoreManual = bwManualCore,
+      bwAdaptiveExtraManual = bwManualExtra,
+      bwAdaptiveCrossover = suppressWarnings(as.numeric(bwAdaptiveCrossover)[1]),
+      bwAdaptiveTransitionWidth = suppressWarnings(as.numeric(bwAdaptiveTransitionWidth)[1]),
       coreObj = coreObj,
       nAdaptive = nAdaptive
     ),
