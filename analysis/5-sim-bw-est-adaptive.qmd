@@ -44,15 +44,6 @@ if (
     source(fn)
   }
 }
-
-path_out_dir <- projr::projr_path_get(
-  "output",
-  "sim",
-  "bw",
-  "freq_bs",
-  "manual_adaptive"
-)
-dir.create(path_out_dir, recursive = TRUE, showWarnings = FALSE)
 ```
 
 ### Checking what the fixed adaptive bandwidths do
@@ -64,30 +55,12 @@ Instead of fixing one scalar bandwidth, we fix two numeric bandwidths: one for t
 #| label: actual-settings
 # simulation settings
 n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)[c(1, 3, 5, 7)]
-prob_response_vec <- c(
-  1 / 5e5,
-  1 / 2e5,
-  1 / 1e5,
-  1 / 5e4,
-  1 / 2e4,
-  1 / 1e4,
-  1 / 5e3,
-  1 / 2e3,
-  1 / 1e3,
-  1 / 5e2,
-  1 / 2e2,
-  1 / 1e2,
-  1 / 5e1,
-  1 / 2e1,
-  1 / 1e1,
-  1 / 5,
-  1 / 2
-)[c(2, 4, 6, 8, 10, 16)]
+prob_response_vec <- c(0.002, 0.2)
 mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
 transformation_vec <- c("gaussian", "gamma", "skew")
 mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 sample_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
-condition_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1:2]
+condition_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
 cluster_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
 background_relative_to_response_vec <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.001)[4]
 n_cell_uns_relative_to_stim_vec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)[4]
@@ -854,7 +827,7 @@ saveRDS(
     "sim",
     "bw",
     "freq_bs",
-    "manual_adaptive",
+    "adaptive",
     "bw_list_raw_loop.rds"
   )
 )
@@ -879,7 +852,7 @@ path_progress_file <- projr::projr_path_get(
   "analysis",
   "sim",
   "bw",
-  "manual_adaptive",
+  "adaptive",
   "progress.txt"
 )
 dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
@@ -1019,7 +992,7 @@ saveRDS(
     "sim",
     "bw",
     "freq_bs",
-    "manual_adaptive",
+    "adaptive",
     "bw_list_raw.rds"
   )
 )
@@ -1047,7 +1020,7 @@ if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
       "sim",
       "bw",
       "freq_bs",
-      "manual_adaptive",
+      "adaptive",
       "bw_list_raw.rds",
       safe = TRUE
     ),
@@ -1056,7 +1029,7 @@ if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
       "sim",
       "bw",
       "freq_bs",
-      "manual_adaptive",
+      "adaptive",
       "bw_list_raw.rds",
       safe = FALSE
     )
@@ -1179,12 +1152,6 @@ bw_tbl_results_summary <- bw_tbl_results_raw |>
     propBsEst_median_abs_diff = abs(.data$propBsEst_median_diff),
     propBsEst_median_abs_diff_rel = abs(.data$propBsEst_median_diff_rel)
   )
-
-utils::write.csv(
-  bw_tbl_results_summary,
-  file = file.path(path_out_dir, "manual_adaptive_summary.csv"),
-  row.names = FALSE
-)
 ```
 
 ### Estimate plots
@@ -1251,8 +1218,12 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
         linetype = "Extra bandwidth"
       )
 
-    path_p <- file.path(
-      path_out_dir,
+    path_p <- projr::projr_path_get(
+      "output",
+      "sim",
+      "bw",
+      "freq_bs",
+      "adaptive",
       "est_median",
       paste0(
         "est_vs_n_cell_mean_pos_setting_",
@@ -1262,7 +1233,6 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
         ".png"
       )
     )
-    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       filename = path_p,
       plot = p,
@@ -1331,8 +1301,12 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
         scales = "free_y"
       )
 
-    path_p <- file.path(
-      path_out_dir,
+    path_p <- projr::projr_path_get(
+      "output",
+      "sim",
+      "bw",
+      "freq_bs",
+      "adaptive",
       "est_raw",
       paste0(
         "raw_est_vs_n_cell_mean_pos_setting_",
@@ -1410,8 +1384,12 @@ for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
       fill = "Median absolute\nrelative error"
     )
 
-  path_p_heat <- file.path(
-    path_out_dir,
+  path_p_heat <- projr::projr_path_get(
+    "output",
+    "sim",
+    "bw",
+    "freq_bs",
+    "adaptive",
     "heatmap",
     paste0("core_extra_heatmap_bias_uns_", bias_uns_setting_curr, ".png")
   )
@@ -1485,8 +1463,12 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
         colour = "Core bandwidth"
       )
 
-    path_p_thresh <- file.path(
-      path_out_dir,
+    path_p_thresh <- projr::projr_path_get(
+      "output",
+      "sim",
+      "bw",
+      "freq_bs",
+      "adaptive",
       "thresholds",
       paste0(
         "thresholds_mean_pos_setting_",

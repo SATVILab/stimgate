@@ -7,11 +7,6 @@
 .simCompareFbetaPath(pathFbeta = NULL)
 }
 \description{
-Moving mean with leading NA values, matching fbeta.py
+Locate the fbeta Python script
 }
-\keyword{Locate}
-\keyword{Python}
-\keyword{fbeta}
 \keyword{internal}
-\keyword{script}
-\keyword{the}

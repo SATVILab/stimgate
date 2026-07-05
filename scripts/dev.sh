@@ -1,40 +1,108 @@
 #!/usr/bin/env bash
-#SBATCH --nodes=1
-#SBATCH --ntasks=10
-#SBATCH --job-name="projr_build_dev"
-#SBATCH --partition=ada
+set -euo pipefail
 
-# Record the start time
-start_time=$(date +%s)
+scripts=(
+  #"dev-1-sim-trans.sh"
+  #"dev-2-stim-bw-freq_bs-global.sh"
+  "dev-3-sim-bw-est-base.sh"
+  "dev-4-sim-bw-est-norm.sh"
+  # "dev-5-sim-bw-est-adaptive.sh"
+)
 
-echo "HOSTNAME: $HOSTNAME"
+poll_seconds="${POLL_SECONDS:-5}"
 
-echo " "
-echo " "
-echo " "
+install_script="scripts/install.sh"
 
-echo "-------------------"
-echo "Run projr"
-date
-apptainer-rscript -f stimgate -- 'devtools::install()'
-apptainer-rscript -f stimgate -- 'projr::projr_build_dev()'
-echo "Completed running projr"
-date
-echo "-------------------"
-echo " "
+tmp_before="$(mktemp)"
+trap 'rm -f "$tmp_before"' EXIT
 
-# Record the end time
-end_time=$(date +%s)
+echo "Recording currently active Slurm jobs"
+squeue -h -u "$USER" -o "%A" | sort -u > "$tmp_before"
 
-# Calculate the duration
-duration=$((end_time - start_time))
+echo "Submitting install job"
+slurm-sbatch "$install_script"
 
-# Convert duration to human-readable format
-hours=$((duration / 3600))
-minutes=$(( (duration % 3600) / 60 ))
-seconds=$((duration % 60))
+echo "Finding newly submitted install job"
 
-# Append the duration to the Slurm standard output log
-echo "--- Script Duration ---"
-printf "Elapsed time: %02d:%02d:%02d\n" $hours $minutes $seconds
-echo "-----------------------"
+install_jobid=""
+
+for attempt in {1..30}; do
+  install_jobid="$(
+    awk '
+      FNR == NR {
+        before[$1] = 1
+        next
+      }
+
+      $2 == "install" && !($1 in before) {
+        print $1
+      }
+    ' "$tmp_before" <(squeue -h -u "$USER" -o "%A %j") | tail -n 1
+  )"
+
+  if [[ -n "$install_jobid" ]]; then
+    break
+  fi
+
+  sleep 2
+done
+
+if [[ -z "$install_jobid" ]]; then
+  echo "ERROR: Could not identify the new install job."
+  echo "Current jobs:"
+  squeue -u "$USER"
+  exit 1
+fi
+
+echo "Install job ID: $install_jobid"
+echo "Waiting for install job to finish"
+
+while squeue -h -j "$install_jobid" 2>/dev/null | grep -q .; do
+  date
+  squeue -j "$install_jobid"
+  sleep "$poll_seconds"
+done
+
+echo "Install job has left the queue"
+echo "Checking final state"
+
+install_state=""
+
+if command -v sacct >/dev/null 2>&1; then
+  for attempt in {1..20}; do
+    install_state="$(
+      sacct -j "$install_jobid" -n -X -o State 2>/dev/null |
+        awk 'NF { print $1; exit }'
+    )"
+
+    if [[ -n "$install_state" ]]; then
+      break
+    fi
+
+    sleep 3
+  done
+else
+  echo "WARNING: sacct not available, so final install status cannot be checked."
+fi
+
+if [[ -n "$install_state" && "$install_state" != "COMPLETED" ]]; then
+  echo "ERROR: install job did not complete successfully."
+  echo "Final state: $install_state"
+  echo
+  echo "sacct output:"
+  sacct -j "$install_jobid" -o JobID,JobName,State,ExitCode,Elapsed
+  exit 1
+fi
+
+if [[ "$install_state" == "COMPLETED" ]]; then
+  echo "Install job completed successfully"
+fi
+
+echo "Submitting downstream jobs"
+
+for script in "${scripts[@]}"; do
+  echo "Submitting scripts/$script"
+  slurm-sbatch "scripts/$script"
+done
+
+echo "All downstream jobs submitted"

@@ -17,7 +17,10 @@
 }
 \description{
 This is the vector-only equivalent of
-.getCpUnsLocGetDensRawDensitiesBwInit(), but with nrd0 and SJ returning
-the numeric density bandwidth via $bw.
+.getCpUnsLocGetDensRawDensitiesBwInit(). It intentionally routes through
+.bwCalcOne() when available so that the direct bandwidth simulations use the
+same ordinary and *Norm bandwidth methods as the gating code. In particular,
+hpi0Norm, hpi1Norm, hpi2Norm, hpi3Norm, sjNorm and nrd0Norm are handled by
+the shared normalised-bandwidth helper rather than by this wrapper.
 }
 \keyword{internal}

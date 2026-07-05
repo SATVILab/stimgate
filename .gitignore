@@ -50,3 +50,8 @@ _tmp/log/sbatch/projr_build_dev-4-sim-bw-est-norm
 _tmp/log/sbatch/dev-2-stim-bw-freq_bs-global
 _tmp/log/sbatch/dev-3-sim-bw-est-base
 _tmp/log/sbatch/dev-4-sim-bw-est-norm
+_tmp/log/sbatch/dev-5-sim-bw-est-adaptive
+
+_tmp/log/sbatch/dev
+_tmp/log/sbatch/install
+
