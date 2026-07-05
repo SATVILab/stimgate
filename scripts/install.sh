@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
-#SBATCH --job-name="dev-1-trans"
+#SBATCH --job-name="install"
 #SBATCH --partition=ada
 
 # Record the start time
@@ -16,8 +16,8 @@ echo " "
 echo "-------------------"
 echo "Run projr"
 date
-apptainer-rscript -f stimgate -- 'projr::projr_build_dev(profile = "", file = "analysis/1-sim-trans.qmd")'
-echo "Completed running projr"
+apptainer-rscript -f stimgate -- 'devtools::install()'
+echo "Completed installing stimgate"
 date
 echo "-------------------"
 echo " "

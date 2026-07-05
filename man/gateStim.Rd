@@ -26,6 +26,24 @@ gateStim(
   bwNcellMin = 100,
   bwNcellMax = 1e+05,
   bwCluster = NULL,
+  bwAdaptive = FALSE,
+  bwAdaptiveDensityN = NULL,
+  bwAdaptivePadFrac = 0.15,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
+  normPeakFrac = 0.1,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normExtraJitterFrac = 0.25,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  normMtd = "moments",
   minCell = 100,
   maxPosProbX = Inf,
   gateQuant = c(0.25, 0.75),
@@ -123,7 +141,7 @@ When \code{"auto"}, the fallback is calculated from randomly selected samples
 using the same bandwidth selector specified by \code{bwMtd}.
 Default is \code{"auto"}.}
 
-\item{bwMtd}{character. Method for automated bandwidth selection. Options include \code{"nrd0"}, \code{"sj"}, \code{"hpi0"}, \code{"hpi1"}, \code{"hpi2"} and \code{"hpi3"}, plus background-normalised variants \code{"nrd0Norm"}, \code{"sjNorm"}, \code{"hpi0Norm"}, \code{"hpi1Norm"}, \code{"hpi2Norm"} and \code{"hpi3Norm"}. The normalised variants estimate bandwidth on a Box-Cox-normalised background core with deliberate right-side excess augmentation. The excess augmentation starts to the right of the background-core boundary and preferentially up-samples cells according to one minus the ratio of a deliberately flat univariate density estimate to a more flexible kernel density estimate, then maps the result back to the original expression scale. Ignored if \code{bw} is set. Default is \code{"hpi1"}.}
+\item{bwMtd}{character. Method for automated bandwidth selection. Options include \code{"nrd0"}, \code{"sj"}, \code{"hpi0"}, \code{"hpi1"}, \code{"hpi2"} and \code{"hpi3"}, plus background-normalised variants \code{"nrd0Norm"}, \code{"sjNorm"}, \code{"hpi0Norm"}, \code{"hpi1Norm"}, \code{"hpi2Norm"} and \code{"hpi3Norm"}. The normalised variants first identify a background core and a high-side component, then estimate bandwidths after component normalisation. By default this uses moment-matched normal components (\code{normMtd = "moments"}); the older Box-Cox route remains available for scalar bandwidths with \code{normMtd = "boxcox"}. Ignored if \code{bw} is set. Default is \code{"hpi1"}.}
 
 \item{bwAdj}{numeric. Adjustment factor for bandwidth. Default is 1. Ignored if \code{bw} is set. Default is 1.}
 
@@ -132,6 +150,78 @@ Default is \code{"auto"}.}
 \item{bwNcellMax}{numeric. Maximum number of cells requested by the bandwidth selector. For ordinary methods this controls internal down-sampling. For \verb{*Norm} methods it limits the constructed background-core/right-excess bandwidth sample after the full distribution has been inspected. Ignored if \code{bw} is set. Default is 100 000.}
 
 \item{bwCluster}{numeric. Optional fallback bandwidth for cluster-based local-FDR imputation. The current cluster step first tries to use a common bandwidth calculated as the median bandwidth across samples with generated local-FDR thresholds. \code{bwCluster} is used as a fallback when that common bandwidth cannot be estimated. Default is \code{NULL}.}
+
+\item{bwAdaptive}{logical. Whether local-FDR density estimation should use an
+adaptive location-specific bandwidth curve when \code{bw} is \code{NULL}. The adaptive
+path estimates separate normalised bandwidth curves for the stimulated and
+unstimulated samples, blends them by their preliminary density heights on a
+shared padded grid, and then evaluates both final densities with that shared
+bandwidth vector. Default is \code{FALSE}.}
+
+\item{bwAdaptiveDensityN}{numeric. Number of grid points for the adaptive
+local-FDR density grid. When \code{NULL}, \code{normDensityN} is used. Default is \code{NULL}.}
+
+\item{bwAdaptivePadFrac}{numeric. Fraction of the combined expression range by
+which the adaptive density grid is extended on both sides before area
+normalisation. Default is \code{0.15}.}
+
+\item{bwAdaptiveCore}{numeric or NULL. Optional manually specified
+bandwidth for the background-core side of the adaptive local-FDR density
+curve. When supplied, it overrides the estimated core-component bandwidth
+for adaptive bandwidth construction. Default is \code{NULL}.}
+
+\item{bwAdaptiveExtra}{numeric or NULL. Optional manually specified
+bandwidth for the high-expression/extra side of the adaptive local-FDR
+density curve. When supplied, it overrides the estimated extra-component
+bandwidth for adaptive bandwidth construction. Default is \code{NULL}.}
+
+\item{bwAdaptiveCrossover}{numeric or NULL. Optional expression value at
+which the adaptive bandwidth curve crosses from the core bandwidth to the
+extra bandwidth. When \code{NULL}, component-density weighting is used. Default
+is \code{NULL}.}
+
+\item{bwAdaptiveTransitionWidth}{numeric. Width, in expression units, of the
+optional smooth transition around \code{bwAdaptiveCrossover}. Use \code{0} for a hard
+switch at the crossover. Default is \code{0}.}
+
+\item{normPeakFrac}{numeric. Fraction of the selected background-core peak
+height used by normalised bandwidth helpers when identifying low-density tail
+regions. Default is \code{0.1}.}
+
+\item{normPeakMinRel}{numeric. Relative peak/trough threshold used to identify
+the main background modal complex for \verb{*Norm} bandwidth methods. Default is
+\code{0.75}.}
+
+\item{normExtraFrac}{numeric. Target fraction of additional high-side values
+sampled for the normalised high component. Default is \code{0.2}.}
+
+\item{normExtraMax}{numeric. Maximum number of additional high-side values used
+by normalised bandwidth methods. May be \code{Inf}. Default is \code{Inf}.}
+
+\item{normExtraJitterFrac}{numeric. Jitter scale, as a fraction of a robust
+expression-scale standard deviation, applied to sampled high-side values.
+Default is \code{0.25}.}
+
+\item{normLambda}{numeric vector. Box-Cox lambda search grid used only when
+\code{normMtd = "boxcox"}. Default is \code{seq(-2, 2, length.out = 81)}.}
+
+\item{normDensityN}{numeric. Number of grid points used inside normalised
+bandwidth helpers. Default is \code{512}.}
+
+\item{normExcessBwMtd}{character. Ordinary bandwidth selector used for the
+right-side excess-density helper. Default is \code{"hpi3"}.}
+
+\item{normExcessNcell}{numeric. Maximum number of cells used when estimating
+the excess-density helper bandwidth. Default is \code{10000}.}
+
+\item{normAdaptiveNcell}{numeric. Fixed number of simulated normal-component
+values used per component when estimating adaptive normalised bandwidths.
+Default is \code{2500}.}
+
+\item{normMtd}{character. Normalisation method for \verb{*Norm} bandwidth selectors.
+\code{"moments"} replaces core and high components by normal components with
+matching moments; \code{"boxcox"} uses the older Box-Cox route for scalar
+bandwidths only. Default is \code{"moments"}.}
 
 \item{minCell}{numeric. Minimum number of cells required for reliable gating.
 Default is 100. Samples with fewer cells will be skipped as they don't provide

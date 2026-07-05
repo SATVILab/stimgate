@@ -528,7 +528,8 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
       geom_point() +
       scale_x_log10() +
       facet_grid(
-        prob_response ~ transformation
+        transformation ~ prob_response,
+        scales = "free_y"
       ) +
       labs(
         title = paste0(
@@ -560,13 +561,12 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
         ".png"
       )
     )
-    dir.create(dirname(path_plot), recursive = TRUE, showWarnings = FALSE)
 
     ggsave(
       filename = path_plot,
       plot = p,
-      width = 18,
-      height = 15,
+      width = 15,
+      height = 20,
       units = "cm"
     )
   }
