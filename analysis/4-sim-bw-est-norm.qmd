@@ -31,7 +31,6 @@ if (
 }
 ```
 
-
 ### Checking what the estimators actually estimate
 
 Get the parameters over which we simulate.
