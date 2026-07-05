@@ -8,7 +8,6 @@ directories:
   docs:
     path: analysis/docs
 build:
-  scripts: analysis/2-sim-bw-freq_bs.qmd
   local:
     archive:
       path: analysis/_archive
