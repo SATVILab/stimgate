@@ -81,7 +81,16 @@ background_relative_to_response_vec <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.00
 n_cell_uns_relative_to_stim_vec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)[4]
 
 # fix the bandwidth
-bandwidth_value_vec <- c(0.001, 0.0025, 0.005, 0.0075, 0.01, 0.0125, 0.02, 0.05, 0.1, 0.25, 0.5, 0.75, 1)
+bandwidth_value_vec <- c(
+  # gamma
+  0.001, 0.0025, 0.005, 0.0075, 0.01,
+  0.0125, 0.015, 0.0175, 0.02, 0.03,
+  0.04,
+  # mixed
+  0.05, 0.1, 0.15,
+  # skew and gaussian
+  0.2, 0.25, 0.5, 0.75, 1
+  )
 
 # can vary these later
 bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
@@ -92,10 +101,10 @@ bias_uns_settings_tbl <- tibble::tribble(
   "none", "gamma", 0,
   "none", "skew", 0,
   "low", "gaussian", 0.05,
-  "low", "gamma", 0.00125,
+  "low", "gamma", 0.0025,
   "low", "skew", 0.05,
   "high", "gaussian", 0.25,
-  "high", "gamma", 0.005,
+  "high", "gamma", 0.01,
   "high", "skew", 0.25
 )
 bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
@@ -155,8 +164,8 @@ sim_grid <- tidyr::expand_grid(
     !(n_cell * prob_response < 5 & prob_response < 0.04)
   ) |>
   dplyr::filter(
-    (bw <= 0.05 & transformation == "gamma") | (
-      bw >= 0.02 & transformation != "gamma"
+    (bw <= 0.15 & transformation == "gamma") | (
+      bw >= 0.05 & transformation != "gamma"
     )
   ) |>
   dplyr::mutate(
