@@ -534,7 +534,8 @@
     settings$bwMin,
     "bwMin",
     allow_none = TRUE,
-    allow_neg_inf = TRUE,
+    allow_neg = TRUE,
+    allow_inf = TRUE,
     prefix = prefix
   )
   .verifyBwLimitSetting(
@@ -813,7 +814,7 @@
   x,
   nm,
   allow_none = TRUE,
-  allow_neg_inf = FALSE,
+  allow_neg = FALSE,
   allow_inf = FALSE,
   prefix = ""
 ) {
@@ -826,12 +827,12 @@
       return(invisible(TRUE))
     }
   }
-  non_pos_when_shouldnt <- if (allow_neg_inf) {
-    x <= 0 & !is.infinite(x)
+  neg_fail <- if (allow_neg) {
+    FALSE
   } else {
     x <= 0
   }
-  inf_when_shouldnt <- if (allow_inf) {
+  inf_fail <- if (allow_inf) {
     FALSE
   } else {
     is.infinite(x)
@@ -839,8 +840,8 @@
   if (
     !is.numeric(x) ||
       length(x) != 1L ||
-      non_pos_when_shouldnt ||
-      inf_when_shouldnt
+      neg_fail ||
+      inf_fail
   ) {
     stop(paste0(
       prefix,
