@@ -141,8 +141,10 @@
 
   if (
     length(bin) == 0L ||
-      !is.finite(bwCore) || bwCore <= 0 ||
-      !is.finite(bwExtra) || bwExtra <= 0 ||
+      !is.finite(bwCore) ||
+      bwCore <= 0 ||
+      !is.finite(bwExtra) ||
+      bwExtra <= 0 ||
       !is.finite(crossover)
   ) {
     return(rep(NA_real_, length(bin)))
@@ -587,8 +589,12 @@
       bwExtra = bwZExtra,
       bwAdaptiveCoreManual = bwManualCore,
       bwAdaptiveExtraManual = bwManualExtra,
-      bwAdaptiveCrossover = suppressWarnings(as.numeric(bwAdaptiveCrossover)[1]),
-      bwAdaptiveTransitionWidth = suppressWarnings(as.numeric(bwAdaptiveTransitionWidth)[1]),
+      bwAdaptiveCrossover = suppressWarnings(as.numeric(bwAdaptiveCrossover)[
+        1
+      ]),
+      bwAdaptiveTransitionWidth = suppressWarnings(as.numeric(
+        bwAdaptiveTransitionWidth
+      )[1]),
       coreObj = coreObj,
       nAdaptive = nAdaptive
     ),
@@ -1055,34 +1061,86 @@
     return(numeric(0L))
   }
 
-  xExtra <- .bwNormPreferentialUpsample(
-    x = xCand,
-    rate = samplingRate,
-    nTarget = nExtraTarget
+  excessCand <- is.finite(xCand) &
+    is.finite(samplingRate) &
+    samplingRate > 0
+
+  if (!any(excessCand)) {
+    return(numeric(0L))
+  }
+
+  xExcessCand <- xCand[excessCand]
+
+  extraLower <- coreObj$thresholdX
+
+  extraUpper <- stats::quantile(
+    xExcessCand,
+    probs = 0.95,
+    na.rm = TRUE,
+    names = FALSE
   )
+
+  if (
+    !is.finite(extraLower) ||
+      !is.finite(extraUpper) ||
+      extraUpper <= extraLower
+  ) {
+    return(numeric(0L))
+  }
+
+  xExtra <- stats::runif(
+    n = nExtraTarget,
+    min = extraLower,
+    max = extraUpper
+  )
+
+  xExtra <- xExtra[is.finite(xExtra)]
 
   if (length(xExtra) == 0L) {
     return(numeric(0L))
   }
 
-  sdDensity <- .sdSum(
-    x[x <= coreObj$thresholdX],
-    .winsorise(xExtra, probs = c(0, 0.95))
+  xCore <- x[x <= coreObj$thresholdX]
+  xCore <- xCore[is.finite(xCore)]
+
+  sdCore <- .bwRobustSd(xCore)
+
+  if (!is.finite(sdCore) || sdCore <= 0) {
+    sdCore <- stats::sd(xCore, na.rm = TRUE)
+  }
+
+  if (!is.finite(sdCore) || sdCore <= 0) {
+    sdCore <- .bwRobustSd(x)
+  }
+
+  if (!is.finite(sdCore) || sdCore <= 0) {
+    sdCore <- .Machine$double.eps
+  }
+
+  sdExtra <- if (length(unique(xExtra)) >= 2L) {
+    stats::sd(xExtra, na.rm = TRUE)
+  } else {
+    0
+  }
+
+  if (!is.finite(sdExtra) || sdExtra < 0) {
+    sdExtra <- 0
+  }
+
+  sdJitter <- sqrt(
+    pmax(0, sdCore^2 - sdExtra^2)
   )
 
-  if (!is.finite(sdDensity) || sdDensity <= 0) {
-    sdDensity <- .bwRobustSd(x)
-  }
-  if (!is.finite(sdDensity) || sdDensity <= 0) {
-    sdDensity <- .Machine$double.eps
+  if (is.finite(sdJitter) && sdJitter > 0) {
+    xExtra <- xExtra +
+      stats::rnorm(
+        length(xExtra),
+        mean = 0,
+        sd = sdJitter
+      )
   }
 
-  xExtra +
-    stats::rnorm(
-      length(xExtra),
-      mean = 0,
-      sd = normExtraJitterFrac * sdDensity
-    )
+  xExtra
 }
 
 
@@ -1580,6 +1638,10 @@
   rate <- pmin(1, pmax(0, rate))
   if (!any(rate > 0)) {
     return(numeric(0L))
+  }
+
+  if (sum(ok) == 1L) {
+    return(rep(x, times = nTarget))
   }
 
   sample(
