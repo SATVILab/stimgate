@@ -1082,7 +1082,7 @@
   covEvMax = 2,
   excMin = TRUE,
   capStimRange = TRUE,
-  summarise = TRUE
+  summarise = FALSE
 ) {
   if (!identical(as.integer(nMarker), 1L)) {
     stop("This helper currently expects nMarker = 1.")
@@ -1184,8 +1184,23 @@
       bwStimExtra <- tryCatch(bwObj$bw$stim$bwExtra, error = function(e) {
         NA_real_
       })
+      thresholdStim <- tryCatch(
+        bwObj$bw$stim$coreObj$thresholdX,
+        error = function(e) NA_real_
+      )
       bwUnsCore <- tryCatch(bwObj$bw$uns$bwCore, error = function(e) NA_real_)
       bwUnsExtra <- tryCatch(bwObj$bw$uns$bwExtra, error = function(e) NA_real_)
+      thresholdUns <- tryCatch(
+        bwObj$bw$uns$coreObj$thresholdX,
+        error = function(e) NA_real_
+      )
+      sharedGrid <- tryCatch(bwObj$bw$sharedGrid, error = function(e) NA_real_)
+      densUnsWeight <- tryCatch(bwObj$bw$densUnsWeight, error = function(e) {
+        NA_real_
+      })
+      densStimWeight <- tryCatch(bwObj$bw$densStimWeight, error = function(e) {
+        NA_real_
+      })
       tibble::tibble(
         transformation = transformation,
         prob_response = probResponse,
@@ -1204,7 +1219,12 @@
         bw_uns_core = bwUnsCore,
         bw_stim_core = bwStimCore,
         bw_uns_extra = bwUnsExtra,
-        bw_stim_extra = bwStimExtra
+        bw_stim_extra = bwStimExtra,
+        threshold_uns = thresholdUns,
+        threshold_stim = thresholdStim,
+        shared_grid = list(sharedGrid),
+        dens_uns_weight = list(densUnsWeight),
+        dens_stim_weight = list(densStimWeight)
       )
     })
   })
