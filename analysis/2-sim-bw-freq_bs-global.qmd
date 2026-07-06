@@ -201,7 +201,8 @@ bw_list_raw <- vector("list", nrow(sim_grid))
 
 for (i in seq_len(nrow(sim_grid))) {
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
-  sim_res <- stimgate:::.simBandwidthBsFreq(
+  # debug(.verifyBwLimitSetting)
+  sim_res <- .simBandwidthBsFreq(
     nSample = 10,
     nMarker = 1,
     nCondition = 2,
@@ -461,7 +462,7 @@ future::plan(future::sequential)
 saveRDS(
   bw_list_raw,
   file = projr::projr_path_get(
-    "output", "sim", "bw", "freq_bs", "global", "bw_list_raw.rds"
+    "cache", "sim", "bw", "freq_bs", "global", "bw_list_raw.rds"
   )
 )
 ```
@@ -488,7 +489,7 @@ if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
 } else {
   path_vec <- c(
     projr::projr_path_get(
-      "output",
+      "cache",
       "sim",
       "bw",
       "freq_bs", "global",
@@ -496,7 +497,7 @@ if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
       safe = TRUE
     ),
     projr::projr_path_get(
-      "output",
+      "cache",
       "sim",
       "bw",
       "freq_bs",
@@ -512,11 +513,11 @@ if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
   bw_list_raw_collate <- readRDS(file = path_vec[[1]])
 }
 
-bw_tbl <- bw_list_raw_collate |>
+bw_tbl_raw <- bw_list_raw_collate |>
   purrr::list_rbind()
 
 bw_tbl <- .add_missing_cols(
-  bw_tbl,
+  bw_tbl_raw,
   list(
     iter = NA_integer_,
     sample = NA_character_,
@@ -526,6 +527,10 @@ bw_tbl <- .add_missing_cols(
     bias_uns_setting = NA_character_
   )
 )
+
+if (all(is.na(bw_tbl$threshold))) {
+  stop("No valid threshold results were collated. Check the progress log for simulation-level errors.")
+}
 
 # Older cached results may contain bias_uns but not the derived plotting label.
 # Reconstruct it here so every downstream summary, plot, and table remains
@@ -694,7 +699,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
       )
 
     path_p <- projr::projr_path_get(
-      "output",
+      "cache",
       "sim",
       "bw",
       "freq_bs",
@@ -776,7 +781,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
       )
 
     path_p <- projr::projr_path_get(
-      "output",
+      "cache",
       "sim",
       "bw",
       "freq_bs", "global",
@@ -1004,7 +1009,7 @@ for (mean_pos_setting in unique(bw_tbl_results_summary$mean_pos_setting)) {
         labels = bw_scale$levels
       )
     path_p <- projr::projr_path_get(
-      "output",
+      "cache",
       "sim",
       "bw",
       "freq_bs",
@@ -1171,7 +1176,7 @@ for (mean_pos_setting in unique(bw_tbl_results_raw$mean_pos_setting)) {
         )
 
       path_p <- projr::projr_path_get(
-        "output",
+        "cache",
         "sim",
         "bw",
         "freq_bs", "global",

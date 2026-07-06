@@ -429,7 +429,7 @@ compare_list_raw <- progressr::with_progress({
 future::plan(future::sequential)
 
 path_compare_out <- projr::projr_path_get(
-  "output", "sim", "compare", "freq_bs", "compare_list_raw.rds"
+  "cache", "sim", "compare", "freq_bs", "compare_list_raw.rds"
 )
 dir.create(dirname(path_compare_out), recursive = TRUE, showWarnings = FALSE)
 saveRDS(compare_list_raw, file = path_compare_out)
@@ -442,7 +442,7 @@ saveRDS(compare_list_raw, file = path_compare_out)
 #| error: true
 path_vec <- c(
   projr::projr_path_get(
-    "output",
+    "cache",
     "sim",
     "compare",
     "freq_bs",
@@ -450,7 +450,7 @@ path_vec <- c(
     safe = TRUE
   ),
   projr::projr_path_get(
-    "output",
+    "cache",
     "sim",
     "compare",
     "freq_bs",
@@ -460,7 +460,7 @@ path_vec <- c(
   projr::projr_path_get(
     "raw-data-archive-manual",
     "v0.103.0",
-    "output",
+    "cache",
     "sim",
     "compare",
     "freq_bs",
@@ -536,7 +536,7 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
 
   ggsave(
     filename = projr::projr_path_get(
-      "output",
+      "cache",
       "sim",
       "compare",
       "freq_bs",
@@ -588,7 +588,7 @@ print(p_est_truth)
 
 ggsave(
   filename = projr::projr_path_get(
-    "output",
+    "cache",
     "sim",
     "compare",
     "freq_bs",
@@ -635,7 +635,7 @@ print(p_fallback)
 
 ggsave(
   filename = projr::projr_path_get(
-    "output",
+    "cache",
     "sim",
     "compare",
     "freq_bs",
