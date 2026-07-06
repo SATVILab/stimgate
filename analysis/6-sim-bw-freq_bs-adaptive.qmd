@@ -74,7 +74,8 @@ cluster_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
 background_relative_to_response_vec <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.001)[4]
 n_cell_uns_relative_to_stim_vec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)[4]
 
-# fix the bandwidth
+# Adaptive bandwidth settings. Gamma uses the low end of this range, while
+# gaussian and skew use the wider-bandwidth part of the same vector.
 bandwidth_value_vec <- c(
   # gamma
   0.001, 0.0025, 0.005, 0.0075, 0.01,
@@ -84,15 +85,16 @@ bandwidth_value_vec <- c(
   0.05, 0.1, 0.15,
   # skew and gaussian
   0.2, 0.25, 0.5, 0.75, 1
-  )
+)
 bw_core_vec <- bandwidth_value_vec
 bw_extra_vec <- bandwidth_value_vec
+
 # NULL/NA crossover means use the density-weighted component blend. Finite
 # values force a core-to-extra crossover at that expression value.
 bw_crossover_vec <- c(NA_real_, 4.5, 5.5, 6.5)[[1]]
 bw_transition_width_vec <- c(0, 0.25)[[1]]
 
-# can vary these later
+# Can vary these later.
 bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
 bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
 bias_uns_settings_tbl <- tibble::tribble(
@@ -108,12 +110,23 @@ bias_uns_settings_tbl <- tibble::tribble(
   "high", "skew", 0.25
 )
 bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
+
+if ("quick" %in% projr::projr_profile_get()) {
+  n_cell_stim_vec <- c(1e3, 5e4)
+  prob_response_vec <- c(0.002, 0.02)
+  bw_core_vec <- c(0.01, 0.05, 0.15, 0.5)
+  bw_extra_vec <- c(0.01, 0.05, 0.15, 0.5)
+  bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
+  condition_perturbation_sd_vec <- 0
+}
 ```
 
+### Varying the adaptive core and extra bandwidths manually
+
+The adaptive density has two manually fixed bandwidths: one for the background core and one for the high-expression extra component. The grid therefore contains every valid `bw_core` and `bw_extra` combination for the corresponding transformation family. Gamma is kept on the low-bandwidth range, while gaussian and skew are kept on the wider range.
 
 ```{r}
 #| label: bw-manual-grid
-# 2. Flatten your nested loops into a single combination grid
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
   prob_response  = prob_response_vec,
@@ -131,9 +144,17 @@ sim_grid <- tidyr::expand_grid(
     bias_uns_settings_tbl,
     by = c("transformation", "bias_uns")
   ) |>
+  dplyr::mutate(
+    bw_fallback = dplyr::if_else(.data$transformation == "gamma", 0.01, 0.5),
+    bw_crossover = bw_crossover_vec,
+    bw_transition_width = bw_transition_width_vec
+  ) |>
   dplyr::select(
     transformation, prob_response, n_cell,
-    mean_pos_setting, mean_pos, bw_core, bw_extra, bias_uns_setting, bias_uns,
+    mean_pos_setting, mean_pos,
+    bw_core, bw_extra, bw_fallback,
+    bw_crossover, bw_transition_width,
+    bias_uns_setting, bias_uns,
     sample_perturbation_sd, condition_perturbation_sd,
     cluster_perturbation_sd, background_relative_to_response,
     n_cell_uns_relative_to_stim
@@ -142,18 +163,21 @@ sim_grid <- tidyr::expand_grid(
     !(n_cell * prob_response < 5 & prob_response < 0.04)
   ) |>
   dplyr::filter(
-    ((bw_core <= 0.15 & transformation == "gamma") | (
-      bw_extra >= 0.05 & transformation != "gamma"
-    )) & ((bw_extra <= 0.15 & transformation == "gamma") | (
-      bw_core >= 0.05 & transformation != "gamma"
-    ))
+    (
+      .data$transformation == "gamma" &
+        .data$bw_core <= 0.15 &
+        .data$bw_extra <= 0.15
+    ) |
+      (
+        .data$transformation != "gamma" &
+          .data$bw_core >= 0.05 &
+          .data$bw_extra >= 0.05
+      )
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
-  )
-
-sim_grid <- sim_grid |>
-  dplyr::arrange(n_cell, dplyr::desc(prob_response))
+  ) |>
+  dplyr::arrange(.data$n_cell, dplyr::desc(.data$prob_response))
 
 if ("dev" %in% projr::projr_profile_get()) {
   sim_grid <- sim_grid |>
@@ -167,10 +191,36 @@ if ("dev" %in% projr::projr_profile_get()) {
       bias_uns_setting == "low",
       condition_perturbation_sd == 0
     ) |>
-    dplyr::sample_n(min(dplyr::n(), 5))
+    dplyr::slice_head(n = 5)
 }
+
 sim_grid
 print(paste0("Performing ", nrow(sim_grid), " simulations"))
+```
+
+A helper for running the adaptive version. This deliberately checks that the loaded package version has the adaptive arguments wired through to `.simBandwidthBsFreq`.
+
+```{r}
+#| label: run-helper
+.run_sim_bandwidth_bs_freq_adaptive <- function(...) {
+  fn <- stimgate:::.simBandwidthBsFreq
+  arg <- list(...)
+  formal_nm <- names(formals(fn))
+  required_nm <- c("bwAdaptiveCore", "bwAdaptiveExtra")
+  has_dots <- "..." %in% formal_nm
+
+  if (!has_dots && !all(required_nm %in% formal_nm)) {
+    stop(
+      ".simBandwidthBsFreq does not expose bwAdaptiveCore and bwAdaptiveExtra. ",
+      "Load the version that forwards adaptive bandwidth settings to gateStim."
+    )
+  }
+
+  if (!has_dots) {
+    arg <- arg[names(arg) %in% formal_nm]
+  }
+  do.call(fn, arg)
+}
 ```
 
 A loop we only run when we want to see why particular runs failed.
@@ -183,17 +233,28 @@ bw_list_raw <- vector("list", nrow(sim_grid))
 
 for (i in seq_len(nrow(sim_grid))) {
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
-  # debug(.verifyBwLimitSetting)
-  sim_res <- .simBandwidthBsFreq(
+
+  bw_crossover_curr <- sim_grid$bw_crossover[i]
+  bw_crossover_curr <- if (is.finite(bw_crossover_curr)) {
+    bw_crossover_curr
+  } else {
+    NULL
+  }
+
+  sim_res <- .run_sim_bandwidth_bs_freq_adaptive(
     nSample = 1,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
     nIter = 1,
     biasUns = sim_grid$bias_uns[i],
+    bw = NULL,
+    bwAdaptive = TRUE,
     bwAdaptiveCore = sim_grid$bw_core[i],
     bwAdaptiveExtra = sim_grid$bw_extra[i],
-    bwFallback = if (sim_grid$transformation[i] == "gamma") 0.01 else 0.5,
+    bwAdaptiveCrossover = bw_crossover_curr,
+    bwAdaptiveTransitionWidth = sim_grid$bw_transition_width[i],
+    bwFallback = sim_grid$bw_fallback[i],
     bwMin = "none",
     bwMax = "none",
     nCellStim = sim_grid$n_cell[i],
@@ -220,7 +281,9 @@ for (i in seq_len(nrow(sim_grid))) {
       mean_pos = sim_grid$mean_pos[i],
       bw_core = sim_grid$bw_core[i],
       bw_extra = sim_grid$bw_extra[i],
-      bw_fallback = if (sim_grid$transformation[i] == "gamma") 0.01 else 0.5,
+      bw_fallback = sim_grid$bw_fallback[i],
+      bw_crossover = sim_grid$bw_crossover[i],
+      bw_transition_width = sim_grid$bw_transition_width[i],
       bias_uns_setting = sim_grid$bias_uns_setting[i],
       bias_uns = sim_grid$bias_uns[i],
       sample_perturbation_sd = sim_grid$sample_perturbation_sd[i],
@@ -234,14 +297,1634 @@ for (i in seq_len(nrow(sim_grid))) {
       sim_id = sim_grid$sim_id[i]
     ) |>
     dplyr::select(
-      transformation, prob_response, n_cell,
-      mean_pos_setting, mean_pos, bw_core, bw_extra, bw_fallback, bias_uns_setting, bias_uns,
-      sample_perturbation_sd, condition_perturbation_sd,
-      cluster_perturbation_sd, background_relative_to_response,
-      n_cell_uns_relative_to_stim, sim_id,
+      dplyr::any_of(colnames(sim_grid)),
       dplyr::everything()
     )
 
   bw_list_raw[[i]] <- sim_res
 }
+```
+
+Run the simulations in parallel, with progress reporting.
+
+```{r}
+#| label: bw-manual-parallel
+#| results: hide
+if (interactive()) {
+  progressr::handlers(global = TRUE)
+}
+
+path_progress_file <- projr::projr_path_get(
+  "cache",
+  "log",
+  "analysis",
+  "sim",
+  "bw",
+  "freq_bs",
+  "adaptive",
+  "progress.txt"
+)
+dir_progress <- dirname(path_progress_file)
+dir_jobs <- file.path(dir_progress, "jobs")
+
+if (file.exists(path_progress_file)) {
+  file.remove(path_progress_file)
+}
+if (dir.exists(dir_jobs)) {
+  unlink(dir_jobs, recursive = TRUE, force = TRUE)
+}
+dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
+
+future::plan(
+  future::multisession,
+  workers = max(1, .simGetCores())
+)
+
+total_sims <- nrow(sim_grid)
+
+bw_list_raw <- progressr::with_progress({
+  p <- progressr::progressor(steps = total_sims)
+
+  furrr::future_pmap(
+    sim_grid,
+    function(
+      transformation,
+      prob_response,
+      n_cell,
+      mean_pos_setting,
+      mean_pos,
+      bw_core,
+      bw_extra,
+      bw_fallback,
+      bw_crossover,
+      bw_transition_width,
+      bias_uns_setting,
+      bias_uns,
+      sample_perturbation_sd,
+      condition_perturbation_sd,
+      cluster_perturbation_sd,
+      background_relative_to_response,
+      n_cell_uns_relative_to_stim,
+      sim_id
+    ) {
+      settings_row <- paste0(
+        "trans = ", transformation,
+        " | prob = ", prob_response,
+        " | n_cell = ", n_cell,
+        " | mean = ", mean_pos,
+        " | bw_core = ", bw_core,
+        " | bw_extra = ", bw_extra,
+        " | bias_setting = ", bias_uns_setting,
+        " | bias = ", bias_uns,
+        " | sample_sd = ", sample_perturbation_sd,
+        " | condition_sd = ", condition_perturbation_sd,
+        " | cluster_sd = ", cluster_perturbation_sd,
+        " | bg_rel = ", background_relative_to_response,
+        " | n_uns_rel = ", n_cell_uns_relative_to_stim,
+        " | sim_id = ", sim_id
+      )
+
+      file_running <- file.path(dir_jobs, paste0("running-", sim_id))
+      file_completed <- file.path(dir_jobs, paste0("completed-", sim_id))
+      file_error <- file.path(dir_jobs, paste0("error-", sim_id))
+
+      update_progress_summary <- function() {
+        all_job_files <- list.files(dir_jobs, full.names = FALSE)
+
+        n_running <- sum(grepl("^running-", all_job_files))
+        n_completed <- sum(grepl("^completed-", all_job_files))
+        n_error <- sum(grepl("^error-", all_job_files))
+        n_done <- n_completed + n_error
+
+        running_files <- all_job_files[grepl("^running-", all_job_files)]
+        running_ids <- sub("^running-", "", running_files)
+        running_list_str <- if (length(running_ids) > 0) {
+          paste(running_ids, collapse = ", ")
+        } else {
+          "None"
+        }
+
+        summary_text <- paste0(
+          "========================================\n",
+          " ADAPTIVE SIMULATION PROGRESS DASHBOARD \n",
+          "========================================\n",
+          "Total Simulations  : ", total_sims, "\n",
+          "In Progress        : ", n_running, "\n",
+          "Completed (Success): ", n_completed, "\n",
+          "Completed (Errors) : ", n_error, "\n",
+          "Total Done          : ", n_done, "\n",
+          "----------------------------------------\n",
+          "Currently Running IDs:\n", running_list_str, "\n",
+          "========================================\n"
+        )
+
+        cat(summary_text, file = path_progress_file, append = FALSE)
+      }
+
+      file.create(file_running)
+      update_progress_summary()
+
+      bw_crossover_curr <- if (is.finite(bw_crossover)) {
+        bw_crossover
+      } else {
+        NULL
+      }
+
+      out <- tryCatch(
+        {
+          sim_res <- .run_sim_bandwidth_bs_freq_adaptive(
+            nSample = 5,
+            nMarker = 1,
+            nCondition = 2,
+            nCluster = 2,
+            nIter = 5,
+            biasUns = bias_uns,
+            bw = NULL,
+            bwAdaptive = TRUE,
+            bwAdaptiveCore = bw_core,
+            bwAdaptiveExtra = bw_extra,
+            bwAdaptiveCrossover = bw_crossover_curr,
+            bwAdaptiveTransitionWidth = bw_transition_width,
+            bwFallback = bw_fallback,
+            bwMin = "none",
+            bwMax = "none",
+            nCellStim = n_cell,
+            probResponse = prob_response,
+            probExact = TRUE,
+            meanPos = mean_pos,
+            transformation = transformation,
+            samplePerturbationSd = sample_perturbation_sd,
+            conditionPerturbationSd = condition_perturbation_sd,
+            clusterPerturbationSd = cluster_perturbation_sd,
+            backgroundRelativeToResponse = background_relative_to_response,
+            ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
+            covEvMin = 1.5,
+            covEvMax = 1.5,
+            tolClust = NULL
+          ) |>
+            dplyr::mutate(
+              transformation = transformation,
+              prob_response = prob_response,
+              n_cell = n_cell,
+              mean_pos_setting = mean_pos_setting,
+              mean_pos = mean_pos,
+              bw_core = bw_core,
+              bw_extra = bw_extra,
+              bw_fallback = bw_fallback,
+              bw_crossover = bw_crossover,
+              bw_transition_width = bw_transition_width,
+              bias_uns_setting = bias_uns_setting,
+              bias_uns = bias_uns,
+              sample_perturbation_sd = sample_perturbation_sd,
+              condition_perturbation_sd = condition_perturbation_sd,
+              cluster_perturbation_sd = cluster_perturbation_sd,
+              background_relative_to_response =
+                background_relative_to_response,
+              n_cell_uns_relative_to_stim =
+                n_cell_uns_relative_to_stim,
+              sim_id = sim_id
+            ) |>
+            dplyr::select(
+              transformation,
+              prob_response,
+              n_cell,
+              mean_pos_setting,
+              mean_pos,
+              bw_core,
+              bw_extra,
+              bw_fallback,
+              bw_crossover,
+              bw_transition_width,
+              bias_uns_setting,
+              bias_uns,
+              sample_perturbation_sd,
+              condition_perturbation_sd,
+              cluster_perturbation_sd,
+              background_relative_to_response,
+              n_cell_uns_relative_to_stim,
+              sim_id,
+              dplyr::everything()
+            )
+
+          file.create(file_completed)
+          if (file.exists(file_running)) file.remove(file_running)
+
+          update_progress_summary()
+          p(sprintf("Completed sim_id: %s", sim_id))
+
+          sim_res
+        },
+        error = function(e) {
+          file.create(file_error)
+          if (file.exists(file_running)) file.remove(file_running)
+
+          update_progress_summary()
+          p(sprintf("ERROR on sim_id: %s", sim_id))
+
+          tibble::tibble(
+            transformation = transformation,
+            prob_response = prob_response,
+            n_cell = n_cell,
+            mean_pos_setting = mean_pos_setting,
+            mean_pos = mean_pos,
+            bw_core = bw_core,
+            bw_extra = bw_extra,
+            bw_fallback = bw_fallback,
+            bw_crossover = bw_crossover,
+            bw_transition_width = bw_transition_width,
+            bias_uns_setting = bias_uns_setting,
+            bias_uns = bias_uns,
+            sample_perturbation_sd = sample_perturbation_sd,
+            condition_perturbation_sd = condition_perturbation_sd,
+            cluster_perturbation_sd = cluster_perturbation_sd,
+            background_relative_to_response =
+              background_relative_to_response,
+            n_cell_uns_relative_to_stim =
+              n_cell_uns_relative_to_stim,
+            sim_id = sim_id,
+            iter = NA_integer_,
+            chnl = NA_character_,
+            sample = NA_character_,
+            ind = NA_character_,
+            method = NA_character_,
+            propRespTruth = NA_real_,
+            propRespEst = NA_real_,
+            propBsEst = NA_real_,
+            threshold = NA_real_,
+            thresholdOrigin = NA_character_,
+            gateReturnPoint = NA_character_,
+            locGenerated = NA,
+            locGeneratedDirect = NA,
+            locSource = NA_character_,
+            locReason = NA_character_,
+            detailLevel = NA_character_,
+            nCellStim = NA_real_,
+            nCellUns = NA_real_,
+            nPosStim = NA_integer_,
+            nPosUns = NA_integer_,
+            error_message = conditionMessage(e),
+            settings = settings_row
+          )
+        }
+      )
+
+      out
+    },
+    .options = furrr::furrr_options(seed = TRUE)
+  )
+})
+
+future::plan(future::sequential)
+
+saveRDS(
+  bw_list_raw,
+  file = projr::projr_path_get(
+    "cache", "sim", "bw", "freq_bs", "adaptive", "bw_list_raw.rds"
+  )
+)
+```
+
+## Collate the results
+
+```{r}
+#| label: bw-manual-collate
+.add_missing_cols <- function(.data, cols) {
+  for (nm in names(cols)) {
+    if (!nm %in% names(.data)) {
+      .data[[nm]] <- cols[[nm]]
+    }
+  }
+  .data
+}
+
+if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
+  bw_list_raw_collate <- bw_list_raw
+} else {
+  path_vec <- c(
+    projr::projr_path_get(
+      "cache",
+      "sim",
+      "bw",
+      "freq_bs",
+      "adaptive",
+      "bw_list_raw.rds",
+      safe = TRUE
+    ),
+    projr::projr_path_get(
+      "cache",
+      "sim",
+      "bw",
+      "freq_bs",
+      "adaptive",
+      "bw_list_raw.rds",
+      safe = FALSE
+    )
+  )
+  path_vec <- path_vec[file.exists(path_vec)]
+  if (length(path_vec) == 0L) {
+    stop(
+      "Could not find bw_list_raw.rds, and bw_list_raw is not available in memory."
+    )
+  }
+  bw_list_raw_collate <- readRDS(file = path_vec[[1]])
+}
+
+bw_tbl_raw <- bw_list_raw_collate |>
+  purrr::list_rbind()
+
+bw_tbl <- .add_missing_cols(
+  bw_tbl_raw,
+  list(
+    iter = NA_integer_,
+    sample = NA_character_,
+    ind = NA_character_,
+    propBsEst = NA_real_,
+    threshold = NA_real_,
+    bias_uns_setting = NA_character_,
+    bw_fallback = NA_real_,
+    bw_crossover = NA_real_,
+    bw_transition_width = NA_real_,
+    error_message = NA_character_
+  )
+)
+
+if (all(is.na(bw_tbl$threshold))) {
+  stop(
+    "No valid threshold results were collated. ",
+    "Check the adaptive progress log for simulation-level errors."
+  )
+}
+
+if (all(is.na(bw_tbl$bias_uns_setting))) {
+  bw_tbl <- bw_tbl |>
+    dplyr::select(-bias_uns_setting) |>
+    dplyr::left_join(
+      bias_uns_settings_tbl,
+      by = c("transformation", "bias_uns")
+    )
+}
+
+bw_tbl <- bw_tbl |>
+  dplyr::filter(!is.na(.data$bias_uns_setting))
+
+bw_tbl_results_raw <- bw_tbl |>
+  dplyr::select(
+    dplyr::any_of(colnames(sim_grid)),
+    iter,
+    sample,
+    ind,
+    propBsEst,
+    threshold
+  ) |>
+  dplyr::filter(is.finite(.data$threshold) & is.finite(.data$propBsEst)) |>
+  dplyr::group_by(.data$sim_id, .data$iter, .data$ind) |>
+  dplyr::mutate(
+    threshold = unique(threshold[is.finite(threshold)])[[1]],
+    propBsEst = unique(propBsEst[is.finite(propBsEst)])[[1]]
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::group_by(
+    dplyr::pick(dplyr::any_of(colnames(sim_grid))),
+    .data$iter,
+    .data$ind
+  ) |>
+  dplyr::slice(1) |>
+  dplyr::ungroup()
+
+if (nrow(bw_tbl_results_raw) == 0L) {
+  warning(
+    "No valid adaptive bandwidth-frequency results were collated. ",
+    "Check the progress log for simulation-level errors."
+  )
+}
+
+bw_tbl_results_summary <- bw_tbl_results_raw |>
+  dplyr::group_by(
+    dplyr::pick(dplyr::any_of(colnames(sim_grid)))
+  ) |>
+  dplyr::summarise(
+    dplyr::across(
+      c(threshold, propBsEst),
+      list(
+        min = ~ min(.x, na.rm = TRUE),
+        max = ~ max(.x, na.rm = TRUE),
+        mean = ~ mean(.x, na.rm = TRUE),
+        median = ~ stats::median(.x, na.rm = TRUE)
+      )
+    ),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    propBsEst_median_diff = .data$propBsEst_median - .data$prob_response,
+    propBsEst_median_diff_rel =
+      (.data$propBsEst_median - .data$prob_response) / .data$prob_response
+  )
+
+saveRDS(
+  bw_tbl,
+  file = projr::projr_path_get(
+    "cache", "sim", "bw", "freq_bs", "adaptive", "bw_tbl.rds"
+  )
+)
+saveRDS(
+  bw_tbl_results_raw,
+  file = projr::projr_path_get(
+    "cache", "sim", "bw", "freq_bs", "adaptive", "bw_tbl_results_raw.rds"
+  )
+)
+saveRDS(
+  bw_tbl_results_summary,
+  file = projr::projr_path_get(
+    "cache", "sim", "bw", "freq_bs", "adaptive", "bw_tbl_results_summary.rds"
+  )
+)
+```
+
+```{r}
+if (requireNamespace("UtilsDataRSV", quietly = TRUE)) {
+  sim_grid |>
+    UtilsDataRSV::view_cols()
+} else {
+  dplyr::glimpse(sim_grid)
+}
+```
+
+## Plot helpers
+
+```{r}
+#| label: plot-helpers
+col_vec_bw <- c(
+  "#e0ecf4",
+  "#bfd3e6",
+  "#9ebcda",
+  "#8c96c6",
+  "#8c6bb1",
+  "#88419d",
+  "#810f7c"
+)
+
+format_bw_lab <- function(x, digits = 4) {
+  x <- suppressWarnings(as.numeric(x))
+  lab <- format(signif(x, digits), scientific = FALSE, trim = TRUE)
+  lab <- sub("\\.?0+$", "", lab)
+  lab[is.na(x)] <- NA_character_
+  lab
+}
+
+format_bw_file <- function(x) {
+  x <- format_bw_lab(x)
+  x <- gsub("\\.", "p", x)
+  gsub("[^A-Za-z0-9]+", "_", x)
+}
+
+safe_file_lab <- function(x) {
+  x <- as.character(x)
+  x <- gsub("[^A-Za-z0-9]+", "_", x)
+  x <- gsub("_+", "_", x)
+  x
+}
+
+make_bw_colour_values <- function(bw_vec, base_col_vec = col_vec_bw) {
+  bw_num <- sort(unique(as.numeric(bw_vec)))
+  bw_lab <- format_bw_lab(bw_num)
+  n_bw <- length(bw_num)
+
+  if (n_bw <= length(base_col_vec)) {
+    col_vec <- base_col_vec[seq(length(base_col_vec) - n_bw + 1, length(base_col_vec))]
+  } else {
+    col_vec <- grDevices::colorRampPalette(base_col_vec)(n_bw)
+  }
+
+  stats::setNames(col_vec, bw_lab)
+}
+
+make_bw_linetype_scale <- function(bw_vec) {
+  bw_num <- sort(unique(as.numeric(bw_vec)))
+  bw_lab <- format_bw_lab(bw_num)
+  n_bw <- length(bw_num)
+
+  if (n_bw == 1L) {
+    lty <- "solid"
+  } else {
+    dash_len <- round(seq(8, 2, length.out = n_bw - 1L))
+    gap_len <- 4L
+
+    lty <- c(
+      "solid",
+      paste0(
+        as.character(as.hexmode(dash_len)),
+        as.character(as.hexmode(gap_len))
+      )
+    )
+  }
+
+  list(
+    levels = bw_lab,
+    values = stats::setNames(lty, bw_lab)
+  )
+}
+
+add_bw_labs <- function(.data) {
+  .data |>
+    dplyr::mutate(
+      bw_core_lab = format_bw_lab(.data$bw_core),
+      bw_extra_lab = format_bw_lab(.data$bw_extra)
+    )
+}
+
+bias_uns_setting_vec_plot <- bias_uns_settings_tbl |>
+  dplyr::distinct(.data$bias_uns_setting) |>
+  dplyr::pull(.data$bias_uns_setting)
+```
+
+## Estimated background-subtracted frequency
+
+### Fixed core bandwidth, varying extra bandwidth
+
+```{r}
+#| label: plot-est-fixed-core
+for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      for (bw_core_curr in unique(bw_tbl_results_summary$bw_core)) {
+        plot_tbl <- bw_tbl_results_summary |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_core == !!bw_core_curr
+          ) |>
+          add_bw_labs()
+
+        if (nrow(plot_tbl) == 0L) {
+          next
+        }
+
+        col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw_extra)
+        plot_tbl <- plot_tbl |>
+          dplyr::mutate(
+            bw_extra_lab = factor(.data$bw_extra_lab, levels = names(col_vec_bw_curr))
+          )
+
+        p <- ggplot(
+          plot_tbl,
+          aes(x = n_cell, y = propBsEst_median, colour = bw_extra_lab)
+        ) +
+          geom_line() +
+          geom_hline(
+            mapping = aes(yintercept = prob_response),
+            linetype = "dashed",
+            colour = "black"
+          ) +
+          geom_point() +
+          scale_x_log10() +
+          facet_grid(. ~ prob_response, scales = "free_y") +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy") +
+          theme(
+            panel.background = element_rect(fill = "white", colour = NA),
+            plot.background = element_rect(fill = "white", colour = NA),
+            legend.position = "bottom"
+          ) +
+          labs(
+            title = paste0(
+              "Estimated frequency: fixed core bandwidth = ",
+              format_bw_lab(bw_core_curr),
+              " (", transformation_curr,
+              ", mean_pos_setting = ", mean_pos_setting_curr,
+              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+            ),
+            x = "Number of cells (log scale)",
+            y = "Estimated background-subtracted frequency (median)",
+            colour = "Extra bandwidth"
+          ) +
+          scale_colour_manual(values = col_vec_bw_curr)
+
+        path_p <- projr::projr_path_get(
+          "cache",
+          "sim",
+          "bw",
+          "freq_bs",
+          "adaptive",
+          "est",
+          "median",
+          "fixed_core_vary_extra",
+          safe_file_lab(transformation_curr),
+          paste0("bias_uns_", safe_file_lab(bias_uns_setting_curr)),
+          paste0(
+            "est_vs_n_cell_mean_pos_setting_",
+            safe_file_lab(mean_pos_setting_curr),
+            "_bw_core_",
+            format_bw_file(bw_core_curr),
+            ".png"
+          )
+        )
+        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+        ggsave(
+          filename = path_p,
+          plot = p,
+          width = 22,
+          height = 10,
+          units = "cm"
+        )
+      }
+    }
+  }
+}
+```
+
+### Fixed extra bandwidth, varying core bandwidth
+
+```{r}
+#| label: plot-est-fixed-extra
+for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      for (bw_extra_curr in unique(bw_tbl_results_summary$bw_extra)) {
+        plot_tbl <- bw_tbl_results_summary |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_extra == !!bw_extra_curr
+          ) |>
+          add_bw_labs()
+
+        if (nrow(plot_tbl) == 0L) {
+          next
+        }
+
+        col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw_core)
+        plot_tbl <- plot_tbl |>
+          dplyr::mutate(
+            bw_core_lab = factor(.data$bw_core_lab, levels = names(col_vec_bw_curr))
+          )
+
+        p <- ggplot(
+          plot_tbl,
+          aes(x = n_cell, y = propBsEst_median, colour = bw_core_lab)
+        ) +
+          geom_line() +
+          geom_hline(
+            mapping = aes(yintercept = prob_response),
+            linetype = "dashed",
+            colour = "black"
+          ) +
+          geom_point() +
+          scale_x_log10() +
+          facet_grid(. ~ prob_response, scales = "free_y") +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy") +
+          theme(
+            panel.background = element_rect(fill = "white", colour = NA),
+            plot.background = element_rect(fill = "white", colour = NA),
+            legend.position = "bottom"
+          ) +
+          labs(
+            title = paste0(
+              "Estimated frequency: fixed extra bandwidth = ",
+              format_bw_lab(bw_extra_curr),
+              " (", transformation_curr,
+              ", mean_pos_setting = ", mean_pos_setting_curr,
+              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+            ),
+            x = "Number of cells (log scale)",
+            y = "Estimated background-subtracted frequency (median)",
+            colour = "Core bandwidth"
+          ) +
+          scale_colour_manual(values = col_vec_bw_curr)
+
+        path_p <- projr::projr_path_get(
+          "cache",
+          "sim",
+          "bw",
+          "freq_bs",
+          "adaptive",
+          "est",
+          "median",
+          "fixed_extra_vary_core",
+          safe_file_lab(transformation_curr),
+          paste0("bias_uns_", safe_file_lab(bias_uns_setting_curr)),
+          paste0(
+            "est_vs_n_cell_mean_pos_setting_",
+            safe_file_lab(mean_pos_setting_curr),
+            "_bw_extra_",
+            format_bw_file(bw_extra_curr),
+            ".png"
+          )
+        )
+        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+        ggsave(
+          filename = path_p,
+          plot = p,
+          width = 22,
+          height = 10,
+          units = "cm"
+        )
+      }
+    }
+  }
+}
+```
+
+## Raw background-subtracted frequency estimates
+
+### Fixed core bandwidth, varying extra bandwidth
+
+```{r}
+#| label: plot-raw-fixed-core
+for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      for (bw_core_curr in unique(bw_tbl_results_raw$bw_core)) {
+        plot_tbl <- bw_tbl_results_raw |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_core == !!bw_core_curr
+          ) |>
+          add_bw_labs()
+
+        if (nrow(plot_tbl) == 0L) {
+          next
+        }
+
+        col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw_extra)
+        plot_tbl <- plot_tbl |>
+          dplyr::mutate(
+            bw_extra_lab = factor(.data$bw_extra_lab, levels = names(col_vec_bw_curr))
+          )
+
+        p <- ggplot(
+          plot_tbl,
+          aes(x = factor(n_cell), y = propBsEst, colour = bw_extra_lab)
+        ) +
+          ggforce::geom_sina(position = "dodge") +
+          geom_hline(
+            mapping = aes(yintercept = prob_response),
+            linetype = "dashed",
+            colour = "black"
+          ) +
+          facet_grid(. ~ prob_response, scales = "free_y") +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy") +
+          theme(
+            panel.background = element_rect(fill = "white", colour = NA),
+            plot.background = element_rect(fill = "white", colour = NA),
+            legend.position = "bottom"
+          ) +
+          labs(
+            title = paste0(
+              "Raw estimated frequency: fixed core bandwidth = ",
+              format_bw_lab(bw_core_curr),
+              " (", transformation_curr,
+              ", mean_pos_setting = ", mean_pos_setting_curr,
+              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+            ),
+            x = "Number of cells",
+            y = "Estimated background-subtracted frequency",
+            colour = "Extra bandwidth"
+          ) +
+          scale_colour_manual(values = col_vec_bw_curr)
+
+        path_p <- projr::projr_path_get(
+          "cache",
+          "sim",
+          "bw",
+          "freq_bs",
+          "adaptive",
+          "est",
+          "raw",
+          "fixed_core_vary_extra",
+          safe_file_lab(transformation_curr),
+          paste0("bias_uns_", safe_file_lab(bias_uns_setting_curr)),
+          paste0(
+            "actual_freq_vs_n_cell_mean_pos_setting_",
+            safe_file_lab(mean_pos_setting_curr),
+            "_bw_core_",
+            format_bw_file(bw_core_curr),
+            ".png"
+          )
+        )
+        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+        ggsave(
+          filename = path_p,
+          plot = p,
+          width = 22,
+          height = 10,
+          units = "cm"
+        )
+      }
+    }
+  }
+}
+```
+
+### Fixed extra bandwidth, varying core bandwidth
+
+```{r}
+#| label: plot-raw-fixed-extra
+for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      for (bw_extra_curr in unique(bw_tbl_results_raw$bw_extra)) {
+        plot_tbl <- bw_tbl_results_raw |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_extra == !!bw_extra_curr
+          ) |>
+          add_bw_labs()
+
+        if (nrow(plot_tbl) == 0L) {
+          next
+        }
+
+        col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw_core)
+        plot_tbl <- plot_tbl |>
+          dplyr::mutate(
+            bw_core_lab = factor(.data$bw_core_lab, levels = names(col_vec_bw_curr))
+          )
+
+        p <- ggplot(
+          plot_tbl,
+          aes(x = factor(n_cell), y = propBsEst, colour = bw_core_lab)
+        ) +
+          ggforce::geom_sina(position = "dodge") +
+          geom_hline(
+            mapping = aes(yintercept = prob_response),
+            linetype = "dashed",
+            colour = "black"
+          ) +
+          facet_grid(. ~ prob_response, scales = "free_y") +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy") +
+          theme(
+            panel.background = element_rect(fill = "white", colour = NA),
+            plot.background = element_rect(fill = "white", colour = NA),
+            legend.position = "bottom"
+          ) +
+          labs(
+            title = paste0(
+              "Raw estimated frequency: fixed extra bandwidth = ",
+              format_bw_lab(bw_extra_curr),
+              " (", transformation_curr,
+              ", mean_pos_setting = ", mean_pos_setting_curr,
+              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+            ),
+            x = "Number of cells",
+            y = "Estimated background-subtracted frequency",
+            colour = "Core bandwidth"
+          ) +
+          scale_colour_manual(values = col_vec_bw_curr)
+
+        path_p <- projr::projr_path_get(
+          "cache",
+          "sim",
+          "bw",
+          "freq_bs",
+          "adaptive",
+          "est",
+          "raw",
+          "fixed_extra_vary_core",
+          safe_file_lab(transformation_curr),
+          paste0("bias_uns_", safe_file_lab(bias_uns_setting_curr)),
+          paste0(
+            "actual_freq_vs_n_cell_mean_pos_setting_",
+            safe_file_lab(mean_pos_setting_curr),
+            "_bw_extra_",
+            format_bw_file(bw_extra_curr),
+            ".png"
+          )
+        )
+        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+        ggsave(
+          filename = path_p,
+          plot = p,
+          width = 22,
+          height = 10,
+          units = "cm"
+        )
+      }
+    }
+  }
+}
+```
+
+## Threshold plots
+
+```{r}
+#| label: threshold-display-objects
+main_settings <- tibble::tibble(
+  n_cell = 1e5,
+  background_relative_to_response = 0.2,
+  prob_exact = TRUE,
+  mixture_type = "gaussianOnly",
+  cluster_perturbation_sd = 0,
+  cov_ev_min = 1.5,
+  cov_ev_max = 1.5
+)
+
+# These objects are only needed for the optional density/rug overlay in the
+# threshold plots. Keep the document renderable if they have not been prepared
+# in this run.
+if (!exists("dens_tbl")) {
+  dens_tbl <- tibble::tibble(
+    F1 = numeric(),
+    density = numeric(),
+    condition = character(),
+    prob_response = numeric(),
+    transformation = character(),
+    mean_pos_setting = character(),
+    bw_core = numeric(),
+    bw_extra = numeric(),
+    bias_uns_setting = character(),
+    bias_uns = numeric()
+  )
+}
+
+if (!exists("rug_tbl")) {
+  rug_tbl <- tibble::tibble(
+    F1 = numeric(),
+    condition = character(),
+    prob_response = numeric(),
+    transformation = character(),
+    mean_pos_setting = character(),
+    bw_core = numeric(),
+    bw_extra = numeric(),
+    bias_uns_setting = character(),
+    bias_uns = numeric()
+  )
+}
+```
+
+### Median thresholds: fixed core bandwidth, varying extra bandwidth
+
+```{r}
+#| label: plot-threshold-median-fixed-core
+for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      for (bw_core_curr in unique(bw_tbl_results_summary$bw_core)) {
+        threshold_tbl_curr <- bw_tbl_results_summary |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_core == !!bw_core_curr
+          ) |>
+          add_bw_labs()
+
+        if (nrow(threshold_tbl_curr) == 0L) {
+          next
+        }
+
+        bw_scale <- make_bw_linetype_scale(threshold_tbl_curr$bw_extra)
+        threshold_tbl_curr <- threshold_tbl_curr |>
+          dplyr::mutate(
+            bw_extra_lab = factor(.data$bw_extra_lab, levels = bw_scale$levels)
+          )
+
+        rug_tbl_curr <- rug_tbl |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_core == !!bw_core_curr
+          )
+        dens_tbl_curr <- dens_tbl |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_core == !!bw_core_curr
+          )
+
+        p <- ggplot() +
+          geom_area(
+            data = dens_tbl_curr,
+            mapping = aes(x = F1, y = density, colour = condition, fill = condition),
+            alpha = 0.18,
+            position = "identity"
+          ) +
+          geom_line(
+            data = dens_tbl_curr,
+            mapping = aes(x = F1, y = density, colour = condition),
+            linewidth = 0.25
+          ) +
+          geom_rug(
+            data = rug_tbl_curr,
+            aes(x = F1, colour = condition),
+            sides = "b",
+            alpha = 0.25,
+            linewidth = 0.15
+          ) +
+          facet_grid(rows = vars(.data$prob_response), scales = "free_x") +
+          scale_y_sqrt() +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy", minor = "none") +
+          theme(
+            panel.background = element_rect(fill = "white", colour = NA),
+            plot.background = element_rect(fill = "white", colour = NA),
+            legend.position = "bottom",
+            strip.text.y = element_text(angle = 0)
+          ) +
+          coord_cartesian(ylim = c(0, 1)) +
+          scale_colour_manual(values = .simMiscGetStimColVec()) +
+          labs(
+            title = paste0(
+              "Median thresholds: fixed core bandwidth = ",
+              format_bw_lab(bw_core_curr),
+              " (", transformation_curr,
+              ", mean_pos_setting = ", mean_pos_setting_curr,
+              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+            ),
+            x = "Marker expression",
+            y = "Density, square-root scale",
+            colour = NULL,
+            fill = NULL,
+            linetype = "Extra bandwidth"
+          ) +
+          geom_vline(
+            data = threshold_tbl_curr,
+            mapping = aes(xintercept = threshold_median, linetype = bw_extra_lab),
+            linewidth = 0.45
+          ) +
+          scale_linetype_manual(
+            values = bw_scale$values,
+            breaks = bw_scale$levels,
+            labels = bw_scale$levels
+          )
+
+        path_p <- projr::projr_path_get(
+          "cache",
+          "sim",
+          "bw",
+          "freq_bs",
+          "adaptive",
+          "thresholds",
+          "median",
+          "fixed_core_vary_extra",
+          safe_file_lab(transformation_curr),
+          paste0("bias_uns_", safe_file_lab(bias_uns_setting_curr)),
+          paste0(
+            "threshold_mean_pos_setting_",
+            safe_file_lab(mean_pos_setting_curr),
+            "_bw_core_",
+            format_bw_file(bw_core_curr),
+            ".png"
+          )
+        )
+        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+        ggsave(
+          filename = path_p,
+          plot = p,
+          width = 14,
+          height = 22,
+          units = "cm"
+        )
+      }
+    }
+  }
+}
+```
+
+### Median thresholds: fixed extra bandwidth, varying core bandwidth
+
+```{r}
+#| label: plot-threshold-median-fixed-extra
+for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      for (bw_extra_curr in unique(bw_tbl_results_summary$bw_extra)) {
+        threshold_tbl_curr <- bw_tbl_results_summary |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_extra == !!bw_extra_curr
+          ) |>
+          add_bw_labs()
+
+        if (nrow(threshold_tbl_curr) == 0L) {
+          next
+        }
+
+        bw_scale <- make_bw_linetype_scale(threshold_tbl_curr$bw_core)
+        threshold_tbl_curr <- threshold_tbl_curr |>
+          dplyr::mutate(
+            bw_core_lab = factor(.data$bw_core_lab, levels = bw_scale$levels)
+          )
+
+        rug_tbl_curr <- rug_tbl |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_extra == !!bw_extra_curr
+          )
+        dens_tbl_curr <- dens_tbl |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_extra == !!bw_extra_curr
+          )
+
+        p <- ggplot() +
+          geom_area(
+            data = dens_tbl_curr,
+            mapping = aes(x = F1, y = density, colour = condition, fill = condition),
+            alpha = 0.18,
+            position = "identity"
+          ) +
+          geom_line(
+            data = dens_tbl_curr,
+            mapping = aes(x = F1, y = density, colour = condition),
+            linewidth = 0.25
+          ) +
+          geom_rug(
+            data = rug_tbl_curr,
+            aes(x = F1, colour = condition),
+            sides = "b",
+            alpha = 0.25,
+            linewidth = 0.15
+          ) +
+          facet_grid(rows = vars(.data$prob_response), scales = "free_x") +
+          scale_y_sqrt() +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy", minor = "none") +
+          theme(
+            panel.background = element_rect(fill = "white", colour = NA),
+            plot.background = element_rect(fill = "white", colour = NA),
+            legend.position = "bottom",
+            strip.text.y = element_text(angle = 0)
+          ) +
+          coord_cartesian(ylim = c(0, 1)) +
+          scale_colour_manual(values = .simMiscGetStimColVec()) +
+          labs(
+            title = paste0(
+              "Median thresholds: fixed extra bandwidth = ",
+              format_bw_lab(bw_extra_curr),
+              " (", transformation_curr,
+              ", mean_pos_setting = ", mean_pos_setting_curr,
+              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+            ),
+            x = "Marker expression",
+            y = "Density, square-root scale",
+            colour = NULL,
+            fill = NULL,
+            linetype = "Core bandwidth"
+          ) +
+          geom_vline(
+            data = threshold_tbl_curr,
+            mapping = aes(xintercept = threshold_median, linetype = bw_core_lab),
+            linewidth = 0.45
+          ) +
+          scale_linetype_manual(
+            values = bw_scale$values,
+            breaks = bw_scale$levels,
+            labels = bw_scale$levels
+          )
+
+        path_p <- projr::projr_path_get(
+          "cache",
+          "sim",
+          "bw",
+          "freq_bs",
+          "adaptive",
+          "thresholds",
+          "median",
+          "fixed_extra_vary_core",
+          safe_file_lab(transformation_curr),
+          paste0("bias_uns_", safe_file_lab(bias_uns_setting_curr)),
+          paste0(
+            "threshold_mean_pos_setting_",
+            safe_file_lab(mean_pos_setting_curr),
+            "_bw_extra_",
+            format_bw_file(bw_extra_curr),
+            ".png"
+          )
+        )
+        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+        ggsave(
+          filename = path_p,
+          plot = p,
+          width = 14,
+          height = 22,
+          units = "cm"
+        )
+      }
+    }
+  }
+}
+```
+
+### Raw thresholds: fixed core bandwidth, varying extra bandwidth
+
+```{r}
+#| label: plot-threshold-raw-fixed-core
+for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      for (bw_core_curr in unique(bw_tbl_results_raw$bw_core)) {
+        threshold_tbl_curr <- bw_tbl_results_raw |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_core == !!bw_core_curr
+          ) |>
+          add_bw_labs()
+
+        if (nrow(threshold_tbl_curr) == 0L) {
+          next
+        }
+
+        col_vec_bw_curr <- make_bw_colour_values(threshold_tbl_curr$bw_extra)
+        threshold_tbl_curr <- threshold_tbl_curr |>
+          dplyr::mutate(
+            bw_extra_lab = factor(.data$bw_extra_lab, levels = names(col_vec_bw_curr))
+          )
+
+        threshold_tbl_curr_med_iqr <- threshold_tbl_curr |>
+          dplyr::group_by(
+            dplyr::pick(dplyr::any_of(colnames(sim_grid)))
+          ) |>
+          dplyr::summarise(
+            threshold_median = stats::median(threshold, na.rm = TRUE),
+            threshold_iqr_lower = stats::quantile(threshold, 0.25, na.rm = TRUE),
+            threshold_iqr_upper = stats::quantile(threshold, 0.75, na.rm = TRUE),
+            .groups = "drop"
+          ) |>
+          tidyr::pivot_longer(
+            threshold_median:threshold_iqr_upper,
+            names_to = "threshold_stat",
+            values_to = "threshold"
+          ) |>
+          dplyr::mutate(
+            threshold_stat = gsub("threshold_", "", .data$threshold_stat),
+            threshold_stat = factor(
+              .data$threshold_stat,
+              levels = c("iqr_lower", "median", "iqr_upper")
+            ),
+            bw_extra_lab = factor(format_bw_lab(.data$bw_extra), levels = names(col_vec_bw_curr))
+          )
+
+        rug_tbl_curr <- rug_tbl |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_core == !!bw_core_curr
+          )
+        dens_tbl_curr <- dens_tbl |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_core == !!bw_core_curr
+          )
+
+        p <- ggplot() +
+          geom_area(
+            data = dens_tbl_curr,
+            mapping = aes(x = F1, y = density, colour = condition, fill = condition),
+            alpha = 0.18,
+            position = "identity"
+          ) +
+          geom_line(
+            data = dens_tbl_curr,
+            mapping = aes(x = F1, y = density, colour = condition),
+            linewidth = 0.25
+          ) +
+          geom_rug(
+            data = rug_tbl_curr,
+            aes(x = F1, colour = condition),
+            sides = "b",
+            alpha = 0.25,
+            linewidth = 0.15
+          ) +
+          facet_grid(rows = vars(.data$prob_response), scales = "free_x") +
+          scale_y_sqrt() +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy", minor = "none") +
+          theme(
+            panel.background = element_rect(fill = "white", colour = NA),
+            plot.background = element_rect(fill = "white", colour = NA),
+            legend.position = "bottom",
+            strip.text.y = element_text(angle = 0)
+          ) +
+          coord_cartesian(ylim = c(0, 1)) +
+          scale_colour_manual(
+            values = c(.simMiscGetStimColVec(), col_vec_bw_curr)
+          ) +
+          labs(
+            title = paste0(
+              "Raw thresholds: fixed core bandwidth = ",
+              format_bw_lab(bw_core_curr),
+              " (", transformation_curr,
+              ", mean_pos_setting = ", mean_pos_setting_curr,
+              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+            ),
+            x = "Marker expression",
+            y = "Density, square-root scale",
+            colour = "Extra bandwidth",
+            fill = NULL,
+            linetype = "Threshold summary"
+          ) +
+          geom_vline(
+            data = threshold_tbl_curr,
+            mapping = aes(
+              xintercept = threshold,
+              colour = bw_extra_lab,
+              group = interaction(bw_extra_lab, iter, sample)
+            ),
+            linewidth = 0.25,
+            alpha = 0.22
+          ) +
+          geom_vline(
+            data = threshold_tbl_curr_med_iqr,
+            aes(
+              xintercept = threshold,
+              colour = bw_extra_lab,
+              linetype = threshold_stat
+            ),
+            linewidth = 0.45
+          ) +
+          scale_linetype_manual(
+            values = c(
+              "iqr_lower" = "dashed",
+              "median" = "solid",
+              "iqr_upper" = "dashed"
+            ),
+            breaks = c("iqr_lower", "median", "iqr_upper"),
+            labels = c("IQR lower", "Median", "IQR upper")
+          )
+
+        path_p <- projr::projr_path_get(
+          "cache",
+          "sim",
+          "bw",
+          "freq_bs",
+          "adaptive",
+          "thresholds",
+          "raw",
+          "fixed_core_vary_extra",
+          safe_file_lab(transformation_curr),
+          paste0("bias_uns_", safe_file_lab(bias_uns_setting_curr)),
+          paste0(
+            "threshold_mean_pos_setting_",
+            safe_file_lab(mean_pos_setting_curr),
+            "_bw_core_",
+            format_bw_file(bw_core_curr),
+            ".png"
+          )
+        )
+        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+        ggsave(
+          filename = path_p,
+          plot = p,
+          width = 14,
+          height = 22,
+          units = "cm"
+        )
+      }
+    }
+  }
+}
+```
+
+### Raw thresholds: fixed extra bandwidth, varying core bandwidth
+
+```{r}
+#| label: plot-threshold-raw-fixed-extra
+for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      for (bw_extra_curr in unique(bw_tbl_results_raw$bw_extra)) {
+        threshold_tbl_curr <- bw_tbl_results_raw |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_extra == !!bw_extra_curr
+          ) |>
+          add_bw_labs()
+
+        if (nrow(threshold_tbl_curr) == 0L) {
+          next
+        }
+
+        col_vec_bw_curr <- make_bw_colour_values(threshold_tbl_curr$bw_core)
+        threshold_tbl_curr <- threshold_tbl_curr |>
+          dplyr::mutate(
+            bw_core_lab = factor(.data$bw_core_lab, levels = names(col_vec_bw_curr))
+          )
+
+        threshold_tbl_curr_med_iqr <- threshold_tbl_curr |>
+          dplyr::group_by(
+            dplyr::pick(dplyr::any_of(colnames(sim_grid)))
+          ) |>
+          dplyr::summarise(
+            threshold_median = stats::median(threshold, na.rm = TRUE),
+            threshold_iqr_lower = stats::quantile(threshold, 0.25, na.rm = TRUE),
+            threshold_iqr_upper = stats::quantile(threshold, 0.75, na.rm = TRUE),
+            .groups = "drop"
+          ) |>
+          tidyr::pivot_longer(
+            threshold_median:threshold_iqr_upper,
+            names_to = "threshold_stat",
+            values_to = "threshold"
+          ) |>
+          dplyr::mutate(
+            threshold_stat = gsub("threshold_", "", .data$threshold_stat),
+            threshold_stat = factor(
+              .data$threshold_stat,
+              levels = c("iqr_lower", "median", "iqr_upper")
+            ),
+            bw_core_lab = factor(format_bw_lab(.data$bw_core), levels = names(col_vec_bw_curr))
+          )
+
+        rug_tbl_curr <- rug_tbl |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_extra == !!bw_extra_curr
+          )
+        dens_tbl_curr <- dens_tbl |>
+          dplyr::filter(
+            .data$transformation == !!transformation_curr,
+            .data$mean_pos_setting == !!mean_pos_setting_curr,
+            .data$bias_uns_setting == !!bias_uns_setting_curr,
+            .data$bw_extra == !!bw_extra_curr
+          )
+
+        p <- ggplot() +
+          geom_area(
+            data = dens_tbl_curr,
+            mapping = aes(x = F1, y = density, colour = condition, fill = condition),
+            alpha = 0.18,
+            position = "identity"
+          ) +
+          geom_line(
+            data = dens_tbl_curr,
+            mapping = aes(x = F1, y = density, colour = condition),
+            linewidth = 0.25
+          ) +
+          geom_rug(
+            data = rug_tbl_curr,
+            aes(x = F1, colour = condition),
+            sides = "b",
+            alpha = 0.25,
+            linewidth = 0.15
+          ) +
+          facet_grid(rows = vars(.data$prob_response), scales = "free_x") +
+          scale_y_sqrt() +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy", minor = "none") +
+          theme(
+            panel.background = element_rect(fill = "white", colour = NA),
+            plot.background = element_rect(fill = "white", colour = NA),
+            legend.position = "bottom",
+            strip.text.y = element_text(angle = 0)
+          ) +
+          coord_cartesian(ylim = c(0, 1)) +
+          scale_colour_manual(
+            values = c(.simMiscGetStimColVec(), col_vec_bw_curr)
+          ) +
+          labs(
+            title = paste0(
+              "Raw thresholds: fixed extra bandwidth = ",
+              format_bw_lab(bw_extra_curr),
+              " (", transformation_curr,
+              ", mean_pos_setting = ", mean_pos_setting_curr,
+              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+            ),
+            x = "Marker expression",
+            y = "Density, square-root scale",
+            colour = "Core bandwidth",
+            fill = NULL,
+            linetype = "Threshold summary"
+          ) +
+          geom_vline(
+            data = threshold_tbl_curr,
+            mapping = aes(
+              xintercept = threshold,
+              colour = bw_core_lab,
+              group = interaction(bw_core_lab, iter, sample)
+            ),
+            linewidth = 0.25,
+            alpha = 0.22
+          ) +
+          geom_vline(
+            data = threshold_tbl_curr_med_iqr,
+            aes(
+              xintercept = threshold,
+              colour = bw_core_lab,
+              linetype = threshold_stat
+            ),
+            linewidth = 0.45
+          ) +
+          scale_linetype_manual(
+            values = c(
+              "iqr_lower" = "dashed",
+              "median" = "solid",
+              "iqr_upper" = "dashed"
+            ),
+            breaks = c("iqr_lower", "median", "iqr_upper"),
+            labels = c("IQR lower", "Median", "IQR upper")
+          )
+
+        path_p <- projr::projr_path_get(
+          "cache",
+          "sim",
+          "bw",
+          "freq_bs",
+          "adaptive",
+          "thresholds",
+          "raw",
+          "fixed_extra_vary_core",
+          safe_file_lab(transformation_curr),
+          paste0("bias_uns_", safe_file_lab(bias_uns_setting_curr)),
+          paste0(
+            "threshold_mean_pos_setting_",
+            safe_file_lab(mean_pos_setting_curr),
+            "_bw_extra_",
+            format_bw_file(bw_extra_curr),
+            ".png"
+          )
+        )
+        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+        ggsave(
+          filename = path_p,
+          plot = p,
+          width = 14,
+          height = 22,
+          units = "cm"
+        )
+      }
+    }
+  }
+}
+```
+
+## Threshold summary table
+
+```{r}
+#| label: threshold-summary
+summary_tbl <- bw_tbl_results_raw |>
+  dplyr::group_by(
+    dplyr::pick(dplyr::any_of(colnames(sim_grid)))
+  ) |>
+  dplyr::summarise(
+    threshold_min = min(threshold, na.rm = TRUE),
+    threshold_max = max(threshold, na.rm = TRUE),
+    threshold_median = stats::median(threshold, na.rm = TRUE),
+    threshold_iqr_lower = stats::quantile(threshold, 0.25, na.rm = TRUE),
+    threshold_iqr_upper = stats::quantile(threshold, 0.75, na.rm = TRUE),
+    threshold_sd = stats::sd(threshold, na.rm = TRUE),
+    threshold_mad = stats::mad(threshold, na.rm = TRUE),
+    threshold_iqr_length = .data$threshold_iqr_upper - .data$threshold_iqr_lower,
+    propBsEst_median = stats::median(propBsEst, na.rm = TRUE),
+    propBsEst_median_diff = propBsEst_median - unique(prob_response),
+    propBsEst_median_diff_rel =
+      (propBsEst_median - unique(prob_response)) / unique(prob_response),
+    .groups = "drop"
+  )
+
+saveRDS(
+  summary_tbl,
+  file = projr::projr_path_get(
+    "cache", "sim", "bw", "freq_bs", "adaptive", "summary_tbl.rds"
+  )
+)
+```
+
+```{r}
+summary_tbl |>
+  dplyr::select(
+    transformation, bias_uns_setting, bias_uns,
+    mean_pos_setting, bw_core, bw_extra, threshold_sd,
+    propBsEst_median_diff_rel
+  ) |>
+  dplyr::mutate(dplyr::across(where(is.numeric), ~ signif(.x, 3))) |>
+  dplyr::arrange(threshold_sd) |>
+  dplyr::mutate(
+    threshold_sd_rank = dplyr::dense_rank(threshold_sd)
+  ) |>
+  dplyr::group_by(
+    transformation, bias_uns_setting, bias_uns,
+    mean_pos_setting, bw_core, bw_extra
+  ) |>
+  dplyr::summarise(
+    mean_threshold_sd_rank = mean(threshold_sd_rank, na.rm = TRUE),
+    mean_abs_rel_error = mean(abs(propBsEst_median_diff_rel), na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(transformation, bias_uns_setting, mean_threshold_sd_rank) |>
+  knitr::kable()
 ```
