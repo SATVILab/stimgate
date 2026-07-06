@@ -325,11 +325,11 @@ bw_list_raw_mtd <- progressr::with_progress({
       out <- tryCatch(
         {
           sim_res <- stimgate:::.simBandwidthEstBwDirect(
-            nSample = 1,
+            nSample = 10,
             nMarker = 1,
             nCondition = 2,
             nCluster = 2,
-            nIter = 1,
+            nIter = 5,
             biasUns = bias_uns,
             bwMtd = bw_mtd,
             bwFallback = bw_fallback,
