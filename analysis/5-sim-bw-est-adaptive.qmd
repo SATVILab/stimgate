@@ -1,5 +1,5 @@
 ---
-title: Simulate best bandwidth
+title: Simulate best adaptive bandwidth
 format:
   html:
     embed-resources: true
@@ -12,9 +12,9 @@ format:
 library(ggplot2)
 library(tibble)
 library(furrr)
-library(progressr) 
+library(progressr)
 
-# Find the build directory root
+# Find the build directory root.
 root_dir <- projr::projr_path_get("project")
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
@@ -31,35 +31,43 @@ if (
 }
 ```
 
-### Checking what the estimators actually estimate
+### Checking what the adaptive estimators actually estimate
 
 Get the parameters over which we simulate.
 
-We mainly need to consider two variations - whether the number of parent population cells is large or small, and whether the size of the responding population is large enough to impact the estimator.
-We can also vary the amount of separation, I suppose.
+We mainly need to consider two variations: whether the number of parent population cells is large or small, and whether the size of the responding population is large enough to impact the estimator. We can also vary the amount of separation.
 
-We'll need to vary over a range of parent population sizes, however, as that will tell us how the estimator behaves over the most crucial dimension (apart from the actual transformation, of course).
+We'll vary over a range of parent population sizes, as that tells us how the estimator behaves over the most important dimension apart from the transformation.
 
-Initially, we will ignore setting maximum/minimum number of cells.
+For the adaptive estimator, the output has separate bandwidths for the background-core and high-expression-extra components, and those are estimated separately for the stimulated and unstimulated samples. The collation therefore works with four bandwidth columns:
+
+- `bw_uns_core`
+- `bw_stim_core`
+- `bw_uns_extra`
+- `bw_stim_extra`
 
 ```{r}
 #| label: actual-settings
-# simulation settings
-n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)[c(1, 3, 5, 7)]
+# Simulation settings.
+n_cell_stim_vec <- c(
+  1e3, 2e3, 5e3, 1e4, 2e4, 5e4,
+  1e5, 2e5, 5e5, 1e6, 2e6, 5e6
+)[c(1, 3, 5, 7)]
 prob_response_vec <- c(0.002, 0.2)
 mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
 
 transformation_vec <- c("gaussian", "gamma", "skew")
 mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 
-# bandwidth settings
-bandwidth_method_vec <- c(
-  "hpi0Norm", "hpi1Norm", "hpi2Norm", "hpi3Norm"
-  )
+# Adaptive core/extra bandwidths are only produced for the normalised methods.
+# Keep the hpi methods used in the norm QMD, but exclude hpi0 as there.
+bandwidth_method_vec <- c("hpi1Norm", "hpi2Norm", "hpi3Norm")
 
-# set this later
-bandwidth_ncell_upper_vec <- c(5e2, 1e3, 2.5e3, 1e4, 5e3, 1e4, 2e4, 5e4, Inf)
+bandwidth_ncell_upper_vec <- c(
+  5e2, 1e3, 2.5e3, 5e3, 1e4, 2e4, 5e4, Inf
+)
 bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
+
 bias_uns_settings_tbl <- tibble::tribble(
   ~bias_uns_setting, ~transformation, ~bias_uns,
   "none", "gaussian", 0,
@@ -79,8 +87,9 @@ bias_uns_settings_tbl <- tibble::tribble(
     )
   ) |>
   dplyr::filter(
-    bias_uns_setting == "low"
+    .data$bias_uns_setting == "low"
   )
+
 bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 ```
 
@@ -105,74 +114,119 @@ sim_grid <- tidyr::expand_grid(
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
+  ) |>
+  dplyr::arrange(
+    .data$n_cell,
+    dplyr::desc(.data$prob_response),
+    .data$transformation,
+    .data$mean_pos_setting,
+    .data$bw_mtd,
+    .data$bw_ncell_upper
   )
-
-sim_grid <- sim_grid |>
-  dplyr::arrange(n_cell, dplyr::desc(prob_response))
 
 if (.isDev()) {
   set.seed(3)
   sim_grid <- sim_grid |>
     dplyr::filter(
-      n_cell %in% c(5e3, 1e4, 2e4),
-      prob_response == 0.002,
-      mean_pos_setting == "high",
-      transformation %in% transformation_vec,
-      grepl("hpi1", bw_mtd)
+      .data$n_cell %in% c(5e3, 1e4, 2e4),
+      .data$prob_response == 0.002,
+      .data$mean_pos_setting == "high",
+      .data$transformation %in% transformation_vec,
+      grepl("hpi1", .data$bw_mtd)
     ) |>
     dplyr::sample_n(5)
 }
+
 sim_grid
 print(paste0("Performing ", nrow(sim_grid), " simulations"))
 
 bw_fallback <- 0.23482348792138919129198282389
 ```
 
-### Manual loop for debugging
+A loop we only run when we want to see why particular runs failed.
 
 ```{r}
-#| label: bw-manual-loop
+#| label: bw-estimate-loop
 #| eval: false
 devtools::load_all()
 bw_list_raw_loop <- vector("list", nrow(sim_grid))
 
-sim_grid <- sim_grid |> dplyr::filter(sim_id == 301)
-set.seed(4)
 for (i in seq_len(nrow(sim_grid))) {
-
   settings_row <- paste0(
-    "trans = ",
-    sim_grid$transformation[i],
-    " | prob = ",
-    sim_grid$prob_response[i],
-    " | n_cell = ",
-    sim_grid$n_cell[i],
-    " | mean = ",
-    sim_grid$mean_pos[i],
-    " | bw_mtd = ",
-    sim_grid$bw_mtd[i],
-    " | bw_ncell_upper = ",
-    sim_grid$bw_ncell_upper[i],
-    " | bias_setting = ",
-    sim_grid$bias_uns_setting[i],
-    " | bias = ",
-    sim_grid$bias_uns[i],
-    " | sim_id = ",
-    sim_grid$sim_id[i]
+    "trans = ", sim_grid$transformation[i],
+    " | prob = ", sim_grid$prob_response[i],
+    " | n_cell = ", sim_grid$n_cell[i],
+    " | mean = ", sim_grid$mean_pos[i],
+    " | bw_mtd = ", sim_grid$bw_mtd[i],
+    " | bw_ncell_upper = ", sim_grid$bw_ncell_upper[i],
+    " | bias_uns_setting = ", sim_grid$bias_uns_setting[i],
+    " | bias_uns = ", sim_grid$bias_uns[i],
+    " | sim_id = ", sim_grid$sim_id[i]
   )
-  message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
+
   message("Running: ", settings_row)
   bw_list_raw_loop[[i]] <- .simBandwidthEstBwDirectAdaptive(
-    nSample = 5L,
-    nIter = 5L,
-    transformation = sim_grid$transformation[i],
-    probResponse = sim_grid$prob_response[i],
-    nCellStim = sim_grid$n_cell[i],
-    meanPos = sim_grid$mean_pos[i],
+    nSample = if (.isDev()) 1L else 5L,
+    nMarker = 1L,
+    nCondition = 2L,
+    nCluster = 2L,
+    nIter = if (.isDev()) 1L else 5L,
+    biasUns = sim_grid$bias_uns[i],
     bwMtd = sim_grid$bw_mtd[i],
-    biasUns = sim_grid$bias_uns[i]
-  )
+    bwMin = -Inf,
+    bwMax = Inf,
+    bwNcellMax = sim_grid$bw_ncell_upper[i],
+    bwFallback = bw_fallback,
+    bwCluster = 0.5,
+    nCellStim = sim_grid$n_cell[i],
+    probResponse = sim_grid$prob_response[i],
+    probExact = TRUE,
+    meanPos = sim_grid$mean_pos[i],
+    transformation = sim_grid$transformation[i],
+    backgroundRelativeToResponse = 0.2,
+    ncellUnsRelativeToStim = 1,
+    covEvMin = 1.5,
+    covEvMax = 1.5,
+    tolClust = NULL,
+    summarise = FALSE
+  ) |>
+    dplyr::mutate(
+      transformation = sim_grid$transformation[i],
+      prob_response = sim_grid$prob_response[i],
+      n_cell = sim_grid$n_cell[i],
+      mean_pos_setting = sim_grid$mean_pos_setting[i],
+      mean_pos = sim_grid$mean_pos[i],
+      bw_mtd = sim_grid$bw_mtd[i],
+      bw_ncell_upper = sim_grid$bw_ncell_upper[i],
+      bias_uns_setting = sim_grid$bias_uns_setting[i],
+      bias_uns = sim_grid$bias_uns[i],
+      sim_id = sim_grid$sim_id[i],
+      error_message = NA_character_
+    ) |>
+    dplyr::select(
+      transformation,
+      prob_response,
+      n_cell,
+      mean_pos_setting,
+      mean_pos,
+      bw_mtd,
+      bw_ncell_upper,
+      bias_uns_setting,
+      bias_uns,
+      sim_id,
+      dplyr::everything()
+    )
+
+  message("Completed: ", settings_row)
 }
+
+dir.create(
+  dirname(projr::projr_path_get(
+    "cache", "sim", "bw", "est", "adaptive", "bw_list_raw_loop.rds"
+  )),
+  recursive = TRUE,
+  showWarnings = FALSE
+)
 
 saveRDS(
   bw_list_raw_loop,
@@ -188,19 +242,53 @@ saveRDS(
 
 bw_list_raw_loop |>
   purrr::list_rbind() |>
+  dplyr::group_by(
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos_setting,
+    mean_pos,
+    bw_mtd,
+    bw_ncell_upper,
+    bias_uns_setting,
+    bias_uns,
+    chnl,
+    n_cell_stim,
+    n_cell_uns
+  ) |>
+  dplyr::summarise(
+    n_est_uns_core = sum(is.finite(.data$bw_uns_core)),
+    n_est_stim_core = sum(is.finite(.data$bw_stim_core)),
+    n_est_uns_extra = sum(is.finite(.data$bw_uns_extra)),
+    n_est_stim_extra = sum(is.finite(.data$bw_stim_extra)),
+    mean_bw_uns_core = mean(.data$bw_uns_core, na.rm = TRUE),
+    mean_bw_stim_core = mean(.data$bw_stim_core, na.rm = TRUE),
+    mean_bw_uns_extra = mean(.data$bw_uns_extra, na.rm = TRUE),
+    mean_bw_stim_extra = mean(.data$bw_stim_extra, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::select(
+    transformation,
+    bw_mtd,
+    bw_ncell_upper,
+    bias_uns_setting,
+    bias_uns,
+    dplyr::starts_with("n_est"),
+    dplyr::starts_with("mean_bw")
+  ) |>
   print(width = Inf)
 ```
 
-### Parallel processing
+Run the simulations in parallel, with progress reporting.
 
 ```{r}
-#| label: bw-manual-parallel
+#| label: bw-estimate-parallel
 #| results: hide
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
 
-# 1. Setup paths
+# 1. Setup paths.
 path_progress_file <- projr::projr_path_get(
   "cache",
   "log",
@@ -214,7 +302,8 @@ path_progress_file <- projr::projr_path_get(
 dir_progress <- dirname(path_progress_file)
 dir_jobs <- file.path(dir_progress, "jobs")
 
-# 2. Clean up previous progress file and the jobs subdirectory
+# 2. Clean up previous progress file and the jobs subdirectory.
+dir.create(dir_progress, recursive = TRUE, showWarnings = FALSE)
 if (file.exists(path_progress_file)) {
   file.remove(path_progress_file)
 }
@@ -223,13 +312,12 @@ if (dir.exists(dir_jobs)) {
 }
 dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
 
-# 3. Setup parallel plan
+# 3. Setup parallel plan.
 future::plan(
   future::multisession,
   workers = max(1, .simGetCores())
 )
 
-# Total number of iterations
 total_sims <- nrow(sim_grid)
 
 bw_list_raw <- progressr::with_progress({
@@ -248,36 +336,31 @@ bw_list_raw <- progressr::with_progress({
         " | mean = ", mean_pos,
         " | bw_mtd = ", bw_mtd,
         " | bw_ncell_upper = ", bw_ncell_upper,
-        " | bias_setting = ", bias_uns_setting,
-        " | bias = ", bias_uns,
+        " | bias_uns_setting = ", bias_uns_setting,
+        " | bias_uns = ", bias_uns,
         " | sim_id = ", sim_id
       )
 
-      # Define file markers for this specific simulation
-      file_running   <- file.path(dir_jobs, paste0("running-", sim_id))
+      file_running <- file.path(dir_jobs, paste0("running-", sim_id))
       file_completed <- file.path(dir_jobs, paste0("completed-", sim_id))
-      file_error     <- file.path(dir_jobs, paste0("error-", sim_id))
+      file_error <- file.path(dir_jobs, paste0("error-", sim_id))
 
-      # Helper function to recalculate state and update progress.txt
       update_progress_summary <- function() {
-        # List all generated status files
         all_job_files <- list.files(dir_jobs, full.names = FALSE)
-        
-        n_running   <- sum(grepl("^running-", all_job_files))
+
+        n_running <- sum(grepl("^running-", all_job_files))
         n_completed <- sum(grepl("^completed-", all_job_files))
-        n_error     <- sum(grepl("^error-", all_job_files))
-        n_done      <- n_completed + n_error
-        
-        # Extract specifically which ones are currently running
+        n_error <- sum(grepl("^error-", all_job_files))
+        n_done <- n_completed + n_error
+
         running_files <- all_job_files[grepl("^running-", all_job_files)]
-        running_ids   <- sub("^running-", "", running_files)
+        running_ids <- sub("^running-", "", running_files)
         running_list_str <- if (length(running_ids) > 0) {
           paste(running_ids, collapse = ", ")
         } else {
           "None"
         }
 
-        # Build dashboard content
         summary_text <- paste0(
           "========================================\n",
           " SIMULATION PROGRESS DASHBOARD          \n",
@@ -286,60 +369,104 @@ bw_list_raw <- progressr::with_progress({
           "In Progress        : ", n_running, "\n",
           "Completed (Success): ", n_completed, "\n",
           "Completed (Errors) : ", n_error, "\n",
-          "Total Done          : ", n_done, "\n",
+          "Total Done         : ", n_done, "\n",
           "----------------------------------------\n",
           "Currently Running IDs:\n", running_list_str, "\n",
           "========================================\n"
         )
-        
-        # Overwrite the summary file safely
+
         cat(summary_text, file = path_progress_file, append = FALSE)
       }
 
-      # --- START WORKER PROCESS ---
-      # Mark as running
       file.create(file_running)
       update_progress_summary()
 
       out <- tryCatch(
         {
           sim_res <- stimgate:::.simBandwidthEstBwDirectAdaptive(
-            nSample = 5L,
-            nIter = 5L,
-            transformation = transformation,
-            probResponse = prob_response,
-            nCellStim = n_cell,
-            meanPos = mean_pos,
+            nSample = if (.isDev()) 1L else 5L,
+            nMarker = 1L,
+            nCondition = 2L,
+            nCluster = 2L,
+            nIter = if (.isDev()) 1L else 5L,
+            biasUns = bias_uns,
             bwMtd = bw_mtd,
-            biasUns = bias_uns
-          )
+            bwMin = -Inf,
+            bwMax = Inf,
+            bwNcellMax = bw_ncell_upper,
+            bwFallback = bw_fallback,
+            bwCluster = 0.5,
+            nCellStim = n_cell,
+            probResponse = prob_response,
+            probExact = TRUE,
+            meanPos = mean_pos,
+            transformation = transformation,
+            backgroundRelativeToResponse = 0.2,
+            ncellUnsRelativeToStim = 1,
+            covEvMin = 1.5,
+            covEvMax = 1.5,
+            tolClust = NULL,
+            summarise = FALSE
+          ) |>
+            dplyr::mutate(
+              transformation = transformation,
+              prob_response = prob_response,
+              n_cell = n_cell,
+              mean_pos_setting = mean_pos_setting,
+              mean_pos = mean_pos,
+              bw_mtd = bw_mtd,
+              bw_ncell_upper = bw_ncell_upper,
+              bias_uns_setting = bias_uns_setting,
+              bias_uns = bias_uns,
+              sim_id = sim_id,
+              error_message = NA_character_
+            ) |>
+            dplyr::select(
+              transformation,
+              prob_response,
+              n_cell,
+              mean_pos_setting,
+              mean_pos,
+              bw_mtd,
+              bw_ncell_upper,
+              bias_uns_setting,
+              bias_uns,
+              sim_id,
+              dplyr::everything()
+            )
 
-          # Move marker from running to completed
           file.create(file_completed)
-          if (file.exists(file_running)) file.remove(file_running)
-          
+          if (file.exists(file_running)) {
+            file.remove(file_running)
+          }
+
           update_progress_summary()
           p(sprintf("Completed sim_id: %s", sim_id))
 
           sim_res
         },
         error = function(e) {
-          # Move marker from running to error
           file.create(file_error)
-          if (file.exists(file_running)) file.remove(file_running)
-          
+          if (file.exists(file_running)) {
+            file.remove(file_running)
+          }
+
           update_progress_summary()
           p(sprintf("ERROR on sim_id: %s", sim_id))
 
-          # Infer standard derived metadata variable matching function internals
-          calculated_n_cell_uns <- round(n_cell * 1) # matches default ncellUnsRelativeToStim = 1
+          calculated_n_cell_uns <- round(n_cell * 1)
 
           tibble::tibble(
             transformation = transformation,
             prob_response = prob_response,
             n_cell = n_cell,
+            mean_pos_setting = mean_pos_setting,
             mean_pos = mean_pos,
             bw_mtd = bw_mtd,
+            bw_ncell_upper = bw_ncell_upper,
+            bias_uns_setting = bias_uns_setting,
+            bias_uns = bias_uns,
+            sim_id = sim_id,
             iter = NA_integer_,
             sample = NA_character_,
             ind = NA_character_,
@@ -358,8 +485,6 @@ bw_list_raw <- progressr::with_progress({
             shared_grid = list(NA_real_),
             dens_uns_weight = list(NA_real_),
             dens_stim_weight = list(NA_real_),
-            # Added meta-columns helpful for hunting down pipeline failures
-            sim_id = sim_id,
             error_message = e$message
           )
         }
@@ -372,6 +497,14 @@ bw_list_raw <- progressr::with_progress({
 })
 
 future::plan(future::sequential)
+
+dir.create(
+  dirname(projr::projr_path_get(
+    "cache", "sim", "bw", "est", "adaptive", "bw_list_raw.rds"
+  )),
+  recursive = TRUE,
+  showWarnings = FALSE
+)
 
 saveRDS(
   bw_list_raw,
@@ -386,3 +519,281 @@ saveRDS(
 )
 ```
 
+Collate the results.
+
+```{r}
+#| label: bw-estimate-collate
+#| error: true
+#| fig-width: 7
+#| fig-height: 10
+.add_missing_cols <- function(.data, cols) {
+  for (nm in names(cols)) {
+    if (!nm %in% names(.data)) {
+      .data[[nm]] <- cols[[nm]]
+    }
+  }
+  .data
+}
+
+.file_safe <- function(x) {
+  x <- as.character(x)
+  x <- gsub("[^A-Za-z0-9]+", "_", x)
+  x <- gsub("^_+|_+$", "", x)
+  x
+}
+
+if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
+  bw_list_raw_collate <- bw_list_raw
+} else {
+  path_vec <- c(
+    projr::projr_path_get(
+      "cache",
+      "sim",
+      "bw",
+      "est",
+      "adaptive",
+      "bw_list_raw.rds",
+      safe = TRUE
+    ),
+    projr::projr_path_get(
+      "cache",
+      "sim",
+      "bw",
+      "est",
+      "adaptive",
+      "bw_list_raw.rds",
+      safe = FALSE
+    )
+  )
+  path_vec <- path_vec[file.exists(path_vec)]
+  if (length(path_vec) == 0L) {
+    stop("Could not find bw_list_raw.rds. Run the simulation chunk first.")
+  }
+  bw_list_raw_collate <- readRDS(file = path_vec[[1]])
+}
+
+bw_tbl <- if (is.data.frame(bw_list_raw_collate)) {
+  bw_list_raw_collate
+} else {
+  purrr::list_rbind(bw_list_raw_collate)
+}
+
+bw_tbl <- .add_missing_cols(
+  bw_tbl,
+  list(
+    mean_pos_setting = NA_character_,
+    bw_ncell_upper = NA_real_,
+    bias_uns = NA_real_,
+    bias_uns_setting = NA_character_,
+    sim_id = NA_integer_,
+    error_message = NA_character_,
+    bw_uns_core = NA_real_,
+    bw_stim_core = NA_real_,
+    bw_uns_extra = NA_real_,
+    bw_stim_extra = NA_real_
+  )
+)
+
+if (all(is.na(bw_tbl$bias_uns_setting)) && any(!is.na(bw_tbl$bias_uns))) {
+  bw_tbl <- bw_tbl |>
+    dplyr::select(-bias_uns_setting) |>
+    dplyr::left_join(
+      bias_uns_settings_tbl,
+      by = c("transformation", "bias_uns")
+    )
+}
+
+if (all(is.na(bw_tbl$mean_pos_setting)) && any(!is.na(bw_tbl$mean_pos))) {
+  bw_tbl <- bw_tbl |>
+    dplyr::select(-mean_pos_setting) |>
+    dplyr::left_join(
+      mean_pos_settings_tbl,
+      by = c("transformation", "mean_pos")
+    )
+}
+
+bw_tbl <- bw_tbl |>
+  dplyr::filter(!is.na(.data$bias_uns_setting))
+
+if (nrow(bw_tbl) == 0L) {
+  stop("No cached rows contain the current bias_uns settings. Rerun the simulation chunk.")
+}
+
+sim_grid_key_cols <- setdiff(
+  intersect(colnames(sim_grid), colnames(bw_tbl)),
+  "sim_id"
+)
+
+bw_tbl <- bw_tbl |>
+  dplyr::semi_join(
+    sim_grid |>
+      dplyr::select(dplyr::all_of(sim_grid_key_cols)) |>
+      dplyr::distinct(),
+    by = sim_grid_key_cols
+  )
+
+if (nrow(bw_tbl) == 0L) {
+  stop("Cached rows do not match the current simulation grid. Rerun the simulation chunk.")
+}
+
+bw_measure_tbl <- tibble::tribble(
+  ~bw_component, ~bw_condition, ~bw_col,
+  "core", "unstim", "bw_uns_core",
+  "core", "stim", "bw_stim_core",
+  "extra", "unstim", "bw_uns_extra",
+  "extra", "stim", "bw_stim_extra"
+)
+
+bw_tbl_long <- purrr::map_dfr(seq_len(nrow(bw_measure_tbl)), function(i) {
+  bw_component_curr <- bw_measure_tbl$bw_component[[i]]
+  bw_condition_curr <- bw_measure_tbl$bw_condition[[i]]
+  bw_col_curr <- bw_measure_tbl$bw_col[[i]]
+
+  bw_tbl |>
+    dplyr::mutate(
+      bw_component = bw_component_curr,
+      bw_condition = bw_condition_curr,
+      bw_est = .data[[bw_col_curr]]
+    )
+}) |>
+  dplyr::mutate(
+    bw_component = factor(.data$bw_component, levels = c("core", "extra")),
+    bw_condition = factor(.data$bw_condition, levels = c("unstim", "stim"))
+  )
+
+bw_tbl_results <- bw_tbl_long |>
+  dplyr::group_by(
+    dplyr::pick(
+      dplyr::any_of(c(colnames(sim_grid), "bw_component", "bw_condition"))
+    )
+  ) |>
+  dplyr::summarise(
+    n_est = sum(is.finite(.data$bw_est)),
+    mean_bw = dplyr::if_else(
+      any(is.finite(.data$bw_est)),
+      mean(.data$bw_est, na.rm = TRUE),
+      NA_real_
+    ),
+    .groups = "drop"
+  ) |>
+  dplyr::select(
+    dplyr::any_of(c(colnames(sim_grid), "bw_component", "bw_condition")),
+    n_est,
+    mean_bw
+  ) |>
+  dplyr::mutate(
+    bw_mtd_base = gsub("Norm$", "", .data$bw_mtd),
+    bw_mtd_norm = grepl("Norm$", .data$bw_mtd),
+    bw_mtd_norm = ifelse(.data$bw_mtd_norm, "norm", "non-norm")
+  )
+
+bw_tbl_results |>
+  dplyr::group_by(.data$bw_component, .data$bw_condition) |>
+  dplyr::summarise(
+    n_grid_rows = dplyr::n(),
+    n_grid_rows_with_estimates = sum(is.finite(.data$mean_bw)),
+    .groups = "drop"
+  ) |>
+  print(width = Inf)
+
+dir_results <- projr::projr_path_get(
+  "cache",
+  "sim",
+  "bw",
+  "est",
+  "adaptive"
+)
+dir.create(dir_results, recursive = TRUE, showWarnings = FALSE)
+
+saveRDS(
+  bw_tbl_long,
+  file = file.path(dir_results, "bw_tbl_long.rds")
+)
+saveRDS(
+  bw_tbl_results,
+  file = file.path(dir_results, "bw_tbl_results.rds")
+)
+
+for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
+  for (bias_uns_setting_curr in unique(bw_tbl_results$bias_uns_setting)) {
+    for (bw_ncell_upper_curr in unique(bw_tbl_results$bw_ncell_upper)) {
+      for (bw_component_curr in levels(bw_tbl_results$bw_component)) {
+        for (bw_condition_curr in levels(bw_tbl_results$bw_condition)) {
+          plot_tbl <- bw_tbl_results |>
+            dplyr::filter(
+              .data$mean_pos_setting == !!mean_pos_setting_curr,
+              .data$bias_uns_setting == !!bias_uns_setting_curr,
+              .data$bw_ncell_upper == !!bw_ncell_upper_curr,
+              .data$bw_component == !!bw_component_curr,
+              .data$bw_condition == !!bw_condition_curr
+            )
+
+          if (nrow(plot_tbl) == 0L) {
+            next
+          }
+
+          p <- ggplot(
+            plot_tbl,
+            aes(x = .data$n_cell, y = .data$mean_bw, colour = .data$bw_mtd_base)
+          ) +
+            geom_line(mapping = aes(linetype = .data$bw_mtd_norm)) +
+            geom_point() +
+            scale_x_log10() +
+            facet_grid(
+              transformation ~ prob_response,
+              scales = "free_y"
+            ) +
+            labs(
+              title = paste0(
+                "Mean position setting: ", mean_pos_setting_curr,
+                ", bias_uns_setting: ", bias_uns_setting_curr,
+                ", bw_ncell_upper: ", bw_ncell_upper_curr,
+                ", component: ", bw_component_curr,
+                ", condition: ", bw_condition_curr
+              ),
+              x = "Number of cells",
+              y = "Estimated bandwidth",
+              colour = "Bandwidth method",
+              linetype = "Bandwidth method type"
+            ) +
+            cowplot::theme_cowplot() +
+            cowplot::background_grid(major = "xy") +
+            theme(
+              panel.background = element_rect(fill = "white", colour = NA),
+              plot.background = element_rect(fill = "white", colour = NA),
+              legend.position = "bottom"
+            ) +
+            scale_colour_manual(
+              values = .simBwMtdColVec,
+              drop = FALSE
+            )
+
+          path_plot <- file.path(
+            dir_results,
+            "plots",
+            paste0(
+              "bw_estimate_meanpos_setting_", .file_safe(mean_pos_setting_curr),
+              "_bias_uns_", .file_safe(bias_uns_setting_curr),
+              "_ncell_upper_", .file_safe(bw_ncell_upper_curr),
+              "_component_", .file_safe(bw_component_curr),
+              "_condition_", .file_safe(bw_condition_curr),
+              ".png"
+            )
+          )
+          dir.create(dirname(path_plot), recursive = TRUE, showWarnings = FALSE)
+
+          ggsave(
+            filename = path_plot,
+            plot = p,
+            width = 12,
+            height = 20,
+            units = "cm"
+          )
+
+          print(p)
+        }
+      }
+    }
+  }
+}
+```
