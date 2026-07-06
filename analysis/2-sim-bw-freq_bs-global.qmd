@@ -266,28 +266,44 @@ Run the simulations in parallel, with progress reporting.
 ```{r}
 #| label: bw-manual-parallel
 #| results: hide
-# Activate global progress bars in your console
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
 
+# 1. Setup paths
 path_progress_file <- projr::projr_path_get(
-  "cache", "log",
-  "analysis", "sim", "bw", "freq_bs", "global", "progress.txt"
+  "cache",
+  "log",
+  "analysis",
+  "sim",
+  "bw",
+  "freq_bs",
+  "global",
+  "progress.txt"
 )
+dir_progress <- dirname(path_progress_file)
+dir_jobs <- file.path(dir_progress, "jobs")
+
+# 2. Clean up previous progress file and the jobs subdirectory
 if (file.exists(path_progress_file)) {
   file.remove(path_progress_file)
 }
+if (dir.exists(dir_jobs)) {
+  unlink(dir_jobs, recursive = TRUE, force = TRUE)
+}
+dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
 
-# Set up the parallel backend
+# 3. Setup parallel plan
 future::plan(
   future::multisession,
   workers = max(1, future::availableCores() - 1)
 )
 
-# Wrap the parallel execution in with_progress()
+# Total number of iterations
+total_sims <- nrow(sim_grid)
+
 bw_list_raw <- progressr::with_progress({
-  p <- progressr::progressor(steps = nrow(sim_grid))
+  p <- progressr::progressor(steps = total_sims)
 
   furrr::future_pmap(
     sim_grid,
@@ -323,9 +339,53 @@ bw_list_raw <- progressr::with_progress({
         " | sim_id = ", sim_id
       )
 
-      log_msg <- paste0("Running: ", settings_row, "
-")
-      cat(log_msg, file = path_progress_file, append = TRUE)
+      # Define file markers for this specific simulation
+      file_running <- file.path(dir_jobs, paste0("running-", sim_id))
+      file_completed <- file.path(dir_jobs, paste0("completed-", sim_id))
+      file_error <- file.path(dir_jobs, paste0("error-", sim_id))
+
+      # Helper function to recalculate state and update progress.txt
+      update_progress_summary <- function() {
+        # List all generated status files
+        all_job_files <- list.files(dir_jobs, full.names = FALSE)
+
+        n_running <- sum(grepl("^running-", all_job_files))
+        n_completed <- sum(grepl("^completed-", all_job_files))
+        n_error <- sum(grepl("^error-", all_job_files))
+        n_done <- n_completed + n_error
+
+        # Extract specifically which ones are currently running
+        running_files <- all_job_files[grepl("^running-", all_job_files)]
+        running_ids <- sub("^running-", "", running_files)
+        running_list_str <- if (length(running_ids) > 0) {
+          paste(running_ids, collapse = ", ")
+        } else {
+          "None"
+        }
+
+        # Build dashboard content
+        summary_text <- paste0(
+          "========================================\n",
+          " SIMULATION PROGRESS DASHBOARD          \n",
+          "========================================\n",
+          "Total Simulations  : ", total_sims, "\n",
+          "In Progress        : ", n_running, "\n",
+          "Completed (Success): ", n_completed, "\n",
+          "Completed (Errors) : ", n_error, "\n",
+          "Total Done          : ", n_done, "\n",
+          "----------------------------------------\n",
+          "Currently Running IDs:\n", running_list_str, "\n",
+          "========================================\n"
+        )
+
+        # Overwrite the summary file safely
+        cat(summary_text, file = path_progress_file, append = FALSE)
+      }
+
+      # --- START WORKER PROCESS ---
+      # Mark as running
+      file.create(file_running)
+      update_progress_summary()
 
       out <- tryCatch(
         {
@@ -390,23 +450,21 @@ bw_list_raw <- progressr::with_progress({
               dplyr::everything()
             )
 
-          cat(
-            "Completed: ",
-            settings_row,
-            "
-",
-            file = path_progress_file,
-            append = TRUE
-          )
+          # Move marker from running to completed
+          file.create(file_completed)
+          if (file.exists(file_running)) file.remove(file_running)
 
+          update_progress_summary()
           p(sprintf("Completed sim_id: %s", sim_id))
 
           sim_res
         },
         error = function(e) {
-          err_msg <- paste0("Error [", settings_row, "]: ", e$message, "
-")
-          cat(err_msg, file = path_progress_file, append = TRUE)
+          # Move marker from running to error
+          file.create(file_error)
+          if (file.exists(file_running)) file.remove(file_running)
+
+          update_progress_summary()
           p(sprintf("ERROR on sim_id: %s", sim_id))
 
           tibble::tibble(
