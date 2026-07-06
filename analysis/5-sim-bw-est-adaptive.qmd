@@ -133,8 +133,11 @@ bw_fallback <- 0.23482348792138919129198282389
 ```{r}
 #| label: bw-manual-loop
 #| eval: false
+devtools::load_all()
 bw_list_raw_loop <- vector("list", nrow(sim_grid))
-   
+
+sim_grid <- sim_grid |> dplyr::filter(sim_id == 301)
+set.seed(4)
 for (i in seq_len(nrow(sim_grid))) {
 
   settings_row <- paste0(
@@ -160,8 +163,8 @@ for (i in seq_len(nrow(sim_grid))) {
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
   message("Running: ", settings_row)
   bw_list_raw_loop[[i]] <- .simBandwidthEstBwDirectAdaptive(
-    nSample = 1L,
-    nIter = 1L,
+    nSample = 5L,
+    nIter = 5L,
     transformation = sim_grid$transformation[i],
     probResponse = sim_grid$prob_response[i],
     nCellStim = sim_grid$n_cell[i],
@@ -177,7 +180,7 @@ saveRDS(
     "cache",
     "sim",
     "bw",
-    "freq_bs",
+    "est",
     "adaptive",
     "bw_list_raw_loop.rds"
   )
@@ -299,7 +302,7 @@ bw_list_raw <- progressr::with_progress({
 
       out <- tryCatch(
         {
-          sim_res <- .simBandwidthEstBwDirectAdaptive(
+          sim_res <- stimgate:::.simBandwidthEstBwDirectAdaptive(
             nSample = 5L,
             nIter = 5L,
             transformation = transformation,
@@ -403,7 +406,7 @@ if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
       "cache",
       "sim",
       "bw",
-      "freq_bs",
+      "est",
       "adaptive",
       "bw_list_raw.rds",
       safe = TRUE
@@ -412,7 +415,7 @@ if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
       "cache",
       "sim",
       "bw",
-      "freq_bs",
+      "est",
       "adaptive",
       "bw_list_raw.rds",
       safe = FALSE
@@ -606,7 +609,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
       "cache",
       "sim",
       "bw",
-      "freq_bs",
+      "est",
       "adaptive",
       "est_median",
       paste0(
@@ -689,7 +692,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
       "cache",
       "sim",
       "bw",
-      "freq_bs",
+      "est",
       "adaptive",
       "est_raw",
       paste0(
@@ -772,7 +775,7 @@ for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
     "cache",
     "sim",
     "bw",
-    "freq_bs",
+    "est",
     "adaptive",
     "heatmap",
     paste0("core_extra_heatmap_bias_uns_", bias_uns_setting_curr, ".png")
@@ -851,7 +854,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
       "cache",
       "sim",
       "bw",
-      "freq_bs",
+      "est",
       "adaptive",
       "thresholds",
       paste0(
