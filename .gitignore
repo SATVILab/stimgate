@@ -22,14 +22,12 @@ docs/
 
 inst/doc
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
-analysis/archive_manual/**
-analysis/_raw_data/**
-analysis/_output/**
 analysis/docs/**
+_raw_data/**
 _tmp/**
+_output/**
 AGENTS.md
 CHANGES_SUMMARY.md
-analysis/_archive/**
 # End of projr section
 
 _tmp/log/sbatch/projr_build_output
@@ -54,4 +52,6 @@ _tmp/log/sbatch/dev-5-sim-bw-est-adaptive
 
 _tmp/log/sbatch/dev
 _tmp/log/sbatch/install
+
+_tmp/log/sbatch/dev-1-sim-trans
 
