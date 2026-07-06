@@ -197,6 +197,7 @@ A loop we only run when we want to see why particular runs failed.
 ```{r}
 #| label: bw-manual-loop
 #| eval: false
+devtools::load_all()
 bw_list_raw <- vector("list", nrow(sim_grid))
 
 for (i in seq_len(nrow(sim_grid))) {

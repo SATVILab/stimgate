@@ -32,7 +32,7 @@
   covEvMax = 2,
   excMin = TRUE,
   capStimRange = TRUE,
-  summarise = TRUE
+  summarise = FALSE
 )
 }
 \description{

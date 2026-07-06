@@ -129,6 +129,7 @@ A loop we only run when we want to see why particular runs failed.
 ```{r}
 #| label: bw-estimate-loop
 #| eval: false
+devtools::load_all()
 bw_list_raw_mtd_loop <- lapply(seq_len(nrow(sim_grid)), function(i) {
   NULL
 })
