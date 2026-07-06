@@ -77,6 +77,10 @@ calc_skew <- function(x, epsilon = 0.5, delta = 1) {
   if (!nzchar(n_tasks)) {
     return(future::availableCores() - 1L)
   }
+  n_tasks <- as.integer(n_tasks)
+  if (is.na(n_tasks)) {
+    return(future::availableCores() - 1L)
+  }
   job_name <- Sys.getenv("SLURM_JOB_NAME") |>
     as.character()
   if (!grepl("VScode$", job_name)) {
