@@ -111,6 +111,7 @@ sim_grid <- sim_grid |>
   dplyr::arrange(n_cell, dplyr::desc(prob_response))
 
 if (.isDev()) {
+  set.seed(3)
   sim_grid <- sim_grid |>
     dplyr::filter(
       n_cell %in% c(5e3, 1e4, 2e4),
@@ -118,7 +119,8 @@ if (.isDev()) {
       mean_pos_setting == "high",
       transformation %in% transformation_vec,
       grepl("hpi1", bw_mtd)
-    ) 
+    ) |>
+    dplyr::sample_n(5)
 }
 sim_grid
 print(paste0("Performing ", nrow(sim_grid), " simulations"))
@@ -170,7 +172,7 @@ for (i in seq_len(nrow(sim_grid))) {
 }
 
 saveRDS(
-  bw_list_raw,
+  bw_list_raw_loop,
   file = projr::projr_path_get(
     "cache",
     "sim",
@@ -181,7 +183,7 @@ saveRDS(
   )
 )
 
-bw_list_raw |>
+bw_list_raw_loop |>
   purrr::list_rbind() |>
   print(width = Inf)
 ```
@@ -195,6 +197,7 @@ if (interactive()) {
   progressr::handlers(global = TRUE)
 }
 
+# 1. Setup paths
 path_progress_file <- projr::projr_path_get(
   "cache",
   "log",
@@ -204,123 +207,155 @@ path_progress_file <- projr::projr_path_get(
   "adaptive",
   "progress.txt"
 )
-dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+dir_progress <- dirname(path_progress_file)
+dir_jobs <- file.path(dir_progress, "jobs")
+
+# 2. Clean up previous progress file and the jobs subdirectory
 if (file.exists(path_progress_file)) {
   file.remove(path_progress_file)
 }
+if (dir.exists(dir_jobs)) {
+  unlink(dir_jobs, recursive = TRUE, force = TRUE)
+}
+dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
 
+# 3. Setup parallel plan
 future::plan(
   future::multisession,
   workers = max(1, future::availableCores() - 1)
 )
 
+# Total number of iterations
+total_sims <- nrow(sim_grid)
+
 bw_list_raw <- progressr::with_progress({
-  p <- progressr::progressor(steps = nrow(sim_grid))
+  p <- progressr::progressor(steps = total_sims)
 
   furrr::future_pmap(
     sim_grid,
     function(
-      transformation,
-      prob_response,
-      n_cell,
-      mean_pos_setting,
-      mean_pos,
-      bw_adaptive_core,
-      bw_adaptive_extra,
-      bias_uns_setting,
-      bias_uns,
-      sample_perturbation_sd,
-      condition_perturbation_sd,
-      cluster_perturbation_sd,
-      background_relative_to_response,
-      n_cell_uns_relative_to_stim,
-      sim_id
+      transformation, prob_response, n_cell, mean_pos_setting, mean_pos,
+      bw_mtd, bw_ncell_upper, bias_uns_setting, bias_uns, sim_id
     ) {
       settings_row <- paste0(
         "trans = ", transformation,
         " | prob = ", prob_response,
         " | n_cell = ", n_cell,
         " | mean = ", mean_pos,
-        " | core = ", bw_adaptive_core,
-        " | extra = ", bw_adaptive_extra,
+        " | bw_mtd = ", bw_mtd,
+        " | bw_ncell_upper = ", bw_ncell_upper,
         " | bias_setting = ", bias_uns_setting,
         " | bias = ", bias_uns,
-        " | sample_sd = ", sample_perturbation_sd,
-        " | condition_sd = ", condition_perturbation_sd,
-        " | cluster_sd = ", cluster_perturbation_sd,
-        " | bg_rel = ", background_relative_to_response,
-        " | n_uns_rel = ", n_cell_uns_relative_to_stim,
         " | sim_id = ", sim_id
       )
 
-      cat(paste0("Running: ", settings_row, "\n"), file = path_progress_file, append = TRUE)
+      # Define file markers for this specific simulation
+      file_running   <- file.path(dir_jobs, paste0("running-", sim_id))
+      file_completed <- file.path(dir_jobs, paste0("completed-", sim_id))
+      file_error     <- file.path(dir_jobs, paste0("error-", sim_id))
+
+      # Helper function to recalculate state and update progress.txt
+      update_progress_summary <- function() {
+        # List all generated status files
+        all_job_files <- list.files(dir_jobs, full.names = FALSE)
+        
+        n_running   <- sum(grepl("^running-", all_job_files))
+        n_completed <- sum(grepl("^completed-", all_job_files))
+        n_error     <- sum(grepl("^error-", all_job_files))
+        n_done      <- n_completed + n_error
+        
+        # Extract specifically which ones are currently running
+        running_files <- all_job_files[grepl("^running-", all_job_files)]
+        running_ids   <- sub("^running-", "", running_files)
+        running_list_str <- if (length(running_ids) > 0) {
+          paste(running_ids, collapse = ", ")
+        } else {
+          "None"
+        }
+
+        # Build dashboard content
+        summary_text <- paste0(
+          "========================================\n",
+          " SIMULATION PROGRESS DASHBOARD          \n",
+          "========================================\n",
+          "Total Simulations  : ", total_sims, "\n",
+          "In Progress        : ", n_running, "\n",
+          "Completed (Success): ", n_completed, "\n",
+          "Completed (Errors) : ", n_error, "\n",
+          "Total Done          : ", n_done, "\n",
+          "----------------------------------------\n",
+          "Currently Running IDs:\n", running_list_str, "\n",
+          "========================================\n"
+        )
+        
+        # Overwrite the summary file safely
+        cat(summary_text, file = path_progress_file, append = FALSE)
+      }
+
+      # --- START WORKER PROCESS ---
+      # Mark as running
+      file.create(file_running)
+      update_progress_summary()
 
       out <- tryCatch(
         {
-          sim_res <- .run_manual_adaptive_freq_bs(
+          sim_res <- .simBandwidthEstBwDirectAdaptive(
+            nSample = 5L,
+            nIter = 5L,
             transformation = transformation,
-            prob_response = prob_response,
-            n_cell = n_cell,
-            mean_pos_setting = mean_pos_setting,
-            mean_pos = mean_pos,
-            bw_adaptive_core = bw_adaptive_core,
-            bw_adaptive_extra = bw_adaptive_extra,
-            bias_uns_setting = bias_uns_setting,
-            bias_uns = bias_uns,
-            sample_perturbation_sd = sample_perturbation_sd,
-            condition_perturbation_sd = condition_perturbation_sd,
-            cluster_perturbation_sd = cluster_perturbation_sd,
-            background_relative_to_response = background_relative_to_response,
-            n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim,
-            sim_id = sim_id
+            probResponse = prob_response,
+            nCellStim = n_cell,
+            meanPos = mean_pos,
+            bwMtd = bw_mtd,
+            biasUns = bias_uns
           )
 
-          cat(paste0("Completed: ", settings_row, "\n"), file = path_progress_file, append = TRUE)
+          # Move marker from running to completed
+          file.create(file_completed)
+          if (file.exists(file_running)) file.remove(file_running)
+          
+          update_progress_summary()
           p(sprintf("Completed sim_id: %s", sim_id))
 
           sim_res
         },
         error = function(e) {
-          err_msg <- paste0("Error [", settings_row, "]: ", e$message, "\n")
-          cat(err_msg, file = path_progress_file, append = TRUE)
+          # Move marker from running to error
+          file.create(file_error)
+          if (file.exists(file_running)) file.remove(file_running)
+          
+          update_progress_summary()
           p(sprintf("ERROR on sim_id: %s", sim_id))
+
+          # Infer standard derived metadata variable matching function internals
+          calculated_n_cell_uns <- round(n_cell * 1) # matches default ncellUnsRelativeToStim = 1
 
           tibble::tibble(
             transformation = transformation,
             prob_response = prob_response,
             n_cell = n_cell,
-            mean_pos_setting = mean_pos_setting,
             mean_pos = mean_pos,
-            bw_adaptive_core = bw_adaptive_core,
-            bw_adaptive_extra = bw_adaptive_extra,
-            bias_uns_setting = bias_uns_setting,
-            bias_uns = bias_uns,
-            sample_perturbation_sd = sample_perturbation_sd,
-            condition_perturbation_sd = condition_perturbation_sd,
-            cluster_perturbation_sd = cluster_perturbation_sd,
-            background_relative_to_response = background_relative_to_response,
-            n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim,
-            sim_id = sim_id,
+            bw_mtd = bw_mtd,
             iter = NA_integer_,
-            chnl = NA_character_,
             sample = NA_character_,
             ind = NA_character_,
-            method = NA_character_,
-            propRespTruth = NA_real_,
-            propRespEst = NA_real_,
-            propBsEst = NA_real_,
-            threshold = NA_real_,
-            thresholdOrigin = NA_character_,
-            gateReturnPoint = NA_character_,
-            locGenerated = NA,
-            locGeneratedDirect = NA,
-            locSource = NA_character_,
-            locReason = NA_character_,
-            detailLevel = NA_character_,
-            nCellStim = NA_real_,
-            nCellUns = NA_real_,
-            nPosStim = NA_integer_,
-            nPosUns = NA_integer_,
+            chnl = "F1",
+            n_cell_uns = calculated_n_cell_uns,
+            n_cell_stim = n_cell,
+            n_uns_bw_core = NA_integer_,
+            n_stim_bw_core = NA_integer_,
+            max_dens_x = NA_real_,
+            bw_uns_core = NA_real_,
+            bw_stim_core = NA_real_,
+            bw_uns_extra = NA_real_,
+            bw_stim_extra = NA_real_,
+            threshold_uns = NA_real_,
+            threshold_stim = NA_real_,
+            shared_grid = list(NA_real_),
+            dens_uns_weight = list(NA_real_),
+            dens_stim_weight = list(NA_real_),
+            # Added meta-columns helpful for hunting down pipeline failures
+            sim_id = sim_id,
             error_message = e$message
           )
         }
@@ -340,7 +375,7 @@ saveRDS(
     "cache",
     "sim",
     "bw",
-    "freq_bs",
+    "est",
     "adaptive",
     "bw_list_raw.rds"
   )
