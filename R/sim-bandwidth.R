@@ -69,6 +69,56 @@
   )
 }
 
+
+.simBandwidthFiniteNumeric <- function(x) {
+  x <- suppressWarnings(as.numeric(x)[1])
+  is.finite(x)
+}
+
+.simBandwidthHasAdaptiveSetting <- function(
+  bwAdaptive = FALSE,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL
+) {
+  isTRUE(bwAdaptive) ||
+    .simBandwidthFiniteNumeric(bwAdaptiveCore) ||
+    .simBandwidthFiniteNumeric(bwAdaptiveExtra) ||
+    .simBandwidthFiniteNumeric(bwAdaptiveCrossover)
+}
+
+.simBandwidthAdaptiveBwMtd <- function(
+  bwMtd,
+  bwAdaptive = FALSE,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL
+) {
+  if (is.null(bwMtd) || length(bwMtd) == 0L) {
+    bwMtd <- "hpi1Norm"
+  }
+
+  bwMtd <- as.character(bwMtd)[1]
+
+  if (is.na(bwMtd) || !nzchar(bwMtd)) {
+    bwMtd <- "hpi1Norm"
+  }
+
+  if (
+    .simBandwidthHasAdaptiveSetting(
+      bwAdaptive = bwAdaptive,
+      bwAdaptiveCore = bwAdaptiveCore,
+      bwAdaptiveExtra = bwAdaptiveExtra,
+      bwAdaptiveCrossover = bwAdaptiveCrossover
+    ) &&
+      !grepl("Norm$", bwMtd)
+  ) {
+    bwMtd <- paste0(bwMtd, "Norm")
+  }
+
+  bwMtd
+}
+
 .simBandwidthReadLocDetails <- function(
   pathProject,
   nSample,
@@ -248,8 +298,13 @@
   nIter,
   biasUns,
   bw = NULL,
+  bwAdaptive = FALSE,
+  bwAdaptiveDensityN = NULL,
+  bwAdaptivePadFrac = 0.15,
   bwAdaptiveCore = NULL,
   bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
   bwFallback = "auto",
   bwMin = "auto",
   bwMax = "auto",
@@ -294,6 +349,14 @@
   calcCytPosGates = FALSE,
   calcSinglePosGates = FALSE
 ) {
+  bwMtdGate <- .simBandwidthAdaptiveBwMtd(
+    bwMtd = bwMtd,
+    bwAdaptive = bwAdaptive,
+    bwAdaptiveCore = bwAdaptiveCore,
+    bwAdaptiveExtra = bwAdaptiveExtra,
+    bwAdaptiveCrossover = bwAdaptiveCrossover
+  )
+
   purrr::map_df(seq_len(nIter), function(iterNum) {
     nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
     nCellByCondition <- c(nCellUns, nCellStim)
@@ -375,12 +438,17 @@
       calcSinglePosGates = calcSinglePosGates,
       biasUns = biasUns,
       bw = bw,
+      bwAdaptive = bwAdaptive,
+      bwAdaptiveDensityN = bwAdaptiveDensityN,
+      bwAdaptivePadFrac = bwAdaptivePadFrac,
       bwAdaptiveCore = bwAdaptiveCore,
       bwAdaptiveExtra = bwAdaptiveExtra,
+      bwAdaptiveCrossover = bwAdaptiveCrossover,
+      bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
       bwFallback = bwFallback,
       bwMin = bwMin,
       bwMax = bwMax,
-      bwMtd = bwMtd,
+      bwMtd = bwMtdGate,
       bwAdj = bwAdj,
       bwNcellMin = bwNcellMin,
       bwNcellMax = bwNcellMax,
@@ -535,10 +603,34 @@
         nCellUnsSim = nCellUns,
         biasUns = biasUns,
         bw = if (is.null(bw)) NA_real_ else bw,
+        bwAdaptive = bwAdaptive,
+        bwAdaptiveDensityN = if (is.null(bwAdaptiveDensityN)) {
+          NA_real_
+        } else {
+          bwAdaptiveDensityN
+        },
+        bwAdaptivePadFrac = bwAdaptivePadFrac,
+        bwAdaptiveCore = if (is.null(bwAdaptiveCore)) {
+          NA_real_
+        } else {
+          bwAdaptiveCore
+        },
+        bwAdaptiveExtra = if (is.null(bwAdaptiveExtra)) {
+          NA_real_
+        } else {
+          bwAdaptiveExtra
+        },
+        bwAdaptiveCrossover = if (is.null(bwAdaptiveCrossover)) {
+          NA_real_
+        } else {
+          bwAdaptiveCrossover
+        },
+        bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
         bwFallback = bwFallback,
         bwMin = bwMin,
         bwMax = bwMax,
-        bwMtd = bwMtd,
+        bwMtd = bwMtdGate,
+        bwMtdInput = bwMtd,
         bwAdj = bwAdj,
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
@@ -700,6 +792,13 @@
   nIter,
   biasUns,
   bw = NULL,
+  bwAdaptive = FALSE,
+  bwAdaptiveDensityN = NULL,
+  bwAdaptivePadFrac = 0.15,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
   bwMtd = "hpi1",
   bwMin = NULL,
   bwMax = NULL,
@@ -722,6 +821,14 @@
   tolClust = 1e-7,
   markerToPlot = "MarkerF1" # Specify univariate marker here
 ) {
+  bwMtdGate <- .simBandwidthAdaptiveBwMtd(
+    bwMtd = bwMtd,
+    bwAdaptive = bwAdaptive,
+    bwAdaptiveCore = bwAdaptiveCore,
+    bwAdaptiveExtra = bwAdaptiveExtra,
+    bwAdaptiveCrossover = bwAdaptiveCrossover
+  )
+
   allPlots <- lapply(seq_len(nIter), function(iterNum) {
     # 1. Setup Simulation Parameters
     nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
@@ -796,8 +903,15 @@
       batchList = batchList,
       marker = paste0("MarkerF", seq_len(nMarker)),
       bw = bw,
+      bwAdaptive = bwAdaptive,
+      bwAdaptiveDensityN = bwAdaptiveDensityN,
+      bwAdaptivePadFrac = bwAdaptivePadFrac,
+      bwAdaptiveCore = bwAdaptiveCore,
+      bwAdaptiveExtra = bwAdaptiveExtra,
+      bwAdaptiveCrossover = bwAdaptiveCrossover,
+      bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
       biasUns = biasUns,
-      bwMtd = bwMtd,
+      bwMtd = bwMtdGate,
       bwMin = bwMin,
       bwMax = bwMax,
       bwAdj = bwAdj,
@@ -1118,6 +1232,11 @@
     c(-probResponse, probResponse)
   )
 
+  bwMtdGate <- .simBandwidthAdaptiveBwMtd(
+    bwMtd = bwMtd,
+    bwAdaptive = TRUE
+  )
+
   raw_tbl <- purrr::map_dfr(seq_len(nIter), function(iterNum) {
     outListExperiment <- simCytExperiment(
       nSample = nSample,
@@ -1175,7 +1294,7 @@
         exTblStimThreshold = exTblStimThreshold,
         exTblUnsThreshold = exTblUnsThreshold,
         chnlSettings = list(
-          bwMtd = bwMtd,
+          bwMtd = bwMtdGate,
           bwMin = bwMin,
           bwMax = bwMax,
           bwAdj = bwAdj,
@@ -1210,7 +1329,8 @@
         prob_response = probResponse,
         n_cell = nCellStim,
         mean_pos = meanPos,
-        bw_mtd = bwMtd,
+        bw_mtd = bwMtdGate,
+        bw_mtd_input = bwMtd,
         iter = iterNum,
         sample = as.character(sampleCurr),
         ind = as.character(indStim),
