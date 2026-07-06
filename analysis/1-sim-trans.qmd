@@ -346,7 +346,7 @@ p <- ggplot(
   )
 
 path_p <- projr::projr_path_get(
-  "output",
+  "cache",
   "sim",
   "trans",
   "mean-pos-grid-univariate.png"
