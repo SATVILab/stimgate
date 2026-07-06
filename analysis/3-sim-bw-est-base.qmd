@@ -279,7 +279,7 @@ dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
 # 3. Setup parallel plan
 future::plan(
   future::multisession,
-  workers = max(1, future::availableCores() - 1)
+  workers = max(1, .simGetCores())
 )
 
 # Total number of iterations
