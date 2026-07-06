@@ -207,7 +207,7 @@ for (i in seq_len(nrow(sim_grid))) {
 
 dir.create(
   dirname(projr::projr_path_get(
-    "output", "sim", "bw", "est", "base", "bw_list_raw_mtd_loop.rds"
+    "cache", "sim", "bw", "est", "base", "bw_list_raw_mtd_loop.rds"
   )),
   recursive = TRUE,
   showWarnings = FALSE
@@ -216,7 +216,7 @@ dir.create(
 saveRDS(
   bw_list_raw_mtd_loop,
   file = projr::projr_path_get(
-    "output",
+    "cache",
     "sim",
     "bw",
     "est",
@@ -403,7 +403,7 @@ future::plan(future::sequential)
 
 dir.create(
   dirname(projr::projr_path_get(
-    "output", "sim", "bw", "est", "base", "bw_list_raw_mtd.rds"
+    "cache", "sim", "bw", "est", "base", "bw_list_raw_mtd.rds"
   )),
   recursive = TRUE,
   showWarnings = FALSE
@@ -412,10 +412,11 @@ dir.create(
 saveRDS(
   bw_list_raw_mtd,
   file = projr::projr_path_get(
-    "output",
+    "cache",
     "sim",
     "bw",
-    "est", "base",
+    "est",
+    "base",
     "bw_list_raw_mtd.rds"
   )
 )
@@ -428,15 +429,16 @@ Collate the results.
 #| error: true
 path_vec <- c(
   projr::projr_path_get(
-    "output",
+    "cache",
     "sim",
     "bw",
-    "est", "base",
+    "est",
+    "base",
     "bw_list_raw_mtd.rds",
     safe = TRUE
   ),
   projr::projr_path_get(
-    "output",
+    "cache",
     "sim",
     "bw",
     "est", "base",
@@ -551,7 +553,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
       )
 
     path_plot <- projr::projr_path_get(
-      "output",
+      "cache",
       "sim",
       "bw",
       "est", "base",

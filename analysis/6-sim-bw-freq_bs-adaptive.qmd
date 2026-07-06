@@ -502,7 +502,7 @@ bw_list_raw <- progressr::with_progress({
 future::plan(future::sequential)
 
 path_raw_list <- projr::projr_path_get(
-  "output", "sim", "bw", "manual_adaptive_perf", "bw_list_raw.rds"
+  "cache", "sim", "bw", "manual_adaptive_perf", "bw_list_raw.rds"
 )
 dir.create(dirname(path_raw_list), recursive = TRUE, showWarnings = FALSE)
 saveRDS(bw_list_raw, file = path_raw_list)
@@ -517,10 +517,10 @@ if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
 } else {
   path_vec <- c(
     projr::projr_path_get(
-      "output", "sim", "bw", "manual_adaptive_perf", "bw_list_raw.rds", safe = TRUE
+      "cache", "sim", "bw", "manual_adaptive_perf", "bw_list_raw.rds", safe = TRUE
     ),
     projr::projr_path_get(
-      "output", "sim", "bw", "manual_adaptive_perf", "bw_list_raw.rds", safe = FALSE
+      "cache", "sim", "bw", "manual_adaptive_perf", "bw_list_raw.rds", safe = FALSE
     )
   )
   path_vec <- path_vec[file.exists(path_vec)]
@@ -601,7 +601,7 @@ method_rank_tbl <- bw_tbl_results_summary |>
   ) |>
   dplyr::arrange(.data$median_abs_rel_error, .data$median_abs_error)
 
-path_out_dir <- projr::projr_path_get("output", "sim", "bw", "manual_adaptive_perf")
+path_out_dir <- projr::projr_path_get("cache", "sim", "bw", "manual_adaptive_perf")
 dir.create(path_out_dir, recursive = TRUE, showWarnings = FALSE)
 
 saveRDS(bw_tbl_results_raw, file = file.path(path_out_dir, "bw_tbl_results_raw.rds"))
