@@ -40,44 +40,12 @@ if (
 }
 ```
 
-## Purpose
-
-This notebook assesses how well scalar, automatic adaptive, and manually
-specified adaptive bandwidth methods recover the known background-subtracted
-response frequency in simulation.
-
-It follows the same broad structure as the fixed-bandwidth frequency simulation:
-
-1. define the simulation and bandwidth grid;
-2. build `sim_grid`;
-3. provide a manual loop for debugging individual failures;
-4. run the same grid in parallel;
-5. collate and rank methods by error.
-
-The manual adaptive settings tested here are the package-level settings passed
-through `gateStim()`:
-
-```{r}
-#| label: manual-adaptive-args-note
-#| echo: true
-# bwAdaptive = TRUE
-# bwAdaptiveCore = <manual core bandwidth>
-# bwAdaptiveExtra = <manual extra bandwidth>
-# bwAdaptiveCrossover = <optional crossover expression value, or NULL>
-# bwAdaptiveTransitionWidth = <0 for hard switch; >0 for smooth switch>
-```
-
 ## Simulation and method settings
 
 ```{r}
 #| label: actual-settings
-set.seed(1)
-
-# Simulation settings ---------------------------------------------------------
-n_cell_stim_vec <- c(
-  1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6
-)[c(1, 3, 5, 7)]
-
+# simulation settings
+n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)[c(1, 3, 5, 7)]
 prob_response_vec <- c(
   1 / 5e5,
   1 / 2e5,
@@ -97,692 +65,183 @@ prob_response_vec <- c(
   1 / 5,
   1 / 2
 )[c(2, 4, 6, 8, 10, 16)]
-
-mean_pos_settings_tbl <- .simMiscGetMeanPosTbl() |>
-  dplyr::mutate(
-    bias_uns = ifelse(transformation == "gamma", 0.01, 0.05)
-  )
-
+mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
+transformation_vec <- c("gaussian", "gamma", "skew")
+mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 sample_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
 condition_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
 cluster_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
 background_relative_to_response_vec <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.001)[4]
 n_cell_uns_relative_to_stim_vec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)[4]
 
-# Bandwidth ranges ------------------------------------------------------------
-# This is the same scalar bandwidth range as in the fixed-bandwidth simulation.
+# fix the bandwidth
 bandwidth_value_vec <- c(
-  0.001, 0.0025, 0.005, 0.0075, 0.01, 0.0125,
-  0.02, 0.05, 0.1, 0.25, 0.5, 0.75, 1
-)
-
+  # gamma
+  0.001, 0.0025, 0.005, 0.0075, 0.01,
+  0.0125, 0.015, 0.0175, 0.02, 0.03,
+  0.04,
+  # mixed
+  0.05, 0.1, 0.15,
+  # skew and gaussian
+  0.2, 0.25, 0.5, 0.75, 1
+  )
 bw_core_vec <- bandwidth_value_vec
 bw_extra_vec <- bandwidth_value_vec
-
 # NULL/NA crossover means use the density-weighted component blend. Finite
 # values force a core-to-extra crossover at that expression value.
-bw_crossover_vec <- c(NA_real_, 4.5, 5.5, 6.5)
-bw_transition_width_vec <- c(0, 0.25)
+bw_crossover_vec <- c(NA_real_, 4.5, 5.5, 6.5)[[1]]
+bw_transition_width_vec <- c(0, 0.25)[[1]]
 
-# Constant-bandwidth comparators use the same range as the existing simulation.
-bw_constant_vec <- bandwidth_value_vec
-
-# bias_uns_vec <- c(0, bandwidth_value_vec / 2)
-
-# Gating/bandwidth settings ---------------------------------------------------
-bw_mtd <- "hpi1Norm"
-bw_adj <- 1
-bw_ncell_min <- 100
-bw_ncell_max <- 1e5
-bw_cluster <- NULL
-bw_min <- "none"
-bw_max <- "none"
-min_cell <- 100
-max_pos_prob_x <- Inf
-gate_combn <- "min"
-tol_clust <- NULL
-
-bw_adaptive_density_n <- NULL
-bw_adaptive_pad_frac <- 0.15
-
-norm_peak_frac <- 0.1
-norm_peak_min_rel <- 0.75
-norm_extra_frac <- 0.2
-norm_extra_max <- Inf
-norm_extra_jitter_frac <- 0.25
-norm_lambda <- seq(-2, 2, length.out = 81)
-norm_density_n <- 512L
-norm_excess_bw_mtd <- "hpi3"
-norm_excess_ncell <- 10000L
-norm_adaptive_ncell <- 2500L
-norm_mtd <- "moments"
-
-# Simulation execution settings ---------------------------------------------
-n_sample_run <- 5L
-n_iter_run <- 5L
-n_marker_run <- 1L
-n_condition_run <- 2L
-n_cluster_run <- 2L
-prob_exact <- TRUE
-cov_ev_min <- 1.5
-cov_ev_max <- 1.5
-calc_cyt_pos_gates <- FALSE
-calc_single_pos_gates <- FALSE
-
-if ("quick" %in% projr::projr_profile_get()) {
-  n_cell_stim_vec <- c(1e3, 5e4)
-  prob_response_vec <- c(0.002, 0.02)
-  bw_core_vec <- c(0.02, 0.05, 0.1)
-  bw_extra_vec <- c(0.1, 0.25, 0.5)
-  bw_crossover_vec <- c(NA_real_, 5.5)
-  bw_transition_width_vec <- c(0)
-  bw_constant_vec <- c(0.02, 0.05, 0.1, 0.25, 0.5)
-  bias_uns_vec <- c(0, 0.05)
-  condition_perturbation_sd_vec <- 0
-  n_sample_run <- 2L
-  n_iter_run <- 2L
-}
+# can vary these later
+bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
+bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
+bias_uns_settings_tbl <- tibble::tribble(
+  ~bias_uns_setting, ~transformation, ~bias_uns,
+  "none", "gaussian", 0,
+  "none", "gamma", 0,
+  "none", "skew", 0,
+  "low", "gaussian", 0.05,
+  "low", "gamma", 0.0025,
+  "low", "skew", 0.05,
+  "high", "gaussian", 0.25,
+  "high", "gamma", 0.01,
+  "high", "skew", 0.25
+)
+bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 ```
 
-## Build method grid
 
 ```{r}
-#| label: method-grid
-manual_adaptive_grid <- tidyr::expand_grid(
-  method_family = "manual_adaptive",
-  bwAdaptive = TRUE,
-  bw = NA_real_,
-  bwAdaptiveCore = bw_core_vec,
-  bwAdaptiveExtra = bw_extra_vec,
-  bwAdaptiveCrossover = bw_crossover_vec,
-  bwAdaptiveTransitionWidth = bw_transition_width_vec
-) |>
-  dplyr::filter(
-    .data$bwAdaptiveExtra >= .data$bwAdaptiveCore
-  )
-
-manual_constant_grid <- tibble::tibble(
-  method_family = "manual_constant",
-  bwAdaptive = FALSE,
-  bw = bw_constant_vec,
-  bwAdaptiveCore = NA_real_,
-  bwAdaptiveExtra = NA_real_,
-  bwAdaptiveCrossover = NA_real_,
-  bwAdaptiveTransitionWidth = NA_real_
-)
-
-auto_grid <- tibble::tibble(
-  method_family = c("auto_constant", "auto_adaptive"),
-  bwAdaptive = c(FALSE, TRUE),
-  bw = NA_real_,
-  bwAdaptiveCore = NA_real_,
-  bwAdaptiveExtra = NA_real_,
-  bwAdaptiveCrossover = NA_real_,
-  bwAdaptiveTransitionWidth = NA_real_
-)
-
-method_grid <- dplyr::bind_rows(
-  manual_adaptive_grid,
-  manual_constant_grid,
-  auto_grid
-) |>
-  dplyr::mutate(
-    crossover_label = dplyr::if_else(
-      is.na(.data$bwAdaptiveCrossover),
-      "auto",
-      formatC(.data$bwAdaptiveCrossover, format = "f", digits = 2)
-    ),
-    method_id = dplyr::case_when(
-      .data$method_family == "manual_constant" ~ paste0(
-        "constant_bw", formatC(.data$bw, format = "f", digits = 4)
-      ),
-      .data$method_family == "manual_adaptive" ~ paste0(
-        "adapt_core", formatC(.data$bwAdaptiveCore, format = "f", digits = 4),
-        "_extra", formatC(.data$bwAdaptiveExtra, format = "f", digits = 4),
-        "_cross", .data$crossover_label,
-        "_tw", formatC(.data$bwAdaptiveTransitionWidth, format = "f", digits = 3)
-      ),
-      TRUE ~ .data$method_family
-    )
-  ) |>
-  dplyr::select(-crossover_label)
-
-method_grid
-```
-
-## Build simulation grid
-
-```{r}
-#| label: sim-grid
+#| label: bw-manual-grid
+# 2. Flatten your nested loops into a single combination grid
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
-  prob_response = prob_response_vec,
-  n_cell = n_cell_stim_vec,
-  bias_uns = bias_uns_vec,
+  prob_response  = prob_response_vec,
+  n_cell         = n_cell_stim_vec,
+  bw_core        = bw_core_vec,
+  bw_extra       = bw_extra_vec,
+  bias_uns       = bias_uns_vec,
   sample_perturbation_sd = sample_perturbation_sd_vec,
   condition_perturbation_sd = condition_perturbation_sd_vec,
   cluster_perturbation_sd = cluster_perturbation_sd_vec,
   background_relative_to_response = background_relative_to_response_vec,
-  n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim_vec,
-  method_grid
+  n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim_vec
 ) |>
+  dplyr::inner_join(
+    bias_uns_settings_tbl,
+    by = c("transformation", "bias_uns")
+  ) |>
   dplyr::select(
-    transformation,
-    prob_response,
-    n_cell,
-    mean_pos_setting,
-    mean_pos,
-    bias_uns,
-    sample_perturbation_sd,
-    condition_perturbation_sd,
-    cluster_perturbation_sd,
-    background_relative_to_response,
-    n_cell_uns_relative_to_stim,
-    method_family,
-    method_id,
-    bwAdaptive,
-    bw,
-    bwAdaptiveCore,
-    bwAdaptiveExtra,
-    bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth
+    transformation, prob_response, n_cell,
+    mean_pos_setting, mean_pos, bw_core, bw_extra, bias_uns_setting, bias_uns,
+    sample_perturbation_sd, condition_perturbation_sd,
+    cluster_perturbation_sd, background_relative_to_response,
+    n_cell_uns_relative_to_stim
   ) |>
   dplyr::filter(
     !(n_cell * prob_response < 5 & prob_response < 0.04)
   ) |>
   dplyr::filter(
-    (bias_uns <= 0.01 & transformation == "gamma") |
-      (bias_uns >= 0.01 & transformation != "gamma")
+    ((bw_core <= 0.15 & transformation == "gamma") | (
+      bw_extra >= 0.05 & transformation != "gamma"
+    )) & ((bw_extra <= 0.15 & transformation == "gamma") | (
+      bw_core >= 0.05 & transformation != "gamma"
+    ))
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
-  ) |>
-  dplyr::arrange(
-    .data$n_cell,
-    dplyr::desc(.data$prob_response),
-    .data$transformation,
-    .data$mean_pos_setting,
-    .data$method_family,
-    .data$method_id
   )
+
+sim_grid <- sim_grid |>
+  dplyr::arrange(n_cell, dplyr::desc(prob_response))
 
 if ("dev" %in% projr::projr_profile_get()) {
   sim_grid <- sim_grid |>
-    dplyr::slice(1:3)
+    dplyr::filter(
+      n_cell == 1e5,
+      prob_response == 0.002,
+      mean_pos_setting == "high",
+      transformation %in% transformation_vec,
+      bw_core == 0.15,
+      bw_extra == 0.15,
+      bias_uns_setting == "low",
+      condition_perturbation_sd == 0
+    ) |>
+    dplyr::sample_n(min(dplyr::n(), 5))
 }
-
 sim_grid
-print(paste0("Performing ", nrow(sim_grid), " simulation settings"))
+print(paste0("Performing ", nrow(sim_grid), " simulations"))
 ```
 
-## Manual loop for debugging
-
-Run this chunk when a particular combination fails and you want an ordinary
-sequential traceback/log.
+A loop we only run when we want to see why particular runs failed.
 
 ```{r}
 #| label: bw-manual-loop
 #| eval: false
+devtools::load_all()
 bw_list_raw <- vector("list", nrow(sim_grid))
 
 for (i in seq_len(nrow(sim_grid))) {
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
-
-  row <- sim_grid[i, , drop = FALSE]
-
- # debugonce(.verifyChnlSettingsChnl)
-
-  .run_manual_adaptive_freq_bs(
-    transformation = row$transformation,
-    prob_response = row$prob_response,
-    n_cell = row$n_cell,
-    mean_pos_setting = row$mean_pos_setting,
-    mean_pos = row$mean_pos,
-    bias_uns = row$bias_uns,
-    sample_perturbation_sd = row$sample_perturbation_sd,
-    condition_perturbation_sd = row$condition_perturbation_sd,
-    cluster_perturbation_sd = row$cluster_perturbation_sd,
-    background_relative_to_response = row$background_relative_to_response,
-    n_cell_uns_relative_to_stim = row$n_cell_uns_relative_to_stim,
-    method_family = row$method_family,
-    method_id = row$method_id,
-    bwAdaptive = row$bwAdaptive,
-    bw = row$bw,
-    bwAdaptiveCore = row$bwAdaptiveCore,
-    bwAdaptiveExtra = row$bwAdaptiveExtra,
-    bwAdaptiveCrossover = row$bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth = row$bwAdaptiveTransitionWidth,
-    sim_id = row$sim_id,
+  # debug(.verifyBwLimitSetting)
+  sim_res <- .simBandwidthBsFreq(
     nSample = 1,
+    nMarker = 1,
+    nCondition = 2,
+    nCluster = 2,
     nIter = 1,
-  )
+    biasUns = sim_grid$bias_uns[i],
+    bwAdaptiveCore = sim_grid$bw_core[i],
+    bwAdaptiveExtra = sim_grid$bw_extra[i],
+    bwFallback = if (sim_grid$transformation[i] == "gamma") 0.01 else 0.5,
+    bwMin = "none",
+    bwMax = "none",
+    nCellStim = sim_grid$n_cell[i],
+    probResponse = sim_grid$prob_response[i],
+    probExact = TRUE,
+    meanPos = sim_grid$mean_pos[i],
+    transformation = sim_grid$transformation[i],
+    samplePerturbationSd = sim_grid$sample_perturbation_sd[i],
+    conditionPerturbationSd = sim_grid$condition_perturbation_sd[i],
+    clusterPerturbationSd = sim_grid$cluster_perturbation_sd[i],
+    backgroundRelativeToResponse =
+      sim_grid$background_relative_to_response[i],
+    ncellUnsRelativeToStim =
+      sim_grid$n_cell_uns_relative_to_stim[i],
+    covEvMin = 1.5,
+    covEvMax = 1.5,
+    tolClust = NULL
+  ) |>
+    dplyr::mutate(
+      transformation = sim_grid$transformation[i],
+      prob_response = sim_grid$prob_response[i],
+      n_cell = sim_grid$n_cell[i],
+      mean_pos_setting = sim_grid$mean_pos_setting[i],
+      mean_pos = sim_grid$mean_pos[i],
+      bw_core = sim_grid$bw_core[i],
+      bw_extra = sim_grid$bw_extra[i],
+      bw_fallback = if (sim_grid$transformation[i] == "gamma") 0.01 else 0.5,
+      bias_uns_setting = sim_grid$bias_uns_setting[i],
+      bias_uns = sim_grid$bias_uns[i],
+      sample_perturbation_sd = sim_grid$sample_perturbation_sd[i],
+      condition_perturbation_sd =
+        sim_grid$condition_perturbation_sd[i],
+      cluster_perturbation_sd = sim_grid$cluster_perturbation_sd[i],
+      background_relative_to_response =
+        sim_grid$background_relative_to_response[i],
+      n_cell_uns_relative_to_stim =
+        sim_grid$n_cell_uns_relative_to_stim[i],
+      sim_id = sim_grid$sim_id[i]
+    ) |>
+    dplyr::select(
+      transformation, prob_response, n_cell,
+      mean_pos_setting, mean_pos, bw_core, bw_extra, bw_fallback, bias_uns_setting, bias_uns,
+      sample_perturbation_sd, condition_perturbation_sd,
+      cluster_perturbation_sd, background_relative_to_response,
+      n_cell_uns_relative_to_stim, sim_id,
+      dplyr::everything()
+    )
 
   bw_list_raw[[i]] <- sim_res
-}
-```
-
-## Parallel processing
-
-```{r}
-#| label: bw-manual-parallel
-#| results: hide
-if (interactive()) {
-  progressr::handlers(global = TRUE)
-}
-
-path_progress_file <- projr::projr_path_get(
-  "cache", "log", "analysis", "sim", "bw", "manual_adaptive_perf", "progress.txt"
-)
-dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
-if (file.exists(path_progress_file)) {
-  file.remove(path_progress_file)
-}
-
-future::plan(
-  future::multisession,
-  workers = max(1, .simGetCores())
-)
-
-bw_list_raw <- progressr::with_progress({
-  p <- progressr::progressor(steps = nrow(sim_grid))
-
-  furrr::future_pmap(
-    sim_grid,
-    function(
-      transformation,
-      prob_response,
-      n_cell,
-      mean_pos_setting,
-      mean_pos,
-      bias_uns,
-      sample_perturbation_sd,
-      condition_perturbation_sd,
-      cluster_perturbation_sd,
-      background_relative_to_response,
-      n_cell_uns_relative_to_stim,
-      method_family,
-      method_id,
-      bwAdaptive,
-      bw,
-      bwAdaptiveCore,
-      bwAdaptiveExtra,
-      bwAdaptiveCrossover,
-      bwAdaptiveTransitionWidth,
-      sim_id
-    ) {
-      settings_row <- paste0(
-        "trans = ", transformation,
-        " | prob = ", prob_response,
-        " | n_cell = ", n_cell,
-        " | mean = ", mean_pos,
-        " | method = ", method_id,
-        " | bias = ", bias_uns,
-        " | condition_sd = ", condition_perturbation_sd,
-        " | sim_id = ", sim_id
-      )
-
-      cat(paste0("Running: ", settings_row, "\n"), file = path_progress_file, append = TRUE)
-
-      out <- tryCatch(
-        {
-          sim_res <- .run_manual_adaptive_freq_bs(
-            transformation = transformation,
-            prob_response = prob_response,
-            n_cell = n_cell,
-            mean_pos_setting = mean_pos_setting,
-            mean_pos = mean_pos,
-            bias_uns = bias_uns,
-            sample_perturbation_sd = sample_perturbation_sd,
-            condition_perturbation_sd = condition_perturbation_sd,
-            cluster_perturbation_sd = cluster_perturbation_sd,
-            background_relative_to_response = background_relative_to_response,
-            n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim,
-            method_family = method_family,
-            method_id = method_id,
-            bwAdaptive = bwAdaptive,
-            bw = bw,
-            bwAdaptiveCore = bwAdaptiveCore,
-            bwAdaptiveExtra = bwAdaptiveExtra,
-            bwAdaptiveCrossover = bwAdaptiveCrossover,
-            bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
-            sim_id = sim_id
-          )
-
-          cat(paste0("Completed: ", settings_row, "\n"), file = path_progress_file, append = TRUE)
-          p(sprintf("Completed sim_id: %s", sim_id))
-          sim_res
-        },
-        error = function(e) {
-          cat(
-            paste0("Error [", settings_row, "]: ", e$message, "\n"),
-            file = path_progress_file,
-            append = TRUE
-          )
-          p(sprintf("ERROR on sim_id: %s", sim_id))
-
-          tibble::tibble(
-            transformation = transformation,
-            prob_response = prob_response,
-            n_cell = n_cell,
-            mean_pos_setting = mean_pos_setting,
-            mean_pos = mean_pos,
-            bias_uns = bias_uns,
-            sample_perturbation_sd = sample_perturbation_sd,
-            condition_perturbation_sd = condition_perturbation_sd,
-            cluster_perturbation_sd = cluster_perturbation_sd,
-            background_relative_to_response = background_relative_to_response,
-            n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim,
-            method_family = method_family,
-            method_id = method_id,
-            bwAdaptive = bwAdaptive,
-            bw = bw,
-            bwAdaptiveCore = bwAdaptiveCore,
-            bwAdaptiveExtra = bwAdaptiveExtra,
-            bwAdaptiveCrossover = bwAdaptiveCrossover,
-            bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
-            sim_id = sim_id,
-            iter = NA_integer_,
-            sample = NA_character_,
-            ind = NA_character_,
-            chnl = "F1",
-            propRespTruth = NA_real_,
-            propRespEst = NA_real_,
-            threshold = NA_real_,
-            error = e$message
-          )
-        }
-      )
-
-      out
-    },
-    .options = furrr::furrr_options(seed = TRUE)
-  )
-})
-
-future::plan(future::sequential)
-
-path_raw_list <- projr::projr_path_get(
-  "cache", "sim", "bw", "manual_adaptive_perf", "bw_list_raw.rds"
-)
-dir.create(dirname(path_raw_list), recursive = TRUE, showWarnings = FALSE)
-saveRDS(bw_list_raw, file = path_raw_list)
-```
-
-## Collate results
-
-```{r}
-#| label: bw-manual-collate
-if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
-  bw_list_raw_collate <- bw_list_raw
-} else {
-  path_vec <- c(
-    projr::projr_path_get(
-      "cache", "sim", "bw", "manual_adaptive_perf", "bw_list_raw.rds", safe = TRUE
-    ),
-    projr::projr_path_get(
-      "cache", "sim", "bw", "manual_adaptive_perf", "bw_list_raw.rds", safe = FALSE
-    )
-  )
-  path_vec <- path_vec[file.exists(path_vec)]
-  if (length(path_vec) == 0L) {
-    stop("Could not find bw_list_raw.rds, and bw_list_raw is not available in memory.")
-  }
-  bw_list_raw_collate <- readRDS(file = path_vec[[1]])
-}
-
-bw_tbl_raw <- bw_list_raw_collate |>
-  purrr::list_rbind()
-
-bw_tbl_raw <- .add_missing_cols(
-  bw_tbl_raw,
-  list(
-    error = NA_character_,
-    propRespTruth = NA_real_,
-    propRespEst = NA_real_,
-    threshold = NA_real_
-  )
-)
-
-bw_tbl_results_raw <- bw_tbl_raw |>
-  dplyr::mutate(
-    propRespError = .data$propRespEst - .data$propRespTruth,
-    propRespAbsError = abs(.data$propRespError),
-    propRespRelError = dplyr::if_else(
-      is.finite(.data$propRespTruth) & .data$propRespTruth != 0,
-      .data$propRespError / .data$propRespTruth,
-      NA_real_
-    ),
-    propRespAbsRelError = abs(.data$propRespRelError)
-  )
-
-summary_group_cols <- c(
-  colnames(sim_grid),
-  "chnl"
-)
-summary_group_cols <- intersect(summary_group_cols, names(bw_tbl_results_raw))
-
-bw_tbl_results_summary <- bw_tbl_results_raw |>
-  dplyr::group_by(dplyr::across(dplyr::all_of(summary_group_cols))) |>
-  dplyr::summarise(
-    n_est = sum(is.finite(.data$propRespEst)),
-    n_error = sum(!is.na(.data$error)),
-    propRespTruth_median = stats::median(.data$propRespTruth, na.rm = TRUE),
-    propRespEst_median = stats::median(.data$propRespEst, na.rm = TRUE),
-    propRespError_mean = mean(.data$propRespError, na.rm = TRUE),
-    propRespError_median = stats::median(.data$propRespError, na.rm = TRUE),
-    propRespAbsError_median = stats::median(.data$propRespAbsError, na.rm = TRUE),
-    propRespAbsRelError_median = stats::median(.data$propRespAbsRelError, na.rm = TRUE),
-    propRespRmse = sqrt(mean(.data$propRespError^2, na.rm = TRUE)),
-    threshold_median = stats::median(.data$threshold, na.rm = TRUE),
-    threshold_q25 = stats::quantile(.data$threshold, 0.25, na.rm = TRUE),
-    threshold_q75 = stats::quantile(.data$threshold, 0.75, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-method_rank_tbl <- bw_tbl_results_summary |>
-  dplyr::group_by(
-    .data$method_family,
-    .data$method_id,
-    .data$bwAdaptive,
-    .data$bw,
-    .data$bwAdaptiveCore,
-    .data$bwAdaptiveExtra,
-    .data$bwAdaptiveCrossover,
-    .data$bwAdaptiveTransitionWidth
-  ) |>
-  dplyr::summarise(
-    n_scenarios = dplyr::n(),
-    n_est_total = sum(.data$n_est, na.rm = TRUE),
-    median_abs_error = stats::median(.data$propRespAbsError_median, na.rm = TRUE),
-    median_abs_rel_error = stats::median(.data$propRespAbsRelError_median, na.rm = TRUE),
-    median_rmse = stats::median(.data$propRespRmse, na.rm = TRUE),
-    mean_bias = mean(.data$propRespError_mean, na.rm = TRUE),
-    .groups = "drop"
-  ) |>
-  dplyr::arrange(.data$median_abs_rel_error, .data$median_abs_error)
-
-path_out_dir <- projr::projr_path_get("cache", "sim", "bw", "manual_adaptive_perf")
-dir.create(path_out_dir, recursive = TRUE, showWarnings = FALSE)
-
-saveRDS(bw_tbl_results_raw, file = file.path(path_out_dir, "bw_tbl_results_raw.rds"))
-saveRDS(bw_tbl_results_summary, file = file.path(path_out_dir, "bw_tbl_results_summary.rds"))
-saveRDS(method_rank_tbl, file = file.path(path_out_dir, "method_rank_tbl.rds"))
-readr::write_csv(bw_tbl_results_summary, file.path(path_out_dir, "bw_tbl_results_summary.csv"))
-readr::write_csv(method_rank_tbl, file.path(path_out_dir, "method_rank_tbl.csv"))
-
-method_rank_tbl
-```
-
-## Best methods overall
-
-```{r}
-#| label: best-method-table
-method_rank_tbl |>
-  dplyr::slice_head(n = 25)
-```
-
-## Plot performance by number of cells
-
-```{r}
-#| label: plot-performance-by-ncell
-top_method_tbl <- method_rank_tbl |>
-  dplyr::slice_head(n = 12) |>
-  dplyr::select(method_id)
-
-plot_tbl <- bw_tbl_results_summary |>
-  dplyr::semi_join(top_method_tbl, by = "method_id")
-
-p <- ggplot(
-  plot_tbl,
-  aes(
-    x = n_cell,
-    y = propRespAbsRelError_median,
-    colour = method_id,
-    group = method_id
-  )
-) +
-  geom_line(alpha = 0.8) +
-  geom_point(size = 0.8) +
-  scale_x_log10() +
-  scale_y_log10() +
-  facet_grid(transformation ~ prob_response, scales = "free_y") +
-  cowplot::theme_cowplot() +
-  cowplot::background_grid(major = "xy") +
-  theme(
-    panel.background = element_rect(fill = "white", colour = NA),
-    plot.background = element_rect(fill = "white", colour = NA),
-    legend.position = "bottom",
-    legend.text = element_text(size = 6)
-  ) +
-  guides(colour = guide_legend(ncol = 1)) +
-  labs(
-    title = "Median absolute relative error by method",
-    x = "Stimulated cells",
-    y = "Median absolute relative error",
-    colour = "Method"
-  )
-
-path_p <- file.path(path_out_dir, "median_abs_rel_error_by_n_cell.png")
-ggsave(path_p, p, width = 24, height = 30, units = "cm")
-p
-```
-
-## Manual adaptive heatmap
-
-This is most useful for the density-weighted crossover-free adaptive methods.
-
-```{r}
-#| label: manual-adaptive-heatmap
-heat_tbl <- bw_tbl_results_summary |>
-  dplyr::filter(
-    .data$method_family == "manual_adaptive",
-    is.na(.data$bwAdaptiveCrossover),
-    .data$bwAdaptiveTransitionWidth == 0
-  ) |>
-  dplyr::group_by(
-    .data$transformation,
-    .data$mean_pos_setting,
-    .data$bwAdaptiveCore,
-    .data$bwAdaptiveExtra
-  ) |>
-  dplyr::summarise(
-    median_abs_rel_error = stats::median(.data$propRespAbsRelError_median, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-if (nrow(heat_tbl) > 0L) {
-  p_heat <- ggplot(
-    heat_tbl,
-    aes(
-      x = factor(bwAdaptiveCore),
-      y = factor(bwAdaptiveExtra),
-      fill = median_abs_rel_error
-    )
-  ) +
-    geom_tile() +
-    facet_grid(mean_pos_setting ~ transformation) +
-    scale_fill_viridis_c(trans = "log10", option = "magma", direction = -1) +
-    cowplot::theme_cowplot() +
-    theme(
-      panel.background = element_rect(fill = "white", colour = NA),
-      plot.background = element_rect(fill = "white", colour = NA),
-      legend.position = "bottom",
-      axis.text.x = element_text(angle = 45, hjust = 1)
-    ) +
-    labs(
-      title = "Manual adaptive bandwidth grid: density-weighted crossover",
-      x = "Core bandwidth",
-      y = "Extra bandwidth",
-      fill = "Median absolute\nrelative error"
-    )
-
-  path_p_heat <- file.path(path_out_dir, "manual_adaptive_core_extra_heatmap.png")
-  ggsave(path_p_heat, p_heat, width = 24, height = 18, units = "cm")
-  p_heat
-}
-```
-
-## Bias versus variance summary
-
-```{r}
-#| label: bias-variance-summary
-method_rank_tbl |>
-  dplyr::mutate(
-    bw = dplyr::if_else(is.finite(.data$bw), .data$bw, NA_real_),
-    bwAdaptiveCore = dplyr::if_else(is.finite(.data$bwAdaptiveCore), .data$bwAdaptiveCore, NA_real_),
-    bwAdaptiveExtra = dplyr::if_else(is.finite(.data$bwAdaptiveExtra), .data$bwAdaptiveExtra, NA_real_)
-  ) |>
-  dplyr::select(
-    method_family,
-    method_id,
-    bw,
-    bwAdaptiveCore,
-    bwAdaptiveExtra,
-    bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth,
-    n_scenarios,
-    n_est_total,
-    median_abs_error,
-    median_abs_rel_error,
-    median_rmse,
-    mean_bias
-  ) |>
-  dplyr::arrange(.data$median_abs_rel_error) |>
-  dplyr::slice_head(n = 50)
-```
-
-## Threshold distributions for top methods
-
-```{r}
-#| label: threshold-distributions
-threshold_plot_tbl <- bw_tbl_results_raw |>
-  dplyr::semi_join(top_method_tbl, by = "method_id") |>
-  dplyr::filter(is.finite(.data$threshold))
-
-if (nrow(threshold_plot_tbl) > 0L) {
-  p_thresh <- ggplot(
-    threshold_plot_tbl,
-    aes(x = method_id, y = threshold, colour = method_family)
-  ) +
-    ggforce::geom_sina(alpha = 0.25, size = 0.6) +
-    facet_grid(transformation ~ mean_pos_setting, scales = "free_y") +
-    coord_flip() +
-    cowplot::theme_cowplot() +
-    theme(
-      panel.background = element_rect(fill = "white", colour = NA),
-      plot.background = element_rect(fill = "white", colour = NA),
-      legend.position = "bottom",
-      axis.text.y = element_text(size = 5)
-    ) +
-    labs(
-      title = "Threshold distributions for top-ranked methods",
-      x = "Method",
-      y = "Threshold",
-      colour = "Method family"
-    )
-
-  path_p_thresh <- file.path(path_out_dir, "threshold_distributions_top_methods.png")
-  ggsave(path_p_thresh, p_thresh, width = 24, height = 24, units = "cm")
-  p_thresh
 }
 ```
