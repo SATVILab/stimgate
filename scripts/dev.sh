@@ -5,8 +5,8 @@ set -euo pipefail
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
 scripts=(
-  #"dev-1-sim-trans.sh"
-  # "dev-2-stim-bw-freq_bs-global.sh"
+  "dev-1-sim-trans.sh"
+  "dev-2-stim-bw-freq_bs-global.sh"
   "dev-3-sim-bw-est-base.sh"
   "dev-4-sim-bw-est-norm.sh"
   # "dev-5-sim-bw-est-adaptive.sh"
