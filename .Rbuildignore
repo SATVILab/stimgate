@@ -17,16 +17,14 @@
 ^AGENTS\.md$
 ^analysis$
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
-^analysis/archive_manual/
-^analysis/archive_manual$
-^analysis/_raw_data/
-^analysis/_raw_data$
-^analysis/_output/
-^analysis/_output$
 ^analysis/docs/
 ^analysis/docs$
+^_raw_data/
+^_raw_data$
 ^_tmp/
 ^_tmp$
+^_output/
+^_output$
 ^_projr\.yml$
 ^README\.Rmd$
 ^_dependencies\.R$
@@ -40,7 +38,5 @@
 ^NEWS\.md$
 ^\.github/
 ^\.github$
-^analysis/_archive/
-^analysis/_archive$
 # End of projr section
 
