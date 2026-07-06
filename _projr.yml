@@ -1,18 +1,4 @@
 directories:
-  raw-data-archive-manual:
-    path: analysis/archive_manual
-  raw-data:
-    path: analysis/_raw_data
-  output:
-    path: analysis/_output
   docs:
     path: analysis/docs
-build:
-  local:
-    archive:
-      path: analysis/_archive
-      content:
-      - raw-data
-      - output
-      - docs
 
