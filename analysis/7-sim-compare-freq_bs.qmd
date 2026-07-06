@@ -255,7 +255,7 @@ if (file.exists(path_progress_file)) {
 
 future::plan(
   future::multisession,
-  workers = max(1, future::availableCores() - 1)
+  workers = max(1, .simGetCores())
 )
 
 compare_list_raw <- progressr::with_progress({

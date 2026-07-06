@@ -68,3 +68,20 @@ calc_skew <- function(x, epsilon = 0.5, delta = 1) {
   ) |>
     stats::setNames(c(uns_nm_vec, stim_nm_vec))
 }
+
+.simGetCores <- function(n_cores = NULL) {
+  if (!is.null(n_cores)) {
+    return(n_cores)
+  }
+  n_tasks <- Sys.getenv("SLURM_NTASKS")
+  if (!nzchar(n_tasks)) {
+    return(future::availableCores() - 1L)
+  }
+  job_name <- Sys.getenv("SLURM_JOB_NAME") |>
+    as.character()
+  if (!grepl("VScode$", job_name)) {
+    n_tasks
+  } else {
+    n_tasks - 1L
+  }
+}
