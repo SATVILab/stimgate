@@ -4,10 +4,43 @@
 #SBATCH --job-name="dev-2-bw-freq_bs"
 #SBATCH --partition=ada
 
-# Record the start time
+set -euo pipefail
+
+chunk_index="${1:-${SIM_GRID_CHUNK_INDEX:-1}}"
+n_chunks="${SIM_GRID_N_CHUNKS:-4}"
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+project_root=$(cd -- "$script_dir/.." &> /dev/null && pwd)
+qmd_file="${SIM_GRID_QMD_FILE:-analysis/split/2-sim-bw-freq_bs-global-${chunk_index}.qmd}"
+qmd_abs="$project_root/$qmd_file"
+
+if [[ ! "$n_chunks" =~ ^[0-9]+$ ]] || (( n_chunks < 1 )); then
+  echo "ERROR: SIM_GRID_N_CHUNKS must be a positive integer. Got: $n_chunks" >&2
+  exit 1
+fi
+
+if [[ ! "$chunk_index" =~ ^[0-9]+$ ]] || (( chunk_index < 1 || chunk_index > n_chunks )); then
+  echo "ERROR: chunk_index must be an integer between 1 and $n_chunks. Got: $chunk_index" >&2
+  exit 1
+fi
+
+if [[ ! -f "$qmd_abs" ]]; then
+  echo "ERROR: Could not find split QMD: $qmd_abs" >&2
+  exit 1
+fi
+
+export SIM_GRID_CHUNK_INDEX="$chunk_index"
+export SIM_GRID_N_CHUNKS="$n_chunks"
+export RUN_SIMULATIONS="${RUN_SIMULATIONS:-true}"
+export RUN_PLOTS="${RUN_PLOTS:-false}"
+
 start_time=$(date +%s)
 
 echo "HOSTNAME: $HOSTNAME"
+echo "SLURM_JOB_ID: ${SLURM_JOB_ID:-unknown}"
+echo "SIM_GRID_CHUNK_INDEX: $SIM_GRID_CHUNK_INDEX"
+echo "SIM_GRID_N_CHUNKS: $SIM_GRID_N_CHUNKS"
+echo "QMD file: $qmd_file"
 
 echo " "
 echo " "
@@ -16,24 +49,18 @@ echo " "
 echo "-------------------"
 echo "Run projr"
 date
-apptainer-rscript -f stimgate -- 'projr::projr_build_dev(profile = "", file = "analysis/2-sim-bw-freq_bs-global.qmd")'
+apptainer-rscript -f stimgate -- "projr::projr_build_dev(profile = '', file = '$qmd_file')"
 echo "Completed running projr"
 date
 echo "-------------------"
 echo " "
 
-# Record the end time
 end_time=$(date +%s)
-
-# Calculate the duration
 duration=$((end_time - start_time))
-
-# Convert duration to human-readable format
 hours=$((duration / 3600))
 minutes=$(( (duration % 3600) / 60 ))
 seconds=$((duration % 60))
 
-# Append the duration to the Slurm standard output log
 echo "--- Script Duration ---"
 printf "Elapsed time: %02d:%02d:%02d\n" $hours $minutes $seconds
 echo "-----------------------"
