@@ -192,7 +192,7 @@ bias_uns_settings_tbl <- tibble::tribble(
 )
 bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
-if ("quick" %in% projr::projr_profile_get()) {
+if (.isQuick()) {
   n_cell_stim_vec <- c(1e3, 5e4)
   prob_response_vec <- c(0.002, 0.02)
   bw_core_vec <- c(0.01, 0.05, 0.15, 0.5)
@@ -259,7 +259,7 @@ sim_grid <- tidyr::expand_grid(
     sim_id = dplyr::row_number()
   )
 
-if ("dev" %in% projr::projr_profile_get()) {
+if (.isDev()) {
   sim_grid <- sim_grid |>
     dplyr::filter(
       n_cell == 1e5,
@@ -275,6 +275,13 @@ if ("dev" %in% projr::projr_profile_get()) {
 }
 
 sim_grid_all <- sim_grid
+
+.setQuick()
+if (.isQuick() && !.isDev()) {
+  set.seed(42)
+  sim_grid <- sim_grid |>
+    dplyr::sample_n(100)
+}
 
 if (nrow(sim_grid_all) > 0L) {
   set.seed(sim_grid_shuffle_seed)
