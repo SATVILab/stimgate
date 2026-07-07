@@ -497,15 +497,6 @@ bw_list_raw <- progressr::with_progress({
 })
 
 future::plan(future::sequential)
-
-dir.create(
-  dirname(projr::projr_path_get(
-    "cache", "sim", "bw", "est", "adaptive", "bw_list_raw.rds"
-  )),
-  recursive = TRUE,
-  showWarnings = FALSE
-)
-
 saveRDS(
   bw_list_raw,
   file = projr::projr_path_get(
@@ -594,14 +585,7 @@ bw_tbl <- .add_missing_cols(
   )
 )
 
-if (all(is.na(bw_tbl$bias_uns_setting)) && any(!is.na(bw_tbl$bias_uns))) {
-  bw_tbl <- bw_tbl |>
-    dplyr::select(-bias_uns_setting) |>
-    dplyr::left_join(
-      bias_uns_settings_tbl,
-      by = c("transformation", "bias_uns")
-    )
-}
+
 
 if (all(is.na(bw_tbl$mean_pos_setting)) && any(!is.na(bw_tbl$mean_pos))) {
   bw_tbl <- bw_tbl |>
@@ -609,6 +593,32 @@ if (all(is.na(bw_tbl$mean_pos_setting)) && any(!is.na(bw_tbl$mean_pos))) {
     dplyr::left_join(
       mean_pos_settings_tbl,
       by = c("transformation", "mean_pos")
+    )
+}
+
+bw_tbl |>
+  dplyr::select(transformation, mean_pos_setting, mean_pos) |>
+  dplyr::distinct()
+
+if (all(is.na(bw_tbl$bias_uns_setting)) && all(is.na(bw_tbl$bias_uns))) {
+  bw_tbl <- bw_tbl |>
+    dplyr::mutate(bias_uns_setting = "low") |>
+    dplyr::select(-bias_uns) |> 
+    dplyr::left_join(
+      bias_uns_settings_tbl,
+      by = c("transformation", "bias_uns_setting")
+    )
+}
+
+bw_tbl |>
+  dplyr::select(transformation, bias_uns_setting, bias_uns) |>
+  dplyr::distinct()
+
+if (all(is.na(bw_tbl$bias_uns_setting)) && any(!is.na(bw_tbl$bias_uns))) {
+  bw_tbl <- bw_tbl |>
+    dplyr::left_join(
+      bias_uns_settings_tbl,
+      by = c("transformation", "bias_uns")
     )
 }
 
@@ -624,13 +634,22 @@ sim_grid_key_cols <- setdiff(
   "sim_id"
 )
 
-bw_tbl <- bw_tbl |>
-  dplyr::semi_join(
+# bw_tbl <- bw_tbl |>
+#   dplyr::semi_join(
+#     sim_grid |>
+#       dplyr::select(dplyr::all_of(sim_grid_key_cols)) |>
+#       dplyr::distinct(),
+#     by = sim_grid_key_cols
+#   )
+
+bw_tbl |>
+  dplyr::select(-bw_ncell_upper) |>
+  dplyr::left_join(
     sim_grid |>
-      dplyr::select(dplyr::all_of(sim_grid_key_cols)) |>
-      dplyr::distinct(),
-    by = sim_grid_key_cols
-  )
+      dplyr::select(sim_id, bw_ncell_upper),
+    by = "sim_id"
+  ) |>
+  dplyr::select(bw_ncell_upper) |> dplyr::distinct()
 
 if (nrow(bw_tbl) == 0L) {
   stop("Cached rows do not match the current simulation grid. Rerun the simulation chunk.")
@@ -696,65 +715,120 @@ bw_tbl_results |>
   ) |>
   print(width = Inf)
 
-dir_results <- projr::projr_path_get(
+dir_results <- projr::projr_path_get_dir(
   "cache",
   "sim",
   "bw",
   "est",
   "adaptive"
 )
-dir.create(dir_results, recursive = TRUE, showWarnings = FALSE)
 
-saveRDS(
-  bw_tbl_long,
-  file = file.path(dir_results, "bw_tbl_long.rds")
-)
-saveRDS(
-  bw_tbl_results,
-  file = file.path(dir_results, "bw_tbl_results.rds")
-)
-
+# saveRDS(
+#   bw_tbl_long,
+#   file = file.path(dir_results, "bw_tbl_long.rds")
+# )
+# saveRDS(
+#   bw_tbl_results,
+#   file = file.path(dir_results, "bw_tbl_results.rds")
+# )
+# 
+mean_pos_setting_curr <- unique(bw_tbl_results$mean_pos_setting)[[1]]
+bias_uns_setting_curr <- unique(bw_tbl_results$bias_uns_setting)[[1]]
+bw_ncell_upper_curr <- NA
+bw_component_curr <- "extra"
+bw_condition_curr <- "stim"
 for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
-  for (bias_uns_setting_curr in unique(bw_tbl_results$bias_uns_setting)) {
-    for (bw_ncell_upper_curr in unique(bw_tbl_results$bw_ncell_upper)) {
-      for (bw_component_curr in levels(bw_tbl_results$bw_component)) {
-        for (bw_condition_curr in levels(bw_tbl_results$bw_condition)) {
-          plot_tbl <- bw_tbl_results |>
-            dplyr::filter(
-              .data$mean_pos_setting == !!mean_pos_setting_curr,
-              .data$bias_uns_setting == !!bias_uns_setting_curr,
-              .data$bw_ncell_upper == !!bw_ncell_upper_curr,
-              .data$bw_component == !!bw_component_curr,
-              .data$bw_condition == !!bw_condition_curr
-            )
-
+  bw_tbl_mean_pos <- bw_tbl_results |>
+    dplyr::filter(.data$mean_pos_setting == !!mean_pos_setting_curr)
+  
+  if (nrow(bw_tbl_mean_pos) == 0L) {
+    print(paste0("No results for mean_pos_setting: ", mean_pos_setting_curr))
+    next
+  }
+  
+  for (bias_uns_setting_curr in unique(bw_tbl_mean_pos$bias_uns_setting)) {
+    bw_tbl_bias <- bw_tbl_mean_pos |>
+      dplyr::filter(.data$bias_uns_setting == !!bias_uns_setting_curr)
+    
+    if (nrow(bw_tbl_bias) == 0L) {
+      print(paste0(
+        "No results for mean_pos_setting: ", mean_pos_setting_curr,
+        ", bias_uns_setting: ", bias_uns_setting_curr
+      ))
+      next
+    }
+    
+    for (bw_ncell_upper_curr in unique(bw_tbl_bias$bw_ncell_upper)) {
+      bw_tbl_ncell <- bw_tbl_bias
+      if (!is.na(bw_ncell_upper_curr)) {
+        bw_tbl_ncell <- bw_tbl_ncell |>
+          dplyr::filter(.data$bw_ncell_upper == !!bw_ncell_upper_curr)
+      }
+      
+      if (nrow(bw_tbl_ncell) == 0L) {
+        print(paste0(
+          "No results for mean_pos_setting: ", mean_pos_setting_curr,
+          ", bias_uns_setting: ", bias_uns_setting_curr,
+          ", bw_ncell_upper: ", bw_ncell_upper_curr
+        ))
+        next
+      }
+      
+      for (bw_component_curr in levels(bw_tbl_ncell$bw_component)) {
+        bw_tbl_comp <- bw_tbl_ncell |>
+          dplyr::filter(.data$bw_component == !!bw_component_curr)
+        
+        if (nrow(bw_tbl_comp) == 0L) {
+          print(paste0(
+            "No results for mean_pos_setting: ", mean_pos_setting_curr,
+            ", bias_uns_setting: ", bias_uns_setting_curr,
+            ", bw_ncell_upper: ", bw_ncell_upper_curr,
+            ", bw_component: ", bw_component_curr
+          ))
+          next
+        }
+        
+        for (bw_condition_curr in levels(bw_tbl_comp$bw_condition)) {
+          plot_tbl <- bw_tbl_comp |>
+            dplyr::filter(.data$bw_condition == !!bw_condition_curr)
+          
           if (nrow(plot_tbl) == 0L) {
+            print(paste0(
+              "No results for plotting for mean_pos_setting: ", mean_pos_setting_curr,
+              ", bias_uns_setting: ", bias_uns_setting_curr,
+              ", bw_ncell_upper: ", bw_ncell_upper_curr,
+              ", bw_component: ", bw_component_curr,
+              ", bw_condition: ", bw_condition_curr
+            ))
             next
           }
+          
+          print(paste0(
+            "Plotting for mean_pos_setting: ", mean_pos_setting_curr,
+            ", bias_uns_setting: ", bias_uns_setting_curr,
+            ", bw_ncell_upper: ", bw_ncell_upper_curr,
+            ", bw_component: ", bw_component_curr,
+            ", bw_condition: ", bw_condition_curr
+          ))
 
+          # --- GGPLOT AND GGSAVE CODE CONTINUES UNCHANGED ---
           p <- ggplot(
             plot_tbl,
             aes(x = .data$n_cell, y = .data$mean_bw, colour = .data$bw_mtd_base)
           ) +
-            geom_line(mapping = aes(linetype = .data$bw_mtd_norm)) +
+            geom_line(linetype = "solid") +
             geom_point() +
             scale_x_log10() +
-            facet_grid(
-              transformation ~ prob_response,
-              scales = "free_y"
-            ) +
+            facet_grid(transformation ~ prob_response, scales = "free_y") +
             labs(
               title = paste0(
                 "Mean position setting: ", mean_pos_setting_curr,
-                ", bias_uns_setting: ", bias_uns_setting_curr,
-                ", bw_ncell_upper: ", bw_ncell_upper_curr,
-                ", component: ", bw_component_curr,
-                ", condition: ", bw_condition_curr
+                ",\nbias_uns_setting: ", bias_uns_setting_curr,
+                ",\nbw_ncell_upper: ", bw_ncell_upper_curr,
+                ",\ncomponent: ", bw_component_curr,
+                ",\ncondition: ", bw_condition_curr
               ),
-              x = "Number of cells",
-              y = "Estimated bandwidth",
-              colour = "Bandwidth method",
-              linetype = "Bandwidth method type"
+              x = "Number of cells", y = "Estimated bandwidth", colour = "Method"
             ) +
             cowplot::theme_cowplot() +
             cowplot::background_grid(major = "xy") +
@@ -763,33 +837,20 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
               plot.background = element_rect(fill = "white", colour = NA),
               legend.position = "bottom"
             ) +
-            scale_colour_manual(
-              values = .simBwMtdColVec,
-              drop = FALSE
-            )
+            scale_colour_manual(values = .simBwMtdColVec, drop = FALSE)
 
           path_plot <- file.path(
-            dir_results,
-            "plots",
+            dir_results, "plots",
             paste0(
               "bw_estimate_meanpos_setting_", .file_safe(mean_pos_setting_curr),
               "_bias_uns_", .file_safe(bias_uns_setting_curr),
               "_ncell_upper_", .file_safe(bw_ncell_upper_curr),
               "_component_", .file_safe(bw_component_curr),
-              "_condition_", .file_safe(bw_condition_curr),
-              ".png"
+              "_condition_", .file_safe(bw_condition_curr), ".png"
             )
           )
           dir.create(dirname(path_plot), recursive = TRUE, showWarnings = FALSE)
-
-          ggsave(
-            filename = path_plot,
-            plot = p,
-            width = 12,
-            height = 20,
-            units = "cm"
-          )
-
+          ggsave(filename = path_plot, plot = p, width = 12, height = 20, units = "cm")
           print(p)
         }
       }
