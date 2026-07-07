@@ -17,13 +17,14 @@ tests/testthat/cache/
 analysis/*html
 analysis/*.rmarkdown
 analysis/archive_manual/**
+*.rmarkdown
 
 # pkgdown local build output
 docs/
 
 inst/doc
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
-analysis/docs/**
+docs/**
 _raw_data/**
 _tmp/**
 _output/**
@@ -64,3 +65,4 @@ _tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-1
 _tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-2
 _tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-3
 _tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-4
+
