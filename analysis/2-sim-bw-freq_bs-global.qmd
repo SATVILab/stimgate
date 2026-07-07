@@ -89,7 +89,7 @@ bandwidth_value_vec <- c(
   # mixed
   0.05, 0.1, 0.15,
   # skew and gaussian
-  0.2, 0.25, 0.5, 0.75, 1
+  0.2, 0.25, 0.5, 0.75, 1, 1.25, 1.5
   )
 
 # can vary these later
@@ -303,6 +303,11 @@ future::plan(
 # Total number of iterations
 total_sims <- nrow(sim_grid)
 
+# Randomise order to ensure that 
+# row order doesn't predict runtime
+set.seed(42)
+sim_grid <- sim_grid[sample(nrow(sim_grid)), ]
+
 bw_list_raw <- progressr::with_progress({
   p <- progressr::progressor(steps = total_sims)
 
@@ -511,7 +516,7 @@ bw_list_raw <- progressr::with_progress({
 
       return(out)
     },
-    .options = furrr::furrr_options(seed = TRUE)
+    .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
   )
 })
 

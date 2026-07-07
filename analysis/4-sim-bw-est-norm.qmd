@@ -481,7 +481,7 @@ bw_list_raw_mtd <- progressr::with_progress({
 
       out
     },
-    .options = furrr::furrr_options(seed = TRUE)
+    .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
   )
 })
 
