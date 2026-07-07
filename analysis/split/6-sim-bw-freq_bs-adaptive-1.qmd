@@ -9,10 +9,10 @@ execute:
   message: false
 params:
   sim_grid_chunk_index: 1
-  sim_grid_n_chunks: 1
+  sim_grid_n_chunks: 4
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
-  run_plots: true
+  run_plots: false
 ---
 
 ```{r}
