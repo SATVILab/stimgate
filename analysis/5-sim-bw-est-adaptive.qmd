@@ -11,7 +11,7 @@ params:
   sim_grid_chunk_index: 1
   sim_grid_n_chunks: 1
   sim_grid_shuffle_seed: 20260707
-  run_simulations: true
+  run_simulations: false
   run_plots: true
 ---
 
@@ -80,7 +80,7 @@ sim_grid_shuffle_seed <- as.integer(.get_qmd_param_env(
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
   "RUN_SIMULATIONS",
-  TRUE
+  FALSE
 ))
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
@@ -470,6 +470,7 @@ dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 bw_list_raw <- list()
 
 if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
+
   future::plan(
     future::multisession,
     workers = max(1, .simGetCores())
