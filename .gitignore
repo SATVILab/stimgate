@@ -18,6 +18,11 @@ analysis/*html
 analysis/*.rmarkdown
 analysis/archive_manual/**
 *.rmarkdown
+analysis/*html
+analysis/*rmarkdown
+analysis/**/*.html
+analysis/**/*.rmarkdown
+analysis/split/*
 
 # pkgdown local build output
 docs/
@@ -70,3 +75,7 @@ _tmp/log/sbatch/2-sim-bw-freq_bs-global/chunk-1
 _tmp/log/sbatch/2-sim-bw-freq_bs-global/chunk-2
 _tmp/log/sbatch/2-sim-bw-freq_bs-global/chunk-3
 _tmp/log/sbatch/2-sim-bw-freq_bs-global/chunk-4
+_tmp/log/sbatch/5-sim-bw-est-adaptive/chunk-1
+_tmp/log/sbatch/5-sim-bw-est-adaptive/chunk-2
+_tmp/log/sbatch/5-sim-bw-est-adaptive/chunk-3
+_tmp/log/sbatch/5-sim-bw-est-adaptive/chunk-4
