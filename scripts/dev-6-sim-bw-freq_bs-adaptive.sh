@@ -54,10 +54,11 @@ echo " "
 echo " "
 
 echo "-------------------"
-echo "Run projr"
+echo "Render Quarto directly"
 date
-apptainer-rscript -f stimgate -- "projr::projr_build_dev(profile = '', file = '$qmd_file')"
-echo "Completed running projr"
+r_expr="qmd_file <- '$qmd_file'; if (requireNamespace('quarto', quietly = TRUE)) { quarto::quarto_render(input = qmd_file) } else { status <- system2('quarto', c('render', qmd_file)); if (!identical(status, 0L)) quit(status = status) }"
+apptainer-rscript -f stimgate -- "$r_expr"
+echo "Completed rendering Quarto"
 date
 echo "-------------------"
 echo " "
