@@ -3,6 +3,7 @@ set -euo pipefail
 
 # get location of script
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+project_root=$(cd -- "$script_dir/.." &> /dev/null && pwd)
 
 scripts=(
   # "dev-1-sim-trans.sh"
@@ -14,8 +15,35 @@ scripts=(
 )
 
 poll_seconds="${POLL_SECONDS:-5}"
+sim_grid_n_chunks="${SIM_GRID_N_CHUNKS:-4}"
+sim_grid_shuffle_seed="${SIM_GRID_SHUFFLE_SEED:-20260707}"
 
 install_script="$script_dir/install.sh"
+
+prepare_adaptive_split_qmds() {
+  local base_qmd="${SIM_GRID_BASE_QMD:-$project_root/analysis/6-sim-bw-freq_bs-adaptive.qmd}"
+  local split_dir="${SIM_GRID_SPLIT_DIR:-$project_root/analysis/split}"
+  local split_rel_dir="analysis/split"
+
+  if [[ ! -f "$base_qmd" ]]; then
+    echo "ERROR: Could not find base QMD: $base_qmd" >&2
+    exit 1
+  fi
+
+  mkdir -p "$split_dir"
+
+  for chunk_index in $(seq 1 "$sim_grid_n_chunks"); do
+    local dest="$split_dir/6-sim-bw-freq_bs-adaptive-${chunk_index}.qmd"
+
+    cp "$base_qmd" "$dest"
+
+    perl -0pi -e \
+      "s/sim_grid_chunk_index:\\s*[^\\n]+/sim_grid_chunk_index: ${chunk_index}/; s/sim_grid_n_chunks:\\s*[^\\n]+/sim_grid_n_chunks: ${sim_grid_n_chunks}/; s/sim_grid_shuffle_seed:\\s*[^\\n]+/sim_grid_shuffle_seed: ${sim_grid_shuffle_seed}/; s/run_simulations:\\s*[^\\n]+/run_simulations: true/; s/run_plots:\\s*[^\\n]+/run_plots: false/;" \
+      "$dest"
+
+    echo "Prepared ${split_rel_dir}/6-sim-bw-freq_bs-adaptive-${chunk_index}.qmd"
+  done
+}
 
 tmp_before="$(mktemp)"
 trap 'rm -f "$tmp_before"' EXIT
@@ -105,8 +133,20 @@ fi
 echo "Submitting downstream jobs"
 
 for script in "${scripts[@]}"; do
-  echo "Submitting $script"
-  slurm-sbatch "$script_dir/$script"
+  if [[ "$script" == "dev-6-sim-bw-freq_bs-adaptive.sh" ]]; then
+    echo "Preparing split QMDs for $script"
+    prepare_adaptive_split_qmds
+
+    for chunk_index in $(seq 1 "$sim_grid_n_chunks"); do
+      echo "Submitting $script chunk $chunk_index of $sim_grid_n_chunks"
+      SIM_GRID_N_CHUNKS="$sim_grid_n_chunks" \
+        SIM_GRID_SHUFFLE_SEED="$sim_grid_shuffle_seed" \
+        slurm-sbatch "$script_dir/$script" "$chunk_index"
+    done
+  else
+    echo "Submitting $script"
+    slurm-sbatch "$script_dir/$script"
+  fi
 done
 
 echo "All downstream jobs submitted"
