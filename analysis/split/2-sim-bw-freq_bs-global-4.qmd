@@ -1,0 +1,1593 @@
+---
+title: Simulate best bandwidth
+format:
+  html:
+    embed-resources: true
+    toc: true
+execute:
+  warning: false
+  message: false
+params:
+  sim_grid_chunk_index: 4
+  sim_grid_n_chunks: 4
+  sim_grid_shuffle_seed: 20260707
+  run_simulations: true
+  run_plots: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(furrr)
+library(progressr)
+
+root_dir <- tryCatch(
+  projr::projr_path_get("project"),
+  error = function(e) getwd()
+)
+
+.get_qmd_param <- function(nm, default = NULL) {
+  if (
+    exists("params", inherits = TRUE) &&
+      nm %in% names(params) &&
+      !is.null(params[[nm]])
+  ) {
+    params[[nm]]
+  } else {
+    default
+  }
+}
+
+.get_qmd_param_env <- function(param_nm, env_nm, default = NULL) {
+  env_val <- Sys.getenv(env_nm, unset = NA_character_)
+
+  if (!is.na(env_val) && nzchar(env_val)) {
+    env_val
+  } else {
+    .get_qmd_param(param_nm, default)
+  }
+}
+
+.as_flag <- function(x) {
+  if (is.logical(x)) {
+    return(isTRUE(x))
+  }
+
+  x <- tolower(trimws(as.character(x)))
+  x %in% c("true", "t", "yes", "y", "1")
+}
+
+sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
+  "sim_grid_chunk_index",
+  "SIM_GRID_CHUNK_INDEX",
+  1L
+))
+sim_grid_n_chunks <- as.integer(.get_qmd_param_env(
+  "sim_grid_n_chunks",
+  "SIM_GRID_N_CHUNKS",
+  1L
+))
+sim_grid_shuffle_seed <- as.integer(.get_qmd_param_env(
+  "sim_grid_shuffle_seed",
+  "SIM_GRID_SHUFFLE_SEED",
+  20260707L
+))
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  TRUE
+))
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+
+if (
+  is.na(sim_grid_chunk_index) ||
+    is.na(sim_grid_n_chunks) ||
+    sim_grid_n_chunks < 1L ||
+    sim_grid_chunk_index < 1L ||
+    sim_grid_chunk_index > sim_grid_n_chunks
+) {
+  stop(
+    "Invalid sim grid chunk settings: sim_grid_chunk_index must be between 1 and sim_grid_n_chunks."
+  )
+}
+
+.sim_chunk_label <- sprintf(
+  "%03d-of-%03d",
+  sim_grid_chunk_index,
+  sim_grid_n_chunks
+)
+
+desc_path <- file.path(root_dir, "DESCRIPTION")
+
+if (
+  file.exists(desc_path) &&
+    grepl("Package: stimgate", readLines(desc_path, n = 1))
+) {
+  devtools::load_all(root_dir)
+} else {
+  fn_vec <- list.files(file.path(root_dir, "R"), full.names = TRUE)
+  for (fn in fn_vec) {
+    source(fn)
+  }
+}
+```
+
+### Checking what the estimators actually estimate
+
+Get the parameters over which we simulate.
+
+So, as with checking what the actual estimated bandwidths are, we are going to have to vary over the number of cells, the probability of response, the mean position of the response, and the transformation applied to the data.
+
+We will need to vary over more response probabilities, however, and of course need to vary over the bandwidths themselves.
+
+Regarding the bandwidths themselves, as the `gamma` scenario is estimating such low bandwidths, we're going to have to start low.
+
+We should probably allow varying amounts of intra-sample variation between the stimulated and unstimulated conditions.
+But for now, let's just have two levels - no variation, slight variation.
+
+Let's keep moderate background at 0.2.
+
+Let's use a low and medium amount of bias.
+
+```{r}
+#| label: actual-settings
+# simulation settings
+n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)[c(1, 3, 5, 7)]
+prob_response_vec <- c(
+  1 / 5e5,
+  1 / 2e5,
+  1 / 1e5,
+  1 / 5e4,
+  1 / 2e4,
+  1 / 1e4,
+  1 / 5e3,
+  1 / 2e3,
+  1 / 1e3,
+  1 / 5e2,
+  1 / 2e2,
+  1 / 1e2,
+  1 / 5e1,
+  1 / 2e1,
+  1 / 1e1,
+  1 / 5,
+  1 / 2
+)[c(2, 4, 6, 8, 10, 16)]
+mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
+transformation_vec <- c("gaussian", "gamma", "skew")
+mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
+sample_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
+condition_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1:2]
+cluster_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
+background_relative_to_response_vec <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.001)[4]
+n_cell_uns_relative_to_stim_vec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)[4]
+
+# fix the bandwidth
+bandwidth_value_vec <- c(
+  # gamma
+  0.001, 0.0025, 0.005, 0.0075, 0.01,
+  0.0125, 0.015, 0.0175, 0.02, 0.03,
+  0.04,
+  # mixed
+  0.05, 0.1, 0.15,
+  # skew and gaussian
+  0.2, 0.25, 0.5, 0.75, 1, 1.25, 1.5
+  )
+
+# can vary these later
+bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
+bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
+bias_uns_settings_tbl <- tibble::tribble(
+  ~bias_uns_setting, ~transformation, ~bias_uns,
+  "none", "gaussian", 0,
+  "none", "gamma", 0,
+  "none", "skew", 0,
+  "low", "gaussian", 0.05,
+  "low", "gamma", 0.0025,
+  "low", "skew", 0.05,
+  "high", "gaussian", 0.25,
+  "high", "gamma", 0.01,
+  "high", "skew", 0.25
+)
+bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
+
+if (.isQuick()) {
+  n_cell_stim_vec <- c(1e3, 5e4)
+  prob_response_vec <- c(0.002, 0.02)
+  bandwidth_value_vec <- c(0.01, 0.1, 0.5, 0.5, 1)
+  bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
+  bandwidth_value_vec <- c(0.05, 0.1, 0.25, 0.5, 0.75)
+  condition_perturbation_sd_vec <- 0
+}
+```
+
+### Varying bandwidth manually
+
+So, now we'll vary the bandwidth from a small value up to to a large value, where "small" is relative to the known spread of the data.
+
+The spread of the data (without any batch effects) around the mean is on average 2, and the spread between the means is up to 8.
+So, we can vary the bandwidth from a small number (say 0.1) to a large number (say 10), and see how estimated background-subtracted frequencies compare to actual.
+
+It should be doable with just the `bw` parameter, but ah, we haven't set that yet.
+
+Okay, we've got the code working above. Now we'll vary the fixed bandwidth from 0.01 to 4, along with making the bias_unstim some reasonably large value (we'll have to fix it).
+
+And we'll do this for varying numbers of cells. 
+
+Generate the grid of parameters to simulate.
+
+```{r}
+#| label: bw-manual-grid
+sim_grid <- tidyr::expand_grid(
+  mean_pos_settings_tbl,
+  prob_response  = prob_response_vec,
+  n_cell         = n_cell_stim_vec,
+  bw             = bandwidth_value_vec,
+  bias_uns       = bias_uns_vec,
+  sample_perturbation_sd = sample_perturbation_sd_vec,
+  condition_perturbation_sd = condition_perturbation_sd_vec,
+  cluster_perturbation_sd = cluster_perturbation_sd_vec,
+  background_relative_to_response = background_relative_to_response_vec,
+  n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim_vec
+) |>
+  dplyr::inner_join(
+    bias_uns_settings_tbl,
+    by = c("transformation", "bias_uns")
+  ) |>
+  dplyr::select(
+    transformation, prob_response, n_cell,
+    mean_pos_setting, mean_pos, bw, bias_uns_setting, bias_uns,
+    sample_perturbation_sd, condition_perturbation_sd,
+    cluster_perturbation_sd, background_relative_to_response,
+    n_cell_uns_relative_to_stim
+  ) |>
+  dplyr::filter(
+    !(n_cell * prob_response < 5 & prob_response < 0.04)
+  ) |>
+  dplyr::filter(
+    (bw <= 0.15 & transformation == "gamma") | (
+      bw >= 0.05 & transformation != "gamma"
+    )
+  ) |>
+  dplyr::mutate(
+    sim_id = dplyr::row_number()
+  ) |>
+  dplyr::arrange(n_cell, dplyr::desc(prob_response))
+
+if (.isDev()) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell == 1e5,
+      prob_response == 0.002,
+      mean_pos_setting == "high",
+      transformation %in% transformation_vec,
+      bw == 0.02,
+      bias_uns_setting == "low",
+      condition_perturbation_sd == 0
+    )
+}
+
+sim_grid_all <- sim_grid
+
+if (nrow(sim_grid_all) > 0L) {
+  set.seed(sim_grid_shuffle_seed)
+
+  sim_grid <- sim_grid_all |>
+    dplyr::mutate(
+      .shuffle_order = sample.int(dplyr::n())
+    ) |>
+    dplyr::arrange(.data$.shuffle_order) |>
+    dplyr::mutate(
+      .sim_grid_chunk = ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L
+    ) |>
+    dplyr::filter(.data$.sim_grid_chunk == sim_grid_chunk_index) |>
+    dplyr::arrange(.data$n_cell, dplyr::desc(.data$prob_response)) |>
+    dplyr::select(-.shuffle_order, -.sim_grid_chunk)
+} else {
+  sim_grid <- sim_grid_all
+}
+
+sim_grid
+print(paste0(
+  "Performing ", nrow(sim_grid), " of ", nrow(sim_grid_all),
+  " simulations for sim_grid chunk ", sim_grid_chunk_index,
+  " of ", sim_grid_n_chunks,
+  " using shuffle seed ", sim_grid_shuffle_seed
+))
+```
+
+A loop we only run when we want to see why particular runs failed.
+
+```{r}
+#| label: bw-manual-loop
+#| eval: false
+devtools::load_all()
+bw_list_raw <- vector("list", nrow(sim_grid))
+
+for (i in seq_len(nrow(sim_grid))) {
+  message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
+  # debug(.verifyBwLimitSetting)
+  sim_res <- .simBandwidthBsFreq(
+    nSample = 10,
+    nMarker = 1,
+    nCondition = 2,
+    nCluster = 2,
+    nIter = 1,
+    biasUns = sim_grid$bias_uns[i],
+    bw = sim_grid$bw[i],
+    bwFallback = sim_grid$bw[i],
+    bwMin = "none",
+    bwMax = "none",
+    nCellStim = sim_grid$n_cell[i],
+    probResponse = sim_grid$prob_response[i],
+    probExact = TRUE,
+    meanPos = sim_grid$mean_pos[i],
+    transformation = sim_grid$transformation[i],
+    samplePerturbationSd = sim_grid$sample_perturbation_sd[i],
+    conditionPerturbationSd = sim_grid$condition_perturbation_sd[i],
+    clusterPerturbationSd = sim_grid$cluster_perturbation_sd[i],
+    backgroundRelativeToResponse =
+      sim_grid$background_relative_to_response[i],
+    ncellUnsRelativeToStim =
+      sim_grid$n_cell_uns_relative_to_stim[i],
+    covEvMin = 1.5,
+    covEvMax = 1.5,
+    tolClust = NULL
+  ) |>
+    dplyr::mutate(
+      transformation = sim_grid$transformation[i],
+      prob_response = sim_grid$prob_response[i],
+      n_cell = sim_grid$n_cell[i],
+      mean_pos_setting = sim_grid$mean_pos_setting[i],
+      mean_pos = sim_grid$mean_pos[i],
+      bw = sim_grid$bw[i],
+      bias_uns_setting = sim_grid$bias_uns_setting[i],
+      bias_uns = sim_grid$bias_uns[i],
+      sample_perturbation_sd = sim_grid$sample_perturbation_sd[i],
+      condition_perturbation_sd =
+        sim_grid$condition_perturbation_sd[i],
+      cluster_perturbation_sd = sim_grid$cluster_perturbation_sd[i],
+      background_relative_to_response =
+        sim_grid$background_relative_to_response[i],
+      n_cell_uns_relative_to_stim =
+        sim_grid$n_cell_uns_relative_to_stim[i],
+      sim_id = sim_grid$sim_id[i]
+    ) |>
+    dplyr::select(
+      transformation, prob_response, n_cell,
+      mean_pos_setting, mean_pos, bw, bias_uns_setting, bias_uns,
+      sample_perturbation_sd, condition_perturbation_sd,
+      cluster_perturbation_sd, background_relative_to_response,
+      n_cell_uns_relative_to_stim, sim_id,
+      dplyr::everything()
+    )
+
+  bw_list_raw[[i]] <- sim_res
+}
+```
+
+Run the simulations in parallel, with progress reporting.
+
+```{r}
+#| label: bw-manual-parallel
+#| results: hide
+if (interactive()) {
+  progressr::handlers(global = TRUE)
+}
+
+path_progress_file <- projr::projr_path_get(
+  "cache",
+  "log",
+  "analysis",
+  "sim",
+  "bw",
+  "freq_bs",
+  "global",
+  paste0("progress-chunk_", .sim_chunk_label, ".txt")
+)
+dir_progress <- dirname(path_progress_file)
+dir_jobs <- file.path(dir_progress, "jobs")
+dir_jobs_chunk <- file.path(dir_jobs, paste0("chunk_", .sim_chunk_label))
+dir_output <- file.path(dir_progress, "output")
+
+if (file.exists(path_progress_file)) {
+  file.remove(path_progress_file)
+}
+if (dir.exists(dir_jobs_chunk)) {
+  unlink(dir_jobs_chunk, recursive = TRUE, force = TRUE)
+}
+dir.create(dir_jobs_chunk, recursive = TRUE, showWarnings = FALSE)
+dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
+
+.write_rds_atomic <- function(object, path) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+
+  tmp <- paste0(
+    path,
+    ".tmp-",
+    Sys.getpid(),
+    "-",
+    as.integer(Sys.time())
+  )
+
+  saveRDS(object, file = tmp)
+
+  if (!file.rename(tmp, path)) {
+    file.copy(tmp, path, overwrite = TRUE)
+    unlink(tmp, force = TRUE)
+  }
+
+  invisible(path)
+}
+
+.path_sim_output <- function(sim_id) {
+  file.path(
+    dir_output,
+    sprintf(
+      "bw_list_raw-chunk_%03d-of_%03d-sim_id_%06d.rds",
+      sim_grid_chunk_index,
+      sim_grid_n_chunks,
+      as.integer(sim_id)
+    )
+  )
+}
+
+bw_list_raw <- list()
+
+if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
+  future::plan(
+    future::multisession,
+    workers = max(1, .simGetCores())
+  )
+
+  total_sims <- nrow(sim_grid)
+
+  bw_list_raw <- progressr::with_progress({
+    p <- progressr::progressor(steps = total_sims)
+
+    furrr::future_pmap(
+      sim_grid,
+      function(
+        transformation,
+        prob_response,
+        n_cell,
+        mean_pos_setting,
+        mean_pos,
+        bw,
+        bias_uns_setting,
+        bias_uns,
+        sample_perturbation_sd,
+        condition_perturbation_sd,
+        cluster_perturbation_sd,
+        background_relative_to_response,
+        n_cell_uns_relative_to_stim,
+        sim_id
+      ) {
+        settings_row <- paste0(
+          "trans = ", transformation,
+          " | prob = ", prob_response,
+          " | n_cell = ", n_cell,
+          " | mean = ", mean_pos,
+          " | bw = ", bw,
+          " | bias_setting = ", bias_uns_setting,
+          " | bias = ", bias_uns,
+          " | sample_sd = ", sample_perturbation_sd,
+          " | condition_sd = ", condition_perturbation_sd,
+          " | cluster_sd = ", cluster_perturbation_sd,
+          " | bg_rel = ", background_relative_to_response,
+          " | n_uns_rel = ", n_cell_uns_relative_to_stim,
+          " | sim_id = ", sim_id,
+          " | chunk = ", sim_grid_chunk_index,
+          " of ", sim_grid_n_chunks
+        )
+
+        file_running <- file.path(dir_jobs_chunk, paste0("running-", sim_id))
+        file_completed <- file.path(dir_jobs_chunk, paste0("completed-", sim_id))
+        file_error <- file.path(dir_jobs_chunk, paste0("error-", sim_id))
+        file_output <- .path_sim_output(sim_id)
+
+        existing_output <- if (file.exists(file_output)) {
+          tryCatch(readRDS(file_output), error = function(e) NULL)
+        } else {
+          NULL
+        }
+
+        if (!is.null(existing_output)) {
+          p(sprintf("Skipped existing sim_id: %s", sim_id))
+          return(existing_output)
+        }
+
+        update_progress_summary <- function() {
+          all_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
+
+          n_running <- sum(grepl("^running-", all_job_files))
+          n_completed <- sum(grepl("^completed-", all_job_files))
+          n_error <- sum(grepl("^error-", all_job_files))
+          n_done <- n_completed + n_error
+
+          running_files <- all_job_files[grepl("^running-", all_job_files)]
+          running_ids <- sub("^running-", "", running_files)
+          running_list_str <- if (length(running_ids) > 0) {
+            paste(running_ids, collapse = ", ")
+          } else {
+            "None"
+          }
+
+          summary_text <- paste0(
+            "========================================\n",
+            " GLOBAL FREQUENCY PROGRESS DASHBOARD    \n",
+            "========================================\n",
+            "Chunk              : ", sim_grid_chunk_index, " of ", sim_grid_n_chunks, "\n",
+            "Total Simulations  : ", total_sims, "\n",
+            "In Progress        : ", n_running, "\n",
+            "Completed (Success): ", n_completed, "\n",
+            "Completed (Errors) : ", n_error, "\n",
+            "Total Done          : ", n_done, "\n",
+            "Output directory   : ", dir_output, "\n",
+            "----------------------------------------\n",
+            "Currently Running IDs:\n", running_list_str, "\n",
+            "========================================\n"
+          )
+
+          cat(summary_text, file = path_progress_file, append = FALSE)
+        }
+
+        file.create(file_running)
+        update_progress_summary()
+
+        out <- tryCatch(
+          {
+            sim_res <- stimgate:::.simBandwidthBsFreq(
+              nSample = 5,
+              nMarker = 1,
+              nCondition = 2,
+              nCluster = 2,
+              nIter = 5,
+              biasUns = bias_uns,
+              bw = bw,
+              bwMin = "none",
+              bwMax = "none",
+              bwFallback = bw,
+              nCellStim = n_cell,
+              probResponse = prob_response,
+              probExact = TRUE,
+              meanPos = mean_pos,
+              transformation = transformation,
+              samplePerturbationSd = sample_perturbation_sd,
+              conditionPerturbationSd = condition_perturbation_sd,
+              clusterPerturbationSd = cluster_perturbation_sd,
+              backgroundRelativeToResponse = background_relative_to_response,
+              ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
+              covEvMin = 1.5,
+              covEvMax = 1.5,
+              tolClust = NULL
+            ) |>
+              dplyr::mutate(
+                transformation = transformation,
+                prob_response = prob_response,
+                n_cell = n_cell,
+                mean_pos_setting = mean_pos_setting,
+                mean_pos = mean_pos,
+                bw = bw,
+                bias_uns_setting = bias_uns_setting,
+                bias_uns = bias_uns,
+                sample_perturbation_sd = sample_perturbation_sd,
+                condition_perturbation_sd = condition_perturbation_sd,
+                cluster_perturbation_sd = cluster_perturbation_sd,
+                background_relative_to_response =
+                  background_relative_to_response,
+                n_cell_uns_relative_to_stim =
+                  n_cell_uns_relative_to_stim,
+                sim_id = sim_id,
+                sim_grid_chunk_index = sim_grid_chunk_index,
+                sim_grid_n_chunks = sim_grid_n_chunks,
+                error_message = NA_character_
+              ) |>
+              dplyr::select(
+                transformation,
+                prob_response,
+                n_cell,
+                mean_pos_setting,
+                mean_pos,
+                bw,
+                bias_uns_setting,
+                bias_uns,
+                sample_perturbation_sd,
+                condition_perturbation_sd,
+                cluster_perturbation_sd,
+                background_relative_to_response,
+                n_cell_uns_relative_to_stim,
+                sim_id,
+                sim_grid_chunk_index,
+                sim_grid_n_chunks,
+                dplyr::everything()
+              )
+
+            .write_rds_atomic(sim_res, file_output)
+
+            file.create(file_completed)
+            if (file.exists(file_running)) file.remove(file_running)
+
+            update_progress_summary()
+            p(sprintf("Completed sim_id: %s", sim_id))
+
+            sim_res
+          },
+          error = function(e) {
+            file.create(file_error)
+            if (file.exists(file_running)) file.remove(file_running)
+
+            err_res <- tibble::tibble(
+              transformation = transformation,
+              prob_response = prob_response,
+              n_cell = n_cell,
+              mean_pos_setting = mean_pos_setting,
+              mean_pos = mean_pos,
+              bw = bw,
+              bias_uns_setting = bias_uns_setting,
+              bias_uns = bias_uns,
+              sample_perturbation_sd = sample_perturbation_sd,
+              condition_perturbation_sd = condition_perturbation_sd,
+              cluster_perturbation_sd = cluster_perturbation_sd,
+              background_relative_to_response =
+                background_relative_to_response,
+              n_cell_uns_relative_to_stim =
+                n_cell_uns_relative_to_stim,
+              sim_id = sim_id,
+              sim_grid_chunk_index = sim_grid_chunk_index,
+              sim_grid_n_chunks = sim_grid_n_chunks,
+              iter = NA_integer_,
+              chnl = NA_character_,
+              sample = NA_character_,
+              ind = NA_character_,
+              method = NA_character_,
+              propRespTruth = NA_real_,
+              propRespEst = NA_real_,
+              propBsEst = NA_real_,
+              threshold = NA_real_,
+              thresholdOrigin = NA_character_,
+              gateReturnPoint = NA_character_,
+              locGenerated = NA,
+              locGeneratedDirect = NA,
+              locSource = NA_character_,
+              locReason = NA_character_,
+              detailLevel = NA_character_,
+              nCellStim = NA_real_,
+              nCellUns = NA_real_,
+              nPosStim = NA_integer_,
+              nPosUns = NA_integer_,
+              error_message = e$message
+            )
+
+            .write_rds_atomic(err_res, file_output)
+            update_progress_summary()
+            p(sprintf("ERROR on sim_id: %s", sim_id))
+
+            err_res
+          }
+        )
+
+        out
+      },
+      .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+    )
+  })
+
+  future::plan(future::sequential)
+
+  .write_rds_atomic(
+    bw_list_raw,
+    projr::projr_path_get(
+      "cache", "sim", "bw", "freq_bs", "global",
+      sprintf(
+        "bw_list_raw_chunk_%03d-of_%03d.rds",
+        sim_grid_chunk_index,
+        sim_grid_n_chunks
+      )
+    )
+  )
+} else if (isTRUE(run_simulations)) {
+  message("No simulations assigned to this chunk.")
+} else {
+  message("Skipping simulations because run_simulations is FALSE.")
+}
+```
+
+Collate the results and calculate the metrics of interest.
+
+```{r}
+#| label: bw-manual-collate
+.add_missing_cols <- function(.data, cols) {
+  for (nm in names(cols)) {
+    if (!nm %in% names(.data)) {
+      .data[[nm]] <- cols[[nm]]
+    }
+  }
+  .data
+}
+
+.find_bw_list_output_files <- function() {
+  output_dir_vec <- unique(c(
+    if (exists("dir_output", inherits = TRUE)) dir_output else character(),
+    file.path(
+      dirname(projr::projr_path_get(
+        "cache",
+        "log",
+        "analysis",
+        "sim",
+        "bw",
+        "freq_bs",
+        "global",
+        "progress.txt",
+        safe = TRUE
+      )),
+      "output"
+    ),
+    file.path(
+      dirname(projr::projr_path_get(
+        "cache",
+        "log",
+        "analysis",
+        "sim",
+        "bw",
+        "freq_bs",
+        "global",
+        "progress.txt",
+        safe = FALSE
+      )),
+      "output"
+    )
+  ))
+
+  output_dir_vec <- output_dir_vec[dir.exists(output_dir_vec)]
+
+  unique(unlist(lapply(
+    output_dir_vec,
+    list.files,
+    pattern = "^bw_list_raw-chunk_[0-9]+-of_[0-9]+-sim_id_[0-9]+[.]rds$",
+    full.names = TRUE
+  )))
+}
+
+bw_list_path_vec <- .find_bw_list_output_files()
+
+if (length(bw_list_path_vec) > 0L) {
+  message("Collating ", length(bw_list_path_vec), " saved simulation result files from output.")
+
+  bw_list_raw_collate <- purrr::map(
+    bw_list_path_vec,
+    function(path) {
+      tryCatch(
+        readRDS(file = path),
+        error = function(e) {
+          warning("Could not read saved simulation result: ", path)
+          NULL
+        }
+      )
+    }
+  ) |>
+    purrr::compact()
+} else if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
+  message("No saved simulation result files found in output; using bw_list_raw from memory.")
+  bw_list_raw_collate <- bw_list_raw
+} else {
+  path_vec <- c(
+    projr::projr_path_get(
+      "cache",
+      "sim",
+      "bw",
+      "freq_bs", "global",
+      "bw_list_raw.rds",
+      safe = TRUE
+    ),
+    projr::projr_path_get(
+      "cache",
+      "sim",
+      "bw",
+      "freq_bs",
+      "global",
+      "bw_list_raw.rds",
+      safe = FALSE
+    )
+  )
+  path_vec <- path_vec[file.exists(path_vec)]
+  if (length(path_vec) == 0L) {
+    stop(
+      "Could not find saved output result files, bw_list_raw.rds, ",
+      "or bw_list_raw in memory."
+    )
+  }
+  bw_list_raw_collate <- readRDS(file = path_vec[[1]])
+}
+
+bw_tbl_raw <- bw_list_raw_collate |>
+  purrr::list_rbind()
+
+bw_tbl <- .add_missing_cols(
+  bw_tbl_raw,
+  list(
+    iter = NA_integer_,
+    sample = NA_character_,
+    ind = NA_character_,
+    propBsEst = NA_real_,
+    threshold = NA_real_,
+    bias_uns_setting = NA_character_,
+    sim_grid_chunk_index = NA_integer_,
+    sim_grid_n_chunks = NA_integer_,
+    error_message = NA_character_
+  )
+)
+
+if (all(is.na(bw_tbl$threshold))) {
+  stop("No valid threshold results were collated. Check the progress log for simulation-level errors.")
+}
+
+if (all(is.na(bw_tbl$bias_uns_setting))) {
+  bw_tbl <- bw_tbl |>
+    dplyr::select(-bias_uns_setting) |>
+    dplyr::left_join(
+      bias_uns_settings_tbl,
+      by = c("transformation", "bias_uns")
+    )
+}
+
+bw_tbl <- bw_tbl |>
+  dplyr::filter(!is.na(.data$bias_uns_setting))
+
+bw_tbl_results_raw <- bw_tbl |>
+  dplyr::select(
+    dplyr::any_of(colnames(sim_grid_all)),
+    iter,
+    sample,
+    ind,
+    propBsEst,
+    threshold
+  ) |>
+  dplyr::filter(is.finite(threshold) & is.finite(propBsEst)) |>
+  dplyr::group_by(sim_id, iter, ind) |>
+  dplyr::mutate(
+    threshold = unique(threshold[is.finite(threshold)])[[1]],
+    propBsEst = unique(propBsEst[is.finite(propBsEst)])[[1]]
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::group_by(
+    dplyr::pick(dplyr::any_of(colnames(sim_grid_all))),
+    iter,
+    ind
+  ) |>
+  dplyr::slice(1) |>
+  dplyr::ungroup()
+
+if (nrow(bw_tbl_results_raw) == 0L) {
+  warning(
+    "No valid bandwidth-frequency results were collated. ",
+    "Check the progress log for simulation-level errors."
+  )
+}
+
+bw_tbl_results_summary <- bw_tbl_results_raw |>
+  dplyr::group_by(
+    dplyr::pick(dplyr::any_of(colnames(sim_grid_all)))
+  ) |>
+  dplyr::summarise(
+    dplyr::across(
+      c(threshold, propBsEst),
+      list(
+        min = ~ min(.x, na.rm = TRUE),
+        max = ~ max(.x, na.rm = TRUE),
+        mean = ~ mean(.x, na.rm = TRUE),
+        median = ~ stats::median(.x, na.rm = TRUE)
+      )
+    ),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    propBsEst_median_diff = propBsEst_median - prob_response,
+    propBsEst_median_diff_rel = (propBsEst_median - prob_response) /
+      prob_response
+  )
+
+collate_suffix <- if (sim_grid_n_chunks > 1L) {
+  sprintf("_chunk_%03d-of_%03d", sim_grid_chunk_index, sim_grid_n_chunks)
+} else {
+  ""
+}
+
+saveRDS(
+  bw_tbl,
+  file = projr::projr_path_get(
+    "cache", "sim", "bw", "freq_bs", "global",
+    paste0("bw_tbl", collate_suffix, ".rds")
+  )
+)
+saveRDS(
+  bw_tbl_results_raw,
+  file = projr::projr_path_get(
+    "cache", "sim", "bw", "freq_bs", "global",
+    paste0("bw_tbl_results_raw", collate_suffix, ".rds")
+  )
+)
+saveRDS(
+  bw_tbl_results_summary,
+  file = projr::projr_path_get(
+    "cache", "sim", "bw", "freq_bs", "global",
+    paste0("bw_tbl_results_summary", collate_suffix, ".rds")
+  )
+)
+```
+
+Okay, now we must plot which bandwidths are best for which scenarios.
+
+```{r}
+if (isTRUE(run_plots)) {
+  if (requireNamespace("UtilsDataRSV", quietly = TRUE)) {
+    sim_grid |>
+      UtilsDataRSV::view_cols()
+  } else {
+    dplyr::glimpse(sim_grid)
+  }
+}
+```
+
+Okay, so we varied the transformation, the prob_response, the n_cell, the mean_pos_setting, the bw, as well as now bias_uns.
+
+So, let's plot it perhaps how we did it for the bandwidth estimators? We have one line for each bandwidth, and then the x-axis as the number of cells, and the y-axis as the estimated background-subtracted frequency.
+We'll do one plot for each of the mean_pos_settings.
+Then, we have transformation along the x-axis, as usual, and the response probability along the y-axis (ito the facet, i.e. response probability gives you the row, transformation gives you the column).
+Okay, and we can plot the median estimated background-subtracted frequency.
+Let's leave error bars out for now.
+
+```{r}
+if (isTRUE(run_plots)) {
+  col_vec_bw <- c(
+    "#e0ecf4",
+    "#bfd3e6",
+    "#9ebcda",
+    "#8c96c6",
+    "#8c6bb1",
+    "#88419d",
+    "#810f7c"
+  )
+
+  make_bw_colour_values <- function(bw_vec, base_col_vec = col_vec_bw) {
+    n_bw <- length(unique(bw_vec))
+
+    if (n_bw <= length(base_col_vec)) {
+      base_col_vec[seq(length(base_col_vec) - n_bw + 1, length(base_col_vec))]
+    } else {
+      grDevices::colorRampPalette(base_col_vec)(n_bw)
+    }
+  }
+
+  bias_uns_setting_vec_plot <- bias_uns_settings_tbl |>
+    dplyr::distinct(.data$bias_uns_setting) |>
+    dplyr::pull(.data$bias_uns_setting)
+  for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      plot_tbl <- bw_tbl_results_summary |>
+        dplyr::filter(
+          mean_pos_setting == !!mean_pos_setting_curr,
+          bias_uns_setting == !!bias_uns_setting_curr
+        )
+
+      if (nrow(plot_tbl) == 0L) {
+        warning(
+          "No median estimate results for mean_pos_setting = ",
+          mean_pos_setting_curr,
+          ", bias_uns_setting = ",
+          bias_uns_setting_curr
+        )
+        next
+      }
+
+      col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw)
+
+      p <- ggplot(
+        plot_tbl,
+        aes(x = n_cell, y = propBsEst_median, color = factor(bw))
+      ) +
+        geom_line() +
+        geom_hline(
+          mapping = aes(yintercept = prob_response),
+          linetype = "dashed",
+          color = "black"
+        ) +
+        geom_point() +
+        scale_x_log10() +
+        facet_grid(transformation ~ prob_response, scales = "free_y") +
+        cowplot::theme_cowplot() +
+        cowplot::background_grid(major = "xy") +
+        theme(
+          panel.background = element_rect(fill = "white", color = NA),
+          plot.background = element_rect(fill = "white", color = NA),
+          legend.position = "bottom"
+        ) +
+        labs(
+          title = paste0(
+            "Estimated background-subtracted frequency vs number of cells ",
+            "(mean_pos_setting = ", mean_pos_setting_curr,
+            ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+          ),
+          x = "Number of cells (log scale)",
+          y = "Estimated background-subtracted frequency (median)",
+          color = "Bandwidth"
+        ) +
+        scale_colour_manual(
+          values = col_vec_bw_curr
+        )
+
+      path_p <- projr::projr_path_get(
+        "cache",
+        "sim",
+        "bw",
+        "freq_bs",
+        "global",
+        "est",
+        "median",
+        paste0(
+          "est_vs_n_cell_mean_pos_setting_",
+          mean_pos_setting_curr,
+          "_bias_uns_",
+          bias_uns_setting_curr,
+          ".png")
+      )
+      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+      ggsave(
+        filename = path_p,
+        plot = p,
+        width = 18,
+        height = 30,
+        units = "cm"
+      )
+    }
+  }
+}
+```
+
+Okay, now, let's do the same plot but where we show the actual frequencies. We'll have to treat the number of cells as a categorical variable, and use the bandwidth as positoin = "dodge".
+
+```{r}
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      plot_tbl <- bw_tbl_results_raw |>
+        dplyr::filter(
+          mean_pos_setting == !!mean_pos_setting_curr,
+          bias_uns_setting == !!bias_uns_setting_curr
+        )
+
+      if (nrow(plot_tbl) == 0L) {
+        warning(
+          "No raw estimate results for mean_pos_setting = ",
+          mean_pos_setting_curr,
+          ", bias_uns_setting = ",
+          bias_uns_setting_curr
+        )
+        next
+      }
+
+      col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw)
+
+      p <- ggplot(
+        plot_tbl,
+        aes(x = factor(n_cell), y = propBsEst, color = factor(bw))
+      ) +
+        ggforce::geom_sina(position = "dodge") +
+        geom_hline(
+          mapping = aes(yintercept = prob_response),
+          linetype = "dashed",
+          color = "black"
+        ) +
+        facet_grid(transformation ~ prob_response, scales = "free_y") +
+        cowplot::theme_cowplot() +
+        cowplot::background_grid(major = "xy") +
+        theme(
+          panel.background = element_rect(fill = "white", color = NA),
+          plot.background = element_rect(fill = "white", color = NA),
+          legend.position = "bottom"
+        ) +
+        labs(
+          title = paste0(
+            "Actual background-subtracted frequency vs number of cells ",
+            "(mean_pos_setting = ", mean_pos_setting_curr,
+            ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+          ),
+          x = "Number of cells",
+          y = "Actual background-subtracted frequency",
+          colour = "Bandwidth"
+        ) +
+        scale_colour_manual(
+          values = col_vec_bw_curr
+        )
+
+      path_p <- projr::projr_path_get(
+        "cache",
+        "sim",
+        "bw",
+        "freq_bs", "global",
+        "est",
+        "raw",
+        paste0(
+          "actual_freq_vs_n_cell_mean_pos_setting_",
+          mean_pos_setting_curr,
+          "_bias_uns_",
+          bias_uns_setting_curr,
+          ".png")
+      )
+      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+      ggsave(
+        filename = path_p,
+        plot = p,
+        width = 18,
+        height = 30,
+        units = "cm"
+      )
+    }
+  }
+}
+```
+
+Okay, now we wanto plot the actual thresholds.
+We should take the same plot as used to display the simulations, and plot those.
+Except now we'll facet with the rows being probability of a response, and a file per mean_pos_setting. Column transformation again.
+We'll just keep the number of cells high.
+
+```{r}
+#| label: main-settings
+if (isTRUE(run_plots)) {
+  main_settings <- tibble::tibble(
+    n_cell = 1e5,
+    background_relative_to_response = 0.2,
+    prob_exact = TRUE,
+    mixture_type = "gaussianOnly",
+    cluster_perturbation_sd = 0,
+    cov_ev_min = 1.5,
+    cov_ev_max = 1.5
+  )
+
+  mean_pos_settings_tbl <- purrr::map_df(
+    unique(sim_grid$prob_response), function(prob_response) {
+      .simMiscGetMeanPosTbl() |>
+        dplyr::mutate(
+          prob_response = prob_response
+        )
+    }
+  ) 
+  transformation_vec <- c("gaussian", "gamma", "skew")
+  mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
+
+  main_settings
+}
+```
+
+```{r}
+if (isTRUE(run_plots)) {
+  make_bw_linetype_scale <- function(bw_vec, digits = 2) {
+    bw_num <- sort(unique(as.numeric(bw_vec)))
+    bw_lab <- formatC(bw_num, format = "f", digits = digits)
+
+    n_bw <- length(bw_num)
+
+    if (n_bw == 1L) {
+      lty <- "solid"
+    } else {
+      # solid, then progressively shorter dash lengths
+      dash_len <- round(seq(8, 2, length.out = n_bw - 1L))
+      gap_len <- 4L
+
+      lty <- c(
+        "solid",
+        paste0(
+          as.character(as.hexmode(dash_len)),
+          as.character(as.hexmode(gap_len))
+        )
+      )
+    }
+
+    list(
+      levels = bw_lab,
+      values = stats::setNames(lty, bw_lab)
+    )
+  }
+}
+```
+
+```{r}
+if (isTRUE(run_plots)) {
+  # These objects are only needed for the optional density/rug overlay in the
+  # threshold plots. Keep the document renderable if they have not been prepared
+  # in this run.
+  if (!exists("dens_tbl")) {
+    dens_tbl <- tibble::tibble(
+      F1 = numeric(),
+      density = numeric(),
+      condition = character(),
+      prob_response = numeric(),
+      transformation = character(),
+      mean_pos_setting = character(),
+      bw = numeric(),
+      bias_uns_setting = character(),
+      bias_uns = numeric()
+    )
+  }
+
+  if (!exists("rug_tbl")) {
+    rug_tbl <- tibble::tibble(
+      F1 = numeric(),
+      condition = character(),
+      prob_response = numeric(),
+      transformation = character(),
+      mean_pos_setting = character(),
+      bw = numeric(),
+      bias_uns_setting = character(),
+      bias_uns = numeric()
+    )
+  }
+
+  if (!exists("mean_line_tbl")) {
+    mean_line_tbl <- tibble::tibble(
+      mean_pos_setting = character()
+    )
+  }
+}
+```
+
+```{r}
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting in unique(bw_tbl_results_summary$mean_pos_setting)) {
+    for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+      threshold_tbl_curr <- bw_tbl_results_summary |>
+        dplyr::filter(
+          mean_pos_setting == !!mean_pos_setting,
+          bias_uns_setting == !!bias_uns_setting_curr
+        )
+
+      if (nrow(threshold_tbl_curr) == 0L) {
+        warning(
+          "No median threshold results for mean_pos_setting = ",
+          mean_pos_setting,
+          ", bias_uns_setting = ",
+          bias_uns_setting_curr
+        )
+        next
+      }
+
+      mean_line_tbl_curr <- mean_line_tbl |>
+        dplyr::filter(mean_pos_setting == !!mean_pos_setting)
+      rug_tbl_curr <- rug_tbl |>
+        dplyr::filter(
+          mean_pos_setting == !!mean_pos_setting,
+          bias_uns_setting == !!bias_uns_setting_curr
+        )
+      dens_tbl_curr <- dens_tbl |>
+        dplyr::filter(
+          mean_pos_setting == !!mean_pos_setting,
+          bias_uns_setting == !!bias_uns_setting_curr
+        )
+
+      bw_scale <- make_bw_linetype_scale(threshold_tbl_curr$bw)
+
+      threshold_tbl_curr <- threshold_tbl_curr |>
+        dplyr::mutate(
+          bw_lab = factor(
+            formatC(as.numeric(.data$bw), format = "f", digits = 2),
+            levels = bw_scale$levels
+          )
+        )
+
+      p <- ggplot() +
+        geom_area(
+          data = dens_tbl_curr,
+          mapping = aes(x = F1, y=  density, colour = condition, fill = condition),
+          alpha = 0.18,
+          position = "identity"
+        ) +
+        geom_line(
+          data = dens_tbl_curr,
+          mapping = aes(x = F1, y=  density, colour = condition),
+          linewidth = 0.25
+        ) +
+        geom_rug(
+          data = rug_tbl_curr,
+          aes(
+            x = F1,
+            colour = condition
+          ),
+          sides = "b",
+          alpha = 0.25,
+          linewidth = 0.15
+        ) +
+        facet_grid(
+          rows = vars(.data$prob_response),
+          cols = vars(.data$transformation),
+          scales = "free_x"
+        ) +
+        scale_y_sqrt() +
+        cowplot::theme_cowplot() +
+        cowplot::background_grid(major = "xy", minor = "none") +
+        theme(
+          panel.background = element_rect(fill = "white", colour = NA),
+          plot.background = element_rect(fill = "white", colour = NA),
+          legend.position = "bottom",
+          strip.text.y = element_text(angle = 0)
+        ) +
+        coord_cartesian(ylim = c(0, 1)) +
+        scale_colour_manual(
+          values = .simMiscGetStimColVec()
+        ) +
+        labs(
+          title = paste0(
+            "Median thresholds (mean_pos_setting = ", mean_pos_setting,
+            ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+          ),
+          x = "Marker expression",
+          y = "Density, square-root scale",
+          colour = NULL,
+          fill = NULL,
+          linetype = "Bandwidth"
+        ) +
+        geom_vline(
+          data = threshold_tbl_curr,
+          mapping = aes(xintercept = threshold_median, linetype = bw_lab),
+          linewidth = 0.45
+        ) +
+        scale_linetype_manual(
+          values = bw_scale$values,
+          breaks = bw_scale$levels,
+          labels = bw_scale$levels
+        )
+      path_p <- projr::projr_path_get(
+        "cache",
+        "sim",
+        "bw",
+        "freq_bs",
+        "global",
+        "thresholds",
+        "median",
+        paste0(
+          "threshold_vs_n_cell_mean_pos_setting_",
+          mean_pos_setting,
+          "_bias_uns_",
+          bias_uns_setting_curr,
+          ".png")
+      )
+      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+      ggsave(
+        filename = path_p,
+        plot = p,
+        width = 18,
+        height = 30,
+        units = "cm"
+      ) 
+    }
+  }
+}
+```
+
+Okay, now let's do the same, but we will make also one plot for each bandwidth setting, and show the actual thresholds all the samples and iterations.
+
+So, now, we loop not just over mean_pos_settings, but also over the bandwidths.
+
+```{r}
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting in unique(bw_tbl_results_raw$mean_pos_setting)) {
+    for (bw_curr in unique(bw_tbl_results_raw$bw)) {
+      if (!is.finite(bw_curr)) {
+        next
+      }
+      for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+        threshold_tbl_curr <- bw_tbl_results_raw |>
+          dplyr::filter(
+            mean_pos_setting == !!mean_pos_setting,
+            bw == !!bw_curr,
+            bias_uns_setting == !!bias_uns_setting_curr
+          )
+
+        if (nrow(threshold_tbl_curr) == 0L) {
+          warning(
+            "No raw threshold results for mean_pos_setting = ",
+            mean_pos_setting,
+            ", bw = ", bw_curr,
+            ", bias_uns_setting = ",
+            bias_uns_setting_curr
+          )
+          next
+        }
+
+        threshold_tbl_curr_med_iqr <- threshold_tbl_curr |>
+          dplyr::group_by(
+            dplyr::pick(dplyr::any_of(colnames(sim_grid)))
+          ) |>
+          dplyr::summarise(
+            threshold_median = stats::median(threshold, na.rm = TRUE),
+            threshold_iqr_lower = stats::quantile(threshold, 0.25, na.rm = TRUE),
+            threshold_iqr_upper = stats::quantile(threshold, 0.75, na.rm = TRUE),
+            .groups = "drop"
+          ) |>
+          tidyr::pivot_longer(
+            threshold_median:threshold_iqr_upper,
+            names_to = "threshold_stat",
+            values_to = "threshold"
+          ) |>
+          dplyr::mutate(
+            threshold_stat = gsub("threshold_", "", threshold_stat),
+            threshold_stat = factor(
+              threshold_stat,
+              levels = c(
+                "iqr_lower",
+                "median",
+                "iqr_upper"
+              )
+            )
+          )
+        rug_tbl_curr <- rug_tbl |>
+          dplyr::filter(
+            mean_pos_setting == !!mean_pos_setting,
+            bw == !!bw_curr,
+            bias_uns_setting == !!bias_uns_setting_curr
+          )
+        dens_tbl_curr <- dens_tbl |>
+          dplyr::filter(
+            mean_pos_setting == !!mean_pos_setting,
+            bw == !!bw_curr,
+            bias_uns_setting == !!bias_uns_setting_curr
+          )
+
+        p <- ggplot() +
+          geom_area(
+            data = dens_tbl_curr,
+            mapping = aes(x = F1, y=  density, colour = condition, fill = condition),
+            alpha = 0.18,
+            position = "identity"
+          ) +
+          geom_line(
+            data = dens_tbl_curr,
+            mapping = aes(x = F1, y=  density, colour = condition),
+            linewidth = 0.25
+          ) +
+          geom_rug(
+            data = rug_tbl_curr,
+            aes(
+              x = F1,
+              colour = condition
+            ),
+            sides = "b",
+            alpha = 0.25,
+            linewidth = 0.15
+          ) +
+          facet_grid(
+            rows = vars(.data$prob_response),
+            cols = vars(.data$transformation),
+            scales = "free_x"
+          ) +
+          scale_y_sqrt() +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy", minor = "none") +
+          theme(
+            panel.background = element_rect(fill = "white", colour = NA),
+            plot.background = element_rect(fill = "white", colour = NA),
+            legend.position = "bottom",
+            strip.text.y = element_text(angle = 0)
+          ) +
+          coord_cartesian(ylim = c(0, 1)) +
+          scale_colour_manual(
+            values = .simMiscGetStimColVec()
+          ) +
+          labs(
+            title = paste0(
+              "Raw thresholds (mean_pos_setting = ", mean_pos_setting,
+              ", bw = ", formatC(bw_curr, format = "f", digits = 2),
+              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+            ),
+            x = "Marker expression",
+            y = "Density, square-root scale",
+            colour = NULL,
+            fill = NULL
+          ) +
+          geom_vline(
+            data = threshold_tbl_curr,
+            mapping = aes(xintercept = threshold, group = interaction(iter, sample)),
+            linewidth = 0.25,
+            alpha = 0.25
+          ) +
+          geom_vline(
+            data = threshold_tbl_curr_med_iqr,
+            aes(xintercept = threshold, linetype = threshold_stat),
+            linewidth = 0.45
+          ) +
+          scale_linetype_manual(
+            values = c(
+              "iqr_lower" = "dashed",
+              "median" = "solid",
+              "iqr_upper" = "dashed"
+            ),
+            breaks = c("iqr_lower", "median", "iqr_upper"),
+            labels = c("IQR lower", "Median", "IQR upper")
+          )
+
+        path_p <- projr::projr_path_get(
+          "cache",
+          "sim",
+          "bw",
+          "freq_bs", "global",
+          "thresholds",
+          "raw",
+          paste0("bias_uns_", bias_uns_setting_curr),
+          formatC(bw_curr, format = "f", digits = 2),
+          paste0(
+            "threshold_vs_n_cell_mean_pos_setting_bw_",
+            mean_pos_setting,
+            "_bw_",
+            formatC(bw_curr, format = "f", digits = 2),
+            "_bias_uns_",
+            bias_uns_setting_curr,
+            ".png"
+          )
+        )
+        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+        ggsave(
+          filename = path_p,
+          plot = p,
+          width = 18,
+          height = 30,
+          units = "cm"
+        )
+      }
+    }
+  }
+}
+```
+
+Okay, let's get a summary table, where for each setting above, for each bandwidth we have the min, max, median, iqr lower, iqr upper, sd, mad, iqr length.
+
+```{r}
+if (isTRUE(run_plots)) {
+  summary_tbl <- bw_tbl_results_raw |>
+    dplyr::group_by(
+      dplyr::pick(dplyr::any_of(colnames(sim_grid))),
+      bw
+    ) |>
+    dplyr::summarise(
+      threshold_min = min(threshold, na.rm = TRUE),
+      threshold_max = max(threshold, na.rm = TRUE),
+      threshold_median = stats::median(threshold, na.rm = TRUE),
+      threshold_iqr_lower = stats::quantile(threshold, 0.25, na.rm = TRUE),
+      threshold_iqr_upper = stats::quantile(threshold, 0.75, na.rm = TRUE),
+      threshold_sd = stats::sd(threshold, na.rm = TRUE),
+      threshold_mad = stats::mad(threshold, na.rm = TRUE),
+      threshold_iqr_length = threshold_iqr_upper - threshold_iqr_lower,
+      .groups = "drop"
+    )
+}
+```
+
+```{r}
+if (isTRUE(run_plots)) {
+  summary_tbl |>
+    dplyr::select(
+      transformation, bias_uns_setting, bias_uns,
+      mean_pos_setting, bw, threshold_sd
+    ) |>
+    dplyr::mutate(dplyr::across(where(is.numeric), ~ signif(.x, 2))) |>
+    dplyr::arrange(threshold_sd) |>
+    dplyr::mutate(
+      threshold_sd_rank = dplyr::dense_rank(threshold_sd)
+    ) |>
+    dplyr::group_by(transformation, bias_uns_setting, bias_uns, mean_pos_setting, bw) |>
+    dplyr::summarise(
+      mean_rank = mean(threshold_sd_rank, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::arrange(bias_uns_setting, mean_rank) |>
+    dplyr::filter(!transformation == "gamma") |>
+    knitr::kable()
+}
+```
