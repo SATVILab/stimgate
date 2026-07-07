@@ -1,6 +1,7 @@
 .Rproj.user/*
 .Rproj.user
 .Rhistory
+.nfs*
 
 R/test4.R
 R/test.R
