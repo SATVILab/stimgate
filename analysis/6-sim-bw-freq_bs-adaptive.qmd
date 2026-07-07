@@ -7,6 +7,12 @@ format:
 execute:
   warning: false
   message: false
+params:
+  sim_grid_chunk_index: 1
+  sim_grid_n_chunks: 1
+  sim_grid_shuffle_seed: 20260707
+  run_simulations: true
+  run_plots: true
 ---
 
 ```{r}
@@ -23,6 +29,81 @@ library(progressr)
 root_dir <- tryCatch(
   projr::projr_path_get("project"),
   error = function(e) getwd()
+)
+
+.get_qmd_param <- function(nm, default = NULL) {
+  if (
+    exists("params", inherits = TRUE) &&
+      nm %in% names(params) &&
+      !is.null(params[[nm]])
+  ) {
+    params[[nm]]
+  } else {
+    default
+  }
+}
+
+.get_qmd_param_env <- function(param_nm, env_nm, default = NULL) {
+  env_val <- Sys.getenv(env_nm, unset = NA_character_)
+
+  if (!is.na(env_val) && nzchar(env_val)) {
+    env_val
+  } else {
+    .get_qmd_param(param_nm, default)
+  }
+}
+
+.as_flag <- function(x) {
+  if (is.logical(x)) {
+    return(isTRUE(x))
+  }
+
+  x <- tolower(trimws(as.character(x)))
+  x %in% c("true", "t", "yes", "y", "1")
+}
+
+sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
+  "sim_grid_chunk_index",
+  "SIM_GRID_CHUNK_INDEX",
+  1L
+))
+sim_grid_n_chunks <- as.integer(.get_qmd_param_env(
+  "sim_grid_n_chunks",
+  "SIM_GRID_N_CHUNKS",
+  1L
+))
+sim_grid_shuffle_seed <- as.integer(.get_qmd_param_env(
+  "sim_grid_shuffle_seed",
+  "SIM_GRID_SHUFFLE_SEED",
+  20260707L
+))
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  TRUE
+))
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+
+if (
+  is.na(sim_grid_chunk_index) ||
+    is.na(sim_grid_n_chunks) ||
+    sim_grid_n_chunks < 1L ||
+    sim_grid_chunk_index < 1L ||
+    sim_grid_chunk_index > sim_grid_n_chunks
+) {
+  stop(
+    "Invalid sim grid chunk settings: sim_grid_chunk_index must be between 1 and sim_grid_n_chunks."
+  )
+}
+
+.sim_chunk_label <- sprintf(
+  "%03d-of-%03d",
+  sim_grid_chunk_index,
+  sim_grid_n_chunks
 )
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
@@ -176,8 +257,7 @@ sim_grid <- tidyr::expand_grid(
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
-  ) |>
-  dplyr::arrange(.data$n_cell, dplyr::desc(.data$prob_response))
+  )
 
 if ("dev" %in% projr::projr_profile_get()) {
   sim_grid <- sim_grid |>
@@ -194,8 +274,33 @@ if ("dev" %in% projr::projr_profile_get()) {
     dplyr::slice_head(n = 5)
 }
 
+sim_grid_all <- sim_grid
+
+if (nrow(sim_grid_all) > 0L) {
+  set.seed(sim_grid_shuffle_seed)
+
+  sim_grid <- sim_grid_all |>
+    dplyr::mutate(
+      .shuffle_order = sample.int(dplyr::n())
+    ) |>
+    dplyr::arrange(.data$.shuffle_order) |>
+    dplyr::mutate(
+      .sim_grid_chunk = ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L
+    ) |>
+    dplyr::filter(.data$.sim_grid_chunk == sim_grid_chunk_index) |>
+    dplyr::arrange(.data$n_cell, dplyr::desc(.data$prob_response)) |>
+    dplyr::select(-.shuffle_order, -.sim_grid_chunk)
+} else {
+  sim_grid <- sim_grid_all
+}
+
 sim_grid
-print(paste0("Performing ", nrow(sim_grid), " simulations"))
+print(paste0(
+  "Performing ", nrow(sim_grid), " of ", nrow(sim_grid_all),
+  " simulations for sim_grid chunk ", sim_grid_chunk_index,
+  " of ", sim_grid_n_chunks,
+  " using shuffle seed ", sim_grid_shuffle_seed
+))
 ```
 
 A helper for running the adaptive version. This deliberately checks that the loaded package version has the adaptive arguments wired through to `.simBandwidthBsFreq`.
@@ -322,147 +427,265 @@ path_progress_file <- projr::projr_path_get(
   "bw",
   "freq_bs",
   "adaptive",
-  "progress.txt"
+  paste0("progress-chunk_", .sim_chunk_label, ".txt")
 )
 dir_progress <- dirname(path_progress_file)
 dir_jobs <- file.path(dir_progress, "jobs")
+dir_jobs_chunk <- file.path(dir_jobs, paste0("chunk_", .sim_chunk_label))
+dir_output <- file.path(dir_progress, "output")
 
 if (file.exists(path_progress_file)) {
   file.remove(path_progress_file)
 }
-if (dir.exists(dir_jobs)) {
-  unlink(dir_jobs, recursive = TRUE, force = TRUE)
+if (dir.exists(dir_jobs_chunk)) {
+  unlink(dir_jobs_chunk, recursive = TRUE, force = TRUE)
 }
-dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
+dir.create(dir_jobs_chunk, recursive = TRUE, showWarnings = FALSE)
+dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 
-future::plan(
-  future::multisession,
-  workers = max(1, .simGetCores())
-)
+.write_rds_atomic <- function(object, path) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
 
-total_sims <- nrow(sim_grid)
+  tmp <- paste0(
+    path,
+    ".tmp-",
+    Sys.getpid(),
+    "-",
+    as.integer(Sys.time())
+  )
 
-bw_list_raw <- progressr::with_progress({
-  p <- progressr::progressor(steps = total_sims)
+  saveRDS(object, file = tmp)
 
-  furrr::future_pmap(
-    sim_grid,
-    function(
-      transformation,
-      prob_response,
-      n_cell,
-      mean_pos_setting,
-      mean_pos,
-      bw_core,
-      bw_extra,
-      bw_fallback,
-      bw_crossover,
-      bw_transition_width,
-      bias_uns_setting,
-      bias_uns,
-      sample_perturbation_sd,
-      condition_perturbation_sd,
-      cluster_perturbation_sd,
-      background_relative_to_response,
-      n_cell_uns_relative_to_stim,
-      sim_id
-    ) {
-      settings_row <- paste0(
-        "trans = ", transformation,
-        " | prob = ", prob_response,
-        " | n_cell = ", n_cell,
-        " | mean = ", mean_pos,
-        " | bw_core = ", bw_core,
-        " | bw_extra = ", bw_extra,
-        " | bias_setting = ", bias_uns_setting,
-        " | bias = ", bias_uns,
-        " | sample_sd = ", sample_perturbation_sd,
-        " | condition_sd = ", condition_perturbation_sd,
-        " | cluster_sd = ", cluster_perturbation_sd,
-        " | bg_rel = ", background_relative_to_response,
-        " | n_uns_rel = ", n_cell_uns_relative_to_stim,
-        " | sim_id = ", sim_id
-      )
+  if (!file.rename(tmp, path)) {
+    file.copy(tmp, path, overwrite = TRUE)
+    unlink(tmp, force = TRUE)
+  }
 
-      file_running <- file.path(dir_jobs, paste0("running-", sim_id))
-      file_completed <- file.path(dir_jobs, paste0("completed-", sim_id))
-      file_error <- file.path(dir_jobs, paste0("error-", sim_id))
+  invisible(path)
+}
 
-      update_progress_summary <- function() {
-        all_job_files <- list.files(dir_jobs, full.names = FALSE)
+.path_sim_output <- function(sim_id) {
+  file.path(
+    dir_output,
+    sprintf(
+      "bw_list_raw-chunk_%03d-of_%03d-sim_id_%06d.rds",
+      sim_grid_chunk_index,
+      sim_grid_n_chunks,
+      as.integer(sim_id)
+    )
+  )
+}
 
-        n_running <- sum(grepl("^running-", all_job_files))
-        n_completed <- sum(grepl("^completed-", all_job_files))
-        n_error <- sum(grepl("^error-", all_job_files))
-        n_done <- n_completed + n_error
+bw_list_raw <- list()
 
-        running_files <- all_job_files[grepl("^running-", all_job_files)]
-        running_ids <- sub("^running-", "", running_files)
-        running_list_str <- if (length(running_ids) > 0) {
-          paste(running_ids, collapse = ", ")
-        } else {
-          "None"
-        }
+if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
+  future::plan(
+    future::multisession,
+    workers = max(1, .simGetCores())
+  )
 
-        summary_text <- paste0(
-          "========================================\n",
-          " ADAPTIVE SIMULATION PROGRESS DASHBOARD \n",
-          "========================================\n",
-          "Total Simulations  : ", total_sims, "\n",
-          "In Progress        : ", n_running, "\n",
-          "Completed (Success): ", n_completed, "\n",
-          "Completed (Errors) : ", n_error, "\n",
-          "Total Done          : ", n_done, "\n",
-          "----------------------------------------\n",
-          "Currently Running IDs:\n", running_list_str, "\n",
-          "========================================\n"
+  total_sims <- nrow(sim_grid)
+
+  bw_list_raw <- progressr::with_progress({
+    p <- progressr::progressor(steps = total_sims)
+
+    furrr::future_pmap(
+      sim_grid,
+      function(
+        transformation,
+        prob_response,
+        n_cell,
+        mean_pos_setting,
+        mean_pos,
+        bw_core,
+        bw_extra,
+        bw_fallback,
+        bw_crossover,
+        bw_transition_width,
+        bias_uns_setting,
+        bias_uns,
+        sample_perturbation_sd,
+        condition_perturbation_sd,
+        cluster_perturbation_sd,
+        background_relative_to_response,
+        n_cell_uns_relative_to_stim,
+        sim_id
+      ) {
+        settings_row <- paste0(
+          "trans = ", transformation,
+          " | prob = ", prob_response,
+          " | n_cell = ", n_cell,
+          " | mean = ", mean_pos,
+          " | bw_core = ", bw_core,
+          " | bw_extra = ", bw_extra,
+          " | bias_setting = ", bias_uns_setting,
+          " | bias = ", bias_uns,
+          " | sample_sd = ", sample_perturbation_sd,
+          " | condition_sd = ", condition_perturbation_sd,
+          " | cluster_sd = ", cluster_perturbation_sd,
+          " | bg_rel = ", background_relative_to_response,
+          " | n_uns_rel = ", n_cell_uns_relative_to_stim,
+          " | sim_id = ", sim_id,
+          " | chunk = ", sim_grid_chunk_index,
+          " of ", sim_grid_n_chunks
         )
 
-        cat(summary_text, file = path_progress_file, append = FALSE)
-      }
+        file_running <- file.path(dir_jobs_chunk, paste0("running-", sim_id))
+        file_completed <- file.path(dir_jobs_chunk, paste0("completed-", sim_id))
+        file_error <- file.path(dir_jobs_chunk, paste0("error-", sim_id))
+        file_output <- .path_sim_output(sim_id)
 
-      file.create(file_running)
-      update_progress_summary()
+        existing_output <- if (file.exists(file_output)) {
+          tryCatch(readRDS(file_output), error = function(e) NULL)
+        } else {
+          NULL
+        }
 
-      bw_crossover_curr <- if (is.finite(bw_crossover)) {
-        bw_crossover
-      } else {
-        NULL
-      }
+        if (!is.null(existing_output)) {
+          p(sprintf("Skipped existing sim_id: %s", sim_id))
+          return(existing_output)
+        }
 
-      out <- tryCatch(
-        {
-          sim_res <- .run_sim_bandwidth_bs_freq_adaptive(
-            nSample = 5,
-            nMarker = 1,
-            nCondition = 2,
-            nCluster = 2,
-            nIter = 5,
-            biasUns = bias_uns,
-            bw = NULL,
-            bwAdaptive = TRUE,
-            bwAdaptiveCore = bw_core,
-            bwAdaptiveExtra = bw_extra,
-            bwAdaptiveCrossover = bw_crossover_curr,
-            bwAdaptiveTransitionWidth = bw_transition_width,
-            bwFallback = bw_fallback,
-            bwMin = "none",
-            bwMax = "none",
-            nCellStim = n_cell,
-            probResponse = prob_response,
-            probExact = TRUE,
-            meanPos = mean_pos,
-            transformation = transformation,
-            samplePerturbationSd = sample_perturbation_sd,
-            conditionPerturbationSd = condition_perturbation_sd,
-            clusterPerturbationSd = cluster_perturbation_sd,
-            backgroundRelativeToResponse = background_relative_to_response,
-            ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
-            covEvMin = 1.5,
-            covEvMax = 1.5,
-            tolClust = NULL
-          ) |>
-            dplyr::mutate(
+        update_progress_summary <- function() {
+          all_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
+
+          n_running <- sum(grepl("^running-", all_job_files))
+          n_completed <- sum(grepl("^completed-", all_job_files))
+          n_error <- sum(grepl("^error-", all_job_files))
+          n_done <- n_completed + n_error
+
+          running_files <- all_job_files[grepl("^running-", all_job_files)]
+          running_ids <- sub("^running-", "", running_files)
+          running_list_str <- if (length(running_ids) > 0) {
+            paste(running_ids, collapse = ", ")
+          } else {
+            "None"
+          }
+
+          summary_text <- paste0(
+            "========================================\n",
+            " ADAPTIVE SIMULATION PROGRESS DASHBOARD \n",
+            "========================================\n",
+            "Chunk              : ", sim_grid_chunk_index, " of ", sim_grid_n_chunks, "\n",
+            "Total Simulations  : ", total_sims, "\n",
+            "In Progress        : ", n_running, "\n",
+            "Completed (Success): ", n_completed, "\n",
+            "Completed (Errors) : ", n_error, "\n",
+            "Total Done          : ", n_done, "\n",
+            "Output directory   : ", dir_output, "\n",
+            "----------------------------------------\n",
+            "Currently Running IDs:\n", running_list_str, "\n",
+            "========================================\n"
+          )
+
+          cat(summary_text, file = path_progress_file, append = FALSE)
+        }
+
+        file.create(file_running)
+        update_progress_summary()
+
+        bw_crossover_curr <- if (is.finite(bw_crossover)) {
+          bw_crossover
+        } else {
+          NULL
+        }
+
+        out <- tryCatch(
+          {
+            sim_res <- .run_sim_bandwidth_bs_freq_adaptive(
+              nSample = 5,
+              nMarker = 1,
+              nCondition = 2,
+              nCluster = 2,
+              nIter = 5,
+              biasUns = bias_uns,
+              bw = NULL,
+              bwAdaptive = TRUE,
+              bwAdaptiveCore = bw_core,
+              bwAdaptiveExtra = bw_extra,
+              bwAdaptiveCrossover = bw_crossover_curr,
+              bwAdaptiveTransitionWidth = bw_transition_width,
+              bwFallback = bw_fallback,
+              bwMin = "none",
+              bwMax = "none",
+              nCellStim = n_cell,
+              probResponse = prob_response,
+              probExact = TRUE,
+              meanPos = mean_pos,
+              transformation = transformation,
+              samplePerturbationSd = sample_perturbation_sd,
+              conditionPerturbationSd = condition_perturbation_sd,
+              clusterPerturbationSd = cluster_perturbation_sd,
+              backgroundRelativeToResponse = background_relative_to_response,
+              ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
+              covEvMin = 1.5,
+              covEvMax = 1.5,
+              tolClust = NULL
+            ) |>
+              dplyr::mutate(
+                transformation = transformation,
+                prob_response = prob_response,
+                n_cell = n_cell,
+                mean_pos_setting = mean_pos_setting,
+                mean_pos = mean_pos,
+                bw_core = bw_core,
+                bw_extra = bw_extra,
+                bw_fallback = bw_fallback,
+                bw_crossover = bw_crossover,
+                bw_transition_width = bw_transition_width,
+                bias_uns_setting = bias_uns_setting,
+                bias_uns = bias_uns,
+                sample_perturbation_sd = sample_perturbation_sd,
+                condition_perturbation_sd = condition_perturbation_sd,
+                cluster_perturbation_sd = cluster_perturbation_sd,
+                background_relative_to_response =
+                  background_relative_to_response,
+                n_cell_uns_relative_to_stim =
+                  n_cell_uns_relative_to_stim,
+                sim_id = sim_id,
+                sim_grid_chunk_index = sim_grid_chunk_index,
+                sim_grid_n_chunks = sim_grid_n_chunks
+              ) |>
+              dplyr::select(
+                transformation,
+                prob_response,
+                n_cell,
+                mean_pos_setting,
+                mean_pos,
+                bw_core,
+                bw_extra,
+                bw_fallback,
+                bw_crossover,
+                bw_transition_width,
+                bias_uns_setting,
+                bias_uns,
+                sample_perturbation_sd,
+                condition_perturbation_sd,
+                cluster_perturbation_sd,
+                background_relative_to_response,
+                n_cell_uns_relative_to_stim,
+                sim_id,
+                sim_grid_chunk_index,
+                sim_grid_n_chunks,
+                dplyr::everything()
+              )
+
+            file.create(file_completed)
+            if (file.exists(file_running)) file.remove(file_running)
+
+            update_progress_summary()
+            p(sprintf("Completed sim_id: %s", sim_id))
+
+            sim_res
+          },
+          error = function(e) {
+            file.create(file_error)
+            if (file.exists(file_running)) file.remove(file_running)
+
+            update_progress_summary()
+            p(sprintf("ERROR on sim_id: %s", sim_id))
+
+            tibble::tibble(
               transformation = transformation,
               prob_response = prob_response,
               n_cell = n_cell,
@@ -482,104 +705,66 @@ bw_list_raw <- progressr::with_progress({
                 background_relative_to_response,
               n_cell_uns_relative_to_stim =
                 n_cell_uns_relative_to_stim,
-              sim_id = sim_id
-            ) |>
-            dplyr::select(
-              transformation,
-              prob_response,
-              n_cell,
-              mean_pos_setting,
-              mean_pos,
-              bw_core,
-              bw_extra,
-              bw_fallback,
-              bw_crossover,
-              bw_transition_width,
-              bias_uns_setting,
-              bias_uns,
-              sample_perturbation_sd,
-              condition_perturbation_sd,
-              cluster_perturbation_sd,
-              background_relative_to_response,
-              n_cell_uns_relative_to_stim,
-              sim_id,
-              dplyr::everything()
+              sim_id = sim_id,
+              sim_grid_chunk_index = sim_grid_chunk_index,
+              sim_grid_n_chunks = sim_grid_n_chunks,
+              iter = NA_integer_,
+              chnl = NA_character_,
+              sample = NA_character_,
+              ind = NA_character_,
+              method = NA_character_,
+              propRespTruth = NA_real_,
+              propRespEst = NA_real_,
+              propBsEst = NA_real_,
+              threshold = NA_real_,
+              thresholdOrigin = NA_character_,
+              gateReturnPoint = NA_character_,
+              locGenerated = NA,
+              locGeneratedDirect = NA,
+              locSource = NA_character_,
+              locReason = NA_character_,
+              detailLevel = NA_character_,
+              nCellStim = NA_real_,
+              nCellUns = NA_real_,
+              nPosStim = NA_integer_,
+              nPosUns = NA_integer_,
+              error_message = conditionMessage(e),
+              settings = settings_row
             )
+          }
+        )
 
-          file.create(file_completed)
-          if (file.exists(file_running)) file.remove(file_running)
+        .write_rds_atomic(out, file_output)
+        out
+      },
+      .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+    )
+  })
 
-          update_progress_summary()
-          p(sprintf("Completed sim_id: %s", sim_id))
-
-          sim_res
-        },
-        error = function(e) {
-          file.create(file_error)
-          if (file.exists(file_running)) file.remove(file_running)
-
-          update_progress_summary()
-          p(sprintf("ERROR on sim_id: %s", sim_id))
-
-          tibble::tibble(
-            transformation = transformation,
-            prob_response = prob_response,
-            n_cell = n_cell,
-            mean_pos_setting = mean_pos_setting,
-            mean_pos = mean_pos,
-            bw_core = bw_core,
-            bw_extra = bw_extra,
-            bw_fallback = bw_fallback,
-            bw_crossover = bw_crossover,
-            bw_transition_width = bw_transition_width,
-            bias_uns_setting = bias_uns_setting,
-            bias_uns = bias_uns,
-            sample_perturbation_sd = sample_perturbation_sd,
-            condition_perturbation_sd = condition_perturbation_sd,
-            cluster_perturbation_sd = cluster_perturbation_sd,
-            background_relative_to_response =
-              background_relative_to_response,
-            n_cell_uns_relative_to_stim =
-              n_cell_uns_relative_to_stim,
-            sim_id = sim_id,
-            iter = NA_integer_,
-            chnl = NA_character_,
-            sample = NA_character_,
-            ind = NA_character_,
-            method = NA_character_,
-            propRespTruth = NA_real_,
-            propRespEst = NA_real_,
-            propBsEst = NA_real_,
-            threshold = NA_real_,
-            thresholdOrigin = NA_character_,
-            gateReturnPoint = NA_character_,
-            locGenerated = NA,
-            locGeneratedDirect = NA,
-            locSource = NA_character_,
-            locReason = NA_character_,
-            detailLevel = NA_character_,
-            nCellStim = NA_real_,
-            nCellUns = NA_real_,
-            nPosStim = NA_integer_,
-            nPosUns = NA_integer_,
-            error_message = conditionMessage(e),
-            settings = settings_row
-          )
-        }
-      )
-
-      out
-    },
-    .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+  future::plan(future::sequential)
+} else {
+  message(
+    "Skipping simulations for sim_grid chunk ",
+    sim_grid_chunk_index,
+    " of ",
+    sim_grid_n_chunks,
+    ". run_simulations = ",
+    run_simulations,
+    "; nrow(sim_grid) = ",
+    nrow(sim_grid),
+    "."
   )
-})
+}
 
-future::plan(future::sequential)
-
-saveRDS(
+.write_rds_atomic(
   bw_list_raw,
-  file = projr::projr_path_get(
-    "cache", "sim", "bw", "freq_bs", "adaptive", "bw_list_raw.rds"
+  file.path(
+    dir_output,
+    sprintf(
+      "bw_list_raw-chunk_%03d-of_%03d.rds",
+      sim_grid_chunk_index,
+      sim_grid_n_chunks
+    )
   )
 )
 ```
@@ -597,7 +782,69 @@ saveRDS(
   .data
 }
 
-if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
+.find_bw_list_output_files <- function() {
+  output_dir_vec <- unique(c(
+    if (exists("dir_output", inherits = TRUE)) dir_output else character(),
+    file.path(
+      dirname(projr::projr_path_get(
+        "cache",
+        "log",
+        "analysis",
+        "sim",
+        "bw",
+        "freq_bs",
+        "adaptive",
+        "progress.txt",
+        safe = TRUE
+      )),
+      "output"
+    ),
+    file.path(
+      dirname(projr::projr_path_get(
+        "cache",
+        "log",
+        "analysis",
+        "sim",
+        "bw",
+        "freq_bs",
+        "adaptive",
+        "progress.txt",
+        safe = FALSE
+      )),
+      "output"
+    )
+  ))
+
+  output_dir_vec <- output_dir_vec[dir.exists(output_dir_vec)]
+
+  unique(unlist(lapply(
+    output_dir_vec,
+    list.files,
+    pattern = "^bw_list_raw-chunk_[0-9]+-of_[0-9]+-sim_id_[0-9]+[.]rds$",
+    full.names = TRUE
+  )))
+}
+
+bw_list_path_vec <- .find_bw_list_output_files()
+
+if (length(bw_list_path_vec) > 0L) {
+  message("Collating ", length(bw_list_path_vec), " saved simulation result files from output.")
+
+  bw_list_raw_collate <- purrr::map(
+    bw_list_path_vec,
+    function(path) {
+      tryCatch(
+        readRDS(file = path),
+        error = function(e) {
+          warning("Could not read saved simulation result: ", path)
+          NULL
+        }
+      )
+    }
+  ) |>
+    purrr::compact()
+} else if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
+  message("No saved simulation result files found in output; using bw_list_raw from memory.")
   bw_list_raw_collate <- bw_list_raw
 } else {
   path_vec <- c(
@@ -623,10 +870,15 @@ if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
   path_vec <- path_vec[file.exists(path_vec)]
   if (length(path_vec) == 0L) {
     stop(
-      "Could not find bw_list_raw.rds, and bw_list_raw is not available in memory."
+      "Could not find saved output result files, bw_list_raw.rds, ",
+      "or bw_list_raw in memory."
     )
   }
   bw_list_raw_collate <- readRDS(file = path_vec[[1]])
+}
+
+if (length(bw_list_raw_collate) == 0L) {
+  stop("No adaptive bandwidth-frequency results were available to collate.")
 }
 
 bw_tbl_raw <- bw_list_raw_collate |>
@@ -644,6 +896,8 @@ bw_tbl <- .add_missing_cols(
     bw_fallback = NA_real_,
     bw_crossover = NA_real_,
     bw_transition_width = NA_real_,
+    sim_grid_chunk_index = NA_integer_,
+    sim_grid_n_chunks = NA_integer_,
     error_message = NA_character_
   )
 )
@@ -669,7 +923,7 @@ bw_tbl <- bw_tbl |>
 
 bw_tbl_results_raw <- bw_tbl |>
   dplyr::select(
-    dplyr::any_of(colnames(sim_grid)),
+    dplyr::any_of(colnames(sim_grid_all)),
     iter,
     sample,
     ind,
@@ -684,7 +938,7 @@ bw_tbl_results_raw <- bw_tbl |>
   ) |>
   dplyr::ungroup() |>
   dplyr::group_by(
-    dplyr::pick(dplyr::any_of(colnames(sim_grid))),
+    dplyr::pick(dplyr::any_of(colnames(sim_grid_all))),
     .data$iter,
     .data$ind
   ) |>
@@ -700,7 +954,7 @@ if (nrow(bw_tbl_results_raw) == 0L) {
 
 bw_tbl_results_summary <- bw_tbl_results_raw |>
   dplyr::group_by(
-    dplyr::pick(dplyr::any_of(colnames(sim_grid)))
+    dplyr::pick(dplyr::any_of(colnames(sim_grid_all)))
   ) |>
   dplyr::summarise(
     dplyr::across(
@@ -720,22 +974,43 @@ bw_tbl_results_summary <- bw_tbl_results_raw |>
       (.data$propBsEst_median - .data$prob_response) / .data$prob_response
   )
 
+collate_suffix <- if (sim_grid_n_chunks > 1L) {
+  sprintf("_chunk_%03d-of_%03d", sim_grid_chunk_index, sim_grid_n_chunks)
+} else {
+  ""
+}
+
 saveRDS(
   bw_tbl,
   file = projr::projr_path_get(
-    "cache", "sim", "bw", "freq_bs", "adaptive", "bw_tbl.rds"
+    "cache",
+    "sim",
+    "bw",
+    "freq_bs",
+    "adaptive",
+    paste0("bw_tbl", collate_suffix, ".rds")
   )
 )
 saveRDS(
   bw_tbl_results_raw,
   file = projr::projr_path_get(
-    "cache", "sim", "bw", "freq_bs", "adaptive", "bw_tbl_results_raw.rds"
+    "cache",
+    "sim",
+    "bw",
+    "freq_bs",
+    "adaptive",
+    paste0("bw_tbl_results_raw", collate_suffix, ".rds")
   )
 )
 saveRDS(
   bw_tbl_results_summary,
   file = projr::projr_path_get(
-    "cache", "sim", "bw", "freq_bs", "adaptive", "bw_tbl_results_summary.rds"
+    "cache",
+    "sim",
+    "bw",
+    "freq_bs",
+    "adaptive",
+    paste0("bw_tbl_results_summary", collate_suffix, ".rds")
   )
 )
 ```
@@ -746,6 +1021,11 @@ if (requireNamespace("UtilsDataRSV", quietly = TRUE)) {
     UtilsDataRSV::view_cols()
 } else {
   dplyr::glimpse(sim_grid)
+}
+
+if (!isTRUE(run_plots)) {
+  message("run_plots is false, so stopping after simulation/collation.")
+  knitr::knit_exit()
 }
 ```
 
@@ -1551,7 +1831,7 @@ for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
 
         threshold_tbl_curr_med_iqr <- threshold_tbl_curr |>
           dplyr::group_by(
-            dplyr::pick(dplyr::any_of(colnames(sim_grid)))
+            dplyr::pick(dplyr::any_of(colnames(sim_grid_all)))
           ) |>
           dplyr::summarise(
             threshold_median = stats::median(threshold, na.rm = TRUE),
@@ -1726,7 +2006,7 @@ for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
 
         threshold_tbl_curr_med_iqr <- threshold_tbl_curr |>
           dplyr::group_by(
-            dplyr::pick(dplyr::any_of(colnames(sim_grid)))
+            dplyr::pick(dplyr::any_of(colnames(sim_grid_all)))
           ) |>
           dplyr::summarise(
             threshold_median = stats::median(threshold, na.rm = TRUE),
@@ -1878,7 +2158,7 @@ for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
 #| label: threshold-summary
 summary_tbl <- bw_tbl_results_raw |>
   dplyr::group_by(
-    dplyr::pick(dplyr::any_of(colnames(sim_grid)))
+    dplyr::pick(dplyr::any_of(colnames(sim_grid_all)))
   ) |>
   dplyr::summarise(
     threshold_min = min(threshold, na.rm = TRUE),
