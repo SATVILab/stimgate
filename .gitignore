@@ -60,3 +60,7 @@ _tmp/log/sbatch/dev-6-sim-bw-freq_bs-adaptive
 
 _tmp/log/sbatch/test-slurm-bad
 _tmp/log/sbatch/test-slurm-good
+_tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-1
+_tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-2
+_tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-3
+_tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-4

@@ -20,8 +20,9 @@ sim_grid_shuffle_seed="${SIM_GRID_SHUFFLE_SEED:-20260707}"
 
 install_script="$script_dir/install.sh"
 
-prepare_adaptive_split_qmds() {
-  local base_qmd="${SIM_GRID_BASE_QMD:-$project_root/analysis/6-sim-bw-freq_bs-adaptive.qmd}"
+prepare_split_qmds() {
+  local qmd_stem="$1"
+  local base_qmd="${SIM_GRID_BASE_QMD:-$project_root/analysis/${qmd_stem}.qmd}"
   local split_dir="${SIM_GRID_SPLIT_DIR:-$project_root/analysis/split}"
   local split_rel_dir="analysis/split"
 
@@ -33,7 +34,7 @@ prepare_adaptive_split_qmds() {
   mkdir -p "$split_dir"
 
   for chunk_index in $(seq 1 "$sim_grid_n_chunks"); do
-    local dest="$split_dir/6-sim-bw-freq_bs-adaptive-${chunk_index}.qmd"
+    local dest="$split_dir/${qmd_stem}-${chunk_index}.qmd"
 
     cp "$base_qmd" "$dest"
 
@@ -41,8 +42,25 @@ prepare_adaptive_split_qmds() {
       "s/sim_grid_chunk_index:\\s*[^\\n]+/sim_grid_chunk_index: ${chunk_index}/; s/sim_grid_n_chunks:\\s*[^\\n]+/sim_grid_n_chunks: ${sim_grid_n_chunks}/; s/sim_grid_shuffle_seed:\\s*[^\\n]+/sim_grid_shuffle_seed: ${sim_grid_shuffle_seed}/; s/run_simulations:\\s*[^\\n]+/run_simulations: true/; s/run_plots:\\s*[^\\n]+/run_plots: false/;" \
       "$dest"
 
-    echo "Prepared ${split_rel_dir}/6-sim-bw-freq_bs-adaptive-${chunk_index}.qmd"
+    echo "Prepared ${split_rel_dir}/${qmd_stem}-${chunk_index}.qmd"
   done
+}
+
+qmd_stem_for_script() {
+  case "$1" in
+    dev-2-stim-bw-freq_bs-global.sh)
+      echo "2-sim-bw-freq_bs-global"
+      ;;
+    dev-5-sim-bw-est-adaptive.sh)
+      echo "5-sim-bw-est-adaptive"
+      ;;
+    dev-6-sim-bw-freq_bs-adaptive.sh)
+      echo "6-sim-bw-freq_bs-adaptive"
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
 }
 
 tmp_before="$(mktemp)"
@@ -133,15 +151,22 @@ fi
 echo "Submitting downstream jobs"
 
 for script in "${scripts[@]}"; do
-  if [[ "$script" == "dev-6-sim-bw-freq_bs-adaptive.sh" ]]; then
+  qmd_stem="$(qmd_stem_for_script "$script")"
+
+  if [[ -n "$qmd_stem" ]]; then
     echo "Preparing split QMDs for $script"
-    prepare_adaptive_split_qmds
+    prepare_split_qmds "$qmd_stem"
 
     for chunk_index in $(seq 1 "$sim_grid_n_chunks"); do
+      log_dir="_tmp/log/sbatch/${qmd_stem}/chunk-${chunk_index}"
+      job_name="${qmd_stem}-${chunk_index}"
+
       echo "Submitting $script chunk $chunk_index of $sim_grid_n_chunks"
-      SIM_GRID_N_CHUNKS="$sim_grid_n_chunks" \
-        SIM_GRID_SHUFFLE_SEED="$sim_grid_shuffle_seed" \
-        slurm-sbatch "$script_dir/$script" "$chunk_index"
+      echo "Log directory: $log_dir"
+
+      slurm-sbatch -l "$log_dir" -n "$script_dir/$script" -- \
+        --job-name="$job_name" \
+        --export=ALL,PROJECT_ROOT="$project_root",SIM_GRID_CHUNK_INDEX="$chunk_index",SIM_GRID_N_CHUNKS="$sim_grid_n_chunks",SIM_GRID_SHUFFLE_SEED="$sim_grid_shuffle_seed",RUN_SIMULATIONS=true,RUN_PLOTS=false
     done
   else
     echo "Submitting $script"
