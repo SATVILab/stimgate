@@ -42,7 +42,7 @@
   }
 }
 .quickUnset <- .unsetQuick
-isQuick <- function() {
+.isQuick <- function() {
   profileVec <- projr::projr_profile_get()
   "quick" %in% profileVec
 }

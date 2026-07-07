@@ -66,3 +66,7 @@ _tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-2
 _tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-3
 _tmp/log/sbatch/6-sim-bw-freq_bs-adaptive/chunk-4
 
+_tmp/log/sbatch/2-sim-bw-freq_bs-global/chunk-1
+_tmp/log/sbatch/2-sim-bw-freq_bs-global/chunk-2
+_tmp/log/sbatch/2-sim-bw-freq_bs-global/chunk-3
+_tmp/log/sbatch/2-sim-bw-freq_bs-global/chunk-4
