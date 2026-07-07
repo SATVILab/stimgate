@@ -199,7 +199,7 @@ bias_uns_settings_tbl <- tibble::tribble(
 )
 bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
-if ("quick" %in% projr::projr_profile_get()) {
+if (.isQuick()) {
   n_cell_stim_vec <- c(1e3, 5e4)
   prob_response_vec <- c(0.002, 0.02)
   bandwidth_value_vec <- c(0.01, 0.1, 0.5, 0.5, 1)
@@ -262,7 +262,7 @@ sim_grid <- tidyr::expand_grid(
   ) |>
   dplyr::arrange(n_cell, dplyr::desc(prob_response))
 
-if ("dev" %in% projr::projr_profile_get()) {
+if (.isDev()) {
   sim_grid <- sim_grid |>
     dplyr::filter(
       n_cell == 1e5,

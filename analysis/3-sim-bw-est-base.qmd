@@ -108,7 +108,7 @@ sim_grid <- tidyr::expand_grid(
 sim_grid <- sim_grid |>
   dplyr::arrange(n_cell, dplyr::desc(prob_response))
 
-if ("dev" %in% projr::projr_profile_get()) {
+if (.isDev()) {
   sim_grid <- sim_grid |>
     dplyr::filter(
       n_cell == 1e5,
