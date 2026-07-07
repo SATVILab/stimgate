@@ -58,3 +58,5 @@ _tmp/log/sbatch/dev-1-sim-trans
 
 _tmp/log/sbatch/dev-6-sim-bw-freq_bs-adaptive
 
+_tmp/log/sbatch/test-slurm-bad
+_tmp/log/sbatch/test-slurm-good
