@@ -715,15 +715,8 @@
     return(objOut)
   }
 
-  # stop expr being higher than maxX to prevent really far away values creating modes
-  exTblStimThreshold <- .getCpUnsLocSetMaxExpr(
-    exTblStimNoMin,
-    .getCpUnsLocConditionMaxDensX(exTblStimNoMin)
-  )
-  exTblUnsThreshold <- .getCpUnsLocSetMaxExpr(
-    exTblUnsBias,
-    .getCpUnsLocConditionMaxDensX(exTblStimNoMin)
-  )
+  exTblStimThreshold <- exTblStimNoMin
+  exTblUnsThreshold <- exTblUnsBias
   .intSave(
     .getInd(exTblStimNoMin),
     stageChnl,
@@ -804,12 +797,6 @@
 #' @keywords internal
 .getCpUnsLocConditionCheckNCell <- function(exTblStimNoMin, minCell) {
   nrow(exTblStimNoMin) < minCell
-}
-
-#' @keywords internal
-.getCpUnsLocConditionMaxDensX <- function(exTblStimNoMin) {
-  max(.getCut(exTblStimNoMin)) -
-    0.05 * (diff(range(.getCut(exTblStimNoMin))))
 }
 
 #' @keywords internal
@@ -1710,6 +1697,9 @@
     x = densityExcMinStim$x,
     y = densityExcMinStim$y
   )
+  peakStimIdx <- .getPeakMainLeftIdx(densTblStim$y)
+  peakStimX <- densTblStim$x[peakStimIdx]
+  peakUnsIdx <- .getPeakMainLeftIdx(density(exVecUnsThreshold)$y)
   peakStim <- densTblStim |>
     dplyr::filter(y == max(y)) |> # nolint
     dplyr::pull("x") # nolint
