@@ -89,3 +89,11 @@ calc_skew <- function(x, epsilon = 0.5, delta = 1) {
     n_tasks - 1L
   }
 }
+
+.simMiscGetTransPretty <- function() {
+  c("gaussian" = "Gaussian", "gamma" = "Gamma", "skew" = "Skew")
+}
+
+.simMiscGetMeanPosPretty <- function() {
+  c("low" = "Low", "high" = "High")
+}
