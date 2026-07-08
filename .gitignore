@@ -23,6 +23,10 @@ analysis/*rmarkdown
 analysis/**/*.html
 analysis/**/*.rmarkdown
 analysis/split/*
+analysis/*png
+analysis/**/*png
+analysis/**/*pdf
+analysis/*pdf
 
 # pkgdown local build output
 docs/

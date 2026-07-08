@@ -139,7 +139,7 @@ sim_trans_univariate_one <- function(
   })
 }
 
-make_density_tbl <- function(.data, n = 2048) {
+make_density_tbl <- function(.data, gamma_range, n = 2048) {
   .data |>
     dplyr::group_by(
       .data$mean_pos_setting,
@@ -161,7 +161,14 @@ make_density_tbl <- function(.data, n = 2048) {
       0.15
       )
 
-      dens <- stats::density(x, n = n, bw = bw)
+      if (.y$transformation[[1]] == "gamma") {
+        dens <- stats::density(
+          x, n = n, bw = bw, from = gamma_range[1], to = gamma_range[2]
+          )
+      } else {
+        dens <- stats::density(x, n = n, bw = bw)
+      }
+      
 
       tibble::tibble(
         F1 = dens$x,
@@ -224,11 +231,19 @@ uni_tbl <- purrr::pmap_dfr(
     )
   )
 
-dens_tbl <- make_density_tbl(uni_tbl) |>
+gamma_range_vec <- uni_tbl |>
+  dplyr::filter(
+    transformation == "gamma"
+  ) |>
+  dplyr::pull(F1) |>
+  range()
+from_gamma <- gamma_range_vec[1] - 0.05 * abs(diff(gamma_range_vec))
+gamma_range <- c(from_gamma, gamma_range_vec[2])
+dens_tbl <- make_density_tbl(uni_tbl, gamma_range) |>
   dplyr::mutate(
     transformation = factor(
       .data$transformation,
-      levels = transformation_vec
+      levels = c("gaussian", "gamma", "skew")
     ),
     mean_pos_setting = factor(
       .data$mean_pos_setting,
@@ -286,7 +301,17 @@ rug_tbl <- uni_tbl |>
   dplyr::filter(.data$response_class == "gp")
 
 p <- ggplot(
-  dens_tbl,
+  dens_tbl |>
+    dplyr::mutate(
+      transformation = factor(
+        .data$transformation,
+        levels = c("gaussian", "skew", "gamma")
+      ),
+      mean_pos_setting = factor(
+        .data$mean_pos_setting,
+        levels = c("low", "high")
+      )
+    ),
   aes(
     x = .data$F1,
     y = .data$density,
@@ -294,11 +319,12 @@ p <- ggplot(
     fill = .data$condition
   )
 ) +
+  geom_hline(yintercept = 0, linewidth = 0.25, colour = "gray25") +
   geom_area(
     alpha = 0.18,
     position = "identity"
   ) +
-  geom_line(linewidth = 0.25) +
+  geom_line(linewidth = 0.25, alpha = 0.1) +
   geom_vline(
     data = mean_line_tbl,
     aes(
@@ -306,7 +332,8 @@ p <- ggplot(
       linetype = .data$component
     ),
     inherit.aes = FALSE,
-    linewidth = 0.3
+    linewidth = 0.6,
+    colour = "gray25"
   ) +
   geom_rug(
     data = rug_tbl,
@@ -322,7 +349,11 @@ p <- ggplot(
   facet_grid(
     rows = vars(.data$mean_pos_setting),
     cols = vars(.data$transformation),
-    scales = "free_x"
+    scales = "free_x",
+    labeller = labeller(
+      transformation = .simMiscGetTransPretty(),
+      mean_pos_setting = .simMiscGetMeanPosPretty()
+    )
   ) +
   scale_y_sqrt() +
   labs(
@@ -332,36 +363,46 @@ p <- ggplot(
     fill = NULL,
     linetype = NULL
   ) +
-  cowplot::theme_cowplot() +
-  cowplot::background_grid(major = "xy", minor = "none") +
+  cowplot::theme_cowplot(
+    font_size = 12
+  ) +
+  cowplot::background_grid(major = "x", minor = "none") +
+  theme(
+    strip.background = element_rect(fill = "white", colour = "gray20"),
+  ) +
   theme(
     panel.background = element_rect(fill = "white", colour = NA),
     plot.background = element_rect(fill = "white", colour = NA),
-    legend.position = "bottom",
-    strip.text.y = element_text(angle = 0)
+    strip.text.y = element_text(angle = 0),
+    # --- Legend Centering Tweaks ---
+    legend.position      = "bottom",
+    legend.box           = "horizontal", # Places line types and colors next to each other
+    legend.box.just      = "center",     # Centers the contents within the box
+    legend.justification = "center"
   ) +
-  coord_cartesian(ylim = c(0, 1)) +
+  coord_cartesian(ylim = c(0, 0.5)) +
   scale_colour_manual(
     values = .simMiscGetStimColVec()
   )
 
-path_p <- projr::projr_path_get(
-  "cache",
-  "sim",
-  "trans",
-  "mean-pos-grid-univariate.png"
-)
 
-ggsave(
-  filename = path_p,
-  plot = p,
-  width = 30,
-  height = 18,
-  units = "cm",
-  dpi = 300
-)
-
-p
+ext_vec <- c("png", "pdf")
+for (ext in ext_vec) {
+  path_p <- projr::projr_path_get(
+    "cache",
+    "sim",
+    "trans",
+    paste0("mean-pos-grid-univariate.", ext)
+  )
+  ggsave(
+    filename = path_p,
+    plot = p,
+    width = 18,
+    height = 12,
+    units = "cm",
+    dpi = 300
+  )
+}
 ```
 
 ```{r}
