@@ -801,7 +801,8 @@
 
 #' @keywords internal
 .getCpUnsLocConditionCheckMaxX <- function(exTblStimNoMin, cpMin) {
-  .getCpUnsLocConditionMaxDensX(exTblStimNoMin) <= cpMin
+  (quantile(.getCut(exTblStimNoMin), 0.9) + 3 * sd(.getCut(exTblStimNoMin))) <=
+    cpMin
 }
 
 #' @keywords internal
