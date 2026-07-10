@@ -53,7 +53,8 @@
   peakIdxAll <- .getLocalMaximaIdx(y)
 
   if (length(peakIdxAll) == 0L) {
-    return(which.max(y))
+    out <- max(which(y == max(y)))
+    return(out)
   }
   if (length(peakIdxAll) == 1L) {
     return(peakIdxAll)
