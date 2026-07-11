@@ -1607,7 +1607,6 @@
   probTblPos <- .getCpUnsLocProbTblFilter(
     densTbl = densTblRaw,
     probTbl = probTbl,
-    maxXFilter = maxXFilter,
     exVecStim = exVecStimThreshold,
     exVecUns = exVecUnsThreshold,
     stage = stage
@@ -1691,7 +1690,6 @@
 .getCpUnsLocProbTblFilter <- function(
   densTbl,
   probTbl,
-  maxXFilter,
   exVecStim,
   exVecUns,
   stage
@@ -1738,7 +1736,7 @@
     # Get the row index of the first time this becomes true
     dplyr::pull(both_met) |>
     which() |>
-    which.min()   
+    which.min()
 
   # Slice the table from that first valid point all the way to the end
   if (length(valid_idx) > 0) {
@@ -3849,14 +3847,4 @@
   attr(dataMod, "idxMod") <- sort(unname(idxMod))
 
   dataMod
-}
-
-.getCpUnsLocGetProbTblMaxXFilter <- function(exVec) {
-  if (length(exVec) < 20L) {
-    return(Inf)
-  }
-  quantile(
-    exVec,
-    (length(exVec) - 20L) / length(exVec)
-  )
 }
