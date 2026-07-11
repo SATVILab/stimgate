@@ -1705,9 +1705,11 @@
   peakUnsX <- densTblUns$xStim[peakUnsIdx]
   peakX <- max(peakStimX, peakUnsX)
 
-  windowWidthStim <- 0.25 *
+  windowWidthStim <- 1 /
+    3 *
     abs(diff(quantile(exVecStim[exVecStim < peakStimX], c(0.05, 1))))
-  windowWidthUns <- 0.25 *
+  windowWidthUns <- 1 /
+    3 *
     abs(diff(quantile(exVecUns[exVecUns < peakUnsX], c(0.05, 1))))
   windowWidth <- max(windowWidthStim, windowWidthUns, na.rm = TRUE)
 
@@ -1775,55 +1777,49 @@
       exTblStimNoMin = exTblStimNoMin,
       exTblUnsBias = exTblUnsBias,
       stage = stage,
-      msg = "No responding cells" # nolint
+      msg = "No responding cells"
     ))
   }
-  margin <- .getCpUnsLocGetDataModMargin(
-    exTblStimNoMin = exTblStimNoMin,
-    exTblUnsNoMin = exTblUnsThreshold
-  )
-  binVec <- density(
-    c(.getCut(exTblStimThreshold), .getCut(exTblUnsThreshold))
-  )$x
 
+  # 1. Capture the true starting boundary from the filtered 'pos' table
+  minProbXPos <- min(probTblList$pos$xStim, na.rm = TRUE)
+
+  # 2. Keep the lower values in dataMod to anchor/clamp the spline at the periphery
   dataMod <- exTblStimThreshold
-  dataMod <- dataMod[
-    .getCut(dataMod) >=
-      (min(.getCpUnsLocGetMinProbX(probTblList$pos) - margin)),
-  ]
-  if (nrow(dataMod) == 0L) {
-    return(.getCpUnsLocConditionCheckOut(
-      cpMin = cpMin,
-      exTblStimNoMin = exTblStimNoMin,
-      exTblUnsBias = exTblUnsBias,
-      stage = stage,
-      msg = "No responding cells" # nolint
-    ))
-  }
+
+  # 3. Interpolate using the 'all' table so baseline cells get real probabilities
   probVec <- try(
     approx(
-      x = probTblList$pos$xStim,
-      y = probTblList$pos$probStimNorm,
-      xout = dataMod[[1]],
+      x = probTblList$all$xStim,
+      y = probTblList$all$probStimNorm,
+      xout = .getCut(dataMod),
       method = "linear",
-      f = 0.5,
       rule = 2
     )$y,
     silent = TRUE
   )
+
   if (inherits(probVec, "try-error")) {
     return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,
       exTblStimNoMin = exTblStimNoMin,
       exTblUnsBias = exTblUnsBias,
       stage = stage,
-      msg = "No responding cells" # nolint
+      msg = "No responding cells"
     ))
   }
-  attr(dataMod, "binVec") <- binVec
 
   dataMod <- dataMod |>
     dplyr::mutate(probSmooth = probVec)
+
+  binVec <- .getCpUnsLocGetDataModBinVec(
+    exTblStimThreshold = exTblStimThreshold,
+    exTblUnsThreshold = exTblUnsThreshold
+  )
+  attr(dataMod, "binVec") <- binVec
+
+  # 4. Attach your safety rail attribute here
+  attr(dataMod, "minProbXPos") <- minProbXPos
 
   .thinDataMod(dataMod, maxCellsPerBin = 20)
 }
@@ -1833,11 +1829,30 @@
   exTblStimNoMin,
   exTblUnsNoMin
 ) {
-  abs(max(
-    diff(.getCut(exTblStimNoMin)),
-    diff(.getCut(exTblUnsNoMin))
-  )) *
-    0.05
+  spanStim <- diff(quantile(
+    .getCut(exTblStimNoMin),
+    probs = c(0.05, 0.95),
+    na.rm = TRUE
+  ))
+  spanUns <- diff(quantile(
+    .getCut(exTblUnsNoMin),
+    probs = c(0.05, 0.95),
+    na.rm = TRUE
+  ))
+
+  max(spanStim, spanUns) * 0.05
+}
+
+.getCpUnsLocGetDataModBinVec <- function(
+  exTblStimThreshold,
+  exTblUnsThreshold
+) {
+  stimVals <- .getCut(exTblStimThreshold)
+  unsVals <- .getCut(exTblUnsThreshold)
+
+  rng <- range(stimVals, unsVals, na.rm = TRUE)
+
+  seq.int(from = rng[1], to = rng[2], length.out = 512L)
 }
 
 # smooth
@@ -2630,6 +2645,14 @@
   if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
     info$reason <- "no_data_mod"
     return(list("dataMod" = dataMod, "cp" = NULL, "info" = info))
+  }
+
+  minProbXPos <- attr(dataMod, "minProbXPos")
+  if (!is.null(minProbXPos) && is.finite(minProbXPos)) {
+    # Exclude peripheral clamping cells so they can't be chosen as thresholds
+    dataMod <- dataMod[.getCut(dataMod) >= minProbXPos, , drop = FALSE]
+    info$applied <- TRUE
+    info$reason <- "excluded_clamping_cells_below_pos_minimum"
   }
 
   dataMod <- dataMod[order(.getCut(dataMod)), , drop = FALSE]
