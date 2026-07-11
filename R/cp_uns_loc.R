@@ -1605,8 +1605,7 @@
   probTbl <- .getCpUnsLocGetProbTblInit(densTblRaw, cpMin)
 
   probTblPos <- .getCpUnsLocProbTblFilter(
-    exVecStimThreshold = exVecStimThreshold,
-    exVecUnsThreshold = exVecUnsThreshold,
+    densTbl = densTblRaw,
     probTbl = probTbl,
     stage = stage
   )
@@ -1686,38 +1685,27 @@
 
 #' @keywords internal
 .getCpUnsLocProbTblFilter <- function(
-  exVecStimThreshold,
-  exVecUnsThreshold,
+  densTbl,
   probTbl,
   stage
 ) {
   .debug("Filtering before smoothing") # nolint
-
-  densityExcMinStim <- density(exVecStimThreshold)
-  densTblStim <- tibble::tibble(
-    x = densityExcMinStim$x,
-    y = densityExcMinStim$y
-  )
+  densTblStim <- densTbl |>
+    dplyr::filter(stim == "yes")
+  densTblUns <- densTbl |>
+    dplyr::filter(stim == "no")
   peakStimIdx <- .getPeakMainLeftIdx(densTblStim$y)
-  peakStimX <- densTblStim$x[peakStimIdx]
-  peakUnsIdx <- .getPeakMainLeftIdx(density(exVecUnsThreshold)$y)
-  peakStim <- densTblStim |>
-    dplyr::filter(y == max(y)) |> # nolint
-    dplyr::pull("x") # nolint
-  densityExcMinUns <- density(exVecUnsThreshold)
-  densTblUns <- tibble::tibble(
-    x = densityExcMinUns$x,
-    y = densityExcMinUns$y
-  )
-  peakUns <- densTblUns |>
-    dplyr::filter(y == max(y)) |> # nolint
-    dplyr::pull("x") # nolint
-  peak <- max(peakStim, peakUns)
+  peakStimX <- densTblStim$xStim[peakStimIdx]
+  peakUnsIdx <- .getPeakMainLeftIdx(densTblUns$y)
+  peakUnsX <- densTblUns$xStim[peakUnsIdx]
+  peakX <- max(peakStimX, peakUnsX)
 
-  windowWidth <- 0.15 * diff(quantile(probTbl$xStim, c(0.05, 0.5)))
+  windowWidthStim <- 0.15 * diff(quantile(probTbl$xStim, c(0.05, 0.5)))
+  windowWidthUns <- 0.15 * diff(quantile(probTbl$uns, c(0.05, 0.5)))
+  windowWidth <- max(windowWidthStim, windowWidthUns)
 
   probTbl <- probTbl |>
-    dplyr::filter(xStim > peak + windowWidth) # nolint
+    dplyr::filter(xStim > peakX + windowWidth) # nolint
 
   probTbl <- probTbl |>
     dplyr::mutate(
