@@ -1720,35 +1720,34 @@
     return(probTbl)
   }
 
-  probTbl |>
+  # Find the threshold index
+  valid_idx <- probTbl |>
     dplyr::arrange(xStim) |>
     dplyr::mutate(
       ge_0025 = probStimNorm >= 0.025,
       ge_0075 = probStimNorm >= 0.075,
-
       n_remaining = rev(seq_len(dplyr::n())),
 
-      count_remaining_0025 = rev(cumsum(rev(ge_0025))),
-      count_remaining_0075 = rev(cumsum(rev(ge_0075))),
+      # Calculate tail proportions
+      prop_0025 = rev(cumsum(rev(ge_0025))) / n_remaining,
+      prop_0075 = rev(cumsum(rev(ge_0075))) / n_remaining,
 
-      prop_remaining_0025 = count_remaining_0025 / n_remaining,
-      prop_remaining_0075 = count_remaining_0075 / n_remaining
+      # Do both conditions match?
+      both_met = prop_0025 >= 0.90 & prop_0075 >= 0.25
     ) |>
-    dplyr::filter(
-      prop_remaining_0025 >= 0.90,
-      prop_remaining_0075 >= 0.25
-    ) |>
-    dplyr::select(
-      -c(
-        ge_0025,
-        ge_0075,
-        n_remaining,
-        count_remaining_0025,
-        count_remaining_0075,
-        prop_remaining_0025,
-        prop_remaining_0075
-      )
-    )
+    # Get the row index of the first time this becomes true
+    dplyr::pull(both_met) |>
+    which() |>
+    which.min()   
+
+  # Slice the table from that first valid point all the way to the end
+  if (length(valid_idx) > 0) {
+    probTbl |>
+      dplyr::arrange(xStim) |>
+      dplyr::slice(valid_idx:dplyr::n())
+  } else {
+    probTbl |> dplyr::slice(0) # Empty if nothing matches
+  }
 }
 
 #' @keywords internal
