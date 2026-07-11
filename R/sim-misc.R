@@ -61,7 +61,17 @@ calc_skew <- function(x, epsilon = 0.5, delta = 1) {
 
 .simMiscGetStimColVec <- function() {
   uns_nm_vec <- c("uns", "unstim", "unstimulated")
+  uns_nm_vec <- c(
+    uns_nm_vec,
+    toupper(uns_nm_vec),
+    tools::toTitleCase(uns_nm_vec)
+  )
   stim_nm_vec <- c("stim", "stimulated")
+  stim_nm_vec <- c(
+    stim_nm_vec,
+    toupper(stim_nm_vec),
+    tools::toTitleCase(stim_nm_vec)
+  )
   c(
     rep("#0072B2", length(uns_nm_vec)), # blue
     rep("#D55E00", length(stim_nm_vec)) # vermillion
