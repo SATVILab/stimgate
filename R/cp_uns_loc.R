@@ -1616,10 +1616,17 @@
 
   probTbl <- .getCpUnsLocGetProbTblInit(densTblRaw, cpMin)
 
+  maxXFilter <- if (length(exVecStimThreshold) < 20L) {
+    Inf
+  } else {
+    quantile(exVecStimThreshold, (length(exVecStimThreshold) - 20L) / length(exVecStimThreshold))
+  }
+
   probTblPos <- .getCpUnsLocProbTblFilter(
     exVecStimThreshold = exVecStimThreshold,
     exVecUnsThreshold = exVecUnsThreshold,
     probTbl = probTbl,
+    maxXFilter = maxXFilter,
     stage = stage
   )
   list(all = probTbl, pos = probTblPos)
@@ -1701,6 +1708,7 @@
   exVecStimThreshold,
   exVecUnsThreshold,
   probTbl,
+  maxXFilter,
   stage
 ) {
   .debug("Filtering before smoothing") # nolint
@@ -1727,6 +1735,19 @@
 
   probTbl <- probTbl |>
     dplyr::filter(xStim > peak + windowWidth) # nolint
+
+  if (nrow(probTbl) < 20L) {
+    return(probTbl)
+  }
+
+  probTbl <- probTbl |> dplyr::arrange(xStim)
+
+  probFilterIdx <- which(probTbl$xStim < maxXFilter)
+  probIncIdx <- setdiff(seq_len(nrow(probTbl)), probFilterIdx)
+  probVec <- probTbl$probStimNorm[probFilterIdx] |>
+    stats::setNames(probTbl$xStim)
+  probVecGe0025FilterIdx <- which(cumsum(probVec) >= 0.025)
+  probVecGe0075 <- probVec >= 0.075
 
   probTbl <- probTbl |>
     dplyr::mutate(
