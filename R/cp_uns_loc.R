@@ -1604,18 +1604,15 @@
 
   probTbl <- .getCpUnsLocGetProbTblInit(densTblRaw, cpMin)
 
-  maxXFilter <- if (length(exVecStimThreshold) < 20L) {
-    Inf
-  } else {
-    quantile(exVecStimThreshold, (length(exVecStimThreshold) - 20L) / length(exVecStimThreshold))
-  }
-
   probTblPos <- .getCpUnsLocProbTblFilter(
     densTbl = densTblRaw,
     probTbl = probTbl,
     maxXFilter = maxXFilter,
+    exVecStim = exVecStimThreshold,
+    exVecUns = exVecUnsThreshold,
     stage = stage
   )
+
   list(all = probTbl, pos = probTblPos)
 }
 
@@ -1695,6 +1692,8 @@
   densTbl,
   probTbl,
   maxXFilter,
+  exVecStim,
+  exVecUns,
   stage
 ) {
   .debug("Filtering before smoothing") # nolint
@@ -1702,58 +1701,52 @@
     dplyr::filter(stim == "yes")
   densTblUns <- densTbl |>
     dplyr::filter(stim == "no")
-  peakStimIdx <- .getPeakMainLeftIdx(densTblStim$y)
+  peakStimIdx <- .getPeakMainLeftIdx(densTblStim$dens)
   peakStimX <- densTblStim$xStim[peakStimIdx]
-  peakUnsIdx <- .getPeakMainLeftIdx(densTblUns$y)
+  peakUnsIdx <- .getPeakMainLeftIdx(densTblUns$dens)
   peakUnsX <- densTblUns$xStim[peakUnsIdx]
   peakX <- max(peakStimX, peakUnsX)
 
-  windowWidthStim <- 0.15 * diff(quantile(probTbl$xStim, c(0.05, 0.5)))
-  windowWidthUns <- 0.15 * diff(quantile(probTbl$uns, c(0.05, 0.5)))
-  windowWidth <- max(windowWidthStim, windowWidthUns)
+  windowWidthStim <- 0.25 *
+    abs(diff(quantile(exVecStim[exVecStim < peakStimX], c(0.05, 1))))
+  windowWidthUns <- 0.25 *
+    abs(diff(quantile(exVecUns[exVecUns < peakUnsX], c(0.05, 1))))
+  windowWidth <- max(windowWidthStim, windowWidthUns, na.rm = TRUE)
 
   probTbl <- probTbl |>
     dplyr::filter(xStim > peakX + windowWidth) # nolint
 
-  if (nrow(probTbl) < 20L) {
+  if (nrow(probTbl) <= 5L) {
     return(probTbl)
   }
 
-  probTbl <- probTbl |> dplyr::arrange(xStim)
-
-  probFilterIdx <- which(probTbl$xStim < maxXFilter)
-  probIncIdx <- setdiff(seq_len(nrow(probTbl)), probFilterIdx)
-  probVec <- probTbl$probStimNorm[probFilterIdx] |>
-    stats::setNames(probTbl$xStim)
-  probVecGe0025FilterIdx <- which(cumsum(probVec) >= 0.025)
-  probVecGe0075 <- probVec >= 0.075
-
-  probTbl <- probTbl |>
-    dplyr::mutate(
-      minorResponseInd = probStimNorm >= 0.025,
-      moderateResponseInd = probStimNorm >= 0.075,
-      nRemaining = dplyr::n() - seq_len(dplyr::n()) + 1
-    )
   probTbl |>
-    dplyr::filter(
-      cumsum(minorResponseInd) > 0 # nolint
-    ) |>
+    dplyr::arrange(xStim) |>
     dplyr::mutate(
-      probLargerCount = purrr::map_int(xStim, function(x) {
-        sum(probTbl$moderateResponseInd[probTbl$xStim >= x])
-      }),
-      probLargerProp = probLargerCount / nRemaining # nolint
+      ge_0025 = probStimNorm >= 0.025,
+      ge_0075 = probStimNorm >= 0.075,
+
+      n_remaining = rev(seq_len(dplyr::n())),
+
+      count_remaining_0025 = rev(cumsum(rev(ge_0025))),
+      count_remaining_0075 = rev(cumsum(rev(ge_0075))),
+
+      prop_remaining_0025 = count_remaining_0025 / n_remaining,
+      prop_remaining_0075 = count_remaining_0075 / n_remaining
     ) |>
     dplyr::filter(
-      probLargerProp > 0.25 # nolint
+      prop_remaining_0025 >= 0.90,
+      prop_remaining_0075 >= 0.25
     ) |>
     dplyr::select(
       -c(
-        probLargerProp,
-        minorResponseInd,
-        moderateResponseInd,
-        nRemaining,
-        probLargerCount
+        ge_0025,
+        ge_0075,
+        n_remaining,
+        count_remaining_0025,
+        count_remaining_0075,
+        prop_remaining_0025,
+        prop_remaining_0075
       )
     )
 }
@@ -3857,4 +3850,14 @@
   attr(dataMod, "idxMod") <- sort(unname(idxMod))
 
   dataMod
+}
+
+.getCpUnsLocGetProbTblMaxXFilter <- function(exVec) {
+  if (length(exVec) < 20L) {
+    return(Inf)
+  }
+  quantile(
+    exVec,
+    (length(exVec) - 20L) / length(exVec)
+  )
 }
