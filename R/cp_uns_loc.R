@@ -1781,13 +1781,23 @@
     ))
   }
 
-  # 1. Capture the true starting boundary from the filtered 'pos' table
   minProbXPos <- min(probTblList$pos$xStim, na.rm = TRUE)
 
-  # 2. Keep the lower values in dataMod to anchor/clamp the spline at the periphery
-  dataMod <- exTblStimThreshold
+  margin <- .getCpUnsLocGetDataModMargin(
+    exTblStimNoMin = exTblStimNoMin,
+    exTblUnsNoMin = exTblUnsThreshold
+  )
 
-  # 3. Interpolate using the 'all' table so baseline cells get real probabilities
+  minMod <- minProbXPos - margin
+
+  # Keep the lower values in dataMod to anchor/clamp the spline at the periphery
+  dataMod <- exTblStimThreshold[
+    .getCut(exTblStimThreshold) >= minMod,
+    ,
+    drop = FALSE
+  ]
+
+  # Interpolate using the 'all' table so baseline cells get real probabilities
   probVec <- try(
     approx(
       x = probTblList$all$xStim,
@@ -1812,13 +1822,15 @@
   dataMod <- dataMod |>
     dplyr::mutate(probSmooth = probVec)
 
+  # get the bins that we'll need for thinning
   binVec <- .getCpUnsLocGetDataModBinVec(
     exTblStimThreshold = exTblStimThreshold,
     exTblUnsThreshold = exTblUnsThreshold
   )
   attr(dataMod, "binVec") <- binVec
 
-  # 4. Attach your safety rail attribute here
+  # Attach this for filtering when it comes to estimating
+  # the final response proportion
   attr(dataMod, "minProbXPos") <- minProbXPos
 
   .thinDataMod(dataMod, maxCellsPerBin = 20)
@@ -2208,7 +2220,11 @@
       control = scam::scam.control(
         print.warn = FALSE,
         trace = FALSE,
-        devtol.fit = 0.01
+        devtol.fit = 0.5,
+        steptol.fit = 1e-1,
+        maxHalf = 5,
+        bfgs = list(steptol.bfgs = 1e-1),
+        maxit = 1e1
       )
     )),
     silent = TRUE
