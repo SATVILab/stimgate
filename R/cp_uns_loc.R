@@ -954,13 +954,16 @@
     chnlSettings = chnlSettings
   )
 
-  # put raw densities into table
-  .getCpUnsLocGetDensRawTabulate(
+  # Keep the bandwidth object used here so the later antimode density can use
+  # exactly half of the same fixed or adaptive bandwidth.
+  densTblRaw <- .getCpUnsLocGetDensRawTabulate(
     stimX = densList$stim$x,
     stimY = densList$stim$y,
     unsX = densList$uns$x,
     unsY = densList$uns$y
   )
+  attr(densTblRaw, "locDensityBw") <- densList$bw
+  densTblRaw
 }
 
 #' @keywords internal
@@ -1612,7 +1615,11 @@
     stage = stage
   )
 
-  list(all = probTbl, pos = probTblPos)
+  list(
+    all = probTbl,
+    pos = probTblPos,
+    densityBw = attr(densTblRaw, "locDensityBw")
+  )
 }
 
 #' @keywords internal
@@ -1833,6 +1840,10 @@
   # the final response proportion
   attr(dataMod, "minProbXPos") <- minProbXPos
 
+  # Retain the exact bandwidth object used for the stimulated and unstimulated
+  # density estimates. The later antimode density uses half this bandwidth.
+  attr(dataMod, "locDensityBw") <- probTblList$densityBw
+
   .thinDataMod(dataMod, maxCellsPerBin = 20)
 }
 
@@ -1878,6 +1889,7 @@
   chnlSettings = list()
 ) {
   stageChnl <- file.path(stage, chnl)
+  densityBw <- attr(dataMod, "locDensityBw")
 
   if (!.getCpUnsLocGetProbSmoothCheckNCell(dataMod)) {
     .intSaveNm(
@@ -1888,6 +1900,7 @@
       pathProject
     )
     dataModOut <- .getCpUnsLocGetProbSmoothCheckNCellOut(dataMod)
+    attr(dataModOut, "locDensityBw") <- densityBw
     .intSaveNm(
       "probSmoothOut",
       dataModOut,
@@ -1909,6 +1922,7 @@
     dataMod = dataModOut,
     smoothObj = smoothObj
   )
+  attr(dataModOut, "locDensityBw") <- densityBw
   .intSaveNm(
     "probSmoothOut",
     dataModOut,
@@ -2663,15 +2677,17 @@
     return(list("dataMod" = dataMod, "cp" = NULL, "info" = info))
   }
 
-  minProbXPos <- attr(dataMod, "minProbXPos")
-  if (!is.null(minProbXPos) && is.finite(minProbXPos)) {
-    # Exclude peripheral clamping cells so they can't be chosen as thresholds
-    dataMod <- dataMod[.getCut(dataMod) >= minProbXPos, , drop = FALSE]
-    info$applied <- TRUE
-    info$reason <- "excluded_clamping_cells_below_pos_minimum"
-  }
+  # The lower-margin values were retained to anchor the monotone smoother.
+  # Keep them available while identifying the antimode, global, and marginal
+  # filtering thresholds. They are removed only when the final response
+  # proportion is calculated.
+  info$minProbXPos <- attr(dataMod, "minProbXPos")
+  info$clampingCellsRetainedForThresholdSelection <- TRUE
 
-  dataMod <- dataMod[order(.getCut(dataMod)), , drop = FALSE]
+  dataMod <- .getCpUnsLocGetCpTrimSubset(
+    dataMod = dataMod,
+    keep = order(.getCut(dataMod))
+  )
   probCol <- .getCpUnsLocGetCpTrimProbCol(dataMod, chnlSettings)
   probVec <- .getCpUnsLocGetCpTrimProbVec(dataMod, probCol)
   maxProb <- suppressWarnings(max(probVec, na.rm = TRUE))
@@ -2699,9 +2715,11 @@
     ))
   }
 
+  # First remove values below the right-most eligible antimode, when one is
+  # found. The antimode upper limit uses (alpha, omega, psi) =
+  # (2 / 3, 0.15, 0.75) by default.
   antiObj <- .getCpUnsLocGetCpTrimAntimode(
     dataMod = dataMod,
-    exTblStimNoMin = exTblStimNoMin,
     chnlSettings = chnlSettings,
     probCol = probCol
   )
@@ -2722,13 +2740,16 @@
     ))
   }
 
-  flatObj <- .getCpUnsLocGetCpTrimFlatLeft(
+  # Apply the global response-probability filter and then the marginal quality
+  # filter sequentially. Their default derivative parameters are
+  # (0.05, 0.15, 0.05) and (0.5, 0.15, 0.75), respectively.
+  flatObj <- .getCpUnsLocGetCpTrimLowProbLeft(
     dataMod = dataMod,
-    exTblStimNoMin = exTblStimNoMin,
     chnlSettings = chnlSettings,
     probCol = probCol
   )
   dataMod <- flatObj$dataMod
+  info$lowProbLeft <- flatObj$info
   info$flatLeft <- flatObj$info
 
   info$applied <- isTRUE(antiObj$info$applied) ||
@@ -2738,7 +2759,7 @@
   }
 
   if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
-    info$reason <- "all_cells_removed_by_left_flat_trim"
+    info$reason <- "all_cells_removed_by_low_probability_left_trim"
     return(list(
       "dataMod" = dataMod,
       "cp" = .getCpUnsLocConditionCpNonLoc(
@@ -2764,6 +2785,170 @@
   }
   default
 }
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimRiseFrac <- function(
+  chnlSettings,
+  settingName,
+  default
+) {
+  riseFrac <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    settingName,
+    default
+  )
+  riseFrac <- suppressWarnings(as.numeric(riseFrac)[1])
+  if (!is.finite(riseFrac) || riseFrac <= 0 || riseFrac > 1) {
+    return(default)
+  }
+  riseFrac
+}
+
+#' Return the first available setting from a precedence-ordered name vector
+#' @keywords internal
+.getCpUnsLocGetCpTrimFirstSetting <- function(
+  chnlSettings,
+  settingNames,
+  default
+) {
+  for (nm in settingNames) {
+    value <- .getCpUnsLocGetCpTrimSetting(
+      chnlSettings = chnlSettings,
+      nm = nm,
+      default = NULL
+    )
+    if (!is.null(value)) {
+      return(value)
+    }
+  }
+  default
+}
+
+#' Validate a probability or relative-height parameter
+#' @keywords internal
+.getCpUnsLocGetCpTrimUnitParameter <- function(
+  value,
+  default,
+  allowZero = FALSE
+) {
+  value <- suppressWarnings(as.numeric(value)[1])
+  validLower <- if (isTRUE(allowZero)) value >= 0 else value > 0
+  if (!is.finite(value) || !validLower || value > 1) {
+    return(default)
+  }
+  value
+}
+
+#' Obtain stage-specific derivative parameters
+#'
+#' The preferred setting names use the symbols from the appendix: `Alpha`,
+#' `Omega`, and `Psi`. Earlier setting names remain supported for backwards
+#' compatibility.
+#' @keywords internal
+.getCpUnsLocGetCpTrimStageDerivParams <- function(
+  chnlSettings,
+  stage
+) {
+  stage <- match.arg(stage, c("antimode", "global", "marginal"))
+  stageTitle <- switch(
+    stage,
+    antimode = "Antimode",
+    global = "Global",
+    marginal = "Marginal"
+  )
+  defaults <- switch(
+    stage,
+    antimode = c(alpha = 2 / 3, omega = 0.15, psi = 0.75),
+    global = c(alpha = 0.05, omega = 0.15, psi = 0.05),
+    marginal = c(alpha = 0.5, omega = 0.15, psi = 0.75)
+  )
+
+  alpha <- .getCpUnsLocGetCpTrimFirstSetting(
+    chnlSettings = chnlSettings,
+    settingNames = c(
+      paste0("loc", stageTitle, "DerivAlpha"),
+      "locDerivAlpha",
+      paste0("loc", stageTitle, "DerivPeakMinRel"),
+      "locDerivPeakMinRel"
+    ),
+    default = defaults[["alpha"]]
+  )
+  omega <- .getCpUnsLocGetCpTrimFirstSetting(
+    chnlSettings = chnlSettings,
+    settingNames = c(
+      paste0("loc", stageTitle, "DerivOmega"),
+      "locDerivOmega",
+      paste0("loc", stageTitle, "DerivPeakProbMin"),
+      "locDerivPeakProbMin"
+    ),
+    default = defaults[["omega"]]
+  )
+  psi <- .getCpUnsLocGetCpTrimFirstSetting(
+    chnlSettings = chnlSettings,
+    settingNames = c(
+      paste0("loc", stageTitle, "DerivPsi"),
+      "locDerivPsi",
+      paste0("loc", stageTitle, "DerivRiseFrac")
+    ),
+    default = defaults[["psi"]]
+  )
+
+  list(
+    alpha = .getCpUnsLocGetCpTrimUnitParameter(
+      alpha,
+      defaults[["alpha"]]
+    ),
+    omega = .getCpUnsLocGetCpTrimUnitParameter(
+      omega,
+      defaults[["omega"]],
+      allowZero = TRUE
+    ),
+    psi = .getCpUnsLocGetCpTrimUnitParameter(
+      psi,
+      defaults[["psi"]]
+    )
+  )
+}
+
+
+#' Get the minimum response probability required at a rise threshold
+#' @keywords internal
+.getCpUnsLocGetCpTrimRiseProbMin <- function(
+  chnlSettings,
+  settingName,
+  default = 0
+) {
+  default <- suppressWarnings(as.numeric(default)[1])
+  if (!is.finite(default) || default < 0 || default > 1) {
+    default <- 0
+  }
+
+  commonDefault <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locDerivRiseProbMin",
+    default
+  )
+  commonDefault <- suppressWarnings(as.numeric(commonDefault)[1])
+  if (
+    !is.finite(commonDefault) ||
+      commonDefault < 0 ||
+      commonDefault > 1
+  ) {
+    commonDefault <- default
+  }
+
+  probMin <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    settingName,
+    commonDefault
+  )
+  probMin <- suppressWarnings(as.numeric(probMin)[1])
+  if (!is.finite(probMin) || probMin < 0 || probMin > 1) {
+    return(commonDefault)
+  }
+  probMin
+}
+
 
 #' @keywords internal
 .getCpUnsLocGetCpTrimAsFiniteNumeric <- function(x, positive = FALSE) {
@@ -2803,331 +2988,740 @@
 }
 
 #' @keywords internal
-.getCpUnsLocGetCpTrimAntimode <- function(
+.getCpUnsLocGetCpTrimSubset <- function(dataMod, keep) {
+  attrNames <- c(
+    "chnlCut",
+    "ind",
+    "indUns",
+    "binVec",
+    "minProbXPos",
+    "locProbDerivTbl",
+    "locProbSmoothMethod",
+    "locDensityBw"
+  )
+  attrList <- lapply(attrNames, function(nm) attr(dataMod, nm))
+  names(attrList) <- attrNames
+
+  out <- dataMod[keep, , drop = FALSE]
+  for (nm in attrNames) {
+    if (!is.null(attrList[[nm]])) {
+      attr(out, nm) <- attrList[[nm]]
+    }
+  }
+  out
+}
+
+#' Find the left-most valid peak of a non-negative derivative
+#'
+#' This helper is deliberately generic. It operates only on numeric vectors and
+#' has no knowledge of StimGate data frames, marker columns, or model objects.
+#' @keywords internal
+.getCpUnsLocDerivativePeak <- function(
+  x,
+  prob,
+  deriv,
+  alpha = 0.75
+) {
+  info <- list(reason = "no_valid_derivative_peak")
+
+  x <- suppressWarnings(as.numeric(x))
+  prob <- suppressWarnings(as.numeric(prob))
+  deriv <- suppressWarnings(as.numeric(deriv))
+
+  if (length(x) != length(prob) || length(x) != length(deriv)) {
+    info$reason <- "derivative_peak_input_lengths_differ"
+    return(list("index" = NA_integer_, "data" = NULL, "info" = info))
+  }
+
+  keep <- is.finite(x) & is.finite(prob) & is.finite(deriv)
+  x <- x[keep]
+  prob <- prob[keep]
+  deriv <- pmax(0, deriv[keep])
+
+  if (length(x) < 3L) {
+    info$reason <- "too_few_finite_derivative_points"
+    return(list("index" = NA_integer_, "data" = NULL, "info" = info))
+  }
+
+  ord <- order(x)
+  peakData <- data.frame(
+    x = x[ord],
+    prob = pmin(1, pmax(0, prob[ord])),
+    deriv = deriv[ord]
+  )
+
+  alpha <- suppressWarnings(as.numeric(alpha)[1])
+  if (!is.finite(alpha) || alpha <= 0 || alpha > 1) {
+    alpha <- 0.75
+  }
+
+  globalMaxDeriv <- max(peakData$deriv, na.rm = TRUE)
+  if (!is.finite(globalMaxDeriv) || globalMaxDeriv <= 0) {
+    info$reason <- "no_positive_probability_derivative"
+    info$globalMaxDeriv <- globalMaxDeriv
+    return(list("index" = NA_integer_, "data" = peakData, "info" = info))
+  }
+
+  # Treat a flat-topped local maximum as one peak and represent it by the
+  # left-most point of the plateau. Endpoints are not local peaks. The existing
+  # global-maximum fallback is retained for cases with no internal peak.
+  derivRuns <- rle(peakData$deriv)
+  runEnd <- cumsum(derivRuns$lengths)
+  runStart <- runEnd - derivRuns$lengths + 1L
+  runValue <- derivRuns$values
+
+  if (length(runValue) >= 3L) {
+    leftValue <- c(Inf, runValue[-length(runValue)])
+    rightValue <- c(runValue[-1L], Inf)
+    peakRun <- runStart > 1L &
+      runEnd < nrow(peakData) &
+      runValue > leftValue &
+      runValue > rightValue
+    peakIdx <- runStart[peakRun]
+  } else {
+    peakIdx <- integer(0L)
+  }
+
+  usedGlobalFallback <- length(peakIdx) == 0L
+  if (isTRUE(usedGlobalFallback)) {
+    peakIdx <- which.max(peakData$deriv)
+  }
+
+  maxPeakDeriv <- max(peakData$deriv[peakIdx], na.rm = TRUE)
+  peakIdxEligible <- peakIdx[
+    peakData$deriv[peakIdx] >= alpha * maxPeakDeriv
+  ]
+
+  info$alpha <- alpha
+  info$peakMinRel <- alpha
+  info$globalMaxDeriv <- globalMaxDeriv
+  info$maxPeakDeriv <- maxPeakDeriv
+  info$usedGlobalMaximumFallback <- usedGlobalFallback
+  info$peakSummary <- data.frame(
+    idx = peakIdx,
+    x = peakData$x[peakIdx],
+    prob = peakData$prob[peakIdx],
+    deriv = peakData$deriv[peakIdx],
+    relToMaxPeak = peakData$deriv[peakIdx] / maxPeakDeriv,
+    relToGlobal = peakData$deriv[peakIdx] / globalMaxDeriv,
+    eligible = peakIdx %in% peakIdxEligible
+  )
+
+  if (length(peakIdxEligible) == 0L) {
+    info$reason <- "no_derivative_peak_met_relative_height"
+    return(list("index" = NA_integer_, "data" = peakData, "info" = info))
+  }
+
+  peakIdxSelected <- min(peakIdxEligible)
+  info$reason <- "identified_leftmost_valid_derivative_peak"
+  info$peakIdx <- peakIdxSelected
+  info$peakX <- peakData$x[peakIdxSelected]
+  info$peakProb <- peakData$prob[peakIdxSelected]
+  info$peakDeriv <- peakData$deriv[peakIdxSelected]
+
+  list(
+    "index" = peakIdxSelected,
+    "data" = peakData,
+    "info" = info
+  )
+}
+
+#' Find where a derivative first reaches a fraction of its selected peak
+#'
+#' This is also generic and calls `.getCpUnsLocDerivativePeak()` to select the
+#' reference peak before locating the rise threshold.
+#' @keywords internal
+.getCpUnsLocDerivativeRiseThreshold <- function(
+  x,
+  prob,
+  deriv,
+  alpha = 0.75,
+  omega = 0.15,
+  psi,
+  thresholdProbMin = 0
+) {
+  peakObj <- .getCpUnsLocDerivativePeak(
+    x = x,
+    prob = prob,
+    deriv = deriv,
+    alpha = alpha
+  )
+  info <- peakObj$info
+
+  if (is.null(peakObj$data) || !is.finite(peakObj$index)) {
+    return(list(
+      "riseThresholdX" = NA_real_,
+      "risingFastX" = NA_real_,
+      "info" = info
+    ))
+  }
+
+  omega <- suppressWarnings(as.numeric(omega)[1])
+  if (!is.finite(omega) || omega < 0 || omega > 1) {
+    info$reason <- "invalid_derivative_minimum_probability"
+    return(list(
+      "riseThresholdX" = NA_real_,
+      "risingFastX" = NA_real_,
+      "info" = info
+    ))
+  }
+
+  psi <- suppressWarnings(as.numeric(psi)[1])
+  if (!is.finite(psi) || psi <= 0 || psi > 1) {
+    info$reason <- "invalid_derivative_rise_fraction"
+    return(list(
+      "riseThresholdX" = NA_real_,
+      "risingFastX" = NA_real_,
+      "info" = info
+    ))
+  }
+
+  peakIdx <- peakObj$index
+  peakHeight <- peakObj$data$deriv[peakIdx]
+  riseHeight <- psi * peakHeight
+
+  # First identify the earliest point at or to the right of the selected peak
+  # whose response probability reaches omega.
+  omegaIdx <- seq.int(peakIdx, nrow(peakObj$data))
+  omegaIdx <- omegaIdx[
+    is.finite(peakObj$data$prob[omegaIdx]) &
+      peakObj$data$prob[omegaIdx] >= omega
+  ]
+
+  info$omega <- omega
+  info$peakProbMin <- omega
+  info$psi <- psi
+  info$riseFrac <- psi
+  info$riseHeight <- riseHeight
+
+  if (length(omegaIdx) == 0L) {
+    info$reason <- "no_point_at_or_after_peak_met_minimum_probability"
+    return(list(
+      "riseThresholdX" = NA_real_,
+      "risingFastX" = NA_real_,
+      "info" = info
+    ))
+  }
+
+  omegaIdx <- min(omegaIdx)
+  info$omegaIdx <- omegaIdx
+  info$omegaX <- peakObj$data$x[omegaIdx]
+  info$omegaProb <- peakObj$data$prob[omegaIdx]
+
+  if (omegaIdx != peakIdx) {
+    # When the selected peak itself has insufficient response probability, do
+    # not move the threshold left. Use the first later point reaching omega.
+    riseIdxCandidate <- omegaIdx
+    info$thresholdBasis <- "minimum_probability_right_of_peak"
+  } else {
+    # Otherwise move left to the first point where the derivative reaches psi
+    # times the selected peak height.
+    riseIdx <- seq_len(peakIdx)
+    riseIdx <- riseIdx[peakObj$data$deriv[riseIdx] >= riseHeight]
+    if (length(riseIdx) == 0L) {
+      info$reason <- "derivative_never_reached_fraction_of_selected_peak"
+      return(list(
+        "riseThresholdX" = NA_real_,
+        "risingFastX" = NA_real_,
+        "info" = info
+      ))
+    }
+    riseIdxCandidate <- min(riseIdx)
+    info$thresholdBasis <- "left_rise_fraction_of_selected_peak"
+  }
+
+  riseThresholdXCandidate <- peakObj$data$x[riseIdxCandidate]
+  riseThresholdProbCandidate <- peakObj$data$prob[riseIdxCandidate]
+
+  thresholdProbMin <- suppressWarnings(as.numeric(thresholdProbMin)[1])
+  if (
+    !is.finite(thresholdProbMin) ||
+      thresholdProbMin < 0 ||
+      thresholdProbMin > 1
+  ) {
+    thresholdProbMin <- 0
+  }
+
+  info$riseThresholdIdxCandidate <- riseIdxCandidate
+  info$riseThresholdXCandidate <- riseThresholdXCandidate
+  info$riseThresholdProbCandidate <- riseThresholdProbCandidate
+  info$thresholdProbMin <- thresholdProbMin
+
+  # This additional, optional constraint applies to the final threshold rather
+  # than to peak selection. If needed, shift the threshold rightwards until the
+  # fitted response probability reaches the requested minimum.
+  laterIdx <- seq.int(riseIdxCandidate, nrow(peakObj$data))
+  laterIdx <- laterIdx[
+    is.finite(peakObj$data$prob[laterIdx]) &
+      peakObj$data$prob[laterIdx] >= thresholdProbMin
+  ]
+
+  if (length(laterIdx) == 0L) {
+    info$reason <- "no_later_rise_threshold_met_minimum_probability"
+    return(list(
+      "riseThresholdX" = NA_real_,
+      "risingFastX" = NA_real_,
+      "info" = info
+    ))
+  }
+
+  riseIdx <- min(laterIdx)
+  riseThresholdX <- peakObj$data$x[riseIdx]
+  riseThresholdProb <- peakObj$data$prob[riseIdx]
+
+  info$reason <- "identified_probability_rise_threshold"
+  info$riseThresholdIdx <- riseIdx
+  info$riseThresholdX <- riseThresholdX
+  info$riseThresholdProb <- riseThresholdProb
+  info$riseThreshold <- riseHeight
+  info$shiftedRightForProbability <- riseIdx > riseIdxCandidate
+  info$risingFastIdx <- riseIdx
+  info$risingFastX <- riseThresholdX
+
+  list(
+    "riseThresholdX" = riseThresholdX,
+    "risingFastX" = riseThresholdX,
+    "info" = info
+  )
+}
+
+#' Obtain a probability-rise threshold from a StimGate model object
+#' @keywords internal
+.getCpUnsLocGetCpTrimRiseThreshold <- function(
   dataMod,
-  exTblStimNoMin,
+  chnlSettings,
+  probCol,
+  alpha = NULL,
+  omega = NULL,
+  psi = NULL,
+  riseFrac = NULL,
+  thresholdProbMin = 0
+) {
+  info <- list(reason = "no_valid_probability_derivative_peak")
+
+  derivTbl <- .getCpUnsLocGetCpTrimDerivativeTbl(
+    dataMod = dataMod,
+    probCol = probCol
+  )
+  if (is.null(derivTbl) || nrow(derivTbl) < 3L) {
+    info$reason <- "probability_derivative_unavailable"
+    return(list(
+      "riseThresholdX" = NA_real_,
+      "risingFastX" = NA_real_,
+      "info" = info
+    ))
+  }
+
+  # `riseFrac` is retained as a backwards-compatible alias for `psi`.
+  if (is.null(psi)) {
+    psi <- riseFrac
+  }
+  if (is.null(alpha)) {
+    alpha <- .getCpUnsLocGetCpTrimSetting(
+      chnlSettings,
+      "locDerivAlpha",
+      .getCpUnsLocGetCpTrimSetting(
+        chnlSettings,
+        "locDerivPeakMinRel",
+        0.75
+      )
+    )
+  }
+  if (is.null(omega)) {
+    omega <- .getCpUnsLocGetCpTrimSetting(
+      chnlSettings,
+      "locDerivOmega",
+      .getCpUnsLocGetCpTrimSetting(
+        chnlSettings,
+        "locDerivPeakProbMin",
+        0.15
+      )
+    )
+  }
+  if (is.null(psi)) {
+    psi <- .getCpUnsLocGetCpTrimSetting(
+      chnlSettings,
+      "locDerivPsi",
+      0.75
+    )
+  }
+
+  riseObj <- .getCpUnsLocDerivativeRiseThreshold(
+    x = derivTbl$x,
+    prob = derivTbl$prob,
+    deriv = derivTbl$deriv,
+    alpha = alpha,
+    omega = omega,
+    psi = psi,
+    thresholdProbMin = thresholdProbMin
+  )
+  riseObj$info$derivSource <- unique(derivTbl$source)[1]
+  riseObj
+}
+
+# Antimode-specific derivative threshold using appendix defaults.
+#' @keywords internal
+.getCpUnsLocGetCpTrimAntimodeRise <- function(
+  dataMod,
   chnlSettings,
   probCol
 ) {
-  info <- list(
-    applied = FALSE,
-    reason = "not_multimodal"
+  params <- .getCpUnsLocGetCpTrimStageDerivParams(
+    chnlSettings = chnlSettings,
+    stage = "antimode"
+  )
+  thresholdProbMin <- .getCpUnsLocGetCpTrimRiseProbMin(
+    chnlSettings = chnlSettings,
+    settingName = "locAntimodeDerivRiseProbMin",
+    default = 0
   )
 
-  exprVec <- .getCut(exTblStimNoMin)
-  exprVec <- exprVec[is.finite(exprVec)]
-  if (length(exprVec) < 5L || length(unique(exprVec)) < 3L) {
-    info$reason <- "too_few_expression_values"
+  .getCpUnsLocGetCpTrimRiseThreshold(
+    dataMod = dataMod,
+    chnlSettings = chnlSettings,
+    probCol = probCol,
+    alpha = params$alpha,
+    omega = params$omega,
+    psi = params$psi,
+    thresholdProbMin = thresholdProbMin
+  )
+}
+
+#' @keywords internal
+.getCpUnsLocGetCpTrimAntimode <- function(
+  dataMod,
+  chnlSettings,
+  probCol,
+  riseObj = NULL
+) {
+  info <- list(
+    applied = FALSE,
+    reason = "antimode_trim_not_applied"
+  )
+
+  if (!is.data.frame(dataMod) || nrow(dataMod) < 5L) {
+    info$reason <- "too_few_model_values_for_antimode_trim"
     return(list("dataMod" = dataMod, "info" = info))
   }
 
-  dipP <- .getCpUnsLocGetCpTrimDipP(exprVec)
-  dipAlpha <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locDipAlpha",
-    0.2
-  )
-  info$dipP <- dipP
-  info$dipAlpha <- dipAlpha
+  if (is.null(riseObj)) {
+    riseObj <- .getCpUnsLocGetCpTrimAntimodeRise(
+      dataMod = dataMod,
+      chnlSettings = chnlSettings,
+      probCol = probCol
+    )
+  }
+  info$rise <- riseObj$info
 
-  if (!is.finite(dipP) || dipP >= dipAlpha) {
-    info$reason <- "dip_test_not_significant"
+  riseThresholdX <- riseObj$riseThresholdX %||% riseObj$risingFastX
+  if (!is.finite(riseThresholdX)) {
+    info$reason <- riseObj$info$reason %||%
+      "no_valid_probability_derivative_peak"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  # Fit the antimode density only to values in the dubious-response region,
+  # including the derivative-based upper endpoint.
+  exprVec <- suppressWarnings(as.numeric(.getCut(dataMod)))
+  exprVec <- exprVec[
+    is.finite(exprVec) &
+      exprVec <= riseThresholdX
+  ]
+  if (length(exprVec) < 5L || length(unique(exprVec)) < 3L) {
+    info$reason <- "too_few_expression_values_below_antimode_upper_limit"
     return(list("dataMod" = dataMod, "info" = info))
   }
 
   densObj <- .getCpUnsLocGetCpTrimDensity(
     exprVec = exprVec,
-    chnlSettings = chnlSettings
+    chnlSettings = chnlSettings,
+    densityBw = attr(dataMod, "locDensityBw")
   )
   if (is.null(densObj)) {
-    info$reason <- "density_failed"
+    info$reason <- "antimode_density_failed"
     return(list("dataMod" = dataMod, "info" = info))
   }
 
-  minObj <- .getCpUnsLocGetCpTrimAntimodes(
-    densObj = densObj,
-    chnlSettings = chnlSettings
+  antimodeX <- .getCpUnsLocGetCpTrimAntimodes(densObj)
+  antimodeLeftX <- antimodeX[
+    is.finite(antimodeX) & antimodeX <= riseThresholdX
+  ]
+
+  info$densityBwType <- attr(densObj, "locBwType")
+  info$densityBwFraction <- attr(densObj, "locBwFraction")
+  info$densityBwBase <- attr(densObj, "locBwBaseSummary")
+  info$densityBwUsed <- attr(densObj, "locBwUsedSummary")
+  info$antimodeX <- antimodeX
+  info$antimodeLeftX <- antimodeLeftX
+  info$riseThresholdX <- riseThresholdX
+  info$risingFastX <- riseThresholdX
+  info$nExpressionValuesForDensity <- length(exprVec)
+
+  if (length(antimodeLeftX) == 0L) {
+    info$reason <- "no_antimode_in_dubious_response_region"
+    return(list("dataMod" = dataMod, "info" = info))
+  }
+
+  # Any antimode is accepted. Use the right-most one in the dubious-response
+  # region as the filtering point.
+  filterX <- max(antimodeLeftX, na.rm = TRUE)
+  x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+  keep <- is.finite(x) & x >= filterX
+
+  info$filterX <- filterX
+  info$nDropped <- sum(!keep, na.rm = TRUE)
+  info$applied <- info$nDropped > 0L
+  info$reason <- if (isTRUE(info$applied)) {
+    "dropped_values_left_of_rightmost_eligible_antimode"
+  } else {
+    "rightmost_eligible_antimode_kept_all_values"
+  }
+
+  list(
+    "dataMod" = .getCpUnsLocGetCpTrimSubset(dataMod, keep),
+    "info" = info
   )
-  info$bw <- attr(densObj, "bw")
-  info$peakHeight <- minObj$peakHeight
-  info$antimodeHeightFrac <- minObj$heightFrac
-  info$antimodeX <- minObj$antimodeX
+}
 
-  if (length(minObj$antimodeX) == 0L) {
-    info$reason <- "no_deep_antimodes"
-    return(list("dataMod" = dataMod, "info" = info))
+#' @keywords internal
+.getCpUnsLocGetCpTrimDerivativeTbl <- function(
+  dataMod,
+  probCol
+) {
+  xRange <- range(
+    suppressWarnings(as.numeric(.getCut(dataMod))),
+    na.rm = TRUE
+  )
+  if (length(xRange) != 2L || any(!is.finite(xRange)) || diff(xRange) <= 0) {
+    return(NULL)
   }
 
-  regionObj <- .getCpUnsLocGetCpTrimAntimodeRegions(
+  # Preferred path: the finite-difference derivative evaluated across the fitted
+  # monotone response-probability curve when the smoother was fitted.
+  derivTbl <- attr(dataMod, "locProbDerivTbl")
+  if (
+    identical(probCol, "pred") &&
+      is.data.frame(derivTbl) &&
+      all(c("x", "pred", "deriv") %in% names(derivTbl))
+  ) {
+    derivTbl <- derivTbl |>
+      dplyr::transmute(
+        x = suppressWarnings(as.numeric(.data$x)),
+        prob = pmin(1, pmax(0, suppressWarnings(as.numeric(.data$pred)))),
+        deriv = pmax(0, suppressWarnings(as.numeric(.data$deriv))),
+        source = "fitted_probability_finite_difference"
+      ) |>
+      dplyr::filter(
+        is.finite(.data$x),
+        is.finite(.data$prob),
+        is.finite(.data$deriv),
+        .data$x >= .env$xRange[1],
+        .data$x <= .env$xRange[2]
+      ) |>
+      dplyr::arrange(.data$x)
+
+    if (nrow(derivTbl) >= 3L) {
+      return(derivTbl)
+    }
+  }
+
+  # Fallback for an unavailable fitted derivative: finite differences of the
+  # selected probability column over the filtered model values.
+  x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+  prob <- .getCpUnsLocGetCpTrimProbVec(dataMod, probCol)
+  probTbl <- tibble::tibble(x = x, prob = prob) |>
+    dplyr::filter(is.finite(.data$x), is.finite(.data$prob)) |>
+    dplyr::group_by(.data$x) |>
+    dplyr::summarise(prob = mean(.data$prob), .groups = "drop") |>
+    dplyr::arrange(.data$x)
+
+  if (nrow(probTbl) < 4L || diff(range(probTbl$x)) <= 0) {
+    return(NULL)
+  }
+
+  dx <- diff(probTbl$x)
+  deriv <- diff(probTbl$prob) / dx
+  deriv[!is.finite(deriv)] <- 0
+  deriv <- pmax(0, deriv)
+
+  tibble::tibble(
+    x = (probTbl$x[-1L] + probTbl$x[-nrow(probTbl)]) / 2,
+    prob = (probTbl$prob[-1L] + probTbl$prob[-nrow(probTbl)]) / 2,
+    deriv = deriv,
+    source = "model_probability_finite_difference"
+  )
+}
+
+# Retain the previous name for compatibility with direct internal calls.
+#' @keywords internal
+.getCpUnsLocGetCpTrimAntimodeDerivativeTbl <- function(
+  dataMod,
+  probCol
+) {
+  .getCpUnsLocGetCpTrimDerivativeTbl(
     dataMod = dataMod,
-    antimodeX = minObj$antimodeX,
-    probCol = probCol,
-    chnlSettings = chnlSettings
+    probCol = probCol
   )
-  info <- c(info, regionObj$info)
-  if (!isTRUE(regionObj$info$applied)) {
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-
-  list("dataMod" = regionObj$dataMod, "info" = info)
 }
 
 #' @keywords internal
-.getCpUnsLocGetCpTrimDipP <- function(exprVec) {
-  if (!requireNamespace("diptest", quietly = TRUE)) {
-    return(NA_real_)
-  }
-  dipObj <- try(
-    suppressWarnings(diptest::dip.test(exprVec)),
-    silent = TRUE
+.getCpUnsLocGetCpTrimDensity <- function(
+  exprVec,
+  chnlSettings,
+  densityBw = NULL
+) {
+  bwFraction <- .getCpUnsLocGetCpTrimSetting(
+    chnlSettings,
+    "locAntimodeBwFrac",
+    1 / 2
   )
-  if (inherits(dipObj, "try-error")) {
-    return(NA_real_)
+  bwFraction <- suppressWarnings(as.numeric(bwFraction[1]))
+  if (!is.finite(bwFraction) || bwFraction <= 0) {
+    bwFraction <- 1 / 2
   }
-  dipObj$p.value
-}
 
-#' @keywords internal
-.getCpUnsLocGetCpTrimDensity <- function(exprVec, chnlSettings) {
-  bw <- .getCpUnsLocGetCpTrimDensityBw(
+  exprRange <- range(exprVec, na.rm = TRUE)
+
+  # If the original density used an adaptive bandwidth curve, halve that curve
+  # pointwise and estimate the antimode density on the same grid.
+  if (
+    is.list(densityBw) &&
+      isTRUE(densityBw$adaptive) &&
+      !is.null(densityBw$grid) &&
+      !is.null(densityBw$sharedGrid)
+  ) {
+    grid <- suppressWarnings(as.numeric(densityBw$grid))
+    bwBase <- suppressWarnings(as.numeric(densityBw$sharedGrid))
+    keepGrid <- is.finite(grid) &
+      is.finite(bwBase) &
+      bwBase > 0 &
+      grid >= exprRange[1] &
+      grid <= exprRange[2]
+    grid <- grid[keepGrid]
+    bwBase <- bwBase[keepGrid]
+
+    if (length(grid) >= 3L && length(grid) == length(bwBase)) {
+      densObj <- .getCpUnsLocDensityAdaptiveGrid(
+        x = exprVec,
+        grid = grid,
+        bwGrid = bwBase * bwFraction,
+        normalise = TRUE
+      )
+      if (!is.null(densObj)) {
+        attr(densObj, "locBwType") <- "adaptive"
+        attr(densObj, "locBwFraction") <- bwFraction
+        attr(densObj, "locBwBaseSummary") <- .getCpUnsLocGetCpTrimBwSummary(
+          bwBase
+        )
+        attr(densObj, "locBwUsedSummary") <- .getCpUnsLocGetCpTrimBwSummary(
+          bwBase * bwFraction
+        )
+        return(densObj)
+      }
+    }
+  }
+
+  bwBase <- .getCpUnsLocGetCpTrimDensityBw(
     exprVec = exprVec,
-    chnlSettings = chnlSettings
+    chnlSettings = chnlSettings,
+    densityBw = densityBw
   )
+  if (!is.finite(bwBase) || bwBase <= 0) {
+    return(NULL)
+  }
+
+  bwUsed <- bwBase * bwFraction
   densObj <- try(
-    suppressWarnings(stats::density(exprVec, bw = bw, n = 512)),
+    suppressWarnings(stats::density(
+      exprVec,
+      bw = bwUsed,
+      n = 512L,
+      from = exprRange[1],
+      to = exprRange[2]
+    )),
     silent = TRUE
   )
   if (inherits(densObj, "try-error")) {
     return(NULL)
   }
-  attr(densObj, "bw") <- densObj$bw
+
+  attr(densObj, "locBwType") <- "fixed"
+  attr(densObj, "locBwFraction") <- bwFraction
+  attr(densObj, "locBwBaseSummary") <- .getCpUnsLocGetCpTrimBwSummary(bwBase)
+  attr(densObj, "locBwUsedSummary") <- .getCpUnsLocGetCpTrimBwSummary(bwUsed)
   densObj
 }
 
 #' @keywords internal
-.getCpUnsLocGetCpTrimDensityBw <- function(exprVec, chnlSettings) {
+.getCpUnsLocGetCpTrimDensityBw <- function(
+  exprVec,
+  chnlSettings,
+  densityBw = NULL
+) {
+  bwBase <- if (is.list(densityBw)) {
+    NA_real_
+  } else {
+    .getCpUnsLocGetCpTrimAsFiniteNumeric(
+      densityBw,
+      positive = TRUE
+    )
+  }
+  if (is.finite(bwBase)) {
+    return(bwBase)
+  }
+
+  # This fallback is mainly for direct calls that bypass the normal pipeline.
+  # In ordinary use, locDensityBw is attached when the first density is fitted.
+  settingNames <- c("bw", "bwCluster", "bwFallback")
+  for (nm in settingNames) {
+    bwBase <- .getCpUnsLocGetCpTrimAsFiniteNumeric(
+      .getCpUnsLocGetCpTrimSetting(chnlSettings, nm, NA_real_),
+      positive = TRUE
+    )
+    if (is.finite(bwBase)) {
+      return(bwBase)
+    }
+  }
+
   hpiBw <- try(
     suppressWarnings(ks::hpi(x = exprVec)),
     silent = TRUE
   )
-  hpiBw <- if (inherits(hpiBw, "try-error")) NA_real_ else hpiBw
-  hpiBw <- .getCpUnsLocGetCpTrimAsFiniteNumeric(hpiBw, positive = TRUE)
-
-  preCalcBw <- .getCpUnsLocGetCpTrimAsFiniteNumeric(
-    .getCpUnsLocGetCpTrimSetting(
-      chnlSettings,
-      "bwCluster",
-      NA_real_
-    ),
-    positive = TRUE
-  )
-  if (!is.finite(preCalcBw)) {
-    preCalcBw <- .getCpUnsLocGetCpTrimAsFiniteNumeric(
-      .getCpUnsLocGetCpTrimSetting(
-        chnlSettings,
-        "bw",
-        NA_real_
-      ),
-      positive = TRUE
-    )
+  if (inherits(hpiBw, "try-error")) {
+    return(NA_real_)
   }
-  if (!is.finite(preCalcBw)) {
-    preCalcBw <- .getCpUnsLocGetCpTrimAsFiniteNumeric(
-      .getCpUnsLocGetCpTrimSetting(
-        chnlSettings,
-        "bwMax",
-        NA_real_
-      ),
-      positive = TRUE
-    )
-  }
-
-  bwVec <- c(hpiBw, preCalcBw / 4)
-  bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
-  if (length(bwVec) == 0L) {
-    return("nrd0")
-  }
-  min(bwVec)
+  .getCpUnsLocGetCpTrimAsFiniteNumeric(hpiBw, positive = TRUE)
 }
 
 #' @keywords internal
-.getCpUnsLocGetCpTrimAntimodes <- function(densObj, chnlSettings) {
-  y <- densObj$y
-  x <- densObj$x
-  heightFrac <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locAntimodeHeightFrac",
-    1 / 6
-  )
-  peakHeight <- max(y, na.rm = TRUE)
-  if (!is.finite(peakHeight) || length(y) < 3L) {
-    return(list(
-      "antimodeX" = numeric(0),
-      "peakHeight" = peakHeight,
-      "heightFrac" = heightFrac
-    ))
+.getCpUnsLocGetCpTrimBwSummary <- function(bw) {
+  bw <- suppressWarnings(as.numeric(bw))
+  bw <- bw[is.finite(bw) & bw > 0]
+  if (length(bw) == 0L) {
+    return(c(min = NA_real_, median = NA_real_, max = NA_real_))
   }
-
-  idx <- seq.int(2L, length(y) - 1L)
-  minIdx <- idx[y[idx] <= y[idx - 1L] & y[idx] < y[idx + 1L]]
-  minIdx <- minIdx[y[minIdx] < peakHeight * heightFrac]
-
-  list(
-    "antimodeX" = sort(unique(x[minIdx])),
-    "peakHeight" = peakHeight,
-    "heightFrac" = heightFrac
+  c(
+    min = min(bw),
+    median = stats::median(bw),
+    max = max(bw)
   )
 }
 
 #' @keywords internal
-.getCpUnsLocGetCpTrimAntimodeRegions <- function(
-  dataMod,
-  antimodeX,
-  probCol,
-  chnlSettings
-) {
-  info <- list(
-    applied = FALSE,
-    reason = "no_low_left_antimode_region"
-  )
-  x <- .getCut(dataMod)
-  probVec <- .getCpUnsLocGetCpTrimProbVec(dataMod, probCol)
-  region <- findInterval(
-    x,
-    c(-Inf, antimodeX, Inf),
-    rightmost.closed = TRUE
-  )
-  regionId <- sort(unique(region))
-  regionMean <- purrr::map_dbl(regionId, function(id) {
-    mean(probVec[region == id], na.rm = TRUE)
-  })
-  regionN <- purrr::map_int(regionId, function(id) sum(region == id))
-  regionXMin <- purrr::map_dbl(regionId, function(id) min(x[region == id]))
-  regionXMax <- purrr::map_dbl(regionId, function(id) max(x[region == id]))
-
-  if (length(regionId) == 0L || all(!is.finite(regionMean))) {
-    info$reason <- "no_regions_with_probability"
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-
-  peakRegion <- regionId[which.max(regionMean)]
-  peakRegionProb <- max(regionMean, na.rm = TRUE)
-  lowRel <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locAntimodeLowRel",
-    0.25
-  )
-  lowAbs <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locAntimodeLowAbs",
-    0.15
-  )
-  dropLgl <- regionId < peakRegion &
-    is.finite(regionMean) &
-    (regionMean < peakRegionProb * lowRel | regionMean < lowAbs)
-  dropLgl[is.na(dropLgl)] <- FALSE
-  dropRegion <- regionId[dropLgl]
-
-  regionSummary <- tibble::tibble(
-    region = regionId,
-    meanProb = regionMean,
-    n = regionN,
-    xMin = regionXMin,
-    xMax = regionXMax,
-    drop = regionId %in% dropRegion
-  )
-
-  info$regionSummary <- regionSummary
-  info$peakRegion <- peakRegion
-  info$peakRegionProb <- peakRegionProb
-  info$lowRel <- lowRel
-  info$lowAbs <- lowAbs
-  info$dropRegion <- dropRegion
-
-  if (length(dropRegion) == 0L) {
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-
-  keep <- !region %in% dropRegion
-  info$applied <- TRUE
-  info$reason <- "dropped_low_probability_left_antimode_regions"
-  list("dataMod" = dataMod[keep, , drop = FALSE], "info" = info)
-}
-
-
-#' @keywords internal
-.getCpUnsLocGetCpTrimFlatLeftDerivData <- function(
-  probData,
-  dataMod,
-  probCol
-) {
-  derivData <- .getCpUnsLocGetCpTrimFlatLeftDerivFitted(
-    probData = probData,
-    dataMod = dataMod,
-    probCol = probCol
-  )
-  if (!is.null(derivData)) {
-    return(derivData)
-  }
-  .getCpUnsLocGetCpTrimFlatLeftDerivObserved(probData)
-}
-
-#' @keywords internal
-.getCpUnsLocGetCpTrimFlatLeftDerivFitted <- function(
-  probData,
-  dataMod,
-  probCol
-) {
-  if (!identical(probCol, "pred")) {
-    return(NULL)
-  }
-  derivTbl <- attr(dataMod, "locProbDerivTbl")
+.getCpUnsLocGetCpTrimAntimodes <- function(densObj) {
+  x <- suppressWarnings(as.numeric(densObj$x))
+  y <- suppressWarnings(as.numeric(densObj$y))
   if (
-    is.null(derivTbl) ||
-      !all(c("x", "deriv") %in% names(derivTbl)) ||
-      nrow(derivTbl) < 2L
+    length(x) != length(y) ||
+      length(y) < 3L ||
+      all(!is.finite(y))
   ) {
-    return(NULL)
-  }
-  derivTbl <- derivTbl |>
-    dplyr::filter(is.finite(.data$x), is.finite(.data$deriv)) |>
-    dplyr::arrange(.data$x)
-  if (nrow(derivTbl) < 2L || diff(range(derivTbl$x)) <= 0) {
-    return(NULL)
+    return(numeric(0L))
   }
 
-  derivVec <- try(
-    stats::approx(
-      x = derivTbl$x,
-      y = derivTbl$deriv,
-      xout = probData$x,
-      rule = 2
-    )$y,
-    silent = TRUE
-  )
-  if (inherits(derivVec, "try-error")) {
-    return(NULL)
-  }
-  tibble::tibble(
-    x = probData$x,
-    deriv = pmax(0, as.numeric(derivVec)),
-    source = "fitted_pred_derivative"
-  )
-}
-
-#' @keywords internal
-.getCpUnsLocGetCpTrimFlatLeftDerivObserved <- function(probData) {
-  if (nrow(probData) < 4L || diff(range(probData$x)) <= 0) {
-    return(NULL)
-  }
-  deriv <- diff(probData$prob) / diff(probData$x)
-  deriv[!is.finite(deriv)] <- 0
-  deriv <- pmax(0, deriv)
-  tibble::tibble(
-    x = probData$x[-nrow(probData)],
-    deriv = deriv,
-    source = "observed_probability_slope"
-  )
+  y[!is.finite(y)] <- Inf
+  minIdx <- .getLocalMinimaIdx(y)
+  sort(unique(x[minIdx]))
 }
 
 
@@ -3149,7 +3743,10 @@
     return(list("dataMod" = dataMod, "info" = info))
   }
 
-  dataMod <- dataMod[order(.getCut(dataMod)), , drop = FALSE]
+  dataMod <- .getCpUnsLocGetCpTrimSubset(
+    dataMod = dataMod,
+    keep = order(.getCut(dataMod))
+  )
   x <- suppressWarnings(as.numeric(.getCut(dataMod)))
   probVec <- .getCpUnsLocGetCpTrimProbVec(dataMod, probCol)
   dm <- tibble::tibble(x = x, prob = probVec) |>
@@ -3166,76 +3763,32 @@
     return(list("dataMod" = dataMod, "info" = info))
   }
 
-  xRight <- dm$x[dm$x >= startX]
-  if (length(xRight) == 0L) {
-    info$reason <- "no_cells_right_of_marginal_start"
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-
-  refQuantile <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locMarginalRefQuantile",
-    0.75
-  )
-  refQuantile <- suppressWarnings(as.numeric(refQuantile[1]))
-  if (!is.finite(refQuantile) || refQuantile <= 0 || refQuantile > 1) {
-    refQuantile <- 0.75
-  }
-
-  xRefHi <- suppressWarnings(stats::quantile(
-    xRight,
-    probs = refQuantile,
-    na.rm = TRUE,
-    names = FALSE
-  ))
-  if (!is.finite(xRefHi) || xRefHi <= startX) {
-    xRefHi <- max(xRight, na.rm = TRUE)
-  }
-  if (!is.finite(xRefHi) || xRefHi <= startX) {
-    info$reason <- "right_reference_interval_too_short"
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-
-  breaks <- .getCpUnsLocGetCpTrimMarginalBreaks(
+  gridObj <- .getCpUnsLocGetCpTrimMarginalBreaks(
     dataMod = dataMod,
-    xMin = min(dm$x, na.rm = TRUE),
-    xMax = max(dm$x, na.rm = TRUE),
-    startX = startX,
-    xRefHi = xRefHi
+    startX = startX
   )
-  if (length(breaks) < 2L) {
+  if (is.null(gridObj)) {
     info$reason <- "insufficient_bins_for_marginal_trim"
     return(list("dataMod" = dataMod, "info" = info))
   }
 
-  binTbl <- tibble::tibble(
-    left = breaks[-length(breaks)],
-    right = breaks[-1]
-  ) |>
-    dplyr::filter(.data$right > .data$left)
-
-  rightRefBins <- binTbl |>
-    dplyr::filter(
-      .data$right > .env$startX,
-      .data$left < .env$xRefHi
-    )
-  refNBin <- nrow(rightRefBins)
-  if (refNBin == 0L) {
+  breaks <- gridObj$breaks
+  refIndex <- gridObj$refIndex
+  refNBin <- length(breaks) - refIndex
+  if (refNBin < 1L) {
     info$reason <- "no_right_reference_bins_for_marginal_trim"
     return(list("dataMod" = dataMod, "info" = info))
   }
 
-  rightMaskForBinDensity <- dm$x >= startX & dm$x <= xRefHi
-  rightMaskForPurity <- dm$x >= startX
-  refNCellBinRegion <- sum(rightMaskForBinDensity, na.rm = TRUE)
-  refNCell <- sum(rightMaskForPurity, na.rm = TRUE)
-  refExpectedResp <- sum(dm$prob[rightMaskForPurity], na.rm = TRUE)
+  rightMask <- dm$x >= startX
+  refNCell <- sum(rightMask, na.rm = TRUE)
+  refExpectedResp <- sum(dm$prob[rightMask], na.rm = TRUE)
   if (refNCell == 0L || !is.finite(refExpectedResp)) {
     info$reason <- "no_right_reference_cells_for_marginal_trim"
     return(list("dataMod" = dataMod, "info" = info))
   }
 
-  refCellsPerBin <- refNCellBinRegion / refNBin
+  refCellsPerBin <- refNCell / refNBin
   refPurity <- refExpectedResp / refNCell
   if (
     !is.finite(refCellsPerBin) ||
@@ -3270,21 +3823,21 @@
   maxLeftBinCells <- cellBinRatio * refCellsPerBin
   minLeftBinPurity <- purityRel * refPurity
 
-  leftBins <- binTbl |>
-    dplyr::filter(.data$right <= .env$startX) |>
-    dplyr::arrange(dplyr::desc(.data$right))
-  if (nrow(leftBins) == 0L) {
+  leftBinIndex <- seq_len(refIndex - 1L)
+  if (length(leftBinIndex) == 0L) {
     info$reason <- "no_left_bins_for_marginal_trim"
     return(list("dataMod" = dataMod, "info" = info))
   }
+  leftBinIndex <- rev(leftBinIndex)
 
   currentCut <- startX
-  scanList <- vector("list", nrow(leftBins))
+  scanList <- vector("list", length(leftBinIndex))
   stopReason <- "accepted_all_left_bins"
 
-  for (i in seq_len(nrow(leftBins))) {
-    left <- leftBins$left[[i]]
-    right <- leftBins$right[[i]]
+  for (j in seq_along(leftBinIndex)) {
+    i <- leftBinIndex[[j]]
+    left <- breaks[[i]]
+    right <- breaks[[i + 1L]]
     mask <- dm$x >= left & dm$x < right
     nCell <- sum(mask, na.rm = TRUE)
     expectedResp <- sum(dm$prob[mask], na.rm = TRUE)
@@ -3295,7 +3848,7 @@
         nCell <= maxLeftBinCells &&
         purity >= minLeftBinPurity)
 
-    scanList[[i]] <- tibble::tibble(
+    scanList[[j]] <- tibble::tibble(
       left = left,
       right = right,
       nCell = nCell,
@@ -3306,7 +3859,11 @@
       refPurity = refPurity,
       maxLeftBinCells = maxLeftBinCells,
       minLeftBinPurity = minLeftBinPurity,
-      relCellsPerBin = ifelse(refCellsPerBin > 0, nCell / refCellsPerBin, Inf),
+      relCellsPerBin = ifelse(
+        refCellsPerBin > 0,
+        nCell / refCellsPerBin,
+        Inf
+      ),
       relPurity = purity / refPurity,
       acceptBin = acceptBin
     )
@@ -3330,11 +3887,11 @@
   }
   info$stopReason <- stopReason
   info$finalStartX <- finalStartX
-  info$xRefHi <- xRefHi
-  info$refQuantile <- refQuantile
+  info$gridShift <- gridObj$shift
+  info$gridSpacing <- gridObj$spacing
+  info$refIndex <- refIndex
   info$refNBin <- refNBin
   info$refNCell <- refNCell
-  info$refNCellBinRegion <- refNCellBinRegion
   info$refExpectedResp <- refExpectedResp
   info$refCellsPerBin <- refCellsPerBin
   info$refPurity <- refPurity
@@ -3344,157 +3901,228 @@
   info$minLeftBinPurity <- minLeftBinPurity
   info$scanTbl <- scanTbl
 
-  list("dataMod" = dataMod[keep, , drop = FALSE], "info" = info)
+  list(
+    "dataMod" = .getCpUnsLocGetCpTrimSubset(dataMod, keep),
+    "info" = info
+  )
 }
 
 #' @keywords internal
 .getCpUnsLocGetCpTrimMarginalBreaks <- function(
   dataMod,
-  xMin,
-  xMax,
-  startX,
-  xRefHi
+  startX
 ) {
   binVec <- attr(dataMod, "binVec")
   if (is.null(binVec)) {
-    binVec <- stats::pretty(.getCut(dataMod), n = 80)
+    x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+    x <- x[is.finite(x)]
+    if (length(x) < 2L || diff(range(x)) <= 0) {
+      return(NULL)
+    }
+    binVec <- seq(
+      min(x),
+      max(x),
+      length.out = 512L
+    )
   }
+
   binVec <- suppressWarnings(as.numeric(binVec))
-  binVec <- binVec[is.finite(binVec)]
-  breaks <- sort(unique(c(xMin, xMax, startX, xRefHi, binVec)))
-  breaks <- breaks[
-    is.finite(breaks) &
-      breaks >= xMin &
-      breaks <= xMax
-  ]
-  sort(unique(breaks))
+  binVec <- sort(unique(binVec[is.finite(binVec)]))
+  if (length(binVec) < 2L || !is.finite(startX)) {
+    return(NULL)
+  }
+
+  spacing <- stats::median(diff(binVec), na.rm = TRUE)
+  if (!is.finite(spacing) || spacing <= 0) {
+    return(NULL)
+  }
+
+  tol <- max(
+    sqrt(.Machine$double.eps) * max(abs(c(binVec, startX)), 1),
+    spacing * 1e-10
+  )
+  eligibleAnchor <- which(binVec <= startX + tol)
+  if (length(eligibleAnchor) == 0L) {
+    return(NULL)
+  }
+
+  # The largest original grid point not exceeding x_ref gives the smallest
+  # non-negative shift that makes a shifted grid point exactly equal x_ref.
+  refIndex <- max(eligibleAnchor)
+  shift <- startX - binVec[[refIndex]]
+  if (!is.finite(shift) || shift < -tol) {
+    return(NULL)
+  }
+  shift <- max(0, shift)
+
+  breaks <- binVec + shift
+  breaks[[refIndex]] <- startX
+  if (any(!is.finite(breaks)) || any(diff(breaks) <= 0)) {
+    return(NULL)
+  }
+
+  list(
+    breaks = breaks,
+    refIndex = refIndex,
+    shift = shift,
+    spacing = spacing
+  )
 }
 
+#' Apply global and marginal filtering using separate rise thresholds
 #' @keywords internal
-.getCpUnsLocGetCpTrimFlatLeft <- function(
+.getCpUnsLocGetCpTrimLowProbLeft <- function(
   dataMod,
-  exTblStimNoMin,
   chnlSettings,
-  probCol
+  probCol,
+  riseObj = NULL
 ) {
   info <- list(
     applied = FALSE,
-    reason = "no_derivative_based_left_trim"
+    reason = "low_probability_left_trim_not_run"
   )
 
   if (!is.data.frame(dataMod) || nrow(dataMod) < 4L) {
-    info$reason <- "too_few_cells_for_derivative_trim"
+    info$reason <- "too_few_cells_for_low_probability_left_trim"
     return(list("dataMod" = dataMod, "info" = info))
   }
 
-  dataMod <- dataMod[order(.getCut(dataMod)), , drop = FALSE]
-  x <- suppressWarnings(as.numeric(.getCut(dataMod)))
-  probVec <- .getCpUnsLocGetCpTrimProbVec(dataMod, probCol)
-  probData <- tibble::tibble(x = x, prob = probVec) |>
-    dplyr::filter(is.finite(x), is.finite(prob)) |>
-    dplyr::group_by(x) |>
-    dplyr::summarise(prob = mean(prob), .groups = "drop") |>
-    dplyr::arrange(x)
+  # Retained only for compatibility with the previous internal interface.
+  force(riseObj)
 
-  if (nrow(probData) < 4L || diff(range(probData$x)) <= 0) {
-    info$reason <- "insufficient_unique_x_for_derivative_trim"
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-
-  derivData <- .getCpUnsLocGetCpTrimFlatLeftDerivData(
-    probData = probData,
+  globalParams <- .getCpUnsLocGetCpTrimStageDerivParams(
+    chnlSettings = chnlSettings,
+    stage = "global"
+  )
+  globalThresholdProbMin <- .getCpUnsLocGetCpTrimRiseProbMin(
+    chnlSettings = chnlSettings,
+    settingName = "locGlobalDerivRiseProbMin",
+    default = 0
+  )
+  globalRiseObj <- .getCpUnsLocGetCpTrimRiseThreshold(
     dataMod = dataMod,
-    probCol = probCol
-  )
-  if (is.null(derivData) || nrow(derivData) == 0L) {
-    info$reason <- "no_probability_derivative_available"
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-
-  deriv <- derivData$deriv
-  deriv[!is.finite(deriv)] <- 0
-  deriv <- pmax(0, deriv)
-  peakDeriv <- max(deriv, na.rm = TRUE)
-  if (!is.finite(peakDeriv) || peakDeriv <= 0) {
-    info$reason <- "no_positive_probability_derivative"
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-
-  hardDerivFrac <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locFlatHardDerivFrac",
-    1 / 4
-  )
-  hardDerivFrac <- suppressWarnings(as.numeric(hardDerivFrac[1]))
-  if (!is.finite(hardDerivFrac) || hardDerivFrac < 0 || hardDerivFrac > 1) {
-    hardDerivFrac <- 1 / 4
-  }
-
-  hardDerivThreshold <- peakDeriv * hardDerivFrac
-  hardIncIdx <- which(deriv >= hardDerivThreshold)
-  if (length(hardIncIdx) == 0L) {
-    info$reason <- "no_derivative_above_hard_flat_threshold"
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-  hardStartX <- derivData$x[min(hardIncIdx)]
-
-  derivFrac <- .getCpUnsLocGetCpTrimSetting(
-    chnlSettings,
-    "locFlatDerivFrac",
-    1 / 2
-  )
-  derivFrac <- suppressWarnings(as.numeric(derivFrac[1]))
-  if (!is.finite(derivFrac) || derivFrac < 0 || derivFrac > 1) {
-    derivFrac <- 1 / 2
-  }
-
-  derivThreshold <- peakDeriv * derivFrac
-  incIdx <- which(deriv >= derivThreshold)
-  if (length(incIdx) == 0L) {
-    info$reason <- "no_derivative_above_marginal_flat_threshold"
-    return(list("dataMod" = dataMod, "info" = info))
-  }
-
-  startX <- derivData$x[min(incIdx)]
-  startX <- max(startX, hardStartX, na.rm = TRUE)
-
-  hardKeep <- is.finite(x) & x >= hardStartX
-  if (sum(hardKeep, na.rm = TRUE) == 0L) {
-    info$reason <- "all_cells_removed_by_hard_derivative_trim"
-    return(list("dataMod" = dataMod[0, , drop = FALSE], "info" = info))
-  }
-
-  dataModHard <- dataMod[hardKeep, , drop = FALSE]
-  marginalObj <- .getCpUnsLocGetCpTrimMarginalLeft(
-    dataMod = dataModHard,
     chnlSettings = chnlSettings,
     probCol = probCol,
-    startX = startX
+    alpha = globalParams$alpha,
+    omega = globalParams$omega,
+    psi = globalParams$psi,
+    thresholdProbMin = globalThresholdProbMin
+  )
+  info$globalRise <- globalRiseObj$info
+  info$globalParams <- globalParams
+  info$globalThresholdProbMin <- globalThresholdProbMin
+
+  globalStartX <- globalRiseObj$riseThresholdX %||%
+    globalRiseObj$risingFastX
+  x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+
+  if (is.finite(globalStartX)) {
+    globalKeep <- is.finite(x) & x >= globalStartX
+    nGlobalDropped <- sum(!globalKeep, na.rm = TRUE)
+    dataModGlobal <- .getCpUnsLocGetCpTrimSubset(dataMod, globalKeep)
+  } else {
+    nGlobalDropped <- 0L
+    dataModGlobal <- dataMod
+  }
+
+  info$globalStartX <- globalStartX
+  info$nGlobalDropped <- nGlobalDropped
+  info$globalDefined <- is.finite(globalStartX)
+  # Compatibility with earlier field names.
+  info$globalRiseFrac <- globalParams$psi
+  info$hardStartX <- globalStartX
+  info$hardDerivFrac <- globalParams$psi
+  info$hardDerivThreshold <- globalRiseObj$info$riseHeight
+  info$peakDeriv <- globalRiseObj$info$peakDeriv
+  info$derivSource <- globalRiseObj$info$derivSource
+
+  if (!is.data.frame(dataModGlobal) || nrow(dataModGlobal) == 0L) {
+    info$applied <- nGlobalDropped > 0L
+    info$reason <- "all_cells_removed_by_global_derivative_trim"
+    return(list("dataMod" = dataModGlobal, "info" = info))
+  }
+
+  # Calculate the marginal reference threshold only after applying a defined
+  # global threshold. An undefined global threshold does not block this stage.
+  marginalParams <- .getCpUnsLocGetCpTrimStageDerivParams(
+    chnlSettings = chnlSettings,
+    stage = "marginal"
+  )
+  marginalThresholdProbMin <- .getCpUnsLocGetCpTrimRiseProbMin(
+    chnlSettings = chnlSettings,
+    settingName = "locMarginalDerivRiseProbMin",
+    default = 0
+  )
+  marginalRiseObj <- .getCpUnsLocGetCpTrimRiseThreshold(
+    dataMod = dataModGlobal,
+    chnlSettings = chnlSettings,
+    probCol = probCol,
+    alpha = marginalParams$alpha,
+    omega = marginalParams$omega,
+    psi = marginalParams$psi,
+    thresholdProbMin = marginalThresholdProbMin
+  )
+  info$marginalRise <- marginalRiseObj$info
+  info$marginalParams <- marginalParams
+  info$marginalThresholdProbMin <- marginalThresholdProbMin
+
+  marginalStartX <- marginalRiseObj$riseThresholdX %||%
+    marginalRiseObj$risingFastX
+  info$marginalStartX <- marginalStartX
+  info$marginalDefined <- is.finite(marginalStartX)
+  # Compatibility with earlier field names.
+  info$marginalRiseFrac <- marginalParams$psi
+  info$startX <- marginalStartX
+  info$derivFrac <- marginalParams$psi
+  info$derivThreshold <- marginalRiseObj$info$riseHeight
+
+  if (!is.finite(marginalStartX)) {
+    info$applied <- nGlobalDropped > 0L
+    info$reason <- if (isTRUE(info$applied)) {
+      "applied_global_trim_but_no_valid_marginal_rise_threshold"
+    } else {
+      "no_valid_global_or_marginal_probability_rise_threshold"
+    }
+    return(list("dataMod" = dataModGlobal, "info" = info))
+  }
+
+  marginalFilterObj <- .getCpUnsLocGetCpTrimMarginalLeft(
+    dataMod = dataModGlobal,
+    chnlSettings = chnlSettings,
+    probCol = probCol,
+    startX = marginalStartX
   )
 
-  hardDropped <- sum(!hardKeep, na.rm = TRUE) > 0L
-  marginalApplied <- isTRUE(marginalObj$info$applied)
+  globalApplied <- nGlobalDropped > 0L
+  marginalApplied <- isTRUE(marginalFilterObj$info$applied)
 
-  info$applied <- hardDropped || marginalApplied
+  info$applied <- globalApplied || marginalApplied
   info$reason <- if (isTRUE(info$applied)) {
-    "dropped_left_region_by_derivative_or_marginal_trim"
+    "dropped_left_region_by_global_or_marginal_trim"
   } else {
-    "derivative_and_marginal_trim_kept_all_cells"
+    "global_and_marginal_trim_kept_all_cells"
   }
-  info$hardStartX <- hardStartX
-  info$startX <- startX
-  info$marginalStartX <- startX
-  info$hardDerivFrac <- hardDerivFrac
-  info$derivFrac <- derivFrac
-  info$hardDerivThreshold <- hardDerivThreshold
-  info$derivThreshold <- derivThreshold
-  info$peakDeriv <- peakDeriv
-  info$derivSource <- unique(derivData$source)[1]
-  info$nDerivPoint <- nrow(derivData)
-  info$nHardDropped <- sum(!hardKeep, na.rm = TRUE)
-  info$marginal <- marginalObj$info
+  info$marginal <- marginalFilterObj$info
 
-  list("dataMod" = marginalObj$dataMod, "info" = info)
+  list("dataMod" = marginalFilterObj$dataMod, "info" = info)
+}
+
+# Retain the old name for callers outside this file.
+#' @keywords internal
+.getCpUnsLocGetCpTrimFlatLeft <- function(
+  dataMod,
+  exTblStimNoMin = NULL,
+  chnlSettings,
+  probCol,
+  riseObj = NULL
+) {
+  force(exTblStimNoMin)
+  .getCpUnsLocGetCpTrimLowProbLeft(
+    dataMod = dataMod,
+    chnlSettings = chnlSettings,
+    probCol = probCol,
+    riseObj = riseObj
+  )
 }
 
 #' @keywords internal
@@ -3508,8 +4136,12 @@
   pathProject,
   stage
 ) {
-  # final filtering step
-  dataCount <- .getCpUnsLocGetCpDataThresholdCount(dataMod)
+  # Remove the lower-margin values retained only to anchor the smoother at the
+  # point where the final response proportion is calculated, not while the
+  # filtering thresholds are identified.
+  dataModEstimate <- .getCpUnsLocGetCpDataThresholdExcludeMargin(dataMod)
+
+  dataCount <- .getCpUnsLocGetCpDataThresholdCount(dataModEstimate)
   probBsEst <- .getCpUnsLocGetCpDataThresholdPropBsEst(
     dataCount = dataCount,
     exTblStimOrig = exTblStimOrig
@@ -3531,15 +4163,39 @@
   )
 }
 
+#' Exclude values retained only as a lower smoothing margin
+#' @keywords internal
+.getCpUnsLocGetCpDataThresholdExcludeMargin <- function(dataMod) {
+  if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
+    return(dataMod)
+  }
+
+  minProbXPos <- attr(dataMod, "minProbXPos")
+  minProbXPos <- suppressWarnings(as.numeric(minProbXPos)[1])
+  if (!is.finite(minProbXPos)) {
+    return(dataMod)
+  }
+
+  x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+  .getCpUnsLocGetCpTrimSubset(
+    dataMod = dataMod,
+    keep = is.finite(x) & x >= minProbXPos
+  )
+}
+
 #' @keywords internal
 .getCpUnsLocGetCpDataThresholdCount <- function(dataMod) {
+  if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
+    return(dataMod)
+  }
+
   if (nrow(dataMod) == 1L) {
     minVal <- min(.getCut(dataMod)) - 1
   } else {
     minVal <- min(.getCut(dataMod))
   }
-  dataMod <- dataMod[.getCut(dataMod) > minVal, ]
-  dataMod <- dataMod[order(.getCut(dataMod)), ]
+  dataMod <- dataMod[.getCut(dataMod) > minVal, , drop = FALSE]
+  dataMod <- dataMod[order(.getCut(dataMod)), , drop = FALSE]
   dataMod |>
     dplyr::mutate(nRow = seq_len(dplyr::n())) |>
     dplyr::filter(cumsum(pred > probSmooth) != nRow) |> # nolint
