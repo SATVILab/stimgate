@@ -52,9 +52,9 @@
   )
   defaults <- switch(
     stage,
-    antimode = c(alpha = 2 / 3, omega = 0.15, psi = 0.75),
-    global = c(alpha = 0.05, omega = 0.15, psi = 0.05),
-    marginal = c(alpha = 0.50, omega = 0.15, psi = 0.75)
+    antimode = c(alpha = 2 / 3, omega = 0.15, psi = -0.1),
+    global = c(alpha = 0.05, omega = 0.15, psi = 0.2),
+    marginal = c(alpha = 0.50, omega = 0.15, psi = -0.1)
   )
 
   alpha <- .getCpUnsLocFirstSetting(
@@ -152,8 +152,14 @@
 #' @keywords internal
 .getCpUnsLocSubsetRows <- function(dataMod, keep) {
   attrs <- c(
-    "chnlCut", "ind", "indUns", "binVec", "minProbXPos",
-    "locProbDerivTbl", "locProbSmoothMethod", "locDensityBw"
+    "chnlCut",
+    "ind",
+    "indUns",
+    "binVec",
+    "minProbXPos",
+    "locProbDerivTbl",
+    "locProbSmoothMethod",
+    "locDensityBw"
   )
   values <- stats::setNames(
     lapply(attrs, function(name) attr(dataMod, name)),
@@ -358,7 +364,7 @@
 
   iPeak <- peak$index
   peakHeight <- peak$data$deriv[iPeak]
-  riseHeight <- psi * peakHeight
+  riseHeight <- abs(psi) * peakHeight
 
   info$omega <- omega
   info$peakProbMin <- omega
@@ -374,17 +380,36 @@
       info$reason <- "probability_never_reached_omega_after_peak"
       return(list(thresholdX = NA_real_, info = info))
     }
+    if (psi < 0) {
+      candidate <- candidate[peak$data$deriv[candidate] >= riseHeight]
+    } else {
+      # no need to apply psi here as we're forced to
+      # move rightware, and positive psi seeks to move left.
+      candidate <- candidate
+    }
     iThreshold <- min(candidate)
     info$thresholdBasis <- "first_point_right_of_peak_reaching_omega"
   } else {
-    candidate <- seq_len(iPeak)
-    candidate <- candidate[peak$data$deriv[candidate] >= riseHeight]
-    if (length(candidate) == 0L) {
-      info$reason <- "derivative_never_reached_psi_times_peak"
-      return(list(thresholdX = NA_real_, info = info))
+    if (psi > 0) {
+      candidate <- seq_len(iPeak)
+      candidate <- candidate[peak$data$deriv[candidate] >= riseHeight]
+      if (length(candidate) == 0L) {
+        info$reason <- "derivative_never_reached_psi_times_peak"
+        return(list(thresholdX = NA_real_, info = info))
+      }
+      info$thresholdBasis <- "left_rise_to_psi_times_peak"
+    } else {
+      # here we find the indices
+      # such that the derivative is less than or equal to riseHeight
+      candidate <- seq.int(iPeak, nrow(peak$data))
+      candidate <- candidate[peak$data$deriv[candidate] <= riseHeight]
+      if (length(candidate) == 0L) {
+        info$reason <- "derivative_never_fell_below_psi_times_peak"
+        return(list(thresholdX = NA_real_, info = info))
+      }
+      info$thresholdBasis <- "right_fall_to_psi_times_peak"
     }
     iThreshold <- min(candidate)
-    info$thresholdBasis <- "left_rise_to_psi_times_peak"
   }
 
   info$thresholdIdxCandidate <- iThreshold
@@ -454,4 +479,3 @@
   out$info$derivSource <- unique(derivTbl$source)[1]
   out
 }
-
