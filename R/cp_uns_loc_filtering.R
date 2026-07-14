@@ -191,7 +191,7 @@
   }
 
   expr <- suppressWarnings(as.numeric(.getCut(dataMod)))
-  exprForDensity <- expr[is.finite(expr) & expr <= upperX]
+  exprForDensity <- expr[is.finite(expr)]
   if (length(exprForDensity) < 5L || length(unique(exprForDensity)) < 3L) {
     info$reason <- "too_few_values_below_antimode_upper_limit"
     return(list(dataMod = dataMod, info = info))
@@ -200,7 +200,8 @@
   density <- .getCpUnsLocAntimodeDensity(
     expr = exprForDensity,
     chnlSettings = chnlSettings,
-    originalBw = attr(dataMod, "locDensityBw")
+    originalBw = attr(dataMod, "locDensityBw"),
+    mtd = "taut_string"
   )
   if (is.null(density)) {
     info$reason <- "antimode_density_failed"
@@ -245,72 +246,82 @@
 
 #' Fit the antimode density using half the original bandwidth
 #' @keywords internal
-.getCpUnsLocAntimodeDensity <- function(expr, chnlSettings, originalBw = NULL) {
-  bwFraction <- suppressWarnings(as.numeric(
-    .getCpUnsLocSetting(chnlSettings, "locAntimodeBwFrac", 1 / 2)
-  )[1])
-  if (!is.finite(bwFraction) || bwFraction <= 0) {
-    bwFraction <- 1 / 2
-  }
+.getCpUnsLocAntimodeDensity <- function(
+  expr,
+  chnlSettings,
+  originalBw = NULL,
+  mtd = "taut_string"
+) {
+  if (mtd == "kde") {
+    bwFraction <- suppressWarnings(as.numeric(
+      .getCpUnsLocSetting(chnlSettings, "locAntimodeBwFrac", 1 / 2)
+    )[1])
+    if (!is.finite(bwFraction) || bwFraction <= 0) {
+      bwFraction <- 1 / 2
+    }
 
-  exprRange <- range(expr, na.rm = TRUE)
-  if (
-    is.list(originalBw) &&
-      isTRUE(originalBw$adaptive) &&
-      !is.null(originalBw$grid) &&
-      !is.null(originalBw$sharedGrid)
-  ) {
-    grid <- suppressWarnings(as.numeric(originalBw$grid))
-    bw <- suppressWarnings(as.numeric(originalBw$sharedGrid))
-    keep <- is.finite(grid) & is.finite(bw) & bw > 0 &
-      grid >= exprRange[1] & grid <= exprRange[2]
-    grid <- grid[keep]
-    bw <- bw[keep]
+    exprRange <- range(expr, na.rm = TRUE)
+    if (
+      is.list(originalBw) &&
+        isTRUE(originalBw$adaptive) &&
+        !is.null(originalBw$grid) &&
+        !is.null(originalBw$sharedGrid)
+    ) {
+      grid <- suppressWarnings(as.numeric(originalBw$grid))
+      bw <- suppressWarnings(as.numeric(originalBw$sharedGrid))
+      keep <- is.finite(grid) &
+        is.finite(bw) &
+        bw > 0 &
+        grid >= exprRange[1] &
+        grid <= exprRange[2]
+      grid <- grid[keep]
+      bw <- bw[keep]
 
-    if (length(grid) >= 3L && length(grid) == length(bw)) {
-      out <- .getCpUnsLocDensityAdaptiveGrid(
-        x = expr,
-        grid = grid,
-        bwGrid = bw * bwFraction,
-        normalise = TRUE
-      )
-      if (!is.null(out)) {
-        attr(out, "locBwType") <- "adaptive"
-        attr(out, "locBwFraction") <- bwFraction
-        attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(bw)
-        attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(
-          bw * bwFraction
+      if (length(grid) >= 3L && length(grid) == length(bw)) {
+        out <- .getCpUnsLocDensityAdaptiveGrid(
+          x = expr,
+          grid = grid,
+          bwGrid = bw * bwFraction,
+          normalise = TRUE
         )
-        return(out)
+        if (!is.null(out)) {
+          attr(out, "locBwType") <- "adaptive"
+          attr(out, "locBwFraction") <- bwFraction
+          attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(bw)
+          attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(
+            bw * bwFraction
+          )
+          return(out)
+        }
       }
     }
-  }
 
-  bw <- .getCpUnsLocAntimodeBw(expr, chnlSettings, originalBw)
-  if (!is.finite(bw) || bw <= 0) {
-    return(NULL)
-  }
+    bw <- .getCpUnsLocAntimodeBw(expr, chnlSettings, originalBw)
+    if (!is.finite(bw) || bw <= 0) {
+      return(NULL)
+    }
 
-  usedBw <- bw * bwFraction
-  out <- try(
-    suppressWarnings(stats::density(
-      expr,
-      bw = usedBw,
-      n = 512L,
-      from = exprRange[1],
-      to = exprRange[2]
-    )),
-    silent = TRUE
-  )
-  if (inherits(out, "try-error")) {
-    return(NULL)
-  }
+    usedBw <- bw * bwFraction
+    out <- try(
+      suppressWarnings(stats::density(
+        expr,
+        bw = usedBw,
+        n = 512L,
+        from = exprRange[1],
+        to = exprRange[2]
+      )),
+      silent = TRUE
+    )
+    if (inherits(out, "try-error")) {
+      return(NULL)
+    }
 
-  attr(out, "locBwType") <- "fixed"
-  attr(out, "locBwFraction") <- bwFraction
-  attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(bw)
-  attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(usedBw)
-  out
+    attr(out, "locBwType") <- "fixed"
+    attr(out, "locBwFraction") <- bwFraction
+    attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(bw)
+    attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(usedBw)
+    out
+  } else if (mtd == "taut_string") {}
 }
 
 #' Resolve the original fixed bandwidth used by the local-FDR densities
@@ -441,7 +452,11 @@
   probCol,
   startX
 ) {
-  info <- list(applied = FALSE, reason = "marginal_filter_not_run", startX = startX)
+  info <- list(
+    applied = FALSE,
+    reason = "marginal_filter_not_run",
+    startX = startX
+  )
   if (!is.data.frame(dataMod) || nrow(dataMod) < 4L || !is.finite(startX)) {
     info$reason <- "insufficient_data_for_marginal_filter"
     return(list(dataMod = dataMod, info = info))
@@ -461,7 +476,7 @@
     return(list(dataMod = dataMod, info = info))
   }
 
-  grid <- .getCpUnsLocMarginalBreaks(dataMod, startX)
+  grid <- .getCpUnsLocMarginalBreaks(dataMod, startX, nBin = 50L)
   if (is.null(grid)) {
     info$reason <- "insufficient_bins_for_marginal_filter"
     return(list(dataMod = dataMod, info = info))
@@ -487,14 +502,14 @@
   }
 
   cellBinRatio <- suppressWarnings(as.numeric(
-    .getCpUnsLocSetting(chnlSettings, "locMarginalCellBinRatio", 2)
+    .getCpUnsLocSetting(chnlSettings, "locMarginalCellBinRatio", 1.25)
   )[1])
   if (!is.finite(cellBinRatio) || cellBinRatio <= 0) {
-    cellBinRatio <- 2
+    cellBinRatio <- 1.25
   }
   purityRel <- .getCpUnsLocUnitValue(
-    .getCpUnsLocSetting(chnlSettings, "locMarginalPurityRel", 0.5),
-    0.5,
+    .getCpUnsLocSetting(chnlSettings, "locMarginalPurityRel", 0.85),
+    0.85,
     allowZero = TRUE
   )
 
@@ -509,6 +524,8 @@
   currentCut <- startX
   scan <- vector("list", length(leftBins))
   stopReason <- "accepted_all_left_bins"
+  consecutiveRejections <- 0L
+  lastAcceptedJ <- 0L
 
   for (j in seq_along(leftBins)) {
     i <- leftBins[[j]]
@@ -532,10 +549,22 @@
       accepted = accepted
     )
 
-    if (!accepted) {
-      stopReason <- "stopped_at_low_purity_or_high_cell_bin"
-      break
+    if (accepted) {
+      # An accepted bin also retains either one or two immediately preceding
+      # rejected bins, because the cutoff moves to this accepted bin's left edge.
+      consecutiveRejections <- 0L
+      lastAcceptedJ <- j
+      currentCut <- breaks[i]
+    } else {
+      consecutiveRejections <- consecutiveRejections + 1L
+
+      # Three consecutive rejected bins terminate the scan. None of those three
+      # bins is retained, because currentCut still marks the last accepted bin.
+      if (consecutiveRejections >= 3L) {
+        break
+      }
     }
+
     currentCut <- breaks[[i]]
   }
 
@@ -567,7 +596,7 @@
 
 #' Shift the original equal-width grid so one breakpoint equals x_ref
 #' @keywords internal
-.getCpUnsLocMarginalBreaks <- function(dataMod, startX) {
+.getCpUnsLocMarginalBreaks <- function(dataMod, startX, nBin = NULL) {
   binVec <- attr(dataMod, "binVec")
   if (is.null(binVec)) {
     x <- suppressWarnings(as.numeric(.getCut(dataMod)))
@@ -575,11 +604,22 @@
     if (length(x) < 2L || diff(range(x)) <= 0) {
       return(NULL)
     }
-    binVec <- seq(min(x), max(x), length.out = 512L)
+    binVec <- seq(
+      min(x),
+      max(x),
+      length.out = if (is.null(nBin)) 512L else nBin
+    )
   }
 
   binVec <- sort(unique(suppressWarnings(as.numeric(binVec))))
   binVec <- binVec[is.finite(binVec)]
+  if (!is.null(nBin) && length(binVec) > 1L && diff(range(binVec)) > 0) {
+    binVec <- seq(
+      min(binVec),
+      max(binVec),
+      length.out = nBin
+    )
+  }
   if (length(binVec) < 2L || !is.finite(startX)) {
     return(NULL)
   }
