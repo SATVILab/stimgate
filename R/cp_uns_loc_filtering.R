@@ -102,7 +102,8 @@
   marginal <- .getCpUnsLocFilterMarginal(
     dataMod = dataMod,
     chnlSettings = chnlSettings,
-    probCol = probCol
+    probCol = probCol,
+    antimodeX = antimode$info$filterX
   )
   dataMod <- marginal$dataMod
   info$marginal <- marginal$info
@@ -488,7 +489,12 @@
 
 #' Find the marginal reference threshold and scan bins to its left
 #' @keywords internal
-.getCpUnsLocFilterMarginal <- function(dataMod, chnlSettings, probCol) {
+.getCpUnsLocFilterMarginal <- function(
+  dataMod,
+  chnlSettings,
+  probCol,
+  antimodeX = NULL
+) {
   threshold <- .getCpUnsLocStageThreshold(
     dataMod,
     chnlSettings,
@@ -507,15 +513,165 @@
     ))
   }
 
+  antimodeX <- suppressWarnings(as.numeric(antimodeX)[1L])
+  if (is.finite(antimodeX)) {
+    densityLowerBound <- list(
+      lowerBoundX = NA_real_,
+      info = list(
+        applied = FALSE,
+        reason = "not_needed_because_antimode_defined",
+        antimodeX = antimodeX
+      )
+    )
+  } else {
+    densityLowerBound <- .getCpUnsLocMarginalDensityLowerBound(
+      density = attr(dataMod, "locStimDensity"),
+      peakX = attr(dataMod, "locStimPeakX"),
+      fraction = 1 / 200
+    )
+  }
+
   out <- .getCpUnsLocFilterMarginalBins(
     dataMod = dataMod,
     chnlSettings = chnlSettings,
     probCol = probCol,
-    startX = threshold$thresholdX
+    startX = threshold$thresholdX,
+    lowerBoundX = densityLowerBound$lowerBoundX
   )
   out$info$thresholdX <- threshold$thresholdX
   out$info$derivativeThreshold <- threshold$info
+  out$info$densityLowerBoundX <- densityLowerBound$lowerBoundX
+  out$info$densityLowerBound <- densityLowerBound$info
   out
+}
+
+#' Bound the marginal scan by the stimulated peak's descending shoulder
+#'
+#' This does not itself define a filtering threshold. When no antimode was
+#' identified, it prevents the marginal scan from considering bins below the
+#' point where the negative stimulated-density derivative has flattened to the
+#' requested fraction of its most negative value on the peak's right shoulder.
+#'
+#' @keywords internal
+.getCpUnsLocMarginalDensityLowerBound <- function(
+  density,
+  peakX,
+  fraction = 1 / 200
+) {
+  info <- list(
+    applied = FALSE,
+    reason = "stimulated_density_lower_bound_undefined",
+    fraction = fraction,
+    peakX = suppressWarnings(as.numeric(peakX)[1L])
+  )
+
+  if (
+    !is.data.frame(density) ||
+      !all(c("x", "y") %in% names(density)) ||
+      !is.finite(info$peakX) ||
+      !is.finite(fraction) ||
+      fraction <= 0 ||
+      fraction >= 1
+  ) {
+    info$reason <- "invalid_stimulated_density_or_peak"
+    return(list(lowerBoundX = NA_real_, info = info))
+  }
+
+  x <- suppressWarnings(as.numeric(density$x))
+  y <- suppressWarnings(as.numeric(density$y))
+  keep <- is.finite(x) & is.finite(y)
+  x <- x[keep]
+  y <- pmax(0, y[keep])
+  ord <- order(x)
+  x <- x[ord]
+  y <- y[ord]
+
+  if (length(x) < 3L || anyDuplicated(x) || diff(range(x)) <= 0) {
+    info$reason <- "insufficient_stimulated_density_grid"
+    return(list(lowerBoundX = NA_real_, info = info))
+  }
+
+  deriv <- .getCpUnsLocDensityDerivative(x, y)
+  peakIdx <- which.min(abs(x - info$peakX))
+  afterPeak <- seq.int(peakIdx, length(x))
+  negativeIdx <- afterPeak[deriv[afterPeak] < 0]
+  if (length(negativeIdx) == 0L) {
+    info$reason <- "no_negative_derivative_right_of_stimulated_peak"
+    return(list(lowerBoundX = NA_real_, info = info))
+  }
+
+  shoulderStart <- min(negativeIdx)
+  afterShoulderStart <- seq.int(shoulderStart, length(x))
+  nonnegativeIdx <- afterShoulderStart[
+    deriv[afterShoulderStart] >= 0
+  ]
+  shoulderEnd <- if (length(nonnegativeIdx) == 0L) {
+    length(x)
+  } else {
+    min(nonnegativeIdx)
+  }
+
+  shoulderNegativeIdx <- seq.int(
+    shoulderStart,
+    max(shoulderStart, shoulderEnd - 1L)
+  )
+  steepestIdx <- shoulderNegativeIdx[
+    which.min(deriv[shoulderNegativeIdx])
+  ]
+  steepestDeriv <- deriv[steepestIdx]
+  targetDeriv <- fraction * steepestDeriv
+
+  laterIdx <- if (steepestIdx < shoulderEnd) {
+    seq.int(steepestIdx + 1L, shoulderEnd)
+  } else {
+    integer(0L)
+  }
+  crossingIdx <- laterIdx[deriv[laterIdx] >= targetDeriv]
+  if (length(crossingIdx) == 0L) {
+    info$reason <- "density_derivative_did_not_flatten_to_target"
+    info$shoulderPeakX <- x[steepestIdx]
+    info$shoulderPeakDeriv <- steepestDeriv
+    info$targetDeriv <- targetDeriv
+    return(list(lowerBoundX = NA_real_, info = info))
+  }
+
+  rightIdx <- min(crossingIdx)
+  leftIdx <- rightIdx - 1L
+  derivChange <- deriv[rightIdx] - deriv[leftIdx]
+  lowerBoundX <- if (!is.finite(derivChange) || derivChange == 0) {
+    x[rightIdx]
+  } else {
+    x[leftIdx] +
+      (targetDeriv - deriv[leftIdx]) *
+        (x[rightIdx] - x[leftIdx]) /
+        derivChange
+  }
+
+  info$applied <- is.finite(lowerBoundX)
+  info$reason <- if (info$applied) {
+    "identified_stimulated_density_shoulder_lower_bound"
+  } else {
+    "stimulated_density_shoulder_lower_bound_undefined"
+  }
+  info$shoulderPeakX <- x[steepestIdx]
+  info$shoulderPeakDeriv <- steepestDeriv
+  info$targetDeriv <- targetDeriv
+  info$lowerBoundX <- lowerBoundX
+
+  list(lowerBoundX = lowerBoundX, info = info)
+}
+
+#' Calculate the density derivative by finite differences
+#' @keywords internal
+.getCpUnsLocDensityDerivative <- function(x, y) {
+  n <- length(x)
+  deriv <- numeric(n)
+  deriv[1L] <- (y[2L] - y[1L]) / (x[2L] - x[1L])
+  deriv[n] <- (y[n] - y[n - 1L]) / (x[n] - x[n - 1L])
+  deriv[2L:(n - 1L)] <-
+    (y[3L:n] - y[1L:(n - 2L)]) /
+    (x[3L:n] - x[1L:(n - 2L)])
+  deriv
 }
 
 #' Apply the appendix marginal-bin acceptance rule
@@ -524,12 +680,14 @@
   dataMod,
   chnlSettings,
   probCol,
-  startX
+  startX,
+  lowerBoundX = NA_real_
 ) {
   info <- list(
     applied = FALSE,
     reason = "marginal_filter_not_run",
-    startX = startX
+    startX = startX,
+    lowerBoundX = lowerBoundX
   )
   if (!is.data.frame(dataMod) || nrow(dataMod) < 4L || !is.finite(startX)) {
     info$reason <- "insufficient_data_for_marginal_filter"
@@ -558,6 +716,37 @@
 
   breaks <- grid$breaks
   refIndex <- grid$refIndex
+  leftBins <- rev(seq_len(refIndex - 1L))
+  info$nLeftBinsBeforeDensityBound <- length(leftBins)
+  info$nLeftBinsExcludedByDensityBound <- 0L
+
+  if (is.finite(lowerBoundX) && length(leftBins) > 0L) {
+    eligibleBin <- breaks[leftBins] >= lowerBoundX
+    info$nLeftBinsExcludedByDensityBound <- sum(!eligibleBin)
+    leftBins <- leftBins[eligibleBin]
+
+    if (length(leftBins) == 0L) {
+      keep <- is.finite(x) & x >= startX
+      info$nDropped <- sum(!keep)
+      info$applied <- info$nDropped > 0L
+      info$reason <- if (info$applied) {
+        "used_marginal_reference_because_density_bound_excluded_all_bins"
+      } else {
+        "marginal_reference_kept_all_values_after_density_bound"
+      }
+      info$stopReason <- "density_lower_bound_excluded_all_left_bins"
+      info$finalStartX <- startX
+      info$gridShift <- grid$shift
+      info$gridSpacing <- grid$spacing
+      info$refIndex <- refIndex
+      info$scanTbl <- tibble::tibble()
+      return(list(
+        dataMod = .getCpUnsLocSubsetRows(dataMod, keep),
+        info = info
+      ))
+    }
+  }
+
   refNBin <- length(breaks) - refIndex
   right <- dm$x >= startX
   refNCell <- sum(right)
@@ -589,7 +778,6 @@
 
   maxCells <- cellBinRatio * refCellsPerBin
   minPurity <- purityRel * refPurity
-  leftBins <- rev(seq_len(refIndex - 1L))
   if (length(leftBins) == 0L) {
     info$reason <- "no_bins_left_of_marginal_reference"
     return(list(dataMod = dataMod, info = info))

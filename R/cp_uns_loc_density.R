@@ -734,18 +734,37 @@
 
   probTbl <- .getCpUnsLocGetProbTblInit(densTblRaw, cpMin)
 
+  densTblStim <- densTblRaw |>
+    dplyr::filter(.data$stim == "yes") |>
+    dplyr::arrange(.data$xStim)
+  densTblUns <- densTblRaw |>
+    dplyr::filter(.data$stim == "no") |>
+    dplyr::arrange(.data$xStim)
+  peakStimIdx <- .getPeakMainLeftIdx(densTblStim$dens)
+  peakUnsIdx <- .getPeakMainLeftIdx(densTblUns$dens)
+  peakStimX <- densTblStim$xStim[peakStimIdx]
+  peakUnsX <- densTblUns$xStim[peakUnsIdx]
+
   probTblPos <- .getCpUnsLocProbTblFilter(
     densTbl = densTblRaw,
     probTbl = probTbl,
     exVecStim = exVecStimThreshold,
     exVecUns = exVecUnsThreshold,
-    stage = stage
+    stage = stage,
+    peakStimX = peakStimX,
+    peakUnsX = peakUnsX
   )
 
   list(
     all = probTbl,
     pos = probTblPos,
-    densityBw = attr(densTblRaw, "locDensityBw")
+    densityBw = attr(densTblRaw, "locDensityBw"),
+    stimDensity = densTblStim |>
+      dplyr::transmute(
+        x = suppressWarnings(as.numeric(.data$xStim)),
+        y = suppressWarnings(as.numeric(.data$dens))
+      ),
+    stimPeakX = suppressWarnings(as.numeric(peakStimX)[1L])
   )
 }
 
@@ -826,17 +845,24 @@
   probTbl,
   exVecStim,
   exVecUns,
-  stage
+  stage,
+  peakStimX = NULL,
+  peakUnsX = NULL
 ) {
   .debug("Filtering before smoothing") # nolint
   densTblStim <- densTbl |>
     dplyr::filter(stim == "yes")
   densTblUns <- densTbl |>
     dplyr::filter(stim == "no")
-  peakStimIdx <- .getPeakMainLeftIdx(densTblStim$dens)
-  peakStimX <- densTblStim$xStim[peakStimIdx]
-  peakUnsIdx <- .getPeakMainLeftIdx(densTblUns$dens)
-  peakUnsX <- densTblUns$xStim[peakUnsIdx]
+
+  if (is.null(peakStimX) || !is.finite(peakStimX)) {
+    peakStimIdx <- .getPeakMainLeftIdx(densTblStim$dens)
+    peakStimX <- densTblStim$xStim[peakStimIdx]
+  }
+  if (is.null(peakUnsX) || !is.finite(peakUnsX)) {
+    peakUnsIdx <- .getPeakMainLeftIdx(densTblUns$dens)
+    peakUnsX <- densTblUns$xStim[peakUnsIdx]
+  }
   peakX <- max(peakStimX, peakUnsX)
 
   windowWidthStim <- 1 /
@@ -971,6 +997,11 @@
   # density estimates. The later antimode density uses half this bandwidth.
   attr(dataMod, "locDensityBw") <- probTblList$densityBw
 
+  # Retain the original stimulated density and its already identified
+  # left-main peak for the post-smoothing marginal-density safeguard.
+  attr(dataMod, "locStimDensity") <- probTblList$stimDensity
+  attr(dataMod, "locStimPeakX") <- probTblList$stimPeakX
+
   .thinDataMod(dataMod, maxCellsPerBin = 20)
 }
 
@@ -1008,7 +1039,6 @@
 # smooth
 # ---------------------
 #' @keywords internal
-
 
 .thinDataMod <- function(dataMod, maxCellsPerBin = 20) {
   binVec <- attr(dataMod, "binVec")
