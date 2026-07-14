@@ -200,8 +200,7 @@
   density <- .getCpUnsLocAntimodeDensity(
     expr = exprForDensity,
     chnlSettings = chnlSettings,
-    originalBw = attr(dataMod, "locDensityBw"),
-    mtd = "taut_string"
+    originalBw = attr(dataMod, "locDensityBw")
   )
   if (is.null(density)) {
     info$reason <- "antimode_density_failed"
@@ -220,6 +219,7 @@
   info$eligibleAntimodes <- eligible
   info$antimodeLeftX <- eligible
   info$nExpressionValuesForDensity <- length(exprForDensity)
+  info$densityMtd <- attr(density, "locDensityMtd")
   info$densityBwType <- attr(density, "locBwType")
   info$densityBwFraction <- attr(density, "locBwFraction")
   info$densityBwBase <- attr(density, "locBwBaseSummary")
@@ -244,84 +244,122 @@
   list(dataMod = .getCpUnsLocSubsetRows(dataMod, keep), info = info)
 }
 
-#' Fit the antimode density using half the original bandwidth
+#' Fit the density used to identify antimodes
 #' @keywords internal
 .getCpUnsLocAntimodeDensity <- function(
   expr,
   chnlSettings,
   originalBw = NULL,
-  mtd = "taut_string"
+  mtd = c("taut_string", "kde")
 ) {
-  if (mtd == "kde") {
-    bwFraction <- suppressWarnings(as.numeric(
-      .getCpUnsLocSetting(chnlSettings, "locAntimodeBwFrac", 1 / 2)
-    )[1])
-    if (!is.finite(bwFraction) || bwFraction <= 0) {
-      bwFraction <- 1 / 2
-    }
+  mtd <- match.arg(mtd)
+  expr <- suppressWarnings(as.numeric(expr))
+  expr <- expr[is.finite(expr)]
 
-    exprRange <- range(expr, na.rm = TRUE)
-    if (
-      is.list(originalBw) &&
-        isTRUE(originalBw$adaptive) &&
-        !is.null(originalBw$grid) &&
-        !is.null(originalBw$sharedGrid)
-    ) {
-      grid <- suppressWarnings(as.numeric(originalBw$grid))
-      bw <- suppressWarnings(as.numeric(originalBw$sharedGrid))
-      keep <- is.finite(grid) &
-        is.finite(bw) &
-        bw > 0 &
-        grid >= exprRange[1] &
-        grid <= exprRange[2]
-      grid <- grid[keep]
-      bw <- bw[keep]
+  if (length(expr) < 5L || length(unique(expr)) < 3L) {
+    return(NULL)
+  }
 
-      if (length(grid) >= 3L && length(grid) == length(bw)) {
-        out <- .getCpUnsLocDensityAdaptiveGrid(
-          x = expr,
-          grid = grid,
-          bwGrid = bw * bwFraction,
-          normalise = TRUE
-        )
-        if (!is.null(out)) {
-          attr(out, "locBwType") <- "adaptive"
-          attr(out, "locBwFraction") <- bwFraction
-          attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(bw)
-          attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(
-            bw * bwFraction
-          )
-          return(out)
-        }
-      }
-    }
-
-    bw <- .getCpUnsLocAntimodeBw(expr, chnlSettings, originalBw)
-    if (!is.finite(bw) || bw <= 0) {
-      return(NULL)
-    }
-
-    usedBw <- bw * bwFraction
-    out <- try(
-      suppressWarnings(stats::density(
-        expr,
-        bw = usedBw,
-        n = 512L,
-        from = exprRange[1],
-        to = exprRange[2]
-      )),
+  if (mtd == "taut_string") {
+    exprSorted <- sort(expr)
+    tautFit <- try(
+      suppressWarnings(ftnonpar::pmden(exprSorted, verbose = FALSE)),
       silent = TRUE
     )
-    if (inherits(out, "try-error")) {
+    if (inherits(tautFit, "try-error")) {
       return(NULL)
     }
 
-    attr(out, "locBwType") <- "fixed"
-    attr(out, "locBwFraction") <- bwFraction
-    attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(bw)
-    attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(usedBw)
-    out
-  } else if (mtd == "taut_string") {}
+    y <- suppressWarnings(as.numeric(tautFit$y))
+    x <- (exprSorted[-1L] + exprSorted[-length(exprSorted)]) / 2
+    if (length(x) != length(y) || length(y) < 3L || all(!is.finite(y))) {
+      return(NULL)
+    }
+
+    out <- list(
+      x = x,
+      y = y,
+      fit = tautFit,
+      method = "taut_string"
+    )
+    attr(out, "locDensityMtd") <- "taut_string"
+    attr(out, "locBwType") <- "not_applicable"
+    attr(out, "locBwFraction") <- NA_real_
+    attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(numeric(0L))
+    attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(numeric(0L))
+    return(out)
+  }
+
+  bwFraction <- suppressWarnings(as.numeric(
+    .getCpUnsLocSetting(chnlSettings, "locAntimodeBwFrac", 1 / 2)
+  )[1])
+  if (!is.finite(bwFraction) || bwFraction <= 0) {
+    bwFraction <- 1 / 2
+  }
+
+  exprRange <- range(expr, na.rm = TRUE)
+  if (
+    is.list(originalBw) &&
+      isTRUE(originalBw$adaptive) &&
+      !is.null(originalBw$grid) &&
+      !is.null(originalBw$sharedGrid)
+  ) {
+    grid <- suppressWarnings(as.numeric(originalBw$grid))
+    bw <- suppressWarnings(as.numeric(originalBw$sharedGrid))
+    keep <- is.finite(grid) &
+      is.finite(bw) &
+      bw > 0 &
+      grid >= exprRange[1] &
+      grid <= exprRange[2]
+    grid <- grid[keep]
+    bw <- bw[keep]
+
+    if (length(grid) >= 3L && length(grid) == length(bw)) {
+      out <- .getCpUnsLocDensityAdaptiveGrid(
+        x = expr,
+        grid = grid,
+        bwGrid = bw * bwFraction,
+        normalise = TRUE
+      )
+      if (!is.null(out)) {
+        attr(out, "locDensityMtd") <- "kde"
+        attr(out, "locBwType") <- "adaptive"
+        attr(out, "locBwFraction") <- bwFraction
+        attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(bw)
+        attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(
+          bw * bwFraction
+        )
+        return(out)
+      }
+    }
+  }
+
+  bw <- .getCpUnsLocAntimodeBw(expr, chnlSettings, originalBw)
+  if (!is.finite(bw) || bw <= 0) {
+    return(NULL)
+  }
+
+  usedBw <- bw * bwFraction
+  out <- try(
+    suppressWarnings(stats::density(
+      expr,
+      bw = usedBw,
+      n = 512L,
+      from = exprRange[1],
+      to = exprRange[2]
+    )),
+    silent = TRUE
+  )
+  if (inherits(out, "try-error")) {
+    return(NULL)
+  }
+
+  attr(out, "locDensityMtd") <- "kde"
+  attr(out, "locBwType") <- "fixed"
+  attr(out, "locBwFraction") <- bwFraction
+  attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(bw)
+  attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(usedBw)
+  out
 }
 
 #' Resolve the original fixed bandwidth used by the local-FDR densities
@@ -370,8 +408,44 @@
   if (length(x) != length(y) || length(y) < 3L || all(!is.finite(y))) {
     return(numeric(0L))
   }
+
+  if (identical(density$method, "taut_string")) {
+    return(.getCpUnsLocPiecewiseConstantAntimodes(x, y))
+  }
+
   y[!is.finite(y)] <- Inf
   sort(unique(x[.getLocalMinimaIdx(y)]))
+}
+
+#' Locate antimodes in a piecewise-constant taut-string density
+#' @keywords internal
+.getCpUnsLocPiecewiseConstantAntimodes <- function(x, y) {
+  finite <- is.finite(x) & is.finite(y)
+  x <- x[finite]
+  y <- y[finite]
+  if (length(x) != length(y) || length(y) < 3L) {
+    return(numeric(0L))
+  }
+
+  runId <- cumsum(c(
+    TRUE,
+    !dplyr::near(y[-1L], y[-length(y)])
+  ))
+  runs <- split(seq_along(y), runId)
+  runY <- vapply(runs, function(i) y[i[[1L]]], numeric(1L))
+  if (length(runY) < 3L) {
+    return(numeric(0L))
+  }
+
+  runLeft <- vapply(runs, function(i) min(x[i]), numeric(1L))
+  runRight <- vapply(runs, function(i) max(x[i]), numeric(1L))
+  internal <- seq.int(2L, length(runY) - 1L)
+  minima <- internal[
+    runY[internal] < runY[internal - 1L] &
+      runY[internal] < runY[internal + 1L]
+  ]
+
+  sort(unique((runLeft[minima] + runRight[minima]) / 2))
 }
 
 # Global filter --------------------------------------------------------------
@@ -561,11 +635,10 @@
       # Three consecutive rejected bins terminate the scan. None of those three
       # bins is retained, because currentCut still marks the last accepted bin.
       if (consecutiveRejections >= 3L) {
+        stopReason <- "three_consecutive_rejections"
         break
       }
     }
-
-    currentCut <- breaks[[i]]
   }
 
   keep <- is.finite(x) & x >= currentCut
@@ -590,6 +663,9 @@
   info$maxLeftBinCells <- maxCells
   info$minLeftBinPurity <- minPurity
   info$scanTbl <- dplyr::bind_rows(scan)
+  if (nrow(info$scanTbl) > 0L) {
+    info$scanTbl$retained <- seq_len(nrow(info$scanTbl)) <= lastAcceptedJ
+  }
 
   list(dataMod = .getCpUnsLocSubsetRows(dataMod, keep), info = info)
 }
