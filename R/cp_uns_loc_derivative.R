@@ -159,7 +159,9 @@
     "minProbXPos",
     "locProbDerivTbl",
     "locProbSmoothMethod",
-    "locDensityBw"
+    "locDensityBw",
+    "locStimDensity",
+    "locStimPeakX"
   )
   values <- stats::setNames(
     lapply(attrs, function(name) attr(dataMod, name)),
