@@ -516,11 +516,12 @@
   antimodeX <- suppressWarnings(as.numeric(antimodeX)[1L])
   if (is.finite(antimodeX)) {
     densityLowerBound <- list(
-      lowerBoundX = NA_real_,
+      lowerBoundX = antimodeX,
       info = list(
-        applied = FALSE,
-        reason = "not_needed_because_antimode_defined",
-        antimodeX = antimodeX
+        applied = TRUE,
+        reason = "antimode",
+        antimodeX = antimodeX,
+        lowerBoundX = antimodeX
       )
     )
   } else {
@@ -529,6 +530,18 @@
       peakX = attr(dataMod, "locStimPeakX"),
       fraction = 1 / 200
     )
+
+    dLb <- suppressWarnings(as.numeric(densityLowerBound$lowerBoundX)[1L])
+    tX <- threshold$thresholdX
+
+    if (is.finite(dLb) && is.finite(tX) && dLb < tX) {
+      adjustedLb <- dLb + 0.25 * (tX - dLb)
+
+      densityLowerBound$lowerBoundX <- adjustedLb
+      densityLowerBound$info$lowerBoundXRaw <- dLb
+      densityLowerBound$info$lowerBoundX <- adjustedLb
+      densityLowerBound$info$adjustmentFraction <- 0.25
+    }
   }
 
   out <- .getCpUnsLocFilterMarginalBins(
