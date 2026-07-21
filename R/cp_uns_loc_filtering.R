@@ -524,7 +524,7 @@
   antimodeX = NULL,
   threshold = NULL
 ) {
-  if (!is.null(threshold)) {
+  if (is.null(threshold)) {
     threshold <- .getCpUnsLocStageThreshold(
       dataMod,
       chnlSettings,
@@ -576,18 +576,130 @@
     }
   }
 
+  dominance <- .getCpUnsLocMarginalDominanceStart(
+    density = attr(dataMod, "locDensityComparison"),
+    startX = threshold$thresholdX,
+    dominanceRatio = 2
+  )
+  purityStartX <- threshold$thresholdX
+  dominanceStartX <- dominance$startX
+  lowerBoundX <- suppressWarnings(
+    as.numeric(densityLowerBound$lowerBoundX)[1L]
+  )
+
+  dominanceAnchorX <- threshold$thresholdX
+  if (is.finite(lowerBoundX)) {
+    dominanceAnchorX <- max(dominanceAnchorX, lowerBoundX)
+  }
+
+  dominance <- .getCpUnsLocMarginalDominanceStart(
+    density = attr(dataMod, "locDensityComparison"),
+    startX = dominanceAnchorX,
+    dominanceRatio = 2
+  )
+
+  purityStartX <- dominance$startX
+  if (!is.finite(purityStartX)) {
+    purityStartX <- dominanceAnchorX
+  }
+  if (is.finite(lowerBoundX)) {
+    purityStartX <- max(purityStartX, lowerBoundX)
+  }
+
   out <- .getCpUnsLocFilterMarginalBins(
     dataMod = dataMod,
     chnlSettings = chnlSettings,
     probCol = probCol,
-    startX = threshold$thresholdX,
+    startX = purityStartX,
     lowerBoundX = densityLowerBound$lowerBoundX
   )
   out$info$thresholdX <- threshold$thresholdX
+  out$info$purityStartX <- purityStartX
   out$info$derivativeThreshold <- threshold$info
+  out$info$densityDominance <- dominance$info
   out$info$densityLowerBoundX <- densityLowerBound$lowerBoundX
   out$info$densityLowerBound <- densityLowerBound$info
   out
+}
+
+#' Extend the marginal reference through continuous density dominance
+#'
+#' Starting at the derivative threshold, move left while the stimulated density
+#' remains at least `dominanceRatio` times the unstimulated density.
+#' @keywords internal
+.getCpUnsLocMarginalDominanceStart <- function(
+  density,
+  startX,
+  dominanceRatio = 2
+) {
+  info <- list(
+    applied = FALSE,
+    reason = "density_dominance_streak_unavailable",
+    derivativeStartX = startX,
+    dominanceRatio = dominanceRatio
+  )
+
+  if (
+    !is.data.frame(density) ||
+      !all(c("x", "stim", "unstim") %in% names(density)) ||
+      !is.finite(startX) ||
+      !is.finite(dominanceRatio) ||
+      dominanceRatio <= 0
+  ) {
+    info$reason <- "invalid_density_dominance_input"
+    return(list(startX = startX, info = info))
+  }
+
+  x <- suppressWarnings(as.numeric(density$x))
+  stim <- suppressWarnings(as.numeric(density$stim))
+  unstim <- suppressWarnings(as.numeric(density$unstim))
+  keep <- is.finite(x) & is.finite(stim) & is.finite(unstim)
+  x <- x[keep]
+  stim <- pmax(0, stim[keep])
+  unstim <- pmax(0, unstim[keep])
+  ord <- order(x)
+  x <- x[ord]
+  stim <- stim[ord]
+  unstim <- unstim[ord]
+
+  if (length(x) == 0L || anyDuplicated(x)) {
+    info$reason <- "insufficient_density_dominance_grid"
+    return(list(startX = startX, info = info))
+  }
+
+  anchorCandidate <- which(x <= startX)
+  if (length(anchorCandidate) == 0L) {
+    info$reason <- "density_grid_does_not_reach_derivative_threshold"
+    return(list(startX = startX, info = info))
+  }
+
+  anchorIdx <- max(anchorCandidate)
+  dominant <- stim >= dominanceRatio * unstim
+  if (!dominant[anchorIdx]) {
+    info$reason <- "stimulated_density_not_dominant_at_derivative_threshold"
+    info$anchorX <- x[anchorIdx]
+    return(list(startX = startX, info = info))
+  }
+
+  failedBefore <- which(!dominant[seq_len(anchorIdx)])
+  streakStartIdx <- if (length(failedBefore) == 0L) {
+    1L
+  } else {
+    max(failedBefore) + 1L
+  }
+  dominanceStartX <- x[streakStartIdx]
+
+  info$applied <- dominanceStartX < startX
+  info$reason <- if (info$applied) {
+    "extended_reference_through_density_dominance_streak"
+  } else {
+    "density_dominance_did_not_extend_reference"
+  }
+  info$anchorX <- x[anchorIdx]
+  info$dominanceStartX <- dominanceStartX
+  info$nGridPoints <- anchorIdx - streakStartIdx + 1L
+
+  list(startX = dominanceStartX, info = info)
 }
 
 #' Bound the marginal scan by the stimulated peak's descending shoulder
