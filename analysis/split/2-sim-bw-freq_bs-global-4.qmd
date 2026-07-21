@@ -1002,7 +1002,7 @@ if (isTRUE(run_plots)) {
         ) +
         geom_point() +
         scale_x_log10() +
-        facet_grid(transformation ~ prob_response, scales = "free_y") +
+        facet_wrap(transformation ~ prob_response, scales = "free_y") +
         cowplot::theme_cowplot() +
         cowplot::background_grid(major = "xy") +
         theme(
@@ -1022,7 +1022,8 @@ if (isTRUE(run_plots)) {
         ) +
         scale_colour_manual(
           values = col_vec_bw_curr
-        )
+        ) +
+        expand_limits(y = c(0))
 
       path_p <- projr::projr_path_get(
         "cache",
@@ -1343,7 +1344,8 @@ if (isTRUE(run_plots)) {
           values = bw_scale$values,
           breaks = bw_scale$levels,
           labels = bw_scale$levels
-        )
+        ) +
+        expand_limits(y = c(0))
       path_p <- projr::projr_path_get(
         "cache",
         "sim",
