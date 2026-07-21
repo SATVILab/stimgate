@@ -694,6 +694,52 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 }
 ```
 
+
+```{r}
+#| eval: false
+target_sim_id <- 1234L
+target_iter <- 4L
+target_sample <- 3L
+
+i <- match(target_sim_id, sim_grid$sim_id)
+stopifnot(!is.na(i))
+
+row <- sim_grid[i, , drop = FALSE]
+
+row_seed <- furrr:::make_seeds(
+  seed = as.integer(12345L + sim_grid_chunk_index),
+  n = nrow(sim_grid)
+)[[i]]
+
+assign(".Random.seed", row_seed, envir = .GlobalEnv)
+
+sim_res <- stimgate:::.simBandwidthBsFreq(
+  nSample = 5,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  nIter = target_iter,
+  biasUns = row[["bias_uns"]],
+  bw = row[["bw"]],
+  bwMin = "none",
+  bwMax = "none",
+  bwFallback = row[["bw"]],
+  nCellStim = row[["n_cell"]],
+  probResponse = row[["prob_response"]],
+  probExact = TRUE,
+  meanPos = row[["mean_pos"]],
+  transformation = row[["transformation"]],
+  samplePerturbationSd = row[["sample_perturbation_sd"]],
+  conditionPerturbationSd = row[["condition_perturbation_sd"]],
+  clusterPerturbationSd = row[["cluster_perturbation_sd"]],
+  backgroundRelativeToResponse = row[["background_relative_to_response"]],
+  ncellUnsRelativeToStim = row[["n_cell_uns_relative_to_stim"]],
+  covEvMin = 1.5,
+  covEvMax = 1.5,
+  tolClust = NULL
+)
+```
+
 Collate the results and calculate the metrics of interest.
 
 ```{r}
