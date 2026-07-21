@@ -58,11 +58,30 @@
       info = info
     ))
   }
+  thresholdAntimode <- .getCpUnsLocStageThreshold(
+    dataMod,
+    chnlSettings,
+    probCol,
+    stage = "antimode"
+  )
+  thresholdGlobal <- .getCpUnsLocStageThreshold(
+    dataMod,
+    chnlSettings,
+    probCol,
+    stage = "global"
+  )
+  thresholdMarginal <- .getCpUnsLocStageThreshold(
+    dataMod,
+    chnlSettings,
+    probCol,
+    stage = "marginal"
+  )
 
   antimode <- .getCpUnsLocFilterAntimode(
     dataMod = dataMod,
     chnlSettings = chnlSettings,
-    probCol = probCol
+    probCol = probCol,
+    threshold = thresholdAntimode
   )
   dataMod <- antimode$dataMod
   info$antimode <- antimode$info
@@ -82,7 +101,8 @@
   global <- .getCpUnsLocFilterGlobal(
     dataMod = dataMod,
     chnlSettings = chnlSettings,
-    probCol = probCol
+    probCol = probCol,
+    threshold = thresholdGlobal
   )
   dataMod <- global$dataMod
   info$global <- global$info
@@ -103,6 +123,7 @@
     dataMod = dataMod,
     chnlSettings = chnlSettings,
     probCol = probCol,
+    threshold = thresholdMarginal,
     antimodeX = antimode$info$filterX
   )
   dataMod <- marginal$dataMod
@@ -453,13 +474,20 @@
 
 #' Apply the global derivative threshold
 #' @keywords internal
-.getCpUnsLocFilterGlobal <- function(dataMod, chnlSettings, probCol) {
-  threshold <- .getCpUnsLocStageThreshold(
-    dataMod,
-    chnlSettings,
-    probCol,
-    stage = "global"
-  )
+.getCpUnsLocFilterGlobal <- function(
+  dataMod,
+  chnlSettings,
+  probCol,
+  threshold = NULL
+) {
+  if (is.null(threshold)) {
+    threshold <- .getCpUnsLocStageThreshold(
+      dataMod,
+      chnlSettings,
+      probCol,
+      stage = "global"
+    )
+  }
   info <- list(
     applied = FALSE,
     reason = threshold$info$reason,
@@ -493,14 +521,18 @@
   dataMod,
   chnlSettings,
   probCol,
-  antimodeX = NULL
+  antimodeX = NULL,
+  threshold = NULL
 ) {
-  threshold <- .getCpUnsLocStageThreshold(
-    dataMod,
-    chnlSettings,
-    probCol,
-    stage = "marginal"
-  )
+  if (!is.null(threshold)) {
+    threshold <- .getCpUnsLocStageThreshold(
+      dataMod,
+      chnlSettings,
+      probCol,
+      stage = "marginal"
+    )
+  }
+
   if (!is.finite(threshold$thresholdX)) {
     return(list(
       dataMod = dataMod,
@@ -527,7 +559,7 @@
   } else {
     densityLowerBound <- .getCpUnsLocMarginalDensityLowerBound(
       density = attr(dataMod, "locStimDensity"),
-      peakX = attr(dataMod, "locStimPeakX"),
+      peakX = attr(dataMod, "locPeakX"),
       fraction = 1 / 200
     )
 
