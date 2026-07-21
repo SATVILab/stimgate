@@ -295,6 +295,8 @@ if (nrow(sim_grid_all) > 0L) {
   sim_grid <- sim_grid_all
 }
 
+sim_grid_loop <- sim_grid
+
 sim_grid
 print(paste0(
   "Performing ", nrow(sim_grid), " of ", nrow(sim_grid_all),
@@ -310,56 +312,59 @@ A loop we only run when we want to see why particular runs failed.
 #| label: bw-manual-loop
 #| eval: false
 devtools::load_all()
-bw_list_raw <- vector("list", nrow(sim_grid))
+bw_list_raw <- vector("list", nrow(sim_grid_loop))
 
-for (i in seq_len(nrow(sim_grid))) {
-  message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
-  # debug(.verifyBwLimitSetting)
+# sim_grid_loop$n_cell <- 1e3
+# sim_grid_loop$prob_response <- 0.2
+for (i in seq_len(nrow(sim_grid_loop))) {
+  i <- 1
+  set.seed(2109)
+  message(paste0("Running simulation ", i, " of ", nrow(sim_grid_loop)))
   sim_res <- .simBandwidthBsFreq(
-    nSample = 10,
+    nSample = 1e3,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
     nIter = 1,
-    biasUns = sim_grid$bias_uns[i],
-    bw = sim_grid$bw[i],
-    bwFallback = sim_grid$bw[i],
+    biasUns = sim_grid_loop$bias_uns[i],
+    bw = sim_grid_loop$bw[i],
+    bwFallback = sim_grid_loop$bw[i],
     bwMin = "none",
     bwMax = "none",
-    nCellStim = sim_grid$n_cell[i],
-    probResponse = sim_grid$prob_response[i],
+    nCellStim = sim_grid_loop$n_cell[i],
+    probResponse = sim_grid_loop$prob_response[i],
     probExact = TRUE,
-    meanPos = sim_grid$mean_pos[i],
-    transformation = sim_grid$transformation[i],
-    samplePerturbationSd = sim_grid$sample_perturbation_sd[i],
-    conditionPerturbationSd = sim_grid$condition_perturbation_sd[i],
-    clusterPerturbationSd = sim_grid$cluster_perturbation_sd[i],
+    meanPos = sim_grid_loop$mean_pos[i],
+    transformation = sim_grid_loop$transformation[i],
+    samplePerturbationSd = sim_grid_loop$sample_perturbation_sd[i],
+    conditionPerturbationSd = sim_grid_loop$condition_perturbation_sd[i],
+    clusterPerturbationSd = sim_grid_loop$cluster_perturbation_sd[i],
     backgroundRelativeToResponse =
-      sim_grid$background_relative_to_response[i],
+      sim_grid_loop$background_relative_to_response[i],
     ncellUnsRelativeToStim =
-      sim_grid$n_cell_uns_relative_to_stim[i],
+      sim_grid_loop$n_cell_uns_relative_to_stim[i],
     covEvMin = 1.5,
     covEvMax = 1.5,
     tolClust = NULL
   ) |>
     dplyr::mutate(
-      transformation = sim_grid$transformation[i],
-      prob_response = sim_grid$prob_response[i],
-      n_cell = sim_grid$n_cell[i],
-      mean_pos_setting = sim_grid$mean_pos_setting[i],
-      mean_pos = sim_grid$mean_pos[i],
-      bw = sim_grid$bw[i],
-      bias_uns_setting = sim_grid$bias_uns_setting[i],
-      bias_uns = sim_grid$bias_uns[i],
-      sample_perturbation_sd = sim_grid$sample_perturbation_sd[i],
+      transformation = sim_grid_loop$transformation[i],
+      prob_response = sim_grid_loop$prob_response[i],
+      n_cell = sim_grid_loop$n_cell[i],
+      mean_pos_setting = sim_grid_loop$mean_pos_setting[i],
+      mean_pos = sim_grid_loop$mean_pos[i],
+      bw = sim_grid_loop$bw[i],
+      bias_uns_setting = sim_grid_loop$bias_uns_setting[i],
+      bias_uns = sim_grid_loop$bias_uns[i],
+      sample_perturbation_sd = sim_grid_loop$sample_perturbation_sd[i],
       condition_perturbation_sd =
-        sim_grid$condition_perturbation_sd[i],
-      cluster_perturbation_sd = sim_grid$cluster_perturbation_sd[i],
+        sim_grid_loop$condition_perturbation_sd[i],
+      cluster_perturbation_sd = sim_grid_loop$cluster_perturbation_sd[i],
       background_relative_to_response =
-        sim_grid$background_relative_to_response[i],
+        sim_grid_loop$background_relative_to_response[i],
       n_cell_uns_relative_to_stim =
-        sim_grid$n_cell_uns_relative_to_stim[i],
-      sim_id = sim_grid$sim_id[i]
+        sim_grid_loop$n_cell_uns_relative_to_stim[i],
+      sim_id = sim_grid_loop$sim_id[i]
     ) |>
     dplyr::select(
       transformation, prob_response, n_cell,
@@ -369,8 +374,12 @@ for (i in seq_len(nrow(sim_grid))) {
       n_cell_uns_relative_to_stim, sim_id,
       dplyr::everything()
     )
+  if (max(sim_res$propStim, na.rm = TRUE) > 0.3) {
+    print(paste0("j: ", j))
+    stop()
+  }
 
-  bw_list_raw[[i]] <- sim_res
+  # bw_list_raw[[i]] <- sim_res
 }
 ```
 
@@ -450,6 +459,9 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
   total_sims <- nrow(sim_grid)
 
+  # Define base integer seed (reproducible seed control)
+  sim_seed <- 12345 + as.integer(sim_grid_chunk_index)
+
   bw_list_raw <- progressr::with_progress({
     p <- progressr::progressor(steps = total_sims)
 
@@ -471,24 +483,6 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
         n_cell_uns_relative_to_stim,
         sim_id
       ) {
-        settings_row <- paste0(
-          "trans = ", transformation,
-          " | prob = ", prob_response,
-          " | n_cell = ", n_cell,
-          " | mean = ", mean_pos,
-          " | bw = ", bw,
-          " | bias_setting = ", bias_uns_setting,
-          " | bias = ", bias_uns,
-          " | sample_sd = ", sample_perturbation_sd,
-          " | condition_sd = ", condition_perturbation_sd,
-          " | cluster_sd = ", cluster_perturbation_sd,
-          " | bg_rel = ", background_relative_to_response,
-          " | n_uns_rel = ", n_cell_uns_relative_to_stim,
-          " | sim_id = ", sim_id,
-          " | chunk = ", sim_grid_chunk_index,
-          " of ", sim_grid_n_chunks
-        )
-
         file_running <- file.path(dir_jobs_chunk, paste0("running-", sim_id))
         file_completed <- file.path(dir_jobs_chunk, paste0("completed-", sim_id))
         file_error <- file.path(dir_jobs_chunk, paste0("error-", sim_id))
@@ -505,43 +499,45 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
           return(existing_output)
         }
 
+        # Safe progress text update (suppress concurrent file lock conflicts)
         update_progress_summary <- function() {
-          all_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
+          tryCatch({
+            all_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
 
-          n_running <- sum(grepl("^running-", all_job_files))
-          n_completed <- sum(grepl("^completed-", all_job_files))
-          n_error <- sum(grepl("^error-", all_job_files))
-          n_done <- n_completed + n_error
+            n_running <- sum(grepl("^running-", all_job_files))
+            n_completed <- sum(grepl("^completed-", all_job_files))
+            n_error <- sum(grepl("^error-", all_job_files))
+            n_done <- n_completed + n_error
 
-          running_files <- all_job_files[grepl("^running-", all_job_files)]
-          running_ids <- sub("^running-", "", running_files)
-          running_list_str <- if (length(running_ids) > 0) {
-            paste(running_ids, collapse = ", ")
-          } else {
-            "None"
-          }
+            running_files <- all_job_files[grepl("^running-", all_job_files)]
+            running_ids <- sub("^running-", "", running_files)
+            running_list_str <- if (length(running_ids) > 0) {
+              paste(running_ids, collapse = ", ")
+            } else {
+              "None"
+            }
 
-          summary_text <- paste0(
-            "========================================\n",
-            " GLOBAL FREQUENCY PROGRESS DASHBOARD    \n",
-            "========================================\n",
-            "Chunk              : ", sim_grid_chunk_index, " of ", sim_grid_n_chunks, "\n",
-            "Total Simulations  : ", total_sims, "\n",
-            "In Progress        : ", n_running, "\n",
-            "Completed (Success): ", n_completed, "\n",
-            "Completed (Errors) : ", n_error, "\n",
-            "Total Done          : ", n_done, "\n",
-            "Output directory   : ", dir_output, "\n",
-            "----------------------------------------\n",
-            "Currently Running IDs:\n", running_list_str, "\n",
-            "========================================\n"
-          )
+            summary_text <- paste0(
+              "========================================\n",
+              " GLOBAL FREQUENCY PROGRESS DASHBOARD    \n",
+              "========================================\n",
+              "Chunk              : ", sim_grid_chunk_index, " of ", sim_grid_n_chunks, "\n",
+              "Total Simulations  : ", total_sims, "\n",
+              "In Progress        : ", n_running, "\n",
+              "Completed (Success): ", n_completed, "\n",
+              "Completed (Errors) : ", n_error, "\n",
+              "Total Done         : ", n_done, "\n",
+              "Output directory   : ", dir_output, "\n",
+              "----------------------------------------\n",
+              "Currently Running IDs:\n", running_list_str, "\n",
+              "========================================\n"
+            )
 
-          cat(summary_text, file = path_progress_file, append = FALSE)
+            cat(summary_text, file = path_progress_file, append = FALSE)
+          }, error = function(e) NULL) # Silently handle file conflicts on write
         }
 
         file.create(file_running)
-        update_progress_summary()
 
         out <- tryCatch(
           {
@@ -582,10 +578,8 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
                 sample_perturbation_sd = sample_perturbation_sd,
                 condition_perturbation_sd = condition_perturbation_sd,
                 cluster_perturbation_sd = cluster_perturbation_sd,
-                background_relative_to_response =
-                  background_relative_to_response,
-                n_cell_uns_relative_to_stim =
-                  n_cell_uns_relative_to_stim,
+                background_relative_to_response = background_relative_to_response,
+                n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim,
                 sim_id = sim_id,
                 sim_grid_chunk_index = sim_grid_chunk_index,
                 sim_grid_n_chunks = sim_grid_n_chunks,
@@ -637,10 +631,8 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
               sample_perturbation_sd = sample_perturbation_sd,
               condition_perturbation_sd = condition_perturbation_sd,
               cluster_perturbation_sd = cluster_perturbation_sd,
-              background_relative_to_response =
-                background_relative_to_response,
-              n_cell_uns_relative_to_stim =
-                n_cell_uns_relative_to_stim,
+              background_relative_to_response = background_relative_to_response,
+              n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim,
               sim_id = sim_id,
               sim_grid_chunk_index = sim_grid_chunk_index,
               sim_grid_n_chunks = sim_grid_n_chunks,
@@ -677,7 +669,8 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
         out
       },
-      .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+      # Explicit integer seed guarantees strict L'Ecuyer reproducibility
+      .options = furrr::furrr_options(seed = sim_seed, scheduling = Inf)
     )
   })
 
@@ -1171,9 +1164,25 @@ if (isTRUE(run_plots)) {
 
 ```{r}
 if (isTRUE(run_plots)) {
-  make_bw_linetype_scale <- function(bw_vec, digits = 2) {
+  make_bw_linetype_scale <- function(bw_vec, digits = "auto") {
     bw_num <- sort(unique(as.numeric(bw_vec)))
-    bw_lab <- formatC(bw_num, format = "f", digits = digits)
+    if (digits == "auto") {
+      for (i in seq_len(10)) {
+        bw_lab <- formatC(bw_num, format = "f", digits = i)
+        if (length(unique(bw_lab)) == length(bw_num)) {
+          break
+        }
+      }
+    } else {
+      bw_lab <- formatC(bw_num, format = "f", digits = digits)
+      if (length(unique(bw_lab)) != length(bw_num)) {
+        stop(
+          "Bandwidth labels are not unique with digits = ", digits,
+          ". Consider using digits = 'auto'."
+        )
+      }
+    }
+    
 
     n_bw <- length(bw_num)
 
@@ -1276,10 +1285,11 @@ if (isTRUE(run_plots)) {
 
       bw_scale <- make_bw_linetype_scale(threshold_tbl_curr$bw)
 
+
       threshold_tbl_curr <- threshold_tbl_curr |>
         dplyr::mutate(
           bw_lab = factor(
-            formatC(as.numeric(.data$bw), format = "f", digits = 2),
+            formatC(as.numeric(.data$bw), format = "f"),
             levels = bw_scale$levels
           )
         )
@@ -1361,7 +1371,6 @@ if (isTRUE(run_plots)) {
           bias_uns_setting_curr,
           ".png")
       )
-      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
       ggsave(
         filename = path_p,
         plot = p,
@@ -1486,7 +1495,7 @@ if (isTRUE(run_plots)) {
           labs(
             title = paste0(
               "Raw thresholds (mean_pos_setting = ", mean_pos_setting,
-              ", bw = ", formatC(bw_curr, format = "f", digits = 2),
+              ", bw = ", signif(bw_curr, 6),
               ", bias_uns_setting = ", bias_uns_setting_curr, ")"
             ),
             x = "Marker expression",
@@ -1523,12 +1532,12 @@ if (isTRUE(run_plots)) {
           "thresholds",
           "raw",
           paste0("bias_uns_", bias_uns_setting_curr),
-          formatC(bw_curr, format = "f", digits = 2),
+          signif(bw_curr),
           paste0(
             "threshold_vs_n_cell_mean_pos_setting_bw_",
             mean_pos_setting,
             "_bw_",
-            formatC(bw_curr, format = "f", digits = 2),
+            signif(bw_curr),
             "_bias_uns_",
             bias_uns_setting_curr,
             ".png"

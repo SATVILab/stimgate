@@ -27,6 +27,7 @@ analysis/*png
 analysis/**/*png
 analysis/**/*pdf
 analysis/*pdf
+analysis/split/*.qmd
 
 # pkgdown local build output
 docs/
