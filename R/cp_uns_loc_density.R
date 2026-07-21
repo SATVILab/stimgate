@@ -764,6 +764,12 @@
         x = suppressWarnings(as.numeric(.data$xStim)),
         y = suppressWarnings(as.numeric(.data$dens))
       ),
+    densityComparison = probTbl |>
+      dplyr::transmute(
+        x = suppressWarnings(as.numeric(.data$xStim)),
+        stim = suppressWarnings(as.numeric(.data$yes)),
+        unstim = suppressWarnings(as.numeric(.data$no))
+      ),
     peakX = max(
       suppressWarnings(
         c(as.numeric(peakStimX)[1L], as.numeric(peakUnsX)[1L])
@@ -1005,6 +1011,7 @@
   # Retain the original stimulated density and its already identified
   # left-main peak for the post-smoothing marginal-density safeguard.
   attr(dataMod, "locStimDensity") <- probTblList$stimDensity
+  attr(dataMod, "locDensityComparison") <- probTblList$densityComparison
   attr(dataMod, "locPeakX") <- probTblList$peakX
 
   .thinDataMod(dataMod, maxCellsPerBin = 20)

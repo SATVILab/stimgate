@@ -60,7 +60,7 @@
     stage,
     antimode = c(alpha = 2 / 3, omega = 0.15, psi = -0.2),
     global = c(alpha = 0.05, omega = 0.15, psi = 0.2),
-    marginal = c(alpha = 0.50, omega = 0.15, psi = -1 / 3)
+    marginal = c(alpha = 0.50, omega = 0.15, psi = -0.2)
   )
 
   alpha <- .getCpUnsLocFirstSetting(
@@ -167,6 +167,7 @@
     "locProbSmoothMethod",
     "locDensityBw",
     "locStimDensity",
+    "locDensityComparison",
     "locPeakX"
   )
   values <- stats::setNames(
@@ -304,14 +305,43 @@
   }
   peakIndex <- runStart[peakRun]
 
-  # Retain the established fallback when the derivative has no internal peak.
+  # Retain the global-maximum fallback only when the maximum has an
+  # observed, meaningful rising flank to its left.
   usedGlobalFallback <- length(peakIndex) == 0L
   if (usedGlobalFallback) {
     peakIndex <- which.max(peakData$deriv)
   }
 
+  leftRiseFrac <- 0.5
+  hasMeaningfulLeftRise <- vapply(
+    peakIndex,
+    function(i) {
+      i > 1L &&
+        any(
+          peakData$deriv[seq_len(i - 1L)] <= leftRiseFrac * peakData$deriv[i]
+        )
+    },
+    logical(1L)
+  )
+
+  peakIndex <- peakIndex[hasMeaningfulLeftRise]
+
+  info$leftRiseFrac <- leftRiseFrac
+  info$usedGlobalMaximumFallback <- usedGlobalFallback
+
+  if (length(peakIndex) == 0L) {
+    info$reason <- "no_derivative_peak_with_meaningful_left_rise"
+    return(list(
+      index = NA_integer_,
+      data = peakData,
+      info = info
+    ))
+  }
+
   maxPeak <- max(peakData$deriv[peakIndex], na.rm = TRUE)
-  eligible <- peakIndex[peakData$deriv[peakIndex] >= alpha * maxPeak]
+  eligible <- peakIndex[
+    peakData$deriv[peakIndex] >= alpha * maxPeak
+  ]
 
   info$alpha <- alpha
   info$peakMinRel <- alpha
@@ -354,7 +384,8 @@
   alpha,
   omega,
   psi,
-  thresholdProbMin = 0
+  thresholdProbMin = 0,
+  capRightWidth = FALSE
 ) {
   peak <- .getCpUnsLocDerivPeak(x, prob, deriv, alpha)
   info <- peak$info
@@ -420,6 +451,25 @@
     iThreshold <- min(candidate)
   }
 
+  info$rightFractionThresholdIdx <- iThreshold
+  info$rightFractionThresholdX <- peak$data$x[iThreshold]
+  info$rightWidthCapApplied <- FALSE
+
+  if (isTRUE(capRightWidth) && psi < 0 && peak$data$prob[iPeak] >= omega) {
+    widthCap <- .getCpUnsLocDerivRightWidthCap(
+      peakData = peak$data,
+      iPeak = iPeak,
+      rightFrac = abs(psi)
+    )
+    info$rightWidthCap <- widthCap$info
+
+    if (is.finite(widthCap$index) && widthCap$index < iThreshold) {
+      iThreshold <- widthCap$index
+      info$rightWidthCapApplied <- TRUE
+      info$thresholdBasis <- "minimum_of_right_fraction_and_width_cap"
+    }
+  }
+
   info$thresholdIdxCandidate <- iThreshold
   info$thresholdXCandidate <- peak$data$x[iThreshold]
   info$thresholdProbCandidate <- peak$data$prob[iThreshold]
@@ -452,6 +502,91 @@
   list(thresholdX = thresholdX, info = info)
 }
 
+#' Cap a right-side derivative threshold using the selected peak's left width
+#'
+#' The left width is measured at half height. The multiplier is chosen so that
+#' a Gaussian-shaped peak reaches `rightFrac` at the same standardised distance.
+#' @keywords internal
+.getCpUnsLocDerivRightWidthCap <- function(
+  peakData,
+  iPeak,
+  rightFrac,
+  leftFrac = 0.5
+) {
+  info <- list(
+    reason = "right_width_cap_undefined",
+    rightFrac = rightFrac,
+    leftFrac = leftFrac
+  )
+
+  if (
+    !is.data.frame(peakData) ||
+      !all(c("x", "deriv") %in% names(peakData)) ||
+      !is.finite(iPeak) ||
+      iPeak < 2L ||
+      iPeak > nrow(peakData) ||
+      !is.finite(rightFrac) ||
+      rightFrac <= 0 ||
+      rightFrac >= 1 ||
+      !is.finite(leftFrac) ||
+      leftFrac <= 0 ||
+      leftFrac >= 1
+  ) {
+    return(list(index = NA_integer_, info = info))
+  }
+
+  peakHeight <- peakData$deriv[iPeak]
+  leftHeight <- leftFrac * peakHeight
+  leftOfPeak <- seq_len(iPeak - 1L)
+  below <- leftOfPeak[peakData$deriv[leftOfPeak] < leftHeight]
+  if (length(below) == 0L) {
+    info$reason <- "left_half_height_crossing_unavailable"
+    return(list(index = NA_integer_, info = info))
+  }
+
+  iLeft <- max(below)
+  iRight <- iLeft + 1L
+  derivChange <- peakData$deriv[iRight] - peakData$deriv[iLeft]
+  leftX <- if (!is.finite(derivChange) || derivChange == 0) {
+    peakData$x[iRight]
+  } else {
+    peakData$x[iLeft] +
+      (leftHeight - peakData$deriv[iLeft]) *
+        (peakData$x[iRight] - peakData$x[iLeft]) /
+        derivChange
+  }
+
+  peakX <- peakData$x[iPeak]
+  leftWidth <- peakX - leftX
+  widthRatio <- sqrt(log(1 / rightFrac) / log(1 / leftFrac))
+  widthCapX <- peakX + widthRatio * leftWidth
+  rightOfPeak <- seq.int(iPeak, nrow(peakData))
+  capIndex <- rightOfPeak[
+    which.min(abs(peakData$x[rightOfPeak] - widthCapX))
+  ]
+
+  if (
+    !is.finite(leftX) ||
+      !is.finite(leftWidth) ||
+      leftWidth <= 0 ||
+      !is.finite(widthRatio) ||
+      !is.finite(widthCapX) ||
+      length(capIndex) == 0L
+  ) {
+    info$reason <- "invalid_right_width_cap"
+    return(list(index = NA_integer_, info = info))
+  }
+
+  info$reason <- "identified_gaussian_matched_right_width_cap"
+  info$leftX <- leftX
+  info$leftWidth <- leftWidth
+  info$widthRatio <- widthRatio
+  info$widthCapX <- widthCapX
+  info$widthCapGridX <- peakData$x[capIndex]
+
+  list(index = capIndex, info = info)
+}
+
 #' Obtain a stage-specific derivative threshold from model data
 #' @keywords internal
 .getCpUnsLocStageThreshold <- function(
@@ -480,7 +615,8 @@
     alpha = params$alpha,
     omega = params$omega,
     psi = params$psi,
-    thresholdProbMin = .getCpUnsLocThresholdProbMin(chnlSettings, stage)
+    thresholdProbMin = .getCpUnsLocThresholdProbMin(chnlSettings, stage),
+    capRightWidth = identical(stage, "marginal")
   )
   out$info$stage <- stage
   out$info$params <- params
