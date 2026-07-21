@@ -30,10 +30,16 @@
 
 #' Validate a value constrained to the unit interval
 #' @keywords internal
-.getCpUnsLocUnitValue <- function(value, default, allowZero = FALSE) {
+.getCpUnsLocUnitValue <- function(
+  value,
+  default,
+  allowZero = FALSE,
+  allowNeg = FALSE
+) {
   value <- suppressWarnings(as.numeric(value)[1])
-  lowerOk <- if (isTRUE(allowZero)) value >= 0 else value > 0
-  if (!is.finite(value) || !lowerOk || value > 1) {
+  zeroOk <- if (isTRUE(allowZero)) TRUE else value != 0
+  negOk <- if (isTRUE(allowNeg)) TRUE else value >= 0
+  if (!is.finite(value) || !zeroOk || !negOk || abs(value) > 1) {
     default
   } else {
     value
@@ -52,9 +58,9 @@
   )
   defaults <- switch(
     stage,
-    antimode = c(alpha = 2 / 3, omega = 0.15, psi = -0.1),
+    antimode = c(alpha = 2 / 3, omega = 0.15, psi = -0.2),
     global = c(alpha = 0.05, omega = 0.15, psi = 0.2),
-    marginal = c(alpha = 0.50, omega = 0.15, psi = -0.1)
+    marginal = c(alpha = 0.50, omega = 0.15, psi = -1 / 3)
   )
 
   alpha <- .getCpUnsLocFirstSetting(
@@ -94,7 +100,7 @@
       defaults[["omega"]],
       allowZero = TRUE
     ),
-    psi = .getCpUnsLocUnitValue(psi, defaults[["psi"]])
+    psi = .getCpUnsLocUnitValue(psi, defaults[["psi"]], allowNeg = TRUE)
   )
 }
 
@@ -161,7 +167,7 @@
     "locProbSmoothMethod",
     "locDensityBw",
     "locStimDensity",
-    "locStimPeakX"
+    "locPeakX"
   )
   values <- stats::setNames(
     lapply(attrs, function(name) attr(dataMod, name)),
@@ -357,7 +363,7 @@
   }
 
   omega <- .getCpUnsLocUnitValue(omega, 0.15, allowZero = TRUE)
-  psi <- .getCpUnsLocUnitValue(psi, 0.75)
+  psi <- .getCpUnsLocUnitValue(psi, 0.75, allowNeg = TRUE)
   thresholdProbMin <- .getCpUnsLocUnitValue(
     thresholdProbMin,
     0,

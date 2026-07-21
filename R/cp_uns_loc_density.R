@@ -764,7 +764,12 @@
         x = suppressWarnings(as.numeric(.data$xStim)),
         y = suppressWarnings(as.numeric(.data$dens))
       ),
-    stimPeakX = suppressWarnings(as.numeric(peakStimX)[1L])
+    peakX = max(
+      suppressWarnings(
+        c(as.numeric(peakStimX)[1L], as.numeric(peakUnsX)[1L])
+      ),
+      na.rm = TRUE
+    )
   )
 }
 
@@ -1000,7 +1005,7 @@
   # Retain the original stimulated density and its already identified
   # left-main peak for the post-smoothing marginal-density safeguard.
   attr(dataMod, "locStimDensity") <- probTblList$stimDensity
-  attr(dataMod, "locStimPeakX") <- probTblList$stimPeakX
+  attr(dataMod, "locPeakX") <- probTblList$peakX
 
   .thinDataMod(dataMod, maxCellsPerBin = 20)
 }
