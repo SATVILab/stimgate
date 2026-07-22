@@ -76,6 +76,24 @@
     probCol,
     stage = "marginal"
   )
+  if (
+    .getCpUnsLocFilterAfterSmoothingExitEarlyNoIncrease(
+      thresholdAntimode,
+      thresholdMarginal
+    )
+  ) {
+    info$applied <- TRUE
+    info$reason <- "no_filtering_thresholds_defined"
+    return(list(
+      dataMod = dataMod,
+      cp = .getCpUnsLocConditionCpNonLoc(
+        cpMin = cpMin,
+        exTblStimNoMin = exTblStimNoMin,
+        exTblUnsBias = exTblUnsBias
+      ),
+      info = info
+    ))
+  }
 
   antimode <- .getCpUnsLocFilterAntimode(
     dataMod = dataMod,
@@ -564,15 +582,36 @@
     )
 
     dLb <- suppressWarnings(as.numeric(densityLowerBound$lowerBoundX)[1L])
-    tX <- threshold$thresholdX
+    windowWidth <- attr(dataMod, "locWindowWidth")
 
-    if (is.finite(dLb) && is.finite(tX) && dLb < tX) {
-      adjustedLb <- dLb + 0.25 * (tX - dLb)
+    if (is.finite(dLb) && is.finite(windowWidth)) {
+      adjustedLb <- dLb + 1 / 4 * windowWidth
 
       densityLowerBound$lowerBoundX <- adjustedLb
       densityLowerBound$info$lowerBoundXRaw <- dLb
       densityLowerBound$info$lowerBoundX <- adjustedLb
       densityLowerBound$info$adjustmentFraction <- 0.25
+      densityLowerBound$info$adjustmMethod <- "window_width"
+    } else if (is.finite(dLb)) {
+      adjustedLb <- dLb + 1 / 8 * sd(.getCut(dataMod), na.rm = TRUE)
+
+      densityLowerBound$lowerBoundX <- adjustedLb
+      densityLowerBound$info$lowerBoundXRaw <- dLb
+      densityLowerBound$info$lowerBoundX <- adjustedLb
+      densityLowerBound$info$adjustmentFraction <- 1 / 8
+      densityLowerBound$info$adjustmMethod <- "sd_data_mod"
+    } else {
+      return(list(
+        dataMod = dataMod,
+        info = list(
+          applied = FALSE,
+          reason = "marginal_density_lower_bound_undefined",
+          thresholdX = threshold$thresholdX,
+          derivativeThreshold = threshold$info,
+          densityLowerBoundX = NA_real_,
+          densityLowerBound = densityLowerBound$info
+        )
+      ))
     }
   }
 
@@ -1074,4 +1113,12 @@
     shift = shift,
     spacing = spacing
   )
+}
+
+.getCpUnsLocFilterAfterSmoothingExitEarlyNoIncrease <- function(
+  thresholdAntimode,
+  thresholdMarginal
+) {
+  !is.finite(thresholdAntimode$thresholdX) &&
+    !is.finite(thresholdMarginal$thresholdX)
 }

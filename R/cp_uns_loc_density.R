@@ -745,7 +745,7 @@
   peakStimX <- densTblStim$xStim[peakStimIdx]
   peakUnsX <- densTblUns$xStim[peakUnsIdx]
 
-  probTblPos <- .getCpUnsLocProbTblFilter(
+  probTblPosList <- .getCpUnsLocProbTblFilter(
     densTbl = densTblRaw,
     probTbl = probTbl,
     exVecStim = exVecStimThreshold,
@@ -757,7 +757,7 @@
 
   list(
     all = probTbl,
-    pos = probTblPos,
+    pos = probTblPosList[["probTbl"]],
     densityBw = attr(densTblRaw, "locDensityBw"),
     stimDensity = densTblStim |>
       dplyr::transmute(
@@ -770,12 +770,8 @@
         stim = suppressWarnings(as.numeric(.data$yes)),
         unstim = suppressWarnings(as.numeric(.data$no))
       ),
-    peakX = max(
-      suppressWarnings(
-        c(as.numeric(peakStimX)[1L], as.numeric(peakUnsX)[1L])
-      ),
-      na.rm = TRUE
-    )
+    peakX = probTblPosList[["peakX"]],
+    windowWidth = probTblPosList[["windowWidth"]]
   )
 }
 
@@ -876,19 +872,25 @@
   }
   peakX <- max(peakStimX, peakUnsX)
 
-  windowWidthStim <- 1 /
-    3 *
-    abs(diff(quantile(exVecStim[exVecStim < peakStimX], c(0.05, 1))))
-  windowWidthUns <- 1 /
-    3 *
-    abs(diff(quantile(exVecUns[exVecUns < peakUnsX], c(0.05, 1))))
+  windowWidthStim <- abs(diff(quantile(
+    exVecStim[exVecStim < peakStimX],
+    c(0.05, 1)
+  )))
+  windowWidthUns <- abs(diff(quantile(
+    exVecUns[exVecUns < peakUnsX],
+    c(0.05, 1)
+  )))
   windowWidth <- max(windowWidthStim, windowWidthUns, na.rm = TRUE)
 
   probTbl <- probTbl |>
-    dplyr::filter(xStim > peakX + windowWidth) # nolint
+    dplyr::filter(xStim > peakX + windowWidth / 3) # nolint
 
   if (nrow(probTbl) <= 5L) {
-    return(probTbl)
+    return(list(
+      "probTbl" = probTbl,
+      "windowWidth" = windowWidth,
+      "peakX" = peakX
+    ))
   }
 
   # Find the threshold index
@@ -912,13 +914,18 @@
     which.min()
 
   # Slice the table from that first valid point all the way to the end
-  if (length(valid_idx) > 0) {
+  probTbl <- if (length(valid_idx) > 0) {
     probTbl |>
       dplyr::arrange(xStim) |>
       dplyr::slice(valid_idx:dplyr::n())
   } else {
     probTbl |> dplyr::slice(0) # Empty if nothing matches
   }
+  list(
+    "probTbl" = probTbl,
+    "windowWidth" = windowWidth,
+    "peakX" = peakX
+  )
 }
 
 #' @keywords internal
@@ -1013,6 +1020,7 @@
   attr(dataMod, "locStimDensity") <- probTblList$stimDensity
   attr(dataMod, "locDensityComparison") <- probTblList$densityComparison
   attr(dataMod, "locPeakX") <- probTblList$peakX
+  attr(dataMod, "locWindowWidth") <- probTblList$windowWidth
 
   .thinDataMod(dataMod, maxCellsPerBin = 20)
 }
