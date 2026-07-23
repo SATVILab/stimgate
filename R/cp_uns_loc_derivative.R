@@ -168,7 +168,8 @@
     "locDensityBw",
     "locStimDensity",
     "locDensityComparison",
-    "locPeakX"
+    "locPeakX",
+    "locWindowWidth"
   )
   values <- stats::setNames(
     lapply(attrs, function(name) attr(dataMod, name)),

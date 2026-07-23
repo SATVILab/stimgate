@@ -11,7 +11,17 @@
   chnlSettings = list()
 ) {
   stageChnl <- file.path(stage, chnl)
-  densityBw <- attr(dataMod, "locDensityBw")
+  retainedAttrs <- c(
+    "locDensityBw",
+    "locStimDensity",
+    "locDensityComparison",
+    "locPeakX",
+    "locWindowWidth"
+  )
+  retainedValues <- stats::setNames(
+    lapply(retainedAttrs, function(name) attr(dataMod, name)),
+    retainedAttrs
+  )
 
   if (!.getCpUnsLocGetProbSmoothCheckNCell(dataMod)) {
     .intSaveNm(
@@ -22,7 +32,11 @@
       pathProject
     )
     dataModOut <- .getCpUnsLocGetProbSmoothCheckNCellOut(dataMod)
-    attr(dataModOut, "locDensityBw") <- densityBw
+    for (name in retainedAttrs) {
+      if (!is.null(retainedValues[[name]])) {
+        attr(dataModOut, name) <- retainedValues[[name]]
+      }
+    }
     .intSaveNm(
       "probSmoothOut",
       dataModOut,
@@ -44,7 +58,11 @@
     dataMod = dataModOut,
     smoothObj = smoothObj
   )
-  attr(dataModOut, "locDensityBw") <- densityBw
+  for (name in retainedAttrs) {
+    if (!is.null(retainedValues[[name]])) {
+      attr(dataModOut, name) <- retainedValues[[name]]
+    }
+  }
   .intSaveNm(
     "probSmoothOut",
     dataModOut,
