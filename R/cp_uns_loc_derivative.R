@@ -313,7 +313,7 @@
     peakIndex <- which.max(peakData$deriv)
   }
 
-  leftRiseFrac <- 0.5
+  leftRiseFrac <- 0.15
   hasMeaningfulLeftRise <- vapply(
     peakIndex,
     function(i) {
