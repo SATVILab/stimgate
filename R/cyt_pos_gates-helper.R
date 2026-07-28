@@ -12,244 +12,242 @@
   incVec
 }
 
+#' Get the safe lower boundary from the full stimulated marginal distribution
+#'
+#' The left/main modal-complex peak is identified in the same way as in the
+#' initial one-marker procedure. `windowWidth` is the span from the 5th
+#' percentile of values below that peak to the peak itself. Cytokine-positive
+#' refinement is not allowed at or below `peakX + windowWidth / 3`.
+#'
 #' @keywords internal
-.getCpNeg <- function(
-  ex,
-  inc,
-  chnl,
-  bwMin,
-  minCell = 1e3,
-  maxPeakRatio = 1e3
-) {
-  # get cytokine-negative cells
-  exNeg <- ex[!inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
+.getCytPosMarginalReference <- function(ex, chnl, bwMin = NA_real_) {
+  out <- list(
+    peakX = NA_real_,
+    windowWidth = NA_real_,
+    lowerX = NA_real_,
+    densityBw = NA_real_,
+    reason = "marginal_reference_unavailable"
+  )
 
-  # if too few, then return
-  if (length(exNeg) <= minCell) {
-    return(NA)
+  x <- suppressWarnings(as.numeric(ex[[chnl]]))
+  x <- x[is.finite(x)]
+  if (length(x) > 0L) {
+    x <- x[x > min(x)]
+  }
+  if (length(x) < 5L || length(unique(x)) < 3L) {
+    out$reason <- "too_few_marginal_values"
+    return(out)
   }
 
-  # calculate density
-  densNeg <- density(exNeg, bw = "SJ")
-  if (densNeg$bw < bwMin) {
-    densNeg <- density(exNeg, bw = bwMin)
+  dens <- try(
+    suppressWarnings(stats::density(x, bw = "SJ")),
+    silent = TRUE
+  )
+  if (inherits(dens, "try-error")) {
+    out$reason <- "marginal_density_failed"
+    return(out)
   }
 
-  # calculate mode furthest to the right
-  densLen <- length(densNeg$x)
+  bwMin <- suppressWarnings(as.numeric(bwMin))[1L]
+  if (
+    is.finite(bwMin) &&
+      bwMin > 0 &&
+      is.finite(dens$bw) &&
+      dens$bw < bwMin
+  ) {
+    dens <- try(
+      suppressWarnings(stats::density(x, bw = bwMin)),
+      silent = TRUE
+    )
+    if (inherits(dens, "try-error")) {
+      out$reason <- "marginal_density_failed"
+      return(out)
+    }
+  }
 
-  modeIndVec <- (2:(densLen - 1))[
-    (densNeg$y[-1] > densNeg$y[-densLen])[-(densLen - 1)] &
-      (densNeg$y[-densLen] > densNeg$y[-1])[-1]
-  ]
-  modeVec <- densNeg$x[modeIndVec]
-  modeVecY <- densNeg$y[modeIndVec]
-  modeIndVec <- modeIndVec[modeVecY > 0.01 * max(modeVecY)]
-  modeVec <- densNeg$x[modeIndVec]
+  peakIdx <- .getPeakMainLeftIdx(dens$y)
+  if (length(peakIdx) != 1L || !is.finite(peakIdx)) {
+    out$reason <- "marginal_peak_unavailable"
+    return(out)
+  }
+  peakX <- suppressWarnings(as.numeric(dens$x[peakIdx]))[1L]
+  xLeft <- x[x < peakX]
+  if (length(xLeft) < 2L || !is.finite(peakX)) {
+    out$reason <- "marginal_left_region_unavailable"
+    return(out)
+  }
 
-  # get all points that are to the
-  # right of the right-most mode that
-  # also are much smaller than peak
-  lowNegDensPtsVec <- densNeg$x[
-    densNeg$y < max(densNeg$y) / maxPeakRatio &
-      densNeg$x >= max(modeVec)
-  ]
+  windowWidth <- abs(diff(stats::quantile(
+    xLeft,
+    probs = c(0.05, 1),
+    na.rm = TRUE,
+    names = FALSE
+  )))
+  windowWidth <- suppressWarnings(as.numeric(windowWidth))[1L]
+  if (!is.finite(windowWidth) || windowWidth <= 0) {
+    out$reason <- "marginal_window_width_unavailable"
+    return(out)
+  }
 
-  # return NA if no such no low neg dens points found, other return left-most such point
-  ifelse(length(lowNegDensPtsVec) == 0, NA, min(lowNegDensPtsVec))
+  out$peakX <- peakX
+  out$windowWidth <- windowWidth
+  out$lowerX <- peakX + windowWidth / 3
+  out$densityBw <- suppressWarnings(as.numeric(dens$bw))[1L]
+  out$reason <- "marginal_reference_available"
+  out
 }
 
-
+#' Fit a taut-string density to cells positive for another cytokine
+#'
 #' @keywords internal
-.getCpPos <- function(
+.getCytPosTautStringDensity <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  x <- sort(x[is.finite(x)])
+  if (length(x) < 5L || length(unique(x)) < 3L) {
+    return(NULL)
+  }
+
+  fit <- try(
+    suppressWarnings(ftnonpar::pmden(x, verbose = FALSE)),
+    silent = TRUE
+  )
+  if (inherits(fit, "try-error")) {
+    return(NULL)
+  }
+
+  y <- suppressWarnings(as.numeric(fit$y))
+  xMid <- (x[-1L] + x[-length(x)]) / 2
+  if (
+    length(xMid) != length(y) ||
+      length(y) < 3L ||
+      all(!is.finite(y))
+  ) {
+    return(NULL)
+  }
+
+  list(x = xMid, y = y, fit = fit)
+}
+
+#' Locate internal troughs in a piecewise-constant taut-string density
+#'
+#' Flat troughs are represented by the midpoint of the complete flat interval.
+#' Boundary runs are never treated as antimodes.
+#'
+#' @keywords internal
+.getCytPosTautStringAntimodes <- function(density) {
+  if (is.null(density)) {
+    return(numeric(0L))
+  }
+  x <- suppressWarnings(as.numeric(density$x))
+  y <- suppressWarnings(as.numeric(density$y))
+  finite <- is.finite(x) & is.finite(y)
+  x <- x[finite]
+  y <- y[finite]
+  if (length(x) != length(y) || length(y) < 3L) {
+    return(numeric(0L))
+  }
+
+  runId <- cumsum(c(
+    TRUE,
+    !dplyr::near(y[-1L], y[-length(y)])
+  ))
+  runs <- split(seq_along(y), runId)
+  runY <- vapply(runs, function(i) y[i[[1L]]], numeric(1L))
+  if (length(runY) < 3L) {
+    return(numeric(0L))
+  }
+
+  runLeft <- vapply(runs, function(i) min(x[i]), numeric(1L))
+  runRight <- vapply(runs, function(i) max(x[i]), numeric(1L))
+  internal <- seq.int(2L, length(runY) - 1L)
+  minima <- internal[
+    runY[internal] < runY[internal - 1L] &
+      runY[internal] < runY[internal + 1L]
+  ]
+  sort(unique((runLeft[minima] + runRight[minima]) / 2))
+}
+
+#' Select a cytokine-positive refinement threshold from a taut-string density
+#'
+#' The leftmost internal antimode strictly between the marginal lower boundary
+#' and the existing clustered gate is selected. If no such antimode exists, the
+#' existing gate is retained by the caller.
+#'
+#' @keywords internal
+.getCpPosTautString <- function(
   ex,
   inc,
   chnl,
-  bwMin,
-  trustNoOrHighAm = FALSE,
-  minCell = 10,
   cpOrig,
-  nLoop = 5
+  peakX,
+  windowWidth,
+  minCell = 10L
 ) {
-  cpPos <- .getCpPosInd(
-    ex = ex,
-    inc = inc,
-    chnl = chnl,
-    bwMin = bwMin,
-    adjust = 1,
-    trustNoOrHighAm = FALSE,
-    minCell = 10,
-    cpOrig = cpOrig
+  out <- list(
+    threshold = NA_real_,
+    peakX = suppressWarnings(as.numeric(peakX))[1L],
+    windowWidth = suppressWarnings(as.numeric(windowWidth))[1L],
+    lowerX = NA_real_,
+    gateOriginal = suppressWarnings(as.numeric(cpOrig))[1L],
+    antimodes = numeric(0L),
+    eligibleAntimodes = numeric(0L),
+    nOtherCytPos = 0L,
+    reason = "taut_string_threshold_unavailable"
   )
 
-  k <- 1
-  while (is.na(cpPos) && k <= nLoop) {
-    if (is.na(cpPos)) {
-      cpPos <- .getCpPosInd(
-        ex = ex,
-        inc = inc,
-        chnl = chnl,
-        bwMin = bwMin,
-        adjust = 0.5^k,
-        trustNoOrHighAm = FALSE,
-        minCell = 10,
-        cpOrig = cpOrig
-      )
-    }
-    k <- k + 1
+  if (
+    !is.finite(out$peakX) ||
+      !is.finite(out$windowWidth) ||
+      out$windowWidth <= 0 ||
+      !is.finite(out$gateOriginal)
+  ) {
+    out$reason <- "invalid_refinement_interval"
+    return(out)
+  }
+  out$lowerX <- out$peakX + out$windowWidth / 3
+  if (out$lowerX >= out$gateOriginal) {
+    out$reason <- "empty_refinement_interval"
+    return(out)
   }
 
-  cpPos
-}
-
-
-#' @keywords internal
-.getCpPosInd <- function(
-  ex,
-  inc,
-  chnl,
-  bwMin,
-  adjust = 1,
-  trustNoOrHighAm = FALSE,
-  minCell = 10,
-  cpOrig
-) {
-  # .data
-  exPos <- ex[inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
-  if (length(exPos) < minCell) {
-    return(NA)
+  xAll <- suppressWarnings(as.numeric(ex[[chnl]]))
+  finiteAll <- is.finite(xAll)
+  if (!any(finiteAll)) {
+    out$reason <- "no_finite_expression_values"
+    return(out)
   }
-  exNeg <- ex[!inc & ex[[chnl]] > min(ex[[chnl]]), ][[chnl]]
+  minX <- min(xAll[finiteAll])
+  keep <- inc %in% TRUE & finiteAll & xAll > minX
+  xPos <- xAll[keep]
+  out$nOtherCytPos <- length(xPos)
+  if (length(xPos) < as.integer(minCell)) {
+    out$reason <- "too_few_other_cytokine_positive_cells"
+    return(out)
+  }
 
-  # bw
-  bwDens <- density(exPos, bw = "SJ")$bw
-  bwSd <- sd(exNeg)
-  bwFinal <- max(bwDens, bwSd, bwMin)
+  density <- .getCytPosTautStringDensity(xPos)
+  if (is.null(density)) {
+    out$reason <- "taut_string_density_failed"
+    return(out)
+  }
 
-  # calculate density
-  # ------------------
-  densPos <- density(exPos, bw = bwFinal, adjust = adjust)
-  densNeg <- density(
-    exNeg,
-    bw = bwFinal,
-    adjust = adjust,
-    from = min(densPos$x),
-    to = max(densPos$x)
-  )
-
-  # calculate modes and antimodes
-  # -----------------------------
-  densLen <- length(densPos$y)
-
-  # antimodes
-  amIndVec <- (2:(densLen - 1))[
-    (densPos$y[-1] < densPos$y[-densLen])[-(densLen - 1)] &
-      (densPos$y[-densLen] < densPos$y[-1])[-1]
+  antimodes <- .getCytPosTautStringAntimodes(density)
+  eligible <- antimodes[
+    is.finite(antimodes) &
+      antimodes > out$lowerX &
+      antimodes < out$gateOriginal
   ]
-  amVec <- densPos$x[amIndVec]
-  amVecHeight <- densPos$y[amIndVec]
+  out$antimodes <- antimodes
+  out$eligibleAntimodes <- eligible
 
-  # modes
-  modeIndVec <- (2:(densLen - 1))[
-    (densPos$y[-1] > densPos$y[-densLen])[-(densLen - 1)] &
-      (densPos$y[-densLen] > densPos$y[-1])[-1]
-  ]
-  modeVec <- densPos$x[modeIndVec]
-  modeVecHeight <- densPos$y[modeIndVec]
-  modeIndVec <- modeIndVec[modeVecHeight > 0.01 * max(modeVecHeight)]
-  modeVec <- densPos$x[modeIndVec]
-  modeVecHeight <- densPos$y[modeIndVec]
-
-  # calculate lowest mode for cyt-neg cells
-  # --------------------------
-  modeIndVecNeg <- (2:(densLen - 1))[
-    (densNeg$y[-1] > densNeg$y[-densLen])[-(densLen - 1)] &
-      (densNeg$y[-densLen] > densNeg$y[-1])[-1]
-  ]
-  modeVecHeightNeg <- densNeg$y[modeIndVecNeg]
-  modeIndVecNeg <- modeIndVecNeg[
-    modeVecHeightNeg > 0.01 * max(modeVecHeightNeg)
-  ]
-  highestModeNeg <- max(densNeg$x[modeIndVecNeg])
-
-  # calculate cpShape
-  # -------------------
-  if (length(amVec) == 0) {
-    if (!trustNoOrHighAm) {
-      return(NA)
-    }
-    if (trustNoOrHighAm) {
-      cpShape <- ifelse(cpOrig < max(modeVec), highestModeNeg, NA)
-      return(cpShape)
-    }
+  if (length(eligible) == 0L) {
+    out$reason <- "no_internal_antimode_in_refinement_interval"
+    return(out)
   }
 
-  # nearest mode to cpOrig
-  modeVecAboveCpOrig <- modeVec[modeVec > cpOrig]
-
-  if (length(modeVecAboveCpOrig) == 0) {
-    return(NA)
-  }
-  modeAboveCpOrigMin <- min(modeVecAboveCpOrig)
-
-  amVecMoreThanCpOrig <- amVec[amVec > cpOrig]
-  amRightMinInd <- ifelse(
-    length(amVecMoreThanCpOrig) > 0,
-    which(amVec == min(amVecMoreThanCpOrig)),
-    NA
-  )
-  amRightMin <- amVec[amRightMinInd]
-
-  if (!is.na(amRightMin[1])) {
-    if (amRightMin < modeAboveCpOrigMin) {
-      return(amRightMin)
-    }
-  }
-
-  # get left-most antimode of antimodes less than cpOrig
-  amVecLessThanCpOrig <- amVec[amVec < cpOrig]
-  maxLeftAmInd <- ifelse(
-    length(amVecLessThanCpOrig) > 0,
-    which(amVec == max(amVecLessThanCpOrig)),
-    NA
-  )
-  maxLeftAm <- amVec[maxLeftAmInd]
-  maxLeftAmHeight <- amVecHeight[maxLeftAmInd]
-
-  if (length(maxLeftAm) == 0 || all(is.na(maxLeftAm))) {
-    cpShape <- ifelse(trustNoOrHighAm, highestModeNeg, NA)
-    return(cpShape)
-  }
-
-  maxModeLessThanCpOrig <- max(modeVec[modeVec < cpOrig])
-  maxModeLessThanCpOrigHeight <- modeVecHeight[
-    which(modeVec == maxModeLessThanCpOrig)
-  ]
-  if (maxLeftAmHeight > 0.5 * maxModeLessThanCpOrigHeight) {
-    if (trustNoOrHighAm) {
-      minModeAboveCpOrigInd <- which(
-        modeVec == min(modeVec[modeVec > cpOrig])
-      )
-      minModeAboveCpOrigHeight <- modeVecHeight[
-        minModeAboveCpOrigInd
-      ]
-      minModeAboveCpOrig <- modeVec[minModeAboveCpOrigInd]
-
-      propMoveToRight <- maxModeLessThanCpOrigHeight /
-        (maxModeLessThanCpOrigHeight + minModeAboveCpOrigHeight)
-      cpShape <- max(
-        maxLeftAm,
-        maxModeLessThanCpOrig +
-          propMoveToRight *
-            (minModeAboveCpOrig - maxModeLessThanCpOrig)
-      )
-      return(cpShape)
-    } else {
-      return(NA)
-    }
-  }
-
-  maxLeftAm
+  out$threshold <- min(eligible)
+  out$reason <- "leftmost_eligible_taut_string_antimode"
+  out
 }
 
 

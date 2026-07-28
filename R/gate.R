@@ -66,11 +66,11 @@
 #' @param bwAdj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
 #' @param bwNcellMin numeric. Minimum number of cells requested by the bandwidth selector. For ordinary methods this controls internal up-sampling with jitter. For `*Norm` methods it is passed into the background-core/right-excess selector so rare right-tail cells are considered before any sampling is done. Ignored if `bw` is set. Default is 100.
 #' @param bwNcellMax numeric. Maximum number of cells requested by the bandwidth selector. For ordinary methods this controls internal down-sampling. For `*Norm` methods it limits the constructed background-core/right-excess bandwidth sample after the full distribution has been inspected. Ignored if `bw` is set. Default is 100 000.
-#' @param bwCluster numeric. Optional fallback bandwidth for the common-grid
-#'   density features used by cluster-based local-FDR threshold sharing. The
-#'   cluster step first tries to use the median bandwidth across samples with
-#'   directly generated local-FDR thresholds. `bwCluster` is used only when
-#'   that common bandwidth cannot be estimated. Default is `NULL`.
+#' @param bwCluster numeric. Optional fallback bandwidth for cluster-based
+#'   local-FDR refinement. The cluster step first tries to use the median
+#'   bandwidth across samples with directly generated local-FDR thresholds.
+#'   `bwCluster` is used when that common bandwidth cannot be estimated. Default
+#'   is `NULL`.
 #' @param bwAdaptive logical. Whether local-FDR density estimation should use an
 #'   adaptive location-specific bandwidth curve when `bw` is `NULL`. The adaptive
 #'   path estimates separate normalised bandwidth curves for the stimulated and
@@ -135,13 +135,15 @@
 #'   gates are identified. Default is c(0.25, 0.75). The method specified in gateCombn
 #'   determines how these quantiles are used (e.g., minimum of 25th percentiles).
 #' @param tolClust numeric or NULL. Backwards-compatible switch for calculating
-#'   cluster-adjusted local-FDR gates. When `NULL`, cluster adjustment is
-#'   skipped. When non-NULL, samples are clustered from their joint stimulated
-#'   and unstimulated densities on a common absolute left-region grid. Directly
-#'   generated thresholds are winsorised to their cluster's 15th and 85th
-#'   percentiles, and every non-direct threshold is replaced by its cluster's
-#'   60th percentile of direct thresholds. The numeric value is retained only
-#'   as the existing on/off API.
+#'   cluster-adjusted local-FDR gates. When `NULL`, cluster adjustment is skipped.
+#'   When non-NULL, paired stimulated and unstimulated densities are clustered
+#'   on a common absolute-expression grid. Direct thresholds are winsorised
+#'   within each cluster to its 15th and 85th percentiles when at least three
+#'   direct thresholds are available. Every non-direct threshold is replaced by
+#'   the cluster's 60th percentile when at least one direct threshold is
+#'   available. A cluster without a direct threshold retains its original high
+#'   thresholds.
+#'   The numeric value is retained only as a backwards-compatible on/off switch.
 #' @param locProbCol character. Probability column used by the local-FDR trimming
 #'   step. Defaults to `"pred"`, the monotone smoothed response-probability
 #'   estimate. Use `"probSmooth"` to force the raw/interpolated probability.
@@ -204,9 +206,9 @@
 #'   the initial derivative-based boundary used to define the reference interval
 #'   for cells-per-bin calculations. Purity is still calculated using all cells to
 #'   the right of the initial boundary. Default is 0.75.
-#' @param locTolRefPeak character. Retained for backwards compatibility. The
-#'   current joint-density clustering method does not use a reference peak or
-#'   equivalent derivative tolerances. Default is `"highest"`.
+#' @param locTolRefPeak character. Deprecated clustering setting retained for
+#'   backwards compatibility. Joint-density quantile transfer does not use a
+#'   derivative-tolerance reference peak. Default is `"highest"`.
 #' @param gateCombn character vector. Method(s) for combining condition-level
 #'   local-FDR gates within a batch. Supported values are `"no"`, `"min"`,
 #'   `"median"`, `"max"`, and `"prejoin"`. Combination uses only thresholds that
@@ -218,9 +220,13 @@
 #' @param chnlSettings list. Optional list of channel-specific settings that override
 #'   global defaults. Similar to markerSettings but keyed by channel names.
 #'   Default is NULL.
-#' @param calcCytPosGates logical. Whether to calculate refined cytokine-positive
-#'   gates using more sophisticated algorithms. Default is TRUE. When FALSE, only
-#'   basic gates are calculated, which may be less accurate but faster.
+#' @param calcCytPosGates logical. Whether to refine each clustered one-marker
+#'   gate using the target-marker distribution among cells positive for at least
+#'   one other cytokine. A taut-string density is fitted to those cells. The
+#'   clustered gate is lowered to the leftmost internal antimode strictly between
+#'   the full stimulated marginal peak plus one third of its left-window width
+#'   and the clustered gate. If no eligible antimode exists, the clustered gate
+#'   is retained. Default is TRUE.
 #' @param calcSinglePosGates logical. Whether to calculate single-positive gates
 #'   for individual markers in addition to combination gates. Default is FALSE.
 #'   Useful for detailed analysis of individual marker responses.
@@ -254,9 +260,12 @@
 #'
 #' \strong{Step 3: Cytokine-Positive Gate Refinement (if calcCytPosGates = TRUE)}
 #' \itemize{
-#'   \item Applies more sophisticated algorithms to refine initial gates
-#'   \item Accounts for background cytokine production and technical variability
-#'   \item Optimizes gates to minimize false positives while maintaining sensitivity
+#'   \item Fits a taut-string density to target-marker expression among cells
+#'     positive for another cytokine
+#'   \item Finds internal antimodes between the protected negative-component
+#'     region and the clustered one-marker gate
+#'   \item Lowers the gate to the leftmost eligible antimode, or retains the
+#'     clustered gate when none is available
 #' }
 #'
 #' \strong{Step 4: Single-Positive Gates (if calcSinglePosGates = TRUE)}
