@@ -321,7 +321,7 @@ for (i in seq_len(nrow(sim_grid_loop))) {
   set.seed(2109)
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid_loop)))
   sim_res <- .simBandwidthBsFreq(
-    nSample = 1e3,
+    nSample = 1,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
@@ -695,50 +695,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 ```
 
 
-```{r}
-#| eval: false
-target_sim_id <- 1234L
-target_iter <- 4L
-target_sample <- 3L
 
-i <- match(target_sim_id, sim_grid$sim_id)
-stopifnot(!is.na(i))
-
-row <- sim_grid[i, , drop = FALSE]
-
-row_seed <- furrr:::make_seeds(
-  seed = as.integer(12345L + sim_grid_chunk_index),
-  n = nrow(sim_grid)
-)[[i]]
-
-assign(".Random.seed", row_seed, envir = .GlobalEnv)
-
-sim_res <- stimgate:::.simBandwidthBsFreq(
-  nSample = 5,
-  nMarker = 1,
-  nCondition = 2,
-  nCluster = 2,
-  nIter = target_iter,
-  biasUns = row[["bias_uns"]],
-  bw = row[["bw"]],
-  bwMin = "none",
-  bwMax = "none",
-  bwFallback = row[["bw"]],
-  nCellStim = row[["n_cell"]],
-  probResponse = row[["prob_response"]],
-  probExact = TRUE,
-  meanPos = row[["mean_pos"]],
-  transformation = row[["transformation"]],
-  samplePerturbationSd = row[["sample_perturbation_sd"]],
-  conditionPerturbationSd = row[["condition_perturbation_sd"]],
-  clusterPerturbationSd = row[["cluster_perturbation_sd"]],
-  backgroundRelativeToResponse = row[["background_relative_to_response"]],
-  ncellUnsRelativeToStim = row[["n_cell_uns_relative_to_stim"]],
-  covEvMin = 1.5,
-  covEvMax = 1.5,
-  tolClust = NULL
-)
-```
 
 Collate the results and calculate the metrics of interest.
 
@@ -961,6 +918,384 @@ saveRDS(
     paste0("bw_tbl_results_summary", collate_suffix, ".rds")
   )
 )
+```
+
+```{r}
+#| eval: false
+#| # low thresholds
+devtools::load_all()
+filter_tbl_error <- bw_tbl_results_raw |>
+  dplyr::filter(
+    transformation == "skew"
+  ) |>
+  dplyr::filter(
+    !is.na(threshold) & bw > 0.2 & threshold < 2 & bias_uns > 0
+  ) |>
+  dplyr::filter(prob_response == min(prob_response)) |>
+  dplyr::filter(n_cell == min(n_cell)) |>
+  dplyr::filter(sim_id == min(sim_id)) |>
+  dplyr::select(dplyr::all_of(colnames(sim_grid)), iter, sample) |>
+  dplyr::distinct() |>
+  dplyr::filter(iter == min(iter)) |>
+  dplyr::filter(sample == min(sample)) |>
+  dplyr::slice(1)
+
+filter_tbl_error |> print(width = Inf)
+
+sim_grid_loop <- sim_grid |>
+  dplyr::inner_join(filter_tbl_error, by = colnames(sim_grid) |> setdiff(c("iter", "sample"))) 
+target_sim_id <- filter_tbl_error$sim_id[[1]]
+target_iter <- filter_tbl_error$iter[[1]]
+target_sample <- filter_tbl_error$sample[[1]]
+
+i <- match(target_sim_id, sim_grid$sim_id)
+stopifnot(!is.na(i))
+
+row <- sim_grid[i, , drop = FALSE]
+
+row_seed <- furrr:::make_seeds(
+  seed = as.integer(12345L + sim_grid_chunk_index),
+  n = nrow(sim_grid)
+)[[i]]
+
+assign(".Random.seed", row_seed, envir = .GlobalEnv)
+
+# debugonce(stimgate:::.simBandwidthBsFreq)
+undebug(.getCpUnsLocGetProb)
+undebug(.getCpUnsLocGetCp)
+debug(.getCpUnsLocCondition)
+undebug(.getCpUnsLocFilterAntimode)
+debugonce(.simBandwidthBsFreq)
+sim_res <- .simBandwidthBsFreq(
+  nSample = 100,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  nIter = target_iter,
+  biasUns = row[["bias_uns"]],
+  bw = row[["bw"]],
+  bwMin = "none",
+  bwMax = "none",
+  bwFallback = row[["bw"]],
+  nCellStim = row[["n_cell"]],
+  probResponse = row[["prob_response"]],
+  probExact = TRUE,
+  meanPos = row[["mean_pos"]],
+  transformation = row[["transformation"]],
+  samplePerturbationSd = row[["sample_perturbation_sd"]],
+  conditionPerturbationSd = row[["condition_perturbation_sd"]],
+  clusterPerturbationSd = row[["cluster_perturbation_sd"]],
+  backgroundRelativeToResponse = row[["background_relative_to_response"]],
+  ncellUnsRelativeToStim = row[["n_cell_uns_relative_to_stim"]],
+  covEvMin = 1.5,
+  covEvMax = 1.5,
+  tolClust = NULL
+)
+
+# NEXT
+# ======================
+# investigate ind 6 - cp was 1.2
+# also, we should note if the marginal
+# threhsold was just in the end the
+# derivative rise threohsld.
+# if so, when it comes to clustering,
+# we should ignore that one.
+# ======================
+```
+
+```{r}
+#| eval: false
+# once inside
+.getCpUnsLocGetCp(
+  dataMod = dataMod,
+  exTblStimNoMin = exTblStimNoMin,
+  exTblStimOrig = exTblStimOrig,
+  exTblUnsOrig = exTblUnsOrig,
+  exTblUnsBias = exTblUnsBias,
+  bias = bias,
+  cpMin = chnlSettings$cpMin,
+  stage = stage,
+  pathProject = pathProject,
+  chnlSettings = chnlSettings
+)$cp
+
+debugonce(.getCpUnsLocGetCp)
+debugonce(.getCpUnsLocFilterAfterSmoothing)
+debugonce(.getCpUnsLocFilterAntimode)
+```
+
+```{r}
+#| eval: false
+# plots
+debugonce(.getCpUnsLocGetProb)
+debugonce(.getCpUnsLocGetProbTbl)
+debugonce(.getCpUnsLocFilterAntimode)
+
+# raw densities
+p <- ggplot(densTblRaw, aes(x = xStim, y = dens, color = stim)) +
+  geom_line() +
+  cowplot::theme_cowplot() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    legend.background = element_rect(fill = "white", color = NA)
+  ) +
+  cowplot::background_grid(major = "xy", minor = "x")
+path_p <- projr::projr_path_get(
+  "cache",
+  "scratch",
+  "p-density-stims-orig.png"
+)
+ggsave(
+  filename = path_p,
+  plot = p,
+  width = 10,
+  height = 10,
+  units = "cm",
+  dpi = 300
+)
+
+# taut string
+# Create the tibble using the coordinates from tautFit
+plotTblTaut <- tibble::tibble(
+  x = density$x,
+  y = density$y
+)
+
+# Plot using geom_step() instead of geom_line()
+p <- ggplot(plotTblTaut, aes(x = x, y = y)) +
+  geom_step() + 
+  cowplot::theme_cowplot() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    legend.background = element_rect(fill = "white", color = NA)
+  ) +
+  cowplot::background_grid(major = "xy", minor = "x")
+
+# Save the plot
+path_p <- projr::projr_path_get(
+  "cache",
+  "scratch",
+  "p-taut.png"
+)
+
+ggsave(
+  filename = path_p,
+  plot = p,
+  width = 10,
+  height = 10,
+  units = "cm",
+  dpi = 300
+)
+```
+
+```{r}
+#| eval: false
+debugonce(.getCpUnsLocFilterAfterSmoothing)
+```
+
+```{r}
+#| eval: false
+#| include: false
+debugonce(.getCpUnsLocStageThreshold)
+try(.getCpUnsLocStageThreshold(
+  dataMod,
+  chnlSettings,
+  probCol,
+  stage = "antimode"
+))
+debugonce(.getCpUnsLocDerivThreshold)
+p0 <- ggplot(derivTbl, aes(x = x, y = deriv)) +
+  geom_line() +
+  cowplot::theme_cowplot() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    legend.background = element_rect(fill = "white", color = NA)
+  ) +
+  cowplot::background_grid(major = "xy", minor = "x")
+
+# Save the plot
+path_p <- projr::projr_path_get(
+  "cache",
+  "scratch",
+  "p-deriv.png"
+)
+
+ggsave(
+  filename = path_p,
+  plot = p0,
+  width = 10,
+  height = 10,
+  units = "cm",
+  dpi = 300
+)
+
+# raw dat
+p1 <- ggplot(dataMod, aes(x = F1)) +
+  geom_density(bw = 0.25) +
+  cowplot::theme_cowplot() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    legend.background = element_rect(fill = "white", color = NA)
+  ) +
+  cowplot::background_grid(major = "xy", minor = "x")
+
+# Save the plot
+path_p <- projr::projr_path_get(
+  "cache",
+  "scratch",
+  "p-density-stim.png"
+)
+
+ggsave(
+  filename = path_p,
+  plot = p1,
+  width = 10,
+  height = 10,
+  units = "cm",
+  dpi = 300
+)
+
+# raw dat
+plotPred <- dataMod |>
+  tidyr::pivot_longer(
+    cols = -F1,
+    names_to = "pred_type",
+    values_to = "pred_value"
+  )
+p2 <- ggplot(plotPred, aes(x = F1, y = pred_value, col = pred_type)) +
+  geom_line() +
+  scale_colour_manual(
+    values = c(
+      "probSmooth" = "#1f78b4",
+      "pred" = "#33a02c"
+    )
+  ) +
+  expand_limits(y = c(0, 1)) +
+  cowplot::theme_cowplot() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    legend.background = element_rect(fill = "white", color = NA)
+  ) +
+  cowplot::background_grid(major = "xy", minor = "x") +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+
+# Save the plot
+path_p <- projr::projr_path_get(
+  "cache",
+  "scratch",
+  "p-prob-smooth.png"
+)
+
+ggsave(
+  filename = path_p,
+  plot = p2,
+  width = 10,
+  height = 10,
+  units = "cm",
+  dpi = 300
+)
+
+
+
+binVec <- attr(dataMod, "binVec")
+nCellRespNormVec <- NULL
+nCellRespPredVec <- NULL
+for (i in seq(2, length(binVec))) {
+  binRange <- c(binVec[i - 1], binVec[i])
+  inBinVec <- dataMod$F1 >= binRange[1] & dataMod$F1 < binRange[2]
+  nCell <- sum(inBinVec)
+  respProbNorm <- mean(dataMod$probSmooth[inBinVec], na.rm = TRUE)
+  nCellRespNormVec[i - 1] <- nCell * respProbNorm
+  respProbPred <- mean(dataMod$pred[inBinVec], na.rm = TRUE)
+  nCellRespPredVec[i - 1] <- nCell * respProbPred
+}
+binVecPlot <- binVec[-1] - diff(binVec) / 2
+plotTblNCellResp <- tibble::tibble(
+  bin = binVecPlot,
+  nCellRespNorm = nCellRespNormVec,
+  nCellRespPred = nCellRespPredVec
+) |>
+  tidyr::pivot_longer(
+    cols = c(nCellRespNorm, nCellRespPred),
+    names_to = "resp_type",
+    values_to = "n_cell_resp"
+  ) |>
+  dplyr::filter(
+    !is.na(n_cell_resp) & !is.nan(n_cell_resp) & is.finite(n_cell_resp)
+  )
+p3 <- ggplot(plotTblNCellResp, aes(x = bin, y = n_cell_resp, col = resp_type)) +
+  geom_line() +
+  scale_colour_manual(
+    values = c(
+      "nCellRespNorm" = "#1f78b4",
+      "nCellRespPred" = "#33a02c"
+    )
+  ) +
+  cowplot::theme_cowplot() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    legend.background = element_rect(fill = "white", color = NA)
+  ) +
+  cowplot::background_grid(major = "xy", minor = "x") +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+
+p_grid <- cowplot::plot_grid(
+  p0, p1, p2, p3, 
+  ncol = 2,
+  labels = c("A", "B", "C", "D"),
+  label_size = 12,
+  align = "hv"
+)
+path_p <- projr::projr_path_get(
+  "cache",
+  "scratch",
+  "p-deriv-grid.png"
+)
+
+ggsave(
+  filename = path_p,
+  plot = p_grid,
+  width = 20,
+  height = 20,
+  units = "cm",
+  dpi = 300
+)
+
+labelVec <- outListExperiment[["labelsList"]][["sample002_stim1"]]
+fr <- outListExperiment[["flowFrameList"]][["sample002_stim1"]]
+expr_tbl <- flowCore::exprs(fr) |>
+  tibble::as_tibble() |>
+  dplyr::mutate(
+    label = labelVec
+  )
+expr_tbl |> dplyr::filter(label == "gp")
+out <- .getCpUnsLocDerivThreshold(
+  x = derivTbl$x,
+  prob = derivTbl$prob,
+  deriv = derivTbl$deriv,
+  alpha = params$alpha,
+  omega = params$omega,
+  psi = params$psi,
+  thresholdProbMin = .getCpUnsLocThresholdProbMin(chnlSettings, stage),
+  capRightWidth = identical(stage, "marginal")
+)
+```
+
+```{r}
+#| eval: false
+debugonce(.getCpUnsLocFilterMarginal)
 ```
 
 Okay, now we must plot which bandwidths are best for which scenarios.
