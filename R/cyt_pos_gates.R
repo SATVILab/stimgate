@@ -150,16 +150,6 @@
     pathProject = pathProject
   )
 
-  exUns <- .getEx(
-    .data = .data[[indUns]],
-    pop = popGate, # nolint
-    chnlCut = chnlVec,
-    ind = indUns, # BUG FIX: Cache under unstim ind, not stim ind
-    indUns = indUns,
-    batch = batch,
-    pathProject = pathProject
-  )
-
   # gates
   # -----------------
   gateTblInd <- gateTblGn |>
@@ -241,44 +231,55 @@
     pathProject
   )
 
-  # =====================
-  # Cutpoint - based on cyt+ cells
-  # =====================
-  cpPos <- .getCpPos(
+  # The full stimulated marginal distribution supplies the safe lower
+  # boundary. The conditional distribution among cells positive for at least
+  # one other cytokine supplies any candidate antimode.
+  shapeRef <- .getCytPosMarginalReference(
     ex = ex,
-    inc = incVec,
     chnl = chnlCurr,
-    bwMin = bwMin,
-    trustNoOrHighAm = FALSE,
-    minCell = 10,
-    cpOrig = cpOrig,
-    nLoop = 5
+    bwMin = bwMin
   )
   .intSaveNm(
-    paste0(chnlCurr, "_cpPos"),
-    cpPos,
+    paste0(chnlCurr, "_shapeReference"),
+    shapeRef,
     ind,
     stage,
     pathProject
   )
 
-  # BUG FIX: Actually calculate cpNeg here instead of checking for its existence
-  cpNeg <- .getCpNeg(
+  cpTaut <- .getCpPosTautString(
     ex = ex,
     inc = incVec,
     chnl = chnlCurr,
-    bwMin = bwMin,
-    minCell = 10
+    cpOrig = cpOrig,
+    peakX = shapeRef$peakX,
+    windowWidth = shapeRef$windowWidth,
+    minCell = 10L
+  )
+  .intSaveNm(
+    paste0(chnlCurr, "_cpTaut"),
+    cpTaut$threshold,
+    ind,
+    stage,
+    pathProject
   )
 
   # =====================
   # Final cutpoint
   # =====================
-  cpCytPos <- min(cpPos, cpOrig, na.rm = TRUE)
-  if (!is.na(cpNeg)) {
-    cpCytPos <- min(cpCytPos, cpNeg, na.rm = TRUE)
+  cpCytPos <- if (is.finite(cpTaut$threshold)) {
+    min(cpOrig, cpTaut$threshold)
+  } else {
+    cpOrig
   }
 
+  .intSaveNm(
+    paste0(chnlCurr, "_tautStringInfo"),
+    cpTaut,
+    ind,
+    stage,
+    pathProject
+  )
   .intSaveNm(
     paste0(chnlCurr, "_cpCytPosFinal"),
     cpCytPos,
