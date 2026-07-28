@@ -66,7 +66,11 @@
 #' @param bwAdj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
 #' @param bwNcellMin numeric. Minimum number of cells requested by the bandwidth selector. For ordinary methods this controls internal up-sampling with jitter. For `*Norm` methods it is passed into the background-core/right-excess selector so rare right-tail cells are considered before any sampling is done. Ignored if `bw` is set. Default is 100.
 #' @param bwNcellMax numeric. Maximum number of cells requested by the bandwidth selector. For ordinary methods this controls internal down-sampling. For `*Norm` methods it limits the constructed background-core/right-excess bandwidth sample after the full distribution has been inspected. Ignored if `bw` is set. Default is 100 000.
-#' @param bwCluster numeric. Optional fallback bandwidth for cluster-based local-FDR imputation. The current cluster step first tries to use a common bandwidth calculated as the median bandwidth across samples with generated local-FDR thresholds. `bwCluster` is used as a fallback when that common bandwidth cannot be estimated. Default is `NULL`.
+#' @param bwCluster numeric. Optional fallback bandwidth for the common-grid
+#'   density features used by cluster-based local-FDR threshold sharing. The
+#'   cluster step first tries to use the median bandwidth across samples with
+#'   directly generated local-FDR thresholds. `bwCluster` is used only when
+#'   that common bandwidth cannot be estimated. Default is `NULL`.
 #' @param bwAdaptive logical. Whether local-FDR density estimation should use an
 #'   adaptive location-specific bandwidth curve when `bw` is `NULL`. The adaptive
 #'   path estimates separate normalised bandwidth curves for the stimulated and
@@ -131,11 +135,13 @@
 #'   gates are identified. Default is c(0.25, 0.75). The method specified in gateCombn
 #'   determines how these quantiles are used (e.g., minimum of 25th percentiles).
 #' @param tolClust numeric or NULL. Backwards-compatible switch for calculating
-#'   cluster-adjusted local-FDR gates. When `NULL`, cluster adjustment is skipped.
-#'   When non-NULL, samples without a generated local-FDR threshold may receive an
-#'   imputed threshold from similar conditions using cluster-level equivalent
-#'   tolerance values. The numeric value is retained for compatibility and is not
-#'   used as the derivative tolerance in the current local-FDR cluster imputation.
+#'   cluster-adjusted local-FDR gates. When `NULL`, cluster adjustment is
+#'   skipped. When non-NULL, samples are clustered from their joint stimulated
+#'   and unstimulated densities on a common absolute left-region grid. Directly
+#'   generated thresholds are winsorised to their cluster's 15th and 85th
+#'   percentiles, and every non-direct threshold is replaced by its cluster's
+#'   60th percentile of direct thresholds. The numeric value is retained only
+#'   as the existing on/off API.
 #' @param locProbCol character. Probability column used by the local-FDR trimming
 #'   step. Defaults to `"pred"`, the monotone smoothed response-probability
 #'   estimate. Use `"probSmooth"` to force the raw/interpolated probability.
@@ -198,9 +204,9 @@
 #'   the initial derivative-based boundary used to define the reference interval
 #'   for cells-per-bin calculations. Purity is still calculated using all cells to
 #'   the right of the initial boundary. Default is 0.75.
-#' @param locTolRefPeak character. Reference peak used by cluster imputation when
-#'   calculating signed equivalent tolerance values from generated local-FDR
-#'   thresholds. Default is `"highest"`.
+#' @param locTolRefPeak character. Retained for backwards compatibility. The
+#'   current joint-density clustering method does not use a reference peak or
+#'   equivalent derivative tolerances. Default is `"highest"`.
 #' @param gateCombn character vector. Method(s) for combining condition-level
 #'   local-FDR gates within a batch. Supported values are `"no"`, `"min"`,
 #'   `"median"`, `"max"`, and `"prejoin"`. Combination uses only thresholds that

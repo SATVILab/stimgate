@@ -1,6 +1,5 @@
-# Get cutpoints using clustering approach
-# Clusters thresholds from similar distributions and imputes local-FDR-missing
-# thresholds from equivalent tolerance values.
+# Cluster local-FDR thresholds using the joint stimulated/unstimulated
+# left-region density shapes. Directly generated thresholds are the only donors.
 #' @keywords internal
 .getCpCluster <- function(
   .data,
@@ -16,11 +15,9 @@
   indBatchList
 ) {
   stageChnl <- file.path(stage, chnlSettings$chnlCut)
-  control <- .getCpClusterControlUpdate(control) # nolint
+  control <- .getCpClusterControlUpdate(control)
 
   gateTbl <- .getCpClusterLocGateTblPrepare(gateTbl)
-  cpMin <- .getCpClusterCpGetMin(gateTbl, gateTblCtrl)
-
   exLookup <- .getCpClusterLocExLookup(
     .data = .data,
     indBatchList = indBatchList,
@@ -30,7 +27,6 @@
     gateTbl = gateTbl,
     pathProject = pathProject
   )
-
   gateTblStim <- .getCpClusterLocGateTblStim(
     gateTbl = gateTbl,
     exLookup = exLookup
@@ -42,19 +38,12 @@
     return(cpTbl)
   }
 
-  if (all(gateTblStim$locGenerated %in% TRUE)) {
+  directAvailable <- gateTblStim$locGeneratedDirect %in% TRUE &
+    is.finite(gateTblStim$gate)
+  if (!any(directAvailable)) {
     cpTbl <- .getCpClusterLocSkipOut(
       gateTblStim = gateTblStim,
-      reason = "all_local_fdr_thresholds_available_skip_cluster"
-    )
-    .intSave("all", stageChnl, pathProject, cpTbl)
-    return(cpTbl)
-  }
-
-  if (!any(gateTblStim$locGenerated %in% TRUE)) {
-    cpTbl <- .getCpClusterLocSkipOut(
-      gateTblStim = gateTblStim,
-      reason = "no_generated_local_fdr_thresholds_for_tol_imputation"
+      reason = "no_direct_local_fdr_threshold_donors"
     )
     .intSave("all", stageChnl, pathProject, cpTbl)
     return(cpTbl)
@@ -67,55 +56,104 @@
   )
   .intSaveNm("locClusterCommonBw", commonBw, "all", stageChnl, pathProject)
 
-  exprRange <- .getCpClusterLocExprRange(exLookup)
-  minThreshold <- .getCpClusterDensTblGetMinThreshold(
-    gateTbl = gateTblStim,
+  if (!is.finite(commonBw) || commonBw <= 0) {
+    cpTbl <- .getCpClusterLocSkipOut(
+      gateTblStim = gateTblStim,
+      reason = "common_density_bandwidth_unavailable",
+      commonBw = commonBw
+    )
+    .intSave("all", stageChnl, pathProject, cpTbl)
+    return(cpTbl)
+  }
+
+  featureRange <- .getCpClusterLocFeatureRange(
+    gateTblStim = gateTblStim,
+    exLookup = exLookup,
     control = control
   )
-
-  densTblUns <- .getCpClusterLocDensTbl(
+  featureObj <- .getCpClusterLocJointFeatureTbl(
     exLookup = exLookup,
-    type = "uns",
-    minThreshold = minThreshold,
-    exprMin = exprRange[["min"]],
-    exprMax = exprRange[["max"]],
+    indKeep = gateTblStim$ind,
+    exprMin = featureRange[["min"]],
+    exprMax = featureRange[["max"]],
     bw = commonBw,
-    chnlCut = chnlSettings$chnlCut
-  ) |>
-    .getCpClusterLocDensTblAddGrp()
-
-  densTblStim <- .getCpClusterLocDensTbl(
-    exLookup = exLookup,
-    type = "stim",
-    minThreshold = minThreshold,
-    exprMin = exprRange[["min"]],
-    exprMax = exprRange[["max"]],
-    bw = commonBw,
-    chnlCut = chnlSettings$chnlCut
-  ) |>
-    .getCpClusterLocDensTblAddGrp()
-
-  .intSave("all", stageChnl, pathProject, densTblUns, densTblStim)
-
-  locTbl <- .getCpClusterLocTbl(
-    gateTblStim = gateTblStim,
-    densTblUns = densTblUns,
-    densTblStim = densTblStim,
-    exLookup = exLookup,
-    commonBw = commonBw,
-    cpMin = cpMin,
-    chnlSettings = chnlSettings
+    n = control$locClusterDensityN
   )
-  .intSaveNm("locClusterTolTbl", locTbl, "all", stageChnl, pathProject)
+  featureTbl <- featureObj$featureTbl
+
+  .intSaveNm(
+    "locClusterDensityGrid",
+    featureObj$x,
+    "all",
+    stageChnl,
+    pathProject
+  )
+  .intSaveNm(
+    "locClusterJointDensityTbl",
+    featureTbl,
+    "all",
+    stageChnl,
+    pathProject
+  )
+
+  if (nrow(featureTbl) == 0L) {
+    cpTbl <- .getCpClusterLocSkipOut(
+      gateTblStim = gateTblStim,
+      reason = "no_complete_joint_density_features",
+      commonBw = commonBw,
+      featureMinX = featureRange[["min"]],
+      featureMaxX = featureRange[["max"]]
+    )
+    .intSave("all", stageChnl, pathProject, cpTbl)
+    return(cpTbl)
+  }
+
+  locTblFeature <- gateTblStim |>
+    dplyr::inner_join(featureTbl, by = "ind")
+  nDirectFeature <- sum(
+    locTblFeature$locGeneratedDirect %in% TRUE &
+      is.finite(locTblFeature$gate)
+  )
+
+  if (nDirectFeature < control$locClusterMinDirect) {
+    cpTbl <- .getCpClusterLocSkipOut(
+      gateTblStim = gateTblStim,
+      reason = "fewer_than_minimum_direct_donors_with_density_features",
+      commonBw = commonBw,
+      featureMinX = featureRange[["min"]],
+      featureMaxX = featureRange[["max"]]
+    )
+    .intSave("all", stageChnl, pathProject, cpTbl)
+    return(cpTbl)
+  }
+
+  grpObj <- .getCpClusterLocJointClusters(
+    locTblFeature = locTblFeature,
+    control = control
+  )
+  grpTbl <- tibble::tibble(
+    ind = locTblFeature$ind,
+    grpInitial = as.character(grpObj$initial),
+    grp = as.character(grpObj$final)
+  )
+
+  locTbl <- gateTblStim |>
+    dplyr::left_join(grpTbl, by = "ind")
+  clusterSummary <- .getCpClusterLocDirectSummary(
+    locTbl = locTbl,
+    control = control
+  )
+  locTbl <- locTbl |>
+    dplyr::left_join(clusterSummary, by = "grp")
+
+  .intSaveNm("locClusterThresholdTbl", locTbl, "all", stageChnl, pathProject)
 
   cpTbl <- purrr::map_df(seq_len(nrow(locTbl)), function(i) {
-    .getCpClusterLocImputeRow(
+    .getCpClusterLocFinaliseRow(
       row = locTbl[i, , drop = FALSE],
-      locTbl = locTbl,
-      exLookup = exLookup,
       commonBw = commonBw,
-      cpMin = cpMin,
-      chnlSettings = chnlSettings
+      featureMinX = featureRange[["min"]],
+      featureMaxX = featureRange[["max"]]
     )
   }) |>
     dplyr::arrange(ind)
@@ -127,7 +165,7 @@
 #' @keywords internal
 .getCpClusterLocGateTblPrepare <- function(gateTbl) {
   if (!"locGenerated" %in% names(gateTbl)) {
-    gateTbl$locGenerated <- !is.na(gateTbl$gate)
+    gateTbl$locGenerated <- is.finite(gateTbl$gate)
   }
   if (!"locGeneratedDirect" %in% names(gateTbl)) {
     gateTbl$locGeneratedDirect <- gateTbl$locGenerated
@@ -138,11 +176,14 @@
   if (!"locReason" %in% names(gateTbl)) {
     gateTbl$locReason <- NA_character_
   }
+
   gateTbl |>
     dplyr::mutate(
       ind = as.character(.data$ind),
-      locGenerated = .data$locGenerated %in% TRUE,
-      locGeneratedDirect = .data$locGeneratedDirect %in% TRUE
+      locGenerated = .data$locGenerated %in% TRUE &
+        is.finite(.data$gate),
+      locGeneratedDirect = .data$locGeneratedDirect %in% TRUE &
+        is.finite(.data$gate)
     )
 }
 
@@ -176,7 +217,7 @@
     )
 
     exListStim <- if (filterOtherCytPos) {
-      .getCpClusterDensTblGetBatchPrepExListFilter(
+      .getCpClusterLocExListFilter(
         exList = exList,
         chnlCut = chnlSettings$chnlCut,
         gateTbl = gateTbl,
@@ -196,28 +237,55 @@
     })
   }) |>
     purrr::flatten()
+
   stats::setNames(exPairs, purrr::map_chr(exPairs, "ind"))
 }
 
 #' @keywords internal
+.getCpClusterLocExListFilter <- function(
+  exList,
+  chnlCut,
+  gateTbl,
+  calcCytPosGates
+) {
+  if (length(exList) <= 1L) {
+    return(exList[0])
+  }
+
+  purrr::map(exList[-1], function(exTbl) {
+    indCurr <- as.character(attr(exTbl, "ind"))
+    gateTblInd <- gateTbl[gateTbl$ind == indCurr, , drop = FALSE]
+    posInd <- .get_pos_ind_but_single_pos_for_one_cyt(
+      ex = exTbl,
+      gateTbl = gateTblInd,
+      chnlSingleExc = chnlCut,
+      chnl = NULL,
+      gateTypeCytPos = if (calcCytPosGates) "cyt" else "base",
+      gateTypeSinglePos = "base"
+    )
+    exTbl[!posInd, , drop = FALSE]
+  })
+}
+
+#' @keywords internal
 .getCpClusterLocCommonBw <- function(gateTblStim, exLookup, chnlSettings) {
-  indGenerated <- gateTblStim |>
-    dplyr::filter(.data$locGenerated %in% TRUE) |>
+  indDirect <- gateTblStim |>
+    dplyr::filter(.data$locGeneratedDirect %in% TRUE) |>
     dplyr::pull("ind") |>
     as.character()
 
-  bwVec <- purrr::map_dbl(indGenerated, function(indCurr) {
+  bwVec <- purrr::map_dbl(indDirect, function(indCurr) {
     exPair <- exLookup[[indCurr]]
     if (is.null(exPair)) {
       return(NA_real_)
     }
     bwStim <- .getCpClusterLocBwOne(.getCut(exPair$stim), chnlSettings)
     bwUns <- .getCpClusterLocBwOne(.getCut(exPair$uns), chnlSettings)
-    suppressWarnings(median(c(bwStim, bwUns), na.rm = TRUE))
+    suppressWarnings(stats::median(c(bwStim, bwUns), na.rm = TRUE))
   })
   bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
   if (length(bwVec) > 0L) {
-    return(median(bwVec, na.rm = TRUE))
+    return(stats::median(bwVec, na.rm = TRUE))
   }
 
   bwFallback <- suppressWarnings(as.numeric(chnlSettings$bwCluster))[1]
@@ -274,522 +342,442 @@
 }
 
 #' @keywords internal
-.getCpClusterLocExprRange <- function(exLookup) {
-  rangeTbl <- purrr::map_df(exLookup, function(exPair) {
+.getCpClusterLocFeatureRange <- function(gateTblStim, exLookup, control) {
+  directGate <- gateTblStim$gate[
+    gateTblStim$locGeneratedDirect %in% TRUE &
+      is.finite(gateTblStim$gate)
+  ]
+  featureMax <- stats::quantile(
+    directGate,
+    probs = control$locClusterLeftQuantile,
+    na.rm = TRUE,
+    names = FALSE
+  )
+  featureMax <- control$locClusterLeftFraction * featureMax
+
+  lowExpr <- purrr::map_dbl(exLookup, function(exPair) {
     x <- c(.getCut(exPair$stim), .getCut(exPair$uns))
     x <- x[is.finite(x)]
-    if (length(x) <= 5L) {
-      return(NULL)
+    if (length(x) < 5L) {
+      return(NA_real_)
     }
-    q <- stats::quantile(x, c(0.0025, 0.999), na.rm = TRUE)
-    tibble::tibble(lb = q[[1]], ub = 3 * q[[2]])
+    stats::quantile(x, 0.0025, na.rm = TRUE, names = FALSE)
   })
-  if (nrow(rangeTbl) == 0L) {
-    return(c(min = 0, max = 1))
+  lowExpr <- lowExpr[is.finite(lowExpr)]
+  featureMin <- if (length(lowExpr) > 0L) {
+    stats::quantile(lowExpr, 0.0025, na.rm = TRUE, names = FALSE)
+  } else {
+    NA_real_
   }
-  c(
-    min = stats::quantile(rangeTbl$lb, 0.0025, na.rm = TRUE)[[1]],
-    max = max(rangeTbl$ub, na.rm = TRUE)
-  )
+
+  if (!is.finite(featureMin) || !is.finite(featureMax) ||
+      featureMin >= featureMax) {
+    allExpr <- unlist(purrr::map(exLookup, function(exPair) {
+      c(.getCut(exPair$stim), .getCut(exPair$uns))
+    }))
+    allExpr <- allExpr[is.finite(allExpr)]
+    if (length(allExpr) >= 5L) {
+      featureMin <- stats::quantile(
+        allExpr,
+        0.0025,
+        na.rm = TRUE,
+        names = FALSE
+      )
+      upperFallback <- stats::quantile(
+        allExpr,
+        0.75,
+        na.rm = TRUE,
+        names = FALSE
+      )
+      if (!is.finite(featureMax) || featureMax <= featureMin) {
+        featureMax <- upperFallback
+      }
+    }
+  }
+
+  c(min = featureMin, max = featureMax)
 }
 
 #' @keywords internal
-.getCpClusterLocDensTbl <- function(
+.getCpClusterLocJointFeatureTbl <- function(
   exLookup,
-  type,
-  minThreshold,
+  indKeep,
   exprMin,
   exprMax,
   bw,
-  chnlCut
+  n = 128L
 ) {
-  densTbl <- purrr::map_df(exLookup, function(exPair) {
-    ex <- switch(type, stim = exPair$stim, uns = exPair$uns)
-    .getCpClusterDensTblGetActualInd(
-      exprVec = .getCut(ex),
-      batch = exPair$batch,
-      ind = exPair$ind,
-      minThreshold = minThreshold,
-      chnlCut = chnlCut,
-      exprMin = exprMin,
-      exprMax = exprMax,
+  n <- max(16L, as.integer(n)[1])
+  if (!is.finite(exprMin) || !is.finite(exprMax) || exprMin >= exprMax) {
+    return(list(
+      featureTbl = tibble::tibble(ind = character()),
+      x = numeric()
+    ))
+  }
+
+  xGrid <- seq(exprMin, exprMax, length.out = n)
+  featureRows <- purrr::map(indKeep, function(indCurr) {
+    exPair <- exLookup[[as.character(indCurr)]]
+    if (is.null(exPair)) {
+      return(NULL)
+    }
+    densUns <- .getCpClusterLocDensityFeature(
+      x = .getCut(exPair$uns),
+      xGrid = xGrid,
       bw = bw
     )
-  }) |>
-    dplyr::filter(!is.na(x1)) # nolint
-
-  if (nrow(densTbl) == 0L) {
-    return(densTbl)
-  }
-  notAllNaVecInd <- purrr::map_lgl(
-    seq_len(ncol(densTbl)),
-    function(i) !all(is.na(densTbl[[i]]))
-  )
-  densTbl[, notAllNaVecInd, drop = FALSE]
-}
-
-#' @keywords internal
-.getCpClusterLocDensTblAddGrp <- function(densTbl) {
-  if (is.null(densTbl) || nrow(densTbl) == 0L) {
-    return(tibble::tibble(ind = character(), grp = character()))
-  }
-  xCols <- grepl("^x\\d+", colnames(densTbl))
-  if (!any(xCols) || nrow(densTbl) < 3L) {
-    return(densTbl |> dplyr::mutate(grp = "1"))
-  }
-  densMat <- as.matrix(densTbl[, xCols, drop = FALSE])
-  if (nrow(unique(densMat)) <= 1L) {
-    return(densTbl |> dplyr::mutate(grp = "1"))
-  }
-  nClus <- .getCpClusterNClus(densTbl)
-  clusVec <- .getCpClusterClus(densTbl, nClus)
-  densTbl |> dplyr::mutate(grp = as.character(clusVec))
-}
-
-#' @keywords internal
-.getCpClusterLocTbl <- function(
-  gateTblStim,
-  densTblUns,
-  densTblStim,
-  exLookup,
-  commonBw,
-  cpMin,
-  chnlSettings
-) {
-  locTbl <- gateTblStim |>
-    dplyr::left_join(
-      densTblUns |> dplyr::select(ind, grpUns = grp) |> dplyr::distinct(),
-      by = "ind"
-    ) |>
-    dplyr::left_join(
-      densTblStim |> dplyr::select(ind, grpStim = grp) |> dplyr::distinct(),
-      by = "ind"
-    )
-
-  tolTbl <- purrr::map_df(seq_len(nrow(locTbl)), function(i) {
-    row <- locTbl[i, , drop = FALSE]
-    indCurr <- as.character(row$ind[1])
-    exPair <- exLookup[[indCurr]]
-    if (is.null(exPair) || !(row$locGenerated[1] %in% TRUE)) {
-      return(tibble::tibble(
-        ind = indCurr,
-        locTolSignedUns = NA_real_,
-        locTolAbsUns = NA_real_,
-        locLog10TolAbsUns = NA_real_,
-        locDerivUns = NA_real_,
-        locDerivSignUns = NA_real_,
-        locTolSignedStim = NA_real_,
-        locTolAbsStim = NA_real_,
-        locLog10TolAbsStim = NA_real_,
-        locDerivStim = NA_real_,
-        locDerivSignStim = NA_real_
-      ))
-    }
-    tolUns <- .getCpClusterLocTolAtCp(
-      x = .getCut(exPair$uns),
-      cp = row$gate[1],
-      bw = commonBw,
-      cpMin = cpMin,
-      refPeak = chnlSettings$locTolRefPeak %||% "highest"
-    )
-    tolStim <- .getCpClusterLocTolAtCp(
+    densStim <- .getCpClusterLocDensityFeature(
       x = .getCut(exPair$stim),
-      cp = row$gate[1],
-      bw = commonBw,
-      cpMin = cpMin,
-      refPeak = chnlSettings$locTolRefPeak %||% "highest"
+      xGrid = xGrid,
+      bw = bw
     )
-    tibble::tibble(
-      ind = indCurr,
-      locTolSignedUns = tolUns$signedTol,
-      locTolAbsUns = tolUns$tolAbs,
-      locLog10TolAbsUns = tolUns$log10TolAbs,
-      locDerivUns = tolUns$deriv,
-      locDerivSignUns = tolUns$derivSign,
-      locTolSignedStim = tolStim$signedTol,
-      locTolAbsStim = tolStim$tolAbs,
-      locLog10TolAbsStim = tolStim$log10TolAbs,
-      locDerivStim = tolStim$deriv,
-      locDerivSignStim = tolStim$derivSign
+    if (is.null(densUns) || is.null(densStim)) {
+      return(NULL)
+    }
+    c(
+      list(ind = as.character(indCurr)),
+      stats::setNames(as.list(densUns), sprintf("uns%03d", seq_len(n))),
+      stats::setNames(as.list(densStim), sprintf("stim%03d", seq_len(n)))
     )
-  })
+  }) |>
+    purrr::compact()
 
-  locTbl |>
-    dplyr::left_join(tolTbl, by = "ind")
+  if (length(featureRows) == 0L) {
+    return(list(
+      featureTbl = tibble::tibble(ind = character()),
+      x = xGrid
+    ))
+  }
+
+  list(
+    featureTbl = dplyr::bind_rows(featureRows),
+    x = xGrid
+  )
 }
 
 #' @keywords internal
-.getCpClusterLocTolAtCp <- function(
-  x,
-  cp,
-  bw,
-  cpMin = -Inf,
-  n = 512,
-  refPeak = c("highest", "first")
-) {
-  refPeak <- match.arg(refPeak)
+.getCpClusterLocDensityFeature <- function(x, xGrid, bw) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
-  cp <- suppressWarnings(as.numeric(cp))[1]
-  bw <- suppressWarnings(as.numeric(bw))[1]
-  cpMin <- suppressWarnings(as.numeric(cpMin))[1]
-  if (
-    length(x) < 5L ||
-      length(unique(x)) < 3L ||
-      !is.finite(cp) ||
-      !is.finite(bw) ||
-      bw <= 0
-  ) {
-    return(.getCpClusterLocTolEmpty(cp = cp, bw = bw))
+  if (length(x) < 5L || length(unique(x)) < 3L) {
+    return(NULL)
+  }
+
+  xAboveMin <- x[x > min(x)]
+  if (length(xAboveMin) >= 5L && length(unique(xAboveMin)) >= 3L) {
+    x <- xAboveMin
   }
 
   dens <- try(
-    suppressWarnings(stats::density(x, bw = bw, n = n)),
+    suppressWarnings(stats::density(
+      x,
+      bw = bw,
+      n = length(xGrid),
+      from = min(xGrid),
+      to = max(xGrid)
+    )),
     silent = TRUE
   )
   if (inherits(dens, "try-error")) {
-    return(.getCpClusterLocTolEmpty(cp = cp, bw = bw))
+    return(NULL)
   }
 
-  derObj <- .getCpClusterLocDerivative(dens)
-  peakInd <- .getCpClusterLocPeakInd(dens, refPeak = refPeak)
-  rightInd <- derObj$x >= max(dens$x[peakInd], cpMin, na.rm = TRUE)
-  if (!any(rightInd)) {
-    return(.getCpClusterLocTolEmpty(cp = cp, bw = bw))
+  y <- as.numeric(dens$y)
+  y[!is.finite(y) | y < 0] <- 0
+  ySum <- sum(y)
+  if (!is.finite(ySum) || ySum <= 0) {
+    return(NULL)
   }
+  y / ySum
+}
 
-  derRight <- derObj$deriv[rightInd]
-  refDeriv <- derRight[which.max(abs(derRight))]
-  if (!is.finite(refDeriv) || refDeriv == 0) {
-    return(.getCpClusterLocTolEmpty(cp = cp, bw = bw))
-  }
+#' @keywords internal
+.getCpClusterLocFeatureCols <- function(tbl) {
+  grep("^(uns|stim)\\d{3}$", names(tbl), value = TRUE)
+}
 
-  derivAtCp <- stats::approx(
-    x = derObj$x,
-    y = derObj$deriv,
-    xout = cp,
-    rule = 2
-  )$y
-  tolAbs <- abs(derivAtCp) / abs(refDeriv)
-  derivSign <- sign(derivAtCp)
-  if (!is.finite(tolAbs) || tolAbs <= 0 || !is.finite(derivSign)) {
-    return(.getCpClusterLocTolEmpty(cp = cp, bw = bw))
-  }
-  signedTol <- derivSign * tolAbs
-  list(
-    signedTol = signedTol,
-    tolAbs = tolAbs,
-    log10TolAbs = log10(tolAbs),
-    deriv = derivAtCp,
-    derivSign = derivSign,
-    refDeriv = refDeriv,
-    bw = bw,
-    cp = cp
+#' @keywords internal
+.getCpClusterLocJointClusters <- function(locTblFeature, control) {
+  featureCols <- .getCpClusterLocFeatureCols(locTblFeature)
+  featureMat <- as.matrix(locTblFeature[, featureCols, drop = FALSE])
+  storage.mode(featureMat) <- "double"
+
+  direct <- locTblFeature$locGeneratedDirect %in% TRUE &
+    is.finite(locTblFeature$gate)
+  nDirect <- sum(direct)
+  nDistinct <- nrow(unique(as.data.frame(featureMat)))
+  kMax <- min(
+    control$locClusterMaxClusters,
+    floor(nDirect / control$locClusterMinDirect),
+    nrow(featureMat),
+    nDistinct
   )
-}
+  kMax <- max(1L, as.integer(kMax))
 
-#' @keywords internal
-.getCpClusterLocTolEmpty <- function(cp, bw) {
-  list(
-    signedTol = NA_real_,
-    tolAbs = NA_real_,
-    log10TolAbs = NA_real_,
-    deriv = NA_real_,
-    derivSign = NA_real_,
-    refDeriv = NA_real_,
-    bw = bw,
-    cp = cp
-  )
-}
-
-#' @keywords internal
-.getCpClusterLocDerivative <- function(dens) {
-  list(
-    x = dens$x[-1] - diff(dens$x) / 2,
-    deriv = diff(dens$y) / diff(dens$x)
-  )
-}
-
-#' @keywords internal
-.getCpClusterLocPeakInd <- function(dens, refPeak = "highest") {
-  if (refPeak == "highest") {
-    return(which.max(dens$y))
+  if (kMax == 1L) {
+    grp <- rep(1L, nrow(featureMat))
+    return(list(initial = grp, final = grp, selectedK = 1L))
   }
-  peakInd <- which(
-    dens$y[-c(1, length(dens$y))] >
-      dens$y[-c(length(dens$y) - 1L, length(dens$y))] &
-      dens$y[-c(1, length(dens$y))] >= dens$y[-c(1, 2)]
-  ) +
-    1L
-  if (length(peakInd) == 0L) {
-    return(which.max(dens$y))
-  }
-  peakInd[1]
+
+  selectedK <- .getCpClusterLocSelectK(
+    featureMat = featureMat,
+    kMax = kMax,
+    control = control
+  )
+  initial <- .getCpClusterLocKmeans(
+    featureMat = featureMat,
+    k = selectedK,
+    control = control
+  )
+  final <- .getCpClusterLocMergeSparseDirect(
+    featureMat = featureMat,
+    grp = initial,
+    direct = direct,
+    minDirect = control$locClusterMinDirect
+  )
+
+  list(initial = initial, final = final, selectedK = selectedK)
 }
 
 #' @keywords internal
-.getCpClusterLocImputeRow <- function(
-  row,
-  locTbl,
-  exLookup,
-  commonBw,
-  cpMin,
-  chnlSettings
+.getCpClusterLocSelectK <- function(featureMat, kMax, control) {
+  if (kMax <= 1L) {
+    return(1L)
+  }
+
+  clusterFun <- function(x, k) {
+    stats::kmeans(
+      x,
+      centers = k,
+      nstart = control$locClusterNstart,
+      iter.max = 100
+    )
+  }
+  gapObj <- .getCpClusterLocWithSeed(
+    seed = control$locClusterSeed,
+    code = try(
+      cluster::clusGap(
+        featureMat,
+        FUNcluster = clusterFun,
+        K.max = kMax,
+        B = control$locClusterGapB
+      ),
+      silent = TRUE
+    )
+  )
+  if (inherits(gapObj, "try-error")) {
+    return(1L)
+  }
+
+  selected <- try(
+    cluster::maxSE(
+      gapObj$Tab[, "gap"],
+      gapObj$Tab[, "SE.sim"],
+      method = "firstSEmax"
+    ),
+    silent = TRUE
+  )
+  if (inherits(selected, "try-error") || !is.finite(selected)) {
+    return(1L)
+  }
+  max(1L, min(as.integer(selected), kMax))
+}
+
+#' @keywords internal
+.getCpClusterLocKmeans <- function(featureMat, k, control) {
+  if (k <= 1L) {
+    return(rep(1L, nrow(featureMat)))
+  }
+  fit <- .getCpClusterLocWithSeed(
+    seed = control$locClusterSeed,
+    code = stats::kmeans(
+      featureMat,
+      centers = k,
+      nstart = control$locClusterNstart,
+      iter.max = 100
+    )
+  )
+  as.integer(fit$cluster)
+}
+
+#' @keywords internal
+.getCpClusterLocWithSeed <- function(seed, code) {
+  hadSeed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  if (hadSeed) {
+    oldSeed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  }
+  on.exit({
+    if (hadSeed) {
+      assign(".Random.seed", oldSeed, envir = .GlobalEnv)
+    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  })
+  set.seed(as.integer(seed)[1])
+  force(code)
+}
+
+#' @keywords internal
+.getCpClusterLocMergeSparseDirect <- function(
+  featureMat,
+  grp,
+  direct,
+  minDirect
 ) {
-  indCurr <- as.character(row$ind[1])
-  cpOrig <- as.numeric(row$gate[1])
-  cpMedianUns <- .getCpClusterLocMedianCp(
-    locTbl = locTbl,
-    grpCol = "grpUns",
-    grpVal = row$grpUns[1]
-  )
-  cpMedianStim <- .getCpClusterLocMedianCp(
-    locTbl = locTbl,
-    grpCol = "grpStim",
-    grpVal = row$grpStim[1]
-  )
+  grp <- as.integer(factor(grp))
+  repeat {
+    grpLevels <- sort(unique(grp))
+    if (length(grpLevels) <= 1L) {
+      break
+    }
+    directCount <- vapply(grpLevels, function(g) {
+      sum(direct[grp == g])
+    }, integer(1))
+    if (all(directCount >= minDirect)) {
+      break
+    }
 
-  if (row$locGenerated[1] %in% TRUE) {
+    sourceGrp <- grpLevels[which.min(directCount)]
+    sourceCentre <- colMeans(
+      featureMat[grp == sourceGrp, , drop = FALSE]
+    )
+    targetGrp <- setdiff(grpLevels, sourceGrp)
+    targetDist <- vapply(targetGrp, function(g) {
+      targetCentre <- colMeans(featureMat[grp == g, , drop = FALSE])
+      sqrt(sum((sourceCentre - targetCentre)^2))
+    }, numeric(1))
+    mergeInto <- targetGrp[which.min(targetDist)]
+    grp[grp == sourceGrp] <- mergeInto
+    grp <- as.integer(factor(grp))
+  }
+  grp
+}
+
+#' @keywords internal
+.getCpClusterLocDirectSummary <- function(locTbl, control) {
+  locTbl |>
+    dplyr::filter(!is.na(.data$grp)) |>
+    dplyr::group_by(.data$grp) |>
+    dplyr::summarise(
+      locClusterN = dplyr::n(),
+      locClusterNDirect = sum(
+        .data$locGeneratedDirect %in% TRUE &
+          is.finite(.data$gate)
+      ),
+      locClusterQ15 = .getCpClusterLocQuantile(
+        .data$gate[
+          .data$locGeneratedDirect %in% TRUE &
+            is.finite(.data$gate)
+        ],
+        control$locClusterWinsorLower
+      ),
+      locClusterQ60 = .getCpClusterLocQuantile(
+        .data$gate[
+          .data$locGeneratedDirect %in% TRUE &
+            is.finite(.data$gate)
+        ],
+        control$locClusterImputeQuantile
+      ),
+      locClusterQ85 = .getCpClusterLocQuantile(
+        .data$gate[
+          .data$locGeneratedDirect %in% TRUE &
+            is.finite(.data$gate)
+        ],
+        control$locClusterWinsorUpper
+      ),
+      .groups = "drop"
+    )
+}
+
+#' @keywords internal
+.getCpClusterLocQuantile <- function(x, prob) {
+  x <- suppressWarnings(as.numeric(x))
+  x <- x[is.finite(x)]
+  if (length(x) == 0L) {
+    return(NA_real_)
+  }
+  stats::quantile(
+    x,
+    probs = prob,
+    na.rm = TRUE,
+    names = FALSE,
+    type = 7
+  )
+}
+
+#' @keywords internal
+.getCpClusterLocFinaliseRow <- function(
+  row,
+  commonBw,
+  featureMinX,
+  featureMaxX
+) {
+  cpOrig <- suppressWarnings(as.numeric(row$gate[1]))
+  q15 <- suppressWarnings(as.numeric(row$locClusterQ15[1]))
+  q60 <- suppressWarnings(as.numeric(row$locClusterQ60[1]))
+  q85 <- suppressWarnings(as.numeric(row$locClusterQ85[1]))
+  direct <- row$locGeneratedDirect[1] %in% TRUE && is.finite(cpOrig)
+
+  if (!is.finite(q15) || !is.finite(q60) || !is.finite(q85)) {
     return(.getCpClusterLocRowOut(
       row = row,
       cp = cpOrig,
-      cpUns = NA_real_,
-      cpStim = NA_real_,
-      cpMedianUns = cpMedianUns,
-      cpMedianStim = cpMedianStim,
       commonBw = commonBw,
-      reason = "local_fdr_available"
+      reason = if (is.na(row$grp[1])) {
+        "joint_density_features_unavailable"
+      } else {
+        "cluster_direct_donor_summary_unavailable"
+      },
+      featureMinX = featureMinX,
+      featureMaxX = featureMaxX
     ))
   }
 
-  exPair <- exLookup[[indCurr]]
-  if (is.null(exPair)) {
+  if (!direct) {
     return(.getCpClusterLocRowOut(
       row = row,
-      cp = cpOrig,
-      cpUns = NA_real_,
-      cpStim = NA_real_,
-      cpMedianUns = cpMedianUns,
-      cpMedianStim = cpMedianStim,
+      cp = q60,
       commonBw = commonBw,
-      reason = "expression_pair_missing"
+      reason = "assigned_cluster_direct_q60",
+      featureMinX = featureMinX,
+      featureMaxX = featureMaxX
     ))
   }
 
-  tolUns <- .getCpClusterLocMedianSignedTol(
-    locTbl = locTbl,
-    grpCol = "grpUns",
-    grpVal = row$grpUns[1],
-    tolCol = "locTolSignedUns"
-  )
-  tolStim <- .getCpClusterLocMedianSignedTol(
-    locTbl = locTbl,
-    grpCol = "grpStim",
-    grpVal = row$grpStim[1],
-    tolCol = "locTolSignedStim"
-  )
-
-  cpUns <- .getCpClusterLocCpFromSignedTol(
-    x = .getCut(exPair$uns),
-    signedTol = tolUns,
-    bw = commonBw,
-    cpMin = cpMin,
-    refPeak = chnlSettings$locTolRefPeak %||% "highest"
-  )
-  cpStim <- .getCpClusterLocCpFromSignedTol(
-    x = .getCut(exPair$stim),
-    signedTol = tolStim,
-    bw = commonBw,
-    cpMin = cpMin,
-    refPeak = chnlSettings$locTolRefPeak %||% "highest"
-  )
-
-  candUns <- .getCpClusterLocCandidateBound(cpUns, cpMedianUns)
-  candStim <- .getCpClusterLocCandidateBound(cpStim, cpMedianStim)
-  cp <- .getCpClusterLocChooseCp(
-    cpUns = candUns,
-    cpStim = candStim,
-    cpMedianUns = cpMedianUns,
-    cpMedianStim = cpMedianStim,
-    cpOrig = cpOrig
-  )
-
+  cp <- min(max(cpOrig, q15), q85)
+  reason <- if (cpOrig < q15) {
+    "direct_winsorised_to_cluster_q15"
+  } else if (cpOrig > q85) {
+    "direct_winsorised_to_cluster_q85"
+  } else {
+    "direct_within_cluster_winsor_limits"
+  }
   .getCpClusterLocRowOut(
     row = row,
     cp = cp,
-    cpUns = candUns,
-    cpStim = candStim,
-    cpMedianUns = cpMedianUns,
-    cpMedianStim = cpMedianStim,
     commonBw = commonBw,
-    reason = "imputed_from_cluster_median_signed_tol"
+    reason = reason,
+    featureMinX = featureMinX,
+    featureMaxX = featureMaxX
   )
 }
 
 #' @keywords internal
-.getCpClusterLocMedianCp <- function(locTbl, grpCol, grpVal) {
-  if (is.na(grpVal)) {
-    return(NA_real_)
-  }
-  x <- locTbl |>
-    dplyr::filter(.data[[grpCol]] == .env$grpVal) |>
-    dplyr::filter(.data$locGenerated %in% TRUE) |>
-    dplyr::pull("gate")
-  x <- x[is.finite(x)]
-  if (length(x) == 0L) {
-    return(NA_real_)
-  }
-  stats::median(x, na.rm = TRUE)
-}
-
-#' @keywords internal
-.getCpClusterLocMedianSignedTol <- function(locTbl, grpCol, grpVal, tolCol) {
-  if (is.na(grpVal)) {
-    return(NA_real_)
-  }
-  tolTbl <- locTbl |>
-    dplyr::filter(.data[[grpCol]] == .env$grpVal) |>
-    dplyr::filter(.data$locGenerated %in% TRUE)
-  x <- tolTbl[[tolCol]]
-  x <- x[is.finite(x) & x != 0]
-  if (length(x) == 0L) {
-    return(NA_real_)
-  }
-
-  signVec <- sign(x)
-  tab <- table(signVec)
-  signUse <- as.numeric(names(tab)[which.max(tab)])
-  xUse <- x[signVec == signUse]
-  if (length(xUse) == 0L) {
-    signUse <- sign(stats::median(x, na.rm = TRUE))
-    xUse <- x
-  }
-  signUse * 10^stats::median(log10(abs(xUse)), na.rm = TRUE)
-}
-
-#' @keywords internal
-.getCpClusterLocCpFromSignedTol <- function(
-  x,
-  signedTol,
-  bw,
-  cpMin = -Inf,
-  n = 512,
-  refPeak = c("highest", "first")
+.getCpClusterLocSkipOut <- function(
+  gateTblStim,
+  reason,
+  commonBw = NA_real_,
+  featureMinX = NA_real_,
+  featureMaxX = NA_real_
 ) {
-  refPeak <- match.arg(refPeak)
-  x <- suppressWarnings(as.numeric(x))
-  x <- x[is.finite(x)]
-  signedTol <- suppressWarnings(as.numeric(signedTol))[1]
-  bw <- suppressWarnings(as.numeric(bw))[1]
-  cpMin <- suppressWarnings(as.numeric(cpMin))[1]
-  if (
-    length(x) < 5L ||
-      length(unique(x)) < 3L ||
-      !is.finite(signedTol) ||
-      signedTol == 0 ||
-      !is.finite(bw) ||
-      bw <= 0
-  ) {
-    return(NA_real_)
-  }
-
-  dens <- try(
-    suppressWarnings(stats::density(x, bw = bw, n = n)),
-    silent = TRUE
-  )
-  if (inherits(dens, "try-error")) {
-    return(NA_real_)
-  }
-
-  derObj <- .getCpClusterLocDerivative(dens)
-  peakInd <- .getCpClusterLocPeakInd(dens, refPeak = refPeak)
-  rightInd <- derObj$x >= max(dens$x[peakInd], cpMin, na.rm = TRUE)
-  if (!any(rightInd)) {
-    return(NA_real_)
-  }
-
-  xRight <- derObj$x[rightInd]
-  derRight <- derObj$deriv[rightInd]
-  refInd <- which.max(abs(derRight))
-  refDeriv <- derRight[refInd]
-  if (!is.finite(refDeriv) || refDeriv == 0) {
-    return(NA_real_)
-  }
-
-  tolAbs <- abs(signedTol)
-  targetSign <- sign(signedTol)
-  ratio <- abs(derRight) / abs(refDeriv)
-  afterRef <- seq_along(xRight) >= refInd
-  sameSign <- sign(derRight) == targetSign
-
-  if (targetSign < 0) {
-    cand <- which(afterRef & sameSign & ratio <= tolAbs)
-    if (length(cand) > 0L) {
-      return(max(min(xRight[cand[1]], na.rm = TRUE), cpMin, na.rm = TRUE))
-    }
-  }
-
-  cand <- which(afterRef & sameSign)
-  if (length(cand) == 0L) {
-    cand <- which(afterRef)
-  }
-  if (length(cand) == 0L) {
-    return(NA_real_)
-  }
-  best <- cand[which.min(abs(ratio[cand] - tolAbs))]
-  max(xRight[best], cpMin, na.rm = TRUE)
-}
-
-#' @keywords internal
-.getCpClusterLocCandidateBound <- function(cp, cpMedian) {
-  if (!is.finite(cp)) {
-    return(NA_real_)
-  }
-  if (!is.finite(cpMedian)) {
-    return(cp)
-  }
-  max(cp, cpMedian)
-}
-
-#' @keywords internal
-.getCpClusterLocChooseCp <- function(
-  cpUns,
-  cpStim,
-  cpMedianUns,
-  cpMedianStim,
-  cpOrig
-) {
-  cand <- tibble::tibble(
-    cp = c(cpUns, cpStim),
-    cpMedian = c(cpMedianUns, cpMedianStim),
-    source = c("uns", "stim")
-  ) |>
-    dplyr::filter(is.finite(.data$cp)) |>
-    dplyr::mutate(
-      dist = ifelse(is.finite(.data$cpMedian), .data$cp - .data$cpMedian, Inf),
-      dist = ifelse(.data$dist < 0, Inf, .data$dist)
-    )
-  if (nrow(cand) == 0L) {
-    return(cpOrig)
-  }
-  cand |>
-    dplyr::arrange(.data$dist) |>
-    dplyr::slice(1) |>
-    dplyr::pull("cp")
-}
-
-#' @keywords internal
-.getCpClusterLocSkipOut <- function(gateTblStim, reason) {
   purrr::map_df(seq_len(nrow(gateTblStim)), function(i) {
     .getCpClusterLocRowOut(
       row = gateTblStim[i, , drop = FALSE],
       cp = gateTblStim$gate[i],
-      cpUns = NA_real_,
-      cpStim = NA_real_,
-      cpMedianUns = NA_real_,
-      cpMedianStim = NA_real_,
-      commonBw = NA_real_,
-      reason = reason
+      commonBw = commonBw,
+      reason = reason,
+      featureMinX = featureMinX,
+      featureMaxX = featureMaxX
     )
   })
 }
@@ -798,47 +786,73 @@
 .getCpClusterLocRowOut <- function(
   row,
   cp,
-  cpUns,
-  cpStim,
-  cpMedianUns,
-  cpMedianStim,
   commonBw,
-  reason
+  reason,
+  featureMinX = NA_real_,
+  featureMaxX = NA_real_
 ) {
-  grpUns <- suppressWarnings(row$grpUns[1]) %||% NA_character_
-  grpStim <- suppressWarnings(row$grpStim[1]) %||% NA_character_
-  grp <- ifelse(!is.na(grpStim), grpStim, grpUns)
-  cpJoin <- ifelse(is.finite(cpMedianStim), cpMedianStim, cpMedianUns)
+  grp <- .getCpClusterLocRowValue(row, "grp", NA_character_)
+  grpInitial <- .getCpClusterLocRowValue(row, "grpInitial", NA_character_)
+  q15 <- .getCpClusterLocRowValue(row, "locClusterQ15", NA_real_)
+  q60 <- .getCpClusterLocRowValue(row, "locClusterQ60", NA_real_)
+  q85 <- .getCpClusterLocRowValue(row, "locClusterQ85", NA_real_)
+  nCluster <- .getCpClusterLocRowValue(row, "locClusterN", NA_integer_)
+  nDirect <- .getCpClusterLocRowValue(
+    row,
+    "locClusterNDirect",
+    NA_integer_
+  )
+
   tibble::tibble(
-    grp = grp,
-    grpUns = grpUns,
-    grpStim = grpStim,
+    grp = as.character(grp),
+    grpUns = as.character(grp),
+    grpStim = as.character(grp),
     ind = as.character(row$ind[1]),
-    cpOrigQuantMin = row$gate[1],
-    cpJoin = cpJoin,
+    cpOrigQuantMin = suppressWarnings(as.numeric(row$gate[1])),
+    cpJoin = as.numeric(q60),
     cpJoinLse = NA_real_,
     cpJoinLseOrig = NA_real_,
     cpJoinLseOrigMean = NA_real_,
     cpJoinTgOrig = cp,
     cpJoinTgOrigMean = cp,
     cpJoinLseOrigMeanTg = cp,
-    cpTolUns = cpUns,
-    cpTolStim = cpStim,
-    cpMedianUns = cpMedianUns,
-    cpMedianStim = cpMedianStim,
-    locGenerated = suppressWarnings(row$locGenerated[1] %in% TRUE),
-    locGeneratedDirect = suppressWarnings(row$locGeneratedDirect[1] %in% TRUE),
-    locSource = suppressWarnings(row$locSource[1]) %||% NA_character_,
-    locReason = suppressWarnings(row$locReason[1]) %||% NA_character_,
+    cpTolUns = NA_real_,
+    cpTolStim = NA_real_,
+    cpMedianUns = as.numeric(q60),
+    cpMedianStim = as.numeric(q60),
+    locGenerated = row$locGenerated[1] %in% TRUE,
+    locGeneratedDirect = row$locGeneratedDirect[1] %in% TRUE,
+    locSource = .getCpClusterLocRowValue(row, "locSource", NA_character_),
+    locReason = .getCpClusterLocRowValue(row, "locReason", NA_character_),
     locClusterReason = reason,
     locClusterBw = commonBw,
-    locTolSignedUns = suppressWarnings(row$locTolSignedUns[1]) %||% NA_real_,
-    locTolSignedStim = suppressWarnings(row$locTolSignedStim[1]) %||% NA_real_,
-    locDerivSignUns = suppressWarnings(row$locDerivSignUns[1]) %||% NA_real_,
-    locDerivSignStim = suppressWarnings(row$locDerivSignStim[1]) %||% NA_real_,
+    locClusterInitialGrp = as.character(grpInitial),
+    locClusterN = as.integer(nCluster),
+    locClusterNDirect = as.integer(nDirect),
+    locClusterQ15 = as.numeric(q15),
+    locClusterQ60 = as.numeric(q60),
+    locClusterQ85 = as.numeric(q85),
+    locClusterFeatureMinX = featureMinX,
+    locClusterFeatureMaxX = featureMaxX,
+    locTolSignedUns = NA_real_,
+    locTolSignedStim = NA_real_,
+    locDerivSignUns = NA_real_,
+    locDerivSignStim = NA_real_,
     propBsOrig = NA_real_,
     propBsCpDiff = NA_real_,
     propBsCpDiffSd = NA_real_,
     propBsCp = NA_real_
   )
+}
+
+#' @keywords internal
+.getCpClusterLocRowValue <- function(row, name, default) {
+  if (!name %in% names(row) || length(row[[name]]) == 0L) {
+    return(default)
+  }
+  value <- row[[name]][1]
+  if (length(value) == 0L) {
+    return(default)
+  }
+  value
 }
