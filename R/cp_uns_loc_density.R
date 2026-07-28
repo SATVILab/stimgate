@@ -15,6 +15,129 @@
   pathProject,
   chnlSettings
 ) {
+  ordinary <- .getCpUnsLocGetProbFit(
+    exTblStimNoMin = exTblStimNoMin,
+    exTblStimThreshold = exTblStimThreshold,
+    exTblUnsThreshold = exTblUnsThreshold,
+    exTblUnsBias = exTblUnsBias,
+    bias = bias,
+    exTblUnsOrig = exTblUnsOrig,
+    stage = stage,
+    pathProject = pathProject,
+    chnlSettings = chnlSettings,
+    applyPreliminaryFilter = TRUE
+  )
+
+  enforceShape <- isTRUE(
+    .getCpUnsLocSetting(
+      chnlSettings,
+      "locEnforceShapeThreshold",
+      FALSE
+    )
+  )
+  if (!enforceShape) {
+    return(.getCpUnsLocAttachShapeFitInfo(
+      dataMod = ordinary$dataMod,
+      shape = list(
+        thresholdX = NA_real_,
+        info = list(
+          applied = FALSE,
+          reason = "shape_threshold_not_requested"
+        )
+      ),
+      requested = FALSE,
+      applied = FALSE,
+      ordinaryDataMod = ordinary$dataMod
+    ))
+  }
+
+  shape <- .getCpUnsLocGetShapeThreshold(
+    exTblStimThreshold = exTblStimThreshold,
+    probTblList = ordinary$probTblList,
+    chnlSettings = chnlSettings
+  )
+  if (!is.finite(shape$thresholdX)) {
+    return(.getCpUnsLocAttachShapeFitInfo(
+      dataMod = ordinary$dataMod,
+      shape = shape,
+      requested = TRUE,
+      applied = FALSE,
+      ordinaryDataMod = ordinary$dataMod
+    ))
+  }
+
+  exTblStimShape <- .getCpUnsLocSubsetExpressionTable(
+    exTblStimThreshold,
+    shape$thresholdX
+  )
+  exTblUnsShape <- .getCpUnsLocSubsetExpressionTable(
+    exTblUnsThreshold,
+    shape$thresholdX
+  )
+  shape$info$nStimRight <- nrow(exTblStimShape)
+  shape$info$nUnstimRight <- nrow(exTblUnsShape)
+
+  if (
+    nrow(exTblStimShape) < 5L ||
+      nrow(exTblUnsShape) < 5L ||
+      length(unique(.getCut(exTblStimShape))) < 3L ||
+      length(unique(.getCut(exTblUnsShape))) < 3L
+  ) {
+    shape$info$reason <- "too_few_values_right_of_shape_threshold"
+    return(.getCpUnsLocAttachShapeFitInfo(
+      dataMod = ordinary$dataMod,
+      shape = shape,
+      requested = TRUE,
+      applied = FALSE,
+      ordinaryDataMod = ordinary$dataMod
+    ))
+  }
+
+  shapeFit <- .getCpUnsLocGetProbFit(
+    exTblStimNoMin = exTblStimShape,
+    exTblStimThreshold = exTblStimShape,
+    exTblUnsThreshold = exTblUnsShape,
+    exTblUnsBias = exTblUnsBias,
+    bias = bias,
+    exTblUnsOrig = exTblUnsOrig,
+    stage = stage,
+    pathProject = pathProject,
+    chnlSettings = chnlSettings,
+    applyPreliminaryFilter = FALSE,
+    peakX = ordinary$probTblList$peakX,
+    windowWidth = ordinary$probTblList$windowWidth
+  )
+
+  .getCpUnsLocAttachShapeFitInfo(
+    dataMod = shapeFit$dataMod,
+    shape = shape,
+    requested = TRUE,
+    applied = is.data.frame(shapeFit$dataMod),
+    ordinaryDataMod = ordinary$dataMod
+  )
+}
+
+#' Fit one response-probability curve
+#'
+#' The ordinary fit uses the existing preliminary probability filter. The
+#' shape-restricted fit instead uses every density-grid point remaining after
+#' the shape threshold, because that threshold has already defined the
+#' admissible modelling region.
+#' @keywords internal
+.getCpUnsLocGetProbFit <- function(
+  exTblStimNoMin,
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  exTblUnsBias,
+  bias,
+  exTblUnsOrig,
+  stage,
+  pathProject,
+  chnlSettings,
+  applyPreliminaryFilter = TRUE,
+  peakX = NULL,
+  windowWidth = NULL
+) {
   ind <- .getInd(exTblStimNoMin)
   chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
   stageChnl <- file.path(stage, chnl)
@@ -37,6 +160,17 @@
     exVecStimThreshold = .getCut(exTblStimThreshold),
     exVecUnsThreshold = .getCut(exTblUnsThreshold)
   )
+  if (!isTRUE(applyPreliminaryFilter)) {
+    probTblList$pos <- probTblList$all
+    if (is.finite(suppressWarnings(as.numeric(peakX)[1L]))) {
+      probTblList$peakX <- suppressWarnings(as.numeric(peakX)[1L])
+    }
+    if (is.finite(suppressWarnings(as.numeric(windowWidth)[1L]))) {
+      probTblList$windowWidth <- suppressWarnings(
+        as.numeric(windowWidth)[1L]
+      )
+    }
+  }
   .intSave(ind, stageChnl, pathProject, probTblList)
 
   # get .data to smooth over
@@ -52,13 +186,201 @@
   .intSave(ind, stageChnl, pathProject, dataMod)
 
   # smooth
-  .getCpUnsLocGetProbSmooth(
+  dataMod <- .getCpUnsLocGetProbSmooth(
     dataMod = dataMod,
     stage = stage,
     pathProject = pathProject,
     chnl = chnl,
     chnlSettings = chnlSettings
   )
+
+  list(dataMod = dataMod, probTblList = probTblList)
+}
+
+#' Define the optional prefit density-shape threshold
+#'
+#' The shape threshold is the lower available value among the first stimulated
+#' antimode to the right of the original main negative peak and the stimulated
+#' density tailgate plus its window-width margin.
+#' @keywords internal
+.getCpUnsLocGetShapeThreshold <- function(
+  exTblStimThreshold,
+  probTblList,
+  chnlSettings
+) {
+  info <- list(
+    applied = FALSE,
+    reason = "shape_threshold_unavailable",
+    adjustmentFraction = 1 / 4
+  )
+
+  if (
+    !is.list(probTblList) ||
+      !is.data.frame(probTblList$stimDensity)
+  ) {
+    info$reason <- "shape_density_unavailable"
+    return(list(thresholdX = NA_real_, info = info))
+  }
+
+  peakX <- suppressWarnings(as.numeric(probTblList$peakX)[1L])
+  windowWidth <- suppressWarnings(
+    as.numeric(probTblList$windowWidth)[1L]
+  )
+  info$peakX <- peakX
+  info$windowWidth <- windowWidth
+
+  tailgate <- .getCpUnsLocMarginalDensityLowerBound(
+    density = probTblList$stimDensity,
+    peakX = peakX,
+    fraction = 1 / 200
+  )
+  rawTailgateX <- suppressWarnings(
+    as.numeric(tailgate$lowerBoundX)[1L]
+  )
+  adjustmentFraction <- suppressWarnings(as.numeric(
+    .getCpUnsLocSetting(
+      chnlSettings,
+      "locShapeTailgateMarginFrac",
+      1 / 4
+    )
+  )[1L])
+  if (!is.finite(adjustmentFraction) || adjustmentFraction < 0) {
+    adjustmentFraction <- 1 / 4
+  }
+  adjustedTailgateX <- rawTailgateX
+  if (
+    is.finite(rawTailgateX) &&
+      is.finite(windowWidth) &&
+      windowWidth > 0
+  ) {
+    adjustedTailgateX <-
+      rawTailgateX + adjustmentFraction * windowWidth
+  }
+
+  stimX <- suppressWarnings(as.numeric(.getCut(exTblStimThreshold)))
+  stimX <- stimX[is.finite(stimX)]
+  antimodeDensity <- .getCpUnsLocAntimodeDensity(
+    expr = stimX,
+    chnlSettings = chnlSettings,
+    originalBw = probTblList$densityBw
+  )
+  antimodes <- if (is.null(antimodeDensity)) {
+    numeric(0L)
+  } else {
+    .getCpUnsLocAntimodes(antimodeDensity)
+  }
+  antimodesRight <- antimodes[
+    is.finite(antimodes) &
+      is.finite(peakX) &
+      antimodes > peakX
+  ]
+  antimodeX <- if (length(antimodesRight) == 0L) {
+    NA_real_
+  } else {
+    min(antimodesRight)
+  }
+
+  candidates <- c(
+    antimode = antimodeX,
+    adjustedTailgate = adjustedTailgateX
+  )
+  candidates <- candidates[is.finite(candidates)]
+  thresholdX <- if (length(candidates) == 0L) {
+    NA_real_
+  } else {
+    min(candidates)
+  }
+
+  info$applied <- is.finite(thresholdX)
+  info$reason <- if (info$applied) {
+    "identified_prefit_shape_threshold"
+  } else {
+    "no_post_peak_antimode_or_tailgate"
+  }
+  info$antimodes <- antimodes
+  info$antimodesRightOfPeak <- antimodesRight
+  info$antimodeX <- antimodeX
+  info$tailgate <- tailgate$info
+  info$rawTailgateX <- rawTailgateX
+  info$adjustmentFraction <- adjustmentFraction
+  info$adjustedTailgateX <- adjustedTailgateX
+  info$thresholdX <- thresholdX
+  info$selectedBasis <- if (!is.finite(thresholdX)) {
+    NA_character_
+  } else if (
+    is.finite(antimodeX) &&
+      (!is.finite(adjustedTailgateX) || antimodeX <= adjustedTailgateX)
+  ) {
+    "first_post_peak_antimode"
+  } else {
+    "adjusted_tailgate"
+  }
+
+  list(thresholdX = thresholdX, info = info)
+}
+
+#' Retain expression values at or above a shape threshold
+#' @keywords internal
+.getCpUnsLocSubsetExpressionTable <- function(.data, thresholdX) {
+  attrs <- attributes(.data)
+  x <- suppressWarnings(as.numeric(.getCut(.data)))
+  out <- .data[is.finite(x) & x >= thresholdX, , drop = FALSE]
+  customAttrs <- setdiff(
+    names(attrs),
+    c("names", "row.names", "class")
+  )
+  for (name in customAttrs) {
+    attr(out, name) <- attrs[[name]]
+  }
+  out
+}
+
+#' Attach shape-route diagnostics to the selected model data
+#' @keywords internal
+.getCpUnsLocAttachShapeFitInfo <- function(
+  dataMod,
+  shape,
+  requested,
+  applied,
+  ordinaryDataMod
+) {
+  if (!is.data.frame(dataMod)) {
+    return(dataMod)
+  }
+
+  ordinaryCurve <- NULL
+  if (isTRUE(requested) && is.data.frame(ordinaryDataMod)) {
+    ordinaryCurve <- data.frame(
+      x = suppressWarnings(as.numeric(.getCut(ordinaryDataMod))),
+      probSmooth = suppressWarnings(
+        as.numeric(ordinaryDataMod$probSmooth)
+      ),
+      pred = if ("pred" %in% names(ordinaryDataMod)) {
+        suppressWarnings(as.numeric(ordinaryDataMod$pred))
+      } else {
+        NA_real_
+      }
+    )
+    attr(ordinaryCurve, "locProbDerivTbl") <-
+      attr(ordinaryDataMod, "locProbDerivTbl")
+    attr(ordinaryCurve, "locProbSmoothMethod") <-
+      attr(ordinaryDataMod, "locProbSmoothMethod")
+  }
+
+  attr(dataMod, "locShapeThresholdRequested") <- isTRUE(requested)
+  attr(dataMod, "locShapeThresholdApplied") <- isTRUE(applied)
+  attr(dataMod, "locShapeThresholdX") <- if (isTRUE(applied)) {
+    shape$thresholdX
+  } else {
+    NA_real_
+  }
+  attr(dataMod, "locShapeThresholdInfo") <- shape$info
+  attr(dataMod, "locShapeTailgateX") <-
+    shape$info$adjustedTailgateX %||% NA_real_
+  attr(dataMod, "locShapeAntimodeX") <-
+    shape$info$antimodeX %||% NA_real_
+  attr(dataMod, "locUnshapedProbCurve") <- ordinaryCurve
+  dataMod
 }
 
 # get densTblRaw

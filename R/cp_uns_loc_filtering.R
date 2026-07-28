@@ -7,7 +7,8 @@
 #   omega: minimum response probability associated with that peak
 #   psi: fraction of the selected peak used to locate the rising edge
 #
-# Filtering is sequential: global, antimode, then marginal. A missing global
+# Density shape, when requested, is enforced before smoothing. Post-smoothing
+# filtering is therefore sequentially global and marginal. A missing global
 # threshold does not prevent the marginal stage from being attempted.
 
 #' Apply all filtering steps after smoothing
@@ -33,6 +34,37 @@
   # proportion is calculated.
   info$minProbXPos <- attr(dataMod, "minProbXPos")
   info$clampingCellsRetainedForThresholdSelection <- TRUE
+  shapeRequested <- isTRUE(attr(dataMod, "locShapeThresholdRequested"))
+  shapeApplied <- isTRUE(attr(dataMod, "locShapeThresholdApplied"))
+  shapeLowerBoundX <- suppressWarnings(
+    as.numeric(attr(dataMod, "locShapeThresholdX"))[1L]
+  )
+  shapeTailgateX <- suppressWarnings(
+    as.numeric(attr(dataMod, "locShapeTailgateX"))[1L]
+  )
+  info$shape <- list(
+    requested = shapeRequested,
+    applied = shapeApplied,
+    lowerBoundX = shapeLowerBoundX,
+    adjustedTailgateX = shapeTailgateX,
+    detail = attr(dataMod, "locShapeThresholdInfo")
+  )
+
+  if (shapeRequested && !shapeApplied) {
+    info$applied <- TRUE
+    info$reason <- "requested_shape_threshold_unavailable"
+    info$thresholdClass <- "undefined"
+    info$shareable <- FALSE
+    return(list(
+      dataMod = dataMod,
+      cp = .getCpUnsLocConditionCpNonLoc(
+        cpMin = cpMin,
+        exTblStimNoMin = exTblStimNoMin,
+        exTblUnsBias = exTblUnsBias
+      ),
+      info = info
+    ))
+  }
 
   dataMod <- .getCpUnsLocSubsetRows(dataMod, order(.getCut(dataMod)))
   probCol <- .getCpUnsLocProbabilityColumn(dataMod, chnlSettings)
@@ -58,12 +90,6 @@
       info = info
     ))
   }
-  thresholdAntimode <- .getCpUnsLocStageThreshold(
-    dataMod,
-    chnlSettings,
-    probCol,
-    stage = "antimode"
-  )
   thresholdGlobal <- .getCpUnsLocStageThreshold(
     dataMod,
     chnlSettings,
@@ -76,16 +102,36 @@
     probCol,
     stage = "marginal"
   )
+  if (!is.finite(thresholdMarginal$thresholdX)) {
+    thresholdMarginal <- .getCpUnsLocHighProbabilityReference(
+      dataMod = dataMod,
+      probCol = probCol,
+      fraction = 0.85,
+      derivativeInfo = thresholdMarginal$info,
+      shapeApplied = shapeApplied
+    )
+  }
 
-  # Dominance is measured on the original, pre-global and pre-antimode
-  # density comparison. It can provide the marginal reference when the
-  # probability derivative has no genuine peak.
+  # Dominance is measured before global filtering on the density comparison
+  # associated with the selected probability fit. Under shape enforcement,
+  # both that density and the fitted probability curve use only observations
+  # to the right of the shape threshold. The adjusted tailgate is the earliest
+  # point at which dominance may begin; the derivative reference still
+  # controls the right-tail collapse.
+  dominanceLowerBoundX <- if (shapeApplied) {
+    candidate <- c(shapeLowerBoundX, shapeTailgateX)
+    candidate <- candidate[is.finite(candidate)]
+    if (length(candidate) == 0L) NA_real_ else max(candidate)
+  } else {
+    NA_real_
+  }
   dominanceMarginal <- .getCpUnsLocMarginalDominanceStart(
     density = attr(dataMod, "locDensityComparison"),
     startX = thresholdMarginal$thresholdX,
     densityBw = attr(dataMod, "locDensityBw"),
     dominanceRatio = 2,
-    onsetWeight = 2 / 3
+    onsetWeight = 2 / 3,
+    lowerBoundX = dominanceLowerBoundX
   )
   marginalReferenceX <- .getCpUnsLocMarginalReferenceX(
     derivativeX = thresholdMarginal$thresholdX,
@@ -94,7 +140,9 @@
   info$marginalReference <- list(
     referenceX = marginalReferenceX,
     derivativeThreshold = thresholdMarginal$info,
-    densityDominance = dominanceMarginal$info
+    densityDominance = dominanceMarginal$info,
+    shapeLowerBoundX = shapeLowerBoundX,
+    dominanceLowerBoundX = dominanceLowerBoundX
   )
 
   if (!is.finite(marginalReferenceX)) {
@@ -114,7 +162,7 @@
   }
 
   # The global stage is only a soft preprocessing filter. Record the first
-  # remaining expression value before antimode filtering so it remains a
+  # remaining expression value before marginal filtering so it remains a
   # distinct lower constraint in the marginal scan.
   global <- .getCpUnsLocFilterGlobal(
     dataMod = dataMod,
@@ -141,27 +189,11 @@
     min(as.numeric(.getCut(dataMod)), na.rm = TRUE)
   )
 
-  antimode <- .getCpUnsLocFilterAntimode(
-    dataMod = dataMod,
-    chnlSettings = chnlSettings,
-    probCol = probCol,
-    threshold = thresholdAntimode,
-    marginalReferenceX = marginalReferenceX
+  info$antimode <- list(
+    applied = FALSE,
+    reason = "post_smoothing_antimode_filter_disabled",
+    shapeThresholdAppliedBeforeSmoothing = shapeApplied
   )
-  dataMod <- antimode$dataMod
-  info$antimode <- antimode$info
-
-  if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
-    info$applied <- TRUE
-    info$reason <- "all_cells_removed_by_antimode_filter"
-    return(.getCpUnsLocEmptyFilterResult(
-      dataMod = dataMod,
-      info = info,
-      cpMin = cpMin,
-      exTblStimNoMin = exTblStimNoMin,
-      exTblUnsBias = exTblUnsBias
-    ))
-  }
 
   marginal <- .getCpUnsLocFilterMarginal(
     dataMod = dataMod,
@@ -169,8 +201,8 @@
     probCol = probCol,
     threshold = thresholdMarginal,
     dominance = dominanceMarginal,
-    antimodeX = antimode$info$filterX,
-    globalLowerBoundX = globalLowerBoundX
+    globalLowerBoundX = globalLowerBoundX,
+    shapeLowerBoundX = shapeLowerBoundX
   )
   dataMod <- marginal$dataMod
   info$marginal <- marginal$info
@@ -183,8 +215,7 @@
   )
   info$flatLeft <- info$lowProbLeft
 
-  info$applied <- isTRUE(antimode$info$applied) ||
-    isTRUE(global$info$applied) ||
+  info$applied <- isTRUE(global$info$applied) ||
     isTRUE(marginal$info$applied)
   info$reason <- if (isTRUE(info$applied)) {
     "filtered_before_threshold"
@@ -224,6 +255,83 @@
     ),
     info = info
   )
+}
+
+#' Use a high fitted-probability point when the derivative reference fails
+#'
+#' The first point reaching a fixed fraction of the maximum fitted probability
+#' supplies a conservative right-hand reference when no derivative peak is
+#' identifiable. It is calculated from whichever ordinary or shape-restricted
+#' probability fit the user selected.
+#' @keywords internal
+.getCpUnsLocHighProbabilityReference <- function(
+  dataMod,
+  probCol,
+  fraction = 0.85,
+  derivativeInfo = NULL,
+  shapeApplied = FALSE
+) {
+  info <- list(
+    reason = "high_probability_reference_unavailable",
+    stage = "marginal",
+    fraction = fraction,
+    derivativeFailure = derivativeInfo,
+    fallback = TRUE,
+    shapeThresholdApplied = isTRUE(shapeApplied)
+  )
+  derivTbl <- attr(dataMod, "locProbDerivTbl")
+  if (
+    is.data.frame(derivTbl) &&
+      all(c("x", "pred") %in% names(derivTbl))
+  ) {
+    x <- suppressWarnings(as.numeric(derivTbl$x))
+    prob <- suppressWarnings(as.numeric(derivTbl$pred))
+    source <- "smoothed_probability_grid"
+  } else {
+    x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+    prob <- .getCpUnsLocProbability(dataMod, probCol)
+    source <- "model_data"
+  }
+
+  keep <- is.finite(x) & is.finite(prob)
+  x <- x[keep]
+  prob <- pmin(1, pmax(0, prob[keep]))
+  ord <- order(x)
+  x <- x[ord]
+  prob <- prob[ord]
+
+  if (
+    length(x) < 2L ||
+      !is.finite(fraction) ||
+      fraction <= 0 ||
+      fraction > 1
+  ) {
+    return(list(thresholdX = NA_real_, info = info))
+  }
+
+  peakProb <- max(prob, na.rm = TRUE)
+  targetProb <- fraction * peakProb
+  reached <- which(prob >= targetProb)
+  if (length(reached) == 0L || !is.finite(peakProb) || peakProb <= 0) {
+    return(list(thresholdX = NA_real_, info = info))
+  }
+
+  rightIdx <- min(reached)
+  thresholdX <- x[rightIdx]
+  if (rightIdx > 1L && prob[rightIdx] != prob[rightIdx - 1L]) {
+    leftIdx <- rightIdx - 1L
+    thresholdX <- x[leftIdx] +
+      (targetProb - prob[leftIdx]) *
+        (x[rightIdx] - x[leftIdx]) /
+        (prob[rightIdx] - prob[leftIdx])
+  }
+
+  info$reason <- "used_probability_85pct_reference"
+  info$source <- source
+  info$peakProb <- peakProb
+  info$targetProb <- targetProb
+  info$thresholdX <- thresholdX
+  list(thresholdX = thresholdX, info = info)
 }
 
 # Antimode filter ------------------------------------------------------------
@@ -584,7 +692,8 @@
   antimodeX = NULL,
   threshold = NULL,
   dominance = NULL,
-  globalLowerBoundX = NA_real_
+  globalLowerBoundX = NA_real_,
+  shapeLowerBoundX = NA_real_
 ) {
   if (is.null(threshold)) {
     threshold <- .getCpUnsLocStageThreshold(
@@ -601,7 +710,8 @@
       startX = threshold$thresholdX,
       densityBw = attr(dataMod, "locDensityBw"),
       dominanceRatio = 2,
-      onsetWeight = 2 / 3
+      onsetWeight = 2 / 3,
+      lowerBoundX = shapeLowerBoundX
     )
   }
 
@@ -636,64 +746,18 @@
     "marginal_probability_derivative"
   }
 
-  antimodeX <- suppressWarnings(as.numeric(antimodeX)[1L])
-  if (is.finite(antimodeX) && antimodeX < referenceX) {
-    densityLowerBound <- list(
-      lowerBoundX = antimodeX,
-      info = list(
-        applied = TRUE,
-        reason = "antimode",
-        antimodeX = antimodeX,
-        lowerBoundX = antimodeX
-      )
+  shapeLowerBoundX <- suppressWarnings(as.numeric(shapeLowerBoundX)[1L])
+  densityLowerBound <- list(
+    lowerBoundX = shapeLowerBoundX,
+    info = list(
+      applied = is.finite(shapeLowerBoundX),
+      reason = if (is.finite(shapeLowerBoundX)) {
+        "enforced_prefit_shape_threshold"
+      } else {
+        "shape_threshold_not_enforced"
+      },
+      lowerBoundX = shapeLowerBoundX
     )
-  } else if (is.finite(antimodeX)) {
-    densityLowerBound <- list(
-      lowerBoundX = NA_real_,
-      info = list(
-        applied = FALSE,
-        reason = "antimode_not_below_marginal_reference",
-        antimodeX = antimodeX,
-        marginalReferenceX = referenceX,
-        lowerBoundX = NA_real_
-      )
-    )
-  } else {
-    densityLowerBound <- .getCpUnsLocMarginalDensityLowerBound(
-      density = attr(dataMod, "locStimDensity"),
-      peakX = attr(dataMod, "locPeakX"),
-      fraction = 1 / 200
-    )
-
-    dLb <- suppressWarnings(as.numeric(densityLowerBound$lowerBoundX)[1L])
-    windowWidth <- suppressWarnings(
-      as.numeric(attr(dataMod, "locWindowWidth"))[1L]
-    )
-
-    if (is.finite(dLb)) {
-      tailgateSelection <- .getCpUnsLocSelectTailgateLowerBound(
-        rawTailgateX = dLb,
-        windowWidth = windowWidth,
-        referenceX = referenceX,
-        adjustmentFraction = 1 / 4
-      )
-      densityLowerBound$lowerBoundX <- tailgateSelection$lowerBoundX
-      for (name in names(tailgateSelection$info)) {
-        densityLowerBound$info[[name]] <- tailgateSelection$info[[name]]
-      }
-    }
-
-    if (!is.finite(densityLowerBound$lowerBoundX)) {
-      densityLowerBound$info$applied <- FALSE
-      if (is.finite(dLb)) {
-        densityLowerBound$info$reason <-
-          "tailgate_not_below_marginal_reference"
-      }
-    }
-  }
-
-  shapeLowerBoundX <- suppressWarnings(
-    as.numeric(densityLowerBound$lowerBoundX)[1L]
   )
   globalLowerBoundX <- suppressWarnings(
     as.numeric(globalLowerBoundX)[1L]
@@ -821,14 +885,16 @@
   startX = NA_real_,
   densityBw = NULL,
   dominanceRatio = 2,
-  onsetWeight = 2 / 3
+  onsetWeight = 2 / 3,
+  lowerBoundX = NA_real_
 ) {
   info <- list(
     applied = FALSE,
     reason = "density_dominance_rise_unavailable",
     derivativeStartX = startX,
     dominanceRatio = dominanceRatio,
-    onsetWeight = onsetWeight
+    onsetWeight = onsetWeight,
+    lowerBoundX = lowerBoundX
   )
 
   if (
@@ -868,8 +934,20 @@
   stim <- stim[ord]
   unstim <- unstim[ord]
 
+  lowerBoundX <- suppressWarnings(as.numeric(lowerBoundX)[1L])
+  if (is.finite(lowerBoundX)) {
+    inDomain <- x >= lowerBoundX
+    x <- x[inDomain]
+    stim <- stim[inDomain]
+    unstim <- unstim[inDomain]
+  }
+
   if (length(x) < 3L || anyDuplicated(x) || diff(range(x)) <= 0) {
-    info$reason <- "insufficient_density_dominance_grid"
+    info$reason <- if (is.finite(lowerBoundX)) {
+      "insufficient_density_dominance_grid_right_of_lower_bound"
+    } else {
+      "insufficient_density_dominance_grid"
+    }
     return(list(startX = NA_real_, info = info))
   }
 
@@ -904,8 +982,7 @@
       validScore[-1L] &
       !dominant[-length(dominant)] &
       dominant[-1L]
-  ) +
-    1L
+  ) + 1L
   if (length(transitionIdx) == 0L) {
     info$reason <- "density_dominance_has_no_observed_left_rise"
     info$tailCollapsed <- length(tailIdx) > 0L
@@ -929,8 +1006,7 @@
   } else {
     x[leftIdx] +
       (scoreThreshold - score[leftIdx]) *
-        (x[onsetIdx] - x[leftIdx]) /
-        scoreChange
+        (x[onsetIdx] - x[leftIdx]) / scoreChange
   }
 
   peakCandidate <- seq.int(onsetIdx, length(x))

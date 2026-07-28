@@ -169,7 +169,14 @@
     "locStimDensity",
     "locDensityComparison",
     "locPeakX",
-    "locWindowWidth"
+    "locWindowWidth",
+    "locShapeThresholdRequested",
+    "locShapeThresholdApplied",
+    "locShapeThresholdX",
+    "locShapeThresholdInfo",
+    "locShapeTailgateX",
+    "locShapeAntimodeX",
+    "locUnshapedProbCurve"
   )
   values <- stats::setNames(
     lapply(attrs, function(name) attr(dataMod, name)),
@@ -263,7 +270,13 @@
 #'
 #' Flat-topped peaks are represented by the left-most point of the plateau.
 #' @keywords internal
-.getCpUnsLocDerivPeak <- function(x, prob, deriv, alpha = 0.75) {
+.getCpUnsLocDerivPeak <- function(
+  x,
+  prob,
+  deriv,
+  alpha = 0.75,
+  leftRiseFrac = 0.15
+) {
   info <- list(reason = "no_valid_derivative_peak")
   x <- suppressWarnings(as.numeric(x))
   prob <- suppressWarnings(as.numeric(prob))
@@ -313,7 +326,11 @@
     peakIndex <- which.max(peakData$deriv)
   }
 
-  leftRiseFrac <- 0.15
+  leftRiseFrac <- .getCpUnsLocUnitValue(
+    leftRiseFrac,
+    0.15,
+    allowZero = TRUE
+  )
   hasMeaningfulLeftRise <- vapply(
     peakIndex,
     function(i) {
@@ -386,9 +403,16 @@
   omega,
   psi,
   thresholdProbMin = 0,
-  capRightWidth = FALSE
+  capRightWidth = FALSE,
+  leftRiseFrac = 0.15
 ) {
-  peak <- .getCpUnsLocDerivPeak(x, prob, deriv, alpha)
+  peak <- .getCpUnsLocDerivPeak(
+    x = x,
+    prob = prob,
+    deriv = deriv,
+    alpha = alpha,
+    leftRiseFrac = leftRiseFrac
+  )
   info <- peak$info
   if (is.null(peak$data) || !is.finite(peak$index)) {
     return(list(thresholdX = NA_real_, info = info))
@@ -617,7 +641,22 @@
     omega = params$omega,
     psi = params$psi,
     thresholdProbMin = .getCpUnsLocThresholdProbMin(chnlSettings, stage),
-    capRightWidth = identical(stage, "marginal")
+    capRightWidth = identical(stage, "marginal"),
+    leftRiseFrac = if (
+      isTRUE(attr(dataMod, "locShapeThresholdApplied"))
+    ) {
+      .getCpUnsLocSetting(
+        chnlSettings,
+        "locShapeDerivativeLeftRiseFrac",
+        0.5
+      )
+    } else {
+      .getCpUnsLocSetting(
+        chnlSettings,
+        "locDerivativeLeftRiseFrac",
+        0.15
+      )
+    }
   )
   out$info$stage <- stage
   out$info$params <- params

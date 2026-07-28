@@ -143,6 +143,14 @@
 #'   required before a local-FDR gate is considered credible. If the maximum
 #'   probability is below this value, no true local-FDR threshold is marked as
 #'   generated.
+#' @param locEnforceShapeThreshold logical. Whether density shape must first
+#'   define the lowest expression value allowed to inform local-FDR
+#'   thresholding. When `TRUE`, the lower of the first stimulated-density
+#'   antimode to the right of the main negative peak and the adjusted
+#'   stimulated-density tailgate is applied to both samples before densities,
+#'   response probabilities, and the monotone probability curve are refitted.
+#'   All subsequent marginal filtering is restricted to this refitted region.
+#'   Default is `FALSE`.
 #' @param locDipAlpha numeric. Liberal dip-test p-value cutoff used to decide
 #'   whether to inspect expression-density antimodes before thresholding.
 #' @param locAntimodeHeightFrac numeric. Maximum allowed antimode height as a
@@ -346,6 +354,7 @@ gateStim <- function(
   tolClust = 1e-7,
   locProbCol = "pred",
   locMinPeakProb = 0.25,
+  locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1 / 6,
   locAntimodeLowRel = 0.25,
@@ -447,6 +456,14 @@ gateStim <- function(
     gateCombn = gateCombn
   )
 
+  if (
+    !is.logical(locEnforceShapeThreshold) ||
+      length(locEnforceShapeThreshold) != 1L ||
+      is.na(locEnforceShapeThreshold)
+  ) {
+    stop("`locEnforceShapeThreshold` must be TRUE or FALSE")
+  }
+
   if (is.null(names(batchList))) {
     batchList <- batchList |>
       stats::setNames(paste0("batch", seq_along(batchList)))
@@ -499,6 +516,7 @@ gateStim <- function(
     tolClust = tolClust,
     locProbCol = locProbCol,
     locMinPeakProb = locMinPeakProb,
+    locEnforceShapeThreshold = locEnforceShapeThreshold,
     locDipAlpha = locDipAlpha,
     locAntimodeHeightFrac = locAntimodeHeightFrac,
     locAntimodeLowRel = locAntimodeLowRel,
