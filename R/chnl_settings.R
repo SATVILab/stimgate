@@ -45,6 +45,7 @@
   tolClust,
   locProbCol,
   locMinPeakProb,
+  locEnforceShapeThreshold,
   locDipAlpha,
   locAntimodeHeightFrac,
   locAntimodeLowRel,
@@ -108,6 +109,7 @@
     tolClust = tolClust,
     locProbCol = locProbCol,
     locMinPeakProb = locMinPeakProb,
+    locEnforceShapeThreshold = locEnforceShapeThreshold,
     locDipAlpha = locDipAlpha,
     locAntimodeHeightFrac = locAntimodeHeightFrac,
     locAntimodeLowRel = locAntimodeLowRel,
@@ -168,6 +170,17 @@
     chnlSettingsCommon = chnlSettingsCommon,
     chnlSettings = chnlSettingsSpec
   )
+  if (
+    !is.logical(chnlSettings$locEnforceShapeThreshold) ||
+      length(chnlSettings$locEnforceShapeThreshold) != 1L ||
+      is.na(chnlSettings$locEnforceShapeThreshold)
+  ) {
+    stop(
+      "`locEnforceShapeThreshold` must be TRUE or FALSE for channel `",
+      chnl,
+      "`"
+    )
+  }
 
   chnlSettings$bwMin <- .completeChnlSettingsBwMin(
     bwMin = chnlSettings$bwMin,

@@ -209,6 +209,7 @@
 # get cp
 #' @keywords internal
 
+
 .createCombinedIdentifier <- function(indStim) {
   if (is.null(indStim) || length(indStim) == 0) {
     "empty_batch"
