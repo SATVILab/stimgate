@@ -1,3 +1,22 @@
+#' Generate a random positive definite matrix
+#'
+#' @keywords internal
+.posDef <- function(n, covEvMin = 1, covEvMax = 2) {
+  ev <- runif(n, min = covEvMin, max = covEvMax)
+  if (n == 1) {
+    return(matrix(ev, 1, 1))
+  }
+  z <- matrix(ncol = n, rnorm(n^2))
+  decomp <- qr(z)
+  q <- qr.Q(decomp)
+  r <- qr.R(decomp)
+  d <- diag(r)
+  ph <- d / abs(d)
+  o <- q %*% diag(ph, nrow = n)
+  z <- t(o) %*% diag(ev, nrow = n) %*% o
+  z
+}
+
 #' Detect whether a transformation should receive upper-population ratio correction
 #'
 #' This is currently applied to the raw gamma transformation and to the skew
@@ -239,7 +258,7 @@
 #'   - `flowFrameList`: A named list of `flowCore::flowFrame` objects.
 #'   - `labelsList`: A named list of character vectors of per-cell cluster labels.
 #'   Names of list elements are formatted as `sampleXXxUnstim`, `sampleXXX_stim1`, etc.
-#
+#'
 #' @export
 simCytExperiment <- function(
   nSample,
@@ -740,7 +759,7 @@ simCytCluster <- function(
   } else {
     meanExprVec + rnorm(nMarker, mean = 0, sd = perturbationSd)
   }
-  currentSigma <- posDef(nMarker, covEvMin, covEvMax)
+  currentSigma <- .posDef(nMarker, covEvMin, covEvMax)
   simCytClusterData(
     mixtureType = mixtureType,
     clusterNumber = clusterNumber,
