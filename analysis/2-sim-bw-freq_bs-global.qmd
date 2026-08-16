@@ -316,8 +316,7 @@ bw_list_raw <- vector("list", nrow(sim_grid_loop))
 
 # sim_grid_loop$n_cell <- 1e3
 # sim_grid_loop$prob_response <- 0.2
-for (i in seq_len(nrow(sim_grid_loop))) {
-  i <- 1
+for (i in seq_len(nrow(sim_grid_loop))[1]) {
   set.seed(2109)
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid_loop)))
   sim_res <- .simBandwidthBsFreq(
@@ -695,8 +694,6 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 ```
 
 
-
-
 Collate the results and calculate the metrics of interest.
 
 ```{r}
@@ -929,7 +926,7 @@ filter_tbl_error <- bw_tbl_results_raw |>
     transformation == "skew"
   ) |>
   dplyr::filter(
-    !is.na(threshold) & bw > 0.2 & threshold < 2 & bias_uns > 0
+    !is.na(threshold) & threshold < 5 & bias_uns > 0
   ) |>
   dplyr::filter(prob_response == min(prob_response)) |>
   dplyr::filter(n_cell == min(n_cell)) |>
@@ -961,11 +958,11 @@ row_seed <- furrr:::make_seeds(
 assign(".Random.seed", row_seed, envir = .GlobalEnv)
 
 # debugonce(stimgate:::.simBandwidthBsFreq)
-undebug(.getCpUnsLocGetProb)
-undebug(.getCpUnsLocGetCp)
+# undebug(.getCpUnsLocGetProb)
+# undebug(.getCpUnsLocGetCp)
 debug(.getCpUnsLocCondition)
-undebug(.getCpUnsLocFilterAntimode)
-debugonce(.simBandwidthBsFreq)
+# undebug(.getCpUnsLocFilterAntimode)
+# debugonce(.simBandwidthBsFreq)
 sim_res <- .simBandwidthBsFreq(
   nSample = 100,
   nMarker = 1,
@@ -1027,9 +1024,12 @@ debugonce(.getCpUnsLocFilterAntimode)
 ```{r}
 #| eval: false
 # plots
-debugonce(.getCpUnsLocGetProb)
-debugonce(.getCpUnsLocGetProbTbl)
-debugonce(.getCpUnsLocFilterAntimode)
+debugonce(.getCpUnsLocGetProbFit)
+dataMod <- .getCpUnsLocGetProb(exTblStimNoMin = exTblStimNoMin, 
+    exTblStimThreshold = exTblStimThreshold, exTblUnsThreshold = exTblUnsThreshold, 
+    exTblUnsBias = exTblUnsBias, stage = stage, bias = bias, 
+    exTblUnsOrig = exTblUnsOrig, pathProject = pathProject, 
+    chnlSettings = chnlSettings)
 
 # raw densities
 p <- ggplot(densTblRaw, aes(x = xStim, y = dens, color = stim)) +
