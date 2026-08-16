@@ -108,7 +108,7 @@
   }
 
   fit <- try(
-    suppressWarnings(ftnonpar::pmden(x, verbose = FALSE)),
+    suppressWarnings(.tautStringPmden(x)),
     silent = TRUE
   )
   if (inherits(fit, "try-error")) {

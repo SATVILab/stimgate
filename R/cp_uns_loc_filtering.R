@@ -434,6 +434,56 @@
   list(dataMod = .getCpUnsLocSubsetRows(dataMod, keep), info = info)
 }
 
+#' Piecewise-constant taut-string density via cytoUtils
+#'
+#' Returns a numeric vector of length `n - 1` (one value per interval between
+#' consecutive sorted data points) representing a piecewise-constant density
+#' consistent with the gate structure returned by `cytoUtils::tautstring()`.
+#' Heights are computed as a histogram within each gate region so that mode
+#' regions have higher values than antimode regions, enabling downstream
+#' antimode detection.
+#'
+#' @keywords internal
+.tautStringPmden <- function(x_sorted) {
+  n <- length(x_sorted)
+  if (n < 3L) {
+    return(list(y = rep(0.0, max(n - 1L, 0L))))
+  }
+
+  gates <- try(
+    suppressWarnings(cytoUtils::tautstring(x_sorted)),
+    silent = TRUE
+  )
+  if (inherits(gates, "try-error") || length(gates) < 2L) {
+    return(list(y = rep(0.0, n - 1L)))
+  }
+
+  y <- numeric(n - 1L)
+
+  if (length(gates) <= 2L) {
+    total_width <- x_sorted[n] - x_sorted[1L]
+    if (total_width > 0) y[] <- 1.0 / total_width
+    return(list(y = y))
+  }
+
+  seg_counts <- tabulate(
+    findInterval(x_sorted, gates, rightmost.closed = TRUE),
+    nbins = length(gates) - 1L
+  )
+  seg_widths <- diff(gates)
+  seg_density <- ifelse(
+    seg_widths > 0 & seg_counts > 0,
+    seg_counts / (n * seg_widths),
+    0.0
+  )
+
+  x_mid <- (x_sorted[-n] + x_sorted[-1L]) / 2
+  mid_seg <- findInterval(x_mid, gates, rightmost.closed = TRUE)
+  mid_seg <- pmax(1L, pmin(mid_seg, length(gates) - 1L))
+  y <- seg_density[mid_seg]
+  list(y = y)
+}
+
 #' Fit the density used to identify antimodes
 #' @keywords internal
 .getCpUnsLocAntimodeDensity <- function(
@@ -453,7 +503,7 @@
   if (mtd == "taut_string") {
     exprSorted <- sort(expr)
     tautFit <- try(
-      suppressWarnings(ftnonpar::pmden(exprSorted, verbose = FALSE)),
+      suppressWarnings(.tautStringPmden(exprSorted)),
       silent = TRUE
     )
     if (inherits(tautFit, "try-error")) {
