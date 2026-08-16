@@ -152,7 +152,13 @@ stringInfo cpPmden(const std::vector<double>& xIn) {
   std::vector<long> kni_lookups(1,0);
   bool stillRepeating = true;
   bool anyJumpDetected = false;
-  while (stillRepeating) {
+  // Safety guard: maximum number of outer iterations to prevent infinite loops
+  // on edge-case inputs (e.g. near-uniform data). Corresponds to the MAXIT
+  // parameter in the original ftnonpar pmden FORTRAN code.
+  // This is a stimgate-specific addition to the upstream FAUST port.
+  int cpPmden_iter = 0;
+  int cpPmden_max_iter = 10000;
+  while (stillRepeating && (cpPmden_iter++ < cpPmden_max_iter)) {
     //first, update the tube around the empirical df
     for (auto i = 0; i < (int)nsamp; i++) {
       lower[i] = fdist_y[i] - eps[i];
