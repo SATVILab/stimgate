@@ -28,9 +28,11 @@ cpp11::list stimgate_cpPmden(std::vector<double> x) {
   unsigned long n = x.size();
 
   // Return degenerate result for inputs too small for the algorithm.
-  if (n < 3) {
+  // cpPmden uses a Kuiper-bound table starting at n = 50; smaller inputs
+  // may not converge.
+  if (n < 50) {
     cpp11::writable::doubles dens(n > 1 ? n - 1 : 0);
-    for (auto& v : dens) v = 0.0;
+    std::fill(dens.begin(), dens.end(), 0.0);
     using cpp11::literals::operator""_nm;
     return cpp11::writable::list({"string"_nm = dens, "nmax"_nm = 0});
   }
