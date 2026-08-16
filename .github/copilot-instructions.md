@@ -64,8 +64,7 @@ This package uses `renv` for dependency management:
   - `ex.R`: Extract expression matrices from GatingSets
   - `example_data.R`: Creates example GatingSet for examples and testing
   - `fcs_write.R`: Write FCS files of cytokine-positive cells (`writeStimFCS`)
-  - `functionsForBenchmarking-Cyt.R`: Benchmarking helpers for cytokine simulation
-  - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation
+  - `functionsForBenchmarking-Cyt.R`: Benchmarking helpers for cytokine simulation (used internally by `example_data.R` to create the example GatingSet)
   - `gate.R`: Main entry point for gating (`gateStim`)
   - `gate_batch-helper.R`: Helper functions for gating batches of samples
   - `gate_batch.R`: Gate batches of samples
@@ -78,20 +77,20 @@ This package uses `renv` for dependency management:
   - `pipe.R`: Pipe operator and related utilities
   - `plot_gate.R`: Plot the identified gates (`plotStim`)
   - `pos_ind.R`: Identify the indices of the cytokine-positive cells
-  - `sim-bandwidth.R`: Simulation bandwidth utilities
-  - `sim-bw-adaptive.R`: Adaptive bandwidth simulation helpers
-  - `sim-misc.R`: Miscellaneous simulation utilities
-  - `sim-trans.R`: Simulation transformation utilities
   - `stats-helper-overall.R`: Helper functions for overall statistics
   - `stats-helper.R`: Helper functions for statistics
   - `stats.R`: Get statistics for the identified gates
   - `verify.R`: Input verification helpers
-  - `zzz_cp_uns_loc_filtering_update.R`: WIP override of the post-smoothing filtering entry point (currently authored as a design draft; contains the taut-string antimode height filter)
 - `scripts/`:
   - `python/`: Python helper scripts used by analysis (not part of the R package)
     - `fbeta.py`: Richards F-beta thresholding implementation (comparison method)
   - `r/`: R helper scripts used by analysis only — not loaded by `devtools::load_all()` and not part of the stimgate namespace
+    - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation
+    - `sim-bandwidth.R`: Simulation bandwidth utilities (sourced explicitly by `analysis/2-*.qmd`, `3-*.qmd`, `4-*.qmd`, `5-*.qmd`, `6-*.qmd` and their split variants)
+    - `sim-bw-adaptive.R`: Adaptive bandwidth simulation helpers
     - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation (comparison analysis only; sourced explicitly by `analysis/7-sim-compare-freq_bs.qmd`)
+    - `sim-misc.R`: Miscellaneous simulation utilities (sourced explicitly by all simulation analysis files)
+    - `sim-trans.R`: Simulation transformation utilities (sourced explicitly by `analysis/1-sim-trans.qmd`)
 - `_reference/`:
   - Reference material for the package, which at this stage is just old scripts that I didn't want to completely delete at the time.
 - `.github/`: GitHub associated files
@@ -136,7 +135,7 @@ This package uses `renv` for dependency management:
 18. Always update this copilot-instructions.md file when you identify new coding patterns, guidelines, or best practices during issue resolution. This ensures future agents benefit from your learnings and the instructions stay current with the evolving codebase
 19. **pkgdown website maintenance**: Whenever functions are added, removed, or have their export status changed (via `@export`), update the `_pkgdown.yml` file to ensure the reference section accurately reflects all exported functions. The `_pkgdown.yml` file organizes functions into logical categories for the package website. After making changes, verify the pkgdown configuration is valid by running `pkgdown::check_pkgdown()` if pkgdown is available
 20. **Taut-string density**: The piecewise-constant taut-string density used for antimode detection is provided by the internal helper `.tautStringPmden()` (in `cp_uns_loc_filtering.R`), which wraps `cytoUtils::tautstring()`. Do not re-introduce `ftnonpar` or vendor C++ source for this purpose. `cytoUtils` is listed under `Remotes: RGLab/cytoUtils` in DESCRIPTION. Note: the `cytoUtils` DESCRIPTION declares GPL-2, but some of its FAUST-derived C++ source files carry GPL-3-or-later notices — this is an upstream discrepancy; stimgate depends on the compiled package and does not vendor those source files.
-21. **Comparison code vs package code**: `R/` contains only StimGate implementation code. Alternative-method implementations used only for empirical comparison belong in `scripts/r/` or `scripts/python/`. `analysis/7-sim-compare-freq_bs.qmd` is the sole consumer of `scripts/r/sim-compare-freq_bs.R` and must source it explicitly.
+21. **Comparison code vs package code**: `R/` contains only StimGate implementation code. Simulation helpers, benchmarking utilities, and other analysis-only code belong in `scripts/r/` and must be sourced explicitly by the relevant `analysis/*.qmd` or targets files. `analysis/7-sim-compare-freq_bs.qmd` is the sole consumer of `scripts/r/sim-compare-freq_bs.R`. The simulation bandwidth and misc helpers (`sim-bandwidth.R`, `sim-misc.R`, `sim-trans.R`, etc.) are sourced by the relevant analysis files via explicit `source()` calls after the `devtools::load_all()` block. Note that `R/functionsForBenchmarking-Cyt.R` is an exception: it stays in `R/` because `getExampleData()` (an exported function) calls `simCytExperiment()` internally.
 22. **Follow-up task — remove cp-sub.R tailgate dependency**: `R/cp-sub.R` calls `.cytokineCutpoint()` (from `R/cytoUtils-cytokine_cutpoint.R`, which in turn uses `R/openCyto-find_peaks_and_valleys.R`). StimGate already has equivalent logic in `R/bw_norm_helpers.R` (`.bwNormFindRightFlat`) and `R/peaks_and_troughs.R`. Replacing the openCyto tailgate call in `cp-sub.R` with StimGate's own implementation is a separate follow-up task that requires careful testing before the openCyto-derived files can be removed from `R/`.
 
 ## Testing Best Practices
