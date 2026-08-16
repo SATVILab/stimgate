@@ -47,6 +47,10 @@ if (
     }
   }
 }
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+for (fn in c("sim-misc.R", "sim-trans.R")) {
+  source(file.path(scripts_r_dir, fn))
+}
 ```
 
 ## Aim
