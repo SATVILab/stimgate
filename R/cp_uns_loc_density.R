@@ -161,6 +161,8 @@
     exVecUnsThreshold = .getCut(exTblUnsThreshold)
   )
   if (!isTRUE(applyPreliminaryFilter)) {
+    # whether or not we should actually do this preliminary filtering.
+    # if not, we skip it by making the `pos` table equal to the `all` table.
     probTblList$pos <- probTblList$all
     if (is.finite(suppressWarnings(as.numeric(peakX)[1L]))) {
       probTblList$peakX <- suppressWarnings(as.numeric(peakX)[1L])

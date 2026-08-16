@@ -23,6 +23,7 @@ analysis/*rmarkdown
 analysis/**/*.html
 analysis/**/*.rmarkdown
 analysis/split/*
+analysis/split/**/*
 analysis/*png
 analysis/**/*png
 analysis/**/*pdf

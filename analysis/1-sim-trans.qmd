@@ -156,6 +156,7 @@ make_density_tbl <- function(.data, gamma_range, n = 2048) {
         return(tibble::tibble(F1 = numeric(), density = numeric()))
       }
 
+      browser()
       bw <- switch(as.character(.y$transformation)[[1]],
       "gamma" = 0.025,
       0.15
@@ -239,6 +240,7 @@ gamma_range_vec <- uni_tbl |>
   range()
 from_gamma <- gamma_range_vec[1] - 0.05 * abs(diff(gamma_range_vec))
 gamma_range <- c(from_gamma, gamma_range_vec[2])
+debug(make_density_tbl)
 dens_tbl <- make_density_tbl(uni_tbl, gamma_range) |>
   dplyr::mutate(
     transformation = factor(

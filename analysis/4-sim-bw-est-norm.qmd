@@ -617,10 +617,21 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
 
       p <- ggplot(
         plot_tbl,
-        aes(x = n_cell, y = mean_bw, color = bw_mtd_base)
+        aes(
+          x = n_cell,
+          y = mean_bw,
+          colour = bw_mtd_base,
+          group = interaction(bw_mtd_base, bw_mtd_norm)
+        )
       ) +
-        geom_line(mapping = aes(linetype = bw_mtd_norm)) +
-        geom_point() +
+        geom_line(
+          aes(linetype = bw_mtd_norm),
+          linewidth = 0.7
+        ) +
+        geom_point(
+          aes(shape = bw_mtd_norm),
+          size = 1.7
+        ) +
         scale_x_log10() +
         facet_grid(
           transformation ~ prob_response,
@@ -633,17 +644,46 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
             ", bw_ncell_upper: ", bw_ncell_upper_curr
           ),
           x = "Number of Cells",
-          y = "Estimated Bandwidth"
+          y = "Estimated Bandwidth",
+          colour = "Bandwidth method",
+          linetype = "Normalisation",
+          shape = "Normalisation"
         ) +
         cowplot::theme_cowplot() +
         cowplot::background_grid(major = "xy") +
         theme(
-          panel.background = element_rect(fill = "white", color = NA),
-          plot.background = element_rect(fill = "white", color = NA),
-          legend.position = "bottom"
+          panel.background = element_rect(fill = "white", colour = NA),
+          plot.background = element_rect(fill = "white", colour = NA),
+          legend.position = "bottom",
+          legend.box = "vertical"
         ) +
         scale_colour_manual(
           values = .simBwMtdColVec
+        ) +
+        scale_linetype_manual(
+          values = c(
+            "non-norm" = "solid",
+            "norm" = "dotted"
+          ),
+          labels = c(
+            "non-norm" = "Not normalised",
+            "norm" = "Normalised"
+          )
+        ) +
+        scale_shape_manual(
+          values = c(
+            "non-norm" = 16,
+            "norm" = 1
+          ),
+          labels = c(
+            "non-norm" = "Not normalised",
+            "norm" = "Normalised"
+          )
+        ) +
+        guides(
+          linetype = guide_legend(order = 1),
+          shape = guide_legend(order = 1),
+          colour = guide_legend(order = 2, nrow = 1)
         )
 
       path_plot <- projr::projr_path_get(
@@ -664,7 +704,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
       ggsave(
         filename = path_plot,
         plot = p,
-        width = 12,
+        width = 25,
         height = 20,
         units = "cm"
       )
