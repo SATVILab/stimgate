@@ -119,6 +119,10 @@ if (
     source(fn)
   }
 }
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+for (fn in c("sim-misc.R", "sim-bandwidth.R")) {
+  source(file.path(scripts_r_dir, fn))
+}
 ```
 
 ### Checking what the estimators actually estimate
