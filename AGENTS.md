@@ -17,11 +17,11 @@ unstimulated background.
 
 **Key architectural patterns:**
 
-- The main user entry point is `stimgate_gate()`, which writes intermediate
-  results to a `path_project` directory on disk and returns that path.
-- Downstream helpers (`get_stats()`, `get_gate_tbl()`, `stimgate_plot()`,
-  `stimgate_fcs_write()`) all accept `path_project` and read from that
-  directory.
+- The main user entry point is `gateStim()`, which writes intermediate
+  results to a `pathProject` directory on disk and returns that path.
+- Downstream helpers (`getStimGates()`, `getStimGatesDetailed()`,
+  `plotStim()`, `writeStimFCS()`) all accept `pathProject` and read from
+  that directory.
 - Internal functions are prefixed with `.` and are not exported.
 - The package integrates tightly with the `flowCore` / `flowWorkspace`
   Bioconductor ecosystem; input data are `GatingSet` objects.
@@ -128,10 +128,12 @@ lintr::lint_package()
 
 ### Naming conventions
 
-- **Exported functions**: `snake_case`, no leading dot (e.g. `stimgate_gate`).
-- **Internal functions**: `snake_case` with a leading dot (e.g. `.get_threshold`).
-- **Debug parameter**: always named `.debug` in internal functions.
-- **Debug messages**: use `.debug_msg(flag, message, optional_value)`.
+- **Exported functions**: `camelCase`, no leading dot (e.g. `gateStim`, `plotStim`).
+- **Internal functions**: `camelCase` with a leading dot (e.g. `.getThreshold`).
+- **Debug messages**: use `.debug(msg, val)` inside internal functions. Debug
+  output is written to a temp file and controlled by the `STIMGATE_DEBUG`
+  environment variable (set to `"true"`, `"yes"`, `"y"`, or `"1"` to enable).
+  Do **not** add a debug parameter to function signatures.
 
 ### Documentation (roxygen2)
 
