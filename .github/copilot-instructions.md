@@ -41,29 +41,52 @@ This package uses `renv` for dependency management:
 ## Repository structure
 
 - `R/`: Core R source code
-  - `cpCluster-helper.R`: Helper functions for getting thresholds lower by grouping thresholds from like distributions
-  - `cpCluster.R`: Gets thresholds lower by grouping thresholds from like distributions
-  - `cp_uns_loc.R`: Gets thresholds by comparing the stim and unstim distributions to identify the point at which cells start appearing to have responded with some probability
+  - `UtilsCytoRSV-chnl_lab.R`: Channel label utilities (get markers/channels from cytometry objects)
+  - `UtilsCytoRSV-plot_cyto.R`: Cytometry plotting utilities
+  - `UtilsGGSV-axis_limits.R`: ggplot2 axis limit helpers
+  - `bw_norm_helpers.R`: Shared bandwidth helpers for standard and normalised bandwidth methods
+  - `check.R`: Input validation helpers
+  - `chnl_settings.R`: Complete channel parameter list with all required settings
   - `cp-sub.R`: Auxiliary functions for getting clusters
-  - `cp_cut_pos_gates-helper.R`: Helper functions for getting more aggressive gates when applied to just the cytokine-positive cells.
-  - `cytPos_gates.R`: Functions for getting more aggressive gates when applied to just the cytokine-positive cells.
-  - `debug.R`: Debugging utilities and specifies global variables
+  - `cp_cluster-helper.R`: Helper functions for grouping thresholds from like distributions
+  - `cp_cluster.R`: Gets thresholds by grouping thresholds from like distributions
+  - `cp_uns_loc.R`: Gets thresholds by comparing stim and unstim distributions (main local-FDR entry point)
+  - `cp_uns_loc_density.R`: Local-FDR density and raw probability estimation
+  - `cp_uns_loc_derivative.R`: Appendix derivative thresholds for local-FDR filtering
+  - `cp_uns_loc_filtering.R`: Local-FDR filtering after probability smoothing
+  - `cp_uns_loc_output.R`: Local-FDR diagnostics, metadata, and output assembly
+  - `cp_uns_loc_smoothing.R`: Local-FDR probability smoothing
+  - `cp_uns_loc_threshold.R`: Local-FDR response estimate and final threshold
+  - `cyt_pos_gates-helper.R`: Helper functions for cytokine-positive cell gates
+  - `cyt_pos_gates.R`: Functions for more aggressive gates applied to cytokine-positive cells
+  - `cytoUtils-cytokine_cutpoint.R`: Cytokine cutpoint utilities
+  - `debug.R`: Debugging utilities (`.debug()`) and global variable declarations
   - `ex.R`: Extract expression matrices from GatingSets
-  - `fcs_write.R`: Write FCS files of just cytokine-positive cells
+  - `example_data.R`: Creates example GatingSet for examples and testing
+  - `fcs_write.R`: Write FCS files of cytokine-positive cells (`writeStimFCS`)
+  - `functionsForBenchmarking-Cyt.R`: Benchmarking helpers for cytokine simulation
+  - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation
+  - `gate.R`: Main entry point for gating (`gateStim`)
   - `gate_batch-helper.R`: Helper functions for gating batches of samples
   - `gate_batch.R`: Gate batches of samples
-  - `gate_marker-helper.R`: Helper functions for gating markers (within each marker, we gate all the batches)
-  - `gate_marker.R`: Gate markers (within each marker, we gate all the batches)
-  - `gate.R`: Main entry point for gating
-  - `gates.R`: Extract the identified gates (thresholds)
-  - `helper-data.R`: Creates example GatingSet for examples and testing
+  - `gate_chnl-helper.R`: Helper functions for gating individual channels
+  - `gate_chnl.R`: Gate individual channels
+  - `gates.R`: Extract the identified gates/thresholds (`getStimGates`, `getStimGatesDetailed`)
   - `ind_batch.R`: Get the list of indices grouped by batch
-  - `marker_list.R`: Get full parameters used for each marker
-  - `plot_gate.R`: Plot the identified gates
+  - `openCyto-find_peaks_and_valleys.R`: Peak and valley finding utilities (from openCyto)
+  - `peaks_and_troughs.R`: Peak and trough detection helpers
+  - `pipe.R`: Pipe operator and related utilities
+  - `plot_gate.R`: Plot the identified gates (`plotStim`)
   - `pos_ind.R`: Identify the indices of the cytokine-positive cells
+  - `sim-bandwidth.R`: Simulation bandwidth utilities
+  - `sim-bw-adaptive.R`: Adaptive bandwidth simulation helpers
+  - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation
+  - `sim-misc.R`: Miscellaneous simulation utilities
+  - `sim-trans.R`: Simulation transformation utilities
   - `stats-helper-overall.R`: Helper functions for overall statistics
   - `stats-helper.R`: Helper functions for statistics
   - `stats.R`: Get statistics for the identified gates
+  - `verify.R`: Input verification helpers
 - `_reference/`:
   - Reference material for the package, which at this stage is just old scripts that I didn't want to completely delete at the time.
 - `.github/`: GitHub associated files
@@ -83,8 +106,8 @@ This package uses `renv` for dependency management:
 ## Key Guidelines
 
 1. Begin each internal function with a `.`
-2. Use the `.debug()` function for debug messages, which takes a message and an optional value. Debug output is controlled by the `STIMGATE_DEBUG` environment variable (set to "true", "yes", "y", or "1" to enable). Never add `.debug` as a function parameter.
-3. Use the `stage` parameter to track algorithm stages ("init", "cytPos", or "single"). Pass the stage parameter through function calls to enable intermediate data saving via `.int_save()` or `.int_save_nm()` functions. Intermediate saving is controlled by the `STIMGATE_INTERMEDIATE` environment variable.
+2. Use the `.debug()` function for debug messages, which takes a message and an optional value. Debug output is written to a temp file and controlled by the `STIMGATE_DEBUG` environment variable (set to "true", "yes", "y", or "1" to enable). Never add a debug flag or parameter to function signatures.
+3. Use the `stage` parameter to track algorithm stages ("init", "cytPos", or "single"). Pass the stage parameter through function calls to enable intermediate data saving via `.intSave()` or `.intSaveNm()` functions. Intermediate saving is controlled by the `STIMGATE_INTERMEDIATE` environment variable.
 4. Add unit tests using `testthat` for all new functionality
 5. Validate inputs and provide meaningful error messages
 6. Explicitly refer to all packages used, rather than using `@import` or `@importFrom`, with the exception of `ggplot2` functions and the `flowCore::exprs` function
