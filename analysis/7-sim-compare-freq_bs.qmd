@@ -29,10 +29,13 @@ if (
   }
 }
 
-path_compare_helpers <- file.path(root_dir, "R", "sim-compare-freq_bs.R")
-if (file.exists(path_compare_helpers)) {
-  source(path_compare_helpers)
-}
+# Comparison-only helpers live outside the package in scripts/r/.
+# The tailgate functions (.cytokineCutpoint etc.) are loaded above via
+# devtools::load_all() / source(R/*) as they are still part of the package.
+path_compare_helpers <- file.path(
+  root_dir, "scripts", "r", "sim-compare-freq_bs.R"
+)
+source(path_compare_helpers)
 ```
 
 ### Aim
@@ -96,14 +99,11 @@ path_fbeta <- projr::projr_path_get(
   "fbeta.py"
 )
 
-path_tailgate_sources <- c(
-  file.path(root_dir, "scripts", "R", "openCyto-find_peaks_and_valleys.R"),
-  file.path(root_dir, "scripts", "R", "cytoUtils-cytokine_cutpoint.R")
-)
-path_tailgate_sources <- path_tailgate_sources[file.exists(path_tailgate_sources)]
-if (length(path_tailgate_sources) == 0L) {
-  path_tailgate_sources <- NULL
-}
+# The tailgate helper functions (.cytokineCutpoint, .findPeaks, .findValleys)
+# are part of the stimgate package (R/cytoUtils-cytokine_cutpoint.R and
+# R/openCyto-find_peaks_and_valleys.R) and are already available after the
+# devtools::load_all() call above. No additional sourcing is required.
+path_tailgate_sources <- NULL
 
 tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
