@@ -6,29 +6,33 @@ reference:
 - title: Gating Functions
   desc: Main functions for identifying cytokine-positive cells
   contents:
-  - stimgate_gate
-  - stimgate_gate_get
+  - gateStim
+  - getStimGates
+  - getStimGatesDetailed
 
 - title: Statistics and Results
   desc: Functions for extracting gating results and statistics
   contents:
-  - get_stats
+  - getStimStats
 
 - title: Visualization
   desc: Functions for plotting gates and results
   contents:
-  - stimgate_plot
+  - plotStim
 
 - title: Data Export
   desc: Functions for exporting gated data
   contents:
-  - stimgate_fcs_write
+  - writeStimFCS
 
 - title: Utilities
   desc: Helper and utility functions
   contents:
-  - chnl_lab
-  - get_example_data
+  - chnlLab
+  - getExampleData
+  - getStimExpr
+  - stimgate_debug_copy
+  - stimgate_debug_print
 
 navbar:
   structure:

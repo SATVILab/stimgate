@@ -1,6 +1,6 @@
 library(testthat)
 
-test_that("stimgate_gate_get returns gate table after stimgate_gate", {
+test_that("getStimGates returns gate table after gateStim", {
   # Skip if we can't load the required package
   skip_if_not_installed("stimgate")
 
@@ -8,15 +8,15 @@ test_that("stimgate_gate_get returns gate table after stimgate_gate", {
   library(stimgate)
 
   # Get example data
-  exampleData <- get_example_data()
-  gs <- flowWorkspace::load_gs(exampleData$path_gs)
+  exampleData <- getExampleData()
+  gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(
-    dirname(exampleData$path_gs),
+    dirname(exampleData$pathGs),
     "stimgate_gate_get_test"
   )
 
-  # Run stimgate_gate first to create the project structure
-  invisible(stimgate_gate(
+  # Run gateStim first to create the project structure
+  invisible(gateStim(
     .data = gs,
     pathProject = pathProject,
     popGate = "root",
@@ -24,8 +24,8 @@ test_that("stimgate_gate_get returns gate table after stimgate_gate", {
     marker = exampleData$marker
   ))
 
-  # Test that stimgate_gate_get function works
-  gateTbl <- stimgate_gate_get(pathProject)
+  # Test that getStimGates function works
+  gateTbl <- getStimGates(pathProject)
 
   # Verify the gate table has expected structure
   expect_true(is.data.frame(gateTbl))
@@ -48,7 +48,7 @@ test_that("stimgate_gate_get returns gate table after stimgate_gate", {
   if (dir.exists(pathProject)) {
     unlink(pathProject, recursive = TRUE)
   }
-  if (dir.exists(exampleData$path_gs)) {
-    unlink(exampleData$path_gs, recursive = TRUE)
+  if (dir.exists(exampleData$pathGs)) {
+    unlink(exampleData$pathGs, recursive = TRUE)
   }
 })
