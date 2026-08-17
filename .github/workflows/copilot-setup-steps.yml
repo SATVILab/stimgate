@@ -47,9 +47,12 @@ jobs:
             any::devtools
             any::decor
           needs: check
-          # Save the package cache even if a later setup step fails. Runs on master
-          # warm a cache that Copilot task branches can subsequently restore.
-          cache: always
+          # Save only a successfully completed package library. Bump the cache
+          # version to avoid restoring the earlier partial cache created with
+          # cache: always. Runs on master warm a cache that Copilot task branches
+          # can subsequently restore.
+          cache: true
+          cache-version: '2'
 
       - name: Verify R development environment
         run: |
