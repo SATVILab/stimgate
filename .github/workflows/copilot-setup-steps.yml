@@ -38,7 +38,11 @@ jobs:
           # Pin the R minor release so cache keys remain stable across patch releases
           # and do not unexpectedly roll over when a new major/minor R release appears.
           r-version: '4.6'
-          use-public-rspm: true
+          # Use the fully specified Posit Ubuntu 24.04 / R 4.6 binary repository
+          # rather than the generic CRAN endpoint, so CRAN packages are installed
+          # as Linux binaries whenever Posit provides one.
+          use-public-rspm: false
+          cran: https://packagemanager.posit.co/cran/latest/bin/linux/noble-x86_64/4.6
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -47,12 +51,12 @@ jobs:
             any::devtools
             any::decor
           needs: check
-          # Save only a successfully completed package library. Bump the cache
-          # version to avoid restoring the earlier partial cache created with
-          # cache: always. Runs on master warm a cache that Copilot task branches
-          # can subsequently restore.
+          # Save only a successfully completed package library. Cache version 3
+          # starts a clean binary-backed cache rather than restoring the earlier
+          # source-built cache. Runs on master warm a cache that Copilot task
+          # branches can subsequently restore.
           cache: true
-          cache-version: '2'
+          cache-version: '3'
 
       - name: Verify R development environment
         run: |
