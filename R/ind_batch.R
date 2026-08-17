@@ -1,7 +1,7 @@
 #' @title Generate a batch list of sample indices
 #' @description Groups sample rows by batch/donor identifiers, screens out samples 
 #'   falling below a minimum cell count threshold, and structures the output so that 
-#'   the unstimulated control index is always positioned as the final element of each batch.
+#'   the unstimulated control index is always positioned as the first element of each batch.
 #' @param fnTblInfo data.frame. Sample metadata containing annotations.
 #' @param colGrp character vector. One or more column names used to define batches/groups.
 #' @param colStim character. Column name containing stimulation identifiers.
@@ -9,7 +9,7 @@
 #' @param colNCell character. Column name containing the cell count for each sample.
 #' @param minCell numeric. Minimum number of cells required to retain a sample.
 #' @return A named list where each element contains a numeric vector of sample 
-#'   indices representing a batch, with the unstimulated control index at the end.
+#'   indices representing a batch, with the unstimulated control index at the beginning.
 #' @export
 getBatchList <- function(
   fnTblInfo,
@@ -57,10 +57,10 @@ getBatchList <- function(
       fnTblSel[[colStim]] == unsChr
     ]
     
-    # Order so that unstim indices always come last
+    # Order so that unstim indices always come first
     c(
-      setdiff(fnTblSel[["rowNumber"]], rowNumberUns),
-      rowNumberUns
+      rowNumberUns,
+      setdiff(fnTblSel[["rowNumber"]], rowNumberUns)
     )
   }) |>
     stats::setNames(grpVecUnique)
