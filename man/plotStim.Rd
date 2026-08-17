@@ -33,10 +33,10 @@ plotStim(
 \arguments{
 \item{ind}{numeric vector. Specifies indices in \code{.data} to plot.}
 
-\item{.data}{GatingSet. Same GatingSet passed to \code{stimgate_gate}.}
+\item{.data}{GatingSet. Same GatingSet passed to \code{gateStim}.}
 
 \item{pathProject}{character.
-Path to the project directory used for \code{stimgate_gate}.}
+Path to the project directory used for \code{gateStim}.}
 
 \item{marker}{character vector of length one or two. Specifies markers
 to be plotted. If only one is passed, then only univariate plots are created.}
@@ -119,12 +119,12 @@ with their gates.
 }
 \examples{
 # Create example data and run gating
-exampleData <- get_example_data()
-gs <- flowWorkspace::load_gs(exampleData$path_gs)
-pathProject <- file.path(dirname(exampleData$path_gs), "stimgate")
+exampleData <- getExampleData()
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
 
 # Run gating
-stimgate::stimgate_gate(
+gateStim(
   .data = gs,
   pathProject = pathProject,
   popGate = "root",
@@ -133,7 +133,7 @@ stimgate::stimgate_gate(
 )
 
 # Create plots
-plots <- stimgate_plot(
+plots <- plotStim(
   ind = exampleData$batchList[[1]], # indices in `gs` to plot
   .data = gs, # GatingSet
   pathProject = pathProject,

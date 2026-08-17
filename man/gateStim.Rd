@@ -50,6 +50,7 @@ gateStim(
   tolClust = 1e-07,
   locProbCol = "pred",
   locMinPeakProb = 0.25,
+  locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1/6,
   locAntimodeLowRel = 0.25,
@@ -93,9 +94,13 @@ override global defaults. The marker name should match channel names in the Gati
 When provided, this is used instead of chnl to determine which markers to analyze.
 Default is NULL.}
 
-\item{calcCytPosGates}{logical. Whether to calculate refined cytokine-positive
-gates using more sophisticated algorithms. Default is TRUE. When FALSE, only
-basic gates are calculated, which may be less accurate but faster.}
+\item{calcCytPosGates}{logical. Whether to refine each clustered one-marker
+gate using the target-marker distribution among cells positive for at least
+one other cytokine. A taut-string density is fitted to those cells. The
+clustered gate is lowered to the leftmost internal antimode strictly between
+the full stimulated marginal peak plus one third of its left-window width
+and the clustered gate. If no eligible antimode exists, the clustered gate
+is retained. Default is TRUE.}
 
 \item{calcSinglePosGates}{logical. Whether to calculate single-positive gates
 for individual markers in addition to combination gates. Default is FALSE.
@@ -149,7 +154,11 @@ Default is \code{"auto"}.}
 
 \item{bwNcellMax}{numeric. Maximum number of cells requested by the bandwidth selector. For ordinary methods this controls internal down-sampling. For \verb{*Norm} methods it limits the constructed background-core/right-excess bandwidth sample after the full distribution has been inspected. Ignored if \code{bw} is set. Default is 100 000.}
 
-\item{bwCluster}{numeric. Optional fallback bandwidth for cluster-based local-FDR imputation. The current cluster step first tries to use a common bandwidth calculated as the median bandwidth across samples with generated local-FDR thresholds. \code{bwCluster} is used as a fallback when that common bandwidth cannot be estimated. Default is \code{NULL}.}
+\item{bwCluster}{numeric. Optional fallback bandwidth for cluster-based
+local-FDR refinement. The cluster step first tries to use the median
+bandwidth across samples with directly generated local-FDR thresholds.
+\code{bwCluster} is used when that common bandwidth cannot be estimated. Default
+is \code{NULL}.}
 
 \item{bwAdaptive}{logical. Whether local-FDR density estimation should use an
 adaptive location-specific bandwidth curve when \code{bw} is \code{NULL}. The adaptive
@@ -237,10 +246,14 @@ determines how these quantiles are used (e.g., minimum of 25th percentiles).}
 
 \item{tolClust}{numeric or NULL. Backwards-compatible switch for calculating
 cluster-adjusted local-FDR gates. When \code{NULL}, cluster adjustment is skipped.
-When non-NULL, samples without a generated local-FDR threshold may receive an
-imputed threshold from similar conditions using cluster-level equivalent
-tolerance values. The numeric value is retained for compatibility and is not
-used as the derivative tolerance in the current local-FDR cluster imputation.}
+When non-NULL, paired stimulated and unstimulated densities are clustered
+on a common absolute-expression grid. Direct thresholds are winsorised
+within each cluster to its 15th and 85th percentiles when at least three
+direct thresholds are available. Every non-direct threshold is replaced by
+the cluster's 60th percentile when at least one direct threshold is
+available. A cluster without a direct threshold retains its original high
+thresholds.
+The numeric value is retained only as a backwards-compatible on/off switch.}
 
 \item{locProbCol}{character. Probability column used by the local-FDR trimming
 step. Defaults to \code{"pred"}, the monotone smoothed response-probability
@@ -250,6 +263,15 @@ estimate. Use \code{"probSmooth"} to force the raw/interpolated probability.}
 required before a local-FDR gate is considered credible. If the maximum
 probability is below this value, no true local-FDR threshold is marked as
 generated.}
+
+\item{locEnforceShapeThreshold}{logical. Whether density shape must first
+define the lowest expression value allowed to inform local-FDR
+thresholding. When \code{TRUE}, the lower of the first stimulated-density
+antimode to the right of the main negative peak and the adjusted
+stimulated-density tailgate is applied to both samples before densities,
+response probabilities, and the monotone probability curve are refitted.
+All subsequent marginal filtering is restricted to this refitted region.
+Default is \code{FALSE}.}
 
 \item{locDipAlpha}{numeric. Liberal dip-test p-value cutoff used to decide
 whether to inspect expression-density antimodes before thresholding.}
@@ -311,9 +333,9 @@ the initial derivative-based boundary used to define the reference interval
 for cells-per-bin calculations. Purity is still calculated using all cells to
 the right of the initial boundary. Default is 0.75.}
 
-\item{locTolRefPeak}{character. Reference peak used by cluster imputation when
-calculating signed equivalent tolerance values from generated local-FDR
-thresholds. Default is \code{"highest"}.}
+\item{locTolRefPeak}{character. Deprecated clustering setting retained for
+backwards compatibility. Joint-density quantile transfer does not use a
+derivative-tolerance reference peak. Default is \code{"highest"}.}
 
 \item{gateCombn}{character vector. Method(s) for combining condition-level
 local-FDR gates within a batch. Supported values are \code{"no"}, \code{"min"},
@@ -373,9 +395,12 @@ The function implements a multi-step workflow for identifying cytokine-positive 
 
 \strong{Step 3: Cytokine-Positive Gate Refinement (if calcCytPosGates = TRUE)}
 \itemize{
-\item Applies more sophisticated algorithms to refine initial gates
-\item Accounts for background cytokine production and technical variability
-\item Optimizes gates to minimize false positives while maintaining sensitivity
+\item Fits a taut-string density to target-marker expression among cells
+positive for another cytokine
+\item Finds internal antimodes between the protected negative-component
+region and the clustered one-marker gate
+\item Lowers the gate to the leftmost eligible antimode, or retains the
+clustered gate when none is available
 }
 
 \strong{Step 4: Single-Positive Gates (if calcSinglePosGates = TRUE)}
@@ -392,9 +417,8 @@ The function implements a multi-step workflow for identifying cytokine-positive 
 }
 }
 \examples{
-{
 exampleData <- getExampleData()
-gs <- flowWorkspace::load_gs(exampleData$path_gs)
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
 pathProject <- file.path(tempdir(), "demonstration")
 
 # Run gating
@@ -414,10 +438,6 @@ plots <- plotStim(
   marker = exampleData$marker,
   grid = TRUE
 )
-
-# Advanced usage with parameter customization
-
-}
 }
 \seealso{
 \code{\link{getStimGates}} for extracting gate information,
