@@ -203,3 +203,13 @@ axisLimits <- function(p, limitsExpand = NULL, limitsEqual = FALSE) {
 
   p
 }
+
+#' @rdname axisLimits
+#' @export
+axis_limits <- function(p, limits_expand = NULL, limits_equal = FALSE) {
+  axisLimits(
+    p = p,
+    limitsExpand = limits_expand,
+    limitsEqual = limits_equal
+  )
+}
