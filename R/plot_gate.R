@@ -539,7 +539,7 @@ plotStim <- function(
     "init",
     chnl,
     "ind",
-    ind[length(ind)],
+    ind[[1]],
     "bwCpUnsLoc.rds"
   )
   bw <- tryCatch(readRDS(pathBwProject), error = function(e) "nrd0")
