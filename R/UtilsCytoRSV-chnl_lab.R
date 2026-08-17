@@ -36,7 +36,7 @@ chnlLab <- function(data) {
     "flowSet" = flowCore::parameters(data[[1]])@data,
     "cytoframe" = flowCore::parameters(data)@data,
     "cytoset" = flowCore::parameters(data[[1]])@data,
-    stop("class of data not recognised")
+    stop("classOfDataNotRecognised")
   )
 
   labVec <- setNames(adf$desc, adf$name)
