@@ -28,6 +28,11 @@ reference:
   - getBatchList
   - getExampleData
   - getStimExpr
+  - getTestData
+  - simCytExperiment
+  - stimgateMetaReadBatchList
+  - stimgateMetaReadChnlLab
+  - stimgateMetaReadMarkerLab
   - simCytExperiment
   - stimgateMetaReadBatchList
   - stimgateMetaReadChnlLab
