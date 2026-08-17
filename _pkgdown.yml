@@ -10,11 +10,6 @@ reference:
   - getStimGates
   - getStimGatesDetailed
 
-- title: Statistics and Results
-  desc: Functions for extracting gating results and statistics
-  contents:
-  - getStimStats
-
 - title: Visualization
   desc: Functions for plotting gates and results
   contents:
@@ -38,6 +33,9 @@ reference:
   - stimgateMetaReadBatchList
   - stimgateMetaReadChnlLab
   - stimgateMetaReadMarkerLab
+  - simCytExperiment
+  - stimgateMetaReadBatchList
+  - stimgateMetaReadChnlLab
   - stimgateMetaReadSettingsChnl
   - stimgateMetaReadSettingsChnls
   - stimgateMetaReadSettingsMarker
