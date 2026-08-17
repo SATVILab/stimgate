@@ -28,9 +28,20 @@ reference:
 - title: Utilities
   desc: Helper and utility functions
   contents:
+  - axisLimits
   - chnlLab
+  - getBatchList
   - getExampleData
   - getStimExpr
+  - getTestData
+  - simCytExperiment
+  - stimgateMetaReadBatchList
+  - stimgateMetaReadChnlLab
+  - stimgateMetaReadMarkerLab
+  - stimgateMetaReadSettingsChnl
+  - stimgateMetaReadSettingsChnls
+  - stimgateMetaReadSettingsMarker
+  - stimgateMetaReadSettingsMarkers
   - stimgate_debug_copy
   - stimgate_debug_print
 
