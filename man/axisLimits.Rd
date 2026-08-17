@@ -2,9 +2,12 @@
 % Please edit documentation in R/UtilsGGSV-axis_limits.R
 \name{axisLimits}
 \alias{axisLimits}
+\alias{axis_limits}
 \title{Manage axis limits}
 \usage{
 axisLimits(p, limitsExpand = NULL, limitsEqual = FALSE)
+
+axis_limits(p, limits_expand = NULL, limits_equal = FALSE)
 }
 \arguments{
 \item{p}{object of class 'ggplot' Limits are adjusted for this plot.}
