@@ -9,6 +9,7 @@ reference:
   - gateStim
   - getStimGates
   - getStimGatesDetailed
+  - getStimStats
 
 - title: Visualization
   desc: Functions for plotting gates and results
