@@ -59,15 +59,21 @@ unstimulated background.
 
 ## 3. Setup Commands
 
-All commands below must be run from the **repository root** (the directory
-containing `DESCRIPTION`) so that `.Rprofile` is sourced and `renv` activates
-correctly.
+Run package commands from the **repository root** (the directory containing
+`DESCRIPTION`). The dependency setup differs between ordinary development and
+the GitHub Copilot cloud agent.
+
+### Local development / ordinary agent environments
+
+Outside CI and the GitHub Copilot cloud agent, `.Rprofile` selects the
+appropriate `renv` profile and activates it. If the project library needs to
+be restored, run:
 
 ```r
 # 1. Install renv (if not already installed)
 install.packages("renv")
 
-# 2. Restore the package library from renv.lock
+# 2. Restore the active renv profile
 renv::restore()
 
 # 3. Load the package in your R session
@@ -83,6 +89,25 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 }
 BiocManager::install(c("flowCore", "flowWorkspace", "HDCytoData"))
 ```
+
+### GitHub Copilot cloud agent
+
+The Copilot cloud agent is set up by
+`.github/workflows/copilot-setup-steps.yml`. That workflow installs R, package
+and system dependencies, and the development tools needed for package work.
+The repository `.Rprofile` deliberately treats the Copilot agent as CI and
+does **not** activate `renv` there.
+
+Do not run `renv::restore()` or require an activated `renv` project in the
+Copilot cloud agent. Use the pre-installed development library directly:
+
+```r
+devtools::load_all()
+devtools::test()
+```
+
+If these packages are unexpectedly unavailable in Copilot, treat that as an
+environment-setup failure rather than switching to `renv`.
 
 ---
 
@@ -156,7 +181,7 @@ lintr::lint_package()
   data that every test in the file requires.
 - Each test cleans up its own temporary files (e.g. `unlink(tmp, recursive = TRUE)`).
 - Tests must pass on macOS, Windows, and Ubuntu; use `file.path()` (not
-  hard-coded `/` or `\` separators) and avoid platform-specific paths.
+  hard-coded `/` or `\\` separators) and avoid platform-specific paths.
 - Test observable behaviour and outputs, not internal implementation details
   or the existence of internal (`.`-prefixed) functions.
 
