@@ -59,7 +59,6 @@ This package uses `renv` for dependency management:
   - `cp_uns_loc_threshold.R`: Local-FDR response estimate and final threshold
   - `cyt_pos_gates-helper.R`: Helper functions for cytokine-positive cell gates
   - `cyt_pos_gates.R`: Functions for more aggressive gates applied to cytokine-positive cells
-  - `cytoUtils-cytokine_cutpoint.R`: Cytokine cutpoint utilities — part of the StimGate package algorithm (used by `cp-sub.R`); not comparison-only despite the filename
   - `debug.R`: Debugging utilities (`.debug()`) and global variable declarations
   - `ex.R`: Extract expression matrices from GatingSets
   - `example_data.R`: Creates example GatingSet for examples and testing
@@ -72,7 +71,6 @@ This package uses `renv` for dependency management:
   - `gate_chnl.R`: Gate individual channels
   - `gates.R`: Extract the identified gates/thresholds (`getStimGates`, `getStimGatesDetailed`)
   - `ind_batch.R`: Get the list of indices grouped by batch
-  - `openCyto-find_peaks_and_valleys.R`: Peak and valley finding utilities (from openCyto) — part of the StimGate package algorithm (used by `.cytokineCutpoint` in `cytoUtils-cytokine_cutpoint.R`); not comparison-only despite the filename
   - `peaks_and_troughs.R`: Peak and trough detection helpers
   - `pipe.R`: Pipe operator and related utilities
   - `plot_gate.R`: Plot the identified gates (`plotStim`)
@@ -85,7 +83,9 @@ This package uses `renv` for dependency management:
   - `python/`: Python helper scripts used by analysis (not part of the R package)
     - `fbeta.py`: Richards F-beta thresholding implementation (comparison method)
   - `r/`: R helper scripts used by analysis only — not loaded by `devtools::load_all()` and not part of the stimgate namespace
+    - `cytoUtils-cytokine_cutpoint.R`: Historical competitor tailgate implementation retained only for benchmark comparison and sourced explicitly by `analysis/7-sim-compare-freq_bs.qmd`
     - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation
+    - `openCyto-find_peaks_and_valleys.R`: Historical peak/valley helper retained only for the legacy comparator benchmark
     - `sim-bandwidth.R`: Simulation bandwidth utilities (sourced explicitly by `analysis/2-*.qmd`, `3-*.qmd`, `4-*.qmd`, `5-*.qmd`, `6-*.qmd` and their split variants)
     - `sim-bw-adaptive.R`: Adaptive bandwidth simulation helpers
     - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation (comparison analysis only; sourced explicitly by `analysis/7-sim-compare-freq_bs.qmd`)
@@ -135,8 +135,8 @@ This package uses `renv` for dependency management:
 18. Always update this copilot-instructions.md file when you identify new coding patterns, guidelines, or best practices during issue resolution. This ensures future agents benefit from your learnings and the instructions stay current with the evolving codebase
 19. **pkgdown website maintenance**: Whenever functions are added, removed, or have their export status changed (via `@export`), update the `_pkgdown.yml` file to ensure the reference section accurately reflects all exported functions. The `_pkgdown.yml` file organizes functions into logical categories for the package website. After making changes, verify the pkgdown configuration is valid by running `pkgdown::check_pkgdown()` if pkgdown is available
 20. **Taut-string density**: The piecewise-constant taut-string density used for antimode detection is provided by the internal helper `.tautStringPmden()` (in `cp_uns_loc_filtering.R`), which wraps `cytoUtils::tautstring()`. Do not re-introduce `ftnonpar` or vendor C++ source for this purpose. `cytoUtils` is listed under `Remotes: RGLab/cytoUtils` in DESCRIPTION. Note: the `cytoUtils` DESCRIPTION declares GPL-2, but some of its FAUST-derived C++ source files carry GPL-3-or-later notices — this is an upstream discrepancy; stimgate depends on the compiled package and does not vendor those source files.
-21. **Comparison code vs package code**: `R/` contains only StimGate implementation code. Simulation helpers, benchmarking utilities, and other analysis-only code belong in `scripts/r/` and must be sourced explicitly by the relevant `analysis/*.qmd` or targets files. `analysis/7-sim-compare-freq_bs.qmd` is the sole consumer of `scripts/r/sim-compare-freq_bs.R`. The simulation bandwidth and misc helpers (`sim-bandwidth.R`, `sim-misc.R`, `sim-trans.R`, etc.) are sourced by the relevant analysis files via explicit `source()` calls after the `devtools::load_all()` block. Note that `R/functionsForBenchmarking-Cyt.R` is an exception: it stays in `R/` because `getExampleData()` (an exported function) calls `simCytExperiment()` internally.
-22. **Follow-up task — remove cp-sub.R tailgate dependency**: `R/cp-sub.R` calls `.cytokineCutpoint()` (from `R/cytoUtils-cytokine_cutpoint.R`, which in turn uses `R/openCyto-find_peaks_and_valleys.R`). StimGate already has equivalent logic in `R/bw_norm_helpers.R` (`.bwNormFindRightFlat`) and `R/peaks_and_troughs.R`. Replacing the openCyto tailgate call in `cp-sub.R` with StimGate's own implementation is a separate follow-up task that requires careful testing before the openCyto-derived files can be removed from `R/`.
+21. **Comparison code vs package code**: `R/` contains only StimGate implementation code. Historical comparison helpers for the legacy cytoUtils/openCyto tailgate live under `scripts/r/` and are sourced explicitly by `analysis/7-sim-compare-freq_bs.qmd` to benchmark against the original tailgate semantics. `analysis/7-sim-compare-freq_bs.qmd` is the sole consumer of `scripts/r/sim-compare-freq_bs.R`. The simulation bandwidth and misc helpers (`sim-bandwidth.R`, `sim-misc.R`, `sim-trans.R`, etc.) are sourced by the relevant analysis files via explicit `source()` calls after the `devtools::load_all()` block. Note that `R/functionsForBenchmarking-Cyt.R` is an exception: it stays in `R/` because `getExampleData()` (an exported function) calls `simCytExperiment()` internally.
+22. **Legacy comparator policy**: The cytoUtils/openCyto tailgate implementation is intentionally kept only in `scripts/r/` for benchmark comparison and is not part of the StimGate package runtime. Do not reintroduce vendored legacy helpers under `R/`.
 23. **Audit status for `.getCpTg()` migration (issue #157/#158)**: remaining call sites are catalogued by `.get_cp_tg_call_audit()` and summarised by `.get_cp_tg_migration_note_157()`. Current default behaviour still constructs `tgClust` control gates in `.gateBatchAll()`, but the current local-FDR cluster quantile implementation does not consume `gateTblCtrl`, so this branch is dead plumbing for current outputs. The other `.getCpTg()` callers are in legacy single-positive paths that are optional/backwards-compatible only.
 
 ## Testing Best Practices
