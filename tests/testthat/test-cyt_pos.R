@@ -3,13 +3,13 @@ library(testthat)
 test_that("cytPos gates actually happen", {
   testData <- getTestData(
     scenario = "cytPos",
-    dir_cache = testthat::test_path("cache", "test_data", "default"),
+    dirCache = testthat::test_path("cache", "test_data", "default"),
     clear = TRUE,
-    n_ind = 1
+    nInd = 1
   )
-  gs <- flowWorkspace::load_gs(testData$path_gs)
-  pathProject <- file.path(dirname(testData$path_gs), "stimgate")
-  invisible(stimgate_gate(
+  gs <- flowWorkspace::load_gs(testData$pathGs)
+  pathProject <- file.path(dirname(testData$pathGs), "stimgate")
+  invisible(gateStim(
     .data = gs,
     pathProject = pathProject,
     popGate = "root",

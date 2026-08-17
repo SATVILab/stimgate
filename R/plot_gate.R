@@ -4,9 +4,9 @@
 #' with their gates.
 #'
 #' @param ind numeric vector. Specifies indices in `.data` to plot.
-#' @param .data GatingSet. Same GatingSet passed to `stimgate_gate`.
+#' @param .data GatingSet. Same GatingSet passed to `gateStim`.
 #' @param pathProject character.
-#' Path to the project directory used for `stimgate_gate`.
+#' Path to the project directory used for `gateStim`.
 #' @param marker character vector of length one or two. Specifies markers
 #' to be plotted. If only one is passed, then only univariate plots are created.
 #' @param chnl character vector of length one or two. Specifies channels
@@ -51,12 +51,12 @@
 #'
 #' @examples
 #' # Create example data and run gating
-#' exampleData <- get_example_data()
-#' gs <- flowWorkspace::load_gs(exampleData$path_gs)
-#' pathProject <- file.path(dirname(exampleData$path_gs), "stimgate")
+#' exampleData <- getExampleData()
+#' gs <- flowWorkspace::load_gs(exampleData$pathGs)
+#' pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
 #'
 #' # Run gating
-#' stimgate::stimgate_gate(
+#' gateStim(
 #'   .data = gs,
 #'   pathProject = pathProject,
 #'   popGate = "root",
@@ -65,7 +65,7 @@
 #' )
 #'
 #' # Create plots
-#' plots <- stimgate_plot(
+#' plots <- plotStim(
 #'   ind = exampleData$batchList[[1]], # indices in `gs` to plot
 #'   .data = gs, # GatingSet
 #'   pathProject = pathProject,
@@ -390,8 +390,8 @@ plotStim <- function(
   if (!showGate) {
     return(p)
   }
-  marker <- marker %||% stimgateMetaReadchnlLab(pathProject)[chnl]
-  chnl <- chnl %||% stimgateMetaReadmarkerLab(pathProject)[marker]
+  marker <- marker %||% stimgateMetaReadChnlLab(pathProject)[chnl]
+  chnl <- chnl %||% stimgateMetaReadMarkerLab(pathProject)[marker]
   pop <- pop %||% .gateGetPop(pathProject)
   if (length(pop) > 1L) {
     stop("Cannot plot gates for multiple populations")
