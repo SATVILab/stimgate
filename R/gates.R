@@ -8,9 +8,9 @@
 #' @param chnl character. Optional channel name(s) to filter gates by. Default is NULL (all channels).
 #'
 #' @return Gate table with gates for each sample for each marker.
-#' @examples{
+#' @examples
 #' # Get example dataset
-#' exampleData <- get_example_data()
+#' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
 #'
 #' # Run the stimgate pipeline
@@ -24,7 +24,6 @@
 #'
 #' # Get statistics for the identified gates
 #' gates <- getStimGates(pathProject)
-#' }
 #' @export
 getStimGates <- function(
   pathProject,
@@ -36,14 +35,14 @@ getStimGates <- function(
 
   purrr::map_df(pop, function(popCurr) {
     chnlVec <- if (!is.null(marker)) {
-      markerLab <- stimgateMetReadMarkerLab(pathProject)
+      markerLab <- stimgateMetaReadMarkerLab(pathProject)
       markerLab[marker] |> stats::setNames(NULL)
     } else {
       chnl %|c|% .gateGetChnl(pathProject, popCurr)
     }
 
     purrr::map_df(chnlVec, function(chnlCurr) {
-      markerCurr <- stimgateMetReadChnlLab(pathProject)[chnlCurr] |>
+      markerCurr <- stimgateMetaReadChnlLab(pathProject)[chnlCurr] |>
         stats::setNames(NULL)
 
       .gatesGetPathAll(
