@@ -95,13 +95,6 @@
   chnlSettings,
   calcCytPosGates
 ) {
-  if (!is.null(chnlSettings$tolClust)) {
-    gateTblTgGate <- gateTbl |>
-      dplyr::filter(gateUse == "tgClust") # nolint
-  } else {
-    gateTblTgGate <- NULL
-  }
-
   gateTbl <- gateTbl |> dplyr::filter(gateUse == "gate") # nolint
   gateTbl <- gateTbl |> dplyr::select(-gateUse) # nolint
 
@@ -137,7 +130,7 @@
             dplyr::filter(gateName == gn), # nolint
           gateStatsTbl = gateStatsTbl |>
             dplyr::filter(gateName == gn),
-          gateTblCtrl = gateTblTgGate,
+          gateTblCtrl = NULL,
           chnlSettings = chnlSettings,
           filterOtherCytPos = FALSE,
           stage = stage,
