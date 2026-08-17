@@ -131,11 +131,11 @@ getExampleData <- function(
 
   # 5. Build matching batchList mapping
   # simCytExperiment returns sequence as: [Unstim_1, Stim_1, Unstim_2, Stim_2...]
-  # The historical test structure requires the LAST element in a batch vector to be the Unstim index.
+  # The first element in a batch vector is the Unstim index.
   batchList <- lapply(seq_len(nInd), function(i) {
     idxUnstim <- (i - 1) * nCondition + 1
     idxStim <- (i - 1) * nCondition + 2
-    c(idxStim, idxUnstim)
+    c(idxUnstim, idxStim)
   })
 
   # Save cache states

@@ -80,15 +80,15 @@ test_that("getStimExpr applies bias only to unstim sample", {
   saveRDS(chnlLab, file.path(tmp, "metaData", "chnlLab.rds"))
   saveRDS(batchList, file.path(tmp, "metaData", "batchList.rds"))
 
-  # unstim is ind 2 -> expect bias added
-  resUns <- getStimExpr(tmp, ind = "2", bias = TRUE)
-  expect_equal(resUns$BC1, c(7 + 10, 8 + 10))
-  expect_equal(resUns$BC2, c(9 - 2, 10 - 2))
+  # unstim is ind 1 -> expect bias added
+  resUns <- getStimExpr(tmp, ind = "1", bias = TRUE)
+  expect_equal(resUns$BC1, c(1 + 10, 2 + 10, 3 + 10))
+  expect_equal(resUns$BC2, c(4 - 2, 5 - 2, 6 - 2))
 
-  # stim is ind 1 -> bias should not be applied
-  resStim <- getStimExpr(tmp, ind = "1", bias = TRUE)
-  expect_equal(resStim$BC1, c(1, 2, 3))
-  expect_equal(resStim$BC2, c(4, 5, 6))
+  # stim is ind 2 -> bias should not be applied
+  resStim <- getStimExpr(tmp, ind = "2", bias = TRUE)
+  expect_equal(resStim$BC1, c(7, 8))
+  expect_equal(resStim$BC2, c(9, 10))
 })
 
 test_that("getStimExpr excludes minimum observed values when excMin = TRUE", {
