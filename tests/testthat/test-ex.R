@@ -1,4 +1,4 @@
-test_that("stimgateDataGetEx reads saved channel data and filters correctly", {
+test_that("getStimExpr reads saved channel data and filters correctly", {
   tmp <- tempfile("stimgate_ex_")
   dir.create(
     file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
@@ -25,24 +25,24 @@ test_that("stimgateDataGetEx reads saved channel data and filters correctly", {
     c(9, 10),
     file = file.path(tmp, "sampleData", "pop_POP1", "ind_2", "chnl_BC2.rds")
   )
-  res <- stimgateDataGetEx(tmp)
+  res <- getStimExpr(tmp)
   expect_equal(nrow(res), 5)
   expect_true(all(c("pop", "ind", "BC1", "BC2") %in% names(res)))
   expect_equal(unique(res$pop), "POP1")
   expect_equal(sum(res$ind == "1"), 3)
   expect_equal(sum(res$ind == "2"), 2)
 
-  resBc1 <- stimgateDataGetEx(tmp, chnl = "BC1")
+  resBc1 <- getStimExpr(tmp, chnl = "BC1")
   expect_true("BC1" %in% names(resBc1))
   expect_false("BC2" %in% names(resBc1))
 
-  resInd1 <- stimgateDataGetEx(tmp, ind = "1")
+  resInd1 <- getStimExpr(tmp, ind = "1")
   expect_equal(nrow(resInd1), 3)
 
-  expect_error(stimgateDataGetEx(""))
+  expect_error(getStimExpr(""))
 })
 
-test_that("stimgateDataGetEx applies bias only to unstim sample", {
+test_that("getStimExpr applies bias only to unstim sample", {
   tmp <- tempfile("stimgate_ex_bias_")
   dir.create(
     file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
@@ -81,17 +81,17 @@ test_that("stimgateDataGetEx applies bias only to unstim sample", {
   saveRDS(batchList, file.path(tmp, "metaData", "batchList.rds"))
 
   # unstim is ind 2 -> expect bias added
-  resUns <- stimgateDataGetEx(tmp, ind = "2", bias = TRUE)
+  resUns <- getStimExpr(tmp, ind = "2", bias = TRUE)
   expect_equal(resUns$BC1, c(7 + 10, 8 + 10))
   expect_equal(resUns$BC2, c(9 - 2, 10 - 2))
 
   # stim is ind 1 -> bias should not be applied
-  resStim <- stimgateDataGetEx(tmp, ind = "1", bias = TRUE)
+  resStim <- getStimExpr(tmp, ind = "1", bias = TRUE)
   expect_equal(resStim$BC1, c(1, 2, 3))
   expect_equal(resStim$BC2, c(4, 5, 6))
 })
 
-test_that("stimgateDataGetEx excludes minimum observed values when excMin = TRUE", {
+test_that("getStimExpr excludes minimum observed values when excMin = TRUE", {
   tmp <- tempfile("stimgate_ex_excmin_")
   dir.create(
     file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
@@ -108,16 +108,16 @@ test_that("stimgateDataGetEx excludes minimum observed values when excMin = TRUE
     file = file.path(tmp, "sampleData", "pop_POP1", "ind_1", "chnl_BC2.rds")
   )
 
-  resNoexc <- stimgateDataGetEx(tmp, ind = "1", excMin = FALSE)
+  resNoexc <- getStimExpr(tmp, ind = "1", excMin = FALSE)
   expect_equal(nrow(resNoexc), 3)
 
-  resExc <- stimgateDataGetEx(tmp, ind = "1", excMin = TRUE)
+  resExc <- getStimExpr(tmp, ind = "1", excMin = TRUE)
   expect_equal(nrow(resExc), 1)
   expect_equal(resExc$BC1, 3)
   expect_equal(resExc$BC2, 6)
 })
 
-test_that("stimgateDataGetEx uses marker parameter to rename channels", {
+test_that("getStimExpr uses marker parameter to rename channels", {
   tmp <- tempfile("stimgate_ex_marker_")
   dir.create(
     file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
@@ -138,13 +138,13 @@ test_that("stimgateDataGetEx uses marker parameter to rename channels", {
   dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
   saveRDS(chnlLab, file.path(tmp, "metaData", "chnlLab.rds"))
 
-  res <- stimgateDataGetEx(tmp, marker = "IFNg")
+  res <- getStimExpr(tmp, marker = "IFNg")
   expect_true("IFNg" %in% names(res))
   expect_false("BC1" %in% names(res))
   expect_equal(res$IFNg, c(1, 2, 3))
 })
 
-test_that("stimgateDataGetEx errors when both marker and chnl specified", {
+test_that("getStimExpr errors when both marker and chnl specified", {
   tmp <- tempfile("stimgate_ex_marker_chnl_conflict_")
   dir.create(
     file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
@@ -157,12 +157,12 @@ test_that("stimgateDataGetEx errors when both marker and chnl specified", {
   )
 
   expect_error(
-    stimgateDataGetEx(tmp, marker = "IFNg", chnl = "BC1"),
+    getStimExpr(tmp, marker = "IFNg", chnl = "BC1"),
     "Must not specify both marker and chnl"
   )
 })
 
-test_that("stimgateDataGetEx applies transFn to specified channels", {
+test_that("getStimExpr applies transFn to specified channels", {
   tmp <- tempfile("stimgate_ex_trans_")
   dir.create(
     file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
@@ -180,12 +180,12 @@ test_that("stimgateDataGetEx applies transFn to specified channels", {
 
   # Test transforming all channels
   transFnDouble <- function(x) x * 2
-  resAll <- stimgateDataGetEx(tmp, transFn = transFnDouble)
+  resAll <- getStimExpr(tmp, transFn = transFnDouble)
   expect_equal(resAll$BC1, c(2, 4, 6))
   expect_equal(resAll$BC2, c(8, 10, 12))
 
   # Test transforming only BC1
-  resBc1 <- stimgateDataGetEx(
+  resBc1 <- getStimExpr(
     tmp,
     transFn = transFnDouble,
     transChnl = "BC1"
@@ -194,7 +194,7 @@ test_that("stimgateDataGetEx applies transFn to specified channels", {
   expect_equal(resBc1$BC2, c(4, 5, 6))
 })
 
-test_that("stimgateDataGetEx applies transFn to markers when using marker parameter", {
+test_that("getStimExpr applies transFn to markers when using marker parameter", {
   tmp <- tempfile("stimgate_ex_trans_marker_")
   dir.create(
     file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
@@ -216,7 +216,7 @@ test_that("stimgateDataGetEx applies transFn to markers when using marker parame
   saveRDS(chnlLab, file.path(tmp, "metaData", "chnlLab.rds"))
 
   transFnDouble <- function(x) x * 2
-  res <- stimgateDataGetEx(
+  res <- getStimExpr(
     tmp,
     marker = c("IFNg", "IL2"),
     transFn = transFnDouble,
@@ -226,7 +226,7 @@ test_that("stimgateDataGetEx applies transFn to markers when using marker parame
   expect_equal(res$IL2, c(4, 5, 6))
 })
 
-test_that("stimgateDataGetEx errors when both chnlGate and markerGate specified", {
+test_that("getStimExpr errors when both chnlGate and markerGate specified", {
   tmp <- tempfile("stimgate_ex_gate_conflict_")
   dir.create(
     file.path(tmp, "sampleData", "pop_POP1", "ind_1"),
@@ -244,19 +244,19 @@ test_that("stimgateDataGetEx errors when both chnlGate and markerGate specified"
   saveRDS(chnlLab, file.path(tmp, "metaData", "chnlLab.rds"))
 
   expect_error(
-    stimgateDataGetEx(tmp, chnlGate = "BC1", markerGate = "IFNg"),
+    getStimExpr(tmp, chnlGate = "BC1", markerGate = "IFNg"),
     "Must not specify both chnlGate and markerGate"
   )
 })
 
-test_that("stimgateDataGetEx extracts cytokine-positive cells with gating", {
+test_that("getStimExpr extracts cytokine-positive cells with gating", {
   # Use example data and run gating
-  example_data <- get_example_data()
-  gs <- flowWorkspace::load_gs(example_data$path_gs)
+  example_data <- getExampleData()
+  gs <- flowWorkspace::load_gs(example_data$pathGs)
   pathProject <- file.path(tempdir(), "stimgate_ex_cytPos_test")
 
   # Run gating
-  invisible(stimgate_gate(
+  invisible(gateStim(
     .data = gs,
     pathProject = pathProject,
     popGate = "root",
@@ -265,7 +265,7 @@ test_that("stimgateDataGetEx extracts cytokine-positive cells with gating", {
   ))
 
   # Get gates to verify they exist
-  gateTbl <- stimgateGateGet(pathProject)
+  gateTbl <- getStimGates(pathProject)
   expect_true(nrow(gateTbl) > 0)
   expect_true(all(c("chnl", "ind", "gateCyt") %in% names(gateTbl)))
 
@@ -274,7 +274,7 @@ test_that("stimgateDataGetEx extracts cytokine-positive cells with gating", {
   expect_true(length(chnlGated) > 0)
 
   # Test extracting all cells without gating (baseline)
-  exAll <- stimgateDataGetEx(
+  exAll <- getStimExpr(
     pathProject,
     pop = "root",
     chnl = chnlGated[[1]]
@@ -286,7 +286,7 @@ test_that("stimgateDataGetEx extracts cytokine-positive cells with gating", {
   # We're testing that the functionality works, not that we get positive cells
   resCytPos <- tryCatch(
     {
-      stimgateDataGetEx(
+      getStimExpr(
         pathProject,
         pop = "root",
         chnl = chnlGated[[1]],
@@ -334,7 +334,7 @@ test_that("stimgateDataGetEx extracts cytokine-positive cells with gating", {
 
   resMarkerGate <- tryCatch(
     {
-      stimgateDataGetEx(
+      getStimExpr(
         pathProject,
         pop = "root",
         marker = markerName,
@@ -360,7 +360,7 @@ test_that("stimgateDataGetEx extracts cytokine-positive cells with gating", {
   if (length(chnlGated) >= 2) {
     resMult <- tryCatch(
       {
-        stimgateDataGetEx(
+        getStimExpr(
           pathProject,
           pop = "root",
           chnl = chnlGated,

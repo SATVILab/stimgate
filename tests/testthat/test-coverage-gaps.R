@@ -69,7 +69,7 @@ test_that("stimgateGateRunsWithGateCombnMean", {
 
   # Test with mean gate combination
   expect_no_error({
-    result <- stimgate::stimgate_gate(
+    result <- stimgate::gateStim(
       .data = gs,
       pathProject = pathProject,
       popGate = "root",
@@ -99,7 +99,7 @@ test_that("stimgateGateRunsWithGateCombnTrim20", {
 
   # Test with trim20 gate combination
   expect_no_error({
-    result <- stimgate::stimgate_gate(
+    result <- stimgate::gateStim(
       .data = gs,
       pathProject = pathProject,
       popGate = "root",
@@ -129,7 +129,7 @@ test_that("stimgateGateRunsWithGateCombnMedian", {
 
   # Test with median gate combination
   expect_no_error({
-    result <- stimgate::stimgate_gate(
+    result <- stimgate::gateStim(
       .data = gs,
       pathProject = pathProject,
       popGate = "root",
@@ -159,7 +159,7 @@ test_that("stimgateGateRunsWithGateCombnMax", {
 
   # Test with max gate combination
   expect_no_error({
-    result <- stimgate::stimgate_gate(
+    result <- stimgate::gateStim(
       .data = gs,
       pathProject = pathProject,
       popGate = "root",

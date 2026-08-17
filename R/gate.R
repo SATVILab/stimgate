@@ -289,9 +289,9 @@
 #' \code{\link{writeStimFCS}} for exporting cytokine-positive cells,
 #' \code{\link[flowWorkspace]{GatingSet}} for GatingSet documentation
 #'
-#' @examples{
+#' @examples
 #' exampleData <- getExampleData()
-#' gs <- flowWorkspace::load_gs(exampleData$path_gs)
+#' gs <- flowWorkspace::load_gs(exampleData$pathGs)
 #' pathProject <- file.path(tempdir(), "demonstration")
 #'
 #' # Run gating
@@ -311,10 +311,6 @@
 #'   marker = exampleData$marker,
 #'   grid = TRUE
 #' )
-#'
-#' # Advanced usage with parameter customization
-#'
-#' }
 #' @importFrom flowCore exprs<- parameters<-
 #' @importFrom stats approx as.formula binomial density glm kmeans median optim predict quantile rnorm sd dnorm fft
 #' @importFrom utils read.csv write.csv
