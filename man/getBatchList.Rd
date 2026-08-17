@@ -21,10 +21,10 @@ getBatchList(fnTblInfo, colGrp, colStim, unsChr, colNCell, minCell)
 }
 \value{
 A named list where each element contains a numeric vector of sample
-indices representing a batch, with the unstimulated control index at the end.
+indices representing a batch, with the unstimulated control index at the beginning.
 }
 \description{
 Groups sample rows by batch/donor identifiers, screens out samples
 falling below a minimum cell count threshold, and structures the output so that
-the unstimulated control index is always positioned as the final element of each batch.
+the unstimulated control index is always positioned as the first element of each batch.
 }

@@ -23,37 +23,47 @@ export(stimgate_debug_copy)
 export(stimgate_debug_print)
 export(writeStimFCS)
 import(ggplot2)
-importFrom(cluster,clusGap)
-importFrom(cluster,maxSE)
+importFrom(cluster,
+  clusGap,
+  maxSE
+)
 importFrom(dplyr,everything)
-importFrom(flowCore,"exprs<-")
-importFrom(flowCore,"parameters<-")
-importFrom(ggplot2,aes)
-importFrom(ggplot2,geom_hline)
-importFrom(ggplot2,geom_line)
-importFrom(ggplot2,geom_smooth)
-importFrom(ggplot2,geom_vline)
-importFrom(ggplot2,ggplot)
+importFrom(flowCore,
+  "exprs<-",
+  "parameters<-"
+)
+importFrom(ggplot2,
+  aes,
+  geom_hline,
+  geom_line,
+  geom_smooth,
+  geom_vline,
+  ggplot
+)
 importFrom(graphics,points)
-importFrom(rlang,.data)
-importFrom(rlang,.env)
-importFrom(stats,approx)
-importFrom(stats,as.formula)
-importFrom(stats,binomial)
-importFrom(stats,density)
-importFrom(stats,dnorm)
-importFrom(stats,fft)
-importFrom(stats,glm)
-importFrom(stats,kmeans)
-importFrom(stats,median)
-importFrom(stats,optim)
-importFrom(stats,predict)
-importFrom(stats,quantile)
-importFrom(stats,rnorm)
-importFrom(stats,sd)
-importFrom(stats,setNames)
-importFrom(utils,head)
-importFrom(utils,read.csv)
-importFrom(utils,write.csv)
-useDynLib(stimgate, .registration = TRUE)
-
+importFrom(rlang,
+  .data,
+  .env
+)
+importFrom(stats,
+  approx,
+  as.formula,
+  binomial,
+  density,
+  dnorm,
+  fft,
+  glm,
+  kmeans,
+  median,
+  optim,
+  predict,
+  quantile,
+  rnorm,
+  sd,
+  setNames
+)
+importFrom(utils,
+  head,
+  read.csv,
+  write.csv
+)
