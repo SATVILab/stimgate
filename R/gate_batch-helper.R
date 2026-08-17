@@ -36,17 +36,6 @@
     }
   }
 
-  if (!is.null(chnlSettings$tolClust)) {
-    .debug("getting tolerance gate") # nolint
-    gateList[["tgClust"]] <- .getCpTg(
-      exList = exList,
-      chnlSettings = chnlSettings,
-      tgType = "tolClust",
-      stage = stage,
-      pathProject = pathProject
-    )
-  }
-
   .gateBatchTbl(gateList, attr(exList[[1]], "batch")) # nolint
 }
 
@@ -130,7 +119,7 @@
   if (grepl("tgCtrl_", gateType)) {
     return("ctrl")
   }
-  if (grepl("tgClust", gateType)) "tgClust" else "gate"
+  "gate"
 }
 
 #' @keywords internal
