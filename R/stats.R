@@ -121,7 +121,7 @@
 #' @param pathProject character. Path to the project directory.
 #' @return A data frame with gating statistics.
 #' @export
-getStimGates <- function(pathProject) {
+getStimStats <- function(pathProject) {
   pathStatsPartial <- file.path(pathProject, "gateStats")
   if (file.exists(paste0(pathStatsPartial, ".rds"))) {
     readRDS(paste0(pathStatsPartial, ".rds"))

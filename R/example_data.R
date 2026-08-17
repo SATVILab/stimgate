@@ -6,6 +6,7 @@
 #' @param scenario Character specifying the simulation scenario ("default", "easy", "poorSeparation", "cytPos").
 #' @param dirCache Directory to save the GatingSet. If NULL, uses a temporary directory.
 #' @param clear Logical indicating whether to force cache clearing.
+#' @param nCell Integer. Number of cells per condition to simulate. Default: 10000.
 #' @param nInd Integer. Number of biological samples to simulate.
 #' @return A list containing the path to the saved GatingSet, batchList, chnl, and marker names.
 #' @export

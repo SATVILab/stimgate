@@ -1,7 +1,7 @@
 library(testthat)
 exampleData <- getExampleData()
-gs <- flowWorkspace::load_gs(exampleData$path_gs)
-pathProject <- file.path(dirname(exampleData$path_gs), "stimgate")
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
 
 # First run gating to create necessary gate data
 invisible(gateStim(
@@ -12,15 +12,15 @@ invisible(gateStim(
   chnl = exampleData$chnl
 ))
 
-test_that("stimgate_plot function exists", {
+test_that("plotStim function exists", {
   # Just test that the function exists and is callable
-  expect_true(exists("stimgate_plot", envir = asNamespace("stimgate")))
-  expect_true(is.function(stimgate_plot))
+  expect_true(exists("plotStim", envir = asNamespace("stimgate")))
+  expect_true(is.function(plotStim))
 })
 
-test_that("stimgate_plot runs", {
+test_that("plotStim runs", {
   # debugonce(.plotGateBv)
-  p <- stimgate_plot(
+  p <- plotStim(
     ind = exampleData$batchList[[1]], # indices in `gs` to plot
     .data = gs, # GatingSet
     pathProject = pathProject,
@@ -30,9 +30,9 @@ test_that("stimgate_plot runs", {
   expect_true(inherits(p, "ggplot"))
 })
 
-test_that("stimgate_plot returns NULL when pList is empty", {
+test_that("plotStim returns NULL when pList is empty", {
   # Test with empty ind list to generate empty pList
-  result <- stimgate_plot(
+  result <- plotStim(
     ind = list(),
     .data = gs,
     pathProject = pathProject,
