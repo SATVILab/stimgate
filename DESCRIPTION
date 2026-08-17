@@ -22,4 +22,4 @@ Imports: cowplot, dplyr, ggplot2, purrr, rlang, stringr, tibble, tidyr,
 LinkingTo: cpp11
 Suggests: testthat (>= 3.0.0), HDCytoData, here, BiocManager, knitr,
         rmarkdown, hexbin, gh, gitcreds
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0
