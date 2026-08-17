@@ -1,6 +1,7 @@
 # Getting Started with stimgate
 
 ``` r
+
 library(stimgate)
 ```
 
@@ -14,25 +15,22 @@ stimulated tubes from the same sample.
 
 The package provides several key functions:
 
-- [`stimgate_gate()`](https://satvilab.github.io/stimgate/reference/stimgate_gate.md):
-  Main function to identify cytokine-positive cells by gating
-- [`get_stats()`](https://satvilab.github.io/stimgate/reference/get_stats.md):
-  Generate statistics from gating results
-- [`stimgate_plot()`](https://satvilab.github.io/stimgate/reference/stimgate_plot.md):
-  Visualize identified gates
-- [`stimgate_gate_get()`](https://satvilab.github.io/stimgate/reference/stimgate_gate_get.md):
-  Extract gate information
-- [`stimgate_fcs_write()`](https://satvilab.github.io/stimgate/reference/stimgate_fcs_write.md):
-  Write FCS files of cytokine-positive cells
+- `stimgate_gate()`: Main function to identify cytokine-positive cells
+  by gating
+- `get_stats()`: Generate statistics from gating results
+- `stimgate_plot()`: Visualize identified gates
+- `stimgate_gate_get()`: Extract gate information
+- `stimgate_fcs_write()`: Write FCS files of cytokine-positive cells
 
 ### Basic Usage
 
 ``` r
+
 # Basic gating workflow
 result <- stimgate_gate(
-  path_project = "/path/to/project",
+  pathProject = "/path/to/project",
   .data = gs, # GatingSet object
-  batch_list = list(batch1 = 1:10, batch2 = 11:20),
+  batchList = list(batch1 = 1:10, batch2 = 11:20),
   marker = list(
     list(cut = "IL2", tol = 0.5e-8),
     list(cut = "TNFa", tol = 0.5e-8)
@@ -49,7 +47,7 @@ gates <- get_gate_tbl("/path/to/project")
 plots <- stimgate_plot(
   ind = 1:3,
   .data = gs,
-  path_project = "/path/to/project",
+  pathProject = "/path/to/project",
   marker = c("IL2", "TNFa")
 )
 ```
@@ -58,10 +56,11 @@ For more detailed examples and advanced usage, please refer to the
 function documentation.
 
 ``` r
+
 sessionInfo()
-#> R version 4.5.2 (2025-10-31)
+#> R version 4.6.1 (2026-06-24)
 #> Platform: x86_64-pc-linux-gnu
-#> Running under: Ubuntu 24.04.3 LTS
+#> Running under: Ubuntu 24.04.4 LTS
 #> 
 #> Matrix products: default
 #> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
@@ -80,24 +79,25 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] stimgate_0.99.1-1
+#> [1] stimgate_0.104.0-2
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] gtable_0.3.6        jsonlite_2.0.0      dplyr_1.2.0        
-#>  [4] compiler_4.5.2      BiocManager_1.30.27 tidyselect_1.2.1   
-#>  [7] Biobase_2.70.0      cytolib_2.22.0      cluster_2.1.8.1    
-#> [10] jquerylib_0.1.4     systemfonts_1.3.1   scales_1.4.0       
-#> [13] textshaping_1.0.4   yaml_2.3.12         fastmap_1.2.0      
-#> [16] RProtoBufLib_2.22.0 ggplot2_4.0.2       R6_2.6.1           
-#> [19] generics_0.1.4      knitr_1.51          BiocGenerics_0.56.0
-#> [22] tibble_3.3.1        desc_1.4.3          bslib_0.10.0       
-#> [25] pillar_1.11.1       RColorBrewer_1.1-3  rlang_1.1.7        
-#> [28] cachem_1.1.0        flowCore_2.22.1     xfun_0.56          
-#> [31] fs_1.6.6            sass_0.4.10         S7_0.2.1           
-#> [34] cli_3.6.5           pkgdown_2.2.0       magrittr_2.0.4     
-#> [37] digest_0.6.39       grid_4.5.2          lifecycle_1.0.5    
-#> [40] S4Vectors_0.48.0    vctrs_0.7.1         evaluate_1.0.5     
-#> [43] glue_1.8.0          farver_2.1.2        ragg_1.5.0         
-#> [46] stats4_4.5.2        rmarkdown_2.30      matrixStats_1.5.0  
-#> [49] tools_4.5.2         pkgconfig_2.0.3     htmltools_0.5.9
+#>  [1] gtable_0.3.6        jsonlite_2.0.0      dplyr_1.2.1        
+#>  [4] compiler_4.6.1      BiocManager_1.30.27 tidyselect_1.2.1   
+#>  [7] Biobase_2.72.0      cytolib_2.24.0      cluster_2.1.8.2    
+#> [10] jquerylib_0.1.4     systemfonts_1.3.2   scales_1.4.0       
+#> [13] textshaping_1.0.5   yaml_2.3.12         fastmap_1.2.0      
+#> [16] RProtoBufLib_2.24.0 ggplot2_4.0.3       R6_2.6.1           
+#> [19] generics_0.1.4      knitr_1.51          BiocGenerics_0.58.1
+#> [22] htmlwidgets_1.6.4   tibble_3.3.1        desc_1.4.3         
+#> [25] bslib_0.12.0        pillar_1.11.1       RColorBrewer_1.1-3 
+#> [28] rlang_1.3.0         flowCore_2.24.0     cachem_1.1.0       
+#> [31] xfun_0.60           fs_2.1.0            sass_0.4.10        
+#> [34] S7_0.2.2            otel_0.2.0          cli_3.6.6          
+#> [37] pkgdown_2.2.1       magrittr_2.0.5      digest_0.6.39      
+#> [40] grid_4.6.1          lifecycle_1.0.5     S4Vectors_0.50.1   
+#> [43] vctrs_0.7.3         evaluate_1.0.5      glue_1.8.1         
+#> [46] farver_2.1.2        ragg_1.5.2          stats4_4.6.1       
+#> [49] rmarkdown_2.31      matrixStats_1.5.0   tools_4.6.1        
+#> [52] pkgconfig_2.0.3     htmltools_0.5.9
 ```

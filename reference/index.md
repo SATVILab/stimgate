@@ -4,37 +4,66 @@
 
 Main functions for identifying cytokine-positive cells
 
-- [`stimgate_gate()`](https://satvilab.github.io/stimgate/reference/stimgate_gate.md)
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
   : Identify cytokine-positive cells through automated gating
-- [`stimgate_gate_get()`](https://satvilab.github.io/stimgate/reference/stimgate_gate_get.md)
+- [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md)
   : Get gates
+- [`getStimGatesDetailed()`](https://satvilab.github.io/stimgate/reference/getStimGatesDetailed.md)
+  : Get detailed gate diagnostics
 
 ## Statistics and Results
 
 Functions for extracting gating results and statistics
 
-- [`get_stats()`](https://satvilab.github.io/stimgate/reference/get_stats.md)
+- [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
   : Get gating statistics
 
 ## Visualization
 
 Functions for plotting gates and results
 
-- [`stimgate_plot()`](https://satvilab.github.io/stimgate/reference/stimgate_plot.md)
+- [`plotStim()`](https://satvilab.github.io/stimgate/reference/plotStim.md)
   : Plot stimulation gate
 
 ## Data Export
 
 Functions for exporting gated data
 
-- [`stimgate_fcs_write()`](https://satvilab.github.io/stimgate/reference/stimgate_fcs_write.md)
+- [`writeStimFCS()`](https://satvilab.github.io/stimgate/reference/writeStimFCS.md)
   : Write FCS files of marker-positive FCS files
 
 ## Utilities
 
 Helper and utility functions
 
-- [`chnl_lab()`](https://satvilab.github.io/stimgate/reference/chnl_lab.md)
+- [`axisLimits()`](https://satvilab.github.io/stimgate/reference/axisLimits.md)
+  : Manage axis limits
+- [`chnlLab()`](https://satvilab.github.io/stimgate/reference/chnlLab.md)
   : Get markers and channels
-- [`get_example_data()`](https://satvilab.github.io/stimgate/reference/get_example_data.md)
+- [`getBatchList()`](https://satvilab.github.io/stimgate/reference/getBatchList.md)
+  : Generate a batch list of sample indices
+- [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
+  [`getTestData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
   : Get example GatingSet
+- [`getStimExpr()`](https://satvilab.github.io/stimgate/reference/getStimExpr.md)
+  : Read saved expression data from project
+- [`simCytExperiment()`](https://satvilab.github.io/stimgate/reference/simCytExperiment.md)
+  : Simulate a set of stimulation conditions for multiple biological
+  samples
+- [`stimgateMetaReadBatchList()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadBatchList.md)
+  : Read batch list from project
+- [`stimgateMetaReadChnlLab()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadLab.md)
+  [`stimgateMetaReadMarkerLab()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadLab.md)
+  : Read channel or marker label mapping
+- [`stimgateMetaReadSettingsChnl()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsChnl.md)
+  : Get marker settings for a single channel
+- [`stimgateMetaReadSettingsChnls()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsChnls.md)
+  : Read marker settings from project
+- [`stimgateMetaReadSettingsMarker()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsMarker.md)
+  : Get settings for a named marker
+- [`stimgateMetaReadSettingsMarkers()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsMarkers.md)
+  : Read marker list with channel labels
+- [`stimgate_debug_copy()`](https://satvilab.github.io/stimgate/reference/stimgate_debug_copy.md)
+  : Copy the latest stimgate debug file to the working directory
+- [`stimgate_debug_print()`](https://satvilab.github.io/stimgate/reference/stimgate_debug_print.md)
+  : Print the latest stimgate debug file to the console

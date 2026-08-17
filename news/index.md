@@ -4,15 +4,11 @@
 
 ### Major features
 
-- Main gating functionality via
-  [`stimgate_gate()`](https://satvilab.github.io/stimgate/reference/stimgate_gate.md)
-  to identify responding cells
-- Statistics generation with
-  [`get_stats()`](https://satvilab.github.io/stimgate/reference/get_stats.md)
-- Visualization capabilities through
-  [`stimgate_plot()`](https://satvilab.github.io/stimgate/reference/stimgate_plot.md)
-- FCS file writing with
-  [`stimgate_fcs_write()`](https://satvilab.github.io/stimgate/reference/stimgate_fcs_write.md)
+- Main gating functionality via `stimgate_gate()` to identify responding
+  cells
+- Statistics generation with `get_stats()`
+- Visualization capabilities through `stimgate_plot()`
+- FCS file writing with `stimgate_fcs_write()`
 - Gate table extraction via `get_gate_tbl()`
 
 ### Minor improvements and bug fixes

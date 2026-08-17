@@ -10,13 +10,13 @@
 Source:
 [`DESCRIPTION`](https://github.com/SATVILab/stimgate/blob/master/DESCRIPTION)
 
-Rodo M (2026). *stimgate: Identify responding cells as outliers*. R
-package version 0.99.1-1, <https://satvilab.github.io/stimgate/>.
+Rodo M (2026). *stimgate: Identify Responding Cells as Outliers*. R
+package version 0.104.0-2, <https://satvilab.github.io/stimgate/>.
 
     @Manual{,
-      title = {stimgate: Identify responding cells as outliers},
+      title = {stimgate: Identify Responding Cells as Outliers},
       author = {Miguel Rodo},
       year = {2026},
-      note = {R package version 0.99.1-1},
+      note = {R package version 0.104.0-2},
       url = {https://satvilab.github.io/stimgate/},
     }

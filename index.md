@@ -1,140 +1,131 @@
-## 🧬 `stimgate`: Identify Responding Cells via Outlier Gating
+# stimgate
 
-`stimgate` is an R package for identifying cell populations that have
-responded to stimulation. It applies outlier gating functions to flow
-cytometry data, comparing unstimulated and stimulated tubes from the
-same sample to isolate stimulation-specific responses.
+`stimgate` is an R package for identifying cells that may have responded
+to immune stimulation in flow cytometry data. It compares stimulated
+samples with matched unstimulated controls and estimates marker-specific
+expression gates relative to the unstimulated background, rather than
+applying one fixed positivity threshold across samples.
 
-------------------------------------------------------------------------
+The package works with
+[`flowWorkspace::GatingSet`](https://rdrr.io/pkg/flowWorkspace/man/GatingSet-class.html)
+objects. Its main entry point,
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
+performs the gating workflow and writes the resulting gates, cached
+expression data and response statistics to a project directory.
+Plotting, expression extraction and FCS export functions can then use
+those saved results without rerunning the full gating procedure.
 
-## 📦 Installation
+## Method overview
+
+For each selected marker and gated population, StimGate compares
+stimulated and matched unstimulated expression distributions. The
+current workflow uses density-based local response-probability/local-FDR
+thresholding, followed by cross-sample refinement of the resulting
+gates. It can also refine gates using the target-marker distribution
+among cells positive for other cytokines. The final project output
+includes marker-level gates and statistics for marker-positive and
+marker-combination populations.
+
+The statistical method is still under active development, so the README
+should give only this high-level overview. Detailed algorithmic settings
+belong in the function documentation and research analyses rather than
+here.
+
+## Installation
+
+The development version can be installed from GitHub. `stimgate` depends
+on Bioconductor flow-cytometry packages, including `flowCore` and
+`flowWorkspace`.
 
 ``` r
-# Install BiocManager and devtools if needed
+
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
   install.packages("BiocManager")
 }
-if (!requireNamespace("devtools", quietly = TRUE)) {
-  install.packages("devtools")
-}
+BiocManager::install(c("flowCore", "flowWorkspace"))
 
-# Install all dependencies using Bioconductor and CRAN repos
-devtools::install_github(
-  "SATVILab/stimgate",
-  repos = BiocManager::repositories(), dependencies = TRUE
-)
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+remotes::install_github("SATVILab/stimgate")
 ```
 
-------------------------------------------------------------------------
+The package requires R \>= 4.4.0.
 
-## 🚀 Quick Start
+## Minimal example
+
+A synthetic `GatingSet` is provided by
+[`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md),
+so the basic workflow can be tried without external FCS files.
 
 ``` r
+
 library(stimgate)
 
-# Get example dataset
-example_data <- get_example_data()
-gs <- flowWorkspace::load_gs(example_data$path_gs)
+example_data <- getExampleData(nCell = 1000)
+gs <- flowWorkspace::load_gs(example_data$pathGs)
 
-# Run the stimgate pipeline
-path_project <- stimgate_gate(
-  path_project = file.path(tempdir(), "stimgate_example"),
+path_project <- file.path(tempdir(), "stimgate-example")
+
+path_project <- gateStim(
+  pathProject = path_project,
   .data = gs,
-  batch_list = example_data$batch_list,
-  marker = example_data$marker,
-  pop_gate = "root"
+  popGate = "root",
+  batchList = example_data$batchList,
+  marker = example_data$marker
 )
 
-# Get statistics for the identified gates
-stats <- get_stats(path_project)
+# Gating statistics written by gateStim()
+gate_stats <- readRDS(file.path(path_project, "gateStats.rds"))
 
-# Extract gate information
-gates <- get_gate_tbl(path_project)
-
-# Visualize results
-stimgate_plot(
-  ind = seq_len(2),
+# Plot the samples in the first matched batch
+plotStim(
+  ind = example_data$batchList[[1]],
   .data = gs,
-  path_project = path_project,
+  pathProject = path_project,
   marker = example_data$marker,
+  grid = TRUE
 )
 ```
 
-------------------------------------------------------------------------
+For real data,
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+requires a compatible flow-cytometry object, the population to gate, the
+marker or channel names to analyse, and a `batchList` describing the
+matched samples. See the function documentation for the full set of
+method and bandwidth controls.
 
-## 🔑 Features
+## Main functions
 
-- **Outlier-based gating**: Identifies responding cells by comparing
-  stimulated vs unstimulated samples
-- **Batch processing**: Handles multiple donors or experimental batches
-  simultaneously  
-- **Background subtraction**: Reduces false positives from baseline
-  cytokine activity
-- **Flexible gating**: Supports various gating parameters and
-  combinations
-- **Comprehensive output**: Generates statistics, gate tables, and
-  visualization plots
-- **FCS export**: Write cytokine-positive cells to new FCS files for
-  downstream analysis
-- **Bioconductor compatibility**: Designed for integration with
-  `flowCore`, `flowWorkspace`, and `CytoML`
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  runs the StimGate gating workflow and saves the project results.
+- [`plotStim()`](https://satvilab.github.io/stimgate/reference/plotStim.md)
+  plots univariate or bivariate expression together with the fitted
+  gates.
+- [`getStimExpr()`](https://satvilab.github.io/stimgate/reference/getStimExpr.md)
+  reads expression data saved by a StimGate project and can optionally
+  apply the saved gates.
+- [`getStimGatesDetailed()`](https://satvilab.github.io/stimgate/reference/getStimGatesDetailed.md)
+  reads detailed saved threshold diagnostics when these are available.
+- [`writeStimFCS()`](https://satvilab.github.io/stimgate/reference/writeStimFCS.md)
+  exports marker-positive cells to FCS files using fitted gates.
+- [`getBatchList()`](https://satvilab.github.io/stimgate/reference/getBatchList.md)
+  constructs matched sample batches from sample metadata.
+- [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
+  and
+  [`simCytExperiment()`](https://satvilab.github.io/stimgate/reference/simCytExperiment.md)
+  provide synthetic data for examples, testing and simulation.
 
-------------------------------------------------------------------------
+## Repository structure
 
-## 📖 Documentation
+The package implementation is in `R/`, with tests in `tests/testthat/`.
+Method-development, simulation and comparison analyses are kept
+separately under `analysis/`; these are research/development analyses
+and are not required to use the package.
 
-- 📘 **Vignette**:
-  [`vignette("stimgate")`](https://satvilab.github.io/stimgate/articles/stimgate.md) -
-  Getting started guide
-- 🌐 **Website**:
-  [satvilab.github.io/stimgate](https://satvilab.github.io/stimgate/)
-- 🔗 **GitHub**:
-  [github.com/SATVILab/stimgate](https://github.com/SATVILab/stimgate)
-- 📦 **Bioconductor**: *URL to be added upon release*
-- 🔧 **Function reference**:
-  [`help(package = "stimgate")`](https://satvilab.github.io/stimgate/reference)
+Developer and coding-agent setup instructions are in `AGENTS.md`. Build
+history for the research project is recorded in `BUILDLOG.md`.
 
-### Key Functions
+## Licence
 
-- [`stimgate_gate()`](https://satvilab.github.io/stimgate/reference/stimgate_gate.md):
-  Main gating function to identify cytokine-positive cells
-- [`get_stats()`](https://satvilab.github.io/stimgate/reference/get_stats.md):
-  Generate comprehensive statistics from gating results  
-- [`stimgate_plot()`](https://satvilab.github.io/stimgate/reference/stimgate_plot.md):
-  Create bivariate hex and univariate density plots with gate overlays
-- `get_gate_tbl()`: Extract gate thresholds and parameters
-- [`stimgate_fcs_write()`](https://satvilab.github.io/stimgate/reference/stimgate_fcs_write.md):
-  Export cytokine-positive cells as FCS files
-
-------------------------------------------------------------------------
-
-## 📌 Citation
-
-``` r
-citation("stimgate")
-```
-
-> Rodo M. (2024). *stimgate: Identify responding cells as outliers*. R
-> package version 0.3.1. <https://github.com/SATVILab/stimgate>
-
-------------------------------------------------------------------------
-
-## 🤝 Contributing
-
-We welcome bug reports, feature requests, and pull requests via [GitHub
-Issues](https://github.com/SATVILab/stimgate/issues).
-
-### Development Guidelines
-
-Before submitting changes, please ensure: - Run `devtools::test()` to
-verify all tests pass - Run `devtools::document()` to update
-documentation  
-- Run `styler::style_pkg()` for consistent code formatting - Run
-`lintr::lint_package()` to check for style violations
-
-------------------------------------------------------------------------
-
-## 📄 License
-
-This package is licensed under the MIT License. See
-[LICENSE](https://satvilab.github.io/stimgate/LICENSE) for details.
+`stimgate` is released under GPL (\>= 3).
