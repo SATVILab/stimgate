@@ -28,6 +28,8 @@ getTestData(
 
 \item{clear}{Logical indicating whether to force cache clearing.}
 
+\item{nCell}{Integer. Number of cells per condition to simulate. Default: 10000.}
+
 \item{nInd}{Integer. Number of biological samples to simulate.}
 }
 \value{
