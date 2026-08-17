@@ -1070,40 +1070,56 @@
   list(startX = dominanceStartX, info = info)
 }
 
-#' Bound the marginal scan by the stimulated peak's descending shoulder
+#' Native StimGate right-tail density shoulder gate
 #'
-#' This does not itself define a filtering threshold. When no antimode was
-#' identified, it prevents the marginal scan from considering bins below the
-#' point where the negative stimulated-density derivative has flattened to the
-#' requested fraction of its most negative value on the peak's right shoulder.
+#' This helper defines the native StimGate tailgate rule: after the main peak,
+#' locate the steepest negative derivative on the descending shoulder and report
+#' the first point at which the density has flattened to the requested fraction
+#' of that slope. This relative-derivative rule preserves the local-FDR shape
+#' threshold behaviour and deliberately does not use a fixed absolute tolerance
+#' like the legacy .cytokineCutpoint() `tol` gate.
 #'
 #' @keywords internal
-.getCpUnsLocMarginalDensityLowerBound <- function(
-  density,
-  peakX,
-  fraction = 1 / 200
-) {
+.getStimGateTailgate <- function(density, peakX = NULL, fraction = 1 / 200) {
   info <- list(
     applied = FALSE,
-    reason = "stimulated_density_lower_bound_undefined",
-    fraction = fraction,
+    reason = "stimulated_density_tailgate_undefined",
+    fraction = suppressWarnings(as.numeric(fraction)[1L]),
     peakX = suppressWarnings(as.numeric(peakX)[1L])
   )
 
   if (
-    !is.data.frame(density) ||
-      !all(c("x", "y") %in% names(density)) ||
-      !is.finite(info$peakX) ||
-      !is.finite(fraction) ||
-      fraction <= 0 ||
-      fraction >= 1
+    !is.data.frame(density) && !is.list(density)
   ) {
     info$reason <- "invalid_stimulated_density_or_peak"
     return(list(lowerBoundX = NA_real_, info = info))
   }
 
-  x <- suppressWarnings(as.numeric(density$x))
-  y <- suppressWarnings(as.numeric(density$y))
+  if (is.data.frame(density)) {
+    if (!all(c("x", "y") %in% names(density))) {
+      info$reason <- "invalid_stimulated_density_or_peak"
+      return(list(lowerBoundX = NA_real_, info = info))
+    }
+    x <- suppressWarnings(as.numeric(density$x))
+    y <- suppressWarnings(as.numeric(density$y))
+  } else {
+    if (!all(c("x", "y") %in% names(density))) {
+      info$reason <- "invalid_stimulated_density_or_peak"
+      return(list(lowerBoundX = NA_real_, info = info))
+    }
+    x <- suppressWarnings(as.numeric(density[["x"]]))
+    y <- suppressWarnings(as.numeric(density[["y"]]))
+  }
+
+  if (
+    !is.finite(info$fraction) ||
+      info$fraction <= 0 ||
+      info$fraction >= 1
+  ) {
+    info$reason <- "invalid_stimulated_density_or_peak"
+    return(list(lowerBoundX = NA_real_, info = info))
+  }
+
   keep <- is.finite(x) & is.finite(y)
   x <- x[keep]
   y <- pmax(0, y[keep])
@@ -1116,8 +1132,21 @@
     return(list(lowerBoundX = NA_real_, info = info))
   }
 
+  if (!is.finite(info$peakX)) {
+    peakIdx <- .getPeakMainLeftIdx(y)
+    if (length(peakIdx) == 0L) {
+      peakIdx <- which.max(y)
+    }
+    info$peakX <- x[peakIdx]
+  }
+  peakX <- info$peakX
+  if (!is.finite(peakX)) {
+    info$reason <- "invalid_stimulated_density_or_peak"
+    return(list(lowerBoundX = NA_real_, info = info))
+  }
+
   deriv <- .getCpUnsLocDensityDerivative(x, y)
-  peakIdx <- which.min(abs(x - info$peakX))
+  peakIdx <- which.min(abs(x - peakX))
   afterPeak <- seq.int(peakIdx, length(x))
   negativeIdx <- afterPeak[deriv[afterPeak] < 0]
   if (length(negativeIdx) == 0L) {
@@ -1144,7 +1173,7 @@
     which.min(deriv[shoulderNegativeIdx])
   ]
   steepestDeriv <- deriv[steepestIdx]
-  targetDeriv <- fraction * steepestDeriv
+  targetDeriv <- info$fraction * steepestDeriv
 
   laterIdx <- if (steepestIdx < shoulderEnd) {
     seq.int(steepestIdx + 1L, shoulderEnd)
@@ -1184,6 +1213,30 @@
   info$lowerBoundX <- lowerBoundX
 
   list(lowerBoundX = lowerBoundX, info = info)
+}
+
+.getCpTailgate <- function(density, peakX = NULL, fraction = 1 / 200) {
+  .getStimGateTailgate(density = density, peakX = peakX, fraction = fraction)
+}
+
+#' Bound the marginal scan by the stimulated peak's descending shoulder
+#'
+#' This does not itself define a filtering threshold. When no antimode was
+#' identified, it prevents the marginal scan from considering bins below the
+#' point where the negative stimulated-density derivative has flattened to the
+#' requested fraction of its most negative value on the peak's right shoulder.
+#'
+#' @keywords internal
+.getCpUnsLocMarginalDensityLowerBound <- function(
+  density,
+  peakX,
+  fraction = 1 / 200
+) {
+  .getStimGateTailgate(
+    density = density,
+    peakX = peakX,
+    fraction = fraction
+  )
 }
 
 #' Calculate the density derivative by finite differences
