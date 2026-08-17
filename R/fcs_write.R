@@ -34,7 +34,7 @@
 #'
 #' # Load your GatingSet (gs) and define batch structure
 #' # batchList <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
-#' # where the last element in each batch is the unstimulated sample
+#' # where the first element in each batch is the unstimulated sample
 #'
 #' # First, run gating to create gates
 #' pathProject <- tempfile("stimgate_project")
@@ -335,12 +335,12 @@ writeStimFCS <- function(
   indBatchList
 ) {
   indBatchVec <- lapply(indBatchList, function(x) {
-    (x[-length(x)]) |>
+    (x[-1]) |>
       sort() |>
       paste0(collapse = "_")
   }) |>
     unlist()
-  indUnsVec <- lapply(indBatchList, function(x) x[length(x)]) |>
+  indUnsVec <- lapply(indBatchList, function(x) x[[1]]) |>
     unlist()
   indVec <- lapply(seq_len(nrow(gateTbl)), function(x) {
     indMatch <- which(indBatchVec == gateTbl$indStim[[x]])
