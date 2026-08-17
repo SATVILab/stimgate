@@ -134,7 +134,7 @@
 ) {
   .debug("Getting cyt+ gates for ind: ", ind) # nolint
 
-  # return if ind in batch is the last one, as that is the unstim ind
+  # return if ind in batch is the unstim ind
   if (ind == indUns) {
     return(NULL)
   }
