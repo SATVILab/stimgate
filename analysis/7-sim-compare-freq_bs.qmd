@@ -29,9 +29,16 @@ if (
   }
 }
 
-# Comparison-only helpers live outside the package in scripts/r/.
-# The tailgate functions (.cytokineCutpoint etc.) are loaded above via
-# devtools::load_all() / source(R/*) as they are still part of the package.
+# The historical cytoUtils/openCyto tailgate comparator is retained only for
+# benchmark comparison; it is not part of the StimGate package runtime.
+path_tailgate_sources <- c(
+  file.path(root_dir, "scripts", "r", "openCyto-find_peaks_and_valleys.R"),
+  file.path(root_dir, "scripts", "r", "cytoUtils-cytokine_cutpoint.R")
+)
+for (path_tailgate in path_tailgate_sources) {
+  source(path_tailgate)
+}
+
 path_compare_helpers <- file.path(
   root_dir, "scripts", "r", "sim-compare-freq_bs.R"
 )
@@ -99,11 +106,14 @@ path_fbeta <- projr::projr_path_get(
   "fbeta.py"
 )
 
-# The tailgate helper functions (.cytokineCutpoint, .findPeaks, .findValleys)
-# are part of the stimgate package (R/cytoUtils-cytokine_cutpoint.R and
-# R/openCyto-find_peaks_and_valleys.R) and are already available after the
-# devtools::load_all() call above. No additional sourcing is required.
-path_tailgate_sources <- NULL
+# The historical tailgate comparator is intentionally retained only in
+# scripts/r/ for direct benchmark comparison against the legacy method.
+# It is not part of the StimGate package runtime and is sourced explicitly
+# above so each worker uses the same comparator implementation.
+path_tailgate_sources <- c(
+  file.path(root_dir, "scripts", "r", "openCyto-find_peaks_and_valleys.R"),
+  file.path(root_dir, "scripts", "r", "cytoUtils-cytokine_cutpoint.R")
+)
 
 tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
