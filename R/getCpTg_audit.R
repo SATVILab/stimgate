@@ -76,16 +76,10 @@
 .get_cp_tg_migration_note_157 <- function() {
   paste(
     "Issue #157 migration note:",
-    paste(
-      "the only .getCpTg() path still on by default is",
-      "the init tgClust plumbing,"
-    ),
-    "but current cluster quantile gating does not consume gateTblCtrl.",
-    "Remaining migration work is therefore the optional legacy single-positive",
-    paste(
-      "tg/Adj/Clust branches plus cleanup of",
-      "tgClust dead plumbing and associated"
-    ),
-    "intermediate artifact expectations."
+    "the obsolete default init tgClust tailgate path has been removed.",
+    "Current local-FDR cluster quantile gating does not consume gateTblCtrl,",
+    "so the legacy tgClust plumbing is dead for current outputs.",
+    "Remaining migration work is limited to optional legacy single-positive",
+    "tg/Adj/Clust branches and their compatibility-only intermediate artifacts."
   )
 }
