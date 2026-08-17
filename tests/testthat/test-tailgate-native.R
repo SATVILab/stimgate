@@ -59,3 +59,45 @@ test_that("native tailgate has a deterministic multimodal fixture and differs fr
   expect_true(native$lowerBoundX > min(x))
   expect_true(native$lowerBoundX < max(x))
 })
+
+test_that("legacy .getCpTg delegates to the native tailgate helper", {
+  exList <- list(
+    uns = data.frame(marker = c(1, 2, 3, 4, 5)),
+    stim = data.frame(marker = c(1, 3, 5, 7, 9))
+  )
+  attr(exList[[1]], "chnlCut") <- "marker"
+  attr(exList[[2]], "chnlCut") <- "marker"
+  attr(exList[[1]], "batch") <- "batch1"
+  attr(exList[[2]], "batch") <- "batch1"
+
+  chnlSettings <- list(
+    chnlCut = "marker",
+    gateCombn = "no",
+    excMin = FALSE,
+    minCell = 5,
+    cpMin = 0,
+    bw = 1
+  )
+
+  local_mocked_bindings(
+    .getCpTailgate = function(density, peakX = NULL, fraction = 1 / 200) {
+      expect_equal(fraction, 1 / 200)
+      list(
+        lowerBoundX = 6,
+        info = list(
+          reason = "identified_stimulated_density_shoulder_lower_bound"
+        )
+      )
+    }
+  )
+
+  out <- stimgate:::.getCpTg(
+    exList = exList,
+    chnlSettings = chnlSettings,
+    tgType = "tg",
+    stage = "init",
+    pathProject = tempdir()
+  )
+
+  expect_equal(out[["no"]][["stim"]], 6)
+})

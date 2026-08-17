@@ -74,7 +74,7 @@
   stage,
   pathProject
 ) {
-  # get cytoUtils tailgate cutpoint
+  # get native StimGate tailgate cutpoint
   .debug("Getting tg cutpoint")
 
   # Extract explicit parameters cleanly from chnlSettings at local execution scope
@@ -84,10 +84,73 @@
   minCell <- chnlSettings$minCell
   cpMin <- chnlSettings$cpMin
   bw <- chnlSettings$bw
-  tol <- chnlSettings$tol %||% 1e-2 # fallback internal tolerance constant if absent
 
   stageChnl <- file.path(stage, chnlCut)
   cpList <- list()
+
+  .getNativeTailgateCp <- function(ex) {
+    ex <- ex[!is.na(.getCut(ex)), , drop = FALSE]
+    if (excMin) {
+      ex <- ex[.getCut(ex) > min(.getCut(ex)), , drop = FALSE]
+    }
+    if (nrow(ex) < max(minCell, 5L)) {
+      return(
+        if (nrow(ex) == 0L) {
+          NA_real_
+        } else {
+          max(
+            cpMin,
+            max(.getCut(ex)) +
+              (max(.getCut(ex)) - min(.getCut(ex))) / 5
+          )
+        }
+      )
+    }
+
+    bwEst <- try(
+      suppressWarnings(ks::hpi(.getCut(ex), deriv.order = 1)),
+      silent = TRUE
+    )
+    if (inherits(bwEst, "try-error") || !is.finite(bwEst)) {
+      bwEst <- max(bw, 1e-8)
+    }
+    bwTg <- max(bw, bwEst)
+    densityObj <- try(
+      suppressWarnings(stats::density(
+        x = .getCut(ex),
+        bw = bwTg,
+        n = 512L,
+        from = min(.getCut(ex)),
+        to = max(.getCut(ex))
+      )),
+      silent = TRUE
+    )
+    if (inherits(densityObj, "try-error") || is.null(densityObj)) {
+      return(
+        max(
+          cpMin,
+          max(.getCut(ex)) +
+            (max(.getCut(ex)) - min(.getCut(ex))) / 5
+        )
+      )
+    }
+
+    tailgate <- .getCpTailgate(
+      density = data.frame(x = densityObj$x, y = densityObj$y),
+      peakX = densityObj$x[which.max(densityObj$y)],
+      fraction = 1 / 200
+    )
+    cp <- suppressWarnings(as.numeric(tailgate$lowerBoundX)[1L])
+    if (!is.finite(cp)) {
+      cp <- max(
+        cpMin,
+        max(.getCut(ex)) +
+          (max(.getCut(ex)) - min(.getCut(ex))) / 5
+      )
+    }
+
+    cp
+  }
 
   if ("prejoin" %in% gateCombn) {
     .debug("prejoin")
@@ -107,18 +170,7 @@
       )
       cpVec <- stats::setNames(rep(NA, length(indGate)), indGate)
     } else {
-      bwEst <- ks::hpi(.getCut(ex), deriv.order = 1)
-      bwTg <- max(bw, bwEst)
-      adjust <- bwTg / bwEst
-      cp <- suppressWarnings(.cytokineCutpoint(
-        x = .getCut(ex),
-        numPeaks = 1,
-        refPeak = 1,
-        tol = tol,
-        side = "right",
-        strict = FALSE,
-        adjust = adjust
-      ))
+      cp <- .getNativeTailgateCp(ex)
       .intSaveNm(
         file.path(tgType, "cpTgPrejoinInit"),
         cp,
@@ -162,32 +214,7 @@
     cpTgVec <- purrr::map_dbl(indGate, function(ind) {
       .debug("ind", ind)
       ex <- exList[[as.character(ind)]]
-      ex <- ex[!is.na(.getCut(ex)), ]
-      if (excMin) {
-        ex <- ex[.getCut(ex) > min(.getCut(ex)), ]
-      }
-      if (nrow(ex) < max(minCell, 5)) {
-        return(
-          max(
-            cpMin,
-            max(.getCut(ex)) +
-              (max(.getCut(ex)) - min(.getCut(ex))) / 5
-          )
-        )
-      }
-      bwEst <- ks::hpi(.getCut(ex), deriv.order = 1)
-      bwTg <- max(bw, bwEst)
-      adjust <- bwTg / bwEst
-
-      cp <- suppressWarnings(.cytokineCutpoint(
-        x = .getCut(ex),
-        numPeaks = 1,
-        refPeak = 1,
-        tol = tol,
-        side = "right",
-        strict = FALSE,
-        adjust = adjust
-      ))
+      cp <- .getNativeTailgateCp(ex)
       .intSaveNm(
         file.path(tgType, "cpTgIndInit"),
         cp,
