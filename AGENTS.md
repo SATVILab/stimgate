@@ -1,17 +1,22 @@
 # AGENTS.md — Configuration for AI Coding Agents
 
-This file provides guidance for autonomous coding agents (e.g. Google Jules,
-GitHub Copilot) working on the `stimgate` repository.
+This file is the **canonical source of truth** for all AI coding agents
+(e.g. Google Jules, GitHub Copilot) working on the `stimgate` repository.
+
+> **Instruction update rule for AI agents:**
+> Always update `AGENTS.md` when you identify new coding patterns, guidelines,
+> or best practices during issue resolution. This ensures all agents benefit from
+> learnings and instructions remain unified and current.
 
 ---
 
 ## 1. Core Philosophy / Project Context
 
-`stimgate` is an R package intended for submission to
-[Bioconductor](https://bioconductor.org/). It identifies cells that have
-possibly responded to immune stimulation by applying outlier-based gating to
-flow cytometry data. The core idea is to compare an *unstimulated* tube with a
-*stimulated* tube from the same donor sample and flag cells whose marker
+`stimgate` is an R package for flow cytometry analysis, intended for eventual
+submission to [Bioconductor](https://bioconductor.org/). It identifies cells that
+have possibly responded to immune stimulation by applying outlier-based gating
+to flow cytometry data. The core idea is to compare an *unstimulated* tube with
+a *stimulated* tube from the same donor sample and flag cells whose marker
 expression in the stimulated condition is unusually high relative to the
 unstimulated background.
 
@@ -57,17 +62,16 @@ unstimulated background.
 
 ---
 
-## 3. Setup Commands
+## 3. Environment Setup & Dependency Management
 
 Run package commands from the **repository root** (the directory containing
-`DESCRIPTION`). The dependency setup differs between ordinary development and
-the GitHub Copilot cloud agent.
+`DESCRIPTION`).
 
 ### Local development / ordinary agent environments
 
 Outside CI and the GitHub Copilot cloud agent, `.Rprofile` selects the
-appropriate `renv` profile and activates it. If the project library needs to
-be restored, run:
+appropriate `renv` profile and activates it automatically when R starts in the
+project directory. If the project library needs to be restored, run:
 
 ```r
 # 1. Install renv (if not already installed)
@@ -111,19 +115,28 @@ environment-setup failure rather than switching to `renv`.
 
 ---
 
-## 4. Build & Test Instructions
+## 4. Build, Test & Quality Instructions
 
-Run the following from the **repository root** in an R session:
+Run the following commands from the **repository root** in an R session:
 
 ```r
+# Load and reload package
+devtools::load_all()
+
 # Run all unit tests
 devtools::test()
 
-# Full R CMD check (mimics CRAN / Bioconductor checks)
-devtools::check()
-
 # Regenerate documentation from roxygen comments
 devtools::document()
+
+# Style package code formatting
+styler::style_pkg()
+
+# Check for linting violations
+lintr::lint_package()
+
+# Full R CMD check (mimics CRAN / Bioconductor checks)
+devtools::check()
 
 # Check test coverage
 covr::report()
@@ -135,65 +148,195 @@ Equivalent shell commands (via `Rscript`):
 Rscript -e "devtools::test()"
 Rscript -e "devtools::check()"
 Rscript -e "devtools::document()"
+Rscript -e "styler::style_pkg()"
+Rscript -e "lintr::lint_package()"
+```
+
+### Checklist before each commit / opening a PR
+
+1. `devtools::document()`
+2. `styler::style_pkg()`
+3. `lintr::lint_package()`
+4. `devtools::test()`
+
+### Website Maintenance (`pkgdown`)
+
+Whenever functions are added, removed, or have their export status changed (via
+`@export`), update `_pkgdown.yml` to ensure the reference section accurately
+reflects all exported functions. Verify the site configuration with:
+
+```r
+pkgdown::check_pkgdown()
 ```
 
 ---
 
-## 5. Coding Style & Conventions
+## 5. Repository Structure
 
-### Formatting
+- `R/`: Core R source code for the package.
+  - `UtilsCytoRSV-chnl_lab.R`: Channel label utilities (get markers/channels from cytometry objects).
+  - `UtilsCytoRSV-plot_cyto.R`: Cytometry plotting utilities.
+  - `UtilsGGSV-axis_limits.R`: `ggplot2` axis limit helpers.
+  - `bw_norm_helpers.R`: Shared bandwidth helpers for standard and normalised bandwidth methods.
+  - `check.R`: Input validation helpers.
+  - `chnl_settings.R`: Complete channel parameter list with all required settings.
+  - `cp-sub.R`: Auxiliary functions for getting clusters.
+  - `cp_cluster-helper.R`: Helper functions for grouping thresholds from like distributions.
+  - `cp_cluster.R`: Gets thresholds by grouping thresholds from like distributions.
+  - `cp_uns_loc.R`: Gets thresholds by comparing stim and unstim distributions (main local-FDR entry point).
+  - `cp_uns_loc_density.R`: Local-FDR density and raw probability estimation.
+  - `cp_uns_loc_derivative.R`: Appendix derivative thresholds for local-FDR filtering.
+  - `cp_uns_loc_filtering.R`: Local-FDR filtering after probability smoothing.
+  - `cp_uns_loc_output.R`: Local-FDR diagnostics, metadata, and output assembly.
+  - `cp_uns_loc_smoothing.R`: Local-FDR probability smoothing.
+  - `cp_uns_loc_threshold.R`: Local-FDR response estimate and final threshold.
+  - `cyt_pos_gates-helper.R`: Helper functions for cytokine-positive cell gates.
+  - `cyt_pos_gates.R`: Functions for more aggressive gates applied to cytokine-positive cells.
+  - `debug.R`: Debugging utilities (`.debug()`) and global variable declarations.
+  - `ex.R`: Extract expression matrices from `GatingSet` objects.
+  - `example_data.R`: Creates example `GatingSet` for examples and testing (`getExampleData()`).
+  - `fcs_write.R`: Write FCS files of cytokine-positive cells (`writeStimFCS`).
+  - `functionsForBenchmarking-Cyt.R`: Benchmarking helpers for cytokine simulation (used internally by `example_data.R`).
+  - `gate.R`: Main entry point for gating (`gateStim`).
+  - `gate_batch-helper.R`: Helper functions for gating batches of samples.
+  - `gate_batch.R`: Gate batches of samples.
+  - `gate_chnl-helper.R`: Helper functions for gating individual channels.
+  - `gate_chnl.R`: Gate individual channels.
+  - `gates.R`: Extract the identified gates/thresholds (`getStimGates`, `getStimGatesDetailed`).
+  - `ind_batch.R`: Get the list of indices grouped by batch.
+  - `peaks_and_troughs.R`: Peak and trough detection helpers.
+  - `pipe.R`: Pipe operator and related utilities.
+  - `plot_gate.R`: Plot the identified gates (`plotStim`).
+  - `pos_ind.R`: Identify the indices of the cytokine-positive cells.
+  - `stats-helper-overall.R`: Helper functions for overall statistics.
+  - `stats-helper.R`: Helper functions for statistics.
+  - `stats.R`: Get statistics for the identified gates.
+  - `verify.R`: Input verification helpers.
+- `scripts/`:
+  - `python/`: Python helper scripts used by analysis (not part of the R package).
+    - `fbeta.py`: Richards F-beta thresholding implementation (comparison method).
+  - `r/`: R helper scripts used by analysis only — not loaded by `devtools::load_all()` and not part of the `stimgate` namespace.
+    - `cytoUtils-cytokine_cutpoint.R`: Historical competitor tailgate implementation retained only for benchmark comparison and sourced explicitly by `analysis/7-sim-compare-freq_bs.qmd`.
+    - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation.
+    - `openCyto-find_peaks_and_valleys.R`: Historical peak/valley helper retained only for the legacy comparator benchmark.
+    - `sim-bandwidth.R`: Simulation bandwidth utilities.
+    - `sim-bw-adaptive.R`: Adaptive bandwidth simulation helpers.
+    - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
+    - `sim-misc.R`: Miscellaneous simulation utilities.
+    - `sim-trans.R`: Simulation transformation utilities.
+- `_reference/`: Reference material (historical scripts retained for reference).
+- `.github/`: GitHub CI workflows and Copilot setup.
+- `data-raw/`: Raw data files used for testing and examples.
+- `man/`: Automatically generated documentation files.
+- `renv/`: R package environment management files (`renv.lock`, `.Rprofile`).
+- `tests/`: Unit tests for the package (`tests/testthat/`).
+- `_dependencies.R`: Explicitly listed dependencies for `renv`.
+- `DESCRIPTION`: Package metadata file.
 
-- Run `styler::style_pkg()` before every commit to apply consistent formatting.
-- Run `lintr::lint_package()` to catch style violations before opening a PR.
+---
 
-```r
-styler::style_pkg()
-lintr::lint_package()
-```
+## 6. Coding Style & Conventions
 
 ### Naming conventions
 
 - **Exported functions**: `camelCase`, no leading dot (e.g. `gateStim`, `plotStim`).
-- **Internal functions**: `camelCase` with a leading dot (e.g. `.getThreshold`).
-- **Debug messages**: use `.debug(msg, val)` inside internal functions. Debug
-  output is written to a temp file and controlled by the `STIMGATE_DEBUG`
-  environment variable (set to `"true"`, `"yes"`, `"y"`, or `"1"` to enable).
-  Do **not** add a debug parameter to function signatures.
+- **Internal functions**: `camelCase` with a leading dot (e.g. `.getThreshold`). Begin each internal function with a `.`.
+
+### Debugging & Intermediate Data Saving
+
+- Use `.debug(msg, val)` inside internal functions for debug messages. Debug output
+  is written to a temp file and controlled by the `STIMGATE_DEBUG` environment
+  variable (set to `"true"`, `"yes"`, `"y"`, or `"1"` to enable).
+  Do **NOT** add a debug flag or parameter to function signatures.
+- Use the `stage` parameter to track algorithm stages (`"init"`, `"cytPos"`, or
+  `"single"`). Pass `stage` through function calls to enable intermediate data
+  saving via `.intSave()` or `.intSaveNm()` functions. Intermediate saving is
+  controlled by the `STIMGATE_INTERMEDIATE` environment variable.
+
+### Function Signatures & Returns
+
+- Validate inputs and provide meaningful error messages.
+- Never use `return()` as the last line of a function; use it only for early returns.
 
 ### Documentation (roxygen2)
 
-- Every exported function must have a `@param`, `@return`, and `@export` tag.
-- Parameter docs follow the format:
+- Every exported function must have `@param`, `@return`, and `@export` tags.
+- Parameter docs must follow the exact format:
   `@param param_name <type> <description>. Default: <value>.`
+  - Example: `@param pathProject character Path to project.`
+  - Multiple types/options example: `logical or character`, or `"always", "never" or "automatic"`.
+  - Stating default: `Default: "automatic".` or `Default is "automatic".`
 - Use `@details` for complex explanations rather than overloading `@param`.
+- Whitespace: Ensure no trailing whitespace on lines, and ensure files end with a final newline.
 
-### Package namespace
+### Package Namespace
 
-- Reference all external functions as `pkg::fun()`.
-- Exceptions: `ggplot2` functions and `flowCore::exprs` may be called without
-  the namespace qualifier and do not require `@importFrom` tags.
+- Reference all external functions explicitly as `pkg::fun()`.
+- Exceptions: `ggplot2` functions and `flowCore::exprs` may be called without a
+  namespace qualifier and do not require `@importFrom` tags.
 
-### Tests
+---
 
-- Place tests in `tests/testthat/` as `test-<topic>.R` files.
-- Tests use `testthat` 3rd-edition conventions (`expect_*` helpers).
-- Do **not** place any code outside `test_that()` blocks except shared setup
-  data that every test in the file requires.
-- Each test cleans up its own temporary files (e.g. `unlink(tmp, recursive = TRUE)`).
-- Tests must pass on macOS, Windows, and Ubuntu; use `file.path()` (not
-  hard-coded `/` or `\\` separators) and avoid platform-specific paths.
-- Test observable behaviour and outputs, not internal implementation details
-  or the existence of internal (`.`-prefixed) functions.
+## 7. Specific Package Policies & Design Notes
 
-### Commits & PRs
+1. **Taut-string density**:
+   The piecewise-constant taut-string density used for antimode detection is
+   provided by the internal helper `.tautStringPmden()` (in
+   `cp_uns_loc_filtering.R`), which wraps `cytoUtils::tautstring()`. Do not
+   re-introduce `ftnonpar` or vendor C++ source for this purpose. `cytoUtils` is
+   listed under `Remotes: RGLab/cytoUtils` in `DESCRIPTION`.
+2. **Comparison code vs. package code**:
+   `R/` contains only StimGate implementation code. Historical comparison helpers
+   for the legacy `cytoUtils`/`openCyto` tailgate live under `scripts/r/` and are
+   sourced explicitly by `analysis/7-sim-compare-freq_bs.qmd` to benchmark against
+   the original tailgate semantics. Note that `R/functionsForBenchmarking-Cyt.R` is an
+   exception: it stays in `R/` because `getExampleData()` (an exported function) calls
+   `simCytExperiment()` internally.
+3. **Legacy comparator policy**:
+   The `cytoUtils`/`openCyto` tailgate implementation is intentionally kept only in
+   `scripts/r/` for benchmark comparison and is not part of the StimGate package
+   runtime. Do not reintroduce vendored legacy helpers under `R/`.
+4. **Audit status for `.getCpTg()` migration (issue #157/#158)**:
+   Remaining call sites are catalogued by `.get_cp_tg_call_audit()` and summarised by
+   `.get_cp_tg_migration_note_157()`. Current default behaviour still constructs
+   `tgClust` control gates in `.gateBatchAll()`, but the current local-FDR cluster
+   quantile implementation does not consume `gateTblCtrl`, so this branch is dead
+   plumbing for current outputs. The other `.getCpTg()` callers are in legacy
+   single-positive paths that are optional/backwards-compatible only.
 
-- Keep commits focused and atomic.
-- Commit message format: `<verb> <what>` in the imperative mood
-  (e.g. `Add threshold helper for cluster method`).
-- Before opening a PR:
-  1. `styler::style_pkg()`
-  2. `lintr::lint_package()`
-  3. `devtools::document()`
-  4. `devtools::test()`
-- Update `_pkgdown.yml` whenever exported functions are added, removed, or
-  renamed, and verify the site config with `pkgdown::check_pkgdown()`.
+---
+
+## 8. Testing Best Practices & Guidelines
+
+Place all unit tests in `tests/testthat/` as `test-<topic>.R` files.
+
+1. **Avoid `library()` calls in test files**:
+   Never use `library(testthat)` or similar calls at the top of test files.
+   The `testthat` package is automatically loaded when tests are run.
+2. **Keep tests independent**:
+   Each test should be self-contained and not rely on global state created outside
+   of test blocks.
+3. **Variable scope in tests**:
+   When a test creates its own test data and variables (e.g. `example_data`, `gs`),
+   always use those local variables throughout that test. Never mix local and global
+   variables from different scopes.
+4. **Avoid code outside test blocks**:
+   Do not place code outside `test_that()` blocks (except shared setup data required
+   by every test in the file). Operations like `unlink()` outside blocks execute in
+   unpredictable order, cause race conditions, and interfere with parallel execution.
+5. **Cleanup within tests**:
+   Each test must clean up its own temporary files/directories created during execution
+   (e.g., `unlink(tmp_dir, recursive = TRUE)` or `withr::defer()`).
+6. **Shared test fixtures**:
+   If multiple tests need the same setup data, create it within each test or create it
+   once at the top with clear documentation. Never delete shared fixtures mid-file.
+7. **Test data files compatibility**:
+   Test data files (`.rds` in `tests/testthat/`) may need regeneration when major
+   dependencies (e.g., `ggplot2`) upgrade. Regenerate test data files using current
+   package versions if objects behave unexpectedly after dependency updates.
+8. **Test observable behaviour**:
+   Tests must verify observable outputs and behavior, not internal implementation
+   details or the existence of internal (`.`-prefixed) functions.
+9. **Cross-platform compatibility**:
+   Tests must pass on macOS, Windows, and Ubuntu. Use `file.path()` (never hard-coded
+   `/` or `\\` separators) and avoid platform-specific paths.
