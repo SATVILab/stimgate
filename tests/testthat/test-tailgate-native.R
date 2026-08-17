@@ -1,4 +1,20 @@
+.sourceLegacyTailgate <- function() {
+  root_dir <- normalizePath(
+    file.path(testthat::test_path(), "..", ".."),
+    winslash = "/",
+    mustWork = TRUE
+  )
+  path_tailgate_sources <- c(
+    file.path(root_dir, "scripts", "r", "openCyto-find_peaks_and_valleys.R"),
+    file.path(root_dir, "scripts", "r", "cytoUtils-cytokine_cutpoint.R")
+  )
+  for (path_tailgate in path_tailgate_sources) {
+    source(path_tailgate, local = parent.frame())
+  }
+}
+
 test_that("native tailgate preserves the relative-derivative shoulder rule", {
+  .sourceLegacyTailgate()
   x <- seq(0, 8, length.out = 500)
   y <- stats::dnorm(x, mean = 2.5, sd = 0.8)
 
@@ -29,6 +45,7 @@ test_that("native tailgate returns NA when the descending shoulder never reaches
 })
 
 test_that("native tailgate has a deterministic multimodal fixture and differs from legacy tol gating", {
+  .sourceLegacyTailgate()
   set.seed(1)
   x <- c(rnorm(200, mean = 0, sd = 0.6), rnorm(200, mean = 4, sd = 0.8))
   density <- stats::density(x, n = 512)
