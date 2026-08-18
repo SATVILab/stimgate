@@ -1475,7 +1475,7 @@
     scam::scam(
       logDens ~ s(x, bs = "mpd", k = k, m = c(2, 1)),
       data = fitTblThin,
-      family = gaussian(),
+      family = stats::gaussian(),
       control = scam::scam.control(
         print.warn = FALSE,
         trace = FALSE,

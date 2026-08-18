@@ -13,5 +13,5 @@ getStimStats(pathProject)
 A data frame with gating statistics.
 }
 \description{
-Get gating statistics
+Read and return gating statistics computed during gating.
 }

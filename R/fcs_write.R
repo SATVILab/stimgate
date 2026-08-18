@@ -418,7 +418,7 @@ writeStimFCS <- function(
     ex = ex,
     gateTblInd = gateTblInd,
     mult = mult,
-    chnl = chnl,
+    chnlGate = chnl,
     gateTypeCytPos = gateTypeCytPos,
     gateTypeSinglePos = gateTypeSinglePos
   )
@@ -432,7 +432,7 @@ writeStimFCS <- function(
     ex = ex,
     combnExc = combnExc,
     gateTblInd = gateTblInd,
-    chnl = chnl,
+    chnlGate = chnl,
     gateTypeCytPos = gateTypeCytPos,
     gateTypeSinglePos = gateTypeSinglePos
   )

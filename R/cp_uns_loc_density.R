@@ -892,7 +892,7 @@
   x <- x[ord]
   y <- y[ord]
 
-  sum(diff(x) * (head(y, -1L) + tail(y, -1L)) / 2)
+  sum(diff(x) * (utils::head(y, -1L) + utils::tail(y, -1L)) / 2)
 }
 
 #' @keywords internal
@@ -1219,21 +1219,21 @@
 
   # Find the threshold index
   valid_idx <- probTbl |>
-    dplyr::arrange(xStim) |>
+    dplyr::arrange(.data$xStim) |>
     dplyr::mutate(
-      ge_0025 = probStimNorm >= 0.025,
-      ge_0075 = probStimNorm >= 0.075,
+      ge_0025 = .data$probStimNorm >= 0.025,
+      ge_0075 = .data$probStimNorm >= 0.075,
       n_remaining = rev(seq_len(dplyr::n())),
 
       # Calculate tail proportions
-      prop_0025 = rev(cumsum(rev(ge_0025))) / n_remaining,
-      prop_0075 = rev(cumsum(rev(ge_0075))) / n_remaining,
+      prop_0025 = rev(cumsum(rev(.data$ge_0025))) / .data$n_remaining,
+      prop_0075 = rev(cumsum(rev(.data$ge_0075))) / .data$n_remaining,
 
       # Do both conditions match?
-      both_met = prop_0025 >= 0.90 & prop_0075 >= 0.25
+      both_met = .data$prop_0025 >= 0.90 & .data$prop_0075 >= 0.25
     ) |>
     # Get the row index of the first time this becomes true
-    dplyr::pull(both_met) |>
+    dplyr::pull(.data$both_met) |>
     which() |>
     which.min()
 
