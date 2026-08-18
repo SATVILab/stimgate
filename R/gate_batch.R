@@ -19,26 +19,13 @@
     pathProject = pathProject
   )
 
-  if (is.null(chnlSettings$gateTbl)) {
-    .gateBatchAll(
-      indBatch = indBatch,
-      batch = batch,
-      exList = exList,
-      .data = .data,
-      chnlSettings = chnlSettings,
-      stage = stage,
-      pathProject = pathProject
-    )
-  } else {
-    .gateBatchSingle(
-      indBatch = indBatch,
-      batch = batch,
-      exList = exList,
-      .data = .data,
-      chnlSettings = chnlSettings,
-      calcCytPosGates = calcCytPosGates,
-      stage = stage,
-      pathProject = pathProject
-    )
-  }
+  .gateBatchAll(
+    indBatch = indBatch,
+    batch = batch,
+    exList = exList,
+    .data = .data,
+    chnlSettings = chnlSettings,
+    stage = stage,
+    pathProject = pathProject
+  )
 }

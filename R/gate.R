@@ -227,9 +227,6 @@
 #'   the full stimulated marginal peak plus one third of its left-window width
 #'   and the clustered gate. If no eligible antimode exists, the clustered gate
 #'   is retained. Default is TRUE.
-#' @param calcSinglePosGates logical. Whether to calculate single-positive gates
-#'   for individual markers in addition to combination gates. Default is FALSE.
-#'   Useful for detailed analysis of individual marker responses.
 #' @return character. Returns the path to the project directory where all results
 #'   have been saved. The directory structure created includes:
 #'   \itemize{
@@ -268,13 +265,7 @@
 #'     clustered gate when none is available
 #' }
 #'
-#' \strong{Step 4: Single-Positive Gates (if calcSinglePosGates = TRUE)}
-#' \itemize{
-#'   \item Calculates gates for individual markers independent of other markers
-#'   \item Useful for understanding single-marker responses
-#' }
-#'
-#' \strong{Step 5: Statistics Generation}
+#' \strong{Step 4: Statistics Generation}
 #' \itemize{
 #'   \item Calculates comprehensive statistics including frequencies and combinations
 #'   \item Generates cross-tabulations of cytokine-positive populations
@@ -329,7 +320,6 @@ gateStim <- function(
   chnl = NULL,
   marker = NULL,
   calcCytPosGates = TRUE,
-  calcSinglePosGates = FALSE,
   biasUns = NULL,
   biasUnsFactor = 1,
   excMin = TRUE,
@@ -414,7 +404,6 @@ gateStim <- function(
     chnlSettings = chnlSettings,
     markerSettings = markerSettings,
     calcCytPosGates = calcCytPosGates,
-    calcSinglePosGates = calcSinglePosGates,
     biasUns = biasUns,
     biasUnsFactor = biasUnsFactor,
     excMin = excMin,
@@ -568,17 +557,6 @@ gateStim <- function(
     pathProject = pathProject
   )
 
-  # single-positive gates
-  .gateSingle(
-    chnlSettings = chnlSettings,
-    .data = .data,
-    indBatchList = batchList,
-    pathProject = pathProject,
-    calcCytPosGates = calcCytPosGates,
-    calcSinglePosGates = calcSinglePosGates,
-    gateTbl = gateTbl
-  )
-
   message("")
   message("")
   message("")
@@ -588,7 +566,6 @@ gateStim <- function(
     .data = .data,
     gateTbl = gateTbl,
     calcCytPosGates = calcCytPosGates,
-    calcSinglePosGates = calcSinglePosGates,
     chnlSettings = chnlSettings,
     indBatchList = batchList,
     pathProject = pathProject
@@ -645,88 +622,10 @@ gateStim <- function(
 }
 
 #' @keywords internal
-.gateSingle <- function(
-  chnlSettings,
-  .data,
-  indBatchList,
-  pathProject,
-  calcCytPosGates,
-  calcSinglePosGates,
-  gateTbl
-) {
-  message("")
-  message("")
-  message("----")
-  message("getting single+ gates")
-  message("----")
-  message("")
-
-  if (!calcSinglePosGates) {
-    .debug("Not gating single-pos gates")
-    purrr::walk(chnlSettings, function(chnlSettingsCurr) {
-      pathSave <- .gatesGetPathAll(
-        pathProject = pathProject,
-        pop = chnlSettings$popGate,
-        chnlCut = chnlSettingsCurr$chnlCut,
-        init = FALSE
-      )
-      if (!dir.exists(dirname(pathSave))) {
-        dir.create(dirname(pathSave), recursive = TRUE, showWarnings = TRUE)
-      }
-      saveRDS(
-        gateTbl |>
-          dplyr::filter(chnl == chnlSettingsCurr$chnlCut) |>
-          dplyr::mutate(gateSingle = gate),
-        pathSave
-      )
-    })
-    return(invisible(TRUE))
-  } else {
-    .debug("Gating single-pos gates")
-  }
-
-  purrr::walk(chnlSettings, function(chnlSettingsCurr) {
-    txt <- paste0("chnl: ", chnlSettingsCurr$chnlCut)
-    message(txt)
-
-    gateObj <- .gateChnl(
-      .data = .data,
-      indBatchList = indBatchList,
-      chnlSettings = chnlSettingsCurr,
-      gateTbl = gateTbl,
-      calcCytPosGates = calcCytPosGates,
-      pathProject = pathProject,
-      stage = "single"
-    )
-
-    .gateSingleSave(
-      pathProject = pathProject,
-      chnlSettings = chnlSettings,
-      gateTbl = gateObj$gateTbl
-    )
-  })
-}
-
-#' @keywords internal
-.gateSingleSave <- function(pathProject, chnlSettings, gateTbl) {
-  pathSave <- .gatesGetPathAll(
-    pathProject = pathProject,
-    pop = chnlSettings$popGate,
-    chnlCut = chnlSettings$chnlCut,
-    init = FALSE
-  )
-  if (!dir.exists(dirname(pathSave))) {
-    dir.create(dirname(pathSave), recursive = TRUE, showWarnings = TRUE)
-  }
-  saveRDS(gateTbl, pathSave)
-}
-
-#' @keywords internal
 .gateStats <- function(
   .data,
   gateTbl = NULL,
   calcCytPosGates,
-  calcSinglePosGates,
   chnlSettings,
   indBatchList,
   pathProject
@@ -737,13 +636,7 @@ gateStim <- function(
     filterOtherCytPos = FALSE,
     combn = TRUE,
     gateTypeCytPosFilter = if (calcCytPosGates) "cyt" else "base",
-    gateTypeSinglePosFilter = if (calcSinglePosGates) {
-      "single"
-    } else {
-      "base"
-    },
     gateTypeCytPosCalc = if (calcCytPosGates) "cyt" else "base",
-    gateTypeSinglePosCalc = if (calcSinglePosGates) "single" else "base",
     save = TRUE,
     popGate = chnlSettings[[1]]$popGate,
     chnl = purrr::map_chr(chnlSettings, function(x) x$chnlCut),

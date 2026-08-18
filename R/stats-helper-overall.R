@@ -10,8 +10,6 @@
   filterOtherCytPos,
   combn,
   gateTypeCytPosFilter,
-  gateTypeSinglePosFilter,
-  gateTypeSinglePosCalc,
   gateTypeCytPosCalc,
   combnMatList,
   cytCombnVecList,
@@ -36,8 +34,6 @@
         filterOtherCytPos = filterOtherCytPos,
         combn = combn,
         gateTypeCytPosFilter = gateTypeCytPosFilter,
-        gateTypeSinglePosFilter = gateTypeSinglePosFilter,
-        gateTypeSinglePosCalc = gateTypeSinglePosCalc,
         gateTypeCytPosCalc = gateTypeCytPosCalc,
         combnMatList = combnMatList,
         cytCombnVecList = cytCombnVecList,
@@ -104,8 +100,6 @@
   filterOtherCytPos,
   combn,
   gateTypeCytPosFilter,
-  gateTypeSinglePosFilter,
-  gateTypeSinglePosCalc,
   gateTypeCytPosCalc,
   combnMatList,
   cytCombnVecList,
@@ -132,8 +126,6 @@
       chnl = chnl,
       filterOtherCytPos = filterOtherCytPos,
       gateTypeCytPosFilter = gateTypeCytPosFilter,
-      gateTypeSinglePosFilter = gateTypeSinglePosFilter,
-      gateTypeSinglePosCalc = gateTypeSinglePosCalc,
       gateTypeCytPosCalc = gateTypeCytPosCalc,
       combn = combn,
       combnMatList = combnMatList,
@@ -151,8 +143,6 @@
   chnl,
   filterOtherCytPos,
   gateTypeCytPosFilter,
-  gateTypeSinglePosFilter,
-  gateTypeSinglePosCalc,
   gateTypeCytPosCalc,
   combn,
   combnMatList,
@@ -169,9 +159,7 @@
       gn = gn,
       chnl = chnl,
       filterOtherCytPos = filterOtherCytPos,
-      gateTypeSinglePosCalc = gateTypeSinglePosCalc,
-      gateTypeCytPosFilter = gateTypeCytPosFilter,
-      gateTypeSinglePosFilter = gateTypeSinglePosFilter
+      gateTypeCytPosFilter = gateTypeCytPosFilter
     )
     return(statTblGn)
   }
@@ -183,8 +171,7 @@
     chnl = chnl,
     combnMatList = combnMatList,
     cytCombnVecList = cytCombnVecList,
-    gateTypeCytPosCalc = gateTypeCytPosCalc,
-    gateTypeSinglePosCalc = gateTypeSinglePosCalc
+    gateTypeCytPosCalc = gateTypeCytPosCalc
   )
 }
 
@@ -196,8 +183,7 @@
   chnl,
   combnMatList,
   cytCombnVecList,
-  gateTypeCytPosCalc,
-  gateTypeSinglePosCalc
+  gateTypeCytPosCalc
 ) {
   exListStim <- exList[-1]
   exUns <- exList[[1]]
@@ -218,8 +204,7 @@
         chnl = chnl,
         combnMatList = combnMatList,
         cytCombnVecList = cytCombnVecList,
-        gateTypeCytPosCalc = gateTypeCytPosCalc,
-        gateTypeSinglePosCalc = gateTypeSinglePosCalc
+        gateTypeCytPosCalc = gateTypeCytPosCalc
       )
     }) |>
       dplyr::mutate(
@@ -240,8 +225,7 @@
   chnl,
   combnMatList,
   cytCombnVecList,
-  gateTypeCytPosCalc,
-  gateTypeSinglePosCalc
+  gateTypeCytPosCalc
 ) {
   .debug("number of cytokines positive: ", j) # nolint
   combnMat <- combnMatList[[j]]
@@ -269,8 +253,7 @@
         chnlPos = chnlPos,
         chnlNeg = chnlNeg,
         chnlAlt = NULL,
-        gateTypeCytPos = gateTypeCytPosCalc,
-        gateTypeSinglePos = gateTypeSinglePosCalc
+        gateTypeCytPos = gateTypeCytPosCalc
       )
     )
     statTblGnInd[i, "countUns"] <- sum(
@@ -281,8 +264,7 @@
         chnlPos = chnlPos,
         chnlNeg = chnlNeg,
         chnlAlt = NULL,
-        gateTypeCytPos = gateTypeCytPosCalc,
-        gateTypeSinglePos = gateTypeSinglePosCalc
+        gateTypeCytPos = gateTypeCytPosCalc
       )
     )
   }
@@ -312,9 +294,7 @@
   gn,
   chnl,
   filterOtherCytPos,
-  gateTypeSinglePosCalc,
-  gateTypeCytPosFilter,
-  gateTypeSinglePosFilter
+  gateTypeCytPosFilter
 ) {
   .debug("filtering or not working out combinations") # nolint
   purrr::map_df(chnl, function(chnlCurr) {
@@ -325,8 +305,7 @@
         exList = exList,
         gateTblGn = gateTblGn,
         chnlCurr = chnlCurr,
-        gateTypeCytPosFilter = gateTypeCytPosFilter,
-        gateTypeSinglePosFilter = gateTypeSinglePosFilter
+        gateTypeCytPosFilter = gateTypeCytPosFilter
       )
     }
 
@@ -357,18 +336,7 @@
         statTblGnInd[j, "nCellUns"] <- nrow(exList[[1]])
         next
       }
-      cnVec <- colnames(gateTblGnInd)
-      gateColInd <- switch(
-        gateTypeSinglePosCalc,
-        "base" = which(cnVec == "gate"),
-        "single" = which(cnVec == "gateSingle"),
-        stop(paste0(
-          "gateTypeSinglePosCalc value of ",
-          gateTypeSinglePosCalc,
-          " not either 'base' or 'single'."
-        ))
-      )
-      gateGnIndChnl <- gateTblGnInd[[gateColInd]][gateTblGnInd$chnl == chnlCurr]
+      gateGnIndChnl <- gateTblGnInd$gate[gateTblGnInd$chnl == chnlCurr]
       statTblGnInd[j, "countStim"] <- sum(ex[[chnlCurr]] > gateGnIndChnl)
       statTblGnInd[j, "nCellStim"] <- nrow(ex)
 
@@ -379,8 +347,7 @@
           gateTbl = gateTblGnInd |> dplyr::mutate(ind = attr(ex, "ind")),
           chnlSingleExc = chnlCurr,
           chnl = NULL,
-          gateTypeCytPos = gateTypeCytPosFilter,
-          gateTypeSinglePos = gateTypeSinglePosFilter
+          gateTypeCytPos = gateTypeCytPosFilter
         )
         exUns <- exUns[!posIndVecButSinglePosCurr, , drop = FALSE]
       }
@@ -396,8 +363,7 @@
   exList,
   gateTblGn,
   chnlCurr,
-  gateTypeCytPosFilter,
-  gateTypeSinglePosFilter
+  gateTypeCytPosFilter
 ) {
   .debug("filtering other cyt pos") # nolint
 
@@ -420,8 +386,7 @@
         dplyr::filter(ind == attr(exList[[i]], "ind")), # nolint
       chnlSingleExc = chnlCurr,
       chnl = NULL,
-      gateTypeCytPos = gateTypeCytPosFilter,
-      gateTypeSinglePos = gateTypeSinglePosFilter
+      gateTypeCytPos = gateTypeCytPosFilter
     )
     exList[[i]][!posIndVecButSinglePosCurr, , drop = FALSE]
   }) |>
