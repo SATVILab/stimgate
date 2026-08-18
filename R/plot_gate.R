@@ -65,13 +65,15 @@
 #' )
 #'
 #' # Create plots
-#' plots <- plotStim(
-#'   ind = exampleData$batchList[[1]], # indices in `gs` to plot
-#'   .data = gs, # GatingSet
-#'   pathProject = pathProject,
-#'   marker = exampleData$marker,
-#'   grid = TRUE
-#' )
+#' if (requireNamespace("hexbin", quietly = TRUE)) {
+#'   plots <- plotStim(
+#'     ind = exampleData$batchList[[1]], # indices in `gs` to plot
+#'     .data = gs, # GatingSet
+#'     pathProject = pathProject,
+#'     marker = exampleData$marker,
+#'     grid = TRUE
+#'   )
+#' }
 #' @export
 plotStim <- function(
   ind,
