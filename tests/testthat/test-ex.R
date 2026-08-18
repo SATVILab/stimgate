@@ -251,7 +251,7 @@ test_that("getStimExpr errors when both chnlGate and markerGate specified", {
 
 test_that("getStimExpr extracts cytokine-positive cells with gating", {
   # Use example data and run gating
-  example_data <- getExampleData()
+  example_data <- stimgate:::.getTestFixture()
   gs <- flowWorkspace::load_gs(example_data$pathGs)
   pathProject <- file.path(tempdir(), "stimgate_ex_cytPos_test")
 

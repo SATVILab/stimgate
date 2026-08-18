@@ -3,7 +3,7 @@ test_that("getStimGates and getStimStats return gate table and stats after gateS
   skip_if_not_installed("stimgate")
 
   # Get example data
-  exampleData <- getExampleData()
+  exampleData <- stimgate:::.getTestFixture()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(
     dirname(exampleData$pathGs),

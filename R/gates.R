@@ -10,7 +10,7 @@
 #' @return Gate table with gates for each sample for each marker.
 #' @examples
 #' # Get example dataset
-#' exampleData <- getExampleData()
+#' exampleData <- stimgate:::.getTestFixture()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
 #'
 #' # Run the stimgate pipeline

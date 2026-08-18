@@ -155,3 +155,52 @@ getExampleData <- function(
 #' @rdname getExampleData
 #' @export
 getTestData <- getExampleData
+
+#' Load the package-shipped tiny cytometry fixture
+#'
+#' Reads the small deterministic FCS files stored in
+#' \code{inst/extdata/stimgate_test_fixture/} (or the installed equivalent)
+#' and assembles them into a \code{GatingSet} in a temporary directory.
+#' Returns the same list structure as \code{\link{getExampleData}} so that
+#' tests and examples that do not depend on simulation can substitute this
+#' fixture for a much faster run.
+#'
+#' The fixture contains 2 biological samples, 2 conditions each (unstimulated
+#' and stimulated), 2 markers, and 200 cells per flow frame.  It is generated
+#' deterministically by \code{data-raw/create_test_fixture.R}.
+#'
+#' @return A named list with elements \code{pathGs}, \code{batchList},
+#'   \code{chnl}, and \code{marker}.
+#' @keywords internal
+.getTestFixture <- function() {
+  fixture_dir <- system.file(
+    "extdata", "stimgate_test_fixture",
+    package = "stimgate"
+  )
+  if (!nzchar(fixture_dir) || !dir.exists(fixture_dir)) {
+    stop(
+      "stimgate test fixture not found. ",
+      "Run data-raw/create_test_fixture.R to regenerate it."
+    )
+  }
+
+  meta <- readRDS(file.path(fixture_dir, "metadata.rds"))
+
+  fcs_paths <- file.path(fixture_dir, meta$fcsNames)
+  ff_list <- lapply(fcs_paths, flowCore::read.FCS, transformation = FALSE)
+  fs <- flowCore::flowSet(ff_list)
+  flowCore::sampleNames(fs) <- meta$sampleNames
+  gs <- flowWorkspace::GatingSet(fs)
+
+  tmp_dir <- tempfile(pattern = "stimgate_fixture_")
+  dir.create(tmp_dir)
+  path_gs <- file.path(tmp_dir, "gs")
+  flowWorkspace::save_gs(gs, path = path_gs)
+
+  list(
+    pathGs = path_gs,
+    batchList = meta$batchList,
+    chnl = meta$chnl,
+    marker = meta$marker
+  )
+}

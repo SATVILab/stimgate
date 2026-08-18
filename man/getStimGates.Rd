@@ -23,7 +23,7 @@ Get all the gates for each of the markers gated.
 }
 \examples{
 # Get example dataset
-exampleData <- getExampleData()
+exampleData <- stimgate:::.getTestFixture()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
 
 # Run the stimgate pipeline
