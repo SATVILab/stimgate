@@ -260,11 +260,7 @@
 <li>
 <code>r/</code>: R helper scripts used by analysis only — not loaded by <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> and not part of the <code>stimgate</code> namespace.
 <ul><li>
-<code>cytoUtils-cytokine_cutpoint.R</code>: Historical competitor tailgate implementation retained only for benchmark comparison and sourced explicitly by <code>analysis/7-sim-compare-freq_bs.qmd</code>.</li>
-<li>
 <code>functionsForBenchmarking-Pheno.R</code>: Benchmarking helpers for phenotype simulation.</li>
-<li>
-<code>openCyto-find_peaks_and_valleys.R</code>: Historical peak/valley helper retained only for the legacy comparator benchmark.</li>
 <li>
 <code>sim-bandwidth.R</code>: Simulation bandwidth utilities.</li>
 <li>
@@ -337,9 +333,9 @@
 <ol style="list-style-type: decimal"><li>
 <strong>Taut-string density</strong>: The piecewise-constant taut-string density used for antimode detection is provided by the internal helper <code><a href="reference/dot-tautStringPmden.html">.tautStringPmden()</a></code> (in <code>cp_uns_loc_filtering.R</code>), which wraps the native FAUST-derived C++ implementation <code>stimgate_cpPmden()</code> compiled via <code>cpp11</code> (<code>src/stimgate_cppmden.cpp</code> and <code>src/cpPmden.cpp</code>).</li>
 <li>
-<strong>Comparison code vs. package code</strong>: <code>R/</code> contains only StimGate implementation code. Historical comparison helpers for the legacy <code>cytoUtils</code>/<code>openCyto</code> tailgate live under <code>scripts/r/</code> and are sourced explicitly by <code>analysis/7-sim-compare-freq_bs.qmd</code> to benchmark against the original tailgate semantics. Note that <code>R/functionsForBenchmarking-Cyt.R</code> is an exception: it stays in <code>R/</code> because <code><a href="reference/getExampleData.html">getExampleData()</a></code> (an exported function) calls <code><a href="reference/simCytExperiment.html">simCytExperiment()</a></code> internally.</li>
+<strong>Comparison code vs. package code</strong>: <code>R/</code> contains only StimGate implementation code. Benchmark comparisons against the legacy <code>openCyto</code> tailgate call <code>openCyto:::.cytokineCutpoint()</code> from the <code>openCyto</code> package directly in <code>scripts/r/sim-compare-freq_bs.R</code> and <code>analysis/7-sim-compare-freq_bs.qmd</code>. Note that <code>R/functionsForBenchmarking-Cyt.R</code> is an exception: it stays in <code>R/</code> because <code><a href="reference/getExampleData.html">getExampleData()</a></code> (an exported function) calls <code><a href="reference/simCytExperiment.html">simCytExperiment()</a></code> internally.</li>
 <li>
-<strong>Legacy comparator policy</strong>: The <code>cytoUtils</code>/<code>openCyto</code> tailgate implementation is intentionally kept only in <code>scripts/r/</code> for benchmark comparison and is not part of the StimGate package runtime. Do not reintroduce vendored legacy helpers under <code>R/</code>.</li>
+<strong>Legacy comparator policy</strong>: Tailgate comparator functions are invoked directly from the <code>openCyto</code> package via <code>openCyto:::.cytokineCutpoint()</code>. Do not reintroduce vendored legacy tailgate helpers under <code>scripts/r/</code> or <code>R/</code>.</li>
 <li>
 <strong>Audit status for <code>.getCpTg()</code> migration (issue #157/#158)</strong>: Remaining call sites are catalogued by <code>.get_cp_tg_call_audit()</code> and summarised by <code>.get_cp_tg_migration_note_157()</code>. Current default behaviour still constructs <code>tgClust</code> control gates in <code>.gateBatchAll()</code>, but the current local-FDR cluster quantile implementation does not consume <code>gateTblCtrl</code>, so this branch is dead plumbing for current outputs. The other <code>.getCpTg()</code> callers are in legacy single-positive paths that are optional/backwards-compatible only.</li>
 </ol><hr></div>
