@@ -1,13 +1,13 @@
-test_that("axis_limits works", {
+test_that("axisLimits works", {
   p <- readRDS(testthat::test_path("p_axis_limits.rds"))
 
   # tests
   # -----------------
 
   # one element of length 1, no name
-  pAdj <- axis_limits(
+  pAdj <- axisLimits(
     p = p,
-    limits_expand = list(-1e4)
+    limitsExpand = list(-1e4)
   )
   expect_identical(
     length(pAdj$layers),
@@ -23,16 +23,16 @@ test_that("axis_limits works", {
 
   # two elements, no name
   expect_error(
-    axis_limits(
+    axisLimits(
       p = p,
-      limits_expand = list(1e4, -5e2)
+      limitsExpand = list(1e4, -5e2)
     )
   )
 
   # one element, no name
-  pAdj <- axis_limits(
+  pAdj <- axisLimits(
     p = p,
-    limits_expand = list(c(1e4, -5e2))
+    limitsExpand = list(c(1e4, -5e2))
   )
   expect_identical(
     pAdj$layers[[2]]$data,
@@ -43,9 +43,9 @@ test_that("axis_limits works", {
   )
 
   # one element, one name
-  pAdj <- axis_limits(
+  pAdj <- axisLimits(
     p = p,
-    limits_expand = list(x = c(1e4, -5e2))
+    limitsExpand = list(x = c(1e4, -5e2))
   )
   expect_identical(
     pAdj$layers[[2]]$data,
@@ -53,9 +53,9 @@ test_that("axis_limits works", {
       x = c(-5e2, 1e4)
     )
   )
-  pAdj <- axis_limits(
+  pAdj <- axisLimits(
     p = p,
-    limits_expand = list(y = c(1e4, -5e2))
+    limitsExpand = list(y = c(1e4, -5e2))
   )
   expect_identical(
     pAdj$layers[[2]]$data,
@@ -65,9 +65,9 @@ test_that("axis_limits works", {
   )
 
   # two elements, both named
-  pAdj <- axis_limits(
+  pAdj <- axisLimits(
     p = p,
-    limits_expand = list(
+    limitsExpand = list(
       y = c(1e4, -5e2),
       x = c(-1e4, 2e4)
     )
@@ -84,9 +84,9 @@ test_that("axis_limits works", {
   # --------------------
 
   # just axis range equal
-  pAdj <- axis_limits(
+  pAdj <- axisLimits(
     p = p,
-    limits_equal = TRUE
+    limitsEqual = TRUE
   )
 
   expect_identical(
@@ -94,12 +94,12 @@ test_that("axis_limits works", {
     pAdj$layers[[2]]$data[, 2]
   )
 
-  # with limits_expand
+  # with limitsExpand
   # just axis range equal
-  pAdj <- axis_limits(
+  pAdj <- axisLimits(
     p = p,
-    limits_equal = TRUE,
-    limits_expand = list(
+    limitsEqual = TRUE,
+    limitsExpand = list(
       y = c(1000, 200),
       x = c(-1e4, 500)
     )
@@ -117,10 +117,10 @@ test_that("axis_limits works", {
   )
 
   # just y-axis
-  pAdj <- axis_limits(
+  pAdj <- axisLimits(
     p = p,
-    limits_equal = TRUE,
-    limits_expand = list(y = c(1e4, 200))
+    limitsEqual = TRUE,
+    limitsExpand = list(y = c(1e4, 200))
   )
 
   expect_identical(
@@ -136,10 +136,10 @@ test_that("axis_limits works", {
   )
 
   # just x-axis
-  pAdj <- axis_limits(
+  pAdj <- axisLimits(
     p = p,
-    limits_equal = TRUE,
-    limits_expand = list(x = c(1e4, 200))
+    limitsEqual = TRUE,
+    limitsExpand = list(x = c(1e4, 200))
   )
 
   expect_identical(
