@@ -622,7 +622,7 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 8 of 8
-#> [1] "/tmp/RtmpQNDWjl/demonstration"
+#> [1] "/tmp/RtmpLZH9Pi/demonstration"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
@@ -634,7 +634,7 @@ if (requireNamespace("hexbin", quietly = TRUE)) {
     grid = TRUE
   )
 }
-#> Warning: cannot open compressed file '/tmp/RtmpQNDWjl/demonstration/gates/poproot/chnlBC2(Pr141)Dd/all/gateTbl.rds', probable reason 'No such file or directory'
+#> Warning: cannot open compressed file '/tmp/RtmpLZH9Pi/demonstration/gates/poproot/chnlBC2(Pr141)Dd/all/gateTbl.rds', probable reason 'No such file or directory'
 #> Error in map(.x, .f, ...): ℹ In index: 1.
 #> Caused by error in `map()`:
 #> ℹ In index: 2.
