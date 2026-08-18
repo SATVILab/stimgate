@@ -192,7 +192,7 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 8 of 8
-#> [1] "/tmp/RtmpgHop1q/dir_4dfb1a618cb6/stimgate"
+#> [1] "/tmp/RtmpTTxeOG/dir_4d994a61a6cc/stimgate"
 
 # Create plots
 plots <- plotStim(

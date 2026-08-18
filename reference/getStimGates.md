@@ -77,7 +77,7 @@ pathProject <- gateStim(
 
 # Get statistics for the identified gates
 gates <- getStimGates(pathProject)
-#> Warning: cannot open compressed file '/tmp/RtmpgHop1q/getGateExample/gates/poproot/chnlBC2(Pr141)Dd/all/gateTbl.rds', probable reason 'No such file or directory'
+#> Warning: cannot open compressed file '/tmp/RtmpTTxeOG/getGateExample/gates/poproot/chnlBC2(Pr141)Dd/all/gateTbl.rds', probable reason 'No such file or directory'
 #> Error in map(.x, .f, ...): ℹ In index: 2.
 #> Caused by error in `map()`:
 #> ℹ In index: 2.
