@@ -1,12 +1,18 @@
+makeChnlLabTestFrame <- function(desc = c("CD3", "CD4")) {
+  exprs <- matrix(
+    seq_len(8),
+    ncol = 2,
+    dimnames = list(NULL, c("FSC-A", "FL1-H"))
+  )
+  ff <- flowCore::flowFrame(exprs)
+  paramData <- flowCore::parameters(ff)@data
+  paramData$desc <- desc
+  flowCore::parameters(ff)@data <- paramData
+  ff
+}
+
 test_that("chnlLabWorksWithFlowFrameObjects", {
-  # Load test data
-  data(GvHD, package = "flowCore")
-  fs <- if (inherits(GvHD, "GatingSet")) {
-    flowWorkspace::gs_pop_get_data(GvHD)
-  } else {
-    GvHD
-  }
-  ff <- fs[[1]]
+  ff <- makeChnlLabTestFrame()
 
   # Test the function
   result <- .chnlLab(ff)
@@ -30,14 +36,10 @@ test_that("chnlLabWorksWithFlowFrameObjects", {
 })
 
 test_that("chnlLabWorksWithFlowSetObjects", {
-  # Load test data
-  data(GvHD, package = "flowCore")
-  fs_raw <- if (inherits(GvHD, "GatingSet")) {
-    flowWorkspace::gs_pop_get_data(GvHD)
-  } else {
-    GvHD
-  }
-  fs <- fs_raw[1:2]
+  fs <- flowCore::flowSet(list(
+    makeChnlLabTestFrame(),
+    makeChnlLabTestFrame(c("CD8", "CD19"))
+  ))
 
   # Test the function
   result <- .chnlLab(fs)
@@ -61,13 +63,11 @@ test_that("chnlLabWorksWithFlowSetObjects", {
 })
 
 test_that("chnlLabWorksWithGatingSetObjects", {
-  # Load test data
-  data(GvHD, package = "flowCore")
-  gs <- if (inherits(GvHD, "GatingSet")) {
-    GvHD
-  } else {
-    flowWorkspace::GatingSet(GvHD)
-  }
+  fs <- flowCore::flowSet(list(
+    makeChnlLabTestFrame(),
+    makeChnlLabTestFrame(c("CD8", "CD19"))
+  ))
+  gs <- flowWorkspace::GatingSet(fs)
 
   result_dot <- .chnlLab(gs)
   result_pub <- chnlLab(gs)
@@ -79,14 +79,7 @@ test_that("chnlLabWorksWithGatingSetObjects", {
 })
 
 test_that("chnlLabHandlesNaMarkerDescriptionsCorrectly", {
-  # Load test data
-  data(GvHD, package = "flowCore")
-  fs <- if (inherits(GvHD, "GatingSet")) {
-    flowWorkspace::gs_pop_get_data(GvHD)
-  } else {
-    GvHD
-  }
-  ff <- fs[[1]]
+  ff <- makeChnlLabTestFrame()
 
   # Modify the flowFrame to have some NA descriptions
   paramData <- flowCore::parameters(ff)@data
@@ -140,14 +133,7 @@ test_that("chnlLabThrowsErrorForUnsupportedObjectTypes", {
 })
 
 test_that("chnlLabResultStructureIsConsistent", {
-  # Load test data
-  data(GvHD, package = "flowCore")
-  fs <- if (inherits(GvHD, "GatingSet")) {
-    flowWorkspace::gs_pop_get_data(GvHD)
-  } else {
-    GvHD
-  }
-  ff <- fs[[1]]
+  ff <- makeChnlLabTestFrame()
 
   result <- .chnlLab(ff)
 
@@ -165,49 +151,20 @@ test_that("chnlLabResultStructureIsConsistent", {
 })
 
 test_that("chnlLabHandlesEdgeCaseWithAllNaDescriptions", {
-  # Load test data
-  data(GvHD, package = "flowCore")
-  fs <- if (inherits(GvHD, "GatingSet")) {
-    flowWorkspace::gs_pop_get_data(GvHD)
-  } else {
-    GvHD
-  }
-  ff <- fs[[1]]
-
-  # Set all descriptions to NA
-  paramData <- flowCore::parameters(ff)@data
-  paramData$desc <- rep(NA, nrow(paramData))
-  flowCore::parameters(ff)@data <- paramData
+  ff <- makeChnlLabTestFrame(rep(NA_character_, 2))
 
   # Test the function
   result <- .chnlLab(ff)
 
   # Check that all values are channel names (since all descriptions were NA)
+  paramData <- flowCore::parameters(ff)@data
   expect_equal(as.character(result), as.character(paramData$name))
   expect_equal(names(result), as.character(paramData$name))
 })
 
 test_that("chnlLabHandlesEdgeCaseWithNoNaDescriptions", {
-  # Load test data
-  data(GvHD, package = "flowCore")
-  fs <- if (inherits(GvHD, "GatingSet")) {
-    flowWorkspace::gs_pop_get_data(GvHD)
-  } else {
-    GvHD
-  }
-  ff <- fs[[1]]
-
-  # Ensure no descriptions are NA by replacing any existing NAs
+  ff <- makeChnlLabTestFrame()
   paramData <- flowCore::parameters(ff)@data
-  originalDesc <- as.character(paramData$desc)
-
-  # Replace any NA with a dummy description
-  for (i in seq_along(paramData$desc)) {
-    if (is.na(paramData$desc[i])) {
-      paramData$desc[i] <- paste0("marker_", i)
-    }
-  }
-  flowCore::parameters(ff)@data <- paramData
 
   # Test the function
   result <- .chnlLab(ff)
