@@ -17,8 +17,8 @@ Roxygen: list(markdown = TRUE)
 biocViews: FlowCytometry, SingleCell, CellBasedAssays, ImmunoOncology
 VignetteBuilder: knitr
 Imports: cowplot, dplyr, ggplot2, purrr, rlang, stringr, tibble, tidyr,
-        scam, mgcv, ks, gtools, splines, stats, utils, flowCore,
-        flowWorkspace, cluster, cpp11, MASS
+        scam, ks, gtools, splines, stats, utils, flowCore,
+        flowWorkspace, cluster, cpp11, MASS, Biobase, mvtnorm
 LinkingTo: cpp11
 Suggests: testthat (>= 3.0.0), HDCytoData, here, BiocManager, knitr,
         rmarkdown, hexbin, gh, gitcreds

@@ -2,11 +2,11 @@
 % Please edit documentation in R/cp_uns_loc_derivative.R
 \name{.getCpUnsLocProbability}
 \alias{.getCpUnsLocProbability}
-\title{Extract finite fitted probabilities on \link{0, 1}}
+\title{Extract finite fitted probabilities on \code{[0, 1]}}
 \usage{
 .getCpUnsLocProbability(dataMod, probCol)
 }
 \description{
-Extract finite fitted probabilities on \link{0, 1}
+Extract finite fitted probabilities on \code{[0, 1]}
 }
 \keyword{internal}

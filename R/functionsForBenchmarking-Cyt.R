@@ -2,7 +2,7 @@
 #'
 #' @keywords internal
 .posDef <- function(n, covEvMin = 1, covEvMax = 2) {
-  ev <- runif(n, min = covEvMin, max = covEvMax)
+  ev <- stats::runif(n, min = covEvMin, max = covEvMax)
   if (n == 1) {
     return(matrix(ev, 1, 1))
   }
@@ -253,6 +253,8 @@
 #'   perturbations added to cluster means within each sample. Default is 0.
 #' @param clusterPerturbationSd Numeric. Standard deviation of cluster-level
 #'   perturbations applied during cell-level simulation. Default is 0.
+#' @param covEvMin Numeric. Minimum eigenvalue for cluster covariance matrices. Default is 1.
+#' @param covEvMax Numeric. Maximum eigenvalue for cluster covariance matrices. Default is 2.
 #
 #' @return A list with two elements:
 #'   - `flowFrameList`: A named list of `flowCore::flowFrame` objects.
