@@ -1,6 +1,4 @@
 library(devtools)
-library(HDCytoData)
-library(flowWorkspaceData)
 library(styler)
 library(lintr)
 library(BiocCheck)
