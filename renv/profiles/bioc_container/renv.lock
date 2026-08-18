@@ -36,141 +36,6 @@
     "Version": "3.20"
   },
   "Packages": {
-    "AnnotationDbi": {
-      "Package": "AnnotationDbi",
-      "Version": "1.68.0",
-      "Source": "Bioconductor",
-      "Title": "Manipulation of SQLite-based annotations in Bioconductor",
-      "Description": "Implements a user-friendly interface for querying SQLite-based annotation data packages.",
-      "biocViews": "Annotation, Microarray, Sequencing, GenomeAnnotation",
-      "URL": "https://bioconductor.org/packages/AnnotationDbi",
-      "Video": "https://www.youtube.com/watch?v=8qvGNTVz3Ik",
-      "BugReports": "https://github.com/Bioconductor/AnnotationDbi/issues",
-      "License": "Artistic-2.0",
-      "Encoding": "UTF-8",
-      "Author": "Hervé Pagès, Marc Carlson, Seth Falcon, Nianhua Li",
-      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>",
-      "Depends": [
-        "R (>= 2.7.0)",
-        "methods",
-        "stats4",
-        "BiocGenerics (>= 0.29.2)",
-        "Biobase (>= 1.17.0)",
-        "IRanges"
-      ],
-      "Imports": [
-        "DBI",
-        "RSQLite",
-        "S4Vectors (>= 0.9.25)",
-        "stats",
-        "KEGGREST"
-      ],
-      "Suggests": [
-        "utils",
-        "hgu95av2.db",
-        "GO.db",
-        "org.Sc.sgd.db",
-        "org.At.tair.db",
-        "RUnit",
-        "TxDb.Hsapiens.UCSC.hg19.knownGene",
-        "org.Hs.eg.db",
-        "reactome.db",
-        "AnnotationForge",
-        "graph",
-        "EnsDb.Hsapiens.v75",
-        "BiocStyle",
-        "knitr"
-      ],
-      "VignetteBuilder": "knitr",
-      "Collate": "00RTobjs.R AllGenerics.R AllClasses.R unlist2.R utils.R SQL.R FlatBimap.R AnnDbObj-lowAPI.R Bimap.R GOTerms.R BimapFormatting.R Bimap-envirAPI.R flatten.R methods-AnnotationDb.R methods-SQLiteConnection.R methods-geneCentricDbs.R methods-geneCentricDbs-keys.R methods-ReactomeDb.R methods-OrthologyDb.R loadDb.R createAnnObjs-utils.R createAnnObjs.NCBIORG_DBs.R createAnnObjs.NCBICHIP_DBs.R createAnnObjs.ORGANISM_DB.R createAnnObjs.YEASTCHIP_DB.R createAnnObjs.COELICOLOR_DB.R createAnnObjs.ARABIDOPSISCHIP_DB.R createAnnObjs.MALARIA_DB.R createAnnObjs.YEAST_DB.R createAnnObjs.YEASTNCBI_DB.R createAnnObjs.ARABIDOPSIS_DB.R createAnnObjs.GO_DB.R createAnnObjs.KEGG_DB.R createAnnObjs.PFAM_DB.R AnnDbPkg-templates-common.R AnnDbPkg-checker.R print.probetable.R makeMap.R inpIDMapper.R test_AnnotationDbi_package.R",
-      "git_url": "https://git.bioconductor.org/packages/AnnotationDbi",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "6a2aa33",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::AnnotationDbi",
-      "RemoteRef": "bioc::AnnotationDbi",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/container-binaries/bioconductor_docker",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "1.68.0"
-    },
-    "AnnotationHub": {
-      "Package": "AnnotationHub",
-      "Version": "3.14.0",
-      "Source": "Bioconductor",
-      "Type": "Package",
-      "Title": "Client to access AnnotationHub resources",
-      "Authors@R": "c(person(\"Bioconductor Package\", \"Maintainer\", email=\"maintainer@bioconductor.org\", role=\"cre\"), person(\"Martin\", \"Morgan\", role=\"aut\"), person(\"Marc\", \"Carlson\", role=\"ctb\"), person(\"Dan\", \"Tenenbaum\", role=\"ctb\"), person(\"Sonali\", \"Arora\", role=\"ctb\"), person(\"Valerie\", \"Oberchain\", role=\"ctb\"), person(\"Kayla\", \"Morrell\", role=\"ctb\"), person(\"Lori\", \"Shepherd\", role=\"aut\"))",
-      "biocViews": "Infrastructure, DataImport, GUI, ThirdPartyClient",
-      "Description": "This package provides a client for the Bioconductor AnnotationHub web resource. The AnnotationHub web resource provides a central location where genomic files (e.g., VCF, bed, wig) and other resources from standard locations (e.g., UCSC, Ensembl) can be discovered. The resource includes metadata about each resource, e.g., a textual description, tags, and date of modification. The client creates and manages a local cache of files retrieved by the user, helping with quick and reproducible access.",
-      "License": "Artistic-2.0",
-      "Depends": [
-        "BiocGenerics (>= 0.15.10)",
-        "BiocFileCache (>= 1.5.1)"
-      ],
-      "Imports": [
-        "utils",
-        "methods",
-        "grDevices",
-        "RSQLite",
-        "BiocManager",
-        "BiocVersion",
-        "curl",
-        "rappdirs",
-        "AnnotationDbi (>= 1.31.19)",
-        "S4Vectors",
-        "httr",
-        "yaml",
-        "dplyr"
-      ],
-      "Suggests": [
-        "IRanges",
-        "GenomicRanges",
-        "GenomeInfoDb",
-        "VariantAnnotation",
-        "Rsamtools",
-        "rtracklayer",
-        "BiocStyle",
-        "knitr",
-        "AnnotationForge",
-        "rBiopaxParser",
-        "RUnit",
-        "txdbmaker",
-        "MSnbase",
-        "mzR",
-        "Biostrings",
-        "CompoundDb",
-        "keras",
-        "ensembldb",
-        "SummarizedExperiment",
-        "ExperimentHub",
-        "gdsfmt",
-        "rmarkdown",
-        "HubPub"
-      ],
-      "Enhances": [
-        "AnnotationHubData"
-      ],
-      "Collate": "AnnotationHubOption.R AllGenerics.R Hub-class.R db-utils.R AnnotationHub-class.R AnnotationHubResource-class.R BEDResource-class.R ProteomicsResource-class.R EpigenomeResource-class.R EnsDbResource-class.R utilities.R sql-utils.R Hub-utils.R cache-utils.R zzz.R",
-      "VignetteBuilder": "knitr",
-      "BugReports": "https://github.com/Bioconductor/AnnotationHub/issues",
-      "NeedsCompilation": "yes",
-      "git_url": "https://git.bioconductor.org/packages/AnnotationHub",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "f93a396",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "Author": "Bioconductor Package Maintainer [cre], Martin Morgan [aut], Marc Carlson [ctb], Dan Tenenbaum [ctb], Sonali Arora [ctb], Valerie Oberchain [ctb], Kayla Morrell [ctb], Lori Shepherd [aut]",
-      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::AnnotationHub",
-      "RemoteRef": "bioc::AnnotationHub",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/container-binaries/bioconductor_docker",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "3.14.0"
-    },
     "BH": {
       "Package": "BH",
       "Version": "1.90.0-1",
@@ -486,69 +351,6 @@
       "Author": "Martin Morgan [aut], Marcel Ramos [ctb], Bioconductor Package Maintainer [ctb, cre]",
       "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
     },
-    "Biostrings": {
-      "Package": "Biostrings",
-      "Version": "2.74.1",
-      "Source": "Bioconductor",
-      "Title": "Efficient manipulation of biological strings",
-      "Description": "Memory efficient string containers, string matching algorithms, and other utilities, for fast manipulation of large biological sequences or sets of sequences.",
-      "biocViews": "SequenceMatching, Alignment, Sequencing, Genetics, DataImport, DataRepresentation, Infrastructure",
-      "URL": "https://bioconductor.org/packages/Biostrings",
-      "BugReports": "https://github.com/Bioconductor/Biostrings/issues",
-      "License": "Artistic-2.0",
-      "Encoding": "UTF-8",
-      "Authors@R": "c( person(\"Hervé\", \"Pagès\", role=c(\"aut\", \"cre\"), email=\"hpages.on.github@gmail.com\"), person(\"Patrick\", \"Aboyoun\", role=\"aut\"), person(\"Robert\", \"Gentleman\", role=\"aut\"), person(\"Saikat\", \"DebRoy\", role=\"aut\"), person(\"Vince\", \"Carey\", role=\"ctb\"), person(\"Nicolas\", \"Delhomme\", role=\"ctb\"), person(\"Felix\", \"Ernst\", role=\"ctb\"), person(\"Wolfgang\", \"Huber\", role=\"ctb\", comment=\"'matchprobes' vignette\"), person(\"Beryl\", \"Kanali\", role=\"ctb\", comment=\"Converted 'MultipleAlignments' vignette from Sweave to RMarkdown\"), person(\"Haleema\", \"Khan\", role=\"ctb\", comment=\"Converted 'matchprobes' vignette from Sweave to RMarkdown\"), person(\"Aidan\", \"Lakshman\", role=\"ctb\"), person(\"Kieran\", \"O'Neill\", role=\"ctb\"), person(\"Valerie\", \"Obenchain\", role=\"ctb\"), person(\"Marcel\", \"Ramos\", role=\"ctb\"), person(\"Albert\", \"Vill\", role=\"ctb\"), person(\"Jen\", \"Wokaty\", role=\"ctb\", comment=\"Converted 'matchprobes' vignette from Sweave to RMarkdown\"), person(\"Erik\", \"Wright\", role=\"ctb\"))",
-      "Depends": [
-        "R (>= 4.0.0)",
-        "BiocGenerics (>= 0.37.0)",
-        "S4Vectors (>= 0.27.12)",
-        "IRanges (>= 2.31.2)",
-        "XVector (>= 0.37.1)",
-        "GenomeInfoDb"
-      ],
-      "Imports": [
-        "methods",
-        "utils",
-        "grDevices",
-        "stats",
-        "crayon"
-      ],
-      "LinkingTo": [
-        "S4Vectors",
-        "IRanges",
-        "XVector"
-      ],
-      "Suggests": [
-        "graphics",
-        "pwalign",
-        "BSgenome (>= 1.13.14)",
-        "BSgenome.Celegans.UCSC.ce2 (>= 1.3.11)",
-        "BSgenome.Dmelanogaster.UCSC.dm3 (>= 1.3.11)",
-        "BSgenome.Hsapiens.UCSC.hg18",
-        "drosophila2probe",
-        "hgu95av2probe",
-        "hgu133aprobe",
-        "GenomicFeatures (>= 1.3.14)",
-        "hgu95av2cdf",
-        "affy (>= 1.41.3)",
-        "affydata (>= 1.11.5)",
-        "RUnit",
-        "BiocStyle",
-        "knitr",
-        "testthat (>= 3.0.0)",
-        "covr"
-      ],
-      "VignetteBuilder": "knitr",
-      "Collate": "utils.R IUPAC_CODE_MAP.R AMINO_ACID_CODE.R GENETIC_CODE.R XStringCodec-class.R seqtype.R coloring.R XString-class.R XStringSet-class.R XStringSet-comparison.R XStringViews-class.R MaskedXString-class.R XStringSetList-class.R seqinfo-methods.R xscat.R XStringSet-io.R letter.R getSeq.R letterFrequency.R dinucleotideFrequencyTest.R chartr.R reverseComplement.R translate.R toComplex.R replaceAt.R replaceLetterAt.R injectHardMask.R padAndClip.R strsplit-methods.R misc.R SparseList-class.R MIndex-class.R lowlevel-matching.R match-utils.R matchPattern.R maskMotif.R matchLRPatterns.R trimLRPatterns.R matchProbePair.R matchPWM.R findPalindromes.R PDict-class.R matchPDict.R XStringPartialMatches-class.R XStringQuality-class.R QualityScaledXStringSet.R pmatchPattern.R needwunsQS.R MultipleAlignment.R matchprobes.R moved_to_pwalign.R zzz.R",
-      "git_url": "https://git.bioconductor.org/packages/Biostrings",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "b5de574",
-      "git_last_commit_date": "2024-12-14",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "yes",
-      "Author": "Hervé Pagès [aut, cre], Patrick Aboyoun [aut], Robert Gentleman [aut], Saikat DebRoy [aut], Vince Carey [ctb], Nicolas Delhomme [ctb], Felix Ernst [ctb], Wolfgang Huber [ctb] ('matchprobes' vignette), Beryl Kanali [ctb] (Converted 'MultipleAlignments' vignette from Sweave to RMarkdown), Haleema Khan [ctb] (Converted 'matchprobes' vignette from Sweave to RMarkdown), Aidan Lakshman [ctb], Kieran O'Neill [ctb], Valerie Obenchain [ctb], Marcel Ramos [ctb], Albert Vill [ctb], Jen Wokaty [ctb] (Converted 'matchprobes' vignette from Sweave to RMarkdown), Erik Wright [ctb]",
-      "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
-    },
     "DBI": {
       "Package": "DBI",
       "Version": "1.3.0",
@@ -661,56 +463,6 @@
       "RemotePkgPlatform": "source",
       "RemoteSha": "0.32.0"
     },
-    "ExperimentHub": {
-      "Package": "ExperimentHub",
-      "Version": "2.14.0",
-      "Source": "Bioconductor",
-      "Type": "Package",
-      "Title": "Client to access ExperimentHub resources",
-      "Authors@R": "c(person(\"Bioconductor Package\", \"Maintainer\", email=\"maintainer@bioconductor.org\", role=\"cre\"), person(\"Martin\", \"Morgan\", role=\"aut\"), person(\"Marc\", \"Carlson\", role=\"ctb\"), person(\"Dan\", \"Tenenbaum\", role=\"ctb\"), person(\"Sonali\", \"Arora\", role=\"ctb\"), person(\"Valerie\", \"Oberchain\", role=\"ctb\"), person(\"Kayla\", \"Morrell\", role=\"ctb\"), person(\"Lori\", \"Shepherd\", role=\"aut\"))",
-      "Description": "This package provides a client for the Bioconductor ExperimentHub web resource. ExperimentHub provides a central location where curated data from experiments, publications or training courses can be accessed. Each resource has associated metadata, tags and date of modification. The client creates and manages a local cache of files retrieved enabling quick and reproducible access.",
-      "License": "Artistic-2.0",
-      "biocViews": "Infrastructure, DataImport, GUI, ThirdPartyClient",
-      "Depends": [
-        "methods",
-        "BiocGenerics (>= 0.15.10)",
-        "AnnotationHub (>= 3.3.6)",
-        "BiocFileCache (>= 1.5.1)"
-      ],
-      "Imports": [
-        "utils",
-        "S4Vectors",
-        "BiocManager",
-        "rappdirs"
-      ],
-      "Suggests": [
-        "knitr",
-        "BiocStyle",
-        "rmarkdown",
-        "HubPub",
-        "GenomicAlignments"
-      ],
-      "Enhances": [
-        "ExperimentHubData"
-      ],
-      "BugReports": "https://github.com/Bioconductor/ExperimentHub/issues",
-      "VignetteBuilder": "knitr",
-      "RoxygenNote": "7.0.0",
-      "git_url": "https://git.bioconductor.org/packages/ExperimentHub",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "2bac493",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "Author": "Bioconductor Package Maintainer [cre], Martin Morgan [aut], Marc Carlson [ctb], Dan Tenenbaum [ctb], Sonali Arora [ctb], Valerie Oberchain [ctb], Kayla Morrell [ctb], Lori Shepherd [aut]",
-      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::ExperimentHub",
-      "RemoteRef": "bioc::ExperimentHub",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/container-binaries/bioconductor_docker",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "2.14.0"
-    },
     "FNN": {
       "Package": "FNN",
       "Version": "1.1.4.1",
@@ -734,206 +486,34 @@
       "Maintainer": "Shengqiao Li <lishengqiao@yahoo.com>",
       "Encoding": "UTF-8"
     },
-    "GenomeInfoDb": {
-      "Package": "GenomeInfoDb",
-      "Version": "1.42.3",
-      "Source": "Bioconductor",
-      "Title": "Utilities for manipulating chromosome names, including modifying them to follow a particular naming style",
-      "Description": "Contains data and functions that define and allow translation between different chromosome sequence naming conventions (e.g., \"chr1\" versus \"1\"), including a function that attempts to place sequence names in their natural, rather than lexicographic, order.",
-      "biocViews": "Genetics, DataRepresentation, Annotation, GenomeAnnotation",
-      "URL": "https://bioconductor.org/packages/GenomeInfoDb",
-      "Video": "http://youtu.be/wdEjCYSXa7w",
-      "BugReports": "https://github.com/Bioconductor/GenomeInfoDb/issues",
-      "License": "Artistic-2.0",
-      "Encoding": "UTF-8",
-      "Authors@R": "c( person(\"Sonali\", \"Arora\", role=\"aut\"), person(\"Martin\", \"Morgan\", role=\"aut\"), person(\"Marc\", \"Carlson\", role=\"aut\"), person(\"Hervé\", \"Pagès\", role=c(\"aut\", \"cre\"), email=\"hpages.on.github@gmail.com\"), person(\"Prisca Chidimma\", \"Maduka\", role=\"ctb\"), person(\"Atuhurira Kirabo\", \"Kakopo\", role=\"ctb\"), person(\"Haleema\", \"Khan\", role=\"ctb\", comment=\"vignette translation from Sweave to Rmarkdown / HTML\"), person(\"Emmanuel Chigozie\", \"Elendu\", role=\"ctb\"))",
+    "IDPmisc": {
+      "Package": "IDPmisc",
+      "Version": "1.1.21",
+      "Source": "Repository",
+      "Type": "Package",
+      "Date": "2024-02-07",
       "Depends": [
-        "R (>= 4.0.0)",
-        "methods",
-        "BiocGenerics (>= 0.37.0)",
-        "S4Vectors (>= 0.25.12)",
-        "IRanges (>= 2.13.12)"
+        "R(>= 3.0.0)"
       ],
       "Imports": [
-        "stats",
-        "stats4",
-        "utils",
-        "UCSC.utils",
-        "GenomeInfoDbData"
-      ],
-      "Suggests": [
-        "R.utils",
-        "data.table",
-        "GenomicRanges",
-        "Rsamtools",
-        "GenomicAlignments",
-        "GenomicFeatures",
-        "BSgenome",
-        "TxDb.Dmelanogaster.UCSC.dm3.ensGene",
-        "BSgenome.Scerevisiae.UCSC.sacCer2",
-        "BSgenome.Celegans.UCSC.ce2",
-        "BSgenome.Hsapiens.NCBI.GRCh38",
-        "RUnit",
-        "BiocStyle",
-        "knitr"
-      ],
-      "VignetteBuilder": "knitr",
-      "Collate": "utils.R fetch_table_dump_from_Ensembl_FTP.R list_ftp_dir.R rankSeqlevels.R NCBI-utils.R UCSC-utils.R Ensembl-utils.R getChromInfoFromNCBI.R getChromInfoFromUCSC.R getChromInfoFromEnsembl.R loadTaxonomyDb.R mapGenomeBuilds.R seqinfo.R Seqinfo-class.R seqlevelsStyle.R seqlevels-wrappers.R GenomeDescription-class.R zzz.R",
-      "git_url": "https://git.bioconductor.org/packages/GenomeInfoDb",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "2f182bf",
-      "git_last_commit_date": "2025-01-23",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "Author": "Sonali Arora [aut], Martin Morgan [aut], Marc Carlson [aut], Hervé Pagès [aut, cre], Prisca Chidimma Maduka [ctb], Atuhurira Kirabo Kakopo [ctb], Haleema Khan [ctb] (vignette translation from Sweave to Rmarkdown / HTML), Emmanuel Chigozie Elendu [ctb]",
-      "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
-    },
-    "GenomeInfoDbData": {
-      "Package": "GenomeInfoDbData",
-      "Version": "1.2.13",
-      "Source": "Bioconductor",
-      "Title": "Species and taxonomy ID look up tables used by GenomeInfoDb",
-      "Description": "Files for mapping between NCBI taxonomy ID and species. Used by functions in the GenomeInfoDb package.",
-      "Author": "Bioconductor Core Team",
-      "Maintainer": "Bioconductor Maintainer <maintainer@bioconductor.org>",
-      "Depends": [
-        "R (>= 3.5.0)"
-      ],
-      "biocViews": "AnnotationData, Organism",
-      "License": "Artistic-2.0",
-      "NeedsCompilation": "no"
-    },
-    "GenomicRanges": {
-      "Package": "GenomicRanges",
-      "Version": "1.58.0",
-      "Source": "Bioconductor",
-      "Title": "Representation and manipulation of genomic intervals",
-      "Description": "The ability to efficiently represent and manipulate genomic annotations and alignments is playing a central role when it comes to analyzing high-throughput sequencing data (a.k.a. NGS data). The GenomicRanges package defines general purpose containers for storing and manipulating genomic intervals and variables defined along a genome. More specialized containers for representing and manipulating short alignments against a reference genome, or a matrix-like summarization of an experiment, are defined in the GenomicAlignments and SummarizedExperiment packages, respectively. Both packages build on top of the GenomicRanges infrastructure.",
-      "biocViews": "Genetics, Infrastructure, DataRepresentation, Sequencing, Annotation, GenomeAnnotation, Coverage",
-      "URL": "https://bioconductor.org/packages/GenomicRanges",
-      "BugReports": "https://github.com/Bioconductor/GenomicRanges/issues",
-      "License": "Artistic-2.0",
-      "Encoding": "UTF-8",
-      "Authors@R": "c( person(\"Patrick\", \"Aboyoun\", role=\"aut\"), person(\"Hervé\", \"Pagès\", role=c(\"aut\", \"cre\"), email=\"hpages.on.github@gmail.com\"), person(\"Michael\", \"Lawrence\", role=\"aut\"), person(\"Sonali\", \"Arora\", role=\"ctb\"), person(\"Martin\", \"Morgan\", role=\"ctb\"), person(\"Kayla\", \"Morrell\", role=\"ctb\"), person(\"Valerie\", \"Obenchain\", role=\"ctb\"), person(\"Marcel\", \"Ramos\", role=\"ctb\"), person(\"Lori\", \"Shepherd\", role=\"ctb\"), person(\"Dan\", \"Tenenbaum\", role=\"ctb\"), person(\"Daniel\", \"van Twisk\", role=\"ctb\"))",
-      "Depends": [
-        "R (>= 4.0.0)",
         "methods",
-        "stats4",
-        "BiocGenerics (>= 0.37.0)",
-        "S4Vectors (>= 0.27.12)",
-        "IRanges (>= 2.37.1)",
-        "GenomeInfoDb (>= 1.15.2)"
-      ],
-      "Imports": [
-        "utils",
-        "stats",
-        "XVector (>= 0.29.2)"
-      ],
-      "LinkingTo": [
-        "S4Vectors",
-        "IRanges"
+        "grid",
+        "lattice"
       ],
       "Suggests": [
-        "Matrix",
-        "Biobase",
-        "AnnotationDbi",
-        "annotate",
-        "Biostrings (>= 2.25.3)",
-        "SummarizedExperiment (>= 0.1.5)",
-        "Rsamtools (>= 1.13.53)",
-        "GenomicAlignments",
-        "rtracklayer",
-        "BSgenome",
-        "GenomicFeatures",
-        "txdbmaker",
-        "Gviz",
-        "VariantAnnotation",
-        "AnnotationHub",
-        "DESeq2",
-        "DEXSeq",
-        "edgeR",
-        "KEGGgraph",
-        "RNAseqData.HNRNPC.bam.chr14",
-        "pasillaBamSubset",
-        "KEGGREST",
-        "hgu95av2.db",
-        "hgu95av2probe",
-        "BSgenome.Scerevisiae.UCSC.sacCer2",
-        "BSgenome.Hsapiens.UCSC.hg38",
-        "BSgenome.Mmusculus.UCSC.mm10",
-        "TxDb.Athaliana.BioMart.plantsmart22",
-        "TxDb.Dmelanogaster.UCSC.dm3.ensGene",
-        "TxDb.Hsapiens.UCSC.hg38.knownGene",
-        "TxDb.Mmusculus.UCSC.mm10.knownGene",
-        "RUnit",
-        "digest",
-        "knitr",
-        "rmarkdown",
-        "BiocStyle"
+        "SwissAir(>= 1.1.3)"
       ],
-      "VignetteBuilder": "knitr",
-      "Collate": "normarg-utils.R utils.R phicoef.R transcript-utils.R constraint.R strand-utils.R genomic-range-squeezers.R GenomicRanges-class.R GenomicRanges-comparison.R GRanges-class.R GPos-class.R GRangesFactor-class.R DelegatingGenomicRanges-class.R GNCList-class.R GenomicRangesList-class.R GRangesList-class.R makeGRangesFromDataFrame.R makeGRangesListFromDataFrame.R RangedData-methods.R findOverlaps-methods.R intra-range-methods.R inter-range-methods.R coverage-methods.R setops-methods.R subtract-methods.R nearest-methods.R absoluteRanges.R tileGenome.R tile-methods.R genomicvars.R zzz.R",
-      "git_url": "https://git.bioconductor.org/packages/GenomicRanges",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "31ad89c",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
+      "Title": "'Utilities of Institute of Data Analyses and Process Design (www.zhaw.ch/idp)'",
+      "Maintainer": "Christoph Hofer <christoph.hofer@zhaw.ch>",
+      "Authors@R": "c(person(\"Christoph\", family = \"Hofer\", role = \"cre\", email = \"christoph.hofer@zhaw.ch\"), person(\"Rene\", family = \"Locher\", role = \"aut\"), person(\"Andreas\", family = \"Ruckstuhl\", role = \"ctb\"))",
+      "Description": "Different high-level graphics functions for displaying large datasets, displaying circular data in a very flexible way, finding local maxima, brewing color ramps, drawing nice arrows, zooming 2D-plots, creating figures with differently colored margin and plot region.  In addition, the package contains auxiliary functions for data manipulation like omitting observations with irregular values or selecting data by logical vectors, which include NAs. Other functions are especially useful in spectroscopy and analyses of environmental data: robust baseline fitting, finding peaks in spectra, converting humidity measures.",
+      "License": "GPL (>= 3)",
+      "ByteCompile": "TRUE",
+      "LazyData": "yes",
       "NeedsCompilation": "yes",
-      "Author": "Patrick Aboyoun [aut], Hervé Pagès [aut, cre], Michael Lawrence [aut], Sonali Arora [ctb], Martin Morgan [ctb], Kayla Morrell [ctb], Valerie Obenchain [ctb], Marcel Ramos [ctb], Lori Shepherd [ctb], Dan Tenenbaum [ctb], Daniel van Twisk [ctb]",
-      "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::GenomicRanges",
-      "RemoteRef": "bioc::GenomicRanges",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/container-binaries/bioconductor_docker",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "1.58.0"
-    },
-    "HDCytoData": {
-      "Package": "HDCytoData",
-      "Version": "1.26.0",
-      "Source": "Bioconductor",
-      "Title": "Collection of high-dimensional cytometry benchmark datasets in Bioconductor object formats",
-      "Description": "Data package containing a set of publicly available high-dimensional cytometry benchmark datasets, formatted into SummarizedExperiment and flowSet Bioconductor object formats, including all required metadata. Row metadata includes sample IDs, group IDs, patient IDs, reference cell population or cluster labels (where available), and labels identifying 'spiked in' cells (where available). Column metadata includes channel names, protein marker names, and protein marker classes (cell type or cell state).",
-      "Authors@R": "c(person(\"Lukas M.\", \"Weber\", email = \"lmweberedu@gmail.com\", role = c(\"aut\", \"cre\")), person(\"Charlotte\", \"Soneson\", email = \"charlottesoneson@gmail.com\", role = \"aut\"))",
-      "URL": "https://github.com/lmweber/HDCytoData",
-      "BugReports": "https://github.com/lmweber/HDCytoData/issues",
-      "License": "MIT + file LICENSE",
-      "biocViews": "ExperimentHub, ExperimentData, ExpressionData, FlowCytometryData, SingleCellData, Homo_sapiens_Data, ImmunoOncologyData",
-      "Depends": [
-        "ExperimentHub",
-        "SummarizedExperiment",
-        "flowCore"
-      ],
-      "Imports": [
-        "utils",
-        "methods"
-      ],
-      "VignetteBuilder": "knitr",
-      "Suggests": [
-        "BiocStyle",
-        "knitr",
-        "rmarkdown",
-        "Rtsne",
-        "umap",
-        "ggplot2",
-        "FlowSOM",
-        "mclust"
-      ],
-      "RoxygenNote": "7.0.0",
-      "git_url": "https://git.bioconductor.org/packages/HDCytoData",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "c60da57",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "Author": "Lukas M. Weber [aut, cre], Charlotte Soneson [aut]",
-      "Maintainer": "Lukas M. Weber <lmweberedu@gmail.com>",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::HDCytoData",
-      "RemoteRef": "bioc::HDCytoData",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/container-binaries/bioconductor_docker",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "1.26.0"
+      "Author": "Christoph Hofer [cre], Rene Locher [aut], Andreas Ruckstuhl [ctb]",
+      "Repository": "BioCcontainers",
+      "Encoding": "UTF-8"
     },
     "IRanges": {
       "Package": "IRanges",
@@ -981,45 +561,6 @@
       "NeedsCompilation": "yes",
       "Author": "Hervé Pagès [aut, cre], Patrick Aboyoun [aut], Michael Lawrence [aut]",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
-    },
-    "KEGGREST": {
-      "Package": "KEGGREST",
-      "Version": "1.46.0",
-      "Source": "Bioconductor",
-      "Title": "Client-side REST access to the Kyoto Encyclopedia of Genes and Genomes (KEGG)",
-      "Authors@R": "c( person(\"Dan\", \"Tenenbaum\", role = \"aut\"), person(\"Bioconductor Package\", \"Maintainer\", role = c(\"aut\", \"cre\"), email = \"maintainer@bioconductor.org\"), person(\"Martin\", \"Morgan\", role = \"ctb\"), person(\"Kozo\", \"Nishida\", role = \"ctb\"), person(\"Marcel\", \"Ramos\", role = \"ctb\"), person(\"Kristina\", \"Riemer\", role = \"ctb\"), person(\"Lori\", \"Shepherd\", role = \"ctb\"), person(\"Jeremy\", \"Volkening\", role = \"ctb\") )",
-      "Depends": [
-        "R (>= 3.5.0)"
-      ],
-      "Imports": [
-        "methods",
-        "httr",
-        "png",
-        "Biostrings"
-      ],
-      "Suggests": [
-        "RUnit",
-        "BiocGenerics",
-        "BiocStyle",
-        "knitr",
-        "markdown"
-      ],
-      "Description": "A package that provides a client interface to the Kyoto Encyclopedia of Genes and Genomes (KEGG) REST API. Only for academic use by academic users belonging to academic institutions (see <https://www.kegg.jp/kegg/rest/>). Note that KEGGREST is based on KEGGSOAP by J. Zhang, R. Gentleman, and Marc Carlson, and KEGG (python package) by Aurelien Mazurie.",
-      "URL": "https://bioconductor.org/packages/KEGGREST",
-      "BugReports": "https://github.com/Bioconductor/KEGGREST/issues",
-      "License": "Artistic-2.0",
-      "VignetteBuilder": "knitr",
-      "biocViews": "Annotation, Pathways, ThirdPartyClient, KEGG",
-      "RoxygenNote": "7.1.1",
-      "Date": "2024-06-17",
-      "git_url": "https://git.bioconductor.org/packages/KEGGREST",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "b34820c",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "Author": "Dan Tenenbaum [aut], Bioconductor Package Maintainer [aut, cre], Martin Morgan [ctb], Kozo Nishida [ctb], Marcel Ramos [ctb], Kristina Riemer [ctb], Lori Shepherd [ctb], Jeremy Volkening [ctb]",
-      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
     },
     "KernSmooth": {
       "Package": "KernSmooth",
@@ -1530,6 +1071,44 @@
       "Maintainer": "Dirk Eddelbuettel <edd@debian.org>",
       "Repository": "RSPM"
     },
+    "RcppEigen": {
+      "Package": "RcppEigen",
+      "Version": "0.3.4.0.2",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "'Rcpp' Integration for the 'Eigen' Templated Linear Algebra Library",
+      "Date": "2024-08-23",
+      "Authors@R": "c(person(\"Doug\", \"Bates\", role = \"aut\", comment = c(ORCID = \"0000-0001-8316-9503\")), person(\"Dirk\", \"Eddelbuettel\", role = c(\"aut\", \"cre\"), email = \"edd@debian.org\", comment = c(ORCID = \"0000-0001-6419-907X\")), person(\"Romain\", \"Francois\", role = \"aut\", comment = c(ORCID = \"0000-0002-2444-4226\")), person(\"Yixuan\", \"Qiu\", role = \"aut\", comment = c(ORCID = \"0000-0003-0109-6692\")), person(\"Authors of\", \"Eigen\", role = \"cph\", comment = \"Authorship and copyright in included Eigen library as detailed in inst/COPYRIGHTS\"))",
+      "Copyright": "See the file COPYRIGHTS for various Eigen copyright details",
+      "Description": "R and 'Eigen' integration using 'Rcpp'. 'Eigen' is a C++ template library for linear algebra: matrices, vectors, numerical solvers and related algorithms.  It supports dense and sparse matrices on integer, floating point and complex numbers, decompositions of such matrices, and solutions of linear systems. Its performance on many algorithms is comparable with some of the best implementations based on 'Lapack' and level-3 'BLAS'. The 'RcppEigen' package includes the header files from the 'Eigen' C++ template library. Thus users do not need to install 'Eigen' itself in order to use 'RcppEigen'. Since version 3.1.1, 'Eigen' is licensed under the Mozilla Public License (version 2); earlier version were licensed under the GNU LGPL version 3 or later. 'RcppEigen' (the 'Rcpp' bindings/bridge to 'Eigen') is licensed under the GNU GPL version 2 or later, as is the rest of 'Rcpp'.",
+      "License": "GPL (>= 2) | file LICENSE",
+      "LazyLoad": "yes",
+      "Depends": [
+        "R (>= 3.6.0)"
+      ],
+      "LinkingTo": [
+        "Rcpp"
+      ],
+      "Imports": [
+        "Rcpp (>= 0.11.0)",
+        "stats",
+        "utils"
+      ],
+      "Suggests": [
+        "Matrix",
+        "inline",
+        "tinytest",
+        "pkgKitten",
+        "microbenchmark"
+      ],
+      "URL": "https://github.com/RcppCore/RcppEigen, https://dirk.eddelbuettel.com/code/rcpp.eigen.html",
+      "BugReports": "https://github.com/RcppCore/RcppEigen/issues",
+      "NeedsCompilation": "yes",
+      "Author": "Doug Bates [aut] (<https://orcid.org/0000-0001-8316-9503>), Dirk Eddelbuettel [aut, cre] (<https://orcid.org/0000-0001-6419-907X>), Romain Francois [aut] (<https://orcid.org/0000-0002-2444-4226>), Yixuan Qiu [aut] (<https://orcid.org/0000-0003-0109-6692>), Authors of Eigen [cph] (Authorship and copyright in included Eigen library as detailed in inst/COPYRIGHTS)",
+      "Maintainer": "Dirk Eddelbuettel <edd@debian.org>",
+      "Repository": "BioCcontainers",
+      "Encoding": "UTF-8"
+    },
     "RcppTOML": {
       "Package": "RcppTOML",
       "Version": "0.2.3",
@@ -1824,106 +1403,6 @@
       "Repository": "Bioconductor 3.20",
       "NeedsCompilation": "yes",
       "Author": "Hervé Pagès [aut, cre] (<https://orcid.org/0009-0002-8272-4522>), Vince Carey [fnd] (<https://orcid.org/0000-0003-4046-0063>), Rafael A. Irizarry [fnd] (<https://orcid.org/0000-0002-3944-4309>), Jacques Serizay [ctb] (<https://orcid.org/0000-0002-4295-0624>)",
-      "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
-    },
-    "SummarizedExperiment": {
-      "Package": "SummarizedExperiment",
-      "Version": "1.36.0",
-      "Source": "Bioconductor",
-      "Title": "A container (S4 class) for matrix-like assays",
-      "Description": "The SummarizedExperiment container contains one or more assays, each represented by a matrix-like object of numeric or other mode. The rows typically represent genomic ranges of interest and the columns represent samples.",
-      "biocViews": "Genetics, Infrastructure, Sequencing, Annotation, Coverage, GenomeAnnotation",
-      "URL": "https://bioconductor.org/packages/SummarizedExperiment",
-      "BugReports": "https://github.com/Bioconductor/SummarizedExperiment/issues",
-      "License": "Artistic-2.0",
-      "Encoding": "UTF-8",
-      "Authors@R": "c( person(\"Martin\", \"Morgan\", role=\"aut\"), person(\"Valerie\", \"Obenchain\", role=\"aut\"), person(\"Jim\", \"Hester\", role=\"aut\"), person(\"Hervé\", \"Pagès\", role=c(\"aut\", \"cre\"), email=\"hpages.on.github@gmail.com\"))",
-      "Depends": [
-        "R (>= 4.0.0)",
-        "methods",
-        "MatrixGenerics (>= 1.1.3)",
-        "GenomicRanges (>= 1.55.2)",
-        "Biobase"
-      ],
-      "Imports": [
-        "utils",
-        "stats",
-        "tools",
-        "Matrix",
-        "BiocGenerics (>= 0.51.3)",
-        "S4Vectors (>= 0.33.7)",
-        "IRanges (>= 2.23.9)",
-        "GenomeInfoDb (>= 1.13.1)",
-        "S4Arrays (>= 1.1.1)",
-        "DelayedArray (>= 0.31.12)"
-      ],
-      "Suggests": [
-        "jsonlite",
-        "rhdf5",
-        "HDF5Array (>= 1.7.5)",
-        "annotate",
-        "AnnotationDbi",
-        "GenomicFeatures",
-        "SparseArray",
-        "SingleCellExperiment",
-        "TxDb.Hsapiens.UCSC.hg19.knownGene",
-        "hgu95av2.db",
-        "airway (>= 1.15.1)",
-        "BiocStyle",
-        "knitr",
-        "rmarkdown",
-        "RUnit",
-        "testthat",
-        "digest"
-      ],
-      "VignetteBuilder": "knitr",
-      "Collate": "Assays-class.R SummarizedExperiment-class.R RangedSummarizedExperiment-class.R intra-range-methods.R inter-range-methods.R coverage-methods.R combine-methods.R findOverlaps-methods.R nearest-methods.R makeSummarizedExperimentFromExpressionSet.R makeSummarizedExperimentFromDataFrame.R makeSummarizedExperimentFromLoom.R zzz.R",
-      "git_url": "https://git.bioconductor.org/packages/SummarizedExperiment",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "c84e08a",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "Author": "Martin Morgan [aut], Valerie Obenchain [aut], Jim Hester [aut], Hervé Pagès [aut, cre]",
-      "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
-    },
-    "UCSC.utils": {
-      "Package": "UCSC.utils",
-      "Version": "1.2.0",
-      "Source": "Bioconductor",
-      "Title": "Low-level utilities to retrieve data from the UCSC Genome Browser",
-      "Description": "A set of low-level utilities to retrieve data from the UCSC Genome Browser. Most functions in the package access the data via the UCSC REST API but some of them query the UCSC MySQL server directly. Note that the primary purpose of the package is to support higher-level functionalities implemented in downstream packages like GenomeInfoDb or txdbmaker.",
-      "biocViews": "Infrastructure, GenomeAssembly, Annotation, GenomeAnnotation, DataImport",
-      "URL": "https://bioconductor.org/packages/UCSC.utils",
-      "BugReports": "https://github.com/Bioconductor/UCSC.utils/issues",
-      "License": "Artistic-2.0",
-      "Encoding": "UTF-8",
-      "Authors@R": "person(\"Hervé\", \"Pagès\", role=c(\"aut\", \"cre\"), email=\"hpages.on.github@gmail.com\")",
-      "Imports": [
-        "methods",
-        "stats",
-        "httr",
-        "jsonlite",
-        "S4Vectors"
-      ],
-      "Suggests": [
-        "DBI",
-        "RMariaDB",
-        "GenomeInfoDb",
-        "testthat",
-        "knitr",
-        "rmarkdown",
-        "BiocStyle"
-      ],
-      "VignetteBuilder": "knitr",
-      "Collate": "00utils.R UCSC.api.url.R REST_API.R list_UCSC_genomes.R get_UCSC_chrom_sizes.R list_UCSC_tracks.R fetch_UCSC_track_data.R UCSC_dbselect.R zzz.R",
-      "git_url": "https://git.bioconductor.org/packages/UCSC.utils",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "d77d73e",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "Author": "Hervé Pagès [aut, cre]",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
     },
     "UtilsDataRSV": {
@@ -2954,6 +2433,61 @@
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
       "Repository": "RSPM"
     },
+    "decor": {
+      "Package": "decor",
+      "Version": "1.0.2",
+      "Source": "Repository",
+      "Title": "Retrieve Code Decorations",
+      "Authors@R": "c( person(\"Davis\", \"Vaughan\", email = \"davis@posit.co\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0003-4777-038X\")), person(\"Romain\", \"François\", role = \"aut\", comment = c(ORCID = \"0000-0002-2444-4226\")), person(\"Jim\",\"Hester\", role = \"aut\", comment = c(ORCID = \"0000-0002-2739-7082\")), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
+      "Description": "Retrieves code comment decorations for C++ languages of the form '\\\\ [[xyz]]', which are used for automated wrapping of C++ functions.",
+      "License": "MIT + file LICENSE",
+      "Depends": [
+        "R (>= 3.3.0)"
+      ],
+      "Imports": [
+        "tibble",
+        "utils",
+        "vctrs (>= 0.5.0)"
+      ],
+      "Suggests": [
+        "covr",
+        "testthat"
+      ],
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.2.3",
+      "URL": "https://github.com/r-lib/decor",
+      "BugReports": "https://github.com/r-lib/decor/issues",
+      "NeedsCompilation": "yes",
+      "Author": "Davis Vaughan [aut, cre] (<https://orcid.org/0000-0003-4777-038X>), Romain François [aut] (<https://orcid.org/0000-0002-2444-4226>), Jim Hester [aut] (<https://orcid.org/0000-0002-2739-7082>), Posit Software, PBC [cph, fnd]",
+      "Maintainer": "Davis Vaughan <davis@posit.co>",
+      "Repository": "RSPM"
+    },
+    "deldir": {
+      "Package": "deldir",
+      "Version": "2.0-4",
+      "Source": "Repository",
+      "Date": "2024-02-27",
+      "Title": "Delaunay Triangulation and Dirichlet (Voronoi) Tessellation",
+      "Author": "Rolf Turner",
+      "Maintainer": "Rolf Turner <rolfturner@posteo.net>",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "Suggests": [
+        "polyclip"
+      ],
+      "Imports": [
+        "graphics",
+        "grDevices"
+      ],
+      "Description": "Calculates the Delaunay triangulation and the Dirichlet or Voronoi tessellation (with respect to the entire plane) of a planar point set. Plots triangulations and tessellations in various ways.  Clips tessellations to sub-windows. Calculates perimeters of tessellations.  Summarises information about the tiles of the tessellation.\tCalculates the centroidal Voronoi (Dirichlet) tessellation using Lloyd's algorithm.",
+      "LazyData": "true",
+      "ByteCompile": "true",
+      "License": "GPL (>= 2)",
+      "NeedsCompilation": "yes",
+      "Repository": "BioCcontainers",
+      "Encoding": "UTF-8"
+    },
     "desc": {
       "Package": "desc",
       "Version": "1.4.3",
@@ -3121,29 +2655,6 @@
       "Author": "Dirk Eddelbuettel [aut, cre] (ORCID: <https://orcid.org/0000-0001-6419-907X>), Antoine Lucas [ctb] (ORCID: <https://orcid.org/0000-0002-8059-9767>), Jarek Tuszynski [ctb], Henrik Bengtsson [ctb] (ORCID: <https://orcid.org/0000-0002-7579-5165>), Simon Urbanek [ctb] (ORCID: <https://orcid.org/0000-0003-2297-1732>), Mario Frasca [ctb], Bryan Lewis [ctb], Murray Stokely [ctb], Hannes Muehleisen [ctb] (ORCID: <https://orcid.org/0000-0001-8552-0029>), Duncan Murdoch [ctb], Jim Hester [ctb] (ORCID: <https://orcid.org/0000-0002-2739-7082>), Wush Wu [ctb] (ORCID: <https://orcid.org/0000-0001-5180-0567>), Qiang Kou [ctb] (ORCID: <https://orcid.org/0000-0001-6786-5453>), Thierry Onkelinx [ctb] (ORCID: <https://orcid.org/0000-0001-8804-4216>), Michel Lang [ctb] (ORCID: <https://orcid.org/0000-0001-9754-0393>), Viliam Simko [ctb], Kurt Hornik [ctb] (ORCID: <https://orcid.org/0000-0003-4198-9911>), Radford Neal [ctb] (ORCID: <https://orcid.org/0000-0002-2473-3407>), Kendon Bell [ctb] (ORCID: <https://orcid.org/0000-0002-9093-8312>), Matthew de Queljoe [ctb], Dmitry Selivanov [ctb] (ORCID: <https://orcid.org/0000-0003-0492-6647>), Ion Suruceanu [ctb] (ORCID: <https://orcid.org/0009-0005-6446-4909>), Bill Denney [ctb] (ORCID: <https://orcid.org/0000-0002-5759-428X>), Dirk Schumacher [ctb], András Svraka [ctb] (ORCID: <https://orcid.org/0009-0008-8480-1329>), Sergey Fedorov [ctb] (ORCID: <https://orcid.org/0000-0002-5970-7233>), Will Landau [ctb] (ORCID: <https://orcid.org/0000-0003-1878-3253>), Floris Vanderhaeghe [ctb] (ORCID: <https://orcid.org/0000-0002-6378-6229>), Kevin Tappe [ctb], Harris McGehee [ctb], Tim Mastny [ctb], Aaron Peikert [ctb] (ORCID: <https://orcid.org/0000-0001-7813-818X>), Mark van der Loo [ctb] (ORCID: <https://orcid.org/0000-0002-9807-4686>), Chris Muir [ctb] (ORCID: <https://orcid.org/0000-0003-2555-3878>), Moritz Beller [ctb] (ORCID: <https://orcid.org/0000-0003-4852-0526>), Sebastian Campbell [ctb] (ORCID: <https://orcid.org/0009-0000-5948-4503>), Winston Chang [ctb] (ORCID: <https://orcid.org/0000-0002-1576-2126>), Dean Attali [ctb] (ORCID: <https://orcid.org/0000-0002-5645-3493>), Michael Chirico [ctb] (ORCID: <https://orcid.org/0000-0003-0787-087X>), Kevin Ushey [ctb] (ORCID: <https://orcid.org/0000-0003-2880-7407>), Carl Pearson [ctb] (ORCID: <https://orcid.org/0000-0003-0701-7860>)",
       "Maintainer": "Dirk Eddelbuettel <edd@debian.org>",
       "Repository": "CRAN"
-    },
-    "diptest": {
-      "Package": "diptest",
-      "Version": "0.77-2",
-      "Source": "Repository",
-      "VersionNote": "Last CRAN: 0.77-1 on 2024-03-31",
-      "Date": "2025-08-19",
-      "Authors@R": "c( person(\"Martin\", \"Maechler\", role = c(\"aut\", \"cre\"), email = \"maechler@stat.math.ethz.ch\", comment = c(\"Ported to R and C from Fortran and S-plus; much enhanced\", ORCID = \"0000-0002-8685-9910\")), person(\"Dario Ringach\", role = \"aut\", comment = \"Fortran and S-plus; at NYU.edu\"))",
-      "Title": "Hartigan's Dip Test Statistic for Unimodality - Corrected",
-      "Description": "Compute Hartigan's dip test statistic for unimodality / multimodality and provide a test with simulation based p-values,  where the original public code has been corrected.",
-      "Imports": [
-        "graphics",
-        "stats"
-      ],
-      "BuildResaveData": "no",
-      "License": "GPL (>= 2)",
-      "URL": "https://github.com/mmaechler/diptest",
-      "BugReports": "https://github.com/mmaechler/diptest/issues",
-      "NeedsCompilation": "yes",
-      "Author": "Martin Maechler [aut, cre] (Ported to R and C from Fortran and S-plus; much enhanced, ORCID: <https://orcid.org/0000-0002-8685-9910>), Dario Ringach [aut] (Fortran and S-plus; at NYU.edu)",
-      "Maintainer": "Martin Maechler <maechler@stat.math.ethz.ch>",
-      "Repository": "CRAN",
-      "Encoding": "UTF-8"
     },
     "downlit": {
       "Package": "downlit",
@@ -3413,6 +2924,49 @@
       "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
       "Repository": "RSPM"
     },
+    "flowClust": {
+      "Package": "flowClust",
+      "Version": "3.44.0",
+      "Source": "Bioconductor",
+      "Type": "Package",
+      "Title": "Clustering for Flow Cytometry",
+      "Author": "Raphael Gottardo, Kenneth Lo <c.lo@stat.ubc.ca>, Greg Finak <greg@ozette.ai>",
+      "Maintainer": "Greg Finak <greg@ozette.ai>, Mike Jiang <mike@ozette.ai>",
+      "Depends": [
+        "R(>= 2.5.0)"
+      ],
+      "Imports": [
+        "BiocGenerics",
+        "methods",
+        "Biobase",
+        "graph",
+        "flowCore",
+        "parallel"
+      ],
+      "Suggests": [
+        "testthat",
+        "flowWorkspace",
+        "flowWorkspaceData",
+        "knitr",
+        "rmarkdown",
+        "openCyto",
+        "flowStats(>= 4.7.1)"
+      ],
+      "Description": "Robust model-based clustering using a t-mixture model with Box-Cox transformation. Note: users should have GSL installed. Windows users: 'consult the README file available in the inst directory of the source distribution for necessary configuration instructions'.",
+      "Collate": "'SetClasses.R' 'SetMethods.R' 'flowClust.R' 'coerce.R' 'flowClust-package.R' 'hist.R' 'miscellaneous.R' 'plot.R' 'split.R'",
+      "License": "MIT",
+      "biocViews": "ImmunoOncology, Clustering, Visualization, FlowCytometry",
+      "SystemRequirements": "GNU make",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.1.1",
+      "VignetteBuilder": "knitr",
+      "git_url": "https://git.bioconductor.org/packages/flowClust",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "7fe1c3c",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "yes"
+    },
     "flowCore": {
       "Package": "flowCore",
       "Version": "2.18.0",
@@ -3470,6 +3024,57 @@
       "Repository": "Bioconductor 3.20",
       "NeedsCompilation": "yes",
       "Author": "B Ellis [aut], Perry Haaland [aut], Florian Hahne [aut], Nolwenn Le Meur [aut], Nishant Gopalakrishnan [aut], Josef Spidlen [aut], Mike Jiang [aut, cre], Greg Finak [aut], Samuel Granjeaud [ctb]"
+    },
+    "flowViz": {
+      "Package": "flowViz",
+      "Version": "1.70.0",
+      "Source": "Bioconductor",
+      "Type": "Package",
+      "Title": "Visualization for flow cytometry",
+      "Author": "B. Ellis, R. Gentleman, F. Hahne, N. Le Meur, D. Sarkar, M. Jiang",
+      "Maintainer": "Mike Jiang <mike@ozette.com>",
+      "Description": "Provides visualization tools for flow cytometry data.",
+      "Depends": [
+        "R (>= 2.7.0)",
+        "flowCore(>= 1.41.9)",
+        "lattice"
+      ],
+      "Imports": [
+        "stats4",
+        "Biobase",
+        "flowCore",
+        "graphics",
+        "grDevices",
+        "grid",
+        "KernSmooth",
+        "lattice",
+        "latticeExtra",
+        "MASS",
+        "methods",
+        "RColorBrewer",
+        "stats",
+        "utils",
+        "hexbin",
+        "IDPmisc"
+      ],
+      "Suggests": [
+        "colorspace",
+        "flowStats",
+        "knitr",
+        "rmarkdown",
+        "markdown",
+        "testthat"
+      ],
+      "License": "Artistic-2.0",
+      "biocViews": "ImmunoOncology, Infrastructure, FlowCytometry, CellBasedAssays, Visualization",
+      "VignetteBuilder": "knitr",
+      "RoxygenNote": "6.1.1",
+      "git_url": "https://git.bioconductor.org/packages/flowViz",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "2a5634b",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no"
     },
     "flowWorkspace": {
       "Package": "flowWorkspace",
@@ -3548,32 +3153,6 @@
       "RemoteRepos": "https://bioconductor.org/packages/3.20/bioc",
       "RemotePkgPlatform": "source",
       "RemoteSha": "4.18.1"
-    },
-    "flowWorkspaceData": {
-      "Package": "flowWorkspaceData",
-      "Version": "3.18.0",
-      "Source": "Bioconductor",
-      "Type": "Package",
-      "Title": "A data package containing two flowJo, one diva xml workspace and the associated fcs files as well as three GatingSets for testing the flowWorkspace, openCyto and CytoML packages.",
-      "Date": "2011-03-31",
-      "Author": "Greg Finak",
-      "Maintainer": "Mike Jiang <wjiang2@fhcrc.org>",
-      "Description": "The necessary external data to run the flowWorkspace and openCyto vignette is found in this package.",
-      "biocViews": "ExperimentData, FlowCytometryData",
-      "License": "GPL-2",
-      "LazyLoad": "yes",
-      "git_url": "https://git.bioconductor.org/packages/flowWorkspaceData",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "f551320",
-      "git_last_commit_date": "2024-10-29",
-      "Repository": "Bioconductor 3.20",
-      "NeedsCompilation": "no",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::flowWorkspaceData",
-      "RemoteRef": "bioc::flowWorkspaceData",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/container-binaries/bioconductor_docker",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "3.18.0"
     },
     "fontawesome": {
       "Package": "fontawesome",
@@ -4532,6 +4111,48 @@
       "Repository": "RSPM",
       "Encoding": "UTF-8"
     },
+    "interp": {
+      "Package": "interp",
+      "Version": "1.1-6",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Interpolation Methods",
+      "Date": "2024-01-26",
+      "Authors@R": "c(person(\"Albrecht\", \"Gebhardt\", role = c(\"aut\", \"cre\", \"cph\"), email = \"albrecht.gebhardt@aau.at\"), person(\"Roger\", \"Bivand\", role = c(\"aut\"), email = \"Roger.Bivand@nhh.no\"), person(\"David\", \"Sinclair\", role = c(\"aut\",\"cph\"), email = \"david@s-hull.org\", comment = \"author of the shull library\"))",
+      "Maintainer": "Albrecht Gebhardt <albrecht.gebhardt@aau.at>",
+      "Description": "Bivariate data interpolation on regular and irregular grids, either linear or using splines are the main part of this package.  It is intended to provide FOSS replacement functions for the ACM licensed akima::interp and tripack::tri.mesh functions. Linear interpolation is implemented in  interp::interp(..., method=\"linear\"), this corresponds to the call  akima::interp(..., linear=TRUE) which is the default setting and  covers most of akima::interp use cases in depending packages.   A re-implementation of Akimas irregular grid spline interpolation (akima::interp(..., linear=FALSE)) is now also available via interp::interp(..., method=\"akima\"). Estimators for partial derivatives are now also available in  interp::locpoly(), these are a prerequisite for the spline interpolation.   The basic part is a GPLed triangulation algorithm (sweep hull  algorithm by David Sinclair) providing the starting point for the irregular grid interpolator. As side effect this algorithm is also used to provide replacements for almost all functions of the tripack package which also suffers from the same ACM license restrictions.   All functions are designed to be backward compatible with their  akima / tripack counterparts.",
+      "License": "GPL (>= 2)",
+      "Imports": [
+        "Rcpp (>= 0.12.9)",
+        "deldir"
+      ],
+      "Suggests": [
+        "sp",
+        "Deriv",
+        "Ryacas",
+        "ggplot2",
+        "gridExtra",
+        "lattice",
+        "stringi",
+        "stringr",
+        "scatterplot3d",
+        "MASS"
+      ],
+      "Enhances": [
+        "RcppEigen"
+      ],
+      "LinkingTo": [
+        "Rcpp",
+        "RcppEigen"
+      ],
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "NeedsCompilation": "yes",
+      "Author": "Albrecht Gebhardt [aut, cre, cph], Roger Bivand [aut], David Sinclair [aut, cph] (author of the shull library)",
+      "Repository": "BioCcontainers",
+      "Encoding": "UTF-8"
+    },
     "isoband": {
       "Package": "isoband",
       "Version": "0.3.0",
@@ -4573,6 +4194,25 @@
       "Author": "Hadley Wickham [aut] (ORCID: <https://orcid.org/0000-0003-4757-117X>), Claus O. Wilke [aut] (Original author, ORCID: <https://orcid.org/0000-0002-7470-9261>), Thomas Lin Pedersen [aut, cre] (ORCID: <https://orcid.org/0000-0002-5147-4711>), Posit, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
       "Maintainer": "Thomas Lin Pedersen <thomas.pedersen@posit.co>",
       "Repository": "CRAN"
+    },
+    "jpeg": {
+      "Package": "jpeg",
+      "Version": "0.1-10",
+      "Source": "Repository",
+      "Title": "Read and write JPEG images",
+      "Author": "Simon Urbanek <Simon.Urbanek@r-project.org>",
+      "Maintainer": "Simon Urbanek <Simon.Urbanek@r-project.org>",
+      "Depends": [
+        "R (>= 2.9.0)"
+      ],
+      "Description": "This package provides an easy and simple way to read, write and display bitmap images stored in the JPEG format. It can read and write both files and in-memory raw vectors.",
+      "License": "GPL-2 | GPL-3",
+      "SystemRequirements": "libjpeg",
+      "URL": "https://www.rforge.net/jpeg/",
+      "BugReports": "https://github.com/s-u/jpeg/issues",
+      "NeedsCompilation": "yes",
+      "Repository": "RSPM",
+      "Encoding": "UTF-8"
     },
     "jquerylib": {
       "Package": "jquerylib",
@@ -4853,6 +4493,46 @@
       "NeedsCompilation": "yes",
       "Author": "Deepayan Sarkar [aut, cre] (ORCID: <https://orcid.org/0000-0003-4107-1553>), Felix Andrews [ctb], Kevin Wright [ctb] (documentation), Neil Klepeis [ctb], Johan Larsson [ctb] (miscellaneous improvements), Zhijian (Jason) Wen [cph] (filled contour code), Paul Murrell [ctb], Stefan Eng [ctb] (violin plot improvements), Achim Zeileis [ctb] (modern colors), Alexandre Courtiol [ctb] (generics for larrows, lpolygon, lrect and lsegments)",
       "Maintainer": "Deepayan Sarkar <deepayan.sarkar@r-project.org>",
+      "Repository": "RSPM",
+      "Encoding": "UTF-8"
+    },
+    "latticeExtra": {
+      "Package": "latticeExtra",
+      "Version": "0.6-30",
+      "Source": "Repository",
+      "Date": "2022-06-30",
+      "Title": "Extra Graphical Utilities Based on Lattice",
+      "Author": "Deepayan Sarkar <deepayan.sarkar@r-project.org>, Felix Andrews <felix@nfrac.org>",
+      "Maintainer": "Deepayan Sarkar <deepayan.sarkar@r-project.org>",
+      "Description": "Building on the infrastructure provided by the lattice package, this package provides several new high-level functions and methods, as well as additional utilities such as panel and axis annotation functions.",
+      "Depends": [
+        "R (>= 3.6.0)",
+        "lattice"
+      ],
+      "Imports": [
+        "grid",
+        "stats",
+        "utils",
+        "grDevices",
+        "png",
+        "jpeg",
+        "RColorBrewer",
+        "interp",
+        "MASS"
+      ],
+      "Suggests": [
+        "maps",
+        "mapproj",
+        "deldir",
+        "quantreg",
+        "zoo",
+        "mgcv"
+      ],
+      "URL": "http://latticeextra.r-forge.r-project.org/",
+      "LazyLoad": "yes",
+      "LazyData": "yes",
+      "License": "GPL (>= 2)",
+      "NeedsCompilation": "no",
       "Repository": "RSPM",
       "Encoding": "UTF-8"
     },
@@ -5315,6 +4995,64 @@
       "Author": "José Pinheiro [aut] (S version), Douglas Bates [aut] (up to 2007), Saikat DebRoy [ctb] (up to 2002), Deepayan Sarkar [ctb] (up to 2005), EISPACK authors [ctb] (src/rs.f), Siem Heisterkamp [ctb] (Author fixed sigma), Bert Van Willigen [ctb] (Programmer fixed sigma), Johannes Ranke [ctb] (varConstProp()), R Core Team [aut, cre] (ROR: <https://ror.org/02zz1nj61>)",
       "Maintainer": "R Core Team <R-core@R-project.org>",
       "Repository": "RSPM"
+    },
+    "openCyto": {
+      "Package": "openCyto",
+      "Version": "2.18.0",
+      "Source": "Bioconductor",
+      "Type": "Package",
+      "Title": "Hierarchical Gating Pipeline for flow cytometry data",
+      "Date": "2012-06-11",
+      "Author": "Mike Jiang, John Ramey, Greg Finak, Raphael Gottardo",
+      "Maintainer": "Mike Jiang <mike@ozette.com>",
+      "Description": "This package is designed to facilitate the automated gating methods in sequential way to mimic the manual gating strategy.",
+      "License": "AGPL-3.0-only",
+      "LazyLoad": "yes",
+      "Imports": [
+        "methods",
+        "Biobase",
+        "BiocGenerics",
+        "flowCore(>= 1.99.17)",
+        "flowViz",
+        "ncdfFlow(>= 2.11.34)",
+        "flowWorkspace(>= 3.99.1)",
+        "flowClust(>= 3.11.4)",
+        "RBGL",
+        "graph",
+        "data.table",
+        "RColorBrewer"
+      ],
+      "Suggests": [
+        "flowWorkspaceData",
+        "knitr",
+        "rmarkdown",
+        "markdown",
+        "testthat",
+        "utils",
+        "tools",
+        "parallel",
+        "ggcyto",
+        "CytoML",
+        "flowStats(>= 4.5.2)",
+        "MASS"
+      ],
+      "biocViews": "ImmunoOncology, FlowCytometry, DataImport, Preprocessing, DataRepresentation",
+      "Encoding": "UTF-8",
+      "VignetteBuilder": "knitr",
+      "LinkingTo": [
+        "cpp11",
+        "BH"
+      ],
+      "RoxygenNote": "7.2.1",
+      "git_url": "https://git.bioconductor.org/packages/openCyto",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "dc6d560",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "yes",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ]
     },
     "openssl": {
       "Package": "openssl",
@@ -6269,8 +6007,8 @@
     },
     "renv": {
       "Package": "renv",
-      "Version": "1.1.2",
-      "Source": "Repository",
+      "Version": "1.2.4.9000",
+      "Source": "GitHub",
       "Type": "Package",
       "Title": "Project Environments",
       "Authors@R": "c( person(\"Kevin\", \"Ushey\", role = c(\"aut\", \"cre\"), email = \"kevin@rstudio.com\", comment = c(ORCID = \"0000-0003-2880-7407\")), person(\"Hadley\", \"Wickham\", role = c(\"aut\"), email = \"hadley@rstudio.com\", comment = c(ORCID = \"0000-0003-4757-117X\")), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
@@ -6287,7 +6025,9 @@
         "compiler",
         "covr",
         "cpp11",
+        "curl",
         "devtools",
+        "generics",
         "gitcreds",
         "jsonlite",
         "jsonvalidate",
@@ -6309,16 +6049,21 @@
         "webfakes"
       ],
       "Encoding": "UTF-8",
-      "RoxygenNote": "7.3.2",
+      "Roxygen": "list(markdown = TRUE)",
       "VignetteBuilder": "knitr",
       "Config/Needs/website": "tidyverse/tidytemplate",
       "Config/testthat/edition": "3",
       "Config/testthat/parallel": "true",
       "Config/testthat/start-first": "bioconductor,python,install,restore,snapshot,retrieve,remotes",
-      "NeedsCompilation": "no",
+      "Config/roxygen2/version": "8.0.0",
       "Author": "Kevin Ushey [aut, cre] (<https://orcid.org/0000-0003-2880-7407>), Hadley Wickham [aut] (<https://orcid.org/0000-0003-4757-117X>), Posit Software, PBC [cph, fnd]",
       "Maintainer": "Kevin Ushey <kevin@rstudio.com>",
-      "Repository": "https://bioconductor.org/packages/3.20/container-binaries/bioconductor_docker"
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "rstudio",
+      "RemoteRepo": "renv",
+      "RemoteRef": "main",
+      "RemoteSha": "05144cb5e325bdd082816d2253c94c7a7be0614c"
     },
     "reticulate": {
       "Package": "reticulate",
