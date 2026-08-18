@@ -9,6 +9,7 @@ reference:
   - gateStim
   - getStimGates
   - getStimGatesDetailed
+  - getStimStats
 
 - title: Visualization
   desc: Functions for plotting gates and results
@@ -33,9 +34,6 @@ reference:
   - stimgateMetaReadBatchList
   - stimgateMetaReadChnlLab
   - stimgateMetaReadMarkerLab
-  - simCytExperiment
-  - stimgateMetaReadBatchList
-  - stimgateMetaReadChnlLab
   - stimgateMetaReadSettingsChnl
   - stimgateMetaReadSettingsChnls
   - stimgateMetaReadSettingsMarker
