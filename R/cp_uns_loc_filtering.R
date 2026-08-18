@@ -449,14 +449,7 @@
     return(list(y = rep(0.0, max(n - 1L, 0L))))
   }
 
-  res <- try(
-    stimgate_cpPmden(x_sorted),
-    silent = TRUE
-  )
-  if (inherits(res, "try-error")) {
-    return(list(y = rep(0.0, n - 1L)))
-  }
-
+  res <- stimgate_cpPmden(x_sorted)
   list(y = as.numeric(res[["string"]]))
 }
 
