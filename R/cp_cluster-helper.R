@@ -459,7 +459,7 @@
   chnlCut,
   calcCytPosGates
 ) {
-  posInd <- .get_pos_ind_but_single_pos_for_one_cyt(
+  posInd <- .getPosIndButSinglePosForOneCyt(
     ex = exTbl,
     gateTbl = gateTbl[gateTbl[["ind"]] == attr(exTbl, "ind"), ],
     chnlSingleExc = chnlCut,
