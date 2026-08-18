@@ -528,7 +528,11 @@ plotStim <- function(
   } else {
     ""
   }
-  bw <- tryCatch(readRDS(pathBwProject), error = function(e) "nrd0")
+  bw <- if (nzchar(pathBwProject) && file.exists(pathBwProject)) {
+    tryCatch(readRDS(pathBwProject), error = function(e) "nrd0")
+  } else {
+    "nrd0"
+  }
   plotTbl <- .plotGateUvMarkerGetPlotTbl(
     marker = marker,
     chnl = chnl,
