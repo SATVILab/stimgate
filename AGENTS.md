@@ -298,8 +298,7 @@ pkgdown::check_pkgdown()
    `.get_cp_tg_migration_note_157()`. Current default behaviour still constructs
    `tgClust` control gates in `.gateBatchAll()`, but the current local-FDR cluster
    quantile implementation does not consume `gateTblCtrl`, so this branch is dead
-   plumbing for current outputs. The other `.getCpTg()` callers are in legacy
-   single-positive paths that are optional/backwards-compatible only.
+   plumbing for current outputs. Single-positive gating branches have been removed per issue #196.
 
 ---
 

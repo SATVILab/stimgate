@@ -20,7 +20,6 @@
   chnlSettings,
   markerSettings,
   calcCytPosGates,
-  calcSinglePosGates,
   biasUns,
   biasUnsFactor,
   excMin,
@@ -123,9 +122,6 @@
   # 3. Global Hyperparameter & Logic Checks
   if (!is.logical(calcCytPosGates) || length(calcCytPosGates) != 1) {
     stop("`calcCytPosGates` must be a single logical value (TRUE/FALSE).")
-  }
-  if (!is.logical(calcSinglePosGates) || length(calcSinglePosGates) != 1) {
-    stop("`calcSinglePosGates` must be a single logical value (TRUE/FALSE).")
   }
   if (!is.logical(excMin) || length(excMin) != 1) {
     stop("`excMin` must be a single logical value (TRUE/FALSE).")

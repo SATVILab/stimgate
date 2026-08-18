@@ -11,7 +11,6 @@ globalVariables(c(
   "ind",
   "gate",
   "gateCyt",
-  "gateSingle",
   "gateName",
   "chnl",
   "gateUse",

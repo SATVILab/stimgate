@@ -37,7 +37,6 @@ test_that("writeStimFCS function exists and has correct signature", {
     "transChnl",
     "combnExc",
     "gateTypeCytPos",
-    "gateTypeSinglePos",
     "mult",
     "gateUnsMethod"
   )
@@ -171,8 +170,7 @@ test_that("writeStimFCS works with different gate types", {
     indBatchList = exampleData$batchList,
     pathDirSave = pathDirSave,
     chnl = exampleData$chnl[[1]],
-    gateTypeCytPos = "cyt",
-    gateTypeSinglePos = "single"
+    gateTypeCytPos = "cyt"
   )
 
   expect_equal(result, pathDirSave)
@@ -232,7 +230,6 @@ test_that("writeStimFCS works with pre-provided gate table", {
     ind = as.character(unlist(exampleData$batchList)),
     gate = rep(0.5, length(unlist(exampleData$batchList))),
     gateCyt = rep(0.5, length(unlist(exampleData$batchList))),
-    gateSingle = rep(0.5, length(unlist(exampleData$batchList))),
     stringsAsFactors = FALSE
   )
 
@@ -455,7 +452,6 @@ test_that("writeStimFCS handles edge case: empty data", {
     ind = as.character(unlist(exampleData$batchList)),
     gate = rep(999999, length(unlist(exampleData$batchList))), # Very high threshold
     gateCyt = rep(999999, length(unlist(exampleData$batchList))),
-    gateSingle = rep(999999, length(unlist(exampleData$batchList))),
     stringsAsFactors = FALSE
   )
 
