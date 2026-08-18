@@ -67,7 +67,8 @@ getStimGates <- function(
     return(character(0))
   }
   dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
-  popVec <- unique(sub("^pop(.*)$", "\\1", dirVec))
+  dirVec <- dirVec[nzchar(dirVec) & grepl("^pop", dirVec)]
+  popVec <- unique(sub("^pop", "", dirVec))
   popVec
 }
 
@@ -78,7 +79,8 @@ getStimGates <- function(
     return(character(0))
   }
   dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
-  chnlVec <- unique(sub("^chnl(.*)$", "\\1", dirVec))
+  dirVec <- dirVec[nzchar(dirVec) & grepl("^chnl", dirVec)]
+  chnlVec <- unique(sub("^chnl", "", dirVec))
   chnlVec
 }
 
