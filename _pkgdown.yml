@@ -28,6 +28,7 @@ reference:
   - getBatchList
   - getExampleData
   - getStimExpr
+  - getStimStats
   - getTestData
   - simCytExperiment
   - stimgateMetaReadBatchList
