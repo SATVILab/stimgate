@@ -789,18 +789,12 @@ simCytClusterData <- function(
   muVec,
   sigmaMat
 ) {
-  rmvnorm <- function(n, mu, sigma) {
-    p <- length(mu)
-    z <- matrix(stats::rnorm(n * p), nrow = n, ncol = p)
-    sweep(z %*% chol(sigma), 2, mu, "+")
-  }
-
   if (mixtureType == "tPlusGauss") {
     if ((clusterNumber %% 2) == 0) {
-      rmvnorm(
+      MASS::mvrnorm(
         nCell,
         mu = muVec,
-        sigma = sigmaMat
+        Sigma = sigmaMat
       )
     } else {
       mvtnorm::rmvt(
@@ -818,10 +812,10 @@ simCytClusterData <- function(
       df = 2
     )
   } else {
-    rmvnorm(
+    MASS::mvrnorm(
       nCell,
       mu = muVec,
-      sigma = sigmaMat
+      Sigma = sigmaMat
     )
   }
 }
