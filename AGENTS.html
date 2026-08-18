@@ -178,7 +178,7 @@
 <li>
 <code>UtilsCytoRSV-plot_cyto.R</code>: Cytometry plotting utilities.</li>
 <li>
-<code>UtilsGGSV-axis_limits.R</code>: <code>ggplot2</code> axis limit helpers.</li>
+<code>UtilsGGSV-axisLimits.R</code>: <code>ggplot2</code> axis limit helpers.</li>
 <li>
 <code>bw_norm_helpers.R</code>: Shared bandwidth helpers for standard and normalised bandwidth methods.</li>
 <li>
@@ -206,6 +206,8 @@
 <li>
 <code>cp_uns_loc_threshold.R</code>: Local-FDR response estimate and final threshold.</li>
 <li>
+<code>cpp11.R</code>: Automatically generated C++ wrapper functions via <code>cpp11</code>.</li>
+<li>
 <code>cyt_pos_gates-helper.R</code>: Helper functions for cytokine-positive cell gates.</li>
 <li>
 <code>cyt_pos_gates.R</code>: Functions for more aggressive gates applied to cytokine-positive cells.</li>
@@ -232,6 +234,8 @@
 <li>
 <code>gates.R</code>: Extract the identified gates/thresholds (<code>getStimGates</code>, <code>getStimGatesDetailed</code>).</li>
 <li>
+<code>getCpTg_audit.R</code>: Audit helpers for <code>.getCpTg()</code> migration tracking.</li>
+<li>
 <code>ind_batch.R</code>: Get the list of indices grouped by batch.</li>
 <li>
 <code>peaks_and_troughs.R</code>: Peak and trough detection helpers.</li>
@@ -252,7 +256,8 @@
 </ul></li>
 <li>
 <code>scripts/</code>:
-<ul><li>
+<ul><li>Shell scripts (<code>dev.sh</code>, <code>install.sh</code>, <code>patch.sh</code>, <code>minor.sh</code>, <code>major.sh</code>, <code>dev-*.sh</code>) for workflow, benchmarking, and version bumping.</li>
+<li>
 <code>python/</code>: Python helper scripts used by analysis (not part of the R package).
 <ul><li>
 <code>fbeta.py</code>: Richards F-beta thresholding implementation (comparison method).</li>
@@ -274,7 +279,13 @@
 </ul></li>
 </ul></li>
 <li>
-<code>_reference/</code>: Reference material (historical scripts retained for reference).</li>
+<code>src/</code>: C++ source code compiled into the package via <code>cpp11</code> (<code>cpPmden.cpp</code>, <code>stimgate_cppmden.cpp</code>, <code>tautstring.cpp</code>, etc.).</li>
+<li>
+<code>analysis/</code>: Quarto (<code>.qmd</code>) documents for research, simulation, and benchmarking analysis.</li>
+<li>
+<code>vignettes/</code>: Package vignettes (<code>stimgate.Rmd</code>).</li>
+<li>
+<code>inst/</code>: Installed package material (e.g. <code>COPYRIGHTS</code>).</li>
 <li>
 <code>.github/</code>: GitHub CI workflows and Copilot setup.</li>
 <li>

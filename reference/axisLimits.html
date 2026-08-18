@@ -46,7 +46,7 @@ calculate limits to pass to ggplot2::expand_limits).'></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Manage axis limits</h1>
-      <small class="dont-index">Source: <a href="https://github.com/SATVILab/stimgate/blob/master/R/UtilsGGSV-axis_limits.R" class="external-link"><code>R/UtilsGGSV-axis_limits.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/SATVILab/stimgate/blob/master/R/UtilsGGSV-axisLimits.R" class="external-link"><code>R/UtilsGGSV-axisLimits.R</code></a></small>
       <div class="d-none name"><code>axisLimits.Rd</code></div>
     </div>
 
@@ -64,9 +64,7 @@ calculate limits to pass to <code><a href="https://ggplot2.tidyverse.org/referen
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">axisLimits</span><span class="op">(</span><span class="va">p</span>, limitsExpand <span class="op">=</span> <span class="cn">NULL</span>, limitsEqual <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu">axis_limits</span><span class="op">(</span><span class="va">p</span>, limits_expand <span class="op">=</span> <span class="cn">NULL</span>, limits_equal <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">axisLimits</span><span class="op">(</span><span class="va">p</span>, limitsExpand <span class="op">=</span> <span class="cn">NULL</span>, limitsEqual <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -93,14 +91,6 @@ Default is NULL.</p></dd>
 <dd><p>logical If TRUE, then the ranges on the x- and
 y-axes must be equal. Effectively applied after expand_grid is
 applied. Default is FALSE.</p></dd>
-
-
-<dt id="arg-limits-expand">limits_expand<a class="anchor" aria-label="anchor" href="#arg-limits-expand"></a></dt>
-<dd><p>list or NULL Alias for <code>limitsExpand</code>. Default is NULL.</p></dd>
-
-
-<dt id="arg-limits-equal">limits_equal<a class="anchor" aria-label="anchor" href="#arg-limits-equal"></a></dt>
-<dd><p>logical Alias for <code>limitsEqual</code>. Default is FALSE.</p></dd>
 
 </dl></div>
     <div class="section level2">

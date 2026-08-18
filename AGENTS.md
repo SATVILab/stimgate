@@ -197,7 +197,7 @@ pkgdown::check_pkgdown()
   - `UtilsCytoRSV-chnl_lab.R`: Channel label utilities (get
     markers/channels from cytometry objects).
   - `UtilsCytoRSV-plot_cyto.R`: Cytometry plotting utilities.
-  - `UtilsGGSV-axis_limits.R`: `ggplot2` axis limit helpers.
+  - `UtilsGGSV-axisLimits.R`: `ggplot2` axis limit helpers.
   - `bw_norm_helpers.R`: Shared bandwidth helpers for standard and
     normalised bandwidth methods.
   - `check.R`: Input validation helpers.
@@ -221,6 +221,8 @@ pkgdown::check_pkgdown()
   - `cp_uns_loc_smoothing.R`: Local-FDR probability smoothing.
   - `cp_uns_loc_threshold.R`: Local-FDR response estimate and final
     threshold.
+  - `cpp11.R`: Automatically generated C++ wrapper functions via
+    `cpp11`.
   - `cyt_pos_gates-helper.R`: Helper functions for cytokine-positive
     cell gates.
   - `cyt_pos_gates.R`: Functions for more aggressive gates applied to
@@ -245,6 +247,8 @@ pkgdown::check_pkgdown()
   - `gate_chnl.R`: Gate individual channels.
   - `gates.R`: Extract the identified gates/thresholds (`getStimGates`,
     `getStimGatesDetailed`).
+  - `getCpTg_audit.R`: Audit helpers for `.getCpTg()` migration
+    tracking.
   - `ind_batch.R`: Get the list of indices grouped by batch.
   - `peaks_and_troughs.R`: Peak and trough detection helpers.
   - `pipe.R`: Pipe operator and related utilities.
@@ -255,6 +259,9 @@ pkgdown::check_pkgdown()
   - `stats.R`: Get statistics for the identified gates.
   - `verify.R`: Input verification helpers.
 - `scripts/`:
+  - Shell scripts (`dev.sh`, `install.sh`, `patch.sh`, `minor.sh`,
+    `major.sh`, `dev-*.sh`) for workflow, benchmarking, and version
+    bumping.
   - `python/`: Python helper scripts used by analysis (not part of the R
     package).
     - `fbeta.py`: Richards F-beta thresholding implementation
@@ -270,8 +277,12 @@ pkgdown::check_pkgdown()
       simulation.
     - `sim-misc.R`: Miscellaneous simulation utilities.
     - `sim-trans.R`: Simulation transformation utilities.
-- `_reference/`: Reference material (historical scripts retained for
-  reference).
+- `src/`: C++ source code compiled into the package via `cpp11`
+  (`cpPmden.cpp`, `stimgate_cppmden.cpp`, `tautstring.cpp`, etc.).
+- `analysis/`: Quarto (`.qmd`) documents for research, simulation, and
+  benchmarking analysis.
+- `vignettes/`: Package vignettes (`stimgate.Rmd`).
+- `inst/`: Installed package material (e.g. `COPYRIGHTS`).
 - `.github/`: GitHub CI workflows and Copilot setup.
 - `data-raw/`: Raw data files used for testing and examples.
 - `man/`: Automatically generated documentation files.
