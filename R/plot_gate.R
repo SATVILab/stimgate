@@ -511,16 +511,16 @@ plotStim <- function(
   if (length(ind) == 0L) {
     return(NULL)
   }
-  chnl <- chnl %||% tryCatch(
+  chnlBw <- chnl %||% tryCatch(
     stimgateMetaReadMarkerLab(pathProject)[marker],
     error = function(e) NULL
   )
-  pathBwProject <- if (!is.null(chnl)) {
+  pathBwProject <- if (!is.null(chnlBw)) {
     file.path(
       pathProject,
       "intermediateData",
       "init",
-      chnl,
+      chnlBw,
       "ind",
       ind[[1]],
       "bwCpUnsLoc.rds"
@@ -663,7 +663,7 @@ plotStim <- function(
     return(NULL)
   }
   .var <- if (!is.null(marker)) marker else chnl
-  densObjRaw <- density(exTbl[[.var]], na.rm = TRUE, bw = bw)
+  densObjRaw <- stats::density(exTbl[[.var]], na.rm = TRUE, bw = bw)
   plotTbl <- tibble::tibble(x = densObjRaw$x, y = densObjRaw$y)
   .plotGateUvMarkerAddAdj(
     excMin = excMin,

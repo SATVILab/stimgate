@@ -23,7 +23,7 @@
     cutTbl[[attr(cutTbl, "chnlCut")]] <- .getCut(cutTbl) + bias # nolint
     if (!is.null(noiseSd)) {
       cutTbl <- cutTbl[[attr(cutTbl, "chnlCut")]] +
-        rnorm(nrow(cutTbl), sd = noiseSd) # nolint
+        stats::rnorm(nrow(cutTbl), sd = noiseSd) # nolint
     }
     cutTbl |>
       .prepareExListWithBiasAndNoiseAddAttr(attrList)
@@ -267,11 +267,11 @@
 
   # model the probability of positivity above this point
   if (nrow(modTbl) < 40) {
-    fitPw <- glm(high ~ chnlCut, family = binomial, .data = modTbl)
+    fitPw <- stats::glm(high ~ chnlCut, family = stats::binomial, .data = modTbl)
   } else {
-    fitPw <- glm(
+    fitPw <- stats::glm(
       high ~ splines::ns(chnlCut, df = 3),
-      family = binomial,
+      family = stats::binomial,
       .data = modTbl
     )
   }
@@ -280,7 +280,7 @@
   predTbl <- tibble::tibble(
     chnlCut = seq(min(modTbl$chnlCut), max(modTbl$chnlCut))
   )
-  predVec <- predict(fitPw, predTbl, type = "response")
+  predVec <- stats::predict(fitPw, predTbl, type = "response")
   predTbl <- predTbl |> dplyr::mutate(pred = predVec)
 
   # find prediction in between middle and max
@@ -293,14 +293,14 @@
   # find the cutpoint that minimises the difference objective function
   optFunc <- function(x) {
     predTbl <- tibble::tibble(chnlCut = x)
-    predVec <- predict(fitPw, predTbl, type = "response")
+    predVec <- stats::predict(fitPw, predTbl, type = "response")
     (predVec - midProb)^2
   }
 
   # initial search parameter
   initPar <- mean(c(cpScp, max(highIndTbl$chnlCut)))
   # optimisation
-  optim(
+  stats::optim(
     initPar,
     fn = optFunc,
     method = "Brent",
@@ -370,7 +370,7 @@
     if (gateCombnCurr == "median") {
       return(stats::setNames(
         rep(
-          median(cp, na.rm = TRUE),
+          stats::median(cp, na.rm = TRUE),
           length(cp)
         ),
         names(cp)

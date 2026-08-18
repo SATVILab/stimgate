@@ -976,7 +976,7 @@
   exTblStimThreshold,
   bw
 ) {
-  densObj <- density(.getCut(exTblStimThreshold), bw = bw)
+  densObj <- stats::density(.getCut(exTblStimThreshold), bw = bw)
   if (is.null(attr(exTblStimThreshold, "probGMin"))) {
     return(densObj)
   }
@@ -990,7 +990,7 @@
   densStim,
   bw
 ) {
-  densObj <- density(
+  densObj <- stats::density(
     .getCut(exTblUnsThreshold),
     from = min(densStim$x),
     to = max(densStim$x),
@@ -1196,11 +1196,11 @@
   }
   peakX <- max(peakStimX, peakUnsX)
 
-  windowWidthStim <- abs(diff(quantile(
+  windowWidthStim <- abs(diff(stats::quantile(
     exVecStim[exVecStim < peakStimX],
     c(0.05, 1)
   )))
-  windowWidthUns <- abs(diff(quantile(
+  windowWidthUns <- abs(diff(stats::quantile(
     exVecUns[exVecUns < peakUnsX],
     c(0.05, 1)
   )))
@@ -1301,7 +1301,7 @@
 
   # Interpolate using the 'all' table so baseline cells get real probabilities
   probVec <- try(
-    approx(
+    stats::approx(
       x = probTblList$all$xStim,
       y = probTblList$all$probStimNorm,
       xout = .getCut(dataMod),
@@ -1354,12 +1354,12 @@
   exTblStimNoMin,
   exTblUnsNoMin
 ) {
-  spanStim <- diff(quantile(
+  spanStim <- diff(stats::quantile(
     .getCut(exTblStimNoMin),
     probs = c(0.05, 0.95),
     na.rm = TRUE
   ))
-  spanUns <- diff(quantile(
+  spanUns <- diff(stats::quantile(
     .getCut(exTblUnsNoMin),
     probs = c(0.05, 0.95),
     na.rm = TRUE

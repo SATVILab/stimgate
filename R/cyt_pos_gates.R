@@ -294,5 +294,5 @@
 .gateCytPosMaxBwMin <- function(chnl, quant = 0.8) {
   chnl |>
     purrr::map_dbl(~ .x$bwMin) |>
-    quantile(quant)
+    stats::quantile(quant)
 }
