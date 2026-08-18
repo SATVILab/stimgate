@@ -331,6 +331,7 @@
   gateQuant = c(0.25, 0.75),
   locProbCol = "pred",
   locMinPeakProb = 0.25,
+  locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1 / 6,
   locAntimodeLowRel = 0.25,
@@ -457,6 +458,7 @@
       tolClust = tolClust,
       locProbCol = locProbCol,
       locMinPeakProb = locMinPeakProb,
+      locEnforceShapeThreshold = locEnforceShapeThreshold,
       locDipAlpha = locDipAlpha,
       locAntimodeHeightFrac = locAntimodeHeightFrac,
       locAntimodeLowRel = locAntimodeLowRel,
@@ -633,6 +635,9 @@
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
         bwCluster = if (is.null(bwCluster)) NA_real_ else bwCluster,
+        tolClust = if (is.null(tolClust)) NA_real_ else tolClust,
+        locEnforceShapeThreshold = locEnforceShapeThreshold,
+        calcCytPosGates = calcCytPosGates,
         samplePerturbationSd = samplePerturbationSd,
         conditionPerturbationSd = conditionPerturbationSd,
         clusterPerturbationSd = clusterPerturbationSd,
@@ -817,6 +822,7 @@
   covEvMin = 1,
   covEvMax = 2,
   tolClust = 1e-7,
+  locEnforceShapeThreshold = FALSE,
   markerToPlot = "MarkerF1" # Specify univariate marker here
 ) {
   bwMtdGate <- .simBandwidthAdaptiveBwMtd(
@@ -916,7 +922,8 @@
       bwNcellMin = bwNcellMin,
       bwNcellMax = bwNcellMax,
       bwCluster = bwCluster,
-      tolClust = tolClust
+      tolClust = tolClust,
+      locEnforceShapeThreshold = locEnforceShapeThreshold
     ))
 
     # 5. Extract plots for each sample

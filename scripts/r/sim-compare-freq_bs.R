@@ -621,6 +621,7 @@
   locTolRefPeak = "highest",
   gateCombn = "min",
   tolClust = NULL,
+  locEnforceShapeThreshold = FALSE,
   calcCytPosGates = FALSE,
   includeLocCondition = TRUE
 ) {
@@ -673,6 +674,7 @@
         tolClust = tolClust,
         locProbCol = locProbCol,
         locMinPeakProb = locMinPeakProb,
+        locEnforceShapeThreshold = locEnforceShapeThreshold,
         locDipAlpha = locDipAlpha,
         locAntimodeHeightFrac = locAntimodeHeightFrac,
         locAntimodeLowRel = locAntimodeLowRel,
@@ -818,6 +820,7 @@
   covEvMin = 1,
   covEvMax = 2,
   tolClust = NULL,
+  locEnforceShapeThreshold = FALSE,
   minCell = 1e2,
   maxPosProbX = Inf,
   gateQuant = c(0.25, 0.75),
@@ -977,6 +980,7 @@
       locTolRefPeak = locTolRefPeak,
       gateCombn = gateCombn,
       tolClust = tolClust,
+      locEnforceShapeThreshold = locEnforceShapeThreshold,
       calcCytPosGates = calcCytPosGates,
       includeLocCondition = includeLocCondition
     )
@@ -1023,6 +1027,9 @@
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
         bwCluster = bwCluster %||% NA_real_,
+        tolClust = tolClust %||% NA_real_,
+        locEnforceShapeThreshold = locEnforceShapeThreshold,
+        calcCytPosGates = calcCytPosGates,
         samplePerturbationSd = samplePerturbationSd,
         conditionPerturbationSd = conditionPerturbationSd,
         clusterPerturbationSd = clusterPerturbationSd,
@@ -1070,6 +1077,8 @@
   covEvMin = 2,
   covEvMax = 2,
   tolClust = NULL,
+  locEnforceShapeThreshold = FALSE,
+  calcCytPosGates = FALSE,
   includeLocCondition = TRUE,
   ...
 ) {
@@ -1100,6 +1109,8 @@
       covEvMin = covEvMin,
       covEvMax = covEvMax,
       tolClust = tolClust,
+      locEnforceShapeThreshold = locEnforceShapeThreshold,
+      calcCytPosGates = calcCytPosGates,
       includeLocCondition = includeLocCondition,
       ...
     )

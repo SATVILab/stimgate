@@ -188,6 +188,14 @@ bandwidth_value_vec <- c(
   0.2, 0.25, 0.5, 0.75, 1, 1.25, 1.5
   )
 
+# StimGate method settings for bandwidth-performance analysis:
+# Cluster refinement (tolClust) is intentionally set to NULL (OFF) to isolate and
+# measure the effect of the bandwidth selector itself without multi-sample
+# cluster adjustments modifying thresholds post-local-FDR.
+tol_clust <- NULL
+loc_enforce_shape_threshold <- FALSE
+calc_cyt_pos_gates <- FALSE
+
 # can vary these later
 bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
 bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
@@ -350,7 +358,9 @@ for (i in seq_len(nrow(sim_grid_loop))[1]) {
       sim_grid_loop$n_cell_uns_relative_to_stim[i],
     covEvMin = 1.5,
     covEvMax = 1.5,
-    tolClust = NULL
+    tolClust = tol_clust,
+    locEnforceShapeThreshold = loc_enforce_shape_threshold,
+    calcCytPosGates = calc_cyt_pos_gates
   ) |>
     dplyr::mutate(
       transformation = sim_grid_loop$transformation[i],
@@ -569,7 +579,9 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
               ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
               covEvMin = 1.5,
               covEvMax = 1.5,
-              tolClust = NULL
+              tolClust = tol_clust,
+              locEnforceShapeThreshold = loc_enforce_shape_threshold,
+              calcCytPosGates = calc_cyt_pos_gates
             ) |>
               dplyr::mutate(
                 transformation = transformation,
@@ -992,7 +1004,9 @@ sim_res <- .simBandwidthBsFreq(
   ncellUnsRelativeToStim = row[["n_cell_uns_relative_to_stim"]],
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = NULL
+  tolClust = tol_clust,
+  locEnforceShapeThreshold = loc_enforce_shape_threshold,
+  calcCytPosGates = calc_cyt_pos_gates
 )
 
 # NEXT
