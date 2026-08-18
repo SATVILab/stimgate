@@ -1070,7 +1070,7 @@
 #' the first point at which the density has flattened to the requested fraction
 #' of that slope. This relative-derivative rule preserves the local-FDR shape
 #' threshold behaviour and deliberately does not use a fixed absolute tolerance
-#' like the legacy .cytokineCutpoint() `tol` gate.
+#' like the cytoUtils:::.cytokine_cutpoint() `tol` gate.
 #'
 #' @keywords internal
 .getStimGateTailgate <- function(density, peakX = NULL, fraction = 1 / 200) {

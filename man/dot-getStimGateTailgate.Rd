@@ -12,6 +12,6 @@ locate the steepest negative derivative on the descending shoulder and report
 the first point at which the density has flattened to the requested fraction
 of that slope. This relative-derivative rule preserves the local-FDR shape
 threshold behaviour and deliberately does not use a fixed absolute tolerance
-like the legacy .cytokineCutpoint() \code{tol} gate.
+like the cytoUtils:::.cytokine_cutpoint() \code{tol} gate.
 }
 \keyword{internal}
