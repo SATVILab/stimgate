@@ -190,6 +190,7 @@ pkgdown::check_pkgdown()
   - `cp_uns_loc_output.R`: Local-FDR diagnostics, metadata, and output assembly.
   - `cp_uns_loc_smoothing.R`: Local-FDR probability smoothing.
   - `cp_uns_loc_threshold.R`: Local-FDR response estimate and final threshold.
+  - `cpp11.R`: Automatically generated C++ wrapper functions via `cpp11`.
   - `cyt_pos_gates-helper.R`: Helper functions for cytokine-positive cell gates.
   - `cyt_pos_gates.R`: Functions for more aggressive gates applied to cytokine-positive cells.
   - `debug.R`: Debugging utilities (`.debug()`) and global variable declarations.
@@ -203,6 +204,7 @@ pkgdown::check_pkgdown()
   - `gate_chnl-helper.R`: Helper functions for gating individual channels.
   - `gate_chnl.R`: Gate individual channels.
   - `gates.R`: Extract the identified gates/thresholds (`getStimGates`, `getStimGatesDetailed`).
+  - `getCpTg_audit.R`: Audit helpers for `.getCpTg()` migration tracking.
   - `ind_batch.R`: Get the list of indices grouped by batch.
   - `peaks_and_troughs.R`: Peak and trough detection helpers.
   - `pipe.R`: Pipe operator and related utilities.
@@ -213,6 +215,7 @@ pkgdown::check_pkgdown()
   - `stats.R`: Get statistics for the identified gates.
   - `verify.R`: Input verification helpers.
 - `scripts/`:
+  - Shell scripts (`dev.sh`, `install.sh`, `patch.sh`, `minor.sh`, `major.sh`, `dev-*.sh`) for workflow, benchmarking, and version bumping.
   - `python/`: Python helper scripts used by analysis (not part of the R package).
     - `fbeta.py`: Richards F-beta thresholding implementation (comparison method).
   - `r/`: R helper scripts used by analysis only — not loaded by `devtools::load_all()` and not part of the `stimgate` namespace.
@@ -222,7 +225,10 @@ pkgdown::check_pkgdown()
     - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
     - `sim-misc.R`: Miscellaneous simulation utilities.
     - `sim-trans.R`: Simulation transformation utilities.
-- `_reference/`: Reference material (historical scripts retained for reference).
+- `src/`: C++ source code compiled into the package via `cpp11` (`cpPmden.cpp`, `stimgate_cppmden.cpp`, `tautstring.cpp`, etc.).
+- `analysis/`: Quarto (`.qmd`) documents for research, simulation, and benchmarking analysis.
+- `vignettes/`: Package vignettes (`stimgate.Rmd`).
+- `inst/`: Installed package material (e.g. `COPYRIGHTS`).
 - `.github/`: GitHub CI workflows and Copilot setup.
 - `data-raw/`: Raw data files used for testing and examples.
 - `man/`: Automatically generated documentation files.
