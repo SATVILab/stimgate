@@ -1,7 +1,3 @@
-#' @importFrom rlang .data .env
-#' @importFrom stats setNames
-#' @importFrom  utils head
-
 # Global variable bindings to avoid R CMD check notes
 # These are primarily used in dplyr and ggplot2 contexts
 globalVariables(c(

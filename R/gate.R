@@ -304,13 +304,6 @@
 #'     grid = TRUE
 #'   )
 #' }
-#' @importFrom flowCore exprs<- parameters<-
-#' @importFrom stats approx as.formula binomial density glm kmeans median optim predict quantile rnorm sd dnorm fft
-#' @importFrom utils read.csv write.csv
-#' @importFrom cluster clusGap maxSE
-#' @importFrom ggplot2 ggplot aes geom_line geom_smooth geom_vline geom_hline
-#' @importFrom graphics points
-#' @importFrom dplyr everything
 #' @export
 gateStim <- function(
   pathProject,

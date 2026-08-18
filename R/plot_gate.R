@@ -47,8 +47,6 @@
 #'
 #' @return A grid of plots if `grid` is TRUE, otherwise a list of ggplot objects.
 #'
-#' @import ggplot2
-#'
 #' @examples
 #' # Create example data and run gating
 #' exampleData <- getExampleData()
