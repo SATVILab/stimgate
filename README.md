@@ -1,6 +1,11 @@
 stimgate
 ================
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/SATVILab/stimgate/graph/badge.svg)](https://app.codecov.io/gh/SATVILab/stimgate)
+<!-- badges: end -->
+
 `stimgate` is an R package for identifying cells that may have responded
 to immune stimulation in flow cytometry data. It compares stimulated
 samples with matched unstimulated controls and estimates marker-specific

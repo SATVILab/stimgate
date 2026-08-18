@@ -3,6 +3,11 @@ title: "stimgate"
 output: github_document
 ---
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/SATVILab/stimgate/graph/badge.svg)](https://app.codecov.io/gh/SATVILab/stimgate)
+<!-- badges: end -->
+
 `stimgate` is an R package for identifying cells that may have responded to immune stimulation in flow cytometry data. It compares stimulated samples with matched unstimulated controls and estimates marker-specific expression gates relative to the unstimulated background, rather than applying one fixed positivity threshold across samples.
 
 The package works with `flowWorkspace::GatingSet` objects. Its main entry point, `gateStim()`, performs the gating workflow and writes the resulting gates, cached expression data and response statistics to a project directory. Plotting, expression extraction and FCS export functions can then use those saved results without rerunning the full gating procedure.
