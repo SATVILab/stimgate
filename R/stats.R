@@ -118,6 +118,9 @@
 }
 
 #' @title Get gating statistics
+#'
+#' @description Read and return gating statistics computed during gating.
+#'
 #' @param pathProject character. Path to the project directory.
 #' @return A data frame with gating statistics.
 #' @export
