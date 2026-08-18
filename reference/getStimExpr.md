@@ -19,7 +19,6 @@ getStimExpr(
   chnlGate = NULL,
   markerGate = NULL,
   gateTypeCytPos = "cyt",
-  gateTypeSinglePos = "single",
   mult = FALSE,
   gateUnsMethod = "min",
   transFn = NULL,
@@ -87,11 +86,6 @@ getStimExpr(
 
   character Gate type to use for cytokine-positive cells. Default is
   "cyt".
-
-- gateTypeSinglePos:
-
-  character Gate type to use for single-positive cells. Default is
-  "single".
 
 - mult:
 

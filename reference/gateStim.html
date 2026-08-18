@@ -75,7 +75,6 @@ background cytokine production, and technical variability.</p>
 <span>  chnl <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  marker <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  calcCytPosGates <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  calcSinglePosGates <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  biasUns <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  biasUnsFactor <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  excMin <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -181,12 +180,6 @@ clustered gate is lowered to the leftmost internal antimode strictly between
 the full stimulated marginal peak plus one third of its left-window width
 and the clustered gate. If no eligible antimode exists, the clustered gate
 is retained. Default is TRUE.</p></dd>
-
-
-<dt id="arg-calcsingleposgates">calcSinglePosGates<a class="anchor" aria-label="anchor" href="#arg-calcsingleposgates"></a></dt>
-<dd><p>logical. Whether to calculate single-positive gates
-for individual markers in addition to combination gates. Default is FALSE.
-Useful for detailed analysis of individual marker responses.</p></dd>
 
 
 <dt id="arg-biasuns">biasUns<a class="anchor" aria-label="anchor" href="#arg-biasuns"></a></dt>
@@ -569,9 +562,7 @@ positive for another cytokine</p></li>
 region and the clustered one-marker gate</p></li>
 <li><p>Lowers the gate to the leftmost eligible antimode, or retains the
 clustered gate when none is available</p></li>
-</ul><p><strong>Step 4: Single-Positive Gates (if calcSinglePosGates = TRUE)</strong></p><ul><li><p>Calculates gates for individual markers independent of other markers</p></li>
-<li><p>Useful for understanding single-marker responses</p></li>
-</ul><p><strong>Step 5: Statistics Generation</strong></p><ul><li><p>Calculates comprehensive statistics including frequencies and combinations</p></li>
+</ul><p><strong>Step 4: Statistics Generation</strong></p><ul><li><p>Calculates comprehensive statistics including frequencies and combinations</p></li>
 <li><p>Generates cross-tabulations of cytokine-positive populations</p></li>
 <li><p>Saves results in structured format for downstream analysis</p></li>
 </ul></div>
@@ -615,16 +606,10 @@ clustered gate when none is available</p></li>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> ----</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> getting single+ gates</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> ----</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 8 of 8</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpcoA8jL/demonstration"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpYbDxde/demonstration"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create plots</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"hexbin"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
@@ -636,7 +621,12 @@ clustered gate when none is available</p></li>
 <span class="r-in"><span>    grid <span class="op">=</span> <span class="cn">TRUE</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in plotStim(ind = exampleData$batchList[[1]], .data = gs, pathProject = pathProject,     marker = exampleData$marker, grid = TRUE):</span> Cannot plot gates for multiple populations</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>cannot open compressed file '/tmp/RtmpYbDxde/demonstration/gates/poproot/chnlBC2(Pr141)Dd/all/gateTbl.rds', probable reason 'No such file or directory'</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in map(.x, .f, ...):</span> <span style="color: #00BBBB;">ℹ</span> In index: 1.</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">Caused by error in `map()`:</span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> In index: 2.</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">Caused by error in `gzfile()`:</span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> cannot open the connection</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

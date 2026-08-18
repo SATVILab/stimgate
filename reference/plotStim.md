@@ -27,7 +27,6 @@ plotStim(
   chnlGate = NULL,
   markerGate = NULL,
   gateTypeCytPos = "cyt",
-  gateTypeSinglePos = "single",
   mult = FALSE,
   gateUnsMethod = "min"
 )
@@ -132,11 +131,6 @@ plotStim(
   character Gate type to use for cytokine-positive cells. Default is
   "cyt".
 
-- gateTypeSinglePos:
-
-  character Gate type to use for single-positive cells. Default is
-  "single".
-
 - mult:
 
   logical Whether to return only multi-functional cells (positive for
@@ -183,16 +177,10 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> 
 #> 
-#> ----
-#> getting single+ gates
-#> ----
-#> 
-#> 
-#> 
 #> 
 #> getting cyt combn frequencies
 #> batch 8 of 8
-#> [1] "/tmp/RtmpcoA8jL/dir_4d974e98b462/stimgate"
+#> [1] "/tmp/RtmpYbDxde/dir_50946aa1ca62/stimgate"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
@@ -204,5 +192,10 @@ if (requireNamespace("hexbin", quietly = TRUE)) {
     grid = TRUE
   )
 }
-#> Error in plotStim(ind = exampleData$batchList[[1]], .data = gs, pathProject = pathProject,     marker = exampleData$marker, grid = TRUE): Cannot plot gates for multiple populations
+#> Warning: cannot open compressed file '/tmp/RtmpYbDxde/dir_50946aa1ca62/stimgate/gates/poproot/chnlBC2(Pr141)Dd/all/gateTbl.rds', probable reason 'No such file or directory'
+#> Error in map(.x, .f, ...): ℹ In index: 1.
+#> Caused by error in `map()`:
+#> ℹ In index: 2.
+#> Caused by error in `gzfile()`:
+#> ! cannot open the connection
 ```

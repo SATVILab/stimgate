@@ -25,7 +25,6 @@ gateStim(
   chnl = NULL,
   marker = NULL,
   calcCytPosGates = TRUE,
-  calcSinglePosGates = FALSE,
   biasUns = NULL,
   biasUnsFactor = 1,
   excMin = TRUE,
@@ -139,12 +138,6 @@ gateStim(
   between the full stimulated marginal peak plus one third of its
   left-window width and the clustered gate. If no eligible antimode
   exists, the clustered gate is retained. Default is TRUE.
-
-- calcSinglePosGates:
-
-  logical. Whether to calculate single-positive gates for individual
-  markers in addition to combination gates. Default is FALSE. Useful for
-  detailed analysis of individual marker responses.
 
 - biasUns:
 
@@ -572,13 +565,7 @@ TRUE)**
 - Lowers the gate to the leftmost eligible antimode, or retains the
   clustered gate when none is available
 
-**Step 4: Single-Positive Gates (if calcSinglePosGates = TRUE)**
-
-- Calculates gates for individual markers independent of other markers
-
-- Useful for understanding single-marker responses
-
-**Step 5: Statistics Generation**
+**Step 4: Statistics Generation**
 
 - Calculates comprehensive statistics including frequencies and
   combinations
@@ -632,16 +619,10 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> 
 #> 
-#> ----
-#> getting single+ gates
-#> ----
-#> 
-#> 
-#> 
 #> 
 #> getting cyt combn frequencies
 #> batch 8 of 8
-#> [1] "/tmp/RtmpcoA8jL/demonstration"
+#> [1] "/tmp/RtmpYbDxde/demonstration"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
@@ -653,5 +634,10 @@ if (requireNamespace("hexbin", quietly = TRUE)) {
     grid = TRUE
   )
 }
-#> Error in plotStim(ind = exampleData$batchList[[1]], .data = gs, pathProject = pathProject,     marker = exampleData$marker, grid = TRUE): Cannot plot gates for multiple populations
+#> Warning: cannot open compressed file '/tmp/RtmpYbDxde/demonstration/gates/poproot/chnlBC2(Pr141)Dd/all/gateTbl.rds', probable reason 'No such file or directory'
+#> Error in map(.x, .f, ...): ℹ In index: 1.
+#> Caused by error in `map()`:
+#> ℹ In index: 2.
+#> Caused by error in `gzfile()`:
+#> ! cannot open the connection
 ```

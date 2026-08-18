@@ -17,7 +17,6 @@ writeStimFCS(
   transChnl = NULL,
   combnExc = NULL,
   gateTypeCytPos = "cyt",
-  gateTypeSinglePos = "single",
   mult = FALSE,
   gateUnsMethod = "min"
 )
@@ -68,10 +67,6 @@ writeStimFCS(
 - gateTypeCytPos:
 
   character. Gate type to use for cytokine-positive cells.
-
-- gateTypeSinglePos:
-
-  character. Gate type to use for single-positive cells.
 
 - mult:
 
