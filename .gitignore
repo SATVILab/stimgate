@@ -4,6 +4,16 @@
 .nfs*
 src/*.o
 src/*.so
+# Compiled object and library files
+src/*.o
+src/*.so
+src/*.dll
+src/*.dylib
+src/*.a
+
+# Rcpp / toolchain artifacts (if applicable)
+src/*.rds
+src/symbols.rds
 R/test4.R
 R/test.R
 R/test2.R
