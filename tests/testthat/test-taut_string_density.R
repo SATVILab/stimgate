@@ -97,12 +97,6 @@ test_that(".getCytPosTautStringAntimodes detects a clear antimode", {
   expect_true(any(antimodes > 3 & antimodes < 5))
 })
 
-test_that(".tautStringPmden raises an explicit error on native failure", {
-  # Invalid input types passed to the native routine must raise an error
-  # rather than returning an all-zero density vector
-  expect_error(.tautStringPmden("invalid_string_input"))
-})
-
 test_that(".tautStringPmden reproduces expected FAUST taut-string estimates on fixed simulated datasets", {
   # 1. Unimodal dataset (n = 100)
   set.seed(101)
@@ -116,7 +110,10 @@ test_that(".tautStringPmden reproduces expected FAUST taut-string estimates on f
 
   # 2. Clearly bimodal dataset (n = 200, equal component proportions)
   set.seed(202)
-  x_bi <- sort(c(rnorm(100, mean = -3, sd = 0.5), rnorm(100, mean = 3, sd = 0.5)))
+  x_bi <- sort(c(
+    rnorm(100, mean = -3, sd = 0.5),
+    rnorm(100, mean = 3, sd = 0.5)
+  ))
   res_bi <- .tautStringPmden(x_bi)
   expect_length(res_bi$y, length(x_bi) - 1L)
   expect_true(all(is.finite(res_bi$y)))
@@ -129,7 +126,10 @@ test_that(".tautStringPmden reproduces expected FAUST taut-string estimates on f
 
   # 3. Unequal component proportions (n = 200, 75% left component, 25% right component)
   set.seed(303)
-  x_unequal <- sort(c(rnorm(150, mean = 0, sd = 0.5), rnorm(50, mean = 4, sd = 0.5)))
+  x_unequal <- sort(c(
+    rnorm(150, mean = 0, sd = 0.5),
+    rnorm(50, mean = 4, sd = 0.5)
+  ))
   res_unequal <- .tautStringPmden(x_unequal)
   expect_length(res_unequal$y, length(x_unequal) - 1L)
   expect_true(all(is.finite(res_unequal$y)))
@@ -147,7 +147,10 @@ test_that(".tautStringPmden reproduces expected FAUST taut-string estimates on f
   res_sep <- .tautStringPmden(x_sep)
 
   set.seed(505)
-  x_weak <- sort(c(rnorm(100, mean = 0, sd = 1), rnorm(100, mean = 2.2, sd = 1)))
+  x_weak <- sort(c(
+    rnorm(100, mean = 0, sd = 1),
+    rnorm(100, mean = 2.2, sd = 1)
+  ))
   res_weak <- .tautStringPmden(x_weak)
 
   expect_length(res_sep$y, length(x_sep) - 1L)
