@@ -239,10 +239,10 @@
   )
 }
 
-#' Call the openCyto tailgate implementation
+#' Call the cytoUtils tailgate implementation
 #'
-#' If bandwidth is NULL, openCyto:::.cytokineCutpoint() forwards NULL to
-#' openCyto:::.derivDensity(), whose default behaviour is to estimate the
+#' If bandwidth is NULL, cytoUtils:::.cytokineCutpoint() forwards NULL to
+#' cytoUtils:::.deriv_density(), whose default behaviour is to estimate the
 #' bandwidth with ks::hpi().
 #'
 #' @keywords internal
@@ -271,20 +271,20 @@
     ))
   }
 
-  if (!requireNamespace("openCyto", quietly = TRUE)) {
-    stop("Package 'openCyto' is required for tailgate comparisons.")
+  if (!requireNamespace("cytoUtils", quietly = TRUE)) {
+    stop("Package 'cytoUtils' is required for tailgate comparisons.")
   }
 
-  threshold <- openCyto:::.cytokineCutpoint(
+  threshold <- cytoUtils:::.cytokine_cutpoint(
     x = x,
     adjust = adjust,
-    numPeaks = numPeaks,
-    refPeak = refPeak,
+    num_peaks = numPeaks,
+    ref_peak = refPeak,
     method = method,
     tol = tol,
     side = side,
     strict = strict,
-    autoTol = autoTol,
+    auto_tol = autoTol,
     bandwidth = bandwidth
   )
 
