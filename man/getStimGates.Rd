@@ -35,6 +35,6 @@ pathProject <- gateStim(
   popGate = "root"
 )
 
-# Get statistics for the identified gates
+# Get identified gates
 gates <- getStimGates(pathProject)
 }
