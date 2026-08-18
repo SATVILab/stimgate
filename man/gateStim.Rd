@@ -12,7 +12,6 @@ gateStim(
   chnl = NULL,
   marker = NULL,
   calcCytPosGates = TRUE,
-  calcSinglePosGates = FALSE,
   biasUns = NULL,
   biasUnsFactor = 1,
   excMin = TRUE,
@@ -101,10 +100,6 @@ clustered gate is lowered to the leftmost internal antimode strictly between
 the full stimulated marginal peak plus one third of its left-window width
 and the clustered gate. If no eligible antimode exists, the clustered gate
 is retained. Default is TRUE.}
-
-\item{calcSinglePosGates}{logical. Whether to calculate single-positive gates
-for individual markers in addition to combination gates. Default is FALSE.
-Useful for detailed analysis of individual marker responses.}
 
 \item{biasUns}{numeric. Bias adjustment for unstimulated samples to account for
 background cytokine production. When NULL (default), no bias correction is applied.
@@ -403,13 +398,7 @@ region and the clustered one-marker gate
 clustered gate when none is available
 }
 
-\strong{Step 4: Single-Positive Gates (if calcSinglePosGates = TRUE)}
-\itemize{
-\item Calculates gates for individual markers independent of other markers
-\item Useful for understanding single-marker responses
-}
-
-\strong{Step 5: Statistics Generation}
+\strong{Step 4: Statistics Generation}
 \itemize{
 \item Calculates comprehensive statistics including frequencies and combinations
 \item Generates cross-tabulations of cytokine-positive populations

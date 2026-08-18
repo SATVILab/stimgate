@@ -516,7 +516,7 @@
       }
 
       # remove any cytokine-positive cells from unstim using gates from
-      # sample for which single-positive gates are required
+      # sample for which gates are required
       exTblUnsBias <- .getCpUnsLocSampleUnsRmCytPos(
         exTblUnsOrig = exTblUnsOrig,
         chnlSettings = chnlSettings,
@@ -629,8 +629,7 @@
         chnlSettings$calcCytPosGates,
         "cyt",
         "base"
-      ),
-      gateTypeSinglePos = "base"
+      )
     )
 
   exTblUnsOrig <- exTblUnsOrig[
