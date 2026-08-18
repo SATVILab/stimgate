@@ -95,6 +95,15 @@ n_cell_uns_relative_to_stim_vec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)[4]
 bw_fixed <- 0.5
 bias_uns_vec <- c(0, 0.05, 0.1, seq(0.2, 2, by = 0.2))[c(2, 4)]
 
+# StimGate method settings for full method comparison (StimGate vs alternatives):
+# Cluster refinement is enabled (tolClust = 1e-7) matching current gateStim() defaults
+# to represent the full one-marker StimGate procedure.
+# locEnforceShapeThreshold is explicitly FALSE for primary comparison.
+# calcCytPosGates is explicitly FALSE for one-marker simulations.
+tol_clust <- 1e-7
+loc_enforce_shape_threshold <- FALSE
+calc_cyt_pos_gates <- FALSE
+
 fbeta_beta <- 0.8
 fbeta_theta <- 2
 fbeta_width <- 10
@@ -190,7 +199,9 @@ for (i in seq_len(nrow(sim_grid))) {
     ncellUnsRelativeToStim = sim_grid$n_cell_uns_relative_to_stim[i],
     covEvMin = 1.5,
     covEvMax = 1.5,
-    tolClust = NULL,
+    tolClust = tol_clust,
+    locEnforceShapeThreshold = loc_enforce_shape_threshold,
+    calcCytPosGates = calc_cyt_pos_gates,
     includeLocCondition = TRUE,
     pathFbeta = path_fbeta,
     fbetaBeta = fbeta_beta,
@@ -323,7 +334,9 @@ compare_list_raw <- progressr::with_progress({
             ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
             covEvMin = 1.5,
             covEvMax = 1.5,
-            tolClust = NULL,
+            tolClust = tol_clust,
+            locEnforceShapeThreshold = loc_enforce_shape_threshold,
+            calcCytPosGates = calc_cyt_pos_gates,
             includeLocCondition = TRUE,
             pathFbeta = path_fbeta,
             fbetaBeta = fbeta_beta,
