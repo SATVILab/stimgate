@@ -12,10 +12,7 @@
     ~intermediateArtifacts,
     ".gateBatchAll(): tgType = 'tolCtrl'",
     "chnlSettings$tolCtrl is non-NULL",
-    paste(
-      "gateUse = 'ctrl' rows used only by legacy",
-      "single-positive Adj control path"
-    ),
+    "gateUse = 'ctrl' rows",
     "No effect on gateTblInit.rds or gateTbl.rds in current default flow",
     "backwards-compatible but optional",
     paste0(
@@ -33,42 +30,6 @@
     paste0(
       "intermediateData/<stage>/<chnl>/ind/*/tolClust/",
       "{cpTgIndInit,cpTgList,cpTgPrejoin*}.rds"
-    ),
-    ".gateBatchSingle(): tgType = 'tg'",
-    paste(
-      "Legacy branch entered only when chnlSettings$gateTbl is non-NULL",
-      "and gateName contains 'tg'"
-    ),
-    "Produces gateUse = 'gate' single-positive thresholds",
-    "Can affect output only for legacy/manual single-positive workflows",
-    "backwards-compatible but optional",
-    paste0(
-      "intermediateData/<stage>/<chnl>/ind/*/tg/",
-      "{cpTgIndInit,cpTgList,cpTgPrejoin*}.rds"
-    ),
-    ".gateBatchSingle(): tgType = 'Adj'",
-    paste(
-      "Legacy branch entered only when chnlSettings$gateTbl is non-NULL",
-      "and gateName contains 'Adj'"
-    ),
-    "Produces gateUse = 'ctrl' single-positive control thresholds",
-    "Can affect output only for legacy/manual single-positive workflows",
-    "backwards-compatible but optional",
-    paste0(
-      "intermediateData/<stage>/<chnl>/ind/*/Adj/",
-      "{cpTgIndInit,cpTgList,cpTgPrejoin*}.rds"
-    ),
-    ".gateBatchSingle(): tgType = 'Clust'",
-    paste(
-      "Legacy branch entered only when chnlSettings$gateTbl is non-NULL",
-      "and gateName contains 'Clust'"
-    ),
-    "Produces gateUse = 'tgClust' single-positive control thresholds",
-    "Can affect output only for legacy/manual single-positive workflows",
-    "backwards-compatible but optional",
-    paste0(
-      "intermediateData/<stage>/<chnl>/ind/*/Clust/",
-      "{cpTgIndInit,cpTgList,cpTgPrejoin*}.rds"
     )
   )
 }
@@ -79,7 +40,6 @@
     "the obsolete default init tgClust tailgate path has been removed.",
     "Current local-FDR cluster quantile gating does not consume gateTblCtrl,",
     "so the legacy tgClust plumbing is dead for current outputs.",
-    "Remaining migration work is limited to optional legacy single-positive",
-    "tg/Adj/Clust branches and their compatibility-only intermediate artifacts."
+    "Single-positive branches have been removed per issue #196."
   )
 }

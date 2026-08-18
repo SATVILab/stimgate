@@ -13,7 +13,6 @@
       gateType,
       "base" = "gate",
       "cyt" = "gateCyt",
-      "single" = "gateSingle",
       stop(paste0(
         "gateType ",
         gateType,
@@ -126,12 +125,8 @@
   gateTbl,
   chnlSingleExc,
   chnl = NULL,
-  gateTypeCytPos,
-  gateTypeSinglePos
+  gateTypeCytPos
 ) {
-  .getPosIndButSinglePosForOneCytCheck(
-    gateTypeSinglePos = gateTypeSinglePos
-  )
   if (is.null(chnl)) {
     chnl <- unique(gateTbl$chnl)
   }
@@ -139,17 +134,17 @@
     unique()
 
   # cells positive for any cytokine except
-  # current cytokine using base or single threshold
+  # current cytokine using base threshold
   posVecSingleIndAnyCytButCurr <- .getPosIndSimple(
     ex = ex,
     gateTbl = gateTbl,
     chnl = setdiff(chnl, chnlSingleExc),
-    gateType = gateTypeSinglePos
+    gateType = "base"
   )
 
   # above specifies all cells that are polyfunctional,
   # if no adjusted thresholds are used
-  if (gateTypeCytPos == "base" && gateTypeSinglePos == "base") {
+  if (gateTypeCytPos == "base") {
     return(posVecSingleIndAnyCytButCurr)
   }
 
@@ -165,23 +160,6 @@
   posVecSingleIndAnyCytButCurr | posVecMultiCyt
 }
 
-#' @keywords internal
-.getPosIndButSinglePosForOneCytCheck <- function(
-  gateTypeSinglePos
-) {
-  if (missing(gateTypeSinglePos)) {
-    stop("gateTypeSinglePos missing")
-  }
-  if (!gateTypeSinglePos %in% c("base", "single")) {
-    stop(paste0(
-      "gateTypeSinglePos value of ",
-      gateTypeSinglePos,
-      ' not either "single" or "base" in function .getPosIndButSinglePosForOneCytCheck.'
-    ))
-  }
-  invisible(TRUE)
-}
-
 # Identify cells that express at least one cytokine
 # Returns a logical vector indicating cytokine-positive cells using flexible thresholds
 #' @keywords internal
@@ -190,18 +168,8 @@
   gateTbl,
   chnl,
   chnlAlt = NULL,
-  gateTypeCytPos,
-  gateTypeSinglePos
+  gateTypeCytPos
 ) {
-  # must specify types of gates to use for single+ cells
-  if (!gateTypeSinglePos %in% c("base", "single")) {
-    stop(paste0(
-      "gateTypeSinglePos value of ",
-      ifelse(missing(gateTypeSinglePos), "blank", gateTypeSinglePos),
-      " not either 'single' or 'base' in function .getPosInd"
-    ))
-  }
-
   if (is.null(chnl)) {
     chnl <- unique(gateTbl$chnl)
   }
@@ -210,9 +178,7 @@
   }
   chnlAlt <- setdiff(chnlAlt, chnl)
 
-  # if only base thresholds are used, then it's sufficient to
-  # look only for cells that are positive for the required channels
-  if (gateTypeCytPos == "base" && gateTypeSinglePos == "base") {
+  if (gateTypeCytPos == "base") {
     posIndVec <- .getPosIndSimple(
       ex = ex,
       gateTbl = gateTbl,
@@ -227,7 +193,7 @@
     ex = ex,
     gateTbl = gateTbl,
     chnl = chnl,
-    gateType = gateTypeSinglePos
+    gateType = "base"
   )
 
   # cells positive for at least two cytokines, for some cytokines that are required
@@ -239,7 +205,7 @@
     gateTypeCytPos = gateTypeCytPos
   )
 
-  # cells positive for either one of the require cytokines (possibly on its own)
+  # cells positive for either one of the required cytokines (possibly on its own)
   # or any other cytokine together with the required cytokine
   posIndVec <- posVecSingle | posVecMulti
 
@@ -253,17 +219,8 @@
   chnlPos,
   chnlNeg,
   chnlAlt,
-  gateTypeCytPos,
-  gateTypeSinglePos
+  gateTypeCytPos
 ) {
-  # must specify types of gates to use for single+ cells
-  if (!gateTypeSinglePos %in% c("base", "single")) {
-    stop(paste0(
-      "gateTypeSinglePos value of ",
-      ifelse(missing(gateTypeSinglePos), "blank", gateTypeSinglePos),
-      " not either 'single' or 'base' in function .getPosIndCytCombn"
-    ))
-  }
   chnl <- unique(c(chnlPos, chnlNeg, chnlAlt))
   chnlPosIndVecPos <- rep(TRUE, nrow(ex))
 
@@ -274,8 +231,7 @@
       gateTbl = gateTbl,
       chnl = chnlCurr,
       chnlAlt = setdiff(chnl, chnlCurr),
-      gateTypeCytPos = gateTypeCytPos,
-      gateTypeSinglePos = gateTypeSinglePos
+      gateTypeCytPos = gateTypeCytPos
     )
     chnlPosIndVecPos <- chnlPosIndVecPos & chnlPosIndVecPosCurr
   }
@@ -287,8 +243,7 @@
       gateTbl = gateTbl,
       chnl = chnlNeg,
       chnlAlt = chnl,
-      gateTypeCytPos = gateTypeCytPos,
-      gateTypeSinglePos = gateTypeSinglePos
+      gateTypeCytPos = gateTypeCytPos
     )
 
     # all cells positive only for positive markers are those that

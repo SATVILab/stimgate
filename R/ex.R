@@ -277,8 +277,6 @@ strDetectAny <- function(string, pattern) {
 #'   Cannot be specified with `chnl_gate`. Default is NULL.
 #' @param gateTypeCytPos character Gate type to use for cytokine-positive
 #'   cells. Default is "cyt".
-#' @param gateTypeSinglePos character Gate type to use for single-positive
-#'   cells. Default is "single".
 #' @param mult logical Whether to return only multi-functional cells (positive
 #'   for multiple markers). Default is FALSE.
 #' @param gateUnsMethod character Method for gating unstimulated cells.
@@ -322,7 +320,6 @@ getStimExpr <- function(
   chnlGate = NULL,
   markerGate = NULL,
   gateTypeCytPos = "cyt",
-  gateTypeSinglePos = "single",
   mult = FALSE,
   gateUnsMethod = "min",
   transFn = NULL,
@@ -365,7 +362,6 @@ getStimExpr <- function(
         ind = indCurr,
         combnExc = combnExc,
         gateTypeCytPos = gateTypeCytPos,
-        gateTypeSinglePos = gateTypeSinglePos,
         mult = mult,
         pathProject = pathProject
       )
@@ -538,7 +534,6 @@ getStimExpr <- function(
   ind,
   combnExc = NULL,
   gateTypeCytPos = "cyt",
-  gateTypeSinglePos = "single",
   mult = FALSE,
   pathProject
 ) {
@@ -565,8 +560,7 @@ getStimExpr <- function(
     gateTblInd,
     mult,
     chnlGate,
-    gateTypeCytPos,
-    gateTypeSinglePos
+    gateTypeCytPos
   )
 
   if (nrow(ex) == 0L) {
@@ -579,8 +573,7 @@ getStimExpr <- function(
     combnExc,
     gateTblInd,
     chnlGate,
-    gateTypeCytPos,
-    gateTypeSinglePos
+    gateTypeCytPos
   )
 
   if (nrow(ex) == 0L) {
@@ -605,8 +598,7 @@ getStimExpr <- function(
   gateTblInd,
   mult,
   chnl,
-  gateTypeCytPos,
-  gateTypeSinglePos
+  gateTypeCytPos
 ) {
   incVec <- rep(FALSE, nrow(ex))
 
@@ -617,8 +609,7 @@ getStimExpr <- function(
       gateTbl = gateTblInd,
       chnl = chnl,
       chnlAlt = NULL,
-      gateTypeCytPos = gateTypeCytPos,
-      gateTypeSinglePos = gateTypeSinglePos
+      gateTypeCytPos = gateTypeCytPos
     )
   } else {
     incVec <- .getPosIndMult(
@@ -639,8 +630,7 @@ getStimExpr <- function(
   combnExc,
   gateTblInd,
   chnlGate,
-  gateTypeCytPos,
-  gateTypeSinglePos
+  gateTypeCytPos
 ) {
   if (is.null(combnExc)) {
     return(ex)
@@ -656,8 +646,7 @@ getStimExpr <- function(
       chnlPos = chnlPos,
       chnlNeg = setdiff(chnlGate, chnlPos),
       chnlAlt = NULL,
-      gateTypeCytPos = gateTypeCytPos,
-      gateTypeSinglePos = gateTypeSinglePos
+      gateTypeCytPos = gateTypeCytPos
     )
     ex <- ex[!excVec, , drop = FALSE]
   }

@@ -54,8 +54,7 @@
           batch,
           ind,
           gate,
-          gateCyt,
-          gateSingle # nolint
+          gateCyt # nolint
         )
     }
   )
