@@ -180,7 +180,7 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 8 of 8
-#> [1] "/tmp/Rtmp2ffeaZ/dir_4a1067395387/stimgate"
+#> [1] "/tmp/RtmpH8IRge/dir_4a01766b9b6a/stimgate"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
@@ -192,6 +192,6 @@ if (requireNamespace("hexbin", quietly = TRUE)) {
     grid = TRUE
   )
 }
-#> Warning: cannot open compressed file '/tmp/Rtmp2ffeaZ/dir_4a1067395387/stimgate/intermediateData/init/BC1(La139)Dd/ind/1/bwCpUnsLoc.rds', probable reason 'No such file or directory'
+#> Warning: cannot open compressed file '/tmp/RtmpH8IRge/dir_4a01766b9b6a/stimgate/intermediateData/init/BC1(La139)Dd/ind/1/bwCpUnsLoc.rds', probable reason 'No such file or directory'
 #> Error in getStimExpr(pathProject = pathProject, .data = .data, pop = pop,     ind = ind, chnl = chnl, marker = marker, bias = bias, excMin = excMin,     combnExc = combnExc, chnlGate = chnlGate, markerGate = markerGate,     gateTypeCytPos = gateTypeCytPos, mult = mult, gateUnsMethod = gateUnsMethod): Must not specify both marker and chnl
 ```
