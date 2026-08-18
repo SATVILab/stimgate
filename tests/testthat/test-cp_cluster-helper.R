@@ -356,6 +356,99 @@ test_that("getCPClusterDensTblGetActualIndEarlyReturnHandlesVectorInputsCorrectl
   expect_equal(result$ind, 123) # Should take first element
 })
 
+test_that("getCpClusterDensTblGetBatchPrepExListFilterInd filters other cytokine positive cells", {
+  # Synthetic expression table with 4 cells across IFNg and IL2
+  exTbl <- tibble::tibble(
+    IFNg = c(10, 2, 12, 1),
+    IL2  = c(1, 15, 12, 2)
+  )
+  attr(exTbl, "ind") <- "2"
+  attr(exTbl, "batch") <- "batch1"
+
+  gateTbl <- tibble::tibble(
+    ind = c("2", "2"),
+    chnl = c("IFNg", "IL2"),
+    gate = c(5, 5),
+    gateCyt = c(8, 8)
+  )
+
+  # Evaluating IFNg (chnlCut = "IFNg"):
+  # Cells positive for other cytokines (IL2 > 5: cells 2 and 3) should be excluded
+  # Cell 1: IFNg=10 (>5), IL2=1 (<=5) -> single-pos IFNg -> retained
+  # Cell 2: IFNg=2 (<=5), IL2=15 (>5) -> pos for IL2 -> excluded
+  # Cell 3: IFNg=12 (>5), IL2=12 (>5) -> double-pos -> pos for IL2 -> excluded
+  # Cell 4: IFNg=1 (<=5), IL2=2 (<=5) -> double-neg -> retained
+
+  resBase <- .getCpClusterDensTblGetBatchPrepExListFilterInd(
+    exTbl = exTbl,
+    gateTbl = gateTbl,
+    chnlCut = "IFNg",
+    calcCytPosGates = FALSE
+  )
+  expect_equal(resBase$IFNg, c(10, 1))
+  expect_equal(resBase$IL2, c(1, 2))
+  expect_equal(attr(resBase, "ind"), "2")
+
+  # Repeat evaluating IL2 (chnlCut = "IL2"):
+  # Cells positive for IFNg (>5: cells 1 and 3) should be excluded
+  resIl2 <- .getCpClusterDensTblGetBatchPrepExListFilterInd(
+    exTbl = exTbl,
+    gateTbl = gateTbl,
+    chnlCut = "IL2",
+    calcCytPosGates = FALSE
+  )
+  expect_equal(resIl2$IFNg, c(2, 1))
+  expect_equal(resIl2$IL2, c(15, 2))
+
+  # Test calcCytPosGates = TRUE (uses gateCyt threshold for other cytokines)
+  gateTblCyt <- tibble::tibble(
+    ind = c("2", "2"),
+    chnl = c("IFNg", "IL2"),
+    gate = c(5, 5),
+    gateCyt = c(10, 10)
+  )
+  # For IFNg evaluation with calcCytPosGates = TRUE:
+  # IL2 threshold is gateCyt = 10. Cell 2 (IL2=15) and Cell 3 (IL2=12) > 10 -> excluded
+  resCyt <- .getCpClusterDensTblGetBatchPrepExListFilterInd(
+    exTbl = exTbl,
+    gateTbl = gateTblCyt,
+    chnlCut = "IFNg",
+    calcCytPosGates = TRUE
+  )
+  expect_equal(resCyt$IFNg, c(10, 1))
+})
+
+test_that("getCpClusterDensTblGetBatchPrepExListFilter filters list of samples", {
+  exUnstim <- tibble::tibble(IFNg = c(1, 2), IL2 = c(1, 1))
+  attr(exUnstim, "ind") <- "1"
+
+  exStim1 <- tibble::tibble(IFNg = c(10, 2), IL2 = c(1, 15))
+  attr(exStim1, "ind") <- "2"
+
+  exStim2 <- tibble::tibble(IFNg = c(12, 1), IL2 = c(12, 2))
+  attr(exStim2, "ind") <- "3"
+
+  exList <- list("1" = exUnstim, "2" = exStim1, "3" = exStim2)
+
+  gateTbl <- tibble::tibble(
+    ind = c("2", "2", "3", "3"),
+    chnl = c("IFNg", "IL2", "IFNg", "IL2"),
+    gate = c(5, 5, 5, 5)
+  )
+
+  resList <- .getCpClusterDensTblGetBatchPrepExListFilter(
+    exList = exList,
+    chnlCut = "IFNg",
+    gateTbl = gateTbl,
+    calcCytPosGates = FALSE
+  )
+
+  # Result should be a list of stimulated samples ("2" and "3"), excluding unstim ("1")
+  expect_named(resList, c("2", "3"))
+  expect_equal(nrow(resList[["2"]]), 1) # cell 1 retained, cell 2 (IL2=15) excluded
+  expect_equal(nrow(resList[["3"]]), 1) # cell 2 retained, cell 1 (IL2=12) excluded
+})
+
 # Test edge cases for the filterAboveMin function
 test_that("getPropBSByCPTblDataListFilterAboveMinHandlesEdgeCasesGracefully", {
   skip_if_not_installed("dplyr")
