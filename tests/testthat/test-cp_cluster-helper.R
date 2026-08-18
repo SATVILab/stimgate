@@ -11,8 +11,7 @@
   gateTbl,
   chnlSingleExc,
   chnl,
-  gateTypeCytPos,
-  gateTypeSinglePos
+  gateTypeCytPos
 ) {
   # Mock function - returns logical vector for testing
   rep(FALSE, nrow(ex))
@@ -69,8 +68,7 @@ sourceTestHelpers <- function() {
           gateTbl = gateTblInd,
           chnlSingleExc = attr(exList[[i]], "chnlCut"),
           chnl = NULL,
-          gateTypeCytPos = ifelse(calcCytPosGates, "cyt", "base"),
-          gateTypeSinglePos = "base"
+          gateTypeCytPos = ifelse(calcCytPosGates, "cyt", "base")
         )
       exList[[i]][!posIndVecButSinglePosCurr, , drop = FALSE]
     }) |>

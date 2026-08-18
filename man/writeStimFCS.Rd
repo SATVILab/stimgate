@@ -16,7 +16,6 @@ writeStimFCS(
   transChnl = NULL,
   combnExc = NULL,
   gateTypeCytPos = "cyt",
-  gateTypeSinglePos = "single",
   mult = FALSE,
   gateUnsMethod = "min"
 )
@@ -43,8 +42,6 @@ writeStimFCS(
 \item{combnExc}{list. Combinations of channels to exclude.}
 
 \item{gateTypeCytPos}{character. Gate type to use for cytokine-positive cells.}
-
-\item{gateTypeSinglePos}{character. Gate type to use for single-positive cells.}
 
 \item{mult}{logical. Whether cells must be multi-positive.}
 

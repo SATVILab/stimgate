@@ -17,7 +17,6 @@ getStimExpr(
   chnlGate = NULL,
   markerGate = NULL,
   gateTypeCytPos = "cyt",
-  gateTypeSinglePos = "single",
   mult = FALSE,
   gateUnsMethod = "min",
   transFn = NULL,
@@ -60,9 +59,6 @@ Cannot be specified with \code{chnl_gate}. Default is NULL.}
 
 \item{gateTypeCytPos}{character Gate type to use for cytokine-positive
 cells. Default is "cyt".}
-
-\item{gateTypeSinglePos}{character Gate type to use for single-positive
-cells. Default is "single".}
 
 \item{mult}{logical Whether to return only multi-functional cells (positive
 for multiple markers). Default is FALSE.}
