@@ -867,7 +867,7 @@
   adf <- switch(
     class(.data)[1],
     "GatingSet" = {
-      gh <- .data[[1]]
+      gh <- .data[[flowWorkspace::sampleNames(.data)[1]]]
       fr <- flowWorkspace::gh_pop_get_data(gh)
       flowCore::parameters(fr)@data
     },
