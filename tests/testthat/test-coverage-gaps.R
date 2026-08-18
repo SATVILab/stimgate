@@ -58,7 +58,6 @@ test_that("stimgateGateRunsWithGateCombnPrejoin", {
 test_that("stimgateGateRunsWithGateCombnNo", {
   skip_if_not_installed("flowWorkspace")
   skip_if_not_installed("flowCore")
-  skip_if_not_installed("HDCytoData")
 
   # Get example data
   exampleData <- stimgate::getExampleData()
@@ -88,7 +87,6 @@ test_that("stimgateGateRunsWithGateCombnNo", {
 test_that("stimgateGateRunsWithGateCombnMedian", {
   skip_if_not_installed("flowWorkspace")
   skip_if_not_installed("flowCore")
-  skip_if_not_installed("HDCytoData")
 
   # Get example data
   exampleData <- stimgate::getExampleData()
@@ -118,7 +116,6 @@ test_that("stimgateGateRunsWithGateCombnMedian", {
 test_that("stimgateGateRunsWithGateCombnMax", {
   skip_if_not_installed("flowWorkspace")
   skip_if_not_installed("flowCore")
-  skip_if_not_installed("HDCytoData")
 
   # Get example data
   exampleData <- stimgate::getExampleData()
