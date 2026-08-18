@@ -38,6 +38,7 @@
 ^LICENSE\.md$
 ^manifest\.csv$
 ^NEWS\.md$
+^README\.html$
 ^\.github/
 ^\.github$
 # End of projr section
