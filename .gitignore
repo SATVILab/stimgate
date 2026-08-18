@@ -50,7 +50,9 @@ docs/**
 _raw_data/**
 _tmp/**
 _output/**
+AGENTS.md
 CHANGES_SUMMARY.md
+README.html
 # End of projr section
 
 _tmp/log/sbatch/projr_build_output
