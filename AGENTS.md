@@ -216,9 +216,7 @@ pkgdown::check_pkgdown()
   - `python/`: Python helper scripts used by analysis (not part of the R package).
     - `fbeta.py`: Richards F-beta thresholding implementation (comparison method).
   - `r/`: R helper scripts used by analysis only — not loaded by `devtools::load_all()` and not part of the `stimgate` namespace.
-    - `cytoUtils-cytokine_cutpoint.R`: Historical competitor tailgate implementation retained only for benchmark comparison and sourced explicitly by `analysis/7-sim-compare-freq_bs.qmd`.
     - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation.
-    - `openCyto-find_peaks_and_valleys.R`: Historical peak/valley helper retained only for the legacy comparator benchmark.
     - `sim-bandwidth.R`: Simulation bandwidth utilities.
     - `sim-bw-adaptive.R`: Adaptive bandwidth simulation helpers.
     - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
@@ -285,16 +283,16 @@ pkgdown::check_pkgdown()
    `cp_uns_loc_filtering.R`), which wraps the native FAUST-derived C++ implementation
    `stimgate_cpPmden()` compiled via `cpp11` (`src/stimgate_cppmden.cpp` and `src/cpPmden.cpp`).
 2. **Comparison code vs. package code**:
-   `R/` contains only StimGate implementation code. Historical comparison helpers
-   for the legacy `cytoUtils`/`openCyto` tailgate live under `scripts/r/` and are
-   sourced explicitly by `analysis/7-sim-compare-freq_bs.qmd` to benchmark against
-   the original tailgate semantics. Note that `R/functionsForBenchmarking-Cyt.R` is an
-   exception: it stays in `R/` because `getExampleData()` (an exported function) calls
-   `simCytExperiment()` internally.
+   `R/` contains only StimGate implementation code. Benchmark comparisons against
+   the legacy `openCyto` tailgate call `openCyto:::.cytokineCutpoint()` from the
+   `openCyto` package directly in `scripts/r/sim-compare-freq_bs.R` and
+   `analysis/7-sim-compare-freq_bs.qmd`. Note that `R/functionsForBenchmarking-Cyt.R`
+   is an exception: it stays in `R/` because `getExampleData()` (an exported function)
+   calls `simCytExperiment()` internally.
 3. **Legacy comparator policy**:
-   The `cytoUtils`/`openCyto` tailgate implementation is intentionally kept only in
-   `scripts/r/` for benchmark comparison and is not part of the StimGate package
-   runtime. Do not reintroduce vendored legacy helpers under `R/`.
+   Tailgate comparator functions are invoked directly from the `openCyto` package via
+   `openCyto:::.cytokineCutpoint()`. Do not reintroduce vendored legacy tailgate helpers
+   under `scripts/r/` or `R/`.
 4. **Audit status for `.getCpTg()` migration (issue #157/#158)**:
    Remaining call sites are catalogued by `.get_cp_tg_call_audit()` and summarised by
    `.get_cp_tg_migration_note_157()`. Current default behaviour still constructs

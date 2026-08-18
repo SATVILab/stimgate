@@ -239,114 +239,11 @@
   )
 }
 
-#' Locate the tailgate helper scripts if they have not already been sourced
+#' Call the openCyto tailgate implementation
 #'
-#' @keywords internal
-.simCompareTailgateFindSourceFiles <- function(tailgateSourceFiles = NULL) {
-  if (!is.null(tailgateSourceFiles)) {
-    return(tailgateSourceFiles[file.exists(tailgateSourceFiles)])
-  }
-
-  root <- tryCatch(
-    {
-      if (requireNamespace("projr", quietly = TRUE)) {
-        projr::projr_path_get("project")
-      } else {
-        getwd()
-      }
-    },
-    error = function(e) getwd()
-  )
-
-  candidate <- list.files(
-    root,
-    pattern = "^(openCyto-find_peaks_and_valleys|cytoUtils-cytokine_cutpoint).*\\.R$",
-    recursive = TRUE,
-    full.names = TRUE
-  )
-
-  if (length(candidate) == 0L) {
-    return(character())
-  }
-
-  candidate[order(
-    !grepl("openCyto-find_peaks_and_valleys", basename(candidate))
-  )]
-}
-
-#' Source and return the real tailgate helper environment
-#'
-#' @keywords internal
-.simCompareTailgateEnv <- function(tailgateSourceFiles = NULL) {
-  if (
-    exists(".cytokineCutpoint", mode = "function") &&
-      exists(".findPeaks", mode = "function") &&
-      exists(".findValleys", mode = "function")
-  ) {
-    return(environment(get(".cytokineCutpoint", mode = "function")))
-  }
-
-  tailgateSourceFiles <- .simCompareTailgateFindSourceFiles(tailgateSourceFiles)
-
-  if (length(tailgateSourceFiles) == 0L) {
-    stop(
-      "Could not find the tailgate helper scripts. Either source the ",
-      "openCyto/cytoUtils scripts before calling this helper, or pass ",
-      "tailgateSourceFiles."
-    )
-  }
-
-  cacheName <- make.names(paste(
-    "tailgate",
-    paste(
-      normalizePath(tailgateSourceFiles, winslash = "/", mustWork = FALSE),
-      collapse = "_"
-    ),
-    sep = "_"
-  ))
-  if (exists(cacheName, envir = .simCompareCacheEnv, inherits = FALSE)) {
-    return(get(cacheName, envir = .simCompareCacheEnv, inherits = FALSE))
-  }
-
-  tailgateEnv <- new.env(parent = parent.frame())
-  for (pathCurr in tailgateSourceFiles) {
-    source(pathCurr, local = tailgateEnv)
-  }
-
-  required <- c(
-    ".cytokineCutpoint",
-    ".findPeaks",
-    ".findValleys",
-    ".derivDensity"
-  )
-  missing <- required[
-    !vapply(
-      required,
-      exists,
-      logical(1),
-      envir = tailgateEnv,
-      mode = "function",
-      inherits = TRUE
-    )
-  ]
-
-  if (length(missing) > 0L) {
-    stop(
-      "Tailgate helper scripts were sourced, but the following functions ",
-      "were not found: ",
-      paste(missing, collapse = ", ")
-    )
-  }
-
-  assign(cacheName, tailgateEnv, envir = .simCompareCacheEnv)
-
-  tailgateEnv
-}
-
-#' Call the cytoUtils/openCyto tailgate implementation
-#'
-#' If bandwidth is NULL, .cytokineCutpoint() forwards NULL to .derivDensity(),
-#' whose default behaviour is to estimate the bandwidth with ks::hpi().
+#' If bandwidth is NULL, openCyto:::.cytokineCutpoint() forwards NULL to
+#' openCyto:::.derivDensity(), whose default behaviour is to estimate the
+#' bandwidth with ks::hpi().
 #'
 #' @keywords internal
 .simCompareTailgateThreshold <- function(
@@ -374,14 +271,11 @@
     ))
   }
 
-  tailgateEnv <- .simCompareTailgateEnv(tailgateSourceFiles)
-  cytokineCutpoint <- get(
-    ".cytokineCutpoint",
-    envir = tailgateEnv,
-    inherits = TRUE
-  )
+  if (!requireNamespace("openCyto", quietly = TRUE)) {
+    stop("Package 'openCyto' is required for tailgate comparisons.")
+  }
 
-  threshold <- cytokineCutpoint(
+  threshold <- openCyto:::.cytokineCutpoint(
     x = x,
     adjust = adjust,
     numPeaks = numPeaks,
