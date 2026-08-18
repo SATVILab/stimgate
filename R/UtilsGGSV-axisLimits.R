@@ -202,16 +202,3 @@ axisLimits <- function(p, limitsExpand = NULL, limitsEqual = FALSE) {
 
   p
 }
-
-#' @param limits_expand list or NULL Alias for `limitsExpand`. Default is NULL.
-#' @param limits_equal logical Alias for `limitsEqual`. Default is FALSE.
-#'
-#' @rdname axisLimits
-#' @export
-axis_limits <- function(p, limits_expand = NULL, limits_equal = FALSE) {
-  axisLimits(
-    p = p,
-    limitsExpand = limits_expand,
-    limitsEqual = limits_equal
-  )
-}

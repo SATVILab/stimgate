@@ -62,6 +62,8 @@ no FCS file will be written for that sample.
 \examples{
 \dontrun{
 # Complete workflow example
+library(stimgate)
+
 # Load your GatingSet (gs) and define batch structure
 # batchList <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
 # where the first element in each batch is the unstimulated sample
