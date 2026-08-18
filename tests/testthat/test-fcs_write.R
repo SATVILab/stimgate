@@ -59,8 +59,10 @@ test_that("writeStimFCS runs with basic parameters", {
 
   # Test output validation
   expect_true(length(list.files(pathDirSave)) > 0)
+  path_fcs <- file.path(pathDirSave, "sample001_stim1.fcs")
+  expect_true(file.exists(path_fcs))
   expect_true(inherits(
-    flowCore::read.FCS(file.path(pathDirSave, "V1.fcs")),
+    flowCore::read.FCS(path_fcs),
     "flowFrame"
   ))
 
