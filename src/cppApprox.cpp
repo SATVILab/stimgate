@@ -1,3 +1,9 @@
+/*
+ * Provenance: Derived from FAUST (https://github.com/RGLab/FAUST, cppApprox.cpp).
+ * Restricted port of base R function approx.
+ * Licensed under GPL (>= 3). See inst/COPYRIGHTS for full details.
+ */
+
 //This file is part of faust, faster annotation using shape-constrained trees.
 
 //faust is free software: you can redistribute it and/or modify
