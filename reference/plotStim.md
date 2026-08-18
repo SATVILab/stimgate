@@ -180,7 +180,7 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 8 of 8
-#> [1] "/tmp/RtmpyaEVaM/dir_4d3264d6aa48/stimgate"
+#> [1] "/tmp/Rtmpcm7zlO/dir_4a875e879635/stimgate"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
@@ -192,5 +192,6 @@ if (requireNamespace("hexbin", quietly = TRUE)) {
     grid = TRUE
   )
 }
-#> Error in ggplot(plotTbl, aes(x = V1, y = V2)): could not find function "ggplot"
+#> Warning: cannot open compressed file '/tmp/Rtmpcm7zlO/dir_4a875e879635/stimgate/intermediateData/init/BC1(La139)Dd/ind/1/bwCpUnsLoc.rds', probable reason 'No such file or directory'
+#> Error in getStimExpr(pathProject = pathProject, .data = .data, pop = pop,     ind = ind, chnl = chnl, marker = marker, bias = bias, excMin = excMin,     combnExc = combnExc, chnlGate = chnlGate, markerGate = markerGate,     gateTypeCytPos = gateTypeCytPos, mult = mult, gateUnsMethod = gateUnsMethod): Must not specify both marker and chnl
 ```
