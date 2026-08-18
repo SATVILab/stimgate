@@ -176,7 +176,7 @@ pkgdown::check_pkgdown()
 - `R/`: Core R source code for the package.
   - `UtilsCytoRSV-chnl_lab.R`: Channel label utilities (get markers/channels from cytometry objects).
   - `UtilsCytoRSV-plot_cyto.R`: Cytometry plotting utilities.
-  - `UtilsGGSV-axis_limits.R`: `ggplot2` axis limit helpers.
+  - `UtilsGGSV-axisLimits.R`: `ggplot2` axis limit helpers.
   - `bw_norm_helpers.R`: Shared bandwidth helpers for standard and normalised bandwidth methods.
   - `check.R`: Input validation helpers.
   - `chnl_settings.R`: Complete channel parameter list with all required settings.
