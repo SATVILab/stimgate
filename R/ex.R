@@ -428,7 +428,6 @@ getStimExpr <- function(
 #' @keywords internal
 .getExProjectPop <- function(pathProject) {
   .assertString(pathProject)
-<<<<<<< Updated upstream
   pathDir <- file.path(pathProject, "sampleData")
   if (!dir.exists(pathDir)) {
     return(character(0))
@@ -436,15 +435,6 @@ getStimExpr <- function(
   dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
   dirVec <- dirVec[nzchar(dirVec) & grepl("^pop_", dirVec)]
   popVec <- unique(sub("^pop_", "", dirVec))
-=======
-  popVec <- list.dirs(
-    file.path(pathProject, "sampleData"),
-    recursive = FALSE
-  ) |>
-    basename() |>
-    sub("^pop_(.*)$", "\\1", x = _)
-  popVec <- setdiff(popVec, "")
->>>>>>> Stashed changes
   .assertStringVector(popVec)
   popVec
 }
@@ -454,7 +444,6 @@ getStimExpr <- function(
   pop <- pop %||% .getExProjectPop(pathProject)
   pop <- pop[[1]]
   .assertString(pop)
-<<<<<<< Updated upstream
   pathDir <- file.path(pathProject, "sampleData", paste0("pop_", pop))
   if (!dir.exists(pathDir)) {
     return(character(0))
@@ -462,15 +451,6 @@ getStimExpr <- function(
   dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
   dirVec <- dirVec[nzchar(dirVec) & grepl("^ind_", dirVec)]
   indVec <- unique(sub("^ind_", "", dirVec))
-=======
-  indVec <- list.dirs(
-    file.path(pathProject, "sampleData", paste0("pop_", pop)),
-    recursive = FALSE
-  ) |>
-    basename() |>
-    sub("^ind_", "", x = _)
-  indVec <- setdiff(indVec, "")
->>>>>>> Stashed changes
   .assertStringVector(indVec)
   indVec
 }
@@ -490,18 +470,12 @@ getStimExpr <- function(
     paste0("ind_", ind)
   )
   .assertString(pathChnlDir)
-<<<<<<< Updated upstream
   if (!dir.exists(pathChnlDir)) {
     return(character(0))
   }
   fnVec <- list.files(pathChnlDir)
   fnVec <- fnVec[grepl("^chnl_.*\\.rds$", fnVec)]
   chnlVec <- unique(sub("^chnl_(.*)\\.rds$", "\\1", fnVec))
-=======
-  chnlVec <- list.files(pathChnlDir) |>
-    sub("^chnl_(.*)\\.rds$", "\\1", x = _)
-  chnlVec <- setdiff(chnlVec, "")
->>>>>>> Stashed changes
   .assertStringVector(chnlVec)
   chnlVec
 }
