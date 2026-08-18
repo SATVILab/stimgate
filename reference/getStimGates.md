@@ -75,9 +75,9 @@ pathProject <- gateStim(
 #> getting cyt combn frequencies
 #> batch 8 of 8
 
-# Get statistics for the identified gates
+# Get identified gates
 gates <- getStimGates(pathProject)
-#> Warning: cannot open compressed file '/tmp/RtmpYMNNMG/getGateExample/gates/poproot/chnlBC2(Pr141)Dd/all/gateTbl.rds', probable reason 'No such file or directory'
+#> Warning: cannot open compressed file '/tmp/RtmpZlgykD/getGateExample/gates/poproot/chnlBC2(Pr141)Dd/all/gateTbl.rds', probable reason 'No such file or directory'
 #> Error in map(.x, .f, ...): ℹ In index: 2.
 #> Caused by error in `map()`:
 #> ℹ In index: 2.

@@ -106,6 +106,16 @@ simCytExperiment(
   Numeric. Standard deviation of cluster-level perturbations applied
   during cell-level simulation. Default is 0.
 
+- covEvMin:
+
+  Numeric. Minimum eigenvalue for cluster covariance matrices. Default
+  is 1.
+
+- covEvMax:
+
+  Numeric. Maximum eigenvalue for cluster covariance matrices. Default
+  is 2.
+
 ## Value
 
 A list with two elements:

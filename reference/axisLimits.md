@@ -37,6 +37,14 @@ axis_limits(p, limits_expand = NULL, limits_equal = FALSE)
   logical If TRUE, then the ranges on the x- and y-axes must be equal.
   Effectively applied after expand_grid is applied. Default is FALSE.
 
+- limits_expand:
+
+  list or NULL Alias for `limitsExpand`. Default is NULL.
+
+- limits_equal:
+
+  logical Alias for `limitsEqual`. Default is FALSE.
+
 ## Value
 
 A ggplot object with adjusted axis limits.

@@ -1,6 +1,6 @@
 # Get gating statistics
 
-Get gating statistics
+Read and return gating statistics computed during gating.
 
 ## Usage
 
