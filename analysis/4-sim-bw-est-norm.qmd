@@ -30,6 +30,8 @@ if (
   }
 }
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
+# Source simulation helpers in dependency order:
+# sim-misc.R must be sourced before sim-bandwidth.R for simulation utilities.
 for (fn in c("sim-misc.R", "sim-bandwidth.R")) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -385,7 +387,7 @@ bw_list_raw_mtd <- progressr::with_progress({
 
       out <- tryCatch(
         {
-          sim_res <- stimgate:::.simBandwidthEstBwDirect(
+          sim_res <- .simBandwidthEstBwDirect(
             nSample = 10,
             nMarker = 1,
             nCondition = 2,
