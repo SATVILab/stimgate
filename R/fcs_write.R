@@ -264,7 +264,7 @@ writeStimFCS <- function(
     "max" = max,
     "mean" = mean,
     "tmean" = function(x) mean(x, trim = 0.2),
-    "med" = median,
+    "med" = stats::median,
     stop("gateUnsMethod not recognised")
   )
 }
@@ -335,7 +335,7 @@ writeStimFCS <- function(
     as.character()
   gateTbl |>
     dplyr::mutate(ind = indVec) |>
-    dplyr::select(chnl, marker, batch, ind, everything()) |> # nolint
+    dplyr::select(chnl, marker, batch, ind, dplyr::everything()) |> # nolint
     dplyr::arrange(chnl, marker, batch, ind)
 }
 

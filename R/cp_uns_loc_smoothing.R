@@ -144,7 +144,7 @@
 
   k <- min(n - 1L, 20L)
 
-  fml <- as.formula(paste0(
+  fml <- stats::as.formula(paste0(
     "probSmooth ~ s(`",
     chnl,
     "`, bs = 'mpi', k = ",
@@ -216,7 +216,7 @@
   method = NA_character_
 ) {
   # predict on full dataset
-  predVec <- predict(fit, newdata = dataMod, type = "response")
+  predVec <- stats::predict(fit, newdata = dataMod, type = "response")
   meanAbsError <- mean(abs(predVec - dataMod$probSmooth))
   derivTbl <- .getCpUnsLocGetProbSmoothDerivativeTbl(
     fit = fit,
@@ -285,17 +285,17 @@
   newData <- dataMod[rep(1L, length(xGrid)), , drop = FALSE]
   newData[[chnl]] <- xGrid
   predGrid <- try(
-    predict(fit, newdata = newData, type = "response"),
+    stats::predict(fit, newdata = newData, type = "response"),
     silent = TRUE
   )
   newData[[chnl]] <- xLeft
   predLeft <- try(
-    predict(fit, newdata = newData, type = "response"),
+    stats::predict(fit, newdata = newData, type = "response"),
     silent = TRUE
   )
   newData[[chnl]] <- xRight
   predRight <- try(
-    predict(fit, newdata = newData, type = "response"),
+    stats::predict(fit, newdata = newData, type = "response"),
     silent = TRUE
   )
   if (
@@ -358,7 +358,7 @@
 
   k <- min(n - 1L, 20L)
 
-  fml <- as.formula(paste0(
+  fml <- stats::as.formula(paste0(
     "probSmooth ~ s(`",
     chnl,
     "`, bs = 'micv', k = ",

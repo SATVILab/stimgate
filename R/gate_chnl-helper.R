@@ -42,7 +42,7 @@
         batch,
         ind,
         gate,
-        everything() # nolint
+        dplyr::everything() # nolint
       )
   })
 }

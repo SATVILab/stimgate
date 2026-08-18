@@ -6,7 +6,7 @@
   if (n == 1) {
     return(matrix(ev, 1, 1))
   }
-  z <- matrix(ncol = n, rnorm(n^2))
+  z <- matrix(ncol = n, stats::rnorm(n^2))
   decomp <- qr(z)
   q <- qr.Q(decomp)
   r <- qr.R(decomp)
@@ -328,7 +328,7 @@ simCytExperiment <- function(
       meanExprMat +
         matrix(
           rep(
-            rnorm(nMarker, mean = 0, sd = samplePerturbationSd),
+            stats::rnorm(nMarker, mean = 0, sd = samplePerturbationSd),
             each = nCluster
           ),
           byrow = FALSE,
@@ -470,7 +470,7 @@ simCytSample <- function(
       meanExprMat +
         matrix(
           rep(
-            rnorm(nMarker, mean = 0, sd = conditionPerturbationSd),
+            stats::rnorm(nMarker, mean = 0, sd = conditionPerturbationSd),
             each = nCluster
           ),
           byrow = FALSE,
@@ -759,7 +759,7 @@ simCytCluster <- function(
   conditionPerturbationVec <- if (perturbationSd == 0L) {
     meanExprVec
   } else {
-    meanExprVec + rnorm(nMarker, mean = 0, sd = perturbationSd)
+    meanExprVec + stats::rnorm(nMarker, mean = 0, sd = perturbationSd)
   }
   currentSigma <- .posDef(nMarker, covEvMin, covEvMax)
   simCytClusterData(

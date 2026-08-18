@@ -19,12 +19,13 @@
 #'
 #' @examples
 #' \donttest{
-#' # Create example flowFrame-like data structure
-#' data(GvHD, package = "flowCore")
-#' fs <- GvHD[1:2]
+#' if (requireNamespace("flowCore", quietly = TRUE)) {
+#'   # Create example flowFrame-like data structure
+#'   data(GvHD, package = "flowCore")
 #'
-#' # Get channel to marker mapping
-#' chnlLab(fs[[1]])
+#'   # Get channel to marker mapping
+#'   chnlLab(GvHD[[1]])
+#' }
 #' }
 #'
 #' @aliases markerLab, chnlToMarker, markerToChnl, getMarker, getChnl
@@ -48,7 +49,7 @@ chnlLab <- function(data) {
     stop("classOfDataNotRecognised")
   )
 
-  labVec <- setNames(adf$desc, adf$name)
+  labVec <- stats::setNames(adf$desc, adf$name)
   for (i in seq_along(labVec)) {
     if (is.na(labVec[i])) {
       labVec[i] <- names(labVec)[i]

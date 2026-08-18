@@ -806,7 +806,7 @@
 
 #' @keywords internal
 .getCpUnsLocConditionCheckMaxX <- function(exTblStimNoMin, cpMin) {
-  (quantile(.getCut(exTblStimNoMin), 0.9) + 3 * sd(.getCut(exTblStimNoMin))) <=
+  (stats::quantile(.getCut(exTblStimNoMin), 0.9) + 3 * stats::sd(.getCut(exTblStimNoMin))) <=
     cpMin
 }
 

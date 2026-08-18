@@ -821,7 +821,7 @@
         pathProject = pathProject
       )
       purrr::map_dbl(exList, function(ex) {
-        median(.getCut(ex)[.getCut(ex) > min(.getCut(ex))], na.rm = TRUE)[[
+        stats::median(.getCut(ex)[.getCut(ex) > min(.getCut(ex))], na.rm = TRUE)[[
           1
         ]] # nolint
       })
@@ -882,7 +882,7 @@
     stop("classOfDataNotRecognised")
   )
 
-  labVec <- setNames(adf$desc, adf$name)
+  labVec <- stats::setNames(adf$desc, adf$name)
   for (i in seq_along(labVec)) {
     if (is.na(labVec[i])) {
       labVec[i] <- names(labVec)[i]
