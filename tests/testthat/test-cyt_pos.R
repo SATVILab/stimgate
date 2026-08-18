@@ -1,5 +1,3 @@
-library(testthat)
-
 test_that("cytPos gates actually happen", {
   testData <- getTestData(
     scenario = "cytPos",

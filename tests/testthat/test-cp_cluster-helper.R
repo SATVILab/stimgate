@@ -1,5 +1,3 @@
-library(testthat)
-
 # Test helper functions for cpCluster-helper.R
 # These tests focus on edge cases and specific functionality mentioned in the issue
 
@@ -101,9 +99,6 @@ test_that("getPropBSByCPTblDataListFilterAboveMinHandlesZeroRowsCorrectly", {
   skip_if_not_installed("dplyr")
   skip_if_not_installed("purrr")
 
-  library(dplyr)
-  library(purrr)
-
   # Create test data that will result in zero rows after filtering
   # We need a case where the filter condition results in no rows
   # This can happen when there are NAs or when the data structure is unexpected
@@ -141,9 +136,6 @@ test_that("getPropBSByCPTblDataListFilterAboveMinZeroRowReconstructionLogic", {
   # Test the specific zero-row reconstruction logic by mocking the condition
   skip_if_not_installed("dplyr")
   skip_if_not_installed("purrr")
-
-  library(dplyr)
-  library(purrr)
 
   # Create a custom version that forces zero rows for testing
   .getPropBSByCPTblDataListFilterAboveMinTest <- function(
@@ -208,9 +200,6 @@ test_that("getPropBSByCPTblDataListFilterAboveMinHandlesNormalCaseCorrectly", {
   skip_if_not_installed("dplyr")
   skip_if_not_installed("purrr")
 
-  library(dplyr)
-  library(purrr)
-
   # Create test data with values that won't be filtered out
   testData <- data.frame(
     batch = c("batch1", "batch1", "batch1"),
@@ -241,9 +230,6 @@ test_that("getPropBSByCPTblDataListFilterCytPosReturnsOriginalListWhenFilterOthe
   skip_if_not_installed("dplyr")
   skip_if_not_installed("purrr")
 
-  library(dplyr)
-  library(purrr)
-
   # Create test data
   testData <- data.frame(
     batch = c("batch1", "batch1"),
@@ -273,9 +259,6 @@ test_that("getPropBSByCPTblDataListFilterCytPosReturnsOriginalListWhenFilterOthe
 test_that("getPropBSByCPTblDataListFilterCytPosProcessesLastElementCorrectly", {
   skip_if_not_installed("dplyr")
   skip_if_not_installed("purrr")
-
-  library(dplyr)
-  library(purrr)
 
   # Create test data
   testData1 <- data.frame(
@@ -319,9 +302,6 @@ test_that("getCPClusterDensTblGetActualIndEarlyReturnCreatesCorrectStructure", {
   skip_if_not_installed("tibble")
   skip_if_not_installed("tidyr")
 
-  library(tibble)
-  library(tidyr)
-
   batch <- "testBatch"
   ind <- 123
 
@@ -342,9 +322,6 @@ test_that("getCPClusterDensTblGetActualIndEarlyReturnCreatesCorrectStructure", {
 test_that("getCPClusterDensTblGetActualIndEarlyReturnHandlesVectorInputsCorrectly", {
   skip_if_not_installed("tibble")
   skip_if_not_installed("tidyr")
-
-  library(tibble)
-  library(tidyr)
 
   # Test with vector inputs (should take first element)
   batch <- c("testBatch1", "testBatch2")
@@ -454,9 +431,6 @@ test_that("getPropBSByCPTblDataListFilterAboveMinHandlesEdgeCasesGracefully", {
   skip_if_not_installed("dplyr")
   skip_if_not_installed("purrr")
 
-  library(dplyr)
-  library(purrr)
-
   # Test with empty input list
   exListFilter <- list()
   cpMin <- 1.0
@@ -482,7 +456,7 @@ test_that("getPropBSByCPTblDataListFilterAboveMinHandlesEdgeCasesGracefully", {
     exListFilterSingle,
     cpMin
   )
-  expect_length(result_single, 1)
+  expect_length(resultSingle, 1)
   expect_equal(nrow(resultSingle[[1]]), 1)
   expect_equal(attr(resultSingle[[1]], "nCell"), 1)
 })
