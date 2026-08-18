@@ -641,7 +641,7 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 8 of 8
-#> [1] "/tmp/RtmpZlgykD/demonstration"
+#> [1] "/tmp/RtmpGzVsdk/demonstration"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
@@ -653,5 +653,5 @@ if (requireNamespace("hexbin", quietly = TRUE)) {
     grid = TRUE
   )
 }
-#> Error in pop%%setdiff(.gateGetPop(pathProject), ""): non-numeric argument to binary operator
+#> Error in plotStim(ind = exampleData$batchList[[1]], .data = gs, pathProject = pathProject,     marker = exampleData$marker, grid = TRUE): Cannot plot gates for multiple populations
 ```
