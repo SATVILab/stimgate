@@ -39,9 +39,8 @@ calculate limits to pass to \code{ggplot2::expand_limits}).
 }
 \examples{
 data("cars", package = "datasets")
-library(ggplot2)
-p <- ggplot(cars, aes(speed, dist)) +
-  geom_point()
+p <- ggplot2::ggplot(cars, ggplot2::aes(speed, dist)) +
+  ggplot2::geom_point()
 
 axisLimits(
   p,
