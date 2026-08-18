@@ -120,6 +120,8 @@ if (
   }
 }
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
+# Source simulation helpers in dependency order:
+# sim-misc.R must be sourced before sim-bandwidth.R for simulation utilities.
 for (fn in c("sim-misc.R", "sim-bandwidth.R")) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -544,7 +546,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
         out <- tryCatch(
           {
-            sim_res <- stimgate:::.simBandwidthBsFreq(
+            sim_res <- .simBandwidthBsFreq(
               nSample = 5,
               nMarker = 1,
               nCondition = 2,
@@ -961,7 +963,7 @@ row_seed <- furrr:::make_seeds(
 
 assign(".Random.seed", row_seed, envir = .GlobalEnv)
 
-# debugonce(stimgate:::.simBandwidthBsFreq)
+# debugonce(.simBandwidthBsFreq)
 # undebug(.getCpUnsLocGetProb)
 # undebug(.getCpUnsLocGetCp)
 debug(.getCpUnsLocCondition)
