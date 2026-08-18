@@ -292,14 +292,14 @@ pkgdown::check_pkgdown()
    `stimgate_cpPmden()` compiled via `cpp11` (`src/stimgate_cppmden.cpp` and `src/cpPmden.cpp`).
 2. **Comparison code vs. package code**:
    `R/` contains only StimGate implementation code. Benchmark comparisons against
-   the legacy `openCyto` tailgate call `openCyto:::.cytokineCutpoint()` from the
-   `openCyto` package directly in `scripts/r/sim-compare-freq_bs.R` and
+   the tailgate method call `cytoUtils:::.cytokine_cutpoint()` from the
+   `cytoUtils` package directly in `scripts/r/sim-compare-freq_bs.R` and
    `analysis/7-sim-compare-freq_bs.qmd`. Note that `R/functionsForBenchmarking-Cyt.R`
    is an exception: it stays in `R/` because `getExampleData()` (an exported function)
    calls `simCytExperiment()` internally.
 3. **Legacy comparator policy**:
-   Tailgate comparator functions are invoked directly from the `openCyto` package via
-   `openCyto:::.cytokineCutpoint()`. Do not reintroduce vendored legacy tailgate helpers
+   Tailgate comparator functions are invoked directly from the `cytoUtils` package via
+   `cytoUtils:::.cytokine_cutpoint()`. Do not reintroduce vendored legacy tailgate helpers
    under `scripts/r/` or `R/`.
 4. **Audit status for `.getCpTg()` migration (issue #157/#158)**:
    Remaining call sites are catalogued by `.get_cp_tg_call_audit()` and summarised by
