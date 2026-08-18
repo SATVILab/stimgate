@@ -450,7 +450,7 @@
   }
 
   res <- try(
-    .stimgate_cpPmden(x_sorted),
+    stimgate_cpPmden(x_sorted),
     silent = TRUE
   )
   if (inherits(res, "try-error")) {
