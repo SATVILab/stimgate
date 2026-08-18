@@ -246,7 +246,6 @@ gamma_range_vec <- uni_tbl |>
   range()
 from_gamma <- gamma_range_vec[1] - 0.05 * abs(diff(gamma_range_vec))
 gamma_range <- c(from_gamma, gamma_range_vec[2])
-debug(make_density_tbl)
 dens_tbl <- make_density_tbl(uni_tbl, gamma_range) |>
   dplyr::mutate(
     transformation = factor(
