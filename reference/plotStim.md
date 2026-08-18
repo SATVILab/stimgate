@@ -192,15 +192,17 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 8 of 8
-#> [1] "/tmp/RtmpTTxeOG/dir_4d994a61a6cc/stimgate"
+#> [1] "/tmp/RtmpYMNNMG/dir_4e6059efb3c3/stimgate"
 
 # Create plots
-plots <- plotStim(
-  ind = exampleData$batchList[[1]], # indices in `gs` to plot
-  .data = gs, # GatingSet
-  pathProject = pathProject,
-  marker = exampleData$marker,
-  grid = TRUE
-)
+if (requireNamespace("hexbin", quietly = TRUE)) {
+  plots <- plotStim(
+    ind = exampleData$batchList[[1]], # indices in `gs` to plot
+    .data = gs, # GatingSet
+    pathProject = pathProject,
+    marker = exampleData$marker,
+    grid = TRUE
+  )
+}
 #> Error in pop%%setdiff(.gateGetPop(pathProject), ""): non-numeric argument to binary operator
 ```
