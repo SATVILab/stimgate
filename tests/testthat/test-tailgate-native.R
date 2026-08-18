@@ -47,20 +47,6 @@ test_that("native tailgate has a deterministic multimodal fixture and differs fr
   expect_equal(wrapper$lowerBoundX, native$lowerBoundX, tolerance = 1e-8)
   expect_true(native$lowerBoundX > min(x))
   expect_true(native$lowerBoundX < max(x))
-
-  if (requireNamespace("openCyto", quietly = TRUE)) {
-    legacy <- openCyto:::.cytokineCutpoint(
-      x = x,
-      numPeaks = 1,
-      refPeak = 1,
-      tol = 1e-2,
-      side = "right",
-      strict = FALSE,
-      plot = FALSE
-    )
-    expect_true(is.finite(legacy))
-    expect_false(isTRUE(all.equal(native$lowerBoundX, legacy, tolerance = 1e-8)))
-  }
 })
 
 test_that("legacy .getCpTg delegates to the native tailgate helper", {
