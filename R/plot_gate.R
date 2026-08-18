@@ -237,20 +237,7 @@ plotStim <- function(
     return(NULL)
   }
   if (!requireNamespace("hexbin", quietly = TRUE)) {
-    if (interactive()) {
-      promptAnswer <- readline(
-        prompt = paste0(
-          "The 'hexbin' package is required for bivariate plots. ",
-          "Do you want to install it now? [y/n]: "
-        )
-      )
-      if (tolower(promptAnswer) != "y") {
-        stop("Cannot proceed without installing 'hexbin' package.")
-      }
-      utils::install.packages("hexbin")
-    } else {
-      stop("The 'hexbin' package is required but not installed.")
-    }
+    stop("The 'hexbin' package is required for bivariate plots.")
   }
   pList <- lapply(seq_along(ind), function(i) {
     indCurr <- ind[[i]]
