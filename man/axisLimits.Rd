@@ -25,6 +25,10 @@ Default is NULL.}
 \item{limitsEqual}{logical If TRUE, then the ranges on the x- and
 y-axes must be equal. Effectively applied after expand_grid is
 applied. Default is FALSE.}
+
+\item{limits_expand}{list or NULL Alias for \code{limitsExpand}. Default is NULL.}
+
+\item{limits_equal}{logical Alias for \code{limitsEqual}. Default is FALSE.}
 }
 \value{
 A ggplot object with adjusted axis limits.
