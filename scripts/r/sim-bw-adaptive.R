@@ -716,6 +716,9 @@
   bwAdaptiveCrossover,
   bwAdaptiveTransitionWidth,
   sim_id,
+  tolClust = tol_clust,
+  locEnforceShapeThreshold = FALSE,
+  calcCytPosGates = calc_cyt_pos_gates,
   nSample = n_sample_run,
   nIter = n_iter_run,
   nMarker = n_marker_run,
@@ -848,7 +851,9 @@
       minCell = min_cell,
       maxPosProbX = max_pos_prob_x,
       gateCombn = gate_combn,
-      tolClust = tol_clust
+      tolClust = tolClust,
+      locEnforceShapeThreshold = locEnforceShapeThreshold,
+      calcCytPosGates = calcCytPosGates
     ))
 
     truth_tbl <- .truth_from_labels(
@@ -905,6 +910,9 @@
         bwAdaptiveExtra = bwAdaptiveExtra %||% NA_real_,
         bwAdaptiveCrossover = bwAdaptiveCrossover %||% NA_real_,
         bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth %||% NA_real_,
+        tolClust = tolClust %||% NA_real_,
+        locEnforceShapeThreshold = locEnforceShapeThreshold,
+        calcCytPosGates = calcCytPosGates,
         sim_id = sim_id
       ) |>
       dplyr::select(
