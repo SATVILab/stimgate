@@ -817,7 +817,6 @@
       batchList = batch_list,
       marker = paste0("MarkerF", seq_len(nMarker)),
       calcCytPosGates = calc_cyt_pos_gates,
-      calcSinglePosGates = calc_single_pos_gates,
       biasUns = bias_uns,
       bw = bw_setting,
       bwFallback = if (!is.null(bw_setting)) bw_setting else "auto",

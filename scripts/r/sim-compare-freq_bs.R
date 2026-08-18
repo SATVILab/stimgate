@@ -622,7 +622,6 @@
   gateCombn = "min",
   tolClust = NULL,
   calcCytPosGates = FALSE,
-  calcSinglePosGates = FALSE,
   includeLocCondition = TRUE
 ) {
   truthTbl <- .simCompareTruthTable(
@@ -658,7 +657,6 @@
         batchList = batchList,
         marker = paste0("MarkerF", seq_len(nMarker)),
         calcCytPosGates = calcCytPosGates,
-        calcSinglePosGates = calcSinglePosGates,
         biasUns = biasUns,
         bw = bw,
         bwFallback = bwFallback,
@@ -841,7 +839,6 @@
   locTolRefPeak = "highest",
   gateCombn = "min",
   calcCytPosGates = FALSE,
-  calcSinglePosGates = FALSE,
   includeLocCondition = TRUE,
   pathFbeta = NULL,
   fbetaPatchPy2Compat = TRUE,
@@ -981,7 +978,6 @@
       gateCombn = gateCombn,
       tolClust = tolClust,
       calcCytPosGates = calcCytPosGates,
-      calcSinglePosGates = calcSinglePosGates,
       includeLocCondition = includeLocCondition
     )
 
