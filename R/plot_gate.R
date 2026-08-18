@@ -103,7 +103,7 @@ plotStim <- function(
   if (is.null(marker) && is.null(chnl)) {
     stop("Must specify one of marker or chnl")
   }
-  pop <- pop %% setdiff(.gateGetPop(pathProject), "")
+  pop <- pop %|c|% setdiff(.gateGetPop(pathProject), "")
   if (length(pop) > 1L) {
     stop("Cannot plot gates for multiple populations")
   }
@@ -535,6 +535,9 @@ plotStim <- function(
   mult,
   gateUnsMethod
 ) {
+  if (is.null(ind) || length(ind) == 0L) {
+    return(NULL)
+  }
   pathBwProject <- file.path(
     pathProject,
     "intermediateData",
