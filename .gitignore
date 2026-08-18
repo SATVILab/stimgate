@@ -2,7 +2,8 @@
 .Rproj.user
 .Rhistory
 .nfs*
-
+src/*.o
+src/*.so
 R/test4.R
 R/test.R
 R/test2.R
