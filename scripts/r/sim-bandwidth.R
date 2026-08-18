@@ -1011,6 +1011,17 @@
   covEvMax = 2,
   excMin = TRUE,
   capStimRange = TRUE,
+  normPeakFrac = 0.1,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normExtraJitterFrac = 0.25,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  normMtd = "moments",
   summarise = TRUE
 ) {
   if (!identical(as.integer(nMarker), 1L)) {
@@ -1095,7 +1106,18 @@
         bwAdj = bwAdj,
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
-        bwFallback = bwFallback
+        bwFallback = bwFallback,
+        normPeakFrac = normPeakFrac,
+        normPeakMinRel = normPeakMinRel,
+        normExtraFrac = normExtraFrac,
+        normExtraMax = normExtraMax,
+        normExtraJitterFrac = normExtraJitterFrac,
+        normLambda = normLambda,
+        normDensityN = normDensityN,
+        normExcessBwMtd = normExcessBwMtd,
+        normExcessNcell = normExcessNcell,
+        normAdaptiveNcell = normAdaptiveNcell,
+        normMtd = normMtd
       )
 
       bw_stim <- .simBandwidthRemoveFallbackBw(
@@ -1111,7 +1133,18 @@
         bwAdj = bwAdj,
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
-        bwFallback = bwFallback
+        bwFallback = bwFallback,
+        normPeakFrac = normPeakFrac,
+        normPeakMinRel = normPeakMinRel,
+        normExtraFrac = normExtraFrac,
+        normExtraMax = normExtraMax,
+        normExtraJitterFrac = normExtraJitterFrac,
+        normLambda = normLambda,
+        normDensityN = normDensityN,
+        normExcessBwMtd = normExcessBwMtd,
+        normExcessNcell = normExcessNcell,
+        normAdaptiveNcell = normAdaptiveNcell,
+        normMtd = normMtd
       )
 
       bw_uns <- .simBandwidthRemoveFallbackBw(
@@ -1205,6 +1238,21 @@
   covEvMax = 2,
   excMin = TRUE,
   capStimRange = TRUE,
+  normPeakFrac = 0.1,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normExtraJitterFrac = 0.25,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
+  normMtd = "moments",
   summarise = FALSE
 ) {
   if (!identical(as.integer(nMarker), 1L)) {
@@ -1305,7 +1353,22 @@
           bwAdj = bwAdj,
           bwNcellMin = bwNcellMin,
           bwNcellMax = bwNcellMax,
-          bwFallback = bwFallback
+          bwFallback = bwFallback,
+          normPeakFrac = normPeakFrac,
+          normPeakMinRel = normPeakMinRel,
+          normExtraFrac = normExtraFrac,
+          normExtraMax = normExtraMax,
+          normExtraJitterFrac = normExtraJitterFrac,
+          normLambda = normLambda,
+          normDensityN = normDensityN,
+          normExcessBwMtd = normExcessBwMtd,
+          normExcessNcell = normExcessNcell,
+          normAdaptiveNcell = normAdaptiveNcell,
+          bwAdaptiveCore = bwAdaptiveCore,
+          bwAdaptiveExtra = bwAdaptiveExtra,
+          bwAdaptiveCrossover = bwAdaptiveCrossover,
+          bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
+          normMtd = normMtd
         )
       )
       bwStimCore <- tryCatch(bwObj$bw$stim$bwCore, error = function(e) NA_real_)
@@ -1524,7 +1587,23 @@
   bwAdj,
   bwNcellMin,
   bwNcellMax,
-  bwFallback
+  bwFallback,
+  normPeakFrac = 0.1,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normExtraJitterFrac = 0.25,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
+  normMtd = "moments",
+  adaptive = FALSE
 ) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
@@ -1541,7 +1620,23 @@
           bwMtd = bwMtd,
           bwAdj = bwAdj,
           bwNcellMin = bwNcellMin,
-          bwNcellMax = bwNcellMax
+          bwNcellMax = bwNcellMax,
+          normPeakFrac = normPeakFrac,
+          normPeakMinRel = normPeakMinRel,
+          normExtraFrac = normExtraFrac,
+          normExtraMax = normExtraMax,
+          normExtraJitterFrac = normExtraJitterFrac,
+          normLambda = normLambda,
+          normDensityN = normDensityN,
+          normExcessBwMtd = normExcessBwMtd,
+          normExcessNcell = normExcessNcell,
+          normAdaptiveNcell = normAdaptiveNcell,
+          bwAdaptiveCore = bwAdaptiveCore,
+          bwAdaptiveExtra = bwAdaptiveExtra,
+          bwAdaptiveCrossover = bwAdaptiveCrossover,
+          bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
+          normMtd = normMtd,
+          adaptive = adaptive
         )
       } else {
         .simBandwidthBwOneBaseLegacy(
