@@ -138,24 +138,29 @@
 
   gateTbl <- gateTbl |>
     dplyr::arrange(gateName, chnl, marker, ind) # nolint
-  pathSaveRds <- .gatesGetPathAll(
-    pathProject = pathProject,
-    pop = popGate,
-    chnlCut = chnl[1],
-    init = FALSE
-  )
-  pathSaveCsv <- sub("\\.rds$", ".csv", pathSaveRds)
-  if (file.exists(pathSaveRds)) {
-    file.remove(pathSaveRds)
+  uniqueChnls <- unique(gateTbl$chnl)
+  for (chnlCurr in uniqueChnls) {
+    gateTblCurr <- gateTbl |>
+      dplyr::filter(chnl == chnlCurr)
+    pathSaveRds <- .gatesGetPathAll(
+      pathProject = pathProject,
+      pop = popGate,
+      chnlCut = chnlCurr,
+      init = FALSE
+    )
+    pathSaveCsv <- sub("\\.rds$", ".csv", pathSaveRds)
+    if (file.exists(pathSaveRds)) {
+      file.remove(pathSaveRds)
+    }
+    if (file.exists(pathSaveCsv)) {
+      file.remove(pathSaveCsv)
+    }
+    if (!dir.exists(dirname(pathSaveCsv))) {
+      dir.create(dirname(pathSaveCsv), recursive = TRUE)
+    }
+    utils::write.csv(gateTblCurr, pathSaveCsv, row.names = FALSE)
+    saveRDS(gateTblCurr, pathSaveRds)
   }
-  if (file.exists(pathSaveCsv)) {
-    file.remove(pathSaveCsv)
-  }
-  if (!dir.exists(dirname(pathSaveCsv))) {
-    dir.create(dirname(pathSaveCsv), recursive = TRUE)
-  }
-  utils::write.csv(gateTbl, pathSaveCsv, row.names = FALSE)
-  saveRDS(gateTbl, pathSaveRds)
 }
 
 #' @keywords internal
