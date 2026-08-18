@@ -282,9 +282,8 @@ pkgdown::check_pkgdown()
 1. **Taut-string density**:
    The piecewise-constant taut-string density used for antimode detection is
    provided by the internal helper `.tautStringPmden()` (in
-   `cp_uns_loc_filtering.R`), which wraps `cytoUtils::tautstring()`. Do not
-   re-introduce `ftnonpar` or vendor C++ source for this purpose. `cytoUtils` is
-   listed under `Remotes: RGLab/cytoUtils` in `DESCRIPTION`.
+   `cp_uns_loc_filtering.R`), which wraps the native FAUST-derived C++ implementation
+   `stimgate_cpPmden()` compiled via `cpp11` (`src/stimgate_cppmden.cpp` and `src/cpPmden.cpp`).
 2. **Comparison code vs. package code**:
    `R/` contains only StimGate implementation code. Historical comparison helpers
    for the legacy `cytoUtils`/`openCyto` tailgate live under `scripts/r/` and are
