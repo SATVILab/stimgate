@@ -622,7 +622,7 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 8 of 8
-#> [1] "/tmp/RtmpSjxFDL/demonstration"
+#> [1] "/tmp/Rtmp05XKYq/demonstration"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
@@ -634,5 +634,4 @@ if (requireNamespace("hexbin", quietly = TRUE)) {
     grid = TRUE
   )
 }
-#> Error in getStimExpr(pathProject = pathProject, .data = .data, pop = pop,     ind = ind, chnl = chnl, marker = marker, bias = bias, excMin = excMin,     combnExc = combnExc, chnlGate = chnlGate, markerGate = markerGate,     gateTypeCytPos = gateTypeCytPos, mult = mult, gateUnsMethod = gateUnsMethod): Must not specify both marker and chnl
 ```

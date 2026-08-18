@@ -77,16 +77,19 @@ and markerLab is equivalent to markerToChnl.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
-<span class="r-in"><span><span class="co"># Create example flowFrame-like data structure</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">GvHD</span>, package <span class="op">=</span> <span class="st">"flowCore"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">fs</span> <span class="op">&lt;-</span> <span class="va">GvHD</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">]</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"flowCore"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">exprs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">8</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    ncol <span class="op">=</span> <span class="fl">2</span>,</span></span>
+<span class="r-in"><span>    dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"FSC-A"</span>, <span class="st">"FL1-H"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">ff</span> <span class="op">&lt;-</span> <span class="fu">flowCore</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/flowCore/man/flowFrame-class.html" class="external-link">flowFrame</a></span><span class="op">(</span><span class="va">exprs</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Get channel to marker mapping</span></span></span>
-<span class="r-in"><span><span class="fu">chnlLab</span><span class="op">(</span><span class="va">fs</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>               FSC-H               SSC-H               FL1-H               FL2-H </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        "FSC-Height"        "SSC-Height"         "CD15 FITC"           "CD45 PE" </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>               FL3-H               FL2-A               FL4-H                Time </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        "CD14 PerCP"             "FL2-A"          "CD33 APC" "Time (51.20 sec.)" </span>
+<span class="r-in"><span>  <span class="co"># Get channel to marker mapping</span></span></span>
+<span class="r-in"><span>  <span class="fu">chnlLab</span><span class="op">(</span><span class="va">ff</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   FSC-A   FL1-H </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> "FSC-A" "FL1-H" </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

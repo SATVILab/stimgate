@@ -50,6 +50,8 @@
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header"><h1 id="stimgate">stimgate<a class="anchor" aria-label="anchor" href="#stimgate"></a>
 </h1></div>
+<!-- badges: start -->
+
 <p><code>stimgate</code> is an R package for identifying cells that may have responded to immune stimulation in flow cytometry data. It compares stimulated samples with matched unstimulated controls and estimates marker-specific expression gates relative to the unstimulated background, rather than applying one fixed positivity threshold across samples.</p>
 <p>The package works with <code><a href="https://rdrr.io/pkg/flowWorkspace/man/GatingSet-class.html" class="external-link">flowWorkspace::GatingSet</a></code> objects. Its main entry point, <code><a href="reference/gateStim.html">gateStim()</a></code>, performs the gating workflow and writes the resulting gates, cached expression data and response statistics to a project directory. Plotting, expression extraction and FCS export functions can then use those saved results without rerunning the full gating procedure.</p>
 <div class="section level2">
@@ -171,7 +173,13 @@
 </ul>
 </div>
 
-
+<div class="dev-status">
+<h2 data-toc-skip>Dev status</h2>
+<ul class="list-unstyled">
+<li><a href="https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
+<li><a href="https://app.codecov.io/gh/SATVILab/stimgate" class="external-link"><img src="https://codecov.io/gh/SATVILab/stimgate/graph/badge.svg" alt="Codecov test coverage"></a></li>
+</ul>
+</div>
 
   </aside>
 </div>

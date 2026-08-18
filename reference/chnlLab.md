@@ -31,15 +31,18 @@ equivalent to markerToChnl.
 
 ``` r
 # \donttest{
-# Create example flowFrame-like data structure
-data(GvHD, package = "flowCore")
-fs <- GvHD[1:2]
+if (requireNamespace("flowCore", quietly = TRUE)) {
+  exprs <- matrix(
+    seq_len(8),
+    ncol = 2,
+    dimnames = list(NULL, c("FSC-A", "FL1-H"))
+  )
+  ff <- flowCore::flowFrame(exprs)
 
-# Get channel to marker mapping
-chnlLab(fs[[1]])
-#>               FSC-H               SSC-H               FL1-H               FL2-H 
-#>        "FSC-Height"        "SSC-Height"         "CD15 FITC"           "CD45 PE" 
-#>               FL3-H               FL2-A               FL4-H                Time 
-#>        "CD14 PerCP"             "FL2-A"          "CD33 APC" "Time (51.20 sec.)" 
+  # Get channel to marker mapping
+  chnlLab(ff)
+}
+#>   FSC-A   FL1-H 
+#> "FSC-A" "FL1-H" 
 # }
 ```
