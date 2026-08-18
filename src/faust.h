@@ -5,5 +5,7 @@
  * provides that name within the stimgate src/ directory and delegates to
  * stimgate_faust.h, which contains only the declarations actually required
  * by the vendored files.
+ *
+ * See inst/COPYRIGHTS for full provenance details.
  */
 #include "stimgate_faust.h"
