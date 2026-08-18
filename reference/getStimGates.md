@@ -5,9 +5,7 @@ Get all the gates for each of the markers gated.
 ## Usage
 
 ``` r
-getStimGates(pathProject)
-
-getStimGates(pathProject)
+getStimGates(pathProject, pop = NULL, marker = NULL, chnl = NULL)
 ```
 
 ## Arguments
@@ -35,14 +33,14 @@ getStimGates(pathProject)
 
 Gate table with gates for each sample for each marker.
 
-A data frame with gating statistics.
-
 ## Examples
 
 ``` r
-{
 # Get example dataset
-exampleData <- get_example_data()
+exampleData <- getExampleData()
+#> Cache incomplete, regenerating synthetic test data...
+#> Done
+#> To reload it, use 'load_gs' function
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
 
 # Run the stimgate pipeline
@@ -53,9 +51,36 @@ pathProject <- gateStim(
   marker = exampleData$marker,
   popGate = "root"
 )
+#> ----
+#> getting base gates
+#> ----
+#> 
+#> chnl: BC1(La139)Dd
+#> getting pre-adjustment gates
+#> batch 8 of 8
+#> getting clustered and/or controlled gates
+#> chnl: BC2(Pr141)Dd
+#> getting pre-adjustment gates
+#> batch 8 of 8
+#> getting clustered and/or controlled gates
+#> 
+#> 
+#> ----
+#> getting single+ gates
+#> ----
+#> 
+#> 
+#> 
+#> 
+#> getting cyt combn frequencies
+#> batch 8 of 8
 
 # Get statistics for the identified gates
 gates <- getStimGates(pathProject)
-}
-#> Error in get_example_data(): could not find function "get_example_data"
+#> Warning: cannot open compressed file '/tmp/RtmpgHop1q/getGateExample/gates/poproot/chnlBC2(Pr141)Dd/all/gateTbl.rds', probable reason 'No such file or directory'
+#> Error in map(.x, .f, ...): ℹ In index: 2.
+#> Caused by error in `map()`:
+#> ℹ In index: 2.
+#> Caused by error in `gzfile()`:
+#> ! cannot open the connection
 ```

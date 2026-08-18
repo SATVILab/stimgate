@@ -63,6 +63,7 @@ gateStim(
   tolClust = 1e-07,
   locProbCol = "pred",
   locMinPeakProb = 0.25,
+  locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1/6,
   locAntimodeLowRel = 0.25,
@@ -108,12 +109,12 @@ gateStim(
 - batchList:
 
   list. List where each element contains indices of samples belonging to
-  the same batch/donor. Last index per element is the unstimulated
-  vector, e.g. if `batchList = list(1:3, 4:6)`, then indices 3 and 6
-  correspond to the unstimulated samples for batches 1 and 2,
-  respectively. If `batchList` is named, e.g.
-  `list(pid1 = 1:3, pid2 = 4:6)`, then these names will be used for
-  batch identification.
+  the same batch/donor. The first index per element is the unstimulated
+  control sample, e.g. if `batchList = list(c(3, 1, 2), c(6, 4, 5))`,
+  then indices 3 and 6 correspond to the unstimulated samples for
+  batches 1 and 2, respectively. If `batchList` is named, e.g.
+  `list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))`, then these names will be
+  used for batch identification.
 
 - chnl:
 
@@ -131,9 +132,13 @@ gateStim(
 
 - calcCytPosGates:
 
-  logical. Whether to calculate refined cytokine-positive gates using
-  more sophisticated algorithms. Default is TRUE. When FALSE, only basic
-  gates are calculated, which may be less accurate but faster.
+  logical. Whether to refine each clustered one-marker gate using the
+  target-marker distribution among cells positive for at least one other
+  cytokine. A taut-string density is fitted to those cells. The
+  clustered gate is lowered to the leftmost internal antimode strictly
+  between the full stimulated marginal peak plus one third of its
+  left-window width and the clustered gate. If no eligible antimode
+  exists, the clustered gate is retained. Default is TRUE.
 
 - calcSinglePosGates:
 
@@ -234,10 +239,10 @@ gateStim(
 - bwCluster:
 
   numeric. Optional fallback bandwidth for cluster-based local-FDR
-  imputation. The current cluster step first tries to use a common
-  bandwidth calculated as the median bandwidth across samples with
-  generated local-FDR thresholds. `bwCluster` is used as a fallback when
-  that common bandwidth cannot be estimated. Default is `NULL`.
+  refinement. The cluster step first tries to use the median bandwidth
+  across samples with directly generated local-FDR thresholds.
+  `bwCluster` is used when that common bandwidth cannot be estimated.
+  Default is `NULL`.
 
 - bwAdaptive:
 
@@ -371,11 +376,14 @@ gateStim(
 
   numeric or NULL. Backwards-compatible switch for calculating
   cluster-adjusted local-FDR gates. When `NULL`, cluster adjustment is
-  skipped. When non-NULL, samples without a generated local-FDR
-  threshold may receive an imputed threshold from similar conditions
-  using cluster-level equivalent tolerance values. The numeric value is
-  retained for compatibility and is not used as the derivative tolerance
-  in the current local-FDR cluster imputation.
+  skipped. When non-NULL, paired stimulated and unstimulated densities
+  are clustered on a common absolute-expression grid. Direct thresholds
+  are winsorised within each cluster to its 15th and 85th percentiles
+  when at least three direct thresholds are available. Every non-direct
+  threshold is replaced by the cluster's 60th percentile when at least
+  one direct threshold is available. A cluster without a direct
+  threshold retains its original high thresholds. The numeric value is
+  retained only as a backwards-compatible on/off switch.
 
 - locProbCol:
 
@@ -389,6 +397,16 @@ gateStim(
   numeric. Minimum peak estimated response probability required before a
   local-FDR gate is considered credible. If the maximum probability is
   below this value, no true local-FDR threshold is marked as generated.
+
+- locEnforceShapeThreshold:
+
+  logical. Whether density shape must first define the lowest expression
+  value allowed to inform local-FDR thresholding. When `TRUE`, the lower
+  of the first stimulated-density antimode to the right of the main
+  negative peak and the adjusted stimulated-density tailgate is applied
+  to both samples before densities, response probabilities, and the
+  monotone probability curve are refitted. All subsequent marginal
+  filtering is restricted to this refitted region. Default is `FALSE`.
 
 - locDipAlpha:
 
@@ -479,9 +497,9 @@ gateStim(
 
 - locTolRefPeak:
 
-  character. Reference peak used by cluster imputation when calculating
-  signed equivalent tolerance values from generated local-FDR
-  thresholds. Default is `"highest"`.
+  character. Deprecated clustering setting retained for backwards
+  compatibility. Joint-density quantile transfer does not use a
+  derivative-tolerance reference peak. Default is `"highest"`.
 
 - gateCombn:
 
@@ -545,12 +563,14 @@ cytokine-positive cells:
 **Step 3: Cytokine-Positive Gate Refinement (if calcCytPosGates =
 TRUE)**
 
-- Applies more sophisticated algorithms to refine initial gates
+- Fits a taut-string density to target-marker expression among cells
+  positive for another cytokine
 
-- Accounts for background cytokine production and technical variability
+- Finds internal antimodes between the protected negative-component
+  region and the clustered one-marker gate
 
-- Optimizes gates to minimize false positives while maintaining
-  sensitivity
+- Lowers the gate to the leftmost eligible antimode, or retains the
+  clustered gate when none is available
 
 **Step 4: Single-Positive Gates (if calcSinglePosGates = TRUE)**
 
@@ -583,9 +603,11 @@ for GatingSet documentation
 ## Examples
 
 ``` r
-{
 exampleData <- getExampleData()
-gs <- flowWorkspace::load_gs(exampleData$path_gs)
+#> Cache incomplete, regenerating synthetic test data...
+#> Done
+#> To reload it, use 'load_gs' function
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
 pathProject <- file.path(tempdir(), "demonstration")
 
 # Run gating
@@ -596,6 +618,30 @@ gateStim(
   batchList = exampleData$batchList,
   marker = exampleData$marker
 )
+#> ----
+#> getting base gates
+#> ----
+#> 
+#> chnl: BC1(La139)Dd
+#> getting pre-adjustment gates
+#> batch 8 of 8
+#> getting clustered and/or controlled gates
+#> chnl: BC2(Pr141)Dd
+#> getting pre-adjustment gates
+#> batch 8 of 8
+#> getting clustered and/or controlled gates
+#> 
+#> 
+#> ----
+#> getting single+ gates
+#> ----
+#> 
+#> 
+#> 
+#> 
+#> getting cyt combn frequencies
+#> batch 8 of 8
+#> [1] "/tmp/RtmpgHop1q/demonstration"
 
 # Create plots
 plots <- plotStim(
@@ -605,12 +651,5 @@ plots <- plotStim(
   marker = exampleData$marker,
   grid = TRUE
 )
-
-# Advanced usage with parameter customization
-
-}
-#> Cache incomplete, regenerating synthetic test data...
-#> Done
-#> To reload it, use 'load_gs' function
-#> Error in if (!is_s3_path(path)) {    if (length(list.files(path = path, pattern = ".rds")) > 0) {        stop("'", path, "' appears to be the legacy GatingSet archive folder!\nPlease use 'convert_legacy_gs()' to convert it to the new format.")    }    path <- normalizePath(path)    sns <- sampleNames(path)}: argument is of length zero
+#> Error in pop%%setdiff(.gateGetPop(pathProject), ""): non-numeric argument to binary operator
 ```

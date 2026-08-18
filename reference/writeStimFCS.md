@@ -85,8 +85,9 @@ writeStimFCS(
 
 This function processes flow cytometry data to identify and export
 cytokine-positive cells to FCS files. It requires that gates have been
-pre-computed using `stimgate_gate` or that a complete gate table is
-provided.
+pre-computed using
+[`gateStim`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+or that a complete gate table is provided.
 
 The function will create the output directory and write FCS files for
 samples that contain cytokine-positive cells. If no positive cells are
@@ -101,11 +102,11 @@ library(stimgate)
 
 # Load your GatingSet (gs) and define batch structure
 # batchList <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
-# where the last element in each batch is the unstimulated sample
+# where the first element in each batch is the unstimulated sample
 
 # First, run gating to create gates
 pathProject <- tempfile("stimgate_project")
-# stimgate_gate(
+# gateStim(
 #   .data = gs,
 #   pathProject = pathProject,
 #   popGate = "root",

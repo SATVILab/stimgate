@@ -79,12 +79,12 @@ with their gates.</p>
 
 
 <dt id="arg--data">.data<a class="anchor" aria-label="anchor" href="#arg--data"></a></dt>
-<dd><p>GatingSet. Same GatingSet passed to <code>stimgate_gate</code>.</p></dd>
+<dd><p>GatingSet. Same GatingSet passed to <code>gateStim</code>.</p></dd>
 
 
 <dt id="arg-pathproject">pathProject<a class="anchor" aria-label="anchor" href="#arg-pathproject"></a></dt>
 <dd><p>character.
-Path to the project directory used for <code>stimgate_gate</code>.</p></dd>
+Path to the project directory used for <code>gateStim</code>.</p></dd>
 
 
 <dt id="arg-marker">marker<a class="anchor" aria-label="anchor" href="#arg-marker"></a></dt>
@@ -207,32 +207,55 @@ Default is "min".</p></dd>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Create example data and run gating</span></span></span>
-<span class="r-in"><span><span class="va">exampleData</span> <span class="op">&lt;-</span> <span class="fu">get_example_data</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in get_example_data():</span> could not find function "get_example_data"</span>
-<span class="r-in"><span><span class="va">gs</span> <span class="op">&lt;-</span> <span class="fu">flowWorkspace</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/flowWorkspace/man/save_gs.html" class="external-link">load_gs</a></span><span class="op">(</span><span class="va">exampleData</span><span class="op">$</span><span class="va">path_gs</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'exampleData' not found</span>
-<span class="r-in"><span><span class="va">pathProject</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">dirname</a></span><span class="op">(</span><span class="va">exampleData</span><span class="op">$</span><span class="va">path_gs</span><span class="op">)</span>, <span class="st">"stimgate"</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'exampleData' not found</span>
+<span class="r-in"><span><span class="va">exampleData</span> <span class="op">&lt;-</span> <span class="fu"><a href="getExampleData.html">getExampleData</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Cache incomplete, regenerating synthetic test data...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Done</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> To reload it, use 'load_gs' function</span>
+<span class="r-in"><span><span class="va">gs</span> <span class="op">&lt;-</span> <span class="fu">flowWorkspace</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/flowWorkspace/man/save_gs.html" class="external-link">load_gs</a></span><span class="op">(</span><span class="va">exampleData</span><span class="op">$</span><span class="va">pathGs</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">pathProject</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">dirname</a></span><span class="op">(</span><span class="va">exampleData</span><span class="op">$</span><span class="va">pathGs</span><span class="op">)</span>, <span class="st">"stimgate"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Run gating</span></span></span>
-<span class="r-in"><span><span class="fu">stimgate</span><span class="fu">::</span><span class="fu">stimgate_gate</span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="gateStim.html">gateStim</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  .data <span class="op">=</span> <span class="va">gs</span>,</span></span>
 <span class="r-in"><span>  pathProject <span class="op">=</span> <span class="va">pathProject</span>,</span></span>
 <span class="r-in"><span>  popGate <span class="op">=</span> <span class="st">"root"</span>,</span></span>
 <span class="r-in"><span>  batchList <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span>,</span></span>
 <span class="r-in"><span>  marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> 'stimgate_gate' is not an exported object from 'namespace:stimgate'</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ----</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting base gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ----</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 8 of 8</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC2(Pr141)Dd</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 8 of 8</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ----</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting single+ gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ----</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 8 of 8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpgHop1q/dir_4dfb1a618cb6/stimgate"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create plots</span></span></span>
-<span class="r-in"><span><span class="va">plots</span> <span class="op">&lt;-</span> <span class="fu">stimgate_plot</span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">plots</span> <span class="op">&lt;-</span> <span class="fu">plotStim</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  ind <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, <span class="co"># indices in `gs` to plot</span></span></span>
 <span class="r-in"><span>  .data <span class="op">=</span> <span class="va">gs</span>, <span class="co"># GatingSet</span></span></span>
 <span class="r-in"><span>  pathProject <span class="op">=</span> <span class="va">pathProject</span>,</span></span>
 <span class="r-in"><span>  marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span>,</span></span>
 <span class="r-in"><span>  grid <span class="op">=</span> <span class="cn">TRUE</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in stimgate_plot(ind = exampleData$batchList[[1]], .data = gs, pathProject = pathProject,     marker = exampleData$marker, grid = TRUE):</span> could not find function "stimgate_plot"</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in pop%%setdiff(.gateGetPop(pathProject), ""):</span> non-numeric argument to binary operator</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

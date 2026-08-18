@@ -122,7 +122,7 @@
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>This function processes flow cytometry data to identify and export cytokine-positive
 cells to FCS files. It requires that gates have been pre-computed using
-<code>stimgate_gate</code> or that a complete gate table is provided.</p>
+<code><a href="gateStim.html">gateStim</a></code> or that a complete gate table is provided.</p>
 <p>The function will create the output directory and write FCS files for samples
 that contain cytokine-positive cells. If no positive cells are found in a sample,
 no FCS file will be written for that sample.</p>
@@ -136,11 +136,11 @@ no FCS file will be written for that sample.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Load your GatingSet (gs) and define batch structure</span></span></span>
 <span class="r-in"><span><span class="co"># batchList &lt;- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))</span></span></span>
-<span class="r-in"><span><span class="co"># where the last element in each batch is the unstimulated sample</span></span></span>
+<span class="r-in"><span><span class="co"># where the first element in each batch is the unstimulated sample</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># First, run gating to create gates</span></span></span>
 <span class="r-in"><span><span class="va">pathProject</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"stimgate_project"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># stimgate_gate(</span></span></span>
+<span class="r-in"><span><span class="co"># gateStim(</span></span></span>
 <span class="r-in"><span><span class="co">#   .data = gs,</span></span></span>
 <span class="r-in"><span><span class="co">#   pathProject = pathProject,</span></span></span>
 <span class="r-in"><span><span class="co">#   popGate = "root",</span></span></span>

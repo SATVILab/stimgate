@@ -11,6 +11,8 @@ manually calculate limits to pass to
 
 ``` r
 axisLimits(p, limitsExpand = NULL, limitsEqual = FALSE)
+
+axis_limits(p, limits_expand = NULL, limits_equal = FALSE)
 ```
 
 ## Arguments

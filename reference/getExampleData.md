@@ -39,6 +39,10 @@ getTestData(
 
   Logical indicating whether to force cache clearing.
 
+- nCell:
+
+  Integer. Number of cells per condition to simulate. Default: 10000.
+
 - nInd:
 
   Integer. Number of biological samples to simulate.

@@ -41,11 +41,11 @@ plotStim(
 
 - .data:
 
-  GatingSet. Same GatingSet passed to `stimgate_gate`.
+  GatingSet. Same GatingSet passed to `gateStim`.
 
 - pathProject:
 
-  character. Path to the project directory used for `stimgate_gate`.
+  character. Path to the project directory used for `gateStim`.
 
 - marker:
 
@@ -154,30 +154,53 @@ A grid of plots if `grid` is TRUE, otherwise a list of ggplot objects.
 
 ``` r
 # Create example data and run gating
-exampleData <- get_example_data()
-#> Error in get_example_data(): could not find function "get_example_data"
-gs <- flowWorkspace::load_gs(exampleData$path_gs)
-#> Error: object 'exampleData' not found
-pathProject <- file.path(dirname(exampleData$path_gs), "stimgate")
-#> Error: object 'exampleData' not found
+exampleData <- getExampleData()
+#> Cache incomplete, regenerating synthetic test data...
+#> Done
+#> To reload it, use 'load_gs' function
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
 
 # Run gating
-stimgate::stimgate_gate(
+gateStim(
   .data = gs,
   pathProject = pathProject,
   popGate = "root",
   batchList = exampleData$batchList,
   marker = exampleData$marker
 )
-#> Error: 'stimgate_gate' is not an exported object from 'namespace:stimgate'
+#> ----
+#> getting base gates
+#> ----
+#> 
+#> chnl: BC1(La139)Dd
+#> getting pre-adjustment gates
+#> batch 8 of 8
+#> getting clustered and/or controlled gates
+#> chnl: BC2(Pr141)Dd
+#> getting pre-adjustment gates
+#> batch 8 of 8
+#> getting clustered and/or controlled gates
+#> 
+#> 
+#> ----
+#> getting single+ gates
+#> ----
+#> 
+#> 
+#> 
+#> 
+#> getting cyt combn frequencies
+#> batch 8 of 8
+#> [1] "/tmp/RtmpgHop1q/dir_4dfb1a618cb6/stimgate"
 
 # Create plots
-plots <- stimgate_plot(
+plots <- plotStim(
   ind = exampleData$batchList[[1]], # indices in `gs` to plot
   .data = gs, # GatingSet
   pathProject = pathProject,
   marker = exampleData$marker,
   grid = TRUE
 )
-#> Error in stimgate_plot(ind = exampleData$batchList[[1]], .data = gs, pathProject = pathProject,     marker = exampleData$marker, grid = TRUE): could not find function "stimgate_plot"
+#> Error in pop%%setdiff(.gateGetPop(pathProject), ""): non-numeric argument to binary operator
 ```

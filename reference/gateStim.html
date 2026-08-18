@@ -113,6 +113,7 @@ background cytokine production, and technical variability.</p>
 <span>  tolClust <span class="op">=</span> <span class="fl">1e-07</span>,</span>
 <span>  locProbCol <span class="op">=</span> <span class="st">"pred"</span>,</span>
 <span>  locMinPeakProb <span class="op">=</span> <span class="fl">0.25</span>,</span>
+<span>  locEnforceShapeThreshold <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  locDipAlpha <span class="op">=</span> <span class="fl">0.2</span>,</span>
 <span>  locAntimodeHeightFrac <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">6</span>,</span>
 <span>  locAntimodeLowRel <span class="op">=</span> <span class="fl">0.25</span>,</span>
@@ -156,7 +157,7 @@ Default is "root" to gate on all cells. Can specify other populations like
 
 
 <dt id="arg-batchlist">batchList<a class="anchor" aria-label="anchor" href="#arg-batchlist"></a></dt>
-<dd><p>list. List where each element contains indices of samples belonging to the same batch/donor. Last index per element is the unstimulated vector, e.g. if <code>batchList = list(1:3, 4:6)</code>, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If <code>batchList</code> is named, e.g. <code>list(pid1 = 1:3, pid2 = 4:6)</code>, then these names will be used for batch identification.</p></dd>
+<dd><p>list. List where each element contains indices of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if <code>batchList = list(c(3, 1, 2), c(6, 4, 5))</code>, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If <code>batchList</code> is named, e.g. <code>list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))</code>, then these names will be used for batch identification.</p></dd>
 
 
 <dt id="arg-chnl">chnl<a class="anchor" aria-label="anchor" href="#arg-chnl"></a></dt>
@@ -173,9 +174,13 @@ Default is NULL.</p></dd>
 
 
 <dt id="arg-calccytposgates">calcCytPosGates<a class="anchor" aria-label="anchor" href="#arg-calccytposgates"></a></dt>
-<dd><p>logical. Whether to calculate refined cytokine-positive
-gates using more sophisticated algorithms. Default is TRUE. When FALSE, only
-basic gates are calculated, which may be less accurate but faster.</p></dd>
+<dd><p>logical. Whether to refine each clustered one-marker
+gate using the target-marker distribution among cells positive for at least
+one other cytokine. A taut-string density is fitted to those cells. The
+clustered gate is lowered to the leftmost internal antimode strictly between
+the full stimulated marginal peak plus one third of its left-window width
+and the clustered gate. If no eligible antimode exists, the clustered gate
+is retained. Default is TRUE.</p></dd>
 
 
 <dt id="arg-calcsingleposgates">calcSinglePosGates<a class="anchor" aria-label="anchor" href="#arg-calcsingleposgates"></a></dt>
@@ -257,7 +262,11 @@ Default is <code>"auto"</code>.</p></dd>
 
 
 <dt id="arg-bwcluster">bwCluster<a class="anchor" aria-label="anchor" href="#arg-bwcluster"></a></dt>
-<dd><p>numeric. Optional fallback bandwidth for cluster-based local-FDR imputation. The current cluster step first tries to use a common bandwidth calculated as the median bandwidth across samples with generated local-FDR thresholds. <code>bwCluster</code> is used as a fallback when that common bandwidth cannot be estimated. Default is <code>NULL</code>.</p></dd>
+<dd><p>numeric. Optional fallback bandwidth for cluster-based
+local-FDR refinement. The cluster step first tries to use the median
+bandwidth across samples with directly generated local-FDR thresholds.
+<code>bwCluster</code> is used when that common bandwidth cannot be estimated. Default
+is <code>NULL</code>.</p></dd>
 
 
 <dt id="arg-bwadaptive">bwAdaptive<a class="anchor" aria-label="anchor" href="#arg-bwadaptive"></a></dt>
@@ -389,10 +398,14 @@ determines how these quantiles are used (e.g., minimum of 25th percentiles).</p>
 <dt id="arg-tolclust">tolClust<a class="anchor" aria-label="anchor" href="#arg-tolclust"></a></dt>
 <dd><p>numeric or NULL. Backwards-compatible switch for calculating
 cluster-adjusted local-FDR gates. When <code>NULL</code>, cluster adjustment is skipped.
-When non-NULL, samples without a generated local-FDR threshold may receive an
-imputed threshold from similar conditions using cluster-level equivalent
-tolerance values. The numeric value is retained for compatibility and is not
-used as the derivative tolerance in the current local-FDR cluster imputation.</p></dd>
+When non-NULL, paired stimulated and unstimulated densities are clustered
+on a common absolute-expression grid. Direct thresholds are winsorised
+within each cluster to its 15th and 85th percentiles when at least three
+direct thresholds are available. Every non-direct threshold is replaced by
+the cluster's 60th percentile when at least one direct threshold is
+available. A cluster without a direct threshold retains its original high
+thresholds.
+The numeric value is retained only as a backwards-compatible on/off switch.</p></dd>
 
 
 <dt id="arg-locprobcol">locProbCol<a class="anchor" aria-label="anchor" href="#arg-locprobcol"></a></dt>
@@ -406,6 +419,17 @@ estimate. Use <code>"probSmooth"</code> to force the raw/interpolated probabilit
 required before a local-FDR gate is considered credible. If the maximum
 probability is below this value, no true local-FDR threshold is marked as
 generated.</p></dd>
+
+
+<dt id="arg-locenforceshapethreshold">locEnforceShapeThreshold<a class="anchor" aria-label="anchor" href="#arg-locenforceshapethreshold"></a></dt>
+<dd><p>logical. Whether density shape must first
+define the lowest expression value allowed to inform local-FDR
+thresholding. When <code>TRUE</code>, the lower of the first stimulated-density
+antimode to the right of the main negative peak and the adjusted
+stimulated-density tailgate is applied to both samples before densities,
+response probabilities, and the monotone probability curve are refitted.
+All subsequent marginal filtering is restricted to this refitted region.
+Default is <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-locdipalpha">locDipAlpha<a class="anchor" aria-label="anchor" href="#arg-locdipalpha"></a></dt>
@@ -495,9 +519,9 @@ the right of the initial boundary. Default is 0.75.</p></dd>
 
 
 <dt id="arg-loctolrefpeak">locTolRefPeak<a class="anchor" aria-label="anchor" href="#arg-loctolrefpeak"></a></dt>
-<dd><p>character. Reference peak used by cluster imputation when
-calculating signed equivalent tolerance values from generated local-FDR
-thresholds. Default is <code>"highest"</code>.</p></dd>
+<dd><p>character. Deprecated clustering setting retained for
+backwards compatibility. Joint-density quantile transfer does not use a
+derivative-tolerance reference peak. Default is <code>"highest"</code>.</p></dd>
 
 
 <dt id="arg-gatecombn">gateCombn<a class="anchor" aria-label="anchor" href="#arg-gatecombn"></a></dt>
@@ -539,9 +563,12 @@ have been saved. The directory structure created includes:</p><ul><li><p><code>p
 <li><p>Estimates probability densities for stimulated and unstimulated samples</p></li>
 <li><p>Identifies candidate cutpoints using outlier detection algorithms</p></li>
 <li><p>Applies clustering to refine gate positions across batches</p></li>
-</ul><p><strong>Step 3: Cytokine-Positive Gate Refinement (if calcCytPosGates = TRUE)</strong></p><ul><li><p>Applies more sophisticated algorithms to refine initial gates</p></li>
-<li><p>Accounts for background cytokine production and technical variability</p></li>
-<li><p>Optimizes gates to minimize false positives while maintaining sensitivity</p></li>
+</ul><p><strong>Step 3: Cytokine-Positive Gate Refinement (if calcCytPosGates = TRUE)</strong></p><ul><li><p>Fits a taut-string density to target-marker expression among cells
+positive for another cytokine</p></li>
+<li><p>Finds internal antimodes between the protected negative-component
+region and the clustered one-marker gate</p></li>
+<li><p>Lowers the gate to the leftmost eligible antimode, or retains the
+clustered gate when none is available</p></li>
 </ul><p><strong>Step 4: Single-Positive Gates (if calcSinglePosGates = TRUE)</strong></p><ul><li><p>Calculates gates for individual markers independent of other markers</p></li>
 <li><p>Useful for understanding single-marker responses</p></li>
 </ul><p><strong>Step 5: Statistics Generation</strong></p><ul><li><p>Calculates comprehensive statistics including frequencies and combinations</p></li>
@@ -559,9 +586,11 @@ have been saved. The directory structure created includes:</p><ul><li><p><code>p
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="op">{</span></span></span>
-<span class="r-in"><span><span class="va">exampleData</span> <span class="op">&lt;-</span> <span class="fu"><a href="getExampleData.html">getExampleData</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">gs</span> <span class="op">&lt;-</span> <span class="fu">flowWorkspace</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/flowWorkspace/man/save_gs.html" class="external-link">load_gs</a></span><span class="op">(</span><span class="va">exampleData</span><span class="op">$</span><span class="va">path_gs</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">exampleData</span> <span class="op">&lt;-</span> <span class="fu"><a href="getExampleData.html">getExampleData</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Cache incomplete, regenerating synthetic test data...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Done</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> To reload it, use 'load_gs' function</span>
+<span class="r-in"><span><span class="va">gs</span> <span class="op">&lt;-</span> <span class="fu">flowWorkspace</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/flowWorkspace/man/save_gs.html" class="external-link">load_gs</a></span><span class="op">(</span><span class="va">exampleData</span><span class="op">$</span><span class="va">pathGs</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">pathProject</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"demonstration"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Run gating</span></span></span>
@@ -572,6 +601,30 @@ have been saved. The directory structure created includes:</p><ul><li><p><code>p
 <span class="r-in"><span>  batchList <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span>,</span></span>
 <span class="r-in"><span>  marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ----</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting base gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ----</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 8 of 8</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC2(Pr141)Dd</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 8 of 8</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ----</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting single+ gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ----</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 8 of 8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpgHop1q/demonstration"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create plots</span></span></span>
 <span class="r-in"><span><span class="va">plots</span> <span class="op">&lt;-</span> <span class="fu"><a href="plotStim.html">plotStim</a></span><span class="op">(</span></span></span>
@@ -581,14 +634,7 @@ have been saved. The directory structure created includes:</p><ul><li><p><code>p
 <span class="r-in"><span>  marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span>,</span></span>
 <span class="r-in"><span>  grid <span class="op">=</span> <span class="cn">TRUE</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Advanced usage with parameter customization</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Cache incomplete, regenerating synthetic test data...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Done</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> To reload it, use 'load_gs' function</span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in if (!is_s3_path(path)) {    if (length(list.files(path = path, pattern = ".rds")) &gt; 0) {        stop("'", path, "' appears to be the legacy GatingSet archive folder!\nPlease use 'convert_legacy_gs()' to convert it to the new format.")    }    path &lt;- normalizePath(path)    sns &lt;- sampleNames(path)}:</span> argument is of length zero</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in pop%%setdiff(.gateGetPop(pathProject), ""):</span> non-numeric argument to binary operator</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

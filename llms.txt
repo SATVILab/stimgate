@@ -142,11 +142,6 @@ Main functions for identifying cytokine-positive cells
   : Get gates
 - [`getStimGatesDetailed()`](https://satvilab.github.io/stimgate/reference/getStimGatesDetailed.md)
   : Get detailed gate diagnostics
-
-## Statistics and Results
-
-Functions for extracting gating results and statistics
-
 - [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
   : Get gating statistics
 
@@ -169,6 +164,7 @@ Functions for exporting gated data
 Helper and utility functions
 
 - [`axisLimits()`](https://satvilab.github.io/stimgate/reference/axisLimits.md)
+  [`axis_limits()`](https://satvilab.github.io/stimgate/reference/axisLimits.md)
   : Manage axis limits
 - [`chnlLab()`](https://satvilab.github.io/stimgate/reference/chnlLab.md)
   : Get markers and channels

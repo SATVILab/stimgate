@@ -346,7 +346,8 @@ pkgdown::check_pkgdown()
 
 1.  **Taut-string density**: The piecewise-constant taut-string density
     used for antimode detection is provided by the internal helper
-    `.tautStringPmden()` (in `cp_uns_loc_filtering.R`), which wraps
+    [`.tautStringPmden()`](https://satvilab.github.io/stimgate/reference/dot-tautStringPmden.md)
+    (in `cp_uns_loc_filtering.R`), which wraps
     `cytoUtils::tautstring()`. Do not re-introduce `ftnonpar` or vendor
     C++ source for this purpose. `cytoUtils` is listed under
     `Remotes: RGLab/cytoUtils` in `DESCRIPTION`.
