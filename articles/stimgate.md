@@ -82,22 +82,14 @@ sessionInfo()
 #> [1] stimgate_0.104.0-2
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] gtable_0.3.6        jsonlite_2.0.0      dplyr_1.2.1        
-#>  [4] compiler_4.6.1      BiocManager_1.30.27 tidyselect_1.2.1   
-#>  [7] Biobase_2.72.0      cytolib_2.24.0      cluster_2.1.8.2    
-#> [10] jquerylib_0.1.4     systemfonts_1.3.2   scales_1.4.0       
-#> [13] textshaping_1.0.5   yaml_2.3.12         fastmap_1.2.0      
-#> [16] RProtoBufLib_2.24.0 ggplot2_4.0.3       R6_2.6.1           
-#> [19] generics_0.1.4      knitr_1.51          BiocGenerics_0.58.1
-#> [22] htmlwidgets_1.6.4   tibble_3.3.1        desc_1.4.3         
-#> [25] bslib_0.12.0        pillar_1.11.1       RColorBrewer_1.1-3 
-#> [28] rlang_1.3.0         flowCore_2.24.0     cachem_1.1.0       
-#> [31] xfun_0.60           fs_2.1.0            sass_0.4.10        
-#> [34] S7_0.2.2            otel_0.2.0          cli_3.6.6          
-#> [37] pkgdown_2.2.1       magrittr_2.0.5      digest_0.6.39      
-#> [40] grid_4.6.1          lifecycle_1.0.5     S4Vectors_0.50.1   
-#> [43] vctrs_0.7.3         evaluate_1.0.5      glue_1.8.1         
-#> [46] farver_2.1.2        ragg_1.5.2          stats4_4.6.1       
-#> [49] rmarkdown_2.31      matrixStats_1.5.0   tools_4.6.1        
-#> [52] pkgconfig_2.0.3     htmltools_0.5.9
+#>  [1] digest_0.6.39       desc_1.4.3          R6_2.6.1           
+#>  [4] fastmap_1.2.0       xfun_0.60           cachem_1.1.0       
+#>  [7] knitr_1.51          htmltools_0.5.9     rmarkdown_2.31     
+#> [10] lifecycle_1.0.5     cli_3.6.6           sass_0.4.10        
+#> [13] pkgdown_2.2.1       textshaping_1.0.5   jquerylib_0.1.4    
+#> [16] systemfonts_1.3.2   compiler_4.6.1      tools_4.6.1        
+#> [19] ragg_1.5.2          bslib_0.12.0        evaluate_1.0.5     
+#> [22] yaml_2.3.12         otel_0.2.0          BiocManager_1.30.27
+#> [25] jsonlite_2.0.0      htmlwidgets_1.6.4   rlang_1.3.0        
+#> [28] fs_2.1.0
 ```
