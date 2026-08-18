@@ -142,11 +142,9 @@ stringInfo tautString(const std::vector<double>& fdist,
     }
   }
 
-  knotst.erase(std::remove(knotst.begin(), knotst.end(), 0), knotst.end()); //remove trailing zeros from knot locations
-  std::vector<double> knotsy_out(knotst.size(),0.0);
-  for (auto i = 0; i < (int)knotst.size(); i++) {
-    knotsy_out[i] = knotsy[i];
-  }
-  stringInfo results = {i_taut_string, knotsind, knotst, knotsy_out, nknots, nmax};
+  knotst.resize(nknots);
+  knotsy.resize(nknots);
+  knotsind.resize(nknots);
+  stringInfo results = {i_taut_string, knotsind, knotst, knotsy, nknots, nmax};
   return results;
 }

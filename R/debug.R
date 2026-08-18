@@ -117,7 +117,12 @@ globalVariables(c(
   "rbeta",
   # Variables from fcs_write.R
   "concat",
-  "gateConcat"
+  "gateConcat",
+  # Additional variables for R CMD check
+  "locGeneratedDirect",
+  "calc_skew",
+  "calc_gamma",
+  "_stimgate_stimgate_cpPmden"
 ))
 
 #' Create a debug file in tempdir()

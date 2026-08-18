@@ -2,7 +2,7 @@ test_that(".get_cp_tg_call_audit enumerates live, optional and dead paths", {
   audit_tbl <- stimgate:::.get_cp_tg_call_audit()
 
   expect_s3_class(audit_tbl, "tbl_df")
-  expect_equal(nrow(audit_tbl), 5)
+  expect_equal(nrow(audit_tbl), 2)
   expect_true(all(c(
     "callSite",
     "activation",
@@ -17,7 +17,6 @@ test_that(".get_cp_tg_call_audit enumerates live, optional and dead paths", {
     audit_tbl$classification == "backwards-compatible but optional"
   ))
   expect_true(any(grepl("tolClust", audit_tbl$callSite, fixed = TRUE)))
-  expect_true(any(grepl("tgType = 'tg'", audit_tbl$callSite, fixed = TRUE)))
 })
 
 test_that(".get_cp_tg_migration_note_157 summarises migration work", {
@@ -27,7 +26,7 @@ test_that(".get_cp_tg_migration_note_157 summarises migration work", {
   expect_length(note, 1)
   expect_match(note, "Issue #157 migration note", fixed = TRUE)
   expect_match(note, "default init tgClust tailgate path has been removed", fixed = TRUE)
-  expect_match(note, "legacy single-positive", fixed = TRUE)
+  expect_match(note, "Single-positive branches have been removed", fixed = TRUE)
 })
 
 test_that("default init flow no longer generates tgClust gate rows", {
