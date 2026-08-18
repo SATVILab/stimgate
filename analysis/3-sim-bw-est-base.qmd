@@ -37,7 +37,6 @@ for (fn in c("sim-misc.R", "sim-bandwidth.R")) {
 }
 ```
 
-
 ### Checking what the estimators actually estimate
 
 Get the parameters over which we simulate.

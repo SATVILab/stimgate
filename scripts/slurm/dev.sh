@@ -3,7 +3,7 @@ set -euo pipefail
 
 # get location of script
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-project_root=$(cd -- "$script_dir/.." &> /dev/null && pwd)
+project_root=$(cd -- "$script_dir/../.." &> /dev/null && pwd)
 
 scripts=(
   "dev-1-sim-trans.sh"
