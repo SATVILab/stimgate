@@ -14,6 +14,9 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^README\.html$
+^analysis/
+^analysis$
 
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
 ^docs/

@@ -103,7 +103,11 @@ plotStim <- function(
   if (is.null(marker) && is.null(chnl)) {
     stop("Must specify one of marker or chnl")
   }
+<<<<<<< Updated upstream
+  pop <- pop %|c|% .gateGetPop(pathProject)
+=======
   pop <- pop %|c|% setdiff(.gateGetPop(pathProject), "")
+>>>>>>> Stashed changes
   if (length(pop) > 1L) {
     stop("Cannot plot gates for multiple populations")
   }
@@ -535,6 +539,14 @@ plotStim <- function(
   mult,
   gateUnsMethod
 ) {
+<<<<<<< Updated upstream
+  if (length(ind) == 0L) {
+    return(NULL)
+  }
+  chnl <- chnl %||% tryCatch(
+    stimgateMetaReadMarkerLab(pathProject)[marker],
+    error = function(e) NULL
+=======
   if (is.null(ind) || length(ind) == 0L) {
     return(NULL)
   }
@@ -546,7 +558,21 @@ plotStim <- function(
     "ind",
     ind[[1]],
     "bwCpUnsLoc.rds"
+>>>>>>> Stashed changes
   )
+  pathBwProject <- if (!is.null(chnl)) {
+    file.path(
+      pathProject,
+      "intermediateData",
+      "init",
+      chnl,
+      "ind",
+      ind[[1]],
+      "bwCpUnsLoc.rds"
+    )
+  } else {
+    ""
+  }
   bw <- tryCatch(readRDS(pathBwProject), error = function(e) "nrd0")
   plotTbl <- .plotGateUvMarkerGetPlotTbl(
     marker = marker,

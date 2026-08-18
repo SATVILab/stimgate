@@ -145,7 +145,7 @@
   }
 }
 
-#' Extract finite fitted probabilities on [0, 1]
+#' Extract finite fitted probabilities on \code{[0, 1]}
 #' @keywords internal
 .getCpUnsLocProbability <- function(dataMod, probCol) {
   prob <- suppressWarnings(as.numeric(dataMod[[probCol]]))
@@ -259,8 +259,8 @@
   deriv[!is.finite(deriv)] <- 0
 
   tibble::tibble(
-    x = (head(probTbl$x, -1L) + tail(probTbl$x, -1L)) / 2,
-    prob = (head(probTbl$prob, -1L) + tail(probTbl$prob, -1L)) / 2,
+    x = (utils::head(probTbl$x, -1L) + utils::tail(probTbl$x, -1L)) / 2,
+    prob = (utils::head(probTbl$prob, -1L) + utils::tail(probTbl$prob, -1L)) / 2,
     deriv = deriv,
     source = "model_probability_finite_difference"
   )
