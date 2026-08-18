@@ -96,3 +96,67 @@ test_that(".getCytPosTautStringAntimodes detects a clear antimode", {
   expect_gte(length(antimodes), 1L)
   expect_true(any(antimodes > 3 & antimodes < 5))
 })
+
+test_that(".tautStringPmden raises an explicit error on native failure", {
+  # Invalid input types passed to the native routine must raise an error
+  # rather than returning an all-zero density vector
+  expect_error(.tautStringPmden("invalid_string_input"))
+})
+
+test_that(".tautStringPmden reproduces expected FAUST taut-string estimates on fixed simulated datasets", {
+  # 1. Unimodal dataset (n = 100)
+  set.seed(101)
+  x_uni <- sort(rnorm(100, mean = 2, sd = 1))
+  res_uni <- .tautStringPmden(x_uni)
+  expect_type(res_uni, "list")
+  expect_named(res_uni, "y")
+  expect_length(res_uni$y, length(x_uni) - 1L)
+  expect_true(all(is.finite(res_uni$y)))
+  expect_true(all(res_uni$y >= 0))
+
+  # 2. Clearly bimodal dataset (n = 200, equal component proportions)
+  set.seed(202)
+  x_bi <- sort(c(rnorm(100, mean = -3, sd = 0.5), rnorm(100, mean = 3, sd = 0.5)))
+  res_bi <- .tautStringPmden(x_bi)
+  expect_length(res_bi$y, length(x_bi) - 1L)
+  expect_true(all(is.finite(res_bi$y)))
+  expect_true(all(res_bi$y >= 0))
+  # Trough between the two modes (index 100) must be near zero density
+  expect_true(res_bi$y[100] < 0.02)
+  # Mode regions should have substantially higher density than the trough
+  expect_true(max(res_bi$y[1:90]) > 5 * res_bi$y[100])
+  expect_true(max(res_bi$y[110:199]) > 5 * res_bi$y[100])
+
+  # 3. Unequal component proportions (n = 200, 75% left component, 25% right component)
+  set.seed(303)
+  x_unequal <- sort(c(rnorm(150, mean = 0, sd = 0.5), rnorm(50, mean = 4, sd = 0.5)))
+  res_unequal <- .tautStringPmden(x_unequal)
+  expect_length(res_unequal$y, length(x_unequal) - 1L)
+  expect_true(all(is.finite(res_unequal$y)))
+  expect_true(all(res_unequal$y >= 0))
+  # The dominant component (left) should have a higher peak density than the minority component (right)
+  left_peak <- max(res_unequal$y[1:140])
+  right_peak <- max(res_unequal$y[160:199])
+  expect_true(left_peak > right_peak)
+  # Antimode between components (around index 150) should be near zero
+  expect_true(res_unequal$y[150] < 0.05)
+
+  # 4. Reasonably separated vs. weakly separated components
+  set.seed(404)
+  x_sep <- sort(c(rnorm(100, mean = 0, sd = 1), rnorm(100, mean = 5, sd = 1)))
+  res_sep <- .tautStringPmden(x_sep)
+
+  set.seed(505)
+  x_weak <- sort(c(rnorm(100, mean = 0, sd = 1), rnorm(100, mean = 2.2, sd = 1)))
+  res_weak <- .tautStringPmden(x_weak)
+
+  expect_length(res_sep$y, length(x_sep) - 1L)
+  expect_length(res_weak$y, length(x_weak) - 1L)
+  expect_true(all(is.finite(res_sep$y) & res_sep$y >= 0))
+  expect_true(all(is.finite(res_weak$y) & res_weak$y >= 0))
+
+  # Reasonably separated data should have a deeper antimode dip relative to component peaks than weakly separated data
+  sep_mid_ratio <- res_sep$y[100] / max(res_sep$y)
+  weak_mid_ratio <- res_weak$y[100] / max(res_weak$y)
+  expect_true(sep_mid_ratio < weak_mid_ratio)
+})
