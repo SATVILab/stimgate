@@ -241,7 +241,7 @@
 
 #' Call the cytoUtils tailgate implementation
 #'
-#' If bandwidth is NULL, cytoUtils:::.cytokineCutpoint() forwards NULL to
+#' If bandwidth is NULL, cytoUtils:::.cytokine_cutpoint() forwards NULL to
 #' cytoUtils:::.deriv_density(), whose default behaviour is to estimate the
 #' bandwidth with ks::hpi().
 #'
