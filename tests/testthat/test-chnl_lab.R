@@ -1,6 +1,3 @@
-library(testthat)
-library(flowCore)
-
 test_that("chnlLabWorksWithFlowFrameObjects", {
   # Load test data
   data(GvHD, package = "flowCore")
