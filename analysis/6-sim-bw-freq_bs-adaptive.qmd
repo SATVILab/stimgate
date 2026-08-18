@@ -120,6 +120,8 @@ if (
   }
 }
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
+# Source simulation helpers in dependency order:
+# sim-misc.R must be sourced before sim-bandwidth.R for simulation utilities.
 for (fn in c("sim-misc.R", "sim-bandwidth.R")) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -319,7 +321,7 @@ A helper for running the adaptive version. This deliberately checks that the loa
 ```{r}
 #| label: run-helper
 .run_sim_bandwidth_bs_freq_adaptive <- function(...) {
-  fn <- stimgate:::.simBandwidthBsFreq
+  fn <- .simBandwidthBsFreq
   arg <- list(...)
   formal_nm <- names(formals(fn))
   required_nm <- c("bwAdaptiveCore", "bwAdaptiveExtra")
