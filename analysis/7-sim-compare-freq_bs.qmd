@@ -34,10 +34,14 @@ if (!requireNamespace("cytoUtils", quietly = TRUE)) {
   warning("Package 'cytoUtils' is not installed. Tailgate comparisons will fail if run.")
 }
 
-path_compare_helpers <- file.path(
-  root_dir, "scripts", "r", "sim-compare-freq_bs.R"
-)
-source(path_compare_helpers)
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+# Source simulation helpers in dependency order:
+# 1. sim-misc.R: general simulation utilities and transformation lookups
+# 2. sim-bandwidth.R: location details reader and bandwidth helpers
+# 3. sim-compare-freq_bs.R: comparison functions requiring sim-bandwidth.R helpers
+for (fn in c("sim-misc.R", "sim-bandwidth.R", "sim-compare-freq_bs.R")) {
+  source(file.path(scripts_r_dir, fn))
+}
 ```
 
 ### Aim
@@ -163,7 +167,7 @@ compare_list_raw_loop <- vector("list", nrow(sim_grid))
 for (i in seq_len(nrow(sim_grid))) {
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
 
-  compare_list_raw_loop[[i]] <- stimgate:::.simCompareFreqBs(
+  compare_list_raw_loop[[i]] <- .simCompareFreqBs(
     nSample = 5,
     nMarker = 1,
     nCondition = 2,
@@ -296,7 +300,7 @@ compare_list_raw <- progressr::with_progress({
 
       out <- tryCatch(
         {
-          sim_res <- stimgate:::.simCompareFreqBs(
+          sim_res <- .simCompareFreqBs(
             nSample = 5,
             nMarker = 1,
             nCondition = 2,
@@ -477,7 +481,7 @@ compare_tbl_focus <- compare_tbl |>
     sq_freq_error = freq_error^2
   )
 
-compare_summary <- stimgate:::.simCompareSummariseFreqBs(compare_tbl)
+compare_summary <- .simCompareSummariseFreqBs(compare_tbl)
 
 compare_summary |>
   dplyr::arrange(rmse) |>
