@@ -175,35 +175,37 @@
   norm_excess_bw_mtd = "hpi3",
   norm_excess_ncell = 10000L,
   norm_adaptive_ncell = 2500L,
+  bw_adaptive_core = NULL,
+  bw_adaptive_extra = NULL,
+  bw_adaptive_crossover = NULL,
+  bw_adaptive_transition_width = 0,
   norm_mtd = "moments"
 ) {
   use_adaptive <- isTRUE(bw_adaptive) && grepl("Norm$", bw_mtd)
 
-  bw_args <- list(
-    x = x,
-    bwMtd = bw_mtd,
-    bwAdj = bw_adj,
-    bwNcellMin = bw_ncell_min,
-    bwNcellMax = bw_ncell_max,
-    normPeakFrac = norm_peak_frac,
-    normPeakMinRel = norm_peak_min_rel,
-    normExtraFrac = norm_extra_frac,
-    normExtraMax = norm_extra_max,
-    normExtraJitterFrac = norm_extra_jitter_frac,
-    normDensityN = norm_density_n,
-    normExcessBwMtd = norm_excess_bw_mtd,
-    normExcessNcell = norm_excess_ncell,
-    normAdaptiveNcell = norm_adaptive_ncell,
-    normMtd = norm_mtd,
-    adaptive = use_adaptive
-  )
-
-  # Keeps the notebook usable if it is accidentally run against an older helper:
-  # unsupported arguments are dropped before calling .bwCalcOne().
-  bw_args <- bw_args[intersect(names(bw_args), names(formals(.bwCalcOne)))]
-
   out <- tryCatch(
-    do.call(.bwCalcOne, bw_args),
+    .bwCalcOne(
+      x = x,
+      bwMtd = bw_mtd,
+      bwAdj = bw_adj,
+      bwNcellMin = bw_ncell_min,
+      bwNcellMax = bw_ncell_max,
+      normPeakFrac = norm_peak_frac,
+      normPeakMinRel = norm_peak_min_rel,
+      normExtraFrac = norm_extra_frac,
+      normExtraMax = norm_extra_max,
+      normExtraJitterFrac = norm_extra_jitter_frac,
+      normDensityN = norm_density_n,
+      normExcessBwMtd = norm_excess_bw_mtd,
+      normExcessNcell = norm_excess_ncell,
+      normAdaptiveNcell = norm_adaptive_ncell,
+      bwAdaptiveCore = bw_adaptive_core,
+      bwAdaptiveExtra = bw_adaptive_extra,
+      bwAdaptiveCrossover = bw_adaptive_crossover,
+      bwAdaptiveTransitionWidth = bw_adaptive_transition_width,
+      normMtd = norm_mtd,
+      adaptive = use_adaptive
+    ),
     error = function(e) {
       structure(NA_real_, error = e$message)
     }
