@@ -61,7 +61,8 @@ condition is unusually high relative to the unstimulated background.
 
 - Use `@import` or `@importFrom` directives in roxygen comments;
   explicitly qualify all package calls with `pkg::fun()`. The only
-  exceptions are `ggplot2` functions and
+  exceptions are `ggplot2` (imported wholesale via `#' @import ggplot2`
+  in `R/misc.R`) and
   [`flowCore::exprs`](https://rdrr.io/pkg/Biobase/man/exprs.html), which
   may be called without a namespace qualifier and do not require
   `@importFrom` tags.
@@ -341,7 +342,8 @@ pkgdown::check_pkgdown()
 ### Package Namespace
 
 - Reference all external functions explicitly as `pkg::fun()`.
-- Exceptions: `ggplot2` functions and
+- Exceptions: `ggplot2` is imported wholesale via `#' @import ggplot2`
+  in `R/misc.R`, so `ggplot2` functions and
   [`flowCore::exprs`](https://rdrr.io/pkg/Biobase/man/exprs.html) may be
   called without a namespace qualifier and do not require `@importFrom`
   tags.

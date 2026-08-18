@@ -88,7 +88,7 @@
 </tr><tr><td>CI</td>
 <td>GitHub Actions (R-CMD-check, pkgdown, Codecov)</td>
 </tr></tbody></table><p><strong>Do NOT:</strong></p>
-<ul><li>Use <code>@import</code> or <code>@importFrom</code> directives in roxygen comments; explicitly qualify all package calls with <code>pkg::fun()</code>. The only exceptions are <code>ggplot2</code> functions and <code><a href="https://rdrr.io/pkg/Biobase/man/exprs.html" class="external-link">flowCore::exprs</a></code>, which may be called without a namespace qualifier and do not require <code>@importFrom</code> tags.</li>
+<ul><li>Use <code>@import</code> or <code>@importFrom</code> directives in roxygen comments; explicitly qualify all package calls with <code>pkg::fun()</code>. The only exceptions are <code>ggplot2</code> (imported wholesale via <code>#' @import ggplot2</code> in <code>R/misc.R</code>) and <code><a href="https://rdrr.io/pkg/Biobase/man/exprs.html" class="external-link">flowCore::exprs</a></code>, which may be called without a namespace qualifier and do not require <code>@importFrom</code> tags.</li>
 <li>Modify <code>.Rd</code> files manually; regenerate them with <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code>.</li>
 <li>Use <code><a href="https://rdrr.io/r/base/function.html" class="external-link">return()</a></code> as the last line of a function; use it only for early returns.</li>
 <li>Add <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code> calls inside test files.</li>
@@ -336,7 +336,7 @@
 <div class="section level3">
 <h3 id="package-namespace">Package Namespace<a class="anchor" aria-label="anchor" href="#package-namespace"></a></h3>
 <ul><li>Reference all external functions explicitly as <code>pkg::fun()</code>.</li>
-<li>Exceptions: <code>ggplot2</code> functions and <code><a href="https://rdrr.io/pkg/Biobase/man/exprs.html" class="external-link">flowCore::exprs</a></code> may be called without a namespace qualifier and do not require <code>@importFrom</code> tags.</li>
+<li>Exceptions: <code>ggplot2</code> is imported wholesale via <code>#' @import ggplot2</code> in <code>R/misc.R</code>, so <code>ggplot2</code> functions and <code><a href="https://rdrr.io/pkg/Biobase/man/exprs.html" class="external-link">flowCore::exprs</a></code> may be called without a namespace qualifier and do not require <code>@importFrom</code> tags.</li>
 </ul><hr></div>
 </div>
 <div class="section level2">
