@@ -1,4 +1,3 @@
-library(testthat)
 exampleData <- getExampleData()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
 pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
@@ -337,9 +336,9 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
   expect_identical(pNoGate, pBase)
 })
 
-test_that("test plot_cyto import and dependencies", {
-  # Test that plot_cyto function is accessible
-  expect_true(exists("plot_cyto", envir = asNamespace("stimgate")))
+test_that("test plotCyto import and dependencies", {
+  # Test that plotCyto function is accessible
+  expect_true(exists("plotCyto", envir = asNamespace("stimgate")))
 
   # Test hexbin namespace checking
   hexbinAvailable <- requireNamespace("hexbin", quietly = TRUE)
