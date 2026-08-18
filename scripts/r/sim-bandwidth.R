@@ -346,8 +346,7 @@
   locMarginalRefQuantile = 0.75,
   locTolRefPeak = "highest",
   gateCombn = "min",
-  calcCytPosGates = FALSE,
-  calcSinglePosGates = FALSE
+  calcCytPosGates = FALSE
 ) {
   bwMtdGate <- .simBandwidthAdaptiveBwMtd(
     bwMtd = bwMtd,
@@ -435,7 +434,6 @@
       batchList = batchList,
       marker = paste0("MarkerF", seq_len(nMarker)),
       calcCytPosGates = calcCytPosGates,
-      calcSinglePosGates = calcSinglePosGates,
       biasUns = biasUns,
       bw = bw,
       bwAdaptive = bwAdaptive,
