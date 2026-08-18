@@ -1,30 +1,4 @@
-.sourceLegacyTailgate <- function() {
-  candidate_dirs <- c(
-    file.path(testthat::test_path(), "..", ".."),
-    file.path(testthat::test_path(), ".."),
-    getwd(),
-    file.path(getwd(), "..")
-  )
-
-  found <- FALSE
-  for (dir in candidate_dirs) {
-    p1 <- file.path(dir, "scripts", "r", "openCyto-find_peaks_and_valleys.R")
-    p2 <- file.path(dir, "scripts", "r", "cytoUtils-cytokine_cutpoint.R")
-    if (file.exists(p1) && file.exists(p2)) {
-      source(p1, local = parent.frame())
-      source(p2, local = parent.frame())
-      found <- TRUE
-      break
-    }
-  }
-
-  if (!found) {
-    .loadLegacyTailgateFallback(env = parent.frame())
-  }
-}
-
 test_that("native tailgate preserves the relative-derivative shoulder rule", {
-  .sourceLegacyTailgate()
   x <- seq(0, 8, length.out = 500)
   y <- stats::dnorm(x, mean = 2.5, sd = 0.8)
 
@@ -55,7 +29,6 @@ test_that("native tailgate returns NA when the descending shoulder never reaches
 })
 
 test_that("native tailgate has a deterministic multimodal fixture and differs from legacy tol gating", {
-  .sourceLegacyTailgate()
   set.seed(1)
   x <- c(rnorm(200, mean = 0, sd = 0.6), rnorm(200, mean = 4, sd = 0.8))
   density <- stats::density(x, n = 512)
@@ -69,22 +42,25 @@ test_that("native tailgate has a deterministic multimodal fixture and differs fr
     peakX = density$x[which.max(density$y)],
     fraction = 1 / 200
   )
-  legacy <- .cytokineCutpoint(
-    x = x,
-    numPeaks = 1,
-    refPeak = 1,
-    tol = 1e-2,
-    side = "right",
-    strict = FALSE,
-    plot = FALSE
-  )
 
   expect_true(is.finite(native$lowerBoundX))
-  expect_true(is.finite(legacy))
   expect_equal(wrapper$lowerBoundX, native$lowerBoundX, tolerance = 1e-8)
-  expect_false(isTRUE(all.equal(native$lowerBoundX, legacy, tolerance = 1e-8)))
   expect_true(native$lowerBoundX > min(x))
   expect_true(native$lowerBoundX < max(x))
+
+  if (requireNamespace("openCyto", quietly = TRUE)) {
+    legacy <- openCyto:::.cytokineCutpoint(
+      x = x,
+      numPeaks = 1,
+      refPeak = 1,
+      tol = 1e-2,
+      side = "right",
+      strict = FALSE,
+      plot = FALSE
+    )
+    expect_true(is.finite(legacy))
+    expect_false(isTRUE(all.equal(native$lowerBoundX, legacy, tolerance = 1e-8)))
+  }
 })
 
 test_that("legacy .getCpTg delegates to the native tailgate helper", {
