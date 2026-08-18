@@ -25,6 +25,7 @@ reference:
   desc: Helper and utility functions
   contents:
   - axisLimits
+  - axis_limits
   - chnlLab
   - getBatchList
   - getExampleData
