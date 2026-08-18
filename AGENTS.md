@@ -222,7 +222,6 @@ pkgdown::check_pkgdown()
   - `r/`: R helper scripts used by analysis only — not loaded by `devtools::load_all()` and not part of the `stimgate` namespace.
     - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation.
     - `sim-bandwidth.R`: Simulation bandwidth utilities.
-    - `sim-bw-adaptive.R`: Adaptive bandwidth simulation helpers.
     - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
     - `sim-misc.R`: Miscellaneous simulation utilities.
     - `sim-trans.R`: Simulation transformation utilities.
