@@ -91,7 +91,7 @@ Bioconductor dependencies explicitly:
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
   install.packages("BiocManager")
 }
-BiocManager::install(c("flowCore", "flowWorkspace", "HDCytoData"))
+BiocManager::install(c("flowCore", "flowWorkspace"))
 ```
 
 ### GitHub Copilot cloud agent
