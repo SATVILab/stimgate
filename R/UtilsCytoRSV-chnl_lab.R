@@ -32,6 +32,15 @@
 chnlLab <- function(data) {
   adf <- switch(
     class(data)[1],
+    "GatingSet" = {
+      gh <- data[[flowWorkspace::sampleNames(data)[1]]]
+      fr <- flowWorkspace::gh_pop_get_data(gh)
+      flowCore::parameters(fr)@data
+    },
+    "GatingHierarchy" = {
+      fr <- flowWorkspace::gh_pop_get_data(data)
+      flowCore::parameters(fr)@data
+    },
     "flowFrame" = flowCore::parameters(data)@data,
     "flowSet" = flowCore::parameters(data[[1]])@data,
     "cytoframe" = flowCore::parameters(data)@data,
