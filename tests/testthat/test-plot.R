@@ -18,6 +18,45 @@ test_that("plotStim function exists", {
   expect_true(is.function(plotStim))
 })
 
+test_that("plotStim resolves pop and handles empty input cleanly", {
+  # Single population inference should succeed without error
+  pSingle <- plotStim(
+    ind = exampleData$batchList[[1]],
+    .data = gs,
+    pathProject = pathProject,
+    chnl = exampleData$chnl,
+    pop = NULL,
+    grid = TRUE
+  )
+  expect_s3_class(pSingle, "ggplot")
+
+  # Empty ind vector should return NULL cleanly
+  pEmptyInd <- plotStim(
+    ind = numeric(0),
+    .data = gs,
+    pathProject = pathProject,
+    chnl = exampleData$chnl,
+    grid = TRUE
+  )
+  expect_null(pEmptyInd)
+
+  # Multiple populations check
+  tmpProjMulti <- file.path(tempdir(), "stimgate_multi_pop_plot_test")
+  dir.create(file.path(tmpProjMulti, "gates", "poproot"), recursive = TRUE)
+  dir.create(file.path(tmpProjMulti, "gates", "popCD4"), recursive = TRUE)
+  expect_error(
+    plotStim(
+      ind = exampleData$batchList[[1]],
+      .data = gs,
+      pathProject = tmpProjMulti,
+      chnl = exampleData$chnl,
+      pop = NULL
+    ),
+    "Cannot plot gates for multiple populations"
+  )
+  unlink(tmpProjMulti, recursive = TRUE)
+})
+
 test_that("plotStim runs", {
   # debugonce(.plotGateBv)
   p <- plotStim(

@@ -434,6 +434,7 @@ getStimExpr <- function(
   ) |>
     basename() |>
     sub("^pop_(.*)$", "\\1", x = _)
+  popVec <- setdiff(popVec, "")
   .assertStringVector(popVec)
   popVec
 }
@@ -449,6 +450,7 @@ getStimExpr <- function(
   ) |>
     basename() |>
     sub("^ind_", "", x = _)
+  indVec <- setdiff(indVec, "")
   .assertStringVector(indVec)
   indVec
 }
@@ -470,6 +472,7 @@ getStimExpr <- function(
   .assertString(pathChnlDir)
   chnlVec <- list.files(pathChnlDir) |>
     sub("^chnl_(.*)\\.rds$", "\\1", x = _)
+  chnlVec <- setdiff(chnlVec, "")
   .assertStringVector(chnlVec)
   chnlVec
 }

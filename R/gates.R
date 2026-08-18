@@ -68,7 +68,7 @@ getStimGates <- function(
   }
   dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
   popVec <- unique(sub("^pop(.*)$", "\\1", dirVec))
-  popVec
+  setdiff(popVec, "")
 }
 
 #' @keywords internal
@@ -79,7 +79,7 @@ getStimGates <- function(
   }
   dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
   chnlVec <- unique(sub("^chnl(.*)$", "\\1", dirVec))
-  chnlVec
+  setdiff(chnlVec, "")
 }
 
 #' @keywords internal
