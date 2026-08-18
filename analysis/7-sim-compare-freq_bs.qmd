@@ -29,14 +29,9 @@ if (
   }
 }
 
-# The historical cytoUtils/openCyto tailgate comparator is retained only for
-# benchmark comparison; it is not part of the StimGate package runtime.
-path_tailgate_sources <- c(
-  file.path(root_dir, "scripts", "r", "openCyto-find_peaks_and_valleys.R"),
-  file.path(root_dir, "scripts", "r", "cytoUtils-cytokine_cutpoint.R")
-)
-for (path_tailgate in path_tailgate_sources) {
-  source(path_tailgate)
+# Tailgate comparisons use the openCyto package directly.
+if (!requireNamespace("openCyto", quietly = TRUE)) {
+  warning("Package 'openCyto' is not installed. Tailgate comparisons will fail if run.")
 }
 
 path_compare_helpers <- file.path(
@@ -50,7 +45,7 @@ source(path_compare_helpers)
 Compare the fixed-bandwidth StimGate background-subtracted frequency estimate against two alternative thresholding approaches:
 
 1. `fbeta`, called from the Python implementation at `scripts/python/fbeta.py` via `reticulate`.
-2. `tailgate`, called from the cytoUtils/openCyto helper scripts.
+2. `tailgate`, called from the `openCyto` package.
 
 For now, the bandwidth is fixed only for StimGate. Tailgate is deliberately left to use its usual automatic bandwidth estimation, because the aim here is to compare StimGate with the alternative methods as they normally run.
 
@@ -104,15 +99,6 @@ path_fbeta <- projr::projr_path_get(
   "scripts",
   "python",
   "fbeta.py"
-)
-
-# The historical tailgate comparator is intentionally retained only in
-# scripts/r/ for direct benchmark comparison against the legacy method.
-# It is not part of the StimGate package runtime and is sourced explicitly
-# above so each worker uses the same comparator implementation.
-path_tailgate_sources <- c(
-  file.path(root_dir, "scripts", "r", "openCyto-find_peaks_and_valleys.R"),
-  file.path(root_dir, "scripts", "r", "cytoUtils-cytokine_cutpoint.R")
 )
 
 tailgate_adjust <- 1
@@ -206,7 +192,6 @@ for (i in seq_len(nrow(sim_grid))) {
     fbetaBeta = fbeta_beta,
     fbetaTheta = fbeta_theta,
     fbetaWidth = fbeta_width,
-    tailgateSourceFiles = path_tailgate_sources,
     tailgateAdjust = tailgate_adjust,
     tailgateAutoTol = TRUE,
     tailgateMethod = tailgate_method,
@@ -340,7 +325,6 @@ compare_list_raw <- progressr::with_progress({
             fbetaBeta = fbeta_beta,
             fbetaTheta = fbeta_theta,
             fbetaWidth = fbeta_width,
-            tailgateSourceFiles = path_tailgate_sources,
             tailgateAdjust = tailgate_adjust,
             tailgateMethod = tailgate_method,
             tailgateTol = tailgate_tol
