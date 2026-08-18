@@ -96,7 +96,6 @@ plotStim <- function(
   chnlGate = NULL,
   markerGate = NULL,
   gateTypeCytPos = "cyt",
-  gateTypeSinglePos = "single",
   mult = FALSE,
   gateUnsMethod = "min"
 ) {
@@ -129,7 +128,6 @@ plotStim <- function(
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    gateTypeSinglePos = gateTypeSinglePos,
     mult = mult,
     gateUnsMethod = gateUnsMethod
   )
@@ -159,7 +157,6 @@ plotStim <- function(
   chnlGate,
   markerGate,
   gateTypeCytPos,
-  gateTypeSinglePos,
   mult,
   gateUnsMethod
 ) {
@@ -183,7 +180,6 @@ plotStim <- function(
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    gateTypeSinglePos = gateTypeSinglePos,
     mult = mult,
     gateUnsMethod = gateUnsMethod
   )
@@ -206,7 +202,6 @@ plotStim <- function(
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    gateTypeSinglePos = gateTypeSinglePos,
     mult = mult,
     gateUnsMethod = gateUnsMethod
   )
@@ -234,7 +229,6 @@ plotStim <- function(
   chnlGate,
   markerGate,
   gateTypeCytPos,
-  gateTypeSinglePos,
   mult,
   gateUnsMethod
 ) {
@@ -275,7 +269,6 @@ plotStim <- function(
       chnlGate = chnlGate,
       markerGate = markerGate,
       gateTypeCytPos = gateTypeCytPos,
-      gateTypeSinglePos = gateTypeSinglePos,
       mult = mult,
       gateUnsMethod = gateUnsMethod
     )
@@ -328,7 +321,6 @@ plotStim <- function(
   chnlGate,
   markerGate,
   gateTypeCytPos,
-  gateTypeSinglePos,
   mult,
   gateUnsMethod
 ) {
@@ -346,7 +338,6 @@ plotStim <- function(
       chnlGate = chnlGate,
       markerGate = markerGate,
       gateTypeCytPos = gateTypeCytPos,
-      gateTypeSinglePos = gateTypeSinglePos,
       mult = mult,
       gateUnsMethod = gateUnsMethod
     )
@@ -475,7 +466,6 @@ plotStim <- function(
   chnlGate,
   markerGate,
   gateTypeCytPos,
-  gateTypeSinglePos,
   mult,
   gateUnsMethod
 ) {
@@ -500,7 +490,6 @@ plotStim <- function(
       chnlGate = chnlGate,
       markerGate = markerGate,
       gateTypeCytPos = gateTypeCytPos,
-      gateTypeSinglePos = gateTypeSinglePos,
       mult = mult,
       gateUnsMethod = gateUnsMethod
     )
@@ -531,7 +520,6 @@ plotStim <- function(
   chnlGate,
   markerGate,
   gateTypeCytPos,
-  gateTypeSinglePos,
   mult,
   gateUnsMethod
 ) {
@@ -572,7 +560,6 @@ plotStim <- function(
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    gateTypeSinglePos = gateTypeSinglePos,
     mult = mult,
     gateUnsMethod = gateUnsMethod
   )
@@ -610,7 +597,6 @@ plotStim <- function(
   chnlGate,
   markerGate,
   gateTypeCytPos,
-  gateTypeSinglePos,
   mult,
   gateUnsMethod
 ) {
@@ -630,7 +616,6 @@ plotStim <- function(
       chnlGate = chnlGate,
       markerGate = markerGate,
       gateTypeCytPos = gateTypeCytPos,
-      gateTypeSinglePos = gateTypeSinglePos,
       mult = mult,
       gateUnsMethod = gateUnsMethod
     )
@@ -666,7 +651,6 @@ plotStim <- function(
   chnlGate,
   markerGate,
   gateTypeCytPos,
-  gateTypeSinglePos,
   mult,
   gateUnsMethod
 ) {
@@ -683,7 +667,6 @@ plotStim <- function(
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    gateTypeSinglePos = gateTypeSinglePos,
     mult = mult,
     gateUnsMethod = gateUnsMethod
   )

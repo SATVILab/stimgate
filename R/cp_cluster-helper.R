@@ -464,8 +464,7 @@
     gateTbl = gateTbl[gateTbl[["ind"]] == attr(exTbl, "ind"), ],
     chnlSingleExc = chnlCut,
     chnl = NULL,
-    gateTypeCytPos = if (calcCytPosGates) "cyt" else "base",
-    gateTypeSinglePos = "base"
+    gateTypeCytPos = if (calcCytPosGates) "cyt" else "base"
   )
   exTbl[!posInd, , drop = FALSE]
 }

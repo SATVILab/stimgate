@@ -207,8 +207,7 @@
     gateTbl = gateTblInd,
     chnl = setdiff(nonNaChnlVec, chnlCurr),
     chnlAlt = setdiff(nonNaChnlVec, chnlCurr),
-    gateTypeCytPos = "base",
-    gateTypeSinglePos = "base"
+    gateTypeCytPos = "base"
   )
   .intSaveNm(
     paste0(chnlCurr, "_incVec"),

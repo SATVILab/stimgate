@@ -14,7 +14,6 @@
 #' @param transChnl character vector. Columns to transform.
 #' @param combnExc list. Combinations of channels to exclude.
 #' @param gateTypeCytPos character. Gate type to use for cytokine-positive cells.
-#' @param gateTypeSinglePos character. Gate type to use for single-positive cells.
 #' @param mult logical. Whether cells must be multi-positive.
 #' @param gateUnsMethod character. Method to calculate unstimulated thresholds.
 #'
@@ -87,7 +86,6 @@ writeStimFCS <- function(
   transChnl = NULL, # columns to transform
   combnExc = NULL, # combinations of chnl to exclude
   gateTypeCytPos = "cyt", # gate type to use for cyt-pos cells # nolint
-  gateTypeSinglePos = "single", # gate type to use for single-pos cells # nolint
   mult = FALSE, # whether cells must be multi-positive
   gateUnsMethod = "min"
 ) {
@@ -107,7 +105,6 @@ writeStimFCS <- function(
     indBatchList = indBatchList,
     gateUnsMethod = gateUnsMethod,
     gateTypeCytPos = gateTypeCytPos,
-    gateTypeSinglePos = gateTypeSinglePos,
     pathProject = pathProject
   )
 
@@ -124,7 +121,6 @@ writeStimFCS <- function(
       chnl = chnl,
       mult = mult,
       gateTypeCytPos = gateTypeCytPos,
-      gateTypeSinglePos = gateTypeSinglePos,
       combnExc = combnExc,
       transFn = transFn,
       transChnl = transChnl
@@ -147,7 +143,6 @@ writeStimFCS <- function(
   indBatchList,
   gateUnsMethod,
   gateTypeCytPos,
-  gateTypeSinglePos,
   pathProject
 ) {
   # Get gate table if not provided
@@ -192,7 +187,6 @@ writeStimFCS <- function(
       .fcsWriteGetGateTblAddUns(
         gateUnsMethod = gateUnsMethod,
         gateTypeCytPos = gateTypeCytPos,
-        gateTypeSinglePos = gateTypeSinglePos,
         indBatchList = indBatchList
       )
   }
@@ -228,7 +222,6 @@ writeStimFCS <- function(
   gateTbl,
   gateUnsMethod,
   gateTypeCytPos,
-  gateTypeSinglePos,
   indBatchList
 ) {
   gateTblUns <- .fcsWriteGetGateTblAddUnsGetUns(
@@ -242,12 +235,6 @@ writeStimFCS <- function(
       dplyr::mutate(gateCyt = pmin(gate, gateCyt)) # nolint
   } else if ("gateCyt" %in% colnames(gateTblUns)) {
     gateTblUns <- gateTblUns |> dplyr::select(-gateCyt) # nolint
-  }
-  if ("gateSingle" %in% colnames(gateTbl)) {
-    gateTblUns <- gateTblUns |>
-      dplyr::mutate(gateSingle = pmax(gate, gateSingle)) # nolint
-  } else if ("gateSingle" %in% colnames(gateTblUns)) {
-    gateTblUns <- gateTblUns |> dplyr::select(-gateSingle) # nolint
   }
 
   gateTbl |>
@@ -304,7 +291,7 @@ writeStimFCS <- function(
       dplyr::group_by(concat) |>
       dplyr::filter(dplyr::n() > 1) |>
       dplyr::ungroup()
-    gateVec <- paste0(gateTbl$gate, gateTbl$gateCyt, gateTbl$gateSingle)
+    gateVec <- paste0(gateTbl$gate, gateTbl$gateCyt)
     gateTbl$gateConcat <- gateVec
     isError <- nrow(
       gateTbl |>
@@ -323,7 +310,6 @@ writeStimFCS <- function(
       indStim = paste0(ind |> sort(), collapse = "_"),
       gate = calc(gate), # nolint
       gateCyt = calc(gateCyt), # nolint
-      gateSingle = calc(gateSingle), # nolint
       .groups = "drop"
     ) |>
     .fcsWriteGetGateTblAddUnsGetUnsInd(indBatchList)
@@ -372,7 +358,7 @@ writeStimFCS <- function(
   baseCols <- c("chnl", "marker", "batch", "ind", "gate")
 
   # Optional columns that may or may not be present
-  optionalCols <- c("gateCyt", "gateSingle", "gateName")
+  optionalCols <- c("gateCyt", "gateName")
 
   # Only select columns that exist
   colsToSelect <- c(
@@ -399,7 +385,6 @@ writeStimFCS <- function(
   chnl,
   mult,
   gateTypeCytPos,
-  gateTypeSinglePos,
   combnExc,
   transFn,
   transChnl
@@ -418,9 +403,8 @@ writeStimFCS <- function(
     ex = ex,
     gateTblInd = gateTblInd,
     mult = mult,
-    chnlGate = chnl,
-    gateTypeCytPos = gateTypeCytPos,
-    gateTypeSinglePos = gateTypeSinglePos
+    chnl = chnl,
+    gateTypeCytPos = gateTypeCytPos
   )
 
   if (nrow(ex) == 0) {
@@ -433,8 +417,7 @@ writeStimFCS <- function(
     combnExc = combnExc,
     gateTblInd = gateTblInd,
     chnlGate = chnl,
-    gateTypeCytPos = gateTypeCytPos,
-    gateTypeSinglePos = gateTypeSinglePos
+    gateTypeCytPos = gateTypeCytPos
   )
 
   if (nrow(ex) == 0) {
