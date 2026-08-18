@@ -66,6 +66,10 @@ perturbations added to cluster means within each sample. Default is 0.}
 
 \item{clusterPerturbationSd}{Numeric. Standard deviation of cluster-level
 perturbations applied during cell-level simulation. Default is 0.}
+
+\item{covEvMin}{Numeric. Minimum eigenvalue for cluster covariance matrices. Default is 1.}
+
+\item{covEvMax}{Numeric. Maximum eigenvalue for cluster covariance matrices. Default is 2.}
 }
 \value{
 A list with two elements:
