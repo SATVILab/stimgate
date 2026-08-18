@@ -1,5 +1,5 @@
 test_that("axisLimits works", {
-  p <- readRDS(testthat::test_path("p_axis_limits.rds"))
+  p <- readRDS(testthat::test_path("p_axisLimits.rds"))
 
   # tests
   # -----------------
