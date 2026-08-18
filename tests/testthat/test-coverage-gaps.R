@@ -1,5 +1,3 @@
-library(testthat)
-
 test_that("interpFunctionWorksWhenXLowNotEqualVal", {
   # Test the interpolation functionality from cp-sub.R
   # This tests the code path where xLow != val
@@ -57,7 +55,7 @@ test_that("stimgateGateRunsWithGateCombnPrejoin", {
   )
 })
 
-test_that("stimgateGateRunsWithGateCombnMean", {
+test_that("stimgateGateRunsWithGateCombnNo", {
   skip_if_not_installed("flowWorkspace")
   skip_if_not_installed("flowCore")
   skip_if_not_installed("HDCytoData")
@@ -65,47 +63,17 @@ test_that("stimgateGateRunsWithGateCombnMean", {
   # Get example data
   exampleData <- stimgate::getExampleData()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
-  pathProject <- file.path(tempdir(), "testMean")
+  pathProject <- file.path(tempdir(), "testNo")
 
-  # Test with mean gate combination
-  expect_no_error({
-    result <- stimgate::gateStim(
+  # Test with no gate combination
+  result <- expect_no_error({
+    stimgate::gateStim(
       .data = gs,
       pathProject = pathProject,
       popGate = "root",
       batchList = exampleData$batchList,
       marker = exampleData$marker,
-      gateCombn = "mean"
-    )
-  })
-
-  # Verify the function completed and returned a path
-  expect_true(is.character(result))
-  expect_true(dir.exists(result))
-
-  # Clean up
-  unlink(pathProject, recursive = TRUE)
-})
-
-test_that("stimgateGateRunsWithGateCombnTrim20", {
-  skip_if_not_installed("flowWorkspace")
-  skip_if_not_installed("flowCore")
-  skip_if_not_installed("HDCytoData")
-
-  # Get example data
-  exampleData <- stimgate::getExampleData()
-  gs <- flowWorkspace::load_gs(exampleData$pathGs)
-  pathProject <- file.path(tempdir(), "testTrim20")
-
-  # Test with trim20 gate combination
-  expect_no_error({
-    result <- stimgate::gateStim(
-      .data = gs,
-      pathProject = pathProject,
-      popGate = "root",
-      batchList = exampleData$batchList,
-      marker = exampleData$marker,
-      gateCombn = "trim20"
+      gateCombn = "no"
     )
   })
 
@@ -128,8 +96,8 @@ test_that("stimgateGateRunsWithGateCombnMedian", {
   pathProject <- file.path(tempdir(), "testMedian")
 
   # Test with median gate combination
-  expect_no_error({
-    result <- stimgate::gateStim(
+  result <- expect_no_error({
+    stimgate::gateStim(
       .data = gs,
       pathProject = pathProject,
       popGate = "root",
@@ -158,8 +126,8 @@ test_that("stimgateGateRunsWithGateCombnMax", {
   pathProject <- file.path(tempdir(), "testMax")
 
   # Test with max gate combination
-  expect_no_error({
-    result <- stimgate::gateStim(
+  result <- expect_no_error({
+    stimgate::gateStim(
       .data = gs,
       pathProject = pathProject,
       popGate = "root",

@@ -1,15 +1,25 @@
 .sourceLegacyTailgate <- function() {
-  root_dir <- normalizePath(
+  candidate_dirs <- c(
     file.path(testthat::test_path(), "..", ".."),
-    winslash = "/",
-    mustWork = TRUE
+    file.path(testthat::test_path(), ".."),
+    getwd(),
+    file.path(getwd(), "..")
   )
-  path_tailgate_sources <- c(
-    file.path(root_dir, "scripts", "r", "openCyto-find_peaks_and_valleys.R"),
-    file.path(root_dir, "scripts", "r", "cytoUtils-cytokine_cutpoint.R")
-  )
-  for (path_tailgate in path_tailgate_sources) {
-    source(path_tailgate, local = parent.frame())
+
+  found <- FALSE
+  for (dir in candidate_dirs) {
+    p1 <- file.path(dir, "scripts", "r", "openCyto-find_peaks_and_valleys.R")
+    p2 <- file.path(dir, "scripts", "r", "cytoUtils-cytokine_cutpoint.R")
+    if (file.exists(p1) && file.exists(p2)) {
+      source(p1, local = parent.frame())
+      source(p2, local = parent.frame())
+      found <- TRUE
+      break
+    }
+  }
+
+  if (!found) {
+    .loadLegacyTailgateFallback(env = parent.frame())
   }
 }
 
