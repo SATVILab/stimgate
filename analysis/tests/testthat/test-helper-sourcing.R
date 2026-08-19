@@ -4,12 +4,22 @@ script_runtime <- file.path(root_dir, "scripts", "r", "analysis-runtime.R")
 script_misc <- file.path(root_dir, "scripts", "r", "sim-misc.R")
 script_cyt <- file.path(root_dir, "scripts", "r", "functionsForBenchmarking-Cyt.R")
 script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
+script_bw_io <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-io.R")
+script_bw_plot <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-plot.R")
 script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 script_trans <- file.path(root_dir, "scripts", "r", "sim-trans.R")
 
 test_that("scripts/r helpers source without error in dependency order", {
-  for (f in c(script_misc, script_cyt, script_bw, script_comp, script_trans)) {
-  for (f in c(script_runtime, script_misc, script_bw, script_comp, script_trans)) {
+  for (f in c(
+    script_runtime,
+    script_misc,
+    script_cyt,
+    script_bw,
+    script_bw_io,
+    script_bw_plot,
+    script_comp,
+    script_trans
+  )) {
     if (!file.exists(f)) {
       stop("Expected analysis helper not found: ", f)
     }
@@ -20,6 +30,8 @@ test_that("scripts/r helpers source without error in dependency order", {
   expect_no_error(source(script_misc, local = env))
   expect_no_error(source(script_cyt, local = env))
   expect_no_error(source(script_bw, local = env))
+  expect_no_error(source(script_bw_io, local = env))
+  expect_no_error(source(script_bw_plot, local = env))
   expect_no_error(source(script_comp, local = env))
   expect_no_error(source(script_trans, local = env))
 })
@@ -36,6 +48,8 @@ test_that("QMD analysis scripts do not call scripts/r helpers via stimgate:::", 
   source(script_misc, local = env)
   source(script_cyt, local = env)
   source(script_bw, local = env)
+  source(script_bw_io, local = env)
+  source(script_bw_plot, local = env)
   source(script_comp, local = env)
   source(script_trans, local = env)
   helper_names <- sub("^\\.", "", ls(env, all.names = TRUE, pattern = "^\\.sim"))

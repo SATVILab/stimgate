@@ -82,7 +82,9 @@ if (
 for (fn in c(
   "sim-misc.R",
   "functionsForBenchmarking-Cyt.R",
-  "sim-bandwidth.R"
+  "sim-bandwidth.R",
+  "sim-bandwidth-analysis-io.R",
+  "sim-bandwidth-analysis-plot.R"
 )) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -285,30 +287,7 @@ print(paste0(
 ))
 ```
 
-A helper for running the adaptive version. This deliberately checks that the loaded package version has the adaptive arguments wired through to `.simBandwidthBsFreq`.
-
-```{r}
-#| label: run-helper
-.run_sim_bandwidth_bs_freq_adaptive <- function(...) {
-  fn <- .simBandwidthBsFreq
-  arg <- list(...)
-  formal_nm <- names(formals(fn))
-  required_nm <- c("bwAdaptiveCore", "bwAdaptiveExtra")
-  has_dots <- "..." %in% formal_nm
-
-  if (!has_dots && !all(required_nm %in% formal_nm)) {
-    stop(
-      ".simBandwidthBsFreq does not expose bwAdaptiveCore and bwAdaptiveExtra. ",
-      "Load the version that forwards adaptive bandwidth settings to gateStim."
-    )
-  }
-
-  if (!has_dots) {
-    arg <- arg[names(arg) %in% formal_nm]
-  }
-  do.call(fn, arg)
-}
-```
+The adaptive frequency analysis calls the current `.simBandwidthBsFreq()` API directly so the analysis remains coupled to the installed package contract instead of a QMD-local shim.
 
 A loop we only run when we want to see why particular runs failed.
 
@@ -427,18 +406,6 @@ if (dir.exists(dir_jobs_chunk)) {
 dir.create(dir_jobs_chunk, recursive = TRUE, showWarnings = FALSE)
 dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 
-.path_sim_output <- function(sim_id) {
-  file.path(
-    dir_output,
-    sprintf(
-      "bw_list_raw-chunk_%03d-of_%03d-sim_id_%06d.rds",
-      sim_grid_chunk_index,
-      sim_grid_n_chunks,
-      as.integer(sim_id)
-    )
-  )
-}
-
 bw_list_raw <- list()
 
 if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
@@ -509,43 +476,15 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
           return(existing_output)
         }
 
-        update_progress_summary <- function() {
-          all_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
-
-          n_running <- sum(grepl("^running-", all_job_files))
-          n_completed <- sum(grepl("^completed-", all_job_files))
-          n_error <- sum(grepl("^error-", all_job_files))
-          n_done <- n_completed + n_error
-
-          running_files <- all_job_files[grepl("^running-", all_job_files)]
-          running_ids <- sub("^running-", "", running_files)
-          running_list_str <- if (length(running_ids) > 0) {
-            paste(running_ids, collapse = ", ")
-          } else {
-            "None"
-          }
-
-          summary_text <- paste0(
-            "========================================\n",
-            " ADAPTIVE SIMULATION PROGRESS DASHBOARD \n",
-            "========================================\n",
-            "Chunk              : ", sim_grid_chunk_index, " of ", sim_grid_n_chunks, "\n",
-            "Total Simulations  : ", total_sims, "\n",
-            "In Progress        : ", n_running, "\n",
-            "Completed (Success): ", n_completed, "\n",
-            "Completed (Errors) : ", n_error, "\n",
-            "Total Done          : ", n_done, "\n",
-            "Output directory   : ", dir_output, "\n",
-            "----------------------------------------\n",
-            "Currently Running IDs:\n", running_list_str, "\n",
-            "========================================\n"
-          )
-
-          cat(summary_text, file = path_progress_file, append = FALSE)
-        }
-
         file.create(file_running)
-        update_progress_summary()
+        update_progress_summary(
+          path_progress_file = path_progress_file,
+          dir_jobs_chunk = dir_jobs_chunk,
+          total_sims = total_sims,
+          sim_grid_chunk_index = sim_grid_chunk_index,
+          sim_grid_n_chunks = sim_grid_n_chunks,
+          dir_output = dir_output
+        )
 
         bw_crossover_curr <- if (is.finite(bw_crossover)) {
           bw_crossover
@@ -555,7 +494,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
         out <- tryCatch(
           {
-            sim_res <- .run_sim_bandwidth_bs_freq_adaptive(
+            sim_res <- .simBandwidthBsFreq(
               nSample = 5,
               nMarker = 1,
               nCondition = 2,
@@ -747,50 +686,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
   .data
 }
 
-.find_bw_list_output_files <- function() {
-  output_dir_vec <- unique(c(
-    if (exists("dir_output", inherits = TRUE)) dir_output else character(),
-    file.path(
-      dirname(projr::projr_path_get(
-        "cache",
-        "log",
-        "analysis",
-        "sim",
-        "bw",
-        "freq_bs",
-        "adaptive",
-        "progress.txt",
-        safe = TRUE
-      )),
-      "output"
-    ),
-    file.path(
-      dirname(projr::projr_path_get(
-        "cache",
-        "log",
-        "analysis",
-        "sim",
-        "bw",
-        "freq_bs",
-        "adaptive",
-        "progress.txt",
-        safe = FALSE
-      )),
-      "output"
-    )
-  ))
-
-  output_dir_vec <- output_dir_vec[dir.exists(output_dir_vec)]
-
-  unique(unlist(lapply(
-    output_dir_vec,
-    list.files,
-    pattern = "^bw_list_raw-chunk_[0-9]+-of_[0-9]+-sim_id_[0-9]+[.]rds$",
-    full.names = TRUE
-  )))
-}
-
-bw_list_path_vec <- .find_bw_list_output_files()
+bw_list_path_vec <- .find_bw_list_output_files(output_dir = dir_output)
 
 if (length(bw_list_path_vec) > 0L) {
   message("Collating ", length(bw_list_path_vec), " saved simulation result files from output.")
@@ -1007,75 +903,6 @@ col_vec_bw <- c(
   "#88419d",
   "#810f7c"
 )
-
-format_bw_lab <- function(x, digits = 4) {
-  x <- suppressWarnings(as.numeric(x))
-  lab <- format(signif(x, digits), scientific = FALSE, trim = TRUE)
-  lab <- sub("\\.?0+$", "", lab)
-  lab[is.na(x)] <- NA_character_
-  lab
-}
-
-format_bw_file <- function(x) {
-  x <- format_bw_lab(x)
-  x <- gsub("\\.", "p", x)
-  gsub("[^A-Za-z0-9]+", "_", x)
-}
-
-safe_file_lab <- function(x) {
-  x <- as.character(x)
-  x <- gsub("[^A-Za-z0-9]+", "_", x)
-  x <- gsub("_+", "_", x)
-  x
-}
-
-make_bw_colour_values <- function(bw_vec, base_col_vec = col_vec_bw) {
-  bw_num <- sort(unique(as.numeric(bw_vec)))
-  bw_lab <- format_bw_lab(bw_num)
-  n_bw <- length(bw_num)
-
-  if (n_bw <= length(base_col_vec)) {
-    col_vec <- base_col_vec[seq(length(base_col_vec) - n_bw + 1, length(base_col_vec))]
-  } else {
-    col_vec <- grDevices::colorRampPalette(base_col_vec)(n_bw)
-  }
-
-  stats::setNames(col_vec, bw_lab)
-}
-
-make_bw_linetype_scale <- function(bw_vec) {
-  bw_num <- sort(unique(as.numeric(bw_vec)))
-  bw_lab <- format_bw_lab(bw_num)
-  n_bw <- length(bw_num)
-
-  if (n_bw == 1L) {
-    lty <- "solid"
-  } else {
-    dash_len <- round(seq(8, 2, length.out = n_bw - 1L))
-    gap_len <- 4L
-
-    lty <- c(
-      "solid",
-      paste0(
-        as.character(as.hexmode(dash_len)),
-        as.character(as.hexmode(gap_len))
-      )
-    )
-  }
-
-  list(
-    levels = bw_lab,
-    values = stats::setNames(lty, bw_lab)
-  )
-}
-
-add_bw_labs <- function(.data) {
-  .data |>
-    dplyr::mutate(
-      bw_core_lab = format_bw_lab(.data$bw_core),
-      bw_extra_lab = format_bw_lab(.data$bw_extra)
-    )
-}
 
 bias_uns_setting_vec_plot <- bias_uns_settings_tbl |>
   dplyr::distinct(.data$bias_uns_setting) |>
