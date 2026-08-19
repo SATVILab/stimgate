@@ -1,15 +1,17 @@
 root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
 
 script_misc <- file.path(root_dir, "scripts", "r", "sim-misc.R")
+script_cyt <- file.path(root_dir, "scripts", "r", "functionsForBenchmarking-Cyt.R")
 script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
 script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 
 .load_analysis_env <- function() {
-  for (f in c(script_misc, script_bw, script_comp)) {
+  for (f in c(script_misc, script_cyt, script_bw, script_comp)) {
     if (!file.exists(f)) stop("Expected analysis helper not found: ", f)
   }
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
+  source(script_cyt, local = env)
   source(script_bw, local = env)
   source(script_comp, local = env)
   env
