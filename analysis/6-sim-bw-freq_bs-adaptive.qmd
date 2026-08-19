@@ -307,7 +307,7 @@ for (i in seq_len(nrow(sim_grid))) {
     NULL
   }
 
-  sim_res <- .run_sim_bandwidth_bs_freq_adaptive(
+  sim_res <- .simBandwidthBsFreq(
     nSample = 1,
     nMarker = 1,
     nCondition = 2,
@@ -677,15 +677,6 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
 ```{r}
 #| label: bw-manual-collate
-.add_missing_cols <- function(.data, cols) {
-  for (nm in names(cols)) {
-    if (!nm %in% names(.data)) {
-      .data[[nm]] <- cols[[nm]]
-    }
-  }
-  .data
-}
-
 bw_list_path_vec <- .find_bw_list_output_files(output_dir = dir_output)
 
 if (length(bw_list_path_vec) > 0L) {
@@ -745,7 +736,7 @@ if (length(bw_list_raw_collate) == 0L) {
 bw_tbl_raw <- bw_list_raw_collate |>
   purrr::list_rbind()
 
-bw_tbl <- .add_missing_cols(
+bw_tbl <- .simBandwidthAddMissingColumns(
   bw_tbl_raw,
   list(
     iter = NA_integer_,

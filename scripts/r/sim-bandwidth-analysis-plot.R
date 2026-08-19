@@ -1,73 +1,86 @@
-format_bw_lab <- function(x, digits = 4L) {
-  x_num <- suppressWarnings(as.numeric(x))
-  if (length(x_num) == 0L) {
-    return(character(0))
-  }
-
-  lab <- vapply(x_num, function(x_curr) {
-    if (length(x_curr) == 0L || is.na(x_curr) || !is.finite(x_curr)) {
-      return("NA")
-    }
-    format(signif(x_curr, digits), scientific = FALSE, trim = TRUE)
-  }, FUN.VALUE = character(1))
-
-  sub("\\.?0+$", "", lab)
+format_bw_lab <- function(x, digits = 4) {
+  x <- suppressWarnings(as.numeric(x))
+  lab <- format(signif(x, digits), scientific = FALSE, trim = TRUE)
+  lab <- sub("\\.?0+$", "", lab)
+  lab[is.na(x)] <- NA_character_
+  lab
 }
+
+format_bw_file <- function(x) {
+  x <- format_bw_lab(x)
+  x <- gsub("\\.", "p", x)
+  gsub("[^A-Za-z0-9]+", "_", x)
+}
+
+safe_file_lab <- function(x) {
+  x <- as.character(x)
+  x <- gsub("[^A-Za-z0-9]+", "_", x)
+  x <- gsub("_+", "_", x)
+  x
+}
+
+.file_safe <- safe_file_lab
 
 make_bw_colour_values <- function(bw_vec, base_col_vec = NULL) {
-  bw_lab <- format_bw_lab(bw_vec)
-  bw_unique <- unique(bw_lab)
-
   if (is.null(base_col_vec) || length(base_col_vec) == 0L) {
-    base_col_vec <- grDevices::hcl.colors(length(bw_unique), palette = "Dark 2")
-  }
-
-  if (length(base_col_vec) < length(bw_unique)) {
-    base_col_vec <- rep(base_col_vec, length.out = length(bw_unique))
-  }
-
-  names(base_col_vec) <- bw_unique
-  out <- base_col_vec[match(bw_lab, names(base_col_vec))]
-  stats::setNames(out, bw_lab)
-}
-
-make_bw_linetype_scale <- function(bw_vec, lty_vec = NULL) {
-  bw_lab <- format_bw_lab(bw_vec)
-  bw_unique <- unique(bw_lab)
-
-  if (is.null(lty_vec) || length(lty_vec) == 0L) {
-    lty_vec <- c(
-      "solid",
-      "dashed",
-      "dotted",
-      "dotdash",
-      "longdash",
-      "twodash",
-      "1F",
-      "F1",
-      "4C88C488"
+    base_col_vec <- c(
+      "#e0ecf4",
+      "#bfd3e6",
+      "#9ebcda",
+      "#8c96c6",
+      "#8c6bb1",
+      "#88419d",
+      "#810f7c"
     )
   }
 
-  if (length(lty_vec) < length(bw_unique)) {
-    lty_vec <- rep(lty_vec, length.out = length(bw_unique))
+  bw_num <- sort(unique(as.numeric(bw_vec)))
+  bw_lab <- format_bw_lab(bw_num)
+  n_bw <- length(bw_num)
+
+  if (n_bw <= length(base_col_vec)) {
+    col_vec <- base_col_vec[seq(length(base_col_vec) - n_bw + 1L, length(base_col_vec))]
+  } else {
+    col_vec <- grDevices::colorRampPalette(base_col_vec)(n_bw)
   }
 
-  names(lty_vec) <- bw_unique
-  out <- lty_vec[match(bw_lab, names(lty_vec))]
-  stats::setNames(out, bw_lab)
+  stats::setNames(col_vec, bw_lab)
 }
 
-add_bw_labs <- function(.data, bw_cols = c("bw", "bw_core", "bw_extra")) {
+make_bw_linetype_scale <- function(bw_vec) {
+  bw_num <- sort(unique(as.numeric(bw_vec)))
+  bw_lab <- format_bw_lab(bw_num)
+  n_bw <- length(bw_num)
+
+  if (n_bw == 1L) {
+    lty <- "solid"
+  } else {
+    dash_len <- round(seq(8, 2, length.out = n_bw - 1L))
+    gap_len <- 4L
+
+    lty <- c(
+      "solid",
+      paste0(
+        as.character(as.hexmode(dash_len)),
+        as.character(as.hexmode(gap_len))
+      )
+    )
+  }
+
+  list(
+    levels = bw_lab,
+    values = stats::setNames(lty, bw_lab)
+  )
+}
+
+add_bw_labs <- function(.data) {
   if (!is.data.frame(.data)) {
     return(.data)
   }
 
-  for (bw_col in bw_cols) {
-    if (bw_col %in% names(.data)) {
-      .data[[paste0(bw_col, "_lab")]] <- format_bw_lab(.data[[bw_col]])
-    }
-  }
-
-  .data
+  .data |>
+    dplyr::mutate(
+      bw_core_lab = format_bw_lab(.data$bw_core),
+      bw_extra_lab = format_bw_lab(.data$bw_extra)
+    )
 }
