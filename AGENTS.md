@@ -178,6 +178,72 @@ Rscript -e "lintr::lint_package()"
 3.  `lintr::lint_package()`
 4.  [`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
 
+### Analysis / Repository Integration Tests
+
+In addition to the package test suite (`tests/testthat/`), there is a
+separate analysis integration test suite in `analysis/tests/testthat/`.
+
+**When to use which suite:**
+
+| Test type | Location | Run with |
+|----|----|----|
+| Package unit/integration tests | `tests/testthat/` | [`devtools::test()`](https://devtools.r-lib.org/reference/test.html) |
+| Analysis helper / scripts/r / QMD drift checks | `analysis/tests/testthat/` | see below |
+
+**What belongs in the analysis test suite
+(`analysis/tests/testthat/`):**
+
+- Checks that `scripts/r/` helpers source cleanly in dependency order.
+- Checks that QMD files do not call `scripts/r` helpers through
+  `stimgate:::`.
+- Checks that analysis wrapper parameters forwarded to
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  still exist in the current package API.
+- Checks that removed arguments (e.g. `calcSinglePosGates`) are not
+  reintroduced.
+- Smoke calls for representative `.simBandwidth*()` / comparison-wrapper
+  functions.
+- Numerical agreement between `.simBandwidthBwOne()` and
+  `stimgate:::.bwCalcOne()`.
+
+**What belongs in the package test suite (`tests/testthat/`):**
+
+- Tests of exported package functions.
+- Tests of internal package functions where drift would break the
+  package.
+- Do **not** place tests whose subject is solely `scripts/r/` or
+  `analysis/` code here.
+
+**Running the analysis test suite:**
+
+The analysis suite loads the package from the current checkout via
+[`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
+before running tests, so it always tests the current source rather than
+any previously installed version. Run from the repository root:
+
+``` r
+
+# Shell
+# Rscript analysis/tests/run_analysis_tests.R
+
+# R session (after devtools::load_all())
+devtools::load_all()
+testthat::test_dir("analysis/tests/testthat")
+```
+
+Or via the runner script:
+
+``` r
+
+source("analysis/tests/run_analysis_tests.R")
+```
+
+Equivalent shell command:
+
+``` bash
+Rscript analysis/tests/run_analysis_tests.R
+```
+
 ### Website Maintenance (`pkgdown`)
 
 Whenever functions are added, removed, or have their export status

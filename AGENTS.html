@@ -163,9 +163,48 @@
 <li><code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code></li>
 </ol></div>
 <div class="section level3">
+<h3 id="analysis--repository-integration-tests">Analysis / Repository Integration Tests<a class="anchor" aria-label="anchor" href="#analysis--repository-integration-tests"></a></h3>
+<p>In addition to the package test suite (<code>tests/testthat/</code>), there is a separate analysis integration test suite in <code>analysis/tests/testthat/</code>.</p>
+<p><strong>When to use which suite:</strong></p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Test type</th>
+<th>Location</th>
+<th>Run with</th>
+</tr></thead><tbody><tr><td>Package unit/integration tests</td>
+<td><code>tests/testthat/</code></td>
+<td><code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code></td>
+</tr><tr><td>Analysis helper / scripts/r / QMD drift checks</td>
+<td><code>analysis/tests/testthat/</code></td>
+<td>see below</td>
+</tr></tbody></table><p><strong>What belongs in the analysis test suite (<code>analysis/tests/testthat/</code>):</strong></p>
+<ul><li>Checks that <code>scripts/r/</code> helpers source cleanly in dependency order.</li>
+<li>Checks that QMD files do not call <code>scripts/r</code> helpers through <code>stimgate:::</code>.</li>
+<li>Checks that analysis wrapper parameters forwarded to <code><a href="reference/gateStim.html">gateStim()</a></code> still exist in the current package API.</li>
+<li>Checks that removed arguments (e.g. <code>calcSinglePosGates</code>) are not reintroduced.</li>
+<li>Smoke calls for representative <code>.simBandwidth*()</code> / comparison-wrapper functions.</li>
+<li>Numerical agreement between <code>.simBandwidthBwOne()</code> and <code>stimgate:::.bwCalcOne()</code>.</li>
+</ul><p><strong>What belongs in the package test suite (<code>tests/testthat/</code>):</strong></p>
+<ul><li>Tests of exported package functions.</li>
+<li>Tests of internal package functions where drift would break the package.</li>
+<li>Do <strong>not</strong> place tests whose subject is solely <code>scripts/r/</code> or <code>analysis/</code> code here.</li>
+</ul><p><strong>Running the analysis test suite:</strong></p>
+<p>The analysis suite loads the package from the current checkout via <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> before running tests, so it always tests the current source rather than any previously installed version. Run from the repository root:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Shell</span></span>
+<span><span class="co"># Rscript analysis/tests/run_analysis_tests.R</span></span>
+<span></span>
+<span><span class="co"># R session (after devtools::load_all())</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">testthat</span><span class="fu">::</span><span class="fu"><a href="https://testthat.r-lib.org/reference/test_dir.html" class="external-link">test_dir</a></span><span class="op">(</span><span class="st">"analysis/tests/testthat"</span><span class="op">)</span></span></code></pre></div>
+<p>Or via the runner script:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"analysis/tests/run_analysis_tests.R"</span><span class="op">)</span></span></code></pre></div>
+<p>Equivalent shell command:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="ex">Rscript</span> analysis/tests/run_analysis_tests.R</span></code></pre></div>
+</div>
+<div class="section level3">
 <h3 id="website-maintenance-pkgdown">Website Maintenance (<code>pkgdown</code>)<a class="anchor" aria-label="anchor" href="#website-maintenance-pkgdown"></a></h3>
 <p>Whenever functions are added, removed, or have their export status changed (via <code>@export</code>), update <code>_pkgdown.yml</code> to ensure the reference section accurately reflects all exported functions. Verify the site configuration with:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pkgdown</span><span class="fu">::</span><span class="fu"><a href="https://pkgdown.r-lib.org/reference/check_pkgdown.html" class="external-link">check_pkgdown</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <hr></div>
 </div>
