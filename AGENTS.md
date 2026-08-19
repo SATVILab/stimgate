@@ -190,9 +190,17 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 
 **Running the analysis test suite:**
 
-From the repository root (R session):
+The analysis suite loads the package from the current checkout via
+`devtools::load_all()` before running tests, so it always tests the current
+source rather than any previously installed version. Run from the repository
+root:
 
 ```r
+# Shell
+# Rscript analysis/tests/run_analysis_tests.R
+
+# R session (after devtools::load_all())
+devtools::load_all()
 testthat::test_dir("analysis/tests/testthat")
 ```
 

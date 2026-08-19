@@ -1,39 +1,45 @@
-root_dir <- normalizePath(file.path(dirname(getwd()), ".."), mustWork = FALSE)
-if (!file.exists(file.path(root_dir, "scripts", "r", "sim-bandwidth.R"))) {
-  root_dir <- normalizePath(
-    file.path(testthat::test_path(), "../../.."),
-    mustWork = FALSE
-  )
-}
+root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
 
 script_misc <- file.path(root_dir, "scripts", "r", "sim-misc.R")
 script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
 script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
+script_trans <- file.path(root_dir, "scripts", "r", "sim-trans.R")
 
 test_that("scripts/r helpers source without error in dependency order", {
-  skip_if_not(file.exists(script_misc), "sim-misc.R not found")
-  skip_if_not(file.exists(script_bw), "sim-bandwidth.R not found")
-  skip_if_not(file.exists(script_comp), "sim-compare-freq_bs.R not found")
+  for (f in c(script_misc, script_bw, script_comp, script_trans)) {
+    if (!file.exists(f)) {
+      stop("Expected analysis helper not found: ", f)
+    }
+  }
 
-  env <- new.env(parent = baseenv())
+  env <- new.env(parent = getNamespace("stimgate"))
   expect_no_error(source(script_misc, local = env))
   expect_no_error(source(script_bw, local = env))
   expect_no_error(source(script_comp, local = env))
+  expect_no_error(source(script_trans, local = env))
 })
 
-test_that("QMD analysis scripts do not call stimgate::: for scripts/r helpers", {
+test_that("QMD analysis scripts do not call scripts/r helpers via stimgate:::", {
   qmd_dir <- file.path(root_dir, "analysis")
-  skip_if_not(dir.exists(qmd_dir), "analysis/ directory not found")
+  if (!dir.exists(qmd_dir)) stop("analysis/ directory not found at: ", qmd_dir)
 
   qmd_files <- list.files(qmd_dir, pattern = "\\.qmd$", full.names = TRUE)
-  skip_if(length(qmd_files) == 0, "No .qmd files found")
+  if (length(qmd_files) == 0) stop("No .qmd files found under: ", qmd_dir)
 
-  helper_fns <- c(
-    "simBandwidthBwOne", "simBandwidthBsFreq", "simCompareStimgateRows",
-    "simCompareFreqBs", "simBandwidthBwAll"
-  )
+  # Derive the full set of helper function names from the sourced scripts
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(script_comp, local = env)
+  source(script_trans, local = env)
+  helper_names <- sub("^\\.", "", ls(env, all.names = TRUE, pattern = "^\\.sim"))
+
+  if (length(helper_names) == 0) {
+    stop("No .sim* helpers found in sourced scripts — check sourcing order")
+  }
+
   pattern <- paste0(
-    "stimgate:::\\.(", paste(helper_fns, collapse = "|"), ")"
+    "stimgate:::\\.(", paste(helper_names, collapse = "|"), ")"
   )
 
   violations <- character(0)
@@ -41,11 +47,14 @@ test_that("QMD analysis scripts do not call stimgate::: for scripts/r helpers", 
     lines <- readLines(f, warn = FALSE)
     hits <- grep(pattern, lines, value = TRUE)
     if (length(hits) > 0) {
-      violations <- c(violations, paste0(basename(f), ": ", hits))
+      violations <- c(violations, paste0(basename(f), ": ", trimws(hits)))
     }
   }
-  expect_length(
-    violations, 0L,
-    label = paste("stimgate::: calls for scripts/r helpers in QMDs:", paste(violations, collapse = "; "))
+  expect_identical(
+    violations, character(0),
+    info = paste(
+      "stimgate::: calls for scripts/r helpers in QMDs:",
+      paste(violations, collapse = "; ")
+    )
   )
 })
