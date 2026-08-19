@@ -487,7 +487,11 @@ bw_list_raw_mtd <- progressr::with_progress({
 
       out
     },
-    .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+    .options = furrr::furrr_options(
+      packages = "stimgate",
+      seed = TRUE,
+      scheduling = Inf
+    )
   )
 })
 

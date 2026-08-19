@@ -8,8 +8,7 @@ script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 script_trans <- file.path(root_dir, "scripts", "r", "sim-trans.R")
 
 test_that("scripts/r helpers source without error in dependency order", {
-  for (f in c(script_misc, script_cyt, script_bw, script_comp, script_trans)) {
-  for (f in c(script_runtime, script_misc, script_bw, script_comp, script_trans)) {
+  for (f in c(script_runtime, script_misc, script_cyt, script_bw, script_comp, script_trans)) {
     if (!file.exists(f)) {
       stop("Expected analysis helper not found: ", f)
     }
