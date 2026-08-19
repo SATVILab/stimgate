@@ -278,12 +278,13 @@ pkgdown::check_pkgdown()
   - `python/`: Python helper scripts used by analysis (not part of the R package).
     - `fbeta.py`: Richards F-beta thresholding implementation (comparison method).
   - `r/`: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by `devtools::load_all()` and are not part of the installed package.
-    - `functionsForBenchmarking-Cyt.R`: Cytokine simulation utilities.
-    - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation.
-    - `sim-bandwidth.R`: Simulation bandwidth utilities.
-    - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
-    - `sim-misc.R`: Miscellaneous simulation utilities.
-    - `sim-trans.R`: Simulation transformation utilities.
+  - `analysis-runtime.R`: Shared QMD execution/runtime plumbing for parameter lookup, env overrides, chunk validation and atomic RDS output.
+  - `functionsForBenchmarking-Cyt.R`: Cytokine simulation utilities.
+  - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation.
+  - `sim-bandwidth.R`: Simulation bandwidth utilities.
+  - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
+  - `sim-misc.R`: Miscellaneous simulation utilities.
+  - `sim-trans.R`: Simulation transformation utilities.
 - `src/`: C++ source code compiled into the package via `cpp11` (`cpPmden.cpp`, `stimgate_cppmden.cpp`, `tautstring.cpp`, etc.).
 - `analysis/`: Quarto (`.qmd`) documents for research, simulation, and benchmarking analysis.
 - `vignettes/`: Package vignettes (`stimgate.Rmd`).
