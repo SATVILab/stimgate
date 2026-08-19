@@ -39,7 +39,7 @@ scripts_r_dir <- file.path(root_dir, "scripts", "r")
 # 1. sim-misc.R: general simulation utilities and transformation lookups
 # 2. sim-bandwidth.R: location details reader and bandwidth helpers
 # 3. sim-compare-freq_bs.R: comparison functions requiring sim-bandwidth.R helpers
-for (fn in c("sim-misc.R", "sim-bandwidth.R", "sim-compare-freq_bs.R")) {
+for (fn in c("sim-misc.R", "functionsForBenchmarking-Cyt.R", "sim-bandwidth.R", "sim-compare-freq_bs.R")) {
   source(file.path(scripts_r_dir, fn))
 }
 ```

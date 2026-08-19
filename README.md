@@ -2,8 +2,10 @@ stimgate
 ================
 
 <!-- badges: start -->
+
 [![R-CMD-check](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/SATVILab/stimgate/actions/workflows/R-CMD-check.yaml)
-[![Codecov test coverage](https://codecov.io/gh/SATVILab/stimgate/graph/badge.svg)](https://app.codecov.io/gh/SATVILab/stimgate)
+[![Codecov test
+coverage](https://codecov.io/gh/SATVILab/stimgate/graph/badge.svg)](https://app.codecov.io/gh/SATVILab/stimgate)
 <!-- badges: end -->
 
 `stimgate` is an R package for identifying cells that may have responded
@@ -57,13 +59,13 @@ The package requires R \>= 4.4.0.
 
 ## Minimal example
 
-A synthetic `GatingSet` is provided by `getExampleData()`, so the basic
-workflow can be tried without external FCS files.
+The canonical packaged example data are provided by `getExampleData()`,
+so the basic workflow can be tried without external FCS files.
 
 ``` r
 library(stimgate)
 
-example_data <- getExampleData(nCell = 1000)
+example_data <- getExampleData()
 gs <- flowWorkspace::load_gs(example_data$pathGs)
 
 path_project <- file.path(tempdir(), "stimgate-example")
@@ -108,8 +110,8 @@ documentation for the full set of method and bandwidth controls.
   fitted gates.
 - `getBatchList()` constructs matched sample batches from sample
   metadata.
-- `getExampleData()` and `simCytExperiment()` provide synthetic data for
-  examples, testing and simulation.
+- `getExampleData()` loads the packaged canonical dataset for examples
+  and package tests.
 
 ## Repository structure
 

@@ -32,7 +32,7 @@ if (
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 # Source simulation helpers in dependency order:
 # sim-misc.R must be sourced before sim-bandwidth.R for simulation utilities.
-for (fn in c("sim-misc.R", "sim-bandwidth.R")) {
+for (fn in c("sim-misc.R", "functionsForBenchmarking-Cyt.R", "sim-bandwidth.R")) {
   source(file.path(scripts_r_dir, fn))
 }
 ```

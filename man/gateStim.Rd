@@ -406,7 +406,7 @@ clustered gate when none is available
 }
 }
 \examples{
-exampleData <- stimgate:::.getTestFixture()
+exampleData <- getExampleData()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
 pathProject <- file.path(tempdir(), "demonstration")
 
