@@ -14,7 +14,8 @@ set.seed(42L)
 # ---- Parameters -------------------------------------------------------
 N_SAMPLE <- 2L # biological samples
 N_CONDITION <- 2L # conditions per sample (1 = unstim, 2 = stim)
-N_CELL <- 200L # cells per flow frame
+N_CELL <- 1e4L # cells per flow frame; large enough to retain realistic
+# rare-response behaviour without making the fixture expensive to load.
 N_MARKER <- 2L # markers per frame
 
 CHNL_VEC <- c("BC1(La139)Dd", "BC2(Pr141)Dd")
@@ -26,9 +27,11 @@ MEAN_MAT <- matrix(
   nrow = 4L,
   byrow = TRUE
 )
-PROB_UNS <- c(0.90, 0.04, 0.04, 0.02)
-# Probability shifts under stimulation
-PROB_STIM_SHIFT <- c(-0.25, 0.2, 0.04, 0.01)
+# Keep background mostly negative while creating a controlled rare stimulated
+# response on the order of a few hundred cells out of 10,000.
+PROB_UNS <- c(0.91, 0.06, 0.025, 0.005)
+# Probability shifts under stimulation: rare but non-trivial response.
+PROB_STIM_SHIFT <- c(-0.03, 0.01, 0.01, 0.02)
 SD_CLUSTER <- 1.0
 
 # ---- Helper: simulate one flow frame -----------------------------------

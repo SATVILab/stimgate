@@ -64,8 +64,17 @@ getExampleData <- function(
 
   # Base probability of a cell falling into each of the 4 clusters in an Unstimulated state
   probVecUns <- c(0.90, 0.04, 0.04, 0.02)
-  # Shift in probabilities under Stimulated conditions
-  probResponseVec <- list(c(-0.25, 0.2, 0.04, 0.01))
+
+  # Use a deliberately rare-response shift for low-separation scenarios so the
+  # simulated stimulated sample contains a few hundred cytokine-positive cells
+  # without overwhelming the clean background population.
+  if (scenario %in% c("default", "easy")) {
+    probResponseVec <- list(c(-0.25, 0.2, 0.04, 0.01))
+  } else if (scenario == "poorSeparation" || scenario == "cytPos") {
+    probResponseVec <- list(c(-0.03, 0.01, 0.01, 0.02))
+  } else {
+    stop("Unknown scenario: ", scenario)
+  }
 
   # Adjust scenario means and perturbations
   if (scenario %in% c("default", "easy")) {
@@ -166,7 +175,8 @@ getTestData <- getExampleData
 #' fixture for a much faster run.
 #'
 #' The fixture contains 2 biological samples, 2 conditions each (unstimulated
-#' and stimulated), 2 markers, and 200 cells per flow frame.  It is generated
+#' and stimulated), 2 markers, and roughly 10,000 cells per flow frame with a
+#' deliberately rare but non-trivial stimulated response. It is generated
 #' deterministically by \code{data-raw/create_test_fixture.R}.
 #'
 #' @return A named list with elements \code{pathGs}, \code{batchList},
