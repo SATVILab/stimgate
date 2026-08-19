@@ -1,5 +1,6 @@
 root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
 
+script_runtime <- file.path(root_dir, "scripts", "r", "analysis-runtime.R")
 script_misc <- file.path(root_dir, "scripts", "r", "sim-misc.R")
 script_cyt <- file.path(root_dir, "scripts", "r", "functionsForBenchmarking-Cyt.R")
 script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
@@ -8,12 +9,14 @@ script_trans <- file.path(root_dir, "scripts", "r", "sim-trans.R")
 
 test_that("scripts/r helpers source without error in dependency order", {
   for (f in c(script_misc, script_cyt, script_bw, script_comp, script_trans)) {
+  for (f in c(script_runtime, script_misc, script_bw, script_comp, script_trans)) {
     if (!file.exists(f)) {
       stop("Expected analysis helper not found: ", f)
     }
   }
 
   env <- new.env(parent = getNamespace("stimgate"))
+  expect_no_error(source(script_runtime, local = env))
   expect_no_error(source(script_misc, local = env))
   expect_no_error(source(script_cyt, local = env))
   expect_no_error(source(script_bw, local = env))
