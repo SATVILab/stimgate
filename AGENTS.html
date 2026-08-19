@@ -162,6 +162,8 @@
 <li><code>styler::style_pkg()</code></li>
 <li><code>lintr::lint_package()</code></li>
 <li><code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code></li>
+<li>If <code>analysis/</code> or <code>scripts/r/</code> changed, <code>Rscript analysis/tests/run_analysis_tests.R</code>
+</li>
 </ol></div>
 <div class="section level3">
 <h3 id="analysis--repository-integration-tests">Analysis / Repository Integration Tests<a class="anchor" aria-label="anchor" href="#analysis--repository-integration-tests"></a></h3>
@@ -340,7 +342,20 @@
 <code>_dependencies.R</code>: Explicitly listed dependencies for <code>renv</code>.</li>
 <li>
 <code>DESCRIPTION</code>: Package metadata file.</li>
-</ul><hr></div>
+</ul><div class="section level3">
+<h3 id="analysis-code-layering">Analysis code layering<a class="anchor" aria-label="anchor" href="#analysis-code-layering"></a></h3>
+<p>For new or moved analysis code, use this layering:</p>
+<ol style="list-style-type: decimal"><li>
+<code>R/</code>: installed StimGate package implementation only.</li>
+<li>
+<code>scripts/r/sim-*.R</code>: developer-side simulation/domain helpers and wrappers around the current package API.</li>
+<li>Generic analysis runtime helpers under <code>scripts/r/</code>: reusable QMD execution plumbing such as parameter/environment handling, chunk validation and atomic output writing.</li>
+<li>Analysis-specific helpers under <code>scripts/r/</code>: substantial orchestration, restart/collation, IO and plotting helpers that should not live inline in QMDs.</li>
+<li>
+<code>analysis/*.qmd</code>: scientific settings, analysis calls, result-specific transformations and presentation.</li>
+</ol><p>Source analysis helper files explicitly in dependency order. Do not move analysis-only helpers into <code>R/</code> unless they have genuinely become part of the installed package implementation or API. Keep large domain helper files such as <code>sim-bandwidth.R</code> focused on their domain rather than using them as catch-all locations for generic QMD runtime or unrelated plotting/orchestration code.</p>
+<hr></div>
+</div>
 <div class="section level2">
 <h2 id="id_6-coding-style--conventions">6. Coding Style &amp; Conventions<a class="anchor" aria-label="anchor" href="#id_6-coding-style--conventions"></a></h2>
 <div class="section level3">
@@ -388,11 +403,11 @@
 <li>
 <strong>Legacy comparator policy</strong>: Tailgate comparator functions are invoked directly from the <code>cytoUtils</code> package via <code>cytoUtils:::.cytokine_cutpoint()</code>. Do not reintroduce vendored legacy tailgate helpers under <code>scripts/r/</code> or <code>R/</code>.</li>
 <li>
-<strong>Audit status for <code>.getCpTg()</code> migration (issue #157/#158)</strong>: Remaining call sites are catalogued by <code>.get_cp_tg_call_audit()</code> and summarised by <code>.get_cp_tg_migration_note_157()</code>. Current default behaviour still constructs <code>tgClust</code> control gates in <code>.gateBatchAll()</code>, but the current local-FDR cluster quantile implementation does not consume <code>gateTblCtrl</code>, so this branch is dead plumbing for current outputs. Single-positive gating branches have been removed per issue #196.</li>
+<strong>Temporary migration status for <code>.getCpTg()</code> (issues #157/#158)</strong>: This is a current-state note rather than a permanent design rule. Verify it against the current implementation and relevant issues before relying on it in later work. At the time of this update, remaining call sites are catalogued by <code>.get_cp_tg_call_audit()</code> and summarised by <code>.get_cp_tg_migration_note_157()</code>. Current default behaviour still constructs <code>tgClust</code> control gates in <code>.gateBatchAll()</code>, but the current local-FDR cluster quantile implementation does not consume <code>gateTblCtrl</code>, so this branch is dead plumbing for current outputs. Single-positive gating branches have been removed per issue #196.</li>
 </ol><hr></div>
 <div class="section level2">
 <h2 id="id_8-testing-best-practices--guidelines">8. Testing Best Practices &amp; Guidelines<a class="anchor" aria-label="anchor" href="#id_8-testing-best-practices--guidelines"></a></h2>
-<p>Place all unit tests in <code>tests/testthat/</code> as <code>test-&lt;topic&gt;.R</code> files.</p>
+<p>Package unit/integration tests belong in <code>tests/testthat/</code>. Tests whose subject is analysis code, <code>scripts/r/</code> helpers or QMD/package-API drift belong in <code>analysis/tests/testthat/</code>. Use <code>test-&lt;topic&gt;.R</code> filenames in both suites.</p>
 <ol style="list-style-type: decimal"><li><p><strong>Avoid <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code> calls in test files</strong>: Never use <code><a href="https://testthat.r-lib.org" class="external-link">library(testthat)</a></code> or similar calls at the top of test files. The <code>testthat</code> package is automatically loaded when tests are run.</p></li>
 <li><p><strong>Keep tests independent</strong>: Each test should be self-contained and not rely on global state created outside of test blocks.</p></li>
 <li><p><strong>Variable scope in tests</strong>: When a test creates its own test data and variables (e.g. <code>example_data</code>, <code>gs</code>), always use those local variables throughout that test. Never mix local and global variables from different scopes.</p></li>
@@ -400,7 +415,7 @@
 <li><p><strong>Cleanup within tests</strong>: Each test must clean up its own temporary files/directories created during execution (e.g., <code>unlink(tmp_dir, recursive = TRUE)</code> or <code><a href="https://withr.r-lib.org/reference/defer.html" class="external-link">withr::defer()</a></code>).</p></li>
 <li><p><strong>Shared test fixtures</strong>: If multiple tests need the same setup data, create it within each test or create it once at the top with clear documentation. Never delete shared fixtures mid-file.</p></li>
 <li><p><strong>Test data files compatibility</strong>: Test data files (<code>.rds</code> in <code>tests/testthat/</code>) may need regeneration when major dependencies (e.g., <code>ggplot2</code>) upgrade. Regenerate test data files using current package versions if objects behave unexpectedly after dependency updates.</p></li>
-<li><p><strong>Test observable behaviour</strong>: Tests must verify observable outputs and behavior, not internal implementation details or the existence of internal (<code>.</code>-prefixed) functions.</p></li>
+<li><p><strong>Test observable behaviour and explicit integration contracts</strong>: Package tests should verify observable outputs and behaviour rather than merely asserting implementation details or the existence of internal (<code>.</code>-prefixed) functions. Analysis integration tests may directly check helper/API contracts when the purpose is to catch drift between <code>scripts/r/</code>, QMDs and the installed package.</p></li>
 <li><p><strong>Cross-platform compatibility</strong>: Tests must pass on macOS, Windows, and Ubuntu. Use <code><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path()</a></code> (never hard-coded <code>/</code> or <code>\\</code> separators) and avoid platform-specific paths.</p></li>
 <li>
 <p><strong>Use the package-shipped example data for routine tests and examples</strong>: The package ships one canonical deterministic cytometry example dataset in <code>inst/extdata/stimgate_example_data/</code> (2 samples × 2 conditions × 2 markers × ~10,000 cells per condition, seed 42). Load it with:</p>

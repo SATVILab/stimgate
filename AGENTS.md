@@ -178,6 +178,8 @@ Rscript -e "lintr::lint_package()"
 2.  `styler::style_pkg()`
 3.  `lintr::lint_package()`
 4.  [`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
+5.  If `analysis/` or `scripts/r/` changed,
+    `Rscript analysis/tests/run_analysis_tests.R`
 
 ### Analysis / Repository Integration Tests
 
@@ -367,6 +369,29 @@ pkgdown::check_pkgdown()
 - `_dependencies.R`: Explicitly listed dependencies for `renv`.
 - `DESCRIPTION`: Package metadata file.
 
+### Analysis code layering
+
+For new or moved analysis code, use this layering:
+
+1.  `R/`: installed StimGate package implementation only.
+2.  `scripts/r/sim-*.R`: developer-side simulation/domain helpers and
+    wrappers around the current package API.
+3.  Generic analysis runtime helpers under `scripts/r/`: reusable QMD
+    execution plumbing such as parameter/environment handling, chunk
+    validation and atomic output writing.
+4.  Analysis-specific helpers under `scripts/r/`: substantial
+    orchestration, restart/collation, IO and plotting helpers that
+    should not live inline in QMDs.
+5.  `analysis/*.qmd`: scientific settings, analysis calls,
+    result-specific transformations and presentation.
+
+Source analysis helper files explicitly in dependency order. Do not move
+analysis-only helpers into `R/` unless they have genuinely become part
+of the installed package implementation or API. Keep large domain helper
+files such as `sim-bandwidth.R` focused on their domain rather than
+using them as catch-all locations for generic QMD runtime or unrelated
+plotting/orchestration code.
+
 ------------------------------------------------------------------------
 
 ## 6. Coding Style & Conventions
@@ -443,8 +468,11 @@ pkgdown::check_pkgdown()
     invoked directly from the `cytoUtils` package via
     `cytoUtils:::.cytokine_cutpoint()`. Do not reintroduce vendored
     legacy tailgate helpers under `scripts/r/` or `R/`.
-4.  **Audit status for `.getCpTg()` migration (issue \#157/#158)**:
-    Remaining call sites are catalogued by `.get_cp_tg_call_audit()` and
+4.  **Temporary migration status for `.getCpTg()` (issues \#157/#158)**:
+    This is a current-state note rather than a permanent design rule.
+    Verify it against the current implementation and relevant issues
+    before relying on it in later work. At the time of this update,
+    remaining call sites are catalogued by `.get_cp_tg_call_audit()` and
     summarised by `.get_cp_tg_migration_note_157()`. Current default
     behaviour still constructs `tgClust` control gates in
     `.gateBatchAll()`, but the current local-FDR cluster quantile
@@ -456,7 +484,10 @@ pkgdown::check_pkgdown()
 
 ## 8. Testing Best Practices & Guidelines
 
-Place all unit tests in `tests/testthat/` as `test-<topic>.R` files.
+Package unit/integration tests belong in `tests/testthat/`. Tests whose
+subject is analysis code, `scripts/r/` helpers or QMD/package-API drift
+belong in `analysis/tests/testthat/`. Use `test-<topic>.R` filenames in
+both suites.
 
 1.  **Avoid [`library()`](https://rdrr.io/r/base/library.html) calls in
     test files**: Never use
@@ -494,9 +525,12 @@ Place all unit tests in `tests/testthat/` as `test-<topic>.R` files.
     package versions if objects behave unexpectedly after dependency
     updates.
 
-8.  **Test observable behaviour**: Tests must verify observable outputs
-    and behavior, not internal implementation details or the existence
-    of internal (`.`-prefixed) functions.
+8.  **Test observable behaviour and explicit integration contracts**:
+    Package tests should verify observable outputs and behaviour rather
+    than merely asserting implementation details or the existence of
+    internal (`.`-prefixed) functions. Analysis integration tests may
+    directly check helper/API contracts when the purpose is to catch
+    drift between `scripts/r/`, QMDs and the installed package.
 
 9.  **Cross-platform compatibility**: Tests must pass on macOS, Windows,
     and Ubuntu. Use
