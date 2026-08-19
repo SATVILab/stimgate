@@ -303,8 +303,10 @@
 <code>fbeta.py</code>: Richards F-beta thresholding implementation (comparison method).</li>
 </ul></li>
 <li>
-<code>r/</code>: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> and are not part of the installed package.
-<ul><li>
+<code>r/</code>: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> and are not part of the installed package.</li>
+<li>
+<code>analysis-runtime.R</code>: Shared QMD execution/runtime plumbing for parameter lookup, env overrides, chunk validation and atomic RDS output.</li>
+<li>
 <code>functionsForBenchmarking-Cyt.R</code>: Cytokine simulation utilities.</li>
 <li>
 <code>functionsForBenchmarking-Pheno.R</code>: Benchmarking helpers for phenotype simulation.</li>
@@ -316,7 +318,6 @@
 <code>sim-misc.R</code>: Miscellaneous simulation utilities.</li>
 <li>
 <code>sim-trans.R</code>: Simulation transformation utilities.</li>
-</ul></li>
 </ul></li>
 <li>
 <code>src/</code>: C++ source code compiled into the package via <code>cpp11</code> (<code>cpPmden.cpp</code>, <code>stimgate_cppmden.cpp</code>, <code>tautstring.cpp</code>, etc.).</li>
