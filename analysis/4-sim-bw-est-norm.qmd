@@ -250,9 +250,9 @@ bw_list_raw_mtd_loop |>
   ) |>
   dplyr::summarise(
     n_est = sum(is.finite(bw)),
-    mean_bw_stim = mean(bw_stim, na.rm = TRUE),
-    mean_bw_uns = mean(bw_uns, na.rm = TRUE),
-    mean_bw = mean(bw, na.rm = TRUE),
+    mean_bw_stim = .simBandwidthFiniteMean(bw_stim),
+    mean_bw_uns = .simBandwidthFiniteMean(bw_uns),
+    mean_bw = .simBandwidthFiniteMean(bw),
     .groups = "drop"
   ) |>
   dplyr::select(
@@ -316,6 +316,7 @@ bw_list_raw_mtd <- progressr::with_progress({
   furrr::future_pmap(
     sim_grid,
     function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos, bw_mtd, bw_ncell_upper, bias_uns_setting, bias_uns, sim_id) {
+      .simBandwidthEnsureCurrentCheckout(root_dir)
       settings_row <- paste0(
         "trans = ",
         transformation,
@@ -488,7 +489,6 @@ bw_list_raw_mtd <- progressr::with_progress({
       out
     },
     .options = furrr::furrr_options(
-      packages = "stimgate",
       seed = TRUE,
       scheduling = Inf
     )
@@ -598,14 +598,22 @@ bw_tbl_results <- bw_tbl |>
     dplyr::pick(dplyr::any_of(colnames(sim_grid)))
   ) |>
   dplyr::summarise(
-    mean_bw_stim = mean(bw_stim, na.rm = TRUE),
-    mean_bw_uns = mean(bw_uns, na.rm = TRUE),
-    mean_bw = mean(bw, na.rm = TRUE),
+    n_est = sum(is.finite(bw)),
+    mean_bw_stim = .simBandwidthFiniteMean(bw_stim),
+    mean_bw_uns = .simBandwidthFiniteMean(bw_uns),
+    mean_bw = .simBandwidthFiniteMean(bw),
     .groups = "drop"
   ) |>
   dplyr::select(
-    dplyr::any_of(colnames(sim_grid)), mean_bw
+    dplyr::any_of(colnames(sim_grid)), n_est, mean_bw_stim, mean_bw_uns, mean_bw
   )
+
+if (any(bw_tbl_results$n_est == 0L)) {
+  stop(
+    "At least one requested bandwidth estimator has zero finite values.",
+    " Review the corresponding raw rows before plotting."
+  )
+}
 bw_tbl_results <- bw_tbl_results |>
   dplyr::mutate(
     bw_mtd_base = gsub("Norm$", "", bw_mtd),

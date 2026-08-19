@@ -53,14 +53,13 @@ test_that(".simBandwidthBwOne agrees numerically with stimgate:::.bwCalcOne", {
 
 test_that(".simBandwidthBwOne resolves the current stimgate namespace in future workers", {
   skip_if_not_installed("future")
+  skip_if_not_installed("pkgload")
 
-  if (!exists("stimgate", mode = "package")) {
-    skip("stimgate package not attached")
+  if (!requireNamespace("stimgate", quietly = TRUE)) {
+    skip("stimgate package not available")
   }
 
-  old_plan <- future::plan()
-  on.exit(future::plan(old_plan), add = TRUE)
-  future::plan(future::multisession, workers = 2L)
+  root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
 
   x_sample <- rnorm(200, mean = 5, sd = 1.5)
   bw_params <- list(
@@ -90,14 +89,40 @@ test_that(".simBandwidthBwOne resolves the current stimgate namespace in future 
     bwFallback = NULL
   )
 
+  set.seed(99)
+  bw_pkg <- do.call(stimgate:::.bwCalcOne, bw_params)
+
+  worker_env <- new.env(parent = globalenv())
+  source(script_misc, local = worker_env)
+  source(script_bw, local = worker_env)
+
+  old_plan <- future::plan()
+  on.exit(future::plan(old_plan), add = TRUE)
+  future::plan(future::multisession, workers = 2L)
+
   result <- future::future({
-    env <- new.env(parent = getNamespace("stimgate"))
+    env <- new.env(parent = globalenv())
     source(script_misc, local = env)
     source(script_bw, local = env)
-    set.seed(42)
-    do.call(env$.simBandwidthBwOne, bw_params)
+    env$.simBandwidthEnsureCurrentCheckout(root_dir)
+    ns <- asNamespace("stimgate")
+    bw_worker <- do.call(get(".bwCalcOne", mode = "function", envir = ns), bw_params)
+    list(
+      ns_path = normalizePath(getNamespaceInfo(ns, "path"), winslash = "/", mustWork = FALSE),
+      bw_worker = bw_worker
+    )
   }, seed = TRUE)
 
-  bw_worker <- future::value(result)
-  expect_true(is.finite(as.numeric(bw_worker)))
+  worker_out <- future::value(result)
+
+  expect_equal(
+    normalizePath(worker_out$ns_path, winslash = "/", mustWork = FALSE),
+    normalizePath(root_dir, winslash = "/", mustWork = FALSE)
+  )
+  expect_equal(as.numeric(worker_out$bw_worker), as.numeric(bw_pkg))
+
+  expect_error(
+    worker_env$.simBandwidthResolveCurrentBwCalc("hpi1Norm", adaptive = FALSE),
+    regexp = "Ensure workers are initialised against the current package checkout"
+  )
 })

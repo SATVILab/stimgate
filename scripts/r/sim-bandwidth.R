@@ -1649,19 +1649,54 @@
 #' the shared normalised-bandwidth helper rather than by this wrapper.
 #'
 #' @keywords internal
-.simBandwidthResolveCurrentBwCalc <- function(bwMtd, adaptive = FALSE) {
-  bwMtd <- as.character(bwMtd)[1]
-  requires_current <- isTRUE(grepl("Norm$", bwMtd)) || isTRUE(adaptive)
+.simBandwidthEnsureCurrentCheckout <- function(pathRoot = NULL) {
+  if (is.null(pathRoot)) {
+    pathRoot <- normalizePath(".", winslash = "/", mustWork = FALSE)
+  }
+  pathRoot <- normalizePath(pathRoot, winslash = "/", mustWork = FALSE)
 
-  if (!requires_current) {
-    if (exists(".bwCalcOne", mode = "function")) {
-      return(get(".bwCalcOne", mode = "function"))
-    }
-    return(.simBandwidthBwOneBaseLegacy)
+  if (!nzchar(pathRoot)) {
+    return(invisible(FALSE))
   }
 
+  if (requireNamespace("stimgate", quietly = TRUE)) {
+    ns <- tryCatch(asNamespace("stimgate"), error = function(e) NULL)
+    if (!is.null(ns)) {
+      ns_path <- normalizePath(
+        getNamespaceInfo(ns, "path"),
+        winslash = "/",
+        mustWork = FALSE
+      )
+      if (isTRUE(identical(ns_path, pathRoot))) {
+        return(invisible(TRUE))
+      }
+    }
+  }
+
+  suppressMessages(devtools::load_all(pathRoot, quiet = TRUE))
+  invisible(TRUE)
+}
+
+.simBandwidthFiniteMean <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  x_finite <- x[is.finite(x)]
+
+  if (length(x_finite) == 0L) {
+    return(NA_real_)
+  }
+
+  mean(x_finite)
+}
+
+.simBandwidthResolveCurrentBwCalc <- function(bwMtd, adaptive = FALSE) {
+  bwMtd <- as.character(bwMtd)[1]
   ns <- tryCatch(asNamespace("stimgate"), error = function(e) NULL)
-  if (is.null(ns) || !exists(".bwCalcOne", mode = "function", envir = ns)) {
+
+  if (!is.null(ns) && exists(".bwCalcOne", mode = "function", envir = ns)) {
+    return(get(".bwCalcOne", mode = "function", envir = ns))
+  }
+
+  if (isTRUE(grepl("Norm$", bwMtd)) || isTRUE(adaptive)) {
     stop(
       "stimgate::.bwCalcOne is unavailable for the requested bandwidth method '",
       bwMtd,
@@ -1670,7 +1705,7 @@
     )
   }
 
-  get(".bwCalcOne", mode = "function", envir = ns)
+  .simBandwidthBwOneBaseLegacy
 }
 
 .simBandwidthBwOne <- function(
@@ -1711,29 +1746,39 @@
     adaptive = adaptive
   )
 
-  bw_calc <- bwCalcFun(
-    x = x,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax,
-    normPeakFrac = normPeakFrac,
-    normPeakMinRel = normPeakMinRel,
-    normExtraFrac = normExtraFrac,
-    normExtraMax = normExtraMax,
-    normExtraJitterFrac = normExtraJitterFrac,
-    normLambda = normLambda,
-    normDensityN = normDensityN,
-    normExcessBwMtd = normExcessBwMtd,
-    normExcessNcell = normExcessNcell,
-    normAdaptiveNcell = normAdaptiveNcell,
-    bwAdaptiveCore = bwAdaptiveCore,
-    bwAdaptiveExtra = bwAdaptiveExtra,
-    bwAdaptiveCrossover = bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
-    normMtd = normMtd,
-    adaptive = adaptive
-  )
+  if (identical(bwCalcFun, .simBandwidthBwOneBaseLegacy)) {
+    bw_calc <- bwCalcFun(
+      x = x,
+      bwMtd = bwMtd,
+      bwAdj = bwAdj,
+      bwNcellMin = bwNcellMin,
+      bwNcellMax = bwNcellMax
+    )
+  } else {
+    bw_calc <- bwCalcFun(
+      x = x,
+      bwMtd = bwMtd,
+      bwAdj = bwAdj,
+      bwNcellMin = bwNcellMin,
+      bwNcellMax = bwNcellMax,
+      normPeakFrac = normPeakFrac,
+      normPeakMinRel = normPeakMinRel,
+      normExtraFrac = normExtraFrac,
+      normExtraMax = normExtraMax,
+      normExtraJitterFrac = normExtraJitterFrac,
+      normLambda = normLambda,
+      normDensityN = normDensityN,
+      normExcessBwMtd = normExcessBwMtd,
+      normExcessNcell = normExcessNcell,
+      normAdaptiveNcell = normAdaptiveNcell,
+      bwAdaptiveCore = bwAdaptiveCore,
+      bwAdaptiveExtra = bwAdaptiveExtra,
+      bwAdaptiveCrossover = bwAdaptiveCrossover,
+      bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
+      normMtd = normMtd,
+      adaptive = adaptive
+    )
+  }
 
   bw_calc <- suppressWarnings(as.numeric(bw_calc)[1])
 
