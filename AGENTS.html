@@ -151,10 +151,11 @@
 <span><span class="fu">covr</span><span class="fu">::</span><span class="fu"><a href="http://covr.r-lib.org/reference/report.html" class="external-link">report</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Equivalent shell commands (via <code>Rscript</code>):</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::test()"</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::check()"</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::document()"</span></span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"styler::style_pkg()"</span></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"lintr::lint_package()"</span></span></code></pre></div>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="ex">Rscript</span> analysis/tests/run_analysis_tests.R</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::check()"</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::document()"</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"styler::style_pkg()"</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"lintr::lint_package()"</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="checklist-before-each-commit--opening-a-pr">Checklist before each commit / opening a PR<a class="anchor" aria-label="anchor" href="#checklist-before-each-commit--opening-a-pr"></a></h3>
 <ol style="list-style-type: decimal"><li><code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code></li>
@@ -187,7 +188,7 @@
 <li>Tests of internal package functions where drift would break the package.</li>
 <li>Do <strong>not</strong> place tests whose subject is solely <code>scripts/r/</code> or <code>analysis/</code> code here.</li>
 </ul><p><strong>Running the analysis test suite:</strong></p>
-<p>The analysis suite loads the package from the current checkout via <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> before running tests, so it always tests the current source rather than any previously installed version. Run from the repository root:</p>
+<p>The analysis suite loads the package from the current checkout via <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> before running tests, so it always tests the current source rather than any previously installed version. The GitHub Actions job in <code>.github/workflows/analysis-integration.yaml</code> runs this suite independently of <code>R CMD check</code>/<code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code>. Run from the repository root:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Shell</span></span>
 <span><span class="co"># Rscript analysis/tests/run_analysis_tests.R</span></span>
