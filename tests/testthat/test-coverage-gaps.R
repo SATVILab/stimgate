@@ -60,7 +60,7 @@ test_that("stimgateGateRunsWithGateCombnNo", {
   skip_if_not_installed("flowCore")
 
   # Get example data
-  exampleData <- stimgate::getExampleData()
+  exampleData <- getExampleData()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(tempdir(), "testNo")
 
@@ -89,7 +89,7 @@ test_that("stimgateGateRunsWithGateCombnMedian", {
   skip_if_not_installed("flowCore")
 
   # Get example data
-  exampleData <- stimgate::getExampleData()
+  exampleData <- getExampleData()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(tempdir(), "testMedian")
 
@@ -118,7 +118,7 @@ test_that("stimgateGateRunsWithGateCombnMax", {
   skip_if_not_installed("flowCore")
 
   # Get example data
-  exampleData <- stimgate::getExampleData()
+  exampleData <- getExampleData()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(tempdir(), "testMax")
 

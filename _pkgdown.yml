@@ -30,7 +30,6 @@ reference:
   - getExampleData
   - getStimExpr
   - getTestData
-  - simCytExperiment
   - stimgateMetaReadBatchList
   - stimgateMetaReadChnlLab
   - stimgateMetaReadMarkerLab
