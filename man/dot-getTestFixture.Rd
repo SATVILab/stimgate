@@ -20,7 +20,8 @@ fixture for a much faster run.
 }
 \details{
 The fixture contains 2 biological samples, 2 conditions each (unstimulated
-and stimulated), 2 markers, and 200 cells per flow frame.  It is generated
+and stimulated), 2 markers, and roughly 10,000 cells per flow frame with a
+deliberately rare but non-trivial stimulated response. It is generated
 deterministically by \code{data-raw/create_test_fixture.R}.
 }
 \keyword{internal}

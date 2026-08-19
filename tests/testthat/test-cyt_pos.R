@@ -1,4 +1,6 @@
 test_that("cytPos gates actually happen", {
+  root_dir <- testthat::test_path("../..")
+  source(file.path(root_dir, "scripts", "r", "functionsForBenchmarking-Cyt.R"), local = TRUE)
   set.seed(42L)
 
   probVecUns <- c(0.90, 0.04, 0.04, 0.02)

@@ -2,12 +2,15 @@ test_that("analysis helpers do not expose or forward calcSinglePosGates", {
   skip_if_not_installed("stimgate")
 
   root_dir <- testthat::test_path("../..")
+  script_sim <- file.path(root_dir, "scripts", "r", "functionsForBenchmarking-Cyt.R")
   script_misc <- file.path(root_dir, "scripts", "r", "sim-misc.R")
   script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
   script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 
+  skip_if_not(file.exists(script_sim), "functionsForBenchmarking-Cyt.R not found")
   skip_if_not(file.exists(script_bw), "sim-bandwidth.R not found")
 
+  source(script_sim, local = TRUE)
   source(script_misc, local = TRUE)
   source(script_bw, local = TRUE)
   source(script_comp, local = TRUE)
@@ -44,11 +47,14 @@ test_that("direct bandwidth simulation helpers agree numerically with package im
   skip_if_not_installed("stimgate")
 
   root_dir <- testthat::test_path("../..")
+  script_sim <- file.path(root_dir, "scripts", "r", "functionsForBenchmarking-Cyt.R")
   script_misc <- file.path(root_dir, "scripts", "r", "sim-misc.R")
   script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
 
+  skip_if_not(file.exists(script_sim), "functionsForBenchmarking-Cyt.R not found")
   skip_if_not(file.exists(script_bw), "sim-bandwidth.R not found")
 
+  source(script_sim, local = TRUE)
   source(script_misc, local = TRUE)
   source(script_bw, local = TRUE)
 

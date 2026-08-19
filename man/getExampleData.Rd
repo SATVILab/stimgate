@@ -22,20 +22,23 @@ getTestData(
 )
 }
 \arguments{
-\item{scenario}{Character specifying the simulation scenario ("default", "easy", "poorSeparation", "cytPos").}
+\item{scenario}{Character ignored for backwards compatibility. Default: "default".}
 
-\item{dirCache}{Directory to save the GatingSet. If NULL, uses a temporary directory.}
+\item{dirCache}{Directory ignored for backwards compatibility. Default: NULL.}
 
-\item{clear}{Logical indicating whether to force cache clearing.}
+\item{clear}{Logical ignored for backwards compatibility. Default: FALSE.}
 
-\item{nCell}{Integer. Number of cells per condition to simulate. Default: 10000.}
+\item{nCell}{Integer ignored for backwards compatibility. Default: 10000.}
 
-\item{nInd}{Integer. Number of biological samples to simulate.}
+\item{nInd}{Integer ignored for backwards compatibility. Default: 8.}
 }
 \value{
-A list containing the path to the saved GatingSet, batchList, chnl, and marker names.
+A list with the saved fixture path, channel labels, marker labels and
+sample-to-condition mapping.
 }
 \description{
-Create and save a complete synthetic GatingSet for testing and examples
-using the simCytExperiment functions, avoiding external data dependencies.
+Load the canonical package fixture shipped under
+\code{inst/extdata/stimgate_test_fixture/}. This keeps the regular package
+examples and tests on a deterministic, realistic dataset without requiring
+the simulation machinery to be installed with the package.
 }
