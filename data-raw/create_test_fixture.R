@@ -1,87 +1,66 @@
 # data-raw/create_test_fixture.R
 #
-# Generate the tiny deterministic cytometry fixture shipped with the package.
+# Generate the canonical saved example dataset shipped with the package.
 # Run this script deliberately when the fixture needs to be regenerated:
 #
 #   source("data-raw/create_test_fixture.R")
 #
 # The resulting FCS files and metadata are stored under
 #   inst/extdata/stimgate_test_fixture/
-# and are loaded at runtime by .getTestFixture().
+# and are loaded at runtime by getExampleData().
 
+source(file.path("scripts", "r", "functionsForBenchmarking-Cyt.R"))
 set.seed(42L)
 
 # ---- Parameters -------------------------------------------------------
-N_SAMPLE <- 2L # biological samples
-N_CONDITION <- 2L # conditions per sample (1 = unstim, 2 = stim)
-N_CELL <- 1e4L # cells per flow frame; large enough to retain realistic
-# rare-response behaviour without making the fixture expensive to load.
-N_MARKER <- 2L # markers per frame
+N_SAMPLE <- 2L
+N_CONDITION <- 2L
+N_CELL <- 1e4L
+N_MARKER <- 2L
 
 CHNL_VEC <- c("BC1(La139)Dd", "BC2(Pr141)Dd")
 MARKER_VEC <- paste0("MarkerF", seq_len(N_MARKER))
-
-# Mean expression per cluster [negNeg, negPos, posNeg, posPos]
+CLUSTER_LABEL_VEC <- c("negNeg", "negPos", "posNeg", "posPos")
 MEAN_MAT <- matrix(
-  c(0, 0, 0, 8, 8, 0, 8, 8),
+  c(0, 0, 0, 4, 4, 0, 4, 4),
   nrow = 4L,
   byrow = TRUE
 )
-# Keep background mostly negative while creating a controlled rare stimulated
-# response on the order of a few hundred cells out of 10,000.
-PROB_UNS <- c(0.91, 0.06, 0.025, 0.005)
-# Probability shifts under stimulation: rare but non-trivial response.
-PROB_STIM_SHIFT <- c(-0.03, 0.01, 0.01, 0.02)
-SD_CLUSTER <- 1.0
 
-# ---- Helper: simulate one flow frame -----------------------------------
-.sim_frame <- function(n_cell, prob_vec, sd_val = SD_CLUSTER) {
-  n_cluster <- length(prob_vec)
-  cluster_assign <- sample.int(n_cluster, n_cell, replace = TRUE, prob = prob_vec)
-  expr_mat <- do.call(rbind, lapply(seq_len(n_cell), function(i) {
-    cl <- cluster_assign[i]
-    MEAN_MAT[cl, ] + stats::rnorm(N_MARKER, sd = sd_val)
-  }))
-  colnames(expr_mat) <- CHNL_VEC
-  expr_mat
-}
+# Use the canonical response model required by the package example dataset.
+# Marker 1 responds on stimulated cells by +0.02; marker 2 by +0.05.
+PROB_UNS <- c(0.988, 0.008, 0.002, 0.002)
+PROB_STIM <- c(0.926, 0.050, 0.014, 0.010)
+PROB_RESPONSE_VEC <- list(PROB_STIM - PROB_UNS)
 
-# ---- Build flow frames -------------------------------------------------
-prob_stim <- pmax(PROB_UNS + PROB_STIM_SHIFT, 0)
-prob_stim <- prob_stim / sum(prob_stim)
+# ---- Build canonical dataset -------------------------------------------
+sim_res <- simCytExperiment(
+  nSample = N_SAMPLE,
+  nMarker = N_MARKER,
+  nCondition = N_CONDITION,
+  nCluster = length(CLUSTER_LABEL_VEC),
+  nCellByCondition = N_CELL,
+  transformationFunc = function(x) x,
+  mixtureType = "gaussianOnly",
+  meanExprMat = MEAN_MAT,
+  clusterLabelVec = CLUSTER_LABEL_VEC,
+  probVecUns = PROB_UNS,
+  probExact = TRUE,
+  probResponseVecByStimCondition = PROB_RESPONSE_VEC,
+  clusterPerturbationSd = 0,
+  conditionPerturbationSd = 0,
+  samplePerturbationSd = 0
+)
 
-ff_list <- vector("list", N_SAMPLE * N_CONDITION)
-idx <- 1L
-for (s in seq_len(N_SAMPLE)) {
-  for (cond in seq_len(N_CONDITION)) {
-    prob_use <- if (cond == 1L) PROB_UNS else prob_stim
-    expr_mat <- .sim_frame(N_CELL, prob_use)
-
-    # Build flowFrame parameters
-    params_df <- data.frame(
-      name = CHNL_VEC,
-      desc = MARKER_VEC,
-      range = rep(2^18, N_MARKER),
-      minRange = rep(min(expr_mat) - 1, N_MARKER),
-      maxRange = rep(max(expr_mat) + 1, N_MARKER),
-      stringsAsFactors = FALSE
-    )
-    rownames(params_df) <- paste0("$P", seq_len(N_MARKER))
-    metadata <- Biobase::AnnotatedDataFrame(
-      data = params_df,
-      varMetadata = data.frame(
-        labelDescription = rep(NA_character_, 5L),
-        row.names = colnames(params_df)
-      )
-    )
-    ff <- flowCore::flowFrame(
-      exprs = expr_mat,
-      parameters = metadata
-    )
-    ff_list[[idx]] <- ff
-    idx <- idx + 1L
-  }
-}
+ff_list <- lapply(sim_res$flowFrameList, function(ff) {
+  flowCore::colnames(ff) <- CHNL_VEC
+  p <- flowCore::parameters(ff)
+  p_data <- flowCore::pData(p)
+  p_data$name <- CHNL_VEC
+  p_data$desc <- MARKER_VEC
+  flowCore::pData(p) <- p_data
+  ff
+})
 
 # ---- Write FCS files and metadata -------------------------------------
 out_dir <- file.path("inst", "extdata", "stimgate_test_fixture")
@@ -91,13 +70,16 @@ if (!dir.exists(out_dir)) {
 
 fcs_names <- character(length(ff_list))
 for (i in seq_along(ff_list)) {
-  fname <- sprintf("sample%02d_cond%02d.fcs", ((i - 1L) %/% N_CONDITION) + 1L, ((i - 1L) %% N_CONDITION) + 1L)
+  fname <- sprintf(
+    "sample%02d_cond%02d.fcs",
+    ((i - 1L) %/% N_CONDITION) + 1L,
+    ((i - 1L) %% N_CONDITION) + 1L
+  )
   fcs_path <- file.path(out_dir, fname)
   flowCore::write.FCS(ff_list[[i]], filename = fcs_path)
   fcs_names[i] <- fname
 }
 
-# batchList: each element is c(unstim_idx, stim_idx)
 batch_list <- lapply(seq_len(N_SAMPLE), function(s) {
   unstim_idx <- (s - 1L) * N_CONDITION + 1L
   stim_idx <- (s - 1L) * N_CONDITION + 2L
@@ -117,5 +99,5 @@ metadata <- list(
 )
 saveRDS(metadata, file = file.path(out_dir, "metadata.rds"))
 
-message("Fixture written to: ", out_dir)
+message("Canonical example data written to: ", out_dir)
 message("Files: ", paste(c(fcs_names, "metadata.rds"), collapse = ", "))

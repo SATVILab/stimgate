@@ -1,4 +1,4 @@
-exampleData <- stimgate:::.getTestFixture()
+exampleData <- getExampleData()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
 pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
 invisible(gateStim(
@@ -504,7 +504,7 @@ test_that("writeStimFCS validates parameter types", {
 
 test_that("writeStimFCS integrates with stimgate workflow", {
   # Test full integration: gate -> fcs_write -> verify output
-  exampleData <- stimgate:::.getTestFixture()
+  exampleData <- getExampleData()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
 
@@ -556,7 +556,7 @@ test_that("writeStimFCS respects working directory", {
   originalWd <- getwd()
   tempWd <- tempdir()
 
-  exampleData <- stimgate:::.getTestFixture()
+  exampleData <- getExampleData()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject2 <- file.path(dirname(exampleData$pathGs), "stimgate")
   invisible(gateStim(
@@ -595,7 +595,7 @@ test_that("writeStimFCS respects working directory", {
 
 
 test_that("writeStimFCS handles transformation edge cases", {
-  exampleData <- stimgate:::.getTestFixture()
+  exampleData <- getExampleData()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject2 <- file.path(dirname(exampleData$pathGs), "stimgate")
   invisible(gateStim(

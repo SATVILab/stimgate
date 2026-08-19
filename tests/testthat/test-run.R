@@ -1,5 +1,5 @@
 test_that("stimgateGateRuns", {
-  exampleData <- stimgate:::.getTestFixture()
+  exampleData <- getExampleData()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
   # debugonce(.getCpUnsLocGetProb)

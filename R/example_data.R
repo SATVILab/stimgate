@@ -20,6 +20,18 @@ getExampleData <- function(
   nCell = 1e4,
   nInd = 8
 ) {
+  if (
+    !identical(scenario, "default") ||
+      !is.null(dirCache) ||
+      isTRUE(clear) ||
+      !isTRUE(all.equal(as.numeric(nCell), 1e4)) ||
+      !isTRUE(all.equal(as.numeric(nInd), 8))
+  ) {
+    warning(
+      "`getExampleData()` now loads the canonical saved package fixture; `scenario`, `dirCache`, `clear`, `nCell`, and `nInd` are deprecated and ignored.",
+      call. = FALSE
+    )
+  }
   .getTestFixture()
 }
 
