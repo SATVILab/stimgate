@@ -74,5 +74,9 @@ test_that(".simCompareFreqBs forwards to gateStim via .simCompareStimgateRows wi
 
   expect_s3_class(res, "data.frame")
   expect_true(nrow(res) > 0)
-  expect_true("stimgate" %in% res[["approach"]])
+
+  stimgate_res <- res[res[["approach"]] == "stimgate", , drop = FALSE]
+  expect_true(nrow(stimgate_res) > 0)
+  expect_false(any(stimgate_res[["method"]] == "stimgate_error"))
+  expect_true(all(is.na(stimgate_res[["error"]])))
 })
