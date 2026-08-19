@@ -343,3 +343,17 @@ Place all unit tests in `tests/testthat/` as `test-<topic>.R` files.
 9. **Cross-platform compatibility**:
    Tests must pass on macOS, Windows, and Ubuntu. Use `file.path()` (never hard-coded
    `/` or `\\` separators) and avoid platform-specific paths.
+10. **Use the package-shipped fixture for routine tests and examples**:
+    The package ships a tiny deterministic cytometry fixture in
+    `inst/extdata/stimgate_test_fixture/` (2 samples × 2 conditions × 2 markers ×
+    200 cells, seed 42).  Load it with the internal helper:
+    ```r
+    exampleData <- stimgate:::.getTestFixture()
+    ```
+    Use `.getTestFixture()` in any test or `@examples` block where the simulation
+    itself is not the subject under test.  Keep `getExampleData()` /
+    `simCytExperiment()` only where those functions or a deliberately simulated
+    scenario are specifically being exercised.  To regenerate the fixture after
+    intentional changes to its structure, run
+    `source("data-raw/create_test_fixture.R")` from the repository root in a
+    clean R session (no `devtools::load_all()` required).

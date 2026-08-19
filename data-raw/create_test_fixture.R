@@ -64,8 +64,7 @@ for (s in seq_len(N_SAMPLE)) {
       stringsAsFactors = FALSE
     )
     rownames(params_df) <- paste0("$P", seq_len(N_MARKER))
-    metadata <- new(
-      "AnnotatedDataFrame",
+    metadata <- Biobase::AnnotatedDataFrame(
       data = params_df,
       varMetadata = data.frame(
         labelDescription = rep(NA_character_, 5L),
