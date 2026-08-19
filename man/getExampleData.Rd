@@ -5,40 +5,17 @@
 \alias{getTestData}
 \title{Get example GatingSet}
 \usage{
-getExampleData(
-  scenario = "default",
-  dirCache = NULL,
-  clear = FALSE,
-  nCell = 10000,
-  nInd = 8
-)
+getExampleData()
 
-getTestData(
-  scenario = "default",
-  dirCache = NULL,
-  clear = FALSE,
-  nCell = 10000,
-  nInd = 8
-)
-}
-\arguments{
-\item{scenario}{Character ignored for backwards compatibility. Default: "default".}
-
-\item{dirCache}{Directory ignored for backwards compatibility. Default: NULL.}
-
-\item{clear}{Logical ignored for backwards compatibility. Default: FALSE.}
-
-\item{nCell}{Integer ignored for backwards compatibility. Default: 10000.}
-
-\item{nInd}{Integer ignored for backwards compatibility. Default: 8.}
+getTestData()
 }
 \value{
-A list with the saved fixture path, channel labels, marker labels and
-sample-to-condition mapping.
+A list with the saved example-data path, channel labels, marker labels,
+and sample-to-condition mapping.
 }
 \description{
-Load the canonical package fixture shipped under
-\code{inst/extdata/stimgate_test_fixture/}. This keeps the regular package
+Load the canonical packaged example dataset shipped under
+\code{inst/extdata/stimgate_example_data/}. This keeps the regular package
 examples and tests on a deterministic, realistic dataset without requiring
 the simulation machinery to be installed with the package.
 }

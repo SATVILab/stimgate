@@ -6,7 +6,7 @@
 #   source("data-raw/create_test_fixture.R")
 #
 # The resulting FCS files and metadata are stored under
-#   inst/extdata/stimgate_test_fixture/
+#   inst/extdata/stimgate_example_data/
 # and are loaded at runtime by getExampleData().
 
 source(file.path("scripts", "r", "functionsForBenchmarking-Cyt.R"))
@@ -63,7 +63,7 @@ ff_list <- lapply(sim_res$flowFrameList, function(ff) {
 })
 
 # ---- Write FCS files and metadata -------------------------------------
-out_dir <- file.path("inst", "extdata", "stimgate_test_fixture")
+out_dir <- file.path("inst", "extdata", "stimgate_example_data")
 if (!dir.exists(out_dir)) {
   dir.create(out_dir, recursive = TRUE)
 }

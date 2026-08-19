@@ -281,7 +281,7 @@
 #' \code{\link[flowWorkspace]{GatingSet}} for GatingSet documentation
 #'
 #' @examples
-#' exampleData <- stimgate:::.getTestFixture()
+#' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
 #' pathProject <- file.path(tempdir(), "demonstration")
 #'

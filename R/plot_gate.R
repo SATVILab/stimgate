@@ -49,7 +49,7 @@
 #'
 #' @examples
 #' # Create example data and run gating
-#' exampleData <- stimgate:::.getTestFixture()
+#' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
 #' pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
 #'
