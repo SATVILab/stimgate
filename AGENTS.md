@@ -265,7 +265,7 @@ pkgdown::check_pkgdown()
 
 ## 5. Repository Structure
 
-- `R/`: Core R source code for the package.
+- `R/`: Core R source code for the installed package.
   - `UtilsCytoRSV-chnl_lab.R`: Channel label utilities (get
     markers/channels from cytometry objects).
   - `UtilsCytoRSV-plot_cyto.R`: Cytometry plotting utilities.
@@ -303,13 +303,11 @@ pkgdown::check_pkgdown()
     ([`.debug()`](https://satvilab.github.io/stimgate/reference/dot-debug.md))
     and global variable declarations.
   - `ex.R`: Extract expression matrices from `GatingSet` objects.
-  - `example_data.R`: Creates example `GatingSet` for examples and
-    testing
-    ([`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)).
+  - `example_data.R`: Loads the canonical shipped example dataset via
+    [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
+    and does not simulate new data.
   - `fcs_write.R`: Write FCS files of cytokine-positive cells
     (`writeStimFCS`).
-  - `functionsForBenchmarking-Cyt.R`: Benchmarking helpers for cytokine
-    simulation (used internally by `example_data.R`).
   - `gate.R`: Main entry point for gating (`gateStim`).
   - `gate_batch-helper.R`: Helper functions for gating batches of
     samples.
@@ -338,9 +336,12 @@ pkgdown::check_pkgdown()
     package).
     - `fbeta.py`: Richards F-beta thresholding implementation
       (comparison method).
-  - `r/`: R helper scripts used by analysis only — not loaded by
+  - `r/`: Developer-side R analysis/simulation helpers used for
+    research, benchmarking, and fixture regeneration. These are not
+    loaded by
     [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
-    and not part of the `stimgate` namespace.
+    and are not part of the installed package.
+    - `functionsForBenchmarking-Cyt.R`: Cytokine simulation utilities.
     - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for
       phenotype simulation.
     - `sim-bandwidth.R`: Simulation bandwidth utilities.
@@ -353,6 +354,9 @@ pkgdown::check_pkgdown()
 - `analysis/`: Quarto (`.qmd`) documents for research, simulation, and
   benchmarking analysis.
 - `vignettes/`: Package vignettes (`stimgate.Rmd`).
+- `inst/extdata/`: Canonical saved example datasets consumed by
+  [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
+  and by package examples/tests.
 - `inst/`: Installed package material (e.g. `COPYRIGHTS`).
 - `.github/`: GitHub CI workflows and Copilot setup.
 - `data-raw/`: Raw data files used for testing and examples.
@@ -431,14 +435,10 @@ pkgdown::check_pkgdown()
 2.  **Comparison code vs. package code**: `R/` contains only StimGate
     implementation code. Benchmark comparisons against the tailgate
     method call `cytoUtils:::.cytokine_cutpoint()` from the `cytoUtils`
-    package directly in `scripts/r/sim-compare-freq_bs.R` and
-    `analysis/7-sim-compare-freq_bs.qmd`. Note that
-    `R/functionsForBenchmarking-Cyt.R` is an exception: it stays in `R/`
-    because
-    [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
-    (an exported function) calls
-    [`simCytExperiment()`](https://satvilab.github.io/stimgate/reference/simCytExperiment.md)
-    internally.
+    package are implemented directly in
+    `scripts/r/sim-compare-freq_bs.R` and
+    `analysis/7-sim-compare-freq_bs.qmd`. Cytokine simulation logic
+    remains in `scripts/r/` and is not installed with the package.
 3.  **Legacy comparator policy**: Tailgate comparator functions are
     invoked directly from the `cytoUtils` package via
     `cytoUtils:::.cytokine_cutpoint()`. Do not reintroduce vendored
@@ -463,35 +463,65 @@ Place all unit tests in `tests/testthat/` as `test-<topic>.R` files.
     [`library(testthat)`](https://testthat.r-lib.org) or similar calls
     at the top of test files. The `testthat` package is automatically
     loaded when tests are run.
+
 2.  **Keep tests independent**: Each test should be self-contained and
     not rely on global state created outside of test blocks.
+
 3.  **Variable scope in tests**: When a test creates its own test data
     and variables (e.g. `example_data`, `gs`), always use those local
     variables throughout that test. Never mix local and global variables
     from different scopes.
+
 4.  **Avoid code outside test blocks**: Do not place code outside
     `test_that()` blocks (except shared setup data required by every
     test in the file). Operations like
     [`unlink()`](https://rdrr.io/r/base/unlink.html) outside blocks
     execute in unpredictable order, cause race conditions, and interfere
     with parallel execution.
+
 5.  **Cleanup within tests**: Each test must clean up its own temporary
     files/directories created during execution (e.g.,
     `unlink(tmp_dir, recursive = TRUE)` or
     [`withr::defer()`](https://withr.r-lib.org/reference/defer.html)).
+
 6.  **Shared test fixtures**: If multiple tests need the same setup
     data, create it within each test or create it once at the top with
     clear documentation. Never delete shared fixtures mid-file.
+
 7.  **Test data files compatibility**: Test data files (`.rds` in
     `tests/testthat/`) may need regeneration when major dependencies
     (e.g., `ggplot2`) upgrade. Regenerate test data files using current
     package versions if objects behave unexpectedly after dependency
     updates.
+
 8.  **Test observable behaviour**: Tests must verify observable outputs
     and behavior, not internal implementation details or the existence
     of internal (`.`-prefixed) functions.
+
 9.  **Cross-platform compatibility**: Tests must pass on macOS, Windows,
     and Ubuntu. Use
     [`file.path()`](https://rdrr.io/r/base/file.path.html) (never
     hard-coded `/` or `\\` separators) and avoid platform-specific
     paths.
+
+10. **Use the package-shipped example data for routine tests and
+    examples**: The package ships one canonical deterministic cytometry
+    example dataset in `inst/extdata/stimgate_example_data/` (2 samples
+    × 2 conditions × 2 markers × ~10,000 cells per condition, seed 42).
+    Load it with:
+
+    ``` r
+
+    exampleData <- getExampleData()
+    ```
+
+    Package tests and examples should use
+    [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
+    rather than sourcing developer-side simulation utilities. Keep
+    simulation code in `scripts/r/` for deliberate
+    analysis/fixture-generation work only. To regenerate the dataset
+    after intentional changes to its structure, run
+    `source("data-raw/create_test_fixture.R")` from the repository root
+    in a clean R session (no
+    [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
+    required).

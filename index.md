@@ -54,7 +54,7 @@ The package requires R \>= 4.4.0.
 
 ## Minimal example
 
-A synthetic `GatingSet` is provided by
+The canonical packaged example data are provided by
 [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md),
 so the basic workflow can be tried without external FCS files.
 
@@ -62,7 +62,7 @@ so the basic workflow can be tried without external FCS files.
 
 library(stimgate)
 
-example_data <- getExampleData(nCell = 1000)
+example_data <- getExampleData()
 gs <- flowWorkspace::load_gs(example_data$pathGs)
 
 path_project <- file.path(tempdir(), "stimgate-example")
@@ -112,9 +112,7 @@ method and bandwidth controls.
 - [`getBatchList()`](https://satvilab.github.io/stimgate/reference/getBatchList.md)
   constructs matched sample batches from sample metadata.
 - [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
-  and
-  [`simCytExperiment()`](https://satvilab.github.io/stimgate/reference/simCytExperiment.md)
-  provide synthetic data for examples, testing and simulation.
+  loads the packaged canonical dataset for examples and package tests.
 
 ## Repository structure
 

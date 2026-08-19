@@ -38,7 +38,6 @@ Gate table with gates for each sample for each marker.
 ``` r
 # Get example dataset
 exampleData <- getExampleData()
-#> Cache incomplete, regenerating synthetic test data...
 #> Done
 #> To reload it, use 'load_gs' function
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
@@ -57,17 +56,17 @@ pathProject <- gateStim(
 #> 
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
-#> batch 8 of 8
+#> batch 2 of 2
 #> getting clustered and/or controlled gates
 #> chnl: BC2(Pr141)Dd
 #> getting pre-adjustment gates
-#> batch 8 of 8
+#> batch 2 of 2
 #> getting clustered and/or controlled gates
 #> 
 #> 
 #> 
 #> getting cyt combn frequencies
-#> batch 8 of 8
+#> batch 2 of 2
 
 # Get identified gates
 gates <- getStimGates(pathProject)

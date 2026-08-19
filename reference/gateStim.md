@@ -591,7 +591,6 @@ for GatingSet documentation
 
 ``` r
 exampleData <- getExampleData()
-#> Cache incomplete, regenerating synthetic test data...
 #> Done
 #> To reload it, use 'load_gs' function
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
@@ -611,18 +610,18 @@ gateStim(
 #> 
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
-#> batch 8 of 8
+#> batch 2 of 2
 #> getting clustered and/or controlled gates
 #> chnl: BC2(Pr141)Dd
 #> getting pre-adjustment gates
-#> batch 8 of 8
+#> batch 2 of 2
 #> getting clustered and/or controlled gates
 #> 
 #> 
 #> 
 #> getting cyt combn frequencies
-#> batch 8 of 8
-#> [1] "/tmp/RtmpKkoHTZ/demonstration"
+#> batch 2 of 2
+#> [1] "/tmp/RtmpSCGZqr/demonstration"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {

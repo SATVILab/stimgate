@@ -42,9 +42,6 @@ Helper and utility functions
   : Get example GatingSet
 - [`getStimExpr()`](https://satvilab.github.io/stimgate/reference/getStimExpr.md)
   : Read saved expression data from project
-- [`simCytExperiment()`](https://satvilab.github.io/stimgate/reference/simCytExperiment.md)
-  : Simulate a set of stimulation conditions for multiple biological
-  samples
 - [`stimgateMetaReadBatchList()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadBatchList.md)
   : Read batch list from project
 - [`stimgateMetaReadChnlLab()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadLab.md)

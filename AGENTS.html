@@ -212,7 +212,7 @@
 <div class="section level2">
 <h2 id="id_5-repository-structure">5. Repository Structure<a class="anchor" aria-label="anchor" href="#id_5-repository-structure"></a></h2>
 <ul><li>
-<code>R/</code>: Core R source code for the package.
+<code>R/</code>: Core R source code for the installed package.
 <ul><li>
 <code>UtilsCytoRSV-chnl_lab.R</code>: Channel label utilities (get markers/channels from cytometry objects).</li>
 <li>
@@ -256,11 +256,9 @@
 <li>
 <code>ex.R</code>: Extract expression matrices from <code>GatingSet</code> objects.</li>
 <li>
-<code>example_data.R</code>: Creates example <code>GatingSet</code> for examples and testing (<code><a href="reference/getExampleData.html">getExampleData()</a></code>).</li>
+<code>example_data.R</code>: Loads the canonical shipped example dataset via <code><a href="reference/getExampleData.html">getExampleData()</a></code> and does not simulate new data.</li>
 <li>
 <code>fcs_write.R</code>: Write FCS files of cytokine-positive cells (<code>writeStimFCS</code>).</li>
-<li>
-<code>functionsForBenchmarking-Cyt.R</code>: Benchmarking helpers for cytokine simulation (used internally by <code>example_data.R</code>).</li>
 <li>
 <code>gate.R</code>: Main entry point for gating (<code>gateStim</code>).</li>
 <li>
@@ -303,8 +301,10 @@
 <code>fbeta.py</code>: Richards F-beta thresholding implementation (comparison method).</li>
 </ul></li>
 <li>
-<code>r/</code>: R helper scripts used by analysis only — not loaded by <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> and not part of the <code>stimgate</code> namespace.
+<code>r/</code>: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> and are not part of the installed package.
 <ul><li>
+<code>functionsForBenchmarking-Cyt.R</code>: Cytokine simulation utilities.</li>
+<li>
 <code>functionsForBenchmarking-Pheno.R</code>: Benchmarking helpers for phenotype simulation.</li>
 <li>
 <code>sim-bandwidth.R</code>: Simulation bandwidth utilities.</li>
@@ -322,6 +322,8 @@
 <code>analysis/</code>: Quarto (<code>.qmd</code>) documents for research, simulation, and benchmarking analysis.</li>
 <li>
 <code>vignettes/</code>: Package vignettes (<code>stimgate.Rmd</code>).</li>
+<li>
+<code>inst/extdata/</code>: Canonical saved example datasets consumed by <code><a href="reference/getExampleData.html">getExampleData()</a></code> and by package examples/tests.</li>
 <li>
 <code>inst/</code>: Installed package material (e.g. <code>COPYRIGHTS</code>).</li>
 <li>
@@ -382,7 +384,7 @@
 <ol style="list-style-type: decimal"><li>
 <strong>Taut-string density</strong>: The piecewise-constant taut-string density used for antimode detection is provided by the internal helper <code><a href="reference/dot-tautStringPmden.html">.tautStringPmden()</a></code> (in <code>cp_uns_loc_filtering.R</code>), which wraps the native FAUST-derived C++ implementation <code>stimgate_cpPmden()</code> compiled via <code>cpp11</code> (<code>src/stimgate_cppmden.cpp</code> and <code>src/cpPmden.cpp</code>).</li>
 <li>
-<strong>Comparison code vs. package code</strong>: <code>R/</code> contains only StimGate implementation code. Benchmark comparisons against the tailgate method call <code>cytoUtils:::.cytokine_cutpoint()</code> from the <code>cytoUtils</code> package directly in <code>scripts/r/sim-compare-freq_bs.R</code> and <code>analysis/7-sim-compare-freq_bs.qmd</code>. Note that <code>R/functionsForBenchmarking-Cyt.R</code> is an exception: it stays in <code>R/</code> because <code><a href="reference/getExampleData.html">getExampleData()</a></code> (an exported function) calls <code><a href="reference/simCytExperiment.html">simCytExperiment()</a></code> internally.</li>
+<strong>Comparison code vs. package code</strong>: <code>R/</code> contains only StimGate implementation code. Benchmark comparisons against the tailgate method call <code>cytoUtils:::.cytokine_cutpoint()</code> from the <code>cytoUtils</code> package are implemented directly in <code>scripts/r/sim-compare-freq_bs.R</code> and <code>analysis/7-sim-compare-freq_bs.qmd</code>. Cytokine simulation logic remains in <code>scripts/r/</code> and is not installed with the package.</li>
 <li>
 <strong>Legacy comparator policy</strong>: Tailgate comparator functions are invoked directly from the <code>cytoUtils</code> package via <code>cytoUtils:::.cytokine_cutpoint()</code>. Do not reintroduce vendored legacy tailgate helpers under <code>scripts/r/</code> or <code>R/</code>.</li>
 <li>
@@ -391,24 +393,21 @@
 <div class="section level2">
 <h2 id="id_8-testing-best-practices--guidelines">8. Testing Best Practices &amp; Guidelines<a class="anchor" aria-label="anchor" href="#id_8-testing-best-practices--guidelines"></a></h2>
 <p>Place all unit tests in <code>tests/testthat/</code> as <code>test-&lt;topic&gt;.R</code> files.</p>
-<ol style="list-style-type: decimal"><li>
-<strong>Avoid <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code> calls in test files</strong>: Never use <code><a href="https://testthat.r-lib.org" class="external-link">library(testthat)</a></code> or similar calls at the top of test files. The <code>testthat</code> package is automatically loaded when tests are run.</li>
+<ol style="list-style-type: decimal"><li><p><strong>Avoid <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code> calls in test files</strong>: Never use <code><a href="https://testthat.r-lib.org" class="external-link">library(testthat)</a></code> or similar calls at the top of test files. The <code>testthat</code> package is automatically loaded when tests are run.</p></li>
+<li><p><strong>Keep tests independent</strong>: Each test should be self-contained and not rely on global state created outside of test blocks.</p></li>
+<li><p><strong>Variable scope in tests</strong>: When a test creates its own test data and variables (e.g. <code>example_data</code>, <code>gs</code>), always use those local variables throughout that test. Never mix local and global variables from different scopes.</p></li>
+<li><p><strong>Avoid code outside test blocks</strong>: Do not place code outside <code>test_that()</code> blocks (except shared setup data required by every test in the file). Operations like <code><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink()</a></code> outside blocks execute in unpredictable order, cause race conditions, and interfere with parallel execution.</p></li>
+<li><p><strong>Cleanup within tests</strong>: Each test must clean up its own temporary files/directories created during execution (e.g., <code>unlink(tmp_dir, recursive = TRUE)</code> or <code><a href="https://withr.r-lib.org/reference/defer.html" class="external-link">withr::defer()</a></code>).</p></li>
+<li><p><strong>Shared test fixtures</strong>: If multiple tests need the same setup data, create it within each test or create it once at the top with clear documentation. Never delete shared fixtures mid-file.</p></li>
+<li><p><strong>Test data files compatibility</strong>: Test data files (<code>.rds</code> in <code>tests/testthat/</code>) may need regeneration when major dependencies (e.g., <code>ggplot2</code>) upgrade. Regenerate test data files using current package versions if objects behave unexpectedly after dependency updates.</p></li>
+<li><p><strong>Test observable behaviour</strong>: Tests must verify observable outputs and behavior, not internal implementation details or the existence of internal (<code>.</code>-prefixed) functions.</p></li>
+<li><p><strong>Cross-platform compatibility</strong>: Tests must pass on macOS, Windows, and Ubuntu. Use <code><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path()</a></code> (never hard-coded <code>/</code> or <code>\\</code> separators) and avoid platform-specific paths.</p></li>
 <li>
-<strong>Keep tests independent</strong>: Each test should be self-contained and not rely on global state created outside of test blocks.</li>
-<li>
-<strong>Variable scope in tests</strong>: When a test creates its own test data and variables (e.g. <code>example_data</code>, <code>gs</code>), always use those local variables throughout that test. Never mix local and global variables from different scopes.</li>
-<li>
-<strong>Avoid code outside test blocks</strong>: Do not place code outside <code>test_that()</code> blocks (except shared setup data required by every test in the file). Operations like <code><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink()</a></code> outside blocks execute in unpredictable order, cause race conditions, and interfere with parallel execution.</li>
-<li>
-<strong>Cleanup within tests</strong>: Each test must clean up its own temporary files/directories created during execution (e.g., <code>unlink(tmp_dir, recursive = TRUE)</code> or <code><a href="https://withr.r-lib.org/reference/defer.html" class="external-link">withr::defer()</a></code>).</li>
-<li>
-<strong>Shared test fixtures</strong>: If multiple tests need the same setup data, create it within each test or create it once at the top with clear documentation. Never delete shared fixtures mid-file.</li>
-<li>
-<strong>Test data files compatibility</strong>: Test data files (<code>.rds</code> in <code>tests/testthat/</code>) may need regeneration when major dependencies (e.g., <code>ggplot2</code>) upgrade. Regenerate test data files using current package versions if objects behave unexpectedly after dependency updates.</li>
-<li>
-<strong>Test observable behaviour</strong>: Tests must verify observable outputs and behavior, not internal implementation details or the existence of internal (<code>.</code>-prefixed) functions.</li>
-<li>
-<strong>Cross-platform compatibility</strong>: Tests must pass on macOS, Windows, and Ubuntu. Use <code><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path()</a></code> (never hard-coded <code>/</code> or <code>\\</code> separators) and avoid platform-specific paths.</li>
+<p><strong>Use the package-shipped example data for routine tests and examples</strong>: The package ships one canonical deterministic cytometry example dataset in <code>inst/extdata/stimgate_example_data/</code> (2 samples × 2 conditions × 2 markers × ~10,000 cells per condition, seed 42). Load it with:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">exampleData</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/getExampleData.html">getExampleData</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>Package tests and examples should use <code><a href="reference/getExampleData.html">getExampleData()</a></code> rather than sourcing developer-side simulation utilities. Keep simulation code in <code>scripts/r/</code> for deliberate analysis/fixture-generation work only. To regenerate the dataset after intentional changes to its structure, run <code>source("data-raw/create_test_fixture.R")</code> from the repository root in a clean R session (no <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> required).</p>
+</li>
 </ol></div>
 </div>
 

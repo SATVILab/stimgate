@@ -70,13 +70,6 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getStimGateTailgate.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-isString.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-isStringVector.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/dot-posDef.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/dot-simCytCombinedRatioFactor.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/dot-simCytLowerMeanTransReference.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/dot-simCytRatioAdjustUpper.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/dot-simCytTransformMatrix.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/dot-simCytUsesGammaRatioCorrection.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/dot-simCytUsesUpperRatioCorrection.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-tautStringPmden.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/gateStim.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/getBatchList.html</loc></url>
@@ -87,10 +80,6 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/getStimStats.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/index.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/plotStim.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/simCytClusterData.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/simCytCondition.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/simCytExperiment.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/simCytSample.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/stimgate-package.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/stimgateMetaReadBatchList.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/stimgateMetaReadLab.html</loc></url>
@@ -100,8 +89,6 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsMarkers.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/stimgate_debug_copy.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/stimgate_debug_print.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/validateExperimentInputs.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/validateSampleInputs.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/writeStimFCS.html</loc></url>
 </urlset>
 

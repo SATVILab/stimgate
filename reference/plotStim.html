@@ -202,7 +202,6 @@ Default is "min".</p></dd>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Create example data and run gating</span></span></span>
 <span class="r-in"><span><span class="va">exampleData</span> <span class="op">&lt;-</span> <span class="fu"><a href="getExampleData.html">getExampleData</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Cache incomplete, regenerating synthetic test data...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Done</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> To reload it, use 'load_gs' function</span>
 <span class="r-in"><span><span class="va">gs</span> <span class="op">&lt;-</span> <span class="fu">flowWorkspace</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/flowWorkspace/man/save_gs.html" class="external-link">load_gs</a></span><span class="op">(</span><span class="va">exampleData</span><span class="op">$</span><span class="va">pathGs</span><span class="op">)</span></span></span>
@@ -222,18 +221,18 @@ Default is "min".</p></dd>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 8 of 8</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC2(Pr141)Dd</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 8 of 8</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 8 of 8</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpKkoHTZ/dir_4a052172d67b/stimgate"</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpSCGZqr/stimgate_example_data_4b8e749c2953/stimgate"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create plots</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"hexbin"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>

@@ -1,53 +1,19 @@
 # Get example GatingSet
 
-Create and save a complete synthetic GatingSet for testing and examples
-using the simCytExperiment functions, avoiding external data
-dependencies.
+Load the canonical packaged example dataset shipped under
+`inst/extdata/stimgate_example_data/`. This keeps the regular package
+examples and tests on a deterministic, realistic dataset without
+requiring the simulation machinery to be installed with the package.
 
 ## Usage
 
 ``` r
-getExampleData(
-  scenario = "default",
-  dirCache = NULL,
-  clear = FALSE,
-  nCell = 10000,
-  nInd = 8
-)
+getExampleData()
 
-getTestData(
-  scenario = "default",
-  dirCache = NULL,
-  clear = FALSE,
-  nCell = 10000,
-  nInd = 8
-)
+getTestData()
 ```
-
-## Arguments
-
-- scenario:
-
-  Character specifying the simulation scenario ("default", "easy",
-  "poorSeparation", "cytPos").
-
-- dirCache:
-
-  Directory to save the GatingSet. If NULL, uses a temporary directory.
-
-- clear:
-
-  Logical indicating whether to force cache clearing.
-
-- nCell:
-
-  Integer. Number of cells per condition to simulate. Default: 10000.
-
-- nInd:
-
-  Integer. Number of biological samples to simulate.
 
 ## Value
 
-A list containing the path to the saved GatingSet, batchList, chnl, and
-marker names.
+A list with the saved example-data path, channel labels, marker labels,
+and sample-to-condition mapping.
