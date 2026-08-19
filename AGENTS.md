@@ -147,6 +147,7 @@ Equivalent shell commands (via `Rscript`):
 
 ```bash
 Rscript -e "devtools::test()"
+Rscript analysis/tests/run_analysis_tests.R
 Rscript -e "devtools::check()"
 Rscript -e "devtools::document()"
 Rscript -e "styler::style_pkg()"
@@ -192,8 +193,9 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 
 The analysis suite loads the package from the current checkout via
 `devtools::load_all()` before running tests, so it always tests the current
-source rather than any previously installed version. Run from the repository
-root:
+source rather than any previously installed version. The GitHub Actions job in
+`.github/workflows/analysis-integration.yaml` runs this suite independently of
+`R CMD check`/`devtools::test()`. Run from the repository root:
 
 ```r
 # Shell
