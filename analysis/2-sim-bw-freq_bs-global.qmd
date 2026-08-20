@@ -205,10 +205,10 @@ Generate the grid of parameters to simulate.
 #| label: bw-manual-grid
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
-  prob_response  = prob_response_vec,
-  n_cell         = n_cell_stim_vec,
-  bw             = bandwidth_value_vec,
-  bias_uns       = bias_uns_vec,
+  prob_response = prob_response_vec,
+  n_cell = n_cell_stim_vec,
+  bw = bandwidth_value_vec,
+  bias_uns = bias_uns_vec,
   sample_perturbation_sd = sample_perturbation_sd_vec,
   condition_perturbation_sd = condition_perturbation_sd_vec,
   cluster_perturbation_sd = cluster_perturbation_sd_vec,
@@ -220,24 +220,28 @@ sim_grid <- tidyr::expand_grid(
     by = c("transformation", "bias_uns")
   ) |>
   dplyr::select(
-    transformation, prob_response, n_cell,
-    mean_pos_setting, mean_pos, bw, bias_uns_setting, bias_uns,
-    sample_perturbation_sd, condition_perturbation_sd,
-    cluster_perturbation_sd, background_relative_to_response,
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos_setting,
+    mean_pos,
+    bw,
+    bias_uns_setting,
+    bias_uns,
+    sample_perturbation_sd,
+    condition_perturbation_sd,
+    cluster_perturbation_sd,
+    background_relative_to_response,
     n_cell_uns_relative_to_stim
   ) |>
   dplyr::filter(
-    !(n_cell * prob_response < 5 & prob_response < 0.04)
-  ) |>
-  dplyr::filter(
-    (bw <= 0.15 & transformation == "gamma") | (
-      bw >= 0.05 & transformation != "gamma"
-    )
+    !(n_cell * prob_response < 5 & prob_response < 0.04),
+    (transformation == "gamma" & bw <= 0.15) |
+      (transformation != "gamma" & bw >= 0.05)
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
-  ) |>
-  dplyr::arrange(n_cell, dplyr::desc(prob_response))
+  )
 
 if (.isDev()) {
   sim_grid <- sim_grid |>
@@ -252,35 +256,45 @@ if (.isDev()) {
     )
 }
 
+# Keep the complete grid for later collation.
 sim_grid_all <- sim_grid
 
+# Randomise execution order, then distribute rows evenly across external chunks.
 if (nrow(sim_grid_all) > 0L) {
   set.seed(sim_grid_shuffle_seed)
 
   sim_grid <- sim_grid_all |>
+    dplyr::slice_sample(prop = 1) |>
     dplyr::mutate(
-      .shuffle_order = sample.int(dplyr::n())
+      .sim_grid_chunk =
+        ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L
     ) |>
-    dplyr::arrange(.data$.shuffle_order) |>
-    dplyr::mutate(
-      .sim_grid_chunk = ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L
+    dplyr::filter(
+      .data$.sim_grid_chunk == sim_grid_chunk_index
     ) |>
-    dplyr::filter(.data$.sim_grid_chunk == sim_grid_chunk_index) |>
-    dplyr::arrange(.data$n_cell, dplyr::desc(.data$prob_response)) |>
-    dplyr::select(-.shuffle_order, -.sim_grid_chunk)
-} else {
-  sim_grid <- sim_grid_all
+    dplyr::select(
+      -.sim_grid_chunk
+    )
 }
 
 sim_grid_loop <- sim_grid
 
 sim_grid
-print(paste0(
-  "Performing ", nrow(sim_grid), " of ", nrow(sim_grid_all),
-  " simulations for sim_grid chunk ", sim_grid_chunk_index,
-  " of ", sim_grid_n_chunks,
-  " using shuffle seed ", sim_grid_shuffle_seed
-))
+
+print(
+  paste0(
+    "Performing ",
+    nrow(sim_grid),
+    " of ",
+    nrow(sim_grid_all),
+    " simulations for sim_grid chunk ",
+    sim_grid_chunk_index,
+    " of ",
+    sim_grid_n_chunks,
+    " using shuffle seed ",
+    sim_grid_shuffle_seed
+  )
+)
 ```
 
 A loop we only run when we want to see why particular runs failed.
@@ -458,11 +472,11 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
         out <- tryCatch(
           {
             sim_res <- .simBandwidthBsFreq(
-              nSample = 5,
+              nSample = 25,
               nMarker = 1,
               nCondition = 2,
               nCluster = 2,
-              nIter = 5,
+              nIter = 1,
               biasUns = bias_uns,
               bw = bw,
               bwMin = "none",
@@ -602,7 +616,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
         out
       },
       # Explicit integer seed guarantees strict L'Ecuyer reproducibility
-      .options = furrr::furrr_options(seed = sim_seed, scheduling = Inf)
+      .options = furrr::furrr_options(seed = sim_seed, chunk_size = 10L)
     )
   })
 
