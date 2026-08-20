@@ -394,41 +394,60 @@
 
   if (!isTRUE(adaptive)) {
     sdCore <- .bwRobustSd(xCore)
+
     sdExtra <- if (length(xExtra) >= 2L) {
       .bwRobustSd(xExtra)
     } else {
       sdCore
     }
 
-    sigmaCoreShrink <- 4 / 5 * sdCore + 1 / 5 * sdExtra
-    sigmaExtraShrink <- 1 / 2 * sdCore + 1 / 2 * sdExtra
+    sdAll <- .bwRobustSd(x)
+
+    sigmaCoreShrink <-
+      4 / 5 * sdCore + 1 / 5 * sdExtra
+
+    sigmaExtraShrink <-
+      1 / 2 * sdCore + 1 / 2 * sdExtra
 
     nExtra <- length(xExtra)
-    nCore <- max(20L, length(x) - nExtra)
-
-    zBw <- c(
-      .bwNormSampleNormalComponent(
-        mu = mean(xCore, na.rm = TRUE),
-        sd = sigmaCoreShrink,
-        n = nCore,
-        fallbackSd = .bwRobustSd(x)
-      ),
-      .bwNormSampleNormalComponent(
-        mu = mean(xExtra, na.rm = TRUE),
-        sd = sigmaExtraShrink,
-        n = nExtra,
-        fallbackSd = .bwRobustSd(xCore)
-      )
+    nCore <- max(
+      20L,
+      length(x) - nExtra
     )
 
-    zBw <- zBw[is.finite(zBw)]
-    zBw <- .bwCalcOneSampleOrdinary(
-      x = zBw,
+    muCore <- mean(
+      xCore,
+      na.rm = TRUE
+    )
+
+    muExtra <- if (nExtra > 0L) {
+      mean(
+        xExtra,
+        na.rm = TRUE
+      )
+    } else {
+      NA_real_
+    }
+
+    zBw <- .bwNormSampleNormalMixture(
+      muCore = muCore,
+      sdCore = sigmaCoreShrink,
+      nCore = nCore,
+      fallbackSdCore = sdAll,
+      muExtra = muExtra,
+      sdExtra = sigmaExtraShrink,
+      nExtra = nExtra,
+      fallbackSdExtra = sdCore,
       bwNcellMin = bwNcellMin,
       bwNcellMax = bwNcellMax
     )
 
-    if (length(zBw) < 20L || length(unique(zBw)) < 5L) {
+    zBw <- zBw[is.finite(zBw)]
+
+    if (
+      length(zBw) < 20L ||
+        length(unique(zBw)) < 5L
+    ) {
       return(.fallback_scalar())
     }
 
@@ -437,11 +456,19 @@
       bwMtd = bwMtd
     )
 
-    if (!is.finite(bwZ) || bwZ <= 0) {
+    if (
+      !is.finite(bwZ) ||
+        bwZ <= 0
+    ) {
       return(.fallback_scalar())
     }
 
-    return(.bwCalcOneFormat(as.numeric(bwZ)[1] * bwAdj, adaptive = FALSE))
+    return(
+      .bwCalcOneFormat(
+        as.numeric(bwZ)[1] * bwAdj,
+        adaptive = FALSE
+      )
+    )
   }
 
   # Adaptive normalised bandwidth: estimate separate component bandwidths on
@@ -1015,7 +1042,7 @@
     x = x,
     coreObj = coreObj,
     bwMtd = normExcessBwMtd,
-    nCell = length(x),
+    nCell = normExcessNcell,
     densityN = densityN,
     peakFrac = normPeakFrac,
     scamK = normScamK
@@ -1400,7 +1427,6 @@
 }
 
 #' @keywords internal
-
 .bwNormFitDecreasingDensity <- function(
   x,
   dx,
@@ -1418,62 +1444,128 @@
 
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
-  yAtX <- stats::approx(
+
+  # The fit only uses observations on or to the right of the main peak.
+  xFit <- x[x >= peakX]
+
+  if (length(xFit) < 6L) {
+    return(NULL)
+  }
+
+  # Work out the representative log-density using the complete set of
+  # observations in the core region. This is deliberately done before
+  # thinning so that thinning cannot change this quantity.
+  xRep <- xFit[
+    xFit <= thresholdX
+  ]
+
+  if (length(xRep) > 0L) {
+    densRep <- stats::approx(
+      x = dx,
+      y = dy,
+      xout = xRep,
+      rule = 2
+    )$y
+
+    logDensRepVal <- min(
+      log(
+        pmax(
+          densRep,
+          1e2 * .Machine$double.eps
+        )
+      ),
+      na.rm = TRUE
+    )
+  } else {
+    logDensRepVal <- NA_real_
+  }
+
+  # Preserve the previous fallback. This should rarely be needed because
+  # interpolation from a valid KDE should be finite.
+  if (!is.finite(logDensRepVal)) {
+    densFit <- stats::approx(
+      x = dx,
+      y = dy,
+      xout = xFit,
+      rule = 2
+    )$y
+
+    logDensRepVal <- min(
+      log(
+        pmax(
+          densFit,
+          1e2 * .Machine$double.eps
+        )
+      ),
+      na.rm = TRUE
+    )
+  }
+
+  if (!is.finite(logDensRepVal)) {
+    return(NULL)
+  }
+
+  # Thin the raw observations BEFORE interpolating the KDE onto them and
+  # before constructing a data frame. At most maxPerBin observations from
+  # each KDE-grid interval are required by the downstream SCAM fit.
+  xThin <- .bwNormThinXByDensityGrid(
+    x = xFit,
+    maxPerBin = 20L,
+    dx = dx
+  )
+
+  if (length(xThin) < 6L) {
+    return(NULL)
+  }
+
+  densThin <- stats::approx(
     x = dx,
     y = dy,
-    xout = x,
+    xout = xThin,
     rule = 2
   )$y
 
-  fitTblInit <- tibble::tibble(
-    x = x,
-    logDens = log(pmax(yAtX, 1e2 * .Machine$double.eps))
-  ) |>
-    dplyr::arrange(.data$x) |>
-    dplyr::filter(.data$x >= .env$peakX)
-
-  if (nrow(fitTblInit) < 6L) {
-    return(NULL)
-  }
-
-  # Values beyond the coreset boundary are allowed to influence where the high
-  # points are, but not to pull the decreasing background continuation upwards.
-  logDensRepRegion <- fitTblInit$logDens[
-    fitTblInit$x >= peakX & fitTblInit$x <= thresholdX
-  ]
-
-  logDensRepVal <- min(logDensRepRegion, na.rm = TRUE)
-  if (!is.finite(logDensRepVal)) {
-    logDensRepVal <- min(fitTblInit$logDens, na.rm = TRUE)
-  }
-  if (!is.finite(logDensRepVal)) {
-    return(NULL)
-  }
-
-  fitTblInit <- fitTblInit |>
-    dplyr::mutate(
-      logDens = dplyr::if_else(
-        .data$x > .env$thresholdX,
-        pmin(.data$logDens, .env$logDensRepVal),
-        .data$logDens
-      )
+  logDensThin <- log(
+    pmax(
+      densThin,
+      1e2 * .Machine$double.eps
     )
+  )
 
-  fitTblThin <- .bwNormThinDensityGrid(
-    fitTblInit,
-    maxPerBin = 20L,
-    dx = dx
+  # Values beyond the coreset boundary may determine where high-x points
+  # occur, but must not pull the decreasing background continuation upwards.
+  aboveThreshold <- xThin > thresholdX
+
+  logDensThin[aboveThreshold] <- pmin(
+    logDensThin[aboveThreshold],
+    logDensRepVal
+  )
+
+  fitTblThin <- tibble::tibble(
+    x = xThin,
+    logDens = logDensThin
   )
 
   if (nrow(fitTblThin) < 6L) {
     return(NULL)
   }
 
-  k <- min(as.integer(scamK), max(4L, nrow(fitTblThin) - 1L))
+  k <- min(
+    as.integer(scamK),
+    max(
+      4L,
+      nrow(fitTblThin) - 1L
+    )
+  )
 
   fit <- try(
     scam::scam(
-      logDens ~ s(x, bs = "mpd", k = k, m = c(2, 1)),
+      logDens ~ s(
+        x,
+        bs = "mpd",
+        k = k,
+        m = c(2, 1)
+      ),
       data = fitTblThin,
       family = stats::gaussian(),
       control = scam::scam.control(
@@ -1492,13 +1584,18 @@
     pred <- try(
       stats::predict(
         fit,
-        newdata = tibble::tibble(x = dx[predIdx]),
+        newdata = tibble::tibble(
+          x = dx[predIdx]
+        ),
         type = "response"
       ),
       silent = TRUE
     )
 
-    if (!inherits(pred, "try-error") && all(is.finite(pred))) {
+    if (
+      !inherits(pred, "try-error") &&
+        all(is.finite(pred))
+    ) {
       yOut[predIdx] <- exp(pred)
       return(yOut)
     }
@@ -1513,11 +1610,15 @@
     ),
     silent = TRUE
   )
+
   if (inherits(iso, "try-error")) {
     return(NULL)
   }
 
-  predFit <- exp(-iso$yf)
+  predFit <- exp(
+    -iso$yf
+  )
+
   predIso <- stats::approx(
     x = fitTblThin$x,
     y = predFit,
@@ -1530,6 +1631,7 @@
   }
 
   yOut[predIdx] <- predIso
+
   yOut
 }
 
@@ -1569,44 +1671,98 @@
 }
 
 #' @keywords internal
-
-.bwNormThinDensityGrid <- function(
-  fitTbl,
+.bwNormThinXByDensityGrid <- function(
+  x,
   maxPerBin = 20L,
   dx = NULL
 ) {
-  if (!is.data.frame(fitTbl) || nrow(fitTbl) == 0L) {
-    return(fitTbl)
+  x <- suppressWarnings(as.numeric(x))
+  x <- x[is.finite(x)]
+
+  if (length(x) == 0L) {
+    return(x)
   }
 
-  maxPerBin <- .bwAsSafeSampleN(maxPerBin, default = 20L, lower = 1L)
+  maxPerBin <- .bwAsSafeSampleN(
+    maxPerBin,
+    default = 20L,
+    lower = 1L
+  )
 
-  if (is.null(dx) || length(dx) < 2L || any(!is.finite(dx))) {
-    breaks <- pretty(fitTbl$x, n = max(2L, ceiling(nrow(fitTbl) / maxPerBin)))
+  if (
+    is.null(dx) ||
+      length(dx) < 2L ||
+      any(!is.finite(dx))
+  ) {
+    breaks <- pretty(
+      x,
+      n = max(
+        2L,
+        ceiling(length(x) / maxPerBin)
+      )
+    )
   } else {
-    breaks <- sort(unique(as.numeric(dx)))
+    breaks <- sort(
+      unique(
+        as.numeric(dx)
+      )
+    )
   }
 
   if (length(breaks) < 2L) {
-    return(fitTbl)
+    return(sort(x))
   }
 
-  fitTbl$bin <- cut(
-    fitTbl$x,
+  # The old implementation arranged by x before binning.
+  x <- sort(x)
+
+  bin <- cut(
+    x,
     breaks = breaks,
     include.lowest = TRUE
   )
 
-  fitTbl |>
-    dplyr::filter(!is.na(.data$bin)) |>
-    dplyr::group_by(.data$bin) |>
-    dplyr::mutate(.bw_rand = stats::runif(dplyr::n())) |>
-    dplyr::arrange(.data$bin, .data$.bw_rand) |>
-    dplyr::slice_head(n = maxPerBin) |>
-    dplyr::ungroup() |>
-    dplyr::select(-.data$bin, -.data$.bw_rand)
-}
+  keep <- !is.na(bin)
+  x <- x[keep]
+  bin <- bin[keep]
 
+  if (length(x) == 0L) {
+    return(x)
+  }
+
+  indByBin <- split(
+    seq_along(x),
+    bin,
+    drop = TRUE
+  )
+
+  keepInd <- unlist(
+    lapply(
+      indByBin,
+      function(ind) {
+        # Generate random priorities for every point, as in the previous
+        # grouped runif/arrange/slice implementation.
+        rand <- stats::runif(
+          length(ind)
+        )
+
+        ind[
+          order(rand)[
+            seq_len(
+              min(
+                length(ind),
+                maxPerBin
+              )
+            )
+          ]
+        ]
+      }
+    ),
+    use.names = FALSE
+  )
+
+  x[keepInd]
+}
 #' @keywords internal
 
 .bwNormPreferentialUpsample <- function(
@@ -1693,4 +1849,113 @@
   sd1 <- .sdOne(x1)
   sd2 <- .sdOne(x2)
   sqrt(sd1^2 + sd2^2)
+}
+
+#' @keywords internal
+.bwNormSampleNormalMixture <- function(
+  muCore,
+  sdCore,
+  nCore,
+  fallbackSdCore,
+  muExtra,
+  sdExtra,
+  nExtra,
+  fallbackSdExtra,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL
+) {
+  nCore <- .bwAsSafeSampleN(
+    nCore,
+    default = 0L,
+    lower = 0L
+  )
+  nExtra <- .bwAsSafeSampleN(
+    nExtra,
+    default = 0L,
+    lower = 0L
+  )
+
+  nTotal <- nCore + nExtra
+
+  bwNcellMinSafe <- .bwAsSafeSampleN(
+    bwNcellMin,
+    default = NULL,
+    lower = 2L
+  )
+
+  bwNcellMaxSafe <- .bwAsSafeSampleN(
+    bwNcellMax,
+    default = NULL,
+    lower = 2L
+  )
+
+  # If the original synthetic mixture would be downsampled, determine how
+  # many sampled observations come from each component before generating
+  # them. Sampling without replacement from the complete mixture gives a
+  # hypergeometric component count.
+  canGenerateCapped <-
+    !is.null(bwNcellMaxSafe) &&
+    nTotal > bwNcellMaxSafe &&
+    (is.null(bwNcellMinSafe) ||
+      nTotal >= bwNcellMinSafe)
+
+  if (canGenerateCapped) {
+    nTarget <- bwNcellMaxSafe
+
+    nExtraTarget <- if (nExtra > 0L) {
+      stats::rhyper(
+        nn = 1L,
+        m = nExtra,
+        n = nCore,
+        k = nTarget
+      )
+    } else {
+      0
+    }
+
+    nExtraTarget <- as.integer(nExtraTarget)
+    nCoreTarget <- nTarget - nExtraTarget
+
+    return(
+      c(
+        .bwNormSampleNormalComponent(
+          mu = muCore,
+          sd = sdCore,
+          n = nCoreTarget,
+          fallbackSd = fallbackSdCore
+        ),
+        .bwNormSampleNormalComponent(
+          mu = muExtra,
+          sd = sdExtra,
+          n = nExtraTarget,
+          fallbackSd = fallbackSdExtra
+        )
+      )
+    )
+  }
+
+  # Keep the existing route when no downsampling is needed, or when
+  # bwNcellMin would first cause upsampling with jitter.
+  zBw <- c(
+    .bwNormSampleNormalComponent(
+      mu = muCore,
+      sd = sdCore,
+      n = nCore,
+      fallbackSd = fallbackSdCore
+    ),
+    .bwNormSampleNormalComponent(
+      mu = muExtra,
+      sd = sdExtra,
+      n = nExtra,
+      fallbackSd = fallbackSdExtra
+    )
+  )
+
+  zBw <- zBw[is.finite(zBw)]
+
+  .bwCalcOneSampleOrdinary(
+    x = zBw,
+    bwNcellMin = bwNcellMin,
+    bwNcellMax = bwNcellMax
+  )
 }
