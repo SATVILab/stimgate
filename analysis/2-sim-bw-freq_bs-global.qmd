@@ -82,7 +82,9 @@ if (
 for (fn in c(
   "sim-misc.R",
   "functionsForBenchmarking-Cyt.R",
-  "sim-bandwidth.R"
+  "sim-bandwidth.R",
+  "sim-bandwidth-analysis-io.R",
+  "sim-bandwidth-analysis-plot.R"
 )) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -395,18 +397,6 @@ if (dir.exists(dir_jobs_chunk)) {
 dir.create(dir_jobs_chunk, recursive = TRUE, showWarnings = FALSE)
 dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 
-.path_sim_output <- function(sim_id) {
-  file.path(
-    dir_output,
-    sprintf(
-      "bw_list_raw-chunk_%03d-of_%03d-sim_id_%06d.rds",
-      sim_grid_chunk_index,
-      sim_grid_n_chunks,
-      as.integer(sim_id)
-    )
-  )
-}
-
 bw_list_raw <- list()
 
 if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
@@ -444,7 +434,12 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
         file_running <- file.path(dir_jobs_chunk, paste0("running-", sim_id))
         file_completed <- file.path(dir_jobs_chunk, paste0("completed-", sim_id))
         file_error <- file.path(dir_jobs_chunk, paste0("error-", sim_id))
-        file_output <- .path_sim_output(sim_id)
+        file_output <- .path_sim_output(
+          sim_id,
+          dir_output = dir_output,
+          sim_grid_chunk_index = sim_grid_chunk_index,
+          sim_grid_n_chunks = sim_grid_n_chunks
+        )
 
         existing_output <- if (file.exists(file_output)) {
           tryCatch(readRDS(file_output), error = function(e) NULL)
@@ -455,44 +450,6 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
         if (!is.null(existing_output)) {
           p(sprintf("Skipped existing sim_id: %s", sim_id))
           return(existing_output)
-        }
-
-        # Safe progress text update (suppress concurrent file lock conflicts)
-        update_progress_summary <- function() {
-          tryCatch({
-            all_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
-
-            n_running <- sum(grepl("^running-", all_job_files))
-            n_completed <- sum(grepl("^completed-", all_job_files))
-            n_error <- sum(grepl("^error-", all_job_files))
-            n_done <- n_completed + n_error
-
-            running_files <- all_job_files[grepl("^running-", all_job_files)]
-            running_ids <- sub("^running-", "", running_files)
-            running_list_str <- if (length(running_ids) > 0) {
-              paste(running_ids, collapse = ", ")
-            } else {
-              "None"
-            }
-
-            summary_text <- paste0(
-              "========================================\n",
-              " GLOBAL FREQUENCY PROGRESS DASHBOARD    \n",
-              "========================================\n",
-              "Chunk              : ", sim_grid_chunk_index, " of ", sim_grid_n_chunks, "\n",
-              "Total Simulations  : ", total_sims, "\n",
-              "In Progress        : ", n_running, "\n",
-              "Completed (Success): ", n_completed, "\n",
-              "Completed (Errors) : ", n_error, "\n",
-              "Total Done         : ", n_done, "\n",
-              "Output directory   : ", dir_output, "\n",
-              "----------------------------------------\n",
-              "Currently Running IDs:\n", running_list_str, "\n",
-              "========================================\n"
-            )
-
-            cat(summary_text, file = path_progress_file, append = FALSE)
-          }, error = function(e) NULL) # Silently handle file conflicts on write
         }
 
         file.create(file_running)
@@ -570,7 +527,14 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
             file.create(file_completed)
             if (file.exists(file_running)) file.remove(file_running)
 
-            update_progress_summary()
+            .update_progress_summary(
+              path_progress_file = path_progress_file,
+              dir_jobs_chunk = dir_jobs_chunk,
+              total_sims = total_sims,
+              sim_grid_chunk_index = sim_grid_chunk_index,
+              sim_grid_n_chunks = sim_grid_n_chunks,
+              dir_output = dir_output
+            )
             p(sprintf("Completed sim_id: %s", sim_id))
 
             sim_res
@@ -620,7 +584,14 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
             )
 
             .write_rds_atomic(err_res, file_output)
-            update_progress_summary()
+            .update_progress_summary(
+              path_progress_file = path_progress_file,
+              dir_jobs_chunk = dir_jobs_chunk,
+              total_sims = total_sims,
+              sim_grid_chunk_index = sim_grid_chunk_index,
+              sim_grid_n_chunks = sim_grid_n_chunks,
+              dir_output = dir_output
+            )
             p(sprintf("ERROR on sim_id: %s", sim_id))
 
             err_res
@@ -659,59 +630,11 @@ Collate the results and calculate the metrics of interest.
 
 ```{r}
 #| label: bw-manual-collate
-.add_missing_cols <- function(.data, cols) {
-  for (nm in names(cols)) {
-    if (!nm %in% names(.data)) {
-      .data[[nm]] <- cols[[nm]]
-    }
-  }
-  .data
-}
-
-.find_bw_list_output_files <- function() {
-  output_dir_vec <- unique(c(
-    if (exists("dir_output", inherits = TRUE)) dir_output else character(),
-    file.path(
-      dirname(projr::projr_path_get(
-        "cache",
-        "log",
-        "analysis",
-        "sim",
-        "bw",
-        "freq_bs",
-        "global",
-        "progress.txt",
-        safe = TRUE
-      )),
-      "output"
-    ),
-    file.path(
-      dirname(projr::projr_path_get(
-        "cache",
-        "log",
-        "analysis",
-        "sim",
-        "bw",
-        "freq_bs",
-        "global",
-        "progress.txt",
-        safe = FALSE
-      )),
-      "output"
-    )
-  ))
-
-  output_dir_vec <- output_dir_vec[dir.exists(output_dir_vec)]
-
-  unique(unlist(lapply(
-    output_dir_vec,
-    list.files,
-    pattern = "^bw_list_raw-chunk_[0-9]+-of_[0-9]+-sim_id_[0-9]+[.]rds$",
-    full.names = TRUE
-  )))
-}
-
-bw_list_path_vec <- .find_bw_list_output_files()
+bw_list_path_vec <- .find_bw_list_output_files(
+  output_dir = dir_output,
+  cache_dir = dir_progress,
+  cache_path = c("cache", "log", "analysis", "sim", "bw", "freq_bs", "global")
+)
 
 if (length(bw_list_path_vec) > 0L) {
   message("Collating ", length(bw_list_path_vec), " saved simulation result files from output.")
@@ -765,7 +688,7 @@ if (length(bw_list_path_vec) > 0L) {
 bw_tbl_raw <- bw_list_raw_collate |>
   purrr::list_rbind()
 
-bw_tbl <- .add_missing_cols(
+bw_tbl <- .simBandwidthAddMissingColumns(
   bw_tbl_raw,
   list(
     iter = NA_integer_,
