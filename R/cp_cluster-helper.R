@@ -12,7 +12,7 @@
     minDirectForWinsor = 3L,
     maxClusters = 6L,
     gapBootstraps = 50L,
-    kmeansNstart = 25L,
+    kmeansNstart = 5L,
     seed = 1L
   )
   for (name in names(defaults)) {
@@ -61,41 +61,116 @@
 }
 
 #' @keywords internal
-.getCpClusterLocCommonBw <- function(gateTblStim, exLookup, chnlSettings) {
+.getCpClusterLocCommonBw <- function(
+  gateTblStim,
+  exLookup,
+  chnlSettings
+) {
   indDirect <- gateTblStim |>
     dplyr::filter(
       .data$locGeneratedDirect %in% TRUE,
-      is.finite(suppressWarnings(as.numeric(.data$gate)))
+      is.finite(
+        suppressWarnings(
+          as.numeric(.data$gate)
+        )
+      )
     ) |>
     dplyr::pull("ind") |>
     as.character()
 
-  bwVec <- purrr::map_dbl(indDirect, function(indCurr) {
-    exPair <- exLookup[[indCurr]]
-    if (is.null(exPair)) {
-      return(NA_real_)
+  bwUnsCache <- new.env(parent = emptyenv())
+
+  bwVec <- purrr::map_dbl(
+    indDirect,
+    function(indCurr) {
+      exPair <- exLookup[[indCurr]]
+
+      if (is.null(exPair)) {
+        return(NA_real_)
+      }
+
+      bwStim <- .getCpClusterLocBwOne(
+        .getCut(exPair$stim),
+        chnlSettings
+      )
+
+      batch <- as.character(exPair$batch)
+
+      if (
+        !exists(
+          batch,
+          envir = bwUnsCache,
+          inherits = FALSE
+        )
+      ) {
+        bwUns <- .getCpClusterLocBwOne(
+          .getCut(exPair$uns),
+          chnlSettings
+        )
+
+        assign(
+          batch,
+          bwUns,
+          envir = bwUnsCache
+        )
+      } else {
+        bwUns <- get(
+          batch,
+          envir = bwUnsCache,
+          inherits = FALSE
+        )
+      }
+
+      suppressWarnings(
+        stats::median(
+          c(bwStim, bwUns),
+          na.rm = TRUE
+        )
+      )
     }
-    bwStim <- .getCpClusterLocBwOne(.getCut(exPair$stim), chnlSettings)
-    bwUns <- .getCpClusterLocBwOne(.getCut(exPair$uns), chnlSettings)
-    suppressWarnings(stats::median(c(bwStim, bwUns), na.rm = TRUE))
-  })
-  bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
+  )
+
+  bwVec <- bwVec[
+    is.finite(bwVec) &
+      bwVec > 0
+  ]
+
   if (length(bwVec) > 0L) {
-    return(stats::median(bwVec, na.rm = TRUE))
+    return(
+      stats::median(
+        bwVec,
+        na.rm = TRUE
+      )
+    )
   }
 
-  bwFallback <- suppressWarnings(as.numeric(chnlSettings$bwCluster))[1]
+  bwFallback <- suppressWarnings(
+    as.numeric(chnlSettings$bwCluster)
+  )[1]
+
   if (!is.finite(bwFallback) || bwFallback <= 0) {
-    bwFallback <- suppressWarnings(as.numeric(chnlSettings$bw))[1]
+    bwFallback <- suppressWarnings(
+      as.numeric(chnlSettings$bw)
+    )[1]
   }
+
   if (is.finite(bwFallback) && bwFallback > 0) {
     return(bwFallback)
   }
 
-  allExpr <- unlist(purrr::map(exLookup, function(x) {
-    c(.getCut(x$stim), .getCut(x$uns))
-  }))
-  .getCpClusterLocBwOne(allExpr, chnlSettings)
+  allExpr <- unlist(
+    purrr::map(exLookup, function(x) {
+      c(
+        .getCut(x$stim),
+        .getCut(x$uns)
+      )
+    })
+  )
+
+  .getCpClusterLocBwOne(
+    allExpr,
+    chnlSettings
+  )
 }
 
 #' @keywords internal
@@ -167,11 +242,12 @@
   if (length(directGates) == 0L) {
     return(NA_real_)
   }
-  control$leftThresholdFrac * stats::quantile(
-    directGates,
-    probs = control$leftThresholdQuantile,
-    na.rm = TRUE
-  )[[1]]
+  control$leftThresholdFrac *
+    stats::quantile(
+      directGates,
+      probs = control$leftThresholdQuantile,
+      na.rm = TRUE
+    )[[1]]
 }
 
 #' @keywords internal
@@ -234,39 +310,85 @@
   bw
 ) {
   if (length(densityGrid) < 2L) {
-    return(tibble::tibble(ind = character(), batch = character()))
+    return(tibble::tibble(
+      ind = character(),
+      batch = character()
+    ))
   }
 
+  # The unstimulated sample is shared by all stimulated conditions within a
+  # batch. Calculate its density feature once per batch.
+  unsCache <- new.env(parent = emptyenv())
+
   featureTbl <- purrr::map_df(exLookup, function(exPair) {
-    uns <- .getCpClusterLocDensityFeature(
-      x = .getCut(exPair$uns),
-      densityGrid = densityGrid,
-      bw = bw
-    )
+    batch <- as.character(exPair$batch)
+
+    if (
+      !exists(
+        batch,
+        envir = unsCache,
+        inherits = FALSE
+      )
+    ) {
+      uns <- .getCpClusterLocDensityFeature(
+        x = .getCut(exPair$uns),
+        densityGrid = densityGrid,
+        bw = bw
+      )
+
+      assign(
+        batch,
+        uns,
+        envir = unsCache
+      )
+    } else {
+      uns <- get(
+        batch,
+        envir = unsCache,
+        inherits = FALSE
+      )
+    }
+
     stim <- .getCpClusterLocDensityFeature(
       x = .getCut(exPair$stim),
       densityGrid = densityGrid,
       bw = bw
     )
+
     values <- c(uns, stim)
+
     names(values) <- c(
-      sprintf("uns_x%03d", seq_along(uns)),
-      sprintf("stim_x%03d", seq_along(stim))
+      sprintf(
+        "uns_x%03d",
+        seq_along(uns)
+      ),
+      sprintf(
+        "stim_x%03d",
+        seq_along(stim)
+      )
     )
+
     tibble::as_tibble_row(c(
       list(
         ind = as.character(exPair$ind),
-        batch = as.character(exPair$batch)
+        batch = batch
       ),
       as.list(values)
     ))
   })
 
-  featureCols <- .getCpClusterLocFeatureCols(featureTbl)
+  featureCols <- .getCpClusterLocFeatureCols(
+    featureTbl
+  )
+
   if (length(featureCols) == 0L) {
     return(featureTbl[0, , drop = FALSE])
   }
-  complete <- stats::complete.cases(featureTbl[, featureCols, drop = FALSE])
+
+  complete <- stats::complete.cases(
+    featureTbl[, featureCols, drop = FALSE]
+  )
+
   featureTbl[complete, , drop = FALSE]
 }
 
@@ -281,13 +403,16 @@
   if (hadSeed) {
     oldSeed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
   }
-  on.exit({
-    if (hadSeed) {
-      assign(".Random.seed", oldSeed, envir = .GlobalEnv)
-    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
-      rm(".Random.seed", envir = .GlobalEnv)
-    }
-  }, add = TRUE)
+  on.exit(
+    {
+      if (hadSeed) {
+        assign(".Random.seed", oldSeed, envir = .GlobalEnv)
+      } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        rm(".Random.seed", envir = .GlobalEnv)
+      }
+    },
+    add = TRUE
+  )
   set.seed(seed)
   force(code)
 }
