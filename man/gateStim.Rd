@@ -102,9 +102,9 @@ and the clustered gate. If no eligible antimode exists, the clustered gate
 is retained. Default is TRUE.}
 
 \item{biasUns}{numeric. Bias adjustment for unstimulated samples to account for
-background cytokine production. When NULL (default), no bias correction is applied.
-Positive values shift the unstimulated distribution higher, making gates more
-conservative.}
+background cytokine production. When NULL (default), 1/4 of \code{bwFallback} is used
+(scaled by \code{biasUnsFactor}). Positive values shift the unstimulated distribution higher,
+making gates more conservative. Default is NULL.}
 
 \item{biasUnsFactor}{numeric. Multiplicative factor applied to biasUns.
 Default is 1. Values > 1 increase the bias effect, values < 1 decrease it.
