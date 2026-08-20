@@ -31,9 +31,9 @@
 #'   Default is "root" to gate on all cells. Can specify other populations like
 #'   "CD3+" or "CD4+" if these gates already exist in the GatingSet.
 #' @param biasUns numeric. Bias adjustment for unstimulated samples to account for
-#'   background cytokine production. When NULL (default), no bias correction is applied.
-#'   Positive values shift the unstimulated distribution higher, making gates more
-#'   conservative.
+#'   background cytokine production. When NULL (default), 1/4 of `bwFallback` is used
+#'   (scaled by `biasUnsFactor`). Positive values shift the unstimulated distribution higher,
+#'   making gates more conservative. Default is NULL.
 #' @param biasUnsFactor numeric. Multiplicative factor applied to biasUns.
 #'   Default is 1. Values > 1 increase the bias effect, values < 1 decrease it.
 #'   This provides fine-tuning of the bias correction.
@@ -306,69 +306,68 @@
 #' }
 #' @export
 gateStim <- function(
-  pathProject,
-  .data,
-  popGate = "root",
-  batchList,
-  chnl = NULL,
-  marker = NULL,
-  calcCytPosGates = TRUE,
-  biasUns = NULL,
-  biasUnsFactor = 1,
-  excMin = TRUE,
-  cpMin = NULL,
-  bw = NULL,
-  bwMin = "auto",
-  bwMax = "auto",
-  bwFallback = "auto",
-  bwMtd = "hpi1",
-  bwAdj = 1,
-  bwNcellMin = 1e2,
-  bwNcellMax = 1e5,
-  bwCluster = NULL,
-  bwAdaptive = FALSE,
-  bwAdaptiveDensityN = NULL,
-  bwAdaptivePadFrac = 0.15,
-  bwAdaptiveCore = NULL,
-  bwAdaptiveExtra = NULL,
-  bwAdaptiveCrossover = NULL,
-  bwAdaptiveTransitionWidth = 0,
-  normPeakFrac = 0.1,
-  normPeakMinRel = 0.75,
-  normExtraFrac = 0.2,
-  normExtraMax = Inf,
-  normExtraJitterFrac = 0.25,
-  normLambda = seq(-2, 2, length.out = 81),
-  normDensityN = 512L,
-  normExcessBwMtd = "hpi3",
-  normExcessNcell = 10000L,
-  normAdaptiveNcell = 2500L,
-  normMtd = "moments",
-  minCell = 1e2,
-  maxPosProbX = Inf,
-  gateQuant = c(0.25, 0.75),
-  tolClust = 1e-7,
-  locProbCol = "pred",
-  locMinPeakProb = 0.25,
-  locEnforceShapeThreshold = FALSE,
-  locDipAlpha = 0.2,
-  locAntimodeHeightFrac = 1 / 6,
-  locAntimodeLowRel = 0.25,
-  locAntimodeLowAbs = 0.15,
-  locFlatDerivFrac = 1 / 2,
-  locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
-  locMarginalPurityRel = 0.5,
-  locMarginalCellBinRatio = 2,
-  locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
-  gateCombn = "min",
-  markerSettings = NULL,
-  chnlSettings = NULL
-) {
+    pathProject,
+    .data,
+    popGate = "root",
+    batchList,
+    chnl = NULL,
+    marker = NULL,
+    calcCytPosGates = TRUE,
+    biasUns = NULL,
+    biasUnsFactor = 1,
+    excMin = TRUE,
+    cpMin = NULL,
+    bw = NULL,
+    bwMin = "auto",
+    bwMax = "auto",
+    bwFallback = "auto",
+    bwMtd = "hpi1",
+    bwAdj = 1,
+    bwNcellMin = 1e2,
+    bwNcellMax = 1e5,
+    bwCluster = NULL,
+    bwAdaptive = FALSE,
+    bwAdaptiveDensityN = NULL,
+    bwAdaptivePadFrac = 0.15,
+    bwAdaptiveCore = NULL,
+    bwAdaptiveExtra = NULL,
+    bwAdaptiveCrossover = NULL,
+    bwAdaptiveTransitionWidth = 0,
+    normPeakFrac = 0.1,
+    normPeakMinRel = 0.75,
+    normExtraFrac = 0.2,
+    normExtraMax = Inf,
+    normExtraJitterFrac = 0.25,
+    normLambda = seq(-2, 2, length.out = 81),
+    normDensityN = 512L,
+    normExcessBwMtd = "hpi3",
+    normExcessNcell = 10000L,
+    normAdaptiveNcell = 2500L,
+    normMtd = "moments",
+    minCell = 1e2,
+    maxPosProbX = Inf,
+    gateQuant = c(0.25, 0.75),
+    tolClust = 1e-7,
+    locProbCol = "pred",
+    locMinPeakProb = 0.25,
+    locEnforceShapeThreshold = FALSE,
+    locDipAlpha = 0.2,
+    locAntimodeHeightFrac = 1 / 6,
+    locAntimodeLowRel = 0.25,
+    locAntimodeLowAbs = 0.15,
+    locFlatDerivFrac = 1 / 2,
+    locFlatHardDerivFrac = 1 / 4,
+    locLeftLowRel = 0.25,
+    locLeftLowAbs = 0.15,
+    locLeftCellFrac = 0.5,
+    locLeftLengthFrac = 0.5,
+    locMarginalPurityRel = 0.5,
+    locMarginalCellBinRatio = 2,
+    locMarginalRefQuantile = 0.75,
+    locTolRefPeak = "highest",
+    gateCombn = "min",
+    markerSettings = NULL,
+    chnlSettings = NULL) {
   force(.data)
   if (Sys.getenv("STIMGATE_DEBUG") == "") {
     Sys.setenv("STIMGATE_DEBUG" = "FALSE")
@@ -569,11 +568,10 @@ gateStim <- function(
 
 #' @keywords internal
 .gateInit <- function(
-  chnlSettings,
-  .data,
-  indBatchList,
-  pathProject
-) {
+    chnlSettings,
+    .data,
+    indBatchList,
+    pathProject) {
   message("----")
   message("getting base gates")
   message("----")
@@ -616,13 +614,12 @@ gateStim <- function(
 
 #' @keywords internal
 .gateStats <- function(
-  .data,
-  gateTbl = NULL,
-  calcCytPosGates,
-  chnlSettings,
-  indBatchList,
-  pathProject
-) {
+    .data,
+    gateTbl = NULL,
+    calcCytPosGates,
+    chnlSettings,
+    indBatchList,
+    pathProject) {
   force(.data)
   .getStats(
     gateTbl = gateTbl,

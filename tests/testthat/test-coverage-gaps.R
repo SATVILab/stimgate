@@ -141,3 +141,92 @@ test_that("stimgateGateRunsWithGateCombnMax", {
   # Clean up
   unlink(pathProject, recursive = TRUE)
 })
+
+test_that("completeChnlSettingsBiasUns defaults to 1/4 of bwFallback", {
+  # Default case: biasUns is NULL, biasUnsFactor is 1, bwFallback is 0.4
+  expect_equal(
+    stimgate:::.completeChnlSettingsBiasUns(
+      biasUns = NULL,
+      biasUnsFactor = 1,
+      bwMin = 0.1,
+      bwMax = 1.0,
+      bwFallback = 0.4
+    ),
+    0.1
+  )
+
+  # Scaled by biasUnsFactor: biasUnsFactor is 2, bwFallback is 0.4
+  expect_equal(
+    stimgate:::.completeChnlSettingsBiasUns(
+      biasUns = NULL,
+      biasUnsFactor = 2,
+      bwMin = 0.1,
+      bwMax = 1.0,
+      bwFallback = 0.4
+    ),
+    0.2
+  )
+
+  # Explicit biasUns overrides bwFallback
+  expect_equal(
+    stimgate:::.completeChnlSettingsBiasUns(
+      biasUns = 0.5,
+      biasUnsFactor = 1,
+      bwMin = 0.1,
+      bwMax = 1.0,
+      bwFallback = 0.4
+    ),
+    0.5
+  )
+
+  # bwFallback is NULL: falls back to 1/4 of mean(bwMin, bwMax)
+  expect_equal(
+    stimgate:::.completeChnlSettingsBiasUns(
+      biasUns = NULL,
+      biasUnsFactor = 1,
+      bwMin = 0.2,
+      bwMax = 0.6,
+      bwFallback = NULL
+    ),
+    0.25 * 0.4
+  )
+
+  # bwFallback is NULL and no valid bw limits: returns 0
+  expect_equal(
+    stimgate:::.completeChnlSettingsBiasUns(
+      biasUns = NULL,
+      biasUnsFactor = 1,
+      bwMin = -Inf,
+      bwMax = Inf,
+      bwFallback = NULL
+    ),
+    0
+  )
+})
+
+test_that("gateStim defaults biasUns to 1/4 of bwFallback in metadata", {
+  skip_if_not_installed("flowWorkspace")
+  skip_if_not_installed("flowCore")
+
+  exampleData <- getExampleData()
+  gs <- flowWorkspace::load_gs(exampleData$pathGs)
+  pathProject <- file.path(tempdir(), "testBiasUnsDefault")
+
+  result <- gateStim(
+    .data = gs,
+    pathProject = pathProject,
+    popGate = "root",
+    batchList = exampleData$batchList,
+    marker = exampleData$marker
+  )
+
+  chnlSettings <- stimgateMetaReadSettingsChnls(pathProject)
+  for (chnlName in names(chnlSettings)) {
+    bwFallback <- chnlSettings[[chnlName]]$bwFallback
+    biasUns <- chnlSettings[[chnlName]]$biasUns
+    expect_true(is.numeric(bwFallback) && bwFallback > 0)
+    expect_equal(biasUns, 0.25 * bwFallback)
+  }
+
+  unlink(pathProject, recursive = TRUE)
+})
