@@ -12,7 +12,7 @@ format:
 library(ggplot2)
 library(tibble)
 library(furrr)
-library(progressr) 
+library(progressr)
 
 # Find the build directory root
 root_dir <- projr::projr_path_get("project")
@@ -609,12 +609,12 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
       ) +
       theme(
         strip.background = element_rect(fill = "white", color = "black")
-      )  +
+      ) +
       scale_colour_manual(
         values = .simBwMtdColVec,
         labels = .simBwMtdLabVec
       ) +
-        theme(
+      theme(
         panel.background = element_rect(fill = "white", colour = NA),
         plot.background = element_rect(fill = "white", colour = NA),
         legend.position = "bottom",
@@ -635,8 +635,10 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
     path_plot <- projr::projr_path_get(
       "output",
       "fig",
-      paste0("est_bw_base", "_meanpos_", mean_pos_setting_curr, "_bias_uns_", bias_uns_setting_curr,
-      ".pdf")
+      paste0(
+        "est_bw_base", "_meanpos_", mean_pos_setting_curr, "_bias_uns_", bias_uns_setting_curr,
+        ".pdf"
+      )
     )
 
     ggsave(

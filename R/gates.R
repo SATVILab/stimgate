@@ -26,11 +26,10 @@
 #' gates <- getStimGates(pathProject)
 #' @export
 getStimGates <- function(
-  pathProject,
-  pop = NULL,
-  marker = NULL,
-  chnl = NULL
-) {
+    pathProject,
+    pop = NULL,
+    marker = NULL,
+    chnl = NULL) {
   pop <- pop %|c|% .gateGetPop(pathProject)
 
   purrr::map_df(pop, function(popCurr) {
@@ -116,13 +115,12 @@ getStimGates <- function(
 #' @return A tibble with one row per saved threshold diagnostic.
 #' @export
 getStimGatesDetailed <- function(
-  pathProject,
-  pop = NULL,
-  marker = NULL,
-  chnl = NULL,
-  save = FALSE,
-  pathSave = NULL
-) {
+    pathProject,
+    pop = NULL,
+    marker = NULL,
+    chnl = NULL,
+    save = FALSE,
+    pathSave = NULL) {
   detailTbl <- .gateGetDetailedIntermediate(pathProject)
 
   if (nrow(detailTbl) == 0L) {

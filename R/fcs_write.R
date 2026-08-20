@@ -73,20 +73,19 @@
 #' }
 #' @export
 writeStimFCS <- function(
-  pathProject, # project directory
-  .data, # gatingset
-  pop = NULL, # population that was gated on
-  indBatchList, # indices by batch
-  pathDirSave, # directory to save to
-  chnl = NULL, # specific channels to gate on
-  gateTbl = NULL, # whether gateTbl is pre-available
-  transFn = NULL, # transformation to apply
-  transChnl = NULL, # columns to transform
-  combnExc = NULL, # combinations of chnl to exclude
-  gateTypeCytPos = "cyt", # gate type to use for cyt-pos cells # nolint
-  mult = FALSE, # whether cells must be multi-positive
-  gateUnsMethod = "min"
-) {
+    pathProject, # project directory
+    .data, # gatingset
+    pop = NULL, # population that was gated on
+    indBatchList, # indices by batch
+    pathDirSave, # directory to save to
+    chnl = NULL, # specific channels to gate on
+    gateTbl = NULL, # whether gateTbl is pre-available
+    transFn = NULL, # transformation to apply
+    transChnl = NULL, # columns to transform
+    combnExc = NULL, # combinations of chnl to exclude
+    gateTypeCytPos = "cyt", # gate type to use for cyt-pos cells # nolint
+    mult = FALSE, # whether cells must be multi-positive
+    gateUnsMethod = "min") {
   # how to calculate unstim thresholds # nolint
   # clear and create directory to save to
   if (dir.exists(pathDirSave)) {
@@ -134,15 +133,14 @@ writeStimFCS <- function(
 
 #' @keywords internal
 .fcsWriteGetGateTbl <- function(
-  gateTbl,
-  chnl,
-  pop,
-  .data,
-  indBatchList,
-  gateUnsMethod,
-  gateTypeCytPos,
-  pathProject
-) {
+    gateTbl,
+    chnl,
+    pop,
+    .data,
+    indBatchList,
+    gateUnsMethod,
+    gateTypeCytPos,
+    pathProject) {
   # Get gate table if not provided
   if (is.null(gateTbl)) {
     popUnspecified <- is.null(pop)
@@ -217,11 +215,10 @@ writeStimFCS <- function(
 
 #' @keywords internal
 .fcsWriteGetGateTblAddUns <- function(
-  gateTbl,
-  gateUnsMethod,
-  gateTypeCytPos,
-  indBatchList
-) {
+    gateTbl,
+    gateUnsMethod,
+    gateTypeCytPos,
+    indBatchList) {
   gateTblUns <- .fcsWriteGetGateTblAddUnsGetUns(
     gateTbl = gateTbl,
     gateUnsMethod = gateUnsMethod,
@@ -241,10 +238,9 @@ writeStimFCS <- function(
 
 #' @keywords internal
 .fcsWriteGetGateTblAddUnsGetUns <- function(
-  gateTbl,
-  gateUnsMethod,
-  indBatchList
-) {
+    gateTbl,
+    gateUnsMethod,
+    indBatchList) {
   calcUnsGate <- .fcsWriteGetGateTblAddUnsGetUnsCalc(
     gateUnsMethod = gateUnsMethod
   )
@@ -258,8 +254,7 @@ writeStimFCS <- function(
 
 #' @keywords internal
 .fcsWriteGetGateTblAddUnsGetUnsCalc <- function(gateUnsMethod) {
-  switch(
-    gateUnsMethod,
+  switch(gateUnsMethod,
     "min" = min,
     "max" = max,
     "mean" = mean,
@@ -271,10 +266,9 @@ writeStimFCS <- function(
 
 #' @keywords internal
 .fcsWriteGetGateTblAddUnsGetUnsImpl <- function(
-  gateTbl,
-  calc,
-  indBatchList
-) {
+    gateTbl,
+    calc,
+    indBatchList) {
   gateTblDistinct <- gateTbl |>
     dplyr::distinct(chnl, marker, batch, ind, .keep_all = TRUE)
   if (nrow(gateTblDistinct) != nrow(gateTbl)) {
@@ -315,9 +309,8 @@ writeStimFCS <- function(
 
 #' @keywords internal
 .fcsWriteGetGateTblAddUnsGetUnsInd <- function(
-  gateTbl,
-  indBatchList
-) {
+    gateTbl,
+    indBatchList) {
   indBatchVec <- lapply(indBatchList, function(x) {
     (x[-1]) |>
       sort() |>
@@ -376,17 +369,16 @@ writeStimFCS <- function(
 
 #' @keywords internal
 .fcsWriteImpl <- function(
-  .data,
-  ind,
-  gateTbl,
-  pathDirSave,
-  chnl,
-  mult,
-  gateTypeCytPos,
-  combnExc,
-  transFn,
-  transChnl
-) {
+    .data,
+    ind,
+    gateTbl,
+    pathDirSave,
+    chnl,
+    mult,
+    gateTypeCytPos,
+    combnExc,
+    transFn,
+    transChnl) {
   fr <- .fcsWriteImplLoad(.data, ind)
   ex <- flowCore::exprs(fr) |> tibble::as_tibble()
 

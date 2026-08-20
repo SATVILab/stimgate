@@ -10,18 +10,17 @@
 # their original high thresholds.
 #' @keywords internal
 .getCpCluster <- function(
-  .data,
-  gateTbl,
-  gateStatsTbl,
-  gateTblCtrl,
-  chnlSettings,
-  stage,
-  pathProject,
-  control = list(),
-  filterOtherCytPos,
-  calcCytPosGates,
-  indBatchList
-) {
+    .data,
+    gateTbl,
+    gateStatsTbl,
+    gateTblCtrl,
+    chnlSettings,
+    stage,
+    pathProject,
+    control = list(),
+    filterOtherCytPos,
+    calcCytPosGates,
+    indBatchList) {
   stageChnl <- file.path(stage, chnlSettings$chnlCut)
   control <- .getCpClusterControlUpdate(control)
   gateTbl <- .getCpClusterLocGateTblPrepare(gateTbl)
@@ -180,14 +179,13 @@
 
 #' @keywords internal
 .getCpClusterLocExLookup <- function(
-  .data,
-  indBatchList,
-  chnlSettings,
-  filterOtherCytPos,
-  calcCytPosGates,
-  gateTbl,
-  pathProject
-) {
+    .data,
+    indBatchList,
+    chnlSettings,
+    filterOtherCytPos,
+    calcCytPosGates,
+    gateTbl,
+    pathProject) {
   exPairs <- purrr::map(seq_along(indBatchList), function(i) {
     batch <- names(indBatchList)[i]
     exList <- .getExList(
@@ -225,11 +223,10 @@
 
 #' @keywords internal
 .getCpClusterLocApplyQuantiles <- function(
-  locTbl,
-  commonBw,
-  control,
-  nInitialClusters
-) {
+    locTbl,
+    commonBw,
+    control,
+    nInitialClusters) {
   clusterSummary <- locTbl |>
     dplyr::mutate(
       gateNumeric = suppressWarnings(as.numeric(.data$gate))

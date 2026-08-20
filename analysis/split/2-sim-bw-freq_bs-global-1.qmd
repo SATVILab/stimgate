@@ -186,7 +186,7 @@ bandwidth_value_vec <- c(
   0.05, 0.1, 0.15,
   # skew and gaussian
   0.2, 0.25, 0.5, 0.75, 1, 1.25, 1.5
-  )
+)
 
 # StimGate method settings for bandwidth-performance analysis:
 # Cluster refinement (tolClust) is intentionally set to NULL (OFF) to isolate and
@@ -242,10 +242,10 @@ Generate the grid of parameters to simulate.
 #| label: bw-manual-grid
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
-  prob_response  = prob_response_vec,
-  n_cell         = n_cell_stim_vec,
-  bw             = bandwidth_value_vec,
-  bias_uns       = bias_uns_vec,
+  prob_response = prob_response_vec,
+  n_cell = n_cell_stim_vec,
+  bw = bandwidth_value_vec,
+  bias_uns = bias_uns_vec,
   sample_perturbation_sd = sample_perturbation_sd_vec,
   condition_perturbation_sd = condition_perturbation_sd_vec,
   cluster_perturbation_sd = cluster_perturbation_sd_vec,
@@ -471,22 +471,20 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
     furrr::future_pmap(
       sim_grid,
-      function(
-        transformation,
-        prob_response,
-        n_cell,
-        mean_pos_setting,
-        mean_pos,
-        bw,
-        bias_uns_setting,
-        bias_uns,
-        sample_perturbation_sd,
-        condition_perturbation_sd,
-        cluster_perturbation_sd,
-        background_relative_to_response,
-        n_cell_uns_relative_to_stim,
-        sim_id
-      ) {
+      function(transformation,
+               prob_response,
+               n_cell,
+               mean_pos_setting,
+               mean_pos,
+               bw,
+               bias_uns_setting,
+               bias_uns,
+               sample_perturbation_sd,
+               condition_perturbation_sd,
+               cluster_perturbation_sd,
+               background_relative_to_response,
+               n_cell_uns_relative_to_stim,
+               sim_id) {
         settings_row <- paste0(
           "trans = ", transformation,
           " | prob = ", prob_response,
@@ -1056,7 +1054,8 @@ if (isTRUE(run_plots)) {
           mean_pos_setting_curr,
           "_bias_uns_",
           bias_uns_setting_curr,
-          ".png")
+          ".png"
+        )
       )
       dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
       ggsave(
@@ -1139,7 +1138,8 @@ if (isTRUE(run_plots)) {
           mean_pos_setting_curr,
           "_bias_uns_",
           bias_uns_setting_curr,
-          ".png")
+          ".png"
+        )
       )
       dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
       ggsave(
@@ -1179,7 +1179,7 @@ if (isTRUE(run_plots)) {
           prob_response = prob_response
         )
     }
-  ) 
+  )
   transformation_vec <- c("gaussian", "gamma", "skew")
   mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 
@@ -1305,13 +1305,13 @@ if (isTRUE(run_plots)) {
       p <- ggplot() +
         geom_area(
           data = dens_tbl_curr,
-          mapping = aes(x = F1, y=  density, colour = condition, fill = condition),
+          mapping = aes(x = F1, y = density, colour = condition, fill = condition),
           alpha = 0.18,
           position = "identity"
         ) +
         geom_line(
           data = dens_tbl_curr,
-          mapping = aes(x = F1, y=  density, colour = condition),
+          mapping = aes(x = F1, y = density, colour = condition),
           linewidth = 0.25
         ) +
         geom_rug(
@@ -1377,7 +1377,8 @@ if (isTRUE(run_plots)) {
           mean_pos_setting,
           "_bias_uns_",
           bias_uns_setting_curr,
-          ".png")
+          ".png"
+        )
       )
       dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
       ggsave(
@@ -1386,7 +1387,7 @@ if (isTRUE(run_plots)) {
         width = 18,
         height = 30,
         units = "cm"
-      ) 
+      )
     }
   }
 }
@@ -1464,13 +1465,13 @@ if (isTRUE(run_plots)) {
         p <- ggplot() +
           geom_area(
             data = dens_tbl_curr,
-            mapping = aes(x = F1, y=  density, colour = condition, fill = condition),
+            mapping = aes(x = F1, y = density, colour = condition, fill = condition),
             alpha = 0.18,
             position = "identity"
           ) +
           geom_line(
             data = dens_tbl_curr,
-            mapping = aes(x = F1, y=  density, colour = condition),
+            mapping = aes(x = F1, y = density, colour = condition),
             linewidth = 0.25
           ) +
           geom_rug(

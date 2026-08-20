@@ -291,20 +291,18 @@ compare_list_raw <- progressr::with_progress({
 
   furrr::future_pmap(
     sim_grid,
-    function(
-      transformation,
-      prob_response,
-      n_cell,
-      mean_pos_setting,
-      mean_pos,
-      bias_uns,
-      sample_perturbation_sd,
-      condition_perturbation_sd,
-      cluster_perturbation_sd,
-      background_relative_to_response,
-      n_cell_uns_relative_to_stim,
-      sim_id
-    ) {
+    function(transformation,
+             prob_response,
+             n_cell,
+             mean_pos_setting,
+             mean_pos,
+             bias_uns,
+             sample_perturbation_sd,
+             condition_perturbation_sd,
+             cluster_perturbation_sd,
+             background_relative_to_response,
+             n_cell_uns_relative_to_stim,
+             sim_id) {
       settings_row <- paste0(
         "trans = ", transformation,
         " | prob = ", prob_response,
@@ -590,16 +588,16 @@ plot_tbl <- compare_tbl_focus |>
 
 p_est_truth <- ggplot(
   plot_tbl, #|>
-    #dplyr::mutate(
-    #  propRespEst = pmax(0, propRespEst),
-   # ),
+  # dplyr::mutate(
+  #  propRespEst = pmax(0, propRespEst),
+  # ),
   aes(x = propRespTruth, y = propRespEst, color = method)
 ) +
-  geom_point(alpha = 0.35, size = 1)  +
+  geom_point(alpha = 0.35, size = 1) +
   expand_limits(
     y = c(0, max(plot_tbl$propRespTruth, na.rm = TRUE) * 2),
     x = c(0, max(plot_tbl$propRespTruth, na.rm = TRUE) * 2)
-    ) +
+  ) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
   facet_grid(mean_pos_setting ~ transformation) +
   labs(

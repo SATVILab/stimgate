@@ -406,7 +406,6 @@ dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 bw_list_raw <- list()
 
 if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
-
   future::plan(
     future::multisession,
     workers = max(1, .simGetCores())
@@ -419,10 +418,8 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
     furrr::future_pmap(
       sim_grid,
-      function(
-        transformation, prob_response, n_cell, mean_pos_setting, mean_pos,
-        bw_mtd, bw_ncell_upper, bias_uns_setting, bias_uns, sim_id
-      ) {
+      function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos,
+               bw_mtd, bw_ncell_upper, bias_uns_setting, bias_uns, sim_id) {
         settings_row <- paste0(
           "trans = ", transformation,
           " | prob = ", prob_response,
@@ -862,16 +859,16 @@ if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
     bw_tbl_mean_pos <- bw_tbl_results |>
       dplyr::filter(.data$mean_pos_setting == !!mean_pos_setting_curr)
-    
+
     if (nrow(bw_tbl_mean_pos) == 0L) {
       print(paste0("No results for mean_pos_setting: ", mean_pos_setting_curr))
       next
     }
-    
+
     for (bias_uns_setting_curr in unique(bw_tbl_mean_pos$bias_uns_setting)) {
       bw_tbl_bias <- bw_tbl_mean_pos |>
         dplyr::filter(.data$bias_uns_setting == !!bias_uns_setting_curr)
-      
+
       if (nrow(bw_tbl_bias) == 0L) {
         print(paste0(
           "No results for mean_pos_setting: ", mean_pos_setting_curr,
@@ -879,14 +876,14 @@ if (isTRUE(run_plots)) {
         ))
         next
       }
-      
+
       for (bw_ncell_upper_curr in unique(bw_tbl_bias$bw_ncell_upper)) {
         bw_tbl_ncell <- bw_tbl_bias
         if (!is.na(bw_ncell_upper_curr)) {
           bw_tbl_ncell <- bw_tbl_ncell |>
             dplyr::filter(.data$bw_ncell_upper == !!bw_ncell_upper_curr)
         }
-        
+
         if (nrow(bw_tbl_ncell) == 0L) {
           print(paste0(
             "No results for mean_pos_setting: ", mean_pos_setting_curr,
@@ -895,11 +892,11 @@ if (isTRUE(run_plots)) {
           ))
           next
         }
-        
+
         for (bw_component_curr in levels(bw_tbl_ncell$bw_component)) {
           bw_tbl_comp <- bw_tbl_ncell |>
             dplyr::filter(.data$bw_component == !!bw_component_curr)
-          
+
           if (nrow(bw_tbl_comp) == 0L) {
             print(paste0(
               "No results for mean_pos_setting: ", mean_pos_setting_curr,
@@ -909,11 +906,11 @@ if (isTRUE(run_plots)) {
             ))
             next
           }
-          
+
           for (bw_condition_curr in levels(bw_tbl_comp$bw_condition)) {
             plot_tbl <- bw_tbl_comp |>
               dplyr::filter(.data$bw_condition == !!bw_condition_curr)
-            
+
             if (nrow(plot_tbl) == 0L) {
               print(paste0(
                 "No results for plotting for mean_pos_setting: ", mean_pos_setting_curr,
@@ -924,7 +921,7 @@ if (isTRUE(run_plots)) {
               ))
               next
             }
-            
+
             print(paste0(
               "Plotting for mean_pos_setting: ", mean_pos_setting_curr,
               ", bias_uns_setting: ", bias_uns_setting_curr,

@@ -11,13 +11,12 @@
 
 #' @keywords internal
 .getStatsGateTblGet <- function(
-  gateTbl,
-  chnlLab,
-  pathProject,
-  popGate,
-  gateName = NULL,
-  tolClust = NULL
-) {
+    gateTbl,
+    chnlLab,
+    pathProject,
+    popGate,
+    gateName = NULL,
+    tolClust = NULL) {
   if (!is.null(gateTbl)) {
     return(gateTbl)
   }
@@ -108,13 +107,12 @@
 
 #' @keywords internal
 .getStatsGateTblSave <- function(
-  gateTbl,
-  pathProject,
-  popGate,
-  chnlLab,
-  chnl,
-  save
-) {
+    gateTbl,
+    pathProject,
+    popGate,
+    chnlLab,
+    chnl,
+    save) {
   if (!save) {
     return(invisible(FALSE))
   }

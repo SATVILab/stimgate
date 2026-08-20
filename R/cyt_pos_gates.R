@@ -1,13 +1,12 @@
 #' @keywords internal
 .gateCytPos <- function(
-  chnlSettings,
-  indBatchList,
-  .data,
-  gateName = NULL,
-  calcCytPos = TRUE,
-  stage,
-  pathProject
-) {
+    chnlSettings,
+    indBatchList,
+    .data,
+    gateName = NULL,
+    calcCytPos = TRUE,
+    stage,
+    pathProject) {
   .debug("-------------") # nolint
   .debug("getting cytokine-positive gates") # nolint
   .debug("-------------") # nolint
@@ -70,17 +69,16 @@
 
 #' @keywords internal
 .getCytPosGatesGateName <- function(
-  gateTblGn,
-  .data,
-  indBatchList,
-  chnlVec,
-  chnlLabVec,
-  popGate,
-  bwMin,
-  calcCytPos,
-  stage,
-  pathProject
-) {
+    gateTblGn,
+    .data,
+    indBatchList,
+    chnlVec,
+    chnlLabVec,
+    popGate,
+    bwMin,
+    calcCytPos,
+    stage,
+    pathProject) {
   .debug(
     "Getting cyt+ gates for gateName: ",
     gateTblGn$gateName[[1]]
@@ -119,19 +117,18 @@
 
 #' @keywords internal
 .getCytPosGatesInd <- function(
-  ind,
-  .data,
-  indUns,
-  gateTblGn,
-  chnlVec,
-  chnlLabVec,
-  popGate,
-  bwMin,
-  calcCytPos,
-  stage,
-  batch,
-  pathProject
-) {
+    ind,
+    .data,
+    indUns,
+    gateTblGn,
+    chnlVec,
+    chnlLabVec,
+    popGate,
+    bwMin,
+    calcCytPos,
+    stage,
+    batch,
+    pathProject) {
   .debug("Getting cyt+ gates for ind: ", ind) # nolint
 
   # return if ind in batch is the unstim ind
@@ -190,15 +187,14 @@
 
 #' @keywords internal
 .getCpPosGatesChnl <- function(
-  chnlCurr,
-  ex,
-  gateTblInd,
-  basePos,
-  bwMin,
-  ind,
-  stage,
-  pathProject
-) {
+    chnlCurr,
+    ex,
+    gateTblInd,
+    basePos,
+    bwMin,
+    ind,
+    stage,
+    pathProject) {
   .debug("chnlCurr: ", chnlCurr) # nolint
   if (is.na(gateTblInd$gate[gateTblInd$chnl == chnlCurr])) {
     return(NA)

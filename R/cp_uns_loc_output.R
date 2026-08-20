@@ -4,11 +4,10 @@
 # provenance, combines sample thresholds, and assembles the final output.
 
 .getCpUnsLocThresholdOrigin <- function(
-  locGenerated,
-  locGeneratedDirect,
-  locSource,
-  locReason = NA_character_
-) {
+    locGenerated,
+    locGeneratedDirect,
+    locSource,
+    locReason = NA_character_) {
   locGenerated <- locGenerated %in% TRUE
   locGeneratedDirect <- locGeneratedDirect %in% TRUE
   locSource <- as.character(locSource %||% NA_character_)
@@ -90,15 +89,14 @@
 
 #' @keywords internal
 .getCpUnsLocConditionDetailRow <- function(
-  cpObj,
-  dataThreshold,
-  exTblStimOrig,
-  exTblUnsOrig,
-  exTblStimNoMin,
-  bias,
-  stage,
-  chnl
-) {
+    cpObj,
+    dataThreshold,
+    exTblStimOrig,
+    exTblUnsOrig,
+    exTblStimNoMin,
+    bias,
+    stage,
+    chnl) {
   cp <- suppressWarnings(as.numeric(cpObj$cp))[1]
   selectedRow <- .getCpUnsLocSelectedThresholdRow(
     dataThreshold,
@@ -189,13 +187,12 @@
 
 #' @keywords internal
 .getCpUnsLocSampleDetailTbl <- function(
-  cpVec,
-  exListOrig,
-  indUns,
-  indStim,
-  stage,
-  chnl
-) {
+    cpVec,
+    exListOrig,
+    indUns,
+    indStim,
+    stage,
+    chnl) {
   meta <- .getCpUnsLocMetaFromCp(cpVec)
   exTblUns <- .getCpUnsLocExByInd(exListOrig, indUns, pos = 1L)
 
@@ -254,14 +251,13 @@
 
 #' @keywords internal
 .getCpUnsLocOutput <- function(
-  cpUnsLocObjList,
-  indUns,
-  indStim,
-  stage,
-  pathProject,
-  chnl,
-  exListOrig
-) {
+    cpUnsLocObjList,
+    indUns,
+    indStim,
+    stage,
+    pathProject,
+    chnl,
+    exListOrig) {
   stageChnl <- file.path(stage, chnl)
   cpVec <- .getCpUnsLocSampleCpRep(
     stage = stage,
@@ -305,13 +301,12 @@
 
 #' @keywords internal
 .getCpUnsLocSampleCpRep <- function(
-  stage,
-  cpUnsLocObjList,
-  indUns,
-  indStim,
-  pathProject,
-  chnl
-) {
+    stage,
+    cpUnsLocObjList,
+    indUns,
+    indStim,
+    pathProject,
+    chnl) {
   .debug("Possibly re-using calculated cutpoints") # nolint
   indCombined <- .createCombinedIdentifier(indStim)
   stageChnl <- file.path(stage, chnl)

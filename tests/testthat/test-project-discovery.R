@@ -30,21 +30,27 @@ test_that("plotStim error handling for multiple populations and empty inputs", {
   dir.create(file.path(tmpProj, "gates", "poproot"), recursive = TRUE)
   dir.create(file.path(tmpProj, "gates", "popCD4"), recursive = TRUE)
 
-  expect_error(plotStim(ind = c(1, 2), .data = NULL, pathProject = tmpProj, marker = "IL2"),
-               "Cannot plot gates for multiple populations")
+  expect_error(
+    plotStim(ind = c(1, 2), .data = NULL, pathProject = tmpProj, marker = "IL2"),
+    "Cannot plot gates for multiple populations"
+  )
 
   unlink(tmpProj, recursive = TRUE)
 
   tmpProjEmpty <- file.path(tempdir(), paste0("plot_disc_empty_", as.numeric(Sys.time())))
-  expect_error(plotStim(ind = c(1, 2), .data = NULL, pathProject = tmpProjEmpty, marker = "IL2"),
-               "No population found for plotting gates")
+  expect_error(
+    plotStim(ind = c(1, 2), .data = NULL, pathProject = tmpProjEmpty, marker = "IL2"),
+    "No population found for plotting gates"
+  )
 
-  expect_null(.plotGateUvMarker(marker = "IL2", chnl = "BC1", pop = "root", ind = numeric(0),
-                                 .data = NULL, excMin = FALSE, indLab = NULL, axisLab = NULL,
-                                 showGate = FALSE, pathProject = tmpProjEmpty, minCell = 10,
-                                 bias = FALSE, combnExc = NULL, chnlGate = NULL, markerGate = NULL,
-                                 gateTypeCytPos = "cyt", mult = FALSE,
-                                 gateUnsMethod = "min"))
+  expect_null(.plotGateUvMarker(
+    marker = "IL2", chnl = "BC1", pop = "root", ind = numeric(0),
+    .data = NULL, excMin = FALSE, indLab = NULL, axisLab = NULL,
+    showGate = FALSE, pathProject = tmpProjEmpty, minCell = 10,
+    bias = FALSE, combnExc = NULL, chnlGate = NULL, markerGate = NULL,
+    gateTypeCytPos = "cyt", mult = FALSE,
+    gateUnsMethod = "min"
+  ))
 
   unlink(tmpProjEmpty, recursive = TRUE)
 })

@@ -1,15 +1,14 @@
 plotCyto <- function(
-  data,
-  marker,
-  lab = NULL,
-  coordEqual = TRUE,
-  limitsExpand = NULL,
-  limitsEqual = FALSE,
-  fontSize = 14,
-  excMin = FALSE,
-  geomUni = "histogram",
-  ...
-) {
+    data,
+    marker,
+    lab = NULL,
+    coordEqual = TRUE,
+    limitsExpand = NULL,
+    limitsEqual = FALSE,
+    fontSize = 14,
+    excMin = FALSE,
+    geomUni = "histogram",
+    ...) {
   # @description Plot a hex-plot with suitable default for a single
   # sample for cytometry (CyTOF, flow) data.
   #
@@ -156,19 +155,17 @@ plotCyto <- function(
 
 #' @keywords internal
 .plotCytoPlot <- function(
-  nMarker,
-  plotTbl,
-  marker,
-  fontSize,
-  coordEqual,
-  limitsExpand,
-  limitsEqual,
-  geomUni,
-  ...
-) {
-  # base plot
-  switch(
     nMarker,
+    plotTbl,
+    marker,
+    fontSize,
+    coordEqual,
+    limitsExpand,
+    limitsEqual,
+    geomUni,
+    ...) {
+  # base plot
+  switch(nMarker,
     .plotCytoPlotUni(
       geomUni = geomUni,
       plotTbl = plotTbl,
@@ -192,14 +189,13 @@ plotCyto <- function(
 
 #' @keywords internal
 .plotCytoPlotUni <- function(
-  geomUni,
-  plotTbl,
-  fontSize,
-  marker,
-  geomUniGg,
-  limitsExpand,
-  ...
-) {
+    geomUni,
+    plotTbl,
+    fontSize,
+    marker,
+    geomUniGg,
+    limitsExpand,
+    ...) {
   geomUniGg <- .plotCytoPlotUniGeom(geomUni, ...)
 
   p <- .plotCytoPlotUniBase(
@@ -217,8 +213,7 @@ plotCyto <- function(
 
 #' @keywords internal
 .plotCytoPlotUniGeom <- function(geomUni, ...) {
-  switch(
-    geomUni,
+  switch(geomUni,
     "histogram" = do.call(
       ggplot2::geom_histogram,
       list(...)
@@ -267,14 +262,13 @@ plotCyto <- function(
 
 #' @keywords internal
 .plotCytoPlotBiv <- function(
-  plotTbl,
-  fontSize,
-  marker,
-  coordEqual,
-  limitsExpand,
-  limitsEqual,
-  ...
-) {
+    plotTbl,
+    fontSize,
+    marker,
+    coordEqual,
+    limitsExpand,
+    limitsEqual,
+    ...) {
   p <- .plotCytoPlotBivBase(
     plotTbl = plotTbl,
     fontSize = fontSize,

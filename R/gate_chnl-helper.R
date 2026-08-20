@@ -11,12 +11,11 @@
 # Get gates for each sample within each batch
 #' @keywords internal
 .gateChnlPreAdjGatesGate <- function(
-  indBatchList,
-  .data,
-  chnlSettings,
-  stage,
-  pathProject
-) {
+    indBatchList,
+    .data,
+    chnlSettings,
+    stage,
+    pathProject) {
   message("getting pre-adjustment gates")
   purrr::map_df(seq_along(indBatchList), function(i) {
     .debug("indBatchList", i) # nolint
@@ -49,15 +48,14 @@
 
 #' @keywords internal
 .gateChnlGetAdjGates <- function(
-  gateTbl,
-  gateTblParams,
-  chnlSettings,
-  .data,
-  stage,
-  pathProject,
-  indBatchList,
-  calcCytPosGates
-) {
+    gateTbl,
+    gateTblParams,
+    chnlSettings,
+    .data,
+    stage,
+    pathProject,
+    indBatchList,
+    calcCytPosGates) {
   .gateChnlGetAdjGatesAll(
     gateTbl = gateTbl,
     .data = .data,
@@ -71,14 +69,13 @@
 
 #' @keywords internal
 .gateChnlGetAdjGatesAll <- function(
-  gateTbl,
-  .data,
-  pathProject,
-  stage,
-  indBatchList,
-  chnlSettings,
-  calcCytPosGates
-) {
+    gateTbl,
+    .data,
+    pathProject,
+    stage,
+    indBatchList,
+    chnlSettings,
+    calcCytPosGates) {
   gateTbl <- gateTbl |> dplyr::filter(gateUse == "gate") # nolint
   gateTbl <- gateTbl |> dplyr::select(-gateUse) # nolint
 

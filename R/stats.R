@@ -1,21 +1,20 @@
 #' @keywords internal
 .getStats <- function(
-  gateTbl = NULL,
-  chnl = NULL,
-  filterOtherCytPos = FALSE,
-  combn = TRUE,
-  gateTypeCytPosFilter = "base",
-  gateTypeCytPosCalc,
-  popGate,
-  chnlLab = NULL,
-  .data,
-  save = FALSE,
-  indBatchList,
-  saveGateTbl = FALSE,
-  gateName = NULL,
-  tolClust = NULL,
-  pathProject
-) {
+    gateTbl = NULL,
+    chnl = NULL,
+    filterOtherCytPos = FALSE,
+    combn = TRUE,
+    gateTypeCytPosFilter = "base",
+    gateTypeCytPosCalc,
+    popGate,
+    chnlLab = NULL,
+    .data,
+    save = FALSE,
+    indBatchList,
+    saveGateTbl = FALSE,
+    gateName = NULL,
+    tolClust = NULL,
+    pathProject) {
   # prep
   # ---------------
   chnlLab <- .getStatsChnlLabGet(

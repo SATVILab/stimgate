@@ -1,13 +1,12 @@
 #' @keywords internal
 .gateBatchAll <- function(
-  indBatch,
-  batch,
-  exList,
-  .data,
-  chnlSettings,
-  stage,
-  pathProject
-) {
+    indBatch,
+    batch,
+    exList,
+    .data,
+    chnlSettings,
+    stage,
+    pathProject) {
   .debug("chnlSettings$gateTbl is NULL") # nolint
   .debug(
     "gating ",
