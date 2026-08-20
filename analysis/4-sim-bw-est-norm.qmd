@@ -167,6 +167,12 @@ print(
 )
 
 bw_fallback <- 0.23482348792138919129198282389
+
+set.seed(1)
+
+n_run <- nrow(sim_grid)
+sim_grid_run <- sim_grid |>
+  dplyr::slice_sample(n = n_run)
 ```
 
 A loop we only run when we want to see why particular runs failed.
@@ -310,11 +316,7 @@ Run the simulations in parallel, with progress reporting.
 ```{r}
 #| label: bw-estimate-parallel
 
-set.seed(1)
 
-n_run <- nrow(sim_grid)
-sim_grid_run <- sim_grid |>
-  dplyr::slice_sample(n = n_run)
 
 if (interactive()) {
   progressr::handlers(global = TRUE)
