@@ -510,6 +510,83 @@
     posVecMultiCyt
 }
 
+# Identify cells to exclude separately for each cytokine
+#' @keywords internal
+.getPosIndButSinglePosByChnl <- function(
+  ex,
+  gateTbl,
+  chnl = NULL,
+  gateTypeCytPos,
+  posCache = NULL
+) {
+  if (!gateTypeCytPos %in% c("base", "cyt")) {
+    stop(
+      paste0(
+        "gateTypeCytPos value of ",
+        gateTypeCytPos,
+        ' not either "cyt" or "base".'
+      )
+    )
+  }
+
+  if (is.null(chnl)) {
+    chnl <- unique(gateTbl$chnl)
+  }
+
+  chnl <- unique(as.character(chnl))
+
+  posCache <- .getPosIndCache(
+    ex = ex,
+    gateTbl = gateTbl,
+    chnl = chnl,
+    posCache = posCache
+  )
+
+  baseCount <- .getPosIndCacheCount(
+    posCache = posCache,
+    chnl = chnl,
+    gateType = "base"
+  )
+
+  posVecMultiCyt <- if (gateTypeCytPos == "cyt") {
+    .getPosIndMult(
+      ex = ex,
+      gateTbl = gateTbl,
+      chnl = chnl,
+      chnlAlt = chnl,
+      gateTypeCytPos = "cyt",
+      posCache = posCache
+    )
+  } else {
+    NULL
+  }
+
+  out <- stats::setNames(
+    vector(
+      "list",
+      length(chnl)
+    ),
+    chnl
+  )
+
+  for (chnlCurr in chnl) {
+    otherBasePos <- .getPosIndCacheAnyExcept(
+      posCache = posCache,
+      count = baseCount,
+      chnlCurr = chnlCurr,
+      gateType = "base"
+    )
+
+    out[[chnlCurr]] <- if (gateTypeCytPos == "base") {
+      otherBasePos
+    } else {
+      otherBasePos | posVecMultiCyt
+    }
+  }
+
+  out
+}
+
 
 # Identify cells that express at least one cytokine
 # Returns a logical vector indicating cytokine-positive cells using flexible thresholds

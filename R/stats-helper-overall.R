@@ -352,6 +352,53 @@
 }
 
 #' @keywords internal
+.getStatsBatchGnFilterMasks <- function(
+  exList,
+  gateTblGn,
+  chnl,
+  gateTypeCytPosFilter
+) {
+  exUns <- exList[[1]]
+
+  purrr::map(
+    exList[-1],
+    function(ex) {
+      gateTblGnInd <- gateTblGn |>
+        dplyr::filter(
+          ind == attr(ex, "ind") # nolint
+        )
+
+      if (
+        nrow(ex) == 0L ||
+          nrow(gateTblGnInd) == 0L
+      ) {
+        return(
+          list(
+            stim = NULL,
+            uns = NULL
+          )
+        )
+      }
+
+      list(
+        stim = .getPosIndButSinglePosByChnl(
+          ex = ex,
+          gateTbl = gateTblGnInd,
+          chnl = chnl,
+          gateTypeCytPos = gateTypeCytPosFilter
+        ),
+        uns = .getPosIndButSinglePosByChnl(
+          ex = exUns,
+          gateTbl = gateTblGnInd,
+          chnl = chnl,
+          gateTypeCytPos = gateTypeCytPosFilter
+        )
+      )
+    }
+  )
+}
+
+#' @keywords internal
 .getStatsBatchGnFilterOrNonCombn <- function(
   exList,
   indBatch,
@@ -362,118 +409,109 @@
   gateTypeCytPosFilter
 ) {
   .debug("filtering or not working out combinations") # nolint
-  purrr::map_df(chnl, function(chnlCurr) {
-    .debug("chnlCurr: ", chnlCurr) # nolint
 
-    if (filterOtherCytPos) {
-      exList <- .getStatsBatchGnFilterOrNonCombnFilter(
-        exList = exList,
-        gateTblGn = gateTblGn,
-        chnlCurr = chnlCurr,
-        gateTypeCytPosFilter = gateTypeCytPosFilter
-      )
-    }
+  exUns <- exList[[1]]
 
-    statTblGnInd <- tibble::tibble(
-      ind = indBatch[-1],
-      gateName = gn,
-      chnl = chnlCurr,
-      countStim = NA,
-      nCellStim = NA,
-      countUns = NA,
-      nCellUns = NA
-    )
-    for (j in seq_len(nrow(statTblGnInd))) {
-      .debug("j: ", j) # nolint
-      ex <- exList[[j + 1]]
-      gateTblGnInd <- gateTblGn |>
-        dplyr::filter(ind == attr(ex, "ind")) # nolint
-      nothingToGate <- nrow(ex) == 0 ||
-        nrow(gateTblGnInd) == 0 ||
-        all(is.na(ex[[chnlCurr]]))
-      if (nothingToGate) {
-        .debug("filling in NAs") # nolint
-        statTblGnInd[j, "countStim"] <- NA_integer_
-        statTblGnInd[j, "nCellStim"] <- min(
-          sum((!is.na(ex[[chnlCurr]])) & (!is.nan(ex[[chnlCurr]])))
-        )
-        statTblGnInd[j, "countUns"] <- NA_integer_
-        statTblGnInd[j, "nCellUns"] <- nrow(exList[[1]])
-        next
-      }
-      gateGnIndChnl <- gateTblGnInd$gate[gateTblGnInd$chnl == chnlCurr]
-      statTblGnInd[j, "countStim"] <- sum(ex[[chnlCurr]] > gateGnIndChnl)
-      statTblGnInd[j, "nCellStim"] <- nrow(ex)
-
-      exUns <- exList[[1]]
-      if (filterOtherCytPos) {
-        posIndVecButSinglePosCurr <- .getPosIndButSinglePosForOneCyt(
-          ex = exUns |> dplyr::mutate(isUns = FALSE),
-          gateTbl = gateTblGnInd |> dplyr::mutate(ind = attr(ex, "ind")),
-          chnlSingleExc = chnlCurr,
-          chnl = NULL,
-          gateTypeCytPos = gateTypeCytPosFilter
-        )
-        exUns <- exUns[!posIndVecButSinglePosCurr, , drop = FALSE]
-      }
-      statTblGnInd[j, "countUns"] <- sum(exUns[[chnlCurr]] > gateGnIndChnl)
-      statTblGnInd[j, "nCellUns"] <- nrow(exUns)
-    }
-    statTblGnInd
-  })
-}
-
-#' @keywords internal
-.getStatsBatchGnFilterOrNonCombnFilter <- function(
-  exList,
-  gateTblGn,
-  chnlCurr,
-  gateTypeCytPosFilter
-) {
-  .debug("filtering other cyt pos") # nolint
-
-  purrr::map(seq_along(exList), function(i) {
-    .debug("i: ", i) # nolint
-
-    returnEarly <- .getStatsBatchGnFilterOrNonCombnFilterCheckEarly(
-      i = i,
+  filterMasks <- if (filterOtherCytPos) {
+    .getStatsBatchGnFilterMasks(
       exList = exList,
-      chnlCurr = chnlCurr,
-      gateTblGn = gateTblGn
+      gateTblGn = gateTblGn,
+      chnl = chnl,
+      gateTypeCytPosFilter = gateTypeCytPosFilter
     )
-    if (returnEarly) {
-      return(exList[[i]])
-    }
-
-    posIndVecButSinglePosCurr <- .getPosIndButSinglePosForOneCyt(
-      ex = exList[[i]],
-      gateTbl = gateTblGn |>
-        dplyr::filter(ind == attr(exList[[i]], "ind")), # nolint
-      chnlSingleExc = chnlCurr,
-      chnl = NULL,
-      gateTypeCytPos = gateTypeCytPosFilter
-    )
-    exList[[i]][!posIndVecButSinglePosCurr, , drop = FALSE]
-  }) |>
-    stats::setNames(names(exList))
-}
-
-#' @keywords internal
-.getStatsBatchGnFilterOrNonCombnFilterCheckEarly <- function(
-  i,
-  exList,
-  chnlCurr,
-  gateTblGn
-) {
-  if (i == 1) {
-    return(TRUE)
+  } else {
+    NULL
   }
-  gateTblGnInd <- gateTblGn |>
-    dplyr::filter(ind == attr(exList[[i]], "ind")) # nolint
 
-  all(is.na(exList[[i]][[chnlCurr]])) ||
-    nrow(gateTblGnInd) == 0 ||
-    nrow(exList[[i]]) == 0
+  purrr::map_df(
+    chnl,
+    function(chnlCurr) {
+      .debug("chnlCurr: ", chnlCurr) # nolint
+
+      statTblGnInd <- tibble::tibble(
+        ind = indBatch[-1],
+        gateName = gn,
+        chnl = chnlCurr,
+        countStim = NA,
+        nCellStim = NA,
+        countUns = NA,
+        nCellUns = NA
+      )
+
+      for (j in seq_len(nrow(statTblGnInd))) {
+        .debug("j: ", j) # nolint
+
+        ex <- exList[[j + 1]]
+
+        gateTblGnInd <- gateTblGn |>
+          dplyr::filter(
+            ind == attr(ex, "ind") # nolint
+          )
+
+        xStim <- ex[[chnlCurr]]
+
+        if (
+          filterOtherCytPos &&
+            !is.null(filterMasks[[j]]$stim)
+        ) {
+          xStim <- xStim[
+            !filterMasks[[j]]$stim[[chnlCurr]]
+          ]
+        }
+
+        nothingToGate <-
+          length(xStim) == 0L ||
+          nrow(gateTblGnInd) == 0L ||
+          all(is.na(xStim))
+
+        if (nothingToGate) {
+          .debug("filling in NAs") # nolint
+
+          statTblGnInd[j, "countStim"] <- NA_integer_
+
+          statTblGnInd[j, "nCellStim"] <- sum(
+            (!is.na(xStim)) &
+              (!is.nan(xStim))
+          )
+
+          statTblGnInd[j, "countUns"] <- NA_integer_
+          statTblGnInd[j, "nCellUns"] <- nrow(exUns)
+
+          next
+        }
+
+        gateGnIndChnl <- gateTblGnInd$gate[
+          gateTblGnInd$chnl == chnlCurr
+        ]
+
+        statTblGnInd[j, "countStim"] <- sum(
+          xStim > gateGnIndChnl
+        )
+
+        statTblGnInd[j, "nCellStim"] <- length(
+          xStim
+        )
+
+        xUns <- exUns[[chnlCurr]]
+
+        if (filterOtherCytPos) {
+          xUns <- xUns[
+            !filterMasks[[j]]$uns[[chnlCurr]]
+          ]
+        }
+
+        statTblGnInd[j, "countUns"] <- sum(
+          xUns > gateGnIndChnl
+        )
+
+        statTblGnInd[j, "nCellUns"] <- length(
+          xUns
+        )
+      }
+
+      statTblGnInd
+    }
+  )
 }
 
 #' @keywords internal
