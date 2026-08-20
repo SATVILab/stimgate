@@ -46,12 +46,17 @@ for (fn in c("sim-misc.R", "functionsForBenchmarking-Cyt.R", "sim-bandwidth.R", 
 
 ### Aim
 
-Compare the fixed-bandwidth StimGate background-subtracted frequency estimate against two alternative thresholding approaches:
+Compare the StimGate background-subtracted frequency estimate against two
+alternative thresholding approaches:
 
-1. `fbeta`, called from the Python implementation at `scripts/python/fbeta.py` via `reticulate`.
+1. `fbeta`, called from the Python implementation at
+   `scripts/python/fbeta.py` via `reticulate`.
 2. `tailgate`, called from the `cytoUtils` package.
 
-For now, the bandwidth is fixed only for StimGate. Tailgate is deliberately left to use its usual automatic bandwidth estimation, because the aim here is to compare StimGate with the alternative methods as they normally run.
+For StimGate, bandwidth is estimated automatically using the ordinary `hpi1`
+selector, without background normalisation, with the bandwidth-estimation sample
+capped at 10,000 cells. Tailgate is deliberately left to use its usual automatic
+bandwidth estimation so that it is evaluated as it would normally run.
 
 ### Simulation settings
 
@@ -92,7 +97,11 @@ cluster_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
 background_relative_to_response_vec <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.001)[4]
 n_cell_uns_relative_to_stim_vec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)[4]
 
-bw_fixed <- 0.5
+stimgate_bw_mtd <- "hpi1"
+stimgate_bw_ncell_max <- 1e4
+stimgate_bw_fallback <- "auto"
+stimgate_bw_min <- "none"
+stimgate_bw_max <- "none"
 bias_uns_vec <- c(0, 0.05, 0.1, seq(0.2, 2, by = 0.2))[c(2, 4)]
 
 # StimGate method settings for full method comparison (StimGate vs alternatives):
@@ -127,7 +136,6 @@ sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
   prob_response = prob_response_vec,
   n_cell = n_cell_stim_vec,
-  bw = bw_fixed,
   bias_uns = bias_uns_vec,
   sample_perturbation_sd = sample_perturbation_sd_vec,
   condition_perturbation_sd = condition_perturbation_sd_vec,
@@ -136,10 +144,16 @@ sim_grid <- tidyr::expand_grid(
   n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim_vec
 ) |>
   dplyr::select(
-    transformation, prob_response, n_cell,
-    mean_pos_setting, mean_pos, bw, bias_uns,
-    sample_perturbation_sd, condition_perturbation_sd,
-    cluster_perturbation_sd, background_relative_to_response,
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos_setting,
+    mean_pos,
+    bias_uns,
+    sample_perturbation_sd,
+    condition_perturbation_sd,
+    cluster_perturbation_sd,
+    background_relative_to_response,
     n_cell_uns_relative_to_stim
   ) |>
   dplyr::filter(
@@ -148,7 +162,10 @@ sim_grid <- tidyr::expand_grid(
   dplyr::mutate(
     sim_id = dplyr::row_number()
   ) |>
-  dplyr::arrange(n_cell, dplyr::desc(prob_response))
+  dplyr::arrange(
+    n_cell,
+    dplyr::desc(prob_response)
+  )
 
 if (.isDev()) {
   sim_grid <- sim_grid |>
@@ -183,10 +200,12 @@ for (i in seq_len(nrow(sim_grid))) {
     nCluster = 2,
     nIter = 2,
     biasUns = sim_grid$bias_uns[i],
-    bw = sim_grid$bw[i],
-    bwFallback = sim_grid$bw[i],
-    bwMin = "none",
-    bwMax = "none",
+    bw = NULL,
+    bwFallback = sim_grid$stimgate_bw_fallback[i],
+    bwMin = sim_grid$stimgate_bw_min[i],
+    bwMax = sim_grid$stimgate_bw_max[i],
+    bwMtd = sim_grid$stimgate_bw_mtd[i],
+    bwNcellMax = sim_grid$stimgate_bw_ncell_max[i],
     nCellStim = sim_grid$n_cell[i],
     probResponse = sim_grid$prob_response[i],
     probExact = TRUE,
@@ -218,7 +237,6 @@ for (i in seq_len(nrow(sim_grid))) {
       n_cell = sim_grid$n_cell[i],
       mean_pos_setting = sim_grid$mean_pos_setting[i],
       mean_pos = sim_grid$mean_pos[i],
-      bw = sim_grid$bw[i],
       bias_uns = sim_grid$bias_uns[i],
       sample_perturbation_sd = sim_grid$sample_perturbation_sd[i],
       condition_perturbation_sd = sim_grid$condition_perturbation_sd[i],
@@ -279,7 +297,6 @@ compare_list_raw <- progressr::with_progress({
       n_cell,
       mean_pos_setting,
       mean_pos,
-      bw,
       bias_uns,
       sample_perturbation_sd,
       condition_perturbation_sd,
@@ -293,7 +310,8 @@ compare_list_raw <- progressr::with_progress({
         " | prob = ", prob_response,
         " | n_cell = ", n_cell,
         " | mean = ", mean_pos,
-        " | bw = ", bw,
+        " | bw_mtd = ", stimgate_bw_mtd,
+        " | bw_ncell_max = ", stimgate_bw_ncell_max,
         " | bias = ", bias_uns,
         " | sample_sd = ", sample_perturbation_sd,
         " | condition_sd = ", condition_perturbation_sd,
@@ -318,10 +336,12 @@ compare_list_raw <- progressr::with_progress({
             nCluster = 2,
             nIter = 5,
             biasUns = bias_uns,
-            bw = bw,
-            bwFallback = bw,
-            bwMin = "none",
-            bwMax = "none",
+            bw = NULL,
+            bwFallback = stimgate_bw_fallback,
+            bwMin = stimgate_bw_min,
+            bwMax = stimgate_bw_max,
+            bwMtd = stimgate_bw_mtd,
+            bwNcellMax = stimgate_bw_ncell_max,
             nCellStim = n_cell,
             probResponse = prob_response,
             probExact = TRUE,
@@ -352,7 +372,6 @@ compare_list_raw <- progressr::with_progress({
               n_cell = n_cell,
               mean_pos_setting = mean_pos_setting,
               mean_pos = mean_pos,
-              bw = bw,
               bias_uns = bias_uns,
               sample_perturbation_sd = sample_perturbation_sd,
               condition_perturbation_sd = condition_perturbation_sd,
@@ -403,7 +422,8 @@ compare_list_raw <- progressr::with_progress({
             n_cell = n_cell,
             mean_pos_setting = mean_pos_setting,
             mean_pos = mean_pos,
-            bw = bw,
+            bwMtd = stimgate_bw_mtd,
+            bwNcellMax = stimgate_bw_ncell_max,
             bias_uns = bias_uns,
             sample_perturbation_sd = sample_perturbation_sd,
             condition_perturbation_sd = condition_perturbation_sd,
