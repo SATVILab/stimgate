@@ -123,10 +123,6 @@ stimgate_bw_fallback <- "auto"
 stimgate_bw_min <- "none"
 stimgate_bw_max <- "none"
 
-bias_uns_vec <- c(
-  0, 0.05, 0.1, seq(0.2, 2, by = 0.2)
-)[c(2, 4)]
-
 # StimGate method settings for the full method comparison.
 # Cluster refinement is enabled to represent the full one-marker procedure.
 tol_clust <- 1e-7
@@ -162,13 +158,19 @@ sim_grid <- tidyr::expand_grid(
   bw_fallback = stimgate_bw_fallback,
   bw_min = stimgate_bw_min,
   bw_max = stimgate_bw_max,
-  bias_uns = bias_uns_vec,
   sample_perturbation_sd = sample_perturbation_sd_vec,
   condition_perturbation_sd = condition_perturbation_sd_vec,
   cluster_perturbation_sd = cluster_perturbation_sd_vec,
   background_relative_to_response = background_relative_to_response_vec,
   n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim_vec
 ) |>
+  dplyr::mutate(
+    bias_uns = dplyr::case_when(
+      transformation == "gamma" ~ 0.01,
+      transformation %in% c("gaussian", "skew") ~ 0.15,
+      TRUE ~ NA_real_
+    )
+  ) |>
   dplyr::select(
     transformation,
     prob_response,
