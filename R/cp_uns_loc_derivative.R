@@ -260,7 +260,8 @@
 
   tibble::tibble(
     x = (utils::head(probTbl$x, -1L) + utils::tail(probTbl$x, -1L)) / 2,
-    prob = (utils::head(probTbl$prob, -1L) + utils::tail(probTbl$prob, -1L)) / 2,
+    prob = (utils::head(probTbl$prob, -1L) + utils::tail(probTbl$prob, -1L)) /
+      2,
     deriv = deriv,
     source = "model_probability_finite_difference"
   )
@@ -331,16 +332,16 @@
     0.15,
     allowZero = TRUE
   )
-  hasMeaningfulLeftRise <- vapply(
-    peakIndex,
-    function(i) {
-      i > 1L &&
-        any(
-          peakData$deriv[seq_len(i - 1L)] <= leftRiseFrac * peakData$deriv[i]
-        )
-    },
-    logical(1L)
+  nPeakData <- nrow(peakData)
+
+  minDerivBefore <- c(
+    Inf,
+    cummin(peakData$deriv)[seq_len(nPeakData - 1L)]
   )
+
+  hasMeaningfulLeftRise <-
+    peakIndex > 1L &
+    minDerivBefore[peakIndex] <= leftRiseFrac * peakData$deriv[peakIndex]
 
   peakIndex <- peakIndex[hasMeaningfulLeftRise]
 
@@ -642,9 +643,7 @@
     psi = params$psi,
     thresholdProbMin = .getCpUnsLocThresholdProbMin(chnlSettings, stage),
     capRightWidth = identical(stage, "marginal"),
-    leftRiseFrac = if (
-      isTRUE(attr(dataMod, "locShapeThresholdApplied"))
-    ) {
+    leftRiseFrac = if (isTRUE(attr(dataMod, "locShapeThresholdApplied"))) {
       .getCpUnsLocSetting(
         chnlSettings,
         "locShapeDerivativeLeftRiseFrac",
