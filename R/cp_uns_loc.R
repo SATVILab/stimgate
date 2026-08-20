@@ -77,11 +77,8 @@
   excMin,
   noiseSd
 ) {
-  # rename `cut` column` to `expr`
-  # -------------------------------------
+  # Keep the complete original data.
   exListOrig <- .prepareExListWithBiasAndNoise(
-    # excMin should always be FALSE here, as we're trying
-    # to keep all the original data
     exList = exList,
     ind = names(exList),
     excMin = FALSE,
@@ -90,32 +87,27 @@
   ) |>
     .arrangeSamplesByDescExpr()
 
-  # separate stim and uns samples, rename
-  # `cut` column to `expr` and exclude min
-  # values
-  # -------------------------------------
-  exListNoMin <- .prepareExListWithBiasAndNoise(
-    exList = exList,
-    ind = names(exList),
-    excMin = excMin,
-    bias = 0,
-    noiseSd = NULL
-  ) |>
-    .arrangeSamplesByDescExpr()
+  # Remove minimum-expression values where requested.
+  if (isTRUE(excMin)) {
+    exListNoMin <- .prepareExListWithBiasAndNoise(
+      exList = exListOrig,
+      ind = names(exListOrig),
+      excMin = TRUE,
+      bias = 0,
+      noiseSd = NULL
+    ) |>
+      .arrangeSamplesByDescExpr()
+  } else {
+    exListNoMin <- exListOrig
+  }
 
-  # adjust expression in unstim,
-  # applying bias, excluding the min val
-  # and /or adding noise
-  # -------------------------------------
-  exListBias <- .prepareExListWithBiasAndNoise(
-    exList = exList,
-    ind = names(exList)[1],
-    excMin = excMin,
-    bias = bias,
-    noiseSd = NULL
-  ) |>
-    .arrangeSamplesByDescExpr()
-  exTblUnsBias <- exListBias[[1]]
+  # The biased unstimulated data differ from the already-prepared unstimulated
+  # data only by a constant expression shift. Adding a constant preserves its
+  # existing ordering.
+  exTblUnsBias <- exListNoMin[[1L]]
+
+  chnl <- attr(exTblUnsBias, "chnlCut")
+  exTblUnsBias[[chnl]] <- .getCut(exTblUnsBias) + bias
 
   list(
     "exListOrig" = exListOrig,
@@ -355,9 +347,15 @@
 
 #' @keywords internal
 .arrangeSamplesByDescExpr <- function(exList) {
-  # arrange in descending order of expression
-  exList |>
-    purrr::map(function(x) x[order(.getCut(x)), ]) # nolint
+  purrr::map(exList, function(x) {
+    cut <- .getCut(x)
+
+    if (is.unsorted(cut)) {
+      x[order(cut), , drop = FALSE]
+    } else {
+      x
+    }
+  })
 }
 
 #' @keywords internal
@@ -806,7 +804,8 @@
 
 #' @keywords internal
 .getCpUnsLocConditionCheckMaxX <- function(exTblStimNoMin, cpMin) {
-  (stats::quantile(.getCut(exTblStimNoMin), 0.9) + 3 * stats::sd(.getCut(exTblStimNoMin))) <=
+  (stats::quantile(.getCut(exTblStimNoMin), 0.9) +
+    3 * stats::sd(.getCut(exTblStimNoMin))) <=
     cpMin
 }
 
