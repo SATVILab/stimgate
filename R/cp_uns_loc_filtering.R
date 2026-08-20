@@ -470,7 +470,11 @@
   }
 
   if (mtd == "taut_string") {
-    exprSorted <- sort(expr)
+    exprSorted <- if (is.unsorted(expr)) {
+      sort(expr)
+    } else {
+      expr
+    }
     tautFit <- try(
       suppressWarnings(.tautStringPmden(exprSorted)),
       silent = TRUE
@@ -636,18 +640,24 @@
     return(numeric(0L))
   }
 
-  runId <- cumsum(c(
+  change <- c(
     TRUE,
-    !dplyr::near(y[-1L], y[-length(y)])
-  ))
-  runs <- split(seq_along(y), runId)
-  runY <- vapply(runs, function(i) y[i[[1L]]], numeric(1L))
-  if (length(runY) < 3L) {
-    return(numeric(0L))
-  }
+    !dplyr::near(
+      y[-1L],
+      y[-length(y)]
+    )
+  )
 
-  runLeft <- vapply(runs, function(i) min(x[i]), numeric(1L))
-  runRight <- vapply(runs, function(i) max(x[i]), numeric(1L))
+  runStart <- which(change)
+  runEnd <- c(
+    runStart[-1L] - 1L,
+    length(y)
+  )
+
+  runY <- y[runStart]
+  runLeft <- x[runStart]
+  runRight <- x[runEnd]
+  runX <- (runLeft + runRight) / 2
   internal <- seq.int(2L, length(runY) - 1L)
   minima <- internal[
     runY[internal] < runY[internal - 1L] &
@@ -1001,7 +1011,8 @@
       validScore[-1L] &
       !dominant[-length(dominant)] &
       dominant[-1L]
-  ) + 1L
+  ) +
+    1L
   if (length(transitionIdx) == 0L) {
     info$reason <- "density_dominance_has_no_observed_left_rise"
     info$tailCollapsed <- length(tailIdx) > 0L
@@ -1025,7 +1036,8 @@
   } else {
     x[leftIdx] +
       (scoreThreshold - score[leftIdx]) *
-        (x[onsetIdx] - x[leftIdx]) / scoreChange
+        (x[onsetIdx] - x[leftIdx]) /
+        scoreChange
   }
 
   peakCandidate <- seq.int(onsetIdx, length(x))
@@ -1081,9 +1093,7 @@
     peakX = suppressWarnings(as.numeric(peakX)[1L])
   )
 
-  if (
-    !is.data.frame(density) && !is.list(density)
-  ) {
+  if (!is.data.frame(density) && !is.list(density)) {
     info$reason <- "invalid_stimulated_density_or_peak"
     return(list(lowerBoundX = NA_real_, info = info))
   }
@@ -1265,14 +1275,25 @@
     return(list(dataMod = dataMod, info = info))
   }
 
-  dataMod <- .getCpUnsLocSubsetRows(dataMod, order(.getCut(dataMod)))
   x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+
+  # The main filtering routes already supply dataMod in expression order.
+  # Only sort here when required, preserving this helper's existing behaviour
+  # for direct or other callers.
+  if (is.unsorted(x)) {
+    ord <- order(x)
+    dataMod <- .getCpUnsLocSubsetRows(dataMod, ord)
+    x <- x[ord]
+  }
+
+  prob <- .getCpUnsLocProbability(dataMod, probCol)
+
+  finite <- is.finite(x) & is.finite(prob)
+
   dm <- tibble::tibble(
-    x = x,
-    prob = .getCpUnsLocProbability(dataMod, probCol)
-  ) |>
-    dplyr::filter(is.finite(.data$x), is.finite(.data$prob)) |>
-    dplyr::arrange(.data$x)
+    x = x[finite],
+    prob = prob[finite]
+  )
 
   if (nrow(dm) < 4L || diff(range(dm$x)) <= 0) {
     info$reason <- "insufficient_finite_data_for_marginal_filter"
@@ -1353,6 +1374,34 @@
     info$reason <- "no_bins_left_of_marginal_reference"
     return(list(dataMod = dataMod, info = info))
   }
+  # Assign each cell to its marginal bin once, rather than rescanning all cells
+  # separately for every bin.
+  nBinTotal <- length(breaks) - 1L
+  binIdx <- findInterval(dm$x, breaks)
+
+  # Preserve the existing interval definition:
+  # breaks[i] <= x < breaks[i + 1].
+  validBin <- binIdx >= 1L & binIdx <= nBinTotal
+
+  # Number of cells in every bin.
+  binNCell <- tabulate(
+    binIdx[validBin],
+    nbins = nBinTotal
+  )
+
+  # Sum of fitted response probabilities in every bin.
+  binExpectedResp <- numeric(nBinTotal)
+
+  if (any(validBin)) {
+    probSums <- rowsum(
+      dm$prob[validBin],
+      group = binIdx[validBin],
+      reorder = FALSE
+    )
+
+    probSumIdx <- as.integer(rownames(probSums))
+    binExpectedResp[probSumIdx] <- probSums[, 1L]
+  }
 
   currentCut <- startX
   scan <- vector("list", length(leftBins))
@@ -1362,9 +1411,8 @@
 
   for (j in seq_along(leftBins)) {
     i <- leftBins[[j]]
-    inBin <- dm$x >= breaks[[i]] & dm$x < breaks[[i + 1L]]
-    nCell <- sum(inBin)
-    expectedResp <- sum(dm$prob[inBin])
+    nCell <- binNCell[[i]]
+    expectedResp <- binExpectedResp[[i]]
     purity <- if (nCell == 0L) NA_real_ else expectedResp / nCell
     accepted <- nCell == 0L ||
       (is.finite(purity) && nCell <= maxCells && purity >= minPurity)
@@ -1886,7 +1934,8 @@
   } else {
     x[[nonDomIdx]] +
       (scoreThreshold - score[[nonDomIdx]]) *
-        (x[[leftIdx]] - x[[nonDomIdx]]) / scoreChange
+        (x[[leftIdx]] - x[[nonDomIdx]]) /
+        scoreChange
   }
 
   # The robustness peak is explicitly constrained to the interval from onset
