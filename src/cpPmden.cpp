@@ -232,38 +232,41 @@ stringInfo cpPmden(const std::vector<double>& xIn) {
 	  eps[i] = cur_kuiper_val;
       }
     }
-    else{
+    else if (nsamp < 10000) {
       first_kuiper_ind = -1;//reset the flag for next iteration
       irmax = std::floor(std::log(nsamp)) + 3;
       icomax = 1;
       prp = std::exp(-1);
       currsum = 2 * exp(-1);
       while (std::log(currsum) < (std::log(0.95)/(double(nsamp)))) {
-	icomax = icomax + 1;
-	prp = prp/(double(icomax));
-	currsum = currsum + prp;
+        icomax = icomax + 1;
+        prp = prp/(double(icomax));
+        currsum = currsum + prp;
       }
       std::fill(kni.begin(),kni.end(),0.0);
       local_density(lastunif,kni,nsamp,icomax,irmax);
-      kni_sum = 0; //set to zero every time through the loop
-      kni_lookups.clear(); //empty lookups every time.
+      kni_sum = 0;
+      kni_lookups.clear();
       for (auto i = 0; i < (int)nsamp; i++) {
-	if (kni[i] == 1) {
-	  kni_sum += 1;
-	  kni_lookups.push_back(i);
-	}
+        if (kni[i] == 1) {
+          kni_sum += 1;
+          kni_lookups.push_back(i);
+        }
       }
-      if (kni_sum  == 0) {
-	stillRepeating = false;
+      if (kni_sum == 0) {
+        stillRepeating = false;
       }
       else {
-	num_kni_lookups = kni_lookups.size();
-	for (auto i = 0; i < num_kni_lookups; i++) {
-	  cur_kni_lookup =  kni_lookups[i];
-	  tmp_eps = eps[cur_kni_lookup] * locsq_factor;
-	  eps[cur_kni_lookup] = tmp_eps;
-	}
+        num_kni_lookups = kni_lookups.size();
+        for (auto i = 0; i < num_kni_lookups; i++) {
+          cur_kni_lookup = kni_lookups[i];
+          tmp_eps = eps[cur_kni_lookup] * locsq_factor;
+          eps[cur_kni_lookup] = tmp_eps;
+        }
       }
+    }
+    else {
+      stillRepeating = false;
     }
   }
   return fts;
