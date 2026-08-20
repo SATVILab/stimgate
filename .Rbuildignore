@@ -39,6 +39,7 @@
 ^manifest\.csv$
 ^NEWS\.md$
 ^README\.html$
+^Rplots\.pdf$
 ^\.github/
 ^\.github$
 # End of projr section

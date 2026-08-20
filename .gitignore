@@ -53,6 +53,7 @@ _output/**
 AGENTS.md
 CHANGES_SUMMARY.md
 README.html
+Rplots.pdf
 # End of projr section
 
 _tmp/log/sbatch/projr_build_output
@@ -97,4 +98,8 @@ _tmp/log/sbatch/5-sim-bw-est-adaptive/chunk-1
 _tmp/log/sbatch/5-sim-bw-est-adaptive/chunk-2
 _tmp/log/sbatch/5-sim-bw-est-adaptive/chunk-3
 _tmp/log/sbatch/5-sim-bw-est-adaptive/chunk-4
+
+analysis/7-sim-compare-freq_bs.qmd
+analysis/split/2-sim-bw-freq_bs-global-1.qmd
+_tmp/log/sbatch/dev-7-sim-compare-freq_bs
 
