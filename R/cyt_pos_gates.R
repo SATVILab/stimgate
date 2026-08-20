@@ -155,6 +155,11 @@
   gateTblInd <- gateTblGn |>
     dplyr::filter(.data$ind == .env$ind) # nolint
 
+  basePos <- .getCytPosBasePos(
+    ex = ex,
+    gateTblInd = gateTblInd
+  )
+
   # ==============
   # Calculate cyt+ cutpoints
   # ==============
@@ -165,6 +170,7 @@
         chnlCurr = chnlVec[[i]],
         ex = ex,
         gateTblInd = gateTblInd,
+        basePos = basePos,
         bwMin = bwMin,
         ind = ind,
         stage = stage,
@@ -187,6 +193,7 @@
   chnlCurr,
   ex,
   gateTblInd,
+  basePos,
   bwMin,
   ind,
   stage,
@@ -199,16 +206,13 @@
 
   # subset only cells pos for at least one other cyt
   # --------------
-  nonNaChnlVec <- gateTblInd |>
-    dplyr::filter(!is.na(gate)) |> # nolint
-    dplyr::pull("chnl")
-  incVec <- .getPosInd(
-    ex = ex,
-    gateTbl = gateTblInd,
-    chnl = setdiff(nonNaChnlVec, chnlCurr),
-    chnlAlt = setdiff(nonNaChnlVec, chnlCurr),
-    gateTypeCytPos = "base"
-  )
+  posCurr <- basePos$pos[[chnlCurr]]
+
+  incVec <- if (is.null(posCurr)) {
+    basePos$nPos > 0L
+  } else {
+    basePos$nPos - as.integer(posCurr) > 0L
+  }
   .intSaveNm(
     paste0(chnlCurr, "_incVec"),
     incVec,

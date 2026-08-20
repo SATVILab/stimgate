@@ -20,7 +20,11 @@
 #' refinement is not allowed at or below `peakX + windowWidth / 3`.
 #'
 #' @keywords internal
-.getCytPosMarginalReference <- function(ex, chnl, bwMin = NA_real_) {
+.getCytPosMarginalReference <- function(
+  ex,
+  chnl,
+  bwMin = NA_real_
+) {
   out <- list(
     peakX = NA_real_,
     windowWidth = NA_real_,
@@ -29,62 +33,116 @@
     reason = "marginal_reference_unavailable"
   )
 
-  x <- suppressWarnings(as.numeric(ex[[chnl]]))
+  x <- suppressWarnings(
+    as.numeric(ex[[chnl]])
+  )
   x <- x[is.finite(x)]
+
   if (length(x) > 0L) {
     x <- x[x > min(x)]
   }
-  if (length(x) < 5L || length(unique(x)) < 3L) {
+
+  if (
+    length(x) < 5L ||
+      length(unique(x)) < 3L
+  ) {
     out$reason <- "too_few_marginal_values"
     return(out)
   }
 
-  dens <- try(
-    suppressWarnings(stats::density(x, bw = "SJ")),
+  # Calculate the SJ bandwidth first so that the bwMin floor can be applied
+  # before evaluating the density. This avoids evaluating the density twice
+  # when the SJ bandwidth is below bwMin.
+  bw <- try(
+    suppressWarnings(
+      stats::bw.SJ(x)
+    ),
     silent = TRUE
   )
+
+  if (
+    inherits(bw, "try-error") ||
+      length(bw) != 1L ||
+      !is.finite(bw) ||
+      bw <= 0
+  ) {
+    out$reason <- "marginal_density_failed"
+    return(out)
+  }
+
+  bwMin <- suppressWarnings(
+    as.numeric(bwMin)
+  )[1L]
+
+  if (
+    is.finite(bwMin) &&
+      bwMin > 0
+  ) {
+    bw <- max(bw, bwMin)
+  }
+
+  dens <- try(
+    suppressWarnings(
+      stats::density(
+        x,
+        bw = bw
+      )
+    ),
+    silent = TRUE
+  )
+
   if (inherits(dens, "try-error")) {
     out$reason <- "marginal_density_failed"
     return(out)
   }
 
-  bwMin <- suppressWarnings(as.numeric(bwMin))[1L]
-  if (
-    is.finite(bwMin) &&
-      bwMin > 0 &&
-      is.finite(dens$bw) &&
-      dens$bw < bwMin
-  ) {
-    dens <- try(
-      suppressWarnings(stats::density(x, bw = bwMin)),
-      silent = TRUE
-    )
-    if (inherits(dens, "try-error")) {
-      out$reason <- "marginal_density_failed"
-      return(out)
-    }
-  }
+  peakIdx <- .getPeakMainLeftIdx(
+    dens$y
+  )
 
-  peakIdx <- .getPeakMainLeftIdx(dens$y)
-  if (length(peakIdx) != 1L || !is.finite(peakIdx)) {
+  if (
+    length(peakIdx) != 1L ||
+      !is.finite(peakIdx)
+  ) {
     out$reason <- "marginal_peak_unavailable"
     return(out)
   }
-  peakX <- suppressWarnings(as.numeric(dens$x[peakIdx]))[1L]
-  xLeft <- x[x < peakX]
-  if (length(xLeft) < 2L || !is.finite(peakX)) {
+
+  peakX <- suppressWarnings(
+    as.numeric(dens$x[peakIdx])
+  )[1L]
+
+  if (!is.finite(peakX)) {
     out$reason <- "marginal_left_region_unavailable"
     return(out)
   }
 
-  windowWidth <- abs(diff(stats::quantile(
-    xLeft,
-    probs = c(0.05, 1),
-    na.rm = TRUE,
-    names = FALSE
-  )))
-  windowWidth <- suppressWarnings(as.numeric(windowWidth))[1L]
-  if (!is.finite(windowWidth) || windowWidth <= 0) {
+  xLeft <- x[x < peakX]
+
+  if (length(xLeft) < 2L) {
+    out$reason <- "marginal_left_region_unavailable"
+    return(out)
+  }
+
+  windowWidth <- abs(
+    diff(
+      stats::quantile(
+        xLeft,
+        probs = c(0.05, 1),
+        na.rm = TRUE,
+        names = FALSE
+      )
+    )
+  )
+
+  windowWidth <- suppressWarnings(
+    as.numeric(windowWidth)
+  )[1L]
+
+  if (
+    !is.finite(windowWidth) ||
+      windowWidth <= 0
+  ) {
     out$reason <- "marginal_window_width_unavailable"
     return(out)
   }
@@ -92,8 +150,11 @@
   out$peakX <- peakX
   out$windowWidth <- windowWidth
   out$lowerX <- peakX + windowWidth / 3
-  out$densityBw <- suppressWarnings(as.numeric(dens$bw))[1L]
+  out$densityBw <- suppressWarnings(
+    as.numeric(dens$bw)
+  )[1L]
   out$reason <- "marginal_reference_available"
+
   out
 }
 
@@ -134,37 +195,61 @@
 #' Boundary runs are never treated as antimodes.
 #'
 #' @keywords internal
+#' @keywords internal
 .getCytPosTautStringAntimodes <- function(density) {
   if (is.null(density)) {
     return(numeric(0L))
   }
+
   x <- suppressWarnings(as.numeric(density$x))
   y <- suppressWarnings(as.numeric(density$y))
+
   finite <- is.finite(x) & is.finite(y)
   x <- x[finite]
   y <- y[finite]
+
   if (length(x) != length(y) || length(y) < 3L) {
     return(numeric(0L))
   }
 
-  runId <- cumsum(c(
+  change <- c(
     TRUE,
-    !dplyr::near(y[-1L], y[-length(y)])
-  ))
-  runs <- split(seq_along(y), runId)
-  runY <- vapply(runs, function(i) y[i[[1L]]], numeric(1L))
+    !dplyr::near(
+      y[-1L],
+      y[-length(y)]
+    )
+  )
+
+  runStart <- which(change)
+
+  runEnd <- c(
+    runStart[-1L] - 1L,
+    length(y)
+  )
+
+  runY <- y[runStart]
+  runLeft <- x[runStart]
+  runRight <- x[runEnd]
+
   if (length(runY) < 3L) {
     return(numeric(0L))
   }
 
-  runLeft <- vapply(runs, function(i) min(x[i]), numeric(1L))
-  runRight <- vapply(runs, function(i) max(x[i]), numeric(1L))
-  internal <- seq.int(2L, length(runY) - 1L)
+  internal <- seq.int(
+    2L,
+    length(runY) - 1L
+  )
+
   minima <- internal[
     runY[internal] < runY[internal - 1L] &
       runY[internal] < runY[internal + 1L]
   ]
-  sort(unique((runLeft[minima] + runRight[minima]) / 2))
+
+  sort(
+    unique(
+      (runLeft[minima] + runRight[minima]) / 2
+    )
+  )
 }
 
 #' Select a cytokine-positive refinement threshold from a taut-string density
@@ -275,4 +360,32 @@
       dplyr::mutate(chnl = chnlCurr, marker = chnlLab[chnlCurr]) |>
       dplyr::select(chnl, marker, gateName, batch, ind, gate) # nolint
   })
+}
+
+#' Precompute base-threshold positivity for one sample
+#' @keywords internal
+.getCytPosBasePos <- function(ex, gateTblInd) {
+  gateTblValid <- gateTblInd |>
+    dplyr::filter(!is.na(.data$gate))
+
+  chnl <- as.character(gateTblValid$chnl)
+  gate <- suppressWarnings(as.numeric(gateTblValid$gate))
+
+  posList <- stats::setNames(
+    lapply(seq_along(chnl), function(i) {
+      ex[[chnl[[i]]]] > gate[[i]]
+    }),
+    chnl
+  )
+
+  nPos <- integer(nrow(ex))
+
+  for (pos in posList) {
+    nPos <- nPos + pos
+  }
+
+  list(
+    pos = posList,
+    nPos = nPos
+  )
 }
