@@ -297,7 +297,6 @@ path_progress_file <- projr::projr_path_get(
 )
 dir_progress <- dirname(path_progress_file)
 dir_jobs <- file.path(dir_progress, "jobs")
-dir_output <- file.path(dir_progress, "output")
 
 # 2. Clean up previous progress file and the jobs subdirectory
 if (file.exists(path_progress_file)) {
@@ -307,7 +306,6 @@ if (dir.exists(dir_jobs)) {
   unlink(dir_jobs, recursive = TRUE, force = TRUE)
 }
 dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
-dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 
 # 3. Setup parallel plan
 future::plan(
@@ -357,9 +355,7 @@ bw_list_raw_mtd <- progressr::with_progress({
         path_progress_file = path_progress_file,
         dir_jobs_chunk = dir_jobs,
         total_sims = total_sims,
-        sim_grid_chunk_index = sim_grid_chunk_index,
-        sim_grid_n_chunks = sim_grid_n_chunks,
-        dir_output = dir_output
+        heading = "SIMULATION PROGRESS DASHBOARD"
       )
 
       out <- tryCatch(
@@ -424,9 +420,7 @@ bw_list_raw_mtd <- progressr::with_progress({
             path_progress_file = path_progress_file,
             dir_jobs_chunk = dir_jobs,
             total_sims = total_sims,
-            sim_grid_chunk_index = sim_grid_chunk_index,
-            sim_grid_n_chunks = sim_grid_n_chunks,
-            dir_output = dir_output
+            heading = "SIMULATION PROGRESS DASHBOARD"
           )
           p(sprintf("Completed sim_id: %s", sim_id))
 
@@ -441,9 +435,7 @@ bw_list_raw_mtd <- progressr::with_progress({
             path_progress_file = path_progress_file,
             dir_jobs_chunk = dir_jobs,
             total_sims = total_sims,
-            sim_grid_chunk_index = sim_grid_chunk_index,
-            sim_grid_n_chunks = sim_grid_n_chunks,
-            dir_output = dir_output
+            heading = "SIMULATION PROGRESS DASHBOARD"
           )
           p(sprintf("ERROR on sim_id: %s", sim_id))
 

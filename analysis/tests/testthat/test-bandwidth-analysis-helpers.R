@@ -138,3 +138,84 @@ test_that("QMD 6 does not retain the stale adaptive shim reference", {
   qmd_lines <- readLines(qmd_6, warn = FALSE)
   expect_false(any(grepl("\\.run_sim_bandwidth_bs_freq_adaptive", qmd_lines)))
 })
+
+test_that(".update_progress_summary() works without chunk/output metadata for non-chunked analyses", {
+  env <- .load_bw_analysis_env()
+
+  tmp_dir <- tempfile("bw-progress")
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+  dir_jobs <- file.path(tmp_dir, "jobs")
+  dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
+  file.create(file.path(dir_jobs, "running-1"))
+  file.create(file.path(dir_jobs, "completed-2"))
+  path_progress_file <- file.path(tmp_dir, "progress.txt")
+
+  summary_text <- env$.update_progress_summary(
+    path_progress_file = path_progress_file,
+    dir_jobs_chunk = dir_jobs,
+    total_sims = 2L,
+    heading = "SIMULATION PROGRESS DASHBOARD"
+  )
+
+  expect_true(file.exists(path_progress_file))
+  expect_false(grepl("Chunk", summary_text))
+  expect_false(grepl("Output directory", summary_text))
+  expect_true(grepl("SIMULATION PROGRESS DASHBOARD", summary_text))
+  expect_true(grepl("Total Simulations  : 2", summary_text, fixed = TRUE))
+})
+
+test_that(".update_progress_summary() still reports chunk/output metadata when supplied", {
+  env <- .load_bw_analysis_env()
+
+  tmp_dir <- tempfile("bw-progress")
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+  dir_jobs <- file.path(tmp_dir, "jobs")
+  dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
+  path_progress_file <- file.path(tmp_dir, "progress.txt")
+
+  summary_text <- env$.update_progress_summary(
+    path_progress_file = path_progress_file,
+    dir_jobs_chunk = dir_jobs,
+    total_sims = 5L,
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 3L,
+    dir_output = tmp_dir
+  )
+
+  expect_true(grepl("Chunk              : 1 of 3", summary_text, fixed = TRUE))
+  expect_true(grepl(paste0("Output directory   : ", tmp_dir), summary_text, fixed = TRUE))
+  expect_true(grepl("ADAPTIVE SIMULATION PROGRESS DASHBOARD", summary_text))
+})
+
+test_that(".update_progress_summary() tolerates a concurrent write failure", {
+  env <- .load_bw_analysis_env()
+
+  tmp_dir <- tempfile("bw-progress")
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+  dir_jobs <- file.path(tmp_dir, "jobs")
+  dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
+  # A path under a non-existent directory forces the write to fail.
+  path_progress_file <- file.path(tmp_dir, "missing-parent", "progress.txt")
+
+  expect_no_error(
+    suppressWarnings(
+      env$.update_progress_summary(
+        path_progress_file = path_progress_file,
+        dir_jobs_chunk = dir_jobs,
+        total_sims = 1L
+      )
+    )
+  )
+  expect_false(file.exists(path_progress_file))
+})
+
+test_that("QMDs 3 and 4 no longer reference undefined chunk variables or a bespoke output dir", {
+  qmd_3 <- readLines(file.path(root_dir, "analysis", "3-sim-bw-est-base.qmd"), warn = FALSE)
+  qmd_4 <- readLines(file.path(root_dir, "analysis", "4-sim-bw-est-norm.qmd"), warn = FALSE)
+
+  for (qmd_lines in list(qmd_3, qmd_4)) {
+    expect_false(any(grepl("sim_grid_chunk_index", qmd_lines)))
+    expect_false(any(grepl("sim_grid_n_chunks", qmd_lines)))
+    expect_false(any(grepl("dir_output", qmd_lines)))
+  }
+})

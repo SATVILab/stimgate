@@ -47,9 +47,10 @@ path_sim_output <- .path_sim_output
   path_progress_file,
   dir_jobs_chunk,
   total_sims,
-  sim_grid_chunk_index,
-  sim_grid_n_chunks,
-  dir_output
+  sim_grid_chunk_index = NULL,
+  sim_grid_n_chunks = NULL,
+  dir_output = NULL,
+  heading = "ADAPTIVE SIMULATION PROGRESS DASHBOARD"
 ) {
   if (!dir.exists(dir_jobs_chunk)) {
     return(invisible(NULL))
@@ -73,23 +74,42 @@ path_sim_output <- .path_sim_output
     "None"
   }
 
+  has_chunk_info <- !is.null(sim_grid_chunk_index) && !is.null(sim_grid_n_chunks)
+  has_output_dir <- !is.null(dir_output) && nzchar(dir_output)
+
   summary_text <- paste0(
     "========================================\n",
-    " ADAPTIVE SIMULATION PROGRESS DASHBOARD \n",
+    " ", heading, " \n",
     "========================================\n",
-    "Chunk              : ", sim_grid_chunk_index, " of ", sim_grid_n_chunks, "\n",
+    if (has_chunk_info) {
+      paste0("Chunk              : ", sim_grid_chunk_index, " of ", sim_grid_n_chunks, "\n")
+    } else {
+      ""
+    },
     "Total Simulations  : ", total_sims, "\n",
     "In Progress        : ", n_running, "\n",
     "Completed (Success): ", n_completed, "\n",
     "Completed (Errors) : ", n_error, "\n",
     "Total Done          : ", n_done, "\n",
-    "Output directory   : ", dir_output, "\n",
+    if (has_output_dir) {
+      paste0("Output directory   : ", dir_output, "\n")
+    } else {
+      ""
+    },
     "----------------------------------------\n",
     "Currently Running IDs:\n", running_list_str, "\n",
     "========================================\n"
   )
 
-  cat(summary_text, file = path_progress_file, append = FALSE)
+  # Tolerate concurrent-write conflicts across parallel workers writing the
+  # same progress file; a transient dashboard write collision should not
+  # fail an otherwise valid simulation.
+  tryCatch(
+    {
+      cat(summary_text, file = path_progress_file, append = FALSE)
+    },
+    error = function(e) NULL
+  )
   invisible(summary_text)
 }
 
