@@ -583,24 +583,39 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
 
     if (nrow(plot_tbl) == 0L) next
 
+    plot_tbl <- plot_tbl |>
+      dplyr::mutate(
+        bw_mtd = factor(
+          bw_mtd,
+          levels = c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
+        ),
+        transformation = factor(
+          transformation,
+          levels = c("gaussian", "skew", "gamma")
+        )
+      )
+
     p <- ggplot(
       plot_tbl,
       aes(x = n_cell, y = mean_bw, color = bw_mtd)
     ) +
       geom_line() +
       geom_point() +
-      scale_x_log10() +
       facet_grid(
         transformation ~ prob_response,
-        scales = "free_y"
+        scales = "free_y",
+        labeller = labeller(
+          transformation = c(
+            gamma = "Gamma",
+            gaussian = "Gaussian",
+            skew = "Skew"
+          )
+        )
       ) +
       labs(
-        title = paste0(
-          "Mean position setting: ", mean_pos_setting_curr,
-          ", bias_uns_setting: ", bias_uns_setting_curr
-        ),
         x = "Number of Cells",
-        y = "Estimated Bandwidth"
+        y = "Estimated Bandwidth",
+        colour = "Bandwidth Method"
       ) +
       cowplot::theme_cowplot() +
       cowplot::background_grid(major = "xy") +
@@ -609,20 +624,36 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
         plot.background = element_rect(fill = "white", color = NA),
         legend.position = "bottom"
       ) +
+      theme(
+        strip.background = element_rect(fill = "white", color = "black")
+      )  +
       scale_colour_manual(
-        values = .simBwMtdColVec
+        values = .simBwMtdColVec,
+        labels = .simBwMtdLabVec
+      ) +
+        theme(
+        panel.background = element_rect(fill = "white", colour = NA),
+        plot.background = element_rect(fill = "white", colour = NA),
+        legend.position = "bottom",
+        legend.justification = "center",
+        legend.box.just = "center"
+      ) +
+      scale_x_log10(
+        breaks = c(1e3, 1e4, 1e5),
+        labels = scales::label_comma()
+      ) +
+      # theme(
+      #   axis.text.x = element_text(angle = 45, hjust = 1)
+      # ) +
+      theme(
+        panel.spacing.x = unit(0.9, "cm")
       )
 
     path_plot <- projr::projr_path_get(
-      "cache",
-      "sim",
-      "bw",
-      "est", "base",
-      paste0(
-        "bw_estimate_meanpos_setting_", mean_pos_setting_curr,
-        "_bias_uns_", bias_uns_setting_curr,
-        ".png"
-      )
+      "output",
+      "fig",
+      paste0("est_bw_base", "_meanpos_", mean_pos_setting_curr, "_bias_uns_", bias_uns_setting_curr,
+      ".pdf")
     )
 
     ggsave(

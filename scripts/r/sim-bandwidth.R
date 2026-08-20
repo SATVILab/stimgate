@@ -12,6 +12,20 @@
   "nrd0Norm" = "#d95f0e",
   "sjNorm" = "#2b8cbe"
 )
+.simBwMtdLabVec <- c(
+  "hpi0" = "HPI0",
+  "hpi1" = "HPI1",
+  "hpi2" = "HPI2",
+  "hpi3" = "HPI3",
+  "nrd0" = "NRD0",
+  "sj" = "SJ",
+  "hpi0Norm" = "HPI0Norm",
+  "hpi1Norm" = "HPI1Norm",
+  "hpi2Norm" = "HPI2Norm",
+  "hpi3Norm" = "HPI3Norm",
+  "nrd0Norm" = "NRD0Norm",
+  "sjNorm" = "SJNorm"
+)
 
 .simBandwidthReadRdsOrNull <- function(path) {
   if (!file.exists(path)) {
@@ -1544,7 +1558,11 @@
     dplyr::group_by(dplyr::across(dplyr::all_of(group_vars))) |>
     dplyr::summarise(
       n_est = sum(is.finite(.data$bw)),
-      n_error = sum(!is.na(.data$error %||% NA_character_)),
+      n_error = if ("error" %in% colnames(.data)) {
+        sum(!is.na(.data$error %||% NA_character_))
+      } else {
+        NA_integer_
+      },
       bw_mean = mean(.data$bw, na.rm = TRUE),
       bw_median = stats::median(.data$bw, na.rm = TRUE),
       bw_q05 = stats::quantile(.data$bw, 0.05, na.rm = TRUE),
