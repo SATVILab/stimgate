@@ -90,6 +90,19 @@
 
   pyTxt <- gsub("normed\\s*=\\s*True", "density=True", pyTxt)
   pyTxt <- gsub("calculate_fscores", "calculate_fscore", pyTxt, fixed = TRUE)
+  # Suppress expected divide-by-zero/invalid warnings when both precision
+  # and recall are zero. The original code subsequently converts NaN F-scores
+  # to zero, so this does not change the numerical result.
+  pyTxt <- gsub(
+    "    fscores = (1+beta*beta)*(precision*recall)/(beta*beta*precision + recall)",
+    paste(
+      "    with np.errstate(divide='ignore', invalid='ignore'):",
+      "        fscores = (1+beta*beta)*(precision*recall)/(beta*beta*precision + recall)",
+      sep = "\n"
+    ),
+    pyTxt,
+    fixed = TRUE
+  )
 
   # The plotting helpers use Python 2 print syntax. They are not used for the
   # threshold, but Python 3 still has to parse them on import.
@@ -109,7 +122,18 @@
     pyTxt
   )
 
-  # fcm is only needed by plotting/tick helpers, not by get_positivity_threshold.
+  # Plotting dependencies are not needed by get_positivity_threshold().
+  pyTxt <- gsub(
+    "^import matplotlib as mpl$",
+    paste(
+      "try:",
+      "    import matplotlib as mpl",
+      "except Exception:",
+      "    mpl = None",
+      sep = "\n"
+    ),
+    pyTxt
+  )
   pyTxt <- gsub(
     "^from fcm\\.graphics import bilinear_interpolate$",
     paste(
@@ -131,6 +155,12 @@
       "        return x",
       sep = "\n"
     ),
+    pyTxt
+  )
+
+  pyTxt <- gsub(
+    're\\.sub\\("\\\\\\.fcs","",fileName\\)',
+    're.sub(r"\\\\.fcs","",fileName)',
     pyTxt
   )
 
@@ -280,7 +310,11 @@
     adjust = adjust,
     num_peaks = numPeaks,
     ref_peak = refPeak,
-    method = method,
+    method = dplyr::case_when(
+      method == "firstDeriv" ~ "first_deriv",
+      method == "secondDeriv" ~ "second_deriv",
+      .unmatched = "error"
+    ),
     tol = tol,
     side = side,
     strict = strict,
@@ -1186,7 +1220,7 @@
       mean_abs_error = mean(.data$abs_error, na.rm = TRUE),
       median_abs_error = stats::median(.data$abs_error, na.rm = TRUE),
       rmse = sqrt(mean(.data$sq_error, na.rm = TRUE)),
-      mean_rel_error = mean(.data$rel_error, na.rm = TRUE),
+      med_abs_rel_error = stats::median(abs(.data$rel_error), na.rm = TRUE),
       threshold_mean = mean(.data$threshold, na.rm = TRUE),
       threshold_median = stats::median(.data$threshold, na.rm = TRUE),
       .groups = "drop"
