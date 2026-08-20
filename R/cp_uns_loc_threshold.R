@@ -285,7 +285,42 @@
   sum(dataCount$pred) / nrow(exTblStimOrig)
 }
 
-#' @keywords internal
+.getCpUnsLocTailPropAtThresholds <- function(x, thresholds, denominator) {
+  x <- as.numeric(x)
+  thresholds <- as.numeric(thresholds)
+
+  # Preserve the current behaviour if the expression vector contains NA/NaN:
+  # sum(x >= threshold) without na.rm = TRUE would return NA.
+  if (anyNA(x)) {
+    return(rep(NA_real_, length(thresholds)))
+  }
+
+  out <- rep(NA_real_, length(thresholds))
+  ok <- !is.na(thresholds)
+
+  if (!any(ok)) {
+    return(out)
+  }
+
+  x <- sort(x)
+
+  # left.open = TRUE gives the number of x values STRICTLY below
+  # each threshold. Therefore:
+  #
+  #   length(x) - n_below
+  #
+  # is the number >= threshold.
+  n_below <- findInterval(
+    thresholds[ok],
+    x,
+    left.open = TRUE
+  )
+
+  out[ok] <- (length(x) - n_below) / denominator
+  out
+}
+
+
 .getCpUnsLocGetCpDataThresholdActual <- function(
   dataCount,
   propBsEst,
@@ -295,20 +330,29 @@
   bias
 ) {
   dataCount <- dataCount[order(.getCut(dataCount)), ]
-  propStimVec <- purrr::map_dbl(.getCut(dataCount), function(x) {
-    sum(.getCut(exTblStimOrig) >= x) / nrow(exTblStimOrig)
-  })
-  propUnsVec <- purrr::map_dbl(.getCut(dataCount), function(x) {
-    sum(.getCut(exTblUnsOrig) >= x) / nrow(exTblUnsOrig)
-  })
+
+  thresholds <- .getCut(dataCount)
+
+  propStimVec <- .getCpUnsLocTailPropAtThresholds(
+    x = .getCut(exTblStimOrig),
+    thresholds = thresholds,
+    denominator = nrow(exTblStimOrig)
+  )
+
+  propUnsVec <- .getCpUnsLocTailPropAtThresholds(
+    x = .getCut(exTblUnsOrig),
+    thresholds = thresholds,
+    denominator = nrow(exTblUnsOrig)
+  )
+
   dataCount |>
     dplyr::mutate(
       propStim = propStimVec,
       propUns = propUnsVec
     ) |>
     dplyr::mutate(
-      propBs = propStim - propUns, # nolint
-      propBsDiff = propBs - propBsEst # nolint
+      propBs = propStim - propUns,
+      propBsDiff = propBs - propBsEst
     )
 }
 
