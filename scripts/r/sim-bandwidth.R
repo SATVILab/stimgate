@@ -1545,16 +1545,86 @@
     dplyr::summarise(
       n_est = sum(is.finite(.data$bw)),
       n_error = sum(!is.na(.data$error %||% NA_character_)),
-      bw_mean = mean(.data$bw, na.rm = TRUE),
-      bw_median = stats::median(.data$bw, na.rm = TRUE),
-      bw_q05 = stats::quantile(.data$bw, 0.05, na.rm = TRUE),
-      bw_q25 = stats::quantile(.data$bw, 0.25, na.rm = TRUE),
-      bw_q75 = stats::quantile(.data$bw, 0.75, na.rm = TRUE),
-      bw_q95 = stats::quantile(.data$bw, 0.95, na.rm = TRUE),
-      bw_min = min(.data$bw, na.rm = TRUE),
-      bw_max = max(.data$bw, na.rm = TRUE),
-      bw_uns_median = stats::median(.data$bw_uns, na.rm = TRUE),
-      bw_stim_median = stats::median(.data$bw_stim, na.rm = TRUE),
+      bw_mean = {
+        bw_finite <- .data$bw[is.finite(.data$bw)]
+        if (length(bw_finite) == 0L) {
+          NA_real_
+        } else {
+          mean(bw_finite)
+        }
+      },
+      bw_median = {
+        bw_finite <- .data$bw[is.finite(.data$bw)]
+        if (length(bw_finite) == 0L) {
+          NA_real_
+        } else {
+          stats::median(bw_finite)
+        }
+      },
+      bw_q05 = {
+        bw_finite <- .data$bw[is.finite(.data$bw)]
+        if (length(bw_finite) == 0L) {
+          NA_real_
+        } else {
+          stats::quantile(bw_finite, 0.05, names = FALSE, type = 7)
+        }
+      },
+      bw_q25 = {
+        bw_finite <- .data$bw[is.finite(.data$bw)]
+        if (length(bw_finite) == 0L) {
+          NA_real_
+        } else {
+          stats::quantile(bw_finite, 0.25, names = FALSE, type = 7)
+        }
+      },
+      bw_q75 = {
+        bw_finite <- .data$bw[is.finite(.data$bw)]
+        if (length(bw_finite) == 0L) {
+          NA_real_
+        } else {
+          stats::quantile(bw_finite, 0.75, names = FALSE, type = 7)
+        }
+      },
+      bw_q95 = {
+        bw_finite <- .data$bw[is.finite(.data$bw)]
+        if (length(bw_finite) == 0L) {
+          NA_real_
+        } else {
+          stats::quantile(bw_finite, 0.95, names = FALSE, type = 7)
+        }
+      },
+      bw_min = {
+        bw_finite <- .data$bw[is.finite(.data$bw)]
+        if (length(bw_finite) == 0L) {
+          NA_real_
+        } else {
+          min(bw_finite)
+        }
+      },
+      bw_max = {
+        bw_finite <- .data$bw[is.finite(.data$bw)]
+        if (length(bw_finite) == 0L) {
+          NA_real_
+        } else {
+          max(bw_finite)
+        }
+      },
+      bw_uns_median = {
+        bw_uns_finite <- .data$bw_uns[is.finite(.data$bw_uns)]
+        if (length(bw_uns_finite) == 0L) {
+          NA_real_
+        } else {
+          stats::median(bw_uns_finite)
+        }
+      },
+      bw_stim_median = {
+        bw_stim_finite <- .data$bw_stim[is.finite(.data$bw_stim)]
+        if (length(bw_stim_finite) == 0L) {
+          NA_real_
+        } else {
+          stats::median(bw_stim_finite)
+        }
+      },
       n_source_uns = sum(.data$bw_source == "unstim", na.rm = TRUE),
       n_source_stim = sum(.data$bw_source == "stim", na.rm = TRUE),
       .groups = "drop"
@@ -1579,6 +1649,65 @@
 #' the shared normalised-bandwidth helper rather than by this wrapper.
 #'
 #' @keywords internal
+.simBandwidthEnsureCurrentCheckout <- function(pathRoot = NULL) {
+  if (is.null(pathRoot)) {
+    pathRoot <- normalizePath(".", winslash = "/", mustWork = FALSE)
+  }
+  pathRoot <- normalizePath(pathRoot, winslash = "/", mustWork = FALSE)
+
+  if (!nzchar(pathRoot)) {
+    return(invisible(FALSE))
+  }
+
+  if (requireNamespace("stimgate", quietly = TRUE)) {
+    ns <- tryCatch(asNamespace("stimgate"), error = function(e) NULL)
+    if (!is.null(ns)) {
+      ns_path <- normalizePath(
+        getNamespaceInfo(ns, "path"),
+        winslash = "/",
+        mustWork = FALSE
+      )
+      if (isTRUE(identical(ns_path, pathRoot))) {
+        return(invisible(TRUE))
+      }
+    }
+  }
+
+  suppressMessages(devtools::load_all(pathRoot, quiet = TRUE))
+  invisible(TRUE)
+}
+
+.simBandwidthFiniteMean <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  x_finite <- x[is.finite(x)]
+
+  if (length(x_finite) == 0L) {
+    return(NA_real_)
+  }
+
+  mean(x_finite)
+}
+
+.simBandwidthResolveCurrentBwCalc <- function(bwMtd, adaptive = FALSE) {
+  bwMtd <- as.character(bwMtd)[1]
+  ns <- tryCatch(asNamespace("stimgate"), error = function(e) NULL)
+
+  if (!is.null(ns) && exists(".bwCalcOne", mode = "function", envir = ns)) {
+    return(get(".bwCalcOne", mode = "function", envir = ns))
+  }
+
+  if (isTRUE(grepl("Norm$", bwMtd)) || isTRUE(adaptive)) {
+    stop(
+      "stimgate::.bwCalcOne is unavailable for the requested bandwidth method '",
+      bwMtd,
+      "'. Ensure workers are initialised against the current package checkout.",
+      call. = FALSE
+    )
+  }
+
+  .simBandwidthBwOneBaseLegacy
+}
+
 .simBandwidthBwOne <- function(
   x,
   bwMtd,
@@ -1612,44 +1741,44 @@
     return(.simBandwidthBwFallbackOrNa(bwFallback))
   }
 
-  bw_calc <- tryCatch(
-    {
-      if (exists(".bwCalcOne", mode = "function")) {
-        .bwCalcOne(
-          x = x,
-          bwMtd = bwMtd,
-          bwAdj = bwAdj,
-          bwNcellMin = bwNcellMin,
-          bwNcellMax = bwNcellMax,
-          normPeakFrac = normPeakFrac,
-          normPeakMinRel = normPeakMinRel,
-          normExtraFrac = normExtraFrac,
-          normExtraMax = normExtraMax,
-          normExtraJitterFrac = normExtraJitterFrac,
-          normLambda = normLambda,
-          normDensityN = normDensityN,
-          normExcessBwMtd = normExcessBwMtd,
-          normExcessNcell = normExcessNcell,
-          normAdaptiveNcell = normAdaptiveNcell,
-          bwAdaptiveCore = bwAdaptiveCore,
-          bwAdaptiveExtra = bwAdaptiveExtra,
-          bwAdaptiveCrossover = bwAdaptiveCrossover,
-          bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
-          normMtd = normMtd,
-          adaptive = adaptive
-        )
-      } else {
-        .simBandwidthBwOneBaseLegacy(
-          x = x,
-          bwMtd = bwMtd,
-          bwAdj = bwAdj,
-          bwNcellMin = bwNcellMin,
-          bwNcellMax = bwNcellMax
-        )
-      }
-    },
-    error = function(e) NA_real_
+  bwCalcFun <- .simBandwidthResolveCurrentBwCalc(
+    bwMtd = bwMtd,
+    adaptive = adaptive
   )
+
+  if (identical(bwCalcFun, .simBandwidthBwOneBaseLegacy)) {
+    bw_calc <- bwCalcFun(
+      x = x,
+      bwMtd = bwMtd,
+      bwAdj = bwAdj,
+      bwNcellMin = bwNcellMin,
+      bwNcellMax = bwNcellMax
+    )
+  } else {
+    bw_calc <- bwCalcFun(
+      x = x,
+      bwMtd = bwMtd,
+      bwAdj = bwAdj,
+      bwNcellMin = bwNcellMin,
+      bwNcellMax = bwNcellMax,
+      normPeakFrac = normPeakFrac,
+      normPeakMinRel = normPeakMinRel,
+      normExtraFrac = normExtraFrac,
+      normExtraMax = normExtraMax,
+      normExtraJitterFrac = normExtraJitterFrac,
+      normLambda = normLambda,
+      normDensityN = normDensityN,
+      normExcessBwMtd = normExcessBwMtd,
+      normExcessNcell = normExcessNcell,
+      normAdaptiveNcell = normAdaptiveNcell,
+      bwAdaptiveCore = bwAdaptiveCore,
+      bwAdaptiveExtra = bwAdaptiveExtra,
+      bwAdaptiveCrossover = bwAdaptiveCrossover,
+      bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
+      normMtd = normMtd,
+      adaptive = adaptive
+    )
+  }
 
   bw_calc <- suppressWarnings(as.numeric(bw_calc)[1])
 

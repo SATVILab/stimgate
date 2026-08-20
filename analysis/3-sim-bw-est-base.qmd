@@ -240,9 +240,9 @@ bw_list_raw_mtd_loop |>
     n_cell_stim, n_cell_uns
   ) |>
   dplyr::summarise(
-    mean_bw_stim = mean(bw_stim, na.rm = TRUE),
-    mean_bw_uns = mean(bw_uns, na.rm = TRUE),
-    mean_bw = mean(bw, na.rm = TRUE),
+    mean_bw_stim = .simBandwidthFiniteMean(bw_stim),
+    mean_bw_uns = .simBandwidthFiniteMean(bw_uns),
+    mean_bw = .simBandwidthFiniteMean(bw),
     .groups = "drop"
   ) |>
   dplyr::select(
@@ -564,9 +564,9 @@ bw_tbl_results <- bw_tbl |>
     dplyr::pick(dplyr::any_of(colnames(sim_grid)))
   ) |>
   dplyr::summarise(
-    mean_bw_stim = mean(bw_stim, na.rm = TRUE),
-    mean_bw_uns = mean(bw_uns, na.rm = TRUE),
-    mean_bw = mean(bw, na.rm = TRUE),
+    mean_bw_stim = .simBandwidthFiniteMean(bw_stim),
+    mean_bw_uns = .simBandwidthFiniteMean(bw_uns),
+    mean_bw = .simBandwidthFiniteMean(bw),
     .groups = "drop"
   ) |>
   dplyr::select(
