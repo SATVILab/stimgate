@@ -191,29 +191,79 @@
 
   purrr::map_df(seq_along(exListStim), function(i) {
     .debug("i: ", i) # nolint
+
     ex <- exListStim[[i]]
+
     gateTblGnInd <- gateTblGn |>
-      dplyr::filter(ind == attr(ex, "ind")) # nolint
-    combnTbl <- purrr::map_df(names(combnMatList), function(j) {
-      .getStatsBatchGnCombn(
-        j = j,
-        ex = ex,
-        exUns = exUns,
-        gateTblGnInd = gateTblGnInd,
-        gn = gn,
-        chnl = chnl,
-        combnMatList = combnMatList,
-        cytCombnVecList = cytCombnVecList,
-        gateTypeCytPosCalc = gateTypeCytPosCalc
+      dplyr::filter(
+        ind == attr(ex, "ind") # nolint
       )
-    }) |>
+
+    # The unstimulated cells are classified using the gates belonging
+    # to the corresponding stimulated condition.
+    gateTblGnIndUns <- gateTblGnInd |>
+      dplyr::mutate(
+        ind = attr(exUns, "ind")
+      )
+
+    # Calculate context-dependent positivity once for the stimulated sample.
+    posCacheStim <- .getPosIndCache(
+      ex = ex,
+      gateTbl = gateTblGnInd,
+      chnl = chnl
+    )
+
+    posByChnlStim <- .getPosIndByChnl(
+      ex = ex,
+      gateTbl = gateTblGnInd,
+      chnl = chnl,
+      gateTypeCytPos = gateTypeCytPosCalc,
+      posCache = posCacheStim
+    )
+
+    # And once for the corresponding unstimulated sample.
+    posCacheUns <- .getPosIndCache(
+      ex = exUns,
+      gateTbl = gateTblGnIndUns,
+      chnl = chnl
+    )
+
+    posByChnlUns <- .getPosIndByChnl(
+      ex = exUns,
+      gateTbl = gateTblGnIndUns,
+      chnl = chnl,
+      gateTypeCytPos = gateTypeCytPosCalc,
+      posCache = posCacheUns
+    )
+
+    combnTbl <- purrr::map_df(
+      names(combnMatList),
+      function(j) {
+        .getStatsBatchGnCombn(
+          j = j,
+          ex = ex,
+          exUns = exUns,
+          gateTblGnInd = gateTblGnInd,
+          gn = gn,
+          chnl = chnl,
+          combnMatList = combnMatList,
+          cytCombnVecList = cytCombnVecList,
+          gateTypeCytPosCalc = gateTypeCytPosCalc,
+          posByChnlStim = posByChnlStim,
+          posByChnlUns = posByChnlUns
+        )
+      }
+    ) |>
       dplyr::mutate(
         nCellStim = nrow(ex),
         nCellUns = .env$nCellUns # nolint
       )
-    combnTbl |> .getStatsBatchGnCombnNeg(chnl)
+
+    combnTbl |>
+      .getStatsBatchGnCombnNeg(chnl)
   })
 }
+
 
 #' @keywords internal
 .getStatsBatchGnCombn <- function(
@@ -225,11 +275,15 @@
   chnl,
   combnMatList,
   cytCombnVecList,
-  gateTypeCytPosCalc
+  gateTypeCytPosCalc,
+  posByChnlStim,
+  posByChnlUns
 ) {
   .debug("number of cytokines positive: ", j) # nolint
+
   combnMat <- combnMatList[[j]]
   cytCombn <- cytCombnVecList[[j]]
+
   statTblGnInd <- tibble::tibble(
     ind = attr(ex, "ind"),
     gateName = gn,
@@ -242,10 +296,18 @@
 
   for (i in seq_len(nrow(statTblGnInd))) {
     .debug("i: ", i) # nolint
-    chnlPos <- chnl[combnMat[i, , drop = TRUE]]
-    chnlNeg <- chnl[
-      setdiff(seq_along(chnl), combnMat[i, , drop = TRUE])
+
+    chnlPos <- chnl[
+      combnMat[i, , drop = TRUE]
     ]
+
+    chnlNeg <- chnl[
+      setdiff(
+        seq_along(chnl),
+        combnMat[i, , drop = TRUE]
+      )
+    ]
+
     statTblGnInd[i, "countStim"] <- sum(
       .getPosIndCytCombn(
         ex = ex,
@@ -253,21 +315,24 @@
         chnlPos = chnlPos,
         chnlNeg = chnlNeg,
         chnlAlt = NULL,
-        gateTypeCytPos = gateTypeCytPosCalc
+        gateTypeCytPos = gateTypeCytPosCalc,
+        posByChnl = posByChnlStim
       )
     )
+
     statTblGnInd[i, "countUns"] <- sum(
       .getPosIndCytCombn(
         ex = exUns,
-        gateTbl = gateTblGnInd |>
-          dplyr::mutate(ind = attr(exUns, "ind")),
+        gateTbl = gateTblGnInd,
         chnlPos = chnlPos,
         chnlNeg = chnlNeg,
         chnlAlt = NULL,
-        gateTypeCytPos = gateTypeCytPosCalc
+        gateTypeCytPos = gateTypeCytPosCalc,
+        posByChnl = posByChnlUns
       )
     )
   }
+
   statTblGnInd
 }
 
