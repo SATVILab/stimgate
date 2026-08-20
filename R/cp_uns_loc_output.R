@@ -100,23 +100,58 @@
   chnl
 ) {
   cp <- suppressWarnings(as.numeric(cpObj$cp))[1]
-  selectedRow <- .getCpUnsLocSelectedThresholdRow(dataThreshold, cp)
-  freqTbl <- .getCpUnsLocPropBsAtCp(
-    cp = cp,
-    exTblStim = exTblStimOrig,
-    exTblUns = exTblUnsOrig
+  selectedRow <- .getCpUnsLocSelectedThresholdRow(
+    dataThreshold,
+    cp
   )
+
+  if (
+    !is.null(selectedRow) &&
+      all(c("propStim", "propUns", "propBs") %in% names(selectedRow))
+  ) {
+    freqTbl <- tibble::tibble(
+      nCellStim = nrow(exTblStimOrig),
+      nCellUns = nrow(exTblUnsOrig),
+      propStim = suppressWarnings(
+        as.numeric(selectedRow$propStim[1L])
+      ),
+      propUns = suppressWarnings(
+        as.numeric(selectedRow$propUns[1L])
+      ),
+      propBs = suppressWarnings(
+        as.numeric(selectedRow$propBs[1L])
+      )
+    )
+  } else {
+    # Required for fallback/non-local thresholds that were not selected
+    # from dataThreshold.
+    freqTbl <- .getCpUnsLocPropBsAtCp(
+      cp = cp,
+      exTblStim = exTblStimOrig,
+      exTblUns = exTblUnsOrig
+    )
+  }
 
   propBsEst <- NA_real_
   propBsDiff <- NA_real_
-  if (!is.null(selectedRow) && "propBsDiff" %in% names(selectedRow)) {
-    propBsDiff <- suppressWarnings(as.numeric(selectedRow$propBsDiff[1]))
-    if (is.finite(propBsDiff) && "propBs" %in% names(selectedRow)) {
-      propBsEst <- suppressWarnings(as.numeric(selectedRow$propBs[1])) -
+
+  if (
+    !is.null(selectedRow) &&
+      "propBsDiff" %in% names(selectedRow)
+  ) {
+    propBsDiff <- suppressWarnings(
+      as.numeric(selectedRow$propBsDiff[1L])
+    )
+
+    if (
+      is.finite(propBsDiff) &&
+        "propBs" %in% names(selectedRow)
+    ) {
+      propBsEst <-
+        suppressWarnings(as.numeric(selectedRow$propBs[1L])) -
         propBsDiff
     }
   }
-
   tibble::tibble(
     detailLevel = "condition",
     stage = stage,
@@ -208,7 +243,6 @@
 
 # get cp
 #' @keywords internal
-
 
 .createCombinedIdentifier <- function(indStim) {
   if (is.null(indStim) || length(indStim) == 0) {
