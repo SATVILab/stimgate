@@ -105,12 +105,20 @@ test_that(".simBandwidthBwOne resolves the current stimgate namespace in future 
     source(script_bw, local = env)
     env$.simBandwidthEnsureCurrentCheckout(root_dir)
     ns <- asNamespace("stimgate")
+
     set.seed(99)
     bw_worker <- do.call(env$.simBandwidthBwOne, bw_wrapper_params)
+
+    set.seed(99)
+    bw_worker_pkg <- do.call(
+      get(".bwCalcOne", mode = "function", envir = ns),
+      bw_params
+    )
+
     list(
       ns_path = normalizePath(getNamespaceInfo(ns, "path"), winslash = "/", mustWork = FALSE),
       bw_worker = bw_worker,
-      bw_pkg = do.call(get(".bwCalcOne", mode = "function", envir = ns), bw_params)
+      bw_pkg = bw_worker_pkg
     )
   }, seed = TRUE)
 
@@ -120,6 +128,7 @@ test_that(".simBandwidthBwOne resolves the current stimgate namespace in future 
     normalizePath(worker_out$ns_path, winslash = "/", mustWork = FALSE),
     normalizePath(root_dir, winslash = "/", mustWork = FALSE)
   )
+  expect_true(is.finite(as.numeric(worker_out$bw_worker)))
   expect_equal(as.numeric(worker_out$bw_worker), as.numeric(worker_out$bw_pkg))
   expect_equal(as.numeric(worker_out$bw_worker), as.numeric(bw_pkg))
 })
