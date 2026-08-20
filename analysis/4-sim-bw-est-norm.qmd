@@ -70,7 +70,13 @@ bandwidth_method_vec <- bandwidth_method_vec[grepl("hpi", bandwidth_method_vec)]
 bandwidth_method_vec <- bandwidth_method_vec[!grepl("hpi0", bandwidth_method_vec)]
 
 # set this later
-bandwidth_ncell_upper_vec <- c(5e2, 1e3, 2.5e3, 5e3, 1e4, 2e4, 5e4, Inf)
+bandwidth_ncell_upper_vec <- c(
+  500,
+  2500,
+  10000,
+  50000,
+  Inf
+)
 bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
 bias_uns_settings_tbl <- tibble::tribble(
   ~bias_uns_setting, ~transformation, ~bias_uns,
@@ -100,27 +106,40 @@ bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 #| label: bw-estimate-grid
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
-  prob_response  = prob_response_vec,
-  n_cell         = n_cell_stim_vec,
-  bw_mtd         = bandwidth_method_vec,
+  prob_response = prob_response_vec,
+  n_cell = n_cell_stim_vec,
+  bw_mtd = bandwidth_method_vec,
   bw_ncell_upper = bandwidth_ncell_upper_vec,
-  bias_uns       = bias_uns_vec
+  bias_uns = bias_uns_vec
 ) |>
   dplyr::inner_join(
     bias_uns_settings_tbl,
     by = c("transformation", "bias_uns")
   ) |>
   dplyr::select(
-    transformation, prob_response, n_cell,
-    mean_pos_setting, mean_pos, bw_mtd,
-    bw_ncell_upper, bias_uns_setting, bias_uns
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos_setting,
+    mean_pos,
+    bw_mtd,
+    bw_ncell_upper,
+    bias_uns_setting,
+    bias_uns
+  ) |>
+  # A finite cap is only informative when it is smaller than the
+  # available sample size. Always retain the uncapped estimate.
+  dplyr::filter(
+    is.infinite(.data$bw_ncell_upper) |
+      .data$bw_ncell_upper < .data$n_cell
+  ) |>
+  dplyr::arrange(
+    n_cell,
+    dplyr::desc(prob_response)
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
   )
-
-sim_grid <- sim_grid |>
-  dplyr::arrange(n_cell, dplyr::desc(prob_response))
 
 if (.isDev()) {
   sim_grid <- sim_grid |>
@@ -129,12 +148,23 @@ if (.isDev()) {
       prob_response == 0.002,
       mean_pos_setting == "high",
       transformation %in% transformation_vec,
-      grepl("hpi1", bw_mtd)
+      grepl("hpi1", bw_mtd),
+      grepl("hpi1Norm", bw_mtd)
     ) |>
-    dplyr::sample_n(5)
+    dplyr::sample_n(
+      min(5L, dplyr::n())
+    )
 }
+
 sim_grid
-print(paste0("Performing ", nrow(sim_grid), " simulations"))
+
+print(
+  paste0(
+    "Performing ",
+    nrow(sim_grid),
+    " simulations"
+  )
+)
 
 bw_fallback <- 0.23482348792138919129198282389
 ```
@@ -280,6 +310,11 @@ Run the simulations in parallel, with progress reporting.
 ```{r}
 #| label: bw-estimate-parallel
 
+set.seed(1)
+
+sim_grid_run <- sim_grid |>
+  dplyr::slice_sample(n = dplyr::n())
+
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
@@ -314,13 +349,13 @@ future::plan(
 )
 
 # Total number of iterations
-total_sims <- nrow(sim_grid)
+total_sims <- nrow(sim_grid_run)
 
 bw_list_raw_mtd <- progressr::with_progress({
-  p <- progressr::progressor(steps = total_sims)
+  p <- progressr::progressor(steps = nrow(sim_grid_run))
 
   furrr::future_pmap(
-    sim_grid,
+    sim_grid_run,
     function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos, bw_mtd, bw_ncell_upper, bias_uns_setting, bias_uns, sim_id) {
       .simBandwidthEnsureCurrentCheckout(root_dir)
       settings_row <- paste0(
@@ -366,7 +401,7 @@ bw_list_raw_mtd <- progressr::with_progress({
             nMarker = 1,
             nCondition = 2,
             nCluster = 2,
-            nIter = 5,
+            nIter = 1,
             biasUns = bias_uns,
             bwMtd = bw_mtd,
             bwFallback = bw_fallback,
@@ -473,7 +508,7 @@ bw_list_raw_mtd <- progressr::with_progress({
     },
     .options = furrr::furrr_options(
       seed = TRUE,
-      scheduling = Inf
+      chunk_size = 10L
     )
   )
 })
@@ -560,13 +595,13 @@ if (nrow(bw_tbl) == 0L) {
 }
 
 sim_grid_key_cols <- setdiff(
-  intersect(colnames(sim_grid), colnames(bw_tbl)),
+  intersect(colnames(sim_grid_run), colnames(bw_tbl)),
   "sim_id"
 )
 
 bw_tbl <- bw_tbl |>
   dplyr::semi_join(
-    sim_grid |>
+    sim_grid_run |>
       dplyr::select(dplyr::all_of(sim_grid_key_cols)) |>
       dplyr::distinct(),
     by = sim_grid_key_cols
@@ -578,7 +613,7 @@ if (nrow(bw_tbl) == 0L) {
 
 bw_tbl_results <- bw_tbl |>
   dplyr::group_by(
-    dplyr::pick(dplyr::any_of(colnames(sim_grid)))
+    dplyr::pick(dplyr::any_of(colnames(sim_grid_run)))
   ) |>
   dplyr::summarise(
     n_est = sum(is.finite(bw)),
@@ -588,7 +623,7 @@ bw_tbl_results <- bw_tbl |>
     .groups = "drop"
   ) |>
   dplyr::select(
-    dplyr::any_of(colnames(sim_grid)), n_est, mean_bw_stim, mean_bw_uns, mean_bw
+    dplyr::any_of(colnames(sim_grid_run)), n_est, mean_bw_stim, mean_bw_uns, mean_bw
   )
 
 if (any(bw_tbl_results$n_est == 0L)) {
