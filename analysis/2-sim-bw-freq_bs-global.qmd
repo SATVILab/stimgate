@@ -765,7 +765,7 @@ bw_tbl_results_summary <- bw_tbl_results_raw |>
   ) |>
   dplyr::mutate(
     propBsEst_median_diff = propBsEst_median - prob_response,
-    propBsEst_median_diff_rel = (propBsEst_median - prob_response) /
+    propBsEst_median_diff_rel = (propBsE st_median - prob_response) /
       prob_response
   )
 
@@ -1316,81 +1316,281 @@ Okay, now, let's do the same plot but where we show the actual frequencies. We'l
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
     for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
-      plot_tbl <- bw_tbl_results_raw |>
-        dplyr::filter(
-          mean_pos_setting == !!mean_pos_setting_curr,
-          bias_uns_setting == !!bias_uns_setting_curr
-        )
+      for(condition_perturbation_sd_curr in unique(bw_tbl_results_raw$condition_perturbation_sd)) {
+        plot_tbl <- bw_tbl_results_raw |>
+          dplyr::filter(
+            mean_pos_setting == !!mean_pos_setting_curr,
+            bias_uns_setting == !!bias_uns_setting_curr,
+            condition_perturbation_sd == !!condition_perturbation_sd_curr
+          )
 
-      if (nrow(plot_tbl) == 0L) {
-        warning(
-          "No raw estimate results for mean_pos_setting = ",
-          mean_pos_setting_curr,
-          ", bias_uns_setting = ",
-          bias_uns_setting_curr
+        if (nrow(plot_tbl) == 0L) {
+          warning(
+            "No raw estimate results for mean_pos_setting = ",
+            mean_pos_setting_curr,
+            ", bias_uns_setting = ",
+            bias_uns_setting_curr
+          )
+          next
+        }
+
+        col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw)
+
+        p <- ggplot(
+          plot_tbl,
+          aes(x = factor(n_cell), y = propBsEst, color = factor(bw))
+        ) +
+          ggforce::geom_sina(position = "dodge") +
+          geom_hline(
+            mapping = aes(yintercept = prob_response),
+            linetype = "dashed",
+            color = "black"
+          ) +
+          facet_wrap(transformation ~ prob_response, scales = "free") +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy") +
+          theme(
+            panel.background = element_rect(fill = "white", color = NA),
+            plot.background = element_rect(fill = "white", color = NA),
+            legend.position = "bottom"
+          ) +
+          expand_limits(y = 0) +
+          labs(
+            title = paste0(
+              "Actual background-subtracted frequency vs number of cells ",
+              "(mean_pos_setting = ", mean_pos_setting_curr,
+              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
+            ),
+            x = "Number of cells",
+            y = "Actual background-subtracted frequency",
+            colour = "Bandwidth"
+          ) +
+          scale_colour_manual(
+            values = col_vec_bw_curr
+          )
+
+        path_p <- projr::projr_path_get(
+          "cache",
+          "sim",
+          "bw",
+          "freq_bs", "global",
+          "est",
+          "raw",
+          paste0("condition_perturbation_sd_", condition_perturbation_sd_curr),
+          paste0(
+            "actual_freq_vs_n_cell_mean_pos_setting_",
+            mean_pos_setting_curr,
+            "_bias_uns_",
+            bias_uns_setting_curr,
+            ".png")
         )
-        next
+        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+        ggsave(
+          filename = path_p,
+          plot = p,
+          width = 18,
+          height = 30,
+          units = "cm"
+        )
       }
-
-      col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw)
-
-      p <- ggplot(
-        plot_tbl,
-        aes(x = factor(n_cell), y = propBsEst, color = factor(bw))
-      ) +
-        ggforce::geom_sina(position = "dodge") +
-        geom_hline(
-          mapping = aes(yintercept = prob_response),
-          linetype = "dashed",
-          color = "black"
-        ) +
-        facet_grid(transformation ~ prob_response, scales = "free_y") +
-        cowplot::theme_cowplot() +
-        cowplot::background_grid(major = "xy") +
-        theme(
-          panel.background = element_rect(fill = "white", color = NA),
-          plot.background = element_rect(fill = "white", color = NA),
-          legend.position = "bottom"
-        ) +
-        labs(
-          title = paste0(
-            "Actual background-subtracted frequency vs number of cells ",
-            "(mean_pos_setting = ", mean_pos_setting_curr,
-            ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-          ),
-          x = "Number of cells",
-          y = "Actual background-subtracted frequency",
-          colour = "Bandwidth"
-        ) +
-        scale_colour_manual(
-          values = col_vec_bw_curr
-        )
-
-      path_p <- projr::projr_path_get(
-        "cache",
-        "sim",
-        "bw",
-        "freq_bs", "global",
-        "est",
-        "raw",
-        paste0(
-          "actual_freq_vs_n_cell_mean_pos_setting_",
-          mean_pos_setting_curr,
-          "_bias_uns_",
-          bias_uns_setting_curr,
-          ".png")
-      )
-      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-      ggsave(
-        filename = path_p,
-        plot = p,
-        width = 18,
-        height = 30,
-        units = "cm"
-      )
     }
   }
 }
+```
+
+```{r}
+ bw_tbl_results_raw |>
+  dplyr::filter(
+    mean_pos_setting == "high",
+    bias_uns_setting == "low"
+  ) |> 
+  dplyr::group_by(transformation, n_cell, bw, condition_perturbation_sd, prob_response) |>
+  dplyr::summarise(
+    perc_g_005 = sum(propBsEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_01 = sum(propBsEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_02 = sum(propBsEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_05 = sum(propBsEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_1 = sum(propBsEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_2 = sum(propBsEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_5 = sum(propBsEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(transformation, condition_perturbation_sd, n_cell, bw) |>
+  print(width = Inf, n = Inf)
+```
+
+So, no large errors as long as we don't put any perturbation (well, 0.5 is quite large).
+
+The table above is hard to read.
+Can't we, for example, compare the average error to the mean?
+
+```{r}
+for (mean_pos_setting_curr in unique(mean_pos_settings_tbl$mean_pos_setting)) {
+
+  err_rel_tbl <- bw_tbl_results_raw |>
+    dplyr::filter(
+      mean_pos_setting == mean_pos_setting_curr,
+      bias_uns_setting == "low"
+    ) |> 
+    dplyr::group_by(transformation, n_cell, bw, condition_perturbation_sd, prob_response) |>
+    dplyr::summarise(
+      err_rel_median = median(abs(propBsEst - prob_response) / prob_response, na.rm = TRUE),
+      err_rel_95 = quantile(abs(propBsEst - prob_response) / prob_response, probs = 0.95, na.rm = TRUE),
+      err_rel_max = max(abs(propBsEst - prob_response) / prob_response, na.rm = TRUE),
+      .groups = "drop"
+    )
+  err_tbl_rel_mean_trans_bw <- err_rel_tbl |>
+    dplyr::filter(
+      condition_perturbation_sd == 0
+    ) |>
+    dplyr::group_by(transformation, bw) |>
+    dplyr::summarise(
+      err_rel_median_avg = mean(err_rel_median, na.rm = TRUE),
+      err_rel_95_avg = mean(err_rel_95, na.rm = TRUE),
+      err_rel_max_avg = mean(err_rel_max, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::starts_with("err_rel_"),
+        ~ signif(.x, digits = 3) * 1e2
+      )
+    ) |>
+    dplyr::arrange(transformation, bw)
+  plot_tbl_error_rel_mean_trans_bw <- err_tbl_rel_mean_trans_bw |>
+    tidyr::pivot_longer(
+      cols = dplyr::starts_with("err_rel_"),
+      names_to = "err_type",
+      values_to = "err_value"
+    )
+  p <- ggplot(
+    plot_tbl_error_rel_mean_trans_bw |>
+      dplyr::mutate(
+        err_type = factor(
+          err_type,
+          levels = c(
+            "err_rel_median_avg",
+            "err_rel_95_avg",
+            "err_rel_max_avg"
+          )
+        ),
+        transformation = factor(
+          transformation,
+          levels = c(
+            "gaussian",
+            "skew",
+            "gamma"
+        )
+        )
+      ),
+    aes(x = factor(bw), y = err_value, color = err_type, group = err_type)
+    ) +
+    geom_line() +
+    geom_point() +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy") +
+    theme(
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.background = element_rect(fill = "white", color = NA),
+      legend.position = "bottom"
+    ) +
+    labs(
+      x = "Bandwidth",
+      y = "Relative error (%)",
+      color = "Error type"
+    ) +
+    expand_limits(y = 0) +
+    facet_wrap(
+      ~ transformation,
+      scales = "free",
+      labeller = labeller(
+      transformation = c(
+        gamma = "Gamma",
+        gaussian = "Gaussian",
+        skew = "Skew"
+      )
+    )) +
+    scale_colour_manual(
+      values = c(
+        "err_rel_median_avg" = "#0072B2",
+        "err_rel_95_avg"   = "#56B4E9",
+        "err_rel_max_avg"  = "#8C8DBA"
+      ),
+      labels = c(
+        "err_rel_median_avg" = "Median",
+        "err_rel_95_avg"   = "95th percentile",
+        "err_rel_max_avg"  = "Maximum"
+      )
+    ) +
+    theme(
+      strip.background = element_rect(fill = "white", color = "black")
+    ) +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1, size = 10)
+    ) +
+    theme(
+      panel.background = element_rect(fill = "white", colour = NA),
+      plot.background = element_rect(fill = "white", colour = NA),
+      legend.position = "bottom",
+      legend.justification = "center",
+      legend.box.just = "center"
+    )
+  path_p <- projr::projr_path_get(
+    "output",
+    "fig",
+    paste0("avg_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf")
+  )
+  ggsave(
+    filename = path_p,
+    plot = p,
+    width = 18,
+    height = 12,
+    units = "cm"
+  )
+}
+```
+
+```{r}
+ bw_tbl_results_raw |>
+  dplyr::filter(
+    mean_pos_setting == "high",
+    bias_uns_setting == "low"
+  ) |> 
+  dplyr::group_by(transformation, n_cell, bw, sample_perturbation_sd, condition_perturbation_sd, cluster_perturbation_sd) |>
+  dplyr::summarise(
+    perc_g_005 = sum(propBsEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_01 = sum(propBsEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_02 = sum(propBsEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_05 = sum(propBsEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_1 = sum(propBsEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_2 = sum(propBsEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_5 = sum(propBsEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(transformation, condition_perturbation_sd, n_cell, bw) |>
+  print(width = Inf, n = Inf)
+```
+
+```{r}
+ bw_tbl_results_raw |>
+  dplyr::filter(
+    mean_pos_setting == "high",
+    bias_uns_setting == "low"
+  ) |>
+  dplyr::filter(prob_response == 0.002, transformation == "gaussian") |>
+  dplyr::group_by(n_cell, bw, sample_perturbation_sd, condition_perturbation_sd, cluster_perturbation_sd) |>
+  dplyr::summarise(
+    perc_g_005 = sum(propBsEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_01 = sum(propBsEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_02 = sum(propBsEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_05 = sum(propBsEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_1 = sum(propBsEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_2 = sum(propBsEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_5 = sum(propBsEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(condition_perturbation_sd, sample_perturbation_sd, cluster_perturbation_sd, n_cell, bw) 
+```
 ```
 
 Okay, now we wanto plot the actual thresholds.

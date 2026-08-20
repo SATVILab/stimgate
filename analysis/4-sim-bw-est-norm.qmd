@@ -256,9 +256,9 @@ bw_list_raw_mtd_loop |>
   ) |>
   dplyr::summarise(
     n_est = sum(is.finite(bw)),
-    mean_bw_stim = mean(bw_stim, na.rm = TRUE),
-    mean_bw_uns = mean(bw_uns, na.rm = TRUE),
-    mean_bw = mean(bw, na.rm = TRUE),
+    mean_bw_stim = .simBandwidthFiniteMean(bw_stim),
+    mean_bw_uns = .simBandwidthFiniteMean(bw_uns),
+    mean_bw = .simBandwidthFiniteMean(bw),
     .groups = "drop"
   ) |>
   dplyr::select(
@@ -322,6 +322,7 @@ bw_list_raw_mtd <- progressr::with_progress({
   furrr::future_pmap(
     sim_grid,
     function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos, bw_mtd, bw_ncell_upper, bias_uns_setting, bias_uns, sim_id) {
+      .simBandwidthEnsureCurrentCheckout(root_dir)
       settings_row <- paste0(
         "trans = ",
         transformation,
@@ -470,7 +471,10 @@ bw_list_raw_mtd <- progressr::with_progress({
 
       out
     },
-    .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+    .options = furrr::furrr_options(
+      seed = TRUE,
+      scheduling = Inf
+    )
   )
 })
 
@@ -577,14 +581,22 @@ bw_tbl_results <- bw_tbl |>
     dplyr::pick(dplyr::any_of(colnames(sim_grid)))
   ) |>
   dplyr::summarise(
-    mean_bw_stim = mean(bw_stim, na.rm = TRUE),
-    mean_bw_uns = mean(bw_uns, na.rm = TRUE),
-    mean_bw = mean(bw, na.rm = TRUE),
+    n_est = sum(is.finite(bw)),
+    mean_bw_stim = .simBandwidthFiniteMean(bw_stim),
+    mean_bw_uns = .simBandwidthFiniteMean(bw_uns),
+    mean_bw = .simBandwidthFiniteMean(bw),
     .groups = "drop"
   ) |>
   dplyr::select(
-    dplyr::any_of(colnames(sim_grid)), mean_bw
+    dplyr::any_of(colnames(sim_grid)), n_est, mean_bw_stim, mean_bw_uns, mean_bw
   )
+
+if (any(bw_tbl_results$n_est == 0L)) {
+  stop(
+    "At least one requested bandwidth estimator has zero finite values.",
+    " Review the corresponding raw rows before plotting."
+  )
+}
 bw_tbl_results <- bw_tbl_results |>
   dplyr::mutate(
     bw_mtd_base = gsub("Norm$", "", bw_mtd),
@@ -609,17 +621,18 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
         aes(
           x = n_cell,
           y = mean_bw,
-          colour = bw_mtd_base,
-          group = interaction(bw_mtd_base, bw_mtd_norm)
+          colour = bw_mtd_base
         )
       ) +
         geom_line(
           aes(linetype = bw_mtd_norm),
-          linewidth = 0.7
+          linewidth = 0.7,
+        alpha = 0.75
         ) +
         geom_point(
           aes(shape = bw_mtd_norm),
-          size = 1.7
+          size = 1.7,
+        alpha = 0.75
         ) +
         scale_x_log10() +
         facet_grid(
@@ -645,35 +658,35 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
           plot.background = element_rect(fill = "white", colour = NA),
           legend.position = "bottom",
           legend.box = "vertical"
-        ) +
-        scale_colour_manual(
-          values = .simBwMtdColVec
-        ) +
-        scale_linetype_manual(
-          values = c(
-            "non-norm" = "solid",
-            "norm" = "dotted"
-          ),
-          labels = c(
-            "non-norm" = "Not normalised",
-            "norm" = "Normalised"
-          )
-        ) +
-        scale_shape_manual(
-          values = c(
-            "non-norm" = 16,
-            "norm" = 1
-          ),
-          labels = c(
-            "non-norm" = "Not normalised",
-            "norm" = "Normalised"
-          )
-        ) +
-        guides(
-          linetype = guide_legend(order = 1),
-          shape = guide_legend(order = 1),
-          colour = guide_legend(order = 2, nrow = 1)
-        )
+        ) # +
+        # scale_colour_manual(
+        #   values = .simBwMtdColVec
+        # ) #+
+        # scale_linetype_manual(
+        #   values = c(
+        #     "non-norm" = "solid",
+        #     "norm" = "dotted"
+        #   ),
+        #   labels = c(
+        #     "non-norm" = "Not normalised",
+        #     "norm" = "Normalised"
+        #   )
+        # ) +
+        # scale_shape_manual(
+        #   values = c(
+        #     "non-norm" = 16,
+        #     "norm" = 1
+        #   ),
+        #   labels = c(
+        #     "non-norm" = "Not normalised",
+        #     "norm" = "Normalised"
+        #   )
+        # ) +
+        # guides(
+        #   linetype = guide_legend(order = 1),
+        #   shape = guide_legend(order = 1),
+        #   colour = guide_legend(order = 2, nrow = 1)
+        # )
 
       path_plot <- projr::projr_path_get(
         "cache",
@@ -685,7 +698,7 @@ for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
           "bw_estimate_meanpos_setting_", mean_pos_setting_curr,
           "_bias_uns_", bias_uns_setting_curr,
           "_ncell_upper_", bw_ncell_upper_curr,
-          ".png"
+          ".pdf"
         )
       )
       dir.create(dirname(path_plot), recursive = TRUE, showWarnings = FALSE)
