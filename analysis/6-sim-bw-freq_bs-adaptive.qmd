@@ -677,7 +677,11 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
 ```{r}
 #| label: bw-manual-collate
-bw_list_path_vec <- .find_bw_list_output_files(output_dir = dir_output)
+bw_list_path_vec <- .find_bw_list_output_files(
+  output_dir = dir_output,
+  cache_dir = dir_progress,
+  cache_path = c("cache", "log", "analysis", "sim", "bw", "freq_bs", "adaptive")
+)
 
 if (length(bw_list_path_vec) > 0L) {
   message("Collating ", length(bw_list_path_vec), " saved simulation result files from output.")

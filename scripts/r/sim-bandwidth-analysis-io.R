@@ -95,10 +95,23 @@ path_sim_output <- .path_sim_output
 
 update_progress_summary <- .update_progress_summary
 
-.find_bw_list_output_files <- function(output_dir = NULL, cache_dir = NULL) {
+.find_bw_list_output_files <- function(output_dir = NULL, cache_dir = NULL, cache_path = NULL) {
   fallback_cache_dirs <- character()
 
-  if (requireNamespace("projr", quietly = TRUE)) {
+  if (!is.null(cache_path) && length(cache_path) > 0L) {
+    cache_path <- as.character(cache_path)
+    cache_path <- cache_path[nzchar(cache_path)]
+
+    if (length(cache_path) > 0L && requireNamespace("projr", quietly = TRUE)) {
+      cache_args_safe <- c(as.list(cache_path), list("progress.txt", safe = TRUE))
+      cache_args_unsafe <- c(as.list(cache_path), list("progress.txt", safe = FALSE))
+
+      fallback_cache_dirs <- c(
+        file.path(dirname(do.call(projr::projr_path_get, cache_args_safe)), "output"),
+        file.path(dirname(do.call(projr::projr_path_get, cache_args_unsafe)), "output")
+      )
+    }
+  } else if (requireNamespace("projr", quietly = TRUE)) {
     fallback_cache_dirs <- c(
       file.path(
         dirname(projr::projr_path_get(

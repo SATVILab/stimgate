@@ -86,6 +86,54 @@ test_that("output discovery checks both active and cache directories", {
   ))
 })
 
+test_that("actual QMD cache fallbacks are discoverable through the shared helper", {
+  env <- .load_bw_analysis_env()
+  tmp_dir <- tempfile("bw-qmd-fallbacks")
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  qmd_cache_dirs <- list(
+    global = file.path(tmp_dir, "cache", "log", "analysis", "sim", "bw", "freq_bs", "global"),
+    est_adaptive = file.path(tmp_dir, "cache", "log", "analysis", "sim", "bw", "est", "adaptive"),
+    freq_adaptive = file.path(tmp_dir, "cache", "log", "analysis", "sim", "bw", "freq_bs", "adaptive")
+  )
+
+  for (cache_dir in qmd_cache_dirs) {
+    out_dir <- file.path(cache_dir, "output")
+    dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+    saveRDS(
+      1L,
+      file.path(out_dir, "bw_list_raw-chunk_001-of_002-sim_id_000001.rds")
+    )
+  }
+
+  expect_equal(
+    basename(env$.find_bw_list_output_files(
+      output_dir = NULL,
+      cache_dir = qmd_cache_dirs[["global"]],
+      cache_path = c("cache", "log", "analysis", "sim", "bw", "freq_bs", "global")
+    )),
+    "bw_list_raw-chunk_001-of_002-sim_id_000001.rds"
+  )
+
+  expect_equal(
+    basename(env$.find_bw_list_output_files(
+      output_dir = NULL,
+      cache_dir = qmd_cache_dirs[["est_adaptive"]],
+      cache_path = c("cache", "log", "analysis", "sim", "bw", "est", "adaptive")
+    )),
+    "bw_list_raw-chunk_001-of_002-sim_id_000001.rds"
+  )
+
+  expect_equal(
+    basename(env$.find_bw_list_output_files(
+      output_dir = NULL,
+      cache_dir = qmd_cache_dirs[["freq_adaptive"]],
+      cache_path = c("cache", "log", "analysis", "sim", "bw", "freq_bs", "adaptive")
+    )),
+    "bw_list_raw-chunk_001-of_002-sim_id_000001.rds"
+  )
+})
+
 test_that("QMD 6 does not retain the stale adaptive shim reference", {
   qmd_lines <- readLines(qmd_6, warn = FALSE)
   expect_false(any(grepl("\\.run_sim_bandwidth_bs_freq_adaptive", qmd_lines)))
