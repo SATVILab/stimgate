@@ -32,7 +32,13 @@ if (
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 # Source simulation helpers in dependency order:
 # sim-misc.R must be sourced before sim-bandwidth.R for simulation utilities.
-for (fn in c("sim-misc.R", "functionsForBenchmarking-Cyt.R", "sim-bandwidth.R")) {
+for (fn in c(
+  "sim-misc.R",
+  "functionsForBenchmarking-Cyt.R",
+  "sim-bandwidth.R",
+  "sim-bandwidth-analysis-io.R",
+  "sim-bandwidth-analysis-plot.R"
+)) {
   source(file.path(scripts_r_dir, fn))
 }
 ```
@@ -321,48 +327,15 @@ bw_list_raw_mtd <- progressr::with_progress({
       file_completed <- file.path(dir_jobs, paste0("completed-", sim_id))
       file_error <- file.path(dir_jobs, paste0("error-", sim_id))
 
-      # Helper function to recalculate state and update progress.txt
-      update_progress_summary <- function() {
-        # List all generated status files
-        all_job_files <- list.files(dir_jobs, full.names = FALSE)
-
-        n_running <- sum(grepl("^running-", all_job_files))
-        n_completed <- sum(grepl("^completed-", all_job_files))
-        n_error <- sum(grepl("^error-", all_job_files))
-        n_done <- n_completed + n_error
-
-        # Extract specifically which ones are currently running
-        running_files <- all_job_files[grepl("^running-", all_job_files)]
-        running_ids <- sub("^running-", "", running_files)
-        running_list_str <- if (length(running_ids) > 0) {
-          paste(running_ids, collapse = ", ")
-        } else {
-          "None"
-        }
-
-        # Build dashboard content
-        summary_text <- paste0(
-          "========================================\n",
-          " SIMULATION PROGRESS DASHBOARD          \n",
-          "========================================\n",
-          "Total Simulations  : ", total_sims, "\n",
-          "In Progress        : ", n_running, "\n",
-          "Completed (Success): ", n_completed, "\n",
-          "Completed (Errors) : ", n_error, "\n",
-          "Total Done          : ", n_done, "\n",
-          "----------------------------------------\n",
-          "Currently Running IDs:\n", running_list_str, "\n",
-          "========================================\n"
-        )
-
-        # Overwrite the summary file safely
-        cat(summary_text, file = path_progress_file, append = FALSE)
-      }
-
       # --- START WORKER PROCESS ---
       # Mark as running
       file.create(file_running)
-      update_progress_summary()
+      .update_progress_summary(
+        path_progress_file = path_progress_file,
+        dir_jobs_chunk = dir_jobs,
+        total_sims = total_sims,
+        heading = "SIMULATION PROGRESS DASHBOARD"
+      )
 
       out <- tryCatch(
         {
@@ -418,7 +391,12 @@ bw_list_raw_mtd <- progressr::with_progress({
           file.create(file_completed)
           if (file.exists(file_running)) file.remove(file_running)
 
-          update_progress_summary()
+          .update_progress_summary(
+            path_progress_file = path_progress_file,
+            dir_jobs_chunk = dir_jobs,
+            total_sims = total_sims,
+            heading = "SIMULATION PROGRESS DASHBOARD"
+          )
           p(sprintf("Completed sim_id: %s", sim_id))
 
           sim_res
@@ -428,7 +406,12 @@ bw_list_raw_mtd <- progressr::with_progress({
           file.create(file_error)
           if (file.exists(file_running)) file.remove(file_running)
 
-          update_progress_summary()
+          .update_progress_summary(
+            path_progress_file = path_progress_file,
+            dir_jobs_chunk = dir_jobs,
+            total_sims = total_sims,
+            heading = "SIMULATION PROGRESS DASHBOARD"
+          )
           p(sprintf("ERROR on sim_id: %s", sim_id))
 
           tibble::tibble(
