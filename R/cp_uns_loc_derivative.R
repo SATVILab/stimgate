@@ -241,14 +241,32 @@
   }
 
   # Fallback for direct calls or failed derivative storage.
-  probTbl <- tibble::tibble(
-    x = x,
-    prob = .getCpUnsLocProbability(dataMod, probCol)
-  ) |>
-    dplyr::filter(is.finite(.data$x), is.finite(.data$prob)) |>
-    dplyr::group_by(.data$x) |>
-    dplyr::summarise(prob = mean(.data$prob), .groups = "drop") |>
-    dplyr::arrange(.data$x)
+  x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+  prob <- .getCpUnsLocProbability(dataMod, probCol)
+
+  keep <- is.finite(x) & is.finite(prob)
+  x <- x[keep]
+  prob <- prob[keep]
+
+  if (!anyDuplicated(x)) {
+    ord <- order(x)
+
+    probTbl <- tibble::tibble(
+      x = x[ord],
+      prob = prob[ord]
+    )
+  } else {
+    probTbl <- tibble::tibble(
+      x = x,
+      prob = prob
+    ) |>
+      dplyr::group_by(.data$x) |>
+      dplyr::summarise(
+        prob = mean(.data$prob),
+        .groups = "drop"
+      ) |>
+      dplyr::arrange(.data$x)
+  }
 
   if (nrow(probTbl) < 4L || diff(range(probTbl$x)) <= 0) {
     return(NULL)
