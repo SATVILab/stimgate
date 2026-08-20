@@ -53,6 +53,7 @@ _output/**
 AGENTS.md
 CHANGES_SUMMARY.md
 README.html
+Rplots.pdf
 # End of projr section
 
 _tmp/log/sbatch/projr_build_output
