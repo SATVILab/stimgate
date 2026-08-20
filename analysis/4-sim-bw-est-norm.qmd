@@ -312,8 +312,9 @@ Run the simulations in parallel, with progress reporting.
 
 set.seed(1)
 
+n_run <- nrow(sim_grid)
 sim_grid_run <- sim_grid |>
-  dplyr::slice_sample(n = dplyr::n())
+  dplyr::slice_sample(n = n_run)
 
 if (interactive()) {
   progressr::handlers(global = TRUE)
