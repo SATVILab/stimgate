@@ -20,10 +20,31 @@ jobs:
       # 0. Set up the environment
       - name: Install system dependencies setup-r does not
         run: |
-          sudo apt-get update -y
-          sudo apt-get install --no-install-recommends -y \
-            libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev \
-            libgit2-dev libjpeg-dev libpng-dev libx11-dev pandoc
+          # GitHub-hosted Ubuntu runners can intermittently stall on the
+          # Azure-local Ubuntu mirror. Prefer the main Ubuntu archive instead.
+          for sources_file in \
+            /etc/apt/sources.list \
+            /etc/apt/sources.list.d/ubuntu.sources; do
+            if [ -f "$sources_file" ]; then
+              sudo sed -i -E \
+                's#https?://azure.archive.ubuntu.com/ubuntu#https://archive.ubuntu.com/ubuntu#g' \
+                "$sources_file"
+            fi
+          done
+
+          sudo apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=20 \
+            -o Acquire::https::Timeout=20 \
+            update -y
+
+          sudo apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=20 \
+            -o Acquire::https::Timeout=20 \
+            install --no-install-recommends -y \
+              libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev \
+              libgit2-dev libjpeg-dev libpng-dev libx11-dev pandoc
 
       # 1. Get the code
       - name: Checkout repository
