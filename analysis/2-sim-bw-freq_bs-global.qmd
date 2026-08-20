@@ -305,8 +305,8 @@ A loop we only run when we want to see why particular runs failed.
 devtools::load_all()
 bw_list_raw <- vector("list", nrow(sim_grid_loop))
 
-sim_grid_loop$n_cell <- 1e5
-debugonce(gateStim)
+# sim_grid_loop$n_cell <- 1e5
+# debugonce(gateStim)
 
 # sim_grid_loop$n_cell <- 1e3
 # sim_grid_loop$prob_response <- 0.2
