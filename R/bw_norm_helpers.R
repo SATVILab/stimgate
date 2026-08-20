@@ -292,11 +292,21 @@
     return(.fallback_scalar())
   }
 
+  corePilotN <- if (
+    identical(normMtd, "moments") &&
+      !isTRUE(adaptive)
+  ) {
+    10000L
+  } else {
+    100000L
+  }
+
   coreObj <- .bwNormFindBackgroundCore(
     x = x,
     peakFrac = normPeakFrac,
     peakMinRel = normPeakMinRel,
-    densityN = normDensityN
+    densityN = normDensityN,
+    pilotN = corePilotN
   )
 
   if (is.null(coreObj)) {
@@ -631,47 +641,90 @@
 
 
 #' @keywords internal
-
-#' @keywords internal
 .bwNormFindBackgroundCore <- function(
   x,
   peakFrac = 0.1,
   peakMinRel = 0.75,
-  densityN = 1024L
+  densityN = 1024L,
+  pilotN = 100000L
 ) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
-  if (length(x) < 20L || length(unique(x)) < 5L) {
+  if (
+    length(x) < 20L ||
+      length(unique(x)) < 5L
+  ) {
     return(NULL)
   }
 
-  xPilot <- if (length(x) > 1e5L) {
-    sample(x, size = 1e5L, replace = FALSE)
+  pilotN <- .bwAsSafeSampleN(
+    pilotN,
+    default = 100000L,
+    lower = 20L
+  )
+
+  xPilot <- if (
+    !is.null(pilotN) &&
+      length(x) > pilotN
+  ) {
+    sample(
+      x,
+      size = pilotN,
+      replace = FALSE
+    )
   } else {
     x
   }
 
   bwPilot <- try(
-    suppressWarnings(ks::hpi(xPilot, deriv.order = 0)),
+    suppressWarnings(
+      ks::hpi(
+        xPilot,
+        deriv.order = 0
+      )
+    ),
     silent = TRUE
   )
+
   if (
     inherits(bwPilot, "try-error") ||
       !is.finite(bwPilot) ||
       bwPilot <= 0
   ) {
-    bwPilot <- stats::IQR(xPilot, na.rm = TRUE) / 20
+    bwPilot <- stats::IQR(
+      xPilot,
+      na.rm = TRUE
+    ) /
+      20
   }
-  if (!is.finite(bwPilot) || bwPilot <= 0) {
-    bwPilot <- .bwRobustSd(xPilot) / 5
+
+  if (
+    !is.finite(bwPilot) ||
+      bwPilot <= 0
+  ) {
+    bwPilot <- .bwRobustSd(
+      xPilot
+    ) /
+      5
   }
-  if (!is.finite(bwPilot) || bwPilot <= 0) {
+
+  if (
+    !is.finite(bwPilot) ||
+      bwPilot <= 0
+  ) {
     return(NULL)
   }
 
+  # Use the complete sample for the actual density used to identify
+  # the background core. Only bandwidth selection is performed on
+  # the smaller pilot sample.
   dens <- try(
-    stats::density(x, bw = bwPilot, n = densityN),
+    stats::density(
+      x,
+      bw = bwPilot,
+      n = densityN
+    ),
     silent = TRUE
   )
 
@@ -679,9 +732,18 @@
     return(NULL)
   }
 
-  dx <- suppressWarnings(as.numeric(dens$x))
-  dy <- suppressWarnings(as.numeric(dens$y))
-  dy <- pmax(dy, 0)
+  dx <- suppressWarnings(
+    as.numeric(dens$x)
+  )
+
+  dy <- suppressWarnings(
+    as.numeric(dens$y)
+  )
+
+  dy <- pmax(
+    dy,
+    0
+  )
 
   if (
     length(dx) < 5L ||
@@ -703,13 +765,23 @@
       peakMainLeftIdx < 1L ||
       peakMainLeftIdx > length(dx)
   ) {
-    peakMainLeftIdx <- which.max(dy)
+    peakMainLeftIdx <- which.max(
+      dy
+    )
   }
 
-  peakMainLeftX <- dx[peakMainLeftIdx]
-  peakHeight <- dy[peakMainLeftIdx]
+  peakMainLeftX <- dx[
+    peakMainLeftIdx
+  ]
 
-  if (!is.finite(peakHeight) || peakHeight <= 0) {
+  peakHeight <- dy[
+    peakMainLeftIdx
+  ]
+
+  if (
+    !is.finite(peakHeight) ||
+      peakHeight <= 0
+  ) {
     return(NULL)
   }
 
@@ -729,20 +801,34 @@
     peakMinRel = peakMinRel
   )
 
-  thresholdVec <- c(thresholdTrough, thresholdFlat)
+  dxMax <- max(
+    dx,
+    na.rm = TRUE
+  )
+
+  thresholdVec <- c(
+    thresholdTrough,
+    thresholdFlat
+  )
+
   thresholdVec <- thresholdVec[
     is.finite(thresholdVec) &
       thresholdVec > peakMainLeftX &
-      thresholdVec <= max(dx, na.rm = TRUE)
+      thresholdVec <= dxMax
   ]
 
   thresholdX <- if (length(thresholdVec) > 0L) {
-    min(thresholdVec)
+    min(
+      thresholdVec
+    )
   } else {
-    max(dx, na.rm = TRUE)
+    dxMax
   }
 
-  thresholdIdx <- which(dx >= thresholdX)[1]
+  thresholdIdx <- which(
+    dx >= thresholdX
+  )[1L]
+
   if (!is.finite(thresholdIdx)) {
     thresholdIdx <- length(dx)
     thresholdX <- dx[thresholdIdx]
@@ -754,7 +840,10 @@
     peakX = peakMainLeftX,
     peakHeight = peakHeight,
     lowHeight = peakFrac * peakHeight,
-    density = tibble::tibble(x = dx, y = dy)
+    density = tibble::tibble(
+      x = dx,
+      y = dy
+    )
   )
 }
 
