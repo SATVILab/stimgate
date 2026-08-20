@@ -142,9 +142,10 @@ gateStim(
 - biasUns:
 
   numeric. Bias adjustment for unstimulated samples to account for
-  background cytokine production. When NULL (default), no bias
-  correction is applied. Positive values shift the unstimulated
-  distribution higher, making gates more conservative.
+  background cytokine production. When NULL (default), 1/4 of
+  `bwFallback` is used (scaled by `biasUnsFactor`). Positive values
+  shift the unstimulated distribution higher, making gates more
+  conservative. Default is NULL.
 
 - biasUnsFactor:
 
@@ -621,7 +622,7 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmptUzuFo/demonstration"
+#> [1] "/tmp/RtmpyPtujK/demonstration"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
