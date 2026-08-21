@@ -357,25 +357,23 @@ compare_list_raw <- progressr::with_progress({
 
   furrr::future_pmap(
     sim_grid_run,
-    function(
-      transformation,
-      prob_response,
-      n_cell,
-      mean_pos_setting,
-      mean_pos,
-      bw_mtd,
-      bw_ncell_max,
-      bw_fallback,
-      bw_min,
-      bw_max,
-      bias_uns,
-      sample_perturbation_sd,
-      condition_perturbation_sd,
-      cluster_perturbation_sd,
-      background_relative_to_response,
-      n_cell_uns_relative_to_stim,
-      sim_id
-    ) {
+    function(transformation,
+             prob_response,
+             n_cell,
+             mean_pos_setting,
+             mean_pos,
+             bw_mtd,
+             bw_ncell_max,
+             bw_fallback,
+             bw_min,
+             bw_max,
+             bias_uns,
+             sample_perturbation_sd,
+             condition_perturbation_sd,
+             cluster_perturbation_sd,
+             background_relative_to_response,
+             n_cell_uns_relative_to_stim,
+             sim_id) {
       settings_row <- paste0(
         "trans = ", transformation,
         " | prob = ", prob_response,
