@@ -44,6 +44,11 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocFirstSetting.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetCpDataThresholdExcludeMargin.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbFit.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbSmoothActualCheck.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbSmoothActualResponseSuccess.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbSmoothFitEval.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbSmoothFitEvalCheck.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbSmoothNewData.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetShapeThreshold.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocHighProbabilityReference.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocMarginalBreaks.html</loc></url>
@@ -62,6 +67,7 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocTautStringExtremaCurrent.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocThresholdProbMin.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocUnitValue.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCytPosBasePos.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCytPosMarginalReference.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCytPosTautStringAntimodes.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCytPosTautStringDensity.html</loc></url>
