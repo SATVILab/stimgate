@@ -50,6 +50,11 @@ pkg_ns <- asNamespace("stimgate")
   envir = pkg_ns,
   mode = "function"
 )
+.getCpUnsLocCombineCpWithMeta <- get(
+  ".getCpUnsLocCombineCpWithMeta",
+  envir = pkg_ns,
+  mode = "function"
+)
 
 test_that(".getCpUnsLocTailPropAtThresholds handles ties and boundaries", {
   x <- c(1.0, 2.0, 2.0, 3.0, 4.0)
@@ -265,6 +270,37 @@ test_that(".getCpUnsLocSampleCpRep averages only generated thresholds", {
   expect_equal(
     meta_none$locReason[meta_none$ind == "uns"],
     "no_generated_local_fdr_thresholds"
+  )
+})
+
+test_that(".getCpUnsLocCombineCpWithMeta propagates combined metadata", {
+  cp_vec <- c("stim1" = 4.0, "stim2" = 1.0, "uns" = 4.0)
+  attr(cp_vec, "locGenerated") <- c(TRUE, FALSE, TRUE)
+  attr(cp_vec, "locGeneratedDirect") <- c(TRUE, FALSE, FALSE)
+  attr(cp_vec, "locSource") <- c("direct", "not_calculated", "unstim_summary")
+  attr(cp_vec, "locReason") <- c("selected", "fallback", "mean")
+
+  combined_out <- .getCpUnsLocCombineCpWithMeta(cp_vec, gateCombn = "mean")
+  cp_mean <- combined_out[["mean"]]
+
+  # Both stim conditions now have threshold 4.0
+  expect_equal(as.numeric(cp_mean["stim1"]), 4.0)
+  expect_equal(as.numeric(cp_mean["stim2"]), 4.0)
+  expect_equal(as.numeric(cp_mean["uns"]), 4.0)
+
+  meta_comb <- .getCpUnsLocMetaFromCp(cp_mean)
+  # stim1 remains direct
+  expect_true(meta_comb$locGenerated[meta_comb$ind == "stim1"])
+  expect_true(meta_comb$locGeneratedDirect[meta_comb$ind == "stim1"])
+  expect_equal(meta_comb$locSource[meta_comb$ind == "stim1"], "direct")
+
+  # stim2 is now imputed from stim1 (combined)
+  expect_true(meta_comb$locGenerated[meta_comb$ind == "stim2"])
+  expect_false(meta_comb$locGeneratedDirect[meta_comb$ind == "stim2"])
+  expect_equal(meta_comb$locSource[meta_comb$ind == "stim2"], "combined")
+  expect_equal(
+    meta_comb$locReason[meta_comb$ind == "stim2"],
+    "combined_from_generated_local_fdr_thresholds"
   )
 })
 
