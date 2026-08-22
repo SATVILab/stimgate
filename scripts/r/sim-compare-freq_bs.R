@@ -903,6 +903,7 @@
   fallbackMargin = 0.05,
   stimMeanShift = 0,
   stimSdMultiplier = 1,
+  stimMeanShiftClusters = NULL,
   pathProject = NULL
 ) {
   if (!identical(as.integer(nMarker), 1L)) {
@@ -951,7 +952,8 @@
       covEvMin = covEvMin,
       covEvMax = covEvMax,
       stimMeanShift = stimMeanShift,
-      stimSdMultiplier = stimSdMultiplier
+      stimSdMultiplier = stimSdMultiplier,
+      stimMeanShiftClusters = stimMeanShiftClusters
     )
 
     flowFrameList <- outListExperiment[["flowFrameList"]]
@@ -1104,7 +1106,12 @@
         tailgateSide = tailgateSide,
         tailgateAutoTol = tailgateAutoTol,
         stimMeanShift = stimMeanShift,
-        stimSdMultiplier = stimSdMultiplier
+        stimSdMultiplier = stimSdMultiplier,
+        stimMeanShiftClusters = if (is.null(stimMeanShiftClusters)) {
+          NA_character_
+        } else {
+          paste(stimMeanShiftClusters, collapse = ",")
+        }
       ) |>
       dplyr::select(
         iter,
@@ -1210,7 +1217,47 @@
 
       if (!is.na(row_scalar)) {
         if (is.numeric(row_scalar) && is.numeric(cached_scalar)) {
-          if (!isTRUE(all.equal(as.numeric(row_scalar), as.numeric(cached_scalar), tolerance = 1e-7))) {
+          if (
+            !isTRUE(
+              all.equal(
+                as.numeric(row_scalar),
+                as.numeric(cached_scalar),
+                tolerance = 1e-7
+              )
+            )
+          ) {
+            return(FALSE)
+          }
+        } else if (nm %in% c("mismatch_type", "mismatchType")) {
+          is_all_1 <- as.character(row_scalar) %in%
+            c("mean_shift", "mean_shift_all")
+          is_all_2 <- as.character(cached_scalar) %in%
+            c("mean_shift", "mean_shift_all")
+          if (is_all_1 != is_all_2) {
+            return(FALSE)
+          }
+          if (
+            !is_all_1 &&
+              as.character(row_scalar) != as.character(cached_scalar)
+          ) {
+            return(FALSE)
+          }
+        } else if (
+          nm %in% c("stim_mean_shift_clusters", "stimMeanShiftClusters")
+        ) {
+          v1 <- if (is.na(row_scalar) || !nzchar(as.character(row_scalar))) {
+            ""
+          } else {
+            as.character(row_scalar)
+          }
+          v2 <- if (
+            is.na(cached_scalar) || !nzchar(as.character(cached_scalar))
+          ) {
+            ""
+          } else {
+            as.character(cached_scalar)
+          }
+          if (v1 != v2) {
             return(FALSE)
           }
         } else {
@@ -1246,17 +1293,45 @@
 .simCompareFormatScenarioLog <- function(row, sim_id) {
   parts <- c(
     paste0("sim_id = ", sim_id),
-    if ("transformation" %in% names(row)) paste0("trans = ", row$transformation[[1]]),
-    if ("prob_response" %in% names(row)) paste0("prob = ", row$prob_response[[1]]),
-    if ("n_cell" %in% names(row)) paste0("n_cell = ", row$n_cell[[1]]),
-    if ("mean_pos_setting" %in% names(row)) paste0("mean_pos_setting = ", row$mean_pos_setting[[1]]),
-    if ("mean_pos" %in% names(row)) paste0("mean = ", row$mean_pos[[1]]),
-    if ("bw_mtd" %in% names(row)) paste0("bw_mtd = ", row$bw_mtd[[1]]),
-    if ("bias_uns" %in% names(row)) paste0("bias = ", row$bias_uns[[1]]),
-    if ("mismatch_type" %in% names(row)) paste0("mismatch_type = ", row$mismatch_type[[1]]),
-    if ("mismatch_val" %in% names(row)) paste0("mismatch_val = ", row$mismatch_val[[1]]),
-    if ("stim_mean_shift" %in% names(row)) paste0("stim_mean_shift = ", row$stim_mean_shift[[1]]),
-    if ("stim_sd_multiplier" %in% names(row)) paste0("stim_sd_multiplier = ", row$stim_sd_multiplier[[1]])
+    if ("transformation" %in% names(row)) {
+      paste0("trans = ", row$transformation[[1]])
+    },
+    if ("prob_response" %in% names(row)) {
+      paste0("prob = ", row$prob_response[[1]])
+    },
+    if ("n_cell" %in% names(row)) {
+      paste0("n_cell = ", row$n_cell[[1]])
+    },
+    if ("mean_pos_setting" %in% names(row)) {
+      paste0("mean_pos_setting = ", row$mean_pos_setting[[1]])
+    },
+    if ("mean_pos" %in% names(row)) {
+      paste0("mean = ", row$mean_pos[[1]])
+    },
+    if ("bw_mtd" %in% names(row)) {
+      paste0("bw_mtd = ", row$bw_mtd[[1]])
+    },
+    if ("bias_uns" %in% names(row)) {
+      paste0("bias = ", row$bias_uns[[1]])
+    },
+    if ("mismatch_type" %in% names(row)) {
+      paste0("mismatch_type = ", row$mismatch_type[[1]])
+    },
+    if ("mismatch_val" %in% names(row)) {
+      paste0("mismatch_val = ", row$mismatch_val[[1]])
+    },
+    if ("stim_mean_shift" %in% names(row)) {
+      paste0("stim_mean_shift = ", row$stim_mean_shift[[1]])
+    },
+    if (
+      "stim_mean_shift_clusters" %in% names(row) &&
+        !is.na(row$stim_mean_shift_clusters[[1]])
+    ) {
+      paste0("shift_clusters = ", row$stim_mean_shift_clusters[[1]])
+    },
+    if ("stim_sd_multiplier" %in% names(row)) {
+      paste0("stim_sd_multiplier = ", row$stim_sd_multiplier[[1]])
+    }
   )
   paste(parts, collapse = " | ")
 }
@@ -1381,7 +1456,10 @@
       }
       .simCompareLogMessage(
         pathProgress = pathProgress,
-        msg = paste0("Skipped (cached): ", .simCompareFormatScenarioLog(row, sim_id))
+        msg = paste0(
+          "Skipped (cached): ",
+          .simCompareFormatScenarioLog(row, sim_id)
+        )
       )
       return(cached)
     }
@@ -1410,6 +1488,26 @@
     1
   }
 
+  stimMeanShiftClustersVal <- if ("stim_mean_shift_clusters" %in% names(row)) {
+    val <- row$stim_mean_shift_clusters[[1]]
+    if (is.null(val) || is.na(val) || !nzchar(as.character(val))) {
+      NULL
+    } else {
+      as.character(val)
+    }
+  } else if ("stimMeanShiftClusters" %in% names(row)) {
+    val <- row$stimMeanShiftClusters[[1]]
+    if (is.null(val) || is.na(val) || !nzchar(as.character(val))) {
+      NULL
+    } else {
+      as.character(val)
+    }
+  } else if (identical(row$mismatch_type[[1]], "mean_shift_negative")) {
+    "gn"
+  } else {
+    NULL
+  }
+
   out <- tryCatch(
     {
       sim_res <- .simCompareFreqBs(
@@ -1430,21 +1528,51 @@
         bwMin = if ("bw_min" %in% names(row)) row$bw_min[[1]] else "none",
         bwMax = if ("bw_max" %in% names(row)) row$bw_max[[1]] else "none",
         bwMtd = if ("bw_mtd" %in% names(row)) row$bw_mtd[[1]] else "hpi1",
-        bwNcellMax = if ("bw_ncell_max" %in% names(row)) row$bw_ncell_max[[1]] else 1e4,
+        bwNcellMax = if ("bw_ncell_max" %in% names(row)) {
+          row$bw_ncell_max[[1]]
+        } else {
+          1e4
+        },
         probExact = probExact,
         nCellStim = if ("n_cell" %in% names(row)) row$n_cell[[1]] else 1e4,
-        probResponse = if ("prob_response" %in% names(row)) row$prob_response[[1]] else 0.05,
+        probResponse = if ("prob_response" %in% names(row)) {
+          row$prob_response[[1]]
+        } else {
+          0.05
+        },
         meanPos = if ("mean_pos" %in% names(row)) row$mean_pos[[1]] else 5,
-        transformation = if ("transformation" %in% names(row)) row$transformation[[1]] else "gaussian",
-        samplePerturbationSd = if ("sample_perturbation_sd" %in% names(row)) row$sample_perturbation_sd[[1]] else 0,
-        conditionPerturbationSd = if ("condition_perturbation_sd" %in% names(row)) row$condition_perturbation_sd[[1]] else 0,
-        clusterPerturbationSd = if ("cluster_perturbation_sd" %in% names(row)) row$cluster_perturbation_sd[[1]] else 0,
-        backgroundRelativeToResponse = if ("background_relative_to_response" %in% names(row)) {
+        transformation = if ("transformation" %in% names(row)) {
+          row$transformation[[1]]
+        } else {
+          "gaussian"
+        },
+        samplePerturbationSd = if ("sample_perturbation_sd" %in% names(row)) {
+          row$sample_perturbation_sd[[1]]
+        } else {
+          0
+        },
+        conditionPerturbationSd = if (
+          "condition_perturbation_sd" %in% names(row)
+        ) {
+          row$condition_perturbation_sd[[1]]
+        } else {
+          0
+        },
+        clusterPerturbationSd = if ("cluster_perturbation_sd" %in% names(row)) {
+          row$cluster_perturbation_sd[[1]]
+        } else {
+          0
+        },
+        backgroundRelativeToResponse = if (
+          "background_relative_to_response" %in% names(row)
+        ) {
           row$background_relative_to_response[[1]]
         } else {
           0.1
         },
-        ncellUnsRelativeToStim = if ("n_cell_uns_relative_to_stim" %in% names(row)) {
+        ncellUnsRelativeToStim = if (
+          "n_cell_uns_relative_to_stim" %in% names(row)
+        ) {
           row$n_cell_uns_relative_to_stim[[1]]
         } else {
           1
@@ -1457,6 +1585,7 @@
         includeLocCondition = includeLocCondition,
         stimMeanShift = stimMeanShiftVal,
         stimSdMultiplier = stimSdMultVal,
+        stimMeanShiftClusters = stimMeanShiftClustersVal,
         ...
       )
 
@@ -1764,6 +1893,8 @@
         "mismatch_val",
         "stim_mean_shift",
         "stimMeanShift",
+        "stim_mean_shift_clusters",
+        "stimMeanShiftClusters",
         "stim_sd_multiplier",
         "stimSdMultiplier",
         "sd_increase",
@@ -1772,6 +1903,7 @@
         "n_cell",
         "mean_pos",
         "mean_pos_setting",
+        "scenario_desc",
         "bw",
         "bias_uns",
         "sample_perturbation_sd",
@@ -1810,6 +1942,10 @@
       ),
       propRespTruth_mean = mean(.data$propRespTruth, na.rm = TRUE),
       propRespEst_mean = mean(.data$propRespEst, na.rm = TRUE),
+      propStim_mean = mean(.data$propStim, na.rm = TRUE),
+      propStim_median = stats::median(.data$propStim, na.rm = TRUE),
+      propUns_mean = mean(.data$propUns, na.rm = TRUE),
+      propUns_median = stats::median(.data$propUns, na.rm = TRUE),
       bias = mean(.data$freq_error, na.rm = TRUE),
       mean_abs_error = mean(.data$abs_error, na.rm = TRUE),
       median_abs_error = stats::median(.data$abs_error, na.rm = TRUE),
