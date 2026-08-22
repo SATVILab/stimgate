@@ -431,12 +431,20 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     scale_y_continuous(
       transform = scales::asinh_trans()
     ) +
-    cowplot::theme_cowplot() +
+    cowplot::theme_cowplot(font_size = 10) +
     cowplot::background_grid(major = "xy", minor = "none") +
     theme(
       panel.background = element_rect(fill = "white", color = NA),
-      plot.background = element_rect(fill = "white", color = NA),
-      legend.position = "bottom"
+      plot.background = element_rect(fill = "white", color = NA)
+    ) +
+    theme(
+      legend.position = "bottom",
+      legend.box = "vertical",
+      legend.box.just = "left"
+    ) +
+    guides(
+      colour = guide_legend(nrow = 1, byrow = TRUE),
+      linetype = guide_legend(nrow = 1, byrow = TRUE)
     ) +
     labs(
       title = "Degradation under Stimulated Mean Shift",
@@ -451,8 +459,9 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     "sim",
     "compare",
     "freq_bs_batch",
+    "mean_shift_degradation",
     paste0(
-      "mean_shift_degradation_plot_",
+      "plot_med_abs_rel_error_",
       mean_pos_setting_curr,
       ".pdf"
     )
@@ -589,8 +598,9 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     "sim",
     "compare",
     "freq_bs_batch",
+    "mean_shift_degradation",
     paste0(
-      "mean_shift_degradation_plot_q90_",
+      "plot_q90_",
       mean_pos_setting_curr,
       ".pdf"
     )
@@ -652,8 +662,9 @@ for (mean_pos_setting_curr in unique(summary_sd$mean_pos_setting)) {
     "sim",
     "compare",
     "freq_bs_batch",
+    "sd_inflation_degradation",
      paste0(
-        "sd_inflation_degradation_plot_",
+        "plot_",
         mean_pos_setting_curr,
         ".pdf"
      )
