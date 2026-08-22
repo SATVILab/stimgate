@@ -482,15 +482,17 @@ plotting/orchestration code.
     implementation does not consume `gateTblCtrl`, so this branch is
     dead plumbing for current outputs. Single-positive gating branches
     have been removed per issue \#196.
-5.  **Simulation engine migration to `simcyto` (issues \#288/#289 /
-    umbrella \#271)**: Generic cytometry simulations and post-simulation
-    transformations are progressively migrating to the exported
-    `simcyto` package API (e.g. `simcyto::simCytExperiment()`,
-    `simcyto::simCytTransform*()`). `analysis/3-sim-bw-est-base.qmd` and
-    `analysis/7-sim-compare-freq_bs.qmd` use `simcyto` and do not source
-    `functionsForBenchmarking-Cyt.R`. StimGate scientific scenario
-    calculations, downstream comparison orchestration, and method
-    evaluations remain StimGate-side under `scripts/r/`.
+5.  **Simulation engine migration to `simcyto` (issues \#288/#289/#295 /
+    umbrella \#271)**: Generic cytometry simulations, post-simulation
+    transformations, and condition-mismatch controls are progressively
+    migrating to the exported `simcyto` package API (e.g.
+    `simcyto::simCytExperiment()`, `simcyto::simCytTransform*()`).
+    `analysis/3-sim-bw-est-base.qmd`,
+    `analysis/7-sim-compare-freq_bs.qmd`, and
+    `analysis/8-sim-compare-freq_bs-batch.qmd` use `simcyto` and do not
+    source `functionsForBenchmarking-Cyt.R`. StimGate scientific
+    scenario calculations, downstream comparison orchestration, and
+    method evaluations remain StimGate-side under `scripts/r/`.
 
 ------------------------------------------------------------------------
 
