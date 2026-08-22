@@ -346,6 +346,152 @@
   rng[2] + max(1, diff(rng)) * margin
 }
 
+.simCompareResolveClusterMismatchNames <- function(clusterSpec) {
+  if (is.null(clusterSpec) || length(clusterSpec) == 0L) {
+    return(character(0))
+  }
+
+  spec <- if (length(clusterSpec) == 1L && is.character(clusterSpec)) {
+    strsplit(as.character(clusterSpec), ",", fixed = TRUE)[[1]]
+  } else {
+    as.character(clusterSpec)
+  }
+
+  spec <- trimws(spec)
+  spec <- spec[nzchar(spec)]
+  unique(spec)
+}
+
+.simCompareApplyClusterMismatch <- function(
+    outListExperiment,
+    stimMeanShift = 0,
+    stimSdMultiplier = 1,
+    stimMeanShiftClusters = NULL,
+    stimSdMultiplierClusters = NULL) {
+  if (is.null(outListExperiment) || is.null(outListExperiment[["flowFrameList"]])) {
+    return(outListExperiment)
+  }
+
+  shiftLabels <- .simCompareResolveClusterMismatchNames(stimMeanShiftClusters)
+  sdLabels <- .simCompareResolveClusterMismatchNames(stimSdMultiplierClusters)
+
+  if (length(shiftLabels) == 0L && length(sdLabels) == 0L) {
+    return(outListExperiment)
+  }
+
+  flowFrameList <- outListExperiment[["flowFrameList"]]
+  labelsList <- outListExperiment[["labelsList"]]
+  nCondition <- if (!is.null(outListExperiment[["nCondition"]])) {
+    outListExperiment[["nCondition"]]
+  } else {
+    2L
+  }
+
+  for (idx in seq_along(flowFrameList)) {
+    condIndex <- ((idx - 1L) %% nCondition) + 1L
+    if (condIndex == 1L) {
+      next
+    }
+
+    labelVec <- labelsList[[idx]]
+    expr <- flowCore::exprs(flowFrameList[[idx]])
+    if (ncol(expr) == 0L || length(labelVec) != nrow(expr)) {
+      next
+    }
+
+    if (length(shiftLabels) > 0L) {
+      shiftMask <- labelVec %in% shiftLabels
+      if (any(shiftMask)) {
+        expr[shiftMask, 1L] <- expr[shiftMask, 1L] + stimMeanShift
+        flowCore::exprs(flowFrameList[[idx]]) <- expr
+      }
+    }
+
+    if (length(sdLabels) > 0L) {
+      sdMask <- labelVec %in% sdLabels
+      if (any(sdMask)) {
+        negVals <- expr[sdMask, 1L]
+        center <- mean(negVals)
+        expr[sdMask, 1L] <- center + (negVals - center) * stimSdMultiplier
+        flowCore::exprs(flowFrameList[[idx]]) <- expr
+      }
+    }
+  }
+
+  outListExperiment[["flowFrameList"]] <- flowFrameList
+  outListExperiment
+}
+
+.simCompareSimCytExperiment <- function(
+    nSample = NULL,
+    nMarker = NULL,
+    nCondition = NULL,
+    nCluster = NULL,
+    nCellByCondition = NULL,
+    transformationFunc = NULL,
+    mixtureType = "gaussianOnly",
+    meanExprMat = NA,
+    clusterLabelVec = NA,
+    probVecUns = NULL,
+    probExact = FALSE,
+    probResponseVecByStimCondition = NULL,
+    samplePerturbationSd = 0,
+    conditionPerturbationSd = 0,
+    clusterPerturbationSd = 0,
+    covEvMin = 1,
+    covEvMax = 2,
+    stimMeanShift = 0,
+    stimSdMultiplier = 1,
+    stimMeanShiftClusters = NULL,
+    stimSdMultiplierClusters = NULL,
+    scenario = NULL) {
+  callArgs <- list(
+    nSample = nSample,
+    nMarker = nMarker,
+    nCondition = nCondition,
+    nCluster = nCluster,
+    nCellByCondition = nCellByCondition,
+    transformationFunc = transformationFunc,
+    mixtureType = mixtureType,
+    meanExprMat = meanExprMat,
+    clusterLabelVec = clusterLabelVec,
+    probVecUns = probVecUns,
+    probExact = probExact,
+    probResponseVecByStimCondition = probResponseVecByStimCondition,
+    samplePerturbationSd = samplePerturbationSd,
+    conditionPerturbationSd = conditionPerturbationSd,
+    clusterPerturbationSd = clusterPerturbationSd,
+    covEvMin = covEvMin,
+    covEvMax = covEvMax,
+    stimMeanShift = stimMeanShift,
+    stimSdMultiplier = stimSdMultiplier,
+    scenario = scenario
+  )
+
+  simcytoArgs <- names(formals(simcyto::simCytExperiment))
+  clusterShiftSupported <- !is.null(simcytoArgs) &&
+    "stimMeanShiftClusters" %in% simcytoArgs
+  clusterSdSupported <- !is.null(simcytoArgs) &&
+    "stimSdMultiplierClusters" %in% simcytoArgs
+
+  if (clusterShiftSupported && !is.null(stimMeanShiftClusters)) {
+    callArgs$stimMeanShiftClusters <- stimMeanShiftClusters
+  }
+  if (clusterSdSupported && !is.null(stimSdMultiplierClusters)) {
+    callArgs$stimSdMultiplierClusters <- stimSdMultiplierClusters
+  }
+
+  result <- do.call(simcyto::simCytExperiment, callArgs)
+
+  .simCompareApplyClusterMismatch(
+    outListExperiment = result,
+    stimMeanShift = stimMeanShift,
+    stimSdMultiplier = stimSdMultiplier,
+    stimMeanShiftClusters = stimMeanShiftClusters,
+    stimSdMultiplierClusters = stimSdMultiplierClusters
+  )
+}
+
 #' @keywords internal
 .simCompareEstimateFromThreshold <- function(
     xStim,
@@ -1029,7 +1175,7 @@
     probVecUns <- c(1 - probResponseUns, probResponseUns)
     probResponseVecByStimCondition <- list(c(-probResponse, probResponse))
 
-    outListExperiment <- simcyto::simCytExperiment(
+    outListExperiment <- .simCompareSimCytExperiment(
       nSample = nSample,
       nMarker = nMarker,
       nCondition = nCondition,
@@ -1924,7 +2070,16 @@
     !requireNamespace("furrr", quietly = TRUE) ||
       !requireNamespace("future", quietly = TRUE)
   ) {
-    stop("Packages 'furrr' and 'future' are required for grid execution.")
+    out_list <- lapply(seq_len(nrow(sim_grid)), function(i) run_one(i, p = NULL))
+    res_tbl <- purrr::list_rbind(out_list)
+    if ("sim_id" %in% names(res_tbl)) {
+      res_tbl <- res_tbl |>
+        dplyr::arrange(
+          .data$sim_id,
+          dplyr::across(dplyr::any_of(c("iter", "sample", "ind", "method")))
+        )
+    }
+    return(res_tbl)
   }
 
   old_plan <- future::plan()
