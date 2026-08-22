@@ -309,6 +309,16 @@ if (sim_grid_n_chunks > 1L) {
 
 ```{r}
 #| label: compare-summary
+if (!exists("compare_raw")) {
+  path_rds <- projr::projr_path_get(
+    "cache",
+    "sim",
+    "compare",
+    "freq_bs_batch",
+    "compare_raw.rds"
+  )
+  compare_raw <- readRDS(path_rds)
+}
 compare_summary <- .simCompareSummariseFreqBs(
   compare_raw,
   scenarioCols = c(
@@ -319,6 +329,7 @@ compare_summary <- .simCompareSummariseFreqBs(
     "sd_increase",
     "transformation",
     "mean_pos_setting",
+    "mean_pos",
     "prob_response",
     "n_cell",
     "scenario_desc",
@@ -332,8 +343,10 @@ compare_summary
 
 ### Mean-shift degradation curves
 
+#### Median
+
 ```{r}
-#| label: plot-mean-shift-degradation
+#| label: plot-mean-shift-degradation-q90
 #| fig-width: 10
 #| fig-height: 8
 summary_mean_shift <- compare_summary |>
@@ -352,18 +365,158 @@ if (nrow(summary_mean_shift) > 0) {
     geom_line(linewidth = 0.8) +
     geom_point(size = 2) +
     facet_wrap(~scenario_desc, scales = "free_y") +
-    scale_y_log10() +
-    theme_bw() +
+    scale_y_continuous(
+      transform = scales::asinh_trans()
+    ) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy", minor = "none") +
+    theme(
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.background = element_rect(fill = "white", color = NA),
+    ) +
     labs(
       title = "Degradation under Stimulated Mean Shift",
       subtitle = "Median Absolute Relative Error vs Mean Shift",
       x = "Stimulated Mean Shift",
       y = "Median Absolute Relative Error (log scale)",
       color = "Method"
+    ) +
+    theme(
+      legend.position = "bottom"
     )
-  print(p_shift)
+  path_p <- projr::projr_path_get(
+    "cache",
+    "sim",
+    "compare",
+    "freq_bs_batch",
+    "mean_shift_degradation_plot.pdf"
+  )
+  ggsave(
+    path_p,
+    p_shift,
+    width = 20,
+    height = 15,
+    units = "cm"
+  )
 }
 ```
+
+#### Max
+
+```{r}
+#| label: plot-mean-shift-degradation-max
+#| fig-width: 10
+#| fig-height: 8
+summary_mean_shift <- compare_summary |>
+  dplyr::filter(mismatch_type == "mean_shift")
+
+if (nrow(summary_mean_shift) > 0) {
+  p_shift_max <- ggplot(
+    summary_mean_shift,
+    aes(
+      x = mismatch_val,
+      y = max_abs_rel_error,
+      color = method,
+      group = method
+    )
+  ) +
+    geom_line(linewidth = 0.8) +
+    geom_point(size = 2) +
+    facet_wrap(~scenario_desc, scales = "free_y") +
+    scale_y_continuous(
+      transform = scales::asinh_trans()
+    ) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy", minor = "none") +
+    theme(
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.background = element_rect(fill = "white", color = NA),
+    ) +
+    labs(
+      title = "Degradation under Stimulated Mean Shift",
+      subtitle = "Maximum Absolute Relative Error vs Mean Shift",
+      x = "Stimulated Mean Shift",
+      y = "Maximum Absolute Relative Error (log scale)",
+      color = "Method"
+    ) +
+    theme(
+      legend.position = "bottom"
+    )
+  path_p <- projr::projr_path_get(
+    "cache",
+    "sim",
+    "compare",
+    "freq_bs_batch",
+    "mean_shift_degradation_plot_max.pdf"
+  )
+  ggsave(
+    path_p,
+    p_shift_90,
+    width = 20,
+    height = 15,
+    units = "cm"
+  )
+}
+```
+
+#### 90-th percentile
+
+```{r}
+#| label: plot-mean-shift-degradation
+#| fig-width: 10
+#| fig-height: 8
+summary_mean_shift <- compare_summary |>
+  dplyr::filter(mismatch_type == "mean_shift")
+
+if (nrow(summary_mean_shift) > 0) {
+  p_shift_90 <- ggplot(
+    summary_mean_shift,
+    aes(
+      x = mismatch_val,
+      y = q90_abs_rel_error,
+      color = method,
+      group = method
+    )
+  ) +
+    geom_line(linewidth = 0.8) +
+    geom_point(size = 2) +
+    facet_wrap(~scenario_desc, scales = "free_y") +
+    scale_y_continuous(
+      transform = scales::asinh_trans()
+    ) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy", minor = "none") +
+    theme(
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.background = element_rect(fill = "white", color = NA),
+    ) +
+    labs(
+      title = "Degradation under Stimulated Mean Shift",
+      subtitle = "90th Percentile Absolute Relative Error vs Mean Shift",
+      x = "Stimulated Mean Shift",
+      y = "90th Percentile Absolute Relative Error (log scale)",
+      color = "Method"
+    ) +
+    theme(
+      legend.position = "bottom"
+    )
+  path_p <- projr::projr_path_get(
+    "cache",
+    "sim",
+    "compare",
+    "freq_bs_batch",
+    "mean_shift_degradation_plot_90.pdf"
+  )
+  ggsave(
+    path_p,
+    p_shift_90,
+    width = 20,
+    height = 15,
+    units = "cm"
+  )
+}
+```
+
 
 ### SD-inflation degradation curves
 
@@ -387,8 +540,16 @@ if (nrow(summary_sd) > 0) {
     geom_line(linewidth = 0.8) +
     geom_point(size = 2) +
     facet_wrap(~scenario_desc, scales = "free_y") +
-    scale_y_log10() +
-    theme_bw() +
+    #scale_y_log10() +
+    scale_y_continuous(
+      transform = scales::asinh_trans()
+    ) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy", minor = "none") +
+    theme(
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.background = element_rect(fill = "white", color = NA),
+    ) +
     labs(
       title = "Degradation under Stimulated SD Inflation",
       subtitle = "Median Absolute Relative Error vs Fractional SD Increase",
@@ -396,7 +557,20 @@ if (nrow(summary_sd) > 0) {
       y = "Median Absolute Relative Error (log scale)",
       color = "Method"
     )
-  print(p_sd)
+  path_p <- projr::projr_path_get(
+    "cache",
+    "sim",
+    "compare",
+    "freq_bs_batch",
+    "sd_inflation_degradation_plot.pdf"
+  )
+  ggsave(
+    path_p,
+    p_sd,
+    width = 20,
+    height = 15,
+    units = "cm"
+  )
 }
 ```
 
