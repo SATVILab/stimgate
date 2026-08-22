@@ -468,30 +468,20 @@
     scenario = scenario
   )
 
-  if (!is.null(stimMeanShiftClusters)) {
+  simcytoArgs <- names(formals(simcyto::simCytExperiment))
+  clusterShiftSupported <- !is.null(simcytoArgs) &&
+    "stimMeanShiftClusters" %in% simcytoArgs
+  clusterSdSupported <- !is.null(simcytoArgs) &&
+    "stimSdMultiplierClusters" %in% simcytoArgs
+
+  if (clusterShiftSupported && !is.null(stimMeanShiftClusters)) {
     callArgs$stimMeanShiftClusters <- stimMeanShiftClusters
   }
-  if (!is.null(stimSdMultiplierClusters)) {
+  if (clusterSdSupported && !is.null(stimSdMultiplierClusters)) {
     callArgs$stimSdMultiplierClusters <- stimSdMultiplierClusters
   }
 
-  result <- tryCatch(
-    do.call(simcyto::simCytExperiment, callArgs),
-    error = function(e) {
-      if (
-        !grepl(
-          "unused argument|unused arguments|unexpected argument|did not match",
-          conditionMessage(e),
-          ignore.case = TRUE
-        )
-      ) {
-        stop(e)
-      }
-      callArgs$stimMeanShiftClusters <- NULL
-      callArgs$stimSdMultiplierClusters <- NULL
-      do.call(simcyto::simCytExperiment, callArgs)
-    }
-  )
+  result <- do.call(simcyto::simCytExperiment, callArgs)
 
   .simCompareApplyClusterMismatch(
     outListExperiment = result,
