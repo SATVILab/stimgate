@@ -81,7 +81,6 @@ if (
 # helper has been loaded.
 for (fn in c(
   "sim-misc.R",
-  "functionsForBenchmarking-Cyt.R",
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-plot.R"
