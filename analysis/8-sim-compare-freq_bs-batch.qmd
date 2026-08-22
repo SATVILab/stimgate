@@ -127,6 +127,7 @@ tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
 tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
+tailgate_x <- "stim"
 
 background_relative_to_response <- 0.2
 n_cell_uns_relative_to_stim <- 1
@@ -349,6 +350,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     tailgateAutoTol = tailgate_auto_tol,
     tailgateMethod = tailgate_method,
     tailgateTol = tailgate_tol,
+    tailgateX = tailgate_x,
     parallel = (n_workers > 1L),
     workers = n_workers,
     dirCache = dir_output,
@@ -458,11 +460,12 @@ compare_summary
 
 ```{r}
 plot_dir <- projr::projr_path_get(
-    "cache",
-    "sim",
-    "compare",
-    "freq_bs_batch",
-    "mean_shift_degradation")
+  "cache",
+  "sim",
+  "compare",
+  "freq_bs_batch",
+  "mean_shift_degradation"
+)
 if (dir.exists(plot_dir)) {
   unlink(plot_dir, recursive = TRUE)
 }
@@ -707,11 +710,12 @@ if (isTRUE(run_plots)) {
 
 ```{r}
 plot_dir <- projr::projr_path_get(
-    "cache",
-    "sim",
-    "compare",
-    "freq_bs_batch",
-    "sd_inflation_degradation")
+  "cache",
+  "sim",
+  "compare",
+  "freq_bs_batch",
+  "sd_inflation_degradation"
+)
 if (dir.exists(plot_dir)) {
   unlink(plot_dir, recursive = TRUE)
 }

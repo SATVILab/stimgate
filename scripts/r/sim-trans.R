@@ -1,17 +1,16 @@
 sim_trans_univariate_one <- function(
-  transformation,
-  n_cell = main_settings$n_cell[[1]],
-  mean_pos = main_settings$mean_pos[[1]],
-  prob_response = main_settings$prob_response[[1]],
-  background_relative_to_response = main_settings$background_relative_to_response[[
-    1
-  ]],
-  prob_exact = main_settings$prob_exact[[1]],
-  mixture_type = main_settings$mixture_type[[1]],
-  cluster_perturbation_sd = main_settings$cluster_perturbation_sd[[1]],
-  cov_ev_min = main_settings$cov_ev_min[[1]],
-  cov_ev_max = main_settings$cov_ev_max[[1]]
-) {
+    transformation,
+    n_cell = main_settings$n_cell[[1]],
+    mean_pos = main_settings$mean_pos[[1]],
+    prob_response = main_settings$prob_response[[1]],
+    background_relative_to_response = main_settings$background_relative_to_response[[
+      1
+    ]],
+    prob_exact = main_settings$prob_exact[[1]],
+    mixture_type = main_settings$mixture_type[[1]],
+    cluster_perturbation_sd = main_settings$cluster_perturbation_sd[[1]],
+    cov_ev_min = main_settings$cov_ev_min[[1]],
+    cov_ev_max = main_settings$cov_ev_max[[1]]) {
   trans_func <- .simMiscGetTrans(transformation)
   attr(trans_func, "sim_transformation") <- transformation
 
@@ -48,11 +47,10 @@ sim_trans_univariate_one <- function(
 }
 
 sim_trans_univariate_experiment_one <- function(
-  transformation,
-  mean_pos,
-  prob_response,
-  settings = NULL
-) {
+    transformation,
+    mean_pos,
+    prob_response,
+    settings = NULL) {
   if (is.null(settings)) {
     stop(
       "settings must be supplied explicitly to sim_trans_univariate_experiment_one()."
@@ -110,19 +108,18 @@ sim_trans_univariate_experiment_one <- function(
 }
 
 sim_trans_bivariate_one <- function(
-  transformation,
-  n_cell = main_settings$n_cell[[1]],
-  mean_pos = main_settings$mean_pos[[1]],
-  prob_response = main_settings$prob_response[[1]],
-  background_relative_to_response = main_settings$background_relative_to_response[[
-    1
-  ]],
-  prob_exact = main_settings$prob_exact[[1]],
-  mixture_type = main_settings$mixture_type[[1]],
-  cluster_perturbation_sd = main_settings$cluster_perturbation_sd[[1]],
-  cov_ev_min = main_settings$cov_ev_min[[1]],
-  cov_ev_max = main_settings$cov_ev_max[[1]]
-) {
+    transformation,
+    n_cell = main_settings$n_cell[[1]],
+    mean_pos = main_settings$mean_pos[[1]],
+    prob_response = main_settings$prob_response[[1]],
+    background_relative_to_response = main_settings$background_relative_to_response[[
+      1
+    ]],
+    prob_exact = main_settings$prob_exact[[1]],
+    mixture_type = main_settings$mixture_type[[1]],
+    cluster_perturbation_sd = main_settings$cluster_perturbation_sd[[1]],
+    cov_ev_min = main_settings$cov_ev_min[[1]],
+    cov_ev_max = main_settings$cov_ev_max[[1]]) {
   trans_func <- .simMiscGetTrans(transformation)
   attr(trans_func, "sim_transformation") <- transformation
 
@@ -188,10 +185,9 @@ sim_trans_bivariate_one <- function(
 }
 
 sim_trans_downsample_for_display <- function(
-  .data,
-  background_n = 12000,
-  response_n = Inf
-) {
+    .data,
+    background_n = 12000,
+    response_n = Inf) {
   background_tbl <- .data |>
     dplyr::filter(.data$response_class == "negative")
 
@@ -226,8 +222,7 @@ make_density_tbl <- function(.data, gamma_range, n = 2048) {
         return(tibble::tibble(F1 = numeric(), density = numeric()))
       }
 
-      bw <- switch(
-        as.character(.y$transformation)[[1]],
+      bw <- switch(as.character(.y$transformation)[[1]],
         "gamma" = 0.025,
         0.15
       )

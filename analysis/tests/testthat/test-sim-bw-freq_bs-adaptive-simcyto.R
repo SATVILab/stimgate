@@ -38,17 +38,16 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
   source(script_bw_plot, local = env)
 
   run_case <- function(
-    seed,
-    transformation,
-    mean_pos,
-    bias_uns,
-    bw_core,
-    bw_extra,
-    bw_fallback,
-    bw_crossover,
-    bw_transition_width,
-    expected_abs_err
-  ) {
+      seed,
+      transformation,
+      mean_pos,
+      bias_uns,
+      bw_core,
+      bw_extra,
+      bw_fallback,
+      bw_crossover,
+      bw_transition_width,
+      expected_abs_err) {
     n_sample <- 2L
     n_condition <- 2L
     n_cell_stim <- 240L

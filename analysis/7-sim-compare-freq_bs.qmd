@@ -157,6 +157,7 @@ tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
 tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
+tailgate_x <- "stim"
 ```
 
 ### Simulation grid
@@ -283,7 +284,8 @@ for (i in seq_len(nrow(sim_grid))) {
     tailgateAdjust = tailgate_adjust,
     tailgateAutoTol = tailgate_auto_tol,
     tailgateMethod = tailgate_method,
-    tailgateTol = tailgate_tol
+    tailgateTol = tailgate_tol,
+    tailgateX = tailgate_x
   ) |>
     dplyr::mutate(
       transformation = sim_grid$transformation[i],
@@ -453,7 +455,8 @@ if (isTRUE(run_simulations) && nrow(sim_grid_run) > 0L) {
               tailgateAdjust = tailgate_adjust,
               tailgateAutoTol = tailgate_auto_tol,
               tailgateMethod = tailgate_method,
-              tailgateTol = tailgate_tol
+              tailgateTol = tailgate_tol,
+              tailgateX = tailgate_x
             ) |>
               dplyr::mutate(
                 transformation = transformation,
@@ -627,7 +630,7 @@ compare_tbl <- compare_list_raw |>
 compare_tbl_focus <- compare_tbl |>
   dplyr::filter(
     method %in% c(
-      "stimgate_loc_sample",
+      "stimgate",
       "fbeta",
       "tailgate"
     )

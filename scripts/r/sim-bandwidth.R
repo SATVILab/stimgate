@@ -52,11 +52,10 @@
 }
 
 .simBandwidthLocDetailGatePoint <- function(
-  detailLevel,
-  locGenerated,
-  locGeneratedDirect,
-  locSource
-) {
+    detailLevel,
+    locGenerated,
+    locGeneratedDirect,
+    locSource) {
   dplyr::case_when(
     detailLevel %in%
       "condition" &
@@ -90,11 +89,10 @@
 }
 
 .simBandwidthHasAdaptiveSetting <- function(
-  bwAdaptive = FALSE,
-  bwAdaptiveCore = NULL,
-  bwAdaptiveExtra = NULL,
-  bwAdaptiveCrossover = NULL
-) {
+    bwAdaptive = FALSE,
+    bwAdaptiveCore = NULL,
+    bwAdaptiveExtra = NULL,
+    bwAdaptiveCrossover = NULL) {
   isTRUE(bwAdaptive) ||
     .simBandwidthFiniteNumeric(bwAdaptiveCore) ||
     .simBandwidthFiniteNumeric(bwAdaptiveExtra) ||
@@ -102,12 +100,11 @@
 }
 
 .simBandwidthAdaptiveBwMtd <- function(
-  bwMtd,
-  bwAdaptive = FALSE,
-  bwAdaptiveCore = NULL,
-  bwAdaptiveExtra = NULL,
-  bwAdaptiveCrossover = NULL
-) {
+    bwMtd,
+    bwAdaptive = FALSE,
+    bwAdaptiveCore = NULL,
+    bwAdaptiveExtra = NULL,
+    bwAdaptiveCrossover = NULL) {
   if (is.null(bwMtd) || length(bwMtd) == 0L) {
     bwMtd <- "hpi1Norm"
   }
@@ -134,10 +131,9 @@
 }
 
 .simBandwidthReadLocDetails <- function(
-  pathProject,
-  nSample,
-  nCondition
-) {
+    pathProject,
+    nSample,
+    nCondition) {
   pathDirIntInit <- file.path(pathProject, "intermediateData", "init")
   if (!dir.exists(pathDirIntInit)) {
     return(tibble::tibble())
@@ -305,64 +301,63 @@
 }
 
 .simBandwidthBsFreq <- function(
-  nSample,
-  nMarker,
-  nCondition,
-  nCluster,
-  nIter,
-  biasUns,
-  bw = NULL,
-  bwAdaptive = FALSE,
-  bwAdaptiveDensityN = NULL,
-  bwAdaptivePadFrac = 0.15,
-  bwAdaptiveCore = NULL,
-  bwAdaptiveExtra = NULL,
-  bwAdaptiveCrossover = NULL,
-  bwAdaptiveTransitionWidth = 0,
-  bwFallback = "auto",
-  bwMin = "auto",
-  bwMax = "auto",
-  bwMtd = "hpi1",
-  bwAdj = 1,
-  bwNcellMin = 1e2,
-  bwNcellMax = 1e5,
-  bwCluster = NULL,
-  probExact = FALSE,
-  nCellStim,
-  probResponse,
-  meanPos,
-  transformation,
-  samplePerturbationSd,
-  conditionPerturbationSd,
-  clusterPerturbationSd,
-  backgroundRelativeToResponse,
-  ncellUnsRelativeToStim,
-  covEvMin = 1,
-  covEvMax = 2,
-  tolClust = NULL,
-  minCell = 1e2,
-  maxPosProbX = Inf,
-  gateQuant = c(0.25, 0.75),
-  locProbCol = "pred",
-  locMinPeakProb = 0.25,
-  locEnforceShapeThreshold = FALSE,
-  locDipAlpha = 0.2,
-  locAntimodeHeightFrac = 1 / 6,
-  locAntimodeLowRel = 0.25,
-  locAntimodeLowAbs = 0.15,
-  locFlatDerivFrac = 1 / 2,
-  locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
-  locMarginalPurityRel = 0.5,
-  locMarginalCellBinRatio = 2,
-  locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
-  gateCombn = "min",
-  calcCytPosGates = FALSE
-) {
+    nSample,
+    nMarker,
+    nCondition,
+    nCluster,
+    nIter,
+    biasUns,
+    bw = NULL,
+    bwAdaptive = FALSE,
+    bwAdaptiveDensityN = NULL,
+    bwAdaptivePadFrac = 0.15,
+    bwAdaptiveCore = NULL,
+    bwAdaptiveExtra = NULL,
+    bwAdaptiveCrossover = NULL,
+    bwAdaptiveTransitionWidth = 0,
+    bwFallback = "auto",
+    bwMin = "auto",
+    bwMax = "auto",
+    bwMtd = "hpi1",
+    bwAdj = 1,
+    bwNcellMin = 1e2,
+    bwNcellMax = 1e5,
+    bwCluster = NULL,
+    probExact = FALSE,
+    nCellStim,
+    probResponse,
+    meanPos,
+    transformation,
+    samplePerturbationSd,
+    conditionPerturbationSd,
+    clusterPerturbationSd,
+    backgroundRelativeToResponse,
+    ncellUnsRelativeToStim,
+    covEvMin = 1,
+    covEvMax = 2,
+    tolClust = NULL,
+    minCell = 1e2,
+    maxPosProbX = Inf,
+    gateQuant = c(0.25, 0.75),
+    locProbCol = "pred",
+    locMinPeakProb = 0.25,
+    locEnforceShapeThreshold = FALSE,
+    locDipAlpha = 0.2,
+    locAntimodeHeightFrac = 1 / 6,
+    locAntimodeLowRel = 0.25,
+    locAntimodeLowAbs = 0.15,
+    locFlatDerivFrac = 1 / 2,
+    locFlatHardDerivFrac = 1 / 4,
+    locLeftLowRel = 0.25,
+    locLeftLowAbs = 0.15,
+    locLeftCellFrac = 0.5,
+    locLeftLengthFrac = 0.5,
+    locMarginalPurityRel = 0.5,
+    locMarginalCellBinRatio = 2,
+    locMarginalRefQuantile = 0.75,
+    locTolRefPeak = "highest",
+    gateCombn = "min",
+    calcCytPosGates = FALSE) {
   bwMtdGate <- .simBandwidthAdaptiveBwMtd(
     bwMtd = bwMtd,
     bwAdaptive = bwAdaptive,
@@ -664,34 +659,33 @@
 
 
 .simBandwidthEstBw <- function(
-  nSample,
-  nMarker,
-  nCondition,
-  nCluster,
-  nIter,
-  biasUns,
-  bw = NULL,
-  bwMtd = "hpi1",
-  bwMin = NULL,
-  bwMax = NULL,
-  bwAdj = 1,
-  bwNcellMin = NULL,
-  bwNcellMax = NULL,
-  bwCluster = NULL,
-  probExact = FALSE,
-  nCellStim,
-  probResponse,
-  meanPos,
-  transformation,
-  samplePerturbationSd,
-  conditionPerturbationSd,
-  clusterPerturbationSd,
-  backgroundRelativeToResponse,
-  ncellUnsRelativeToStim,
-  covEvMin = 1,
-  covEvMax = 2,
-  tolClust = 1e-7
-) {
+    nSample,
+    nMarker,
+    nCondition,
+    nCluster,
+    nIter,
+    biasUns,
+    bw = NULL,
+    bwMtd = "hpi1",
+    bwMin = NULL,
+    bwMax = NULL,
+    bwAdj = 1,
+    bwNcellMin = NULL,
+    bwNcellMax = NULL,
+    bwCluster = NULL,
+    probExact = FALSE,
+    nCellStim,
+    probResponse,
+    meanPos,
+    transformation,
+    samplePerturbationSd,
+    conditionPerturbationSd,
+    clusterPerturbationSd,
+    backgroundRelativeToResponse,
+    ncellUnsRelativeToStim,
+    covEvMin = 1,
+    covEvMax = 2,
+    tolClust = 1e-7) {
   purrr::map_df(seq_len(nIter), function(iterNum) {
     nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
     nCellByCondition <- c(nCellUns, nCellStim)
@@ -802,43 +796,43 @@
 }
 
 .simPlotGate <- function(
-  nSample,
-  nMarker,
-  nCondition,
-  nCluster,
-  nIter,
-  biasUns,
-  bw = NULL,
-  bwAdaptive = FALSE,
-  bwAdaptiveDensityN = NULL,
-  bwAdaptivePadFrac = 0.15,
-  bwAdaptiveCore = NULL,
-  bwAdaptiveExtra = NULL,
-  bwAdaptiveCrossover = NULL,
-  bwAdaptiveTransitionWidth = 0,
-  bwMtd = "hpi1",
-  bwMin = NULL,
-  bwMax = NULL,
-  bwAdj = 1,
-  bwNcellMin = NULL,
-  bwNcellMax = NULL,
-  bwCluster = NULL,
-  probExact = FALSE,
-  nCellStim,
-  probResponse,
-  meanPos,
-  transformation,
-  samplePerturbationSd,
-  conditionPerturbationSd,
-  clusterPerturbationSd,
-  backgroundRelativeToResponse,
-  ncellUnsRelativeToStim,
-  covEvMin = 1,
-  covEvMax = 2,
-  tolClust = 1e-7,
-  locEnforceShapeThreshold = FALSE,
-  markerToPlot = "MarkerF1" # Specify univariate marker here
-) {
+    nSample,
+    nMarker,
+    nCondition,
+    nCluster,
+    nIter,
+    biasUns,
+    bw = NULL,
+    bwAdaptive = FALSE,
+    bwAdaptiveDensityN = NULL,
+    bwAdaptivePadFrac = 0.15,
+    bwAdaptiveCore = NULL,
+    bwAdaptiveExtra = NULL,
+    bwAdaptiveCrossover = NULL,
+    bwAdaptiveTransitionWidth = 0,
+    bwMtd = "hpi1",
+    bwMin = NULL,
+    bwMax = NULL,
+    bwAdj = 1,
+    bwNcellMin = NULL,
+    bwNcellMax = NULL,
+    bwCluster = NULL,
+    probExact = FALSE,
+    nCellStim,
+    probResponse,
+    meanPos,
+    transformation,
+    samplePerturbationSd,
+    conditionPerturbationSd,
+    clusterPerturbationSd,
+    backgroundRelativeToResponse,
+    ncellUnsRelativeToStim,
+    covEvMin = 1,
+    covEvMax = 2,
+    tolClust = 1e-7,
+    locEnforceShapeThreshold = FALSE,
+    markerToPlot = "MarkerF1" # Specify univariate marker here
+    ) {
   bwMtdGate <- .simBandwidthAdaptiveBwMtd(
     bwMtd = bwMtd,
     bwAdaptive = bwAdaptive,
@@ -998,46 +992,45 @@
 #'
 #' @keywords internal
 .simBandwidthEstBwDirect <- function(
-  nSample = 10L,
-  nMarker = 1L,
-  nCondition = 2L,
-  nCluster = 2L,
-  nIter = 10L,
-  biasUns = 0.05,
-  bw = NULL,
-  bwMtd = "hpi1",
-  bwMin = 1e-10,
-  bwMax = 1e10,
-  bwFallback = NULL,
-  bwAdj = 1,
-  bwNcellMin = NULL,
-  bwNcellMax = NULL,
-  bwCluster = NULL, # retained only for signature compatibility
-  tolClust = NULL, # retained only for signature compatibility
-  probExact = TRUE,
-  nCellStim,
-  probResponse,
-  meanPos,
-  transformation,
-  backgroundRelativeToResponse = 0.2,
-  ncellUnsRelativeToStim = 1,
-  covEvMin = 2,
-  covEvMax = 2,
-  excMin = TRUE,
-  capStimRange = TRUE,
-  normPeakFrac = 0.1,
-  normPeakMinRel = 0.75,
-  normExtraFrac = 0.2,
-  normExtraMax = Inf,
-  normExtraJitterFrac = 0.25,
-  normLambda = seq(-2, 2, length.out = 81),
-  normDensityN = 512L,
-  normExcessBwMtd = "hpi3",
-  normExcessNcell = 10000L,
-  normAdaptiveNcell = 2500L,
-  normMtd = "moments",
-  summarise = TRUE
-) {
+    nSample = 10L,
+    nMarker = 1L,
+    nCondition = 2L,
+    nCluster = 2L,
+    nIter = 10L,
+    biasUns = 0.05,
+    bw = NULL,
+    bwMtd = "hpi1",
+    bwMin = 1e-10,
+    bwMax = 1e10,
+    bwFallback = NULL,
+    bwAdj = 1,
+    bwNcellMin = NULL,
+    bwNcellMax = NULL,
+    bwCluster = NULL, # retained only for signature compatibility
+    tolClust = NULL, # retained only for signature compatibility
+    probExact = TRUE,
+    nCellStim,
+    probResponse,
+    meanPos,
+    transformation,
+    backgroundRelativeToResponse = 0.2,
+    ncellUnsRelativeToStim = 1,
+    covEvMin = 2,
+    covEvMax = 2,
+    excMin = TRUE,
+    capStimRange = TRUE,
+    normPeakFrac = 0.1,
+    normPeakMinRel = 0.75,
+    normExtraFrac = 0.2,
+    normExtraMax = Inf,
+    normExtraJitterFrac = 0.25,
+    normLambda = seq(-2, 2, length.out = 81),
+    normDensityN = 512L,
+    normExcessBwMtd = "hpi3",
+    normExcessNcell = 10000L,
+    normAdaptiveNcell = 2500L,
+    normMtd = "moments",
+    summarise = TRUE) {
   if (!identical(as.integer(nMarker), 1L)) {
     stop("This helper currently expects nMarker = 1.")
   }
@@ -1225,50 +1218,49 @@
 #'
 #' @keywords internal
 .simBandwidthEstBwDirectAdaptive <- function(
-  nSample = 10L,
-  nMarker = 1L,
-  nCondition = 2L,
-  nCluster = 2L,
-  nIter = 10L,
-  biasUns = 0.05,
-  bw = NULL,
-  bwMtd = "hpi1",
-  bwMin = 1e-10,
-  bwMax = 1e10,
-  bwFallback = NULL,
-  bwAdj = 1,
-  bwNcellMin = NULL,
-  bwNcellMax = NULL,
-  bwCluster = NULL,
-  tolClust = NULL,
-  probExact = TRUE,
-  nCellStim,
-  probResponse,
-  meanPos,
-  transformation,
-  backgroundRelativeToResponse = 0.2,
-  ncellUnsRelativeToStim = 1,
-  covEvMin = 2,
-  covEvMax = 2,
-  excMin = TRUE,
-  capStimRange = TRUE,
-  normPeakFrac = 0.1,
-  normPeakMinRel = 0.75,
-  normExtraFrac = 0.2,
-  normExtraMax = Inf,
-  normExtraJitterFrac = 0.25,
-  normLambda = seq(-2, 2, length.out = 81),
-  normDensityN = 512L,
-  normExcessBwMtd = "hpi3",
-  normExcessNcell = 10000L,
-  normAdaptiveNcell = 2500L,
-  bwAdaptiveCore = NULL,
-  bwAdaptiveExtra = NULL,
-  bwAdaptiveCrossover = NULL,
-  bwAdaptiveTransitionWidth = 0,
-  normMtd = "moments",
-  summarise = FALSE
-) {
+    nSample = 10L,
+    nMarker = 1L,
+    nCondition = 2L,
+    nCluster = 2L,
+    nIter = 10L,
+    biasUns = 0.05,
+    bw = NULL,
+    bwMtd = "hpi1",
+    bwMin = 1e-10,
+    bwMax = 1e10,
+    bwFallback = NULL,
+    bwAdj = 1,
+    bwNcellMin = NULL,
+    bwNcellMax = NULL,
+    bwCluster = NULL,
+    tolClust = NULL,
+    probExact = TRUE,
+    nCellStim,
+    probResponse,
+    meanPos,
+    transformation,
+    backgroundRelativeToResponse = 0.2,
+    ncellUnsRelativeToStim = 1,
+    covEvMin = 2,
+    covEvMax = 2,
+    excMin = TRUE,
+    capStimRange = TRUE,
+    normPeakFrac = 0.1,
+    normPeakMinRel = 0.75,
+    normExtraFrac = 0.2,
+    normExtraMax = Inf,
+    normExtraJitterFrac = 0.25,
+    normLambda = seq(-2, 2, length.out = 81),
+    normDensityN = 512L,
+    normExcessBwMtd = "hpi3",
+    normExcessNcell = 10000L,
+    normAdaptiveNcell = 2500L,
+    bwAdaptiveCore = NULL,
+    bwAdaptiveExtra = NULL,
+    bwAdaptiveCrossover = NULL,
+    bwAdaptiveTransitionWidth = 0,
+    normMtd = "moments",
+    summarise = FALSE) {
   if (!identical(as.integer(nMarker), 1L)) {
     stop("This helper currently expects nMarker = 1.")
   }
@@ -1447,24 +1439,23 @@
 #'
 #' @keywords internal
 .simBandwidthEstBwDirectGrid <- function(
-  sim_grid,
-  nSample = 10L,
-  nIter = 10L,
-  biasUns = 0.05,
-  bwMin = 1e-10,
-  bwMax = 1e10,
-  bwAdj = 1,
-  bwNcellMin = NULL,
-  bwNcellMax = NULL,
-  probExact = TRUE,
-  backgroundRelativeToResponse = 0.2,
-  ncellUnsRelativeToStim = 1,
-  covEvMin = 2,
-  covEvMax = 2,
-  excMin = TRUE,
-  capStimRange = TRUE,
-  summarise = TRUE
-) {
+    sim_grid,
+    nSample = 10L,
+    nIter = 10L,
+    biasUns = 0.05,
+    bwMin = 1e-10,
+    bwMax = 1e10,
+    bwAdj = 1,
+    bwNcellMin = NULL,
+    bwNcellMax = NULL,
+    probExact = TRUE,
+    backgroundRelativeToResponse = 0.2,
+    ncellUnsRelativeToStim = 1,
+    covEvMin = 2,
+    covEvMax = 2,
+    excMin = TRUE,
+    capStimRange = TRUE,
+    summarise = TRUE) {
   raw_tbl <- purrr::map_dfr(seq_len(nrow(sim_grid)), function(i) {
     row <- sim_grid[i, , drop = FALSE]
 
@@ -1657,31 +1648,30 @@
 }
 
 .simBandwidthBwOne <- function(
-  x,
-  bwMtd,
-  bwMin,
-  bwMax,
-  bwAdj,
-  bwNcellMin,
-  bwNcellMax,
-  bwFallback,
-  normPeakFrac = 0.1,
-  normPeakMinRel = 0.75,
-  normExtraFrac = 0.2,
-  normExtraMax = Inf,
-  normExtraJitterFrac = 0.25,
-  normLambda = seq(-2, 2, length.out = 81),
-  normDensityN = 512L,
-  normExcessBwMtd = "hpi3",
-  normExcessNcell = 10000L,
-  normAdaptiveNcell = 2500L,
-  bwAdaptiveCore = NULL,
-  bwAdaptiveExtra = NULL,
-  bwAdaptiveCrossover = NULL,
-  bwAdaptiveTransitionWidth = 0,
-  normMtd = "moments",
-  adaptive = FALSE
-) {
+    x,
+    bwMtd,
+    bwMin,
+    bwMax,
+    bwAdj,
+    bwNcellMin,
+    bwNcellMax,
+    bwFallback,
+    normPeakFrac = 0.1,
+    normPeakMinRel = 0.75,
+    normExtraFrac = 0.2,
+    normExtraMax = Inf,
+    normExtraJitterFrac = 0.25,
+    normLambda = seq(-2, 2, length.out = 81),
+    normDensityN = 512L,
+    normExcessBwMtd = "hpi3",
+    normExcessNcell = 10000L,
+    normAdaptiveNcell = 2500L,
+    bwAdaptiveCore = NULL,
+    bwAdaptiveExtra = NULL,
+    bwAdaptiveCrossover = NULL,
+    bwAdaptiveTransitionWidth = 0,
+    normMtd = "moments",
+    adaptive = FALSE) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -1746,9 +1736,8 @@
 
 #' @keywords internal
 .simBandwidthRemoveFallbackBw <- function(
-  bw,
-  bwFallback
-) {
+    bw,
+    bwFallback) {
   bw <- suppressWarnings(as.numeric(bw)[1])
 
   if (!is.finite(bw)) {
@@ -1788,12 +1777,11 @@
 
 #' @keywords internal
 .simBandwidthBwOneBaseLegacy <- function(
-  x,
-  bwMtd,
-  bwAdj,
-  bwNcellMin,
-  bwNcellMax
-) {
+    x,
+    bwMtd,
+    bwAdj,
+    bwNcellMin,
+    bwNcellMax) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -1818,8 +1806,7 @@
 
   bwMtdBase <- bwMtd
 
-  bw_calc <- switch(
-    bwMtdBase,
+  bw_calc <- switch(bwMtdBase,
     "nrd0" = try(stats::bw.nrd0(x), silent = TRUE),
     "sj" = try(stats::bw.SJ(x), silent = TRUE),
     {
@@ -1876,10 +1863,9 @@
 
 #' @keywords internal
 .simBandwidthCapForCpUnsLoc <- function(
-  x_stim,
-  x_uns,
-  capStimRange
-) {
+    x_stim,
+    x_uns,
+    capStimRange) {
   if (!capStimRange || length(x_stim) < 2L) {
     return(list(
       x_stim = x_stim,
@@ -1908,8 +1894,7 @@
     return(transformation)
   }
 
-  switch(
-    transformation,
+  switch(transformation,
     "gamma" = simcyto::simCytTransformGamma(),
     "gamma_fixed_mean_and_spread" = ,
     "gammaFixed" = simcyto::simCytTransformGammaFixed(),
