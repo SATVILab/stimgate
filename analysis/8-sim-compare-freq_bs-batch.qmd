@@ -106,7 +106,7 @@ tailgate_method <- "firstDeriv"
 tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
 
-background_relative_to_response <- 0.1
+background_relative_to_response <- 0.2
 n_cell_uns_relative_to_stim <- 1
 
 mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
@@ -352,9 +352,12 @@ compare_summary
 summary_mean_shift <- compare_summary |>
   dplyr::filter(mismatch_type == "mean_shift")
 
-if (nrow(summary_mean_shift) > 0) {
+for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
+  summary_mean_shift_curr <- summary_mean_shift |>
+    dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
+
   p_shift <- ggplot(
-    summary_mean_shift,
+    summary_mean_shift_curr,
     aes(
       x = mismatch_val,
       y = med_abs_rel_error,
@@ -389,7 +392,12 @@ if (nrow(summary_mean_shift) > 0) {
     "sim",
     "compare",
     "freq_bs_batch",
-    "mean_shift_degradation_plot.pdf"
+    paste0(
+      "mean_shift_degradation_plot_",
+      mean_pos_setting_curr,
+      ".pdf"
+    )
+
   )
   ggsave(
     path_p,
@@ -410,9 +418,14 @@ if (nrow(summary_mean_shift) > 0) {
 summary_mean_shift <- compare_summary |>
   dplyr::filter(mismatch_type == "mean_shift")
 
-if (nrow(summary_mean_shift) > 0) {
+summary_mean_shift <- compare_summary |>
+  dplyr::filter(mismatch_type == "mean_shift")
+
+for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
+  summary_mean_shift_curr <- summary_mean_shift |>
+    dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
   p_shift_max <- ggplot(
-    summary_mean_shift,
+    summary_mean_shift_curr,
     aes(
       x = mismatch_val,
       y = max_abs_rel_error,
@@ -447,11 +460,15 @@ if (nrow(summary_mean_shift) > 0) {
     "sim",
     "compare",
     "freq_bs_batch",
-    "mean_shift_degradation_plot_max.pdf"
+    paste0(
+      "mean_shift_degradation_plot_max_",
+      mean_pos_setting_curr,
+      ".pdf"
+    )
   )
   ggsave(
     path_p,
-    p_shift_90,
+    p_shift_max,
     width = 20,
     height = 15,
     units = "cm"
@@ -468,9 +485,11 @@ if (nrow(summary_mean_shift) > 0) {
 summary_mean_shift <- compare_summary |>
   dplyr::filter(mismatch_type == "mean_shift")
 
-if (nrow(summary_mean_shift) > 0) {
+for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
+  summary_mean_shift_curr <- summary_mean_shift |>
+    dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
   p_shift_90 <- ggplot(
-    summary_mean_shift,
+    summary_mean_shift_curr,
     aes(
       x = mismatch_val,
       y = q90_abs_rel_error,
@@ -505,7 +524,11 @@ if (nrow(summary_mean_shift) > 0) {
     "sim",
     "compare",
     "freq_bs_batch",
-    "mean_shift_degradation_plot_90.pdf"
+    paste0(
+      "mean_shift_degradation_plot_q90_",
+      mean_pos_setting_curr,
+      ".pdf"
+    )
   )
   ggsave(
     path_p,
@@ -517,7 +540,6 @@ if (nrow(summary_mean_shift) > 0) {
 }
 ```
 
-
 ### SD-inflation degradation curves
 
 ```{r}
@@ -527,9 +549,11 @@ if (nrow(summary_mean_shift) > 0) {
 summary_sd <- compare_summary |>
   dplyr::filter(mismatch_type == "sd_inflation")
 
-if (nrow(summary_sd) > 0) {
+for (mean_pos_setting_curr in unique(summary_sd$mean_pos_setting)) {
+  summary_sd_curr <- summary_sd |>
+    dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
   p_sd <- ggplot(
-    summary_sd,
+    summary_sd_curr,
     aes(
       x = mismatch_val,
       y = med_abs_rel_error,
@@ -562,7 +586,11 @@ if (nrow(summary_sd) > 0) {
     "sim",
     "compare",
     "freq_bs_batch",
-    "sd_inflation_degradation_plot.pdf"
+     paste0(
+        "sd_inflation_degradation_plot_",
+        mean_pos_setting_curr,
+        ".pdf"
+     )
   )
   ggsave(
     path_p,
