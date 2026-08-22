@@ -675,7 +675,8 @@ Collate the results.
 #| fig-height: 10
 bw_list_path_vec <- .find_bw_list_output_files(
   output_dir = run_ctx$staging_run_dir,
-  cache_dir = run_ctx$current_dir
+  cache_dir = run_ctx$current_dir,
+  allow_cache_fallback = !isTRUE(run_simulations)
 )
 
 if (length(bw_list_path_vec) > 0L) {
@@ -698,26 +699,33 @@ if (length(bw_list_path_vec) > 0L) {
   message("No saved simulation result files found in output; using bw_list_raw from memory.")
   bw_list_raw_collate <- bw_list_raw
 } else {
-  path_vec <- c(
-    if (dir.exists(run_ctx$staging_collated_dir)) {
-      list.files(
-        run_ctx$staging_collated_dir,
-        pattern = "^bw_list_raw([-_]chunk_[0-9]+-of_[0-9]+)?[.]rds$",
-        full.names = TRUE
-      )
-    } else {
-      character(0)
-    },
-    if (dir.exists(file.path(run_ctx$current_dir, "collated"))) {
-      list.files(
-        file.path(run_ctx$current_dir, "collated"),
-        pattern = "^bw_list_raw([-_]chunk_[0-9]+-of_[0-9]+)?[.]rds$",
-        full.names = TRUE
-      )
-    } else {
-      character(0)
-    }
-  )
+  staged_collated_files <- if (dir.exists(run_ctx$staging_collated_dir)) {
+    list.files(
+      run_ctx$staging_collated_dir,
+      pattern = "^bw_list_raw([-_]chunk_[0-9]+-of_[0-9]+)?[.]rds$",
+      full.names = TRUE
+    )
+  } else {
+    character(0)
+  }
+  collated_dir <- if (
+    isTRUE(run_simulations) ||
+      length(staged_collated_files) > 0L
+  ) {
+    run_ctx$staging_collated_dir
+  } else {
+    file.path(run_ctx$current_dir, "collated")
+  }
+
+  path_vec <- if (dir.exists(collated_dir)) {
+    list.files(
+      collated_dir,
+      pattern = "^bw_list_raw([-_]chunk_[0-9]+-of_[0-9]+)?[.]rds$",
+      full.names = TRUE
+    )
+  } else {
+    character(0)
+  }
   path_vec <- path_vec[file.exists(path_vec)]
   if (length(path_vec) == 0L) {
     stop(

@@ -341,3 +341,130 @@ test_that("resuming from existing output reconciles missing completion markers",
   expect_false(file.exists(file_error))
   expect_false(file.exists(file_running))
 })
+
+test_that("concurrent promotion attempts are serialised safely", {
+  env <- .load_runtime_env()
+
+  tmp_project <- tempfile("analysis-runtime-promote-concurrent-")
+  dir.create(tmp_project, recursive = TRUE, showWarnings = FALSE)
+  old_wd <- getwd()
+  setwd(tmp_project)
+  on.exit(setwd(old_wd), add = TRUE)
+  on.exit(unlink(tmp_project, recursive = TRUE, force = TRUE), add = TRUE)
+  writeLines(c("directories:", "  docs:", "    path: docs"), file.path(tmp_project, "_projr.yml"))
+
+  run_id <- "promote-concurrent-run"
+  analysis_key <- c("sim", "analysis-runtime-promote-concurrent")
+  script_path <- script_runtime
+
+  ctx_1 <- env$.analysis_run_context(
+    analysis_key = analysis_key,
+    run_id = run_id,
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 2L
+  )
+  ctx_2 <- env$.analysis_run_context(
+    analysis_key = analysis_key,
+    run_id = run_id,
+    sim_grid_chunk_index = 2L,
+    sim_grid_n_chunks = 2L
+  )
+
+  saveRDS(tibble::tibble(x = 1L), file.path(ctx_1$chunk_output_dir, "bw_list_raw-chunk_001-of_002-sim_id_000001.rds"))
+  saveRDS(tibble::tibble(x = 2L), file.path(ctx_2$chunk_output_dir, "bw_list_raw-chunk_002-of_002-sim_id_000002.rds"))
+
+  env$.analysis_mark_chunk(
+    run_ctx = ctx_1,
+    total_sims = 1L,
+    completed_sims = 1L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+  env$.analysis_mark_chunk(
+    run_ctx = ctx_2,
+    total_sims = 1L,
+    completed_sims = 1L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+
+  expect_true(env$.analysis_can_promote(ctx_1))
+
+  cl <- parallel::makePSOCKcluster(2L)
+  on.exit(parallel::stopCluster(cl), add = TRUE)
+  parallel::clusterExport(
+    cl,
+    varlist = c("tmp_project", "run_id", "analysis_key", "script_path"),
+    envir = environment()
+  )
+
+  res <- parallel::clusterApply(cl, 1:2, function(i) {
+    local_env <- new.env(parent = baseenv())
+    setwd(tmp_project)
+    source(script_path, local = local_env)
+    ctx <- local_env$.analysis_run_context(
+      analysis_key = analysis_key,
+      run_id = run_id,
+      sim_grid_chunk_index = as.integer(i),
+      sim_grid_n_chunks = 2L
+    )
+    tryCatch(
+      as.logical(local_env$.analysis_promote_run(ctx)),
+      error = function(e) FALSE
+    )
+  })
+
+  expect_true(any(unlist(res)))
+  expect_true(dir.exists(ctx_1$current_dir))
+  current_manifest <- readRDS(file.path(ctx_1$current_dir, "manifest.rds"))
+  expect_identical(current_manifest$run_id, run_id)
+
+  status <- env$.analysis_read_status(ctx_1)
+  expect_true(isTRUE(status$promotion_done))
+  expect_identical(status$status, "completed")
+})
+
+test_that("explicit run ID reuses the original dated run directory", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  run_id <- "resume-cross-date"
+  ctx_initial <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-date-reuse"),
+    run_id = run_id,
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 2L
+  )
+
+  target_date <- "1999-12-31"
+  moved_staging_dir <- file.path(ctx_initial$staging_root, target_date, run_id)
+  moved_progress_dir <- file.path(ctx_initial$log_root, target_date, run_id)
+  dir.create(dirname(moved_staging_dir), recursive = TRUE, showWarnings = FALSE)
+  dir.create(dirname(moved_progress_dir), recursive = TRUE, showWarnings = FALSE)
+  expect_true(file.rename(ctx_initial$staging_run_dir, moved_staging_dir))
+  expect_true(file.rename(ctx_initial$progress_run_dir, moved_progress_dir))
+
+  moved_manifest_path <- file.path(moved_staging_dir, "manifest.rds")
+  moved_manifest <- readRDS(moved_manifest_path)
+  moved_manifest$run_date <- target_date
+  moved_manifest$path_staging_run <- moved_staging_dir
+  moved_manifest$path_log_run <- moved_progress_dir
+  saveRDS(moved_manifest, moved_manifest_path)
+  saveRDS(moved_manifest, file.path(moved_progress_dir, "manifest.rds"))
+
+  ctx_resume <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-date-reuse"),
+    run_id = run_id,
+    sim_grid_chunk_index = 2L,
+    sim_grid_n_chunks = 2L
+  )
+
+  expect_identical(ctx_resume$run_date, target_date)
+  expect_identical(ctx_resume$staging_run_dir, moved_staging_dir)
+  expect_identical(ctx_resume$progress_run_dir, moved_progress_dir)
+})

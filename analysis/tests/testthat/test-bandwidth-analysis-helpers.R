@@ -64,7 +64,7 @@ test_that("make_bw_linetype_scale keeps the legacy list contract", {
   expect_equal(lty$values, c("0.5" = "solid", "1" = "84"))
 })
 
-test_that("output discovery checks both active and cache directories", {
+test_that("output discovery prefers active output and does not mix with cache", {
   env <- .load_bw_analysis_env()
   tmp_dir <- tempfile("bw-discovery")
   on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
@@ -86,10 +86,55 @@ test_that("output discovery checks both active and cache directories", {
   saveRDS(2, file_2)
 
   found <- env$.find_bw_list_output_files(output_dir = active_dir, cache_dir = cache_dir)
-  expect_setequal(basename(found), c(
-    "bw_list_raw-chunk_001-of_002-sim_id_000001.rds",
+  expect_equal(basename(found), "bw_list_raw-chunk_001-of_002-sim_id_000001.rds")
+})
+
+test_that("output discovery falls back to cache only when active output is empty", {
+  env <- .load_bw_analysis_env()
+  tmp_dir <- tempfile("bw-discovery-fallback")
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  active_dir <- file.path(tmp_dir, "active-output")
+  cache_dir <- file.path(tmp_dir, "cache", "sim", "bw", "freq_bs", "adaptive", "current")
+  dir.create(active_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(cache_dir, "chunks", "001-of-002", "output"), recursive = TRUE, showWarnings = FALSE)
+
+  file_2 <- file.path(
+    cache_dir,
+    "chunks",
+    "001-of-002",
+    "output",
+    "bw_list_raw-chunk_001-of_002-sim_id_000002.rds"
+  )
+  saveRDS(2, file_2)
+
+  found <- env$.find_bw_list_output_files(output_dir = active_dir, cache_dir = cache_dir)
+  expect_equal(basename(found), "bw_list_raw-chunk_001-of_002-sim_id_000002.rds")
+})
+
+test_that("output discovery can disable cache fallback", {
+  env <- .load_bw_analysis_env()
+  tmp_dir <- tempfile("bw-discovery-no-cache")
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  active_dir <- file.path(tmp_dir, "active-output")
+  cache_dir <- file.path(tmp_dir, "cache", "sim", "bw", "freq_bs", "adaptive", "current")
+  dir.create(active_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(cache_dir, "chunks", "001-of-002", "output"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(2L, file.path(
+    cache_dir,
+    "chunks",
+    "001-of-002",
+    "output",
     "bw_list_raw-chunk_001-of_002-sim_id_000002.rds"
   ))
+
+  found <- env$.find_bw_list_output_files(
+    output_dir = active_dir,
+    cache_dir = cache_dir,
+    allow_cache_fallback = FALSE
+  )
+  expect_identical(found, character(0))
 })
 
 test_that("canonical current results are discoverable for run_simulations = FALSE", {

@@ -115,28 +115,48 @@ path_sim_output <- .path_sim_output
 
 update_progress_summary <- .update_progress_summary
 
-.find_bw_list_output_files <- function(output_dir = NULL, cache_dir = NULL, cache_path = NULL) {
-  output_dir_vec <- unique(c(
-    if (!is.null(output_dir) && nzchar(output_dir)) output_dir else character(),
-    if (!is.null(cache_dir) && nzchar(cache_dir)) cache_dir else character()
-  ))
+.find_bw_list_output_files <- function(
+    output_dir = NULL,
+    cache_dir = NULL,
+    cache_path = NULL,
+    allow_cache_fallback = TRUE,
+    merge_dirs = FALSE) {
+  find_in_dir <- function(path) {
+    if (is.null(path) || !nzchar(path) || !dir.exists(path)) {
+      return(character(0))
+    }
+    list.files(
+      path,
+      pattern = "^bw_list_raw-chunk_[0-9]+-of_[0-9]+-sim_id_[0-9]+[.]rds$",
+      full.names = TRUE,
+      recursive = TRUE
+    )
+  }
 
-  output_dir_vec <- output_dir_vec[dir.exists(output_dir_vec)]
-  if (length(output_dir_vec) == 0L) {
+  if (isTRUE(merge_dirs)) {
+    output_dir_vec <- unique(c(
+      if (!is.null(output_dir) && nzchar(output_dir)) output_dir else character(),
+      if (!is.null(cache_dir) && nzchar(cache_dir)) cache_dir else character()
+    ))
+
+    output_dir_vec <- output_dir_vec[dir.exists(output_dir_vec)]
+    if (length(output_dir_vec) == 0L) {
+      return(character(0))
+    }
+
+    return(unique(unlist(lapply(output_dir_vec, find_in_dir), use.names = FALSE)))
+  }
+
+  files_output <- find_in_dir(output_dir)
+  if (length(files_output) > 0L) {
+    return(unique(files_output))
+  }
+
+  if (!isTRUE(allow_cache_fallback)) {
     return(character(0))
   }
 
-  unique(unlist(lapply(
-    output_dir_vec,
-    function(path) {
-      list.files(
-        path,
-        pattern = "^bw_list_raw-chunk_[0-9]+-of_[0-9]+-sim_id_[0-9]+[.]rds$",
-        full.names = TRUE,
-        recursive = TRUE
-      )
-    }
-  ), use.names = FALSE))
+  unique(find_in_dir(cache_dir))
 }
 
 find_bw_list_output_files <- .find_bw_list_output_files

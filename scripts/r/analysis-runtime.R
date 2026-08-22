@@ -191,6 +191,78 @@
   invisible(TRUE)
 }
 
+.analysis_read_manifest <- function(path) {
+  if (!file.exists(path)) {
+    return(NULL)
+  }
+  tryCatch(readRDS(path), error = function(e) NULL)
+}
+
+.analysis_find_existing_run_manifest <- function(staging_root, run_id) {
+  if (!dir.exists(staging_root)) {
+    return(NULL)
+  }
+
+  date_dir_vec <- list.dirs(staging_root, recursive = FALSE, full.names = TRUE)
+  if (length(date_dir_vec) == 0L) {
+    return(NULL)
+  }
+
+  manifest_path_vec <- file.path(date_dir_vec, run_id, "manifest.rds")
+  manifest_path_vec <- manifest_path_vec[file.exists(manifest_path_vec)]
+
+  if (length(manifest_path_vec) == 0L) {
+    return(NULL)
+  }
+  if (length(manifest_path_vec) > 1L) {
+    stop(
+      "Run ID '", run_id, "' exists under multiple staging dates. ",
+      "Use a new analysis_run_id."
+    )
+  }
+
+  manifest_path <- manifest_path_vec[[1]]
+  manifest <- .analysis_read_manifest(manifest_path)
+  if (is.null(manifest)) {
+    return(NULL)
+  }
+
+  list(
+    manifest = manifest,
+    manifest_path = manifest_path,
+    staging_run_dir = dirname(manifest_path),
+    run_date = basename(dirname(dirname(manifest_path)))
+  )
+}
+
+.analysis_lock_path <- function(run_ctx, lock_name) {
+  file.path(run_ctx$progress_run_dir, paste0(lock_name, ".lock"))
+}
+
+.analysis_acquire_lock <- function(lock_path, timeout_sec = 120, poll_sec = 0.1) {
+  dir.create(dirname(lock_path), recursive = TRUE, showWarnings = FALSE)
+  start <- Sys.time()
+
+  repeat {
+    if (dir.create(lock_path, recursive = FALSE, showWarnings = FALSE)) {
+      return(TRUE)
+    }
+
+    elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
+    if (is.finite(elapsed) && elapsed >= timeout_sec) {
+      return(FALSE)
+    }
+    Sys.sleep(poll_sec)
+  }
+}
+
+.analysis_release_lock <- function(lock_path) {
+  if (dir.exists(lock_path)) {
+    unlink(lock_path, recursive = TRUE, force = TRUE)
+  }
+  invisible(TRUE)
+}
+
 .analysis_run_context <- function(
     analysis_key,
     run_id = NULL,
@@ -218,7 +290,7 @@
   run_id <- run_id[[1]]
 
   start_time <- Sys.time()
-  run_date <- format(start_time, "%Y-%m-%d")
+  run_date_now <- format(start_time, "%Y-%m-%d")
   run_time <- format(start_time, "%H%M%S")
 
   if (requireNamespace("projr", quietly = TRUE)) {
@@ -241,14 +313,29 @@
 
   staging_root <- file.path(sim_root, "staging")
   current_dir <- file.path(sim_root, "current")
-  staging_run_dir <- file.path(staging_root, run_date, run_id)
+  existing_run <- .analysis_find_existing_run_manifest(staging_root, run_id)
+  if (is.null(existing_run)) {
+    run_date <- run_date_now
+    staging_run_dir <- file.path(staging_root, run_date, run_id)
+    progress_run_dir <- file.path(log_root, run_date, run_id)
+  } else {
+    run_date <- existing_run$run_date
+    staging_run_dir <- existing_run$staging_run_dir
+
+    progress_run_dir <- if (
+      !is.null(existing_run$manifest$path_log_run) &&
+        nzchar(as.character(existing_run$manifest$path_log_run))
+    ) {
+      as.character(existing_run$manifest$path_log_run)
+    } else {
+      file.path(log_root, run_date, run_id)
+    }
+  }
 
   chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
   chunk_dir <- file.path(staging_run_dir, "chunks", chunk_label)
   chunk_output_dir <- file.path(chunk_dir, "output")
-  chunk_jobs_dir <- file.path(log_root, run_date, run_id, "jobs", chunk_label)
-
-  progress_run_dir <- file.path(log_root, run_date, run_id)
+  chunk_jobs_dir <- file.path(progress_run_dir, "jobs", chunk_label)
   progress_file <- file.path(progress_run_dir, "progress.txt")
 
   dir.create(staging_run_dir, recursive = TRUE, showWarnings = FALSE)
@@ -439,6 +526,12 @@
     n_outstanding = NULL,
     ended_at = NULL,
     promotion_done = NULL) {
+  lock_path <- .analysis_lock_path(run_ctx, "status-update")
+  if (!.analysis_acquire_lock(lock_path, timeout_sec = 300)) {
+    stop("Timed out acquiring status update lock for run_id: ", run_ctx$run_id)
+  }
+  on.exit(.analysis_release_lock(lock_path), add = TRUE)
+
   st <- .analysis_read_status(run_ctx)
   if (is.null(st)) {
     st <- list(
@@ -463,37 +556,37 @@
   chunk_list <- .analysis_read_chunk_statuses(run_ctx)
   st$chunks <- chunk_list
 
-  if (length(chunk_list) > 0L) {
-    as_nonneg_int <- function(x) {
-      out <- suppressWarnings(as.integer(x))
-      if (length(out) == 0L || is.na(out)) {
-        return(0L)
-      }
-      max(0L, out)
+  as_nonneg_int <- function(x) {
+    out <- suppressWarnings(as.integer(x))
+    if (length(out) == 0L || is.na(out)) {
+      return(0L)
     }
+    max(0L, out)
+  }
 
-    n_completed_agg <- sum(vapply(chunk_list, function(cs) {
+  if (length(chunk_list) > 0L) {
+    st$n_completed <- sum(vapply(chunk_list, function(cs) {
       as_nonneg_int(cs$completed_sims)
     }, integer(1)))
-    n_failed_agg <- sum(vapply(chunk_list, function(cs) {
+    st$n_failed <- sum(vapply(chunk_list, function(cs) {
       as_nonneg_int(cs$failed_sims)
     }, integer(1)))
-    n_outstanding_agg <- sum(vapply(chunk_list, function(cs) {
+    st$n_outstanding <- sum(vapply(chunk_list, function(cs) {
       total <- as_nonneg_int(cs$total_sims)
       done <- as_nonneg_int(cs$completed_sims) + as_nonneg_int(cs$failed_sims)
       as.integer(max(0L, total - done))
     }, integer(1)))
-
-    st$n_completed <- n_completed_agg
-    st$n_failed <- n_failed_agg
-    st$n_outstanding <- n_outstanding_agg
   } else {
     if (!is.null(n_completed)) st$n_completed <- as.integer(n_completed)
     if (!is.null(n_failed)) st$n_failed <- as.integer(n_failed)
     if (!is.null(n_outstanding)) st$n_outstanding <- as.integer(n_outstanding)
   }
 
-  if (!is.null(status)) st$status <- status
+  if (!is.null(status)) {
+    if (!identical(st$status, "completed") || identical(status, "completed")) {
+      st$status <- status
+    }
+  }
   if (!is.null(ended_at)) st$ended_at <- ended_at
   if (!is.null(promotion_done)) st$promotion_done <- isTRUE(promotion_done)
 
@@ -551,27 +644,29 @@
 }
 
 .analysis_can_promote <- function(run_ctx) {
-  st <- .analysis_read_status(run_ctx)
-  if (is.null(st)) {
+  manifest <- .analysis_read_manifest(run_ctx$manifest_path)
+  if (is.null(manifest)) {
     return(FALSE)
   }
 
-  expected <- as.integer(st$expected_n_chunks)
+  expected <- as.integer(manifest$expected_n_chunks)
   if (is.na(expected) || expected < 1L) {
     expected <- 1L
   }
+
+  chunk_list <- .analysis_read_chunk_statuses(run_ctx)
   chunk_labels_expected <- vapply(
     seq_len(expected),
     function(i) .sim_chunk_label(i, expected),
     character(1)
   )
 
-  if (!all(chunk_labels_expected %in% names(st$chunks))) {
+  if (!all(chunk_labels_expected %in% names(chunk_list))) {
     return(FALSE)
   }
 
   for (label in chunk_labels_expected) {
-    cs <- st$chunks[[label]]
+    cs <- chunk_list[[label]]
     if (!isTRUE(cs$is_complete)) {
       return(FALSE)
     }
@@ -600,8 +695,28 @@
 }
 
 .analysis_promote_run <- function(run_ctx) {
+  lock_path <- .analysis_lock_path(run_ctx, "promotion")
+  if (!.analysis_acquire_lock(lock_path, timeout_sec = 300)) {
+    return(invisible(FALSE))
+  }
+  on.exit(.analysis_release_lock(lock_path), add = TRUE)
+
   if (!.analysis_can_promote(run_ctx)) {
     return(invisible(FALSE))
+  }
+
+  current_manifest <- .analysis_read_manifest(file.path(run_ctx$current_dir, "manifest.rds"))
+  if (
+    !is.null(current_manifest) &&
+      identical(as.character(current_manifest$run_id), as.character(run_ctx$run_id))
+  ) {
+    .analysis_update_status(
+      run_ctx = run_ctx,
+      status = "completed",
+      ended_at = Sys.time(),
+      promotion_done = TRUE
+    )
+    return(invisible(TRUE))
   }
 
   complete_path <- file.path(run_ctx$staging_run_dir, "COMPLETE")
