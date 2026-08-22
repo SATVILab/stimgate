@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=5
+#SBATCH --ntasks=10
 #SBATCH --job-name="dev-8-compare-batch"
 #SBATCH --partition=ada
 
