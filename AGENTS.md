@@ -512,6 +512,26 @@ plotting/orchestration code.
     - Collation chunks read cached output RDS files unconditionally so
       downstream summaries and diagnostics work whether simulations just
       ran or were loaded from cache.
+7.  **Run-scoped staging, progress and promotion for expensive analysis
+    simulations (issue \#304)**: Expensive simulation analyses that
+    support resumable per-scenario/per-chunk outputs must use shared
+    run-management helpers from `scripts/r/analysis-runtime.R`:
+    - Treat each logical run as a unique run ID (`analysis_run_id` QMD
+      param or `ANALYSIS_RUN_ID` env var; auto-generated when absent).
+    - Write run outputs to
+      `cache/sim/<analysis-key>/staging/<YYYY-MM-DD>/<run-id>/...` and
+      keep canonical outputs in `cache/sim/<analysis-key>/current/`.
+    - Write run progress/state to
+      `cache/log/analysis/<analysis-key>/<YYYY-MM-DD>/<run-id>/`
+      (`progress.txt`, `manifest.rds`, `status.rds`, chunk/job subdirs).
+    - For external chunking, all chunks of one logical run must use the
+      same run ID and write under the same staged run directory,
+      separated by chunk labels.
+    - Never promote on partial/incomplete runs. Promote only after
+      required chunks are complete and collated outputs validate.
+    - Promotion updates `current/` only after a complete staged run is
+      available; failed/interrupted staged runs remain inspectable and
+      resumable.
 
 ------------------------------------------------------------------------
 
