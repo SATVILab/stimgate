@@ -7,6 +7,9 @@ format:
 execute:
   warning: false
   message: false
+params:
+  run_simulations: true
+  run_plots: false
 ---
 
 ```{r}
@@ -30,6 +33,20 @@ if (requireNamespace("projr", quietly = TRUE)) {
   root_dir <- getwd()
 }
 
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  FALSE
+))
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
 if (
@@ -47,7 +64,6 @@ if (
     }
   }
 }
-scripts_r_dir <- file.path(root_dir, "scripts", "r")
 # Source simulation helpers in dependency order:
 # sim-misc.R must be sourced before sim-trans.R for helper utilities.
 for (fn in c("sim-misc.R", "functionsForBenchmarking-Cyt.R", "sim-trans.R")) {
@@ -99,219 +115,232 @@ Each row corresponds to the low or high transformation-specific `mean_pos` setti
 #| fig-height: 18
 #| fig-cap: "Univariate simulated expression for transformation-specific low and high mean_pos settings. The y-axis is square-root transformed to make the rare response component easier to see."
 
-set.seed(1)
+path_uni_tbl <- projr::projr_path_get("cache", "sim", "trans", "uni_tbl.rds")
 
-uni_grid <- mean_pos_settings_tbl
+if (isTRUE(run_simulations)) {
+  set.seed(1)
 
-uni_tbl <- purrr::pmap_dfr(
-  uni_grid,
-  function(transformation, mean_pos_setting, mean_pos, prob_response) {
-    sim_trans_univariate_experiment_one(
-      transformation = transformation,
-      mean_pos = mean_pos,
-      prob_response = prob_response,
-      settings = main_settings
-    ) |>
-      dplyr::mutate(mean_pos_setting = mean_pos_setting) |>
-      dplyr::mutate(prob_response = prob_response)
-  }
-) |>
-  dplyr::mutate(
-    transformation = factor(
-      .data$transformation,
-      levels = transformation_vec
-    ),
-    mean_pos_setting = factor(
-      .data$mean_pos_setting,
-      levels = c("low", "high")
-    ),
-    mean_pos_lab = paste0(
-      .data$mean_pos_setting,
-      " (mean_pos = ",
-      .data$mean_pos,
-      ")"
-    ),
-    prob_response = factor(
-      .data$prob_response,
-      levels = sort(unique(.data$prob_response))
-    ),
-    condition = factor(
-      .data$condition,
-      levels = c("stimulated", "unstimulated")
-    )
-  )
+  uni_grid <- mean_pos_settings_tbl
 
-gamma_range_vec <- uni_tbl |>
-  dplyr::filter(
-    transformation == "gamma"
+  uni_tbl <- purrr::pmap_dfr(
+    uni_grid,
+    function(transformation, mean_pos_setting, mean_pos, prob_response) {
+      sim_trans_univariate_experiment_one(
+        transformation = transformation,
+        mean_pos = mean_pos,
+        prob_response = prob_response,
+        settings = main_settings
+      ) |>
+        dplyr::mutate(mean_pos_setting = mean_pos_setting) |>
+        dplyr::mutate(prob_response = prob_response)
+    }
   ) |>
-  dplyr::pull(F1) |>
-  range()
-from_gamma <- gamma_range_vec[1] - 0.05 * abs(diff(gamma_range_vec))
-gamma_range <- c(from_gamma, gamma_range_vec[2])
-dens_tbl <- make_density_tbl(uni_tbl, gamma_range) |>
-  dplyr::mutate(
-    transformation = factor(
-      .data$transformation,
-      levels = c("gaussian", "gamma", "skew")
-    ),
-    mean_pos_setting = factor(
-      .data$mean_pos_setting,
-      levels = c("low", "high")
-    ),
-    mean_pos_lab = paste0(
-      .data$mean_pos_setting,
-      " (mean_pos = ",
-      .data$mean_pos,
-      ")"
-    ),
-    prob_response = factor(
-      .data$prob_response,
-      levels = sort(unique(.data$prob_response))
-    ),
-    condition = factor(
-      .data$condition,
-      levels = c("stimulated", "unstimulated")
-    )
-  )
-
-mean_line_tbl <- uni_tbl |>
-  dplyr::filter(
-    (
-      .data$condition == "unstimulated" &
-        .data$response_class == "gn"
-    ) |
-      (
-        .data$condition == "stimulated" &
-          .data$response_class == "gp"
-      )
-  ) |>
-  dplyr::mutate(
-    component = dplyr::case_when(
-      .data$condition == "unstimulated" &
-        .data$response_class == "gn" ~ "negative mean",
-      .data$condition == "stimulated" &
-        .data$response_class == "gp" ~ "positive mean",
-      TRUE ~ NA_character_
-    )
-  ) |>
-  dplyr::group_by(
-    .data$mean_pos_setting,
-    .data$mean_pos,
-    .data$mean_pos_lab,
-    .data$transformation,
-    .data$component
-  ) |>
-  dplyr::summarise(
-    F1 = mean(.data$F1, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-rug_tbl <- uni_tbl |>
-  dplyr::filter(.data$response_class == "gp")
-
-p <- ggplot(
-  dens_tbl |>
     dplyr::mutate(
       transformation = factor(
         .data$transformation,
-        levels = c("gaussian", "skew", "gamma")
+        levels = transformation_vec
       ),
       mean_pos_setting = factor(
         .data$mean_pos_setting,
         levels = c("low", "high")
+      ),
+      mean_pos_lab = paste0(
+        .data$mean_pos_setting,
+        " (mean_pos = ",
+        .data$mean_pos,
+        ")"
+      ),
+      prob_response = factor(
+        .data$prob_response,
+        levels = sort(unique(.data$prob_response))
+      ),
+      condition = factor(
+        .data$condition,
+        levels = c("stimulated", "unstimulated")
       )
-    ),
-  aes(
-    x = .data$F1,
-    y = .data$density,
-    colour = .data$condition,
-    fill = .data$condition
-  )
-) +
-  geom_hline(yintercept = 0, linewidth = 0.25, colour = "gray25") +
-  geom_area(
-    alpha = 0.18,
-    position = "identity"
-  ) +
-  geom_line(linewidth = 0.25, alpha = 0.1) +
-  geom_vline(
-    data = mean_line_tbl,
-    aes(
-      xintercept = .data$F1,
-      linetype = .data$component
-    ),
-    inherit.aes = FALSE,
-    linewidth = 0.6,
-    colour = "gray25"
-  ) +
-  geom_rug(
-    data = rug_tbl,
+    )
+
+  .write_rds_atomic(uni_tbl, path_uni_tbl)
+} else if (file.exists(path_uni_tbl)) {
+  uni_tbl <- readRDS(path_uni_tbl)
+} else {
+  stop("Cached uni_tbl.rds not found. Run simulations first.")
+}
+
+if (isTRUE(run_plots)) {
+  gamma_range_vec <- uni_tbl |>
+    dplyr::filter(
+      transformation == "gamma"
+    ) |>
+    dplyr::pull(F1) |>
+    range()
+  from_gamma <- gamma_range_vec[1] - 0.05 * abs(diff(gamma_range_vec))
+  gamma_range <- c(from_gamma, gamma_range_vec[2])
+  dens_tbl <- make_density_tbl(uni_tbl, gamma_range) |>
+    dplyr::mutate(
+      transformation = factor(
+        .data$transformation,
+        levels = c("gaussian", "gamma", "skew")
+      ),
+      mean_pos_setting = factor(
+        .data$mean_pos_setting,
+        levels = c("low", "high")
+      ),
+      mean_pos_lab = paste0(
+        .data$mean_pos_setting,
+        " (mean_pos = ",
+        .data$mean_pos,
+        ")"
+      ),
+      prob_response = factor(
+        .data$prob_response,
+        levels = sort(unique(.data$prob_response))
+      ),
+      condition = factor(
+        .data$condition,
+        levels = c("stimulated", "unstimulated")
+      )
+    )
+
+  mean_line_tbl <- uni_tbl |>
+    dplyr::filter(
+      (
+        .data$condition == "unstimulated" &
+          .data$response_class == "gn"
+      ) |
+        (
+          .data$condition == "stimulated" &
+            .data$response_class == "gp"
+        )
+    ) |>
+    dplyr::mutate(
+      component = dplyr::case_when(
+        .data$condition == "unstimulated" &
+          .data$response_class == "gn" ~ "negative mean",
+        .data$condition == "stimulated" &
+          .data$response_class == "gp" ~ "positive mean",
+        TRUE ~ NA_character_
+      )
+    ) |>
+    dplyr::group_by(
+      .data$mean_pos_setting,
+      .data$mean_pos,
+      .data$mean_pos_lab,
+      .data$transformation,
+      .data$component
+    ) |>
+    dplyr::summarise(
+      F1 = mean(.data$F1, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  rug_tbl <- uni_tbl |>
+    dplyr::filter(.data$response_class == "gp")
+
+  p <- ggplot(
+    dens_tbl |>
+      dplyr::mutate(
+        transformation = factor(
+          .data$transformation,
+          levels = c("gaussian", "skew", "gamma")
+        ),
+        mean_pos_setting = factor(
+          .data$mean_pos_setting,
+          levels = c("low", "high")
+        )
+      ),
     aes(
       x = .data$F1,
-      colour = .data$condition
-    ),
-    inherit.aes = FALSE,
-    sides = "b",
-    alpha = 0.25,
-    linewidth = 0.15
-  ) +
-  facet_grid(
-    rows = vars(.data$mean_pos_setting),
-    cols = vars(.data$transformation),
-    scales = "free_x",
-    labeller = labeller(
-      transformation = .simMiscGetTransPretty(),
-      mean_pos_setting = .simMiscGetMeanPosPretty()
+      y = .data$density,
+      colour = .data$condition,
+      fill = .data$condition
     )
   ) +
-  scale_y_sqrt() +
-  labs(
-    x = "Marker expression",
-    y = "Density, square-root scale",
-    colour = NULL,
-    fill = NULL,
-    linetype = NULL
-  ) +
-  cowplot::theme_cowplot(
-    font_size = 12
-  ) +
-  cowplot::background_grid(major = "x", minor = "none") +
-  theme(
-    strip.background = element_rect(fill = "white", colour = "gray20"),
-  ) +
-  theme(
-    panel.background = element_rect(fill = "white", colour = NA),
-    plot.background = element_rect(fill = "white", colour = NA),
-    strip.text.y = element_text(angle = 0),
-    # --- Legend Centering Tweaks ---
-    legend.position = "bottom",
-    legend.box = "horizontal", # Places line types and colors next to each other
-    legend.box.just = "center", # Centers the contents within the box
-    legend.justification = "center"
-  ) +
-  coord_cartesian(ylim = c(0, 0.5)) +
-  scale_colour_manual(
-    values = .simMiscGetStimColVec()
-  )
+    geom_hline(yintercept = 0, linewidth = 0.25, colour = "gray25") +
+    geom_area(
+      alpha = 0.18,
+      position = "identity"
+    ) +
+    geom_line(linewidth = 0.25, alpha = 0.1) +
+    geom_vline(
+      data = mean_line_tbl,
+      aes(
+        xintercept = .data$F1,
+        linetype = .data$component
+      ),
+      inherit.aes = FALSE,
+      linewidth = 0.6,
+      colour = "gray25"
+    ) +
+    geom_rug(
+      data = rug_tbl,
+      aes(
+        x = .data$F1,
+        colour = .data$condition
+      ),
+      inherit.aes = FALSE,
+      sides = "b",
+      alpha = 0.25,
+      linewidth = 0.15
+    ) +
+    facet_grid(
+      rows = vars(.data$mean_pos_setting),
+      cols = vars(.data$transformation),
+      scales = "free_x",
+      labeller = labeller(
+        transformation = .simMiscGetTransPretty(),
+        mean_pos_setting = .simMiscGetMeanPosPretty()
+      )
+    ) +
+    scale_y_sqrt() +
+    labs(
+      x = "Marker expression",
+      y = "Density, square-root scale",
+      colour = NULL,
+      fill = NULL,
+      linetype = NULL
+    ) +
+    cowplot::theme_cowplot(
+      font_size = 12
+    ) +
+    cowplot::background_grid(major = "x", minor = "none") +
+    theme(
+      strip.background = element_rect(fill = "white", colour = "gray20"),
+    ) +
+    theme(
+      panel.background = element_rect(fill = "white", colour = NA),
+      plot.background = element_rect(fill = "white", colour = NA),
+      strip.text.y = element_text(angle = 0),
+      # --- Legend Centering Tweaks ---
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      legend.box.just = "center",
+      legend.justification = "center"
+    ) +
+    coord_cartesian(ylim = c(0, 0.5)) +
+    scale_colour_manual(
+      values = .simMiscGetStimColVec()
+    )
 
+  ext_vec <- c("png", "pdf")
+  for (ext in ext_vec) {
+    path_p <- projr::projr_path_get(
+      "cache",
+      "sim",
+      "trans",
+      paste0("mean-pos-grid-univariate.", ext)
+    )
+    ggsave(
+      filename = path_p,
+      plot = p,
+      width = 18,
+      height = 12,
+      units = "cm",
+      dpi = 300
+    )
+  }
 
-ext_vec <- c("png", "pdf")
-for (ext in ext_vec) {
-  path_p <- projr::projr_path_get(
-    "cache",
-    "sim",
-    "trans",
-    paste0("mean-pos-grid-univariate.", ext)
-  )
-  ggsave(
-    filename = path_p,
-    plot = p,
-    width = 18,
-    height = 12,
-    units = "cm",
-    dpi = 300
-  )
+  print(p)
 }
 ```
 

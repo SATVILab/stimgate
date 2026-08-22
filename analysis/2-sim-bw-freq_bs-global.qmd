@@ -81,7 +81,6 @@ if (
 # helper has been loaded.
 for (fn in c(
   "sim-misc.R",
-  "functionsForBenchmarking-Cyt.R",
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-plot.R"
@@ -149,7 +148,7 @@ bandwidth_value_vec <- c(
   0.05, 0.1, 0.15,
   # skew and gaussian
   0.2, 0.25, 0.5, 0.75, 1, 1.25, 1.5
-  )
+)
 
 # StimGate method settings for bandwidth-performance analysis:
 # Cluster refinement (tolClust) is intentionally set to NULL (OFF) to isolate and
@@ -313,7 +312,7 @@ bw_list_raw <- vector("list", nrow(sim_grid_loop))
 for (i in seq_len(nrow(sim_grid_loop))[1]) {
   set.seed(2109)
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid_loop)))
-  
+
   sim_res <- .simBandwidthBsFreq(
     nSample = 5,
     nMarker = 1,
@@ -430,22 +429,20 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
     furrr::future_pmap(
       sim_grid,
-      function(
-        transformation,
-        prob_response,
-        n_cell,
-        mean_pos_setting,
-        mean_pos,
-        bw,
-        bias_uns_setting,
-        bias_uns,
-        sample_perturbation_sd,
-        condition_perturbation_sd,
-        cluster_perturbation_sd,
-        background_relative_to_response,
-        n_cell_uns_relative_to_stim,
-        sim_id
-      ) {
+      function(transformation,
+               prob_response,
+               n_cell,
+               mean_pos_setting,
+               mean_pos,
+               bw,
+               bias_uns_setting,
+               bias_uns,
+               sample_perturbation_sd,
+               condition_perturbation_sd,
+               cluster_perturbation_sd,
+               background_relative_to_response,
+               n_cell_uns_relative_to_stim,
+               sim_id) {
         file_running <- file.path(dir_jobs_chunk, paste0("running-", sim_id))
         file_completed <- file.path(dir_jobs_chunk, paste0("completed-", sim_id))
         file_error <- file.path(dir_jobs_chunk, paste0("error-", sim_id))
@@ -783,7 +780,7 @@ bw_tbl_results_summary <- bw_tbl_results_raw |>
   ) |>
   dplyr::mutate(
     propBsEst_median_diff = propBsEst_median - prob_response,
-    propBsEst_median_diff_rel = (propBsE st_median - prob_response) /
+    propBsEst_median_diff_rel = (propBsEst_median - prob_response) /
       prob_response
   )
 
@@ -839,7 +836,7 @@ filter_tbl_error <- bw_tbl_results_raw |>
 filter_tbl_error |> print(width = Inf)
 
 sim_grid_loop <- sim_grid |>
-  dplyr::inner_join(filter_tbl_error, by = colnames(sim_grid) |> setdiff(c("iter", "sample"))) 
+  dplyr::inner_join(filter_tbl_error, by = colnames(sim_grid) |> setdiff(c("iter", "sample")))
 target_sim_id <- filter_tbl_error$sim_id[[1]]
 target_iter <- filter_tbl_error$iter[[1]]
 target_sample <- filter_tbl_error$sample[[1]]
@@ -926,11 +923,13 @@ debugonce(.getCpUnsLocFilterAntimode)
 #| eval: false
 # plots
 debugonce(.getCpUnsLocGetProbFit)
-dataMod <- .getCpUnsLocGetProb(exTblStimNoMin = exTblStimNoMin, 
-    exTblStimThreshold = exTblStimThreshold, exTblUnsThreshold = exTblUnsThreshold, 
-    exTblUnsBias = exTblUnsBias, stage = stage, bias = bias, 
-    exTblUnsOrig = exTblUnsOrig, pathProject = pathProject, 
-    chnlSettings = chnlSettings)
+dataMod <- .getCpUnsLocGetProb(
+  exTblStimNoMin = exTblStimNoMin,
+  exTblStimThreshold = exTblStimThreshold, exTblUnsThreshold = exTblUnsThreshold,
+  exTblUnsBias = exTblUnsBias, stage = stage, bias = bias,
+  exTblUnsOrig = exTblUnsOrig, pathProject = pathProject,
+  chnlSettings = chnlSettings
+)
 
 # raw densities
 p <- ggplot(densTblRaw, aes(x = xStim, y = dens, color = stim)) +
@@ -965,7 +964,7 @@ plotTblTaut <- tibble::tibble(
 
 # Plot using geom_step() instead of geom_line()
 p <- ggplot(plotTblTaut, aes(x = x, y = y)) +
-  geom_step() + 
+  geom_step() +
   cowplot::theme_cowplot() +
   theme(
     plot.background = element_rect(fill = "white", color = NA),
@@ -1153,7 +1152,7 @@ p3 <- ggplot(plotTblNCellResp, aes(x = bin, y = n_cell_resp, col = resp_type)) +
   )
 
 p_grid <- cowplot::plot_grid(
-  p0, p1, p2, p3, 
+  p0, p1, p2, p3,
   ncol = 2,
   labels = c("A", "B", "C", "D"),
   label_size = 12,
@@ -1313,7 +1312,8 @@ if (isTRUE(run_plots)) {
           mean_pos_setting_curr,
           "_bias_uns_",
           bias_uns_setting_curr,
-          ".png")
+          ".png"
+        )
       )
       dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
       ggsave(
@@ -1334,7 +1334,7 @@ Okay, now, let's do the same plot but where we show the actual frequencies. We'l
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
     for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
-      for(condition_perturbation_sd_curr in unique(bw_tbl_results_raw$condition_perturbation_sd)) {
+      for (condition_perturbation_sd_curr in unique(bw_tbl_results_raw$condition_perturbation_sd)) {
         plot_tbl <- bw_tbl_results_raw |>
           dplyr::filter(
             mean_pos_setting == !!mean_pos_setting_curr,
@@ -1400,7 +1400,8 @@ if (isTRUE(run_plots)) {
             mean_pos_setting_curr,
             "_bias_uns_",
             bias_uns_setting_curr,
-            ".png")
+            ".png"
+          )
         )
         dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
         ggsave(
@@ -1417,11 +1418,11 @@ if (isTRUE(run_plots)) {
 ```
 
 ```{r}
- bw_tbl_results_raw |>
+bw_tbl_results_raw |>
   dplyr::filter(
     mean_pos_setting == "high",
     bias_uns_setting == "low"
-  ) |> 
+  ) |>
   dplyr::group_by(transformation, n_cell, bw, condition_perturbation_sd, prob_response) |>
   dplyr::summarise(
     perc_g_005 = sum(propBsEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
@@ -1444,12 +1445,11 @@ Can't we, for example, compare the average error to the mean?
 
 ```{r}
 for (mean_pos_setting_curr in unique(mean_pos_settings_tbl$mean_pos_setting)) {
-
   err_rel_tbl <- bw_tbl_results_raw |>
     dplyr::filter(
       mean_pos_setting == mean_pos_setting_curr,
       bias_uns_setting == "low"
-    ) |> 
+    ) |>
     dplyr::group_by(transformation, n_cell, bw, condition_perturbation_sd, prob_response) |>
     dplyr::summarise(
       err_rel_median = median(abs(propBsEst - prob_response) / prob_response, na.rm = TRUE),
@@ -1498,11 +1498,11 @@ for (mean_pos_setting_curr in unique(mean_pos_settings_tbl$mean_pos_setting)) {
             "gaussian",
             "skew",
             "gamma"
-        )
+          )
         )
       ),
     aes(x = factor(bw), y = err_value, color = err_type, group = err_type)
-    ) +
+  ) +
     geom_line() +
     geom_point() +
     cowplot::theme_cowplot() +
@@ -1519,25 +1519,26 @@ for (mean_pos_setting_curr in unique(mean_pos_settings_tbl$mean_pos_setting)) {
     ) +
     expand_limits(y = 0) +
     facet_wrap(
-      ~ transformation,
+      ~transformation,
       scales = "free",
       labeller = labeller(
-      transformation = c(
-        gamma = "Gamma",
-        gaussian = "Gaussian",
-        skew = "Skew"
+        transformation = c(
+          gamma = "Gamma",
+          gaussian = "Gaussian",
+          skew = "Skew"
+        )
       )
-    )) +
+    ) +
     scale_colour_manual(
       values = c(
         "err_rel_median_avg" = "#0072B2",
-        "err_rel_95_avg"   = "#56B4E9",
-        "err_rel_max_avg"  = "#8C8DBA"
+        "err_rel_95_avg" = "#56B4E9",
+        "err_rel_max_avg" = "#8C8DBA"
       ),
       labels = c(
         "err_rel_median_avg" = "Median",
-        "err_rel_95_avg"   = "95th percentile",
-        "err_rel_max_avg"  = "Maximum"
+        "err_rel_95_avg" = "95th percentile",
+        "err_rel_max_avg" = "Maximum"
       )
     ) +
     theme(
@@ -1569,11 +1570,11 @@ for (mean_pos_setting_curr in unique(mean_pos_settings_tbl$mean_pos_setting)) {
 ```
 
 ```{r}
- bw_tbl_results_raw |>
+bw_tbl_results_raw |>
   dplyr::filter(
     mean_pos_setting == "high",
     bias_uns_setting == "low"
-  ) |> 
+  ) |>
   dplyr::group_by(transformation, n_cell, bw, sample_perturbation_sd, condition_perturbation_sd, cluster_perturbation_sd) |>
   dplyr::summarise(
     perc_g_005 = sum(propBsEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
@@ -1590,7 +1591,7 @@ for (mean_pos_setting_curr in unique(mean_pos_settings_tbl$mean_pos_setting)) {
 ```
 
 ```{r}
- bw_tbl_results_raw |>
+bw_tbl_results_raw |>
   dplyr::filter(
     mean_pos_setting == "high",
     bias_uns_setting == "low"
@@ -1607,7 +1608,7 @@ for (mean_pos_setting_curr in unique(mean_pos_settings_tbl$mean_pos_setting)) {
     perc_g_5 = sum(propBsEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
     .groups = "drop"
   ) |>
-  dplyr::arrange(condition_perturbation_sd, sample_perturbation_sd, cluster_perturbation_sd, n_cell, bw) 
+  dplyr::arrange(condition_perturbation_sd, sample_perturbation_sd, cluster_perturbation_sd, n_cell, bw)
 ```
 ```
 
@@ -1636,7 +1637,7 @@ if (isTRUE(run_plots)) {
           prob_response = prob_response
         )
     }
-  ) 
+  )
   transformation_vec <- c("gaussian", "gamma", "skew")
   mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 
@@ -1664,7 +1665,7 @@ if (isTRUE(run_plots)) {
         )
       }
     }
-    
+
 
     n_bw <- length(bw_num)
 
@@ -1779,13 +1780,13 @@ if (isTRUE(run_plots)) {
       p <- ggplot() +
         geom_area(
           data = dens_tbl_curr,
-          mapping = aes(x = F1, y=  density, colour = condition, fill = condition),
+          mapping = aes(x = F1, y = density, colour = condition, fill = condition),
           alpha = 0.18,
           position = "identity"
         ) +
         geom_line(
           data = dens_tbl_curr,
-          mapping = aes(x = F1, y=  density, colour = condition),
+          mapping = aes(x = F1, y = density, colour = condition),
           linewidth = 0.25
         ) +
         geom_rug(
@@ -1851,7 +1852,8 @@ if (isTRUE(run_plots)) {
           mean_pos_setting,
           "_bias_uns_",
           bias_uns_setting_curr,
-          ".png")
+          ".png"
+        )
       )
       ggsave(
         filename = path_p,
@@ -1859,7 +1861,7 @@ if (isTRUE(run_plots)) {
         width = 18,
         height = 30,
         units = "cm"
-      ) 
+      )
     }
   }
 }
@@ -1937,13 +1939,13 @@ if (isTRUE(run_plots)) {
         p <- ggplot() +
           geom_area(
             data = dens_tbl_curr,
-            mapping = aes(x = F1, y=  density, colour = condition, fill = condition),
+            mapping = aes(x = F1, y = density, colour = condition, fill = condition),
             alpha = 0.18,
             position = "identity"
           ) +
           geom_line(
             data = dens_tbl_curr,
-            mapping = aes(x = F1, y=  density, colour = condition),
+            mapping = aes(x = F1, y = density, colour = condition),
             linewidth = 0.25
           ) +
           geom_rug(

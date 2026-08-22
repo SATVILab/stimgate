@@ -385,14 +385,21 @@ QMD runtime or unrelated plotting/orchestration code.
    `.gateBatchAll()`, but the current local-FDR cluster quantile implementation does
    not consume `gateTblCtrl`, so this branch is dead plumbing for current outputs.
    Single-positive gating branches have been removed per issue #196.
-5. **Simulation engine migration to `simcyto` (issues #288/#289/#295 / umbrella #271)**:
+5. **Simulation engine migration to `simcyto` (issues #288/#289/#291/#295 / umbrella #271)**:
    Generic cytometry simulations, post-simulation transformations, and condition-mismatch
    controls are progressively migrating to the exported `simcyto` package API (e.g.
-   `simcyto::simCytExperiment()`, `simcyto::simCytTransform*()`). `analysis/3-sim-bw-est-base.qmd`,
-   `analysis/7-sim-compare-freq_bs.qmd`, and `analysis/8-sim-compare-freq_bs-batch.qmd` use
-   `simcyto` and do not source `functionsForBenchmarking-Cyt.R`. StimGate scientific scenario
-   calculations, downstream comparison orchestration, and method evaluations remain
-   StimGate-side under `scripts/r/`.
+   `simcyto::simCytExperiment()`, `simcyto::simCytTransform*()`). `analysis/2-sim-bw-freq_bs-global.qmd`,
+   `analysis/3-sim-bw-est-base.qmd`, `analysis/7-sim-compare-freq_bs.qmd`, and
+   `analysis/8-sim-compare-freq_bs-batch.qmd` use `simcyto` and do not source
+   `functionsForBenchmarking-Cyt.R`. StimGate scientific scenario calculations, downstream
+   comparison orchestration, and method evaluations remain StimGate-side under `scripts/r/`.
+6. **Standardised simulation and plotting controls across analysis QMDs (issue #299)**:
+   All analysis QMDs follow a unified execution control pattern sourced from `scripts/r/analysis-runtime.R`:
+   - YAML headers declare `params: run_simulations: true, run_plots: false` (along with any chunking parameters).
+   - Setup chunks initialise `run_simulations` (defaulting to `FALSE` in interactive execution) and `run_plots` (defaulting to `TRUE` in interactive execution) via `.as_flag(.get_qmd_param_env(...))`.
+   - Environment variables `RUN_SIMULATIONS` and `RUN_PLOTS` override YAML parameters and interactive default values.
+   - Expensive simulation chunks are guarded with `if (isTRUE(run_simulations))`, and plotting chunks are guarded with `if (isTRUE(run_plots))`.
+   - Collation chunks read cached output RDS files unconditionally so downstream summaries and diagnostics work whether simulations just ran or were loaded from cache.
 
 ---
 

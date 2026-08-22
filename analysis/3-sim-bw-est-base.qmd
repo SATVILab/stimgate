@@ -4,6 +4,9 @@ format:
   html:
     embed-resources: true
     toc: true
+params:
+  run_simulations: true
+  run_plots: false
 ---
 
 ```{r}
@@ -16,6 +19,21 @@ library(progressr)
 
 # Find the build directory root
 root_dir <- projr::projr_path_get("project")
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  FALSE
+))
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
 if (
@@ -29,7 +47,6 @@ if (
     source(fn)
   }
 }
-scripts_r_dir <- file.path(root_dir, "scripts", "r")
 # Source simulation helpers in dependency order:
 # sim-misc.R must be sourced before sim-bandwidth.R for simulation utilities.
 for (fn in c(
@@ -287,82 +304,136 @@ if (dir.exists(dir_jobs)) {
 }
 dir.create(dir_jobs, recursive = TRUE, showWarnings = FALSE)
 
-# 3. Setup parallel plan
-future::plan(
-  future::multisession,
-  workers = max(1, .simGetCores())
-)
+bw_list_raw_mtd <- list()
 
-# Total number of iterations
-total_sims <- nrow(sim_grid)
+if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
+  # 3. Setup parallel plan
+  future::plan(
+    future::multisession,
+    workers = max(1, .simGetCores())
+  )
 
-bw_list_raw_mtd <- progressr::with_progress({
-  p <- progressr::progressor(steps = total_sims)
+  # Total number of iterations
+  total_sims <- nrow(sim_grid)
 
-  furrr::future_pmap(
-    sim_grid,
-    function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos, bw_mtd, bias_uns_setting, bias_uns, sim_id) {
-      settings_row <- paste0(
-        "trans = ",
-        transformation,
-        " | prob = ",
-        prob_response,
-        " | n_cell = ",
-        n_cell,
-        " | mean = ",
-        mean_pos,
-        " | bw_mtd = ",
-        bw_mtd,
-        " | bias_uns_setting = ",
-        bias_uns_setting,
-        " | bias_uns = ",
-        bias_uns,
-        " | sim_id = ",
-        sim_id
-      )
+  bw_list_raw_mtd <- progressr::with_progress({
+    p <- progressr::progressor(steps = total_sims)
 
-      # Define file markers for this specific simulation
-      file_running <- file.path(dir_jobs, paste0("running-", sim_id))
-      file_completed <- file.path(dir_jobs, paste0("completed-", sim_id))
-      file_error <- file.path(dir_jobs, paste0("error-", sim_id))
+    furrr::future_pmap(
+      sim_grid,
+      function(transformation, prob_response, n_cell, mean_pos_setting, mean_pos, bw_mtd, bias_uns_setting, bias_uns, sim_id) {
+        settings_row <- paste0(
+          "trans = ",
+          transformation,
+          " | prob = ",
+          prob_response,
+          " | n_cell = ",
+          n_cell,
+          " | mean = ",
+          mean_pos,
+          " | bw_mtd = ",
+          bw_mtd,
+          " | bias_uns_setting = ",
+          bias_uns_setting,
+          " | bias_uns = ",
+          bias_uns,
+          " | sim_id = ",
+          sim_id
+        )
 
-      # --- START WORKER PROCESS ---
-      # Mark as running
-      file.create(file_running)
-      .update_progress_summary(
-        path_progress_file = path_progress_file,
-        dir_jobs_chunk = dir_jobs,
-        total_sims = total_sims,
-        heading = "SIMULATION PROGRESS DASHBOARD"
-      )
+        # Define file markers for this specific simulation
+        file_running <- file.path(dir_jobs, paste0("running-", sim_id))
+        file_completed <- file.path(dir_jobs, paste0("completed-", sim_id))
+        file_error <- file.path(dir_jobs, paste0("error-", sim_id))
 
-      out <- tryCatch(
-        {
-          sim_res <- .simBandwidthEstBwDirect(
-            nSample = 50,
-            nMarker = 1,
-            nCondition = 2,
-            nCluster = 2,
-            nIter = 1,
-            biasUns = bias_uns,
-            bwMtd = bw_mtd,
-            bwFallback = bw_fallback,
-            bwMin = -Inf,
-            bwMax = Inf,
-            bwCluster = 0.5,
-            nCellStim = n_cell,
-            probResponse = prob_response,
-            probExact = TRUE,
-            meanPos = mean_pos,
-            transformation = transformation,
-            backgroundRelativeToResponse = 0.2,
-            ncellUnsRelativeToStim = 1,
-            covEvMin = 1.5,
-            covEvMax = 1.5,
-            tolClust = NULL,
-            summarise = FALSE
-          ) |>
-            dplyr::mutate(
+        # --- START WORKER PROCESS ---
+        # Mark as running
+        file.create(file_running)
+        .update_progress_summary(
+          path_progress_file = path_progress_file,
+          dir_jobs_chunk = dir_jobs,
+          total_sims = total_sims,
+          heading = "SIMULATION PROGRESS DASHBOARD"
+        )
+
+        out <- tryCatch(
+          {
+            sim_res <- .simBandwidthEstBwDirect(
+              nSample = 50,
+              nMarker = 1,
+              nCondition = 2,
+              nCluster = 2,
+              nIter = 1,
+              biasUns = bias_uns,
+              bwMtd = bw_mtd,
+              bwFallback = bw_fallback,
+              bwMin = -Inf,
+              bwMax = Inf,
+              bwCluster = 0.5,
+              nCellStim = n_cell,
+              probResponse = prob_response,
+              probExact = TRUE,
+              meanPos = mean_pos,
+              transformation = transformation,
+              backgroundRelativeToResponse = 0.2,
+              ncellUnsRelativeToStim = 1,
+              covEvMin = 1.5,
+              covEvMax = 1.5,
+              tolClust = NULL,
+              summarise = FALSE
+            ) |>
+              dplyr::mutate(
+                transformation = transformation,
+                prob_response = prob_response,
+                n_cell = n_cell,
+                mean_pos_setting = mean_pos_setting,
+                mean_pos = mean_pos,
+                bw_mtd = bw_mtd,
+                bias_uns_setting = bias_uns_setting,
+                bias_uns = bias_uns,
+                sim_id = sim_id
+              ) |>
+              dplyr::select(
+                transformation,
+                prob_response,
+                n_cell,
+                mean_pos_setting,
+                mean_pos,
+                bw_mtd,
+                bias_uns_setting,
+                bias_uns,
+                sim_id,
+                dplyr::everything()
+              )
+
+            # Move marker from running to completed
+            file.create(file_completed)
+            if (file.exists(file_running)) file.remove(file_running)
+
+            .update_progress_summary(
+              path_progress_file = path_progress_file,
+              dir_jobs_chunk = dir_jobs,
+              total_sims = total_sims,
+              heading = "SIMULATION PROGRESS DASHBOARD"
+            )
+            p(sprintf("Completed sim_id: %s", sim_id))
+
+            sim_res
+          },
+          error = function(e) {
+            # Move marker from running to error
+            file.create(file_error)
+            if (file.exists(file_running)) file.remove(file_running)
+
+            .update_progress_summary(
+              path_progress_file = path_progress_file,
+              dir_jobs_chunk = dir_jobs,
+              total_sims = total_sims,
+              heading = "SIMULATION PROGRESS DASHBOARD"
+            )
+            p(sprintf("ERROR on sim_id: %s", sim_id))
+
+            tibble::tibble(
               transformation = transformation,
               prob_response = prob_response,
               n_cell = n_cell,
@@ -371,98 +442,44 @@ bw_list_raw_mtd <- progressr::with_progress({
               bw_mtd = bw_mtd,
               bias_uns_setting = bias_uns_setting,
               bias_uns = bias_uns,
-              sim_id = sim_id
-            ) |>
-            dplyr::select(
-              transformation,
-              prob_response,
-              n_cell,
-              mean_pos_setting,
-              mean_pos,
-              bw_mtd,
-              bias_uns_setting,
-              bias_uns,
-              sim_id,
-              dplyr::everything()
+              sim_id = sim_id,
+              iter = NA_integer_,
+              chnl = NA_character_,
+              sample = NA_character_,
+              ind = NA_character_,
+              bw_uns = NA_real_,
+              bw_stim = NA_real_,
+              bw = NA_real_,
+              bw_source = NA_character_,
+              error = e$message
             )
+          }
+        )
 
-          # Move marker from running to completed
-          file.create(file_completed)
-          if (file.exists(file_running)) file.remove(file_running)
+        out
+      },
+      .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+    )
+  })
 
-          .update_progress_summary(
-            path_progress_file = path_progress_file,
-            dir_jobs_chunk = dir_jobs,
-            total_sims = total_sims,
-            heading = "SIMULATION PROGRESS DASHBOARD"
-          )
-          p(sprintf("Completed sim_id: %s", sim_id))
+  future::plan(future::sequential)
 
-          sim_res
-        },
-        error = function(e) {
-          # Move marker from running to error
-          file.create(file_error)
-          if (file.exists(file_running)) file.remove(file_running)
-
-          .update_progress_summary(
-            path_progress_file = path_progress_file,
-            dir_jobs_chunk = dir_jobs,
-            total_sims = total_sims,
-            heading = "SIMULATION PROGRESS DASHBOARD"
-          )
-          p(sprintf("ERROR on sim_id: %s", sim_id))
-
-          tibble::tibble(
-            transformation = transformation,
-            prob_response = prob_response,
-            n_cell = n_cell,
-            mean_pos_setting = mean_pos_setting,
-            mean_pos = mean_pos,
-            bw_mtd = bw_mtd,
-            bias_uns_setting = bias_uns_setting,
-            bias_uns = bias_uns,
-            sim_id = sim_id,
-            iter = NA_integer_,
-            chnl = NA_character_,
-            sample = NA_character_,
-            ind = NA_character_,
-            bw_uns = NA_real_,
-            bw_stim = NA_real_,
-            bw = NA_real_,
-            bw_source = NA_character_,
-            error = e$message
-          )
-        }
-      )
-
-      out
-    },
-    .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+  .write_rds_atomic(
+    bw_list_raw_mtd,
+    file = projr::projr_path_get(
+      "cache",
+      "sim",
+      "bw",
+      "est",
+      "base",
+      "bw_list_raw_mtd.rds"
+    )
   )
-})
-
-future::plan(future::sequential)
-
-dir.create(
-  dirname(projr::projr_path_get(
-    "cache", "sim", "bw", "est", "base", "bw_list_raw_mtd.rds"
-  )),
-  recursive = TRUE,
-  showWarnings = FALSE
-)
-
-saveRDS(
-  bw_list_raw_mtd,
-  file = projr::projr_path_get(
-    "cache",
-    "sim",
-    "bw",
-    "est",
-    "base",
-    "bw_list_raw_mtd.rds"
-  )
-)
+} else if (isTRUE(run_simulations)) {
+  message("No simulations assigned to this chunk.")
+} else {
+  message("Skipping simulations because run_simulations is FALSE.")
+}
 ```
 
 Collate the results.
@@ -555,98 +572,98 @@ bw_tbl_results <- bw_tbl |>
     dplyr::any_of(colnames(sim_grid)), mean_bw
   )
 
-for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
-  for (bias_uns_setting_curr in unique(bw_tbl_results$bias_uns_setting)) {
-    plot_tbl <- bw_tbl_results |>
-      dplyr::filter(
-        mean_pos_setting == !!mean_pos_setting_curr,
-        bias_uns_setting == !!bias_uns_setting_curr
-      )
-
-    if (nrow(plot_tbl) == 0L) next
-
-    plot_tbl <- plot_tbl |>
-      dplyr::mutate(
-        bw_mtd = factor(
-          bw_mtd,
-          levels = c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
-        ),
-        transformation = factor(
-          transformation,
-          levels = c("gaussian", "skew", "gamma")
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
+    for (bias_uns_setting_curr in unique(bw_tbl_results$bias_uns_setting)) {
+      plot_tbl <- bw_tbl_results |>
+        dplyr::filter(
+          mean_pos_setting == !!mean_pos_setting_curr,
+          bias_uns_setting == !!bias_uns_setting_curr
         )
-      )
 
-    p <- ggplot(
-      plot_tbl,
-      aes(x = n_cell, y = mean_bw, color = bw_mtd)
-    ) +
-      geom_line() +
-      geom_point() +
-      facet_grid(
-        transformation ~ prob_response,
-        scales = "free_y",
-        labeller = labeller(
-          transformation = c(
-            gamma = "Gamma",
-            gaussian = "Gaussian",
-            skew = "Skew"
+      if (nrow(plot_tbl) == 0L) next
+
+      plot_tbl <- plot_tbl |>
+        dplyr::mutate(
+          bw_mtd = factor(
+            bw_mtd,
+            levels = c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
+          ),
+          transformation = factor(
+            transformation,
+            levels = c("gaussian", "skew", "gamma")
           )
         )
+
+      p <- ggplot(
+        plot_tbl,
+        aes(x = n_cell, y = mean_bw, color = bw_mtd)
       ) +
-      labs(
-        x = "Number of Cells",
-        y = "Estimated Bandwidth",
-        colour = "Bandwidth Method"
-      ) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy") +
-      theme(
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA),
-        legend.position = "bottom"
-      ) +
-      theme(
-        strip.background = element_rect(fill = "white", color = "black")
-      ) +
-      scale_colour_manual(
-        values = .simBwMtdColVec,
-        labels = .simBwMtdLabVec
-      ) +
-      theme(
-        panel.background = element_rect(fill = "white", colour = NA),
-        plot.background = element_rect(fill = "white", colour = NA),
-        legend.position = "bottom",
-        legend.justification = "center",
-        legend.box.just = "center"
-      ) +
-      scale_x_log10(
-        breaks = c(1e3, 1e4, 1e5),
-        labels = scales::label_comma()
-      ) +
-      # theme(
-      #   axis.text.x = element_text(angle = 45, hjust = 1)
-      # ) +
-      theme(
-        panel.spacing.x = unit(0.9, "cm")
+        geom_line() +
+        geom_point() +
+        facet_grid(
+          transformation ~ prob_response,
+          scales = "free_y",
+          labeller = labeller(
+            transformation = c(
+              gamma = "Gamma",
+              gaussian = "Gaussian",
+              skew = "Skew"
+            )
+          )
+        ) +
+        labs(
+          x = "Number of Cells",
+          y = "Estimated Bandwidth",
+          colour = "Bandwidth Method"
+        ) +
+        cowplot::theme_cowplot() +
+        cowplot::background_grid(major = "xy") +
+        theme(
+          panel.background = element_rect(fill = "white", color = NA),
+          plot.background = element_rect(fill = "white", color = NA),
+          legend.position = "bottom"
+        ) +
+        theme(
+          strip.background = element_rect(fill = "white", color = "black")
+        ) +
+        scale_colour_manual(
+          values = .simBwMtdColVec,
+          labels = .simBwMtdLabVec
+        ) +
+        theme(
+          panel.background = element_rect(fill = "white", colour = NA),
+          plot.background = element_rect(fill = "white", colour = NA),
+          legend.position = "bottom",
+          legend.justification = "center",
+          legend.box.just = "center"
+        ) +
+        scale_x_log10(
+          breaks = c(1e3, 1e4, 1e5),
+          labels = scales::label_comma()
+        ) +
+        theme(
+          panel.spacing.x = unit(0.9, "cm")
+        )
+
+      path_plot <- projr::projr_path_get(
+        "output",
+        "fig",
+        paste0(
+          "est_bw_base", "_meanpos_", mean_pos_setting_curr, "_bias_uns_", bias_uns_setting_curr,
+          ".pdf"
+        )
       )
 
-    path_plot <- projr::projr_path_get(
-      "output",
-      "fig",
-      paste0(
-        "est_bw_base", "_meanpos_", mean_pos_setting_curr, "_bias_uns_", bias_uns_setting_curr,
-        ".pdf"
+      ggsave(
+        filename = path_plot,
+        plot = p,
+        width = 15,
+        height = 20,
+        units = "cm"
       )
-    )
-
-    ggsave(
-      filename = path_plot,
-      plot = p,
-      width = 15,
-      height = 20,
-      units = "cm"
-    )
+      print(p)
+    }
   }
 }
 ```

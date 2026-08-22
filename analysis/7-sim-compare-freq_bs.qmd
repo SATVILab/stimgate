@@ -4,6 +4,9 @@ format:
   html:
     embed-resources: true
     toc: true
+params:
+  run_simulations: true
+  run_plots: false
 ---
 
 ```{r}
@@ -15,6 +18,21 @@ library(furrr)
 library(progressr)
 
 root_dir <- projr::projr_path_get("project")
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  FALSE
+))
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
 if (
@@ -35,8 +53,6 @@ if (!requireNamespace("cytoUtils", quietly = TRUE)) {
     "Package 'cytoUtils' is not installed. Tailgate comparisons will fail if run."
   )
 }
-
-scripts_r_dir <- file.path(root_dir, "scripts", "r")
 
 # Source simulation helpers in dependency order:
 # 1. sim-misc.R: general simulation utilities and transformation lookups
@@ -345,98 +361,168 @@ if (file.exists(path_progress_file)) {
   file.remove(path_progress_file)
 }
 
-future::plan(
-  future::multisession,
-  workers = max(1, .simGetCores())
-)
+compare_list_raw <- list()
 
-compare_list_raw <- progressr::with_progress({
-  p <- progressr::progressor(steps = nrow(sim_grid_run))
+if (isTRUE(run_simulations) && nrow(sim_grid_run) > 0L) {
+  future::plan(
+    future::multisession,
+    workers = max(1, .simGetCores())
+  )
 
-  furrr::future_pmap(
-    sim_grid_run,
-    function(transformation,
-             prob_response,
-             n_cell,
-             mean_pos_setting,
-             mean_pos,
-             bw_mtd,
-             bw_ncell_max,
-             bw_fallback,
-             bw_min,
-             bw_max,
-             bias_uns,
-             sample_perturbation_sd,
-             condition_perturbation_sd,
-             cluster_perturbation_sd,
-             background_relative_to_response,
-             n_cell_uns_relative_to_stim,
-             sim_id) {
-      settings_row <- paste0(
-        "trans = ", transformation,
-        " | prob = ", prob_response,
-        " | n_cell = ", n_cell,
-        " | mean = ", mean_pos,
-        " | bw_mtd = ", bw_mtd,
-        " | bw_ncell_max = ", bw_ncell_max,
-        " | bias = ", bias_uns,
-        " | sample_sd = ", sample_perturbation_sd,
-        " | condition_sd = ", condition_perturbation_sd,
-        " | cluster_sd = ", cluster_perturbation_sd,
-        " | bg_rel = ", background_relative_to_response,
-        " | n_uns_rel = ", n_cell_uns_relative_to_stim,
-        " | sim_id = ", sim_id
-      )
+  compare_list_raw <- progressr::with_progress({
+    p <- progressr::progressor(steps = nrow(sim_grid_run))
 
-      cat(
-        paste0("Running: ", settings_row, "\n"),
-        file = path_progress_file,
-        append = TRUE
-      )
+    furrr::future_pmap(
+      sim_grid_run,
+      function(transformation,
+               prob_response,
+               n_cell,
+               mean_pos_setting,
+               mean_pos,
+               bw_mtd,
+               bw_ncell_max,
+               bw_fallback,
+               bw_min,
+               bw_max,
+               bias_uns,
+               sample_perturbation_sd,
+               condition_perturbation_sd,
+               cluster_perturbation_sd,
+               background_relative_to_response,
+               n_cell_uns_relative_to_stim,
+               sim_id) {
+        settings_row <- paste0(
+          "trans = ", transformation,
+          " | prob = ", prob_response,
+          " | n_cell = ", n_cell,
+          " | mean = ", mean_pos,
+          " | bw_mtd = ", bw_mtd,
+          " | bw_ncell_max = ", bw_ncell_max,
+          " | bias = ", bias_uns,
+          " | sample_sd = ", sample_perturbation_sd,
+          " | condition_sd = ", condition_perturbation_sd,
+          " | cluster_sd = ", cluster_perturbation_sd,
+          " | bg_rel = ", background_relative_to_response,
+          " | n_uns_rel = ", n_cell_uns_relative_to_stim,
+          " | sim_id = ", sim_id
+        )
 
-      out <- tryCatch(
-        {
-          sim_res <- .simCompareFreqBs(
-            nSample = 10,
-            nMarker = 1,
-            nCondition = 2,
-            nCluster = 2,
-            nIter = 2,
-            biasUns = bias_uns,
-            bw = NULL,
-            bwFallback = bw_fallback,
-            bwMin = bw_min,
-            bwMax = bw_max,
-            bwMtd = bw_mtd,
-            bwNcellMax = bw_ncell_max,
-            nCellStim = n_cell,
-            probResponse = prob_response,
-            probExact = TRUE,
-            meanPos = mean_pos,
-            transformation = transformation,
-            samplePerturbationSd = sample_perturbation_sd,
-            conditionPerturbationSd = condition_perturbation_sd,
-            clusterPerturbationSd = cluster_perturbation_sd,
-            backgroundRelativeToResponse =
-              background_relative_to_response,
-            ncellUnsRelativeToStim =
-              n_cell_uns_relative_to_stim,
-            covEvMin = 1.5,
-            covEvMax = 1.5,
-            tolClust = tol_clust,
-            locEnforceShapeThreshold = loc_enforce_shape_threshold,
-            calcCytPosGates = calc_cyt_pos_gates,
-            includeLocCondition = TRUE,
-            pathFbeta = path_fbeta,
-            fbetaBeta = fbeta_beta,
-            fbetaTheta = fbeta_theta,
-            fbetaWidth = fbeta_width,
-            tailgateAdjust = tailgate_adjust,
-            tailgateAutoTol = tailgate_auto_tol,
-            tailgateMethod = tailgate_method,
-            tailgateTol = tailgate_tol
-          ) |>
-            dplyr::mutate(
+        cat(
+          paste0("Running: ", settings_row, "\n"),
+          file = path_progress_file,
+          append = TRUE
+        )
+
+        out <- tryCatch(
+          {
+            sim_res <- .simCompareFreqBs(
+              nSample = 10,
+              nMarker = 1,
+              nCondition = 2,
+              nCluster = 2,
+              nIter = 2,
+              biasUns = bias_uns,
+              bw = NULL,
+              bwFallback = bw_fallback,
+              bwMin = bw_min,
+              bwMax = bw_max,
+              bwMtd = bw_mtd,
+              bwNcellMax = bw_ncell_max,
+              nCellStim = n_cell,
+              probResponse = prob_response,
+              probExact = TRUE,
+              meanPos = mean_pos,
+              transformation = transformation,
+              samplePerturbationSd = sample_perturbation_sd,
+              conditionPerturbationSd = condition_perturbation_sd,
+              clusterPerturbationSd = cluster_perturbation_sd,
+              backgroundRelativeToResponse =
+                background_relative_to_response,
+              ncellUnsRelativeToStim =
+                n_cell_uns_relative_to_stim,
+              covEvMin = 1.5,
+              covEvMax = 1.5,
+              tolClust = tol_clust,
+              locEnforceShapeThreshold = loc_enforce_shape_threshold,
+              calcCytPosGates = calc_cyt_pos_gates,
+              includeLocCondition = TRUE,
+              pathFbeta = path_fbeta,
+              fbetaBeta = fbeta_beta,
+              fbetaTheta = fbeta_theta,
+              fbetaWidth = fbeta_width,
+              tailgateAdjust = tailgate_adjust,
+              tailgateAutoTol = tailgate_auto_tol,
+              tailgateMethod = tailgate_method,
+              tailgateTol = tailgate_tol
+            ) |>
+              dplyr::mutate(
+                transformation = transformation,
+                prob_response = prob_response,
+                n_cell = n_cell,
+                mean_pos_setting = mean_pos_setting,
+                mean_pos = mean_pos,
+                bw_mtd = bw_mtd,
+                bw_ncell_max = bw_ncell_max,
+                bw_fallback = bw_fallback,
+                bw_min = bw_min,
+                bw_max = bw_max,
+                bias_uns = bias_uns,
+                sample_perturbation_sd = sample_perturbation_sd,
+                condition_perturbation_sd =
+                  condition_perturbation_sd,
+                cluster_perturbation_sd =
+                  cluster_perturbation_sd,
+                background_relative_to_response =
+                  background_relative_to_response,
+                n_cell_uns_relative_to_stim =
+                  n_cell_uns_relative_to_stim,
+                sim_id = sim_id
+              ) |>
+              dplyr::select(
+                transformation,
+                prob_response,
+                n_cell,
+                mean_pos_setting,
+                mean_pos,
+                bw_mtd,
+                bw_ncell_max,
+                bw_fallback,
+                bw_min,
+                bw_max,
+                bias_uns,
+                sample_perturbation_sd,
+                condition_perturbation_sd,
+                cluster_perturbation_sd,
+                background_relative_to_response,
+                n_cell_uns_relative_to_stim,
+                sim_id,
+                dplyr::everything()
+              )
+
+            cat(
+              paste0("Completed: ", settings_row, "\n"),
+              file = path_progress_file,
+              append = TRUE
+            )
+            p(sprintf("Completed sim_id: %s", sim_id))
+
+            sim_res
+          },
+          error = function(e) {
+            cat(
+              paste0(
+                "Error [",
+                settings_row,
+                "]: ",
+                e$message,
+                "\n"
+              ),
+              file = path_progress_file,
+              append = TRUE
+            )
+            p(sprintf("ERROR on sim_id: %s", sim_id))
+
+            tibble::tibble(
               transformation = transformation,
               prob_response = prob_response,
               n_cell = n_cell,
@@ -449,121 +535,59 @@ compare_list_raw <- progressr::with_progress({
               bw_max = bw_max,
               bias_uns = bias_uns,
               sample_perturbation_sd = sample_perturbation_sd,
-              condition_perturbation_sd =
-                condition_perturbation_sd,
-              cluster_perturbation_sd =
-                cluster_perturbation_sd,
+              condition_perturbation_sd = condition_perturbation_sd,
+              cluster_perturbation_sd = cluster_perturbation_sd,
               background_relative_to_response =
                 background_relative_to_response,
               n_cell_uns_relative_to_stim =
                 n_cell_uns_relative_to_stim,
-              sim_id = sim_id
-            ) |>
-            dplyr::select(
-              transformation,
-              prob_response,
-              n_cell,
-              mean_pos_setting,
-              mean_pos,
-              bw_mtd,
-              bw_ncell_max,
-              bw_fallback,
-              bw_min,
-              bw_max,
-              bias_uns,
-              sample_perturbation_sd,
-              condition_perturbation_sd,
-              cluster_perturbation_sd,
-              background_relative_to_response,
-              n_cell_uns_relative_to_stim,
-              sim_id,
-              dplyr::everything()
+              sim_id = sim_id,
+              iter = NA_integer_,
+              chnl = NA_character_,
+              sample = NA_character_,
+              ind = NA_character_,
+              approach = NA_character_,
+              method = NA_character_,
+              propRespTruth = NA_real_,
+              propRespEst = NA_real_,
+              threshold = NA_real_,
+              thresholdOrigin = NA_character_,
+              gateReturnPoint = NA_character_,
+              nCellStim = NA_real_,
+              nCellUns = NA_real_,
+              nPosStim = NA_integer_,
+              nPosUns = NA_integer_,
+              error = e$message
             )
+          }
+        )
 
-          cat(
-            paste0("Completed: ", settings_row, "\n"),
-            file = path_progress_file,
-            append = TRUE
-          )
-          p(sprintf("Completed sim_id: %s", sim_id))
+        out
+      },
+      .options = furrr::furrr_options(seed = TRUE, chunk_size = 10L)
+    )
+  })
 
-          sim_res
-        },
-        error = function(e) {
-          cat(
-            paste0(
-              "Error [",
-              settings_row,
-              "]: ",
-              e$message,
-              "\n"
-            ),
-            file = path_progress_file,
-            append = TRUE
-          )
-          p(sprintf("ERROR on sim_id: %s", sim_id))
+  future::plan(future::sequential)
 
-          tibble::tibble(
-            transformation = transformation,
-            prob_response = prob_response,
-            n_cell = n_cell,
-            mean_pos_setting = mean_pos_setting,
-            mean_pos = mean_pos,
-            bw_mtd = bw_mtd,
-            bw_ncell_max = bw_ncell_max,
-            bw_fallback = bw_fallback,
-            bw_min = bw_min,
-            bw_max = bw_max,
-            bias_uns = bias_uns,
-            sample_perturbation_sd = sample_perturbation_sd,
-            condition_perturbation_sd = condition_perturbation_sd,
-            cluster_perturbation_sd = cluster_perturbation_sd,
-            background_relative_to_response =
-              background_relative_to_response,
-            n_cell_uns_relative_to_stim =
-              n_cell_uns_relative_to_stim,
-            sim_id = sim_id,
-            iter = NA_integer_,
-            chnl = NA_character_,
-            sample = NA_character_,
-            ind = NA_character_,
-            approach = NA_character_,
-            method = NA_character_,
-            propRespTruth = NA_real_,
-            propRespEst = NA_real_,
-            threshold = NA_real_,
-            thresholdOrigin = NA_character_,
-            gateReturnPoint = NA_character_,
-            nCellStim = NA_real_,
-            nCellUns = NA_real_,
-            nPosStim = NA_integer_,
-            nPosUns = NA_integer_,
-            error = e$message
-          )
-        }
-      )
-
-      out
-    },
-    .options = furrr::furrr_options(seed = TRUE, chunk_size = 10L)
+  path_compare_out <- projr::projr_path_get(
+    "cache",
+    "sim",
+    "compare",
+    "freq_bs",
+    "compare_list_raw.rds"
   )
-})
-
-future::plan(future::sequential)
-
-path_compare_out <- projr::projr_path_get(
-  "cache",
-  "sim",
-  "compare",
-  "freq_bs",
-  "compare_list_raw.rds"
-)
-dir.create(
-  dirname(path_compare_out),
-  recursive = TRUE,
-  showWarnings = FALSE
-)
-saveRDS(compare_list_raw, file = path_compare_out)
+  dir.create(
+    dirname(path_compare_out),
+    recursive = TRUE,
+    showWarnings = FALSE
+  )
+  .write_rds_atomic(compare_list_raw, file = path_compare_out)
+} else if (isTRUE(run_simulations)) {
+  message("No simulations assigned to this chunk.")
+} else {
+  message("Skipping simulations because run_simulations is FALSE.")
+}
 ```
 
 ### Collate results
@@ -590,9 +614,12 @@ path_vec <- c(
   )
 )
 
-path_vec <- path_vec[file.exists(path_vec)][[1]]
+path_vec <- path_vec[file.exists(path_vec)]
+if (length(path_vec) == 0L) {
+  stop("Could not find compare_list_raw.rds. Run the simulation chunk first.")
+}
 
-compare_list_raw <- readRDS(file = path_vec)
+compare_list_raw <- readRDS(file = path_vec[[1]])
 
 compare_tbl <- compare_list_raw |>
   purrr::list_rbind()
@@ -643,66 +670,68 @@ compare_summary |>
 
 ```{r}
 #| label: plot-mae-cell-count
-for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-  plot_tbl <- compare_summary |>
-    dplyr::filter(
-      mean_pos_setting == !!mean_pos_setting_curr
-    )
-
-  p <- ggplot(
-    plot_tbl,
-    aes(
-      x = n_cell,
-      y = mean_abs_error,
-      color = method
-    )
-  ) +
-    geom_line() +
-    geom_point() +
-    scale_x_log10() +
-    facet_grid(prob_response ~ transformation) +
-    labs(
-      title = paste0(
-        "Mean position setting: ",
-        mean_pos_setting_curr
-      ),
-      x = "Number of stimulated cells",
-      y = "Mean absolute error",
-      color = "Method"
-    ) +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
-    theme(
-      panel.background = element_rect(
-        fill = "white",
-        color = NA
-      ),
-      plot.background = element_rect(
-        fill = "white",
-        color = NA
-      ),
-      legend.position = "bottom"
-    )
-
-  print(p)
-
-  ggsave(
-    filename = projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs",
-      paste0(
-        "freq_bs_mae_meanpos_setting_",
-        mean_pos_setting_curr,
-        ".png"
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
+    plot_tbl <- compare_summary |>
+      dplyr::filter(
+        mean_pos_setting == !!mean_pos_setting_curr
       )
-    ),
-    plot = p,
-    width = 18,
-    height = 15,
-    units = "cm"
-  )
+
+    p <- ggplot(
+      plot_tbl,
+      aes(
+        x = n_cell,
+        y = mean_abs_error,
+        color = method
+      )
+    ) +
+      geom_line() +
+      geom_point() +
+      scale_x_log10() +
+      facet_grid(prob_response ~ transformation) +
+      labs(
+        title = paste0(
+          "Mean position setting: ",
+          mean_pos_setting_curr
+        ),
+        x = "Number of stimulated cells",
+        y = "Mean absolute error",
+        color = "Method"
+      ) +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "xy", minor = "none") +
+      theme(
+        panel.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        plot.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        legend.position = "bottom"
+      )
+
+    print(p)
+
+    ggsave(
+      filename = projr::projr_path_get(
+        "cache",
+        "sim",
+        "compare",
+        "freq_bs",
+        paste0(
+          "freq_bs_mae_meanpos_setting_",
+          mean_pos_setting_curr,
+          ".png"
+        )
+      ),
+      plot = p,
+      width = 18,
+      height = 15,
+      units = "cm"
+    )
+  }
 }
 ```
 
@@ -710,106 +739,108 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
 
 ```{r}
 #| label: plot-med-rel-error-cell-count
-for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-  print(paste0("Plotting median relative error for mean position setting: ", mean_pos_setting_curr))
-  plot_tbl <- compare_summary |>
-    dplyr::filter(
-      mean_pos_setting == !!mean_pos_setting_curr
-    ) |>
-    dplyr::filter(
-      condition_perturbation_sd == 0
-    )
-  plot_tbl |>
-    dplyr::select(
-      approach, med_abs_rel_error,
-      transformation, prob_response, n_cell, mean_pos_setting,
-    ) |>
-    tidyr::pivot_wider(
-      names_from = approach,
-      values_from = med_abs_rel_error
-    ) |>
-    dplyr::select(-mean_pos_setting) |>
-    dplyr::mutate(
-      winner = dplyr::case_when(
-        stimgate < fbeta &
-          stimgate < tailgate ~ "stimgate",
-        fbeta < stimgate &
-          fbeta < tailgate ~ "fbeta",
-        tailgate < stimgate &
-          tailgate < fbeta ~ "tailgate",
-        TRUE ~ "tie"
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
+    print(paste0("Plotting median relative error for mean position setting: ", mean_pos_setting_curr))
+    plot_tbl <- compare_summary |>
+      dplyr::filter(
+        mean_pos_setting == !!mean_pos_setting_curr
+      ) |>
+      dplyr::filter(
+        condition_perturbation_sd == 0
       )
-    ) |>
-    dplyr::mutate(
-      big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
-    ) |>
-    dplyr::mutate(
-      max_error = pmax(fbeta, stimgate, tailgate)
-    ) |>
-    # dplyr::arrange(dplyr::desc(big_winner), winner) |>
-    dplyr::arrange(dplyr::desc(fbeta)) |>
-    print(n = Inf, width = Inf)
+    plot_tbl |>
+      dplyr::select(
+        approach, med_abs_rel_error,
+        transformation, prob_response, n_cell, mean_pos_setting,
+      ) |>
+      tidyr::pivot_wider(
+        names_from = approach,
+        values_from = med_abs_rel_error
+      ) |>
+      dplyr::select(-mean_pos_setting) |>
+      dplyr::mutate(
+        winner = dplyr::case_when(
+          stimgate < fbeta &
+            stimgate < tailgate ~ "stimgate",
+          fbeta < stimgate &
+            fbeta < tailgate ~ "fbeta",
+          tailgate < stimgate &
+            tailgate < fbeta ~ "tailgate",
+          TRUE ~ "tie"
+        )
+      ) |>
+      dplyr::mutate(
+        big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
+      ) |>
+      dplyr::mutate(
+        max_error = pmax(fbeta, stimgate, tailgate)
+      ) |>
+      # dplyr::arrange(dplyr::desc(big_winner), winner) |>
+      dplyr::arrange(dplyr::desc(fbeta)) |>
+      print(n = Inf, width = Inf)
 
 
-  p <- ggplot(
-    plot_tbl,
-    aes(
-      x = n_cell,
-      y = med_abs_rel_error,
-      color = method
-    )
-  ) +
-    geom_hline(
-      yintercept = 0,
-      colour = "gray25",
-      linetype = "dashed"
-    ) +
-    geom_line() +
-    geom_point() +
-    scale_x_log10() +
-    facet_grid(prob_response ~ transformation, scales = "free_y") +
-    labs(
-      title = paste0(
-        "Mean position setting: ",
-        mean_pos_setting_curr
-      ),
-      x = "Number of stimulated cells",
-      y = "Median relative error",
-      color = "Method"
-    ) +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
-    theme(
-      panel.background = element_rect(
-        fill = "white",
-        color = NA
-      ),
-      plot.background = element_rect(
-        fill = "white",
-        color = NA
-      ),
-      legend.position = "bottom"
-    )
-
-  print(p)
-
-  ggsave(
-    filename = projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs",
-      paste0(
-        "freq_bs_med_rel_error_meanpos_setting_",
-        mean_pos_setting_curr,
-        ".png"
+    p <- ggplot(
+      plot_tbl,
+      aes(
+        x = n_cell,
+        y = med_abs_rel_error,
+        color = method
       )
-    ),
-    plot = p,
-    width = 18,
-    height = 15,
-    units = "cm"
-  )
+    ) +
+      geom_hline(
+        yintercept = 0,
+        colour = "gray25",
+        linetype = "dashed"
+      ) +
+      geom_line() +
+      geom_point() +
+      scale_x_log10() +
+      facet_grid(prob_response ~ transformation, scales = "free_y") +
+      labs(
+        title = paste0(
+          "Mean position setting: ",
+          mean_pos_setting_curr
+        ),
+        x = "Number of stimulated cells",
+        y = "Median relative error",
+        color = "Method"
+      ) +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "xy", minor = "none") +
+      theme(
+        panel.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        plot.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        legend.position = "bottom"
+      )
+
+    print(p)
+
+    ggsave(
+      filename = projr::projr_path_get(
+        "cache",
+        "sim",
+        "compare",
+        "freq_bs",
+        paste0(
+          "freq_bs_med_rel_error_meanpos_setting_",
+          mean_pos_setting_curr,
+          ".png"
+        )
+      ),
+      plot = p,
+      width = 18,
+      height = 15,
+      units = "cm"
+    )
+  }
 }
 ```
 
@@ -817,102 +848,104 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
 
 ```{r}
 #| label: plot-90th-rel-error-cell-count
-for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-  plot_tbl <- compare_summary |>
-    dplyr::filter(
-      mean_pos_setting == !!mean_pos_setting_curr
-    ) |>
-    dplyr::filter(
-      condition_perturbation_sd == 0
-    )
-  plot_tbl |>
-    dplyr::select(
-      approach, q90_abs_rel_error,
-      transformation, prob_response, n_cell, mean_pos_setting,
-    ) |>
-    tidyr::pivot_wider(
-      names_from = approach,
-      values_from = q90_abs_rel_error
-    ) |>
-    dplyr::select(-mean_pos_setting) |>
-    dplyr::mutate(
-      winner = dplyr::case_when(
-        stimgate < fbeta &
-          stimgate < tailgate ~ "stimgate",
-        fbeta < stimgate &
-          fbeta < tailgate ~ "fbeta",
-        tailgate < stimgate &
-          tailgate < fbeta ~ "tailgate",
-        TRUE ~ "tie"
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
+    plot_tbl <- compare_summary |>
+      dplyr::filter(
+        mean_pos_setting == !!mean_pos_setting_curr
+      ) |>
+      dplyr::filter(
+        condition_perturbation_sd == 0
       )
-    ) |>
-    dplyr::mutate(
-      big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
-    ) |>
-    dplyr::arrange(dplyr::desc(big_winner), winner) |>
-    dplyr::arrange(dplyr::desc(fbeta)) |>
-    print(n = Inf, width = Inf)
+    plot_tbl |>
+      dplyr::select(
+        approach, q90_abs_rel_error,
+        transformation, prob_response, n_cell, mean_pos_setting,
+      ) |>
+      tidyr::pivot_wider(
+        names_from = approach,
+        values_from = q90_abs_rel_error
+      ) |>
+      dplyr::select(-mean_pos_setting) |>
+      dplyr::mutate(
+        winner = dplyr::case_when(
+          stimgate < fbeta &
+            stimgate < tailgate ~ "stimgate",
+          fbeta < stimgate &
+            fbeta < tailgate ~ "fbeta",
+          tailgate < stimgate &
+            tailgate < fbeta ~ "tailgate",
+          TRUE ~ "tie"
+        )
+      ) |>
+      dplyr::mutate(
+        big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
+      ) |>
+      dplyr::arrange(dplyr::desc(big_winner), winner) |>
+      dplyr::arrange(dplyr::desc(fbeta)) |>
+      print(n = Inf, width = Inf)
 
 
-  p <- ggplot(
-    plot_tbl,
-    aes(
-      x = n_cell,
-      y = q90_abs_rel_error,
-      color = method
-    )
-  ) +
-    geom_hline(
-      yintercept = 0,
-      colour = "gray25",
-      linetype = "dashed"
-    ) +
-    geom_line() +
-    geom_point() +
-    scale_x_log10() +
-    facet_grid(prob_response ~ transformation, scales = "free_y") +
-    labs(
-      title = paste0(
-        "Mean position setting: ",
-        mean_pos_setting_curr
-      ),
-      x = "Number of stimulated cells",
-      y = "90th percentile relative error",
-      color = "Method"
-    ) +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
-    theme(
-      panel.background = element_rect(
-        fill = "white",
-        color = NA
-      ),
-      plot.background = element_rect(
-        fill = "white",
-        color = NA
-      ),
-      legend.position = "bottom"
-    )
-
-  print(p)
-
-  ggsave(
-    filename = projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs",
-      paste0(
-        "freq_bs_q90_rel_error_meanpos_setting_",
-        mean_pos_setting_curr,
-        ".png"
+    p <- ggplot(
+      plot_tbl,
+      aes(
+        x = n_cell,
+        y = q90_abs_rel_error,
+        color = method
       )
-    ),
-    plot = p,
-    width = 18,
-    height = 15,
-    units = "cm"
-  )
+    ) +
+      geom_hline(
+        yintercept = 0,
+        colour = "gray25",
+        linetype = "dashed"
+      ) +
+      geom_line() +
+      geom_point() +
+      scale_x_log10() +
+      facet_grid(prob_response ~ transformation, scales = "free_y") +
+      labs(
+        title = paste0(
+          "Mean position setting: ",
+          mean_pos_setting_curr
+        ),
+        x = "Number of stimulated cells",
+        y = "90th percentile relative error",
+        color = "Method"
+      ) +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "xy", minor = "none") +
+      theme(
+        panel.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        plot.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        legend.position = "bottom"
+      )
+
+    print(p)
+
+    ggsave(
+      filename = projr::projr_path_get(
+        "cache",
+        "sim",
+        "compare",
+        "freq_bs",
+        paste0(
+          "freq_bs_q90_rel_error_meanpos_setting_",
+          mean_pos_setting_curr,
+          ".png"
+        )
+      ),
+      plot = p,
+      width = 18,
+      height = 15,
+      units = "cm"
+    )
+  }
 }
 ```
 
@@ -920,102 +953,104 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
 
 ```{r}
 #| label: plot-95th-rel-error-cell-count
-for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-  plot_tbl <- compare_summary |>
-    dplyr::filter(
-      mean_pos_setting == !!mean_pos_setting_curr
-    ) |>
-    dplyr::filter(
-      condition_perturbation_sd == 0
-    )
-  plot_tbl |>
-    dplyr::select(
-      approach, q95_abs_rel_error,
-      transformation, prob_response, n_cell, mean_pos_setting,
-    ) |>
-    tidyr::pivot_wider(
-      names_from = approach,
-      values_from = q95_abs_rel_error
-    ) |>
-    dplyr::select(-mean_pos_setting) |>
-    dplyr::mutate(
-      winner = dplyr::case_when(
-        stimgate < fbeta &
-          stimgate < tailgate ~ "stimgate",
-        fbeta < stimgate &
-          fbeta < tailgate ~ "fbeta",
-        tailgate < stimgate &
-          tailgate < fbeta ~ "tailgate",
-        TRUE ~ "tie"
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
+    plot_tbl <- compare_summary |>
+      dplyr::filter(
+        mean_pos_setting == !!mean_pos_setting_curr
+      ) |>
+      dplyr::filter(
+        condition_perturbation_sd == 0
       )
-    ) |>
-    dplyr::mutate(
-      big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
-    ) |>
-    dplyr::arrange(dplyr::desc(big_winner), winner) |>
-    dplyr::arrange(dplyr::desc(fbeta)) |>
-    print(n = Inf, width = Inf)
+    plot_tbl |>
+      dplyr::select(
+        approach, q95_abs_rel_error,
+        transformation, prob_response, n_cell, mean_pos_setting,
+      ) |>
+      tidyr::pivot_wider(
+        names_from = approach,
+        values_from = q95_abs_rel_error
+      ) |>
+      dplyr::select(-mean_pos_setting) |>
+      dplyr::mutate(
+        winner = dplyr::case_when(
+          stimgate < fbeta &
+            stimgate < tailgate ~ "stimgate",
+          fbeta < stimgate &
+            fbeta < tailgate ~ "fbeta",
+          tailgate < stimgate &
+            tailgate < fbeta ~ "tailgate",
+          TRUE ~ "tie"
+        )
+      ) |>
+      dplyr::mutate(
+        big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
+      ) |>
+      dplyr::arrange(dplyr::desc(big_winner), winner) |>
+      dplyr::arrange(dplyr::desc(fbeta)) |>
+      print(n = Inf, width = Inf)
 
 
-  p <- ggplot(
-    plot_tbl,
-    aes(
-      x = n_cell,
-      y = q95_abs_rel_error,
-      color = method
-    )
-  ) +
-    geom_hline(
-      yintercept = 0,
-      colour = "gray25",
-      linetype = "dashed"
-    ) +
-    geom_line() +
-    geom_point() +
-    scale_x_log10() +
-    facet_grid(prob_response ~ transformation, scales = "free_y") +
-    labs(
-      title = paste0(
-        "Mean position setting: ",
-        mean_pos_setting_curr
-      ),
-      x = "Number of stimulated cells",
-      y = "95th percentile relative error",
-      color = "Method"
-    ) +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
-    theme(
-      panel.background = element_rect(
-        fill = "white",
-        color = NA
-      ),
-      plot.background = element_rect(
-        fill = "white",
-        color = NA
-      ),
-      legend.position = "bottom"
-    )
-
-  print(p)
-
-  ggsave(
-    filename = projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs",
-      paste0(
-        "freq_bs_q95_rel_error_meanpos_setting_",
-        mean_pos_setting_curr,
-        ".png"
+    p <- ggplot(
+      plot_tbl,
+      aes(
+        x = n_cell,
+        y = q95_abs_rel_error,
+        color = method
       )
-    ),
-    plot = p,
-    width = 18,
-    height = 15,
-    units = "cm"
-  )
+    ) +
+      geom_hline(
+        yintercept = 0,
+        colour = "gray25",
+        linetype = "dashed"
+      ) +
+      geom_line() +
+      geom_point() +
+      scale_x_log10() +
+      facet_grid(prob_response ~ transformation, scales = "free_y") +
+      labs(
+        title = paste0(
+          "Mean position setting: ",
+          mean_pos_setting_curr
+        ),
+        x = "Number of stimulated cells",
+        y = "95th percentile relative error",
+        color = "Method"
+      ) +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "xy", minor = "none") +
+      theme(
+        panel.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        plot.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        legend.position = "bottom"
+      )
+
+    print(p)
+
+    ggsave(
+      filename = projr::projr_path_get(
+        "cache",
+        "sim",
+        "compare",
+        "freq_bs",
+        paste0(
+          "freq_bs_q95_rel_error_meanpos_setting_",
+          mean_pos_setting_curr,
+          ".png"
+        )
+      ),
+      plot = p,
+      width = 18,
+      height = 15,
+      units = "cm"
+    )
+  }
 }
 ```
 
@@ -1049,102 +1084,104 @@ compare_summary |>
 
 ```{r}
 #| label: plot-max-rel-error-cell-count
-for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-  plot_tbl <- compare_summary |>
-    dplyr::filter(
-      mean_pos_setting == !!mean_pos_setting_curr
-    ) |>
-    dplyr::filter(
-      condition_perturbation_sd == 0
-    )
-  plot_tbl |>
-    dplyr::select(
-      approach, max_abs_rel_error,
-      transformation, prob_response, n_cell, mean_pos_setting,
-    ) |>
-    tidyr::pivot_wider(
-      names_from = approach,
-      values_from = max_abs_rel_error
-    ) |>
-    dplyr::select(-mean_pos_setting) |>
-    dplyr::mutate(
-      winner = dplyr::case_when(
-        stimgate < fbeta &
-          stimgate < tailgate ~ "stimgate",
-        fbeta < stimgate &
-          fbeta < tailgate ~ "fbeta",
-        tailgate < stimgate &
-          tailgate < fbeta ~ "tailgate",
-        TRUE ~ "tie"
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
+    plot_tbl <- compare_summary |>
+      dplyr::filter(
+        mean_pos_setting == !!mean_pos_setting_curr
+      ) |>
+      dplyr::filter(
+        condition_perturbation_sd == 0
       )
-    ) |>
-    dplyr::mutate(
-      big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
-    ) |>
-    dplyr::arrange(dplyr::desc(big_winner), winner) |>
-    dplyr::arrange(dplyr::desc(fbeta)) |>
-    print(n = Inf, width = Inf)
+    plot_tbl |>
+      dplyr::select(
+        approach, max_abs_rel_error,
+        transformation, prob_response, n_cell, mean_pos_setting,
+      ) |>
+      tidyr::pivot_wider(
+        names_from = approach,
+        values_from = max_abs_rel_error
+      ) |>
+      dplyr::select(-mean_pos_setting) |>
+      dplyr::mutate(
+        winner = dplyr::case_when(
+          stimgate < fbeta &
+            stimgate < tailgate ~ "stimgate",
+          fbeta < stimgate &
+            fbeta < tailgate ~ "fbeta",
+          tailgate < stimgate &
+            tailgate < fbeta ~ "tailgate",
+          TRUE ~ "tie"
+        )
+      ) |>
+      dplyr::mutate(
+        big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
+      ) |>
+      dplyr::arrange(dplyr::desc(big_winner), winner) |>
+      dplyr::arrange(dplyr::desc(fbeta)) |>
+      print(n = Inf, width = Inf)
 
 
-  p <- ggplot(
-    plot_tbl,
-    aes(
-      x = n_cell,
-      y = max_abs_rel_error,
-      color = method
-    )
-  ) +
-    geom_hline(
-      yintercept = 0,
-      colour = "gray25",
-      linetype = "dashed"
-    ) +
-    geom_line() +
-    geom_point() +
-    scale_x_log10() +
-    facet_grid(prob_response ~ transformation, scales = "free_y") +
-    labs(
-      title = paste0(
-        "Mean position setting: ",
-        mean_pos_setting_curr
-      ),
-      x = "Number of stimulated cells",
-      y = "Maximum relative error",
-      color = "Method"
-    ) +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
-    theme(
-      panel.background = element_rect(
-        fill = "white",
-        color = NA
-      ),
-      plot.background = element_rect(
-        fill = "white",
-        color = NA
-      ),
-      legend.position = "bottom"
-    )
-
-  print(p)
-
-  ggsave(
-    filename = projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs",
-      paste0(
-        "freq_bs_max_rel_error_meanpos_setting_",
-        mean_pos_setting_curr,
-        ".png"
+    p <- ggplot(
+      plot_tbl,
+      aes(
+        x = n_cell,
+        y = max_abs_rel_error,
+        color = method
       )
-    ),
-    plot = p,
-    width = 18,
-    height = 15,
-    units = "cm"
-  )
+    ) +
+      geom_hline(
+        yintercept = 0,
+        colour = "gray25",
+        linetype = "dashed"
+      ) +
+      geom_line() +
+      geom_point() +
+      scale_x_log10() +
+      facet_grid(prob_response ~ transformation, scales = "free_y") +
+      labs(
+        title = paste0(
+          "Mean position setting: ",
+          mean_pos_setting_curr
+        ),
+        x = "Number of stimulated cells",
+        y = "Maximum relative error",
+        color = "Method"
+      ) +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "xy", minor = "none") +
+      theme(
+        panel.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        plot.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        legend.position = "bottom"
+      )
+
+    print(p)
+
+    ggsave(
+      filename = projr::projr_path_get(
+        "cache",
+        "sim",
+        "compare",
+        "freq_bs",
+        paste0(
+          "freq_bs_max_rel_error_meanpos_setting_",
+          mean_pos_setting_curr,
+          ".png"
+        )
+      ),
+      plot = p,
+      width = 18,
+      height = 15,
+      units = "cm"
+    )
+  }
 }
 ```
 
@@ -1152,189 +1189,238 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
 
 ```{r}
 #| label: plot-est-vs-truth
-plot_tbl <- compare_tbl_focus |>
-  dplyr::filter(
-    is.finite(propRespTruth),
-    is.finite(propRespEst)
-  ) |>
-  dplyr::filter(
-    condition_perturbation_sd == 0
-  )
-
-p_est_truth <- ggplot(
-  plot_tbl,
-  aes(
-    x = propRespTruth,
-    y = propRespEst,
-    color = method
-  )
-) +
-  geom_point(alpha = 0.35, size = 1) +
-  expand_limits(
-    y = c(
-      0,
-      max(plot_tbl$propRespTruth, na.rm = TRUE) * 2
-    ),
-    x = c(
-      0,
-      max(plot_tbl$propRespTruth, na.rm = TRUE) * 2
+if (isTRUE(run_plots)) {
+  plot_tbl <- compare_tbl_focus |>
+    dplyr::filter(
+      is.finite(propRespTruth),
+      is.finite(propRespEst)
+    ) |>
+    dplyr::filter(
+      condition_perturbation_sd == 0
     )
-  ) +
-  geom_abline(
-    slope = 1,
-    intercept = 0,
-    linetype = "dashed"
-  ) +
-  facet_grid(mean_pos_setting ~ transformation) +
-  labs(
-    x = "True background-subtracted response frequency",
-    y = "Estimated background-subtracted response frequency",
-    color = "Method"
-  ) +
-  cowplot::theme_cowplot() +
-  cowplot::background_grid(major = "xy") +
-  theme(
-    panel.background = element_rect(
-      fill = "white",
-      color = NA
-    ),
-    plot.background = element_rect(
-      fill = "white",
-      color = NA
-    ),
-    legend.position = "bottom"
-  )
 
-print(p_est_truth)
+  for (mean_pos_setting_curr in unique(plot_tbl$mean_pos_setting)) {
+    plot_tbl_curr <- plot_tbl |>
+      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr)
 
-ggsave(
-  filename = projr::projr_path_get(
-    "cache",
-    "sim",
-    "compare",
-    "freq_bs",
-    "freq_bs_est_vs_truth.png"
-  ),
-  plot = p_est_truth,
-  width = 18,
-  height = 15,
-  units = "cm"
-)
+    p_est_truth <- ggplot(
+      plot_tbl_curr,
+      aes(
+        x = propRespTruth,
+        y = propRespEst,
+        color = method
+      )
+    ) +
+      geom_point(alpha = 0.35, size = 1) +
+      expand_limits(
+        y = c(
+          0,
+          max(plot_tbl_curr$propRespTruth, na.rm = TRUE) * 2
+        ),
+        x = c(
+          0,
+          max(plot_tbl_curr$propRespTruth, na.rm = TRUE) * 2
+        )
+      ) +
+      geom_abline(
+        slope = 1,
+        intercept = 0,
+        linetype = "dashed"
+      ) +
+      facet_wrap(~transformation) +
+      labs(
+        title = paste0(
+          "Mean position setting: ",
+          mean_pos_setting_curr
+        ),
+        x = "True background-subtracted response frequency",
+        y = "Estimated background-subtracted response frequency",
+        color = "Method"
+      ) +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "xy", minor = "none") +
+      theme(
+        panel.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        plot.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        legend.position = "bottom"
+      )
+
+    print(p_est_truth)
+
+    ggsave(
+      filename = projr::projr_path_get(
+        "cache",
+        "sim",
+        "compare",
+        "freq_bs",
+        paste0(
+          "freq_bs_est_vs_truth_",
+          mean_pos_setting_curr,
+          ".png"
+        )
+      ),
+      plot = p_est_truth,
+      width = 18,
+      height = 15,
+      units = "cm"
+    )
+  }
+}
 ```
 
 ### Threshold fallback rate
 
 ```{r}
 #| label: plot-threshold-fallback
-fallback_tbl <- compare_summary |>
-  dplyr::mutate(
-    fallback_rate = n_threshold_fallback / n
-  )
+if (isTRUE(run_plots)) {
+  fallback_tbl <- compare_summary |>
+    dplyr::mutate(
+      fallback_rate = n_threshold_fallback / n
+    )
 
-p_fallback <- ggplot(
-  fallback_tbl,
-  aes(
-    x = n_cell,
-    y = fallback_rate,
-    color = method
-  )
-) +
-  geom_line() +
-  geom_point() +
-  scale_x_log10() +
-  facet_grid(
-    prob_response + mean_pos_setting ~ transformation
-  ) +
-  labs(
-    x = "Number of stimulated cells",
-    y = "Threshold fallback rate",
-    color = "Method"
-  ) +
-  cowplot::theme_cowplot() +
-  cowplot::background_grid(major = "xy") +
-  theme(
-    panel.background = element_rect(
-      fill = "white",
-      color = NA
-    ),
-    plot.background = element_rect(
-      fill = "white",
-      color = NA
-    ),
-    legend.position = "bottom"
-  )
+  for (mean_pos_setting_curr in unique(fallback_tbl$mean_pos_setting)) {
+    fallback_tbl_curr <- fallback_tbl |>
+      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr)
 
-print(p_fallback)
+    p_fallback <- ggplot(
+      fallback_tbl_curr,
+      aes(
+        x = n_cell,
+        y = fallback_rate,
+        color = method
+      )
+    ) +
+      geom_line() +
+      geom_point() +
+      scale_x_log10() +
+      facet_grid(
+        prob_response ~ transformation
+      ) +
+      labs(
+        title = paste0(
+          "Mean position setting: ",
+          mean_pos_setting_curr
+        ),
+        x = "Number of stimulated cells",
+        y = "Threshold fallback rate",
+        color = "Method"
+      ) +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "xy", minor = "none") +
+      theme(
+        panel.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        plot.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        legend.position = "bottom"
+      )
 
-ggsave(
-  filename = projr::projr_path_get(
-    "cache",
-    "sim",
-    "compare",
-    "freq_bs",
-    "freq_bs_threshold_fallback_rate.png"
-  ),
-  plot = p_fallback,
-  width = 18,
-  height = 15,
-  units = "cm"
-)
+    print(p_fallback)
+
+    ggsave(
+      filename = projr::projr_path_get(
+        "cache",
+        "sim",
+        "compare",
+        "freq_bs",
+        paste0(
+          "freq_bs_threshold_fallback_rate_",
+          mean_pos_setting_curr,
+          ".png"
+        )
+      ),
+      plot = p_fallback,
+      width = 18,
+      height = 15,
+      units = "cm"
+    )
+  }
+}
 ```
 
 ## Plot the thresholds
 
 ```{r}
-plot_tbl <- compare_tbl |>
-  dplyr::filter(
-    condition_perturbation_sd == 0,
-    is.finite(threshold)
-  ) |>
-  dplyr::select(
-    approach, threshold,
-    transformation, prob_response, n_cell, mean_pos_setting,
-  )
+#| label: plot-threshold-density
+if (isTRUE(run_plots)) {
+  plot_tbl <- compare_tbl |>
+    dplyr::filter(
+      condition_perturbation_sd == 0,
+      is.finite(threshold)
+    ) |>
+    dplyr::select(
+      approach, threshold,
+      transformation, prob_response, n_cell, mean_pos_setting
+    )
 
-p <- ggplot(
-  plot_tbl,
-  aes(
-    x = threshold,
-    fill = approach,
-    colour = approach
-  )
-) +
-  geom_histogram(alpha = 0.5) +
-  facet_grid(prob_response + mean_pos_setting ~ transformation, scales = "free") +
-  labs(
-    x = "Threshold",
-    y = "Density",
-    fill = "Method",
-    colour = "Method"
-  ) +
-  cowplot::theme_cowplot() +
-  cowplot::background_grid(major = "xy") +
-  theme(
-    panel.background = element_rect(
-      fill = "white",
-      color = NA
-    ),
-    plot.background = element_rect(
-      fill = "white",
-      color = NA
-    ),
-    legend.position = "bottom"
-  )
-path_p <- projr::projr_path_get(
-  "cache",
-  "sim",
-  "compare",
-  "freq_bs",
-  "freq_bs_threshold_density.png"
-)
-ggplot2::ggsave(
-  filename = path_p,
-  plot = p,
-  width = 18,
-  height = 15,
-  units = "cm"
-)
+  for (mean_pos_setting_curr in unique(plot_tbl$mean_pos_setting)) {
+    plot_tbl_curr <- plot_tbl |>
+      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr)
+
+    p <- ggplot(
+      plot_tbl_curr,
+      aes(
+        x = threshold,
+        fill = approach,
+        colour = approach
+      )
+    ) +
+      geom_histogram(alpha = 0.5) +
+      facet_grid(prob_response ~ transformation, scales = "free") +
+      labs(
+        title = paste0(
+          "Mean position setting: ",
+          mean_pos_setting_curr
+        ),
+        x = "Threshold",
+        y = "Density",
+        fill = "Method",
+        colour = "Method"
+      ) +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "xy", minor = "none") +
+      theme(
+        panel.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        plot.background = element_rect(
+          fill = "white",
+          color = NA
+        ),
+        legend.position = "bottom"
+      )
+
+    print(p)
+
+    path_p <- projr::projr_path_get(
+      "cache",
+      "sim",
+      "compare",
+      "freq_bs",
+      paste0(
+        "freq_bs_threshold_density_",
+        mean_pos_setting_curr,
+        ".png"
+      )
+    )
+    ggplot2::ggsave(
+      filename = path_p,
+      plot = p,
+      width = 18,
+      height = 15,
+      units = "cm"
+    )
+  }
+}
 ```
