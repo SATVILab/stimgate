@@ -168,6 +168,66 @@ test_that("sim_trans_univariate_experiment_one fixed-seed parity matches direct 
   run_case(seed = 303L, transformation = "skew", mean_pos = 6, prob_response = 0.002)
 })
 
+test_that("legacy sim_trans helpers use exported simcyto::simCytExperiment and run as smoke checks", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_trans, local = env)
+
+  orig_simcyto_experiment <- simcyto::simCytExperiment
+  called_n <- 0L
+
+  testthat::with_mocked_bindings(
+    simCytExperiment = function(...) {
+      called_n <<- called_n + 1L
+      orig_simcyto_experiment(...)
+    },
+    .package = "simcyto",
+    {
+      set.seed(123)
+      uni_out <- env$sim_trans_univariate_one(
+        transformation = "gaussian",
+        n_cell = 500L,
+        mean_pos = 4.5,
+        prob_response = 0.01,
+        background_relative_to_response = 0.2,
+        prob_exact = TRUE,
+        mixture_type = "gaussianOnly",
+        cluster_perturbation_sd = 0,
+        cov_ev_min = 1.5,
+        cov_ev_max = 1.5
+      )
+      expect_s3_class(uni_out, "data.frame")
+      expect_true(all(c("unstimulated", "stimulated") %in% unique(uni_out$condition)))
+      expect_true(all(uni_out$response_class %in% c("negative", "response")))
+
+      set.seed(124)
+      bi_out <- env$sim_trans_bivariate_one(
+        transformation = "gamma",
+        n_cell = 400L,
+        mean_pos = 4,
+        prob_response = 0.02,
+        background_relative_to_response = 0.2,
+        prob_exact = TRUE,
+        mixture_type = "gaussianOnly",
+        cluster_perturbation_sd = 0,
+        cov_ev_min = 1.5,
+        cov_ev_max = 1.5
+      )
+      expect_s3_class(bi_out, "data.frame")
+      expect_true(all(c("F1", "F2") %in% names(bi_out)))
+      expect_true(all(bi_out$condition == "stimulated"))
+      expect_true(all(bi_out$response_class %in% c(
+        "negative",
+        "F1 response",
+        "F2 response",
+        "F1 and F2 response"
+      )))
+    }
+  )
+
+  expect_equal(called_n, 2L)
+})
+
 test_that("make_density_tbl handles gamma fixed-range and non-gamma densities without browser debugging", {
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
