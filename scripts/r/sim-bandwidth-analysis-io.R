@@ -116,63 +116,9 @@ path_sim_output <- .path_sim_output
 update_progress_summary <- .update_progress_summary
 
 .find_bw_list_output_files <- function(output_dir = NULL, cache_dir = NULL, cache_path = NULL) {
-  fallback_cache_dirs <- character()
-
-  if (!is.null(cache_path) && length(cache_path) > 0L) {
-    cache_path <- as.character(cache_path)
-    cache_path <- cache_path[nzchar(cache_path)]
-
-    if (length(cache_path) > 0L && requireNamespace("projr", quietly = TRUE)) {
-      cache_args_safe <- c(as.list(cache_path), list("progress.txt", safe = TRUE))
-      cache_args_unsafe <- c(as.list(cache_path), list("progress.txt", safe = FALSE))
-
-      fallback_cache_dirs <- c(
-        file.path(dirname(do.call(projr::projr_path_get, cache_args_safe)), "output"),
-        file.path(dirname(do.call(projr::projr_path_get, cache_args_unsafe)), "output")
-      )
-    }
-  } else if (requireNamespace("projr", quietly = TRUE)) {
-    fallback_cache_dirs <- c(
-      file.path(
-        dirname(projr::projr_path_get(
-          "cache",
-          "log",
-          "analysis",
-          "sim",
-          "bw",
-          "freq_bs",
-          "adaptive",
-          "progress.txt",
-          safe = TRUE
-        )),
-        "output"
-      ),
-      file.path(
-        dirname(projr::projr_path_get(
-          "cache",
-          "log",
-          "analysis",
-          "sim",
-          "bw",
-          "freq_bs",
-          "adaptive",
-          "progress.txt",
-          safe = FALSE
-        )),
-        "output"
-      )
-    )
-  }
-
   output_dir_vec <- unique(c(
     if (!is.null(output_dir) && nzchar(output_dir)) output_dir else character(),
-    if (!is.null(cache_dir) && nzchar(cache_dir)) file.path(cache_dir, "output") else character(),
-    if (exists("dir_output", inherits = TRUE)) {
-      get("dir_output", mode = "any", inherits = TRUE)
-    } else {
-      character()
-    },
-    fallback_cache_dirs
+    if (!is.null(cache_dir) && nzchar(cache_dir)) cache_dir else character()
   ))
 
   output_dir_vec <- output_dir_vec[dir.exists(output_dir_vec)]

@@ -123,6 +123,74 @@
   }
 }
 
+.analysis_manifest_params_for_compat <- function(params) {
+  if (is.null(params) || length(params) == 0L) {
+    return(list())
+  }
+
+  keep <- intersect(
+    names(params),
+    c("sim_grid_n_chunks", "sim_grid_shuffle_seed")
+  )
+  params[keep]
+}
+
+.analysis_validate_manifest_compat <- function(
+    manifest,
+    analysis_key,
+    run_id,
+    expected_n_chunks,
+    git_sha,
+    params) {
+  mismatch <- character()
+
+  if (!identical(as.character(manifest$analysis_key), as.character(analysis_key))) {
+    mismatch <- c(mismatch, "analysis_key")
+  }
+
+  if (!identical(as.character(manifest$run_id), as.character(run_id))) {
+    mismatch <- c(mismatch, "run_id")
+  }
+
+  manifest_chunks <- as.integer(manifest$expected_n_chunks)
+  if (!identical(manifest_chunks, as.integer(expected_n_chunks))) {
+    mismatch <- c(mismatch, "expected_n_chunks")
+  }
+
+  manifest_sha <- as.character(manifest$git_sha)
+  current_sha <- as.character(git_sha)
+  if (
+    length(manifest_sha) > 0L &&
+      length(current_sha) > 0L &&
+      !is.na(manifest_sha) &&
+      !is.na(current_sha) &&
+      nzchar(manifest_sha) &&
+      nzchar(current_sha) &&
+      !identical(manifest_sha, current_sha)
+  ) {
+    mismatch <- c(mismatch, "git_sha")
+  }
+
+  manifest_params <- .analysis_manifest_params_for_compat(manifest$params)
+  current_params <- .analysis_manifest_params_for_compat(params)
+  if (!identical(manifest_params, current_params)) {
+    mismatch <- c(mismatch, "params")
+  }
+
+  if (length(mismatch) > 0L) {
+    stop(
+      paste0(
+        "Run ID '", run_id,
+        "' is incompatible with existing manifest. Mismatched fields: ",
+        paste(unique(mismatch), collapse = ", "),
+        ". Use a new analysis_run_id."
+      )
+    )
+  }
+
+  invisible(TRUE)
+}
+
 .analysis_run_context <- function(
     analysis_key,
     run_id = NULL,
@@ -192,8 +260,11 @@
 
   manifest_path <- file.path(staging_run_dir, "manifest.rds")
   status_path <- file.path(progress_run_dir, "status.rds")
+  chunk_status_dir <- file.path(progress_run_dir, "chunks")
+  dir.create(chunk_status_dir, recursive = TRUE, showWarnings = FALSE)
 
   if (!file.exists(manifest_path)) {
+    manifest_git_sha <- .git_sha(if (is.null(path_root)) "." else path_root)
     manifest <- list(
       analysis_key = analysis_key,
       run_id = run_id,
@@ -201,7 +272,7 @@
       run_time = run_time,
       started_at = start_time,
       status = "running",
-      git_sha = .git_sha(if (is.null(path_root)) "." else path_root),
+      git_sha = manifest_git_sha,
       params = params,
       expected_n_chunks = as.integer(sim_grid_n_chunks),
       path_staging_run = staging_run_dir,
@@ -209,6 +280,17 @@
       path_log_run = progress_run_dir
     )
     .write_rds_atomic(manifest, manifest_path)
+    .write_rds_atomic(manifest, file.path(progress_run_dir, "manifest.rds"))
+  } else {
+    manifest <- readRDS(manifest_path)
+    .analysis_validate_manifest_compat(
+      manifest = manifest,
+      analysis_key = analysis_key,
+      run_id = run_id,
+      expected_n_chunks = sim_grid_n_chunks,
+      git_sha = .git_sha(if (is.null(path_root)) "." else path_root),
+      params = params
+    )
     .write_rds_atomic(manifest, file.path(progress_run_dir, "manifest.rds"))
   }
 
@@ -247,6 +329,7 @@
     progress_run_dir = progress_run_dir,
     progress_file = progress_file,
     chunk_jobs_dir = chunk_jobs_dir,
+    chunk_status_dir = chunk_status_dir,
     manifest_path = manifest_path,
     status_path = status_path
   )
@@ -257,6 +340,94 @@
     return(NULL)
   }
   readRDS(run_ctx$status_path)
+}
+
+.analysis_chunk_status_path <- function(run_ctx, chunk_label = run_ctx$chunk_label) {
+  file.path(run_ctx$chunk_status_dir, paste0(chunk_label, ".rds"))
+}
+
+.analysis_read_chunk_statuses <- function(run_ctx) {
+  if (!dir.exists(run_ctx$chunk_status_dir)) {
+    return(list())
+  }
+
+  path_vec <- list.files(
+    run_ctx$chunk_status_dir,
+    pattern = "[.]rds$",
+    full.names = TRUE
+  )
+
+  if (length(path_vec) == 0L) {
+    return(list())
+  }
+
+  out <- lapply(path_vec, function(path) {
+    tryCatch(readRDS(path), error = function(e) NULL)
+  })
+  out <- out[!vapply(out, is.null, logical(1))]
+  if (length(out) == 0L) {
+    return(list())
+  }
+
+  nm <- vapply(
+    out,
+    function(x) {
+      if (!is.null(x$chunk_label) && nzchar(as.character(x$chunk_label))) {
+        as.character(x$chunk_label)
+      } else {
+        NA_character_
+      }
+    },
+    character(1)
+  )
+  keep <- !is.na(nm) & nzchar(nm)
+  out <- out[keep]
+  nm <- nm[keep]
+  if (length(out) == 0L) {
+    return(list())
+  }
+  names(out) <- nm
+  out
+}
+
+.analysis_output_has_error <- function(existing_output, error_col = "error_message") {
+  if (is.null(existing_output) || !error_col %in% names(existing_output)) {
+    return(FALSE)
+  }
+  any(
+    !is.na(existing_output[[error_col]]) &
+      nzchar(as.character(existing_output[[error_col]]))
+  )
+}
+
+.analysis_reconcile_resume_markers <- function(
+    existing_output,
+    file_completed,
+    file_error,
+    file_running = NULL,
+    error_col = "error_message") {
+  existing_is_error <- .analysis_output_has_error(
+    existing_output = existing_output,
+    error_col = error_col
+  )
+
+  if (isTRUE(existing_is_error)) {
+    file.create(file_error)
+    if (file.exists(file_completed)) {
+      file.remove(file_completed)
+    }
+  } else {
+    file.create(file_completed)
+    if (file.exists(file_error)) {
+      file.remove(file_error)
+    }
+  }
+
+  if (!is.null(file_running) && file.exists(file_running)) {
+    file.remove(file_running)
+  }
+
+  invisible(existing_is_error)
 }
 
 .analysis_update_status <- function(
@@ -282,16 +453,49 @@
     )
   }
 
+  if (!is.null(chunk_status) && !is.null(chunk_status$chunk_label)) {
+    .write_rds_atomic(
+      chunk_status,
+      .analysis_chunk_status_path(run_ctx, chunk_status$chunk_label)
+    )
+  }
+
+  chunk_list <- .analysis_read_chunk_statuses(run_ctx)
+  st$chunks <- chunk_list
+
+  if (length(chunk_list) > 0L) {
+    as_nonneg_int <- function(x) {
+      out <- suppressWarnings(as.integer(x))
+      if (length(out) == 0L || is.na(out)) {
+        return(0L)
+      }
+      max(0L, out)
+    }
+
+    n_completed_agg <- sum(vapply(chunk_list, function(cs) {
+      as_nonneg_int(cs$completed_sims)
+    }, integer(1)))
+    n_failed_agg <- sum(vapply(chunk_list, function(cs) {
+      as_nonneg_int(cs$failed_sims)
+    }, integer(1)))
+    n_outstanding_agg <- sum(vapply(chunk_list, function(cs) {
+      total <- as_nonneg_int(cs$total_sims)
+      done <- as_nonneg_int(cs$completed_sims) + as_nonneg_int(cs$failed_sims)
+      as.integer(max(0L, total - done))
+    }, integer(1)))
+
+    st$n_completed <- n_completed_agg
+    st$n_failed <- n_failed_agg
+    st$n_outstanding <- n_outstanding_agg
+  } else {
+    if (!is.null(n_completed)) st$n_completed <- as.integer(n_completed)
+    if (!is.null(n_failed)) st$n_failed <- as.integer(n_failed)
+    if (!is.null(n_outstanding)) st$n_outstanding <- as.integer(n_outstanding)
+  }
+
   if (!is.null(status)) st$status <- status
-  if (!is.null(n_completed)) st$n_completed <- as.integer(n_completed)
-  if (!is.null(n_failed)) st$n_failed <- as.integer(n_failed)
-  if (!is.null(n_outstanding)) st$n_outstanding <- as.integer(n_outstanding)
   if (!is.null(ended_at)) st$ended_at <- ended_at
   if (!is.null(promotion_done)) st$promotion_done <- isTRUE(promotion_done)
-
-  if (!is.null(chunk_status) && !is.null(chunk_status$chunk_label)) {
-    st$chunks[[chunk_status$chunk_label]] <- chunk_status
-  }
 
   .write_rds_atomic(st, run_ctx$status_path)
   invisible(st)
@@ -305,19 +509,29 @@
     collate_ok = NULL,
     validation_ok = NULL,
     error_message = NULL) {
+  total_sims <- as.integer(total_sims)
+  completed_sims <- as.integer(completed_sims)
+  failed_sims <- as.integer(failed_sims)
+
+  total_sims <- max(0L, total_sims)
+  completed_sims <- max(0L, completed_sims)
+  failed_sims <- max(0L, failed_sims)
+
+  done_sims <- as.integer(completed_sims + failed_sims)
+  outstanding <- as.integer(max(0L, total_sims - done_sims))
+
   chunk_status <- list(
     chunk_label = run_ctx$chunk_label,
-    total_sims = as.integer(total_sims),
-    completed_sims = as.integer(completed_sims),
-    failed_sims = as.integer(failed_sims),
+    total_sims = total_sims,
+    completed_sims = completed_sims,
+    failed_sims = failed_sims,
     collate_ok = collate_ok,
     validation_ok = validation_ok,
     error_message = error_message,
     updated_at = Sys.time()
   )
 
-  outstanding <- as.integer(total_sims - completed_sims - failed_sims)
-  chunk_status$is_complete <- isTRUE(outstanding <= 0L)
+  chunk_status$is_complete <- isTRUE(done_sims >= total_sims)
 
   .analysis_update_status(
     run_ctx = run_ctx,
@@ -325,7 +539,14 @@
     n_completed = completed_sims,
     n_failed = failed_sims,
     n_outstanding = outstanding,
-    status = if (!is.null(error_message) && nzchar(error_message)) "failed" else "running"
+    status = if (
+      (!is.null(error_message) && nzchar(error_message)) ||
+        failed_sims > 0L
+    ) {
+      "failed"
+    } else {
+      "running"
+    }
   )
 }
 
@@ -355,6 +576,9 @@
       return(FALSE)
     }
     if (!isTRUE(cs$collate_ok) || !isTRUE(cs$validation_ok)) {
+      return(FALSE)
+    }
+    if (!is.null(cs$failed_sims) && as.integer(cs$failed_sims) > 0L) {
       return(FALSE)
     }
     if (!is.null(cs$error_message) && nzchar(cs$error_message)) {

@@ -456,6 +456,21 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
         }
 
         if (!is.null(existing_output)) {
+          .analysis_reconcile_resume_markers(
+            existing_output = existing_output,
+            file_completed = file_completed,
+            file_error = file_error,
+            file_running = file_running,
+            error_col = "error_message"
+          )
+          .update_progress_summary(
+            path_progress_file = path_progress_file,
+            dir_jobs_chunk = dir_jobs_chunk,
+            total_sims = total_sims,
+            sim_grid_chunk_index = sim_grid_chunk_index,
+            sim_grid_n_chunks = sim_grid_n_chunks,
+            dir_output = dir_output
+          )
           p(sprintf("Skipped existing sim_id: %s", sim_id))
           return(existing_output)
         }
@@ -631,11 +646,22 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
 if (isTRUE(run_simulations)) {
   chunk_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
+  chunk_completed_ids <- unique(sub(
+    "^completed-",
+    "",
+    chunk_job_files[grepl("^completed-", chunk_job_files)]
+  ))
+  chunk_failed_ids <- unique(sub(
+    "^error-",
+    "",
+    chunk_job_files[grepl("^error-", chunk_job_files)]
+  ))
+  chunk_completed_ids <- setdiff(chunk_completed_ids, chunk_failed_ids)
   .analysis_mark_chunk(
     run_ctx = run_ctx,
     total_sims = nrow(sim_grid),
-    completed_sims = sum(grepl("^completed-", chunk_job_files)),
-    failed_sims = sum(grepl("^error-", chunk_job_files))
+    completed_sims = length(chunk_completed_ids),
+    failed_sims = length(chunk_failed_ids)
   )
 }
 ```
@@ -649,8 +675,7 @@ Collate the results.
 #| fig-height: 10
 bw_list_path_vec <- .find_bw_list_output_files(
   output_dir = run_ctx$staging_run_dir,
-  cache_dir = run_ctx$current_dir,
-  cache_path = c("cache", "log", "analysis", "sim", "bw", "est", "adaptive")
+  cache_dir = run_ctx$current_dir
 )
 
 if (length(bw_list_path_vec) > 0L) {
@@ -674,8 +699,24 @@ if (length(bw_list_path_vec) > 0L) {
   bw_list_raw_collate <- bw_list_raw
 } else {
   path_vec <- c(
-    file.path(run_ctx$staging_collated_dir, "bw_list_raw.rds"),
-    file.path(run_ctx$current_dir, "collated", "bw_list_raw.rds")
+    if (dir.exists(run_ctx$staging_collated_dir)) {
+      list.files(
+        run_ctx$staging_collated_dir,
+        pattern = "^bw_list_raw([-_]chunk_[0-9]+-of_[0-9]+)?[.]rds$",
+        full.names = TRUE
+      )
+    } else {
+      character(0)
+    },
+    if (dir.exists(file.path(run_ctx$current_dir, "collated"))) {
+      list.files(
+        file.path(run_ctx$current_dir, "collated"),
+        pattern = "^bw_list_raw([-_]chunk_[0-9]+-of_[0-9]+)?[.]rds$",
+        full.names = TRUE
+      )
+    } else {
+      character(0)
+    }
   )
   path_vec <- path_vec[file.exists(path_vec)]
   if (length(path_vec) == 0L) {
@@ -840,11 +881,22 @@ saveRDS(
 )
 
 chunk_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
+chunk_completed_ids <- unique(sub(
+  "^completed-",
+  "",
+  chunk_job_files[grepl("^completed-", chunk_job_files)]
+))
+chunk_failed_ids <- unique(sub(
+  "^error-",
+  "",
+  chunk_job_files[grepl("^error-", chunk_job_files)]
+))
+chunk_completed_ids <- setdiff(chunk_completed_ids, chunk_failed_ids)
 .analysis_mark_chunk(
   run_ctx = run_ctx,
   total_sims = nrow(sim_grid),
-  completed_sims = sum(grepl("^completed-", chunk_job_files)),
-  failed_sims = sum(grepl("^error-", chunk_job_files)),
+  completed_sims = length(chunk_completed_ids),
+  failed_sims = length(chunk_failed_ids),
   collate_ok = TRUE,
   validation_ok = nrow(bw_tbl_results) > 0L
 )
