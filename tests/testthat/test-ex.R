@@ -388,3 +388,147 @@ test_that("getStimExpr extracts cytokine-positive cells with gating", {
   # Cleanup
   unlink(pathProject, recursive = TRUE)
 })
+
+test_that("cytokine-positive filtering helpers respect gate context and exclusions", {
+  ex <- tibble::tibble(
+    IFNg = c(0, 5, 3, 3, 5, 5, 3),
+    IL2 = c(0, 0, 5, 0, 5, 0, 0),
+    TNFa = c(0, 0, 0, 5, 0, 5, 0)
+  )
+  gateTbl <- tibble::tibble(
+    chnl = c("IFNg", "IL2", "TNFa"),
+    ind = "1",
+    gate = c(4, 4, 4),
+    gateCyt = c(2, 2, 2)
+  )
+
+  exBase <- .dataGetExCytPosInc(
+    ex,
+    gateTbl,
+    mult = FALSE,
+    chnl = c("IFNg", "IL2", "TNFa"),
+    gateTypeCytPos = "base"
+  )
+  expect_equal(
+    exBase[, c("IFNg", "IL2", "TNFa")],
+    tibble::tibble(
+      IFNg = c(5, 3, 3, 5, 5),
+      IL2 = c(0, 5, 0, 5, 0),
+      TNFa = c(0, 0, 5, 0, 5)
+    )
+  )
+
+  exCyt <- .dataGetExCytPosInc(
+    ex,
+    gateTbl,
+    mult = FALSE,
+    chnl = c("IFNg", "IL2", "TNFa"),
+    gateTypeCytPos = "cyt"
+  )
+  expect_equal(
+    exCyt[, c("IFNg", "IL2", "TNFa")],
+    tibble::tibble(
+      IFNg = c(5, 3, 3, 5, 5),
+      IL2 = c(0, 5, 0, 5, 0),
+      TNFa = c(0, 0, 5, 0, 5)
+    )
+  )
+
+  exCytMult <- .dataGetExCytPosInc(
+    ex,
+    gateTbl,
+    mult = TRUE,
+    chnl = c("IFNg", "IL2", "TNFa"),
+    gateTypeCytPos = "cyt"
+  )
+  expect_equal(
+    exCytMult[, c("IFNg", "IL2", "TNFa")],
+    tibble::tibble(
+      IFNg = c(3, 3, 5, 5),
+      IL2 = c(5, 0, 5, 0),
+      TNFa = c(0, 5, 0, 5)
+    )
+  )
+
+  exSubset <- .dataGetExCytPosInc(
+    ex,
+    gateTbl,
+    mult = FALSE,
+    chnl = "IFNg",
+    gateTypeCytPos = "cyt"
+  )
+  expect_equal(
+    nrow(exSubset),
+    5L
+  )
+  expect_equal(
+    exSubset$IFNg,
+    c(5, 3, 3, 5, 5)
+  )
+  expect_false(any(exSubset$IFNg == 3 & exSubset$IL2 == 0 & exSubset$TNFa == 0))
+
+  exExc <- .dataGetExCytPosExc(
+    exCyt,
+    combnExc = list(c("IFNg", "IL2")),
+    gateTblInd = gateTbl,
+    chnlGate = c("IFNg", "IL2", "TNFa"),
+    gateTypeCytPos = "cyt"
+  )
+  expect_equal(
+    exExc[, c("IFNg", "IL2", "TNFa")],
+    tibble::tibble(
+      IFNg = c(5, 3, 5),
+      IL2 = c(0, 0, 0),
+      TNFa = c(0, 5, 5)
+    )
+  )
+
+  tmp <- tempfile("stimgate_ex_cyt_filter_")
+  dir.create(file.path(tmp, "sampleData", "pop_root", "ind_1"), recursive = TRUE)
+  saveRDS(
+    c(0, 5, 3, 3, 5, 5, 3),
+    file.path(tmp, "sampleData", "pop_root", "ind_1", "chnl_IFNg.rds")
+  )
+  saveRDS(
+    c(0, 0, 5, 0, 5, 0, 0),
+    file.path(tmp, "sampleData", "pop_root", "ind_1", "chnl_IL2.rds")
+  )
+  saveRDS(
+    c(0, 0, 0, 5, 0, 5, 0),
+    file.path(tmp, "sampleData", "pop_root", "ind_1", "chnl_TNFa.rds")
+  )
+  for (nm in c("IFNg", "IL2", "TNFa")) {
+    dir.create(
+      file.path(tmp, "gates", "poproot", paste0("chnl", nm), "all"),
+      recursive = TRUE
+    )
+    gateTblCurr <- tibble::tibble(
+      chnl = nm,
+      ind = "1",
+      gate = 4,
+      gateCyt = 2
+    )
+    saveRDS(
+      gateTblCurr,
+      file.path(tmp, "gates", "poproot", paste0("chnl", nm), "all", "gateTbl.rds")
+    )
+  }
+
+  res <- getStimExpr(
+    tmp,
+    pop = "root",
+    chnl = c("IFNg", "IL2", "TNFa"),
+    chnlGate = c("IFNg", "IL2", "TNFa")
+  )
+  expect_equal(
+    res[, c("IFNg", "IL2", "TNFa")],
+    tibble::tibble(
+      IFNg = c(5, 3, 3, 5, 5),
+      IL2 = c(0, 5, 0, 5, 0),
+      TNFa = c(0, 0, 5, 0, 5)
+    ),
+    check.attributes = FALSE
+  )
+
+  unlink(tmp, recursive = TRUE)
+})
