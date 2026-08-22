@@ -713,6 +713,7 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
 ```{r}
 #| label: plot-med-rel-error-cell-count
 for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
+  print(paste0("Plotting median relative error for mean position setting: ", mean_pos_setting_curr))
   plot_tbl <- compare_summary |>
     dplyr::filter(
       mean_pos_setting == !!mean_pos_setting_curr
@@ -744,10 +745,12 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     dplyr::mutate(
       big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
     ) |>
-    dplyr::arrange(dplyr::desc(big_winner), winner) |>
+    dplyr::mutate(
+      max_error = pmax(fbeta, stimgate, tailgate)
+    ) |>
+    # dplyr::arrange(dplyr::desc(big_winner), winner) |>
     dplyr::arrange(dplyr::desc(fbeta)) |>
     print(n = Inf, width = Inf)
-    
 
   p <- ggplot(
     plot_tbl,
