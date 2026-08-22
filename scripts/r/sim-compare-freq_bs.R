@@ -1221,6 +1221,17 @@
       median_abs_error = stats::median(.data$abs_error, na.rm = TRUE),
       rmse = sqrt(mean(.data$sq_error, na.rm = TRUE)),
       med_abs_rel_error = stats::median(abs(.data$rel_error), na.rm = TRUE),
+      q90_abs_rel_error = stats::quantile(
+        abs(.data$rel_error),
+        probs = 0.9,
+        na.rm = TRUE
+      ),
+      q95_abs_rel_error = stats::quantile(
+        abs(.data$rel_error),
+        probs = 0.95,
+        na.rm = TRUE
+      ),
+      max_abs_rel_error = max(abs(.data$rel_error), na.rm = TRUE),
       threshold_mean = mean(.data$threshold, na.rm = TRUE),
       threshold_median = stats::median(.data$threshold, na.rm = TRUE),
       .groups = "drop"

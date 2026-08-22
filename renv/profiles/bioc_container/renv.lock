@@ -7848,6 +7848,44 @@
       "Maintainer": "Carson Sievert <carson@posit.co>",
       "Repository": "RSPM"
     },
+    "simcyto": {
+      "Package": "simcyto",
+      "Version": "0.99.0",
+      "Source": "GitHub",
+      "Title": "Simulate Cytometry Data for Testing and Benchmarking",
+      "Authors@R": "person(\"Miguel\", \"Rodo\", , \"miguel.rodo@outlook.com\", role = c(\"aut\", \"cre\"))",
+      "Description": "Provides a simulation engine for generating synthetic single-cell cytometry data across multi-sample, multi-condition experimental designs. Users define phenotype clusters, mixture distributions (Gaussian, t, or t-plus-Gaussian), perturbations (sample, condition and cluster level), and marker transformations (identity, gamma, Gaussian, or skew-normal).  The resulting data are returned as flowCore flowFrame objects with per-cell ground-truth cluster labels, making the package suitable for testing and benchmarking of cytometry analysis methods.",
+      "License": "GPL (>= 3)",
+      "Encoding": "UTF-8",
+      "Roxygen": "list(markdown = TRUE)",
+      "Date": "2026-08-19",
+      "URL": "https://github.com/SATVILab/simcyto",
+      "BugReports": "https://github.com/SATVILab/simcyto/issues",
+      "biocViews": "FlowCytometry, SingleCell, Preprocessing, Software",
+      "Imports": [
+        "Biobase",
+        "flowCore",
+        "MASS",
+        "mvtnorm",
+        "stats"
+      ],
+      "Suggests": [
+        "knitr",
+        "rmarkdown",
+        "testthat (>= 3.0.0)"
+      ],
+      "VignetteBuilder": "knitr",
+      "Config/testthat/edition": "3",
+      "Config/roxygen2/version": "8.1.0",
+      "Author": "Miguel Rodo [aut, cre]",
+      "Maintainer": "Miguel Rodo <miguel.rodo@outlook.com>",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "SATVILab",
+      "RemoteRepo": "simcyto",
+      "RemoteRef": "main",
+      "RemoteSha": "d9128b0529b958632cebbfdc7ee7e530b2584621"
+    },
     "snow": {
       "Package": "snow",
       "Version": "0.4-4",
