@@ -27,7 +27,7 @@ sim_trans_univariate_one <- function(
   )
 
   purrr::imap_dfr(cond_list, function(prob_vec, condition_nm) {
-    out <- simCytCondition(
+    out <- simcyto::simCytCondition(
       nMarker = 1L,
       nCell = n_cell,
       transformationFunc = trans_func,
@@ -69,7 +69,7 @@ sim_trans_univariate_experiment_one <- function(
   transformation_fun <- .simMiscGetTrans(transformation)
   attr(transformation_fun, "sim_transformation") <- transformation
 
-  out <- simCytExperiment(
+  out <- simcyto::simCytExperiment(
     nSample = 1L,
     nMarker = 1L,
     nCondition = 2L,
@@ -161,7 +161,7 @@ sim_trans_bivariate_one <- function(
     "F1 and F2 response"
   )
 
-  out <- simCytCondition(
+  out <- simcyto::simCytCondition(
     nMarker = 2L,
     nCell = n_cell,
     transformationFunc = trans_func,
