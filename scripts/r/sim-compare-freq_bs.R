@@ -900,7 +900,9 @@
   tailgateSide = "right",
   tailgateAutoTol = FALSE,
   fallbackHighValue = TRUE,
-  fallbackMargin = 0.05
+  fallbackMargin = 0.05,
+  stimMeanShift = 0,
+  stimSdMultiplier = 1
 ) {
   if (!identical(as.integer(nMarker), 1L)) {
     stop("This comparison helper currently expects nMarker = 1.")
@@ -946,7 +948,9 @@
       clusterPerturbationSd = clusterPerturbationSd,
       samplePerturbationSd = samplePerturbationSd,
       covEvMin = covEvMin,
-      covEvMax = covEvMax
+      covEvMax = covEvMax,
+      stimMeanShift = stimMeanShift,
+      stimSdMultiplier = stimSdMultiplier
     )
 
     flowFrameList <- outListExperiment[["flowFrameList"]]
@@ -1089,7 +1093,9 @@
         tailgateMethod = tailgateMethod,
         tailgateTol = tailgateTol,
         tailgateSide = tailgateSide,
-        tailgateAutoTol = tailgateAutoTol
+        tailgateAutoTol = tailgateAutoTol,
+        stimMeanShift = stimMeanShift,
+        stimSdMultiplier = stimSdMultiplier
       ) |>
       dplyr::select(
         iter,
@@ -1125,6 +1131,26 @@
   purrr::map_df(seq_len(nrow(sim_grid)), function(i) {
     row <- sim_grid[i, , drop = FALSE]
 
+    stimMeanShiftVal <- if ("stim_mean_shift" %in% names(row)) {
+      row$stim_mean_shift[[1]]
+    } else if ("stimMeanShift" %in% names(row)) {
+      row$stimMeanShift[[1]]
+    } else {
+      0
+    }
+
+    stimSdMultVal <- if ("stim_sd_multiplier" %in% names(row)) {
+      row$stim_sd_multiplier[[1]]
+    } else if ("stimSdMultiplier" %in% names(row)) {
+      row$stimSdMultiplier[[1]]
+    } else if ("sd_multiplier" %in% names(row)) {
+      row$sd_multiplier[[1]]
+    } else if ("sd_increase" %in% names(row)) {
+      1 + row$sd_increase[[1]]
+    } else {
+      1
+    }
+
     out <- .simCompareFreqBs(
       nSample = nSample,
       nMarker = nMarker,
@@ -1152,6 +1178,8 @@
       locEnforceShapeThreshold = locEnforceShapeThreshold,
       calcCytPosGates = calcCytPosGates,
       includeLocCondition = includeLocCondition,
+      stimMeanShift = stimMeanShiftVal,
+      stimSdMultiplier = stimSdMultVal,
       ...
     )
 
@@ -1180,10 +1208,18 @@
   if (is.null(scenarioCols)) {
     scenarioCols <- intersect(
       c(
+        "mismatch_type",
+        "mismatch_val",
+        "stim_mean_shift",
+        "stimMeanShift",
+        "stim_sd_multiplier",
+        "stimSdMultiplier",
+        "sd_increase",
         "transformation",
         "prob_response",
         "n_cell",
         "mean_pos",
+        "mean_pos_setting",
         "bw",
         "bias_uns",
         "sample_perturbation_sd",

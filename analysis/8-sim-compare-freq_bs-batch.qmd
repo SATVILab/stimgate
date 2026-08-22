@@ -1,0 +1,381 @@
+---
+title: Compare background-subtracted frequency approaches under condition mismatch
+format:
+  html:
+    embed-resources: true
+    toc: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+library(tibble)
+library(furrr)
+library(progressr)
+library(dplyr)
+library(tidyr)
+
+root_dir <- projr::projr_path_get("project")
+desc_path <- file.path(root_dir, "DESCRIPTION")
+
+if (
+  file.exists(desc_path) &&
+    grepl("Package: stimgate", readLines(desc_path, n = 1))
+) {
+  devtools::load_all(root_dir)
+} else {
+  fn_vec <- list.files(file.path(root_dir, "R"), full.names = TRUE)
+  for (fn in fn_vec) {
+    source(fn)
+  }
+}
+
+# Tailgate comparisons use the cytoUtils package directly.
+if (!requireNamespace("cytoUtils", quietly = TRUE)) {
+  warning(
+    "Package 'cytoUtils' is not installed. Tailgate comparisons will fail if run."
+  )
+}
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+
+# Source simulation helpers in dependency order:
+# 1. sim-misc.R: general simulation utilities and transformation lookups
+# 2. sim-bandwidth.R: location details reader and bandwidth helpers
+# 3. sim-compare-freq_bs.R: comparison functions requiring the helpers above
+for (fn in c(
+  "sim-misc.R",
+  "sim-bandwidth.R",
+  "sim-compare-freq_bs.R"
+)) {
+  source(file.path(scripts_r_dir, fn))
+}
+```
+
+### Aim
+
+Compare the StimGate background-subtracted frequency estimate against two
+alternative thresholding approaches (`fbeta` and `tailgate`) under controlled
+**condition mismatch** (technical misalignment between the stimulated and
+matched unstimulated tubes).
+
+The simulation isolates two deterministic post-transformation mismatch
+mechanisms provided by `simcyto`:
+
+1. **Mean shift** (`stimMeanShift`): An additive shift applied to all stimulated
+   cells on the transformed expression scale.
+2. **SD inflation** (`stimSdMultiplier`): A multiplicative scaling of the
+   within-component standard deviation for stimulated cells around each
+   component's realised mean.
+
+In all primary mismatch comparisons, random perturbations are disabled
+(`samplePerturbationSd = 0`, `conditionPerturbationSd = 0`,
+`clusterPerturbationSd = 0`) to isolate the effects of the controlled mismatch.
+
+### Simulation settings
+
+```{r}
+#| label: actual-settings
+# Method settings inherited from analysis 7:
+stimgate_bw_mtd <- "hpi1"
+stimgate_bw_ncell_max <- 1e4
+stimgate_bw_fallback <- "auto"
+stimgate_bw_min <- "none"
+stimgate_bw_max <- "none"
+
+# Cluster refinement enabled for the full one-marker procedure
+tol_clust <- 1e-7
+loc_enforce_shape_threshold <- FALSE
+calc_cyt_pos_gates <- FALSE
+
+fbeta_beta <- 0.8
+fbeta_theta <- 2
+fbeta_width <- 10
+path_fbeta <- projr::projr_path_get(
+  "project",
+  "scripts",
+  "python",
+  "fbeta.py"
+)
+
+tailgate_adjust <- 1
+tailgate_method <- "firstDeriv"
+tailgate_tol <- 1e-2
+tailgate_auto_tol <- TRUE
+
+background_relative_to_response <- 0.1
+n_cell_uns_relative_to_stim <- 1
+
+mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
+
+# Targeted scenario panel representing qualitatively distinct baselines
+targeted_scenarios_tbl <- tibble::tribble(
+  ~transformation, ~mean_pos_setting, ~prob_response, ~n_cell, ~scenario_desc,
+  "gaussian", "high", 0.002, 20000, "Rare response, clean baseline",
+  "skew", "high", 0.2, 20000, "Clean skew baseline",
+  "gamma", "high", 0.2, 5000, "Very clean gamma baseline",
+  "gaussian", "low", 0.2, 1000, "Overlapping Gaussian (StimGate clean advantage)",
+  "gamma", "low", 0.2, 1000, "Overlapping Gamma (StimGate clean advantage)",
+  "gaussian", "high", 0.0005, 100000, "Rare Gaussian (F-beta clean advantage)",
+  "gamma", "high", 0.0005, 20000, "Rare Gamma (F-beta clean advantage)"
+) |>
+  dplyr::left_join(
+    mean_pos_settings_tbl,
+    by = c("transformation", "mean_pos_setting")
+  ) |>
+  dplyr::mutate(
+    bias_uns = dplyr::case_when(
+      transformation == "gamma" ~ 0.01,
+      transformation %in% c("gaussian", "skew") ~ 0.15,
+      TRUE ~ NA_real_
+    ),
+    bw_mtd = stimgate_bw_mtd,
+    bw_ncell_max = stimgate_bw_ncell_max,
+    bw_fallback = stimgate_bw_fallback,
+    bw_min = stimgate_bw_min,
+    bw_max = stimgate_bw_max,
+    sample_perturbation_sd = 0,
+    condition_perturbation_sd = 0,
+    cluster_perturbation_sd = 0,
+    background_relative_to_response = background_relative_to_response,
+    n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim
+  )
+```
+
+### Mismatch experiment grids
+
+```{r}
+#| label: mismatch-grids
+# 1. Mean-shift grid:
+# Gaussian and Skew: 0, 0.025, 0.05, 0.1, 0.2
+# Gamma: 0, 0.005, 0.01, 0.025, 0.05
+mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.1, 0.2)
+mean_shift_gamma <- c(0, 0.005, 0.01, 0.025, 0.05)
+
+grid_mean_shift <- purrr::map_df(seq_len(nrow(targeted_scenarios_tbl)), function(i) {
+  row <- targeted_scenarios_tbl[i, , drop = FALSE]
+  shifts <- if (row$transformation[[1]] == "gamma") {
+    mean_shift_gamma
+  } else {
+    mean_shift_gaussian_skew
+  }
+  tidyr::expand_grid(
+    row,
+    stim_mean_shift = shifts
+  ) |>
+    dplyr::mutate(
+      mismatch_type = "mean_shift",
+      mismatch_val = stim_mean_shift,
+      stim_sd_multiplier = 1,
+      sd_increase = 0
+    )
+})
+
+# 2. SD-inflation grid:
+# Fractional SD increase: 0, 0.01, 0.025, 0.05, 0.10, 0.20
+sd_increase_vec <- c(0, 0.01, 0.025, 0.05, 0.10, 0.20)
+
+grid_sd_inflation <- tidyr::expand_grid(
+  targeted_scenarios_tbl,
+  sd_increase = sd_increase_vec
+) |>
+  dplyr::mutate(
+    mismatch_type = "sd_inflation",
+    mismatch_val = sd_increase,
+    stim_sd_multiplier = 1 + sd_increase,
+    stim_mean_shift = 0
+  )
+
+# Combined full mismatch simulation grid
+sim_grid <- dplyr::bind_rows(grid_mean_shift, grid_sd_inflation) |>
+  dplyr::mutate(
+    sim_id = dplyr::row_number()
+  )
+
+if (.isDev()) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      transformation == "gaussian",
+      mean_pos_setting == "high",
+      prob_response == 0.002,
+      mismatch_val %in% c(0, 0.05)
+    )
+}
+
+sim_grid
+print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
+```
+
+### Simulation execution
+
+```{r}
+#| label: compare-batch-run
+#| results: hide
+path_cache_dir <- projr::projr_path_get(
+  "cache",
+  "analysis",
+  "sim",
+  "compare",
+  "freq_bs_batch"
+)
+dir.create(path_cache_dir, recursive = TRUE, showWarnings = FALSE)
+
+path_rds <- file.path(path_cache_dir, "compare_raw.rds")
+
+n_sample_sim <- 5
+n_iter_sim <- 5
+
+if (file.exists(path_rds)) {
+  compare_raw <- readRDS(path_rds)
+} else {
+  compare_raw <- .simCompareFreqBsGrid(
+    sim_grid = sim_grid,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim,
+    nMarker = 1,
+    nCondition = 2,
+    nCluster = 2,
+    probExact = TRUE,
+    covEvMin = 1.5,
+    covEvMax = 1.5,
+    tolClust = tol_clust,
+    locEnforceShapeThreshold = loc_enforce_shape_threshold,
+    calcCytPosGates = calc_cyt_pos_gates,
+    includeLocCondition = TRUE,
+    pathFbeta = path_fbeta,
+    fbetaBeta = fbeta_beta,
+    fbetaTheta = fbeta_theta,
+    fbetaWidth = fbeta_width,
+    tailgateAdjust = tailgate_adjust,
+    tailgateAutoTol = tailgate_auto_tol,
+    tailgateMethod = tailgate_method,
+    tailgateTol = tailgate_tol
+  )
+  saveRDS(compare_raw, path_rds)
+}
+```
+
+### Results summary
+
+```{r}
+#| label: compare-summary
+compare_summary <- .simCompareSummariseFreqBs(
+  compare_raw,
+  scenarioCols = c(
+    "mismatch_type",
+    "mismatch_val",
+    "stim_mean_shift",
+    "stim_sd_multiplier",
+    "sd_increase",
+    "transformation",
+    "mean_pos_setting",
+    "prob_response",
+    "n_cell",
+    "scenario_desc",
+    "approach",
+    "method"
+  )
+)
+
+compare_summary
+```
+
+### Mean-shift degradation curves
+
+```{r}
+#| label: plot-mean-shift-degradation
+#| fig-width: 10
+#| fig-height: 8
+summary_mean_shift <- compare_summary |>
+  dplyr::filter(mismatch_type == "mean_shift")
+
+if (nrow(summary_mean_shift) > 0) {
+  p_shift <- ggplot(
+    summary_mean_shift,
+    aes(
+      x = mismatch_val,
+      y = med_abs_rel_error,
+      color = method,
+      group = method
+    )
+  ) +
+    geom_line(linewidth = 0.8) +
+    geom_point(size = 2) +
+    facet_wrap(~scenario_desc, scales = "free_y") +
+    scale_y_log10() +
+    theme_bw() +
+    labs(
+      title = "Degradation under Stimulated Mean Shift",
+      subtitle = "Median Absolute Relative Error vs Mean Shift",
+      x = "Stimulated Mean Shift",
+      y = "Median Absolute Relative Error (log scale)",
+      color = "Method"
+    )
+  print(p_shift)
+}
+```
+
+### SD-inflation degradation curves
+
+```{r}
+#| label: plot-sd-inflation-degradation
+#| fig-width: 10
+#| fig-height: 8
+summary_sd <- compare_summary |>
+  dplyr::filter(mismatch_type == "sd_inflation")
+
+if (nrow(summary_sd) > 0) {
+  p_sd <- ggplot(
+    summary_sd,
+    aes(
+      x = mismatch_val,
+      y = med_abs_rel_error,
+      color = method,
+      group = method
+    )
+  ) +
+    geom_line(linewidth = 0.8) +
+    geom_point(size = 2) +
+    facet_wrap(~scenario_desc, scales = "free_y") +
+    scale_y_log10() +
+    theme_bw() +
+    labs(
+      title = "Degradation under Stimulated SD Inflation",
+      subtitle = "Median Absolute Relative Error vs Fractional SD Increase",
+      x = "Fractional SD Increase",
+      y = "Median Absolute Relative Error (log scale)",
+      color = "Method"
+    )
+  print(p_sd)
+}
+```
+
+### Upper-tail error and fallback analysis
+
+```{r}
+#| label: plot-upper-tail-and-fallbacks
+#| fig-width: 10
+#| fig-height: 6
+p_tail <- ggplot(
+  compare_summary,
+  aes(
+    x = mismatch_val,
+    y = q90_abs_rel_error,
+    color = method,
+    group = method
+  )
+) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2) +
+  facet_grid(mismatch_type ~ scenario_desc, scales = "free") +
+  scale_y_log10() +
+  theme_bw() +
+  labs(
+    title = "90th Percentile Relative Error under Mismatch",
+    x = "Mismatch Magnitude",
+    y = "90th Percentile Absolute Relative Error (log scale)",
+    color = "Method"
+  )
+print(p_tail)
+```

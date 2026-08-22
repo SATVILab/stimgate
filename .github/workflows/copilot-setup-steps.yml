@@ -62,7 +62,7 @@ jobs:
             any::rcmdcheck
             any::devtools
             any::decor
-            SATVILab/simcyto@e9bba258c8629a7ab5fe0bb4b47bef0637a76111
+            SATVILab/simcyto@734637f0a4568bbfebe8712e62c326921db2955d
           needs: check
           # Save only a successfully completed package library. Cache version 4
           # starts a clean binary-backed cache using Posit Public Package Manager.
