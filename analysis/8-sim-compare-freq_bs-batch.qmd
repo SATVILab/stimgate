@@ -149,32 +149,60 @@ targeted_scenarios_tbl <- tibble::tribble(
 
 ```{r}
 #| label: mismatch-grids
-# 1. Mean-shift grid:
+# 1. Mean-shift grid (all components):
 # Gaussian and Skew: 0, 0.025, 0.05, 0.1, 0.2
 # Gamma: 0, 0.005, 0.01, 0.025, 0.05
 mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.1, 0.2)
 mean_shift_gamma <- c(0, 0.005, 0.01, 0.025, 0.05)
 
-grid_mean_shift <- purrr::map_df(seq_len(nrow(targeted_scenarios_tbl)), function(i) {
-  row <- targeted_scenarios_tbl[i, , drop = FALSE]
-  shifts <- if (row$transformation[[1]] == "gamma") {
-    mean_shift_gamma
-  } else {
-    mean_shift_gaussian_skew
+grid_mean_shift_all <- purrr::map_df(
+  seq_len(nrow(targeted_scenarios_tbl)),
+  function(i) {
+    row <- targeted_scenarios_tbl[i, , drop = FALSE]
+    shifts <- if (row$transformation[[1]] == "gamma") {
+      mean_shift_gamma
+    } else {
+      mean_shift_gaussian_skew
+    }
+    tidyr::expand_grid(
+      row,
+      stim_mean_shift = shifts
+    ) |>
+      dplyr::mutate(
+        mismatch_type = "mean_shift_all",
+        mismatch_val = stim_mean_shift,
+        stim_mean_shift_clusters = NA_character_,
+        stim_sd_multiplier = 1,
+        sd_increase = 0
+      )
   }
-  tidyr::expand_grid(
-    row,
-    stim_mean_shift = shifts
-  ) |>
-    dplyr::mutate(
-      mismatch_type = "mean_shift",
-      mismatch_val = stim_mean_shift,
-      stim_sd_multiplier = 1,
-      sd_increase = 0
-    )
-})
+)
 
-# 2. SD-inflation grid:
+# 2. Mean-shift grid (negative/background component only):
+grid_mean_shift_negative <- purrr::map_df(
+  seq_len(nrow(targeted_scenarios_tbl)),
+  function(i) {
+    row <- targeted_scenarios_tbl[i, , drop = FALSE]
+    shifts <- if (row$transformation[[1]] == "gamma") {
+      mean_shift_gamma
+    } else {
+      mean_shift_gaussian_skew
+    }
+    tidyr::expand_grid(
+      row,
+      stim_mean_shift = shifts
+    ) |>
+      dplyr::mutate(
+        mismatch_type = "mean_shift_negative",
+        mismatch_val = stim_mean_shift,
+        stim_mean_shift_clusters = "gn",
+        stim_sd_multiplier = 1,
+        sd_increase = 0
+      )
+  }
+)
+
+# 3. SD-inflation grid:
 # Fractional SD increase: 0, 0.01, 0.025, 0.05, 0.10, 0.20
 sd_increase_vec <- c(0, 0.01, 0.025, 0.05, 0.10, 0.20)
 
@@ -185,12 +213,17 @@ grid_sd_inflation <- tidyr::expand_grid(
   dplyr::mutate(
     mismatch_type = "sd_inflation",
     mismatch_val = sd_increase,
-    stim_sd_multiplier = 1 + sd_increase,
-    stim_mean_shift = 0
+    stim_mean_shift = 0,
+    stim_mean_shift_clusters = NA_character_,
+    stim_sd_multiplier = 1 + sd_increase
   )
 
 # Combined full mismatch simulation grid
-sim_grid <- dplyr::bind_rows(grid_mean_shift, grid_sd_inflation) |>
+sim_grid <- dplyr::bind_rows(
+  grid_mean_shift_all,
+  grid_mean_shift_negative,
+  grid_sd_inflation
+) |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
   )
@@ -205,8 +238,12 @@ if (.isDev()) {
     )
 }
 
-sim_grid_chunk_index <- as.integer(.get_qmd_param_env("sim_grid_chunk_index", "SIM_GRID_CHUNK_INDEX", 1L))
-sim_grid_n_chunks <- as.integer(.get_qmd_param_env("sim_grid_n_chunks", "SIM_GRID_N_CHUNKS", 1L))
+sim_grid_chunk_index <- as.integer(
+  .get_qmd_param_env("sim_grid_chunk_index", "SIM_GRID_CHUNK_INDEX", 1L)
+)
+sim_grid_n_chunks <- as.integer(
+  .get_qmd_param_env("sim_grid_n_chunks", "SIM_GRID_N_CHUNKS", 1L)
+)
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -214,7 +251,10 @@ sim_grid_all <- sim_grid
 
 if (sim_grid_n_chunks > 1L && nrow(sim_grid_all) > 0L) {
   sim_grid <- sim_grid_all |>
-    dplyr::filter(((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L == sim_grid_chunk_index)
+    dplyr::filter(
+      ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L ==
+        sim_grid_chunk_index
+    )
 }
 
 sim_grid
@@ -242,13 +282,21 @@ path_progress_file <- projr::projr_path_get(
   "sim",
   "compare",
   "freq_bs_batch",
-  if (sim_grid_n_chunks > 1L) paste0("progress-chunk_", sim_chunk_label, ".txt") else "progress.txt"
+  if (sim_grid_n_chunks > 1L) {
+    paste0("progress-chunk_", sim_chunk_label, ".txt")
+  } else {
+    "progress.txt"
+  }
 )
 dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
 
 path_rds <- file.path(
   path_cache_dir,
-  if (sim_grid_n_chunks > 1L) sprintf("compare_raw_chunk_%s.rds", sim_chunk_label) else "compare_raw.rds"
+  if (sim_grid_n_chunks > 1L) {
+    sprintf("compare_raw_chunk_%s.rds", sim_chunk_label)
+  } else {
+    "compare_raw.rds"
+  }
 )
 
 n_sample_sim <- 5
@@ -286,8 +334,16 @@ compare_raw <- .simCompareFreqBsGrid(
   dirCache = dir_output,
   pathProgress = path_progress_file,
   resume = TRUE,
-  sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) sim_grid_chunk_index else NULL,
-  sim_grid_n_chunks = if (sim_grid_n_chunks > 1L) sim_grid_n_chunks else NULL
+  sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) {
+    sim_grid_chunk_index
+  } else {
+    NULL
+  },
+  sim_grid_n_chunks = if (sim_grid_n_chunks > 1L) {
+    sim_grid_n_chunks
+  } else {
+    NULL
+  }
 )
 
 .write_rds_atomic(compare_raw, path_rds)
@@ -325,6 +381,7 @@ compare_summary <- .simCompareSummariseFreqBs(
     "mismatch_type",
     "mismatch_val",
     "stim_mean_shift",
+    "stim_mean_shift_clusters",
     "stim_sd_multiplier",
     "sd_increase",
     "transformation",
@@ -341,16 +398,18 @@ compare_summary <- .simCompareSummariseFreqBs(
 compare_summary
 ```
 
-### Mean-shift degradation curves
+### Mean-shift degradation curves (all components vs negative only)
 
 #### Median
 
 ```{r}
-#| label: plot-mean-shift-degradation-q90
+#| label: plot-mean-shift-degradation-median
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 9
 summary_mean_shift <- compare_summary |>
-  dplyr::filter(mismatch_type == "mean_shift")
+  dplyr::filter(
+    mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
+  )
 
 for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
   summary_mean_shift_curr <- summary_mean_shift |>
@@ -362,7 +421,8 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
       x = mismatch_val,
       y = med_abs_rel_error,
       color = method,
-      group = method
+      linetype = mismatch_type,
+      group = interaction(method, mismatch_type)
     )
   ) +
     geom_line(linewidth = 0.8) +
@@ -376,16 +436,15 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     theme(
       panel.background = element_rect(fill = "white", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
+      legend.position = "bottom"
     ) +
     labs(
       title = "Degradation under Stimulated Mean Shift",
       subtitle = "Median Absolute Relative Error vs Mean Shift",
       x = "Stimulated Mean Shift",
-      y = "Median Absolute Relative Error (log scale)",
-      color = "Method"
-    ) +
-    theme(
-      legend.position = "bottom"
+      y = "Median Absolute Relative Error (asinh scale)",
+      color = "Method",
+      linetype = "Mismatch Variant"
     )
   path_p <- projr::projr_path_get(
     "cache",
@@ -406,6 +465,7 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     height = 15,
     units = "cm"
   )
+  print(p_shift)
 }
 ```
 
@@ -414,9 +474,11 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
 ```{r}
 #| label: plot-mean-shift-degradation-max
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 9
 summary_mean_shift <- compare_summary |>
-  dplyr::filter(mismatch_type == "mean_shift")
+  dplyr::filter(
+    mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
+  )
 
 summary_mean_shift <- compare_summary |>
   dplyr::filter(mismatch_type == "mean_shift")
@@ -430,7 +492,8 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
       x = mismatch_val,
       y = max_abs_rel_error,
       color = method,
-      group = method
+      linetype = mismatch_type,
+      group = interaction(method, mismatch_type)
     )
   ) +
     geom_line(linewidth = 0.8) +
@@ -444,16 +507,15 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     theme(
       panel.background = element_rect(fill = "white", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
+      legend.position = "bottom"
     ) +
     labs(
       title = "Degradation under Stimulated Mean Shift",
       subtitle = "Maximum Absolute Relative Error vs Mean Shift",
       x = "Stimulated Mean Shift",
-      y = "Maximum Absolute Relative Error (log scale)",
-      color = "Method"
-    ) +
-    theme(
-      legend.position = "bottom"
+      y = "Maximum Absolute Relative Error (asinh scale)",
+      color = "Method",
+      linetype = "Mismatch Variant"
     )
   path_p <- projr::projr_path_get(
     "cache",
@@ -473,17 +535,20 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     height = 15,
     units = "cm"
   )
+  print(p_shift_max)
 }
 ```
 
 #### 90-th percentile
 
 ```{r}
-#| label: plot-mean-shift-degradation
+#| label: plot-mean-shift-degradation-q90
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 9
 summary_mean_shift <- compare_summary |>
-  dplyr::filter(mismatch_type == "mean_shift")
+  dplyr::filter(
+    mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
+  )
 
 for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
   summary_mean_shift_curr <- summary_mean_shift |>
@@ -494,7 +559,8 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
       x = mismatch_val,
       y = q90_abs_rel_error,
       color = method,
-      group = method
+      linetype = mismatch_type,
+      group = interaction(method, mismatch_type)
     )
   ) +
     geom_line(linewidth = 0.8) +
@@ -508,16 +574,15 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     theme(
       panel.background = element_rect(fill = "white", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
+      legend.position = "bottom"
     ) +
     labs(
       title = "Degradation under Stimulated Mean Shift",
       subtitle = "90th Percentile Absolute Relative Error vs Mean Shift",
       x = "Stimulated Mean Shift",
-      y = "90th Percentile Absolute Relative Error (log scale)",
-      color = "Method"
-    ) +
-    theme(
-      legend.position = "bottom"
+      y = "90th Percentile Absolute Relative Error (asinh scale)",
+      color = "Method",
+      linetype = "Mismatch Variant"
     )
   path_p <- projr::projr_path_get(
     "cache",
@@ -537,6 +602,7 @@ for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     height = 15,
     units = "cm"
   )
+  print(p_shift_90)
 }
 ```
 
@@ -564,7 +630,6 @@ for (mean_pos_setting_curr in unique(summary_sd$mean_pos_setting)) {
     geom_line(linewidth = 0.8) +
     geom_point(size = 2) +
     facet_wrap(~scenario_desc, scales = "free_y") +
-    #scale_y_log10() +
     scale_y_continuous(
       transform = scales::asinh_trans()
     ) +
@@ -573,12 +638,13 @@ for (mean_pos_setting_curr in unique(summary_sd$mean_pos_setting)) {
     theme(
       panel.background = element_rect(fill = "white", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
+      legend.position = "bottom"
     ) +
     labs(
       title = "Degradation under Stimulated SD Inflation",
       subtitle = "Median Absolute Relative Error vs Fractional SD Increase",
       x = "Fractional SD Increase",
-      y = "Median Absolute Relative Error (log scale)",
+      y = "Median Absolute Relative Error (asinh scale)",
       color = "Method"
     )
   path_p <- projr::projr_path_get(
@@ -599,15 +665,74 @@ for (mean_pos_setting_curr in unique(summary_sd$mean_pos_setting)) {
     height = 15,
     units = "cm"
   )
+  print(p_sd)
 }
 ```
 
-### Upper-tail error and fallback analysis
+### Threshold placement diagnostic (unstimulated background intrusion)
+
+```{r}
+#| label: plot-threshold-placement-unstim
+#| fig-width: 10
+#| fig-height: 9
+summary_shifts <- compare_summary |>
+  dplyr::filter(
+    mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
+  )
+
+if (nrow(summary_shifts) > 0) {
+  p_placement <- ggplot(
+    summary_shifts,
+    aes(
+      x = mismatch_val,
+      y = propUns_mean,
+      color = method,
+      linetype = mismatch_type,
+      group = interaction(method, mismatch_type)
+    )
+  ) +
+    geom_line(linewidth = 0.8) +
+    geom_point(size = 2) +
+    facet_wrap(~scenario_desc, scales = "free_y") +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy", minor = "none") +
+    theme(
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.background = element_rect(fill = "white", color = NA),
+      legend.position = "bottom"
+    ) +
+    labs(
+      title = "Threshold Placement: Unstimulated Background Intrusion",
+      subtitle = "Proportion of unstimulated cells above threshold vs shift",
+      x = "Stimulated Mean Shift",
+      y = "Proportion of Unstimulated Cells Above Gate",
+      color = "Method",
+      linetype = "Mismatch Variant"
+    )
+  path_p <- projr::projr_path_get(
+    "cache",
+    "sim",
+    "compare",
+    "freq_bs_batch",
+    "threshold_placement_unstim_plot.pdf"
+  )
+  ggsave(
+    path_p,
+    p_placement,
+    width = 20,
+    height = 15,
+    units = "cm"
+  )
+  print(p_placement)
+}
+```
+
+### Upper-tail error analysis
 
 ```{r}
 #| label: plot-upper-tail-and-fallbacks
 #| fig-width: 10
-#| fig-height: 6
+#| fig-height: 8
 p_tail <- ggplot(
   compare_summary,
   aes(
@@ -620,12 +745,20 @@ p_tail <- ggplot(
   geom_line(linewidth = 0.8) +
   geom_point(size = 2) +
   facet_grid(mismatch_type ~ scenario_desc, scales = "free") +
-  scale_y_log10() +
-  theme_bw() +
+  scale_y_continuous(
+    transform = scales::asinh_trans()
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy", minor = "none") +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    legend.position = "bottom"
+  ) +
   labs(
     title = "90th Percentile Relative Error under Mismatch",
     x = "Mismatch Magnitude",
-    y = "90th Percentile Absolute Relative Error (log scale)",
+    y = "90th Percentile Absolute Relative Error (asinh scale)",
     color = "Method"
   )
 print(p_tail)
