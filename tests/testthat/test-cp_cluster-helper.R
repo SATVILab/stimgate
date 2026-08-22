@@ -21,9 +21,8 @@
 sourceTestHelpers <- function() {
   # For testing purposes, we'll define simplified versions
 
-  .getPropBSByCPTblDataListFilterAboveMin <<- function(
-      exListFilter,
-      cpMin) {
+  .getPropBSByCPTblDataListFilterAboveMin <<- function(exListFilter,
+                                                       cpMin) {
     exListFilter |>
       purrr::map(function(x) {
         attr(x, "nCell") <- nrow(x)
@@ -44,11 +43,10 @@ sourceTestHelpers <- function() {
       })
   }
 
-  .getPropBSByCPTblDataListFilterCytPos <<- function(
-      filterOtherCytPos,
-      exList,
-      gateTbl,
-      calcCytPosGates) {
+  .getPropBSByCPTblDataListFilterCytPos <<- function(filterOtherCytPos,
+                                                     exList,
+                                                     gateTbl,
+                                                     calcCytPosGates) {
     if (!filterOtherCytPos) {
       return(exList)
     }
@@ -72,9 +70,8 @@ sourceTestHelpers <- function() {
       stats::setNames(names(exList))
   }
 
-  .getCPClusterDensTblGetActualIndEarlyReturn <<- function(
-      batch,
-      ind) {
+  .getCPClusterDensTblGetActualIndEarlyReturn <<- function(batch,
+                                                           ind) {
     tibble::tibble(
       batch = batch[1],
       ind = ind[1],
@@ -132,9 +129,8 @@ test_that("getPropBSByCPTblDataListFilterAboveMinZeroRowReconstructionLogic", {
   skip_if_not_installed("purrr")
 
   # Create a custom version that forces zero rows for testing
-  .getPropBSByCPTblDataListFilterAboveMinTest <- function(
-      exListFilter,
-      cpMin) {
+  .getPropBSByCPTblDataListFilterAboveMinTest <- function(exListFilter,
+                                                          cpMin) {
     exListFilter |>
       purrr::map(function(x) {
         originalNCell <- nrow(x)
