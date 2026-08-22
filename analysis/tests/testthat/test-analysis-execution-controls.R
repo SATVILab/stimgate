@@ -83,18 +83,21 @@ test_that("execution flag contract respects render defaults, interactive fallbac
   # 3. Environment overrides
   old_run_sims <- Sys.getenv("RUN_SIMULATIONS", unset = NA_character_)
   old_run_plots <- Sys.getenv("RUN_PLOTS", unset = NA_character_)
-  on.exit({
-    if (is.na(old_run_sims)) {
-      Sys.unsetenv("RUN_SIMULATIONS")
-    } else {
-      Sys.setenv(RUN_SIMULATIONS = old_run_sims)
-    }
-    if (is.na(old_run_plots)) {
-      Sys.unsetenv("RUN_PLOTS")
-    } else {
-      Sys.setenv(RUN_PLOTS = old_run_plots)
-    }
-  }, add = TRUE)
+  on.exit(
+    {
+      if (is.na(old_run_sims)) {
+        Sys.unsetenv("RUN_SIMULATIONS")
+      } else {
+        Sys.setenv(RUN_SIMULATIONS = old_run_sims)
+      }
+      if (is.na(old_run_plots)) {
+        Sys.unsetenv("RUN_PLOTS")
+      } else {
+        Sys.setenv(RUN_PLOTS = old_run_plots)
+      }
+    },
+    add = TRUE
+  )
 
   Sys.setenv(RUN_SIMULATIONS = "false", RUN_PLOTS = "true")
   env$params <- list(run_simulations = TRUE, run_plots = FALSE)

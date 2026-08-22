@@ -1,332 +1,195 @@
-# Test helper functions for cpCluster-helper.R
-# These tests focus on edge cases and specific functionality mentioned in the issue
+# Deterministic regressions for the paired-density sample clustering route.
 
-# Mock helper functions to make tests work independently
-.getCut <- function(ex) {
-  ex[[attr(ex, "chnlCut")]]
+make_density_ex <- function(values) {
+  ex <- data.frame(expr = as.numeric(values))
+  attr(ex, "chnlCut") <- "expr"
+  ex
 }
 
-.getPosIndButSinglePosForOneCyt <- function(
-    ex,
-    gateTbl,
-    chnlSingleExc,
-    chnl,
-    gateTypeCytPos) {
-  # Mock function - returns logical vector for testing
-  rep(FALSE, nrow(ex))
+make_pair_fixture <- function(ind, batch, stim_shift = 0, uns_shift = 0) {
+  x1 <- c(seq(0.03, 0.20, length.out = 200), seq(0.45, 0.75, length.out = 200))
+  x2 <- x1 + stim_shift
+  x3 <- x1 + uns_shift
+  list(
+    ind = ind,
+    batch = batch,
+    stim = make_density_ex(x2),
+    uns = make_density_ex(x3)
+  )
 }
 
-# Source the functions we want to test
-# Note: In a proper setup, these would be available from the loaded package
-sourceTestHelpers <- function() {
-  # For testing purposes, we'll define simplified versions
-
-  .getPropBSByCPTblDataListFilterAboveMin <<- function(exListFilter,
-                                                       cpMin) {
-    exListFilter |>
-      purrr::map(function(x) {
-        attr(x, "nCell") <- nrow(x)
-        xOut <- x |>
-          dplyr::filter(.getCut(x) >= min(.env$cpMin, max(.getCut(x))))
-        if (nrow(xOut) == 0) {
-          allCols <- colnames(x)
-          batchIdx <- which(allCols == "batch")
-          stimIdx <- which(allCols == "stim")
-          selIdx <- seq(batchIdx, stimIdx)
-          xOut <- x[1, selIdx, drop = FALSE]
-          xAdd <- x[1, setdiff(seq_along(x), selIdx)]
-          xAdd[1, ] <- NA
-          xOut <- xOut |>
-            dplyr::bind_cols(xAdd)
-        }
-        xOut
-      })
-  }
-
-  .getPropBSByCPTblDataListFilterCytPos <<- function(filterOtherCytPos,
-                                                     exList,
-                                                     gateTbl,
-                                                     calcCytPosGates) {
-    if (!filterOtherCytPos) {
-      return(exList)
-    }
-    purrr::map(seq_along(exList), function(i) {
-      if (i == 1) {
-        return(exList[[i]])
-      }
-      gateTblInd <- gateTbl |>
-        dplyr::filter(ind == attr(exList[[i]], "ind"))
-
-      posIndVecButSinglePosCurr <-
-        .getPosIndButSinglePosForOneCyt(
-          ex = exList[[i]],
-          gateTbl = gateTblInd,
-          chnlSingleExc = attr(exList[[i]], "chnlCut"),
-          chnl = NULL,
-          gateTypeCytPos = ifelse(calcCytPosGates, "cyt", "base")
-        )
-      exList[[i]][!posIndVecButSinglePosCurr, , drop = FALSE]
-    }) |>
-      stats::setNames(names(exList))
-  }
-
-  .getCPClusterDensTblGetActualIndEarlyReturn <<- function(batch,
-                                                           ind) {
-    tibble::tibble(
-      batch = batch[1],
-      ind = ind[1],
-      y = rep(NA, 512),
-      x = paste0("x", seq.int(from = 1, to = 512))
-    ) |>
-      tidyr::pivot_wider(names_from = x, values_from = y)
+rng_snapshot <- function() {
+  if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+    get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  } else {
+    NULL
   }
 }
 
-# Run the source helper to make functions available
-sourceTestHelpers()
-
-test_that("getPropBSByCPTblDataListFilterAboveMinHandlesZeroRowsCorrectly", {
-  # Skip if required packages are not available
-  skip_if_not_installed("dplyr")
-  skip_if_not_installed("purrr")
-
-  # Create test data that will result in zero rows after filtering
-  # We need a case where the filter condition results in no rows
-  # This can happen when there are NAs or when the data structure is unexpected
-  testData <- data.frame(
-    batch = c("batch1", "batch1"),
-    stim = c("stim", "uns"),
-    otherCol1 = c("a", "b"),
-    value = c(NA, NA), # NA values will cause max() to return -Inf, leading to issues
-    otherCol2 = c("x", "y")
+test_that("paired density clustering uses both stimulated and unstimulated blocks on one shared grid", {
+  densityGrid <- seq(0, 1, length.out = 32)
+  exLookup <- list(
+    A = make_pair_fixture("A", "batch1", stim_shift = 0.12, uns_shift = 0.03),
+    B = make_pair_fixture("B", "batch1", stim_shift = 0.12, uns_shift = 0.03),
+    C = make_pair_fixture("C", "batch2", stim_shift = 0.58, uns_shift = 0.04),
+    D = make_pair_fixture("D", "batch2", stim_shift = 0.10, uns_shift = 0.62)
   )
 
-  # Set required attributes
-  attr(testData, "chnlCut") <- "value"
-
-  # Create exListFilter with one element
-  exListFilter <- list(testData)
-  names(exListFilter) <- "test"
-
-  # With NA values, the filtering may behave unexpectedly
-  cpMin <- 1.0
-
-  # Test the function - this should handle the edge case gracefully
-  result <- .getPropBSByCPTblDataListFilterAboveMin(
-    exListFilter,
-    cpMin
+  featureTbl <- .getCpClusterLocJointFeatureTbl(
+    exLookup = exLookup,
+    densityGrid = densityGrid,
+    bw = 0.08
   )
 
-  # Verify results - the function should handle this gracefully
-  expect_length(result, 1)
-  expect_true(is.data.frame(result[[1]]))
-  # Note: The nCell attribute behavior may vary with NA values
+  unsCols <- grep("^uns_x\\d+$", names(featureTbl), value = TRUE)
+  stimCols <- grep("^stim_x\\d+$", names(featureTbl), value = TRUE)
+
+  expect_equal(length(unsCols), length(densityGrid))
+  expect_equal(length(stimCols), length(densityGrid))
+  expect_equal(unsCols, sprintf("uns_x%03d", seq_along(unsCols)))
+  expect_equal(stimCols, sprintf("stim_x%03d", seq_along(stimCols)))
+  expect_identical(
+    names(featureTbl)[-(1:2)],
+    c(unsCols, stimCols)
+  )
 })
 
-test_that("getPropBSByCPTblDataListFilterAboveMinZeroRowReconstructionLogic", {
-  # Test the specific zero-row reconstruction logic by mocking the condition
-  skip_if_not_installed("dplyr")
-  skip_if_not_installed("purrr")
+test_that("near-identical paired densities co-cluster while clearly separated ones do not", {
+  exLookup <- list(
+    A = make_pair_fixture("A", "batch1", stim_shift = 0.12, uns_shift = 0.03),
+    B = make_pair_fixture("B", "batch1", stim_shift = 0.12, uns_shift = 0.03),
+    C = make_pair_fixture("C", "batch2", stim_shift = 0.58, uns_shift = 0.04),
+    D = make_pair_fixture("D", "batch2", stim_shift = 0.10, uns_shift = 0.62)
+  )
 
-  # Create a custom version that forces zero rows for testing
-  .getPropBSByCPTblDataListFilterAboveMinTest <- function(exListFilter,
-                                                          cpMin) {
-    exListFilter |>
-      purrr::map(function(x) {
-        originalNCell <- nrow(x)
-        attr(x, "nCell") <- originalNCell
-        # Force zero rows condition
-        xOut <- x[FALSE, ] # Empty data frame with same structure
+  featureTbl <- .getCpClusterLocJointFeatureTbl(
+    exLookup = exLookup,
+    densityGrid = seq(0, 1, length.out = 32),
+    bw = 0.08
+  )
 
-        if (nrow(xOut) == 0) {
-          allCols <- colnames(x)
-          batchIdx <- which(allCols == "batch")
-          stimIdx <- which(allCols == "stim")
-          selIdx <- seq(batchIdx, stimIdx)
-          xOut <- x[1, selIdx, drop = FALSE]
-          xAdd <- x[1, setdiff(seq_along(x), selIdx)]
-          xAdd[1, ] <- NA
-          xOut <- xOut |>
-            dplyr::bind_cols(xAdd)
-        }
-        # Preserve the nCell attribute
-        attr(xOut, "nCell") <- originalNCell
-        xOut
-      })
+  clusterObj <- .getCpClusterLocClusters(
+    featureTbl = featureTbl,
+    control = list(
+      maxClusters = 6L,
+      gapBootstraps = 20L,
+      kmeansNstart = 5L,
+      seed = 1L
+    )
+  )
+
+  grp <- clusterObj$clusterTbl
+  expect_equal(grp$grp[match(c("A", "B"), grp$ind)], c("1", "1"))
+  expect_equal(grp$grp[match(c("C", "D"), grp$ind)], c("2", "3"))
+  expect_true(grp$grp[match("A", grp$ind)] != grp$grp[match("C", grp$ind)])
+  expect_true(grp$grp[match("B", grp$ind)] != grp$grp[match("D", grp$ind)])
+})
+
+test_that("changing only the stimulated distribution changes the stimulated feature block while leaving the unstimulated block fixed", {
+  densityGrid <- seq(0, 1, length.out = 32)
+  exLookupStim <- list(
+    A = make_pair_fixture("A", "batch1", stim_shift = 0.12, uns_shift = 0.03),
+    B = make_pair_fixture("B", "batch1", stim_shift = 0.38, uns_shift = 0.03)
+  )
+  exLookupUns <- list(
+    A = make_pair_fixture("A", "batch1", stim_shift = 0.12, uns_shift = 0.03),
+    B = make_pair_fixture("B", "batch2", stim_shift = 0.12, uns_shift = 0.39)
+  )
+
+  featureStim <- .getCpClusterLocJointFeatureTbl(
+    exLookup = exLookupStim,
+    densityGrid = densityGrid,
+    bw = 0.08
+  )
+  featureUns <- .getCpClusterLocJointFeatureTbl(
+    exLookup = exLookupUns,
+    densityGrid = densityGrid,
+    bw = 0.08
+  )
+
+  unsCols <- grep("^uns_x\\d+$", names(featureStim), value = TRUE)
+  stimCols <- grep("^stim_x\\d+$", names(featureStim), value = TRUE)
+
+  expect_equal(featureStim[1, unsCols], featureStim[2, unsCols])
+  expect_false(isTRUE(all.equal(featureStim[1, stimCols], featureStim[2, stimCols])))
+
+  expect_equal(featureUns[1, stimCols], featureUns[2, stimCols])
+  expect_false(isTRUE(all.equal(featureUns[1, unsCols], featureUns[2, unsCols])))
+})
+
+test_that("stimulated samples that share an unstimulated control in the same batch reuse the same unstimulated feature block", {
+  densityGrid <- seq(0, 1, length.out = 32)
+  exLookup <- list(
+    A = make_pair_fixture("A", "batch1", stim_shift = 0.12, uns_shift = 0.03),
+    B = make_pair_fixture("B", "batch1", stim_shift = 0.50, uns_shift = 0.03),
+    C = make_pair_fixture("C", "batch2", stim_shift = 0.35, uns_shift = 0.60)
+  )
+
+  featureTbl <- .getCpClusterLocJointFeatureTbl(
+    exLookup = exLookup,
+    densityGrid = densityGrid,
+    bw = 0.08
+  )
+
+  unsCols <- grep("^uns_x\\d+$", names(featureTbl), value = TRUE)
+  stimCols <- grep("^stim_x\\d+$", names(featureTbl), value = TRUE)
+
+  expect_equal(featureTbl[match("A", featureTbl$ind), unsCols],
+               featureTbl[match("B", featureTbl$ind), unsCols])
+  expect_false(isTRUE(all.equal(featureTbl[match("A", featureTbl$ind), stimCols],
+                                featureTbl[match("B", featureTbl$ind), stimCols])))
+})
+
+test_that("a degenerate one-structure fixture yields a single cluster without changing the caller RNG state", {
+  densityGrid <- seq(0, 1, length.out = 32)
+  exLookup <- list(
+    A = make_pair_fixture("A", "batch1", stim_shift = 0.12, uns_shift = 0.03),
+    B = make_pair_fixture("B", "batch1", stim_shift = 0.12, uns_shift = 0.03)
+  )
+
+  featureTbl <- .getCpClusterLocJointFeatureTbl(
+    exLookup = exLookup,
+    densityGrid = densityGrid,
+    bw = 0.08
+  )
+
+  rngBefore <- rng_snapshot()
+  clusterObj1 <- .getCpClusterLocClusters(
+    featureTbl = featureTbl,
+    control = list(
+      maxClusters = 6L,
+      gapBootstraps = 20L,
+      kmeansNstart = 5L,
+      seed = 1L
+    )
+  )
+  clusterObj2 <- .getCpClusterLocClusters(
+    featureTbl = featureTbl,
+    control = list(
+      maxClusters = 6L,
+      gapBootstraps = 20L,
+      kmeansNstart = 5L,
+      seed = 1L
+    )
+  )
+  rngAfter <- rng_snapshot()
+
+  expect_equal(clusterObj1$nInitialClusters, 1L)
+  expect_equal(clusterObj1$nFinalClusters, 1L)
+  expect_equal(clusterObj1$clusterTbl$grp, c("1", "1"))
+  expect_identical(clusterObj1$clusterTbl, clusterObj2$clusterTbl)
+
+  if (is.null(rngBefore)) {
+    expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+  } else {
+    expect_identical(rngAfter, rngBefore)
   }
-
-  # Test data with proper structure
-  testData <- data.frame(
-    batch = c("batch1", "batch1"),
-    stim = c("stim", "uns"),
-    otherCol1 = c("a", "b"),
-    value = c(0.1, 0.2),
-    otherCol2 = c("x", "y")
-  )
-  attr(testData, "chnlCut") <- "value"
-
-  exListFilter <- list(testData)
-  cpMin <- 1.0
-
-  result <- .getPropBSByCPTblDataListFilterAboveMinTest(
-    exListFilter,
-    cpMin
-  )
-
-  # Verify the zero-row reconstruction worked correctly
-  expect_length(result, 1)
-  expect_true(is.data.frame(result[[1]]))
-  expect_equal(nrow(result[[1]]), 1)
-  expect_false(is.na(result[[1]][1, "batch"])) # batch should not be NA
-  expect_false(is.na(result[[1]][1, "stim"])) # stim should not be NA
-  expect_true(is.na(result[[1]][1, "otherCol1"])) # Columns after stim should be NA
-  expect_true(is.na(result[[1]][1, "value"])) # value column should be NA
-  expect_true(is.na(result[[1]][1, "otherCol2"])) # Columns after stim should be NA
-  expect_equal(attr(result[[1]], "nCell"), 2) # nCell attribute should be preserved
 })
 
-test_that("getPropBSByCPTblDataListFilterAboveMinHandlesNormalCaseCorrectly", {
-  skip_if_not_installed("dplyr")
-  skip_if_not_installed("purrr")
-
-  # Create test data with values that won't be filtered out
-  testData <- data.frame(
-    batch = c("batch1", "batch1", "batch1"),
-    stim = c("stim", "uns", "stim"),
-    value = c(5.0, 6.0, 7.0), # High values that will pass filter
-    otherCol = c("a", "b", "c")
-  )
-
-  attr(testData, "chnlCut") <- "value"
-
-  exListFilter <- list(testData)
-  names(exListFilter) <- "test"
-
-  cpMin <- 2.0 # Low enough that rows will pass
-
-  result <- .getPropBSByCPTblDataListFilterAboveMin(
-    exListFilter,
-    cpMin
-  )
-
-  expect_length(result, 1)
-  expect_true(is.data.frame(result[[1]]))
-  expect_equal(nrow(result[[1]]), 3) # All rows should pass
-  expect_equal(attr(result[[1]], "nCell"), 3) # nCell attribute should be set
-})
-
-test_that("getPropBSByCPTblDataListFilterCytPosReturnsOriginalListWhenFilterOtherCytPosIsFalse", {
-  skip_if_not_installed("dplyr")
-  skip_if_not_installed("purrr")
-
-  # Create test data
-  testData <- data.frame(
-    batch = c("batch1", "batch1"),
-    stim = c("stim", "uns"),
-    value = c(1.0, 2.0)
-  )
-
-  exList <- list(testData, testData)
-  names(exList) <- c("test1", "test2")
-
-  gateTbl <- data.frame(
-    ind = c(1, 2),
-    gate = c(1.5, 2.5)
-  )
-
-  # Test with filterOtherCytPos = FALSE
-  result <- .getPropBSByCPTblDataListFilterCytPos(
-    filterOtherCytPos = FALSE,
-    exList = exList,
-    gateTbl = gateTbl,
-    calcCytPosGates = FALSE
-  )
-
-  expect_identical(result, exList)
-})
-
-test_that("getPropBSByCPTblDataListFilterCytPosProcessesLastElementCorrectly", {
-  skip_if_not_installed("dplyr")
-  skip_if_not_installed("purrr")
-
-  # Create test data
-  testData1 <- data.frame(
-    batch = c("batch1", "batch1"),
-    stim = c("stim", "uns"),
-    value = c(1.0, 2.0)
-  )
-  attr(testData1, "ind") <- 1
-  attr(testData1, "chnlCut") <- "value"
-
-  testData2 <- data.frame(
-    batch = c("batch1", "batch1"),
-    stim = c("stim", "uns"),
-    value = c(3.0, 4.0)
-  )
-  attr(testData2, "ind") <- 2
-  attr(testData2, "chnlCut") <- "value"
-
-  exList <- list(testData1, testData2)
-  names(exList) <- c("test1", "test2")
-
-  gateTbl <- data.frame(
-    ind = c(1, 2),
-    gate = c(1.5, 2.5)
-  )
-
-  # Test with filterOtherCytPos = TRUE
-  result <- .getPropBSByCPTblDataListFilterCytPos(
-    filterOtherCytPos = TRUE,
-    exList = exList,
-    gateTbl = gateTbl,
-    calcCytPosGates = FALSE
-  )
-
-  expect_length(result, 2)
-  expect_identical(result[[2]], testData2) # Last element should be unchanged
-  expect_named(result, c("test1", "test2"))
-})
-
-test_that("getCPClusterDensTblGetActualIndEarlyReturnCreatesCorrectStructure", {
-  skip_if_not_installed("tibble")
-  skip_if_not_installed("tidyr")
-
-  batch <- "testBatch"
-  ind <- 123
-
-  result <- .getCPClusterDensTblGetActualIndEarlyReturn(batch, ind)
-
-  expect_true(is.data.frame(result))
-  expect_equal(nrow(result), 1)
-  expect_equal(ncol(result), 514) # batch + ind + 512 x columns
-  expect_equal(result$batch, "testBatch")
-  expect_equal(result$ind, 123)
-
-  # Check that all x columns are present and contain NA
-  xCols <- paste0("x", seq.int(from = 1, to = 512))
-  expect_true(all(xCols %in% names(result)))
-  expect_true(all(is.na(result[xCols])))
-})
-
-test_that("getCPClusterDensTblGetActualIndEarlyReturnHandlesVectorInputsCorrectly", {
-  skip_if_not_installed("tibble")
-  skip_if_not_installed("tidyr")
-
-  # Test with vector inputs (should take first element)
-  batch <- c("testBatch1", "testBatch2")
-  ind <- c(123, 456)
-
-  result <- .getCPClusterDensTblGetActualIndEarlyReturn(batch, ind)
-
-  expect_equal(result$batch, "testBatch1") # Should take first element
-  expect_equal(result$ind, 123) # Should take first element
-})
-
-test_that("getCpClusterDensTblGetBatchPrepExListFilterInd filters other cytokine positive cells", {
-  # Synthetic expression table with 4 cells across IFNg and IL2
+test_that(".getCpClusterDensTblGetBatchPrepExListFilterInd filters other cytokine positive cells", {
   exTbl <- tibble::tibble(
     IFNg = c(10, 2, 12, 1),
-    IL2  = c(1, 15, 12, 2)
+    IL2 = c(1, 15, 12, 2)
   )
   attr(exTbl, "ind") <- "2"
   attr(exTbl, "batch") <- "batch1"
@@ -338,13 +201,6 @@ test_that("getCpClusterDensTblGetBatchPrepExListFilterInd filters other cytokine
     gateCyt = c(8, 8)
   )
 
-  # Evaluating IFNg (chnlCut = "IFNg"):
-  # Cells positive for other cytokines (IL2 > 5: cells 2 and 3) should be excluded
-  # Cell 1: IFNg=10 (>5), IL2=1 (<=5) -> single-pos IFNg -> retained
-  # Cell 2: IFNg=2 (<=5), IL2=15 (>5) -> pos for IL2 -> excluded
-  # Cell 3: IFNg=12 (>5), IL2=12 (>5) -> double-pos -> pos for IL2 -> excluded
-  # Cell 4: IFNg=1 (<=5), IL2=2 (<=5) -> double-neg -> retained
-
   resBase <- .getCpClusterDensTblGetBatchPrepExListFilterInd(
     exTbl = exTbl,
     gateTbl = gateTbl,
@@ -355,8 +211,6 @@ test_that("getCpClusterDensTblGetBatchPrepExListFilterInd filters other cytokine
   expect_equal(resBase$IL2, c(1, 2))
   expect_equal(attr(resBase, "ind"), "2")
 
-  # Repeat evaluating IL2 (chnlCut = "IL2"):
-  # Cells positive for IFNg (>5: cells 1 and 3) should be excluded
   resIl2 <- .getCpClusterDensTblGetBatchPrepExListFilterInd(
     exTbl = exTbl,
     gateTbl = gateTbl,
@@ -366,15 +220,12 @@ test_that("getCpClusterDensTblGetBatchPrepExListFilterInd filters other cytokine
   expect_equal(resIl2$IFNg, c(2, 1))
   expect_equal(resIl2$IL2, c(15, 2))
 
-  # Test calcCytPosGates = TRUE (uses gateCyt threshold for other cytokines)
   gateTblCyt <- tibble::tibble(
     ind = c("2", "2"),
     chnl = c("IFNg", "IL2"),
     gate = c(5, 5),
     gateCyt = c(10, 10)
   )
-  # For IFNg evaluation with calcCytPosGates = TRUE:
-  # IL2 threshold is gateCyt = 10. Cell 2 (IL2=15) and Cell 3 (IL2=12) > 10 -> excluded
   resCyt <- .getCpClusterDensTblGetBatchPrepExListFilterInd(
     exTbl = exTbl,
     gateTbl = gateTblCyt,
@@ -384,7 +235,7 @@ test_that("getCpClusterDensTblGetBatchPrepExListFilterInd filters other cytokine
   expect_equal(resCyt$IFNg, c(10, 1))
 })
 
-test_that("getCpClusterDensTblGetBatchPrepExListFilter filters list of samples", {
+test_that(".getCpClusterDensTblGetBatchPrepExListFilter filters a list of samples", {
   exUnstim <- tibble::tibble(IFNg = c(1, 2), IL2 = c(1, 1))
   attr(exUnstim, "ind") <- "1"
 
@@ -409,43 +260,7 @@ test_that("getCpClusterDensTblGetBatchPrepExListFilter filters list of samples",
     calcCytPosGates = FALSE
   )
 
-  # Result should be a list of stimulated samples ("2" and "3"), excluding unstim ("1")
   expect_named(resList, c("2", "3"))
-  expect_equal(nrow(resList[["2"]]), 1) # cell 1 retained, cell 2 (IL2=15) excluded
-  expect_equal(nrow(resList[["3"]]), 1) # cell 2 retained, cell 1 (IL2=12) excluded
-})
-
-# Test edge cases for the filterAboveMin function
-test_that("getPropBSByCPTblDataListFilterAboveMinHandlesEdgeCasesGracefully", {
-  skip_if_not_installed("dplyr")
-  skip_if_not_installed("purrr")
-
-  # Test with empty input list
-  exListFilter <- list()
-  cpMin <- 1.0
-
-  result <- .getPropBSByCPTblDataListFilterAboveMin(
-    exListFilter,
-    cpMin
-  )
-  expect_length(result, 0)
-
-  # Test with single row data
-  testDataSingle <- data.frame(
-    batch = "batch1",
-    stim = "stim",
-    value = 5.0
-  )
-  attr(testDataSingle, "chnlCut") <- "value"
-
-  exListFilterSingle <- list(testDataSingle)
-  cpMin <- 1.0
-
-  resultSingle <- .getPropBSByCPTblDataListFilterAboveMin(
-    exListFilterSingle,
-    cpMin
-  )
-  expect_length(resultSingle, 1)
-  expect_equal(nrow(resultSingle[[1]]), 1)
-  expect_equal(attr(resultSingle[[1]], "nCell"), 1)
+  expect_equal(nrow(resList[["2"]]), 1)
+  expect_equal(nrow(resList[["3"]]), 1)
 })
