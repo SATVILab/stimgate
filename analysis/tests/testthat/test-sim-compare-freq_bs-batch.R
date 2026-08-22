@@ -38,11 +38,9 @@ test_that(
     captured_sd_mult <- NULL
 
     testthat::with_mocked_bindings(
-      simCytExperiment = function(
-        ...,
-        stimMeanShift = 0,
-        stimSdMultiplier = 1
-      ) {
+      simCytExperiment = function(...,
+                                  stimMeanShift = 0,
+                                  stimSdMultiplier = 1) {
         captured_shift <<- stimMeanShift
         captured_sd_mult <<- stimSdMultiplier
         orig_simcyto_experiment(
@@ -555,10 +553,8 @@ test_that(
     captured_clusters <- NULL
 
     testthat::with_mocked_bindings(
-      simCytExperiment = function(
-        ...,
-        stimMeanShiftClusters = NULL
-      ) {
+      simCytExperiment = function(...,
+                                  stimMeanShiftClusters = NULL) {
         captured_clusters <<- stimMeanShiftClusters
         orig_simcyto_experiment(
           ...,
@@ -726,5 +722,293 @@ test_that(
       "stimMeanShiftClusters"
     )
     expect_equal(res_clean[common_cols], res_zero_neg[common_cols])
+  }
+)
+
+test_that(
+  "analysis/8-sim-compare-freq_bs-batch.qmd targets gn for SD inflation",
+  {
+    qmd_path <- file.path(
+      root_dir,
+      "analysis",
+      "8-sim-compare-freq_bs-batch.qmd"
+    )
+    lines <- readLines(qmd_path, warn = FALSE)
+    expect_true(any(grepl('stim_sd_multiplier_clusters = "gn"', lines)))
+  }
+)
+
+test_that(
+  ".simCompareFreqBs forwards stimSdMultiplierClusters to simcyto",
+  {
+    env <- new.env(parent = getNamespace("stimgate"))
+    source(script_misc, local = env)
+    source(script_bw, local = env)
+    source(script_comp, local = env)
+
+    orig_simcyto_experiment <- simcyto::simCytExperiment
+    captured_sd_clusters <- NULL
+
+    testthat::with_mocked_bindings(
+      simCytExperiment = function(...,
+                                  stimSdMultiplierClusters = NULL) {
+        captured_sd_clusters <<- stimSdMultiplierClusters
+        orig_simcyto_experiment(
+          ...,
+          stimSdMultiplierClusters = stimSdMultiplierClusters
+        )
+      },
+      .package = "simcyto",
+      {
+        set.seed(42)
+        res <- env$.simCompareFreqBs(
+          nSample = 1L,
+          nMarker = 1L,
+          nCondition = 2L,
+          nCluster = 2L,
+          nIter = 1L,
+          biasUns = 0,
+          bw = 0.1,
+          bwMtd = "hpi1",
+          nCellStim = 200L,
+          probResponse = 0.1,
+          meanPos = 5,
+          transformation = "gaussian",
+          samplePerturbationSd = 0,
+          conditionPerturbationSd = 0,
+          clusterPerturbationSd = 0,
+          backgroundRelativeToResponse = 0.1,
+          ncellUnsRelativeToStim = 1,
+          tailgateAutoTol = TRUE,
+          stimSdMultiplier = 1.2,
+          stimSdMultiplierClusters = "gn"
+        )
+
+        expect_equal(captured_sd_clusters, "gn")
+        expect_s3_class(res, "data.frame")
+        expect_true("stimSdMultiplierClusters" %in% names(res))
+        expect_equal(res$stimSdMultiplierClusters[[1]], "gn")
+      }
+    )
+  }
+)
+
+test_that(
+  "stimSdMultiplierClusters = 'gn' leaves positive and unstim unchanged",
+  {
+    set.seed(42)
+    trans <- simcyto::simCytTransformIdentity()
+    meanExprMat <- matrix(c(0, 5), byrow = TRUE, ncol = 1)
+    clusterLabelVec <- c("gn", "gp")
+    probVecUns <- c(0.9, 0.1)
+    probResponseVecByStimCondition <- list(c(-0.05, 0.05))
+
+    sim_clean <- simcyto::simCytExperiment(
+      nSample = 1,
+      nMarker = 1,
+      nCondition = 2,
+      nCluster = 2,
+      nCellByCondition = c(1000, 1000),
+      transformationFunc = trans,
+      mixtureType = "gaussianOnly",
+      meanExprMat = meanExprMat,
+      clusterLabelVec = clusterLabelVec,
+      probVecUns = probVecUns,
+      probExact = TRUE,
+      probResponseVecByStimCondition = probResponseVecByStimCondition,
+      covEvMin = 1,
+      covEvMax = 1,
+      stimMeanShift = 0,
+      stimSdMultiplier = 1
+    )
+
+    set.seed(42)
+    sim_neg_sd <- simcyto::simCytExperiment(
+      nSample = 1,
+      nMarker = 1,
+      nCondition = 2,
+      nCluster = 2,
+      nCellByCondition = c(1000, 1000),
+      transformationFunc = trans,
+      mixtureType = "gaussianOnly",
+      meanExprMat = meanExprMat,
+      clusterLabelVec = clusterLabelVec,
+      probVecUns = probVecUns,
+      probExact = TRUE,
+      probResponseVecByStimCondition = probResponseVecByStimCondition,
+      covEvMin = 1,
+      covEvMax = 1,
+      stimMeanShift = 0,
+      stimSdMultiplier = 1.25,
+      stimSdMultiplierClusters = "gn"
+    )
+
+    unstim_clean <- flowCore::exprs(sim_clean$flowFrameList[[1]])[, "F1"]
+    unstim_neg <- flowCore::exprs(sim_neg_sd$flowFrameList[[1]])[, "F1"]
+    expect_equal(unstim_clean, unstim_neg)
+
+    stim_clean_expr <- flowCore::exprs(sim_clean$flowFrameList[[2]])[, "F1"]
+    stim_neg_expr <- flowCore::exprs(sim_neg_sd$flowFrameList[[2]])[, "F1"]
+    labels <- sim_clean$labelsList[[2]]
+
+    # Positive cluster expressions must be IDENTICAL
+    expect_equal(
+      stim_clean_expr[labels == "gp"],
+      stim_neg_expr[labels == "gp"]
+    )
+
+    # Negative cluster SD must be scaled by factor 1.25
+    sd_clean_gn <- sd(stim_clean_expr[labels == "gn"])
+    sd_neg_gn <- sd(stim_neg_expr[labels == "gn"])
+    expect_equal(sd_neg_gn / sd_clean_gn, 1.25, tolerance = 1e-10)
+  }
+)
+
+test_that(
+  "cache validation distinguishes all-component and negative-only SD inflation",
+  {
+    env <- new.env(parent = getNamespace("stimgate"))
+    source(script_misc, local = env)
+    source(script_bw, local = env)
+    source(script_comp, local = env)
+
+    cached_all_sd <- data.frame(
+      sim_id = 2L,
+      iter = 1L,
+      sample = "sample1",
+      transformation = "gaussian",
+      mismatch_type = "sd_inflation",
+      mismatch_val = 0.10,
+      stim_sd_multiplier = 1.10,
+      stim_sd_multiplier_clusters = NA_character_,
+      stringsAsFactors = FALSE
+    )
+
+    row_neg_sd <- data.frame(
+      sim_id = 2L,
+      transformation = "gaussian",
+      mismatch_type = "sd_inflation",
+      mismatch_val = 0.10,
+      stim_sd_multiplier = 1.10,
+      stim_sd_multiplier_clusters = "gn",
+      stringsAsFactors = FALSE
+    )
+
+    # Cached all-component SD output should NOT validate for negative-only row
+    expect_false(
+      env$.simCompareValidateScenarioCache(
+        cached = cached_all_sd,
+        row = row_neg_sd,
+        nSample = 1,
+        nIter = 1
+      )
+    )
+
+    # Cached object missing the stim_sd_multiplier_clusters column must NOT validate
+    cached_legacy <- data.frame(
+      sim_id = 2L,
+      iter = 1L,
+      sample = "sample1",
+      transformation = "gaussian",
+      mismatch_type = "sd_inflation",
+      mismatch_val = 0.10,
+      stim_sd_multiplier = 1.10,
+      stringsAsFactors = FALSE
+    )
+    expect_false(
+      env$.simCompareValidateScenarioCache(
+        cached = cached_legacy,
+        row = row_neg_sd,
+        nSample = 1,
+        nIter = 1
+      )
+    )
+
+    cached_neg_sd <- data.frame(
+      sim_id = 2L,
+      iter = 1L,
+      sample = "sample1",
+      transformation = "gaussian",
+      mismatch_type = "sd_inflation",
+      mismatch_val = 0.10,
+      stim_sd_multiplier = 1.10,
+      stim_sd_multiplier_clusters = "gn",
+      stringsAsFactors = FALSE
+    )
+
+    # Cached negative-only SD output SHOULD validate for negative-only row
+    expect_true(
+      env$.simCompareValidateScenarioCache(
+        cached = cached_neg_sd,
+        row = row_neg_sd,
+        nSample = 1,
+        nIter = 1
+      )
+    )
+  }
+)
+
+test_that(
+  "negative-only zero-increase SD inflation agrees with clean baseline",
+  {
+    env <- new.env(parent = getNamespace("stimgate"))
+    source(script_misc, local = env)
+    source(script_bw, local = env)
+    source(script_comp, local = env)
+
+    set.seed(42)
+    res_clean <- env$.simCompareFreqBs(
+      nSample = 1L,
+      nMarker = 1L,
+      nCondition = 2L,
+      nCluster = 2L,
+      nIter = 1L,
+      biasUns = 0,
+      bw = 0.1,
+      bwMtd = "hpi1",
+      nCellStim = 200L,
+      probResponse = 0.05,
+      meanPos = 5,
+      transformation = "gaussian",
+      samplePerturbationSd = 0,
+      conditionPerturbationSd = 0,
+      clusterPerturbationSd = 0,
+      backgroundRelativeToResponse = 0.1,
+      ncellUnsRelativeToStim = 1,
+      tailgateAutoTol = TRUE,
+      stimMeanShift = 0,
+      stimSdMultiplier = 1
+    )
+
+    set.seed(42)
+    res_zero_sd <- env$.simCompareFreqBs(
+      nSample = 1L,
+      nMarker = 1L,
+      nCondition = 2L,
+      nCluster = 2L,
+      nIter = 1L,
+      biasUns = 0,
+      bw = 0.1,
+      bwMtd = "hpi1",
+      nCellStim = 200L,
+      probResponse = 0.05,
+      meanPos = 5,
+      transformation = "gaussian",
+      samplePerturbationSd = 0,
+      conditionPerturbationSd = 0,
+      clusterPerturbationSd = 0,
+      backgroundRelativeToResponse = 0.1,
+      ncellUnsRelativeToStim = 1,
+      tailgateAutoTol = TRUE,
+      stimMeanShift = 0,
+      stimSdMultiplier = 1,
+      stimSdMultiplierClusters = "gn"
+    )
+
+    common_cols <- setdiff(
+      intersect(names(res_clean), names(res_zero_sd)),
+      c("stimMeanShiftClusters", "stimSdMultiplierClusters")
+    )
+    expect_equal(res_clean[common_cols], res_zero_sd[common_cols])
   }
 )
