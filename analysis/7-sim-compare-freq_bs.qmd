@@ -40,12 +40,10 @@ scripts_r_dir <- file.path(root_dir, "scripts", "r")
 
 # Source simulation helpers in dependency order:
 # 1. sim-misc.R: general simulation utilities and transformation lookups
-# 2. functionsForBenchmarking-Cyt.R: cytometry simulation
-# 3. sim-bandwidth.R: location details reader and bandwidth helpers
-# 4. sim-compare-freq_bs.R: comparison functions requiring the helpers above
+# 2. sim-bandwidth.R: location details reader and bandwidth helpers
+# 3. sim-compare-freq_bs.R: comparison functions requiring the helpers above
 for (fn in c(
   "sim-misc.R",
-  "functionsForBenchmarking-Cyt.R",
   "sim-bandwidth.R",
   "sim-compare-freq_bs.R"
 )) {
@@ -747,7 +745,7 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     dplyr::arrange(dplyr::desc(big_winner), winner) |>
     dplyr::arrange(dplyr::desc(fbeta)) |>
     print(n = Inf, width = Inf)
-    
+
 
   p <- ggplot(
     plot_tbl,
@@ -850,7 +848,7 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     dplyr::arrange(dplyr::desc(big_winner), winner) |>
     dplyr::arrange(dplyr::desc(fbeta)) |>
     print(n = Inf, width = Inf)
-    
+
 
   p <- ggplot(
     plot_tbl,
@@ -953,7 +951,7 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     dplyr::arrange(dplyr::desc(big_winner), winner) |>
     dplyr::arrange(dplyr::desc(fbeta)) |>
     print(n = Inf, width = Inf)
-    
+
 
   p <- ggplot(
     plot_tbl,
@@ -1082,7 +1080,7 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     dplyr::arrange(dplyr::desc(big_winner), winner) |>
     dplyr::arrange(dplyr::desc(fbeta)) |>
     print(n = Inf, width = Inf)
-    
+
 
   p <- ggplot(
     plot_tbl,
