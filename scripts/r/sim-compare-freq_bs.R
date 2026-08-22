@@ -439,7 +439,7 @@
     fbetaTheta = 2,
     fbetaWidth = 10,
     fbetaNumBins = NULL,
-    tailgateX = c("unstim", "combined", "stim"),
+    tailgateX = c("stim", "unstim", "combined"),
     tailgateSourceFiles = NULL,
     tailgateAdjust = 1,
     tailgateBandwidth = NULL,
@@ -466,14 +466,16 @@
     indStimVec <- seq.int(indUns + 1L, sampleCurr * nCondition)
 
     xUnsRaw <- as.numeric(flowCore::exprs(flowFrameList[[indUns]])[, chnl])
-    xUnsGate <- xUnsRaw + (biasUns %||% 0)
+    # Competitor methods receive raw unstimulated data and do not inherit StimGate's biasUns
+    xUnsFbeta <- xUnsRaw
+    xUnsTailgate <- xUnsRaw
 
     purrr::map_df(indStimVec, function(indStim) {
       xStim <- as.numeric(flowCore::exprs(flowFrameList[[indStim]])[, chnl])
 
       fbetaObj <- tryCatch(
         .simCompareFbetaThreshold(
-          xUns = xUnsGate,
+          xUns = xUnsFbeta,
           xStim = xStim,
           pathFbeta = pathFbeta,
           patchPy2Compat = fbetaPatchPy2Compat,
@@ -493,16 +495,16 @@
 
       fbetaEst <- .simCompareEstimateFromThreshold(
         xStim = xStim,
-        xUns = xUnsGate,
+        xUns = xUnsFbeta,
         threshold = fbetaObj$threshold,
         fallbackHighValue = fallbackHighValue,
         fallbackMargin = fallbackMargin
       )
 
       xTail <- switch(tailgateX,
-        "unstim" = xUnsGate,
-        "combined" = c(xUnsGate, xStim),
-        "stim" = xStim
+        "stim" = xStim,
+        "unstim" = xUnsTailgate,
+        "combined" = c(xUnsTailgate, xStim)
       )
 
       tailgateObj <- tryCatch(
@@ -530,7 +532,7 @@
 
       tailgateEst <- .simCompareEstimateFromThreshold(
         xStim = xStim,
-        xUns = xUnsGate,
+        xUns = xUnsTailgate,
         threshold = tailgateObj$threshold,
         fallbackHighValue = fallbackHighValue,
         fallbackMargin = fallbackMargin
@@ -724,60 +726,156 @@
         gateCombn = gateCombn
       ))
 
-      detailTbl <- .simCompareReadLocDetails(
-        pathProject = pathProject,
-        nSample = nSample,
-        nCondition = nCondition
+      # Extract final cluster-refined StimGate gates and statistics
+      gateTblFinal <- tryCatch(
+        stimgate::getStimGates(pathProject),
+        error = function(e) tibble::tibble()
+      )
+      statsTblFinal <- tryCatch(
+        stimgate::getStimStats(pathProject),
+        error = function(e) tibble::tibble()
       )
 
-      if (!includeLocCondition) {
+      stimgatePrimaryTbl <- purrr::map_df(seq_len(nSample), function(sampleCurr) {
+        indUns <- (sampleCurr - 1L) * nCondition + 1L
+        indStimVec <- seq.int(indUns + 1L, sampleCurr * nCondition)
+
+        purrr::map_df(indStimVec, function(indStim) {
+          ind_curr <- as.character(indStim)
+          gRow <- if (nrow(gateTblFinal) > 0L && "ind" %in% names(gateTblFinal)) {
+            gateTblFinal[as.character(gateTblFinal$ind) == ind_curr & gateTblFinal$chnl == "F1", , drop = FALSE]
+          } else {
+            tibble::tibble()
+          }
+          if (nrow(gRow) > 0L) {
+            if (any(grepl("Clust$", gRow$gateName))) {
+              gRow <- gRow[grepl("Clust$", gRow$gateName), , drop = FALSE]
+            } else {
+              gRow <- gRow[nrow(gRow), , drop = FALSE]
+            }
+          }
+
+          sRow <- if (nrow(statsTblFinal) > 0L && "ind" %in% names(statsTblFinal)) {
+            statsTblFinal[as.character(statsTblFinal$ind) == ind_curr & grepl("~\\+~", statsTblFinal$cytCombn), , drop = FALSE]
+          } else {
+            tibble::tibble()
+          }
+          if (nrow(sRow) > 0L) {
+            if (any(grepl("Clust$", sRow$gateName))) {
+              sRow <- sRow[grepl("Clust$", sRow$gateName), , drop = FALSE]
+            } else {
+              sRow <- sRow[1L, , drop = FALSE]
+            }
+          }
+
+          gateVal <- if (nrow(gRow) > 0L) suppressWarnings(as.numeric(unname(gRow$gate[[1]]))) else NA_real_
+          gateNm <- if (nrow(gRow) > 0L) as.character(gRow$gateName[[1]]) else NA_character_
+
+          nCellStimVal <- if (nrow(sRow) > 0L) suppressWarnings(as.numeric(sRow$nCellStim[[1]])) else NA_real_
+          nCellUnsVal <- if (nrow(sRow) > 0L) suppressWarnings(as.numeric(sRow$nCellUns[[1]])) else NA_real_
+          nPosStimVal <- if (nrow(sRow) > 0L) suppressWarnings(as.integer(sRow$countStim[[1]])) else NA_integer_
+          nPosUnsVal <- if (nrow(sRow) > 0L) suppressWarnings(as.integer(sRow$countUns[[1]])) else NA_integer_
+          propStimVal <- if (nrow(sRow) > 0L) suppressWarnings(as.numeric(sRow$propStim[[1]])) else NA_real_
+          propUnsVal <- if (nrow(sRow) > 0L) suppressWarnings(as.numeric(sRow$propUns[[1]])) else NA_real_
+          propBsVal <- if (nrow(sRow) > 0L) suppressWarnings(as.numeric(sRow$propBs[[1]])) else NA_real_
+
+          isClustered <- grepl("Clust$", gateNm %||% "")
+
+          tibble::tibble(
+            sample = as.character(sampleCurr),
+            ind = as.character(indStim),
+            chnl = "F1",
+            approach = "stimgate",
+            method = "stimgate",
+            threshold = gateVal,
+            thresholdOrigin = if (is.finite(gateVal)) {
+              if (isClustered) "calculated_clustered" else "calculated"
+            } else {
+              "failed_no_cutpoint"
+            },
+            gateReturnPoint = if (isClustered) "stimgate_clustered" else "stimgate_calculated",
+            thresholdMetric = NA_real_,
+            thresholdFallbackUsed = !is.finite(gateVal),
+            nCellStim = nCellStimVal,
+            nCellUns = nCellUnsVal,
+            nPosStim = nPosStimVal,
+            nPosUns = nPosUnsVal,
+            propStim = propStimVal,
+            propUns = propUnsVal,
+            propRespEst = propBsVal,
+            detailLevel = if (isClustered) "cluster_final" else "sample_final",
+            locGenerated = is.finite(gateVal),
+            locGeneratedDirect = !isClustered,
+            locSource = if (isClustered) "cluster" else "sample",
+            locReason = NA_character_,
+            error = NA_character_
+          )
+        })
+      })
+
+      detailTbl <- tryCatch(
+        .simCompareReadLocDetails(
+          pathProject = pathProject,
+          nSample = nSample,
+          nCondition = nCondition
+        ),
+        error = function(e) tibble::tibble()
+      )
+
+      if (nrow(detailTbl) > 0L) {
+        if (!includeLocCondition) {
+          detailTbl <- detailTbl |>
+            dplyr::filter(.data$detailLevel %in% "sample")
+        } else {
+          detailTbl <- detailTbl |>
+            dplyr::filter(.data$detailLevel %in% c("condition", "sample"))
+        }
+
+        detailTbl <- .simCompareAddMissingColumns(
+          detailTbl,
+          list(
+            method = NA_character_,
+            propRespEst = NA_real_,
+            propBsEst = NA_real_,
+            propBs = NA_real_,
+            threshold = NA_real_,
+            thresholdOrigin = NA_character_,
+            gateReturnPoint = NA_character_,
+            nCellStim = NA_real_,
+            nCellUns = NA_real_,
+            nPosStim = NA_integer_,
+            nPosUns = NA_integer_,
+            propStim = NA_real_,
+            propUns = NA_real_,
+            detailLevel = NA_character_,
+            locGenerated = NA,
+            locGeneratedDirect = NA,
+            locSource = NA_character_,
+            locReason = NA_character_
+          )
+        )
+
         detailTbl <- detailTbl |>
-          dplyr::filter(.data$detailLevel %in% "sample")
+          dplyr::mutate(
+            approach = "stimgate",
+            method = paste0("stimgate_", .data$method),
+            propRespEst = dplyr::coalesce(
+              suppressWarnings(as.numeric(.data$propRespEst)),
+              suppressWarnings(as.numeric(.data$propBsEst)),
+              suppressWarnings(as.numeric(.data$propBs))
+            ),
+            thresholdMetric = NA_real_,
+            thresholdFallbackUsed = grepl(
+              "fallback_high_value",
+              .data$gateReturnPoint %||% ""
+            ),
+            error = NA_character_
+          )
       } else {
-        detailTbl <- detailTbl |>
-          dplyr::filter(.data$detailLevel %in% c("condition", "sample"))
+        detailTbl <- tibble::tibble()
       }
 
-      detailTbl <- .simCompareAddMissingColumns(
-        detailTbl,
-        list(
-          method = NA_character_,
-          propRespEst = NA_real_,
-          propBsEst = NA_real_,
-          propBs = NA_real_,
-          threshold = NA_real_,
-          thresholdOrigin = NA_character_,
-          gateReturnPoint = NA_character_,
-          nCellStim = NA_real_,
-          nCellUns = NA_real_,
-          nPosStim = NA_integer_,
-          nPosUns = NA_integer_,
-          propStim = NA_real_,
-          propUns = NA_real_,
-          detailLevel = NA_character_,
-          locGenerated = NA,
-          locGeneratedDirect = NA,
-          locSource = NA_character_,
-          locReason = NA_character_
-        )
-      )
-
-      detailTbl |>
-        dplyr::mutate(
-          approach = "stimgate",
-          method = paste0("stimgate_", .data$method),
-          propRespEst = dplyr::coalesce(
-            suppressWarnings(as.numeric(.data$propRespEst)),
-            suppressWarnings(as.numeric(.data$propBsEst)),
-            suppressWarnings(as.numeric(.data$propBs))
-          ),
-          thresholdMetric = NA_real_,
-          thresholdFallbackUsed = grepl(
-            "fallback_high_value",
-            .data$gateReturnPoint %||% ""
-          ),
-          error = NA_character_
-        ) |>
+      dplyr::bind_rows(stimgatePrimaryTbl, detailTbl) |>
         dplyr::left_join(truthTbl, by = c("sample", "ind", "chnl")) |>
         dplyr::select(
           sample,
@@ -881,7 +979,7 @@
     fbetaTheta = 2,
     fbetaWidth = 10,
     fbetaNumBins = NULL,
-    tailgateX = c("unstim", "combined", "stim"),
+    tailgateX = c("stim", "unstim", "combined"),
     tailgateSourceFiles = NULL,
     tailgateAdjust = 1,
     tailgateBandwidth = NULL,
@@ -963,8 +1061,7 @@
     } else {
       file.path(
         tempdir(),
-        "stimgate",
-        "sim-compare-freq-bs",
+        "stimgate-sim-compare",
         paste0(
           "pid-",
           Sys.getpid(),
@@ -1941,7 +2038,7 @@
 .simCompareSummariseFreqBs <- function(
     .data,
     scenarioCols = NULL,
-    keepMethods = c("stimgate_loc_sample", "fbeta", "tailgate")) {
+    keepMethods = c("stimgate", "fbeta", "tailgate")) {
   if (!"error" %in% names(.data)) {
     .data$error <- NA_character_
   }
@@ -2029,10 +2126,18 @@
       .groups = "drop"
     ) |>
     dplyr::arrange(
-      .data$n_cell,
-      dplyr::desc(.data$prob_response),
-      .data$transformation,
-      .data$mean_pos,
-      .data$method
+      dplyr::across(
+        dplyr::any_of(
+          c(
+            "n_cell",
+            "prob_response",
+            "transformation",
+            "mean_pos",
+            "mismatch_type",
+            "mismatch_val",
+            "method"
+          )
+        )
+      )
     )
 }

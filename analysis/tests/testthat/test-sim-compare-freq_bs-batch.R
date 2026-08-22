@@ -434,7 +434,10 @@ test_that("Analysis 7 and Analysis 8 namespaces are isolated", {
 
   content8 <- paste(lines8, collapse = "\n")
   # Analysis 8 progress log should be in freq_bs_batch log namespace
-  expect_true(grepl('"log"[^)]*"freq_bs_batch"', content8))
+  expect_true(
+    grepl('"log"[^)]*"freq_bs_batch"', content8) ||
+      grepl('analysis_key\\s*=\\s*c\\([^)]*"freq_bs_batch"', content8)
+  )
 })
 
 test_that("Inner nIter execution remains serial without nested parallelism", {
@@ -460,8 +463,7 @@ test_that("Temporary project directories are unique and collision-safe", {
   paths <- replicate(20, {
     file.path(
       tempdir(),
-      "stimgate",
-      "sim-compare-freq-bs",
+      "stimgate-sim-compare",
       paste0(
         "pid-",
         Sys.getpid(),
