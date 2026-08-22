@@ -9,6 +9,20 @@ invisible(gateStim(
   chnl = exampleData$chnl
 ))
 
+.fcsRowSig <- function(ex) {
+  if (!is.data.frame(ex) && !is.matrix(ex)) {
+   return(character(0))
+  }
+  if (nrow(ex) == 0L) {
+   return(character(0))
+  }
+  unname(sort(
+   apply(ex, 1, function(row) {
+     paste(sprintf("%.12f", as.numeric(row)), collapse = "|")
+   })
+  ))
+}
+
 # Comprehensive test suite for writeStimFCS function
 # Tests cover:
 # 1. Basic functionality and parameter validation
@@ -132,52 +146,134 @@ test_that("writeStimFCS works with different gateUnsMethod options", {
   }
 })
 
-test_that("writeStimFCS works with mult parameter", {
-  # Test with mult = FALSE (default)
-  pathDirSaveSingle <- file.path(tempdir(), "fcs_output_single")
-  resultSingle <- writeStimFCS(
-    pathProject = pathProject,
-    .data = gs,
-    indBatchList = exampleData$batchList,
-    pathDirSave = pathDirSaveSingle,
+test_that("writeStimFCS exports exactly the cells selected by an explicit gate table", {
+  gsSmall <- gs[1]
+  indBatchList <- list(batch_1 = 1L)
+  gateTbl <- data.frame(
     chnl = exampleData$chnl,
+    marker = c("MarkerF1", "MarkerF2"),
+    batch = "batch_1",
+    ind = "1",
+    gate = c(0.5, 0.5),
+    gateCyt = c(0.25, 0.25),
+    stringsAsFactors = FALSE
+  )
+  pathDirSave <- file.path(tempdir(), "fcs_output_exact_gate")
+
+  writeStimFCS(
+    pathProject = tempdir(),
+    .data = gsSmall,
+    indBatchList = indBatchList,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl,
+    gateTbl = gateTbl,
+    gateTypeCytPos = "base",
     mult = FALSE
   )
 
-  # Test with mult = TRUE
-  pathDirSaveMult <- file.path(tempdir(), "fcs_output_mult")
-  resultMult <- writeStimFCS(
-    pathProject = pathProject,
-    .data = gs,
-    indBatchList = exampleData$batchList,
-    pathDirSave = pathDirSaveMult,
+  fcsFile <- list.files(pathDirSave, pattern = "\\.fcs$", full.names = TRUE)
+  expect_length(fcsFile, 1L)
+
+  exOrig <- as.data.frame(flowCore::exprs(
+    flowWorkspace::gh_pop_get_data(gsSmall[[1]])
+  ))
+  expected <- exOrig[
+    exOrig[[exampleData$chnl[[1]]]] > 0.5 |
+      exOrig[[exampleData$chnl[[2]]]] > 0.5,
+    exampleData$chnl,
+    drop = FALSE
+  ]
+  exOut <- as.data.frame(flowCore::exprs(flowCore::read.FCS(fcsFile[[1]])))
+
+  expect_equal(
+    .fcsRowSig(exOut[, exampleData$chnl, drop = FALSE]),
+    .fcsRowSig(expected[, exampleData$chnl, drop = FALSE])
+  )
+  unlink(pathDirSave, recursive = TRUE)
+})
+
+test_that("writeStimFCS respects mult and gateTypeCytPos when exporting exact cells", {
+  gsSmall <- gs[1]
+  indBatchList <- list(batch_1 = 1L)
+  gateTbl <- data.frame(
     chnl = exampleData$chnl,
+    marker = c("MarkerF1", "MarkerF2"),
+    batch = "batch_1",
+    ind = "1",
+    gate = c(0.5, 0.5),
+    gateCyt = c(0.25, 0.25),
+    stringsAsFactors = FALSE
+  )
+
+  exOrig <- as.data.frame(flowCore::exprs(
+    flowWorkspace::gh_pop_get_data(gsSmall[[1]])
+  ))
+  expectedBase <- exOrig[
+    (exOrig[[exampleData$chnl[[1]]]] > 0.5) &
+      (exOrig[[exampleData$chnl[[2]]]] > 0.5),
+    exampleData$chnl,
+    drop = FALSE
+  ]
+  expectedCyt <- exOrig[
+    ((exOrig[[exampleData$chnl[[1]]]] > 0.5) &
+      (exOrig[[exampleData$chnl[[2]]]] > 0.25)) |
+      ((exOrig[[exampleData$chnl[[1]]]] > 0.25) &
+      (exOrig[[exampleData$chnl[[2]]]] > 0.5)),
+    exampleData$chnl,
+    drop = FALSE
+  ]
+
+  pathDirSaveBase <- file.path(tempdir(), "fcs_output_mult_base")
+  pathDirSaveCyt <- file.path(tempdir(), "fcs_output_mult_cyt")
+
+  writeStimFCS(
+    pathProject = tempdir(),
+    .data = gsSmall,
+    indBatchList = indBatchList,
+    pathDirSave = pathDirSaveBase,
+    chnl = exampleData$chnl,
+    gateTbl = gateTbl,
+    gateTypeCytPos = "base",
+    mult = TRUE
+  )
+  writeStimFCS(
+    pathProject = tempdir(),
+    .data = gsSmall,
+    indBatchList = indBatchList,
+    pathDirSave = pathDirSaveCyt,
+    chnl = exampleData$chnl,
+    gateTbl = gateTbl,
+    gateTypeCytPos = "cyt",
     mult = TRUE
   )
 
-  expect_equal(resultSingle, pathDirSaveSingle)
-  expect_equal(resultMult, pathDirSaveMult)
-  expect_true(dir.exists(pathDirSaveSingle))
-  expect_true(dir.exists(pathDirSaveMult))
-  unlink(pathDirSaveSingle, recursive = TRUE)
-  unlink(pathDirSaveMult, recursive = TRUE)
-})
-
-test_that("writeStimFCS works with different gate types", {
-  pathDirSave <- file.path(tempdir(), "fcs_output_gate_types")
-
-  result <- writeStimFCS(
-    pathProject = pathProject,
-    .data = gs,
-    indBatchList = exampleData$batchList,
-    pathDirSave = pathDirSave,
-    chnl = exampleData$chnl[[1]],
-    gateTypeCytPos = "cyt"
+  fcsBase <- flowCore::read.FCS(
+    list.files(pathDirSaveBase, pattern = "\\.fcs$", full.names = TRUE)[[1]]
+  )
+  fcsCyt <- flowCore::read.FCS(
+    list.files(pathDirSaveCyt, pattern = "\\.fcs$", full.names = TRUE)[[1]]
   )
 
-  expect_equal(result, pathDirSave)
-  expect_true(dir.exists(pathDirSave))
-  unlink(pathDirSave, recursive = TRUE)
+  exBase <- as.data.frame(flowCore::exprs(fcsBase))
+  exCyt <- as.data.frame(flowCore::exprs(fcsCyt))
+
+  expect_equal(
+    .fcsRowSig(exBase[, exampleData$chnl, drop = FALSE]),
+    .fcsRowSig(expectedBase[, exampleData$chnl, drop = FALSE])
+  )
+  expect_equal(
+    .fcsRowSig(exCyt[, exampleData$chnl, drop = FALSE]),
+    .fcsRowSig(expectedCyt[, exampleData$chnl, drop = FALSE])
+  )
+  expect_false(
+    identical(
+      .fcsRowSig(exBase[, exampleData$chnl, drop = FALSE]),
+      .fcsRowSig(exCyt[, exampleData$chnl, drop = FALSE])
+    )
+  )
+
+  unlink(pathDirSaveBase, recursive = TRUE)
+  unlink(pathDirSaveCyt, recursive = TRUE)
 })
 
 test_that("writeStimFCS validates output file contents", {
@@ -358,38 +454,54 @@ test_that("writeStimFCS preserves file metadata", {
   unlink(pathDirSave, recursive = TRUE)
 })
 
-test_that("writeStimFCS handles combination exclusions", {
-  pathDirSave <- file.path(tempdir(), "fcs_output_exclusions")
+test_that("writeStimFCS removes the requested cytokine combinations exactly", {
+  gsSmall <- gs[1]
+  indBatchList <- list(batch_1 = 1L)
+  gateTbl <- data.frame(
+    chnl = exampleData$chnl,
+    marker = c("MarkerF1", "MarkerF2"),
+    batch = "batch_1",
+    ind = "1",
+    gate = c(0.5, 0.5),
+    gateCyt = c(0.25, 0.25),
+    stringsAsFactors = FALSE
+  )
+  pathDirSave <- file.path(tempdir(), "fcs_output_exclusions_exact")
 
-  # Test with combination exclusions (if we have multiple markers)
-  if (length(exampleData$chnl) > 1) {
-    combnExc <- list(exampleData$chnl[[1]])
+  exOrig <- as.data.frame(flowCore::exprs(
+    flowWorkspace::gh_pop_get_data(gsSmall[[1]])
+  ))
+  incVec <- exOrig[[exampleData$chnl[[1]]]] > 0.5 |
+    exOrig[[exampleData$chnl[[2]]]] > 0.5
+  excVec <- .getPosIndCytCombn(
+    ex = exOrig,
+    gateTbl = gateTbl,
+    chnlPos = exampleData$chnl[[1]],
+    chnlNeg = setdiff(exampleData$chnl, exampleData$chnl[[1]]),
+    chnlAlt = NULL,
+    gateTypeCytPos = "base"
+  )
+  expected <- exOrig[incVec & !excVec, exampleData$chnl, drop = FALSE]
 
-    result <- writeStimFCS(
-      pathProject = pathProject,
-      .data = gs,
-      indBatchList = exampleData$batchList,
-      pathDirSave = pathDirSave,
-      chnl = exampleData$chnl,
-      combnExc = combnExc
-    )
+  writeStimFCS(
+    pathProject = tempdir(),
+    .data = gsSmall,
+    indBatchList = indBatchList,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl,
+    gateTbl = gateTbl,
+    gateTypeCytPos = "base",
+    combnExc = list(exampleData$chnl[[1]])
+  )
 
-    expect_equal(result, pathDirSave)
-    expect_true(dir.exists(pathDirSave))
-  } else {
-    # Test with NULL exclusions
-    result <- writeStimFCS(
-      pathProject = pathProject,
-      .data = gs,
-      indBatchList = exampleData$batchList,
-      pathDirSave = pathDirSave,
-      chnl = exampleData$chnl[[1]],
-      combnExc = NULL
-    )
+  fcsFile <- list.files(pathDirSave, pattern = "\\.fcs$", full.names = TRUE)
+  expect_length(fcsFile, 1L)
 
-    expect_equal(result, pathDirSave)
-    expect_true(dir.exists(pathDirSave))
-  }
+  exOut <- as.data.frame(flowCore::exprs(flowCore::read.FCS(fcsFile[[1]])))
+  expect_equal(
+    .fcsRowSig(exOut[, exampleData$chnl, drop = FALSE]),
+    .fcsRowSig(expected[, exampleData$chnl, drop = FALSE])
+  )
   unlink(pathDirSave, recursive = TRUE)
 })
 
