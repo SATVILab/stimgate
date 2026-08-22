@@ -275,6 +275,7 @@ test_that("primary StimGate comparator scores full cluster-refined procedure (#3
     ncellUnsRelativeToStim = 1,
     tolClust = 0.01,
     includeLocCondition = TRUE,
+    includeLocDetails = TRUE,
     tailgateX = "stim"
   )
 
@@ -286,7 +287,7 @@ test_that("primary StimGate comparator scores full cluster-refined procedure (#3
   expect_true(all(is.finite(stimgate_primary$threshold)))
   expect_true(all(is.finite(stimgate_primary$propRespEst)))
 
-  # Pre-clustering diagnostic rows stimgate_loc_sample are also preserved
+  # Pre-clustering diagnostic rows stimgate_loc_sample are preserved when requested
   stimgate_loc_sample <- res[res$method == "stimgate_loc_sample", ]
   expect_equal(nrow(stimgate_loc_sample), 3L)
   expect_true(all(stimgate_loc_sample$detailLevel == "sample"))
@@ -294,6 +295,31 @@ test_that("primary StimGate comparator scores full cluster-refined procedure (#3
   # Summaries default to keeping c("stimgate", "fbeta", "tailgate")
   summ <- env$.simCompareSummariseFreqBs(res)
   expect_setequal(unique(summ$method), c("stimgate", "fbeta", "tailgate"))
+
+  # Default run (without includeLocDetails) returns only single 'stimgate' method
+  set.seed(42)
+  res_default <- env$.simCompareFreqBs(
+    nSample = 2,
+    nMarker = 1,
+    nCondition = 2,
+    nCluster = 2,
+    nIter = 1,
+    biasUns = 0,
+    bw = 0.1,
+    bwMtd = "hpi1",
+    nCellStim = 200,
+    probResponse = 0.05,
+    meanPos = 5,
+    transformation = "gaussian",
+    samplePerturbationSd = 0,
+    conditionPerturbationSd = 0,
+    clusterPerturbationSd = 0,
+    backgroundRelativeToResponse = 0.1,
+    ncellUnsRelativeToStim = 1,
+    tailgateX = "stim"
+  )
+  stimgate_methods <- unique(res_default$method[res_default$approach == "stimgate"])
+  expect_equal(stimgate_methods, "stimgate")
 })
 
 test_that("tailgate derives threshold from stimulated sample and applies to both conditions (#308)", {

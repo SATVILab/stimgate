@@ -658,7 +658,8 @@
     tolClust = NULL,
     locEnforceShapeThreshold = FALSE,
     calcCytPosGates = FALSE,
-    includeLocCondition = TRUE) {
+    includeLocCondition = FALSE,
+    includeLocDetails = includeLocCondition) {
   truthTbl <- .simCompareTruthTable(
     labelsList = labelsList,
     nSample = nSample,
@@ -813,17 +814,21 @@
         })
       })
 
-      detailTbl <- tryCatch(
-        .simCompareReadLocDetails(
-          pathProject = pathProject,
-          nSample = nSample,
-          nCondition = nCondition
-        ),
-        error = function(e) tibble::tibble()
-      )
+      detailTbl <- if (isTRUE(includeLocDetails) || isTRUE(includeLocCondition)) {
+        tryCatch(
+          .simCompareReadLocDetails(
+            pathProject = pathProject,
+            nSample = nSample,
+            nCondition = nCondition
+          ),
+          error = function(e) tibble::tibble()
+        )
+      } else {
+        tibble::tibble()
+      }
 
       if (nrow(detailTbl) > 0L) {
-        if (!includeLocCondition) {
+        if (!isTRUE(includeLocCondition)) {
           detailTbl <- detailTbl |>
             dplyr::filter(.data$detailLevel %in% "sample")
         } else {
@@ -972,7 +977,8 @@
     locTolRefPeak = "highest",
     gateCombn = "min",
     calcCytPosGates = FALSE,
-    includeLocCondition = TRUE,
+    includeLocCondition = FALSE,
+    includeLocDetails = includeLocCondition,
     pathFbeta = NULL,
     fbetaPatchPy2Compat = TRUE,
     fbetaBeta = 0.8,
@@ -1127,7 +1133,8 @@
       tolClust = tolClust,
       locEnforceShapeThreshold = locEnforceShapeThreshold,
       calcCytPosGates = calcCytPosGates,
-      includeLocCondition = includeLocCondition
+      includeLocCondition = includeLocCondition,
+      includeLocDetails = includeLocDetails
     )
 
     alternativeTbl <- .simCompareAlternativeRows(
@@ -1549,7 +1556,8 @@
     tolClust = NULL,
     locEnforceShapeThreshold = FALSE,
     calcCytPosGates = FALSE,
-    includeLocCondition = TRUE,
+    includeLocCondition = FALSE,
+    includeLocDetails = includeLocCondition,
     dirCache = NULL,
     pathProgress = NULL,
     resume = TRUE,
@@ -1742,6 +1750,7 @@
         locEnforceShapeThreshold = locEnforceShapeThreshold,
         calcCytPosGates = calcCytPosGates,
         includeLocCondition = includeLocCondition,
+        includeLocDetails = includeLocDetails,
         stimMeanShift = stimMeanShiftVal,
         stimSdMultiplier = stimSdMultVal,
         stimMeanShiftClusters = stimMeanShiftClustersVal,
@@ -1855,7 +1864,8 @@
     tolClust = NULL,
     locEnforceShapeThreshold = FALSE,
     calcCytPosGates = FALSE,
-    includeLocCondition = TRUE,
+    includeLocCondition = FALSE,
+    includeLocDetails = includeLocCondition,
     parallel = FALSE,
     workers = NULL,
     dirCache = NULL,
@@ -1898,6 +1908,7 @@
       locEnforceShapeThreshold = locEnforceShapeThreshold,
       calcCytPosGates = calcCytPosGates,
       includeLocCondition = includeLocCondition,
+      includeLocDetails = includeLocDetails,
       dirCache = dirCache,
       pathProgress = pathProgress,
       resume = resume,

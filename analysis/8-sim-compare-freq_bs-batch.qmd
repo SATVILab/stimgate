@@ -341,7 +341,6 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     tolClust = tol_clust,
     locEnforceShapeThreshold = loc_enforce_shape_threshold,
     calcCytPosGates = calc_cyt_pos_gates,
-    includeLocCondition = TRUE,
     pathFbeta = path_fbeta,
     fbetaBeta = fbeta_beta,
     fbetaTheta = fbeta_theta,
@@ -432,6 +431,16 @@ if (!exists("compare_raw") || nrow(compare_raw) == 0L) {
     compare_raw <- readRDS(path_rds)
   }
 }
+
+if (exists("compare_raw") && nrow(compare_raw) > 0L) {
+  if (!"stimgate" %in% compare_raw$method && "stimgate_loc_sample" %in% compare_raw$method) {
+    compare_raw <- compare_raw |>
+      dplyr::mutate(
+        method = dplyr::if_else(method == "stimgate_loc_sample", "stimgate", method)
+      )
+  }
+}
+
 compare_summary <- .simCompareSummariseFreqBs(
   compare_raw,
   scenarioCols = c(

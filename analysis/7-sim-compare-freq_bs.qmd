@@ -276,7 +276,6 @@ for (i in seq_len(nrow(sim_grid))) {
     tolClust = tol_clust,
     locEnforceShapeThreshold = loc_enforce_shape_threshold,
     calcCytPosGates = calc_cyt_pos_gates,
-    includeLocCondition = TRUE,
     pathFbeta = path_fbeta,
     fbetaBeta = fbeta_beta,
     fbetaTheta = fbeta_theta,
@@ -447,7 +446,6 @@ if (isTRUE(run_simulations) && nrow(sim_grid_run) > 0L) {
               tolClust = tol_clust,
               locEnforceShapeThreshold = loc_enforce_shape_threshold,
               calcCytPosGates = calc_cyt_pos_gates,
-              includeLocCondition = TRUE,
               pathFbeta = path_fbeta,
               fbetaBeta = fbeta_beta,
               fbetaTheta = fbeta_theta,
@@ -626,6 +624,13 @@ compare_list_raw <- readRDS(file = path_vec[[1]])
 
 compare_tbl <- compare_list_raw |>
   purrr::list_rbind()
+
+if (!"stimgate" %in% compare_tbl$method && "stimgate_loc_sample" %in% compare_tbl$method) {
+  compare_tbl <- compare_tbl |>
+    dplyr::mutate(
+      method = dplyr::if_else(method == "stimgate_loc_sample", "stimgate", method)
+    )
+}
 
 compare_tbl_focus <- compare_tbl |>
   dplyr::filter(
