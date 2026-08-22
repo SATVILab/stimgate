@@ -41,10 +41,12 @@ if (!requireNamespace("cytoUtils", quietly = TRUE)) {
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 
 # Source simulation helpers in dependency order:
-# 1. sim-misc.R: general simulation utilities and transformation lookups
-# 2. sim-bandwidth.R: location details reader and bandwidth helpers
-# 3. sim-compare-freq_bs.R: comparison functions requiring the helpers above
+# 1. analysis-runtime.R: shared QMD execution/runtime plumbing
+# 2. sim-misc.R: general simulation utilities and transformation lookups
+# 3. sim-bandwidth.R: location details reader and bandwidth helpers
+# 4. sim-compare-freq_bs.R: comparison functions requiring the helpers above
 for (fn in c(
+  "analysis-runtime.R",
   "sim-misc.R",
   "sim-bandwidth.R",
   "sim-compare-freq_bs.R"
@@ -203,6 +205,18 @@ if (.isDev()) {
     )
 }
 
+sim_grid_chunk_index <- as.integer(.get_qmd_param_env("sim_grid_chunk_index", "SIM_GRID_CHUNK_INDEX", 1L))
+sim_grid_n_chunks <- as.integer(.get_qmd_param_env("sim_grid_n_chunks", "SIM_GRID_N_CHUNKS", 1L))
+.validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
+sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
+
+sim_grid_all <- sim_grid
+
+if (sim_grid_n_chunks > 1L && nrow(sim_grid_all) > 0L) {
+  sim_grid <- sim_grid_all |>
+    dplyr::filter(((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L == sim_grid_chunk_index)
+}
+
 sim_grid
 print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
 ```
@@ -214,45 +228,80 @@ print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
 #| results: hide
 path_cache_dir <- projr::projr_path_get(
   "cache",
-  "analysis",
   "sim",
   "compare",
   "freq_bs_batch"
 )
-dir.create(path_cache_dir, recursive = TRUE, showWarnings = FALSE)
+dir_output <- file.path(path_cache_dir, "output")
+dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 
-path_rds <- file.path(path_cache_dir, "compare_raw.rds")
+path_progress_file <- projr::projr_path_get(
+  "cache",
+  "log",
+  "analysis",
+  "sim",
+  "compare",
+  "freq_bs_batch",
+  if (sim_grid_n_chunks > 1L) paste0("progress-chunk_", sim_chunk_label, ".txt") else "progress.txt"
+)
+dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+
+path_rds <- file.path(
+  path_cache_dir,
+  if (sim_grid_n_chunks > 1L) sprintf("compare_raw_chunk_%s.rds", sim_chunk_label) else "compare_raw.rds"
+)
 
 n_sample_sim <- 5
 n_iter_sim <- 5
+n_workers <- max(1, .simGetCores())
 
-if (file.exists(path_rds)) {
-  compare_raw <- readRDS(path_rds)
-} else {
-  compare_raw <- .simCompareFreqBsGrid(
-    sim_grid = sim_grid,
-    nSample = n_sample_sim,
-    nIter = n_iter_sim,
-    nMarker = 1,
-    nCondition = 2,
-    nCluster = 2,
-    probExact = TRUE,
-    covEvMin = 1.5,
-    covEvMax = 1.5,
-    tolClust = tol_clust,
-    locEnforceShapeThreshold = loc_enforce_shape_threshold,
-    calcCytPosGates = calc_cyt_pos_gates,
-    includeLocCondition = TRUE,
-    pathFbeta = path_fbeta,
-    fbetaBeta = fbeta_beta,
-    fbetaTheta = fbeta_theta,
-    fbetaWidth = fbeta_width,
-    tailgateAdjust = tailgate_adjust,
-    tailgateAutoTol = tailgate_auto_tol,
-    tailgateMethod = tailgate_method,
-    tailgateTol = tailgate_tol
+if (interactive()) {
+  progressr::handlers(global = TRUE)
+}
+
+compare_raw <- .simCompareFreqBsGrid(
+  sim_grid = sim_grid,
+  nSample = n_sample_sim,
+  nIter = n_iter_sim,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  probExact = TRUE,
+  covEvMin = 1.5,
+  covEvMax = 1.5,
+  tolClust = tol_clust,
+  locEnforceShapeThreshold = loc_enforce_shape_threshold,
+  calcCytPosGates = calc_cyt_pos_gates,
+  includeLocCondition = TRUE,
+  pathFbeta = path_fbeta,
+  fbetaBeta = fbeta_beta,
+  fbetaTheta = fbeta_theta,
+  fbetaWidth = fbeta_width,
+  tailgateAdjust = tailgate_adjust,
+  tailgateAutoTol = tailgate_auto_tol,
+  tailgateMethod = tailgate_method,
+  tailgateTol = tailgate_tol,
+  parallel = (n_workers > 1L),
+  workers = n_workers,
+  dirCache = dir_output,
+  pathProgress = path_progress_file,
+  resume = TRUE,
+  sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) sim_grid_chunk_index else NULL,
+  sim_grid_n_chunks = if (sim_grid_n_chunks > 1L) sim_grid_n_chunks else NULL
+)
+
+.write_rds_atomic(compare_raw, path_rds)
+
+if (sim_grid_n_chunks > 1L) {
+  path_rds_full <- file.path(path_cache_dir, "compare_raw.rds")
+  compare_raw_full <- .simCompareCollateScenarioOutputs(
+    dirCache = dir_output,
+    sim_grid = sim_grid_all
   )
-  saveRDS(compare_raw, path_rds)
+  if (nrow(compare_raw_full) > 0L) {
+    .write_rds_atomic(compare_raw_full, path_rds_full)
+    compare_raw <- compare_raw_full
+  }
 }
 ```
 

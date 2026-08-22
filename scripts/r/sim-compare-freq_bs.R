@@ -691,7 +691,7 @@
       )
       Sys.setenv("STIMGATE_INTERMEDIATE" = "TRUE")
 
-      invisible(gateStim(
+      invisible(stimgate::gateStim(
         .data = gs,
         pathProject = pathProject,
         popGate = "root",
@@ -902,7 +902,8 @@
   fallbackHighValue = TRUE,
   fallbackMargin = 0.05,
   stimMeanShift = 0,
-  stimSdMultiplier = 1
+  stimSdMultiplier = 1,
+  pathProject = NULL
 ) {
   if (!identical(as.integer(nMarker), 1L)) {
     stop("This comparison helper currently expects nMarker = 1.")
@@ -958,38 +959,46 @@
     fs <- as(flowFrameList, "flowSet")
     gs <- flowWorkspace::GatingSet(fs)
 
-    pathProject <- file.path(
-      tempdir(),
-      "stimgate",
-      "sim-compare-freq-bs",
-      paste0(
-        "iter-",
-        iterNum,
-        "-",
-        Sys.getpid(),
-        "-",
-        format(Sys.time(), "%Y%m%d%H%M%S"),
-        "-",
-        sample.int(1e7, 1)
+    pathProjectUse <- if (!is.null(pathProject) && nzchar(pathProject)) {
+      if (identical(as.integer(nIter), 1L)) {
+        pathProject
+      } else {
+        file.path(pathProject, paste0("iter-", iterNum))
+      }
+    } else {
+      file.path(
+        tempdir(),
+        "stimgate",
+        "sim-compare-freq-bs",
+        paste0(
+          "pid-",
+          Sys.getpid(),
+          "-iter-",
+          iterNum,
+          "-",
+          format(Sys.time(), "%Y%m%d%H%M%OS6"),
+          "-",
+          sample.int(1e9, 1)
+        )
       )
-    )
+    }
     on.exit(
       {
-        if (dir.exists(pathProject)) {
-          unlink(pathProject, recursive = TRUE)
+        if (dir.exists(pathProjectUse)) {
+          unlink(pathProjectUse, recursive = TRUE)
         }
       },
       add = TRUE
     )
-    if (dir.exists(pathProject)) {
-      unlink(pathProject, recursive = TRUE)
+    if (dir.exists(pathProjectUse)) {
+      unlink(pathProjectUse, recursive = TRUE)
     }
-    dir.create(pathProject, recursive = TRUE, showWarnings = FALSE)
+    dir.create(pathProjectUse, recursive = TRUE, showWarnings = FALSE)
 
     stimgateTbl <- .simCompareStimgateRows(
       gs = gs,
       labelsList = labelsList,
-      pathProject = pathProject,
+      pathProject = pathProjectUse,
       nSample = nSample,
       nCondition = nCondition,
       nMarker = nMarker,
@@ -1109,6 +1118,438 @@
   })
 }
 
+#' Generate scenario output file path
+#'
+#' @keywords internal
+.simCompareScenarioOutputPath <- function(
+  sim_id,
+  dirCache,
+  sim_grid_chunk_index = NULL,
+  sim_grid_n_chunks = NULL
+) {
+  if (is.null(dirCache) || !nzchar(dirCache)) {
+    return(character(0))
+  }
+
+  if (
+    !is.null(sim_grid_chunk_index) && !is.na(sim_grid_chunk_index) &&
+      !is.null(sim_grid_n_chunks) && !is.na(sim_grid_n_chunks) &&
+      as.integer(sim_grid_n_chunks) > 1L
+  ) {
+    file.path(
+      dirCache,
+      sprintf(
+        "compare_raw-chunk_%03d-of_%03d-sim_id_%06d.rds",
+        as.integer(sim_grid_chunk_index),
+        as.integer(sim_grid_n_chunks),
+        as.integer(sim_id)
+      )
+    )
+  } else {
+    file.path(
+      dirCache,
+      sprintf(
+        "compare_raw-sim_id_%06d.rds",
+        as.integer(sim_id)
+      )
+    )
+  }
+}
+
+#' Find scenario output files in a directory
+#'
+#' @keywords internal
+.simCompareFindScenarioOutputs <- function(dirCache) {
+  if (is.null(dirCache) || !dir.exists(dirCache)) {
+    return(character(0))
+  }
+
+  files <- list.files(
+    dirCache,
+    pattern = "^(compare_raw.*|sim_scenario.*|sim_raw.*)sim_id_[0-9]+[.]rds$",
+    full.names = TRUE
+  )
+  sort(unique(files))
+}
+
+#' Validate scenario cached output against grid row settings
+#'
+#' @keywords internal
+.simCompareValidateScenarioCache <- function(
+  cached,
+  row,
+  nSample = NULL,
+  nIter = NULL,
+  retryErrors = FALSE
+) {
+  if (!is.data.frame(cached) || nrow(cached) == 0L) {
+    return(FALSE)
+  }
+
+  has_error <- "error" %in% names(cached) &&
+    any(!is.na(cached$error) & nzchar(as.character(cached$error)))
+  if (isTRUE(retryErrors) && has_error) {
+    return(FALSE)
+  }
+
+  for (nm in names(row)) {
+    if (nm %in% names(cached)) {
+      row_val <- row[[nm]]
+      cached_val <- cached[[nm]]
+
+      if (is.null(row_val) || length(row_val) == 0L) {
+        next
+      }
+
+      row_scalar <- row_val[[1]]
+      cached_scalar <- cached_val[[1]]
+
+      if (is.na(row_scalar) != is.na(cached_scalar)) {
+        return(FALSE)
+      }
+
+      if (!is.na(row_scalar)) {
+        if (is.numeric(row_scalar) && is.numeric(cached_scalar)) {
+          if (!isTRUE(all.equal(as.numeric(row_scalar), as.numeric(cached_scalar), tolerance = 1e-7))) {
+            return(FALSE)
+          }
+        } else {
+          if (as.character(row_scalar) != as.character(cached_scalar)) {
+            return(FALSE)
+          }
+        }
+      }
+    }
+  }
+
+  if (!has_error) {
+    if (!is.null(nIter) && "iter" %in% names(cached)) {
+      cached_iters <- unique(cached$iter[!is.na(cached$iter)])
+      if (length(cached_iters) != as.integer(nIter)) {
+        return(FALSE)
+      }
+    }
+    if (!is.null(nSample) && "sample" %in% names(cached)) {
+      cached_samples <- unique(cached$sample[!is.na(cached$sample)])
+      if (length(cached_samples) != as.integer(nSample)) {
+        return(FALSE)
+      }
+    }
+  }
+
+  TRUE
+}
+
+#' Format scenario settings string for logging
+#'
+#' @keywords internal
+.simCompareFormatScenarioLog <- function(row, sim_id) {
+  parts <- c(
+    paste0("sim_id = ", sim_id),
+    if ("transformation" %in% names(row)) paste0("trans = ", row$transformation[[1]]),
+    if ("prob_response" %in% names(row)) paste0("prob = ", row$prob_response[[1]]),
+    if ("n_cell" %in% names(row)) paste0("n_cell = ", row$n_cell[[1]]),
+    if ("mean_pos_setting" %in% names(row)) paste0("mean_pos_setting = ", row$mean_pos_setting[[1]]),
+    if ("mean_pos" %in% names(row)) paste0("mean = ", row$mean_pos[[1]]),
+    if ("bw_mtd" %in% names(row)) paste0("bw_mtd = ", row$bw_mtd[[1]]),
+    if ("bias_uns" %in% names(row)) paste0("bias = ", row$bias_uns[[1]]),
+    if ("mismatch_type" %in% names(row)) paste0("mismatch_type = ", row$mismatch_type[[1]]),
+    if ("mismatch_val" %in% names(row)) paste0("mismatch_val = ", row$mismatch_val[[1]]),
+    if ("stim_mean_shift" %in% names(row)) paste0("stim_mean_shift = ", row$stim_mean_shift[[1]]),
+    if ("stim_sd_multiplier" %in% names(row)) paste0("stim_sd_multiplier = ", row$stim_sd_multiplier[[1]])
+  )
+  paste(parts, collapse = " | ")
+}
+
+#' Append a log line safely
+#'
+#' @keywords internal
+.simCompareLogMessage <- function(pathProgress, msg) {
+  if (is.null(pathProgress) || !nzchar(pathProgress)) {
+    return(invisible(NULL))
+  }
+  tryCatch(
+    {
+      dir.create(dirname(pathProgress), recursive = TRUE, showWarnings = FALSE)
+      timestamp <- format(Sys.time(), "[%Y-%m-%d %H:%M:%S] ")
+      cat(paste0(timestamp, msg, "\n"), file = pathProgress, append = TRUE)
+    },
+    error = function(e) invisible(NULL)
+  )
+}
+
+#' Ensure the current stimgate checkout is loaded
+#'
+#' @keywords internal
+.simCompareEnsureCurrentCheckout <- function(pathRoot = NULL) {
+  if (is.null(pathRoot) || !nzchar(pathRoot)) {
+    if (requireNamespace("projr", quietly = TRUE)) {
+      pathRoot <- tryCatch(
+        projr::projr_path_get("project"),
+        error = function(e) normalizePath(".", winslash = "/", mustWork = FALSE)
+      )
+    } else {
+      pathRoot <- normalizePath(".", winslash = "/", mustWork = FALSE)
+    }
+  }
+  pathRoot <- normalizePath(pathRoot, winslash = "/", mustWork = FALSE)
+
+  if (!nzchar(pathRoot)) {
+    return(invisible(FALSE))
+  }
+
+  if (requireNamespace("stimgate", quietly = TRUE)) {
+    ns <- tryCatch(asNamespace("stimgate"), error = function(e) NULL)
+    if (!is.null(ns)) {
+      ns_path <- normalizePath(
+        getNamespaceInfo(ns, "path"),
+        winslash = "/",
+        mustWork = FALSE
+      )
+      if (isTRUE(identical(ns_path, pathRoot))) {
+        return(invisible(TRUE))
+      }
+    }
+  }
+
+  if (requireNamespace("pkgload", quietly = TRUE)) {
+    suppressMessages(pkgload::load_all(pathRoot, quiet = TRUE))
+  } else if (requireNamespace("devtools", quietly = TRUE)) {
+    suppressMessages(devtools::load_all(pathRoot, quiet = TRUE))
+  }
+  invisible(TRUE)
+}
+
+#' Run a single comparison scenario row
+#'
+#' @keywords internal
+.simCompareRunScenario <- function(
+  row,
+  nSample = 5,
+  nIter = 5,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  probExact = TRUE,
+  covEvMin = 2,
+  covEvMax = 2,
+  tolClust = NULL,
+  locEnforceShapeThreshold = FALSE,
+  calcCytPosGates = FALSE,
+  includeLocCondition = TRUE,
+  dirCache = NULL,
+  pathProgress = NULL,
+  resume = TRUE,
+  sim_grid_chunk_index = NULL,
+  sim_grid_n_chunks = NULL,
+  retryErrors = FALSE,
+  p = NULL,
+  ...
+) {
+  .simCompareEnsureCurrentCheckout()
+
+  sim_id <- if ("sim_id" %in% names(row)) {
+    row$sim_id[[1]]
+  } else {
+    1L
+  }
+
+  file_output <- if (!is.null(dirCache) && nzchar(dirCache)) {
+    .simCompareScenarioOutputPath(
+      sim_id = sim_id,
+      dirCache = dirCache,
+      sim_grid_chunk_index = sim_grid_chunk_index,
+      sim_grid_n_chunks = sim_grid_n_chunks
+    )
+  } else {
+    character(0)
+  }
+
+  if (isTRUE(resume) && length(file_output) > 0L && file.exists(file_output)) {
+    cached <- tryCatch(readRDS(file_output), error = function(e) NULL)
+    if (
+      .simCompareValidateScenarioCache(
+        cached = cached,
+        row = row,
+        nSample = nSample,
+        nIter = nIter,
+        retryErrors = retryErrors
+      )
+    ) {
+      if (!is.null(p)) {
+        p(sprintf("Skipped existing sim_id: %s", sim_id))
+      }
+      .simCompareLogMessage(
+        pathProgress = pathProgress,
+        msg = paste0("Skipped (cached): ", .simCompareFormatScenarioLog(row, sim_id))
+      )
+      return(cached)
+    }
+  }
+
+  settings_log <- .simCompareFormatScenarioLog(row, sim_id)
+  .simCompareLogMessage(pathProgress, paste0("Running: ", settings_log))
+
+  stimMeanShiftVal <- if ("stim_mean_shift" %in% names(row)) {
+    row$stim_mean_shift[[1]]
+  } else if ("stimMeanShift" %in% names(row)) {
+    row$stimMeanShift[[1]]
+  } else {
+    0
+  }
+
+  stimSdMultVal <- if ("stim_sd_multiplier" %in% names(row)) {
+    row$stim_sd_multiplier[[1]]
+  } else if ("stimSdMultiplier" %in% names(row)) {
+    row$stimSdMultiplier[[1]]
+  } else if ("sd_multiplier" %in% names(row)) {
+    row$sd_multiplier[[1]]
+  } else if ("sd_increase" %in% names(row)) {
+    1 + row$sd_increase[[1]]
+  } else {
+    1
+  }
+
+  out <- tryCatch(
+    {
+      sim_res <- .simCompareFreqBs(
+        nSample = nSample,
+        nMarker = nMarker,
+        nCondition = nCondition,
+        nCluster = nCluster,
+        nIter = nIter,
+        biasUns = if ("bias_uns" %in% names(row)) row$bias_uns[[1]] else 0,
+        bw = if ("bw" %in% names(row)) row$bw[[1]] else NULL,
+        bwFallback = if ("bw_fallback" %in% names(row)) {
+          row$bw_fallback[[1]]
+        } else if ("bw" %in% names(row)) {
+          row$bw[[1]]
+        } else {
+          "auto"
+        },
+        bwMin = if ("bw_min" %in% names(row)) row$bw_min[[1]] else "none",
+        bwMax = if ("bw_max" %in% names(row)) row$bw_max[[1]] else "none",
+        bwMtd = if ("bw_mtd" %in% names(row)) row$bw_mtd[[1]] else "hpi1",
+        bwNcellMax = if ("bw_ncell_max" %in% names(row)) row$bw_ncell_max[[1]] else 1e4,
+        probExact = probExact,
+        nCellStim = if ("n_cell" %in% names(row)) row$n_cell[[1]] else 1e4,
+        probResponse = if ("prob_response" %in% names(row)) row$prob_response[[1]] else 0.05,
+        meanPos = if ("mean_pos" %in% names(row)) row$mean_pos[[1]] else 5,
+        transformation = if ("transformation" %in% names(row)) row$transformation[[1]] else "gaussian",
+        samplePerturbationSd = if ("sample_perturbation_sd" %in% names(row)) row$sample_perturbation_sd[[1]] else 0,
+        conditionPerturbationSd = if ("condition_perturbation_sd" %in% names(row)) row$condition_perturbation_sd[[1]] else 0,
+        clusterPerturbationSd = if ("cluster_perturbation_sd" %in% names(row)) row$cluster_perturbation_sd[[1]] else 0,
+        backgroundRelativeToResponse = if ("background_relative_to_response" %in% names(row)) {
+          row$background_relative_to_response[[1]]
+        } else {
+          0.1
+        },
+        ncellUnsRelativeToStim = if ("n_cell_uns_relative_to_stim" %in% names(row)) {
+          row$n_cell_uns_relative_to_stim[[1]]
+        } else {
+          1
+        },
+        covEvMin = covEvMin,
+        covEvMax = covEvMax,
+        tolClust = tolClust,
+        locEnforceShapeThreshold = locEnforceShapeThreshold,
+        calcCytPosGates = calcCytPosGates,
+        includeLocCondition = includeLocCondition,
+        stimMeanShift = stimMeanShiftVal,
+        stimSdMultiplier = stimSdMultVal,
+        ...
+      )
+
+      sim_res <- sim_res |>
+        dplyr::select(-dplyr::any_of(names(row)))
+
+      res <- dplyr::bind_cols(
+        row[rep(1L, nrow(sim_res)), , drop = FALSE],
+        sim_res
+      )
+
+      if (length(file_output) > 0L) {
+        if (exists(".write_rds_atomic", mode = "function")) {
+          .write_rds_atomic(res, file_output)
+        } else {
+          dir.create(
+            dirname(file_output),
+            recursive = TRUE,
+            showWarnings = FALSE
+          )
+          saveRDS(res, file_output)
+        }
+      }
+
+      .simCompareLogMessage(pathProgress, paste0("Completed: ", settings_log))
+      if (!is.null(p)) {
+        p(sprintf("Completed sim_id: %s", sim_id))
+      }
+
+      res
+    },
+    error = function(e) {
+      .simCompareLogMessage(
+        pathProgress,
+        paste0("Error [", settings_log, "]: ", e$message)
+      )
+      if (!is.null(p)) {
+        p(sprintf("ERROR on sim_id: %s", sim_id))
+      }
+
+      err_res <- dplyr::bind_cols(
+        row,
+        tibble::tibble(
+          iter = NA_integer_,
+          chnl = "F1",
+          sample = NA_character_,
+          ind = NA_character_,
+          approach = NA_character_,
+          method = NA_character_,
+          propRespTruth = NA_real_,
+          propRespEst = NA_real_,
+          threshold = NA_real_,
+          thresholdOrigin = NA_character_,
+          gateReturnPoint = NA_character_,
+          thresholdMetric = NA_real_,
+          thresholdFallbackUsed = NA,
+          nCellStim = NA_real_,
+          nCellUns = NA_real_,
+          nPosStim = NA_integer_,
+          nPosUns = NA_integer_,
+          propStim = NA_real_,
+          propUns = NA_real_,
+          propStimTruth = NA_real_,
+          propUnsTruth = NA_real_,
+          detailLevel = NA_character_,
+          locGenerated = NA,
+          locGeneratedDirect = NA,
+          locSource = NA_character_,
+          locReason = NA_character_,
+          error = e$message
+        )
+      )
+
+      if (length(file_output) > 0L) {
+        if (exists(".write_rds_atomic", mode = "function")) {
+          .write_rds_atomic(err_res, file_output)
+        } else {
+          dir.create(
+            dirname(file_output),
+            recursive = TRUE,
+            showWarnings = FALSE
+          )
+          saveRDS(err_res, file_output)
+        }
+      }
+
+      err_res
+    }
+  )
+
+  out
+}
+
 #' Run the comparison helper over a simulation grid
 #'
 #' @keywords internal
@@ -1126,71 +1567,182 @@
   locEnforceShapeThreshold = FALSE,
   calcCytPosGates = FALSE,
   includeLocCondition = TRUE,
+  parallel = FALSE,
+  workers = NULL,
+  dirCache = NULL,
+  pathProgress = NULL,
+  resume = TRUE,
+  progress = TRUE,
+  sim_grid_chunk_index = NULL,
+  sim_grid_n_chunks = NULL,
+  retryErrors = FALSE,
   ...
 ) {
-  purrr::map_df(seq_len(nrow(sim_grid)), function(i) {
+  if (nrow(sim_grid) == 0L) {
+    return(tibble::tibble())
+  }
+
+  if (!"sim_id" %in% names(sim_grid)) {
+    sim_grid <- sim_grid |>
+      dplyr::mutate(sim_id = dplyr::row_number())
+  }
+
+  if (!is.null(dirCache) && nzchar(dirCache)) {
+    dir.create(dirCache, recursive = TRUE, showWarnings = FALSE)
+  }
+  if (!is.null(pathProgress) && nzchar(pathProgress)) {
+    dir.create(dirname(pathProgress), recursive = TRUE, showWarnings = FALSE)
+  }
+
+  run_one <- function(i, p = NULL) {
     row <- sim_grid[i, , drop = FALSE]
-
-    stimMeanShiftVal <- if ("stim_mean_shift" %in% names(row)) {
-      row$stim_mean_shift[[1]]
-    } else if ("stimMeanShift" %in% names(row)) {
-      row$stimMeanShift[[1]]
-    } else {
-      0
-    }
-
-    stimSdMultVal <- if ("stim_sd_multiplier" %in% names(row)) {
-      row$stim_sd_multiplier[[1]]
-    } else if ("stimSdMultiplier" %in% names(row)) {
-      row$stimSdMultiplier[[1]]
-    } else if ("sd_multiplier" %in% names(row)) {
-      row$sd_multiplier[[1]]
-    } else if ("sd_increase" %in% names(row)) {
-      1 + row$sd_increase[[1]]
-    } else {
-      1
-    }
-
-    out <- .simCompareFreqBs(
+    .simCompareRunScenario(
+      row = row,
       nSample = nSample,
+      nIter = nIter,
       nMarker = nMarker,
       nCondition = nCondition,
       nCluster = nCluster,
-      nIter = nIter,
-      biasUns = row$bias_uns[[1]],
-      bw = row$bw[[1]],
-      bwFallback = row$bw[[1]],
-      bwMin = "none",
-      bwMax = "none",
       probExact = probExact,
-      nCellStim = row$n_cell[[1]],
-      probResponse = row$prob_response[[1]],
-      meanPos = row$mean_pos[[1]],
-      transformation = row$transformation[[1]],
-      samplePerturbationSd = row$sample_perturbation_sd[[1]],
-      conditionPerturbationSd = row$condition_perturbation_sd[[1]],
-      clusterPerturbationSd = row$cluster_perturbation_sd[[1]],
-      backgroundRelativeToResponse = row$background_relative_to_response[[1]],
-      ncellUnsRelativeToStim = row$n_cell_uns_relative_to_stim[[1]],
       covEvMin = covEvMin,
       covEvMax = covEvMax,
       tolClust = tolClust,
       locEnforceShapeThreshold = locEnforceShapeThreshold,
       calcCytPosGates = calcCytPosGates,
       includeLocCondition = includeLocCondition,
-      stimMeanShift = stimMeanShiftVal,
-      stimSdMultiplier = stimSdMultVal,
+      dirCache = dirCache,
+      pathProgress = pathProgress,
+      resume = resume,
+      sim_grid_chunk_index = sim_grid_chunk_index,
+      sim_grid_n_chunks = sim_grid_n_chunks,
+      retryErrors = retryErrors,
+      p = p,
       ...
     )
+  }
 
-    out <- out |>
-      dplyr::select(-dplyr::any_of(names(row)))
+  if (
+    !requireNamespace("furrr", quietly = TRUE) ||
+      !requireNamespace("future", quietly = TRUE)
+  ) {
+    stop("Packages 'furrr' and 'future' are required for grid execution.")
+  }
 
-    dplyr::bind_cols(
-      row[rep(1L, nrow(out)), , drop = FALSE],
-      out
+  old_plan <- future::plan()
+  on.exit(future::plan(old_plan), add = TRUE)
+
+  if (isTRUE(parallel)) {
+    workers_use <- if (!is.null(workers)) {
+      max(1L, as.integer(workers))
+    } else {
+      max(1L, .simGetCores())
+    }
+    if (workers_use > 1L) {
+      future::plan(future::multisession, workers = workers_use)
+    } else {
+      future::plan(future::sequential)
+    }
+  } else {
+    future::plan(future::sequential)
+  }
+
+  furrr_opts <- furrr::furrr_options(seed = TRUE)
+
+  out_list <- if (
+    isTRUE(progress) && requireNamespace("progressr", quietly = TRUE)
+  ) {
+    progressr::with_progress({
+      p <- progressr::progressor(steps = nrow(sim_grid))
+      furrr::future_map(
+        seq_len(nrow(sim_grid)),
+        function(i) run_one(i, p = p),
+        .options = furrr_opts
+      )
+    })
+  } else {
+    furrr::future_map(
+      seq_len(nrow(sim_grid)),
+      function(i) run_one(i, p = NULL),
+      .options = furrr_opts
     )
-  })
+  }
+
+  res_tbl <- purrr::list_rbind(out_list)
+
+  if ("sim_id" %in% names(res_tbl)) {
+    res_tbl <- res_tbl |>
+      dplyr::arrange(
+        .data$sim_id,
+        dplyr::across(dplyr::any_of(c("iter", "sample", "ind", "method")))
+      )
+  }
+
+  res_tbl
+}
+
+#' Collate scenario output files
+#'
+#' @keywords internal
+.simCompareCollateScenarioOutputs <- function(
+  dirCache = NULL,
+  pathList = NULL,
+  sim_grid = NULL
+) {
+  if (is.null(pathList) || length(pathList) == 0L) {
+    if (is.null(dirCache) || !dir.exists(dirCache)) {
+      return(tibble::tibble())
+    }
+    pathList <- .simCompareFindScenarioOutputs(dirCache)
+  }
+
+  if (length(pathList) == 0L) {
+    return(tibble::tibble())
+  }
+
+  out_list <- purrr::map(
+    pathList,
+    function(path) {
+      tryCatch(
+        readRDS(path),
+        error = function(e) {
+          warning(
+            "Could not read scenario output file: ",
+            path,
+            " (",
+            e$message,
+            ")"
+          )
+          NULL
+        }
+      )
+    }
+  ) |>
+    purrr::compact()
+
+  if (length(out_list) == 0L) {
+    return(tibble::tibble())
+  }
+
+  collated <- purrr::list_rbind(out_list)
+
+  if (
+    !is.null(sim_grid) &&
+      "sim_id" %in% names(sim_grid) &&
+      "sim_id" %in% names(collated)
+  ) {
+    collated <- collated |>
+      dplyr::filter(.data$sim_id %in% sim_grid$sim_id)
+  }
+
+  if ("sim_id" %in% names(collated)) {
+    collated <- collated |>
+      dplyr::arrange(
+        .data$sim_id,
+        dplyr::across(dplyr::any_of(c("iter", "sample", "ind", "method")))
+      )
+  }
+
+  collated
 }
 
 #' Summarise comparison runs by scenario and method
