@@ -467,6 +467,21 @@ test_that("cytokine-positive filtering helpers respect gate context and exclusio
   )
   expect_false(any(exSubset$IFNg == 3 & exSubset$IL2 == 0 & exSubset$TNFa == 0))
 
+  exGateCytRequired <- tibble::tibble(
+    IFNg = c(1, 3, 5),
+    IL2 = c(5, 5, 0),
+    TNFa = c(0, 0, 0)
+  )
+  exGateCytRequiredPos <- .dataGetExCytPosInc(
+    exGateCytRequired,
+    gateTbl,
+    mult = FALSE,
+    chnl = "IFNg",
+    gateTypeCytPos = "cyt"
+  )
+  expect_true(any(exGateCytRequiredPos$IFNg == 3 & exGateCytRequiredPos$IL2 == 5))
+  expect_false(any(exGateCytRequiredPos$IFNg == 1 & exGateCytRequiredPos$IL2 == 5))
+
   exExc <- .dataGetExCytPosExc(
     exCyt,
     combnExc = list(c("IFNg", "IL2")),
@@ -484,6 +499,7 @@ test_that("cytokine-positive filtering helpers respect gate context and exclusio
   )
 
   tmp <- tempfile("stimgate_ex_cyt_filter_")
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
   dir.create(file.path(tmp, "sampleData", "pop_root", "ind_1"), recursive = TRUE)
   saveRDS(
     c(0, 5, 3, 3, 5, 5, 3),
@@ -530,5 +546,4 @@ test_that("cytokine-positive filtering helpers respect gate context and exclusio
     check.attributes = FALSE
   )
 
-  unlink(tmp, recursive = TRUE)
 })
