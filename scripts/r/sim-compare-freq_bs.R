@@ -402,8 +402,7 @@
     if (length(shiftLabels) > 0L) {
       shiftMask <- labelVec %in% shiftLabels
       if (any(shiftMask)) {
-        expr[shiftMask, 1L, drop = FALSE] <-
-          expr[shiftMask, 1L, drop = FALSE] + stimMeanShift
+        expr[shiftMask, 1L] <- expr[shiftMask, 1L] + stimMeanShift
         flowCore::exprs(flowFrameList[[idx]]) <- expr
       }
     }
@@ -411,10 +410,9 @@
     if (length(sdLabels) > 0L) {
       sdMask <- labelVec %in% sdLabels
       if (any(sdMask)) {
-        negVals <- expr[sdMask, 1L, drop = FALSE]
+        negVals <- expr[sdMask, 1L]
         center <- mean(negVals)
-        expr[sdMask, 1L, drop = FALSE] <-
-          center + (negVals - center) * stimSdMultiplier
+        expr[sdMask, 1L] <- center + (negVals - center) * stimSdMultiplier
         flowCore::exprs(flowFrameList[[idx]]) <- expr
       }
     }
