@@ -720,12 +720,36 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
       mean_pos_setting == !!mean_pos_setting_curr
     ) |>
     dplyr::filter(
-      condition_perturbation_sd == 0,
-      bias_uns == 0.2 & transformation %in% c("gaussian", "skew") |
-        bias_uns == 0.05 & transformation == "gamma"
+      condition_perturbation_sd == 0
     )
   plot_tbl |>
-    UtilsDataRSV::view_cols()
+    dplyr::select(
+      approach, med_abs_rel_error,
+      transformation, prob_response, n_cell, mean_pos_setting,
+    ) |>
+    tidyr::pivot_wider(
+      names_from = approach,
+      values_from = med_abs_rel_error
+    ) |>
+    dplyr::select(-mean_pos_setting) |>
+    dplyr::mutate(
+      winner = dplyr::case_when(
+        stimgate < fbeta &
+          stimgate < tailgate ~ "stimgate",
+        fbeta < stimgate &
+          fbeta < tailgate ~ "fbeta",
+        tailgate < stimgate &
+          tailgate < fbeta ~ "tailgate",
+        TRUE ~ "tie"
+      )
+    ) |>
+    dplyr::mutate(
+      big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
+    ) |>
+    dplyr::arrange(dplyr::desc(big_winner), winner) |>
+    dplyr::arrange(dplyr::desc(fbeta)) |>
+    print(n = Inf, width = Inf)
+    
 
   p <- ggplot(
     plot_tbl,
@@ -743,7 +767,7 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     geom_line() +
     geom_point() +
     scale_x_log10() +
-    facet_grid(prob_response ~ transformation) +
+    facet_grid(prob_response ~ transformation, scales = "free_y") +
     labs(
       title = paste0(
         "Mean position setting: ",
@@ -789,6 +813,341 @@ for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
 }
 ```
 
+### 90th percentile relative error by cell count
+
+```{r}
+#| label: plot-90th-rel-error-cell-count
+for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
+  plot_tbl <- compare_summary |>
+    dplyr::filter(
+      mean_pos_setting == !!mean_pos_setting_curr
+    ) |>
+    dplyr::filter(
+      condition_perturbation_sd == 0
+    )
+  plot_tbl |>
+    dplyr::select(
+      approach, q90_abs_rel_error,
+      transformation, prob_response, n_cell, mean_pos_setting,
+    ) |>
+    tidyr::pivot_wider(
+      names_from = approach,
+      values_from = q90_abs_rel_error
+    ) |>
+    dplyr::select(-mean_pos_setting) |>
+    dplyr::mutate(
+      winner = dplyr::case_when(
+        stimgate < fbeta &
+          stimgate < tailgate ~ "stimgate",
+        fbeta < stimgate &
+          fbeta < tailgate ~ "fbeta",
+        tailgate < stimgate &
+          tailgate < fbeta ~ "tailgate",
+        TRUE ~ "tie"
+      )
+    ) |>
+    dplyr::mutate(
+      big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
+    ) |>
+    dplyr::arrange(dplyr::desc(big_winner), winner) |>
+    dplyr::arrange(dplyr::desc(fbeta)) |>
+    print(n = Inf, width = Inf)
+    
+
+  p <- ggplot(
+    plot_tbl,
+    aes(
+      x = n_cell,
+      y = q90_abs_rel_error,
+      color = method
+    )
+  ) +
+    geom_hline(
+      yintercept = 0,
+      colour = "gray25",
+      linetype = "dashed"
+    ) +
+    geom_line() +
+    geom_point() +
+    scale_x_log10() +
+    facet_grid(prob_response ~ transformation, scales = "free_y") +
+    labs(
+      title = paste0(
+        "Mean position setting: ",
+        mean_pos_setting_curr
+      ),
+      x = "Number of stimulated cells",
+      y = "90th percentile relative error",
+      color = "Method"
+    ) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy") +
+    theme(
+      panel.background = element_rect(
+        fill = "white",
+        color = NA
+      ),
+      plot.background = element_rect(
+        fill = "white",
+        color = NA
+      ),
+      legend.position = "bottom"
+    )
+
+  print(p)
+
+  ggsave(
+    filename = projr::projr_path_get(
+      "cache",
+      "sim",
+      "compare",
+      "freq_bs",
+      paste0(
+        "freq_bs_q90_rel_error_meanpos_setting_",
+        mean_pos_setting_curr,
+        ".png"
+      )
+    ),
+    plot = p,
+    width = 18,
+    height = 15,
+    units = "cm"
+  )
+}
+```
+
+### 95th percentile relative error by cell count
+
+```{r}
+#| label: plot-95th-rel-error-cell-count
+for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
+  plot_tbl <- compare_summary |>
+    dplyr::filter(
+      mean_pos_setting == !!mean_pos_setting_curr
+    ) |>
+    dplyr::filter(
+      condition_perturbation_sd == 0
+    )
+  plot_tbl |>
+    dplyr::select(
+      approach, q95_abs_rel_error,
+      transformation, prob_response, n_cell, mean_pos_setting,
+    ) |>
+    tidyr::pivot_wider(
+      names_from = approach,
+      values_from = q95_abs_rel_error
+    ) |>
+    dplyr::select(-mean_pos_setting) |>
+    dplyr::mutate(
+      winner = dplyr::case_when(
+        stimgate < fbeta &
+          stimgate < tailgate ~ "stimgate",
+        fbeta < stimgate &
+          fbeta < tailgate ~ "fbeta",
+        tailgate < stimgate &
+          tailgate < fbeta ~ "tailgate",
+        TRUE ~ "tie"
+      )
+    ) |>
+    dplyr::mutate(
+      big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
+    ) |>
+    dplyr::arrange(dplyr::desc(big_winner), winner) |>
+    dplyr::arrange(dplyr::desc(fbeta)) |>
+    print(n = Inf, width = Inf)
+    
+
+  p <- ggplot(
+    plot_tbl,
+    aes(
+      x = n_cell,
+      y = q95_abs_rel_error,
+      color = method
+    )
+  ) +
+    geom_hline(
+      yintercept = 0,
+      colour = "gray25",
+      linetype = "dashed"
+    ) +
+    geom_line() +
+    geom_point() +
+    scale_x_log10() +
+    facet_grid(prob_response ~ transformation, scales = "free_y") +
+    labs(
+      title = paste0(
+        "Mean position setting: ",
+        mean_pos_setting_curr
+      ),
+      x = "Number of stimulated cells",
+      y = "95th percentile relative error",
+      color = "Method"
+    ) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy") +
+    theme(
+      panel.background = element_rect(
+        fill = "white",
+        color = NA
+      ),
+      plot.background = element_rect(
+        fill = "white",
+        color = NA
+      ),
+      legend.position = "bottom"
+    )
+
+  print(p)
+
+  ggsave(
+    filename = projr::projr_path_get(
+      "cache",
+      "sim",
+      "compare",
+      "freq_bs",
+      paste0(
+        "freq_bs_q95_rel_error_meanpos_setting_",
+        mean_pos_setting_curr,
+        ".png"
+      )
+    ),
+    plot = p,
+    width = 18,
+    height = 15,
+    units = "cm"
+  )
+}
+```
+
+```{r}
+compare_summary |>
+  dplyr::filter(
+    condition_perturbation_sd == 0
+  ) |>
+  dplyr::select(
+    approach, max_abs_rel_error,
+    transformation, prob_response, n_cell, mean_pos_setting,
+    max_abs_rel_error, med_abs_rel_error, q90_abs_rel_error, q95_abs_rel_error
+  ) |>
+  dplyr::group_by(
+    mean_pos_setting,
+    transformation,
+    prob_response,
+    n_cell
+  ) |>
+  tidyr::pivot_wider(
+    names_from = approach,
+    values_from = c(max_abs_rel_error, med_abs_rel_error, q90_abs_rel_error, q95_abs_rel_error)
+  ) |>
+  dplyr::arrange(
+    dplyr::desc(q95_abs_rel_error_fbeta)
+  ) |>
+  print(n = Inf, width = Inf)
+```
+
+### Max relative error by cell count
+
+```{r}
+#| label: plot-max-rel-error-cell-count
+for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
+  plot_tbl <- compare_summary |>
+    dplyr::filter(
+      mean_pos_setting == !!mean_pos_setting_curr
+    ) |>
+    dplyr::filter(
+      condition_perturbation_sd == 0
+    )
+  plot_tbl |>
+    dplyr::select(
+      approach, max_abs_rel_error,
+      transformation, prob_response, n_cell, mean_pos_setting,
+    ) |>
+    tidyr::pivot_wider(
+      names_from = approach,
+      values_from = max_abs_rel_error
+    ) |>
+    dplyr::select(-mean_pos_setting) |>
+    dplyr::mutate(
+      winner = dplyr::case_when(
+        stimgate < fbeta &
+          stimgate < tailgate ~ "stimgate",
+        fbeta < stimgate &
+          fbeta < tailgate ~ "fbeta",
+        tailgate < stimgate &
+          tailgate < fbeta ~ "tailgate",
+        TRUE ~ "tie"
+      )
+    ) |>
+    dplyr::mutate(
+      big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
+    ) |>
+    dplyr::arrange(dplyr::desc(big_winner), winner) |>
+    dplyr::arrange(dplyr::desc(fbeta)) |>
+    print(n = Inf, width = Inf)
+    
+
+  p <- ggplot(
+    plot_tbl,
+    aes(
+      x = n_cell,
+      y = max_abs_rel_error,
+      color = method
+    )
+  ) +
+    geom_hline(
+      yintercept = 0,
+      colour = "gray25",
+      linetype = "dashed"
+    ) +
+    geom_line() +
+    geom_point() +
+    scale_x_log10() +
+    facet_grid(prob_response ~ transformation, scales = "free_y") +
+    labs(
+      title = paste0(
+        "Mean position setting: ",
+        mean_pos_setting_curr
+      ),
+      x = "Number of stimulated cells",
+      y = "Maximum relative error",
+      color = "Method"
+    ) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy") +
+    theme(
+      panel.background = element_rect(
+        fill = "white",
+        color = NA
+      ),
+      plot.background = element_rect(
+        fill = "white",
+        color = NA
+      ),
+      legend.position = "bottom"
+    )
+
+  print(p)
+
+  ggsave(
+    filename = projr::projr_path_get(
+      "cache",
+      "sim",
+      "compare",
+      "freq_bs",
+      paste0(
+        "freq_bs_max_rel_error_meanpos_setting_",
+        mean_pos_setting_curr,
+        ".png"
+      )
+    ),
+    plot = p,
+    width = 18,
+    height = 15,
+    units = "cm"
+  )
+}
+```
+
 ### Estimated versus true response frequency
 
 ```{r}
@@ -797,6 +1156,9 @@ plot_tbl <- compare_tbl_focus |>
   dplyr::filter(
     is.finite(propRespTruth),
     is.finite(propRespEst)
+  ) |>
+  dplyr::filter(
+    condition_perturbation_sd == 0
   )
 
 p_est_truth <- ggplot(
@@ -913,6 +1275,64 @@ ggsave(
     "freq_bs_threshold_fallback_rate.png"
   ),
   plot = p_fallback,
+  width = 18,
+  height = 15,
+  units = "cm"
+)
+```
+
+## Plot the thresholds
+
+```{r}
+plot_tbl <- compare_tbl |>
+  dplyr::filter(
+    condition_perturbation_sd == 0,
+    is.finite(threshold)
+  ) |>
+  dplyr::select(
+    approach, threshold,
+    transformation, prob_response, n_cell, mean_pos_setting,
+  )
+
+p <- ggplot(
+  plot_tbl,
+  aes(
+    x = threshold,
+    fill = approach,
+    colour = approach
+  )
+) +
+  geom_histogram(alpha = 0.5) +
+  facet_grid(prob_response + mean_pos_setting ~ transformation, scales = "free") +
+  labs(
+    x = "Threshold",
+    y = "Density",
+    fill = "Method",
+    colour = "Method"
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(
+      fill = "white",
+      color = NA
+    ),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA
+    ),
+    legend.position = "bottom"
+  )
+path_p <- projr::projr_path_get(
+  "cache",
+  "sim",
+  "compare",
+  "freq_bs",
+  "freq_bs_threshold_density.png"
+)
+ggplot2::ggsave(
+  filename = path_p,
+  plot = p,
   width = 18,
   height = 15,
   units = "cm"
