@@ -289,6 +289,9 @@ print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
 ```{r}
 #| label: compare-batch-run
 #| results: hide
+log_dir <- file.path("cache", "log", "freq_bs_batch")
+path_progress_file <- file.path(log_dir, "progress.txt")
+
 run_ctx <- .analysis_run_context(
   analysis_key = c("sim", "compare", "freq_bs_batch"),
   run_id = analysis_run_id,
@@ -303,7 +306,6 @@ run_ctx <- .analysis_run_context(
   sim_grid_n_chunks = sim_grid_n_chunks
 )
 dir_output <- run_ctx$chunk_output_dir
-path_progress_file <- run_ctx$progress_file
 dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
 
