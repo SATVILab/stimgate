@@ -482,6 +482,14 @@ plotting/orchestration code.
     implementation does not consume `gateTblCtrl`, so this branch is
     dead plumbing for current outputs. Single-positive gating branches
     have been removed per issue \#196.
+5.  **Simulation engine migration to `simcyto` (issue \#288 / umbrella
+    \#271)**: Generic cytometry simulations and post-simulation
+    transformations are progressively migrating to the exported
+    `simcyto` package API (e.g. `simcyto::simCytExperiment()`,
+    `simcyto::simCytTransform*()`). `analysis/3-sim-bw-est-base.qmd`
+    uses `simcyto` and does not source `functionsForBenchmarking-Cyt.R`.
+    StimGate scientific scenario calculations and bandwidth/gating
+    orchestration remain StimGate-side under `scripts/r/`.
 
 ------------------------------------------------------------------------
 
