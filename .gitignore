@@ -102,4 +102,5 @@ _tmp/log/sbatch/5-sim-bw-est-adaptive/chunk-4
 analysis/7-sim-compare-freq_bs.qmd
 analysis/split/2-sim-bw-freq_bs-global-1.qmd
 _tmp/log/sbatch/dev-7-sim-compare-freq_bs
+_tmp/log/sbatch/dev-8-sim-compare-freq_bs-batch
 
