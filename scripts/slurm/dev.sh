@@ -12,7 +12,7 @@ scripts=(
   # "dev-4-sim-bw-est-norm.sh"
   # "dev-5-sim-bw-est-adaptive.sh"
   # "dev-6-sim-bw-freq_bs-adaptive.sh"
-  # "dev-7-sim-compare-freq_bs.sh"
+  "dev-7-sim-compare-freq_bs.sh"
   "dev-8-sim-compare-freq_bs-batch.sh"
 )
 
