@@ -468,3 +468,112 @@ test_that("explicit run ID reuses the original dated run directory", {
   expect_identical(ctx_resume$staging_run_dir, moved_staging_dir)
   expect_identical(ctx_resume$progress_run_dir, moved_progress_dir)
 })
+
+test_that("a promoted run cannot be reset to running or lose collation/validation state", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  ctx <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-no-reset"),
+    run_id = "promoted-run",
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 1L
+  )
+
+  env$.analysis_mark_chunk(
+    run_ctx = ctx,
+    total_sims = 2L,
+    completed_sims = 2L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+  env$.analysis_promote_run(ctx)
+
+  status_after_promote <- env$.analysis_read_status(ctx)
+  expect_identical(status_after_promote$status, "completed")
+  expect_true(isTRUE(status_after_promote$promotion_done))
+
+  chunk_list_before <- env$.analysis_read_chunk_statuses(ctx)
+  cs_before <- chunk_list_before[[ctx$chunk_label]]
+  expect_true(isTRUE(cs_before$collate_ok))
+  expect_true(isTRUE(cs_before$validation_ok))
+
+  env$.analysis_mark_chunk(
+    run_ctx = ctx,
+    total_sims = 2L,
+    completed_sims = 2L,
+    failed_sims = 0L
+  )
+
+  chunk_list_after <- env$.analysis_read_chunk_statuses(ctx)
+  cs_after <- chunk_list_after[[ctx$chunk_label]]
+  expect_true(isTRUE(cs_after$collate_ok))
+  expect_true(isTRUE(cs_after$validation_ok))
+
+  status_after_second <- env$.analysis_read_status(ctx)
+  expect_identical(status_after_second$status, "completed")
+  expect_true(isTRUE(status_after_second$promotion_done))
+})
+
+test_that("reconcile_resume_markers corrects error-path markers from durable output", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- withr::local_tempdir()
+  file_completed <- file.path(tmp_dir, "completed-2")
+  file_error <- file.path(tmp_dir, "error-2")
+  file_running <- file.path(tmp_dir, "running-2")
+  file.create(file_running)
+  file.create(file_completed)
+
+  err_output <- tibble::tibble(sim_id = 2L, error_message = "something went wrong")
+  env$.analysis_reconcile_resume_markers(
+    existing_output = err_output,
+    file_completed = file_completed,
+    file_error = file_error,
+    file_running = file_running,
+    error_col = "error_message"
+  )
+
+  expect_false(file.exists(file_completed))
+  expect_true(file.exists(file_error))
+  expect_false(file.exists(file_running))
+})
+
+test_that("a live lock still excludes a second writer", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- withr::local_tempdir()
+  lock_path <- file.path(tmp_dir, "test.lock")
+
+  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.2, poll_sec = 0.05)
+  expect_true(acquired)
+  expect_true(dir.exists(lock_path))
+
+  second <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.2, poll_sec = 0.05)
+  expect_false(second)
+
+  env$.analysis_release_lock(lock_path)
+})
+
+test_that("a stale lock from a dead process can be recovered", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- withr::local_tempdir()
+  lock_path <- file.path(tmp_dir, "stale.lock")
+  dir.create(lock_path)
+
+  stale_meta <- list(
+    pid = .Machine$integer.max,
+    host = Sys.info()[["nodename"]],
+    created_at = format(Sys.time() - 3600, "%Y-%m-%d %H:%M:%S")
+  )
+  saveRDS(stale_meta, file.path(lock_path, "lock-meta.rds"))
+
+  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 5, poll_sec = 0.05)
+  expect_true(acquired)
+  env$.analysis_release_lock(lock_path)
+})

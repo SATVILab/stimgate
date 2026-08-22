@@ -245,7 +245,40 @@
 
   repeat {
     if (dir.create(lock_path, recursive = FALSE, showWarnings = FALSE)) {
+      lock_meta <- list(
+        pid = Sys.getpid(),
+        host = Sys.info()[["nodename"]],
+        created_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+      )
+      tryCatch(
+        saveRDS(lock_meta, file.path(lock_path, "lock-meta.rds")),
+        error = function(e) NULL
+      )
       return(TRUE)
+    }
+
+    meta_path <- file.path(lock_path, "lock-meta.rds")
+    if (file.exists(meta_path)) {
+      lock_meta <- tryCatch(readRDS(meta_path), error = function(e) NULL)
+      if (!is.null(lock_meta)) {
+        owner_host <- as.character(lock_meta$host)
+        owner_pid <- as.integer(lock_meta$pid)
+        current_host <- Sys.info()[["nodename"]]
+        is_stale <- FALSE
+        if (identical(owner_host, current_host) && !is.na(owner_pid)) {
+          ps_out <- tryCatch(
+            system2("ps", args = c("-p", owner_pid, "-o", "pid="), stdout = TRUE, stderr = FALSE),
+            error = function(e) character(0)
+          )
+          if (length(ps_out) == 0L || !any(nzchar(trimws(ps_out)))) {
+            is_stale <- TRUE
+          }
+        }
+        if (is_stale) {
+          unlink(lock_path, recursive = TRUE, force = TRUE)
+          next
+        }
+      }
     }
 
     elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
@@ -612,6 +645,18 @@
 
   done_sims <- as.integer(completed_sims + failed_sims)
   outstanding <- as.integer(max(0L, total_sims - done_sims))
+
+  existing_cs <- tryCatch(
+    readRDS(.analysis_chunk_status_path(run_ctx)),
+    error = function(e) NULL
+  )
+
+  if (is.null(collate_ok) && !is.null(existing_cs$collate_ok)) {
+    collate_ok <- existing_cs$collate_ok
+  }
+  if (is.null(validation_ok) && !is.null(existing_cs$validation_ok)) {
+    validation_ok <- existing_cs$validation_ok
+  }
 
   chunk_status <- list(
     chunk_label = run_ctx$chunk_label,
