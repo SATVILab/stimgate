@@ -51,7 +51,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::devtools, any::testthat
+          extra-packages: any::devtools, any::testthat, SATVILab/simcyto@d9128b0529b958632cebbfdc7ee7e530b2584621
           needs: check
 
       - name: Run analysis integration tests

@@ -34,7 +34,6 @@ scripts_r_dir <- file.path(root_dir, "scripts", "r")
 # sim-misc.R must be sourced before sim-bandwidth.R for simulation utilities.
 for (fn in c(
   "sim-misc.R",
-  "functionsForBenchmarking-Cyt.R",
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-plot.R"

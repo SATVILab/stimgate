@@ -106,6 +106,7 @@ test_that(".simBandwidthBwOne resolves the current stimgate namespace in future 
     env$.simBandwidthEnsureCurrentCheckout(root_dir)
     ns <- asNamespace("stimgate")
 
+    suppressWarnings(RNGkind("Mersenne-Twister", "Inversion", "Rejection"))
     set.seed(99)
     bw_worker <- do.call(env$.simBandwidthBwOne, bw_wrapper_params)
 

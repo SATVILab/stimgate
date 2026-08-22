@@ -4,16 +4,18 @@
 }
 
 .simMiscGetTrans <- function(transformation) {
+  if (is.function(transformation)) {
+    return(transformation)
+  }
   switch(
     transformation,
-    "gamma" = .simMiscTagTrans(calc_gamma, "gamma"),
-    "gamma_fixed_mean_and_spread" = .simMiscTagTrans(
-      calc_gamma_fixed_mean_and_spread,
-      "gamma_fixed_mean_and_spread"
-    ),
-    "gaussian" = .simMiscTagTrans(calc_gaussian, "gaussian"),
-    "skew" = .simMiscTagTrans(calc_skew, "skew"),
-    stop("transformation not recognised")
+    "gamma" = simcyto::simCytTransformGamma(),
+    "gamma_fixed_mean_and_spread" = ,
+    "gammaFixed" = simcyto::simCytTransformGammaFixed(),
+    "gaussian" = simcyto::simCytTransformGaussian(),
+    "identity" = simcyto::simCytTransformIdentity(),
+    "skew" = simcyto::simCytTransformSkew(),
+    simcyto::simCytGetTransformation(transformation)
   )
 }
 

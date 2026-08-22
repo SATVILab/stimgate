@@ -76,6 +76,7 @@ jobs:
           Rscript -e 'stopifnot(requireNamespace("flowCore", quietly = TRUE))'
           Rscript -e 'stopifnot(requireNamespace("flowWorkspace", quietly = TRUE))'
           Rscript -e 'stopifnot(requireNamespace("decor", quietly = TRUE))'
+          Rscript -e 'stopifnot(requireNamespace("simcyto", quietly = TRUE))'
           Rscript -e 'devtools::load_all(); cat("stimgate loaded successfully\n")'
 
       - uses: quarto-dev/quarto-actions/setup@v2

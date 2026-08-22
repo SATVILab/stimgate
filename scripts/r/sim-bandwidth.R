@@ -385,7 +385,7 @@
     probVecUns <- c(1 - probResponseUns, probResponseUns)
     probResponseVecByStimCondition <- list(c(-probResponse, probResponse))
 
-    outListExperiment <- simCytExperiment(
+    outListExperiment <- simcyto::simCytExperiment(
       nSample = nSample,
       nMarker = nMarker,
       nCondition = nCondition,
@@ -706,7 +706,7 @@
     probVecUns <- c(1 - probResponseUns, probResponseUns)
     probResponseVecByStimCondition <- list(c(-probResponse, probResponse))
 
-    outListExperiment <- simCytExperiment(
+    outListExperiment <- simcyto::simCytExperiment(
       nSample = nSample,
       nMarker = nMarker,
       nCondition = nCondition,
@@ -863,7 +863,7 @@
     probResponseVecByStimCondition <- list(c(-probResponse, probResponse))
 
     # 2. Simulate Cytometry Experiment
-    outListExperiment <- simCytExperiment(
+    outListExperiment <- simcyto::simCytExperiment(
       nSample = nSample,
       nMarker = nMarker,
       nCondition = nCondition,
@@ -1069,7 +1069,7 @@
   )
 
   raw_tbl <- purrr::map_dfr(seq_len(nIter), function(iterNum) {
-    outListExperiment <- simCytExperiment(
+    outListExperiment <- simcyto::simCytExperiment(
       nSample = nSample,
       nMarker = nMarker,
       nCondition = nCondition,
@@ -1305,7 +1305,7 @@
   )
 
   raw_tbl <- purrr::map_dfr(seq_len(nIter), function(iterNum) {
-    outListExperiment <- simCytExperiment(
+    outListExperiment <- simcyto::simCytExperiment(
       nSample = nSample,
       nMarker = nMarker,
       nCondition = nCondition,
@@ -1904,12 +1904,18 @@
   if (exists(".simMiscGetTrans", mode = "function")) {
     return(.simMiscGetTrans(transformation))
   }
+  if (is.function(transformation)) {
+    return(transformation)
+  }
 
   switch(
     transformation,
-    "gamma" = calc_gamma,
-    "gaussian" = calc_gaussian,
-    "skew" = calc_skew,
-    stop("Transformation not recognised: ", transformation)
+    "gamma" = simcyto::simCytTransformGamma(),
+    "gamma_fixed_mean_and_spread" = ,
+    "gammaFixed" = simcyto::simCytTransformGammaFixed(),
+    "gaussian" = simcyto::simCytTransformGaussian(),
+    "identity" = simcyto::simCytTransformIdentity(),
+    "skew" = simcyto::simCytTransformSkew(),
+    simcyto::simCytGetTransformation(transformation)
   )
 }
