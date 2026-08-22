@@ -285,9 +285,9 @@ p <- ggplot(
     plot.background = element_rect(fill = "white", colour = NA),
     strip.text.y = element_text(angle = 0),
     # --- Legend Centering Tweaks ---
-    legend.position      = "bottom",
-    legend.box           = "horizontal", # Places line types and colors next to each other
-    legend.box.just      = "center",     # Centers the contents within the box
+    legend.position = "bottom",
+    legend.box = "horizontal", # Places line types and colors next to each other
+    legend.box.just = "center", # Centers the contents within the box
     legend.justification = "center"
   ) +
   coord_cartesian(ylim = c(0, 0.5)) +

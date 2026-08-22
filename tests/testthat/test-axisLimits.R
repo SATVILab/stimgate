@@ -1,5 +1,9 @@
 test_that("axisLimits works", {
-  p <- readRDS(testthat::test_path("p_axisLimits.rds"))
+  p <- ggplot2::ggplot(
+    data.frame(x = c(1, 9222), y = c(1, 9222)),
+    ggplot2::aes(x = x, y = y)
+  ) +
+    ggplot2::geom_point()
 
   # tests
   # -----------------
@@ -9,12 +13,13 @@ test_that("axisLimits works", {
     p = p,
     limitsExpand = list(-1e4)
   )
-  expect_identical(
+  expect_equal(
     length(pAdj$layers),
     2L
   )
-  expect_identical(
-    pAdj$layers[[2]]$data,
+  dat <- ggplot2::layer_data(pAdj, 2)
+  expect_equal(
+    dat[c("x", "y")],
     data.frame(
       x = c(-1e4, -1e4),
       y = c(-1e4, -1e4)
@@ -34,8 +39,9 @@ test_that("axisLimits works", {
     p = p,
     limitsExpand = list(c(1e4, -5e2))
   )
-  expect_identical(
-    pAdj$layers[[2]]$data,
+  dat <- ggplot2::layer_data(pAdj, 2)
+  expect_equal(
+    dat[c("x", "y")],
     data.frame(
       x = c(-5e2, 1e4),
       y = c(-5e2, 1e4)
@@ -47,8 +53,9 @@ test_that("axisLimits works", {
     p = p,
     limitsExpand = list(x = c(1e4, -5e2))
   )
-  expect_identical(
-    pAdj$layers[[2]]$data,
+  dat <- ggplot2::layer_data(pAdj, 2)
+  expect_equal(
+    dat["x"],
     data.frame(
       x = c(-5e2, 1e4)
     )
@@ -57,8 +64,9 @@ test_that("axisLimits works", {
     p = p,
     limitsExpand = list(y = c(1e4, -5e2))
   )
-  expect_identical(
-    pAdj$layers[[2]]$data,
+  dat <- ggplot2::layer_data(pAdj, 2)
+  expect_equal(
+    dat["y"],
     data.frame(
       y = c(-5e2, 1e4)
     )
@@ -72,8 +80,9 @@ test_that("axisLimits works", {
       x = c(-1e4, 2e4)
     )
   )
-  expect_identical(
-    pAdj$layers[[2]]$data,
+  dat <- ggplot2::layer_data(pAdj, 2)
+  expect_equal(
+    dat[c("y", "x")],
     data.frame(
       y = c(-5e2, 1e4),
       x = c(-1e4, 2e4)
@@ -88,10 +97,10 @@ test_that("axisLimits works", {
     p = p,
     limitsEqual = TRUE
   )
-
-  expect_identical(
-    pAdj$layers[[2]]$data[, 1],
-    pAdj$layers[[2]]$data[, 2]
+  dat <- ggplot2::layer_data(pAdj, 2)
+  expect_equal(
+    dat$x,
+    dat$y
   )
 
   # with limitsExpand
@@ -104,15 +113,13 @@ test_that("axisLimits works", {
       x = c(-1e4, 500)
     )
   )
-  expect_identical(
-    pAdj$layers[[2]]$data[1, ] |>
-      as.numeric(),
+  dat <- ggplot2::layer_data(pAdj, 2)
+  expect_equal(
+    as.numeric(dat[1, c("x", "y")]),
     c(-1e4, -1e4)
   )
-  expect_identical(
-    pAdj$layers[[2]]$data[2, ] |>
-      as.numeric() |>
-      round(),
+  expect_equal(
+    round(as.numeric(dat[2, c("x", "y")])),
     c(9222, 9222)
   )
 
@@ -122,16 +129,13 @@ test_that("axisLimits works", {
     limitsEqual = TRUE,
     limitsExpand = list(y = c(1e4, 200))
   )
-
-  expect_identical(
-    pAdj$layers[[2]]$data[1, ] |>
-      as.numeric(),
+  dat <- ggplot2::layer_data(pAdj, 2)
+  expect_equal(
+    as.numeric(dat[1, c("y", "x")]),
     c(1, 1)
   )
-  expect_identical(
-    pAdj$layers[[2]]$data[2, ] |>
-      as.numeric() |>
-      round(),
+  expect_equal(
+    round(as.numeric(dat[2, c("y", "x")])),
     c(1e4, 9222)
   )
 
@@ -141,16 +145,13 @@ test_that("axisLimits works", {
     limitsEqual = TRUE,
     limitsExpand = list(x = c(1e4, 200))
   )
-
-  expect_identical(
-    pAdj$layers[[2]]$data[1, ] |>
-      as.numeric(),
+  dat <- ggplot2::layer_data(pAdj, 2)
+  expect_equal(
+    as.numeric(dat[1, c("x", "y")]),
     c(1, 1)
   )
-  expect_identical(
-    pAdj$layers[[2]]$data[2, ] |>
-      as.numeric() |>
-      round(),
+  expect_equal(
+    round(as.numeric(dat[2, c("x", "y")])),
     c(1e4, 9222)
   )
 })

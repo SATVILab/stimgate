@@ -21,10 +21,9 @@
 #'
 #' @keywords internal
 .getCytPosMarginalReference <- function(
-  ex,
-  chnl,
-  bwMin = NA_real_
-) {
+    ex,
+    chnl,
+    bwMin = NA_real_) {
   out <- list(
     peakX = NA_real_,
     windowWidth = NA_real_,
@@ -260,14 +259,13 @@
 #'
 #' @keywords internal
 .getCpPosTautString <- function(
-  ex,
-  inc,
-  chnl,
-  cpOrig,
-  peakX,
-  windowWidth,
-  minCell = 10L
-) {
+    ex,
+    inc,
+    chnl,
+    cpOrig,
+    peakX,
+    windowWidth,
+    minCell = 10L) {
   out <- list(
     threshold = NA_real_,
     peakX = suppressWarnings(as.numeric(peakX))[1L],
@@ -343,11 +341,10 @@
 
 #' @keywords internal
 .getCytPosGatesGateTblGet <- function(
-  chnlVec,
-  pop,
-  pathProject,
-  chnlLab
-) {
+    chnlVec,
+    pop,
+    pathProject,
+    chnlLab) {
   .debug("Getting gateTbl") # nolint
   purrr::map_df(chnlVec, function(chnlCurr) {
     .gatesGetPathAll(

@@ -4,12 +4,11 @@
 # stores the finite-difference derivative evaluated from the fitted curve.
 
 .getCpUnsLocGetProbSmooth <- function(
-  dataMod,
-  stage,
-  pathProject,
-  chnl,
-  chnlSettings = list()
-) {
+    dataMod,
+    stage,
+    pathProject,
+    chnl,
+    chnlSettings = list()) {
   stageChnl <- file.path(stage, chnl)
   retainedAttrs <- c(
     "locDensityBw",
@@ -125,10 +124,9 @@
 
 #' @keywords internal
 .getCpUnsLocGetProbSmoothActual <- function(
-  dataMod,
-  stage,
-  chnlSettings = list()
-) {
+    dataMod,
+    stage,
+    chnlSettings = list()) {
   fit1 <- .getCpUnsLocGetProbSmoothActualFirst(
     dataMod,
     stage
@@ -276,11 +274,10 @@
 
 #' @keywords internal
 .getCpUnsLocGetProbSmoothActualFirstResponse <- function(
-  fit,
-  dataMod,
-  stage,
-  chnlSettings = list()
-) {
+    fit,
+    dataMod,
+    stage,
+    chnlSettings = list()) {
   # Evaluate the full-data prediction once. Previously the check performed a
   # full prediction and derivative calculation, then the success path repeated
   # both operations.
@@ -334,13 +331,12 @@
 #' during fit validation. This avoids repeating the full-data prediction.
 #' @keywords internal
 .getCpUnsLocGetProbSmoothActualResponseSuccess <- function(
-  fit,
-  dataMod,
-  chnlSettings = list(),
-  method = NA_character_,
-  predVec = NULL,
-  meanAbsError = NULL
-) {
+    fit,
+    dataMod,
+    chnlSettings = list(),
+    method = NA_character_,
+    predVec = NULL,
+    meanAbsError = NULL) {
   if (is.null(predVec)) {
     fitEval <- .getCpUnsLocGetProbSmoothFitEval(
       fit = fit,
@@ -381,10 +377,9 @@
 
 #' @keywords internal
 .getCpUnsLocGetProbSmoothDerivativeTbl <- function(
-  fit,
-  dataMod,
-  chnlSettings = list()
-) {
+    fit,
+    dataMod,
+    chnlSettings = list()) {
   chnl <- .getCpUnsLocGetChnl(dataMod)
 
   x <- suppressWarnings(
@@ -517,10 +512,9 @@
 
 #' @keywords internal
 .getCpUnsLocGetProbSmoothActualFirstResponseFailure <- function(
-  stage,
-  dataMod,
-  chnlSettings = list()
-) {
+    stage,
+    dataMod,
+    chnlSettings = list()) {
   fit2 <- .getCpUnsLocGetProbSmoothActualSecond(
     dataMod,
     stage
@@ -627,10 +621,9 @@
 
 
 .getCpUnsLocGetCpTrimSetting <- function(
-  chnlSettings,
-  nm,
-  default
-) {
+    chnlSettings,
+    nm,
+    default) {
   .getCpUnsLocSetting(
     chnlSettings,
     nm,

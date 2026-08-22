@@ -1,11 +1,10 @@
 # Get cached per-cell base and cytokine-positive threshold comparisons
 #' @keywords internal
 .getPosIndCache <- function(
-  ex,
-  gateTbl,
-  chnl = NULL,
-  posCache = NULL
-) {
+    ex,
+    gateTbl,
+    chnl = NULL,
+    posCache = NULL) {
   if (is.null(chnl)) {
     chnl <- unique(gateTbl$chnl)
   }
@@ -60,12 +59,10 @@
 # Get one cached logical threshold-comparison vector
 #' @keywords internal
 .getPosIndCacheGet <- function(
-  posCache,
-  chnl,
-  gateType
-) {
-  gateList <- switch(
-    gateType,
+    posCache,
+    chnl,
+    gateType) {
+  gateList <- switch(gateType,
     "base" = posCache$base,
     "cyt" = posCache$cyt,
     stop(
@@ -98,10 +95,9 @@
 # Logical OR across cached positivity vectors while preserving NA semantics
 #' @keywords internal
 .getPosIndCacheAny <- function(
-  posCache,
-  chnl,
-  gateType
-) {
+    posCache,
+    chnl,
+    gateType) {
   out <- rep(FALSE, posCache$n)
 
   for (chnlCurr in chnl) {
@@ -120,10 +116,9 @@
 # Count TRUE and NA values across cached positivity vectors
 #' @keywords internal
 .getPosIndCacheCount <- function(
-  posCache,
-  chnl,
-  gateType
-) {
+    posCache,
+    chnl,
+    gateType) {
   nTrue <- integer(posCache$n)
   nNa <- integer(posCache$n)
 
@@ -171,11 +166,10 @@
 # Get positivity for at least one channel other than the current channel
 #' @keywords internal
 .getPosIndCacheAnyExcept <- function(
-  posCache,
-  count,
-  chnlCurr,
-  gateType
-) {
+    posCache,
+    count,
+    chnlCurr,
+    gateType) {
   posCurr <- .getPosIndCacheGet(
     posCache = posCache,
     chnl = chnlCurr,
@@ -205,12 +199,11 @@
 # for any of the specified channels using a single threshold type
 #' @keywords internal
 .getPosIndSimple <- function(
-  ex,
-  gateTbl,
-  chnl = NULL,
-  gateType,
-  posCache = NULL
-) {
+    ex,
+    gateTbl,
+    chnl = NULL,
+    gateType,
+    posCache = NULL) {
   if (is.null(chnl)) {
     chnl <- unique(gateTbl$chnl)
   }
@@ -233,13 +226,12 @@
 # Identify cells that are positive for at least two cytokines
 #' @keywords internal
 .getPosIndMult <- function(
-  ex,
-  gateTbl,
-  chnl = NULL,
-  chnlAlt = NULL,
-  gateTypeCytPos,
-  posCache = NULL
-) {
+    ex,
+    gateTbl,
+    chnl = NULL,
+    chnlAlt = NULL,
+    gateTypeCytPos,
+    posCache = NULL) {
   if (!gateTypeCytPos %in% c("base", "cyt")) {
     stop(
       paste0(
@@ -351,10 +343,10 @@
 
     posVecCytPosMult <-
       posVecCytPosMult |
-      (posCurrBase &
-        posOtherCyt) |
-      (posCurrCyt &
-        posOtherBase)
+        (posCurrBase &
+          posOtherCyt) |
+        (posCurrCyt &
+          posOtherBase)
   }
 
   posVecCytPosMult
@@ -364,12 +356,11 @@
 # Get context-dependent positivity separately for every supplied cytokine
 #' @keywords internal
 .getPosIndByChnl <- function(
-  ex,
-  gateTbl,
-  chnl = NULL,
-  gateTypeCytPos,
-  posCache = NULL
-) {
+    ex,
+    gateTbl,
+    chnl = NULL,
+    gateTypeCytPos,
+    posCache = NULL) {
   if (!gateTypeCytPos %in% c("base", "cyt")) {
     stop(
       paste0(
@@ -443,8 +434,8 @@
 
     out[[chnlCurr]] <-
       posCurrBase |
-      (posCurrCyt &
-        posOtherBase)
+        (posCurrCyt &
+          posOtherBase)
   }
 
   out
@@ -455,13 +446,12 @@
 # Finds cells positive for every cytokine except one specified channel
 #' @keywords internal
 .getPosIndButSinglePosForOneCyt <- function(
-  ex,
-  gateTbl,
-  chnlSingleExc,
-  chnl = NULL,
-  gateTypeCytPos,
-  posCache = NULL
-) {
+    ex,
+    gateTbl,
+    chnlSingleExc,
+    chnl = NULL,
+    gateTypeCytPos,
+    posCache = NULL) {
   if (is.null(chnl)) {
     chnl <- unique(gateTbl$chnl)
   }
@@ -513,12 +503,11 @@
 # Identify cells to exclude separately for each cytokine
 #' @keywords internal
 .getPosIndButSinglePosByChnl <- function(
-  ex,
-  gateTbl,
-  chnl = NULL,
-  gateTypeCytPos,
-  posCache = NULL
-) {
+    ex,
+    gateTbl,
+    chnl = NULL,
+    gateTypeCytPos,
+    posCache = NULL) {
   if (!gateTypeCytPos %in% c("base", "cyt")) {
     stop(
       paste0(
@@ -592,13 +581,12 @@
 # Returns a logical vector indicating cytokine-positive cells using flexible thresholds
 #' @keywords internal
 .getPosInd <- function(
-  ex,
-  gateTbl,
-  chnl,
-  chnlAlt = NULL,
-  gateTypeCytPos,
-  posCache = NULL
-) {
+    ex,
+    gateTbl,
+    chnl,
+    chnlAlt = NULL,
+    gateTypeCytPos,
+    posCache = NULL) {
   if (is.null(chnl)) {
     chnl <- unique(gateTbl$chnl)
   }
@@ -672,7 +660,7 @@
   for (chnlCurr in chnl) {
     posIndVec <-
       posIndVec |
-      posByChnl[[as.character(chnlCurr)]]
+        posByChnl[[as.character(chnlCurr)]]
   }
 
   posIndVec
@@ -682,15 +670,14 @@
 # Get cell membership for one exact cytokine combination
 #' @keywords internal
 .getPosIndCytCombn <- function(
-  ex,
-  gateTbl,
-  chnlPos,
-  chnlNeg,
-  chnlAlt,
-  gateTypeCytPos,
-  posCache = NULL,
-  posByChnl = NULL
-) {
+    ex,
+    gateTbl,
+    chnlPos,
+    chnlNeg,
+    chnlAlt,
+    gateTypeCytPos,
+    posCache = NULL,
+    posByChnl = NULL) {
   chnl <- unique(
     c(
       chnlPos,
@@ -724,7 +711,7 @@
   for (chnlCurr in chnlPos) {
     chnlPosIndVecPos <-
       chnlPosIndVecPos &
-      posByChnl[[as.character(chnlCurr)]]
+        posByChnl[[as.character(chnlCurr)]]
   }
 
   if (length(chnlNeg) > 0L) {
@@ -736,12 +723,12 @@
     for (chnlCurr in chnlNeg) {
       chnlNegIndVecPos <-
         chnlNegIndVecPos |
-        posByChnl[[as.character(chnlCurr)]]
+          posByChnl[[as.character(chnlCurr)]]
     }
 
     chnlPosIndVecPos <-
       chnlPosIndVecPos &
-      !chnlNegIndVecPos
+        !chnlNegIndVecPos
   }
 
   chnlPosIndVecPos

@@ -21,5 +21,5 @@ Imports: cowplot, dplyr, ggplot2, purrr, rlang, tibble, tidyr, scam,
         cluster, MASS, Biobase, mvtnorm
 LinkingTo: cpp11
 Suggests: testthat (>= 3.0.0), here, BiocManager, knitr, rmarkdown,
-        hexbin
+        hexbin, withr
 Config/roxygen2/version: 8.1.0

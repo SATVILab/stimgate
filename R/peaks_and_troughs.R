@@ -40,10 +40,9 @@
 #'
 #' @keywords internal
 .getPeakMainLeftIdx <- function(
-  y,
-  peakMinRel = 0.75,
-  troughMaxRel = 0.75
-) {
+    y,
+    peakMinRel = 0.75,
+    troughMaxRel = 0.75) {
   y <- suppressWarnings(as.numeric(y))
   if (length(y) == 0L || all(!is.finite(y))) {
     return(integer(0L))
@@ -99,11 +98,10 @@
 #'
 #' @keywords internal
 .getPeakIdxNextTroughIdx <- function(
-  y,
-  peakIdxMeaningful,
-  peakMinRel = 0.75,
-  peakHeightRef = NULL
-) {
+    y,
+    peakIdxMeaningful,
+    peakMinRel = 0.75,
+    peakHeightRef = NULL) {
   y <- suppressWarnings(as.numeric(y))
   y <- pmax(y, 0)
   peakIdxMeaningful <- sort(unique(as.integer(peakIdxMeaningful)))
@@ -143,12 +141,12 @@
 
     lowEnoughAdjacent <-
       troughHeight <= peakMinRel * leftPeakHeight &&
-      troughHeight <= peakMinRel * rightPeakHeight
+        troughHeight <= peakMinRel * rightPeakHeight
 
     lowEnoughAbsolute <-
       is.finite(peakHeightRef) &&
-      peakHeightRef > 0 &&
-      troughHeight <= peakMinRel * peakHeightRef
+        peakHeightRef > 0 &&
+        troughHeight <= peakMinRel * peakHeightRef
 
     if (isTRUE(lowEnoughAdjacent) && isTRUE(lowEnoughAbsolute)) {
       return(troughIdx)

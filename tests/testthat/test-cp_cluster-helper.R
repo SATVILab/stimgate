@@ -7,12 +7,11 @@
 }
 
 .getPosIndButSinglePosForOneCyt <- function(
-  ex,
-  gateTbl,
-  chnlSingleExc,
-  chnl,
-  gateTypeCytPos
-) {
+    ex,
+    gateTbl,
+    chnlSingleExc,
+    chnl,
+    gateTypeCytPos) {
   # Mock function - returns logical vector for testing
   rep(FALSE, nrow(ex))
 }
@@ -23,9 +22,8 @@ sourceTestHelpers <- function() {
   # For testing purposes, we'll define simplified versions
 
   .getPropBSByCPTblDataListFilterAboveMin <<- function(
-    exListFilter,
-    cpMin
-  ) {
+      exListFilter,
+      cpMin) {
     exListFilter |>
       purrr::map(function(x) {
         attr(x, "nCell") <- nrow(x)
@@ -47,11 +45,10 @@ sourceTestHelpers <- function() {
   }
 
   .getPropBSByCPTblDataListFilterCytPos <<- function(
-    filterOtherCytPos,
-    exList,
-    gateTbl,
-    calcCytPosGates
-  ) {
+      filterOtherCytPos,
+      exList,
+      gateTbl,
+      calcCytPosGates) {
     if (!filterOtherCytPos) {
       return(exList)
     }
@@ -76,9 +73,8 @@ sourceTestHelpers <- function() {
   }
 
   .getCPClusterDensTblGetActualIndEarlyReturn <<- function(
-    batch,
-    ind
-  ) {
+      batch,
+      ind) {
     tibble::tibble(
       batch = batch[1],
       ind = ind[1],
@@ -137,9 +133,8 @@ test_that("getPropBSByCPTblDataListFilterAboveMinZeroRowReconstructionLogic", {
 
   # Create a custom version that forces zero rows for testing
   .getPropBSByCPTblDataListFilterAboveMinTest <- function(
-    exListFilter,
-    cpMin
-  ) {
+      exListFilter,
+      cpMin) {
     exListFilter |>
       purrr::map(function(x) {
         originalNCell <- nrow(x)

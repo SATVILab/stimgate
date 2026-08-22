@@ -1,13 +1,12 @@
 # Get cutpoints for a single batch
 #' @keywords internal
 .gateBatch <- function(
-  .data,
-  indBatch,
-  chnlSettings,
-  batch,
-  stage,
-  pathProject
-) {
+    .data,
+    indBatch,
+    chnlSettings,
+    batch,
+    stage,
+    pathProject) {
   # get list of dataframes
   exList <- .getExList(
     # nolint

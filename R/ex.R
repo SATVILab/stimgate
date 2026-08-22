@@ -9,14 +9,13 @@ strDetectAny <- function(string, pattern) {
 
 #' @keywords internal
 .getExList <- function(
-  .data,
-  indBatch,
-  batch,
-  pop,
-  chnlCut,
-  extraChnl = NULL,
-  pathProject
-) {
+    .data,
+    indBatch,
+    batch,
+    pop,
+    chnlCut,
+    extraChnl = NULL,
+    pathProject) {
   isPathGiven <- is.character(pathProject) && nzchar(pathProject)
   if (!isPathGiven) {
     stop("pathProject must be a non-empty character string.")
@@ -41,16 +40,15 @@ strDetectAny <- function(string, pattern) {
 
 #' @keywords internal
 .getEx <- function(
-  .data,
-  pop,
-  chnlCut,
-  ind,
-  indUns,
-  batch,
-  extraChnl = NULL,
-  pathProject,
-  addAttributes = TRUE
-) {
+    .data,
+    pop,
+    chnlCut,
+    ind,
+    indUns,
+    batch,
+    extraChnl = NULL,
+    pathProject,
+    addAttributes = TRUE) {
   # collect all the channels we need
   # get expression information as a tibble
   # get .data
@@ -187,14 +185,13 @@ strDetectAny <- function(string, pattern) {
 
 #' @keywords internal
 .getExAddAttributes <- function(
-  ex,
-  ind,
-  indUns,
-  batch,
-  chnlCut,
-  pop,
-  addAttributes
-) {
+    ex,
+    ind,
+    indUns,
+    batch,
+    chnlCut,
+    pop,
+    addAttributes) {
   if (!addAttributes) {
     return(ex)
   }
@@ -308,24 +305,23 @@ strDetectAny <- function(string, pattern) {
 #' }
 #' @export
 getStimExpr <- function(
-  pathProject,
-  .data = NULL,
-  pop = NULL,
-  ind = NULL,
-  chnl = NULL,
-  marker = NULL,
-  bias = FALSE,
-  excMin = FALSE,
-  combnExc = NULL,
-  chnlGate = NULL,
-  markerGate = NULL,
-  gateTypeCytPos = "cyt",
-  mult = FALSE,
-  gateUnsMethod = "min",
-  transFn = NULL,
-  transChnl = NULL,
-  transMarker = NULL
-) {
+    pathProject,
+    .data = NULL,
+    pop = NULL,
+    ind = NULL,
+    chnl = NULL,
+    marker = NULL,
+    bias = FALSE,
+    excMin = FALSE,
+    combnExc = NULL,
+    chnlGate = NULL,
+    markerGate = NULL,
+    gateTypeCytPos = "cyt",
+    mult = FALSE,
+    gateUnsMethod = "min",
+    transFn = NULL,
+    transChnl = NULL,
+    transMarker = NULL) {
   .assertString(pathProject)
   pop <- pop %|c|% .getExProjectPop(pathProject)
   if (!is.null(chnl) && !is.null(marker)) {
@@ -499,12 +495,11 @@ getStimExpr <- function(
 
 #' @keywords internal
 .dataGetExExcMin <- function(
-  ex,
-  excMin,
-  pop = NULL,
-  chnl = NULL,
-  ind = NULL
-) {
+    ex,
+    excMin,
+    pop = NULL,
+    chnl = NULL,
+    ind = NULL) {
   if (!excMin) {
     attr(ex, "probGMin") <- NULL
     return(ex)
@@ -527,16 +522,15 @@ getStimExpr <- function(
 
 #' @keywords internal
 .dataGetExCytPos <- function(
-  ex,
-  chnlGate,
-  markerGate,
-  pop,
-  ind,
-  combnExc = NULL,
-  gateTypeCytPos = "cyt",
-  mult = FALSE,
-  pathProject
-) {
+    ex,
+    chnlGate,
+    markerGate,
+    pop,
+    ind,
+    combnExc = NULL,
+    gateTypeCytPos = "cyt",
+    mult = FALSE,
+    pathProject) {
   if (is.null(chnlGate) && is.null(markerGate)) {
     return(ex)
   }
@@ -594,12 +588,11 @@ getStimExpr <- function(
 
 #' @keywords internal
 .dataGetExCytPosInc <- function(
-  ex,
-  gateTblInd,
-  mult,
-  chnl,
-  gateTypeCytPos
-) {
+    ex,
+    gateTblInd,
+    mult,
+    chnl,
+    gateTypeCytPos) {
   incVec <- rep(FALSE, nrow(ex))
 
   if (!mult) {
@@ -626,12 +619,11 @@ getStimExpr <- function(
 
 #' @keywords internal
 .dataGetExCytPosExc <- function(
-  ex,
-  combnExc,
-  gateTblInd,
-  chnlGate,
-  gateTypeCytPos
-) {
+    ex,
+    combnExc,
+    gateTblInd,
+    chnlGate,
+    gateTypeCytPos) {
   if (is.null(combnExc)) {
     return(ex)
   }

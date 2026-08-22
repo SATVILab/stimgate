@@ -5,17 +5,16 @@
 # that estimate.
 
 .getCpUnsLocGetCp <- function(
-  dataMod,
-  exTblStimOrig,
-  exTblStimNoMin,
-  exTblUnsOrig,
-  exTblUnsBias,
-  bias,
-  cpMin,
-  stage,
-  pathProject,
-  chnlSettings = list()
-) {
+    dataMod,
+    exTblStimOrig,
+    exTblStimNoMin,
+    exTblUnsOrig,
+    exTblUnsBias,
+    bias,
+    cpMin,
+    stage,
+    pathProject,
+    chnlSettings = list()) {
   ind <- .getInd(exTblStimNoMin)
   chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
   stageChnl <- file.path(stage, chnl)
@@ -170,13 +169,12 @@
 
 #' @keywords internal
 .getCpUnsLocGetCpEnsureMeta <- function(
-  obj,
-  cpMin,
-  exTblStimNoMin,
-  exTblUnsBias,
-  stage,
-  reason
-) {
+    obj,
+    cpMin,
+    exTblStimNoMin,
+    exTblUnsBias,
+    stage,
+    reason) {
   if (is.list(obj) && "cp" %in% names(obj)) {
     obj$locGenerated <- obj$locGenerated %||% FALSE
     obj$locGeneratedDirect <- obj$locGeneratedDirect %||% FALSE
@@ -202,15 +200,14 @@
 #' @keywords internal
 
 .getCpUnsLocGetCpDataThreshold <- function(
-  dataMod,
-  exTblStimOrig,
-  exTblStimNoMin,
-  exTblUnsBias,
-  exTblUnsOrig,
-  bias,
-  pathProject,
-  stage
-) {
+    dataMod,
+    exTblStimOrig,
+    exTblStimNoMin,
+    exTblUnsBias,
+    exTblUnsOrig,
+    bias,
+    pathProject,
+    stage) {
   # Remove the lower-margin values retained only to anchor the smoother at the
   # point where the final response proportion is calculated, not while the
   # filtering thresholds are identified.
@@ -279,9 +276,8 @@
 
 #' @keywords internal
 .getCpUnsLocGetCpDataThresholdPropBsEst <- function(
-  dataCount,
-  exTblStimOrig
-) {
+    dataCount,
+    exTblStimOrig) {
   sum(dataCount$pred) / nrow(exTblStimOrig)
 }
 
@@ -322,13 +318,12 @@
 
 
 .getCpUnsLocGetCpDataThresholdActual <- function(
-  dataCount,
-  propBsEst,
-  exTblStimOrig,
-  exTblUnsBias,
-  exTblUnsOrig,
-  bias
-) {
+    dataCount,
+    propBsEst,
+    exTblStimOrig,
+    exTblUnsBias,
+    exTblUnsOrig,
+    bias) {
   dataCount <- dataCount[order(.getCut(dataCount)), ]
 
   thresholds <- .getCut(dataCount)
@@ -358,12 +353,11 @@
 
 #' @keywords internal
 .getCpUnsLocGetCpActual <- function(
-  dataThreshold,
-  exTblStimNoMin,
-  exTblUnsBias,
-  cpMin,
-  stage
-) {
+    dataThreshold,
+    exTblStimNoMin,
+    exTblUnsBias,
+    cpMin,
+    stage) {
   if (nrow(dataThreshold) == 0L) {
     return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,

@@ -1,20 +1,19 @@
 #' @keywords internal
 .getStatsOverall <- function(
-  indBatchList,
-  .data,
-  popGate,
-  gateTbl,
-  gateName,
-  chnl,
-  chnlLab,
-  filterOtherCytPos,
-  combn,
-  gateTypeCytPosFilter,
-  gateTypeCytPosCalc,
-  combnMatList,
-  cytCombnVecList,
-  pathProject
-) {
+    indBatchList,
+    .data,
+    popGate,
+    gateTbl,
+    gateName,
+    chnl,
+    chnlLab,
+    filterOtherCytPos,
+    combn,
+    gateTypeCytPosFilter,
+    gateTypeCytPosCalc,
+    combnMatList,
+    cytCombnVecList,
+    pathProject) {
   statTbl <- purrr::map_df(
     seq_along(indBatchList),
     function(i) {
@@ -71,11 +70,10 @@
 
 #' @keywords internal
 .getStatsOverallProgress <- function(
-  indBatchList,
-  i,
-  combn,
-  filterOtherCytPos
-) {
+    indBatchList,
+    i,
+    combn,
+    filterOtherCytPos) {
   indBatch <- indBatchList[[i]]
   .debug(
     "indBatch: ",
@@ -91,21 +89,20 @@
 
 #' @keywords internal
 .getStatsBatch <- function(
-  indBatch,
-  batch,
-  .data,
-  popGate,
-  gateTbl,
-  chnl,
-  filterOtherCytPos,
-  combn,
-  gateTypeCytPosFilter,
-  gateTypeCytPosCalc,
-  combnMatList,
-  cytCombnVecList,
-  gateName,
-  pathProject
-) {
+    indBatch,
+    batch,
+    .data,
+    popGate,
+    gateTbl,
+    chnl,
+    filterOtherCytPos,
+    combn,
+    gateTypeCytPosFilter,
+    gateTypeCytPosCalc,
+    combnMatList,
+    cytCombnVecList,
+    gateName,
+    pathProject) {
   .debug("Getting gate stats for a batch") # nolint
   .debug("indBatch: ", paste0(indBatch, collapse = "-")) # nolint
 
@@ -137,18 +134,17 @@
 
 #' @keywords internal
 .getStatsBatchGn <- function(
-  gn,
-  exList,
-  gateTbl,
-  chnl,
-  filterOtherCytPos,
-  gateTypeCytPosFilter,
-  gateTypeCytPosCalc,
-  combn,
-  combnMatList,
-  cytCombnVecList,
-  indBatch
-) {
+    gn,
+    exList,
+    gateTbl,
+    chnl,
+    filterOtherCytPos,
+    gateTypeCytPosFilter,
+    gateTypeCytPosCalc,
+    combn,
+    combnMatList,
+    cytCombnVecList,
+    indBatch) {
   .debug("gate name: ", gn) # nolint
   gateTblGn <- gateTbl |> dplyr::filter(gateName == gn) # nolint
   if (filterOtherCytPos || !combn) {
@@ -177,14 +173,13 @@
 
 #' @keywords internal
 .getStatsBatchGnCombnLoopInd <- function(
-  exList,
-  gateTblGn,
-  gn,
-  chnl,
-  combnMatList,
-  cytCombnVecList,
-  gateTypeCytPosCalc
-) {
+    exList,
+    gateTblGn,
+    gn,
+    chnl,
+    combnMatList,
+    cytCombnVecList,
+    gateTypeCytPosCalc) {
   exListStim <- exList[-1]
   exUns <- exList[[1]]
   nCellUns <- nrow(exUns) # nolint
@@ -267,18 +262,17 @@
 
 #' @keywords internal
 .getStatsBatchGnCombn <- function(
-  j,
-  ex,
-  exUns,
-  gateTblGnInd,
-  gn,
-  chnl,
-  combnMatList,
-  cytCombnVecList,
-  gateTypeCytPosCalc,
-  posByChnlStim,
-  posByChnlUns
-) {
+    j,
+    ex,
+    exUns,
+    gateTblGnInd,
+    gn,
+    chnl,
+    combnMatList,
+    cytCombnVecList,
+    gateTypeCytPosCalc,
+    posByChnlStim,
+    posByChnlUns) {
   .debug("number of cytokines positive: ", j) # nolint
 
   combnMat <- combnMatList[[j]]
@@ -353,11 +347,10 @@
 
 #' @keywords internal
 .getStatsBatchGnFilterMasks <- function(
-  exList,
-  gateTblGn,
-  chnl,
-  gateTypeCytPosFilter
-) {
+    exList,
+    gateTblGn,
+    chnl,
+    gateTypeCytPosFilter) {
   exUns <- exList[[1]]
 
   purrr::map(
@@ -400,14 +393,13 @@
 
 #' @keywords internal
 .getStatsBatchGnFilterOrNonCombn <- function(
-  exList,
-  indBatch,
-  gateTblGn,
-  gn,
-  chnl,
-  filterOtherCytPos,
-  gateTypeCytPosFilter
-) {
+    exList,
+    indBatch,
+    gateTblGn,
+    gn,
+    chnl,
+    filterOtherCytPos,
+    gateTypeCytPosFilter) {
   .debug("filtering or not working out combinations") # nolint
 
   exUns <- exList[[1]]
@@ -461,8 +453,8 @@
 
         nothingToGate <-
           length(xStim) == 0L ||
-          nrow(gateTblGnInd) == 0L ||
-          all(is.na(xStim))
+            nrow(gateTblGnInd) == 0L ||
+            all(is.na(xStim))
 
         if (nothingToGate) {
           .debug("filling in NAs") # nolint

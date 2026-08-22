@@ -35,8 +35,7 @@
 #' @aliases markerLab, chnlToMarker, markerToChnl, getMarker, getChnl
 #' @export
 chnlLab <- function(data) {
-  adf <- switch(
-    class(data)[1],
+  adf <- switch(class(data)[1],
     "GatingSet" = {
       gh <- data[[flowWorkspace::sampleNames(data)[1]]]
       fr <- flowWorkspace::gh_pop_get_data(gh)
