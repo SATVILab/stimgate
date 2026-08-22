@@ -152,8 +152,8 @@ targeted_scenarios_tbl <- tibble::tribble(
 # 1. Mean-shift grid (all components):
 # Gaussian and Skew: 0, 0.025, 0.05, 0.1, 0.2
 # Gamma: 0, 0.005, 0.01, 0.025, 0.05
-mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.1, 0.2)
-mean_shift_gamma <- c(0, 0.005, 0.01, 0.025, 0.05)
+mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.1, 0.2, 0.5, 1)
+mean_shift_gamma <- c(0, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2)
 
 grid_mean_shift_all <- purrr::map_df(
   seq_len(nrow(targeted_scenarios_tbl)),
@@ -204,7 +204,7 @@ grid_mean_shift_negative <- purrr::map_df(
 
 # 3. SD-inflation grid (negative/background component only):
 # Fractional SD increase: 0, 0.01, 0.025, 0.05, 0.10, 0.20
-sd_increase_vec <- c(0, 0.01, 0.025, 0.05, 0.10, 0.20)
+sd_increase_vec <- c(0, 0.01, 0.025, 0.05, 0.10, 0.20, 0.5, 1)
 
 grid_sd_inflation <- tidyr::expand_grid(
   targeted_scenarios_tbl,
