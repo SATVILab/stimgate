@@ -428,6 +428,18 @@ compare_summary
 
 ### Mean-shift degradation curves (all components vs negative only)
 
+```{r}
+plot_dir <- projr::projr_path_get(
+    "cache",
+    "sim",
+    "compare",
+    "freq_bs_batch",
+    "mean_shift_degradation")
+if (dir.exists(plot_dir)) {
+  unlink(plot_dir, recursive = TRUE)
+}
+```
+
 #### Median
 
 ```{r}
@@ -664,6 +676,18 @@ if (isTRUE(run_plots)) {
 ```
 
 ### SD-inflation degradation curves
+
+```{r}
+plot_dir <- projr::projr_path_get(
+    "cache",
+    "sim",
+    "compare",
+    "freq_bs_batch",
+    "sd_inflation_degradation")
+if (dir.exists(plot_dir)) {
+  unlink(plot_dir, recursive = TRUE)
+}
+```
 
 ```{r}
 #| label: plot-sd-inflation-degradation
