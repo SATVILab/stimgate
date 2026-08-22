@@ -79,3 +79,358 @@
 
   invisible(path)
 }
+
+.random_hex <- function(n = 6L) {
+  paste0(sample(c(letters[1:6], 0:9), n, replace = TRUE), collapse = "")
+}
+
+.sanitize_run_id <- function(x) {
+  out <- gsub("[^A-Za-z0-9_.-]+", "-", as.character(x))
+  out <- gsub("(^-+|-+$)", "", out)
+  out[nzchar(out)]
+}
+
+.default_analysis_run_id <- function() {
+  paste0(
+    format(Sys.time(), "%Y%m%dT%H%M%S"),
+    "-p", Sys.getpid(),
+    "-",
+    .random_hex(6L)
+  )
+}
+
+.git_sha <- function(path_root = ".") {
+  if (!nzchar(path_root)) {
+    return(NA_character_)
+  }
+
+  out <- suppressWarnings(
+    tryCatch(
+      system2(
+        "git",
+        c("-C", path_root, "rev-parse", "--short", "HEAD"),
+        stdout = TRUE,
+        stderr = FALSE
+      ),
+      error = function(e) character()
+    )
+  )
+
+  if (length(out) == 0L || !nzchar(out[[1]])) {
+    NA_character_
+  } else {
+    out[[1]]
+  }
+}
+
+.analysis_run_context <- function(
+    analysis_key,
+    run_id = NULL,
+    path_root = NULL,
+    params = list(),
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 1L) {
+  if (length(analysis_key) == 0L || !all(nzchar(analysis_key))) {
+    stop("analysis_key must be a non-empty character vector.")
+  }
+
+  run_id_env <- Sys.getenv("ANALYSIS_RUN_ID", unset = "")
+  run_id <- if (!is.null(run_id) && nzchar(as.character(run_id))) {
+    as.character(run_id)
+  } else if (nzchar(run_id_env)) {
+    run_id_env
+  } else {
+    .default_analysis_run_id()
+  }
+
+  run_id <- .sanitize_run_id(run_id)
+  if (length(run_id) == 0L || !nzchar(run_id[[1]])) {
+    stop("run_id cannot be empty after sanitization.")
+  }
+  run_id <- run_id[[1]]
+
+  start_time <- Sys.time()
+  run_date <- format(start_time, "%Y-%m-%d")
+  run_time <- format(start_time, "%H%M%S")
+
+  if (requireNamespace("projr", quietly = TRUE)) {
+    sim_root <- do.call(projr::projr_path_get_dir, c(list("cache"), as.list(analysis_key)))
+    log_root <- do.call(
+      projr::projr_path_get_dir,
+      c(list("cache", "log", "analysis"), as.list(analysis_key))
+    )
+  } else {
+    root_local <- normalizePath(
+      if (is.null(path_root) || !nzchar(path_root)) "." else path_root,
+      mustWork = FALSE
+    )
+    sim_root <- do.call(file.path, c(list(root_local, "cache"), as.list(analysis_key)))
+    log_root <- do.call(
+      file.path,
+      c(list(root_local, "cache", "log", "analysis"), as.list(analysis_key))
+    )
+  }
+
+  staging_root <- file.path(sim_root, "staging")
+  current_dir <- file.path(sim_root, "current")
+  staging_run_dir <- file.path(staging_root, run_date, run_id)
+
+  chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
+  chunk_dir <- file.path(staging_run_dir, "chunks", chunk_label)
+  chunk_output_dir <- file.path(chunk_dir, "output")
+  chunk_jobs_dir <- file.path(log_root, run_date, run_id, "jobs", chunk_label)
+
+  progress_run_dir <- file.path(log_root, run_date, run_id)
+  progress_file <- file.path(progress_run_dir, "progress.txt")
+
+  dir.create(staging_run_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(staging_run_dir, "output"), recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(staging_run_dir, "collated"), recursive = TRUE, showWarnings = FALSE)
+  dir.create(chunk_output_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(chunk_jobs_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(progress_run_dir, recursive = TRUE, showWarnings = FALSE)
+
+  manifest_path <- file.path(staging_run_dir, "manifest.rds")
+  status_path <- file.path(progress_run_dir, "status.rds")
+
+  if (!file.exists(manifest_path)) {
+    manifest <- list(
+      analysis_key = analysis_key,
+      run_id = run_id,
+      run_date = run_date,
+      run_time = run_time,
+      started_at = start_time,
+      status = "running",
+      git_sha = .git_sha(if (is.null(path_root)) "." else path_root),
+      params = params,
+      expected_n_chunks = as.integer(sim_grid_n_chunks),
+      path_staging_run = staging_run_dir,
+      path_current = current_dir,
+      path_log_run = progress_run_dir
+    )
+    .write_rds_atomic(manifest, manifest_path)
+    .write_rds_atomic(manifest, file.path(progress_run_dir, "manifest.rds"))
+  }
+
+  if (!file.exists(status_path)) {
+    status <- list(
+      run_id = run_id,
+      analysis_key = analysis_key,
+      started_at = start_time,
+      ended_at = as.POSIXct(NA),
+      status = "running",
+      expected_n_chunks = as.integer(sim_grid_n_chunks),
+      chunks = list(),
+      n_completed = 0L,
+      n_failed = 0L,
+      n_outstanding = NA_integer_,
+      promotion_done = FALSE
+    )
+    .write_rds_atomic(status, status_path)
+  }
+
+  list(
+    analysis_key = analysis_key,
+    run_id = run_id,
+    run_date = run_date,
+    run_time = run_time,
+    sim_root = sim_root,
+    log_root = log_root,
+    current_dir = current_dir,
+    staging_root = staging_root,
+    staging_run_dir = staging_run_dir,
+    staging_output_dir = file.path(staging_run_dir, "output"),
+    staging_collated_dir = file.path(staging_run_dir, "collated"),
+    chunk_label = chunk_label,
+    chunk_dir = chunk_dir,
+    chunk_output_dir = chunk_output_dir,
+    progress_run_dir = progress_run_dir,
+    progress_file = progress_file,
+    chunk_jobs_dir = chunk_jobs_dir,
+    manifest_path = manifest_path,
+    status_path = status_path
+  )
+}
+
+.analysis_read_status <- function(run_ctx) {
+  if (!file.exists(run_ctx$status_path)) {
+    return(NULL)
+  }
+  readRDS(run_ctx$status_path)
+}
+
+.analysis_update_status <- function(
+    run_ctx,
+    status = NULL,
+    chunk_status = NULL,
+    n_completed = NULL,
+    n_failed = NULL,
+    n_outstanding = NULL,
+    ended_at = NULL,
+    promotion_done = NULL) {
+  st <- .analysis_read_status(run_ctx)
+  if (is.null(st)) {
+    st <- list(
+      run_id = run_ctx$run_id,
+      analysis_key = run_ctx$analysis_key,
+      started_at = Sys.time(),
+      ended_at = as.POSIXct(NA),
+      status = "running",
+      expected_n_chunks = 1L,
+      chunks = list(),
+      promotion_done = FALSE
+    )
+  }
+
+  if (!is.null(status)) st$status <- status
+  if (!is.null(n_completed)) st$n_completed <- as.integer(n_completed)
+  if (!is.null(n_failed)) st$n_failed <- as.integer(n_failed)
+  if (!is.null(n_outstanding)) st$n_outstanding <- as.integer(n_outstanding)
+  if (!is.null(ended_at)) st$ended_at <- ended_at
+  if (!is.null(promotion_done)) st$promotion_done <- isTRUE(promotion_done)
+
+  if (!is.null(chunk_status) && !is.null(chunk_status$chunk_label)) {
+    st$chunks[[chunk_status$chunk_label]] <- chunk_status
+  }
+
+  .write_rds_atomic(st, run_ctx$status_path)
+  invisible(st)
+}
+
+.analysis_mark_chunk <- function(
+    run_ctx,
+    total_sims,
+    completed_sims,
+    failed_sims = 0L,
+    collate_ok = NULL,
+    validation_ok = NULL,
+    error_message = NULL) {
+  chunk_status <- list(
+    chunk_label = run_ctx$chunk_label,
+    total_sims = as.integer(total_sims),
+    completed_sims = as.integer(completed_sims),
+    failed_sims = as.integer(failed_sims),
+    collate_ok = collate_ok,
+    validation_ok = validation_ok,
+    error_message = error_message,
+    updated_at = Sys.time()
+  )
+
+  outstanding <- as.integer(total_sims - completed_sims - failed_sims)
+  chunk_status$is_complete <- isTRUE(outstanding <= 0L)
+
+  .analysis_update_status(
+    run_ctx = run_ctx,
+    chunk_status = chunk_status,
+    n_completed = completed_sims,
+    n_failed = failed_sims,
+    n_outstanding = outstanding,
+    status = if (!is.null(error_message) && nzchar(error_message)) "failed" else "running"
+  )
+}
+
+.analysis_can_promote <- function(run_ctx) {
+  st <- .analysis_read_status(run_ctx)
+  if (is.null(st)) {
+    return(FALSE)
+  }
+
+  expected <- as.integer(st$expected_n_chunks)
+  if (is.na(expected) || expected < 1L) {
+    expected <- 1L
+  }
+  chunk_labels_expected <- vapply(
+    seq_len(expected),
+    function(i) .sim_chunk_label(i, expected),
+    character(1)
+  )
+
+  if (!all(chunk_labels_expected %in% names(st$chunks))) {
+    return(FALSE)
+  }
+
+  for (label in chunk_labels_expected) {
+    cs <- st$chunks[[label]]
+    if (!isTRUE(cs$is_complete)) {
+      return(FALSE)
+    }
+    if (!isTRUE(cs$collate_ok) || !isTRUE(cs$validation_ok)) {
+      return(FALSE)
+    }
+    if (!is.null(cs$error_message) && nzchar(cs$error_message)) {
+      return(FALSE)
+    }
+  }
+
+  TRUE
+}
+
+.copy_dir_contents <- function(from, to) {
+  dir.create(to, recursive = TRUE, showWarnings = FALSE)
+  files <- list.files(from, all.files = TRUE, no.. = TRUE, full.names = TRUE)
+  if (length(files) == 0L) {
+    return(invisible(TRUE))
+  }
+  ok <- file.copy(files, to = to, recursive = TRUE, copy.mode = TRUE)
+  invisible(all(ok))
+}
+
+.analysis_promote_run <- function(run_ctx) {
+  if (!.analysis_can_promote(run_ctx)) {
+    return(invisible(FALSE))
+  }
+
+  complete_path <- file.path(run_ctx$staging_run_dir, "COMPLETE")
+  cat(
+    paste0("completed_at=", format(Sys.time(), "%Y-%m-%d %H:%M:%S")),
+    file = complete_path
+  )
+
+  current_parent <- dirname(run_ctx$current_dir)
+  dir.create(current_parent, recursive = TRUE, showWarnings = FALSE)
+
+  tmp_current <- file.path(
+    current_parent,
+    paste0(".current-next-", run_ctx$run_id, "-", .random_hex(4L))
+  )
+  backup_current <- file.path(
+    current_parent,
+    paste0(".current-prev-", run_ctx$run_id, "-", .random_hex(4L))
+  )
+
+  unlink(tmp_current, recursive = TRUE, force = TRUE)
+  unlink(backup_current, recursive = TRUE, force = TRUE)
+
+  copied <- .copy_dir_contents(run_ctx$staging_run_dir, tmp_current)
+  if (!isTRUE(copied)) {
+    stop("Failed to stage promoted output set for current run.")
+  }
+
+  had_current <- dir.exists(run_ctx$current_dir)
+  if (had_current) {
+    if (!file.rename(run_ctx$current_dir, backup_current)) {
+      stop("Failed to move existing current directory before promotion.")
+    }
+  }
+
+  promoted <- file.rename(tmp_current, run_ctx$current_dir)
+  if (!isTRUE(promoted)) {
+    if (had_current && dir.exists(backup_current)) {
+      file.rename(backup_current, run_ctx$current_dir)
+    }
+    stop("Failed to promote staged run into canonical current location.")
+  }
+
+  if (dir.exists(backup_current)) {
+    unlink(backup_current, recursive = TRUE, force = TRUE)
+  }
+
+  .analysis_update_status(
+    run_ctx = run_ctx,
+    status = "completed",
+    ended_at = Sys.time(),
+    promotion_done = TRUE
+  )
+
+  invisible(TRUE)
+}

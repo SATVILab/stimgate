@@ -186,7 +186,8 @@ update_progress_summary <- .update_progress_summary
       list.files(
         path,
         pattern = "^bw_list_raw-chunk_[0-9]+-of_[0-9]+-sim_id_[0-9]+[.]rds$",
-        full.names = TRUE
+        full.names = TRUE,
+        recursive = TRUE
       )
     }
   ), use.names = FALSE))

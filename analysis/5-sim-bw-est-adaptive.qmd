@@ -8,6 +8,7 @@ execute:
   warning: false
   message: false
 params:
+  analysis_run_id: null
   sim_grid_chunk_index: 1
   sim_grid_n_chunks: 1
   sim_grid_shuffle_seed: 20260707
@@ -54,6 +55,11 @@ run_simulations <- .as_flag(.get_qmd_param_env(
   "RUN_SIMULATIONS",
   FALSE
 ))
+analysis_run_id <- .get_qmd_param_env(
+  "analysis_run_id",
+  "ANALYSIS_RUN_ID",
+  NULL
+)
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -62,7 +68,7 @@ run_plots <- .as_flag(.get_qmd_param_env(
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
-.sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
+sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
@@ -379,27 +385,26 @@ if (interactive()) {
   progressr::handlers(global = TRUE)
 }
 
-path_progress_file <- projr::projr_path_get(
-  "cache",
-  "log",
-  "analysis",
-  "sim",
-  "bw",
-  "est",
-  "adaptive",
-  paste0("progress-chunk_", .sim_chunk_label, ".txt")
+run_ctx <- .analysis_run_context(
+  analysis_key = c("sim", "bw", "est", "adaptive"),
+  run_id = analysis_run_id,
+  path_root = root_dir,
+  params = list(
+    run_simulations = run_simulations,
+    run_plots = run_plots,
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks,
+    sim_grid_shuffle_seed = sim_grid_shuffle_seed
+  ),
+  sim_grid_chunk_index = sim_grid_chunk_index,
+  sim_grid_n_chunks = sim_grid_n_chunks
 )
-dir_progress <- dirname(path_progress_file)
-dir_jobs <- file.path(dir_progress, "jobs")
-dir_jobs_chunk <- file.path(dir_jobs, paste0("chunk_", .sim_chunk_label))
-dir_output <- file.path(dir_progress, "output")
 
-if (file.exists(path_progress_file)) {
-  file.remove(path_progress_file)
-}
-if (dir.exists(dir_jobs_chunk)) {
-  unlink(dir_jobs_chunk, recursive = TRUE, force = TRUE)
-}
+path_progress_file <- run_ctx$progress_file
+dir_progress <- run_ctx$progress_run_dir
+dir_jobs_chunk <- run_ctx$chunk_jobs_dir
+dir_output <- run_ctx$chunk_output_dir
+
 dir.create(dir_jobs_chunk, recursive = TRUE, showWarnings = FALSE)
 dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 
@@ -609,12 +614,8 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 
   .write_rds_atomic(
     bw_list_raw,
-    projr::projr_path_get(
-      "cache",
-      "sim",
-      "bw",
-      "est",
-      "adaptive",
+    file.path(
+      run_ctx$staging_collated_dir,
       sprintf(
         "bw_list_raw_chunk_%03d-of_%03d.rds",
         sim_grid_chunk_index,
@@ -627,6 +628,16 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 } else {
   message("Skipping simulations because run_simulations is FALSE.")
 }
+
+if (isTRUE(run_simulations)) {
+  chunk_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
+  .analysis_mark_chunk(
+    run_ctx = run_ctx,
+    total_sims = nrow(sim_grid),
+    completed_sims = sum(grepl("^completed-", chunk_job_files)),
+    failed_sims = sum(grepl("^error-", chunk_job_files))
+  )
+}
 ```
 
 Collate the results.
@@ -637,8 +648,8 @@ Collate the results.
 #| fig-width: 7
 #| fig-height: 10
 bw_list_path_vec <- .find_bw_list_output_files(
-  output_dir = dir_output,
-  cache_dir = dir_progress,
+  output_dir = run_ctx$staging_run_dir,
+  cache_dir = run_ctx$current_dir,
   cache_path = c("cache", "log", "analysis", "sim", "bw", "est", "adaptive")
 )
 
@@ -663,24 +674,8 @@ if (length(bw_list_path_vec) > 0L) {
   bw_list_raw_collate <- bw_list_raw
 } else {
   path_vec <- c(
-    projr::projr_path_get(
-      "cache",
-      "sim",
-      "bw",
-      "est",
-      "adaptive",
-      "bw_list_raw.rds",
-      safe = TRUE
-    ),
-    projr::projr_path_get(
-      "cache",
-      "sim",
-      "bw",
-      "est",
-      "adaptive",
-      "bw_list_raw.rds",
-      safe = FALSE
-    )
+    file.path(run_ctx$staging_collated_dir, "bw_list_raw.rds"),
+    file.path(run_ctx$current_dir, "collated", "bw_list_raw.rds")
   )
   path_vec <- path_vec[file.exists(path_vec)]
   if (length(path_vec) == 0L) {
@@ -827,13 +822,7 @@ bw_tbl_results |>
   ) |>
   print(width = Inf)
 
-dir_results <- projr::projr_path_get_dir(
-  "cache",
-  "sim",
-  "bw",
-  "est",
-  "adaptive"
-)
+dir_results <- run_ctx$staging_collated_dir
 
 collate_suffix <- if (sim_grid_n_chunks > 1L) {
   sprintf("_chunk_%03d-of_%03d", sim_grid_chunk_index, sim_grid_n_chunks)
@@ -849,6 +838,20 @@ saveRDS(
   bw_tbl_results,
   file = file.path(dir_results, paste0("bw_tbl_results", collate_suffix, ".rds"))
 )
+
+chunk_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
+.analysis_mark_chunk(
+  run_ctx = run_ctx,
+  total_sims = nrow(sim_grid),
+  completed_sims = sum(grepl("^completed-", chunk_job_files)),
+  failed_sims = sum(grepl("^error-", chunk_job_files)),
+  collate_ok = TRUE,
+  validation_ok = nrow(bw_tbl_results) > 0L
+)
+
+if (.analysis_can_promote(run_ctx)) {
+  .analysis_promote_run(run_ctx)
+}
 
 if (isTRUE(run_plots)) {
   mean_pos_setting_curr <- unique(bw_tbl_results$mean_pos_setting)[[1]]

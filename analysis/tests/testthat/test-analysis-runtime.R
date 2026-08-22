@@ -87,3 +87,115 @@ test_that("atomic RDS writes are readable and preserve object contents", {
   expect_identical(env$.write_rds_atomic(obj, path), path)
   expect_equal(readRDS(path), obj)
 })
+
+test_that("run contexts are isolated by logical run ID", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  ctx_a <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-test"),
+    run_id = "run-a",
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 1L
+  )
+  ctx_b <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-test"),
+    run_id = "run-b",
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 1L
+  )
+
+  expect_false(identical(ctx_a$staging_run_dir, ctx_b$staging_run_dir))
+  expect_false(identical(ctx_a$progress_run_dir, ctx_b$progress_run_dir))
+  expect_true(file.exists(ctx_a$manifest_path))
+  expect_true(file.exists(ctx_b$manifest_path))
+  expect_true(file.exists(ctx_a$status_path))
+  expect_true(file.exists(ctx_b$status_path))
+})
+
+test_that("promotion only occurs after all expected chunks complete and validate", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  ctx_1 <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-promotion"),
+    run_id = "shared-run",
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 2L
+  )
+  saveRDS(tibble::tibble(x = 1L), file.path(ctx_1$staging_collated_dir, "chunk1.rds"))
+
+  env$.analysis_mark_chunk(
+    run_ctx = ctx_1,
+    total_sims = 1L,
+    completed_sims = 1L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+
+  expect_false(env$.analysis_can_promote(ctx_1))
+  expect_false(isTRUE(env$.analysis_promote_run(ctx_1)))
+  expect_false(dir.exists(ctx_1$current_dir))
+
+  ctx_2 <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-promotion"),
+    run_id = "shared-run",
+    sim_grid_chunk_index = 2L,
+    sim_grid_n_chunks = 2L
+  )
+  saveRDS(tibble::tibble(x = 2L), file.path(ctx_2$staging_collated_dir, "chunk2.rds"))
+
+  env$.analysis_mark_chunk(
+    run_ctx = ctx_2,
+    total_sims = 1L,
+    completed_sims = 1L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+
+  expect_true(env$.analysis_can_promote(ctx_2))
+  expect_true(isTRUE(env$.analysis_promote_run(ctx_2)))
+  expect_true(dir.exists(ctx_2$current_dir))
+  expect_true(file.exists(file.path(ctx_2$staging_run_dir, "COMPLETE")))
+
+  status <- env$.analysis_read_status(ctx_2)
+  expect_identical(status$status, "completed")
+  expect_true(isTRUE(status$promotion_done))
+})
+
+test_that("failed or invalid runs are never promoted", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  ctx <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-failure"),
+    run_id = "failed-run",
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 1L
+  )
+
+  env$.analysis_mark_chunk(
+    run_ctx = ctx,
+    total_sims = 1L,
+    completed_sims = 0L,
+    failed_sims = 1L,
+    collate_ok = FALSE,
+    validation_ok = FALSE,
+    error_message = "sim failure"
+  )
+
+  expect_false(env$.analysis_can_promote(ctx))
+  expect_false(isTRUE(env$.analysis_promote_run(ctx)))
+  expect_false(dir.exists(ctx$current_dir))
+})
