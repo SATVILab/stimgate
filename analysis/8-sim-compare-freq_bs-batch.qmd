@@ -152,8 +152,8 @@ targeted_scenarios_tbl <- tibble::tribble(
 # 1. Mean-shift grid (all components):
 # Gaussian and Skew: 0, 0.025, 0.05, 0.1, 0.2
 # Gamma: 0, 0.005, 0.01, 0.025, 0.05
-mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.1, 0.2)
-mean_shift_gamma <- c(0, 0.005, 0.01, 0.025, 0.05)
+mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.1, 0.2, 0.5, 1)
+mean_shift_gamma <- c(0, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2)
 
 grid_mean_shift_all <- purrr::map_df(
   seq_len(nrow(targeted_scenarios_tbl)),
@@ -202,9 +202,9 @@ grid_mean_shift_negative <- purrr::map_df(
   }
 )
 
-# 3. SD-inflation grid:
+# 3. SD-inflation grid (negative/background component only):
 # Fractional SD increase: 0, 0.01, 0.025, 0.05, 0.10, 0.20
-sd_increase_vec <- c(0, 0.01, 0.025, 0.05, 0.10, 0.20)
+sd_increase_vec <- c(0, 0.01, 0.025, 0.05, 0.10, 0.20, 0.5, 1)
 
 grid_sd_inflation <- tidyr::expand_grid(
   targeted_scenarios_tbl,
@@ -215,7 +215,8 @@ grid_sd_inflation <- tidyr::expand_grid(
     mismatch_val = sd_increase,
     stim_mean_shift = 0,
     stim_mean_shift_clusters = NA_character_,
-    stim_sd_multiplier = 1 + sd_increase
+    stim_sd_multiplier = 1 + sd_increase,
+    stim_sd_multiplier_clusters = "gn"
   )
 
 # Combined full mismatch simulation grid
@@ -383,6 +384,7 @@ compare_summary <- .simCompareSummariseFreqBs(
     "stim_mean_shift",
     "stim_mean_shift_clusters",
     "stim_sd_multiplier",
+    "stim_sd_multiplier_clusters",
     "sd_increase",
     "transformation",
     "mean_pos_setting",
@@ -652,7 +654,7 @@ for (mean_pos_setting_curr in unique(summary_sd$mean_pos_setting)) {
     ) +
     labs(
       title = "Degradation under Stimulated SD Inflation",
-      subtitle = "Median Absolute Relative Error vs Fractional SD Increase",
+      subtitle = "Median Absolute Relative Error vs Fractional SD Increase (Negative Component Only)",
       x = "Fractional SD Increase",
       y = "Median Absolute Relative Error (asinh scale)",
       color = "Method"
