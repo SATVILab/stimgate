@@ -5,6 +5,7 @@ format:
     embed-resources: true
     toc: true
 params:
+  analysis_run_id: null
   sim_grid_chunk_index: 1
   sim_grid_n_chunks: 1
   run_simulations: true
@@ -31,6 +32,11 @@ run_simulations <- .as_flag(.get_qmd_param_env(
   "RUN_SIMULATIONS",
   FALSE
 ))
+analysis_run_id <- .get_qmd_param_env(
+  "analysis_run_id",
+  "ANALYSIS_RUN_ID",
+  NULL
+)
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -283,32 +289,26 @@ print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
 ```{r}
 #| label: compare-batch-run
 #| results: hide
-path_cache_dir <- projr::projr_path_get(
-  "cache",
-  "sim",
-  "compare",
-  "freq_bs_batch"
+run_ctx <- .analysis_run_context(
+  analysis_key = c("sim", "compare", "freq_bs_batch"),
+  run_id = analysis_run_id,
+  path_root = root_dir,
+  params = list(
+    run_simulations = run_simulations,
+    run_plots = run_plots,
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks
+  ),
+  sim_grid_chunk_index = sim_grid_chunk_index,
+  sim_grid_n_chunks = sim_grid_n_chunks
 )
-dir_output <- file.path(path_cache_dir, "output")
+dir_output <- run_ctx$chunk_output_dir
+path_progress_file <- run_ctx$progress_file
 dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
-
-path_progress_file <- projr::projr_path_get(
-  "cache",
-  "log",
-  "analysis",
-  "sim",
-  "compare",
-  "freq_bs_batch",
-  if (sim_grid_n_chunks > 1L) {
-    paste0("progress-chunk_", sim_chunk_label, ".txt")
-  } else {
-    "progress.txt"
-  }
-)
 dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
 
 path_rds <- file.path(
-  path_cache_dir,
+  run_ctx$staging_collated_dir,
   if (sim_grid_n_chunks > 1L) {
     sprintf("compare_raw_chunk_%s.rds", sim_chunk_label)
   } else {
@@ -369,9 +369,9 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
   .write_rds_atomic(compare_raw, path_rds)
 
   if (sim_grid_n_chunks > 1L) {
-    path_rds_full <- file.path(path_cache_dir, "compare_raw.rds")
+    path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
     compare_raw_full <- .simCompareCollateScenarioOutputs(
-      dirCache = dir_output,
+      dirCache = run_ctx$staging_run_dir,
       sim_grid = sim_grid_all
     )
     if (nrow(compare_raw_full) > 0L) {
@@ -384,6 +384,40 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 } else {
   message("Skipping simulations because run_simulations is FALSE.")
 }
+
+if (isTRUE(run_simulations)) {
+  sim_status_tbl <- if (nrow(compare_raw) > 0L && "sim_id" %in% names(compare_raw)) {
+    compare_raw |>
+      dplyr::filter(.data$sim_id %in% sim_grid$sim_id) |>
+      dplyr::group_by(.data$sim_id) |>
+      dplyr::summarise(
+        has_error = if ("error" %in% names(compare_raw)) {
+          any(!is.na(.data$error) & .data$error != "")
+        } else {
+          FALSE
+        },
+        .groups = "drop"
+      )
+  } else {
+    tibble::tibble(sim_id = integer(), has_error = logical())
+  }
+
+  n_failed <- sum(sim_status_tbl$has_error)
+  n_completed <- sum(!sim_status_tbl$has_error)
+
+  .analysis_mark_chunk(
+    run_ctx = run_ctx,
+    total_sims = nrow(sim_grid),
+    completed_sims = n_completed,
+    failed_sims = n_failed,
+    collate_ok = nrow(compare_raw) > 0L,
+    validation_ok = nrow(compare_raw) > 0L
+  )
+
+  if (.analysis_can_promote(run_ctx)) {
+    .analysis_promote_run(run_ctx)
+  }
+}
 ```
 
 ### Results summary
@@ -391,13 +425,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 ```{r}
 #| label: compare-summary
 if (!exists("compare_raw") || nrow(compare_raw) == 0L) {
-  path_rds <- projr::projr_path_get(
-    "cache",
-    "sim",
-    "compare",
-    "freq_bs_batch",
-    "compare_raw.rds"
-  )
+  path_rds <- file.path(run_ctx$current_dir, "collated", "compare_raw.rds")
   if (file.exists(path_rds)) {
     compare_raw <- readRDS(path_rds)
   }
