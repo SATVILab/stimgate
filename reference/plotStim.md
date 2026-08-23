@@ -179,7 +179,7 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpK1kgNG/stimgate_example_data_4af155d5e11a/stimgate"
+#> [1] "/tmp/RtmppmZWHf/stimgate_example_data_4a625ca889a6/stimgate"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
