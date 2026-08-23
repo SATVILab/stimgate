@@ -239,170 +239,22 @@
   file.path(run_ctx$progress_run_dir, paste0(lock_name, ".lock"))
 }
 
-.analysis_active_tokens <- new.env(parent = emptyenv())
-
-.lock_canonical_key <- function(lock_path) {
+.analysis_acquire_lock <- function(lock_path, timeout_sec = 120) {
   dir.create(dirname(lock_path), recursive = TRUE, showWarnings = FALSE)
-  file.path(normalizePath(dirname(lock_path), mustWork = TRUE), basename(lock_path))
-}
-
-.is_pid_alive <- function(pid) {
-  if (is.na(pid) || !is.numeric(pid) || pid <= 0L) {
-    return(FALSE)
+  if (!requireNamespace("filelock", quietly = TRUE)) {
+    stop("Package 'filelock' is required for transactional analysis locking.")
   }
-  pid <- as.integer(pid)
-  alive <- tryCatch(tools::pskill(pid, signal = 0L), error = function(e) NA)
-  if (!is.na(alive)) {
-    return(isTRUE(alive))
-  }
-  proc_path <- file.path("/proc", as.character(pid))
-  if (file.exists(proc_path)) {
-    return(TRUE)
-  }
-  ps_out <- tryCatch(
-    system2("ps", args = c("-p", as.character(pid), "-o", "pid="), stdout = TRUE, stderr = FALSE),
-    error = function(e) character(0)
-  )
-  length(ps_out) > 0L && any(nzchar(trimws(ps_out)))
-}
-
-.analysis_acquire_lock <- function(
+  filelock::lock(
     lock_path,
-    timeout_sec = 120,
-    poll_sec = 0.1,
-    orphan_stale_sec = 5) {
-  canon_key <- .lock_canonical_key(lock_path)
-  start <- Sys.time()
-
-  # Prevent recursive acquisition within the same R session
-  if (!is.null(.analysis_active_tokens[[canon_key]])) {
-    return(FALSE)
-  }
-
-  my_token <- paste0(
-    Sys.info()[["nodename"]],
-    "-",
-    Sys.getpid(),
-    "-",
-    as.numeric(Sys.time()),
-    "-",
-    .random_hex(6L)
+    exclusive = TRUE,
+    timeout = timeout_sec * 1000
   )
-
-  repeat {
-    if (dir.create(lock_path, recursive = FALSE, showWarnings = FALSE)) {
-      meta <- list(
-        token = my_token,
-        pid = Sys.getpid(),
-        host = Sys.info()[["nodename"]],
-        created_at = Sys.time()
-      )
-      token_path <- file.path(lock_path, paste0("token-", my_token, ".rds"))
-      meta_saved <- tryCatch({
-        saveRDS(meta, token_path)
-        TRUE
-      }, error = function(e) FALSE)
-
-      if (!isTRUE(meta_saved)) {
-        unlink(lock_path, recursive = TRUE, force = TRUE)
-        return(FALSE)
-      }
-      .analysis_active_tokens[[canon_key]] <- my_token
-      return(TRUE)
-    }
-
-    # Inspect token files inside existing lock directory
-    token_files <- list.files(lock_path, pattern = "^token-.*[.]rds$", full.names = FALSE)
-    if (length(token_files) > 0L) {
-      obs_file <- token_files[[1]]
-      meta <- tryCatch(readRDS(file.path(lock_path, obs_file)), error = function(e) NULL)
-      if (!is.null(meta)) {
-        owner_host <- as.character(meta$host)
-        owner_pid <- as.integer(meta$pid)
-        current_host <- Sys.info()[["nodename"]]
-
-        # Reclaim only when owner is proven dead on the same host (never by elapsed wall-time alone)
-        if (identical(owner_host, current_host) && !is.na(owner_pid) && !.is_pid_alive(owner_pid)) {
-          reclaim_file <- paste0("reclaim-", .random_hex(8L), ".rds")
-          reclaimed <- suppressWarnings(file.rename(
-            file.path(lock_path, obs_file),
-            file.path(lock_path, reclaim_file)
-          ))
-          if (isTRUE(reclaimed)) {
-            unlink(file.path(lock_path, reclaim_file), force = TRUE)
-            meta_new <- list(
-              token = my_token,
-              pid = Sys.getpid(),
-              host = Sys.info()[["nodename"]],
-              created_at = Sys.time()
-            )
-            saveRDS(meta_new, file.path(lock_path, paste0("token-", my_token, ".rds")))
-            .analysis_active_tokens[[canon_key]] <- my_token
-            return(TRUE)
-          }
-        }
-      }
-    } else {
-      # Orphan lock: directory exists but has no token file (e.g. process died right after dir.create)
-      dir_info <- tryCatch(file.info(lock_path), error = function(e) NULL)
-      dir_age_sec <- if (!is.null(dir_info$mtime)) {
-        as.numeric(difftime(Sys.time(), dir_info$mtime, units = "secs"))
-      } else {
-        Inf
-      }
-      if (is.finite(dir_age_sec) && dir_age_sec >= orphan_stale_sec) {
-        # Attempt atomic rename of orphan directory
-        reclaim_orphan <- paste0(lock_path, ".orphan.", .random_hex(6L))
-        if (isTRUE(suppressWarnings(file.rename(lock_path, reclaim_orphan)))) {
-          unlink(reclaim_orphan, recursive = TRUE, force = TRUE)
-          next
-        }
-      }
-    }
-
-    elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
-    if (is.finite(elapsed) && elapsed >= timeout_sec) {
-      return(FALSE)
-    }
-    Sys.sleep(poll_sec)
-  }
 }
 
-.analysis_release_lock <- function(lock_path, token = NULL) {
-  canon_key <- .lock_canonical_key(lock_path)
-  held_token <- .analysis_active_tokens[[canon_key]]
-  if (!is.null(held_token)) {
-    rm(list = canon_key, envir = .analysis_active_tokens)
+.analysis_release_lock <- function(lock) {
+  if (!is.null(lock) && inherits(lock, "filelock_lock")) {
+    tryCatch(filelock::unlock(lock), error = function(e) NULL)
   }
-
-  if (!dir.exists(lock_path)) {
-    return(invisible(TRUE))
-  }
-
-  token_files <- list.files(lock_path, pattern = "^token-.*[.]rds$", full.names = TRUE)
-  for (tf in token_files) {
-    meta <- tryCatch(readRDS(tf), error = function(e) NULL)
-    if (!is.null(meta)) {
-      is_owner <- FALSE
-      if (!is.null(token) && !is.null(meta$token)) {
-        is_owner <- identical(as.character(meta$token), as.character(token))
-      } else if (!is.null(held_token) && !is.null(meta$token)) {
-        is_owner <- identical(as.character(meta$token), as.character(held_token))
-      } else if (!is.null(meta$pid) && !is.null(meta$host)) {
-        is_owner <- identical(as.integer(meta$pid), as.integer(Sys.getpid())) &&
-          identical(as.character(meta$host), as.character(Sys.info()[["nodename"]]))
-      }
-      if (is_owner) {
-        unlink(tf, force = TRUE)
-      }
-    }
-  }
-
-  remaining_tokens <- list.files(lock_path, pattern = "^token-.*[.]rds$")
-  if (length(remaining_tokens) == 0L) {
-    unlink(lock_path, recursive = TRUE, force = TRUE)
-  }
-
   invisible(TRUE)
 }
 
@@ -670,10 +522,11 @@
     ended_at = NULL,
     promotion_done = NULL) {
   lock_path <- .analysis_lock_path(run_ctx, "status-update")
-  if (!.analysis_acquire_lock(lock_path, timeout_sec = 300)) {
+  lock <- .analysis_acquire_lock(lock_path, timeout_sec = 300)
+  if (is.null(lock)) {
     stop("Timed out acquiring status update lock for run_id: ", run_ctx$run_id)
   }
-  on.exit(.analysis_release_lock(lock_path), add = TRUE)
+  on.exit(.analysis_release_lock(lock), add = TRUE)
 
   st <- .analysis_read_status(run_ctx)
   if (is.null(st)) {
@@ -856,10 +709,11 @@
 
 .analysis_promote_run <- function(run_ctx) {
   lock_path <- .analysis_lock_path(run_ctx, "promotion")
-  if (!.analysis_acquire_lock(lock_path, timeout_sec = 300)) {
+  lock <- .analysis_acquire_lock(lock_path, timeout_sec = 300)
+  if (is.null(lock)) {
     return(invisible(FALSE))
   }
-  on.exit(.analysis_release_lock(lock_path), add = TRUE)
+  on.exit(.analysis_release_lock(lock), add = TRUE)
 
   if (!.analysis_can_promote(run_ctx)) {
     return(invisible(FALSE))

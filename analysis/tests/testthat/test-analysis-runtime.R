@@ -546,136 +546,78 @@ test_that("reconcile_resume_markers corrects error-path markers from durable out
   expect_false(file.exists(file_running))
 })
 
-test_that("a live lock still excludes a second writer", {
+test_that("one process holding the lock excludes another process, and unlock allows acquisition", {
   env <- .load_runtime_env()
 
   tmp_dir <- withr::local_tempdir()
   lock_path <- file.path(tmp_dir, "test.lock")
+  script_path <- script_runtime
 
-  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.2, poll_sec = 0.05)
-  expect_true(acquired)
+  lock1 <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.5)
+  expect_false(is.null(lock1))
+  withr::defer(env$.analysis_release_lock(lock1))
 
-  second <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.2, poll_sec = 0.05)
-  expect_false(second)
-
-  env$.analysis_release_lock(lock_path)
-
-  # After release, acquisition succeeds
-  reacquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.5, poll_sec = 0.05)
-  expect_true(reacquired)
-  env$.analysis_release_lock(lock_path)
-})
-
-test_that("a lock held by a dead process on the same host is recovered via token-fenced reclamation", {
-  env <- .load_runtime_env()
-
-  tmp_dir <- withr::local_tempdir()
-  lock_path <- file.path(tmp_dir, "stale-dead.lock")
-  dir.create(lock_path)
-
-  # Plant a token from a non-existent PID on the current host
-  dead_meta <- list(
-    token = "token-dead-old",
-    pid = .Machine$integer.max,
-    host = Sys.info()[["nodename"]],
-    created_at = Sys.time() - 3600
+  # Another process attempting to acquire the same lock times out and returns NULL
+  cmd_excluded <- sprintf(
+    "local_env <- new.env(parent = baseenv()); source(\"%s\", local = local_env); l <- local_env$.analysis_acquire_lock(\"%s\", timeout_sec = 0.1); cat(if (is.null(l)) \"EXCLUDED\" else \"ACQUIRED\")",
+    script_path, lock_path
   )
-  saveRDS(dead_meta, file.path(lock_path, "token-token-dead-old.rds"))
+  out_excluded <- system2("Rscript", args = c("-e", shQuote(cmd_excluded)), stdout = TRUE)
+  expect_true(any(grepl("EXCLUDED", out_excluded)))
 
-  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 2, poll_sec = 0.05)
-  expect_true(acquired)
-  env$.analysis_release_lock(lock_path)
-  expect_false(dir.exists(lock_path))
-})
+  # After normal unlock, another process can acquire it
+  env$.analysis_release_lock(lock1)
 
-test_that("token fencing prevents ABA race where stale decision clobbers a newer owner", {
-  env <- .load_runtime_env()
-
-  tmp_dir <- withr::local_tempdir()
-  lock_path <- file.path(tmp_dir, "aba-test.lock")
-  dir.create(lock_path)
-
-  # 1. Plant an old stale lock token from a dead PID
-  old_meta <- list(
-    token = "OLD_TOKEN",
-    pid = .Machine$integer.max,
-    host = Sys.info()[["nodename"]],
-    created_at = Sys.time() - 3600
+  cmd_acquired <- sprintf(
+    "local_env <- new.env(parent = baseenv()); source(\"%s\", local = local_env); l <- local_env$.analysis_acquire_lock(\"%s\", timeout_sec = 1); if (!is.null(l)) { local_env$.analysis_release_lock(l); cat(\"ACQUIRED_OK\") }",
+    script_path, lock_path
   )
-  saveRDS(old_meta, file.path(lock_path, "token-OLD_TOKEN.rds"))
+  out_acquired <- system2("Rscript", args = c("-e", shQuote(cmd_acquired)), stdout = TRUE)
+  expect_true(any(grepl("ACQUIRED_OK", out_acquired)))
+})
 
-  # 2. Contender B inspects lock_path and observes "token-OLD_TOKEN.rds"
-  observed_by_b <- "token-OLD_TOKEN.rds"
+test_that("a worker process terminating without unlocking leaves lock immediately acquirable", {
+  env <- .load_runtime_env()
 
-  # 3. Contender A reclaims "token-OLD_TOKEN.rds" and installs "token-NEW_TOKEN.rds"
-  token_files <- list.files(lock_path, pattern = "^token-.*[.]rds$")
-  expect_identical(token_files, "token-OLD_TOKEN.rds")
+  tmp_dir <- withr::local_tempdir()
+  lock_path <- file.path(tmp_dir, "termination.lock")
+  ready_file <- file.path(tmp_dir, "ready.txt")
+  pid_file <- file.path(tmp_dir, "pid.txt")
+  script_path <- script_runtime
 
-  reclaim_a <- file.path(lock_path, paste0("reclaim-", env$.random_hex(6L), ".rds"))
-  expect_true(file.rename(file.path(lock_path, "token-OLD_TOKEN.rds"), reclaim_a))
-  unlink(reclaim_a, force = TRUE)
-
-  live_meta_a <- list(
-    token = "NEW_TOKEN_A",
-    pid = Sys.getpid(),
-    host = Sys.info()[["nodename"]],
-    created_at = Sys.time()
+  # Launch worker in background that acquires lock and signals readiness
+  worker_cmd <- sprintf(
+    "local_env <- new.env(parent = baseenv()); source(\"%s\", local = local_env); writeLines(as.character(Sys.getpid()), \"%s\"); l <- local_env$.analysis_acquire_lock(\"%s\", timeout_sec = 10); writeLines(\"READY\", \"%s\"); Sys.sleep(100)",
+    script_path, pid_file, lock_path, ready_file
   )
-  saveRDS(live_meta_a, file.path(lock_path, "token-NEW_TOKEN_A.rds"))
+  system2("Rscript", args = c("-e", shQuote(worker_cmd)), wait = FALSE)
 
-  # 4. Contender B now attempts to reclaim its stale observation of "token-OLD_TOKEN.rds"
-  reclaim_b <- file.path(lock_path, paste0("reclaim-", env$.random_hex(6L), ".rds"))
-  b_reclaim_success <- suppressWarnings(file.rename(file.path(lock_path, observed_by_b), reclaim_b))
-
-  # Because Contender A already replaced OLD_TOKEN with NEW_TOKEN_A, B cannot rename OLD_TOKEN
-  expect_false(b_reclaim_success)
-
-  # Contender A's live lock remains completely intact and un-clobbered
-  expect_true(file.exists(file.path(lock_path, "token-NEW_TOKEN_A.rds")))
-  current_tokens <- list.files(lock_path, pattern = "^token-.*[.]rds$")
-  expect_identical(current_tokens, "token-NEW_TOKEN_A.rds")
-
-  # Clean up
-  unlink(lock_path, recursive = TRUE, force = TRUE)
-})
-
-test_that("orphan lock directory without metadata is recovered after orphan timeout", {
-  env <- .load_runtime_env()
-
-  tmp_dir <- withr::local_tempdir()
-  lock_path <- file.path(tmp_dir, "orphan.lock")
-  dir.create(lock_path)
-
-  # Directory exists but no token file
-  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 2, poll_sec = 0.05, orphan_stale_sec = 0.05)
-  expect_true(acquired)
-  env$.analysis_release_lock(lock_path)
-  expect_false(dir.exists(lock_path))
-})
-
-test_that("live locks during long-running operations cannot be stolen by elapsed time", {
-  env <- .load_runtime_env()
-
-  tmp_dir <- withr::local_tempdir()
-  lock_path <- file.path(tmp_dir, "long-op.lock")
-
-  # Holder acquires lock
-  holder_acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 1, poll_sec = 0.05)
-  expect_true(holder_acquired)
-
-  # Contender attempts acquisition with short timeout and cannot steal it
-  for (i in seq_len(3L)) {
-    contender_acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.1, poll_sec = 0.05)
-    expect_false(contender_acquired)
+  # Wait until worker has locked and signaled readiness
+  for (i in seq_len(100L)) {
+    if (file.exists(ready_file)) break
+    Sys.sleep(0.05)
   }
+  expect_true(file.exists(ready_file))
 
-  env$.analysis_release_lock(lock_path)
+  # Parent process cannot acquire while worker is alive
+  l_while_alive <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.1)
+  expect_null(l_while_alive)
+
+  # Terminate worker process abruptly (SIGKILL = 9)
+  worker_pid <- as.integer(readLines(pid_file)[[1]])
+  tools::pskill(worker_pid, signal = tools::SIGKILL)
+  Sys.sleep(0.1)
+
+  # OS fcntl drops lock automatically on process termination; another process can acquire immediately
+  l_after_death <- env$.analysis_acquire_lock(lock_path, timeout_sec = 2)
+  expect_false(is.null(l_after_death))
+  env$.analysis_release_lock(l_after_death)
 })
 
-test_that("concurrent lock acquisition across multiple workers is strictly serialised without races", {
+test_that("concurrent lock acquisition across workers remains safely serialised", {
   env <- .load_runtime_env()
 
-  tmp_dir <- tempfile("stale-concurrent-")
+  tmp_dir <- tempfile("flock-concurrent-")
   dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
   on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
 
@@ -696,13 +638,12 @@ test_that("concurrent lock acquisition across multiple workers is strictly seria
     local_env <- new.env(parent = baseenv())
     source(script_path, local = local_env)
 
-    acquired <- local_env$.analysis_acquire_lock(
+    lock <- local_env$.analysis_acquire_lock(
       lock_path,
-      timeout_sec = 15,
-      poll_sec = 0.05
+      timeout_sec = 15
     )
 
-    if (!isTRUE(acquired)) {
+    if (is.null(lock)) {
       return(list(worker_id = worker_id, ok = FALSE, error = "failed to acquire lock"))
     }
 
@@ -710,7 +651,7 @@ test_that("concurrent lock acquisition across multiple workers is strictly seria
     cat(paste0("worker-", worker_id, "\n"), file = log_file, append = TRUE)
     Sys.sleep(0.05)
 
-    local_env$.analysis_release_lock(lock_path)
+    local_env$.analysis_release_lock(lock)
 
     list(worker_id = worker_id, ok = TRUE)
   })
