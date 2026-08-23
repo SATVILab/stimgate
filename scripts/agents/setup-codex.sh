@@ -76,8 +76,7 @@ cat("pak repository status:\n")
 print(pak::repo_status())
 '
 
-# Install the latest stable Quarto release. Avoid pinning the cloud environment
-# to an obsolete Quarto release while still using a deterministic release asset.
+# Install the latest stable Quarto release.
 QUARTO_VERSION="$(curl -fsSL https://api.github.com/repos/quarto-dev/quarto-cli/releases/latest \
     | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"].lstrip("v"))')"
 wget -qO /tmp/quarto.deb \
@@ -86,33 +85,16 @@ sudo dpkg -i /tmp/quarto.deb
 rm -f /tmp/quarto.deb
 quarto --version
 
-run_pak_pass() {
-    local rc=0
-
-    sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
-        Rscript --vanilla -e '
-    source("/tmp/stimgate-agent-repos.R")
-    pak::local_install_dev_deps(".", upgrade = FALSE, ask = FALSE)
-    ' || rc=1
-
+run_pak_bioc_core() {
     sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
         Rscript --vanilla -e '
     source("/tmp/stimgate-agent-repos.R")
     pak::pkg_install(
-        c(
-            "devtools", "rcmdcheck", "decor", "roxygen2", "styler", "lintr", "covr", "pkgdown",
-            "SATVILab/projr",
-            "SATVILab/simcyto",
-            "future", "furrr", "progressr",
-            "reticulate",
-            "RGLab/cytoUtils"
-        ),
+        c("flowCore", "flowWorkspace", "Biobase"),
         upgrade = FALSE,
         ask = FALSE
     )
-    ' || rc=1
-
-    return "$rc"
+    '
 }
 
 run_bioc_repair() {
@@ -127,30 +109,117 @@ run_bioc_repair() {
     "
 }
 
-if run_pak_pass; then
-    PAK_PASS_1=0
-else
-    PAK_PASS_1=$?
-fi
+run_pak_local_deps() {
+    sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
+        Rscript --vanilla -e '
+    source("/tmp/stimgate-agent-repos.R")
+    pak::local_install_dev_deps(".", upgrade = FALSE, ask = FALSE)
+    '
+}
 
-if [ "$PAK_PASS_1" -ne 0 ]; then
+run_pak_dev_tools() {
+    sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
+        Rscript --vanilla -e '
+    source("/tmp/stimgate-agent-repos.R")
+    pak::pkg_install(
+        c("devtools", "rcmdcheck", "decor", "roxygen2", "styler", "lintr", "covr", "pkgdown"),
+        upgrade = FALSE,
+        ask = FALSE
+    )
+    '
+}
+
+run_pak_analysis_deps() {
+    sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
+        Rscript --vanilla -e '
+    source("/tmp/stimgate-agent-repos.R")
+    pak::pkg_install(
+        c("future", "furrr", "progressr", "reticulate"),
+        upgrade = FALSE,
+        ask = FALSE
+    )
+    '
+}
+
+run_pak_github_deps() {
+    sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
+        Rscript --vanilla -e '
+    source("/tmp/stimgate-agent-repos.R")
+    pak::pkg_install(
+        c("SATVILab/projr", "SATVILab/simcyto", "RGLab/cytoUtils"),
+        upgrade = FALSE,
+        ask = FALSE
+    )
+    '
+}
+
+run_stage() {
+    local label="$1"
+    local fn="$2"
+
+    echo
+    echo "################################################################"
+    echo "# ${label}"
+    echo "################################################################"
+
+    if "$fn"; then
+        return 0
+    fi
+
+    echo "${label} failed."
+    return 1
+}
+
+# Keep the initial setup in bounded transactions. In particular, install the
+# Bioconductor runtime stack before asking pak to resolve all local dev deps.
+# This avoids one large mixed CRAN/Bioconductor transaction and makes a stalled
+# download or source build much easier to diagnose.
+BIOC_RC=0
+LOCAL_RC=0
+TOOLS_RC=0
+ANALYSIS_RC=0
+GITHUB_RC=0
+
+run_stage "STAGE 1: core Bioconductor packages" run_pak_bioc_core || BIOC_RC=$?
+
+if [ "$BIOC_RC" -ne 0 ]; then
+    echo "Trying BiocManager repair before retrying the core Bioconductor stage."
     run_bioc_repair || true
+    BIOC_RC=0
+    run_stage "STAGE 1 RETRY: core Bioconductor packages" run_pak_bioc_core || BIOC_RC=$?
 fi
 
-if run_pak_pass; then
-    PAK_PASS_2=0
-else
-    PAK_PASS_2=$?
-fi
+run_stage "STAGE 2: StimGate DESCRIPTION development dependencies" run_pak_local_deps || LOCAL_RC=$?
+run_stage "STAGE 3: package-development tools" run_pak_dev_tools || TOOLS_RC=$?
+run_stage "STAGE 4: analysis CRAN dependencies" run_pak_analysis_deps || ANALYSIS_RC=$?
+run_stage "STAGE 5: GitHub dependencies" run_pak_github_deps || GITHUB_RC=$?
 
-if [ "$PAK_PASS_2" -ne 0 ]; then
+if [ "$LOCAL_RC" -ne 0 ] || [ "$TOOLS_RC" -ne 0 ] || [ "$ANALYSIS_RC" -ne 0 ] || [ "$GITHUB_RC" -ne 0 ]; then
+    echo
+    echo "One or more pak stages failed. Repairing installed system requirements and retrying only failed stages."
+
     sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
         Rscript --vanilla -e '
     source("/tmp/stimgate-agent-repos.R")
     try(pak::sysreqs_fix_installed(), silent = FALSE)
     ' || true
-    run_bioc_repair || true
-    run_pak_pass || true
+
+    if [ "$LOCAL_RC" -ne 0 ]; then
+        LOCAL_RC=0
+        run_stage "STAGE 2 RETRY: StimGate DESCRIPTION development dependencies" run_pak_local_deps || LOCAL_RC=$?
+    fi
+    if [ "$TOOLS_RC" -ne 0 ]; then
+        TOOLS_RC=0
+        run_stage "STAGE 3 RETRY: package-development tools" run_pak_dev_tools || TOOLS_RC=$?
+    fi
+    if [ "$ANALYSIS_RC" -ne 0 ]; then
+        ANALYSIS_RC=0
+        run_stage "STAGE 4 RETRY: analysis CRAN dependencies" run_pak_analysis_deps || ANALYSIS_RC=$?
+    fi
+    if [ "$GITHUB_RC" -ne 0 ]; then
+        GITHUB_RC=0
+        run_stage "STAGE 5 RETRY: GitHub dependencies" run_pak_github_deps || GITHUB_RC=$?
+    fi
 fi
 
 Rscript --vanilla -e '
