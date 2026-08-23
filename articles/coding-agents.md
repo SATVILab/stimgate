@@ -74,6 +74,22 @@ Do not run `renv::restore()` merely because the project contains `renv`
 files. For these cloud environments, a missing package should normally
 be treated as an environment-setup problem.
 
+### Use Posit Linux binaries in a form pak recognises
+
+The Codex and Jules scripts use:
+
+``` text
+https://packagemanager.posit.co/cran/__linux__/noble/latest
+```
+
+for ordinary CRAN packages. Keep this `__linux__` form unless pak adds
+equivalent support for the newer Posit `/bin/linux/...` repository
+layout. In testing, pak classified the newer URL as a source repository
+and attempted to rebuild more than 100 ordinary CRAN dependencies from
+source. The `__linux__` URL lets pak use prebuilt Linux binaries where
+available, which makes initial cloud setup substantially faster and less
+fragile.
+
 ### Keep `simcyto` current
 
 Use:
@@ -411,6 +427,21 @@ rebuilds.
 Check that `CI=true` is present in the agent’s task-time environment,
 not only exported during setup. For Copilot, also check that the
 repository `.Rprofile` still recognises the Copilot/CI environment.
+
+### pak starts building large numbers of ordinary CRAN packages
+
+Check the repository URL printed by
+[`pak::repo_status()`](https://pak.r-lib.org/reference/repo_status.html).
+For Codex/Jules, CRAN should use:
+
+``` text
+https://packagemanager.posit.co/cran/__linux__/noble/latest
+```
+
+If pak reports CRAN as a source repository and starts compiling ordinary
+packages such as `jsonlite`, `callr`, `otel`, `rlang` or `ggplot2`,
+check that the newer `/bin/linux/...` Posit URL has not been substituted
+into the agent script.
 
 ### `simcyto` is installed but appears stale
 
