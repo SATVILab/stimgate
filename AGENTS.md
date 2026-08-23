@@ -256,7 +256,6 @@ pkgdown::check_pkgdown()
   - `debug.R`: Debugging utilities (`.debug()`) and global variable declarations.
   - `profile.R`: Structured debug timing, incremental persistence and final collation helpers.
   - `zz_profile_instrumentation.R`: Debug-only profiling wrappers around selected workflow boundaries.
-  - `zzz_profile_run_start.R`: Resets profiling once at the start of each debug `gateStim()` run.
   - `ex.R`: Extract expression matrices from `GatingSet` objects.
   - `example_data.R`: Loads the canonical shipped example dataset via `getExampleData()` and does not simulate new data.
   - `fcs_write.R`: Write FCS files of cytokine-positive cells (`writeStimFCS`).
@@ -333,10 +332,13 @@ QMD runtime or unrelated plotting/orchestration code.
   variable (set to `"true"`, `"yes"`, `"y"`, or `"1"` to enable).
   Do **NOT** add a debug flag or parameter to function signatures.
 - Debug mode also enables structured timing profiles under `pathProject/profile/`.
-  Each completed timing unit is saved immediately as a small RDS record under
-  `profile/raw/`; a successful run collates these records into `profile/profile.rds`
-  and `profile/profile.csv`. A new debug `gateStim()` run removes the previous
-  `profile/` directory first. Profiling failures must never fail the gating run.
+  The whole-run timer and directory lifecycle are managed from `gateStim()` via
+  an `on.exit()` handler. Each completed timing unit is saved immediately as a
+  small RDS record under `profile/raw/`; successful and failed runs both collate
+  all readable records into `profile/profile.rds` and `profile/profile.csv`
+  (recording `"completed"` or `"failed"` status). A new debug `gateStim()` run
+  removes the previous `profile/` directory first. Profiling failures must never
+  fail the gating run.
 - Keep profiling selective. Record broad workflow stages generally, but detailed
   per-sample timings are currently reserved for initial local-FDR gating. The
   selected sample-level detail is the probability model, density/bandwidth work,

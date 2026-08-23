@@ -385,6 +385,37 @@ gateStim <- function(
     ) # nolint
   }
 
+  if (
+    .profileEnabled() &&
+      is.character(pathProject) &&
+      length(pathProject) == 1L &&
+      !is.na(pathProject) &&
+      nzchar(pathProject)
+  ) {
+    .profileInit(pathProject, reset = TRUE)
+  }
+
+  runSuccess <- FALSE
+  on.exit(
+    {
+      if (.profileEnabled() && isTRUE(.profileState$initialized)) {
+        tryCatch(
+          {
+            .profileFinishRun(
+              pathProject = pathProject,
+              status = if (runSuccess) "completed" else "failed"
+            )
+          },
+          error = function(e) {
+            .profileStateReset()
+            invisible(NULL)
+          }
+        )
+      }
+    },
+    add = TRUE
+  )
+
   # Verify global function inputs
   .verifyGateInputs(
     pathProject = pathProject,
@@ -563,6 +594,7 @@ gateStim <- function(
     pathProject = pathProject
   )
 
+  runSuccess <- TRUE
   pathProject
 }
 

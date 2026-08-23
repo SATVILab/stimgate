@@ -69,6 +69,15 @@
 
   tryCatch(
     {
+      if (
+        is.null(pathProject) ||
+          !is.character(pathProject) ||
+          length(pathProject) != 1L ||
+          is.na(pathProject) ||
+          !nzchar(pathProject)
+      ) {
+        return(invisible(FALSE))
+      }
       pathProject <- .profileNormalisePath(pathProject)
       if (
         isTRUE(.profileState$initialized) &&
@@ -186,9 +195,12 @@
     }
   }
   .profileState$context <- newContext
-  on.exit({
-    .profileState$context <- oldContext
-  }, add = TRUE)
+  on.exit(
+    {
+      .profileState$context <- oldContext
+    },
+    add = TRUE
+  )
 
   value <- withVisible(force(expr))
   if (isTRUE(value$visible)) {
@@ -279,47 +291,64 @@
 
 #' Finish one profiling timer and persist it immediately
 #' @keywords internal
-.profileStop <- function(timer) {
+.profileStop <- function(timer, status = "completed") {
   if (is.null(timer)) {
     return(invisible(NULL))
   }
 
-  elapsed <- proc.time()[["elapsed"]] - timer$startedElapsed
-  finishedAt <- format(
-    Sys.time(),
-    "%Y-%m-%dT%H:%M:%OS3%z"
-  )
-  .profilePop(timer$recordId)
+  tryCatch(
+    {
+      elapsed <- proc.time()[["elapsed"]] - timer$startedElapsed
+      finishedAt <- format(
+        Sys.time(),
+        "%Y-%m-%dT%H:%M:%OS3%z"
+      )
+      .profilePop(timer$recordId)
 
-  record <- data.frame(
-    record_id = timer$recordId,
-    parent_id = timer$parentId,
-    depth = as.integer(timer$depth),
-    level = timer$level,
-    major = timer$major,
-    minor = timer$minor,
-    operation = timer$operation,
-    marker = timer$marker,
-    channel = timer$channel,
-    batch = timer$batch,
-    sample = timer$sample,
-    stage = timer$stage,
-    pid = as.integer(timer$pid),
-    elapsed_sec = as.numeric(elapsed),
-    started_at = timer$startedAt,
-    finished_at = finishedAt,
-    status = "completed",
-    stringsAsFactors = FALSE
+      record <- data.frame(
+        record_id = timer$recordId,
+        parent_id = timer$parentId,
+        depth = as.integer(timer$depth),
+        level = timer$level,
+        major = timer$major,
+        minor = timer$minor,
+        operation = timer$operation,
+        marker = timer$marker,
+        channel = timer$channel,
+        batch = timer$batch,
+        sample = timer$sample,
+        stage = timer$stage,
+        pid = as.integer(timer$pid),
+        elapsed_sec = as.numeric(elapsed),
+        started_at = timer$startedAt,
+        finished_at = finishedAt,
+        status = as.character(status[[1L]]),
+        stringsAsFactors = FALSE
+      )
+      .profileWriteRecord(record, timer$pathRecord)
+      invisible(record)
+    },
+    error = function(e) {
+      .profilePop(timer$recordId)
+      .profileMessage(conditionMessage(e))
+      invisible(NULL)
+    }
   )
-  .profileWriteRecord(record, timer$pathRecord)
-  invisible(record)
 }
 
 #' Discard an unfinished timer while restoring the hierarchy stack
 #' @keywords internal
 .profileCancel <- function(timer) {
   if (!is.null(timer)) {
-    .profilePop(timer$recordId)
+    tryCatch(
+      {
+        .profileStop(timer, status = "failed")
+      },
+      error = function(e) {
+        .profilePop(timer$recordId)
+        invisible(FALSE)
+      }
+    )
   }
   invisible(FALSE)
 }
@@ -349,14 +378,17 @@
   }
 
   completed <- FALSE
-  on.exit({
-    if (!completed) {
-      .profileCancel(timer)
-    }
-  }, add = TRUE)
+  on.exit(
+    {
+      if (!completed) {
+        .profileCancel(timer)
+      }
+    },
+    add = TRUE
+  )
 
   value <- withVisible(force(expr))
-  .profileStop(timer)
+  .profileStop(timer, status = "completed")
   completed <- TRUE
   if (isTRUE(value$visible)) {
     value$value
@@ -447,17 +479,28 @@
 
 #' Finish the run timer and collate the final profile
 #' @keywords internal
-.profileFinishRun <- function(pathProject = .profileState$pathProject) {
+.profileFinishRun <- function(
+    pathProject = .profileState$pathProject,
+    status = "completed") {
   if (!.profileEnabled() || !isTRUE(.profileState$initialized)) {
     return(invisible(NULL))
   }
 
-  runTimer <- .profileState$runTimer
-  if (!is.null(runTimer)) {
-    .profileStop(runTimer)
-    .profileState$runTimer <- NULL
-  }
-  profileTbl <- .profileFinalise(pathProject)
-  .profileStateReset()
-  invisible(profileTbl)
+  tryCatch(
+    {
+      runTimer <- .profileState$runTimer
+      if (!is.null(runTimer)) {
+        .profileStop(runTimer, status = status)
+        .profileState$runTimer <- NULL
+      }
+      profileTbl <- .profileFinalise(pathProject)
+      .profileStateReset()
+      invisible(profileTbl)
+    },
+    error = function(e) {
+      .profileStateReset()
+      .profileMessage(conditionMessage(e))
+      invisible(NULL)
+    }
+  )
 }

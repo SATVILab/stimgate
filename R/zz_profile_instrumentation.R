@@ -126,7 +126,6 @@
     ),
     stage = "stats"
   )
-  .profileFinishRun(pathProject)
   out
 }
 
