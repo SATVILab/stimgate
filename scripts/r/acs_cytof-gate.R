@@ -8,10 +8,12 @@
   if (!is.character(pop) || length(pop) != 1L || !nzchar(pop)) {
     stop("pop must be one non-empty character value.")
   }
-  if (!is.null(outputGroup) &&
-    (!is.character(outputGroup) ||
-      length(outputGroup) != 1L ||
-      !nzchar(outputGroup))) {
+  if (
+    !is.null(outputGroup) &&
+      (!is.character(outputGroup) ||
+        length(outputGroup) != 1L ||
+        !nzchar(outputGroup))
+  ) {
     stop("outputGroup must be NULL or one non-empty character value.")
   }
 
@@ -30,12 +32,14 @@
 }
 
 .acsCytofBatchList <- function(nSample) {
-  if (!is.numeric(nSample) ||
-    length(nSample) != 1L ||
-    is.na(nSample) ||
-    !is.finite(nSample) ||
-    nSample != as.integer(nSample) ||
-    nSample < 5L) {
+  if (
+    !is.numeric(nSample) ||
+      length(nSample) != 1L ||
+      is.na(nSample) ||
+      !is.finite(nSample) ||
+      nSample != as.integer(nSample) ||
+      nSample < 5L
+  ) {
     stop("nSample must be one integer of at least 5.")
   }
 
@@ -67,22 +71,32 @@
   )
   if (length(fcsFiles) < 10L) {
     stop(
-      "Expected at least 10 ACS CyTOF FCS files in ", pathFcs,
-      ", but found only ", length(fcsFiles), "."
+      "Expected at least 10 ACS CyTOF FCS files in ",
+      pathFcs,
+      ", but found only ",
+      length(fcsFiles),
+      "."
     )
   }
 
   sort(fcsFiles)
 }
 
-.acsCytofPreprocessPopulation <- function(paths, nSample = NULL, runPlots = TRUE) {
+.acsCytofPreprocessPopulation <- function(
+  paths,
+  nSample = NULL,
+  runPlots = TRUE
+) {
   fcsFiles <- .acsCytofFcsFiles(paths$fcs)
   if (!is.null(nSample)) {
     .acsCytofBatchList(nSample)
     if (nSample > length(fcsFiles)) {
       stop(
-        "Requested ", nSample, " tester samples, but only ",
-        length(fcsFiles), " FCS files are available."
+        "Requested ",
+        nSample,
+        " tester samples, but only ",
+        length(fcsFiles),
+        " FCS files are available."
       )
     }
   }
@@ -157,6 +171,30 @@
   }
 }
 
+.acsCytofRunPopulationSafe <- function(...) {
+  pop <- list(...)$pop
+
+  tryCatch(
+    {
+      result <- .acsCytofRunPopulation(...)
+      list(
+        pop = pop,
+        success = TRUE,
+        result = result,
+        error = NULL
+      )
+    },
+    error = function(e) {
+      list(
+        pop = pop,
+        success = FALSE,
+        result = NULL,
+        error = conditionMessage(e)
+      )
+    }
+  )
+}
+
 .acsCytofRunPopulation <- function(
   pop,
   pathFcsBase,
@@ -190,8 +228,11 @@
   }
   if (!dir.exists(paths$gs)) {
     stop(
-      "Cached ACS CyTOF GatingSet not found for '", pop, "' at: ",
-      paths$gs, ". Run preprocessing for this population first."
+      "Cached ACS CyTOF GatingSet not found for '",
+      pop,
+      "' at: ",
+      paths$gs,
+      ". Run preprocessing for this population first."
     )
   }
 
@@ -200,8 +241,13 @@
   nSampleActual <- length(gs)
   if (!is.null(nSample) && nSampleActual != nSample) {
     stop(
-      "Cached tester GatingSet for '", pop, "' contains ", nSampleActual,
-      " samples; expected ", nSample, ". Re-run tester preprocessing."
+      "Cached tester GatingSet for '",
+      pop,
+      "' contains ",
+      nSampleActual,
+      " samples; expected ",
+      nSample,
+      ". Re-run tester preprocessing."
     )
   }
   batchList <- .acsCytofBatchList(nSampleActual)
@@ -221,8 +267,12 @@
       popGate = "root",
       batchList = batchList,
       chnl = c(
-        "Ho165Di", "Gd158Di", "Nd146Di",
-        "Dy164Di", "Gd156Di", "Nd150Di"
+        "Ho165Di",
+        "Gd158Di",
+        "Nd146Di",
+        "Dy164Di",
+        "Gd156Di",
+        "Nd150Di"
       ),
       biasUns = biasUns,
       bwMtd = "hpi1",
@@ -240,7 +290,10 @@
   if (isTRUE(runPlots)) {
     if (!dir.exists(paths$stimgate)) {
       stop(
-        "StimGate output not found for '", pop, "' at: ", paths$stimgate,
+        "StimGate output not found for '",
+        pop,
+        "' at: ",
+        paths$stimgate,
         ". Run the methods for this population first."
       )
     }
@@ -252,7 +305,11 @@
       pop = "root",
       chnl = c("Ho165Di", "Nd146Di")
     )
-    dir.create(dirname(paths$stimgateCheck), recursive = TRUE, showWarnings = FALSE)
+    dir.create(
+      dirname(paths$stimgateCheck),
+      recursive = TRUE,
+      showWarnings = FALSE
+    )
     ggplot2::ggsave(
       filename = paths$stimgateCheck,
       plot = p,

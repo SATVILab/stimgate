@@ -191,7 +191,7 @@ population_runs <- tryCatch(
     furrr::future_map(
       pop_vec,
       function(pop) {
-        .acsCytofRunPopulation(
+        .acsCytofRunPopulationSafe(
           pop = pop,
           pathFcsBase = path_fcs_base,
           pathGsBase = path_gs_base,
@@ -202,12 +202,34 @@ population_runs <- tryCatch(
           biasUns = bias_uns_vec_by_pop[[pop]]
         )
       },
-      .options = furrr::furrr_options(seed = TRUE)
+      .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
     )
   },
   finally = future::plan(old_plan)
 )
 names(population_runs) <- pop_vec
+failed_pop_vec <- names(population_runs)[
+  !vapply(
+    population_runs,
+    function(x) isTRUE(x$success),
+    logical(1)
+  )
+]
+
+if (length(failed_pop_vec) > 0L) {
+  warning(
+    "ACS CyTOF populations failed: ",
+    paste(failed_pop_vec, collapse = ", ")
+  )
+
+  for (pop in failed_pop_vec) {
+    message(
+      pop,
+      ": ",
+      population_runs[[pop]]$error
+    )
+  }
+}
 ```
 
 ## Tailgate and F-beta
