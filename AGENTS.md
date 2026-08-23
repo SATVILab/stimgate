@@ -328,8 +328,8 @@ QMD runtime or unrelated plotting/orchestration code.
 ### Debugging & Intermediate Data Saving
 
 - Use `.debug(msg, val)` inside internal functions for debug messages. Debug output
-  is written to a temp file and controlled by the `STIMGATE_DEBUG` environment
-  variable (set to `"true"`, `"yes"`, `"y"`, or `"1"` to enable).
+  is written to `pathProject/debug/debug.txt` and controlled by the `STIMGATE_DEBUG`
+  environment variable (set to `"true"`, `"yes"`, `"y"`, or `"1"` to enable).
   Do **NOT** add a debug flag or parameter to function signatures.
 - Debug mode also enables structured timing profiles under `pathProject/profile/`.
   The whole-run timer and directory lifecycle are managed from `gateStim()` via
@@ -337,8 +337,8 @@ QMD runtime or unrelated plotting/orchestration code.
   small RDS record under `profile/raw/`; successful and failed runs both collate
   all readable records into `profile/profile.rds` and `profile/profile.csv`
   (recording `"completed"` or `"failed"` status). A new debug `gateStim()` run
-  removes the previous `profile/` directory first. Profiling failures must never
-  fail the gating run.
+  removes previous `debug/` and `profile/` directories first. Profiling and debug
+  logging failures must never fail the gating run.
 - Keep profiling selective. Record broad workflow stages generally, but detailed
   per-sample timings are currently reserved for initial local-FDR gating. The
   selected sample-level detail is the probability model, density/bandwidth work,

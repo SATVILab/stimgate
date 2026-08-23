@@ -37,8 +37,6 @@ reference:
   - stimgateMetaReadSettingsChnls
   - stimgateMetaReadSettingsMarker
   - stimgateMetaReadSettingsMarkers
-  - stimgate_debug_copy
-  - stimgate_debug_print
 
 navbar:
   structure:

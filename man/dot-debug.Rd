@@ -7,15 +7,15 @@
 .debug(msg, val = NULL)
 }
 \arguments{
-\item{msg}{character Message to print}
+\item{msg}{character Message to print.}
 
-\item{val}{object Optional value to append to message. Default is NULL.}
+\item{val}{object Optional value to append to message. Default: NULL.}
 }
 \value{
-logical invisibly TRUE if message was written, FALSE otherwise
+logical invisibly TRUE if message was written, FALSE otherwise.
 }
 \description{
-Writes debug output to the most recent stimgate debug file when
+Writes debug output directly to pathProject/debug/debug.txt when
 STIMGATE_DEBUG is enabled.
 }
 \keyword{internal}

@@ -140,49 +140,73 @@ globalVariables(c(
   "_stimgate_stimgate_cpPmden"
 ))
 
-#' Create a debug file in tempdir()
+.debugState <- new.env(parent = emptyenv())
+.debugState$file <- NULL
+.debugState$initialized <- FALSE
+
+#' Reset internal debug state
 #'
-#' @return character Path to the created debug file (invisibly).
+#' @return invisible(NULL)
 #' @keywords internal
-.debugFileCreate <- function() {
-  dirPath <- file.path(tempdir(), "stimgate")
-  if (!dir.exists(dirPath)) {
-    dir.create(dirPath, recursive = TRUE, showWarnings = FALSE)
-  }
-  timestamp <- format(Sys.time(), "%Y-%m-%d-%H%M%S")
-  filePath <- file.path(dirPath, paste0("stimgate_", timestamp, ".txt"))
-  file.create(filePath, showWarnings = FALSE)
-  invisible(filePath)
+.debugStateReset <- function() {
+  .debugState$file <- NULL
+  .debugState$initialized <- FALSE
+  invisible(NULL)
 }
 
-#' Get the most recent debug file path
+#' Initialise textual debug state for a StimGate run
 #'
-#' @return character Path to the most recent debug file, or NULL if none.
+#' @param pathProject character Path to project directory.
+#' @param reset logical Whether to reset existing debug directory.
+#'   Default: TRUE.
+#' @return logical TRUE if debug is active and initialized, FALSE otherwise.
 #' @keywords internal
-.debugFileGetPath <- function() {
-  dirPath <- file.path(tempdir(), "stimgate")
-  if (!dir.exists(dirPath)) {
-    return(NULL)
+.debugInit <- function(pathProject, reset = TRUE) {
+  mustDebug <- tolower(trimws(Sys.getenv("STIMGATE_DEBUG"))) %in%
+    c("y", "true", "yes", "1")
+  if (!mustDebug) {
+    .debugStateReset()
+    return(FALSE)
   }
-  files <- list.files(
-    dirPath,
-    pattern = "^stimgate_\\d{4}-\\d{2}-\\d{2}-\\d{6}\\.txt$",
-    full.names = TRUE
+  if (
+    !is.character(pathProject) ||
+      length(pathProject) != 1L ||
+      is.na(pathProject) ||
+      !nzchar(pathProject)
+  ) {
+    .debugStateReset()
+    return(FALSE)
+  }
+  tryCatch(
+    {
+      dirDebug <- file.path(pathProject, "debug")
+      if (isTRUE(reset) && dir.exists(dirDebug)) {
+        unlink(dirDebug, recursive = TRUE, force = TRUE)
+      }
+      if (!dir.exists(dirDebug)) {
+        dir.create(dirDebug, recursive = TRUE, showWarnings = FALSE)
+      }
+      pathDebugFile <- file.path(dirDebug, "debug.txt")
+      file.create(pathDebugFile, showWarnings = FALSE)
+      .debugState$file <- pathDebugFile
+      .debugState$initialized <- TRUE
+      TRUE
+    },
+    error = function(e) {
+      .debugStateReset()
+      FALSE
+    }
   )
-  if (length(files) == 0) {
-    return(NULL)
-  }
-  files[which.max(file.info(files)$mtime)]
 }
 
 #' Print debug message conditionally
 #'
-#' Writes debug output to the most recent stimgate debug file when
+#' Writes debug output directly to pathProject/debug/debug.txt when
 #' STIMGATE_DEBUG is enabled.
 #'
-#' @param msg character Message to print
-#' @param val object Optional value to append to message. Default is NULL.
-#' @return logical invisibly TRUE if message was written, FALSE otherwise
+#' @param msg character Message to print.
+#' @param val object Optional value to append to message. Default: NULL.
+#' @return logical invisibly TRUE if message was written, FALSE otherwise.
 #' @keywords internal
 .debug <- function(msg, val = NULL) {
   mustDebug <- tolower(trimws(Sys.getenv("STIMGATE_DEBUG"))) %in%
@@ -190,62 +214,25 @@ globalVariables(c(
   if (!mustDebug) {
     return(invisible(FALSE))
   }
-  if (!is.null(val)) {
-    msg <- paste0(msg, ": ", val)
-  }
-  pathDebug <- .debugFileGetPath()
-  if (is.null(pathDebug)) {
-    pathDebug <- .debugFileCreate()
-  }
-  cat(msg, file = pathDebug, sep = "\n", append = TRUE)
-  invisible(TRUE)
-}
-
-#' Copy the latest stimgate debug file to the working directory
-#'
-#' @description Copies the most recent debug file created by stimgate
-#' to the current working directory. The copied file uses the same
-#' filename as the source.
-#' @param pathDir character. Directory to copy the debug file to.
-#' Default is `getwd()` (i.e. the working directory).
-#'
-#' @return character Path to the copied file (invisibly), or NULL if no
-#'   debug file exists.
-#' @export
-stimgate_debug_copy <- function(pathDir = getwd()) {
-  src <- .debugFileGetPath()
-  if (is.null(src)) {
-    message("No stimgate debug file found.")
-    return(invisible(NULL))
-  }
-  if (!dir.exists(pathDir)) {
-    dir.create(pathDir, recursive = TRUE)
-  }
-  dest <- file.path(pathDir, basename(src))
-  ok <- file.copy(src, dest, overwrite = TRUE)
-  if (!ok) {
-    message("Failed to copy debug file to working directory.")
-    return(invisible(NULL))
-  }
-  invisible(dest)
-}
-
-#' Print the latest stimgate debug file to the console
-#'
-#' @description Prints the most recent debug file created by stimgate
-#' to the console.
-#'
-#' @return character The debug text (invisibly), or NULL if no debug file exists.
-#' @export
-stimgate_debug_print <- function() {
-  src <- .debugFileGetPath()
-  if (is.null(src)) {
-    message("No stimgate debug file found.")
-    return(invisible(NULL))
-  }
-  txt <- readLines(src, warn = FALSE)
-  cat(txt, sep = "\n")
-  invisible(txt)
+  tryCatch(
+    {
+      if (!is.null(val)) {
+        msg <- paste0(msg, ": ", val)
+      }
+      pathDebug <- .debugState$file
+      if (is.null(pathDebug) || !is.character(pathDebug) || !nzchar(pathDebug)) {
+        return(invisible(FALSE))
+      }
+      if (!dir.exists(dirname(pathDebug))) {
+        dir.create(dirname(pathDebug), recursive = TRUE, showWarnings = FALSE)
+      }
+      cat(msg, file = pathDebug, sep = "\n", append = TRUE)
+      invisible(TRUE)
+    },
+    error = function(e) {
+      invisible(FALSE)
+    }
+  )
 }
 
 #' @keywords internal
