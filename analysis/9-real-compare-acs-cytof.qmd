@@ -35,7 +35,7 @@ source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
 run_preprocessing <- .as_flag(.get_qmd_param_env(
   "run_preprocessing",
   "RUN_PREPROCESSING",
-  FALSE
+  TRUE
 ))
 run_methods <- .as_flag(.get_qmd_param_env(
   "run_methods",
