@@ -52,6 +52,36 @@ test_that(".tautStringPmden handles short input (n < 50) gracefully", {
   expect_length(res10$y, 9L)
 })
 
+test_that(".tautStringPmden handles exact ties without entering invalid native arithmetic", {
+  x <- sort(rep(seq(-2, 2, length.out = 60), each = 2L))
+  result <- .tautStringPmden(x)
+
+  expect_length(result$y, length(x) - 1L)
+  expect_true(all(is.finite(result$y)))
+  expect_true(all(result$y >= 0))
+  expect_true(any(result$y > 0))
+})
+
+test_that(".tautStringPmden returns a benign result for constant input", {
+  x <- rep(3, 100)
+  result <- .tautStringPmden(x)
+
+  expect_length(result$y, length(x) - 1L)
+  expect_true(all(is.finite(result$y)))
+  expect_true(all(result$y == 0))
+})
+
+test_that(".tautStringPmden returns a benign result when tie jitter has zero MAD", {
+  x <- sort(c(rep(0, 80), seq(1, 20, length.out = 20)))
+  expect_equal(stats::mad(x), 0)
+
+  result <- .tautStringPmden(x)
+
+  expect_length(result$y, length(x) - 1L)
+  expect_true(all(is.finite(result$y)))
+  expect_true(all(result$y == 0))
+})
+
 test_that(".tautStringPmden bimodal density has a clear dip between clusters", {
   # Two-cluster fixture with deterministic, well-separated groups (n=120)
   x <- c(seq(-1, 1, length.out = 60), seq(4, 6, length.out = 60))
