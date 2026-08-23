@@ -31,12 +31,14 @@ source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))
 source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
+source(file.path(scripts_r_dir, "sim-misc.R"))
 
 run_preprocessing <- .as_flag(.get_qmd_param_env(
   "run_preprocessing",
   "RUN_PREPROCESSING",
   TRUE
 ))
+pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "pre_nk")
 run_preprocessing_vec_by_pop <- c(
   tcrgd = NULL %||% run_preprocessing,
   cd4 = NULL %||% run_preprocessing,
@@ -68,11 +70,20 @@ run_plots_vec_by_pop <- c(
   nk = NULL %||% run_plots,
   pre_nk = NULL %||% run_plots
 )
-run_plots_vec_by_pop <- stats::setNames(
-  rep(run_plots, length(pop_vec)),
-  pop_vec
+tester_n_sample <- .get_qmd_param_env(
+  "tester_n_sample",
+  "TESTER_N_SAMPLE",
+  20L
 )
-bias_uns_vec_by_pop <- stats::setNames(rep(0.15, length(pop_vec)), pop_vec)
+n_workers <- max(1, .simGetCores())
+bias_uns <- 0.15
+bias_uns_vec_by_pop <- c(
+  tcrgd = NULL %||% bias_uns,
+  cd4 = NULL %||% bias_uns,
+  cd8 = NULL %||% bias_uns,
+  nk = NULL %||% bias_uns,
+  pre_nk = NULL %||% bias_uns
+)
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 if (
