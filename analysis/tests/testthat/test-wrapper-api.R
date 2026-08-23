@@ -108,3 +108,15 @@ test_that(".simCompareFreqBs forwards to gateStim via .simCompareStimgateRows wi
   expect_false(any(stimgate_res[["method"]] == "stimgate_error"))
   expect_true(all(is.na(stimgate_res[["error"]])))
 })
+
+test_that(
+  ".simCompareFreqBs and .simCompareStimgateRows accept and forward gateCombn",
+  {
+    env <- .load_analysis_env()
+
+    expect_true("gateCombn" %in% names(formals(env$.simCompareStimgateRows)))
+    expect_true("gateCombn" %in% names(formals(env$.simCompareFreqBs)))
+    expect_equal(formals(env$.simCompareStimgateRows)$gateCombn, "min")
+    expect_equal(formals(env$.simCompareFreqBs)$gateCombn, "min")
+  }
+)

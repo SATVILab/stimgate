@@ -1599,6 +1599,12 @@
     if ("bias_uns" %in% names(row)) {
       paste0("bias = ", row$bias_uns[[1]])
     },
+    if ("gate_combn" %in% names(row)) {
+      paste0("gate_combn = ", row$gate_combn[[1]])
+    },
+    if ("gateCombn" %in% names(row)) {
+      paste0("gate_combn = ", row$gateCombn[[1]])
+    },
     if ("mismatch_type" %in% names(row)) {
       paste0("mismatch_type = ", row$mismatch_type[[1]])
     },
@@ -1897,6 +1903,13 @@
         calcCytPosGates = calcCytPosGates,
         includeLocCondition = includeLocCondition,
         includeLocDetails = includeLocDetails,
+        gateCombn = if ("gate_combn" %in% names(row)) {
+          row$gate_combn[[1]]
+        } else if ("gateCombn" %in% names(row)) {
+          row$gateCombn[[1]]
+        } else {
+          "min"
+        },
         stimMeanShift = stimMeanShiftVal,
         stimSdMultiplier = stimSdMultVal,
         stimMeanShiftClusters = stimMeanShiftClustersVal,

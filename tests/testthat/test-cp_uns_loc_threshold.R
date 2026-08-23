@@ -304,6 +304,80 @@ test_that(".getCpUnsLocCombineCpWithMeta propagates combined metadata", {
   )
 })
 
+test_that(".getCpUnsLocCombineCpWithMeta uses min of generated thresholds and ignores fallback cutpoints", {
+  # Multi-condition batch:
+  # stim1 generated 3.5, stim2 generated 2.8, stim3 is fallback at 0.5 (lower than 2.8), uns is 3.15
+  cp_vec <- c("stim1" = 3.5, "stim2" = 2.8, "stim3" = 0.5, "uns" = 3.15)
+  attr(cp_vec, "locGenerated") <- c(TRUE, TRUE, FALSE, TRUE)
+  attr(cp_vec, "locGeneratedDirect") <- c(TRUE, TRUE, FALSE, FALSE)
+  attr(cp_vec, "locSource") <- c("direct", "direct", "not_calculated", "unstim_summary")
+  attr(cp_vec, "locReason") <- c("detected", "detected", "fallback_above_range", "mean")
+
+  combined_out <- .getCpUnsLocCombineCpWithMeta(cp_vec, gateCombn = "min")
+  cp_min <- combined_out[["min"]]
+
+  # All conditions receive min of generated thresholds (2.8), ignoring fallback (0.5)
+  expect_equal(as.numeric(cp_min["stim1"]), 2.8)
+  expect_equal(as.numeric(cp_min["stim2"]), 2.8)
+  expect_equal(as.numeric(cp_min["stim3"]), 2.8)
+  expect_equal(as.numeric(cp_min["uns"]), 2.8)
+
+  meta_comb <- .getCpUnsLocMetaFromCp(cp_min)
+
+  # stim2 matches the minimum and remains direct
+  expect_true(meta_comb$locGenerated[meta_comb$ind == "stim2"])
+  expect_true(meta_comb$locGeneratedDirect[meta_comb$ind == "stim2"])
+  expect_equal(meta_comb$locSource[meta_comb$ind == "stim2"], "direct")
+
+  # stim1 was lowered from 3.5 to 2.8 -> combined
+  expect_true(meta_comb$locGenerated[meta_comb$ind == "stim1"])
+  expect_false(meta_comb$locGeneratedDirect[meta_comb$ind == "stim1"])
+  expect_equal(meta_comb$locSource[meta_comb$ind == "stim1"], "combined")
+  expect_equal(
+    meta_comb$locReason[meta_comb$ind == "stim1"],
+    "combined_from_generated_local_fdr_thresholds"
+  )
+
+  # stim3 was non-generated fallback -> combined
+  expect_true(meta_comb$locGenerated[meta_comb$ind == "stim3"])
+  expect_false(meta_comb$locGeneratedDirect[meta_comb$ind == "stim3"])
+  expect_equal(meta_comb$locSource[meta_comb$ind == "stim3"], "combined")
+  expect_equal(
+    meta_comb$locReason[meta_comb$ind == "stim3"],
+    "combined_from_generated_local_fdr_thresholds"
+  )
+
+  # uns receives unstim_summary
+  expect_true(meta_comb$locGenerated[meta_comb$ind == "uns"])
+  expect_false(meta_comb$locGeneratedDirect[meta_comb$ind == "uns"])
+  expect_equal(meta_comb$locSource[meta_comb$ind == "uns"], "unstim_summary")
+  expect_equal(
+    meta_comb$locReason[meta_comb$ind == "uns"],
+    "summary_of_combined_generated_local_fdr_thresholds"
+  )
+})
+
+test_that(".getCpUnsLocCombineCpWithMeta handles all-fallback conditions cleanly under min", {
+  cp_vec <- c("stim1" = 5.0, "stim2" = 6.0, "uns" = NA_real_)
+  attr(cp_vec, "locGenerated") <- c(FALSE, FALSE, FALSE)
+  attr(cp_vec, "locGeneratedDirect") <- c(FALSE, FALSE, FALSE)
+  attr(cp_vec, "locSource") <- c("not_calculated", "not_calculated", "unstim_summary")
+  attr(cp_vec, "locReason") <- c("fallback", "fallback", "no_generated_local_fdr_thresholds")
+
+  combined_out <- .getCpUnsLocCombineCpWithMeta(cp_vec, gateCombn = "min")
+  cp_min <- combined_out[["min"]]
+
+  expect_equal(as.numeric(cp_min["stim1"]), 5.0)
+  expect_equal(as.numeric(cp_min["stim2"]), 5.0)
+  expect_equal(as.numeric(cp_min["uns"]), 5.0)
+
+  meta_comb <- .getCpUnsLocMetaFromCp(cp_min)
+  expect_false(any(meta_comb$locGenerated))
+  expect_false(any(meta_comb$locGeneratedDirect))
+  expect_true(all(meta_comb$locSource == "not_calculated"))
+  expect_true(all(meta_comb$locReason == "no_generated_local_fdr_threshold_to_combine"))
+})
+
 test_that("diagnostic tables compute frequencies matching threshold cutoffs", {
   df_uns <- data.frame(CD4 = c(0.5, 1.0, 1.5, 2.0, 2.5))
   attr(df_uns, "chnlCut") <- "CD4"

@@ -382,10 +382,12 @@
       metaOut <- meta
       stimRow <- !(metaOut$locSource %in% "unstim_summary")
       metaOut$locGenerated[stimRow] <- TRUE
-      metaOut$locGeneratedDirect[stimRow] <- meta$locGeneratedDirect[
-        stimRow
-      ] %in%
-        TRUE
+      stimDirectMatches <- (meta$locGeneratedDirect %in% TRUE) &
+        (abs(
+          suppressWarnings(as.numeric(cp)) -
+            suppressWarnings(as.numeric(cpCombined))
+        ) < 1e-7)
+      metaOut$locGeneratedDirect[stimRow] <- stimDirectMatches[stimRow]
       metaOut$locSource[stimRow & !(metaOut$locGeneratedDirect %in% TRUE)] <-
         "combined"
       metaOut$locReason[stimRow & !(metaOut$locGeneratedDirect %in% TRUE)] <-
