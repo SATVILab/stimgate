@@ -38,13 +38,13 @@ run_preprocessing <- .as_flag(.get_qmd_param_env(
   "RUN_PREPROCESSING",
   TRUE
 ))
-pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "pre_nk", "b")
+pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "nk_pre", "b")
 run_preprocessing_vec_by_pop <- c(
   tcrgd = NULL %||% run_preprocessing,
   cd4 = NULL %||% run_preprocessing,
   cd8 = NULL %||% run_preprocessing,
   nk = NULL %||% run_preprocessing,
-  pre_nk = NULL %||% run_preprocessing,
+  nk_pre = NULL %||% run_preprocessing,
   b = NULL %||% run_preprocessing
 )
 run_methods <- .as_flag(.get_qmd_param_env(
@@ -57,7 +57,7 @@ run_methods_vec_by_pop <- c(
   cd4 = NULL %||% run_methods,
   cd8 = NULL %||% run_methods,
   nk = NULL %||% run_methods,
-  pre_nk = NULL %||% run_methods,
+  nk_pre = NULL %||% run_methods,
   b = NULL %||% run_methods
 )
 run_plots <- .as_flag(.get_qmd_param_env(
@@ -70,7 +70,7 @@ run_plots_vec_by_pop <- c(
   cd4 = NULL %||% run_plots,
   cd8 = NULL %||% run_plots,
   nk = NULL %||% run_plots,
-  pre_nk = NULL %||% run_plots,
+  nk_pre = NULL %||% run_plots,
   b = NULL %||% run_plots
 )
 tester_n_sample <- .get_qmd_param_env(
@@ -85,7 +85,7 @@ bias_uns_vec_by_pop <- c(
   cd4 = NULL %||% bias_uns,
   cd8 = NULL %||% bias_uns,
   nk = NULL %||% bias_uns,
-  pre_nk = NULL %||% bias_uns,
+  nk_pre = NULL %||% bias_uns,
   b = NULL %||% bias_uns
 )
 
