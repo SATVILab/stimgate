@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=12
+#SBATCH --ntasks=10
 #SBATCH --job-name="dev-9-acs-cytof"
 #SBATCH --partition=ada
 
