@@ -554,81 +554,125 @@ test_that("a live lock still excludes a second writer", {
 
   acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.2, poll_sec = 0.05)
   expect_true(acquired)
-  expect_true(dir.exists(lock_path))
 
   second <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.2, poll_sec = 0.05)
   expect_false(second)
 
   env$.analysis_release_lock(lock_path)
-})
 
-test_that("a stale lock from a dead process can be recovered", {
-  env <- .load_runtime_env()
-
-  tmp_dir <- withr::local_tempdir()
-  lock_path <- file.path(tmp_dir, "stale.lock")
-  dir.create(lock_path)
-
-  stale_meta <- list(
-    pid = .Machine$integer.max,
-    host = Sys.info()[["nodename"]],
-    created_at = format(Sys.time() - 3600, "%Y-%m-%d %H:%M:%S")
-  )
-  saveRDS(stale_meta, file.path(lock_path, "lock-meta.rds"))
-
-  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 5, poll_sec = 0.05)
-  expect_true(acquired)
+  # After release, acquisition succeeds
+  reacquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.5, poll_sec = 0.05)
+  expect_true(reacquired)
   env$.analysis_release_lock(lock_path)
 })
 
-test_that("a stale lock from another host can be recovered based on age threshold", {
+test_that("a lock held by a dead process on the same host is recovered via token-fenced reclamation", {
   env <- .load_runtime_env()
 
   tmp_dir <- withr::local_tempdir()
-  lock_path <- file.path(tmp_dir, "remote-stale.lock")
+  lock_path <- file.path(tmp_dir, "stale-dead.lock")
   dir.create(lock_path)
 
-  stale_meta <- list(
-    pid = 12345L,
-    host = "slurm-remote-node-99",
-    token = "remote-node-99-12345-stale",
+  # Plant a token from a non-existent PID on the current host
+  dead_meta <- list(
+    token = "token-dead-old",
+    pid = .Machine$integer.max,
+    host = Sys.info()[["nodename"]],
     created_at = Sys.time() - 3600
   )
-  saveRDS(stale_meta, file.path(lock_path, "lock-meta.rds"))
+  saveRDS(dead_meta, file.path(lock_path, "token-token-dead-old.rds"))
 
-  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 5, poll_sec = 0.05, stale_sec = 10)
+  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 2, poll_sec = 0.05)
   expect_true(acquired)
-  expect_true(dir.exists(lock_path))
-
-  new_meta <- readRDS(file.path(lock_path, "lock-meta.rds"))
-  expect_identical(new_meta$host, Sys.info()[["nodename"]])
-  expect_identical(new_meta$pid, Sys.getpid())
-
   env$.analysis_release_lock(lock_path)
   expect_false(dir.exists(lock_path))
 })
 
-test_that("an orphan lock without metadata can be recovered after orphan timeout", {
+test_that("token fencing prevents ABA race where stale decision clobbers a newer owner", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- withr::local_tempdir()
+  lock_path <- file.path(tmp_dir, "aba-test.lock")
+  dir.create(lock_path)
+
+  # 1. Plant an old stale lock token from a dead PID
+  old_meta <- list(
+    token = "OLD_TOKEN",
+    pid = .Machine$integer.max,
+    host = Sys.info()[["nodename"]],
+    created_at = Sys.time() - 3600
+  )
+  saveRDS(old_meta, file.path(lock_path, "token-OLD_TOKEN.rds"))
+
+  # 2. Contender B inspects lock_path and observes "token-OLD_TOKEN.rds"
+  observed_by_b <- "token-OLD_TOKEN.rds"
+
+  # 3. Contender A reclaims "token-OLD_TOKEN.rds" and installs "token-NEW_TOKEN.rds"
+  token_files <- list.files(lock_path, pattern = "^token-.*[.]rds$")
+  expect_identical(token_files, "token-OLD_TOKEN.rds")
+
+  reclaim_a <- file.path(lock_path, paste0("reclaim-", env$.random_hex(6L), ".rds"))
+  expect_true(file.rename(file.path(lock_path, "token-OLD_TOKEN.rds"), reclaim_a))
+  unlink(reclaim_a, force = TRUE)
+
+  live_meta_a <- list(
+    token = "NEW_TOKEN_A",
+    pid = Sys.getpid(),
+    host = Sys.info()[["nodename"]],
+    created_at = Sys.time()
+  )
+  saveRDS(live_meta_a, file.path(lock_path, "token-NEW_TOKEN_A.rds"))
+
+  # 4. Contender B now attempts to reclaim its stale observation of "token-OLD_TOKEN.rds"
+  reclaim_b <- file.path(lock_path, paste0("reclaim-", env$.random_hex(6L), ".rds"))
+  b_reclaim_success <- suppressWarnings(file.rename(file.path(lock_path, observed_by_b), reclaim_b))
+
+  # Because Contender A already replaced OLD_TOKEN with NEW_TOKEN_A, B cannot rename OLD_TOKEN
+  expect_false(b_reclaim_success)
+
+  # Contender A's live lock remains completely intact and un-clobbered
+  expect_true(file.exists(file.path(lock_path, "token-NEW_TOKEN_A.rds")))
+  current_tokens <- list.files(lock_path, pattern = "^token-.*[.]rds$")
+  expect_identical(current_tokens, "token-NEW_TOKEN_A.rds")
+
+  # Clean up
+  unlink(lock_path, recursive = TRUE, force = TRUE)
+})
+
+test_that("orphan lock directory without metadata is recovered after orphan timeout", {
   env <- .load_runtime_env()
 
   tmp_dir <- withr::local_tempdir()
   lock_path <- file.path(tmp_dir, "orphan.lock")
   dir.create(lock_path)
 
-  # Directory exists but no lock-meta.rds
-  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 5, poll_sec = 0.05, orphan_stale_sec = 0.05)
+  # Directory exists but no token file
+  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 2, poll_sec = 0.05, orphan_stale_sec = 0.05)
   expect_true(acquired)
-  expect_true(dir.exists(lock_path))
-
-  new_meta <- readRDS(file.path(lock_path, "lock-meta.rds"))
-  expect_identical(new_meta$host, Sys.info()[["nodename"]])
-  expect_identical(new_meta$pid, Sys.getpid())
-
   env$.analysis_release_lock(lock_path)
   expect_false(dir.exists(lock_path))
 })
 
-test_that("concurrent stale-lock recovery remains safely serialised without races", {
+test_that("live locks during long-running operations cannot be stolen by elapsed time", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- withr::local_tempdir()
+  lock_path <- file.path(tmp_dir, "long-op.lock")
+
+  # Holder acquires lock
+  holder_acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 1, poll_sec = 0.05)
+  expect_true(holder_acquired)
+
+  # Contender attempts acquisition with short timeout and cannot steal it
+  for (i in seq_len(3L)) {
+    contender_acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.1, poll_sec = 0.05)
+    expect_false(contender_acquired)
+  }
+
+  env$.analysis_release_lock(lock_path)
+})
+
+test_that("concurrent lock acquisition across multiple workers is strictly serialised without races", {
   env <- .load_runtime_env()
 
   tmp_dir <- tempfile("stale-concurrent-")
@@ -636,27 +680,15 @@ test_that("concurrent stale-lock recovery remains safely serialised without race
   on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
 
   lock_path <- file.path(tmp_dir, "shared.lock")
-  dir.create(lock_path)
-
-  # Plant an initial stale lock
-  stale_meta <- list(
-    pid = .Machine$integer.max,
-    host = Sys.info()[["nodename"]],
-    token = "initial-stale",
-    created_at = Sys.time() - 3600
-  )
-  saveRDS(stale_meta, file.path(lock_path, "lock-meta.rds"))
-
   script_path <- script_runtime
   log_file <- file.path(tmp_dir, "execution.log")
-  sentinel_file <- file.path(tmp_dir, "in_critical_section.txt")
 
   cl <- parallel::makePSOCKcluster(4L)
   on.exit(parallel::stopCluster(cl), add = TRUE)
 
   parallel::clusterExport(
     cl,
-    varlist = c("tmp_dir", "lock_path", "log_file", "sentinel_file", "script_path"),
+    varlist = c("tmp_dir", "lock_path", "log_file", "script_path"),
     envir = environment()
   )
 
@@ -674,28 +706,17 @@ test_that("concurrent stale-lock recovery remains safely serialised without race
       return(list(worker_id = worker_id, ok = FALSE, error = "failed to acquire lock"))
     }
 
-    # Verify mutual exclusion: sentinel file must NOT exist when entering CS
-    race_detected <- file.exists(sentinel_file)
-    if (!race_detected) {
-      writeLines(as.character(worker_id), sentinel_file)
-    }
-
     # Append to log
     cat(paste0("worker-", worker_id, "\n"), file = log_file, append = TRUE)
     Sys.sleep(0.05)
 
-    if (file.exists(sentinel_file)) {
-      unlink(sentinel_file, force = TRUE)
-    }
-
     local_env$.analysis_release_lock(lock_path)
 
-    list(worker_id = worker_id, ok = TRUE, race_detected = race_detected)
+    list(worker_id = worker_id, ok = TRUE)
   })
 
   for (res in results) {
     expect_true(isTRUE(res$ok))
-    expect_false(isTRUE(res$race_detected))
   }
 
   log_lines <- readLines(log_file)

@@ -134,10 +134,14 @@ test_that("stimulated samples that share an unstimulated control in the same bat
   unsCols <- grep("^uns_x\\d+$", names(featureTbl), value = TRUE)
   stimCols <- grep("^stim_x\\d+$", names(featureTbl), value = TRUE)
 
-  expect_equal(featureTbl[match("A", featureTbl$ind), unsCols],
-               featureTbl[match("B", featureTbl$ind), unsCols])
-  expect_false(isTRUE(all.equal(featureTbl[match("A", featureTbl$ind), stimCols],
-                                featureTbl[match("B", featureTbl$ind), stimCols])))
+  expect_equal(
+    featureTbl[match("A", featureTbl$ind), unsCols],
+    featureTbl[match("B", featureTbl$ind), unsCols]
+  )
+  expect_false(isTRUE(all.equal(
+    featureTbl[match("A", featureTbl$ind), stimCols],
+    featureTbl[match("B", featureTbl$ind), stimCols]
+  )))
 })
 
 test_that("a degenerate one-structure fixture yields a single cluster without changing the caller RNG state", {
