@@ -425,6 +425,7 @@
 <li>Write run outputs to <code>cache/sim/&lt;analysis-key&gt;/staging/&lt;YYYY-MM-DD&gt;/&lt;run-id&gt;/...</code> and keep canonical outputs in <code>cache/sim/&lt;analysis-key&gt;/current/</code>.</li>
 <li>Write run progress/state to <code>cache/log/analysis/&lt;analysis-key&gt;/&lt;YYYY-MM-DD&gt;/&lt;run-id&gt;/</code> (<code>progress.txt</code>, <code>manifest.rds</code>, <code>status.rds</code>, chunk/job subdirs).</li>
 <li>For external chunking, all chunks of one logical run must use the same run ID and write under the same staged run directory, separated by chunk labels.</li>
+<li>Slurm chunk launchers render the current top-level QMD and pass chunk controls through environment variables. Do not create or launch physical split-QMD copies; all chunks of one submission must receive the same <code>ANALYSIS_RUN_ID</code>.</li>
 <li>Never promote on partial/incomplete runs. Promote only after required chunks are complete and collated outputs validate.</li>
 <li>Promotion updates <code>current/</code> only after a complete staged run is available; failed/interrupted staged runs remain inspectable and resumable.</li>
 <li>Read canonical outputs through <code>.analysis_current_file()</code>, which requires a <code>COMPLETE</code> marker, a readable manifest for the requested analysis key, and any analysis-specific semantic version required by the caller.</li>

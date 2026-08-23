@@ -528,6 +528,10 @@ plotting/orchestration code.
     - For external chunking, all chunks of one logical run must use the
       same run ID and write under the same staged run directory,
       separated by chunk labels.
+    - Slurm chunk launchers render the current top-level QMD and pass
+      chunk controls through environment variables. Do not create or
+      launch physical split-QMD copies; all chunks of one submission
+      must receive the same `ANALYSIS_RUN_ID`.
     - Never promote on partial/incomplete runs. Promote only after
       required chunks are complete and collated outputs validate.
     - Promotion updates `current/` only after a complete staged run is
