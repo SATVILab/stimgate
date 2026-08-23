@@ -13,7 +13,11 @@ fi
 
 R_MINOR="4.6"
 BIOC_VERSION="3.23"
-POSIT_CRAN="https://packagemanager.posit.co/cran/latest/bin/linux/noble-x86_64/${R_MINOR}"
+
+# Use Posit Package Manager's pak-compatible Linux binary URL. Do not replace
+# this with the newer /bin/linux/noble-x86_64/<R> form: pak currently
+# classifies that repository as source and rebuilds ordinary CRAN packages.
+POSIT_CRAN="https://packagemanager.posit.co/cran/__linux__/noble/latest"
 
 sudo apt-get update -qq
 sudo apt-get install --no-install-recommends -y \
@@ -65,6 +69,12 @@ options(
     }
 )
 EOF
+
+sudo env CI=true Rscript --vanilla -e '
+source("/tmp/stimgate-agent-repos.R")
+cat("pak repository status:\n")
+print(pak::repo_status())
+'
 
 # Install the latest stable Quarto release. Avoid pinning the cloud environment
 # to an obsolete Quarto release while still using a deterministic release asset.
