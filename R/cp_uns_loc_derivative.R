@@ -31,10 +31,11 @@
 #' Validate a value constrained to the unit interval
 #' @keywords internal
 .getCpUnsLocUnitValue <- function(
-    value,
-    default,
-    allowZero = FALSE,
-    allowNeg = FALSE) {
+  value,
+  default,
+  allowZero = FALSE,
+  allowNeg = FALSE
+) {
   value <- suppressWarnings(as.numeric(value)[1])
   zeroOk <- if (isTRUE(allowZero)) TRUE else value != 0
   negOk <- if (isTRUE(allowNeg)) TRUE else value >= 0
@@ -49,12 +50,14 @@
 #' @keywords internal
 .getCpUnsLocDerivParams <- function(chnlSettings, stage) {
   stage <- match.arg(stage, c("antimode", "global", "marginal"))
-  stageTitle <- switch(stage,
+  stageTitle <- switch(
+    stage,
     antimode = "Antimode",
     global = "Global",
     marginal = "Marginal"
   )
-  defaults <- switch(stage,
+  defaults <- switch(
+    stage,
     antimode = c(alpha = 2 / 3, omega = 0.15, psi = -0.2),
     global = c(alpha = 0.05, omega = 0.15, psi = 0.2),
     marginal = c(alpha = 0.50, omega = 0.15, psi = -0.2)
@@ -105,7 +108,8 @@
 #' @keywords internal
 .getCpUnsLocThresholdProbMin <- function(chnlSettings, stage) {
   stage <- match.arg(stage, c("antimode", "global", "marginal"))
-  stageTitle <- switch(stage,
+  stageTitle <- switch(
+    stage,
     antimode = "Antimode",
     global = "Global",
     marginal = "Marginal"
@@ -286,11 +290,12 @@
 #' Flat-topped peaks are represented by the left-most point of the plateau.
 #' @keywords internal
 .getCpUnsLocDerivPeak <- function(
-    x,
-    prob,
-    deriv,
-    alpha = 0.75,
-    leftRiseFrac = 0.15) {
+  x,
+  prob,
+  deriv,
+  alpha = 0.75,
+  leftRiseFrac = 0.15
+) {
   info <- list(reason = "no_valid_derivative_peak")
   x <- suppressWarnings(as.numeric(x))
   prob <- suppressWarnings(as.numeric(prob))
@@ -354,7 +359,7 @@
 
   hasMeaningfulLeftRise <-
     peakIndex > 1L &
-      minDerivBefore[peakIndex] <= leftRiseFrac * peakData$deriv[peakIndex]
+    minDerivBefore[peakIndex] <= leftRiseFrac * peakData$deriv[peakIndex]
 
   peakIndex <- peakIndex[hasMeaningfulLeftRise]
 
@@ -410,15 +415,16 @@
 #' Locate x_deriv(alpha, omega, psi)
 #' @keywords internal
 .getCpUnsLocDerivThreshold <- function(
-    x,
-    prob,
-    deriv,
-    alpha,
-    omega,
-    psi,
-    thresholdProbMin = 0,
-    capRightWidth = FALSE,
-    leftRiseFrac = 0.15) {
+  x,
+  prob,
+  deriv,
+  alpha,
+  omega,
+  psi,
+  thresholdProbMin = 0,
+  capRightWidth = FALSE,
+  leftRiseFrac = 0.15
+) {
   peak <- .getCpUnsLocDerivPeak(
     x = x,
     prob = prob,
@@ -427,7 +433,13 @@
     leftRiseFrac = leftRiseFrac
   )
   info <- peak$info
-  if (is.null(peak$data) || !is.finite(peak$index)) {
+  if (
+    is.null(peak$data) ||
+      length(peak$index) != 1L ||
+      !is.finite(peak$index) ||
+      peak$index < 1L ||
+      peak$index > nrow(peak$data)
+  ) {
     return(list(thresholdX = NA_real_, info = info))
   }
 
@@ -453,17 +465,22 @@
   if (peak$data$prob[iPeak] < omega) {
     candidate <- seq.int(iPeak, nrow(peak$data))
     candidate <- candidate[peak$data$prob[candidate] >= omega]
+
     if (length(candidate) == 0L) {
       info$reason <- "probability_never_reached_omega_after_peak"
       return(list(thresholdX = NA_real_, info = info))
     }
+
     if (psi < 0) {
-      candidate <- candidate[peak$data$deriv[candidate] >= riseHeight]
-    } else {
-      # no need to apply psi here as we're forced to
-      # move rightware, and positive psi seeks to move left.
-      candidate <- candidate
+      candidate <- candidate[
+        peak$data$deriv[candidate] >= riseHeight
+      ]
+      if (length(candidate) == 0L) {
+        info$reason <- "no_point_met_probability_and_derivative_constraints"
+        return(list(thresholdX = NA_real_, info = info))
+      }
     }
+
     iThreshold <- min(candidate)
     info$thresholdBasis <- "first_point_right_of_peak_reaching_omega"
   } else {
@@ -487,6 +504,16 @@
       info$thresholdBasis <- "right_fall_to_psi_times_peak"
     }
     iThreshold <- min(candidate)
+  }
+
+  if (
+    length(iThreshold) != 1L ||
+      !is.finite(iThreshold) ||
+      iThreshold < 1L ||
+      iThreshold > nrow(peak$data)
+  ) {
+    info$reason <- "invalid_derivative_threshold_index"
+    return(list(thresholdX = NA_real_, info = info))
   }
 
   info$rightFractionThresholdIdx <- iThreshold
@@ -546,10 +573,11 @@
 #' a Gaussian-shaped peak reaches `rightFrac` at the same standardised distance.
 #' @keywords internal
 .getCpUnsLocDerivRightWidthCap <- function(
-    peakData,
-    iPeak,
-    rightFrac,
-    leftFrac = 0.5) {
+  peakData,
+  iPeak,
+  rightFrac,
+  leftFrac = 0.5
+) {
   info <- list(
     reason = "right_width_cap_undefined",
     rightFrac = rightFrac,
@@ -627,10 +655,11 @@
 #' Obtain a stage-specific derivative threshold from model data
 #' @keywords internal
 .getCpUnsLocStageThreshold <- function(
-    dataMod,
-    chnlSettings,
-    probCol,
-    stage) {
+  dataMod,
+  chnlSettings,
+  probCol,
+  stage
+) {
   params <- .getCpUnsLocDerivParams(chnlSettings, stage)
   derivTbl <- .getCpUnsLocDerivTbl(dataMod, probCol)
   if (is.null(derivTbl) || nrow(derivTbl) < 3L) {
