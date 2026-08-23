@@ -408,6 +408,8 @@ QMD runtime or unrelated plotting/orchestration code.
    - For external chunking, all chunks of one logical run must use the same run ID and write under the same staged run directory, separated by chunk labels.
    - Never promote on partial/incomplete runs. Promote only after required chunks are complete and collated outputs validate.
    - Promotion updates `current/` only after a complete staged run is available; failed/interrupted staged runs remain inspectable and resumable.
+   - Read canonical outputs through `.analysis_current_file()`, which requires a `COMPLETE` marker, a readable manifest for the requested analysis key, and any analysis-specific semantic version required by the caller.
+   - Record scientific and semantic settings in the run manifest. Reusing an explicit run ID must match those settings; only operational controls such as plotting, simulation execution and the current chunk index may differ across invocations.
 
 ---
 
