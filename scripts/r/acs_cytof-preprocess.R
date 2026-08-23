@@ -4,25 +4,40 @@ create_gatingset <- function(
   n_sample = NULL,
   ind_sample = NULL
 ) {
-  stopifnot(length(list.files(path_fcs, pattern = "fcs$")) > 0)
-  if (is.null(n_sample) && is.null(ind_sample)) {
-    cs <- flowWorkspace::load_cytoset_from_fcs(
-      path = path_fcs,
-      pattern = "fcs$"
-    )
-  } else {
-    fcs_vec <- list.files(
-      path_fcs,
-      pattern = "fcs$",
-      full.names = TRUE
-    )
-    if (!is.null(ind_sample)) {
-      fcs_vec <- fcs_vec[ind_sample]
-    } else {
-      fcs_vec <- fcs_vec[seq_len(n_sample)]
-    }
-    cs <- flowWorkspace::load_cytoset_from_fcs(fcs_vec)
+  if (!is.null(n_sample) && !is.null(ind_sample)) {
+    stop("Specify only one of n_sample and ind_sample.")
   }
+
+  fcs_vec <- list.files(
+    path_fcs,
+    pattern = "\\.fcs$",
+    recursive = TRUE,
+    full.names = TRUE,
+    ignore.case = TRUE
+  ) |>
+    sort()
+  if (length(fcs_vec) == 0L) {
+    stop("No FCS files found at: ", path_fcs)
+  }
+
+  if (!is.null(ind_sample)) {
+    if (anyNA(ind_sample) ||
+      any(ind_sample < 1L) ||
+      any(ind_sample > length(fcs_vec))) {
+      stop("ind_sample contains an index outside the available FCS files.")
+    }
+    fcs_vec <- fcs_vec[ind_sample]
+  } else if (!is.null(n_sample)) {
+    if (length(n_sample) != 1L ||
+      is.na(n_sample) ||
+      n_sample < 1L ||
+      n_sample > length(fcs_vec)) {
+      stop("n_sample must be between 1 and the number of available FCS files.")
+    }
+    fcs_vec <- fcs_vec[seq_len(n_sample)]
+  }
+
+  cs <- flowWorkspace::load_cytoset_from_fcs(fcs_vec)
 
   gs <- flowWorkspace::GatingSet(cs)
   forwardTransform <- function(x) {
