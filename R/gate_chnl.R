@@ -1,16 +1,14 @@
 #' @keywords internal
 .gateChnl <- function(
-    .data,
-    indBatchList,
-    chnlSettings,
-    gateTbl = NULL,
-    tolGateSingle = NULL,
-    calcCytPosGates,
-    pathProject,
-    stage) {
-  # message progress
-  .debug("popGate: ", popGate) # nolint
-
+  .data,
+  indBatchList,
+  chnlSettings,
+  gateTbl = NULL,
+  tolGateSingle = NULL,
+  calcCytPosGates,
+  pathProject,
+  stage
+) {
   # Parameters list
   # ----------------
 
