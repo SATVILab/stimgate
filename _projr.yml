@@ -1,6 +1,10 @@
 directories:
   raw-data:
     path: _raw/data
+  cache:
+    path: _tmp
+  cache-analysis:
+    path: analysis/cache
   docs:
     path: docs
 

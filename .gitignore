@@ -47,8 +47,9 @@ docs/
 inst/doc
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
 _raw/data/**
-docs/**
 _tmp/**
+analysis/cache/**
+docs/**
 _output/**
 AGENTS.md
 CHANGES_SUMMARY.md
@@ -102,3 +103,4 @@ _tmp/log/sbatch/5-sim-bw-est-adaptive/chunk-4
 analysis/7-sim-compare-freq_bs.qmd
 _tmp/log/sbatch/dev-7-sim-compare-freq_bs
 _tmp/log/sbatch/dev-8-sim-compare-freq_bs-batch
+

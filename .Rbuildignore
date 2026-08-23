@@ -21,10 +21,12 @@
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
 ^_raw/data/
 ^_raw/data$
-^docs/
-^docs$
 ^_tmp/
 ^_tmp$
+^analysis/cache/
+^analysis/cache$
+^docs/
+^docs$
 ^_output/
 ^_output$
 ^_projr\.yml$
