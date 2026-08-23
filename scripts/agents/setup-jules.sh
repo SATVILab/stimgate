@@ -10,7 +10,11 @@ export PKG_SYSREQS_VERBOSE=true
 
 R_MINOR="4.6"
 BIOC_VERSION="3.23"
-POSIT_CRAN="https://packagemanager.posit.co/cran/latest/bin/linux/noble-x86_64/${R_MINOR}"
+
+# Use Posit Package Manager's pak-compatible Linux binary URL. Do not replace
+# this with the newer /bin/linux/noble-x86_64/<R> form: pak currently
+# classifies that repository as source and rebuilds ordinary CRAN packages.
+POSIT_CRAN="https://packagemanager.posit.co/cran/__linux__/noble/latest"
 
 sudo apt-get update -qq
 sudo apt-get install --no-install-recommends -y \
