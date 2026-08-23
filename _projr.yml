@@ -1,4 +1,6 @@
 directories:
+  raw-data:
+    path: _raw/data
   docs:
     path: docs
 

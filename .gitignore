@@ -46,8 +46,8 @@ docs/
 
 inst/doc
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
+_raw/data/**
 docs/**
-_raw_data/**
 _tmp/**
 _output/**
 AGENTS.md
