@@ -122,13 +122,12 @@
 getStimStats <- function(pathProject) {
   pathStatsPartial <- file.path(pathProject, "gateStats")
   if (file.exists(paste0(pathStatsPartial, ".rds"))) {
-    tbl <- readRDS(paste0(pathStatsPartial, ".rds"))
+    readRDS(paste0(pathStatsPartial, ".rds"))
   } else if (file.exists(paste0(pathStatsPartial, ".csv"))) {
-    tbl <- utils::read.csv(paste0(pathStatsPartial, ".csv"))
+    utils::read.csv(paste0(pathStatsPartial, ".csv"))
   } else {
     stop(
       "No stats file found"
     )
   }
-  tbl
 }
