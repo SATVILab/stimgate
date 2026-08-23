@@ -139,8 +139,8 @@ separate unmanaged version.</p>
 then runs commands such as:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#| eval: false</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">test</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/test.html" class="external-link">test</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Do not run <code>renv::restore()</code> merely because the project
 contains <code>renv</code> files. For these cloud environments, a
 missing package should normally be treated as an environment-setup
@@ -178,7 +178,7 @@ that is no longer the one used by current development.</p>
 are actually available and that:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#| eval: false</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>succeeds. Intermediate package-install failures may be recoverable,
 especially for Bioconductor dependencies, so the Codex and Jules scripts
 use a pak-first, Bioconductor-repair, pak-again strategy before applying
@@ -352,7 +352,7 @@ enabled;</li>
 <li>installs the latest <code>SATVILab/simcyto</code> from its default
 branch;</li>
 <li>verifies the important R packages and
-<code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code>; and</li>
+<code><a href="https://rdrr.io/pkg/devtools/man/load_all.html" class="external-link">devtools::load_all()</a></code>; and</li>
 <li>installs Quarto.</li>
 </ul>
 <p>The repository <code>.Rprofile</code> treats the Copilot agent as CI,

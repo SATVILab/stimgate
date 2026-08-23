@@ -82,7 +82,7 @@ function with `STIMGATE_DEBUG` environment variable (instead of `.debug`
 parameter) - **Guideline \#3**: Added guidance on `stage` parameter
 usage and intermediate data saving - **Required before commit**:
 Reordered to run
-[`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
+[`devtools::document()`](https://rdrr.io/pkg/devtools/man/document.html)
 first, then `styler::style_pkg()`, then tests
 
 ### 5. Updated Tests

@@ -314,7 +314,7 @@ The workflow currently:
 - installs `devtools`, `rcmdcheck` and `decor`;
 - installs the latest `SATVILab/simcyto` from its default branch;
 - verifies the important R packages and
-  [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html);
+  [`devtools::load_all()`](https://rdrr.io/pkg/devtools/man/load_all.html);
   and
 - installs Quarto.
 
