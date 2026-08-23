@@ -1903,6 +1903,57 @@
       "Author": "Hervé Pagès [aut, cre]",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
     },
+    "UtilsCytoRSV": {
+      "Package": "UtilsCytoRSV",
+      "Version": "0.1.5",
+      "Source": "GitHub",
+      "Type": "Package",
+      "Title": "Utility Functions for Working with Cytometry Data",
+      "Authors@R": "person(given = \"Miguel\", family = \"Rodo\", role = c(\"aut\", \"cre\"), email = \"rdxmig002@myuct.ac.za\")",
+      "Description": "Provides utility functions for working with cytometry data including  CyTOF and flow cytometry. Includes data processing, calculation, and  visualization tools for cytometry analysis.",
+      "License": "MIT + file LICENSE",
+      "Encoding": "UTF-8",
+      "LazyData": "true",
+      "Config/testthat/edition": "3",
+      "Imports": [
+        "purrr",
+        "ggplot2",
+        "cowplot",
+        "dplyr",
+        "stringr",
+        "stats"
+      ],
+      "Suggests": [
+        "UtilsCompassSV",
+        "here",
+        "remotes",
+        "BiocManager",
+        "UtilsGGSV",
+        "flowCore",
+        "flowWorkspace",
+        "testthat (>= 3.0.0)",
+        "usethis",
+        "DataTidyACSCyTOFCytokinesTCells",
+        "hexbin",
+        "tibble",
+        "knitr",
+        "rmarkdown",
+        "pkgdown"
+      ],
+      "RoxygenNote": "7.3.3",
+      "VignetteBuilder": "knitr",
+      "Depends": [
+        "R (>= 4.1.0)"
+      ],
+      "Author": "Miguel Rodo [aut, cre]",
+      "Maintainer": "Miguel Rodo <rdxmig002@myuct.ac.za>",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "SATVILab",
+      "RemoteRepo": "UtilsCytoRSV",
+      "RemoteRef": "main",
+      "RemoteSha": "626d625d3d6b9c457aa6ee9ff7919da6fc1def99"
+    },
     "UtilsDataRSV": {
       "Package": "UtilsDataRSV",
       "Version": "0.1.0",
@@ -7862,6 +7913,9 @@
       "URL": "https://github.com/SATVILab/simcyto",
       "BugReports": "https://github.com/SATVILab/simcyto/issues",
       "biocViews": "FlowCytometry, SingleCell, Preprocessing, Software",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
       "Imports": [
         "Biobase",
         "flowCore",
@@ -7877,6 +7931,7 @@
       "VignetteBuilder": "knitr",
       "Config/testthat/edition": "3",
       "Config/roxygen2/version": "8.1.0",
+      "RoxygenNote": "7.3.2",
       "Author": "Miguel Rodo [aut, cre]",
       "Maintainer": "Miguel Rodo <miguel.rodo@outlook.com>",
       "RemoteType": "github",
@@ -7884,7 +7939,7 @@
       "RemoteUsername": "SATVILab",
       "RemoteRepo": "simcyto",
       "RemoteRef": "main",
-      "RemoteSha": "d9128b0529b958632cebbfdc7ee7e530b2584621"
+      "RemoteSha": "355ff1fd573f7ccc7e8196eafb00d7a303391843"
     },
     "snow": {
       "Package": "snow",
