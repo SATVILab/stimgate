@@ -583,16 +583,14 @@ if (isTRUE(run_simulations)) {
 ```{r}
 #| label: compare-collate
 #| error: true
-if (!exists("compare_raw") || nrow(compare_raw) == 0L) {
-  path_rds <- file.path(run_ctx$current_dir, "collated", "compare_raw.rds")
-  if (file.exists(path_rds)) {
-    compare_raw <- readRDS(path_rds)
-  }
-}
-
-if (!exists("compare_raw") || nrow(compare_raw) == 0L) {
-  stop("Could not find canonical compare_raw.rds in current/. Run the simulation chunk first.")
-}
+path_rds <- .analysis_current_file(
+  run_ctx = run_ctx,
+  relative_path = c("collated", "compare_raw.rds"),
+  required_params = list(
+    comparison_semantics_version = comparison_semantics_version
+  )
+)
+compare_raw <- readRDS(path_rds)
 
 compare_tbl <- compare_raw
 

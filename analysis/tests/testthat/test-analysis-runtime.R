@@ -262,6 +262,111 @@ test_that("explicit run ID reuse rejects incompatible manifest settings", {
   )
 })
 
+test_that("explicit run ID reuse checks scientific but not operational parameters", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-scientific-params"),
+    run_id = "shared-scientific-run",
+    params = list(
+      run_simulations = TRUE,
+      run_plots = FALSE,
+      sim_grid_chunk_index = 1L,
+      sim_grid_n_chunks = 2L,
+      comparison_semantics_version = "corrected-v1"
+    ),
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 2L
+  )
+
+  expect_no_error(env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-scientific-params"),
+    run_id = "shared-scientific-run",
+    params = list(
+      run_simulations = FALSE,
+      run_plots = TRUE,
+      sim_grid_chunk_index = 2L,
+      sim_grid_n_chunks = 2L,
+      comparison_semantics_version = "corrected-v1"
+    ),
+    sim_grid_chunk_index = 2L,
+    sim_grid_n_chunks = 2L
+  ))
+
+  expect_error(
+    env$.analysis_run_context(
+      analysis_key = c("sim", "analysis-runtime-scientific-params"),
+      run_id = "shared-scientific-run",
+      params = list(
+        run_simulations = TRUE,
+        run_plots = FALSE,
+        sim_grid_chunk_index = 2L,
+        sim_grid_n_chunks = 2L,
+        comparison_semantics_version = "corrected-v2"
+      ),
+      sim_grid_chunk_index = 2L,
+      sim_grid_n_chunks = 2L
+    ),
+    "incompatible with existing manifest"
+  )
+})
+
+test_that("canonical current reads require completion and compatible provenance", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  ctx <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-current"),
+    run_id = "current-run",
+    params = list(comparison_semantics_version = "corrected-v1")
+  )
+  path_staged <- file.path(ctx$staging_collated_dir, "result.rds")
+  env$.write_rds_atomic(tibble::tibble(x = 1L), path_staged)
+
+  expect_error(
+    env$.analysis_current_file(
+      ctx,
+      c("collated", "result.rds"),
+      list(comparison_semantics_version = "corrected-v1")
+    ),
+    "No complete canonical current result"
+  )
+
+  env$.analysis_mark_chunk(
+    run_ctx = ctx,
+    total_sims = 1L,
+    completed_sims = 1L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+  expect_true(isTRUE(env$.analysis_promote_run(ctx)))
+
+  expect_identical(
+    env$.analysis_current_file(
+      ctx,
+      c("collated", "result.rds"),
+      list(comparison_semantics_version = "corrected-v1")
+    ),
+    file.path(ctx$current_dir, "collated", "result.rds")
+  )
+  expect_error(
+    env$.analysis_current_file(
+      ctx,
+      c("collated", "result.rds"),
+      list(comparison_semantics_version = "legacy-v0")
+    ),
+    "comparison_semantics_version"
+  )
+})
+
 test_that("concurrent chunk updates preserve per-chunk status and aggregate counts", {
   env <- .load_runtime_env()
 

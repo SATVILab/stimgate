@@ -441,10 +441,14 @@ test_that(
     expect_true(grepl("\\.analysis_mark_chunk", content))
     expect_true(grepl("\\.analysis_promote_run", content))
 
-    # Reads canonical current/collated/compare_raw.rds
+    # Reads only a complete canonical current result with corrected semantics
     # and does NOT write/read fixed legacy compare_list_raw.rds
     expect_true(grepl(
-      'file\\.path\\(run_ctx\\$current_dir,\\s*"collated",\\s*"compare_raw\\.rds"\\)',
+      "\\.analysis_current_file",
+      content
+    ))
+    expect_true(grepl(
+      "required_params\\s*=\\s*list\\(\\s*comparison_semantics_version",
       content
     ))
     expect_false(grepl("compare_list_raw\\.rds", content))
