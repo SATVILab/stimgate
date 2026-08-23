@@ -533,6 +533,14 @@ plotting/orchestration code.
     - Promotion updates `current/` only after a complete staged run is
       available; failed/interrupted staged runs remain inspectable and
       resumable.
+    - Read canonical outputs through `.analysis_current_file()`, which
+      requires a `COMPLETE` marker, a readable manifest for the
+      requested analysis key, and any analysis-specific semantic version
+      required by the caller.
+    - Record scientific and semantic settings in the run manifest.
+      Reusing an explicit run ID must match those settings; only
+      operational controls such as plotting, simulation execution and
+      the current chunk index may differ across invocations.
 
 ------------------------------------------------------------------------
 

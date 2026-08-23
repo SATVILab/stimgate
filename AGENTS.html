@@ -427,6 +427,8 @@
 <li>For external chunking, all chunks of one logical run must use the same run ID and write under the same staged run directory, separated by chunk labels.</li>
 <li>Never promote on partial/incomplete runs. Promote only after required chunks are complete and collated outputs validate.</li>
 <li>Promotion updates <code>current/</code> only after a complete staged run is available; failed/interrupted staged runs remain inspectable and resumable.</li>
+<li>Read canonical outputs through <code>.analysis_current_file()</code>, which requires a <code>COMPLETE</code> marker, a readable manifest for the requested analysis key, and any analysis-specific semantic version required by the caller.</li>
+<li>Record scientific and semantic settings in the run manifest. Reusing an explicit run ID must match those settings; only operational controls such as plotting, simulation execution and the current chunk index may differ across invocations.</li>
 </ul></li>
 </ol><hr></div>
 <div class="section level2">
