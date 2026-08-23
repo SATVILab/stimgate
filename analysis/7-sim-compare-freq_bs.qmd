@@ -6,6 +6,7 @@ format:
     toc: true
 params:
   analysis_run_id: null
+  simulation_seed: 1
   sim_grid_chunk_index: 1
   sim_grid_n_chunks: 1
   run_simulations: true
@@ -41,6 +42,15 @@ analysis_run_id <- .get_qmd_param_env(
   "ANALYSIS_RUN_ID",
   NULL
 )
+simulation_seed <- as.integer(.get_qmd_param_env(
+  "simulation_seed",
+  "SIMULATION_SEED",
+  1L
+))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
+comparison_semantics_version <- "corrected-comparison-v1"
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -86,6 +96,19 @@ for (fn in c(
   "sim-compare-freq_bs.R"
 )) {
   source(file.path(scripts_r_dir, fn))
+}
+
+# Keep scenario-level RNG stable across worker scheduling and grid chunking.
+.simCompareRunScenarioUnseeded <- .simCompareRunScenario
+.simCompareRunScenario <- function(row, ...) {
+  if (
+    "sim_seed" %in% names(row) &&
+      length(row$sim_seed) > 0L &&
+      !is.na(row$sim_seed[[1]])
+  ) {
+    set.seed(as.integer(row$sim_seed[[1]]))
+  }
+  .simCompareRunScenarioUnseeded(row = row, ...)
 }
 ```
 
@@ -235,6 +258,9 @@ sim_grid <- tidyr::expand_grid(
   dplyr::arrange(
     n_cell,
     dplyr::desc(prob_response)
+  ) |>
+  dplyr::mutate(
+    sim_seed = as.integer(simulation_seed + sim_id - 1L)
   )
 
 if (.isDev()) {
@@ -272,6 +298,7 @@ compare_list_raw_loop <- vector("list", nrow(sim_grid))
 source("scripts/r/sim-compare-freq_bs.R")
 for (i in seq_len(nrow(sim_grid))) {
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
+  set.seed(sim_grid$sim_seed[i])
 
   compare_list_raw_loop[[i]] <- .simCompareFreqBs(
     nSample = 5,
@@ -334,7 +361,8 @@ for (i in seq_len(nrow(sim_grid))) {
         sim_grid$background_relative_to_response[i],
       n_cell_uns_relative_to_stim =
         sim_grid$n_cell_uns_relative_to_stim[i],
-      sim_id = sim_grid$sim_id[i]
+      sim_id = sim_grid$sim_id[i],
+      sim_seed = sim_grid$sim_seed[i]
     ) |>
     dplyr::select(
       transformation,
@@ -354,20 +382,22 @@ for (i in seq_len(nrow(sim_grid))) {
       background_relative_to_response,
       n_cell_uns_relative_to_stim,
       sim_id,
+      sim_seed,
       dplyr::everything()
     )
 }
 ```
 
-Run the simulations in parallel, with progress reporting. The execution grid is
-shuffled first so that the larger and smaller cell-count scenarios are mixed
-across workers. `sim_id` remains unchanged.
+Run the simulations in parallel, with progress reporting. Each scenario has a
+deterministic seed derived from `sim_id`, so its simulation is stable across
+worker scheduling and grid chunking.
 
 ```{r}
 #| label: compare-parallel
 #| results: hide
-log_dir <- file.path("cache", "log", "freq_bs")
-path_progress_file <- file.path(log_dir, "progress.txt")
+n_sample_sim <- 10
+n_iter_sim <- 2
+n_workers <- max(1, .simGetCores())
 
 run_ctx <- .analysis_run_context(
   analysis_key = c("sim", "compare", "freq_bs"),
@@ -376,12 +406,34 @@ run_ctx <- .analysis_run_context(
   params = list(
     run_simulations = run_simulations,
     run_plots = run_plots,
+    comparison_semantics_version = comparison_semantics_version,
+    simulation_seed = simulation_seed,
+    sim_grid_shuffle_seed = simulation_seed,
+    n_sample_sim = n_sample_sim,
+    n_iter_sim = n_iter_sim,
+    stimgate_bw_mtd = stimgate_bw_mtd,
+    stimgate_bw_ncell_max = stimgate_bw_ncell_max,
+    stimgate_bw_fallback = stimgate_bw_fallback,
+    stimgate_bw_min = stimgate_bw_min,
+    stimgate_bw_max = stimgate_bw_max,
+    tol_clust = tol_clust,
+    loc_enforce_shape_threshold = loc_enforce_shape_threshold,
+    calc_cyt_pos_gates = calc_cyt_pos_gates,
+    fbeta_beta = fbeta_beta,
+    fbeta_theta = fbeta_theta,
+    fbeta_width = fbeta_width,
+    tailgate_adjust = tailgate_adjust,
+    tailgate_method = tailgate_method,
+    tailgate_tol = tailgate_tol,
+    tailgate_auto_tol = tailgate_auto_tol,
+    tailgate_x = tailgate_x,
     sim_grid_chunk_index = sim_grid_chunk_index,
     sim_grid_n_chunks = sim_grid_n_chunks
   ),
   sim_grid_chunk_index = sim_grid_chunk_index,
   sim_grid_n_chunks = sim_grid_n_chunks
 )
+path_progress_file <- run_ctx$progress_file
 dir_output <- run_ctx$chunk_output_dir
 dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
@@ -394,10 +446,6 @@ path_rds <- file.path(
     "compare_raw.rds"
   }
 )
-
-n_sample_sim <- 10
-n_iter_sim <- 2
-n_workers <- max(1, .simGetCores())
 
 if (interactive()) {
   progressr::handlers(global = TRUE)
@@ -446,18 +494,6 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
   )
 
   .write_rds_atomic(compare_raw, path_rds)
-
-  if (sim_grid_n_chunks > 1L) {
-    path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
-    compare_raw_full <- .simCompareCollateScenarioOutputs(
-      dirCache = run_ctx$staging_run_dir,
-      sim_grid = sim_grid_all
-    )
-    if (nrow(compare_raw_full) > 0L) {
-      .write_rds_atomic(compare_raw_full, path_rds_full)
-      compare_raw <- compare_raw_full
-    }
-  }
 } else if (isTRUE(run_simulations)) {
   message("No simulations assigned to this chunk.")
 } else {
@@ -494,6 +530,49 @@ if (isTRUE(run_simulations)) {
   )
 
   if (.analysis_can_promote(run_ctx)) {
+    scenario_paths <- list.files(
+      run_ctx$staging_run_dir,
+      pattern = "^(compare_raw.*|sim_scenario.*|sim_raw.*)sim_id_[0-9]+[.]rds$",
+      recursive = TRUE,
+      full.names = TRUE
+    )
+    compare_raw_full <- .simCompareCollateScenarioOutputs(
+      pathList = scenario_paths,
+      sim_grid = sim_grid_all
+    )
+    expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
+    collated_sim_ids <- if (
+      nrow(compare_raw_full) > 0L && "sim_id" %in% names(compare_raw_full)
+    ) {
+      sort(unique(as.integer(compare_raw_full$sim_id)))
+    } else {
+      integer()
+    }
+    full_collate_ok <- identical(collated_sim_ids, expected_sim_ids)
+    full_validation_ok <- full_collate_ok &&
+      (!"error" %in% names(compare_raw_full) ||
+        !any(!is.na(compare_raw_full$error) & compare_raw_full$error != ""))
+
+    if (!isTRUE(full_validation_ok)) {
+      error_message <- paste0(
+        "Refusing to promote analysis 7: canonical collation did not contain ",
+        "exactly the complete error-free simulation grid."
+      )
+      .analysis_mark_chunk(
+        run_ctx = run_ctx,
+        total_sims = nrow(sim_grid),
+        completed_sims = n_completed,
+        failed_sims = n_failed,
+        collate_ok = full_collate_ok,
+        validation_ok = FALSE,
+        error_message = error_message
+      )
+      stop(error_message)
+    }
+
+    path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
+    .write_rds_atomic(compare_raw_full, path_rds_full)
+    compare_raw <- compare_raw_full
     .analysis_promote_run(run_ctx)
   }
 }
