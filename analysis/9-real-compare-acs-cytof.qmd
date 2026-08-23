@@ -25,7 +25,7 @@ root_dir <- tryCatch(
 )
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
-source(file.path(scripts_r_dir, "acs_cytof-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))
 
