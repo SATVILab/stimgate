@@ -25,17 +25,19 @@ root_dir <- tryCatch(
 )
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
-source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "acs_cytof-runtime.R"))
+source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
+source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))
 
 run_preprocessing <- .as_flag(.get_qmd_param_env(
   "run_preprocessing",
   "RUN_PREPROCESSING",
-  FALSE
+  TRUE
 ))
 run_methods <- .as_flag(.get_qmd_param_env(
   "run_methods",
   "RUN_METHODS",
-  FALSE
+  TRUE
 ))
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
@@ -55,96 +57,6 @@ if (
     source(fn)
   }
 }
-
-if (!requireNamespace("cytoUtils", quietly = TRUE)) {
-  warning(
-    "Package 'cytoUtils' is not installed. Tailgate comparisons will fail if run."
-  )
-}
-
-# Reuse the corrected comparator implementations from analyses 7 and 8.
-for (fn in c(
-  "sim-misc.R",
-  "sim-bandwidth.R",
-  "sim-compare-freq_bs.R"
-)) {
-  source(file.path(scripts_r_dir, fn))
-}
-
-.acs_assert_file <- function(path, description) {
-  if (!file.exists(path)) {
-    stop(description, " not found at: ", path)
-  }
-  invisible(path)
-}
-
-.acs_assert_dir <- function(path, description) {
-  if (!dir.exists(path)) {
-    stop(description, " not found at: ", path)
-  }
-  invisible(path)
-}
-
-.acs_get_expr <- function(gs, ind, chnl, pop = "root") {
-  gh <- gs[[as.integer(ind)]]
-  ff <- flowWorkspace::gh_pop_get_data(gh, pop)
-  ex <- flowCore::exprs(ff)
-  if (!chnl %in% colnames(ex)) {
-    stop("Channel '", chnl, "' is not present in sample index ", ind, ".")
-  }
-  as.numeric(ex[, chnl])
-}
-
-.acs_estimate_from_threshold <- function(x_stim, x_uns, threshold) {
-  threshold <- suppressWarnings(as.numeric(threshold))[1]
-  n_stim <- length(x_stim)
-  n_uns <- length(x_uns)
-
-  if (!is.finite(threshold)) {
-    return(tibble::tibble(
-      threshold = NA_real_,
-      nCellStim = n_stim,
-      nCellUns = n_uns,
-      nPosStim = NA_integer_,
-      nPosUns = NA_integer_,
-      propStim = NA_real_,
-      propUns = NA_real_,
-      propRespEst = NA_real_
-    ))
-  }
-
-  n_pos_stim <- sum(x_stim > threshold, na.rm = TRUE)
-  n_pos_uns <- sum(x_uns > threshold, na.rm = TRUE)
-  prop_stim <- n_pos_stim / n_stim
-  prop_uns <- n_pos_uns / n_uns
-
-  tibble::tibble(
-    threshold = threshold,
-    nCellStim = n_stim,
-    nCellUns = n_uns,
-    nPosStim = n_pos_stim,
-    nPosUns = n_pos_uns,
-    propStim = prop_stim,
-    propUns = prop_uns,
-    propRespEst = prop_stim - prop_uns
-  )
-}
-
-.acs_stim_pair_tbl <- function(batch_list, sample_metadata) {
-  purrr::imap_dfr(batch_list, function(ind_batch, batch_nm) {
-    ind_uns <- ind_batch[[1]]
-    ind_stim <- ind_batch[-1]
-
-    tibble::tibble(
-      batch = batch_nm,
-      indUns = ind_uns,
-      indStim = ind_stim,
-      sampleUns = sample_metadata$sample_name[ind_uns],
-      sampleStim = sample_metadata$sample_name[ind_stim],
-      conditionStim = sample_metadata$condition[ind_stim]
-    )
-  })
-}
 ```
 
 ### Aim
@@ -152,51 +64,35 @@ for (fn in c(
 Validate StimGate on the ACS CyTOF dataset and compare its estimated
 background-subtracted response frequencies with Tailgate and F-beta.
 
-Unlike the simulation analyses, this analysis starts with a non-parallel
-pre-processing stage. The raw FCS files are read from `raw-data`, the input scale
-and transformation are made explicit, and the resulting `GatingSet` is cached.
-The three methods are then run sequentially on exactly the same processed data.
+## Gating
 
-The primary StimGate analysis explicitly uses `gateCombn = "min"`. Within each
-batch this should choose the lowest genuinely generated local-FDR threshold from
-the stimulated conditions, rather than allowing a fallback cutpoint to determine
-the minimum.
+### Common settings
 
-## Pre-processing
-
-### Data, transformation and method settings
+Here we specify settings common across all the populations gated.
 
 ```{r}
-#| label: preprocessing-settings
-# TODO #346: confirm the exact raw-data location and metadata filenames.
-acs_raw_subdir <- "acs-cytof"
-acs_raw_dir <- projr::projr_path_get("raw-data", acs_raw_subdir)
-acs_sample_metadata_path <- file.path(acs_raw_dir, "sample_metadata.csv")
-acs_marker_metadata_path <- file.path(acs_raw_dir, "marker_metadata.csv")
-acs_reference_counts_path <- file.path(acs_raw_dir, "reference_counts.csv")
+path_fcs_base <- projr::projr_path_get(
+  "raw-data",
+  "comparison_data", "acscytof", "fcs"
+)
+if (!dir.exists(path_fcs_base)) {
+  stop("Path to fcs files does not exist: ", path_fcs_base)
+}
+path_gs_base <- projr::projr_path_get(
+  "cache",
+  "acs_cytof",
+  "gs"
+)
+path_scratch_base <- projr::projr_path_get(
+  "cache",
+  "acs_cytof",
+  "scratch"
+)
+```
 
-acs_cache_dir <- projr::projr_path_get("cache", "real", "acs-cytof")
-acs_gs_path <- file.path(acs_cache_dir, "gatingset")
-acs_sample_metadata_cache <- file.path(acs_cache_dir, "sample_metadata.csv")
-acs_marker_metadata_cache <- file.path(acs_cache_dir, "marker_metadata.csv")
-acs_batch_list_path <- file.path(acs_cache_dir, "batch_list.rds")
-
-acs_output_dir <- projr::projr_path_get("cache-analysis", "9-acs-cytof")
-acs_table_dir <- file.path(acs_output_dir, "tables")
-acs_figure_dir <- file.path(acs_output_dir, "figures")
-
-dir.create(acs_cache_dir, recursive = TRUE, showWarnings = FALSE)
-dir.create(acs_table_dir, recursive = TRUE, showWarnings = FALSE)
-dir.create(acs_figure_dir, recursive = TRUE, showWarnings = FALSE)
-
-# TODO #346: set these only after inspecting the stored ACS values.
-# "none" means that the FCS values are already on the analysis scale.
-# "asinh" applies asinh(x / cofactor) to the listed marker channels.
-acs_transform_name <- NA_character_
-acs_transform_cofactor <- NA_real_
-
-acs_unstim_label <- "unstim"
-acs_pop_gate <- "root"
+```{r}
+#| label: settings-common-gatings
+chnl_vec <- c("Ho165Di", "Gd158Di", "Nd146Di", "Dy164Di", "Gd156Di", "Nd150Di")
 
 # StimGate settings. gateCombn is intentionally explicit.
 stimgate_gate_combn <- "min"
@@ -207,8 +103,8 @@ stimgate_bw_min <- "none"
 stimgate_bw_max <- "none"
 stimgate_bias_uns <- NULL
 stimgate_min_cell <- 100
-tol_clust <- 1e-7
-calc_cyt_pos_gates <- FALSE
+tol_clust <- NULL
+calc_cyt_pos_gates <- TRUE
 
 # Comparator settings, matching the corrected analyses 7 and 8 semantics.
 fbeta_beta <- 0.8
@@ -227,245 +123,111 @@ tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
 ```
 
-### Read the FCS files and inspect their stored scale
+### TCRgd
 
 ```{r}
-#| label: preprocessing-fcs
+# directories
+path_fcs_tcrgd <- file.path(path_fcs_base, "tcrgd")
+path_gs_tcrgd <- file.path(path_gs_base, "tcrgd")
+path_scratch_tcrgd <- file.path(path_scratch_base, "tcrgd")
+if (!dir.exists(path_scratch_tcrgd)) {
+  dir.create(path_scratch_tcrgd, recursive = TRUE, showWarnings = FALSE)
+}
+path_stimgate_tcrgd <- file.path(path_scratch_tcrgd, "stimgate")
+# gating settings
+bias_uns_tcrgd <- 0.15
+```
+
+#### Pre-processing
+
+##### Create GatingSet
+
+```{r}
+#| label: create-gatingset-tcrgd
 #| results: hide
 if (isTRUE(run_preprocessing)) {
-  .acs_assert_dir(acs_raw_dir, "ACS raw-data directory")
-  .acs_assert_file(acs_sample_metadata_path, "ACS sample metadata")
-  .acs_assert_file(acs_marker_metadata_path, "ACS marker metadata")
-
-  sample_metadata <- utils::read.csv(
-    acs_sample_metadata_path,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-  marker_metadata <- utils::read.csv(
-    acs_marker_metadata_path,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-
-  required_sample_cols <- c("fcs_file", "sample_name", "batch", "condition")
-  missing_sample_cols <- setdiff(required_sample_cols, names(sample_metadata))
-  if (length(missing_sample_cols) > 0L) {
-    stop(
-      "ACS sample metadata is missing columns: ",
-      paste(missing_sample_cols, collapse = ", ")
-    )
+  # ensure fcs directory exists
+  if (!dir.exists(path_fcs_tcrgd)) {
+    stop("Path to TCRgd FCS files does not exist: ", path_fcs_tcrgd)
   }
-
-  required_marker_cols <- c("channel", "marker")
-  missing_marker_cols <- setdiff(required_marker_cols, names(marker_metadata))
-  if (length(missing_marker_cols) > 0L) {
-    stop(
-      "ACS marker metadata is missing columns: ",
-      paste(missing_marker_cols, collapse = ", ")
-    )
-  }
-
-  fcs_paths_all <- list.files(
-    acs_raw_dir,
+  # ensure that there are many fcs files in there
+  fcs_files_tcrgd <- list.files(
+    path_fcs_tcrgd,
     pattern = "\\.fcs$",
     recursive = TRUE,
     full.names = TRUE,
     ignore.case = TRUE
   )
-  fcs_lookup <- stats::setNames(fcs_paths_all, basename(fcs_paths_all))
-
-  missing_fcs <- setdiff(sample_metadata$fcs_file, names(fcs_lookup))
-  if (length(missing_fcs) > 0L) {
+  if (length(fcs_files_tcrgd) < 10L) {
     stop(
-      "Could not find ACS FCS files listed in sample_metadata.csv: ",
-      paste(missing_fcs, collapse = ", ")
+      "Expected at least 10 TCRgd FCS files in the directory, but found
+  only ", length(fcs_files_tcrgd), "."
     )
   }
-
-  fcs_paths <- unname(fcs_lookup[sample_metadata$fcs_file])
-  ff_list <- lapply(
-    fcs_paths,
-    flowCore::read.FCS,
-    transformation = FALSE,
-    truncate_max_range = FALSE
-  )
-
-  sample_metadata$n_cell <- vapply(ff_list, nrow, integer(1))
-
-  scale_summary <- purrr::map2_dfr(
-    ff_list,
-    sample_metadata$sample_name,
-    function(ff, sample_name) {
-      ex <- flowCore::exprs(ff)
-      purrr::map_dfr(marker_metadata$channel, function(channel) {
-        if (!channel %in% colnames(ex)) {
-          return(tibble::tibble(
-            sample_name = sample_name,
-            channel = channel,
-            min = NA_real_,
-            q50 = NA_real_,
-            q95 = NA_real_,
-            max = NA_real_
-          ))
-        }
-        x <- as.numeric(ex[, channel])
-        tibble::tibble(
-          sample_name = sample_name,
-          channel = channel,
-          min = min(x, na.rm = TRUE),
-          q50 = stats::median(x, na.rm = TRUE),
-          q95 = stats::quantile(x, 0.95, na.rm = TRUE),
-          max = max(x, na.rm = TRUE)
-        )
-      })
-    }
-  )
-  utils::write.csv(
-    scale_summary,
-    file.path(acs_table_dir, "stored_fcs_scale_summary.csv"),
-    row.names = FALSE
-  )
-
-  if (is.na(acs_transform_name)) {
-    stop(
-      "ACS transformation has not yet been verified. Inspect ",
-      "stored_fcs_scale_summary.csv, then set acs_transform_name to 'none' ",
-      "or 'asinh'. No analysis-scale GatingSet has been cached."
-    )
+  # ensure that the gating set directory exists and is empty
+  if (dir.exists(path_gs_tcrgd)) {
+    unlink(path_gs_tcrgd, recursive = TRUE)
   }
-
-  if (identical(acs_transform_name, "asinh")) {
-    if (!is.finite(acs_transform_cofactor) || acs_transform_cofactor <= 0) {
-      stop("A positive acs_transform_cofactor is required for the asinh transform.")
-    }
-
-    transform_channels <- marker_metadata$channel
-    ff_list <- lapply(ff_list, function(ff) {
-      ex <- flowCore::exprs(ff)
-      missing_channels <- setdiff(transform_channels, colnames(ex))
-      if (length(missing_channels) > 0L) {
-        stop(
-          "Marker channels missing from an ACS FCS file: ",
-          paste(missing_channels, collapse = ", ")
-        )
-      }
-      ex[, transform_channels] <- asinh(
-        ex[, transform_channels, drop = FALSE] / acs_transform_cofactor
-      )
-      flowCore::exprs(ff) <- ex
-      ff
-    })
-  } else if (!identical(acs_transform_name, "none")) {
-    stop(
-      "Unsupported acs_transform_name: ", acs_transform_name,
-      ". Add the verified transformation explicitly rather than guessing."
-    )
-  }
-
-  fs <- flowCore::flowSet(ff_list)
-  flowCore::sampleNames(fs) <- sample_metadata$sample_name
-  gs <- flowWorkspace::GatingSet(fs)
-
-  if (dir.exists(acs_gs_path)) {
-    unlink(acs_gs_path, recursive = TRUE)
-  }
-  flowWorkspace::save_gs(gs, path = acs_gs_path)
-
-  utils::write.csv(
-    sample_metadata,
-    acs_sample_metadata_cache,
-    row.names = FALSE
-  )
-  utils::write.csv(
-    marker_metadata,
-    acs_marker_metadata_cache,
-    row.names = FALSE
+  dir.create(path_gs_tcrgd, recursive = TRUE, showWarnings = FALSE)
+  # create the gatingset
+  create_gatingset(
+    path_fcs = path_fcs_tcrgd,
+    path_gs = path_gs_tcrgd# ,
+    # n_sample = 20
   )
 
-  batch_list <- stimgate::getBatchList(
-    fnTblInfo = sample_metadata,
-    colGrp = "batch",
-    colStim = "condition",
-    unsChr = acs_unstim_label,
-    colNCell = "n_cell",
-    minCell = stimgate_min_cell
-  )
-  if (length(batch_list) == 0L) {
-    stop("No valid ACS batches remain after constructing batch_list.")
+  # plot the gatingset to check transformation
+  # is appropriate
+  # create the scratch directory
+  path_check_tcrgd <- file.path(path_scratch_tcrgd, "gatingset")
+  if (!dir.exists(path_check_tcrgd)) {
+    dir.create(path_check_tcrgd, recursive = TRUE, showWarnings = FALSE)
   }
-  saveRDS(batch_list, acs_batch_list_path)
+  plot_gatingset_check(
+    path_gs = path_gs_tcrgd,
+    path_plot_dir = path_check_tcrgd
+  )
+  # okay, looking here, we clearly need to use the transformation,
+  # as e.g. the DNA markers are just vertical bars otherwise
+  # and I know from preprocessing that they should not be so.
 }
 ```
 
-### Load the cached pre-processing outputs
+#### Gate
+
+##### StimGate
 
 ```{r}
-#| label: preprocessing-load
-if (!dir.exists(acs_gs_path)) {
-  stop(
-    "Cached ACS GatingSet not found. Run pre-processing after the ",
-    "transformation has been verified."
-  )
-}
-
-.acs_assert_file(acs_sample_metadata_cache, "Cached ACS sample metadata")
-.acs_assert_file(acs_marker_metadata_cache, "Cached ACS marker metadata")
-.acs_assert_file(acs_batch_list_path, "Cached ACS batch list")
-
-gs_acs <- flowWorkspace::load_gs(acs_gs_path)
-sample_metadata <- utils::read.csv(
-  acs_sample_metadata_cache,
-  stringsAsFactors = FALSE,
-  check.names = FALSE
-)
-marker_metadata <- utils::read.csv(
-  acs_marker_metadata_cache,
-  stringsAsFactors = FALSE,
-  check.names = FALSE
-)
-batch_list <- readRDS(acs_batch_list_path)
-stim_pair_tbl <- .acs_stim_pair_tbl(batch_list, sample_metadata)
-method_grid <- merge(
-  stim_pair_tbl,
-  marker_metadata[, c("channel", "marker"), drop = FALSE],
-  by = NULL
-)
-
-stim_pair_tbl
-marker_metadata
-```
-
-## StimGate
-
-```{r}
-#| label: run-stimgate
-#| results: hide
-path_stimgate <- file.path(acs_cache_dir, "stimgate")
-path_stimgate_results <- file.path(acs_cache_dir, "stimgate_results.rds")
-path_stimgate_gates <- file.path(acs_cache_dir, "stimgate_gates.rds")
-path_stimgate_gates_detailed <- file.path(
-  acs_cache_dir,
-  "stimgate_gates_detailed.rds"
-)
-
-if (isTRUE(run_methods)) {
-  chnl_settings <- stats::setNames(
-    lapply(marker_metadata$channel, function(channel) list(cut = channel)),
-    marker_metadata$marker
-  )
-
-  if (dir.exists(path_stimgate)) {
-    unlink(path_stimgate, recursive = TRUE)
+#| label: gate-stimgate-tcrgd
+if (run_methods) {
+  # ensure a clean stimgate run
+  if (dir.exists(path_stimgate_tcrgd)) {
+    unlink(path_stimgate_tcrgd, recursive = TRUE)
   }
+  dir.create(path_stimgate_tcrgd, recursive = TRUE, showWarnings = FALSE)
+
+  # load gatingset
+  gs_tcrgd <- flowWorkspace::load_gs(path_gs_tcrgd)
+
+  # create a batch_list object,
+  # which for each element has five indices,
+  # the first of which specifies unstim.
+  # the elements covered go from 
+  # 1 to the length of gs_tcrgd.
+  # and every fifth element in gs_tcrgd is an unstim sample.
+  # but its index must go FIRST in batch_list
+  # (and all the stims come afterwards)
+  batch_list_tcrgd <- lapply(seq(1, length(gs_tcrgd), by = 5), function(i) {
+    c(i, seq(i + 1, min(i + 4, length(gs_tcrgd))))
+  })
 
   invisible(stimgate::gateStim(
-    pathProject = path_stimgate,
-    .data = gs_acs,
-    popGate = acs_pop_gate,
-    batchList = batch_list,
-    chnl = chnl_settings,
-    biasUns = stimgate_bias_uns,
+    pathProject = path_stimgate_tcrgd,
+    .data = gs_tcrgd,
+    popGate = "root",
+    batchList = batch_list_tcrgd,
+    chnl = chnl_vec,
+    biasUns = bias_uns_tcrgd,
     bwMtd = stimgate_bw_mtd,
     bwNcellMax = stimgate_bw_ncell_max,
     bwFallback = stimgate_bw_fallback,
@@ -477,156 +239,35 @@ if (isTRUE(run_methods)) {
     calcCytPosGates = calc_cyt_pos_gates
   ))
 
-  stimgate_gates <- stimgate::getStimGates(path_stimgate)
-  stimgate_gates_detailed <- stimgate::getStimGatesDetailed(path_stimgate)
-  saveRDS(stimgate_gates, path_stimgate_gates)
-  saveRDS(stimgate_gates_detailed, path_stimgate_gates_detailed)
-
-  stimgate_results <- purrr::pmap_dfr(
-    method_grid,
-    function(
-        batch,
-        indUns,
-        indStim,
-        sampleUns,
-        sampleStim,
-        conditionStim,
-        channel,
-        marker) {
-      gate_rows <- stimgate_gates |>
-        dplyr::filter(
-          as.character(.data$ind) == as.character(indStim),
-          .data$chnl == channel,
-          .data$gateCombn %in% c("min", "minClust")
-        )
-
-      if (nrow(gate_rows) > 0L && any(gate_rows$gateCombn == "minClust")) {
-        gate_rows <- gate_rows[gate_rows$gateCombn == "minClust", , drop = FALSE]
-      }
-      if (nrow(gate_rows) > 0L) {
-        gate_rows <- gate_rows[nrow(gate_rows), , drop = FALSE]
-      }
-
-      threshold <- if (nrow(gate_rows) > 0L) {
-        suppressWarnings(as.numeric(gate_rows$gate[[1]]))
-      } else {
-        NA_real_
-      }
-      gate_name <- if (nrow(gate_rows) > 0L) {
-        as.character(gate_rows$gateName[[1]])
-      } else {
-        NA_character_
-      }
-
-      x_stim <- .acs_get_expr(gs_acs, indStim, channel, acs_pop_gate)
-      x_uns <- .acs_get_expr(gs_acs, indUns, channel, acs_pop_gate)
-
-      .acs_estimate_from_threshold(x_stim, x_uns, threshold) |>
-        dplyr::mutate(
-          batch = batch,
-          indUns = indUns,
-          indStim = indStim,
-          sampleUns = sampleUns,
-          sampleStim = sampleStim,
-          conditionStim = conditionStim,
-          channel = channel,
-          marker = marker,
-          method = "stimgate",
-          thresholdOrigin = gate_name,
-          thresholdFallbackUsed = !is.finite(threshold),
-          .before = 1
-        )
-    }
+  p <- plotStim(
+    ind = 2L,
+    .data = gs_tcrgd,
+    pathProject = path_stimgate_tcrgd,
+    pop = "root",
+    chnl = c("Ho165Di", "Nd146Di"),
   )
-  saveRDS(stimgate_results, path_stimgate_results)
-} else {
-  stimgate_results <- readRDS(path_stimgate_results)
-  stimgate_gates <- readRDS(path_stimgate_gates)
-  stimgate_gates_detailed <- readRDS(path_stimgate_gates_detailed)
+
+  path_p_stimgate_check_tcrgd <- projr::projr_path_get(
+    "cache",
+    "acs_cytof",
+    "scratch",
+    "tcrgd",
+    "stimgate_check.pdf"
+  )
+  ggsave(
+    path_p_stimgate_check_tcrgd,
+    p,
+    width = 18,
+    height = 16,
+    units = "cm"
+  )
 }
 ```
 
-### Verify the `min` gate combination
+#### Tailgate
 
 ```{r}
-#| label: check-stimgate-min
-if (!identical(stimgate_gate_combn, "min")) {
-  stop("ACS StimGate comparison must use gateCombn = 'min'.")
-}
-
-condition_generated <- stimgate_gates_detailed |>
-  dplyr::filter(
-    .data$detailLevel == "condition",
-    .data$locGenerated %in% TRUE,
-    is.finite(.data$threshold)
-  ) |>
-  dplyr::mutate(indStim = as.integer(.data$ind)) |>
-  dplyr::inner_join(
-    stim_pair_tbl |>
-      dplyr::select(.data$batch, .data$indStim),
-    by = "indStim"
-  ) |>
-  dplyr::group_by(.data$batch, .data$chnl) |>
-  dplyr::summarise(
-    expected_min = min(.data$threshold),
-    n_generated = dplyr::n(),
-    .groups = "drop"
-  )
-
-actual_min <- stimgate_gates |>
-  dplyr::filter(.data$gateType == "loc", .data$gateCombn == "min") |>
-  dplyr::mutate(indStim = as.integer(.data$ind)) |>
-  dplyr::inner_join(
-    stim_pair_tbl |>
-      dplyr::select(.data$batch, .data$indStim),
-    by = c("batch", "indStim")
-  ) |>
-  dplyr::group_by(.data$batch, .data$chnl) |>
-  dplyr::summarise(
-    actual_min = dplyr::first(.data$gate),
-    n_distinct_gates = dplyr::n_distinct(.data$gate),
-    .groups = "drop"
-  )
-
-min_gate_check_tbl <- condition_generated |>
-  dplyr::left_join(actual_min, by = c("batch", "chnl")) |>
-  dplyr::mutate(
-    min_matches = is.finite(.data$actual_min) &
-      abs(.data$expected_min - .data$actual_min) < 1e-10,
-    one_gate_within_batch = .data$n_distinct_gates == 1L
-  )
-
-if (
-  nrow(min_gate_check_tbl) > 0L &&
-    any(
-      !min_gate_check_tbl$min_matches |
-        !min_gate_check_tbl$one_gate_within_batch,
-      na.rm = TRUE
-    )
-) {
-  stop("StimGate gateCombn = 'min' did not match the generated-condition minimum.")
-}
-
-if (!is.null(tol_clust)) {
-  n_min_clust <- stimgate_gates |>
-    dplyr::filter(.data$gateCombn == "minClust") |>
-    nrow()
-  if (n_min_clust == 0L) {
-    stop("Cluster refinement was requested but no minClust gates were saved.")
-  }
-}
-
-saveRDS(
-  min_gate_check_tbl,
-  file.path(acs_table_dir, "stimgate_min_gate_check.rds")
-)
-min_gate_check_tbl
-```
-
-## Tailgate
-
-```{r}
-#| label: run-tailgate
+#| label: run-tailgate-tcrgd
 #| results: hide
 path_tailgate_results <- file.path(acs_cache_dir, "tailgate_results.rds")
 
@@ -701,10 +342,10 @@ if (isTRUE(run_methods)) {
 }
 ```
 
-## F-beta
+#### F-beta
 
 ```{r}
-#| label: run-fbeta
+#| label: run-fbeta-tcrgd
 #| results: hide
 path_fbeta_results <- file.path(acs_cache_dir, "fbeta_results.rds")
 
@@ -781,172 +422,10 @@ if (isTRUE(run_methods)) {
 
 ## Compare methods with the ACS reference counts
 
-```{r}
-#| label: compare-methods
-method_results <- dplyr::bind_rows(
-  stimgate_results,
-  tailgate_results,
-  fbeta_results
-)
-
-if (file.exists(acs_reference_counts_path)) {
-  reference_counts <- utils::read.csv(
-    acs_reference_counts_path,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-
-  required_reference_cols <- c("sample_name", "channel")
-  missing_reference_cols <- setdiff(
-    required_reference_cols,
-    names(reference_counts)
-  )
-  if (length(missing_reference_cols) > 0L) {
-    stop(
-      "ACS reference table is missing columns: ",
-      paste(missing_reference_cols, collapse = ", ")
-    )
-  }
-
-  if (!"reference_prop" %in% names(reference_counts)) {
-    if (all(c("reference_count", "reference_n") %in% names(reference_counts))) {
-      reference_counts <- reference_counts |>
-        dplyr::mutate(
-          reference_prop = .data$reference_count / .data$reference_n
-        )
-    } else {
-      stop(
-        "ACS reference table must contain reference_prop, or both ",
-        "reference_count and reference_n."
-      )
-    }
-  }
-
-  comparison_tbl <- method_results |>
-    dplyr::left_join(
-      reference_counts,
-      by = c("sampleStim" = "sample_name", "channel")
-    ) |>
-    dplyr::mutate(
-      error = .data$propRespEst - .data$reference_prop,
-      abs_error = abs(.data$error),
-      rel_error = dplyr::if_else(
-        .data$reference_prop == 0,
-        NA_real_,
-        .data$error / .data$reference_prop
-      )
-    )
-} else {
-  warning(
-    "ACS reference counts have not yet been located. Method outputs are ",
-    "available, but reference-based comparison is deferred."
-  )
-  comparison_tbl <- method_results
-}
-
-comparison_tbl
-```
-
 ## Output tables and figures
 
 ### Save analysis tables
 
-```{r}
-#| label: save-output-tables
-saveRDS(method_results, file.path(acs_table_dir, "method_results.rds"))
-saveRDS(comparison_tbl, file.path(acs_table_dir, "comparison_with_reference.rds"))
-
-utils::write.csv(
-  method_results,
-  file.path(acs_table_dir, "method_results.csv"),
-  row.names = FALSE
-)
-utils::write.csv(
-  comparison_tbl,
-  file.path(acs_table_dir, "comparison_with_reference.csv"),
-  row.names = FALSE
-)
-
-if (exists("reference_counts")) {
-  saveRDS(reference_counts, file.path(acs_table_dir, "reference_counts.rds"))
-}
-```
-
 ### Estimated versus reference response frequency
 
-```{r}
-#| label: plot-estimate-v-reference
-#| fig-width: 9
-#| fig-height: 7
-if (
-  isTRUE(run_plots) &&
-    all(c("reference_prop", "propRespEst") %in% names(comparison_tbl))
-) {
-  p_est_ref <- ggplot(
-    comparison_tbl,
-    aes(
-      x = reference_prop,
-      y = propRespEst,
-      colour = method
-    )
-  ) +
-    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-    geom_point(alpha = 0.75) +
-    facet_wrap(~marker, scales = "free") +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy", minor = "none") +
-    labs(
-      title = "ACS CyTOF: Estimated vs Reference Response Frequency",
-      x = "Reference response frequency",
-      y = "Estimated background-subtracted response frequency",
-      colour = "Method"
-    )
-
-  ggsave(
-    file.path(acs_figure_dir, "estimate_vs_reference.pdf"),
-    p_est_ref,
-    width = 18,
-    height = 14,
-    units = "cm"
-  )
-  print(p_est_ref)
-}
-```
-
 ### Relative error by method
-
-```{r}
-#| label: plot-relative-error
-#| fig-width: 9
-#| fig-height: 7
-if (isTRUE(run_plots) && "rel_error" %in% names(comparison_tbl)) {
-  p_rel_error <- ggplot(
-    comparison_tbl,
-    aes(x = method, y = rel_error)
-  ) +
-    geom_hline(yintercept = 0, linetype = "dashed") +
-    geom_boxplot(outlier.shape = NA) +
-    geom_jitter(width = 0.15, alpha = 0.5) +
-    facet_wrap(~marker, scales = "free_y") +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "y", minor = "none") +
-    labs(
-      title = "ACS CyTOF: Relative Error by Method",
-      x = NULL,
-      y = "Relative error"
-    )
-
-  ggsave(
-    file.path(acs_figure_dir, "relative_error_by_method.pdf"),
-    p_rel_error,
-    width = 18,
-    height = 14,
-    units = "cm"
-  )
-  print(p_rel_error)
-}
-```
-
-The figures above are initial comparison outputs. Once the ACS reference counts
-and their exact denominator are recovered, this final section should be reduced
-to the thesis figures and tables that are actually needed.
