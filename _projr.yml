@@ -1,6 +1,9 @@
 directories:
-  raw-data:
-    path: _raw/data
+  raw-data-large:
+    path: _raw/data/large
+  raw-data-small:
+    path: _raw/data/small
+    ignore-git: no
   cache:
     path: _tmp
   cache-analysis:

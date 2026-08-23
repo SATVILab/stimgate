@@ -46,7 +46,7 @@ docs/
 
 inst/doc
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
-_raw/data/**
+_raw/data/large/**
 _tmp/**
 analysis/cache/**
 docs/**
@@ -105,3 +105,4 @@ _tmp/log/sbatch/dev-7-sim-compare-freq_bs
 _tmp/log/sbatch/dev-8-sim-compare-freq_bs-batch
 
 _tmp/log/sbatch/dev-9-real-compare-acs-cytof
+

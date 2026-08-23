@@ -124,7 +124,7 @@ the six cytokine channels, `bwMtd = "hpi1"`, debug profiling and the required
 ```{r}
 #| label: settings-common-gating-paths
 path_fcs_base <- projr::projr_path_get(
-  "raw-data",
+  "raw-data-large",
   "comparison_data", "acscytof", "fcs"
 )
 if (!dir.exists(path_fcs_base)) {
