@@ -458,11 +458,12 @@ compare_summary
 
 ```{r}
 plot_dir <- projr::projr_path_get(
-    "cache",
-    "sim",
-    "compare",
-    "freq_bs_batch",
-    "mean_shift_degradation")
+  "cache",
+  "sim",
+  "compare",
+  "freq_bs_batch",
+  "mean_shift_degradation"
+)
 if (dir.exists(plot_dir)) {
   unlink(plot_dir, recursive = TRUE)
 }
@@ -707,11 +708,12 @@ if (isTRUE(run_plots)) {
 
 ```{r}
 plot_dir <- projr::projr_path_get(
-    "cache",
-    "sim",
-    "compare",
-    "freq_bs_batch",
-    "sd_inflation_degradation")
+  "cache",
+  "sim",
+  "compare",
+  "freq_bs_batch",
+  "sd_inflation_degradation"
+)
 if (dir.exists(plot_dir)) {
   unlink(plot_dir, recursive = TRUE)
 }
