@@ -181,6 +181,7 @@ stimgate_bw_ncell_max <- 1e4
 stimgate_bw_fallback <- "auto"
 stimgate_bw_min <- "none"
 stimgate_bw_max <- "none"
+stimgate_gate_combn <- "min"
 
 # StimGate method settings for the full method comparison.
 # Cluster refinement is enabled to represent the full one-marker procedure.
@@ -218,6 +219,7 @@ sim_grid <- tidyr::expand_grid(
   bw_fallback = stimgate_bw_fallback,
   bw_min = stimgate_bw_min,
   bw_max = stimgate_bw_max,
+  gate_combn = stimgate_gate_combn,
   sample_perturbation_sd = sample_perturbation_sd_vec,
   condition_perturbation_sd = condition_perturbation_sd_vec,
   cluster_perturbation_sd = cluster_perturbation_sd_vec,
@@ -242,6 +244,7 @@ sim_grid <- tidyr::expand_grid(
     bw_fallback,
     bw_min,
     bw_max,
+    gate_combn,
     bias_uns,
     sample_perturbation_sd,
     condition_perturbation_sd,
@@ -416,6 +419,7 @@ run_ctx <- .analysis_run_context(
     stimgate_bw_fallback = stimgate_bw_fallback,
     stimgate_bw_min = stimgate_bw_min,
     stimgate_bw_max = stimgate_bw_max,
+    stimgate_gate_combn = stimgate_gate_combn,
     tol_clust = tol_clust,
     loc_enforce_shape_threshold = loc_enforce_shape_threshold,
     calc_cyt_pos_gates = calc_cyt_pos_gates,
@@ -467,6 +471,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     tolClust = tol_clust,
     locEnforceShapeThreshold = loc_enforce_shape_threshold,
     calcCytPosGates = calc_cyt_pos_gates,
+    gateCombn = stimgate_gate_combn,
     pathFbeta = path_fbeta,
     fbetaBeta = fbeta_beta,
     fbetaTheta = fbeta_theta,

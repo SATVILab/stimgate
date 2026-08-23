@@ -343,6 +343,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     tolClust = tol_clust,
     locEnforceShapeThreshold = loc_enforce_shape_threshold,
     calcCytPosGates = calc_cyt_pos_gates,
+    gateCombn = "min",
     pathFbeta = path_fbeta,
     fbetaBeta = fbeta_beta,
     fbetaTheta = fbeta_theta,
