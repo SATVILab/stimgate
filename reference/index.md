@@ -55,7 +55,3 @@ Helper and utility functions
   : Get settings for a named marker
 - [`stimgateMetaReadSettingsMarkers()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsMarkers.md)
   : Read marker list with channel labels
-- [`stimgate_debug_copy()`](https://satvilab.github.io/stimgate/reference/stimgate_debug_copy.md)
-  : Copy the latest stimgate debug file to the working directory
-- [`stimgate_debug_print()`](https://satvilab.github.io/stimgate/reference/stimgate_debug_print.md)
-  : Print the latest stimgate debug file to the console

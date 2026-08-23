@@ -1,6 +1,6 @@
 # Print debug message conditionally
 
-Writes debug output to the most recent stimgate debug file when
+Writes debug output directly to pathProject/debug/debug.txt when
 STIMGATE_DEBUG is enabled.
 
 ## Usage
@@ -13,12 +13,12 @@ STIMGATE_DEBUG is enabled.
 
 - msg:
 
-  character Message to print
+  character Message to print.
 
 - val:
 
-  object Optional value to append to message. Default is NULL.
+  object Optional value to append to message. Default: NULL.
 
 ## Value
 
-logical invisibly TRUE if message was written, FALSE otherwise
+logical invisibly TRUE if message was written, FALSE otherwise.

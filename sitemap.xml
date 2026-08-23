@@ -18,8 +18,8 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-assertStringVector.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-bwCalcOne.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-debug.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/dot-debugFileCreate.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/dot-debugFileGetPath.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-debugInit.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-debugStateReset.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpPosTautString.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocAntimodeBoundaryCurrent.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocAntimodeBw.html</loc></url>
@@ -102,8 +102,6 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsChnls.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsMarker.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsMarkers.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/stimgate_debug_copy.html</loc></url>
-<url><loc>https://satvilab.github.io/stimgate/reference/stimgate_debug_print.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/writeStimFCS.html</loc></url>
 </urlset>
 
