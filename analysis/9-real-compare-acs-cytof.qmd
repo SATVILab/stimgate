@@ -29,21 +29,44 @@ source(file.path(scripts_r_dir, "acs_cytof-runtime.R"))
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))
 
+pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "pre_nk", "tcrgd")
+
 run_preprocessing <- .as_flag(.get_qmd_param_env(
   "run_preprocessing",
   "RUN_PREPROCESSING",
-  TRUE
+  FALSE
 ))
+run_preprocessing_vec_by_pop <- c(
+  tcrgd = NULL %||% run_preprocessing,
+  cd4 = NULL %||%  run_preprocessing,
+  cd8 = NULL %||% run_preprocessing,
+  nk = NULL %||% run_preprocessing,
+  pre_nk = NULL %||% run_preprocessing
+)
 run_methods <- .as_flag(.get_qmd_param_env(
   "run_methods",
   "RUN_METHODS",
   TRUE
 ))
+run_methods_vec_by_pop <- c(
+  tcrgd = NULL %||% run_methods,
+  cd4 = NULL %||%  run_methods,
+  cd8 = NULL %||% run_methods,
+  nk = NULL %||% run_methods,
+  pre_nk = NULL %||% run_methods
+)
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
   TRUE
 ))
+run_plots_vec_by_pop <- c(
+  tcrgd = NULL %||% run_plots,
+  cd4 = NULL %||%  run_plots,
+  cd8 = NULL %||% run_plots,
+  nk = NULL %||% run_plots,
+  pre_nk = NULL %||% run_plots
+)
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 if (
@@ -423,3 +446,5 @@ if (isTRUE(run_methods)) {
   fbeta_results <- readRDS(path_fbeta_results)
 }
 ```
+
+### Across pops, in parallel
