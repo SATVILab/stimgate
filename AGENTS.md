@@ -254,6 +254,9 @@ pkgdown::check_pkgdown()
   - `cyt_pos_gates-helper.R`: Helper functions for cytokine-positive cell gates.
   - `cyt_pos_gates.R`: Functions for more aggressive gates applied to cytokine-positive cells.
   - `debug.R`: Debugging utilities (`.debug()`) and global variable declarations.
+  - `profile.R`: Structured debug timing, incremental persistence and final collation helpers.
+  - `zz_profile_instrumentation.R`: Debug-only profiling wrappers around selected workflow boundaries.
+  - `zzz_profile_run_start.R`: Resets profiling once at the start of each debug `gateStim()` run.
   - `ex.R`: Extract expression matrices from `GatingSet` objects.
   - `example_data.R`: Loads the canonical shipped example dataset via `getExampleData()` and does not simulate new data.
   - `fcs_write.R`: Write FCS files of cytokine-positive cells (`writeStimFCS`).
@@ -329,6 +332,20 @@ QMD runtime or unrelated plotting/orchestration code.
   is written to a temp file and controlled by the `STIMGATE_DEBUG` environment
   variable (set to `"true"`, `"yes"`, `"y"`, or `"1"` to enable).
   Do **NOT** add a debug flag or parameter to function signatures.
+- Debug mode also enables structured timing profiles under `pathProject/profile/`.
+  Each completed timing unit is saved immediately as a small RDS record under
+  `profile/raw/`; a successful run collates these records into `profile/profile.rds`
+  and `profile/profile.csv`. A new debug `gateStim()` run removes the previous
+  `profile/` directory first. Profiling failures must never fail the gating run.
+- Keep profiling selective. Record broad workflow stages generally, but detailed
+  per-sample timings are currently reserved for initial local-FDR gating. The
+  selected sample-level detail is the probability model, density/bandwidth work,
+  antimode work, filtering/threshold work and marginal filtering. Do not add a
+  timer for every debug statement or small helper without evidence that it is
+  useful for diagnosing run time.
+- `zz_profile_instrumentation.R` deliberately loads after the implementation files
+  and wraps selected internal functions without changing their arguments. Preserve
+  wrapped function signatures when profiling boundaries change.
 - Use the `stage` parameter to track algorithm stages (`"init"`, `"cytPos"`, or
   `"single"`). Pass `stage` through function calls to enable intermediate data
   saving via `.intSave()` or `.intSaveNm()` functions. Intermediate saving is
