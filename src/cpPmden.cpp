@@ -63,6 +63,20 @@ std::vector<std::vector<double>> kuipdiffbounds = {kuip01,kuip02,kuip03,kuip04,k
 
 std::vector<double> kuipdiffbounds_x = {50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0};
 
+namespace {
+stringInfo degenerateStringInfo(unsigned long n) {
+  stringInfo out = {
+    std::vector<double>(n > 1 ? n - 1 : 0, 0.0),
+    std::vector<int>(),
+    std::vector<double>(),
+    std::vector<double>(),
+    0,
+    0
+  };
+  return out;
+}
+}  // namespace
+
 stringInfo cpPmden(const std::vector<double>& xIn) {
   //sorting is currently turned off because cpPmden can only be called by tsGates, which is responsible for the sorting.
   //in the event cpPmden is to be used on a stand-alone basis, re-implement the sorting.
@@ -74,6 +88,9 @@ stringInfo cpPmden(const std::vector<double>& xIn) {
   int extrema_mean = 1; //parameter passed to tautstring C routine.
   int maxkuipnr = 19;
   unsigned long nsamp = x.size();
+  if (nsamp < 2) {
+    return degenerateStringInfo(nsamp);
+  }
   std::vector<double> currbounds(maxkuipnr,0.0);  //in this port, set maxkuipnr to 19. Do not allow user choice of mod.
 
   if (nsamp > 5000)  {
@@ -90,6 +107,9 @@ stringInfo cpPmden(const std::vector<double>& xIn) {
   dataemp[0] = 0.0;
   double acc_min = 1.0;
   double max_diff = (x[(nsamp-1)]-x[0]);
+  if (!std::isfinite(max_diff) || max_diff <= 0.0) {
+    return degenerateStringInfo(nsamp);
+  }
   double current_ratio = 1.0;
   for (auto i = 0; i < (int)(nsamp-1); i++) {
     current_ratio = (x[(i+1)]-x[i])/max_diff;
@@ -98,12 +118,15 @@ stringInfo cpPmden(const std::vector<double>& xIn) {
   }
   if (acc_min < 1e-14) {
     double accuracy = ((medianAbsoluteDeviation(xIn))/(1000.0));
+    if (!std::isfinite(accuracy) || accuracy <= 0.0) {
+      return degenerateStringInfo(nsamp);
+    }
     std::vector<double> newx;
     for (auto val : x)
       newx.push_back(val/accuracy);
     decltype(nsamp) j = 0, k, cur_ind;
     std::vector<decltype(nsamp)> ind;
-    double rhs, newaccx;
+    double rhs;
     while((j+1) < nsamp) {
       ind.clear();
       rhs = std::floor(newx[j]) + 1;
@@ -116,11 +139,12 @@ stringInfo cpPmden(const std::vector<double>& xIn) {
       else
 	k = *std::max_element(ind.begin(),ind.end());
       cur_ind = 1;
+      double group_floor = std::floor(newx[j]);
       for (auto i = j; i <= k; i++) {
-	newaccx = std::floor(newx[i]) + double(cur_ind)/double(k-j+2);
+	newx[i] = group_floor + double(cur_ind)/double(k-j+2);
 	cur_ind++;
       }
-      j++;
+      j = k + 1;
     }
     for (auto &i : newx)
       i = i * accuracy;
