@@ -67,7 +67,7 @@ condition is unusually high relative to the unstimulated background.
   may be called without a namespace qualifier and do not require
   `@importFrom` tags.
 - Modify `.Rd` files manually; regenerate them with
-  [`devtools::document()`](https://rdrr.io/pkg/devtools/man/document.html).
+  [`devtools::document()`](https://devtools.r-lib.org/reference/document.html).
 - Use [`return()`](https://rdrr.io/r/base/function.html) as the last
   line of a function; use it only for early returns.
 - Add [`library()`](https://rdrr.io/r/base/library.html) calls inside
@@ -174,10 +174,10 @@ Rscript -e "lintr::lint_package()"
 
 ### Checklist before each commit / opening a PR
 
-1.  [`devtools::document()`](https://rdrr.io/pkg/devtools/man/document.html)
+1.  [`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
 2.  `styler::style_pkg()`
 3.  `lintr::lint_package()`
-4.  [`devtools::test()`](https://rdrr.io/pkg/devtools/man/test.html)
+4.  [`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
 5.  If `analysis/` or `scripts/r/` changed,
     `Rscript analysis/tests/run_analysis_tests.R`
 
@@ -190,7 +190,7 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 
 | Test type | Location | Run with |
 |----|----|----|
-| Package unit/integration tests | `tests/testthat/` | [`devtools::test()`](https://rdrr.io/pkg/devtools/man/test.html) |
+| Package unit/integration tests | `tests/testthat/` | [`devtools::test()`](https://devtools.r-lib.org/reference/test.html) |
 | Analysis helper / scripts/r / QMD drift checks | `analysis/tests/testthat/` | see below |
 
 **What belongs in the analysis test suite
@@ -220,12 +220,12 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 **Running the analysis test suite:**
 
 The analysis suite loads the package from the current checkout via
-[`devtools::load_all()`](https://rdrr.io/pkg/devtools/man/load_all.html)
+[`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
 before running tests, so it always tests the current source rather than
 any previously installed version. The GitHub Actions job in
 `.github/workflows/analysis-integration.yaml` runs this suite
 independently of
-`R CMD check`/[`devtools::test()`](https://rdrr.io/pkg/devtools/man/test.html).
+`R CMD check`/[`devtools::test()`](https://devtools.r-lib.org/reference/test.html).
 Run from the repository root:
 
 ``` r
@@ -345,7 +345,7 @@ pkgdown::check_pkgdown()
   - `r/`: Developer-side R analysis/simulation helpers used for
     research, benchmarking, and fixture regeneration. These are not
     loaded by
-    [`devtools::load_all()`](https://rdrr.io/pkg/devtools/man/load_all.html)
+    [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
     and are not part of the installed package.
   - `analysis-runtime.R`: Shared QMD execution/runtime plumbing for
     parameter lookup, env overrides, chunk validation and atomic RDS
@@ -650,5 +650,5 @@ both suites.
     after intentional changes to its structure, run
     `source("data-raw/create_test_fixture.R")` from the repository root
     in a clean R session (no
-    [`devtools::load_all()`](https://rdrr.io/pkg/devtools/man/load_all.html)
+    [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
     required).

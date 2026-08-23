@@ -93,7 +93,7 @@
 <td>GitHub Actions (R-CMD-check, pkgdown, Codecov)</td>
 </tr></tbody></table><p><strong>Do NOT:</strong></p>
 <ul><li>Use <code>@import</code> or <code>@importFrom</code> directives in roxygen comments; explicitly qualify all package calls with <code>pkg::fun()</code>. The only exceptions are <code>ggplot2</code> (imported wholesale via <code>#' @import ggplot2</code> in <code>R/misc.R</code>) and <code><a href="https://rdrr.io/pkg/Biobase/man/exprs.html" class="external-link">flowCore::exprs</a></code>, which may be called without a namespace qualifier and do not require <code>@importFrom</code> tags.</li>
-<li>Modify <code>.Rd</code> files manually; regenerate them with <code><a href="https://rdrr.io/pkg/devtools/man/document.html" class="external-link">devtools::document()</a></code>.</li>
+<li>Modify <code>.Rd</code> files manually; regenerate them with <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code>.</li>
 <li>Use <code><a href="https://rdrr.io/r/base/function.html" class="external-link">return()</a></code> as the last line of a function; use it only for early returns.</li>
 <li>Add <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code> calls inside test files.</li>
 </ul><hr></div>
@@ -111,7 +111,7 @@
 <span><span class="fu">renv</span><span class="fu">::</span><span class="fu">restore</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 3. Load the package in your R session</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>For a clean environment on a new machine you may also need to install Bioconductor dependencies explicitly:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -124,8 +124,8 @@
 <p>The Copilot cloud agent is set up by <code>.github/workflows/copilot-setup-steps.yml</code>. That workflow installs R, package and system dependencies, and the development tools needed for package work. The repository <code>.Rprofile</code> deliberately treats the Copilot agent as CI and does <strong>not</strong> activate <code>renv</code> there.</p>
 <p>Do not run <code>renv::restore()</code> or require an activated <code>renv</code> project in the Copilot cloud agent. Use the pre-installed development library directly:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/test.html" class="external-link">test</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">test</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>If these packages are unexpectedly unavailable in Copilot, treat that as an environment-setup failure rather than switching to <code>renv</code>.</p>
 <hr></div>
 </div>
@@ -134,13 +134,13 @@
 <p>Run the following commands from the <strong>repository root</strong> in an R session:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load and reload package</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Run all unit tests</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/test.html" class="external-link">test</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">test</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Regenerate documentation from roxygen comments</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/document.html" class="external-link">document</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">document</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Style package code formatting</span></span>
 <span><span class="fu">styler</span><span class="fu">::</span><span class="fu">style_pkg</span><span class="op">(</span><span class="op">)</span></span>
@@ -149,7 +149,7 @@
 <span><span class="fu">lintr</span><span class="fu">::</span><span class="fu">lint_package</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Full R CMD check (mimics CRAN / Bioconductor checks)</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/check.html" class="external-link">check</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">check</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Check test coverage</span></span>
 <span><span class="fu">covr</span><span class="fu">::</span><span class="fu"><a href="http://covr.r-lib.org/reference/report.html" class="external-link">report</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -162,10 +162,10 @@
 <span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"lintr::lint_package()"</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="checklist-before-each-commit--opening-a-pr">Checklist before each commit / opening a PR<a class="anchor" aria-label="anchor" href="#checklist-before-each-commit--opening-a-pr"></a></h3>
-<ol style="list-style-type: decimal"><li><code><a href="https://rdrr.io/pkg/devtools/man/document.html" class="external-link">devtools::document()</a></code></li>
+<ol style="list-style-type: decimal"><li><code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code></li>
 <li><code>styler::style_pkg()</code></li>
 <li><code>lintr::lint_package()</code></li>
-<li><code><a href="https://rdrr.io/pkg/devtools/man/test.html" class="external-link">devtools::test()</a></code></li>
+<li><code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code></li>
 <li>If <code>analysis/</code> or <code>scripts/r/</code> changed, <code>Rscript analysis/tests/run_analysis_tests.R</code>
 </li>
 </ol></div>
@@ -178,7 +178,7 @@
 <th>Run with</th>
 </tr></thead><tbody><tr><td>Package unit/integration tests</td>
 <td><code>tests/testthat/</code></td>
-<td><code><a href="https://rdrr.io/pkg/devtools/man/test.html" class="external-link">devtools::test()</a></code></td>
+<td><code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code></td>
 </tr><tr><td>Analysis helper / scripts/r / QMD drift checks</td>
 <td><code>analysis/tests/testthat/</code></td>
 <td>see below</td>
@@ -194,13 +194,13 @@
 <li>Tests of internal package functions where drift would break the package.</li>
 <li>Do <strong>not</strong> place tests whose subject is solely <code>scripts/r/</code> or <code>analysis/</code> code here.</li>
 </ul><p><strong>Running the analysis test suite:</strong></p>
-<p>The analysis suite loads the package from the current checkout via <code><a href="https://rdrr.io/pkg/devtools/man/load_all.html" class="external-link">devtools::load_all()</a></code> before running tests, so it always tests the current source rather than any previously installed version. The GitHub Actions job in <code>.github/workflows/analysis-integration.yaml</code> runs this suite independently of <code>R CMD check</code>/<code><a href="https://rdrr.io/pkg/devtools/man/test.html" class="external-link">devtools::test()</a></code>. Run from the repository root:</p>
+<p>The analysis suite loads the package from the current checkout via <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> before running tests, so it always tests the current source rather than any previously installed version. The GitHub Actions job in <code>.github/workflows/analysis-integration.yaml</code> runs this suite independently of <code>R CMD check</code>/<code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code>. Run from the repository root:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Shell</span></span>
 <span><span class="co"># Rscript analysis/tests/run_analysis_tests.R</span></span>
 <span></span>
 <span><span class="co"># R session (after devtools::load_all())</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/devtools/man/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu">testthat</span><span class="fu">::</span><span class="fu"><a href="https://testthat.r-lib.org/reference/test_dir.html" class="external-link">test_dir</a></span><span class="op">(</span><span class="st">"analysis/tests/testthat"</span><span class="op">)</span></span></code></pre></div>
 <p>Or via the runner script:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
@@ -311,7 +311,7 @@
 <code>fbeta.py</code>: Richards F-beta thresholding implementation (comparison method).</li>
 </ul></li>
 <li>
-<code>r/</code>: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by <code><a href="https://rdrr.io/pkg/devtools/man/load_all.html" class="external-link">devtools::load_all()</a></code> and are not part of the installed package.</li>
+<code>r/</code>: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> and are not part of the installed package.</li>
 <li>
 <code>analysis-runtime.R</code>: Shared QMD execution/runtime plumbing for parameter lookup, env overrides, chunk validation and atomic RDS output.</li>
 <li>
@@ -456,7 +456,7 @@
 <p><strong>Use the package-shipped example data for routine tests and examples</strong>: The package ships one canonical deterministic cytometry example dataset in <code>inst/extdata/stimgate_example_data/</code> (2 samples × 2 conditions × 2 markers × ~10,000 cells per condition, seed 42). Load it with:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exampleData</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/getExampleData.html">getExampleData</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>Package tests and examples should use <code><a href="reference/getExampleData.html">getExampleData()</a></code> rather than sourcing developer-side simulation utilities. Keep simulation code in <code>scripts/r/</code> for deliberate analysis/fixture-generation work only. To regenerate the dataset after intentional changes to its structure, run <code>source("data-raw/create_test_fixture.R")</code> from the repository root in a clean R session (no <code><a href="https://rdrr.io/pkg/devtools/man/load_all.html" class="external-link">devtools::load_all()</a></code> required).</p>
+<p>Package tests and examples should use <code><a href="reference/getExampleData.html">getExampleData()</a></code> rather than sourcing developer-side simulation utilities. Keep simulation code in <code>scripts/r/</code> for deliberate analysis/fixture-generation work only. To regenerate the dataset after intentional changes to its structure, run <code>source("data-raw/create_test_fixture.R")</code> from the repository root in a clean R session (no <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> required).</p>
 </li>
 </ol></div>
 </div>
