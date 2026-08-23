@@ -62,9 +62,7 @@ if (!requireNamespace("cytoUtils", quietly = TRUE)) {
   )
 }
 
-# Reuse the current comparator implementations from analyses 7 and 8.
-# These helpers should eventually be split into generic comparison helpers if
-# the real-data analysis needs to use them more broadly.
+# Reuse the corrected comparator implementations from analyses 7 and 8.
 for (fn in c(
   "sim-misc.R",
   "sim-bandwidth.R",
@@ -154,30 +152,25 @@ for (fn in c(
 Validate StimGate on the ACS CyTOF dataset and compare its estimated
 background-subtracted response frequencies with Tailgate and F-beta.
 
-This analysis is deliberately organised differently from the simulation analyses.
-The raw FCS files are first read and converted into a cached `GatingSet`. Once the
-input scale, transformations, sample structure and marker mapping have been
-verified, the three methods are run sequentially on the same data. No part of the
-analysis is expected to require parallel execution.
+Unlike the simulation analyses, this analysis starts with a non-parallel
+pre-processing stage. The raw FCS files are read from `raw-data`, the input scale
+and transformation are made explicit, and the resulting `GatingSet` is cached.
+The three methods are then run sequentially on exactly the same processed data.
 
-The primary StimGate comparison must use `gateCombn = "min"`, so that within each
-batch the lowest genuinely generated local-FDR threshold across stimulated
-conditions is used for the batch-level gate combination. This setting is explicit
-below and should not be left to a default.
+The primary StimGate analysis explicitly uses `gateCombn = "min"`. Within each
+batch this should choose the lowest genuinely generated local-FDR threshold from
+the stimulated conditions, rather than allowing a fallback cutpoint to determine
+the minimum.
 
 ## Pre-processing
 
-### Data and cache paths
+### Data, transformation and method settings
 
 ```{r}
 #| label: preprocessing-settings
-# TODO #346: confirm the exact raw-data subdirectory and file layout.
+# TODO #346: confirm the exact raw-data location and metadata filenames.
 acs_raw_subdir <- "acs-cytof"
 acs_raw_dir <- projr::projr_path_get("raw-data", acs_raw_subdir)
-
-# The analysis currently expects these small metadata files beside the FCS data.
-# Adjust the names here once the existing ACS files/reference material have been
-# located. The FCS files themselves may live anywhere below acs_raw_dir.
 acs_sample_metadata_path <- file.path(acs_raw_dir, "sample_metadata.csv")
 acs_marker_metadata_path <- file.path(acs_raw_dir, "marker_metadata.csv")
 acs_reference_counts_path <- file.path(acs_raw_dir, "reference_counts.csv")
@@ -196,17 +189,16 @@ dir.create(acs_cache_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(acs_table_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(acs_figure_dir, recursive = TRUE, showWarnings = FALSE)
 
-# TODO #346: set these only after the ACS input scale has been checked.
-# Use "none" when the stored FCS values are already on the analysis scale.
-# Use "asinh" only if the raw values need an asinh transform here.
+# TODO #346: set these only after inspecting the stored ACS values.
+# "none" means that the FCS values are already on the analysis scale.
+# "asinh" applies asinh(x / cofactor) to the listed marker channels.
 acs_transform_name <- NA_character_
 acs_transform_cofactor <- NA_real_
 
-# Metadata contract for this QMD.
 acs_unstim_label <- "unstim"
 acs_pop_gate <- "root"
 
-# StimGate settings. Keep the batch combination explicit.
+# StimGate settings. gateCombn is intentionally explicit.
 stimgate_gate_combn <- "min"
 stimgate_bw_mtd <- "hpi1"
 stimgate_bw_ncell_max <- 1e4
@@ -216,7 +208,6 @@ stimgate_bw_max <- "none"
 stimgate_bias_uns <- NULL
 stimgate_min_cell <- 100
 tol_clust <- 1e-7
-loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
 
 # Comparator settings, matching the corrected analyses 7 and 8 semantics.
@@ -236,7 +227,7 @@ tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
 ```
 
-### Read FCS files and construct the analysis GatingSet
+### Read the FCS files and inspect their stored scale
 
 ```{r}
 #| label: preprocessing-fcs
@@ -293,7 +284,6 @@ if (isTRUE(run_preprocessing)) {
   }
 
   fcs_paths <- unname(fcs_lookup[sample_metadata$fcs_file])
-
   ff_list <- lapply(
     fcs_paths,
     flowCore::read.FCS,
@@ -303,11 +293,45 @@ if (isTRUE(run_preprocessing)) {
 
   sample_metadata$n_cell <- vapply(ff_list, nrow, integer(1))
 
+  scale_summary <- purrr::map2_dfr(
+    ff_list,
+    sample_metadata$sample_name,
+    function(ff, sample_name) {
+      ex <- flowCore::exprs(ff)
+      purrr::map_dfr(marker_metadata$channel, function(channel) {
+        if (!channel %in% colnames(ex)) {
+          return(tibble::tibble(
+            sample_name = sample_name,
+            channel = channel,
+            min = NA_real_,
+            q50 = NA_real_,
+            q95 = NA_real_,
+            max = NA_real_
+          ))
+        }
+        x <- as.numeric(ex[, channel])
+        tibble::tibble(
+          sample_name = sample_name,
+          channel = channel,
+          min = min(x, na.rm = TRUE),
+          q50 = stats::median(x, na.rm = TRUE),
+          q95 = stats::quantile(x, 0.95, na.rm = TRUE),
+          max = max(x, na.rm = TRUE)
+        )
+      })
+    }
+  )
+  utils::write.csv(
+    scale_summary,
+    file.path(acs_table_dir, "stored_fcs_scale_summary.csv"),
+    row.names = FALSE
+  )
+
   if (is.na(acs_transform_name)) {
     stop(
-      "ACS transformation has not yet been verified. Set acs_transform_name ",
-      "to 'none' or 'asinh' after checking whether the FCS values are already ",
-      "transformed. No analysis-scale GatingSet has been cached."
+      "ACS transformation has not yet been verified. Inspect ",
+      "stored_fcs_scale_summary.csv, then set acs_transform_name to 'none' ",
+      "or 'asinh'. No analysis-scale GatingSet has been cached."
     )
   }
 
@@ -367,7 +391,6 @@ if (isTRUE(run_preprocessing)) {
     colNCell = "n_cell",
     minCell = stimgate_min_cell
   )
-
   if (length(batch_list) == 0L) {
     stop("No valid ACS batches remain after constructing batch_list.")
   }
@@ -375,14 +398,14 @@ if (isTRUE(run_preprocessing)) {
 }
 ```
 
-### Load cached pre-processing outputs
+### Load the cached pre-processing outputs
 
 ```{r}
 #| label: preprocessing-load
 if (!dir.exists(acs_gs_path)) {
   stop(
-    "Cached ACS GatingSet not found. Run the pre-processing section after ",
-    "the transformation has been verified."
+    "Cached ACS GatingSet not found. Run pre-processing after the ",
+    "transformation has been verified."
   )
 }
 
@@ -403,6 +426,11 @@ marker_metadata <- utils::read.csv(
 )
 batch_list <- readRDS(acs_batch_list_path)
 stim_pair_tbl <- .acs_stim_pair_tbl(batch_list, sample_metadata)
+method_grid <- merge(
+  stim_pair_tbl,
+  marker_metadata[, c("channel", "marker"), drop = FALSE],
+  by = NULL
+)
 
 stim_pair_tbl
 marker_metadata
@@ -423,9 +451,7 @@ path_stimgate_gates_detailed <- file.path(
 
 if (isTRUE(run_methods)) {
   chnl_settings <- stats::setNames(
-    lapply(marker_metadata$channel, function(chnl_curr) {
-      list(cut = chnl_curr)
-    }),
+    lapply(marker_metadata$channel, function(channel) list(cut = channel)),
     marker_metadata$marker
   )
 
@@ -448,21 +474,16 @@ if (isTRUE(run_methods)) {
     minCell = stimgate_min_cell,
     gateCombn = stimgate_gate_combn,
     tolClust = tol_clust,
-    locEnforceShapeThreshold = loc_enforce_shape_threshold,
     calcCytPosGates = calc_cyt_pos_gates
   ))
 
   stimgate_gates <- stimgate::getStimGates(path_stimgate)
   stimgate_gates_detailed <- stimgate::getStimGatesDetailed(path_stimgate)
-
   saveRDS(stimgate_gates, path_stimgate_gates)
   saveRDS(stimgate_gates_detailed, path_stimgate_gates_detailed)
 
   stimgate_results <- purrr::pmap_dfr(
-    tidyr::crossing(
-      stim_pair_tbl,
-      marker_metadata[, c("channel", "marker"), drop = FALSE]
-    ),
+    method_grid,
     function(
         batch,
         indUns,
@@ -475,13 +496,14 @@ if (isTRUE(run_methods)) {
       gate_rows <- stimgate_gates |>
         dplyr::filter(
           as.character(.data$ind) == as.character(indStim),
-          .data$chnl == channel
+          .data$chnl == channel,
+          .data$gateCombn %in% c("min", "minClust")
         )
 
-      if (nrow(gate_rows) > 0L && "gateName" %in% names(gate_rows)) {
-        if (any(grepl("Clust$", gate_rows$gateName))) {
-          gate_rows <- gate_rows[grepl("Clust$", gate_rows$gateName), , drop = FALSE]
-        }
+      if (nrow(gate_rows) > 0L && any(gate_rows$gateCombn == "minClust")) {
+        gate_rows <- gate_rows[gate_rows$gateCombn == "minClust", , drop = FALSE]
+      }
+      if (nrow(gate_rows) > 0L) {
         gate_rows <- gate_rows[nrow(gate_rows), , drop = FALSE]
       }
 
@@ -490,7 +512,7 @@ if (isTRUE(run_methods)) {
       } else {
         NA_real_
       }
-      gate_name <- if (nrow(gate_rows) > 0L && "gateName" %in% names(gate_rows)) {
+      gate_name <- if (nrow(gate_rows) > 0L) {
         as.character(gate_rows$gateName[[1]])
       } else {
         NA_character_
@@ -516,7 +538,6 @@ if (isTRUE(run_methods)) {
         )
     }
   )
-
   saveRDS(stimgate_results, path_stimgate_results)
 } else {
   stimgate_results <- readRDS(path_stimgate_results)
@@ -525,7 +546,7 @@ if (isTRUE(run_methods)) {
 }
 ```
 
-### Check the `min` batch gate combination
+### Verify the `min` gate combination
 
 ```{r}
 #| label: check-stimgate-min
@@ -533,17 +554,71 @@ if (!identical(stimgate_gate_combn, "min")) {
   stop("ACS StimGate comparison must use gateCombn = 'min'.")
 }
 
-# Keep the detailed threshold diagnostics available for explicit inspection of
-# the condition-level generated thresholds and the subsequent batch-combined
-# threshold. This is intentionally a visible analysis check rather than relying
-# only on the gateStim() call argument.
-min_gate_check_tbl <- stimgate_gates_detailed |>
-  dplyr::filter(.data$detailLevel %in% c("condition", "sample", "cluster_final")) |>
-  dplyr::arrange(.data$chnl, .data$ind, .data$detailLevel)
+condition_generated <- stimgate_gates_detailed |>
+  dplyr::filter(
+    .data$detailLevel == "condition",
+    .data$locGenerated %in% TRUE,
+    is.finite(.data$threshold)
+  ) |>
+  dplyr::mutate(indStim = as.integer(.data$ind)) |>
+  dplyr::inner_join(
+    stim_pair_tbl |>
+      dplyr::select(.data$batch, .data$indStim),
+    by = "indStim"
+  ) |>
+  dplyr::group_by(.data$batch, .data$chnl) |>
+  dplyr::summarise(
+    expected_min = min(.data$threshold),
+    n_generated = dplyr::n(),
+    .groups = "drop"
+  )
+
+actual_min <- stimgate_gates |>
+  dplyr::filter(.data$gateType == "loc", .data$gateCombn == "min") |>
+  dplyr::mutate(indStim = as.integer(.data$ind)) |>
+  dplyr::inner_join(
+    stim_pair_tbl |>
+      dplyr::select(.data$batch, .data$indStim),
+    by = c("batch", "indStim")
+  ) |>
+  dplyr::group_by(.data$batch, .data$chnl) |>
+  dplyr::summarise(
+    actual_min = dplyr::first(.data$gate),
+    n_distinct_gates = dplyr::n_distinct(.data$gate),
+    .groups = "drop"
+  )
+
+min_gate_check_tbl <- condition_generated |>
+  dplyr::left_join(actual_min, by = c("batch", "chnl")) |>
+  dplyr::mutate(
+    min_matches = is.finite(.data$actual_min) &
+      abs(.data$expected_min - .data$actual_min) < 1e-10,
+    one_gate_within_batch = .data$n_distinct_gates == 1L
+  )
+
+if (
+  nrow(min_gate_check_tbl) > 0L &&
+    any(
+      !min_gate_check_tbl$min_matches |
+        !min_gate_check_tbl$one_gate_within_batch,
+      na.rm = TRUE
+    )
+) {
+  stop("StimGate gateCombn = 'min' did not match the generated-condition minimum.")
+}
+
+if (!is.null(tol_clust)) {
+  n_min_clust <- stimgate_gates |>
+    dplyr::filter(.data$gateCombn == "minClust") |>
+    nrow()
+  if (n_min_clust == 0L) {
+    stop("Cluster refinement was requested but no minClust gates were saved.")
+  }
+}
 
 saveRDS(
   min_gate_check_tbl,
-  file.path(acs_table_dir, "stimgate_min_gate_diagnostics.rds")
+  file.path(acs_table_dir, "stimgate_min_gate_check.rds")
 )
 min_gate_check_tbl
 ```
@@ -557,10 +632,7 @@ path_tailgate_results <- file.path(acs_cache_dir, "tailgate_results.rds")
 
 if (isTRUE(run_methods)) {
   tailgate_results <- purrr::pmap_dfr(
-    tidyr::crossing(
-      stim_pair_tbl,
-      marker_metadata[, c("channel", "marker"), drop = FALSE]
-    ),
+    method_grid,
     function(
         batch,
         indUns,
@@ -609,21 +681,20 @@ if (isTRUE(run_methods)) {
           channel = channel,
           marker = marker,
           method = "tailgate",
-          threshold = threshold,
+          threshold = .data$threshold,
           thresholdOrigin = threshold_obj$thresholdOrigin,
           thresholdMetric = threshold_obj$thresholdMetric,
-          thresholdFallbackUsed = thresholdFallbackUsed,
-          nCellStim = nCellStim,
-          nCellUns = nCellUns,
-          nPosStim = nPosStim,
-          nPosUns = nPosUns,
-          propStim = propStim,
-          propUns = propUns,
-          propRespEst = propRespEst
+          thresholdFallbackUsed = .data$thresholdFallbackUsed,
+          nCellStim = .data$nCellStim,
+          nCellUns = .data$nCellUns,
+          nPosStim = .data$nPosStim,
+          nPosUns = .data$nPosUns,
+          propStim = .data$propStim,
+          propUns = .data$propUns,
+          propRespEst = .data$propRespEst
         )
     }
   )
-
   saveRDS(tailgate_results, path_tailgate_results)
 } else {
   tailgate_results <- readRDS(path_tailgate_results)
@@ -639,10 +710,7 @@ path_fbeta_results <- file.path(acs_cache_dir, "fbeta_results.rds")
 
 if (isTRUE(run_methods)) {
   fbeta_results <- purrr::pmap_dfr(
-    tidyr::crossing(
-      stim_pair_tbl,
-      marker_metadata[, c("channel", "marker"), drop = FALSE]
-    ),
+    method_grid,
     function(
         batch,
         indUns,
@@ -691,21 +759,20 @@ if (isTRUE(run_methods)) {
           channel = channel,
           marker = marker,
           method = "fbeta",
-          threshold = threshold,
+          threshold = .data$threshold,
           thresholdOrigin = threshold_obj$thresholdOrigin,
           thresholdMetric = threshold_obj$thresholdMetric,
-          thresholdFallbackUsed = thresholdFallbackUsed,
-          nCellStim = nCellStim,
-          nCellUns = nCellUns,
-          nPosStim = nPosStim,
-          nPosUns = nPosUns,
-          propStim = propStim,
-          propUns = propUns,
-          propRespEst = propRespEst
+          thresholdFallbackUsed = .data$thresholdFallbackUsed,
+          nCellStim = .data$nCellStim,
+          nCellUns = .data$nCellUns,
+          nPosStim = .data$nPosStim,
+          nPosUns = .data$nPosUns,
+          propStim = .data$propStim,
+          propUns = .data$propUns,
+          propRespEst = .data$propRespEst
         )
     }
   )
-
   saveRDS(fbeta_results, path_fbeta_results)
 } else {
   fbeta_results <- readRDS(path_fbeta_results)
@@ -805,7 +872,7 @@ if (exists("reference_counts")) {
 }
 ```
 
-### Method estimates against reference values
+### Estimated versus reference response frequency
 
 ```{r}
 #| label: plot-estimate-v-reference
@@ -852,16 +919,10 @@ if (
 #| label: plot-relative-error
 #| fig-width: 9
 #| fig-height: 7
-if (
-  isTRUE(run_plots) &&
-    "rel_error" %in% names(comparison_tbl)
-) {
+if (isTRUE(run_plots) && "rel_error" %in% names(comparison_tbl)) {
   p_rel_error <- ggplot(
     comparison_tbl,
-    aes(
-      x = method,
-      y = rel_error
-    )
+    aes(x = method, y = rel_error)
   ) +
     geom_hline(yintercept = 0, linetype = "dashed") +
     geom_boxplot(outlier.shape = NA) +
@@ -886,9 +947,6 @@ if (
 }
 ```
 
-### Notes for final outputs
-
-The plots above are deliberately initial comparison outputs. Once the ACS
-reference counts and their exact denominator are recovered, this section should
-be reduced to the final thesis figures and tables rather than retaining every
-exploratory diagnostic.
+The figures above are initial comparison outputs. Once the ACS reference counts
+and their exact denominator are recovered, this final section should be reduced
+to the thesis figures and tables that are actually needed.
