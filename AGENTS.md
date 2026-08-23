@@ -486,7 +486,8 @@ plotting/orchestration code.
     \#288/#289/#291/#295 / umbrella \#271)**: Generic cytometry
     simulations, post-simulation transformations, and condition-mismatch
     controls are progressively migrating to the exported `simcyto`
-    package API (e.g. `simcyto::simCytExperiment()`,
+    package API (e.g.
+    [`simcyto::simCytExperiment()`](https://rdrr.io/pkg/simcyto/man/simCytExperiment.html),
     `simcyto::simCytTransform*()`).
     `analysis/2-sim-bw-freq_bs-global.qmd`,
     `analysis/3-sim-bw-est-base.qmd`,
