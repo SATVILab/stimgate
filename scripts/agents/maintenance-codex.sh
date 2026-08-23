@@ -11,9 +11,12 @@ if [ "${CI:-}" != "true" ]; then
     exit 1
 fi
 
-R_MINOR="4.6"
 BIOC_VERSION="3.23"
-POSIT_CRAN="https://packagemanager.posit.co/cran/latest/bin/linux/noble-x86_64/${R_MINOR}"
+
+# Keep this in sync with setup-codex.sh. pak recognises the __linux__ form as
+# a Linux binary repository; the newer /bin/linux/... form may be treated as
+# source and trigger unnecessary source builds.
+POSIT_CRAN="https://packagemanager.posit.co/cran/__linux__/noble/latest"
 
 cat > /tmp/stimgate-agent-repos.R <<EOF
 options(
