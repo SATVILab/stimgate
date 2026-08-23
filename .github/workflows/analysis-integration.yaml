@@ -51,7 +51,9 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::devtools, any::testthat, SATVILab/simcyto@734637f0a4568bbfebe8712e62c326921db2955d
+          # Deliberately unpinned: analysis validation follows the current
+          # SATVILab/simcyto default branch used by StimGate development.
+          extra-packages: any::devtools, any::testthat, SATVILab/simcyto
           needs: check
 
       - name: Run analysis integration tests
