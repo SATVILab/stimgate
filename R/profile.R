@@ -62,7 +62,7 @@
 
 #' Start a fresh profile directory for a StimGate run
 #' @keywords internal
-.profileInit <- function(pathProject) {
+.profileInit <- function(pathProject, reset = FALSE) {
   if (!.profileEnabled()) {
     return(invisible(FALSE))
   }
@@ -70,6 +70,14 @@
   tryCatch(
     {
       pathProject <- .profileNormalisePath(pathProject)
+      if (
+        isTRUE(.profileState$initialized) &&
+          identical(.profileState$pathProject, pathProject) &&
+          !isTRUE(reset)
+      ) {
+        return(invisible(TRUE))
+      }
+
       pathProfile <- .profilePath(pathProject)
       if (dir.exists(pathProfile)) {
         unlink(pathProfile, recursive = TRUE, force = TRUE)
