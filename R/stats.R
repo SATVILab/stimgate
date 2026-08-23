@@ -130,11 +130,5 @@ getStimStats <- function(pathProject) {
       "No stats file found"
     )
   }
-  if ("ind" %in% colnames(tbl)) {
-    tbl[["ind"]] <- as.character(tbl[["ind"]])
-  }
-  if ("batch" %in% colnames(tbl)) {
-    tbl[["batch"]] <- as.character(tbl[["batch"]])
-  }
   tbl
 }

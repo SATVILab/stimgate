@@ -3,10 +3,11 @@ test_that("getStimStats returns saved RDS table unchanged", {
   dir.create(tmp_dir, showWarnings = FALSE)
   withr::defer(unlink(tmp_dir, recursive = TRUE))
 
-  # Build a deliberately distinctive fixture
+  # Fixture uses non-character ind (integer) and factor batch to verify the
+  # reader contract: getStimStats() must return exactly what is stored.
   fixture <- data.frame(
-    ind = c("sampleA", "sampleB"),
-    batch = c("batch1", "batch1"),
+    ind = 1:2,
+    batch = factor(c("batch1", "batch1")),
     chnl = c("APC-A", "APC-A"),
     marker = c("IFNg", "IFNg"),
     count_pos = c(42L, 7L),
@@ -18,27 +19,6 @@ test_that("getStimStats returns saved RDS table unchanged", {
   result <- getStimStats(tmp_dir)
 
   expect_equal(result, fixture)
-})
-
-test_that("getStimStats coerces ind and batch to character from RDS", {
-  tmp_dir <- file.path(tempdir(), "stimgate_reader_coerce_test")
-  dir.create(tmp_dir, showWarnings = FALSE)
-  withr::defer(unlink(tmp_dir, recursive = TRUE))
-
-  # Save with integer ind and factor batch
-  fixture <- data.frame(
-    ind = 1:2,
-    batch = factor(c("b1", "b2")),
-    count_pos = c(10L, 20L),
-    stringsAsFactors = FALSE
-  )
-  saveRDS(fixture, file.path(tmp_dir, "gateStats.rds"))
-
-  result <- getStimStats(tmp_dir)
-
-  expect_type(result[["ind"]], "character")
-  expect_type(result[["batch"]], "character")
-  expect_equal(result[["count_pos"]], fixture[["count_pos"]])
 })
 
 test_that("getStimStats reads CSV fallback when no RDS present", {
