@@ -1364,27 +1364,6 @@ if (!exists("rug_tbl")) {
     bias_uns = numeric()
   )
 }
-
-if (isTRUE(run_simulations)) {
-  chunk_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
-  chunk_completed_ids <- unique(sub(
-    "^completed-",
-    "",
-    chunk_job_files[grepl("^completed-", chunk_job_files)]
-  ))
-  chunk_failed_ids <- unique(sub(
-    "^error-",
-    "",
-    chunk_job_files[grepl("^error-", chunk_job_files)]
-  ))
-  chunk_completed_ids <- setdiff(chunk_completed_ids, chunk_failed_ids)
-  .analysis_mark_chunk(
-    run_ctx = run_ctx,
-    total_sims = nrow(sim_grid),
-    completed_sims = length(chunk_completed_ids),
-    failed_sims = length(chunk_failed_ids)
-  )
-}
 ```
 
 ### Median thresholds: fixed core bandwidth, varying extra bandwidth

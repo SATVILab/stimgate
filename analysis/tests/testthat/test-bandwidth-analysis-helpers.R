@@ -251,13 +251,25 @@ test_that(".update_progress_summary() tolerates a concurrent write failure", {
   expect_false(file.exists(path_progress_file))
 })
 
-test_that("QMDs 3 and 4 no longer reference undefined chunk variables or a bespoke output dir", {
+test_that("QMDs 3 and 4 define chunk controls and use the run-scoped output dir", {
   qmd_3 <- readLines(file.path(root_dir, "analysis", "3-sim-bw-est-base.qmd"), warn = FALSE)
   qmd_4 <- readLines(file.path(root_dir, "analysis", "4-sim-bw-est-norm.qmd"), warn = FALSE)
 
   for (qmd_lines in list(qmd_3, qmd_4)) {
-    expect_false(any(grepl("sim_grid_chunk_index", qmd_lines)))
-    expect_false(any(grepl("sim_grid_n_chunks", qmd_lines)))
-    expect_false(any(grepl("dir_output", qmd_lines)))
+    expect_true(any(grepl(
+      "sim_grid_chunk_index <- as.integer",
+      qmd_lines,
+      fixed = TRUE
+    )))
+    expect_true(any(grepl(
+      "sim_grid_n_chunks <- as.integer",
+      qmd_lines,
+      fixed = TRUE
+    )))
+    expect_true(any(grepl(
+      "dir_output <- run_ctx$chunk_output_dir",
+      qmd_lines,
+      fixed = TRUE
+    )))
   }
 })

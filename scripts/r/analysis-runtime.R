@@ -128,10 +128,12 @@
     return(list())
   }
 
-  keep <- intersect(
-    names(params),
-    c("sim_grid_n_chunks", "sim_grid_shuffle_seed")
+  operational_params <- c(
+    "run_simulations",
+    "run_plots",
+    "sim_grid_chunk_index"
   )
+  keep <- sort(setdiff(names(params), operational_params))
   params[keep]
 }
 
@@ -198,6 +200,87 @@
   tryCatch(readRDS(path), error = function(e) NULL)
 }
 
+.analysis_current_file <- function(
+    run_ctx,
+    relative_path,
+    required_params = list()) {
+  if (
+    length(relative_path) == 0L ||
+      any(is.na(relative_path)) ||
+      any(!nzchar(as.character(relative_path)))
+  ) {
+    stop("relative_path must contain at least one non-empty path component.")
+  }
+  if (
+    length(required_params) > 0L &&
+      (is.null(names(required_params)) || any(!nzchar(names(required_params))))
+  ) {
+    stop("required_params must be a fully named list.")
+  }
+
+  complete_path <- file.path(run_ctx$current_dir, "COMPLETE")
+  if (!file.exists(complete_path)) {
+    stop(
+      "No complete canonical current result is available for analysis key: ",
+      paste(run_ctx$analysis_key, collapse = "/"),
+      "."
+    )
+  }
+
+  manifest_path <- file.path(run_ctx$current_dir, "manifest.rds")
+  manifest <- .analysis_read_manifest(manifest_path)
+  if (is.null(manifest)) {
+    stop("Canonical current result has no readable manifest.rds.")
+  }
+
+  if (!identical(
+    as.character(manifest$analysis_key),
+    as.character(run_ctx$analysis_key)
+  )) {
+    stop("Canonical current manifest does not match the requested analysis key.")
+  }
+
+  if (length(required_params) > 0L) {
+    manifest_params <- manifest$params
+    mismatched_params <- names(required_params)[vapply(
+      names(required_params),
+      function(nm) {
+        is.null(manifest_params) ||
+          !nm %in% names(manifest_params) ||
+          !isTRUE(all.equal(
+            manifest_params[[nm]],
+            required_params[[nm]],
+            check.attributes = FALSE
+          ))
+      },
+      logical(1)
+    )]
+
+    if (length(mismatched_params) > 0L) {
+      stop(
+        "Canonical current result is incompatible with the required manifest ",
+        "parameters: ",
+        paste(mismatched_params, collapse = ", "),
+        ". Rerun the analysis before using these results."
+      )
+    }
+  }
+
+  path <- do.call(
+    file.path,
+    c(list(run_ctx$current_dir), as.list(as.character(relative_path)))
+  )
+  if (!file.exists(path)) {
+    stop(
+      "Canonical current result is complete but the required file is missing: ",
+      paste(as.character(relative_path), collapse = "/"),
+      "."
+    )
+  }
+
+  path
+}
+
 .analysis_find_existing_run_manifest <- function(staging_root, run_id) {
   if (!dir.exists(staging_root)) {
     return(NULL)
@@ -239,26 +322,21 @@
   file.path(run_ctx$progress_run_dir, paste0(lock_name, ".lock"))
 }
 
-.analysis_acquire_lock <- function(lock_path, timeout_sec = 120, poll_sec = 0.1) {
+.analysis_acquire_lock <- function(lock_path, timeout_sec = 120) {
   dir.create(dirname(lock_path), recursive = TRUE, showWarnings = FALSE)
-  start <- Sys.time()
-
-  repeat {
-    if (dir.create(lock_path, recursive = FALSE, showWarnings = FALSE)) {
-      return(TRUE)
-    }
-
-    elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
-    if (is.finite(elapsed) && elapsed >= timeout_sec) {
-      return(FALSE)
-    }
-    Sys.sleep(poll_sec)
+  if (!requireNamespace("filelock", quietly = TRUE)) {
+    stop("Package 'filelock' is required for transactional analysis locking.")
   }
+  filelock::lock(
+    lock_path,
+    exclusive = TRUE,
+    timeout = timeout_sec * 1000
+  )
 }
 
-.analysis_release_lock <- function(lock_path) {
-  if (dir.exists(lock_path)) {
-    unlink(lock_path, recursive = TRUE, force = TRUE)
+.analysis_release_lock <- function(lock) {
+  if (!is.null(lock) && inherits(lock, "filelock_lock")) {
+    tryCatch(filelock::unlock(lock), error = function(e) NULL)
   }
   invisible(TRUE)
 }
@@ -527,10 +605,11 @@
     ended_at = NULL,
     promotion_done = NULL) {
   lock_path <- .analysis_lock_path(run_ctx, "status-update")
-  if (!.analysis_acquire_lock(lock_path, timeout_sec = 300)) {
+  lock <- .analysis_acquire_lock(lock_path, timeout_sec = 300)
+  if (is.null(lock)) {
     stop("Timed out acquiring status update lock for run_id: ", run_ctx$run_id)
   }
-  on.exit(.analysis_release_lock(lock_path), add = TRUE)
+  on.exit(.analysis_release_lock(lock), add = TRUE)
 
   st <- .analysis_read_status(run_ctx)
   if (is.null(st)) {
@@ -612,6 +691,23 @@
 
   done_sims <- as.integer(completed_sims + failed_sims)
   outstanding <- as.integer(max(0L, total_sims - done_sims))
+
+  cs_path <- .analysis_chunk_status_path(run_ctx)
+  existing_cs <- if (file.exists(cs_path)) {
+    tryCatch(
+      readRDS(cs_path),
+      error = function(e) NULL
+    )
+  } else {
+    NULL
+  }
+
+  if (is.null(collate_ok) && !is.null(existing_cs$collate_ok)) {
+    collate_ok <- existing_cs$collate_ok
+  }
+  if (is.null(validation_ok) && !is.null(existing_cs$validation_ok)) {
+    validation_ok <- existing_cs$validation_ok
+  }
 
   chunk_status <- list(
     chunk_label = run_ctx$chunk_label,
@@ -696,10 +792,11 @@
 
 .analysis_promote_run <- function(run_ctx) {
   lock_path <- .analysis_lock_path(run_ctx, "promotion")
-  if (!.analysis_acquire_lock(lock_path, timeout_sec = 300)) {
+  lock <- .analysis_acquire_lock(lock_path, timeout_sec = 300)
+  if (is.null(lock)) {
     return(invisible(FALSE))
   }
-  on.exit(.analysis_release_lock(lock_path), add = TRUE)
+  on.exit(.analysis_release_lock(lock), add = TRUE)
 
   if (!.analysis_can_promote(run_ctx)) {
     return(invisible(FALSE))

@@ -434,13 +434,8 @@ if (!exists("compare_raw") || nrow(compare_raw) == 0L) {
   }
 }
 
-if (exists("compare_raw") && nrow(compare_raw) > 0L) {
-  if (!"stimgate" %in% compare_raw$method && "stimgate_loc_sample" %in% compare_raw$method) {
-    compare_raw <- compare_raw |>
-      dplyr::mutate(
-        method = dplyr::if_else(method == "stimgate_loc_sample", "stimgate", method)
-      )
-  }
+if (!exists("compare_raw") || nrow(compare_raw) == 0L) {
+  stop("Could not find canonical compare_raw.rds in current/. Run the simulation chunk first.")
 }
 
 compare_summary <- .simCompareSummariseFreqBs(

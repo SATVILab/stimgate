@@ -5,6 +5,10 @@ format:
     embed-resources: true
     toc: true
 params:
+  analysis_run_id: null
+  simulation_seed: 1
+  sim_grid_chunk_index: 1
+  sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
 ---
@@ -14,10 +18,16 @@ params:
 #| include: false
 library(ggplot2)
 library(tibble)
+library(dplyr)
+library(tidyr)
+library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- projr::projr_path_get("project")
+root_dir <- tryCatch(
+  projr::projr_path_get("project"),
+  error = function(e) getwd()
+)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
@@ -27,11 +37,33 @@ run_simulations <- .as_flag(.get_qmd_param_env(
   "RUN_SIMULATIONS",
   FALSE
 ))
+analysis_run_id <- .get_qmd_param_env(
+  "analysis_run_id",
+  "ANALYSIS_RUN_ID",
+  NULL
+)
+simulation_seed <- as.integer(.get_qmd_param_env(
+  "simulation_seed",
+  "SIMULATION_SEED",
+  1L
+))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
+comparison_semantics_version <- "corrected-comparison-v1"
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
   TRUE
 ))
+sim_grid_chunk_index <- as.integer(
+  .get_qmd_param_env("sim_grid_chunk_index", "SIM_GRID_CHUNK_INDEX", 1L)
+)
+sim_grid_n_chunks <- as.integer(
+  .get_qmd_param_env("sim_grid_n_chunks", "SIM_GRID_N_CHUNKS", 1L)
+)
+.validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
+sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
@@ -64,6 +96,19 @@ for (fn in c(
   "sim-compare-freq_bs.R"
 )) {
   source(file.path(scripts_r_dir, fn))
+}
+
+# Keep scenario-level RNG stable across worker scheduling and grid chunking.
+.simCompareRunScenarioUnseeded <- .simCompareRunScenario
+.simCompareRunScenario <- function(row, ...) {
+  if (
+    "sim_seed" %in% names(row) &&
+      length(row$sim_seed) > 0L &&
+      !is.na(row$sim_seed[[1]])
+  ) {
+    set.seed(as.integer(row$sim_seed[[1]]))
+  }
+  .simCompareRunScenarioUnseeded(row = row, ...)
 }
 ```
 
@@ -213,6 +258,9 @@ sim_grid <- tidyr::expand_grid(
   dplyr::arrange(
     n_cell,
     dplyr::desc(prob_response)
+  ) |>
+  dplyr::mutate(
+    sim_seed = as.integer(simulation_seed + sim_id - 1L)
   )
 
 if (.isDev()) {
@@ -227,13 +275,18 @@ if (.isDev()) {
     )
 }
 
+sim_grid_all <- sim_grid
+
+if (sim_grid_n_chunks > 1L && nrow(sim_grid_all) > 0L) {
+  sim_grid <- sim_grid_all |>
+    dplyr::filter(
+      ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L ==
+        sim_grid_chunk_index
+    )
+}
+
 sim_grid
-print(paste0("Performing ", nrow(sim_grid), " simulations"))
-
-set.seed(1)
-
-sim_grid_run <- sim_grid |>
-  dplyr::slice_sample(prop = 1)
+print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
 ```
 
 A loop for debugging a single failure or inspecting intermediate objects.
@@ -245,6 +298,7 @@ compare_list_raw_loop <- vector("list", nrow(sim_grid))
 source("scripts/r/sim-compare-freq_bs.R")
 for (i in seq_len(nrow(sim_grid))) {
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
+  set.seed(sim_grid$sim_seed[i])
 
   compare_list_raw_loop[[i]] <- .simCompareFreqBs(
     nSample = 5,
@@ -307,7 +361,8 @@ for (i in seq_len(nrow(sim_grid))) {
         sim_grid$background_relative_to_response[i],
       n_cell_uns_relative_to_stim =
         sim_grid$n_cell_uns_relative_to_stim[i],
-      sim_id = sim_grid$sim_id[i]
+      sim_id = sim_grid$sim_id[i],
+      sim_seed = sim_grid$sim_seed[i]
     ) |>
     dplyr::select(
       transformation,
@@ -327,267 +382,199 @@ for (i in seq_len(nrow(sim_grid))) {
       background_relative_to_response,
       n_cell_uns_relative_to_stim,
       sim_id,
+      sim_seed,
       dplyr::everything()
     )
 }
 ```
 
-Run the simulations in parallel, with progress reporting. The execution grid is
-shuffled first so that the larger and smaller cell-count scenarios are mixed
-across workers. `sim_id` remains unchanged.
+Run the simulations in parallel, with progress reporting. Each scenario has a
+deterministic seed derived from `sim_id`, so its simulation is stable across
+worker scheduling and grid chunking.
 
 ```{r}
 #| label: compare-parallel
 #| results: hide
+n_sample_sim <- 10
+n_iter_sim <- 2
+n_workers <- max(1, .simGetCores())
+
+run_ctx <- .analysis_run_context(
+  analysis_key = c("sim", "compare", "freq_bs"),
+  run_id = analysis_run_id,
+  path_root = root_dir,
+  params = list(
+    run_simulations = run_simulations,
+    run_plots = run_plots,
+    comparison_semantics_version = comparison_semantics_version,
+    simulation_seed = simulation_seed,
+    sim_grid_shuffle_seed = simulation_seed,
+    n_sample_sim = n_sample_sim,
+    n_iter_sim = n_iter_sim,
+    stimgate_bw_mtd = stimgate_bw_mtd,
+    stimgate_bw_ncell_max = stimgate_bw_ncell_max,
+    stimgate_bw_fallback = stimgate_bw_fallback,
+    stimgate_bw_min = stimgate_bw_min,
+    stimgate_bw_max = stimgate_bw_max,
+    tol_clust = tol_clust,
+    loc_enforce_shape_threshold = loc_enforce_shape_threshold,
+    calc_cyt_pos_gates = calc_cyt_pos_gates,
+    fbeta_beta = fbeta_beta,
+    fbeta_theta = fbeta_theta,
+    fbeta_width = fbeta_width,
+    tailgate_adjust = tailgate_adjust,
+    tailgate_method = tailgate_method,
+    tailgate_tol = tailgate_tol,
+    tailgate_auto_tol = tailgate_auto_tol,
+    tailgate_x = tailgate_x,
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks
+  ),
+  sim_grid_chunk_index = sim_grid_chunk_index,
+  sim_grid_n_chunks = sim_grid_n_chunks
+)
+path_progress_file <- run_ctx$progress_file
+dir_output <- run_ctx$chunk_output_dir
+dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
+dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+
+path_rds <- file.path(
+  run_ctx$staging_collated_dir,
+  if (sim_grid_n_chunks > 1L) {
+    sprintf("compare_raw_chunk_%s.rds", sim_chunk_label)
+  } else {
+    "compare_raw.rds"
+  }
+)
+
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
 
-path_progress_file <- projr::projr_path_get(
-  "cache",
-  "log",
-  "analysis",
-  "sim",
-  "compare",
-  "freq_bs",
-  "progress.txt"
-)
-dir.create(
-  dirname(path_progress_file),
-  recursive = TRUE,
-  showWarnings = FALSE
-)
+compare_raw <- tibble::tibble()
 
-if (file.exists(path_progress_file)) {
-  file.remove(path_progress_file)
-}
-
-compare_list_raw <- list()
-
-if (isTRUE(run_simulations) && nrow(sim_grid_run) > 0L) {
-  future::plan(
-    future::multisession,
-    workers = max(1, .simGetCores())
+if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
+  compare_raw <- .simCompareFreqBsGrid(
+    sim_grid = sim_grid,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim,
+    nMarker = 1,
+    nCondition = 2,
+    nCluster = 2,
+    probExact = TRUE,
+    covEvMin = 1.5,
+    covEvMax = 1.5,
+    tolClust = tol_clust,
+    locEnforceShapeThreshold = loc_enforce_shape_threshold,
+    calcCytPosGates = calc_cyt_pos_gates,
+    pathFbeta = path_fbeta,
+    fbetaBeta = fbeta_beta,
+    fbetaTheta = fbeta_theta,
+    fbetaWidth = fbeta_width,
+    tailgateAdjust = tailgate_adjust,
+    tailgateAutoTol = tailgate_auto_tol,
+    tailgateMethod = tailgate_method,
+    tailgateTol = tailgate_tol,
+    tailgateX = tailgate_x,
+    parallel = (n_workers > 1L),
+    workers = n_workers,
+    dirCache = dir_output,
+    pathProgress = path_progress_file,
+    resume = TRUE,
+    sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) {
+      sim_grid_chunk_index
+    } else {
+      NULL
+    },
+    sim_grid_n_chunks = if (sim_grid_n_chunks > 1L) {
+      sim_grid_n_chunks
+    } else {
+      NULL
+    }
   )
 
-  compare_list_raw <- progressr::with_progress({
-    p <- progressr::progressor(steps = nrow(sim_grid_run))
-
-    furrr::future_pmap(
-      sim_grid_run,
-      function(transformation,
-               prob_response,
-               n_cell,
-               mean_pos_setting,
-               mean_pos,
-               bw_mtd,
-               bw_ncell_max,
-               bw_fallback,
-               bw_min,
-               bw_max,
-               bias_uns,
-               sample_perturbation_sd,
-               condition_perturbation_sd,
-               cluster_perturbation_sd,
-               background_relative_to_response,
-               n_cell_uns_relative_to_stim,
-               sim_id) {
-        settings_row <- paste0(
-          "trans = ", transformation,
-          " | prob = ", prob_response,
-          " | n_cell = ", n_cell,
-          " | mean = ", mean_pos,
-          " | bw_mtd = ", bw_mtd,
-          " | bw_ncell_max = ", bw_ncell_max,
-          " | bias = ", bias_uns,
-          " | sample_sd = ", sample_perturbation_sd,
-          " | condition_sd = ", condition_perturbation_sd,
-          " | cluster_sd = ", cluster_perturbation_sd,
-          " | bg_rel = ", background_relative_to_response,
-          " | n_uns_rel = ", n_cell_uns_relative_to_stim,
-          " | sim_id = ", sim_id
-        )
-
-        cat(
-          paste0("Running: ", settings_row, "\n"),
-          file = path_progress_file,
-          append = TRUE
-        )
-
-        out <- tryCatch(
-          {
-            sim_res <- .simCompareFreqBs(
-              nSample = 10,
-              nMarker = 1,
-              nCondition = 2,
-              nCluster = 2,
-              nIter = 2,
-              biasUns = bias_uns,
-              bw = NULL,
-              bwFallback = bw_fallback,
-              bwMin = bw_min,
-              bwMax = bw_max,
-              bwMtd = bw_mtd,
-              bwNcellMax = bw_ncell_max,
-              nCellStim = n_cell,
-              probResponse = prob_response,
-              probExact = TRUE,
-              meanPos = mean_pos,
-              transformation = transformation,
-              samplePerturbationSd = sample_perturbation_sd,
-              conditionPerturbationSd = condition_perturbation_sd,
-              clusterPerturbationSd = cluster_perturbation_sd,
-              backgroundRelativeToResponse =
-                background_relative_to_response,
-              ncellUnsRelativeToStim =
-                n_cell_uns_relative_to_stim,
-              covEvMin = 1.5,
-              covEvMax = 1.5,
-              tolClust = tol_clust,
-              locEnforceShapeThreshold = loc_enforce_shape_threshold,
-              calcCytPosGates = calc_cyt_pos_gates,
-              pathFbeta = path_fbeta,
-              fbetaBeta = fbeta_beta,
-              fbetaTheta = fbeta_theta,
-              fbetaWidth = fbeta_width,
-              tailgateAdjust = tailgate_adjust,
-              tailgateAutoTol = tailgate_auto_tol,
-              tailgateMethod = tailgate_method,
-              tailgateTol = tailgate_tol,
-              tailgateX = tailgate_x
-            ) |>
-              dplyr::mutate(
-                transformation = transformation,
-                prob_response = prob_response,
-                n_cell = n_cell,
-                mean_pos_setting = mean_pos_setting,
-                mean_pos = mean_pos,
-                bw_mtd = bw_mtd,
-                bw_ncell_max = bw_ncell_max,
-                bw_fallback = bw_fallback,
-                bw_min = bw_min,
-                bw_max = bw_max,
-                bias_uns = bias_uns,
-                sample_perturbation_sd = sample_perturbation_sd,
-                condition_perturbation_sd =
-                  condition_perturbation_sd,
-                cluster_perturbation_sd =
-                  cluster_perturbation_sd,
-                background_relative_to_response =
-                  background_relative_to_response,
-                n_cell_uns_relative_to_stim =
-                  n_cell_uns_relative_to_stim,
-                sim_id = sim_id
-              ) |>
-              dplyr::select(
-                transformation,
-                prob_response,
-                n_cell,
-                mean_pos_setting,
-                mean_pos,
-                bw_mtd,
-                bw_ncell_max,
-                bw_fallback,
-                bw_min,
-                bw_max,
-                bias_uns,
-                sample_perturbation_sd,
-                condition_perturbation_sd,
-                cluster_perturbation_sd,
-                background_relative_to_response,
-                n_cell_uns_relative_to_stim,
-                sim_id,
-                dplyr::everything()
-              )
-
-            cat(
-              paste0("Completed: ", settings_row, "\n"),
-              file = path_progress_file,
-              append = TRUE
-            )
-            p(sprintf("Completed sim_id: %s", sim_id))
-
-            sim_res
-          },
-          error = function(e) {
-            cat(
-              paste0(
-                "Error [",
-                settings_row,
-                "]: ",
-                e$message,
-                "\n"
-              ),
-              file = path_progress_file,
-              append = TRUE
-            )
-            p(sprintf("ERROR on sim_id: %s", sim_id))
-
-            tibble::tibble(
-              transformation = transformation,
-              prob_response = prob_response,
-              n_cell = n_cell,
-              mean_pos_setting = mean_pos_setting,
-              mean_pos = mean_pos,
-              bw_mtd = bw_mtd,
-              bw_ncell_max = bw_ncell_max,
-              bw_fallback = bw_fallback,
-              bw_min = bw_min,
-              bw_max = bw_max,
-              bias_uns = bias_uns,
-              sample_perturbation_sd = sample_perturbation_sd,
-              condition_perturbation_sd = condition_perturbation_sd,
-              cluster_perturbation_sd = cluster_perturbation_sd,
-              background_relative_to_response =
-                background_relative_to_response,
-              n_cell_uns_relative_to_stim =
-                n_cell_uns_relative_to_stim,
-              sim_id = sim_id,
-              iter = NA_integer_,
-              chnl = NA_character_,
-              sample = NA_character_,
-              ind = NA_character_,
-              approach = NA_character_,
-              method = NA_character_,
-              propRespTruth = NA_real_,
-              propRespEst = NA_real_,
-              threshold = NA_real_,
-              thresholdOrigin = NA_character_,
-              gateReturnPoint = NA_character_,
-              nCellStim = NA_real_,
-              nCellUns = NA_real_,
-              nPosStim = NA_integer_,
-              nPosUns = NA_integer_,
-              error = e$message
-            )
-          }
-        )
-
-        out
-      },
-      .options = furrr::furrr_options(seed = TRUE, chunk_size = 10L)
-    )
-  })
-
-  future::plan(future::sequential)
-
-  path_compare_out <- projr::projr_path_get(
-    "cache",
-    "sim",
-    "compare",
-    "freq_bs",
-    "compare_list_raw.rds"
-  )
-  dir.create(
-    dirname(path_compare_out),
-    recursive = TRUE,
-    showWarnings = FALSE
-  )
-  .write_rds_atomic(compare_list_raw, file = path_compare_out)
+  .write_rds_atomic(compare_raw, path_rds)
 } else if (isTRUE(run_simulations)) {
   message("No simulations assigned to this chunk.")
 } else {
   message("Skipping simulations because run_simulations is FALSE.")
+}
+
+if (isTRUE(run_simulations)) {
+  sim_status_tbl <- if (nrow(compare_raw) > 0L && "sim_id" %in% names(compare_raw)) {
+    compare_raw |>
+      dplyr::filter(.data$sim_id %in% sim_grid$sim_id) |>
+      dplyr::group_by(.data$sim_id) |>
+      dplyr::summarise(
+        has_error = if ("error" %in% names(compare_raw)) {
+          any(!is.na(.data$error) & .data$error != "")
+        } else {
+          FALSE
+        },
+        .groups = "drop"
+      )
+  } else {
+    tibble::tibble(sim_id = integer(), has_error = logical())
+  }
+
+  n_failed <- sum(sim_status_tbl$has_error)
+  n_completed <- sum(!sim_status_tbl$has_error)
+
+  .analysis_mark_chunk(
+    run_ctx = run_ctx,
+    total_sims = nrow(sim_grid),
+    completed_sims = n_completed,
+    failed_sims = n_failed,
+    collate_ok = nrow(compare_raw) > 0L,
+    validation_ok = nrow(compare_raw) > 0L
+  )
+
+  if (.analysis_can_promote(run_ctx)) {
+    scenario_paths <- list.files(
+      run_ctx$staging_run_dir,
+      pattern = "^(compare_raw.*|sim_scenario.*|sim_raw.*)sim_id_[0-9]+[.]rds$",
+      recursive = TRUE,
+      full.names = TRUE
+    )
+    compare_raw_full <- .simCompareCollateScenarioOutputs(
+      pathList = scenario_paths,
+      sim_grid = sim_grid_all
+    )
+    expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
+    collated_sim_ids <- if (
+      nrow(compare_raw_full) > 0L && "sim_id" %in% names(compare_raw_full)
+    ) {
+      sort(unique(as.integer(compare_raw_full$sim_id)))
+    } else {
+      integer()
+    }
+    full_collate_ok <- identical(collated_sim_ids, expected_sim_ids)
+    full_validation_ok <- full_collate_ok &&
+      (!"error" %in% names(compare_raw_full) ||
+        !any(!is.na(compare_raw_full$error) & compare_raw_full$error != ""))
+
+    if (!isTRUE(full_validation_ok)) {
+      error_message <- paste0(
+        "Refusing to promote analysis 7: canonical collation did not contain ",
+        "exactly the complete error-free simulation grid."
+      )
+      .analysis_mark_chunk(
+        run_ctx = run_ctx,
+        total_sims = nrow(sim_grid),
+        completed_sims = n_completed,
+        failed_sims = n_failed,
+        collate_ok = full_collate_ok,
+        validation_ok = FALSE,
+        error_message = error_message
+      )
+      stop(error_message)
+    }
+
+    path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
+    .write_rds_atomic(compare_raw_full, path_rds_full)
+    compare_raw <- compare_raw_full
+    .analysis_promote_run(run_ctx)
+  }
 }
 ```
 
@@ -596,41 +583,16 @@ if (isTRUE(run_simulations) && nrow(sim_grid_run) > 0L) {
 ```{r}
 #| label: compare-collate
 #| error: true
-path_vec <- c(
-  projr::projr_path_get(
-    "cache",
-    "sim",
-    "compare",
-    "freq_bs",
-    "compare_list_raw.rds",
-    safe = TRUE
-  ),
-  projr::projr_path_get(
-    "cache",
-    "sim",
-    "compare",
-    "freq_bs",
-    "compare_list_raw.rds",
-    safe = FALSE
+path_rds <- .analysis_current_file(
+  run_ctx = run_ctx,
+  relative_path = c("collated", "compare_raw.rds"),
+  required_params = list(
+    comparison_semantics_version = comparison_semantics_version
   )
 )
+compare_raw <- readRDS(path_rds)
 
-path_vec <- path_vec[file.exists(path_vec)]
-if (length(path_vec) == 0L) {
-  stop("Could not find compare_list_raw.rds. Run the simulation chunk first.")
-}
-
-compare_list_raw <- readRDS(file = path_vec[[1]])
-
-compare_tbl <- compare_list_raw |>
-  purrr::list_rbind()
-
-if (!"stimgate" %in% compare_tbl$method && "stimgate_loc_sample" %in% compare_tbl$method) {
-  compare_tbl <- compare_tbl |>
-    dplyr::mutate(
-      method = dplyr::if_else(method == "stimgate_loc_sample", "stimgate", method)
-    )
-}
+compare_tbl <- compare_raw
 
 compare_tbl_focus <- compare_tbl |>
   dplyr::filter(

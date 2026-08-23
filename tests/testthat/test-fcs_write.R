@@ -11,15 +11,15 @@ invisible(gateStim(
 
 .fcsRowSig <- function(ex) {
   if (!is.data.frame(ex) && !is.matrix(ex)) {
-   return(character(0))
+    return(character(0))
   }
   if (nrow(ex) == 0L) {
-   return(character(0))
+    return(character(0))
   }
   unname(sort(
-   apply(ex, 1, function(row) {
-     paste(sprintf("%.12f", as.numeric(row)), collapse = "|")
-   })
+    apply(ex, 1, function(row) {
+      paste(sprintf("%.12f", as.numeric(row)), collapse = "|")
+    })
   ))
 }
 
@@ -218,7 +218,7 @@ test_that("writeStimFCS respects mult and gateTypeCytPos when exporting exact ce
     ((exOrig[[exampleData$chnl[[1]]]] > 0.5) &
       (exOrig[[exampleData$chnl[[2]]]] > 0.25)) |
       ((exOrig[[exampleData$chnl[[1]]]] > 0.25) &
-      (exOrig[[exampleData$chnl[[2]]]] > 0.5)),
+        (exOrig[[exampleData$chnl[[2]]]] > 0.5)),
     exampleData$chnl,
     drop = FALSE
   ]

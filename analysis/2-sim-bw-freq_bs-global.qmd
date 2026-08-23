@@ -465,11 +465,34 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
         }
 
         if (!is.null(existing_output)) {
+          .analysis_reconcile_resume_markers(
+            existing_output = existing_output,
+            file_completed = file_completed,
+            file_error = file_error,
+            file_running = file_running,
+            error_col = "error_message"
+          )
+          .update_progress_summary(
+            path_progress_file = path_progress_file,
+            dir_jobs_chunk = dir_jobs_chunk,
+            total_sims = total_sims,
+            sim_grid_chunk_index = sim_grid_chunk_index,
+            sim_grid_n_chunks = sim_grid_n_chunks,
+            dir_output = dir_output
+          )
           p(sprintf("Skipped existing sim_id: %s", sim_id))
           return(existing_output)
         }
 
         file.create(file_running)
+        .update_progress_summary(
+          path_progress_file = path_progress_file,
+          dir_jobs_chunk = dir_jobs_chunk,
+          total_sims = total_sims,
+          sim_grid_chunk_index = sim_grid_chunk_index,
+          sim_grid_n_chunks = sim_grid_n_chunks,
+          dir_output = dir_output
+        )
 
         out <- tryCatch(
           {
@@ -557,9 +580,6 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
             sim_res
           },
           error = function(e) {
-            file.create(file_error)
-            if (file.exists(file_running)) file.remove(file_running)
-
             err_res <- tibble::tibble(
               transformation = transformation,
               prob_response = prob_response,
@@ -601,6 +621,8 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
             )
 
             .write_rds_atomic(err_res, file_output)
+            file.create(file_error)
+            if (file.exists(file_running)) file.remove(file_running)
             .update_progress_summary(
               path_progress_file = path_progress_file,
               dir_jobs_chunk = dir_jobs_chunk,

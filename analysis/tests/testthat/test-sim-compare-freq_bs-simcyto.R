@@ -413,3 +413,144 @@ test_that("F-beta threshold metric is preserved as diagnostic without altering t
   expect_true(is.numeric(fbeta_row$thresholdMetric))
   expect_true(is.finite(fbeta_row$threshold))
 })
+
+test_that(
+  "analysis/7-sim-compare-freq_bs.qmd conforms to transactional contract (#338)",
+  {
+    qmd_path <- file.path(root_dir, "analysis", "7-sim-compare-freq_bs.qmd")
+    expect_true(file.exists(qmd_path))
+
+    lines <- readLines(qmd_path, warn = FALSE)
+    content <- paste(lines, collapse = "\n")
+
+    # Declares standard params in YAML
+    expect_true(grepl("analysis_run_id:\\s*null", content))
+    expect_true(grepl("sim_grid_chunk_index:\\s*1", content))
+    expect_true(grepl("sim_grid_n_chunks:\\s*1", content))
+    expect_true(grepl("run_simulations:\\s*true", content))
+    expect_true(grepl("run_plots:\\s*false", content))
+
+    # Uses .analysis_run_context with analysis_key = c("sim", "compare", "freq_bs")
+    expect_true(grepl('c\\("sim",\\s*"compare",\\s*"freq_bs"\\)', content))
+
+    # Uses .simCompareFreqBsGrid with dirCache and progress
+    expect_true(grepl("\\.simCompareFreqBsGrid", content))
+    expect_true(grepl("dirCache\\s*=\\s*dir_output", content))
+
+    # Calls .analysis_mark_chunk and .analysis_promote_run
+    expect_true(grepl("\\.analysis_mark_chunk", content))
+    expect_true(grepl("\\.analysis_promote_run", content))
+
+    # Reads only a complete canonical current result with corrected semantics
+    # and does NOT write/read fixed legacy compare_list_raw.rds
+    expect_true(grepl(
+      "\\.analysis_current_file",
+      content
+    ))
+    expect_true(grepl(
+      "required_params\\s*=\\s*list\\(\\s*comparison_semantics_version",
+      content
+    ))
+    expect_false(grepl("compare_list_raw\\.rds", content))
+
+    # Does NOT contain the legacy stimgate_loc_sample -> stimgate renaming shim
+    expect_false(grepl('method\\s*==\\s*"stimgate_loc_sample"', content))
+  }
+)
+
+test_that(
+  "Analysis 7 run context and promotion isolates staging from current (#338)",
+  {
+    script_runtime <- file.path(root_dir, "scripts", "r", "analysis-runtime.R")
+    env <- new.env(parent = getNamespace("stimgate"))
+    source(script_runtime, local = env)
+
+    tmp_project <- withr::local_tempdir()
+    withr::local_dir(tmp_project)
+    writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+    run_ctx <- env$.analysis_run_context(
+      analysis_key = c("sim", "compare", "freq_bs"),
+      run_id = "test-run-338",
+      params = list(
+        run_simulations = TRUE,
+        run_plots = FALSE,
+        sim_grid_chunk_index = 1L,
+        sim_grid_n_chunks = 1L
+      ),
+      sim_grid_chunk_index = 1L,
+      sim_grid_n_chunks = 1L
+    )
+
+    expect_true(dir.exists(run_ctx$staging_run_dir))
+    expect_true(dir.exists(run_ctx$chunk_output_dir))
+    expect_false(dir.exists(run_ctx$current_dir))
+
+    # Write mock collated output under staging
+    mock_data <- tibble::tibble(
+      sim_id = 1L,
+      method = c("stimgate", "fbeta", "tailgate"),
+      approach = c("stimgate", "fbeta", "tailgate"),
+      propRespEst = c(0.05, 0.048, 0.051),
+      propRespTruth = c(0.05, 0.05, 0.05)
+    )
+    path_staging_collated <- file.path(
+      run_ctx$staging_collated_dir,
+      "compare_raw.rds"
+    )
+    env$.write_rds_atomic(mock_data, path_staging_collated)
+
+    # Mark chunk complete
+    env$.analysis_mark_chunk(
+      run_ctx = run_ctx,
+      total_sims = 1L,
+      completed_sims = 1L,
+      failed_sims = 0L,
+      collate_ok = TRUE,
+      validation_ok = TRUE
+    )
+
+    expect_true(env$.analysis_can_promote(run_ctx))
+    env$.analysis_promote_run(run_ctx)
+
+    # Verify promotion created canonical current
+    expect_true(dir.exists(run_ctx$current_dir))
+    canonical_collated <- file.path(
+      run_ctx$current_dir,
+      "collated",
+      "compare_raw.rds"
+    )
+    expect_true(file.exists(canonical_collated))
+
+    promoted_data <- readRDS(canonical_collated)
+    expect_equal(nrow(promoted_data), 3L)
+    expect_true("stimgate" %in% promoted_data$method)
+    expect_true(file.exists(file.path(run_ctx$current_dir, "COMPLETE")))
+    expect_true(file.exists(file.path(run_ctx$current_dir, "manifest.rds")))
+  }
+)
+
+test_that(
+  "Legacy cache with stimgate_loc_sample is not canonical stimgate (#338)",
+  {
+    # Synthetic legacy output with only stimgate_loc_sample (pre-#308 semantics)
+    legacy_data <- tibble::tibble(
+      sim_id = 1L,
+      method = c("stimgate_loc_sample", "fbeta", "tailgate"),
+      approach = c("stimgate", "fbeta", "tailgate"),
+      propRespEst = c(0.03, 0.048, 0.051),
+      propRespTruth = c(0.05, 0.05, 0.05)
+    )
+
+    # Without the shim, stimgate is not present
+    expect_false("stimgate" %in% legacy_data$method)
+    expect_true("stimgate_loc_sample" %in% legacy_data$method)
+
+    # Verify filtering for method does not include stimgate_loc_sample
+    focused <- legacy_data[
+      legacy_data$method %in% c("stimgate", "fbeta", "tailgate"),
+    ]
+    expect_false("stimgate" %in% focused$method)
+    expect_false("stimgate_loc_sample" %in% focused$method)
+  }
+)

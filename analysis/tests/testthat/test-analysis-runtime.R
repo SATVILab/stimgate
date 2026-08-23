@@ -262,6 +262,111 @@ test_that("explicit run ID reuse rejects incompatible manifest settings", {
   )
 })
 
+test_that("explicit run ID reuse checks scientific but not operational parameters", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-scientific-params"),
+    run_id = "shared-scientific-run",
+    params = list(
+      run_simulations = TRUE,
+      run_plots = FALSE,
+      sim_grid_chunk_index = 1L,
+      sim_grid_n_chunks = 2L,
+      comparison_semantics_version = "corrected-v1"
+    ),
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 2L
+  )
+
+  expect_no_error(env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-scientific-params"),
+    run_id = "shared-scientific-run",
+    params = list(
+      run_simulations = FALSE,
+      run_plots = TRUE,
+      sim_grid_chunk_index = 2L,
+      sim_grid_n_chunks = 2L,
+      comparison_semantics_version = "corrected-v1"
+    ),
+    sim_grid_chunk_index = 2L,
+    sim_grid_n_chunks = 2L
+  ))
+
+  expect_error(
+    env$.analysis_run_context(
+      analysis_key = c("sim", "analysis-runtime-scientific-params"),
+      run_id = "shared-scientific-run",
+      params = list(
+        run_simulations = TRUE,
+        run_plots = FALSE,
+        sim_grid_chunk_index = 2L,
+        sim_grid_n_chunks = 2L,
+        comparison_semantics_version = "corrected-v2"
+      ),
+      sim_grid_chunk_index = 2L,
+      sim_grid_n_chunks = 2L
+    ),
+    "incompatible with existing manifest"
+  )
+})
+
+test_that("canonical current reads require completion and compatible provenance", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  ctx <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-current"),
+    run_id = "current-run",
+    params = list(comparison_semantics_version = "corrected-v1")
+  )
+  path_staged <- file.path(ctx$staging_collated_dir, "result.rds")
+  env$.write_rds_atomic(tibble::tibble(x = 1L), path_staged)
+
+  expect_error(
+    env$.analysis_current_file(
+      ctx,
+      c("collated", "result.rds"),
+      list(comparison_semantics_version = "corrected-v1")
+    ),
+    "No complete canonical current result"
+  )
+
+  env$.analysis_mark_chunk(
+    run_ctx = ctx,
+    total_sims = 1L,
+    completed_sims = 1L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+  expect_true(isTRUE(env$.analysis_promote_run(ctx)))
+
+  expect_identical(
+    env$.analysis_current_file(
+      ctx,
+      c("collated", "result.rds"),
+      list(comparison_semantics_version = "corrected-v1")
+    ),
+    file.path(ctx$current_dir, "collated", "result.rds")
+  )
+  expect_error(
+    env$.analysis_current_file(
+      ctx,
+      c("collated", "result.rds"),
+      list(comparison_semantics_version = "legacy-v0")
+    ),
+    "comparison_semantics_version"
+  )
+})
+
 test_that("concurrent chunk updates preserve per-chunk status and aggregate counts", {
   env <- .load_runtime_env()
 
@@ -470,4 +575,196 @@ test_that("explicit run ID reuses the original dated run directory", {
   expect_identical(ctx_resume$run_date, target_date)
   expect_identical(ctx_resume$staging_run_dir, moved_staging_dir)
   expect_identical(ctx_resume$progress_run_dir, moved_progress_dir)
+})
+
+test_that("a promoted run cannot be reset to running or lose collation/validation state", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  ctx <- env$.analysis_run_context(
+    analysis_key = c("sim", "analysis-runtime-no-reset"),
+    run_id = "promoted-run",
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 1L
+  )
+
+  env$.analysis_mark_chunk(
+    run_ctx = ctx,
+    total_sims = 2L,
+    completed_sims = 2L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+  env$.analysis_promote_run(ctx)
+
+  status_after_promote <- env$.analysis_read_status(ctx)
+  expect_identical(status_after_promote$status, "completed")
+  expect_true(isTRUE(status_after_promote$promotion_done))
+
+  chunk_list_before <- env$.analysis_read_chunk_statuses(ctx)
+  cs_before <- chunk_list_before[[ctx$chunk_label]]
+  expect_true(isTRUE(cs_before$collate_ok))
+  expect_true(isTRUE(cs_before$validation_ok))
+
+  env$.analysis_mark_chunk(
+    run_ctx = ctx,
+    total_sims = 2L,
+    completed_sims = 2L,
+    failed_sims = 0L
+  )
+
+  chunk_list_after <- env$.analysis_read_chunk_statuses(ctx)
+  cs_after <- chunk_list_after[[ctx$chunk_label]]
+  expect_true(isTRUE(cs_after$collate_ok))
+  expect_true(isTRUE(cs_after$validation_ok))
+
+  status_after_second <- env$.analysis_read_status(ctx)
+  expect_identical(status_after_second$status, "completed")
+  expect_true(isTRUE(status_after_second$promotion_done))
+})
+
+test_that("reconcile_resume_markers corrects error-path markers from durable output", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- withr::local_tempdir()
+  file_completed <- file.path(tmp_dir, "completed-2")
+  file_error <- file.path(tmp_dir, "error-2")
+  file_running <- file.path(tmp_dir, "running-2")
+  file.create(file_running)
+  file.create(file_completed)
+
+  err_output <- tibble::tibble(sim_id = 2L, error_message = "something went wrong")
+  env$.analysis_reconcile_resume_markers(
+    existing_output = err_output,
+    file_completed = file_completed,
+    file_error = file_error,
+    file_running = file_running,
+    error_col = "error_message"
+  )
+
+  expect_false(file.exists(file_completed))
+  expect_true(file.exists(file_error))
+  expect_false(file.exists(file_running))
+})
+
+test_that("one process holding the lock excludes another process, and unlock allows acquisition", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- withr::local_tempdir()
+  lock_path <- file.path(tmp_dir, "test.lock")
+  script_path <- script_runtime
+
+  lock1 <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.5)
+  expect_false(is.null(lock1))
+  withr::defer(env$.analysis_release_lock(lock1))
+
+  # Another process attempting to acquire the same lock times out and returns NULL
+  cmd_excluded <- sprintf(
+    "local_env <- new.env(parent = baseenv()); source(\"%s\", local = local_env); l <- local_env$.analysis_acquire_lock(\"%s\", timeout_sec = 0.1); cat(if (is.null(l)) \"EXCLUDED\" else \"ACQUIRED\")",
+    script_path, lock_path
+  )
+  out_excluded <- system2("Rscript", args = c("-e", shQuote(cmd_excluded)), stdout = TRUE)
+  expect_true(any(grepl("EXCLUDED", out_excluded)))
+
+  # After normal unlock, another process can acquire it
+  env$.analysis_release_lock(lock1)
+
+  cmd_acquired <- sprintf(
+    "local_env <- new.env(parent = baseenv()); source(\"%s\", local = local_env); l <- local_env$.analysis_acquire_lock(\"%s\", timeout_sec = 1); if (!is.null(l)) { local_env$.analysis_release_lock(l); cat(\"ACQUIRED_OK\") }",
+    script_path, lock_path
+  )
+  out_acquired <- system2("Rscript", args = c("-e", shQuote(cmd_acquired)), stdout = TRUE)
+  expect_true(any(grepl("ACQUIRED_OK", out_acquired)))
+})
+
+test_that("a worker process terminating without unlocking leaves lock immediately acquirable", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- withr::local_tempdir()
+  lock_path <- file.path(tmp_dir, "termination.lock")
+  ready_file <- file.path(tmp_dir, "ready.txt")
+  pid_file <- file.path(tmp_dir, "pid.txt")
+  script_path <- script_runtime
+
+  # Launch worker in background that acquires lock and signals readiness
+  worker_cmd <- sprintf(
+    "local_env <- new.env(parent = baseenv()); source(\"%s\", local = local_env); writeLines(as.character(Sys.getpid()), \"%s\"); l <- local_env$.analysis_acquire_lock(\"%s\", timeout_sec = 10); writeLines(\"READY\", \"%s\"); Sys.sleep(100)",
+    script_path, pid_file, lock_path, ready_file
+  )
+  system2("Rscript", args = c("-e", shQuote(worker_cmd)), wait = FALSE)
+
+  # Wait until worker has locked and signaled readiness
+  for (i in seq_len(100L)) {
+    if (file.exists(ready_file)) break
+    Sys.sleep(0.05)
+  }
+  expect_true(file.exists(ready_file))
+
+  # Parent process cannot acquire while worker is alive
+  l_while_alive <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.1)
+  expect_null(l_while_alive)
+
+  # Terminate worker process abruptly (SIGKILL = 9)
+  worker_pid <- as.integer(readLines(pid_file)[[1]])
+  tools::pskill(worker_pid, signal = tools::SIGKILL)
+  Sys.sleep(0.1)
+
+  # OS fcntl drops lock automatically on process termination; another process can acquire immediately
+  l_after_death <- env$.analysis_acquire_lock(lock_path, timeout_sec = 2)
+  expect_false(is.null(l_after_death))
+  env$.analysis_release_lock(l_after_death)
+})
+
+test_that("concurrent lock acquisition across workers remains safely serialised", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- tempfile("flock-concurrent-")
+  dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  lock_path <- file.path(tmp_dir, "shared.lock")
+  script_path <- script_runtime
+  log_file <- file.path(tmp_dir, "execution.log")
+
+  cl <- parallel::makePSOCKcluster(4L)
+  on.exit(parallel::stopCluster(cl), add = TRUE)
+
+  parallel::clusterExport(
+    cl,
+    varlist = c("tmp_dir", "lock_path", "log_file", "script_path"),
+    envir = environment()
+  )
+
+  results <- parallel::clusterApply(cl, 1:4, function(worker_id) {
+    local_env <- new.env(parent = baseenv())
+    source(script_path, local = local_env)
+
+    lock <- local_env$.analysis_acquire_lock(
+      lock_path,
+      timeout_sec = 15
+    )
+
+    if (is.null(lock)) {
+      return(list(worker_id = worker_id, ok = FALSE, error = "failed to acquire lock"))
+    }
+
+    # Append to log
+    cat(paste0("worker-", worker_id, "\n"), file = log_file, append = TRUE)
+    Sys.sleep(0.05)
+
+    local_env$.analysis_release_lock(lock)
+
+    list(worker_id = worker_id, ok = TRUE)
+  })
+
+  for (res in results) {
+    expect_true(isTRUE(res$ok))
+  }
+
+  log_lines <- readLines(log_file)
+  expect_length(log_lines, 4L)
 })
