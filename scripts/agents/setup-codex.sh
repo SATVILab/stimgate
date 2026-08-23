@@ -23,7 +23,7 @@ sudo apt-get update -qq
 sudo apt-get install --no-install-recommends -y \
     ca-certificates curl dirmngr gnupg lsb-release software-properties-common wget git \
     libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev libgit2-dev \
-    libjpeg-dev libpng-dev libx11-dev libssl-dev libxml2-dev pandoc \
+    libjpeg-dev libpng-dev libx11-dev libssl-dev libxml2-dev libuv1-dev pandoc \
     python3 python3-numpy
 
 wget -qO /tmp/cran_ubuntu_key.asc \
@@ -85,35 +85,19 @@ sudo dpkg -i /tmp/quarto.deb
 rm -f /tmp/quarto.deb
 quarto --version
 
-run_pak_bioc_core() {
+run_pak_stimgate_cran() {
     sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
         Rscript --vanilla -e '
     source("/tmp/stimgate-agent-repos.R")
     pak::pkg_install(
-        c("flowCore", "flowWorkspace", "Biobase"),
+        c(
+            "cowplot", "dplyr", "ggplot2", "purrr", "rlang", "tibble", "tidyr",
+            "scam", "ks", "gtools", "cluster", "MASS", "mvtnorm", "cpp11",
+            "testthat", "here", "knitr", "rmarkdown", "hexbin", "withr", "filelock"
+        ),
         upgrade = FALSE,
         ask = FALSE
     )
-    '
-}
-
-run_bioc_repair() {
-    sudo env CI=true Rscript --vanilla -e "
-    source('/tmp/stimgate-agent-repos.R')
-    BiocManager::install(
-        c('flowCore', 'flowWorkspace', 'Biobase'),
-        version = '${BIOC_VERSION}',
-        ask = FALSE,
-        update = FALSE
-    )
-    "
-}
-
-run_pak_local_deps() {
-    sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
-        Rscript --vanilla -e '
-    source("/tmp/stimgate-agent-repos.R")
-    pak::local_install_dev_deps(".", upgrade = FALSE, ask = FALSE)
     '
 }
 
@@ -129,7 +113,7 @@ run_pak_dev_tools() {
     '
 }
 
-run_pak_analysis_deps() {
+run_pak_analysis_cran() {
     sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
         Rscript --vanilla -e '
     source("/tmp/stimgate-agent-repos.R")
@@ -141,15 +125,59 @@ run_pak_analysis_deps() {
     '
 }
 
-run_pak_github_deps() {
+run_pak_projr() {
+    sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
+        Rscript --vanilla -e '
+    source("/tmp/stimgate-agent-repos.R")
+    pak::pkg_install("SATVILab/projr", upgrade = FALSE, ask = FALSE)
+    '
+}
+
+run_pak_bioc_core() {
     sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
         Rscript --vanilla -e '
     source("/tmp/stimgate-agent-repos.R")
     pak::pkg_install(
-        c("SATVILab/projr", "SATVILab/simcyto", "RGLab/cytoUtils"),
+        c("Biobase", "flowCore", "flowWorkspace"),
         upgrade = FALSE,
         ask = FALSE
     )
+    '
+}
+
+run_bioc_repair() {
+    sudo env CI=true Rscript --vanilla -e "
+    source('/tmp/stimgate-agent-repos.R')
+    BiocManager::install(
+        c('Biobase', 'flowCore', 'flowWorkspace'),
+        version = '${BIOC_VERSION}',
+        ask = FALSE,
+        update = FALSE
+    )
+    "
+}
+
+run_pak_simcyto() {
+    sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
+        Rscript --vanilla -e '
+    source("/tmp/stimgate-agent-repos.R")
+    pak::pkg_install("SATVILab/simcyto", upgrade = FALSE, ask = FALSE)
+    '
+}
+
+run_pak_cytoutils() {
+    sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
+        Rscript --vanilla -e '
+    source("/tmp/stimgate-agent-repos.R")
+    pak::pkg_install("RGLab/cytoUtils", upgrade = FALSE, ask = FALSE)
+    '
+}
+
+run_pak_local_deps() {
+    sudo env CI=true PKG_SYSREQS=true PKG_SYSREQS_VERBOSE=true \
+        Rscript --vanilla -e '
+    source("/tmp/stimgate-agent-repos.R")
+    pak::local_install_dev_deps(".", upgrade = FALSE, ask = FALSE)
     '
 }
 
@@ -170,31 +198,40 @@ run_stage() {
     return 1
 }
 
-# Keep the initial setup in bounded transactions. In particular, install the
-# Bioconductor runtime stack before asking pak to resolve all local dev deps.
-# This avoids one large mixed CRAN/Bioconductor transaction and makes a stalled
-# download or source build much easier to diagnose.
-BIOC_RC=0
-LOCAL_RC=0
+# Populate the cheap binary-backed part of the environment first. If the later
+# Bioconductor source stack is slow or fails, the CRAN/tooling work is already
+# complete and cached. Keep the final local dev-dependency pass as a fill-gaps
+# check after the explicit stages, rather than using it as the first large mixed
+# CRAN/Bioconductor transaction.
+CRAN_RC=0
 TOOLS_RC=0
 ANALYSIS_RC=0
-GITHUB_RC=0
+PROJR_RC=0
+BIOC_RC=0
+SIMCYTO_RC=0
+CYTOUTILS_RC=0
+LOCAL_RC=0
 
-run_stage "STAGE 1: core Bioconductor packages" run_pak_bioc_core || BIOC_RC=$?
+run_stage "STAGE 1: StimGate CRAN dependencies" run_pak_stimgate_cran || CRAN_RC=$?
+run_stage "STAGE 2: package-development CRAN tools" run_pak_dev_tools || TOOLS_RC=$?
+run_stage "STAGE 3: analysis CRAN dependencies" run_pak_analysis_cran || ANALYSIS_RC=$?
+run_stage "STAGE 4: CRAN-only GitHub dependency projr" run_pak_projr || PROJR_RC=$?
 
+run_stage "STAGE 5: core Bioconductor packages" run_pak_bioc_core || BIOC_RC=$?
 if [ "$BIOC_RC" -ne 0 ]; then
     echo "Trying BiocManager repair before retrying the core Bioconductor stage."
     run_bioc_repair || true
     BIOC_RC=0
-    run_stage "STAGE 1 RETRY: core Bioconductor packages" run_pak_bioc_core || BIOC_RC=$?
+    run_stage "STAGE 5 RETRY: core Bioconductor packages" run_pak_bioc_core || BIOC_RC=$?
 fi
 
-run_stage "STAGE 2: StimGate DESCRIPTION development dependencies" run_pak_local_deps || LOCAL_RC=$?
-run_stage "STAGE 3: package-development tools" run_pak_dev_tools || TOOLS_RC=$?
-run_stage "STAGE 4: analysis CRAN dependencies" run_pak_analysis_deps || ANALYSIS_RC=$?
-run_stage "STAGE 5: GitHub dependencies" run_pak_github_deps || GITHUB_RC=$?
+run_stage "STAGE 6: current SATVILab/simcyto" run_pak_simcyto || SIMCYTO_RC=$?
+run_stage "STAGE 7: RGLab/cytoUtils and its Bioconductor dependencies" run_pak_cytoutils || CYTOUTILS_RC=$?
+run_stage "STAGE 8: final StimGate DESCRIPTION dependency fill" run_pak_local_deps || LOCAL_RC=$?
 
-if [ "$LOCAL_RC" -ne 0 ] || [ "$TOOLS_RC" -ne 0 ] || [ "$ANALYSIS_RC" -ne 0 ] || [ "$GITHUB_RC" -ne 0 ]; then
+if [ "$CRAN_RC" -ne 0 ] || [ "$TOOLS_RC" -ne 0 ] || [ "$ANALYSIS_RC" -ne 0 ] || \
+   [ "$PROJR_RC" -ne 0 ] || [ "$SIMCYTO_RC" -ne 0 ] || [ "$CYTOUTILS_RC" -ne 0 ] || \
+   [ "$LOCAL_RC" -ne 0 ]; then
     echo
     echo "One or more pak stages failed. Repairing installed system requirements and retrying only failed stages."
 
@@ -204,21 +241,33 @@ if [ "$LOCAL_RC" -ne 0 ] || [ "$TOOLS_RC" -ne 0 ] || [ "$ANALYSIS_RC" -ne 0 ] ||
     try(pak::sysreqs_fix_installed(), silent = FALSE)
     ' || true
 
-    if [ "$LOCAL_RC" -ne 0 ]; then
-        LOCAL_RC=0
-        run_stage "STAGE 2 RETRY: StimGate DESCRIPTION development dependencies" run_pak_local_deps || LOCAL_RC=$?
+    if [ "$CRAN_RC" -ne 0 ]; then
+        CRAN_RC=0
+        run_stage "STAGE 1 RETRY: StimGate CRAN dependencies" run_pak_stimgate_cran || CRAN_RC=$?
     fi
     if [ "$TOOLS_RC" -ne 0 ]; then
         TOOLS_RC=0
-        run_stage "STAGE 3 RETRY: package-development tools" run_pak_dev_tools || TOOLS_RC=$?
+        run_stage "STAGE 2 RETRY: package-development CRAN tools" run_pak_dev_tools || TOOLS_RC=$?
     fi
     if [ "$ANALYSIS_RC" -ne 0 ]; then
         ANALYSIS_RC=0
-        run_stage "STAGE 4 RETRY: analysis CRAN dependencies" run_pak_analysis_deps || ANALYSIS_RC=$?
+        run_stage "STAGE 3 RETRY: analysis CRAN dependencies" run_pak_analysis_cran || ANALYSIS_RC=$?
     fi
-    if [ "$GITHUB_RC" -ne 0 ]; then
-        GITHUB_RC=0
-        run_stage "STAGE 5 RETRY: GitHub dependencies" run_pak_github_deps || GITHUB_RC=$?
+    if [ "$PROJR_RC" -ne 0 ]; then
+        PROJR_RC=0
+        run_stage "STAGE 4 RETRY: CRAN-only GitHub dependency projr" run_pak_projr || PROJR_RC=$?
+    fi
+    if [ "$SIMCYTO_RC" -ne 0 ]; then
+        SIMCYTO_RC=0
+        run_stage "STAGE 6 RETRY: current SATVILab/simcyto" run_pak_simcyto || SIMCYTO_RC=$?
+    fi
+    if [ "$CYTOUTILS_RC" -ne 0 ]; then
+        CYTOUTILS_RC=0
+        run_stage "STAGE 7 RETRY: RGLab/cytoUtils and its Bioconductor dependencies" run_pak_cytoutils || CYTOUTILS_RC=$?
+    fi
+    if [ "$LOCAL_RC" -ne 0 ]; then
+        LOCAL_RC=0
+        run_stage "STAGE 8 RETRY: final StimGate DESCRIPTION dependency fill" run_pak_local_deps || LOCAL_RC=$?
     fi
 fi
 
