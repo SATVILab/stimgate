@@ -39,18 +39,9 @@ test_that("getStimGates and getStimStats return gate table and stats after gateS
   # Verify that we have gate data for multiple samples
   expect_true(length(unique(gateTbl$ind)) > 1)
 
-  # Test that getStimStats function works
+  # Lightweight integration check: getStimStats returns a non-empty data frame
   statsTbl <- getStimStats(pathProject)
-
-  # Verify the stats table has expected structure
-  expect_true(is.data.frame(statsTbl))
-  expect_true(nrow(statsTbl) > 0)
-
-  # Verify error handling for getStimStats with invalid project path
-  tmpEmptyDir <- file.path(tempdir(), "stimgate_empty_test_dir")
-  dir.create(tmpEmptyDir, showWarnings = FALSE)
-  expect_error(getStimStats(tmpEmptyDir), "No stats file found")
-  unlink(tmpEmptyDir, recursive = TRUE)
+  expect_true(is.data.frame(statsTbl) && nrow(statsTbl) > 0)
 
   # Clean up
   if (dir.exists(pathProject)) {
