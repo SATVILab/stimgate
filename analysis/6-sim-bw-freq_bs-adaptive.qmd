@@ -1364,7 +1364,6 @@ if (!exists("rug_tbl")) {
     bias_uns = numeric()
   )
 }
-
 ```
 
 ### Median thresholds: fixed core bandwidth, varying extra bandwidth

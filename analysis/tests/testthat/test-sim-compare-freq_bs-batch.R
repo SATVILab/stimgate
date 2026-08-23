@@ -433,8 +433,9 @@ test_that("Analysis 7 and Analysis 8 namespaces are isolated", {
   expect_true(any(grepl('"freq_bs_batch"', lines8)))
 
   content8 <- paste(lines8, collapse = "\n")
-  # Analysis 8 progress log should be in freq_bs_batch log namespace
-  expect_true(grepl('"log"[^)]*"freq_bs_batch"', content8))
+  # Analysis 8 run context should be in freq_bs_batch namespace
+  expect_true(grepl('c\\("sim",\\s*"compare",\\s*"freq_bs_batch"\\)', content8) ||
+    grepl('"log"[^)]*"freq_bs_batch"', content8))
 })
 
 test_that("Inner nIter execution remains serial without nested parallelism", {

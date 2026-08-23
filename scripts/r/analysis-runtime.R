@@ -239,45 +239,136 @@
   file.path(run_ctx$progress_run_dir, paste0(lock_name, ".lock"))
 }
 
-.analysis_acquire_lock <- function(lock_path, timeout_sec = 120, poll_sec = 0.1) {
+.is_pid_alive <- function(pid) {
+  if (is.na(pid) || !is.numeric(pid) || pid <= 0L) {
+    return(FALSE)
+  }
+  pid <- as.integer(pid)
+  alive <- tryCatch(tools::pskill(pid, signal = 0L), error = function(e) NA)
+  if (!is.na(alive)) {
+    return(isTRUE(alive))
+  }
+  proc_path <- file.path("/proc", as.character(pid))
+  if (file.exists(proc_path)) {
+    return(TRUE)
+  }
+  ps_out <- tryCatch(
+    system2("ps", args = c("-p", as.character(pid), "-o", "pid="), stdout = TRUE, stderr = FALSE),
+    error = function(e) character(0)
+  )
+  length(ps_out) > 0L && any(nzchar(trimws(ps_out)))
+}
+
+.analysis_acquire_lock <- function(
+    lock_path,
+    timeout_sec = 120,
+    poll_sec = 0.1,
+    stale_sec = 60,
+    orphan_stale_sec = 5) {
   dir.create(dirname(lock_path), recursive = TRUE, showWarnings = FALSE)
   start <- Sys.time()
+  my_token <- paste0(
+    Sys.info()[["nodename"]],
+    "-",
+    Sys.getpid(),
+    "-",
+    as.numeric(Sys.time()),
+    "-",
+    .random_hex(6L)
+  )
 
   repeat {
     if (dir.create(lock_path, recursive = FALSE, showWarnings = FALSE)) {
       lock_meta <- list(
         pid = Sys.getpid(),
         host = Sys.info()[["nodename"]],
-        created_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        token = my_token,
+        created_at = Sys.time()
       )
-      tryCatch(
-        saveRDS(lock_meta, file.path(lock_path, "lock-meta.rds")),
-        error = function(e) NULL
-      )
+      meta_saved <- tryCatch({
+        saveRDS(lock_meta, file.path(lock_path, "lock-meta.rds"))
+        TRUE
+      }, error = function(e) FALSE)
+
+      if (!isTRUE(meta_saved)) {
+        unlink(lock_path, recursive = TRUE, force = TRUE)
+        return(FALSE)
+      }
       return(TRUE)
     }
 
     meta_path <- file.path(lock_path, "lock-meta.rds")
+    is_stale <- FALSE
+
     if (file.exists(meta_path)) {
       lock_meta <- tryCatch(readRDS(meta_path), error = function(e) NULL)
       if (!is.null(lock_meta)) {
         owner_host <- as.character(lock_meta$host)
         owner_pid <- as.integer(lock_meta$pid)
         current_host <- Sys.info()[["nodename"]]
-        is_stale <- FALSE
+        created_at <- lock_meta$created_at
+        if (is.character(created_at)) {
+          created_at <- tryCatch(as.POSIXct(created_at), error = function(e) NULL)
+        }
+        age_sec <- if (!is.null(created_at) && inherits(created_at, "POSIXt")) {
+          as.numeric(difftime(Sys.time(), created_at, units = "secs"))
+        } else {
+          Inf
+        }
+
+        # Case 1: Same host with dead PID -> immediately stale
         if (identical(owner_host, current_host) && !is.na(owner_pid)) {
-          ps_out <- tryCatch(
-            system2("ps", args = c("-p", owner_pid, "-o", "pid="), stdout = TRUE, stderr = FALSE),
-            error = function(e) character(0)
-          )
-          if (length(ps_out) == 0L || !any(nzchar(trimws(ps_out)))) {
+          if (!.is_pid_alive(owner_pid)) {
             is_stale <- TRUE
           }
         }
-        if (is_stale) {
-          unlink(lock_path, recursive = TRUE, force = TRUE)
-          next
+
+        # Case 2: Cross-node or hung process past stale_sec threshold -> stale
+        if (is.finite(age_sec) && age_sec >= stale_sec) {
+          is_stale <- TRUE
         }
+      } else {
+        # Corrupted / unreadable metadata file
+        dir_info <- tryCatch(file.info(lock_path), error = function(e) NULL)
+        dir_age_sec <- if (!is.null(dir_info$mtime)) {
+          as.numeric(difftime(Sys.time(), dir_info$mtime, units = "secs"))
+        } else {
+          Inf
+        }
+        if (!is.finite(dir_age_sec) || dir_age_sec >= orphan_stale_sec) {
+          is_stale <- TRUE
+        }
+      }
+    } else {
+      # Lock directory exists but lock-meta.rds is missing (orphan lock)
+      dir_info <- tryCatch(file.info(lock_path), error = function(e) NULL)
+      dir_age_sec <- if (!is.null(dir_info$mtime)) {
+        as.numeric(difftime(Sys.time(), dir_info$mtime, units = "secs"))
+      } else {
+        Inf
+      }
+      if (!is.finite(dir_age_sec) || dir_age_sec >= orphan_stale_sec) {
+        is_stale <- TRUE
+      }
+    }
+
+    if (is_stale) {
+      # Atomic reclamation: Rename the stale lock directory to a unique path.
+      # Exactly one process will succeed in renaming; losers will get FALSE and
+      # will not interfere with any new lock acquired by the winner.
+      reclaim_path <- paste0(
+        lock_path,
+        ".stale.",
+        Sys.info()[["nodename"]],
+        "-",
+        Sys.getpid(),
+        "-",
+        .random_hex(6L)
+      )
+      reclaimed <- suppressWarnings(file.rename(lock_path, reclaim_path))
+      if (isTRUE(reclaimed)) {
+        unlink(reclaim_path, recursive = TRUE, force = TRUE)
+        next
       }
     }
 
@@ -289,8 +380,42 @@
   }
 }
 
-.analysis_release_lock <- function(lock_path) {
-  if (dir.exists(lock_path)) {
+.analysis_release_lock <- function(lock_path, token = NULL) {
+  if (!dir.exists(lock_path)) {
+    return(invisible(TRUE))
+  }
+
+  meta_path <- file.path(lock_path, "lock-meta.rds")
+  if (file.exists(meta_path)) {
+    meta <- tryCatch(readRDS(meta_path), error = function(e) NULL)
+    if (!is.null(meta)) {
+      is_owner <- FALSE
+      if (!is.null(token) && !is.null(meta$token)) {
+        is_owner <- identical(as.character(meta$token), as.character(token))
+      } else if (!is.null(meta$pid) && !is.null(meta$host)) {
+        is_owner <- identical(as.integer(meta$pid), as.integer(Sys.getpid())) &&
+          identical(as.character(meta$host), as.character(Sys.info()[["nodename"]]))
+      }
+      if (!is_owner) {
+        # Not the owner (e.g. lock was reclaimed after timeout); do not delete someone else's lock
+        return(invisible(FALSE))
+      }
+    }
+  }
+
+  release_path <- paste0(
+    lock_path,
+    ".rel.",
+    Sys.info()[["nodename"]],
+    "-",
+    Sys.getpid(),
+    "-",
+    .random_hex(6L)
+  )
+  renamed <- suppressWarnings(file.rename(lock_path, release_path))
+  if (isTRUE(renamed)) {
+    unlink(release_path, recursive = TRUE, force = TRUE)
+  } else {
     unlink(lock_path, recursive = TRUE, force = TRUE)
   }
   invisible(TRUE)
@@ -646,10 +771,15 @@
   done_sims <- as.integer(completed_sims + failed_sims)
   outstanding <- as.integer(max(0L, total_sims - done_sims))
 
-  existing_cs <- tryCatch(
-    readRDS(.analysis_chunk_status_path(run_ctx)),
-    error = function(e) NULL
-  )
+  cs_path <- .analysis_chunk_status_path(run_ctx)
+  existing_cs <- if (file.exists(cs_path)) {
+    tryCatch(
+      readRDS(cs_path),
+      error = function(e) NULL
+    )
+  } else {
+    NULL
+  }
 
   if (is.null(collate_ok) && !is.null(existing_cs$collate_ok)) {
     collate_ok <- existing_cs$collate_ok

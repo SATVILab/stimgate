@@ -577,3 +577,124 @@ test_that("a stale lock from a dead process can be recovered", {
   expect_true(acquired)
   env$.analysis_release_lock(lock_path)
 })
+
+test_that("a stale lock from another host can be recovered based on age threshold", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- withr::local_tempdir()
+  lock_path <- file.path(tmp_dir, "remote-stale.lock")
+  dir.create(lock_path)
+
+  stale_meta <- list(
+    pid = 12345L,
+    host = "slurm-remote-node-99",
+    token = "remote-node-99-12345-stale",
+    created_at = Sys.time() - 3600
+  )
+  saveRDS(stale_meta, file.path(lock_path, "lock-meta.rds"))
+
+  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 5, poll_sec = 0.05, stale_sec = 10)
+  expect_true(acquired)
+  expect_true(dir.exists(lock_path))
+
+  new_meta <- readRDS(file.path(lock_path, "lock-meta.rds"))
+  expect_identical(new_meta$host, Sys.info()[["nodename"]])
+  expect_identical(new_meta$pid, Sys.getpid())
+
+  env$.analysis_release_lock(lock_path)
+  expect_false(dir.exists(lock_path))
+})
+
+test_that("an orphan lock without metadata can be recovered after orphan timeout", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- withr::local_tempdir()
+  lock_path <- file.path(tmp_dir, "orphan.lock")
+  dir.create(lock_path)
+
+  # Directory exists but no lock-meta.rds
+  acquired <- env$.analysis_acquire_lock(lock_path, timeout_sec = 5, poll_sec = 0.05, orphan_stale_sec = 0.05)
+  expect_true(acquired)
+  expect_true(dir.exists(lock_path))
+
+  new_meta <- readRDS(file.path(lock_path, "lock-meta.rds"))
+  expect_identical(new_meta$host, Sys.info()[["nodename"]])
+  expect_identical(new_meta$pid, Sys.getpid())
+
+  env$.analysis_release_lock(lock_path)
+  expect_false(dir.exists(lock_path))
+})
+
+test_that("concurrent stale-lock recovery remains safely serialised without races", {
+  env <- .load_runtime_env()
+
+  tmp_dir <- tempfile("stale-concurrent-")
+  dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  lock_path <- file.path(tmp_dir, "shared.lock")
+  dir.create(lock_path)
+
+  # Plant an initial stale lock
+  stale_meta <- list(
+    pid = .Machine$integer.max,
+    host = Sys.info()[["nodename"]],
+    token = "initial-stale",
+    created_at = Sys.time() - 3600
+  )
+  saveRDS(stale_meta, file.path(lock_path, "lock-meta.rds"))
+
+  script_path <- script_runtime
+  log_file <- file.path(tmp_dir, "execution.log")
+  sentinel_file <- file.path(tmp_dir, "in_critical_section.txt")
+
+  cl <- parallel::makePSOCKcluster(4L)
+  on.exit(parallel::stopCluster(cl), add = TRUE)
+
+  parallel::clusterExport(
+    cl,
+    varlist = c("tmp_dir", "lock_path", "log_file", "sentinel_file", "script_path"),
+    envir = environment()
+  )
+
+  results <- parallel::clusterApply(cl, 1:4, function(worker_id) {
+    local_env <- new.env(parent = baseenv())
+    source(script_path, local = local_env)
+
+    acquired <- local_env$.analysis_acquire_lock(
+      lock_path,
+      timeout_sec = 15,
+      poll_sec = 0.05
+    )
+
+    if (!isTRUE(acquired)) {
+      return(list(worker_id = worker_id, ok = FALSE, error = "failed to acquire lock"))
+    }
+
+    # Verify mutual exclusion: sentinel file must NOT exist when entering CS
+    race_detected <- file.exists(sentinel_file)
+    if (!race_detected) {
+      writeLines(as.character(worker_id), sentinel_file)
+    }
+
+    # Append to log
+    cat(paste0("worker-", worker_id, "\n"), file = log_file, append = TRUE)
+    Sys.sleep(0.05)
+
+    if (file.exists(sentinel_file)) {
+      unlink(sentinel_file, force = TRUE)
+    }
+
+    local_env$.analysis_release_lock(lock_path)
+
+    list(worker_id = worker_id, ok = TRUE, race_detected = race_detected)
+  })
+
+  for (res in results) {
+    expect_true(isTRUE(res$ok))
+    expect_false(isTRUE(res$race_detected))
+  }
+
+  log_lines <- readLines(log_file)
+  expect_length(log_lines, 4L)
+})
