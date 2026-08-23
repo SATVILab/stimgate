@@ -221,6 +221,8 @@ if (run_methods) {
     c(i, seq(i + 1, min(i + 4, length(gs_tcrgd))))
   })
 
+  Sys.setenv("STIMGATE_DEBUG" = "TRUE")
+
   invisible(stimgate::gateStim(
     pathProject = path_stimgate_tcrgd,
     .data = gs_tcrgd,
