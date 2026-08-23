@@ -87,6 +87,97 @@ test_that(
   }
 )
 
+test_that(".simCompareSimCytExperiment keeps cluster mismatch local and supports old and new simcyto APIs", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_comp, local = env)
+
+  make_out <- function() {
+    labels <- c("gn", "gp", "gn", "gp")
+    values <- c(1, 2, 3, 4)
+    expr1 <- matrix(values, ncol = 1L)
+    colnames(expr1) <- "F1"
+    list(
+      flowFrameList = list(
+        flowCore::flowFrame(expr = expr1),
+        flowCore::flowFrame(expr = expr1)
+      ),
+      labelsList = list(labels, labels),
+      nCondition = 2L
+    )
+  }
+
+  legacy_seen <- NULL
+  testthat::with_mocked_bindings(
+    simCytExperiment = function(...,
+                                stimMeanShift = 0,
+                                stimSdMultiplier = 1,
+                                stimMeanShiftClusters = NULL,
+                                stimSdMultiplierClusters = NULL) {
+      legacy_seen <<- list(
+        stimMeanShiftClusters = stimMeanShiftClusters,
+        stimSdMultiplierClusters = stimSdMultiplierClusters,
+        stimMeanShift = stimMeanShift,
+        stimSdMultiplier = stimSdMultiplier
+      )
+      make_out()
+    },
+    .package = "simcyto",
+    {
+      out_legacy <- env$.simCompareSimCytExperiment(
+        nSample = 1L,
+        nMarker = 1L,
+        nCondition = 2L,
+        nCluster = 2L,
+        nCellByCondition = c(4L, 4L),
+        stimMeanShift = 2,
+        stimSdMultiplier = 1.5,
+        stimMeanShiftClusters = "gn",
+        stimSdMultiplierClusters = "gp"
+      )
+
+      expect_equal(legacy_seen$stimMeanShiftClusters, "gn")
+      expect_equal(legacy_seen$stimSdMultiplierClusters, "gp")
+      expect_equal(
+        as.vector(flowCore::exprs(out_legacy[["flowFrameList"]][[2L]])),
+        c(3, 1.5, 5, 4.5),
+        tolerance = 1e-8
+      )
+    }
+  )
+
+  new_seen <- NULL
+  testthat::with_mocked_bindings(
+    simCytExperiment = function(...,
+                                stimMeanShift = 0,
+                                stimSdMultiplier = 1) {
+      new_seen <<- list(...)
+      make_out()
+    },
+    .package = "simcyto",
+    {
+      out_new <- env$.simCompareSimCytExperiment(
+        nSample = 1L,
+        nMarker = 1L,
+        nCondition = 2L,
+        nCluster = 2L,
+        nCellByCondition = c(4L, 4L),
+        stimMeanShift = 2,
+        stimSdMultiplier = 1.5,
+        stimMeanShiftClusters = "gn",
+        stimSdMultiplierClusters = "gp"
+      )
+
+      expect_false("stimMeanShiftClusters" %in% names(new_seen))
+      expect_false("stimSdMultiplierClusters" %in% names(new_seen))
+      expect_equal(
+        as.vector(flowCore::exprs(out_new[["flowFrameList"]][[2L]])),
+        c(3, 1.5, 5, 4.5),
+        tolerance = 1e-8
+      )
+    }
+  )
+})
+
 test_that(".simCompareFreqBs with zero mismatch reproduces clean baseline", {
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
@@ -436,6 +527,11 @@ test_that("Analysis 7 and Analysis 8 namespaces are isolated", {
   # Analysis 8 run context should be in freq_bs_batch namespace
   expect_true(grepl('c\\("sim",\\s*"compare",\\s*"freq_bs_batch"\\)', content8) ||
     grepl('"log"[^)]*"freq_bs_batch"', content8))
+  # Analysis 8 progress log should be in freq_bs_batch log namespace
+  expect_true(
+    grepl('"log"[^)]*"freq_bs_batch"', content8) ||
+      grepl('analysis_key\\s*=\\s*c\\([^)]*"freq_bs_batch"', content8)
+  )
 })
 
 test_that("Inner nIter execution remains serial without nested parallelism", {
@@ -461,8 +557,7 @@ test_that("Temporary project directories are unique and collision-safe", {
   paths <- replicate(20, {
     file.path(
       tempdir(),
-      "stimgate",
-      "sim-compare-freq-bs",
+      "stimgate-sim-compare",
       paste0(
         "pid-",
         Sys.getpid(),
@@ -555,12 +650,17 @@ test_that(
 
     testthat::with_mocked_bindings(
       simCytExperiment = function(...,
+                                  stimMeanShift = 0,
+                                  stimSdMultiplier = 1,
                                   stimMeanShiftClusters = NULL) {
         captured_clusters <<- stimMeanShiftClusters
-        orig_simcyto_experiment(
-          ...,
-          stimMeanShiftClusters = stimMeanShiftClusters
-        )
+        call_args <- list(...)
+        call_args$stimMeanShift <- stimMeanShift
+        call_args$stimSdMultiplier <- stimSdMultiplier
+        if ("stimMeanShiftClusters" %in% names(formals(orig_simcyto_experiment))) {
+          call_args$stimMeanShiftClusters <- stimMeanShiftClusters
+        }
+        do.call(orig_simcyto_experiment, call_args)
       },
       .package = "simcyto",
       {
@@ -752,12 +852,17 @@ test_that(
 
     testthat::with_mocked_bindings(
       simCytExperiment = function(...,
+                                  stimMeanShift = 0,
+                                  stimSdMultiplier = 1,
                                   stimSdMultiplierClusters = NULL) {
         captured_sd_clusters <<- stimSdMultiplierClusters
-        orig_simcyto_experiment(
-          ...,
-          stimSdMultiplierClusters = stimSdMultiplierClusters
-        )
+        call_args <- list(...)
+        call_args$stimMeanShift <- stimMeanShift
+        call_args$stimSdMultiplier <- stimSdMultiplier
+        if ("stimSdMultiplierClusters" %in% names(formals(orig_simcyto_experiment))) {
+          call_args$stimSdMultiplierClusters <- stimSdMultiplierClusters
+        }
+        do.call(orig_simcyto_experiment, call_args)
       },
       .package = "simcyto",
       {
@@ -797,6 +902,9 @@ test_that(
 test_that(
   "stimSdMultiplierClusters = 'gn' leaves positive and unstim unchanged",
   {
+    env <- new.env(parent = getNamespace("stimgate"))
+    source(script_comp, local = env)
+
     set.seed(42)
     trans <- simcyto::simCytTransformIdentity()
     meanExprMat <- matrix(c(0, 5), byrow = TRUE, ncol = 1)
@@ -824,23 +932,11 @@ test_that(
     )
 
     set.seed(42)
-    sim_neg_sd <- simcyto::simCytExperiment(
-      nSample = 1,
-      nMarker = 1,
-      nCondition = 2,
-      nCluster = 2,
-      nCellByCondition = c(1000, 1000),
-      transformationFunc = trans,
-      mixtureType = "gaussianOnly",
-      meanExprMat = meanExprMat,
-      clusterLabelVec = clusterLabelVec,
-      probVecUns = probVecUns,
-      probExact = TRUE,
-      probResponseVecByStimCondition = probResponseVecByStimCondition,
-      covEvMin = 1,
-      covEvMax = 1,
+    sim_neg_sd <- env$.simCompareApplyClusterMismatch(
+      outListExperiment = sim_clean,
       stimMeanShift = 0,
       stimSdMultiplier = 1.25,
+      stimMeanShiftClusters = NULL,
       stimSdMultiplierClusters = "gn"
     )
 
@@ -852,13 +948,11 @@ test_that(
     stim_neg_expr <- flowCore::exprs(sim_neg_sd$flowFrameList[[2]])[, "F1"]
     labels <- sim_clean$labelsList[[2]]
 
-    # Positive cluster expressions must be IDENTICAL
     expect_equal(
       stim_clean_expr[labels == "gp"],
       stim_neg_expr[labels == "gp"]
     )
 
-    # Negative cluster SD must be scaled by factor 1.25
     sd_clean_gn <- sd(stim_clean_expr[labels == "gn"])
     sd_neg_gn <- sd(stim_neg_expr[labels == "gn"])
     expect_equal(sd_neg_gn / sd_clean_gn, 1.25, tolerance = 1e-10)

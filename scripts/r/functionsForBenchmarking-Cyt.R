@@ -51,10 +51,9 @@
 #'
 #' @keywords internal
 .simCytLowerMeanTransReference <- function(
-  transformationFunc,
-  lowerMeanRawReference,
-  yLower = NULL
-) {
+    transformationFunc,
+    lowerMeanRawReference,
+    yLower = NULL) {
   transName <- attr(transformationFunc, "sim_transformation")
   isSkew <- isTRUE(identical(transName, "skew")) ||
     (exists("calc_skew", mode = "function") &&
@@ -81,12 +80,11 @@
 #'
 #' @keywords internal
 .simCytCombinedRatioFactor <- function(
-  delta,
-  sdLower,
-  sdUpper,
-  targetRatio,
-  eps = sqrt(.Machine$double.eps)
-) {
+    delta,
+    sdLower,
+    sdUpper,
+    targetRatio,
+    eps = sqrt(.Machine$double.eps)) {
   delta <- as.numeric(delta)[1]
   sdLower <- as.numeric(sdLower)[1]
   sdUpper <- as.numeric(sdUpper)[1]
@@ -132,14 +130,13 @@
 #'
 #' @keywords internal
 .simCytRatioAdjustUpper <- function(
-  yUpper,
-  xUpperRaw,
-  xLowerRaw,
-  yLower,
-  lowerMeanRawReference,
-  lowerMeanTransReference,
-  eps = sqrt(.Machine$double.eps)
-) {
+    yUpper,
+    xUpperRaw,
+    xLowerRaw,
+    yLower,
+    lowerMeanRawReference,
+    lowerMeanTransReference,
+    eps = sqrt(.Machine$double.eps)) {
   yUpper <- as.numeric(yUpper)
   xUpperRaw <- as.numeric(xUpperRaw)
   xLowerRaw <- as.numeric(xLowerRaw)
@@ -263,24 +260,23 @@
 #'
 #' @export
 simCytExperiment <- function(
-  nSample,
-  nMarker,
-  nCondition,
-  nCluster,
-  nCellByCondition,
-  transformationFunc,
-  mixtureType = "gaussianOnly",
-  meanExprMat = NA,
-  clusterLabelVec = NA,
-  probVecUns,
-  probExact = FALSE,
-  probResponseVecByStimCondition = NULL,
-  samplePerturbationSd = 0,
-  conditionPerturbationSd = 0,
-  clusterPerturbationSd = 0,
-  covEvMin = 1,
-  covEvMax = 2
-) {
+    nSample,
+    nMarker,
+    nCondition,
+    nCluster,
+    nCellByCondition,
+    transformationFunc,
+    mixtureType = "gaussianOnly",
+    meanExprMat = NA,
+    clusterLabelVec = NA,
+    probVecUns,
+    probExact = FALSE,
+    probResponseVecByStimCondition = NULL,
+    samplePerturbationSd = 0,
+    conditionPerturbationSd = 0,
+    clusterPerturbationSd = 0,
+    covEvMin = 1,
+    covEvMax = 2) {
   # Coerce inputs
   stopifnot(is.numeric(nSample))
   nSample <- as.integer(nSample)
@@ -407,23 +403,22 @@ simCytExperiment <- function(
 #'
 #' @keywords internal
 simCytSample <- function(
-  nMarker,
-  nCondition,
-  nCluster,
-  nCellByCondition,
-  transformationFunc,
-  mixtureType = "gaussianOnly",
-  meanExprMat = NA,
-  clusterLabelVec = NA,
-  probVecUns,
-  probExact,
-  probResponseVecByStimCondition = NULL,
-  conditionPerturbationSd = 0,
-  clusterPerturbationSd = 0,
-  covEvMin = 1,
-  covEvMax = 2,
-  meanExprMatReference = NULL
-) {
+    nMarker,
+    nCondition,
+    nCluster,
+    nCellByCondition,
+    transformationFunc,
+    mixtureType = "gaussianOnly",
+    meanExprMat = NA,
+    clusterLabelVec = NA,
+    probVecUns,
+    probExact,
+    probResponseVecByStimCondition = NULL,
+    conditionPerturbationSd = 0,
+    clusterPerturbationSd = 0,
+    covEvMin = 1,
+    covEvMax = 2,
+    meanExprMatReference = NULL) {
   # Validate inputs using helper
   validateSampleInputs(
     nCondition,
@@ -551,19 +546,18 @@ simCytSample <- function(
 #'
 #' @keywords internal
 simCytCondition <- function(
-  nMarker,
-  nCell,
-  transformationFunc,
-  mixtureType = "gaussianOnly",
-  meanExprMat = NA,
-  clusterLabelVec = NA,
-  probVec,
-  probExact = FALSE,
-  clusterPerturbationSd = 0,
-  covEvMin = 1,
-  covEvMax = 2,
-  meanExprMatReference = NULL
-) {
+    nMarker,
+    nCell,
+    transformationFunc,
+    mixtureType = "gaussianOnly",
+    meanExprMat = NA,
+    clusterLabelVec = NA,
+    probVec,
+    probExact = FALSE,
+    clusterPerturbationSd = 0,
+    covEvMin = 1,
+    covEvMax = 2,
+    meanExprMatReference = NULL) {
   numClusters <- nrow(meanExprMat)
 
   if (is.null(meanExprMatReference)) {
@@ -723,7 +717,8 @@ simCytCondition <- function(
     }
     outDataIndClusterVec <- outDataIndClusterList[[clusterNumber]]
     if (nMarker == 1L) {
-      outData[outDataIndClusterVec] <- transformedDataList[[clusterNumber]][,
+      outData[outDataIndClusterVec] <- transformedDataList[[clusterNumber]][
+        ,
         1L
       ]
     } else {
@@ -747,15 +742,14 @@ simCytCondition <- function(
 }
 
 simCytCluster <- function(
-  nMarker,
-  nCell,
-  meanExprVec,
-  perturbationSd = 0,
-  mixtureType,
-  clusterNumber,
-  covEvMin = 1,
-  covEvMax = 2
-) {
+    nMarker,
+    nCell,
+    meanExprVec,
+    perturbationSd = 0,
+    mixtureType,
+    clusterNumber,
+    covEvMin = 1,
+    covEvMax = 2) {
   conditionPerturbationVec <- if (perturbationSd == 0L) {
     meanExprVec
   } else {
@@ -785,12 +779,11 @@ simCytCluster <- function(
 #'
 #' @keywords internal
 simCytClusterData <- function(
-  mixtureType,
-  clusterNumber,
-  nCell,
-  muVec,
-  sigmaMat
-) {
+    mixtureType,
+    clusterNumber,
+    nCell,
+    muVec,
+    sigmaMat) {
   if (mixtureType == "tPlusGauss") {
     if ((clusterNumber %% 2) == 0) {
       MASS::mvrnorm(
@@ -825,13 +818,12 @@ simCytClusterData <- function(
 #' @title Validate inputs for simCytExperiment
 #' @keywords internal
 validateExperimentInputs <- function(
-  nSample,
-  nMarker,
-  nCondition,
-  nCluster,
-  nCellByCondition,
-  transformationFunc
-) {
+    nSample,
+    nMarker,
+    nCondition,
+    nCluster,
+    nCellByCondition,
+    transformationFunc) {
   stopifnot(nSample > 0L)
   stopifnot(nMarker > 0L)
   stopifnot(nCondition > 1L)
@@ -846,21 +838,20 @@ validateExperimentInputs <- function(
 #' @title Validate inputs for simCytSample
 #' @keywords internal
 validateSampleInputs <- function(
-  nCondition,
-  nMarker,
-  nCluster,
-  nCellByCondition,
-  transformationFunc,
-  probResponseVecByStimCondition,
-  probVecUns,
-  probExact,
-  conditionPerturbationSd,
-  clusterPerturbationSd,
-  meanExprMat,
-  clusterLabelVec,
-  covEvMin,
-  covEvMax
-) {
+    nCondition,
+    nMarker,
+    nCluster,
+    nCellByCondition,
+    transformationFunc,
+    probResponseVecByStimCondition,
+    probVecUns,
+    probExact,
+    conditionPerturbationSd,
+    clusterPerturbationSd,
+    meanExprMat,
+    clusterLabelVec,
+    covEvMin,
+    covEvMax) {
   stopifnot(is.logical(probExact))
   stopifnot(is.integer(nCondition))
   stopifnot(is.integer(nMarker))

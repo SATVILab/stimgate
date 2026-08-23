@@ -36,12 +36,11 @@ test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundar
   source(script_bw, local = env)
 
   run_case <- function(
-    seed,
-    transformation,
-    mean_pos,
-    bias_uns,
-    expected_bw_means
-  ) {
+      seed,
+      transformation,
+      mean_pos,
+      bias_uns,
+      expected_bw_means) {
     n_sample <- 2L
     n_condition <- 2L
     n_cell_stim <- 240L

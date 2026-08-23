@@ -127,6 +127,7 @@ tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
 tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
+tailgate_x <- "stim"
 
 background_relative_to_response <- 0.2
 n_cell_uns_relative_to_stim <- 1
@@ -289,6 +290,9 @@ print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
 ```{r}
 #| label: compare-batch-run
 #| results: hide
+log_dir <- file.path("cache", "log", "freq_bs_batch")
+path_progress_file <- file.path(log_dir, "progress.txt")
+
 run_ctx <- .analysis_run_context(
   analysis_key = c("sim", "compare", "freq_bs_batch"),
   run_id = analysis_run_id,
@@ -303,7 +307,6 @@ run_ctx <- .analysis_run_context(
   sim_grid_n_chunks = sim_grid_n_chunks
 )
 dir_output <- run_ctx$chunk_output_dir
-path_progress_file <- run_ctx$progress_file
 dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
 dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
 
@@ -340,7 +343,6 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     tolClust = tol_clust,
     locEnforceShapeThreshold = loc_enforce_shape_threshold,
     calcCytPosGates = calc_cyt_pos_gates,
-    includeLocCondition = TRUE,
     pathFbeta = path_fbeta,
     fbetaBeta = fbeta_beta,
     fbetaTheta = fbeta_theta,
@@ -349,6 +351,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     tailgateAutoTol = tailgate_auto_tol,
     tailgateMethod = tailgate_method,
     tailgateTol = tailgate_tol,
+    tailgateX = tailgate_x,
     parallel = (n_workers > 1L),
     workers = n_workers,
     dirCache = dir_output,
@@ -430,6 +433,16 @@ if (!exists("compare_raw") || nrow(compare_raw) == 0L) {
     compare_raw <- readRDS(path_rds)
   }
 }
+
+if (exists("compare_raw") && nrow(compare_raw) > 0L) {
+  if (!"stimgate" %in% compare_raw$method && "stimgate_loc_sample" %in% compare_raw$method) {
+    compare_raw <- compare_raw |>
+      dplyr::mutate(
+        method = dplyr::if_else(method == "stimgate_loc_sample", "stimgate", method)
+      )
+  }
+}
+
 compare_summary <- .simCompareSummariseFreqBs(
   compare_raw,
   scenarioCols = c(

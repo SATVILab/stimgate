@@ -16,18 +16,21 @@ test_that("QMD param lookup follows param > default precedence and env override 
 
   old_chunk_index <- Sys.getenv("SIM_GRID_CHUNK_INDEX", unset = NA_character_)
   old_n_chunks <- Sys.getenv("SIM_GRID_N_CHUNKS", unset = NA_character_)
-  on.exit({
-    if (is.na(old_chunk_index)) {
-      Sys.unsetenv("SIM_GRID_CHUNK_INDEX")
-    } else {
-      Sys.setenv(SIM_GRID_CHUNK_INDEX = old_chunk_index)
-    }
-    if (is.na(old_n_chunks)) {
-      Sys.unsetenv("SIM_GRID_N_CHUNKS")
-    } else {
-      Sys.setenv(SIM_GRID_N_CHUNKS = old_n_chunks)
-    }
-  }, add = TRUE)
+  on.exit(
+    {
+      if (is.na(old_chunk_index)) {
+        Sys.unsetenv("SIM_GRID_CHUNK_INDEX")
+      } else {
+        Sys.setenv(SIM_GRID_CHUNK_INDEX = old_chunk_index)
+      }
+      if (is.na(old_n_chunks)) {
+        Sys.unsetenv("SIM_GRID_N_CHUNKS")
+      } else {
+        Sys.setenv(SIM_GRID_N_CHUNKS = old_n_chunks)
+      }
+    },
+    add = TRUE
+  )
   Sys.setenv(SIM_GRID_CHUNK_INDEX = "9", SIM_GRID_N_CHUNKS = "4")
 
   expect_identical(

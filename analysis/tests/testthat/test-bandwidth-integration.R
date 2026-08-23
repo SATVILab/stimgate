@@ -99,29 +99,32 @@ test_that(".simBandwidthBwOne resolves the current stimgate namespace in future 
   on.exit(future::plan(old_plan), add = TRUE)
   future::plan(future::multisession, workers = 2L)
 
-  result <- future::future({
-    env <- new.env(parent = globalenv())
-    source(script_misc, local = env)
-    source(script_bw, local = env)
-    env$.simBandwidthEnsureCurrentCheckout(root_dir)
-    ns <- asNamespace("stimgate")
+  result <- future::future(
+    {
+      env <- new.env(parent = globalenv())
+      source(script_misc, local = env)
+      source(script_bw, local = env)
+      env$.simBandwidthEnsureCurrentCheckout(root_dir)
+      ns <- asNamespace("stimgate")
 
-    suppressWarnings(RNGkind("Mersenne-Twister", "Inversion", "Rejection"))
-    set.seed(99)
-    bw_worker <- do.call(env$.simBandwidthBwOne, bw_wrapper_params)
+      suppressWarnings(RNGkind("Mersenne-Twister", "Inversion", "Rejection"))
+      set.seed(99)
+      bw_worker <- do.call(env$.simBandwidthBwOne, bw_wrapper_params)
 
-    set.seed(99)
-    bw_worker_pkg <- do.call(
-      get(".bwCalcOne", mode = "function", envir = ns),
-      bw_params
-    )
+      set.seed(99)
+      bw_worker_pkg <- do.call(
+        get(".bwCalcOne", mode = "function", envir = ns),
+        bw_params
+      )
 
-    list(
-      ns_path = normalizePath(getNamespaceInfo(ns, "path"), winslash = "/", mustWork = FALSE),
-      bw_worker = bw_worker,
-      bw_pkg = bw_worker_pkg
-    )
-  }, seed = TRUE)
+      list(
+        ns_path = normalizePath(getNamespaceInfo(ns, "path"), winslash = "/", mustWork = FALSE),
+        bw_worker = bw_worker,
+        bw_pkg = bw_worker_pkg
+      )
+    },
+    seed = TRUE
+  )
 
   worker_out <- future::value(result)
 

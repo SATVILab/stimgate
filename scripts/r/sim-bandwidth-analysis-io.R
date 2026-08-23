@@ -1,9 +1,8 @@
 .path_sim_output <- function(
-  sim_id,
-  dir_output = NULL,
-  sim_grid_chunk_index = NULL,
-  sim_grid_n_chunks = NULL
-) {
+    sim_id,
+    dir_output = NULL,
+    sim_grid_chunk_index = NULL,
+    sim_grid_n_chunks = NULL) {
   if (is.null(dir_output) || !nzchar(dir_output)) {
     dir_output <- if (exists("dir_output", inherits = TRUE)) {
       get("dir_output", mode = "any", inherits = TRUE)
@@ -44,14 +43,13 @@
 path_sim_output <- .path_sim_output
 
 .update_progress_summary <- function(
-  path_progress_file,
-  dir_jobs_chunk,
-  total_sims,
-  sim_grid_chunk_index = NULL,
-  sim_grid_n_chunks = NULL,
-  dir_output = NULL,
-  heading = "ADAPTIVE SIMULATION PROGRESS DASHBOARD"
-) {
+    path_progress_file,
+    dir_jobs_chunk,
+    total_sims,
+    sim_grid_chunk_index = NULL,
+    sim_grid_n_chunks = NULL,
+    dir_output = NULL,
+    heading = "ADAPTIVE SIMULATION PROGRESS DASHBOARD") {
   if (!dir.exists(dir_jobs_chunk)) {
     return(invisible(NULL))
   }

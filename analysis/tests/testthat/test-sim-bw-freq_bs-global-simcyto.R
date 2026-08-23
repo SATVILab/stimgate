@@ -195,13 +195,12 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
   source(script_bw_plot, local = env)
 
   run_case <- function(
-    seed,
-    transformation,
-    mean_pos,
-    bw,
-    bias_uns,
-    expected_abs_err
-  ) {
+      seed,
+      transformation,
+      mean_pos,
+      bw,
+      bias_uns,
+      expected_abs_err) {
     n_sample <- 2L
     n_condition <- 2L
     n_cell_stim <- 240L

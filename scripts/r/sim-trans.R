@@ -1,61 +1,56 @@
 sim_trans_univariate_one <- function(
-  transformation,
-  n_cell = main_settings$n_cell[[1]],
-  mean_pos = main_settings$mean_pos[[1]],
-  prob_response = main_settings$prob_response[[1]],
-  background_relative_to_response = main_settings$background_relative_to_response[[
-    1
-  ]],
-  prob_exact = main_settings$prob_exact[[1]],
-  mixture_type = main_settings$mixture_type[[1]],
-  cluster_perturbation_sd = main_settings$cluster_perturbation_sd[[1]],
-  cov_ev_min = main_settings$cov_ev_min[[1]],
-  cov_ev_max = main_settings$cov_ev_max[[1]]
-) {
+    transformation,
+    n_cell = main_settings$n_cell[[1]],
+    mean_pos = main_settings$mean_pos[[1]],
+    prob_response = main_settings$prob_response[[1]],
+    background_relative_to_response = main_settings$background_relative_to_response[[
+      1
+    ]],
+    prob_exact = main_settings$prob_exact[[1]],
+    mixture_type = main_settings$mixture_type[[1]],
+    cluster_perturbation_sd = main_settings$cluster_perturbation_sd[[1]],
+    cov_ev_min = main_settings$cov_ev_min[[1]],
+    cov_ev_max = main_settings$cov_ev_max[[1]]) {
   trans_func <- .simMiscGetTrans(transformation)
+  attr(trans_func, "sim_transformation") <- transformation
 
   prob_background <- prob_response * background_relative_to_response
   prob_uns <- c(1 - prob_background, prob_background)
-  prob_stim <- prob_uns + c(-prob_response, prob_response)
-
-  mean_expr_mat <- matrix(c(0, mean_pos), ncol = 1)
-  cluster_label_vec <- c("negative", "response")
-
-  cond_list <- list(
-    unstimulated = prob_uns,
-    stimulated = prob_stim
+  out <- simcyto::simCytExperiment(
+    nSample = 1L,
+    nMarker = 1L,
+    nCondition = 2L,
+    nCluster = 2L,
+    nCellByCondition = c(n_cell, n_cell),
+    transformationFunc = trans_func,
+    mixtureType = mixture_type,
+    meanExprMat = matrix(c(0, mean_pos), byrow = TRUE, ncol = 1),
+    clusterLabelVec = c("negative", "response"),
+    probVecUns = prob_uns,
+    probExact = prob_exact,
+    probResponseVecByStimCondition = list(c(-prob_response, prob_response)),
+    samplePerturbationSd = 0,
+    conditionPerturbationSd = 0,
+    clusterPerturbationSd = cluster_perturbation_sd,
+    covEvMin = cov_ev_min,
+    covEvMax = cov_ev_max
   )
 
-  purrr::imap_dfr(cond_list, function(prob_vec, condition_nm) {
-    out <- simCytCondition(
-      nMarker = 1L,
-      nCell = n_cell,
-      transformationFunc = trans_func,
-      mixtureType = mixture_type,
-      meanExprMat = mean_expr_mat,
-      clusterLabelVec = cluster_label_vec,
-      probVec = prob_vec,
-      probExact = prob_exact,
-      clusterPerturbationSd = cluster_perturbation_sd,
-      covEvMin = cov_ev_min,
-      covEvMax = cov_ev_max
-    )
-
+  purrr::map_dfr(seq_along(out$flowFrameList), function(ind) {
     tibble::tibble(
       transformation = transformation,
-      condition = condition_nm,
-      response_class = out$conditionLabels,
-      F1 = as.numeric(out$conditionMatrix[, "F1"])
+      condition = c("unstimulated", "stimulated")[[ind]],
+      response_class = out$labelsList[[ind]],
+      F1 = as.numeric(flowCore::exprs(out$flowFrameList[[ind]])[, "F1"])
     )
   })
 }
 
 sim_trans_univariate_experiment_one <- function(
-  transformation,
-  mean_pos,
-  prob_response,
-  settings = NULL
-) {
+    transformation,
+    mean_pos,
+    prob_response,
+    settings = NULL) {
   if (is.null(settings)) {
     stop(
       "settings must be supplied explicitly to sim_trans_univariate_experiment_one()."
@@ -69,7 +64,7 @@ sim_trans_univariate_experiment_one <- function(
   transformation_fun <- .simMiscGetTrans(transformation)
   attr(transformation_fun, "sim_transformation") <- transformation
 
-  out <- simCytExperiment(
+  out <- simcyto::simCytExperiment(
     nSample = 1L,
     nMarker = 1L,
     nCondition = 2L,
@@ -113,20 +108,20 @@ sim_trans_univariate_experiment_one <- function(
 }
 
 sim_trans_bivariate_one <- function(
-  transformation,
-  n_cell = main_settings$n_cell[[1]],
-  mean_pos = main_settings$mean_pos[[1]],
-  prob_response = main_settings$prob_response[[1]],
-  background_relative_to_response = main_settings$background_relative_to_response[[
-    1
-  ]],
-  prob_exact = main_settings$prob_exact[[1]],
-  mixture_type = main_settings$mixture_type[[1]],
-  cluster_perturbation_sd = main_settings$cluster_perturbation_sd[[1]],
-  cov_ev_min = main_settings$cov_ev_min[[1]],
-  cov_ev_max = main_settings$cov_ev_max[[1]]
-) {
+    transformation,
+    n_cell = main_settings$n_cell[[1]],
+    mean_pos = main_settings$mean_pos[[1]],
+    prob_response = main_settings$prob_response[[1]],
+    background_relative_to_response = main_settings$background_relative_to_response[[
+      1
+    ]],
+    prob_exact = main_settings$prob_exact[[1]],
+    mixture_type = main_settings$mixture_type[[1]],
+    cluster_perturbation_sd = main_settings$cluster_perturbation_sd[[1]],
+    cov_ev_min = main_settings$cov_ev_min[[1]],
+    cov_ev_max = main_settings$cov_ev_max[[1]]) {
   trans_func <- .simMiscGetTrans(transformation)
+  attr(trans_func, "sim_transformation") <- transformation
 
   prob_background <- prob_response * background_relative_to_response
   prob_background_each <- prob_background / 3
@@ -161,15 +156,21 @@ sim_trans_bivariate_one <- function(
     "F1 and F2 response"
   )
 
-  out <- simCytCondition(
+  out <- simcyto::simCytExperiment(
+    nSample = 1L,
     nMarker = 2L,
-    nCell = n_cell,
+    nCondition = 2L,
+    nCluster = 4L,
+    nCellByCondition = c(n_cell, n_cell),
     transformationFunc = trans_func,
     mixtureType = mixture_type,
     meanExprMat = mean_expr_mat,
     clusterLabelVec = cluster_label_vec,
-    probVec = prob_vec,
+    probVecUns = prob_vec,
     probExact = prob_exact,
+    probResponseVecByStimCondition = list(rep(0, length(prob_vec))),
+    samplePerturbationSd = 0,
+    conditionPerturbationSd = 0,
     clusterPerturbationSd = cluster_perturbation_sd,
     covEvMin = cov_ev_min,
     covEvMax = cov_ev_max
@@ -178,16 +179,15 @@ sim_trans_bivariate_one <- function(
   tibble::tibble(
     transformation = transformation,
     condition = "stimulated",
-    response_class = out$conditionLabels
+    response_class = out$labelsList[[2]]
   ) |>
-    dplyr::bind_cols(as.data.frame(out$conditionMatrix))
+    dplyr::bind_cols(as.data.frame(flowCore::exprs(out$flowFrameList[[2]])))
 }
 
 sim_trans_downsample_for_display <- function(
-  .data,
-  background_n = 12000,
-  response_n = Inf
-) {
+    .data,
+    background_n = 12000,
+    response_n = Inf) {
   background_tbl <- .data |>
     dplyr::filter(.data$response_class == "negative")
 
@@ -222,8 +222,7 @@ make_density_tbl <- function(.data, gamma_range, n = 2048) {
         return(tibble::tibble(F1 = numeric(), density = numeric()))
       }
 
-      bw <- switch(
-        as.character(.y$transformation)[[1]],
+      bw <- switch(as.character(.y$transformation)[[1]],
         "gamma" = 0.025,
         0.15
       )

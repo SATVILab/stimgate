@@ -7,8 +7,7 @@
   if (is.function(transformation)) {
     return(transformation)
   }
-  switch(
-    transformation,
+  switch(transformation,
     "gamma" = simcyto::simCytTransformGamma(),
     "gamma_fixed_mean_and_spread" = ,
     "gammaFixed" = simcyto::simCytTransformGammaFixed(),
@@ -45,13 +44,13 @@ calc_skew <- function(x, epsilon = 0.5, delta = 1) {
 
 .simMiscGetMeanPosTbl <- function() {
   tibble::tribble(
-    ~transformation , ~mean_pos_setting , ~mean_pos ,
-    "gaussian"      , "low"             , 4.5       ,
-    "gaussian"      , "high"            , 8         ,
-    "skew"          , "low"             , 6         ,
-    "skew"          , "high"            , 8.5       ,
-    "gamma"         , "low"             , 4         ,
-    "gamma"         , "high"            , 7
+    ~transformation, ~mean_pos_setting, ~mean_pos,
+    "gaussian", "low", 4.5,
+    "gaussian", "high", 8,
+    "skew", "low", 6,
+    "skew", "high", 8.5,
+    "gamma", "low", 4,
+    "gamma", "high", 7
   ) |>
     dplyr::mutate(
       mean_pos_setting = factor(
