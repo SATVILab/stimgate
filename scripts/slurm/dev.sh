@@ -19,39 +19,20 @@ scripts=(
 poll_seconds="${POLL_SECONDS:-5}"
 sim_grid_n_chunks="${SIM_GRID_N_CHUNKS:-4}"
 sim_grid_shuffle_seed="${SIM_GRID_SHUFFLE_SEED:-20260707}"
+analysis_run_id="${ANALYSIS_RUN_ID:-analysis-slurm-$(date -u +%Y%m%dT%H%M%S)-$$}"
 
 install_script="$script_dir/install.sh"
 
-prepare_split_qmds() {
-  local qmd_stem="$1"
-  local base_qmd="${SIM_GRID_BASE_QMD:-$project_root/analysis/${qmd_stem}.qmd}"
-  local split_dir="${SIM_GRID_SPLIT_DIR:-$project_root/analysis/split}"
-  local split_rel_dir="analysis/split"
-
-  if [[ ! -f "$base_qmd" ]]; then
-    echo "ERROR: Could not find base QMD: $base_qmd" >&2
-    exit 1
-  fi
-
-  mkdir -p "$split_dir"
-
-  for chunk_index in $(seq 1 "$sim_grid_n_chunks"); do
-    local dest="$split_dir/${qmd_stem}-${chunk_index}.qmd"
-
-    cp "$base_qmd" "$dest"
-
-    perl -0pi -e \
-      "s/sim_grid_chunk_index:\\s*[^\\n]+/sim_grid_chunk_index: ${chunk_index}/; s/sim_grid_n_chunks:\\s*[^\\n]+/sim_grid_n_chunks: ${sim_grid_n_chunks}/; s/sim_grid_shuffle_seed:\\s*[^\\n]+/sim_grid_shuffle_seed: ${sim_grid_shuffle_seed}/; s/run_simulations:\\s*[^\\n]+/run_simulations: true/; s/run_plots:\\s*[^\\n]+/run_plots: false/;" \
-      "$dest"
-
-    echo "Prepared ${split_rel_dir}/${qmd_stem}-${chunk_index}.qmd"
-  done
-}
-
-qmd_stem_for_script() {
+chunked_qmd_stem_for_script() {
   case "$1" in
     dev-2-stim-bw-freq_bs-global.sh)
       echo "2-sim-bw-freq_bs-global"
+      ;;
+    dev-3-sim-bw-est-base.sh)
+      echo "3-sim-bw-est-base"
+      ;;
+    dev-4-sim-bw-est-norm.sh)
+      echo "4-sim-bw-est-norm"
       ;;
     dev-5-sim-bw-est-adaptive.sh)
       echo "5-sim-bw-est-adaptive"
@@ -153,11 +134,11 @@ fi
 echo "Submitting downstream jobs"
 
 for script in "${scripts[@]}"; do
-  qmd_stem="$(qmd_stem_for_script "$script")"
+  qmd_stem="$(chunked_qmd_stem_for_script "$script")"
 
   if [[ -n "$qmd_stem" ]]; then
-    echo "Preparing split QMDs for $script"
-    prepare_split_qmds "$qmd_stem"
+    echo "Submitting transactional chunks for $script"
+    echo "ANALYSIS_RUN_ID: $analysis_run_id"
 
     for chunk_index in $(seq 1 "$sim_grid_n_chunks"); do
       log_dir="_tmp/log/sbatch/${qmd_stem}/chunk-${chunk_index}"
@@ -168,7 +149,7 @@ for script in "${scripts[@]}"; do
 
       slurm-sbatch -l "$log_dir" -n "$script_dir/$script" -- \
         --job-name="$job_name" \
-        --export=ALL,PROJECT_ROOT="$project_root",SIM_GRID_CHUNK_INDEX="$chunk_index",SIM_GRID_N_CHUNKS="$sim_grid_n_chunks",SIM_GRID_SHUFFLE_SEED="$sim_grid_shuffle_seed",RUN_SIMULATIONS=true,RUN_PLOTS=false
+        --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",SIM_GRID_CHUNK_INDEX="$chunk_index",SIM_GRID_N_CHUNKS="$sim_grid_n_chunks",SIM_GRID_SHUFFLE_SEED="$sim_grid_shuffle_seed",RUN_SIMULATIONS=true,RUN_PLOTS=false
     done
   else
     echo "Submitting $script"

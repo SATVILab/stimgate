@@ -6,14 +6,14 @@
 
 set -euo pipefail
 
-chunk_index="${1:-${SIM_GRID_CHUNK_INDEX:-1}}"
+chunk_index="${1:-${SIM_GRID_CHUNK_INDEX:-${SLURM_ARRAY_TASK_ID:-1}}}"
 n_chunks="${SIM_GRID_N_CHUNKS:-4}"
 
 # Under sbatch, the script may be copied into Slurm's spool directory.
 # So do not infer the project root from ${BASH_SOURCE[0]}. Use the submit
 # directory, or an explicit PROJECT_ROOT passed from the launcher.
 project_root="${PROJECT_ROOT:-${SLURM_SUBMIT_DIR:-$(pwd)}}"
-qmd_file="${SIM_GRID_QMD_FILE:-analysis/split/5-sim-bw-est-adaptive-${chunk_index}.qmd}"
+qmd_file="${SIM_GRID_QMD_FILE:-analysis/5-sim-bw-est-adaptive.qmd}"
 qmd_abs="$project_root/$qmd_file"
 
 if [[ ! "$n_chunks" =~ ^[0-9]+$ ]] || (( n_chunks < 1 )); then
@@ -26,11 +26,22 @@ if [[ ! "$chunk_index" =~ ^[0-9]+$ ]] || (( chunk_index < 1 || chunk_index > n_c
   exit 1
 fi
 
-if [[ ! -f "$qmd_abs" ]]; then
-  echo "ERROR: Could not find split QMD: $qmd_abs" >&2
+analysis_run_id="${ANALYSIS_RUN_ID:-}"
+if [[ -z "$analysis_run_id" && -n "${SLURM_ARRAY_JOB_ID:-}" ]]; then
+  analysis_run_id="analysis-5-slurm-${SLURM_ARRAY_JOB_ID}"
+elif [[ -z "$analysis_run_id" && "$n_chunks" == "1" ]]; then
+  analysis_run_id="analysis-5-slurm-${SLURM_JOB_ID:-$(date -u +%Y%m%dT%H%M%S)}"
+elif [[ -z "$analysis_run_id" ]]; then
+  echo "ERROR: ANALYSIS_RUN_ID is required for separately submitted multi-chunk jobs." >&2
   exit 1
 fi
 
+if [[ ! -f "$qmd_abs" ]]; then
+  echo "ERROR: Could not find QMD: $qmd_abs" >&2
+  exit 1
+fi
+
+export ANALYSIS_RUN_ID="$analysis_run_id"
 export SIM_GRID_CHUNK_INDEX="$chunk_index"
 export SIM_GRID_N_CHUNKS="$n_chunks"
 export RUN_SIMULATIONS="${RUN_SIMULATIONS:-true}"
@@ -43,6 +54,7 @@ start_time=$(date +%s)
 
 echo "HOSTNAME: $HOSTNAME"
 echo "SLURM_JOB_ID: ${SLURM_JOB_ID:-unknown}"
+echo "ANALYSIS_RUN_ID: $ANALYSIS_RUN_ID"
 echo "SIM_GRID_CHUNK_INDEX: $SIM_GRID_CHUNK_INDEX"
 echo "SIM_GRID_N_CHUNKS: $SIM_GRID_N_CHUNKS"
 echo "QMD file: $qmd_file"
