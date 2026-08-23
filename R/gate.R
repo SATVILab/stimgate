@@ -373,25 +373,20 @@ gateStim <- function(
     Sys.setenv("STIMGATE_DEBUG" = "FALSE")
     on.exit(Sys.unsetenv("STIMGATE_DEBUG"), add = TRUE)
   }
-  if (Sys.getenv("STIMGATE_DEBUG") == "TRUE") {
-    .debugFileCreate()
-    pathDebug <- .debugFileCreate()
-    message(paste0("Saving debug output to ", pathDebug))
-    message(
-      "Can copy it after the run to working directory with stimgateDebugCopy()"
-    ) # nolint
-    message(
-      "Can print the output after the run to console with stimgate_debug_print()"
-    ) # nolint
-  }
+
+  mustDebug <- tolower(trimws(Sys.getenv("STIMGATE_DEBUG"))) %in%
+    c("y", "true", "yes", "1")
 
   if (
-    .profileEnabled() &&
+    mustDebug &&
       is.character(pathProject) &&
       length(pathProject) == 1L &&
       !is.na(pathProject) &&
       nzchar(pathProject)
   ) {
+    .debugInit(pathProject, reset = TRUE)
+    pathDebug <- file.path(pathProject, "debug", "debug.txt")
+    message(paste0("Saving debug output to ", pathDebug))
     .profileInit(pathProject, reset = TRUE)
   }
 
@@ -412,6 +407,7 @@ gateStim <- function(
           }
         )
       }
+      .debugStateReset()
     },
     add = TRUE
   )
