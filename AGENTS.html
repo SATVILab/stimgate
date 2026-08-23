@@ -260,6 +260,12 @@
 <li>
 <code>debug.R</code>: Debugging utilities (<code><a href="reference/dot-debug.html">.debug()</a></code>) and global variable declarations.</li>
 <li>
+<code>profile.R</code>: Structured debug timing, incremental persistence and final collation helpers.</li>
+<li>
+<code>zz_profile_instrumentation.R</code>: Debug-only profiling wrappers around selected workflow boundaries.</li>
+<li>
+<code>zzz_profile_run_start.R</code>: Resets profiling once at the start of each debug <code><a href="reference/gateStim.html">gateStim()</a></code> run.</li>
+<li>
 <code>ex.R</code>: Extract expression matrices from <code>GatingSet</code> objects.</li>
 <li>
 <code>example_data.R</code>: Loads the canonical shipped example dataset via <code><a href="reference/getExampleData.html">getExampleData()</a></code> and does not simulate new data.</li>
@@ -373,6 +379,10 @@
 <div class="section level3">
 <h3 id="debugging--intermediate-data-saving">Debugging &amp; Intermediate Data Saving<a class="anchor" aria-label="anchor" href="#debugging--intermediate-data-saving"></a></h3>
 <ul><li>Use <code>.debug(msg, val)</code> inside internal functions for debug messages. Debug output is written to a temp file and controlled by the <code>STIMGATE_DEBUG</code> environment variable (set to <code>"true"</code>, <code>"yes"</code>, <code>"y"</code>, or <code>"1"</code> to enable). Do <strong>NOT</strong> add a debug flag or parameter to function signatures.</li>
+<li>Debug mode also enables structured timing profiles under <code>pathProject/profile/</code>. Each completed timing unit is saved immediately as a small RDS record under <code>profile/raw/</code>; a successful run collates these records into <code>profile/profile.rds</code> and <code>profile/profile.csv</code>. A new debug <code><a href="reference/gateStim.html">gateStim()</a></code> run removes the previous <code>profile/</code> directory first. Profiling failures must never fail the gating run.</li>
+<li>Keep profiling selective. Record broad workflow stages generally, but detailed per-sample timings are currently reserved for initial local-FDR gating. The selected sample-level detail is the probability model, density/bandwidth work, antimode work, filtering/threshold work and marginal filtering. Do not add a timer for every debug statement or small helper without evidence that it is useful for diagnosing run time.</li>
+<li>
+<code>zz_profile_instrumentation.R</code> deliberately loads after the implementation files and wraps selected internal functions without changing their arguments. Preserve wrapped function signatures when profiling boundaries change.</li>
 <li>Use the <code>stage</code> parameter to track algorithm stages (<code>"init"</code>, <code>"cytPos"</code>, or <code>"single"</code>). Pass <code>stage</code> through function calls to enable intermediate data saving via <code>.intSave()</code> or <code>.intSaveNm()</code> functions. Intermediate saving is controlled by the <code>STIMGATE_INTERMEDIATE</code> environment variable.</li>
 </ul></div>
 <div class="section level3">
