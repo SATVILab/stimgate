@@ -8,6 +8,9 @@ script_bw_io <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-io.R
 script_bw_plot <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-plot.R")
 script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 script_trans <- file.path(root_dir, "scripts", "r", "sim-trans.R")
+script_acs_helper <- file.path(root_dir, "scripts", "r", "acs_cytof-helper.R")
+script_acs_preprocess <- file.path(root_dir, "scripts", "r", "acs_cytof-preprocess.R")
+script_acs_gate <- file.path(root_dir, "scripts", "r", "acs_cytof-gate.R")
 
 test_that("scripts/r helpers source without error in dependency order", {
   for (f in c(
@@ -18,7 +21,10 @@ test_that("scripts/r helpers source without error in dependency order", {
     script_bw_io,
     script_bw_plot,
     script_comp,
-    script_trans
+    script_trans,
+    script_acs_helper,
+    script_acs_preprocess,
+    script_acs_gate
   )) {
     if (!file.exists(f)) {
       stop("Expected analysis helper not found: ", f)
@@ -34,6 +40,9 @@ test_that("scripts/r helpers source without error in dependency order", {
   expect_no_error(source(script_bw_plot, local = env))
   expect_no_error(source(script_comp, local = env))
   expect_no_error(source(script_trans, local = env))
+  expect_no_error(source(script_acs_helper, local = env))
+  expect_no_error(source(script_acs_preprocess, local = env))
+  expect_no_error(source(script_acs_gate, local = env))
 })
 
 test_that("QMD analysis scripts do not call scripts/r helpers via stimgate:::", {

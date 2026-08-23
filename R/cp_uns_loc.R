@@ -231,6 +231,7 @@
 #' @keywords internal
 .prepareDataForPrejoinInd <- function(exList) {
   indUns <- names(exList)[1]
+  indStim <- names(exList)[-1]
   exTblStim <- exList[seq.int(2, length(exList))] |>
     dplyr::bind_rows()
   exTblStim <- exTblStim[order(.getCut(exTblStim)), ]
@@ -238,7 +239,7 @@
     exList[[1]],
     exTblStim
   ) |>
-    stats::setNames(c(indUns, names(exList)[seq(2, length(exList))]))
+    stats::setNames(c(indUns, .createCombinedIdentifier(indStim)))
 }
 
 #' @keywords internal
@@ -251,6 +252,7 @@
     pathProject,
     stage) {
   .debug("prejoin") # nolint
+  indStim <- names(exListNoMin)[-1]
 
   # get marker expression for stim samples,
   # join and then sort into descending order
@@ -260,16 +262,22 @@
   )
 
   # get cutpoints for gate combn method for a range of fdr's
-  .getCpUnsLocSample(
+  cpUnsPrejoin <- .getCpUnsLocSample(
     exListOrig = exListPrejoin[["exListOrig"]],
-    exListNoMinStim = exListPrejoin[["exListNoMin"]],
+    exListNoMinStim = exListPrejoin[["exListNoMin"]][-1],
     exTblUnsBias = exTblUnsBias,
     chnlSettings = chnlSettings,
     bias = bias,
     stage = stage,
-    pathProject = pathProject
-  ) |>
-    purrr::map(function(x) list("prejoin" = x))
+    pathProject = pathProject,
+    indStim = indStim,
+    exListOrigOutput = exListOrig,
+    prejoin = TRUE
+  )
+  list(
+    "cp" = list("prejoin" = cpUnsPrejoin[["loc"]]),
+    "pList" = list()
+  )
 }
 
 # --------------------------------
@@ -460,9 +468,14 @@
     chnlSettings,
     bias,
     pathProject,
-    stage) {
+    stage,
+    indStim = NULL,
+    exListOrigOutput = NULL,
+    prejoin = FALSE) {
   .debug("getting loc gate at sample level") # nolint
   force(pathProject)
+  indStim <- indStim %||% names(exListNoMinStim)
+  exListOrigOutput <- exListOrigOutput %||% exListOrig
 
   # get cutpoints for each sample
   cpUnsLocObjList <- purrr::map(
@@ -535,11 +548,12 @@
   .getCpUnsLocOutput(
     cpUnsLocObjList = cpUnsLocObjList,
     indUns = names(exListOrig)[1],
-    indStim = names(exListNoMinStim),
+    indStim = indStim,
     stage = stage,
     pathProject = .pathProject,
     chnl = chnl,
-    exListOrig = exListOrig
+    exListOrig = exListOrigOutput,
+    prejoin = prejoin
   )
 }
 

@@ -47,12 +47,59 @@ test_that("interpFunctionWorksWhenXLowEqualVal", {
   expect_equal(result, 10)
 })
 
-# Note: prejoin gate combination test is skipped due to a bug in the current implementation
-# that causes: "object 'countStim' not found" error. This may need investigation in the main codebase.
 test_that("stimgateGateRunsWithGateCombnPrejoin", {
-  skip(
-    "prejoin gate combination has a bug causing 'object countStim not found' error"
+  skip_if_not_installed("flowWorkspace")
+  skip_if_not_installed("flowCore")
+
+  exampleData <- getExampleData()
+  gs <- flowWorkspace::load_gs(exampleData$pathGs)
+  batchList <- list(batch1 = c(1, 2, 4))
+  stimInd <- as.character(batchList[[1]][-1])
+  pathProject <- tempfile("testPrejoin")
+  withr::defer(unlink(pathProject, recursive = TRUE))
+  withr::local_envvar(STIMGATE_INTERMEDIATE = "all")
+
+  result <- gateStim(
+    .data = gs,
+    pathProject = pathProject,
+    popGate = "root",
+    batchList = batchList,
+    marker = exampleData$marker,
+    gateCombn = "prejoin"
   )
+
+  expect_identical(result, pathProject)
+  expect_identical(stimgateMetaReadBatchList(pathProject), batchList)
+
+  gateTbl <- getStimGates(pathProject)
+  stimGateTbl <- gateTbl[gateTbl$ind %in% stimInd, ]
+  expect_gt(nrow(stimGateTbl), 0L)
+  expect_true(all(grepl("prejoin", stimGateTbl$gateName, fixed = TRUE)))
+
+  gateGroups <- split(
+    stimGateTbl,
+    interaction(stimGateTbl$gateName, stimGateTbl$chnl, drop = TRUE)
+  )
+  expect_true(all(vapply(gateGroups, function(x) {
+    setequal(x$ind, stimInd) && length(unique(x$gate)) == 1L
+  }, logical(1))))
+
+  detailTbl <- getStimGatesDetailed(pathProject)
+  stimDetailTbl <- detailTbl[
+    detailTbl$detailLevel == "sample" & detailTbl$ind %in% stimInd,
+  ]
+  expect_gt(nrow(stimDetailTbl), 0L)
+  detailGroups <- split(stimDetailTbl, stimDetailTbl$chnl)
+  expect_true(all(vapply(detailGroups, function(x) {
+    setequal(x$ind, stimInd) && length(unique(x$threshold)) == 1L
+  }, logical(1))))
+  expect_true(all(stimDetailTbl$locGenerated))
+  expect_false(any(stimDetailTbl$locGeneratedDirect))
+  expect_true(all(stimDetailTbl$locSource == "prejoin"))
+  expect_true(all(
+    stimDetailTbl$thresholdOrigin ==
+      "prejoin_generated_from_joined_stim_conditions"
+  ))
 })
 
 test_that("stimgateGateRunsWithGateCombnNo", {

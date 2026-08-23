@@ -17,17 +17,18 @@ if [[ ! -f "$qmd_abs" ]]; then
   exit 1
 fi
 
-# Analysis 9 is intentionally sequential at the R level. Keep the Slurm
-# allocation small and cap common native-library thread pools at two cores.
-export OMP_NUM_THREADS="${OMP_NUM_THREADS:-2}"
-export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-2}"
-export MKL_NUM_THREADS="${MKL_NUM_THREADS:-2}"
-export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-2}"
-export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-2}"
+# Analysis 9 runs populations across two R workers. Keep native-library thread
+# pools single-threaded so the two-worker Slurm allocation is not oversubscribed.
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
+export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
+export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
 
 export RUN_PREPROCESSING="${RUN_PREPROCESSING:-true}"
 export RUN_METHODS="${RUN_METHODS:-true}"
 export RUN_PLOTS="${RUN_PLOTS:-false}"
+export ACS_N_WORKERS="${ACS_N_WORKERS:-${SLURM_NTASKS:-2}}"
 export PROJECT_ROOT="$project_root"
 
 cd "$project_root"
@@ -42,6 +43,7 @@ echo "PROJECT_ROOT: $project_root"
 echo "RUN_PREPROCESSING: $RUN_PREPROCESSING"
 echo "RUN_METHODS: $RUN_METHODS"
 echo "RUN_PLOTS: $RUN_PLOTS"
+echo "ACS_N_WORKERS: $ACS_N_WORKERS"
 echo "OMP_NUM_THREADS: $OMP_NUM_THREADS"
 
 echo " "
