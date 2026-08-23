@@ -3,6 +3,10 @@ test_that("profiling is disabled outside debug mode", {
   .profileStateReset()
   pathProject <- tempfile("stimgate-profile-off-")
   dir.create(pathProject, recursive = TRUE)
+  withr::defer({
+    .profileStateReset()
+    unlink(pathProject, recursive = TRUE, force = TRUE)
+  })
 
   expect_false(.profileInit(pathProject))
   expect_false(dir.exists(file.path(pathProject, "profile")))
@@ -12,6 +16,10 @@ test_that("a debug run resets and incrementally saves profiling records", {
   withr::local_envvar(c(STIMGATE_DEBUG = "true"))
   .profileStateReset()
   pathProject <- tempfile("stimgate-profile-")
+  withr::defer({
+    .profileStateReset()
+    unlink(pathProject, recursive = TRUE, force = TRUE)
+  })
   pathOldRaw <- file.path(pathProject, "profile", "raw")
   dir.create(pathOldRaw, recursive = TRUE)
   pathOld <- file.path(pathOldRaw, "old.rds")
@@ -50,6 +58,10 @@ test_that("profiling records explicit hierarchy and sample context", {
   withr::local_envvar(c(STIMGATE_DEBUG = "yes"))
   .profileStateReset()
   pathProject <- tempfile("stimgate-profile-hierarchy-")
+  withr::defer({
+    .profileStateReset()
+    unlink(pathProject, recursive = TRUE, force = TRUE)
+  })
   expect_true(.profileInit(pathProject))
 
   .profileWithContext(
@@ -102,7 +114,10 @@ test_that("profiling records explicit hierarchy and sample context", {
 })
 
 test_that("profiling instrumentation preserves wrapped function arguments", {
-  expect_identical(names(formals(.gateInit)), names(formals(.profileOriginalGateInit)))
+  expect_identical(
+    names(formals(.gateInit)),
+    names(formals(.profileOriginalGateInit))
+  )
   expect_identical(
     names(formals(.gateCytPos)),
     names(formals(.profileOriginalGateCytPos))
