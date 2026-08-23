@@ -257,7 +257,8 @@
     stage,
     pathProject,
     chnl,
-    exListOrig) {
+    exListOrig,
+    prejoin = FALSE) {
   stageChnl <- file.path(stage, chnl)
   cpVec <- .getCpUnsLocSampleCpRep(
     stage = stage,
@@ -265,7 +266,8 @@
     indUns = indUns,
     indStim = indStim,
     pathProject = pathProject,
-    chnl = chnl
+    chnl = chnl,
+    prejoin = prejoin
   )
   indCombined <- .createCombinedIdentifier(indStim)
   .intSave(indCombined, stageChnl, pathProject, cpVec)
@@ -306,7 +308,8 @@
     indUns,
     indStim,
     pathProject,
-    chnl) {
+    chnl,
+    prejoin = FALSE) {
   .debug("Possibly re-using calculated cutpoints") # nolint
   indCombined <- .createCombinedIdentifier(indStim)
   stageChnl <- file.path(stage, chnl)
@@ -331,7 +334,10 @@
     pathProject
   )
 
-  if (length(cpVec) != length(indStim)) {
+  if (isTRUE(prejoin) && length(cpVec) != 1L) {
+    stop("Prejoin must produce exactly one cutpoint per batch")
+  }
+  if (isTRUE(prejoin) || length(cpVec) != length(indStim)) {
     .intSaveNm(
       "prejoinedCpUsed",
       NULL,
@@ -473,5 +479,8 @@
     source,
     metaOut$locSource
   )
+  if (identical(source, "prejoin")) {
+    metaOut$locGeneratedDirect[metaOut$locGenerated %in% TRUE] <- FALSE
+  }
   metaOut
 }
