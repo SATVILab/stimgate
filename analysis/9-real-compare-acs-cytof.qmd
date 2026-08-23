@@ -8,6 +8,8 @@ params:
   run_preprocessing: true
   run_methods: true
   run_plots: false
+  tester_n_sample: 20
+  n_workers: 2
 ---
 
 ```{r}
@@ -28,45 +30,55 @@ scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))
-
-pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "pre_nk", "tcrgd")
+source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
 
 run_preprocessing <- .as_flag(.get_qmd_param_env(
   "run_preprocessing",
   "RUN_PREPROCESSING",
   FALSE
 ))
-run_preprocessing_vec_by_pop <- c(
-  tcrgd = NULL %||% run_preprocessing,
-  cd4 = NULL %||%  run_preprocessing,
-  cd8 = NULL %||% run_preprocessing,
-  nk = NULL %||% run_preprocessing,
-  pre_nk = NULL %||% run_preprocessing
-)
 run_methods <- .as_flag(.get_qmd_param_env(
   "run_methods",
   "RUN_METHODS",
   TRUE
 ))
-run_methods_vec_by_pop <- c(
-  tcrgd = NULL %||% run_methods,
-  cd4 = NULL %||%  run_methods,
-  cd8 = NULL %||% run_methods,
-  nk = NULL %||% run_methods,
-  pre_nk = NULL %||% run_methods
-)
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
   TRUE
 ))
-run_plots_vec_by_pop <- c(
-  tcrgd = NULL %||% run_plots,
-  cd4 = NULL %||%  run_plots,
-  cd8 = NULL %||% run_plots,
-  nk = NULL %||% run_plots,
-  pre_nk = NULL %||% run_plots
+tester_n_sample <- as.integer(.get_qmd_param_env(
+  "tester_n_sample",
+  "ACS_TESTER_N_SAMPLE",
+  20L
+))
+n_workers <- as.integer(.get_qmd_param_env(
+  "n_workers",
+  "ACS_N_WORKERS",
+  2L
+))
+
+if (is.na(n_workers) || n_workers < 1L) {
+  stop("n_workers must be at least one.")
+}
+.acsCytofBatchList(tester_n_sample)
+
+# Population-level controls belong here. These named vectors make it easy to
+# rerun only selected stages for one population without changing the helper.
+pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "nk_pre", "b")
+run_preprocessing_vec_by_pop <- stats::setNames(
+  rep(run_preprocessing, length(pop_vec)),
+  pop_vec
 )
+run_methods_vec_by_pop <- stats::setNames(
+  rep(run_methods, length(pop_vec)),
+  pop_vec
+)
+run_plots_vec_by_pop <- stats::setNames(
+  rep(run_plots, length(pop_vec)),
+  pop_vec
+)
+bias_uns_vec_by_pop <- stats::setNames(rep(0.15, length(pop_vec)), pop_vec)
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 if (
@@ -89,17 +101,25 @@ background-subtracted response frequencies with Tailgate and F-beta.
 
 ## Gating
 
-### Common settings
+The TCRgd population is first run on a limited set of complete five-sample
+batches. If that tester completes successfully, the same preprocessing and
+StimGate flow is applied to every population configured in `pop_vec`.
 
-Here we specify settings common across all the populations gated.
+The reusable helper fixes the settings that are shared by these runs, including
+the six cytokine channels, `bwMtd = "hpi1"`, debug profiling and the required
+`gateCombn = "min"`. The population, stage controls, tester sample limit and
+`biasUns` remain visible here because they are the settings most likely to vary.
+
+### Common paths
 
 ```{r}
+#| label: settings-common-gating-paths
 path_fcs_base <- projr::projr_path_get(
   "raw-data",
   "comparison_data", "acscytof", "fcs"
 )
 if (!dir.exists(path_fcs_base)) {
-  stop("Path to fcs files does not exist: ", path_fcs_base)
+  stop("Path to FCS files does not exist: ", path_fcs_base)
 }
 path_gs_base <- projr::projr_path_get(
   "cache",
@@ -113,336 +133,84 @@ path_scratch_base <- projr::projr_path_get(
 )
 ```
 
+### TCRgd tester
+
+The tester uses only the first `tester_n_sample` files, which must comprise
+complete batches of one unstimulated and four stimulated samples. Its cached
+GatingSet and StimGate project are kept under a separate `tester/tcrgd`
+subdirectory, so they cannot overwrite the full TCRgd run.
+
 ```{r}
-#| label: settings-common-gatings
-chnl_vec <- c("Ho165Di", "Gd158Di", "Nd146Di", "Dy164Di", "Gd156Di", "Nd150Di")
-
-# StimGate settings. gateCombn is intentionally explicit.
-stimgate_gate_combn <- "min"
-stimgate_bw_mtd <- "hpi1"
-stimgate_bw_ncell_max <- 1e4
-stimgate_bw_fallback <- "auto"
-stimgate_bw_min <- "none"
-stimgate_bw_max <- "none"
-stimgate_bias_uns <- NULL
-stimgate_min_cell <- 100
-tol_clust <- NULL
-calc_cyt_pos_gates <- TRUE
-
-# Comparator settings, matching the corrected analyses 7 and 8 semantics.
-fbeta_beta <- 0.8
-fbeta_theta <- 2
-fbeta_width <- 10
-path_fbeta <- projr::projr_path_get(
-  "project",
-  "scripts",
-  "python",
-  "fbeta.py"
+#| label: run-tcrgd-tester
+#| results: hide
+tcrgd_tester <- .acsCytofRunPopulation(
+  pop = "tcrgd",
+  pathFcsBase = path_fcs_base,
+  pathGsBase = path_gs_base,
+  pathScratchBase = path_scratch_base,
+  runPreprocessing = run_preprocessing,
+  runMethods = run_methods,
+  runPlots = run_plots,
+  nSample = tester_n_sample,
+  biasUns = bias_uns_vec_by_pop[["tcrgd"]],
+  outputGroup = "tester"
 )
-
-tailgate_adjust <- 1
-tailgate_method <- "firstDeriv"
-tailgate_tol <- 1e-2
-tailgate_auto_tol <- TRUE
 ```
 
-### TCRgd
+### Across populations, in parallel
+
+Each population writes to its own cached GatingSet and scratch directory. The
+number of concurrent population runs defaults to two and can be changed with
+the `n_workers` parameter or `ACS_N_WORKERS` environment variable.
 
 ```{r}
-# directories
-path_fcs_tcrgd <- file.path(path_fcs_base, "tcrgd")
-path_gs_tcrgd <- file.path(path_gs_base, "tcrgd")
-path_scratch_tcrgd <- file.path(path_scratch_base, "tcrgd")
-if (!dir.exists(path_scratch_tcrgd)) {
-  dir.create(path_scratch_tcrgd, recursive = TRUE, showWarnings = FALSE)
-}
-path_stimgate_tcrgd <- file.path(path_scratch_tcrgd, "stimgate")
-# gating settings
-bias_uns_tcrgd <- 0.15
-```
-
-#### Pre-processing
-
-##### Create GatingSet
-
-```{r}
-#| label: create-gatingset-tcrgd
+#| label: run-all-populations
 #| results: hide
-if (isTRUE(run_preprocessing)) {
-  # ensure fcs directory exists
-  if (!dir.exists(path_fcs_tcrgd)) {
-    stop("Path to TCRgd FCS files does not exist: ", path_fcs_tcrgd)
-  }
-  # ensure that there are many fcs files in there
-  fcs_files_tcrgd <- list.files(
-    path_fcs_tcrgd,
-    pattern = "\\.fcs$",
-    recursive = TRUE,
-    full.names = TRUE,
-    ignore.case = TRUE
-  )
-  if (length(fcs_files_tcrgd) < 10L) {
-    stop(
-      "Expected at least 10 TCRgd FCS files in the directory, but found
-  only ", length(fcs_files_tcrgd), "."
+n_workers_use <- min(n_workers, length(pop_vec))
+old_plan <- future::plan()
+
+population_runs <- tryCatch(
+  {
+    if (n_workers_use > 1L) {
+      future::plan(future::multisession, workers = n_workers_use)
+    } else {
+      future::plan(future::sequential)
+    }
+
+    furrr::future_map(
+      pop_vec,
+      function(pop) {
+        .acsCytofRunPopulation(
+          pop = pop,
+          pathFcsBase = path_fcs_base,
+          pathGsBase = path_gs_base,
+          pathScratchBase = path_scratch_base,
+          runPreprocessing = run_preprocessing_vec_by_pop[[pop]],
+          runMethods = run_methods_vec_by_pop[[pop]],
+          runPlots = run_plots_vec_by_pop[[pop]],
+          biasUns = bias_uns_vec_by_pop[[pop]]
+        )
+      },
+      .options = furrr::furrr_options(seed = TRUE)
     )
-  }
-  # ensure that the gating set directory exists and is empty
-  if (dir.exists(path_gs_tcrgd)) {
-    unlink(path_gs_tcrgd, recursive = TRUE)
-  }
-  dir.create(path_gs_tcrgd, recursive = TRUE, showWarnings = FALSE)
-  # create the gatingset
-  create_gatingset(
-    path_fcs = path_fcs_tcrgd,
-    path_gs = path_gs_tcrgd # ,
-    # n_sample = 20
-  )
-
-  # plot the gatingset to check transformation
-  # is appropriate
-  # create the scratch directory
-  path_check_tcrgd <- file.path(path_scratch_tcrgd, "gatingset")
-  if (!dir.exists(path_check_tcrgd)) {
-    dir.create(path_check_tcrgd, recursive = TRUE, showWarnings = FALSE)
-  }
-  plot_gatingset_check(
-    path_gs = path_gs_tcrgd,
-    path_plot_dir = path_check_tcrgd
-  )
-  # okay, looking here, we clearly need to use the transformation,
-  # as e.g. the DNA markers are just vertical bars otherwise
-  # and I know from preprocessing that they should not be so.
-}
+  },
+  finally = future::plan(old_plan)
+)
+names(population_runs) <- pop_vec
 ```
 
-#### Gate
+## Tailgate and F-beta
 
-##### StimGate
+The reusable run above covers the currently working ACS preprocessing and
+StimGate path. Tailgate and F-beta will be added to the same population helper
+once their ACS method grid and result-cache contract have been completed.
 
-```{r}
-#| label: gate-stimgate-tcrgd
-if (run_methods) {
-  # ensure a clean stimgate run
-  if (dir.exists(path_stimgate_tcrgd)) {
-    unlink(path_stimgate_tcrgd, recursive = TRUE)
-  }
-  dir.create(path_stimgate_tcrgd, recursive = TRUE, showWarnings = FALSE)
+## Compare methods with the ACS reference counts
 
-  # load gatingset
-  gs_tcrgd <- flowWorkspace::load_gs(path_gs_tcrgd)
+## Output tables and figures
 
-  # create a batch_list object,
-  # which for each element has five indices,
-  # the first of which specifies unstim.
-  # the elements covered go from
-  # 1 to the length of gs_tcrgd.
-  # and every fifth element in gs_tcrgd is an unstim sample.
-  # but its index must go FIRST in batch_list
-  # (and all the stims come afterwards)
-  batch_list_tcrgd <- lapply(seq(1, length(gs_tcrgd), by = 5), function(i) {
-    c(i, seq(i + 1, min(i + 4, length(gs_tcrgd))))
-  })
+### Save analysis tables
 
-  Sys.setenv("STIMGATE_DEBUG" = "TRUE")
+### Estimated versus reference response frequency
 
-  invisible(stimgate::gateStim(
-    pathProject = path_stimgate_tcrgd,
-    .data = gs_tcrgd,
-    popGate = "root",
-    batchList = batch_list_tcrgd,
-    chnl = chnl_vec,
-    biasUns = bias_uns_tcrgd,
-    bwMtd = stimgate_bw_mtd,
-    bwNcellMax = stimgate_bw_ncell_max,
-    bwFallback = stimgate_bw_fallback,
-    bwMin = stimgate_bw_min,
-    bwMax = stimgate_bw_max,
-    minCell = stimgate_min_cell,
-    gateCombn = stimgate_gate_combn,
-    tolClust = tol_clust,
-    calcCytPosGates = calc_cyt_pos_gates
-  ))
-
-  p <- plotStim(
-    ind = 2L,
-    .data = gs_tcrgd,
-    pathProject = path_stimgate_tcrgd,
-    pop = "root",
-    chnl = c("Ho165Di", "Nd146Di"),
-  )
-
-  path_p_stimgate_check_tcrgd <- projr::projr_path_get(
-    "cache",
-    "acs_cytof",
-    "scratch",
-    "tcrgd",
-    "stimgate_check.pdf"
-  )
-  ggsave(
-    path_p_stimgate_check_tcrgd,
-    p,
-    width = 18,
-    height = 16,
-    units = "cm"
-  )
-}
-```
-
-#### Tailgate
-
-```{r}
-#| label: run-tailgate-tcrgd
-#| results: hide
-#| eval: false
-path_tailgate_results <- file.path(acs_cache_dir, "tailgate_results.rds")
-
-if (isTRUE(run_methods)) {
-  tailgate_results <- purrr::pmap_dfr(
-    method_grid,
-    function(batch,
-             indUns,
-             indStim,
-             sampleUns,
-             sampleStim,
-             conditionStim,
-             channel,
-             marker) {
-      x_stim <- .acs_get_expr(gs_acs, indStim, channel, acs_pop_gate)
-      x_uns <- .acs_get_expr(gs_acs, indUns, channel, acs_pop_gate)
-
-      threshold_obj <- tryCatch(
-        .simCompareTailgateThreshold(
-          x = x_stim,
-          adjust = tailgate_adjust,
-          method = tailgate_method,
-          tol = tailgate_tol,
-          autoTol = tailgate_auto_tol,
-          strict = FALSE
-        ),
-        error = function(e) {
-          list(
-            threshold = NA_real_,
-            thresholdMetric = NA_real_,
-            thresholdOrigin = paste0("error: ", e$message)
-          )
-        }
-      )
-
-      est <- .simCompareEstimateFromThreshold(
-        xStim = x_stim,
-        xUns = x_uns,
-        threshold = threshold_obj$threshold,
-        fallbackHighValue = TRUE
-      )
-
-      tibble::as_tibble(est) |>
-        dplyr::transmute(
-          batch = batch,
-          indUns = indUns,
-          indStim = indStim,
-          sampleUns = sampleUns,
-          sampleStim = sampleStim,
-          conditionStim = conditionStim,
-          channel = channel,
-          marker = marker,
-          method = "tailgate",
-          threshold = .data$threshold,
-          thresholdOrigin = threshold_obj$thresholdOrigin,
-          thresholdMetric = threshold_obj$thresholdMetric,
-          thresholdFallbackUsed = .data$thresholdFallbackUsed,
-          nCellStim = .data$nCellStim,
-          nCellUns = .data$nCellUns,
-          nPosStim = .data$nPosStim,
-          nPosUns = .data$nPosUns,
-          propStim = .data$propStim,
-          propUns = .data$propUns,
-          propRespEst = .data$propRespEst
-        )
-    }
-  )
-  saveRDS(tailgate_results, path_tailgate_results)
-} else {
-  tailgate_results <- readRDS(path_tailgate_results)
-}
-```
-
-#### F-beta
-
-```{r}
-#| label: run-fbeta-tcrgd
-#| results: hide
-#| eval: false
-path_fbeta_results <- file.path(acs_cache_dir, "fbeta_results.rds")
-
-if (isTRUE(run_methods)) {
-  fbeta_results <- purrr::pmap_dfr(
-    method_grid,
-    function(batch,
-             indUns,
-             indStim,
-             sampleUns,
-             sampleStim,
-             conditionStim,
-             channel,
-             marker) {
-      x_stim <- .acs_get_expr(gs_acs, indStim, channel, acs_pop_gate)
-      x_uns <- .acs_get_expr(gs_acs, indUns, channel, acs_pop_gate)
-
-      threshold_obj <- tryCatch(
-        .simCompareFbetaThreshold(
-          xUns = x_uns,
-          xStim = x_stim,
-          pathFbeta = path_fbeta,
-          beta = fbeta_beta,
-          theta = fbeta_theta,
-          width = fbeta_width
-        ),
-        error = function(e) {
-          list(
-            threshold = NA_real_,
-            thresholdMetric = NA_real_,
-            thresholdOrigin = paste0("error: ", e$message)
-          )
-        }
-      )
-
-      est <- .simCompareEstimateFromThreshold(
-        xStim = x_stim,
-        xUns = x_uns,
-        threshold = threshold_obj$threshold,
-        fallbackHighValue = TRUE
-      )
-
-      tibble::as_tibble(est) |>
-        dplyr::transmute(
-          batch = batch,
-          indUns = indUns,
-          indStim = indStim,
-          sampleUns = sampleUns,
-          sampleStim = sampleStim,
-          conditionStim = conditionStim,
-          channel = channel,
-          marker = marker,
-          method = "fbeta",
-          threshold = .data$threshold,
-          thresholdOrigin = threshold_obj$thresholdOrigin,
-          thresholdMetric = threshold_obj$thresholdMetric,
-          thresholdFallbackUsed = .data$thresholdFallbackUsed,
-          nCellStim = .data$nCellStim,
-          nCellUns = .data$nCellUns,
-          nPosStim = .data$nPosStim,
-          nPosUns = .data$nPosUns,
-          propStim = .data$propStim,
-          propUns = .data$propUns,
-          propRespEst = .data$propRespEst
-        )
-    }
-  )
-  saveRDS(fbeta_results, path_fbeta_results)
-} else {
-  fbeta_results <- readRDS(path_fbeta_results)
-}
-```
-
-### Across pops, in parallel
+### Relative error by method
