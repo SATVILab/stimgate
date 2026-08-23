@@ -36,7 +36,7 @@ source(file.path(scripts_r_dir, "sim-misc.R"))
 run_preprocessing <- .as_flag(.get_qmd_param_env(
   "run_preprocessing",
   "RUN_PREPROCESSING",
-  TRUE
+  FALSE
 ))
 pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "nk_pre", "b")
 run_preprocessing_vec_by_pop <- c(
