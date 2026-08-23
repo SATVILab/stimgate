@@ -77,6 +77,14 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getStimGateTailgate.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-isString.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-isStringVector.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-profileAttach.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-profileCancel.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-profileFinalise.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-profileFinishRun.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-profileInit.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-profileStop.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-profileTime.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-profileWithContext.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-tautStringPmden.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/gateStim.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/getBatchList.html</loc></url>

@@ -308,10 +308,6 @@ pkgdown::check_pkgdown()
     final collation helpers.
   - `zz_profile_instrumentation.R`: Debug-only profiling wrappers around
     selected workflow boundaries.
-  - `zzz_profile_run_start.R`: Resets profiling once at the start of
-    each debug
-    [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
-    run.
   - `ex.R`: Extract expression matrices from `GatingSet` objects.
   - `example_data.R`: Loads the canonical shipped example dataset via
     [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
@@ -422,10 +418,14 @@ plotting/orchestration code.
   `"y"`, or `"1"` to enable). Do **NOT** add a debug flag or parameter
   to function signatures.
 - Debug mode also enables structured timing profiles under
-  `pathProject/profile/`. Each completed timing unit is saved
-  immediately as a small RDS record under `profile/raw/`; a successful
-  run collates these records into `profile/profile.rds` and
-  `profile/profile.csv`. A new debug
+  `pathProject/profile/`. The whole-run timer and directory lifecycle
+  are managed from
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  via an [`on.exit()`](https://rdrr.io/r/base/on.exit.html) handler.
+  Each completed timing unit is saved immediately as a small RDS record
+  under `profile/raw/`; successful and failed runs both collate all
+  readable records into `profile/profile.rds` and `profile/profile.csv`
+  (recording `"completed"` or `"failed"` status). A new debug
   [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
   run removes the previous `profile/` directory first. Profiling
   failures must never fail the gating run.
