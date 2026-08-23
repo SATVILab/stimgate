@@ -545,5 +545,4 @@ test_that("cytokine-positive filtering helpers respect gate context and exclusio
     ),
     check.attributes = FALSE
   )
-
 })

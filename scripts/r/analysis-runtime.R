@@ -239,26 +239,21 @@
   file.path(run_ctx$progress_run_dir, paste0(lock_name, ".lock"))
 }
 
-.analysis_acquire_lock <- function(lock_path, timeout_sec = 120, poll_sec = 0.1) {
+.analysis_acquire_lock <- function(lock_path, timeout_sec = 120) {
   dir.create(dirname(lock_path), recursive = TRUE, showWarnings = FALSE)
-  start <- Sys.time()
-
-  repeat {
-    if (dir.create(lock_path, recursive = FALSE, showWarnings = FALSE)) {
-      return(TRUE)
-    }
-
-    elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
-    if (is.finite(elapsed) && elapsed >= timeout_sec) {
-      return(FALSE)
-    }
-    Sys.sleep(poll_sec)
+  if (!requireNamespace("filelock", quietly = TRUE)) {
+    stop("Package 'filelock' is required for transactional analysis locking.")
   }
+  filelock::lock(
+    lock_path,
+    exclusive = TRUE,
+    timeout = timeout_sec * 1000
+  )
 }
 
-.analysis_release_lock <- function(lock_path) {
-  if (dir.exists(lock_path)) {
-    unlink(lock_path, recursive = TRUE, force = TRUE)
+.analysis_release_lock <- function(lock) {
+  if (!is.null(lock) && inherits(lock, "filelock_lock")) {
+    tryCatch(filelock::unlock(lock), error = function(e) NULL)
   }
   invisible(TRUE)
 }
@@ -527,10 +522,11 @@
     ended_at = NULL,
     promotion_done = NULL) {
   lock_path <- .analysis_lock_path(run_ctx, "status-update")
-  if (!.analysis_acquire_lock(lock_path, timeout_sec = 300)) {
+  lock <- .analysis_acquire_lock(lock_path, timeout_sec = 300)
+  if (is.null(lock)) {
     stop("Timed out acquiring status update lock for run_id: ", run_ctx$run_id)
   }
-  on.exit(.analysis_release_lock(lock_path), add = TRUE)
+  on.exit(.analysis_release_lock(lock), add = TRUE)
 
   st <- .analysis_read_status(run_ctx)
   if (is.null(st)) {
@@ -612,6 +608,23 @@
 
   done_sims <- as.integer(completed_sims + failed_sims)
   outstanding <- as.integer(max(0L, total_sims - done_sims))
+
+  cs_path <- .analysis_chunk_status_path(run_ctx)
+  existing_cs <- if (file.exists(cs_path)) {
+    tryCatch(
+      readRDS(cs_path),
+      error = function(e) NULL
+    )
+  } else {
+    NULL
+  }
+
+  if (is.null(collate_ok) && !is.null(existing_cs$collate_ok)) {
+    collate_ok <- existing_cs$collate_ok
+  }
+  if (is.null(validation_ok) && !is.null(existing_cs$validation_ok)) {
+    validation_ok <- existing_cs$validation_ok
+  }
 
   chunk_status <- list(
     chunk_label = run_ctx$chunk_label,
@@ -696,10 +709,11 @@
 
 .analysis_promote_run <- function(run_ctx) {
   lock_path <- .analysis_lock_path(run_ctx, "promotion")
-  if (!.analysis_acquire_lock(lock_path, timeout_sec = 300)) {
+  lock <- .analysis_acquire_lock(lock_path, timeout_sec = 300)
+  if (is.null(lock)) {
     return(invisible(FALSE))
   }
-  on.exit(.analysis_release_lock(lock_path), add = TRUE)
+  on.exit(.analysis_release_lock(lock), add = TRUE)
 
   if (!.analysis_can_promote(run_ctx)) {
     return(invisible(FALSE))
