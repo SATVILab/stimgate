@@ -195,7 +195,7 @@ if (isTRUE(run_preprocessing)) {
   # create the gatingset
   create_gatingset(
     path_fcs = path_fcs_tcrgd,
-    path_gs = path_gs_tcrgd# ,
+    path_gs = path_gs_tcrgd # ,
     # n_sample = 20
   )
 
@@ -235,7 +235,7 @@ if (run_methods) {
   # create a batch_list object,
   # which for each element has five indices,
   # the first of which specifies unstim.
-  # the elements covered go from 
+  # the elements covered go from
   # 1 to the length of gs_tcrgd.
   # and every fifth element in gs_tcrgd is an unstim sample.
   # but its index must go FIRST in batch_list
@@ -300,15 +300,14 @@ path_tailgate_results <- file.path(acs_cache_dir, "tailgate_results.rds")
 if (isTRUE(run_methods)) {
   tailgate_results <- purrr::pmap_dfr(
     method_grid,
-    function(
-        batch,
-        indUns,
-        indStim,
-        sampleUns,
-        sampleStim,
-        conditionStim,
-        channel,
-        marker) {
+    function(batch,
+             indUns,
+             indStim,
+             sampleUns,
+             sampleStim,
+             conditionStim,
+             channel,
+             marker) {
       x_stim <- .acs_get_expr(gs_acs, indStim, channel, acs_pop_gate)
       x_uns <- .acs_get_expr(gs_acs, indUns, channel, acs_pop_gate)
 
@@ -379,15 +378,14 @@ path_fbeta_results <- file.path(acs_cache_dir, "fbeta_results.rds")
 if (isTRUE(run_methods)) {
   fbeta_results <- purrr::pmap_dfr(
     method_grid,
-    function(
-        batch,
-        indUns,
-        indStim,
-        sampleUns,
-        sampleStim,
-        conditionStim,
-        channel,
-        marker) {
+    function(batch,
+             indUns,
+             indStim,
+             sampleUns,
+             sampleStim,
+             conditionStim,
+             channel,
+             marker) {
       x_stim <- .acs_get_expr(gs_acs, indStim, channel, acs_pop_gate)
       x_uns <- .acs_get_expr(gs_acs, indUns, channel, acs_pop_gate)
 
