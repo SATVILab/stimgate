@@ -2,6 +2,8 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
 script_gate <- file.path(root_dir, "scripts", "r", "acs_cytof-gate.R")
 script_methods <- file.path(root_dir, "scripts", "r", "acs_cytof-methods.R")
 script_manual <- file.path(root_dir, "scripts", "r", "acs_cytof-manual.R")
+script_compare <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
+script_fbeta <- file.path(root_dir, "scripts", "python", "fbeta.py")
 qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
 
 .load_acs_method_env <- function() {
@@ -20,12 +22,37 @@ test_that("ACS comparator settings pin F-beta defaults and Tailgate auto tuning"
   expect_equal(fbeta$params$theta, 2)
   expect_equal(fbeta$params$width, 10L)
   expect_null(fbeta$params$numBins)
+  expect_equal(fbeta$cacheVersion, 2L)
 
   tailgate <- env$.acsCytofComparatorSettings("tailgate")
   expect_identical(tailgate$params$tailgateX, "stim")
   expect_null(tailgate$params$bandwidth)
   expect_true(tailgate$params$autoTol)
   expect_identical(tailgate$params$derivativeMethod, "firstDeriv")
+  expect_equal(tailgate$cacheVersion, 1L)
+})
+
+test_that("F-beta histogram support includes the stimulated response tail", {
+  skip_if_not_installed("reticulate")
+
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_compare, local = env)
+
+  x_uns <- seq(0, 1, length.out = 400L)
+  x_stim <- c(seq(0, 1, length.out = 350L), rep(4, 50L))
+  out <- env$.simCompareFbetaThreshold(
+    xUns = x_uns,
+    xStim = x_stim,
+    pathFbeta = script_fbeta,
+    width = 2L,
+    numBins = 20L
+  )
+
+  expect_gt(max(as.numeric(out$fbeta$pdfx)), max(x_uns))
+  expect_gt(
+    max(as.numeric(out$fbeta$pdfx)),
+    max(x_stim) - diff(range(c(x_uns, x_stim))) / 20
+  )
 })
 
 test_that("thresholded cells are saved as a complete combination table", {
