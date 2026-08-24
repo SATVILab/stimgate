@@ -7,6 +7,8 @@ format:
 params:
   run_preprocessing: true
   run_methods: true
+  run_comparators: true
+  overwrite_comparator_cache: false
   run_plots: false
   tester_n_sample: 20
   n_workers: 2
@@ -32,6 +34,8 @@ source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))
 source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
 source(file.path(scripts_r_dir, "sim-misc.R"))
+source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
+source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
 source(file.path(scripts_r_dir, "acs_cytof-manual.R"))
 
 run_preprocessing <- .as_flag(.get_qmd_param_env(
@@ -61,10 +65,28 @@ run_methods_vec_by_pop <- c(
   nk_pre = NULL %||% run_methods,
   b = NULL %||% run_methods
 )
+run_comparators <- .as_flag(.get_qmd_param_env(
+  "run_comparators",
+  "RUN_COMPARATORS",
+  TRUE
+))
+run_comparators_vec_by_pop <- c(
+  tcrgd = NULL %||% run_comparators,
+  cd4 = NULL %||% run_comparators,
+  cd8 = NULL %||% run_comparators,
+  nk = NULL %||% run_comparators,
+  nk_pre = NULL %||% run_comparators,
+  b = NULL %||% run_comparators
+)
+overwrite_comparator_cache <- .as_flag(.get_qmd_param_env(
+  "overwrite_comparator_cache",
+  "OVERWRITE_COMPARATOR_CACHE",
+  FALSE
+))
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
-  TRUE
+  FALSE
 ))
 run_plots_vec_by_pop <- c(
   tcrgd = NULL %||% run_plots,
@@ -79,7 +101,14 @@ tester_n_sample <- .get_qmd_param_env(
   "TESTER_N_SAMPLE",
   20L
 )
-n_workers <- max(1, .simGetCores())
+n_workers <- max(
+  1L,
+  as.integer(.get_qmd_param_env(
+    "n_workers",
+    "ACS_N_WORKERS",
+    2L
+  ))
+)
 bias_uns <- 0.15
 bias_uns_vec_by_pop <- c(
   tcrgd = NULL %||% bias_uns,
@@ -115,10 +144,11 @@ The TCRgd population is first run on a limited set of complete five-sample
 batches. If that tester completes successfully, the same preprocessing and
 StimGate flow is applied to every population configured in `pop_vec`.
 
-The reusable helper fixes the settings that are shared by these runs, including
-the six cytokine channels, `bwMtd = "hpi1"`, debug profiling and the required
-`gateCombn = "min"`. The population, stage controls, tester sample limit and
-`biasUns` remain visible here because they are the settings most likely to vary.
+The reusable helpers fix the six cytokine channels and the method settings.
+StimGate uses `bwMtd = "hpi1"` and `gateCombn = "min"`. F-beta uses its standard
+parameters (`beta = 0.8`, `theta = 2`, `width = 10` and automatic bin count).
+Tailgate uses the stimulated distribution, automatic bandwidth estimation and
+automatic tolerance tuning.
 
 ### Common paths
 
@@ -164,6 +194,17 @@ tcrgd_tester <- .acsCytofRunPopulation(
   nSample = tester_n_sample,
   biasUns = bias_uns_vec_by_pop[["tcrgd"]],
   outputGroup = "tester"
+)
+
+tcrgd_comparison_tester <- .acsCytofRunComparisonMethods(
+  pop = "tcrgd",
+  pathFcsBase = path_fcs_base,
+  pathGsBase = path_gs_base,
+  pathScratchBase = path_scratch_base,
+  runMethods = run_comparators,
+  nSample = tester_n_sample,
+  outputGroup = "tester",
+  overwrite = overwrite_comparator_cache
 )
 ```
 
@@ -235,16 +276,97 @@ if (length(failed_pop_vec) > 0L) {
 
 ## Tailgate and F-beta
 
-The reusable run above covers the currently working ACS preprocessing and
-StimGate path. Tailgate and F-beta will be added to the same population helper
-once their ACS method grid and result-cache contract have been completed.
+Tailgate and F-beta run one population at a time. Each method is saved
+immediately to its own `result.rds`; a later render reuses a complete cache when
+the sample count and fixed settings still match. Set
+`overwrite_comparator_cache` to `true` only when those method outputs need to
+be recomputed.
+
+```{r}
+#| label: run-comparison-methods-sequentially
+#| results: hide
+comparison_method_runs <- purrr::map(
+  pop_vec,
+  function(pop) {
+    .acsCytofRunComparisonMethodsSafe(
+      pop = pop,
+      pathFcsBase = path_fcs_base,
+      pathGsBase = path_gs_base,
+      pathScratchBase = path_scratch_base,
+      runMethods = run_comparators_vec_by_pop[[pop]],
+      overwrite = overwrite_comparator_cache
+    )
+  }
+)
+names(comparison_method_runs) <- pop_vec
+
+failed_comparator_pop_vec <- names(comparison_method_runs)[
+  !vapply(
+    comparison_method_runs,
+    function(x) isTRUE(x$success),
+    logical(1)
+  )
+]
+if (length(failed_comparator_pop_vec) > 0L) {
+  stop(
+    "ACS Tailgate/F-beta runs failed for: ",
+    paste(failed_comparator_pop_vec, collapse = ", "),
+    ". See the returned error entries in comparison_method_runs."
+  )
+}
+```
 
 ## Compare methods with the ACS reference counts
+
+The cached combination tables for all three methods are reduced to one
+frequency per cytokine with `UtilsCytoRSV::sum_over_markers()`. Combination
+labels are then normalised to the standard `+`/`-` form with
+`UtilsCompassSV::convert_cyt_combn_format()` before the automated and manual
+tables are joined. `nk_pre` is still run above, but is omitted here because the
+manual file has no matching population.
+
+```{r}
+#| label: format-manual-comparison
+path_manual_output <- file.path(
+  path_scratch_base,
+  "manual-comparison"
+)
+manual_comparison_tbl <- comp_against_manual_cyt(
+  fn = "Cytokines_10Jun2021_2.csv",
+  path_scratch_base = path_scratch_base,
+  path_fcs_base = path_fcs_base,
+  pop = pop_vec,
+  methods = c("stimgate", "tailgate", "fbeta"),
+  path_dir_save = path_manual_output,
+  save_plots = run_plots
+)
+manual_summary_tbl <- attr(manual_comparison_tbl, "summary")
+```
 
 ## Output tables and figures
 
 ### Save analysis tables
 
+The comparison table, its RDS copy and a method/population/cytokine summary are
+written under `path_manual_output` by the formatting step above.
+
+```{r}
+#| label: show-manual-summary
+manual_summary_tbl
+```
+
 ### Estimated versus reference response frequency
 
+```{r}
+#| label: plot-manual-comparison
+#| eval: run_plots
+.acsCytofManualPlotScatter(manual_comparison_tbl)
+```
+
 ### Relative error by method
+
+```{r}
+#| label: plot-manual-relative-error
+#| eval: run_plots
+.acsCytofManualPlotRelativeError(manual_comparison_tbl)
+```

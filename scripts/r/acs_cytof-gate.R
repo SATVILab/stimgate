@@ -27,6 +27,8 @@
     scratch = pathScratch,
     gsCheck = file.path(pathScratch, "gatingset"),
     stimgate = file.path(pathScratch, "stimgate"),
+    tailgate = file.path(pathScratch, "tailgate", "result.rds"),
+    fbeta = file.path(pathScratch, "fbeta", "result.rds"),
     stimgateCheck = file.path(pathScratch, "stimgate_check.pdf")
   )
 }
