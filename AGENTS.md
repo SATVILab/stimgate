@@ -506,7 +506,13 @@ plotting/orchestration code.
     the stimulated and unstimulated distributions; the published code
     derives them from the negative distribution alone. Document any
     further deviation explicitly in the relevant analyses and comparison
-    issue.
+    issue. Reticulate-backed Python environments must be created inside
+    the R process that uses them and kept local to that run; never store
+    them in a global R cache that can be serialised to multisession
+    workers. For the ACS analysis, requesting a Tailgate/F-beta run
+    removes both prior comparator `result.rds` files and recomputes
+    them. Existing results are read only when comparator execution is
+    disabled.
 5.  **Temporary migration status for `.getCpTg()` (issues \#157/#158)**:
     This is a current-state note rather than a permanent design rule.
     Verify it against the current implementation and relevant issues
