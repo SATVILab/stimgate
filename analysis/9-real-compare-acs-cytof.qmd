@@ -278,28 +278,48 @@ if (isTRUE(run_stimgate)) {
 
 ## Tailgate and F-beta
 
-Tailgate and F-beta run one population at a time. Each method is saved
-immediately to its own `result.rds`; a later render reuses a complete cache when
-the sample count and fixed settings still match. Set
+Tailgate and F-beta run concurrently across populations, using the same
+`n_workers` control as StimGate. Within each population, the two methods remain
+sequential so that they do not compete for the same GatingSet. Each method is
+saved immediately to its own `result.rds`; a later render reuses a complete
+cache when the sample count and fixed settings still match. Set
 `overwrite_comparator_cache` to `true` only when those method outputs need to
 be recomputed.
 
 ```{r}
-#| label: run-comparison-methods-sequentially
+#| label: run-comparison-methods-in-parallel
 #| results: hide
 if (isTRUE(run_comparators)) {
-  comparison_method_runs <- purrr::map(
-    pop_vec,
-    function(pop) {
-      .acsCytofRunComparisonMethodsSafe(
-        pop = pop,
-        pathFcsBase = path_fcs_base,
-        pathGsBase = path_gs_base,
-        pathScratchBase = path_scratch_base,
-        runMethods = run_comparators_vec_by_pop[[pop]],
-        overwrite = overwrite_comparator_cache
+  n_comparator_workers_use <- min(n_workers, length(pop_vec))
+  old_comparator_plan <- future::plan()
+
+  comparison_method_runs <- tryCatch(
+    {
+      if (n_comparator_workers_use > 1L) {
+        future::plan(
+          future::multisession,
+          workers = n_comparator_workers_use
+        )
+      } else {
+        future::plan(future::sequential)
+      }
+
+      furrr::future_map(
+        pop_vec,
+        function(pop) {
+          .acsCytofRunComparisonMethodsSafe(
+            pop = pop,
+            pathFcsBase = path_fcs_base,
+            pathGsBase = path_gs_base,
+            pathScratchBase = path_scratch_base,
+            runMethods = run_comparators_vec_by_pop[[pop]],
+            overwrite = overwrite_comparator_cache
+          )
+        },
+        .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
       )
-    }
+    },
+    finally = future::plan(old_comparator_plan)
   )
   names(comparison_method_runs) <- pop_vec
 
