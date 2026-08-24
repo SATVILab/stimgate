@@ -1,13 +1,13 @@
 directories:
   raw-data-large:
-    path: _raw/data/large
+    path: ../stimgate-store/_raw/data/large
   raw-data-small:
     path: _raw/data/small
     ignore-git: no
   cache:
-    path: _tmp
+    path: ../stimgate-store/_tmp
   cache-analysis:
-    path: analysis/cache
+    path: ../stimgate-store/_tmp_analysis/cache
   docs:
     path: docs
 

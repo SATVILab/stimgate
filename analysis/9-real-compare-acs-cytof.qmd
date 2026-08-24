@@ -32,6 +32,7 @@ source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))
 source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
 source(file.path(scripts_r_dir, "sim-misc.R"))
+source(file.path(scripts_r_dir, "acs_cytof-manual.R"))
 
 run_preprocessing <- .as_flag(.get_qmd_param_env(
   "run_preprocessing",

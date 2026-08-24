@@ -19,14 +19,8 @@
 ^analysis$
 
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
-^_raw/data/large/
-^_raw/data/large$
 ^_raw/data/small/
 ^_raw/data/small$
-^_tmp/
-^_tmp$
-^analysis/cache/
-^analysis/cache$
 ^docs/
 ^docs$
 ^_output/
