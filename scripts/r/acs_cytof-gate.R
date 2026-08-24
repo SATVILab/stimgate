@@ -54,8 +54,13 @@
     )
   }
 
-  lapply(seq.int(1L, nSample, by = nPerBatch), function(indUns) {
-    seq.int(indUns, length.out = nPerBatch)
+  lapply(seq.int(1L, nSample, by = 5L), function(indStart) {
+    indRaw <- seq.int(indStart, length.out = 5L)
+
+    c(
+      indRaw[[5L]], # unstimulated
+      indRaw[1:4] # four stimulated samples
+    )
   })
 }
 
