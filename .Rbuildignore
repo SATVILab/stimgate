@@ -21,6 +21,8 @@
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
 ^_raw/data/small/
 ^_raw/data/small$
+^_tmp/
+^_tmp$
 ^docs/
 ^docs$
 ^_output/
