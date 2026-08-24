@@ -78,10 +78,11 @@
 }
 
 .acsCytofCombinationCounts <- function(
-    xStim,
-    xUns,
-    thresholds,
-    channels = names(thresholds)) {
+  xStim,
+  xUns,
+  thresholds,
+  channels = names(thresholds)
+) {
   xStim <- as.matrix(xStim)
   xUns <- as.matrix(xUns)
   thresholds <- as.numeric(thresholds)
@@ -91,10 +92,14 @@
       ncol(xUns) != length(channels) ||
       length(thresholds) != length(channels)
   ) {
-    stop("Expression matrices, thresholds and channels do not have matching widths.")
+    stop(
+      "Expression matrices, thresholds and channels do not have matching widths."
+    )
   }
   if (any(!is.finite(thresholds))) {
-    stop("All thresholds must be finite before combination counts are calculated.")
+    stop(
+      "All thresholds must be finite before combination counts are calculated."
+    )
   }
 
   combinationLevels <- .acsCytofCombinationLevels(channels)
@@ -109,7 +114,10 @@
 
   tibble::tibble(
     cytCombn = combinationLevels,
-    countStim = as.integer(table(factor(labelStim, levels = combinationLevels))),
+    countStim = as.integer(table(factor(
+      labelStim,
+      levels = combinationLevels
+    ))),
     nCellStim = nrow(xStim),
     countUns = as.integer(table(factor(labelUns, levels = combinationLevels))),
     nCellUns = nrow(xUns)
@@ -122,7 +130,11 @@
   })
   nCell <- lengths(exprList)
   if (length(unique(nCell)) != 1L) {
-    stop("Cytokine channels returned different cell counts for sample index ", ind, ".")
+    stop(
+      "Cytokine channels returned different cell counts for sample index ",
+      ind,
+      "."
+    )
   }
 
   out <- do.call(cbind, exprList)
@@ -149,19 +161,22 @@
 }
 
 .acsCytofThresholdOne <- function(
-    method,
-    xUns,
-    xStim,
-    settings,
-    pathFbeta = NULL) {
+  method,
+  xUns,
+  xStim,
+  settings,
+  pathFbeta = NULL
+) {
   thresholdObj <- tryCatch(
     {
       if (identical(method, "fbeta")) {
-        if (!exists(
-          ".simCompareFbetaThreshold",
-          mode = "function",
-          inherits = TRUE
-        )) {
+        if (
+          !exists(
+            ".simCompareFbetaThreshold",
+            mode = "function",
+            inherits = TRUE
+          )
+        ) {
           stop("Source scripts/r/sim-compare-freq_bs.R before running F-beta.")
         }
         do.call(
@@ -176,12 +191,16 @@
           )
         )
       } else {
-        if (!exists(
-          ".simCompareTailgateThreshold",
-          mode = "function",
-          inherits = TRUE
-        )) {
-          stop("Source scripts/r/sim-compare-freq_bs.R before running Tailgate.")
+        if (
+          !exists(
+            ".simCompareTailgateThreshold",
+            mode = "function",
+            inherits = TRUE
+          )
+        ) {
+          stop(
+            "Source scripts/r/sim-compare-freq_bs.R before running Tailgate."
+          )
         }
         do.call(
           .simCompareTailgateThreshold,
@@ -238,11 +257,12 @@
 }
 
 .acsCytofRunComparator <- function(
-    gs,
-    pop,
-    method = c("tailgate", "fbeta"),
-    batchList = .acsCytofBatchList(length(gs)),
-    pathFbeta = NULL) {
+  gs,
+  pop,
+  method = c("tailgate", "fbeta"),
+  batchList = .acsCytofBatchList(length(gs)),
+  pathFbeta = NULL
+) {
   method <- match.arg(method)
   settings <- .acsCytofComparatorSettings(method)
   channelMap <- settings$channelMap
@@ -332,20 +352,23 @@
 }
 
 .acsCytofCacheIsCurrent <- function(
-    object,
-    settings,
-    nSample = NULL) {
+  object,
+  settings,
+  nSample = NULL
+) {
   if (
     !is.list(object) ||
       !all(c("settings", "nSample", "stats", "thresholds") %in% names(object))
   ) {
     return(FALSE)
   }
-  if (!isTRUE(all.equal(
-    object$settings,
-    settings,
-    check.attributes = FALSE
-  ))) {
+  if (
+    !isTRUE(all.equal(
+      object$settings,
+      settings,
+      check.attributes = FALSE
+    ))
+  ) {
     return(FALSE)
   }
   if (
@@ -356,12 +379,23 @@
   }
 
   requiredStats <- c(
-    "method", "pop", "ind", "cytCombn",
-    "countStim", "nCellStim", "countUns", "nCellUns"
+    "method",
+    "pop",
+    "ind",
+    "cytCombn",
+    "countStim",
+    "nCellStim",
+    "countUns",
+    "nCellUns"
   )
   requiredThresholds <- c(
-    "method", "pop", "ind", "chnl", "threshold",
-    "thresholdOrigin", "thresholdFallbackUsed"
+    "method",
+    "pop",
+    "ind",
+    "chnl",
+    "threshold",
+    "thresholdOrigin",
+    "thresholdFallbackUsed"
   )
   all(requiredStats %in% names(object$stats)) &&
     all(requiredThresholds %in% names(object$thresholds))
@@ -384,12 +418,16 @@
 }
 
 .acsCytofReadComparatorCache <- function(
-    path,
-    method,
-    nSample = NULL) {
+  path,
+  method,
+  nSample = NULL
+) {
   if (!file.exists(path)) {
     stop(
-      "Cached ", method, " result not found at: ", path,
+      "Cached ",
+      method,
+      " result not found at: ",
+      path,
       ". Run the ACS comparison methods first."
     )
   }
@@ -398,7 +436,9 @@
   settings <- .acsCytofComparatorSettings(method)
   if (!.acsCytofCacheIsCurrent(object, settings, nSample = nSample)) {
     stop(
-      "Cached ", method, " result is missing, incomplete or was created ",
+      "Cached ",
+      method,
+      " result is missing, incomplete or was created ",
       "with different settings. Re-run that ACS comparison method."
     )
   }
@@ -430,15 +470,16 @@
 }
 
 .acsCytofRunComparisonMethods <- function(
-    pop,
-    pathFcsBase,
-    pathGsBase,
-    pathScratchBase,
-    runMethods,
-    nSample = NULL,
-    outputGroup = NULL,
-    overwrite = FALSE,
-    pathFbeta = NULL) {
+  pop,
+  pathFcsBase,
+  pathGsBase,
+  pathScratchBase,
+  runMethods,
+  nSample = NULL,
+  outputGroup = NULL,
+  overwrite = FALSE,
+  pathFbeta = NULL
+) {
   paths <- .acsCytofPopulationPaths(
     pop = pop,
     pathFcsBase = pathFcsBase,
@@ -446,7 +487,7 @@
     pathScratchBase = pathScratchBase,
     outputGroup = outputGroup
   )
-  methodVec <- c("tailgate", "fbeta")
+  methodVec <- c("tailgate", "fbeta") |> rev()
 
   if (!isTRUE(runMethods)) {
     resultList <- lapply(methodVec, function(method) {
@@ -489,11 +530,13 @@
     settings <- .acsCytofComparatorSettings(method)
     if (file.exists(pathCache) && !isTRUE(overwrite)) {
       cached <- tryCatch(readRDS(pathCache), error = function(e) NULL)
-      if (.acsCytofCacheIsCurrent(
-        cached,
-        settings = settings,
-        nSample = nSampleActual
-      )) {
+      if (
+        .acsCytofCacheIsCurrent(
+          cached,
+          settings = settings,
+          nSample = nSampleActual
+        )
+      ) {
         message("Using cached ", method, " result for ", pop, ".")
         return(cached)
       }

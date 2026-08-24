@@ -6,7 +6,7 @@ directories:
     ignore-git: no
   cache:
     path: ../stimgate-store/_tmp
-  cache-within-project:
+  cache-in:
     path: _tmp
   cache-analysis:
     path: ../stimgate-store/_tmp_analysis/cache
