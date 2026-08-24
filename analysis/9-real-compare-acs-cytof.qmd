@@ -6,7 +6,7 @@ format:
     toc: true
 params:
   run_preprocessing: true
-  run_methods: true
+  run_stimgate: true
   run_comparators: true
   overwrite_comparator_cache: false
   run_plots: false
@@ -52,18 +52,18 @@ run_preprocessing_vec_by_pop <- c(
   nk_pre = NULL %||% run_preprocessing,
   b = NULL %||% run_preprocessing
 )
-run_methods <- .as_flag(.get_qmd_param_env(
-  "run_methods",
-  "RUN_METHODS",
-  TRUE
+run_stimgate <- .as_flag(.get_qmd_param_env(
+  "run_stimgate",
+  "RUN_STIMGATE",
+  FALSE
 ))
-run_methods_vec_by_pop <- c(
-  tcrgd = NULL %||% run_methods,
-  cd4 = NULL %||% run_methods,
-  cd8 = NULL %||% run_methods,
-  nk = NULL %||% run_methods,
-  nk_pre = NULL %||% run_methods,
-  b = NULL %||% run_methods
+run_stimgate_vec_by_pop <- c(
+  tcrgd = NULL %||% run_stimgate,
+  cd4 = NULL %||% run_stimgate,
+  cd8 = NULL %||% run_stimgate,
+  nk = NULL %||% run_stimgate,
+  nk_pre = NULL %||% run_stimgate,
+  b = NULL %||% run_stimgate
 )
 run_comparators <- .as_flag(.get_qmd_param_env(
   "run_comparators",
@@ -189,7 +189,7 @@ tcrgd_tester <- .acsCytofRunPopulation(
   pathGsBase = path_gs_base,
   pathScratchBase = path_scratch_base,
   runPreprocessing = run_preprocessing,
-  runMethods = run_methods,
+  runMethods = run_stimgate,
   runPlots = run_plots,
   nSample = tester_n_sample,
   biasUns = bias_uns_vec_by_pop[["tcrgd"]],
@@ -239,7 +239,7 @@ population_runs <- tryCatch(
           pathGsBase = path_gs_base,
           pathScratchBase = path_scratch_base,
           runPreprocessing = run_preprocessing_vec_by_pop[[pop]],
-          runMethods = run_methods_vec_by_pop[[pop]],
+          runMethods = run_stimgate_vec_by_pop[[pop]],
           runPlots = run_plots_vec_by_pop[[pop]],
           biasUns = bias_uns_vec_by_pop[[pop]]
         )
