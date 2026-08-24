@@ -121,6 +121,12 @@ alternative thresholding approaches:
    `scripts/python/fbeta.py` via `reticulate`.
 2. `tailgate`, called from the `cytoUtils` package.
 
+The F-beta implementation retains the Richards et al. (2014) scoring procedure
+and standard parameters, but uses common histogram support spanning the paired
+stimulated and unstimulated distributions. The published code derives the bin
+range from the negative distribution alone, which can omit a simulated response
+tail beyond the observed negative range.
+
 For StimGate, bandwidth is estimated automatically using the ordinary `hpi1`
 selector, without background normalisation, with the bandwidth-estimation sample
 capped at 10,000 cells. Tailgate is deliberately left to use its usual automatic

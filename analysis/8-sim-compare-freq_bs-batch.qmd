@@ -84,6 +84,11 @@ alternative thresholding approaches (`fbeta` and `tailgate`) under controlled
 **condition mismatch** (technical misalignment between the stimulated and
 matched unstimulated tubes).
 
+The F-beta implementation retains the Richards et al. (2014) scoring procedure
+and standard parameters, but adapts its histogram support to span both paired
+distributions. This prevents stimulated response-tail events outside the
+observed unstimulated range from being omitted from the F-beta calculation.
+
 The simulation isolates two deterministic post-transformation mismatch
 mechanisms provided by `simcyto`:
 

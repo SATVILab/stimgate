@@ -166,6 +166,11 @@ StimGate flow is applied to every population configured in `pop_vec`.
 The reusable helpers fix the six cytokine channels and the method settings.
 StimGate uses `bwMtd = "hpi1"` and `gateCombn = "min"`. F-beta uses its standard
 parameters (`beta = 0.8`, `theta = 2`, `width = 10` and automatic bin count).
+The F-beta implementation is adapted from Richards et al. (2014) only in the
+histogram support: common bin edges span the matched stimulated and unstimulated
+distributions, instead of being derived from the unstimulated range alone. This
+prevents stimulated response-tail events outside the observed unstimulated range
+from being omitted when no explicit strong positive control is available.
 Tailgate uses the stimulated distribution, automatic bandwidth estimation and
 automatic tolerance tuning.
 
