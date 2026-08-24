@@ -43,6 +43,14 @@ test_that("the TCRgd tester and full population use separate output paths", {
     tester$stimgate,
     file.path("scratch", "tester", "tcrgd", "stimgate")
   )
+  expect_equal(
+    tester$tailgate,
+    file.path("scratch", "tester", "tcrgd", "tailgate", "result.rds")
+  )
+  expect_equal(
+    tester$fbeta,
+    file.path("scratch", "tester", "tcrgd", "fbeta", "result.rds")
+  )
   expect_false(identical(full$stimgate, tester$stimgate))
 })
 
@@ -73,8 +81,24 @@ test_that("analysis 9 uses one runner for the tester and configured populations"
       content,
       gregexpr(".acsCytofRunPopulation(", content, fixed = TRUE)
     )),
-    2L
+    1L
   )
+  expect_true(grepl(".acsCytofRunPopulationSafe(", content, fixed = TRUE))
   expect_true(grepl('outputGroup = "tester"', content, fixed = TRUE))
   expect_true(grepl("furrr::future_map", content, fixed = TRUE))
+  expect_true(grepl(
+    ".acsCytofRunComparisonMethods(",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "run-comparison-methods-sequentially",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    'methods = c("stimgate", "tailgate", "fbeta")',
+    content,
+    fixed = TRUE
+  ))
 })
