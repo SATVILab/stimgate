@@ -36,7 +36,7 @@
   )
 
   list(
-    cacheVersion = 1L,
+    cacheVersion = if (identical(method, "fbeta")) 2L else 1L,
     method = method,
     channelMap = .acsCytofChannelMap(),
     params = params

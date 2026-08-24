@@ -395,7 +395,15 @@ QMD runtime or unrelated plotting/orchestration code.
    Tailgate comparator functions are invoked directly from the `cytoUtils` package via
    `cytoUtils:::.cytokine_cutpoint()`. Do not reintroduce vendored legacy tailgate helpers
    under `scripts/r/` or `R/`.
-4. **Temporary migration status for `.getCpTg()` (issues #157/#158)**:
+4. **F-beta comparator provenance**:
+   `scripts/python/fbeta.py` is adapted from the Richards et al. (2014) positivity
+   threshold implementation. Preserve its F-beta scoring, standard parameters,
+   automatic bin count and moving-average smoothing. The deliberate StimGate-side
+   adaptation is that common histogram edges span both the stimulated and
+   unstimulated distributions; the published code derives them from the negative
+   distribution alone. Document any further deviation explicitly in the relevant
+   analyses and comparison issue.
+5. **Temporary migration status for `.getCpTg()` (issues #157/#158)**:
    This is a current-state note rather than a permanent design rule. Verify it against
    the current implementation and relevant issues before relying on it in later work.
    At the time of this update, remaining call sites are catalogued by
@@ -404,7 +412,7 @@ QMD runtime or unrelated plotting/orchestration code.
    `.gateBatchAll()`, but the current local-FDR cluster quantile implementation does
    not consume `gateTblCtrl`, so this branch is dead plumbing for current outputs.
    Single-positive gating branches have been removed per issue #196.
-5. **Simulation engine migration to `simcyto` (issues #288/#289/#291/#295 / umbrella #271)**:
+6. **Simulation engine migration to `simcyto` (issues #288/#289/#291/#295 / umbrella #271)**:
    Generic cytometry simulations, post-simulation transformations, and condition-mismatch
    controls are progressively migrating to the exported `simcyto` package API (e.g.
    `simcyto::simCytExperiment()`, `simcyto::simCytTransform*()`). `analysis/2-sim-bw-freq_bs-global.qmd`,
@@ -412,14 +420,14 @@ QMD runtime or unrelated plotting/orchestration code.
    `analysis/8-sim-compare-freq_bs-batch.qmd` use `simcyto` and do not source
    `functionsForBenchmarking-Cyt.R`. StimGate scientific scenario calculations, downstream
    comparison orchestration, and method evaluations remain StimGate-side under `scripts/r/`.
-6. **Standardised simulation and plotting controls across analysis QMDs (issue #299)**:
+7. **Standardised simulation and plotting controls across analysis QMDs (issue #299)**:
    All analysis QMDs follow a unified execution control pattern sourced from `scripts/r/analysis-runtime.R`:
    - YAML headers declare `params: run_simulations: true, run_plots: false` (along with any chunking parameters).
    - Setup chunks initialise `run_simulations` (defaulting to `FALSE` in interactive execution) and `run_plots` (defaulting to `TRUE` in interactive execution) via `.as_flag(.get_qmd_param_env(...))`.
    - Environment variables `RUN_SIMULATIONS` and `RUN_PLOTS` override YAML parameters and interactive default values.
    - Expensive simulation chunks are guarded with `if (isTRUE(run_simulations))`, and plotting chunks are guarded with `if (isTRUE(run_plots))`.
    - Collation chunks read cached output RDS files unconditionally so downstream summaries and diagnostics work whether simulations just ran or were loaded from cache.
-7. **Run-scoped staging, progress and promotion for expensive analysis simulations (issue #304)**:
+8. **Run-scoped staging, progress and promotion for expensive analysis simulations (issue #304)**:
    Expensive simulation analyses that support resumable per-scenario/per-chunk outputs must use shared run-management helpers from `scripts/r/analysis-runtime.R`:
    - Treat each logical run as a unique run ID (`analysis_run_id` QMD param or `ANALYSIS_RUN_ID` env var; auto-generated when absent).
    - Write run outputs to `cache/sim/<analysis-key>/staging/<YYYY-MM-DD>/<run-id>/...` and keep canonical outputs in `cache/sim/<analysis-key>/current/`.

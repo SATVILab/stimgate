@@ -1,3 +1,12 @@
+# Adapted from PositivityLib.py accompanying:
+# Richards et al. (2014), "Setting objective thresholds for rare event
+# detection in flow cytometry", Journal of Immunological Methods 409, 54-61.
+# https://doi.org/10.1016/j.jim.2014.04.002
+#
+# StimGate modification: histogram edges span the combined negative and
+# positive observations rather than the negative observations alone.  The
+# exact change is documented beside get_positivity_threshold().
+
 import os, sys, re
 import numpy as np
 import matplotlib as mpl
@@ -48,7 +57,13 @@ def get_positivity_threshold(neg,pos,channelIndex,beta=0.8,theta=2.0, width=10, 
     if numBins == None:
         numBins = int(np.sqrt(np.max([neg.shape[0],pos.shape[0]])))
 
-    pdfNeg, bins = np.histogram(neg, bins=numBins, normed=True)
+    # Richards et al. derive the histogram support from the negative sample.
+    # For the paired stim/unstim comparisons used here, that can discard the
+    # stimulated response tail when it extends beyond the observed unstimulated
+    # range.  Retain the published bin count and scoring procedure, but construct
+    # common bin edges over both samples so every event contributes to its pdf.
+    _, bins = np.histogram(np.concatenate([neg, pos]), bins=numBins)
+    pdfNeg, bins = np.histogram(neg, bins=bins, normed=True)
     pdfPos, bins = np.histogram(pos, bins=bins, normed=True)
 
     pdfNeg = move_mean(pdfNeg, window=width)
