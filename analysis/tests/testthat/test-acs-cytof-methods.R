@@ -2,6 +2,7 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
 script_gate <- file.path(root_dir, "scripts", "r", "acs_cytof-gate.R")
 script_methods <- file.path(root_dir, "scripts", "r", "acs_cytof-methods.R")
 script_manual <- file.path(root_dir, "scripts", "r", "acs_cytof-manual.R")
+qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
 
 .load_acs_method_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
@@ -86,7 +87,7 @@ test_that("comparator cache validation includes settings and sample count", {
   expect_false(env$.acsCytofCacheIsCurrent(cache, changed_settings, nSample = 10L))
 })
 
-test_that("ACS comparison methods are deliberately sequential and cache each method", {
+test_that("ACS methods stay sequential within each population and cache results", {
   env <- .load_acs_method_env()
   runner_body <- paste(
     deparse(body(env$.acsCytofRunComparisonMethods)),
@@ -97,6 +98,39 @@ test_that("ACS comparison methods are deliberately sequential and cache each met
   expect_false(grepl("future_map", runner_body, fixed = TRUE))
   expect_true(grepl(".acsCytofWriteComparatorCache", runner_body, fixed = TRUE))
   expect_true(grepl("Using cached", runner_body, fixed = TRUE))
+})
+
+test_that("ACS comparator populations run in parallel", {
+  qmd_lines <- readLines(qmd_path, warn = FALSE)
+  chunk_start <- grep(
+    "#| label: run-comparison-methods-in-parallel",
+    qmd_lines,
+    fixed = TRUE
+  )
+  expect_length(chunk_start, 1L)
+
+  chunk_end_offset <- which(
+    qmd_lines[(chunk_start + 1L):length(qmd_lines)] == "```"
+  )[1L]
+  expect_false(is.na(chunk_end_offset))
+
+  chunk_lines <- qmd_lines[
+    chunk_start:(chunk_start + chunk_end_offset)
+  ]
+  chunk_body <- paste(chunk_lines, collapse = "\n")
+
+  expect_true(grepl("furrr::future_map", chunk_body, fixed = TRUE))
+  expect_true(grepl(
+    ".acsCytofRunComparisonMethodsSafe",
+    chunk_body,
+    fixed = TRUE
+  ))
+  expect_true(grepl("future::multisession", chunk_body, fixed = TRUE))
+  expect_true(grepl(
+    "finally = future::plan(old_comparator_plan)",
+    chunk_body,
+    fixed = TRUE
+  ))
 })
 
 test_that("manual formatting uses the shared cytometry combination utilities", {
