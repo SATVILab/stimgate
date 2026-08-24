@@ -6,7 +6,7 @@ format:
     toc: true
 params:
   run_preprocessing: false
-  run_stimgate: false
+  run_stimgate: true
   run_comparators: true
   overwrite_comparator_cache: true
   run_plots: true
@@ -55,7 +55,7 @@ run_preprocessing_vec_by_pop <- c(
 run_stimgate <- .as_flag(.get_qmd_param_env(
   "run_stimgate",
   "RUN_STIMGATE",
-  TRUE
+  FALSE
 ))
 run_stimgate_vec_by_pop <- c(
   tcrgd = NULL %||% run_stimgate,
@@ -68,7 +68,7 @@ run_stimgate_vec_by_pop <- c(
 run_comparators <- .as_flag(.get_qmd_param_env(
   "run_comparators",
   "RUN_COMPARATORS",
-  TRUE
+  FALSE
 ))
 run_comparators_vec_by_pop <- c(
   tcrgd = NULL %||% run_comparators,
