@@ -7,7 +7,7 @@ format:
 params:
   run_preprocessing: false
   run_stimgate: false
-  run_comparators: false
+  run_comparators: true
   overwrite_comparator_cache: true
   run_plots: false
   tester_n_sample: 20
