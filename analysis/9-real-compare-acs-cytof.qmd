@@ -8,7 +8,6 @@ params:
   run_preprocessing: false
   run_stimgate: false
   run_comparators: true
-  overwrite_comparator_cache: true
   run_plots: true
   tester_n_sample: 20
   n_workers: 2
@@ -78,11 +77,6 @@ run_comparators_vec_by_pop <- c(
   nk_pre = NULL %||% run_comparators,
   b = NULL %||% run_comparators
 )
-overwrite_comparator_cache <- .as_flag(.get_qmd_param_env(
-  "overwrite_comparator_cache",
-  "OVERWRITE_COMPARATOR_CACHE",
-  TRUE
-))
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -150,6 +144,7 @@ path_scratch_base <- projr::projr_path_get(
   "acs_cytof",
   "scratch"
 )
+path_fbeta <- file.path(root_dir, "scripts", "python", "fbeta.py")
 ```
 
 ### Aim
@@ -205,7 +200,7 @@ tcrgd_comparison_tester <- .acsCytofRunComparisonMethods(
   runMethods = run_comparators,
   nSample = tester_n_sample,
   outputGroup = "tester",
-  overwrite = overwrite_comparator_cache
+  pathFbeta = path_fbeta
 )
 ```
 
@@ -282,10 +277,10 @@ if (isTRUE(run_stimgate)) {
 Tailgate and F-beta run concurrently across populations, using the same
 `n_workers` control as StimGate. Within each population, the two methods remain
 sequential so that they do not compete for the same GatingSet. Each method is
-saved immediately to its own `result.rds`; a later render reuses a complete
-cache when the sample count and fixed settings still match. Set
-`overwrite_comparator_cache` to `true` only when those method outputs need to
-be recomputed.
+saved immediately to its own `result.rds`. Whenever `run_comparators` is true,
+the previous F-beta and Tailgate results for that population are removed and
+both methods are recomputed. When `run_comparators` is false, existing results
+remain available to the downstream comparison and plotting sections.
 
 ```{r}
 #| label: run-comparison-methods-in-parallel
@@ -314,7 +309,7 @@ if (isTRUE(run_comparators)) {
             pathGsBase = path_gs_base,
             pathScratchBase = path_scratch_base,
             runMethods = run_comparators_vec_by_pop[[pop]],
-            overwrite = overwrite_comparator_cache
+            pathFbeta = path_fbeta
           )
         },
         .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)

@@ -1,5 +1,3 @@
-.simCompareCacheEnv <- new.env(parent = emptyenv())
-
 #' @keywords internal
 .simCompareAddMissingColumns <- function(.data, cols) {
   for (nm in names(cols)) {
@@ -183,6 +181,36 @@
   pathTmp
 }
 
+#' Load the fbeta Python implementation for one R run
+#'
+#' The returned environment contains Reticulate-backed Python objects and must
+#' remain local to the R process that created it. In particular, it must not be
+#' stored in a global cache that can be serialised to multisession workers.
+#'
+#' @keywords internal
+.simCompareFbetaEnvironment <- function(
+    pathFbeta = NULL,
+    patchPy2Compat = TRUE) {
+  if (!requireNamespace("reticulate", quietly = TRUE)) {
+    stop("reticulate is required to call fbeta.py.")
+  }
+
+  pathFbeta <- .simCompareFbetaPath(pathFbeta)
+  pathPyUse <- .simCompareFbetaCompatPath(
+    pathFbeta = pathFbeta,
+    patchPy2Compat = patchPy2Compat
+  )
+
+  pyEnv <- new.env(parent = emptyenv())
+  reticulate::source_python(pathPyUse, envir = pyEnv)
+
+  if (!exists("get_positivity_threshold", envir = pyEnv, inherits = FALSE)) {
+    stop("fbeta.py did not define get_positivity_threshold().")
+  }
+
+  pyEnv
+}
+
 #' Call the fbeta Python implementation via reticulate
 #'
 #' @keywords internal
@@ -191,6 +219,7 @@
     xStim,
     pathFbeta = NULL,
     patchPy2Compat = TRUE,
+    fbetaEnv = NULL,
     beta = 0.8,
     theta = 2,
     width = 10,
@@ -212,38 +241,17 @@
     ))
   }
 
-  pathFbeta <- .simCompareFbetaPath(pathFbeta)
-  pathInfo <- file.info(pathFbeta)
-  cacheName <- make.names(paste(
-    "fbeta",
-    normalizePath(pathFbeta, winslash = "/", mustWork = FALSE),
-    patchPy2Compat,
-    pathInfo$mtime,
-    sep = "_"
-  ))
-
-  if (!exists(cacheName, envir = .simCompareCacheEnv, inherits = FALSE)) {
-    pathPyUse <- .simCompareFbetaCompatPath(
+  if (is.null(fbetaEnv)) {
+    fbetaEnv <- .simCompareFbetaEnvironment(
       pathFbeta = pathFbeta,
       patchPy2Compat = patchPy2Compat
     )
-
-    pyEnv <- new.env(parent = emptyenv())
-    reticulate::source_python(pathPyUse, envir = pyEnv)
-
-    if (!exists("get_positivity_threshold", envir = pyEnv, inherits = FALSE)) {
-      stop("fbeta.py did not define get_positivity_threshold().")
-    }
-
-    assign(cacheName, pyEnv, envir = .simCompareCacheEnv)
   }
-
-  pyEnv <- get(cacheName, envir = .simCompareCacheEnv, inherits = FALSE)
 
   negMat <- matrix(xUns, ncol = 1L)
   posMat <- matrix(xStim, ncol = 1L)
 
-  out <- pyEnv$get_positivity_threshold(
+  out <- fbetaEnv$get_positivity_threshold(
     neg = negMat,
     pos = posMat,
     channelIndex = 0L,
@@ -600,6 +608,11 @@
   tailgateX <- match.arg(tailgateX)
   tailgateMethod <- match.arg(tailgateMethod)
 
+  fbetaEnv <- .simCompareFbetaEnvironment(
+    pathFbeta = pathFbeta,
+    patchPy2Compat = fbetaPatchPy2Compat
+  )
+
   truthTbl <- .simCompareTruthTable(
     labelsList = labelsList,
     nSample = nSample,
@@ -625,6 +638,7 @@
           xStim = xStim,
           pathFbeta = pathFbeta,
           patchPy2Compat = fbetaPatchPy2Compat,
+          fbetaEnv = fbetaEnv,
           beta = fbetaBeta,
           theta = fbetaTheta,
           width = fbetaWidth,
