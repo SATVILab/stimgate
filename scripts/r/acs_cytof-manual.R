@@ -370,6 +370,13 @@
   channels <- names(channelMap)
   channelsToKeep <- channels
   if (!is.null(cyt)) {
+    unknownCytokines <- setdiff(cyt, unname(channelMap))
+    if (length(unknownCytokines) > 0L) {
+      stop(
+        "Unknown ACS cytokine label(s): ",
+        paste(unknownCytokines, collapse = ", ")
+      )
+    }
     channelsToKeep <- channels[channelMap %in% cyt]
   }
 
@@ -409,6 +416,17 @@
   mapPopulation <- sampleMap |>
     dplyr::filter(.data$popCode == .env$popCode) |>
     dplyr::select(ind, SampleID, stim)
+  unmatchedIndex <- setdiff(unique(singleTbl$ind), mapPopulation$ind)
+  if (length(unmatchedIndex) > 0L) {
+    warning(
+      length(unmatchedIndex),
+      " ",
+      method,
+      " sample(s) in population '",
+      popCode,
+      "' could not be matched to the manual file and will be omitted."
+    )
+  }
 
   singleTbl |>
     dplyr::inner_join(mapPopulation, by = "ind") |>
@@ -544,6 +562,20 @@
     dplyr::filter(.data$stim != "uns")
 
   joinBy <- c("SampleID", "stim", "pop", "cyt")
+  unmatchedAuto <- autoTbl |>
+    dplyr::anti_join(manualTbl, by = joinBy)
+  unmatchedManual <- manualTbl |>
+    dplyr::anti_join(autoTbl, by = joinBy)
+  if (nrow(unmatchedAuto) > 0L || nrow(unmatchedManual) > 0L) {
+    warning(
+      "The manual join omitted ",
+      nrow(unmatchedAuto),
+      " automated row(s) and ",
+      nrow(unmatchedManual),
+      " manual row(s) with no matching key."
+    )
+  }
+
   methodLevels <- c("stimgate", "tailgate", "fbeta")
   popLevels <- stats::na.omit(unname(.acsCytofManualPopulationMap()))
   cytLevels <- unname(.acsCytofChannelMap())
