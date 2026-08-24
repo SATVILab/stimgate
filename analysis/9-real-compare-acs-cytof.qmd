@@ -55,7 +55,7 @@ run_preprocessing_vec_by_pop <- c(
 run_stimgate <- .as_flag(.get_qmd_param_env(
   "run_stimgate",
   "RUN_STIMGATE",
-  FALSE
+  TRUE
 ))
 run_stimgate_vec_by_pop <- c(
   tcrgd = NULL %||% run_stimgate,
