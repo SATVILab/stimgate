@@ -76,20 +76,25 @@
 }
 
 .comp_against_manual_cyt_format_manual <- function(
-    fn,
-    pop = NULL,
-    cyt = NULL) {
+  fn,
+  pop = NULL,
+  cyt = NULL
+) {
   manualObject <- .acsCytofManualRead(fn)
-  idCol <- manualObject$idCol
 
-  manualTbl <- manualObject$data |>
-    dplyr::mutate(.sourceId = as.character(.data[[idCol]])) |>
-    dplyr::left_join(
-      manualObject$sampleLookup |>
-        dplyr::select(.sourceId = sourceId, SampleID, stim),
-      by = ".sourceId"
+  manualTblInit <- manualObject$data |>
+    dplyr::rename(fn = `...1`)
+  x <- manualTblInit[[1]]
+  sampleidVec <- sub("^([^_]+_[^_]+).*", "\\1", x)
+  stimVec <- sub(".*_", "", x)
+  manualTbl <- manualTblInit |>
+    dplyr::mutate(
+      SampleID = sampleidVec,
+      stim = dplyr::if_else(stimVec == "mtbaux", "mtb", stimVec)
     ) |>
-    dplyr::select(-dplyr::all_of(idCol))
+    dplyr::select(-fn) |>
+    dplyr::select(SampleID, stim, dplyr::everything())
+
   names(manualTbl) <- stringr::str_remove(
     names(manualTbl),
     " FreqofParent$"
@@ -97,7 +102,7 @@
 
   manualTbl <- manualTbl |>
     tidyr::pivot_longer(
-      cols = -c(.sourceId, SampleID, stim),
+      cols = -c(SampleID, stim),
       names_to = "popCyt",
       values_to = "freq_stim_man"
     ) |>
@@ -192,10 +197,8 @@
   fcsKey <- .acsCytofManualNormaliseId(fcs)
   exactIndex <- which(
     nzchar(sampleLookup$sourceKey) &
-      (
-        stringr::str_detect(fcsKey, stringr::fixed(sampleLookup$sourceKey)) |
-          stringr::str_detect(sampleLookup$sourceKey, stringr::fixed(fcsKey))
-      )
+      (stringr::str_detect(fcsKey, stringr::fixed(sampleLookup$sourceKey)) |
+        stringr::str_detect(sampleLookup$sourceKey, stringr::fixed(fcsKey)))
   )
   if (length(exactIndex) == 1L) {
     return(exactIndex)
@@ -236,15 +239,20 @@
 }
 
 .acsCytofManualSampleMapFromFcs <- function(
-    pathFcsBase,
-    popCode,
-    sampleLookup) {
+  pathFcsBase,
+  popCode,
+  sampleLookup
+) {
   fcsFiles <- .acsCytofFcsFiles(file.path(pathFcsBase, popCode))
+  fcsFilesClean <- DataTidyACSCyTOFFAUST::clean_fcs_for_matching(
+    fcsFiles |> basename()
+  )
   lookupIndex <- vapply(
-    fcsFiles,
-    .acsCytofManualMatchOneFcs,
-    integer(1),
-    sampleLookup = sampleLookup
+    fcsFilesClean,
+    function(x) {
+      which(sampleLookup$MatchFCSName == x)
+    },
+    integer(1)
   )
   matched <- sampleLookup[lookupIndex, , drop = FALSE]
 
@@ -252,7 +260,7 @@
     popCode = popCode,
     ind = as.character(seq_along(fcsFiles)),
     SampleID = matched$SampleID,
-    stim = matched$stim
+    stim = matched$Stim
   ) |>
     dplyr::filter(!is.na(.data$SampleID), !is.na(.data$stim))
 }
@@ -290,10 +298,11 @@
 }
 
 .acsCytofManualMethodPath <- function(
-    pathScratchBase,
-    popCode,
-    method,
-    outputGroup = NULL) {
+  pathScratchBase,
+  popCode,
+  method,
+  outputGroup = NULL
+) {
   pathParts <- c(
     pathScratchBase,
     if (!is.null(outputGroup)) outputGroup,
@@ -345,15 +354,20 @@
 }
 
 .acsCytofStatsSingleMarkers <- function(
-    statsTbl,
-    method,
-    popCode,
-    popLabel,
-    sampleMap,
-    cyt = NULL) {
+  statsTbl,
+  method,
+  popCode,
+  popLabel,
+  sampleMap,
+  cyt = NULL
+) {
   requiredColumns <- c(
-    "ind", "cytCombn", "countStim", "nCellStim",
-    "countUns", "nCellUns"
+    "ind",
+    "cytCombn",
+    "countStim",
+    "nCellStim",
+    "countUns",
+    "nCellUns"
   )
   missingColumns <- setdiff(requiredColumns, names(statsTbl))
   if (length(missingColumns) > 0L) {
@@ -388,8 +402,15 @@
     )
   groupColumns <- intersect(
     c(
-      "gateName", "method", "popCode", "pop", "batch",
-      "ind", "indUns", "nCellStim", "nCellUns"
+      "gateName",
+      "method",
+      "popCode",
+      "pop",
+      "batch",
+      "ind",
+      "indUns",
+      "nCellStim",
+      "nCellUns"
     ),
     names(statsTbl)
   )
@@ -456,15 +477,16 @@
 }
 
 .acsCytofManualAutoTable <- function(
-    pathScratchBase,
-    pathFcsBase,
-    fn,
-    pop = NULL,
-    cyt = NULL,
-    methods = c("stimgate", "tailgate", "fbeta"),
-    outputGroup = NULL,
-    gateName = "loc_min",
-    sampleMap = NULL) {
+  pathScratchBase,
+  pathFcsBase,
+  fn,
+  pop = NULL,
+  cyt = NULL,
+  methods = c("stimgate", "tailgate", "fbeta"),
+  outputGroup = NULL,
+  gateName = "loc_min",
+  sampleMap = NULL
+) {
   methods <- match.arg(
     methods,
     choices = c("stimgate", "tailgate", "fbeta"),
@@ -483,30 +505,31 @@
   }
 
   if (is.null(pop)) {
-    hasStimGate <- vapply(popCodes, function(popCode) {
-      dir.exists(.acsCytofManualMethodPath(
-        pathScratchBase,
-        popCode,
-        method = "stimgate",
-        outputGroup = outputGroup
-      ))
-    }, logical(1))
+    hasStimGate <- vapply(
+      popCodes,
+      function(popCode) {
+        dir.exists(.acsCytofManualMethodPath(
+          pathScratchBase,
+          popCode,
+          method = "stimgate",
+          outputGroup = outputGroup
+        ))
+      },
+      logical(1)
+    )
     popCodes <- popCodes[hasStimGate]
   }
   if (length(popCodes) == 0L) {
     stop("No requested ACS population has an automated and manual result.")
   }
 
-  if (is.null(sampleMap)) {
-    sampleLookup <- .acsCytofManualRead(fn)$sampleLookup
-    sampleMap <- purrr::map_dfr(popCodes, function(popCode) {
-      .acsCytofManualSampleMapFromFcs(
-        pathFcsBase = pathFcsBase,
-        popCode = popCode,
-        sampleLookup = sampleLookup
-      )
-    })
-  }
+  sampleMap <- purrr::map_dfr(popCodes, function(popCode) {
+    .acsCytofManualSampleMapFromFcs(
+      pathFcsBase = pathFcsBase,
+      popCode = popCode,
+      sampleLookup = sampleMap
+    )
+  })
   sampleMap <- .acsCytofManualValidateSampleMap(sampleMap, popCodes)
 
   purrr::map_dfr(popCodes, function(popCode) {
@@ -534,15 +557,16 @@
 }
 
 .acsCytofManualComparisonTable <- function(
-    fn,
-    pathScratchBase,
-    pathFcsBase,
-    pop = NULL,
-    cyt = NULL,
-    methods = c("stimgate", "tailgate", "fbeta"),
-    outputGroup = NULL,
-    gateName = "loc_min",
-    sampleMap = NULL) {
+  fn,
+  pathScratchBase,
+  pathFcsBase,
+  pop = NULL,
+  cyt = NULL,
+  methods = c("stimgate", "tailgate", "fbeta"),
+  outputGroup = NULL,
+  gateName = "loc_min",
+  sampleMap = NULL
+) {
   autoTbl <- .acsCytofManualAutoTable(
     pathScratchBase = pathScratchBase,
     pathFcsBase = pathFcsBase,
@@ -687,9 +711,10 @@
 }
 
 .acsCytofManualSave <- function(
-    comparisonTbl,
-    pathDirSave,
-    savePlots = TRUE) {
+  comparisonTbl,
+  pathDirSave,
+  savePlots = TRUE
+) {
   dir.create(pathDirSave, recursive = TRUE, showWarnings = FALSE)
   summaryTbl <- .acsCytofManualSummaryTable(comparisonTbl)
 
@@ -735,17 +760,18 @@
 }
 
 comp_against_manual_cyt <- function(
-    fn,
-    path_scratch_base,
-    path_fcs_base,
-    pop = NULL,
-    cyt = NULL,
-    methods = c("stimgate", "tailgate", "fbeta"),
-    output_group = NULL,
-    gate_name = "loc_min",
-    sample_map = NULL,
-    path_dir_save = NULL,
-    save_plots = TRUE) {
+  fn,
+  path_scratch_base,
+  path_fcs_base,
+  pop = NULL,
+  cyt = NULL,
+  methods = c("stimgate", "tailgate", "fbeta"),
+  output_group = NULL,
+  gate_name = "loc_min",
+  sample_map = NULL,
+  path_dir_save = NULL,
+  save_plots = TRUE
+) {
   comparisonTbl <- .acsCytofManualComparisonTable(
     fn = fn,
     pathScratchBase = path_scratch_base,

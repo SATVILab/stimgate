@@ -6,10 +6,10 @@ format:
     toc: true
 params:
   run_preprocessing: false
-  run_stimgate: true
-  run_comparators: true
+  run_stimgate: false
+  run_comparators: false
   overwrite_comparator_cache: true
-  run_plots: true
+  run_plots: false
   tester_n_sample: 20
   n_workers: 2
 ---
@@ -131,29 +131,8 @@ if (
     source(fn)
   }
 }
-```
 
-### Aim
-
-Validate StimGate on the ACS CyTOF dataset and compare its estimated
-background-subtracted response frequencies with Tailgate and F-beta.
-
-## Gating
-
-The TCRgd population is first run on a limited set of complete five-sample
-batches. If that tester completes successfully, the same preprocessing and
-StimGate flow is applied to every population configured in `pop_vec`.
-
-The reusable helpers fix the six cytokine channels and the method settings.
-StimGate uses `bwMtd = "hpi1"` and `gateCombn = "min"`. F-beta uses its standard
-parameters (`beta = 0.8`, `theta = 2`, `width = 10` and automatic bin count).
-Tailgate uses the stimulated distribution, automatic bandwidth estimation and
-automatic tolerance tuning.
-
-### Common paths
-
-```{r}
-#| label: settings-common-gating-paths
+# common paths
 path_fcs_base <- projr::projr_path_get(
   "raw-data-large",
   "comparison_data", "acscytof", "fcs"
@@ -172,6 +151,23 @@ path_scratch_base <- projr::projr_path_get(
   "scratch"
 )
 ```
+
+### Aim
+
+Validate StimGate on the ACS CyTOF dataset and compare its estimated
+background-subtracted response frequencies with Tailgate and F-beta.
+
+## Gating
+
+The TCRgd population is first run on a limited set of complete five-sample
+batches. If that tester completes successfully, the same preprocessing and
+StimGate flow is applied to every population configured in `pop_vec`.
+
+The reusable helpers fix the six cytokine channels and the method settings.
+StimGate uses `bwMtd = "hpi1"` and `gateCombn = "min"`. F-beta uses its standard
+parameters (`beta = 0.8`, `theta = 2`, `width = 10` and automatic bin count).
+Tailgate uses the stimulated distribution, automatic bandwidth estimation and
+automatic tolerance tuning.
 
 ### TCRgd tester
 
@@ -359,6 +355,10 @@ if (dir.exists(path_manual_output)) {
   unlink(path_manual_output, recursive = TRUE)
 }
 dir.create(path_manual_output, showWarnings = FALSE, recursive = TRUE)
+data("fn_to_sampleid_map", package = "DataTidyACSCyTOFFAUST")
+#debugonce(comp_against_manual_cyt)
+source("/scratch/01463748/projects/2024/stimgate/stimgate/scripts/r/acs_cytof-manual.R")
+
 manual_comparison_tbl <- comp_against_manual_cyt(
   fn = "Cytokines_10Jun2021_2.csv",
   path_scratch_base = path_scratch_base,
@@ -366,7 +366,8 @@ manual_comparison_tbl <- comp_against_manual_cyt(
   pop = pop_vec,
   methods = c("stimgate", "tailgate", "fbeta"),
   path_dir_save = path_manual_output,
-  save_plots = run_plots
+  save_plots = run_plots,
+  sample_map = fn_to_sampleid_map
 )
 manual_summary_tbl <- attr(manual_comparison_tbl, "summary")
 ```
