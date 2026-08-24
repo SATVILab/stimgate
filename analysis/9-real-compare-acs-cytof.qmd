@@ -326,11 +326,17 @@ if (isTRUE(run_comparators)) {
       logical(1)
     )
   ]
+
   if (length(failed_comparator_pop_vec) > 0L) {
+    failure_messages <- vapply(
+      comparison_method_runs[failed_comparator_pop_vec],
+      function(x) paste0(x$pop, ": ", x$error),
+      character(1)
+    )
+
     stop(
-      "ACS Tailgate/F-beta runs failed for: ",
-      paste(failed_comparator_pop_vec, collapse = ", "),
-      ". See the returned error entries in comparison_method_runs."
+      "ACS Tailgate/F-beta runs failed:\n",
+      paste(failure_messages, collapse = "\n")
     )
   }
 }
