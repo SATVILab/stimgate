@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+install_stimgate=FALSE
+
 # get location of script
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 project_root=$(cd -- "$script_dir/../.." &> /dev/null && pwd)
@@ -50,86 +52,93 @@ chunked_qmd_stem_for_script() {
 tmp_before="$(mktemp)"
 trap 'rm -f "$tmp_before"' EXIT
 
-echo "Recording currently active Slurm jobs"
-squeue -h -u "$USER" -o "%A" | sort -u > "$tmp_before"
+if [[ "$install_stimgate" == "TRUE" ]]; then
+  echo "Installing stimgate"
+  slurm-sbatch "$install_script"
 
-echo "Submitting install job"
-slurm-sbatch "$install_script"
+  echo "Recording currently active Slurm jobs"
+  squeue -h -u "$USER" -o "%A" | sort -u > "$tmp_before"
 
-echo "Finding newly submitted install job"
+  echo "Submitting install job"
+  slurm-sbatch "$install_script"
 
-install_jobid=""
+  echo "Finding newly submitted install job"
 
-for attempt in {1..30}; do
-  install_jobid="$(
-    awk '
-      FNR == NR {
-        before[$1] = 1
-        next
-      }
+  install_jobid=""
 
-      $2 == "install" && !($1 in before) {
-        print $1
-      }
-    ' "$tmp_before" <(squeue -h -u "$USER" -o "%A %j") | tail -n 1
-  )"
+  for attempt in {1..30}; do
+    install_jobid="$(
+      awk '
+        FNR == NR {
+          before[$1] = 1
+          next
+        }
 
-  if [[ -n "$install_jobid" ]]; then
-    break
-  fi
-
-  sleep 2
-done
-
-if [[ -z "$install_jobid" ]]; then
-  echo "ERROR: Could not identify the new install job."
-  echo "Current jobs:"
-  squeue -u "$USER"
-  exit 1
-fi
-
-echo "Install job ID: $install_jobid"
-echo "Waiting for install job to finish"
-
-while squeue -h -j "$install_jobid" 2>/dev/null | grep -q .; do
-  date
-  squeue -j "$install_jobid"
-  sleep "$poll_seconds"
-done
-
-echo "Install job has left the queue"
-echo "Checking final state"
-
-install_state=""
-
-if command -v sacct >/dev/null 2>&1; then
-  for attempt in {1..20}; do
-    install_state="$(
-      sacct -j "$install_jobid" -n -X -o State 2>/dev/null |
-        awk 'NF { print $1; exit }'
+        $2 == "install" && !($1 in before) {
+          print $1
+        }
+      ' "$tmp_before" <(squeue -h -u "$USER" -o "%A %j") | tail -n 1
     )"
 
-    if [[ -n "$install_state" ]]; then
+    if [[ -n "$install_jobid" ]]; then
       break
     fi
 
-    sleep 3
+    sleep 2
   done
+
+  if [[ -z "$install_jobid" ]]; then
+    echo "ERROR: Could not identify the new install job."
+    echo "Current jobs:"
+    squeue -u "$USER"
+    exit 1
+  fi
+
+  echo "Install job ID: $install_jobid"
+  echo "Waiting for install job to finish"
+
+  while squeue -h -j "$install_jobid" 2>/dev/null | grep -q .; do
+    date
+    squeue -j "$install_jobid"
+    sleep "$poll_seconds"
+  done
+
+  echo "Install job has left the queue"
+  echo "Checking final state"
+
+  install_state=""
+
+  if command -v sacct >/dev/null 2>&1; then
+    for attempt in {1..20}; do
+      install_state="$(
+        sacct -j "$install_jobid" -n -X -o State 2>/dev/null |
+          awk 'NF { print $1; exit }'
+      )"
+
+      if [[ -n "$install_state" ]]; then
+        break
+      fi
+
+      sleep 3
+    done
+  else
+    echo "WARNING: sacct not available, so final install status cannot be checked."
+  fi
+
+  if [[ -n "$install_state" && "$install_state" != "COMPLETED" ]]; then
+    echo "ERROR: install job did not complete successfully."
+    echo "Final state: $install_state"
+    echo
+    echo "sacct output:"
+    sacct -j "$install_jobid" -o JobID,JobName,State,ExitCode,Elapsed
+    exit 1
+  fi
+
+  if [[ "$install_state" == "COMPLETED" ]]; then
+    echo "Install job completed successfully"
+  fi
 else
-  echo "WARNING: sacct not available, so final install status cannot be checked."
-fi
-
-if [[ -n "$install_state" && "$install_state" != "COMPLETED" ]]; then
-  echo "ERROR: install job did not complete successfully."
-  echo "Final state: $install_state"
-  echo
-  echo "sacct output:"
-  sacct -j "$install_jobid" -o JobID,JobName,State,ExitCode,Elapsed
-  exit 1
-fi
-
-if [[ "$install_state" == "COMPLETED" ]]; then
-  echo "Install job completed successfully"
+  echo "Skipping stimgate installation"
 fi
 
 echo "Submitting downstream jobs"

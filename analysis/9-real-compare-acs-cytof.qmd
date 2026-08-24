@@ -5,11 +5,11 @@ format:
     embed-resources: true
     toc: true
 params:
-  run_preprocessing: true
-  run_stimgate: true
+  run_preprocessing: false
+  run_stimgate: false
   run_comparators: true
-  overwrite_comparator_cache: false
-  run_plots: false
+  overwrite_comparator_cache: true
+  run_plots: true
   tester_n_sample: 20
   n_workers: 2
 ---
@@ -81,12 +81,12 @@ run_comparators_vec_by_pop <- c(
 overwrite_comparator_cache <- .as_flag(.get_qmd_param_env(
   "overwrite_comparator_cache",
   "OVERWRITE_COMPARATOR_CACHE",
-  FALSE
+  TRUE
 ))
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
-  FALSE
+  TRUE
 ))
 run_plots_vec_by_pop <- c(
   tcrgd = NULL %||% run_plots,
@@ -327,20 +327,26 @@ manual file has no matching population.
 
 ```{r}
 #| label: format-manual-comparison
-path_manual_output <- file.path(
-  path_scratch_base,
-  "manual-comparison"
-)
-manual_comparison_tbl <- comp_against_manual_cyt(
-  fn = "Cytokines_10Jun2021_2.csv",
-  path_scratch_base = path_scratch_base,
-  path_fcs_base = path_fcs_base,
-  pop = pop_vec,
-  methods = c("stimgate", "tailgate", "fbeta"),
-  path_dir_save = path_manual_output,
-  save_plots = run_plots
-)
-manual_summary_tbl <- attr(manual_comparison_tbl, "summary")
+if (isTRUE(run_plots)) {
+  path_manual_output <- file.path(
+    path_scratch_base,
+    "manual-comparison"
+  )
+  if (dir.exists(path_manual_output)) {
+    unlink(path_manual_output, recursive = TRUE)
+  }
+  dir.create(path_manual_output, showWarnings = FALSE, recursive = TRUE)
+  manual_comparison_tbl <- comp_against_manual_cyt(
+    fn = "Cytokines_10Jun2021_2.csv",
+    path_scratch_base = path_scratch_base,
+    path_fcs_base = path_fcs_base,
+    pop = pop_vec,
+    methods = c("stimgate", "tailgate", "fbeta"),
+    path_dir_save = path_manual_output,
+    save_plots = run_plots
+  )
+  manual_summary_tbl <- attr(manual_comparison_tbl, "summary")
+}
 ```
 
 ## Output tables and figures
@@ -359,14 +365,16 @@ manual_summary_tbl
 
 ```{r}
 #| label: plot-manual-comparison
-#| eval: run_plots
-.acsCytofManualPlotScatter(manual_comparison_tbl)
+if (isTRUE(run_plots)) {
+  .acsCytofManualPlotScatter(manual_comparison_tbl)
+}
 ```
 
 ### Relative error by method
 
 ```{r}
 #| label: plot-manual-relative-error
-#| eval: run_plots
-.acsCytofManualPlotRelativeError(manual_comparison_tbl)
+if (isTRUE(run_plots)) {
+  .acsCytofManualPlotRelativeError(manual_comparison_tbl)
+}
 ```
