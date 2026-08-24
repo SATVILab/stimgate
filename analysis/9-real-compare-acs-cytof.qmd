@@ -9,7 +9,7 @@ params:
   run_stimgate: false
   run_comparators: true
   overwrite_comparator_cache: true
-  run_plots: false
+  run_plots: true
   tester_n_sample: 20
   n_workers: 2
 ---
@@ -361,8 +361,6 @@ if (dir.exists(path_manual_output)) {
 }
 dir.create(path_manual_output, showWarnings = FALSE, recursive = TRUE)
 data("fn_to_sampleid_map", package = "DataTidyACSCyTOFFAUST")
-#debugonce(comp_against_manual_cyt)
-source("/scratch/01463748/projects/2024/stimgate/stimgate/scripts/r/acs_cytof-manual.R")
 
 manual_comparison_tbl <- comp_against_manual_cyt(
   fn = "Cytokines_10Jun2021_2.csv",
