@@ -92,7 +92,7 @@ test_that("analysis 9 uses one runner for the tester and configured populations"
     fixed = TRUE
   ))
   expect_true(grepl(
-    "run-comparison-methods-sequentially",
+    "run-comparison-methods-in-parallel",
     content,
     fixed = TRUE
   ))

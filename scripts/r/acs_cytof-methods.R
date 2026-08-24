@@ -165,68 +165,59 @@
   xUns,
   xStim,
   settings,
-  pathFbeta = NULL
+  pathFbeta = NULL,
+  fbetaEnv = NULL
 ) {
-  thresholdObj <- tryCatch(
-    {
-      if (identical(method, "fbeta")) {
-        if (
-          !exists(
-            ".simCompareFbetaThreshold",
-            mode = "function",
-            inherits = TRUE
-          )
-        ) {
-          stop("Source scripts/r/sim-compare-freq_bs.R before running F-beta.")
-        }
-        do.call(
-          .simCompareFbetaThreshold,
-          c(
-            list(
-              xUns = xUns,
-              xStim = xStim,
-              pathFbeta = pathFbeta
-            ),
-            settings$params
-          )
-        )
-      } else {
-        if (
-          !exists(
-            ".simCompareTailgateThreshold",
-            mode = "function",
-            inherits = TRUE
-          )
-        ) {
-          stop(
-            "Source scripts/r/sim-compare-freq_bs.R before running Tailgate."
-          )
-        }
-        do.call(
-          .simCompareTailgateThreshold,
-          list(
-            x = xStim,
-            adjust = settings$params$adjust,
-            bandwidth = settings$params$bandwidth,
-            numPeaks = settings$params$numPeaks,
-            refPeak = settings$params$refPeak,
-            method = settings$params$derivativeMethod,
-            tol = settings$params$tol,
-            side = settings$params$side,
-            strict = settings$params$strict,
-            autoTol = settings$params$autoTol
-          )
-        )
-      }
-    },
-    error = function(e) {
-      list(
-        threshold = NA_real_,
-        thresholdMetric = NA_real_,
-        thresholdOrigin = paste0("error: ", conditionMessage(e))
+  thresholdObj <- if (identical(method, "fbeta")) {
+    if (
+      !exists(
+        ".simCompareFbetaThreshold",
+        mode = "function",
+        inherits = TRUE
+      )
+    ) {
+      stop("Source scripts/r/sim-compare-freq_bs.R before running F-beta.")
+    }
+    do.call(
+      .simCompareFbetaThreshold,
+      c(
+        list(
+          xUns = xUns,
+          xStim = xStim,
+          pathFbeta = pathFbeta,
+          fbetaEnv = fbetaEnv
+        ),
+        settings$params
+      )
+    )
+  } else {
+    if (
+      !exists(
+        ".simCompareTailgateThreshold",
+        mode = "function",
+        inherits = TRUE
+      )
+    ) {
+      stop(
+        "Source scripts/r/sim-compare-freq_bs.R before running Tailgate."
       )
     }
-  )
+    do.call(
+      .simCompareTailgateThreshold,
+      list(
+        x = xStim,
+        adjust = settings$params$adjust,
+        bandwidth = settings$params$bandwidth,
+        numPeaks = settings$params$numPeaks,
+        refPeak = settings$params$refPeak,
+        method = settings$params$derivativeMethod,
+        tol = settings$params$tol,
+        side = settings$params$side,
+        strict = settings$params$strict,
+        autoTol = settings$params$autoTol
+      )
+    )
+  }
 
   thresholdRaw <- suppressWarnings(as.numeric(thresholdObj$threshold))[[1]]
   fallbackUsed <- !is.finite(thresholdRaw)
@@ -267,6 +258,23 @@
   settings <- .acsCytofComparatorSettings(method)
   channelMap <- settings$channelMap
   channels <- names(channelMap)
+  fbetaEnv <- if (identical(method, "fbeta")) {
+    if (
+      !exists(
+        ".simCompareFbetaEnvironment",
+        mode = "function",
+        inherits = TRUE
+      )
+    ) {
+      stop("Source scripts/r/sim-compare-freq_bs.R before running F-beta.")
+    }
+    .simCompareFbetaEnvironment(
+      pathFbeta = pathFbeta,
+      patchPy2Compat = settings$params$patchPy2Compat
+    )
+  } else {
+    NULL
+  }
 
   resultList <- purrr::imap(batchList, function(indBatch, batchIndex) {
     indUns <- indBatch[[1]]
@@ -289,7 +297,8 @@
           xUns = xUns[, i],
           xStim = xStim[, i],
           settings = settings,
-          pathFbeta = pathFbeta
+          pathFbeta = pathFbeta,
+          fbetaEnv = fbetaEnv
         ) |>
           dplyr::mutate(
             method = .env$method,
@@ -417,6 +426,28 @@
   invisible(path)
 }
 
+.acsCytofRemoveComparatorResults <- function(
+  paths,
+  methods = c("fbeta", "tailgate")
+) {
+  pathResultVec <- unname(unlist(paths[methods], use.names = FALSE))
+  pathResultVec <- pathResultVec[file.exists(pathResultVec)]
+  if (length(pathResultVec) == 0L) {
+    return(invisible(character()))
+  }
+
+  unlink(pathResultVec)
+  pathRemaining <- pathResultVec[file.exists(pathResultVec)]
+  if (length(pathRemaining) > 0L) {
+    stop(
+      "Could not remove previous comparator result(s): ",
+      paste(pathRemaining, collapse = ", ")
+    )
+  }
+
+  invisible(pathResultVec)
+}
+
 .acsCytofReadComparatorCache <- function(
   path,
   method,
@@ -477,7 +508,6 @@
   runMethods,
   nSample = NULL,
   outputGroup = NULL,
-  overwrite = FALSE,
   pathFbeta = NULL
 ) {
   paths <- .acsCytofPopulationPaths(
@@ -525,23 +555,9 @@
   }
   batchList <- .acsCytofBatchList(nSampleActual)
 
-  resultList <- lapply(methodVec, function(method) {
-    pathCache <- paths[[method]]
-    settings <- .acsCytofComparatorSettings(method)
-    if (file.exists(pathCache) && !isTRUE(overwrite)) {
-      cached <- tryCatch(readRDS(pathCache), error = function(e) NULL)
-      if (
-        .acsCytofCacheIsCurrent(
-          cached,
-          settings = settings,
-          nSample = nSampleActual
-        )
-      ) {
-        message("Using cached ", method, " result for ", pop, ".")
-        return(cached)
-      }
-    }
+  .acsCytofRemoveComparatorResults(paths = paths, methods = methodVec)
 
+  resultList <- lapply(methodVec, function(method) {
     message("Running ", method, " for ", pop, ".")
     result <- .acsCytofRunComparator(
       gs = gs,
@@ -550,7 +566,7 @@
       batchList = batchList,
       pathFbeta = pathFbeta
     )
-    .acsCytofWriteComparatorCache(result, pathCache)
+    .acsCytofWriteComparatorCache(result, paths[[method]])
     result
   })
   names(resultList) <- methodVec

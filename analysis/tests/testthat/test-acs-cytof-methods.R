@@ -55,6 +55,56 @@ test_that("F-beta histogram support includes the stimulated response tail", {
   )
 })
 
+test_that("F-beta does not retain Python objects in a global R cache", {
+  skip_if_not_installed("reticulate")
+
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_compare, local = env)
+
+  expect_false(exists(
+    ".simCompareCacheEnv",
+    envir = env,
+    inherits = FALSE
+  ))
+
+  fbeta_env <- env$.simCompareFbetaEnvironment(
+    pathFbeta = script_fbeta
+  )
+  out <- env$.simCompareFbetaThreshold(
+    xUns = seq(0, 1, length.out = 400L),
+    xStim = c(seq(0, 1, length.out = 350L), rep(4, 50L)),
+    pathFbeta = script_fbeta,
+    fbetaEnv = fbeta_env,
+    width = 2L,
+    numBins = 20L
+  )
+
+  expect_true(is.finite(out$threshold))
+  expect_false(exists(
+    ".simCompareCacheEnv",
+    envir = env,
+    inherits = FALSE
+  ))
+})
+
+test_that("comparator execution errors are not converted into fallback gates", {
+  env <- .load_acs_method_env()
+  env$.simCompareFbetaThreshold <- function(...) {
+    stop("reticulate worker failure")
+  }
+
+  expect_error(
+    env$.acsCytofThresholdOne(
+      method = "fbeta",
+      xUns = c(0, 1),
+      xStim = c(0, 2),
+      settings = env$.acsCytofComparatorSettings("fbeta"),
+      fbetaEnv = new.env(parent = emptyenv())
+    ),
+    "reticulate worker failure"
+  )
+})
+
 test_that("thresholded cells are saved as a complete combination table", {
   env <- .load_acs_method_env()
   channels <- c("A", "B")
@@ -114,7 +164,32 @@ test_that("comparator cache validation includes settings and sample count", {
   expect_false(env$.acsCytofCacheIsCurrent(cache, changed_settings, nSample = 10L))
 })
 
-test_that("ACS methods stay sequential within each population and cache results", {
+test_that("requested comparator runs remove both previous result files", {
+  env <- .load_acs_method_env()
+  path_dir <- tempfile("acs-comparator-results-")
+  dir.create(path_dir, recursive = TRUE)
+  withr::defer(unlink(path_dir, recursive = TRUE))
+
+  paths <- list(
+    fbeta = file.path(path_dir, "fbeta", "result.rds"),
+    tailgate = file.path(path_dir, "tailgate", "result.rds"),
+    gs = file.path(path_dir, "gs")
+  )
+  dir.create(dirname(paths$fbeta), recursive = TRUE)
+  dir.create(dirname(paths$tailgate), recursive = TRUE)
+  saveRDS("old fbeta", paths$fbeta)
+  saveRDS("old tailgate", paths$tailgate)
+  writeLines("keep", paths$gs)
+
+  removed <- env$.acsCytofRemoveComparatorResults(paths)
+
+  expect_setequal(removed, c(paths$fbeta, paths$tailgate))
+  expect_false(file.exists(paths$fbeta))
+  expect_false(file.exists(paths$tailgate))
+  expect_true(file.exists(paths$gs))
+})
+
+test_that("ACS methods stay sequential and always replace previous results", {
   env <- .load_acs_method_env()
   runner_body <- paste(
     deparse(body(env$.acsCytofRunComparisonMethods)),
@@ -124,11 +199,24 @@ test_that("ACS methods stay sequential within each population and cache results"
   expect_true(grepl("lapply(methodVec", runner_body, fixed = TRUE))
   expect_false(grepl("future_map", runner_body, fixed = TRUE))
   expect_true(grepl(".acsCytofWriteComparatorCache", runner_body, fixed = TRUE))
-  expect_true(grepl("Using cached", runner_body, fixed = TRUE))
+  expect_true(grepl(
+    ".acsCytofRemoveComparatorResults",
+    runner_body,
+    fixed = TRUE
+  ))
+  expect_false(grepl("Using cached", runner_body, fixed = TRUE))
+  expect_false("overwrite" %in% names(formals(
+    env$.acsCytofRunComparisonMethods
+  )))
 })
 
 test_that("ACS comparator populations run in parallel", {
   qmd_lines <- readLines(qmd_path, warn = FALSE)
+  expect_false(any(grepl(
+    "overwrite_comparator_cache",
+    qmd_lines,
+    fixed = TRUE
+  )))
   chunk_start <- grep(
     "#| label: run-comparison-methods-in-parallel",
     qmd_lines,
@@ -153,6 +241,7 @@ test_that("ACS comparator populations run in parallel", {
     fixed = TRUE
   ))
   expect_true(grepl("future::multisession", chunk_body, fixed = TRUE))
+  expect_true(grepl("pathFbeta = path_fbeta", chunk_body, fixed = TRUE))
   expect_true(grepl(
     "finally = future::plan(old_comparator_plan)",
     chunk_body,
