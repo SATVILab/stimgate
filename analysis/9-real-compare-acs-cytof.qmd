@@ -217,59 +217,61 @@ the `n_workers` parameter or `ACS_N_WORKERS` environment variable.
 ```{r}
 #| label: run-all-populations
 #| results: hide
-n_workers_use <- min(n_workers, length(pop_vec))
-old_plan <- future::plan()
+if (isTRUE(run_stimgate)) {
+  n_workers_use <- min(n_workers, length(pop_vec))
+  old_plan <- future::plan()
 
-Sys.setenv("STIMGATE_DEBUG" = "TRUE")
+  Sys.setenv("STIMGATE_DEBUG" = "TRUE")
 
-population_runs <- tryCatch(
-  {
-    if (n_workers_use > 1L) {
-      future::plan(future::multisession, workers = n_workers_use)
-    } else {
-      future::plan(future::sequential)
+  population_runs <- tryCatch(
+    {
+      if (n_workers_use > 1L) {
+        future::plan(future::multisession, workers = n_workers_use)
+      } else {
+        future::plan(future::sequential)
+      }
+
+      furrr::future_map(
+        pop_vec,
+        function(pop) {
+          .acsCytofRunPopulationSafe(
+            pop = pop,
+            pathFcsBase = path_fcs_base,
+            pathGsBase = path_gs_base,
+            pathScratchBase = path_scratch_base,
+            runPreprocessing = run_preprocessing_vec_by_pop[[pop]],
+            runMethods = run_stimgate_vec_by_pop[[pop]],
+            runPlots = run_plots_vec_by_pop[[pop]],
+            biasUns = bias_uns_vec_by_pop[[pop]]
+          )
+        },
+        .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+      )
+    },
+    finally = future::plan(old_plan)
+  )
+  names(population_runs) <- pop_vec
+  failed_pop_vec <- names(population_runs)[
+    !vapply(
+      population_runs,
+      function(x) isTRUE(x$success),
+      logical(1)
+    )
+  ]
+
+  if (length(failed_pop_vec) > 0L) {
+    warning(
+      "ACS CyTOF populations failed: ",
+      paste(failed_pop_vec, collapse = ", ")
+    )
+
+    for (pop in failed_pop_vec) {
+      message(
+        pop,
+        ": ",
+        population_runs[[pop]]$error
+      )
     }
-
-    furrr::future_map(
-      pop_vec,
-      function(pop) {
-        .acsCytofRunPopulationSafe(
-          pop = pop,
-          pathFcsBase = path_fcs_base,
-          pathGsBase = path_gs_base,
-          pathScratchBase = path_scratch_base,
-          runPreprocessing = run_preprocessing_vec_by_pop[[pop]],
-          runMethods = run_stimgate_vec_by_pop[[pop]],
-          runPlots = run_plots_vec_by_pop[[pop]],
-          biasUns = bias_uns_vec_by_pop[[pop]]
-        )
-      },
-      .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
-    )
-  },
-  finally = future::plan(old_plan)
-)
-names(population_runs) <- pop_vec
-failed_pop_vec <- names(population_runs)[
-  !vapply(
-    population_runs,
-    function(x) isTRUE(x$success),
-    logical(1)
-  )
-]
-
-if (length(failed_pop_vec) > 0L) {
-  warning(
-    "ACS CyTOF populations failed: ",
-    paste(failed_pop_vec, collapse = ", ")
-  )
-
-  for (pop in failed_pop_vec) {
-    message(
-      pop,
-      ": ",
-      population_runs[[pop]]$error
-    )
   }
 }
 ```
@@ -285,34 +287,36 @@ be recomputed.
 ```{r}
 #| label: run-comparison-methods-sequentially
 #| results: hide
-comparison_method_runs <- purrr::map(
-  pop_vec,
-  function(pop) {
-    .acsCytofRunComparisonMethodsSafe(
-      pop = pop,
-      pathFcsBase = path_fcs_base,
-      pathGsBase = path_gs_base,
-      pathScratchBase = path_scratch_base,
-      runMethods = run_comparators_vec_by_pop[[pop]],
-      overwrite = overwrite_comparator_cache
+if (isTRUE(run_comparators)) {
+  comparison_method_runs <- purrr::map(
+    pop_vec,
+    function(pop) {
+      .acsCytofRunComparisonMethodsSafe(
+        pop = pop,
+        pathFcsBase = path_fcs_base,
+        pathGsBase = path_gs_base,
+        pathScratchBase = path_scratch_base,
+        runMethods = run_comparators_vec_by_pop[[pop]],
+        overwrite = overwrite_comparator_cache
+      )
+    }
+  )
+  names(comparison_method_runs) <- pop_vec
+
+  failed_comparator_pop_vec <- names(comparison_method_runs)[
+    !vapply(
+      comparison_method_runs,
+      function(x) isTRUE(x$success),
+      logical(1)
+    )
+  ]
+  if (length(failed_comparator_pop_vec) > 0L) {
+    stop(
+      "ACS Tailgate/F-beta runs failed for: ",
+      paste(failed_comparator_pop_vec, collapse = ", "),
+      ". See the returned error entries in comparison_method_runs."
     )
   }
-)
-names(comparison_method_runs) <- pop_vec
-
-failed_comparator_pop_vec <- names(comparison_method_runs)[
-  !vapply(
-    comparison_method_runs,
-    function(x) isTRUE(x$success),
-    logical(1)
-  )
-]
-if (length(failed_comparator_pop_vec) > 0L) {
-  stop(
-    "ACS Tailgate/F-beta runs failed for: ",
-    paste(failed_comparator_pop_vec, collapse = ", "),
-    ". See the returned error entries in comparison_method_runs."
-  )
 }
 ```
 
@@ -327,26 +331,24 @@ manual file has no matching population.
 
 ```{r}
 #| label: format-manual-comparison
-if (isTRUE(run_plots)) {
-  path_manual_output <- file.path(
-    path_scratch_base,
-    "manual-comparison"
-  )
-  if (dir.exists(path_manual_output)) {
-    unlink(path_manual_output, recursive = TRUE)
-  }
-  dir.create(path_manual_output, showWarnings = FALSE, recursive = TRUE)
-  manual_comparison_tbl <- comp_against_manual_cyt(
-    fn = "Cytokines_10Jun2021_2.csv",
-    path_scratch_base = path_scratch_base,
-    path_fcs_base = path_fcs_base,
-    pop = pop_vec,
-    methods = c("stimgate", "tailgate", "fbeta"),
-    path_dir_save = path_manual_output,
-    save_plots = run_plots
-  )
-  manual_summary_tbl <- attr(manual_comparison_tbl, "summary")
+path_manual_output <- file.path(
+  path_scratch_base,
+  "manual-comparison"
+)
+if (dir.exists(path_manual_output)) {
+  unlink(path_manual_output, recursive = TRUE)
 }
+dir.create(path_manual_output, showWarnings = FALSE, recursive = TRUE)
+manual_comparison_tbl <- comp_against_manual_cyt(
+  fn = "Cytokines_10Jun2021_2.csv",
+  path_scratch_base = path_scratch_base,
+  path_fcs_base = path_fcs_base,
+  pop = pop_vec,
+  methods = c("stimgate", "tailgate", "fbeta"),
+  path_dir_save = path_manual_output,
+  save_plots = run_plots
+)
+manual_summary_tbl <- attr(manual_comparison_tbl, "summary")
 ```
 
 ## Output tables and figures
