@@ -122,3 +122,38 @@ test_that("manual formatting uses the shared cytometry combination utilities", {
   ))
 })
 
+test_that("combination counts collapse to one positive row per cytokine", {
+  skip_if_not_installed("UtilsCytoRSV")
+  skip_if_not_installed("UtilsCompassSV")
+  env <- .load_acs_method_env()
+  channels <- names(env$.acsCytofChannelMap())
+  combinations <- env$.acsCytofCombinationLevels(channels)
+  stats_tbl <- tibble::tibble(
+    gateName = "loc_min",
+    ind = "2",
+    cytCombn = combinations,
+    countStim = 1L,
+    nCellStim = length(combinations),
+    countUns = 0L,
+    nCellUns = length(combinations)
+  )
+  sample_map <- tibble::tibble(
+    popCode = "cd4",
+    ind = "2",
+    SampleID = "000001_D0",
+    stim = "mtb"
+  )
+
+  out <- env$.acsCytofStatsSingleMarkers(
+    statsTbl = stats_tbl,
+    method = "stimgate",
+    popCode = "cd4",
+    popLabel = "CD4 T cells",
+    sampleMap = sample_map
+  )
+
+  expect_equal(nrow(out), length(channels))
+  expect_equal(out$countStim, rep(32L, length(channels)))
+  expect_equal(as.character(out$cyt), unname(env$.acsCytofChannelMap()))
+  expect_equal(out$cytCombn, paste0(out$cyt, "+"))
+})
