@@ -385,7 +385,23 @@ written under `path_manual_output` by the formatting step above.
 
 ```{r}
 #| label: show-manual-summary
-manual_summary_tbl
+manual_summary_tbl |>
+  dplyr::filter(!method == "tailgate") |>
+  dplyr::select(
+    method:stim, pcc
+  ) |>
+  #dplyr::arrange(method:stim, pcc) |>
+  tidyr::pivot_wider(
+    names_from = method,
+    values_from = pcc
+  ) |>
+  dplyr::mutate(
+    diff_stimgate = stimgate - fbeta,
+    diff_fbeta = fbeta - stimgate,
+    diff_abs = pmax(abs(diff_stimgate), abs(diff_fbeta))
+  ) |>
+  dplyr::arrange(desc(diff_abs)) |>
+  print(n = Inf)
 ```
 
 ### Estimated versus reference response frequency
