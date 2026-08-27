@@ -1,0 +1,127 @@
+---
+title: ACS CyTOF validation outputs
+format:
+  html:
+    embed-resources: true
+    toc: true
+params:
+  run_plots: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+library(dplyr)
+
+root_dir <- tryCatch(
+  projr::projr_path_get("project"),
+  error = function(e) getwd()
+)
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
+
+run_plots <- isTRUE(params$run_plots)
+path_manual_output <- projr::projr_path_get(
+  "cache",
+  "acs_cytof",
+  "manual-comparison"
+)
+path_comparison <- file.path(path_manual_output, "manual-comparison.rds")
+if (!file.exists(path_comparison)) {
+  stop(
+    "ACS manual comparison table not found at: ",
+    path_comparison,
+    ". Run analysis/9-real-compare-acs-cytof.qmd first."
+  )
+}
+manual_comparison_tbl <- readRDS(path_comparison)
+```
+
+## Aim
+
+Reproduce the ACS manuscript-style validation plots for StimGate, F-beta and
+Tailgate using the comparison table produced by the main ACS analysis.
+
+The raw-frequency plots show automated against manual background-subtracted
+frequencies for every matched population and cytokine. The correlation outputs
+show both Pearson correlation (PCC) and concordance correlation (CCC), with one
+set restricted to CD4, CD8 and TCRgd T cells and another using every matched
+population. This keeps the original manuscript comparison available while also
+showing the additional populations in the current benchmark.
+
+## Correlation table
+
+```{r}
+#| label: correlation-table
+correlation_tbl <- .acsCytofValidationCorrelationTable(manual_comparison_tbl)
+correlation_tbl
+```
+
+## Validation figures
+
+```{r}
+#| label: save-validation-figures
+#| results: hide
+if (run_plots) {
+  .acsCytofValidationSavePlots(
+    comparisonTbl = manual_comparison_tbl,
+    pathDirSave = path_manual_output
+  )
+}
+```
+
+### Raw background-subtracted frequencies
+
+```{r}
+#| label: show-scatter
+if (run_plots) {
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "stimgate")
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "fbeta")
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "tailgate")
+}
+```
+
+### Correlation heatmaps for CD4, CD8 and TCRgd T cells
+
+```{r}
+#| label: show-real-pop-heatmaps
+if (run_plots) {
+  for (method in c("stimgate", "fbeta", "tailgate")) {
+    print(.acsCytofValidationPlotCorrelation(
+      correlationTbl = correlation_tbl,
+      method = method,
+      metric = "pcc",
+      realPopulationsOnly = TRUE
+    ))
+    print(.acsCytofValidationPlotCorrelation(
+      correlationTbl = correlation_tbl,
+      method = method,
+      metric = "ccc",
+      realPopulationsOnly = TRUE
+    ))
+  }
+}
+```
+
+### Correlation heatmaps for all matched populations
+
+```{r}
+#| label: show-all-pop-heatmaps
+if (run_plots) {
+  for (method in c("stimgate", "fbeta", "tailgate")) {
+    print(.acsCytofValidationPlotCorrelation(
+      correlationTbl = correlation_tbl,
+      method = method,
+      metric = "pcc",
+      realPopulationsOnly = FALSE
+    ))
+    print(.acsCytofValidationPlotCorrelation(
+      correlationTbl = correlation_tbl,
+      method = method,
+      metric = "ccc",
+      realPopulationsOnly = FALSE
+    ))
+  }
+}
+```
