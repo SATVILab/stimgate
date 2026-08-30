@@ -127,12 +127,53 @@
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">test</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>If these packages are unexpectedly unavailable in Copilot, treat that as an environment-setup failure rather than switching to <code>renv</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="codex-cloud-for-github-project-administration">Codex Cloud for GitHub Project administration<a class="anchor" aria-label="anchor" href="#codex-cloud-for-github-project-administration"></a></h3>
+<p>Project-administration runs use a separate, lightweight Codex Cloud environment from R package development. In the Codex Cloud environment settings, use this repository-backed setup command:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">bash</span> scripts/codex-projects-setup.sh</span></code></pre></div>
+<p>Do not paste the script body into the environment settings. Configure <code>GH_TOKEN</code> as an <strong>environment variable</strong>, not a setup-only secret, because Codex needs it during both setup and the later agent phase. For a classic personal access token, grant <code>repo</code>, <code>project</code> and <code>read:org</code>. Enable agent internet access to <code>api.github.com</code> and <code>github.com</code>. The script installs a pinned, checksum-verified GitHub CLI when necessary, performs read-only preflight checks, and deliberately does not install R or package dependencies.</p>
+<p>This repository’s provisional Project-administration contract is:</p>
+<table class="table"><thead><tr><th>Concern</th>
+<th>Provider-native location</th>
+</tr></thead><tbody><tr><td>Issues</td>
+<td><code>SATVILab/stimgate</code></td>
+</tr><tr><td>Project</td>
+<td>
+<code>SATVILab</code> organisation Project 30, titled <code>stimgate</code>
+</td>
+</tr><tr><td>Class</td>
+<td>Organisation-native Issue Type</td>
+</tr><tr><td>Priority</td>
+<td>Organisation-native <code>Priority</code> issue field</td>
+</tr><tr><td>Status</td>
+<td>Project single-select field <code>Status</code>
+</td>
+</tr><tr><td>Workstream</td>
+<td>Project single-select field <code>Workstream</code>
+</td>
+</tr><tr><td>Due date</td>
+<td>Project date field <code>Target date</code>
+</td>
+</tr><tr><td>Hierarchy</td>
+<td>Native parent issue and sub-issues</td>
+</tr></tbody></table><p>Interpret the native Priority options as <code>Urgent</code> = P0, <code>High</code> = P1, and <code>Medium</code> or <code>Low</code> = P2. Use the live native values when writing to GitHub; P0, P1 and P2 are the cross-project interpretation, not replacement labels.</p>
+<p>Project 30 is linked directly to this single issue repository, so do not create or require a <code>project:</code> routing label. Use at most one existing <code>subproject:&lt;slug&gt;</code> label when a genuine sub-project distinction is needed; do not invent one merely to route an issue into Project 30. Labels are reserved for real cross-cutting or automation concerns. Do not create labels that duplicate Issue Type, Priority, Status or Workstream, and do not remove legacy labels unless the task explicitly authorises it.</p>
+<p>For every issue or Project administration task:</p>
+<ol style="list-style-type: decimal"><li>Read the issue and its current Project membership, native fields, labels, assignees and hierarchy before proposing a change.</li>
+<li>Compare the live Project and organisation metadata with the contract above. If a field, option, owner, Project number or permission differs, stop and report the exact mismatch rather than guessing.</li>
+<li>State the exact intended mutation and preserve every unrequested value.</li>
+<li>Use <code>gh issue</code> for ordinary issue operations. Use versioned <code>gh api</code> endpoints for organisation-native Issue Type, Priority and issue field values. Use targeted GraphQL for Project membership and the Project-only Status, Workstream and Target date fields.</li>
+<li>Do not try to set organisation-native Priority with <code>updateProjectV2ItemFieldValue</code>; it is issue metadata rather than a custom Project field.</li>
+<li>Read back the issue, Project item and every affected field after a mutation. Treat a missing value, silent drop or failed readback as a failed operation.</li>
+<li>Make issue or Project mutations only when the task authorises them. Changes to this setup or contract go through a branch and pull request.</li>
+</ol><p>Private operator sources, personal tasks and credentials do not belong in this shared repository, issue bodies, comments, commits or logs. Keep this contract provisional while the repository-backed dogfood run is in progress. If live use exposes a missing rule, update this section through a focused pull request instead of importing the central issue-store topology wholesale.</p>
 <hr></div>
 </div>
 <div class="section level2">
 <h2 id="id_4-build-test--quality-instructions">4. Build, Test &amp; Quality Instructions<a class="anchor" aria-label="anchor" href="#id_4-build-test--quality-instructions"></a></h2>
 <p>Run the following commands from the <strong>repository root</strong> in an R session:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load and reload package</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -154,12 +195,12 @@
 <span><span class="co"># Check test coverage</span></span>
 <span><span class="fu">covr</span><span class="fu">::</span><span class="fu"><a href="http://covr.r-lib.org/reference/report.html" class="external-link">report</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Equivalent shell commands (via <code>Rscript</code>):</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::test()"</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="ex">Rscript</span> analysis/tests/run_analysis_tests.R</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::check()"</span></span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::document()"</span></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"styler::style_pkg()"</span></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"lintr::lint_package()"</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::test()"</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="ex">Rscript</span> analysis/tests/run_analysis_tests.R</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::check()"</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::document()"</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"styler::style_pkg()"</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"lintr::lint_package()"</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="checklist-before-each-commit--opening-a-pr">Checklist before each commit / opening a PR<a class="anchor" aria-label="anchor" href="#checklist-before-each-commit--opening-a-pr"></a></h3>
 <ol style="list-style-type: decimal"><li><code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code></li>
@@ -195,7 +236,7 @@
 <li>Do <strong>not</strong> place tests whose subject is solely <code>scripts/r/</code> or <code>analysis/</code> code here.</li>
 </ul><p><strong>Running the analysis test suite:</strong></p>
 <p>The analysis suite loads the package from the current checkout via <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> before running tests, so it always tests the current source rather than any previously installed version. The GitHub Actions job in <code>.github/workflows/analysis-integration.yaml</code> runs this suite independently of <code>R CMD check</code>/<code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code>. Run from the repository root:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Shell</span></span>
 <span><span class="co"># Rscript analysis/tests/run_analysis_tests.R</span></span>
 <span></span>
@@ -203,15 +244,15 @@
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu">testthat</span><span class="fu">::</span><span class="fu"><a href="https://testthat.r-lib.org/reference/test_dir.html" class="external-link">test_dir</a></span><span class="op">(</span><span class="st">"analysis/tests/testthat"</span><span class="op">)</span></span></code></pre></div>
 <p>Or via the runner script:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"analysis/tests/run_analysis_tests.R"</span><span class="op">)</span></span></code></pre></div>
 <p>Equivalent shell command:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="ex">Rscript</span> analysis/tests/run_analysis_tests.R</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="ex">Rscript</span> analysis/tests/run_analysis_tests.R</span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="website-maintenance-pkgdown">Website Maintenance (<code>pkgdown</code>)<a class="anchor" aria-label="anchor" href="#website-maintenance-pkgdown"></a></h3>
 <p>Whenever functions are added, removed, or have their export status changed (via <code>@export</code>), update <code>_pkgdown.yml</code> to ensure the reference section accurately reflects all exported functions. Verify the site configuration with:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pkgdown</span><span class="fu">::</span><span class="fu"><a href="https://pkgdown.r-lib.org/reference/check_pkgdown.html" class="external-link">check_pkgdown</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <hr></div>
 </div>
@@ -456,7 +497,7 @@
 <li><p><strong>Cross-platform compatibility</strong>: Tests must pass on macOS, Windows, and Ubuntu. Use <code><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path()</a></code> (never hard-coded <code>/</code> or <code>\\</code> separators) and avoid platform-specific paths.</p></li>
 <li>
 <p><strong>Use the package-shipped example data for routine tests and examples</strong>: The package ships one canonical deterministic cytometry example dataset in <code>inst/extdata/stimgate_example_data/</code> (2 samples × 2 conditions × 2 markers × ~10,000 cells per condition, seed 42). Load it with:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exampleData</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/getExampleData.html">getExampleData</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Package tests and examples should use <code><a href="reference/getExampleData.html">getExampleData()</a></code> rather than sourcing developer-side simulation utilities. Keep simulation code in <code>scripts/r/</code> for deliberate analysis/fixture-generation work only. To regenerate the dataset after intentional changes to its structure, run <code>source("data-raw/create_test_fixture.R")</code> from the repository root in a clean R session (no <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> required).</p>
 </li>

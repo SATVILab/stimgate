@@ -131,6 +131,82 @@ devtools::test()
 If these packages are unexpectedly unavailable in Copilot, treat that as
 an environment-setup failure rather than switching to `renv`.
 
+### Codex Cloud for GitHub Project administration
+
+Project-administration runs use a separate, lightweight Codex Cloud
+environment from R package development. In the Codex Cloud environment
+settings, use this repository-backed setup command:
+
+``` bash
+bash scripts/codex-projects-setup.sh
+```
+
+Do not paste the script body into the environment settings. Configure
+`GH_TOKEN` as an **environment variable**, not a setup-only secret,
+because Codex needs it during both setup and the later agent phase. For
+a classic personal access token, grant `repo`, `project` and `read:org`.
+Enable agent internet access to `api.github.com` and `github.com`. The
+script installs a pinned, checksum-verified GitHub CLI when necessary,
+performs read-only preflight checks, and deliberately does not install R
+or package dependencies.
+
+This repository’s provisional Project-administration contract is:
+
+| Concern    | Provider-native location                              |
+|------------|-------------------------------------------------------|
+| Issues     | `SATVILab/stimgate`                                   |
+| Project    | `SATVILab` organisation Project 30, titled `stimgate` |
+| Class      | Organisation-native Issue Type                        |
+| Priority   | Organisation-native `Priority` issue field            |
+| Status     | Project single-select field `Status`                  |
+| Workstream | Project single-select field `Workstream`              |
+| Due date   | Project date field `Target date`                      |
+| Hierarchy  | Native parent issue and sub-issues                    |
+
+Interpret the native Priority options as `Urgent` = P0, `High` = P1, and
+`Medium` or `Low` = P2. Use the live native values when writing to
+GitHub; P0, P1 and P2 are the cross-project interpretation, not
+replacement labels.
+
+Project 30 is linked directly to this single issue repository, so do not
+create or require a `project:` routing label. Use at most one existing
+`subproject:<slug>` label when a genuine sub-project distinction is
+needed; do not invent one merely to route an issue into Project 30.
+Labels are reserved for real cross-cutting or automation concerns. Do
+not create labels that duplicate Issue Type, Priority, Status or
+Workstream, and do not remove legacy labels unless the task explicitly
+authorises it.
+
+For every issue or Project administration task:
+
+1.  Read the issue and its current Project membership, native fields,
+    labels, assignees and hierarchy before proposing a change.
+2.  Compare the live Project and organisation metadata with the contract
+    above. If a field, option, owner, Project number or permission
+    differs, stop and report the exact mismatch rather than guessing.
+3.  State the exact intended mutation and preserve every unrequested
+    value.
+4.  Use `gh issue` for ordinary issue operations. Use versioned `gh api`
+    endpoints for organisation-native Issue Type, Priority and issue
+    field values. Use targeted GraphQL for Project membership and the
+    Project-only Status, Workstream and Target date fields.
+5.  Do not try to set organisation-native Priority with
+    `updateProjectV2ItemFieldValue`; it is issue metadata rather than a
+    custom Project field.
+6.  Read back the issue, Project item and every affected field after a
+    mutation. Treat a missing value, silent drop or failed readback as a
+    failed operation.
+7.  Make issue or Project mutations only when the task authorises them.
+    Changes to this setup or contract go through a branch and pull
+    request.
+
+Private operator sources, personal tasks and credentials do not belong
+in this shared repository, issue bodies, comments, commits or logs. Keep
+this contract provisional while the repository-backed dogfood run is in
+progress. If live use exposes a missing rule, update this section
+through a focused pull request instead of importing the central
+issue-store topology wholesale.
+
 ------------------------------------------------------------------------
 
 ## 4. Build, Test & Quality Instructions
