@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: MiguelRodo/projects
-          ref: a1d480adb4155ba10947ae1a36ca4f6c2a5681e1
+          ref: 01f91d6489c3f3e0fa5e56b91bf6311b42229f0f
           path: .github-project-admin-source
 
       - name: Validate local Project contract
