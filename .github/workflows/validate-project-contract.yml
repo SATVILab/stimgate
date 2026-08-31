@@ -1,0 +1,51 @@
+name: Validate Project contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".projects/**"
+      - "AGENTS.md"
+      - "scripts/codex-projects-setup.sh"
+      - ".github/workflows/validate-project-contract.yml"
+  push:
+    branches: [master]
+    paths:
+      - ".projects/**"
+      - "AGENTS.md"
+      - ".github/workflows/validate-project-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out canonical Project skill
+        uses: actions/checkout@v4
+        with:
+          repository: MiguelRodo/projects
+          ref: 0c22354e0cde03866323e707f7a12b82e34f4162
+          path: .github-project-admin-source
+
+      - name: Validate local Project contract
+        run: |
+          bash .github-project-admin-source/skills/github-project-admin/scripts/validate-contract.sh .
+
+      - name: Verify repository boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e scripts/codex-projects-setup.sh
+          section_lines="$(awk '
+            /^### GitHub Project administration$/ { in_section = 1 }
+            in_section { count += 1 }
+            in_section && /^---$/ { print count; exit }
+          ' AGENTS.md)"
+          test "$section_lines" -lt 12
+          grep -Fq 'P2 | Medium' .projects/project.md
+          grep -Fq 'P3 | Low' .projects/project.md
