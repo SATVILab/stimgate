@@ -505,3 +505,11 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
     after intentional changes to its structure, run
     `source("data-raw/create_test_fixture.R")` from the repository root in a
     clean R session (no `devtools::load_all()` required).
+
+<!-- github-project-admin:start -->
+## GitHub issues and Projects
+
+For GitHub issue or Project administration, use
+`.agents/skills/github-project-admin/SKILL.md` and read
+`.projects/project.md` before acting.
+<!-- github-project-admin:end -->
