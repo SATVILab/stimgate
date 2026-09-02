@@ -675,3 +675,9 @@ both suites.
     in a clean R session (no
     [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
     required).
+
+## GitHub issues and Projects
+
+For GitHub issue or Project administration, use
+`.agents/skills/github-project-admin/SKILL.md` and read
+`.projects/project.md` before acting.
