@@ -36,6 +36,10 @@ if bash "$validator" "$test_dir/fixtures/invalid-writeup" >/dev/null 2>&1; then
   echo "ERROR: retired minimal issue write-up style unexpectedly validated" >&2
   exit 1
 fi
+if bash "$validator" "$test_dir/fixtures/invalid-prose" >/dev/null 2>&1; then
+  echo "ERROR: unsupported issue prose style unexpectedly validated" >&2
+  exit 1
+fi
 
 grep -Fqx 'name: github-project-admin' "$skill_dir/SKILL.md"
 test -f "$skill_dir/README.md"
@@ -45,11 +49,14 @@ grep -Fq '## Issue creation styles' "$test_dir/short-requests.md"
 grep -Fq 'P3 | Low' "$skill_dir/SKILL.md"
 grep -Fq 'Priority mapping status: pending' "$skill_dir/SKILL.md"
 grep -Fq 'Deliverable' "$skill_dir/references/issue-types.md"
+grep -Fq 'Treat the GitHub Project as the container.' "$skill_dir/references/issue-types.md"
+grep -Fq 'use body checkboxes for' "$initializer"
 grep -Fq '`Task`, `Bug`, `Enhancement`, `Data`, `Analysis`, `Deliverable`, `Documentation` and `Epic`' \
   "$skill_dir/SKILL.md"
 grep -Fq '| Data | PINK |' "$skill_dir/references/issue-types.md"
 grep -Fq '`direct`: do only the structural work needed to create the issue' "$skill_dir/SKILL.md"
 grep -Fq '`tidy`: the default. Reword and organise the supplied material' "$skill_dir/SKILL.md"
+grep -Fq '`natural-direct`' "$skill_dir/SKILL.md"
 grep -Fq 'Workstream is not a standard semantic dimension' "$skill_dir/SKILL.md"
 grep -Fq 'gh auth login --web --scopes "project,read:org"' "$skill_dir/README.md"
 grep -Fq 'https://chatgpt.com/codex/settings/environments' "$skill_dir/README.md"
@@ -262,6 +269,8 @@ grep -Fq '| Project title | Example planning |' "$test_tmp_dir/init-single/.proj
 grep -Fq '| Class | organization issue type | Issue Type |' "$test_tmp_dir/init-single/.projects/project.md"
 grep -Fq '| Priority | pending live inspection | Priority |' "$test_tmp_dir/init-single/.projects/project.md"
 grep -Fq '| Routing | Project membership; no routing label |' "$test_tmp_dir/init-single/.projects/project.md"
+grep -Fq '| Issue write-up style | tidy |' "$test_tmp_dir/init-single/.projects/project.md"
+grep -Fq '| Issue prose style | natural-direct |' "$test_tmp_dir/init-single/.projects/project.md"
 grep -Fxq 'Priority mapping status: pending' "$test_tmp_dir/init-single/.projects/project.md"
 grep -Fq 'This is a personal Project.' "$test_tmp_dir/init-single/.projects/project.md"
 if grep -Fq '| Workstream |' "$test_tmp_dir/init-single/.projects/project.md"; then
@@ -333,6 +342,14 @@ grep -Fq '| Owner type | organization |' \
   "$test_tmp_dir/init-multiple/.projects/projects/example-planning.md"
 grep -Fq '| Routing | label:project:example-planning |' \
   "$test_tmp_dir/init-multiple/.projects/projects/example-planning.md"
+grep -Fq '| Issue write-up style | tidy |' \
+  "$test_tmp_dir/init-multiple/.projects/projects/example-planning.md"
+grep -Fq '| Issue prose style | natural-direct |' \
+  "$test_tmp_dir/init-multiple/.projects/projects/example-planning.md"
+if grep -Fq '| Issue prose style |' "$test_tmp_dir/init-multiple/.projects/project.md"; then
+  echo "ERROR: dispatcher root unexpectedly received an Issue prose style" >&2
+  exit 1
+fi
 if grep -Fq '| Workstream |' "$test_tmp_dir/init-multiple/.projects/projects/example-planning.md"; then
   echo "ERROR: dispatcher child generated a standard Workstream dimension" >&2
   exit 1

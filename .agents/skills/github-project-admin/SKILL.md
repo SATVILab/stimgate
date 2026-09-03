@@ -4,7 +4,7 @@ metadata:
     github-path: skills/github-project-admin
     github-ref: refs/heads/main
     github-repo: https://github.com/MiguelRodo/projects
-    github-tree-sha: db175991b150ea8087649ad4d5ecf60f32110f2a
+    github-tree-sha: 5ae534caba0224987735235bec8a818146e6c63b
 name: github-project-admin
 ---
 # GitHub Project administration
@@ -47,6 +47,14 @@ For issue creation or a substantial issue-body rewrite, read the optional `Issue
 
 If a contract supplies any other value, stop and identify the unsupported setting instead of silently choosing a style.
 
+## Write issues in the configured prose style
+
+`Issue write-up style` controls how much an agent may reshape or expand the material. `Issue prose style` is separate: it controls how the resulting GitHub title and body read, regardless of whether the write-up style is `direct`, `tidy` or `unrestricted`.
+
+For issue creation or a substantial issue-body rewrite, read the optional `Issue prose style` value from the resolved Project contract. If it is absent, use `natural-direct`. For `natural-direct`, follow the prose rules in [the repository contract reference](references/repository-contract.md): preserve the supplied meaning and uncertainty, use plain and natural UK English, keep GitHub Markdown useful rather than templated, and avoid generic AI phrasing or inflated language.
+
+If a contract supplies another prose-style value, stop and identify the unsupported setting instead of silently choosing a style.
+
 ## Use Issue Type or Class for the kind of work
 
 When creating, refining or applying Class or Issue Type values, follow [the Issue Type and Class design reference](references/issue-types.md).
@@ -60,6 +68,8 @@ When creating, refining or applying Class or Issue Type values, follow [the Issu
 - Workstream is not a standard semantic dimension. If an older Project still has a custom field named `Workstream`, treat it as legacy or unmanaged state unless the resolved repository contract deliberately documents it as non-standard metadata. Do not require or populate it merely because it exists.
 - Routing remains separate through repository/Project topology and declared `project:*` or `subproject:*` labels where applicable. Native parent/sub-issue relationships carry hierarchy. Milestones are optional temporal or checkpoint groupings, not a replacement classification dimension.
 - Colour is presentational. Reuse provider-supported colours when categories outnumber distinct colours; colour uniqueness must not block ordinary administration unless the local contract explicitly makes a palette exact.
+
+When the user explicitly asks to bootstrap, migrate or substantially reorganise a whole Project, also follow the whole-Project organisation guidance in [the Issue Type and Class design reference](references/issue-types.md). Do not use that guidance to restructure a routine or narrowly requested change. In broad organisation work, treat the Project as the container, prefer independently meaningful top-level outcomes, and choose body checkboxes versus sub-issues according to whether the work needs independent planning state.
 
 Use this default common Priority vocabulary unless the resolved contract declares a complete override:
 

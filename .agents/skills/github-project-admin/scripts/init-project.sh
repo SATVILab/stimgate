@@ -266,6 +266,8 @@ EOF
 | Project title | $project_title |
 | Routing | $routing |
 | Privacy | $privacy |
+| Issue write-up style | tidy |
+| Issue prose style | natural-direct |
 
 ## Field locations
 
@@ -718,7 +720,11 @@ Use the same first request in a chat interface or an execution-capable agent:
   without adding, removing or renaming options; set up or refine
   $first_request_class_name from the issue evidence; preserve useful existing
   definitions while choosing sensible colours; and organise the issues using
-  Project fields and useful native parent/sub-issue relationships. Suggest
+  Project fields and useful native parent/sub-issue relationships. Treat the
+  Project itself as the container rather than creating a generic root issue;
+  prefer independently meaningful top-level outcomes, propose retiring generic
+  category or standing wrappers where appropriate, and use body checkboxes for
+  small local steps versus sub-issues for independently trackable work. Suggest
   optional sub-project labels only where they are genuinely useful. Show me
   the exact proposed changes and do not change GitHub until I approve them.
 

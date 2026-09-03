@@ -101,6 +101,8 @@ The initializer offers one shared, proposal-only first request after the chat an
 - confirm the local Priority location and mapping from the existing live field without changing it;
 - set up or refine Issue Type or Class, with sensible colours;
 - organise existing issues and useful native parent/sub-issue relationships;
+- repair generic project-root, category-wrapper or standing issues where the existing structure obscures real outcomes;
+- use body checkboxes for small local steps and sub-issues when work needs independent planning state;
 - suggest optional sub-project labels only where they add value.
 
 It does not authorise changes until you approve the proposal. After approval, an execution-capable agent can apply and verify it; a chat that cannot write returns minimal commands with readback. To add another Project later, rerun the initializer.
@@ -140,9 +142,12 @@ Each resolved Project contract can tune issue drafting with an optional metadata
 
 ```text
 | Issue write-up style | tidy |
+| Issue prose style | natural-direct |
 ```
 
 Use `unrestricted` when the agent may add useful grounded detail, `tidy` when it may reword and organise supplied material without adding substantive information, or `direct` when it should do only the structural work needed to create the issue plus spelling and grammar corrections. `tidy` is the default when the row is absent, and an explicit instruction in the current request overrides the setting. In a multi-Project repository, put the row in the relevant `.projects/projects/*.md` child contract.
+
+`Issue prose style` is separate from that content-level setting. `natural-direct` keeps titles and bodies plain, human-sounding and easy to scan in GitHub, with UK English, useful Markdown, preserved uncertainty and no generic AI scaffolding or inflated language. It applies regardless of whether the write-up style is `direct`, `tidy` or `unrestricted`.
 
 If the repository needs extra tools, add `.projects/setup.sh`. It runs automatically after the shared setup and is not replaced when the skill is updated.
 
