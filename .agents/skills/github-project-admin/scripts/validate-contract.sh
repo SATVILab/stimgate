@@ -130,6 +130,15 @@ validate_issue_writeup_style() {
   esac
 }
 
+validate_issue_prose_style() {
+  local file="$1" style
+  style="$(table_value "$file" "Issue prose style")"
+  case "$style" in
+    ""|natural-direct) ;;
+    *) die "$file has unsupported Issue prose style '$style'; use natural-direct" ;;
+  esac
+}
+
 validate_project_file() {
   local file="$1" expected_mode="$2" version mode repository owner owner_type number title
   [[ -f "$file" ]] || die "missing Project contract: $file"
@@ -164,6 +173,7 @@ validate_project_file() {
   validate_priority_mapping "$file"
   validate_colour_tables "$file"
   validate_issue_writeup_style "$file"
+  validate_issue_prose_style "$file"
 
   if grep -Eq '(gh[pousr]_[A-Za-z0-9]{20,}|GH_TOKEN[[:space:]]*=|GITHUB_TOKEN[[:space:]]*=)' "$file"; then
     die "$file appears to contain a credential"
