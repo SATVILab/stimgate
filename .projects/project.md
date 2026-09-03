@@ -11,6 +11,7 @@
 | Project title | stimgate |
 | Routing | linked repository; no project:* label |
 | Privacy | public repository with a private organisation Project |
+| Issue write-up style | tidy |
 
 ## Field locations
 
