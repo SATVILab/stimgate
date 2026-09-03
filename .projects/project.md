@@ -12,6 +12,7 @@
 | Routing | linked repository; no project:* label |
 | Privacy | public repository with a private organisation Project |
 | Issue write-up style | tidy |
+| Issue prose style | natural-direct |
 
 ## Field locations
 
