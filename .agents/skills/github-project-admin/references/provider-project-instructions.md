@@ -13,9 +13,12 @@ AGENTS.md. Follow the skill and configuration files it references. If the
 repository or AGENTS.md is unavailable, say so rather than guessing.
 
 Treat the user's prompt as the desired outcome. If this surface cannot perform
-the required GitHub change, follow the same repository instructions and return
-the smallest executable gh command block, including independent readback. Do
-not ask the user to restate the skill's operating procedure.
+an authorised GitHub change, follow the repository's configured handoff. When
+the local Chat-to-pj queue is enabled, create the bounded queue issue and
+separate authority comment described by github-project-admin and report it as
+queued, not completed. Otherwise return the smallest executable gh command
+block with independent readback. Do not ask the user to restate the skill's
+operating procedure.
 ```
 
 Each repository normally installs the shared skill under `.agents/skills/` and routes to it from `AGENTS.md`. A repository may deliberately point elsewhere, but provider instructions should not hard-code that internal path.
@@ -28,7 +31,8 @@ Routine prompts should remain short:
 For the first broad organisation request, use the same proposal-only wording in
 a chat interface or an execution-capable agent. Ask it to inspect and propose
 the exact organisation, and do not authorise live changes until the operator
-approves. After approval, a capable agent may execute and verify; a chat that
-cannot write returns the smallest executable command block with readback.
+approves. After approval, a capable agent may execute and verify. A chat that
+cannot write should use the configured local queue when available, otherwise
+return the smallest executable command block with readback.
 
-If a routine prompt must repeat stale checks, narrow mutation, preservation or verification, move that missing behaviour into the skill instead of lengthening the standing instructions or prompt.
+If a routine prompt must repeat stale checks, narrow mutation, preservation, verification or queue trust rules, move that missing behaviour into the skill instead of lengthening the standing instructions or prompt.

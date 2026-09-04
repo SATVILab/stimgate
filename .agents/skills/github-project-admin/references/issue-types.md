@@ -31,6 +31,19 @@ Use Epic only when the broad coordinating outcome is useful in its own right, us
 
 A presentation can remain a Deliverable while having preparation children. A simulation analysis can remain Analysis while having data-generation, fitting and figure children. A Project may have several top-level issues and no single root Epic.
 
+## Organising a whole Project
+
+Apply this guidance only when the user explicitly authorises broad organisation, such as bootstrapping a new Project, migrating an existing task system, or substantially restructuring a poorly organised Project. Do not use it to silently reshape a Project during routine issue creation or a narrow field/body update.
+
+- Treat the GitHub Project as the container. Do not manufacture a root issue whose outcome is merely to "do", "complete" or "manage" the Project, and do not make all other work descend from such an issue.
+- Prefer top-level issues that describe independently meaningful outcomes, deliverables, analyses, decisions or bounded improvements. They should be useful to prioritise, defer, complete or cancel without referring to the whole Project.
+- Use parent/sub-issue hierarchy for genuine scope containment. A child should materially contribute to completing its parent, and the parent should remain a useful planning object in its own right. Avoid category-only wrappers such as generic "Deliverables", "Analysis", "Supervision" or "Project management" issues when the children already stand on their own.
+- Do not create standing issues for activity that is intrinsic to running the Project, such as "supervise the project", "keep the project moving" or "maintain the analysis". Create a concrete issue when there is a specific review, decision, change or output to track.
+- Separate producing a result from reporting that result when they have different lifecycles. An Analysis issue can produce the scientific or quantitative result while a reporting task sits under the relevant Deliverable and links back to that analysis.
+- Keep hierarchy as shallow as the work allows. Several top-level Epics or other outcomes are fine; there is no requirement for one root Epic. Add another level only when it makes planning clearer rather than merely making the tree look complete.
+- Use body checkboxes for small, local steps where only completion within the parent matters and the step does not need its own priority, status, assignee, due date, discussion, dependency or relationship. Use a sub-issue when the work is independently actionable, substantial enough to track separately, or benefits from any of that independent planning state. If a checkbox grows into separately managed work, promote it to a sub-issue and remove or replace the old checkbox so the same work is not tracked twice.
+- When repairing an imported Project, preserve useful history and meaning. Propose retiring or closing generic wrapper/standing issues only after their useful children, links and current state are represented directly.
+
 ## No standard Workstream dimension
 
 The active project-administration model does not use Workstream as a standard semantic dimension. Do not require every issue to carry a second functional-lane classification such as `Methods`, `Analysis`, `Validation`, `Reporting` or `Administration`.

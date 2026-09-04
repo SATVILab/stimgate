@@ -32,6 +32,7 @@ Use this form when one repository resolves to one Project:
 | Routing | linked repository |
 | Privacy | repository |
 | Issue write-up style | tidy |
+| Issue prose style | natural-direct |
 
 ## Field locations
 
@@ -98,6 +99,25 @@ Supported values are:
 - `direct`: the agent performs only the structural work needed to derive a title and, when supported by the supplied material, a description, plus spelling and grammar corrections. It does not otherwise reword, reorganise, expand or add substantive information.
 
 For `tidy`, ask only when genuine ambiguity would change the issue's meaning. For a multi-Project repository, put the setting in the resolved `.projects/projects/*.md` child contract so different Projects can use different defaults. Users may edit this row directly when they want a different style. Replace the retired `minimal` value with `direct` in an existing contract.
+
+## Issue prose style
+
+A resolved Project contract may also contain an `Issue prose style` row. This is independent of `Issue write-up style`: the write-up setting controls how much content may be reshaped or added, while the prose setting controls how the resulting GitHub issue is written. A more recent explicit user instruction still takes precedence.
+
+`natural-direct` is the default when the row is absent. For this style:
+
+- Write the title and body like an individual person recording real work for collaborators, rather than polished generic AI prose. Use a concise title that names the actual task, problem or outcome.
+- Preserve the supplied argument, scope and uncertainty. Do not introduce new claims or make the issue sound more certain than the source material.
+- Prefer plain, precise words over elaborate wording. Use UK English. Vary sentence length naturally; short sentences are fine.
+- Use GitHub Markdown when it makes the issue easier to scan. Headings should name real parts of the issue, bullets should represent real lists, and checklists should represent genuine trackable items. Do not force generic headings, summaries, conclusions, symmetrical sections or boilerplate templates.
+- Do not make every paragraph perfectly balanced or neatly structured. Minor unevenness is fine when it sounds natural, provided the grammar remains correct.
+- Avoid repeated three-part lists. Do not repeatedly join clauses with `and`.
+- Avoid stock constructions such as `not only X, but also Y`, `it is not X, it is Y`, and `from X to Y`.
+- Use commas, semicolons and parentheses where they genuinely help, without over-punctuating.
+- Avoid vague preambles such as `It is important to note`, `In today’s world`, `At its core`, `Ultimately` and `This highlights`.
+- Avoid inflated words such as `delve`, `nuanced`, `multifaceted`, `pivotal`, `robust`, `foster`, `leverage`, `landscape`, `tapestry` and `underscores`.
+
+For a multi-Project repository, put the row in the resolved `.projects/projects/*.md` child contract rather than the dispatcher root.
 
 ## Class / Issue Type vocabulary
 

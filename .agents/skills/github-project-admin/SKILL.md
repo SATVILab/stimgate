@@ -1,10 +1,10 @@
 ---
-description: Administer GitHub issues and Projects from short outcome requests. Use for Project-aware inspection, prioritisation, creation, updates, assignment, routing, hierarchy, field changes, or when a surface must return minimal executable gh commands instead of writing directly.
+description: Administer GitHub issues and Projects from short outcome requests. Use for Project-aware inspection, prioritisation, creation, updates, assignment, routing, hierarchy, field changes, or when a surface must hand unsupported mutations to the local pj implementation queue.
 metadata:
     github-path: skills/github-project-admin
     github-ref: refs/heads/main
     github-repo: https://github.com/MiguelRodo/projects
-    github-tree-sha: db175991b150ea8087649ad4d5ecf60f32110f2a
+    github-tree-sha: 5ae534caba0224987735235bec8a818146e6c63b
 name: github-project-admin
 ---
 # GitHub Project administration
@@ -47,6 +47,14 @@ For issue creation or a substantial issue-body rewrite, read the optional `Issue
 
 If a contract supplies any other value, stop and identify the unsupported setting instead of silently choosing a style.
 
+## Write issues in the configured prose style
+
+`Issue write-up style` controls how much an agent may reshape or expand the material. `Issue prose style` is separate: it controls how the resulting GitHub title and body read, regardless of whether the write-up style is `direct`, `tidy` or `unrestricted`.
+
+For issue creation or a substantial issue-body rewrite, read the optional `Issue prose style` value from the resolved Project contract. If it is absent, use `natural-direct`. For `natural-direct`, follow the prose rules in [the repository contract reference](references/repository-contract.md): preserve the supplied meaning and uncertainty, use plain and natural UK English, keep GitHub Markdown useful rather than templated, and avoid generic AI phrasing or inflated language.
+
+If a contract supplies another prose-style value, stop and identify the unsupported setting instead of silently choosing a style.
+
 ## Use Issue Type or Class for the kind of work
 
 When creating, refining or applying Class or Issue Type values, follow [the Issue Type and Class design reference](references/issue-types.md).
@@ -60,6 +68,8 @@ When creating, refining or applying Class or Issue Type values, follow [the Issu
 - Workstream is not a standard semantic dimension. If an older Project still has a custom field named `Workstream`, treat it as legacy or unmanaged state unless the resolved repository contract deliberately documents it as non-standard metadata. Do not require or populate it merely because it exists.
 - Routing remains separate through repository/Project topology and declared `project:*` or `subproject:*` labels where applicable. Native parent/sub-issue relationships carry hierarchy. Milestones are optional temporal or checkpoint groupings, not a replacement classification dimension.
 - Colour is presentational. Reuse provider-supported colours when categories outnumber distinct colours; colour uniqueness must not block ordinary administration unless the local contract explicitly makes a palette exact.
+
+When the user explicitly asks to bootstrap, migrate or substantially reorganise a whole Project, also follow the whole-Project organisation guidance in [the Issue Type and Class design reference](references/issue-types.md). Do not use that guidance to restructure a routine or narrowly requested change. In broad organisation work, treat the Project as the container, prefer independently meaningful top-level outcomes, and choose body checkboxes versus sub-issues according to whether the work needs independent planning state.
 
 Use this default common Priority vocabulary unless the resolved contract declares a complete override:
 
@@ -86,13 +96,15 @@ Use the first capable surface:
 
 The future CLI is optional and does not exist merely because this skill mentions it. Until it is available, use the direct operations in [the GitHub operations reference](references/github-operations.md).
 
-If the current surface cannot perform an authorised mutation, inspect as far as safely possible and return the smallest executable command block that completes the operation. Use placeholders only for facts that cannot be discovered. Do not claim that returned commands ran.
+If the current surface cannot perform an authorised mutation, inspect as far as safely possible. When the resolved Project contract declares a `Chat implementation label` and the current surface can create an issue and comment safely, use [the local Chat-to-pj implementation queue](references/local-implementation-queue.md) instead of asking the user to remember a shell command. The queue issue describes the goal; an exact command is optional. Add the separate unedited authority comment required by that reference and report the mutation as queued, not completed.
+
+If the local queue is not configured or cannot be created safely, return the smallest executable command block that completes the operation. Use placeholders only for facts that cannot be discovered. Do not claim that returned commands ran.
 
 Copy-and-paste command handoffs must be safe to paste into an interactive shell. Do not include command-wide shell-option changes such as `set -e`, `set -u`, `set -o pipefail`, `set -euo pipefail`, or combined variants. Prefer ordinary commands that leave the caller's shell behaviour unchanged. If a shell-state change is genuinely required, scope it to a subprocess so it does not persist after the command finishes.
 
 Run `scripts/setup.sh` when preparing an environment or when `gh` prerequisites are missing. The host must provide credentials and network access. Never print, persist, transform or request a token in a prompt.
 
-When adopting the skill in a repository that does not yet have `.projects/project.md`, run `scripts/init-project.sh` from that repository. It discovers live GitHub facts, asks only for local choices, writes the first single-Project contract or an empty multi-Project dispatcher, and adds a bounded `AGENTS.md` routing section. For a dispatcher, it offers to add Projects one at a time, discovering each live Project and asking only for its routing identity. Rerunning it can add another Project without replacing current routes. It never mutates live issues, labels or Projects.
+When adopting the skill in a repository that does not yet have `.projects/project.md`, run `scripts/init-project.sh` from that repository. It discovers live GitHub facts, asks only for local choices, writes the first single-Project contract or an empty multi-Project dispatcher, and adds a bounded `AGENTS.md` routing section. For a dispatcher, it offers to add Projects one at a time, discovering each live Project and asking only for its routing identity. Rerunning it can add another Project without replacing current routes. It never mutates live issues, labels or Projects. New resolved Project contracts should carry the standard `Chat implementation label | pj:implement-chat` local handoff setting unless the repository deliberately opts out.
 
 ## Inspect and plan
 

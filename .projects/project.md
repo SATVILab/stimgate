@@ -11,11 +11,14 @@
 | Project title | stimgate |
 | Routing | linked repository; no project:* label |
 | Privacy | public repository with a private organisation Project |
+| Issue write-up style | tidy |
+| Issue prose style | natural-direct |
+| Chat implementation label | pj:implement-chat |
 
 ## Field locations
 
 | Common dimension | Provider location | Provider field |
-| --- | --- | --- |
+| --- | --- |
 | Class | organization issue type | Issue Type |
 | Priority | organization issue field | Priority |
 | Status | project field | Status |
@@ -32,11 +35,11 @@
 | P2 | Medium |
 | P3 | Low |
 
-The mapping is exact in both directions. In particular, Low is P3 and must never be read as P2.
+The mapping is exact in both directions. The SATVILab provider names remain unchanged because changing the organisation-wide Priority field would require organisation-admin rights and is not required for canonical P0-P3 semantics.
 
 ## Class vocabulary
 
-Use the current shared organisation Issue Type vocabulary where available:
+Use the current shared organisation Issue Type vocabulary:
 
 - Task
 - Bug
@@ -47,17 +50,13 @@ Use the current shared organisation Issue Type vocabulary where available:
 - Documentation
 - Epic
 
-`Deliverable` replaces the retired `Report` value. `Data` replaces the retired `Raw data` and `Processed data` split. Changing organisation Issue Types is a separate live mutation and requires live inspection and readback.
+`Deliverable` replaces the retired `Report` value. Retired `Raw data` and `Processed data` issues have been migrated to `Data` and those values are not part of the active vocabulary.
 
 ## Other value mappings
 
 - Class uses the exact live organisation Issue Type name. No aliases are declared.
 - Status uses exact live Project option names. No aliases are declared.
 - Due date uses an ISO 8601 date in the `Target date` Project field.
-
-## Legacy provider state
-
-A live Project field named `Workstream` may still contain historical values. It is legacy and unmanaged by the current model: do not require, interpret or populate it. Removing the live field is a separate migration because deletion also removes its Project-local values.
 
 ## Routing and grouping
 
