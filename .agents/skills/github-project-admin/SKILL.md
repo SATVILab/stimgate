@@ -4,7 +4,7 @@ metadata:
     github-path: skills/github-project-admin
     github-ref: refs/heads/main
     github-repo: https://github.com/MiguelRodo/projects
-    github-tree-sha: 5ae534caba0224987735235bec8a818146e6c63b
+    github-tree-sha: 15fe3e9b26f5ea981859cc8cc5fa7e3cf35fb9dd
 name: github-project-admin
 ---
 # GitHub Project administration

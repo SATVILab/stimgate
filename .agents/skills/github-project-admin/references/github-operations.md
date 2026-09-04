@@ -58,9 +58,36 @@ gh api graphql \
 
 If the repository contract declares `Owner type`, compare it with the discovered value and stop on disagreement. Require one non-null Project at the discovered root. Stop if field pagination reports another page rather than silently ignoring fields.
 
-`gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json --limit 1000` is useful when it succeeds, but inspect pagination and do not assume it includes organisation-native issue fields.
+When using `gh project item-list` for discovery or readback, always set an explicit generous limit. The command's default page can omit a newly created or newly added item on a non-trivial Project and make a successful mutation look like a failure.
+
+```bash
+gh project item-list "$PROJECT_NUMBER" \
+  --owner "$PROJECT_OWNER" \
+  --format json \
+  --limit 1000
+```
+
+Treat an unbounded/default `gh project item-list` result as incomplete evidence, not proof that an item is absent. If a target is still absent after a sufficiently broad read, then use an exact GraphQL lookup or diagnose the preceding mutation. Do not add the same issue again merely because the first read used the default page. Do not assume Project item output includes organisation-native issue fields.
 
 Observed provider limitation: with GitHub CLI 2.98.0, `gh project field-list NUMBER --owner USER --format json` can fail with `unknown owner type` for a user-owned Project. Use GraphQL. Do not interpret that message as proof that the Project is absent.
+
+## Reliable command selection and fallbacks
+
+Prefer one deliberate execution path for each property rather than cycling through equivalent CLI, REST and GraphQL mutations.
+
+For ordinary issue-to-Project membership:
+
+1. inspect the issue and current Project membership;
+2. use `gh project item-add` once when membership is authorised;
+3. read the Project again with an explicit generous `--limit` and capture the resulting item ID;
+4. only if `gh project item-add` itself returns a reproducible provider/CLI limitation, use the equivalent GraphQL mutation;
+5. after membership is verified, edit Project fields and independently read them back.
+
+A successful mutation followed by an incomplete read is a readback problem until proven otherwise. Re-run the read correctly before changing mutation mechanism.
+
+When a command fails because of a deterministic permission, eligibility or authentication condition, stop and report that condition. Do not retry the same requested change through several equivalent endpoints in the hope that one bypasses GitHub's access rules. Use another surface only for a documented capability gap or provider-specific CLI limitation.
+
+For exact Project item diagnosis, GraphQL is an appropriate fallback because it can target the Project and issue node IDs directly. It should not be the first response to ordinary pagination mistakes.
 
 ## Organisation-native issue fields
 
@@ -155,7 +182,7 @@ gh project item-add "$PROJECT_NUMBER" \
   --url "$ISSUE_URL"
 ```
 
-Perform it only when membership itself is authorised or necessarily implied by an authorised Project-field change and allowed by the local contract. Read membership back before editing fields.
+Perform it only when membership itself is authorised or necessarily implied by an authorised Project-field change and allowed by the local contract. Read membership back with an explicit generous `--limit` before editing fields. If the command itself fails because of a documented CLI/provider limitation, use GraphQL deliberately; do not switch mutation mechanisms merely because a default-page readback omitted the item.
 
 ## Ordinary issue mutations
 
@@ -166,6 +193,14 @@ gh issue edit "$ISSUE_NUMBER" --repo "$REPOSITORY" --add-assignee "$LOGIN"
 gh issue close "$ISSUE_NUMBER" --repo "$REPOSITORY" --reason completed
 gh issue reopen "$ISSUE_NUMBER" --repo "$REPOSITORY"
 ```
+
+Before assigning a user, check that GitHub considers the login assignable to the repository:
+
+```bash
+gh api "repos/$REPOSITORY/assignees/$LOGIN" >/dev/null
+```
+
+A successful response means the user is eligible for assignment. A not-found or permission response is a real eligibility/access condition: report it and stop instead of trying REST, GraphQL and `gh issue edit` variants in succession. If the preflight succeeds but assignment still fails, inspect the exact error and issue state once before choosing a documented fallback.
 
 For labels, use additive or subtractive flags rather than replacing the full label set. Read the issue again after the command.
 
