@@ -532,9 +532,9 @@ if (isTRUE(run_plots)) {
       ) +
       labs(
         title = "Degradation under Stimulated Mean Shift",
-        subtitle = "Median Absolute Relative Error vs Mean Shift",
+        subtitle = "Median Relative Error vs Mean Shift",
         x = "Stimulated Mean Shift",
-        y = "Median Absolute Relative Error (asinh scale)",
+        y = "Median Relative Error (asinh scale)",
         color = "Method",
         linetype = "Mismatch Variant"
       )
@@ -610,9 +610,9 @@ if (isTRUE(run_plots)) {
       ) +
       labs(
         title = "Degradation under Stimulated Mean Shift",
-        subtitle = "Maximum Absolute Relative Error vs Mean Shift",
+        subtitle = "Maximum Relative Error vs Mean Shift",
         x = "Stimulated Mean Shift",
-        y = "Maximum Absolute Relative Error (asinh scale)",
+        y = "Maximum Relative Error (asinh scale)",
         color = "Method",
         linetype = "Mismatch Variant"
       )
@@ -688,9 +688,9 @@ if (isTRUE(run_plots)) {
       ) +
       labs(
         title = "Degradation under Stimulated Mean Shift",
-        subtitle = "90th Percentile Absolute Relative Error vs Mean Shift",
+        subtitle = "90th Percentile Relative Error vs Mean Shift",
         x = "Stimulated Mean Shift",
-        y = "90th Percentile Absolute Relative Error (asinh scale)",
+        y = "90th Percentile Relative Error (asinh scale)",
         color = "Method",
         linetype = "Mismatch Variant"
       )
@@ -768,9 +768,9 @@ if (isTRUE(run_plots)) {
       ) +
       labs(
         title = "Degradation under Stimulated SD Inflation",
-        subtitle = "Median Absolute Relative Error vs Fractional SD Increase (Negative Component Only)",
+        subtitle = "Median Relative Error vs Fractional SD Increase (Negative Component Only)",
         x = "Fractional SD Increase",
-        y = "Median Absolute Relative Error (asinh scale)",
+        y = "Median Relative Error (asinh scale)",
         color = "Method"
       )
     path_p <- projr::projr_path_get(
@@ -910,7 +910,7 @@ if (isTRUE(run_plots)) {
         title = "90th Percentile Relative Error under Mismatch",
         subtitle = paste0("Mean position setting: ", mean_pos_setting_curr),
         x = "Mismatch Magnitude",
-        y = "90th Percentile Absolute Relative Error (asinh scale)",
+        y = "90th Percentile Relative Error (asinh scale)",
         color = "Method"
       )
     path_p <- projr::projr_path_get(

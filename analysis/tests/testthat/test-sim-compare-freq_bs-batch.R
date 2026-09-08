@@ -288,6 +288,28 @@ test_that(
     expect_true(all(req_cols %in% names(summ)))
     expect_true("mismatch_val" %in% names(summ))
     expect_true(nrow(summ) > 0)
+
+    sign_check <- tibble::tibble(
+      method = rep("stimgate", 6L),
+      approach = rep("stimgate", 6L),
+      error = rep("", 6L),
+      propRespEst = c(0.02, 0.1, 0.16, 0.22, 0.36, 0.44),
+      propRespTruth = rep(0.2, 6L),
+      propStim = rep(0.2, 6L),
+      propUns = rep(0.1, 6L),
+      threshold = rep(1, 6L),
+      thresholdFallbackUsed = rep(FALSE, 6L),
+      mismatch_type = rep("mean_shift", 6L),
+      mismatch_val = c(0, 0.01, 0.02, 0.03, 0.04, 0.05)
+    )
+
+    sign_summary <- env$.simCompareSummariseFreqBs(
+      sign_check,
+      scenarioCols = "method"
+    )
+
+    expect_lt(sign_summary$med_abs_rel_error[[1]], 0)
+    expect_gt(sign_summary$max_abs_rel_error[[1]], 0)
   }
 )
 
