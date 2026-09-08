@@ -58,7 +58,16 @@ gh api graphql \
 
 If the repository contract declares `Owner type`, compare it with the discovered value and stop on disagreement. Require one non-null Project at the discovered root. Stop if field pagination reports another page rather than silently ignoring fields.
 
-When using `gh project item-list` for discovery or readback, always set an explicit generous limit. The command's default page can omit a newly created or newly added item on a non-trivial Project and make a successful mutation look like a failure.
+When `projects` is installed, prefer its count-checked read for a complete Project inventory. Run it from the participating repository root and supply an exact route selector for a dispatcher:
+
+```bash
+projects project item-list --format json
+projects project item-list --project-key "$PROJECT_KEY" --format json
+```
+
+The command validates the local contract, verifies the live Project identity and fails when the number of returned items differs from GitHub's reported total. It does not mutate GitHub.
+
+When the CLI is unavailable, use `gh project item-list` with an explicit generous limit. The command's default page can omit a newly created or newly added item on a non-trivial Project and make a successful mutation look like a failure.
 
 ```bash
 gh project item-list "$PROJECT_NUMBER" \

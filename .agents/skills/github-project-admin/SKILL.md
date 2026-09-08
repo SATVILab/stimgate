@@ -2,9 +2,9 @@
 description: Administer GitHub issues and Projects from short outcome requests. Use for Project-aware inspection, prioritisation, creation, updates, assignment, routing, hierarchy, field changes, or when a surface must hand unsupported mutations to the local pj implementation queue.
 metadata:
     github-path: skills/github-project-admin
-    github-ref: refs/heads/main
+    github-ref: refs/tags/v0.2.0
     github-repo: https://github.com/MiguelRodo/projects
-    github-tree-sha: 15fe3e9b26f5ea981859cc8cc5fa7e3cf35fb9dd
+    github-tree-sha: 2b2a5377c6dae86bf7a04222d3057a6628e2db64
 name: github-project-admin
 ---
 # GitHub Project administration
@@ -17,7 +17,7 @@ Treat the user's request as the desired outcome. Do not require the user to repe
 2. If `.projects/skills/github-project-admin/SKILL.md` exists there and is not this skill, load that deliberate local replacement and stop applying this copy. Do not merge two skill definitions implicitly.
 3. Otherwise use this canonical skill.
 4. Read `.projects/project.md`. If it is missing during ordinary administration, stop and identify the missing repository contract. For an explicit setup or adoption request, create it through the onboarding workflow and repository-contract reference instead of guessing topology from a repository name, issue title, Project title or previous run.
-5. In a shell-capable environment, run `scripts/validate-contract.sh REPOSITORY_ROOT` before relying on the contract.
+5. In a shell-capable environment, run `projects contract validate --root REPOSITORY_ROOT` when `projects` is installed. Otherwise run `scripts/validate-contract.sh REPOSITORY_ROOT`. Both validate the complete dispatcher and its child contracts before they are relied upon.
 
 Read [the repository contract reference](references/repository-contract.md) when creating, migrating, validating, or interpreting `.projects/` files.
 
@@ -90,11 +90,11 @@ For single-select option colours, follow any exact palette in the repository con
 
 Use the first capable surface:
 
-1. a future `projects` CLI, or `projectscli` if that is the installed name;
+1. the `projects` CLI for a command it currently implements;
 2. proven native `gh` commands, versioned GitHub REST, and GraphQL;
 3. an equivalent authenticated provider connector that can perform the same inspection and independent readback.
 
-The future CLI is optional and does not exist merely because this skill mentions it. Until it is available, use the direct operations in [the GitHub operations reference](references/github-operations.md).
+The CLI is optional. It validates contracts, returns a complete count-checked Project item set, plans and applies issue creation/edits and Project item additions/field updates with verified readback, reports its version and checks for an update. Do not invent a CLI command for an unsupported mutation; use the direct operations in [the GitHub operations reference](references/github-operations.md).
 
 If the current surface cannot perform an authorised mutation, inspect as far as safely possible. When the resolved Project contract declares a `Chat implementation label` and the current surface can create an issue and comment safely, use [the local Chat-to-pj implementation queue](references/local-implementation-queue.md) instead of asking the user to remember a shell command. The queue issue describes the goal; an exact command is optional. Add the separate unedited authority comment required by that reference and report the mutation as queued, not completed.
 
