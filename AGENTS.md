@@ -134,8 +134,8 @@ an environment-setup failure rather than switching to `renv`.
 ### GitHub Project administration
 
 For GitHub issue or Project-administration work, use the shared
-`github-project-admin` skill from
-`MiguelRodo/projects/skills/github-project-admin/` and read
+`github-projects` skill from
+`MiguelRodo/github-projects-skill/skills/github-projects/` and read
 `.projects/project.md`. Keep its lightweight Project environment
 separate from the R package-development setup above.
 
@@ -679,5 +679,5 @@ both suites.
 ## GitHub issues and Projects
 
 For GitHub issue or Project administration, use
-`.agents/skills/github-project-admin/SKILL.md` and read
+`.agents/skills/github-projects/SKILL.md` and read
 `.projects/project.md` before acting.

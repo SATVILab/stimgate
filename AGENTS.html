@@ -130,7 +130,7 @@
 </div>
 <div class="section level3">
 <h3 id="github-project-administration">GitHub Project administration<a class="anchor" aria-label="anchor" href="#github-project-administration"></a></h3>
-<p>For GitHub issue or Project-administration work, use the shared <code>github-project-admin</code> skill from <code>MiguelRodo/projects/skills/github-project-admin/</code> and read <code>.projects/project.md</code>. Keep its lightweight Project environment separate from the R package-development setup above.</p>
+<p>For GitHub issue or Project-administration work, use the shared <code>github-projects</code> skill from <code>MiguelRodo/github-projects-skill/skills/github-projects/</code> and read <code>.projects/project.md</code>. Keep its lightweight Project environment separate from the R package-development setup above.</p>
 <hr></div>
 </div>
 <div class="section level2">
@@ -464,10 +464,10 @@
 <code class="sourceCode R"><span><span class="va">exampleData</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/getExampleData.html">getExampleData</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Package tests and examples should use <code><a href="reference/getExampleData.html">getExampleData()</a></code> rather than sourcing developer-side simulation utilities. Keep simulation code in <code>scripts/r/</code> for deliberate analysis/fixture-generation work only. To regenerate the dataset after intentional changes to its structure, run <code>source("data-raw/create_test_fixture.R")</code> from the repository root in a clean R session (no <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code> required).</p>
 </li>
-</ol><!-- github-project-admin:start --></div>
+</ol><!-- github-projects:start --></div>
 <div class="section level2">
 <h2 id="github-issues-and-projects">GitHub issues and Projects<a class="anchor" aria-label="anchor" href="#github-issues-and-projects"></a></h2>
-<p>For GitHub issue or Project administration, use <code>.agents/skills/github-project-admin/SKILL.md</code> and read <code>.projects/project.md</code> before acting. <!-- github-project-admin:end --></p>
+<p>For GitHub issue or Project administration, use <code>.agents/skills/github-projects/SKILL.md</code> and read <code>.projects/project.md</code> before acting. <!-- github-projects:end --></p>
 </div>
 </div>
 
