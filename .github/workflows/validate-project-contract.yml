@@ -28,13 +28,13 @@ jobs:
       - name: Check out canonical Project skill
         uses: actions/checkout@v4
         with:
-          repository: MiguelRodo/projects
-          ref: 01f91d6489c3f3e0fa5e56b91bf6311b42229f0f
-          path: .github-project-admin-source
+          repository: MiguelRodo/github-projects-skill
+          ref: v0.3.0
+          path: .github-projects-source
 
       - name: Validate local Project contract
         run: |
-          bash .github-project-admin-source/skills/github-project-admin/scripts/validate-contract.sh .
+          bash .github-projects-source/skills/github-projects/scripts/validate-contract.sh .
 
       - name: Verify repository boundary
         shell: bash

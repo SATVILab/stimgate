@@ -117,8 +117,8 @@ environment-setup failure rather than switching to `renv`.
 ### GitHub Project administration
 
 For GitHub issue or Project-administration work, use the shared
-`github-project-admin` skill from
-`MiguelRodo/projects/skills/github-project-admin/` and read
+`github-projects` skill from
+`MiguelRodo/github-projects-skill/skills/github-projects/` and read
 `.projects/project.md`. Keep its lightweight Project environment separate from
 the R package-development setup above.
 
@@ -506,10 +506,10 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
     `source("data-raw/create_test_fixture.R")` from the repository root in a
     clean R session (no `devtools::load_all()` required).
 
-<!-- github-project-admin:start -->
+<!-- github-projects:start -->
 ## GitHub issues and Projects
 
 For GitHub issue or Project administration, use
-`.agents/skills/github-project-admin/SKILL.md` and read
+`.agents/skills/github-projects/SKILL.md` and read
 `.projects/project.md` before acting.
-<!-- github-project-admin:end -->
+<!-- github-projects:end -->
