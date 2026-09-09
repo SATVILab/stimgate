@@ -313,9 +313,7 @@ The workflow currently:
 - installs StimGate package and development dependencies;
 - installs `devtools`, `rcmdcheck` and `decor`;
 - installs the latest `SATVILab/simcyto` from its default branch;
-- verifies the important R packages and
-  [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html);
-  and
+- verifies the important R packages and `devtools::load_all()`; and
 - installs Quarto.
 
 The repository `.Rprofile` treats the Copilot agent as CI, so Copilot

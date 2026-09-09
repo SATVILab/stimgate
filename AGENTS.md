@@ -67,7 +67,7 @@ condition is unusually high relative to the unstimulated background.
   may be called without a namespace qualifier and do not require
   `@importFrom` tags.
 - Modify `.Rd` files manually; regenerate them with
-  [`devtools::document()`](https://devtools.r-lib.org/reference/document.html).
+  `devtools::document()`.
 - Use [`return()`](https://rdrr.io/r/base/function.html) as the last
   line of a function; use it only for early returns.
 - Add [`library()`](https://rdrr.io/r/base/library.html) calls inside
@@ -182,10 +182,10 @@ Rscript -e "lintr::lint_package()"
 
 ### Checklist before each commit / opening a PR
 
-1.  [`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
+1.  `devtools::document()`
 2.  `styler::style_pkg()`
 3.  `lintr::lint_package()`
-4.  [`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
+4.  `devtools::test()`
 5.  If `analysis/` or `scripts/r/` changed,
     `Rscript analysis/tests/run_analysis_tests.R`
 
@@ -198,7 +198,7 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 
 | Test type | Location | Run with |
 |----|----|----|
-| Package unit/integration tests | `tests/testthat/` | [`devtools::test()`](https://devtools.r-lib.org/reference/test.html) |
+| Package unit/integration tests | `tests/testthat/` | `devtools::test()` |
 | Analysis helper / scripts/r / QMD drift checks | `analysis/tests/testthat/` | see below |
 
 **What belongs in the analysis test suite
@@ -228,13 +228,11 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 **Running the analysis test suite:**
 
 The analysis suite loads the package from the current checkout via
-[`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
-before running tests, so it always tests the current source rather than
-any previously installed version. The GitHub Actions job in
-`.github/workflows/analysis-integration.yaml` runs this suite
-independently of
-`R CMD check`/[`devtools::test()`](https://devtools.r-lib.org/reference/test.html).
-Run from the repository root:
+`devtools::load_all()` before running tests, so it always tests the
+current source rather than any previously installed version. The GitHub
+Actions job in `.github/workflows/analysis-integration.yaml` runs this
+suite independently of `R CMD check`/`devtools::test()`. Run from the
+repository root:
 
 ``` r
 
@@ -352,9 +350,8 @@ pkgdown::check_pkgdown()
       (comparison method).
   - `r/`: Developer-side R analysis/simulation helpers used for
     research, benchmarking, and fixture regeneration. These are not
-    loaded by
-    [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
-    and are not part of the installed package.
+    loaded by `devtools::load_all()` and are not part of the installed
+    package.
   - `analysis-runtime.R`: Shared QMD execution/runtime plumbing for
     parameter lookup, env overrides, chunk validation and atomic RDS
     output.
@@ -536,8 +533,7 @@ plotting/orchestration code.
     \#288/#289/#291/#295 / umbrella \#271)**: Generic cytometry
     simulations, post-simulation transformations, and condition-mismatch
     controls are progressively migrating to the exported `simcyto`
-    package API (e.g.
-    [`simcyto::simCytExperiment()`](https://rdrr.io/pkg/simcyto/man/simCytExperiment.html),
+    package API (e.g. `simcyto::simCytExperiment()`,
     `simcyto::simCytTransform*()`).
     `analysis/2-sim-bw-freq_bs-global.qmd`,
     `analysis/3-sim-bw-est-base.qmd`,
@@ -672,9 +668,7 @@ both suites.
     analysis/fixture-generation work only. To regenerate the dataset
     after intentional changes to its structure, run
     `source("data-raw/create_test_fixture.R")` from the repository root
-    in a clean R session (no
-    [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
-    required).
+    in a clean R session (no `devtools::load_all()` required).
 
 ## GitHub issues and Projects
 

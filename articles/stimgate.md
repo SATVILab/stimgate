@@ -60,7 +60,7 @@ function documentation.
 sessionInfo()
 #> R version 4.6.1 (2026-06-24)
 #> Platform: x86_64-pc-linux-gnu
-#> Running under: Ubuntu 24.04.4 LTS
+#> Running under: Ubuntu 24.04.5 LTS
 #> 
 #> Matrix products: default
 #> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
@@ -82,19 +82,19 @@ sessionInfo()
 #> [1] stimgate_0.105.0-1
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] gtable_0.3.6        jsonlite_2.0.0      dplyr_1.2.1        
-#>  [4] compiler_4.6.1      BiocManager_1.30.27 tidyselect_1.2.1   
-#>  [7] jquerylib_0.1.4     systemfonts_1.3.2   scales_1.4.0       
-#> [10] textshaping_1.0.5   yaml_2.3.12         fastmap_1.2.0      
-#> [13] ggplot2_4.0.3       R6_2.6.1            generics_0.1.4     
-#> [16] knitr_1.52          htmlwidgets_1.6.4   tibble_3.3.1       
-#> [19] desc_1.4.3          bslib_0.12.0        pillar_1.11.1      
-#> [22] RColorBrewer_1.1-3  rlang_1.3.0         cachem_1.1.0       
-#> [25] xfun_0.60           fs_2.1.0            sass_0.4.10        
-#> [28] S7_0.2.2            otel_0.2.0          cli_3.6.6          
-#> [31] pkgdown_2.2.1       magrittr_2.0.5      digest_0.6.39      
-#> [34] grid_4.6.1          lifecycle_1.0.5     vctrs_0.7.3        
-#> [37] evaluate_1.0.5      glue_1.8.1          farver_2.1.2       
-#> [40] ragg_1.5.2          rmarkdown_2.32      tools_4.6.1        
-#> [43] pkgconfig_2.0.3     htmltools_0.5.9
+#>  [1] vctrs_0.7.3         cli_3.6.6           knitr_1.52         
+#>  [4] rlang_1.3.0         xfun_0.60           otel_0.2.0         
+#>  [7] generics_0.1.4      S7_0.2.2            textshaping_1.0.5  
+#> [10] jsonlite_2.0.0      glue_1.8.1          htmltools_0.5.9    
+#> [13] ragg_1.5.2          sass_0.4.10         scales_1.4.0       
+#> [16] rmarkdown_2.32      grid_4.6.1          tibble_3.3.1       
+#> [19] evaluate_1.0.5      jquerylib_0.1.4     fastmap_1.2.0      
+#> [22] yaml_2.3.12         lifecycle_1.0.5     BiocManager_1.30.27
+#> [25] compiler_4.6.1      dplyr_1.2.1         RColorBrewer_1.1-3 
+#> [28] fs_2.1.0            pkgconfig_2.0.3     farver_2.1.2       
+#> [31] systemfonts_1.3.2   digest_0.6.39       R6_2.6.1           
+#> [34] tidyselect_1.2.1    pillar_1.11.1       magrittr_2.0.5     
+#> [37] bslib_0.12.0        tools_4.6.1         gtable_0.3.6       
+#> [40] pkgdown_2.2.1       ggplot2_4.0.3       cachem_1.1.0       
+#> [43] desc_1.4.3
 ```
