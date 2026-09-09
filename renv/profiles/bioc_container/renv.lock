@@ -391,6 +391,43 @@
       "Author": "Martin Morgan [aut, cre], Jiefei Wang [aut], Valerie Obenchain [aut], Michel Lang [aut], Ryan Thompson [aut], Nitesh Turaga [aut], Aaron Lun [ctb], Henrik Bengtsson [ctb], Madelyn Carlson [ctb] (Translated 'Random Numbers' vignette from Sweave to RMarkdown / HTML.), Phylis Atieno [ctb] (Translated 'Introduction to BiocParallel' vignette from Sweave to Rmarkdown / HTML.), Sergio Oller [ctb] (Improved bpmapply() efficiency., <https://orcid.org/0000-0002-8994-1549>)",
       "Maintainer": "Martin Morgan <mtmorgan.bioc@gmail.com>"
     },
+    "BiocStyle": {
+      "Package": "BiocStyle",
+      "Version": "2.34.0",
+      "Source": "Bioconductor",
+      "Title": "Standard styles for vignettes and other Bioconductor documents",
+      "Description": "Provides standard formatting styles for Bioconductor PDF and HTML documents. Package vignettes illustrate use and functionality.",
+      "Authors@R": "c( person(\"Andrzej\", \"Oleś\", role = \"aut\", comment = c(ORCID = \"0000-0003-0285-2787\") ),  person(\"Mike\", \"Smith\", role = \"ctb\", comment = c(ORCID = \"0000-0002-7800-3848\") ), person(\"Martin\", \"Morgan\", role = \"ctb\"), person(\"Wolfgang\", \"Huber\", role = \"ctb\"), person(\"Bioconductor Package Maintainer\", role = \"cre\", email = \"maintainer@bioconductor.org\") )",
+      "Imports": [
+        "bookdown",
+        "knitr (>= 1.30)",
+        "rmarkdown (>= 1.2)",
+        "stats",
+        "utils",
+        "yaml",
+        "BiocManager"
+      ],
+      "Suggests": [
+        "BiocGenerics",
+        "RUnit",
+        "htmltools"
+      ],
+      "biocViews": "Software",
+      "License": "Artistic-2.0",
+      "VignetteBuilder": "knitr",
+      "Encoding": "UTF-8",
+      "URL": "https://github.com/Bioconductor/BiocStyle",
+      "BugReports": "https://github.com/Bioconductor/BiocStyle/issues",
+      "RoxygenNote": "6.1.0",
+      "git_url": "https://git.bioconductor.org/packages/BiocStyle",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "0a04242",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "no",
+      "Author": "Andrzej Oleś [aut] (<https://orcid.org/0000-0003-0285-2787>), Mike Smith [ctb] (<https://orcid.org/0000-0002-7800-3848>), Martin Morgan [ctb], Wolfgang Huber [ctb], Bioconductor Package Maintainer [cre]",
+      "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
+    },
     "BiocVersion": {
       "Package": "BiocVersion",
       "Version": "3.20.0",
@@ -477,6 +514,73 @@
       "Author": "Hervé Pagès [aut, cre], Patrick Aboyoun [aut], Robert Gentleman [aut], Saikat DebRoy [aut], Vince Carey [ctb], Nicolas Delhomme [ctb], Felix Ernst [ctb], Wolfgang Huber [ctb] ('matchprobes' vignette), Beryl Kanali [ctb] (Converted 'MultipleAlignments' vignette from Sweave to RMarkdown), Haleema Khan [ctb] (Converted 'matchprobes' vignette from Sweave to RMarkdown), Aidan Lakshman [ctb], Kieran O'Neill [ctb], Valerie Obenchain [ctb], Marcel Ramos [ctb], Albert Vill [ctb], Jen Wokaty [ctb] (Converted 'matchprobes' vignette from Sweave to RMarkdown), Erik Wright [ctb]",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
     },
+    "COMPASS": {
+      "Package": "COMPASS",
+      "Version": "1.44.0",
+      "Source": "Bioconductor",
+      "Type": "Package",
+      "Title": "Combinatorial Polyfunctionality Analysis of Single Cells",
+      "Date": "2014-07-11",
+      "Author": "Lynn Lin, Kevin Ushey, Greg Finak, Ravio Kolde (pheatmap)",
+      "Authors@R": "c( person(\"Lynn\", \"Lin\", role=\"aut\", email=\"llin@fhcrc.org\"), person(\"Kevin\", \"Ushey\", role=\"aut\", email=\"kushey@fhcrc.org\"), person(\"Greg\", \"Finak\", role=c(\"aut\",\"cre\"), email=\"gfinak@fhcrc.org\"), person(\"Raivo\", \"Kolde\", role=\"ctb\", email=\"rkolde@gmail.com\", comment=\"Author of 'pheatmap', which was modified and now used internally in COMPASS\") )",
+      "Description": "COMPASS is a statistical framework that enables unbiased analysis of antigen-specific T-cell subsets. COMPASS uses a Bayesian hierarchical framework to model all observed cell-subsets and select the most likely to be antigen-specific while regularizing the small cell counts that often arise in multi-parameter space. The model provides a posterior probability of specificity for each cell subset and each sample, which can be used to profile a subject's immune response to external stimuli such as infection or vaccination.",
+      "License": "Artistic-2.0",
+      "BugReports": "https://github.com/RGLab/COMPASS/issues",
+      "VignetteBuilder": "knitr",
+      "Depends": [
+        "R (>= 3.0.3)"
+      ],
+      "LinkingTo": [
+        "Rcpp (>= 0.11.0)"
+      ],
+      "Maintainer": "Greg Finak <gfinak@fhcrc.org>",
+      "Imports": [
+        "methods",
+        "Rcpp",
+        "data.table",
+        "RColorBrewer",
+        "scales",
+        "grid",
+        "plyr",
+        "knitr",
+        "abind",
+        "clue",
+        "grDevices",
+        "utils",
+        "pdist",
+        "magrittr",
+        "reshape2",
+        "dplyr",
+        "tidyr",
+        "rlang",
+        "BiocStyle",
+        "rmarkdown",
+        "foreach",
+        "coda"
+      ],
+      "Suggests": [
+        "flowWorkspace (>= 3.33.1)",
+        "flowCore",
+        "ncdfFlow",
+        "shiny",
+        "testthat",
+        "devtools",
+        "flowWorkspaceData",
+        "ggplot2",
+        "progress"
+      ],
+      "LazyLoad": "yes",
+      "LazyData": "yes",
+      "biocViews": "ImmunoOncology, FlowCytometry",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.1.1",
+      "git_url": "https://git.bioconductor.org/packages/COMPASS",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "865b5b9",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "yes"
+    },
     "DBI": {
       "Package": "DBI",
       "Version": "1.3.0",
@@ -553,6 +657,30 @@
       "Repository/R-Forge/DateTimeStamp": "2024-11-23 19:13:45",
       "NeedsCompilation": "no",
       "Encoding": "UTF-8"
+    },
+    "DataTidyACSCyTOFFAUST": {
+      "Package": "DataTidyACSCyTOFFAUST",
+      "Version": "0.0.0.9000",
+      "Source": "GitHub",
+      "Title": "Use FAUST to get ACS CyTOF phenotypes",
+      "Authors@R": "person(\"Miguel\", \"Rodo\", , \"rdxmig002@myuct.ac.za\", role = c(\"aut\", \"cre\"))",
+      "Description": "Applies FAUST to the ACS CyTOF live, debarcoded singlets to get phenotypes. FCS files are exported of lineages, as well as counts of the phenotypes",
+      "License": "CC BY 4.0",
+      "Encoding": "UTF-8",
+      "Roxygen": "list(markdown = TRUE)",
+      "RoxygenNote": "7.2.0",
+      "Depends": [
+        "R (>= 2.10)"
+      ],
+      "LazyData": "true",
+      "Author": "Miguel Rodo [aut, cre]",
+      "Maintainer": "Miguel Rodo <rdxmig002@myuct.ac.za>",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "SATVILab",
+      "RemoteRepo": "DataTidyACSCyTOFFAUST",
+      "RemoteRef": "primary",
+      "RemoteSha": "14287983227da6bf6d4eca57b46088a741a7cf84"
     },
     "DelayedArray": {
       "Package": "DelayedArray",
@@ -1903,6 +2031,49 @@
       "Author": "Hervé Pagès [aut, cre]",
       "Maintainer": "Hervé Pagès <hpages.on.github@gmail.com>"
     },
+    "UtilsCompassSV": {
+      "Package": "UtilsCompassSV",
+      "Version": "0.1.7",
+      "Source": "GitHub",
+      "Type": "Package",
+      "Title": "Utility Functions to Plot and Work with COMPASS Output",
+      "Authors@R": "person(given = c(\"Miguel\", \"Julio\"), family = \"Rodo\", role = c(\"aut\", \"cre\"), email = \"rdxmig002@myuct.ac.za\")",
+      "Description": "Primary function thus far is plot_compass,  which plots posterior probabilities for each cytokine combination using more concise alternatives to the COMPASS::plot function's grid.  Also has `convert_cyt_combn_format`, for converting between \"standard\" and COMPASS cytokine combination formats.",
+      "License": "MIT + file LICENSE",
+      "Encoding": "UTF-8",
+      "LazyData": "true",
+      "Depends": [
+        "R (>= 4.1.0)"
+      ],
+      "Suggests": [
+        "knitr",
+        "rmarkdown",
+        "testthat (>= 3.0.0)"
+      ],
+      "Config/testthat/edition": "3",
+      "Imports": [
+        "purrr",
+        "stringr",
+        "tibble",
+        "rlang",
+        "tidyr",
+        "cowplot",
+        "COMPASS",
+        "RColorBrewer",
+        "ggplot2",
+        "dplyr"
+      ],
+      "RoxygenNote": "7.3.3",
+      "VignetteBuilder": "knitr",
+      "Author": "Miguel Julio Rodo [aut, cre]",
+      "Maintainer": "Miguel Julio Rodo <rdxmig002@myuct.ac.za>",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "SATVILab",
+      "RemoteRepo": "UtilsCompassSV",
+      "RemoteRef": "master",
+      "RemoteSha": "771ac3232c624f300185e8baa6b8e1eb3117c78b"
+    },
     "UtilsCytoRSV": {
       "Package": "UtilsCytoRSV",
       "Version": "0.1.5",
@@ -2367,6 +2538,59 @@
       "Maintainer": "Kirill Müller <kirill@cynkra.com>",
       "Repository": "CRAN"
     },
+    "bookdown": {
+      "Package": "bookdown",
+      "Version": "0.42",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Authoring Books and Technical Documents with R Markdown",
+      "Authors@R": "c( person(\"Yihui\", \"Xie\", role = c(\"aut\", \"cre\"), email = \"xie@yihui.name\", comment = c(ORCID = \"0000-0003-0645-5666\")), person(\"Christophe\", \"Dervieux\", , \"cderv@posit.co\", role = c(\"ctb\"), comment = c(ORCID = \"0000-0003-4474-2498\")), person(\"JJ\", \"Allaire\", role = \"ctb\"), person(\"Albert\", \"Kim\", role = \"ctb\"), person(\"Alessandro\", \"Samuel-Rosa\", role = \"ctb\"), person(\"Andrzej\", \"Oles\", role = \"ctb\"), person(\"Atsushi\", \"Yasumoto\", role = \"ctb\", comment = c(ORCID = \"0000-0002-8335-495X\")), person(\"Aust\", \"Frederik\", role = \"ctb\", comment = c(ORCID = \"0000-0003-4900-788X\")), person(\"Bastiaan\", \"Quast\", role = \"ctb\"), person(\"Ben\", \"Marwick\", role = \"ctb\"), person(\"Chester\", \"Ismay\", role = \"ctb\"), person(\"Clifton\", \"Franklund\", role = \"ctb\"), person(\"Daniel\", \"Emaasit\", role = \"ctb\"), person(\"David\", \"Shuman\", role = \"ctb\"), person(\"Dean\", \"Attali\", role = \"ctb\"), person(\"Drew\", \"Tyre\", role = \"ctb\"), person(\"Ellis\", \"Valentiner\", role = \"ctb\"), person(\"Frans\", \"van Dunne\", role = \"ctb\"), person(\"Hadley\", \"Wickham\", role = \"ctb\"), person(\"Jeff\", \"Allen\", role = \"ctb\"), person(\"Jennifer\", \"Bryan\", role = \"ctb\"), person(\"Jonathan\", \"McPhers\", role = \"ctb\"), person(\"JooYoung\", \"Seo\", role=\"ctb\", comment = c(ORCID = \"0000-0002-4064-6012\")), person(\"Joyce\", \"Robbins\", role = \"ctb\"), person(\"Junwen\", \"Huang\", role = \"ctb\"), person(\"Kevin\", \"Cheung\", role = \"ctb\"), person(\"Kevin\", \"Ushey\", role = \"ctb\"), person(\"Kim\", \"Seonghyun\", role = \"ctb\"), person(\"Kirill\", \"Muller\", role = \"ctb\"), person(\"Luciano\", \"Selzer\", role = \"ctb\"), person(\"Matthew\", \"Lincoln\", role = \"ctb\"), person(\"Maximilian\", \"Held\", role = \"ctb\"), person(\"Michael\", \"Sachs\", role = \"ctb\"), person(\"Michal\", \"Bojanowski\", role = \"ctb\"), person(\"Nathan\", \"Werth\", role = \"ctb\"), person(\"Noam\", \"Ross\", role = \"ctb\"), person(\"Peter\", \"Hickey\", role = \"ctb\"), person(\"Pedro Rafael D.\", \"Marinho\", role=\"ctb\", comment = c(ORCID = \"0000-0003-1591-8300\")), person(\"Romain\", \"Lesur\", role = \"ctb\", comment = c(ORCID = \"0000-0002-0721-5595\")), person(\"Sahir\", \"Bhatnagar\", role = \"ctb\"), person(\"Shir\", \"Dekel\", role = \"ctb\", comment = c(ORCID = \"0000-0003-1773-2446\")), person(\"Steve\", \"Simpson\", role = \"ctb\"), person(\"Thierry\", \"Onkelinx\", role = \"ctb\", comment = c(ORCID = \"0000-0001-8804-4216\")), person(\"Vincent\", \"Fulco\", role = \"ctb\"), person(\"Yixuan\", \"Qiu\", role = \"ctb\"), person(\"Zhuoer\", \"Dong\", role = \"ctb\"), person(given = \"Posit Software, PBC\", role = c(\"cph\", \"fnd\")), person(\"Bartek\", \"Szopka\", role = \"ctb\", comment = \"The jQuery Highlight plugin\"), person(\"Zeno\", \"Rocha\", role = \"cph\", comment = \"clipboard.js library\"), person(family = \"MathQuill contributors\", role = \"ctb\", comment = \"The MathQuill library; authors listed in inst/resources/AUTHORS\"), person(family = \"FriendCode Inc\", role = c(\"cph\", \"ctb\"), comment = \"The gitbook style, with modifications\") )",
+      "Maintainer": "Yihui Xie <xie@yihui.name>",
+      "Description": "Output formats and utilities for authoring books and technical documents with R Markdown.",
+      "License": "GPL-3",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "Imports": [
+        "htmltools (>= 0.3.6)",
+        "knitr (>= 1.38)",
+        "rmarkdown (>= 2.14)",
+        "jquerylib",
+        "xfun (>= 0.48)",
+        "tinytex (>= 0.12)",
+        "yaml (>= 2.1.19)"
+      ],
+      "Suggests": [
+        "bslib (>= 0.2.4)",
+        "downlit (>= 0.4.0)",
+        "htmlwidgets",
+        "jsonlite",
+        "rstudioapi",
+        "miniUI",
+        "rsconnect (>= 0.4.3)",
+        "servr (>= 0.13)",
+        "shiny",
+        "tibble",
+        "testit (>= 0.9)",
+        "tufte",
+        "xml2",
+        "webshot",
+        "testthat (>= 3.1.0)",
+        "withr (>= 2.3.0)"
+      ],
+      "URL": "https://github.com/rstudio/bookdown, https://pkgs.rstudio.com/bookdown/",
+      "BugReports": "https://github.com/rstudio/bookdown/issues",
+      "SystemRequirements": "Pandoc (>= 1.17.2)",
+      "RoxygenNote": "7.3.2",
+      "Encoding": "UTF-8",
+      "Config/Needs/book": "remotes, webshot, svglite",
+      "Config/Needs/website": "pkgdown, tidyverse/tidytemplate, rstudio/quillt",
+      "Config/testthat/edition": "3",
+      "VignetteBuilder": "knitr",
+      "NeedsCompilation": "no",
+      "Author": "Yihui Xie [aut, cre] (<https://orcid.org/0000-0003-0645-5666>), Christophe Dervieux [ctb] (<https://orcid.org/0000-0003-4474-2498>), JJ Allaire [ctb], Albert Kim [ctb], Alessandro Samuel-Rosa [ctb], Andrzej Oles [ctb], Atsushi Yasumoto [ctb] (<https://orcid.org/0000-0002-8335-495X>), Aust Frederik [ctb] (<https://orcid.org/0000-0003-4900-788X>), Bastiaan Quast [ctb], Ben Marwick [ctb], Chester Ismay [ctb], Clifton Franklund [ctb], Daniel Emaasit [ctb], David Shuman [ctb], Dean Attali [ctb], Drew Tyre [ctb], Ellis Valentiner [ctb], Frans van Dunne [ctb], Hadley Wickham [ctb], Jeff Allen [ctb], Jennifer Bryan [ctb], Jonathan McPhers [ctb], JooYoung Seo [ctb] (<https://orcid.org/0000-0002-4064-6012>), Joyce Robbins [ctb], Junwen Huang [ctb], Kevin Cheung [ctb], Kevin Ushey [ctb], Kim Seonghyun [ctb], Kirill Muller [ctb], Luciano Selzer [ctb], Matthew Lincoln [ctb], Maximilian Held [ctb], Michael Sachs [ctb], Michal Bojanowski [ctb], Nathan Werth [ctb], Noam Ross [ctb], Peter Hickey [ctb], Pedro Rafael D. Marinho [ctb] (<https://orcid.org/0000-0003-1591-8300>), Romain Lesur [ctb] (<https://orcid.org/0000-0002-0721-5595>), Sahir Bhatnagar [ctb], Shir Dekel [ctb] (<https://orcid.org/0000-0003-1773-2446>), Steve Simpson [ctb], Thierry Onkelinx [ctb] (<https://orcid.org/0000-0001-8804-4216>), Vincent Fulco [ctb], Yixuan Qiu [ctb], Zhuoer Dong [ctb], Posit Software, PBC [cph, fnd], Bartek Szopka [ctb] (The jQuery Highlight plugin), Zeno Rocha [cph] (clipboard.js library), MathQuill contributors [ctb] (The MathQuill library; authors listed in inst/resources/AUTHORS), FriendCode Inc [cph, ctb] (The gitbook style, with modifications)",
+      "Repository": "RSPM"
+    },
     "brew": {
       "Package": "brew",
       "Version": "1.0-10",
@@ -2702,6 +2926,27 @@
       "URL": "https://svn.r-project.org/R-packages/trunk/cluster/",
       "NeedsCompilation": "yes",
       "Author": "Martin Maechler [aut, cre] (ORCID: <https://orcid.org/0000-0002-8685-9910>), Peter Rousseeuw [aut] (Fortran original, ORCID: <https://orcid.org/0000-0002-3807-5353>), Anja Struyf [aut] (S original), Mia Hubert [aut] (S original, ORCID: <https://orcid.org/0000-0001-6398-4850>), Kurt Hornik [trl, ctb] (port to R; maintenance(1999-2000), ORCID: <https://orcid.org/0000-0003-4198-9911>), Matthias Studer [ctb], Pierre Roudier [ctb], Juan Gonzalez [ctb], Kamil Kozlowski [ctb], Erich Schubert [ctb] (fastpam options for pam(), ORCID: <https://orcid.org/0000-0001-9143-4880>), Keefe Murphy [ctb] (volume.ellipsoid({d >= 3}))",
+      "Repository": "RSPM",
+      "Encoding": "UTF-8"
+    },
+    "coda": {
+      "Package": "coda",
+      "Version": "0.19-4.1",
+      "Source": "Repository",
+      "Date": "2020-09-30",
+      "Title": "Output Analysis and Diagnostics for MCMC",
+      "Authors@R": "c(person(\"Martyn\", \"Plummer\", role=c(\"aut\",\"cre\",\"trl\"), email=\"martyn.plummer@gmail.com\"), person(\"Nicky\", \"Best\", role=\"aut\"), person(\"Kate\", \"Cowles\", role=\"aut\"), person(\"Karen\", \"Vines\", role=\"aut\"), person(\"Deepayan\", \"Sarkar\", role=\"aut\"), person(\"Douglas\", \"Bates\", role=\"aut\"), person(\"Russell\", \"Almond\", role=\"aut\"), person(\"Arni\", \"Magnusson\", role=\"aut\"))",
+      "Depends": [
+        "R (>= 2.14.0)"
+      ],
+      "Imports": [
+        "lattice"
+      ],
+      "Description": "Provides functions for summarizing and plotting the output from Markov Chain Monte Carlo (MCMC) simulations, as well as diagnostic tests of convergence to the equilibrium distribution of the Markov chain.",
+      "License": "GPL (>= 2)",
+      "NeedsCompilation": "no",
+      "Author": "Martyn Plummer [aut, cre, trl], Nicky Best [aut], Kate Cowles [aut], Karen Vines [aut], Deepayan Sarkar [aut], Douglas Bates [aut], Russell Almond [aut], Arni Magnusson [aut]",
+      "Maintainer": "Martyn Plummer <martyn.plummer@gmail.com>",
       "Repository": "RSPM",
       "Encoding": "UTF-8"
     },
@@ -3764,6 +4009,49 @@
       "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
       "Repository": "RSPM"
     },
+    "flowClust": {
+      "Package": "flowClust",
+      "Version": "3.44.0",
+      "Source": "Bioconductor",
+      "Type": "Package",
+      "Title": "Clustering for Flow Cytometry",
+      "Author": "Raphael Gottardo, Kenneth Lo <c.lo@stat.ubc.ca>, Greg Finak <greg@ozette.ai>",
+      "Maintainer": "Greg Finak <greg@ozette.ai>, Mike Jiang <mike@ozette.ai>",
+      "Depends": [
+        "R(>= 2.5.0)"
+      ],
+      "Imports": [
+        "BiocGenerics",
+        "methods",
+        "Biobase",
+        "graph",
+        "flowCore",
+        "parallel"
+      ],
+      "Suggests": [
+        "testthat",
+        "flowWorkspace",
+        "flowWorkspaceData",
+        "knitr",
+        "rmarkdown",
+        "openCyto",
+        "flowStats(>= 4.7.1)"
+      ],
+      "Description": "Robust model-based clustering using a t-mixture model with Box-Cox transformation. Note: users should have GSL installed. Windows users: 'consult the README file available in the inst directory of the source distribution for necessary configuration instructions'.",
+      "Collate": "'SetClasses.R' 'SetMethods.R' 'flowClust.R' 'coerce.R' 'flowClust-package.R' 'hist.R' 'miscellaneous.R' 'plot.R' 'split.R'",
+      "License": "MIT",
+      "biocViews": "ImmunoOncology, Clustering, Visualization, FlowCytometry",
+      "SystemRequirements": "GNU make",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.1.1",
+      "VignetteBuilder": "knitr",
+      "git_url": "https://git.bioconductor.org/packages/flowClust",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "7fe1c3c",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "yes"
+    },
     "flowCore": {
       "Package": "flowCore",
       "Version": "2.18.0",
@@ -4046,6 +4334,42 @@
       "Author": "Richard Iannone [aut, cre] (<https://orcid.org/0000-0003-3925-190X>), Christophe Dervieux [ctb] (<https://orcid.org/0000-0003-4474-2498>), Winston Chang [ctb], Dave Gandy [ctb, cph] (Font-Awesome font), Posit Software, PBC [cph, fnd]",
       "Maintainer": "Richard Iannone <rich@posit.co>",
       "Repository": "CRAN"
+    },
+    "foreach": {
+      "Package": "foreach",
+      "Version": "1.5.2",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Provides Foreach Looping Construct",
+      "Authors@R": "c(person(\"Folashade\", \"Daniel\", role=\"cre\", email=\"fdaniel@microsoft.com\"), person(\"Hong\", \"Ooi\", role=\"ctb\"), person(\"Rich\", \"Calaway\", role=\"ctb\"), person(\"Microsoft\", role=c(\"aut\", \"cph\")), person(\"Steve\", \"Weston\", role=\"aut\"))",
+      "Description": "Support for the foreach looping construct.  Foreach is an idiom that allows for iterating over elements in a collection, without the use of an explicit loop counter.  This package in particular is intended to be used for its return value, rather than for its side effects.  In that sense, it is similar to the standard lapply function, but doesn't require the evaluation of a function.  Using foreach without side effects also facilitates executing the loop in parallel.",
+      "License": "Apache License (== 2.0)",
+      "URL": "https://github.com/RevolutionAnalytics/foreach",
+      "BugReports": "https://github.com/RevolutionAnalytics/foreach/issues",
+      "Depends": [
+        "R (>= 2.5.0)"
+      ],
+      "Imports": [
+        "codetools",
+        "utils",
+        "iterators"
+      ],
+      "Suggests": [
+        "randomForest",
+        "doMC",
+        "doParallel",
+        "testthat",
+        "knitr",
+        "rmarkdown"
+      ],
+      "VignetteBuilder": "knitr",
+      "RoxygenNote": "7.1.1",
+      "Collate": "'callCombine.R' 'foreach.R' 'do.R' 'foreach-ext.R' 'foreach-pkg.R' 'getDoPar.R' 'getDoSeq.R' 'getsyms.R' 'iter.R' 'nextElem.R' 'onLoad.R' 'setDoPar.R' 'setDoSeq.R' 'times.R' 'utils.R'",
+      "NeedsCompilation": "no",
+      "Author": "Folashade Daniel [cre], Hong Ooi [ctb], Rich Calaway [ctb], Microsoft [aut, cph], Steve Weston [aut]",
+      "Maintainer": "Folashade Daniel <fdaniel@microsoft.com>",
+      "Repository": "RSPM",
+      "Encoding": "UTF-8"
     },
     "formatR": {
       "Package": "formatR",
@@ -5198,6 +5522,30 @@
       "Maintainer": "Thomas Lin Pedersen <thomas.pedersen@posit.co>",
       "Repository": "CRAN"
     },
+    "iterators": {
+      "Package": "iterators",
+      "Version": "1.0.14",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Provides Iterator Construct",
+      "Authors@R": "c(person(\"Folashade\", \"Daniel\", role=\"cre\", email=\"fdaniel@microsoft.com\"), person(\"Revolution\", \"Analytics\", role=c(\"aut\", \"cph\")), person(\"Steve\", \"Weston\", role=\"aut\"))",
+      "Description": "Support for iterators, which allow a programmer to traverse through all the elements of a vector, list, or other collection of data.",
+      "URL": "https://github.com/RevolutionAnalytics/iterators",
+      "Depends": [
+        "R (>= 2.5.0)",
+        "utils"
+      ],
+      "Suggests": [
+        "RUnit",
+        "foreach"
+      ],
+      "License": "Apache License (== 2.0)",
+      "NeedsCompilation": "no",
+      "Author": "Folashade Daniel [cre], Revolution Analytics [aut, cph], Steve Weston [aut]",
+      "Maintainer": "Folashade Daniel <fdaniel@microsoft.com>",
+      "Repository": "RSPM",
+      "Encoding": "UTF-8"
+    },
     "jpeg": {
       "Package": "jpeg",
       "Version": "0.1-10",
@@ -6096,6 +6444,64 @@
       "Maintainer": "R Core Team <R-core@R-project.org>",
       "Repository": "RSPM"
     },
+    "openCyto": {
+      "Package": "openCyto",
+      "Version": "2.18.0",
+      "Source": "Bioconductor",
+      "Type": "Package",
+      "Title": "Hierarchical Gating Pipeline for flow cytometry data",
+      "Date": "2012-06-11",
+      "Author": "Mike Jiang, John Ramey, Greg Finak, Raphael Gottardo",
+      "Maintainer": "Mike Jiang <mike@ozette.com>",
+      "Description": "This package is designed to facilitate the automated gating methods in sequential way to mimic the manual gating strategy.",
+      "License": "AGPL-3.0-only",
+      "LazyLoad": "yes",
+      "Imports": [
+        "methods",
+        "Biobase",
+        "BiocGenerics",
+        "flowCore(>= 1.99.17)",
+        "flowViz",
+        "ncdfFlow(>= 2.11.34)",
+        "flowWorkspace(>= 3.99.1)",
+        "flowClust(>= 3.11.4)",
+        "RBGL",
+        "graph",
+        "data.table",
+        "RColorBrewer"
+      ],
+      "Suggests": [
+        "flowWorkspaceData",
+        "knitr",
+        "rmarkdown",
+        "markdown",
+        "testthat",
+        "utils",
+        "tools",
+        "parallel",
+        "ggcyto",
+        "CytoML",
+        "flowStats(>= 4.5.2)",
+        "MASS"
+      ],
+      "biocViews": "ImmunoOncology, FlowCytometry, DataImport, Preprocessing, DataRepresentation",
+      "Encoding": "UTF-8",
+      "VignetteBuilder": "knitr",
+      "LinkingTo": [
+        "cpp11",
+        "BH"
+      ],
+      "RoxygenNote": "7.2.1",
+      "git_url": "https://git.bioconductor.org/packages/openCyto",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "dc6d560",
+      "git_last_commit_date": "2024-10-29",
+      "Repository": "Bioconductor 3.20",
+      "NeedsCompilation": "yes",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ]
+    },
     "openssl": {
       "Package": "openssl",
       "Version": "2.4.2",
@@ -6278,6 +6684,27 @@
       "NeedsCompilation": "yes",
       "Author": "Peter Filzmoser [aut], Heinrich Fritz [aut], Klaudius Kalcher [aut], Valentin Todorov [cre]",
       "Repository": "RSPM",
+      "Encoding": "UTF-8"
+    },
+    "pdist": {
+      "Package": "pdist",
+      "Version": "1.2.1",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Partitioned Distance Function",
+      "Date": "2013-01-31",
+      "Author": "Jeffrey Wong",
+      "Maintainer": "Jeffrey Wong <jeff.ct.wong@gmail.com>",
+      "URL": "https://github.com/jeffwong/pdist",
+      "Description": "Computes the euclidean distance between rows of a matrix X and rows of another matrix Y.  Previously, this could be done by binding the two matrices together and calling 'dist', but this creates unnecessary computation by computing the distances between a row of X and another row of X, and likewise for Y. pdist strictly computes distances across the two matrices, not within the same matrix, making computations significantly faster for certain use cases.",
+      "License": "GPL",
+      "LazyLoad": "yes",
+      "Depends": [
+        "methods"
+      ],
+      "Collate": "'pdist.R' 'setup.R'",
+      "Repository": "RSPM",
+      "NeedsCompilation": "yes",
       "Encoding": "UTF-8"
     },
     "pillar": {
@@ -6518,6 +6945,43 @@
       "Author": "Hadley Wickham [aut], Winston Chang [aut], Jim Hester [aut], Lionel Henry [aut, cre], Posit Software, PBC [cph, fnd], R Core team [ctb] (Some namespace and vignette code extracted from base R)",
       "Maintainer": "Lionel Henry <lionel@posit.co>",
       "Repository": "RSPM"
+    },
+    "plyr": {
+      "Package": "plyr",
+      "Version": "1.8.9",
+      "Source": "Repository",
+      "Title": "Tools for Splitting, Applying and Combining Data",
+      "Authors@R": "person(\"Hadley\", \"Wickham\", , \"hadley@rstudio.com\", role = c(\"aut\", \"cre\"))",
+      "Description": "A set of tools that solves a common set of problems: you need to break a big problem down into manageable pieces, operate on each piece and then put all the pieces back together.  For example, you might want to fit a model to each spatial location or time point in your study, summarise data by panels or collapse high-dimensional arrays to simpler summary statistics. The development of 'plyr' has been generously supported by 'Becton Dickinson'.",
+      "License": "MIT + file LICENSE",
+      "URL": "http://had.co.nz/plyr, https://github.com/hadley/plyr",
+      "BugReports": "https://github.com/hadley/plyr/issues",
+      "Depends": [
+        "R (>= 3.1.0)"
+      ],
+      "Imports": [
+        "Rcpp (>= 0.11.0)"
+      ],
+      "Suggests": [
+        "abind",
+        "covr",
+        "doParallel",
+        "foreach",
+        "iterators",
+        "itertools",
+        "tcltk",
+        "testthat"
+      ],
+      "LinkingTo": [
+        "Rcpp"
+      ],
+      "Encoding": "UTF-8",
+      "LazyData": "true",
+      "RoxygenNote": "7.2.3",
+      "NeedsCompilation": "yes",
+      "Author": "Hadley Wickham [aut, cre]",
+      "Maintainer": "Hadley Wickham <hadley@rstudio.com>",
+      "Repository": "BioCcontainers"
     },
     "png": {
       "Package": "png",
@@ -7286,6 +7750,39 @@
       "RemoteRepo": "renv",
       "RemoteRef": "main",
       "RemoteSha": "05144cb5e325bdd082816d2253c94c7a7be0614c"
+    },
+    "reshape2": {
+      "Package": "reshape2",
+      "Version": "1.4.4",
+      "Source": "Repository",
+      "Title": "Flexibly Reshape Data: A Reboot of the Reshape Package",
+      "Author": "Hadley Wickham <h.wickham@gmail.com>",
+      "Maintainer": "Hadley Wickham <h.wickham@gmail.com>",
+      "Description": "Flexibly restructure and aggregate data using just two functions: melt and 'dcast' (or 'acast').",
+      "License": "MIT + file LICENSE",
+      "URL": "https://github.com/hadley/reshape",
+      "BugReports": "https://github.com/hadley/reshape/issues",
+      "Depends": [
+        "R (>= 3.1)"
+      ],
+      "Imports": [
+        "plyr (>= 1.8.1)",
+        "Rcpp",
+        "stringr"
+      ],
+      "Suggests": [
+        "covr",
+        "lattice",
+        "testthat (>= 0.8.0)"
+      ],
+      "LinkingTo": [
+        "Rcpp"
+      ],
+      "Encoding": "UTF-8",
+      "LazyData": "true",
+      "RoxygenNote": "7.1.0",
+      "NeedsCompilation": "yes",
+      "Repository": "RSPM"
     },
     "reticulate": {
       "Package": "reticulate",

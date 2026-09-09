@@ -20,7 +20,8 @@
     return(transformation)
   }
 
-  switch(transformation,
+  switch(
+    transformation,
     "gamma" = simcyto::simCytTransformGamma(),
     "gamma_fixed_mean_and_spread" = ,
     "gammaFixed" = simcyto::simCytTransformGammaFixed(),
@@ -189,8 +190,9 @@
 #'
 #' @keywords internal
 .simCompareFbetaEnvironment <- function(
-    pathFbeta = NULL,
-    patchPy2Compat = TRUE) {
+  pathFbeta = NULL,
+  patchPy2Compat = TRUE
+) {
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     stop("reticulate is required to call fbeta.py.")
   }
@@ -215,15 +217,16 @@
 #'
 #' @keywords internal
 .simCompareFbetaThreshold <- function(
-    xUns,
-    xStim,
-    pathFbeta = NULL,
-    patchPy2Compat = TRUE,
-    fbetaEnv = NULL,
-    beta = 0.8,
-    theta = 2,
-    width = 10,
-    numBins = NULL) {
+  xUns,
+  xStim,
+  pathFbeta = NULL,
+  patchPy2Compat = TRUE,
+  fbetaEnv = NULL,
+  beta = 0.8,
+  theta = 2,
+  width = 10,
+  numBins = NULL
+) {
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     stop("reticulate is required to call fbeta.py.")
   }
@@ -289,17 +292,18 @@
 #'
 #' @keywords internal
 .simCompareTailgateThreshold <- function(
-    x,
-    tailgateSourceFiles = NULL,
-    adjust = 1,
-    bandwidth = NULL,
-    numPeaks = 1,
-    refPeak = 1,
-    method = c("firstDeriv", "secondDeriv"),
-    tol = 1e-2,
-    side = "right",
-    strict = FALSE,
-    autoTol = FALSE) {
+  x,
+  tailgateSourceFiles = NULL,
+  adjust = 1,
+  bandwidth = NULL,
+  numPeaks = 1,
+  refPeak = 1,
+  method = c("firstDeriv", "secondDeriv"),
+  tol = 1e-2,
+  side = "right",
+  strict = FALSE,
+  autoTol = FALSE
+) {
   method <- match.arg(method)
   x <- as.numeric(x)
   x <- x[is.finite(x)]
@@ -316,6 +320,29 @@
     stop("Package 'cytoUtils' is required for tailgate comparisons.")
   }
 
+  bandwidthUse <- if (is.null(bandwidth)) {
+    suppressWarnings(
+      tryCatch(
+        ks::hpi(x, deriv.order = 1L),
+        error = function(e) NA_real_
+      )
+    )
+  } else {
+    bandwidth
+  }
+
+  if (
+    length(bandwidthUse) != 1L ||
+      !is.finite(bandwidthUse) ||
+      bandwidthUse <= 0
+  ) {
+    return(list(
+      threshold = NA_real_,
+      thresholdMetric = NA_real_,
+      thresholdOrigin = "failed_bandwidth_nonfinite"
+    ))
+  }
+
   threshold <- cytoUtils:::.cytokine_cutpoint(
     x = x,
     adjust = adjust,
@@ -330,7 +357,7 @@
     side = side,
     strict = strict,
     auto_tol = autoTol,
-    bandwidth = bandwidth
+    bandwidth = bandwidthUse
   )
 
   list(
@@ -371,12 +398,15 @@
 }
 
 .simCompareApplyClusterMismatch <- function(
-    outListExperiment,
-    stimMeanShift = 0,
-    stimSdMultiplier = 1,
-    stimMeanShiftClusters = NULL,
-    stimSdMultiplierClusters = NULL) {
-  if (is.null(outListExperiment) || is.null(outListExperiment[["flowFrameList"]])) {
+  outListExperiment,
+  stimMeanShift = 0,
+  stimSdMultiplier = 1,
+  stimMeanShiftClusters = NULL,
+  stimSdMultiplierClusters = NULL
+) {
+  if (
+    is.null(outListExperiment) || is.null(outListExperiment[["flowFrameList"]])
+  ) {
     return(outListExperiment)
   }
 
@@ -431,28 +461,29 @@
 }
 
 .simCompareSimCytExperiment <- function(
-    nSample = NULL,
-    nMarker = NULL,
-    nCondition = NULL,
-    nCluster = NULL,
-    nCellByCondition = NULL,
-    transformationFunc = NULL,
-    mixtureType = "gaussianOnly",
-    meanExprMat = NA,
-    clusterLabelVec = NA,
-    probVecUns = NULL,
-    probExact = FALSE,
-    probResponseVecByStimCondition = NULL,
-    samplePerturbationSd = 0,
-    conditionPerturbationSd = 0,
-    clusterPerturbationSd = 0,
-    covEvMin = 1,
-    covEvMax = 2,
-    stimMeanShift = 0,
-    stimSdMultiplier = 1,
-    stimMeanShiftClusters = NULL,
-    stimSdMultiplierClusters = NULL,
-    scenario = NULL) {
+  nSample = NULL,
+  nMarker = NULL,
+  nCondition = NULL,
+  nCluster = NULL,
+  nCellByCondition = NULL,
+  transformationFunc = NULL,
+  mixtureType = "gaussianOnly",
+  meanExprMat = NA,
+  clusterLabelVec = NA,
+  probVecUns = NULL,
+  probExact = FALSE,
+  probResponseVecByStimCondition = NULL,
+  samplePerturbationSd = 0,
+  conditionPerturbationSd = 0,
+  clusterPerturbationSd = 0,
+  covEvMin = 1,
+  covEvMax = 2,
+  stimMeanShift = 0,
+  stimSdMultiplier = 1,
+  stimMeanShiftClusters = NULL,
+  stimSdMultiplierClusters = NULL,
+  scenario = NULL
+) {
   callArgs <- list(
     nSample = nSample,
     nMarker = nMarker,
@@ -502,11 +533,12 @@
 
 #' @keywords internal
 .simCompareEstimateFromThreshold <- function(
-    xStim,
-    xUns,
-    threshold,
-    fallbackHighValue = TRUE,
-    fallbackMargin = 0.05) {
+  xStim,
+  xUns,
+  threshold,
+  fallbackHighValue = TRUE,
+  fallbackMargin = 0.05
+) {
   xStim <- as.numeric(xStim)
   xUns <- as.numeric(xUns)
   nCellStim <- length(xStim)
@@ -553,10 +585,11 @@
 
 #' @keywords internal
 .simCompareTruthTable <- function(
-    labelsList,
-    nSample,
-    nCondition,
-    chnl = "F1") {
+  labelsList,
+  nSample,
+  nCondition,
+  chnl = "F1"
+) {
   purrr::map_df(seq_len(nSample), function(sampleCurr) {
     indUns <- (sampleCurr - 1L) * nCondition + 1L
     indStim <- seq.int(indUns + 1L, sampleCurr * nCondition)
@@ -581,30 +614,31 @@
 
 #' @keywords internal
 .simCompareAlternativeRows <- function(
-    flowFrameList,
-    labelsList,
-    nSample,
-    nCondition,
-    chnl = "F1",
-    biasUns = 0,
-    pathFbeta = NULL,
-    fbetaPatchPy2Compat = TRUE,
-    fbetaBeta = 0.8,
-    fbetaTheta = 2,
-    fbetaWidth = 10,
-    fbetaNumBins = NULL,
-    tailgateX = c("stim", "unstim", "combined"),
-    tailgateSourceFiles = NULL,
-    tailgateAdjust = 1,
-    tailgateBandwidth = NULL,
-    tailgateNumPeaks = 1,
-    tailgateRefPeak = 1,
-    tailgateMethod = c("firstDeriv", "secondDeriv"),
-    tailgateTol = 1e-2,
-    tailgateSide = "right",
-    tailgateAutoTol = TRUE,
-    fallbackHighValue = TRUE,
-    fallbackMargin = 0.05) {
+  flowFrameList,
+  labelsList,
+  nSample,
+  nCondition,
+  chnl = "F1",
+  biasUns = 0,
+  pathFbeta = NULL,
+  fbetaPatchPy2Compat = TRUE,
+  fbetaBeta = 0.8,
+  fbetaTheta = 2,
+  fbetaWidth = 10,
+  fbetaNumBins = NULL,
+  tailgateX = c("stim", "unstim", "combined"),
+  tailgateSourceFiles = NULL,
+  tailgateAdjust = 1,
+  tailgateBandwidth = NULL,
+  tailgateNumPeaks = 1,
+  tailgateRefPeak = 1,
+  tailgateMethod = c("firstDeriv", "secondDeriv"),
+  tailgateTol = 1e-2,
+  tailgateSide = "right",
+  tailgateAutoTol = TRUE,
+  fallbackHighValue = TRUE,
+  fallbackMargin = 0.05
+) {
   tailgateX <- match.arg(tailgateX)
   tailgateMethod <- match.arg(tailgateMethod)
 
@@ -661,7 +695,8 @@
         fallbackMargin = fallbackMargin
       )
 
-      xTail <- switch(tailgateX,
+      xTail <- switch(
+        tailgateX,
         "stim" = xStim,
         "unstim" = xUnsTailgate,
         "combined" = c(xUnsTailgate, xStim)
@@ -779,47 +814,48 @@
 
 #' @keywords internal
 .simCompareStimgateRows <- function(
-    gs,
-    labelsList,
-    pathProject,
-    nSample,
-    nCondition,
-    nMarker,
-    biasUns,
-    bw,
-    bwFallback = bw,
-    bwMin = "none",
-    bwMax = "none",
-    bwMtd = "hpi1",
-    bwAdj = 1,
-    bwNcellMin = 1e2,
-    bwNcellMax = 1e5,
-    bwCluster = NULL,
-    minCell = 1e2,
-    maxPosProbX = Inf,
-    gateQuant = c(0.25, 0.75),
-    locProbCol = "pred",
-    locMinPeakProb = 0.25,
-    locDipAlpha = 0.2,
-    locAntimodeHeightFrac = 1 / 6,
-    locAntimodeLowRel = 0.25,
-    locAntimodeLowAbs = 0.15,
-    locFlatDerivFrac = 1 / 2,
-    locFlatHardDerivFrac = 1 / 4,
-    locLeftLowRel = 0.25,
-    locLeftLowAbs = 0.15,
-    locLeftCellFrac = 0.5,
-    locLeftLengthFrac = 0.5,
-    locMarginalPurityRel = 0.5,
-    locMarginalCellBinRatio = 2,
-    locMarginalRefQuantile = 0.75,
-    locTolRefPeak = "highest",
-    gateCombn = "min",
-    tolClust = NULL,
-    locEnforceShapeThreshold = FALSE,
-    calcCytPosGates = FALSE,
-    includeLocCondition = FALSE,
-    includeLocDetails = includeLocCondition) {
+  gs,
+  labelsList,
+  pathProject,
+  nSample,
+  nCondition,
+  nMarker,
+  biasUns,
+  bw,
+  bwFallback = bw,
+  bwMin = "none",
+  bwMax = "none",
+  bwMtd = "hpi1",
+  bwAdj = 1,
+  bwNcellMin = 1e2,
+  bwNcellMax = 1e5,
+  bwCluster = NULL,
+  minCell = 1e2,
+  maxPosProbX = Inf,
+  gateQuant = c(0.25, 0.75),
+  locProbCol = "pred",
+  locMinPeakProb = 0.25,
+  locDipAlpha = 0.2,
+  locAntimodeHeightFrac = 1 / 6,
+  locAntimodeLowRel = 0.25,
+  locAntimodeLowAbs = 0.15,
+  locFlatDerivFrac = 1 / 2,
+  locFlatHardDerivFrac = 1 / 4,
+  locLeftLowRel = 0.25,
+  locLeftLowAbs = 0.15,
+  locLeftCellFrac = 0.5,
+  locLeftLengthFrac = 0.5,
+  locMarginalPurityRel = 0.5,
+  locMarginalCellBinRatio = 2,
+  locMarginalRefQuantile = 0.75,
+  locTolRefPeak = "highest",
+  gateCombn = "min",
+  tolClust = NULL,
+  locEnforceShapeThreshold = FALSE,
+  calcCytPosGates = FALSE,
+  includeLocCondition = FALSE,
+  includeLocDetails = includeLocCondition
+) {
   truthTbl <- .simCompareTruthTable(
     labelsList = labelsList,
     nSample = nSample,
@@ -897,84 +933,147 @@
         error = function(e) tibble::tibble()
       )
 
-      stimgatePrimaryTbl <- purrr::map_df(seq_len(nSample), function(sampleCurr) {
-        indUns <- (sampleCurr - 1L) * nCondition + 1L
-        indStimVec <- seq.int(indUns + 1L, sampleCurr * nCondition)
+      stimgatePrimaryTbl <- purrr::map_df(
+        seq_len(nSample),
+        function(sampleCurr) {
+          indUns <- (sampleCurr - 1L) * nCondition + 1L
+          indStimVec <- seq.int(indUns + 1L, sampleCurr * nCondition)
 
-        purrr::map_df(indStimVec, function(indStim) {
-          ind_curr <- as.character(indStim)
-          gRow <- if (nrow(gateTblFinal) > 0L && "ind" %in% names(gateTblFinal)) {
-            gateTblFinal[as.character(gateTblFinal$ind) == ind_curr & gateTblFinal$chnl == "F1", , drop = FALSE]
-          } else {
-            tibble::tibble()
-          }
-          if (nrow(gRow) > 0L) {
-            if (any(grepl("Clust$", gRow$gateName))) {
-              gRow <- gRow[grepl("Clust$", gRow$gateName), , drop = FALSE]
+          purrr::map_df(indStimVec, function(indStim) {
+            ind_curr <- as.character(indStim)
+            gRow <- if (
+              nrow(gateTblFinal) > 0L && "ind" %in% names(gateTblFinal)
+            ) {
+              gateTblFinal[
+                as.character(gateTblFinal$ind) == ind_curr &
+                  gateTblFinal$chnl == "F1",
+                ,
+                drop = FALSE
+              ]
             } else {
-              gRow <- gRow[nrow(gRow), , drop = FALSE]
+              tibble::tibble()
             }
-          }
-
-          sRow <- if (nrow(statsTblFinal) > 0L && "ind" %in% names(statsTblFinal)) {
-            statsTblFinal[as.character(statsTblFinal$ind) == ind_curr & grepl("~\\+~", statsTblFinal$cytCombn), , drop = FALSE]
-          } else {
-            tibble::tibble()
-          }
-          if (nrow(sRow) > 0L) {
-            if (any(grepl("Clust$", sRow$gateName))) {
-              sRow <- sRow[grepl("Clust$", sRow$gateName), , drop = FALSE]
-            } else {
-              sRow <- sRow[1L, , drop = FALSE]
+            if (nrow(gRow) > 0L) {
+              if (any(grepl("Clust$", gRow$gateName))) {
+                gRow <- gRow[grepl("Clust$", gRow$gateName), , drop = FALSE]
+              } else {
+                gRow <- gRow[nrow(gRow), , drop = FALSE]
+              }
             }
-          }
 
-          gateVal <- if (nrow(gRow) > 0L) suppressWarnings(as.numeric(unname(gRow$gate[[1]]))) else NA_real_
-          gateNm <- if (nrow(gRow) > 0L) as.character(gRow$gateName[[1]]) else NA_character_
-
-          nCellStimVal <- if (nrow(sRow) > 0L) suppressWarnings(as.numeric(sRow$nCellStim[[1]])) else NA_real_
-          nCellUnsVal <- if (nrow(sRow) > 0L) suppressWarnings(as.numeric(sRow$nCellUns[[1]])) else NA_real_
-          nPosStimVal <- if (nrow(sRow) > 0L) suppressWarnings(as.integer(sRow$countStim[[1]])) else NA_integer_
-          nPosUnsVal <- if (nrow(sRow) > 0L) suppressWarnings(as.integer(sRow$countUns[[1]])) else NA_integer_
-          propStimVal <- if (nrow(sRow) > 0L) suppressWarnings(as.numeric(sRow$propStim[[1]])) else NA_real_
-          propUnsVal <- if (nrow(sRow) > 0L) suppressWarnings(as.numeric(sRow$propUns[[1]])) else NA_real_
-          propBsVal <- if (nrow(sRow) > 0L) suppressWarnings(as.numeric(sRow$propBs[[1]])) else NA_real_
-
-          isClustered <- grepl("Clust$", gateNm %||% "")
-
-          tibble::tibble(
-            sample = as.character(sampleCurr),
-            ind = as.character(indStim),
-            chnl = "F1",
-            approach = "stimgate",
-            method = "stimgate",
-            threshold = gateVal,
-            thresholdOrigin = if (is.finite(gateVal)) {
-              if (isClustered) "calculated_clustered" else "calculated"
+            sRow <- if (
+              nrow(statsTblFinal) > 0L && "ind" %in% names(statsTblFinal)
+            ) {
+              statsTblFinal[
+                as.character(statsTblFinal$ind) == ind_curr &
+                  grepl("~\\+~", statsTblFinal$cytCombn),
+                ,
+                drop = FALSE
+              ]
             } else {
-              "failed_no_cutpoint"
-            },
-            gateReturnPoint = if (isClustered) "stimgate_clustered" else "stimgate_calculated",
-            thresholdMetric = NA_real_,
-            thresholdFallbackUsed = !is.finite(gateVal),
-            nCellStim = nCellStimVal,
-            nCellUns = nCellUnsVal,
-            nPosStim = nPosStimVal,
-            nPosUns = nPosUnsVal,
-            propStim = propStimVal,
-            propUns = propUnsVal,
-            propRespEst = propBsVal,
-            detailLevel = if (isClustered) "cluster_final" else "sample_final",
-            locGenerated = is.finite(gateVal),
-            locGeneratedDirect = !isClustered,
-            locSource = if (isClustered) "cluster" else "sample",
-            locReason = NA_character_,
-            error = NA_character_
-          )
-        })
-      })
+              tibble::tibble()
+            }
+            if (nrow(sRow) > 0L) {
+              if (any(grepl("Clust$", sRow$gateName))) {
+                sRow <- sRow[grepl("Clust$", sRow$gateName), , drop = FALSE]
+              } else {
+                sRow <- sRow[1L, , drop = FALSE]
+              }
+            }
 
-      detailTbl <- if (isTRUE(includeLocDetails) || isTRUE(includeLocCondition)) {
+            gateVal <- if (nrow(gRow) > 0L) {
+              suppressWarnings(as.numeric(unname(gRow$gate[[1]])))
+            } else {
+              NA_real_
+            }
+            gateNm <- if (nrow(gRow) > 0L) {
+              as.character(gRow$gateName[[1]])
+            } else {
+              NA_character_
+            }
+
+            nCellStimVal <- if (nrow(sRow) > 0L) {
+              suppressWarnings(as.numeric(sRow$nCellStim[[1]]))
+            } else {
+              NA_real_
+            }
+            nCellUnsVal <- if (nrow(sRow) > 0L) {
+              suppressWarnings(as.numeric(sRow$nCellUns[[1]]))
+            } else {
+              NA_real_
+            }
+            nPosStimVal <- if (nrow(sRow) > 0L) {
+              suppressWarnings(as.integer(sRow$countStim[[1]]))
+            } else {
+              NA_integer_
+            }
+            nPosUnsVal <- if (nrow(sRow) > 0L) {
+              suppressWarnings(as.integer(sRow$countUns[[1]]))
+            } else {
+              NA_integer_
+            }
+            propStimVal <- if (nrow(sRow) > 0L) {
+              suppressWarnings(as.numeric(sRow$propStim[[1]]))
+            } else {
+              NA_real_
+            }
+            propUnsVal <- if (nrow(sRow) > 0L) {
+              suppressWarnings(as.numeric(sRow$propUns[[1]]))
+            } else {
+              NA_real_
+            }
+            propBsVal <- if (nrow(sRow) > 0L) {
+              suppressWarnings(as.numeric(sRow$propBs[[1]]))
+            } else {
+              NA_real_
+            }
+
+            isClustered <- grepl("Clust$", gateNm %||% "")
+
+            tibble::tibble(
+              sample = as.character(sampleCurr),
+              ind = as.character(indStim),
+              chnl = "F1",
+              approach = "stimgate",
+              method = "stimgate",
+              threshold = gateVal,
+              thresholdOrigin = if (is.finite(gateVal)) {
+                if (isClustered) "calculated_clustered" else "calculated"
+              } else {
+                "failed_no_cutpoint"
+              },
+              gateReturnPoint = if (isClustered) {
+                "stimgate_clustered"
+              } else {
+                "stimgate_calculated"
+              },
+              thresholdMetric = NA_real_,
+              thresholdFallbackUsed = !is.finite(gateVal),
+              nCellStim = nCellStimVal,
+              nCellUns = nCellUnsVal,
+              nPosStim = nPosStimVal,
+              nPosUns = nPosUnsVal,
+              propStim = propStimVal,
+              propUns = propUnsVal,
+              propRespEst = propBsVal,
+              detailLevel = if (isClustered) {
+                "cluster_final"
+              } else {
+                "sample_final"
+              },
+              locGenerated = is.finite(gateVal),
+              locGeneratedDirect = !isClustered,
+              locSource = if (isClustered) "cluster" else "sample",
+              locReason = NA_character_,
+              error = NA_character_
+            )
+          })
+        }
+      )
+
+      detailTbl <- if (
+        isTRUE(includeLocDetails) || isTRUE(includeLocCondition)
+      ) {
         tryCatch(
           .simCompareReadLocDetails(
             pathProject = pathProject,
@@ -1087,81 +1186,82 @@
 #'
 #' @keywords internal
 .simCompareFreqBs <- function(
-    nSample,
-    nMarker,
-    nCondition,
-    nCluster,
-    nIter,
-    biasUns,
-    bw,
-    bwFallback = bw,
-    bwMin = "none",
-    bwMax = "none",
-    bwMtd = "hpi1",
-    bwAdj = 1,
-    bwNcellMin = 1e2,
-    bwNcellMax = 1e5,
-    bwCluster = NULL,
-    probExact = FALSE,
-    nCellStim,
-    probResponse,
-    meanPos,
-    transformation,
-    samplePerturbationSd,
-    conditionPerturbationSd,
-    clusterPerturbationSd,
-    backgroundRelativeToResponse,
-    ncellUnsRelativeToStim,
-    covEvMin = 1,
-    covEvMax = 2,
-    tolClust = NULL,
-    locEnforceShapeThreshold = FALSE,
-    minCell = 1e2,
-    maxPosProbX = Inf,
-    gateQuant = c(0.25, 0.75),
-    locProbCol = "pred",
-    locMinPeakProb = 0.25,
-    locDipAlpha = 0.2,
-    locAntimodeHeightFrac = 1 / 6,
-    locAntimodeLowRel = 0.25,
-    locAntimodeLowAbs = 0.15,
-    locFlatDerivFrac = 1 / 2,
-    locFlatHardDerivFrac = 1 / 4,
-    locLeftLowRel = 0.25,
-    locLeftLowAbs = 0.15,
-    locLeftCellFrac = 0.5,
-    locLeftLengthFrac = 0.5,
-    locMarginalPurityRel = 0.5,
-    locMarginalCellBinRatio = 2,
-    locMarginalRefQuantile = 0.75,
-    locTolRefPeak = "highest",
-    gateCombn = "min",
-    calcCytPosGates = FALSE,
-    includeLocCondition = FALSE,
-    includeLocDetails = includeLocCondition,
-    pathFbeta = NULL,
-    fbetaPatchPy2Compat = TRUE,
-    fbetaBeta = 0.8,
-    fbetaTheta = 2,
-    fbetaWidth = 10,
-    fbetaNumBins = NULL,
-    tailgateX = c("stim", "unstim", "combined"),
-    tailgateSourceFiles = NULL,
-    tailgateAdjust = 1,
-    tailgateBandwidth = NULL,
-    tailgateNumPeaks = 1,
-    tailgateRefPeak = 1,
-    tailgateMethod = c("firstDeriv", "secondDeriv"),
-    tailgateTol = 1e-2,
-    tailgateSide = "right",
-    tailgateAutoTol = FALSE,
-    fallbackHighValue = TRUE,
-    fallbackMargin = 0.05,
-    stimMeanShift = 0,
-    stimSdMultiplier = 1,
-    stimMeanShiftClusters = NULL,
-    stimSdMultiplierClusters = NULL,
-    pathProject = NULL) {
+  nSample,
+  nMarker,
+  nCondition,
+  nCluster,
+  nIter,
+  biasUns,
+  bw,
+  bwFallback = bw,
+  bwMin = "none",
+  bwMax = "none",
+  bwMtd = "hpi1",
+  bwAdj = 1,
+  bwNcellMin = 1e2,
+  bwNcellMax = 1e5,
+  bwCluster = NULL,
+  probExact = FALSE,
+  nCellStim,
+  probResponse,
+  meanPos,
+  transformation,
+  samplePerturbationSd,
+  conditionPerturbationSd,
+  clusterPerturbationSd,
+  backgroundRelativeToResponse,
+  ncellUnsRelativeToStim,
+  covEvMin = 1,
+  covEvMax = 2,
+  tolClust = NULL,
+  locEnforceShapeThreshold = FALSE,
+  minCell = 1e2,
+  maxPosProbX = Inf,
+  gateQuant = c(0.25, 0.75),
+  locProbCol = "pred",
+  locMinPeakProb = 0.25,
+  locDipAlpha = 0.2,
+  locAntimodeHeightFrac = 1 / 6,
+  locAntimodeLowRel = 0.25,
+  locAntimodeLowAbs = 0.15,
+  locFlatDerivFrac = 1 / 2,
+  locFlatHardDerivFrac = 1 / 4,
+  locLeftLowRel = 0.25,
+  locLeftLowAbs = 0.15,
+  locLeftCellFrac = 0.5,
+  locLeftLengthFrac = 0.5,
+  locMarginalPurityRel = 0.5,
+  locMarginalCellBinRatio = 2,
+  locMarginalRefQuantile = 0.75,
+  locTolRefPeak = "highest",
+  gateCombn = "min",
+  calcCytPosGates = FALSE,
+  includeLocCondition = FALSE,
+  includeLocDetails = includeLocCondition,
+  pathFbeta = NULL,
+  fbetaPatchPy2Compat = TRUE,
+  fbetaBeta = 0.8,
+  fbetaTheta = 2,
+  fbetaWidth = 10,
+  fbetaNumBins = NULL,
+  tailgateX = c("stim", "unstim", "combined"),
+  tailgateSourceFiles = NULL,
+  tailgateAdjust = 1,
+  tailgateBandwidth = NULL,
+  tailgateNumPeaks = 1,
+  tailgateRefPeak = 1,
+  tailgateMethod = c("firstDeriv", "secondDeriv"),
+  tailgateTol = 1e-2,
+  tailgateSide = "right",
+  tailgateAutoTol = FALSE,
+  fallbackHighValue = TRUE,
+  fallbackMargin = 0.05,
+  stimMeanShift = 0,
+  stimSdMultiplier = 1,
+  stimMeanShiftClusters = NULL,
+  stimSdMultiplierClusters = NULL,
+  pathProject = NULL
+) {
   if (!identical(as.integer(nMarker), 1L)) {
     stop("This comparison helper currently expects nMarker = 1.")
   }
@@ -1391,17 +1491,20 @@
 #'
 #' @keywords internal
 .simCompareScenarioOutputPath <- function(
-    sim_id,
-    dirCache,
-    sim_grid_chunk_index = NULL,
-    sim_grid_n_chunks = NULL) {
+  sim_id,
+  dirCache,
+  sim_grid_chunk_index = NULL,
+  sim_grid_n_chunks = NULL
+) {
   if (is.null(dirCache) || !nzchar(dirCache)) {
     return(character(0))
   }
 
   if (
-    !is.null(sim_grid_chunk_index) && !is.na(sim_grid_chunk_index) &&
-      !is.null(sim_grid_n_chunks) && !is.na(sim_grid_n_chunks) &&
+    !is.null(sim_grid_chunk_index) &&
+      !is.na(sim_grid_chunk_index) &&
+      !is.null(sim_grid_n_chunks) &&
+      !is.na(sim_grid_n_chunks) &&
       as.integer(sim_grid_n_chunks) > 1L
   ) {
     file.path(
@@ -1444,16 +1547,18 @@
 #'
 #' @keywords internal
 .simCompareValidateScenarioCache <- function(
-    cached,
-    row,
-    nSample = NULL,
-    nIter = NULL,
-    retryErrors = FALSE) {
+  cached,
+  row,
+  nSample = NULL,
+  nIter = NULL,
+  retryErrors = FALSE
+) {
   if (!is.data.frame(cached) || nrow(cached) == 0L) {
     return(FALSE)
   }
 
-  has_error <- "error" %in% names(cached) &&
+  has_error <- "error" %in%
+    names(cached) &&
     any(!is.na(cached$error) & nzchar(as.character(cached$error)))
   if (isTRUE(retryErrors) && has_error) {
     return(FALSE)
@@ -1470,7 +1575,9 @@
       } else {
         NA_character_
       }
-      if (is.na(cached_val) || as.character(cached_val) != as.character(row_val)) {
+      if (
+        is.na(cached_val) || as.character(cached_val) != as.character(row_val)
+      ) {
         return(FALSE)
       }
     }
@@ -1487,7 +1594,9 @@
       } else {
         NA_character_
       }
-      if (is.na(cached_val) || as.character(cached_val) != as.character(row_val)) {
+      if (
+        is.na(cached_val) || as.character(cached_val) != as.character(row_val)
+      ) {
         return(FALSE)
       }
     }
@@ -1537,12 +1646,13 @@
             return(FALSE)
           }
         } else if (
-          nm %in% c(
-            "stim_mean_shift_clusters",
-            "stimMeanShiftClusters",
-            "stim_sd_multiplier_clusters",
-            "stimSdMultiplierClusters"
-          )
+          nm %in%
+            c(
+              "stim_mean_shift_clusters",
+              "stimMeanShiftClusters",
+              "stim_sd_multiplier_clusters",
+              "stimSdMultiplierClusters"
+            )
         ) {
           v1 <- if (is.na(row_scalar) || !nzchar(as.character(row_scalar))) {
             ""
@@ -1629,7 +1739,8 @@
       paste0("stim_mean_shift = ", row$stim_mean_shift[[1]])
     },
     if (
-      "stim_mean_shift_clusters" %in% names(row) &&
+      "stim_mean_shift_clusters" %in%
+        names(row) &&
         !is.na(row$stim_mean_shift_clusters[[1]])
     ) {
       paste0("shift_clusters = ", row$stim_mean_shift_clusters[[1]])
@@ -1638,7 +1749,8 @@
       paste0("stim_sd_multiplier = ", row$stim_sd_multiplier[[1]])
     },
     if (
-      "stim_sd_multiplier_clusters" %in% names(row) &&
+      "stim_sd_multiplier_clusters" %in%
+        names(row) &&
         !is.na(row$stim_sd_multiplier_clusters[[1]])
     ) {
       paste0("sd_clusters = ", row$stim_sd_multiplier_clusters[[1]])
@@ -1710,28 +1822,29 @@
 #'
 #' @keywords internal
 .simCompareRunScenario <- function(
-    row,
-    nSample = 5,
-    nIter = 5,
-    nMarker = 1,
-    nCondition = 2,
-    nCluster = 2,
-    probExact = TRUE,
-    covEvMin = 2,
-    covEvMax = 2,
-    tolClust = NULL,
-    locEnforceShapeThreshold = FALSE,
-    calcCytPosGates = FALSE,
-    includeLocCondition = FALSE,
-    includeLocDetails = includeLocCondition,
-    dirCache = NULL,
-    pathProgress = NULL,
-    resume = TRUE,
-    sim_grid_chunk_index = NULL,
-    sim_grid_n_chunks = NULL,
-    retryErrors = FALSE,
-    p = NULL,
-    ...) {
+  row,
+  nSample = 5,
+  nIter = 5,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  probExact = TRUE,
+  covEvMin = 2,
+  covEvMax = 2,
+  tolClust = NULL,
+  locEnforceShapeThreshold = FALSE,
+  calcCytPosGates = FALSE,
+  includeLocCondition = FALSE,
+  includeLocDetails = includeLocCondition,
+  dirCache = NULL,
+  pathProgress = NULL,
+  resume = TRUE,
+  sim_grid_chunk_index = NULL,
+  sim_grid_n_chunks = NULL,
+  retryErrors = FALSE,
+  p = NULL,
+  ...
+) {
   .simCompareEnsureCurrentCheckout()
 
   sim_id <- if ("sim_id" %in% names(row)) {
@@ -2025,30 +2138,31 @@
 #'
 #' @keywords internal
 .simCompareFreqBsGrid <- function(
-    sim_grid,
-    nSample = 5,
-    nIter = 5,
-    nMarker = 1,
-    nCondition = 2,
-    nCluster = 2,
-    probExact = TRUE,
-    covEvMin = 2,
-    covEvMax = 2,
-    tolClust = NULL,
-    locEnforceShapeThreshold = FALSE,
-    calcCytPosGates = FALSE,
-    includeLocCondition = FALSE,
-    includeLocDetails = includeLocCondition,
-    parallel = FALSE,
-    workers = NULL,
-    dirCache = NULL,
-    pathProgress = NULL,
-    resume = TRUE,
-    progress = TRUE,
-    sim_grid_chunk_index = NULL,
-    sim_grid_n_chunks = NULL,
-    retryErrors = FALSE,
-    ...) {
+  sim_grid,
+  nSample = 5,
+  nIter = 5,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  probExact = TRUE,
+  covEvMin = 2,
+  covEvMax = 2,
+  tolClust = NULL,
+  locEnforceShapeThreshold = FALSE,
+  calcCytPosGates = FALSE,
+  includeLocCondition = FALSE,
+  includeLocDetails = includeLocCondition,
+  parallel = FALSE,
+  workers = NULL,
+  dirCache = NULL,
+  pathProgress = NULL,
+  resume = TRUE,
+  progress = TRUE,
+  sim_grid_chunk_index = NULL,
+  sim_grid_n_chunks = NULL,
+  retryErrors = FALSE,
+  ...
+) {
   if (nrow(sim_grid) == 0L) {
     return(tibble::tibble())
   }
@@ -2097,7 +2211,9 @@
     !requireNamespace("furrr", quietly = TRUE) ||
       !requireNamespace("future", quietly = TRUE)
   ) {
-    out_list <- lapply(seq_len(nrow(sim_grid)), function(i) run_one(i, p = NULL))
+    out_list <- lapply(seq_len(nrow(sim_grid)), function(i) {
+      run_one(i, p = NULL)
+    })
     res_tbl <- purrr::list_rbind(out_list)
     if ("sim_id" %in% names(res_tbl)) {
       res_tbl <- res_tbl |>
@@ -2165,9 +2281,10 @@
 #'
 #' @keywords internal
 .simCompareCollateScenarioOutputs <- function(
-    dirCache = NULL,
-    pathList = NULL,
-    sim_grid = NULL) {
+  dirCache = NULL,
+  pathList = NULL,
+  sim_grid = NULL
+) {
   if (is.null(pathList) || length(pathList) == 0L) {
     if (is.null(dirCache) || !dir.exists(dirCache)) {
       return(tibble::tibble())
@@ -2229,9 +2346,10 @@
 #'
 #' @keywords internal
 .simCompareSummariseFreqBs <- function(
-    .data,
-    scenarioCols = NULL,
-    keepMethods = c("stimgate", "fbeta", "tailgate")) {
+  .data,
+  scenarioCols = NULL,
+  keepMethods = c("stimgate", "fbeta", "tailgate")
+) {
   if (!"error" %in% names(.data)) {
     .data$error <- NA_character_
   }
