@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Add Issues to Project Action
         with:
@@ -26,4 +26,4 @@ jobs:
           org_name: ${{ github.event.inputs.org_name }}
         env:
           ADD_ISSUES_TO_PROJECT_TOKEN: ${{ secrets.ADD_ISSUES_TO_PROJECT_TOKEN }}
-        uses: SATVILab/actions/add-issues-to-project@v1.0.4
+        uses: SATVILab/actions/add-issues-to-project@fb63950c3ff379655bcfd5671a1b6d961b92619a # v1.2.5
