@@ -52,6 +52,29 @@ Use the current shared organisation Issue Type vocabulary:
 
 `Deliverable` replaces the retired `Report` value. Retired `Raw data` and `Processed data` issues have been migrated to `Data` and those values are not part of the active vocabulary.
 
+## Class values
+
+Machine-readable declaration of the active Class / Issue Type vocabulary.
+
+| Option | Provider value |
+| --- | --- |
+| Task | Task |
+| Bug | Bug |
+| Enhancement | Enhancement |
+| Data | Data |
+| Analysis | Analysis |
+| Deliverable | Deliverable |
+| Documentation | Documentation |
+| Epic | Epic |
+
+## Status mapping
+
+| Common value | Provider value |
+| --- | --- |
+| Todo | Todo |
+| In progress | In progress |
+| Done | Done |
+
 ## Other value mappings
 
 - Class uses the exact live organisation Issue Type name. No aliases are declared.
