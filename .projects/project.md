@@ -35,11 +35,7 @@
 | P2 | P2 |
 | P3 | P3 |
 
-The mapping is exact in both directions.
-
 ## Priority values
-
-The organisation Priority field uses this exact palette:
 
 | Option | Colour |
 | --- | --- |
@@ -64,8 +60,6 @@ Use the current shared organisation Issue Type vocabulary:
 `Deliverable` replaces the retired `Report` value. Retired `Raw data` and `Processed data` issues have been migrated to `Data` and those values are not part of the active vocabulary.
 
 ## Class values
-
-Machine-readable declaration of the active Class / Issue Type vocabulary and exact organisation palette.
 
 | Option | Colour |
 | --- | --- |
