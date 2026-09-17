@@ -11,9 +11,6 @@
 | Project title | stimgate |
 | Routing | linked repository; no project:* label |
 | Privacy | public repository with a private organisation Project |
-| Issue write-up style | tidy |
-| Issue prose style | natural-direct |
-| Chat implementation label | pj:implement-chat |
 
 ## Field locations
 
@@ -25,60 +22,6 @@
 | Due date | project field | Target date |
 | Parent | native issue relationship | Parent issue |
 | Sub-project | repository label | subproject:* |
-
-## Priority mapping
-
-| Common value | Provider value |
-| --- | --- |
-| P0 | P0 |
-| P1 | P1 |
-| P2 | P2 |
-| P3 | P3 |
-
-## Priority values
-
-| Option | Colour |
-| --- | --- |
-| P0 | RED |
-| P1 | ORANGE |
-| P2 | YELLOW |
-| P3 | PURPLE |
-
-## Class vocabulary
-
-Use the current shared organisation Issue Type vocabulary:
-
-- Task
-- Bug
-- Enhancement
-- Data
-- Analysis
-- Deliverable
-- Documentation
-- Epic
-
-`Deliverable` replaces the retired `Report` value. Retired `Raw data` and `Processed data` issues have been migrated to `Data` and those values are not part of the active vocabulary.
-
-## Class values
-
-| Option | Colour |
-| --- | --- |
-| Task | GRAY |
-| Bug | RED |
-| Enhancement | GREEN |
-| Data | PINK |
-| Analysis | PURPLE |
-| Deliverable | ORANGE |
-| Documentation | YELLOW |
-| Epic | BLUE |
-
-## Status mapping
-
-| Common value | Provider value |
-| --- | --- |
-| Todo | Todo |
-| In progress | In progress |
-| Done | Done |
 
 ## Other value mappings
 
