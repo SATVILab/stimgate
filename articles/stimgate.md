@@ -83,7 +83,7 @@ sessionInfo()
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] vctrs_0.7.3         cli_3.6.6           knitr_1.52         
-#>  [4] rlang_1.3.0         xfun_0.60           otel_0.2.0         
+#>  [4] rlang_1.3.0         xfun_0.61           otel_0.2.0         
 #>  [7] generics_0.1.4      S7_0.2.2            textshaping_1.0.5  
 #> [10] jsonlite_2.0.0      glue_1.8.1          htmltools_0.5.9    
 #> [13] ragg_1.5.2          sass_0.4.10         scales_1.4.0       
