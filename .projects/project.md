@@ -18,7 +18,7 @@
 ## Field locations
 
 | Common dimension | Provider location | Provider field |
-| --- | --- |
+| --- | --- | --- |
 | Class | organization issue type | Issue Type |
 | Priority | organization issue field | Priority |
 | Status | project field | Status |
@@ -30,12 +30,21 @@
 
 | Common value | Provider value |
 | --- | --- |
-| P0 | Urgent |
-| P1 | High |
-| P2 | Medium |
-| P3 | Low |
+| P0 | P0 |
+| P1 | P1 |
+| P2 | P2 |
+| P3 | P3 |
 
-The mapping is exact in both directions. The SATVILab provider names remain unchanged because changing the organisation-wide Priority field would require organisation-admin rights and is not required for canonical P0-P3 semantics.
+The mapping is exact in both directions.
+
+## Priority values
+
+| Option | Colour |
+| --- | --- |
+| P0 | RED |
+| P1 | ORANGE |
+| P2 | YELLOW |
+| P3 | PURPLE |
 
 ## Class vocabulary
 
@@ -54,18 +63,18 @@ Use the current shared organisation Issue Type vocabulary:
 
 ## Class values
 
-Machine-readable declaration of the active Class / Issue Type vocabulary.
+Machine-readable declaration of the active Class / Issue Type vocabulary and exact organisation palette.
 
-| Option | Provider value |
+| Option | Colour |
 | --- | --- |
-| Task | Task |
-| Bug | Bug |
-| Enhancement | Enhancement |
-| Data | Data |
-| Analysis | Analysis |
-| Deliverable | Deliverable |
-| Documentation | Documentation |
-| Epic | Epic |
+| Task | GRAY |
+| Bug | RED |
+| Enhancement | GREEN |
+| Data | PINK |
+| Analysis | PURPLE |
+| Deliverable | ORANGE |
+| Documentation | YELLOW |
+| Epic | BLUE |
 
 ## Status mapping
 
