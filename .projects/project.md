@@ -39,6 +39,8 @@ The mapping is exact in both directions.
 
 ## Priority values
 
+The organisation Priority field uses this exact palette:
+
 | Option | Colour |
 | --- | --- |
 | P0 | RED |
