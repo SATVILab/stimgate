@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: MiguelRodo/github-projects-skill
-          ref: v0.3.0
+          ref: v0.4.0
           path: .github-projects-source
 
       - name: Validate local Project contract
@@ -47,5 +47,11 @@ jobs:
             in_section && /^---$/ { print count; exit }
           ' AGENTS.md)"
           test "$section_lines" -lt 12
-          grep -Fq 'P2 | Medium' .projects/project.md
-          grep -Fq 'P3 | Low' .projects/project.md
+          if grep -Eq '^## (Priority mapping|Priority values|Class values|Class vocabulary|Status mapping)[[:space:]]*$' .projects/project.md; then
+            echo "ERROR: the repository contract repeats shared Project semantics owned by github-projects" >&2
+            exit 1
+          fi
+          if grep -Eq '^\| P[0-3] \|' .projects/project.md; then
+            echo "ERROR: the repository contract redeclares the shared Priority mapping" >&2
+            exit 1
+          fi
