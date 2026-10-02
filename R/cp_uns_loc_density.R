@@ -258,11 +258,7 @@
 
   stimX <- suppressWarnings(as.numeric(.getCut(exTblStimThreshold)))
   stimX <- stimX[is.finite(stimX)]
-  antimodeDensity <- .getCpUnsLocAntimodeDensity(
-    expr = stimX,
-    chnlSettings = chnlSettings,
-    originalBw = probTblList$densityBw
-  )
+  antimodeDensity <- .getCpUnsLocAntimodeDensity(expr = stimX)
   antimodes <- if (is.null(antimodeDensity)) {
     numeric(0L)
   } else {
@@ -1052,7 +1048,6 @@
   peakUnsX <- densTblUns$xStim[peakUnsIdx]
 
   probTblPosList <- .getCpUnsLocProbTblFilter(
-    densTbl = densTblRaw,
     probTbl = probTbl,
     exVecStim = exVecStimThreshold,
     exVecUns = exVecUnsThreshold,
@@ -1153,27 +1148,13 @@
 
 #' @keywords internal
 .getCpUnsLocProbTblFilter <- function(
-    densTbl,
     probTbl,
     exVecStim,
     exVecUns,
     stage,
-    peakStimX = NULL,
-    peakUnsX = NULL) {
+    peakStimX,
+    peakUnsX) {
   .debug("Filtering before smoothing") # nolint
-  densTblStim <- densTbl |>
-    dplyr::filter(stim == "yes")
-  densTblUns <- densTbl |>
-    dplyr::filter(stim == "no")
-
-  if (is.null(peakStimX) || !is.finite(peakStimX)) {
-    peakStimIdx <- .getPeakMainLeftIdx(densTblStim$dens)
-    peakStimX <- densTblStim$xStim[peakStimIdx]
-  }
-  if (is.null(peakUnsX) || !is.finite(peakUnsX)) {
-    peakUnsIdx <- .getPeakMainLeftIdx(densTblUns$dens)
-    peakUnsX <- densTblUns$xStim[peakUnsIdx]
-  }
   peakX <- max(peakStimX, peakUnsX)
 
   windowWidthStim <- abs(diff(stats::quantile(

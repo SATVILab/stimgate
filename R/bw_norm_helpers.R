@@ -1280,64 +1280,6 @@
 
 
 #' @keywords internal
-.bwNormCoreTargetN <- function(
-    nCore,
-    nExtra,
-    nTotal,
-    bwNcellMin = NULL,
-    bwNcellMax = NULL) {
-  nCore <- .bwAsSafeSampleN(nCore, default = 0L, lower = 0L)
-  nExtra <- .bwAsSafeSampleN(nExtra, default = 0L, lower = 0L)
-  nTotal <- .bwAsSafeSampleN(nTotal, default = nCore + nExtra, lower = 0L)
-
-  if (!is.finite(nCore) || nCore <= 0L) {
-    return(0L)
-  }
-
-  if (!is.finite(nExtra) || nExtra < 0L) {
-    nExtra <- 0L
-  }
-
-  # Start from the actual core size.
-  # bwNcellMax is a cap, not a target.
-  nTarget <- nCore
-
-  bwNcellMaxSafe <- .bwAsSafeSampleN(
-    bwNcellMax,
-    default = NULL,
-    lower = 20L
-  )
-
-  if (!is.null(bwNcellMaxSafe)) {
-    nTarget <- min(
-      nTarget,
-      max(20L, bwNcellMaxSafe - nExtra)
-    )
-  }
-
-  bwNcellMinSafe <- .bwAsSafeSampleN(
-    bwNcellMin,
-    default = NULL,
-    lower = 0L
-  )
-
-  if (!is.null(bwNcellMinSafe)) {
-    nTarget <- max(
-      nTarget,
-      bwNcellMinSafe - nExtra
-    )
-  }
-
-  nTarget <- max(20L, nTarget)
-
-  .bwAsSafeSampleN(
-    nTarget,
-    default = 20L,
-    lower = 20L
-  )
-}
-
-#' @keywords internal
 .bwRobustSd <- function(x) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
@@ -1380,23 +1322,6 @@
 
   pmin(pmax(x, qs[[1L]]), qs[[2L]])
 }
-#' @keywords internal
-.bwWeightedSd <- function(x, w) {
-  x <- suppressWarnings(as.numeric(x))
-  w <- suppressWarnings(as.numeric(w))
-  ok <- is.finite(x) & is.finite(w) & w >= 0
-  x <- x[ok]
-  w <- w[ok]
-
-  if (length(x) < 2L || sum(w) <= 0) {
-    return(NA_real_)
-  }
-
-  w <- w / sum(w)
-  mu <- sum(w * x)
-  sqrt(sum(w * (x - mu)^2))
-}
-
 #' @keywords internal
 
 #' @keywords internal
@@ -1486,18 +1411,6 @@
     thresholdX = coreObj$thresholdX,
     peakIdx = peakIdx
   )
-}
-
-.bwNormRightCutFromDensity <- function(
-    dx,
-    dy,
-    peakIdx,
-    peakFrac = 0.1) {
-  lowHeight <- peakFrac * dy[peakIdx]
-
-  rightIdx <- which(seq_along(dy) > peakIdx & dy <= lowHeight)[1]
-
-  dx[rightIdx]
 }
 
 #' @keywords internal
@@ -1709,40 +1622,6 @@
 }
 
 #' @keywords internal
-.bwNormFitDecreasingDensityIso <- function(
-    x,
-    y,
-    dx,
-    dy,
-    peakIdx) {
-  n <- length(dx)
-
-  if (peakIdx >= n - 3L) {
-    return(NULL)
-  }
-
-  yRight <- log(pmax(dy[seq.int(peakIdx, n)], .Machine$double.eps))
-
-  iso <- try(
-    stats::isoreg(
-      seq_along(yRight),
-      -yRight
-    ),
-    silent = TRUE
-  )
-
-  if (inherits(iso, "try-error")) {
-    return(NULL)
-  }
-
-  yRightDec <- exp(-iso$yf)
-
-  yOut <- dy
-  yOut[seq.int(peakIdx, n)] <- yRightDec
-  yOut
-}
-
-#' @keywords internal
 .bwNormThinXByDensityGrid <- function(
     x,
     maxPerBin = 20L,
@@ -1836,48 +1715,6 @@
 }
 #' @keywords internal
 
-.bwNormPreferentialUpsample <- function(
-    x,
-    rate,
-    nTarget = NULL) {
-  x <- suppressWarnings(as.numeric(x))
-  rate <- suppressWarnings(as.numeric(rate))
-
-  ok <- is.finite(x) & is.finite(rate) & rate > 0
-  x <- x[ok]
-  rate <- rate[ok]
-
-  if (length(x) == 0L) {
-    return(numeric(0L))
-  }
-
-  nTarget <- .bwAsSafeSampleN(
-    nTarget,
-    default = 0L,
-    lower = 0L
-  )
-
-  if (is.null(nTarget) || nTarget <= 0L) {
-    return(numeric(0L))
-  }
-
-  rate <- pmin(1, pmax(0, rate))
-  if (!any(rate > 0)) {
-    return(numeric(0L))
-  }
-
-  if (sum(ok) == 1L) {
-    return(rep(x, times = nTarget))
-  }
-
-  sample(
-    x = x,
-    size = nTarget,
-    replace = TRUE,
-    prob = rate
-  )
-}
-
 #' @keywords internal
 .bwAsSafeSampleN <- function(
     x,
@@ -1900,25 +1737,6 @@
   as.integer(x)
 }
 
-
-.sdSum <- function(x1, x2) {
-  .sdOne <- function(x) {
-    x <- suppressWarnings(as.numeric(x))
-    x <- x[is.finite(x)]
-    if (length(x) < 2L) {
-      return(0)
-    }
-    out <- stats::sd(x)
-    if (!is.finite(out) || out < 0) {
-      return(0)
-    }
-    out
-  }
-
-  sd1 <- .sdOne(x1)
-  sd2 <- .sdOne(x2)
-  sqrt(sd1^2 + sd2^2)
-}
 
 #' @keywords internal
 .bwNormSampleNormalMixture <- function(
