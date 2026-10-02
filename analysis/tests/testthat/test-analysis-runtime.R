@@ -694,6 +694,10 @@ test_that("one process holding the lock excludes another process, and unlock all
 })
 
 test_that("a worker process terminating without unlocking leaves lock immediately acquirable", {
+  # On Windows, tools::pskill() cannot terminate the background Rscript worker
+  # (it reports failure and the worker keeps the lock), so this Unix
+  # kill-and-release check cannot run there.
+  skip_on_os("windows")
   env <- .load_runtime_env()
 
   tmp_dir <- withr::local_tempdir()
