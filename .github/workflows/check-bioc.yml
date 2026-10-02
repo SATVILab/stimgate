@@ -113,7 +113,7 @@ jobs:
       ## R is already included in the Bioconductor docker images
       - name: Setup R from r-lib
         if: runner.os != 'Linux'
-        uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
         with:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
@@ -121,7 +121,7 @@ jobs:
       ## pandoc is already included in the Bioconductor docker images
       - name: Setup pandoc from r-lib
         if: runner.os != 'Linux'
-        uses: r-lib/actions/setup-pandoc@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
+        uses: r-lib/actions/setup-pandoc@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
 
       ## Create the path that will be used for caching packages on Linux
       - name: Create R_LIBS_USER on Linux
@@ -342,11 +342,11 @@ jobs:
 
       - name: Set up QEMU
         if: "!contains(github.event.head_commit.message, '/nodocker') && env.run_docker == 'true' && github.ref == 'refs/heads/devel'"
-        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - name: Set up Docker Buildx
         if: "!contains(github.event.head_commit.message, '/nodocker') && env.run_docker == 'true' && github.ref == 'refs/heads/devel'"
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Login to Docker Hub
         if: "!contains(github.event.head_commit.message, '/nodocker') && env.run_docker == 'true' && github.ref == 'refs/heads/devel'"
@@ -364,7 +364,7 @@ jobs:
 
       - name: Build and Push Docker
         if: "!contains(github.event.head_commit.message, '/nodocker') && env.run_docker == 'true' && github.ref == 'refs/heads/devel' && success()"
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           push: true
