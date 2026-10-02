@@ -271,6 +271,41 @@ configuration with:
 pkgdown::check_pkgdown()
 ```
 
+### Continuous integration (GitHub Actions)
+
+Pull-request CI is deliberately minimal and Windows-based, because
+Windows installs CRAN and Bioconductor binaries while Ubuntu compiles
+the `flowWorkspace` stack from source.
+
+| Workflow | Pull requests | Otherwise |
+|----|----|----|
+| `R-CMD-check.yaml` | `windows-latest` (release) only | Same on pushes to `master`; full OS/R matrix on published releases, manual runs (`full` input) and PRs labelled `full-check` |
+| `analysis-integration.yaml` | `windows-latest`, path-filtered | Same on pushes to `master` |
+| `pkgdown.yaml` | Not run | Builds and deploys on `master`, releases and manual runs (Ubuntu) |
+| `test-coverage.yaml` | Not run | `master` and manual runs (Windows) |
+| `document.yaml` | Pushes touching `R/` (Windows) | Also runnable manually |
+
+- Add the `full-check` label to a PR, or run R-CMD-check manually, when
+  a change needs Linux, macOS or older-R coverage, and before releases.
+- `analysis-integration.yaml` installs Python, `numpy` and `reticulate`
+  and sets `RETICULATE_PYTHON`, because the F-beta comparator tests call
+  `scripts/python/fbeta.py`.
+- In CI, `.Rprofile` must keep preferring the `RSPM` repository URL
+  exported by `r-lib/actions/setup-r`. pak resolves packages in a
+  subprocess that skips the site profile but sources `.Rprofile`;
+  falling back to the source-only
+  `https://packagemanager.posit.co/cran/latest` there makes every
+  package build from source.
+- Never put comments inside a `setup-r-dependencies` `extra-packages: |`
+  block: YAML keeps them as text and pak treats them as package names.
+- `setup-r-dependencies` uses `cache: always` where a failing job should
+  still save its package library for later runs.
+- Ubuntu jobs depend on that cache: an uncached run compiles the
+  Bioconductor `flowWorkspace` stack (RProtoBufLib, Rhdf5lib, cytolib,
+  …) from source in about 10 minutes, while a cached run installs
+  dependencies in 1-4 minutes. Pull-request branches restore `master`’s
+  caches.
+
 ------------------------------------------------------------------------
 
 ## 5. Repository Structure
@@ -591,6 +626,12 @@ plotting/orchestration code.
       requires a `COMPLETE` marker, a readable manifest for the
       requested analysis key, and any analysis-specific semantic version
       required by the caller.
+    - To read canonical results without running the simulation chunk (so
+      no `run_ctx` exists), collation chunks fall back to
+      `.analysis_results_context()`, a read-only stand-in whose staging
+      paths point at `current/` and which creates no run state. Guard
+      all writes, chunk marking and promotion with
+      `if (!isTRUE(run_ctx$read_only))`.
     - Record scientific and semantic settings in the run manifest.
       Reusing an explicit run ID must match those settings; only
       operational controls such as plotting, simulation execution and
@@ -652,7 +693,20 @@ both suites.
     and Ubuntu. Use
     [`file.path()`](https://rdrr.io/r/base/file.path.html) (never
     hard-coded `/` or `\\` separators) and avoid platform-specific
-    paths.
+    paths. Pull-request CI runs on Windows, so in particular:
+
+    - Pass only a file-name prefix to
+      [`tempfile()`](https://rdrr.io/r/base/tempfile.html); a full path
+      as the pattern is prepended with
+      [`tempdir()`](https://rdrr.io/r/base/tempfile.html) again, which
+      is invalid on Windows.
+    - Compare paths after
+      `normalizePath(path, winslash = "/", mustWork = FALSE)`, since
+      equivalent paths may differ in separator style.
+    - Embed only forward-slash paths in R code run through `Rscript -e`;
+      Windows backslashes are escape sequences there.
+    - Use `skip_on_os("windows")`, with a comment giving the reason, for
+      checks of Unix-only process or signal behaviour.
 
 10. **Use the package-shipped example data for routine tests and
     examples**: The package ships one canonical deterministic cytometry
