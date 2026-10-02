@@ -81,8 +81,9 @@ function)
 function with `STIMGATE_DEBUG` environment variable (instead of `.debug`
 parameter) - **Guideline \#3**: Added guidance on `stage` parameter
 usage and intermediate data saving - **Required before commit**:
-Reordered to run `devtools::document()` first, then
-`styler::style_pkg()`, then tests
+Reordered to run
+[`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
+first, then `styler::style_pkg()`, then tests
 
 ### 5. Updated Tests
 
@@ -102,7 +103,8 @@ instead - Uses `on.exit(Sys.unsetenv("STIMGATE_DEBUG"))` for cleanup
 
 ✅ **All R source files parse successfully** (29 files checked) ✅ **All
 test files parse successfully** (10 files checked)  
-✅ **Documentation updated successfully** via `roxygen2::roxygenise()`
+✅ **Documentation updated successfully** via
+[`roxygen2::roxygenise()`](https://roxygen2.r-lib.org/reference/roxygenize.html)
 ✅ **Code formatted successfully** via `styler::style_pkg()`
 
 ## Migration Guide
