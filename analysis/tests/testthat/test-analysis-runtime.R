@@ -768,3 +768,56 @@ test_that("concurrent lock acquisition across workers remains safely serialised"
   log_lines <- readLines(log_file)
   expect_length(log_lines, 4L)
 })
+
+test_that("results context reads promoted current outputs without creating run state", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+  key <- c("sim", "analysis-runtime-results-context")
+
+  expect_error(
+    env$.analysis_results_context(key, path_root = tmp_project),
+    "No complete canonical current result"
+  )
+  expect_false(dir.exists(file.path(tmp_project, "cache", "log")))
+
+  ctx <- env$.analysis_run_context(
+    analysis_key = key,
+    run_id = "promoted-run",
+    path_root = tmp_project
+  )
+  env$.write_rds_atomic(
+    data.frame(x = 1),
+    file.path(ctx$staging_collated_dir, "result.rds")
+  )
+  env$.analysis_mark_chunk(
+    run_ctx = ctx,
+    total_sims = 1L,
+    completed_sims = 1L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+  expect_true(isTRUE(env$.analysis_promote_run(ctx)))
+
+  staging_before <- list.files(ctx$staging_root, recursive = TRUE)
+  ctx_read <- env$.analysis_results_context(key, path_root = tmp_project)
+
+  expect_true(ctx_read$read_only)
+  expect_identical(
+    normalizePath(ctx_read$current_dir),
+    normalizePath(ctx$current_dir)
+  )
+  expect_identical(ctx_read$staging_run_dir, ctx_read$current_dir)
+  expect_identical(
+    readRDS(file.path(ctx_read$staging_collated_dir, "result.rds")),
+    data.frame(x = 1)
+  )
+  expect_identical(
+    env$.analysis_current_file(ctx_read, c("collated", "result.rds")),
+    file.path(ctx_read$current_dir, "collated", "result.rds")
+  )
+  expect_identical(list.files(ctx$staging_root, recursive = TRUE), staging_before)
+})
