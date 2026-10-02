@@ -2,11 +2,11 @@
 % Please edit documentation in R/cp_uns_loc_filtering.R
 \name{.getCpUnsLocAntimodes}
 \alias{.getCpUnsLocAntimodes}
-\title{Locate all antimodes in a density object}
+\title{Locate all antimodes in a taut-string density object}
 \usage{
 .getCpUnsLocAntimodes(density)
 }
 \description{
-Locate all antimodes in a density object
+Locate all antimodes in a taut-string density object
 }
 \keyword{internal}

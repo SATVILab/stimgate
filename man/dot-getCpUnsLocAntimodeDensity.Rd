@@ -4,12 +4,7 @@
 \alias{.getCpUnsLocAntimodeDensity}
 \title{Fit the density used to identify antimodes}
 \usage{
-.getCpUnsLocAntimodeDensity(
-  expr,
-  chnlSettings,
-  originalBw = NULL,
-  mtd = c("taut_string", "kde")
-)
+.getCpUnsLocAntimodeDensity(expr)
 }
 \description{
 Fit the density used to identify antimodes
