@@ -265,6 +265,10 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   block: YAML keeps them as text and pak treats them as package names.
 - `setup-r-dependencies` uses `cache: always` where a failing job should still
   save its package library for later runs.
+- Ubuntu jobs depend on that cache: an uncached run compiles the Bioconductor
+  `flowWorkspace` stack (RProtoBufLib, Rhdf5lib, cytolib, ...) from source in
+  about 10 minutes, while a cached run installs dependencies in 1-4 minutes.
+  Pull-request branches restore `master`'s caches.
 
 ---
 
