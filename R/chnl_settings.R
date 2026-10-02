@@ -355,6 +355,18 @@
       tolower(x) == "auto")
 }
 
+# Evenly spaced indices: deterministic, and spread across the batch order
+#' @keywords internal
+.spreadInd <- function(n, size) {
+  unique(round(seq(1, n, length.out = min(size, n))))
+}
+
+# Batches used to estimate automatic channel settings
+#' @keywords internal
+.completeChnlSettingsBatchInd <- function(indBatchList) {
+  .spreadInd(length(indBatchList), 5)
+}
+
 #' @keywords internal
 .completeChnlSettingsGetBwExprList <- function(
     indBatchList,
@@ -362,11 +374,8 @@
     popGate,
     chnlCut,
     pathProject) {
-  batchInd <- seq_along(indBatchList)
-  batchInd <- sample(batchInd, size = min(5, length(batchInd)))
-
   purrr::map(
-    batchInd,
+    .completeChnlSettingsBatchInd(indBatchList),
     function(i) {
       exList <- .getExList(
         .data = .data,
@@ -638,11 +647,10 @@
   nCellFallback <- stats::median(purrr::map_int(xList, length), na.rm = TRUE)
   nCellFallback <- max(2L, as.integer(round(nCellFallback)))
 
-  xListFallback <- sample(
-    xList,
-    size = min(length(xList), max(1L, ceiling(sqrt(length(xList))))),
-    replace = FALSE
-  )
+  xListFallback <- xList[.spreadInd(
+    length(xList),
+    max(1L, ceiling(sqrt(length(xList))))
+  )]
 
   bwVec <- purrr::map_dbl(xListFallback, function(xVec) {
     .completeChnlSettingsBwCalcOne(
@@ -714,7 +722,7 @@
   }
 
   bwVec <- purrr::map(
-    seq_len(min(5, length(indBatchList))),
+    .completeChnlSettingsBatchInd(indBatchList),
     function(i) {
       exList <- try(
         .getExList(
@@ -797,7 +805,7 @@
   }
   .debug("calculating cpMin automatically") # nolint
   purrr::map(
-    seq_len(min(5, length(indBatchList))),
+    .completeChnlSettingsBatchInd(indBatchList),
     function(i) {
       exList <- .getExList(
         # nolint
