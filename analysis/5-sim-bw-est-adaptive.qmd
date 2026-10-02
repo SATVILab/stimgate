@@ -60,6 +60,7 @@ analysis_run_id <- .get_qmd_param_env(
   "ANALYSIS_RUN_ID",
   NULL
 )
+analysis_key <- c("sim", "bw", "est", "adaptive")
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -385,7 +386,7 @@ if (interactive()) {
 }
 
 run_ctx <- .analysis_run_context(
-  analysis_key = c("sim", "bw", "est", "adaptive"),
+  analysis_key = analysis_key,
   run_id = analysis_run_id,
   path_root = root_dir,
   params = list(
@@ -672,6 +673,13 @@ Collate the results.
 #| error: true
 #| fig-width: 7
 #| fig-height: 10
+# Without `run_ctx` (simulation chunk not run in this session), read the
+# canonical promoted results under `current/` and skip all writes below.
+if (!exists("run_ctx")) {
+  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+}
+results_read_only <- isTRUE(run_ctx$read_only)
+
 bw_list_path_vec <- .find_bw_list_output_files(
   output_dir = run_ctx$staging_run_dir,
   cache_dir = run_ctx$current_dir,
@@ -870,46 +878,57 @@ bw_tbl_results |>
   ) |>
   print(width = Inf)
 
-dir_results <- run_ctx$staging_collated_dir
-
-collate_suffix <- if (sim_grid_n_chunks > 1L) {
-  sprintf("_chunk_%03d-of_%03d", sim_grid_chunk_index, sim_grid_n_chunks)
+# Plots go beside the canonical results, never inside current/, when reading
+# results without a run.
+dir_results <- if (results_read_only) {
+  file.path(run_ctx$sim_root, "read-only-plots")
 } else {
-  ""
+  run_ctx$staging_collated_dir
 }
 
-saveRDS(
-  bw_tbl_long,
-  file = file.path(dir_results, paste0("bw_tbl_long", collate_suffix, ".rds"))
-)
-saveRDS(
-  bw_tbl_results,
-  file = file.path(dir_results, paste0("bw_tbl_results", collate_suffix, ".rds"))
-)
+if (!results_read_only) {
+  collate_suffix <- if (sim_grid_n_chunks > 1L) {
+    sprintf("_chunk_%03d-of_%03d", sim_grid_chunk_index, sim_grid_n_chunks)
+  } else {
+    ""
+  }
 
-chunk_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
-chunk_completed_ids <- unique(sub(
-  "^completed-",
-  "",
-  chunk_job_files[grepl("^completed-", chunk_job_files)]
-))
-chunk_failed_ids <- unique(sub(
-  "^error-",
-  "",
-  chunk_job_files[grepl("^error-", chunk_job_files)]
-))
-chunk_completed_ids <- setdiff(chunk_completed_ids, chunk_failed_ids)
-.analysis_mark_chunk(
-  run_ctx = run_ctx,
-  total_sims = nrow(sim_grid),
-  completed_sims = length(chunk_completed_ids),
-  failed_sims = length(chunk_failed_ids),
-  collate_ok = TRUE,
-  validation_ok = nrow(bw_tbl_results) > 0L
-)
+  saveRDS(
+    bw_tbl_long,
+    file = file.path(dir_results, paste0("bw_tbl_long", collate_suffix, ".rds"))
+  )
+  saveRDS(
+    bw_tbl_results,
+    file = file.path(
+      dir_results,
+      paste0("bw_tbl_results", collate_suffix, ".rds")
+    )
+  )
 
-if (.analysis_can_promote(run_ctx)) {
-  .analysis_promote_run(run_ctx)
+  chunk_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
+  chunk_completed_ids <- unique(sub(
+    "^completed-",
+    "",
+    chunk_job_files[grepl("^completed-", chunk_job_files)]
+  ))
+  chunk_failed_ids <- unique(sub(
+    "^error-",
+    "",
+    chunk_job_files[grepl("^error-", chunk_job_files)]
+  ))
+  chunk_completed_ids <- setdiff(chunk_completed_ids, chunk_failed_ids)
+  .analysis_mark_chunk(
+    run_ctx = run_ctx,
+    total_sims = nrow(sim_grid),
+    completed_sims = length(chunk_completed_ids),
+    failed_sims = length(chunk_failed_ids),
+    collate_ok = TRUE,
+    validation_ok = nrow(bw_tbl_results) > 0L
+  )
+
+  if (.analysis_can_promote(run_ctx)) {
+    .analysis_promote_run(run_ctx)
+  }
 }
 
 if (isTRUE(run_plots)) {
