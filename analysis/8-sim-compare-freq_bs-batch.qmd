@@ -37,6 +37,7 @@ analysis_run_id <- .get_qmd_param_env(
   "ANALYSIS_RUN_ID",
   NULL
 )
+analysis_key <- c("sim", "compare", "freq_bs_batch")
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -299,7 +300,7 @@ log_dir <- file.path("cache", "log", "freq_bs_batch")
 path_progress_file <- file.path(log_dir, "progress.txt")
 
 run_ctx <- .analysis_run_context(
-  analysis_key = c("sim", "compare", "freq_bs_batch"),
+  analysis_key = analysis_key,
   run_id = analysis_run_id,
   path_root = root_dir,
   params = list(
@@ -433,6 +434,12 @@ if (isTRUE(run_simulations)) {
 
 ```{r}
 #| label: compare-summary
+# Without `run_ctx` (simulation chunk not run in this session), read the
+# canonical promoted results under `current/`.
+if (!exists("run_ctx")) {
+  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+}
+
 if (!exists("compare_raw") || nrow(compare_raw) == 0L) {
   path_rds <- file.path(run_ctx$current_dir, "collated", "compare_raw.rds")
   if (file.exists(path_rds)) {
