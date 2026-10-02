@@ -57,8 +57,6 @@ test_that("verifyGlobalAndPerChannelAgreeOnSharedSettings", {
   expect_no_error(chnlCall(list()))
 
   # Each case: list(setting, invalid value, valid value).
-  # bwMin = -Inf (and negative bwMin) is rejected globally but accepted per
-  # channel; that inconsistency is deliberately not pinned here.
   cases <- list(
     list("excMin", "yes", FALSE),
     list("biasUns", "a", 0.5),
@@ -75,16 +73,19 @@ test_that("verifyGlobalAndPerChannelAgreeOnSharedSettings", {
     list("gateQuant", 0.5, c(0.1, 0.9)),
     list("bwMin", "foo", 0.1),
     list("bwMin", "foo", "none"),
+    list("bwMin", "foo", -Inf),
+    list("bwMin", "foo", -1),
+    list("bwMax", -Inf, Inf),
     list("bwMax", 0, 0.5),
     list("bwMax", "foo", "none"),
     list("bwFallback", "none", 0.1),
     list("bwAdaptive", "yes", TRUE),
     list("bwAdaptiveDensityN", 0, 256),
-    list("bwAdaptivePadFrac", -1, 0.1),
+    list("bwAdaptivePadFrac", -1, 0),
     list("bwAdaptiveCore", 0, 1),
     list("bwAdaptiveExtra", 0, 1),
     list("bwAdaptiveCrossover", Inf, 0.5),
-    list("bwAdaptiveTransitionWidth", -1, 0.1),
+    list("bwAdaptiveTransitionWidth", -1, 0),
     list("normPeakFrac", 2, 0.5),
     list("normPeakMinRel", -1, 0.5),
     list("normExtraFrac", 2, 0.1),
@@ -181,13 +182,24 @@ test_that("verifyGateInputsRejectsInvalidGlobalOnlyArguments", {
     list(chnl = exampleData$chnl),
     list(marker = NULL),
     list(marker = NULL, chnl = exampleData$chnl, markerSettings = list()),
-    list(chnlSettings = list())
+    list(chnlSettings = list()),
+    list(popGate = NULL),
+    list(excMin = NULL),
+    list(biasUnsFactor = NULL),
+    list(maxPosProbX = NULL),
+    list(bwAdj = NULL),
+    list(bwMtd = NULL),
+    list(gateCombn = NULL),
+    list(gateQuant = NULL)
   )
   for (vals in invalid) {
     expect_error(globalCall(vals), info = paste(names(vals), collapse = ","))
   }
 
   expect_no_error(globalCall(list(minCell = 10, bwNcellMax = 1e4)))
+  # Globally, `bwMtd` is unused and so unchecked when `bw` is fixed.
+  expect_no_error(globalCall(list(bw = 0.5, bwMtd = NULL)))
+  expect_no_error(globalCall(list(bw = 0.5, bwMtd = "foo")))
   expect_no_error(globalCall(list(marker = NULL, chnl = exampleData$chnl)))
 })
 
@@ -201,15 +213,9 @@ test_that("verifyChnlSettingsRejectsInvalidStructure", {
     )
   }
 
-  expect_error(
-    .verifyChnlSettings(
-      chnlSettings = list(ch = list()),
-      chnl = "ch",
-      markerSettings = list(mk = list()),
-      marker = "mk"
-    )
-  )
   expect_error(chnlCall(list(ch = list(notASetting = 1))))
+  # Legacy setting stays global only.
+  expect_error(chnlCall(list(ch = list(locEnforceShapeThreshold = TRUE))))
   expect_error(
     .verifyChnlSettings(
       chnlSettings = NULL,
