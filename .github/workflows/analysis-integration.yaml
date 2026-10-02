@@ -30,7 +30,9 @@ concurrency:
 
 jobs:
   analysis-integration:
-    runs-on: ubuntu-latest
+    # Windows installs CRAN and Bioconductor binaries, so it is much faster
+    # than Ubuntu, which builds the flowWorkspace stack from source.
+    runs-on: windows-latest
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
