@@ -24,6 +24,10 @@ on:
 
 permissions: read-all
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analysis-integration:
     runs-on: ubuntu-latest
@@ -42,19 +46,16 @@ jobs:
           r-version: 'release'
           use-public-rspm: true
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install --no-install-recommends -y \
-            libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev \
-            libgit2-dev libjpeg-dev libpng-dev libx11-dev pandoc
-
       - uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
         with:
           # Deliberately unpinned: analysis validation follows the current
           # SATVILab/simcyto default branch used by StimGate development.
-          extra-packages: any::devtools, any::testthat, SATVILab/simcyto
+          # decor is needed by devtools::load_all() to register cpp11 code.
+          extra-packages: any::devtools, any::testthat, any::decor, SATVILab/simcyto
           needs: check
+          # Save the package library even when the tests fail, so later runs
+          # restore it instead of rebuilding every dependency from source.
+          cache: always
 
       - name: Run analysis integration tests
         run: Rscript analysis/tests/run_analysis_tests.R
