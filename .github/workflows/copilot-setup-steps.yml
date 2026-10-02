@@ -58,12 +58,13 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
         with:
+          # Deliberately unpinned: StimGate development tracks the latest
+          # SATVILab/simcyto default branch. (Comments must stay outside the
+          # block scalar below, or pak reads them as package names.)
           extra-packages: |
             any::rcmdcheck
             any::devtools
             any::decor
-            # Deliberately unpinned: StimGate development tracks the latest
-            # SATVILab/simcyto default branch.
             SATVILab/simcyto
           needs: check
           # Save only a successfully completed package library. Cache version 4
