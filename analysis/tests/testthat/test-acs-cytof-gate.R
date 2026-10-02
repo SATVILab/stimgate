@@ -13,7 +13,8 @@ test_that("ACS CyTOF batches contain one unstimulated and four stimulated sample
 
   expect_equal(
     env$.acsCytofBatchList(20L),
-    list(1:5, 6:10, 11:15, 16:20)
+    # The fifth sample of each block is unstimulated and is listed first.
+    list(c(5L, 1:4), c(10L, 6:9), c(15L, 11:14), c(20L, 16:19))
   )
   expect_error(env$.acsCytofBatchList(19L), "multiple of five")
   expect_error(env$.acsCytofBatchList(0L), "at least 5")

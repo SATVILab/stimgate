@@ -48,16 +48,28 @@ jobs:
           r-version: 'release'
           use-public-rspm: true
 
+      # The F-beta comparator (scripts/python/fbeta.py) runs through reticulate
+      # and only needs numpy to compute thresholds.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: python
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: python -m pip install numpy
+
       - uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
         with:
           # Deliberately unpinned: analysis validation follows the current
           # SATVILab/simcyto default branch used by StimGate development.
           # decor is needed by devtools::load_all() to register cpp11 code.
-          extra-packages: any::devtools, any::testthat, any::decor, SATVILab/simcyto
+          extra-packages: any::devtools, any::testthat, any::decor, any::reticulate, SATVILab/simcyto
           needs: check
           # Save the package library even when the tests fail, so later runs
           # restore it instead of rebuilding every dependency from source.
           cache: always
 
       - name: Run analysis integration tests
+        env:
+          RETICULATE_PYTHON: ${{ steps.python.outputs.python-path }}
         run: Rscript analysis/tests/run_analysis_tests.R

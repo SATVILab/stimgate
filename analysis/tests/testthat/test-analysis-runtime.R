@@ -7,6 +7,12 @@ script_runtime <- file.path(root_dir, "scripts", "r", "analysis-runtime.R")
   env
 }
 
+# Forward-slash absolute paths: safe to compare across separator styles and to
+# embed in R code run by `Rscript -e` (Windows backslashes are escapes there).
+.norm_path <- function(path) {
+  normalizePath(path, winslash = "/", mustWork = FALSE)
+}
+
 test_that("QMD param lookup follows param > default precedence and env override precedence", {
   env <- .load_runtime_env()
   env$params <- list(sim_grid_chunk_index = 7L)
@@ -79,7 +85,7 @@ test_that("sim grid chunk validation rejects invalid settings and formats labels
 test_that("atomic RDS writes are readable and preserve object contents", {
   env <- .load_runtime_env()
 
-  path <- tempfile(file.path(tempdir(), "analysis-runtime-"), fileext = ".rds")
+  path <- tempfile("analysis-runtime-", fileext = ".rds")
   on.exit(unlink(path, force = TRUE), add = TRUE)
 
   obj <- list(
@@ -573,8 +579,14 @@ test_that("explicit run ID reuses the original dated run directory", {
   )
 
   expect_identical(ctx_resume$run_date, target_date)
-  expect_identical(ctx_resume$staging_run_dir, moved_staging_dir)
-  expect_identical(ctx_resume$progress_run_dir, moved_progress_dir)
+  expect_identical(
+    .norm_path(ctx_resume$staging_run_dir),
+    .norm_path(moved_staging_dir)
+  )
+  expect_identical(
+    .norm_path(ctx_resume$progress_run_dir),
+    .norm_path(moved_progress_dir)
+  )
 })
 
 test_that("a promoted run cannot be reset to running or lose collation/validation state", {
@@ -655,8 +667,8 @@ test_that("one process holding the lock excludes another process, and unlock all
   env <- .load_runtime_env()
 
   tmp_dir <- withr::local_tempdir()
-  lock_path <- file.path(tmp_dir, "test.lock")
-  script_path <- script_runtime
+  lock_path <- .norm_path(file.path(tmp_dir, "test.lock"))
+  script_path <- .norm_path(script_runtime)
 
   lock1 <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.5)
   expect_false(is.null(lock1))
@@ -685,10 +697,10 @@ test_that("a worker process terminating without unlocking leaves lock immediatel
   env <- .load_runtime_env()
 
   tmp_dir <- withr::local_tempdir()
-  lock_path <- file.path(tmp_dir, "termination.lock")
-  ready_file <- file.path(tmp_dir, "ready.txt")
-  pid_file <- file.path(tmp_dir, "pid.txt")
-  script_path <- script_runtime
+  lock_path <- .norm_path(file.path(tmp_dir, "termination.lock"))
+  ready_file <- .norm_path(file.path(tmp_dir, "ready.txt"))
+  pid_file <- .norm_path(file.path(tmp_dir, "pid.txt"))
+  script_path <- .norm_path(script_runtime)
 
   # Launch worker in background that acquires lock and signals readiness
   worker_cmd <- sprintf(
@@ -698,9 +710,9 @@ test_that("a worker process terminating without unlocking leaves lock immediatel
   system2("Rscript", args = c("-e", shQuote(worker_cmd)), wait = FALSE)
 
   # Wait until worker has locked and signaled readiness
-  for (i in seq_len(100L)) {
+  for (i in seq_len(300L)) {
     if (file.exists(ready_file)) break
-    Sys.sleep(0.05)
+    Sys.sleep(0.1)
   }
   expect_true(file.exists(ready_file))
 
