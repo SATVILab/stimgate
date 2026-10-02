@@ -670,6 +670,29 @@ both suites.
     `source("data-raw/create_test_fixture.R")` from the repository root
     in a clean R session (no `devtools::load_all()` required).
 
+## 9. Ponytail
+
+For coding, refactoring, bug-fixing, review and implementation design,
+read `.agents/skills/ponytail/SKILL.md` and apply Ponytail in **full**
+mode by default. Do not use **ultra** unless the operator explicitly
+requests it. Provenance is in `.agents/skills/ponytail/README.md`.
+
+Ponytail is subordinate to settled behaviour. Precedence is:
+
+1.  the current explicit operator instruction or issue acceptance
+    criteria;
+2.  the conventions and policies in this file;
+3.  the exported API and supported analysis/QMD contracts;
+4.  the smallest implementation.
+
+Do not simplify away input validation,
+[`.debug()`](https://satvilab.github.io/stimgate/reference/dot-debug.md)/profiling/intermediate-save
+plumbing, run-scoped staging and promotion for analysis simulations,
+comparator provenance, or roxygen documentation of exported functions.
+The generic Ponytail “one runnable check” suggestion is not a test cap
+here: add focused `testthat` coverage in the appropriate suite (Section
+8) and run the pre-commit checklist (Section 4).
+
 ## GitHub issues and Projects
 
 For GitHub issue or Project administration, use
