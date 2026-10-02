@@ -120,7 +120,8 @@ test_that("QMDs with run contexts can read canonical results without run_ctx", {
     chunks <- vapply(starts, function(s) {
       paste(lines[(s + 1L):(min(ends[ends > s]) - 1L)], collapse = "\n")
     }, character(1))
-    ind_sim <- which(grepl("run_ctx <- .analysis_run_context(", chunks, fixed = TRUE))[[1]]
+    pattern_sim <- "run_ctx <- .analysis_run_context("
+    ind_sim <- which(grepl(pattern_sim, chunks, fixed = TRUE))[[1]]
     ind_use <- which(
       seq_along(chunks) > ind_sim & grepl("run_ctx", chunks, fixed = TRUE)
     )
@@ -134,11 +135,14 @@ test_that("QMDs with run contexts can read canonical results without run_ctx", {
     )
     expect_true(
       grepl(
-        'if (!exists("run_ctx")) {\n  run_ctx <- .analysis_results_context(analysis_key',
+        paste0(
+          'if (!exists("run_ctx")) {\n',
+          "  run_ctx <- .analysis_results_context(analysis_key"
+        ),
         first_use,
         fixed = TRUE
       ),
-      info = paste0("First chunk using run_ctx lacks the read-only fallback: ", qmd_name)
+      info = paste0("First run_ctx chunk lacks read-only fallback: ", qmd_name)
     )
 
     # Collation chunks that write must skip writes, marking and promotion when
@@ -147,12 +151,15 @@ test_that("QMDs with run contexts can read canonical results without run_ctx", {
       guard <- regexpr("if (!results_read_only) {", first_use, fixed = TRUE)
       expect_gt(guard, 0L, label = qmd_name)
       writes <- gregexpr(
-        "saveRDS\\(|\\.write_rds_atomic\\(|\\.analysis_mark_chunk\\(|\\.analysis_promote_run\\(",
+        paste0(
+          "saveRDS\\(|\\.write_rds_atomic\\(|",
+          "\\.analysis_mark_chunk\\(|\\.analysis_promote_run\\("
+        ),
         first_use
       )[[1]]
       expect_true(
         all(writes > guard),
-        info = paste0("Collation writes outside the read-only guard: ", qmd_name)
+        info = paste0("Collation writes outside read-only guard: ", qmd_name)
       )
     }
   }

@@ -899,7 +899,10 @@ if (!results_read_only) {
   )
   saveRDS(
     bw_tbl_results,
-    file = file.path(dir_results, paste0("bw_tbl_results", collate_suffix, ".rds"))
+    file = file.path(
+      dir_results,
+      paste0("bw_tbl_results", collate_suffix, ".rds")
+    )
   )
 
   chunk_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)

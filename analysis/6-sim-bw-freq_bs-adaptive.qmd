@@ -876,7 +876,10 @@ if (!results_read_only) {
 
   saveRDS(
     bw_tbl,
-    file = file.path(run_ctx$staging_collated_dir, paste0("bw_tbl", collate_suffix, ".rds"))
+    file = file.path(
+      run_ctx$staging_collated_dir,
+      paste0("bw_tbl", collate_suffix, ".rds")
+    )
   )
   saveRDS(
     bw_tbl_results_raw,
