@@ -786,7 +786,7 @@ test_that("concurrent lock acquisition across workers remains safely serialised"
   expect_length(log_lines, 4L)
 })
 
-test_that("results context reads promoted current outputs without creating run state", {
+test_that("results context reads promoted outputs without run state", {
   env <- .load_runtime_env()
 
   tmp_project <- withr::local_tempdir()
@@ -836,5 +836,8 @@ test_that("results context reads promoted current outputs without creating run s
     env$.analysis_current_file(ctx_read, c("collated", "result.rds")),
     file.path(ctx_read$current_dir, "collated", "result.rds")
   )
-  expect_identical(list.files(ctx$staging_root, recursive = TRUE), staging_before)
+  expect_identical(
+    list.files(ctx$staging_root, recursive = TRUE),
+    staging_before
+  )
 })
