@@ -920,10 +920,6 @@
   list(lowerBoundX = lowerBoundX, info = info)
 }
 
-.getCpTailgate <- function(density, peakX = NULL, fraction = 1 / 200) {
-  .getStimGateTailgate(density = density, peakX = peakX, fraction = fraction)
-}
-
 #' Bound the marginal scan by the stimulated peak's descending shoulder
 #'
 #' This does not itself define a filtering threshold. When no antimode was
@@ -1179,7 +1175,7 @@
 
 #' Shift the original equal-width grid so one breakpoint equals x_ref
 #' @keywords internal
-.getCpUnsLocMarginalBreaks <- function(dataMod, startX, nBin = NULL) {
+.getCpUnsLocMarginalBreaks <- function(dataMod, startX, nBin = 50L) {
   binVec <- attr(dataMod, "binVec")
   if (is.null(binVec)) {
     x <- suppressWarnings(as.numeric(.getCut(dataMod)))
@@ -1190,13 +1186,13 @@
     binVec <- seq(
       min(x),
       max(x),
-      length.out = if (is.null(nBin)) 512L else nBin
+      length.out = nBin
     )
   }
 
   binVec <- sort(unique(suppressWarnings(as.numeric(binVec))))
   binVec <- binVec[is.finite(binVec)]
-  if (!is.null(nBin) && length(binVec) > 1L && diff(range(binVec)) > 0) {
+  if (length(binVec) > 1L && diff(range(binVec)) > 0) {
     binVec <- seq(
       min(binVec),
       max(binVec),
@@ -1293,14 +1289,12 @@
   if (!is.finite(maxProb) || maxProb < minPeakProb) {
     info$applied <- TRUE
     info$reason <- "max_response_probability_below_minimum"
-    return(list(
+    return(.getCpUnsLocEmptyFilterResult(
       dataMod = dataModFull[0, , drop = FALSE],
-      cp = .getCpUnsLocConditionCpNonLoc(
-        cpMin = cpMin,
-        exTblStimNoMin = exTblStimNoMin,
-        exTblUnsBias = exTblUnsBias
-      ),
-      info = info
+      info = info,
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias
     ))
   }
 
@@ -1330,14 +1324,12 @@
     info$reason <- "no_informative_clear_response_reference"
     info$thresholdClass <- "undefined"
     info$shareable <- FALSE
-    return(list(
+    return(.getCpUnsLocEmptyFilterResult(
       dataMod = dataModFull,
-      cp = .getCpUnsLocConditionCpNonLoc(
-        cpMin = cpMin,
-        exTblStimNoMin = exTblStimNoMin,
-        exTblUnsBias = exTblUnsBias
-      ),
-      info = info
+      info = info,
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias
     ))
   }
 
@@ -1355,6 +1347,7 @@
     lowerBoundX = preliminaryLowerBoundX
   )
   xDom <- suppressWarnings(as.numeric(dominance$startX)[1L])
+  # xClearInit is finite here, so xClear and every later minimum are finite.
   xClear <- .getCpUnsLocFiniteMin(c(xClearInit, xDom))
 
   info$clear <- list(
@@ -1373,22 +1366,6 @@
     globalFilterApplied = FALSE
   )
 
-  if (!is.finite(xClear)) {
-    info$applied <- TRUE
-    info$reason <- "no_informative_clear_response_reference"
-    info$thresholdClass <- "undefined"
-    info$shareable <- FALSE
-    return(list(
-      dataMod = dataModFull,
-      cp = .getCpUnsLocConditionCpNonLoc(
-        cpMin = cpMin,
-        exTblStimNoMin = exTblStimNoMin,
-        exTblUnsBias = exTblUnsBias
-      ),
-      info = info
-    ))
-  }
-
   # x_qual: scan bins leftward from x_clear. The old global derivative floor is
   # deliberately absent. The only lower bound is the preliminary filter that
   # was already applied before smoothing.
@@ -1399,10 +1376,7 @@
     xClear = xClear,
     lowerBoundX = preliminaryLowerBoundX
   )
-  xQual <- suppressWarnings(as.numeric(quality$thresholdX)[1L])
-  if (!is.finite(xQual)) {
-    xQual <- xClear
-  }
+  xQual <- quality$thresholdX
   info$marginal <- quality$info
 
   xBase <- .getCpUnsLocFiniteMin(c(xClear, xQual))
@@ -1438,22 +1412,6 @@
     xSum = xSum,
     globalFilterApplied = FALSE
   )
-
-  if (!is.finite(xSum)) {
-    info$applied <- TRUE
-    info$reason <- "no_final_post_smoothing_boundary"
-    info$thresholdClass <- "undefined"
-    info$shareable <- FALSE
-    return(list(
-      dataMod = dataModFull,
-      cp = .getCpUnsLocConditionCpNonLoc(
-        cpMin = cpMin,
-        exTblStimNoMin = exTblStimNoMin,
-        exTblUnsBias = exTblUnsBias
-      ),
-      info = info
-    ))
-  }
 
   x <- suppressWarnings(as.numeric(.getCut(dataModFull)))
   keep <- is.finite(x) & x >= xSum

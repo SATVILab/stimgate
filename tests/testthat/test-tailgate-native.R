@@ -69,7 +69,7 @@ test_that("legacy .getCpTg delegates to the native tailgate helper", {
   )
 
   local_mocked_bindings(
-    .getCpTailgate = function(density, peakX = NULL, fraction = 1 / 200) {
+    .getStimGateTailgate = function(density, peakX = NULL, fraction = 1 / 200) {
       expect_equal(fraction, 1 / 200)
       list(
         lowerBoundX = 6,

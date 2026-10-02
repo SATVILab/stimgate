@@ -4,7 +4,7 @@
 \alias{.getCpUnsLocMarginalBreaks}
 \title{Shift the original equal-width grid so one breakpoint equals x_ref}
 \usage{
-.getCpUnsLocMarginalBreaks(dataMod, startX, nBin = NULL)
+.getCpUnsLocMarginalBreaks(dataMod, startX, nBin = 50L)
 }
 \description{
 Shift the original equal-width grid so one breakpoint equals x_ref
