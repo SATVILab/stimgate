@@ -722,11 +722,12 @@ test_that("a worker process terminating without unlocking leaves lock immediatel
 
   # Terminate worker process abruptly (SIGKILL = 9)
   worker_pid <- as.integer(readLines(pid_file)[[1]])
-  tools::pskill(worker_pid, signal = tools::SIGKILL)
+  expect_true(tools::pskill(worker_pid, signal = tools::SIGKILL))
   Sys.sleep(0.1)
 
-  # OS fcntl drops lock automatically on process termination; another process can acquire immediately
-  l_after_death <- env$.analysis_acquire_lock(lock_path, timeout_sec = 2)
+  # The OS drops the lock when the holder dies (fcntl on Unix; on Windows the
+  # release can lag slightly behind TerminateProcess), so it becomes acquirable.
+  l_after_death <- env$.analysis_acquire_lock(lock_path, timeout_sec = 10)
   expect_false(is.null(l_after_death))
   env$.analysis_release_lock(l_after_death)
 })
