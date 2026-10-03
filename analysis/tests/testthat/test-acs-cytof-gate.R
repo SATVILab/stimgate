@@ -1,6 +1,12 @@
 root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
 script_gate <- file.path(root_dir, "scripts", "r", "acs_cytof-gate.R")
 qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
+launcher_path <- file.path(
+  root_dir,
+  "scripts",
+  "slurm",
+  "dev-9-real-compare-acs-cytof.sh"
+)
 
 .load_acs_gate_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
@@ -102,4 +108,89 @@ test_that("analysis 9 uses one runner for the tester and configured populations"
     content,
     fixed = TRUE
   ))
+})
+
+
+test_that("analysis 9 validates execution controls before running", {
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl(
+    'tester_n_sample <- as.integer(.get_qmd_param_env(',
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(".acsCytofBatchList(tester_n_sample)", content, fixed = TRUE))
+  expect_true(grepl(
+    'n_workers <- as.integer(.get_qmd_param_env(',
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("is.na(n_workers) || n_workers < 1L", content, fixed = TRUE))
+})
+
+test_that("analysis 9 preprocessing reaches every configured population", {
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl(
+    "if (isTRUE(run_preprocessing) || isTRUE(run_stimgate))",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "runPreprocessing = run_preprocessing_vec_by_pop[[pop]]",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "runPlots = run_stimgate_plots_vec_by_pop[[pop]]",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    'Sys.setenv("STIMGATE_DEBUG" = "TRUE")',
+    content,
+    fixed = TRUE
+  ))
+})
+
+test_that("analysis 9 does not continue after a population-stage failure", {
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl(
+    "ACS population preprocessing/StimGate runs failed:",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    '"ACS CyTOF populations failed: "',
+    content,
+    fixed = TRUE
+  ))
+})
+
+test_that("analysis 9 Slurm launcher exports the controls the QMD reads", {
+  content <- paste(readLines(launcher_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl(
+    'run_methods_default="${RUN_METHODS:-true}"',
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    'export RUN_STIMGATE="${RUN_STIMGATE:-$run_methods_default}"',
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    'export RUN_COMPARATORS="${RUN_COMPARATORS:-$run_methods_default}"',
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl('echo "RUN_STIMGATE: $RUN_STIMGATE"', content, fixed = TRUE))
+  expect_true(grepl(
+    'echo "RUN_COMPARATORS: $RUN_COMPARATORS"',
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("#SBATCH --ntasks=6", content, fixed = TRUE))
 })
