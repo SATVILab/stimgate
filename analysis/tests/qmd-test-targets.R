@@ -22,7 +22,8 @@
   )
   documents <- list.files(file.path(root_dir, "analysis"), pattern = "[.]qmd$")
   if (!setequal(documents, names(targets))) {
-    stop("QMD test registry must match every top-level analysis QMD. Missing: ",
+    stop(
+      "QMD test registry must match every top-level analysis QMD. Missing: ",
       paste(setdiff(names(targets), documents), collapse = ", "),
       "; unregistered: ", paste(setdiff(documents, names(targets)), collapse = ", ")
     )
@@ -58,7 +59,8 @@
     match(value, filenames, nomatch = match(value, stems, nomatch = match(value, numbers)))
   }, integer(1))
   if (anyNA(indices)) {
-    stop("Unknown QMD selection: ", paste(selection[is.na(indices)], collapse = ", "),
+    stop(
+      "Unknown QMD selection: ", paste(selection[is.na(indices)], collapse = ", "),
       ". Use --list to see available targets."
     )
   }
