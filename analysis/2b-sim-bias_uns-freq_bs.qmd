@@ -161,7 +161,7 @@ bias_uns_settings_tbl <- dplyr::bind_rows(
 ) |>
   dplyr::mutate(
     bias_uns_rule = paste0(
-      format(.data$bias_uns_multiplier, trim = TRUE),
+      as.character(.data$bias_uns_multiplier),
       " x ",
       dplyr::if_else(
         .data$bias_uns_basis == "bandwidth",
@@ -316,9 +316,9 @@ if (analysis_dev) {
       mean_pos_setting == "high",
       mismatch_label == "mean shift 0.05",
       bw == 0.1,
-      bias_uns_rule %in% c(
-        "0.25 x bandwidth",
-        "0.5 x negative width"
+      (
+        (bias_uns_basis == "bandwidth" & bias_uns_multiplier == 0.25) |
+          (bias_uns_basis == "negative_width" & bias_uns_multiplier == 0.5)
       )
     )
 }
