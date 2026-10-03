@@ -40,6 +40,39 @@ test_that("correlation table contains PCC and CCC by method and stratum", {
   expect_true(all(abs(correlation_tbl$pcc - 1) < 1e-10))
 })
 
+test_that("correlation table keeps only manuscript-eligible signal strata", {
+  comparison_tbl <- tibble::tibble(
+    method = "stimgate",
+    pop = "CD4 T cells",
+    cyt = "IFNg",
+    stim = rep(c("p1", "mtb", "ebv"), each = 4L),
+    SampleID = rep(paste0("sample", 1:4), 3L),
+    freq_bs_man = c(
+      0.10, 0.20, 0.30, 0.40,
+      0.10, 0.20, 0.30, 0.40,
+      0.001, 0.002, 0.003, 0.004
+    ),
+    freq_bs_auto = c(
+      0.11, 0.22, 0.33, 0.44,
+      0.11, 0.22, 0.33, 0.44,
+      0.0011, 0.0022, 0.0033, 0.0044
+    ),
+    freq_stim_man = c(
+      0.12, 0.22, 0.32, 0.42,
+      0.03, 0.04, 0.05, 0.06,
+      0.12, 0.22, 0.32, 0.42
+    ),
+    freq_uns_man = 0.02
+  )
+
+  correlation_tbl <- env$.acsCytofValidationCorrelationTable(comparison_tbl)
+
+  expect_equal(correlation_tbl$stim, "p1")
+  expect_equal(correlation_tbl$n, 4L)
+  expect_equal(correlation_tbl$pcc, 1, tolerance = 1e-12)
+})
+
+
 test_that("validation plotting helpers return ggplot objects", {
   comparison_tbl <- .acs_validation_fixture()
   correlation_tbl <- env$.acsCytofValidationCorrelationTable(comparison_tbl)
