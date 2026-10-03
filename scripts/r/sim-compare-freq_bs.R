@@ -33,15 +33,6 @@
 }
 
 #' @keywords internal
-.simCompareSampleFromInd <- function(ind, nCondition) {
-  if (exists(".simBandwidthSampleFromInd", mode = "function")) {
-    return(.simBandwidthSampleFromInd(ind, nCondition))
-  }
-  ind_num <- suppressWarnings(as.numeric(ind))
-  as.character(((ind_num - 1) %/% nCondition) + 1)
-}
-
-#' @keywords internal
 .simCompareReadLocDetails <- function(pathProject, nSample, nCondition) {
   if (!exists(".simBandwidthReadLocDetails", mode = "function")) {
     stop(
@@ -499,6 +490,18 @@
   stimSdMultiplierClusters = NULL,
   scenario = NULL
 ) {
+  simcytoArgs <- names(formals(simcyto::simCytExperiment))
+  clusterShiftSupported <- !is.null(simcytoArgs) &&
+    "stimMeanShiftClusters" %in% simcytoArgs
+  clusterSdSupported <- !is.null(simcytoArgs) &&
+    "stimSdMultiplierClusters" %in% simcytoArgs
+
+  selectiveShift <- !is.null(stimMeanShiftClusters)
+  selectiveSd <- !is.null(stimSdMultiplierClusters)
+
+  # If the installed simcyto supports selective mismatch, let simcyto apply it
+  # exactly once. For older simcyto versions, neutralise the global mismatch
+  # during simulation and apply the selective mismatch locally afterwards.
   callArgs <- list(
     nSample = nSample,
     nMarker = nMarker,
@@ -517,33 +520,58 @@
     clusterPerturbationSd = clusterPerturbationSd,
     covEvMin = covEvMin,
     covEvMax = covEvMax,
-    stimMeanShift = stimMeanShift,
-    stimSdMultiplier = stimSdMultiplier,
+    stimMeanShift = if (selectiveShift && !clusterShiftSupported) {
+      0
+    } else {
+      stimMeanShift
+    },
+    stimSdMultiplier = if (selectiveSd && !clusterSdSupported) {
+      1
+    } else {
+      stimSdMultiplier
+    },
     scenario = scenario
   )
 
-  simcytoArgs <- names(formals(simcyto::simCytExperiment))
-  clusterShiftSupported <- !is.null(simcytoArgs) &&
-    "stimMeanShiftClusters" %in% simcytoArgs
-  clusterSdSupported <- !is.null(simcytoArgs) &&
-    "stimSdMultiplierClusters" %in% simcytoArgs
-
-  if (clusterShiftSupported && !is.null(stimMeanShiftClusters)) {
+  if (clusterShiftSupported && selectiveShift) {
     callArgs$stimMeanShiftClusters <- stimMeanShiftClusters
   }
-  if (clusterSdSupported && !is.null(stimSdMultiplierClusters)) {
+  if (clusterSdSupported && selectiveSd) {
     callArgs$stimSdMultiplierClusters <- stimSdMultiplierClusters
   }
 
   result <- do.call(simcyto::simCytExperiment, callArgs)
 
-  .simCompareApplyClusterMismatch(
-    outListExperiment = result,
-    stimMeanShift = stimMeanShift,
-    stimSdMultiplier = stimSdMultiplier,
-    stimMeanShiftClusters = stimMeanShiftClusters,
-    stimSdMultiplierClusters = stimSdMultiplierClusters
-  )
+  if (
+    (selectiveShift && !clusterShiftSupported) ||
+      (selectiveSd && !clusterSdSupported)
+  ) {
+    result <- .simCompareApplyClusterMismatch(
+      outListExperiment = result,
+      stimMeanShift = if (selectiveShift && !clusterShiftSupported) {
+        stimMeanShift
+      } else {
+        0
+      },
+      stimSdMultiplier = if (selectiveSd && !clusterSdSupported) {
+        stimSdMultiplier
+      } else {
+        1
+      },
+      stimMeanShiftClusters = if (selectiveShift && !clusterShiftSupported) {
+        stimMeanShiftClusters
+      } else {
+        NULL
+      },
+      stimSdMultiplierClusters = if (selectiveSd && !clusterSdSupported) {
+        stimSdMultiplierClusters
+      } else {
+        NULL
+      }
+    )
+  }
+
+  result
 }
 
 #' @keywords internal
@@ -681,6 +709,7 @@
     purrr::map_df(indStimVec, function(indStim) {
       xStim <- as.numeric(flowCore::exprs(flowFrameList[[indStim]])[, chnl])
 
+      fbetaError <- NA_character_
       fbetaObj <- tryCatch(
         .simCompareFbetaThreshold(
           xUns = xUnsFbeta,
@@ -694,10 +723,11 @@
           numBins = fbetaNumBins
         ),
         error = function(e) {
+          fbetaError <<- conditionMessage(e)
           list(
             threshold = NA_real_,
             thresholdMetric = NA_real_,
-            thresholdOrigin = paste0("error: ", e$message)
+            thresholdOrigin = paste0("error: ", fbetaError)
           )
         }
       )
@@ -717,6 +747,7 @@
         "combined" = c(xUnsTailgate, xStim)
       )
 
+      tailgateError <- NA_character_
       tailgateObj <- tryCatch(
         .simCompareTailgateThreshold(
           x = xTail,
@@ -732,10 +763,11 @@
           autoTol = tailgateAutoTol
         ),
         error = function(e) {
+          tailgateError <<- conditionMessage(e)
           list(
             threshold = NA_real_,
             thresholdMetric = NA_real_,
-            thresholdOrigin = paste0("error: ", e$message)
+            thresholdOrigin = paste0("error: ", tailgateError)
           )
         }
       )
@@ -760,12 +792,16 @@
           tailgateObj$thresholdOrigin
         ),
         gateReturnPoint = c(
-          if (isTRUE(fbetaEst$thresholdFallbackUsed)) {
+          if (!is.na(fbetaError)) {
+            "fbeta_error_fallback_high_value"
+          } else if (isTRUE(fbetaEst$thresholdFallbackUsed)) {
             "fbeta_fallback_high_value"
           } else {
             "fbeta_calculated"
           },
-          if (isTRUE(tailgateEst$thresholdFallbackUsed)) {
+          if (!is.na(tailgateError)) {
+            "tailgate_error_fallback_high_value"
+          } else if (isTRUE(tailgateEst$thresholdFallbackUsed)) {
             "tailgate_fallback_high_value"
           } else {
             "tailgate_calculated"
@@ -791,7 +827,7 @@
         locGeneratedDirect = NA,
         locSource = NA_character_,
         locReason = NA_character_,
-        error = NA_character_
+        error = c(fbetaError, tailgateError)
       )
     })
   })
@@ -827,6 +863,81 @@
     )
 }
 
+#' Extract final StimGate threshold provenance for comparison outputs
+#'
+#' @keywords internal
+.simCompareStimgateGateProvenance <- function(gRow, gateVal, isClustered) {
+  has_row <- is.data.frame(gRow) && nrow(gRow) > 0L
+
+  locGenerated <- if (
+    has_row &&
+      "locGenerated" %in% names(gRow) &&
+      !is.na(gRow$locGenerated[[1]])
+  ) {
+    isTRUE(gRow$locGenerated[[1]])
+  } else {
+    is.finite(gateVal)
+  }
+
+  locGeneratedDirect <- if (
+    has_row &&
+      "locGeneratedDirect" %in% names(gRow) &&
+      !is.na(gRow$locGeneratedDirect[[1]])
+  ) {
+    isTRUE(gRow$locGeneratedDirect[[1]])
+  } else {
+    isTRUE(locGenerated) && !isTRUE(isClustered)
+  }
+
+  locSource <- if (
+    has_row &&
+      "locSource" %in% names(gRow) &&
+      !is.na(gRow$locSource[[1]])
+  ) {
+    as.character(gRow$locSource[[1]])
+  } else if (isTRUE(isClustered)) {
+    "cluster"
+  } else if (isTRUE(locGenerated)) {
+    "sample"
+  } else {
+    "not_calculated"
+  }
+
+  locReason <- if (
+    has_row &&
+      "locReason" %in% names(gRow) &&
+      !is.na(gRow$locReason[[1]])
+  ) {
+    as.character(gRow$locReason[[1]])
+  } else {
+    NA_character_
+  }
+
+  thresholdFallbackUsed <- !isTRUE(locGenerated)
+
+  list(
+    thresholdOrigin = if (thresholdFallbackUsed) {
+      "fallback_high_value"
+    } else if (isTRUE(isClustered)) {
+      "calculated_clustered"
+    } else {
+      "calculated"
+    },
+    gateReturnPoint = if (thresholdFallbackUsed) {
+      "stimgate_fallback_high_value"
+    } else if (isTRUE(isClustered)) {
+      "stimgate_clustered"
+    } else {
+      "stimgate_calculated"
+    },
+    thresholdFallbackUsed = thresholdFallbackUsed,
+    locGenerated = locGenerated,
+    locGeneratedDirect = locGeneratedDirect,
+    locSource = locSource,
+    locReason = locReason
+  )
+}
+
 #' @keywords internal
 .simCompareStimgateRows <- function(
   gs,
@@ -856,15 +967,9 @@
   locAntimodeLowAbs = 0.15,
   locFlatDerivFrac = 1 / 2,
   locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
-  gateCombn = "min",
   tolClust = NULL,
   locEnforceShapeThreshold = FALSE,
   calcCytPosGates = FALSE,
@@ -927,15 +1032,9 @@
         locAntimodeLowAbs = locAntimodeLowAbs,
         locFlatDerivFrac = locFlatDerivFrac,
         locFlatHardDerivFrac = locFlatHardDerivFrac,
-        locLeftLowRel = locLeftLowRel,
-        locLeftLowAbs = locLeftLowAbs,
-        locLeftCellFrac = locLeftCellFrac,
-        locLeftLengthFrac = locLeftLengthFrac,
         locMarginalPurityRel = locMarginalPurityRel,
         locMarginalCellBinRatio = locMarginalCellBinRatio,
-        locMarginalRefQuantile = locMarginalRefQuantile,
-        locTolRefPeak = locTolRefPeak,
-        gateCombn = gateCombn
+        locMarginalRefQuantile = locMarginalRefQuantile
       ))
 
       # Extract final cluster-refined StimGate gates and statistics
@@ -1044,6 +1143,11 @@
             }
 
             isClustered <- grepl("Clust$", gateNm %||% "")
+            provenance <- .simCompareStimgateGateProvenance(
+              gRow = gRow,
+              gateVal = gateVal,
+              isClustered = isClustered
+            )
 
             tibble::tibble(
               sample = as.character(sampleCurr),
@@ -1052,18 +1156,10 @@
               approach = "stimgate",
               method = "stimgate",
               threshold = gateVal,
-              thresholdOrigin = if (is.finite(gateVal)) {
-                if (isClustered) "calculated_clustered" else "calculated"
-              } else {
-                "failed_no_cutpoint"
-              },
-              gateReturnPoint = if (isClustered) {
-                "stimgate_clustered"
-              } else {
-                "stimgate_calculated"
-              },
+              thresholdOrigin = provenance$thresholdOrigin,
+              gateReturnPoint = provenance$gateReturnPoint,
               thresholdMetric = NA_real_,
-              thresholdFallbackUsed = !is.finite(gateVal),
+              thresholdFallbackUsed = provenance$thresholdFallbackUsed,
               nCellStim = nCellStimVal,
               nCellUns = nCellUnsVal,
               nPosStim = nPosStimVal,
@@ -1076,10 +1172,10 @@
               } else {
                 "sample_final"
               },
-              locGenerated = is.finite(gateVal),
-              locGeneratedDirect = !isClustered,
-              locSource = if (isClustered) "cluster" else "sample",
-              locReason = NA_character_,
+              locGenerated = provenance$locGenerated,
+              locGeneratedDirect = provenance$locGeneratedDirect,
+              locSource = provenance$locSource,
+              locReason = provenance$locReason,
               error = NA_character_
             )
           })
@@ -1241,15 +1337,9 @@
   locAntimodeLowAbs = 0.15,
   locFlatDerivFrac = 1 / 2,
   locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
-  gateCombn = "min",
   calcCytPosGates = FALSE,
   includeLocCondition = FALSE,
   includeLocDetails = includeLocCondition,
@@ -1396,15 +1486,9 @@
       locAntimodeLowAbs = locAntimodeLowAbs,
       locFlatDerivFrac = locFlatDerivFrac,
       locFlatHardDerivFrac = locFlatHardDerivFrac,
-      locLeftLowRel = locLeftLowRel,
-      locLeftLowAbs = locLeftLowAbs,
-      locLeftCellFrac = locLeftCellFrac,
-      locLeftLengthFrac = locLeftLengthFrac,
       locMarginalPurityRel = locMarginalPurityRel,
       locMarginalCellBinRatio = locMarginalCellBinRatio,
       locMarginalRefQuantile = locMarginalRefQuantile,
-      locTolRefPeak = locTolRefPeak,
-      gateCombn = gateCombn,
       tolClust = tolClust,
       locEnforceShapeThreshold = locEnforceShapeThreshold,
       calcCytPosGates = calcCytPosGates,
@@ -1558,6 +1642,66 @@
   sort(unique(files))
 }
 
+#' Check that a scenario has one complete primary result per replicate and method
+#'
+#' @keywords internal
+.simComparePrimaryOutputComplete <- function(
+  .data,
+  nSample,
+  nIter,
+  methods = c("stimgate", "fbeta", "tailgate")
+) {
+  required_cols <- c(
+    "iter",
+    "sample",
+    "method",
+    "propRespTruth",
+    "propRespEst"
+  )
+  if (
+    !is.data.frame(.data) ||
+      nrow(.data) == 0L ||
+      !all(required_cols %in% names(.data))
+  ) {
+    return(FALSE)
+  }
+
+  if (
+    "error" %in% names(.data) &&
+      any(!is.na(.data$error) & nzchar(as.character(.data$error)))
+  ) {
+    return(FALSE)
+  }
+
+  primary <- .data |>
+    dplyr::filter(.data$method %in% methods)
+
+  expected_n_per_method <- as.integer(nSample) * as.integer(nIter)
+  if (nrow(primary) != expected_n_per_method * length(methods)) {
+    return(FALSE)
+  }
+
+  key_counts <- primary |>
+    dplyr::count(.data$iter, .data$sample, .data$method, name = "n")
+
+  if (any(key_counts$n != 1L)) {
+    return(FALSE)
+  }
+
+  method_counts <- primary |>
+    dplyr::count(.data$method, name = "n")
+
+  if (
+    !setequal(as.character(method_counts$method), methods) ||
+      any(method_counts$n != expected_n_per_method)
+  ) {
+    return(FALSE)
+  }
+
+  all(is.finite(primary$propRespTruth)) &&
+    all(is.finite(primary$propRespEst))
+}
+
 #' Validate scenario cached output against grid row settings
 #'
 #' @keywords internal
@@ -1706,6 +1850,18 @@
         return(FALSE)
       }
     }
+    if (
+      !is.null(nIter) &&
+        !is.null(nSample) &&
+        "method" %in% names(cached) &&
+        !.simComparePrimaryOutputComplete(
+          cached,
+          nSample = nSample,
+          nIter = nIter
+        )
+    ) {
+      return(FALSE)
+    }
   }
 
   TRUE
@@ -1738,11 +1894,8 @@
     if ("bias_uns" %in% names(row)) {
       paste0("bias = ", row$bias_uns[[1]])
     },
-    if ("gate_combn" %in% names(row)) {
-      paste0("gate_combn = ", row$gate_combn[[1]])
-    },
-    if ("gateCombn" %in% names(row)) {
-      paste0("gate_combn = ", row$gateCombn[[1]])
+    if ("sim_seed" %in% names(row)) {
+      paste0("sim_seed = ", row$sim_seed[[1]])
     },
     if ("mismatch_type" %in% names(row)) {
       paste0("mismatch_type = ", row$mismatch_type[[1]])
@@ -1904,6 +2057,29 @@
     }
   }
 
+  if (
+    "sim_seed" %in% names(row) &&
+      length(row$sim_seed) > 0L &&
+      is.finite(as.numeric(row$sim_seed[[1]]))
+  ) {
+    rng_kind <- RNGkind()
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    rng_seed <- if (had_seed) get(".Random.seed", envir = .GlobalEnv) else NULL
+    on.exit({
+      do.call(RNGkind, as.list(rng_kind))
+      if (had_seed) {
+        assign(".Random.seed", rng_seed, envir = .GlobalEnv)
+      } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        rm(".Random.seed", envir = .GlobalEnv)
+      }
+    }, add = TRUE)
+    sim_seed <- as.integer(row$sim_seed[[1]])
+    set.seed(
+      sim_seed, kind = "Mersenne-Twister",
+      normal.kind = "Inversion", sample.kind = "Rejection"
+    )
+  }
+
   settings_log <- .simCompareFormatScenarioLog(row, sim_id)
   .simCompareLogMessage(pathProgress, paste0("Running: ", settings_log))
 
@@ -1941,7 +2117,8 @@
     } else {
       as.character(val)
     }
-  } else if (identical(row$mismatch_type[[1]], "mean_shift_negative")) {
+  } else if ("mismatch_type" %in% names(row) &&
+    identical(row$mismatch_type[[1]], "mean_shift_negative")) {
     "gn"
   } else {
     NULL
@@ -1963,7 +2140,8 @@
     } else {
       as.character(val)
     }
-  } else if (identical(row$mismatch_type[[1]], "sd_inflation_negative")) {
+  } else if ("mismatch_type" %in% names(row) &&
+    identical(row$mismatch_type[[1]], "sd_inflation_negative")) {
     "gn"
   } else {
     NULL
@@ -2045,13 +2223,6 @@
         calcCytPosGates = calcCytPosGates,
         includeLocCondition = includeLocCondition,
         includeLocDetails = includeLocDetails,
-        gateCombn = if ("gate_combn" %in% names(row)) {
-          row$gate_combn[[1]]
-        } else if ("gateCombn" %in% names(row)) {
-          row$gateCombn[[1]]
-        } else {
-          "min"
-        },
         stimMeanShift = stimMeanShiftVal,
         stimSdMultiplier = stimSdMultVal,
         stimMeanShiftClusters = stimMeanShiftClustersVal,
@@ -2357,6 +2528,89 @@
   collated
 }
 
+#' Validate primary comparison output coverage for a simulation grid
+#'
+#' @keywords internal
+.simCompareGridOutputStatus <- function(
+  .data,
+  sim_grid,
+  nSample,
+  nIter
+) {
+  expected_ids <- if (
+    is.data.frame(sim_grid) &&
+      "sim_id" %in% names(sim_grid)
+  ) {
+    sort(unique(as.integer(sim_grid$sim_id)))
+  } else {
+    integer()
+  }
+
+  observed_ids <- if (
+    is.data.frame(.data) &&
+      nrow(.data) > 0L &&
+      "sim_id" %in% names(.data)
+  ) {
+    sort(unique(as.integer(.data$sim_id[!is.na(.data$sim_id)])))
+  } else {
+    integer()
+  }
+
+  extra_ids <- setdiff(observed_ids, expected_ids)
+  missing_ids <- setdiff(expected_ids, observed_ids)
+
+  if (length(expected_ids) == 0L) {
+    return(list(
+      expected_ids = expected_ids,
+      observed_ids = observed_ids,
+      completed_ids = integer(),
+      failed_ids = integer(),
+      missing_ids = integer(),
+      extra_ids = extra_ids,
+      collate_ok = length(extra_ids) == 0L,
+      validation_ok = length(extra_ids) == 0L
+    ))
+  }
+
+  completed_ids <- integer()
+  failed_ids <- integer()
+
+  for (sim_id in intersect(expected_ids, observed_ids)) {
+    sim_data <- .data[as.integer(.data$sim_id) == sim_id, , drop = FALSE]
+    has_error <- "error" %in% names(sim_data) &&
+      any(!is.na(sim_data$error) & nzchar(as.character(sim_data$error)))
+    complete <- !has_error &&
+      .simComparePrimaryOutputComplete(
+        sim_data,
+        nSample = nSample,
+        nIter = nIter
+      )
+
+    if (isTRUE(complete)) {
+      completed_ids <- c(completed_ids, sim_id)
+    } else {
+      failed_ids <- c(failed_ids, sim_id)
+    }
+  }
+
+  collate_ok <- length(missing_ids) == 0L &&
+    length(extra_ids) == 0L
+  validation_ok <- collate_ok &&
+    length(failed_ids) == 0L &&
+    identical(sort(completed_ids), expected_ids)
+
+  list(
+    expected_ids = expected_ids,
+    observed_ids = observed_ids,
+    completed_ids = sort(completed_ids),
+    failed_ids = sort(failed_ids),
+    missing_ids = sort(missing_ids),
+    extra_ids = sort(extra_ids),
+    collate_ok = collate_ok,
+    validation_ok = validation_ok
+  )
+}
+
 #' Summarise comparison runs by scenario and method
 #'
 #' @keywords internal
@@ -2465,5 +2719,107 @@
           )
         )
       )
+    )
+}
+
+# Promote only a complete cross-chunk comparison grid.
+.simComparePromoteIfReady <- function(
+    run_ctx,
+    sim_grid_all,
+    total_sims,
+    completed_sims,
+    failed_sims,
+    nSample,
+    nIter) {
+  if (isTRUE(run_ctx$read_only) || !.analysis_can_promote(run_ctx)) {
+    return(invisible(FALSE))
+  }
+
+  scenario_paths <- list.files(
+    run_ctx$staging_run_dir,
+    pattern = "^(compare_raw.*|sim_scenario.*|sim_raw.*)sim_id_[0-9]+[.]rds$",
+    recursive = TRUE,
+    full.names = TRUE
+  )
+  compare_raw_full <- .simCompareCollateScenarioOutputs(
+    pathList = scenario_paths,
+    sim_grid = sim_grid_all
+  )
+  expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
+  full_check <- .simCompareGridOutputStatus(
+    compare_raw_full,
+    sim_grid = sim_grid_all,
+    nSample = nSample,
+    nIter = nIter
+  )
+  full_collate_ok <-
+    length(scenario_paths) == length(expected_sim_ids) &&
+    isTRUE(full_check$collate_ok)
+  full_validation_ok <-
+    full_collate_ok &&
+    isTRUE(full_check$validation_ok)
+
+  if (!isTRUE(full_validation_ok)) {
+    error_message <- paste0(
+      "Refusing to promote comparison: canonical collation did not contain ",
+      "exactly the complete error-free simulation grid."
+    )
+    .analysis_mark_chunk(
+      run_ctx = run_ctx,
+      total_sims = total_sims,
+      completed_sims = completed_sims,
+      failed_sims = failed_sims,
+      collate_ok = full_collate_ok,
+      validation_ok = FALSE,
+      error_message = error_message
+    )
+    stop(error_message)
+  }
+
+  path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
+  .write_rds_atomic(compare_raw_full, path_rds_full)
+  invisible(isTRUE(.analysis_promote_run(run_ctx)))
+}
+
+# Construct mean-shift degradation plots; callers own output paths and writes.
+.simComparePlotMeanShift <- function(summary_data, statistic, label) {
+  ggplot2::ggplot(
+    summary_data,
+    ggplot2::aes(
+      x = mismatch_val,
+      y = .data[[statistic]],
+      color = method,
+      linetype = mismatch_type,
+      group = interaction(method, mismatch_type)
+    )
+  ) +
+    ggplot2::geom_line(linewidth = 0.8) +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::facet_wrap(~scenario_desc, scales = "free_y") +
+    ggplot2::scale_y_continuous(
+      transform = scales::asinh_trans()
+    ) +
+    cowplot::theme_cowplot(font_size = 10) +
+    cowplot::background_grid(major = "xy", minor = "none") +
+    ggplot2::theme(
+      panel.background = ggplot2::element_rect(fill = "white", color = NA),
+      plot.background = ggplot2::element_rect(fill = "white", color = NA)
+    ) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      legend.box = "vertical",
+      legend.box.just = "left"
+    ) +
+    ggplot2::guides(
+      colour = ggplot2::guide_legend(nrow = 1, byrow = TRUE),
+      linetype = ggplot2::guide_legend(nrow = 1, byrow = TRUE)
+    ) +
+    ggplot2::labs(
+      title = "Degradation under Stimulated Mean Shift",
+      subtitle = paste(label, "vs Mean Shift"),
+      x = "Stimulated Mean Shift",
+      y = paste(label, "(asinh scale)"),
+      color = "Method",
+      linetype = "Mismatch Variant"
     )
 }

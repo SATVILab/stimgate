@@ -352,14 +352,9 @@
   locAntimodeLowAbs = 0.15,
   locFlatDerivFrac = 1 / 2,
   locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
   gateCombn = "min",
   calcCytPosGates = FALSE
 ) {
@@ -479,14 +474,9 @@
       locAntimodeLowAbs = locAntimodeLowAbs,
       locFlatDerivFrac = locFlatDerivFrac,
       locFlatHardDerivFrac = locFlatHardDerivFrac,
-      locLeftLowRel = locLeftLowRel,
-      locLeftLowAbs = locLeftLowAbs,
-      locLeftCellFrac = locLeftCellFrac,
-      locLeftLengthFrac = locLeftLengthFrac,
       locMarginalPurityRel = locMarginalPurityRel,
       locMarginalCellBinRatio = locMarginalCellBinRatio,
       locMarginalRefQuantile = locMarginalRefQuantile,
-      locTolRefPeak = locTolRefPeak,
       gateCombn = gateCombn
     ))
 
@@ -1130,6 +1120,7 @@
         normMtd = normMtd
       )
 
+      bw_stim_norm_fallback <- isTRUE(attr(bw_stim, "normFallback"))
       bw_stim <- .simBandwidthRemoveFallbackBw(
         bw = bw_stim,
         bwFallback = bwFallback
@@ -1155,6 +1146,7 @@
         normMtd = normMtd
       )
 
+      bw_uns_norm_fallback <- isTRUE(attr(bw_uns, "normFallback"))
       bw_uns <- .simBandwidthRemoveFallbackBw(
         bw = bw_uns,
         bwFallback = bwFallback
@@ -1171,6 +1163,19 @@
           min(bw_vec)
         }
       }
+
+      bw_source <- dplyr::case_when(
+        !is.null(bw) ~ "fixed",
+        is.finite(bw_stim) &
+          (!is.finite(bw_uns) || bw_stim <= bw_uns) ~ "stim",
+        is.finite(bw_uns) ~ "unstim",
+        TRUE ~ NA_character_
+      )
+      bw_norm_fallback <- dplyr::case_when(
+        bw_source == "stim" ~ bw_stim_norm_fallback,
+        bw_source == "unstim" ~ bw_uns_norm_fallback,
+        TRUE ~ NA
+      )
 
       tibble::tibble(
         transformation = transformation,
@@ -1190,13 +1195,10 @@
         bw_uns = bw_uns,
         bw_stim = bw_stim,
         bw = bw_final,
-        bw_source = dplyr::case_when(
-          !is.null(bw) ~ "fixed",
-          is.finite(bw_stim) &
-            (!is.finite(bw_uns) || bw_stim <= bw_uns) ~ "stim",
-          is.finite(bw_uns) ~ "unstim",
-          TRUE ~ NA_character_
-        )
+        bw_source = bw_source,
+        bw_norm_fallback_stim = bw_stim_norm_fallback,
+        bw_norm_fallback_uns = bw_uns_norm_fallback,
+        bw_norm_fallback = bw_norm_fallback
       )
     })
   })
@@ -1433,101 +1435,6 @@
 }
 
 
-#' Run the direct bandwidth estimator over a Simulation-Bandwidth sim_grid
-#'
-#' @keywords internal
-.simBandwidthEstBwDirectGrid <- function(
-  sim_grid,
-  nSample = 10L,
-  nIter = 10L,
-  biasUns = 0.05,
-  bwMin = 1e-10,
-  bwMax = 1e10,
-  bwAdj = 1,
-  bwNcellMin = NULL,
-  bwNcellMax = NULL,
-  probExact = TRUE,
-  backgroundRelativeToResponse = 0.2,
-  ncellUnsRelativeToStim = 1,
-  covEvMin = 2,
-  covEvMax = 2,
-  excMin = TRUE,
-  capStimRange = TRUE,
-  summarise = TRUE
-) {
-  raw_tbl <- purrr::map_dfr(seq_len(nrow(sim_grid)), function(i) {
-    row <- sim_grid[i, , drop = FALSE]
-
-    out <- tryCatch(
-      .simBandwidthEstBwDirect(
-        nSample = nSample,
-        nIter = nIter,
-        biasUns = biasUns,
-        bwMtd = row$bw_mtd[[1]],
-        bwMin = bwMin,
-        bwMax = bwMax,
-        bwAdj = bwAdj,
-        bwNcellMin = bwNcellMin,
-        bwNcellMax = bwNcellMax,
-        probExact = probExact,
-        nCellStim = row$n_cell[[1]],
-        probResponse = row$prob_response[[1]],
-        meanPos = row$mean_pos[[1]],
-        transformation = row$transformation[[1]],
-        backgroundRelativeToResponse = backgroundRelativeToResponse,
-        ncellUnsRelativeToStim = ncellUnsRelativeToStim,
-        covEvMin = covEvMin,
-        covEvMax = covEvMax,
-        excMin = excMin,
-        capStimRange = capStimRange,
-        summarise = FALSE
-      ),
-      error = function(e) {
-        tibble::tibble(
-          iter = NA_integer_,
-          sample = NA_character_,
-          ind = NA_character_,
-          chnl = "F1",
-          n_cell_uns = NA_real_,
-          n_cell_stim = row$n_cell[[1]],
-          n_uns_bw = NA_integer_,
-          n_stim_bw = NA_integer_,
-          max_dens_x = NA_real_,
-          bw_uns = NA_real_,
-          bw_stim = NA_real_,
-          bw = NA_real_,
-          bw_source = NA_character_,
-          error = e$message
-        )
-      }
-    )
-
-    # Avoid duplicating scenario columns if the direct helper already added them.
-    out <- out |>
-      dplyr::select(
-        -dplyr::any_of(c(
-          "transformation",
-          "prob_response",
-          "n_cell",
-          "mean_pos",
-          "bw_mtd"
-        ))
-      )
-
-    dplyr::bind_cols(
-      row[rep(1L, nrow(out)), , drop = FALSE],
-      out
-    )
-  })
-
-  if (!summarise) {
-    return(raw_tbl)
-  }
-
-  .simBandwidthSummariseBw(raw_tbl)
-}
-
-
 #' Summarise raw bandwidth estimates by simulation scenario
 #'
 #' @keywords internal
@@ -1714,10 +1621,14 @@
     )
   }
 
+  norm_fallback <- isTRUE(attr(bw_calc, "normFallback"))
   bw_calc <- suppressWarnings(as.numeric(bw_calc)[1])
 
   if (!is.finite(bw_calc) || bw_calc <= 0) {
-    return(.simBandwidthBwFallbackOrNa(bwFallback))
+    return(structure(
+      .simBandwidthBwFallbackOrNa(bwFallback),
+      normFallback = norm_fallback
+    ))
   }
 
   if (.simBandwidthIsFiniteScalar(bwMin)) {
@@ -1727,7 +1638,10 @@
     bw_calc <- min(as.numeric(bwMax)[1], bw_calc)
   }
 
-  bw_calc
+  structure(
+    bw_calc,
+    normFallback = norm_fallback
+  )
 }
 
 #' @keywords internal

@@ -150,39 +150,60 @@
         propBsDiff
     }
   }
-  tibble::tibble(
+  .getCpUnsLocDiagnosticRow(
     detailLevel = "condition",
     stage = stage,
     chnl = chnl,
     ind = as.character(.getInd(exTblStimNoMin)),
     threshold = cp,
-    thresholdOrigin = .getCpUnsLocThresholdOrigin(
-      locGenerated = cpObj$locGenerated,
-      locGeneratedDirect = cpObj$locGeneratedDirect,
-      locSource = cpObj$locSource,
-      locReason = cpObj$locReason
-    ),
-    locGenerated = cpObj$locGenerated %in% TRUE,
-    locGeneratedDirect = cpObj$locGeneratedDirect %in% TRUE,
-    locSource = as.character(cpObj$locSource %||% NA_character_),
-    locReason = as.character(cpObj$locReason %||% NA_character_),
-    bias = suppressWarnings(as.numeric(bias))[1],
+    locGenerated = cpObj$locGenerated,
+    locGeneratedDirect = cpObj$locGeneratedDirect,
+    locSource = cpObj$locSource,
+    locReason = cpObj$locReason,
+    bias = bias,
     propBsEst = propBsEst,
-    propBsDiff = propBsDiff
-  ) |>
-    dplyr::bind_cols(freqTbl)
+    propBsDiff = propBsDiff,
+    freqTbl = freqTbl
+  )
 }
 
-#' @keywords internal
-.getCpUnsLocExByInd <- function(exList, ind, pos = NULL) {
-  ind <- as.character(ind)
-  if (!is.null(names(exList)) && ind %in% names(exList)) {
-    return(exList[[ind]])
+.getCpUnsLocDiagnosticRow <- function(
+    detailLevel,
+    stage,
+    chnl,
+    ind,
+    threshold,
+    locGenerated,
+    locGeneratedDirect,
+    locSource,
+    locReason,
+    bias,
+    propBsEst = NA_real_,
+    propBsDiff = NA_real_,
+    freqTbl) {
+  row <- tibble::tibble(
+    detailLevel = detailLevel,
+    stage = stage,
+    chnl = chnl,
+    ind = ind,
+    threshold = threshold,
+    thresholdOrigin = .getCpUnsLocThresholdOrigin(
+      locGenerated = locGenerated,
+      locGeneratedDirect = locGeneratedDirect,
+      locSource = locSource,
+      locReason = locReason
+    ),
+    locGenerated = locGenerated %in% TRUE,
+    locGeneratedDirect = locGeneratedDirect %in% TRUE,
+    locSource = as.character(locSource %||% NA_character_),
+    locReason = as.character(locReason %||% NA_character_)
+  )
+  if (!missing(bias)) {
+    row$bias <- suppressWarnings(as.numeric(bias))[1]
   }
-  if (!is.null(pos) && is.finite(pos) && pos >= 1L && pos <= length(exList)) {
-    return(exList[[pos]])
-  }
-  NULL
+  row$propBsEst <- propBsEst
+  row$propBsDiff <- propBsDiff
+  dplyr::bind_cols(row, freqTbl)
 }
 
 #' @keywords internal
@@ -194,7 +215,8 @@
     stage,
     chnl) {
   meta <- .getCpUnsLocMetaFromCp(cpVec)
-  exTblUns <- .getCpUnsLocExByInd(exListOrig, indUns, pos = 1L)
+  exTblUns <- exListOrig[[as.character(indUns)]] %||%
+    (if (length(exListOrig) >= 1L) exListOrig[[1L]])
 
   purrr::map_df(seq_along(indStim), function(i) {
     indCurr <- as.character(indStim[[i]])
@@ -209,32 +231,27 @@
         locReason = NA_character_
       )
     }
-    exTblStim <- .getCpUnsLocExByInd(exListOrig, indCurr, pos = i + 1L)
+    exTblStim <- exListOrig[[indCurr]] %||%
+      (if (length(exListOrig) >= i + 1L) exListOrig[[i + 1L]])
     freqTbl <- .getCpUnsLocPropBsAtCp(
       cp = cp,
       exTblStim = exTblStim,
       exTblUns = exTblUns
     )
-    tibble::tibble(
+    .getCpUnsLocDiagnosticRow(
       detailLevel = "sample",
       stage = stage,
       chnl = chnl,
       ind = indCurr,
       threshold = cp,
-      thresholdOrigin = .getCpUnsLocThresholdOrigin(
-        locGenerated = metaRow$locGenerated[1],
-        locGeneratedDirect = metaRow$locGeneratedDirect[1],
-        locSource = metaRow$locSource[1],
-        locReason = metaRow$locReason[1]
-      ),
-      locGenerated = metaRow$locGenerated[1] %in% TRUE,
-      locGeneratedDirect = metaRow$locGeneratedDirect[1] %in% TRUE,
-      locSource = as.character(metaRow$locSource[1] %||% NA_character_),
-      locReason = as.character(metaRow$locReason[1] %||% NA_character_),
+      locGenerated = metaRow$locGenerated[1],
+      locGeneratedDirect = metaRow$locGeneratedDirect[1],
+      locSource = metaRow$locSource[1],
+      locReason = metaRow$locReason[1],
       propBsEst = NA_real_,
-      propBsDiff = NA_real_
-    ) |>
-      dplyr::bind_cols(freqTbl)
+      propBsDiff = NA_real_,
+      freqTbl = freqTbl
+    )
   })
 }
 
@@ -312,9 +329,24 @@
   stageChnl <- file.path(stage, chnl)
 
   cpVec <- purrr::map_dbl(cpUnsLocObjList, ~ .x[["cp"]])
-  meta <- .getCpUnsLocSampleMeta(
-    cpUnsLocObjList = cpUnsLocObjList,
-    ind = names(cpUnsLocObjList)
+  meta <- tibble::tibble(
+    ind = as.character(names(cpUnsLocObjList)),
+    locGenerated = purrr::map_lgl(
+      cpUnsLocObjList,
+      ~ .x[["locGenerated"]] %||% FALSE
+    ),
+    locGeneratedDirect = purrr::map_lgl(
+      cpUnsLocObjList,
+      ~ .x[["locGeneratedDirect"]] %||% FALSE
+    ),
+    locSource = purrr::map_chr(
+      cpUnsLocObjList,
+      ~ .x[["locSource"]] %||% "not_calculated"
+    ),
+    locReason = purrr::map_chr(
+      cpUnsLocObjList,
+      ~ .x[["locReason"]] %||% NA_character_
+    )
   )
   .intSaveNm(
     "cpVecBeforeRep",
@@ -334,6 +366,13 @@
   if (isTRUE(prejoin) && length(cpVec) != 1L) {
     stop("Prejoin must produce exactly one cutpoint per batch")
   }
+  if (!isTRUE(prejoin) && length(cpVec) != length(indStim) && length(cpVec) > 1L) {
+    stop(sprintf(
+      "Cannot replicate cutpoint vector of length %d across %d stimulated conditions",
+      length(cpVec),
+      length(indStim)
+    ))
+  }
   if (isTRUE(prejoin) || length(cpVec) != length(indStim)) {
     .intSaveNm(
       "prejoinedCpUsed",
@@ -346,11 +385,24 @@
       rep(cpVec, length(indStim)),
       indStim
     )
-    meta <- .getCpUnsLocSampleMetaRep(
-      meta = meta,
-      indStim = indStim,
-      source = "prejoin"
-    )
+    if (nrow(meta) == 0L) {
+      meta <- tibble::tibble(
+        ind = as.character(indStim),
+        locGenerated = FALSE,
+        locGeneratedDirect = FALSE,
+        locSource = "not_calculated",
+        locReason = "no_local_fdr_objects"
+      )
+    } else {
+      meta <- meta[rep(1, length(indStim)), , drop = FALSE]
+      meta$ind <- as.character(indStim)
+      meta$locSource <- ifelse(
+        meta$locGenerated %in% TRUE,
+        "prejoin",
+        meta$locSource
+      )
+      meta$locGeneratedDirect[meta$locGenerated %in% TRUE] <- FALSE
+    }
   } else {
     .intSaveNm(
       "individualCpUsed",
@@ -432,52 +484,4 @@
   )
 
   .getCpUnsLocCpAttachMeta(cpVec, meta)
-}
-
-#' @keywords internal
-.getCpUnsLocSampleMeta <- function(cpUnsLocObjList, ind) {
-  tibble::tibble(
-    ind = as.character(ind),
-    locGenerated = purrr::map_lgl(
-      cpUnsLocObjList,
-      ~ .x[["locGenerated"]] %||% FALSE
-    ),
-    locGeneratedDirect = purrr::map_lgl(
-      cpUnsLocObjList,
-      ~ .x[["locGeneratedDirect"]] %||% FALSE
-    ),
-    locSource = purrr::map_chr(
-      cpUnsLocObjList,
-      ~ .x[["locSource"]] %||% "not_calculated"
-    ),
-    locReason = purrr::map_chr(
-      cpUnsLocObjList,
-      ~ .x[["locReason"]] %||% NA_character_
-    )
-  )
-}
-
-#' @keywords internal
-.getCpUnsLocSampleMetaRep <- function(meta, indStim, source) {
-  if (nrow(meta) == 0L) {
-    return(tibble::tibble(
-      ind = as.character(indStim),
-      locGenerated = FALSE,
-      locGeneratedDirect = FALSE,
-      locSource = "not_calculated",
-      locReason = "no_local_fdr_objects"
-    ))
-  }
-  metaOne <- meta[1, , drop = FALSE]
-  metaOut <- metaOne[rep(1, length(indStim)), , drop = FALSE]
-  metaOut$ind <- as.character(indStim)
-  metaOut$locSource <- ifelse(
-    metaOut$locGenerated %in% TRUE,
-    source,
-    metaOut$locSource
-  )
-  if (identical(source, "prejoin")) {
-    metaOut$locGeneratedDirect[metaOut$locGenerated %in% TRUE] <- FALSE
-  }
-  metaOut
 }

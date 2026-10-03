@@ -98,3 +98,6 @@ Deliberate StimGate-Specific Modifications
 4. No Algorithmic Alterations:
    Aside from the loop safety guard and header decoupling, no algorithmic changes
    were made to any ported function.
+5. Dead Workspace Removal in `cpPmden.cpp`:
+   Removed the write-only `x_string_compare` and `kuipinds` vectors and their
+   assignments. Neither vector was read; calculations and results are unchanged.

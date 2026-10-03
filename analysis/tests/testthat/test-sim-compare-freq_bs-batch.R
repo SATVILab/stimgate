@@ -87,7 +87,7 @@ test_that(
   }
 )
 
-test_that(".simCompareSimCytExperiment keeps cluster mismatch local and supports old and new simcyto APIs", {
+test_that(".simCompareSimCytExperiment applies selective mismatch exactly once", {
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_comp, local = env)
 
@@ -106,18 +106,62 @@ test_that(".simCompareSimCytExperiment keeps cluster mismatch local and supports
     )
   }
 
-  legacy_seen <- NULL
+  cluster_aware_seen <- NULL
   testthat::with_mocked_bindings(
     simCytExperiment = function(...,
                                 stimMeanShift = 0,
                                 stimSdMultiplier = 1,
                                 stimMeanShiftClusters = NULL,
                                 stimSdMultiplierClusters = NULL) {
-      legacy_seen <<- list(
+      cluster_aware_seen <<- list(
         stimMeanShiftClusters = stimMeanShiftClusters,
         stimSdMultiplierClusters = stimSdMultiplierClusters,
         stimMeanShift = stimMeanShift,
         stimSdMultiplier = stimSdMultiplier
+      )
+      env$.simCompareApplyClusterMismatch(
+        make_out(),
+        stimMeanShift = stimMeanShift,
+        stimSdMultiplier = stimSdMultiplier,
+        stimMeanShiftClusters = stimMeanShiftClusters,
+        stimSdMultiplierClusters = stimSdMultiplierClusters
+      )
+    },
+    .package = "simcyto",
+    {
+      out_cluster_aware <- env$.simCompareSimCytExperiment(
+        nSample = 1L,
+        nMarker = 1L,
+        nCondition = 2L,
+        nCluster = 2L,
+        nCellByCondition = c(4L, 4L),
+        stimMeanShift = 2,
+        stimSdMultiplier = 1.5,
+        stimMeanShiftClusters = "gn",
+        stimSdMultiplierClusters = "gp"
+      )
+
+      expect_equal(cluster_aware_seen$stimMeanShiftClusters, "gn")
+      expect_equal(cluster_aware_seen$stimSdMultiplierClusters, "gp")
+      expect_equal(cluster_aware_seen$stimMeanShift, 2)
+      expect_equal(cluster_aware_seen$stimSdMultiplier, 1.5)
+      expect_equal(
+        as.vector(flowCore::exprs(out_cluster_aware[["flowFrameList"]][[2L]])),
+        c(3, 1.5, 5, 4.5),
+        tolerance = 1e-8
+      )
+    }
+  )
+
+  legacy_seen <- NULL
+  testthat::with_mocked_bindings(
+    simCytExperiment = function(...,
+                                stimMeanShift = 0,
+                                stimSdMultiplier = 1) {
+      legacy_seen <<- list(
+        stimMeanShift = stimMeanShift,
+        stimSdMultiplier = stimSdMultiplier,
+        dots = list(...)
       )
       make_out()
     },
@@ -135,42 +179,12 @@ test_that(".simCompareSimCytExperiment keeps cluster mismatch local and supports
         stimSdMultiplierClusters = "gp"
       )
 
-      expect_equal(legacy_seen$stimMeanShiftClusters, "gn")
-      expect_equal(legacy_seen$stimSdMultiplierClusters, "gp")
+      expect_equal(legacy_seen$stimMeanShift, 0)
+      expect_equal(legacy_seen$stimSdMultiplier, 1)
+      expect_false("stimMeanShiftClusters" %in% names(legacy_seen$dots))
+      expect_false("stimSdMultiplierClusters" %in% names(legacy_seen$dots))
       expect_equal(
         as.vector(flowCore::exprs(out_legacy[["flowFrameList"]][[2L]])),
-        c(3, 1.5, 5, 4.5),
-        tolerance = 1e-8
-      )
-    }
-  )
-
-  new_seen <- NULL
-  testthat::with_mocked_bindings(
-    simCytExperiment = function(...,
-                                stimMeanShift = 0,
-                                stimSdMultiplier = 1) {
-      new_seen <<- list(...)
-      make_out()
-    },
-    .package = "simcyto",
-    {
-      out_new <- env$.simCompareSimCytExperiment(
-        nSample = 1L,
-        nMarker = 1L,
-        nCondition = 2L,
-        nCluster = 2L,
-        nCellByCondition = c(4L, 4L),
-        stimMeanShift = 2,
-        stimSdMultiplier = 1.5,
-        stimMeanShiftClusters = "gn",
-        stimSdMultiplierClusters = "gp"
-      )
-
-      expect_false("stimMeanShiftClusters" %in% names(new_seen))
-      expect_false("stimSdMultiplierClusters" %in% names(new_seen))
-      expect_equal(
-        as.vector(flowCore::exprs(out_new[["flowFrameList"]][[2L]])),
         c(3, 1.5, 5, 4.5),
         tolerance = 1e-8
       )
@@ -527,10 +541,16 @@ test_that("Analysis 7 and Analysis 8 namespaces are isolated", {
   # Analysis 8 run context should be in freq_bs_batch namespace
   expect_true(grepl('c\\("sim",\\s*"compare",\\s*"freq_bs_batch"\\)', content8) ||
     grepl('"log"[^)]*"freq_bs_batch"', content8))
-  # Analysis 8 progress log should be in freq_bs_batch log namespace
+  # The shared runtime derives the progress-log namespace from analysis_key.
   expect_true(
     grepl('"log"[^)]*"freq_bs_batch"', content8) ||
-      grepl('analysis_key\\s*=\\s*c\\([^)]*"freq_bs_batch"', content8)
+      (
+        grepl(
+          'analysis_key\\s*<-\\s*c\\([^)]*"freq_bs_batch"',
+          content8
+        ) &&
+          grepl("analysis_key = analysis_key", content8, fixed = TRUE)
+      )
   )
 })
 
@@ -1107,3 +1127,223 @@ test_that(
     expect_equal(res_clean[common_cols], res_zero_sd[common_cols])
   }
 )
+
+
+test_that(".simComparePrimaryOutputComplete requires exact primary coverage", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(script_comp, local = env)
+
+  primary <- tidyr::expand_grid(
+    iter = 1:2,
+    sample = as.character(1:2),
+    method = c("stimgate", "fbeta", "tailgate")
+  ) |>
+    dplyr::mutate(
+      propRespTruth = 0.1,
+      propRespEst = 0.1,
+      error = NA_character_
+    )
+
+  expect_true(
+    env$.simComparePrimaryOutputComplete(
+      primary,
+      nSample = 2,
+      nIter = 2
+    )
+  )
+  expect_false(
+    env$.simComparePrimaryOutputComplete(
+      primary[-1, , drop = FALSE],
+      nSample = 2,
+      nIter = 2
+    )
+  )
+
+  duplicated <- dplyr::bind_rows(primary, primary[1, , drop = FALSE])
+  expect_false(
+    env$.simComparePrimaryOutputComplete(
+      duplicated,
+      nSample = 2,
+      nIter = 2
+    )
+  )
+
+  failed <- primary
+  failed$error[[1]] <- "competitor failed"
+  expect_false(
+    env$.simComparePrimaryOutputComplete(
+      failed,
+      nSample = 2,
+      nIter = 2
+    )
+  )
+
+  nonfinite <- primary
+  nonfinite$propRespEst[[1]] <- NA_real_
+  expect_false(
+    env$.simComparePrimaryOutputComplete(
+      nonfinite,
+      nSample = 2,
+      nIter = 2
+    )
+  )
+})
+
+test_that(".simCompareGridOutputStatus catches missing, failed, and empty chunks", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(script_comp, local = env)
+
+  make_scenario <- function(sim_id) {
+    tidyr::expand_grid(
+      sim_id = sim_id,
+      iter = 1:2,
+      sample = as.character(1:2),
+      method = c("stimgate", "fbeta", "tailgate")
+    ) |>
+      dplyr::mutate(
+        propRespTruth = 0.1,
+        propRespEst = 0.1,
+        error = NA_character_
+      )
+  }
+
+  grid <- tibble::tibble(sim_id = 1:2)
+  complete <- dplyr::bind_rows(make_scenario(1L), make_scenario(2L))
+  status <- env$.simCompareGridOutputStatus(
+    complete,
+    sim_grid = grid,
+    nSample = 2,
+    nIter = 2
+  )
+  expect_true(status$collate_ok)
+  expect_true(status$validation_ok)
+  expect_equal(status$completed_ids, 1:2)
+  expect_length(status$failed_ids, 0L)
+
+  missing <- env$.simCompareGridOutputStatus(
+    make_scenario(1L),
+    sim_grid = grid,
+    nSample = 2,
+    nIter = 2
+  )
+  expect_false(missing$collate_ok)
+  expect_false(missing$validation_ok)
+  expect_equal(missing$missing_ids, 2L)
+
+  failed_data <- complete
+  failed_idx <- which(failed_data$sim_id == 2L)[[1]]
+  failed_data$error[[failed_idx]] <- "failed"
+  failed <- env$.simCompareGridOutputStatus(
+    failed_data,
+    sim_grid = grid,
+    nSample = 2,
+    nIter = 2
+  )
+  expect_true(failed$collate_ok)
+  expect_false(failed$validation_ok)
+  expect_equal(failed$failed_ids, 2L)
+
+  empty <- env$.simCompareGridOutputStatus(
+    tibble::tibble(),
+    sim_grid = tibble::tibble(sim_id = integer()),
+    nSample = 2,
+    nIter = 2
+  )
+  expect_true(empty$collate_ok)
+  expect_true(empty$validation_ok)
+  expect_length(empty$completed_ids, 0L)
+})
+
+test_that("alternative comparator exceptions remain explicit run errors", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(script_comp, local = env)
+
+  assign(
+    ".simCompareFbetaEnvironment",
+    function(...) new.env(parent = emptyenv()),
+    envir = env
+  )
+  assign(
+    ".simCompareFbetaThreshold",
+    function(...) stop("fbeta boom"),
+    envir = env
+  )
+  assign(
+    ".simCompareTailgateThreshold",
+    function(...) {
+      list(
+        threshold = 0,
+        thresholdMetric = NA_real_,
+        thresholdOrigin = "calculated"
+      )
+    },
+    envir = env
+  )
+
+  x_uns <- matrix(c(-2, -1, 0, 1), ncol = 1)
+  x_stim <- matrix(c(-1, 0, 1, 2), ncol = 1)
+  colnames(x_uns) <- "F1"
+  colnames(x_stim) <- "F1"
+
+  flow_frames <- list(
+    flowCore::flowFrame(expr = x_uns),
+    flowCore::flowFrame(expr = x_stim)
+  )
+  labels <- list(
+    c("gn", "gn", "gp", "gp"),
+    c("gn", "gn", "gp", "gp")
+  )
+
+  res <- env$.simCompareAlternativeRows(
+    flowFrameList = flow_frames,
+    labelsList = labels,
+    nSample = 1,
+    nCondition = 2,
+    chnl = "F1",
+    fallbackHighValue = TRUE
+  )
+
+  fbeta_row <- res[res$method == "fbeta", , drop = FALSE]
+  tailgate_row <- res[res$method == "tailgate", , drop = FALSE]
+
+  expect_equal(fbeta_row$error[[1]], "fbeta boom")
+  expect_equal(
+    fbeta_row$gateReturnPoint[[1]],
+    "fbeta_error_fallback_high_value"
+  )
+  expect_true(isTRUE(fbeta_row$thresholdFallbackUsed[[1]]))
+  expect_true(is.finite(fbeta_row$propRespEst[[1]]))
+
+  expect_true(is.na(tailgate_row$error[[1]]))
+  expect_equal(tailgate_row$gateReturnPoint[[1]], "tailgate_calculated")
+})
+
+test_that("mean-shift plotting shares statistics without writing files", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_comp, local = env)
+  data <- tibble::tibble(
+    mismatch_val = c(0, 0.1), method = "stimgate",
+    mismatch_type = "mean_shift_negative", scenario_desc = "scenario",
+    med_abs_rel_error = c(0.1, 0.2), max_abs_rel_error = c(0.3, 0.4),
+    q90_abs_rel_error = c(0.2, 0.3)
+  )
+  for (statistic in c(
+    "med_abs_rel_error", "max_abs_rel_error", "q90_abs_rel_error"
+  )) {
+    plot <- env$.simComparePlotMeanShift(data, statistic, "Error")
+    built <- ggplot2::ggplot_build(plot)
+    expect_equal(built$data[[1]]$y, asinh(data[[statistic]]))
+    expect_equal(plot$labels$y, "Error (asinh scale)")
+  }
+  content <- paste(readLines(file.path(root_dir, "analysis",
+    "8-sim-compare-freq_bs-batch.qmd")), collapse = "\n")
+  expect_false(grepl('"mean_shift"', content, fixed = TRUE))
+  expect_equal(length(gregexpr(".simComparePlotMeanShift(", content,
+    fixed = TRUE)[[1]]), 3L)
+})

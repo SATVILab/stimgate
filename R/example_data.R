@@ -9,7 +9,16 @@
 #'   and sample-to-condition mapping.
 #' @export
 getExampleData <- function() {
-  example_dir <- .getExampleDataDir()
+  example_dir <- system.file(
+    "extdata", "stimgate_example_data",
+    package = "stimgate"
+  )
+  if (!nzchar(example_dir) || !dir.exists(example_dir)) {
+    stop(
+      "stimgate example data not found. ",
+      "Run data-raw/create_test_fixture.R to regenerate it."
+    )
+  }
   meta <- readRDS(file.path(example_dir, "metadata.rds"))
 
   fcs_paths <- file.path(example_dir, meta$fcsNames)
@@ -29,23 +38,4 @@ getExampleData <- function() {
     chnl = meta$chnl,
     marker = meta$marker
   )
-}
-
-#' @rdname getExampleData
-#' @export
-getTestData <- getExampleData
-
-#' @keywords internal
-.getExampleDataDir <- function() {
-  example_dir <- system.file(
-    "extdata", "stimgate_example_data",
-    package = "stimgate"
-  )
-  if (!nzchar(example_dir) || !dir.exists(example_dir)) {
-    stop(
-      "stimgate example data not found. ",
-      "Run data-raw/create_test_fixture.R to regenerate it."
-    )
-  }
-  example_dir
 }

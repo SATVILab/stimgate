@@ -12,17 +12,40 @@ test_that(".gateGetPop and .gateGetChnl handle single and multiple populations c
   unlink(tmpProj, recursive = TRUE)
 })
 
-test_that(".getExProjectPop, .getExProjectInd and .getExProjectChnl discover sampleData correctly", {
-  tmpProj <- file.path(tempdir(), paste0("sample_disc_test_", as.numeric(Sys.time())))
-  dir.create(file.path(tmpProj, "sampleData", "pop_root", "ind_1"), recursive = TRUE)
-  dir.create(file.path(tmpProj, "sampleData", "pop_root", "ind_2"), recursive = TRUE)
-  saveRDS(1:5, file.path(tmpProj, "sampleData", "pop_root", "ind_1", "chnl_BC1.rds"))
+test_that("expression discovery preserves filtering, ordering and empty-path behaviour", {
+  project <- withr::local_tempdir()
+  expect_identical(.getExProjectPop(project), character())
 
-  expect_equal(.getExProjectPop(tmpProj), "root")
-  expect_equal(sort(.getExProjectInd(tmpProj, "root")), c("1", "2"))
-  expect_equal(.getExProjectChnl(tmpProj, "root", "1"), "BC1")
+  sample_dir <- file.path(project, "sampleData")
+  dir.create(sample_dir)
+  expect_error(.getExProjectPop(project), "Expected a non-empty character vector")
 
-  unlink(tmpProj, recursive = TRUE)
+  root_dir <- file.path(sample_dir, "pop_root")
+  dir.create(root_dir)
+  dir.create(file.path(sample_dir, "unrelated"))
+  saveRDS(1, file.path(sample_dir, "pop_file"))
+  expect_identical(.getExProjectPop(project), "root")
+  expect_error(
+    .getExProjectInd(project, "root"), "Expected a non-empty character vector"
+  )
+  expect_identical(.getExProjectInd(project, "missing"), character())
+
+  for (ind in c("2", "10")) {
+    dir.create(file.path(root_dir, paste0("ind_", ind)))
+  }
+  dir.create(file.path(root_dir, "unrelated"))
+  saveRDS(1, file.path(root_dir, "ind_file"))
+  expect_identical(.getExProjectInd(project), c("10", "2"))
+
+  channel_dir <- .getExChnlPathDir("10", "root", project)
+  expect_error(.getExProjectChnl(project), "Expected a non-empty character vector")
+  for (chnl in c("Z", "A")) {
+    saveRDS(1:3, file.path(channel_dir, paste0("chnl_", chnl, ".rds")))
+  }
+  saveRDS(1, file.path(channel_dir, "unrelated.rds"))
+  saveRDS(1, file.path(channel_dir, "chnl_ignore.txt"))
+  expect_identical(.getExProjectChnl(project), c("A", "Z"))
+  expect_identical(.getExProjectChnl(project, "root", "missing"), character())
 })
 
 test_that("plotStim error handling for multiple populations and empty inputs", {

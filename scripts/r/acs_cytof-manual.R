@@ -9,14 +9,6 @@
   )
 }
 
-.acsCytofManualNormaliseId <- function(x) {
-  x |>
-    basename() |>
-    tools::file_path_sans_ext() |>
-    stringr::str_to_lower() |>
-    stringr::str_replace_all("[^[:alnum:]]", "")
-}
-
 .acsCytofManualRead <- function(fn) {
   pathManual <- projr::projr_path_get(
     "raw-data-small",
@@ -34,29 +26,10 @@
     show_col_types = FALSE
   )))
   idCol <- names(manualRaw)[[1]]
-  sourceId <- as.character(manualRaw[[idCol]])
-  sourceParts <- stringr::str_split(sourceId, "_")
+  sourceParts <- stringr::str_split(as.character(manualRaw[[idCol]]), "_")
   if (any(lengths(sourceParts) < 5L)) {
     stop("Could not parse SampleID and stimulus from the manual ACS file.")
   }
-
-  sampleLookup <- tibble::tibble(
-    sourceId = sourceId,
-    SampleID = purrr::map_chr(
-      sourceParts,
-      function(x) paste0(x[[1]], "_", x[[2]])
-    ),
-    stim = purrr::map_chr(sourceParts, function(x) x[[5]]),
-    pid = stringr::str_extract(
-      stringr::str_to_lower(sourceId),
-      "pid[12]"
-    )
-  ) |>
-    dplyr::mutate(
-      stim = dplyr::if_else(.data$stim == "mtbaux", "mtb", .data$stim),
-      sourceKey = .acsCytofManualNormaliseId(.data$sourceId)
-    ) |>
-    dplyr::distinct()
 
   emptyCol <- vapply(
     manualRaw,
@@ -68,11 +41,7 @@
   )
   emptyCol[[idCol]] <- FALSE
 
-  list(
-    data = manualRaw[, !emptyCol, drop = FALSE],
-    idCol = idCol,
-    sampleLookup = sampleLookup
-  )
+  list(data = manualRaw[, !emptyCol, drop = FALSE])
 }
 
 .comp_against_manual_cyt_format_manual <- function(
@@ -185,59 +154,6 @@
   }))
 }
 
-.acsCytofManualStimPattern <- function(stim) {
-  switch(
-    stim,
-    mtb = "(^|[^[:alnum:]])mtb(aux)?([^[:alnum:]]|$)",
-    paste0("(^|[^[:alnum:]])", stim, "([^[:alnum:]]|$)")
-  )
-}
-
-.acsCytofManualMatchOneFcs <- function(fcs, sampleLookup) {
-  fcsKey <- .acsCytofManualNormaliseId(fcs)
-  exactIndex <- which(
-    nzchar(sampleLookup$sourceKey) &
-      (stringr::str_detect(fcsKey, stringr::fixed(sampleLookup$sourceKey)) |
-        stringr::str_detect(sampleLookup$sourceKey, stringr::fixed(fcsKey)))
-  )
-  if (length(exactIndex) == 1L) {
-    return(exactIndex)
-  }
-
-  fcsLower <- stringr::str_to_lower(basename(fcs))
-  sampleKey <- .acsCytofManualNormaliseId(sampleLookup$SampleID)
-  sampleIndex <- which(stringr::str_detect(
-    fcsKey,
-    stringr::fixed(sampleKey)
-  ))
-  if (length(sampleIndex) == 0L) {
-    return(NA_integer_)
-  }
-
-  stimMatch <- vapply(
-    sampleLookup$stim[sampleIndex],
-    function(stim) {
-      stringr::str_detect(
-        fcsLower,
-        stringr::regex(
-          .acsCytofManualStimPattern(stim),
-          ignore_case = TRUE
-        )
-      )
-    },
-    logical(1)
-  )
-  sampleIndex <- sampleIndex[stimMatch]
-
-  fcsPid <- stringr::str_extract(fcsLower, "pid[12]")
-  if (length(sampleIndex) > 1L && !is.na(fcsPid)) {
-    pidMatch <- sampleLookup$pid[sampleIndex] == fcsPid
-    pidMatch[is.na(pidMatch)] <- FALSE
-    sampleIndex <- sampleIndex[pidMatch]
-  }
-  if (length(sampleIndex) == 1L) sampleIndex else NA_integer_
-}
-
 .acsCytofManualSampleMapFromFcs <- function(
   pathFcsBase,
   popCode,
@@ -247,13 +163,17 @@
   fcsFilesClean <- DataTidyACSCyTOFFAUST::clean_fcs_for_matching(
     fcsFiles |> basename()
   )
-  lookupIndex <- vapply(
-    fcsFilesClean,
-    function(x) {
-      which(sampleLookup$MatchFCSName == x)
-    },
-    integer(1)
-  )
+  lookupIndex <- match(fcsFilesClean, sampleLookup$MatchFCSName)
+  unmatched <- is.na(lookupIndex)
+  if (any(unmatched)) {
+    warning(
+      sum(unmatched),
+      " FCS file(s) in population '",
+      popCode,
+      "' could not be matched to the manual file and will be omitted: ",
+      paste(basename(fcsFiles)[unmatched], collapse = ", ")
+    )
+  }
   matched <- sampleLookup[lookupIndex, , drop = FALSE]
 
   tibble::tibble(
@@ -479,7 +399,6 @@
 .acsCytofManualAutoTable <- function(
   pathScratchBase,
   pathFcsBase,
-  fn,
   pop = NULL,
   cyt = NULL,
   methods = c("stimgate", "tailgate", "fbeta"),
@@ -570,7 +489,6 @@
   autoTbl <- .acsCytofManualAutoTable(
     pathScratchBase = pathScratchBase,
     pathFcsBase = pathFcsBase,
-    fn = fn,
     pop = pop,
     cyt = cyt,
     methods = methods,
@@ -723,7 +641,10 @@
     file.path(pathDirSave, "manual-comparison.csv"),
     row.names = FALSE
   )
-  saveRDS(comparisonTbl, file.path(pathDirSave, "manual-comparison.rds"))
+  .write_rds_atomic(
+    comparisonTbl,
+    file.path(pathDirSave, "manual-comparison.rds")
+  )
   utils::write.csv(
     summaryTbl,
     file.path(pathDirSave, "manual-comparison-summary.csv"),

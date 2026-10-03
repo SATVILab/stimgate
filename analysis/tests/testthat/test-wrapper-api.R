@@ -110,13 +110,11 @@ test_that(".simCompareFreqBs forwards to gateStim via .simCompareStimgateRows wi
 })
 
 test_that(
-  ".simCompareFreqBs and .simCompareStimgateRows accept and forward gateCombn",
+  ".simCompareFreqBs and .simCompareStimgateRows use the gateStim default",
   {
     env <- .load_analysis_env()
 
-    expect_true("gateCombn" %in% names(formals(env$.simCompareStimgateRows)))
-    expect_true("gateCombn" %in% names(formals(env$.simCompareFreqBs)))
-    expect_equal(formals(env$.simCompareStimgateRows)$gateCombn, "min")
-    expect_equal(formals(env$.simCompareFreqBs)$gateCombn, "min")
+    expect_false("gateCombn" %in% names(formals(env$.simCompareStimgateRows)))
+    expect_false("gateCombn" %in% names(formals(env$.simCompareFreqBs)))
   }
 )

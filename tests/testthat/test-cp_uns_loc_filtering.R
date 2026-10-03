@@ -293,13 +293,31 @@ test_that("taut string extrema helper identifies modes and antimodes", {
   extrema <- .getCpUnsLocTautStringExtremaCurrent(density_mock)
   expect_named(extrema, c("modes", "antimodes"))
 
-  # Identifies 2 modes and 1 antimode
-  expect_equal(nrow(extrema$modes), 2L)
-  expect_equal(nrow(extrema$antimodes), 1L)
+  expect_identical(extrema, list(
+    modes = data.frame(
+      x = c(2, 5.5), height = c(0.8, 0.9), row.names = c("2", "4")
+    ),
+    antimodes = data.frame(x = 4, height = 0.2, row.names = "3")
+  ))
 
-  # Antimode is located in the middle trough
-  expect_true(extrema$antimodes$x[[1L]] > extrema$modes$x[[1L]])
-  expect_true(extrema$antimodes$x[[1L]] < extrema$modes$x[[2L]])
+  # Sorting and removal of non-finite pairs preserve plateau centres and labels.
+  shuffled <- list(
+    x = c(rev(x_pts), Inf, NA_real_),
+    y = c(rev(y_pts), 0.5, 0.5),
+    method = "taut_string"
+  )
+  expect_identical(.getCpUnsLocTautStringExtremaCurrent(shuffled), extrema)
+
+  # Near-equal adjacent heights still form one plateau, using its first height.
+  density_mock$y[[3L]] <- 0.8 + .Machine$double.eps
+  expect_identical(.getCpUnsLocTautStringExtremaCurrent(density_mock), extrema)
+
+  constant <- list(x = 1:5, y = rep(0.2, 5), method = "taut_string")
+  empty <- data.frame(x = numeric(), height = numeric())
+  expect_identical(
+    .getCpUnsLocTautStringExtremaCurrent(constant),
+    list(modes = empty, antimodes = empty)
+  )
 
   # Invalid inputs return empty data frames
   empty_extrema <- .getCpUnsLocTautStringExtremaCurrent(NULL)

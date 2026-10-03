@@ -46,7 +46,7 @@ unstimulated background.
 | Data manipulation | `dplyr`, `purrr`, `tidyr`, `tibble`, `stringr`, `rlang` |
 | Plotting | `ggplot2`, `cowplot` |
 | Statistical modelling | `scam`, `mgcv` |
-| Clustering | `cluster`, `gtools` |
+| Clustering | `cluster` |
 | Dependency management | `renv` |
 | CI | GitHub Actions (R-CMD-check, pkgdown, Codecov) |
 
@@ -54,7 +54,7 @@ unstimulated background.
 
 - Use `@import` or `@importFrom` directives in roxygen comments; explicitly
   qualify all package calls with `pkg::fun()`. The only exceptions are
-  `ggplot2` (imported wholesale via `#' @import ggplot2` in `R/misc.R`) and
+  `ggplot2` (imported wholesale via `#' @import ggplot2` in `R/stimgate-package.R`) and
   `flowCore::exprs`, which may be called without a namespace qualifier and do
   not require `@importFrom` tags.
 - Modify `.Rd` files manually; regenerate them with `devtools::document()`.
@@ -177,10 +177,13 @@ the code you changed, e.g. `devtools::test(filter = "cp_uns_loc|pos_ind")` or
 `testthat::test_file()` for analysis tests. Run the full suite once, on the
 finished change, before opening the PR; CI runs it again.
 
-When several agents work in parallel (subagents, separate worktrees), each
-agent runs targeted tests only and the coordinating agent runs the full suite
-once on the combined result. Worktrees share one `git stash`, so parallel
-agents must not use it; use a patch file or a temporary commit instead.
+When several agents work in parallel (subagents, separate worktrees), the
+subagents do not run R locally: concurrent R runs overload the machine. The
+coordinating agent tests once, locally, on the combined result before opening
+the PR. A subagent may push a branch to CI if it really needs a check, but CI
+takes about five minutes to start, so do this only when necessary. Worktrees
+share one `git stash`, so parallel agents must not use it; use a patch file or
+a temporary commit instead.
 
 ### Analysis / Repository Integration Tests
 
@@ -198,6 +201,72 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 
 - Checks that `scripts/r/` helpers source cleanly in dependency order.
 - Checks that QMD files do not call `scripts/r` helpers through `stimgate:::`.
+- Checks that QMD setup code does not overwrite sourced helper-function names
+  with computed values; use a distinct variable name for helper return values.
+- Checks that chunked simulation QMDs use per-scenario deterministic seeds and
+  validate complete cross-chunk collation before promoting canonical results.
+- Persist each per-scenario output atomically before writing its completed/error
+  marker, and pass required run/chunk paths explicitly to progress helpers. This
+  keeps restart markers consistent with durable output files.
+- Estimator-comparison simulations should use the same simulated dataset for
+  rows that differ only by estimator or estimator-tuning settings. Derive the
+  data-generation seed from the biological scenario, not from the estimator,
+  cap, chunk index or worker scheduling.
+- Keep requested estimator settings distinct from the estimator path actually
+  used after fallbacks. Preserve and summarise fallback provenance rather than
+  labelling fallback rows as though they used the requested estimator.
+- Active simulation chunks must collate only their own chunk outputs; canonical
+  cross-chunk reads happen after promotion. A render with simulations disabled
+  must use the read-only current-results context and must not create staging state.
+- `run_plots = FALSE` must stop before optional plot/report chunks; multi-chunk
+  simulation renders should not write shared plot files concurrently.
+- Comparison analyses must fail before simulation when a required competitor
+  dependency is unavailable. Do not let a missing package/script be converted
+  into an algorithmic fallback and then score that fallback as a real method result.
+- When plotting a summary over a simulation grid, every varying scenario
+  dimension must be filtered, faceted or included in the plot grouping. Do not
+  connect or aggregate distinct scenario settings into one line implicitly.
+- When porting a validation figure or summary from an authoritative analysis,
+  preserve its scientific inclusion/exclusion rules as well as its metric and
+  aesthetics; otherwise the reproduced number is answering a different question.
+- Agreement metrics must match the reference estimator, not only the population
+  formula. Add a shifted/scaled regression case so denominator conventions such
+  as `n` versus `n - 1` cannot pass unnoticed behind an identity-only test.
+- Regenerated validation/report directories must be built in a sibling staging
+  directory and swapped into place only after every table and figure succeeds.
+  Do not delete the last good output directory before rendering the replacement.
+- Controlled mismatch/degradation simulations should use common random numbers
+  within each baseline biological scenario when the mismatch itself is
+  deterministic, so curve differences are not driven by different simulated draws.
+- Compatibility wrappers for optional upstream features must apply an effect
+  exactly once. If upstream supports the feature, pass it through without also
+  applying a local fallback; otherwise neutralise the upstream global effect
+  before applying the local selective fallback.
+- Comparator exceptions in benchmarking analyses must remain explicit runtime
+  errors. A numerical fallback may be retained for diagnostics, but the
+  exception must not be silently promoted or scored as a valid prediction.
+- Transactional simulation/collation chunks must not use Quarto
+  `error: true`; validation and promotion errors must fail the render/job.
+- For adaptive normalised bandwidth estimation, `normAdaptiveNcell` controls
+  the fixed-size synthetic core/extra samples. Do not vary `bwNcellMax` as if
+  it controlled that adaptive branch unless the implementation changes.
+- When an estimator can legitimately fail to return a finite scientific
+  estimate, retain that failure as analysis data (for example with
+  `n_*_finite` / `prop_*_finite`) rather than hiding it behind a magic
+  numeric fallback or averaging only successful estimates without reporting
+  coverage. Distinguish estimator failure from infrastructure/runtime errors.
+- Simulation wrappers that claim to mirror a current package calculation must
+  use the same preprocessing as the package implementation. If a wrapper keeps
+  a legacy preprocessing option for other analyses, set the current behaviour
+  explicitly in the QMD rather than relying on the wrapper default.
+- For end-to-end background-subtracted-frequency performance, score the final
+  sample-level `loc_sample` `propRespEst` against `propRespTruth`.
+  `propBsEst` is an internal local-FDR diagnostic used during threshold
+  selection and must not silently replace the final frequency estimand.
+- Preserve StimGate threshold provenance in method-comparison outputs. A finite
+  high-value fallback is still a fallback: use `locGenerated`,
+  `locGeneratedDirect`, `locSource` and `locReason` from the final gate
+  table rather than inferring success solely from `is.finite(threshold)`.
 - Checks that analysis wrapper parameters forwarded to `gateStim()` still exist
   in the current package API.
 - Checks that removed arguments (e.g. `calcSinglePosGates`) are not reintroduced.
@@ -329,7 +398,6 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `getCpTg_audit.R`: Audit helpers for `.getCpTg()` migration tracking.
   - `ind_batch.R`: Get the list of indices grouped by batch.
   - `peaks_and_troughs.R`: Peak and trough detection helpers.
-  - `pipe.R`: Pipe operator and related utilities.
   - `plot_gate.R`: Plot the identified gates (`plotStim`).
   - `pos_ind.R`: Identify the indices of the cytokine-positive cells.
   - `stats-helper-overall.R`: Helper functions for overall statistics.
@@ -345,6 +413,9 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `functionsForBenchmarking-Cyt.R`: Cytokine simulation utilities.
   - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation.
   - `sim-bandwidth.R`: Simulation bandwidth utilities.
+  - `sim-bandwidth-analysis-io.R` / `sim-bandwidth-analysis-plot.R`: Output-file lookup and plotting helpers for the bandwidth QMDs.
+  - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2-6, followed by one delimited section of scenario/validation/collation callbacks per analysis.
+  - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating, comparator, manual-comparison and plotting helpers for analyses 9 and 10.
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
   - `sim-misc.R`: Miscellaneous simulation utilities.
   - `sim-trans.R`: Simulation transformation utilities.
@@ -363,6 +434,10 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
 
 ### Analysis code layering
 
+Before removing an analysis helper, check all repository callers, including QMDs
+and tests. Preserve explicitly documented compatibility aliases even when current
+repository analyses no longer call them.
+
 For new or moved analysis code, use this layering:
 
 1. `R/`: installed StimGate package implementation only.
@@ -370,6 +445,10 @@ For new or moved analysis code, use this layering:
 3. Generic analysis runtime helpers under `scripts/r/`: reusable QMD execution plumbing such as parameter/environment handling, chunk validation and atomic output writing.
 4. Analysis-specific helpers under `scripts/r/`: substantial orchestration, restart/collation, IO and plotting helpers that should not live inline in QMDs.
 5. `analysis/*.qmd`: scientific settings, analysis calls, result-specific transformations and presentation.
+
+Plot-construction helpers under `scripts/r/` should return plot objects without
+creating directories or writing files. Keep filesystem side effects in the
+corresponding save/orchestration helper or QMD.
 
 Source analysis helper files explicitly in dependency order. Do not move analysis-only
 helpers into `R/` unless they have genuinely become part of the installed package
@@ -409,6 +488,9 @@ QMD runtime or unrelated plotting/orchestration code.
 - `zz_profile_instrumentation.R` deliberately loads after the implementation files
   and wraps selected internal functions without changing their arguments. Preserve
   wrapped function signatures when profiling boundaries change.
+  When removing unused internal arguments, update the implementation, both wrapper
+  paths, callers and profiling tests together. Compare complete `formals()` so
+  wrapper defaults stay aligned as well as argument names.
 - Use the `stage` parameter to track algorithm stages (`"init"`, `"cytPos"`, or
   `"single"`). Pass `stage` through function calls to enable intermediate data
   saving via `.intSave()` or `.intSaveNm()` functions. Intermediate saving is
@@ -416,6 +498,8 @@ QMD runtime or unrelated plotting/orchestration code.
 
 ### Saved expression and stimulation gates
 
+Reuse `.gateGetDirs()` for prefixed directory discovery and `.getExChnlPathDir()`
+for saved expression paths, preserving each caller's validation and missing-path handling.
 Saved expression includes unstimulated samples, while final stimulation gate
 tables omit them. Positivity helpers must treat channels with no gate for the
 current sample as all-FALSE, preserving one logical value per cell.
@@ -443,18 +527,24 @@ saved `biasUns`; channels without a saved bias use zero.
 
 - Reference all external functions explicitly as `pkg::fun()`.
 - Exceptions: `ggplot2` is imported wholesale via `#' @import ggplot2` in
-  `R/misc.R`, so `ggplot2` functions and `flowCore::exprs` may be called without
+  `R/stimgate-package.R`, so `ggplot2` functions and `flowCore::exprs` may be called without
   a namespace qualifier and do not require `@importFrom` tags.
 
 ---
 
 ## 7. Specific Package Policies & Design Notes
 
+Vectorised gate-line layers must preserve overlapping lines for coincident
+thresholds: give each line a distinct group, since ggplot2 deduplicates identical
+rows before drawing reference lines.
+
 1. **Taut-string density**:
    The piecewise-constant taut-string density used for antimode detection is
    provided by the internal helper `.tautStringPmden()` (in
    `cp_uns_loc_filtering.R`), which wraps the native FAUST-derived C++ implementation
    `stimgate_cpPmden()` compiled via `cpp11` (`src/stimgate_cppmden.cpp` and `src/cpPmden.cpp`).
+   Record cleanups to FAUST-derived native code in `inst/COPYRIGHTS`, preserving
+   licence notices, numerical calculations and native entrypoint signatures.
 2. **Comparison code vs. package code**:
    `R/` contains only StimGate implementation code. Benchmark comparisons against
    the tailgate method call `cytoUtils:::.cytokine_cutpoint()` from the
@@ -478,15 +568,10 @@ saved `biasUns`; channels without a saved bias use zero.
    For the ACS analysis, requesting a Tailgate/F-beta run removes both prior
    comparator `result.rds` files and recomputes them. Existing results are read only
    when comparator execution is disabled.
-5. **Temporary migration status for `.getCpTg()` (issues #157/#158)**:
-   This is a current-state note rather than a permanent design rule. Verify it against
-   the current implementation and relevant issues before relying on it in later work.
-   At the time of this update, remaining call sites are catalogued by
-   `.get_cp_tg_call_audit()` and summarised by `.get_cp_tg_migration_note_157()`.
-   Current default behaviour still constructs `tgClust` control gates in
-   `.gateBatchAll()`, but the current local-FDR cluster quantile implementation does
-   not consume `gateTblCtrl`, so this branch is dead plumbing for current outputs.
-   Single-positive gating branches have been removed per issue #196.
+5. **Removal of legacy tailgate-as-control path (issues #157/#158)**:
+   The legacy tailgate-as-control path (`.getCpTg()`, `tolCtrl`) has been removed.
+   Tailgate benchmark comparisons use `cytoUtils:::.cytokine_cutpoint()` in
+   `scripts/r/`, per notes 2 and 3.
 6. **Simulation engine migration to `simcyto` (issues #288/#289/#291/#295 / umbrella #271)**:
    Generic cytometry simulations, post-simulation transformations, and condition-mismatch
    controls are progressively migrating to the exported `simcyto` package API (e.g.
@@ -514,8 +599,27 @@ saved `biasUns`; channels without a saved bias use zero.
    - Read canonical outputs through `.analysis_current_file()`, which requires a `COMPLETE` marker, a readable manifest for the requested analysis key, and any analysis-specific semantic version required by the caller.
    - To read canonical results without running the simulation chunk (so no `run_ctx` exists), collation chunks fall back to `.analysis_results_context()`, a read-only stand-in whose staging paths point at `current/` and which creates no run state. Guard all writes, chunk marking and promotion with `if (!isTRUE(run_ctx$read_only))`.
    - Record scientific and semantic settings in the run manifest. Reusing an explicit run ID must match those settings; only operational controls such as plotting, simulation execution and the current chunk index may differ across invocations.
+   - Record the complete selected cross-chunk grid specification (not just a few scalars) as a required parameter, so editing the grid under the same `analysis_semantics_version` is detected. Bump the semantics version when results change.
+   - Resume retries rows whose saved output or marker recorded an error, so a run ID with a failed simulation can still complete.
 
-9. **Versioning before the first Bioconductor release**:
+
+9. **Shared analysis runners and cached settings**:
+   Bandwidth QMDs 2-6 use `.simBandwidthRunRow()`, `.simBandwidthRunGrid()`
+   and `.simBandwidthFinishChunk()`. Assign IDs and seeds on the full grid
+   before dev/quick filters, shuffling or chunking. Workers and interactive
+   single-row reruns use the same explicitly seeded row runner; resume retries
+   failed rows by default. Comparison scenarios in QMDs 7/8 use explicit RNG
+   kinds and restore the caller's RNG state; do not reintroduce `gateCombn`
+   plumbing in the comparison layer. Analysis 1 seeds each row and saves and
+   validates its scientific settings with the cache.
+
+10. **Exact reruns of one simulation row**:
+   Assign `sim_id` and `sim_seed` on the full grid before dev/quick filtering, shuffling and chunking. Each row is seeded with its own `sim_seed` under fixed RNG kinds (`Mersenne-Twister`, `Inversion`, `Rejection`) and the caller's RNG state is restored afterwards (`.analysis_with_seed()`, `.simBandwidthRunRow()`, `.simCompareRunScenario()`), so results do not depend on furrr's L'Ecuyer state, chunking or scheduling. Each simulation QMD has one `eval: false` "rerun one simulation" chunk that selects a `sim_id` from the full grid and calls the same scenario code path as the workers. Do not add separate debug loops.
+
+11. **Real-data analyses replace outputs non-destructively**:
+   Real-data analyses that recompute cached outputs (e.g. ACS CyTOF) build into a temporary sibling and swap it in on success (`.acsCytofReplaceDir()`), or compute all results before atomically writing them. Never delete the previous output before the new one is complete.
+
+12. **Versioning before the first Bioconductor release**:
    Keep `Version` in `DESCRIPTION` at `0.99.z` (three components, no `-n`
    suffix) until stimgate's first Bioconductor release, bumping `z` for each
    change worth marking. Do not move to `0.100.0` or higher; Bioconductor sets
@@ -556,8 +660,13 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
 8. **Test observable behaviour and explicit integration contracts**:
    Package tests should verify observable outputs and behaviour rather than merely
    asserting implementation details or the existence of internal (`.`-prefixed)
-   functions. Analysis integration tests may directly check helper/API contracts when
+   functions. Output-preserving refactors must retain attributes and row names as
+   well as values; named intermediate vectors can set data-frame row names.
+   Analysis integration tests may directly check helper/API contracts when
    the purpose is to catch drift between `scripts/r/`, QMDs and the installed package.
+   Remove duplicate or existence-only tests only after verifying that remaining
+   behavioural tests cover the same inputs and contracts. Do not delete skipped
+   tests merely because their dependencies are unavailable.
 9. **Cross-platform compatibility**:
    Tests must pass on macOS, Windows, and Ubuntu. Use `file.path()` (never hard-coded
    `/` or `\\` separators) and avoid platform-specific paths. Pull-request CI runs on
@@ -566,6 +675,8 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
      prepended with `tempdir()` again, which is invalid on Windows.
    - Compare paths after `normalizePath(path, winslash = "/", mustWork = FALSE)`,
      since equivalent paths may differ in separator style.
+   - Normalise an existing temporary root before appending paths that do not
+     exist yet; Windows cannot resolve short/long path aliases in a missing path.
    - Embed only forward-slash paths in R code run through `Rscript -e`;
      Windows backslashes are escape sequences there.
    - Use `skip_on_os("windows")`, with a comment giving the reason, for checks of

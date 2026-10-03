@@ -3,22 +3,10 @@
   .data,
   indBatchList,
   chnlSettings,
-  gateTbl = NULL,
-  tolGateSingle = NULL,
   calcCytPosGates,
   pathProject,
   stage
 ) {
-  # Parameters list
-  # ----------------
-
-  # named
-  chnlLabVec <- .getLabs(
-    # nolint
-    .data = .data[[indBatchList[[1]]]],
-    chnlCut = chnlSettings$chnlCut
-  )
-
   # Initial gates
   # ----------------
   gateTbl <- .gateChnlPreAdjGatesGate(

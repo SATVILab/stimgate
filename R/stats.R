@@ -82,27 +82,6 @@
   )
 }
 
-#' @keywords internal
-.readGateStats <- function(statsSaveOutput) {
-  if (inherits(statsSaveOutput, "data.frame")) {
-    return(statsSaveOutput)
-  }
-  if (!inherits(statsSaveOutput, "character")) {
-    stop(
-      "statsSaveOutput must be a character string if not a data.frame."
-    )
-  }
-  pathStats <- file.path(statsSaveOutput, "gateStats.rds")
-  gateStatsTbl <- readRDS(pathStats)
-  if ("ind" %in% colnames(gateStatsTbl)) {
-    gateStatsTbl[, "ind"] <- as.character(gateStatsTbl[["ind"]])
-  }
-  if ("batch" %in% colnames(gateStatsTbl)) {
-    gateStatsTbl[, "batch"] <- as.character(gateStatsTbl[["batch"]])
-  }
-  gateStatsTbl
-}
-
 #' @title Get gating statistics
 #'
 #' @description Read and return gating statistics computed during gating.

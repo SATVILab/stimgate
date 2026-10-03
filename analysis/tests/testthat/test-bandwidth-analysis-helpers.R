@@ -179,6 +179,10 @@ test_that("output discovery does not use implicit legacy fallbacks", {
 test_that("QMD 6 does not retain the stale adaptive shim reference", {
   qmd_lines <- readLines(qmd_6, warn = FALSE)
   expect_false(any(grepl("\\.run_sim_bandwidth_bs_freq_adaptive", qmd_lines)))
+  expect_true(any(grepl("sim-bandwidth-analysis-run.R",
+                       qmd_lines, fixed = TRUE)))
+  expect_true(any(grepl(".simBandwidthFreqBsAdaptiveScenario",
+                       qmd_lines, fixed = TRUE)))
 })
 
 test_that(".update_progress_summary() works without chunk/output metadata for non-chunked analyses", {
@@ -251,25 +255,16 @@ test_that(".update_progress_summary() tolerates a concurrent write failure", {
   expect_false(file.exists(path_progress_file))
 })
 
-test_that("QMDs 3 and 4 define chunk controls and use the run-scoped output dir", {
-  qmd_3 <- readLines(file.path(root_dir, "analysis", "3-sim-bw-est-base.qmd"), warn = FALSE)
-  qmd_4 <- readLines(file.path(root_dir, "analysis", "4-sim-bw-est-norm.qmd"), warn = FALSE)
-
-  for (qmd_lines in list(qmd_3, qmd_4)) {
-    expect_true(any(grepl(
+test_that("QMDs 3 and 4 use shared runners with chunk controls", {
+  for (qmd_name in c("3-sim-bw-est-base.qmd", "4-sim-bw-est-norm.qmd")) {
+    qmd_lines <- readLines(file.path(root_dir, "analysis", qmd_name), warn = FALSE)
+    for (contract in c(
       "sim_grid_chunk_index <- as.integer",
-      qmd_lines,
-      fixed = TRUE
-    )))
-    expect_true(any(grepl(
       "sim_grid_n_chunks <- as.integer",
-      qmd_lines,
-      fixed = TRUE
-    )))
-    expect_true(any(grepl(
-      "dir_output <- run_ctx$chunk_output_dir",
-      qmd_lines,
-      fixed = TRUE
-    )))
+      ".simBandwidthRunGrid(",
+      "run_ctx = run_ctx"
+    )) {
+      expect_true(any(grepl(contract, qmd_lines, fixed = TRUE)), info = qmd_name)
+    }
   }
 })

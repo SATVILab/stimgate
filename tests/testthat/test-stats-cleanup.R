@@ -1,7 +1,7 @@
 test_that("statistics combinations retain their order and integer matrices", {
   for (n_chnl in seq_len(6L)) {
     expected <- stats::setNames(lapply(seq_len(n_chnl), function(n_pos) {
-      gtools::combinations(n_chnl, n_pos)
+      t(utils::combn(n_chnl, n_pos))
     }), seq_len(n_chnl))
     expect_identical(.getStatsCombnMatListGet(n_chnl), expected)
   }

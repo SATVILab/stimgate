@@ -45,6 +45,11 @@ if (!file.exists(path_comparison)) {
   )
 }
 manual_comparison_tbl <- readRDS(path_comparison)
+validation_methods <- .acsCytofValidationMethods()
+.acsCytofValidationValidateComparisonTable(
+  manual_comparison_tbl,
+  requiredMethods = validation_methods
+)
 ```
 
 ## Aim
@@ -54,10 +59,16 @@ Tailgate using the comparison table produced by the main ACS analysis.
 
 The raw-frequency plots show automated against manual background-subtracted
 frequencies for every matched population and cytokine. The correlation outputs
-show both Pearson correlation (PCC) and concordance correlation (CCC), with one
-set restricted to CD4, CD8 and TCRgd T cells and another using every matched
-population. This keeps the original manuscript comparison available while also
-showing the additional populations in the current benchmark.
+follow the manuscript eligibility rule before calculating Pearson correlation
+(PCC) and concordance correlation (CCC): within each population/cytokine/stimulus
+stratum, the 75th percentile of the manual stimulated frequency must exceed
+three times the larger of 0.01% and the median manual unstimulated frequency,
+and the 75th percentile of the manual background-subtracted frequency must
+exceed 0.02%. The heatmaps omit the non-secreted-protein (`p4`) stimulation,
+matching the manuscript-style display. One set of heatmaps is restricted to
+CD4, CD8 and TCRgd T cells and another uses every matched population. This
+keeps the original manuscript comparison available while also showing the
+additional populations in the current benchmark.
 
 ## Correlation table
 
@@ -72,13 +83,10 @@ correlation_tbl
 ```{r}
 #| label: save-validation-figures
 #| results: hide
-if (run_plots) {
+if (isTRUE(run_plots)) {
   path_dir_save <- file.path(
     path_manual_output, "validation-figures"
   )
-  if (dir.exists(path_dir_save)) {
-    unlink(path_dir_save, recursive = TRUE)
-  }
   .acsCytofValidationSavePlots(
     comparisonTbl = manual_comparison_tbl,
     pathDirSave = path_dir_save
@@ -90,17 +98,10 @@ if (run_plots) {
 
 ```{r}
 #| label: show-scatter
-if (run_plots) {
-  path_dir_save <- file.path(
-    path_manual_output, "scatter-plots"
-  )
-  if (dir.exists(path_dir_save)) {
-    unlink(path_dir_save, recursive = TRUE)
-  }
-  dir.create(path_dir_save, recursive = TRUE)
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "stimgate", path_dir_save)
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "fbeta", path_dir_save)
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "tailgate", path_dir_save)
+if (isTRUE(run_plots)) {
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "stimgate")
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "fbeta")
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "tailgate")
 }
 ```
 
@@ -108,8 +109,8 @@ if (run_plots) {
 
 ```{r}
 #| label: show-real-pop-heatmaps
-if (run_plots) {
-  for (method in c("stimgate", "fbeta", "tailgate")) {
+if (isTRUE(run_plots)) {
+  for (method in validation_methods) {
     print(.acsCytofValidationPlotCorrelation(
       correlationTbl = correlation_tbl,
       method = method,
@@ -130,8 +131,8 @@ if (run_plots) {
 
 ```{r}
 #| label: show-all-pop-heatmaps
-if (run_plots) {
-  for (method in c("stimgate", "fbeta", "tailgate")) {
+if (isTRUE(run_plots)) {
+  for (method in validation_methods) {
     print(.acsCytofValidationPlotCorrelation(
       correlationTbl = correlation_tbl,
       method = method,

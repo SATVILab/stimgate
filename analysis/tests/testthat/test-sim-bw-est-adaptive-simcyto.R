@@ -192,3 +192,143 @@ test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundar
     )
   )
 })
+
+
+test_that("adaptive normalised bandwidths are controlled by normAdaptiveNcell, not bwNcellMax", {
+  set.seed(519L)
+  x <- c(
+    stats::rnorm(800L, mean = 0, sd = 1),
+    stats::rnorm(200L, mean = 5, sd = 1)
+  )
+
+  calc_adaptive <- function(bw_ncell_max) {
+    set.seed(520L)
+    stimgate:::.bwCalcOne(
+      x = x,
+      bwMtd = "hpi1Norm",
+      bwNcellMax = bw_ncell_max,
+      normAdaptiveNcell = 200L,
+      adaptive = TRUE
+    )
+  }
+
+  bw_small_cap <- calc_adaptive(100L)
+  bw_large_cap <- calc_adaptive(100000L)
+
+  expect_true(is.list(bw_small_cap))
+  expect_true(isTRUE(attr(bw_small_cap, "adaptive")))
+  expect_equal(bw_small_cap$bwCore, bw_large_cap$bwCore, tolerance = 1e-12)
+  expect_equal(bw_small_cap$bwExtra, bw_large_cap$bwExtra, tolerance = 1e-12)
+  expect_equal(bw_small_cap$bw, bw_large_cap$bw, tolerance = 1e-12)
+})
+
+.load_adaptive_run_env <- function() {
+  env <- new.env(parent = getNamespace("stimgate"))
+  for (fn in c(
+    "analysis-runtime.R",
+    "sim-misc.R",
+    "sim-bandwidth.R",
+    "sim-bandwidth-analysis-io.R",
+    "sim-bandwidth-analysis-run.R"
+  )) {
+    source(file.path(root_dir, "scripts", "r", fn), local = env)
+  }
+  env
+}
+
+.adaptive_fake_result <- function(sim_id, n_rows, bw = 0.5) {
+  tibble::tibble(
+    sim_id = sim_id,
+    transformation = "gaussian",
+    bw_mtd = "hpi1Norm",
+    n_cell = 1000,
+    bw_uns_core = bw,
+    bw_stim_core = c(bw, rep(NA_real_, n_rows - 1L)),
+    bw_uns_extra = bw,
+    bw_stim_extra = bw
+  )
+}
+
+test_that("analysis 5 scenario forwards grid row and fixed settings", {
+  env <- .load_adaptive_run_env()
+  captured <- NULL
+  env$.simBandwidthEstBwDirectAdaptive <- function(...) {
+    captured <<- list(...)
+    tibble::tibble(iter = 1L, bw_uns_core = 1)
+  }
+  row <- tibble::tibble(
+    transformation = "gamma", prob_response = 0.2, n_cell = 5000,
+    mean_pos = 4, bias_uns = 0.00125, bw_mtd = "hpi2Norm"
+  )
+  env$.simBandwidthEstAdaptiveScenario(
+    row, list(nSample = 2L, normAdaptiveNcell = 2500L)
+  )
+  expect_identical(captured$nSample, 2L)
+  expect_identical(captured$normAdaptiveNcell, 2500L)
+  expect_identical(captured$bwMtd, "hpi2Norm")
+  expect_identical(captured$transformation, "gamma")
+  expect_identical(captured$nCellStim, 5000)
+  expect_identical(captured$biasUns, 0.00125)
+})
+
+test_that("analysis 5 validation checks sample-row counts per sim_id", {
+  env <- .load_adaptive_run_env()
+  tbl <- dplyr::bind_rows(
+    .adaptive_fake_result(1L, 2L), .adaptive_fake_result(2L, 2L)
+  )
+  expect_identical(env$.simBandwidthEstAdaptiveValidate(tbl, 2L), character())
+  expect_match(
+    env$.simBandwidthEstAdaptiveValidate(tbl, 3L),
+    "sim_id: 1, 2"
+  )
+})
+
+test_that("analysis 5 collation summarises finite estimates per component", {
+  env <- .load_adaptive_run_env()
+  tbl <- .adaptive_fake_result(1L, 2L)
+  res <- env$.simBandwidthEstAdaptiveCollate(tbl, c("sim_id", "bw_mtd"))
+  expect_named(res, c("bw_list_raw", "bw_tbl_results"))
+  expect_identical(res$bw_list_raw, tbl)
+  out <- res$bw_tbl_results
+  expect_identical(nrow(out), 4L)
+  expect_false("bw_mtd_norm" %in% names(out))
+  expect_identical(unique(out$bw_mtd_base), "hpi1")
+  stim_core <- out[out$bw_component == "core" & out$bw_condition == "stim", ]
+  expect_identical(stim_core$n_total, 2L)
+  expect_identical(stim_core$n_est, 1L)
+  expect_equal(stim_core$prop_est, 0.5)
+})
+
+test_that("analysis 5 dev filter selects values that exist in the grid", {
+  lines <- readLines(file.path(
+    root_dir, "analysis", "5-sim-bw-est-adaptive.qmd"
+  ))
+  chunk <- function(label) {
+    start <- which(lines == paste0("#| label: ", label))
+    end <- start + which(lines[(start + 1L):length(lines)] == "```")[1]
+    lines[(start + 1L):(end - 1L)]
+  }
+  run_grid <- function(dev) {
+    env <- .load_adaptive_run_env()
+    env$analysis_dev <- dev
+    env$simulation_seed <- 12345L
+    env$sim_grid_shuffle_seed <- 8L
+    env$sim_grid_chunk_index <- 1L
+    env$sim_grid_n_chunks <- 1L
+    eval(parse(text = chunk("actual-settings")), envir = env)
+    invisible(utils::capture.output(
+      eval(parse(text = chunk("bw-estimate-grid")), envir = env)
+    ))
+    env
+  }
+  full <- run_grid(FALSE)
+  dev <- run_grid(TRUE)
+  expect_identical(
+    full$n_cell_stim_vec, c(1e3, 5e3, 2e4, 1e5)
+  )
+  expect_identical(nrow(dev$sim_grid_all), 6L)
+  expect_setequal(dev$sim_grid_all$n_cell, c(5e3, 2e4))
+  expected <- full$sim_grid_full |>
+    dplyr::filter(.data$sim_id %in% dev$sim_grid_all$sim_id)
+  expect_identical(dev$sim_grid_all, expected)
+})

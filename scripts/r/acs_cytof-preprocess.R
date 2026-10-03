@@ -46,8 +46,6 @@ create_gatingset <- function(
   backTransform <- function(x) {
     5 * sinh(x)
   }
-  round(2.3, 10) == round(backTransform(forwardTransform(2.3)), 10)
-  round(2.3, 10) == round(forwardTransform(backTransform(2.3)), 10)
   trans.obj <- flowWorkspace::flow_trans(
     "asinh",
     trans.fun = forwardTransform,

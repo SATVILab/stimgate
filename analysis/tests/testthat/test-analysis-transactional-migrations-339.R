@@ -10,10 +10,9 @@ read_project_file <- function(...) {
   )
 }
 
-test_that("analyses 3 and 4 use resumable transactional run contexts", {
+test_that("analysis 3 uses resumable transactional run contexts", {
   qmd_specs <- list(
-    list(file = "3-sim-bw-est-base.qmd", key = "base"),
-    list(file = "4-sim-bw-est-norm.qmd", key = "norm")
+    list(file = "3-sim-bw-est-base.qmd", key = "base")
   )
 
   for (spec in qmd_specs) {
@@ -27,6 +26,15 @@ test_that("analyses 3 and 4 use resumable transactional run contexts", {
       paste0('c\\("sim",\\s*"bw",\\s*"est",\\s*"', spec$key, '"\\)'),
       content
     ))
+    if (spec$key == "base") {
+      expect_true(grepl("sim-bandwidth-analysis-run.R", content, fixed = TRUE))
+      expect_true(grepl(".simBandwidthRunGrid(", content, fixed = TRUE))
+      expect_true(grepl(".simBandwidthFinishChunk(", content, fixed = TRUE))
+      expect_true(grepl("sim_grid_all = sim_grid_all", content, fixed = TRUE))
+      expect_true(grepl("retry_errors = sim_retry_errors", content, fixed = TRUE))
+      expect_true(grepl(".analysis_current_file", content, fixed = TRUE))
+      next
+    }
     expect_true(grepl("run_ctx$progress_file", content, fixed = TRUE))
     expect_true(grepl("run_ctx$chunk_output_dir", content, fixed = TRUE))
     expect_true(grepl(".path_sim_output", content, fixed = TRUE))
@@ -34,8 +42,14 @@ test_that("analyses 3 and 4 use resumable transactional run contexts", {
     expect_true(grepl(".analysis_mark_chunk", content, fixed = TRUE))
     expect_true(grepl(".analysis_can_promote", content, fixed = TRUE))
     expect_true(grepl(".analysis_promote_run", content, fixed = TRUE))
-    expect_true(grepl("expected_sim_ids", content, fixed = TRUE))
-    expect_true(grepl("run_ctx$current_dir", content, fixed = TRUE))
+    expect_true(
+      grepl("expected_sim_ids", content, fixed = TRUE) ||
+        grepl("expected_full_ids", content, fixed = TRUE)
+    )
+    expect_true(
+      grepl("run_ctx$current_dir", content, fixed = TRUE) ||
+        grepl(".analysis_current_file", content, fixed = TRUE)
+    )
   }
 })
 
@@ -147,4 +161,17 @@ test_that("promoted bandwidth outputs are discoverable without a simulation run"
 
   expect_length(discovered, 1L)
   expect_equal(readRDS(discovered[[1]])$sim_id, 1L)
+})
+
+test_that("analysis 6 promotes its summaries through the shared runner", {
+  content <- read_project_file("analysis", "6-sim-bw-freq_bs-adaptive.qmd")
+  expect_true(grepl(".simBandwidthFinishChunk(", content, fixed = TRUE))
+  expect_true(grepl(".simBandwidthFreqBsAdaptiveCollate(tbl,",
+                   content, fixed = TRUE))
+  expect_true(grepl("sim_grid_spec = analysis_grid_spec",
+                   content, fixed = TRUE))
+  expect_true(grepl('relative_path = c("collated", "summary_tbl.rds")',
+                   content, fixed = TRUE))
+  expect_false(grepl("staging_collated_dir", content, fixed = TRUE))
+  expect_false(grepl(".write_rds_atomic(", content, fixed = TRUE))
 })

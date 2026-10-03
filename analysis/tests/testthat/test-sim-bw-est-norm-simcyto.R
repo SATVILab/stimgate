@@ -190,3 +190,74 @@ test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parit
   expect_equal(res_norm$bw, c(0.570753196215079, 0.580931838697578), tolerance = 1e-12)
   expect_false(isTRUE(all.equal(res_hpi1$bw, res_norm$bw, tolerance = 0)))
 })
+
+.load_norm_run_env <- function() {
+  env <- new.env(parent = getNamespace("stimgate"))
+  for (fn in c(
+    "analysis-runtime.R",
+    "sim-misc.R",
+    "sim-bandwidth.R",
+    "sim-bandwidth-analysis-io.R",
+    "sim-bandwidth-analysis-run.R"
+  )) {
+    source(file.path(root_dir, "scripts", "r", fn), local = env)
+  }
+  env
+}
+
+test_that("analysis 4 collation takes pmin of finite pairs and validates", {
+  env <- .load_norm_run_env()
+  tbl <- tibble::tibble(
+    sim_id = c(1L, 1L, 2L, 2L),
+    sim_seed = c(10L, 10L, 11L, 11L),
+    bw_mtd = c("hpi1", "hpi1", "hpi1Norm", "hpi1Norm"),
+    bw_stim = c(0.2, 0.4, 0.3, NA),
+    bw_uns = c(0.1, 0.5, 0.6, 0.2),
+    bw_norm_fallback = c(FALSE, FALSE, TRUE, NA),
+    error_message = NA_character_
+  )
+  out <- suppressWarnings(
+    env$.simBandwidthEstNormCollate(tbl, c("sim_id", "sim_seed", "bw_mtd"))
+  )
+  expect_named(out, c("bw_list_raw_mtd", "bw_tbl_results"))
+  res <- out$bw_tbl_results
+  expect_equal(res$mean_bw, c(mean(c(0.1, 0.4)), 0.3))
+  expect_equal(res$n_est, c(2L, 1L))
+  expect_equal(res$n_norm_fallback, c(0L, 1L))
+  expect_equal(res$bw_mtd_norm, c("non-norm", "norm"))
+
+  validate <- env$.simBandwidthEstNormValidator(2L)
+  expect_length(validate(tbl), 0L)
+  expect_match(validate(tbl[-1, ]), "unexpected row counts for sim_id: 1")
+  tbl$bw_stim[3:4] <- NA
+  expect_match(validate(tbl), "no finite stim/unstim bandwidth pair")
+})
+
+test_that("analysis 4 scenario rerun is identical whatever the prior RNG", {
+  env <- .load_norm_run_env()
+  settings <- list(
+    nSample = 2L, nMarker = 1, nCondition = 2, nCluster = 2, nIter = 1L,
+    bwFallback = NA_real_, bwMin = -Inf, bwMax = Inf, bwCluster = 0.5,
+    capStimRange = FALSE, probExact = TRUE,
+    backgroundRelativeToResponse = 0.2, ncellUnsRelativeToStim = 1,
+    covEvMin = 1.5, covEvMax = 1.5, tolClust = NULL, summarise = FALSE
+  )
+  row <- tibble::tibble(
+    transformation = "gaussian", prob_response = 0.05, n_cell = 200,
+    mean_pos_setting = "high", mean_pos = 6, bw_mtd = "hpi1Norm",
+    bw_ncell_upper = Inf, bias_uns_setting = "low", bias_uns = 0.05,
+    sim_seed = 7L, sim_id = 1L
+  )
+  set.seed(1)
+  res_1 <- env$.simBandwidthRunRow(
+    row, env$.simBandwidthEstNormScenario, settings
+  )
+  set.seed(99)
+  runif(5)
+  res_2 <- env$.simBandwidthRunRow(
+    row, env$.simBandwidthEstNormScenario, settings
+  )
+  expect_identical(res_1, res_2)
+  expect_true(all(is.na(res_1$error_message)))
+  expect_equal(nrow(res_1), 2L)
+})

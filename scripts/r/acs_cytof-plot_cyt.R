@@ -28,32 +28,135 @@
   c("CD4 T cells", "CD8 T cells", "TCRgd T cells")
 }
 
+.acsCytofValidationMethods <- function() {
+  c("stimgate", "fbeta", "tailgate")
+}
+
+.acsCytofValidationValidateComparisonTable <- function(
+  comparisonTbl,
+  requiredMethods = NULL
+) {
+  if (!is.data.frame(comparisonTbl) || nrow(comparisonTbl) == 0L) {
+    stop("ACS validation comparison table must be a non-empty data frame.")
+  }
+
+  requiredCols <- c(
+    "method",
+    "pop",
+    "cyt",
+    "stim",
+    "SampleID",
+    "freq_bs_auto",
+    "freq_bs_man",
+    "freq_stim_man",
+    "freq_uns_man"
+  )
+  missingCols <- setdiff(requiredCols, names(comparisonTbl))
+  if (length(missingCols) > 0L) {
+    stop(
+      "ACS validation comparison table is missing required column(s): ",
+      paste(missingCols, collapse = ", "),
+      "."
+    )
+  }
+
+  frequencyCols <- c(
+    "freq_bs_auto",
+    "freq_bs_man",
+    "freq_stim_man",
+    "freq_uns_man"
+  )
+  nonNumeric <- frequencyCols[
+    !vapply(comparisonTbl[frequencyCols], is.numeric, logical(1))
+  ]
+  if (length(nonNumeric) > 0L) {
+    stop(
+      "ACS validation frequency column(s) must be numeric: ",
+      paste(nonNumeric, collapse = ", "),
+      "."
+    )
+  }
+
+  keyCols <- c("method", "pop", "cyt", "stim", "SampleID")
+  if (any(vapply(comparisonTbl[keyCols], anyNA, logical(1)))) {
+    stop("ACS validation comparison keys must not contain missing values.")
+  }
+
+  duplicateKeys <- comparisonTbl |>
+    dplyr::count(dplyr::across(dplyr::all_of(keyCols)), name = "n") |>
+    dplyr::filter(.data$n != 1L)
+  if (nrow(duplicateKeys) > 0L) {
+    stop(
+      "ACS validation comparison table contains duplicate ",
+      "method/population/cytokine/stimulation/sample rows."
+    )
+  }
+
+  if (!is.null(requiredMethods)) {
+    missingMethods <- setdiff(
+      as.character(requiredMethods),
+      unique(as.character(comparisonTbl$method))
+    )
+    if (length(missingMethods) > 0L) {
+      stop(
+        "ACS validation comparison table is missing required method(s): ",
+        paste(missingMethods, collapse = ", "),
+        "."
+      )
+    }
+  }
+
+  invisible(TRUE)
+}
+
+# For paired, non-repeated two-method data this is algebraically equivalent
+# to the U-statistic CCC used by cccrm::cccUst() in the ACS manuscript code.
 .acsCytofValidationCcc <- function(x, y) {
-  complete <- stats::complete.cases(x, y)
-  x <- x[complete]
-  y <- y[complete]
-  if (length(x) < 2L || stats::sd(x) == 0 || stats::sd(y) == 0) {
+  finite <- is.finite(x) & is.finite(y)
+  x <- as.numeric(x[finite])
+  y <- as.numeric(y[finite])
+  n <- length(x)
+  if (n < 2L) {
     return(NA_real_)
   }
 
-  covariance <- stats::cov(x, y)
-  (2 * covariance) /
-    (stats::var(x) + stats::var(y) + (mean(x) - mean(y))^2)
+  meanX <- mean(x)
+  meanY <- mean(y)
+  varianceX <- mean((x - meanX)^2)
+  varianceY <- mean((y - meanY)^2)
+  covariance <- mean((x - meanX) * (y - meanY))
+  denominator <- varianceX + varianceY + (meanX - meanY)^2
+
+  if (!is.finite(denominator) || denominator <= 0) {
+    return(NA_real_)
+  }
+
+  (2 * covariance) / denominator
 }
 
 .acsCytofValidationCorrelationTable <- function(comparisonTbl) {
+  .acsCytofValidationValidateComparisonTable(comparisonTbl)
+
   comparisonTbl |>
     dplyr::group_by(method, pop, cyt, stim) |>
+    dplyr::filter(
+      stats::quantile(.data$freq_stim_man, 0.75, na.rm = TRUE) >
+        3 * max(0.01, stats::median(.data$freq_uns_man, na.rm = TRUE)),
+      stats::quantile(.data$freq_bs_man, 0.75, na.rm = TRUE) > 0.02
+    ) |>
     dplyr::summarise(
-      n = sum(stats::complete.cases(.data$freq_bs_auto, .data$freq_bs_man)),
-      pcc = if (n > 1L) {
-        suppressWarnings(stats::cor(
-          .data$freq_bs_auto,
-          .data$freq_bs_man,
-          use = "complete.obs"
-        ))
-      } else {
-        NA_real_
+      n = sum(is.finite(.data$freq_bs_auto) & is.finite(.data$freq_bs_man)),
+      pcc = {
+        finite <- is.finite(.data$freq_bs_auto) &
+          is.finite(.data$freq_bs_man)
+        if (sum(finite) > 1L) {
+          suppressWarnings(stats::cor(
+            .data$freq_bs_auto[finite],
+            .data$freq_bs_man[finite]
+          ))
+        } else {
+          NA_real_
+        }
       },
       ccc = .acsCytofValidationCcc(
         .data$freq_bs_auto,
@@ -63,11 +166,11 @@
     )
 }
 
-.acsCytofValidationPlotScatter <- function(comparisonTbl, method, pathDirSave) {
-  method <- match.arg(method, c("stimgate", "fbeta", "tailgate"))
-  pathDirSaveMethod <- file.path(pathDirSave, method)
-  if (!dir.exists(pathDirSaveMethod)) {
-    dir.create(pathDirSaveMethod, recursive = TRUE)
+.acsCytofValidationPlotScatter <- function(comparisonTbl, method) {
+  .acsCytofValidationValidateComparisonTable(comparisonTbl)
+  method <- match.arg(method, .acsCytofValidationMethods())
+  if (!method %in% as.character(unique(comparisonTbl$method))) {
+    stop("No ACS validation rows are available for method: ", method, ".")
   }
   plotTbl <- comparisonTbl |>
     dplyr::filter(.data$method == .env$method) |>
@@ -133,7 +236,16 @@
   realPopulationsOnly = TRUE
 ) {
   metric <- match.arg(metric)
-  method <- match.arg(method, c("stimgate", "fbeta", "tailgate"))
+  method <- match.arg(method, .acsCytofValidationMethods())
+  requiredCols <- c("method", "pop", "cyt", "stim", metric)
+  missingCols <- setdiff(requiredCols, names(correlationTbl))
+  if (length(missingCols) > 0L) {
+    stop(
+      "ACS validation correlation table is missing required column(s): ",
+      paste(missingCols, collapse = ", "),
+      "."
+    )
+  }
   plotTbl <- correlationTbl |>
     dplyr::filter(
       .data$method == .env$method,
@@ -208,33 +320,87 @@
     )
 }
 
+.acsCytofValidationReplaceDirectory <- function(stagedDir, targetDir) {
+  parentDir <- dirname(targetDir)
+  dir.create(parentDir, recursive = TRUE, showWarnings = FALSE)
+
+  if (file.exists(targetDir) && !dir.exists(targetDir)) {
+    stop("ACS validation output path exists but is not a directory: ", targetDir)
+  }
+
+  backupDir <- tempfile(
+    pattern = paste0(".", basename(targetDir), "-previous-"),
+    tmpdir = parentDir
+  )
+  hadTarget <- dir.exists(targetDir)
+
+  if (hadTarget && !file.rename(targetDir, backupDir)) {
+    stop("Could not move the previous ACS validation output directory aside.")
+  }
+
+  if (!file.rename(stagedDir, targetDir)) {
+    restored <- TRUE
+    if (hadTarget && dir.exists(backupDir)) {
+      restored <- file.rename(backupDir, targetDir)
+    }
+    stop(
+      "Could not promote the staged ACS validation output directory.",
+      if (!isTRUE(restored)) {
+        " Restoring the previous output directory also failed."
+      } else {
+        ""
+      }
+    )
+  }
+
+  if (dir.exists(backupDir)) {
+    unlink(backupDir, recursive = TRUE, force = TRUE)
+  }
+
+  invisible(TRUE)
+}
+
 .acsCytofValidationSavePlots <- function(comparisonTbl, pathDirSave) {
-  dir.create(pathDirSave, recursive = TRUE, showWarnings = FALSE)
-  pathDirSaveHeatmap <- file.path(pathDirSave, "heatmaps")
-  if (!dir.exists(pathDirSaveHeatmap)) {
-    dir.create(pathDirSaveHeatmap, recursive = TRUE)
-  }
-  pathDirSaveScatter <- file.path(pathDirSave, "scatter-plots")
-  if (!dir.exists(pathDirSaveScatter)) {
-    dir.create(pathDirSaveScatter, recursive = TRUE)
-  }
+  .acsCytofValidationValidateComparisonTable(comparisonTbl)
+
+  parentDir <- dirname(pathDirSave)
+  dir.create(parentDir, recursive = TRUE, showWarnings = FALSE)
+  stagedDir <- tempfile(
+    pattern = paste0(".", basename(pathDirSave), "-next-"),
+    tmpdir = parentDir
+  )
+  dir.create(stagedDir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(
+    if (dir.exists(stagedDir)) {
+      unlink(stagedDir, recursive = TRUE, force = TRUE)
+    },
+    add = TRUE
+  )
+
+  pathDirSaveHeatmap <- file.path(stagedDir, "heatmaps")
+  pathDirSaveScatter <- file.path(stagedDir, "scatter-plots")
+  dir.create(pathDirSaveHeatmap, recursive = TRUE, showWarnings = FALSE)
+  dir.create(pathDirSaveScatter, recursive = TRUE, showWarnings = FALSE)
 
   correlationTbl <- .acsCytofValidationCorrelationTable(comparisonTbl)
   utils::write.csv(
     correlationTbl,
-    file.path(pathDirSave, "manual-comparison-correlations.csv"),
+    file.path(stagedDir, "manual-comparison-correlations.csv"),
     row.names = FALSE
   )
-  saveRDS(
+  .write_rds_atomic(
     correlationTbl,
-    file.path(pathDirSave, "manual-comparison-correlations.rds")
+    file.path(stagedDir, "manual-comparison-correlations.rds")
   )
 
   methods <- intersect(
-    c("stimgate", "fbeta", "tailgate"),
+    .acsCytofValidationMethods(),
     as.character(unique(comparisonTbl$method))
   )
-  pathDirSaveHeatmap <- file.path(pathDirSave, "heatmaps")
+  if (length(methods) == 0L) {
+    stop("No supported ACS validation methods are available to plot.")
+  }
+
   for (method in methods) {
     scatter <- .acsCytofValidationPlotScatter(comparisonTbl, method)
     ggplot2::ggsave(
@@ -274,6 +440,8 @@
       }
     }
   }
+
+  .acsCytofValidationReplaceDirectory(stagedDir, pathDirSave)
 
   invisible(correlationTbl)
 }

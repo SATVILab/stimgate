@@ -1807,15 +1807,17 @@
   x <- x[ord]
   y <- y[ord]
 
-  runId <- cumsum(c(
+  runStart <- which(c(
     TRUE,
     !dplyr::near(y[-1L], y[-length(y)])
   ))
-  runs <- split(seq_along(y), runId)
-  runY <- vapply(runs, function(i) y[i[[1L]]], numeric(1L))
-  runLeft <- vapply(runs, function(i) min(x[i]), numeric(1L))
-  runRight <- vapply(runs, function(i) max(x[i]), numeric(1L))
+  runEnd <- c(runStart[-1L] - 1L, length(y))
+  runY <- y[runStart]
+  runLeft <- x[runStart]
+  runRight <- x[runEnd]
   runX <- (runLeft + runRight) / 2
+  # Preserve the run labels used as row names in the returned data frames.
+  names(runX) <- names(runY) <- as.character(seq_along(runStart))
 
   if (length(runY) < 3L) {
     return(list(modes = empty, antimodes = empty))
