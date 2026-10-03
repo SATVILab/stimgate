@@ -91,16 +91,9 @@ if (run_plots) {
 ```{r}
 #| label: show-scatter
 if (run_plots) {
-  path_dir_save <- file.path(
-    path_manual_output, "scatter-plots"
-  )
-  if (dir.exists(path_dir_save)) {
-    unlink(path_dir_save, recursive = TRUE)
-  }
-  dir.create(path_dir_save, recursive = TRUE)
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "stimgate", path_dir_save)
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "fbeta", path_dir_save)
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "tailgate", path_dir_save)
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "stimgate")
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "fbeta")
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "tailgate")
 }
 ```
 
