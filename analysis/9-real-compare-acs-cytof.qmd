@@ -97,6 +97,7 @@ bias_uns_vec_by_pop <- stats::setNames(
   rep(bias_uns, length(pop_vec)),
   pop_vec
 )
+analysis_seed <- 20260823L
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 if (
@@ -164,6 +165,8 @@ subdirectory, so they cannot overwrite the full TCRgd run.
 ```{r}
 #| label: run-tcrgd-tester
 #| results: hide
+set.seed(analysis_seed)
+
 tcrgd_tester <- .acsCytofRunPopulation(
   pop = "tcrgd",
   pathFcsBase = path_fcs_base,
@@ -226,7 +229,10 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate)) {
             biasUns = bias_uns_vec_by_pop[[pop]]
           )
         },
-        .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+        .options = furrr::furrr_options(
+          seed = analysis_seed,
+          scheduling = Inf
+        )
       )
     },
     finally = future::plan(old_plan)
