@@ -207,6 +207,13 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   must use the read-only current-results context and must not create staging state.
 - `run_plots = FALSE` must stop before optional plot/report chunks; multi-chunk
   simulation renders should not write shared plot files concurrently.
+- Transactional simulation/collation chunks must not use Quarto
+  `error: true`; validation and promotion errors must fail the render/job.
+- When an estimator can legitimately fail to return a finite scientific
+  estimate, retain that failure as analysis data (for example with
+  `n_*_finite` / `prop_*_finite`) rather than hiding it behind a magic
+  numeric fallback or averaging only successful estimates without reporting
+  coverage. Distinguish estimator failure from infrastructure/runtime errors.
 - For end-to-end background-subtracted-frequency performance, score the final
   sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
