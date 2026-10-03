@@ -91,6 +91,46 @@ test_that("getStimExpr applies bias only to unstim sample", {
   expect_equal(resStim$BC2, c(9, 10))
 })
 
+test_that("getStimExpr uses completed marker settings and tolerates absent bias", {
+  exampleData <- getExampleData()
+  gs <- flowWorkspace::load_gs(exampleData$pathGs)
+  pathProject <- withr::local_tempdir()
+  invisible(gateStim(
+    .data = gs,
+    pathProject = pathProject,
+    popGate = "root",
+    batchList = exampleData$batchList,
+    marker = exampleData$marker
+  ))
+
+  settings <- stimgateMetaReadSettingsChnls(pathProject)
+  chnlLab <- stimgateMetaReadChnlLab(pathProject)
+  expect_setequal(names(settings), unname(chnlLab[exampleData$chnl]))
+  expect_false(any(exampleData$chnl %in% names(settings)))
+  batch <- exampleData$batchList[[1]]
+  exUns <- getStimExpr(pathProject, ind = as.character(batch[[1]]))
+  exBias <- getStimExpr(pathProject, ind = as.character(batch[[1]]), bias = TRUE)
+  for (ch in exampleData$chnl) {
+    savedBias <- settings[[chnlLab[[ch]]]]$biasUns
+    expect_length(savedBias, 1L)
+    expect_equal(exBias[[ch]], exUns[[ch]] + savedBias)
+  }
+  indStim <- as.character(batch[[2]])
+  expect_equal(
+    getStimExpr(pathProject, ind = indStim, bias = TRUE),
+    getStimExpr(pathProject, ind = indStim)
+  )
+
+  # Older or incomplete settings can lack a bias or a channel entirely.
+  settings[[chnlLab[[exampleData$chnl[[1]]]]]]$biasUns <- NULL
+  settings[[chnlLab[[exampleData$chnl[[2]]]]]] <- NULL
+  saveRDS(settings, file.path(pathProject, "metaData", "chnlSettings.rds"))
+  expect_equal(
+    getStimExpr(pathProject, ind = as.character(batch[[1]]), bias = TRUE),
+    exUns
+  )
+})
+
 test_that("getStimExpr excludes minimum observed values when excMin = TRUE", {
   tmp <- tempfile("stimgate_ex_excmin_")
   dir.create(

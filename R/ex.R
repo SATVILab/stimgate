@@ -368,8 +368,11 @@ getStimExpr <- function(
   }
   # apply bias
   chnlList <- stimgateMetaReadSettingsChnls(pathProject)
+  chnlLab <- stimgateMetaReadChnlLab(pathProject)
   for (chnl in colnames(ex)) {
-    bias <- chnlList[[chnl]][["biasUns"]]
+    # Completed settings are marker-keyed; older projects may use channels.
+    settings <- chnlList[[chnlLab[chnl]]] %||% chnlList[[chnl]]
+    bias <- settings[["biasUns"]] %||% 0
     ex[[chnl]] <- ex[[chnl]] + bias
   }
   ex
