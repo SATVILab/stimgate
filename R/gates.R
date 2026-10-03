@@ -249,11 +249,14 @@ getStimGatesDetailed <- function(
   pathCurrNorm <- normalizePath(pathCurr, winslash = "/", mustWork = FALSE)
   pathIntNorm <- normalizePath(pathInt, winslash = "/", mustWork = FALSE)
   rel <- substring(pathCurrNorm, nchar(pathIntNorm) + 2L)
-  parts <- strsplit(rel, "/", fixed = TRUE)[[1]]
+  parts <- strsplit(dirname(rel), "/", fixed = TRUE)[[1]]
+  if (identical(parts, ".")) {
+    parts <- character(0)
+  }
   detailObject <- sub("\\.rds$", "", basename(pathCurr))
   list(
-    stage = parts[[1]] %||% NA_character_,
-    chnl = parts[[2]] %||% NA_character_,
+    stage = if (length(parts) >= 1L) parts[[1]] else NA_character_,
+    chnl = if (length(parts) >= 2L) parts[[2]] else NA_character_,
     ind = if (length(parts) >= 4L && parts[[3]] == "ind") {
       parts[[4]]
     } else {

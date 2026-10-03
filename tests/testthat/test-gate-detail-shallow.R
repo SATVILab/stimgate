@@ -1,0 +1,12 @@
+test_that("diagnostics without stage or channel directories remain readable", {
+  pathProject <- tempfile("gate-shallow-")
+  pathInt <- file.path(pathProject, "intermediateData")
+  dir.create(pathInt, recursive = TRUE)
+  withr::defer(unlink(pathProject, recursive = TRUE))
+  saveRDS(tibble::tibble(threshold = 1), file.path(pathInt, "locDetailSample.rds"))
+  detail <- getStimGatesDetailed(pathProject)
+  expect_identical(detail$threshold, 1)
+  expect_identical(detail$detailPathStage, NA_character_)
+  expect_identical(detail$chnl, NA_character_)
+  expect_identical(detail$detailPathInd, NA_character_)
+})
