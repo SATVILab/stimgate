@@ -677,7 +677,6 @@ if (isTRUE(run_simulations)) {
 
 ```{r}
 #| label: compare-collate
-#| error: true
 # Without `run_ctx` (simulation chunk not run in this session), read the
 # canonical promoted results under `current/`.
 if (!exists("run_ctx")) {
