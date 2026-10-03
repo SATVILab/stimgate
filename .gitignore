@@ -104,3 +104,4 @@ _tmp/log/sbatch/dev-8-sim-compare-freq_bs-batch
 
 _tmp/log/sbatch/dev-9-real-compare-acs-cytof
 
+analysis/2-sim-bw-freq_bs-global.knit.md
