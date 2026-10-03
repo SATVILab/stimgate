@@ -2440,13 +2440,28 @@
   nIter = NULL
 ) {
   expected_ids <- sort(unique(as.integer(sim_ids)))
+  observed_ids <- if (
+    is.data.frame(compare_raw) &&
+      nrow(compare_raw) > 0L &&
+      "sim_id" %in% names(compare_raw)
+  ) {
+    sort(unique(as.integer(compare_raw$sim_id[!is.na(compare_raw$sim_id)])))
+  } else {
+    integer()
+  }
+
+  missing_ids <- setdiff(expected_ids, observed_ids)
+  extra_ids <- setdiff(observed_ids, expected_ids)
+
   if (length(expected_ids) == 0L) {
     return(list(
-      collated_sim_ids = integer(),
+      collated_sim_ids = observed_ids,
       error_sim_ids = integer(),
       incomplete_sim_ids = integer(),
-      collate_ok = TRUE,
-      validation_ok = TRUE
+      missing_sim_ids = integer(),
+      extra_sim_ids = extra_ids,
+      collate_ok = length(extra_ids) == 0L,
+      validation_ok = length(extra_ids) == 0L
     ))
   }
 
@@ -2459,6 +2474,8 @@
       collated_sim_ids = integer(),
       error_sim_ids = integer(),
       incomplete_sim_ids = expected_ids,
+      missing_sim_ids = expected_ids,
+      extra_sim_ids = integer(),
       collate_ok = FALSE,
       validation_ok = FALSE
     ))
@@ -2468,7 +2485,7 @@
     dplyr::filter(.data$sim_id %in% .env$expected_ids)
 
   collated_ids <- sort(unique(as.integer(compare_use$sim_id)))
-  collate_ok <- identical(collated_ids, expected_ids)
+  collate_ok <- length(missing_ids) == 0L && length(extra_ids) == 0L
 
   error_ids <- if ("error" %in% names(compare_use)) {
     sort(unique(as.integer(
@@ -2483,12 +2500,21 @@
 
   incomplete_ids <- integer()
   if (length(methods) > 0L) {
-    if (!"method" %in% names(compare_use)) {
+    required_cols <- c("method", "propRespTruth", "propRespEst")
+    if (!all(required_cols %in% names(compare_use))) {
       incomplete_ids <- expected_ids
     } else {
       method_counts <- compare_use |>
         dplyr::filter(.data$method %in% .env$methods) |>
-        dplyr::count(.data$sim_id, .data$method, name = "n_rows")
+        dplyr::group_by(.data$sim_id, .data$method) |>
+        dplyr::summarise(
+          n_rows = dplyr::n(),
+          all_finite = all(
+            is.finite(.data$propRespTruth) &
+              is.finite(.data$propRespEst)
+          ),
+          .groups = "drop"
+        )
 
       expected_keys <- tidyr::expand_grid(
         sim_id = expected_ids,
@@ -2499,23 +2525,23 @@
           by = c("sim_id", "method")
         )
 
-      if (!is.null(nSample) && !is.null(nIter)) {
-        expected_n <- as.integer(nSample) * as.integer(nIter)
-        incomplete_ids <- expected_keys |>
-          dplyr::filter(
-            is.na(.data$n_rows) |
-              .data$n_rows != .env$expected_n
-          ) |>
-          dplyr::pull(.data$sim_id) |>
-          unique() |>
-          sort()
+      expected_n <- if (!is.null(nSample) && !is.null(nIter)) {
+        as.integer(nSample) * as.integer(nIter)
       } else {
-        incomplete_ids <- expected_keys |>
-          dplyr::filter(is.na(.data$n_rows) | .data$n_rows < 1L) |>
-          dplyr::pull(.data$sim_id) |>
-          unique() |>
-          sort()
+        NULL
       }
+
+      incomplete_ids <- expected_keys |>
+        dplyr::filter(
+          is.na(.data$n_rows) |
+            (!is.null(.env$expected_n) & .data$n_rows != .env$expected_n) |
+            (is.null(.env$expected_n) & .data$n_rows < 1L) |
+            is.na(.data$all_finite) |
+            !.data$all_finite
+        ) |>
+        dplyr::pull(.data$sim_id) |>
+        unique() |>
+        sort()
     }
   }
 
@@ -2528,6 +2554,8 @@
     collated_sim_ids = collated_ids,
     error_sim_ids = error_ids,
     incomplete_sim_ids = incomplete_ids,
+    missing_sim_ids = sort(missing_ids),
+    extra_sim_ids = sort(extra_ids),
     collate_ok = collate_ok,
     validation_ok = validation_ok
   )
