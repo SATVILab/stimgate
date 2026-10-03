@@ -189,6 +189,8 @@ if (analysis_dev) {
 }
 
 sim_grid_all <- sim_grid
+analysis_grid_spec <- sim_grid_all |>
+  dplyr::select(-sim_seed)
 
 if (nrow(sim_grid_all) > 0L) {
   set.seed(sim_grid_shuffle_seed)
@@ -354,7 +356,8 @@ analysis_required_params <- list(
   analysis_dev = analysis_dev,
   n_sample_sim = n_sample_sim,
   n_iter_sim = n_iter_sim,
-  bw_fallback = bw_fallback
+  bw_fallback = bw_fallback,
+  sim_grid_spec = analysis_grid_spec
 )
 
 summarise_base_bw_results <- function(.data) {
