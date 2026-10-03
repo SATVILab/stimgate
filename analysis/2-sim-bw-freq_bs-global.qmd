@@ -1553,7 +1553,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-Okay, now, let's do the same plot but where we show the actual frequencies. We'll have to treat the number of cells as a categorical variable, and use the bandwidth as positoin = "dodge".
+Okay, now, let's do the same plot using the individual final sample-level frequency estimates rather than the scenario median. We'll treat the number of cells as a categorical variable and dodge the bandwidths.
 
 ```{r}
 if (isTRUE(run_plots)) {
