@@ -1,0 +1,12 @@
+test_that("diagnostic paths treat project regex characters literally", {
+  pathProject <- tempfile("gate[one]+(two)")
+  pathInt <- file.path(pathProject, "intermediateData")
+  pathDir <- file.path(pathInt, "init", "BC1", "ind", "2")
+  dir.create(pathDir, recursive = TRUE)
+  withr::defer(unlink(pathProject, recursive = TRUE))
+  saveRDS(tibble::tibble(threshold = 1), file.path(pathDir, "locDetailSample.rds"))
+  detail <- getStimGatesDetailed(pathProject)
+  expect_identical(detail$detailPathStage, "init")
+  expect_identical(detail$chnl, "BC1")
+  expect_identical(detail$detailPathInd, "2")
+})

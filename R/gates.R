@@ -248,11 +248,7 @@ getStimGatesDetailed <- function(
 .gateGetDetailedPathMeta <- function(pathCurr, pathInt) {
   pathCurrNorm <- normalizePath(pathCurr, winslash = "/", mustWork = FALSE)
   pathIntNorm <- normalizePath(pathInt, winslash = "/", mustWork = FALSE)
-  rel <- sub(
-    paste0("^", gsub("([\\\\.\"])", "\\\\\\1", pathIntNorm), "/?"),
-    "",
-    pathCurrNorm
-  )
+  rel <- substring(pathCurrNorm, nchar(pathIntNorm) + 2L)
   parts <- strsplit(rel, "/", fixed = TRUE)[[1]]
   detailObject <- sub("\\.rds$", "", basename(pathCurr))
   list(
