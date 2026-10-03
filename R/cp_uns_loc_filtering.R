@@ -14,12 +14,13 @@
 #' Apply all filtering steps after smoothing
 #' @keywords internal
 .getCpUnsLocFilterAfterSmoothingLegacy <- function(
-    dataMod,
-    exTblStimNoMin,
-    exTblUnsBias,
-    cpMin,
-    stage,
-    chnlSettings) {
+  dataMod,
+  exTblStimNoMin,
+  exTblUnsBias,
+  cpMin,
+  stage,
+  chnlSettings
+) {
   force(stage)
   info <- list(applied = FALSE, reason = "not_filtered")
 
@@ -239,11 +240,12 @@
 #' Return the standard non-local result after a filter removes every cell
 #' @keywords internal
 .getCpUnsLocEmptyFilterResult <- function(
-    dataMod,
-    info,
-    cpMin,
-    exTblStimNoMin,
-    exTblUnsBias) {
+  dataMod,
+  info,
+  cpMin,
+  exTblStimNoMin,
+  exTblUnsBias
+) {
   list(
     dataMod = dataMod,
     cp = .getCpUnsLocConditionCpNonLoc(
@@ -263,11 +265,12 @@
 #' probability fit the user selected.
 #' @keywords internal
 .getCpUnsLocHighProbabilityReference <- function(
-    dataMod,
-    probCol,
-    fraction = 0.85,
-    derivativeInfo = NULL,
-    shapeApplied = FALSE) {
+  dataMod,
+  probCol,
+  fraction = 0.85,
+  derivativeInfo = NULL,
+  shapeApplied = FALSE
+) {
   info <- list(
     reason = "high_probability_reference_unavailable",
     stage = "marginal",
@@ -442,10 +445,11 @@
 #' Apply the global derivative threshold
 #' @keywords internal
 .getCpUnsLocFilterGlobal <- function(
-    dataMod,
-    chnlSettings,
-    probCol,
-    threshold = NULL) {
+  dataMod,
+  chnlSettings,
+  probCol,
+  threshold = NULL
+) {
   if (is.null(threshold)) {
     threshold <- .getCpUnsLocStageThreshold(
       dataMod,
@@ -484,14 +488,15 @@
 #' Find the marginal reference threshold and scan bins to its left
 #' @keywords internal
 .getCpUnsLocFilterMarginal <- function(
-    dataMod,
-    chnlSettings,
-    probCol,
-    antimodeX = NULL,
-    threshold = NULL,
-    dominance = NULL,
-    globalLowerBoundX = NA_real_,
-    shapeLowerBoundX = NA_real_) {
+  dataMod,
+  chnlSettings,
+  probCol,
+  antimodeX = NULL,
+  threshold = NULL,
+  dominance = NULL,
+  globalLowerBoundX = NA_real_,
+  shapeLowerBoundX = NA_real_
+) {
   if (is.null(threshold)) {
     threshold <- .getCpUnsLocStageThreshold(
       dataMod,
@@ -613,12 +618,13 @@
 #' location plus one-third of the subsequent dominance-score peak location.
 #' @keywords internal
 .getCpUnsLocMarginalDominanceStart <- function(
-    density,
-    startX = NA_real_,
-    densityBw = NULL,
-    dominanceRatio = 2,
-    onsetWeight = 2 / 3,
-    lowerBoundX = NA_real_) {
+  density,
+  startX = NA_real_,
+  densityBw = NULL,
+  dominanceRatio = 2,
+  onsetWeight = 2 / 3,
+  lowerBoundX = NA_real_
+) {
   info <- list(
     applied = FALSE,
     reason = "density_dominance_rise_unavailable",
@@ -929,9 +935,10 @@
 #'
 #' @keywords internal
 .getCpUnsLocMarginalDensityLowerBound <- function(
-    density,
-    peakX,
-    fraction = 1 / 200) {
+  density,
+  peakX,
+  fraction = 1 / 200
+) {
   .getStimGateTailgate(
     density = density,
     peakX = peakX,
@@ -955,11 +962,12 @@
 #' Apply the appendix marginal-bin acceptance rule
 #' @keywords internal
 .getCpUnsLocFilterMarginalBins <- function(
-    dataMod,
-    chnlSettings,
-    probCol,
-    startX,
-    lowerBoundX = NA_real_) {
+  dataMod,
+  chnlSettings,
+  probCol,
+  startX,
+  lowerBoundX = NA_real_
+) {
   info <- list(
     applied = FALSE,
     reason = "marginal_filter_not_run",
@@ -1237,12 +1245,13 @@
 #' Apply current post-smoothing filtering for the ordinary local-FDR route
 #' @keywords internal
 .getCpUnsLocFilterAfterSmoothing <- function(
-    dataMod,
-    exTblStimNoMin,
-    exTblUnsBias,
-    cpMin,
-    stage,
-    chnlSettings) {
+  dataMod,
+  exTblStimNoMin,
+  exTblUnsBias,
+  cpMin,
+  stage,
+  chnlSettings
+) {
   force(stage)
 
   # Leave the separate shape-enforced arm exactly as it was.
@@ -1461,12 +1470,13 @@
 #' x_clear_init.
 #' @keywords internal
 .getCpUnsLocDominanceBoundaryCurrent <- function(
-    density,
-    startX,
-    densityBw = NULL,
-    dominanceRatio = 2,
-    onsetWeight = 2 / 3,
-    lowerBoundX = NA_real_) {
+  density,
+  startX,
+  densityBw = NULL,
+  dominanceRatio = 2,
+  onsetWeight = 2 / 3,
+  lowerBoundX = NA_real_
+) {
   info <- list(
     applied = FALSE,
     reason = "density_dominance_boundary_unavailable",
@@ -1635,11 +1645,12 @@
 #' Obtain the quality-based lower boundary starting at x_clear
 #' @keywords internal
 .getCpUnsLocQualityBoundaryCurrent <- function(
-    dataMod,
-    chnlSettings,
-    probCol,
-    xClear,
-    lowerBoundX = NA_real_) {
+  dataMod,
+  chnlSettings,
+  probCol,
+  xClear,
+  lowerBoundX = NA_real_
+) {
   out <- .getCpUnsLocFilterMarginalBins(
     dataMod = dataMod,
     chnlSettings = chnlSettings,
@@ -1667,11 +1678,12 @@
 #' Select a taut-string antimode that can move xBase lower
 #' @keywords internal
 .getCpUnsLocAntimodeBoundaryCurrent <- function(
-    dataMod,
-    chnlSettings,
-    xBase,
-    lowerBoundX = NA_real_,
-    heightFrac = 0.95) {
+  dataMod,
+  chnlSettings,
+  xBase,
+  lowerBoundX = NA_real_,
+  heightFrac = 0.95
+) {
   info <- list(
     applied = FALSE,
     reason = "antimode_boundary_not_applied",
