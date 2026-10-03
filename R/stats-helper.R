@@ -1,22 +1,12 @@
 #' @keywords internal
-.getStatsChnlLabGet <- function(chnlLab, .data, chnl) {
-  if (is.null(chnlLab)) {
-    chnlLab <- .getLabs(
-      .data = .data[[1]],
-      chnlCut = chnl
-    )
-  }
-  chnlLab
-}
-
-#' @keywords internal
 .getStatsGateTblGet <- function(
-    gateTbl,
-    chnlLab,
-    pathProject,
-    popGate,
-    gateName = NULL,
-    tolClust = NULL) {
+  gateTbl,
+  chnlLab,
+  pathProject,
+  popGate,
+  gateName = NULL,
+  tolClust = NULL
+) {
   if (!is.null(gateTbl)) {
     return(gateTbl)
   }
@@ -60,26 +50,10 @@
 }
 
 #' @keywords internal
-.getStatsChnlGet <- function(chnl, gateTbl) {
-  if (!is.null(chnl)) {
-    return(chnl)
-  }
-  unique(gateTbl$chnl)
-}
-
-#' @keywords internal
-.getStatsGateNameGet <- function(gateName, gateTbl) {
-  if (!is.null(gateName)) {
-    return(gateName)
-  }
-  unique(gateTbl$gateName)
-}
-
-#' @keywords internal
-.getStatsCombnMatListGet <- function(nChnl, nPos) {
+.getStatsCombnMatListGet <- function(nChnl) {
   purrr::map(
     seq_len(nChnl),
-    function(nPos) gtools::combinations(n = nChnl, r = nPos)
+    function(nPos) t(utils::combn(nChnl, nPos))
   ) |>
     stats::setNames(seq_len(nChnl))
 }
@@ -92,13 +66,7 @@
       combnMat <- combnMatList[[nPosNm]]
       purrr::map_chr(seq_len(nrow(combnMat)), function(i) {
         chnlPos <- chnl[combnMat[i, , drop = TRUE]]
-        purrr::map_chr(chnl, function(chnlCurr) {
-          if (chnlCurr %in% chnlPos) {
-            return(paste0(chnlCurr, "~+~"))
-          }
-          paste0(chnlCurr, "~-~")
-        }) |>
-          paste0(collapse = "")
+        paste0(chnl, ifelse(chnl %in% chnlPos, "~+~", "~-~"), collapse = "")
       })
     }
   ) |>
@@ -107,12 +75,13 @@
 
 #' @keywords internal
 .getStatsGateTblSave <- function(
-    gateTbl,
-    pathProject,
-    popGate,
-    chnlLab,
-    chnl,
-    save) {
+  gateTbl,
+  pathProject,
+  popGate,
+  chnlLab,
+  chnl,
+  save
+) {
   if (!save) {
     return(invisible(FALSE))
   }
@@ -147,12 +116,6 @@
       init = FALSE
     )
     pathSaveCsv <- sub("\\.rds$", ".csv", pathSaveRds)
-    if (file.exists(pathSaveRds)) {
-      file.remove(pathSaveRds)
-    }
-    if (file.exists(pathSaveCsv)) {
-      file.remove(pathSaveCsv)
-    }
     if (!dir.exists(dirname(pathSaveCsv))) {
       dir.create(dirname(pathSaveCsv), recursive = TRUE)
     }
@@ -169,22 +132,10 @@
   if (!dir.exists(pathProject)) {
     dir.create(pathProject, recursive = TRUE)
   }
-  if ("ind" %in% colnames(statTbl)) {
-    statTbl[, "ind"] <- as.character(statTbl[["ind"]])
-  }
-  if ("batch" %in% colnames(statTbl)) {
-    statTbl[, "batch"] <- as.character(statTbl[["batch"]])
-  }
   fnRds <- "gateStats.rds"
   fnCsv <- "gateStats.csv"
   pathSaveFnRds <- file.path(pathProject, fnRds)
   pathSaveFnCsv <- file.path(pathProject, fnCsv)
-  if (file.exists(pathSaveFnRds)) {
-    file.remove(pathSaveFnRds)
-  }
-  if (file.exists(pathSaveFnCsv)) {
-    file.remove(pathSaveFnCsv)
-  }
   utils::write.csv(statTbl, pathSaveFnCsv, row.names = FALSE)
   saveRDS(statTbl, pathSaveFnRds)
   invisible(pathProject)
