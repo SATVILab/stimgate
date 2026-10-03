@@ -271,6 +271,7 @@ for (i in seq_len(nrow(sim_grid))) {
     covEvMin = 1.5,
     covEvMax = 1.5,
     tolClust = NULL,
+    capStimRange = FALSE,
     summarise = FALSE
   ) |>
     dplyr::mutate(
@@ -549,6 +550,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
                 covEvMin = 1.5,
                 covEvMax = 1.5,
                 tolClust = NULL,
+                capStimRange = FALSE,
                 summarise = FALSE
               ) |>
                 dplyr::mutate(
@@ -1011,7 +1013,7 @@ if (results_read_only) {
     )
   }
 
-  promote_analysis3_if_ready(
+  promotion_done <- promote_analysis3_if_ready(
     run_ctx = run_ctx,
     sim_grid_all = sim_grid_all,
     total_sims = nrow(sim_grid),
@@ -1030,6 +1032,13 @@ if (results_read_only) {
       "Render again with run_simulations = FALSE after promotion."
     )
     knitr::knit_exit()
+  }
+
+  if (!isTRUE(promotion_done)) {
+    stop(
+      "Refusing to plot analysis 3: this run was not promoted to canonical ",
+      "current results."
+    )
   }
 
   read_ctx <- .analysis_results_context(

@@ -203,3 +203,122 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
     expected_abs_err = c(0.0041666667, 0.0041666667, 0.0083333333, 0.0083333333)
   )
 })
+
+
+test_that("analysis 6 QMD is chunk-stable and scores final sample frequencies", {
+  qmd_path <- file.path(
+    root_dir,
+    "analysis",
+    "6-sim-bw-freq_bs-adaptive.qmd"
+  )
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("simulation_seed:\\s*12345", content))
+  expect_true(grepl("analysis_semantics_version", content, fixed = TRUE))
+  expect_true(grepl("analysis_quick", content, fixed = TRUE))
+  expect_true(grepl("analysis_dev", content, fixed = TRUE))
+  expect_true(grepl(
+    "sim_seed = as.integer(simulation_seed + sim_id - 1L)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "set.seed(as.integer(sim_seed))",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(".setQuick()", content, fixed = TRUE))
+  expect_true(grepl(
+    "if (analysis_quick && !analysis_dev)",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl("update_progress_summary()", content, fixed = TRUE))
+  expect_false(grepl(
+    "future::plan(future::sequential)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("finally = future::plan(old_plan)", content, fixed = TRUE))
+
+  expect_true(grepl(
+    "run_ctx <- .analysis_results_context(",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "collate_output_dir <- if (results_read_only)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("run_ctx$chunk_dir", content, fixed = TRUE))
+  expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
+  expect_true(grepl("valid_result_ids", content, fixed = TRUE))
+  expect_true(grepl("output_error_ids", content, fixed = TRUE))
+  expect_true(grepl("expected_full_ids", content, fixed = TRUE))
+  expect_true(grepl("promote_analysis6_if_ready", content, fixed = TRUE))
+  expect_true(grepl("nrow(sim_grid) == 0L", content, fixed = TRUE))
+
+  expect_true(grepl('.data$method == "loc_sample"', content, fixed = TRUE))
+  expect_true(grepl("is.finite(.data$propRespTruth)", content, fixed = TRUE))
+  expect_true(grepl("is.finite(.data$propRespEst)", content, fixed = TRUE))
+  expect_true(grepl(
+    "propRespEst_median - .data$propRespTruth_median",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    "filter(is.finite(.data$threshold) & is.finite(.data$propBsEst))",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_true(grepl(
+    "run_plots is false, so stopping after simulation/collation.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "Skipping plots during a multi-chunk simulation render.",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl("saveRDS(", content, fixed = TRUE))
+})
+
+test_that("analysis 6 writes scenario output before durable completion markers", {
+  qmd_path <- file.path(
+    root_dir,
+    "analysis",
+    "6-sim-bw-freq_bs-adaptive.qmd"
+  )
+  lines <- readLines(qmd_path, warn = FALSE)
+
+  success_write <- grep(
+    ".write_rds_atomic(sim_res, file_output)",
+    lines,
+    fixed = TRUE
+  )
+  success_marker <- grep(
+    "file.create(file_completed)",
+    lines,
+    fixed = TRUE
+  )
+  error_write <- grep(
+    ".write_rds_atomic(err_res, file_output)",
+    lines,
+    fixed = TRUE
+  )
+  error_marker <- grep(
+    "file.create(file_error)",
+    lines,
+    fixed = TRUE
+  )
+
+  expect_length(success_write, 1L)
+  expect_length(success_marker, 1L)
+  expect_length(error_write, 1L)
+  expect_length(error_marker, 1L)
+  expect_lt(success_write, success_marker)
+  expect_lt(error_write, error_marker)
+})

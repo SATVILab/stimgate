@@ -723,7 +723,10 @@
     file.path(pathDirSave, "manual-comparison.csv"),
     row.names = FALSE
   )
-  saveRDS(comparisonTbl, file.path(pathDirSave, "manual-comparison.rds"))
+  .write_rds_atomic(
+    comparisonTbl,
+    file.path(pathDirSave, "manual-comparison.rds")
+  )
   utils::write.csv(
     summaryTbl,
     file.path(pathDirSave, "manual-comparison-summary.csv"),
