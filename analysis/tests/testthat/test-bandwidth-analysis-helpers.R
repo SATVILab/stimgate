@@ -46,6 +46,47 @@ test_that("legacy output path and formatting helpers match the original contract
   expect_equal(out$bw_extra_lab, c("0.2", "0.3"))
 })
 
+test_that("bandwidth labels trim fractional zeros without truncating integers", {
+  env <- .load_bw_analysis_env()
+
+  integers <- c(0, 1, 10, 100, 120, 1000, NA_real_)
+  integer_labs <- c("0", "1", "10", "100", "120", "1000", NA_character_)
+  expect_equal(env$format_bw_lab(integers), integer_labs)
+  expect_equal(env$format_bw_file(integers), integer_labs)
+
+  mixed <- c(0, 0.001, 0.1, 0.25, 1, 10, 100, NA_real_)
+  expect_equal(
+    env$format_bw_lab(mixed),
+    c("0", "0.001", "0.1", "0.25", "1", "10", "100", NA_character_)
+  )
+  expect_equal(
+    env$format_bw_file(mixed),
+    c("0", "0p001", "0p1", "0p25", "1", "10", "100", NA_character_)
+  )
+  expect_equal(
+    env$format_bw_lab(c("10", "0.2500", NA_character_)),
+    c("10", "0.25", NA_character_)
+  )
+})
+
+test_that("integer bandwidths retain distinct plot scale keys", {
+  env <- .load_bw_analysis_env()
+  bw_vec <- c(100, 10, 1, 0, 10, NA_real_)
+  expected_labs <- c("0", "1", "10", "100")
+
+  expect_equal(names(env$make_bw_colour_values(bw_vec)), expected_labs)
+  scale <- env$make_bw_linetype_scale(bw_vec)
+  expect_equal(scale$levels, expected_labs)
+  expect_equal(names(scale$values), expected_labs)
+
+  labels <- env$add_bw_labs(data.frame(
+    bw_core = c(0, 10, 100),
+    bw_extra = c(10, 100, NA_real_)
+  ))
+  expect_equal(labels$bw_core_lab, c("0", "10", "100"))
+  expect_equal(labels$bw_extra_lab, c("10", "100", NA_character_))
+})
+
 test_that("make_bw_colour_values preserves old ordering and palette semantics", {
   env <- .load_bw_analysis_env()
   base_col_vec <- c("#111111", "#222222", "#333333", "#444444", "#555555", "#666666")

@@ -1,7 +1,8 @@
 format_bw_lab <- function(x, digits = 4) {
   x <- suppressWarnings(as.numeric(x))
   lab <- format(signif(x, digits), scientific = FALSE, trim = TRUE)
-  lab <- sub("\\.?0+$", "", lab)
+  decimal <- grepl(".", lab, fixed = TRUE)
+  lab[decimal] <- sub("\\.?0+$", "", lab[decimal])
   lab[is.na(x)] <- NA_character_
   lab
 }
