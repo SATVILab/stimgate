@@ -65,7 +65,7 @@ test_that("analysis QMDs do not overwrite sourced helper functions", {
   expect_identical(violations, character())
 })
 
-test_that("analysis 8 uses deterministic scenario seeds and full-grid promotion", {
+test_that("analysis 8 is paired, transactional, and read-only for plots", {
   qmd_path <- file.path(
     root_dir,
     "analysis",
@@ -74,32 +74,56 @@ test_that("analysis 8 uses deterministic scenario seeds and full-grid promotion"
   content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
 
   expect_true(grepl("simulation_seed:\\s*1", content))
-  expect_true(grepl("comparison_semantics_version", content, fixed = TRUE))
   expect_true(grepl(
-    "sim_seed = as.integer(simulation_seed + sim_id - 1L)",
+    'comparison_semantics_version <- "batch-mismatch-comparison-v2"',
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("analysis_dev <- isTRUE(.isDev())", content, fixed = TRUE))
+  expect_true(grepl("base_scenario_id = dplyr::row_number()", content, fixed = TRUE))
+  expect_true(grepl(
+    "sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(".simCompareRunScenarioUnseeded", content, fixed = TRUE))
+
+  expect_true(grepl(
+    "run_ctx <- .analysis_results_context(",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("paired_mismatch_rng = TRUE", content, fixed = TRUE))
+  expect_true(grepl("retryErrors = TRUE", content, fixed = TRUE))
+  expect_true(grepl(".simCompareGridOutputStatus(", content, fixed = TRUE))
+  expect_true(grepl(
+    "Refusing to promote analysis 8",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_true(grepl(
+    "run_plots is false, so stopping after simulation/collation.",
     content,
     fixed = TRUE
   ))
   expect_true(grepl(
-    "set.seed(as.integer(row$sim_seed[[1]]))",
+    "Skipping plots during a multi-chunk simulation render.",
     content,
     fixed = TRUE
   ))
+  expect_true(grepl("knitr::knit_exit()", content, fixed = TRUE))
+
+  expect_true(grepl(".analysis_current_file(", content, fixed = TRUE))
+  expect_true(grepl("simulation_seed = simulation_seed", content, fixed = TRUE))
+  expect_true(grepl("analysis_dev = analysis_dev", content, fixed = TRUE))
+  expect_true(grepl("n_sample_sim = n_sample_sim", content, fixed = TRUE))
+  expect_true(grepl("n_iter_sim = n_iter_sim", content, fixed = TRUE))
+
   expect_true(grepl(
-    "path_progress_file <- run_ctx$progress_file",
+    "dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)",
     content,
     fixed = TRUE
-  ))
-  expect_true(grepl("recursive\\s*=\\s*TRUE", content))
-  expect_true(grepl("expected_sim_ids", content, fixed = TRUE))
-  expect_true(grepl("Refusing to promote analysis 8", content, fixed = TRUE))
-  expect_true(grepl(".analysis_current_file", content, fixed = TRUE))
-  expect_true(grepl("results_available", content, fixed = TRUE))
-  expect_true(grepl(
-    "skipping summary and plots for this chunk",
-    content,
-    fixed = TRUE,
-    ignore.case = TRUE
   ))
 })
 
