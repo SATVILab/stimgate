@@ -180,7 +180,6 @@
     obj$locGeneratedDirect <- obj$locGeneratedDirect %||% FALSE
     obj$locSource <- obj$locSource %||% "not_calculated"
     obj$locReason <- obj$locReason %||% reason
-    obj$pList <- obj$pList %||% .getCpUnsLocPListEmpty()
     return(obj)
   }
   .getCpUnsLocConditionOut(
