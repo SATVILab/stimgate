@@ -87,6 +87,22 @@ writeStimFCS <- function(
     mult = FALSE, # whether cells must be multi-positive
     gateUnsMethod = "min") {
   # how to calculate unstim thresholds # nolint
+  popUnspecified <- is.null(pop)
+  pop <- pop %||% if (is.null(gateTbl)) .gateGetPop(pathProject) else "root"
+  if (is.null(pop) || length(pop) == 0) {
+    stop(
+      "No population provided and no populations found in project directory."
+    )
+  }
+  if (length(pop) > 1) {
+    stop(
+      "Multiple populations found in project directory. Please specify 'pop' parameter."
+    )
+  }
+  if (popUnspecified && is.null(gateTbl)) {
+    message(paste0("Using population '", pop, "' from project directory."))
+  }
+
   # get gates
   gateTbl <- .fcsWriteGetGateTbl(
     gateTbl = gateTbl,
@@ -113,6 +129,7 @@ writeStimFCS <- function(
     .fcsWriteImpl(
       .data = .data,
       ind = ind,
+      pop = pop,
       gateTbl = gateTbl,
       pathDirSave = pathDirSave,
       chnl = chnl,
@@ -143,21 +160,6 @@ writeStimFCS <- function(
     pathProject) {
   # Get gate table if not provided
   if (is.null(gateTbl)) {
-    popUnspecified <- is.null(pop)
-    pop <- pop %||% .gateGetPop(pathProject)
-    if (is.null(pop) || length(pop) == 0) {
-      stop(
-        "No population provided and no populations found in project directory."
-      )
-    }
-    if (length(pop) > 1) {
-      stop(
-        "Multiple populations found in project directory. Please specify 'pop' parameter."
-      )
-    }
-    if (popUnspecified) {
-      message(paste0("Using population '", pop, "' from project directory."))
-    }
     chnlUnspecified <- is.null(chnl)
     chnl <- chnl %||% .gateGetChnl(pathProject, pop)
     if (is.null(chnl) || length(chnl) == 0) {
@@ -371,6 +373,7 @@ writeStimFCS <- function(
 .fcsWriteImpl <- function(
     .data,
     ind,
+    pop,
     gateTbl,
     pathDirSave,
     chnl,
@@ -379,7 +382,7 @@ writeStimFCS <- function(
     combnExc,
     transFn,
     transChnl) {
-  fr <- .fcsWriteImplLoad(.data, ind)
+  fr <- .fcsWriteImplLoad(.data, ind, pop)
   ex <- flowCore::exprs(fr) |> tibble::as_tibble()
 
   if (is.na(ex[1, chnl[1]]) && nrow(ex) == 1) {
@@ -424,8 +427,8 @@ writeStimFCS <- function(
 }
 
 #' @keywords internal
-.fcsWriteImplLoad <- function(.data, ind) {
-  fr <- flowWorkspace::gh_pop_get_data(.data[[ind]])
+.fcsWriteImplLoad <- function(.data, ind, pop) {
+  fr <- flowWorkspace::gh_pop_get_data(.data[[ind]], y = pop)
   if (inherits(fr, "cytoframe")) {
     fr <- flowWorkspace::cytoframe_to_flowFrame(fr)
   }
