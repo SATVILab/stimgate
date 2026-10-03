@@ -846,7 +846,9 @@ test_that("project directory fallback is local and can be read-only", {
   env <- .load_runtime_env()
   # Exercise the fallback without depending on installed projr configuration.
   env$.analysis_projr_dir <- function(...) NULL
-  project <- withr::local_tempdir()
+  # Normalize the existing root before appending non-existent paths; Windows
+  # cannot expand RUNNER~1 in a path whose final components do not exist.
+  project <- .norm_path(withr::local_tempdir())
   expected <- file.path(project, "output", "fig")
   expect_identical(
     .norm_path(env$.analysis_project_dir(

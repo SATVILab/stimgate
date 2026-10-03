@@ -646,6 +646,8 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
      prepended with `tempdir()` again, which is invalid on Windows.
    - Compare paths after `normalizePath(path, winslash = "/", mustWork = FALSE)`,
      since equivalent paths may differ in separator style.
+   - Normalise an existing temporary root before appending paths that do not
+     exist yet; Windows cannot resolve short/long path aliases in a missing path.
    - Embed only forward-slash paths in R code run through `Rscript -e`;
      Windows backslashes are escape sequences there.
    - Use `skip_on_os("windows")`, with a comment giving the reason, for checks of
