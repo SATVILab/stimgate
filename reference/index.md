@@ -31,8 +31,6 @@ Functions for exporting gated data
 
 Helper and utility functions
 
-- [`axisLimits()`](https://satvilab.github.io/stimgate/reference/axisLimits.md)
-  : Manage axis limits
 - [`chnlLab()`](https://satvilab.github.io/stimgate/reference/chnlLab.md)
   : Get markers and channels
 - [`getBatchList()`](https://satvilab.github.io/stimgate/reference/getBatchList.md)

@@ -266,8 +266,6 @@
 <ul><li>
 <code>UtilsCytoRSV-chnl_lab.R</code>: Channel label utilities (get markers/channels from cytometry objects).</li>
 <li>
-<code>UtilsCytoRSV-plot_cyto.R</code>: Cytometry plotting utilities.</li>
-<li>
 <code>UtilsGGSV-axisLimits.R</code>: <code>ggplot2</code> axis limit helpers.</li>
 <li>
 <code>bw_norm_helpers.R</code>: Shared bandwidth helpers for standard and normalised bandwidth methods.</li>
@@ -427,6 +425,10 @@
 <code>zz_profile_instrumentation.R</code> deliberately loads after the implementation files and wraps selected internal functions without changing their arguments. Preserve wrapped function signatures when profiling boundaries change.</li>
 <li>Use the <code>stage</code> parameter to track algorithm stages (<code>"init"</code>, <code>"cytPos"</code>, or <code>"single"</code>). Pass <code>stage</code> through function calls to enable intermediate data saving via <code>.intSave()</code> or <code>.intSaveNm()</code> functions. Intermediate saving is controlled by the <code>STIMGATE_INTERMEDIATE</code> environment variable.</li>
 </ul></div>
+<div class="section level3">
+<h3 id="saved-expression-and-stimulation-gates">Saved expression and stimulation gates<a class="anchor" aria-label="anchor" href="#saved-expression-and-stimulation-gates"></a></h3>
+<p>Saved expression includes unstimulated samples, while final stimulation gate tables omit them. Positivity helpers must treat channels with no gate for the current sample as all-FALSE, preserving one logical value per cell. Completed <code>chnlSettings.rds</code> settings are keyed by marker labels, although saved expression columns use channel names. Resolve that mapping before applying the saved <code>biasUns</code>; channels without a saved bias use zero.</p>
+</div>
 <div class="section level3">
 <h3 id="function-signatures--returns">Function Signatures &amp; Returns<a class="anchor" aria-label="anchor" href="#function-signatures--returns"></a></h3>
 <ul><li>Validate inputs and provide meaningful error messages.</li>

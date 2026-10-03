@@ -27,8 +27,7 @@ plotStim(
   chnlGate = NULL,
   markerGate = NULL,
   gateTypeCytPos = "cyt",
-  mult = FALSE,
-  gateUnsMethod = "min"
+  mult = FALSE
 )
 ```
 
@@ -136,10 +135,6 @@ plotStim(
   logical Whether to return only multi-functional cells (positive for
   multiple markers). Default is FALSE.
 
-- gateUnsMethod:
-
-  character Method for gating unstimulated cells. Default is "min".
-
 ## Value
 
 A grid of plots if `grid` is TRUE, otherwise a list of ggplot objects.
@@ -179,7 +174,7 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpjS5iKb/stimgate_example_data_1b78238190a1/stimgate"
+#> [1] "/tmp/Rtmp8FkmL2/stimgate_example_data_1be07670c288/stimgate"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {

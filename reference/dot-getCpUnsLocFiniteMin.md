@@ -5,5 +5,5 @@ Return the smallest finite numeric value
 ## Usage
 
 ``` r
-.getCpUnsLocFiniteMin(x, positive = FALSE)
+.getCpUnsLocFiniteMin(x)
 ```

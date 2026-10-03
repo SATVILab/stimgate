@@ -20,7 +20,6 @@ getStimExpr(
   markerGate = NULL,
   gateTypeCytPos = "cyt",
   mult = FALSE,
-  gateUnsMethod = "min",
   transFn = NULL,
   transChnl = NULL,
   transMarker = NULL
@@ -91,10 +90,6 @@ getStimExpr(
 
   logical Whether to return only multi-functional cells (positive for
   multiple markers). Default is FALSE.
-
-- gateUnsMethod:
-
-  character Method for gating unstimulated cells. Default is "min".
 
 - transFn:
 
