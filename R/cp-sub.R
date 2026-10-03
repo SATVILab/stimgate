@@ -8,6 +8,15 @@
   excMin,
   bias = 0
 ) {
+  attrsToKeep <- c(
+    "ind",
+    "indUns",
+    "isUns",
+    "chnlCut",
+    "batch",
+    "popGate",
+    "probGMin"
+  )
   purrr::map(ind, function(indCurr) {
     cutTbl <- exList[[as.character(indCurr)]]
     attrList <- attributes(cutTbl)
@@ -20,31 +29,13 @@
       attr(cutTbl, "probGMin") <- nRowFin / nRowInit
     }
     cutTbl[[attr(cutTbl, "chnlCut")]] <- .getCut(cutTbl) + bias # nolint
-    cutTbl |>
-      .prepareExListWithBiasAndNoiseAddAttr(attrList)
+    for (nm in intersect(attrsToKeep, names(attrList))) {
+      attr(cutTbl, nm) <- attrList[[nm]]
+    }
+    cutTbl
   }) |>
     stats::setNames(as.character(ind))
 }
-
-.prepareExListWithBiasAndNoiseAddAttr <- function(ex, attrList) {
-  attrVecNmOrig <- names(attrList)
-  attrVecNmAdd <- c(
-    "ind",
-    "indUns",
-    "isUns",
-    "chnlCut",
-    "batch",
-    "popGate",
-    "probGMin"
-  )
-  attrVecNmAdd <- intersect(attrVecNmAdd, attrVecNmOrig)
-  for (i in seq_along(attrVecNmAdd)) {
-    attr(ex, attrVecNmAdd[i]) <- attrList[[attrVecNmAdd[i]]]
-  }
-  ex
-}
-
-
 
 
 # Get axis labels from annotated data frame
@@ -55,72 +46,30 @@
     flowCore::parameters() |>
     flowCore::pData()
 
-  if (!is.null(high)) {
-    cutLab <- adfData[["desc"]][[which(adfData$name == chnlCut)]] |>
-      stats::setNames(chnlCut)
-    return(cutLab)
-  }
-
-  purrr::map_chr(chnlCut, function(cutCurr) {
-    adfData[["desc"]][[which(adfData$name == cutCurr)]]
-  }) |>
-    stats::setNames(chnlCut)
+  descMap <- stats::setNames(as.character(adfData[["desc"]]), adfData[["name"]])
+  descMap[chnlCut]
 }
 
 
 #' @keywords internal
 .combineCp <- function(cp, gateCombn) {
   purrr::map(gateCombn, function(gateCombnCurr) {
-    if (all(purrr::map_lgl(cp, is.na))) {
+    if (all(is.na(cp))) {
       return(stats::setNames(cp, names(cp)))
     }
     if (is.null(gateCombnCurr) || gateCombnCurr %in% c("no", "prejoin")) {
       return(cp)
     }
-    if (gateCombnCurr == "min") {
-      return(stats::setNames(
-        rep(
-          min(cp, na.rm = TRUE),
-          length(cp)
-        ),
-        names(cp)
-      ))
-    }
-    if (gateCombnCurr == "mean") {
-      return(stats::setNames(
-        rep(
-          mean(cp, na.rm = TRUE),
-          length(cp)
-        ),
-        names(cp)
-      ))
-    }
-    if (gateCombnCurr == "trim20") {
-      return(stats::setNames(
-        rep(
-          mean(cp, trim = 0.2, na.rm = TRUE),
-          length(cp)
-        ),
-        names(cp)
-      ))
-    }
-    if (gateCombnCurr == "median") {
-      return(stats::setNames(
-        rep(
-          stats::median(cp, na.rm = TRUE),
-          length(cp)
-        ),
-        names(cp)
-      ))
-    }
-    if (gateCombnCurr == "max") {
-      return(stats::setNames(
-        rep(
-          max(cp, na.rm = TRUE),
-          length(cp)
-        ),
-        names(cp)
-      ))
+    val <- switch(gateCombnCurr,
+      min = min(cp, na.rm = TRUE),
+      mean = mean(cp, na.rm = TRUE),
+      trim20 = mean(cp, trim = 0.2, na.rm = TRUE),
+      median = stats::median(cp, na.rm = TRUE),
+      max = max(cp, na.rm = TRUE),
+      NULL
+    )
+    if (!is.null(val)) {
+      stats::setNames(rep(val, length(cp)), names(cp))
     }
   }) |>
     stats::setNames(gateCombn)

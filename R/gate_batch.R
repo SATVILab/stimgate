@@ -1,12 +1,13 @@
 # Get cutpoints for a single batch
 #' @keywords internal
 .gateBatch <- function(
-    .data,
-    indBatch,
-    chnlSettings,
-    batch,
-    stage,
-    pathProject) {
+  .data,
+  indBatch,
+  chnlSettings,
+  batch,
+  stage,
+  pathProject
+) {
   # get list of dataframes
   exList <- .getExList(
     # nolint
@@ -18,13 +19,20 @@
     pathProject = pathProject
   )
 
-  .gateBatchAll(
-    indBatch = indBatch,
-    batch = batch,
+  .debug("chnlSettings$gateTbl is NULL") # nolint
+  .debug(
+    "gating ",
+    paste0(indBatch, collapse = "-") # nolint
+  )
+
+  # create bare list
+  gateList <- .getCpUnsLoc(
     exList = exList,
     .data = .data,
     chnlSettings = chnlSettings,
     stage = stage,
     pathProject = pathProject
   )
+
+  .gateBatchTbl(gateList, attr(exList[[1]], "batch")) # nolint
 }
