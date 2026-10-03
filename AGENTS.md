@@ -202,22 +202,42 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   with computed values; use a distinct variable name for helper return values.
 - Checks that chunked simulation QMDs use per-scenario deterministic seeds and
   validate complete cross-chunk collation before promoting canonical results.
+- Persist each per-scenario output atomically before writing its completed/error
+  marker, and pass required run/chunk paths explicitly to progress helpers. This
+  keeps restart markers consistent with durable output files.
+- Estimator-comparison simulations should use the same simulated dataset for
+  rows that differ only by estimator or estimator-tuning settings. Derive the
+  data-generation seed from the biological scenario, not from the estimator,
+  cap, chunk index or worker scheduling.
+- Keep requested estimator settings distinct from the estimator path actually
+  used after fallbacks. Preserve and summarise fallback provenance rather than
+  labelling fallback rows as though they used the requested estimator.
 - Active simulation chunks must collate only their own chunk outputs; canonical
   cross-chunk reads happen after promotion. A render with simulations disabled
   must use the read-only current-results context and must not create staging state.
 - `run_plots = FALSE` must stop before optional plot/report chunks; multi-chunk
   simulation renders should not write shared plot files concurrently.
-- For controlled degradation experiments, use common random numbers within a
-  baseline scenario when mismatch settings are deterministic. This keeps
-  differences across mismatch magnitudes attributable to the mismatch rather
-  than to a different simulated draw.
+- Controlled mismatch/degradation simulations should use common random numbers
+  within each baseline biological scenario when the mismatch itself is
+  deterministic, so curve differences are not driven by different simulated draws.
 - Compatibility wrappers for optional upstream features must apply an effect
-  exactly once. If the upstream API supports the feature, pass it through and
-  do not also apply a local fallback; if it does not, neutralise the upstream
-  global effect before applying the local selective fallback.
-- Comparator exceptions in benchmarking analyses must remain explicit errors.
-  A numerical fallback may be recorded for diagnostics, but an exception must
-  not be silently converted into a valid prediction or promoted result.
+  exactly once. If upstream supports the feature, pass it through without also
+  applying a local fallback; otherwise neutralise the upstream global effect
+  before applying the local selective fallback.
+- Comparator exceptions in benchmarking analyses must remain explicit runtime
+  errors. A numerical fallback may be retained for diagnostics, but the
+  exception must not be silently promoted or scored as a valid prediction.
+- Transactional simulation/collation chunks must not use Quarto
+  `error: true`; validation and promotion errors must fail the render/job.
+- When an estimator can legitimately fail to return a finite scientific
+  estimate, retain that failure as analysis data (for example with
+  `n_*_finite` / `prop_*_finite`) rather than hiding it behind a magic
+  numeric fallback or averaging only successful estimates without reporting
+  coverage. Distinguish estimator failure from infrastructure/runtime errors.
+- Simulation wrappers that claim to mirror a current package calculation must
+  use the same preprocessing as the package implementation. If a wrapper keeps
+  a legacy preprocessing option for other analyses, set the current behaviour
+  explicitly in the QMD rather than relying on the wrapper default.
 - For end-to-end background-subtracted-frequency performance, score the final
   sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
