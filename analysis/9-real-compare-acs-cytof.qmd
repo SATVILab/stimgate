@@ -354,7 +354,7 @@ manual_comparison_tbl <- comp_against_manual_cyt(
 )
 manual_summary_tbl <- attr(manual_comparison_tbl, "summary")
 
-.acsCytofManualSaveTransactional(
+.acsCytofManualSave(
   comparisonTbl = manual_comparison_tbl,
   pathDirSave = path_manual_output,
   savePlots = run_plots
