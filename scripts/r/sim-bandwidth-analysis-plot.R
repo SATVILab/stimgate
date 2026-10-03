@@ -83,3 +83,26 @@ add_bw_labs <- function(.data) {
       bw_extra_lab = format_bw_lab(.data$bw_extra)
     )
 }
+
+# Bias curves share the same dimensions in averaged and per-cell-count views.
+.simBandwidthBiasRelativeErrorPlot <- function(
+    tbl, title, y_label = "Median absolute relative error") {
+  ggplot2::ggplot(
+    tbl,
+    ggplot2::aes(
+      x = bias_uns_multiplier, y = median_abs_rel_error,
+      colour = factor(bw), linetype = bias_uns_basis,
+      group = interaction(bw, bias_uns_basis)
+    )
+  ) +
+    ggplot2::geom_line() +
+    ggplot2::geom_point() +
+    ggplot2::facet_wrap(~mismatch_label, scales = "free_y") +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy") +
+    ggplot2::theme(legend.position = "bottom") +
+    ggplot2::labs(
+      title = title, x = "Bias multiplier", y = y_label,
+      colour = "Bandwidth", linetype = "Bias scale"
+    )
+}

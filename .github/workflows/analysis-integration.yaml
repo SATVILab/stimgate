@@ -6,6 +6,7 @@ on:
     paths:
       - 'analysis/**'
       - 'scripts/r/**'
+      - 'scripts/slurm/**'
       - 'R/**'
       - 'src/**'
       - 'DESCRIPTION'
@@ -15,6 +16,7 @@ on:
     paths:
       - 'analysis/**'
       - 'scripts/r/**'
+      - 'scripts/slurm/**'
       - 'R/**'
       - 'src/**'
       - 'DESCRIPTION'
@@ -40,6 +42,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check Slurm analysis selection
+        shell: bash
+        run: bash analysis/tests/test-slurm-launchers.sh
 
       - uses: r-lib/actions/setup-pandoc@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
 
