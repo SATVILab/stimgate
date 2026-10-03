@@ -696,15 +696,27 @@ if (!exists("run_ctx")) {
 }
 results_read_only <- isTRUE(run_ctx$read_only)
 
+collate_output_dir <- if (results_read_only) {
+  run_ctx$current_dir
+} else {
+  run_ctx$chunk_dir
+}
+
 bw_list_path_vec <- .find_bw_list_output_files(
-  output_dir = run_ctx$staging_run_dir,
+  output_dir = collate_output_dir,
   cache_dir = run_ctx$current_dir,
-  allow_cache_fallback = !isTRUE(run_simulations),
+  allow_cache_fallback = results_read_only,
   merge_dirs = FALSE
 )
 
 if (length(bw_list_path_vec) > 0L) {
-  message("Collating ", length(bw_list_path_vec), " saved simulation result files from output.")
+  message(
+    "Collating ",
+    length(bw_list_path_vec),
+    " saved simulation result files from ",
+    collate_output_dir,
+    "."
+  )
 
   bw_list_raw_collate <- purrr::map(
     bw_list_path_vec,
@@ -719,27 +731,14 @@ if (length(bw_list_path_vec) > 0L) {
     }
   ) |>
     purrr::compact()
-} else if (exists("bw_list_raw") && length(bw_list_raw) > 0L) {
-  message("No saved simulation result files found in output; using bw_list_raw from memory.")
+} else if (!results_read_only && length(bw_list_raw) > 0L) {
+  message(
+    "No saved simulation result files found for this chunk; ",
+    "using bw_list_raw from memory."
+  )
   bw_list_raw_collate <- bw_list_raw
-} else {
-  staged_collated_files <- if (dir.exists(run_ctx$staging_collated_dir)) {
-    list.files(
-      run_ctx$staging_collated_dir,
-      pattern = "^bw_list_raw([-_]chunk_[0-9]+-of_[0-9]+)?[.]rds$",
-      full.names = TRUE
-    )
-  } else {
-    character(0)
-  }
-  collated_dir <- if (
-    isTRUE(run_simulations) ||
-      length(staged_collated_files) > 0L
-  ) {
-    run_ctx$staging_collated_dir
-  } else {
-    file.path(run_ctx$current_dir, "collated")
-  }
+} else if (results_read_only) {
+  collated_dir <- file.path(run_ctx$current_dir, "collated")
   path_vec <- if (dir.exists(collated_dir)) {
     list.files(
       collated_dir,
@@ -752,11 +751,14 @@ if (length(bw_list_path_vec) > 0L) {
   path_vec <- path_vec[file.exists(path_vec)]
   if (length(path_vec) == 0L) {
     stop(
-      "Could not find saved output result files, bw_list_raw.rds, ",
-      "or bw_list_raw in memory."
+      "Could not find canonical simulation output files or bw_list_raw ",
+      "under current/."
     )
   }
-  bw_list_raw_collate <- readRDS(file = path_vec[[1]])
+  bw_list_raw_collate <- purrr::map(path_vec, readRDS) |>
+    purrr::flatten()
+} else {
+  stop("No saved simulation results were available for the current chunk.")
 }
 
 bw_tbl_raw <- bw_list_raw_collate |>
@@ -771,6 +773,7 @@ bw_tbl <- .simBandwidthAddMissingColumns(
     propBsEst = NA_real_,
     threshold = NA_real_,
     bias_uns_setting = NA_character_,
+    sim_seed = NA_integer_,
     sim_grid_chunk_index = NA_integer_,
     sim_grid_n_chunks = NA_integer_,
     error_message = NA_character_
@@ -885,18 +888,102 @@ if (!results_read_only) {
   ))
   chunk_completed_ids <- setdiff(chunk_completed_ids, chunk_failed_ids)
 
+  expected_chunk_ids <- sort(unique(as.integer(sim_grid$sim_id)))
+  collated_chunk_ids <- sort(unique(as.integer(bw_tbl$sim_id)))
+  valid_chunk_ids <- sort(unique(as.integer(bw_tbl_results_summary$sim_id)))
+  output_error_ids <- sort(unique(as.integer(
+    bw_tbl$sim_id[
+      !is.na(bw_tbl$error_message) &
+        nzchar(as.character(bw_tbl$error_message))
+    ]
+  )))
+
+  chunk_collate_ok <- identical(collated_chunk_ids, expected_chunk_ids)
+  chunk_validation_ok <- chunk_collate_ok &&
+    identical(valid_chunk_ids, expected_chunk_ids) &&
+    length(output_error_ids) == 0L
+
+  validation_error <- if (!chunk_collate_ok) {
+    "Chunk collation did not contain exactly the assigned sim_id set."
+  } else if (length(output_error_ids) > 0L) {
+    paste0(
+      "Chunk contains simulation errors for sim_id: ",
+      paste(output_error_ids, collapse = ", "),
+      "."
+    )
+  } else if (!identical(valid_chunk_ids, expected_chunk_ids)) {
+    "At least one assigned sim_id had no finite threshold/frequency result."
+  } else {
+    NULL
+  }
+
   .analysis_mark_chunk(
     run_ctx = run_ctx,
     total_sims = nrow(sim_grid),
     completed_sims = length(chunk_completed_ids),
     failed_sims = length(chunk_failed_ids),
-    collate_ok = TRUE,
-    validation_ok = nrow(bw_tbl_results_summary) > 0L
+    collate_ok = chunk_collate_ok,
+    validation_ok = chunk_validation_ok,
+    error_message = validation_error
   )
 
+  if (!isTRUE(chunk_validation_ok) || length(chunk_failed_ids) > 0L) {
+    stop(
+      validation_error %||%
+        paste0(
+          "Chunk contains ",
+          length(chunk_failed_ids),
+          " failed simulation(s)."
+        )
+    )
+  }
+
   if (.analysis_can_promote(run_ctx)) {
+    full_output_paths <- .find_bw_list_output_files(
+      output_dir = run_ctx$staging_run_dir,
+      allow_cache_fallback = FALSE
+    )
+    full_output_ids <- suppressWarnings(as.integer(sub(
+      "^.*-sim_id_([0-9]+)[.]rds$",
+      "\\1",
+      basename(full_output_paths)
+    )))
+    expected_full_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
+    full_outputs_ok <- length(full_output_paths) == length(expected_full_ids) &&
+      identical(sort(unique(full_output_ids)), expected_full_ids)
+
+    if (!isTRUE(full_outputs_ok)) {
+      error_message <- paste0(
+        "Refusing to promote analysis 2: staged outputs do not contain ",
+        "exactly the complete simulation grid."
+      )
+      .analysis_mark_chunk(
+        run_ctx = run_ctx,
+        total_sims = nrow(sim_grid),
+        completed_sims = length(chunk_completed_ids),
+        failed_sims = length(chunk_failed_ids),
+        collate_ok = FALSE,
+        validation_ok = FALSE,
+        error_message = error_message
+      )
+      stop(error_message)
+    }
+
     .analysis_promote_run(run_ctx)
   }
+}
+
+if (!isTRUE(run_plots)) {
+  message("run_plots is false, so stopping after simulation/collation.")
+  knitr::knit_exit()
+}
+
+if (!results_read_only && sim_grid_n_chunks > 1L) {
+  message(
+    "Skipping plots during a multi-chunk simulation render. ",
+    "Render again with run_simulations = FALSE after promotion."
+  )
+  knitr::knit_exit()
 }
 ```
 
@@ -1934,6 +2021,7 @@ if (isTRUE(run_plots)) {
           ".png"
         )
       )
+      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
       ggsave(
         filename = path_p,
         plot = p,
