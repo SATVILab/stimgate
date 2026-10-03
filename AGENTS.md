@@ -630,6 +630,10 @@ rows before drawing reference lines.
    kinds and restore the caller's RNG state; do not reintroduce `gateCombn`
    plumbing in the comparison layer. Analysis 1 seeds each row and saves and
    validates its scientific settings with the cache.
+   Plot-only comparison renders must report missing canonical outputs with the
+   exact simulation render command and remind readers to use the same dev profile.
+   Set the knitr working directory to the checkout root so simulation workers
+   load the current package even when Quarto starts in `analysis/`.
 
 10. **Exact reruns of one simulation row**:
    Assign `sim_id` and `sim_seed` on the full grid before dev/quick filtering, shuffling and chunking. Each row is seeded with its own `sim_seed` under fixed RNG kinds (`Mersenne-Twister`, `Inversion`, `Rejection`) and the caller's RNG state is restored afterwards (`.analysis_with_seed()`, `.simBandwidthRunRow()`, `.simCompareRunScenario()`), so results do not depend on furrr's L'Ecuyer state, chunking or scheduling. Each simulation QMD has one `eval: false` "rerun one simulation" chunk that selects a `sim_id` from the full grid and calls the same scenario code path as the workers. Do not add separate debug loops.

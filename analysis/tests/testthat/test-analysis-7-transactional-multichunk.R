@@ -5,6 +5,50 @@ root_dir <- normalizePath(
 
 script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 
+test_that("comparison plot-only renders explain how to create missing canonical results", {
+  cache_dir <- tempfile("comparison-cache-")
+  dir.create(cache_dir)
+  withr::defer(unlink(cache_dir, recursive = TRUE))
+
+  for (qmd_name in c(
+    "7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd"
+  )) {
+    lines <- readLines(file.path(root_dir, "analysis", qmd_name))
+    label <- which(lines == "#| label: canonical-results-check")
+    expect_length(label, 1L)
+    end <- which(seq_along(lines) > label & lines == "```")[[1]]
+    code <- parse(text = lines[seq.int(label + 1L, end - 1L)])
+    env <- new.env(parent = baseenv())
+    env$run_simulations <- FALSE
+    env$run_plots <- TRUE
+    env$root_dir <- root_dir
+    env$analysis_key <- c("sim", "compare", "test")
+    env$.analysis_cache_dir <- function(analysis_key, path_root, create) {
+      stopifnot(identical(create, FALSE))
+      cache_dir
+    }
+    expected <- paste0(
+      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/", qmd_name
+    )
+    expect_error(eval(code, env), expected, fixed = TRUE)
+    expect_false(dir.exists(file.path(cache_dir, "current")))
+
+    # A completion marker alone must not allow a missing collated file through.
+    dir.create(file.path(cache_dir, "current", "collated"), recursive = TRUE)
+    file.create(file.path(cache_dir, "current", "COMPLETE"))
+    expect_error(eval(code, env), expected, fixed = TRUE)
+    saveRDS(tibble::tibble(), file.path(cache_dir, "current", "collated", "compare_raw.rds"))
+    expect_no_error(eval(code, env))
+    unlink(file.path(cache_dir, "current"), recursive = TRUE)
+
+    env$run_simulations <- TRUE
+    expect_no_error(eval(code, env))
+    env$run_simulations <- FALSE
+    env$run_plots <- FALSE
+    expect_no_error(eval(code, env))
+  }
+})
+
 test_that("analysis 7 uses run-specific progress and validates full nested collation", {
   qmd_path <- file.path(root_dir, "analysis", "7-sim-compare-freq_bs.qmd")
   expect_true(file.exists(qmd_path))

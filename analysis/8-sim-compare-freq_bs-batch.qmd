@@ -16,6 +16,14 @@ params:
   run_plots: false
 ---
 
+This analysis compares StimGate, F-beta and Tailgate when stimulated and
+unstimulated expression distributions are misaligned. Paired samples are
+simulated for selected baseline scenarios, then the stimulated expression is
+shifted or its background spread is increased. The same simulated draws are
+used across mismatch settings within each baseline scenario.
+
+## Set-up
+
 ```{r}
 #| label: setup
 #| include: false
@@ -30,6 +38,17 @@ root_dir <- tryCatch(
   projr::projr_path_get("project"),
   error = function(e) getwd()
 )
+if (
+  !file.exists(file.path(root_dir, "DESCRIPTION")) &&
+    file.exists(file.path(dirname(root_dir), "DESCRIPTION"))
+) {
+  root_dir <- dirname(root_dir)
+}
+
+if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
+  stop("Cannot find the stimgate repository root. Render from the repository root.")
+}
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
@@ -54,6 +73,11 @@ if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
 comparison_semantics_version <- "batch-mismatch-comparison-v3"
+if (!exists(".isDev", mode = "function")) {
+  .isDev <- function() {
+    "dev" %in% strsplit(Sys.getenv("PROJR_PROFILE"), ",", fixed = TRUE)[[1]]
+  }
+}
 analysis_dev <- isTRUE(.isDev())
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
@@ -69,10 +93,7 @@ if (
 ) {
   devtools::load_all(root_dir)
 } else {
-  fn_vec <- list.files(file.path(root_dir, "R"), full.names = TRUE)
-  for (fn in fn_vec) {
-    source(fn)
-  }
+  stop("Expected the stimgate DESCRIPTION at the repository root: ", root_dir)
 }
 
 # Tailgate is a required primary comparator when simulations are requested.
@@ -81,6 +102,10 @@ if (
     !requireNamespace("cytoUtils", quietly = TRUE)
 ) {
   stop("Package 'cytoUtils' is required for the tailgate comparison.")
+}
+
+if (isTRUE(run_simulations) && !requireNamespace("simcyto", quietly = TRUE)) {
+  stop("Package 'simcyto' is required for the comparison simulations.")
 }
 
 # Source simulation helpers in dependency order:
@@ -95,6 +120,27 @@ for (fn in c(
   source(file.path(scripts_r_dir, fn))
 }
 
+```
+
+```{r}
+#| label: canonical-results-check
+#| include: false
+if (!isTRUE(run_simulations) && isTRUE(run_plots)) {
+  current_dir <- file.path(
+    .analysis_cache_dir(analysis_key, path_root = root_dir, create = FALSE),
+    "current"
+  )
+  if (
+    !file.exists(file.path(current_dir, "COMPLETE")) ||
+      !file.exists(file.path(current_dir, "collated", "compare_raw.rds"))
+  ) {
+    stop(
+      "Canonical comparison results are missing or incomplete. Run from the repository root: ",
+      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/8-sim-compare-freq_bs-batch.qmd. ",
+      "Use the same dev profile for both renders; complete all chunks before plotting."
+    )
+  }
+}
 ```
 
 ### Aim
@@ -215,10 +261,13 @@ targeted_scenarios_tbl <- tibble::tribble(
   )
 ```
 
+## Simulation
+
 ### Mismatch experiment grids
 
 ```{r}
 #| label: mismatch-grids
+#| include: false
 # 1. Mean-shift grid (all components):
 # Gaussian and Skew: 0, 0.025, 0.05, 0.1, 0.2, 0.5, 1
 # Gamma: 0, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2
@@ -350,6 +399,7 @@ print(paste0(
 
 ```{r}
 #| label: compare-batch-run
+#| include: false
 #| results: hide
 n_workers <- max(1, .simGetCores())
 
@@ -536,10 +586,11 @@ if (isTRUE(run_simulations)) {
 }
 ```
 
-### Results summary
+## Collation
 
 ```{r}
 #| label: compare-summary
+#| echo: false
 path_rds <- .analysis_current_file(
   run_ctx = run_ctx,
   relative_path = c("collated", "compare_raw.rds"),
@@ -597,11 +648,19 @@ compare_summary <- .simCompareSummariseFreqBs(
 )
 
 compare_summary
+
+if (!isTRUE(run_plots)) {
+  message("run_plots is false, so stopping after the canonical comparison summary.")
+  knitr::knit_exit()
+}
 ```
+
+## Results and figures
 
 ### Mean-shift degradation curves (all components vs negative only)
 
 ```{r}
+#| include: false
 plot_dir <- .analysis_cache_dir(c(analysis_key, "mean_shift_degradation"), path_root = root_dir)
 if (
   isTRUE(run_plots) &&
@@ -614,8 +673,16 @@ if (
 
 #### Median
 
+Median absolute relative error is plotted against the stimulated mean shift
+on an inverse-hyperbolic-sine vertical scale. Colour identifies the method,
+line type distinguishes shifts of all cells from shifts of background cells
+only, and facets separate baseline scenarios. Lower curves indicate smaller
+errors at the same shift.
+
 ```{r}
-#| label: plot-mean-shift-degradation-median
+#| label: fig-mean-shift-degradation-median
+#| fig-cap: "Median absolute relative frequency error under mean shifts."
+#| echo: false
 #| fig-width: 10
 #| fig-height: 9
 if (isTRUE(run_plots) && isTRUE(results_available)) {
@@ -641,10 +708,17 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 }
 ```
 
-#### Max
+#### Maximum
+
+Maximum absolute relative error is plotted against the stimulated mean shift
+on an inverse-hyperbolic-sine vertical scale. Colour identifies the method,
+line type identifies which cells are shifted, and facets separate baseline
+scenarios. Compare how the largest errors vary with shift magnitude.
 
 ```{r}
-#| label: plot-mean-shift-degradation-max
+#| label: fig-mean-shift-degradation-max
+#| fig-cap: "Maximum absolute relative frequency error under mean shifts."
+#| echo: false
 #| fig-width: 10
 #| fig-height: 9
 if (isTRUE(run_plots) && isTRUE(results_available)) {
@@ -670,10 +744,17 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 }
 ```
 
-#### 90-th percentile
+#### 90th percentile
+
+The 90th percentile of absolute relative error is plotted against the
+stimulated mean shift on an inverse-hyperbolic-sine vertical scale. Colour
+identifies the method, line type identifies which cells are shifted, and
+facets separate baseline scenarios. Compare upper-tail errors at each shift.
 
 ```{r}
-#| label: plot-mean-shift-degradation-q90
+#| label: fig-mean-shift-degradation-q90
+#| fig-cap: "90th percentile absolute relative frequency error under mean shifts."
+#| echo: false
 #| fig-width: 10
 #| fig-height: 9
 if (isTRUE(run_plots) && isTRUE(results_available)) {
@@ -702,6 +783,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 ### SD-inflation degradation curves
 
 ```{r}
+#| include: false
 plot_dir <- .analysis_cache_dir(c(analysis_key, "sd_inflation_degradation"), path_root = root_dir)
 if (
   isTRUE(run_plots) &&
@@ -712,8 +794,16 @@ if (
 }
 ```
 
+Median absolute relative error is plotted against the fractional increase
+in stimulated background standard deviation on an inverse-hyperbolic-sine
+vertical scale. Colour identifies the method and facets separate baseline
+scenarios, with one mean position setting per plot. Zero on the horizontal
+axis is the unchanged background spread.
+
 ```{r}
-#| label: plot-sd-inflation-degradation
+#| label: fig-sd-inflation-degradation
+#| fig-cap: "Median absolute relative frequency error under background SD inflation."
+#| echo: false
 #| fig-width: 10
 #| fig-height: 8
 if (isTRUE(run_plots) && isTRUE(results_available)) {
@@ -775,8 +865,15 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 
 ### Threshold placement diagnostic (unstimulated background intrusion)
 
+The mean proportion of unstimulated cells above the gate is plotted against
+the stimulated mean shift. Colour identifies the method, line type identifies
+which stimulated cells are shifted, and facets separate baseline scenarios.
+Higher values indicate that more unstimulated cells lie above the chosen gate.
+
 ```{r}
-#| label: plot-threshold-placement-unstim
+#| label: fig-threshold-placement-unstim
+#| fig-cap: "Unstimulated cells above the gate under stimulated mean shifts."
+#| echo: false
 #| fig-width: 10
 #| fig-height: 9
 if (isTRUE(run_plots) && isTRUE(results_available)) {
@@ -848,8 +945,16 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 
 ### Upper-tail error analysis
 
+The 90th percentile of absolute relative error is plotted against mismatch
+magnitude on an inverse-hyperbolic-sine vertical scale, with colour identifying
+the method. Facet rows separate mismatch mechanisms and columns separate
+baseline scenarios, with one mean position setting per plot. Compare curves
+within each panel, since mean shift and SD inflation use different units.
+
 ```{r}
-#| label: plot-upper-tail-and-fallbacks
+#| label: fig-upper-tail-and-fallbacks
+#| fig-cap: "90th percentile absolute relative frequency error across mismatch settings."
+#| echo: false
 #| fig-width: 10
 #| fig-height: 8
 if (isTRUE(run_plots) && isTRUE(results_available)) {
@@ -906,6 +1011,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   }
 }
 ```
+
+## Rerun one scenario
 
 A single scenario can be rerun with the production settings and RNG.
 Run the setup, settings and grid chunks first.
