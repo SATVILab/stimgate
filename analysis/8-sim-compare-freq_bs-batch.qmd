@@ -429,34 +429,45 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
   message("Skipping simulations because run_simulations is FALSE.")
 }
 
-if (isTRUE(run_simulations)) {
-  sim_status_tbl <- if (nrow(compare_raw) > 0L && "sim_id" %in% names(compare_raw)) {
-    compare_raw |>
-      dplyr::filter(.data$sim_id %in% sim_grid$sim_id) |>
-      dplyr::group_by(.data$sim_id) |>
-      dplyr::summarise(
-        has_error = if ("error" %in% names(compare_raw)) {
-          any(!is.na(.data$error) & .data$error != "")
-        } else {
-          FALSE
-        },
-        .groups = "drop"
-      )
-  } else {
-    tibble::tibble(sim_id = integer(), has_error = logical())
-  }
+simulation_promoted <- FALSE
 
-  n_failed <- sum(sim_status_tbl$has_error)
-  n_completed <- sum(!sim_status_tbl$has_error)
+if (isTRUE(run_simulations)) {
+  chunk_status <- .simCompareGridOutputStatus(
+    compare_raw,
+    sim_grid = sim_grid,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim
+  )
+  n_failed <- length(chunk_status$failed_ids)
+  n_completed <- length(chunk_status$completed_ids)
+
+  chunk_error <- if (!isTRUE(chunk_status$validation_ok)) {
+    paste0(
+      "Analysis 8 chunk output is incomplete or invalid. Missing sim_id: ",
+      paste(chunk_status$missing_ids, collapse = ", "),
+      "; failed sim_id: ",
+      paste(chunk_status$failed_ids, collapse = ", "),
+      "; extra sim_id: ",
+      paste(chunk_status$extra_ids, collapse = ", "),
+      "."
+    )
+  } else {
+    NULL
+  }
 
   .analysis_mark_chunk(
     run_ctx = run_ctx,
     total_sims = nrow(sim_grid),
     completed_sims = n_completed,
     failed_sims = n_failed,
-    collate_ok = nrow(compare_raw) > 0L,
-    validation_ok = nrow(compare_raw) > 0L
+    collate_ok = chunk_status$collate_ok,
+    validation_ok = chunk_status$validation_ok,
+    error_message = chunk_error
   )
+
+  if (!isTRUE(chunk_status$validation_ok)) {
+    stop(chunk_error)
+  }
 
   if (.analysis_can_promote(run_ctx)) {
     scenario_paths <- list.files(
@@ -469,30 +480,24 @@ if (isTRUE(run_simulations)) {
       pathList = scenario_paths,
       sim_grid = sim_grid_all
     )
-    expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
-    collated_sim_ids <- if (
-      nrow(compare_raw_full) > 0L && "sim_id" %in% names(compare_raw_full)
-    ) {
-      sort(unique(as.integer(compare_raw_full$sim_id)))
-    } else {
-      integer()
-    }
-    full_collate_ok <- identical(collated_sim_ids, expected_sim_ids)
-    full_validation_ok <- full_collate_ok &&
-      (!"error" %in% names(compare_raw_full) ||
-        !any(!is.na(compare_raw_full$error) & compare_raw_full$error != ""))
+    full_status <- .simCompareGridOutputStatus(
+      compare_raw_full,
+      sim_grid = sim_grid_all,
+      nSample = n_sample_sim,
+      nIter = n_iter_sim
+    )
 
-    if (!isTRUE(full_validation_ok)) {
+    if (!isTRUE(full_status$validation_ok)) {
       error_message <- paste0(
-        "Refusing to promote analysis 8: canonical collation did not contain ",
-        "exactly the complete error-free simulation grid."
+        "Refusing to promote analysis 8: canonical collation is incomplete ",
+        "or contains invalid primary method results."
       )
       .analysis_mark_chunk(
         run_ctx = run_ctx,
         total_sims = nrow(sim_grid),
         completed_sims = n_completed,
         failed_sims = n_failed,
-        collate_ok = full_collate_ok,
+        collate_ok = full_status$collate_ok,
         validation_ok = FALSE,
         error_message = error_message
       )
@@ -502,7 +507,25 @@ if (isTRUE(run_simulations)) {
     path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
     .write_rds_atomic(compare_raw_full, path_rds_full)
     compare_raw <- compare_raw_full
-    .analysis_promote_run(run_ctx)
+    simulation_promoted <- isTRUE(.analysis_promote_run(run_ctx))
+  }
+
+  if (!isTRUE(run_plots)) {
+    message("run_plots is false, so stopping after simulation/collation.")
+    knitr::knit_exit()
+  }
+
+  if (sim_grid_n_chunks > 1L) {
+    message(
+      "Skipping plots during a multi-chunk simulation render. ",
+      "Render again with run_simulations = FALSE after promotion."
+    )
+    knitr::knit_exit()
+  }
+
+  if (!isTRUE(simulation_promoted)) {
+    message("The simulation run has not been promoted; skipping summary and plots.")
+    knitr::knit_exit()
   }
 }
 ```
