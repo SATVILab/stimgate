@@ -626,6 +626,10 @@ if (isTRUE(run_simulations)) {
                     dplyr::everything()
                   )
 
+                if (nrow(sim_res) == 0L) {
+                  stop("Simulation returned no result rows.")
+                }
+
                 .write_rds_atomic(sim_res, file_output)
                 file.create(file_completed)
                 if (file.exists(file_error)) file.remove(file_error)
