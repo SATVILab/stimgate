@@ -16,9 +16,6 @@ globalVariables(c(
   "gateTbl",
   "chnlCut",
   "tol",
-  "indInBatchGate",
-  "tolClustSingle",
-  "indBatchGate",
   "cp",
   "grp",
   "cpJoinLseOrigMeanTg",
@@ -33,38 +30,21 @@ globalVariables(c(
   "propBsCpDiff",
   "propBsCpDiffSd",
   "propBsCp",
-  "propL1se",
   "pred",
-  "der",
   "cpOrig",
-  "maxExpr",
-  "gate05",
-  "propBsCpDiffSdMax",
-  "grpLevel",
   "indVec",
   "x1",
   "x",
   "y",
-  "xInd",
   "countStim",
   "nCellStim",
   "countUns",
   "nCellUns",
-  "propStimPos",
-  "propUnsPos",
-  "propStimSd",
-  "propUnsSd",
-  "x512",
   "xVec",
   "freqBs",
   "freqStim",
-  "popGateCurr",
-  "cpJoinTg",
-  "lseOrig",
-  "cpTgCtrl",
   "chnlPos",
   "dirSave",
-  "isNullGateTbl",
   "pathProject",
   "excMin",
   "propBsDiff",
@@ -79,32 +59,12 @@ globalVariables(c(
   "xStim",
   "prob",
   "xUns",
-  "propLab",
   "type",
-  "lineId",
   "dens",
   "no",
   "yes",
   "probStim",
   "probStimNorm",
-  "propPos",
-  # Variables from .get_cp_uns_loc_prob_tbl_filter
-  "minorResponseInd",
-  "moderateResponseInd",
-  "nRemaining",
-  "probLargerCount",
-  "probLargerProp",
-  # Variables from .get_prop_bs_by_cp_tbl_ind_calc
-  "countStimCp",
-  "countUnsCp",
-  "propStimCp",
-  "propUnsCp",
-  "propBsSd",
-  "propStimPosCp",
-  "propUnsPosCp",
-  "propStimSdCp",
-  "propUnsSdCp",
-  "propBsSdCp",
   # Variables from other functions
   "cytCombn",
   "freqUns",
@@ -112,9 +72,6 @@ globalVariables(c(
   "V2",
   "i",
   "tolGateSingle",
-  # Variables used in plots and ggplot2 context
-  ".debug",
-  "rbeta",
   # Variables from fcs_write.R
   "concat",
   "gateConcat",
@@ -135,8 +92,6 @@ globalVariables(c(
   "sd",
   "setNames",
   "locGeneratedDirect",
-  "calc_skew",
-  "calc_gamma",
   "_stimgate_stimgate_cpPmden"
 ))
 
@@ -157,14 +112,10 @@ globalVariables(c(
 #' Initialise textual debug state for a StimGate run
 #'
 #' @param pathProject character Path to project directory.
-#' @param reset logical Whether to reset existing debug directory.
-#'   Default: TRUE.
 #' @return logical TRUE if debug is active and initialized, FALSE otherwise.
 #' @keywords internal
-.debugInit <- function(pathProject, reset = TRUE) {
-  mustDebug <- tolower(trimws(Sys.getenv("STIMGATE_DEBUG"))) %in%
-    c("y", "true", "yes", "1")
-  if (!mustDebug) {
+.debugInit <- function(pathProject) {
+  if (!.profileEnabled()) {
     .debugStateReset()
     return(FALSE)
   }
@@ -180,7 +131,7 @@ globalVariables(c(
   tryCatch(
     {
       dirDebug <- file.path(pathProject, "debug")
-      if (isTRUE(reset) && dir.exists(dirDebug)) {
+      if (dir.exists(dirDebug)) {
         unlink(dirDebug, recursive = TRUE, force = TRUE)
       }
       if (!dir.exists(dirDebug)) {
@@ -212,9 +163,7 @@ globalVariables(c(
 #' @return logical invisibly TRUE if message was written, FALSE otherwise.
 #' @keywords internal
 .debug <- function(msg, val = NULL) {
-  mustDebug <- tolower(trimws(Sys.getenv("STIMGATE_DEBUG"))) %in%
-    c("y", "true", "yes", "1")
-  if (!mustDebug) {
+  if (!.profileEnabled()) {
     return(invisible(FALSE))
   }
   tryCatch(
@@ -276,33 +225,27 @@ globalVariables(c(
   }
 
   for (i in seq_along(dots)) {
-    .intSaveNm(
-      name = dotNames[[i]],
-      obj = dots[[i]],
-      ind = ind,
+    saveRDS(dots[[i]], .intSavePathSave(
+      pathProject = pathProject,
       stage = stage,
-      pathProject = pathProject
-    )
+      ind = ind,
+      name = dotNames[[i]]
+    ))
   }
 
   invisible(TRUE)
 }
 
 #' @keywords internal
-.isInvalidInd <- function(ind) {
-  is.null(ind) || length(ind) == 0 || all(is.na(ind))
-}
-
-#' @keywords internal
 .intSaveCheck <- function(ind) {
-  if (.isInvalidInd(ind)) {
+  if (is.null(ind) || length(ind) == 0L || all(is.na(ind))) {
     return(FALSE)
   }
 
   envVar <- Sys.getenv("STIMGATE_INTERMEDIATE") |>
     trimws() |>
     tolower()
-  if (is.null(envVar) || length(envVar) == 0 || envVar == "") {
+  if (envVar == "") {
     return(FALSE)
   }
   if (envVar %in% c("y", "true", "yes", "all")) {
@@ -330,34 +273,4 @@ globalVariables(c(
     dir.create(dirname(pathSave), recursive = TRUE, showWarnings = FALSE)
   }
   pathSave
-}
-
-#' @keywords internal
-.browse <- function(ind) {
-  if (!.browseCheck(ind)) {
-    return(invisible(FALSE))
-  }
-  eval(quote(browser()), envir = parent.frame())
-  invisible(TRUE)
-}
-
-#' @keywords internal
-.browseCheck <- function(ind) {
-  if (.isInvalidInd(ind)) {
-    return(FALSE)
-  }
-
-  envVar <- Sys.getenv("STIMGATE_BROWSE") |>
-    trimws() |>
-    tolower()
-  if (is.null(envVar) || length(envVar) == 0 || envVar == "") {
-    return(FALSE)
-  }
-  if (envVar %in% c("y", "true", "yes", "all")) {
-    return(TRUE)
-  }
-  envVarSplit <- strsplit(envVar, ",|;") |>
-    unlist() |>
-    trimws()
-  any(as.character(ind) %in% envVarSplit)
 }

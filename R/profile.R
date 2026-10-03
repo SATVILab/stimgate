@@ -1,33 +1,11 @@
 # Debug profiling helpers ----------------------------------------------------
 
 .profileState <- new.env(parent = emptyenv())
-.profileState$initialized <- FALSE
-.profileState$pathProject <- NULL
-.profileState$rawDir <- NULL
-.profileState$context <- list(
-  marker = NA_character_,
-  channel = NA_character_,
-  batch = NA_character_,
-  sample = NA_character_,
-  stage = NA_character_
-)
-.profileState$stack <- character()
-.profileState$runTimer <- NULL
 
 #' @keywords internal
 .profileEnabled <- function() {
   tolower(trimws(Sys.getenv("STIMGATE_DEBUG"))) %in%
     c("y", "true", "yes", "1")
-}
-
-#' @keywords internal
-.profilePath <- function(pathProject) {
-  file.path(pathProject, "profile")
-}
-
-#' @keywords internal
-.profileNormalisePath <- function(pathProject) {
-  normalizePath(pathProject, winslash = "/", mustWork = FALSE)
 }
 
 #' @keywords internal
@@ -60,6 +38,8 @@
   invisible(TRUE)
 }
 
+.profileStateReset()
+
 #' Start a fresh profile directory for a StimGate run
 #' @keywords internal
 .profileInit <- function(pathProject, reset = FALSE) {
@@ -78,7 +58,10 @@
       ) {
         return(invisible(FALSE))
       }
-      pathProject <- .profileNormalisePath(pathProject)
+      pathProject <- normalizePath(
+        pathProject,
+        winslash = "/", mustWork = FALSE
+      )
       if (
         isTRUE(.profileState$initialized) &&
           identical(.profileState$pathProject, pathProject) &&
@@ -87,7 +70,7 @@
         return(invisible(TRUE))
       }
 
-      pathProfile <- .profilePath(pathProject)
+      pathProfile <- file.path(pathProject, "profile")
       if (isTRUE(reset) && dir.exists(pathProfile)) {
         unlink(pathProfile, recursive = TRUE, force = TRUE)
       }
@@ -130,8 +113,11 @@
 
   tryCatch(
     {
-      pathProject <- .profileNormalisePath(pathProject)
-      rawDir <- file.path(.profilePath(pathProject), "raw")
+      pathProject <- normalizePath(
+        pathProject,
+        winslash = "/", mustWork = FALSE
+      )
+      rawDir <- file.path(pathProject, "profile", "raw")
       dir.create(rawDir, recursive = TRUE, showWarnings = FALSE)
       if (!dir.exists(rawDir)) {
         stop("could not attach to profile/raw directory")
@@ -168,12 +154,13 @@
 #' Temporarily add profiling context
 #' @keywords internal
 .profileWithContext <- function(
-    expr,
-    marker = NULL,
-    channel = NULL,
-    batch = NULL,
-    sample = NULL,
-    stage = NULL) {
+  expr,
+  marker = NULL,
+  channel = NULL,
+  batch = NULL,
+  sample = NULL,
+  stage = NULL
+) {
   if (!.profileEnabled()) {
     return(force(expr))
   }
@@ -201,21 +188,17 @@
     add = TRUE
   )
 
-  value <- withVisible(force(expr))
-  if (isTRUE(value$visible)) {
-    value$value
-  } else {
-    invisible(value$value)
-  }
+  force(expr)
 }
 
 #' @keywords internal
 .profileStart <- function(
-    level,
-    major,
-    minor = NA_character_,
-    operation = NA_character_,
-    pathProject = NULL) {
+  level,
+  major,
+  minor = NA_character_,
+  operation = NA_character_,
+  pathProject = NULL
+) {
   if (!.profileEnsureAttached(pathProject)) {
     return(NULL)
   }
@@ -272,22 +255,6 @@
   invisible(TRUE)
 }
 
-#' @keywords internal
-.profileWriteRecord <- function(record, pathRecord) {
-  tryCatch(
-    {
-      saveRDS(record, pathRecord)
-      invisible(TRUE)
-    },
-    error = function(e) {
-      .profileMessage(
-        paste0("could not write timing record: ", conditionMessage(e))
-      )
-      invisible(FALSE)
-    }
-  )
-}
-
 #' Finish one profiling timer and persist it immediately
 #' @keywords internal
 .profileStop <- function(timer, status = "completed") {
@@ -324,7 +291,14 @@
         status = as.character(status[[1L]]),
         stringsAsFactors = FALSE
       )
-      .profileWriteRecord(record, timer$pathRecord)
+      tryCatch(
+        saveRDS(record, timer$pathRecord),
+        error = function(e) {
+          .profileMessage(
+            paste0("could not write timing record: ", conditionMessage(e))
+          )
+        }
+      )
       invisible(record)
     },
     error = function(e) {
@@ -335,32 +309,16 @@
   )
 }
 
-#' Discard an unfinished timer while restoring the hierarchy stack
-#' @keywords internal
-.profileCancel <- function(timer) {
-  if (!is.null(timer)) {
-    tryCatch(
-      {
-        .profileStop(timer, status = "failed")
-      },
-      error = function(e) {
-        .profilePop(timer$recordId)
-        invisible(FALSE)
-      }
-    )
-  }
-  invisible(FALSE)
-}
-
 #' Time one expression and persist the completed timing record
 #' @keywords internal
 .profileTime <- function(
-    expr,
-    level,
-    major,
-    minor = NA_character_,
-    operation = NA_character_,
-    pathProject = NULL) {
+  expr,
+  level,
+  major,
+  minor = NA_character_,
+  operation = NA_character_,
+  pathProject = NULL
+) {
   if (!.profileEnabled()) {
     return(force(expr))
   }
@@ -386,7 +344,7 @@
   on.exit(
     {
       if (!completed) {
-        .profileCancel(timer)
+        .profileStop(timer, status = "failed")
       }
     },
     add = TRUE
@@ -427,16 +385,31 @@
     nzchar(context$sample)
 }
 
-#' Merge the incrementally saved timing records
+#' Finish the run timer and collate the final profile
 #' @keywords internal
-.profileFinalise <- function(pathProject = .profileState$pathProject) {
-  if (!.profileEnabled() || is.null(pathProject)) {
+.profileFinishRun <- function(
+  pathProject = .profileState$pathProject,
+  status = "completed"
+) {
+  if (!.profileEnabled() || !isTRUE(.profileState$initialized)) {
     return(invisible(NULL))
   }
 
+  on.exit(.profileStateReset(), add = TRUE)
   tryCatch(
     {
-      pathProfile <- .profilePath(.profileNormalisePath(pathProject))
+      runTimer <- .profileState$runTimer
+      if (!is.null(runTimer)) {
+        .profileStop(runTimer, status = status)
+        .profileState$runTimer <- NULL
+      }
+      if (is.null(pathProject)) {
+        return(invisible(NULL))
+      }
+      pathProfile <- file.path(
+        normalizePath(pathProject, winslash = "/", mustWork = FALSE),
+        "profile"
+      )
       rawDir <- file.path(pathProfile, "raw")
       files <- list.files(
         rawDir,
@@ -477,34 +450,6 @@
       .profileMessage(
         paste0("could not collate profiling records: ", conditionMessage(e))
       )
-      invisible(NULL)
-    }
-  )
-}
-
-#' Finish the run timer and collate the final profile
-#' @keywords internal
-.profileFinishRun <- function(
-    pathProject = .profileState$pathProject,
-    status = "completed") {
-  if (!.profileEnabled() || !isTRUE(.profileState$initialized)) {
-    return(invisible(NULL))
-  }
-
-  tryCatch(
-    {
-      runTimer <- .profileState$runTimer
-      if (!is.null(runTimer)) {
-        .profileStop(runTimer, status = status)
-        .profileState$runTimer <- NULL
-      }
-      profileTbl <- .profileFinalise(pathProject)
-      .profileStateReset()
-      invisible(profileTbl)
-    },
-    error = function(e) {
-      .profileStateReset()
-      .profileMessage(conditionMessage(e))
       invisible(NULL)
     }
   )

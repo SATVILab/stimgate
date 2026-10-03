@@ -377,7 +377,7 @@ gateStim <- function(
       !is.na(pathProject) &&
       nzchar(pathProject)
   ) {
-    .debugInit(pathProject, reset = TRUE)
+    .debugInit(pathProject)
     pathDebug <- file.path(pathProject, "debug", "debug.txt")
     message(paste0("Saving debug output to ", pathDebug))
     .profileInit(pathProject, reset = TRUE)

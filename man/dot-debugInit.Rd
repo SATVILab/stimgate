@@ -4,13 +4,10 @@
 \alias{.debugInit}
 \title{Initialise textual debug state for a StimGate run}
 \usage{
-.debugInit(pathProject, reset = TRUE)
+.debugInit(pathProject)
 }
 \arguments{
 \item{pathProject}{character Path to project directory.}
-
-\item{reset}{logical Whether to reset existing debug directory.
-Default: TRUE.}
 }
 \value{
 logical TRUE if debug is active and initialized, FALSE otherwise.

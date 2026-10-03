@@ -330,14 +330,17 @@ test_that("profiling errors never cause gateStim to fail", {
     }
   })
 
-  # Mock .profileWriteRecord or .profileFinalise to throw an error
+  # Redirect records to a missing directory to exercise real write errors.
+  start_timer <- .profileStart
   testthat::with_mocked_bindings(
-    .profileWriteRecord = function(record, pathRecord) {
-      stop("Simulated profiling disk write error")
+    .profileStart = function(...) {
+      timer <- start_timer(...)
+      timer$pathRecord <- file.path(pathProject, "missing", "record.rds")
+      timer
     },
     {
       expect_no_error(
-        resPath <- gateStim(
+        resPath <- suppressWarnings(gateStim(
           .data = gs,
           pathProject = pathProject,
           popGate = "root",
@@ -345,10 +348,30 @@ test_that("profiling errors never cause gateStim to fail", {
           marker = exampleData$marker,
           calcCytPosGates = FALSE,
           tolClust = NULL
-        )
+        ))
       )
       expect_equal(resPath, pathProject)
       expect_true(is.data.frame(getStimGates(pathProject)))
     }
   )
+})
+
+test_that("profiling context restores state and preserves visibility", {
+  for (enabled in c("true", "false")) {
+    withr::local_envvar(c(STIMGATE_DEBUG = enabled))
+    .profileStateReset()
+    withr::defer(.profileStateReset())
+    expect_identical(
+      withVisible(.profileWithContext(42, stage = "init")),
+      withVisible(42)
+    )
+    expect_identical(
+      withVisible(.profileWithContext(invisible(42), stage = "init")),
+      withVisible(invisible(42))
+    )
+    expect_error(
+      .profileWithContext(stop("expected"), stage = "init"), "expected"
+    )
+    expect_identical(.profileState$context, .profileContextDefault())
+  }
 })
