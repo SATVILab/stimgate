@@ -493,6 +493,31 @@ gateStim <- function(
   .saveMetaData(.data, batchList, pathProject)
   chnl <- .extractChnl(chnl, marker, pathProject)
 
+  chnlSettingsRaw <- .extractChnlSettings(
+    chnlSettings = chnlSettings,
+    markerSettings = markerSettings,
+    chnl = chnl,
+    marker = marker,
+    pathProject = pathProject
+  )
+  chnlSettingsCache <- lapply(chnl, function(chnlCurr) {
+    popCurr <- chnlSettingsRaw[[chnlCurr]]$popGate
+    list(
+      chnlCut = chnlCurr,
+      popGate = if (!is.null(popCurr)) popCurr else popGate
+    )
+  })
+  runPops <- unique(
+    vapply(chnlSettingsCache, function(x) x$popGate, character(1))
+  )
+  .gateInvalidateRunPopulations(pathProject = pathProject, pops = runPops)
+  .gateCacheChnl(
+    .data = .data,
+    indBatchList = batchList,
+    chnlSettings = chnlSettingsCache,
+    pathProject = pathProject
+  )
+
   chnlSettings <- .completeChnlSettings(
     chnl = chnl,
     marker = marker,
@@ -623,4 +648,21 @@ gateStim <- function(
     saveGateTbl = TRUE,
     pathProject = pathProject
   )
+}
+
+#' @keywords internal
+.gateInvalidateRunPopulations <- function(pathProject, pops) {
+  for (pop in pops) {
+    pathExPop <- dirname(.getExChnlPathDir("dummy", pop, pathProject))
+    if (dir.exists(pathExPop)) {
+      unlink(pathExPop, recursive = TRUE)
+    }
+    pathGatePop <- dirname(dirname(dirname(
+      .gatesGetPathAll(pathProject, pop, "dummy", FALSE)
+    )))
+    if (dir.exists(pathGatePop)) {
+      unlink(pathGatePop, recursive = TRUE)
+    }
+  }
+  invisible(NULL)
 }

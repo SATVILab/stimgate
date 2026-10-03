@@ -34,8 +34,19 @@
     return(chnlSettings)
   }
 
+  batchCache <- new.env(parent = emptyenv())
   readBatch <- function(i) {
-    .bwSharedReadBatch(i, indBatchList, .data, chnlSettings, pathProject)
+    key <- as.character(i)
+    if (!exists(key, envir = batchCache, inherits = FALSE)) {
+      batchCache[[key]] <- .bwSharedReadBatch(
+        i = i,
+        indBatchList = indBatchList,
+        .data = .data,
+        chnlSettings = chnlSettings,
+        pathProject = pathProject
+      )
+    }
+    batchCache[[key]]
   }
   # Bandwidths of tubes `indSel`, reading only the batches that contain them
   estBw <- function(indSel) {

@@ -180,6 +180,44 @@
     function(nm) chnlSettings[[nm]]
   )
 
+  needBwMin <- .completeChnlSettingsBwLimitIsAuto(chnlSettings$bwMin) &&
+    !.completeChnlSettingsBwLimitIsNone(chnlSettings$bwMin)
+  needBwMax <- .completeChnlSettingsBwLimitIsAuto(chnlSettings$bwMax) &&
+    !.completeChnlSettingsBwLimitIsNone(chnlSettings$bwMax)
+  needBwFallback <- .completeChnlSettingsBwLimitIsAuto(chnlSettings$bwFallback)
+  needCpMin <- is.null(chnlSettings$cpMin)
+
+  exListByBatch <- if (needBwMin || needBwMax || needBwFallback || needCpMin) {
+    purrr::map(
+      .completeChnlSettingsBatchInd(indBatchList),
+      function(i) {
+        .getExList(
+          .data = .data,
+          indBatch = indBatchList[[i]],
+          pop = chnlSettings$popGate,
+          chnlCut = chnl,
+          batch = names(indBatchList)[i],
+          pathProject = pathProject
+        )
+      }
+    )
+  } else {
+    NULL
+  }
+
+  xList <- if (needBwMin || needBwMax || needBwFallback) {
+    .completeChnlSettingsGetBwExprList(
+      indBatchList = indBatchList,
+      .data = .data,
+      popGate = chnlSettings$popGate,
+      chnlCut = chnl,
+      pathProject = pathProject,
+      exListByBatch = exListByBatch
+    )
+  } else {
+    NULL
+  }
+
   chnlSettings$bwMin <- .completeChnlSettingsBwLimit(
     bwLimit = chnlSettings$bwMin,
     noneValue = -Inf,
@@ -189,7 +227,8 @@
     popGate = chnlSettings$popGate,
     chnlCut = chnl,
     pathProject = pathProject,
-    bwArgs = bwArgs
+    bwArgs = bwArgs,
+    xList = xList
   )
 
   chnlSettings$bwMax <- .completeChnlSettingsBwLimit(
@@ -201,7 +240,8 @@
     popGate = chnlSettings$popGate,
     chnlCut = chnl,
     pathProject = pathProject,
-    bwArgs = bwArgs
+    bwArgs = bwArgs,
+    xList = xList
   )
 
   chnlSettings$bwFallback <- .completeChnlSettingsBwFallback(
@@ -211,7 +251,8 @@
     popGate = chnlSettings$popGate,
     chnlCut = chnl,
     pathProject = pathProject,
-    bwArgs = bwArgs
+    bwArgs = bwArgs,
+    xList = xList
   )
 
   chnlSettings$biasUns <- .completeChnlSettingsBiasUns(
@@ -235,7 +276,8 @@
     popGate = chnlSettings$popGate,
     chnlCut = chnl,
     indBatchList = indBatchList,
-    pathProject = pathProject
+    pathProject = pathProject,
+    exListByBatch = exListByBatch
   )
 
   chnlSettings
@@ -311,20 +353,27 @@
   .data,
   popGate,
   chnlCut,
-  pathProject
+  pathProject,
+  exListByBatch = NULL
 ) {
+  if (is.null(exListByBatch)) {
+    exListByBatch <- purrr::map(
+      .completeChnlSettingsBatchInd(indBatchList),
+      function(i) {
+        .getExList(
+          .data = .data,
+          indBatch = indBatchList[[i]],
+          pop = popGate,
+          chnlCut = chnlCut,
+          batch = names(indBatchList)[i],
+          pathProject = pathProject
+        )
+      }
+    )
+  }
   purrr::map(
-    .completeChnlSettingsBatchInd(indBatchList),
-    function(i) {
-      exList <- .getExList(
-        .data = .data,
-        indBatch = indBatchList[[i]],
-        pop = popGate,
-        chnlCut,
-        batch = names(indBatchList)[i],
-        pathProject = pathProject
-      )
-
+    exListByBatch,
+    function(exList) {
       purrr::map(exList, function(ex) {
         xVec <- .getCut(ex)
         xVec <- xVec[is.finite(xVec)]
@@ -347,7 +396,8 @@
   popGate,
   chnlCut,
   pathProject,
-  bwArgs
+  bwArgs,
+  xList = NULL
 ) {
   if (.completeChnlSettingsBwLimitIsNone(bwLimit)) {
     return(noneValue)
@@ -357,13 +407,15 @@
     return(bwLimit)
   }
 
-  xList <- .completeChnlSettingsGetBwExprList(
-    indBatchList = indBatchList,
-    .data = .data,
-    popGate = popGate,
-    chnlCut = chnlCut,
-    pathProject = pathProject
-  )
+  if (is.null(xList)) {
+    xList <- .completeChnlSettingsGetBwExprList(
+      indBatchList = indBatchList,
+      .data = .data,
+      popGate = popGate,
+      chnlCut = chnlCut,
+      pathProject = pathProject
+    )
+  }
 
   bwVec <- purrr::map_dbl(xList, function(xVec) {
     as.numeric(do.call(.bwCalcOne, c(
@@ -388,19 +440,22 @@
   popGate,
   chnlCut,
   pathProject,
-  bwArgs
+  bwArgs,
+  xList = NULL
 ) {
   if (!.completeChnlSettingsBwLimitIsAuto(bwFallback)) {
     return(bwFallback)
   }
 
-  xList <- .completeChnlSettingsGetBwExprList(
-    indBatchList = indBatchList,
-    .data = .data,
-    popGate = popGate,
-    chnlCut = chnlCut,
-    pathProject = pathProject
-  )
+  if (is.null(xList)) {
+    xList <- .completeChnlSettingsGetBwExprList(
+      indBatchList = indBatchList,
+      .data = .data,
+      popGate = popGate,
+      chnlCut = chnlCut,
+      pathProject = pathProject
+    )
+  }
 
   if (length(xList) == 0L) {
     return(.Machine$double.eps)
@@ -440,28 +495,35 @@
   popGate,
   chnlCut,
   indBatchList,
-  pathProject
+  pathProject,
+  exListByBatch = NULL
 ) {
   if (!is.null(cpMin)) {
     return(cpMin)
   }
   .debug("calculating cpMin automatically") # nolint
+  if (is.null(exListByBatch)) {
+    exListByBatch <- purrr::map(
+      .completeChnlSettingsBatchInd(indBatchList),
+      function(i) {
+        .getExList(
+          # nolint
+          .data = .data,
+          indBatch = indBatchList[[i]],
+          pop = popGate,
+          chnlCut = chnlCut,
+          batch = names(indBatchList)[i],
+          pathProject = pathProject
+        )
+      }
+    )
+  }
   purrr::map(
-    .completeChnlSettingsBatchInd(indBatchList),
-    function(i) {
-      exList <- .getExList(
-        # nolint
-        .data = .data,
-        indBatch = indBatchList[[i]],
-        pop = popGate,
-        chnlCut,
-        batch = names(indBatchList)[i],
-        pathProject = pathProject
-      )
+    exListByBatch,
+    function(exList) {
       purrr::map_dbl(exList, function(ex) {
-        stats::median(.getCut(ex)[.getCut(ex) > min(.getCut(ex))], na.rm = TRUE)[[
-          1
-        ]] # nolint
+        cutVals <- .getCut(ex)
+        stats::median(cutVals[cutVals > min(cutVals)], na.rm = TRUE)[[1]]
       })
     }
   ) |>

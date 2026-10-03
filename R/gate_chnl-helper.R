@@ -47,6 +47,15 @@
   # =========================
 
   if (!is.null(chnlSettings$tolClust)) {
+    exLookup <- .getCpClusterLocExLookup(
+      .data = .data,
+      indBatchList = indBatchList,
+      chnlSettings = chnlSettings,
+      filterOtherCytPos = FALSE,
+      calcCytPosGates = calcCytPosGates,
+      gateTbl = gateTbl,
+      pathProject = pathProject
+    )
     gateTblCluster <- purrr::map_df(
       unique(gateTbl$gateName),
       function(gn) {
@@ -60,7 +69,8 @@
           stage = stage,
           pathProject = pathProject,
           calcCytPosGates = calcCytPosGates,
-          indBatchList = indBatchList
+          indBatchList = indBatchList,
+          exLookup = exLookup
         )
 
         gateTblCluster |>
