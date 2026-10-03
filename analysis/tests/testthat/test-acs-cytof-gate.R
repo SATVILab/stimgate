@@ -1,4 +1,5 @@
 root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
+script_helper <- file.path(root_dir, "scripts", "r", "acs_cytof-helper.R")
 script_gate <- file.path(root_dir, "scripts", "r", "acs_cytof-gate.R")
 qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
 launcher_path <- file.path(
@@ -10,6 +11,7 @@ launcher_path <- file.path(
 
 .load_acs_gate_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
+  source(script_helper, local = env)
   source(script_gate, local = env)
   env
 }
@@ -92,9 +94,9 @@ test_that("analysis 9 uses one runner for the tester and configured populations"
   )
   expect_true(grepl(".acsCytofRunPopulationSafe(", content, fixed = TRUE))
   expect_true(grepl('outputGroup = "tester"', content, fixed = TRUE))
-  expect_true(grepl("furrr::future_map", content, fixed = TRUE))
+  expect_true(grepl(".acsCytofMapPopulations(", content, fixed = TRUE))
   expect_true(grepl(
-    ".acsCytofRunComparisonMethods(",
+    ".acsCytofRunComparisonMethods",
     content,
     fixed = TRUE
   ))
@@ -146,13 +148,22 @@ test_that("analysis 9 preprocessing reaches every configured population", {
     content,
     fixed = TRUE
   ))
-  expect_true(grepl("analysis_seed <- 20260823L", content, fixed = TRUE))
-  expect_true(grepl("set.seed(analysis_seed)", content, fixed = TRUE))
   expect_true(grepl(
-    "seed = analysis_seed",
+    "runPreprocessingPlots = run_preprocessing_plots_vec_by_pop[[pop]]",
     content,
     fixed = TRUE
   ))
+  expect_true(grepl("analysis_seed <- 20260823L", content, fixed = TRUE))
+  expect_true(grepl("set.seed(analysis_seed)", content, fixed = TRUE))
+  # Both the StimGate and comparator population maps use the analysis seed.
+  expect_equal(
+    lengths(regmatches(
+      content,
+      gregexpr("seed = analysis_seed", content, fixed = TRUE)
+    )),
+    2L
+  )
+  expect_false(grepl("seed = TRUE", content, fixed = TRUE))
   expect_false(grepl(
     'Sys.setenv("STIMGATE_DEBUG" = "TRUE")',
     content,
@@ -164,10 +175,15 @@ test_that("analysis 9 does not continue after a population-stage failure", {
   content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
 
   expect_true(grepl(
-    "ACS population preprocessing/StimGate runs failed:",
+    'label = "ACS population preprocessing/StimGate runs"',
     content,
     fixed = TRUE
   ))
+  helper_body <- paste(
+    deparse(body(.load_acs_gate_env()$.acsCytofMapPopulations)),
+    collapse = "\n"
+  )
+  expect_true(grepl("stop(", helper_body, fixed = TRUE))
   expect_false(grepl(
     '"ACS CyTOF populations failed: "',
     content,
@@ -200,4 +216,69 @@ test_that("analysis 9 Slurm launcher exports the controls the QMD reads", {
     fixed = TRUE
   ))
   expect_true(grepl("#SBATCH --ntasks=6", content, fixed = TRUE))
+})
+
+test_that("analysis 9 YAML defaults agree with the env fallbacks and are safe", {
+  lines <- readLines(qmd_path, warn = FALSE)
+  yaml_end <- which(lines == "---")[2L]
+  yaml_params <- yaml::yaml.load(paste(lines[2:(yaml_end - 1L)], collapse = "\n"))
+  content <- paste(lines, collapse = "\n")
+
+  expect_false(yaml_params$params$run_preprocessing)
+  expect_false(yaml_params$params$run_stimgate)
+  expect_false(yaml_params$params$run_comparators)
+  expect_false(yaml_params$params$run_plots)
+  expect_false(yaml_params$execute$warning)
+  expect_false(yaml_params$execute$message)
+
+  # The setup-chunk fallback must equal the YAML value for every flag; run_plots
+  # is the one deliberate exception (interactive default TRUE, as in the other
+  # QMDs).
+  for (flag in c("run_preprocessing", "run_stimgate", "run_comparators")) {
+    pattern <- paste0(
+      '"', flag, '",\\s*"[A-Z_]+",\\s*(TRUE|FALSE)'
+    )
+    fallback <- sub(
+      ".*,\\s*(TRUE|FALSE)$",
+      "\\1",
+      regmatches(content, regexpr(pattern, content))
+    )
+    expect_identical(fallback, "FALSE", info = flag)
+  }
+})
+
+test_that("a replaced directory keeps its last good content on failure", {
+  env <- .load_acs_gate_env()
+  path_dir <- tempfile("acs-replace-")
+  withr::defer(unlink(
+    list.files(dirname(path_dir), pattern = basename(path_dir), full.names = TRUE),
+    recursive = TRUE
+  ))
+
+  env$.acsCytofReplaceDir(path_dir, function(path_tmp) {
+    writeLines("v1", file.path(path_tmp, "out.txt"))
+  })
+  expect_equal(readLines(file.path(path_dir, "out.txt")), "v1")
+
+  expect_error(
+    env$.acsCytofReplaceDir(path_dir, function(path_tmp) {
+      writeLines("partial", file.path(path_tmp, "out.txt"))
+      stop("gating failed")
+    }),
+    "gating failed"
+  )
+  expect_equal(readLines(file.path(path_dir, "out.txt")), "v1")
+  expect_equal(
+    list.files(dirname(path_dir), pattern = paste0("^", basename(path_dir))),
+    basename(path_dir)
+  )
+
+  env$.acsCytofReplaceDir(path_dir, function(path_tmp) {
+    writeLines("v2", file.path(path_tmp, "out.txt"))
+  })
+  expect_equal(readLines(file.path(path_dir, "out.txt")), "v2")
+  expect_equal(
+    list.files(dirname(path_dir), pattern = paste0("^", basename(path_dir))),
+    basename(path_dir)
+  )
 })

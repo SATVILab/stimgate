@@ -1,5 +1,6 @@
 root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
 script_runtime <- file.path(root_dir, "scripts", "r", "analysis-runtime.R")
+script_helper <- file.path(root_dir, "scripts", "r", "acs_cytof-helper.R")
 script_gate <- file.path(root_dir, "scripts", "r", "acs_cytof-gate.R")
 script_methods <- file.path(root_dir, "scripts", "r", "acs_cytof-methods.R")
 script_manual <- file.path(root_dir, "scripts", "r", "acs_cytof-manual.R")
@@ -10,6 +11,7 @@ qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
 .load_acs_method_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_runtime, local = env)
+  source(script_helper, local = env)
   source(script_gate, local = env)
   source(script_methods, local = env)
   source(script_manual, local = env)
@@ -166,29 +168,47 @@ test_that("comparator cache validation includes settings and sample count", {
   expect_false(env$.acsCytofCacheIsCurrent(cache, changed_settings, nSample = 10L))
 })
 
-test_that("requested comparator runs remove both previous result files", {
+test_that("a failed comparator rerun keeps the previous results", {
   env <- .load_acs_method_env()
-  path_dir <- tempfile("acs-comparator-results-")
-  dir.create(path_dir, recursive = TRUE)
-  withr::defer(unlink(path_dir, recursive = TRUE))
-
-  paths <- list(
-    fbeta = file.path(path_dir, "fbeta", "result.rds"),
-    tailgate = file.path(path_dir, "tailgate", "result.rds"),
-    gs = file.path(path_dir, "gs")
+  path_base <- tempfile("acs-comparator-results-")
+  withr::defer(unlink(path_base, recursive = TRUE))
+  paths <- env$.acsCytofPopulationPaths(
+    pop = "cd4",
+    pathFcsBase = file.path(path_base, "fcs"),
+    pathGsBase = file.path(path_base, "gs"),
+    pathScratchBase = file.path(path_base, "scratch")
   )
+  dir.create(paths$gs, recursive = TRUE)
   dir.create(dirname(paths$fbeta), recursive = TRUE)
   dir.create(dirname(paths$tailgate), recursive = TRUE)
   saveRDS("old fbeta", paths$fbeta)
   saveRDS("old tailgate", paths$tailgate)
-  writeLines("keep", paths$gs)
 
-  removed <- env$.acsCytofRemoveComparatorResults(paths)
+  testthat::local_mocked_bindings(
+    load_gs = function(...) as.list(seq_len(10L)),
+    .package = "flowWorkspace"
+  )
+  run_with <- function(fail_method) {
+    env$.acsCytofRunComparator <- function(gs, pop, method, ...) {
+      if (identical(method, fail_method)) stop("boom")
+      list(method = method, new = TRUE)
+    }
+    env$.acsCytofRunComparisonMethods(
+      pop = "cd4",
+      pathFcsBase = file.path(path_base, "fcs"),
+      pathGsBase = file.path(path_base, "gs"),
+      pathScratchBase = file.path(path_base, "scratch"),
+      runMethods = TRUE
+    )
+  }
 
-  expect_setequal(removed, c(paths$fbeta, paths$tailgate))
-  expect_false(file.exists(paths$fbeta))
-  expect_false(file.exists(paths$tailgate))
-  expect_true(file.exists(paths$gs))
+  expect_error(run_with("tailgate"), "boom")
+  expect_identical(readRDS(paths$fbeta), "old fbeta")
+  expect_identical(readRDS(paths$tailgate), "old tailgate")
+
+  expect_no_error(run_with("none"))
+  expect_true(readRDS(paths$fbeta)$new)
+  expect_true(readRDS(paths$tailgate)$new)
 })
 
 test_that("ACS methods stay sequential and always replace previous results", {
@@ -201,11 +221,8 @@ test_that("ACS methods stay sequential and always replace previous results", {
   expect_true(grepl("lapply(methodVec", runner_body, fixed = TRUE))
   expect_false(grepl("future_map", runner_body, fixed = TRUE))
   expect_true(grepl(".acsCytofWriteComparatorCache", runner_body, fixed = TRUE))
-  expect_true(grepl(
-    ".acsCytofRemoveComparatorResults",
-    runner_body,
-    fixed = TRUE
-  ))
+  expect_false(grepl("Remove", runner_body, fixed = TRUE))
+  expect_false(grepl("unlink", runner_body, fixed = TRUE))
   expect_false(grepl("Using cached", runner_body, fixed = TRUE))
   expect_false("overwrite" %in% names(formals(
     env$.acsCytofRunComparisonMethods
@@ -236,19 +253,45 @@ test_that("ACS comparator populations run in parallel", {
   ]
   chunk_body <- paste(chunk_lines, collapse = "\n")
 
-  expect_true(grepl("furrr::future_map", chunk_body, fixed = TRUE))
+  expect_true(grepl(".acsCytofMapPopulations(", chunk_body, fixed = TRUE))
   expect_true(grepl(
     ".acsCytofRunComparisonMethodsSafe",
     chunk_body,
     fixed = TRUE
   ))
-  expect_true(grepl("future::multisession", chunk_body, fixed = TRUE))
+  expect_true(grepl("seed = analysis_seed", chunk_body, fixed = TRUE))
   expect_true(grepl("pathFbeta = path_fbeta", chunk_body, fixed = TRUE))
-  expect_true(grepl(
-    "finally = future::plan(old_comparator_plan)",
-    chunk_body,
-    fixed = TRUE
-  ))
+
+  helper_body <- paste(
+    deparse(body(.load_acs_method_env()$.acsCytofMapPopulations)),
+    collapse = "\n"
+  )
+  expect_true(grepl("furrr::future_map", helper_body, fixed = TRUE))
+  expect_true(grepl("future::multisession", helper_body, fixed = TRUE))
+  expect_true(grepl("future::plan(oldPlan)", helper_body, fixed = TRUE))
+})
+
+test_that("FCS files missing from the manual sample map are dropped with a warning", {
+  skip_if_not_installed("DataTidyACSCyTOFFAUST")
+  env <- .load_acs_method_env()
+  path_fcs <- tempfile("acs-fcs-")
+  withr::defer(unlink(path_fcs, recursive = TRUE))
+  dir.create(file.path(path_fcs, "cd4"), recursive = TRUE)
+  fcs_names <- sprintf("file%02d.fcs", 1:10)
+  file.create(file.path(path_fcs, "cd4", fcs_names))
+  clean <- DataTidyACSCyTOFFAUST::clean_fcs_for_matching(fcs_names)
+  lookup <- tibble::tibble(
+    MatchFCSName = clean[-3L],
+    SampleID = paste0("s", 1:9),
+    Stim = "mtb"
+  )
+
+  expect_warning(
+    out <- env$.acsCytofManualSampleMapFromFcs(path_fcs, "cd4", lookup),
+    "file03.fcs"
+  )
+  expect_equal(nrow(out), 9L)
+  expect_false("3" %in% out$ind)
 })
 
 test_that("manual formatting uses the shared cytometry combination utilities", {
