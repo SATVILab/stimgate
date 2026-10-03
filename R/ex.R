@@ -15,7 +15,7 @@
   # get expression .data for each batch
   lapply(indBatch, function(i) {
     .getEx(
-      .data = .data[[i]],
+      .data = if (is.null(.data)) NULL else .data[[i]],
       pop = pop,
       chnlCut = chnlCut,
       extraChnl = extraChnl,
@@ -48,6 +48,13 @@
       stats::setNames(chnl) |>
       tibble::as_tibble()
   } else {
+    if (is.null(.data)) {
+      stop(
+        "Incomplete expression cache for sample ", ind,
+        ", population ", pop, ", channel(s) ", paste(chnl, collapse = ", "),
+        ". Parallel channel workers require a complete, accessible disk cache."
+      )
+    }
     fr <- flowWorkspace::gh_pop_get_data(.data, y = pop)
     exNew <- flowCore::exprs(fr)[, chnl, drop = FALSE] |>
       tibble::as_tibble()
