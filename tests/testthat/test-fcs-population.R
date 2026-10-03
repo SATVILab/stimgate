@@ -27,7 +27,7 @@ test_that("FCS export selects events from the requested population", {
     pathDirSave = output, chnl = chnl, gateTbl = gates,
     gateTypeCytPos = "base"
   )
-  files <- list.files(output, full.names = TRUE)
+  files <- list.files(output, pattern = "\\.fcs$", full.names = TRUE)
   expect_length(files, 1L)
   actual <- flowCore::exprs(
     flowCore::read.FCS(files[[1]], transformation = FALSE)

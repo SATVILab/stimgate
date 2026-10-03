@@ -81,7 +81,8 @@ test_that("writeStimFCS runs with basic parameters", {
   ))
 
   # Test return value
-  expect_equal(result, pathDirSave)
+  expect_equal(attr(result, "pathDirSave"), pathDirSave)
+  expect_s3_class(result, "tbl_df")
 
   # Test directory was created
   expect_true(dir.exists(pathDirSave))
@@ -138,7 +139,8 @@ test_that("writeStimFCS works with different gateUnsMethod options", {
       gateUnsMethod = method
     )
 
-    expect_equal(result, pathDirSave)
+    expect_equal(attr(result, "pathDirSave"), pathDirSave)
+    expect_s3_class(result, "tbl_df")
     expect_true(dir.exists(pathDirSave))
     # Should have some files (at least one sample should have positive cells)
     expect_true(length(list.files(pathDirSave, pattern = "\\.fcs$")) >= 0)
@@ -342,7 +344,7 @@ test_that("writeStimFCS works with pre-provided gate table", {
     gateTbl = gateTbl
   )
 
-  expect_equal(result, pathDirSave)
+  expect_equal(attr(result, "pathDirSave"), pathDirSave)
   expect_true(dir.exists(pathDirSave))
   unlink(pathDirSave, recursive = TRUE)
 })
@@ -376,7 +378,7 @@ test_that("writeStimFCS works with channel filtering", {
     chnl = exampleData$chnl[[1]] # Only first marker
   )
 
-  expect_equal(result, pathDirSave)
+  expect_equal(attr(result, "pathDirSave"), pathDirSave)
   expect_true(dir.exists(pathDirSave))
 
   # Test with NULL chnl (should use all available)
@@ -390,7 +392,7 @@ test_that("writeStimFCS works with channel filtering", {
     chnl = NULL
   )
 
-  expect_equal(resultAll, pathDirSaveAll)
+  expect_equal(attr(resultAll, "pathDirSave"), pathDirSaveAll)
   expect_true(dir.exists(pathDirSaveAll))
   unlink(pathDirSave, recursive = TRUE)
 })
@@ -412,7 +414,7 @@ test_that("writeStimFCS handles transformation parameters", {
     transChnl = exampleData$chnl[[1]]
   )
 
-  expect_equal(result, pathDirSave)
+  expect_equal(attr(result, "pathDirSave"), pathDirSave)
   expect_true(dir.exists(pathDirSave))
 
   # Verify files were created
@@ -583,7 +585,7 @@ test_that("writeStimFCS handles edge case: empty data", {
     "No stimulation-positive cells"
   )
 
-  expect_equal(result, pathDirSave)
+  expect_equal(attr(result, "pathDirSave"), pathDirSave)
   expect_true(dir.exists(pathDirSave))
   unlink(pathDirSave, recursive = TRUE)
 })
@@ -643,7 +645,7 @@ test_that("writeStimFCS integrates with stimgate workflow", {
   )
 
   # Step 3: Verify integration worked
-  expect_equal(result, pathDirSave)
+  expect_equal(attr(result, "pathDirSave"), pathDirSave)
   expect_true(dir.exists(pathDirSave))
 
   # Verify that gate information was properly used
@@ -695,7 +697,7 @@ test_that("writeStimFCS respects working directory", {
 
       # Should create directory relative to current working directory
       expect_true(dir.exists(file.path(tempWd, pathDirSave)))
-      expect_equal(result, pathDirSave)
+      expect_equal(attr(result, "pathDirSave"), pathDirSave)
     },
     finally = {
       setwd(originalWd)
@@ -733,7 +735,7 @@ test_that("writeStimFCS handles transformation edge cases", {
     transChnl = NULL # Should apply to all columns
   )
 
-  expect_equal(result, pathDirSave)
+  expect_equal(attr(result, "pathDirSave"), pathDirSave)
   expect_true(dir.exists(pathDirSave))
 
   # Test with NULL transformation function
@@ -749,7 +751,176 @@ test_that("writeStimFCS handles transformation edge cases", {
     transChnl = exampleData$chnl[[1]]
   )
 
-  expect_equal(resultNull, pathDirSaveNull)
+  expect_equal(attr(resultNull, "pathDirSave"), pathDirSaveNull)
   expect_true(dir.exists(pathDirSaveNull))
   unlink(pathDirSave, recursive = TRUE)
 })
+
+test_that("writeStimFCS generates a complete manifest matching files on disk", {
+  pathDirSave <- file.path(tempdir(), "fcs_output_manifest_test")
+  withr::defer(unlink(pathDirSave, recursive = TRUE))
+
+  manifest <- writeStimFCS(
+    pathProject = pathProject,
+    .data = gs,
+    indBatchList = exampleData$batchList,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl
+  )
+
+  expect_s3_class(manifest, "tbl_df")
+  expect_named(
+    manifest,
+    c("ind", "batch", "fileName", "nCellPos", "written", "reason")
+  )
+  expect_equal(nrow(manifest), length(gs))
+  expect_equal(manifest$ind, as.character(seq_along(gs)))
+  expect_type(manifest$ind, "character")
+  expect_type(manifest$batch, "character")
+  expect_type(manifest$fileName, "character")
+  expect_type(manifest$nCellPos, "integer")
+  expect_type(manifest$written, "logical")
+  expect_type(manifest$reason, "character")
+
+  validReasons <- c(
+    "written", "no_positive_cells", "none_after_exclusion", "empty_sample"
+  )
+  expect_true(all(manifest$reason %in% validReasons))
+  expect_equal(attr(manifest, "pathDirSave"), pathDirSave)
+
+  manifestCsv <- file.path(pathDirSave, "manifest.csv")
+  expect_true(file.exists(manifestCsv))
+
+  # Consistency with files on disk
+  fcsOnDisk <- list.files(pathDirSave, pattern = "\\.fcs$")
+  expect_setequal(fcsOnDisk, manifest$fileName[manifest$written])
+
+  for (i in seq_len(nrow(manifest))) {
+    fcsPath <- file.path(pathDirSave, manifest$fileName[[i]])
+    if (manifest$written[[i]]) {
+      expect_true(file.exists(fcsPath))
+      expect_gt(manifest$nCellPos[[i]], 0L)
+      expect_equal(manifest$reason[[i]], "written")
+    } else {
+      expect_false(file.exists(fcsPath))
+      expect_equal(manifest$nCellPos[[i]], 0L)
+      expect_true(manifest$reason[[i]] != "written")
+    }
+  }
+})
+
+test_that("writeStimFCS populates batch column and NA for unknown batches", {
+  pathDirSave <- file.path(tempdir(), "fcs_output_manifest_batch")
+  withr::defer(unlink(pathDirSave, recursive = TRUE))
+
+  batchListNamed <- list(batchA = c(1, 2), batchB = c(3, 4))
+  manifest <- writeStimFCS(
+    pathProject = pathProject,
+    .data = gs,
+    indBatchList = batchListNamed,
+    pathDirSave = pathDirSave,
+    chnl = exampleData$chnl
+  )
+
+  expect_equal(manifest$batch[1:2], c("batchA", "batchA"))
+  expect_equal(manifest$batch[3:4], c("batchB", "batchB"))
+
+  # Test sample not in indBatchList gets NA
+  pathDirSaveUnknown <- file.path(tempdir(), "fcs_output_manifest_unknown")
+  withr::defer(unlink(pathDirSaveUnknown, recursive = TRUE))
+
+  gateTbl3 <- data.frame(
+    chnl = rep(exampleData$chnl, 3),
+    marker = rep(c("BC1", "BC2"), 3),
+    batch = rep(c("batchA", "batchA", "batchB"), each = 2),
+    ind = rep(c("1", "2", "3"), each = 2),
+    gate = 0.5,
+    gateCyt = 0.5,
+    gateName = "gate"
+  )
+  manifestUnknown <- writeStimFCS(
+    pathProject = pathProject,
+    .data = gs[1:3],
+    indBatchList = list(batchA = c(1, 2)),
+    pathDirSave = pathDirSaveUnknown,
+    chnl = exampleData$chnl,
+    gateTbl = gateTbl3
+  )
+  expect_equal(manifestUnknown$batch[1:2], c("batchA", "batchA"))
+  expect_true(is.na(manifestUnknown$batch[[3]]))
+})
+
+test_that(
+  "writeStimFCS handles forced no-positive and exclusion cases in manifest",
+  {
+    pathDirSaveHigh <- file.path(tempdir(), "fcs_output_manifest_high")
+    withr::defer(unlink(pathDirSaveHigh, recursive = TRUE))
+
+    gateTblHigh <- data.frame(
+      chnl = rep(exampleData$chnl, length(gs)),
+      marker = rep(c("BC1", "BC2"), length(gs)),
+      batch = rep("batch_1", length(gs) * 2),
+      ind = rep(as.character(seq_along(gs)), each = 2),
+      gate = 999999,
+      gateCyt = 999999,
+      gateName = "gate"
+    )
+
+    manifestHigh <- writeStimFCS(
+      pathProject = pathProject,
+      .data = gs,
+      indBatchList = exampleData$batchList,
+      pathDirSave = pathDirSaveHigh,
+      chnl = exampleData$chnl,
+      gateTbl = gateTblHigh
+    )
+
+    expect_true(all(!manifestHigh$written))
+    expect_true(all(manifestHigh$nCellPos == 0L))
+    expect_true(all(manifestHigh$reason == "no_positive_cells"))
+    expect_length(list.files(pathDirSaveHigh, pattern = "\\.fcs$"), 0L)
+    expect_true(file.exists(file.path(pathDirSaveHigh, "manifest.csv")))
+
+    # Forced none_after_exclusion via combnExc
+    pathDirSaveExc <- file.path(tempdir(), "fcs_output_manifest_exc")
+    withr::defer(unlink(pathDirSaveExc, recursive = TRUE))
+
+    combnExcAll <- list(
+      exampleData$chnl[[1]],
+      exampleData$chnl[[2]],
+      exampleData$chnl
+    )
+    manifestExc <- writeStimFCS(
+      pathProject = pathProject,
+      .data = gs,
+      indBatchList = exampleData$batchList,
+      pathDirSave = pathDirSaveExc,
+      chnl = exampleData$chnl,
+      combnExc = combnExcAll
+    )
+
+    expect_true(all(!manifestExc$written))
+    expect_true(all(manifestExc$nCellPos == 0L))
+    validExcReasons <- c("no_positive_cells", "none_after_exclusion")
+    expect_true(all(manifestExc$reason %in% validExcReasons))
+    expect_true("none_after_exclusion" %in% manifestExc$reason)
+    expect_length(list.files(pathDirSaveExc, pattern = "\\.fcs$"), 0L)
+    expect_true(file.exists(file.path(pathDirSaveExc, "manifest.csv")))
+    # Also test mult = TRUE with high gates
+    pathDirSaveMult <- file.path(tempdir(), "fcs_output_manifest_mult")
+    withr::defer(unlink(pathDirSaveMult, recursive = TRUE))
+
+    manifestMult <- writeStimFCS(
+      pathProject = pathProject,
+      .data = gs,
+      indBatchList = exampleData$batchList,
+      pathDirSave = pathDirSaveMult,
+      chnl = exampleData$chnl,
+      mult = TRUE,
+      gateTbl = gateTblHigh
+    )
+    expect_true(all(!manifestMult$written))
+    expect_true(all(manifestMult$nCellPos == 0L))
+    expect_true(all(manifestMult$reason == "no_positive_cells"))
+  }
+)

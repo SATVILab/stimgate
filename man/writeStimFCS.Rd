@@ -48,7 +48,8 @@ writeStimFCS(
 \item{gateUnsMethod}{character. Method to calculate unstimulated thresholds.}
 }
 \value{
-The output directory path, invisibly.
+A tibble manifest with one row per sample, invisibly. The output
+directory path is attached as the attribute \code{"pathDirSave"}.
 }
 \description{
 Uses the gates to write FCS files of marker-positive FCS files.
