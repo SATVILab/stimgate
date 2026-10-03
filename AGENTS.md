@@ -207,6 +207,12 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   must use the read-only current-results context and must not create staging state.
 - `run_plots = FALSE` must stop before optional plot/report chunks; multi-chunk
   simulation renders should not write shared plot files concurrently.
+- For adaptive normalised bandwidth estimation, `normAdaptiveNcell` controls
+  the fixed-size synthetic core/extra samples. Do not vary `bwNcellMax` as if
+  it controlled that adaptive branch unless the implementation changes.
+- When candidate estimators are compared on the same simulated data-generating
+  scenario, use the same scenario seed across methods unless independent
+  simulation noise is itself part of the intended comparison.
 - For end-to-end background-subtracted-frequency performance, score the final
   sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
