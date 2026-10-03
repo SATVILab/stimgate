@@ -97,6 +97,7 @@ jobs:
             any::withr
             SATVILab/simcyto
             github::RGLab/cytoUtils
+            bioc::openCyto
             any::quarto
             any::rmarkdown
             any::knitr
