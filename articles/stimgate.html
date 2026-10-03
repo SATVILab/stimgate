@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.9</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -124,6 +124,14 @@ cytokine-positive cells</li>
 <span><span class="op">)</span></span></code></pre></div>
 <p>For more detailed examples and advanced usage, please refer to the
 function documentation.</p>
+<p><code><a href="../reference/gateStim.html">gateStim()</a></code> takes its data and marker arguments directly
+(<code>pathProject</code>, <code>.data</code>, <code>batchList</code>,
+<code>marker</code> or <code>chnl</code>, <code>popGate</code>,
+<code>biasUns</code>, <code>bw</code>). All other method, bandwidth and
+thresholding settings are supplied through its <code>control</code>
+argument as a <code><a href="../reference/stimControl.html">stimControl()</a></code> object, and per-marker
+overrides through <code>markerControl</code>, keyed by marker label or
+channel name.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; R version 4.6.1 (2026-06-24)</span></span>
@@ -147,7 +155,7 @@ function documentation.</p>
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] stimgate_0.99.9</span></span>
+<span><span class="co">#&gt; [1] stimgate_0.99.10</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] gtable_0.3.6        jsonlite_2.0.0      dplyr_1.2.1        </span></span>

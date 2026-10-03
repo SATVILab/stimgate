@@ -310,6 +310,8 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   `is.finite(threshold)`.
 - Checks that analysis wrapper parameters forwarded to
   [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  or
+  [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
   still exist in the current package API.
 - Checks that removed arguments (e.g. `calcSinglePosGates`) are not
   reintroduced.
@@ -692,6 +694,20 @@ applying the saved `biasUns`; channels without a saved bias use zero.
 ------------------------------------------------------------------------
 
 ## 7. Specific Package Policies & Design Notes
+
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+keeps data, batch, marker/channel and population arguments plus the
+user-facing `biasUns` and `bw` tuning knobs. All other tuning belongs in
+the validated
+[`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
+object passed as `control`; that includes the gating switches
+`calcCytPosGates` and `minCell`. Per-marker overrides belong in
+`markerControl`, keyed by marker labels or channel names: `bw` and
+`minCell` are allowed per marker, whereas `calcCytPosGates` is
+global-only and rejected there. Threshold sharing is controlled by
+logical `clusterGates`. Do not restore the removed tuning arguments on
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+or the dead `gateQuant` / `maxPosProbX` settings.
 
 Vectorised gate-line layers must preserve overlapping lines for
 coincident thresholds: give each line a distinct group, since ggplot2

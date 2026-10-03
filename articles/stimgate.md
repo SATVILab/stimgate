@@ -55,6 +55,15 @@ plots <- stimgate_plot(
 For more detailed examples and advanced usage, please refer to the
 function documentation.
 
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+takes its data and marker arguments directly (`pathProject`, `.data`,
+`batchList`, `marker` or `chnl`, `popGate`, `biasUns`, `bw`). All other
+method, bandwidth and thresholding settings are supplied through its
+`control` argument as a
+[`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
+object, and per-marker overrides through `markerControl`, keyed by
+marker label or channel name.
+
 ``` r
 
 sessionInfo()
@@ -79,7 +88,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] stimgate_0.99.9
+#> [1] stimgate_0.99.10
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] gtable_0.3.6        jsonlite_2.0.0      dplyr_1.2.1        

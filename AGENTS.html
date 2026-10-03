@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.9</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -214,7 +214,7 @@
 <li>Simulation wrappers that claim to mirror a current package calculation must use the same preprocessing as the package implementation. If a wrapper keeps a legacy preprocessing option for other analyses, set the current behaviour explicitly in the QMD rather than relying on the wrapper default.</li>
 <li>For end-to-end background-subtracted-frequency performance, score the final sample-level <code>loc_sample</code> <code>propRespEst</code> against <code>propRespTruth</code>. <code>propBsEst</code> is an internal local-FDR diagnostic used during threshold selection and must not silently replace the final frequency estimand.</li>
 <li>Preserve StimGate threshold provenance in method-comparison outputs. A finite high-value fallback is still a fallback: use <code>locGenerated</code>, <code>locGeneratedDirect</code>, <code>locSource</code> and <code>locReason</code> from the final gate table rather than inferring success solely from <code>is.finite(threshold)</code>.</li>
-<li>Checks that analysis wrapper parameters forwarded to <code><a href="reference/gateStim.html">gateStim()</a></code> still exist in the current package API.</li>
+<li>Checks that analysis wrapper parameters forwarded to <code><a href="reference/gateStim.html">gateStim()</a></code> or <code><a href="reference/stimControl.html">stimControl()</a></code> still exist in the current package API.</li>
 <li>Checks that removed arguments (e.g. <code>calcSinglePosGates</code>) are not reintroduced.</li>
 <li>Smoke calls for representative <code>.simBandwidth*()</code> / comparison-wrapper functions.</li>
 <li>Numerical agreement between <code>.simBandwidthBwOne()</code> and <code>stimgate:::.bwCalcOne()</code>.</li>
@@ -485,6 +485,7 @@
 </div>
 <div class="section level2">
 <h2 id="id_7-specific-package-policies--design-notes">7. Specific Package Policies &amp; Design Notes<a class="anchor" aria-label="anchor" href="#id_7-specific-package-policies--design-notes"></a></h2>
+<p><code><a href="reference/gateStim.html">gateStim()</a></code> keeps data, batch, marker/channel and population arguments plus the user-facing <code>biasUns</code> and <code>bw</code> tuning knobs. All other tuning belongs in the validated <code><a href="reference/stimControl.html">stimControl()</a></code> object passed as <code>control</code>; that includes the gating switches <code>calcCytPosGates</code> and <code>minCell</code>. Per-marker overrides belong in <code>markerControl</code>, keyed by marker labels or channel names: <code>bw</code> and <code>minCell</code> are allowed per marker, whereas <code>calcCytPosGates</code> is global-only and rejected there. Threshold sharing is controlled by logical <code>clusterGates</code>. Do not restore the removed tuning arguments on <code><a href="reference/gateStim.html">gateStim()</a></code> or the dead <code>gateQuant</code> / <code>maxPosProbX</code> settings.</p>
 <p>Vectorised gate-line layers must preserve overlapping lines for coincident thresholds: give each line a distinct group, since ggplot2 deduplicates identical rows before drawing reference lines.</p>
 <ol style="list-style-type: decimal"><li><p><strong>Taut-string density</strong>: The piecewise-constant taut-string density used for antimode detection is provided by the internal helper <code><a href="reference/dot-tautStringPmden.html">.tautStringPmden()</a></code> (in <code>cp_uns_loc_filtering.R</code>), which wraps the native FAUST-derived C++ implementation <code>stimgate_cpPmden()</code> compiled via <code>cpp11</code> (<code>src/stimgate_cppmden.cpp</code> and <code>src/cpPmden.cpp</code>). Record cleanups to FAUST-derived native code in <code>inst/COPYRIGHTS</code>, preserving licence notices, numerical calculations and native entrypoint signatures.</p></li>
 <li><p><strong>Comparison code vs. package code</strong>: <code>R/</code> contains only StimGate implementation code. Benchmark comparisons against the tailgate method call <code>cytoUtils:::.cytokine_cutpoint()</code> from the <code>cytoUtils</code> package are implemented directly in <code>scripts/r/sim-compare-freq_bs.R</code> and <code>analysis/7-sim-compare-freq_bs.qmd</code>. Cytokine simulation logic remains in <code>scripts/r/</code> and is not installed with the package.</p></li>
