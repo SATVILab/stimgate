@@ -696,6 +696,33 @@ if (!exists("run_ctx")) {
 }
 results_read_only <- isTRUE(run_ctx$read_only)
 
+if (results_read_only) {
+  current_manifest <- .analysis_read_manifest(run_ctx$manifest_path)
+  required_params <- list(
+    analysis_semantics_version = analysis_semantics_version,
+    simulation_seed = simulation_seed
+  )
+  incompatible_params <- names(required_params)[vapply(
+    names(required_params),
+    function(nm) {
+      is.null(current_manifest) ||
+        is.null(current_manifest$params) ||
+        !nm %in% names(current_manifest$params) ||
+        !identical(current_manifest$params[[nm]], required_params[[nm]])
+    },
+    logical(1)
+  )]
+
+  if (length(incompatible_params) > 0L) {
+    stop(
+      "Canonical analysis 2 results are incompatible with the current ",
+      "analysis semantics: ",
+      paste(incompatible_params, collapse = ", "),
+      ". Rerun the simulation before plotting."
+    )
+  }
+}
+
 collate_output_dir <- if (results_read_only) {
   run_ctx$current_dir
 } else {
@@ -856,20 +883,20 @@ if (!results_read_only) {
     ""
   }
 
-  saveRDS(
+  .write_rds_atomic(
     bw_tbl,
-    file = file.path(run_ctx$staging_collated_dir, paste0("bw_tbl", collate_suffix, ".rds"))
+    file.path(run_ctx$staging_collated_dir, paste0("bw_tbl", collate_suffix, ".rds"))
   )
-  saveRDS(
+  .write_rds_atomic(
     bw_tbl_results_raw,
-    file = file.path(
+    file.path(
       run_ctx$staging_collated_dir,
       paste0("bw_tbl_results_raw", collate_suffix, ".rds")
     )
   )
-  saveRDS(
+  .write_rds_atomic(
     bw_tbl_results_summary,
-    file = file.path(
+    file.path(
       run_ctx$staging_collated_dir,
       paste0("bw_tbl_results_summary", collate_suffix, ".rds")
     )
@@ -929,12 +956,15 @@ if (!results_read_only) {
 
   if (!isTRUE(chunk_validation_ok) || length(chunk_failed_ids) > 0L) {
     stop(
-      validation_error %||%
+      if (!is.null(validation_error)) {
+        validation_error
+      } else {
         paste0(
           "Chunk contains ",
           length(chunk_failed_ids),
           " failed simulation(s)."
         )
+      }
     )
   }
 
@@ -1725,6 +1755,7 @@ for (mean_pos_setting_curr in unique(mean_pos_settings_tbl$mean_pos_setting)) {
     "fig",
     paste0("avg_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf")
   )
+  dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
   ggsave(
     filename = path_p,
     plot = p,
