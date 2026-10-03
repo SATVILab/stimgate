@@ -17,6 +17,10 @@ params:
   run_plots: false
 ---
 
+How do the core and extra bandwidths of an adaptive density affect the estimated background-subtracted response frequency? Matched unstimulated and stimulated samples are simulated with Gaussian, gamma and skewed expression distributions. The analysis varies both bandwidths, cell counts, response frequencies and the unstimulated bias, then compares final sample estimates with the simulated truth.
+
+## Set-up
+
 ```{r}
 #| label: setup
 #| include: false
@@ -28,10 +32,14 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
+root_dir <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+while (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
+  parent_dir <- dirname(root_dir)
+  if (identical(parent_dir, root_dir)) {
+    stop("Render analysis/6-sim-bw-freq_bs-adaptive.qmd from the stimgate checkout.")
+  }
+  root_dir <- parent_dir
+}
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
@@ -71,13 +79,32 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
 analysis_semantics_version <- "adaptive-bw-freq-v3"
-analysis_quick <- isTRUE(.isQuick())
-analysis_dev <- isTRUE(.isDev())
+analysis_profiles <- tryCatch(
+  projr::projr_profile_get(),
+  error = function(e) strsplit(Sys.getenv("PROJR_PROFILE"), ",", fixed = TRUE)[[1]]
+)
+analysis_quick <- if (exists(".isQuick", mode = "function")) {
+  isTRUE(.isQuick())
+} else {
+  "quick" %in% analysis_profiles
+}
+analysis_dev <- if (exists(".isDev", mode = "function")) {
+  isTRUE(.isDev())
+} else {
+  "dev" %in% analysis_profiles
+}
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
   TRUE
 ))
+
+cache_render_hint <- paste0(
+  "\nFirst run RUN_SIMULATIONS=true RUN_PLOTS=false quarto render ",
+  "analysis/6-sim-bw-freq_bs-adaptive.qmd from the repository root ",
+  "with the same dev/quick profile and scientific settings; ",
+  "complete all chunks before rendering plots."
+)
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -108,6 +135,8 @@ for (fn in c(
 ```
 
 ## Simulation and method settings
+
+The core bandwidth describes the background density; the extra bandwidth describes the high-expression component. Cluster refinement and cytokine-positive refinement are disabled to isolate the bandwidth settings.
 
 ```{r}
 #| label: actual-settings
@@ -192,6 +221,7 @@ The adaptive density has two manually fixed bandwidths: one for the background c
 
 ```{r}
 #| label: bw-manual-grid
+#| include: false
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
   prob_response = sort(unique(c(prob_response_vec, 0.002, 0.02))),
@@ -320,6 +350,8 @@ print(paste0(
 ))
 ```
 
+## Simulation
+
 Fixed settings are shared by the parallel worker and interactive rerun.
 The manifest includes the complete selected cross-chunk scientific grid.
 
@@ -379,7 +411,7 @@ all chunks and final sample results validate.
 
 ```{r}
 #| label: bw-manual-parallel
-#| results: hide
+#| include: false
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
@@ -424,39 +456,49 @@ if (isTRUE(run_simulations)) {
     run_plots <- FALSE
   }
 } else if (isTRUE(run_plots)) {
-  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+  tryCatch({
+    run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+  }, error = function(e) {
+    stop(conditionMessage(e), cache_render_hint, call. = FALSE)
+  })
 }
 ```
 
-## Read promoted results
+## Collation
+
+Only complete, validated results are promoted to the canonical cache. Plot-only renders read that cache with the same scientific settings and dev/quick profile.
 
 ```{r}
 #| label: bw-manual-collate
+#| include: false
 if (isTRUE(run_plots)) {
-  bw_tbl_results_raw <- readRDS(.analysis_current_file(
-    run_ctx = run_ctx,
-    relative_path = c("collated", "bw_tbl_results_raw.rds"),
-    required_params = analysis_required_params
-  ))
-  bw_tbl_results_summary <- readRDS(.analysis_current_file(
-    run_ctx = run_ctx,
-    relative_path = c("collated", "bw_tbl_results_summary.rds"),
-    required_params = analysis_required_params
-  ))
-  summary_tbl <- readRDS(.analysis_current_file(
-    run_ctx = run_ctx,
-    relative_path = c("collated", "summary_tbl.rds"),
-    required_params = analysis_required_params
-  ))
+  tryCatch({
+    bw_tbl_results_raw <- readRDS(.analysis_current_file(
+      run_ctx = run_ctx,
+      relative_path = c("collated", "bw_tbl_results_raw.rds"),
+      required_params = analysis_required_params
+    ))
+    bw_tbl_results_summary <- readRDS(.analysis_current_file(
+      run_ctx = run_ctx,
+      relative_path = c("collated", "bw_tbl_results_summary.rds"),
+      required_params = analysis_required_params
+    ))
+    summary_tbl <- readRDS(.analysis_current_file(
+      run_ctx = run_ctx,
+      relative_path = c("collated", "summary_tbl.rds"),
+      required_params = analysis_required_params
+    ))
+  }, error = function(e) {
+    stop(conditionMessage(e), cache_render_hint, call. = FALSE)
+  })
 } else {
   message("run_plots is false, so stopping after simulation/collation.")
 }
 ```
 
-## Plot helpers
-
 ```{r}
 #| label: plot-helpers
+#| include: false
 if (isTRUE(run_plots)) {
   bias_uns_setting_vec_plot <- bias_uns_settings_tbl |>
     dplyr::distinct(.data$bias_uns_setting) |>
@@ -468,8 +510,14 @@ if (isTRUE(run_plots)) {
 
 ### Fixed core bandwidth, varying extra bandwidth
 
+Cell count is on the logarithmic horizontal axis and median estimated frequency is on the vertical axis. Colour distinguishes extra bandwidths, panels separate response frequencies, and dashed lines mark the simulated truth; estimates nearer these lines indicate closer agreement.
+
 ```{r}
-#| label: plot-est-fixed-core
+#| label: fig-est-fixed-core
+#| fig-cap: "Median response-frequency estimates with fixed core bandwidth."
+#| fig-width: 9
+#| fig-height: 4
+#| echo: false
 if (isTRUE(run_plots)) {
   for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
     for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
@@ -548,6 +596,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+          print(p)
           ggsave(
             filename = path_p,
             plot = p,
@@ -564,8 +613,14 @@ if (isTRUE(run_plots)) {
 
 ### Fixed extra bandwidth, varying core bandwidth
 
+Cell count is on the logarithmic horizontal axis and median estimated frequency is on the vertical axis. Colour distinguishes core bandwidths and panels separate response frequencies. Compare estimates with the dashed lines marking the simulated truth.
+
 ```{r}
-#| label: plot-est-fixed-extra
+#| label: fig-est-fixed-extra
+#| fig-cap: "Median response-frequency estimates with fixed extra bandwidth."
+#| fig-width: 9
+#| fig-height: 4
+#| echo: false
 if (isTRUE(run_plots)) {
   for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
     for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
@@ -644,6 +699,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+          print(p)
           ggsave(
             filename = path_p,
             plot = p,
@@ -662,8 +718,14 @@ if (isTRUE(run_plots)) {
 
 ### Fixed core bandwidth, varying extra bandwidth
 
+Each point is a final sample estimate, with cell count on the horizontal axis and estimated frequency on the vertical axis. Colour distinguishes extra bandwidths and panels separate response frequencies. The spread around the dashed truth lines shows variation across samples and simulation iterations.
+
 ```{r}
-#| label: plot-raw-fixed-core
+#| label: fig-raw-fixed-core
+#| fig-cap: "Sample response-frequency estimates with fixed core bandwidth."
+#| fig-width: 9
+#| fig-height: 4
+#| echo: false
 if (isTRUE(run_plots)) {
   for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
     for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
@@ -740,6 +802,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+          print(p)
           ggsave(
             filename = path_p,
             plot = p,
@@ -756,8 +819,14 @@ if (isTRUE(run_plots)) {
 
 ### Fixed extra bandwidth, varying core bandwidth
 
+Each point is a final sample estimate, with cell count on the horizontal axis and estimated frequency on the vertical axis. Colour distinguishes core bandwidths and panels separate response frequencies. Compare the spread of points with the dashed lines marking the simulated truth.
+
 ```{r}
-#| label: plot-raw-fixed-extra
+#| label: fig-raw-fixed-extra
+#| fig-cap: "Sample response-frequency estimates with fixed extra bandwidth."
+#| fig-width: 9
+#| fig-height: 4
+#| echo: false
 if (isTRUE(run_plots)) {
   for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
     for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
@@ -834,6 +903,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+          print(p)
           ggsave(
             filename = path_p,
             plot = p,
@@ -856,8 +926,14 @@ and their interquartile range.
 
 ### Median thresholds: fixed core bandwidth, varying extra bandwidth
 
+Vertical lines mark median thresholds on the marker-expression axis; line type distinguishes extra bandwidths. Rows separate response frequencies and columns separate cell counts. Compare the positions of the lines to see how the extra bandwidth changes the gate.
+
 ```{r}
-#| label: plot-threshold-median-fixed-core
+#| label: fig-threshold-median-fixed-core
+#| fig-cap: "Median thresholds with fixed core bandwidth."
+#| fig-width: 10
+#| fig-height: 8
+#| echo: false
 if (isTRUE(run_plots)) {
   for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
     for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
@@ -883,7 +959,11 @@ if (isTRUE(run_plots)) {
             )
 
           p <- ggplot() +
-            facet_grid(rows = vars(.data$prob_response), scales = "free_x") +
+            facet_grid(
+              rows = vars(.data$prob_response),
+              cols = vars(.data$n_cell),
+              scales = "free_x"
+            ) +
             cowplot::theme_cowplot() +
             cowplot::background_grid(major = "xy", minor = "none") +
             theme(
@@ -908,7 +988,10 @@ if (isTRUE(run_plots)) {
             ) +
             geom_vline(
               data = threshold_tbl_curr,
-              mapping = aes(xintercept = threshold_median, linetype = bw_extra_lab),
+              mapping = aes(
+                xintercept = threshold_median, linetype = bw_extra_lab,
+                group = bw_extra_lab
+              ),
               linewidth = 0.45
             ) +
             scale_linetype_manual(
@@ -937,6 +1020,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+          print(p)
           ggsave(
             filename = path_p,
             plot = p,
@@ -953,8 +1037,14 @@ if (isTRUE(run_plots)) {
 
 ### Median thresholds: fixed extra bandwidth, varying core bandwidth
 
+Vertical lines mark median thresholds on the marker-expression axis; line type distinguishes core bandwidths. Rows separate response frequencies and columns separate cell counts. Compare the positions of the lines to see how the core bandwidth changes the gate.
+
 ```{r}
-#| label: plot-threshold-median-fixed-extra
+#| label: fig-threshold-median-fixed-extra
+#| fig-cap: "Median thresholds with fixed extra bandwidth."
+#| fig-width: 10
+#| fig-height: 8
+#| echo: false
 if (isTRUE(run_plots)) {
   for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
     for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
@@ -980,7 +1070,11 @@ if (isTRUE(run_plots)) {
             )
 
           p <- ggplot() +
-            facet_grid(rows = vars(.data$prob_response), scales = "free_x") +
+            facet_grid(
+              rows = vars(.data$prob_response),
+              cols = vars(.data$n_cell),
+              scales = "free_x"
+            ) +
             cowplot::theme_cowplot() +
             cowplot::background_grid(major = "xy", minor = "none") +
             theme(
@@ -1005,7 +1099,10 @@ if (isTRUE(run_plots)) {
             ) +
             geom_vline(
               data = threshold_tbl_curr,
-              mapping = aes(xintercept = threshold_median, linetype = bw_core_lab),
+              mapping = aes(
+                xintercept = threshold_median, linetype = bw_core_lab,
+                group = bw_core_lab
+              ),
               linewidth = 0.45
             ) +
             scale_linetype_manual(
@@ -1034,6 +1131,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+          print(p)
           ggsave(
             filename = path_p,
             plot = p,
@@ -1050,8 +1148,14 @@ if (isTRUE(run_plots)) {
 
 ### Raw thresholds: fixed core bandwidth, varying extra bandwidth
 
+Faint vertical lines mark individual sample thresholds on the marker-expression axis, coloured by extra bandwidth. Solid lines mark medians and dashed lines mark the lower and upper quartiles. Rows separate response frequencies and columns separate cell counts, allowing the threshold spread to be compared within each setting.
+
 ```{r}
-#| label: plot-threshold-raw-fixed-core
+#| label: fig-threshold-raw-fixed-core
+#| fig-cap: "Sample thresholds and interquartile ranges with fixed core bandwidth."
+#| fig-width: 10
+#| fig-height: 8
+#| echo: false
 if (isTRUE(run_plots)) {
   for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
     for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
@@ -1101,7 +1205,11 @@ if (isTRUE(run_plots)) {
             )
 
           p <- ggplot() +
-            facet_grid(rows = vars(.data$prob_response), scales = "free_x") +
+            facet_grid(
+              rows = vars(.data$prob_response),
+              cols = vars(.data$n_cell),
+              scales = "free_x"
+            ) +
             cowplot::theme_cowplot() +
             cowplot::background_grid(major = "xy", minor = "none") +
             theme(
@@ -1142,7 +1250,8 @@ if (isTRUE(run_plots)) {
               aes(
                 xintercept = threshold,
                 colour = bw_extra_lab,
-                linetype = threshold_stat
+                linetype = threshold_stat,
+                group = interaction(bw_extra_lab, threshold_stat)
               ),
               linewidth = 0.45
             ) +
@@ -1176,6 +1285,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+          print(p)
           ggsave(
             filename = path_p,
             plot = p,
@@ -1192,8 +1302,14 @@ if (isTRUE(run_plots)) {
 
 ### Raw thresholds: fixed extra bandwidth, varying core bandwidth
 
+Faint vertical lines mark individual sample thresholds on the marker-expression axis, coloured by core bandwidth. Solid lines mark medians and dashed lines mark the lower and upper quartiles. Rows separate response frequencies and columns separate cell counts, allowing the threshold spread to be compared within each setting.
+
 ```{r}
-#| label: plot-threshold-raw-fixed-extra
+#| label: fig-threshold-raw-fixed-extra
+#| fig-cap: "Sample thresholds and interquartile ranges with fixed extra bandwidth."
+#| fig-width: 10
+#| fig-height: 8
+#| echo: false
 if (isTRUE(run_plots)) {
   for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
     for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
@@ -1243,7 +1359,11 @@ if (isTRUE(run_plots)) {
             )
 
           p <- ggplot() +
-            facet_grid(rows = vars(.data$prob_response), scales = "free_x") +
+            facet_grid(
+              rows = vars(.data$prob_response),
+              cols = vars(.data$n_cell),
+              scales = "free_x"
+            ) +
             cowplot::theme_cowplot() +
             cowplot::background_grid(major = "xy", minor = "none") +
             theme(
@@ -1284,7 +1404,8 @@ if (isTRUE(run_plots)) {
               aes(
                 xintercept = threshold,
                 colour = bw_core_lab,
-                linetype = threshold_stat
+                linetype = threshold_stat,
+                group = interaction(bw_core_lab, threshold_stat)
               ),
               linewidth = 0.45
             ) +
@@ -1318,6 +1439,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+          print(p)
           ggsave(
             filename = path_p,
             plot = p,
@@ -1334,15 +1456,21 @@ if (isTRUE(run_plots)) {
 
 ## Threshold summary table
 
+The tables summarise threshold variation and relative frequency error for each bandwidth pair. The ranked table averages threshold-variation ranks and absolute relative error over cell counts and response frequencies within each transformation, bias and mean-expression setting.
+
 ```{r}
 #| label: threshold-summary
+#| echo: false
 if (isTRUE(run_plots)) {
   # summary_tbl was collated and validated during promotion.
-  summary_tbl
+  print(summary_tbl)
 }
 ```
 
 ```{r}
+#| label: threshold-ranks
+#| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
   summary_tbl |>
     dplyr::select(
@@ -1365,6 +1493,7 @@ if (isTRUE(run_plots)) {
       .groups = "drop"
     ) |>
     dplyr::arrange(transformation, bias_uns_setting, mean_threshold_sd_rank) |>
-    knitr::kable()
+    knitr::kable() |>
+    print()
 }
 ```
