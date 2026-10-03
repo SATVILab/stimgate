@@ -316,53 +316,62 @@ n_sample_sim <- 5
 n_iter_sim <- 5
 n_workers <- max(1, .simGetCores())
 
-run_ctx <- .analysis_run_context(
-  analysis_key = analysis_key,
-  run_id = analysis_run_id,
-  path_root = root_dir,
-  params = list(
-    run_simulations = run_simulations,
-    run_plots = run_plots,
-    comparison_semantics_version = comparison_semantics_version,
-    simulation_seed = simulation_seed,
-    sim_grid_shuffle_seed = simulation_seed,
-    n_sample_sim = n_sample_sim,
-    n_iter_sim = n_iter_sim,
-    stimgate_bw_mtd = stimgate_bw_mtd,
-    stimgate_bw_ncell_max = stimgate_bw_ncell_max,
-    stimgate_bw_fallback = stimgate_bw_fallback,
-    stimgate_bw_min = stimgate_bw_min,
-    stimgate_bw_max = stimgate_bw_max,
-    tol_clust = tol_clust,
-    loc_enforce_shape_threshold = loc_enforce_shape_threshold,
-    calc_cyt_pos_gates = calc_cyt_pos_gates,
-    fbeta_beta = fbeta_beta,
-    fbeta_theta = fbeta_theta,
-    fbeta_width = fbeta_width,
-    tailgate_adjust = tailgate_adjust,
-    tailgate_method = tailgate_method,
-    tailgate_tol = tailgate_tol,
-    tailgate_auto_tol = tailgate_auto_tol,
-    tailgate_x = tailgate_x,
+if (isTRUE(run_simulations)) {
+  run_ctx <- .analysis_run_context(
+    analysis_key = analysis_key,
+    run_id = analysis_run_id,
+    path_root = root_dir,
+    params = list(
+      run_simulations = run_simulations,
+      run_plots = run_plots,
+      comparison_semantics_version = comparison_semantics_version,
+      simulation_seed = simulation_seed,
+      analysis_dev = analysis_dev,
+      paired_mismatch_rng = TRUE,
+      n_sample_sim = n_sample_sim,
+      n_iter_sim = n_iter_sim,
+      stimgate_bw_mtd = stimgate_bw_mtd,
+      stimgate_bw_ncell_max = stimgate_bw_ncell_max,
+      stimgate_bw_fallback = stimgate_bw_fallback,
+      stimgate_bw_min = stimgate_bw_min,
+      stimgate_bw_max = stimgate_bw_max,
+      tol_clust = tol_clust,
+      loc_enforce_shape_threshold = loc_enforce_shape_threshold,
+      calc_cyt_pos_gates = calc_cyt_pos_gates,
+      fbeta_beta = fbeta_beta,
+      fbeta_theta = fbeta_theta,
+      fbeta_width = fbeta_width,
+      tailgate_adjust = tailgate_adjust,
+      tailgate_method = tailgate_method,
+      tailgate_tol = tailgate_tol,
+      tailgate_auto_tol = tailgate_auto_tol,
+      tailgate_x = tailgate_x,
+      sim_grid_chunk_index = sim_grid_chunk_index,
+      sim_grid_n_chunks = sim_grid_n_chunks
+    ),
     sim_grid_chunk_index = sim_grid_chunk_index,
     sim_grid_n_chunks = sim_grid_n_chunks
-  ),
-  sim_grid_chunk_index = sim_grid_chunk_index,
-  sim_grid_n_chunks = sim_grid_n_chunks
-)
-path_progress_file <- run_ctx$progress_file
-dir_output <- run_ctx$chunk_output_dir
-dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
-dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+  )
 
-path_rds <- file.path(
-  run_ctx$staging_collated_dir,
-  if (sim_grid_n_chunks > 1L) {
-    sprintf("compare_raw_chunk_%s.rds", sim_chunk_label)
-  } else {
-    "compare_raw.rds"
-  }
-)
+  path_progress_file <- run_ctx$progress_file
+  dir_output <- run_ctx$chunk_output_dir
+  dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
+  dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+
+  path_rds <- file.path(
+    run_ctx$staging_collated_dir,
+    if (sim_grid_n_chunks > 1L) {
+      sprintf("compare_raw_chunk_%s.rds", sim_chunk_label)
+    } else {
+      "compare_raw.rds"
+    }
+  )
+} else {
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key,
+    path_root = root_dir
+  )
+}
 
 if (interactive()) {
   progressr::handlers(global = TRUE)
