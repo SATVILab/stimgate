@@ -397,20 +397,10 @@ manual_summary_tbl |>
 #| label: plot-manual-comparison
 if (isTRUE(run_plots)) {
   p <- .acsCytofManualPlotScatter(manual_comparison_tbl)
-  path_p <- projr::projr_path_get(
-    "cache",
-    "acs_cytof",
-    "manual-comparison",
-    "scatter.pdf"
-  )
+  path_p <- file.path(path_manual_output, "scatter.pdf")
   ggsave(path_p, plot = p, units = "cm", width = 20, height = 20)
   p <- .acsCytofManualPlotScatter(manual_comparison_tbl |> dplyr::filter(method != "tailgate"))
-  path_p <- projr::projr_path_get(
-    "cache",
-    "acs_cytof",
-    "manual-comparison",
-    "scatter-no_tg.pdf"
-  )
+  path_p <- file.path(path_manual_output, "scatter-no_tg.pdf")
   ggsave(path_p, plot = p, units = "cm", width = 20, height = 20)
 }
 ```
@@ -421,12 +411,7 @@ if (isTRUE(run_plots)) {
 #| label: plot-manual-relative-error
 if (isTRUE(run_plots)) {
   p <- .acsCytofManualPlotRelativeError(manual_comparison_tbl |> dplyr::filter(method != "tailgate"))
-  path_p <- projr::projr_path_get(
-    "cache",
-    "acs_cytof",
-    "manual-comparison",
-    "rel_error-no_tg.pdf"
-  )
+  path_p <- file.path(path_manual_output, "rel_error-no_tg.pdf")
   ggsave(path_p, plot = p, units = "cm", width = 20, height = 20)
 }
 ```
