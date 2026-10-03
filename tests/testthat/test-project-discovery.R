@@ -45,10 +45,9 @@ test_that("plotStim error handling for multiple populations and empty inputs", {
 
   expect_null(.plotGateUvMarker(
     marker = "IL2", chnl = "BC1", pop = "root", ind = numeric(0),
-    .data = NULL, excMin = FALSE, indLab = NULL, axisLab = NULL,
+    excMin = FALSE, indLab = NULL, axisLab = NULL,
     showGate = FALSE, pathProject = tmpProjEmpty, minCell = 10,
-    bias = FALSE, combnExc = NULL, chnlGate = NULL, markerGate = NULL,
-    gateTypeCytPos = "cyt", mult = FALSE
+    exArgs = list()
   ))
 
   unlink(tmpProjEmpty, recursive = TRUE)

@@ -276,7 +276,6 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
 
 - `R/`: Core R source code for the installed package.
   - `UtilsCytoRSV-chnl_lab.R`: Channel label utilities (get markers/channels from cytometry objects).
-  - `UtilsCytoRSV-plot_cyto.R`: Cytometry plotting utilities.
   - `UtilsGGSV-axisLimits.R`: `ggplot2` axis limit helpers.
   - `bw_norm_helpers.R`: Shared bandwidth helpers for standard and normalised bandwidth methods.
   - `check.R`: Input validation helpers.
