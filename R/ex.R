@@ -475,7 +475,6 @@ getStimExpr <- function(
       ex = ex,
       gateTbl = gateTblInd,
       chnl = chnl,
-      chnlAlt = NULL,
       gateTypeCytPos = gateTypeCytPos
     )
   }
@@ -503,7 +502,6 @@ getStimExpr <- function(
       gateTbl = gateTblInd,
       chnlPos = chnlPos,
       chnlNeg = setdiff(chnlGate, chnlPos),
-      chnlAlt = NULL,
       gateTypeCytPos = gateTypeCytPos
     )
     ex <- ex[!excVec, , drop = FALSE]

@@ -4,7 +4,7 @@
 \alias{.getCpUnsLocFiniteMin}
 \title{Return the smallest finite numeric value}
 \usage{
-.getCpUnsLocFiniteMin(x, positive = FALSE)
+.getCpUnsLocFiniteMin(x)
 }
 \description{
 Return the smallest finite numeric value
