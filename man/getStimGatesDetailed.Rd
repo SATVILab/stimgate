@@ -16,8 +16,8 @@ getStimGatesDetailed(
 \arguments{
 \item{pathProject}{character. Path to the project directory.}
 
-\item{pop}{character. Optional population name(s) to retain. Population is
-currently recorded as \code{NA} for intermediate diagnostics.}
+\item{pop}{character. Optional population name(s) to filter gates by. Default
+is NULL (all populations).}
 
 \item{marker}{character. Optional marker name(s) to retain.}
 

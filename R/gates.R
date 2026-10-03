@@ -82,6 +82,31 @@ getStimGates <- function(
 }
 
 #' @keywords internal
+.gateGetChnlPopMap <- function(pathProject) {
+  popMap <- character(0)
+  pops <- try(.gateGetPop(pathProject), silent = TRUE)
+  if (!inherits(pops, "try-error") && length(pops) > 0L) {
+    for (p in pops) {
+      chnls <- try(.gateGetChnl(pathProject, p), silent = TRUE)
+      if (!inherits(chnls, "try-error") && length(chnls) > 0L) {
+        popMap[chnls] <- p
+      }
+    }
+  }
+  if (length(popMap) == 0L) {
+    settings <- try(stimgateMetaReadSettingsChnls(pathProject), silent = TRUE)
+    if (!inherits(settings, "try-error") && is.list(settings)) {
+      for (s in settings) {
+        if (!is.null(s$chnlCut) && !is.null(s$popGate)) {
+          popMap[s$chnlCut] <- s$popGate
+        }
+      }
+    }
+  }
+  popMap
+}
+
+#' @keywords internal
 .gateGetDirs <- function(pathDir, prefix) {
   dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
   dirVec <- dirVec[nzchar(dirVec) & startsWith(dirVec, prefix)]
@@ -109,8 +134,8 @@ getStimGates <- function(
 #' corresponding background-subtracted frequencies.
 #'
 #' @param pathProject character. Path to the project directory.
-#' @param pop character. Optional population name(s) to retain. Population is
-#'   currently recorded as `NA` for intermediate diagnostics.
+#' @param pop character. Optional population name(s) to filter gates by. Default
+#'   is NULL (all populations).
 #' @param marker character. Optional marker name(s) to retain.
 #' @param chnl character. Optional channel name(s) to retain.
 #' @param save logical. If TRUE, save the detailed table as an RDS file.
@@ -144,8 +169,32 @@ getStimGatesDetailed <- function(
     } else {
       detailTbl$marker <- NA_character_
     }
-    detailTbl$pop <- NA_character_
 
+    if (!"pop" %in% names(detailTbl)) {
+      detailTbl$pop <- NA_character_
+    }
+    if ("popGate" %in% names(detailTbl)) {
+      detailTbl$pop <- dplyr::coalesce(detailTbl$pop, detailTbl$popGate)
+    }
+    if ("detailPathPop" %in% names(detailTbl)) {
+      detailTbl$pop <- dplyr::coalesce(detailTbl$pop, detailTbl$detailPathPop)
+    }
+
+    popMap <- .gateGetChnlPopMap(pathProject)
+    if (length(popMap) > 0L) {
+      detailTbl$pop <- dplyr::coalesce(
+        detailTbl$pop, unname(popMap[detailTbl$chnl])
+      )
+    }
+    pops <- try(.gateGetPop(pathProject), silent = TRUE)
+    if (!inherits(pops, "try-error") && length(pops) == 1L) {
+      detailTbl$pop <- dplyr::coalesce(detailTbl$pop, pops)
+    }
+
+    if (!is.null(pop)) {
+      detailTbl <- detailTbl |>
+        dplyr::filter(.data$pop %in% .env$pop)
+    }
     if (!is.null(chnl)) {
       detailTbl <- detailTbl |>
         dplyr::filter(.data$chnl %in% .env$chnl)
@@ -201,6 +250,7 @@ getStimGatesDetailed <- function(
         detailPathStage = meta$stage,
         detailPathChnl = meta$chnl,
         detailPathInd = meta$ind,
+        detailPathPop = meta$pop,
         detailSourceFile = pathCurr
       )
   })
@@ -249,6 +299,12 @@ getStimGatesDetailed <- function(
   if (identical(parts, ".")) {
     parts <- character(0)
   }
+  popParts <- parts[startsWith(parts, "pop")]
+  popFromPath <- if (length(popParts) > 0L) {
+    sub("^pop", "", popParts[[1]])
+  } else {
+    NA_character_
+  }
   detailObject <- sub("\\.rds$", "", basename(pathCurr))
   list(
     stage = if (length(parts) >= 1L) parts[[1]] else NA_character_,
@@ -258,6 +314,7 @@ getStimGatesDetailed <- function(
     } else {
       NA_character_
     },
+    pop = popFromPath,
     detailObject = detailObject
   )
 }
