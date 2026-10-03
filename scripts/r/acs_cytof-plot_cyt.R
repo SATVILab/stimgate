@@ -63,8 +63,12 @@
     )
 }
 
-.acsCytofValidationPlotScatter <- function(comparisonTbl, method) {
+.acsCytofValidationPlotScatter <- function(comparisonTbl, method, pathDirSave) {
   method <- match.arg(method, c("stimgate", "fbeta", "tailgate"))
+  pathDirSaveMethod <- file.path(pathDirSave, method)
+  if (!dir.exists(pathDirSaveMethod)) {
+    dir.create(pathDirSaveMethod, recursive = TRUE)
+  }
   plotTbl <- comparisonTbl |>
     dplyr::filter(.data$method == .env$method) |>
     dplyr::mutate(
@@ -195,7 +199,10 @@
     ) +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1),
-      strip.background = ggplot2::element_rect(fill = "white", colour = "black"),
+      strip.background = ggplot2::element_rect(
+        fill = "white",
+        colour = "black"
+      ),
       strip.text = ggplot2::element_text(size = 9.5),
       legend.title = ggplot2::element_text(size = 10)
     )
@@ -203,6 +210,15 @@
 
 .acsCytofValidationSavePlots <- function(comparisonTbl, pathDirSave) {
   dir.create(pathDirSave, recursive = TRUE, showWarnings = FALSE)
+  pathDirSaveHeatmap <- file.path(pathDirSave, "heatmaps")
+  if (!dir.exists(pathDirSaveHeatmap)) {
+    dir.create(pathDirSaveHeatmap, recursive = TRUE)
+  }
+  pathDirSaveScatter <- file.path(pathDirSave, "scatter-plots")
+  if (!dir.exists(pathDirSaveScatter)) {
+    dir.create(pathDirSaveScatter, recursive = TRUE)
+  }
+
   correlationTbl <- .acsCytofValidationCorrelationTable(comparisonTbl)
   utils::write.csv(
     correlationTbl,
@@ -218,10 +234,11 @@
     c("stimgate", "fbeta", "tailgate"),
     as.character(unique(comparisonTbl$method))
   )
+  pathDirSaveHeatmap <- file.path(pathDirSave, "heatmaps")
   for (method in methods) {
     scatter <- .acsCytofValidationPlotScatter(comparisonTbl, method)
     ggplot2::ggsave(
-      file.path(pathDirSave, paste0("scatter-", method, ".pdf")),
+      file.path(pathDirSaveScatter, paste0(method, ".pdf")),
       plot = scatter,
       height = 25,
       width = 40,
@@ -239,8 +256,15 @@
         )
         ggplot2::ggsave(
           file.path(
-            pathDirSave,
-            paste0("heatmap-", metric, "-", method, "-", populationSuffix, ".pdf")
+            pathDirSaveHeatmap,
+            paste0(
+              metric,
+              "-",
+              method,
+              "-",
+              populationSuffix,
+              ".pdf"
+            )
           ),
           plot = correlationPlot,
           height = 12.5,

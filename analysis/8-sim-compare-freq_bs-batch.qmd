@@ -37,11 +37,6 @@ analysis_run_id <- .get_qmd_param_env(
   "ANALYSIS_RUN_ID",
   NULL
 )
-run_plots <- .as_flag(.get_qmd_param_env(
-  "run_plots",
-  "RUN_PLOTS",
-  TRUE
-))
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 

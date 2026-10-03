@@ -19,15 +19,24 @@ root_dir <- tryCatch(
   error = function(e) getwd()
 )
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
 
-run_plots <- isTRUE(params$run_plots)
-path_manual_output <- projr::projr_path_get(
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+
+path_manual_output <- projr::projr_path_get_dir(
   "cache",
   "acs_cytof",
   "manual-comparison"
 )
-path_comparison <- file.path(path_manual_output, "manual-comparison.rds")
+path_comparison <- file.path(
+  path_manual_output,
+  "manual-comparison.rds"
+)
 if (!file.exists(path_comparison)) {
   stop(
     "ACS manual comparison table not found at: ",
@@ -64,9 +73,15 @@ correlation_tbl
 #| label: save-validation-figures
 #| results: hide
 if (run_plots) {
+  path_dir_save <- file.path(
+    path_manual_output, "validation-figures"
+  )
+  if (dir.exists(path_dir_save)) {
+    unlink(path_dir_save, recursive = TRUE)
+  }
   .acsCytofValidationSavePlots(
     comparisonTbl = manual_comparison_tbl,
-    pathDirSave = path_manual_output
+    pathDirSave = path_dir_save
   )
 }
 ```
@@ -76,9 +91,16 @@ if (run_plots) {
 ```{r}
 #| label: show-scatter
 if (run_plots) {
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "stimgate")
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "fbeta")
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "tailgate")
+  path_dir_save <- file.path(
+    path_manual_output, "scatter-plots"
+  )
+  if (dir.exists(path_dir_save)) {
+    unlink(path_dir_save, recursive = TRUE)
+  }
+  dir.create(path_dir_save, recursive = TRUE)
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "stimgate", path_dir_save)
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "fbeta", path_dir_save)
+  .acsCytofValidationPlotScatter(manual_comparison_tbl, "tailgate", path_dir_save)
 }
 ```
 

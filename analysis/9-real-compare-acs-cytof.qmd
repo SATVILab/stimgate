@@ -374,6 +374,13 @@ manual_comparison_tbl <- comp_against_manual_cyt(
   sample_map = fn_to_sampleid_map
 )
 manual_summary_tbl <- attr(manual_comparison_tbl, "summary")
+path_comparison <- projr::projr_path_get(
+  "cache",
+  "acs_cytof",
+  "manual-comparison",
+  "manual-comparison.rds"
+)
+saveRDS(manual_comparison_tbl, path_comparison)
 ```
 
 ## Output tables and figures
