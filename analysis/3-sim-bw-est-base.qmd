@@ -1,11 +1,12 @@
 ---
-title: Simulate best bandwidth
+title: Simulate base bandwidth estimators
 format:
   html:
     embed-resources: true
     toc: true
 params:
   analysis_run_id: null
+  simulation_seed: 12345
   sim_grid_chunk_index: 1
   sim_grid_n_chunks: 1
   sim_grid_shuffle_seed: 20260707
@@ -47,6 +48,14 @@ sim_grid_shuffle_seed <- as.integer(.get_qmd_param_env(
   "SIM_GRID_SHUFFLE_SEED",
   20260707L
 ))
+simulation_seed <- as.integer(.get_qmd_param_env(
+  "simulation_seed",
+  "SIMULATION_SEED",
+  12345L
+))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
   "RUN_SIMULATIONS",
@@ -58,6 +67,11 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "base")
+analysis_semantics_version <- "bandwidth-est-base-v2"
+analysis_dev <- isTRUE(.isDev())
+n_sample_sim <- 50L
+n_iter_sim <- 1L
+bw_fallback <- NA_real_
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -65,7 +79,6 @@ run_plots <- .as_flag(.get_qmd_param_env(
 ))
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
-sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
@@ -111,14 +124,9 @@ prob_response_vec <- c(0.002, 0.2)
 mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
 
 transformation_vec <- c("gaussian", "gamma", "skew")
-mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
-
 # bandwidth settings
 bandwidth_method_vec <- c("hpi0", "hpi1", "hpi2", "hpi3", "sj", "nrd0")
 
-# set this later
-bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)
-bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
 bias_uns_settings_tbl <- tibble::tribble(
   ~bias_uns_setting, ~transformation, ~bias_uns,
   "none", "gaussian", 0,
@@ -162,13 +170,14 @@ sim_grid <- tidyr::expand_grid(
     bias_uns_setting, bias_uns
   ) |>
   dplyr::mutate(
-    sim_id = dplyr::row_number()
+    sim_id = dplyr::row_number(),
+    sim_seed = as.integer(simulation_seed + sim_id - 1L)
   )
 
 sim_grid <- sim_grid |>
   dplyr::arrange(n_cell, dplyr::desc(prob_response))
 
-if (.isDev()) {
+if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
       n_cell == 1e5,
@@ -204,7 +213,6 @@ print(paste0(
   " using shuffle seed ", sim_grid_shuffle_seed
 ))
 
-bw_fallback <- 0.23482348792138919129198282389
 ```
 
 A loop we only run when we want to see why particular runs failed.
@@ -218,6 +226,7 @@ bw_list_raw_mtd_loop <- lapply(seq_len(nrow(sim_grid)), function(i) {
 })
 
 for (i in seq_len(nrow(sim_grid))) {
+  set.seed(as.integer(sim_grid$sim_seed[i]))
   settings_row <- paste0(
     "trans = ",
     sim_grid$transformation[i],
@@ -239,11 +248,11 @@ for (i in seq_len(nrow(sim_grid))) {
 
   message("Running: ", settings_row)
   bw_list_raw_mtd_loop[[i]] <- .simBandwidthEstBwDirect(
-    nSample = 10,
+    nSample = n_sample_sim,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
-    nIter = 10,
+    nIter = n_iter_sim,
     biasUns = sim_grid$bias_uns[i],
     bwMtd = sim_grid$bw_mtd[i],
     bwMin = -Inf,
@@ -271,7 +280,8 @@ for (i in seq_len(nrow(sim_grid))) {
       bw_mtd = sim_grid$bw_mtd[i],
       bias_uns_setting = sim_grid$bias_uns_setting[i],
       bias_uns = sim_grid$bias_uns[i],
-      sim_id = sim_grid$sim_id[i]
+      sim_id = sim_grid$sim_id[i],
+      sim_seed = sim_grid$sim_seed[i]
     ) |>
     dplyr::select(
       transformation,
@@ -283,6 +293,7 @@ for (i in seq_len(nrow(sim_grid))) {
       bias_uns_setting,
       bias_uns,
       sim_id,
+      sim_seed,
       dplyr::everything()
     )
 
