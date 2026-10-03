@@ -251,11 +251,10 @@ test_that(".update_progress_summary() tolerates a concurrent write failure", {
   expect_false(file.exists(path_progress_file))
 })
 
-test_that("QMDs 3 and 4 define chunk controls and use the run-scoped output dir", {
+test_that("QMD 3 defines chunk controls and use the run-scoped output dir", {
   qmd_3 <- readLines(file.path(root_dir, "analysis", "3-sim-bw-est-base.qmd"), warn = FALSE)
-  qmd_4 <- readLines(file.path(root_dir, "analysis", "4-sim-bw-est-norm.qmd"), warn = FALSE)
 
-  for (qmd_lines in list(qmd_3, qmd_4)) {
+  for (qmd_lines in list(qmd_3)) {
     expect_true(any(grepl(
       "sim_grid_chunk_index <- as.integer",
       qmd_lines,

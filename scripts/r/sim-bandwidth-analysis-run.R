@@ -575,3 +575,111 @@
     bw_tbl_results_summary = results_summary
   )
 }
+
+# ---------------------------------------------------------------------------
+# Analysis 4: ordinary vs normalised bandwidth estimators
+# ---------------------------------------------------------------------------
+
+#' Analysis 4 scenario: one bandwidth-estimator simulation
+#'
+#' @param row data.frame One row of the analysis 4 `sim_grid`.
+#' @param settings list Fixed `.simBandwidthEstBwDirect()` arguments.
+#' @return tibble `.simBandwidthEstBwDirect()` output (one row per sample
+#'   and iteration).
+.simBandwidthEstNormScenario <- function(row, settings) {
+  do.call(.simBandwidthEstBwDirect, c(settings, list(
+    biasUns = row$bias_uns[[1]],
+    bwMtd = row$bw_mtd[[1]],
+    bwNcellMax = row$bw_ncell_upper[[1]],
+    nCellStim = row$n_cell[[1]],
+    probResponse = row$prob_response[[1]],
+    meanPos = row$mean_pos[[1]],
+    transformation = row$transformation[[1]]
+  )))
+}
+
+#' Analysis 4 validation of collated outputs
+#'
+#' @param n_rows_per_sim integer Expected result rows per `sim_id`.
+#' @return function `function(tbl)` returning problem strings: `sim_id`s with
+#'   an unexpected row count, or with no finite stim/unstim bandwidth pair.
+.simBandwidthEstNormValidator <- function(n_rows_per_sim) {
+  function(tbl) {
+    if (nrow(tbl) == 0L) {
+      return(character())
+    }
+    per_sim <- tbl |>
+      dplyr::group_by(.data$sim_id) |>
+      dplyr::summarise(
+        n_rows = dplyr::n(),
+        n_pair = sum(is.finite(.data$bw_stim) & is.finite(.data$bw_uns)),
+        .groups = "drop"
+      )
+    ids <- function(x) paste(sort(as.integer(x)), collapse = ", ")
+    c(
+      if (any(per_sim$n_rows != n_rows_per_sim)) {
+        paste0(
+          "unexpected row counts for sim_id: ",
+          ids(per_sim$sim_id[per_sim$n_rows != n_rows_per_sim])
+        )
+      },
+      if (any(per_sim$n_pair == 0L)) {
+        paste0(
+          "no finite stim/unstim bandwidth pair for sim_id: ",
+          ids(per_sim$sim_id[per_sim$n_pair == 0L])
+        )
+      }
+    )
+  }
+}
+
+#' Analysis 4 collation: raw rows and per-scenario summary
+#'
+#' `mean_bw` averages `pmin(bw_stim, bw_uns)` over complete finite
+#' stim/unstim pairs.
+#'
+#' @param tbl data.frame Collated analysis 4 outputs.
+#' @param grid_cols character Grid column names.
+#' @return list `bw_list_raw_mtd` (raw rows) and `bw_tbl_results`.
+.simBandwidthEstNormCollate <- function(tbl, grid_cols) {
+  results <- tbl |>
+    dplyr::group_by(dplyr::pick(dplyr::any_of(grid_cols))) |>
+    dplyr::summarise(
+      n_total = dplyr::n(),
+      n_bw_stim_finite = sum(is.finite(.data$bw_stim)),
+      n_bw_uns_finite = sum(is.finite(.data$bw_uns)),
+      n_est = sum(is.finite(.data$bw_stim) & is.finite(.data$bw_uns)),
+      n_norm_fallback = sum(
+        is.finite(.data$bw_stim) &
+          is.finite(.data$bw_uns) &
+          .data$bw_norm_fallback %in% TRUE
+      ),
+      mean_bw_stim = .simBandwidthFiniteMean(.data$bw_stim),
+      mean_bw_uns = .simBandwidthFiniteMean(.data$bw_uns),
+      mean_bw = .simBandwidthFiniteMean(
+        dplyr::if_else(
+          is.finite(.data$bw_stim) & is.finite(.data$bw_uns),
+          pmin(.data$bw_stim, .data$bw_uns),
+          NA_real_
+        )
+      ),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      estimate_rate = .data$n_est / .data$n_total,
+      norm_fallback_rate = dplyr::if_else(
+        .data$n_est > 0L,
+        .data$n_norm_fallback / .data$n_est,
+        NA_real_
+      ),
+      bw_mtd_base = gsub("Norm$", "", .data$bw_mtd),
+      bw_mtd_norm = ifelse(grepl("Norm$", .data$bw_mtd), "norm", "non-norm")
+    )
+  if (any(results$n_est < results$n_total)) {
+    warning(
+      "Some estimator/scenario combinations have incomplete stim/unstim ",
+      "bandwidth pairs; estimate_rate records the complete-pair fraction."
+    )
+  }
+  list(bw_list_raw_mtd = tbl, bw_tbl_results = results)
+}
