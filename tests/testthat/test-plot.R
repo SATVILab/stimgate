@@ -41,53 +41,28 @@ test_that("plotStim returns NULL when pList is empty", {
   expect_null(result)
 })
 
-test_that(".plotGateBv returns NULL for single marker", {
-  # Test single marker scenario
-  singleMarker <- exampleData$chnl[1]
-  result <- stimgate:::.plotGateBv(
-    chnl = singleMarker,
-    marker = NULL,
+test_that("plotStim returns only univariate plots for a single channel", {
+  pList <- plotStim(
     ind = exampleData$batchList[[1]],
-    indLab = NULL,
     .data = gs,
-    axisLab = NULL,
     pathProject = pathProject,
-    excMin = TRUE,
-    limitsExpand = NULL,
-    limitsEqual = FALSE,
-    showGate = TRUE,
-    minCell = 10
+    chnl = exampleData$chnl[1],
+    grid = FALSE
   )
-  expect_null(result)
+  expect_length(pList, 1L)
+  expect_s3_class(pList[[1]]$layers[[1]]$geom, "GeomLine")
 })
 
-test_that("plot functions handle minCell threshold correctly", {
-  # Test with very high minCell to trigger early return
-  # debugonce(.getExNew)
-  result <- stimgate:::.plotGateBv(
-    chnl = exampleData$chnl,
-    pop = "root",
-    marker = NULL,
+test_that("plotStim returns NULL when no sample has minCell cells", {
+  result <- plotStim(
     ind = exampleData$batchList[[1]],
-    indLab = NULL,
     .data = gs,
-    axisLab = NULL,
     pathProject = pathProject,
-    excMin = TRUE,
-    limitsExpand = NULL,
-    limitsEqual = FALSE,
-    showGate = TRUE,
-    chnlGate = NULL,
-    markerGate = NULL,
-    bias = FALSE,
-    combnExc = NULL,
-    gateTypeCytPos = "cyt",
-    mult = FALSE,
-    gateUnsMethod = "min",
-    minCell = 999999 # Very high threshold
+    chnl = exampleData$chnl,
+    grid = FALSE,
+    minCell = 999999
   )
-  # Should return a list with NULLs filtered out, or NULL
-  expect_true(is.null(result) || (is.list(result) && length(result) == 0))
+  expect_null(result)
 })
 
 test_that(".plotGetLab handles various valLab configurations", {
@@ -127,107 +102,40 @@ test_that(".plotGetLab handles various valLab configurations", {
   expect_null(names(result4))
 })
 
-test_that(".plotGateUv returns NULL when all markers return NULL", {
-  # Test with empty ind to generate NULL results
-  result <- stimgate:::.plotGateUv(
-    ind = list(),
-    indLab = NULL,
-    .data = gs,
-    chnl = exampleData$chnl,
-    marker = NULL,
-    excMin = TRUE,
-    axisLab = NULL,
-    showGate = TRUE,
-    pathProject = pathProject,
-    minCell = 10
-  )
-  expect_null(result)
-})
-
-test_that(".plotGateUvMarker returns NULL when plotTbl is NULL", {
-  # Test with empty ind list to generate NULL plotTbl
+test_that(".plotGateUvMarker returns NULL when ind is empty", {
   result <- stimgate:::.plotGateUvMarker(
-    chnl = exampleData$chnl[1],
-    marker = NULL,
-    pop = "root",
     ind = list(),
-    .data = gs,
-    excMin = TRUE,
     indLab = NULL,
+    marker = NULL,
+    chnl = exampleData$chnl[1],
+    pop = "root",
+    excMin = TRUE,
     axisLab = NULL,
     showGate = TRUE,
     pathProject = pathProject,
-    minCell = 10
+    minCell = 10,
+    exArgs = list()
   )
   expect_null(result)
 })
 
-test_that(".plotGateUvMarkerGetPlotTbl returns NULL for insufficient cells", {
-  result <- stimgate:::.plotGateUvMarkerGetPlotTbl(
-    ind = exampleData$batchList[[1]],
-    .data = gs,
-    chnl = exampleData$chnl[1],
-    marker = NULL,
-    pop = "root",
-    excMin = TRUE,
-    indLab = NULL,
-    pathProject = pathProject,
-    bias = FALSE,
-    combnExc = NULL,
-    chnlGate = NULL,
-    markerGate = NULL,
-    gateTypeCytPos = "cyt",
-    mult = FALSE,
-    gateUnsMethod = "min",
-    minCell = 999999 # Very high threshold
-  )
-  expect_null(result)
-})
-
-test_that(".plotGateUvMarkerPlotInit handles different condition branches", {
-  # Create mock plotTbl for testing
-  plotTbl <- data.frame(
-    x = 1:10,
-    y = 1:10,
-    type = rep(c("raw", "adj"), 5),
-    indLab = rep(c("Sample1", "Sample2"), 5)
-  )
-
-  # Test excMin = TRUE, multiple ind
-  p1 <- stimgate:::.plotGateUvMarkerPlotInit(
-    plotTbl = plotTbl,
-    excMin = TRUE,
-    ind = c(1, 2),
-    indLab = c("Sample1", "Sample2")
-  )
-  expect_s3_class(p1, "ggplot")
-
-  # Test excMin = TRUE, single ind
-  p2 <- stimgate:::.plotGateUvMarkerPlotInit(
-    plotTbl = plotTbl,
-    excMin = TRUE,
-    ind = c(1),
-    indLab = c("Sample1")
-  )
-  expect_s3_class(p2, "ggplot")
-
-  # Test excMin = FALSE, multiple ind
-  p3 <- stimgate:::.plotGateUvMarkerPlotInit(
-    plotTbl = plotTbl,
-    excMin = FALSE,
-    ind = c(1, 2),
-    indLab = c("Sample1", "Sample2")
-  )
-  expect_s3_class(p3, "ggplot")
-
-  # Test excMin = FALSE, single ind
-  p4 <- stimgate:::.plotGateUvMarkerPlotInit(
-    plotTbl = plotTbl,
-    excMin = FALSE,
-    ind = c(1),
-    indLab = c("Sample1")
-  )
-  expect_s3_class(p4, "ggplot")
+test_that("univariate plots map alpha to excMin and colour to sample", {
+  aesNames <- function(ind, excMin) {
+    pList <- plotStim(
+      ind = ind,
+      .data = gs,
+      pathProject = pathProject,
+      chnl = exampleData$chnl[1],
+      excMin = excMin,
+      grid = FALSE
+    )
+    sort(names(pList[[1]]$mapping))
+  }
+  indVec <- exampleData$batchList[[1]]
+  expect_identical(aesNames(indVec, TRUE), c("alpha", "colour", "x", "y"))
+  expect_identical(aesNames(indVec[[2]], TRUE), c("alpha", "x", "y"))
+  expect_identical(aesNames(indVec, FALSE), c("colour", "x", "y"))
+  expect_identical(aesNames(indVec[[2]], FALSE), c("x", "y"))
 })
 
 test_that(".plotGrid returns pList when plot = FALSE", {
@@ -257,47 +165,7 @@ test_that(".plotGrid returns pList when plot = FALSE", {
 })
 
 # Additional comprehensive edge case tests
-test_that("comprehensive edge case coverage for plot_gate functions", {
-  # Test .plotGateUvMarkerGetPlotTblInd with insufficient cells
-  expect_null(stimgate:::.plotGateUvMarkerGetPlotTblInd(
-    ind = c(1), # Single index
-    .data = gs,
-    chnl = exampleData$chnl[1],
-    marker = NULL,
-    pop = "root",
-    excMin = TRUE,
-    pathProject = pathProject,
-    bias = FALSE,
-    combnExc = NULL,
-    chnlGate = NULL,
-    markerGate = NULL,
-    gateTypeCytPos = "cyt",
-    mult = FALSE,
-    gateUnsMethod = "min",
-    minCell = 999999 # Impossible threshold
-  ))
-
-  # Test .plotGetExTbl with single index
-  exTbl <- stimgate:::.plotGetExTbl(
-    ind = c(1),
-    .data = gs,
-    chnl = exampleData$chnl[1],
-    marker = NULL,
-    pop = "root",
-    excMin = TRUE,
-    pathProject = pathProject,
-    bias = FALSE,
-    combnExc = NULL,
-    chnlGate = NULL,
-    markerGate = NULL,
-    gateTypeCytPos = "cyt",
-    mult = FALSE,
-    gateUnsMethod = "min"
-  )
-  expect_true(is.data.frame(exTbl))
-  expect_true(nrow(exTbl) > 0)
-
-  # Test .plotAddAxisTitle with single and multiple markers
+test_that("plot helpers handle axis titles and disabled gates", {
   pBase <- ggplot2::ggplot() +
     ggplot2::geom_point(ggplot2::aes(x = 1, y = 1))
   pSingle <- stimgate:::.plotAddAxisTitle(
@@ -316,31 +184,62 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
   )
   expect_s3_class(pDouble, "ggplot")
 
-  # Test .plotAddTitle
-  pTitled <- stimgate:::.plotAddTitle(pBase, c(1, 2), 1, NULL)
-  expect_s3_class(pTitled, "ggplot")
-
-  # Test .plotAddGate when showGate = FALSE
   pNoGate <- stimgate:::.plotAddGate(
     pBase,
-    gs,
-    c(1),
-    exampleData$chnl[1],
-    pathProject,
+    ind = 1,
+    marker = NULL,
+    chnl = exampleData$chnl[1],
+    pop = "root",
+    pathProject = pathProject,
     showGate = FALSE
   )
   expect_identical(pNoGate, pBase)
 })
 
-test_that("test plotCyto import and dependencies", {
-  # Test that plotCyto function is accessible
-  expect_true(exists("plotCyto", envir = asNamespace("stimgate")))
-
-  # Test hexbin namespace checking
-  hexbinAvailable <- requireNamespace("hexbin", quietly = TRUE)
-  expect_true(is.logical(hexbinAvailable))
-})
-
 # if (dir.exists(exampleData$path_gs)) {
 #   unlink(exampleData$path_gs, recursive = TRUE)
 # }
+
+test_that("plotStim keeps univariate plots when excMin = FALSE", {
+  pList <- plotStim(
+    ind = exampleData$batchList[[1]],
+    .data = gs,
+    pathProject = pathProject,
+    chnl = exampleData$chnl[1],
+    excMin = FALSE,
+    grid = FALSE
+  )
+  expect_length(pList, 1L)
+  expect_s3_class(pList[[1]], "ggplot")
+  expect_no_warning(layerTbl <- ggplot2::layer_data(pList[[1]], 1L))
+  expect_gt(nrow(layerTbl), 0L)
+})
+
+test_that("bivariate gate lines are drawn on the axis of their own channel", {
+  pathProjectCopy <- file.path(tempfile("stimgate_plot_gate_axis_"))
+  dir.create(pathProjectCopy)
+  withr::defer(unlink(pathProjectCopy, recursive = TRUE))
+  file.copy(pathProject, pathProjectCopy, recursive = TRUE)
+  pathProjectCopy <- file.path(pathProjectCopy, basename(pathProject))
+  # x channel has no gate; only the y channel is gated
+  unlink(
+    file.path(
+      pathProjectCopy, "gates", "poproot", paste0("chnl", exampleData$chnl[1])
+    ),
+    recursive = TRUE
+  )
+  pList <- plotStim(
+    ind = exampleData$batchList[[1]][[2]],
+    .data = gs,
+    pathProject = pathProjectCopy,
+    chnl = exampleData$chnl,
+    grid = FALSE
+  )
+  geomVec <- vapply(
+    pList[[1]]$layers,
+    function(l) class(l$geom)[[1]],
+    character(1)
+  )
+  expect_false("GeomVline" %in% geomVec)
+  expect_true("GeomHline" %in% geomVec)
+})

@@ -4,46 +4,26 @@
 # level control flow. Density estimation, smoothing, filtering, threshold
 # selection, and output assembly are kept in separate files.
 
-# Calculate local FDR-based cutpoint
+# Calculate local FDR-based cutpoint for each level of bias
 #' @keywords internal
 .getCpUnsLoc <- function(
-    exList,
-    .data,
-    chnlSettings,
-    stage,
-    pathProject) {
-  # get cutpoints for each level of bias
-  .getCpUnsLocBias(
-    exList = exList,
-    .data = .data,
-    chnlSettings = chnlSettings,
-    stage = stage,
-    pathProject = pathProject
-  )
-}
-
-# Get unstim-based local FDR cutpoint for each bias level
-#' @keywords internal
-.getCpUnsLocBias <- function(
-    exList,
-    .data,
-    chnlSettings,
-    stage,
-    pathProject) {
-  # get ecdf of uns
+  exList,
+  .data,
+  chnlSettings,
+  stage,
+  pathProject
+) {
   purrr::map(chnlSettings$biasUns, function(bias) {
     .debug("biasUns", bias) # nolint
 
     exListPrep <- .prepareDataWithBiasAndNoise(
       exList = exList,
       bias = bias,
-      noiseSd = NULL,
       excMin = chnlSettings$excMin
     )
 
     # get gates for given level of bias across gate combination methods
-    # --------------------------------------
-    cpUnsGateCombnObj <- .getCpUnsLocGateCombn(
+    list("loc" = .getCpUnsLocGateCombn(
       exListOrig = exListPrep[["exListOrig"]],
       exListNoMin = exListPrep[["exListNoMin"]],
       exTblUnsBias = exListPrep[["exTblUnsBias"]],
@@ -51,49 +31,35 @@
       bias = bias,
       pathProject = pathProject,
       stage = stage
-    )
-
-    # extract and add bias label to gates
-    # ---------------------------------------
-    .getCpUnsLocGateLabel(cpUnsGateCombnObj, bias)
+    ))
   }) |>
     purrr::flatten()
 }
 
 #' @keywords internal
-.getCpUnsLocGateLabel <- function(cpUnsGateCombnObj, bias) {
-  cpUnsGateCombnList <- cpUnsGateCombnObj[["cpUns"]]
-  names(cpUnsGateCombnList) <-
-    paste0(names(cpUnsGateCombnList))
-  cpUnsGateCombnList
-}
-
-#' @keywords internal
 .prepareDataWithBiasAndNoise <- function(
-    exList,
-    bias,
-    excMin,
-    noiseSd) {
+  exList,
+  bias,
+  excMin
+) {
   # Keep the complete original data.
   exListOrig <- .prepareExListWithBiasAndNoise(
     exList = exList,
     ind = names(exList),
     excMin = FALSE,
-    bias = 0,
-    noiseSd = NULL
+    bias = 0
   ) |>
-    .arrangeSamplesByDescExpr()
+    .arrangeSamplesByExpr()
 
-  # Remove minimum-expression values where requested.
+  # Remove minimum-expression values where requested. Row subsetting keeps the
+  # ascending order of exListOrig.
   if (isTRUE(excMin)) {
     exListNoMin <- .prepareExListWithBiasAndNoise(
       exList = exListOrig,
       ind = names(exListOrig),
       excMin = TRUE,
-      bias = 0,
-      noiseSd = NULL
-    ) |>
-      .arrangeSamplesByDescExpr()
+      bias = 0
+    )
   } else {
     exListNoMin <- exListOrig
   }
@@ -117,115 +83,57 @@
 # cutpoint for a given bias across gate combination methods
 #' @keywords internal
 .getCpUnsLocGateCombn <- function(
-    exListOrig,
-    exListNoMin,
-    exTblUnsBias,
-    chnlSettings,
-    bias,
-    pathProject,
-    stage) {
+  exListOrig,
+  exListNoMin,
+  exTblUnsBias,
+  chnlSettings,
+  bias,
+  pathProject,
+  stage
+) {
   .debug("getting gateCombn") # nolint
+  cp <- list()
 
-  # get cutpoints for prejoin gate combination method
-  cpUnsListPrejoin <- .getCpUnsLocGateCombnPrejoin(
-    exListNoMin = exListNoMin,
-    exListOrig = exListOrig,
-    exTblUnsBias = exTblUnsBias,
-    chnlSettings = chnlSettings,
-    bias = bias,
-    pathProject = pathProject,
-    stage = stage
-  )
-
-  # get cutpoint for non-prejoin grouping methods
-  cpUnsListPrejoinNon <- .getCpUnsLocGateCombnPrejoinNon(
-    nonPrejoinCombn = setdiff(chnlSettings$gateCombn, "prejoin"),
-    exListNoMinStim = exListNoMin[-1],
-    exListOrig = exListOrig,
-    exTblUnsBias = exTblUnsBias,
-    chnlSettings = chnlSettings,
-    bias = bias,
-    pathProject = pathProject,
-    stage = stage
-  )
-
-  # merge above two lists
-  cpUnsList <- .getCpUnsLocGateCombnMerge(
-    cpUnsListPrejoin,
-    cpUnsListPrejoinNon,
-    stage
-  )
-
-  list(
-    "cpUns" = list("loc" = cpUnsList),
-    "pList" = list()
-  )
-}
-
-#' @keywords internal
-.getCpUnsLocGateCombnMerge <- function(
-    cpUnsListPrejoin,
-    cpUnsListPrejoinNon,
-    stage) {
-  .debug("done getting gateCombn") # nolint
-
-  combinedList <- cpUnsListPrejoin |>
-    append(cpUnsListPrejoinNon)
-  purrr::map(
-    unique(names(combinedList)),
-    function(x) {
-      .debug("cutpoint name", paste0(x, collapse = "-")) # nolint
-      cpUnsListPrejoin[[x]] |>
-        append(cpUnsListPrejoinNon[[x]])
-    }
-  ) |>
-    stats::setNames(unique(names(combinedList)))
-}
-
-# --------------------------------
-# gate using prejoined .data
-# --------------------------------
-#' @keywords internal
-.getCpUnsLocGateCombnPrejoin <- function(
-    exListNoMin,
-    exListOrig,
-    exTblUnsBias,
-    chnlSettings,
-    bias,
-    pathProject,
-    stage) {
-  if (!"prejoin" %in% chnlSettings$gateCombn) {
-    return(.getCpUnsLocGateCombnPrejoinNot())
+  # gate using prejoined stim data
+  if ("prejoin" %in% chnlSettings$gateCombn) {
+    .debug("prejoin") # nolint
+    # join marker expression for stim samples and sort into ascending order
+    cp[["prejoin"]] <- .getCpUnsLocSample(
+      exListOrig = .prepareDataForPrejoinInd(exListOrig),
+      exListNoMinStim = .prepareDataForPrejoinInd(exListNoMin)[-1],
+      exTblUnsBias = exTblUnsBias,
+      chnlSettings = chnlSettings,
+      bias = bias,
+      stage = stage,
+      pathProject = pathProject,
+      indStim = names(exListNoMin)[-1],
+      exListOrigOutput = exListOrig,
+      prejoin = TRUE
+    )[["loc"]]
   }
-  .getCpUnsLocGateCombnPrejoinActual(
-    exListNoMin = exListNoMin,
-    exListOrig = exListOrig,
-    exTblUnsBias = exTblUnsBias,
-    chnlSettings = chnlSettings,
-    bias = bias,
-    pathProject = pathProject,
-    stage = stage
-  )
-}
 
-#' @keywords internal
-.getCpUnsLocGateCombnPrejoinNot <- function() {
-  list("cp" = list(), "pList" = list())
-}
+  # gate each sample individually, then combine
+  nonPrejoinCombn <- setdiff(chnlSettings$gateCombn, "prejoin")
+  if (length(nonPrejoinCombn) > 0L) {
+    .debug("non-prejoin") # nolint
+    cpUnsListNonjoin <- .getCpUnsLocSample(
+      exListOrig = exListOrig,
+      exListNoMinStim = exListNoMin[-1],
+      exTblUnsBias = exTblUnsBias,
+      chnlSettings = chnlSettings,
+      bias = bias,
+      stage = stage,
+      pathProject = pathProject
+    )
+    .debug("Combining cutpoints") # nolint
+    cp <- c(cp, .getCpUnsLocCombineCpWithMeta(
+      cp = cpUnsListNonjoin[["loc"]],
+      gateCombn = nonPrejoinCombn
+    ))
+  }
 
-#' @keywords internal
-.prepareDataForPrejoin <- function(exListOrig, exListNoMin) {
-  exListNoMin <- .prepareDataForPrejoinInd(
-    exList = exListNoMin
-  )
-  exListOrig <- .prepareDataForPrejoinInd(
-    exList = exListOrig
-  )
-
-  list(
-    "exListOrig" = exListOrig,
-    "exListNoMin" = exListNoMin
-  )
+  .debug("done getting gateCombn") # nolint
+  list("cp" = cp)
 }
 
 #' @keywords internal
@@ -242,110 +150,9 @@
     stats::setNames(c(indUns, .createCombinedIdentifier(indStim)))
 }
 
+# Sort each sample's rows into ascending order of the cut channel
 #' @keywords internal
-.getCpUnsLocGateCombnPrejoinActual <- function(
-    exListNoMin,
-    exListOrig,
-    exTblUnsBias,
-    chnlSettings,
-    bias,
-    pathProject,
-    stage) {
-  .debug("prejoin") # nolint
-  indStim <- names(exListNoMin)[-1]
-
-  # get marker expression for stim samples,
-  # join and then sort into descending order
-  exListPrejoin <- .prepareDataForPrejoin(
-    exListOrig = exListOrig,
-    exListNoMin = exListNoMin
-  )
-
-  # get cutpoints for gate combn method for a range of fdr's
-  cpUnsPrejoin <- .getCpUnsLocSample(
-    exListOrig = exListPrejoin[["exListOrig"]],
-    exListNoMinStim = exListPrejoin[["exListNoMin"]][-1],
-    exTblUnsBias = exTblUnsBias,
-    chnlSettings = chnlSettings,
-    bias = bias,
-    stage = stage,
-    pathProject = pathProject,
-    indStim = indStim,
-    exListOrigOutput = exListOrig,
-    prejoin = TRUE
-  )
-  list(
-    "cp" = list("prejoin" = cpUnsPrejoin[["loc"]]),
-    "pList" = list()
-  )
-}
-
-# --------------------------------
-# gate each sample individually
-# --------------------------------
-#' @keywords internal
-.getCpUnsLocGateCombnPrejoinNon <- function(
-    nonPrejoinCombn,
-    exListNoMinStim,
-    exListOrig,
-    exTblUnsBias,
-    chnlSettings,
-    bias,
-    pathProject,
-    stage) {
-  if (length(nonPrejoinCombn) == 0L) {
-    return(
-      .getCpUnsLocGateCombnPrejoinNonNot()
-    )
-  }
-  .getCpUnsLocGateCombnPrejoinNonActual(
-    exListNoMinStim = exListNoMinStim,
-    exListOrig = exListOrig,
-    exTblUnsBias = exTblUnsBias,
-    chnlSettings = chnlSettings,
-    bias = bias,
-    nonPrejoinCombn = nonPrejoinCombn,
-    pathProject = pathProject,
-    stage = stage
-  )
-}
-
-#' @keywords internal
-.getCpUnsLocGateCombnPrejoinNonNot <- function() {
-  list("cp" = list(), "pList" = list())
-}
-
-#' @keywords internal
-.getCpUnsLocGateCombnPrejoinNonActual <- function(
-    exListNoMinStim,
-    exListOrig,
-    exTblUnsBias,
-    chnlSettings,
-    bias,
-    pathProject,
-    stage,
-    nonPrejoinCombn) {
-  .debug("non-prejoin") # nolint
-  cpUnsListNonjoin <- .getCpUnsLocSample(
-    exListOrig = exListOrig,
-    exListNoMinStim = exListNoMinStim,
-    exTblUnsBias = exTblUnsBias,
-    chnlSettings = chnlSettings,
-    bias = bias,
-    stage = stage,
-    pathProject = pathProject
-  )
-
-  cpUnsListNonjoin <- .getCpUnsLocGateCombnPrejoinNonActualCombn(
-    stage,
-    cpUnsListNonjoin,
-    nonPrejoinCombn
-  )
-  list("cp" = cpUnsListNonjoin, "pList" = list())
-}
-
-#' @keywords internal
-.arrangeSamplesByDescExpr <- function(exList) {
+.arrangeSamplesByExpr <- function(exList) {
   purrr::map(exList, function(x) {
     cut <- .getCut(x)
 
@@ -355,18 +162,6 @@
       x
     }
   })
-}
-
-#' @keywords internal
-.getCpUnsLocGateCombnPrejoinNonActualCombn <- function(
-    stage,
-    cpUnsListNonjoin, # nolint
-    nonPrejoinCombnVec) {
-  .debug("Combining cutpoints") # nolint
-  .getCpUnsLocCombineCpWithMeta(
-    cp = cpUnsListNonjoin[["loc"]],
-    gateCombn = nonPrejoinCombnVec
-  )
 }
 
 #' @keywords internal
@@ -462,18 +257,18 @@
 # Get cutpoint for a range of samples given the q-value and fdr
 #' @keywords internal
 .getCpUnsLocSample <- function(
-    exListOrig,
-    exListNoMinStim,
-    exTblUnsBias,
-    chnlSettings,
-    bias,
-    pathProject,
-    stage,
-    indStim = NULL,
-    exListOrigOutput = NULL,
-    prejoin = FALSE) {
+  exListOrig,
+  exListNoMinStim,
+  exTblUnsBias,
+  chnlSettings,
+  bias,
+  pathProject,
+  stage,
+  indStim = NULL,
+  exListOrigOutput = NULL,
+  prejoin = FALSE
+) {
   .debug("getting loc gate at sample level") # nolint
-  force(pathProject)
   indStim <- indStim %||% names(exListNoMinStim)
   exListOrigOutput <- exListOrigOutput %||% exListOrig
 
@@ -507,7 +302,8 @@
         exTblUnsBias = exTblUnsBias
       )
       if (tooFewCellsLgl) {
-        objOut <- .getCpUnsLocSampleTooFew(
+        objOut <- .getCpUnsLocTooFew(
+          label = "too_few_cells_sample_fn",
           stage = stage,
           pathProject = pathProject,
           exTblNoMinStim = exTblNoMinStim,
@@ -519,7 +315,7 @@
 
       # remove any cytokine-positive cells from unstim using gates from
       # sample for which gates are required
-      exTblUnsBias <- .getCpUnsLocSampleUnsRmCytPos(
+      exTblUnsBiasRm <- .getCpUnsLocSampleUnsRmCytPos(
         exTblUnsOrig = exTblUnsOrig,
         chnlSettings = chnlSettings,
         exTblStimNoMin = exTblNoMinStim,
@@ -527,6 +323,19 @@
         exTblUnsBias = exTblUnsBias,
         stage = stage
       )
+      # removal can leave too few unstim cells, so check again
+      if (nrow(exTblUnsBiasRm) < chnlSettings$minCell) {
+        objOut <- .getCpUnsLocTooFew(
+          label = "too_few_cells_sample_fn",
+          stage = stage,
+          pathProject = pathProject,
+          exTblNoMinStim = exTblNoMinStim,
+          exTblUnsBias = exTblUnsBias,
+          cpMin = chnlSettings$cpMin
+        )
+        return(objOut)
+      }
+      exTblUnsBias <- exTblUnsBiasRm
       .intSave(ind, stageChnl, pathProject, exTblUnsBias)
 
       .getCpUnsLocCondition(
@@ -543,14 +352,13 @@
   ) |>
     stats::setNames(names(exListNoMinStim))
 
-  .pathProject <- pathProject
   chnl <- .getCpUnsLocGetChnl(exListNoMinStim[[1]])
   .getCpUnsLocOutput(
     cpUnsLocObjList = cpUnsLocObjList,
     indUns = names(exListOrig)[1],
     indStim = indStim,
     stage = stage,
-    pathProject = .pathProject,
+    pathProject = pathProject,
     chnl = chnl,
     exListOrig = exListOrigOutput,
     prejoin = prejoin
@@ -559,24 +367,29 @@
 
 #' @keywords internal
 .getCpUnsLocSampleCheckCellNumber <- function(
-    exTblStimNoMin,
-    minCell,
-    exTblUnsBias) {
+  exTblStimNoMin,
+  minCell,
+  exTblUnsBias
+) {
   nrow(exTblStimNoMin) < minCell ||
     nrow(exTblUnsBias) < minCell
 }
 
+# Fallback result when there are too few cells to gate; label names the
+# intermediate save marking where the check failed
 #' @keywords internal
-.getCpUnsLocSampleTooFew <- function(
-    stage,
-    pathProject,
-    exTblNoMinStim,
-    exTblUnsBias,
-    cpMin) {
+.getCpUnsLocTooFew <- function(
+  label,
+  stage,
+  pathProject,
+  exTblNoMinStim,
+  exTblUnsBias,
+  cpMin
+) {
   chnl <- .getCpUnsLocGetChnl(exTblNoMinStim)
   stageChnl <- file.path(stage, chnl)
   .intSaveNm(
-    "too_few_cells_sample_fn",
+    label,
     NULL,
     .getInd(exTblNoMinStim),
     stageChnl,
@@ -601,12 +414,13 @@
 
 #' @keywords internal
 .getCpUnsLocSampleUnsRmCytPos <- function(
-    exTblUnsOrig,
-    chnlSettings,
-    exTblStimNoMin,
-    bias,
-    exTblUnsBias,
-    stage) {
+  exTblUnsOrig,
+  chnlSettings,
+  exTblStimNoMin,
+  bias,
+  exTblUnsBias,
+  stage
+) {
   if (stage == "init") {
     return(exTblUnsBias)
   }
@@ -645,15 +459,8 @@
     ),
     ind = attr(exTblUnsOrig, "indUns"),
     excMin = chnlSettings$excMin,
-    bias = bias,
-    noiseSd = NULL
+    bias = bias
   )[[1]]
-}
-
-#' @keywords internal
-.getCpUnsLocPListEmpty <- function() {
-  lapply(seq_len(3), function(x) list()) |>
-    stats::setNames(c("pLocDens", "pLocProb", "pLocCtb"))
 }
 
 #' @keywords internal
@@ -683,16 +490,17 @@
 
 #' @keywords internal
 .getCpUnsLocCondition <- function(
-    exTblUnsBias,
-    exTblStimNoMin,
-    chnlSettings,
-    exTblStimOrig,
-    exTblUnsOrig,
-    plot = TRUE,
-    probMin = 0.1,
-    bias,
-    pathProject,
-    stage) {
+  exTblUnsBias,
+  exTblStimNoMin,
+  chnlSettings,
+  exTblStimOrig,
+  exTblUnsOrig,
+  plot = TRUE,
+  probMin = 0.1,
+  bias,
+  pathProject,
+  stage
+) {
   .debug("getting loc gate for single sample") # nolint
   ind <- .getInd(exTblStimNoMin)
   chnl <- chnlSettings$chnlCut %||%
@@ -700,15 +508,15 @@
   stageChnl <- file.path(stage, chnl)
   .debug("ind", ind) # nolint
 
-  # estimate densities for stim and unstim over stim range
+  # return early if almost all stim expression is below cpMin (cell numbers
+  # were already checked by .getCpUnsLocSample)
+  cutStim <- .getCut(exTblStimNoMin)
   if (
-    .getCpUnsLocCheckEarly(
-      exTblStimNoMin,
-      chnlSettings$minCell,
+    (stats::quantile(cutStim, 0.9) + 3 * stats::sd(cutStim)) <=
       chnlSettings$cpMin
-    )
   ) {
-    objOut <- .getCpUnsLocConditionTooFew(
+    objOut <- .getCpUnsLocTooFew(
+      label = "too_few_cells_ind_fn",
       stage = stage,
       pathProject = pathProject,
       exTblNoMinStim = exTblStimNoMin,
@@ -762,65 +570,14 @@
   )
 }
 
-.getCpUnsLocConditionTooFew <- function(
-    stage,
-    pathProject,
-    exTblNoMinStim,
-    exTblUnsBias,
-    cpMin) {
-  chnl <- .getCpUnsLocGetChnl(exTblNoMinStim)
-  stageChnl <- file.path(stage, chnl)
-  .intSaveNm(
-    "too_few_cells_ind_fn",
-    NULL,
-    .getInd(exTblNoMinStim),
-    stageChnl,
-    pathProject
-  ) # nolint
-  objOut <- .getCpUnsLocConditionCheckOut(
-    cpMin = cpMin,
-    exTblStimNoMin = exTblNoMinStim,
-    exTblUnsBias = exTblUnsBias,
-    stage = stage,
-    msg = "Too few cells"
-  )
-  .intSaveNm(
-    "cpInd",
-    objOut$cp,
-    .getInd(exTblNoMinStim),
-    stageChnl,
-    pathProject
-  )
-  return(objOut)
-}
-
-# initial checks
-# ---------------------
-#' @keywords internal
-.getCpUnsLocConditionCheckNCell <- function(exTblStimNoMin, minCell) {
-  nrow(exTblStimNoMin) < minCell
-}
-
-#' @keywords internal
-.getCpUnsLocConditionCheckMaxX <- function(exTblStimNoMin, cpMin) {
-  (stats::quantile(.getCut(exTblStimNoMin), 0.9) +
-    3 * stats::sd(.getCut(exTblStimNoMin))) <=
-    cpMin
-}
-
-#' @keywords internal
-.getCpUnsLocCheckEarly <- function(exTblStimNoMin, minCell, cpMin) {
-  .getCpUnsLocConditionCheckNCell(exTblStimNoMin, minCell) ||
-    .getCpUnsLocConditionCheckMaxX(exTblStimNoMin, cpMin)
-}
-
 #' @keywords internal
 .getCpUnsLocConditionCheckOut <- function(
-    cpMin,
-    exTblStimNoMin,
-    exTblUnsBias,
-    stage,
-    msg) {
+  cpMin,
+  exTblStimNoMin,
+  exTblUnsBias,
+  stage,
+  msg
+) {
   .debug(msg) # nolint
   .getCpUnsLocConditionOut(
     cp = .getCpUnsLocConditionCpNonLoc(
@@ -835,17 +592,17 @@
   )
 }
 
+
 #' @keywords internal
 .getCpUnsLocConditionOut <- function(
-    cp,
-    locGenerated,
-    locGeneratedDirect,
-    locSource,
-    locReason,
-    pList = .getCpUnsLocPListEmpty()) {
+  cp,
+  locGenerated,
+  locGeneratedDirect,
+  locSource,
+  locReason
+) {
   list(
     cp = cp,
-    pList = pList,
     locGenerated = isTRUE(locGenerated),
     locGeneratedDirect = isTRUE(locGeneratedDirect),
     locSource = locSource,
@@ -856,9 +613,10 @@
 
 #' @keywords internal
 .getCpUnsLocConditionCpNonLoc <- function(
-    cpMin,
-    exTblStimNoMin,
-    exTblUnsBias) {
+  cpMin,
+  exTblStimNoMin,
+  exTblUnsBias
+) {
   rangeVecStim <- range(.getCut(exTblStimNoMin))
   rangeVecUns <- range(.getCut(exTblUnsBias))
   rangeLen <- max(diff(rangeVecStim), diff(rangeVecUns))
@@ -867,10 +625,4 @@
     rangeVecStim[[2]] + rangeLen / 5,
     rangeVecUns[[2]] + rangeLen / 3
   )
-}
-
-#' @keywords internal
-.getCpUnsLocSetMaxExpr <- function(.data, maxX) {
-  .data[, attr(.data, "chnlCut")] <- pmin(.getCut(.data), maxX)
-  .data
 }

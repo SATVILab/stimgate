@@ -11,9 +11,9 @@
   alpha,
   omega,
   psi,
-  thresholdProbMin = 0,
   capRightWidth = FALSE,
-  leftRiseFrac = 0.15
+  leftRiseFrac = 0.15,
+  stage
 )
 }
 \description{

@@ -18,7 +18,6 @@ getStimExpr(
   markerGate = NULL,
   gateTypeCytPos = "cyt",
   mult = FALSE,
-  gateUnsMethod = "min",
   transFn = NULL,
   transChnl = NULL,
   transMarker = NULL
@@ -62,9 +61,6 @@ cells. Default is "cyt".}
 
 \item{mult}{logical Whether to return only multi-functional cells (positive
 for multiple markers). Default is FALSE.}
-
-\item{gateUnsMethod}{character Method for gating unstimulated cells.
-Default is "min".}
 
 \item{transFn}{function or NULL Transformation function to apply to
 expression values. Default is NULL.}

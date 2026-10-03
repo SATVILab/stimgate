@@ -1,21 +1,13 @@
-strDetectAny <- function(string, pattern) {
-  vapply(
-    pattern,
-    function(patternCurr) grepl(patternCurr, string),
-    logical(1)
-  ) |>
-    any()
-}
-
 #' @keywords internal
 .getExList <- function(
-    .data,
-    indBatch,
-    batch,
-    pop,
-    chnlCut,
-    extraChnl = NULL,
-    pathProject) {
+  .data,
+  indBatch,
+  batch,
+  pop,
+  chnlCut,
+  extraChnl = NULL,
+  pathProject
+) {
   isPathGiven <- is.character(pathProject) && nzchar(pathProject)
   if (!isPathGiven) {
     stop("pathProject must be a non-empty character string.")
@@ -40,50 +32,45 @@ strDetectAny <- function(string, pattern) {
 
 #' @keywords internal
 .getEx <- function(
-    .data,
-    pop,
-    chnlCut,
-    ind,
-    indUns,
-    batch,
-    extraChnl = NULL,
-    pathProject,
-    addAttributes = TRUE) {
-  # collect all the channels we need
-  # get expression information as a tibble
-  # get .data
-  allSaved <- .getExCheckChnlSaved(
-    chnl = c(chnlCut, extraChnl),
-    ind = ind,
-    pop = pop,
-    pathProject = pathProject
-  )
-  ex <- if (allSaved) {
-    .getExOld(
-      pop = pop,
-      chnl = c(chnlCut, extraChnl),
-      ind = ind,
-      pathProject = pathProject
-    )
+  .data,
+  pop,
+  chnlCut,
+  ind,
+  indUns,
+  batch,
+  extraChnl = NULL,
+  pathProject,
+  addAttributes = TRUE
+) {
+  chnl <- c(chnlCut, extraChnl)
+  ex <- if (.getExCheckChnlSaved(chnl, ind, pop, pathProject)) {
+    lapply(chnl, \(x) readRDS(.getExChnlPath(x, ind, pop, pathProject))) |>
+      stats::setNames(chnl) |>
+      tibble::as_tibble()
   } else {
-    .getExNew(
-      .data = .data,
-      chnl = c(chnlCut, extraChnl),
-      ind = ind,
-      pop = pop,
-      pathProject = pathProject,
-      save = TRUE
-    )
+    fr <- flowWorkspace::gh_pop_get_data(.data, y = pop)
+    exNew <- flowCore::exprs(fr)[, chnl, drop = FALSE] |>
+      tibble::as_tibble()
+    # cache each channel so later reads skip the GatingSet
+    for (chnlCurr in chnl) {
+      pathChnl <- .getExChnlPath(chnlCurr, ind, pop, pathProject)
+      if (!file.exists(pathChnl)) {
+        dir.create(dirname(pathChnl), recursive = TRUE, showWarnings = FALSE)
+        saveRDS(exNew[[chnlCurr]], pathChnl)
+      }
+    }
+    exNew
   }
-  .getExAddAttributes(
-    ex = ex,
-    ind = ind,
-    indUns = indUns,
-    batch = batch,
-    chnlCut = chnlCut,
-    pop = pop,
-    addAttributes = addAttributes
-  )
+  if (!addAttributes) {
+    return(ex)
+  }
+  attr(ex, "ind") <- ind |> as.character()
+  attr(ex, "indUns") <- indUns |> as.character()
+  attr(ex, "isUns") <- ind == indUns
+  attr(ex, "chnlCut") <- chnlCut
+  attr(ex, "batch") <- batch
+  attr(ex, "popGate") <- pop
+  ex
 }
 
 #' @keywords internal
@@ -95,75 +82,6 @@ strDetectAny <- function(string, pattern) {
   fnVec <- list.files(pathChnlDir)
   reqVec <- paste0("chnl_", chnl, ".rds")
   all(reqVec %in% fnVec)
-}
-
-#' @keywords internal
-.getExOld <- function(pop, chnl, ind, pathProject) {
-  # get expression information as a tibble
-  # get .data
-  ex <- tibble::tibble(
-    V1 = .getExOldChnlReadInd(chnl[[1]], ind, pop, pathProject)
-  )
-  names(ex) <- chnl[[1]]
-  chnlRemaining <- chnl[-1]
-  for (i in seq_along(chnlRemaining)) {
-    chnlCurr <- chnlRemaining[[i]]
-    ex[[chnlCurr]] <-
-      .getExOldChnlReadInd(chnlCurr, ind, pop, pathProject)
-  }
-  ex
-}
-
-#' @keywords internal
-.getExOldChnlReadInd <- function(chnl, ind, pop, pathProject) {
-  pathChnl <- .getExChnlPath(chnl, ind, pop, pathProject)
-  readRDS(pathChnl)
-}
-
-#' @keywords internal
-.getExNew <- function(.data, pop, chnl, ind, pathProject, save) {
-  # get expression information as a tibble
-  # get .data
-  fr <- flowWorkspace::gh_pop_get_data(.data, y = pop)
-  ex <- flowCore::exprs(fr)[, chnl, drop = FALSE] |>
-    tibble::as_tibble()
-  .getExNewChnlSave(
-    ex = ex,
-    ind = ind,
-    pop = pop,
-    pathProject = pathProject,
-    save = save
-  )
-  ex
-}
-
-#' @keywords internal
-.getExNewChnlSave <- function(ex, ind, pop, pathProject, save) {
-  if (!save) {
-    return(invisible(FALSE))
-  }
-  for (chnlCurr in colnames(ex)) {
-    .getExNewChnlSaveInd(
-      ex = ex,
-      chnl = chnlCurr,
-      ind = ind,
-      pop = pop,
-      pathProject = pathProject
-    )
-  }
-  invisible(TRUE)
-}
-
-#' @keywords internal
-.getExNewChnlSaveInd <- function(ex, chnl, ind, pop, pathProject) {
-  pathChnl <- .getExChnlPath(chnl, ind, pop, pathProject)
-  if (file.exists(pathChnl)) {
-    return(invisible(FALSE))
-  }
-  if (!dir.exists(dirname(pathChnl))) {
-    dir.create(dirname(pathChnl), recursive = TRUE)
-  }
-  saveRDS(ex[[chnl]], pathChnl)
 }
 
 #' @keywords internal
@@ -183,28 +101,6 @@ strDetectAny <- function(string, pattern) {
   )
 }
 
-#' @keywords internal
-.getExAddAttributes <- function(
-    ex,
-    ind,
-    indUns,
-    batch,
-    chnlCut,
-    pop,
-    addAttributes) {
-  if (!addAttributes) {
-    return(ex)
-  }
-  attr(ex, "ind") <- ind |> as.character()
-  attr(ex, "indUns") <- indUns |> as.character()
-  attr(ex, "isUns") <- ind == indUns
-  attr(ex, "chnlCut") <- chnlCut
-  attr(ex, "batch") <- batch
-  attr(ex, "popGate") <- pop
-
-  ex
-}
-
 .getInd <- function(ex) {
   attr(ex, "ind")
 }
@@ -212,11 +108,6 @@ strDetectAny <- function(string, pattern) {
 #' @keywords internal
 .getCut <- function(ex) {
   ex[[attr(ex, "chnlCut")]]
-}
-
-#' @keywords internal
-.getBatchEx <- function(ex) {
-  attr(ex, "batch")
 }
 
 #' @keywords internal
@@ -276,8 +167,6 @@ strDetectAny <- function(string, pattern) {
 #'   cells. Default is "cyt".
 #' @param mult logical Whether to return only multi-functional cells (positive
 #'   for multiple markers). Default is FALSE.
-#' @param gateUnsMethod character Method for gating unstimulated cells.
-#'   Default is "min".
 #' @param transFn function or NULL Transformation function to apply to
 #'   expression values. Default is NULL.
 #' @param transChnl character or NULL Channel name(s) to transform when using
@@ -305,23 +194,23 @@ strDetectAny <- function(string, pattern) {
 #' }
 #' @export
 getStimExpr <- function(
-    pathProject,
-    .data = NULL,
-    pop = NULL,
-    ind = NULL,
-    chnl = NULL,
-    marker = NULL,
-    bias = FALSE,
-    excMin = FALSE,
-    combnExc = NULL,
-    chnlGate = NULL,
-    markerGate = NULL,
-    gateTypeCytPos = "cyt",
-    mult = FALSE,
-    gateUnsMethod = "min",
-    transFn = NULL,
-    transChnl = NULL,
-    transMarker = NULL) {
+  pathProject,
+  .data = NULL,
+  pop = NULL,
+  ind = NULL,
+  chnl = NULL,
+  marker = NULL,
+  bias = FALSE,
+  excMin = FALSE,
+  combnExc = NULL,
+  chnlGate = NULL,
+  markerGate = NULL,
+  gateTypeCytPos = "cyt",
+  mult = FALSE,
+  transFn = NULL,
+  transChnl = NULL,
+  transMarker = NULL
+) {
   .assertString(pathProject)
   pop <- pop %|c|% .getExProjectPop(pathProject)
   if (!is.null(chnl) && !is.null(marker)) {
@@ -332,14 +221,11 @@ getStimExpr <- function(
     ind <- ind %|c|% .getExProjectInd(pathProject, popCurr)
     .assertStringVector(ind)
     purrr::map(ind, function(indCurr) {
-      chnl <- if (!is.null(marker)) {
-        isMarker <- TRUE
-        marker <- as.character(marker)
-        stimgateMetaReadMarkerLab(pathProject)[marker]
+      isMarker <- !is.null(marker)
+      chnl <- if (isMarker) {
+        stimgateMetaReadMarkerLab(pathProject)[as.character(marker)]
       } else {
-        isMarker <- FALSE
-        chnl %|c|%
-          .getExProjectChnl(pathProject, popCurr, indCurr)
+        chnl %|c|% .getExProjectChnl(pathProject, popCurr, indCurr)
       }
       .assertStringVector(chnl)
       ex <- .dataGetExInit(
@@ -349,7 +235,7 @@ getStimExpr <- function(
         indCurr,
         pathProject
       )
-      ex <- .dataGetExExcMin(ex, excMin, pop, chnl, indCurr)
+      ex <- .dataGetExExcMin(ex, excMin)
       ex <- .dataGetExCytPos(
         ex = ex,
         chnlGate = chnlGate,
@@ -384,12 +270,8 @@ getStimExpr <- function(
       purrr::map(
         exIndList,
         function(ex) {
-          probGMin <- attr(ex, "probGMin") %||% 1
-          if (is.null(probGMin)) {
-            return(1.0)
-          }
-          chnl <- attr(ex, "chnl")
-          list(probGMin) |> stats::setNames(chnl)
+          list(attr(ex, "probGMin") %||% 1) |>
+            stats::setNames(attr(ex, "chnl"))
         }
       ) |>
         stats::setNames(names(exIndList))
@@ -486,20 +368,18 @@ getStimExpr <- function(
   }
   # apply bias
   chnlList <- stimgateMetaReadSettingsChnls(pathProject)
+  chnlLab <- stimgateMetaReadChnlLab(pathProject)
   for (chnl in colnames(ex)) {
-    bias <- chnlList[[chnl]][["biasUns"]]
+    # Completed settings are marker-keyed; older projects may use channels.
+    settings <- chnlList[[chnlLab[chnl]]] %||% chnlList[[chnl]]
+    bias <- settings[["biasUns"]] %||% 0
     ex[[chnl]] <- ex[[chnl]] + bias
   }
   ex
 }
 
 #' @keywords internal
-.dataGetExExcMin <- function(
-    ex,
-    excMin,
-    pop = NULL,
-    chnl = NULL,
-    ind = NULL) {
+.dataGetExExcMin <- function(ex, excMin) {
   if (!excMin) {
     attr(ex, "probGMin") <- NULL
     return(ex)
@@ -522,30 +402,23 @@ getStimExpr <- function(
 
 #' @keywords internal
 .dataGetExCytPos <- function(
-    ex,
-    chnlGate,
-    markerGate,
-    pop,
-    ind,
-    combnExc = NULL,
-    gateTypeCytPos = "cyt",
-    mult = FALSE,
-    pathProject) {
+  ex,
+  chnlGate,
+  markerGate,
+  pop,
+  ind,
+  combnExc = NULL,
+  gateTypeCytPos = "cyt",
+  mult = FALSE,
+  pathProject
+) {
   if (is.null(chnlGate) && is.null(markerGate)) {
     return(ex)
   }
   if (!is.null(chnlGate) && !is.null(markerGate)) {
     stop("Must not specify both chnlGate and markerGate")
   }
-  cnVec <- colnames(ex)
-  chnlGate <- if (!is.null(markerGate)) {
-    isMarker <- TRUE
-    stimgateMetaReadMarkerLab(pathProject)[markerGate]
-  } else {
-    isMarker <- FALSE
-    chnlGate %||%
-      .getExProjectChnl(pathProject, pop, ind)
-  }
+  chnlGate <- chnlGate %||% stimgateMetaReadMarkerLab(pathProject)[markerGate]
   gateTblInd <- .gateGetGateTblAll(NULL, pop, chnlGate, pathProject) |>
     dplyr::filter(.data$ind == .env$ind) # nolint
 
@@ -559,7 +432,7 @@ getStimExpr <- function(
 
   if (nrow(ex) == 0L) {
     message("No stimulation-positive cells.")
-    return(.dataGetExZeroTbl(cnVec))
+    return(ex)
   }
 
   ex <- .dataGetExCytPosExc(
@@ -574,25 +447,20 @@ getStimExpr <- function(
     message(
       "No stimulation-positive cells after excluding specified cytokine combinations."
     ) # nolint
-    return(.dataGetExZeroTbl(cnVec))
+    return(ex)
   }
 
   ex
 }
 
-.dataGetExZeroTbl <- function(cn) {
-  outDf <- matrix(rep(NA_real_, length(cn)), ncol = length(cn))
-  colnames(outDf) <- cn
-  tibble::as_tibble(outDf)
-}
-
 #' @keywords internal
 .dataGetExCytPosInc <- function(
-    ex,
-    gateTblInd,
-    mult,
-    chnl,
-    gateTypeCytPos) {
+  ex,
+  gateTblInd,
+  mult,
+  chnl,
+  gateTypeCytPos
+) {
   incVec <- rep(FALSE, nrow(ex))
 
   if (!mult) {
@@ -610,7 +478,6 @@ getStimExpr <- function(
       ex = ex,
       gateTbl = gateTblInd,
       chnl = chnl,
-      chnlAlt = NULL,
       gateTypeCytPos = gateTypeCytPos
     )
   }
@@ -619,11 +486,12 @@ getStimExpr <- function(
 
 #' @keywords internal
 .dataGetExCytPosExc <- function(
-    ex,
-    combnExc,
-    gateTblInd,
-    chnlGate,
-    gateTypeCytPos) {
+  ex,
+  combnExc,
+  gateTblInd,
+  chnlGate,
+  gateTypeCytPos
+) {
   if (is.null(combnExc)) {
     return(ex)
   }
@@ -637,7 +505,6 @@ getStimExpr <- function(
       gateTbl = gateTblInd,
       chnlPos = chnlPos,
       chnlNeg = setdiff(chnlGate, chnlPos),
-      chnlAlt = NULL,
       gateTypeCytPos = gateTypeCytPos
     )
     ex <- ex[!excVec, , drop = FALSE]
@@ -677,8 +544,8 @@ getStimExpr <- function(
 #' @keywords internal
 .dataGetExMeta <- function(ex, pop, ind) {
   metaDf <- tibble::tibble(
-    pop = pop,
-    ind = ind
+    pop = rep(pop, nrow(ex)),
+    ind = rep(ind, nrow(ex))
   )
   attrList <- attributes(ex)
   attrVecNmOrig <- names(attrList)
