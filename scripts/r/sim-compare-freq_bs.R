@@ -47,8 +47,6 @@
   )
 }
 
-#' Moving mean with leading NA values, matching fbeta.py
-#'
 #' Locate the fbeta Python script
 #'
 #' @keywords internal

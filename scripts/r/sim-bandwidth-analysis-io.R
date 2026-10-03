@@ -4,13 +4,6 @@
     sim_grid_chunk_index = NULL,
     sim_grid_n_chunks = NULL) {
   if (is.null(dir_output) || !nzchar(dir_output)) {
-    dir_output <- if (exists("dir_output", inherits = TRUE)) {
-      get("dir_output", mode = "any", inherits = TRUE)
-    } else {
-      NULL
-    }
-  }
-  if (is.null(dir_output) || !nzchar(dir_output)) {
     return(character(0))
   }
 
