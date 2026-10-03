@@ -230,6 +230,13 @@ test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure 
   ))
   expect_true(grepl("bw_fallback <- NA_real_", content, fixed = TRUE))
   expect_false(grepl("0.23482348792138919129198282389", content, fixed = TRUE))
+  expect_equal(
+    lengths(regmatches(
+      content,
+      gregexpr("capStimRange = FALSE", content, fixed = TRUE)
+    )),
+    2L
+  )
 
   expect_true(grepl(
     "run_ctx <- .analysis_results_context(",
