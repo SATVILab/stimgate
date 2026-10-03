@@ -219,6 +219,9 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   simulation renders should not write shared plot files concurrently.
 - Transactional simulation/collation chunks must not use Quarto
   `error: true`; validation and promotion errors must fail the render/job.
+- For adaptive normalised bandwidth estimation, `normAdaptiveNcell` controls
+  the fixed-size synthetic core/extra samples. Do not vary `bwNcellMax` as if
+  it controlled that adaptive branch unless the implementation changes.
 - When an estimator can legitimately fail to return a finite scientific
   estimate, retain that failure as analysis data (for example with
   `n_*_finite` / `prop_*_finite`) rather than hiding it behind a magic
