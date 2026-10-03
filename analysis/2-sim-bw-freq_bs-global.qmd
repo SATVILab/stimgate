@@ -1419,26 +1419,6 @@ Let's leave error bars out for now.
 
 ```{r}
 if (isTRUE(run_plots)) {
-  col_vec_bw <- c(
-    "#e0ecf4",
-    "#bfd3e6",
-    "#9ebcda",
-    "#8c96c6",
-    "#8c6bb1",
-    "#88419d",
-    "#810f7c"
-  )
-
-  make_bw_colour_values <- function(bw_vec, base_col_vec = col_vec_bw) {
-    n_bw <- length(unique(bw_vec))
-
-    if (n_bw <= length(base_col_vec)) {
-      base_col_vec[seq(length(base_col_vec) - n_bw + 1, length(base_col_vec))]
-    } else {
-      grDevices::colorRampPalette(base_col_vec)(n_bw)
-    }
-  }
-
   bias_uns_setting_vec_plot <- bias_uns_settings_tbl |>
     dplyr::distinct(.data$bias_uns_setting) |>
     dplyr::pull(.data$bias_uns_setting)
@@ -1846,54 +1826,6 @@ if (isTRUE(run_plots)) {
 
 ```{r}
 if (isTRUE(run_plots)) {
-  make_bw_linetype_scale <- function(bw_vec, digits = "auto") {
-    bw_num <- sort(unique(as.numeric(bw_vec)))
-    if (digits == "auto") {
-      for (i in seq_len(10)) {
-        bw_lab <- formatC(bw_num, format = "f", digits = i)
-        if (length(unique(bw_lab)) == length(bw_num)) {
-          break
-        }
-      }
-    } else {
-      bw_lab <- formatC(bw_num, format = "f", digits = digits)
-      if (length(unique(bw_lab)) != length(bw_num)) {
-        stop(
-          "Bandwidth labels are not unique with digits = ", digits,
-          ". Consider using digits = 'auto'."
-        )
-      }
-    }
-
-
-    n_bw <- length(bw_num)
-
-    if (n_bw == 1L) {
-      lty <- "solid"
-    } else {
-      # solid, then progressively shorter dash lengths
-      dash_len <- round(seq(8, 2, length.out = n_bw - 1L))
-      gap_len <- 4L
-
-      lty <- c(
-        "solid",
-        paste0(
-          as.character(as.hexmode(dash_len)),
-          as.character(as.hexmode(gap_len))
-        )
-      )
-    }
-
-    list(
-      levels = bw_lab,
-      values = stats::setNames(lty, bw_lab)
-    )
-  }
-}
-```
-
-```{r}
-if (isTRUE(run_plots)) {
   # These objects are only needed for the optional density/rug overlay in the
   # threshold plots. Keep the document renderable if they have not been prepared
   # in this run.
@@ -1971,7 +1903,7 @@ if (isTRUE(run_plots)) {
       threshold_tbl_curr <- threshold_tbl_curr |>
         dplyr::mutate(
           bw_lab = factor(
-            formatC(as.numeric(.data$bw), format = "f"),
+            format_bw_lab(.data$bw),
             levels = bw_scale$levels
           )
         )
