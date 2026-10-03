@@ -1603,6 +1603,66 @@
   sort(unique(files))
 }
 
+#' Check that a scenario has one complete primary result per replicate and method
+#'
+#' @keywords internal
+.simComparePrimaryOutputComplete <- function(
+  .data,
+  nSample,
+  nIter,
+  methods = c("stimgate", "fbeta", "tailgate")
+) {
+  required_cols <- c(
+    "iter",
+    "sample",
+    "method",
+    "propRespTruth",
+    "propRespEst"
+  )
+  if (
+    !is.data.frame(.data) ||
+      nrow(.data) == 0L ||
+      !all(required_cols %in% names(.data))
+  ) {
+    return(FALSE)
+  }
+
+  if (
+    "error" %in% names(.data) &&
+      any(!is.na(.data$error) & nzchar(as.character(.data$error)))
+  ) {
+    return(FALSE)
+  }
+
+  primary <- .data |>
+    dplyr::filter(.data$method %in% methods)
+
+  expected_n_per_method <- as.integer(nSample) * as.integer(nIter)
+  if (nrow(primary) != expected_n_per_method * length(methods)) {
+    return(FALSE)
+  }
+
+  key_counts <- primary |>
+    dplyr::count(.data$iter, .data$sample, .data$method, name = "n")
+
+  if (any(key_counts$n != 1L)) {
+    return(FALSE)
+  }
+
+  method_counts <- primary |>
+    dplyr::count(.data$method, name = "n")
+
+  if (
+    !setequal(as.character(method_counts$method), methods) ||
+      any(method_counts$n != expected_n_per_method)
+  ) {
+    return(FALSE)
+  }
+
+  all(is.finite(primary$propRespTruth)) &&
+    all(is.finite(primary$propRespEst))
+}
+
 #' Validate scenario cached output against grid row settings
 #'
 #' @keywords internal
@@ -1750,6 +1810,18 @@
       if (length(cached_samples) != as.integer(nSample)) {
         return(FALSE)
       }
+    }
+    if (
+      !is.null(nIter) &&
+        !is.null(nSample) &&
+        "method" %in% names(cached) &&
+        !.simComparePrimaryOutputComplete(
+          cached,
+          nSample = nSample,
+          nIter = nIter
+        )
+    ) {
+      return(FALSE)
     }
   }
 
