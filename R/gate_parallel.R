@@ -10,7 +10,6 @@
   parallel = FALSE
 ) {
   if (parallel) {
-    .gateCacheChnl(.data, indBatchList, chnlSettings, pathProject)
     pathProject <- normalizePath(pathProject, winslash = "/", mustWork = TRUE)
   }
   if (parallel && length(chnlSettings) > 1L) {
