@@ -103,7 +103,7 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
     fixed = TRUE
   ))
   expect_true(grepl(
-    '.analysis_require_packages(c("cytoUtils", "openCyto", "simcyto"))',
+    '.analysis_require_packages(c("cytoUtils", "openCyto", "flowStats", "simcyto"))',
     content,
     fixed = TRUE
   ))

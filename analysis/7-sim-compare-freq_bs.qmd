@@ -92,7 +92,7 @@ if (
 }
 
 if (isTRUE(run_simulations)) {
-  .analysis_require_packages(c("cytoUtils", "openCyto", "simcyto"))
+  .analysis_require_packages(c("cytoUtils", "openCyto", "flowStats", "simcyto"))
 }
 
 # Source simulation helpers in dependency order:

@@ -61,7 +61,7 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
   expect_false(grepl("bias_uns == 0.05", content, fixed = TRUE))
   expect_true(grepl("knitr::knit_exit()", content, fixed = TRUE))
   expect_true(grepl(
-    '.analysis_require_packages(c("cytoUtils", "openCyto", "simcyto"))',
+    '.analysis_require_packages(c("cytoUtils", "openCyto", "flowStats", "simcyto"))',
     content,
     fixed = TRUE
   ))

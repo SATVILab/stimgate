@@ -151,6 +151,7 @@ jobs:
             SATVILab/simcyto
             github::RGLab/cytoUtils
             bioc::openCyto
+            bioc::flowStats
             any::quarto
             any::rmarkdown
             any::knitr

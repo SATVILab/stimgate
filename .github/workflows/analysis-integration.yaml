@@ -69,7 +69,7 @@ jobs:
           # Deliberately unpinned: analysis validation follows the current
           # SATVILab/simcyto default branch used by StimGate development.
           # decor is needed by devtools::load_all() to register cpp11 code.
-          extra-packages: any::devtools, any::testthat, any::decor, any::reticulate, any::future, any::furrr, any::progressr, any::withr, SATVILab/simcyto, github::RGLab/cytoUtils, bioc::openCyto
+          extra-packages: any::devtools, any::testthat, any::decor, any::reticulate, any::future, any::furrr, any::progressr, any::withr, SATVILab/simcyto, github::RGLab/cytoUtils, bioc::openCyto, bioc::flowStats
           needs: check
           # Save the package library even when the tests fail, so later runs
           # restore it instead of rebuilding every dependency from source.
