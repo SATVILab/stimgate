@@ -584,7 +584,7 @@
 }
 
 #' @keywords internal
-.simCompareEstimateFromThreshold <- function
+.simCompareEstimateFromThreshold <- function(
   xStim,
   xUns,
   threshold,
