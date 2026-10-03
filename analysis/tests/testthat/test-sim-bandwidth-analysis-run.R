@@ -496,3 +496,23 @@ test_that("analysis 2b declares the agreed grid and common-random-number seeds",
   expect_true(has("scenario_fn = .simBandwidthBiasUnsScenario"))
   expect_true(has(".simBandwidthBiasUnsCollate("))
 })
+
+
+test_that("negative shoulder width extends as the density-height cutoff falls", {
+  env <- .load_bw_run_env()
+  x <- stats::qnorm(seq(0.001, 0.999, length.out = 2000))
+  width_50 <- env$.simBandwidthNegativeShoulderWidth(
+    x,
+    bw = 0.25,
+    heightFrac = 0.50
+  )
+  width_15 <- env$.simBandwidthNegativeShoulderWidth(
+    x,
+    bw = 0.25,
+    heightFrac = 0.15
+  )
+
+  expect_true(is.finite(width_50))
+  expect_true(is.finite(width_15))
+  expect_gt(width_15, width_50)
+})
