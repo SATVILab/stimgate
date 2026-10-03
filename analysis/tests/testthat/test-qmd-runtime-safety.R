@@ -98,8 +98,7 @@ test_that("analysis 8 uses deterministic scenario seeds and full-grid promotion"
   expect_true(grepl(
     "skipping summary and plots for this chunk",
     content,
-    fixed = TRUE,
-    ignore.case = TRUE
+    fixed = TRUE
   ))
 })
 
