@@ -97,6 +97,7 @@ bias_uns_vec_by_pop <- stats::setNames(
   rep(bias_uns, length(pop_vec)),
   pop_vec
 )
+analysis_seed <- 20260823L
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 if (
@@ -164,6 +165,8 @@ subdirectory, so they cannot overwrite the full TCRgd run.
 ```{r}
 #| label: run-tcrgd-tester
 #| results: hide
+set.seed(analysis_seed)
+
 tcrgd_tester <- .acsCytofRunPopulation(
   pop = "tcrgd",
   pathFcsBase = path_fcs_base,
@@ -226,7 +229,10 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate)) {
             biasUns = bias_uns_vec_by_pop[[pop]]
           )
         },
-        .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+        .options = furrr::furrr_options(
+          seed = analysis_seed,
+          scheduling = Inf
+        )
       )
     },
     finally = future::plan(old_plan)
@@ -397,20 +403,10 @@ manual_summary_tbl |>
 #| label: plot-manual-comparison
 if (isTRUE(run_plots)) {
   p <- .acsCytofManualPlotScatter(manual_comparison_tbl)
-  path_p <- projr::projr_path_get(
-    "cache",
-    "acs_cytof",
-    "manual-comparison",
-    "scatter.pdf"
-  )
+  path_p <- file.path(path_manual_output, "scatter.pdf")
   ggsave(path_p, plot = p, units = "cm", width = 20, height = 20)
   p <- .acsCytofManualPlotScatter(manual_comparison_tbl |> dplyr::filter(method != "tailgate"))
-  path_p <- projr::projr_path_get(
-    "cache",
-    "acs_cytof",
-    "manual-comparison",
-    "scatter-no_tg.pdf"
-  )
+  path_p <- file.path(path_manual_output, "scatter-no_tg.pdf")
   ggsave(path_p, plot = p, units = "cm", width = 20, height = 20)
 }
 ```
@@ -421,12 +417,7 @@ if (isTRUE(run_plots)) {
 #| label: plot-manual-relative-error
 if (isTRUE(run_plots)) {
   p <- .acsCytofManualPlotRelativeError(manual_comparison_tbl |> dplyr::filter(method != "tailgate"))
-  path_p <- projr::projr_path_get(
-    "cache",
-    "acs_cytof",
-    "manual-comparison",
-    "rel_error-no_tg.pdf"
-  )
+  path_p <- file.path(path_manual_output, "rel_error-no_tg.pdf")
   ggsave(path_p, plot = p, units = "cm", width = 20, height = 20)
 }
 ```
