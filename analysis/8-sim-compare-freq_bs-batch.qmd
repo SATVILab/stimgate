@@ -26,7 +26,10 @@ library(progressr)
 library(dplyr)
 library(tidyr)
 
-root_dir <- projr::projr_path_get("project")
+root_dir <- tryCatch(
+  projr::projr_path_get("project"),
+  error = function(e) getwd()
+)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
@@ -143,8 +146,8 @@ n_iter_sim <- 5
 fbeta_beta <- 0.8
 fbeta_theta <- 2
 fbeta_width <- 10
-path_fbeta <- projr::projr_path_get(
-  "project",
+path_fbeta <- file.path(
+  root_dir,
   "scripts",
   "python",
   "fbeta.py"
@@ -596,13 +599,7 @@ compare_summary
 ### Mean-shift degradation curves (all components vs negative only)
 
 ```{r}
-plot_dir <- projr::projr_path_get(
-  "cache",
-  "sim",
-  "compare",
-  "freq_bs_batch",
-  "mean_shift_degradation"
-)
+plot_dir <- .analysis_cache_dir(c(analysis_key, "mean_shift_degradation"), path_root = root_dir)
 if (
   isTRUE(run_plots) &&
     isTRUE(results_available) &&
@@ -702,13 +699,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 ### SD-inflation degradation curves
 
 ```{r}
-plot_dir <- projr::projr_path_get(
-  "cache",
-  "sim",
-  "compare",
-  "freq_bs_batch",
-  "sd_inflation_degradation"
-)
+plot_dir <- .analysis_cache_dir(c(analysis_key, "sd_inflation_degradation"), path_root = root_dir)
 if (
   isTRUE(run_plots) &&
     isTRUE(results_available) &&
@@ -758,12 +749,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         y = "Median Absolute Relative Error (asinh scale)",
         color = "Method"
       )
-    path_p <- projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs_batch",
-      "sd_inflation_degradation",
+    path_p <- file.path(
+      .analysis_cache_dir(c(analysis_key, "sd_inflation_degradation"), path_root = root_dir),
       paste0(
         "plot_",
         mean_pos_setting_curr,
@@ -835,12 +822,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         color = "Method",
         linetype = "Mismatch Variant"
       )
-    path_p <- projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs_batch",
-      "threshold_placement_unstim",
+    path_p <- file.path(
+      .analysis_cache_dir(c(analysis_key, "threshold_placement_unstim"), path_root = root_dir),
       paste0(
         "plot_",
         mean_pos_setting_curr,
@@ -900,12 +883,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         y = "90th Percentile Absolute Relative Error (asinh scale)",
         color = "Method"
       )
-    path_p <- projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs_batch",
-      "upper_tail_and_fallbacks",
+    path_p <- file.path(
+      .analysis_cache_dir(c(analysis_key, "upper_tail_and_fallbacks"), path_root = root_dir),
       paste0(
         "plot_",
         mean_pos_setting_curr,
