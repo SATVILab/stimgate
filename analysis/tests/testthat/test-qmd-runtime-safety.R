@@ -211,7 +211,7 @@ test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure 
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'analysis_semantics_version <- "bandwidth-est-base-v2"',
+    'analysis_semantics_version <- "bandwidth-est-base-v3"',
     content,
     fixed = TRUE
   ))
