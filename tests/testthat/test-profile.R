@@ -117,24 +117,28 @@ test_that("profiling instrumentation preserves wrapped function arguments", {
     names(formals(.profileOriginalGateInit))
   )
   expect_identical(
-    names(formals(.gateCytPos)),
-    names(formals(.profileOriginalGateCytPos))
+    formals(.gateCytPos),
+    formals(.profileOriginalGateCytPos)
   )
   expect_identical(
     names(formals(.gateStats)),
     names(formals(.profileOriginalGateStats))
   )
   expect_identical(
-    names(formals(.gateChnl)),
-    names(formals(.profileOriginalGateChnl))
+    formals(.gateChnl),
+    formals(.profileOriginalGateChnl)
   )
   expect_identical(
     names(formals(.gateBatch)),
     names(formals(.profileOriginalGateBatch))
   )
   expect_identical(
-    names(formals(.getCpUnsLocCondition)),
-    names(formals(.profileOriginalGetCpUnsLocCondition))
+    formals(.getCpCluster),
+    formals(.profileOriginalGetCpCluster)
+  )
+  expect_identical(
+    formals(.getCpUnsLocCondition),
+    formals(.profileOriginalGetCpUnsLocCondition)
   )
   expect_identical(
     names(formals(.getCpUnsLocGetProb)),

@@ -12,8 +12,6 @@
 .getCpCluster <- function(
   .data,
   gateTbl,
-  gateStatsTbl,
-  gateTblCtrl,
   chnlSettings,
   stage,
   pathProject,
