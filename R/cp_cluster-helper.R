@@ -196,12 +196,12 @@
     bwMax <- Inf
   }
 
-  bwCalc <- .bwCalcOne(
+  bwCalc <- .getCpUnsLocBwCalcOne(
     x = x,
+    chnlSettings = chnlSettings,
     bwMtd = bwMtd,
     bwAdj = bwAdj,
-    bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax
+    adaptive = FALSE
   )
 
   if (!is.finite(bwCalc) || bwCalc <= 0) {
