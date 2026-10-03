@@ -43,6 +43,87 @@ test_that(".simBandwidthBsFreq exposes adaptive bandwidth settings directly", {
   expect_true(all(adaptive_nm %in% names(formals(env$.simBandwidthBsFreq))))
 })
 
+test_that("analysis calls use the gateStim and stimControl argument contracts", {
+  gate_args <- names(formals(stimgate::gateStim))
+  control_args <- names(formals(stimgate::stimControl))
+  api_args <- union(gate_args, control_args)
+  removed_args <- c("tolClust", "gateQuant", "maxPosProbX")
+  expect_false(any(removed_args %in% api_args))
+
+  check_calls <- function(node) {
+    if (!is.call(node) && !is.expression(node)) return(invisible(NULL))
+    if (is.call(node)) {
+      target <- paste(deparse(node[[1L]]), collapse = "")
+      if (target %in% c("gateStim", "stimgate::gateStim", "stimgate::stimControl")) {
+        forwarded <- names(as.list(node)[-1L])
+        expect_true(all(forwarded %in% api_args), info = target)
+        allowed <- if (target == "stimgate::stimControl") control_args else gate_args
+        expect_true(all(forwarded %in% allowed), info = target)
+        if (target == "stimgate::stimControl" && "clusterGates" %in% forwarded) {
+          expect_true(
+            identical(as.list(node)$clusterGates, quote(!is.null(tolClust))) ||
+              identical(as.list(node)$clusterGates, FALSE)
+          )
+        }
+      }
+    }
+    for (i in seq_along(node)) {
+      if (identical(node[[i]], quote(expr = ))) next
+      if (is.call(node[[i]]) || is.expression(node[[i]])) check_calls(node[[i]])
+    }
+    invisible(NULL)
+  }
+
+  scripts <- list.files(file.path(root_dir, "scripts", "r"), pattern = "\\.R$", full.names = TRUE)
+  for (script in scripts) check_calls(parse(script))
+})
+
+test_that("scripts pass bw to gateStim and calcCytPosGates/minCell to stimControl", {
+  gate_args <- names(formals(stimgate::gateStim))
+  control_args <- names(formals(stimgate::stimControl))
+  expect_true("bw" %in% gate_args)
+  expect_false(any(c("calcCytPosGates", "minCell") %in% gate_args))
+  expect_true(all(c("calcCytPosGates", "minCell") %in% control_args))
+  expect_false("bw" %in% control_args)
+
+  check_split <- function(node) {
+    if (!is.call(node) && !is.expression(node)) return(invisible(NULL))
+    if (is.call(node)) {
+      target <- paste(deparse(node[[1L]]), collapse = "")
+      forwarded <- names(as.list(node)[-1L])
+      if (target %in% c("gateStim", "stimgate::gateStim")) {
+        expect_false(
+          any(c("calcCytPosGates", "minCell") %in% forwarded),
+          info = target
+        )
+      }
+      if (target == "stimgate::stimControl") {
+        expect_false("bw" %in% forwarded, info = target)
+      }
+    }
+    for (i in seq_along(node)) {
+      if (identical(node[[i]], quote(expr = ))) next
+      if (is.call(node[[i]]) || is.expression(node[[i]])) check_split(node[[i]])
+    }
+    invisible(NULL)
+  }
+
+  scripts <- list.files(
+    file.path(root_dir, "scripts", "r"),
+    pattern = "\\.R$",
+    full.names = TRUE
+  )
+  for (script in scripts) check_split(parse(script))
+})
+
+test_that("analysis wrappers retain legacy arguments for callers and manifests", {
+  env <- .load_analysis_env()
+  legacy_args <- c("tolClust", "gateQuant", "maxPosProbX")
+  for (wrapper in c(".simBandwidthBsFreq", ".simCompareStimgateRows", ".simCompareFreqBs")) {
+    expect_true(all(legacy_args %in% names(formals(env[[wrapper]]))), info = wrapper)
+  }
+})
+
 test_that(".simBandwidthBsFreq forwards to gateStim without unknown-argument error", {
   env <- .load_analysis_env()
 
@@ -110,7 +191,7 @@ test_that(".simCompareFreqBs forwards to gateStim via .simCompareStimgateRows wi
 })
 
 test_that(
-  ".simCompareFreqBs and .simCompareStimgateRows use the gateStim default",
+  ".simCompareFreqBs and .simCompareStimgateRows use the stimControl gateCombn default",
   {
     env <- .load_analysis_env()
 
