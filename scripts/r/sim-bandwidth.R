@@ -436,6 +436,17 @@
       seq((i - 1) * nCondition + 1, i * nCondition)
     })
 
+    oldIntermediate <- Sys.getenv("STIMGATE_INTERMEDIATE", unset = NA)
+    on.exit(
+      {
+        if (is.na(oldIntermediate)) {
+          Sys.unsetenv("STIMGATE_INTERMEDIATE")
+        } else {
+          Sys.setenv("STIMGATE_INTERMEDIATE" = oldIntermediate)
+        }
+      },
+      add = TRUE
+    )
     Sys.setenv("STIMGATE_INTERMEDIATE" = "TRUE")
     invisible(gateStim(
       .data = gs,
