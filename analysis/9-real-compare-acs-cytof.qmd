@@ -334,8 +334,9 @@ manual file has no matching population.
 
 ```{r}
 #| label: format-manual-comparison
-path_manual_output <- file.path(
-  path_scratch_base,
+path_manual_output <- projr::projr_path_get_dir(
+  "cache",
+  "acs_cytof",
   "manual-comparison"
 )
 data("fn_to_sampleid_map", package = "DataTidyACSCyTOFFAUST")
