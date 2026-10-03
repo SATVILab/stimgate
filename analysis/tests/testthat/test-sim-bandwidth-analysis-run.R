@@ -64,15 +64,16 @@ test_that("analysis 2 scenario rerun is identical whatever the prior RNG", {
     cluster_perturbation_sd = 0, background_relative_to_response = 0.2,
     n_cell_uns_relative_to_stim = 1, sim_id = 7L, sim_seed = 12351L
   )
-  old_kind <- RNGkind()
-  withr::defer(do.call(RNGkind, as.list(old_kind)))
+  withr::local_seed(123L)
 
   RNGkind("L'Ecuyer-CMRG")
   set.seed(99)
+  seed_before <- .Random.seed
   res_lecuyer <- env$.simBandwidthRunRow(
     row, env$.simBandwidthFreqBsGlobalScenario, settings
   )
   expect_identical(RNGkind()[[1]], "L'Ecuyer-CMRG")
+  expect_identical(.Random.seed, seed_before)
 
   RNGkind("default", "default", "default")
   set.seed(1)
@@ -86,7 +87,7 @@ test_that("analysis 2 scenario rerun is identical whatever the prior RNG", {
   expect_identical(names(res_default)[seq_along(row)], names(row))
 })
 
-test_that("grid run outputs match an interactive rerun regardless of chunking", {
+test_that("grid and interactive reruns agree regardless of chunking", {
   env <- .load_bw_run_env()
   grid <- .fake_grid()
   settings <- list(fail_a = NA)
@@ -227,4 +228,216 @@ test_that("promotion waits for every chunk and checks the full grid", {
   )
   expect_false(validation$ids_ok)
   expect_false(validation$validation_ok)
+})
+
+
+test_that("row RNG and its absence are restored even on scenario errors", {
+  env <- .load_bw_run_env()
+  withr::local_seed(10L)
+  RNGkind("L'Ecuyer-CMRG", "Box-Muller", "Rejection")
+  set.seed(18L)
+  before_kind <- RNGkind()
+  before_seed <- .Random.seed
+  expect_error(
+    env$.simBandwidthRunRow(.fake_grid()[1, ], .fake_scenario,
+      list(fail_a = 1)
+    ),
+    "boom"
+  )
+  expect_identical(RNGkind(), before_kind)
+  expect_identical(.Random.seed, before_seed)
+
+  rm(".Random.seed", envir = .GlobalEnv)
+  env$.simBandwidthRunRow(.fake_grid()[1, ], .fake_scenario, list(fail_a = NA))
+  expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+  expect_identical(RNGkind(), before_kind)
+  expect_error(
+    env$.simBandwidthRunRow(.fake_grid()[1, ], function(row, settings) {
+      tibble::tibble()
+    }),
+    "at least one result row"
+  )
+})
+
+test_that("stale error markers and unreadable outputs are retried", {
+  env <- .load_bw_run_env()
+  grid <- .fake_grid()[1, ]
+  ctx <- .local_run_ctx(env, "stale-error")
+  run <- function(retry_errors = TRUE) {
+    env$.simBandwidthRunRowResumable(
+      grid, .fake_scenario, list(fail_a = NA), ctx, 1L,
+      retry_errors = retry_errors
+    )
+  }
+  reference <- run()
+  output <- env$.path_sim_output(1L, ctx$chunk_output_dir, 1L, 1L)
+  stale <- reference
+  stale$x <- -999
+  saveRDS(stale, output)
+  file.create(file.path(ctx$chunk_jobs_dir, "error-1"))
+  expect_identical(run(), reference)
+  expect_false(file.exists(file.path(ctx$chunk_jobs_dir, "error-1")))
+  writeLines("unreadable RDS", output)
+  expect_identical(run(), reference)
+})
+
+test_that("full-grid validation catches wrong IDs, seeds and corrupt files", {
+  env <- .load_bw_run_env()
+  grid <- .fake_grid()
+  tbl <- purrr::list_rbind(lapply(seq_len(nrow(grid)), function(i) {
+    env$.simBandwidthRunRow(grid[i, ], .fake_scenario, list(fail_a = NA))
+  }))
+  expect_true(env$.simBandwidthValidateOutputs(tbl, grid)$validation_ok)
+  wrong_seed <- tbl
+  wrong_seed$sim_seed[1] <- 0L
+  expect_match(
+    env$.simBandwidthValidateOutputs(wrong_seed, grid)$problems,
+    "sim_seed values"
+  )
+  extra <- tbl
+  extra$sim_id[1] <- 99L
+  expect_false(env$.simBandwidthValidateOutputs(extra, grid)$ids_ok)
+  expect_identical(
+    env$.simBandwidthValidateOutputs(tbl, grid,
+      validate_fn = function(tbl) "analysis-specific failure"
+    )$problems,
+    "analysis-specific failure"
+  )
+  path <- withr::local_tempfile()
+  writeLines("broken", path)
+  expect_error(env$.simBandwidthReadOutputs(path), "Could not read saved")
+})
+
+test_that("all chunks collate together and empty chunks can complete", {
+  env <- .load_bw_run_env()
+  project <- withr::local_tempdir()
+  withr::local_dir(project)
+  grid <- .fake_grid()
+  contexts <- lapply(1:2, function(k) {
+    env$.analysis_run_context(
+      c("sim", "test", "shared"), run_id = "shared",
+      path_root = project, sim_grid_chunk_index = k, sim_grid_n_chunks = 2L
+    )
+  })
+  collate <- function(tbl) list(summary = tbl)
+  env$.simBandwidthRunGrid(
+    grid, scenario_fn = .fake_scenario, settings = list(fail_a = NA),
+    run_ctx = contexts[[1]], sim_grid_n_chunks = 2L, workers = 1L
+  )
+  expect_false(env$.simBandwidthFinishChunk(
+    contexts[[1]], grid, grid, collate_fn = collate
+  ))
+  expect_true(env$.simBandwidthFinishChunk(
+    contexts[[2]], grid[0, ], grid, collate_fn = collate
+  ))
+  expect_identical(
+    list.files(contexts[[1]]$staging_collated_dir), "summary.rds"
+  )
+  expect_identical(
+    sort(unique(readRDS(file.path(
+      contexts[[1]]$current_dir, "collated", "summary.rds"
+    ))$sim_id)),
+    grid$sim_id
+  )
+})
+
+test_that("parallel workers use the same row stream as an interactive rerun", {
+  env <- .load_bw_run_env()
+  grid <- .fake_grid()
+  ctx <- .local_run_ctx(env, "parallel")
+  actual <- env$.simBandwidthRunGrid(
+    grid[3:1, ], scenario_fn = .fake_scenario, settings = list(fail_a = NA),
+    run_ctx = ctx, workers = 2L
+  )
+  expected <- lapply(3:1, function(i) {
+    env$.simBandwidthRunRow(grid[i, ], .fake_scenario, list(fail_a = NA))
+  })
+  expect_identical(actual, expected)
+})
+
+test_that("analysis 2 collates final sample estimates", {
+  env <- .load_bw_run_env()
+  grid <- .fake_grid()[1, ]
+  tbl <- dplyr::bind_cols(
+    grid[rep(1L, 3L), ],
+    tibble::tibble(
+      iter = 1L, sample = c("1", "1", "2"), ind = c("2", "2", "4"),
+      method = c("propRespPred", "loc_sample", "loc_sample"),
+      threshold = c(NA_real_, 3, 5), propRespTruth = 0.1,
+      propRespEst = c(0.99, 0.15, 0.25), propBsEst = 0.95
+    )
+  )
+  res <- env$.simBandwidthFreqBsGlobalCollate(tbl, names(grid))
+  expect_identical(res$bw_tbl_results_raw$propRespEst, c(0.15, 0.25))
+  expect_equal(res$bw_tbl_results_summary$propRespEst_median, 0.2)
+  expect_false("propBsEst" %in% names(res$bw_tbl_results_raw))
+  expect_error(
+    env$.simBandwidthFreqBsGlobalCollate(
+      dplyr::bind_rows(tbl, tbl), names(grid)
+    ),
+    "duplicate result keys"
+  )
+})
+
+test_that("analysis 2 dev and quick filters preserve full-grid IDs and seeds", {
+  lines <- readLines(file.path(
+    root_dir, "analysis", "2-sim-bw-freq_bs-global.qmd"
+  ))
+  chunk <- function(label) {
+    start <- which(lines == paste0("#| label: ", label))
+    end <- start + which(lines[(start + 1L):length(lines)] == "```")[1]
+    lines[(start + 1L):(end - 1L)]
+  }
+  run_grid <- function(quick, dev) {
+    env <- .load_bw_run_env()
+    env$analysis_quick <- quick
+    env$analysis_dev <- dev
+    env$simulation_seed <- 12345L
+    env$sim_grid_shuffle_seed <- 8L
+    env$sim_grid_chunk_index <- 1L
+    env$sim_grid_n_chunks <- 1L
+    eval(parse(text = chunk("actual-settings")), envir = env)
+    invisible(utils::capture.output(
+      eval(parse(text = chunk("bw-manual-grid")), envir = env)
+    ))
+    env
+  }
+  full <- run_grid(FALSE, FALSE)
+  quick <- run_grid(TRUE, FALSE)
+  dev <- run_grid(FALSE, TRUE)
+  both <- run_grid(TRUE, TRUE)
+  for (env in list(quick, dev, both)) {
+    expect_identical(env$sim_grid_full, full$sim_grid_full)
+    expect_gt(nrow(env$sim_grid_all), 0L)
+    expected <- full$sim_grid_full |>
+      dplyr::filter(.data$sim_id %in% env$sim_grid_all$sim_id)
+    expect_identical(env$sim_grid_all, expected)
+  }
+  expect_true(5e4 %in% quick$sim_grid_all$n_cell)
+  expect_true(0.02 %in% quick$sim_grid_all$prob_response)
+  expect_identical(nrow(both$sim_grid_all), 3L)
+})
+
+test_that("shared run helpers cannot write to a read-only results context", {
+  env <- .load_bw_run_env()
+  project <- withr::local_tempdir()
+  withr::local_dir(project)
+  ctx <- list(
+    read_only = TRUE,
+    sim_root = file.path(project, "cache", "sim", "absent")
+  )
+  grid <- .fake_grid()
+  expect_false(env$.simBandwidthFinishChunk(
+    ctx, grid, grid, collate_fn = function(tbl) list(summary = tbl)
+  ))
+  expect_false(env$.simBandwidthPromoteIfReady(
+    ctx, grid, collate_fn = function(tbl) list(summary = tbl)
+  ))
+  expect_error(
+    env$.simBandwidthRunRowResumable(
+      grid[1, ], .fake_scenario, list(fail_a = NA), ctx, 1L
+    ),
+    "read-only results context"
+  )
+  expect_false(dir.exists(ctx$sim_root))
 })

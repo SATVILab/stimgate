@@ -199,8 +199,12 @@ test_that("analysis 2 uses shared seeded runners and canonical reads", {
   expect_true(has("sim_seed = as.integer(simulation_seed + sim_id - 1L)"))
   # sim_id/sim_seed are fixed on the full grid before filtering/shuffling.
   expect_lt(pos("sim_seed = as.integer("), pos("sim_grid_full <- sim_grid"))
-  expect_lt(pos("sim_grid_full <- sim_grid"), pos("if (analysis_dev)"))
-  expect_lt(pos("if (analysis_dev)"), pos("dplyr::slice_sample(prop = 1)"))
+  expect_lt(pos("sim_grid_full <- sim_grid"), pos("if (analysis_quick)"))
+  expect_lt(pos("if (analysis_quick)"), pos("if (analysis_dev)"))
+  expect_lt(
+    pos("if (analysis_dev)"),
+    pos("dplyr::slice_sample(sim_grid_all, prop = 1)")
+  )
   expect_true(has("n_cell == max(n_cell)"))
   expect_false(has("n_cell == 1e5"))
 

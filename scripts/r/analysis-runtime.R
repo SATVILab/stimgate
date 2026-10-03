@@ -341,18 +341,33 @@
   invisible(TRUE)
 }
 
-# Project directory under the projr `label` directory ("cache", "output",
-# ...), falling back to `<path_root>/<label>/...` when projr is unavailable.
+#' Resolve a project directory, with a checkout-local fallback
+#'
+#' Uses projr's configured directory when available. If projr cannot resolve
+#' the project (including when installed without a project configuration),
+#' falls back to `<path_root>/<label>/...`.
+#'
+#' @param label character Directory label, such as "cache" or "output".
+#' @param path_parts character Relative path components.
+#' @param path_root character or NULL Checkout root (default: working directory).
+#' @param create logical Create the directory. Default: TRUE.
+#' @return character Directory path.
 .analysis_project_dir <- function(
     label,
     path_parts = character(),
     path_root = NULL,
     create = TRUE) {
-  if (requireNamespace("projr", quietly = TRUE)) {
-    return(do.call(
-      projr::projr_path_get_dir,
-      c(list(label), as.list(path_parts), list(create = create))
-    ))
+  path <- if (requireNamespace("projr", quietly = TRUE)) {
+    tryCatch(
+      do.call(
+        projr::projr_path_get_dir,
+        c(list(label), as.list(path_parts), list(create = create))
+      ),
+      error = function(e) NULL
+    )
+  }
+  if (!is.null(path) && length(path) == 1L && !is.na(path) && nzchar(path)) {
+    return(path)
   }
   root_local <- normalizePath(
     if (is.null(path_root) || !nzchar(path_root)) "." else path_root,

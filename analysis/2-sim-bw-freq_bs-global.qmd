@@ -200,13 +200,11 @@ bias_uns_settings_tbl <- tibble::tribble(
 )
 bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
-if (analysis_quick) {
-  n_cell_stim_vec <- c(1e3, 5e4)
-  prob_response_vec <- c(0.002, 0.02)
-  bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
-  bandwidth_value_vec <- c(0.05, 0.1, 0.25, 0.5, 0.75)
-  condition_perturbation_sd_vec <- 0
-}
+# Include quick-mode scenarios before assigning stable IDs and seeds. The
+# execution filters below keep the original full and quick scientific settings.
+n_cell_stim_grid_vec <- unique(c(n_cell_stim_vec, 5e4))
+prob_response_grid_vec <- unique(c(prob_response_vec, 0.02))
+
 ```
 
 ### Varying bandwidth manually
@@ -224,8 +222,8 @@ Generate the grid of parameters to simulate.
 #| label: bw-manual-grid
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
-  prob_response = prob_response_vec,
-  n_cell = n_cell_stim_vec,
+  prob_response = prob_response_grid_vec,
+  n_cell = n_cell_stim_grid_vec,
   bw = bandwidth_value_vec,
   bias_uns = bias_uns_vec,
   sample_perturbation_sd = sample_perturbation_sd_vec,
@@ -263,14 +261,30 @@ sim_grid <- tidyr::expand_grid(
     sim_seed = as.integer(simulation_seed + sim_id - 1L)
   )
 
-# sim_id and sim_seed are fixed on the full grid, before the dev filter,
+# sim_id and sim_seed are fixed on the full grid, before dev/quick filters,
 # shuffling and chunking, so each row keeps its seed in every run.
 sim_grid_full <- sim_grid
+
+if (analysis_quick) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell %in% c(1e3, 5e4),
+      prob_response %in% c(0.002, 0.02),
+      bw %in% c(0.05, 0.1, 0.25, 0.5, 0.75),
+      condition_perturbation_sd == 0
+    )
+} else {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell %in% n_cell_stim_vec,
+      prob_response %in% prob_response_vec
+    )
+}
 
 if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
-      # The largest n_cell (1e5 in the full grid) also exists in quick mode.
+      # Select the largest cell count remaining in either execution mode.
       n_cell == max(n_cell),
       prob_response == 0.002,
       mean_pos_setting == "high",
@@ -290,9 +304,13 @@ analysis_grid_spec <- sim_grid_all |>
   dplyr::select(-sim_seed)
 
 # Randomise execution order, then distribute rows evenly across external chunks.
-set.seed(sim_grid_shuffle_seed)
-sim_grid <- sim_grid_all |>
-  dplyr::slice_sample(prop = 1) |>
+sim_grid <- withr::with_seed(
+  sim_grid_shuffle_seed,
+  dplyr::slice_sample(sim_grid_all, prop = 1),
+  .rng_kind = .simBandwidthRngKind[["kind"]],
+  .rng_normal_kind = .simBandwidthRngKind[["normal.kind"]],
+  .rng_sample_kind = .simBandwidthRngKind[["sample.kind"]]
+) |>
   dplyr::mutate(
     .sim_grid_chunk =
       ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L

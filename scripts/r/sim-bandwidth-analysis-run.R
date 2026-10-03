@@ -51,6 +51,9 @@
     .rng_sample_kind = .simBandwidthRngKind[["sample.kind"]]
   )
   res <- tibble::as_tibble(res)
+  if (nrow(res) == 0L) {
+    stop("scenario_fn must return at least one result row.")
+  }
   res <- res[, setdiff(names(res), c(names(row), error_col)), drop = FALSE]
   out <- dplyr::bind_cols(
     tibble::as_tibble(row)[rep(1L, nrow(res)), , drop = FALSE],
@@ -80,8 +83,8 @@
 #'
 #' Handles resume, running/completed/error markers, atomic output writing
 #' and error rows around `.simBandwidthRunRow()`. Existing outputs are reused
-#' unless they recorded an error and `retry_errors` is TRUE, in which case
-#' the row is run again.
+#' unless the output or marker recorded an error and `retry_errors` is TRUE,
+#' in which case the row is run again.
 #'
 #' @param row data.frame One row of `sim_grid`.
 #' @param scenario_fn,settings,error_col See `.simBandwidthRunRow()`.
@@ -106,6 +109,9 @@
     heading = "BANDWIDTH SIMULATION PROGRESS",
     path_root = NULL,
     p = NULL) {
+  if (isTRUE(run_ctx$read_only)) {
+    stop("Cannot run simulations in a read-only results context.")
+  }
   if (!is.null(path_root)) {
     .simBandwidthEnsureCurrentCheckout(path_root)
   }
@@ -141,7 +147,10 @@
   }
   if (
     !is.null(existing) &&
-      !(isTRUE(retry_errors) && .analysis_output_has_error(existing, error_col))
+      !(isTRUE(retry_errors) && (
+        file.exists(file_error) ||
+          .analysis_output_has_error(existing, error_col)
+      ))
   ) {
     .analysis_reconcile_resume_markers(
       existing_output = existing,
@@ -347,6 +356,9 @@
     error_col = "error_message",
     label = "analysis",
     counts = list(total = 0L, completed = 0L, failed = 0L)) {
+  if (isTRUE(run_ctx$read_only)) {
+    return(invisible(FALSE))
+  }
   if (!.analysis_can_promote(run_ctx)) {
     return(invisible(FALSE))
   }
@@ -397,6 +409,13 @@
   }
 
   collated <- collate_fn(tbl)
+  if (
+    !is.list(collated) || length(collated) == 0L ||
+      is.null(names(collated)) || anyNA(names(collated)) ||
+      any(!nzchar(names(collated))) || anyDuplicated(names(collated))
+  ) {
+    stop("collate_fn must return a non-empty list with unique object names.")
+  }
   for (nm in names(collated)) {
     .write_rds_atomic(
       collated[[nm]],
@@ -427,6 +446,9 @@
     error_col = "error_message",
     label = "analysis",
     ...) {
+  if (isTRUE(run_ctx$read_only)) {
+    return(invisible(FALSE))
+  }
   counts <- .simBandwidthChunkMarkerCounts(run_ctx)
   counts$total <- nrow(sim_grid)
   validation <- if (nrow(sim_grid) == 0L) {
