@@ -431,7 +431,8 @@
 <li>Analysis-specific helpers under <code>scripts/r/</code>: substantial orchestration, restart/collation, IO and plotting helpers that should not live inline in QMDs.</li>
 <li>
 <code>analysis/*.qmd</code>: scientific settings, analysis calls, result-specific transformations and presentation.</li>
-</ol><p>Plot-construction helpers under <code>scripts/r/</code> should return plot objects without creating directories or writing files. Keep filesystem side effects in the corresponding save/orchestration helper or QMD.</p>
+</ol><p>When displaying ggplot objects inside QMD conditionals or loops, call <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> explicitly. Chunk tests should capture printed plots and check that each requested method appears and that disabling plotting produces no printed plots.</p>
+<p>Plot-construction helpers under <code>scripts/r/</code> should return plot objects without creating directories or writing files. Keep filesystem side effects in the corresponding save/orchestration helper or QMD.</p>
 <p>Source analysis helper files explicitly in dependency order. Do not move analysis-only helpers into <code>R/</code> unless they have genuinely become part of the installed package implementation or API. Keep large domain helper files such as <code>sim-bandwidth.R</code> focused on their domain rather than using them as catch-all locations for generic QMD runtime or unrelated plotting/orchestration code.</p>
 <hr></div>
 </div>
@@ -536,6 +537,7 @@
 <li>Normalise an existing temporary root before appending paths that do not exist yet; Windows cannot resolve short/long path aliases in a missing path.</li>
 <li>Embed only forward-slash paths in R code run through <code>Rscript -e</code>; Windows backslashes are escape sequences there.</li>
 <li>Use <code>skip_on_os("windows")</code>, with a comment giving the reason, for checks of Unix-only process or signal behaviour.</li>
+<li>Environment-restoration tests must compare the value observed after setup; Windows treats an empty environment value as unset.</li>
 </ul></li>
 <li>
 <p><strong>Use the package-shipped example data for routine tests and examples</strong>: The package ships one canonical deterministic cytometry example dataset in <code>inst/extdata/stimgate_example_data/</code> (2 samples × 2 conditions × 2 markers × ~10,000 cells per condition, seed 42). Load it with:</p>

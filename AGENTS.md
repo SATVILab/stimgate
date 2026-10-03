@@ -567,6 +567,11 @@ For new or moved analysis code, use this layering:
 5.  `analysis/*.qmd`: scientific settings, analysis calls,
     result-specific transformations and presentation.
 
+When displaying ggplot objects inside QMD conditionals or loops, call
+[`print()`](https://rdrr.io/r/base/print.html) explicitly. Chunk tests
+should capture printed plots and check that each requested method
+appears and that disabling plotting produces no printed plots.
+
 Plot-construction helpers under `scripts/r/` should return plot objects
 without creating directories or writing files. Keep filesystem side
 effects in the corresponding save/orchestration helper or QMD.
@@ -920,6 +925,8 @@ both suites.
       Windows backslashes are escape sequences there.
     - Use `skip_on_os("windows")`, with a comment giving the reason, for
       checks of Unix-only process or signal behaviour.
+    - Environment-restoration tests must compare the value observed
+      after setup; Windows treats an empty environment value as unset.
 
 10. **Use the package-shipped example data for routine tests and
     examples**: The package ships one canonical deterministic cytometry
