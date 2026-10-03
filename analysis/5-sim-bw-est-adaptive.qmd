@@ -703,42 +703,158 @@ Collate the results.
 #| label: bw-estimate-collate
 #| fig-width: 7
 #| fig-height: 10
-results_read_only <- isTRUE(run_ctx$read_only)
 
-required_manifest_params <- list(
-  analysis_semantics_version = analysis_semantics_version,
-  simulation_seed = simulation_seed,
-  analysis_dev = analysis_dev,
-  n_sample_sim = n_sample_sim,
-  n_iter_sim = n_iter_sim,
-  norm_adaptive_ncell = norm_adaptive_ncell
-)
-
-if (results_read_only) {
-  current_manifest <- .analysis_read_manifest(run_ctx$manifest_path)
-  mismatched_params <- names(required_manifest_params)[vapply(
-    names(required_manifest_params),
-    function(nm) {
-      is.null(current_manifest) ||
-        is.null(current_manifest$params) ||
-        !nm %in% names(current_manifest$params) ||
-        !isTRUE(all.equal(
-          current_manifest$params[[nm]],
-          required_manifest_params[[nm]],
-          check.attributes = FALSE
-        ))
-    },
-    logical(1)
-  )]
-
-  if (length(mismatched_params) > 0L) {
-    stop(
-      "Canonical analysis 5 results are incompatible with the current ",
-      "analysis semantics: ",
-      paste(mismatched_params, collapse = ", "),
-      ". Rerun the simulation before plotting."
-    )
+read_adaptive_bw_outputs <- function(path_vec) {
+  if (length(path_vec) == 0L) {
+    return(tibble::tibble())
   }
+
+  out <- purrr::map(
+    path_vec,
+    function(path) {
+      tryCatch(
+        readRDS(path),
+        error = function(e) {
+          stop(
+            "Could not read saved simulation result: ",
+            path,
+            ". ",
+            conditionMessage(e)
+          )
+        }
+      )
+    }
+  )
+
+  purrr::list_rbind(out)
+}
+
+summarise_adaptive_bw_results <- function(.data) {
+  bw_measure_tbl <- tibble::tribble(
+    ~bw_component, ~bw_condition, ~bw_col,
+    "core", "unstim", "bw_uns_core",
+    "core", "stim", "bw_stim_core",
+    "extra", "unstim", "bw_uns_extra",
+    "extra", "stim", "bw_stim_extra"
+  )
+
+  long <- purrr::map_dfr(seq_len(nrow(bw_measure_tbl)), function(i) {
+    bw_component_curr <- bw_measure_tbl$bw_component[[i]]
+    bw_condition_curr <- bw_measure_tbl$bw_condition[[i]]
+    bw_col_curr <- bw_measure_tbl$bw_col[[i]]
+
+    .data |>
+      dplyr::mutate(
+        bw_component = bw_component_curr,
+        bw_condition = bw_condition_curr,
+        bw_est = .data[[bw_col_curr]]
+      )
+  }) |>
+    dplyr::mutate(
+      bw_component = factor(.data$bw_component, levels = c("core", "extra")),
+      bw_condition = factor(.data$bw_condition, levels = c("unstim", "stim"))
+    )
+
+  summary <- long |>
+    dplyr::group_by(
+      dplyr::pick(
+        dplyr::any_of(c(colnames(sim_grid_all), "bw_component", "bw_condition"))
+      )
+    ) |>
+    dplyr::summarise(
+      n_total = dplyr::n(),
+      n_est = sum(is.finite(.data$bw_est)),
+      prop_est = n_est / n_total,
+      mean_bw = .simBandwidthFiniteMean(.data$bw_est),
+      .groups = "drop"
+    ) |>
+    dplyr::select(
+      dplyr::any_of(c(colnames(sim_grid_all), "bw_component", "bw_condition")),
+      n_total,
+      n_est,
+      prop_est,
+      mean_bw
+    ) |>
+    dplyr::mutate(
+      bw_mtd_base = gsub("Norm$", "", .data$bw_mtd),
+      bw_mtd_norm = grepl("Norm$", .data$bw_mtd),
+      bw_mtd_norm = ifelse(.data$bw_mtd_norm, "norm", "non-norm")
+    )
+
+  list(long = long, summary = summary)
+}
+
+validate_adaptive_bw_outputs <- function(.data, expected_grid) {
+  expected_ids <- sort(unique(as.integer(expected_grid$sim_id)))
+  observed_ids <- if ("sim_id" %in% names(.data)) {
+    sort(unique(as.integer(.data$sim_id)))
+  } else {
+    integer()
+  }
+
+  ids_ok <- identical(observed_ids, expected_ids)
+
+  error_ids <- if (
+    nrow(.data) > 0L &&
+      all(c("sim_id", "error_message") %in% names(.data))
+  ) {
+    sort(unique(as.integer(
+      .data$sim_id[
+        !is.na(.data$error_message) &
+          nzchar(as.character(.data$error_message))
+      ]
+    )))
+  } else {
+    integer()
+  }
+
+  expected_rows_per_sim <- as.integer(n_sample_sim * n_iter_sim)
+  row_count_bad_ids <- if (nrow(.data) > 0L && "sim_id" %in% names(.data)) {
+    .data |>
+      dplyr::count(.data$sim_id, name = "n_rows") |>
+      dplyr::filter(.data$n_rows != expected_rows_per_sim) |>
+      dplyr::pull(.data$sim_id) |>
+      as.integer() |>
+      sort()
+  } else if (length(expected_ids) > 0L) {
+    expected_ids
+  } else {
+    integer()
+  }
+
+  seed_ok <- if (length(expected_ids) == 0L) {
+    TRUE
+  } else if (!all(c("sim_id", "sim_seed") %in% names(.data))) {
+    FALSE
+  } else {
+    observed_seed <- .data |>
+      dplyr::distinct(.data$sim_id, .data$sim_seed) |>
+      dplyr::arrange(.data$sim_id)
+    expected_seed <- expected_grid |>
+      dplyr::select(sim_id, sim_seed) |>
+      dplyr::distinct() |>
+      dplyr::arrange(.data$sim_id)
+
+    identical(
+      as.integer(observed_seed$sim_id),
+      as.integer(expected_seed$sim_id)
+    ) &&
+      identical(
+        as.integer(observed_seed$sim_seed),
+        as.integer(expected_seed$sim_seed)
+      )
+  }
+
+  list(
+    ids_ok = ids_ok,
+    error_ids = error_ids,
+    row_count_bad_ids = row_count_bad_ids,
+    seed_ok = seed_ok,
+    validation_ok = ids_ok &&
+      length(error_ids) == 0L &&
+      length(row_count_bad_ids) == 0L &&
+      isTRUE(seed_ok)
+  )
 }
 
 promote_analysis5_if_ready <- function(
@@ -747,6 +863,19 @@ promote_analysis5_if_ready <- function(
     total_sims,
     completed_sims,
     failed_sims) {
+  if (!.analysis_can_promote(run_ctx)) {
+    return(invisible(FALSE))
+  }
+
+  collate_lock <- .analysis_acquire_lock(
+    .analysis_lock_path(run_ctx, "analysis5-collation"),
+    timeout_sec = 300
+  )
+  if (is.null(collate_lock)) {
+    return(invisible(FALSE))
+  }
+  on.exit(.analysis_release_lock(collate_lock), add = TRUE)
+
   if (!.analysis_can_promote(run_ctx)) {
     return(invisible(FALSE))
   }
@@ -761,10 +890,10 @@ promote_analysis5_if_ready <- function(
     basename(full_output_paths)
   )))
   expected_full_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
-  full_outputs_ok <- length(full_output_paths) == length(expected_full_ids) &&
+  full_paths_ok <- length(full_output_paths) == length(expected_full_ids) &&
     identical(sort(unique(full_output_ids)), expected_full_ids)
 
-  if (!isTRUE(full_outputs_ok)) {
+  if (!isTRUE(full_paths_ok)) {
     error_message <- paste0(
       "Refusing to promote analysis 5: staged outputs do not contain ",
       "exactly the complete simulation grid."
@@ -781,10 +910,91 @@ promote_analysis5_if_ready <- function(
     stop(error_message)
   }
 
+  bw_tbl_full <- read_adaptive_bw_outputs(full_output_paths)
+  validation <- validate_adaptive_bw_outputs(
+    bw_tbl_full,
+    expected_grid = sim_grid_all
+  )
+
+  if (!isTRUE(validation$validation_ok)) {
+    error_message <- paste0(
+      "Refusing to promote analysis 5: full-grid validation failed",
+      if (length(validation$error_ids) > 0L) {
+        paste0(
+          "; simulation errors for sim_id ",
+          paste(validation$error_ids, collapse = ", ")
+        )
+      } else {
+        ""
+      },
+      if (length(validation$row_count_bad_ids) > 0L) {
+        paste0(
+          "; unexpected row counts for sim_id ",
+          paste(validation$row_count_bad_ids, collapse = ", ")
+        )
+      } else {
+        ""
+      },
+      if (!isTRUE(validation$seed_ok)) {
+        "; scenario seeds do not match the simulation grid"
+      } else {
+        ""
+      },
+      "."
+    )
+    .analysis_mark_chunk(
+      run_ctx = run_ctx,
+      total_sims = total_sims,
+      completed_sims = completed_sims,
+      failed_sims = failed_sims,
+      collate_ok = validation$ids_ok,
+      validation_ok = FALSE,
+      error_message = error_message
+    )
+    stop(error_message)
+  }
+
+  full_results <- summarise_adaptive_bw_results(bw_tbl_full)
+
+  .write_rds_atomic(
+    bw_tbl_full,
+    file.path(run_ctx$staging_collated_dir, "bw_list_raw.rds")
+  )
+  .write_rds_atomic(
+    full_results$long,
+    file.path(run_ctx$staging_collated_dir, "bw_tbl_long.rds")
+  )
+  .write_rds_atomic(
+    full_results$summary,
+    file.path(run_ctx$staging_collated_dir, "bw_tbl_results.rds")
+  )
+
   .analysis_promote_run(run_ctx)
 }
 
-if (!results_read_only && nrow(sim_grid) == 0L) {
+results_read_only <- isTRUE(run_ctx$read_only)
+
+if (results_read_only) {
+  path_raw <- .analysis_current_file(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "bw_list_raw.rds"),
+    required_params = analysis_required_params
+  )
+  path_long <- .analysis_current_file(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "bw_tbl_long.rds"),
+    required_params = analysis_required_params
+  )
+  path_results <- .analysis_current_file(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "bw_tbl_results.rds"),
+    required_params = analysis_required_params
+  )
+
+  bw_tbl <- readRDS(path_raw)
+  bw_tbl_long <- readRDS(path_long)
+  bw_tbl_results <- readRDS(path_results)
+} else if (nrow(sim_grid) == 0L) {
   .analysis_mark_chunk(
     run_ctx = run_ctx,
     total_sims = 0L,
@@ -793,6 +1003,7 @@ if (!results_read_only && nrow(sim_grid) == 0L) {
     collate_ok = TRUE,
     validation_ok = TRUE
   )
+
   promote_analysis5_if_ready(
     run_ctx = run_ctx,
     sim_grid_all = sim_grid_all,
@@ -800,165 +1011,124 @@ if (!results_read_only && nrow(sim_grid) == 0L) {
     completed_sims = 0L,
     failed_sims = 0L
   )
+
   message("No simulations were assigned to this chunk; marked it complete.")
   knitr::knit_exit()
-}
-
-collate_output_dir <- if (results_read_only) {
-  run_ctx$current_dir
 } else {
-  run_ctx$chunk_output_dir
-}
-
-bw_list_path_vec <- .find_bw_list_output_files(
-  output_dir = collate_output_dir,
-  cache_dir = run_ctx$current_dir,
-  allow_cache_fallback = results_read_only,
-  merge_dirs = FALSE
-)
-
-if (length(bw_list_path_vec) > 0L) {
-  message(
-    "Collating ",
-    length(bw_list_path_vec),
-    " saved simulation result files from ",
-    collate_output_dir,
-    "."
+  chunk_output_paths <- .find_bw_list_output_files(
+    output_dir = run_ctx$chunk_dir,
+    allow_cache_fallback = FALSE
   )
+  bw_tbl <- read_adaptive_bw_outputs(chunk_output_paths)
 
-  bw_list_raw_collate <- purrr::map(
-    bw_list_path_vec,
-    function(path) {
-      tryCatch(
-        readRDS(path),
-        error = function(e) {
-          warning("Could not read saved simulation result: ", path)
-          NULL
-        }
-      )
-    }
-  ) |>
-    purrr::compact()
-} else if (!results_read_only && length(bw_list_raw) > 0L) {
-  message(
-    "No saved simulation result files found for this chunk; ",
-    "using bw_list_raw from memory."
+  validation <- validate_adaptive_bw_outputs(
+    bw_tbl,
+    expected_grid = sim_grid
   )
-  bw_list_raw_collate <- bw_list_raw
-} else {
-  stop("No saved adaptive-bandwidth simulation results were available.")
-}
+  chunk_results <- summarise_adaptive_bw_results(bw_tbl)
+  bw_tbl_long <- chunk_results$long
+  bw_tbl_results <- chunk_results$summary
 
-bw_tbl <- if (is.data.frame(bw_list_raw_collate)) {
-  bw_list_raw_collate
-} else {
-  purrr::list_rbind(bw_list_raw_collate)
-}
+  collate_suffix <- if (sim_grid_n_chunks > 1L) {
+    sprintf("_chunk_%03d-of_%03d", sim_grid_chunk_index, sim_grid_n_chunks)
+  } else {
+    ""
+  }
 
-bw_tbl <- .simBandwidthAddMissingColumns(
-  bw_tbl,
-  list(
-    mean_pos_setting = NA_character_,
-    bias_uns = NA_real_,
-    bias_uns_setting = NA_character_,
-    data_scenario_id = NA_integer_,
-    sim_id = NA_integer_,
-    sim_seed = NA_integer_,
-    sim_grid_chunk_index = NA_integer_,
-    sim_grid_n_chunks = NA_integer_,
-    error_message = NA_character_,
-    bw_uns_core = NA_real_,
-    bw_stim_core = NA_real_,
-    bw_uns_extra = NA_real_,
-    bw_stim_extra = NA_real_
-  )
-)
-
-expected_sim_ids <- if (results_read_only) {
-  sort(unique(as.integer(sim_grid_all$sim_id)))
-} else {
-  sort(unique(as.integer(sim_grid$sim_id)))
-}
-collated_sim_ids <- sort(unique(as.integer(bw_tbl$sim_id)))
-collate_ok <- identical(collated_sim_ids, expected_sim_ids)
-
-output_error_ids <- sort(unique(as.integer(
-  bw_tbl$sim_id[
-    !is.na(bw_tbl$error_message) &
-      nzchar(as.character(bw_tbl$error_message))
-  ]
-)))
-validation_ok <- collate_ok && length(output_error_ids) == 0L
-
-if (!isTRUE(collate_ok)) {
-  stop(
-    "Collated adaptive-bandwidth outputs did not contain exactly the expected ",
-    "sim_id set."
-  )
-}
-
-if (length(output_error_ids) > 0L) {
-  stop(
-    "Adaptive-bandwidth simulation errors were recorded for sim_id: ",
-    paste(output_error_ids, collapse = ", "),
-    "."
-  )
-}
-
-bw_measure_tbl <- tibble::tribble(
-  ~bw_component, ~bw_condition, ~bw_col,
-  "core", "unstim", "bw_uns_core",
-  "core", "stim", "bw_stim_core",
-  "extra", "unstim", "bw_uns_extra",
-  "extra", "stim", "bw_stim_extra"
-)
-
-bw_tbl_long <- purrr::map_dfr(seq_len(nrow(bw_measure_tbl)), function(i) {
-  bw_component_curr <- bw_measure_tbl$bw_component[[i]]
-  bw_condition_curr <- bw_measure_tbl$bw_condition[[i]]
-  bw_col_curr <- bw_measure_tbl$bw_col[[i]]
-
-  bw_tbl |>
-    dplyr::mutate(
-      bw_component = bw_component_curr,
-      bw_condition = bw_condition_curr,
-      bw_est = .data[[bw_col_curr]]
+  .write_rds_atomic(
+    bw_tbl_long,
+    file.path(
+      run_ctx$staging_collated_dir,
+      paste0("bw_tbl_long", collate_suffix, ".rds")
     )
-}) |>
-  dplyr::mutate(
-    bw_component = factor(.data$bw_component, levels = c("core", "extra")),
-    bw_condition = factor(.data$bw_condition, levels = c("unstim", "stim"))
+  )
+  .write_rds_atomic(
+    bw_tbl_results,
+    file.path(
+      run_ctx$staging_collated_dir,
+      paste0("bw_tbl_results", collate_suffix, ".rds")
+    )
   )
 
-bw_tbl_results <- bw_tbl_long |>
-  dplyr::group_by(
-    dplyr::pick(
-      dplyr::any_of(c(colnames(sim_grid_all), "bw_component", "bw_condition"))
+  chunk_job_files <- list.files(run_ctx$chunk_jobs_dir, full.names = FALSE)
+  chunk_completed_ids <- unique(sub(
+    "^completed-",
+    "",
+    chunk_job_files[grepl("^completed-", chunk_job_files)]
+  ))
+  chunk_failed_ids <- unique(sub(
+    "^error-",
+    "",
+    chunk_job_files[grepl("^error-", chunk_job_files)]
+  ))
+  chunk_completed_ids <- setdiff(chunk_completed_ids, chunk_failed_ids)
+
+  validation_error <- if (!isTRUE(validation$ids_ok)) {
+    "Chunk collation did not contain exactly the assigned sim_id set."
+  } else if (length(validation$error_ids) > 0L) {
+    paste0(
+      "Chunk contains simulation errors for sim_id: ",
+      paste(validation$error_ids, collapse = ", "),
+      "."
     )
-  ) |>
-  dplyr::summarise(
-    n_total = dplyr::n(),
-    n_est = sum(is.finite(.data$bw_est)),
-    prop_est = n_est / n_total,
-    mean_bw = if (any(is.finite(.data$bw_est))) {
-      mean(.data$bw_est, na.rm = TRUE)
-    } else {
-      NA_real_
-    },
-    .groups = "drop"
-  ) |>
-  dplyr::select(
-    dplyr::any_of(c(colnames(sim_grid_all), "bw_component", "bw_condition")),
-    n_total,
-    n_est,
-    prop_est,
-    mean_bw
-  ) |>
-  dplyr::mutate(
-    bw_mtd_base = gsub("Norm$", "", .data$bw_mtd),
-    bw_mtd_norm = grepl("Norm$", .data$bw_mtd),
-    bw_mtd_norm = ifelse(.data$bw_mtd_norm, "norm", "non-norm")
+  } else if (length(validation$row_count_bad_ids) > 0L) {
+    paste0(
+      "Chunk contains unexpected sample-row counts for sim_id: ",
+      paste(validation$row_count_bad_ids, collapse = ", "),
+      "."
+    )
+  } else if (!isTRUE(validation$seed_ok)) {
+    "Chunk output scenario seeds do not match the assigned simulation grid."
+  } else {
+    NULL
+  }
+
+  .analysis_mark_chunk(
+    run_ctx = run_ctx,
+    total_sims = nrow(sim_grid),
+    completed_sims = length(chunk_completed_ids),
+    failed_sims = length(chunk_failed_ids),
+    collate_ok = validation$ids_ok,
+    validation_ok = validation$validation_ok,
+    error_message = validation_error
   )
+
+  if (
+    !isTRUE(validation$validation_ok) ||
+      length(chunk_failed_ids) > 0L
+  ) {
+    stop(
+      if (!is.null(validation_error)) {
+        validation_error
+      } else {
+        paste0(
+          "Chunk contains ",
+          length(chunk_failed_ids),
+          " failed simulation(s)."
+        )
+      }
+    )
+  }
+
+  promote_analysis5_if_ready(
+    run_ctx = run_ctx,
+    sim_grid_all = sim_grid_all,
+    total_sims = nrow(sim_grid),
+    completed_sims = length(chunk_completed_ids),
+    failed_sims = length(chunk_failed_ids)
+  )
+
+  if (!isTRUE(run_plots)) {
+    message("run_plots is false, so stopping after simulation/collation.")
+    knitr::knit_exit()
+  }
+
+  message(
+    "Skipping plots during a simulation render. ",
+    "Render again with run_simulations = FALSE and run_plots = TRUE."
+  )
+  knitr::knit_exit()
+}
 
 bw_tbl_results |>
   dplyr::group_by(.data$bw_mtd, .data$bw_component, .data$bw_condition) |>
@@ -978,80 +1148,12 @@ if (any(bw_tbl_results$prop_est < 1)) {
   )
 }
 
-dir_results <- if (results_read_only) {
-  file.path(run_ctx$sim_root, "read-only-plots")
-} else {
-  run_ctx$staging_collated_dir
-}
-
-if (!results_read_only) {
-  collate_suffix <- if (sim_grid_n_chunks > 1L) {
-    sprintf("_chunk_%03d-of_%03d", sim_grid_chunk_index, sim_grid_n_chunks)
-  } else {
-    ""
-  }
-
-  .write_rds_atomic(
-    bw_tbl_long,
-    file.path(dir_results, paste0("bw_tbl_long", collate_suffix, ".rds"))
-  )
-  .write_rds_atomic(
-    bw_tbl_results,
-    file.path(dir_results, paste0("bw_tbl_results", collate_suffix, ".rds"))
-  )
-
-  chunk_job_files <- list.files(run_ctx$chunk_jobs_dir, full.names = FALSE)
-  chunk_completed_ids <- unique(sub(
-    "^completed-",
-    "",
-    chunk_job_files[grepl("^completed-", chunk_job_files)]
-  ))
-  chunk_failed_ids <- unique(sub(
-    "^error-",
-    "",
-    chunk_job_files[grepl("^error-", chunk_job_files)]
-  ))
-  chunk_completed_ids <- setdiff(chunk_completed_ids, chunk_failed_ids)
-
-  .analysis_mark_chunk(
-    run_ctx = run_ctx,
-    total_sims = nrow(sim_grid),
-    completed_sims = length(chunk_completed_ids),
-    failed_sims = length(chunk_failed_ids),
-    collate_ok = collate_ok,
-    validation_ok = validation_ok
-  )
-
-  if (length(chunk_failed_ids) > 0L) {
-    stop(
-      "Chunk contains ",
-      length(chunk_failed_ids),
-      " failed simulation(s)."
-    )
-  }
-
-  promote_analysis5_if_ready(
-    run_ctx = run_ctx,
-    sim_grid_all = sim_grid_all,
-    total_sims = nrow(sim_grid),
-    completed_sims = length(chunk_completed_ids),
-    failed_sims = length(chunk_failed_ids)
-  )
-}
-
 if (!isTRUE(run_plots)) {
-  message("run_plots is false, so stopping after simulation/collation.")
+  message("run_plots is false, so stopping before plots.")
   knitr::knit_exit()
 }
 
-if (!results_read_only) {
-  message(
-    "Skipping plots during a simulation render. ",
-    "Render again with run_simulations = FALSE and run_plots = TRUE."
-  )
-  knitr::knit_exit()
-}
-
+dir_results <- file.path(run_ctx$sim_root, "read-only-plots")
 dir.create(dir_results, recursive = TRUE, showWarnings = FALSE)
 
 for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
