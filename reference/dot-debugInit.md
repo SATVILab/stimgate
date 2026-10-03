@@ -5,7 +5,7 @@ Initialise textual debug state for a StimGate run
 ## Usage
 
 ``` r
-.debugInit(pathProject, reset = TRUE)
+.debugInit(pathProject)
 ```
 
 ## Arguments
@@ -13,10 +13,6 @@ Initialise textual debug state for a StimGate run
 - pathProject:
 
   character Path to project directory.
-
-- reset:
-
-  logical Whether to reset existing debug directory. Default: TRUE.
 
 ## Value
 

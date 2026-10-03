@@ -76,6 +76,10 @@ writeStimFCS(
 
   character. Method to calculate unstimulated thresholds.
 
+## Value
+
+The output directory path, invisibly.
+
 ## Details
 
 This function processes flow cytometry data to identify and export

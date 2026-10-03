@@ -7,5 +7,5 @@ antimode exists, the existing gate is retained by the caller.
 ## Usage
 
 ``` r
-.getCpPosTautString(ex, inc, chnl, cpOrig, peakX, windowWidth, minCell = 10L)
+.getCpPosTautString(ex, inc, chnl, cpOrig, peakX, windowWidth, lower)
 ```

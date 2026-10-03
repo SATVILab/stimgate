@@ -157,10 +157,7 @@ gateStim(
   batchList = exampleData$batchList,
   marker = exampleData$marker
 )
-#> ----
 #> getting base gates
-#> ----
-#> 
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
 #> batch 2 of 2
@@ -169,12 +166,9 @@ gateStim(
 #> getting pre-adjustment gates
 #> batch 2 of 2
 #> getting clustered and/or controlled gates
-#> 
-#> 
-#> 
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmpxp9Rjg/stimgate_example_data_1b4e5074771b/stimgate"
+#> [1] "/tmp/Rtmph6IOu3/stimgate_example_data_1a882eeee518/stimgate"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {

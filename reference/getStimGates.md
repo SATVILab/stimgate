@@ -50,10 +50,7 @@ pathProject <- gateStim(
   marker = exampleData$marker,
   popGate = "root"
 )
-#> ----
 #> getting base gates
-#> ----
-#> 
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
 #> batch 2 of 2
@@ -62,9 +59,6 @@ pathProject <- gateStim(
 #> getting pre-adjustment gates
 #> batch 2 of 2
 #> getting clustered and/or controlled gates
-#> 
-#> 
-#> 
 #> getting cyt combn frequencies
 #> batch 2 of 2
 
