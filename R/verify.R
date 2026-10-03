@@ -168,7 +168,7 @@
   .verifyChnlSettingsChnl(settings = settings, prefix = "")
 
   # Channel presence
-  chnlLab <- .chnlLab(.data)
+  chnlLab <- chnlLab(.data)
   if (!is.null(chnl)) {
     if (!all(chnl %in% names(chnlLab))) {
       stop(

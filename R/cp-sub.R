@@ -133,7 +133,7 @@
       )
     }
 
-    tailgate <- .getCpTailgate(
+    tailgate <- .getStimGateTailgate(
       density = data.frame(x = densityObj$x, y = densityObj$y),
       peakX = densityObj$x[which.max(densityObj$y)],
       fraction = 1 / 200

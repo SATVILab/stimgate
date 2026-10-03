@@ -441,14 +441,6 @@
   bw <- .getCpUnsLocGetDensRawDensitiesBw(
     exTblStimThreshold = exTblStimThreshold,
     exTblUnsThreshold = exTblUnsThreshold,
-    bw = chnlSettings$bw,
-    bwMin = chnlSettings$bwMin,
-    bwMax = chnlSettings$bwMax,
-    bwFallback = chnlSettings$bwFallback,
-    bwMtd = chnlSettings$bwMtd,
-    bwAdj = chnlSettings$bwAdj,
-    bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax,
     chnlSettings = chnlSettings
   )
   chnl <- .getCpUnsLocGetChnl(exTblStimThreshold)
@@ -686,31 +678,33 @@
 .getCpUnsLocGetDensRawDensitiesBwAdaptiveOne <- function(
     x,
     chnlSettings) {
-  .bwCalcOne(
+  .getCpUnsLocBwCalcOne(
     x = x,
+    chnlSettings = chnlSettings,
     bwMtd = chnlSettings$bwMtd %||% "hpi1Norm",
     bwAdj = chnlSettings$bwAdj %||% 1,
-    bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax,
-    normPeakFrac = chnlSettings$normPeakFrac %||% 0.1,
-    normPeakMinRel = chnlSettings$normPeakMinRel %||% 0.75,
-    normExtraFrac = chnlSettings$normExtraFrac %||% 0.2,
-    normExtraMax = chnlSettings$normExtraMax %||% Inf,
-    normExtraJitterFrac = chnlSettings$normExtraJitterFrac %||% 0.25,
-    normLambda = chnlSettings$normLambda %||% seq(-2, 2, length.out = 81),
-    normDensityN = chnlSettings$normDensityN %||% 512L,
-    normExcessBwMtd = chnlSettings$normExcessBwMtd %||% "hpi3",
-    normExcessNcell = chnlSettings$normExcessNcell %||% 10000L,
-    normAdaptiveNcell = chnlSettings$normAdaptiveNcell %||%
-      chnlSettings$bwAdaptiveNcell %||%
-      2500L,
-    bwAdaptiveCore = chnlSettings$bwAdaptiveCore,
-    bwAdaptiveExtra = chnlSettings$bwAdaptiveExtra,
-    bwAdaptiveCrossover = chnlSettings$bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth = chnlSettings$bwAdaptiveTransitionWidth %||% 0,
-    normMtd = chnlSettings$normMtd %||% "moments",
     adaptive = TRUE
   )
+}
+
+# .bwCalcOne() with the bandwidth settings from chnlSettings. Unset settings
+# fall back to .bwCalcOne()'s own defaults.
+#' @keywords internal
+.getCpUnsLocBwCalcOne <- function(x, chnlSettings, bwMtd, bwAdj, adaptive) {
+  argNm <- c(
+    "bwNcellMin", "bwNcellMax", "normPeakFrac", "normPeakMinRel",
+    "normExtraFrac", "normExtraMax", "normExtraJitterFrac", "normLambda",
+    "normDensityN", "normExcessBwMtd", "normExcessNcell", "bwAdaptiveCore",
+    "bwAdaptiveExtra", "bwAdaptiveCrossover", "bwAdaptiveTransitionWidth",
+    "normMtd"
+  )
+  bwArgs <- chnlSettings[intersect(argNm, names(chnlSettings))]
+  bwArgs$normAdaptiveNcell <- chnlSettings$normAdaptiveNcell %||%
+    chnlSettings$bwAdaptiveNcell
+  do.call(.bwCalcOne, c(
+    list(x = x, bwMtd = bwMtd, bwAdj = bwAdj, adaptive = adaptive),
+    Filter(Negate(is.null), bwArgs)
+  ))
 }
 
 #' @keywords internal
@@ -916,38 +910,16 @@
 .getCpUnsLocGetDensRawDensitiesBw <- function(
     exTblStimThreshold,
     exTblUnsThreshold,
-    bw,
-    bwMin,
-    bwMax,
-    bwFallback,
-    bwMtd,
-    bwAdj,
-    bwNcellMin,
-    bwNcellMax,
-    chnlSettings = NULL) {
-  if (!is.null(bw)) {
-    return(bw)
+    chnlSettings) {
+  if (!is.null(chnlSettings$bw)) {
+    return(chnlSettings$bw)
   }
   bwStim <- .getCpUnsLocGetDensRawDensitiesBwInit(
     .data = .getCut(exTblStimThreshold),
-    bwMin = bwMin,
-    bwMax = bwMax,
-    bwFallback = bwFallback,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax,
     chnlSettings = chnlSettings
   )
   bwUns <- .getCpUnsLocGetDensRawDensitiesBwInit(
     .data = .getCut(exTblUnsThreshold),
-    bwMin = bwMin,
-    bwMax = bwMax,
-    bwFallback = bwFallback,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax,
     chnlSettings = chnlSettings
   )
   min(bwUns, bwStim)
@@ -1096,15 +1068,8 @@
 #' @keywords internal
 .getCpUnsLocGetDensRawDensitiesBwInit <- function(
     .data,
-    bwMin,
-    bwMax,
-    bwFallback,
-    bwMtd,
-    bwAdj,
-    bwNcellMin,
-    bwNcellMax,
-    chnlSettings = NULL) {
-  chnlSettings <- chnlSettings %||% list()
+    chnlSettings) {
+  bwFallback <- chnlSettings$bwFallback
   .data <- suppressWarnings(as.numeric(.data))
   .data <- .data[is.finite(.data)]
 
@@ -1112,29 +1077,11 @@
     return(bwFallback)
   }
 
-  bwCalc <- .bwCalcOne(
+  bwCalc <- .getCpUnsLocBwCalcOne(
     x = .data,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax,
-    normPeakFrac = chnlSettings$normPeakFrac %||% 0.1,
-    normPeakMinRel = chnlSettings$normPeakMinRel %||% 0.75,
-    normExtraFrac = chnlSettings$normExtraFrac %||% 0.2,
-    normExtraMax = chnlSettings$normExtraMax %||% Inf,
-    normExtraJitterFrac = chnlSettings$normExtraJitterFrac %||% 0.25,
-    normLambda = chnlSettings$normLambda %||% seq(-2, 2, length.out = 81),
-    normDensityN = chnlSettings$normDensityN %||% 512L,
-    normExcessBwMtd = chnlSettings$normExcessBwMtd %||% "hpi3",
-    normExcessNcell = chnlSettings$normExcessNcell %||% 10000L,
-    normAdaptiveNcell = chnlSettings$normAdaptiveNcell %||%
-      chnlSettings$bwAdaptiveNcell %||%
-      2500L,
-    bwAdaptiveCore = chnlSettings$bwAdaptiveCore,
-    bwAdaptiveExtra = chnlSettings$bwAdaptiveExtra,
-    bwAdaptiveCrossover = chnlSettings$bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth = chnlSettings$bwAdaptiveTransitionWidth %||% 0,
-    normMtd = chnlSettings$normMtd %||% "moments",
+    chnlSettings = chnlSettings,
+    bwMtd = chnlSettings$bwMtd,
+    bwAdj = chnlSettings$bwAdj,
     adaptive = FALSE
   )
 
@@ -1142,7 +1089,7 @@
     return(bwFallback)
   }
 
-  max(bwMin, min(as.numeric(bwCalc)[1], bwMax))
+  max(chnlSettings$bwMin, min(as.numeric(bwCalc)[1], chnlSettings$bwMax))
 }
 
 

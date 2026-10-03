@@ -3,18 +3,6 @@
 #   nrd0, sj, hpi0, hpi1, hpi2, hpi3
 #   nrd0Norm, sjNorm, hpi0Norm, hpi1Norm, hpi2Norm, hpi3Norm
 
-#' @keywords internal
-.bwMethodIsNorm <- function(bwMtd) {
-  is.character(bwMtd) &&
-    length(bwMtd) == 1L &&
-    grepl("Norm$", bwMtd)
-}
-
-#' @keywords internal
-.bwMethodBase <- function(bwMtd) {
-  sub("Norm$", "", bwMtd)
-}
-
 #' Calculate bandwidth using ordinary or background-normalised methods
 #' @keywords internal
 .bwCalcOne <- function(
@@ -43,14 +31,13 @@
   x <- x[is.finite(x)]
 
   if (length(x) < 2L || length(unique(x)) < 2L) {
-    return(.bwCalcOneFormat(NA_real_, adaptive = adaptive))
+    return(structure(NA_real_, adaptive = adaptive))
   }
 
   bwMtd <- as.character(bwMtd)[1]
-  isNorm <- .bwMethodIsNorm(bwMtd)
-  bwMtdBase <- .bwMethodBase(bwMtd)
+  bwMtdBase <- sub("Norm$", "", bwMtd)
 
-  if (isTRUE(isNorm)) {
+  if (grepl("Norm$", bwMtd)) {
     return(.bwCalcOneNorm(
       x = x,
       bwMtd = bwMtdBase,
@@ -88,20 +75,10 @@
   )
 
   if (!is.finite(bwOut) || bwOut <= 0) {
-    return(.bwCalcOneFormat(NA_real_, adaptive = FALSE))
+    return(structure(NA_real_, adaptive = FALSE))
   }
 
-  .bwCalcOneFormat(as.numeric(bwOut)[1] * bwAdj, adaptive = FALSE)
-}
-
-
-.bwCalcOneFormat <- function(bw, adaptive = FALSE) {
-  if (!adaptive) {
-    attr(bw, "adaptive") <- FALSE
-    return(bw)
-  }
-  attr(bw, "adaptive") <- TRUE
-  bw
+  structure(as.numeric(bwOut)[1] * bwAdj, adaptive = FALSE)
 }
 
 #' @keywords internal
@@ -116,12 +93,6 @@
   }
 
   x
-}
-
-#' @keywords internal
-.bwNormHasManualCrossover <- function(x) {
-  x <- suppressWarnings(as.numeric(x)[1])
-  is.finite(x)
 }
 
 #' @keywords internal
@@ -243,7 +214,11 @@
 }
 
 #' @keywords internal
+.bwNormTooFew <- function(x) {
+  length(x) < 20L || length(unique(x)) < 5L
+}
 
+#' @keywords internal
 .bwCalcOneNorm <- function(
     x,
     bwMtd,
@@ -272,18 +247,15 @@
     stop("Cannot use adaptive bandwidth with boxcox normalisation method.")
   }
 
-  x <- suppressWarnings(as.numeric(x))
-  x <- x[is.finite(x)]
-
   .fallback_scalar <- function() {
     bwFallback <- .bwCalcOneBase(x, bwMtd)
     if (!is.finite(bwFallback) || bwFallback <= 0) {
-      return(.bwCalcOneFormat(NA_real_, adaptive = FALSE))
+      return(structure(NA_real_, adaptive = FALSE))
     }
-    .bwCalcOneFormat(as.numeric(bwFallback)[1] * bwAdj, adaptive = FALSE)
+    structure(as.numeric(bwFallback)[1] * bwAdj, adaptive = FALSE)
   }
 
-  if (length(x) < 20L || length(unique(x)) < 5L) {
+  if (.bwNormTooFew(x)) {
     return(.fallback_scalar())
   }
 
@@ -309,9 +281,8 @@
   }
 
   xCore <- x[x <= coreObj$thresholdX]
-  xCore <- xCore[is.finite(xCore)]
 
-  if (length(xCore) < 20L || length(unique(xCore)) < 5L) {
+  if (.bwNormTooFew(xCore)) {
     return(.fallback_scalar())
   }
 
@@ -343,15 +314,8 @@
   xExtra <- xExtra[is.finite(xExtra)]
 
   if (identical(normMtd, "boxcox")) {
-    xBw <- c(x, xExtra)
-    xBw <- xBw[is.finite(xBw)]
-
-    if (length(xBw) < 20L || length(unique(xBw)) < 5L) {
-      return(.fallback_scalar())
-    }
-
     zBw <- .bwBoxCoxTransform(
-      x = xBw,
+      x = c(x, xExtra),
       lambda = boxObj$lambda,
       winsoriseMin = boxObj$winsoriseMin
     )
@@ -363,7 +327,7 @@
       bwNcellMax = bwNcellMax
     )
 
-    if (length(zBw) < 20L || length(unique(zBw)) < 5L) {
+    if (.bwNormTooFew(zBw)) {
       return(.fallback_scalar())
     }
 
@@ -391,7 +355,7 @@
       return(.fallback_scalar())
     }
 
-    return(.bwCalcOneFormat(
+    return(structure(
       as.numeric(bwZ)[1] * scaleX / scaleZ * bwAdj,
       adaptive = FALSE
     ))
@@ -449,10 +413,7 @@
 
     zBw <- zBw[is.finite(zBw)]
 
-    if (
-      length(zBw) < 20L ||
-        length(unique(zBw)) < 5L
-    ) {
+    if (.bwNormTooFew(zBw)) {
       return(.fallback_scalar())
     }
 
@@ -469,7 +430,7 @@
     }
 
     return(
-      .bwCalcOneFormat(
+      structure(
         as.numeric(bwZ)[1] * bwAdj,
         adaptive = FALSE
       )
@@ -479,7 +440,7 @@
   # Adaptive normalised bandwidth: estimate separate component bandwidths on
   # fixed-size normalised core/extra components, then blend them by component
   # density over an expression grid.
-  if (length(xExtra) < 20L || length(unique(xExtra)) < 5L) {
+  if (.bwNormTooFew(xExtra)) {
     return(.fallback_scalar())
   }
 
@@ -506,12 +467,7 @@
   zCore <- zCore[is.finite(zCore)]
   zExtra <- zExtra[is.finite(zExtra)]
 
-  if (
-    length(zCore) < 20L ||
-      length(unique(zCore)) < 5L ||
-      length(zExtra) < 20L ||
-      length(unique(zExtra)) < 5L
-  ) {
+  if (.bwNormTooFew(zCore) || .bwNormTooFew(zExtra)) {
     return(.fallback_scalar())
   }
 
@@ -591,12 +547,13 @@
   densZCoreY <- pmax(suppressWarnings(as.numeric(densZCore$y)), 0)
   densZExtraY <- pmax(suppressWarnings(as.numeric(densZExtra$y)), 0)
 
-  if (.bwNormHasManualCrossover(bwAdaptiveCrossover)) {
+  crossover <- suppressWarnings(as.numeric(bwAdaptiveCrossover)[1])
+  if (is.finite(crossover)) {
     bwVec <- .bwNormBwFromCrossover(
       bin = binVec,
       bwCore = bwZCore,
       bwExtra = bwZExtra,
-      crossover = bwAdaptiveCrossover,
+      crossover = crossover,
       transitionWidth = bwAdaptiveTransitionWidth
     )
   } else {
@@ -613,7 +570,7 @@
     .Machine$double.eps
   )
 
-  .bwCalcOneFormat(
+  structure(
     list(
       bin = binVec,
       bw = bwVec,
@@ -621,9 +578,7 @@
       bwExtra = bwZExtra,
       bwAdaptiveCoreManual = bwManualCore,
       bwAdaptiveExtraManual = bwManualExtra,
-      bwAdaptiveCrossover = suppressWarnings(as.numeric(bwAdaptiveCrossover)[
-        1
-      ]),
+      bwAdaptiveCrossover = crossover,
       bwAdaptiveTransitionWidth = suppressWarnings(as.numeric(
         bwAdaptiveTransitionWidth
       )[1]),
@@ -645,10 +600,7 @@
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
-  if (
-    length(x) < 20L ||
-      length(unique(x)) < 5L
-  ) {
+  if (.bwNormTooFew(x)) {
     return(NULL)
   }
 
@@ -701,13 +653,6 @@
       xPilot
     ) /
       5
-  }
-
-  if (
-    !is.finite(bwPilot) ||
-      bwPilot <= 0
-  ) {
-    return(NULL)
   }
 
   # Use the complete sample for the actual density used to identify
@@ -988,14 +933,14 @@
   xCore <- suppressWarnings(as.numeric(xCore))
   xCore <- xCore[is.finite(xCore)]
 
-  if (length(xCore) < 20L || length(unique(xCore)) < 5L) {
+  if (.bwNormTooFew(xCore)) {
     return(NULL)
   }
 
   xMin <- min(xCore, na.rm = TRUE)
   xCore <- xCore[xCore > xMin]
 
-  if (length(xCore) < 20L || length(unique(xCore)) < 5L) {
+  if (.bwNormTooFew(xCore)) {
     return(NULL)
   }
 
@@ -1010,11 +955,11 @@
     return(NULL)
   }
 
-  xCore <- .winsorise(xCore, probs = c(0.01, 0.99), na.rm = TRUE)
+  xCore <- pmin(pmax(xCore, xCoreQuantVec[[1]]), xCoreQuantVec[[2]])
   winsoriseMin <- max(xCoreQuantVec[[1]], .Machine$double.eps)
   xCore <- pmax(xCore, winsoriseMin)
 
-  if (length(xCore) < 20L || length(unique(xCore)) < 5L) {
+  if (.bwNormTooFew(xCore)) {
     return(NULL)
   }
 
@@ -1098,7 +1043,7 @@
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
-  if (length(x) < 20L || length(unique(x)) < 5L) {
+  if (.bwNormTooFew(x)) {
     return(numeric(0L))
   }
 
@@ -1205,22 +1150,8 @@
     return(numeric(0L))
   }
 
-  xCore <- x[x <= coreObj$thresholdX]
-  xCore <- xCore[is.finite(xCore)]
-
-  sdCore <- .bwRobustSd(xCore)
-
-  if (!is.finite(sdCore) || sdCore <= 0) {
-    sdCore <- stats::sd(xCore, na.rm = TRUE)
-  }
-
-  if (!is.finite(sdCore) || sdCore <= 0) {
-    sdCore <- .bwRobustSd(x)
-  }
-
-  if (!is.finite(sdCore) || sdCore <= 0) {
-    sdCore <- .Machine$double.eps
-  }
+  # .bwRobustSd() always returns a finite positive value.
+  sdCore <- .bwRobustSd(x[x <= coreObj$thresholdX])
 
   sdExtra <- if (length(unique(xExtra)) >= 2L) {
     stats::sd(xExtra, na.rm = TRUE)
@@ -1303,27 +1234,6 @@
 }
 
 
-.winsorise <- function(x, probs = c(0.05, 0.95), na.rm = TRUE) {
-  x <- suppressWarnings(as.numeric(x))
-  if (length(x) == 0L || all(!is.finite(x))) {
-    return(x)
-  }
-
-  qs <- stats::quantile(
-    x,
-    probs = probs,
-    na.rm = na.rm,
-    names = FALSE
-  )
-
-  if (length(qs) != 2L || any(!is.finite(qs))) {
-    return(x)
-  }
-
-  pmin(pmax(x, qs[[1L]]), qs[[2L]])
-}
-#' @keywords internal
-
 #' @keywords internal
 .bwNormExcessDensityDecreasing <- function(
     x,
@@ -1336,7 +1246,7 @@
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
-  if (length(x) < 20L || length(unique(x)) < 5L) {
+  if (.bwNormTooFew(x)) {
     return(NULL)
   }
 
@@ -1445,46 +1355,17 @@
     xFit <= thresholdX
   ]
 
-  if (length(xRep) > 0L) {
-    densRep <- stats::approx(
-      x = dx,
-      y = dy,
-      xout = xRep,
-      rule = 2
-    )$y
-
-    logDensRepVal <- min(
-      log(
-        pmax(
-          densRep,
-          1e2 * .Machine$double.eps
-        )
-      ),
-      na.rm = TRUE
-    )
-  } else {
-    logDensRepVal <- NA_real_
+  .minLogDens <- function(xout) {
+    densOut <- stats::approx(x = dx, y = dy, xout = xout, rule = 2)$y
+    min(log(pmax(densOut, 1e2 * .Machine$double.eps)), na.rm = TRUE)
   }
+
+  logDensRepVal <- if (length(xRep) > 0L) .minLogDens(xRep) else NA_real_
 
   # Preserve the previous fallback. This should rarely be needed because
   # interpolation from a valid KDE should be finite.
   if (!is.finite(logDensRepVal)) {
-    densFit <- stats::approx(
-      x = dx,
-      y = dy,
-      xout = xFit,
-      rule = 2
-    )$y
-
-    logDensRepVal <- min(
-      log(
-        pmax(
-          densFit,
-          1e2 * .Machine$double.eps
-        )
-      ),
-      na.rm = TRUE
-    )
+    logDensRepVal <- .minLogDens(xFit)
   }
 
   if (!is.finite(logDensRepVal)) {
@@ -1531,10 +1412,6 @@
     x = xThin,
     logDens = logDensThin
   )
-
-  if (nrow(fitTblThin) < 6L) {
-    return(NULL)
-  }
 
   k <- min(
     as.integer(scamK),
@@ -1625,7 +1502,7 @@
 .bwNormThinXByDensityGrid <- function(
     x,
     maxPerBin = 20L,
-    dx = NULL) {
+    dx) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -1639,25 +1516,8 @@
     lower = 1L
   )
 
-  if (
-    is.null(dx) ||
-      length(dx) < 2L ||
-      any(!is.finite(dx))
-  ) {
-    breaks <- pretty(
-      x,
-      n = max(
-        2L,
-        ceiling(length(x) / maxPerBin)
-      )
-    )
-  } else {
-    breaks <- sort(
-      unique(
-        as.numeric(dx)
-      )
-    )
-  }
+  # The only caller passes a finite KDE grid with at least five points.
+  breaks <- sort(unique(as.numeric(dx)))
 
   if (length(breaks) < 2L) {
     return(sort(x))
@@ -1786,57 +1646,43 @@
         nTotal >= bwNcellMinSafe)
 
   if (canGenerateCapped) {
-    nTarget <- bwNcellMaxSafe
-
-    nExtraTarget <- if (nExtra > 0L) {
-      stats::rhyper(
+    nExtraOut <- if (nExtra > 0L) {
+      as.integer(stats::rhyper(
         nn = 1L,
         m = nExtra,
         n = nCore,
-        k = nTarget
-      )
+        k = bwNcellMaxSafe
+      ))
     } else {
-      0
+      0L
     }
-
-    nExtraTarget <- as.integer(nExtraTarget)
-    nCoreTarget <- nTarget - nExtraTarget
-
-    return(
-      c(
-        .bwNormSampleNormalComponent(
-          mu = muCore,
-          sd = sdCore,
-          n = nCoreTarget,
-          fallbackSd = fallbackSdCore
-        ),
-        .bwNormSampleNormalComponent(
-          mu = muExtra,
-          sd = sdExtra,
-          n = nExtraTarget,
-          fallbackSd = fallbackSdExtra
-        )
-      )
-    )
+    nCoreOut <- bwNcellMaxSafe - nExtraOut
+  } else {
+    nCoreOut <- nCore
+    nExtraOut <- nExtra
   }
 
-  # Keep the existing route when no downsampling is needed, or when
-  # bwNcellMin would first cause upsampling with jitter.
   zBw <- c(
     .bwNormSampleNormalComponent(
       mu = muCore,
       sd = sdCore,
-      n = nCore,
+      n = nCoreOut,
       fallbackSd = fallbackSdCore
     ),
     .bwNormSampleNormalComponent(
       mu = muExtra,
       sd = sdExtra,
-      n = nExtra,
+      n = nExtraOut,
       fallbackSd = fallbackSdExtra
     )
   )
 
+  if (canGenerateCapped) {
+    return(zBw)
+  }
+
+  # Keep the existing route when no downsampling is needed, or when
+  # bwNcellMin would first cause upsampling with jitter.
   zBw <- zBw[is.finite(zBw)]
 
   .bwCalcOneSampleOrdinary(
