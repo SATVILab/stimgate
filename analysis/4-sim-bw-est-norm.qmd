@@ -651,6 +651,9 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
                 bw_stim = NA_real_,
                 bw = NA_real_,
                 bw_source = NA_character_,
+                bw_norm_fallback_stim = NA,
+                bw_norm_fallback_uns = NA,
+                bw_norm_fallback = NA,
                 error_message = conditionMessage(e)
               )
 
@@ -716,6 +719,7 @@ summarise_bw_results <- function(bw_tbl) {
     dplyr::summarise(
       n_total = dplyr::n(),
       n_est = sum(is.finite(.data$bw)),
+      n_norm_fallback = sum(.data$bw_norm_fallback %in% TRUE),
       mean_bw_stim = .simBandwidthFiniteMean(.data$bw_stim),
       mean_bw_uns = .simBandwidthFiniteMean(.data$bw_uns),
       mean_bw = .simBandwidthFiniteMean(.data$bw),
@@ -723,6 +727,11 @@ summarise_bw_results <- function(bw_tbl) {
     ) |>
     dplyr::mutate(
       estimate_rate = .data$n_est / .data$n_total,
+      norm_fallback_rate = dplyr::if_else(
+        .data$n_est > 0L,
+        .data$n_norm_fallback / .data$n_est,
+        NA_real_
+      ),
       bw_mtd_base = gsub("Norm$", "", .data$bw_mtd),
       bw_mtd_norm = ifelse(
         grepl("Norm$", .data$bw_mtd),
@@ -1029,10 +1038,9 @@ if (!results_read_only && sim_grid_n_chunks > 1L) {
   knitr::knit_exit()
 }
 
-# bw_mtd_norm describes the requested estimator. The current normalised
-# bandwidth implementation may fall back internally to the corresponding
-# ordinary HPI estimator; that fallback is not yet exposed in row-level
-# provenance, so it cannot be separated in these plots.
+# bw_mtd_norm describes the requested estimator. Normalised estimators can
+# fall back internally to the corresponding ordinary HPI estimator;
+# norm_fallback_rate records how often the selected final bandwidth did so.
 for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
   for (bias_uns_setting_curr in unique(bw_tbl_results$bias_uns_setting)) {
     for (bw_ncell_upper_curr in unique(bw_tbl_results$bw_ncell_upper)) {
