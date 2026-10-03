@@ -390,3 +390,54 @@ test_that("adaptive failed rows retry and promoted reads enforce grid settings",
     read_ctx, c("collated", "summary_tbl.rds"), required_params = changed
   ), "scenario_settings")
 })
+
+test_that("analysis 6 finds its checkout from the analysis directory", {
+  lines <- readLines(file.path(
+    root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd"
+  ), warn = FALSE)
+  start <- match('root_dir <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)', lines)
+  end <- match('scripts_r_dir <- file.path(root_dir, "scripts", "r")', lines)
+  expect_false(is.na(start))
+  expect_false(is.na(end))
+  withr::local_dir(file.path(root_dir, "analysis"))
+  env <- new.env(parent = baseenv())
+  eval(parse(text = lines[start:(end - 1L)]), envir = env)
+  expect_identical(
+    env$root_dir,
+    normalizePath(root_dir, winslash = "/", mustWork = TRUE)
+  )
+})
+
+test_that("analysis 6 tells plot-only renders how to create a missing cache", {
+  lines <- readLines(file.path(
+    root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd"
+  ), warn = FALSE)
+  chunk_code <- function(label) {
+    start <- match(paste0("#| label: ", label), lines)
+    end <- which(seq_along(lines) > start & lines == "```")[[1]]
+    parse(text = lines[(start + 1L):(end - 1L)])
+  }
+  setup <- chunk_code("setup")
+  hint <- which(vapply(setup, function(expr) {
+    is.call(expr) && identical(expr[[1]], as.name("<-")) &&
+      identical(expr[[2]], as.name("cache_render_hint"))
+  }, logical(1)))
+  expect_length(hint, 1L)
+  env <- new.env(parent = baseenv())
+  eval(setup[hint], envir = env)
+  env$interactive <- function() FALSE
+  env$run_simulations <- FALSE
+  env$run_plots <- TRUE
+  env$analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
+  env$root_dir <- root_dir
+  env$.analysis_results_context <- function(...) stop("No complete canonical result")
+  expect_error(
+    eval(chunk_code("bw-manual-parallel"), envir = env),
+    "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/6-sim-bw-freq_bs-adaptive.qmd",
+    fixed = TRUE
+  )
+  env$run_plots <- FALSE
+  expect_no_error(eval(chunk_code("bw-manual-parallel"), envir = env))
+  expect_no_error(eval(chunk_code("bw-manual-collate"), envir = env))
+  expect_false(exists("run_ctx", envir = env, inherits = FALSE))
+})
