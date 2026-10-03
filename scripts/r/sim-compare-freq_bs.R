@@ -1009,11 +1009,9 @@
         popGate = "root",
         batchList = batchList,
         marker = paste0("MarkerF", seq_len(nMarker)),
-        calcCytPosGates = calcCytPosGates,
         biasUns = biasUns,
-        minCell = minCell,
+        bw = bw,
         control = stimgate::stimControl(
-          bw = bw,
           bwFallback = bwFallback,
           bwMin = bwMin,
           bwMax = bwMax,
@@ -1034,7 +1032,9 @@
           locFlatHardDerivFrac = locFlatHardDerivFrac,
           locMarginalPurityRel = locMarginalPurityRel,
           locMarginalCellBinRatio = locMarginalCellBinRatio,
-          locMarginalRefQuantile = locMarginalRefQuantile
+          locMarginalRefQuantile = locMarginalRefQuantile,
+          calcCytPosGates = calcCytPosGates,
+          minCell = minCell
         )
       ))
 

@@ -553,11 +553,9 @@
       popGate = "root",
       batchList = batchList,
       marker = paste0("MarkerF", seq_len(nMarker)),
-      calcCytPosGates = calcCytPosGates,
       biasUns = biasUnsUse,
-      minCell = minCell,
+      bw = bw,
       control = stimgate::stimControl(
-        bw = bw,
         bwAdaptive = bwAdaptive,
         bwAdaptiveDensityN = bwAdaptiveDensityN,
         bwAdaptivePadFrac = bwAdaptivePadFrac,
@@ -586,7 +584,9 @@
         locMarginalPurityRel = locMarginalPurityRel,
         locMarginalCellBinRatio = locMarginalCellBinRatio,
         locMarginalRefQuantile = locMarginalRefQuantile,
-        gateCombn = gateCombn
+        gateCombn = gateCombn,
+        calcCytPosGates = calcCytPosGates,
+        minCell = minCell
       )
     ))
 
@@ -1041,8 +1041,8 @@
       batchList = batchList,
       marker = paste0("MarkerF", seq_len(nMarker)),
       biasUns = biasUns,
+      bw = bw,
       control = stimgate::stimControl(
-        bw = bw,
         bwAdaptive = bwAdaptive,
         bwAdaptiveDensityN = bwAdaptiveDensityN,
         bwAdaptivePadFrac = bwAdaptivePadFrac,

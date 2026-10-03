@@ -280,8 +280,6 @@
           "Nd150Di"
         ),
         biasUns = biasUns,
-        minCell = 100,
-        calcCytPosGates = TRUE,
         control = stimgate::stimControl(
           bwMtd = "hpi1",
           bwNcellMax = 1e4,
@@ -289,7 +287,9 @@
           bwMin = "none",
           bwMax = "none",
           gateCombn = "min",
-          clusterGates = FALSE
+          clusterGates = FALSE,
+          calcCytPosGates = TRUE,
+          minCell = 100
         )
       )
     })
