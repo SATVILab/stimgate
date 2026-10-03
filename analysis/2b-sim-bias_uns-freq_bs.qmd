@@ -559,6 +559,120 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+For an overview, average the scenario-level median errors equally over cell
+counts, keeping response probabilities and mismatch settings separate.
+
+```{r}
+#| label: plot-relative-error-averaged-n-cell
+if (isTRUE(run_plots)) {
+  plot_dir <- .analysis_cache_dir(
+    c(analysis_key, "relative_error_averaged_n_cell"),
+    path_root = root_dir
+  )
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Average scenario medians equally across cell counts; do not pool samples.
+  bias_uns_error_avg <- bias_uns_results_summary |>
+    dplyr::group_by(
+      transformation, mean_pos_setting, prob_response, mismatch_label,
+      mismatch_type, mismatch_val, bw, bias_uns_basis, bias_uns_multiplier
+    ) |>
+    dplyr::summarise(
+      median_abs_rel_error = mean(median_abs_rel_error, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  for (transformation_curr in unique(bias_uns_results_summary$transformation)) {
+    for (mean_pos_setting_curr in unique(bias_uns_results_summary$mean_pos_setting)) {
+      for (prob_response_curr in unique(bias_uns_results_summary$prob_response)) {
+        plot_tbl <- bias_uns_error_avg |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          )
+
+        p <- .simBandwidthBiasRelativeErrorPlot(
+          plot_tbl,
+          y_label = "Mean of cell-count median absolute relative errors",
+          title = paste0(
+            transformation_curr,
+            "; mean position = ", mean_pos_setting_curr,
+            "; response probability = ", prob_response_curr
+          )
+        )
+
+        path_p <- file.path(
+          plot_dir,
+          paste0(
+            transformation_curr,
+            "_", mean_pos_setting_curr,
+            "_p_", format(prob_response_curr, scientific = TRUE),
+            ".pdf"
+          )
+        )
+        ggsave(path_p, p, width = 28, height = 13, units = "cm")
+        print(p)
+      }
+    }
+  }
+}
+```
+
+For cell-count-specific inspection, also save each row of the original faceted
+relative-error plots as its own figure.
+
+```{r}
+#| label: plot-relative-error-by-n-cell
+if (isTRUE(run_plots)) {
+  plot_dir <- .analysis_cache_dir(
+    c(analysis_key, "relative_error_by_n_cell"),
+    path_root = root_dir
+  )
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+
+  for (transformation_curr in unique(bias_uns_results_summary$transformation)) {
+    for (mean_pos_setting_curr in unique(bias_uns_results_summary$mean_pos_setting)) {
+      for (prob_response_curr in unique(bias_uns_results_summary$prob_response)) {
+        for (n_cell_curr in sort(unique(bias_uns_results_summary$n_cell))) {
+          plot_tbl <- bias_uns_results_summary |>
+            dplyr::filter(
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr,
+              n_cell == n_cell_curr
+            )
+
+          if (nrow(plot_tbl) == 0L) next
+
+          p <- .simBandwidthBiasRelativeErrorPlot(
+            plot_tbl,
+            title = paste0(
+              transformation_curr,
+              "; mean position = ", mean_pos_setting_curr,
+              "; response probability = ", prob_response_curr,
+              "; cells = ", n_cell_curr
+            )
+          )
+
+          path_p <- file.path(
+            plot_dir,
+            paste0(
+              transformation_curr,
+              "_", mean_pos_setting_curr,
+              "_p_", format(prob_response_curr, scientific = TRUE),
+              "_n_cell_", n_cell_curr, ".pdf"
+            )
+          )
+          ggsave(path_p, p, width = 28, height = 13, units = "cm")
+          print(p)
+        }
+      }
+    }
+  }
+}
+```
+
 ```{r}
 #| label: plot-estimated-frequency
 if (isTRUE(run_plots)) {

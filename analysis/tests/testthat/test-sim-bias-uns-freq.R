@@ -26,14 +26,71 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
     env$sim_grid_shuffle_seed <- 8L
     env$sim_grid_chunk_index <- 1L
     env$sim_grid_n_chunks <- 1L
+    env$analysis_semantics_version <- "test"
     eval(parse(text = chunk("bias-uns-settings")), envir = env)
     invisible(utils::capture.output(
       eval(parse(text = chunk("bias-uns-grid")), envir = env)
     ))
+    eval(parse(text = chunk("bias-uns-run-settings")), envir = env)
     env
   }
   full <- run_grid(FALSE, FALSE)
   expect_equal(nrow(full$sim_grid_all), 6720L)
+  expect_equal(sort(unique(full$sim_grid_all$n_cell)), c(1e4, 5e4))
+  expect_equal(sort(unique(full$sim_grid_all$prob_response)), c(0.002, 0.05))
+  expect_equal(full$scenario_settings$nSample, 25)
+  expect_equal(full$scenario_settings$biasUnsWidthHeightFrac, 0.15)
+  expect_equal(full$scenario_settings$covEvMin, 1.5)
+  expect_equal(full$scenario_settings$covEvMax, 1.5)
+  expect_null(full$scenario_settings$tolClust)
+  expect_false(full$scenario_settings$calcCytPosGates)
+  expect_false(full$scenario_settings$locEnforceShapeThreshold)
+  expect_identical(full$analysis_required_params$simulation_seed, 12345L)
+  expect_identical(
+    full$analysis_required_params$sim_grid_spec,
+    dplyr::select(full$sim_grid_all, -sim_seed)
+  )
+  expect_equal(
+    full$bias_uns_settings_tbl$bias_uns_multiplier[
+      full$bias_uns_settings_tbl$bias_uns_basis == "bandwidth"
+    ],
+    c(0, 0.1, 0.25, 0.33, 0.5, 0.75, 1, 1.25, 1.5, 2)
+  )
+  expect_equal(
+    full$bias_uns_settings_tbl$bias_uns_multiplier[
+      full$bias_uns_settings_tbl$bias_uns_basis == "negative_width"
+    ],
+    c(0.1, 0.25, 0.5, 0.75)
+  )
+  for (transformation in c("gaussian", "skew", "gamma")) {
+    rows <- full$sim_grid_all |>
+      dplyr::filter(.data$transformation == .env$transformation)
+    expect_equal(
+      sort(unique(rows$mean_pos)),
+      switch(transformation, gaussian = c(4.5, 8), skew = c(6, 8.5), gamma = c(4, 7))
+    )
+    expect_true(all(rows$background_relative_to_response == 0.2))
+    expect_true(all(rows$n_cell_uns_relative_to_stim == 1))
+    expect_equal(
+      sort(unique(rows$bw)),
+      if (transformation == "gamma") c(0.001, 0.0025, 0.005, 0.01) else {
+        c(0.05, 0.1, 0.25, 0.5)
+      }
+    )
+    shifted <- rows[rows$mismatch_type == "mean_shift", ]
+    expect_equal(
+      sort(unique(shifted$stim_mean_shift)),
+      if (transformation == "gamma") c(0, 0.005, 0.01, 0.05) else {
+        c(0, 0.025, 0.05, 0.2)
+      }
+    )
+    expect_true(all(shifted$stim_mean_shift_clusters == "gn"))
+    expect_true(all(shifted$stim_sd_multiplier == 1))
+    inflated <- rows[rows$mismatch_type == "sd_inflation", ]
+    expect_true(all(inflated$stim_mean_shift == 0))
+    expect_true(all(inflated$stim_sd_multiplier == 1.10))
+    expect_true(all(inflated$stim_sd_multiplier_clusters == "gn"))
+  }
   grouped <- full$sim_grid_all |>
     dplyr::group_by(.data$base_scenario_id) |>
     dplyr::summarise(
@@ -54,6 +111,65 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
       dplyr::filter(.data$sim_id %in% reduced$sim_grid_all$sim_id)
     expect_identical(reduced$sim_grid_all, expected)
   }
+})
+
+test_that("Analysis 2b runtime guards simulations and reads canonical results", {
+  env <- .bias_uns_test_env()
+  root <- normalizePath(file.path(testthat::test_path(), "../../.."))
+  lines <- readLines(file.path(root, "analysis", "2b-sim-bias_uns-freq_bs.qmd"))
+  chunk <- function(label) {
+    start <- which(lines == paste0("#| label: ", label))
+    end <- start + which(lines[(start + 1L):length(lines)] == "```")[1L]
+    lines[(start + 1L):(end - 1L)]
+  }
+  unexpected <- function(...) stop("A disabled simulation or plot executed.")
+  env$run_simulations <- FALSE
+  env$run_plots <- FALSE
+  env$.analysis_run_context <- unexpected
+  env$.simBandwidthRunGrid <- unexpected
+  env$.simBandwidthFinishChunk <- unexpected
+  env$.analysis_cache_dir <- unexpected
+  env$ggplot <- unexpected
+  for (label in c(
+    "bias-uns-parallel", "bias-uns-collate",
+    "plot-relative-error", "plot-estimated-frequency"
+  )) {
+    expect_no_error(eval(parse(text = chunk(label)), envir = env))
+  }
+  expect_false(exists("run_ctx", envir = env, inherits = FALSE))
+
+  env$run_plots <- TRUE
+  env$analysis_key <- c("sim", "bias_uns", "freq_bs")
+  env$root_dir <- root
+  env$analysis_required_params <- list(
+    analysis_semantics_version = "bias-uns-freq-v1", simulation_seed = 12345L
+  )
+  env$.analysis_results_context <- function(analysis_key, path_root) {
+    expect_identical(analysis_key, env$analysis_key)
+    expect_identical(path_root, root)
+    list(read_only = TRUE)
+  }
+  reads <- list()
+  env$.analysis_current_file <- function(run_ctx, relative_path, required_params) {
+    expect_true(run_ctx$read_only)
+    expect_identical(required_params, env$analysis_required_params)
+    reads[[length(reads) + 1L]] <<- relative_path
+    relative_path[[2L]]
+  }
+  env$readRDS <- identity
+  eval(parse(text = chunk("bias-uns-parallel")), envir = env)
+  eval(parse(text = chunk("bias-uns-collate")), envir = env)
+  expect_identical(reads, list(
+    c("collated", "bias_uns_results_raw.rds"),
+    c("collated", "bias_uns_results_summary.rds")
+  ))
+
+  rerun <- chunk("rerun-one-simulation")
+  expect_true("#| eval: false" %in% rerun)
+  expect_true(any(grepl(".simBandwidthRunRow(", rerun, fixed = TRUE)))
+  expect_true(any(grepl(
+    "scenario_fn = .simBandwidthBiasUnsScenario", rerun, fixed = TRUE
+  )))
 })
 
 test_that("negative shoulder width matches a normal KDE and stops at an antimode", {
@@ -144,6 +260,13 @@ test_that("Analysis 2b runs width-based bias with selective batch mismatch", {
   env <- .bias_uns_test_env()
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   source(file.path(root, "scripts", "r", "sim-compare-freq_bs.R"), local = env)
+  simulate <- env$.simCompareSimCytExperiment
+  captured <- list()
+  env$.simCompareSimCytExperiment <- function(...) {
+    out <- simulate(...)
+    captured[[length(captured) + 1L]] <<- out
+    out
+  }
   withr::local_envvar(c(STIMGATE_INTERMEDIATE = NA_character_))
   row <- tibble::tibble(
     sim_id = 1L,
@@ -187,4 +310,28 @@ test_that("Analysis 2b runs width-based bias with selective batch mismatch", {
   expect_true(all(is.finite(final$biasUnsNegativeWidth)))
   expect_true(all(final$biasUnsNegativeWidth > 0))
   expect_equal(final$biasUns, 0.5 * final$biasUnsNegativeWidth)
+
+  # Estimator settings and deterministic mismatch must preserve the random draws.
+  baseline_row <- row
+  baseline_row$stim_mean_shift <- 0
+  baseline_row$bias_uns_multiplier <- 0.25
+  baseline_row$bw <- 0.5
+  baseline <- env$.simBandwidthRunRow(
+    baseline_row,
+    scenario_fn = env$.simBandwidthBiasUnsScenario,
+    settings = settings
+  )
+  expect_equal(nrow(baseline[baseline$method == "loc_sample", ]), 2L)
+  expect_equal(length(captured), 2L)
+  expect_identical(captured[[1L]]$labelsList, captured[[2L]]$labelsList)
+  for (ind in seq_len(4L)) {
+    shifted <- flowCore::exprs(captured[[1L]]$flowFrameList[[ind]])
+    original <- flowCore::exprs(captured[[2L]]$flowFrameList[[ind]])
+    expected_shift <- if (ind %% 2L == 0L) {
+      as.numeric(captured[[1L]]$labelsList[[ind]] == "gn") * 0.05
+    } else {
+      rep(0, nrow(original))
+    }
+    expect_equal(shifted[, 1L] - original[, 1L], expected_shift)
+  }
 })
