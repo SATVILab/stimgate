@@ -185,4 +185,18 @@ test_that("analysis 2 is chunk-stable, read-only when not simulating, and valida
   ))
   expect_true(grepl("format_bw_lab(.data$bw)", content, fixed = TRUE))
   expect_true(grepl(".write_rds_atomic(", content, fixed = TRUE))
+
+  expect_true(grepl('.data$method == "loc_sample"', content, fixed = TRUE))
+  expect_true(grepl("is.finite(.data$propRespTruth)", content, fixed = TRUE))
+  expect_true(grepl("is.finite(.data$propRespEst)", content, fixed = TRUE))
+  expect_true(grepl(
+    "abs(propRespEst - propRespTruth) / propRespTruth",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    "filter(is.finite(threshold) & is.finite(propBsEst))",
+    content,
+    fixed = TRUE
+  ))
 })
