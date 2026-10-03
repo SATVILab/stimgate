@@ -18,6 +18,27 @@
 .profileOriginalGetCpUnsLocAntimodeDensity <- .getCpUnsLocAntimodeDensity
 .profileOriginalGetCpUnsLocGetCp <- .getCpUnsLocGetCp
 .profileOriginalGetCpUnsLocFilterMarginal <- .getCpUnsLocFilterMarginal
+.profileOriginalCompleteChnlSettingsBwShared <- .completeChnlSettingsBwShared
+
+.completeChnlSettingsBwShared <- function(
+  chnlSettings,
+  indBatchList,
+  .data,
+  pathProject
+) {
+  .profileTime(
+    .profileOriginalCompleteChnlSettingsBwShared(
+      chnlSettings = chnlSettings,
+      indBatchList = indBatchList,
+      .data = .data,
+      pathProject = pathProject
+    ),
+    level = "major",
+    major = "shared_bandwidth",
+    operation = paste0("shared_bandwidth_", chnlSettings$bwScope),
+    pathProject = pathProject
+  )
+}
 
 .gateInit <- function(
   chnlSettings,

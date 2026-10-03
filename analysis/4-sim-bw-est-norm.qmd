@@ -77,7 +77,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "norm")
-analysis_semantics_version <- "bandwidth-est-norm-v3"
+analysis_semantics_version <- "bandwidth-est-norm-v4"
 analysis_dev <- isTRUE(.isDev())
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",

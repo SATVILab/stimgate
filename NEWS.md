@@ -1,3 +1,10 @@
+# stimgate 0.99.8
+
+## New features
+
+* `gateStim(bwScope = )` chooses which samples share the scalar local-FDR bandwidth: `"cytokine"` (new default; one trimmed-mean bandwidth per channel from about 100 tubes), `"cluster"` (one bandwidth per cluster of similarly shaped tubes) or `"sample"` (previous per-sample behaviour). The chosen values are reported and saved in the channel settings, so they can be inspected and fixed via `bw`.
+* `bwCluster` is no longer estimated automatically. When `NULL`, cluster-based threshold sharing uses the shared local-FDR bandwidth; a supplied `bwCluster` now takes precedence rather than being a fallback.
+
 # stimgate 0.99.5
 
 ## Breaking changes
