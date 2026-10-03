@@ -554,3 +554,49 @@ test_that(
     expect_false("stimgate_loc_sample" %in% focused$method)
   }
 )
+
+
+test_that("StimGate comparison fallback flags preserve final gate provenance", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(script_comp, local = env)
+
+  fallback_row <- tibble::tibble(
+    locGenerated = FALSE,
+    locGeneratedDirect = FALSE,
+    locSource = "not_calculated",
+    locReason = "no_valid_local_threshold"
+  )
+  fallback <- env$.simCompareStimgateGateProvenance(
+    gRow = fallback_row,
+    gateVal = 12,
+    isClustered = FALSE
+  )
+
+  expect_true(fallback$thresholdFallbackUsed)
+  expect_false(fallback$locGenerated)
+  expect_false(fallback$locGeneratedDirect)
+  expect_equal(fallback$locSource, "not_calculated")
+  expect_equal(fallback$thresholdOrigin, "fallback_high_value")
+  expect_equal(fallback$gateReturnPoint, "stimgate_fallback_high_value")
+
+  cluster_row <- tibble::tibble(
+    locGenerated = TRUE,
+    locGeneratedDirect = FALSE,
+    locSource = "cluster_q60",
+    locReason = "replaced_by_cluster_direct_threshold_q60"
+  )
+  cluster <- env$.simCompareStimgateGateProvenance(
+    gRow = cluster_row,
+    gateVal = 4,
+    isClustered = TRUE
+  )
+
+  expect_false(cluster$thresholdFallbackUsed)
+  expect_true(cluster$locGenerated)
+  expect_false(cluster$locGeneratedDirect)
+  expect_equal(cluster$locSource, "cluster_q60")
+  expect_equal(cluster$thresholdOrigin, "calculated_clustered")
+  expect_equal(cluster$gateReturnPoint, "stimgate_clustered")
+})
