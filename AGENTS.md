@@ -320,6 +320,9 @@ the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-onl
 (`workflow_dispatch`); do not add automatic triggers. See
 `analysis/tests/README.md` for commands and coverage limits.
 
+The default Slurm job list includes both Analysis 2a and 2b. Keep enabled
+chunked analyses in the `scripts` list and `chunked_qmd_stem_for_script()`
+mapping, sharing run ID, chunk count and shuffle seed across each run.
 Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`;
 validate all target arguments before submitting jobs. Keep mocked submission and
 render checks in `analysis/tests/test-slurm-launchers.sh` and run them in analysis

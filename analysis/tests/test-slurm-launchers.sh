@@ -20,12 +20,20 @@ chmod +x "$test_dir/bin/"*
 export PATH="$test_dir/bin:$PATH"
 export PROJECT_ROOT="$project_root"
 export SIM_GRID_N_CHUNKS=2 ANALYSIS_RUN_ID=slurm-test-run
+export SIM_GRID_SHUFFLE_SEED=123
 unset SIM_GRID_QMD_FILE SIM_GRID_CHUNK_INDEX SLURM_ARRAY_TASK_ID
 
 run_selection() {
   : > "$SLURM_TEST_LOG"
   bash "$project_root/scripts/slurm/dev.sh" "$@" > "$test_dir/output" 2>&1
 }
+
+run_selection
+[[ $(grep -c 'dev-2b-' "$SLURM_TEST_LOG") -eq 2 ]]
+for chunk in 1 2; do
+  bias_job=$(grep -F "2b-sim-bias_uns-freq_bs/chunk-${chunk}|" "$SLURM_TEST_LOG")
+  [[ "$bias_job" == *"PROJECT_ROOT=$project_root,ANALYSIS_RUN_ID=slurm-test-run,SIM_GRID_CHUNK_INDEX=$chunk,SIM_GRID_N_CHUNKS=2,SIM_GRID_SHUFFLE_SEED=123,RUN_SIMULATIONS=true,RUN_PLOTS=false"* ]]
+done
 
 for analysis_id in 2a 2b; do
   run_selection "$analysis_id"
