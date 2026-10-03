@@ -283,30 +283,11 @@ writeStimFCS <- function(
     indBatchList) {
   gateTblDistinct <- gateTbl |>
     dplyr::distinct(chnl, marker, batch, ind, .keep_all = TRUE)
-  if (nrow(gateTblDistinct) != nrow(gateTbl)) {
-    # check that gates are the same for all duplicates
-    cnVec <- c("chnl", "marker", "batch", "ind")
-    cnVecConcate <- NULL
-    for (i in seq_along(cnVec)) {
-      cnVecConcate <- paste(cnVecConcate, gateTbl[[cnVec[i]]], sep = "_")
-    }
-    gateTbl$concat <- cnVecConcate
-    gateTbl <- gateTbl |>
-      dplyr::group_by(concat) |>
-      dplyr::filter(dplyr::n() > 1) |>
-      dplyr::ungroup()
-    gateVec <- paste0(gateTbl$gate, gateTbl$gateCyt)
-    gateTbl$gateConcat <- gateVec
-    isError <- nrow(
-      gateTbl |>
-        dplyr::group_by(chnl, marker, batch, ind) |>
-        dplyr::filter(length(unique(gateConcat)) > 1) |>
-        dplyr::ungroup()
-    ) >
-      0
-    if (isError) {
-      stop("Gates are not the same for all duplicates in gateTbl.")
-    }
+  thresholdCols <- c("chnl", "marker", "batch", "ind", "gate", "gateCyt")
+  gateTblThresholds <- gateTbl |>
+    dplyr::distinct(dplyr::across(dplyr::any_of(thresholdCols)))
+  if (nrow(gateTblThresholds) != nrow(gateTblDistinct)) {
+    stop("Gates are not the same for all duplicates in gateTbl.")
   }
   gateTblDistinct |>
     dplyr::group_by(chnl, marker, batch) |> # nolint
