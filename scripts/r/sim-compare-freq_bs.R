@@ -718,6 +718,7 @@
     purrr::map_df(indStimVec, function(indStim) {
       xStim <- as.numeric(flowCore::exprs(flowFrameList[[indStim]])[, chnl])
 
+      fbetaError <- NA_character_
       fbetaObj <- tryCatch(
         .simCompareFbetaThreshold(
           xUns = xUnsFbeta,
@@ -731,10 +732,11 @@
           numBins = fbetaNumBins
         ),
         error = function(e) {
+          fbetaError <<- conditionMessage(e)
           list(
             threshold = NA_real_,
             thresholdMetric = NA_real_,
-            thresholdOrigin = paste0("error: ", e$message)
+            thresholdOrigin = paste0("error: ", fbetaError)
           )
         }
       )
@@ -754,6 +756,7 @@
         "combined" = c(xUnsTailgate, xStim)
       )
 
+      tailgateError <- NA_character_
       tailgateObj <- tryCatch(
         .simCompareTailgateThreshold(
           x = xTail,
@@ -769,10 +772,11 @@
           autoTol = tailgateAutoTol
         ),
         error = function(e) {
+          tailgateError <<- conditionMessage(e)
           list(
             threshold = NA_real_,
             thresholdMetric = NA_real_,
-            thresholdOrigin = paste0("error: ", e$message)
+            thresholdOrigin = paste0("error: ", tailgateError)
           )
         }
       )
@@ -797,12 +801,16 @@
           tailgateObj$thresholdOrigin
         ),
         gateReturnPoint = c(
-          if (isTRUE(fbetaEst$thresholdFallbackUsed)) {
+          if (!is.na(fbetaError)) {
+            "fbeta_error_fallback_high_value"
+          } else if (isTRUE(fbetaEst$thresholdFallbackUsed)) {
             "fbeta_fallback_high_value"
           } else {
             "fbeta_calculated"
           },
-          if (isTRUE(tailgateEst$thresholdFallbackUsed)) {
+          if (!is.na(tailgateError)) {
+            "tailgate_error_fallback_high_value"
+          } else if (isTRUE(tailgateEst$thresholdFallbackUsed)) {
             "tailgate_fallback_high_value"
           } else {
             "tailgate_calculated"
@@ -828,7 +836,7 @@
         locGeneratedDirect = NA,
         locSource = NA_character_,
         locReason = NA_character_,
-        error = NA_character_
+        error = c(fbetaError, tailgateError)
       )
     })
   })
@@ -1781,6 +1789,9 @@
     if ("gateCombn" %in% names(row)) {
       paste0("gate_combn = ", row$gateCombn[[1]])
     },
+    if ("sim_seed" %in% names(row)) {
+      paste0("sim_seed = ", row$sim_seed[[1]])
+    },
     if ("mismatch_type" %in% names(row)) {
       paste0("mismatch_type = ", row$mismatch_type[[1]])
     },
@@ -1939,6 +1950,14 @@
       )
       return(cached)
     }
+  }
+
+  if (
+    "sim_seed" %in% names(row) &&
+      length(row$sim_seed) > 0L &&
+      is.finite(as.numeric(row$sim_seed[[1]]))
+  ) {
+    set.seed(as.integer(row$sim_seed[[1]]))
   }
 
   settings_log <- .simCompareFormatScenarioLog(row, sim_id)
