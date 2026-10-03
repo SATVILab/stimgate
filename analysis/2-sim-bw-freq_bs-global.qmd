@@ -1254,7 +1254,6 @@ out <- .getCpUnsLocDerivThreshold(
   alpha = params$alpha,
   omega = params$omega,
   psi = params$psi,
-  thresholdProbMin = .getCpUnsLocThresholdProbMin(chnlSettings, stage),
   capRightWidth = identical(stage, "marginal")
 )
 ```

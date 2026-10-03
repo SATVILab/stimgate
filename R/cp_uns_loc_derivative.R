@@ -16,18 +16,6 @@
   }
 }
 
-#' Read the first available setting from a precedence-ordered vector
-#' @keywords internal
-.getCpUnsLocFirstSetting <- function(chnlSettings, names, default = NULL) {
-  for (name in names) {
-    value <- .getCpUnsLocSetting(chnlSettings, name)
-    if (!is.null(value)) {
-      return(value)
-    }
-  }
-  default
-}
-
 #' Validate a value constrained to the unit interval
 #' @keywords internal
 .getCpUnsLocUnitValue <- function(
@@ -48,85 +36,11 @@
 
 #' Get appendix parameters (alpha, omega, psi) for one filtering stage
 #' @keywords internal
-.getCpUnsLocDerivParams <- function(chnlSettings, stage) {
-  stage <- match.arg(stage, c("antimode", "global", "marginal"))
-  stageTitle <- switch(
-    stage,
-    antimode = "Antimode",
-    global = "Global",
-    marginal = "Marginal"
-  )
-  defaults <- switch(
-    stage,
-    antimode = c(alpha = 2 / 3, omega = 0.15, psi = -0.2),
-    global = c(alpha = 0.05, omega = 0.15, psi = 0.2),
-    marginal = c(alpha = 0.50, omega = 0.15, psi = -0.2)
-  )
-
-  alpha <- .getCpUnsLocFirstSetting(
-    chnlSettings,
-    c(
-      paste0("loc", stageTitle, "DerivAlpha"),
-      "locDerivAlpha",
-      paste0("loc", stageTitle, "DerivPeakMinRel"),
-      "locDerivPeakMinRel"
-    ),
-    defaults[["alpha"]]
-  )
-  omega <- .getCpUnsLocFirstSetting(
-    chnlSettings,
-    c(
-      paste0("loc", stageTitle, "DerivOmega"),
-      "locDerivOmega",
-      paste0("loc", stageTitle, "DerivPeakProbMin"),
-      "locDerivPeakProbMin"
-    ),
-    defaults[["omega"]]
-  )
-  psi <- .getCpUnsLocFirstSetting(
-    chnlSettings,
-    c(
-      paste0("loc", stageTitle, "DerivPsi"),
-      "locDerivPsi",
-      paste0("loc", stageTitle, "DerivRiseFrac")
-    ),
-    defaults[["psi"]]
-  )
-
-  list(
-    alpha = .getCpUnsLocUnitValue(alpha, defaults[["alpha"]]),
-    omega = .getCpUnsLocUnitValue(
-      omega,
-      defaults[["omega"]],
-      allowZero = TRUE
-    ),
-    psi = .getCpUnsLocUnitValue(psi, defaults[["psi"]], allowNeg = TRUE)
-  )
-}
-
-#' Get the optional minimum probability at the final derivative threshold
-#' @keywords internal
-.getCpUnsLocThresholdProbMin <- function(chnlSettings, stage) {
-  stage <- match.arg(stage, c("antimode", "global", "marginal"))
-  stageTitle <- switch(
-    stage,
-    antimode = "Antimode",
-    global = "Global",
-    marginal = "Marginal"
-  )
-  common <- .getCpUnsLocUnitValue(
-    .getCpUnsLocSetting(chnlSettings, "locDerivRiseProbMin", 0),
-    0,
-    allowZero = TRUE
-  )
-  .getCpUnsLocUnitValue(
-    .getCpUnsLocSetting(
-      chnlSettings,
-      paste0("loc", stageTitle, "DerivRiseProbMin"),
-      common
-    ),
-    common,
-    allowZero = TRUE
+.getCpUnsLocDerivParams <- function(stage) {
+  switch(match.arg(stage, c("antimode", "global", "marginal")),
+    antimode = list(alpha = 2 / 3, omega = 0.15, psi = -0.2),
+    global = list(alpha = 0.05, omega = 0.15, psi = 0.2),
+    marginal = list(alpha = 0.50, omega = 0.15, psi = -0.2)
   )
 }
 
@@ -413,7 +327,6 @@
   alpha,
   omega,
   psi,
-  thresholdProbMin = 0,
   capRightWidth = FALSE,
   leftRiseFrac = 0.15,
   stage
@@ -434,13 +347,8 @@
   # `stage` is only needed (and evaluated) when psi is invalid.
   psi <- .getCpUnsLocUnitValue(
     psi,
-    .getCpUnsLocDerivParams(NULL, stage)$psi,
+    .getCpUnsLocDerivParams(stage)$psi,
     allowNeg = TRUE
-  )
-  thresholdProbMin <- .getCpUnsLocUnitValue(
-    thresholdProbMin,
-    0,
-    allowZero = TRUE
   )
 
   iPeak <- peak$index
@@ -450,7 +358,6 @@
   info$omega <- omega
   info$psi <- psi
   info$riseHeight <- riseHeight
-  info$thresholdProbMin <- thresholdProbMin
 
   if (peak$data$prob[iPeak] < omega) {
     candidate <- seq.int(iPeak, nrow(peak$data))
@@ -515,25 +422,11 @@
     }
   }
 
-  info$thresholdIdxCandidate <- iThreshold
-  info$thresholdXCandidate <- peak$data$x[iThreshold]
-  info$thresholdProbCandidate <- peak$data$prob[iThreshold]
-
-  # Optional extra constraint on the threshold itself, independent of omega.
-  later <- seq.int(iThreshold, nrow(peak$data))
-  later <- later[peak$data$prob[later] >= thresholdProbMin]
-  if (length(later) == 0L) {
-    info$reason <- "no_later_threshold_met_probability_minimum"
-    return(list(thresholdX = NA_real_, info = info))
-  }
-
-  iThresholdFinal <- min(later)
-  thresholdX <- peak$data$x[iThresholdFinal]
+  thresholdX <- peak$data$x[iThreshold]
   info$reason <- "identified_derivative_threshold"
-  info$thresholdIdx <- iThresholdFinal
+  info$thresholdIdx <- iThreshold
   info$thresholdX <- thresholdX
-  info$thresholdProb <- peak$data$prob[iThresholdFinal]
-  info$shiftedRightForProbability <- iThresholdFinal > iThreshold
+  info$thresholdProb <- peak$data$prob[iThreshold]
 
   list(thresholdX = thresholdX, info = info)
 }
@@ -609,7 +502,7 @@
   probCol,
   stage
 ) {
-  params <- .getCpUnsLocDerivParams(chnlSettings, stage)
+  params <- .getCpUnsLocDerivParams(stage)
   derivTbl <- .getCpUnsLocDerivTbl(dataMod, probCol)
   if (is.null(derivTbl)) {
     return(list(
@@ -629,20 +522,11 @@
     alpha = params$alpha,
     omega = params$omega,
     psi = params$psi,
-    thresholdProbMin = .getCpUnsLocThresholdProbMin(chnlSettings, stage),
     capRightWidth = identical(stage, "marginal"),
     leftRiseFrac = if (isTRUE(attr(dataMod, "locShapeThresholdApplied"))) {
-      .getCpUnsLocSetting(
-        chnlSettings,
-        "locShapeDerivativeLeftRiseFrac",
-        0.5
-      )
+      0.5
     } else {
-      .getCpUnsLocSetting(
-        chnlSettings,
-        "locDerivativeLeftRiseFrac",
-        0.15
-      )
+      0.15
     },
     stage = stage
   )
