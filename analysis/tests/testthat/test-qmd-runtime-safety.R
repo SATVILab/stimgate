@@ -374,3 +374,98 @@ test_that("analysis 4 uses paired estimator seeds and transactional chunk promot
   expect_true(grepl("n_norm_fallback", content, fixed = TRUE))
   expect_true(grepl("norm_fallback_rate", content, fixed = TRUE))
 })
+
+
+test_that("analysis 5 matches adaptive estimator semantics and is chunk-stable", {
+  qmd_path <- file.path(
+    root_dir,
+    "analysis",
+    "5-sim-bw-est-adaptive.qmd"
+  )
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("simulation_seed:\\s*12345", content))
+  expect_true(grepl(
+    'analysis_semantics_version <- "adaptive-bw-est-v2"',
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("analysis_grid_spec", content, fixed = TRUE))
+  expect_true(grepl("sim_grid_spec = analysis_grid_spec", content, fixed = TRUE))
+  expect_true(grepl("bw_fallback <- NA_real_", content, fixed = TRUE))
+
+  expect_true(grepl("norm_adaptive_ncell <- 2500L", content, fixed = TRUE))
+  expect_true(grepl(
+    "normAdaptiveNcell = norm_adaptive_ncell",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl("bw_ncell_upper", content, fixed = TRUE))
+  expect_false(grepl("bwNcellMax =", content, fixed = TRUE))
+
+  expect_true(grepl("data_scenario_id", content, fixed = TRUE))
+  expect_true(grepl(
+    "sim_seed = as.integer(simulation_seed + .data$data_scenario_id - 1L)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "set.seed(as.integer(sim_seed))",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    ".simBandwidthEnsureCurrentCheckout(root_dir)",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_true(grepl(
+    "run_ctx <- .analysis_results_context(",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(".analysis_current_file(", content, fixed = TRUE))
+  expect_true(grepl("analysis_required_params", content, fixed = TRUE))
+  expect_true(grepl("run_ctx$chunk_dir", content, fixed = TRUE))
+
+  expect_true(grepl("expected_rows_per_sim", content, fixed = TRUE))
+  expect_true(grepl("row_count_bad_ids", content, fixed = TRUE))
+  expect_true(grepl("seed_ok", content, fixed = TRUE))
+  expect_true(grepl("expected_full_ids", content, fixed = TRUE))
+  expect_true(grepl("promote_analysis5_if_ready", content, fixed = TRUE))
+  expect_true(grepl("nrow(sim_grid) == 0L", content, fixed = TRUE))
+  expect_true(grepl(
+    "Refusing to promote analysis 5",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl("#\\| error:\\s*true", content))
+
+  expect_true(grepl("n_total = dplyr::n()", content, fixed = TRUE))
+  expect_true(grepl("prop_est = n_est / n_total", content, fixed = TRUE))
+  expect_true(grepl(
+    "means are conditional on finite estimates",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_true(grepl("old_plan <- future::plan()", content, fixed = TRUE))
+  expect_true(grepl(
+    "finally = future::plan(old_plan)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "run_plots is false, so stopping after simulation/collation.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "Render again with run_simulations = FALSE and run_plots = TRUE.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(".write_rds_atomic(", content, fixed = TRUE))
+  expect_false(grepl("saveRDS(", content, fixed = TRUE))
+})
