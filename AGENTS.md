@@ -566,7 +566,7 @@ rows before drawing reference lines.
 6. **Simulation engine migration to `simcyto` (issues #288/#289/#291/#295 / umbrella #271)**:
    Generic cytometry simulations, post-simulation transformations, and condition-mismatch
    controls are progressively migrating to the exported `simcyto` package API (e.g.
-   `simcyto::simCytExperiment()`, `simcyto::simCytTransform*()`). `analysis/2-sim-bw-freq_bs-global.qmd`,
+   `simcyto::simCytExperiment()`, `simcyto::simCytTransform*()`). `analysis/2a-sim-bw-freq_bs-global.qmd`, `analysis/2b-sim-bias_uns-freq_bs.qmd`,
    `analysis/3-sim-bw-est-base.qmd`, `analysis/7-sim-compare-freq_bs.qmd`, and
    `analysis/8-sim-compare-freq_bs-batch.qmd` use `simcyto` and do not source
    `functionsForBenchmarking-Cyt.R`. StimGate scientific scenario calculations, downstream
