@@ -1,26 +1,25 @@
 #' @keywords internal
 .getStats <- function(
-    gateTbl = NULL,
-    chnl = NULL,
-    filterOtherCytPos = FALSE,
-    combn = TRUE,
-    gateTypeCytPosFilter = "base",
-    gateTypeCytPosCalc,
-    popGate,
-    chnlLab = NULL,
-    .data,
-    save = FALSE,
-    indBatchList,
-    saveGateTbl = FALSE,
-    gateName = NULL,
-    tolClust = NULL,
-    pathProject) {
+  gateTbl = NULL,
+  chnl = NULL,
+  filterOtherCytPos = FALSE,
+  combn = TRUE,
+  gateTypeCytPosFilter = "base",
+  gateTypeCytPosCalc,
+  popGate,
+  chnlLab = NULL,
+  .data,
+  save = FALSE,
+  indBatchList,
+  saveGateTbl = FALSE,
+  gateName = NULL,
+  tolClust = NULL,
+  pathProject
+) {
   # prep
   # ---------------
-  chnlLab <- .getStatsChnlLabGet(
-    chnlLab = chnlLab,
-    .data = .data,
-    chnl = chnl
+  chnlLab <- chnlLab %||% .getLabs( # nolint: object_usage_linter.
+    .data = .data[[1]], chnlCut = chnl
   )
 
   gateTbl <- .getStatsGateTblGet(
@@ -32,21 +31,13 @@
     tolClust = tolClust
   )
 
-  chnl <- .getStatsChnlGet(
-    chnl = chnl,
-    gateTbl = gateTbl
-  )
-
-  gateName <- .getStatsGateNameGet(
-    gateName = gateName,
-    gateTbl = gateTbl
-  )
+  chnl <- chnl %||% unique(gateTbl$chnl)
+  gateName <- gateName %||% unique(gateTbl$gateName)
 
   if ((!filterOtherCytPos) && combn) {
     nChnl <- length(chnl)
     combnMatList <- .getStatsCombnMatListGet(
-      nChnl = nChnl,
-      nPos = 2
+      nChnl = nChnl
     )
     cytCombnVecList <- .getStatsCytCombnVecListGet(
       combnMatList = combnMatList,

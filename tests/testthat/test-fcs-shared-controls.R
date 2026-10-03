@@ -8,9 +8,10 @@ test_that("complete gate tables support a shared unstimulated sample", {
     ind = c("1", "2", "1", "3"), gate = 0.5, gateCyt = 0.25
   )
   actual <- .fcsWriteGetGateTbl(
-    gates, chnl = example$chnl[[1]], pop = "root", .data = gs,
+    gates,
+    chnl = example$chnl[[1]], pop = "root", .data = gs,
     indBatchList = list(c(1L, 2L), c(1L, 3L)), gateUnsMethod = "min",
-    gateTypeCytPos = "base", pathProject = tempdir()
+    pathProject = tempdir()
   )
   actual$marker <- unname(actual$marker)
   expect_identical(actual, gates)

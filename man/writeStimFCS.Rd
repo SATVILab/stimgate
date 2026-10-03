@@ -47,6 +47,9 @@ writeStimFCS(
 
 \item{gateUnsMethod}{character. Method to calculate unstimulated thresholds.}
 }
+\value{
+The output directory path, invisibly.
+}
 \description{
 Uses the gates to write FCS files of marker-positive FCS files.
 }
