@@ -308,9 +308,9 @@ dir.create(
   showWarnings = FALSE
 )
 
-saveRDS(
+.write_rds_atomic(
   bw_list_raw_mtd_loop,
-  file = projr::projr_path_get(
+  projr::projr_path_get(
     "cache",
     "sim",
     "bw",
@@ -373,12 +373,12 @@ summarise_base_bw_results <- function(.data) {
     ) |>
     dplyr::select(
       dplyr::any_of(colnames(sim_grid_all)),
-      .data$n_bw_total,
-      .data$n_bw_finite,
-      .data$prop_bw_finite,
-      .data$mean_bw_stim,
-      .data$mean_bw_uns,
-      .data$mean_bw
+      n_bw_total,
+      n_bw_finite,
+      prop_bw_finite,
+      mean_bw_stim,
+      mean_bw_uns,
+      mean_bw
     )
 }
 
@@ -734,7 +734,7 @@ validate_base_bw_outputs <- function(.data, expected_grid) {
       dplyr::distinct(.data$sim_id, .data$sim_seed) |>
       dplyr::arrange(.data$sim_id)
     expected_seed <- expected_grid |>
-      dplyr::select(.data$sim_id, .data$sim_seed) |>
+      dplyr::select(sim_id, sim_seed) |>
       dplyr::distinct() |>
       dplyr::arrange(.data$sim_id)
 
