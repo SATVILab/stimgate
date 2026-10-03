@@ -90,7 +90,7 @@
 </tr><tr><td>CI</td>
 <td>GitHub Actions (R-CMD-check, pkgdown, Codecov)</td>
 </tr></tbody></table><p><strong>Do NOT:</strong></p>
-<ul><li>Use <code>@import</code> or <code>@importFrom</code> directives in roxygen comments; explicitly qualify all package calls with <code>pkg::fun()</code>. The only exceptions are <code>ggplot2</code> (imported wholesale via <code>#' @import ggplot2</code> in <code>R/misc.R</code>) and <code><a href="https://rdrr.io/pkg/Biobase/man/exprs.html" class="external-link">flowCore::exprs</a></code>, which may be called without a namespace qualifier and do not require <code>@importFrom</code> tags.</li>
+<ul><li>Use <code>@import</code> or <code>@importFrom</code> directives in roxygen comments; explicitly qualify all package calls with <code>pkg::fun()</code>. The only exceptions are <code>ggplot2</code> (imported wholesale via <code>#' @import ggplot2</code> in <code>R/stimgate-package.R</code>) and <code><a href="https://rdrr.io/pkg/Biobase/man/exprs.html" class="external-link">flowCore::exprs</a></code>, which may be called without a namespace qualifier and do not require <code>@importFrom</code> tags.</li>
 <li>Modify <code>.Rd</code> files manually; regenerate them with <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code>.</li>
 <li>Use <code><a href="https://rdrr.io/r/base/function.html" class="external-link">return()</a></code> as the last line of a function; use it only for early returns.</li>
 <li>Add <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code> calls inside test files.</li>
@@ -174,7 +174,7 @@
 <div class="section level3">
 <h3 id="test-runs-while-iterating">Test runs while iterating<a class="anchor" aria-label="anchor" href="#test-runs-while-iterating"></a></h3>
 <p>The full suites are slow. While iterating, run only the test files that cover the code you changed, e.g. <code>devtools::test(filter = "cp_uns_loc|pos_ind")</code> or <code><a href="https://testthat.r-lib.org/reference/test_file.html" class="external-link">testthat::test_file()</a></code> for analysis tests. Run the full suite once, on the finished change, before opening the PR; CI runs it again.</p>
-<p>When several agents work in parallel (subagents, separate worktrees), each agent runs targeted tests only and the coordinating agent runs the full suite once on the combined result. Worktrees share one <code>git stash</code>, so parallel agents must not use it; use a patch file or a temporary commit instead.</p>
+<p>When several agents work in parallel (subagents, separate worktrees), the subagents do not run R locally: concurrent R runs overload the machine. The coordinating agent tests once, locally, on the combined result before opening the PR. A subagent may push a branch to CI if it really needs a check, but CI takes about five minutes to start, so do this only when necessary. Worktrees share one <code>git stash</code>, so parallel agents must not use it; use a patch file or a temporary commit instead.</p>
 </div>
 <div class="section level3">
 <h3 id="analysis--repository-integration-tests">Analysis / Repository Integration Tests<a class="anchor" aria-label="anchor" href="#analysis--repository-integration-tests"></a></h3>
@@ -350,8 +350,6 @@
 <li>
 <code>peaks_and_troughs.R</code>: Peak and trough detection helpers.</li>
 <li>
-<code>pipe.R</code>: Pipe operator and related utilities.</li>
-<li>
 <code>plot_gate.R</code>: Plot the identified gates (<code>plotStim</code>).</li>
 <li>
 <code>pos_ind.R</code>: Identify the indices of the cytokine-positive cells.</li>
@@ -471,7 +469,7 @@
 <div class="section level3">
 <h3 id="package-namespace">Package Namespace<a class="anchor" aria-label="anchor" href="#package-namespace"></a></h3>
 <ul><li>Reference all external functions explicitly as <code>pkg::fun()</code>.</li>
-<li>Exceptions: <code>ggplot2</code> is imported wholesale via <code>#' @import ggplot2</code> in <code>R/misc.R</code>, so <code>ggplot2</code> functions and <code><a href="https://rdrr.io/pkg/Biobase/man/exprs.html" class="external-link">flowCore::exprs</a></code> may be called without a namespace qualifier and do not require <code>@importFrom</code> tags.</li>
+<li>Exceptions: <code>ggplot2</code> is imported wholesale via <code>#' @import ggplot2</code> in <code>R/stimgate-package.R</code>, so <code>ggplot2</code> functions and <code><a href="https://rdrr.io/pkg/Biobase/man/exprs.html" class="external-link">flowCore::exprs</a></code> may be called without a namespace qualifier and do not require <code>@importFrom</code> tags.</li>
 </ul><hr></div>
 </div>
 <div class="section level2">
@@ -485,7 +483,7 @@
 <li>
 <strong>F-beta comparator provenance</strong>: <code>scripts/python/fbeta.py</code> is adapted from the Richards et al. (2014) positivity threshold implementation. Preserve its F-beta scoring, standard parameters, automatic bin count and moving-average smoothing. The deliberate StimGate-side adaptation is that common histogram edges span both the stimulated and unstimulated distributions; the published code derives them from the negative distribution alone. Document any further deviation explicitly in the relevant analyses and comparison issue. Reticulate-backed Python environments must be created inside the R process that uses them and kept local to that run; never store them in a global R cache that can be serialised to multisession workers. For the ACS analysis, requesting a Tailgate/F-beta run removes both prior comparator <code>result.rds</code> files and recomputes them. Existing results are read only when comparator execution is disabled.</li>
 <li>
-<strong>Temporary migration status for <code>.getCpTg()</code> (issues #157/#158)</strong>: This is a current-state note rather than a permanent design rule. Verify it against the current implementation and relevant issues before relying on it in later work. At the time of this update, remaining call sites are catalogued by <code>.get_cp_tg_call_audit()</code> and summarised by <code>.get_cp_tg_migration_note_157()</code>. Current default behaviour still constructs <code>tgClust</code> control gates in <code>.gateBatchAll()</code>, but the current local-FDR cluster quantile implementation does not consume <code>gateTblCtrl</code>, so this branch is dead plumbing for current outputs. Single-positive gating branches have been removed per issue #196.</li>
+<strong>Removal of legacy tailgate-as-control path (issues #157/#158)</strong>: The legacy tailgate-as-control path (<code>.getCpTg()</code>, <code>tolCtrl</code>) has been removed. Tailgate benchmark comparisons use <code>cytoUtils:::.cytokine_cutpoint()</code> in <code>scripts/r/</code>, per notes 2 and 3.</li>
 <li>
 <strong>Simulation engine migration to <code>simcyto</code> (issues #288/#289/#291/#295 / umbrella #271)</strong>: Generic cytometry simulations, post-simulation transformations, and condition-mismatch controls are progressively migrating to the exported <code>simcyto</code> package API (e.g. <code><a href="https://rdrr.io/pkg/simcyto/man/simCytExperiment.html" class="external-link">simcyto::simCytExperiment()</a></code>, <code>simcyto::simCytTransform*()</code>). <code>analysis/2-sim-bw-freq_bs-global.qmd</code>, <code>analysis/3-sim-bw-est-base.qmd</code>, <code>analysis/7-sim-compare-freq_bs.qmd</code>, and <code>analysis/8-sim-compare-freq_bs-batch.qmd</code> use <code>simcyto</code> and do not source <code>functionsForBenchmarking-Cyt.R</code>. StimGate scientific scenario calculations, downstream comparison orchestration, and method evaluations remain StimGate-side under <code>scripts/r/</code>.</li>
 <li>

@@ -36,7 +36,6 @@ Helper and utility functions
 - [`getBatchList()`](https://satvilab.github.io/stimgate/reference/getBatchList.md)
   : Generate a batch list of sample indices
 - [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
-  [`getTestData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
   : Get example GatingSet
 - [`getStimExpr()`](https://satvilab.github.io/stimgate/reference/getStimExpr.md)
   : Read saved expression data from project

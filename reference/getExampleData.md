@@ -9,8 +9,6 @@ requiring the simulation machinery to be installed with the package.
 
 ``` r
 getExampleData()
-
-getTestData()
 ```
 
 ## Value
