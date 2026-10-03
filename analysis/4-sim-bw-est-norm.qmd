@@ -230,7 +230,7 @@ if (analysis_dev) {
 
 sim_grid_all <- sim_grid
 sim_grid_definition <- sim_grid_all |>
-  dplyr::select(-.data$sim_id, -.data$sim_seed)
+  dplyr::select(-dplyr::all_of(c("sim_id", "sim_seed")))
 
 if (nrow(sim_grid_all) > 0L) {
   set.seed(sim_grid_shuffle_seed)
