@@ -67,11 +67,20 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "base")
-analysis_semantics_version <- "bandwidth-est-base-v2"
+analysis_semantics_version <- "bandwidth-est-base-v3"
 analysis_dev <- isTRUE(.isDev())
 n_sample_sim <- 50L
 n_iter_sim <- 1L
 bw_fallback <- NA_real_
+bw_min <- -Inf
+bw_max <- Inf
+prob_exact_sim <- TRUE
+background_relative_to_response <- 0.2
+ncell_uns_relative_to_stim <- 1
+cov_ev_min <- 1.5
+cov_ev_max <- 1.5
+exc_min <- TRUE
+cap_stim_range <- FALSE
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -257,21 +266,20 @@ for (i in seq_len(nrow(sim_grid))) {
     nIter = n_iter_sim,
     biasUns = sim_grid$bias_uns[i],
     bwMtd = sim_grid$bw_mtd[i],
-    bwMin = -Inf,
-    bwMax = Inf,
+    bwMin = bw_min,
+    bwMax = bw_max,
     bwFallback = bw_fallback,
-    bwCluster = 0.5,
     nCellStim = sim_grid$n_cell[i],
     probResponse = sim_grid$prob_response[i],
-    probExact = TRUE,
+    probExact = prob_exact_sim,
     meanPos = sim_grid$mean_pos[i],
     transformation = sim_grid$transformation[i],
-    backgroundRelativeToResponse = 0.2,
-    ncellUnsRelativeToStim = 1,
-    covEvMin = 1.5,
-    covEvMax = 1.5,
-    tolClust = NULL,
-    capStimRange = FALSE,
+    backgroundRelativeToResponse = background_relative_to_response,
+    ncellUnsRelativeToStim = ncell_uns_relative_to_stim,
+    covEvMin = cov_ev_min,
+    covEvMax = cov_ev_max,
+    excMin = exc_min,
+    capStimRange = cap_stim_range,
     summarise = FALSE
   ) |>
     dplyr::mutate(
@@ -358,6 +366,15 @@ analysis_required_params <- list(
   n_sample_sim = n_sample_sim,
   n_iter_sim = n_iter_sim,
   bw_fallback = bw_fallback,
+  bw_min = bw_min,
+  bw_max = bw_max,
+  prob_exact_sim = prob_exact_sim,
+  background_relative_to_response = background_relative_to_response,
+  ncell_uns_relative_to_stim = ncell_uns_relative_to_stim,
+  cov_ev_min = cov_ev_min,
+  cov_ev_max = cov_ev_max,
+  exc_min = exc_min,
+  cap_stim_range = cap_stim_range,
   sim_grid_spec = analysis_grid_spec
 )
 
@@ -537,20 +554,19 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
                 biasUns = bias_uns,
                 bwMtd = bw_mtd,
                 bwFallback = bw_fallback,
-                bwMin = -Inf,
-                bwMax = Inf,
-                bwCluster = 0.5,
-                nCellStim = n_cell,
+                bwMin = bw_min,
+                bwMax = bw_max,
+                            nCellStim = n_cell,
                 probResponse = prob_response,
-                probExact = TRUE,
+                probExact = prob_exact_sim,
                 meanPos = mean_pos,
                 transformation = transformation,
-                backgroundRelativeToResponse = 0.2,
-                ncellUnsRelativeToStim = 1,
-                covEvMin = 1.5,
-                covEvMax = 1.5,
-                tolClust = NULL,
-                capStimRange = FALSE,
+                backgroundRelativeToResponse = background_relative_to_response,
+                ncellUnsRelativeToStim = ncell_uns_relative_to_stim,
+                covEvMin = cov_ev_min,
+                covEvMax = cov_ev_max,
+                excMin = exc_min,
+                capStimRange = cap_stim_range,
                 summarise = FALSE
               ) |>
                 dplyr::mutate(
