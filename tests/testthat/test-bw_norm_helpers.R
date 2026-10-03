@@ -21,6 +21,7 @@
 # ---------------------------------------------------------------------------
 
 test_that("bwCalcOne returns finite positive scalar for nrd0", {
+  withr::local_preserve_seed()
   x <- .makeTestVec()
   bw <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0")
   expect_true(is.numeric(bw))
@@ -30,6 +31,7 @@ test_that("bwCalcOne returns finite positive scalar for nrd0", {
 })
 
 test_that("bwCalcOne returns finite positive scalar for sj", {
+  withr::local_preserve_seed()
   x <- .makeTestVec()
   bw <- stimgate:::.bwCalcOne(x, bwMtd = "sj")
   expect_true(is.finite(bw) && bw > 0)
@@ -37,6 +39,7 @@ test_that("bwCalcOne returns finite positive scalar for sj", {
 })
 
 test_that("bwCalcOne returns finite positive scalar for hpi3", {
+  withr::local_preserve_seed()
   x <- .makeTestVec()
   bw <- stimgate:::.bwCalcOne(x, bwMtd = "hpi3")
   expect_true(is.finite(bw) && bw > 0)
@@ -44,6 +47,7 @@ test_that("bwCalcOne returns finite positive scalar for hpi3", {
 })
 
 test_that("bwAdj scales ordinary bandwidth proportionally", {
+  withr::local_preserve_seed()
   x <- .makeTestVec()
   bw1 <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0", bwAdj = 1)
   bw2 <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0", bwAdj = 2)
@@ -55,6 +59,7 @@ test_that("bwAdj scales ordinary bandwidth proportionally", {
 # ---------------------------------------------------------------------------
 
 test_that("bwCalcOne with nrd0Norm returns finite positive scalar", {
+  withr::local_preserve_seed()
   x <- .makeTestVec()
   set.seed(11L)
   bw <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0Norm", normMtd = "moments")
@@ -66,6 +71,7 @@ test_that("bwCalcOne with nrd0Norm returns finite positive scalar", {
 })
 
 test_that("bwCalcOne with sjNorm returns finite positive scalar", {
+  withr::local_preserve_seed()
   x <- .makeTestVec()
   set.seed(11L)
   bw <- stimgate:::.bwCalcOne(x, bwMtd = "sjNorm", normMtd = "moments")
@@ -73,6 +79,7 @@ test_that("bwCalcOne with sjNorm returns finite positive scalar", {
 })
 
 test_that("bwCalcOne with hpi3Norm returns finite positive scalar", {
+  withr::local_preserve_seed()
   x <- .makeTestVec()
   set.seed(11L)
   bw <- stimgate:::.bwCalcOne(x, bwMtd = "hpi3Norm", normMtd = "moments")
@@ -80,6 +87,7 @@ test_that("bwCalcOne with hpi3Norm returns finite positive scalar", {
 })
 
 test_that("bwAdj scales Norm bandwidth proportionally", {
+  withr::local_preserve_seed()
   x <- .makeTestVec()
   set.seed(11L)
   bw1 <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0Norm", bwAdj = 1)
@@ -97,6 +105,7 @@ test_that("bwAdj scales Norm bandwidth proportionally", {
 # actually changes the result, which would fail if the Norm path silently fell
 # back to the ordinary selector for both calls.
 test_that("bwCalcOne Norm moments path is sensitive to normExtraFrac", {
+  withr::local_preserve_seed()
   x <- .makeTestVec(seed = 42L, n = 800L)
   set.seed(77L)
   bw_default <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0Norm", normMtd = "moments")
@@ -115,6 +124,7 @@ test_that("bwCalcOne Norm moments path is sensitive to normExtraFrac", {
 })
 
 test_that("normalised fallback honours bwNcellMax and records provenance", {
+  withr::local_preserve_seed()
   x <- seq_len(10)
 
   set.seed(91L)
@@ -144,6 +154,7 @@ test_that("normalised fallback honours bwNcellMax and records provenance", {
 # ---------------------------------------------------------------------------
 
 test_that("bwCalcOne adaptive=TRUE with NormMtd returns list with adaptive attribute", {
+  withr::local_preserve_seed()
   x <- .makeTestVec(n = 1000L)
   set.seed(55L)
   bw <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0Norm", adaptive = TRUE)
@@ -159,6 +170,7 @@ test_that("bwCalcOne adaptive=TRUE with NormMtd returns list with adaptive attri
 # component bandwidths.  The implementation substitutes them directly into the
 # returned list, so the result must match exactly.
 test_that("bwCalcOne adaptive mode honours manual bwAdaptiveCore and bwAdaptiveExtra", {
+  withr::local_preserve_seed()
   x <- .makeTestVec(n = 1000L)
   manualCore <- 0.3
   manualExtra <- 0.8
@@ -180,6 +192,7 @@ test_that("bwCalcOne adaptive mode honours manual bwAdaptiveCore and bwAdaptiveE
 })
 
 test_that("bwCalcOne adaptive=TRUE with non-Norm method returns scalar (not adaptive)", {
+  withr::local_preserve_seed()
   x <- .makeTestVec()
   bw <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0", adaptive = TRUE)
   # ordinary (non-Norm) path ignores adaptive flag and returns scalar
@@ -189,6 +202,7 @@ test_that("bwCalcOne adaptive=TRUE with non-Norm method returns scalar (not adap
 })
 
 test_that("bwCalcOne adaptive=TRUE boxcox raises an error", {
+  withr::local_preserve_seed()
   x <- .makeTestVec()
   expect_error(
     stimgate:::.bwCalcOne(x, bwMtd = "nrd0Norm", adaptive = TRUE, normMtd = "boxcox"),
@@ -218,6 +232,7 @@ test_that("bwCalcOne handles all-NA / non-finite input gracefully", {
 })
 
 test_that("bwCalcOne handles mixed finite and non-finite input", {
+  withr::local_preserve_seed()
   x <- c(.makeTestVec(n = 200L), NA_real_, Inf, -Inf, NaN)
   bw <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0")
   expect_true(is.finite(bw) && bw > 0)
@@ -228,6 +243,7 @@ test_that("bwCalcOne handles mixed finite and non-finite input", {
 # ---------------------------------------------------------------------------
 
 test_that("bwCalcOne Norm scalar result is reproducible with same seed", {
+  withr::local_preserve_seed()
   x <- .makeTestVec(seed = 7L, n = 600L)
   set.seed(123L)
   bw1 <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0Norm")
@@ -237,6 +253,7 @@ test_that("bwCalcOne Norm scalar result is reproducible with same seed", {
 })
 
 test_that("bwCalcOne adaptive Norm result is reproducible with same seed", {
+  withr::local_preserve_seed()
   x <- .makeTestVec(seed = 99L, n = 1000L)
   set.seed(55L)
   bw1 <- stimgate:::.bwCalcOne(x, bwMtd = "nrd0Norm", adaptive = TRUE)
@@ -256,6 +273,7 @@ test_that("bwCalcOne adaptive Norm result is reproducible with same seed", {
 # subsample.  The resulting bandwidth should differ from the uncapped result
 # because the sample the estimator sees is different in size and composition.
 test_that("bwCalcOne ordinary path bwNcellMax changes the result vs uncapped", {
+  withr::local_preserve_seed()
   set.seed(1L)
   x <- stats::rnorm(5000L)
   set.seed(1L)
@@ -274,6 +292,7 @@ test_that("bwCalcOne ordinary path bwNcellMax changes the result vs uncapped", {
 # the original 5 cells (the latter would fail .bwCalcOneBase with n < 2
 # unique values, but nrd0 can handle 5; the key is the size differs).
 test_that("bwCalcOne ordinary path bwNcellMin bootstraps input up to minimum size", {
+  withr::local_preserve_seed()
   set.seed(2L)
   x <- stats::rnorm(5L)
   # Without bwNcellMin the estimator sees 5 cells.
@@ -293,6 +312,7 @@ test_that("bwCalcOne ordinary path bwNcellMin bootstraps input up to minimum siz
 # ---------------------------------------------------------------------------
 
 test_that("bwCalcOne nrd0 bandwidth is in a plausible range for a known distribution", {
+  withr::local_preserve_seed()
   # For rnorm(500, mean=0, sd=1), Silverman's rule-of-thumb gives ~ 0.2-0.5.
   # This is a loose sanity check, not an exact regression fixture.
   set.seed(42L)

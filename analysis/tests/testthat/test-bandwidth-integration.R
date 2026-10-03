@@ -4,6 +4,7 @@ script_misc <- file.path(root_dir, "scripts", "r", "sim-misc.R")
 script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
 
 test_that(".simBandwidthBwOne agrees numerically with stimgate:::.bwCalcOne", {
+  withr::local_preserve_seed()
   for (f in c(script_misc, script_bw)) {
     if (!file.exists(f)) stop("Expected analysis helper not found: ", f)
   }
@@ -52,6 +53,7 @@ test_that(".simBandwidthBwOne agrees numerically with stimgate:::.bwCalcOne", {
 })
 
 test_that(".simBandwidthBwOne resolves the current stimgate namespace in future workers", {
+  withr::local_preserve_seed()
   skip_if_not_installed("future")
   skip_if_not_installed("pkgload")
 

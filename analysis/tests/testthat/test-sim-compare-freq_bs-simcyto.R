@@ -30,6 +30,7 @@ test_that("analysis/7-sim-compare-freq_bs.qmd does not source functionsForBenchm
 })
 
 test_that(".simCompareFreqBs calls simcyto::simCytExperiment and preserves comparison structure", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -96,6 +97,7 @@ test_that(".simCompareFreqBs calls simcyto::simCytExperiment and preserves compa
 })
 
 test_that(".simCompareFreqBs works with gamma and skew transformations and rare responses", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -140,6 +142,7 @@ test_that(".simCompareFreqBs works with gamma and skew transformations and rare 
 })
 
 test_that("changing biasUns modifies StimGate while leaving F-beta and tailgate inputs and estimates untouched (#307)", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -249,6 +252,7 @@ test_that("changing biasUns modifies StimGate while leaving F-beta and tailgate 
 })
 
 test_that("primary StimGate comparator scores full cluster-refined procedure (#308)", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -323,6 +327,7 @@ test_that("primary StimGate comparator scores full cluster-refined procedure (#3
 })
 
 test_that("tailgate derives threshold from stimulated sample and applies to both conditions (#308)", {
+  withr::local_preserve_seed()
   testthat::skip_if_not_installed("cytoUtils")
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)

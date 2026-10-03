@@ -32,6 +32,7 @@ test_that("analysis/2a-sim-bw-freq_bs-global.qmd does not source functionsForBen
 })
 
 test_that(".simBandwidthBsFreq calls simcyto::simCytExperiment and produces valid Gaussian bandwidth results", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -101,6 +102,7 @@ test_that(".simBandwidthBsFreq calls simcyto::simCytExperiment and produces vali
 })
 
 test_that(".simBandwidthBsFreq works with gamma and skew transformations from simcyto", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -146,6 +148,7 @@ test_that(".simBandwidthBsFreq works with gamma and skew transformations from si
 })
 
 test_that(".simBandwidthBsFreq correctly preserves perturbations and cell count ratios", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -188,6 +191,7 @@ test_that(".simBandwidthBsFreq correctly preserves perturbations and cell count 
 })
 
 test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma and gaussian scenarios", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)

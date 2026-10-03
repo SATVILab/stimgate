@@ -29,6 +29,7 @@ test_that("native tailgate returns NA when the descending shoulder never reaches
 })
 
 test_that("native tailgate has a deterministic multimodal fixture and differs from legacy tol gating", {
+  withr::local_preserve_seed()
   set.seed(1)
   x <- c(rnorm(200, mean = 0, sd = 0.6), rnorm(200, mean = 4, sd = 0.8))
   density <- stats::density(x, n = 512)

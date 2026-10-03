@@ -1,5 +1,6 @@
 # Share one expensive fixture within this file and clean it on exit.
 local({
+withr::local_preserve_seed()
 exampleData <- getExampleData()
 withr::defer(unlink(dirname(exampleData$pathGs), recursive = TRUE))
 gs <- flowWorkspace::load_gs(exampleData$pathGs)

@@ -28,6 +28,7 @@ test_that(
 test_that(
   ".simCompareFreqBs forwards shift and sd multiplier to simcyto",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -193,6 +194,7 @@ test_that(".simCompareSimCytExperiment applies selective mismatch exactly once",
 })
 
 test_that(".simCompareFreqBs with zero mismatch reproduces clean baseline", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -252,6 +254,7 @@ test_that(".simCompareFreqBs with zero mismatch reproduces clean baseline", {
 test_that(
   ".simCompareSummariseFreqBs correctly handles mismatch scenarios",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -308,6 +311,7 @@ test_that(
 test_that(
   ".simCompareFreqBsGrid parallel and serial runs produce equivalent results",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -634,6 +638,7 @@ test_that(
 test_that(
   ".simCompareFreqBs forwards stimMeanShiftClusters to simcyto",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -758,6 +763,7 @@ test_that(
 test_that(
   "negative-only zero-shift agrees with clean baseline semantics",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -836,6 +842,7 @@ test_that(
 test_that(
   ".simCompareFreqBs forwards stimSdMultiplierClusters to simcyto",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -896,6 +903,7 @@ test_that(
 test_that(
   "stimSdMultiplierClusters = 'gn' leaves positive and unstim unchanged",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_comp, local = env)
 
@@ -1040,6 +1048,7 @@ test_that(
 test_that(
   "negative-only zero-increase SD inflation agrees with clean baseline",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)

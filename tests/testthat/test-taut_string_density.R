@@ -6,6 +6,7 @@ test_that(".tautStringPmden preserves uniform density across sample-size branche
 })
 
 test_that(".tautStringPmden returns a list with y of length n-1", {
+  withr::local_preserve_seed()
   set.seed(42)
   x <- sort(rnorm(200))
   result <- .tautStringPmden(x)
@@ -17,6 +18,7 @@ test_that(".tautStringPmden returns a list with y of length n-1", {
 })
 
 test_that(".tautStringPmden returns non-negative finite values for unimodal data", {
+  withr::local_preserve_seed()
   # Fixture: set.seed(1), sort(rnorm(100, 5, 1)) → nmax=1, all finite, all >= 0
   set.seed(1)
   x <- sort(rnorm(100, mean = 5, sd = 1))
@@ -27,6 +29,7 @@ test_that(".tautStringPmden returns non-negative finite values for unimodal data
 })
 
 test_that(".tautStringPmden has higher density in mode than antimode for bimodal data", {
+  withr::local_preserve_seed()
   # Fixture: set.seed(7), two clusters at 0 and 5 (sd=0.5), n=100
   # density[49]=0.163882, density[50]=0.003675 — sharp drop at the gap
   set.seed(7)
@@ -42,6 +45,7 @@ test_that(".tautStringPmden has higher density in mode than antimode for bimodal
 })
 
 test_that(".tautStringPmden handles short input (n < 50) gracefully", {
+  withr::local_preserve_seed()
   # n < 50: cpPmden Kuiper-bound table starts at n=50; below this return zeros
   expect_type(.tautStringPmden(numeric(0L)), "list")
   expect_length(.tautStringPmden(numeric(0L))$y, 0L)
@@ -135,6 +139,7 @@ test_that(".getCytPosTautStringAntimodes detects a clear antimode", {
 })
 
 test_that(".tautStringPmden reproduces expected FAUST taut-string estimates on fixed simulated datasets", {
+  withr::local_preserve_seed()
   # 1. Unimodal dataset (n = 100)
   set.seed(101)
   x_uni <- sort(rnorm(100, mean = 2, sd = 1))

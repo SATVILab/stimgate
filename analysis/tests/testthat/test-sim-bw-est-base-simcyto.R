@@ -32,6 +32,7 @@ test_that("analysis/3-sim-bw-est-base.qmd does not source functionsForBenchmarki
 })
 
 test_that(".simBandwidthEstBwDirect calls simcyto::simCytExperiment and produces valid Gaussian bandwidth results", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -89,6 +90,7 @@ test_that(".simBandwidthEstBwDirect calls simcyto::simCytExperiment and produces
 })
 
 test_that(".simBandwidthEstBwDirect works with gamma and skew transformations from simcyto", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -131,6 +133,7 @@ test_that(".simBandwidthEstBwDirect works with gamma and skew transformations fr
 })
 
 test_that("simcyto::simCytExperiment generates expected flowFrames and cluster labels", {
+  withr::local_preserve_seed()
   nCellStim <- 300L
   nCellUns <- 300L
   nCellByCondition <- c(nCellUns, nCellStim)

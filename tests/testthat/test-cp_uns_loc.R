@@ -1,4 +1,5 @@
 test_that(".getCpUnsLocSample re-checks unstim cells after removal", {
+  withr::local_preserve_seed()
   mk <- function(x, ind) {
     tbl <- tibble::tibble(marker = sort(x), ind = ind)
     attr(tbl, "chnlCut") <- "marker"
