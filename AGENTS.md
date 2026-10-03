@@ -207,6 +207,12 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   must use the read-only current-results context and must not create staging state.
 - `run_plots = FALSE` must stop before optional plot/report chunks; multi-chunk
   simulation renders should not write shared plot files concurrently.
+- Comparison analyses must fail before simulation when a required competitor
+  dependency is unavailable. Do not let a missing package/script be converted
+  into an algorithmic fallback and then score that fallback as a real method result.
+- When plotting a summary over a simulation grid, every varying scenario
+  dimension must be filtered, faceted or included in the plot grouping. Do not
+  connect or aggregate distinct scenario settings into one line implicitly.
 - For end-to-end background-subtracted-frequency performance, score the final
   sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
