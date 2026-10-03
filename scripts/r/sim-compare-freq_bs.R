@@ -499,6 +499,18 @@
   stimSdMultiplierClusters = NULL,
   scenario = NULL
 ) {
+  simcytoArgs <- names(formals(simcyto::simCytExperiment))
+  clusterShiftSupported <- !is.null(simcytoArgs) &&
+    "stimMeanShiftClusters" %in% simcytoArgs
+  clusterSdSupported <- !is.null(simcytoArgs) &&
+    "stimSdMultiplierClusters" %in% simcytoArgs
+
+  selectiveShift <- !is.null(stimMeanShiftClusters)
+  selectiveSd <- !is.null(stimSdMultiplierClusters)
+
+  # If the installed simcyto supports selective mismatch, let simcyto apply it
+  # exactly once. For older simcyto versions, neutralise the global mismatch
+  # during simulation and apply the selective mismatch locally afterwards.
   callArgs <- list(
     nSample = nSample,
     nMarker = nMarker,
@@ -517,33 +529,58 @@
     clusterPerturbationSd = clusterPerturbationSd,
     covEvMin = covEvMin,
     covEvMax = covEvMax,
-    stimMeanShift = stimMeanShift,
-    stimSdMultiplier = stimSdMultiplier,
+    stimMeanShift = if (selectiveShift && !clusterShiftSupported) {
+      0
+    } else {
+      stimMeanShift
+    },
+    stimSdMultiplier = if (selectiveSd && !clusterSdSupported) {
+      1
+    } else {
+      stimSdMultiplier
+    },
     scenario = scenario
   )
 
-  simcytoArgs <- names(formals(simcyto::simCytExperiment))
-  clusterShiftSupported <- !is.null(simcytoArgs) &&
-    "stimMeanShiftClusters" %in% simcytoArgs
-  clusterSdSupported <- !is.null(simcytoArgs) &&
-    "stimSdMultiplierClusters" %in% simcytoArgs
-
-  if (clusterShiftSupported && !is.null(stimMeanShiftClusters)) {
+  if (clusterShiftSupported && selectiveShift) {
     callArgs$stimMeanShiftClusters <- stimMeanShiftClusters
   }
-  if (clusterSdSupported && !is.null(stimSdMultiplierClusters)) {
+  if (clusterSdSupported && selectiveSd) {
     callArgs$stimSdMultiplierClusters <- stimSdMultiplierClusters
   }
 
   result <- do.call(simcyto::simCytExperiment, callArgs)
 
-  .simCompareApplyClusterMismatch(
-    outListExperiment = result,
-    stimMeanShift = stimMeanShift,
-    stimSdMultiplier = stimSdMultiplier,
-    stimMeanShiftClusters = stimMeanShiftClusters,
-    stimSdMultiplierClusters = stimSdMultiplierClusters
-  )
+  if (
+    (selectiveShift && !clusterShiftSupported) ||
+      (selectiveSd && !clusterSdSupported)
+  ) {
+    result <- .simCompareApplyClusterMismatch(
+      outListExperiment = result,
+      stimMeanShift = if (selectiveShift && !clusterShiftSupported) {
+        stimMeanShift
+      } else {
+        0
+      },
+      stimSdMultiplier = if (selectiveSd && !clusterSdSupported) {
+        stimSdMultiplier
+      } else {
+        1
+      },
+      stimMeanShiftClusters = if (selectiveShift && !clusterShiftSupported) {
+        stimMeanShiftClusters
+      } else {
+        NULL
+      },
+      stimSdMultiplierClusters = if (selectiveSd && !clusterSdSupported) {
+        stimSdMultiplierClusters
+      } else {
+        NULL
+      }
+    )
+  }
+
+  result
 }
 
 #' @keywords internal
@@ -681,6 +718,7 @@
     purrr::map_df(indStimVec, function(indStim) {
       xStim <- as.numeric(flowCore::exprs(flowFrameList[[indStim]])[, chnl])
 
+      fbetaError <- NA_character_
       fbetaObj <- tryCatch(
         .simCompareFbetaThreshold(
           xUns = xUnsFbeta,
@@ -694,10 +732,11 @@
           numBins = fbetaNumBins
         ),
         error = function(e) {
+          fbetaError <<- conditionMessage(e)
           list(
             threshold = NA_real_,
             thresholdMetric = NA_real_,
-            thresholdOrigin = paste0("error: ", e$message)
+            thresholdOrigin = paste0("error: ", fbetaError)
           )
         }
       )
@@ -717,6 +756,7 @@
         "combined" = c(xUnsTailgate, xStim)
       )
 
+      tailgateError <- NA_character_
       tailgateObj <- tryCatch(
         .simCompareTailgateThreshold(
           x = xTail,
@@ -732,10 +772,11 @@
           autoTol = tailgateAutoTol
         ),
         error = function(e) {
+          tailgateError <<- conditionMessage(e)
           list(
             threshold = NA_real_,
             thresholdMetric = NA_real_,
-            thresholdOrigin = paste0("error: ", e$message)
+            thresholdOrigin = paste0("error: ", tailgateError)
           )
         }
       )
@@ -760,12 +801,16 @@
           tailgateObj$thresholdOrigin
         ),
         gateReturnPoint = c(
-          if (isTRUE(fbetaEst$thresholdFallbackUsed)) {
+          if (!is.na(fbetaError)) {
+            "fbeta_error_fallback_high_value"
+          } else if (isTRUE(fbetaEst$thresholdFallbackUsed)) {
             "fbeta_fallback_high_value"
           } else {
             "fbeta_calculated"
           },
-          if (isTRUE(tailgateEst$thresholdFallbackUsed)) {
+          if (!is.na(tailgateError)) {
+            "tailgate_error_fallback_high_value"
+          } else if (isTRUE(tailgateEst$thresholdFallbackUsed)) {
             "tailgate_fallback_high_value"
           } else {
             "tailgate_calculated"
@@ -791,7 +836,7 @@
         locGeneratedDirect = NA,
         locSource = NA_character_,
         locReason = NA_character_,
-        error = NA_character_
+        error = c(fbetaError, tailgateError)
       )
     })
   })
@@ -825,81 +870,6 @@
       locReason = NA_character_,
       error = errorMessage
     )
-}
-
-#' Extract final StimGate threshold provenance for comparison outputs
-#'
-#' @keywords internal
-.simCompareStimgateGateProvenance <- function(gRow, gateVal, isClustered) {
-  has_row <- is.data.frame(gRow) && nrow(gRow) > 0L
-
-  locGenerated <- if (
-    has_row &&
-      "locGenerated" %in% names(gRow) &&
-      !is.na(gRow$locGenerated[[1]])
-  ) {
-    isTRUE(gRow$locGenerated[[1]])
-  } else {
-    is.finite(gateVal)
-  }
-
-  locGeneratedDirect <- if (
-    has_row &&
-      "locGeneratedDirect" %in% names(gRow) &&
-      !is.na(gRow$locGeneratedDirect[[1]])
-  ) {
-    isTRUE(gRow$locGeneratedDirect[[1]])
-  } else {
-    isTRUE(locGenerated) && !isTRUE(isClustered)
-  }
-
-  locSource <- if (
-    has_row &&
-      "locSource" %in% names(gRow) &&
-      !is.na(gRow$locSource[[1]])
-  ) {
-    as.character(gRow$locSource[[1]])
-  } else if (isTRUE(isClustered)) {
-    "cluster"
-  } else if (isTRUE(locGenerated)) {
-    "sample"
-  } else {
-    "not_calculated"
-  }
-
-  locReason <- if (
-    has_row &&
-      "locReason" %in% names(gRow) &&
-      !is.na(gRow$locReason[[1]])
-  ) {
-    as.character(gRow$locReason[[1]])
-  } else {
-    NA_character_
-  }
-
-  thresholdFallbackUsed <- !isTRUE(locGenerated)
-
-  list(
-    thresholdOrigin = if (thresholdFallbackUsed) {
-      "fallback_high_value"
-    } else if (isTRUE(isClustered)) {
-      "calculated_clustered"
-    } else {
-      "calculated"
-    },
-    gateReturnPoint = if (thresholdFallbackUsed) {
-      "stimgate_fallback_high_value"
-    } else if (isTRUE(isClustered)) {
-      "stimgate_clustered"
-    } else {
-      "stimgate_calculated"
-    },
-    thresholdFallbackUsed = thresholdFallbackUsed,
-    locGenerated = locGenerated,
-    locGeneratedDirect = locGeneratedDirect,
-    locSource = locSource,
-    locReason = locReason
-  )
 }
 
 #' @keywords internal
@@ -1119,11 +1089,6 @@
             }
 
             isClustered <- grepl("Clust$", gateNm %||% "")
-            provenance <- .simCompareStimgateGateProvenance(
-              gRow = gRow,
-              gateVal = gateVal,
-              isClustered = isClustered
-            )
 
             tibble::tibble(
               sample = as.character(sampleCurr),
@@ -1132,10 +1097,18 @@
               approach = "stimgate",
               method = "stimgate",
               threshold = gateVal,
-              thresholdOrigin = provenance$thresholdOrigin,
-              gateReturnPoint = provenance$gateReturnPoint,
+              thresholdOrigin = if (is.finite(gateVal)) {
+                if (isClustered) "calculated_clustered" else "calculated"
+              } else {
+                "failed_no_cutpoint"
+              },
+              gateReturnPoint = if (isClustered) {
+                "stimgate_clustered"
+              } else {
+                "stimgate_calculated"
+              },
               thresholdMetric = NA_real_,
-              thresholdFallbackUsed = provenance$thresholdFallbackUsed,
+              thresholdFallbackUsed = !is.finite(gateVal),
               nCellStim = nCellStimVal,
               nCellUns = nCellUnsVal,
               nPosStim = nPosStimVal,
@@ -1148,10 +1121,10 @@
               } else {
                 "sample_final"
               },
-              locGenerated = provenance$locGenerated,
-              locGeneratedDirect = provenance$locGeneratedDirect,
-              locSource = provenance$locSource,
-              locReason = provenance$locReason,
+              locGenerated = is.finite(gateVal),
+              locGeneratedDirect = !isClustered,
+              locSource = if (isClustered) "cluster" else "sample",
+              locReason = NA_character_,
               error = NA_character_
             )
           })
@@ -1630,6 +1603,66 @@
   sort(unique(files))
 }
 
+#' Check that a scenario has one complete primary result per replicate and method
+#'
+#' @keywords internal
+.simComparePrimaryOutputComplete <- function(
+  .data,
+  nSample,
+  nIter,
+  methods = c("stimgate", "fbeta", "tailgate")
+) {
+  required_cols <- c(
+    "iter",
+    "sample",
+    "method",
+    "propRespTruth",
+    "propRespEst"
+  )
+  if (
+    !is.data.frame(.data) ||
+      nrow(.data) == 0L ||
+      !all(required_cols %in% names(.data))
+  ) {
+    return(FALSE)
+  }
+
+  if (
+    "error" %in% names(.data) &&
+      any(!is.na(.data$error) & nzchar(as.character(.data$error)))
+  ) {
+    return(FALSE)
+  }
+
+  primary <- .data |>
+    dplyr::filter(.data$method %in% methods)
+
+  expected_n_per_method <- as.integer(nSample) * as.integer(nIter)
+  if (nrow(primary) != expected_n_per_method * length(methods)) {
+    return(FALSE)
+  }
+
+  key_counts <- primary |>
+    dplyr::count(.data$iter, .data$sample, .data$method, name = "n")
+
+  if (any(key_counts$n != 1L)) {
+    return(FALSE)
+  }
+
+  method_counts <- primary |>
+    dplyr::count(.data$method, name = "n")
+
+  if (
+    !setequal(as.character(method_counts$method), methods) ||
+      any(method_counts$n != expected_n_per_method)
+  ) {
+    return(FALSE)
+  }
+
+  all(is.finite(primary$propRespTruth)) &&
+    all(is.finite(primary$propRespEst))
+}
+
 #' Validate scenario cached output against grid row settings
 #'
 #' @keywords internal
@@ -1778,6 +1811,18 @@
         return(FALSE)
       }
     }
+    if (
+      !is.null(nIter) &&
+        !is.null(nSample) &&
+        "method" %in% names(cached) &&
+        !.simComparePrimaryOutputComplete(
+          cached,
+          nSample = nSample,
+          nIter = nIter
+        )
+    ) {
+      return(FALSE)
+    }
   }
 
   TRUE
@@ -1815,6 +1860,9 @@
     },
     if ("gateCombn" %in% names(row)) {
       paste0("gate_combn = ", row$gateCombn[[1]])
+    },
+    if ("sim_seed" %in% names(row)) {
+      paste0("sim_seed = ", row$sim_seed[[1]])
     },
     if ("mismatch_type" %in% names(row)) {
       paste0("mismatch_type = ", row$mismatch_type[[1]])
@@ -1974,6 +2022,14 @@
       )
       return(cached)
     }
+  }
+
+  if (
+    "sim_seed" %in% names(row) &&
+      length(row$sim_seed) > 0L &&
+      is.finite(as.numeric(row$sim_seed[[1]]))
+  ) {
+    set.seed(as.integer(row$sim_seed[[1]]))
   }
 
   settings_log <- .simCompareFormatScenarioLog(row, sim_id)
@@ -2429,105 +2485,84 @@
   collated
 }
 
-#' Validate completeness of comparison scenario outputs
+#' Validate primary comparison output coverage for a simulation grid
 #'
 #' @keywords internal
-.simCompareValidateCompletedScenarios <- function(
-  compare_raw,
-  sim_ids,
-  methods = c("stimgate", "fbeta", "tailgate"),
-  nSample = NULL,
-  nIter = NULL
+.simCompareGridOutputStatus <- function(
+  .data,
+  sim_grid,
+  nSample,
+  nIter
 ) {
-  expected_ids <- sort(unique(as.integer(sim_ids)))
-  if (length(expected_ids) == 0L) {
-    return(list(
-      collated_sim_ids = integer(),
-      error_sim_ids = integer(),
-      incomplete_sim_ids = integer(),
-      collate_ok = TRUE,
-      validation_ok = TRUE
-    ))
-  }
-
-  if (
-    !is.data.frame(compare_raw) ||
-      nrow(compare_raw) == 0L ||
-      !"sim_id" %in% names(compare_raw)
+  expected_ids <- if (
+    is.data.frame(sim_grid) &&
+      "sim_id" %in% names(sim_grid)
   ) {
-    return(list(
-      collated_sim_ids = integer(),
-      error_sim_ids = integer(),
-      incomplete_sim_ids = expected_ids,
-      collate_ok = FALSE,
-      validation_ok = FALSE
-    ))
-  }
-
-  compare_use <- compare_raw |>
-    dplyr::filter(.data$sim_id %in% .env$expected_ids)
-
-  collated_ids <- sort(unique(as.integer(compare_use$sim_id)))
-  collate_ok <- identical(collated_ids, expected_ids)
-
-  error_ids <- if ("error" %in% names(compare_use)) {
-    sort(unique(as.integer(
-      compare_use$sim_id[
-        !is.na(compare_use$error) &
-          nzchar(as.character(compare_use$error))
-      ]
-    )))
+    sort(unique(as.integer(sim_grid$sim_id)))
   } else {
     integer()
   }
 
-  incomplete_ids <- integer()
-  if (length(methods) > 0L) {
-    if (!"method" %in% names(compare_use)) {
-      incomplete_ids <- expected_ids
+  observed_ids <- if (
+    is.data.frame(.data) &&
+      nrow(.data) > 0L &&
+      "sim_id" %in% names(.data)
+  ) {
+    sort(unique(as.integer(.data$sim_id[!is.na(.data$sim_id)])))
+  } else {
+    integer()
+  }
+
+  extra_ids <- setdiff(observed_ids, expected_ids)
+  missing_ids <- setdiff(expected_ids, observed_ids)
+
+  if (length(expected_ids) == 0L) {
+    return(list(
+      expected_ids = expected_ids,
+      observed_ids = observed_ids,
+      completed_ids = integer(),
+      failed_ids = integer(),
+      missing_ids = integer(),
+      extra_ids = extra_ids,
+      collate_ok = length(extra_ids) == 0L,
+      validation_ok = length(extra_ids) == 0L
+    ))
+  }
+
+  completed_ids <- integer()
+  failed_ids <- integer()
+
+  for (sim_id in intersect(expected_ids, observed_ids)) {
+    sim_data <- .data[as.integer(.data$sim_id) == sim_id, , drop = FALSE]
+    has_error <- "error" %in% names(sim_data) &&
+      any(!is.na(sim_data$error) & nzchar(as.character(sim_data$error)))
+    complete <- !has_error &&
+      .simComparePrimaryOutputComplete(
+        sim_data,
+        nSample = nSample,
+        nIter = nIter
+      )
+
+    if (isTRUE(complete)) {
+      completed_ids <- c(completed_ids, sim_id)
     } else {
-      method_counts <- compare_use |>
-        dplyr::filter(.data$method %in% .env$methods) |>
-        dplyr::count(.data$sim_id, .data$method, name = "n_rows")
-
-      expected_keys <- tidyr::expand_grid(
-        sim_id = expected_ids,
-        method = methods
-      ) |>
-        dplyr::left_join(
-          method_counts,
-          by = c("sim_id", "method")
-        )
-
-      if (!is.null(nSample) && !is.null(nIter)) {
-        expected_n <- as.integer(nSample) * as.integer(nIter)
-        incomplete_ids <- expected_keys |>
-          dplyr::filter(
-            is.na(.data$n_rows) |
-              .data$n_rows != .env$expected_n
-          ) |>
-          dplyr::pull(.data$sim_id) |>
-          unique() |>
-          sort()
-      } else {
-        incomplete_ids <- expected_keys |>
-          dplyr::filter(is.na(.data$n_rows) | .data$n_rows < 1L) |>
-          dplyr::pull(.data$sim_id) |>
-          unique() |>
-          sort()
-      }
+      failed_ids <- c(failed_ids, sim_id)
     }
   }
 
-  validation_ok <-
-    collate_ok &&
-    length(error_ids) == 0L &&
-    length(incomplete_ids) == 0L
+  collate_ok <- length(missing_ids) == 0L &&
+    length(extra_ids) == 0L
+  validation_ok <- collate_ok &&
+    length(failed_ids) == 0L &&
+    identical(sort(completed_ids), expected_ids)
 
   list(
-    collated_sim_ids = collated_ids,
-    error_sim_ids = error_ids,
-    incomplete_sim_ids = incomplete_ids,
+    expected_ids = expected_ids,
+    observed_ids = observed_ids,
+    completed_ids = sort(completed_ids),
+    failed_ids = sort(failed_ids),
+    missing_ids = sort(missing_ids),
+    extra_ids = sort(extra_ids),
     collate_ok = collate_ok,
     validation_ok = validation_ok
   )
