@@ -229,13 +229,34 @@ test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure 
   ))
   expect_true(grepl("bw_fallback <- NA_real_", content, fixed = TRUE))
   expect_false(grepl("0.23482348792138919129198282389", content, fixed = TRUE))
+  expect_true(grepl("cap_stim_range <- FALSE", content, fixed = TRUE))
   expect_equal(
     lengths(regmatches(
       content,
-      gregexpr("capStimRange = FALSE", content, fixed = TRUE)
+      gregexpr("capStimRange = cap_stim_range", content, fixed = TRUE)
     )),
     2L
   )
+  for (setting_name in c(
+    "bw_min",
+    "bw_max",
+    "prob_exact_sim",
+    "background_relative_to_response",
+    "ncell_uns_relative_to_stim",
+    "cov_ev_min",
+    "cov_ev_max",
+    "exc_min",
+    "cap_stim_range"
+  )) {
+    expect_true(
+      grepl(
+        paste0(setting_name, " = ", setting_name),
+        content,
+        fixed = TRUE
+      ),
+      info = paste0("Analysis 3 provenance is missing ", setting_name)
+    )
+  }
 
   expect_true(grepl(
     "run_ctx <- .analysis_results_context(",
