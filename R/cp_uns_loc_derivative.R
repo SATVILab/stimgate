@@ -423,7 +423,8 @@
   psi,
   thresholdProbMin = 0,
   capRightWidth = FALSE,
-  leftRiseFrac = 0.15
+  leftRiseFrac = 0.15,
+  stage
 ) {
   peak <- .getCpUnsLocDerivPeak(
     x = x,
@@ -444,7 +445,12 @@
   }
 
   omega <- .getCpUnsLocUnitValue(omega, 0.15, allowZero = TRUE)
-  psi <- .getCpUnsLocUnitValue(psi, 0.75, allowNeg = TRUE)
+  # `stage` is only needed (and evaluated) when psi is invalid.
+  psi <- .getCpUnsLocUnitValue(
+    psi,
+    .getCpUnsLocDerivParams(NULL, stage)$psi,
+    allowNeg = TRUE
+  )
   thresholdProbMin <- .getCpUnsLocUnitValue(
     thresholdProbMin,
     0,
@@ -694,7 +700,8 @@
         "locDerivativeLeftRiseFrac",
         0.15
       )
-    }
+    },
+    stage = stage
   )
   out$info$stage <- stage
   out$info$params <- params
