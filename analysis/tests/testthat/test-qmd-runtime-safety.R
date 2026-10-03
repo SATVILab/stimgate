@@ -246,107 +246,47 @@ test_that("analysis 2 uses shared seeded runners and canonical reads", {
 })
 
 
-test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure coverage", {
-  qmd_path <- file.path(
-    root_dir,
-    "analysis",
-    "3-sim-bw-est-base.qmd"
-  )
-  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
-
-  expect_true(grepl("simulation_seed:\\s*12345", content))
-  expect_true(grepl(
-    'analysis_semantics_version <- "bandwidth-est-base-v3"',
-    content,
-    fixed = TRUE
+test_that("analysis 3 uses the shared runner and matching canonical results", {
+  content <- paste(readLines(file.path(
+    root_dir, "analysis", "3-sim-bw-est-base.qmd"
+  ), warn = FALSE), collapse = "\n")
+  has <- function(x) grepl(x, content, fixed = TRUE)
+  expect_true(has(
+    'analysis_semantics_version <- "bandwidth-est-base-v4"'
   ))
-  expect_true(grepl("analysis_grid_spec", content, fixed = TRUE))
-  expect_true(grepl("sim_grid_spec = analysis_grid_spec", content, fixed = TRUE))
-  expect_true(grepl(
+  for (contract in c(
+    "sim_grid_full <- sim_grid",
     "sim_seed = as.integer(simulation_seed + sim_id - 1L)",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "set.seed(as.integer(sim_seed))",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("bw_fallback <- NA_real_", content, fixed = TRUE))
-  expect_false(grepl("0.23482348792138919129198282389", content, fixed = TRUE))
-  expect_true(grepl("cap_stim_range <- FALSE", content, fixed = TRUE))
-  expect_equal(
-    lengths(regmatches(
-      content,
-      gregexpr("capStimRange = cap_stim_range", content, fixed = TRUE)
-    )),
-    2L
-  )
-
-  expect_true(grepl(
-    "run_ctx <- .analysis_results_context(",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("run_ctx$chunk_dir", content, fixed = TRUE))
-  expect_true(grepl(".analysis_current_file(", content, fixed = TRUE))
-  expect_true(grepl("analysis_required_params", content, fixed = TRUE))
-
-  expect_true(grepl("expected_rows_per_sim", content, fixed = TRUE))
-  expect_true(grepl("row_count_bad_ids", content, fixed = TRUE))
-  expect_true(grepl("seed_ok", content, fixed = TRUE))
-  expect_true(grepl("expected_full_ids", content, fixed = TRUE))
-  expect_true(grepl(
-    "Refusing to promote analysis 3",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "No simulations were assigned to this chunk; marked it complete.",
-    content,
-    fixed = TRUE
-  ))
-
-  expect_true(grepl("n_bw_total", content, fixed = TRUE))
-  expect_true(grepl("n_bw_stim_finite", content, fixed = TRUE))
-  expect_true(grepl("n_bw_uns_finite", content, fixed = TRUE))
-  expect_true(grepl("n_bw_finite", content, fixed = TRUE))
-  expect_true(grepl("prop_bw_finite", content, fixed = TRUE))
-  expect_true(grepl(
-    "pmin(.data$bw_stim, .data$bw_uns)",
-    content,
-    fixed = TRUE
-  ))
-
+    "sim_grid_spec = analysis_grid_spec",
+    "scenario_settings = scenario_settings",
+    "sim-bandwidth-analysis-run.R",
+    ".simBandwidthRunGrid(", ".simBandwidthFinishChunk(",
+    ".simBandwidthEstBaseScenario", ".simBandwidthEstBaseCollate",
+    ".simBandwidthEstBaseValidate", ".simBandwidthRunRow(",
+    "sim_grid_full$sim_id == sim_id_target",
+    "retry_errors = sim_retry_errors", "SIM_RETRY_ERRORS",
+    "if (is.na(sim_grid_shuffle_seed))",
+    "bw_fallback <- NA_real_", "bw_min <- -Inf", "bw_max <- Inf",
+    "cap_stim_range <- FALSE", "capStimRange = cap_stim_range",
+    ".analysis_results_context(", ".analysis_current_file(",
+    "required_params = analysis_required_params",
+    "if (isTRUE(run_plots))", "prop_bw_finite",
+    "Skipping plots during a multi-chunk simulation render."
+  )) {
+    expect_true(has(contract), info = contract)
+  }
+  for (obsolete in c(
+    "promote_analysis3_if_ready", "read_base_bw_outputs",
+    "validate_base_bw_outputs", "bw-estimate-loop", "set.seed(",
+    "bw_list_raw_mtd_chunk_", 'projr::projr_path_get(\n        "output"'
+  )) {
+    expect_false(has(obsolete), info = obsolete)
+  }
   expect_false(grepl("#\\| error:\\s*true", content))
-  expect_true(grepl("old_plan <- future::plan()", content, fixed = TRUE))
-  expect_true(grepl(
-    "finally = future::plan(old_plan)",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "run_plots is false, so stopping after simulation/collation.",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "Skipping plots during a multi-chunk simulation render.",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("promotion_done <-", content, fixed = TRUE))
-  expect_true(grepl(
-    "Refusing to plot analysis 3: this run was not promoted",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "dir.create(dirname(path_plot)",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("grid::unit(0.9", content, fixed = TRUE))
+  expect_true(grepl("execute:\\s*warning: false\\s*message: false", content))
+  expect_equal(sum(grepl("#| eval: false", strsplit(
+    content, "\n", fixed = TRUE
+  )[[1]], fixed = TRUE)), 1L)
 })
 
 

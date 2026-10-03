@@ -27,6 +27,15 @@ test_that("analyses 3 and 4 use resumable transactional run contexts", {
       paste0('c\\("sim",\\s*"bw",\\s*"est",\\s*"', spec$key, '"\\)'),
       content
     ))
+    if (spec$key == "base") {
+      expect_true(grepl("sim-bandwidth-analysis-run.R", content, fixed = TRUE))
+      expect_true(grepl(".simBandwidthRunGrid(", content, fixed = TRUE))
+      expect_true(grepl(".simBandwidthFinishChunk(", content, fixed = TRUE))
+      expect_true(grepl("sim_grid_all = sim_grid_all", content, fixed = TRUE))
+      expect_true(grepl("retry_errors = sim_retry_errors", content, fixed = TRUE))
+      expect_true(grepl(".analysis_current_file", content, fixed = TRUE))
+      next
+    }
     expect_true(grepl("run_ctx$progress_file", content, fixed = TRUE))
     expect_true(grepl("run_ctx$chunk_output_dir", content, fixed = TRUE))
     expect_true(grepl(".path_sim_output", content, fixed = TRUE))
