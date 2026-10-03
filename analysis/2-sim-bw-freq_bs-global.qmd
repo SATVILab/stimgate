@@ -925,7 +925,6 @@ assign(".Random.seed", row_seed, envir = .GlobalEnv)
 # undebug(.getCpUnsLocGetProb)
 # undebug(.getCpUnsLocGetCp)
 debug(.getCpUnsLocCondition)
-# undebug(.getCpUnsLocFilterAntimode)
 # debugonce(.simBandwidthBsFreq)
 sim_res <- .simBandwidthBsFreq(
   nSample = 100,
@@ -984,7 +983,6 @@ sim_res <- .simBandwidthBsFreq(
 
 debugonce(.getCpUnsLocGetCp)
 debugonce(.getCpUnsLocFilterAfterSmoothing)
-debugonce(.getCpUnsLocFilterAntimode)
 ```
 
 ```{r}

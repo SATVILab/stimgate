@@ -333,103 +333,6 @@
 
 # Antimode filter ------------------------------------------------------------
 
-#' Remove values left of the right-most antimode in the dubious-response region
-#' @keywords internal
-.getCpUnsLocFilterAntimode <- function(
-    dataMod,
-    chnlSettings,
-    probCol,
-    threshold = NULL,
-    marginalReferenceX = Inf) {
-  info <- list(applied = FALSE, reason = "antimode_filter_not_applied")
-  if (!is.data.frame(dataMod) || nrow(dataMod) < 5L) {
-    info$reason <- "too_few_model_values_for_antimode_filter"
-    return(list(dataMod = dataMod, info = info))
-  }
-
-  if (is.null(threshold)) {
-    threshold <- .getCpUnsLocStageThreshold(
-      dataMod,
-      chnlSettings,
-      probCol,
-      stage = "antimode"
-    )
-  }
-  upper <- threshold
-  info$derivativeThreshold <- upper$info
-  upperX <- upper$thresholdX
-  if (!is.finite(upperX)) {
-    info$reason <- upper$info$reason
-    return(list(dataMod = dataMod, info = info))
-  }
-
-  expr <- suppressWarnings(as.numeric(.getCut(dataMod)))
-  exprForDensity <- expr[is.finite(expr)]
-  if (length(exprForDensity) < 5L || length(unique(exprForDensity)) < 3L) {
-    info$reason <- "too_few_values_below_antimode_upper_limit"
-    return(list(dataMod = dataMod, info = info))
-  }
-
-  density <- .getCpUnsLocAntimodeDensity(
-    expr = exprForDensity,
-    chnlSettings = chnlSettings,
-    originalBw = attr(dataMod, "locDensityBw")
-  )
-  if (is.null(density)) {
-    info$reason <- "antimode_density_failed"
-    return(list(dataMod = dataMod, info = info))
-  }
-
-  antimodes <- .getCpUnsLocAntimodes(density)
-  marginalReferenceX <- suppressWarnings(
-    as.numeric(marginalReferenceX)[1L]
-  )
-  if (!is.finite(marginalReferenceX)) {
-    marginalReferenceX <- Inf
-  }
-  eligibleUpperX <- min(upperX, marginalReferenceX)
-  eligible <- antimodes[
-    is.finite(antimodes) &
-      antimodes <= upperX &
-      antimodes < marginalReferenceX
-  ]
-
-  info$upperX <- upperX
-  info$marginalReferenceX <- marginalReferenceX
-  info$eligibleUpperX <- eligibleUpperX
-  info$rise <- upper$info
-  info$riseThresholdX <- upperX
-  info$risingFastX <- upperX
-  info$antimodes <- antimodes
-  info$antimodeX <- antimodes
-  info$eligibleAntimodes <- eligible
-  info$antimodeLeftX <- eligible
-  info$nExpressionValuesForDensity <- length(exprForDensity)
-  info$densityMtd <- attr(density, "locDensityMtd")
-  info$densityBwType <- attr(density, "locBwType")
-  info$densityBwFraction <- attr(density, "locBwFraction")
-  info$densityBwBase <- attr(density, "locBwBaseSummary")
-  info$densityBwUsed <- attr(density, "locBwUsedSummary")
-
-  if (length(eligible) == 0L) {
-    info$reason <- "no_antimode_in_dubious_response_region"
-    return(list(dataMod = dataMod, info = info))
-  }
-
-  filterX <- max(eligible)
-  keep <- is.finite(expr) & expr >= filterX
-  info$filterX <- filterX
-  info$nDropped <- sum(!keep)
-  info$applied <- info$nDropped > 0L
-  info$reason <- if (info$applied) {
-    "dropped_values_left_of_rightmost_eligible_antimode"
-  } else {
-    "rightmost_eligible_antimode_kept_all_values"
-  }
-
-  list(dataMod = .getCpUnsLocSubsetRows(dataMod, keep), info = info)
-}
-
 #' Piecewise-constant taut-string density via native C++ implementation
 #'
 #' Returns a list with element `$y`: a numeric vector of length `n - 1` (one
@@ -451,12 +354,7 @@
 
 #' Fit the density used to identify antimodes
 #' @keywords internal
-.getCpUnsLocAntimodeDensity <- function(
-    expr,
-    chnlSettings,
-    originalBw = NULL,
-    mtd = c("taut_string", "kde")) {
-  mtd <- match.arg(mtd)
+.getCpUnsLocAntimodeDensity <- function(expr) {
   expr <- suppressWarnings(as.numeric(expr))
   expr <- expr[is.finite(expr)]
 
@@ -464,151 +362,34 @@
     return(NULL)
   }
 
-  if (mtd == "taut_string") {
-    exprSorted <- if (is.unsorted(expr)) {
-      sort(expr)
-    } else {
-      expr
-    }
-    tautFit <- try(
-      suppressWarnings(.tautStringPmden(exprSorted)),
-      silent = TRUE
-    )
-    if (inherits(tautFit, "try-error")) {
-      return(NULL)
-    }
-
-    y <- suppressWarnings(as.numeric(tautFit$y))
-    x <- (exprSorted[-1L] + exprSorted[-length(exprSorted)]) / 2
-    if (length(x) != length(y) || length(y) < 3L || all(!is.finite(y))) {
-      return(NULL)
-    }
-
-    out <- list(
-      x = x,
-      y = y,
-      fit = tautFit,
-      method = "taut_string"
-    )
-    attr(out, "locDensityMtd") <- "taut_string"
-    attr(out, "locBwType") <- "not_applicable"
-    attr(out, "locBwFraction") <- NA_real_
-    attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(numeric(0L))
-    attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(numeric(0L))
-    return(out)
+  exprSorted <- if (is.unsorted(expr)) {
+    sort(expr)
+  } else {
+    expr
   }
-
-  bwFraction <- suppressWarnings(as.numeric(
-    .getCpUnsLocSetting(chnlSettings, "locAntimodeBwFrac", 1 / 2)
-  )[1])
-  if (!is.finite(bwFraction) || bwFraction <= 0) {
-    bwFraction <- 1 / 2
-  }
-
-  exprRange <- range(expr, na.rm = TRUE)
-  if (
-    is.list(originalBw) &&
-      isTRUE(originalBw$adaptive) &&
-      !is.null(originalBw$grid) &&
-      !is.null(originalBw$sharedGrid)
-  ) {
-    grid <- suppressWarnings(as.numeric(originalBw$grid))
-    bw <- suppressWarnings(as.numeric(originalBw$sharedGrid))
-    keep <- is.finite(grid) &
-      is.finite(bw) &
-      bw > 0 &
-      grid >= exprRange[1] &
-      grid <= exprRange[2]
-    grid <- grid[keep]
-    bw <- bw[keep]
-
-    if (length(grid) >= 3L && length(grid) == length(bw)) {
-      out <- .getCpUnsLocDensityAdaptiveGrid(
-        x = expr,
-        grid = grid,
-        bwGrid = bw * bwFraction,
-        normalise = TRUE
-      )
-      if (!is.null(out)) {
-        attr(out, "locDensityMtd") <- "kde"
-        attr(out, "locBwType") <- "adaptive"
-        attr(out, "locBwFraction") <- bwFraction
-        attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(bw)
-        attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(
-          bw * bwFraction
-        )
-        return(out)
-      }
-    }
-  }
-
-  bw <- .getCpUnsLocAntimodeBw(expr, chnlSettings, originalBw)
-  if (!is.finite(bw) || bw <= 0) {
-    return(NULL)
-  }
-
-  usedBw <- bw * bwFraction
-  out <- try(
-    suppressWarnings(stats::density(
-      expr,
-      bw = usedBw,
-      n = 512L,
-      from = exprRange[1],
-      to = exprRange[2]
-    )),
+  tautFit <- try(
+    suppressWarnings(.tautStringPmden(exprSorted)),
     silent = TRUE
   )
-  if (inherits(out, "try-error")) {
+  if (inherits(tautFit, "try-error")) {
     return(NULL)
   }
 
-  attr(out, "locDensityMtd") <- "kde"
-  attr(out, "locBwType") <- "fixed"
-  attr(out, "locBwFraction") <- bwFraction
-  attr(out, "locBwBaseSummary") <- .getCpUnsLocBwSummary(bw)
-  attr(out, "locBwUsedSummary") <- .getCpUnsLocBwSummary(usedBw)
-  out
+  y <- suppressWarnings(as.numeric(tautFit$y))
+  x <- (exprSorted[-1L] + exprSorted[-length(exprSorted)]) / 2
+  if (length(x) != length(y) || length(y) < 3L || all(!is.finite(y))) {
+    return(NULL)
+  }
+
+  list(
+    x = x,
+    y = y,
+    fit = tautFit,
+    method = "taut_string"
+  )
 }
 
-#' Resolve the original fixed bandwidth used by the local-FDR densities
-#' @keywords internal
-.getCpUnsLocAntimodeBw <- function(expr, chnlSettings, originalBw = NULL) {
-  if (!is.list(originalBw)) {
-    bw <- .getCpUnsLocFiniteMin(originalBw, positive = TRUE)
-    if (is.finite(bw)) {
-      return(bw)
-    }
-  }
-
-  for (name in c("bw", "bwCluster", "bwFallback")) {
-    bw <- .getCpUnsLocFiniteMin(
-      .getCpUnsLocSetting(chnlSettings, name, NA_real_),
-      positive = TRUE
-    )
-    if (is.finite(bw)) {
-      return(bw)
-    }
-  }
-
-  bw <- try(suppressWarnings(ks::hpi(x = expr)), silent = TRUE)
-  if (inherits(bw, "try-error")) {
-    return(NA_real_)
-  }
-  .getCpUnsLocFiniteMin(bw, positive = TRUE)
-}
-
-#' Summarise a scalar or adaptive bandwidth
-#' @keywords internal
-.getCpUnsLocBwSummary <- function(bw) {
-  bw <- suppressWarnings(as.numeric(bw))
-  bw <- bw[is.finite(bw) & bw > 0]
-  if (length(bw) == 0L) {
-    return(c(min = NA_real_, median = NA_real_, max = NA_real_))
-  }
-  c(min = min(bw), median = stats::median(bw), max = max(bw))
-}
-
-#' Locate all antimodes in a density object
+#' Locate all antimodes in a taut-string density object
 #' @keywords internal
 .getCpUnsLocAntimodes <- function(density) {
   x <- suppressWarnings(as.numeric(density$x))
@@ -616,13 +397,7 @@
   if (length(x) != length(y) || length(y) < 3L || all(!is.finite(y))) {
     return(numeric(0L))
   }
-
-  if (identical(density$method, "taut_string")) {
-    return(.getCpUnsLocPiecewiseConstantAntimodes(x, y))
-  }
-
-  y[!is.finite(y)] <- Inf
-  sort(unique(x[.getLocalMinimaIdx(y)]))
+  .getCpUnsLocPiecewiseConstantAntimodes(x, y)
 }
 
 #' Locate antimodes in a piecewise-constant taut-string density
@@ -826,70 +601,6 @@
     return(NA_real_)
   }
   min(candidate)
-}
-
-#' Adjust and validate the tailgate floor against the marginal reference
-#' @keywords internal
-.getCpUnsLocSelectTailgateLowerBound <- function(
-    rawTailgateX,
-    windowWidth,
-    referenceX,
-    adjustmentFraction = 1 / 4) {
-  rawTailgateX <- suppressWarnings(as.numeric(rawTailgateX)[1L])
-  windowWidth <- suppressWarnings(as.numeric(windowWidth)[1L])
-  referenceX <- suppressWarnings(as.numeric(referenceX)[1L])
-  adjustmentFraction <- suppressWarnings(
-    as.numeric(adjustmentFraction)[1L]
-  )
-  info <- list(
-    lowerBoundXRaw = rawTailgateX,
-    windowWidth = windowWidth,
-    marginalReferenceX = referenceX,
-    adjustmentFraction = adjustmentFraction,
-    adjustmentMethod = "none_missing_window_width",
-    adjustmentRolledBack = FALSE
-  )
-
-  if (!is.finite(rawTailgateX) || !is.finite(referenceX)) {
-    info$selectionReason <- "invalid_tailgate_or_marginal_reference"
-    info$lowerBoundX <- NA_real_
-    return(list(lowerBoundX = NA_real_, info = info))
-  }
-
-  adjustedTailgateX <- rawTailgateX
-  if (
-    is.finite(windowWidth) &&
-      windowWidth > 0 &&
-      is.finite(adjustmentFraction) &&
-      adjustmentFraction >= 0
-  ) {
-    adjustedTailgateX <-
-      rawTailgateX + adjustmentFraction * windowWidth
-    info$adjustmentMethod <- "window_width"
-  }
-  info$lowerBoundXAdjusted <- adjustedTailgateX
-
-  # The adjustment is only a conservative nudge. If it would overtake the
-  # informative right-hand reference, retain the raw tailgate instead.
-  if (adjustedTailgateX >= referenceX && rawTailgateX < referenceX) {
-    selectedTailgateX <- rawTailgateX
-    info$adjustmentRolledBack <- TRUE
-    info$selectionReason <- "adjustment_crossed_marginal_reference"
-  } else {
-    selectedTailgateX <- adjustedTailgateX
-    info$selectionReason <- "selected_adjusted_tailgate"
-  }
-
-  # Shape evidence to the right of the response reference is ignored rather
-  # than allowed to replace or invalidate that informative reference.
-  if (selectedTailgateX >= referenceX) {
-    info$selectionReason <- "tailgate_not_below_marginal_reference"
-    info$ignoredLowerBoundX <- selectedTailgateX
-    selectedTailgateX <- NA_real_
-  }
-  info$lowerBoundX <- selectedTailgateX
-
-  list(lowerBoundX = selectedTailgateX, info = info)
 }
 
 #' Identify a smoothed left-to-right rise in density dominance
@@ -2035,12 +1746,7 @@
     return(list(thresholdX = NA_real_, info = info))
   }
 
-  density <- .getCpUnsLocAntimodeDensity(
-    expr = exprForDensity,
-    chnlSettings = chnlSettings,
-    originalBw = attr(dataMod, "locDensityBw"),
-    mtd = "taut_string"
-  )
+  density <- .getCpUnsLocAntimodeDensity(expr = exprForDensity)
   if (is.null(density)) {
     info$reason <- "antimode_density_failed"
     return(list(thresholdX = NA_real_, info = info))
@@ -2051,7 +1757,7 @@
   antimodes <- extrema$antimodes
 
   info$nExpressionValuesForDensity <- length(exprForDensity)
-  info$densityMtd <- attr(density, "locDensityMtd")
+  info$densityMtd <- density$method
   info$allModes <- modes
   info$allAntimodes <- antimodes
 

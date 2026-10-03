@@ -822,20 +822,6 @@
 # Get all cutpoint type names
 # Returns character vector of all available cutpoint names
 #' @keywords internal
-.getFullCpTypeVec <- function(fdr) {
-  c(
-    "man",
-    "tg",
-    "dcp",
-    "midp",
-    "scp",
-    "uns",
-    "unsr",
-    "loc"
-  )
-}
-
-#' @keywords internal
 .completeChnlSettingsSave <- function(chnlList, pathProject) {
   pathSave <- file.path(pathProject, "metaData", "chnlSettings.rds")
   if (file.exists(pathSave)) {

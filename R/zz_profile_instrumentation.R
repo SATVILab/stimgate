@@ -434,27 +434,13 @@
   )
 }
 
-.getCpUnsLocAntimodeDensity <- function(
-    expr,
-    chnlSettings,
-    originalBw = NULL,
-    mtd = c("taut_string", "kde")) {
+.getCpUnsLocAntimodeDensity <- function(expr) {
   if (!.profileEnabled() || !.profileInitialSampleActive()) {
-    return(.profileOriginalGetCpUnsLocAntimodeDensity(
-      expr = expr,
-      chnlSettings = chnlSettings,
-      originalBw = originalBw,
-      mtd = mtd
-    ))
+    return(.profileOriginalGetCpUnsLocAntimodeDensity(expr = expr))
   }
 
   .profileTime(
-    .profileOriginalGetCpUnsLocAntimodeDensity(
-      expr = expr,
-      chnlSettings = chnlSettings,
-      originalBw = originalBw,
-      mtd = mtd
-    ),
+    .profileOriginalGetCpUnsLocAntimodeDensity(expr = expr),
     level = "sample_detail",
     major = "initial_gating",
     minor = "local_fdr",
