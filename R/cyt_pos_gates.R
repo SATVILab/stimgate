@@ -1,12 +1,13 @@
 #' @keywords internal
 .gateCytPos <- function(
-    chnlSettings,
-    indBatchList,
-    .data,
-    gateName = NULL,
-    calcCytPos = TRUE,
-    stage,
-    pathProject) {
+  chnlSettings,
+  indBatchList,
+  .data,
+  gateName = NULL,
+  calcCytPos = TRUE,
+  stage,
+  pathProject
+) {
   .debug("-------------") # nolint
   .debug("getting cytokine-positive gates") # nolint
   .debug("-------------") # nolint
@@ -15,15 +16,13 @@
   # -------------------------------
 
   # vector of chanls
-  chnlVec <- .getCytPosGatesChnlVecFromChnlList(
-    chnlSettings = chnlSettings
-  )
+  chnlVec <- purrr::map_chr(chnlSettings, "chnlCut")
 
   # chnlLab
   chnlLabVec <- .getLabs(.data = .data[[1]], chnlCut = chnlVec)
 
   # get max bwMin for densities from chnlSettings elements
-  bwMin <- .gateCytPosMaxBwMin(chnlSettings)
+  bwMin <- stats::quantile(purrr::map_dbl(chnlSettings, "bwMin"), 0.8)
 
   # get original gates
   gateTbl <- .getCytPosGatesGateTblGet(
@@ -51,84 +50,57 @@
 
   purrr::map_df(gnVec, function(gn) {
     gateTblGn <- gateTbl |> dplyr::filter(gateName == gn)
-    force(gateTblGn)
-    .getCytPosGatesGateName(
-      gateTblGn = gateTblGn,
-      .data = .data,
-      indBatchList = indBatchList,
-      chnlVec = chnlVec,
-      chnlLabVec = chnlLabVec,
-      popGate = chnlSettings[[1]]$popGate,
-      bwMin = bwMin,
-      calcCytPos = calcCytPos,
-      stage = stage,
-      pathProject = pathProject
-    )
+    .debug(
+      "Getting cyt+ gates for gateName: ",
+      gateTblGn$gateName[[1]]
+    ) # nolint
+    indVec <- unlist(indBatchList)
+
+    cpTblCyt <- purrr::map_df(indVec, function(ind) {
+      indUns <- .getIndUns(ind, indBatchList)
+      batch <- .getBatch(ind, indBatchList)
+      .getCytPosGatesInd(
+        ind = ind,
+        .data = .data,
+        indUns = indUns,
+        gateTblGn = gateTblGn,
+        chnlVec = chnlVec,
+        chnlLabVec = chnlLabVec,
+        popGate = chnlSettings[[1]]$popGate,
+        bwMin = bwMin,
+        stage = stage,
+        pathProject = pathProject,
+        batch = batch
+      )
+    })
+
+    if (nrow(cpTblCyt) == 0L) {
+      return(dplyr::mutate(gateTblGn, gateCyt = NA_real_))
+    }
+
+    # join gateCyt onto gateTbl
+    gateTblGn |>
+      dplyr::left_join(
+        cpTblCyt,
+        by = c("batch", "ind", "chnl", "marker")
+      )
   })
 }
 
 #' @keywords internal
-.getCytPosGatesGateName <- function(
-    gateTblGn,
-    .data,
-    indBatchList,
-    chnlVec,
-    chnlLabVec,
-    popGate,
-    bwMin,
-    calcCytPos,
-    stage,
-    pathProject) {
-  .debug(
-    "Getting cyt+ gates for gateName: ",
-    gateTblGn$gateName[[1]]
-  ) # nolint
-  indVec <- unlist(indBatchList)
-
-  cpTblCyt <- purrr::map_df(indVec, function(ind) {
-    indUns <- .getIndUns(ind, indBatchList)
-    batch <- .getBatch(ind, indBatchList)
-    .getCytPosGatesInd(
-      ind = ind,
-      .data = .data,
-      indUns = indUns,
-      gateTblGn = gateTblGn,
-      chnlVec = chnlVec,
-      chnlLabVec = chnlLabVec,
-      popGate = popGate,
-      bwMin = bwMin,
-      calcCytPos = calcCytPos,
-      stage = stage,
-      pathProject = pathProject,
-      batch = batch
-    )
-  }) |>
-    purrr::compact() |>
-    dplyr::bind_rows()
-
-  # join gateCyt onto gateTbl
-  gateTblGn |>
-    dplyr::left_join(
-      cpTblCyt |>
-        dplyr::select(batch, ind, chnl, marker, gateCyt), # nolint
-      by = c("batch", "ind", "chnl", "marker")
-    )
-}
-
-#' @keywords internal
 .getCytPosGatesInd <- function(
-    ind,
-    .data,
-    indUns,
-    gateTblGn,
-    chnlVec,
-    chnlLabVec,
-    popGate,
-    bwMin,
-    calcCytPos,
-    stage,
-    batch,
-    pathProject) {
+  ind,
+  .data,
+  indUns,
+  gateTblGn,
+  chnlVec,
+  chnlLabVec,
+  popGate,
+  bwMin,
+  stage,
+  batch,
+  pathProject
+) {
   .debug("Getting cyt+ gates for ind: ", ind) # nolint
 
   # return if ind in batch is the unstim ind
@@ -187,28 +159,26 @@
 
 #' @keywords internal
 .getCpPosGatesChnl <- function(
-    chnlCurr,
-    ex,
-    gateTblInd,
-    basePos,
-    bwMin,
-    ind,
-    stage,
-    pathProject) {
+  chnlCurr,
+  ex,
+  gateTblInd,
+  basePos,
+  bwMin,
+  ind,
+  stage,
+  pathProject
+) {
   .debug("chnlCurr: ", chnlCurr) # nolint
-  if (is.na(gateTblInd$gate[gateTblInd$chnl == chnlCurr])) {
-    return(NA)
+  cpOrig <- gateTblInd$gate[gateTblInd$chnl == chnlCurr]
+  if (length(cpOrig) == 0L || is.na(cpOrig)) {
+    return(NA_real_)
   }
 
   # subset only cells pos for at least one other cyt
   # --------------
   posCurr <- basePos$pos[[chnlCurr]]
 
-  incVec <- if (is.null(posCurr)) {
-    basePos$nPos > 0L
-  } else {
-    basePos$nPos - as.integer(posCurr) > 0L
-  }
+  incVec <- basePos$nPos - as.integer(posCurr) > 0L
   .intSaveNm(
     paste0(chnlCurr, "_incVec"),
     incVec,
@@ -216,11 +186,6 @@
     stage,
     pathProject
   )
-
-  # get original cutpoint
-  cpOrig <- gateTblInd |>
-    dplyr::filter(chnl == chnlCurr) |> # nolint
-    dplyr::pull("gate")
 
   .intSaveNm(
     paste0(chnlCurr, "_cpOrig"),
@@ -253,7 +218,7 @@
     cpOrig = cpOrig,
     peakX = shapeRef$peakX,
     windowWidth = shapeRef$windowWidth,
-    minCell = 10L
+    lower = shapeRef$lowerX
   )
   .intSaveNm(
     paste0(chnlCurr, "_cpTaut"),
@@ -288,11 +253,4 @@
   )
 
   cpCytPos
-}
-
-#' @keywords internal
-.gateCytPosMaxBwMin <- function(chnl, quant = 0.8) {
-  chnl |>
-    purrr::map_dbl(~ .x$bwMin) |>
-    stats::quantile(quant)
 }

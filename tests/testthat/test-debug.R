@@ -29,7 +29,7 @@ test_that(
     pathOldFile <- file.path(dirDebugOld, "old.txt")
     writeLines("stale content", pathOldFile)
 
-    expect_true(.debugInit(pathProject, reset = TRUE))
+    expect_true(.debugInit(pathProject))
     expect_false(file.exists(pathOldFile))
 
     pathDebugFile <- file.path(pathProject, "debug", "debug.txt")
@@ -199,4 +199,23 @@ test_that("stimgate_debug_copy and debug_print are removed from exports", {
   exports <- getNamespaceExports("stimgate")
   expect_false("stimgate_debug_copy" %in% exports)
   expect_false("stimgate_debug_print" %in% exports)
+})
+
+test_that("grouped intermediate saves preserve names, contents and selection", {
+  withr::local_envvar(c(STIMGATE_INTERMEDIATE = "104"))
+  path_project <- tempfile("intermediate-group-")
+  withr::defer(unlink(path_project, recursive = TRUE))
+  raw <- data.frame(x = 1:3)
+
+  expect_true(.intSave(104, "init", path_project, raw, named = 42))
+  path_saved <- file.path(
+    path_project, "intermediateData", "init", "ind", "104"
+  )
+  expect_setequal(list.files(path_saved), c("raw.rds", "named.rds"))
+  expect_identical(readRDS(file.path(path_saved, "raw.rds")), raw)
+  expect_identical(readRDS(file.path(path_saved, "named.rds")), 42)
+  expect_false(.intSave(105, "init", path_project, stop("must not evaluate")))
+  expect_false(.intSaveNm(
+    "unused", stop("must not evaluate"), 105, "init", path_project
+  ))
 })

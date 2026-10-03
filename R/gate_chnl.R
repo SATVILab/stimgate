@@ -1,13 +1,14 @@
 #' @keywords internal
 .gateChnl <- function(
-    .data,
-    indBatchList,
-    chnlSettings,
-    gateTbl = NULL,
-    tolGateSingle = NULL,
-    calcCytPosGates,
-    pathProject,
-    stage) {
+  .data,
+  indBatchList,
+  chnlSettings,
+  gateTbl = NULL,
+  tolGateSingle = NULL,
+  calcCytPosGates,
+  pathProject,
+  stage
+) {
   # Parameters list
   # ----------------
 
@@ -17,9 +18,6 @@
     .data = .data[[indBatchList[[1]]]],
     chnlCut = chnlSettings$chnlCut
   )
-
-  # delete locb gates
-  .gateChnlDeleteOldGates()
 
   # Initial gates
   # ----------------
@@ -55,10 +53,9 @@
   # For all cells
   # =============================
 
-  .gateChnlGetAdjGates(
+  .gateChnlGetAdjGatesAll(
     # nolint
     gateTbl = gateTbl,
-    gateTblParams = chnlSettings$gateTbl,
     chnlSettings = chnlSettings,
     .data = .data,
     pathProject = pathProject,

@@ -419,7 +419,7 @@ getStimExpr <- function(
     stop("Must not specify both chnlGate and markerGate")
   }
   chnlGate <- chnlGate %||% stimgateMetaReadMarkerLab(pathProject)[markerGate]
-  gateTblInd <- .gateGetGateTblAll(NULL, pop, chnlGate, pathProject) |>
+  gateTblInd <- .gateGetGateTblAll(pop, chnlGate, pathProject) |>
     dplyr::filter(.data$ind == .env$ind) # nolint
 
   ex <- .dataGetExCytPosInc(

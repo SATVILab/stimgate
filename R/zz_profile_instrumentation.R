@@ -25,15 +25,6 @@
   indBatchList,
   pathProject
 ) {
-  if (!.profileEnabled()) {
-    return(.profileOriginalGateInit(
-      chnlSettings = chnlSettings,
-      .data = .data,
-      indBatchList = indBatchList,
-      pathProject = pathProject
-    ))
-  }
-
   .profileInit(pathProject)
   .profileWithContext(
     .profileTime(
@@ -61,18 +52,6 @@
   stage,
   pathProject
 ) {
-  if (!.profileEnabled()) {
-    return(.profileOriginalGateCytPos(
-      chnlSettings = chnlSettings,
-      indBatchList = indBatchList,
-      .data = .data,
-      gateName = gateName,
-      calcCytPos = calcCytPos,
-      stage = stage,
-      pathProject = pathProject
-    ))
-  }
-
   .profileWithContext(
     .profileTime(
       .profileOriginalGateCytPos(
@@ -101,17 +80,6 @@
   indBatchList,
   pathProject
 ) {
-  if (!.profileEnabled()) {
-    return(.profileOriginalGateStats(
-      .data = .data,
-      gateTbl = gateTbl,
-      calcCytPosGates = calcCytPosGates,
-      chnlSettings = chnlSettings,
-      indBatchList = indBatchList,
-      pathProject = pathProject
-    ))
-  }
-
   out <- .profileWithContext(
     .profileTime(
       .profileOriginalGateStats(
@@ -129,7 +97,7 @@
     ),
     stage = "stats"
   )
-  out
+  if (.profileEnabled()) out else invisible(out)
 }
 
 .gateChnl <- function(

@@ -26,22 +26,35 @@
 #' gates <- getStimGates(pathProject)
 #' @export
 getStimGates <- function(
-    pathProject,
-    pop = NULL,
-    marker = NULL,
-    chnl = NULL) {
+  pathProject,
+  pop = NULL,
+  marker = NULL,
+  chnl = NULL
+) {
   pop <- pop %|c|% .gateGetPop(pathProject)
+
+  markerChnl <- NULL
+  if (!is.null(marker) && length(pop) > 0L) {
+    markerLab <- stimgateMetaReadMarkerLab(pathProject)
+    unknown <- marker[!marker %in% names(markerLab)]
+    if (length(unknown) > 0L) {
+      stop("Unknown marker: ", paste(unknown, collapse = ", "))
+    }
+    markerChnl <- unname(markerLab[marker])
+  }
 
   purrr::map_df(pop, function(popCurr) {
     chnlVec <- if (!is.null(marker)) {
-      markerLab <- stimgateMetaReadMarkerLab(pathProject)
-      markerLab[marker] |> stats::setNames(NULL)
+      markerChnl
     } else {
       chnl %|c|% .gateGetChnl(pathProject, popCurr)
     }
+    chnlLab <- if (length(chnlVec) > 0L) {
+      stimgateMetaReadChnlLab(pathProject)
+    }
 
     purrr::map_df(chnlVec, function(chnlCurr) {
-      markerCurr <- stimgateMetaReadChnlLab(pathProject)[chnlCurr] |>
+      markerCurr <- chnlLab[chnlCurr] |>
         stats::setNames(NULL)
 
       .gatesGetPathAll(
@@ -51,7 +64,6 @@ getStimGates <- function(
         init = FALSE
       ) |>
         readRDS() |>
-        dplyr::filter(chnl == chnlCurr) |>
         dplyr::mutate(marker = markerCurr) |>
         dplyr::mutate(pop = popCurr) |>
         dplyr::select(pop, dplyr::everything())
@@ -61,26 +73,19 @@ getStimGates <- function(
 
 #' @keywords internal
 .gateGetPop <- function(pathProject) {
-  pathDir <- file.path(pathProject, "gates")
-  if (!dir.exists(pathDir)) {
-    return(character(0))
-  }
-  dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
-  dirVec <- dirVec[nzchar(dirVec) & grepl("^pop", dirVec)]
-  popVec <- unique(sub("^pop", "", dirVec))
-  popVec
+  .gateGetDirs(file.path(pathProject, "gates"), "pop")
 }
 
 #' @keywords internal
 .gateGetChnl <- function(pathProject, pop) {
-  pathDir <- file.path(pathProject, "gates", paste0("pop", pop))
-  if (!dir.exists(pathDir)) {
-    return(character(0))
-  }
+  .gateGetDirs(file.path(pathProject, "gates", paste0("pop", pop)), "chnl")
+}
+
+#' @keywords internal
+.gateGetDirs <- function(pathDir, prefix) {
   dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
-  dirVec <- dirVec[nzchar(dirVec) & grepl("^chnl", dirVec)]
-  chnlVec <- unique(sub("^chnl", "", dirVec))
-  chnlVec
+  dirVec <- dirVec[nzchar(dirVec) & startsWith(dirVec, prefix)]
+  unique(sub(paste0("^", prefix), "", dirVec))
 }
 
 #' @keywords internal
@@ -115,56 +120,48 @@ getStimGates <- function(
 #' @return A tibble with one row per saved threshold diagnostic.
 #' @export
 getStimGatesDetailed <- function(
-    pathProject,
-    pop = NULL,
-    marker = NULL,
-    chnl = NULL,
-    save = FALSE,
-    pathSave = NULL) {
+  pathProject,
+  pop = NULL,
+  marker = NULL,
+  chnl = NULL,
+  save = FALSE,
+  pathSave = NULL
+) {
   detailTbl <- .gateGetDetailedIntermediate(pathProject)
 
-  if (nrow(detailTbl) == 0L) {
-    if (isTRUE(save)) {
-      pathSave <- pathSave %||% file.path(pathProject, "gatesDetailed.rds")
-      saveRDS(detailTbl, pathSave)
+  if (nrow(detailTbl) > 0L) {
+    if (!"chnl" %in% names(detailTbl)) {
+      detailTbl$chnl <- detailTbl$detailPathChnl
+    } else if ("detailPathChnl" %in% names(detailTbl)) {
+      detailTbl$chnl <- dplyr::coalesce(
+        detailTbl$chnl, detailTbl$detailPathChnl
+      )
     }
-    return(detailTbl)
-  }
 
-  if (!"chnl" %in% names(detailTbl)) {
-    detailTbl$chnl <- detailTbl$detailPathChnl
-  } else if ("detailPathChnl" %in% names(detailTbl)) {
-    detailTbl$chnl <- dplyr::coalesce(detailTbl$chnl, detailTbl$detailPathChnl)
-  }
+    chnlLab <- try(stimgateMetaReadChnlLab(pathProject), silent = TRUE)
+    if (!inherits(chnlLab, "try-error") && length(chnlLab) > 0L) {
+      detailTbl$marker <- unname(chnlLab[detailTbl$chnl])
+    } else {
+      detailTbl$marker <- NA_character_
+    }
+    detailTbl$pop <- NA_character_
 
-  chnlLab <- try(stimgateMetaReadChnlLab(pathProject), silent = TRUE)
-  if (!inherits(chnlLab, "try-error") && length(chnlLab) > 0L) {
-    detailTbl$marker <- unname(chnlLab[detailTbl$chnl])
-  } else {
-    detailTbl$marker <- NA_character_
-  }
-  detailTbl$pop <- NA_character_
-
-  if (!is.null(chnl)) {
+    if (!is.null(chnl)) {
+      detailTbl <- detailTbl |>
+        dplyr::filter(.data$chnl %in% .env$chnl)
+    }
+    if (!is.null(marker)) {
+      detailTbl <- detailTbl |>
+        dplyr::filter(.data$marker %in% .env$marker)
+    }
     detailTbl <- detailTbl |>
-      dplyr::filter(.data$chnl %in% .env$chnl)
+      dplyr::select(
+        pop,
+        marker,
+        chnl,
+        dplyr::everything()
+      )
   }
-  if (!is.null(marker)) {
-    detailTbl <- detailTbl |>
-      dplyr::filter(.data$marker %in% .env$marker)
-  }
-  if (!is.null(pop)) {
-    detailTbl <- detailTbl |>
-      dplyr::filter(is.na(.data$pop) | .data$pop %in% .env$pop)
-  }
-
-  detailTbl <- detailTbl |>
-    dplyr::select(
-      pop,
-      marker,
-      chnl,
-      dplyr::everything()
-    )
 
   if (isTRUE(save)) {
     pathSave <- pathSave %||% file.path(pathProject, "gatesDetailed.rds")
@@ -183,7 +180,7 @@ getStimGatesDetailed <- function(
 
   pathVec <- list.files(
     pathInt,
-    pattern = "^locDetail.*\\.rds$",
+    pattern = "^(locDetail.*|locClusterQuantileTbl)\\.rds$",
     recursive = TRUE,
     full.names = TRUE
   )
@@ -212,33 +209,32 @@ getStimGatesDetailed <- function(
 
 #' @keywords internal
 .gateGetDetailedNormaliseObject <- function(obj, detailObject) {
-  if (detailObject %in% "locDetailClusterFinal") {
+  if (detailObject == "locClusterQuantileTbl") {
     if (!"detailLevel" %in% names(obj)) {
       obj$detailLevel <- "cluster_final"
     }
-    if (!"threshold" %in% names(obj) && "locFinalThreshold" %in% names(obj)) {
-      obj$threshold <- obj$locFinalThreshold
+    if (!"threshold" %in% names(obj) && "cpJoinTgOrig" %in% names(obj)) {
+      obj$threshold <- obj$cpJoinTgOrig
     }
-    if (
-      !"thresholdOrigin" %in% names(obj) &&
-        "locFinalThresholdOrigin" %in% names(obj)
-    ) {
-      obj$thresholdOrigin <- obj$locFinalThresholdOrigin
+  }
+  if (detailObject == "locDetailClusterFinal") {
+    if (!"detailLevel" %in% names(obj)) {
+      obj$detailLevel <- "cluster_final"
     }
-    if (!"nCellStim" %in% names(obj) && "locFinalNCellStim" %in% names(obj)) {
-      obj$nCellStim <- obj$locFinalNCellStim
-    }
-    if (!"nCellUns" %in% names(obj) && "locFinalNCellUns" %in% names(obj)) {
-      obj$nCellUns <- obj$locFinalNCellUns
-    }
-    if (!"propStim" %in% names(obj) && "locFinalPropStim" %in% names(obj)) {
-      obj$propStim <- obj$locFinalPropStim
-    }
-    if (!"propUns" %in% names(obj) && "locFinalPropUns" %in% names(obj)) {
-      obj$propUns <- obj$locFinalPropUns
-    }
-    if (!"propBs" %in% names(obj) && "locFinalPropBs" %in% names(obj)) {
-      obj$propBs <- obj$locFinalPropBs
+    columns <- c(
+      threshold = "locFinalThreshold",
+      thresholdOrigin = "locFinalThresholdOrigin",
+      nCellStim = "locFinalNCellStim",
+      nCellUns = "locFinalNCellUns",
+      propStim = "locFinalPropStim",
+      propUns = "locFinalPropUns",
+      propBs = "locFinalPropBs"
+    )
+    for (column in names(columns)) {
+      source <- columns[[column]]
+      if (!column %in% names(obj) && source %in% names(obj)) {
+        obj[[column]] <- obj[[source]]
+      }
     }
   }
   obj
@@ -248,16 +244,15 @@ getStimGatesDetailed <- function(
 .gateGetDetailedPathMeta <- function(pathCurr, pathInt) {
   pathCurrNorm <- normalizePath(pathCurr, winslash = "/", mustWork = FALSE)
   pathIntNorm <- normalizePath(pathInt, winslash = "/", mustWork = FALSE)
-  rel <- sub(
-    paste0("^", gsub("([\\\\.\"])", "\\\\\\1", pathIntNorm), "/?"),
-    "",
-    pathCurrNorm
-  )
-  parts <- strsplit(rel, "/", fixed = TRUE)[[1]]
+  rel <- substring(pathCurrNorm, nchar(pathIntNorm) + 2L)
+  parts <- strsplit(dirname(rel), "/", fixed = TRUE)[[1]]
+  if (identical(parts, ".")) {
+    parts <- character(0)
+  }
   detailObject <- sub("\\.rds$", "", basename(pathCurr))
   list(
-    stage = parts[[1]] %||% NA_character_,
-    chnl = parts[[2]] %||% NA_character_,
+    stage = if (length(parts) >= 1L) parts[[1]] else NA_character_,
+    chnl = if (length(parts) >= 2L) parts[[2]] else NA_character_,
     ind = if (length(parts) >= 4L && parts[[3]] == "ind") {
       parts[[4]]
     } else {

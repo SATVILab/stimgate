@@ -99,10 +99,10 @@ test_that(".tautStringPmden bimodal density has a clear dip between clusters", {
   expect_true(all(result$y >= 0))
 })
 
-test_that(".getCytPosTautStringDensity returns NULL for degenerate input", {
-  expect_null(.getCytPosTautStringDensity(numeric(0L)))
-  expect_null(.getCytPosTautStringDensity(rep(1.0, 3L)))
-  expect_null(.getCytPosTautStringDensity(c(1, 2, NA, NA, NA)))
+test_that("antimode density returns NULL for degenerate input", {
+  expect_null(.getCpUnsLocAntimodeDensity(numeric(0L)))
+  expect_null(.getCpUnsLocAntimodeDensity(rep(1.0, 3L)))
+  expect_null(.getCpUnsLocAntimodeDensity(c(1, 2, NA, NA, NA)))
 })
 
 test_that(".getCytPosTautStringAntimodes returns empty for unimodal density", {
