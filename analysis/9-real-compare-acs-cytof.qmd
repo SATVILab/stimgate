@@ -177,16 +177,18 @@ tcrgd_tester <- .acsCytofRunPopulation(
   outputGroup = "tester"
 )
 
-tcrgd_comparison_tester <- .acsCytofRunComparisonMethods(
-  pop = "tcrgd",
-  pathFcsBase = path_fcs_base,
-  pathGsBase = path_gs_base,
-  pathScratchBase = path_scratch_base,
-  runMethods = run_comparators,
-  nSample = tester_n_sample,
-  outputGroup = "tester",
-  pathFbeta = path_fbeta
-)
+if (isTRUE(run_comparators)) {
+  tcrgd_comparison_tester <- .acsCytofRunComparisonMethods(
+    pop = "tcrgd",
+    pathFcsBase = path_fcs_base,
+    pathGsBase = path_gs_base,
+    pathScratchBase = path_scratch_base,
+    runMethods = TRUE,
+    nSample = tester_n_sample,
+    outputGroup = "tester",
+    pathFbeta = path_fbeta
+  )
+}
 ```
 
 ### Across populations, in parallel
