@@ -217,6 +217,9 @@ test_that("analysis 6 QMD is chunk-stable and scores final sample frequencies", 
   expect_true(grepl("analysis_semantics_version", content, fixed = TRUE))
   expect_true(grepl("analysis_quick", content, fixed = TRUE))
   expect_true(grepl("analysis_dev", content, fixed = TRUE))
+  expect_true(grepl("analysis_grid_spec", content, fixed = TRUE))
+  expect_true(grepl("sim_grid_spec = analysis_grid_spec", content, fixed = TRUE))
+  expect_true(grepl("analysis_required_params", content, fixed = TRUE))
   expect_true(grepl(
     "sim_seed = as.integer(simulation_seed + sim_id - 1L)",
     content,
