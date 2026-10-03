@@ -10,17 +10,18 @@
 # their original high thresholds.
 #' @keywords internal
 .getCpCluster <- function(
-    .data,
-    gateTbl,
-    gateStatsTbl,
-    gateTblCtrl,
-    chnlSettings,
-    stage,
-    pathProject,
-    control = list(),
-    filterOtherCytPos,
-    calcCytPosGates,
-    indBatchList) {
+  .data,
+  gateTbl,
+  gateStatsTbl,
+  gateTblCtrl,
+  chnlSettings,
+  stage,
+  pathProject,
+  control = list(),
+  filterOtherCytPos,
+  calcCytPosGates,
+  indBatchList
+) {
   stageChnl <- file.path(stage, chnlSettings$chnlCut)
   control <- .getCpClusterControlUpdate(control)
   gateTbl <- .getCpClusterLocGateTblPrepare(gateTbl)
@@ -40,7 +41,7 @@
   )
 
   if (nrow(gateTblStim) == 0L) {
-    cpTbl <- tibble::tibble()
+    cpTbl <- .getCpClusterLocSkipOut(gateTblStim, "no_stimulated_samples")
     .intSave("all", stageChnl, pathProject, cpTbl)
     return(cpTbl)
   }
@@ -179,13 +180,14 @@
 
 #' @keywords internal
 .getCpClusterLocExLookup <- function(
-    .data,
-    indBatchList,
-    chnlSettings,
-    filterOtherCytPos,
-    calcCytPosGates,
-    gateTbl,
-    pathProject) {
+  .data,
+  indBatchList,
+  chnlSettings,
+  filterOtherCytPos,
+  calcCytPosGates,
+  gateTbl,
+  pathProject
+) {
   exPairs <- purrr::map(seq_along(indBatchList), function(i) {
     batch <- names(indBatchList)[i]
     exList <- .getExList(
@@ -223,10 +225,11 @@
 
 #' @keywords internal
 .getCpClusterLocApplyQuantiles <- function(
-    locTbl,
-    commonBw,
-    control,
-    nInitialClusters) {
+  locTbl,
+  commonBw,
+  control,
+  nInitialClusters
+) {
   clusterSummary <- locTbl |>
     dplyr::mutate(
       gateNumeric = suppressWarnings(as.numeric(.data$gate))
@@ -374,6 +377,9 @@
 
 #' @keywords internal
 .getCpClusterLocSkipOut <- function(gateTblStim, reason) {
+  if (nrow(gateTblStim) == 0L) {
+    return(.getCpClusterLocRowUnchanged(gateTblStim, reason)[0, ])
+  }
   purrr::map_df(seq_len(nrow(gateTblStim)), function(i) {
     .getCpClusterLocRowUnchanged(
       row = gateTblStim[i, , drop = FALSE],
