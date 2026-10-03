@@ -9,7 +9,7 @@ test_that("axisLimits works", {
   # -----------------
 
   # one element of length 1, no name
-  pAdj <- axisLimits(
+  pAdj <- .axisLimits(
     p = p,
     limitsExpand = list(-1e4)
   )
@@ -28,14 +28,14 @@ test_that("axisLimits works", {
 
   # two elements, no name
   expect_error(
-    axisLimits(
+    .axisLimits(
       p = p,
       limitsExpand = list(1e4, -5e2)
     )
   )
 
   # one element, no name
-  pAdj <- axisLimits(
+  pAdj <- .axisLimits(
     p = p,
     limitsExpand = list(c(1e4, -5e2))
   )
@@ -49,7 +49,7 @@ test_that("axisLimits works", {
   )
 
   # one element, one name
-  pAdj <- axisLimits(
+  pAdj <- .axisLimits(
     p = p,
     limitsExpand = list(x = c(1e4, -5e2))
   )
@@ -60,7 +60,7 @@ test_that("axisLimits works", {
       x = c(-5e2, 1e4)
     )
   )
-  pAdj <- axisLimits(
+  pAdj <- .axisLimits(
     p = p,
     limitsExpand = list(y = c(1e4, -5e2))
   )
@@ -73,7 +73,7 @@ test_that("axisLimits works", {
   )
 
   # two elements, both named
-  pAdj <- axisLimits(
+  pAdj <- .axisLimits(
     p = p,
     limitsExpand = list(
       y = c(1e4, -5e2),
@@ -93,7 +93,7 @@ test_that("axisLimits works", {
   # --------------------
 
   # just axis range equal
-  pAdj <- axisLimits(
+  pAdj <- .axisLimits(
     p = p,
     limitsEqual = TRUE
   )
@@ -105,7 +105,7 @@ test_that("axisLimits works", {
 
   # with limitsExpand
   # just axis range equal
-  pAdj <- axisLimits(
+  pAdj <- .axisLimits(
     p = p,
     limitsEqual = TRUE,
     limitsExpand = list(
@@ -124,7 +124,7 @@ test_that("axisLimits works", {
   )
 
   # just y-axis
-  pAdj <- axisLimits(
+  pAdj <- .axisLimits(
     p = p,
     limitsEqual = TRUE,
     limitsExpand = list(y = c(1e4, 200))
@@ -140,7 +140,7 @@ test_that("axisLimits works", {
   )
 
   # just x-axis
-  pAdj <- axisLimits(
+  pAdj <- .axisLimits(
     p = p,
     limitsEqual = TRUE,
     limitsExpand = list(x = c(1e4, 200))

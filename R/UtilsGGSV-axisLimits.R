@@ -3,7 +3,7 @@
 #' Manage axis limits.
 #'  Fix axis limits to be equal between x- and y-axes,
 #' and/or expand axis coordinates.
-#' The primary use of `axisLimits`
+#' The primary use of `.axisLimits`
 #' is forcing the x- and y-axes
 #' to have the same limits "automatically"
 #' (i.e. by inspecting the `ggplot` object,
@@ -25,56 +25,9 @@
 #' applied. Default is FALSE.
 #'
 #' @return A ggplot object with adjusted axis limits.
-#'
-#' @export
-#'
-#' @examples
-#' data("cars", package = "datasets")
-#' p <- ggplot2::ggplot(cars, ggplot2::aes(speed, dist)) +
-#'   ggplot2::geom_point()
-#'
-#' axisLimits(
-#'   p,
-#'   limitsEqual = TRUE
-#' )
-#'
-#' # both axes
-#' axisLimits(
-#'   p,
-#'   limitsExpand = list(200)
-#' )
-#' # x only
-#' axisLimits(
-#'   p,
-#'   limitsExpand = list(x = 75)
-#' )
-#' # y only
-#' axisLimits(
-#'   p,
-#'   limitsExpand = list(y = 200)
-#' )
-#' # lower and upper expansion
-#' axisLimits(
-#'   p,
-#'   limitsExpand = list(
-#'     y = c(-50, 200),
-#'     x = c(-10, 75)
-#'   )
-#' )
-#'
-#' # note that when fixing range and expanding, range is fixed
-#' # after expansions are applied, so effectively the larger
-#' # expansions apply to both.
-#' # compare the following output to the previous output:
-#' axisLimits(
-#'   p,
-#'   limitsExpand = list(
-#'     y = c(-50, 200),
-#'     x = c(-10, 75)
-#'   ),
-#'   limitsEqual = TRUE
-#' )
-axisLimits <- function(p, limitsExpand = NULL, limitsEqual = FALSE) {
+#' @keywords internal
+#' @noRd
+.axisLimits <- function(p, limitsExpand = NULL, limitsEqual = FALSE) {
   # initial check
   # ------------------------
 

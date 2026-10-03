@@ -254,7 +254,7 @@ plotCyto <- function(
   if (is.null(limitsExpand)) {
     return(p)
   }
-  axisLimits(
+  .axisLimits(
     p = p,
     limitsExpand = limitsExpand
   )
@@ -327,7 +327,7 @@ plotCyto <- function(
 
 #' @keywords internal
 .plotCytoBivAxesExpand <- function(p, limitsEqual, limitsExpand) {
-  axisLimits(
+  .axisLimits(
     p = p,
     limitsExpand = limitsExpand,
     limitsEqual = limitsEqual

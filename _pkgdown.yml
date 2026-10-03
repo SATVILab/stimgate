@@ -24,7 +24,6 @@ reference:
 - title: Utilities
   desc: Helper and utility functions
   contents:
-  - axisLimits
   - chnlLab
   - getBatchList
   - getExampleData
