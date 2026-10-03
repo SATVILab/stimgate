@@ -408,6 +408,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     dirCache = dir_output,
     pathProgress = path_progress_file,
     resume = TRUE,
+    retryErrors = TRUE,
     sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) {
       sim_grid_chunk_index
     } else {
