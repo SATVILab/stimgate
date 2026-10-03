@@ -157,6 +157,8 @@ gateStim(
   batchList = exampleData$batchList,
   marker = exampleData$marker
 )
+#> shared bandwidth for MarkerF1: 0.329
+#> shared bandwidth for MarkerF2: 0.334
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -168,7 +170,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpVTh1DV/stimgate_example_data_1bd05fa951d9/stimgate"
+#> [1] "/tmp/RtmpHrLRIa/stimgate_example_data_1b3d2295a4d6/stimgate"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {

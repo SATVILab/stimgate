@@ -25,7 +25,7 @@ background cytokine production, and technical variability."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -92,6 +92,7 @@ background cytokine production, and technical variability.</p>
 <span>  bwNcellMin <span class="op">=</span> <span class="fl">100</span>,</span>
 <span>  bwNcellMax <span class="op">=</span> <span class="fl">1e+05</span>,</span>
 <span>  bwCluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  bwScope <span class="op">=</span> <span class="st">"cytokine"</span>,</span>
 <span>  bwAdaptive <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  bwAdaptiveDensityN <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  bwAdaptivePadFrac <span class="op">=</span> <span class="fl">0.15</span>,</span>
@@ -252,11 +253,31 @@ Default is <code>"auto"</code>.</p></dd>
 
 
 <dt id="arg-bwcluster">bwCluster<a class="anchor" aria-label="anchor" href="#arg-bwcluster"></a></dt>
-<dd><p>numeric. Optional fallback bandwidth for cluster-based
-local-FDR refinement. The cluster step first tries to use the median
-bandwidth across samples with directly generated local-FDR thresholds.
-<code>bwCluster</code> is used when that common bandwidth cannot be estimated. Default
-is <code>NULL</code>.</p></dd>
+<dd><p>numeric or NULL. Bandwidth for the densities clustered by
+the cluster-based threshold sharing (<code>tolClust</code>). When <code>NULL</code>, the shared
+local-FDR bandwidth (see <code>bwScope</code>) is used, or, with
+<code>bwScope = "sample"</code>, the median bandwidth across samples with directly
+generated local-FDR thresholds. Default is <code>NULL</code>.</p></dd>
+
+
+<dt id="arg-bwscope">bwScope<a class="anchor" aria-label="anchor" href="#arg-bwscope"></a></dt>
+<dd><p>"cytokine", "cluster" or "sample". Which samples share the
+scalar local-FDR bandwidth. <code>"cytokine"</code> estimates the bandwidths of
+about 100 tubes spread across the batches (all tubes when there are
+fewer) and uses their 10% trimmed mean for every sample of the channel.
+<code>"cluster"</code> clusters all tubes on their densities up to the right shoulder
+of the left modal complex, estimates bandwidths for about 100 tubes spread
+across the clusters (all tubes when there are fewer, and at least one per
+cluster) and gives each tube its cluster's median bandwidth. <code>"sample"</code>
+estimates the bandwidth separately for every stimulated sample. Tubes with
+fewer than <code>minCell</code> cells are excluded from shared bandwidths. In every
+case a sample uses the smaller of its stimulated and unstimulated tube
+bandwidths. The chosen values are reported while gating and saved as
+<code>bwShared</code> (and, for <code>"cluster"</code>, the per-tube table <code>bwSharedTbl</code>) in
+<code>stimgateMetaReadSettingsChnls(pathProject)</code>, so an automatic value can be
+inspected and then fixed for a marker through <code>bw</code> in <code>markerSettings</code>.
+Ignored if <code>bw</code> is set or the adaptive bandwidth is used.
+Default is <code>"cytokine"</code>.</p></dd>
 
 
 <dt id="arg-bwadaptive">bwAdaptive<a class="anchor" aria-label="anchor" href="#arg-bwadaptive"></a></dt>
@@ -539,6 +560,8 @@ clustered gate when none is available</p></li>
 <span class="r-in"><span>  batchList <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span>,</span></span>
 <span class="r-in"><span>  marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF1: 0.329</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF2: 0.334</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting base gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
@@ -550,7 +573,7 @@ clustered gate when none is available</p></li>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpVTh1DV/demonstration"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpHrLRIa/demonstration"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create plots</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"hexbin"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>

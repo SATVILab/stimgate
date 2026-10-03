@@ -38,6 +38,7 @@ gateStim(
   bwNcellMin = 100,
   bwNcellMax = 1e+05,
   bwCluster = NULL,
+  bwScope = "cytokine",
   bwAdaptive = FALSE,
   bwAdaptiveDensityN = NULL,
   bwAdaptivePadFrac = 0.15,
@@ -225,11 +226,32 @@ gateStim(
 
 - bwCluster:
 
-  numeric. Optional fallback bandwidth for cluster-based local-FDR
-  refinement. The cluster step first tries to use the median bandwidth
-  across samples with directly generated local-FDR thresholds.
-  `bwCluster` is used when that common bandwidth cannot be estimated.
-  Default is `NULL`.
+  numeric or NULL. Bandwidth for the densities clustered by the
+  cluster-based threshold sharing (`tolClust`). When `NULL`, the shared
+  local-FDR bandwidth (see `bwScope`) is used, or, with
+  `bwScope = "sample"`, the median bandwidth across samples with
+  directly generated local-FDR thresholds. Default is `NULL`.
+
+- bwScope:
+
+  "cytokine", "cluster" or "sample". Which samples share the scalar
+  local-FDR bandwidth. `"cytokine"` estimates the bandwidths of about
+  100 tubes spread across the batches (all tubes when there are fewer)
+  and uses their 10% trimmed mean for every sample of the channel.
+  `"cluster"` clusters all tubes on their densities up to the right
+  shoulder of the left modal complex, estimates bandwidths for about 100
+  tubes spread across the clusters (all tubes when there are fewer, and
+  at least one per cluster) and gives each tube its cluster's median
+  bandwidth. `"sample"` estimates the bandwidth separately for every
+  stimulated sample. Tubes with fewer than `minCell` cells are excluded
+  from shared bandwidths. In every case a sample uses the smaller of its
+  stimulated and unstimulated tube bandwidths. The chosen values are
+  reported while gating and saved as `bwShared` (and, for `"cluster"`,
+  the per-tube table `bwSharedTbl`) in
+  `stimgateMetaReadSettingsChnls(pathProject)`, so an automatic value
+  can be inspected and then fixed for a marker through `bw` in
+  `markerSettings`. Ignored if `bw` is set or the adaptive bandwidth is
+  used. Default is `"cytokine"`.
 
 - bwAdaptive:
 
@@ -549,6 +571,8 @@ gateStim(
   batchList = exampleData$batchList,
   marker = exampleData$marker
 )
+#> shared bandwidth for MarkerF1: 0.329
+#> shared bandwidth for MarkerF2: 0.334
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -560,7 +584,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpVTh1DV/demonstration"
+#> [1] "/tmp/RtmpHrLRIa/demonstration"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {

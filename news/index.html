@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,16 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.8" id="stimgate-0998">stimgate 0.99.8<a class="anchor" aria-label="anchor" href="#stimgate-0998"></a></h2>
+<div class="section level3">
+<h3 id="new-features-0-99-8">New features<a class="anchor" aria-label="anchor" href="#new-features-0-99-8"></a></h3>
+<ul><li>
+<code>gateStim(bwScope = )</code> chooses which samples share the scalar local-FDR bandwidth: <code>"cytokine"</code> (new default; one trimmed-mean bandwidth per channel from about 100 tubes), <code>"cluster"</code> (one bandwidth per cluster of similarly shaped tubes) or <code>"sample"</code> (previous per-sample behaviour). The chosen values are reported and saved in the channel settings, so they can be inspected and fixed via <code>bw</code>.</li>
+<li>
+<code>bwCluster</code> is no longer estimated automatically. When <code>NULL</code>, cluster-based threshold sharing uses the shared local-FDR bandwidth; a supplied <code>bwCluster</code> now takes precedence rather than being a fallback.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.5" id="stimgate-0995">stimgate 0.99.5<a class="anchor" aria-label="anchor" href="#stimgate-0995"></a></h2>
 <div class="section level3">
