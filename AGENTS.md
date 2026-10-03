@@ -217,6 +217,10 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
   selection and must not silently replace the final frequency estimand.
+- Preserve StimGate threshold provenance in method-comparison outputs. A finite
+  high-value fallback is still a fallback: use `locGenerated`,
+  `locGeneratedDirect`, `locSource` and `locReason` from the final gate
+  table rather than inferring success solely from `is.finite(threshold)`.
 - Checks that analysis wrapper parameters forwarded to `gateStim()` still exist
   in the current package API.
 - Checks that removed arguments (e.g. `calcSinglePosGates`) are not reintroduced.
