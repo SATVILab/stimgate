@@ -515,44 +515,50 @@ if (!exists("run_ctx")) {
   run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
 }
 
-path_rds <- .analysis_current_file(
-  run_ctx = run_ctx,
-  relative_path = c("collated", "compare_raw.rds"),
-  required_params = list(
-    comparison_semantics_version = comparison_semantics_version
-  )
-)
+results_available <- file.exists(file.path(run_ctx$current_dir, "COMPLETE"))
 
-if (!exists("compare_raw") || nrow(compare_raw) == 0L) {
+if (isTRUE(results_available)) {
+  path_rds <- .analysis_current_file(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "compare_raw.rds"),
+    required_params = list(
+      comparison_semantics_version = comparison_semantics_version
+    )
+  )
   compare_raw <- readRDS(path_rds)
-}
 
-if (!exists("compare_raw") || nrow(compare_raw) == 0L) {
-  stop("Canonical compare_raw.rds is empty. Rerun the simulation analysis.")
-}
+  if (nrow(compare_raw) == 0L) {
+    stop("Canonical compare_raw.rds is empty. Rerun the simulation analysis.")
+  }
 
-compare_summary <- .simCompareSummariseFreqBs(
-  compare_raw,
-  scenarioCols = c(
-    "mismatch_type",
-    "mismatch_val",
-    "stim_mean_shift",
-    "stim_mean_shift_clusters",
-    "stim_sd_multiplier",
-    "stim_sd_multiplier_clusters",
-    "sd_increase",
-    "transformation",
-    "mean_pos_setting",
-    "mean_pos",
-    "prob_response",
-    "n_cell",
-    "scenario_desc",
-    "approach",
-    "method"
+  compare_summary <- .simCompareSummariseFreqBs(
+    compare_raw,
+    scenarioCols = c(
+      "mismatch_type",
+      "mismatch_val",
+      "stim_mean_shift",
+      "stim_mean_shift_clusters",
+      "stim_sd_multiplier",
+      "stim_sd_multiplier_clusters",
+      "sd_increase",
+      "transformation",
+      "mean_pos_setting",
+      "mean_pos",
+      "prob_response",
+      "n_cell",
+      "scenario_desc",
+      "approach",
+      "method"
+    )
   )
-)
 
-compare_summary
+  compare_summary
+} else {
+  compare_summary <- tibble::tibble()
+  message(
+    "Canonical results are not complete yet; skipping summary and plots for this chunk."
+  )
+}
 ```
 
 ### Mean-shift degradation curves (all components vs negative only)
@@ -565,7 +571,11 @@ plot_dir <- projr::projr_path_get(
   "freq_bs_batch",
   "mean_shift_degradation"
 )
-if (dir.exists(plot_dir)) {
+if (
+  isTRUE(run_plots) &&
+    isTRUE(results_available) &&
+    dir.exists(plot_dir)
+) {
   unlink(plot_dir, recursive = TRUE)
 }
 ```
@@ -576,7 +586,7 @@ if (dir.exists(plot_dir)) {
 #| label: plot-mean-shift-degradation-median
 #| fig-width: 10
 #| fig-height: 9
-if (isTRUE(run_plots)) {
+if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_mean_shift <- compare_summary |>
     dplyr::filter(
       mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
@@ -655,7 +665,7 @@ if (isTRUE(run_plots)) {
 #| label: plot-mean-shift-degradation-max
 #| fig-width: 10
 #| fig-height: 9
-if (isTRUE(run_plots)) {
+if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_mean_shift <- compare_summary |>
     dplyr::filter(
       mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
@@ -733,7 +743,7 @@ if (isTRUE(run_plots)) {
 #| label: plot-mean-shift-degradation-q90
 #| fig-width: 10
 #| fig-height: 9
-if (isTRUE(run_plots)) {
+if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_mean_shift <- compare_summary |>
     dplyr::filter(
       mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
@@ -815,7 +825,11 @@ plot_dir <- projr::projr_path_get(
   "freq_bs_batch",
   "sd_inflation_degradation"
 )
-if (dir.exists(plot_dir)) {
+if (
+  isTRUE(run_plots) &&
+    isTRUE(results_available) &&
+    dir.exists(plot_dir)
+) {
   unlink(plot_dir, recursive = TRUE)
 }
 ```
@@ -824,7 +838,7 @@ if (dir.exists(plot_dir)) {
 #| label: plot-sd-inflation-degradation
 #| fig-width: 10
 #| fig-height: 8
-if (isTRUE(run_plots)) {
+if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_sd <- compare_summary |>
     dplyr::filter(mismatch_type == "sd_inflation")
 
@@ -890,7 +904,7 @@ if (isTRUE(run_plots)) {
 #| label: plot-threshold-placement-unstim
 #| fig-width: 10
 #| fig-height: 9
-if (isTRUE(run_plots)) {
+if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_shifts <- compare_summary |>
     dplyr::filter(
       mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
@@ -966,7 +980,7 @@ if (isTRUE(run_plots)) {
 #| label: plot-upper-tail-and-fallbacks
 #| fig-width: 10
 #| fig-height: 8
-if (isTRUE(run_plots)) {
+if (isTRUE(run_plots) && isTRUE(results_available)) {
   for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     compare_summary_curr <- compare_summary |>
       dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
