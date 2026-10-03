@@ -344,3 +344,18 @@ test_that("test plotCyto import and dependencies", {
 # if (dir.exists(exampleData$path_gs)) {
 #   unlink(exampleData$path_gs, recursive = TRUE)
 # }
+
+test_that("plotStim keeps univariate plots when excMin = FALSE", {
+  pList <- plotStim(
+    ind = exampleData$batchList[[1]],
+    .data = gs,
+    pathProject = pathProject,
+    chnl = exampleData$chnl[1],
+    excMin = FALSE,
+    grid = FALSE
+  )
+  expect_length(pList, 1L)
+  expect_s3_class(pList[[1]], "ggplot")
+  expect_no_warning(layerTbl <- ggplot2::layer_data(pList[[1]], 1L))
+  expect_gt(nrow(layerTbl), 0L)
+})

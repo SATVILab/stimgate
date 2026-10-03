@@ -671,11 +671,11 @@ plotStim <- function(
     plotTbl,
     densObjRaw,
     exTbl) {
+  plotTbl[, "type"] <- "raw"
   if (!excMin) {
-    return(NULL)
+    return(plotTbl)
   }
   probGMin <- attr(exTbl, "probGMin")[[1]][[1]][[1]]
-  plotTbl[, "type"] <- "raw"
   densObjAdj <- densObjRaw
   densObjAdj$y <- densObjAdj$y * probGMin
   plotTblAdj <- tibble::tibble(
@@ -721,11 +721,9 @@ plotStim <- function(
     }
   } else {
     if (length(ind) > 1L) {
-      ggplot(plotTbl, aes(x = x, y = y, colour = indLab)) +
-        scale_alpha_manual(values = alphaLabVec)
+      ggplot(plotTbl, aes(x = x, y = y, colour = indLab))
     } else {
-      ggplot(plotTbl, aes(x = x, y = y)) +
-        scale_alpha_manual(values = alphaLabVec)
+      ggplot(plotTbl, aes(x = x, y = y))
     }
   }
   p +
