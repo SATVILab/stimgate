@@ -72,7 +72,7 @@ test_that("detailed channel fallback preserves existing channels", {
     tibble::tibble(chnl = c(NA_character_, "BC2"), threshold = c(1, 2)),
     file.path(path_dir, "locDetailSample.rds")
   )
-  detail <- getStimGatesDetailed(path_project, pop = "CD4", save = TRUE)
+  detail <- getStimGatesDetailed(path_project, save = TRUE)
   expect_identical(detail$chnl, c("BC1", "BC2"))
   expect_identical(detail$pop, rep(NA_character_, 2))
   expect_identical(

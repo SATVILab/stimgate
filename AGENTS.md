@@ -46,7 +46,7 @@ unstimulated background.
 | Data manipulation | `dplyr`, `purrr`, `tidyr`, `tibble`, `stringr`, `rlang` |
 | Plotting | `ggplot2`, `cowplot` |
 | Statistical modelling | `scam`, `mgcv` |
-| Clustering | `cluster`, `gtools` |
+| Clustering | `cluster` |
 | Dependency management | `renv` |
 | CI | GitHub Actions (R-CMD-check, pkgdown, Codecov) |
 

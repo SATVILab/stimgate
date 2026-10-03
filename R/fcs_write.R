@@ -71,7 +71,8 @@
 #' #   gateTbl = gateTbl
 #' # )
 #' }
-#' @return The output directory path, invisibly.
+#' @return A tibble manifest with one row per sample, invisibly. The output
+#'   directory path is attached as the attribute \code{"pathDirSave"}.
 #' @export
 writeStimFCS <- function(
   pathProject, # project directory
@@ -127,7 +128,7 @@ writeStimFCS <- function(
 
   nFn <- length(.data)
 
-  purrr::walk(seq_along(.data), function(ind) {
+  manifestRows <- purrr::map(seq_along(.data), function(ind) {
     txt <- paste0("Writing ", ind, " of ", nFn, " files")
     message(txt)
     .fcsWriteImpl(
@@ -141,10 +142,29 @@ writeStimFCS <- function(
       gateTypeCytPos = gateTypeCytPos,
       combnExc = combnExc,
       transFn = transFn,
-      transChnl = transChnl
+      transChnl = transChnl,
+      indBatchList = indBatchList
     )
   })
-  invisible(pathDirSave)
+  manifest <- if (nFn == 0L) {
+    tibble::tibble(
+      ind = character(0),
+      batch = character(0),
+      fileName = character(0),
+      nCellPos = integer(0),
+      written = logical(0),
+      reason = character(0)
+    )
+  } else {
+    dplyr::bind_rows(manifestRows)
+  }
+  utils::write.csv(
+    manifest,
+    file = file.path(pathDirSave, "manifest.csv"),
+    row.names = FALSE
+  )
+  attr(manifest, "pathDirSave") <- pathDirSave
+  invisible(manifest)
 }
 
 
@@ -329,16 +349,32 @@ writeStimFCS <- function(
   gateTypeCytPos,
   combnExc,
   transFn,
-  transChnl
+  transChnl,
+  indBatchList = NULL
 ) {
   fr <- flowWorkspace::gh_pop_get_data(.data[[ind]], y = pop)
   if (inherits(fr, "cytoframe")) {
     fr <- flowWorkspace::cytoframe_to_flowFrame(fr)
   }
+  guid <- flowCore::keyword(fr)[["GUID"]]
+  fileName <- if (!is.null(guid) && length(guid) > 0L && !is.na(guid[[1]])) {
+    basename(as.character(guid[[1]]))
+  } else {
+    basename(as.character(flowCore::identifier(fr)))
+  }
+  batch <- .fcsWriteGetBatch(ind, indBatchList)
+
   ex <- flowCore::exprs(fr) |> tibble::as_tibble()
 
-  if (is.na(ex[1, chnl[1]]) && nrow(ex) == 1) {
-    return(invisible(FALSE))
+  if (nrow(ex) == 0L || (nrow(ex) == 1L && is.na(ex[[chnl[1]]][1]))) {
+    return(tibble::tibble(
+      ind = as.character(ind),
+      batch = as.character(batch),
+      fileName = fileName,
+      nCellPos = 0L,
+      written = FALSE,
+      reason = "empty_sample"
+    ))
   }
 
   gateTblInd <- gateTbl |>
@@ -352,9 +388,16 @@ writeStimFCS <- function(
     gateTypeCytPos = gateTypeCytPos
   )
 
-  if (nrow(ex) == 0) {
+  if (nrow(ex) == 0L) {
     message("No stimulation-positive cells. No FCS file written.")
-    return(invisible(FALSE))
+    return(tibble::tibble(
+      ind = as.character(ind),
+      batch = as.character(batch),
+      fileName = fileName,
+      nCellPos = 0L,
+      written = FALSE,
+      reason = "no_positive_cells"
+    ))
   }
 
   ex <- .dataGetExCytPosExc(
@@ -365,17 +408,51 @@ writeStimFCS <- function(
     gateTypeCytPos = gateTypeCytPos
   )
 
-  if (nrow(ex) == 0) {
+  if (nrow(ex) == 0L) {
     message(
       "No cells after excluding particular combinations. No FCS file written."
     )
-    return(invisible(FALSE))
+    return(tibble::tibble(
+      ind = as.character(ind),
+      batch = as.character(batch),
+      fileName = fileName,
+      nCellPos = 0L,
+      written = FALSE,
+      reason = "none_after_exclusion"
+    ))
   }
 
+  nCellPos <- as.integer(nrow(ex))
   ex <- .dataGetExTrans(ex, transFn, transChnl)
 
   .fcsWriteImplWrite(ex, fr, pathDirSave)
-  invisible(TRUE)
+  tibble::tibble(
+    ind = as.character(ind),
+    batch = as.character(batch),
+    fileName = fileName,
+    nCellPos = nCellPos,
+    written = TRUE,
+    reason = "written"
+  )
+}
+
+#' @keywords internal
+.fcsWriteGetBatch <- function(ind, indBatchList) {
+  bNames <- names(indBatchList)
+  if (!is.list(indBatchList) || is.null(bNames)) {
+    return(NA_character_)
+  }
+  for (i in seq_along(indBatchList)) {
+    items <- indBatchList[[i]]
+    if (as.character(ind) %in% as.character(items)) {
+      b <- bNames[i]
+      if (!is.na(b) && nzchar(b)) {
+        return(as.character(b))
+      }
+      return(NA_character_)
+    }
+  }
+  NA_character_
 }
 
 #' @keywords internal
