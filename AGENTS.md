@@ -485,6 +485,8 @@ QMD runtime or unrelated plotting/orchestration code.
 
 ### Saved expression and stimulation gates
 
+Reuse `.gateGetDirs()` for prefixed directory discovery and `.getExChnlPathDir()`
+for saved expression paths, preserving each caller's validation and missing-path handling.
 Saved expression includes unstimulated samples, while final stimulation gate
 tables omit them. Positivity helpers must treat channels with no gate for the
 current sample as all-FALSE, preserving one logical value per cell.

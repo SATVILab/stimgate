@@ -330,9 +330,7 @@ getStimExpr <- function(
   if (!dir.exists(pathDir)) {
     return(character(0))
   }
-  dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
-  dirVec <- dirVec[nzchar(dirVec) & grepl("^pop_", dirVec)]
-  popVec <- unique(sub("^pop_", "", dirVec))
+  popVec <- .gateGetDirs(pathDir, "pop_")
   .assertStringVector(popVec)
   popVec
 }
@@ -346,9 +344,7 @@ getStimExpr <- function(
   if (!dir.exists(pathDir)) {
     return(character(0))
   }
-  dirVec <- list.dirs(pathDir, full.names = FALSE, recursive = FALSE)
-  dirVec <- dirVec[nzchar(dirVec) & grepl("^ind_", dirVec)]
-  indVec <- unique(sub("^ind_", "", dirVec))
+  indVec <- .gateGetDirs(pathDir, "ind_")
   .assertStringVector(indVec)
   indVec
 }
@@ -361,12 +357,7 @@ getStimExpr <- function(
   ind <- ind %||% .getExProjectInd(pathProject, pop)
   ind <- ind[[1]]
   .assertString(ind)
-  pathChnlDir <- file.path(
-    pathProject,
-    "sampleData",
-    paste0("pop_", pop),
-    paste0("ind_", ind)
-  )
+  pathChnlDir <- .getExChnlPathDir(ind, pop, pathProject)
   .assertString(pathChnlDir)
   if (!dir.exists(pathChnlDir)) {
     return(character(0))
