@@ -499,6 +499,18 @@
   stimSdMultiplierClusters = NULL,
   scenario = NULL
 ) {
+  simcytoArgs <- names(formals(simcyto::simCytExperiment))
+  clusterShiftSupported <- !is.null(simcytoArgs) &&
+    "stimMeanShiftClusters" %in% simcytoArgs
+  clusterSdSupported <- !is.null(simcytoArgs) &&
+    "stimSdMultiplierClusters" %in% simcytoArgs
+
+  selectiveShift <- !is.null(stimMeanShiftClusters)
+  selectiveSd <- !is.null(stimSdMultiplierClusters)
+
+  # If the installed simcyto supports selective mismatch, let simcyto apply it
+  # exactly once. For older simcyto versions, neutralise the global mismatch
+  # during simulation and apply the selective mismatch locally afterwards.
   callArgs <- list(
     nSample = nSample,
     nMarker = nMarker,
@@ -517,33 +529,58 @@
     clusterPerturbationSd = clusterPerturbationSd,
     covEvMin = covEvMin,
     covEvMax = covEvMax,
-    stimMeanShift = stimMeanShift,
-    stimSdMultiplier = stimSdMultiplier,
+    stimMeanShift = if (selectiveShift && !clusterShiftSupported) {
+      0
+    } else {
+      stimMeanShift
+    },
+    stimSdMultiplier = if (selectiveSd && !clusterSdSupported) {
+      1
+    } else {
+      stimSdMultiplier
+    },
     scenario = scenario
   )
 
-  simcytoArgs <- names(formals(simcyto::simCytExperiment))
-  clusterShiftSupported <- !is.null(simcytoArgs) &&
-    "stimMeanShiftClusters" %in% simcytoArgs
-  clusterSdSupported <- !is.null(simcytoArgs) &&
-    "stimSdMultiplierClusters" %in% simcytoArgs
-
-  if (clusterShiftSupported && !is.null(stimMeanShiftClusters)) {
+  if (clusterShiftSupported && selectiveShift) {
     callArgs$stimMeanShiftClusters <- stimMeanShiftClusters
   }
-  if (clusterSdSupported && !is.null(stimSdMultiplierClusters)) {
+  if (clusterSdSupported && selectiveSd) {
     callArgs$stimSdMultiplierClusters <- stimSdMultiplierClusters
   }
 
   result <- do.call(simcyto::simCytExperiment, callArgs)
 
-  .simCompareApplyClusterMismatch(
-    outListExperiment = result,
-    stimMeanShift = stimMeanShift,
-    stimSdMultiplier = stimSdMultiplier,
-    stimMeanShiftClusters = stimMeanShiftClusters,
-    stimSdMultiplierClusters = stimSdMultiplierClusters
-  )
+  if (
+    (selectiveShift && !clusterShiftSupported) ||
+      (selectiveSd && !clusterSdSupported)
+  ) {
+    result <- .simCompareApplyClusterMismatch(
+      outListExperiment = result,
+      stimMeanShift = if (selectiveShift && !clusterShiftSupported) {
+        stimMeanShift
+      } else {
+        0
+      },
+      stimSdMultiplier = if (selectiveSd && !clusterSdSupported) {
+        stimSdMultiplier
+      } else {
+        1
+      },
+      stimMeanShiftClusters = if (selectiveShift && !clusterShiftSupported) {
+        stimMeanShiftClusters
+      } else {
+        NULL
+      },
+      stimSdMultiplierClusters = if (selectiveSd && !clusterSdSupported) {
+        stimSdMultiplierClusters
+      } else {
+        NULL
+      }
+    )
+  }
+
+  result
 }
 
 #' @keywords internal
