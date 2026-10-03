@@ -543,18 +543,14 @@ test_that("Analysis 7 and Analysis 8 namespaces are isolated", {
 
   content8 <- paste(lines8, collapse = "\n")
   # Analysis 8 run context should be in freq_bs_batch namespace
-  expect_true(grepl('c\\("sim",\\s*"compare",\\s*"freq_bs_batch"\\)', content8) ||
-    grepl('"log"[^)]*"freq_bs_batch"', content8))
-  # The shared runtime derives the progress-log namespace from analysis_key.
+  expect_true(grepl('c\\("sim",\\s*"compare",\\s*"freq_bs_batch"\\)', content8))
+  # The shared runtime derives the run-state namespace from analysis_key.
   expect_true(
-    grepl('"log"[^)]*"freq_bs_batch"', content8) ||
-      (
-        grepl(
-          'analysis_key\\s*<-\\s*c\\([^)]*"freq_bs_batch"',
-          content8
-        ) &&
-          grepl("analysis_key = analysis_key", content8, fixed = TRUE)
-      )
+    grepl(
+      'analysis_key\\s*<-\\s*c\\([^)]*"freq_bs_batch"',
+      content8
+    ) &&
+      grepl("analysis_key = analysis_key", content8, fixed = TRUE)
   )
 })
 

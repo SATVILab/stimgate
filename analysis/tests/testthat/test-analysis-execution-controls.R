@@ -143,14 +143,8 @@ test_that("QMDs with run contexts can read canonical results without run_ctx", {
       chunks[[ind_sim]],
       fixed = TRUE
     )
-    later_read_only_fallback <- grepl(
-      paste0(
-        'if (!exists("run_ctx")) {\n',
-        "  run_ctx <- .analysis_results_context(analysis_key"
-      ),
-      first_use,
-      fixed = TRUE
-    )
+    later_read_only_fallback <- grepl('if (!exists("run_ctx"))', first_use, fixed = TRUE) &&
+      grepl("run_ctx <- .analysis_results_context(", first_use, fixed = TRUE)
 
     expect_true(
       inline_read_only_branch || later_read_only_fallback,

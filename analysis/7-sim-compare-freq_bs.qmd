@@ -16,6 +16,14 @@ params:
   run_plots: false
 ---
 
+This analysis compares background-subtracted response frequencies from StimGate,
+F-beta and Tailgate. Paired stimulated and unstimulated samples are simulated
+with different response frequencies, cell counts and expression distributions.
+The estimates are compared with the known response frequency and their threshold
+fallbacks are recorded.
+
+## Set-up
+
 ```{r}
 #| label: setup
 #| include: false
@@ -27,13 +35,13 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/7-sim-compare-freq_bs.qmd"
 
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
@@ -55,7 +63,9 @@ if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
 comparison_semantics_version <- "corrected-comparison-v4"
-analysis_dev <- isTRUE(.isDev())
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -78,25 +88,11 @@ if (
 ) {
   devtools::load_all(root_dir)
 } else {
-  fn_vec <- list.files(file.path(root_dir, "R"), full.names = TRUE)
-  for (fn in fn_vec) {
-    source(fn)
-  }
+  stop("Expected the stimgate DESCRIPTION at the repository root: ", root_dir)
 }
 
-# Tailgate failures are otherwise converted to high-threshold fallbacks by the
-# comparison helper, so missing cytoUtils must fail before a comparison run.
-if (
-  isTRUE(run_simulations) &&
-    !requireNamespace("cytoUtils", quietly = TRUE)
-) {
-  stop("Package 'cytoUtils' is required for tailgate comparisons.")
-}
-if (
-  isTRUE(run_simulations) &&
-    !requireNamespace("reticulate", quietly = TRUE)
-) {
-  stop("Package 'reticulate' is required for F-beta comparisons.")
+if (isTRUE(run_simulations)) {
+  .analysis_require_packages(c("cytoUtils", "openCyto", "flowStats", "simcyto"))
 }
 
 # Source simulation helpers in dependency order:
@@ -112,6 +108,8 @@ for (fn in c(
 }
 
 ```
+
+## Scientific settings
 
 ### Aim
 
@@ -194,8 +192,8 @@ stimgate_bw_max <- "none"
 tol_clust <- 1e-7
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
-n_sample_sim <- 10
-n_iter_sim <- 2
+n_sample_sim <- if (analysis_quick) 1L else 10
+n_iter_sim <- if (analysis_quick) 1L else 2
 
 fbeta_beta <- 0.8
 fbeta_theta <- 2
@@ -206,8 +204,11 @@ path_fbeta <- file.path(
   "python",
   "fbeta.py"
 )
-if (isTRUE(run_simulations) && !file.exists(path_fbeta)) {
-  stop("F-beta comparison script not found: ", path_fbeta)
+if (isTRUE(run_simulations)) {
+  if (!file.exists(path_fbeta)) {
+    stop("F-beta comparison script not found: ", path_fbeta)
+  }
+  .simCompareFbetaEnvironment(pathFbeta = path_fbeta)
 }
 
 tailgate_adjust <- 1
@@ -217,10 +218,13 @@ tailgate_auto_tol <- TRUE
 tailgate_x <- "stim"
 ```
 
+## Simulation
+
 ### Simulation grid
 
 ```{r}
 #| label: compare-grid
+#| include: false
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
   prob_response = prob_response_vec,
@@ -278,6 +282,19 @@ sim_grid <- tidyr::expand_grid(
 # Keep every seeded row available for an exact interactive rerun.
 sim_grid_full <- sim_grid
 
+# Quick mode keeps cells, response and transformation; all comparison methods remain.
+# Smallest grid covering every figure; dev takes precedence.
+if (analysis_quick) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell %in% c(5e3, 2e4),
+      prob_response %in% c(0.002, 0.2),
+      transformation %in% c("gaussian", "gamma"),
+      mean_pos_setting == "high",
+      condition_perturbation_sd == 0
+    )
+}
+
 if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
@@ -309,12 +326,13 @@ across worker scheduling and grid chunking.
 
 ```{r}
 #| label: compare-parallel
-#| results: hide
+#| include: false
 n_workers <- max(1, .simGetCores())
 
 analysis_result_params <- list(
   comparison_semantics_version = comparison_semantics_version,
   simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
   n_cell_stim_vec = n_cell_stim_vec,
   prob_response_vec = prob_response_vec,
@@ -357,6 +375,7 @@ if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
     path_root = root_dir,
     params = c(
       list(
@@ -499,20 +518,24 @@ if (isTRUE(run_simulations)) {
 } else {
   run_ctx <- .analysis_results_context(
     analysis_key = analysis_key,
-    path_root = root_dir
+    path_root = root_dir,
+    qmd_path = analysis_qmd
   )
   message("Skipping simulations; using canonical promoted results.")
 }
 ```
 
-### Collate results
+## Collation
 
 ```{r}
 #| label: compare-collate
+#| echo: false
 # Without `run_ctx` (simulation chunk not run in this session), read the
 # canonical promoted results under `current/`.
 if (!exists("run_ctx")) {
-  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key, path_root = root_dir, qmd_path = analysis_qmd
+  )
 }
 
 path_rds <- .analysis_current_file(
@@ -520,7 +543,7 @@ path_rds <- .analysis_current_file(
   relative_path = c("collated", "compare_raw.rds"),
   required_params = analysis_result_params
 )
-compare_raw <- readRDS(path_rds)
+compare_raw <- .analysis_read_rds(path_rds, analysis_key, analysis_qmd)
 
 compare_tbl <- compare_raw
 
@@ -577,10 +600,22 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+## Results
+
 ### Mean absolute error by cell count
 
+Mean absolute frequency error is plotted against stimulated cell count on a
+logarithmic axis, with colour identifying the method. Facets separate response
+frequencies and expression distributions; each plot uses one mean position
+setting and no random condition perturbation. Lower values indicate closer
+agreement with the true frequency.
+
 ```{r}
-#| label: plot-mae-cell-count
+#| label: fig-mae-cell-count
+#| fig-cap: "Mean absolute frequency error by stimulated cell count."
+#| echo: false
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     plot_tbl <- compare_summary |>
@@ -624,9 +659,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -646,8 +679,18 @@ if (isTRUE(run_plots)) {
 
 ### Median relative error by cell count
 
+Median absolute relative error is plotted against stimulated cell count, with
+colour identifying the method and facets separating response frequencies and
+expression distributions. Each plot uses one mean position setting and no random
+condition perturbation. Values nearer the dashed zero line indicate smaller
+errors relative to the true frequency.
+
 ```{r}
-#| label: plot-med-rel-error-cell-count
+#| label: fig-med-rel-error-cell-count
+#| fig-cap: "Median absolute relative frequency error by stimulated cell count."
+#| echo: false
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     print(paste0("Plotting median relative error for mean position setting: ", mean_pos_setting_curr))
@@ -730,9 +773,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -752,8 +793,18 @@ if (isTRUE(run_plots)) {
 
 ### 90th percentile relative error by cell count
 
+The 90th percentile of absolute relative error is plotted against stimulated
+cell count, with colour identifying the method. Facets separate response
+frequencies and expression distributions, with one mean position setting per
+plot and no random condition perturbation. Compare the upper-tail errors with
+the dashed zero line.
+
 ```{r}
-#| label: plot-90th-rel-error-cell-count
+#| label: fig-90th-rel-error-cell-count
+#| fig-cap: "90th percentile absolute relative frequency error by cell count."
+#| echo: false
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     plot_tbl <- compare_summary |>
@@ -832,9 +883,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -854,8 +903,18 @@ if (isTRUE(run_plots)) {
 
 ### 95th percentile relative error by cell count
 
+The 95th percentile of absolute relative error is plotted against stimulated
+cell count, with colour identifying the method. Facets separate response
+frequencies and expression distributions, with one mean position setting per
+plot and no random condition perturbation. This shows errors further into the
+upper tail; the dashed line marks zero error.
+
 ```{r}
-#| label: plot-95th-rel-error-cell-count
+#| label: fig-95th-rel-error-cell-count
+#| fig-cap: "95th percentile absolute relative frequency error by cell count."
+#| echo: false
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     plot_tbl <- compare_summary |>
@@ -934,9 +993,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -956,6 +1013,7 @@ if (isTRUE(run_plots)) {
 
 ```{r}
 #| label: compare-relative-error-summary
+#| echo: false
 if (isTRUE(run_plots)) {
   compare_summary |>
     dplyr::filter(
@@ -985,8 +1043,18 @@ if (isTRUE(run_plots)) {
 
 ### Max relative error by cell count
 
+Maximum absolute relative error is plotted against stimulated cell count,
+with colour identifying the method. Facets separate response frequencies and
+expression distributions, with one mean position setting per plot and no random
+condition perturbation. The dashed zero line provides a reference for the
+largest observed errors.
+
 ```{r}
-#| label: plot-max-rel-error-cell-count
+#| label: fig-max-rel-error-cell-count
+#| fig-cap: "Maximum absolute relative frequency error by stimulated cell count."
+#| echo: false
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     plot_tbl <- compare_summary |>
@@ -1065,9 +1133,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -1087,8 +1153,18 @@ if (isTRUE(run_plots)) {
 
 ### Estimated versus true response frequency
 
+Estimated frequency is plotted against the true background-subtracted frequency,
+with colour identifying the method and facets separating expression distributions.
+Each plot uses one mean position setting and pools the simulated cell counts
+without random condition perturbation. Points closer to the dashed identity
+line indicate better agreement.
+
 ```{r}
-#| label: plot-est-vs-truth
+#| label: fig-est-vs-truth
+#| fig-cap: "Estimated and true background-subtracted response frequencies."
+#| echo: false
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   plot_tbl <- compare_tbl_focus |>
     dplyr::filter(
@@ -1151,9 +1227,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p_est_truth)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -1173,8 +1247,18 @@ if (isTRUE(run_plots)) {
 
 ### Threshold fallback rate
 
+The proportion of estimates using a threshold fallback is plotted against
+stimulated cell count, with colour identifying the method. Facets separate
+response frequencies and expression distributions, with one mean position
+setting per plot and no random condition perturbation. Read this alongside
+frequency error to distinguish calculated gates from fallbacks.
+
 ```{r}
-#| label: plot-threshold-fallback
+#| label: fig-threshold-fallback
+#| fig-cap: "Threshold fallback rates by stimulated cell count."
+#| echo: false
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   fallback_tbl <- compare_summary |>
     dplyr::filter(condition_perturbation_sd == 0) |>
@@ -1223,9 +1307,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p_fallback)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -1243,10 +1325,20 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-## Plot the thresholds
+### Threshold distributions
+
+Histograms show the density of finite thresholds, with colour and fill
+identifying the approach. Facets separate response frequencies and expression
+distributions; each plot uses one mean position setting and pools cell counts
+without random condition perturbation. Compare the spread and overlap of the
+threshold distributions, including finite fallback thresholds.
 
 ```{r}
-#| label: plot-threshold-density
+#| label: fig-threshold-density
+#| fig-cap: "Distributions of finite thresholds from the comparison methods."
+#| echo: false
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   plot_tbl <- compare_tbl |>
     dplyr::filter(
@@ -1297,8 +1389,6 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
     path_p <- file.path(
       plot_dir,
       paste0(
@@ -1307,7 +1397,7 @@ if (isTRUE(run_plots)) {
         ".png"
       )
     )
-    ggplot2::ggsave(
+    .analysis_save_plot(
       filename = path_p,
       plot = p,
       width = 18,
@@ -1318,11 +1408,14 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+## Rerun one scenario
+
 A single scenario can be rerun with the production settings and RNG.
 Run the setup, settings and grid chunks first.
 
 ```{r}
 #| label: rerun-one-simulation
+#| include: false
 #| eval: false
 sim_id_rerun <- 1L
 row_rerun <- sim_grid_full[sim_grid_full$sim_id == sim_id_rerun, , drop = FALSE]

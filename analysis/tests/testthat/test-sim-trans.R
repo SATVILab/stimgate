@@ -219,7 +219,7 @@ test_that("sim_trans cache stores settings and rejects mismatched ones", {
   path <- file.path(withr::local_tempdir(), "sub", "uni_tbl.rds")
   uni_tbl <- tibble::tibble(F1 = c(0.1, 0.2))
 
-  expect_error(env$sim_trans_read_cache(path, settings), "not found")
+  expect_error(env$sim_trans_read_cache(path, settings), "Required cache file is missing")
   env$sim_trans_write_cache(uni_tbl, settings, path)
   expect_equal(env$sim_trans_read_cache(path, settings), uni_tbl)
 

@@ -114,3 +114,5 @@ _tmp/log/sbatch/4-sim-bw-est-norm/chunk-1
 _tmp/log/sbatch/4-sim-bw-est-norm/chunk-2
 _tmp/log/sbatch/4-sim-bw-est-norm/chunk-3
 _tmp/log/sbatch/4-sim-bw-est-norm/chunk-4
+_render/
+analysis/tests/_tmp/

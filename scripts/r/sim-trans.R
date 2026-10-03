@@ -132,25 +132,23 @@ sim_trans_write_cache <- function(uni_tbl, settings, path) {
 
 # Read the cached table, stopping if it was made with different settings.
 sim_trans_read_cache <- function(path, settings) {
-  if (!file.exists(path)) {
-    stop("Cached uni_tbl.rds not found. Run simulations first.")
-  }
-  cached <- readRDS(path)
+  cached <- .analysis_read_rds(path, c("sim", "trans"), "analysis/1-sim-trans.qmd")
   if (
     !is.list(cached) ||
       !all(c("settings", "uni_tbl") %in% names(cached))
   ) {
-    stop(
-      "Cached uni_tbl.rds at ", path, " has no stored settings (legacy ",
-      "cache). Rerun with run_simulations = TRUE."
+    .analysis_cache_error(
+      c("sim", "trans"), paste0("Cached uni_tbl.rds at ", path,
+                              " has no stored settings (legacy cache)."),
+      "analysis/1-sim-trans.qmd"
     )
   }
   if (!isTRUE(all.equal(cached$settings, settings))) {
-    stop(
-      "Cached uni_tbl.rds at ", path, " was made with different settings ",
-      "(main_settings, mean_pos settings, transformations or ",
-      "simulation_seed) from the current ones. Rerun with ",
-      "run_simulations = TRUE."
+    .analysis_cache_error(
+      c("sim", "trans"), paste0("Cached uni_tbl.rds at ", path,
+        " was made with different settings (main_settings, mean_pos settings, ",
+        "transformations or simulation_seed) from the current ones."),
+      "analysis/1-sim-trans.qmd"
     )
   }
   cached$uni_tbl

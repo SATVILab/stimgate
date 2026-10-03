@@ -317,7 +317,8 @@ runner targets. Bias-tuning collation retains invalid final sample estimates,
 reports valid/failed counts, and rejects missing sample outputs before promotion.
 These targets reuse bounded scientific helper and document-contract tests; they do not render
 the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-only
-(`workflow_dispatch`); do not add automatic triggers. See
+(`workflow_dispatch`); do not add automatic triggers. Its `mode: render` input renders
+the QMDs end to end in quick mode instead (simulate, then plot; one job per QMD). See
 `analysis/tests/README.md` for commands and coverage limits.
 
 The default Slurm job list includes both Analysis 2a and 2b. Keep enabled
@@ -463,6 +464,12 @@ For new or moved analysis code, use this layering:
 3. Generic analysis runtime helpers under `scripts/r/`: reusable QMD execution plumbing such as parameter/environment handling, chunk validation and atomic output writing.
 4. Analysis-specific helpers under `scripts/r/`: substantial orchestration, restart/collation, IO and plotting helpers that should not live inline in QMDs.
 5. `analysis/*.qmd`: scientific settings, analysis calls, result-specific transformations and presentation.
+
+QMDs locate the checkout root before sourcing `analysis-runtime.R` and set
+knitr's working directory there for workers. Use `.analysis_is_dev()` and
+`.analysis_is_quick()` for profile fallbacks and the shared cache readers for
+errors naming the analysis, render command, matching dev/quick profile and
+required completion of all chunks.
 
 When displaying ggplot objects inside QMD conditionals or loops, call `print()`
 explicitly. Chunk tests should capture printed plots and check that each requested
@@ -628,7 +635,8 @@ rows before drawing reference lines.
    Expensive simulation analyses that support resumable per-scenario/per-chunk outputs must use shared run-management helpers from `scripts/r/analysis-runtime.R`:
    - Treat each logical run as a unique run ID (`analysis_run_id` QMD param or `ANALYSIS_RUN_ID` env var; auto-generated when absent).
    - Write run outputs to `cache/sim/<analysis-key>/staging/<YYYY-MM-DD>/<run-id>/...` and keep canonical outputs in `cache/sim/<analysis-key>/current/`.
-   - Write run progress/state to `cache/log/analysis/<analysis-key>/<YYYY-MM-DD>/<run-id>/` (`progress.txt`, `manifest.rds`, `status.rds`, chunk/job subdirs).
+   - Write run progress/state to `cache/sim/<analysis-key>/runs/<YYYY-MM-DD>/<run-id>/` (`progress.txt`, `manifest.rds`, `status.rds`, chunk/job subdirs and locks). Keep `runs/` separate from `staging/`; promotion copies only the staged run, and staging discovery/cleanup must not touch `runs/`.
+   - Resume discovery reads dated manifests under `staging/` and honours their recorded `path_log_run` (the field name is retained for compatibility), including old `cache/log/analysis/...` paths. Do not relocate existing run state on resume.
    - For external chunking, all chunks of one logical run must use the same run ID and write under the same staged run directory, separated by chunk labels.
    - Slurm chunk launchers render the current top-level QMD and pass chunk controls through environment variables. Do not create or launch physical split-QMD copies; all chunks of one submission must receive the same `ANALYSIS_RUN_ID`.
    - Never promote on partial/incomplete runs. Promote only after required chunks are complete and collated outputs validate.
@@ -643,8 +651,12 @@ rows before drawing reference lines.
 9. **Shared analysis runners and cached settings**:
    Bandwidth QMDs 2-6 use `.simBandwidthRunRow()`, `.simBandwidthRunGrid()`
    and `.simBandwidthFinishChunk()`. Assign IDs and seeds on the full grid
-   before dev/quick filters, shuffling or chunking. Workers and interactive
-   single-row reruns use the same explicitly seeded row runner; resume retries
+   before dev/quick filters, shuffling or chunking. Quick mode selects the smallest,
+   cheapest grid that still exercises every figure; dev mode retains its single
+   debugging scenario and takes precedence when both profiles are active.
+   Results for dev and quick runs are kept under `<analysis-key>/dev/` and
+   `<analysis-key>/quick/`; full runs keep the existing analysis key.
+   Workers and interactive single-row reruns use the same explicitly seeded row runner; resume retries
    failed rows by default. Comparison scenarios in QMDs 7/8 use explicit RNG
    kinds and restore the caller's RNG state; do not reintroduce `gateCombn`
    plumbing in the comparison layer. Analysis 1 seeds each row and saves and
@@ -655,6 +667,10 @@ rows before drawing reference lines.
 
 11. **Real-data analyses replace outputs non-destructively**:
    Real-data analyses that recompute cached outputs (e.g. ACS CyTOF) build into a temporary sibling and swap it in on success (`.acsCytofReplaceDir()`), or compute all results before atomically writing them. Never delete the previous output before the new one is complete.
+   ACS stage controls inherit `run_simulations` when their parameters are NULL;
+   explicit stage parameters/environment variables override that default. Cached
+   comparison renders read the saved manual-comparison table without raw FCS or
+   manual CSV inputs; GatingSet diagnostics are optional when those caches are absent.
 
 12. **Shared local-FDR bandwidths (`bwScope`, issue #417)**:
    The scalar local-FDR bandwidth is chosen once per channel during settings

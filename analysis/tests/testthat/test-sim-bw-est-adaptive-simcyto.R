@@ -334,3 +334,23 @@ test_that("analysis 5 dev filter selects values that exist in the grid", {
     dplyr::filter(.data$sim_id %in% dev$sim_grid_all$sim_id)
   expect_identical(dev$sim_grid_all, expected)
 })
+
+
+test_that("analysis 5 plot filenames work with the controlled scenario labels", {
+  lines <- readLines(file.path(root_dir, "analysis", "5-sim-bw-est-adaptive.qmd"))
+  start <- grep("^          path_plot <- file.path", lines)
+  end <- grep("^          dir.create", lines)
+  expect_length(start, 1L)
+  expect_length(end, 1L)
+  env <- new.env(parent = baseenv())
+  env$dir_results <- "plots"
+  env$mean_pos_setting_curr <- factor("high", levels = c("low", "high"))
+  env$bias_uns_setting_curr <- factor("low", levels = c("none", "low", "high"))
+  env$bw_component_curr <- "core"
+  env$bw_condition_curr <- "stim"
+  expect_no_error(eval(parse(text = lines[start:(end - 1L)]), envir = env))
+  expect_identical(
+    env$path_plot,
+    file.path("plots", "bw_estimate_meanpos_setting_high_bias_uns_low_component_core_condition_stim.png")
+  )
+})

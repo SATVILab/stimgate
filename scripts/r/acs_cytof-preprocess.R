@@ -92,20 +92,13 @@ create_gatingset <- function(
     trans.obj
   )
   gs_trans <- flowWorkspace::transform(gs, trans)
-  if (dir.exists(path_gs)) {
-    unlink(path_gs, recursive = TRUE)
-  }
-  if (!dir.exists(dirname(path_gs))) {
-    dir.create(dirname(path_gs), recursive = TRUE)
-  }
-  flowWorkspace::save_gs(
-    gs = gs_trans,
-    path = path_gs
-  )
+  .acsCytofReplaceDir(path_gs, function(path_tmp) {
+    flowWorkspace::save_gs(gs = gs_trans, path = path_tmp)
+  })
   path_gs
 }
 
-plot_gatingset_check <- function(path_gs, path_plot_dir) {
+.acsCytofPlotGatingSetCheck <- function(path_gs) {
   gs <- flowWorkspace::load_gs(path_gs)
   cf <- flowWorkspace::gh_pop_get_data(gs[[1]])
   chnl_to_marker <- UtilsCytoRSV::chnl_to_marker(cf)
@@ -133,50 +126,39 @@ plot_gatingset_check <- function(path_gs, path_plot_dir) {
         dplyr::mutate(trans = "none") |>
         dplyr::mutate(expr = backTransform(expr))
     )
-  try(
-    lapply(unique(expr_tbl_long$trans), function(x) {
-      plot_tbl <- expr_tbl_long |> dplyr::filter(trans == x)
-      p <- ggplot(
-        plot_tbl,
-        aes(x = expr, fill = marker)
+  plots <- lapply(unique(expr_tbl_long$trans), function(x) {
+    plot_tbl <- expr_tbl_long |> dplyr::filter(trans == x)
+    ggplot2::ggplot(plot_tbl, ggplot2::aes(x = expr, fill = marker)) +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "x") +
+      ggplot2::theme(
+        plot.background = ggplot2::element_rect(fill = "white", colour = "white"),
+        panel.background = ggplot2::element_rect(fill = "white", colour = "white")
       ) +
-        cowplot::theme_cowplot() +
-        cowplot::background_grid(major = "x") +
-        theme(
-          plot.background = element_rect(fill = "white", colour = "white"),
-          panel.background = element_rect(fill = "white", colour = "white")
-        ) +
-        geom_histogram(bins = 30) +
-        facet_wrap(~marker, scales = "free", ncol = 8) +
-        theme(legend.position = "none") +
-        theme(
-          axis.ticks.y = element_blank(),
-          axis.text.y = element_blank()
-        ) +
-        labs(y = "Count", x = "Marker expression", title = x)
+      ggplot2::geom_histogram(bins = 30) +
+      ggplot2::facet_wrap(~marker, scales = "free", ncol = 8) +
+      ggplot2::theme(
+        legend.position = "none",
+        axis.ticks.y = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank()
+      ) +
+      ggplot2::labs(y = "Count", x = "Marker expression", title = x)
+  })
+  stats::setNames(plots, unique(expr_tbl_long$trans))
+}
 
-      path_plot <- file.path(
-        path_plot_dir,
-        paste0("all_markers-trans_", x, ".png")
-      )
-
-      if (file.exists(path_plot)) {
-        invisible(file.remove(path_plot))
-      }
-      if (!dir.exists(dirname(path_plot))) {
-        dir.create(dirname(path_plot), recursive = TRUE)
-      }
-
-      ggplot2::ggsave(
-        filename = path_plot,
-        plot = p,
-        width = 20,
-        height = 16,
-        units = "cm"
-      )
-
-      path_plot
-    }) |>
-      unlist()
-  )
+plot_gatingset_check <- function(path_gs, path_plot_dir, plots = NULL) {
+  if (is.null(plots)) plots <- .acsCytofPlotGatingSetCheck(path_gs)
+  dir.create(path_plot_dir, recursive = TRUE, showWarnings = FALSE)
+  paths <- vapply(names(plots), function(trans) {
+    path_plot <- file.path(
+      path_plot_dir, paste0("all_markers-trans_", trans, ".png")
+    )
+    ggplot2::ggsave(
+      filename = path_plot, plot = plots[[trans]],
+      width = 20, height = 16, units = "cm"
+    )
+    path_plot
+  }, character(1))
+  unname(paths)
 }

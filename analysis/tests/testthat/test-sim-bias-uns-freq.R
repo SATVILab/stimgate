@@ -20,7 +20,8 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
   }
   run_grid <- function(quick, dev) {
     env <- .bias_uns_test_env()
-    env$analysis_quick <- quick
+    # Mirrors QMD set-up: dev takes precedence over quick.
+    env$analysis_quick <- quick && !dev
     env$analysis_dev <- dev
     env$simulation_seed <- 12345L
     env$sim_grid_shuffle_seed <- 8L
@@ -103,6 +104,18 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
   expect_true(all(grouped$n_rule == 14L))
   expect_true(all(grouped$n_mismatch == 5L))
   expect_true(all(grouped$n_bw == 4L))
+  quick <- run_grid(TRUE, FALSE)
+  expect_equal(nrow(quick$sim_grid_all), 120L)
+  expect_setequal(quick$sim_grid_all$n_cell, c(1e4, 5e4))
+  expect_setequal(quick$sim_grid_all$mismatch_label, c("mean shift 0", "SD inflation 10%"))
+  expect_setequal(quick$sim_grid_all$bias_uns_basis, c("bandwidth", "negative_width"))
+  for (transformation in unique(quick$sim_grid_all$transformation)) {
+    expect_equal(dplyr::n_distinct(quick$sim_grid_all$bw[
+      quick$sim_grid_all$transformation == transformation
+    ]), 2L)
+  }
+  expect_identical(quick$scenario_settings$nSample, 1L)
+  expect_identical(run_grid(TRUE, TRUE)$sim_grid_all, run_grid(FALSE, TRUE)$sim_grid_all)
   for (mode in list(c(TRUE, FALSE), c(FALSE, TRUE), c(TRUE, TRUE))) {
     reduced <- run_grid(mode[[1L]], mode[[2L]])
     expect_gt(nrow(reduced$sim_grid_all), 0L)
@@ -132,7 +145,7 @@ test_that("Analysis 2b runtime guards simulations and reads canonical results", 
   env$ggplot <- unexpected
   for (label in c(
     "bias-uns-parallel", "bias-uns-collate",
-    "plot-relative-error", "plot-estimated-frequency"
+    "fig-relative-error", "fig-estimated-frequency"
   )) {
     expect_no_error(eval(parse(text = chunk(label)), envir = env))
   }
@@ -144,13 +157,14 @@ test_that("Analysis 2b runtime guards simulations and reads canonical results", 
   env$analysis_required_params <- list(
     analysis_semantics_version = "bias-uns-freq-v1", simulation_seed = 12345L
   )
-  env$.analysis_results_context <- function(analysis_key, path_root) {
+  env$analysis_qmd <- "analysis/2b-sim-bias_uns-freq_bs.qmd"
+  env$.analysis_results_context <- function(analysis_key, path_root, qmd_path) {
     expect_identical(analysis_key, env$analysis_key)
     expect_identical(path_root, root)
     list(read_only = TRUE)
   }
   reads <- list()
-  env$.analysis_current_file <- function(run_ctx, relative_path, required_params) {
+  env$.analysis_read_current <- function(run_ctx, relative_path, required_params) {
     expect_true(run_ctx$read_only)
     expect_identical(required_params, env$analysis_required_params)
     reads[[length(reads) + 1L]] <<- relative_path

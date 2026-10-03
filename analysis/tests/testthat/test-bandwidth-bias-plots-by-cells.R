@@ -17,6 +17,7 @@
   env$analysis_key <- "bias_uns"
   env$run_plots <- TRUE
   env$saved <- list()
+  env$printed <- list()
   env$.analysis_project_dir <- function(type, subdir, root_dir) {
     path <- file.path(env$root_dir, "fig")
     dir.create(path, recursive = TRUE, showWarnings = FALSE)
@@ -29,7 +30,10 @@
     env$saved[[length(env$saved) + 1L]] <- list(path = filename, plot = plot)
     invisible(NULL)
   }
-  env$print <- function(x, ...) invisible(x)
+  env$print <- function(x, ...) {
+    env$printed[[length(env$printed) + 1L]] <- x
+    invisible(x)
+  }
   env
 }
 
@@ -54,10 +58,11 @@ test_that("2a per-cell plots average scenario errors before combining probabilit
       )
     )
   code <- .bandwidth_cell_plot_chunk(
-    "2a-sim-bw-freq_bs-global.qmd", "plot-relative-error-by-n-cell"
+    "2a-sim-bw-freq_bs-global.qmd", "fig-relative-error-by-n-cell"
   )
   eval(code, env)
   expect_length(env$saved, 4L)
+  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
   expect_equal(length(unique(paths)), 4L)
   for (saved in env$saved) {
@@ -74,9 +79,11 @@ test_that("2a per-cell plots average scenario errors before combining probabilit
   }
   unlink(env$root_dir, recursive = TRUE)
   env$saved <- list()
+  env$printed <- list()
   env$run_plots <- FALSE
   eval(code, env)
   expect_length(env$saved, 0L)
+  expect_length(env$printed, 0L)
   expect_false(dir.exists(env$root_dir))
 })
 
@@ -97,10 +104,10 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
         mismatch_val + prob_response + ifelse(bias_uns_basis == "bandwidth", 0, 2)
     )
   average_code <- .bandwidth_cell_plot_chunk(
-    "2b-sim-bias_uns-freq_bs.qmd", "plot-relative-error-averaged-n-cell"
+    "2b-sim-bias_uns-freq_bs.qmd", "fig-relative-error-averaged-n-cell"
   )
   cell_code <- .bandwidth_cell_plot_chunk(
-    "2b-sim-bias_uns-freq_bs.qmd", "plot-relative-error-by-n-cell"
+    "2b-sim-bias_uns-freq_bs.qmd", "fig-relative-error-by-n-cell"
   )
   eval(average_code, env)
   expect_length(env$saved, 8L)
@@ -114,6 +121,7 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
   }
   eval(cell_code, env)
   expect_length(env$saved, 24L)
+  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
   expect_equal(length(unique(paths)), 24L)
   for (saved in env$saved) {
@@ -137,9 +145,11 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
   }
   unlink(env$root_dir, recursive = TRUE)
   env$saved <- list()
+  env$printed <- list()
   env$run_plots <- FALSE
   eval(average_code, env)
   eval(cell_code, env)
   expect_length(env$saved, 0L)
+  expect_length(env$printed, 0L)
   expect_false(dir.exists(env$root_dir))
 })
