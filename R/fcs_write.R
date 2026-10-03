@@ -115,6 +115,8 @@ writeStimFCS <- function(
     pathProject = pathProject
   )
 
+  chnl <- chnl %||% unique(gateTbl$chnl)
+
   # clear and create directory to save to
   if (dir.exists(pathDirSave)) {
     unlink(pathDirSave, force = TRUE, recursive = TRUE)
@@ -188,6 +190,8 @@ writeStimFCS <- function(
         indBatchList = indBatchList
       )
   }
+
+  chnl <- chnl %||% unique(gateTbl$chnl)
 
   # Apply remaining processing
   gateTbl <- gateTbl |>
