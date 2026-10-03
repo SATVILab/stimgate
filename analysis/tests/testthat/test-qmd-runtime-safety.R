@@ -148,6 +148,13 @@ test_that("analysis 2 is chunk-stable, read-only when not simulating, and valida
   expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
   expect_true(grepl("output_error_ids", content, fixed = TRUE))
   expect_true(grepl("expected_full_ids", content, fixed = TRUE))
+  expect_true(grepl("promote_analysis2_if_ready", content, fixed = TRUE))
+  expect_true(grepl("nrow(sim_grid) == 0L", content, fixed = TRUE))
+  expect_true(grepl(
+    "No simulations were assigned to this chunk; marked it complete.",
+    content,
+    fixed = TRUE
+  ))
   expect_true(grepl(
     "Refusing to promote analysis 2",
     content,
