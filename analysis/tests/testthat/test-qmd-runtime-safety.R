@@ -301,7 +301,15 @@ test_that("analysis 5 matches adaptive estimator semantics and is chunk-stable",
   content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
-  expect_true(grepl("analysis_semantics_version", content, fixed = TRUE))
+  expect_true(grepl(
+    'analysis_semantics_version <- "adaptive-bw-est-v2"',
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("analysis_grid_spec", content, fixed = TRUE))
+  expect_true(grepl("sim_grid_spec = analysis_grid_spec", content, fixed = TRUE))
+  expect_true(grepl("bw_fallback <- NA_real_", content, fixed = TRUE))
+
   expect_true(grepl("norm_adaptive_ncell <- 2500L", content, fixed = TRUE))
   expect_true(grepl(
     "normAdaptiveNcell = norm_adaptive_ncell",
@@ -322,23 +330,32 @@ test_that("analysis 5 matches adaptive estimator semantics and is chunk-stable",
     content,
     fixed = TRUE
   ))
+  expect_true(grepl(
+    ".simBandwidthEnsureCurrentCheckout(root_dir)",
+    content,
+    fixed = TRUE
+  ))
 
   expect_true(grepl(
     "run_ctx <- .analysis_results_context(",
     content,
     fixed = TRUE
   ))
-  expect_true(grepl(
-    "collate_output_dir <- if (results_read_only)",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("run_ctx$chunk_output_dir", content, fixed = TRUE))
-  expect_true(grepl("expected_sim_ids", content, fixed = TRUE))
-  expect_true(grepl("output_error_ids", content, fixed = TRUE))
+  expect_true(grepl(".analysis_current_file(", content, fixed = TRUE))
+  expect_true(grepl("analysis_required_params", content, fixed = TRUE))
+  expect_true(grepl("run_ctx$chunk_dir", content, fixed = TRUE))
+
+  expect_true(grepl("expected_rows_per_sim", content, fixed = TRUE))
+  expect_true(grepl("row_count_bad_ids", content, fixed = TRUE))
+  expect_true(grepl("seed_ok", content, fixed = TRUE))
   expect_true(grepl("expected_full_ids", content, fixed = TRUE))
   expect_true(grepl("promote_analysis5_if_ready", content, fixed = TRUE))
   expect_true(grepl("nrow(sim_grid) == 0L", content, fixed = TRUE))
+  expect_true(grepl(
+    "Refusing to promote analysis 5",
+    content,
+    fixed = TRUE
+  ))
   expect_false(grepl("#\\| error:\\s*true", content))
 
   expect_true(grepl("n_total = dplyr::n()", content, fixed = TRUE))
@@ -349,6 +366,12 @@ test_that("analysis 5 matches adaptive estimator semantics and is chunk-stable",
     fixed = TRUE
   ))
 
+  expect_true(grepl("old_plan <- future::plan()", content, fixed = TRUE))
+  expect_true(grepl(
+    "finally = future::plan(old_plan)",
+    content,
+    fixed = TRUE
+  ))
   expect_true(grepl(
     "run_plots is false, so stopping after simulation/collation.",
     content,
@@ -356,12 +379,6 @@ test_that("analysis 5 matches adaptive estimator semantics and is chunk-stable",
   ))
   expect_true(grepl(
     "Render again with run_simulations = FALSE and run_plots = TRUE.",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("old_plan <- future::plan()", content, fixed = TRUE))
-  expect_true(grepl(
-    "finally = future::plan(old_plan)",
     content,
     fixed = TRUE
   ))
