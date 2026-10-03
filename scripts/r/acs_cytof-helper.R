@@ -1,17 +1,3 @@
-.acs_assert_file <- function(path, description) {
-  if (!file.exists(path)) {
-    stop(description, " not found at: ", path)
-  }
-  invisible(path)
-}
-
-.acs_assert_dir <- function(path, description) {
-  if (!dir.exists(path)) {
-    stop(description, " not found at: ", path)
-  }
-  invisible(path)
-}
-
 .acs_get_expr <- function(gs, ind, chnl, pop = "root") {
   gh <- gs[[as.integer(ind)]]
   ff <- flowWorkspace::gh_pop_get_data(gh, pop)
@@ -22,53 +8,68 @@
   as.numeric(ex[, chnl])
 }
 
-.acs_estimate_from_threshold <- function(x_stim, x_uns, threshold) {
-  threshold <- suppressWarnings(as.numeric(threshold))[1]
-  n_stim <- length(x_stim)
-  n_uns <- length(x_uns)
+# Build a directory in a temporary sibling, then swap it in. A failed build
+# leaves the previous directory untouched.
+.acsCytofReplaceDir <- function(path, build) {
+  pathTmp <- paste0(path, ".tmp-", Sys.getpid())
+  pathOld <- paste0(path, ".old-", Sys.getpid())
+  unlink(c(pathTmp, pathOld), recursive = TRUE)
+  on.exit(unlink(c(pathTmp, pathOld), recursive = TRUE), add = TRUE)
+  dir.create(pathTmp, recursive = TRUE, showWarnings = FALSE)
 
-  if (!is.finite(threshold)) {
-    return(tibble::tibble(
-      threshold = NA_real_,
-      nCellStim = n_stim,
-      nCellUns = n_uns,
-      nPosStim = NA_integer_,
-      nPosUns = NA_integer_,
-      propStim = NA_real_,
-      propUns = NA_real_,
-      propRespEst = NA_real_
-    ))
+  build(pathTmp)
+
+  hadOld <- dir.exists(path)
+  if (hadOld && !file.rename(path, pathOld)) {
+    stop("Could not move the previous output aside: ", path)
+  }
+  if (!file.rename(pathTmp, path)) {
+    if (hadOld) file.rename(pathOld, path)
+    stop("Could not move the new output into place: ", path)
   }
 
-  n_pos_stim <- sum(x_stim > threshold, na.rm = TRUE)
-  n_pos_uns <- sum(x_uns > threshold, na.rm = TRUE)
-  prop_stim <- n_pos_stim / n_stim
-  prop_uns <- n_pos_uns / n_uns
-
-  tibble::tibble(
-    threshold = threshold,
-    nCellStim = n_stim,
-    nCellUns = n_uns,
-    nPosStim = n_pos_stim,
-    nPosUns = n_pos_uns,
-    propStim = prop_stim,
-    propUns = prop_uns,
-    propRespEst = prop_stim - prop_uns
-  )
+  invisible(path)
 }
 
-.acs_stim_pair_tbl <- function(batch_list, sample_metadata) {
-  purrr::imap_dfr(batch_list, function(ind_batch, batch_nm) {
-    ind_uns <- ind_batch[[1]]
-    ind_stim <- ind_batch[-1]
+# Run `fn` over `popVec` with a multisession plan (sequential for one worker)
+# and stop with every failed population's message. `fn` must return the
+# list(pop, success, error) shape of the *Safe runners.
+.acsCytofMapPopulations <- function(popVec, fn, nWorkers, seed, label) {
+  nWorkersUse <- min(nWorkers, length(popVec))
+  oldPlan <- future::plan()
 
-    tibble::tibble(
-      batch = batch_nm,
-      indUns = ind_uns,
-      indStim = ind_stim,
-      sampleUns = sample_metadata$sample_name[ind_uns],
-      sampleStim = sample_metadata$sample_name[ind_stim],
-      conditionStim = sample_metadata$condition[ind_stim]
+  runList <- tryCatch(
+    {
+      if (nWorkersUse > 1L) {
+        future::plan(future::multisession, workers = nWorkersUse)
+      } else {
+        future::plan(future::sequential)
+      }
+      furrr::future_map(
+        popVec,
+        fn,
+        .options = furrr::furrr_options(seed = seed, scheduling = Inf)
+      )
+    },
+    finally = future::plan(oldPlan)
+  )
+  names(runList) <- popVec
+
+  failed <- !vapply(runList, function(x) isTRUE(x$success), logical(1))
+  if (any(failed)) {
+    stop(
+      label,
+      " failed:\n",
+      paste(
+        vapply(
+          runList[failed],
+          function(x) paste0(x$pop, ": ", x$error),
+          character(1)
+        ),
+        collapse = "\n"
+      )
     )
-  })
+  }
+
+  invisible(runList)
 }

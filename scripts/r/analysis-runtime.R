@@ -341,22 +341,84 @@
   invisible(TRUE)
 }
 
-.analysis_cache_dir <- function(path_parts, path_root = NULL, create = TRUE) {
-  if (requireNamespace("projr", quietly = TRUE)) {
-    return(do.call(
-      projr::projr_path_get_dir,
-      c(list("cache"), as.list(path_parts), list(create = create))
-    ))
+#' Resolve a project directory, with a checkout-local fallback
+#'
+#' Uses projr's configured directory when available. If projr cannot resolve
+#' the project (including when installed without a project configuration),
+#' falls back to `<path_root>/<label>/...`.
+#'
+#' @param label character Directory label, such as "cache" or "output".
+#' @param path_parts character Relative path components.
+#' @param path_root character or NULL Checkout root (default: working directory).
+#' @param create logical Create the directory. Default: TRUE.
+#' @return character Directory path.
+# Directory from projr when it is installed and resolves the project; NULL
+# otherwise. `getter` exists for tests.
+.analysis_projr_dir <- function(
+    label,
+    path_parts = character(),
+    create = TRUE,
+    getter = NULL) {
+  if (is.null(getter)) {
+    if (!requireNamespace("projr", quietly = TRUE)) {
+      return(NULL)
+    }
+    getter <- projr::projr_path_get_dir
+  }
+  path <- tryCatch(
+    do.call(getter, c(list(label), as.list(path_parts), list(create = create))),
+    error = function(e) NULL
+  )
+  if (length(path) == 1L && !is.na(path) && nzchar(path)) path
+}
+
+.analysis_project_dir <- function(
+    label,
+    path_parts = character(),
+    path_root = NULL,
+    create = TRUE) {
+  path <- .analysis_projr_dir(label, path_parts, create)
+  if (!is.null(path)) {
+    return(path)
   }
   root_local <- normalizePath(
     if (is.null(path_root) || !nzchar(path_root)) "." else path_root,
     mustWork = FALSE
   )
-  path <- do.call(file.path, c(list(root_local, "cache"), as.list(path_parts)))
+  path <- do.call(file.path, c(list(root_local, label), as.list(path_parts)))
   if (isTRUE(create)) {
     dir.create(path, recursive = TRUE, showWarnings = FALSE)
   }
   path
+}
+
+# Evaluate `code` with RNG seeded by `seed` under fixed RNG kinds, so the
+# random numbers do not depend on the caller's (or furrr's) RNG state. The
+# caller's RNG kind and `.Random.seed` (or its absence) are restored on exit,
+# including on error.
+.analysis_with_seed <- function(seed, code) {
+  rng_kind <- RNGkind()
+  had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  rng_seed <- if (had_seed) get(".Random.seed", envir = .GlobalEnv)
+  on.exit({
+    RNGkind(rng_kind[[1]], rng_kind[[2]], rng_kind[[3]])
+    if (had_seed) {
+      assign(".Random.seed", rng_seed, envir = .GlobalEnv)
+    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  }, add = TRUE)
+  set.seed(
+    as.integer(seed),
+    kind = "Mersenne-Twister",
+    normal.kind = "Inversion",
+    sample.kind = "Rejection"
+  )
+  code
+}
+
+.analysis_cache_dir <- function(path_parts, path_root = NULL, create = TRUE) {
+  .analysis_project_dir("cache", path_parts, path_root, create)
 }
 
 # Read-only stand-in for `.analysis_run_context()` when only the canonical

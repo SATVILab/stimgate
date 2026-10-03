@@ -93,7 +93,8 @@
       length(thresholds) != length(channels)
   ) {
     stop(
-      "Expression matrices, thresholds and channels do not have matching widths."
+      "Expression matrices, thresholds and channels do not have ",
+      "matching widths."
     )
   }
   if (any(!is.finite(thresholds))) {
@@ -426,28 +427,6 @@
   invisible(path)
 }
 
-.acsCytofRemoveComparatorResults <- function(
-  paths,
-  methods = c("fbeta", "tailgate")
-) {
-  pathResultVec <- unname(unlist(paths[methods], use.names = FALSE))
-  pathResultVec <- pathResultVec[file.exists(pathResultVec)]
-  if (length(pathResultVec) == 0L) {
-    return(invisible(character()))
-  }
-
-  unlink(pathResultVec)
-  pathRemaining <- pathResultVec[file.exists(pathResultVec)]
-  if (length(pathRemaining) > 0L) {
-    stop(
-      "Could not remove previous comparator result(s): ",
-      paste(pathRemaining, collapse = ", ")
-    )
-  }
-
-  invisible(pathResultVec)
-}
-
 .acsCytofReadComparatorCache <- function(
   path,
   method,
@@ -517,7 +496,7 @@
     pathScratchBase = pathScratchBase,
     outputGroup = outputGroup
   )
-  methodVec <- c("tailgate", "fbeta") |> rev()
+  methodVec <- c("fbeta", "tailgate")
 
   if (!isTRUE(runMethods)) {
     resultList <- lapply(methodVec, function(method) {
@@ -555,21 +534,22 @@
   }
   batchList <- .acsCytofBatchList(nSampleActual)
 
-  .acsCytofRemoveComparatorResults(paths = paths, methods = methodVec)
-
+  # Compute every method before writing any, so a failure keeps the previous
+  # results. Each write is itself atomic.
   resultList <- lapply(methodVec, function(method) {
     message("Running ", method, " for ", pop, ".")
-    result <- .acsCytofRunComparator(
+    .acsCytofRunComparator(
       gs = gs,
       pop = pop,
       method = method,
       batchList = batchList,
       pathFbeta = pathFbeta
     )
-    .acsCytofWriteComparatorCache(result, paths[[method]])
-    result
   })
   names(resultList) <- methodVec
+  for (method in methodVec) {
+    .acsCytofWriteComparatorCache(resultList[[method]], paths[[method]])
+  }
 
   invisible(list(
     pop = pop,

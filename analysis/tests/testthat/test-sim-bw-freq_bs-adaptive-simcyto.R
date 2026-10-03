@@ -205,120 +205,186 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
 })
 
 
-test_that("analysis 6 QMD is chunk-stable and scores final sample frequencies", {
-  qmd_path <- file.path(
-    root_dir,
-    "analysis",
-    "6-sim-bw-freq_bs-adaptive.qmd"
-  )
-  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
-
-  expect_true(grepl("simulation_seed:\\s*12345", content))
-  expect_true(grepl("analysis_semantics_version", content, fixed = TRUE))
-  expect_true(grepl("analysis_quick", content, fixed = TRUE))
-  expect_true(grepl("analysis_dev", content, fixed = TRUE))
-  expect_true(grepl(
-    "sim_seed = as.integer(simulation_seed + sim_id - 1L)",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "set.seed(as.integer(sim_seed))",
-    content,
-    fixed = TRUE
-  ))
-  expect_false(grepl(".setQuick()", content, fixed = TRUE))
-  expect_true(grepl(
-    "if (analysis_quick && !analysis_dev)",
-    content,
-    fixed = TRUE
-  ))
-  expect_false(grepl("update_progress_summary()", content, fixed = TRUE))
-  expect_false(grepl(
-    "future::plan(future::sequential)",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("finally = future::plan(old_plan)", content, fixed = TRUE))
-
-  expect_true(grepl(
+test_that("analysis 6 uses shared transactional runners and full-grid reruns", {
+  content <- paste(readLines(file.path(
+    root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd"
+  )), collapse = "\n")
+  for (contract in c(
+    'analysis_semantics_version <- "adaptive-bw-freq-v3"',
+    "sim_grid_full <- sim_grid",
+    "sim_grid_spec = analysis_grid_spec",
+    "scenario_settings = scenario_settings",
+    "nSample = n_sample_sim", "nIter = n_iter_sim",
+    ".simBandwidthRunRow(", ".simBandwidthRunGrid(",
+    ".simBandwidthFinishChunk(", "retry_errors = TRUE",
+    "validate_fn = .simBandwidthFreqBsAdaptiveValidate",
+    "required_params = analysis_required_params",
     "run_ctx <- .analysis_results_context(",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "collate_output_dir <- if (results_read_only)",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("run_ctx$chunk_dir", content, fixed = TRUE))
-  expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
-  expect_true(grepl("valid_result_ids", content, fixed = TRUE))
-  expect_true(grepl("output_error_ids", content, fixed = TRUE))
-  expect_true(grepl("expected_full_ids", content, fixed = TRUE))
-  expect_true(grepl("promote_analysis6_if_ready", content, fixed = TRUE))
-  expect_true(grepl("nrow(sim_grid) == 0L", content, fixed = TRUE))
-
-  expect_true(grepl('.data$method == "loc_sample"', content, fixed = TRUE))
-  expect_true(grepl("is.finite(.data$propRespTruth)", content, fixed = TRUE))
-  expect_true(grepl("is.finite(.data$propRespEst)", content, fixed = TRUE))
-  expect_true(grepl(
-    "propRespEst_median - .data$propRespTruth_median",
-    content,
-    fixed = TRUE
-  ))
-  expect_false(grepl(
-    "filter(is.finite(.data$threshold) & is.finite(.data$propBsEst))",
-    content,
-    fixed = TRUE
-  ))
-
-  expect_true(grepl(
-    "run_plots is false, so stopping after simulation/collation.",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "Skipping plots during a multi-chunk simulation render.",
-    content,
-    fixed = TRUE
-  ))
-  expect_false(grepl("saveRDS(", content, fixed = TRUE))
+    "Skipping plots during a multi-chunk simulation render."
+  )) {
+    expect_true(grepl(contract, content, fixed = TRUE), info = contract)
+  }
+  expect_false(grepl("promote_analysis6_if_ready", content, fixed = TRUE))
+  expect_false(grepl("purrr::flatten", content, fixed = TRUE))
+  expect_false(grepl("dens_tbl", content, fixed = TRUE))
+  expect_false(grepl("rug_tbl", content, fixed = TRUE))
+  expect_false(grepl(".write_rds_atomic", content, fixed = TRUE))
+  expect_equal(length(gregexpr("#| eval: false", content,
+                               fixed = TRUE)[[1]]), 1L)
+  expect_lt(regexpr("sim_grid_full <-", content, fixed = TRUE)[[1]],
+            regexpr("if (analysis_quick", content, fixed = TRUE)[[1]])
 })
 
-test_that("analysis 6 writes scenario output before durable completion markers", {
-  qmd_path <- file.path(
-    root_dir,
-    "analysis",
-    "6-sim-bw-freq_bs-adaptive.qmd"
-  )
-  lines <- readLines(qmd_path, warn = FALSE)
+.load_adaptive_run_env <- function() {
+  env <- new.env(parent = getNamespace("stimgate"))
+  for (file in c("analysis-runtime.R", "sim-misc.R", "sim-bandwidth.R",
+                 "sim-bandwidth-analysis-io.R",
+                 "sim-bandwidth-analysis-run.R")) {
+    source(file.path(root_dir, "scripts", "r", file), local = env)
+  }
+  env
+}
 
-  success_write <- grep(
-    ".write_rds_atomic(sim_res, file_output)",
-    lines,
-    fixed = TRUE
+.adaptive_grid_row <- function() {
+  tibble::tibble(
+    sim_id = 7L, sim_seed = 124L, bias_uns = 0.05,
+    bw_core = 0.15, bw_extra = 0.25, bw_crossover = NA_real_,
+    bw_transition_width = 0, bw_fallback = 0.5, n_cell = 1000,
+    prob_response = 0.02, mean_pos = 6, transformation = "skew",
+    sample_perturbation_sd = 0, condition_perturbation_sd = 0,
+    cluster_perturbation_sd = 0, background_relative_to_response = 0.2,
+    n_cell_uns_relative_to_stim = 1
   )
-  success_marker <- grep(
-    "file.create(file_completed)",
-    lines,
-    fixed = TRUE
-  )
-  error_write <- grep(
-    ".write_rds_atomic(err_res, file_output)",
-    lines,
-    fixed = TRUE
-  )
-  error_marker <- grep(
-    "file.create(file_error)",
-    lines,
-    fixed = TRUE
-  )
+}
 
-  expect_length(success_write, 1L)
-  expect_length(success_marker, 1L)
-  expect_length(error_write, 1L)
-  expect_length(error_marker, 1L)
-  expect_lt(success_write, success_marker)
-  expect_lt(error_write, error_marker)
+test_that("adaptive scenario forwards settings and reruns identical random draws", {
+  env <- .load_adaptive_run_env()
+  captured <- NULL
+  env$.simBandwidthBsFreq <- function(...) {
+    captured <<- list(...)
+    tibble::tibble(iter = 1L, ind = 2L, sample = "1",
+                   method = "loc_sample", threshold = stats::runif(1),
+                   propRespTruth = 0.02, propRespEst = 0.025)
+  }
+  row <- .adaptive_grid_row()
+  settings <- list(nSample = 3L, nIter = 2L, bw = NULL, bwAdaptive = TRUE)
+  withr::local_rng_version("4.4.0")
+  set.seed(99L, kind = "L'Ecuyer-CMRG")
+  before <- .Random.seed
+  first <- env$.simBandwidthRunRow(
+    row, env$.simBandwidthFreqBsAdaptiveScenario, settings
+  )
+  expect_identical(.Random.seed, before)
+  expect_identical(captured$nSample, 3L)
+  expect_identical(captured$nIter, 2L)
+  expect_null(captured$bwAdaptiveCrossover)
+  expect_identical(captured$bwAdaptiveCore, row$bw_core)
+  expect_identical(captured$bwAdaptiveExtra, row$bw_extra)
+  set.seed(55L, kind = "Mersenne-Twister")
+  second <- env$.simBandwidthRunRow(
+    row, env$.simBandwidthFreqBsAdaptiveScenario, settings
+  )
+  expect_identical(first, second)
+  row$bw_crossover <- 5.5
+  env$.simBandwidthRunRow(row, env$.simBandwidthFreqBsAdaptiveScenario,
+                         settings)
+  expect_identical(captured$bwAdaptiveCrossover, 5.5)
+  error <- env$.simBandwidthErrorRow(row, "failed")
+  expect_type(dplyr::bind_rows(first, error)$ind, "integer")
+})
+
+test_that("adaptive collation scores final sample frequencies and keeps summaries", {
+  env <- .load_adaptive_run_env()
+  tbl <- tibble::tibble(
+    sim_id = c(7L, 7L, 7L), sim_seed = 124L,
+    iter = 1L, ind = c(2L, 4L, 2L), sample = c("1", "2", "1"),
+    method = c("loc_sample", "loc_sample", "loc_condition"),
+    threshold = c(1, 3, 99), propRespTruth = 0.02,
+    propRespEst = c(0.01, 0.03, 1), propBsEst = 0.9
+  )
+  expect_identical(env$.simBandwidthFreqBsAdaptiveValidate(tbl), character())
+  result <- env$.simBandwidthFreqBsAdaptiveCollate(tbl,
+                                                 c("sim_id", "sim_seed"))
+  expect_named(result, c("bw_tbl_results_raw", "bw_tbl_results_summary",
+                         "summary_tbl"))
+  expect_equal(nrow(result$bw_tbl_results_raw), 2L)
+  expect_equal(result$summary_tbl$threshold_median, 2)
+  expect_equal(result$summary_tbl$threshold_iqr_length, 1)
+  expect_equal(result$bw_tbl_results_summary$propRespEst_median_diff, 0,
+               tolerance = 1e-12)
+  duplicate <- dplyr::bind_rows(tbl, tbl[1, ])
+  expect_match(env$.simBandwidthFreqBsAdaptiveValidate(duplicate), "Duplicate")
+  missing <- tbl
+  missing$threshold <- NA_real_
+  expect_match(env$.simBandwidthFreqBsAdaptiveValidate(missing),
+               "no finite final")
+  expect_match(env$.simBandwidthFreqBsAdaptiveValidate(tbl["sim_id"]),
+               "Missing final")
+})
+
+test_that("adaptive failed rows retry and promoted reads enforce grid settings", {
+  env <- .load_adaptive_run_env()
+  project <- withr::local_tempdir()
+  withr::local_dir(project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+  row <- .adaptive_grid_row()
+  required <- list(
+    analysis_semantics_version = "adaptive-bw-freq-v3",
+    sim_grid_spec = row[, setdiff(names(row), "sim_seed")],
+    scenario_settings = list(nSample = 5L, nIter = 5L)
+  )
+  ctx <- env$.analysis_run_context(
+    c("sim", "bw", "freq_bs", "adaptive"), run_id = "adaptive-retry",
+    path_root = project, params = required
+  )
+  fail <- TRUE
+  env$.simBandwidthBsFreq <- function(...) {
+    if (fail) stop("temporary failure")
+    tibble::tibble(iter = 1L, ind = 2L, sample = "1",
+                   method = "loc_sample", threshold = stats::runif(1),
+                   propRespTruth = 0.02, propRespEst = 0.025)
+  }
+  run <- function() env$.simBandwidthRunRowResumable(
+    row, env$.simBandwidthFreqBsAdaptiveScenario,
+    required$scenario_settings, ctx, total_sims = 1L
+  )
+  expect_match(run()$error_message, "temporary failure")
+  expect_error(env$.simBandwidthFinishChunk(
+    ctx, row, row,
+    validate_fn = env$.simBandwidthFreqBsAdaptiveValidate,
+    collate_fn = function(tbl) {
+      env$.simBandwidthFreqBsAdaptiveCollate(tbl, names(row))
+    }
+  ), "simulation errors")
+  fail <- FALSE
+  retried <- run()
+  expect_true(all(is.na(retried$error_message)))
+  expect_false(file.exists(file.path(ctx$chunk_jobs_dir, "error-7")))
+  expect_identical(retried, env$.simBandwidthRunRow(
+    row, env$.simBandwidthFreqBsAdaptiveScenario, required$scenario_settings
+  ))
+  expect_true(env$.simBandwidthFinishChunk(
+    ctx, row, row,
+    validate_fn = env$.simBandwidthFreqBsAdaptiveValidate,
+    collate_fn = function(tbl) {
+      env$.simBandwidthFreqBsAdaptiveCollate(tbl, names(row))
+    }
+  ))
+  read_ctx <- env$.analysis_results_context(ctx$analysis_key,
+                                           path_root = project)
+  summary_path <- env$.analysis_current_file(
+    read_ctx, c("collated", "summary_tbl.rds"), required_params = required
+  )
+  expect_equal(readRDS(summary_path)$threshold_median, retried$threshold)
+  expect_true(read_ctx$read_only)
+  changed <- required
+  changed$sim_grid_spec$bw_core <- 0.5
+  expect_error(env$.analysis_current_file(
+    read_ctx, c("collated", "summary_tbl.rds"), required_params = changed
+  ), "sim_grid_spec")
+  changed <- required
+  changed$scenario_settings$nSample <- 6L
+  expect_error(env$.analysis_current_file(
+    read_ctx, c("collated", "summary_tbl.rds"), required_params = changed
+  ), "scenario_settings")
 })
