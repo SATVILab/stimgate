@@ -1,9 +1,7 @@
 test_that("getStimGates and getStimStats return gate table and stats after gateStim", {
-  # Skip if we can't load the required package
-  skip_if_not_installed("stimgate")
-
   # Get example data
   exampleData <- getExampleData()
+  withr::defer(unlink(dirname(exampleData$pathGs), recursive = TRUE))
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(
     dirname(exampleData$pathGs),
@@ -43,11 +41,4 @@ test_that("getStimGates and getStimStats return gate table and stats after gateS
   statsTbl <- getStimStats(pathProject)
   expect_true(is.data.frame(statsTbl) && nrow(statsTbl) > 0)
 
-  # Clean up
-  if (dir.exists(pathProject)) {
-    unlink(pathProject, recursive = TRUE)
-  }
-  if (dir.exists(exampleData$pathGs)) {
-    unlink(exampleData$pathGs, recursive = TRUE)
-  }
 })

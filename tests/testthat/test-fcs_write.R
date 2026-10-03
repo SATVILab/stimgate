@@ -1,4 +1,8 @@
+# Share one expensive fixture within this file and clean it on exit.
+local({
+withr::local_preserve_seed()
 exampleData <- getExampleData()
+withr::defer(unlink(dirname(exampleData$pathGs), recursive = TRUE))
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
 pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
 invisible(gateStim(
@@ -36,7 +40,7 @@ invisible(gateStim(
 
 
 test_that("writeStimFCS runs with basic parameters", {
-  pathDirSave <- file.path(tempdir(), "fcs_output_test")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_test")
 
   # Function should create the directory before failing on missing gates
   result <- writeStimFCS(
@@ -68,7 +72,7 @@ test_that("writeStimFCS runs with basic parameters", {
 
 test_that("writeStimFCS handles directory creation and cleanup", {
   # Test with non-existent directory
-  pathDirSave <- file.path(tempdir(), "new_fcs_dir", "subdir")
+  pathDirSave <- file.path(withr::local_tempdir(), "new_fcs_dir", "subdir")
   expect_false(dir.exists(pathDirSave))
 
   writeStimFCS(
@@ -104,7 +108,7 @@ test_that("writeStimFCS works with different gateUnsMethod options", {
   gateMethods <- c("min", "max", "mean", "tmean", "med")
 
   for (method in gateMethods) {
-    pathDirSave <- file.path(tempdir(), paste0("fcs_output_", method))
+    pathDirSave <- file.path(withr::local_tempdir(), paste0("fcs_output_", method))
 
     result <- writeStimFCS(
       pathProject = pathProject,
@@ -139,7 +143,7 @@ test_that("writeStimFCS exports exactly the cells selected by an explicit gate t
     gateCyt = c(0.25, 0.25),
     stringsAsFactors = FALSE
   )
-  pathDirSave <- file.path(tempdir(), "fcs_output_exact_gate")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_exact_gate")
 
   writeStimFCS(
     pathProject = tempdir(),
@@ -204,8 +208,8 @@ test_that("writeStimFCS respects mult and gateTypeCytPos when exporting exact ce
     drop = FALSE
   ]
 
-  pathDirSaveBase <- file.path(tempdir(), "fcs_output_mult_base")
-  pathDirSaveCyt <- file.path(tempdir(), "fcs_output_mult_cyt")
+  pathDirSaveBase <- file.path(withr::local_tempdir(), "fcs_output_mult_base")
+  pathDirSaveCyt <- file.path(withr::local_tempdir(), "fcs_output_mult_cyt")
 
   writeStimFCS(
     pathProject = tempdir(),
@@ -258,7 +262,7 @@ test_that("writeStimFCS respects mult and gateTypeCytPos when exporting exact ce
 })
 
 test_that("writeStimFCS validates output file contents", {
-  pathDirSave <- file.path(tempdir(), "fcs_output_validation")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_validation")
 
   result <- writeStimFCS(
     pathProject = pathProject,
@@ -318,7 +322,7 @@ test_that("writeStimFCS works with pre-provided gate table", {
     stringsAsFactors = FALSE
   )
 
-  pathDirSave <- file.path(tempdir(), "fcs_output_custom_gate")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_custom_gate")
 
   result <- writeStimFCS(
     pathProject = tempdir(), # Not used when gateTbl provided
@@ -335,7 +339,7 @@ test_that("writeStimFCS works with pre-provided gate table", {
 })
 
 test_that("writeStimFCS handles invalid gateUnsMethod", {
-  pathDirSave <- file.path(tempdir(), "fcs_output_invalid")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_invalid")
 
   expect_error(
     writeStimFCS(
@@ -353,7 +357,7 @@ test_that("writeStimFCS handles invalid gateUnsMethod", {
 
 test_that("writeStimFCS works with channel filtering", {
   # Test with specific channel subset
-  pathDirSave <- file.path(tempdir(), "fcs_output_filtered")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_filtered")
 
   result <- writeStimFCS(
     pathProject = pathProject,
@@ -367,7 +371,7 @@ test_that("writeStimFCS works with channel filtering", {
   expect_true(dir.exists(pathDirSave))
 
   # Test with NULL chnl (should use all available)
-  pathDirSaveAll <- file.path(tempdir(), "fcs_output_all")
+  pathDirSaveAll <- file.path(withr::local_tempdir(), "fcs_output_all")
 
   resultAll <- writeStimFCS(
     pathProject = pathProject,
@@ -384,7 +388,7 @@ test_that("writeStimFCS works with channel filtering", {
 
 test_that("writeStimFCS handles transformation parameters", {
   # Test with transformation function
-  pathDirSave <- file.path(tempdir(), "fcs_output_transform")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_transform")
 
   # Simple log transformation
   logTransform <- function(x) log10(x + 1)
@@ -409,7 +413,7 @@ test_that("writeStimFCS handles transformation parameters", {
 })
 
 test_that("writeStimFCS preserves file metadata", {
-  pathDirSave <- file.path(tempdir(), "fcs_output_metadata")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_metadata")
 
   writeStimFCS(
     pathProject = pathProject,
@@ -453,7 +457,7 @@ test_that("writeStimFCS removes the requested cytokine combinations exactly", {
     gateCyt = c(0.25, 0.25),
     stringsAsFactors = FALSE
   )
-  pathDirSave <- file.path(tempdir(), "fcs_output_exclusions_exact")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_exclusions_exact")
 
   exOrig <- as.data.frame(flowCore::exprs(
     flowWorkspace::gh_pop_get_data(gsSmall[[1]])
@@ -492,7 +496,7 @@ test_that("writeStimFCS removes the requested cytokine combinations exactly", {
 })
 
 test_that("writeStimFCS creates consistent file names", {
-  pathDirSave <- file.path(tempdir(), "fcs_output_naming")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_naming")
 
   writeStimFCS(
     pathProject = pathProject,
@@ -521,7 +525,7 @@ test_that("writeStimFCS creates consistent file names", {
 })
 
 test_that("writeStimFCS message output", {
-  pathDirSave <- file.path(tempdir(), "fcs_output_messages")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_messages")
 
   # Capture messages
   expect_message(
@@ -555,7 +559,7 @@ test_that("writeStimFCS handles edge case: empty data", {
     stringsAsFactors = FALSE
   )
 
-  pathDirSave <- file.path(tempdir(), "fcs_output_empty")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_empty")
 
   # Should handle case where no cells meet criteria
   expect_message(
@@ -582,7 +586,7 @@ test_that("writeStimFCS validates parameter types", {
       pathProject = tempdir(),
       .data = "not_a_gatingset",
       indBatchList = exampleData$batchList,
-      pathDirSave = tempdir(),
+      pathDirSave = withr::local_tempdir(),
       chnl = exampleData$chnl[[1]]
     )
   )
@@ -593,7 +597,7 @@ test_that("writeStimFCS validates parameter types", {
       pathProject = tempdir(),
       .data = gs,
       indBatchList = "not_a_list",
-      pathDirSave = tempdir(),
+      pathDirSave = withr::local_tempdir(),
       chnl = exampleData$chnl[[1]]
     )
   )
@@ -603,6 +607,7 @@ test_that("writeStimFCS validates parameter types", {
 test_that("writeStimFCS integrates with stimgate workflow", {
   # Test full integration: gate -> fcs_write -> verify output
   exampleData <- getExampleData()
+  withr::defer(unlink(dirname(exampleData$pathGs), recursive = TRUE))
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
 
@@ -619,7 +624,7 @@ test_that("writeStimFCS integrates with stimgate workflow", {
   expect_true(file.exists(file.path(pathProject, "gateStats.rds")))
 
   # Step 2: Run FCS writing using gates from step 1
-  pathDirSave <- file.path(tempdir(), "fcs_output_integration")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_integration")
 
   result <- writeStimFCS(
     pathProject = pathProject,
@@ -658,9 +663,10 @@ test_that("writeStimFCS integrates with stimgate workflow", {
 test_that("writeStimFCS respects working directory", {
   # Change working directory temporarily
   originalWd <- getwd()
-  tempWd <- tempdir()
+  tempWd <- withr::local_tempdir()
 
   exampleData <- getExampleData()
+  withr::defer(unlink(dirname(exampleData$pathGs), recursive = TRUE))
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject2 <- file.path(dirname(exampleData$pathGs), "stimgate")
   invisible(gateStim(
@@ -700,6 +706,7 @@ test_that("writeStimFCS respects working directory", {
 
 test_that("writeStimFCS handles transformation edge cases", {
   exampleData <- getExampleData()
+  withr::defer(unlink(dirname(exampleData$pathGs), recursive = TRUE))
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject2 <- file.path(dirname(exampleData$pathGs), "stimgate")
   invisible(gateStim(
@@ -711,7 +718,7 @@ test_that("writeStimFCS handles transformation edge cases", {
   ))
 
   # Test with transformation function but no transChnl (should apply to all columns)
-  pathDirSave <- file.path(tempdir(), "fcs_output_transform_all")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_transform_all")
 
   # Identity transformation (should not change values but test the pathway)
   identityTransform <- function(x) x
@@ -730,7 +737,7 @@ test_that("writeStimFCS handles transformation edge cases", {
   expect_true(dir.exists(pathDirSave))
 
   # Test with NULL transformation function
-  pathDirSaveNull <- file.path(tempdir(), "fcs_output_transform_null")
+  pathDirSaveNull <- file.path(withr::local_tempdir(), "fcs_output_transform_null")
 
   resultNull <- stimgate::writeStimFCS(
     pathProject = pathProject2,
@@ -748,7 +755,7 @@ test_that("writeStimFCS handles transformation edge cases", {
 })
 
 test_that("writeStimFCS generates a complete manifest matching files on disk", {
-  pathDirSave <- file.path(tempdir(), "fcs_output_manifest_test")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_manifest_test")
   withr::defer(unlink(pathDirSave, recursive = TRUE))
 
   manifest <- writeStimFCS(
@@ -801,7 +808,7 @@ test_that("writeStimFCS generates a complete manifest matching files on disk", {
 })
 
 test_that("writeStimFCS populates batch column and NA for unknown batches", {
-  pathDirSave <- file.path(tempdir(), "fcs_output_manifest_batch")
+  pathDirSave <- file.path(withr::local_tempdir(), "fcs_output_manifest_batch")
   withr::defer(unlink(pathDirSave, recursive = TRUE))
 
   batchListNamed <- list(batchA = c(1, 2), batchB = c(3, 4))
@@ -817,7 +824,7 @@ test_that("writeStimFCS populates batch column and NA for unknown batches", {
   expect_equal(manifest$batch[3:4], c("batchB", "batchB"))
 
   # Test sample not in indBatchList gets NA
-  pathDirSaveUnknown <- file.path(tempdir(), "fcs_output_manifest_unknown")
+  pathDirSaveUnknown <- file.path(withr::local_tempdir(), "fcs_output_manifest_unknown")
   withr::defer(unlink(pathDirSaveUnknown, recursive = TRUE))
 
   gateTbl3 <- data.frame(
@@ -844,7 +851,7 @@ test_that("writeStimFCS populates batch column and NA for unknown batches", {
 test_that(
   "writeStimFCS handles forced no-positive and exclusion cases in manifest",
   {
-    pathDirSaveHigh <- file.path(tempdir(), "fcs_output_manifest_high")
+    pathDirSaveHigh <- file.path(withr::local_tempdir(), "fcs_output_manifest_high")
     withr::defer(unlink(pathDirSaveHigh, recursive = TRUE))
 
     gateTblHigh <- data.frame(
@@ -873,7 +880,7 @@ test_that(
     expect_true(file.exists(file.path(pathDirSaveHigh, "manifest.csv")))
 
     # Forced none_after_exclusion via combnExc
-    pathDirSaveExc <- file.path(tempdir(), "fcs_output_manifest_exc")
+    pathDirSaveExc <- file.path(withr::local_tempdir(), "fcs_output_manifest_exc")
     withr::defer(unlink(pathDirSaveExc, recursive = TRUE))
 
     combnExcAll <- list(
@@ -898,7 +905,7 @@ test_that(
     expect_length(list.files(pathDirSaveExc, pattern = "\\.fcs$"), 0L)
     expect_true(file.exists(file.path(pathDirSaveExc, "manifest.csv")))
     # Also test mult = TRUE with high gates
-    pathDirSaveMult <- file.path(tempdir(), "fcs_output_manifest_mult")
+    pathDirSaveMult <- file.path(withr::local_tempdir(), "fcs_output_manifest_mult")
     withr::defer(unlink(pathDirSaveMult, recursive = TRUE))
 
     manifestMult <- writeStimFCS(
@@ -915,3 +922,4 @@ test_that(
     expect_true(all(manifestMult$reason == "no_positive_cells"))
   }
 )
+})

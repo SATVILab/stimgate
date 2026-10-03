@@ -1,4 +1,5 @@
 test_that("automatic settings use the same evenly spaced batches", {
+  withr::local_preserve_seed()
   expect_identical(.completeChnlSettingsBatchInd(as.list(1:3)), c(1, 2, 3))
   expect_identical(
     .completeChnlSettingsBatchInd(as.list(1:9)),

@@ -20,6 +20,9 @@
 }
 
 test_that("base scenario forwards settings and reruns the stored RNG stream", {
+  withr::local_preserve_seed()
+  originalRngKind <- RNGkind()
+  withr::defer(do.call(RNGkind, as.list(originalRngKind)))
   env <- .load_est_base_run_env()
   row <- .est_base_test_row()
   settings <- list(

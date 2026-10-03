@@ -42,6 +42,7 @@
 # fixed-bandwidth path, because downstream filtering expects a single comparison
 # grid and a consistent bandwidth object paired with the raw densities.
 test_that("ordinary fixed-bandwidth densities stay finite, aligned and retain the selected bandwidth", {
+  withr::local_preserve_seed()
   fixture <- .makeCpUnsLocDensityFixture(seed = 101L)
   chnlSettings <- .makeCpUnsLocDensityChnlSettings(bw = 0.55)
 
@@ -68,6 +69,7 @@ test_that("ordinary fixed-bandwidth densities stay finite, aligned and retain th
 # [0, 1] and increase in the clearly separated positive region, as a guardrail
 # against negative or mis-scaled densities being fed into the smoother.
 test_that("ordinary fixed-bandwidth raw probabilities remain valid and rise in the response region", {
+  withr::local_preserve_seed()
   fixture <- .makeCpUnsLocDensityFixture(seed = 202L)
   chnlSettings <- .makeCpUnsLocDensityChnlSettings(bw = 0.6)
 
@@ -106,6 +108,7 @@ test_that("ordinary fixed-bandwidth raw probabilities remain valid and rise in t
 # The ordinary fit should package the observed density metadata and the smoothable
 # probability inputs that the later local-FDR stages expect.
 test_that("ordinary fixed-bandwidth fit preserves the density metadata and smoothing inputs", {
+  withr::local_preserve_seed()
   fixture <- .makeCpUnsLocDensityFixture(seed = 303L)
   chnlSettings <- .makeCpUnsLocDensityChnlSettings(bw = 0.5)
 
