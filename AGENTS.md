@@ -362,6 +362,10 @@ For new or moved analysis code, use this layering:
 4. Analysis-specific helpers under `scripts/r/`: substantial orchestration, restart/collation, IO and plotting helpers that should not live inline in QMDs.
 5. `analysis/*.qmd`: scientific settings, analysis calls, result-specific transformations and presentation.
 
+Plot-construction helpers under `scripts/r/` should return plot objects without
+creating directories or writing files. Keep filesystem side effects in the
+corresponding save/orchestration helper or QMD.
+
 Source analysis helper files explicitly in dependency order. Do not move analysis-only
 helpers into `R/` unless they have genuinely become part of the installed package
 implementation or API. Keep large domain helper files such as `sim-bandwidth.R`
