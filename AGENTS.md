@@ -209,6 +209,9 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - Keep requested estimator settings distinct from the estimator path actually
   used after fallbacks. Preserve and summarise fallback provenance rather than
   labelling fallback rows as though they used the requested estimator.
+- For adaptive normalised bandwidth estimation, `normAdaptiveNcell` controls
+  the fixed-size synthetic core/extra samples. Do not vary `bwNcellMax` as if
+  it controlled that adaptive branch unless the implementation changes.
 - Active simulation chunks must collate only their own chunk outputs; canonical
   cross-chunk reads happen after promotion. A render with simulations disabled
   must use the read-only current-results context and must not create staging state.
