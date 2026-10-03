@@ -221,6 +221,13 @@ fallback <- inspectCytPosCase(
   "fallback-unimodal"
 )
 
+stopifnot(
+  accepted$markers$IFNG$summary$gateCyt <
+    accepted$markers$IFNG$summary$gateOriginal,
+  fallback$markers$IFNG$summary$gateCyt ==
+    fallback$markers$IFNG$summary$gateOriginal
+)
+
 summaryTbl <- dplyr::bind_rows(
   accepted$summary,
   fallback$summary
