@@ -12,19 +12,6 @@ test_that(".gateGetPop and .gateGetChnl handle single and multiple populations c
   unlink(tmpProj, recursive = TRUE)
 })
 
-test_that(".getExProjectPop, .getExProjectInd and .getExProjectChnl discover sampleData correctly", {
-  tmpProj <- file.path(tempdir(), paste0("sample_disc_test_", as.numeric(Sys.time())))
-  dir.create(file.path(tmpProj, "sampleData", "pop_root", "ind_1"), recursive = TRUE)
-  dir.create(file.path(tmpProj, "sampleData", "pop_root", "ind_2"), recursive = TRUE)
-  saveRDS(1:5, file.path(tmpProj, "sampleData", "pop_root", "ind_1", "chnl_BC1.rds"))
-
-  expect_equal(.getExProjectPop(tmpProj), "root")
-  expect_equal(sort(.getExProjectInd(tmpProj, "root")), c("1", "2"))
-  expect_equal(.getExProjectChnl(tmpProj, "root", "1"), "BC1")
-
-  unlink(tmpProj, recursive = TRUE)
-})
-
 test_that("expression discovery preserves filtering, ordering and empty-path behaviour", {
   project <- withr::local_tempdir()
   expect_identical(.getExProjectPop(project), character())

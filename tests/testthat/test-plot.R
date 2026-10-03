@@ -11,14 +11,7 @@ invisible(gateStim(
   chnl = exampleData$chnl
 ))
 
-test_that("plotStim function exists", {
-  # Just test that the function exists and is callable
-  expect_true(exists("plotStim", envir = asNamespace("stimgate")))
-  expect_true(is.function(plotStim))
-})
-
 test_that("plotStim runs", {
-  # debugonce(.plotGateBv)
   p <- plotStim(
     ind = exampleData$batchList[[1]], # indices in `gs` to plot
     .data = gs, # GatingSet
@@ -195,10 +188,6 @@ test_that("plot helpers handle axis titles and disabled gates", {
   )
   expect_identical(pNoGate, pBase)
 })
-
-# if (dir.exists(exampleData$path_gs)) {
-#   unlink(exampleData$path_gs, recursive = TRUE)
-# }
 
 test_that("plotStim keeps univariate plots when excMin = FALSE", {
   pList <- plotStim(
