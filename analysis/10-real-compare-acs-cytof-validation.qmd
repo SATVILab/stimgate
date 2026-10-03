@@ -4,9 +4,19 @@ format:
   html:
     embed-resources: true
     toc: true
+execute:
+  warning: false
+  message: false
 params:
-  run_plots: true
+  run_simulations: true
+  run_plots: false
 ---
+
+This analysis compares automated and manual background-subtracted cytokine frequencies in the ACS CyTOF dataset. It uses the matched comparison table saved by analysis 9 to plot frequencies and calculate Pearson and concordance correlations for StimGate, F-beta and Tailgate. The correlation summaries retain the manuscript eligibility rules.
+
+## Set-up
+
+The saved `acs_cytof/manual-comparison/manual-comparison.rds` table is sufficient; raw FCS files are not needed here. Render analysis 9 with `RUN_SIMULATIONS=true RUN_PLOTS=false` first if that table is missing. `RUN_PLOTS=true` displays and saves the validation figures; this document does not rerun the gating methods.
 
 ```{r}
 #| label: setup
@@ -18,17 +28,30 @@ root_dir <- tryCatch(
   projr::projr_path_get("project"),
   error = function(e) getwd()
 )
+# Quarto may start in analysis/ when no project execution directory is set.
+if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
+  root_dir <- normalizePath(file.path(getwd(), ".."), mustWork = TRUE)
+}
+if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
+  stop("Cannot find the stimgate repository root; render from the checkout.")
+}
+
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
 
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  FALSE
+))
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
   TRUE
 ))
 
-path_manual_output <- projr::projr_path_get_dir(
+path_manual_output <- projr::projr_path_get(
   "cache",
   "acs_cytof",
   "manual-comparison"
@@ -41,7 +64,8 @@ if (!file.exists(path_comparison)) {
   stop(
     "ACS manual comparison table not found at: ",
     path_comparison,
-    ". Run analysis/9-real-compare-acs-cytof.qmd first."
+    ". Run RUN_SIMULATIONS=true RUN_PLOTS=false quarto render ",
+    "analysis/9-real-compare-acs-cytof.qmd first with the ACS data available."
   )
 }
 manual_comparison_tbl <- readRDS(path_comparison)
@@ -52,10 +76,7 @@ validation_methods <- .acsCytofValidationMethods()
 )
 ```
 
-## Aim
-
-Reproduce the ACS manuscript-style validation plots for StimGate, F-beta and
-Tailgate using the comparison table produced by the main ACS analysis.
+## Scientific inclusion rules
 
 The raw-frequency plots show automated against manual background-subtracted
 frequencies for every matched population and cytokine. The correlation outputs
@@ -74,6 +95,7 @@ additional populations in the current benchmark.
 
 ```{r}
 #| label: correlation-table
+#| echo: false
 correlation_tbl <- .acsCytofValidationCorrelationTable(manual_comparison_tbl)
 correlation_tbl
 ```
@@ -82,7 +104,7 @@ correlation_tbl
 
 ```{r}
 #| label: save-validation-figures
-#| results: hide
+#| include: false
 if (isTRUE(run_plots)) {
   path_dir_save <- file.path(
     path_manual_output, "validation-figures"
@@ -96,8 +118,14 @@ if (isTRUE(run_plots)) {
 
 ### Raw background-subtracted frequencies
 
+Manual background-subtracted frequency is on the horizontal axis and automated frequency on the vertical axis. Colours identify stimuli, and panels separate populations and cytokines within each method. Points closer to the identity line indicate closer agreement; horizontal and vertical lines mark zero frequency.
+
 ```{r}
-#| label: show-scatter
+#| label: fig-acs-validation-scatter
+#| echo: false
+#| fig-width: 12
+#| fig-height: 9
+#| fig-cap: "Automated versus manual background-subtracted frequencies, one figure per method."
 if (isTRUE(run_plots)) {
   for (method in validation_methods) {
     print(.acsCytofValidationPlotScatter(manual_comparison_tbl, method))
@@ -107,8 +135,14 @@ if (isTRUE(run_plots)) {
 
 ### Correlation heatmaps for CD4, CD8 and TCRgd T cells
 
+Cytokines run across columns and the three T-cell populations across rows, with panels for stimuli. Colour and text show Pearson or concordance correlation for each method after applying the eligibility rules. Values closer to one indicate stronger agreement; grey cells mark unavailable correlations.
+
 ```{r}
-#| label: show-real-pop-heatmaps
+#| label: fig-acs-validation-t-cell-correlations
+#| echo: false
+#| fig-width: 12
+#| fig-height: 5
+#| fig-cap: "Pearson and concordance correlations for CD4, CD8 and TCRgd T cells."
 if (isTRUE(run_plots)) {
   for (method in validation_methods) {
     print(.acsCytofValidationPlotCorrelation(
@@ -129,8 +163,14 @@ if (isTRUE(run_plots)) {
 
 ### Correlation heatmaps for all matched populations
 
+These heatmaps use the same cytokine, stimulus and correlation scales for all matched populations, including B and NK cells. Compare methods within the same population and cytokine, keeping the eligibility rules in mind.
+
 ```{r}
-#| label: show-all-pop-heatmaps
+#| label: fig-acs-validation-all-correlations
+#| echo: false
+#| fig-width: 12
+#| fig-height: 6
+#| fig-cap: "Pearson and concordance correlations across all matched populations."
 if (isTRUE(run_plots)) {
   for (method in validation_methods) {
     print(.acsCytofValidationPlotCorrelation(

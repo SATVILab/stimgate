@@ -637,6 +637,10 @@ rows before drawing reference lines.
 
 11. **Real-data analyses replace outputs non-destructively**:
    Real-data analyses that recompute cached outputs (e.g. ACS CyTOF) build into a temporary sibling and swap it in on success (`.acsCytofReplaceDir()`), or compute all results before atomically writing them. Never delete the previous output before the new one is complete.
+   ACS stage controls inherit `run_simulations` when their parameters are NULL;
+   explicit stage parameters/environment variables override that default. Cached
+   comparison renders read the saved manual-comparison table without raw FCS or
+   manual CSV inputs; GatingSet diagnostics are optional when those caches are absent.
 
 12. **Versioning before the first Bioconductor release**:
    Keep `Version` in `DESCRIPTION` at `0.99.z` (three components, no `-n`
