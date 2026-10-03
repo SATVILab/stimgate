@@ -192,3 +192,32 @@ test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundar
     )
   )
 })
+
+
+test_that("adaptive normalised bandwidths are controlled by normAdaptiveNcell, not bwNcellMax", {
+  set.seed(519L)
+  x <- c(
+    stats::rnorm(800L, mean = 0, sd = 1),
+    stats::rnorm(200L, mean = 5, sd = 1)
+  )
+
+  calc_adaptive <- function(bw_ncell_max) {
+    set.seed(520L)
+    stimgate:::.bwCalcOne(
+      x = x,
+      bwMtd = "hpi1Norm",
+      bwNcellMax = bw_ncell_max,
+      normAdaptiveNcell = 200L,
+      adaptive = TRUE
+    )
+  }
+
+  bw_small_cap <- calc_adaptive(100L)
+  bw_large_cap <- calc_adaptive(100000L)
+
+  expect_true(is.list(bw_small_cap))
+  expect_true(isTRUE(attr(bw_small_cap, "adaptive")))
+  expect_equal(bw_small_cap$bwCore, bw_large_cap$bwCore, tolerance = 1e-12)
+  expect_equal(bw_small_cap$bwExtra, bw_large_cap$bwExtra, tolerance = 1e-12)
+  expect_equal(bw_small_cap$bw, bw_large_cap$bw, tolerance = 1e-12)
+})
