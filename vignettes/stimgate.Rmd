@@ -63,6 +63,8 @@ plots <- stimgate_plot(
 
 For more detailed examples and advanced usage, please refer to the function documentation.
 
+`gateStim()` takes its data and marker arguments directly (`pathProject`, `.data`, `batchList`, `marker` or `chnl`, `popGate`, `biasUns`, `bw`). All other method, bandwidth and thresholding settings are supplied through its `control` argument as a `stimControl()` object, and per-marker overrides through `markerControl`, keyed by marker label or channel name.
+
 ```{r}
 sessionInfo()
 ```

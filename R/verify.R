@@ -17,74 +17,25 @@
   popGate,
   chnl,
   marker,
-  chnlSettings,
-  markerSettings,
-  calcCytPosGates,
   biasUns,
-  biasUnsFactor,
-  excMin,
-  cpMin,
   bw,
-  bwMin,
-  bwMax,
-  bwFallback,
-  bwMtd,
-  bwAdj,
-  bwNcellMin,
-  bwNcellMax,
-  bwCluster,
-  bwScope,
-  bwAdaptive,
-  bwAdaptiveDensityN,
-  bwAdaptivePadFrac,
-  bwAdaptiveCore,
-  bwAdaptiveExtra,
-  bwAdaptiveCrossover,
-  bwAdaptiveTransitionWidth,
-  normPeakMinRel,
-  normExtraFrac,
-  normExtraMax,
-  normLambda,
-  normDensityN,
-  normExcessBwMtd,
-  normExcessNcell,
-  normAdaptiveNcell,
-  normMtd,
-  minCell,
-  tolClust,
-  locProbCol,
-  locMinPeakProb,
-  locDipAlpha,
-  locAntimodeHeightFrac,
-  locAntimodeLowRel,
-  locAntimodeLowAbs,
-  locFlatDerivFrac,
-  locFlatHardDerivFrac,
-  locMarginalPurityRel,
-  locMarginalCellBinRatio,
-  locMarginalRefQuantile,
-  maxPosProbX,
-  gateCombn,
-  gateQuant
+  control,
+  markerControl
 ) {
-  # Snapshot of all arguments, taken before any local variable exists.
-  settings <- as.list(environment())
+  # 1. Control class check: no other argument is read before this succeeds.
+  if (!inherits(control, "stimControl")) {
+    stop("`control` must be a stimControl object; use `stimControl()`.")
+  }
 
-  # 1. Channel / Marker Mutual Exclusivity Checks
+  # 2. Channel / Marker Mutual Exclusivity Checks
   if (!is.null(chnl) && !is.null(marker)) {
     stop("Specify only one of 'chnl' or 'marker', not both.")
   }
   if (is.null(chnl) && is.null(marker)) {
     stop("Must specify one of 'chnl' or 'marker'.")
   }
-  if (!is.null(chnl) && !is.null(markerSettings)) {
-    stop("When 'chnl' is specified, 'markerSettings' must be NULL.")
-  }
-  if (!is.null(marker) && !is.null(chnlSettings)) {
-    stop("When 'marker' is specified, 'chnlSettings' must be NULL.")
-  }
 
-  # 2. Structural & Type Checks
+  # 3. Structural & Type Checks
   if (
     !is.character(pathProject) || length(pathProject) != 1 || pathProject == ""
   ) {
@@ -113,56 +64,14 @@
     stop("`batchList` must be a non-empty list of sample indices.")
   }
 
-  # 3. Global-only checks
-  if (!is.logical(calcCytPosGates) || length(calcCytPosGates) != 1) {
-    stop("`calcCytPosGates` must be a single logical value (TRUE/FALSE).")
+  # 4. Global-only checks
+  if (!is.null(markerControl) && !is.list(markerControl)) {
+    stop("`markerControl` must be NULL or a named list.")
   }
-  if (
-    .verifyIsNullOrNa(bw) &&
-      !.verifyIsNullOrNa(bwNcellMin) &&
-      !is.numeric(bwNcellMin)
-  ) {
-    stop("`bwNcellMin` must be numeric.")
-  }
-  if (.verifyIsNullOrNa(bw) && !.verifyIsNullOrNa(bwNcellMax)) {
-    if (!is.numeric(bwNcellMax)) {
-      stop("`bwNcellMax` must be numeric.")
-    }
-    if (
-      !.verifyIsNullOrNa(bwNcellMin) &&
-        is.numeric(bwNcellMin) &&
-        length(bwNcellMin) == 1L &&
-        is.finite(bwNcellMin) &&
-        is.finite(bwNcellMax) &&
-        bwNcellMax < bwNcellMin
-    ) {
-      stop("`bwNcellMax` must be >= `bwNcellMin`.")
-    }
-  }
-  if (!is.numeric(minCell) || length(minCell) != 1 || minCell <= 0) {
-    stop("`minCell` must be a positive number.")
-  }
-
-  # 4. Settings shared with per-channel validation. Per channel, NULL means
-  # "inherit the global value", so the global value must itself be supplied.
-  # `bwMtd` and `bwScope` are only used (and so only checked) when `bw` is not
-  # fixed.
-  if (!.verifyIsNullOrNa(bw)) {
-    settings[["bwMtd"]] <- NULL
-    settings[["bwScope"]] <- NULL
-  }
-  required <- c(
-    "excMin", "biasUnsFactor", "maxPosProbX", "bwAdj", "gateCombn",
-    "gateQuant", if (.verifyIsNullOrNa(bw)) c("bwMtd", "bwScope")
+  .verifyChnlSettingsChnl(
+    settings = list(popGate = popGate, biasUns = biasUns, bw = bw),
+    prefix = ""
   )
-  isMissing <- vapply(settings[required], .verifyIsNullOrNa, logical(1))
-  if (any(isMissing)) {
-    stop(
-      "Must be supplied (not NULL or NA): ",
-      paste0("`", required[isMissing], "`", collapse = ", ")
-    )
-  }
-  .verifyChnlSettingsChnl(settings = settings, prefix = "")
 
   # Channel presence
   chnlLab <- chnlLab(.data)
@@ -173,6 +82,7 @@
         paste(setdiff(chnl, names(chnlLab)), collapse = ", ")
       )
     }
+    chnlSel <- chnl
   }
   if (!is.null(marker)) {
     if (!all(marker %in% chnlLab)) {
@@ -181,66 +91,17 @@
         paste(setdiff(marker, chnlLab), collapse = ", ")
       )
     }
+    chnlSel <- names(chnlLab)[chnlLab %in% marker]
   }
 
-  invisible(TRUE)
-}
-
-#' @keywords internal
-.verifyChnlSettings <- function(chnlSettings, chnl, markerSettings, marker) {
-  # `.verifyGateInputs()` (the only caller's precondition) guarantees that at
-  # most one of `chnlSettings` and `markerSettings` is supplied.
-  isChnl <- !is.null(chnlSettings)
-  settingsList <- if (isChnl) chnlSettings else markerSettings
-  if (is.null(settingsList)) {
-    return(invisible(TRUE))
-  }
-  arg <- if (isChnl) "chnlSettings" else "markerSettings"
-  type <- if (isChnl) "channel" else "marker"
-  allowed <- if (isChnl) chnl else marker
-
-  if (!is.list(settingsList)) {
-    stop(sprintf("`%s` must be a list of %s-specific settings.", arg, type))
-  }
-  nms <- names(settingsList)
-  if (length(settingsList) > 0L) {
-    if (is.null(nms)) {
-      stop(sprintf("`%s` elements must be named.", arg))
-    }
-    if (anyDuplicated(nms) > 0L) {
-      stop(sprintf("`%s` must have unique %s names.", arg, type))
-    }
-    if (!all(nms %in% allowed)) {
-      stop(sprintf(
-        "All %ss in `%s` must be included in `%s`",
-        type, arg, if (isChnl) "chnl" else "marker"
-      ))
-    }
-  }
-
-  # Every per-channel-capable `gateStim()` argument. `locEnforceShapeThreshold`
-  # is legacy and deliberately global only.
-  permissibleSettings <- setdiff(
-    names(formals(gateStim)),
-    c(
-      "pathProject", ".data", "batchList", "chnl", "marker", "chnlSettings",
-      "markerSettings", "calcCytPosGates", "locEnforceShapeThreshold"
-    )
+  # Validate `markerControl` here, before any project directory is created. The
+  # resolved settings are recomputed in `.completeChnlSettings()`.
+  .resolveMarkerControl(
+    markerControl = markerControl,
+    chnl = chnlSel,
+    chnlLab = chnlLab
   )
-  purrr::walk(nms, function(nm) {
-    settingsCurr <- settingsList[[nm]]
-    if (!is.list(settingsCurr)) {
-      stop(sprintf("%s '%s' setting must be a list.", type, nm))
-    }
-    invalidSettings <- setdiff(names(settingsCurr), permissibleSettings)
-    if (length(invalidSettings) > 0L) {
-      stop(
-        sprintf("Invalid settings for %s '%s': ", type, nm),
-        paste(invalidSettings, collapse = ", ")
-      )
-    }
-    .verifyChnlSettingsChnl(nm, settingsCurr)
-  })
+
   invisible(TRUE)
 }
 
@@ -260,7 +121,7 @@
   ) {
     stop(paste0(prefix, "`excMin` must be a single logical value."))
   }
-  for (nm in c("biasUns", "cpMin", "maxPosProbX")) {
+  for (nm in c("biasUns", "cpMin")) {
     val <- settings[[nm]]
     if (!.verifyIsNullOrNa(val) && (!is.numeric(val) || length(val) != 1)) {
       stop(paste0(prefix, "`", nm, "` must be a single numeric value."))
@@ -272,8 +133,42 @@
       allow_inf = TRUE, settings = settings, prefix = prefix
     )
   }
-  for (nm in c("bw", "bwCluster", "tolClust")) {
+  for (nm in c("bw", "bwCluster")) {
     .check_positive_n(nm, settings = settings, prefix = prefix)
+  }
+
+  if (
+    !.verifyIsNullOrNa(settings[["minCell"]]) &&
+      (!is.numeric(settings[["minCell"]]) ||
+        length(settings[["minCell"]]) != 1L ||
+        settings[["minCell"]] <= 0)
+  ) {
+    stop(paste0(prefix, "`minCell` must be a positive number."))
+  }
+
+  # The bandwidth-selector settings are only used when no fixed bandwidth is
+  # supplied for this channel.
+  if (.verifyIsNullOrNa(settings[["bw"]])) {
+    bwNcellMin <- settings[["bwNcellMin"]]
+    bwNcellMax <- settings[["bwNcellMax"]]
+    if (!.verifyIsNullOrNa(bwNcellMin) && !is.numeric(bwNcellMin)) {
+      stop(paste0(prefix, "`bwNcellMin` must be numeric."))
+    }
+    if (!.verifyIsNullOrNa(bwNcellMax)) {
+      if (!is.numeric(bwNcellMax)) {
+        stop(paste0(prefix, "`bwNcellMax` must be numeric."))
+      }
+      if (
+        !.verifyIsNullOrNa(bwNcellMin) &&
+          is.numeric(bwNcellMin) &&
+          length(bwNcellMin) == 1L &&
+          is.finite(bwNcellMin) &&
+          is.finite(bwNcellMax) &&
+          bwNcellMax < bwNcellMin
+      ) {
+        stop(paste0(prefix, "`bwNcellMax` must be >= `bwNcellMin`."))
+      }
+    }
   }
 
   bwMin <- settings[["bwMin"]]
@@ -304,7 +199,8 @@
 
   bwMtd <- settings[["bwMtd"]]
   if (
-    !.verifyIsNullOrNa(bwMtd) &&
+    .verifyIsNullOrNa(settings[["bw"]]) &&
+      !.verifyIsNullOrNa(bwMtd) &&
       (!is.character(bwMtd) || length(bwMtd) != 1 || !bwMtd %in% .verifyBwMtds)
   ) {
     stop(paste0(
@@ -326,16 +222,13 @@
     ))
   }
 
-  gateQuant <- settings[["gateQuant"]]
   if (
-    !.verifyIsNullOrNa(gateQuant) &&
-      (!is.numeric(gateQuant) ||
-        length(gateQuant) != 2 ||
-        any(gateQuant < 0 | gateQuant > 1))
+    "clusterGates" %in% names(settings) &&
+      (!is.logical(settings[["clusterGates"]]) ||
+        length(settings[["clusterGates"]]) != 1L ||
+        is.na(settings[["clusterGates"]]))
   ) {
-    stop(paste0(
-      prefix, "`gateQuant` must be two probabilities between 0 and 1."
-    ))
+    stop(paste0(prefix, "`clusterGates` must be TRUE or FALSE."))
   }
 
   .verifyNormBwSettings(settings = settings, prefix = prefix)
