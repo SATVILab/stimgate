@@ -218,6 +218,8 @@ if (analysis_dev) {
 }
 
 sim_grid_all <- sim_grid
+analysis_grid_spec <- sim_grid_all |>
+  dplyr::select(-sim_seed)
 
 if (nrow(sim_grid_all) > 0L) {
   set.seed(sim_grid_shuffle_seed)
@@ -251,7 +253,7 @@ print(paste0(
   " using shuffle seed ", sim_grid_shuffle_seed
 ))
 
-bw_fallback <- 0.23482348792138919129198282389
+bw_fallback <- NA_real_
 ```
 
 A loop we only run when we want to see why particular runs failed.
