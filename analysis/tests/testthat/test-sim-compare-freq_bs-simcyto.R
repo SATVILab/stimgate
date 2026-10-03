@@ -672,8 +672,9 @@ test_that("QMD scenario calls use package defaults and reproducible RNG", {
   source(script_comp, local = env)
   env$.simCompareEnsureCurrentCheckout <- function() invisible(NULL)
   env$.simCompareFreqBs <- function(...) {
-    args <- list(...)
-    expect_false("gateCombn" %in% names(args))
+    # stopifnot, not expect_*: this mock also runs inside a future, where
+    # testthat expectations cannot be muffled.
+    stopifnot(!"gateCombn" %in% names(list(...)))
     tibble::tibble(
       method = "stimgate", propRespEst = runif(1), propRespTruth = 0.05,
       error = NA_character_
