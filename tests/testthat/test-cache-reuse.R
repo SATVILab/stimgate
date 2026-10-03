@@ -186,6 +186,10 @@ test_that(".getCpCluster accepts precomputed exLookup", {
     batchList = exampleData$batchList,
     marker = exampleData$marker[1L]
   ))
+  # gateStim() names batches; the internal helpers rely on those names
+  indBatchList <- stats::setNames(
+    exampleData$batchList, paste0("batch", seq_along(exampleData$batchList))
+  )
   settingsList <- stimgateMetaReadSettingsChnls(pathProject)
   chnlSettings <- settingsList[[1L]]
 
@@ -199,7 +203,7 @@ test_that(".getCpCluster accepts precomputed exLookup", {
 
   exLookup <- .getCpClusterLocExLookup(
     .data = gs,
-    indBatchList = exampleData$batchList,
+    indBatchList = indBatchList,
     chnlSettings = chnlSettings,
     filterOtherCytPos = FALSE,
     calcCytPosGates = FALSE,
@@ -223,7 +227,7 @@ test_that(".getCpCluster accepts precomputed exLookup", {
     pathProject = pathProject,
     filterOtherCytPos = FALSE,
     calcCytPosGates = FALSE,
-    indBatchList = exampleData$batchList,
+    indBatchList = indBatchList,
     exLookup = exLookup
   )
 
