@@ -16,7 +16,7 @@ test_that("stimgateGateRunsWithGateCombnPrejoin", {
     popGate = "root",
     batchList = batchList,
     marker = exampleData$marker,
-    gateCombn = "prejoin"
+    control = stimControl(gateCombn = "prejoin")
   )
 
   expect_identical(result, pathProject)
@@ -70,7 +70,7 @@ test_that("stimgateGateRunsWithGateCombnNo", {
       popGate = "root",
       batchList = exampleData$batchList,
       marker = exampleData$marker,
-      gateCombn = "no"
+      control = stimgate::stimControl(gateCombn = "no")
     )
   })
 
@@ -99,7 +99,7 @@ test_that("stimgateGateRunsWithGateCombnMedian", {
       popGate = "root",
       batchList = exampleData$batchList,
       marker = exampleData$marker,
-      gateCombn = "median"
+      control = stimgate::stimControl(gateCombn = "median")
     )
   })
 
@@ -128,7 +128,7 @@ test_that("stimgateGateRunsWithGateCombnMax", {
       popGate = "root",
       batchList = exampleData$batchList,
       marker = exampleData$marker,
-      gateCombn = "max"
+      control = stimgate::stimControl(gateCombn = "max")
     )
   })
 

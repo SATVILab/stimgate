@@ -84,7 +84,7 @@ test_that(
       batchList = exampleData$batchList,
       marker = exampleData$marker,
       calcCytPosGates = FALSE,
-      tolClust = NULL
+      control = stimControl(clusterGates = FALSE)
     )
     expect_equal(resPath, pathProject)
 
@@ -108,7 +108,7 @@ test_that(
       batchList = exampleData$batchList,
       marker = exampleData$marker,
       calcCytPosGates = FALSE,
-      tolClust = NULL
+      control = stimControl(clusterGates = FALSE)
     )
     expect_equal(resPath2, pathProject)
     expect_true(file.exists(pathDebugFile))
@@ -145,7 +145,7 @@ test_that("non-debug gateStim does not create or reset debug directory", {
     batchList = exampleData$batchList,
     marker = exampleData$marker,
     calcCytPosGates = FALSE,
-    tolClust = NULL
+    control = stimControl(clusterGates = FALSE)
   )
 
   expect_false(dir.exists(file.path(pathProject, "debug")))
@@ -186,7 +186,7 @@ test_that("debug write errors never fail gateStim", {
           batchList = exampleData$batchList,
           marker = exampleData$marker,
           calcCytPosGates = FALSE,
-          tolClust = NULL
+          control = stimControl(clusterGates = FALSE)
         )
       )
       expect_equal(resPath, pathProject)

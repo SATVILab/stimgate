@@ -5,16 +5,16 @@ test_that("bwScope sets shared local-FDR bandwidths in the channel settings", {
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   indAll <- as.character(unlist(exampleData$batchList))
 
-  runSettings <- function(...) {
+  runSettings <- function(..., minCell = 1e2) {
     pathProject <- withr::local_tempdir(.local_envir = parent.frame())
     invisible(gateStim(
       .data = gs,
       pathProject = pathProject,
       batchList = exampleData$batchList,
       marker = exampleData$marker,
-      tolClust = NULL,
+      minCell = minCell,
       calcCytPosGates = FALSE,
-      ...
+      control = stimControl(clusterGates = FALSE, ...)
     ))
     stimgateMetaReadSettingsChnls(pathProject)
   }
@@ -22,6 +22,7 @@ test_that("bwScope sets shared local-FDR bandwidths in the channel settings", {
   # Default: one trimmed-mean bandwidth per channel
   for (settings in runSettings()) {
     expect_identical(settings$bwScope, "cytokine")
+    expect_false(isTRUE(settings$clusterGates))
     expect_length(settings$bwShared, 1L)
     expect_true(is.finite(settings$bwShared) && settings$bwShared > 0)
     expect_null(settings$bwSharedTbl)

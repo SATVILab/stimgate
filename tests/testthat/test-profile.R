@@ -175,7 +175,7 @@ test_that("gateStim with STIMGATE_DEBUG produces full profiling records and clea
     batchList = exampleData$batchList,
     marker = exampleData$marker,
     calcCytPosGates = TRUE,
-    tolClust = NULL
+    control = stimControl(clusterGates = FALSE)
   )
 
   expect_equal(resPath, pathProject)
@@ -251,7 +251,7 @@ test_that("gateStim with STIMGATE_DEBUG produces full profiling records and clea
     batchList = exampleData$batchList,
     marker = exampleData$marker,
     calcCytPosGates = FALSE,
-    tolClust = NULL
+    control = stimControl(clusterGates = FALSE)
   )
   profileTbl2 <- readRDS(pathProfileRds)
   rootRow2 <- profileTbl2[profileTbl2$level == "run", , drop = FALSE]
@@ -351,7 +351,7 @@ test_that("profiling errors never cause gateStim to fail", {
           batchList = exampleData$batchList,
           marker = exampleData$marker,
           calcCytPosGates = FALSE,
-          tolClust = NULL
+          control = stimControl(clusterGates = FALSE)
         ))
       )
       expect_equal(resPath, pathProject)

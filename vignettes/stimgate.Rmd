@@ -26,38 +26,53 @@ The `stimgate` package provides tools to identify cells that have possibly respo
 
 The package provides several key functions:
 
-- `stimgate_gate()`: Main function to identify cytokine-positive cells by gating
-- `get_stats()`: Generate statistics from gating results
-- `stimgate_plot()`: Visualize identified gates
-- `stimgate_gate_get()`: Extract gate information
-- `stimgate_fcs_write()`: Write FCS files of cytokine-positive cells
+- `gateStim()`: Main function to identify cytokine-positive cells by gating, writing the results to a project directory
+- `stimControl()`: Collects the tuning settings passed to `gateStim()` through its `control` argument
+- `getStimGates()` / `getStimGatesDetailed()`: Read the fitted gates and detailed threshold diagnostics
+- `getStimStats()`: Generate statistics from gating results
+- `plotStim()`: Visualize identified gates
+- `getStimExpr()`: Read the expression data saved by a project, optionally applying the saved gates
+- `writeStimFCS()`: Write FCS files of cytokine-positive cells
 
 ## Basic Usage
 
 ```{r eval=FALSE}
 # Basic gating workflow
-result <- stimgate_gate(
-  pathProject = "/path/to/project",
+example_data <- getExampleData()
+gs <- flowWorkspace::load_gs(example_data$pathGs)
+
+path_project <- gateStim(
+  pathProject = file.path(tempdir(), "stimgate-example"),
   .data = gs, # GatingSet object
-  batchList = list(batch1 = 1:10, batch2 = 11:20),
-  marker = list(
-    list(cut = "IL2", tol = 0.5e-8),
-    list(cut = "TNFa", tol = 0.5e-8)
-  )
+  batchList = example_data$batchList,
+  marker = example_data$marker
 )
 
-# Get statistics
-stats <- get_stats("/path/to/project")
-
-# Get gate table
-gates <- get_gate_tbl("/path/to/project")
+# Get gate table and statistics
+gates <- getStimGates(path_project)
+stats <- getStimStats(path_project)
 
 # Plot gates
-plots <- stimgate_plot(
-  ind = 1:3,
+plotStim(
+  ind = example_data$batchList[[1]],
   .data = gs,
-  pathProject = "/path/to/project",
-  marker = c("IL2", "TNFa")
+  pathProject = path_project,
+  marker = example_data$marker
+)
+```
+
+All method, bandwidth and thresholding settings are passed as a single `stimControl()` object through `gateStim()`'s `control` argument, and per-marker overrides as a `markerControl` list keyed by marker label or channel name.
+
+```{r eval=FALSE}
+gateStim(
+  pathProject = path_project,
+  .data = gs,
+  batchList = example_data$batchList,
+  marker = example_data$marker,
+  control = stimControl(clusterGates = FALSE, bwMtd = "nrd0"),
+  markerControl = list(
+    MarkerF1 = list(bw = 0.12, biasUns = 0)
+  )
 )
 ```
 
