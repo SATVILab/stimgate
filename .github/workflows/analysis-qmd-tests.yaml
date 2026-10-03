@@ -1,0 +1,52 @@
+name: analysis-qmd-tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      qmds:
+        description: 'QMD numbers, stems or paths, separated by commas/spaces; all runs every target'
+        required: true
+        default: 'all'
+        type: string
+
+permissions: read-all
+
+jobs:
+  qmd-tests:
+    # Reuse the analysis integration environment: Windows has Bioconductor binaries.
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      QMD_TEST_TARGETS: ${{ inputs.qmds }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: r-lib/actions/setup-pandoc@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+
+      - uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+        with:
+          r-version: 'release'
+          use-public-rspm: true
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: python
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: python -m pip install numpy
+
+      - uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+        with:
+          extra-packages: any::devtools, any::testthat, any::decor, any::reticulate, any::future, any::furrr, any::progressr, any::withr, any::RColorBrewer, SATVILab/simcyto
+          needs: check
+          cache: always
+
+      - name: Run selected QMD tests
+        env:
+          RETICULATE_PYTHON: ${{ steps.python.outputs.python-path }}
+        run: Rscript analysis/tests/run_qmd_tests.R "$env:QMD_TEST_TARGETS"
