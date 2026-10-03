@@ -83,7 +83,6 @@ test_that("plot functions handle minCell threshold correctly", {
     combnExc = NULL,
     gateTypeCytPos = "cyt",
     mult = FALSE,
-    gateUnsMethod = "min",
     minCell = 999999 # Very high threshold
   )
   # Should return a list with NULLs filtered out, or NULL
@@ -178,7 +177,6 @@ test_that(".plotGateUvMarkerGetPlotTbl returns NULL for insufficient cells", {
     markerGate = NULL,
     gateTypeCytPos = "cyt",
     mult = FALSE,
-    gateUnsMethod = "min",
     minCell = 999999 # Very high threshold
   )
   expect_null(result)
@@ -273,7 +271,6 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
     markerGate = NULL,
     gateTypeCytPos = "cyt",
     mult = FALSE,
-    gateUnsMethod = "min",
     minCell = 999999 # Impossible threshold
   ))
 
@@ -291,8 +288,7 @@ test_that("comprehensive edge case coverage for plot_gate functions", {
     chnlGate = NULL,
     markerGate = NULL,
     gateTypeCytPos = "cyt",
-    mult = FALSE,
-    gateUnsMethod = "min"
+    mult = FALSE
   )
   expect_true(is.data.frame(exTbl))
   expect_true(nrow(exTbl) > 0)

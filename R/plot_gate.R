@@ -94,8 +94,7 @@ plotStim <- function(
     chnlGate = NULL,
     markerGate = NULL,
     gateTypeCytPos = "cyt",
-    mult = FALSE,
-    gateUnsMethod = "min") {
+    mult = FALSE) {
   if (is.null(marker) && is.null(chnl)) {
     stop("Must specify one of marker or chnl")
   }
@@ -125,8 +124,7 @@ plotStim <- function(
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    mult = mult,
-    gateUnsMethod = gateUnsMethod
+    mult = mult
   )
   if (length(pList) == 0L) {
     return(NULL)
@@ -154,8 +152,7 @@ plotStim <- function(
     chnlGate,
     markerGate,
     gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
+    mult) {
   # bv
   pListBv <- .plotGateBv(
     marker = marker,
@@ -176,8 +173,7 @@ plotStim <- function(
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    mult = mult,
-    gateUnsMethod = gateUnsMethod
+    mult = mult
   )
 
   # uv
@@ -198,8 +194,7 @@ plotStim <- function(
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    mult = mult,
-    gateUnsMethod = gateUnsMethod
+    mult = mult
   )
 
   pListBv |> append(pListUv)
@@ -225,8 +220,7 @@ plotStim <- function(
     chnlGate,
     markerGate,
     gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
+    mult) {
   oneChnl <- is.null(marker) && !is.null(chnl) && length(chnl) == 1L
   oneMarker <- is.null(chnl) && !is.null(marker) && length(marker) == 1L
   oneVar <- oneChnl || oneMarker
@@ -251,8 +245,7 @@ plotStim <- function(
       chnlGate = chnlGate,
       markerGate = markerGate,
       gateTypeCytPos = gateTypeCytPos,
-      mult = mult,
-      gateUnsMethod = gateUnsMethod
+      mult = mult
     )
     if (nrow(exTbl) < minCell) {
       return(NULL)
@@ -303,8 +296,7 @@ plotStim <- function(
     chnlGate,
     markerGate,
     gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
+    mult) {
   lapply(ind, function(indCurr) {
     getStimExpr(
       pathProject = pathProject,
@@ -319,8 +311,7 @@ plotStim <- function(
       chnlGate = chnlGate,
       markerGate = markerGate,
       gateTypeCytPos = gateTypeCytPos,
-      mult = mult,
-      gateUnsMethod = gateUnsMethod
+      mult = mult
     )
   }) |>
     Reduce(rbind, x = _)
@@ -451,8 +442,7 @@ plotStim <- function(
     chnlGate,
     markerGate,
     gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
+    mult) {
   varLoop <- if (!is.null(marker)) marker else chnl
   pList <- lapply(varLoop, function(v) {
     markerCurr <- if (!is.null(marker)) v else NULL
@@ -474,8 +464,7 @@ plotStim <- function(
       chnlGate = chnlGate,
       markerGate = markerGate,
       gateTypeCytPos = gateTypeCytPos,
-      mult = mult,
-      gateUnsMethod = gateUnsMethod
+      mult = mult
     )
   }) |>
     stats::setNames(.plotGetLab(varLoop, axisLab))
@@ -504,8 +493,7 @@ plotStim <- function(
     chnlGate,
     markerGate,
     gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
+    mult) {
   if (length(ind) == 0L) {
     return(NULL)
   }
@@ -547,8 +535,7 @@ plotStim <- function(
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    mult = mult,
-    gateUnsMethod = gateUnsMethod
+    mult = mult
   )
   if (is.null(plotTbl)) {
     return(NULL)
@@ -584,8 +571,7 @@ plotStim <- function(
     chnlGate,
     markerGate,
     gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
+    mult) {
   plotTblList <- lapply(seq_along(ind), function(i) {
     plotTbl <- .plotGateUvMarkerGetPlotTblInd(
       ind = ind[[i]],
@@ -602,8 +588,7 @@ plotStim <- function(
       chnlGate = chnlGate,
       markerGate = markerGate,
       gateTypeCytPos = gateTypeCytPos,
-      mult = mult,
-      gateUnsMethod = gateUnsMethod
+      mult = mult
     )
     if (is.null(plotTbl)) {
       return(NULL)
@@ -637,8 +622,7 @@ plotStim <- function(
     chnlGate,
     markerGate,
     gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
+    mult) {
   exTbl <- getStimExpr(
     pathProject = pathProject,
     .data = .data,
@@ -652,8 +636,7 @@ plotStim <- function(
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    mult = mult,
-    gateUnsMethod = gateUnsMethod
+    mult = mult
   )
   if (nrow(exTbl) < minCell) {
     return(NULL)

@@ -276,8 +276,6 @@ strDetectAny <- function(string, pattern) {
 #'   cells. Default is "cyt".
 #' @param mult logical Whether to return only multi-functional cells (positive
 #'   for multiple markers). Default is FALSE.
-#' @param gateUnsMethod character Method for gating unstimulated cells.
-#'   Default is "min".
 #' @param transFn function or NULL Transformation function to apply to
 #'   expression values. Default is NULL.
 #' @param transChnl character or NULL Channel name(s) to transform when using
@@ -318,7 +316,6 @@ getStimExpr <- function(
     markerGate = NULL,
     gateTypeCytPos = "cyt",
     mult = FALSE,
-    gateUnsMethod = "min",
     transFn = NULL,
     transChnl = NULL,
     transMarker = NULL) {

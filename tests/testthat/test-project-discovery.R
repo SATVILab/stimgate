@@ -48,8 +48,7 @@ test_that("plotStim error handling for multiple populations and empty inputs", {
     .data = NULL, excMin = FALSE, indLab = NULL, axisLab = NULL,
     showGate = FALSE, pathProject = tmpProjEmpty, minCell = 10,
     bias = FALSE, combnExc = NULL, chnlGate = NULL, markerGate = NULL,
-    gateTypeCytPos = "cyt", mult = FALSE,
-    gateUnsMethod = "min"
+    gateTypeCytPos = "cyt", mult = FALSE
   ))
 
   unlink(tmpProjEmpty, recursive = TRUE)
