@@ -192,4 +192,5 @@ test_that("analysis 9 Slurm launcher exports the controls the QMD reads", {
     content,
     fixed = TRUE
   ))
+  expect_true(grepl("#SBATCH --ntasks=6", content, fixed = TRUE))
 })
