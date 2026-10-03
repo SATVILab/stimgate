@@ -97,93 +97,9 @@ inspectCytPosCase <- function(
     incVec <- saved("incVec")
     cpOrig <- saved("cpOrig")
     shapeRef <- saved("shapeReference")
-    cpTaut <- saved("cpTaut")
     tautInfo <- saved("tautStringInfo")
-    cpFinal <- saved("cpCytPosFinal")
-
-    conditionalValues <- ex[[chnlCurr]][incVec]
-    tautDensity <- .getCpUnsLocAntimodeDensity(conditionalValues)
-
-    thresholdTbl <- tibble::tibble(
-      threshold = c(
-        shapeRef$lowerX,
-        cpOrig,
-        cpTaut,
-        cpFinal
-      ),
-      type = c(
-        "marginal lower boundary",
-        "original gate",
-        "candidate aggressive gate",
-        "final gateCyt"
-      )
-    ) |>
-      dplyr::filter(is.finite(.data$threshold))
-
-    distributionTbl <- dplyr::bind_rows(
-      tibble::tibble(
-        value = ex[[chnlCurr]],
-        distribution = "full stimulated marginal"
-      ),
-      tibble::tibble(
-        value = conditionalValues,
-        distribution = "positive for another cytokine"
-      )
-    )
-
-    distributionPlot <- ggplot2::ggplot(
-      distributionTbl,
-      ggplot2::aes(x = .data$value)
-    ) +
-      ggplot2::geom_histogram(bins = 30) +
-      ggplot2::facet_wrap(
-        ggplot2::vars(.data$distribution),
-        ncol = 1,
-        scales = "free_y"
-      ) +
-      ggplot2::geom_vline(
-        data = thresholdTbl,
-        ggplot2::aes(
-          xintercept = .data$threshold,
-          linetype = .data$type
-        ),
-        inherit.aes = FALSE
-      ) +
-      ggplot2::labs(
-        title = paste(label, chnlCurr),
-        x = "Expression",
-        y = "Cell count",
-        linetype = NULL
-      )
-
-    tautPlot <- if (is.null(tautDensity)) {
-      NULL
-    } else {
-      ggplot2::ggplot(
-        tibble::tibble(
-          x = tautDensity$x,
-          y = tautDensity$y
-        ),
-        ggplot2::aes(x = .data$x, y = .data$y)
-      ) +
-        ggplot2::geom_step() +
-        ggplot2::geom_vline(
-          data = thresholdTbl,
-          ggplot2::aes(
-            xintercept = .data$threshold,
-            linetype = .data$type
-          ),
-          inherit.aes = FALSE
-        ) +
-        ggplot2::labs(
-          title = paste(label, chnlCurr, "taut-string density"),
-          x = "Expression",
-          y = "Density",
-          linetype = NULL
-        )
-    }
-
     marker <- gateTbl$marker[match(chnlCurr, gateTbl$chnl)]
+
     cells <- tibble::as_tibble(ex) |>
       dplyr::mutate(
         cell = dplyr::row_number(),
@@ -202,6 +118,8 @@ inspectCytPosCase <- function(
         dplyr::everything()
       )
 
+    conditional <- ex[[chnlCurr]][incVec]
+
     list(
       summary = tibble::tibble(
         case = label,
@@ -214,16 +132,16 @@ inspectCytPosCase <- function(
         windowWidth = shapeRef$windowWidth,
         lowerX = shapeRef$lowerX,
         gateOriginal = cpOrig,
-        candidateAggressive = cpTaut,
+        candidateAggressive = tautInfo$threshold,
         candidateReason = tautInfo$reason,
         gateCyt = gateCyt
       ),
       cells = cells,
+      marginal = ex[[chnlCurr]],
+      conditional = conditional,
       shapeReference = shapeRef,
       tautStringInfo = tautInfo,
-      tautDensity = tautDensity,
-      distributionPlot = distributionPlot,
-      tautPlot = tautPlot
+      tautDensity = .getCpUnsLocAntimodeDensity(conditional)
     )
   })
 
@@ -239,6 +157,61 @@ inspectCytPosCase <- function(
   )
 }
 
+plotCytPosMarker <- function(result) {
+  thresholds <- c(
+    lower = result$shapeReference$lowerX,
+    original = result$summary$gateOriginal,
+    candidate = result$summary$candidateAggressive,
+    final = result$summary$gateCyt
+  )
+  thresholds <- thresholds[is.finite(thresholds)]
+  lineType <- seq_along(thresholds)
+
+  addThresholds <- function() {
+    graphics::abline(v = thresholds, lty = lineType)
+    graphics::legend(
+      "topright",
+      legend = names(thresholds),
+      lty = lineType,
+      bty = "n"
+    )
+  }
+
+  oldPar <- graphics::par(mfrow = c(3, 1))
+  on.exit(graphics::par(oldPar), add = TRUE)
+
+  graphics::hist(
+    result$marginal,
+    breaks = 30,
+    main = "Full stimulated marginal",
+    xlab = "Expression"
+  )
+  addThresholds()
+
+  graphics::hist(
+    result$conditional,
+    breaks = 30,
+    main = "Positive for at least one other cytokine",
+    xlab = "Expression"
+  )
+  addThresholds()
+
+  if (is.null(result$tautDensity)) {
+    graphics::plot.new()
+    graphics::title("Taut-string density unavailable")
+  } else {
+    graphics::plot(
+      result$tautDensity$x,
+      result$tautDensity$y,
+      type = "s",
+      main = "Conditional taut-string density",
+      xlab = "Expression",
+      ylab = "Density"
+    )
+    addThresholds()
+  }
+}
+
 accepted <- inspectCytPosCase(
   makeCytPosExample("bimodal"),
   "accepted-bimodal"
@@ -252,9 +225,10 @@ summaryTbl <- dplyr::bind_rows(
   accepted$summary,
   fallback$summary
 )
+print(baselineGates)
 print(summaryTbl)
 
-# Cell identities used for the IFNG conditional distributions.
+# Exact cell identities entering the IFNG conditional distributions.
 print(
   accepted$markers$IFNG$cells |>
     dplyr::filter(.data$included)
@@ -264,12 +238,8 @@ print(
     dplyr::filter(.data$included)
 )
 
-# Compare the full marginal and conditional distributions with the original,
-# candidate and final thresholds.
-print(accepted$markers$IFNG$distributionPlot)
-print(accepted$markers$IFNG$tautPlot)
-print(fallback$markers$IFNG$distributionPlot)
-print(fallback$markers$IFNG$tautPlot)
+plotCytPosMarker(accepted$markers$IFNG)
+plotCytPosMarker(fallback$markers$IFNG)
 
 # Useful variants:
 # inspectCytPosCase(makeCytPosExample("bimodal", nOtherCytPos = 8L), "few-cells")
