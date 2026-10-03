@@ -869,7 +869,10 @@ both suites.
     intermediate vectors can set data-frame row names. Analysis
     integration tests may directly check helper/API contracts when the
     purpose is to catch drift between `scripts/r/`, QMDs and the
-    installed package.
+    installed package. Remove duplicate or existence-only tests only
+    after verifying that remaining behavioural tests cover the same
+    inputs and contracts. Do not delete skipped tests merely because
+    their dependencies are unavailable.
 
 9.  **Cross-platform compatibility**: Tests must pass on macOS, Windows,
     and Ubuntu. Use
