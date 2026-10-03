@@ -10,10 +10,9 @@ read_project_file <- function(...) {
   )
 }
 
-test_that("analyses 3 and 4 use resumable transactional run contexts", {
+test_that("analysis 3 uses resumable transactional run contexts", {
   qmd_specs <- list(
-    list(file = "3-sim-bw-est-base.qmd", key = "base"),
-    list(file = "4-sim-bw-est-norm.qmd", key = "norm")
+    list(file = "3-sim-bw-est-base.qmd", key = "base")
   )
 
   for (spec in qmd_specs) {

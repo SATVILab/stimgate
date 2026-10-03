@@ -350,90 +350,94 @@ test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure 
 })
 
 
-test_that("analysis 4 uses paired estimator seeds and transactional chunk promotion", {
-  qmd_path <- file.path(
-    root_dir,
-    "analysis",
-    "4-sim-bw-est-norm.qmd"
-  )
-  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+test_that("analysis 4 uses shared seeded runners and canonical reads", {
+  qmd_path <- file.path(root_dir, "analysis", "4-sim-bw-est-norm.qmd")
+  lines <- readLines(qmd_path, warn = FALSE)
+  content <- paste(lines, collapse = "\n")
+  has <- function(x) grepl(x, content, fixed = TRUE)
+  pos <- function(x) regexpr(x, content, fixed = TRUE)[[1]]
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
-  expect_true(grepl(
-    "sim_seed = as.integer(simulation_seed + dplyr::cur_group_id() - 1L)",
-    content,
-    fixed = TRUE
+  expect_true(grepl("sim_retry_errors:\\s*true", content))
+  expect_true(grepl("warning:\\s*false", content))
+  expect_true(has('analysis_semantics_version <- "bandwidth-est-norm-v3"'))
+  expect_true(has(
+    "sim_seed = as.integer(simulation_seed + dplyr::cur_group_id() - 1L)"
   ))
-  expect_true(grepl(
-    'bw_mtd %in% c("hpi1", "hpi1Norm")',
-    content,
-    fixed = TRUE
-  ))
-  expect_false(grepl(
-    'grepl("hpi1", bw_mtd),',
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "set.seed(as.integer(sim_seed))",
-    content,
-    fixed = TRUE
-  ))
+  # IDs and paired estimator seeds are fixed before the dev filter/shuffle.
+  expect_lt(pos("sim_seed = as.integer("), pos("sim_grid_full <- sim_grid"))
+  expect_lt(pos("sim_grid_full <- sim_grid"), pos("if (analysis_dev)"))
+  expect_lt(
+    pos("if (analysis_dev)"),
+    pos("dplyr::slice_sample(sim_grid_all, prop = 1)")
+  )
+  expect_true(has('bw_mtd %in% c("hpi1", "hpi1Norm")'))
+  expect_false(has('"none", "gaussian"'))
+  expect_false(has('"high", "gaussian"'))
 
-  expect_true(grepl(
-    "run_ctx <- .analysis_results_context(",
-    content,
-    fixed = TRUE
+  expect_true(has('"sim-bandwidth-analysis-run.R"'))
+  expect_true(has(".simBandwidthRunGrid("))
+  expect_true(has("scenario_fn = .simBandwidthEstNormScenario"))
+  expect_true(has("retry_errors = sim_retry_errors"))
+  expect_true(has(".simBandwidthFinishChunk("))
+  expect_true(has(".simBandwidthEstNormCollate("))
+  expect_true(has(".simBandwidthEstNormValidator("))
+  expect_true(has(".analysis_current_file("))
+  expect_true(has("required_params = analysis_required_params"))
+  expect_true(has("sim_grid_spec = analysis_grid_spec"))
+  expect_true(has("scenario_settings = scenario_settings"))
+  expect_true(has("capStimRange = FALSE"))
+  expect_true(has("Requested normalisation"))
+  expect_true(has("pmin(bw_stim, bw_uns)"))
+  expect_true(has(
+    "Skipping plots during a multi-chunk simulation render."
   ))
-  expect_true(grepl(
-    "output_dir = run_ctx$chunk_dir",
-    content,
-    fixed = TRUE
+  expect_true(has(
+    "run_plots is false, so stopping after simulation/collation."
   ))
-  expect_true(grepl("row_count_bad_ids", content, fixed = TRUE))
-  expect_true(grepl("seed_ok", content, fixed = TRUE))
-  expect_true(grepl("expected_sim_ids", content, fixed = TRUE))
-  expect_true(grepl("validation$error_ids", content, fixed = TRUE))
-  expect_true(grepl("promote_analysis4_if_ready", content, fixed = TRUE))
-  expect_true(grepl("nrow(sim_grid) == 0L", content, fixed = TRUE))
-  expect_true(grepl(
-    "No simulations were assigned to this chunk; marked it complete.",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "Refusing to promote analysis 4",
-    content,
-    fixed = TRUE
-  ))
+  expect_true(has("Results were not promoted"))
 
-  expect_true(grepl(
-    "run_plots is false, so stopping after simulation/collation.",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "Skipping plots during a multi-chunk simulation render.",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("finally = future::plan(old_plan)", content, fixed = TRUE))
-
-  expect_true(grepl("n_total = dplyr::n()", content, fixed = TRUE))
-  expect_true(grepl("estimate_rate = .data$n_est / .data$n_total", content, fixed = TRUE))
-  expect_true(grepl("analysis_grid_spec", content, fixed = TRUE))
-  expect_true(grepl(
-    "sim_grid_spec = analysis_grid_spec",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("bw_fallback <- NA_real_", content, fixed = TRUE))
-  expect_true(grepl("capStimRange = FALSE", content, fixed = TRUE))
+  expect_false(has("set.seed(as.integer(sim_seed))"))
+  expect_false(has("promote_analysis4_if_ready"))
+  expect_false(has("read_norm_bw_outputs"))
+  expect_false(has("validate_norm_bw_outputs"))
+  expect_false(has("collate_suffix"))
+  expect_false(has("dir.create"))
+  expect_false(has('"cache"'))
+  expect_false(has("NA_character_"))
   expect_false(grepl("#\\| error:\\s*true", content))
-  expect_true(grepl("analysis4-collation", content, fixed = TRUE))
-  expect_true(grepl("Requested normalisation", content, fixed = TRUE))
-  expect_true(grepl("n_norm_fallback", content, fixed = TRUE))
-  expect_true(grepl("norm_fallback_rate", content, fixed = TRUE))
+})
+
+test_that("analysis 4 has one rerun chunk and guarded plotting", {
+  lines <- readLines(
+    file.path(root_dir, "analysis", "4-sim-bw-est-norm.qmd"),
+    warn = FALSE
+  )
+  expect_identical(
+    length(grep("^```\\{r", lines)),
+    length(grep("^```\\s*$", lines))
+  )
+  chunks <- .qmd_r_chunks(lines)
+
+  is_eval_false <- vapply(chunks, function(x) {
+    any(grepl("^#\\|\\s*eval:\\s*false", x))
+  }, logical(1))
+  expect_identical(sum(is_eval_false), 1L)
+  rerun <- chunks[is_eval_false][[1]]
+  expect_true(any(grepl("label: rerun-one-simulation", rerun, fixed = TRUE)))
+  expect_true(any(grepl("sim_id_target <-", rerun, fixed = TRUE)))
+  expect_true(any(grepl("sim_grid_full", rerun, fixed = TRUE)))
+  expect_true(any(grepl(".simBandwidthRunRow(", rerun, fixed = TRUE)))
+
+  uses_plots <- vapply(chunks, function(x) {
+    code <- x[!grepl("^#\\|", x)]
+    any(grepl("ggsave|ggplot\\(", code))
+  }, logical(1))
+  expect_gt(sum(uses_plots), 0L)
+  for (x in chunks[uses_plots]) {
+    code <- x[!grepl("^#\\|", x) & nzchar(trimws(x))]
+    expect_identical(code[[1]], "if (isTRUE(run_plots)) {")
+  }
 })
 
 
