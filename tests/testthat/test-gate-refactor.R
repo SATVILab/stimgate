@@ -13,7 +13,7 @@ test_that("cluster adjustment preserves order without statistics", {
     gate_tbl,
     .data = NULL, pathProject = tempdir(), stage = "init",
     indBatchList = list(batch1 = c(1, 2, 4)),
-    chnlSettings = list(tolClust = 0.1), calcCytPosGates = FALSE
+    chnlSettings = list(clusterGates = TRUE), calcCytPosGates = FALSE
   )$gateTbl
   expected <- dplyr::bind_rows(
     dplyr::select(gate_tbl, -gateUse),

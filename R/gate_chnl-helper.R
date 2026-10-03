@@ -46,7 +46,7 @@
   # Cluster-based gating
   # =========================
 
-  if (!is.null(chnlSettings$tolClust)) {
+  if (isTRUE(chnlSettings$clusterGates)) {
     # share one expression lookup across gate names; with a single gate name
     # .getCpCluster() builds it itself
     exLookup <- if (length(unique(gateTbl$gateName)) > 1L) {

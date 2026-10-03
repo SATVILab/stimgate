@@ -4,119 +4,25 @@
 #' @keywords internal
 .completeChnlSettings <- function(
   chnl,
-  marker,
-  chnlSettings,
-  markerSettings,
+  markerControl,
+  control,
   biasUns,
-  biasUnsFactor,
-  excMin,
+  bw,
   .data,
   popGate,
   indBatchList,
-  bw,
-  bwMin,
-  bwMax,
-  bwFallback,
-  bwMtd,
-  bwAdj,
-  bwNcellMin,
-  bwNcellMax,
-  bwCluster,
-  bwScope,
-  bwAdaptive,
-  bwAdaptiveDensityN,
-  bwAdaptivePadFrac,
-  bwAdaptiveCore,
-  bwAdaptiveExtra,
-  bwAdaptiveCrossover,
-  bwAdaptiveTransitionWidth,
-  normPeakMinRel,
-  normExtraFrac,
-  normExtraMax,
-  normLambda,
-  normDensityN,
-  normExcessBwMtd,
-  normExcessNcell,
-  normAdaptiveNcell,
-  normMtd,
-  cpMin,
-  minCell,
-  tolClust,
-  locProbCol,
-  locMinPeakProb,
-  locEnforceShapeThreshold,
-  locDipAlpha,
-  locAntimodeHeightFrac,
-  locAntimodeLowRel,
-  locAntimodeLowAbs,
-  locFlatDerivFrac,
-  locFlatHardDerivFrac,
-  locMarginalPurityRel,
-  locMarginalCellBinRatio,
-  locMarginalRefQuantile,
-  maxPosProbX,
-  gateCombn,
-  gateQuant,
   pathProject
 ) {
-  chnlSettings <- .extractChnlSettings(
-    chnl = chnl,
-    marker = marker,
-    chnlSettings = chnlSettings,
-    markerSettings = markerSettings,
-    pathProject = pathProject
-  )
-  chnlSettingsCommon <- list(
-    popGate = popGate,
-    biasUns = biasUns,
-    biasUnsFactor = biasUnsFactor,
-    excMin = excMin,
-    cpMin = cpMin,
-    bwMin = bwMin,
-    bw = bw,
-    bwMax = bwMax,
-    bwFallback = bwFallback,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax,
-    bwCluster = bwCluster,
-    bwScope = bwScope,
-    bwAdaptive = bwAdaptive,
-    bwAdaptiveDensityN = bwAdaptiveDensityN,
-    bwAdaptivePadFrac = bwAdaptivePadFrac,
-    bwAdaptiveCore = bwAdaptiveCore,
-    bwAdaptiveExtra = bwAdaptiveExtra,
-    bwAdaptiveCrossover = bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
-    normPeakMinRel = normPeakMinRel,
-    normExtraFrac = normExtraFrac,
-    normExtraMax = normExtraMax,
-    normLambda = normLambda,
-    normDensityN = normDensityN,
-    normExcessBwMtd = normExcessBwMtd,
-    normExcessNcell = normExcessNcell,
-    normAdaptiveNcell = normAdaptiveNcell,
-    normMtd = normMtd,
-    minCell = minCell,
-    tolClust = tolClust,
-    locProbCol = locProbCol,
-    locMinPeakProb = locMinPeakProb,
-    locEnforceShapeThreshold = locEnforceShapeThreshold,
-    locDipAlpha = locDipAlpha,
-    locAntimodeHeightFrac = locAntimodeHeightFrac,
-    locAntimodeLowRel = locAntimodeLowRel,
-    locAntimodeLowAbs = locAntimodeLowAbs,
-    locFlatDerivFrac = locFlatDerivFrac,
-    locFlatHardDerivFrac = locFlatHardDerivFrac,
-    locMarginalPurityRel = locMarginalPurityRel,
-    locMarginalCellBinRatio = locMarginalCellBinRatio,
-    locMarginalRefQuantile = locMarginalRefQuantile,
-    gateCombn = gateCombn,
-    maxPosProbX = maxPosProbX,
-    gateQuant = gateQuant
-  )
   chnlLab <- stimgateMetaReadChnlLab(pathProject)
+  chnlSettings <- .resolveMarkerControl(
+    markerControl = markerControl,
+    chnl = chnl,
+    chnlLab = chnlLab
+  )
+  chnlSettingsCommon <- c(
+    list(popGate = popGate, biasUns = biasUns, bw = bw),
+    unclass(control)
+  )
   chnlList <- purrr::map(chnl, function(chnlCurr) {
     chnlSettingsSpecCurr <- list(
       marker = chnlLab[[chnlCurr]],
@@ -725,38 +631,64 @@ stimgateMetaReadBatchList <- function(pathProject) {
     stop(
       "Duplicate channel labels found for the specified markers. ",
       "Please ensure that each marker has a unique channel label. ",
-      "Otherwise, simply specify `chnl` instead of `marker` ",
-      "(and then also `chnlSettings` instead of `markerSettings` if applicable). "
+      "Otherwise, simply specify `chnl` instead of `marker`. "
     )
   }
   chnlVec
 }
 
-.extractChnlSettings <- function(
-  chnlSettings,
-  markerSettings,
-  chnl,
-  marker,
-  pathProject
-) {
-  .verifyChnlSettings(
-    chnlSettings = chnlSettings,
-    markerSettings = markerSettings,
-    chnl = chnl,
-    marker = marker
+#' @keywords internal
+.resolveMarkerControl <- function(markerControl, chnl, chnlLab) {
+  if (is.null(markerControl)) {
+    return(stats::setNames(lapply(chnl, function(x) list()), chnl))
+  }
+  if (!is.list(markerControl)) {
+    stop("`markerControl` must be NULL or a named list.")
+  }
+  nms <- names(markerControl)
+  if (
+    length(markerControl) > 0L &&
+      (is.null(nms) || anyNA(nms) || any(!nzchar(nms)))
+  ) {
+    stop("`markerControl` elements must have non-empty names.")
+  }
+  allowed <- c(
+    setdiff(
+      names(formals(stimControl)),
+      c("locEnforceShapeThreshold", "calcCytPosGates")
+    ),
+    "biasUns", "bw", "popGate"
   )
-  if (!is.null(chnlSettings)) {
-    return(chnlSettings)
+  resolved <- vapply(seq_along(markerControl), function(i) {
+    nm <- nms[[i]]
+    matches <- chnl[chnl == nm | chnlLab[chnl] == nm]
+    if (length(matches) != 1L) {
+      stop("Unknown or ambiguous marker/channel in `markerControl`: ", nm)
+    }
+    settings <- markerControl[[i]]
+    if (!is.list(settings)) {
+      stop("`markerControl` setting for '", nm, "' must be a list.")
+    }
+    settingNames <- names(settings)
+    if (
+      length(settings) > 0L &&
+        (is.null(settingNames) || anyNA(settingNames) ||
+          any(!nzchar(settingNames)) || anyDuplicated(settingNames) > 0L)
+    ) {
+      stop("`markerControl` settings for '", nm, "' must have unique, non-empty names.")
+    }
+    invalid <- setdiff(settingNames, allowed)
+    if (length(invalid) > 0L) {
+      stop(
+        "Invalid settings for marker/channel '", nm, "': ",
+        paste(invalid, collapse = ", ")
+      )
+    }
+    .verifyChnlSettingsChnl(nm, settings)
+    matches[[1]]
+  }, character(1))
+  if (anyDuplicated(resolved) > 0L) {
+    stop("`markerControl` entries must resolve to distinct channels.")
   }
-  if (is.null(markerSettings)) {
-    return(lapply(chnl, function(x) list()) |> stats::setNames(chnl))
-  }
-  markerLab <- stimgateMetaReadMarkerLab(pathProject)
-  chnlSettings <- markerSettings
-  names(chnlSettings) <- markerLab[names(markerSettings)]
-  for (i in seq_along(chnlSettings)) {
-    chnlSettings[[i]]$chnlCut <- markerLab[[chnlSettings[[i]]$markerCut]]
-    chnlSettings[[i]]$markerCut <- NULL
-  }
-  chnlSettings
+  stats::setNames(markerControl, resolved)
 }

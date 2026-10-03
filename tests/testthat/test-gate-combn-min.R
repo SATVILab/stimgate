@@ -24,9 +24,10 @@ test_that("gateStim with gateCombn = 'min' applies minimum generated threshold a
     popGate = "root",
     batchList = batchListMulti,
     marker = exampleData$marker,
-    gateCombn = "min",
-    tolClust = NULL,
-    calcCytPosGates = FALSE
+    control = stimControl(
+      gateCombn = "min", clusterGates = FALSE,
+      calcCytPosGates = FALSE
+    )
   ))
 
   gatesMin <- getStimGates(pathProjectMin)
@@ -105,9 +106,10 @@ test_that("gateStim with gateCombn = 'min' combines generated thresholds on dist
     popGate = "root",
     batchList = batchList,
     marker = "MarkerF1",
-    gateCombn = "no",
-    tolClust = NULL,
-    calcCytPosGates = FALSE
+    control = stimControl(
+      gateCombn = "no", clusterGates = FALSE,
+      calcCytPosGates = FALSE
+    )
   ))
   gatesNo <- getStimGates(pathProjectNo)
   gateStrong <- gatesNo$gate[as.character(gatesNo$ind) == "2"]
@@ -121,9 +123,10 @@ test_that("gateStim with gateCombn = 'min' combines generated thresholds on dist
     popGate = "root",
     batchList = batchList,
     marker = "MarkerF1",
-    gateCombn = "min",
-    tolClust = NULL,
-    calcCytPosGates = FALSE
+    control = stimControl(
+      gateCombn = "min", clusterGates = FALSE,
+      calcCytPosGates = FALSE
+    )
   ))
   gatesMin <- getStimGates(pathProjectMin)
   expect_equal(
@@ -186,9 +189,10 @@ test_that("gateStim with gateCombn = 'min' ignores fallback non-generated cutpoi
     popGate = "root",
     batchList = batchList,
     marker = "MarkerF1",
-    gateCombn = "min",
-    tolClust = NULL,
-    calcCytPosGates = FALSE
+    control = stimControl(
+      gateCombn = "min", clusterGates = FALSE,
+      calcCytPosGates = FALSE
+    )
   ))
 
   gates <- getStimGates(pathProject)

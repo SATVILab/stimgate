@@ -69,7 +69,7 @@ plotStim(
 )
 ```
 
-For real data, `gateStim()` requires a compatible flow-cytometry object, the population to gate, the marker or channel names to analyse, and a `batchList` describing the matched samples. See the function documentation for the full set of method and bandwidth controls.
+For real data, `gateStim()` requires a compatible flow-cytometry object, the population to gate, the marker or channel names to analyse, and a `batchList` describing the matched samples. Its user-facing tuning arguments are `biasUns` and `bw`; all other method, bandwidth and thresholding settings are supplied as a `stimControl()` object through `control`, with per-marker overrides in `markerControl` keyed by marker label or channel name. Most users never need to change the defaults.
 
 ## Main functions
 

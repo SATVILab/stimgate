@@ -80,12 +80,14 @@ run_local_fdr_inspection <- function(scenario) {
     popGate = "root",
     batchList = list(c(1L, 2L)),
     marker = "MarkerF1",
-    calcCytPosGates = FALSE,
-    tolClust = NULL,
     biasUns = 0,
     bw = scenario$bandwidth,
-    gateCombn = "no",
-    locEnforceShapeThreshold = FALSE
+    control = stimControl(
+      calcCytPosGates = FALSE,
+      clusterGates = FALSE,
+      gateCombn = "no",
+      locEnforceShapeThreshold = FALSE
+    )
   ))
 
   path_ind <- file.path(
