@@ -672,6 +672,14 @@ test_that("QMD scenario calls use package defaults and reproducible RNG", {
     expect_false(grepl("gate_combn|gateCombn", content))
     expect_false(grepl(".simCompareRunScenario <-", content, fixed = TRUE))
     expect_match(content, "#\\| label: rerun-one-simulation")
+    expect_match(content,
+      "row_rerun <- sim_grid_full[sim_grid_full$sim_id == sim_id_rerun",
+      fixed = TRUE
+    )
+    expect_lt(
+      regexpr("sim_grid_full <- sim_grid", content, fixed = TRUE)[[1]],
+      regexpr("if (analysis_dev) {", content, fixed = TRUE)[[1]]
+    )
     expect_match(content, "retryErrors = TRUE", fixed = TRUE)
     expect_match(content, "warning: false", fixed = TRUE)
     expect_match(content, "message: false", fixed = TRUE)

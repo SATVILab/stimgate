@@ -255,33 +255,16 @@ test_that(".update_progress_summary() tolerates a concurrent write failure", {
   expect_false(file.exists(path_progress_file))
 })
 
-test_that("QMD 3 defines chunk controls and use the run-scoped output dir", {
-  qmd_3 <- readLines(file.path(root_dir, "analysis", "3-sim-bw-est-base.qmd"), warn = FALSE)
-
-  for (qmd_lines in list(qmd_3)) {
-    expect_true(any(grepl(
+test_that("QMDs 3 and 4 use shared runners with chunk controls", {
+  for (qmd_name in c("3-sim-bw-est-base.qmd", "4-sim-bw-est-norm.qmd")) {
+    qmd_lines <- readLines(file.path(root_dir, "analysis", qmd_name), warn = FALSE)
+    for (contract in c(
       "sim_grid_chunk_index <- as.integer",
-      qmd_lines,
-      fixed = TRUE
-    )))
-    expect_true(any(grepl(
       "sim_grid_n_chunks <- as.integer",
-      qmd_lines,
-      fixed = TRUE
-    )))
-    if (identical(qmd_lines, qmd_3)) {
-      expect_true(any(grepl(
-        ".simBandwidthRunGrid(", qmd_lines, fixed = TRUE
-      )))
-      expect_true(any(grepl(
-        "run_ctx = run_ctx", qmd_lines, fixed = TRUE
-      )))
-      next
+      ".simBandwidthRunGrid(",
+      "run_ctx = run_ctx"
+    )) {
+      expect_true(any(grepl(contract, qmd_lines, fixed = TRUE)), info = qmd_name)
     }
-    expect_true(any(grepl(
-      "dir_output <- run_ctx$chunk_output_dir",
-      qmd_lines,
-      fixed = TRUE
-    )))
   }
 })

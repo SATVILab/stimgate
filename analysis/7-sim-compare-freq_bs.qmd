@@ -275,6 +275,9 @@ sim_grid <- tidyr::expand_grid(
     sim_seed = as.integer(simulation_seed + sim_id - 1L)
   )
 
+# Keep every seeded row available for an exact interactive rerun.
+sim_grid_full <- sim_grid
+
 if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
@@ -1322,7 +1325,7 @@ Run the setup, settings and grid chunks first.
 #| label: rerun-one-simulation
 #| eval: false
 sim_id_rerun <- 1L
-row_rerun <- sim_grid_all[sim_grid_all$sim_id == sim_id_rerun, , drop = FALSE]
+row_rerun <- sim_grid_full[sim_grid_full$sim_id == sim_id_rerun, , drop = FALSE]
 stopifnot(nrow(row_rerun) == 1L)
 compare_one <- .simCompareRunScenario(
   row = row_rerun,
