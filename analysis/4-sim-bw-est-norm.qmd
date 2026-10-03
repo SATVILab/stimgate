@@ -711,7 +711,104 @@ Collate the results.
 
 ```{r}
 #| label: bw-estimate-collate
-#| error: true
+
+read_norm_bw_outputs <- function(path_vec) {
+  if (length(path_vec) == 0L) {
+    return(tibble::tibble())
+  }
+
+  out <- purrr::map(
+    path_vec,
+    function(path) {
+      tryCatch(
+        readRDS(path),
+        error = function(e) {
+          stop(
+            "Could not read saved simulation result: ",
+            path,
+            ". ",
+            conditionMessage(e)
+          )
+        }
+      )
+    }
+  )
+
+  purrr::list_rbind(out)
+}
+
+validate_norm_bw_outputs <- function(.data, expected_grid) {
+  expected_ids <- sort(unique(as.integer(expected_grid$sim_id)))
+  observed_ids <- if ("sim_id" %in% names(.data)) {
+    sort(unique(as.integer(.data$sim_id)))
+  } else {
+    integer()
+  }
+
+  ids_ok <- identical(observed_ids, expected_ids)
+
+  error_ids <- if (
+    nrow(.data) > 0L &&
+      all(c("sim_id", "error_message") %in% names(.data))
+  ) {
+    sort(unique(as.integer(
+      .data$sim_id[
+        !is.na(.data$error_message) &
+          nzchar(as.character(.data$error_message))
+      ]
+    )))
+  } else {
+    integer()
+  }
+
+  expected_rows_per_sim <- as.integer(n_sample_sim * n_iter_sim)
+  row_count_bad_ids <- if (nrow(.data) > 0L && "sim_id" %in% names(.data)) {
+    .data |>
+      dplyr::count(.data$sim_id, name = "n_rows") |>
+      dplyr::filter(.data$n_rows != expected_rows_per_sim) |>
+      dplyr::pull(.data$sim_id) |>
+      as.integer() |>
+      sort()
+  } else if (length(expected_ids) > 0L) {
+    expected_ids
+  } else {
+    integer()
+  }
+
+  seed_ok <- if (length(expected_ids) == 0L) {
+    TRUE
+  } else if (!all(c("sim_id", "sim_seed") %in% names(.data))) {
+    FALSE
+  } else {
+    observed_seed <- .data |>
+      dplyr::distinct(.data$sim_id, .data$sim_seed) |>
+      dplyr::arrange(.data$sim_id)
+    expected_seed <- expected_grid |>
+      dplyr::select(sim_id, sim_seed) |>
+      dplyr::distinct() |>
+      dplyr::arrange(.data$sim_id)
+
+    identical(
+      as.integer(observed_seed$sim_id),
+      as.integer(expected_seed$sim_id)
+    ) &&
+      identical(
+        as.integer(observed_seed$sim_seed),
+        as.integer(expected_seed$sim_seed)
+      )
+  }
+
+  list(
+    ids_ok = ids_ok,
+    error_ids = error_ids,
+    row_count_bad_ids = row_count_bad_ids,
+    seed_ok = seed_ok,
+    validation_ok = ids_ok &&
+      length(error_ids) == 0L &&
+      length(row_count_bad_ids) == 0L &&
+      isTRUE(seed_ok)
+  )
+}
 
 summarise_bw_results <- function(bw_tbl) {
   bw_tbl_results <- bw_tbl |>
@@ -765,8 +862,8 @@ summarise_bw_results <- function(bw_tbl) {
 
   if (any(bw_tbl_results$n_est < bw_tbl_results$n_total)) {
     warning(
-      "Some estimator/scenario combinations have non-finite bandwidths; ",
-      "estimate_rate records the fraction retained in each mean."
+      "Some estimator/scenario combinations have incomplete stim/unstim ",
+      "bandwidth pairs; estimate_rate records the complete-pair fraction."
     )
   }
 
@@ -779,6 +876,19 @@ promote_analysis4_if_ready <- function(
     total_sims,
     completed_sims,
     failed_sims) {
+  if (!.analysis_can_promote(run_ctx)) {
+    return(NULL)
+  }
+
+  collate_lock <- .analysis_acquire_lock(
+    .analysis_lock_path(run_ctx, "analysis4-collation"),
+    timeout_sec = 300
+  )
+  if (is.null(collate_lock)) {
+    return(NULL)
+  }
+  on.exit(.analysis_release_lock(collate_lock), add = TRUE)
+
   if (!.analysis_can_promote(run_ctx)) {
     return(NULL)
   }
@@ -815,43 +925,44 @@ promote_analysis4_if_ready <- function(
     stop(error_message)
   }
 
-  full_bw_tbl <- purrr::map(full_output_paths, readRDS) |>
-    purrr::list_rbind()
+  full_bw_tbl <- read_norm_bw_outputs(full_output_paths)
+  validation <- validate_norm_bw_outputs(
+    full_bw_tbl,
+    expected_grid = sim_grid_all
+  )
 
-  full_error_ids <- sort(unique(as.integer(
-    full_bw_tbl$sim_id[
-      !is.na(full_bw_tbl$error_message) &
-        nzchar(as.character(full_bw_tbl$error_message))
-    ]
-  )))
-
-  expected_rows_per_sim <- as.integer(n_sample_sim * n_iter_sim)
-  full_row_counts <- full_bw_tbl |>
-    dplyr::count(.data$sim_id, name = "n_rows")
-  full_rows_ok <-
-    nrow(full_row_counts) == length(expected_sim_ids) &&
-    all(full_row_counts$n_rows == expected_rows_per_sim)
-
-  if (length(full_error_ids) > 0L || !isTRUE(full_rows_ok)) {
-    error_message <- if (length(full_error_ids) > 0L) {
-      paste0(
-        "Refusing to promote analysis 4: simulation errors remain for sim_id ",
-        paste(full_error_ids, collapse = ", "),
-        "."
-      )
-    } else {
-      paste0(
-        "Refusing to promote analysis 4: one or more scenarios do not have ",
-        expected_rows_per_sim,
-        " sample-level estimator rows."
-      )
-    }
+  if (!isTRUE(validation$validation_ok)) {
+    error_message <- paste0(
+      "Refusing to promote analysis 4: full-grid validation failed",
+      if (length(validation$error_ids) > 0L) {
+        paste0(
+          "; simulation errors for sim_id ",
+          paste(validation$error_ids, collapse = ", ")
+        )
+      } else {
+        ""
+      },
+      if (length(validation$row_count_bad_ids) > 0L) {
+        paste0(
+          "; unexpected row counts for sim_id ",
+          paste(validation$row_count_bad_ids, collapse = ", ")
+        )
+      } else {
+        ""
+      },
+      if (!isTRUE(validation$seed_ok)) {
+        "; scenario seeds do not match the simulation grid"
+      } else {
+        ""
+      },
+      "."
+    )
     .analysis_mark_chunk(
       run_ctx = run_ctx,
       total_sims = total_sims,
       completed_sims = completed_sims,
       failed_sims = failed_sims,
-      collate_ok = TRUE,
+      collate_ok = validation$ids_ok,
       validation_ok = FALSE,
       error_message = error_message
     )
@@ -916,63 +1027,28 @@ if (results_read_only) {
     merge_dirs = FALSE
   )
 
-  if (length(bw_list_path_vec) == 0L) {
-    stop("No saved simulation results were available for the current chunk.")
-  }
+  bw_tbl <- read_norm_bw_outputs(bw_list_path_vec)
+  validation <- validate_norm_bw_outputs(
+    bw_tbl,
+    expected_grid = sim_grid
+  )
 
-  bw_tbl <- purrr::map(
-    bw_list_path_vec,
-    function(path) {
-      tryCatch(
-        readRDS(path),
-        error = function(e) {
-          warning("Could not read saved simulation result: ", path)
-          NULL
-        }
-      )
-    }
-  ) |>
-    purrr::compact() |>
-    purrr::list_rbind()
-
-  expected_chunk_ids <- sort(unique(as.integer(sim_grid$sim_id)))
-  collated_chunk_ids <- sort(unique(as.integer(bw_tbl$sim_id)))
-  output_error_ids <- sort(unique(as.integer(
-    bw_tbl$sim_id[
-      !is.na(bw_tbl$error_message) &
-        nzchar(as.character(bw_tbl$error_message))
-    ]
-  )))
-
-  expected_rows_per_sim <- as.integer(n_sample_sim * n_iter_sim)
-  chunk_row_counts <- bw_tbl |>
-    dplyr::count(.data$sim_id, name = "n_rows")
-  chunk_rows_ok <-
-    nrow(chunk_row_counts) == length(expected_chunk_ids) &&
-    all(chunk_row_counts$n_rows == expected_rows_per_sim)
-
-  chunk_collate_ok <-
-    length(bw_list_path_vec) == length(expected_chunk_ids) &&
-    identical(collated_chunk_ids, expected_chunk_ids)
-  chunk_validation_ok <-
-    chunk_collate_ok &&
-    chunk_rows_ok &&
-    length(output_error_ids) == 0L
-
-  validation_error <- if (!chunk_collate_ok) {
+  validation_error <- if (!isTRUE(validation$ids_ok)) {
     "Chunk collation did not contain exactly the assigned sim_id set."
-  } else if (length(output_error_ids) > 0L) {
+  } else if (length(validation$error_ids) > 0L) {
     paste0(
       "Chunk contains simulation errors for sim_id: ",
-      paste(output_error_ids, collapse = ", "),
+      paste(validation$error_ids, collapse = ", "),
       "."
     )
-  } else if (!chunk_rows_ok) {
+  } else if (length(validation$row_count_bad_ids) > 0L) {
     paste0(
-      "At least one scenario did not produce exactly ",
-      expected_rows_per_sim,
-      " sample-level estimator rows."
+      "Chunk contains unexpected sample-row counts for sim_id: ",
+      paste(validation$row_count_bad_ids, collapse = ", "),
+      "."
     )
+  } else if (!isTRUE(validation$seed_ok)) {
+    "Chunk output scenario seeds do not match the assigned simulation grid."
   } else {
     NULL
   }
@@ -1010,12 +1086,12 @@ if (results_read_only) {
     total_sims = nrow(sim_grid),
     completed_sims = length(chunk_completed_ids),
     failed_sims = length(chunk_failed_ids),
-    collate_ok = chunk_collate_ok,
-    validation_ok = chunk_validation_ok,
+    collate_ok = validation$ids_ok,
+    validation_ok = validation$validation_ok,
     error_message = validation_error
   )
 
-  if (!isTRUE(chunk_validation_ok) || length(chunk_failed_ids) > 0L) {
+  if (!isTRUE(validation$validation_ok) || length(chunk_failed_ids) > 0L) {
     stop(
       if (!is.null(validation_error)) {
         validation_error
