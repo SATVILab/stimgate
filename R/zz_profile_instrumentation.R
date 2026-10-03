@@ -44,7 +44,8 @@
   chnlSettings,
   .data,
   indBatchList,
-  pathProject
+  pathProject,
+  parallel = FALSE
 ) {
   .profileInit(pathProject)
   .profileWithContext(
@@ -53,7 +54,8 @@
         chnlSettings = chnlSettings,
         .data = .data,
         indBatchList = indBatchList,
-        pathProject = pathProject
+        pathProject = pathProject,
+        parallel = parallel
       ),
       level = "major",
       major = "initial_gating",
