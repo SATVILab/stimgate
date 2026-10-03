@@ -29,10 +29,10 @@ test_that("base scenario forwards settings and reruns the stored RNG stream", {
   # A cheap estimator stub checks forwarding without a cytometry simulation.
   env$.simBandwidthEstBwDirect <- function(...) {
     args <- list(...)
-    expect_identical(args, c(settings, list(
+    stopifnot(identical(args, c(settings, list(
       biasUns = 0.05, bwMtd = "hpi1", nCellStim = 1000,
       probResponse = 0.002, meanPos = 8, transformation = "gaussian"
-    )))
+    ))))
     tibble::tibble(iter = 1L, sample = c("1", "2"), bw = stats::runif(2))
   }
   withr::local_seed(10L)

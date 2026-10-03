@@ -2126,7 +2126,8 @@
     } else {
       as.character(val)
     }
-  } else if (identical(row$mismatch_type[[1]], "mean_shift_negative")) {
+  } else if ("mismatch_type" %in% names(row) &&
+    identical(row$mismatch_type[[1]], "mean_shift_negative")) {
     "gn"
   } else {
     NULL
@@ -2148,7 +2149,8 @@
     } else {
       as.character(val)
     }
-  } else if (identical(row$mismatch_type[[1]], "sd_inflation_negative")) {
+  } else if ("mismatch_type" %in% names(row) &&
+    identical(row$mismatch_type[[1]], "sd_inflation_negative")) {
     "gn"
   } else {
     NULL

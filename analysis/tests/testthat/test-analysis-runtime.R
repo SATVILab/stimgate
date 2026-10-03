@@ -845,10 +845,7 @@ test_that("results context reads promoted outputs without run state", {
 test_that("project directory fallback is local and can be read-only", {
   env <- .load_runtime_env()
   # Exercise the fallback without depending on installed projr configuration.
-  testthat::local_mocked_bindings(
-    .analysis_projr_dir = function(...) NULL,
-    .env = env
-  )
+  env$.analysis_projr_dir <- function(...) NULL
   project <- withr::local_tempdir()
   expected <- file.path(project, "output", "fig")
   expect_identical(
