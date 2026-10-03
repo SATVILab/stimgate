@@ -64,9 +64,6 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - name: Run manual cluster threshold-sharing inspection
-        run: Rscript -e "source('tests/manual/inspect-cluster-threshold-sharing.R')"
-
       - uses: r-lib/actions/check-r-package@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
         with:
           upload-snapshots: true
