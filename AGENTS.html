@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -419,6 +419,7 @@
 <code>DESCRIPTION</code>: Package metadata file.</li>
 </ul><div class="section level3">
 <h3 id="analysis-code-layering">Analysis code layering<a class="anchor" aria-label="anchor" href="#analysis-code-layering"></a></h3>
+<p>Analysis helpers must restore temporary environment overrides on every exit, including errors, preserving whether the variable was originally unset. Formatting helpers may trim fractional padding zeros only after a decimal point; integer zeros remain meaningful in labels, scale keys and filenames.</p>
 <p>Before removing an analysis helper, check all repository callers, including QMDs and tests. Preserve explicitly documented compatibility aliases even when current repository analyses no longer call them.</p>
 <p>For new or moved analysis code, use this layering:</p>
 <ol style="list-style-type: decimal"><li>

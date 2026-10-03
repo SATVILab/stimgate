@@ -529,6 +529,12 @@ the `flowWorkspace` stack from source.
 
 ### Analysis code layering
 
+Analysis helpers must restore temporary environment overrides on every
+exit, including errors, preserving whether the variable was originally
+unset. Formatting helpers may trim fractional padding zeros only after a
+decimal point; integer zeros remain meaningful in labels, scale keys and
+filenames.
+
 Before removing an analysis helper, check all repository callers,
 including QMDs and tests. Preserve explicitly documented compatibility
 aliases even when current repository analyses no longer call them.
