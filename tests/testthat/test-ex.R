@@ -589,4 +589,107 @@ test_that("getStimExpr returns zero rows when no cells are stimulation-positive"
   expect_identical(nrow(res), 0L)
   expect_identical(colnames(res), c("pop", "ind", "IFNg"))
   expect_equal(attr(res, "probGMin")[["root"]][["1"]][["IFNg"]], 6 / 7)
+  expect_equal(
+    attr(res, "nCellPos"),
+    tibble::tibble(pop = "root", ind = "1", nCellPos = 0L)
+  )
 })
+
+test_that(
+  "getStimExpr attaches nCellPos attribute for every requested pop and ind",
+  {
+    tmp <- tempfile("stimgate_ex_ncell_")
+    withr::defer(unlink(tmp, recursive = TRUE))
+
+    dir.create(
+      file.path(tmp, "sampleData", "pop_root", "ind_1"),
+      recursive = TRUE
+    )
+    dir.create(
+      file.path(tmp, "sampleData", "pop_root", "ind_2"),
+      recursive = TRUE
+    )
+    dir.create(
+      file.path(tmp, "sampleData", "pop_sub", "ind_1"),
+      recursive = TRUE
+    )
+    dir.create(
+      file.path(tmp, "sampleData", "pop_sub", "ind_2"),
+      recursive = TRUE
+    )
+
+    saveRDS(
+      c(1, 2, 10, 20),
+      file.path(tmp, "sampleData", "pop_root", "ind_1", "chnl_IFNg.rds")
+    )
+    saveRDS(
+      c(1, 2, 3),
+      file.path(tmp, "sampleData", "pop_root", "ind_2", "chnl_IFNg.rds")
+    )
+    saveRDS(
+      c(10, 20, 30),
+      file.path(tmp, "sampleData", "pop_sub", "ind_1", "chnl_IFNg.rds")
+    )
+    saveRDS(
+      c(1, 2),
+      file.path(tmp, "sampleData", "pop_sub", "ind_2", "chnl_IFNg.rds")
+    )
+
+    dir.create(
+      file.path(tmp, "gates", "poproot", "chnlIFNg", "all"),
+      recursive = TRUE
+    )
+    saveRDS(
+      tibble::tibble(
+        chnl = "IFNg",
+        ind = c("1", "2"),
+        gate = c(5, 5),
+        gateCyt = c(5, 5)
+      ),
+      file.path(tmp, "gates", "poproot", "chnlIFNg", "all", "gateTbl.rds")
+    )
+
+    dir.create(
+      file.path(tmp, "gates", "popsub", "chnlIFNg", "all"),
+      recursive = TRUE
+    )
+    saveRDS(
+      tibble::tibble(
+        chnl = "IFNg",
+        ind = c("1", "2"),
+        gate = c(5, 5),
+        gateCyt = c(5, 5)
+      ),
+      file.path(tmp, "gates", "popsub", "chnlIFNg", "all", "gateTbl.rds")
+    )
+
+    res <- suppressMessages(getStimExpr(
+      tmp,
+      pop = c("root", "sub"),
+      ind = c("1", "2"),
+      chnl = "IFNg",
+      chnlGate = "IFNg"
+    ))
+
+    # Samples with zero positive cells return zero rows
+    expect_equal(nrow(res[res$pop == "root" & res$ind == "2", ]), 0L)
+    expect_equal(nrow(res[res$pop == "sub" & res$ind == "2", ]), 0L)
+    expect_equal(nrow(res[res$pop == "root" & res$ind == "1", ]), 2L)
+    expect_equal(nrow(res[res$pop == "sub" & res$ind == "1", ]), 3L)
+
+    # Attribute nCellPos includes EVERY requested pop/ind combination
+    n_cell_pos <- attr(res, "nCellPos")
+    expect_s3_class(n_cell_pos, "tbl_df")
+    expect_named(n_cell_pos, c("pop", "ind", "nCellPos"))
+    expect_type(n_cell_pos$pop, "character")
+    expect_type(n_cell_pos$ind, "character")
+    expect_type(n_cell_pos$nCellPos, "integer")
+
+    expected_n_cell_pos <- tibble::tibble(
+      pop = c("root", "root", "sub", "sub"),
+      ind = c("1", "2", "1", "2"),
+      nCellPos = c(2L, 0L, 3L, 0L)
+    )
+    expect_equal(n_cell_pos, expected_n_cell_pos)
+  }
+)

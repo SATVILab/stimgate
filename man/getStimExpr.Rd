@@ -72,8 +72,12 @@ channel names. Default is NULL (transforms all channels).}
 using marker names. Default is NULL (transforms all markers).}
 }
 \value{
-A tibble with columns \code{pop}, \code{ind} and one column per requested
-channel. Rows correspond to cells.
+A tibble with columns \code{pop}, \code{ind} and one column per
+requested channel. Rows correspond to cells. Samples with no positive cells
+have zero rows in the tibble, and cell counts for every requested
+population and sample combination are attached as the \code{"nCellPos"}
+attribute (a tibble with columns \code{pop}, \code{ind}, and
+\code{nCellPos}).
 }
 \description{
 Read channel expression vectors saved under a project's
