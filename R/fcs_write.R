@@ -306,8 +306,7 @@ writeStimFCS <- function(
     dplyr::group_by(chnl, marker, batch) |> # nolint
     dplyr::summarise(
       indStim = paste0(ind |> sort(), collapse = "_"),
-      gate = calc(gate), # nolint
-      gateCyt = calc(gateCyt), # nolint
+      dplyr::across(c("gate", dplyr::any_of("gateCyt")), calc),
       .groups = "drop"
     ) |>
     .fcsWriteGetGateTblAddUnsGetUnsInd(indBatchList)
