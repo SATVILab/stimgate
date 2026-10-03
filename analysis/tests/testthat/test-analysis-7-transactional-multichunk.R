@@ -36,8 +36,8 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
     content,
     fixed = TRUE
   ))
-  expect_true(grepl(
-    "set.seed(as.integer(row$sim_seed[[1]]))",
+  expect_false(grepl(
+    ".simCompareRunScenarioUnseeded",
     content,
     fixed = TRUE
   ))
