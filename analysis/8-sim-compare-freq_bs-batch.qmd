@@ -678,6 +678,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_shift,
@@ -756,6 +757,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_shift_max,
@@ -834,6 +836,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_shift_90,
@@ -917,6 +920,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_sd,
@@ -993,6 +997,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_placement,
@@ -1057,6 +1062,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_tail,
