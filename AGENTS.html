@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.105.0-1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -488,6 +488,8 @@
 <li>To read canonical results without running the simulation chunk (so no <code>run_ctx</code> exists), collation chunks fall back to <code>.analysis_results_context()</code>, a read-only stand-in whose staging paths point at <code>current/</code> and which creates no run state. Guard all writes, chunk marking and promotion with <code>if (!isTRUE(run_ctx$read_only))</code>.</li>
 <li>Record scientific and semantic settings in the run manifest. Reusing an explicit run ID must match those settings; only operational controls such as plotting, simulation execution and the current chunk index may differ across invocations.</li>
 </ul></li>
+<li>
+<strong>Versioning before the first Bioconductor release</strong>: Keep <code>Version</code> in <code>DESCRIPTION</code> at <code>0.99.z</code> (three components, no <code>-n</code> suffix) until stimgate’s first Bioconductor release, bumping <code>z</code> for each change worth marking. Do not move to <code>0.100.0</code> or higher; Bioconductor sets the release version itself.</li>
 </ol><hr></div>
 <div class="section level2">
 <h2 id="id_8-testing-best-practices--guidelines">8. Testing Best Practices &amp; Guidelines<a class="anchor" aria-label="anchor" href="#id_8-testing-best-practices--guidelines"></a></h2>

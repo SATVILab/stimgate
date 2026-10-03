@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.105.0-1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,31 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.4" id="stimgate-0994">stimgate 0.99.4<a class="anchor" aria-label="anchor" href="#stimgate-0994"></a></h2>
+<div class="section level3">
+<h3 id="breaking-changes-0-99-4">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-99-4"></a></h3>
+<ul><li>Removed the no-op <code><a href="../reference/gateStim.html">gateStim()</a></code> arguments <code>normExtraJitterFrac</code> and <code>normPeakFrac</code>.</li>
+<li>Removed the unused <code>gateUnsMethod</code> argument from <code><a href="../reference/getStimExpr.html">getStimExpr()</a></code> and <code><a href="../reference/plotStim.html">plotStim()</a></code>.</li>
+<li>
+<code>axisLimits()</code> is no longer exported.</li>
+<li>
+<code><a href="../reference/getStimExpr.html">getStimExpr()</a></code> returns zero rows, rather than one NA row, for samples with no positive cells.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-0-99-4">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-99-4"></a></h3>
+<ul><li>
+<code>plotStim(excMin = FALSE)</code> keeps univariate plots; bivariate gate lines are drawn on their own channel’s axis.</li>
+<li>
+<code><a href="../reference/getStimExpr.html">getStimExpr()</a></code> with <code>chnlGate</code>/<code>markerGate</code> no longer errors on marker-gated projects, and <code>bias = TRUE</code> reads the saved marker-keyed settings.</li>
+<li>Unstimulated cell counts are re-checked against <code>minCell</code> after cytokine-positive cells are removed.</li>
+<li>Per-channel settings are validated with exact names (partial matching wrongly rejected valid settings).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="note-0-99-4">Note<a class="anchor" aria-label="anchor" href="#note-0-99-4"></a></h3>
+<p>The snake_case API (<code>stimgate_gate()</code>, <code>stimgate_fcs_write()</code>, …) was removed in 0.99.3; code written for it needs stimgate &lt; 0.99.3.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.1.9013" id="stimgate-0319013">stimgate 0.3.1.9013<a class="anchor" aria-label="anchor" href="#stimgate-0319013"></a></h2>
 <div class="section level3">
