@@ -177,6 +177,11 @@ test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parit
   expect_equal(nrow(res_norm), n_sample)
   expect_equal(res_norm$n_cell_uns, rep(n_cell_uns, n_sample))
   expect_equal(res_norm$n_cell_stim, rep(n_cell_stim, n_sample))
+  expect_true(all(c(
+    "bw_norm_fallback_stim",
+    "bw_norm_fallback_uns",
+    "bw_norm_fallback"
+  ) %in% names(res_norm)))
 
   set.seed(seed)
   res_hpi1 <- do.call(env$.simBandwidthEstBwDirect, c(common_args, list(bwMtd = "hpi1")))
@@ -185,6 +190,7 @@ test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parit
   expect_true(all(is.finite(res_norm$bw)))
   expect_true(all(res_hpi1$bw > 0))
   expect_true(all(res_norm$bw > 0))
+  expect_false(any(res_hpi1$bw_norm_fallback %in% TRUE))
 
   expect_equal(res_hpi1$bw, c(0.529433696153644, 0.48829492916954), tolerance = 1e-12)
   expect_equal(res_norm$bw, c(0.570753196215079, 0.580931838697578), tolerance = 1e-12)
