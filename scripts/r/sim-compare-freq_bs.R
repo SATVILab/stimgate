@@ -20,7 +20,8 @@
     return(transformation)
   }
 
-  switch(transformation,
+  switch(
+    transformation,
     "gamma" = simcyto::simCytTransformGamma(),
     "gamma_fixed_mean_and_spread" = ,
     "gammaFixed" = simcyto::simCytTransformGammaFixed(),
@@ -748,7 +749,8 @@
         fallbackMargin = fallbackMargin
       )
 
-      xTail <- switch(tailgateX,
+      xTail <- switch(
+        tailgateX,
         "stim" = xStim,
         "unstim" = xUnsTailgate,
         "combined" = c(xUnsTailgate, xStim)
@@ -1069,7 +1071,8 @@
             ) {
               gateTblFinal[
                 as.character(gateTblFinal$ind) == ind_curr &
-                  gateTblFinal$chnl == "F1", ,
+                  gateTblFinal$chnl == "F1",
+                ,
                 drop = FALSE
               ]
             } else {
@@ -1088,7 +1091,8 @@
             ) {
               statsTblFinal[
                 as.character(statsTblFinal$ind) == ind_curr &
-                  grepl("~\\+~", statsTblFinal$cytCombn), ,
+                  grepl("~\\+~", statsTblFinal$cytCombn),
+                ,
                 drop = FALSE
               ]
             } else {

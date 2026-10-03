@@ -168,6 +168,7 @@
 #'   how far left of this anchor to extend, one bin at a time. Default is 0.5.
 #' @param locFlatHardDerivFrac numeric. Lower derivative fraction used for a
 #'   conservative hard exclusion of the very flat far-left region before the
+#'   marginal bin scan. Default is 0.25.
 #' @param locMarginalPurityRel numeric. Minimum allowed purity of each additional
 #'   leftward bin, expressed as a fraction of the average response probability
 #'   among cells to the right of the initial derivative-based local-FDR boundary.
