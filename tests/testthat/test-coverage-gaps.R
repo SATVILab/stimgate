@@ -1,4 +1,3 @@
-
 test_that("stimgateGateRunsWithGateCombnPrejoin", {
   skip_if_not_installed("flowWorkspace")
   skip_if_not_installed("flowCore")

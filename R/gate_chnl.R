@@ -9,7 +9,6 @@
   pathProject,
   stage
 ) {
-
   # Initial gates
   # ----------------
   gateTbl <- .gateChnlPreAdjGatesGate(
