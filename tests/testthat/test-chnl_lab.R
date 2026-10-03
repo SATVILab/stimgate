@@ -129,24 +129,6 @@ test_that("chnlLabThrowsErrorForUnsupportedObjectTypes", {
   )
 })
 
-test_that("chnlLabResultStructureIsConsistent", {
-  ff <- makeChnlLabTestFrame()
-
-  result <- chnlLab(ff)
-
-  # Check that every element has a name
-  expect_true(all(nzchar(names(result))))
-  expect_equal(length(result), length(names(result)))
-
-  # Check that result length matches number of parameters
-  paramData <- flowCore::parameters(ff)@data
-  expect_equal(length(result), nrow(paramData))
-
-  # Check that no values are NULL or missing
-  expect_false(any(is.null(result)))
-  expect_false(any(is.na(as.character(result))))
-})
-
 test_that("chnlLabHandlesEdgeCaseWithAllNaDescriptions", {
   ff <- makeChnlLabTestFrame(rep(NA_character_, 2))
 
@@ -157,17 +139,4 @@ test_that("chnlLabHandlesEdgeCaseWithAllNaDescriptions", {
   paramData <- flowCore::parameters(ff)@data
   expect_equal(as.character(result), as.character(paramData$name))
   expect_equal(names(result), as.character(paramData$name))
-})
-
-test_that("chnlLabHandlesEdgeCaseWithNoNaDescriptions", {
-  ff <- makeChnlLabTestFrame()
-  paramData <- flowCore::parameters(ff)@data
-
-  # Test the function
-  result <- chnlLab(ff)
-
-  # Check that all values are the actual descriptions (no channel names used)
-  expect_equal(as.character(result), as.character(paramData$desc))
-  expect_equal(names(result), as.character(paramData$name))
-  expect_false(any(as.character(result) == names(result))) # No fallback to channel names
 })

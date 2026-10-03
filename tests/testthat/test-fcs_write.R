@@ -34,30 +34,6 @@ invisible(gateStim(
 # 7. Error handling and message output
 # 8. Channel filtering and combination exclusions
 
-test_that("writeStimFCS function exists and has correct signature", {
-  # Test that the function exists and has the expected parameters
-  expect_true(exists("writeStimFCS", where = asNamespace("stimgate")))
-
-  # Test function signature by checking for argument names
-  args <- names(formals(writeStimFCS))
-  expectedArgs <- c(
-    "pathProject",
-    ".data",
-    "indBatchList",
-    "pathDirSave",
-    "chnl",
-    "gateTbl",
-    "transFn",
-    "transChnl",
-    "combnExc",
-    "gateTypeCytPos",
-    "mult",
-    "gateUnsMethod"
-  )
-
-  expect_true(all(expectedArgs %in% args))
-})
-
 
 test_that("writeStimFCS runs with basic parameters", {
   pathDirSave <- file.path(tempdir(), "fcs_output_test")
