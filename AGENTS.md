@@ -206,6 +206,10 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   rows that differ only by estimator or estimator-tuning settings. Derive the
   data-generation seed from the biological scenario, not from the estimator,
   cap, chunk index or worker scheduling.
+- Keep requested estimator settings distinct from the estimator path actually
+  used after fallbacks. If row-level fallback provenance is unavailable, label
+  figures as the requested method/normalisation and state that limitation rather
+  than implying every row used the requested path.
 - Active simulation chunks must collate only their own chunk outputs; canonical
   cross-chunk reads happen after promotion. A render with simulations disabled
   must use the read-only current-results context and must not create staging state.
