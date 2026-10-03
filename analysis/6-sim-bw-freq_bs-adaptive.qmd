@@ -2211,16 +2211,19 @@ summary_tbl <- bw_tbl_results_raw |>
     threshold_sd = stats::sd(threshold, na.rm = TRUE),
     threshold_mad = stats::mad(threshold, na.rm = TRUE),
     threshold_iqr_length = .data$threshold_iqr_upper - .data$threshold_iqr_lower,
-    propBsEst_median = stats::median(propBsEst, na.rm = TRUE),
-    propBsEst_median_diff = propBsEst_median - unique(prob_response),
-    propBsEst_median_diff_rel =
-      (propBsEst_median - unique(prob_response)) / unique(prob_response),
+    propRespTruth_median = stats::median(propRespTruth, na.rm = TRUE),
+    propRespEst_median = stats::median(propRespEst, na.rm = TRUE),
+    propRespEst_median_diff =
+      .data$propRespEst_median - .data$propRespTruth_median,
+    propRespEst_median_diff_rel =
+      (.data$propRespEst_median - .data$propRespTruth_median) /
+        .data$propRespTruth_median,
     .groups = "drop"
   )
 
-saveRDS(
+.write_rds_atomic(
   summary_tbl,
-  file = projr::projr_path_get(
+  projr::projr_path_get(
     "cache", "sim", "bw", "freq_bs", "adaptive", "summary_tbl.rds"
   )
 )
@@ -2231,7 +2234,7 @@ summary_tbl |>
   dplyr::select(
     transformation, bias_uns_setting, bias_uns,
     mean_pos_setting, bw_core, bw_extra, threshold_sd,
-    propBsEst_median_diff_rel
+    propRespEst_median_diff_rel
   ) |>
   dplyr::mutate(dplyr::across(where(is.numeric), ~ signif(.x, 3))) |>
   dplyr::arrange(threshold_sd) |>
@@ -2244,7 +2247,7 @@ summary_tbl |>
   ) |>
   dplyr::summarise(
     mean_threshold_sd_rank = mean(threshold_sd_rank, na.rm = TRUE),
-    mean_abs_rel_error = mean(abs(propBsEst_median_diff_rel), na.rm = TRUE),
+    mean_abs_rel_error = mean(abs(propRespEst_median_diff_rel), na.rm = TRUE),
     .groups = "drop"
   ) |>
   dplyr::arrange(transformation, bias_uns_setting, mean_threshold_sd_rank) |>
