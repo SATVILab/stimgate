@@ -28,7 +28,6 @@ reference:
   - getBatchList
   - getExampleData
   - getStimExpr
-  - getTestData
   - stimgateMetaReadBatchList
   - stimgateMetaReadChnlLab
   - stimgateMetaReadMarkerLab

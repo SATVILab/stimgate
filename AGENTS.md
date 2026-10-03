@@ -54,7 +54,7 @@ unstimulated background.
 
 - Use `@import` or `@importFrom` directives in roxygen comments; explicitly
   qualify all package calls with `pkg::fun()`. The only exceptions are
-  `ggplot2` (imported wholesale via `#' @import ggplot2` in `R/misc.R`) and
+  `ggplot2` (imported wholesale via `#' @import ggplot2` in `R/stimgate-package.R`) and
   `flowCore::exprs`, which may be called without a namespace qualifier and do
   not require `@importFrom` tags.
 - Modify `.Rd` files manually; regenerate them with `devtools::document()`.
@@ -177,10 +177,13 @@ the code you changed, e.g. `devtools::test(filter = "cp_uns_loc|pos_ind")` or
 `testthat::test_file()` for analysis tests. Run the full suite once, on the
 finished change, before opening the PR; CI runs it again.
 
-When several agents work in parallel (subagents, separate worktrees), each
-agent runs targeted tests only and the coordinating agent runs the full suite
-once on the combined result. Worktrees share one `git stash`, so parallel
-agents must not use it; use a patch file or a temporary commit instead.
+When several agents work in parallel (subagents, separate worktrees), the
+subagents do not run R locally: concurrent R runs overload the machine. The
+coordinating agent tests once, locally, on the combined result before opening
+the PR. A subagent may push a branch to CI if it really needs a check, but CI
+takes about five minutes to start, so do this only when necessary. Worktrees
+share one `git stash`, so parallel agents must not use it; use a patch file or
+a temporary commit instead.
 
 ### Analysis / Repository Integration Tests
 
@@ -386,7 +389,6 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `getCpTg_audit.R`: Audit helpers for `.getCpTg()` migration tracking.
   - `ind_batch.R`: Get the list of indices grouped by batch.
   - `peaks_and_troughs.R`: Peak and trough detection helpers.
-  - `pipe.R`: Pipe operator and related utilities.
   - `plot_gate.R`: Plot the identified gates (`plotStim`).
   - `pos_ind.R`: Identify the indices of the cytokine-positive cells.
   - `stats-helper-overall.R`: Helper functions for overall statistics.
@@ -507,7 +509,7 @@ saved `biasUns`; channels without a saved bias use zero.
 
 - Reference all external functions explicitly as `pkg::fun()`.
 - Exceptions: `ggplot2` is imported wholesale via `#' @import ggplot2` in
-  `R/misc.R`, so `ggplot2` functions and `flowCore::exprs` may be called without
+  `R/stimgate-package.R`, so `ggplot2` functions and `flowCore::exprs` may be called without
   a namespace qualifier and do not require `@importFrom` tags.
 
 ---
@@ -542,15 +544,10 @@ saved `biasUns`; channels without a saved bias use zero.
    For the ACS analysis, requesting a Tailgate/F-beta run removes both prior
    comparator `result.rds` files and recomputes them. Existing results are read only
    when comparator execution is disabled.
-5. **Temporary migration status for `.getCpTg()` (issues #157/#158)**:
-   This is a current-state note rather than a permanent design rule. Verify it against
-   the current implementation and relevant issues before relying on it in later work.
-   At the time of this update, remaining call sites are catalogued by
-   `.get_cp_tg_call_audit()` and summarised by `.get_cp_tg_migration_note_157()`.
-   Current default behaviour still constructs `tgClust` control gates in
-   `.gateBatchAll()`, but the current local-FDR cluster quantile implementation does
-   not consume `gateTblCtrl`, so this branch is dead plumbing for current outputs.
-   Single-positive gating branches have been removed per issue #196.
+5. **Removal of legacy tailgate-as-control path (issues #157/#158)**:
+   The legacy tailgate-as-control path (`.getCpTg()`, `tolCtrl`) has been removed.
+   Tailgate benchmark comparisons use `cytoUtils:::.cytokine_cutpoint()` in
+   `scripts/r/`, per notes 2 and 3.
 6. **Simulation engine migration to `simcyto` (issues #288/#289/#291/#295 / umbrella #271)**:
    Generic cytometry simulations, post-simulation transformations, and condition-mismatch
    controls are progressively migrating to the exported `simcyto` package API (e.g.
