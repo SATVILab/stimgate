@@ -256,8 +256,15 @@ test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure 
   ))
 
   expect_true(grepl("n_bw_total", content, fixed = TRUE))
+  expect_true(grepl("n_bw_stim_finite", content, fixed = TRUE))
+  expect_true(grepl("n_bw_uns_finite", content, fixed = TRUE))
   expect_true(grepl("n_bw_finite", content, fixed = TRUE))
   expect_true(grepl("prop_bw_finite", content, fixed = TRUE))
+  expect_true(grepl(
+    "pmin(.data$bw_stim, .data$bw_uns)",
+    content,
+    fixed = TRUE
+  ))
 
   expect_false(grepl("#\\| error:\\s*true", content))
   expect_true(grepl("old_plan <- future::plan()", content, fixed = TRUE))
