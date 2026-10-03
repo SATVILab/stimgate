@@ -379,9 +379,9 @@ test_that("analysis 2 collates final sample estimates", {
   )
 })
 
-test_that("analysis 2 dev and quick filters preserve full-grid IDs and seeds", {
+test_that("analysis 2a dev and quick filters preserve full-grid IDs and seeds", {
   lines <- readLines(file.path(
-    root_dir, "analysis", "2-sim-bw-freq_bs-global.qmd"
+    root_dir, "analysis", "2a-sim-bw-freq_bs-global.qmd"
   ))
   chunk <- function(label) {
     start <- which(lines == paste0("#| label: ", label))
