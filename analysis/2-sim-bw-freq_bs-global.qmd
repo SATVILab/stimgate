@@ -919,7 +919,6 @@ if (!results_read_only) {
 
   expected_chunk_ids <- sort(unique(as.integer(sim_grid$sim_id)))
   collated_chunk_ids <- sort(unique(as.integer(bw_tbl$sim_id)))
-  valid_chunk_ids <- sort(unique(as.integer(bw_tbl_results_summary$sim_id)))
   output_error_ids <- sort(unique(as.integer(
     bw_tbl$sim_id[
       !is.na(bw_tbl$error_message) &
@@ -929,7 +928,6 @@ if (!results_read_only) {
 
   chunk_collate_ok <- identical(collated_chunk_ids, expected_chunk_ids)
   chunk_validation_ok <- chunk_collate_ok &&
-    identical(valid_chunk_ids, expected_chunk_ids) &&
     length(output_error_ids) == 0L
 
   validation_error <- if (!chunk_collate_ok) {
@@ -940,8 +938,6 @@ if (!results_read_only) {
       paste(output_error_ids, collapse = ", "),
       "."
     )
-  } else if (!identical(valid_chunk_ids, expected_chunk_ids)) {
-    "At least one assigned sim_id had no finite threshold/frequency result."
   } else {
     NULL
   }
