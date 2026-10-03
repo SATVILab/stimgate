@@ -239,6 +239,15 @@ Equivalent shell command:
 Rscript analysis/tests/run_analysis_tests.R
 ```
 
+Each top-level analysis QMD also has an independently runnable target in
+`analysis/tests/run_qmd_tests.R`. Use `--list` to inspect the QMD-to-test mapping,
+one target number/path to run it, a comma/space-separated set, or `all`.
+Maintain the registry when adding or renaming top-level QMDs. These targets
+reuse bounded scientific helper and document-contract tests; they do not render
+the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-only
+(`workflow_dispatch`); do not add automatic triggers. See
+`analysis/tests/README.md` for commands and coverage limits.
+
 ### Website Maintenance (`pkgdown`)
 
 Whenever functions are added, removed, or have their export status changed (via
