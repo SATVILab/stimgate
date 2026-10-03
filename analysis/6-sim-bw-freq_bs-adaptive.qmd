@@ -914,7 +914,19 @@ if (length(bw_list_path_vec) > 0L) {
 }
 
 if (length(bw_list_raw_collate) == 0L) {
-  stop("No adaptive bandwidth-frequency results were available to collate.")
+  error_message <- "No adaptive bandwidth-frequency results were available to collate."
+  if (!results_read_only) {
+    .analysis_mark_chunk(
+      run_ctx = run_ctx,
+      total_sims = nrow(sim_grid),
+      completed_sims = 0L,
+      failed_sims = nrow(sim_grid),
+      collate_ok = FALSE,
+      validation_ok = FALSE,
+      error_message = error_message
+    )
+  }
+  stop(error_message)
 }
 
 bw_tbl_raw <- bw_list_raw_collate |>
@@ -942,7 +954,7 @@ bw_tbl <- .simBandwidthAddMissingColumns(
   )
 )
 
-if (all(is.na(bw_tbl$threshold))) {
+if (results_read_only && !any(is.finite(bw_tbl$threshold))) {
   stop(
     "No valid threshold results were collated. ",
     "Check the adaptive progress log for simulation-level errors."
@@ -983,7 +995,7 @@ duplicate_result_keys <- bw_tbl_results_raw |>
   dplyr::count(.data$sim_id, .data$iter, .data$ind) |>
   dplyr::filter(.data$n != 1L)
 
-if (nrow(duplicate_result_keys) > 0L) {
+if (results_read_only && nrow(duplicate_result_keys) > 0L) {
   stop(
     "Expected exactly one final loc_sample result per sim_id/iter/ind, ",
     "but duplicate result keys were found."
@@ -1065,6 +1077,7 @@ if (!results_read_only) {
 
   expected_chunk_ids <- sort(unique(as.integer(sim_grid$sim_id)))
   collated_chunk_ids <- sort(unique(as.integer(bw_tbl$sim_id)))
+  valid_result_ids <- sort(unique(as.integer(bw_tbl_results_raw$sim_id)))
   output_error_ids <- sort(unique(as.integer(
     bw_tbl$sim_id[
       !is.na(bw_tbl$error_message) &
@@ -1074,7 +1087,9 @@ if (!results_read_only) {
 
   chunk_collate_ok <- identical(collated_chunk_ids, expected_chunk_ids)
   chunk_validation_ok <- chunk_collate_ok &&
-    length(output_error_ids) == 0L
+    length(output_error_ids) == 0L &&
+    identical(valid_result_ids, expected_chunk_ids) &&
+    nrow(duplicate_result_keys) == 0L
 
   validation_error <- if (!chunk_collate_ok) {
     "Chunk collation did not contain exactly the assigned sim_id set."
@@ -1084,6 +1099,10 @@ if (!results_read_only) {
       paste(output_error_ids, collapse = ", "),
       "."
     )
+  } else if (!identical(valid_result_ids, expected_chunk_ids)) {
+    "At least one assigned sim_id had no finite final loc_sample result."
+  } else if (nrow(duplicate_result_keys) > 0L) {
+    "At least one sim_id/iter/ind had duplicate final loc_sample results."
   } else {
     NULL
   }
