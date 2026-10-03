@@ -18,9 +18,6 @@
     chnlCut = chnlSettings$chnlCut
   )
 
-  # delete locb gates
-  .gateChnlDeleteOldGates()
-
   # Initial gates
   # ----------------
   gateTbl <- .gateChnlPreAdjGatesGate(

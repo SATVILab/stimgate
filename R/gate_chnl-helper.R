@@ -1,13 +1,3 @@
-#' @keywords internal
-.gateChnlDeleteOldGates <- function() {
-  dirSave <- file.path(tempdir(), "stimgate")
-  if (!dir.exists(dirSave)) {
-    return(invisible(FALSE))
-  }
-  unlink(dirSave, recursive = TRUE)
-  invisible(TRUE)
-}
-
 # Get gates for each sample within each batch
 #' @keywords internal
 .gateChnlPreAdjGatesGate <- function(
