@@ -1,5 +1,7 @@
 # Analysis test targets
 
+The manual-only **analysis-qmd-render** workflow renders QMDs end to end in quick mode (optional dev), with parallel Windows jobs uploading simulation/plot HTML and saved figures.
+
 Run commands from the repository root. The package is loaded from the current
 checkout, and failed expectations cause a nonzero exit status.
 

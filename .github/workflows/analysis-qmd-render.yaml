@@ -1,0 +1,152 @@
+name: analysis-qmd-render
+
+on:
+  # TEMPORARY: lets the branch run before the workflow exists on master. Remove before merging.
+  push:
+    branches: [analysis-annotate]
+  workflow_dispatch:
+    inputs:
+      qmds:
+        description: 'Comma-separated QMD stems under analysis/'
+        required: true
+        type: string
+        default: '1-sim-trans,2a-sim-bw-freq_bs-global,2b-sim-bias_uns-freq_bs,3-sim-bw-est-base,4-sim-bw-est-norm,7-sim-compare-freq_bs,8-sim-compare-freq_bs-batch'
+      profile:
+        description: 'Analysis profile'
+        required: true
+        type: choice
+        default: quick
+        options:
+          - quick
+          - dev
+
+permissions: read-all
+
+env:
+  GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      qmds: ${{ steps.matrix.outputs.qmds }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare QMD matrix
+        id: matrix
+        env:
+          QMD_INPUT: ${{ inputs.qmds || '1-sim-trans,2a-sim-bw-freq_bs-global,2b-sim-bias_uns-freq_bs,3-sim-bw-est-base,4-sim-bw-est-norm,7-sim-compare-freq_bs,8-sim-compare-freq_bs-batch' }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          qmds = list(dict.fromkeys(stem.strip() for stem in os.environ['QMD_INPUT'].split(',')))
+          if not qmds or any(
+              not re.fullmatch(r'[A-Za-z0-9_-]+', stem)
+              or not (Path('analysis') / (stem + '.qmd')).is_file()
+              for stem in qmds
+          ):
+              raise SystemExit('qmds must contain existing QMD stems under analysis/, separated by commas')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('qmds=' + json.dumps(qmds) + '\n')
+          PY
+
+  render:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        qmd: ${{ fromJSON(needs.prepare.outputs.qmds) }}
+    env:
+      R_KEEP_PKG_SOURCE: yes
+      PROJR_PROFILE: ${{ inputs.profile || 'quick' }}
+      QMD: ${{ matrix.qmd }}
+      # GITHUB_ACTIONS=true makes the repository .Rprofile skip renv activation.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: r-lib/actions/setup-pandoc@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+
+      - uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+        with:
+          r-version: 'release'
+          use-public-rspm: true
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: python
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: python -m pip install numpy
+
+      - uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+        with:
+          extra-packages: |
+            any::devtools
+            any::testthat
+            any::decor
+            any::reticulate
+            any::future
+            any::furrr
+            any::progressr
+            any::withr
+            SATVILab/simcyto
+            github::RGLab/cytoUtils
+            any::quarto
+            any::rmarkdown
+            any::knitr
+            any::ggforce
+            any::projr
+            any::pkgload
+            any::scales
+            any::RColorBrewer
+            github::SATVILab/UtilsDataRSV
+          needs: check
+          cache: always
+
+      - uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2
+        with:
+          tinytex: false
+
+      - name: Prepare render and cache directories
+        shell: bash
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/render/simulate" "$GITHUB_WORKSPACE/render/plots"
+          # _projr.yml uses these writable sibling paths; both renders share this job's disk.
+          mkdir -p "$GITHUB_WORKSPACE/../stimgate-store/_tmp" "$GITHUB_WORKSPACE/../stimgate-store/_tmp_analysis/cache"
+
+      - name: Render simulations
+        shell: bash
+        env:
+          RETICULATE_PYTHON: ${{ steps.python.outputs.python-path }}
+          RUN_SIMULATIONS: 'true'
+          RUN_PLOTS: 'false'
+        run: quarto render "analysis/$QMD.qmd" --output-dir "$GITHUB_WORKSPACE/render/simulate"
+
+      - name: Render plots from saved simulations
+        shell: bash
+        env:
+          RETICULATE_PYTHON: ${{ steps.python.outputs.python-path }}
+          RUN_SIMULATIONS: 'false'
+          RUN_PLOTS: 'true'
+        run: quarto render "analysis/$QMD.qmd" --output-dir "$GITHUB_WORKSPACE/render/plots"
+
+      - name: Upload rendered HTML and saved figures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: render-${{ matrix.qmd }}
+          retention-days: 7
+          path: |
+            ${{ github.workspace }}/render/plots/**/*.html
+            ${{ github.workspace }}/render/simulate/**/*.html
+            ${{ github.workspace }}/output/fig/**/*.png
+            ${{ github.workspace }}/output/fig/**/*.pdf
+            ${{ github.workspace }}/../stimgate-store/_tmp/**/*.png
+            ${{ github.workspace }}/../stimgate-store/_tmp/**/*.pdf
+            ${{ github.workspace }}/cache/**/*.png
+            ${{ github.workspace }}/cache/**/*.pdf

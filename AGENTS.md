@@ -347,6 +347,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
 |---|---|---|
 | `R-CMD-check.yaml` | `windows-latest` (release) only | Same on pushes to `master`; full OS/R matrix on published releases, manual runs (`full` input) and PRs labelled `full-check` |
 | `analysis-integration.yaml` | `windows-latest`, path-filtered | Same on pushes to `master` |
+| `analysis-qmd-render.yaml` | Not run | Manual-only; renders QMDs end to end in quick mode by default (optional dev), parallel Windows jobs, HTML and figure artifacts |
 | `pkgdown.yaml` | Not run | Builds and deploys on `master`, releases and manual runs (Ubuntu) |
 | `test-coverage.yaml` | Not run | `master` and manual runs (Windows) |
 | `document.yaml` | Pushes touching `R/` (Windows) | Also runnable manually |
