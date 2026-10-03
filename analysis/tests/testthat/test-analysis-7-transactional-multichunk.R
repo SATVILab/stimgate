@@ -43,8 +43,12 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
   ))
   expect_true(grepl(".analysis_results_context", content, fixed = TRUE))
   expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
-  expect_true(grepl("collated_chunk_ids", content, fixed = TRUE))
-  expect_true(grepl("error_sim_ids", content, fixed = TRUE))
+  expect_true(grepl(
+    ".simCompareValidateCompletedScenarios",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("incomplete_sim_ids", content, fixed = TRUE))
   expect_true(grepl("analysis_dev", content, fixed = TRUE))
   expect_false(grepl("bias_uns == 0.05", content, fixed = TRUE))
   expect_true(grepl("knitr::knit_exit()", content, fixed = TRUE))
