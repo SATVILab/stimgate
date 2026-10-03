@@ -246,11 +246,24 @@
   }
 
   .fallback_scalar <- function() {
-    bwFallback <- .bwCalcOneBase(x, bwMtd)
+    xFallback <- .bwCalcOneSampleOrdinary(
+      x = x,
+      bwNcellMin = bwNcellMin,
+      bwNcellMax = bwNcellMax
+    )
+    bwFallback <- .bwCalcOneBase(xFallback, bwMtd)
     if (!is.finite(bwFallback) || bwFallback <= 0) {
-      return(structure(NA_real_, adaptive = FALSE))
+      return(structure(
+        NA_real_,
+        adaptive = FALSE,
+        normFallback = TRUE
+      ))
     }
-    structure(as.numeric(bwFallback)[1] * bwAdj, adaptive = FALSE)
+    structure(
+      as.numeric(bwFallback)[1] * bwAdj,
+      adaptive = FALSE,
+      normFallback = TRUE
+    )
   }
 
   if (.bwNormTooFew(x)) {
@@ -352,7 +365,8 @@
 
     return(structure(
       as.numeric(bwZ)[1] * scaleX / scaleZ * bwAdj,
-      adaptive = FALSE
+      adaptive = FALSE,
+      normFallback = FALSE
     ))
   }
 
@@ -427,7 +441,8 @@
     return(
       structure(
         as.numeric(bwZ)[1] * bwAdj,
-        adaptive = FALSE
+        adaptive = FALSE,
+        normFallback = FALSE
       )
     )
   }
