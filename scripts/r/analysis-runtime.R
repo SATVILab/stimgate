@@ -341,6 +341,53 @@
   invisible(TRUE)
 }
 
+.analysis_cache_dir <- function(path_parts, path_root = NULL, create = TRUE) {
+  if (requireNamespace("projr", quietly = TRUE)) {
+    return(do.call(
+      projr::projr_path_get_dir,
+      c(list("cache"), as.list(path_parts), list(create = create))
+    ))
+  }
+  root_local <- normalizePath(
+    if (is.null(path_root) || !nzchar(path_root)) "." else path_root,
+    mustWork = FALSE
+  )
+  path <- do.call(file.path, c(list(root_local, "cache"), as.list(path_parts)))
+  if (isTRUE(create)) {
+    dir.create(path, recursive = TRUE, showWarnings = FALSE)
+  }
+  path
+}
+
+# Read-only stand-in for `.analysis_run_context()` when only the canonical
+# promoted results are needed (e.g. interactively, without running the
+# simulation chunk). Staging fields point at `current/`, so collation code
+# reads the promoted outputs. Creates no directories, manifests or logs.
+.analysis_results_context <- function(analysis_key, path_root = NULL) {
+  if (length(analysis_key) == 0L || !all(nzchar(analysis_key))) {
+    stop("analysis_key must be a non-empty character vector.")
+  }
+  sim_root <- .analysis_cache_dir(analysis_key, path_root, create = FALSE)
+  current_dir <- file.path(sim_root, "current")
+  if (!file.exists(file.path(current_dir, "COMPLETE"))) {
+    stop(
+      "No complete canonical current result is available for analysis key: ",
+      paste(analysis_key, collapse = "/"),
+      " (looked in ", current_dir, ")."
+    )
+  }
+  list(
+    analysis_key = analysis_key,
+    sim_root = sim_root,
+    current_dir = current_dir,
+    staging_run_dir = current_dir,
+    staging_output_dir = file.path(current_dir, "output"),
+    staging_collated_dir = file.path(current_dir, "collated"),
+    manifest_path = file.path(current_dir, "manifest.rds"),
+    read_only = TRUE
+  )
+}
+
 .analysis_run_context <- function(
     analysis_key,
     run_id = NULL,
@@ -371,23 +418,11 @@
   run_date_now <- format(start_time, "%Y-%m-%d")
   run_time <- format(start_time, "%H%M%S")
 
-  if (requireNamespace("projr", quietly = TRUE)) {
-    sim_root <- do.call(projr::projr_path_get_dir, c(list("cache"), as.list(analysis_key)))
-    log_root <- do.call(
-      projr::projr_path_get_dir,
-      c(list("cache", "log", "analysis"), as.list(analysis_key))
-    )
-  } else {
-    root_local <- normalizePath(
-      if (is.null(path_root) || !nzchar(path_root)) "." else path_root,
-      mustWork = FALSE
-    )
-    sim_root <- do.call(file.path, c(list(root_local, "cache"), as.list(analysis_key)))
-    log_root <- do.call(
-      file.path,
-      c(list(root_local, "cache", "log", "analysis"), as.list(analysis_key))
-    )
-  }
+  sim_root <- .analysis_cache_dir(analysis_key, path_root)
+  log_root <- .analysis_cache_dir(
+    c("log", "analysis", analysis_key),
+    path_root
+  )
 
   staging_root <- file.path(sim_root, "staging")
   current_dir <- file.path(sim_root, "current")

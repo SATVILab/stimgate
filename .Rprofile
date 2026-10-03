@@ -108,12 +108,16 @@ if (!.is_ci()) {
         NULL
       }
       repos_vec <- c(bioc_vec, getOption("repos"))
-      # Use Posit Package Manager for CRAN, with fallback
+      # Use Posit Package Manager for CRAN, with fallback. Prefer the
+      # binary URL that r-lib/actions/setup-r exports as RSPM: pak resolves
+      # packages in a callr subprocess that skips the site profile (where
+      # setup-r sets repos), so without this every package builds from source.
       if (isFALSE("CRAN" %in% names(repos_vec))) {
-        repos_vec <- c(
-          repos_vec,
-          CRAN = "https://packagemanager.posit.co/cran/latest"
-        )
+        cran_url <- Sys.getenv("RSPM", unset = "")
+        if (!nzchar(cran_url)) {
+          cran_url <- "https://packagemanager.posit.co/cran/latest"
+        }
+        repos_vec <- c(repos_vec, CRAN = cran_url)
       }
       options(repos = repos_vec)
     },
@@ -136,7 +140,10 @@ try(
     .set_renv_profile,
     .is_ci,
     .is_bioc_container,
-    .is_devcontainer_config_r_feature
+    .is_devcontainer_config_r_feature,
+    bioc_vec,
+    repos_vec,
+    cran_url
   )),
   silent = TRUE
 )

@@ -65,13 +65,28 @@
   if (!is.null(pathFbeta)) {
     return(pathFbeta)
   }
-  if (!requireNamespace("projr", quietly = TRUE)) {
-    stop(
-      "pathFbeta was not supplied and projr is not available. ",
-      "Pass pathFbeta explicitly."
-    )
+  if (requireNamespace("projr", quietly = TRUE)) {
+    return(projr::projr_path_get("project", "scripts", "python", "fbeta.py"))
   }
-  projr::projr_path_get("project", "scripts", "python", "fbeta.py")
+  # Without projr, look for the checkout's copy above the working directory
+  # (e.g. analysis tests run from analysis/tests/testthat).
+  pathDir <- normalizePath(".", winslash = "/", mustWork = FALSE)
+  repeat {
+    pathCandidate <- file.path(pathDir, "scripts", "python", "fbeta.py")
+    if (file.exists(pathCandidate)) {
+      return(pathCandidate)
+    }
+    pathParent <- dirname(pathDir)
+    if (identical(pathParent, pathDir)) {
+      break
+    }
+    pathDir <- pathParent
+  }
+  stop(
+    "pathFbeta was not supplied, projr is not available and ",
+    "scripts/python/fbeta.py was not found above the working directory. ",
+    "Pass pathFbeta explicitly."
+  )
 }
 
 #' Patch a temporary copy of fbeta.py only for Python 3 / NumPy compatibility

@@ -7,6 +7,12 @@ script_runtime <- file.path(root_dir, "scripts", "r", "analysis-runtime.R")
   env
 }
 
+# Forward-slash absolute paths: safe to compare across separator styles and to
+# embed in R code run by `Rscript -e` (Windows backslashes are escapes there).
+.norm_path <- function(path) {
+  normalizePath(path, winslash = "/", mustWork = FALSE)
+}
+
 test_that("QMD param lookup follows param > default precedence and env override precedence", {
   env <- .load_runtime_env()
   env$params <- list(sim_grid_chunk_index = 7L)
@@ -79,7 +85,7 @@ test_that("sim grid chunk validation rejects invalid settings and formats labels
 test_that("atomic RDS writes are readable and preserve object contents", {
   env <- .load_runtime_env()
 
-  path <- tempfile(file.path(tempdir(), "analysis-runtime-"), fileext = ".rds")
+  path <- tempfile("analysis-runtime-", fileext = ".rds")
   on.exit(unlink(path, force = TRUE), add = TRUE)
 
   obj <- list(
@@ -573,8 +579,14 @@ test_that("explicit run ID reuses the original dated run directory", {
   )
 
   expect_identical(ctx_resume$run_date, target_date)
-  expect_identical(ctx_resume$staging_run_dir, moved_staging_dir)
-  expect_identical(ctx_resume$progress_run_dir, moved_progress_dir)
+  expect_identical(
+    .norm_path(ctx_resume$staging_run_dir),
+    .norm_path(moved_staging_dir)
+  )
+  expect_identical(
+    .norm_path(ctx_resume$progress_run_dir),
+    .norm_path(moved_progress_dir)
+  )
 })
 
 test_that("a promoted run cannot be reset to running or lose collation/validation state", {
@@ -655,8 +667,8 @@ test_that("one process holding the lock excludes another process, and unlock all
   env <- .load_runtime_env()
 
   tmp_dir <- withr::local_tempdir()
-  lock_path <- file.path(tmp_dir, "test.lock")
-  script_path <- script_runtime
+  lock_path <- .norm_path(file.path(tmp_dir, "test.lock"))
+  script_path <- .norm_path(script_runtime)
 
   lock1 <- env$.analysis_acquire_lock(lock_path, timeout_sec = 0.5)
   expect_false(is.null(lock1))
@@ -682,13 +694,17 @@ test_that("one process holding the lock excludes another process, and unlock all
 })
 
 test_that("a worker process terminating without unlocking leaves lock immediately acquirable", {
+  # On Windows, tools::pskill() cannot terminate the background Rscript worker
+  # (it reports failure and the worker keeps the lock), so this Unix
+  # kill-and-release check cannot run there.
+  skip_on_os("windows")
   env <- .load_runtime_env()
 
   tmp_dir <- withr::local_tempdir()
-  lock_path <- file.path(tmp_dir, "termination.lock")
-  ready_file <- file.path(tmp_dir, "ready.txt")
-  pid_file <- file.path(tmp_dir, "pid.txt")
-  script_path <- script_runtime
+  lock_path <- .norm_path(file.path(tmp_dir, "termination.lock"))
+  ready_file <- .norm_path(file.path(tmp_dir, "ready.txt"))
+  pid_file <- .norm_path(file.path(tmp_dir, "pid.txt"))
+  script_path <- .norm_path(script_runtime)
 
   # Launch worker in background that acquires lock and signals readiness
   worker_cmd <- sprintf(
@@ -698,9 +714,9 @@ test_that("a worker process terminating without unlocking leaves lock immediatel
   system2("Rscript", args = c("-e", shQuote(worker_cmd)), wait = FALSE)
 
   # Wait until worker has locked and signaled readiness
-  for (i in seq_len(100L)) {
+  for (i in seq_len(300L)) {
     if (file.exists(ready_file)) break
-    Sys.sleep(0.05)
+    Sys.sleep(0.1)
   }
   expect_true(file.exists(ready_file))
 
@@ -710,11 +726,12 @@ test_that("a worker process terminating without unlocking leaves lock immediatel
 
   # Terminate worker process abruptly (SIGKILL = 9)
   worker_pid <- as.integer(readLines(pid_file)[[1]])
-  tools::pskill(worker_pid, signal = tools::SIGKILL)
+  expect_true(tools::pskill(worker_pid, signal = tools::SIGKILL))
   Sys.sleep(0.1)
 
-  # OS fcntl drops lock automatically on process termination; another process can acquire immediately
-  l_after_death <- env$.analysis_acquire_lock(lock_path, timeout_sec = 2)
+  # The OS drops the lock when the holder dies (fcntl on Unix; on Windows the
+  # release can lag slightly behind TerminateProcess), so it becomes acquirable.
+  l_after_death <- env$.analysis_acquire_lock(lock_path, timeout_sec = 10)
   expect_false(is.null(l_after_death))
   env$.analysis_release_lock(l_after_death)
 })
@@ -767,4 +784,60 @@ test_that("concurrent lock acquisition across workers remains safely serialised"
 
   log_lines <- readLines(log_file)
   expect_length(log_lines, 4L)
+})
+
+test_that("results context reads promoted outputs without run state", {
+  env <- .load_runtime_env()
+
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+  key <- c("sim", "analysis-runtime-results-context")
+
+  expect_error(
+    env$.analysis_results_context(key, path_root = tmp_project),
+    "No complete canonical current result"
+  )
+  expect_false(dir.exists(file.path(tmp_project, "cache", "log")))
+
+  ctx <- env$.analysis_run_context(
+    analysis_key = key,
+    run_id = "promoted-run",
+    path_root = tmp_project
+  )
+  env$.write_rds_atomic(
+    data.frame(x = 1),
+    file.path(ctx$staging_collated_dir, "result.rds")
+  )
+  env$.analysis_mark_chunk(
+    run_ctx = ctx,
+    total_sims = 1L,
+    completed_sims = 1L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+  expect_true(isTRUE(env$.analysis_promote_run(ctx)))
+
+  staging_before <- list.files(ctx$staging_root, recursive = TRUE)
+  ctx_read <- env$.analysis_results_context(key, path_root = tmp_project)
+
+  expect_true(ctx_read$read_only)
+  expect_identical(
+    normalizePath(ctx_read$current_dir),
+    normalizePath(ctx$current_dir)
+  )
+  expect_identical(ctx_read$staging_run_dir, ctx_read$current_dir)
+  expect_identical(
+    readRDS(file.path(ctx_read$staging_collated_dir, "result.rds")),
+    data.frame(x = 1)
+  )
+  expect_identical(
+    env$.analysis_current_file(ctx_read, c("collated", "result.rds")),
+    file.path(ctx_read$current_dir, "collated", "result.rds")
+  )
+  expect_identical(
+    list.files(ctx$staging_root, recursive = TRUE),
+    staging_before
+  )
 })

@@ -25,8 +25,7 @@ plotStim(
   chnlGate = NULL,
   markerGate = NULL,
   gateTypeCytPos = "cyt",
-  mult = FALSE,
-  gateUnsMethod = "min"
+  mult = FALSE
 )
 }
 \arguments{
@@ -102,9 +101,6 @@ cells. Default is "cyt".}
 
 \item{mult}{logical Whether to return only multi-functional cells (positive
 for multiple markers). Default is FALSE.}
-
-\item{gateUnsMethod}{character Method for gating unstimulated cells.
-Default is "min".}
 }
 \value{
 A grid of plots if \code{grid} is TRUE, otherwise a list of ggplot objects.

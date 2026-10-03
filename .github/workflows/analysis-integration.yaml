@@ -24,37 +24,52 @@ on:
 
 permissions: read-all
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analysis-integration:
-    runs-on: ubuntu-latest
+    # Windows installs CRAN and Bioconductor binaries, so it is much faster
+    # than Ubuntu, which builds the flowWorkspace stack from source.
+    runs-on: windows-latest
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-pandoc@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
 
-      - uses: r-lib/actions/setup-r@v2
+      - uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
         with:
           r-version: 'release'
           use-public-rspm: true
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install --no-install-recommends -y \
-            libcurl4-openssl-dev libfontconfig1-dev libfreetype6-dev \
-            libgit2-dev libjpeg-dev libpng-dev libx11-dev pandoc
+      # The F-beta comparator (scripts/python/fbeta.py) runs through reticulate
+      # and only needs numpy to compute thresholds.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: python
+        with:
+          python-version: '3.12'
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Install Python dependencies
+        run: python -m pip install numpy
+
+      - uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
         with:
           # Deliberately unpinned: analysis validation follows the current
           # SATVILab/simcyto default branch used by StimGate development.
-          extra-packages: any::devtools, any::testthat, SATVILab/simcyto
+          # decor is needed by devtools::load_all() to register cpp11 code.
+          extra-packages: any::devtools, any::testthat, any::decor, any::reticulate, SATVILab/simcyto
           needs: check
+          # Save the package library even when the tests fail, so later runs
+          # restore it instead of rebuilding every dependency from source.
+          cache: always
 
       - name: Run analysis integration tests
+        env:
+          RETICULATE_PYTHON: ${{ steps.python.outputs.python-path }}
         run: Rscript analysis/tests/run_analysis_tests.R

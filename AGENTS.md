@@ -117,8 +117,8 @@ environment-setup failure rather than switching to `renv`.
 ### GitHub Project administration
 
 For GitHub issue or Project-administration work, use the shared
-`github-project-admin` skill from
-`MiguelRodo/projects/skills/github-project-admin/` and read
+`github-projects` skill from
+`MiguelRodo/github-projects-skill/skills/github-projects/` and read
 `.projects/project.md`. Keep its lightweight Project environment separate from
 the R package-development setup above.
 
@@ -162,13 +162,25 @@ Rscript -e "styler::style_pkg()"
 Rscript -e "lintr::lint_package()"
 ```
 
-### Checklist before each commit / opening a PR
+### Checklist before opening a PR
 
 1. `devtools::document()`
 2. `styler::style_pkg()`
 3. `lintr::lint_package()`
 4. `devtools::test()`
 5. If `analysis/` or `scripts/r/` changed, `Rscript analysis/tests/run_analysis_tests.R`
+
+### Test runs while iterating
+
+The full suites are slow. While iterating, run only the test files that cover
+the code you changed, e.g. `devtools::test(filter = "cp_uns_loc|pos_ind")` or
+`testthat::test_file()` for analysis tests. Run the full suite once, on the
+finished change, before opening the PR; CI runs it again.
+
+When several agents work in parallel (subagents, separate worktrees), each
+agent runs targeted tests only and the coordinating agent runs the full suite
+once on the combined result. Worktrees share one `git stash`, so parallel
+agents must not use it; use a patch file or a temporary commit instead.
 
 ### Analysis / Repository Integration Tests
 
@@ -237,13 +249,45 @@ reflects all exported functions. Verify the site configuration with:
 pkgdown::check_pkgdown()
 ```
 
+### Continuous integration (GitHub Actions)
+
+Pull-request CI is deliberately minimal and Windows-based, because Windows
+installs CRAN and Bioconductor binaries while Ubuntu compiles the
+`flowWorkspace` stack from source.
+
+| Workflow | Pull requests | Otherwise |
+|---|---|---|
+| `R-CMD-check.yaml` | `windows-latest` (release) only | Same on pushes to `master`; full OS/R matrix on published releases, manual runs (`full` input) and PRs labelled `full-check` |
+| `analysis-integration.yaml` | `windows-latest`, path-filtered | Same on pushes to `master` |
+| `pkgdown.yaml` | Not run | Builds and deploys on `master`, releases and manual runs (Ubuntu) |
+| `test-coverage.yaml` | Not run | `master` and manual runs (Windows) |
+| `document.yaml` | Pushes touching `R/` (Windows) | Also runnable manually |
+
+- Add the `full-check` label to a PR, or run R-CMD-check manually, when a
+  change needs Linux, macOS or older-R coverage, and before releases.
+- `analysis-integration.yaml` installs Python, `numpy` and `reticulate` and
+  sets `RETICULATE_PYTHON`, because the F-beta comparator tests call
+  `scripts/python/fbeta.py`.
+- In CI, `.Rprofile` must keep preferring the `RSPM` repository URL exported by
+  `r-lib/actions/setup-r`. pak resolves packages in a subprocess that skips the
+  site profile but sources `.Rprofile`; falling back to the source-only
+  `https://packagemanager.posit.co/cran/latest` there makes every package
+  build from source.
+- Never put comments inside a `setup-r-dependencies` `extra-packages: |`
+  block: YAML keeps them as text and pak treats them as package names.
+- `setup-r-dependencies` uses `cache: always` where a failing job should still
+  save its package library for later runs.
+- Ubuntu jobs depend on that cache: an uncached run compiles the Bioconductor
+  `flowWorkspace` stack (RProtoBufLib, Rhdf5lib, cytolib, ...) from source in
+  about 10 minutes, while a cached run installs dependencies in 1-4 minutes.
+  Pull-request branches restore `master`'s caches.
+
 ---
 
 ## 5. Repository Structure
 
 - `R/`: Core R source code for the installed package.
   - `UtilsCytoRSV-chnl_lab.R`: Channel label utilities (get markers/channels from cytometry objects).
-  - `UtilsCytoRSV-plot_cyto.R`: Cytometry plotting utilities.
   - `UtilsGGSV-axisLimits.R`: `ggplot2` axis limit helpers.
   - `bw_norm_helpers.R`: Shared bandwidth helpers for standard and normalised bandwidth methods.
   - `check.R`: Input validation helpers.
@@ -361,6 +405,15 @@ QMD runtime or unrelated plotting/orchestration code.
   saving via `.intSave()` or `.intSaveNm()` functions. Intermediate saving is
   controlled by the `STIMGATE_INTERMEDIATE` environment variable.
 
+### Saved expression and stimulation gates
+
+Saved expression includes unstimulated samples, while final stimulation gate
+tables omit them. Positivity helpers must treat channels with no gate for the
+current sample as all-FALSE, preserving one logical value per cell.
+Completed `chnlSettings.rds` settings are keyed by marker labels, although saved
+expression columns use channel names. Resolve that mapping before applying the
+saved `biasUns`; channels without a saved bias use zero.
+
 ### Function Signatures & Returns
 
 - Validate inputs and provide meaningful error messages.
@@ -450,7 +503,14 @@ QMD runtime or unrelated plotting/orchestration code.
    - Never promote on partial/incomplete runs. Promote only after required chunks are complete and collated outputs validate.
    - Promotion updates `current/` only after a complete staged run is available; failed/interrupted staged runs remain inspectable and resumable.
    - Read canonical outputs through `.analysis_current_file()`, which requires a `COMPLETE` marker, a readable manifest for the requested analysis key, and any analysis-specific semantic version required by the caller.
+   - To read canonical results without running the simulation chunk (so no `run_ctx` exists), collation chunks fall back to `.analysis_results_context()`, a read-only stand-in whose staging paths point at `current/` and which creates no run state. Guard all writes, chunk marking and promotion with `if (!isTRUE(run_ctx$read_only))`.
    - Record scientific and semantic settings in the run manifest. Reusing an explicit run ID must match those settings; only operational controls such as plotting, simulation execution and the current chunk index may differ across invocations.
+
+9. **Versioning before the first Bioconductor release**:
+   Keep `Version` in `DESCRIPTION` at `0.99.z` (three components, no `-n`
+   suffix) until stimgate's first Bioconductor release, bumping `z` for each
+   change worth marking. Do not move to `0.100.0` or higher; Bioconductor sets
+   the release version itself.
 
 ---
 
@@ -491,7 +551,16 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
    the purpose is to catch drift between `scripts/r/`, QMDs and the installed package.
 9. **Cross-platform compatibility**:
    Tests must pass on macOS, Windows, and Ubuntu. Use `file.path()` (never hard-coded
-   `/` or `\\` separators) and avoid platform-specific paths.
+   `/` or `\\` separators) and avoid platform-specific paths. Pull-request CI runs on
+   Windows, so in particular:
+   - Pass only a file-name prefix to `tempfile()`; a full path as the pattern is
+     prepended with `tempdir()` again, which is invalid on Windows.
+   - Compare paths after `normalizePath(path, winslash = "/", mustWork = FALSE)`,
+     since equivalent paths may differ in separator style.
+   - Embed only forward-slash paths in R code run through `Rscript -e`;
+     Windows backslashes are escape sequences there.
+   - Use `skip_on_os("windows")`, with a comment giving the reason, for checks of
+     Unix-only process or signal behaviour.
 10. **Use the package-shipped example data for routine tests and examples**:
     The package ships one canonical deterministic cytometry example dataset in
     `inst/extdata/stimgate_example_data/` (2 samples × 2 conditions × 2 markers ×
@@ -506,10 +575,31 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
     `source("data-raw/create_test_fixture.R")` from the repository root in a
     clean R session (no `devtools::load_all()` required).
 
-<!-- github-project-admin:start -->
+<!-- github-projects:start -->
+## 9. Ponytail
+
+For coding, refactoring, bug-fixing, review and implementation design, read
+`.agents/skills/ponytail/SKILL.md` and apply Ponytail in **full** mode by
+default. Do not use **ultra** unless the operator explicitly requests it.
+Provenance is in `.agents/skills/ponytail/README.md`.
+
+Ponytail is subordinate to settled behaviour. Precedence is:
+
+1. the current explicit operator instruction or issue acceptance criteria;
+2. the conventions and policies in this file;
+3. the exported API and supported analysis/QMD contracts;
+4. the smallest implementation.
+
+Do not simplify away input validation, `.debug()`/profiling/intermediate-save
+plumbing, run-scoped staging and promotion for analysis simulations, comparator
+provenance, or roxygen documentation of exported functions. The generic
+Ponytail "one runnable check" suggestion is not a test cap here: add focused
+`testthat` coverage in the appropriate suite (Section 8) and run the
+pre-commit checklist (Section 4).
+
 ## GitHub issues and Projects
 
 For GitHub issue or Project administration, use
-`.agents/skills/github-project-admin/SKILL.md` and read
+`.agents/skills/github-projects/SKILL.md` and read
 `.projects/project.md` before acting.
-<!-- github-project-admin:end -->
+<!-- github-projects:end -->

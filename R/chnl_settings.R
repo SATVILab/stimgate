@@ -3,67 +3,66 @@
 
 #' @keywords internal
 .completeChnlSettings <- function(
-    chnl,
-    marker,
-    chnlSettings,
-    markerSettings,
-    biasUns,
-    biasUnsFactor,
-    excMin,
-    .data,
-    popGate,
-    indBatchList,
-    bw,
-    bwMin,
-    bwMax,
-    bwFallback,
-    bwMtd,
-    bwAdj,
-    bwNcellMin,
-    bwNcellMax,
-    bwCluster,
-    bwAdaptive,
-    bwAdaptiveDensityN,
-    bwAdaptivePadFrac,
-    bwAdaptiveCore,
-    bwAdaptiveExtra,
-    bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth,
-    normPeakFrac,
-    normPeakMinRel,
-    normExtraFrac,
-    normExtraMax,
-    normExtraJitterFrac,
-    normLambda,
-    normDensityN,
-    normExcessBwMtd,
-    normExcessNcell,
-    normAdaptiveNcell,
-    normMtd,
-    cpMin,
-    minCell,
-    tolClust,
-    locProbCol,
-    locMinPeakProb,
-    locEnforceShapeThreshold,
-    locDipAlpha,
-    locAntimodeHeightFrac,
-    locAntimodeLowRel,
-    locAntimodeLowAbs,
-    locFlatDerivFrac,
-    locFlatHardDerivFrac,
-    locLeftLowRel,
-    locLeftLowAbs,
-    locLeftCellFrac,
-    locLeftLengthFrac,
-    locMarginalPurityRel,
-    locMarginalCellBinRatio,
-    locMarginalRefQuantile,
-    locTolRefPeak,
-    maxPosProbX,
-    gateCombn,
-    gateQuant,
-    pathProject) {
+  chnl,
+  marker,
+  chnlSettings,
+  markerSettings,
+  biasUns,
+  biasUnsFactor,
+  excMin,
+  .data,
+  popGate,
+  indBatchList,
+  bw,
+  bwMin,
+  bwMax,
+  bwFallback,
+  bwMtd,
+  bwAdj,
+  bwNcellMin,
+  bwNcellMax,
+  bwCluster,
+  bwAdaptive,
+  bwAdaptiveDensityN,
+  bwAdaptivePadFrac,
+  bwAdaptiveCore,
+  bwAdaptiveExtra,
+  bwAdaptiveCrossover,
+  bwAdaptiveTransitionWidth,
+  normPeakMinRel,
+  normExtraFrac,
+  normExtraMax,
+  normLambda,
+  normDensityN,
+  normExcessBwMtd,
+  normExcessNcell,
+  normAdaptiveNcell,
+  normMtd,
+  cpMin,
+  minCell,
+  tolClust,
+  locProbCol,
+  locMinPeakProb,
+  locEnforceShapeThreshold,
+  locDipAlpha,
+  locAntimodeHeightFrac,
+  locAntimodeLowRel,
+  locAntimodeLowAbs,
+  locFlatDerivFrac,
+  locFlatHardDerivFrac,
+  locLeftLowRel,
+  locLeftLowAbs,
+  locLeftCellFrac,
+  locLeftLengthFrac,
+  locMarginalPurityRel,
+  locMarginalCellBinRatio,
+  locMarginalRefQuantile,
+  locTolRefPeak,
+  maxPosProbX,
+  gateCombn,
+  gateQuant,
+  pathProject
+) {
   chnlSettings <- .extractChnlSettings(
     chnl = chnl,
     marker = marker,
@@ -93,11 +92,9 @@
     bwAdaptiveExtra = bwAdaptiveExtra,
     bwAdaptiveCrossover = bwAdaptiveCrossover,
     bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
-    normPeakFrac = normPeakFrac,
     normPeakMinRel = normPeakMinRel,
     normExtraFrac = normExtraFrac,
     normExtraMax = normExtraMax,
-    normExtraJitterFrac = normExtraJitterFrac,
     normLambda = normLambda,
     normDensityN = normDensityN,
     normExcessBwMtd = normExcessBwMtd,
@@ -158,12 +155,13 @@
 
 #' @keywords internal
 .completeChnlSettingsInd <- function(
-    chnlSettingsCommon,
-    chnlSettingsSpec,
-    chnl,
-    .data,
-    indBatchList,
-    pathProject) {
+  chnlSettingsCommon,
+  chnlSettingsSpec,
+  chnl,
+  .data,
+  indBatchList,
+  pathProject
+) {
   chnlSettings <- .completeChnlSettingsAddCommon(
     chnlSettingsCommon = chnlSettingsCommon,
     chnlSettings = chnlSettingsSpec
@@ -180,52 +178,38 @@
     )
   }
 
-  chnlSettings$bwMin <- .completeChnlSettingsBwMin(
-    bwMin = chnlSettings$bwMin,
-    indBatchList = indBatchList,
-    .data = .data,
-    popGate = chnlSettings$popGate,
-    chnlCut = chnl,
-    pathProject = pathProject,
-    bwMtd = chnlSettings$bwMtd,
-    bwAdj = chnlSettings$bwAdj,
-    bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax,
-    normPeakFrac = chnlSettings$normPeakFrac,
-    normPeakMinRel = chnlSettings$normPeakMinRel,
-    normExtraFrac = chnlSettings$normExtraFrac,
-    normExtraMax = chnlSettings$normExtraMax,
-    normExtraJitterFrac = chnlSettings$normExtraJitterFrac,
-    normLambda = chnlSettings$normLambda,
-    normDensityN = chnlSettings$normDensityN,
-    normExcessBwMtd = chnlSettings$normExcessBwMtd,
-    normExcessNcell = chnlSettings$normExcessNcell,
-    normAdaptiveNcell = chnlSettings$normAdaptiveNcell,
-    normMtd = chnlSettings$normMtd
+  # Bandwidth-method settings shared by every automatic bandwidth below
+  bwArgs <- lapply(
+    stats::setNames(nm = c(
+      "bwMtd", "bwAdj", "normPeakMinRel", "normExtraFrac",
+      "normExtraMax", "normLambda", "normDensityN",
+      "normExcessBwMtd", "normExcessNcell", "normAdaptiveNcell", "normMtd"
+    )),
+    function(nm) chnlSettings[[nm]]
   )
 
-  chnlSettings$bwMax <- .completeChnlSettingsBwMax(
-    bwMax = chnlSettings$bwMax,
+  chnlSettings$bwMin <- .completeChnlSettingsBwLimit(
+    bwLimit = chnlSettings$bwMin,
+    noneValue = -Inf,
+    nSampleBw = 1e5,
     indBatchList = indBatchList,
     .data = .data,
     popGate = chnlSettings$popGate,
     chnlCut = chnl,
     pathProject = pathProject,
-    bwMtd = chnlSettings$bwMtd,
-    bwAdj = chnlSettings$bwAdj,
-    bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax,
-    normPeakFrac = chnlSettings$normPeakFrac,
-    normPeakMinRel = chnlSettings$normPeakMinRel,
-    normExtraFrac = chnlSettings$normExtraFrac,
-    normExtraMax = chnlSettings$normExtraMax,
-    normExtraJitterFrac = chnlSettings$normExtraJitterFrac,
-    normLambda = chnlSettings$normLambda,
-    normDensityN = chnlSettings$normDensityN,
-    normExcessBwMtd = chnlSettings$normExcessBwMtd,
-    normExcessNcell = chnlSettings$normExcessNcell,
-    normAdaptiveNcell = chnlSettings$normAdaptiveNcell,
-    normMtd = chnlSettings$normMtd
+    bwArgs = bwArgs
+  )
+
+  chnlSettings$bwMax <- .completeChnlSettingsBwLimit(
+    bwLimit = chnlSettings$bwMax,
+    noneValue = Inf,
+    nSampleBw = 1e2,
+    indBatchList = indBatchList,
+    .data = .data,
+    popGate = chnlSettings$popGate,
+    chnlCut = chnl,
+    pathProject = pathProject,
+    bwArgs = bwArgs
   )
 
   chnlSettings$bwFallback <- .completeChnlSettingsBwFallback(
@@ -235,21 +219,7 @@
     popGate = chnlSettings$popGate,
     chnlCut = chnl,
     pathProject = pathProject,
-    bwMtd = chnlSettings$bwMtd,
-    bwAdj = chnlSettings$bwAdj,
-    bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax,
-    normPeakFrac = chnlSettings$normPeakFrac,
-    normPeakMinRel = chnlSettings$normPeakMinRel,
-    normExtraFrac = chnlSettings$normExtraFrac,
-    normExtraMax = chnlSettings$normExtraMax,
-    normExtraJitterFrac = chnlSettings$normExtraJitterFrac,
-    normLambda = chnlSettings$normLambda,
-    normDensityN = chnlSettings$normDensityN,
-    normExcessBwMtd = chnlSettings$normExcessBwMtd,
-    normExcessNcell = chnlSettings$normExcessNcell,
-    normAdaptiveNcell = chnlSettings$normAdaptiveNcell,
-    normMtd = chnlSettings$normMtd
+    bwArgs = bwArgs
   )
 
   chnlSettings$biasUns <- .completeChnlSettingsBiasUns(
@@ -267,22 +237,8 @@
     chnlCut = chnl,
     pathProject = pathProject,
     bwCluster = chnlSettings$bwCluster,
-    bwMtd = chnlSettings$bwMtd,
-    bwAdj = chnlSettings$bwAdj,
-    bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax,
     bwFallback = chnlSettings$bwFallback,
-    normPeakFrac = chnlSettings$normPeakFrac,
-    normPeakMinRel = chnlSettings$normPeakMinRel,
-    normExtraFrac = chnlSettings$normExtraFrac,
-    normExtraMax = chnlSettings$normExtraMax,
-    normExtraJitterFrac = chnlSettings$normExtraJitterFrac,
-    normLambda = chnlSettings$normLambda,
-    normDensityN = chnlSettings$normDensityN,
-    normExcessBwMtd = chnlSettings$normExcessBwMtd,
-    normExcessNcell = chnlSettings$normExcessNcell,
-    normAdaptiveNcell = chnlSettings$normAdaptiveNcell,
-    normMtd = chnlSettings$normMtd
+    bwArgs = bwArgs
   )
 
   chnlSettings$cpMin <- .completeChnlSettingsCpMin(
@@ -299,8 +255,9 @@
 
 #' @keywords internal
 .completeChnlSettingsAddCommon <- function(
-    chnlSettingsCommon,
-    chnlSettings) {
+  chnlSettingsCommon,
+  chnlSettings
+) {
   chnlSettings |>
     append(chnlSettingsCommon[
       setdiff(names(chnlSettingsCommon), names(chnlSettings))
@@ -309,11 +266,12 @@
 
 #' @keywords internal
 .completeChnlSettingsBiasUns <- function(
-    biasUns,
-    biasUnsFactor,
-    bwMin,
-    bwMax,
-    bwFallback) {
+  biasUns,
+  biasUnsFactor,
+  bwMin,
+  bwMax,
+  bwFallback
+) {
   if (!is.null(biasUns)) {
     return(biasUns)
   }
@@ -347,26 +305,28 @@
     tolower(x) == "none"
 }
 
+# Evenly spaced indices: deterministic, and spread across the batch order
 #' @keywords internal
-.completeChnlSettingsBwFallbackIsAuto <- function(x) {
-  is.null(x) ||
-    (is.character(x) &&
-      length(x) == 1L &&
-      tolower(x) == "auto")
+.spreadInd <- function(n, size) {
+  unique(round(seq(1, n, length.out = min(size, n))))
+}
+
+# Batches used to estimate automatic channel settings
+#' @keywords internal
+.completeChnlSettingsBatchInd <- function(indBatchList) {
+  .spreadInd(length(indBatchList), 5)
 }
 
 #' @keywords internal
 .completeChnlSettingsGetBwExprList <- function(
-    indBatchList,
-    .data,
-    popGate,
-    chnlCut,
-    pathProject) {
-  batchInd <- seq_along(indBatchList)
-  batchInd <- sample(batchInd, size = min(5, length(batchInd)))
-
+  indBatchList,
+  .data,
+  popGate,
+  chnlCut,
+  pathProject
+) {
   purrr::map(
-    batchInd,
+    .completeChnlSettingsBatchInd(indBatchList),
     function(i) {
       exList <- .getExList(
         .data = .data,
@@ -390,67 +350,25 @@
 }
 
 #' @keywords internal
-.completeChnlSettingsBwCalcOne <- function(
-    x,
-    bwMtd,
-    bwAdj,
-    bwNcellMin = NULL,
-    bwNcellMax = NULL,
-    normPeakFrac = 0.1,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.2,
-    normExtraMax = Inf,
-    normExtraJitterFrac = 0.25,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    normMtd = "moments") {
-  bwOut <- .bwCalcOne(
-    x = x,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax,
-    normPeakFrac = normPeakFrac,
-    normPeakMinRel = normPeakMinRel,
-    normExtraFrac = normExtraFrac,
-    normExtraMax = normExtraMax,
-    normExtraJitterFrac = normExtraJitterFrac,
-    normLambda = normLambda,
-    normDensityN = normDensityN,
-    normExcessBwMtd = normExcessBwMtd,
-    normExcessNcell = normExcessNcell,
-    normAdaptiveNcell = normAdaptiveNcell,
-    normMtd = normMtd,
-    adaptive = FALSE
-  )
+.completeChnlSettingsBwLimit <- function(
+  bwLimit,
+  noneValue,
+  nSampleBw,
+  indBatchList,
+  .data,
+  popGate,
+  chnlCut,
+  pathProject,
+  bwArgs
+) {
+  if (.completeChnlSettingsBwLimitIsNone(bwLimit)) {
+    return(noneValue)
+  }
 
-  as.numeric(bwOut)[1]
-}
+  if (!.completeChnlSettingsBwLimitIsAuto(bwLimit)) {
+    return(bwLimit)
+  }
 
-#' @keywords internal
-.completeChnlSettingsBwLimitAuto <- function(
-    indBatchList,
-    .data,
-    popGate,
-    chnlCut,
-    pathProject,
-    bwMtd,
-    bwAdj,
-    nSampleBw,
-    normPeakFrac = 0.1,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.2,
-    normExtraMax = Inf,
-    normExtraJitterFrac = 0.25,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    normMtd = "moments") {
   xList <- .completeChnlSettingsGetBwExprList(
     indBatchList = indBatchList,
     .data = .data,
@@ -460,24 +378,10 @@
   )
 
   bwVec <- purrr::map_dbl(xList, function(xVec) {
-    .completeChnlSettingsBwCalcOne(
-      x = xVec,
-      bwMtd = bwMtd,
-      bwAdj = bwAdj,
-      bwNcellMin = nSampleBw,
-      bwNcellMax = nSampleBw,
-      normPeakFrac = normPeakFrac,
-      normPeakMinRel = normPeakMinRel,
-      normExtraFrac = normExtraFrac,
-      normExtraMax = normExtraMax,
-      normExtraJitterFrac = normExtraJitterFrac,
-      normLambda = normLambda,
-      normDensityN = normDensityN,
-      normExcessBwMtd = normExcessBwMtd,
-      normExcessNcell = normExcessNcell,
-      normAdaptiveNcell = normAdaptiveNcell,
-      normMtd = normMtd
-    )
+    as.numeric(do.call(.bwCalcOne, c(
+      list(x = xVec, bwNcellMin = nSampleBw, bwNcellMax = nSampleBw),
+      bwArgs
+    )))[1]
   })
 
   bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
@@ -489,137 +393,16 @@
 }
 
 #' @keywords internal
-.completeChnlSettingsBwMax <- function(
-    bwMax,
-    indBatchList,
-    .data,
-    popGate,
-    chnlCut,
-    pathProject,
-    bwMtd,
-    bwAdj,
-    bwNcellMin = NULL,
-    bwNcellMax = NULL,
-    normPeakFrac = 0.1,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.2,
-    normExtraMax = Inf,
-    normExtraJitterFrac = 0.25,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    normMtd = "moments") {
-  if (.completeChnlSettingsBwLimitIsNone(bwMax)) {
-    return(Inf)
-  }
-
-  if (!.completeChnlSettingsBwLimitIsAuto(bwMax)) {
-    return(bwMax)
-  }
-
-  .completeChnlSettingsBwLimitAuto(
-    indBatchList = indBatchList,
-    .data = .data,
-    popGate = popGate,
-    chnlCut = chnlCut,
-    pathProject = pathProject,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    nSampleBw = 1e2,
-    normPeakFrac = normPeakFrac,
-    normPeakMinRel = normPeakMinRel,
-    normExtraFrac = normExtraFrac,
-    normExtraMax = normExtraMax,
-    normExtraJitterFrac = normExtraJitterFrac,
-    normLambda = normLambda,
-    normDensityN = normDensityN,
-    normExcessBwMtd = normExcessBwMtd,
-    normExcessNcell = normExcessNcell,
-    normAdaptiveNcell = normAdaptiveNcell,
-    normMtd = normMtd
-  )
-}
-
-#' @keywords internal
-.completeChnlSettingsBwMin <- function(
-    bwMin,
-    indBatchList,
-    .data,
-    popGate,
-    chnlCut,
-    pathProject,
-    bwMtd,
-    bwAdj,
-    bwNcellMin = NULL,
-    bwNcellMax = NULL,
-    normPeakFrac = 0.1,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.2,
-    normExtraMax = Inf,
-    normExtraJitterFrac = 0.25,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    normMtd = "moments") {
-  if (.completeChnlSettingsBwLimitIsNone(bwMin)) {
-    return(-Inf)
-  }
-
-  if (!.completeChnlSettingsBwLimitIsAuto(bwMin)) {
-    return(bwMin)
-  }
-
-  .completeChnlSettingsBwLimitAuto(
-    indBatchList = indBatchList,
-    .data = .data,
-    popGate = popGate,
-    chnlCut = chnlCut,
-    pathProject = pathProject,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    nSampleBw = 1e5,
-    normPeakFrac = normPeakFrac,
-    normPeakMinRel = normPeakMinRel,
-    normExtraFrac = normExtraFrac,
-    normExtraMax = normExtraMax,
-    normExtraJitterFrac = normExtraJitterFrac,
-    normLambda = normLambda,
-    normDensityN = normDensityN,
-    normExcessBwMtd = normExcessBwMtd,
-    normExcessNcell = normExcessNcell,
-    normAdaptiveNcell = normAdaptiveNcell,
-    normMtd = normMtd
-  )
-}
-
-#' @keywords internal
 .completeChnlSettingsBwFallback <- function(
-    bwFallback,
-    indBatchList,
-    .data,
-    popGate,
-    chnlCut,
-    pathProject,
-    bwMtd,
-    bwAdj,
-    bwNcellMin = NULL,
-    bwNcellMax = NULL,
-    normPeakFrac = 0.1,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.2,
-    normExtraMax = Inf,
-    normExtraJitterFrac = 0.25,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    normMtd = "moments") {
-  if (!.completeChnlSettingsBwFallbackIsAuto(bwFallback)) {
+  bwFallback,
+  indBatchList,
+  .data,
+  popGate,
+  chnlCut,
+  pathProject,
+  bwArgs
+) {
+  if (!.completeChnlSettingsBwLimitIsAuto(bwFallback)) {
     return(bwFallback)
   }
 
@@ -638,31 +421,16 @@
   nCellFallback <- stats::median(purrr::map_int(xList, length), na.rm = TRUE)
   nCellFallback <- max(2L, as.integer(round(nCellFallback)))
 
-  xListFallback <- sample(
-    xList,
-    size = min(length(xList), max(1L, ceiling(sqrt(length(xList))))),
-    replace = FALSE
-  )
+  xListFallback <- xList[.spreadInd(
+    length(xList),
+    max(1L, ceiling(sqrt(length(xList))))
+  )]
 
   bwVec <- purrr::map_dbl(xListFallback, function(xVec) {
-    .completeChnlSettingsBwCalcOne(
-      x = xVec,
-      bwMtd = bwMtd,
-      bwAdj = bwAdj,
-      bwNcellMin = nCellFallback,
-      bwNcellMax = nCellFallback,
-      normPeakFrac = normPeakFrac,
-      normPeakMinRel = normPeakMinRel,
-      normExtraFrac = normExtraFrac,
-      normExtraMax = normExtraMax,
-      normExtraJitterFrac = normExtraJitterFrac,
-      normLambda = normLambda,
-      normDensityN = normDensityN,
-      normExcessBwMtd = normExcessBwMtd,
-      normExcessNcell = normExcessNcell,
-      normAdaptiveNcell = normAdaptiveNcell,
-      normMtd = normMtd
-    )
+    as.numeric(do.call(.bwCalcOne, c(
+      list(x = xVec, bwNcellMin = nCellFallback, bwNcellMax = nCellFallback),
+      bwArgs
+    )))[1]
   })
   bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
 
@@ -679,28 +447,15 @@
 
 #' @keywords internal
 .completeChnlSettingsBwCluster <- function(
-    indBatchList,
-    .data,
-    popGate,
-    chnlCut,
-    pathProject,
-    bwCluster,
-    bwMtd,
-    bwAdj,
-    bwFallback,
-    bwNcellMin = NULL,
-    bwNcellMax = NULL,
-    normPeakFrac = 0.1,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.2,
-    normExtraMax = Inf,
-    normExtraJitterFrac = 0.25,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    normMtd = "moments") {
+  indBatchList,
+  .data,
+  popGate,
+  chnlCut,
+  pathProject,
+  bwCluster,
+  bwFallback,
+  bwArgs
+) {
   if (!is.null(bwCluster)) {
     if (
       is.numeric(bwCluster) &&
@@ -714,7 +469,7 @@
   }
 
   bwVec <- purrr::map(
-    seq_len(min(5, length(indBatchList))),
+    .completeChnlSettingsBatchInd(indBatchList),
     function(i) {
       exList <- try(
         .getExList(
@@ -746,24 +501,10 @@
           return(bwFallback)
         }
 
-        bwOut <- .completeChnlSettingsBwCalcOne(
-          x = xVec,
-          bwMtd = bwMtd,
-          bwAdj = bwAdj,
-          bwNcellMin = 1e4,
-          bwNcellMax = 1e4,
-          normPeakFrac = normPeakFrac,
-          normPeakMinRel = normPeakMinRel,
-          normExtraFrac = normExtraFrac,
-          normExtraMax = normExtraMax,
-          normExtraJitterFrac = normExtraJitterFrac,
-          normLambda = normLambda,
-          normDensityN = normDensityN,
-          normExcessBwMtd = normExcessBwMtd,
-          normExcessNcell = normExcessNcell,
-          normAdaptiveNcell = normAdaptiveNcell,
-          normMtd = normMtd
-        )
+        bwOut <- as.numeric(do.call(.bwCalcOne, c(
+          list(x = xVec, bwNcellMin = 1e4, bwNcellMax = 1e4),
+          bwArgs
+        )))[1]
 
         if (!is.finite(bwOut) || bwOut <= 0) {
           return(bwFallback)
@@ -786,18 +527,19 @@
 
 #' @keywords internal
 .completeChnlSettingsCpMin <- function(
-    cpMin,
-    .data,
-    popGate,
-    chnlCut,
-    indBatchList,
-    pathProject) {
+  cpMin,
+  .data,
+  popGate,
+  chnlCut,
+  indBatchList,
+  pathProject
+) {
   if (!is.null(cpMin)) {
     return(cpMin)
   }
   .debug("calculating cpMin automatically") # nolint
   purrr::map(
-    seq_len(min(5, length(indBatchList))),
+    .completeChnlSettingsBatchInd(indBatchList),
     function(i) {
       exList <- .getExList(
         # nolint
@@ -822,20 +564,6 @@
 # Get all cutpoint type names
 # Returns character vector of all available cutpoint names
 #' @keywords internal
-.getFullCpTypeVec <- function(fdr) {
-  c(
-    "man",
-    "tg",
-    "dcp",
-    "midp",
-    "scp",
-    "uns",
-    "unsr",
-    "loc"
-  )
-}
-
-#' @keywords internal
 .completeChnlSettingsSave <- function(chnlList, pathProject) {
   pathSave <- file.path(pathProject, "metaData", "chnlSettings.rds")
   if (file.exists(pathSave)) {
@@ -848,35 +576,6 @@
     chnlList,
     file = pathSave
   )
-}
-
-#' @keywords internal
-.chnlLab <- function(.data) {
-  adf <- switch(class(.data)[1],
-    "GatingSet" = {
-      gh <- .data[[flowWorkspace::sampleNames(.data)[1]]]
-      fr <- flowWorkspace::gh_pop_get_data(gh)
-      flowCore::parameters(fr)@data
-    },
-    "GatingHierarchy" = {
-      fr <- flowWorkspace::gh_pop_get_data(.data)
-      flowCore::parameters(fr)@data
-    },
-    "flowFrame" = flowCore::parameters(.data)@data,
-    "flowSet" = flowCore::parameters(.data[[1]])@data,
-    "cytoframe" = flowCore::parameters(.data)@data,
-    "cytoset" = flowCore::parameters(.data[[1]])@data,
-    stop("classOfDataNotRecognised")
-  )
-
-  labVec <- stats::setNames(adf$desc, adf$name)
-  for (i in seq_along(labVec)) {
-    if (is.na(labVec[i])) {
-      labVec[i] <- names(labVec)[i]
-    }
-  }
-
-  labVec
 }
 
 #' @title Read marker settings from project
@@ -1006,7 +705,7 @@ stimgateMetaReadMarkerLab <- function(pathProject) {
 
 #' @keywords internal
 .saveMetaDataChnlLab <- function(.data, pathDir) {
-  chnlLab <- .chnlLab(.data)
+  chnlLab <- chnlLab(.data)
   saveRDS(
     chnlLab,
     file = file.path(pathDir, "chnlLab.rds")
@@ -1064,11 +763,12 @@ stimgateMetaReadBatchList <- function(pathProject) {
 }
 
 .extractChnlSettings <- function(
-    chnlSettings,
-    markerSettings,
-    chnl,
-    marker,
-    pathProject) {
+  chnlSettings,
+  markerSettings,
+  chnl,
+  marker,
+  pathProject
+) {
   .verifyChnlSettings(
     chnlSettings = chnlSettings,
     markerSettings = markerSettings,

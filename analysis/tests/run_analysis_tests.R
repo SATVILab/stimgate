@@ -32,4 +32,6 @@ devtools::load_all(quiet = TRUE)
 test_dir <- file.path("analysis", "tests", "testthat")
 
 cat("Running analysis integration tests from:", test_dir, "\n")
+# Report every failure rather than stopping after testthat's default limit.
+testthat::set_max_fails(Inf)
 testthat::test_dir(test_dir, reporter = testthat::default_reporter())

@@ -15,7 +15,7 @@ test_that("chnlLabWorksWithFlowFrameObjects", {
   ff <- makeChnlLabTestFrame()
 
   # Test the function
-  result <- .chnlLab(ff)
+  result <- chnlLab(ff)
 
   # Check that result is a character object (may have AsIs class)
   expect_type(result, "character")
@@ -42,7 +42,7 @@ test_that("chnlLabWorksWithFlowSetObjects", {
   ))
 
   # Test the function
-  result <- .chnlLab(fs)
+  result <- chnlLab(fs)
 
   # Check that result is a character object (may have AsIs class)
   expect_type(result, "character")
@@ -69,13 +69,10 @@ test_that("chnlLabWorksWithGatingSetObjects", {
   ))
   gs <- flowWorkspace::GatingSet(fs)
 
-  result_dot <- .chnlLab(gs)
-  result_pub <- chnlLab(gs)
+  result <- chnlLab(gs)
 
-  expect_type(result_dot, "character")
-  expect_type(result_pub, "character")
-  expect_equal(result_dot, result_pub)
-  expect_true(!is.null(names(result_dot)))
+  expect_type(result, "character")
+  expect_true(!is.null(names(result)))
 })
 
 test_that("chnlLabHandlesNaMarkerDescriptionsCorrectly", {
@@ -90,7 +87,7 @@ test_that("chnlLabHandlesNaMarkerDescriptionsCorrectly", {
   flowCore::parameters(ff)@data <- paramData
 
   # Test the function
-  result <- .chnlLab(ff)
+  result <- chnlLab(ff)
 
   # Check that NA descriptions were replaced with channel names
   expect_equal(as.character(result[1]), as.character(paramData$name[1]))
@@ -107,27 +104,27 @@ test_that("chnlLabHandlesNaMarkerDescriptionsCorrectly", {
 test_that("chnlLabThrowsErrorForUnsupportedObjectTypes", {
   # Test with various unsupported objects
   expect_error(
-    .chnlLab(data.frame(x = 1:5, y = 6:10)),
+    chnlLab(data.frame(x = 1:5, y = 6:10)),
     "classOfDataNotRecognised"
   )
 
   expect_error(
-    .chnlLab(matrix(1:10, nrow = 2)),
+    chnlLab(matrix(1:10, nrow = 2)),
     "classOfDataNotRecognised"
   )
 
   expect_error(
-    .chnlLab(list(a = 1, b = 2)),
+    chnlLab(list(a = 1, b = 2)),
     "classOfDataNotRecognised"
   )
 
   expect_error(
-    .chnlLab("characterString"),
+    chnlLab("characterString"),
     "classOfDataNotRecognised"
   )
 
   expect_error(
-    .chnlLab(123),
+    chnlLab(123),
     "classOfDataNotRecognised"
   )
 })
@@ -135,7 +132,7 @@ test_that("chnlLabThrowsErrorForUnsupportedObjectTypes", {
 test_that("chnlLabResultStructureIsConsistent", {
   ff <- makeChnlLabTestFrame()
 
-  result <- .chnlLab(ff)
+  result <- chnlLab(ff)
 
   # Check that every element has a name
   expect_true(all(nzchar(names(result))))
@@ -154,7 +151,7 @@ test_that("chnlLabHandlesEdgeCaseWithAllNaDescriptions", {
   ff <- makeChnlLabTestFrame(rep(NA_character_, 2))
 
   # Test the function
-  result <- .chnlLab(ff)
+  result <- chnlLab(ff)
 
   # Check that all values are channel names (since all descriptions were NA)
   paramData <- flowCore::parameters(ff)@data
@@ -167,7 +164,7 @@ test_that("chnlLabHandlesEdgeCaseWithNoNaDescriptions", {
   paramData <- flowCore::parameters(ff)@data
 
   # Test the function
-  result <- .chnlLab(ff)
+  result <- chnlLab(ff)
 
   # Check that all values are the actual descriptions (no channel names used)
   expect_equal(as.character(result), as.character(paramData$desc))
