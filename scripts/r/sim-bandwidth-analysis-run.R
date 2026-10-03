@@ -571,6 +571,121 @@
 }
 
 # ---------------------------------------------------------------------------
+# Analysis 2b: biasUns tuning across fixed bandwidths and batch mismatch
+# ---------------------------------------------------------------------------
+
+.simBandwidthBiasUnsScenario <- function(row, settings) {
+  cluster_arg <- function(x) {
+    x <- as.character(x)[1]
+    if (is.na(x) || !nzchar(x)) NULL else x
+  }
+
+  bias_basis <- row$bias_uns_basis[[1]]
+  bias_multiplier <- row$bias_uns_multiplier[[1]]
+  if (!bias_basis %in% c("bandwidth", "negative_width")) {
+    stop("Unknown bias_uns_basis: ", bias_basis)
+  }
+
+  do.call(.simBandwidthBsFreq, c(settings, list(
+    biasUns = if (bias_basis == "bandwidth") {
+      bias_multiplier * row$bw[[1]]
+    } else {
+      0
+    },
+    biasUnsWidthMultiplier = if (bias_basis == "negative_width") {
+      bias_multiplier
+    } else {
+      NULL
+    },
+    bw = row$bw[[1]],
+    bwFallback = row$bw[[1]],
+    nCellStim = row$n_cell[[1]],
+    probResponse = row$prob_response[[1]],
+    meanPos = row$mean_pos[[1]],
+    transformation = row$transformation[[1]],
+    samplePerturbationSd = 0,
+    conditionPerturbationSd = 0,
+    clusterPerturbationSd = 0,
+    backgroundRelativeToResponse = row$background_relative_to_response[[1]],
+    ncellUnsRelativeToStim = row$n_cell_uns_relative_to_stim[[1]],
+    stimMeanShift = row$stim_mean_shift[[1]],
+    stimSdMultiplier = row$stim_sd_multiplier[[1]],
+    stimMeanShiftClusters = cluster_arg(row$stim_mean_shift_clusters[[1]]),
+    stimSdMultiplierClusters = cluster_arg(row$stim_sd_multiplier_clusters[[1]])
+  )))
+}
+
+.simBandwidthBiasUnsCollate <- function(tbl, grid_cols) {
+  if (all(is.na(tbl$threshold))) {
+    stop(
+      "No valid threshold results were collated. ",
+      "Check the progress log for simulation-level errors."
+    )
+  }
+
+  results_raw <- tbl |>
+    dplyr::filter(
+      .data$method == "loc_sample",
+      is.finite(.data$threshold),
+      is.finite(.data$propRespTruth),
+      is.finite(.data$propRespEst)
+    ) |>
+    dplyr::select(
+      dplyr::any_of(grid_cols),
+      "iter", "sample", "ind", "method",
+      "propRespTruth", "propRespEst", "threshold",
+      "nCellStim", "nCellUns", "nPosStim", "nPosUns",
+      "propStim", "propUns",
+      "thresholdOrigin", "gateReturnPoint",
+      "locGenerated", "locGeneratedDirect", "locSource", "locReason",
+      "biasUns", "biasUnsNegativeWidth"
+    ) |>
+    dplyr::mutate(
+      error = .data$propRespEst - .data$propRespTruth,
+      rel_error = .data$error / .data$propRespTruth,
+      abs_rel_error = abs(.data$rel_error)
+    )
+
+  if (anyDuplicated(results_raw[c("sim_id", "iter", "ind")]) > 0L) {
+    stop(
+      "Expected exactly one final loc_sample result per sim_id/iter/ind, ",
+      "but duplicate result keys were found."
+    )
+  }
+
+  results_summary <- results_raw |>
+    dplyr::group_by(dplyr::pick(dplyr::any_of(grid_cols))) |>
+    dplyr::summarise(
+      propRespTruth = stats::median(.data$propRespTruth, na.rm = TRUE),
+      propRespEst_median = stats::median(.data$propRespEst, na.rm = TRUE),
+      propRespEst_mean = mean(.data$propRespEst, na.rm = TRUE),
+      median_rel_error = stats::median(.data$rel_error, na.rm = TRUE),
+      median_abs_rel_error = stats::median(.data$abs_rel_error, na.rm = TRUE),
+      q90_abs_rel_error = stats::quantile(
+        .data$abs_rel_error,
+        probs = 0.9,
+        na.rm = TRUE,
+        names = FALSE
+      ),
+      bias_uns_realised = stats::median(.data$biasUns, na.rm = TRUE),
+      negative_width = if (any(is.finite(.data$biasUnsNegativeWidth))) {
+        stats::median(.data$biasUnsNegativeWidth, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      threshold_median = stats::median(.data$threshold, na.rm = TRUE),
+      prop_stim_median = stats::median(.data$propStim, na.rm = TRUE),
+      prop_uns_median = stats::median(.data$propUns, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  list(
+    bias_uns_results_raw = results_raw,
+    bias_uns_results_summary = results_summary
+  )
+}
+
+# ---------------------------------------------------------------------------
 # Analysis 3: base bandwidth estimators
 # ---------------------------------------------------------------------------
 
