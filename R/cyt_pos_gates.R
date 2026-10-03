@@ -108,6 +108,10 @@
     purrr::compact() |>
     dplyr::bind_rows()
 
+  if (nrow(cpTblCyt) == 0L) {
+    return(dplyr::mutate(gateTblGn, gateCyt = NA_real_))
+  }
+
   # join gateCyt onto gateTbl
   gateTblGn |>
     dplyr::left_join(
