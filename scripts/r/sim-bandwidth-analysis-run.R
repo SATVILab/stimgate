@@ -577,21 +577,6 @@
 }
 
 # ---------------------------------------------------------------------------
-# Analysis 5: adaptive bandwidth estimates
-# ---------------------------------------------------------------------------
-
-#' Analysis 5 scenario: one adaptive bandwidth estimation simulation
-#'
-#' @param row data.frame One row of the analysis 5 `sim_grid`.
-#' @param settings list Fixed `.simBandwidthEstBwDirectAdaptive()` arguments
-#'   (e.g. `nSample`, `nIter`, `normAdaptiveNcell`, `bwFallback`).
-#' @return tibble `.simBandwidthEstBwDirectAdaptive()` output, one row per
-#'   sample and iteration.
-.simBandwidthEstAdaptiveScenario <- function(row, settings) {
-  do.call(.simBandwidthEstBwDirectAdaptive, c(settings, list(
-    biasUns = row$bias_uns[[1]],
-    bwMtd = row$bw_mtd[[1]],
-
 # Analysis 4: ordinary vs normalised bandwidth estimators
 # ---------------------------------------------------------------------------
 
@@ -612,67 +597,6 @@
     transformation = row$transformation[[1]]
   )))
 }
-
-#' Analysis 5 validation: expected number of sample-level rows per sim_id
-#'
-#' @param tbl data.frame Collated analysis 5 outputs.
-#' @param rows_per_sim integer Expected rows per `sim_id`
-#'   (`nSample * nIter`).
-#' @return character Problem strings (`character(0)` when valid).
-.simBandwidthEstAdaptiveValidate <- function(tbl, rows_per_sim) {
-  n_rows <- table(tbl$sim_id)
-  bad_ids <- sort(as.integer(names(n_rows)[n_rows != rows_per_sim]))
-  if (length(bad_ids) == 0L) {
-    return(character())
-  }
-  paste0(
-    "unexpected sample-row counts for sim_id: ",
-    paste(bad_ids, collapse = ", ")
-  )
-}
-
-#' Analysis 5 collated results
-#'
-#' Summarises the four adaptive bandwidth estimates (core and extra, for the
-#' unstimulated and stimulated samples) per grid row: the number and
-#' proportion of finite estimates and their mean. Means are conditional on
-#' finite estimates.
-#'
-#' @param tbl data.frame Collated analysis 5 outputs.
-#' @param grid_cols character Grid column names.
-#' @return list `bw_list_raw` (the raw outputs) and `bw_tbl_results`.
-.simBandwidthEstAdaptiveCollate <- function(tbl, grid_cols) {
-  bw_measure_tbl <- tibble::tribble(
-    ~bw_component, ~bw_condition, ~bw_col,
-    "core", "unstim", "bw_uns_core",
-    "core", "stim", "bw_stim_core",
-    "extra", "unstim", "bw_uns_extra",
-    "extra", "stim", "bw_stim_extra"
-  )
-  long <- purrr::map_dfr(seq_len(nrow(bw_measure_tbl)), function(i) {
-    dplyr::mutate(
-      tbl,
-      bw_component = bw_measure_tbl$bw_component[[i]],
-      bw_condition = bw_measure_tbl$bw_condition[[i]],
-      bw_est = .data[[bw_measure_tbl$bw_col[[i]]]]
-    )
-  }) |>
-    dplyr::mutate(
-      bw_component = factor(.data$bw_component, levels = c("core", "extra")),
-      bw_condition = factor(.data$bw_condition, levels = c("unstim", "stim"))
-    )
-  group_cols <- c(grid_cols, "bw_component", "bw_condition")
-  results <- long |>
-    dplyr::group_by(dplyr::pick(dplyr::any_of(group_cols))) |>
-    dplyr::summarise(
-      n_total = dplyr::n(),
-      n_est = sum(is.finite(.data$bw_est)),
-      prop_est = .data$n_est / .data$n_total,
-      mean_bw = .simBandwidthFiniteMean(.data$bw_est),
-      .groups = "drop"
-    ) |>
-    dplyr::mutate(bw_mtd_base = gsub("Norm$", "", .data$bw_mtd))
-  list(bw_list_raw = tbl, bw_tbl_results = results)
 
 #' Analysis 4 validation of collated outputs
 #'
@@ -758,4 +682,88 @@
     )
   }
   list(bw_list_raw_mtd = tbl, bw_tbl_results = results)
+}
+
+# ---------------------------------------------------------------------------
+# Analysis 5: adaptive bandwidth estimates
+# ---------------------------------------------------------------------------
+
+#' Analysis 5 scenario: one adaptive bandwidth estimation simulation
+#'
+#' @param row data.frame One row of the analysis 5 `sim_grid`.
+#' @param settings list Fixed `.simBandwidthEstBwDirectAdaptive()` arguments
+#'   (e.g. `nSample`, `nIter`, `normAdaptiveNcell`, `bwFallback`).
+#' @return tibble `.simBandwidthEstBwDirectAdaptive()` output, one row per
+#'   sample and iteration.
+.simBandwidthEstAdaptiveScenario <- function(row, settings) {
+  do.call(.simBandwidthEstBwDirectAdaptive, c(settings, list(
+    biasUns = row$bias_uns[[1]],
+    bwMtd = row$bw_mtd[[1]],
+    nCellStim = row$n_cell[[1]],
+    probResponse = row$prob_response[[1]],
+    meanPos = row$mean_pos[[1]],
+    transformation = row$transformation[[1]]
+  )))
+}
+
+#' Analysis 5 validation: expected number of sample-level rows per sim_id
+#'
+#' @param tbl data.frame Collated analysis 5 outputs.
+#' @param rows_per_sim integer Expected rows per `sim_id`
+#'   (`nSample * nIter`).
+#' @return character Problem strings (`character(0)` when valid).
+.simBandwidthEstAdaptiveValidate <- function(tbl, rows_per_sim) {
+  n_rows <- table(tbl$sim_id)
+  bad_ids <- sort(as.integer(names(n_rows)[n_rows != rows_per_sim]))
+  if (length(bad_ids) == 0L) {
+    return(character())
+  }
+  paste0(
+    "unexpected sample-row counts for sim_id: ",
+    paste(bad_ids, collapse = ", ")
+  )
+}
+
+#' Analysis 5 collated results
+#'
+#' Summarises the four adaptive bandwidth estimates (core and extra, for the
+#' unstimulated and stimulated samples) per grid row: the number and
+#' proportion of finite estimates and their mean. Means are conditional on
+#' finite estimates.
+#'
+#' @param tbl data.frame Collated analysis 5 outputs.
+#' @param grid_cols character Grid column names.
+#' @return list `bw_list_raw` (the raw outputs) and `bw_tbl_results`.
+.simBandwidthEstAdaptiveCollate <- function(tbl, grid_cols) {
+  bw_measure_tbl <- tibble::tribble(
+    ~bw_component, ~bw_condition, ~bw_col,
+    "core", "unstim", "bw_uns_core",
+    "core", "stim", "bw_stim_core",
+    "extra", "unstim", "bw_uns_extra",
+    "extra", "stim", "bw_stim_extra"
+  )
+  long <- purrr::map_dfr(seq_len(nrow(bw_measure_tbl)), function(i) {
+    dplyr::mutate(
+      tbl,
+      bw_component = bw_measure_tbl$bw_component[[i]],
+      bw_condition = bw_measure_tbl$bw_condition[[i]],
+      bw_est = .data[[bw_measure_tbl$bw_col[[i]]]]
+    )
+  }) |>
+    dplyr::mutate(
+      bw_component = factor(.data$bw_component, levels = c("core", "extra")),
+      bw_condition = factor(.data$bw_condition, levels = c("unstim", "stim"))
+    )
+  group_cols <- c(grid_cols, "bw_component", "bw_condition")
+  results <- long |>
+    dplyr::group_by(dplyr::pick(dplyr::any_of(group_cols))) |>
+    dplyr::summarise(
+      n_total = dplyr::n(),
+      n_est = sum(is.finite(.data$bw_est)),
+      prop_est = .data$n_est / .data$n_total,
+      mean_bw = .simBandwidthFiniteMean(.data$bw_est),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(bw_mtd_base = gsub("Norm$", "", .data$bw_mtd))
+  list(bw_list_raw = tbl, bw_tbl_results = results)
 }
