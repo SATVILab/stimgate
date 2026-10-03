@@ -177,10 +177,13 @@ the code you changed, e.g. `devtools::test(filter = "cp_uns_loc|pos_ind")` or
 `testthat::test_file()` for analysis tests. Run the full suite once, on the
 finished change, before opening the PR; CI runs it again.
 
-When several agents work in parallel (subagents, separate worktrees), each
-agent runs targeted tests only and the coordinating agent runs the full suite
-once on the combined result. Worktrees share one `git stash`, so parallel
-agents must not use it; use a patch file or a temporary commit instead.
+When several agents work in parallel (subagents, separate worktrees), the
+subagents do not run R locally: concurrent R runs overload the machine. The
+coordinating agent tests once, locally, on the combined result before opening
+the PR. A subagent may push a branch to CI if it really needs a check, but CI
+takes about five minutes to start, so do this only when necessary. Worktrees
+share one `git stash`, so parallel agents must not use it; use a patch file or
+a temporary commit instead.
 
 ### Analysis / Repository Integration Tests
 
