@@ -217,6 +217,12 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   must use the read-only current-results context and must not create staging state.
 - `run_plots = FALSE` must stop before optional plot/report chunks; multi-chunk
   simulation renders should not write shared plot files concurrently.
+- Comparison analyses must fail before simulation when a required competitor
+  dependency is unavailable. Do not let a missing package or script be converted
+  into an algorithmic fallback and then score that fallback as a method result.
+- When plotting summaries over a simulation grid, every varying scenario
+  dimension must be filtered, faceted or included in the plot grouping. Do not
+  implicitly connect distinct scenario settings into one line.
 - Transactional simulation/collation chunks must not use Quarto
   `error: true`; validation and promotion errors must fail the render/job.
 - When an estimator can legitimately fail to return a finite scientific
@@ -232,6 +238,10 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
   selection and must not silently replace the final frequency estimand.
+- Preserve final StimGate threshold provenance in method-comparison outputs.
+  A finite high-value threshold can still mean that no local threshold was
+  generated; use `locGenerated`, `locGeneratedDirect`, `locSource` and
+  `locReason` rather than inferring success solely from threshold finiteness.
 - Checks that analysis wrapper parameters forwarded to `gateStim()` still exist
   in the current package API.
 - Checks that removed arguments (e.g. `calcSinglePosGates`) are not reintroduced.
