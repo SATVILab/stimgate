@@ -451,6 +451,10 @@ For new or moved analysis code, use this layering:
 4. Analysis-specific helpers under `scripts/r/`: substantial orchestration, restart/collation, IO and plotting helpers that should not live inline in QMDs.
 5. `analysis/*.qmd`: scientific settings, analysis calls, result-specific transformations and presentation.
 
+When displaying ggplot objects inside QMD conditionals or loops, call `print()`
+explicitly. Chunk tests should capture printed plots and check that each requested
+method appears and that disabling plotting produces no printed plots.
+
 Plot-construction helpers under `scripts/r/` should return plot objects without
 creating directories or writing files. Keep filesystem side effects in the
 corresponding save/orchestration helper or QMD.
