@@ -51,7 +51,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v1"
+comparison_semantics_version <- "corrected-comparison-v2"
 analysis_dev <- isTRUE(.isDev())
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
@@ -322,7 +322,7 @@ for (i in seq_len(nrow(sim_grid))) {
   set.seed(sim_grid$sim_seed[i])
 
   compare_list_raw_loop[[i]] <- .simCompareFreqBs(
-    nSample = 5,
+    nSample = 10,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
