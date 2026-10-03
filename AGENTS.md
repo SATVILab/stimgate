@@ -228,6 +228,10 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - Checks that chunked simulation QMDs use per-scenario deterministic
   seeds and validate complete cross-chunk collation before promoting
   canonical results.
+- Persist each per-scenario output atomically before writing its
+  completed/error marker, and pass required run/chunk paths explicitly
+  to progress helpers. This keeps restart markers consistent with
+  durable output files.
 - Estimator-comparison simulations should use the same simulated dataset
   for rows that differ only by estimator or estimator-tuning settings.
   Derive the data-generation seed from the biological scenario, not from
@@ -252,6 +256,11 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   numeric fallback or averaging only successful estimates without
   reporting coverage. Distinguish estimator failure from
   infrastructure/runtime errors.
+- Simulation wrappers that claim to mirror a current package calculation
+  must use the same preprocessing as the package implementation. If a
+  wrapper keeps a legacy preprocessing option for other analyses, set
+  the current behaviour explicitly in the QMD rather than relying on the
+  wrapper default.
 - For end-to-end background-subtracted-frequency performance, score the
   final sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
