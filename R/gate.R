@@ -143,9 +143,8 @@ gateStim <- function(
     add = TRUE
   )
 
-  calcCytPosGates <- control$calcCytPosGates
-
-  # Verify global function inputs
+  # Verify global function inputs before reading anything from `control`, so an
+  # invalid control object is reported as such.
   .verifyGateInputs(
     pathProject = pathProject,
     .data = .data,
@@ -158,6 +157,8 @@ gateStim <- function(
     control = control,
     markerControl = markerControl
   )
+
+  calcCytPosGates <- control$calcCytPosGates
 
   if (is.null(names(batchList))) {
     batchList <- batchList |>

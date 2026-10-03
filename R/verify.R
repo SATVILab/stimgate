@@ -22,7 +22,12 @@
   control,
   markerControl
 ) {
-  # 1. Channel / Marker Mutual Exclusivity Checks
+  # 1. Control class check: no other argument is read before this succeeds.
+  if (!inherits(control, "stimControl")) {
+    stop("`control` must be a stimControl object; use `stimControl()`.")
+  }
+
+  # 2. Channel / Marker Mutual Exclusivity Checks
   if (!is.null(chnl) && !is.null(marker)) {
     stop("Specify only one of 'chnl' or 'marker', not both.")
   }
@@ -30,7 +35,7 @@
     stop("Must specify one of 'chnl' or 'marker'.")
   }
 
-  # 2. Structural & Type Checks
+  # 3. Structural & Type Checks
   if (
     !is.character(pathProject) || length(pathProject) != 1 || pathProject == ""
   ) {
@@ -59,10 +64,7 @@
     stop("`batchList` must be a non-empty list of sample indices.")
   }
 
-  # 3. Global-only checks
-  if (!inherits(control, "stimControl")) {
-    stop("`control` must be a stimControl object; use `stimControl()`.")
-  }
+  # 4. Global-only checks
   if (!is.null(markerControl) && !is.list(markerControl)) {
     stop("`markerControl` must be NULL or a named list.")
   }
@@ -80,6 +82,7 @@
         paste(setdiff(chnl, names(chnlLab)), collapse = ", ")
       )
     }
+    chnlSel <- chnl
   }
   if (!is.null(marker)) {
     if (!all(marker %in% chnlLab)) {
@@ -88,7 +91,16 @@
         paste(setdiff(marker, chnlLab), collapse = ", ")
       )
     }
+    chnlSel <- names(chnlLab)[chnlLab %in% marker]
   }
+
+  # Validate `markerControl` here, before any project directory is created. The
+  # resolved settings are recomputed in `.completeChnlSettings()`.
+  .resolveMarkerControl(
+    markerControl = markerControl,
+    chnl = chnlSel,
+    chnlLab = chnlLab
+  )
 
   invisible(TRUE)
 }
