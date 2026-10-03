@@ -64,23 +64,11 @@
 
 #' @keywords internal
 .getCpClusterLocCommonBw <- function(
-  gateTblStim,
+  indDirect,
   exLookup,
   chnlSettings
 ) {
-  indDirect <- gateTblStim |>
-    dplyr::filter(
-      .data$locGeneratedDirect %in% TRUE,
-      is.finite(
-        suppressWarnings(
-          as.numeric(.data$gate)
-        )
-      )
-    ) |>
-    dplyr::pull("ind") |>
-    as.character()
-
-  bwUnsCache <- new.env(parent = emptyenv())
+  bwUnsCache <- new.env(parent = emptyenv()) # nolint: object_usage_linter.
 
   bwVec <- purrr::map_dbl(
     indDirect,
@@ -98,29 +86,10 @@
 
       batch <- as.character(exPair$batch)
 
-      if (
-        !exists(
-          batch,
-          envir = bwUnsCache,
-          inherits = FALSE
-        )
-      ) {
-        bwUns <- .getCpClusterLocBwOne(
-          .getCut(exPair$uns),
-          chnlSettings
-        )
-
-        assign(
-          batch,
-          bwUns,
-          envir = bwUnsCache
-        )
-      } else {
-        bwUns <- get(
-          batch,
-          envir = bwUnsCache,
-          inherits = FALSE
-        )
+      bwUns <- bwUnsCache[[batch]]
+      if (is.null(bwUns)) {
+        bwUns <- .getCpClusterLocBwOne(.getCut(exPair$uns), chnlSettings)
+        bwUnsCache[[batch]] <- bwUns
       }
 
       suppressWarnings(
@@ -196,7 +165,7 @@
     bwMax <- Inf
   }
 
-  bwCalc <- .getCpUnsLocBwCalcOne(
+  bwCalc <- .getCpUnsLocBwCalcOne( # nolint: object_usage_linter.
     x = x,
     chnlSettings = chnlSettings,
     bwMtd = bwMtd,
@@ -222,34 +191,15 @@
     if (length(x) <= 5L) {
       return(NULL)
     }
-    q <- stats::quantile(x, c(0.0025, 0.999), na.rm = TRUE)
-    tibble::tibble(lb = q[[1]], ub = q[[2]])
+    q <- stats::quantile(x, 0.0025, na.rm = TRUE)
+    tibble::tibble(lb = q[[1]])
   })
   if (nrow(rangeTbl) == 0L) {
-    return(c(min = 0, max = 1))
+    return(c(min = 0))
   }
   c(
-    min = stats::quantile(rangeTbl$lb, 0.0025, na.rm = TRUE)[[1]],
-    max = max(rangeTbl$ub, na.rm = TRUE)
+    min = stats::quantile(rangeTbl$lb, 0.0025, na.rm = TRUE)[[1]]
   )
-}
-
-#' @keywords internal
-.getCpClusterLocLeftUpperX <- function(gateTblStim, control) {
-  directGates <- gateTblStim |>
-    dplyr::filter(.data$locGeneratedDirect %in% TRUE) |>
-    dplyr::pull("gate")
-  directGates <- suppressWarnings(as.numeric(directGates))
-  directGates <- directGates[is.finite(directGates)]
-  if (length(directGates) == 0L) {
-    return(NA_real_)
-  }
-  control$leftThresholdFrac *
-    stats::quantile(
-      directGates,
-      probs = control$leftThresholdQuantile,
-      na.rm = TRUE
-    )[[1]]
 }
 
 #' @keywords internal
@@ -320,35 +270,19 @@
 
   # The unstimulated sample is shared by all stimulated conditions within a
   # batch. Calculate its density feature once per batch.
-  unsCache <- new.env(parent = emptyenv())
+  unsCache <- new.env(parent = emptyenv()) # nolint: object_usage_linter.
 
   featureTbl <- purrr::map_df(exLookup, function(exPair) {
     batch <- as.character(exPair$batch)
 
-    if (
-      !exists(
-        batch,
-        envir = unsCache,
-        inherits = FALSE
-      )
-    ) {
+    uns <- unsCache[[batch]]
+    if (is.null(uns)) {
       uns <- .getCpClusterLocDensityFeature(
         x = .getCut(exPair$uns),
         densityGrid = densityGrid,
         bw = bw
       )
-
-      assign(
-        batch,
-        uns,
-        envir = unsCache
-      )
-    } else {
-      uns <- get(
-        batch,
-        envir = unsCache,
-        inherits = FALSE
-      )
+      unsCache[[batch]] <- uns
     }
 
     stim <- .getCpClusterLocDensityFeature(
@@ -421,11 +355,9 @@
 
 #' @keywords internal
 .getCpClusterLocInitialNClusters <- function(
-  featureTbl,
+  x,
   control
 ) {
-  featureCols <- .getCpClusterLocFeatureCols(featureTbl)
-  x <- as.matrix(featureTbl[, featureCols, drop = FALSE])
   nUnique <- nrow(unique(as.data.frame(x)))
   nForClustering <- nrow(x)
   kMaxByN <- max(1L, nForClustering - 1L)
@@ -464,7 +396,7 @@
   featureCols <- .getCpClusterLocFeatureCols(featureTbl)
   x <- as.matrix(featureTbl[, featureCols, drop = FALSE])
   nClusters <- .getCpClusterLocInitialNClusters(
-    featureTbl = featureTbl,
+    x = x,
     control = control
   )
 
@@ -496,64 +428,19 @@
 #' @keywords internal
 .getCpClusterLocRqQuantile <- function(x, tau) {
   x <- suppressWarnings(as.numeric(x))
-  x <- sort(x[is.finite(x)])
-  tau <- suppressWarnings(as.numeric(tau))[1]
+  x <- x[is.finite(x)]
+  tau <- suppressWarnings(as.numeric(tau))
 
-  if (length(x) == 0L || !is.finite(tau) || tau < 0 || tau > 1) {
-    return(NA_real_)
+  if (length(x) == 0L || length(tau) == 0L) {
+    return(rep(NA_real_, max(1L, length(tau))))
   }
-  if (tau <= 0) {
-    return(x[[1]])
-  }
-
-  index <- min(length(x), max(1L, ceiling(length(x) * tau)))
-  x[[index]]
-}
-
-#' @keywords internal
-.getCpClusterLocRowUnchanged <- function(row, reason) {
-  cp <- suppressWarnings(as.numeric(row$gate[1]))
-  tibble::tibble(
-    grp = NA_character_,
-    grpUns = NA_character_,
-    grpStim = NA_character_,
-    ind = as.character(row$ind[1]),
-    cpOrigQuantMin = cp,
-    cpJoin = NA_real_,
-    cpJoinLse = cp,
-    cpJoinLseOrig = cp,
-    cpJoinLseOrigMean = cp,
-    cpJoinTgOrig = cp,
-    cpJoinTgOrigMean = cp,
-    cpJoinLseOrigMeanTg = cp,
-    cpTolUns = NA_real_,
-    cpTolStim = NA_real_,
-    cpMedianUns = NA_real_,
-    cpMedianStim = NA_real_,
-    locGenerated = suppressWarnings(row$locGenerated[1] %in% TRUE),
-    locGeneratedDirect = suppressWarnings(
-      row$locGeneratedDirect[1] %in% TRUE
-    ),
-    locSource = as.character(row$locSource[1] %||% NA_character_),
-    locReason = as.character(row$locReason[1] %||% NA_character_),
-    locClusterReason = reason,
-    locClusterAction = "unchanged",
-    locClusterAdjusted = FALSE,
-    locClusterBw = NA_real_,
-    locClusterNDirect = NA_integer_,
-    locClusterQ15 = NA_real_,
-    locClusterQ60 = NA_real_,
-    locClusterQ85 = NA_real_,
-    locClusterNInitial = NA_integer_,
-    locTolSignedUns = NA_real_,
-    locTolSignedStim = NA_real_,
-    locDerivSignUns = NA_real_,
-    locDerivSignStim = NA_real_,
-    propBsOrig = NA_real_,
-    propBsCpDiff = NA_real_,
-    propBsCpDiffSd = NA_real_,
-    propBsCp = NA_real_
+  valid <- is.finite(tau) & tau >= 0 & tau <= 1
+  out <- rep(NA_real_, length(tau))
+  out[valid] <- stats::quantile(
+    x, tau[valid],
+    type = 1, names = FALSE, fuzz = 0
   )
+  out
 }
 
 #' @keywords internal
@@ -564,19 +451,14 @@
   calcCytPosGates
 ) {
   .debug("Filtering other cytokine positive cells")
-  exListFilter <- purrr::map(seq_along(exList), function(i) {
-    if (i == 1L) {
-      return(exList[[i]])
-    }
+  purrr::map(exList[-1], function(exTbl) {
     .getCpClusterDensTblGetBatchPrepExListFilterInd(
-      exTbl = exList[[i]],
+      exTbl = exTbl,
       gateTbl = gateTbl,
       chnlCut = chnlCut,
       calcCytPosGates = calcCytPosGates
     )
-  }) |>
-    stats::setNames(names(exList))
-  exListFilter[-1]
+  })
 }
 
 #' @keywords internal

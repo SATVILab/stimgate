@@ -35,10 +35,11 @@
     gateTbl = gateTbl,
     pathProject = pathProject
   )
-  gateTblStim <- .getCpClusterLocGateTblStim(
-    gateTbl = gateTbl,
-    exLookup = exLookup
-  )
+  gateTblStim <- gateTbl |>
+    dplyr::filter(
+      .data$ind %in% names(.env$exLookup),
+      !(.data$locSource %in% "unstim_summary")
+    )
 
   if (nrow(gateTblStim) == 0L) {
     cpTbl <- .getCpClusterLocSkipOut(gateTblStim, "no_stimulated_samples")
@@ -58,7 +59,7 @@
   }
 
   commonBw <- .getCpClusterLocCommonBw(
-    gateTblStim = gateTblStim,
+    indDirect = as.character(gateTblStim$ind[direct]),
     exLookup = exLookup,
     chnlSettings = chnlSettings
   )
@@ -73,10 +74,11 @@
   .intSaveNm("locClusterCommonBw", commonBw, "all", stageChnl, pathProject)
 
   exprRange <- .getCpClusterLocExprRange(exLookup)
-  leftUpperX <- .getCpClusterLocLeftUpperX(
-    gateTblStim = gateTblStim,
-    control = control
-  )
+  leftUpperX <- control$leftThresholdFrac * stats::quantile(
+    suppressWarnings(as.numeric(gateTblStim$gate[direct])),
+    probs = control$leftThresholdQuantile,
+    na.rm = TRUE
+  )[[1]]
   densityGrid <- .getCpClusterLocDensityGrid(
     exprMin = exprRange[["min"]],
     leftUpperX = leftUpperX,
@@ -108,19 +110,8 @@
     return(cpTbl)
   }
 
-  clusterInput <- featureTbl |>
-    dplyr::left_join(
-      gateTblStim |>
-        dplyr::select(ind, locGeneratedDirect, gate),
-      by = "ind"
-    ) |>
-    dplyr::mutate(
-      locGeneratedDirect = .data$locGeneratedDirect %in% TRUE &
-        is.finite(suppressWarnings(as.numeric(.data$gate)))
-    )
-
   clusterObj <- .getCpClusterLocClusters(
-    featureTbl = clusterInput,
+    featureTbl = featureTbl,
     control = control
   )
   clusterTbl <- clusterObj$clusterTbl
@@ -168,14 +159,6 @@
       locGenerated = .data$locGenerated %in% TRUE,
       locGeneratedDirect = .data$locGeneratedDirect %in% TRUE
     )
-}
-
-#' @keywords internal
-.getCpClusterLocGateTblStim <- function(gateTbl, exLookup) {
-  stimInd <- names(exLookup)
-  gateTbl |>
-    dplyr::filter(.data$ind %in% .env$stimInd) |>
-    dplyr::filter(!(.data$locSource %in% "unstim_summary"))
 }
 
 #' @keywords internal
@@ -242,26 +225,23 @@
     dplyr::group_by(.data$grp) |>
     dplyr::summarise(
       locClusterNDirect = dplyr::n(),
-      locClusterQ15 = dplyr::if_else(
-        dplyr::n() >= control$minDirectForWinsor,
-        .getCpClusterLocRqQuantile(
+      {
+        q <- .getCpClusterLocRqQuantile(
           .data$gateNumeric,
-          tau = control$winsorLower
-        ),
-        NA_real_
-      ),
-      locClusterQ60 = .getCpClusterLocRqQuantile(
-        .data$gateNumeric,
-        tau = control$imputeQuantile
-      ),
-      locClusterQ85 = dplyr::if_else(
-        dplyr::n() >= control$minDirectForWinsor,
-        .getCpClusterLocRqQuantile(
-          .data$gateNumeric,
-          tau = control$winsorUpper
-        ),
-        NA_real_
-      ),
+          tau = c(
+            control$winsorLower[1], control$imputeQuantile[1],
+            control$winsorUpper[1]
+          )
+        )
+        if (dplyr::n() < control$minDirectForWinsor) {
+          q[c(1L, 3L)] <- NA_real_
+        }
+        tibble::tibble(
+          locClusterQ15 = q[[1]],
+          locClusterQ60 = q[[2]],
+          locClusterQ85 = q[[3]]
+        )
+      },
       .groups = "drop"
     )
 
@@ -377,13 +357,51 @@
 
 #' @keywords internal
 .getCpClusterLocSkipOut <- function(gateTblStim, reason) {
-  if (nrow(gateTblStim) == 0L) {
-    return(.getCpClusterLocRowUnchanged(gateTblStim, reason)[0, ])
-  }
-  purrr::map_df(seq_len(nrow(gateTblStim)), function(i) {
-    .getCpClusterLocRowUnchanged(
-      row = gateTblStim[i, , drop = FALSE],
-      reason = reason
-    )
-  })
+  cp <- suppressWarnings(as.numeric(gateTblStim$gate))
+  tibble::tibble(
+    .rows = nrow(gateTblStim),
+    grp = NA_character_,
+    grpUns = NA_character_,
+    grpStim = NA_character_,
+    ind = as.character(gateTblStim$ind),
+    cpOrigQuantMin = cp,
+    cpJoin = NA_real_,
+    cpJoinLse = cp,
+    cpJoinLseOrig = cp,
+    cpJoinLseOrigMean = cp,
+    cpJoinTgOrig = cp,
+    cpJoinTgOrigMean = cp,
+    cpJoinLseOrigMeanTg = cp,
+    cpTolUns = NA_real_,
+    cpTolStim = NA_real_,
+    cpMedianUns = NA_real_,
+    cpMedianStim = NA_real_,
+    locGenerated = suppressWarnings(gateTblStim$locGenerated %in% TRUE),
+    locGeneratedDirect = suppressWarnings(
+      gateTblStim$locGeneratedDirect %in% TRUE
+    ),
+    locSource = as.character(
+      gateTblStim$locSource %||% rep(NA_character_, nrow(gateTblStim))
+    ),
+    locReason = as.character(
+      gateTblStim$locReason %||% rep(NA_character_, nrow(gateTblStim))
+    ),
+    locClusterReason = reason,
+    locClusterAction = "unchanged",
+    locClusterAdjusted = FALSE,
+    locClusterBw = NA_real_,
+    locClusterNDirect = NA_integer_,
+    locClusterQ15 = NA_real_,
+    locClusterQ60 = NA_real_,
+    locClusterQ85 = NA_real_,
+    locClusterNInitial = NA_integer_,
+    locTolSignedUns = NA_real_,
+    locTolSignedStim = NA_real_,
+    locDerivSignUns = NA_real_,
+    locDerivSignStim = NA_real_,
+    propBsOrig = NA_real_,
+    propBsCpDiff = NA_real_,
+    propBsCpDiffSd = NA_real_,
+    propBsCp = NA_real_
+  )
 }
