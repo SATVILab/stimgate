@@ -31,6 +31,7 @@ test_that("analysis/6-sim-bw-freq_bs-adaptive.qmd does not source functionsForBe
 })
 
 test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto for gamma and skew scenarios", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -258,6 +259,7 @@ test_that("analysis 6 uses shared transactional runners and full-grid reruns", {
 }
 
 test_that("adaptive scenario forwards settings and reruns identical random draws", {
+  withr::local_preserve_seed()
   env <- .load_adaptive_run_env()
   captured <- NULL
   env$.simBandwidthBsFreq <- function(...) {

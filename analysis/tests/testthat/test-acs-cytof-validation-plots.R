@@ -110,7 +110,7 @@ test_that("validation plotting helpers return ggplot objects", {
   )
 })
 
-test_that("analysis 10 correlation and heatmap chunks run with comparison fixtures", {
+test_that("analysis 10 correlation and plot chunks run with comparison fixtures", {
   lines <- readLines(qmd_path, warn = FALSE)
   chunk_code <- function(label) {
     start <- which(lines == paste0("#| label: ", label))
@@ -145,17 +145,27 @@ test_that("analysis 10 correlation and heatmap chunks run with comparison fixtur
     plots[[length(plots) + 1L]] <<- x
     invisible(x)
   }
-  heatmap_labels <- c("show-real-pop-heatmaps", "show-all-pop-heatmaps")
+  plot_labels <- c(
+    "show-scatter", "show-real-pop-heatmaps", "show-all-pop-heatmaps"
+  )
   chunk_env$run_plots <- TRUE
-  for (label in heatmap_labels) {
+  for (label in plot_labels) {
     eval(chunk_code(label), envir = chunk_env)
   }
-  expect_length(plots, 12L)
+  expect_length(plots, 15L)
   expect_true(all(vapply(plots, inherits, logical(1), what = "ggplot")))
+  expect_equal(
+    vapply(
+      plots[1:3],
+      function(plot) as.character(unique(plot$data$method)),
+      character(1)
+    ),
+    chunk_env$validation_methods
+  )
 
   plots <- list()
   chunk_env$run_plots <- FALSE
-  for (label in heatmap_labels) {
+  for (label in plot_labels) {
     eval(chunk_code(label), envir = chunk_env)
   }
   expect_length(plots, 0L)

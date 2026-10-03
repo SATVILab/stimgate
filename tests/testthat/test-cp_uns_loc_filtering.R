@@ -186,6 +186,7 @@ test_that("quality boundary respects preliminary lower bound", {
 })
 
 test_that("antimode boundary moves xBase lower only when deep trough exists", {
+  withr::local_preserve_seed()
   # Bimodal distribution with deep separation at x ~ 2.5
   set.seed(42)
   x_bimodal <- c(

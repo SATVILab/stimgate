@@ -49,6 +49,9 @@ root_dir <- normalizePath(
 }
 
 test_that("analysis 2a scenario rerun is identical whatever the prior RNG", {
+  withr::local_preserve_seed()
+  originalRngKind <- RNGkind()
+  withr::defer(do.call(RNGkind, as.list(originalRngKind)))
   env <- .load_bw_run_env()
   settings <- list(
     nSample = 2L, nMarker = 1L, nCondition = 2L, nCluster = 2L, nIter = 1L,
@@ -232,6 +235,9 @@ test_that("promotion waits for every chunk and checks the full grid", {
 
 
 test_that("row RNG and its absence are restored even on scenario errors", {
+  withr::local_preserve_seed()
+  originalRngKind <- RNGkind()
+  withr::defer(do.call(RNGkind, as.list(originalRngKind)))
   env <- .load_bw_run_env()
   withr::local_seed(10L)
   RNGkind("L'Ecuyer-CMRG", "Box-Muller", "Rejection")

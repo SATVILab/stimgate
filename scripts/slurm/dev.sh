@@ -10,7 +10,7 @@ project_root=$(cd -- "$script_dir/../.." &> /dev/null && pwd)
 scripts=(
   "dev-1-sim-trans.sh"
   "dev-2a-stim-bw-freq_bs-global.sh"
-  # "dev-2b-stim-bias_uns-freq_bs.sh"
+  "dev-2b-stim-bias_uns-freq_bs.sh"
   "dev-3-sim-bw-est-base.sh"
   "dev-4-sim-bw-est-norm.sh"
   # "dev-5-sim-bw-est-adaptive.sh"
@@ -19,6 +19,36 @@ scripts=(
   "dev-8-sim-compare-freq_bs-batch.sh"
   "dev-9-real-compare-acs-cytof.sh"
 )
+
+# With arguments, submit only those analysis IDs or launcher filenames.
+# Validate the entire selection before submitting any jobs.
+if [[ "${1:-}" == "--help" ]]; then
+  echo "Usage: bash scripts/slurm/dev.sh [analysis ID or launcher filename ...]"
+  echo "Examples: dev.sh 2a; dev.sh 2b; dev.sh 2a 2b"
+  exit 0
+fi
+if (( $# > 0 )); then
+  scripts=()
+  for target in "$@"; do
+    matched_script=""
+    for launcher_path in "$script_dir"/dev-*.sh; do
+      launcher_name="${launcher_path##*/}"
+      analysis_id="${launcher_name#dev-}"
+      analysis_id="${analysis_id%%-*}"
+      if [[ "$target" == "$analysis_id" || "$target" == "$launcher_name" ]]; then
+        matched_script="$launcher_name"
+        break
+      fi
+    done
+    if [[ -z "$matched_script" ]]; then
+      echo "ERROR: Unknown analysis target: $target. Use an ID such as 2a or 2b." >&2
+      exit 1
+    fi
+    if [[ " ${scripts[*]} " != *" $matched_script "* ]]; then
+      scripts+=("$matched_script")
+    fi
+  done
+fi
 
 poll_seconds="${POLL_SECONDS:-5}"
 sim_grid_n_chunks="${SIM_GRID_N_CHUNKS:-4}"

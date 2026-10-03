@@ -320,6 +320,16 @@ the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-onl
 (`workflow_dispatch`); do not add automatic triggers. See
 `analysis/tests/README.md` for commands and coverage limits.
 
+The default Slurm job list includes both Analysis 2a and 2b. Keep enabled
+chunked analyses in the `scripts` list and `chunked_qmd_stem_for_script()`
+mapping, sharing run ID, chunk count and shuffle seed across each run.
+Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`;
+validate all target arguments before submitting jobs. Keep mocked submission and
+render checks in `analysis/tests/test-slurm-launchers.sh` and run them in analysis
+CI when launchers change. Relative-error plots averaged over cell counts and
+plots for each cell count belong in separate labelled QMD chunks; preserve the
+same scientific inclusion rules and avoid pooling different grid dimensions.
+
 ### Website Maintenance (`pkgdown`)
 
 Whenever functions are added, removed, or have their export status changed (via
@@ -415,7 +425,6 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `r/`: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by `devtools::load_all()` and are not part of the installed package.
   - `analysis-runtime.R`: Shared QMD execution/runtime plumbing for parameter lookup, env overrides, chunk validation and atomic RDS output.
   - `functionsForBenchmarking-Cyt.R`: Cytokine simulation utilities.
-  - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation.
   - `sim-bandwidth.R`: Simulation bandwidth utilities.
   - `sim-bandwidth-analysis-io.R` / `sim-bandwidth-analysis-plot.R`: Output-file lookup and plotting helpers for the bandwidth QMDs.
   - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2-6, followed by one delimited section of scenario/validation/collation callbacks per analysis.
@@ -454,6 +463,10 @@ For new or moved analysis code, use this layering:
 3. Generic analysis runtime helpers under `scripts/r/`: reusable QMD execution plumbing such as parameter/environment handling, chunk validation and atomic output writing.
 4. Analysis-specific helpers under `scripts/r/`: substantial orchestration, restart/collation, IO and plotting helpers that should not live inline in QMDs.
 5. `analysis/*.qmd`: scientific settings, analysis calls, result-specific transformations and presentation.
+
+When displaying ggplot objects inside QMD conditionals or loops, call `print()`
+explicitly. Chunk tests should capture printed plots and check that each requested
+method appears and that disabling plotting produces no printed plots.
 
 Plot-construction helpers under `scripts/r/` should return plot objects without
 creating directories or writing files. Keep filesystem side effects in the
@@ -685,6 +698,9 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
    Each test must clean up its own temporary files/directories created during execution
    (e.g., `unlink(tmp_dir, recursive = TRUE)` or `withr::defer()`).
 6. **Shared test fixtures**:
+   Scope expensive file-shared fixtures in `local({ ... })` and register deferred
+   cleanup there; seeded tests must restore RNG state rather than leaking it into
+   later files.
    If multiple tests need the same setup data, create it within each test or create it
    once at the top with clear documentation. Never delete shared fixtures mid-file.
 7. **Test data files compatibility**:
@@ -715,6 +731,8 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
      Windows backslashes are escape sequences there.
    - Use `skip_on_os("windows")`, with a comment giving the reason, for checks of
      Unix-only process or signal behaviour.
+   - Environment-restoration tests must compare the value observed after setup;
+     Windows treats an empty environment value as unset.
 10. **Use the package-shipped example data for routine tests and examples**:
     The package ships one canonical deterministic cytometry example dataset in
     `inst/extdata/stimgate_example_data/` (2 samples × 2 conditions × 2 markers ×

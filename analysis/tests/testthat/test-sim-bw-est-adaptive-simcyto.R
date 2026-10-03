@@ -31,6 +31,7 @@ test_that("analysis/5-sim-bw-est-adaptive.qmd does not source functionsForBenchm
 })
 
 test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundary and adaptive outputs", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -195,6 +196,7 @@ test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundar
 
 
 test_that("adaptive normalised bandwidths are controlled by normAdaptiveNcell, not bwNcellMax", {
+  withr::local_preserve_seed()
   set.seed(519L)
   x <- c(
     stats::rnorm(800L, mean = 0, sd = 1),

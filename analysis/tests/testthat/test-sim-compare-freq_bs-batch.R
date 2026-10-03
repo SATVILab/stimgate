@@ -28,6 +28,7 @@ test_that(
 test_that(
   ".simCompareFreqBs forwards shift and sd multiplier to simcyto",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -193,6 +194,7 @@ test_that(".simCompareSimCytExperiment applies selective mismatch exactly once",
 })
 
 test_that(".simCompareFreqBs with zero mismatch reproduces clean baseline", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -252,6 +254,7 @@ test_that(".simCompareFreqBs with zero mismatch reproduces clean baseline", {
 test_that(
   ".simCompareSummariseFreqBs correctly handles mismatch scenarios",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -308,6 +311,7 @@ test_that(
 test_that(
   ".simCompareFreqBsGrid parallel and serial runs produce equivalent results",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -568,32 +572,6 @@ test_that("Inner nIter execution remains serial without nested parallelism", {
   expect_false(grepl("future::plan", fn_body_txt))
 })
 
-test_that("Temporary project directories are unique and collision-safe", {
-  env <- new.env(parent = getNamespace("stimgate"))
-  source(script_misc, local = env)
-  source(script_bw, local = env)
-  source(script_comp, local = env)
-
-  paths <- replicate(20, {
-    file.path(
-      tempdir(),
-      "stimgate-sim-compare",
-      paste0(
-        "pid-",
-        Sys.getpid(),
-        "-iter-",
-        1,
-        "-",
-        format(Sys.time(), "%Y%m%d%H%M%OS6"),
-        "-",
-        sample.int(1e9, 1)
-      )
-    )
-  })
-
-  expect_equal(length(unique(paths)), length(paths))
-})
-
 test_that(".simCompareRunScenario handles errors and writes log", {
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
@@ -660,6 +638,7 @@ test_that(
 test_that(
   ".simCompareFreqBs forwards stimMeanShiftClusters to simcyto",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -784,6 +763,7 @@ test_that(
 test_that(
   "negative-only zero-shift agrees with clean baseline semantics",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -862,6 +842,7 @@ test_that(
 test_that(
   ".simCompareFreqBs forwards stimSdMultiplierClusters to simcyto",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)
@@ -922,6 +903,7 @@ test_that(
 test_that(
   "stimSdMultiplierClusters = 'gn' leaves positive and unstim unchanged",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_comp, local = env)
 
@@ -1066,6 +1048,7 @@ test_that(
 test_that(
   "negative-only zero-increase SD inflation agrees with clean baseline",
   {
+  withr::local_preserve_seed()
     env <- new.env(parent = getNamespace("stimgate"))
     source(script_misc, local = env)
     source(script_bw, local = env)

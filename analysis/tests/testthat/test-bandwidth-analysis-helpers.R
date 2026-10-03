@@ -46,6 +46,34 @@ test_that("legacy output path and formatting helpers match the original contract
   expect_equal(out$bw_extra_lab, c("0.2", "0.3"))
 })
 
+test_that("output paths preserve absent settings and scalar validation", {
+  env <- .load_bw_analysis_env()
+  env$dir_output <- "caller-output"
+  env$sim_grid_chunk_index <- 1L
+  env$sim_grid_n_chunks <- 1L
+
+  expect_identical(env$.path_sim_output(42L), character(0))
+  expect_identical(env$.path_sim_output(42L, dir_output = ""), character(0))
+  expect_identical(env$.path_sim_output(42L, dir_output = "output"), character(0))
+  expect_match(
+    basename(env$.path_sim_output(42L, "output", NA_integer_, NA_integer_)),
+    "NA-of_.*NA-sim_id_000042[.]rds$"
+  )
+  expect_error(env$.path_sim_output(42L, c("one", "two"), 1L, 1L))
+  expect_error(env$.path_sim_output(42L, "output", c(1L, 2L), 1L))
+  expect_error(env$.path_sim_output(42L, "output", 1L, c(1L, 2L)))
+})
+
+test_that("filename sanitising collapses mixed separators and preserves missing values", {
+  env <- .load_bw_analysis_env()
+  expect_identical(
+    env$safe_file_lab(c("a_ b", "a-_b", "__start---", "", NA_character_)),
+    c("a_b", "a_b", "_start_", "", NA_character_)
+  )
+  expect_identical(env$safe_file_lab(NULL), character(0))
+  expect_identical(env$safe_file_lab(c(1, 1.5)), c("1", "1_5"))
+})
+
 test_that("bandwidth labels trim fractional zeros without truncating integers", {
   env <- .load_bw_analysis_env()
 

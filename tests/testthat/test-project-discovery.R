@@ -1,5 +1,5 @@
 test_that(".gateGetPop and .gateGetChnl handle single and multiple populations correctly", {
-  tmpProj <- file.path(tempdir(), paste0("proj_disc_test_", as.numeric(Sys.time())))
+  tmpProj <- withr::local_tempdir()
   dir.create(file.path(tmpProj, "gates", "poproot", "chnlBC1"), recursive = TRUE)
   dir.create(file.path(tmpProj, "gates", "poproot", "chnlBC2"), recursive = TRUE)
 
@@ -8,8 +8,6 @@ test_that(".gateGetPop and .gateGetChnl handle single and multiple populations c
 
   dir.create(file.path(tmpProj, "gates", "popCD4"), recursive = TRUE)
   expect_equal(sort(.gateGetPop(tmpProj)), c("CD4", "root"))
-
-  unlink(tmpProj, recursive = TRUE)
 })
 
 test_that("expression discovery preserves filtering, ordering and empty-path behaviour", {
@@ -49,7 +47,7 @@ test_that("expression discovery preserves filtering, ordering and empty-path beh
 })
 
 test_that("plotStim error handling for multiple populations and empty inputs", {
-  tmpProj <- file.path(tempdir(), paste0("plot_disc_test_", as.numeric(Sys.time())))
+  tmpProj <- withr::local_tempdir()
   dir.create(file.path(tmpProj, "gates", "poproot"), recursive = TRUE)
   dir.create(file.path(tmpProj, "gates", "popCD4"), recursive = TRUE)
 
@@ -58,9 +56,7 @@ test_that("plotStim error handling for multiple populations and empty inputs", {
     "Cannot plot gates for multiple populations"
   )
 
-  unlink(tmpProj, recursive = TRUE)
-
-  tmpProjEmpty <- file.path(tempdir(), paste0("plot_disc_empty_", as.numeric(Sys.time())))
+  tmpProjEmpty <- file.path(withr::local_tempdir(), "missing")
   expect_error(
     plotStim(ind = c(1, 2), .data = NULL, pathProject = tmpProjEmpty, marker = "IL2"),
     "No population found for plotting gates"
@@ -72,6 +68,4 @@ test_that("plotStim error handling for multiple populations and empty inputs", {
     showGate = FALSE, pathProject = tmpProjEmpty, minCell = 10,
     exArgs = list()
   ))
-
-  unlink(tmpProjEmpty, recursive = TRUE)
 })

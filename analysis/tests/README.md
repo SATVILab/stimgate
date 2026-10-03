@@ -18,6 +18,24 @@ Rscript analysis/tests/run_qmd_tests.R all
 
 Analysis 2 is split into targets `2a` and `2b`. For example,
 `Rscript analysis/tests/run_qmd_tests.R "2a,2b"` runs both.
+Both targets include the shared seeded runner, resume and promotion tests.
+Their plot fixtures check relative-error summaries averaged over cell counts
+and separate outputs for each cell count without rendering the research grid.
+
+Submit the corresponding Slurm analyses independently or together:
+
+```sh
+bash scripts/slurm/dev.sh 2a
+bash scripts/slurm/dev.sh 2b
+bash scripts/slurm/dev.sh 2a 2b
+```
+
+The Slurm launcher accepts analysis IDs or launcher filenames. With no arguments,
+it submits its default batch. All requested targets are validated before any job
+is submitted. Each selected chunk receives the same logical run ID.
+`bash analysis/tests/test-slurm-launchers.sh` checks submission and render
+arguments using mock commands, without Slurm or R; both analysis CI workflows
+run this check.
 
 Targets also accept document stems or paths, such as `3-sim-bw-est-base` or
 `analysis/3-sim-bw-est-base.qmd`. Each target runs its existing scientific helper

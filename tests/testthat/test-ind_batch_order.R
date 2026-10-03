@@ -24,6 +24,7 @@ test_that("getBatchList positions unstimulated sample index first", {
 
 test_that("getExampleData positions unstimulated sample index first in batchList", {
   exampleData <- getExampleData()
+  withr::defer(unlink(dirname(exampleData$pathGs), recursive = TRUE))
   expect_type(exampleData$batchList, "list")
   expect_equal(length(exampleData$batchList), 2)
   # For index 1: idxUnstim = 1, idxStim = 2 -> c(1, 2)

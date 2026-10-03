@@ -31,6 +31,7 @@ test_that("analysis/4-sim-bw-est-norm.qmd does not source functionsForBenchmarki
 })
 
 test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parity and stable ordinary-vs-normalised outputs", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -234,6 +235,7 @@ test_that("analysis 4 collation takes pmin of finite pairs and validates", {
 })
 
 test_that("analysis 4 scenario rerun is identical whatever the prior RNG", {
+  withr::local_preserve_seed()
   env <- .load_norm_run_env()
   settings <- list(
     nSample = 2L, nMarker = 1, nCondition = 2, nCluster = 2, nIter = 1L,

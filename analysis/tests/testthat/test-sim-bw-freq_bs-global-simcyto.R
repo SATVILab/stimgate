@@ -5,6 +5,83 @@ script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
 script_bw_io <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-io.R")
 script_bw_plot <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-plot.R")
 
+test_that("Analysis 2a executes its original bandwidth and fixed-bias design", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  for (fn in c(
+    "analysis-runtime.R", "sim-misc.R", "sim-bandwidth.R",
+    "sim-bandwidth-analysis-io.R", "sim-bandwidth-analysis-run.R"
+  )) {
+    source(file.path(root_dir, "scripts", "r", fn), local = env)
+  }
+  lines <- readLines(file.path(
+    root_dir, "analysis", "2a-sim-bw-freq_bs-global.qmd"
+  ))
+  chunk <- function(label) {
+    start <- which(lines == paste0("#| label: ", label))
+    end <- start + which(lines[(start + 1L):length(lines)] == "```")[1L]
+    lines[(start + 1L):(end - 1L)]
+  }
+  env$analysis_quick <- FALSE
+  env$analysis_dev <- FALSE
+  env$analysis_semantics_version <- "test"
+  env$simulation_seed <- 12345L
+  env$sim_grid_shuffle_seed <- 8L
+  env$sim_grid_chunk_index <- 1L
+  env$sim_grid_n_chunks <- 1L
+  eval(parse(text = chunk("actual-settings")), envir = env)
+  invisible(utils::capture.output(
+    eval(parse(text = chunk("bw-manual-grid")), envir = env)
+  ))
+  eval(parse(text = chunk("bw-manual-settings")), envir = env)
+
+  expect_equal(env$scenario_settings$nSample, 200)
+  expect_null(env$scenario_settings$tolClust)
+  expect_false(env$scenario_settings$locEnforceShapeThreshold)
+  expect_false(env$scenario_settings$calcCytPosGates)
+  expect_equal(sort(unique(env$sim_grid_all$n_cell)), c(1e3, 5e3, 2e4, 1e5))
+  expected_pairs <- tidyr::expand_grid(
+    n_cell = c(1e3, 5e3, 2e4, 1e5),
+    prob_response = c(1 / 2e5, 1 / 5e4, 1 / 1e4, 1 / 2e3, 1 / 5e2, 1 / 5)
+  ) |>
+    dplyr::filter(!(.data$n_cell * .data$prob_response < 5 &
+      .data$prob_response < 0.04)) |>
+    dplyr::arrange(.data$n_cell, .data$prob_response)
+  actual_pairs <- env$sim_grid_all |>
+    dplyr::distinct(.data$n_cell, .data$prob_response) |>
+    dplyr::arrange(.data$n_cell, .data$prob_response)
+  expect_equal(actual_pairs, expected_pairs)
+  expect_equal(
+    sort(unique(env$sim_grid_all$condition_perturbation_sd)), c(0, 0.5)
+  )
+  expect_true(all(env$sim_grid_all$sample_perturbation_sd == 0))
+  expect_true(all(env$sim_grid_all$cluster_perturbation_sd == 0))
+  expect_true(all(env$sim_grid_all$background_relative_to_response == 0.2))
+  expect_true(all(env$sim_grid_all$n_cell_uns_relative_to_stim == 1))
+  for (transformation in c("gaussian", "skew", "gamma")) {
+    rows <- env$sim_grid_all |>
+      dplyr::filter(.data$transformation == .env$transformation)
+    expect_equal(
+      sort(unique(rows$mean_pos)),
+      switch(transformation, gaussian = c(4.5, 8), skew = c(6, 8.5), gamma = c(4, 7))
+    )
+    expected_bw <- if (transformation == "gamma") {
+      c(0.001, 0.0025, 0.005, 0.0075, 0.01, 0.0125, 0.015,
+        0.0175, 0.02, 0.03, 0.04, 0.05, 0.1, 0.15)
+    } else {
+      c(0.05, 0.1, 0.15, 0.2, 0.25, 0.5, 0.75, 1, 1.25, 1.5)
+    }
+    expect_equal(sort(unique(rows$bw)), expected_bw)
+    bias_rules <- rows |>
+      dplyr::distinct(.data$bias_uns_setting, .data$bias_uns) |>
+      dplyr::arrange(.data$bias_uns)
+    expect_identical(bias_rules$bias_uns_setting, c("none", "low", "high"))
+    expect_equal(
+      bias_rules$bias_uns,
+      if (transformation == "gamma") c(0, 0.0025, 0.01) else c(0, 0.05, 0.25)
+    )
+  }
+})
+
 test_that("global bandwidth simulation helpers source cleanly without legacy functionsForBenchmarking-Cyt.R", {
   for (f in c(script_misc, script_bw, script_bw_io, script_bw_plot)) {
     if (!file.exists(f)) stop("Expected analysis helper not found: ", f)
@@ -32,6 +109,7 @@ test_that("analysis/2a-sim-bw-freq_bs-global.qmd does not source functionsForBen
 })
 
 test_that(".simBandwidthBsFreq calls simcyto::simCytExperiment and produces valid Gaussian bandwidth results", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -101,6 +179,7 @@ test_that(".simBandwidthBsFreq calls simcyto::simCytExperiment and produces vali
 })
 
 test_that(".simBandwidthBsFreq works with gamma and skew transformations from simcyto", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -146,6 +225,7 @@ test_that(".simBandwidthBsFreq works with gamma and skew transformations from si
 })
 
 test_that(".simBandwidthBsFreq correctly preserves perturbations and cell count ratios", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)
@@ -188,6 +268,7 @@ test_that(".simBandwidthBsFreq correctly preserves perturbations and cell count 
 })
 
 test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma and gaussian scenarios", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_bw, local = env)

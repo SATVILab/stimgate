@@ -37,6 +37,7 @@ test_that("analysis/1-sim-trans.qmd does not source functionsForBenchmarking-Cyt
 })
 
 test_that("sim_trans_univariate_experiment_one fixed-seed parity matches direct simcyto for gaussian, gamma and skew", {
+  withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_trans, local = env)

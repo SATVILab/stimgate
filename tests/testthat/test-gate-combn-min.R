@@ -53,6 +53,7 @@ test_that("gateStim with gateCombn = 'min' applies minimum generated threshold a
 })
 
 test_that("gateStim with gateCombn = 'min' combines generated thresholds on distinct responses", {
+  withr::local_preserve_seed()
   skip_if_not_installed("flowWorkspace")
   skip_if_not_installed("flowCore")
 
@@ -141,6 +142,7 @@ test_that("gateStim with gateCombn = 'min' combines generated thresholds on dist
 })
 
 test_that("gateStim with gateCombn = 'min' ignores fallback non-generated cutpoints in multi-condition batch", {
+  withr::local_preserve_seed()
   skip_if_not_installed("flowWorkspace")
   skip_if_not_installed("flowCore")
 

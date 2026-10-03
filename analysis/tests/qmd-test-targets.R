@@ -3,9 +3,13 @@
   targets <- list(
     "1-sim-trans.qmd" = "test-sim-trans.R",
     "2a-sim-bw-freq_bs-global.qmd" = c(
-      "test-sim-bw-freq_bs-global-simcyto.R", "test-sim-bandwidth-analysis-run.R"
+      "test-sim-bw-freq_bs-global-simcyto.R", "test-sim-bandwidth-analysis-run.R",
+      "test-bandwidth-bias-plots-by-cells.R"
     ),
-    "2b-sim-bias_uns-freq_bs.qmd" = "test-sim-bias-uns-freq.R",
+    "2b-sim-bias_uns-freq_bs.qmd" = c(
+      "test-sim-bias-uns-freq.R", "test-sim-bandwidth-analysis-run.R",
+      "test-bandwidth-bias-plots-by-cells.R"
+    ),
     "3-sim-bw-est-base.qmd" = c(
       "test-sim-bw-est-base-simcyto.R", "test-sim-bw-est-base-run.R"
     ),
