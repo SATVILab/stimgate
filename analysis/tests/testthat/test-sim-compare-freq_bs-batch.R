@@ -87,7 +87,7 @@ test_that(
   }
 )
 
-test_that(".simCompareSimCytExperiment keeps cluster mismatch local and supports old and new simcyto APIs", {
+test_that(".simCompareSimCytExperiment applies selective mismatch exactly once", {
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_comp, local = env)
 
@@ -106,18 +106,62 @@ test_that(".simCompareSimCytExperiment keeps cluster mismatch local and supports
     )
   }
 
-  legacy_seen <- NULL
+  cluster_aware_seen <- NULL
   testthat::with_mocked_bindings(
     simCytExperiment = function(...,
                                 stimMeanShift = 0,
                                 stimSdMultiplier = 1,
                                 stimMeanShiftClusters = NULL,
                                 stimSdMultiplierClusters = NULL) {
-      legacy_seen <<- list(
+      cluster_aware_seen <<- list(
         stimMeanShiftClusters = stimMeanShiftClusters,
         stimSdMultiplierClusters = stimSdMultiplierClusters,
         stimMeanShift = stimMeanShift,
         stimSdMultiplier = stimSdMultiplier
+      )
+      env$.simCompareApplyClusterMismatch(
+        make_out(),
+        stimMeanShift = stimMeanShift,
+        stimSdMultiplier = stimSdMultiplier,
+        stimMeanShiftClusters = stimMeanShiftClusters,
+        stimSdMultiplierClusters = stimSdMultiplierClusters
+      )
+    },
+    .package = "simcyto",
+    {
+      out_cluster_aware <- env$.simCompareSimCytExperiment(
+        nSample = 1L,
+        nMarker = 1L,
+        nCondition = 2L,
+        nCluster = 2L,
+        nCellByCondition = c(4L, 4L),
+        stimMeanShift = 2,
+        stimSdMultiplier = 1.5,
+        stimMeanShiftClusters = "gn",
+        stimSdMultiplierClusters = "gp"
+      )
+
+      expect_equal(cluster_aware_seen$stimMeanShiftClusters, "gn")
+      expect_equal(cluster_aware_seen$stimSdMultiplierClusters, "gp")
+      expect_equal(cluster_aware_seen$stimMeanShift, 2)
+      expect_equal(cluster_aware_seen$stimSdMultiplier, 1.5)
+      expect_equal(
+        as.vector(flowCore::exprs(out_cluster_aware[["flowFrameList"]][[2L]])),
+        c(3, 1.5, 5, 4.5),
+        tolerance = 1e-8
+      )
+    }
+  )
+
+  legacy_seen <- NULL
+  testthat::with_mocked_bindings(
+    simCytExperiment = function(...,
+                                stimMeanShift = 0,
+                                stimSdMultiplier = 1) {
+      legacy_seen <<- list(
+        stimMeanShift = stimMeanShift,
+        stimSdMultiplier = stimSdMultiplier,
+        dots = list(...)
       )
       make_out()
     },
@@ -135,42 +179,12 @@ test_that(".simCompareSimCytExperiment keeps cluster mismatch local and supports
         stimSdMultiplierClusters = "gp"
       )
 
-      expect_equal(legacy_seen$stimMeanShiftClusters, "gn")
-      expect_equal(legacy_seen$stimSdMultiplierClusters, "gp")
+      expect_equal(legacy_seen$stimMeanShift, 0)
+      expect_equal(legacy_seen$stimSdMultiplier, 1)
+      expect_false("stimMeanShiftClusters" %in% names(legacy_seen$dots))
+      expect_false("stimSdMultiplierClusters" %in% names(legacy_seen$dots))
       expect_equal(
         as.vector(flowCore::exprs(out_legacy[["flowFrameList"]][[2L]])),
-        c(3, 1.5, 5, 4.5),
-        tolerance = 1e-8
-      )
-    }
-  )
-
-  new_seen <- NULL
-  testthat::with_mocked_bindings(
-    simCytExperiment = function(...,
-                                stimMeanShift = 0,
-                                stimSdMultiplier = 1) {
-      new_seen <<- list(...)
-      make_out()
-    },
-    .package = "simcyto",
-    {
-      out_new <- env$.simCompareSimCytExperiment(
-        nSample = 1L,
-        nMarker = 1L,
-        nCondition = 2L,
-        nCluster = 2L,
-        nCellByCondition = c(4L, 4L),
-        stimMeanShift = 2,
-        stimSdMultiplier = 1.5,
-        stimMeanShiftClusters = "gn",
-        stimSdMultiplierClusters = "gp"
-      )
-
-      expect_false("stimMeanShiftClusters" %in% names(new_seen))
-      expect_false("stimSdMultiplierClusters" %in% names(new_seen))
-      expect_equal(
-        as.vector(flowCore::exprs(out_new[["flowFrameList"]][[2L]])),
         c(3, 1.5, 5, 4.5),
         tolerance = 1e-8
       )
