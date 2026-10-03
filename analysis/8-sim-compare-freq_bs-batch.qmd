@@ -105,15 +105,18 @@ observed unstimulated range from being omitted from the F-beta calculation.
 The simulation isolates two deterministic post-transformation mismatch
 mechanisms provided by `simcyto`:
 
-1. **Mean shift** (`stimMeanShift`): An additive shift applied to all stimulated
-   cells on the transformed expression scale.
+1. **Mean shift** (`stimMeanShift`): An additive shift on the transformed
+   expression scale, applied either to all stimulated cells or only to the
+   stimulated negative/background component.
 2. **SD inflation** (`stimSdMultiplier`): A multiplicative scaling of the
-   within-component standard deviation for stimulated cells around each
-   component's realised mean.
+   stimulated negative/background component's within-component standard
+   deviation around its realised mean.
 
-In all primary mismatch comparisons, random perturbations are disabled
+Random perturbations are disabled
 (`samplePerturbationSd = 0`, `conditionPerturbationSd = 0`,
-`clusterPerturbationSd = 0`) to isolate the effects of the controlled mismatch.
+`clusterPerturbationSd = 0`). Within each baseline scenario, all mismatch
+magnitudes and variants use the same random seed, so the degradation curves
+compare deterministic changes to the same simulated draws.
 
 ### Simulation settings
 
