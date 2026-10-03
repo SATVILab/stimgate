@@ -229,8 +229,8 @@ if (analysis_dev) {
 }
 
 sim_grid_all <- sim_grid
-sim_grid_definition <- sim_grid_all |>
-  dplyr::select(-dplyr::all_of(c("sim_id", "sim_seed")))
+analysis_grid_spec <- sim_grid_all |>
+  dplyr::select(-sim_seed)
 
 if (nrow(sim_grid_all) > 0L) {
   set.seed(sim_grid_shuffle_seed)
@@ -420,19 +420,25 @@ if (interactive()) {
   progressr::handlers(global = TRUE)
 }
 
-analysis_params <- list(
-  run_simulations = run_simulations,
-  run_plots = run_plots,
+analysis_required_params <- list(
+  analysis_semantics_version = analysis_semantics_version,
   simulation_seed = simulation_seed,
   analysis_dev = analysis_dev,
-  sim_grid_definition = sim_grid_definition,
-  sim_grid_chunk_index = sim_grid_chunk_index,
-  sim_grid_n_chunks = sim_grid_n_chunks,
-  sim_grid_shuffle_seed = sim_grid_shuffle_seed,
-  analysis_semantics_version = analysis_semantics_version,
   n_sample_sim = n_sample_sim,
   n_iter_sim = n_iter_sim,
-  bw_fallback = bw_fallback
+  bw_fallback = bw_fallback,
+  sim_grid_spec = analysis_grid_spec
+)
+
+analysis_params <- c(
+  list(
+    run_simulations = run_simulations,
+    run_plots = run_plots,
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks,
+    sim_grid_shuffle_seed = sim_grid_shuffle_seed
+  ),
+  analysis_required_params
 )
 
 if (isTRUE(run_simulations)) {
@@ -990,14 +996,7 @@ if (results_read_only) {
   path_results <- .analysis_current_file(
     run_ctx = run_ctx,
     relative_path = c("collated", "bw_tbl_results.rds"),
-    required_params = list(
-      analysis_semantics_version = analysis_semantics_version,
-      simulation_seed = simulation_seed,
-      analysis_dev = analysis_dev,
-      sim_grid_definition = sim_grid_definition,
-      n_sample_sim = n_sample_sim,
-      n_iter_sim = n_iter_sim
-    )
+    required_params = analysis_required_params
   )
   bw_tbl_results <- readRDS(path_results)
 } else if (nrow(sim_grid) == 0L) {
