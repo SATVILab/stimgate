@@ -2485,6 +2485,89 @@
   collated
 }
 
+#' Validate primary comparison output coverage for a simulation grid
+#'
+#' @keywords internal
+.simCompareGridOutputStatus <- function(
+  .data,
+  sim_grid,
+  nSample,
+  nIter
+) {
+  expected_ids <- if (
+    is.data.frame(sim_grid) &&
+      "sim_id" %in% names(sim_grid)
+  ) {
+    sort(unique(as.integer(sim_grid$sim_id)))
+  } else {
+    integer()
+  }
+
+  observed_ids <- if (
+    is.data.frame(.data) &&
+      nrow(.data) > 0L &&
+      "sim_id" %in% names(.data)
+  ) {
+    sort(unique(as.integer(.data$sim_id[!is.na(.data$sim_id)])))
+  } else {
+    integer()
+  }
+
+  extra_ids <- setdiff(observed_ids, expected_ids)
+  missing_ids <- setdiff(expected_ids, observed_ids)
+
+  if (length(expected_ids) == 0L) {
+    return(list(
+      expected_ids = expected_ids,
+      observed_ids = observed_ids,
+      completed_ids = integer(),
+      failed_ids = integer(),
+      missing_ids = integer(),
+      extra_ids = extra_ids,
+      collate_ok = length(extra_ids) == 0L,
+      validation_ok = length(extra_ids) == 0L
+    ))
+  }
+
+  completed_ids <- integer()
+  failed_ids <- integer()
+
+  for (sim_id in intersect(expected_ids, observed_ids)) {
+    sim_data <- .data[as.integer(.data$sim_id) == sim_id, , drop = FALSE]
+    has_error <- "error" %in% names(sim_data) &&
+      any(!is.na(sim_data$error) & nzchar(as.character(sim_data$error)))
+    complete <- !has_error &&
+      .simComparePrimaryOutputComplete(
+        sim_data,
+        nSample = nSample,
+        nIter = nIter
+      )
+
+    if (isTRUE(complete)) {
+      completed_ids <- c(completed_ids, sim_id)
+    } else {
+      failed_ids <- c(failed_ids, sim_id)
+    }
+  }
+
+  collate_ok <- length(missing_ids) == 0L &&
+    length(extra_ids) == 0L
+  validation_ok <- collate_ok &&
+    length(failed_ids) == 0L &&
+    identical(sort(completed_ids), expected_ids)
+
+  list(
+    expected_ids = expected_ids,
+    observed_ids = observed_ids,
+    completed_ids = sort(completed_ids),
+    failed_ids = sort(failed_ids),
+    missing_ids = sort(missing_ids),
+    extra_ids = sort(extra_ids),
+    collate_ok = collate_ok,
+    validation_ok = validation_ok
+  )
+}
+
 #' Summarise comparison runs by scenario and method
 #'
 #' @keywords internal
