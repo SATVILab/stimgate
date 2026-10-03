@@ -48,18 +48,18 @@ test_that("bandwidth frequency simulations restore intermediate saving after suc
         for (initial in c(NA_character_, "FALSE", "TRUE", "", "caller-setting")) {
           withr::with_envvar(c(STIMGATE_INTERMEDIATE = initial), {
             # Windows treats an empty environment value as unset.
-            initial_value <- Sys.getenv("STIMGATE_INTERMEDIATE", unset = NA_character_)
+            before <- Sys.getenv("STIMGATE_INTERMEDIATE", unset = NA_character_)
             failure <- "none"
             gating_calls <- 0L
             result <- run()
             expect_identical(gating_calls, 2L)
             expect_equal(result$propRespTruth, rep(0.5, 6))
             expect_equal(result$propRespEst[result$method == "loc_sample"], c(0.25, 0.25))
-            expect_identical(Sys.getenv("STIMGATE_INTERMEDIATE", unset = NA_character_), initial_value)
+            expect_identical(Sys.getenv("STIMGATE_INTERMEDIATE", unset = NA_character_), before)
 
             for (failure in c("gate", "details")) {
               expect_error(run(), paste("mock", if (failure == "gate") "gating" else "detail", "failure"))
-              expect_identical(Sys.getenv("STIMGATE_INTERMEDIATE", unset = NA_character_), initial_value)
+              expect_identical(Sys.getenv("STIMGATE_INTERMEDIATE", unset = NA_character_), before)
             }
           })
         }

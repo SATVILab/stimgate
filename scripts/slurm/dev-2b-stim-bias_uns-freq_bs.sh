@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=10
-#SBATCH --job-name="dev-2-bw-freq_bs"
+#SBATCH --job-name="dev-2b-bias_uns"
 #SBATCH --partition=ada
 
 set -euo pipefail
@@ -13,7 +13,7 @@ n_chunks="${SIM_GRID_N_CHUNKS:-4}"
 # So do not infer the project root from ${BASH_SOURCE[0]}. Use the submit
 # directory, or an explicit PROJECT_ROOT passed from the launcher.
 project_root="${PROJECT_ROOT:-${SLURM_SUBMIT_DIR:-$(pwd)}}"
-qmd_file="${SIM_GRID_QMD_FILE:-analysis/2-sim-bw-freq_bs-global.qmd}"
+qmd_file="${SIM_GRID_QMD_FILE:-analysis/2b-sim-bias_uns-freq_bs.qmd}"
 qmd_abs="$project_root/$qmd_file"
 
 if [[ ! "$n_chunks" =~ ^[0-9]+$ ]] || (( n_chunks < 1 )); then
@@ -28,9 +28,9 @@ fi
 
 analysis_run_id="${ANALYSIS_RUN_ID:-}"
 if [[ -z "$analysis_run_id" && -n "${SLURM_ARRAY_JOB_ID:-}" ]]; then
-  analysis_run_id="analysis-2-slurm-${SLURM_ARRAY_JOB_ID}"
+  analysis_run_id="analysis-2b-slurm-${SLURM_ARRAY_JOB_ID}"
 elif [[ -z "$analysis_run_id" && "$n_chunks" == "1" ]]; then
-  analysis_run_id="analysis-2-slurm-${SLURM_JOB_ID:-$(date -u +%Y%m%dT%H%M%S)}"
+  analysis_run_id="analysis-2b-slurm-${SLURM_JOB_ID:-$(date -u +%Y%m%dT%H%M%S)}"
 elif [[ -z "$analysis_run_id" ]]; then
   echo "ERROR: ANALYSIS_RUN_ID is required for separately submitted multi-chunk jobs." >&2
   exit 1

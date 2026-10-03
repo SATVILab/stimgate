@@ -1,0 +1,629 @@
+---
+title: Tune unstimulated-sample bias (2b)
+format:
+  html:
+    embed-resources: true
+    toc: true
+execute:
+  warning: false
+  message: false
+params:
+  analysis_run_id: null
+  simulation_seed: 12345
+  sim_grid_chunk_index: 1
+  sim_grid_n_chunks: 1
+  sim_grid_shuffle_seed: 20261003
+  run_simulations: true
+  run_plots: false
+  sim_retry_errors: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(furrr)
+library(progressr)
+
+root_dir <- tryCatch(
+  projr::projr_path_get("project"),
+  error = function(e) getwd()
+)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+
+sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
+  "sim_grid_chunk_index",
+  "SIM_GRID_CHUNK_INDEX",
+  1L
+))
+sim_grid_n_chunks <- as.integer(.get_qmd_param_env(
+  "sim_grid_n_chunks",
+  "SIM_GRID_N_CHUNKS",
+  1L
+))
+sim_grid_shuffle_seed <- as.integer(.get_qmd_param_env(
+  "sim_grid_shuffle_seed",
+  "SIM_GRID_SHUFFLE_SEED",
+  20261003L
+))
+simulation_seed <- as.integer(.get_qmd_param_env(
+  "simulation_seed",
+  "SIMULATION_SEED",
+  12345L
+))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  FALSE
+))
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+sim_retry_errors <- .as_flag(.get_qmd_param_env(
+  "sim_retry_errors",
+  "SIM_RETRY_ERRORS",
+  TRUE
+))
+analysis_run_id <- .get_qmd_param_env(
+  "analysis_run_id",
+  "ANALYSIS_RUN_ID",
+  NULL
+)
+analysis_key <- c("sim", "bias_uns", "freq_bs")
+analysis_semantics_version <- "bias-uns-freq-v2"
+analysis_quick <- isTRUE(.isQuick())
+analysis_dev <- isTRUE(.isDev())
+
+.validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
+
+desc_path <- file.path(root_dir, "DESCRIPTION")
+if (
+  file.exists(desc_path) &&
+    grepl("Package: stimgate", readLines(desc_path, n = 1))
+) {
+  devtools::load_all(root_dir)
+} else {
+  fn_vec <- list.files(file.path(root_dir, "R"), full.names = TRUE)
+  for (fn in fn_vec) {
+    source(fn)
+  }
+}
+
+for (fn in c(
+  "sim-misc.R",
+  "sim-bandwidth.R",
+  "sim-bandwidth-analysis-io.R",
+  "sim-bandwidth-analysis-run.R",
+  "sim-bandwidth-analysis-plot.R",
+  "sim-compare-freq_bs.R"
+)) {
+  source(file.path(scripts_r_dir, fn))
+}
+```
+
+Analysis 2a identifies a plausible bandwidth range while keeping `bias_uns`
+deliberately simple. This analysis asks the complementary question: across
+those plausible bandwidths, how should `bias_uns` be set when the stimulated
+negative population is displaced relative to its matched unstimulated
+population?
+
+The batch mismatch follows Analysis 8 and is applied only to the stimulated
+negative/background component. Random sample, condition and cluster
+perturbations are disabled so that the controlled mismatch is the source of
+stimulated-versus-unstimulated disagreement.
+
+### Simulation grid
+
+```{r}
+#| label: bias-uns-settings
+n_cell_vec <- c(1e4, 5e4)
+prob_response_vec <- c(0.002, 0.05)
+mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
+
+bandwidth_settings_tbl <- tibble::tribble(
+  ~transformation, ~bw,
+  "gaussian", 0.05,
+  "gaussian", 0.10,
+  "gaussian", 0.25,
+  "gaussian", 0.50,
+  "skew",     0.05,
+  "skew",     0.10,
+  "skew",     0.25,
+  "skew",     0.50,
+  "gamma",    0.001,
+  "gamma",    0.0025,
+  "gamma",    0.005,
+  "gamma",    0.010
+)
+
+bias_uns_settings_tbl <- dplyr::bind_rows(
+  tibble::tibble(
+    bias_uns_basis = "bandwidth",
+    bias_uns_multiplier = c(
+      0, 0.1, 0.25, 0.33, 0.5, 0.75, 1, 1.25, 1.5, 2
+    )
+  ),
+  tibble::tibble(
+    bias_uns_basis = "negative_width",
+    bias_uns_multiplier = c(0.1, 0.25, 0.5, 0.75)
+  )
+) |>
+  dplyr::mutate(
+    bias_uns_rule = paste0(
+      as.character(.data$bias_uns_multiplier),
+      " x ",
+      dplyr::if_else(
+        .data$bias_uns_basis == "bandwidth",
+        "bandwidth",
+        "negative width"
+      )
+    )
+  )
+
+mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.2)
+mean_shift_gamma <- c(0, 0.005, 0.01, 0.05)
+
+mean_shift_tbl <- dplyr::bind_rows(
+  tidyr::expand_grid(
+    transformation = c("gaussian", "skew"),
+    mismatch_val = mean_shift_gaussian_skew
+  ),
+  tidyr::expand_grid(
+    transformation = "gamma",
+    mismatch_val = mean_shift_gamma
+  )
+) |>
+  dplyr::mutate(
+    mismatch_type = "mean_shift",
+    mismatch_label = paste0("mean shift ", .data$mismatch_val),
+    stim_mean_shift = .data$mismatch_val,
+    stim_mean_shift_clusters = "gn",
+    stim_sd_multiplier = 1,
+    stim_sd_multiplier_clusters = NA_character_,
+    sd_increase = 0
+  )
+
+sd_inflation_tbl <- tibble::tibble(
+  transformation = c("gaussian", "gamma", "skew"),
+  mismatch_val = 0.10,
+  mismatch_type = "sd_inflation",
+  mismatch_label = "SD inflation 10%",
+  stim_mean_shift = 0,
+  stim_mean_shift_clusters = NA_character_,
+  stim_sd_multiplier = 1.10,
+  stim_sd_multiplier_clusters = "gn",
+  sd_increase = 0.10
+)
+
+mismatch_settings_tbl <- dplyr::bind_rows(
+  mean_shift_tbl,
+  sd_inflation_tbl
+)
+
+background_relative_to_response <- 0.2
+n_cell_uns_relative_to_stim <- 1
+
+tol_clust <- NULL
+loc_enforce_shape_threshold <- FALSE
+calc_cyt_pos_gates <- FALSE
+```
+
+For the negative-width rules, the width is calculated from the pooled
+unstimulated cells in the simulation row, using the same fixed KDE bandwidth
+being evaluated. Starting at the dominant negative peak, the right endpoint is
+the first point at which the density reaches 15% of the peak height or the next
+antimode, whichever comes first.
+
+```{r}
+#| label: bias-uns-grid
+sim_grid <- tidyr::expand_grid(
+  mean_pos_settings_tbl,
+  n_cell = n_cell_vec,
+  prob_response = prob_response_vec,
+  bias_uns_settings_tbl
+) |>
+  dplyr::inner_join(
+    bandwidth_settings_tbl,
+    by = "transformation"
+  ) |>
+  dplyr::inner_join(
+    mismatch_settings_tbl,
+    by = "transformation"
+  ) |>
+  dplyr::mutate(
+    background_relative_to_response = background_relative_to_response,
+    n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim
+  ) |>
+  dplyr::arrange(
+    .data$transformation,
+    .data$n_cell,
+    .data$prob_response,
+    .data$mean_pos_setting,
+    .data$mismatch_type,
+    .data$mismatch_val,
+    .data$bw,
+    .data$bias_uns_basis,
+    .data$bias_uns_multiplier
+  )
+
+base_scenario_tbl <- sim_grid |>
+  dplyr::distinct(
+    .data$transformation,
+    .data$n_cell,
+    .data$prob_response,
+    .data$mean_pos_setting,
+    .data$mean_pos
+  ) |>
+  dplyr::mutate(base_scenario_id = dplyr::row_number())
+
+sim_grid <- sim_grid |>
+  dplyr::left_join(
+    base_scenario_tbl,
+    by = c(
+      "transformation",
+      "n_cell",
+      "prob_response",
+      "mean_pos_setting",
+      "mean_pos"
+    )
+  ) |>
+  dplyr::mutate(
+    sim_id = dplyr::row_number(),
+    # Bandwidth, bias rule and deterministic mismatch settings all use the
+    # same underlying simulated data within each biological scenario.
+    sim_seed = as.integer(simulation_seed + .data$base_scenario_id - 1L)
+  )
+
+if (nrow(sim_grid) != 6720L) {
+  stop(
+    "Expected 6,720 Analysis 2b grid rows, found ",
+    nrow(sim_grid),
+    "."
+  )
+}
+
+sim_grid_full <- sim_grid
+
+# Dev mode selects a smaller fixture and takes precedence over quick mode.
+if (analysis_quick && !analysis_dev) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell == 1e4,
+      prob_response == 0.002,
+      mean_pos_setting == "high",
+      mismatch_label %in% c("mean shift 0", "SD inflation 10%"),
+      bw %in% c(0.05, 0.1, 0.005),
+      bias_uns_multiplier %in% c(0, 0.25, 0.5)
+    )
+}
+
+if (analysis_dev) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      transformation == "gaussian",
+      n_cell == 1e4,
+      prob_response == 0.002,
+      mean_pos_setting == "high",
+      mismatch_label == "mean shift 0.05",
+      bw == 0.1,
+      (
+        (bias_uns_basis == "bandwidth" & bias_uns_multiplier == 0.25) |
+          (bias_uns_basis == "negative_width" & bias_uns_multiplier == 0.5)
+      )
+    )
+}
+
+sim_grid_all <- sim_grid
+if (nrow(sim_grid_all) == 0L) {
+  stop("The Analysis 2b simulation grid is empty; check the dev/quick filters.")
+}
+
+analysis_grid_spec <- sim_grid_all |>
+  dplyr::select(-sim_seed)
+
+sim_grid <- withr::with_seed(
+  sim_grid_shuffle_seed,
+  dplyr::slice_sample(sim_grid_all, prop = 1),
+  .rng_kind = .simBandwidthRngKind[["kind"]],
+  .rng_normal_kind = .simBandwidthRngKind[["normal.kind"]],
+  .rng_sample_kind = .simBandwidthRngKind[["sample.kind"]]
+) |>
+  dplyr::mutate(
+    .sim_grid_chunk =
+      ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L
+  ) |>
+  dplyr::filter(.data$.sim_grid_chunk == sim_grid_chunk_index) |>
+  dplyr::select(-.sim_grid_chunk)
+
+print(
+  paste0(
+    "Performing ",
+    nrow(sim_grid),
+    " of ",
+    nrow(sim_grid_all),
+    " Analysis 2b simulations for chunk ",
+    sim_grid_chunk_index,
+    " of ",
+    sim_grid_n_chunks
+  )
+)
+```
+
+```{r}
+#| label: bias-uns-run-settings
+scenario_settings <- list(
+  nSample = 25,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  nIter = 1,
+  biasUnsWidthHeightFrac = 0.15,
+  bwMin = "none",
+  bwMax = "none",
+  probExact = TRUE,
+  covEvMin = 1.5,
+  covEvMax = 1.5,
+  tolClust = tol_clust,
+  locEnforceShapeThreshold = loc_enforce_shape_threshold,
+  calcCytPosGates = calc_cyt_pos_gates
+)
+
+analysis_required_params <- list(
+  analysis_semantics_version = analysis_semantics_version,
+  simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
+  analysis_dev = analysis_dev,
+  scenario_settings = scenario_settings,
+  sim_grid_spec = analysis_grid_spec
+)
+```
+
+A single row can be rerun interactively with exactly the same random numbers
+used by the parallel run.
+
+```{r}
+#| label: rerun-one-simulation
+#| eval: false
+sim_id_target <- 1L
+row_target <- sim_grid_full |>
+  dplyr::filter(.data$sim_id == sim_id_target)
+
+rerun_res <- .simBandwidthRunRow(
+  row_target,
+  scenario_fn = .simBandwidthBiasUnsScenario,
+  settings = scenario_settings
+)
+```
+
+```{r}
+#| label: bias-uns-parallel
+#| results: hide
+if (interactive()) {
+  progressr::handlers(global = TRUE)
+}
+
+if (isTRUE(run_simulations)) {
+  run_ctx <- .analysis_run_context(
+    analysis_key = analysis_key,
+    run_id = analysis_run_id,
+    path_root = root_dir,
+    params = c(
+      list(
+        run_simulations = run_simulations,
+        run_plots = run_plots,
+        sim_grid_chunk_index = sim_grid_chunk_index,
+        sim_grid_n_chunks = sim_grid_n_chunks,
+        sim_grid_shuffle_seed = sim_grid_shuffle_seed
+      ),
+      analysis_required_params
+    ),
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks
+  )
+
+  .simBandwidthRunGrid(
+    sim_grid,
+    scenario_fn = .simBandwidthBiasUnsScenario,
+    settings = scenario_settings,
+    run_ctx = run_ctx,
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks,
+    retry_errors = sim_retry_errors,
+    heading = "BIAS_UNS FREQUENCY PROGRESS",
+    path_root = root_dir
+  )
+
+  .simBandwidthFinishChunk(
+    run_ctx = run_ctx,
+    sim_grid = sim_grid,
+    sim_grid_all = sim_grid_all,
+    collate_fn = function(tbl) {
+      .simBandwidthBiasUnsCollate(
+        tbl, colnames(sim_grid_all), n_sample_expected = scenario_settings$nSample
+      )
+    },
+    label = "analysis 2b"
+  )
+
+  if (isTRUE(run_plots) && sim_grid_n_chunks > 1L) {
+    message(
+      "Skipping plots during a multi-chunk simulation render. ",
+      "Render again with run_simulations = FALSE after promotion."
+    )
+    run_plots <- FALSE
+  }
+} else if (isTRUE(run_plots)) {
+  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+}
+```
+
+### Results
+
+```{r}
+#| label: bias-uns-collate
+if (isTRUE(run_plots)) {
+  read_current <- function(nm) {
+    readRDS(.analysis_current_file(
+      run_ctx = run_ctx,
+      relative_path = c("collated", paste0(nm, ".rds")),
+      required_params = analysis_required_params
+    ))
+  }
+  bias_uns_results_raw <- read_current("bias_uns_results_raw")
+  bias_uns_results_summary <- read_current("bias_uns_results_summary")
+} else {
+  message("run_plots is false, so stopping after simulation/collation.")
+}
+```
+
+The primary summaries are relative error and the estimated
+background-subtracted frequencies themselves. Plot each response probability
+separately so that every remaining varying scenario dimension is either
+faceted or included in the grouping. Invalid final estimates remain in the raw
+results; summaries record `n_sample`, `n_valid`, `n_failed` and `failure_fraction`.
+Frequency and error summaries use valid estimates only; settings with no valid
+estimates remain in the summary with missing frequency/error values.
+
+```{r}
+#| label: plot-relative-error
+if (isTRUE(run_plots)) {
+  plot_dir <- .analysis_cache_dir(
+    c(analysis_key, "relative_error"),
+    path_root = root_dir
+  )
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+
+  for (transformation_curr in unique(bias_uns_results_summary$transformation)) {
+    for (mean_pos_setting_curr in unique(bias_uns_results_summary$mean_pos_setting)) {
+      for (prob_response_curr in unique(bias_uns_results_summary$prob_response)) {
+        plot_tbl <- bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          )
+
+        p <- ggplot(
+          plot_tbl,
+          aes(
+            x = bias_uns_multiplier,
+            y = median_abs_rel_error,
+            colour = factor(bw),
+            linetype = bias_uns_basis,
+            group = interaction(bw, bias_uns_basis)
+          )
+        ) +
+          geom_line() +
+          geom_point() +
+          facet_grid(n_cell ~ mismatch_label, scales = "free_y") +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy") +
+          theme(legend.position = "bottom") +
+          labs(
+            title = paste0(
+              transformation_curr,
+              "; mean position = ", mean_pos_setting_curr,
+              "; response probability = ", prob_response_curr
+            ),
+            x = "Bias multiplier",
+            y = "Median absolute relative error",
+            colour = "Bandwidth",
+            linetype = "Bias scale"
+          )
+
+        path_p <- file.path(
+          plot_dir,
+          paste0(
+            transformation_curr,
+            "_", mean_pos_setting_curr,
+            "_p_", format(prob_response_curr, scientific = TRUE),
+            ".pdf"
+          )
+        )
+        ggsave(path_p, p, width = 28, height = 13, units = "cm")
+        print(p)
+      }
+    }
+  }
+}
+```
+
+```{r}
+#| label: plot-estimated-frequency
+if (isTRUE(run_plots)) {
+  plot_dir <- .analysis_cache_dir(
+    c(analysis_key, "estimated_frequency"),
+    path_root = root_dir
+  )
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+
+  for (transformation_curr in unique(bias_uns_results_summary$transformation)) {
+    for (mean_pos_setting_curr in unique(bias_uns_results_summary$mean_pos_setting)) {
+      for (prob_response_curr in unique(bias_uns_results_summary$prob_response)) {
+        plot_tbl <- bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          )
+
+        p <- ggplot(
+          plot_tbl,
+          aes(
+            x = bias_uns_multiplier,
+            y = propRespEst_median,
+            colour = factor(bw),
+            linetype = bias_uns_basis,
+            group = interaction(bw, bias_uns_basis)
+          )
+        ) +
+          geom_hline(
+            aes(yintercept = propRespTruth),
+            linetype = "dashed",
+            colour = "black"
+          ) +
+          geom_line() +
+          geom_point() +
+          facet_grid(n_cell ~ mismatch_label, scales = "free_y") +
+          cowplot::theme_cowplot() +
+          cowplot::background_grid(major = "xy") +
+          theme(legend.position = "bottom") +
+          labs(
+            title = paste0(
+              transformation_curr,
+              "; mean position = ", mean_pos_setting_curr,
+              "; response probability = ", prob_response_curr
+            ),
+            x = "Bias multiplier",
+            y = "Estimated background-subtracted frequency (median)",
+            colour = "Bandwidth",
+            linetype = "Bias scale"
+          )
+
+        path_p <- file.path(
+          plot_dir,
+          paste0(
+            transformation_curr,
+            "_", mean_pos_setting_curr,
+            "_p_", format(prob_response_curr, scientific = TRUE),
+            ".pdf"
+          )
+        )
+        ggsave(path_p, p, width = 28, height = 13, units = "cm")
+        print(p)
+      }
+    }
+  }
+}
+```

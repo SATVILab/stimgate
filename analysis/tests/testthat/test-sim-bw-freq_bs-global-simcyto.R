@@ -20,14 +20,14 @@ test_that("global bandwidth simulation helpers source cleanly without legacy fun
   expect_false(exists("simCytExperiment", envir = env, inherits = FALSE))
 })
 
-test_that("analysis/2-sim-bw-freq_bs-global.qmd does not source functionsForBenchmarking-Cyt.R", {
-  qmd_path <- file.path(root_dir, "analysis", "2-sim-bw-freq_bs-global.qmd")
+test_that("analysis/2a-sim-bw-freq_bs-global.qmd does not source functionsForBenchmarking-Cyt.R", {
+  qmd_path <- file.path(root_dir, "analysis", "2a-sim-bw-freq_bs-global.qmd")
   expect_true(file.exists(qmd_path))
 
   lines <- readLines(qmd_path, warn = FALSE)
   expect_false(
     any(grepl("functionsForBenchmarking-Cyt\\.R", lines)),
-    info = "analysis/2-sim-bw-freq_bs-global.qmd should not source functionsForBenchmarking-Cyt.R"
+    info = "analysis/2a-sim-bw-freq_bs-global.qmd should not source functionsForBenchmarking-Cyt.R"
   )
 })
 
