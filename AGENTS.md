@@ -207,6 +207,17 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   must use the read-only current-results context and must not create staging state.
 - `run_plots = FALSE` must stop before optional plot/report chunks; multi-chunk
   simulation renders should not write shared plot files concurrently.
+- For controlled degradation experiments, use common random numbers within a
+  baseline scenario when mismatch settings are deterministic. This keeps
+  differences across mismatch magnitudes attributable to the mismatch rather
+  than to a different simulated draw.
+- Compatibility wrappers for optional upstream features must apply an effect
+  exactly once. If the upstream API supports the feature, pass it through and
+  do not also apply a local fallback; if it does not, neutralise the upstream
+  global effect before applying the local selective fallback.
+- Comparator exceptions in benchmarking analyses must remain explicit errors.
+  A numerical fallback may be recorded for diagnostics, but an exception must
+  not be silently converted into a valid prediction or promoted result.
 - For end-to-end background-subtracted-frequency performance, score the final
   sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
