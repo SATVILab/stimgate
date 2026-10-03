@@ -18,6 +18,10 @@ params:
   sim_retry_errors: true
 ---
 
+This analysis asks how adaptive normalised bandwidth estimates vary with cell count, response frequency and separation. Matched stimulated and unstimulated samples are simulated under Gaussian, gamma and skew transformations. The background-core and high-expression-extra bandwidths are estimated separately for each condition.
+
+## Set-up
+
 ```{r}
 #| label: setup
 #| include: false
@@ -33,6 +37,18 @@ root_dir <- tryCatch(
   projr::projr_path_get("project"),
   error = function(e) getwd()
 )
+
+# Quarto may start in analysis/ when no project working directory is set.
+if (!file.exists(file.path(root_dir, "DESCRIPTION")) &&
+    file.exists(file.path(dirname(root_dir), "DESCRIPTION"))) {
+  root_dir <- dirname(root_dir)
+}
+if (!file.exists(file.path(root_dir, "scripts", "r", "analysis-runtime.R"))) {
+  stop("Cannot locate the stimgate checkout; render from its root or analysis/.")
+}
+if (!exists(".isDev", mode = "function")) {
+  .isDev <- function() "dev" %in% projr::projr_profile_get()
+}
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
@@ -119,22 +135,13 @@ for (fn in c(
 }
 ```
 
-### Checking what the adaptive estimators actually estimate
+## Scientific settings
 
-Get the parameters over which we simulate.
+The current adaptive normalised estimator calculates core and extra bandwidths from fixed-size synthetic normal components. Their sample size is controlled by `normAdaptiveNcell`, not by `bwNcellMax`; `normAdaptiveNcell = 2500` is fixed here. Collation retains separate core and extra bandwidths for each condition, including the proportion of finite estimates.
 
-We mainly need to consider whether the number of parent-population cells is large or small, whether the responding population is large enough to affect the estimator, and the amount of separation.
-
-We'll vary over a range of parent-population sizes, as that tells us how the estimator behaves over the most important dimension apart from the transformation.
-
-The current adaptive normalised estimator calculates the core and extra bandwidths from fixed-size synthetic normal components. That internal sample size is controlled by `normAdaptiveNcell`, not by `bwNcellMax`. We therefore keep `normAdaptiveNcell = 2500` fixed here rather than varying the non-adaptive cell-count cap.
-
-For the adaptive estimator, the output has separate bandwidths for the background-core and high-expression-extra components, and those are estimated separately for the stimulated and unstimulated samples. The collation therefore works with four bandwidth columns:
-
-- `bw_uns_core`
-- `bw_stim_core`
-- `bw_uns_extra`
-- `bw_stim_extra`
+External chunks share one run ID and promote results only after all selected
+scenarios validate. For cached plots, use the same dev profile and scientific
+settings as the simulation render.
 
 ```{r}
 #| label: actual-settings
@@ -177,6 +184,7 @@ bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
 ```{r}
 #| label: bw-estimate-grid
+#| include: false
 data_scenario_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
   prob_response = prob_response_vec,
@@ -292,6 +300,8 @@ analysis_required_params <- list(
 )
 ```
 
+## Simulation
+
 Rerun one simulation interactively, for example to see why it failed.
 Each row is seeded from its own `sim_seed` with a fixed RNG kind inside
 `.simBandwidthRunRow()`, which the parallel run also calls, so this
@@ -301,6 +311,7 @@ step through it.
 
 ```{r}
 #| label: rerun-one-simulation
+#| include: false
 #| eval: false
 sim_id_target <- 1L
 
@@ -330,6 +341,7 @@ chunk and promote the run once every chunk is complete.
 
 ```{r}
 #| label: bw-estimate-parallel
+#| include: false
 #| results: hide
 if (interactive()) {
   progressr::handlers(global = TRUE)
@@ -387,15 +399,29 @@ if (isTRUE(run_simulations)) {
     run_plots <- FALSE
   }
 } else if (isTRUE(run_plots)) {
+  current_dir <- .analysis_cache_dir(
+    c(analysis_key, "current"), path_root = root_dir, create = FALSE
+  )
+  if (!file.exists(file.path(current_dir, "COMPLETE"))) {
+    stop(
+      "No complete canonical results are available. First run from the repository root: ",
+      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/5-sim-bw-est-adaptive.qmd",
+      " (with the same dev profile and settings; complete all chunks if chunked).",
+      call. = FALSE
+    )
+  }
   # Read-only: plots use the canonical promoted results under current/.
   run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
 }
 ```
 
+## Collation
+
 Read the canonical promoted results for plotting.
 
 ```{r}
 #| label: bw-estimate-collate
+#| echo: false
 if (isTRUE(run_plots)) {
   bw_tbl_results <- readRDS(.analysis_current_file(
     run_ctx = run_ctx,
@@ -426,8 +452,14 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+## Results
+
+Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the HPI method. Facets separate transformations and response frequencies; separate figures show each core or extra component and each condition at fixed response separation and bias. Compare the curves within a panel, bearing in mind that means use only finite estimates and the table above reports their coverage.
+
 ```{r}
-#| label: bw-estimate-plots
+#| label: fig-bw-estimate-plots
+#| echo: false
+#| fig-cap: "Adaptive core and extra bandwidth estimates by cell count and condition."
 #| fig-width: 7
 #| fig-height: 10
 if (isTRUE(run_plots)) {
@@ -501,13 +533,13 @@ if (isTRUE(run_plots)) {
             dir_results,
             paste0(
               "bw_estimate_meanpos_setting_",
-              .file_safe(mean_pos_setting_curr),
+              as.character(mean_pos_setting_curr),
               "_bias_uns_",
-              .file_safe(bias_uns_setting_curr),
+              as.character(bias_uns_setting_curr),
               "_component_",
-              .file_safe(bw_component_curr),
+              as.character(bw_component_curr),
               "_condition_",
-              .file_safe(bw_condition_curr),
+              as.character(bw_condition_curr),
               ".png"
             )
           )
