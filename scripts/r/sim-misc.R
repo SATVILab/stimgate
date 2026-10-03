@@ -1,8 +1,3 @@
-.simMiscTagTrans <- function(fun, name) {
-  attr(fun, "sim_transformation") <- name
-  fun
-}
-
 .simMiscGetTrans <- function(transformation) {
   if (is.function(transformation)) {
     return(transformation)
