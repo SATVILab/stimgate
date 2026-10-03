@@ -100,11 +100,9 @@ jobs:
             any::rmarkdown
             any::knitr
             any::ggforce
-            any::projr
             any::pkgload
             any::scales
             any::RColorBrewer
-            github::SATVILab/UtilsDataRSV
           needs: check
           cache: always
 
@@ -116,8 +114,6 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$GITHUB_WORKSPACE/render/simulate" "$GITHUB_WORKSPACE/render/plots"
-          # _projr.yml uses these writable sibling paths; both renders share this job's disk.
-          mkdir -p "$GITHUB_WORKSPACE/../stimgate-store/_tmp" "$GITHUB_WORKSPACE/../stimgate-store/_tmp_analysis/cache"
 
       - name: Render simulations
         shell: bash
@@ -146,7 +142,5 @@ jobs:
             ${{ github.workspace }}/render/simulate/**/*.html
             ${{ github.workspace }}/output/fig/**/*.png
             ${{ github.workspace }}/output/fig/**/*.pdf
-            ${{ github.workspace }}/../stimgate-store/_tmp/**/*.png
-            ${{ github.workspace }}/../stimgate-store/_tmp/**/*.pdf
             ${{ github.workspace }}/cache/**/*.png
             ${{ github.workspace }}/cache/**/*.pdf
