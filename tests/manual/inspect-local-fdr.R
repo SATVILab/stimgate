@@ -97,14 +97,6 @@ run_local_fdr_inspection <- function(scenario) {
     "2"
   )
 
-  read_required <- function(name) {
-    path <- file.path(path_ind, paste0(name, ".rds"))
-    if (!file.exists(path)) {
-      stop("Expected local-FDR intermediate was not saved: ", path)
-    }
-    readRDS(path)
-  }
-
   read_optional <- function(name) {
     path <- file.path(path_ind, paste0(name, ".rds"))
     if (file.exists(path)) readRDS(path) else NULL
