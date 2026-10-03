@@ -249,144 +249,118 @@ test_that("getStimExpr errors when both chnlGate and markerGate specified", {
   )
 })
 
-test_that("getStimExpr extracts cytokine-positive cells with gating", {
-  # Use example data and run gating
-  example_data <- getExampleData()
-  gs <- flowWorkspace::load_gs(example_data$pathGs)
-  pathProject <- file.path(tempdir(), "stimgate_ex_cytPos_test")
-
-  # Run gating
+test_that("getStimExpr and plotStim filter using saved stimulation gates", {
+  exampleData <- getExampleData()
+  gs <- flowWorkspace::load_gs(exampleData$pathGs)
+  pathProject <- withr::local_tempdir()
   invisible(gateStim(
     .data = gs,
     pathProject = pathProject,
     popGate = "root",
-    batchList = example_data$batchList,
-    marker = example_data$marker
+    batchList = exampleData$batchList,
+    marker = exampleData$marker
   ))
 
-  # Get gates to verify they exist
   gateTbl <- getStimGates(pathProject)
-  expect_true(nrow(gateTbl) > 0)
-  expect_true(all(c("chnl", "ind", "gateCyt") %in% names(gateTbl)))
-
-  # Get the channel names from gate table
   chnlGated <- unique(gateTbl$chnl)
-  expect_true(length(chnlGated) > 0)
+  chnlLab <- stimgateMetaReadChnlLab(pathProject)
+  expect_gt(nrow(gateTbl), 0L)
 
-  # Test extracting all cells without gating (baseline)
-  exAll <- getStimExpr(
+  # Include unstimulated indices: they have expression but no saved gates.
+  for (chnlCurr in chnlGated) {
+    markerCurr <- unname(chnlLab[chnlCurr])
+    exAll <- getStimExpr(pathProject, pop = "root", chnl = chnlCurr)
+    for (gateType in c("base", "cyt")) {
+      expected <- rep(FALSE, nrow(exAll))
+      for (indCurr in unique(exAll$ind)) {
+        gateInd <- gateTbl[
+          gateTbl$chnl == chnlCurr & gateTbl$ind == indCurr,
+        ]
+        if (nrow(gateInd) == 0L) {
+          next
+        }
+        rows <- exAll$ind == indCurr
+        # One requested channel has no other cytokine context, so the cyt+
+        # rule reduces to base positivity as well.
+        expected[rows] <- exAll[[chnlCurr]][rows] > gateInd$gate[[1]]
+      }
+      res <- getStimExpr(
+        pathProject,
+        pop = "root",
+        chnl = chnlCurr,
+        chnlGate = chnlCurr,
+        gateTypeCytPos = gateType
+      )
+      expect_equal(nrow(res), sum(expected))
+      expect_equal(res$ind, exAll$ind[expected])
+      expect_equal(res[[chnlCurr]], exAll[[chnlCurr]][expected])
+
+      resMarker <- getStimExpr(
+        pathProject,
+        pop = "root",
+        marker = markerCurr,
+        markerGate = markerCurr,
+        gateTypeCytPos = gateType
+      )
+      expect_equal(resMarker$ind, res$ind)
+      expect_equal(resMarker[[markerCurr]], res[[chnlCurr]])
+    }
+
+    indStim <- gateTbl$ind[gateTbl$chnl == chnlCurr][[1]]
+    expect_gt(sum(res$ind == indStim), 10L)
+    for (useMarker in c(FALSE, TRUE)) {
+      args <- if (useMarker) {
+        list(marker = markerCurr, markerGate = markerCurr)
+      } else {
+        list(chnl = chnlCurr, chnlGate = chnlCurr)
+      }
+      p <- do.call(plotStim, c(list(
+        pathProject = pathProject,
+        ind = unique(exAll$ind),
+        excMin = FALSE,
+        grid = FALSE
+      ), args))
+      expect_length(p, 1L)
+      expect_s3_class(p[[1]], "ggplot")
+    }
+  }
+
+  exAll <- getStimExpr(pathProject, pop = "root", chnl = chnlGated)
+  expected <- rep(FALSE, nrow(exAll))
+  for (indCurr in unique(exAll$ind)) {
+    gates <- gateTbl[gateTbl$ind == indCurr, ]
+    if (nrow(gates) == 0L) {
+      next
+    }
+    rows <- exAll$ind == indCurr
+    base <- lapply(chnlGated, function(ch) {
+      exAll[[ch]][rows] > gates$gate[gates$chnl == ch]
+    })
+    cyt <- lapply(chnlGated, function(ch) {
+      exAll[[ch]][rows] > gates$gateCyt[gates$chnl == ch]
+    })
+    # Multifunctional cyt+ positivity requires base positivity on one
+    # channel and cyt+ positivity on a different channel.
+    pos <- rep(FALSE, sum(rows))
+    for (i in seq_along(chnlGated)) {
+      for (j in setdiff(seq_along(chnlGated), i)) {
+        pos <- pos | (base[[i]] & cyt[[j]])
+      }
+    }
+    expected[rows] <- pos
+  }
+  resMult <- getStimExpr(
     pathProject,
     pop = "root",
-    chnl = chnlGated[[1]]
+    chnl = chnlGated,
+    chnlGate = chnlGated,
+    mult = TRUE
   )
-  expect_true(nrow(exAll) > 0)
-
-  # Test extracting cytokine-positive cells with chnlGate
-  # Note: This may return 0 rows if gates are at or above max expression
-  # We're testing that the functionality works, not that we get positive cells
-  resCytPos <- tryCatch(
-    {
-      getStimExpr(
-        pathProject,
-        pop = "root",
-        chnl = chnlGated[[1]],
-        chnlGate = chnlGated[[1]]
-      )
-    },
-    error = function(e) {
-      # Known issue: gates may be at or above max expression,
-      # causing empty incVec and subsetting errors.
-      # Return empty tibble for test.
-      result <- tibble::tibble(
-        pop = character(0),
-        ind = character(0)
-      )
-      result[[chnlGated[[1]]]] <- numeric(0)
-      result
-    }
-  )
-
-  # Should return a valid data frame (even if empty)
-  expect_true(is.data.frame(resCytPos))
-  expect_true(all(c("pop", "ind", chnlGated[[1]]) %in% names(resCytPos)))
-
-  # Number of cytokine-positive cells should be <= total cells
-  expect_true(nrow(resCytPos) <= nrow(exAll))
-
-  # If we got any positive cells, verify they're above the gate threshold
-  if (nrow(resCytPos) > 0 && nrow(gateTbl) > 0) {
-    for (indCurr in unique(resCytPos$ind)) {
-      gateVal <- gateTbl$gateCyt[
-        gateTbl$chnl == chnlGated[[1]] & gateTbl$ind == indCurr
-      ]
-      if (length(gateVal) > 0 && !is.na(gateVal[[1]])) {
-        resInd <- resCytPos[resCytPos$ind == indCurr, ]
-        if (nrow(resInd) > 0) {
-          expect_true(all(resInd[[chnlGated[[1]]]] >= gateVal[[1]]))
-        }
-      }
-    }
+  expect_equal(nrow(resMult), sum(expected))
+  expect_equal(resMult$ind, exAll$ind[expected])
+  for (ch in chnlGated) {
+    expect_equal(resMult[[ch]], exAll[[ch]][expected])
   }
-
-  # Test with markerGate using marker names
-  chnlLab <- stimgateMetaReadChnlLab(pathProject)
-  markerName <- chnlLab[chnlGated[[1]]]
-
-  resMarkerGate <- tryCatch(
-    {
-      getStimExpr(
-        pathProject,
-        pop = "root",
-        marker = markerName,
-        markerGate = markerName
-      )
-    },
-    error = function(e) {
-      # Known issue: gates may be at or above max expression
-      result <- tibble::tibble(
-        pop = character(0),
-        ind = character(0)
-      )
-      result[[markerName]] <- numeric(0)
-      result
-    }
-  )
-
-  expect_true(is.data.frame(resMarkerGate))
-  expect_true(all(c("pop", "ind", markerName) %in% names(resMarkerGate)))
-  expect_true(nrow(resMarkerGate) <= nrow(exAll))
-
-  # Test mult parameter (multifunctional cells) if multiple channels
-  if (length(chnlGated) >= 2) {
-    resMult <- tryCatch(
-      {
-        getStimExpr(
-          pathProject,
-          pop = "root",
-          chnl = chnlGated,
-          chnlGate = chnlGated,
-          mult = TRUE
-        )
-      },
-      error = function(e) {
-        # Known issue: gates may be at or above max expression
-        tbl <- tibble::tibble(
-          pop = character(0),
-          ind = character(0)
-        )
-        for (ch in chnlGated) {
-          tbl[[ch]] <- numeric(0)
-        }
-        tbl
-      }
-    )
-
-    expect_true(is.data.frame(resMult))
-    expect_true(nrow(resMult) <= nrow(exAll))
-  }
-
-  # Cleanup
-  unlink(pathProject, recursive = TRUE)
 })
 
 test_that("cytokine-positive filtering helpers respect gate context and exclusions", {

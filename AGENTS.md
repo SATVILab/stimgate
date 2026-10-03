@@ -393,6 +393,12 @@ QMD runtime or unrelated plotting/orchestration code.
   saving via `.intSave()` or `.intSaveNm()` functions. Intermediate saving is
   controlled by the `STIMGATE_INTERMEDIATE` environment variable.
 
+### Saved expression and stimulation gates
+
+Saved expression includes unstimulated samples, while final stimulation gate
+tables omit them. Positivity helpers must treat channels with no gate for the
+current sample as all-FALSE, preserving one logical value per cell.
+
 ### Function Signatures & Returns
 
 - Validate inputs and provide meaningful error messages.

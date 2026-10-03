@@ -48,6 +48,19 @@ test_that(".getPosIndCache records and validates per-channel threshold compariso
   )
 })
 
+test_that("missing gates produce one FALSE positivity value per cell", {
+  ex <- tibble::tibble(A = c(1, NA_real_, Inf), B = c(0, 3, 4))
+  gates <- tibble::tibble(chnl = "B", gate = 2, gateCyt = 1)
+  cache <- .getPosIndCache(ex, gates, chnl = c("A", "B"))
+  expect_identical(cache$base$A, rep(FALSE, nrow(ex)))
+  expect_identical(cache$cyt$A, rep(FALSE, nrow(ex)))
+  expect_identical(cache$base$B, c(FALSE, TRUE, TRUE))
+
+  cache <- .getPosIndCache(ex, gates[0, ], chnl = c("A", "B"))
+  expect_identical(cache$base$B, rep(FALSE, nrow(ex)))
+  expect_identical(cache$cyt$B, rep(FALSE, nrow(ex)))
+})
+
 test_that(".getPosIndMult and .getPosIndByChnl preserve NA semantics and combination logic", {
   ex <- data.frame(
     A = c(11, 8, 9, NA_real_),

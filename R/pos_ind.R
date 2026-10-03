@@ -31,6 +31,15 @@
       as.character(gateTbl$chnl) == chnlCurr
     )
 
+    # Unstimulated samples have saved expression but no stimulation gates.
+    if (length(gateTblChnlInd) == 0L) {
+      posCache$base[[chnlCurr]] <- rep(FALSE, nrow(ex))
+      if (hasGateCyt) {
+        posCache$cyt[[chnlCurr]] <- rep(FALSE, nrow(ex))
+      }
+      next
+    }
+
     if (is.null(posCache$base[[chnlCurr]])) {
       posCache$base[[chnlCurr]] <-
         ex[[chnlCurr]] > gateTbl$gate[[gateTblChnlInd]]
