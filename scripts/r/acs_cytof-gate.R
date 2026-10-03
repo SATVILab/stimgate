@@ -280,15 +280,17 @@
           "Nd150Di"
         ),
         biasUns = biasUns,
-        bwMtd = "hpi1",
-        bwNcellMax = 1e4,
-        bwFallback = "auto",
-        bwMin = "none",
-        bwMax = "none",
         minCell = 100,
-        gateCombn = "min",
-        tolClust = NULL,
-        calcCytPosGates = TRUE
+        calcCytPosGates = TRUE,
+        control = stimgate::stimControl(
+          bwMtd = "hpi1",
+          bwNcellMax = 1e4,
+          bwFallback = "auto",
+          bwMin = "none",
+          bwMax = "none",
+          gateCombn = "min",
+          clusterGates = FALSE
+        )
       )
     })
   }
