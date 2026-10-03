@@ -72,6 +72,9 @@
     maxPosProbX,
     gateCombn,
     gateQuant) {
+  # Snapshot of all arguments, taken before any local variable exists.
+  settings <- as.list(environment())
+
   # 1. Channel / Marker Mutual Exclusivity Checks
   if (!is.null(chnl) && !is.null(marker)) {
     stop("Specify only one of 'chnl' or 'marker', not both.")
@@ -94,9 +97,6 @@
       "`pathProject` must be a single, non-empty character string specifying a directory."
     )
   }
-  if (!is.character(popGate) || length(popGate) != 1) {
-    stop("`popGate` must be a single character string (e.g., 'root').")
-  }
   if (
     !inherits(
       .data,
@@ -118,82 +118,10 @@
     stop("`batchList` must be a non-empty list of sample indices.")
   }
 
-  # 3. Global Hyperparameter & Logic Checks
+  # 3. Global-only checks
   if (!is.logical(calcCytPosGates) || length(calcCytPosGates) != 1) {
     stop("`calcCytPosGates` must be a single logical value (TRUE/FALSE).")
   }
-  if (!is.logical(excMin) || length(excMin) != 1) {
-    stop("`excMin` must be a single logical value (TRUE/FALSE).")
-  }
-  if (
-    !.verifyIsNullOrNa(biasUns) &&
-      (!is.numeric(biasUns) || length(biasUns) != 1)
-  ) {
-    stop("`biasUns` must be a single numeric value, or NULL.")
-  }
-  if (
-    !is.numeric(biasUnsFactor) ||
-      length(biasUnsFactor) != 1 ||
-      biasUnsFactor <= 0
-  ) {
-    stop("`biasUnsFactor` must be a positive single numeric value.")
-  }
-  if (!.verifyIsNullOrNa(cpMin) && (!is.numeric(cpMin) || length(cpMin) != 1)) {
-    stop("`cpMin` must be a single numeric value, or NULL.")
-  }
-  if (!is.numeric(maxPosProbX) || length(maxPosProbX) != 1) {
-    stop("`maxPosProbX` must be a single numeric value.")
-  }
-
-  # Bandwidth checks
-  if (
-    !.verifyIsNullOrNa(bw) &&
-      (!is.numeric(bw) || length(bw) != 1 || !is.finite(bw) || bw <= 0)
-  ) {
-    stop("`bw` must be a single positive numeric value, or NULL.")
-  }
-
-  .verifyBwLimit(bwMin, "bwMin", allow_none = TRUE)
-  .verifyBwLimit(bwMax, "bwMax", allow_none = TRUE)
-  .verifyBwLimit(bwFallback, "bwFallback", allow_none = FALSE)
-
-  if (
-    is.numeric(bwMin) &&
-      length(bwMin) == 1L &&
-      is.finite(bwMin) &&
-      is.numeric(bwMax) &&
-      length(bwMax) == 1L &&
-      is.finite(bwMax) &&
-      bwMax < bwMin
-  ) {
-    stop("`bwMax` must be greater than or equal to `bwMin`.")
-  }
-  if (!is.numeric(bwAdj) || length(bwAdj) != 1 || bwAdj <= 0) {
-    stop("`bwAdj` must be a single positive numeric multiplier.")
-  }
-
-  validBwMtds <- c(
-    "nrd0",
-    "sj",
-    "hpi0",
-    "hpi1",
-    "hpi2",
-    "hpi3",
-    "nrd0Norm",
-    "sjNorm",
-    "hpi0Norm",
-    "hpi1Norm",
-    "hpi2Norm",
-    "hpi3Norm"
-  )
-  if (.verifyIsNullOrNa(bw) && !bwMtd %in% validBwMtds) {
-    stop(sprintf(
-      "`bwMtd` must be one of: %s",
-      paste(validBwMtds, collapse = ", ")
-    ))
-  }
-
-  # Cell limits
   if (
     .verifyIsNullOrNa(bw) &&
       !.verifyIsNullOrNa(bwNcellMin) &&
@@ -220,91 +148,24 @@
     stop("`minCell` must be a positive number.")
   }
 
-  if (
-    !.verifyIsNullOrNa(bwCluster) &&
-      (!is.numeric(bwCluster) ||
-        length(bwCluster) != 1 ||
-        !is.finite(bwCluster) ||
-        bwCluster <= 0)
-  ) {
-    stop("`bwCluster` must be a single positive numeric value, or NULL.")
+  # 4. Settings shared with per-channel validation. Per channel, NULL means
+  # "inherit the global value", so the global value must itself be supplied.
+  # `bwMtd` is only used (and so only checked) when `bw` is not fixed.
+  if (!.verifyIsNullOrNa(bw)) {
+    settings[["bwMtd"]] <- NULL
   }
-  if (
-    !.verifyIsNullOrNa(tolClust) &&
-      (!is.numeric(tolClust) ||
-        length(tolClust) != 1 ||
-        !is.finite(tolClust) ||
-        tolClust <= 0)
-  ) {
-    stop("`tolClust` must be a positive numeric value, or NULL.")
-  }
-
-  .verifyNormBwSettings(
-    settings = list(
-      bwAdaptive = bwAdaptive,
-      bwAdaptiveDensityN = bwAdaptiveDensityN,
-      bwAdaptivePadFrac = bwAdaptivePadFrac,
-      bwAdaptiveCore = bwAdaptiveCore,
-      bwAdaptiveExtra = bwAdaptiveExtra,
-      bwAdaptiveCrossover = bwAdaptiveCrossover,
-      bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
-      normPeakFrac = normPeakFrac,
-      normPeakMinRel = normPeakMinRel,
-      normExtraFrac = normExtraFrac,
-      normExtraMax = normExtraMax,
-      normExtraJitterFrac = normExtraJitterFrac,
-      normLambda = normLambda,
-      normDensityN = normDensityN,
-      normExcessBwMtd = normExcessBwMtd,
-      normExcessNcell = normExcessNcell,
-      normAdaptiveNcell = normAdaptiveNcell,
-      normMtd = normMtd
-    ),
-    prefix = ""
+  required <- c(
+    "excMin", "biasUnsFactor", "maxPosProbX", "bwAdj", "gateCombn",
+    "gateQuant", if (.verifyIsNullOrNa(bw)) "bwMtd"
   )
-
-  .verifyLocSettings(
-    settings = list(
-      locProbCol = locProbCol,
-      locMinPeakProb = locMinPeakProb,
-      locDipAlpha = locDipAlpha,
-      locAntimodeHeightFrac = locAntimodeHeightFrac,
-      locAntimodeLowRel = locAntimodeLowRel,
-      locAntimodeLowAbs = locAntimodeLowAbs,
-      locFlatDerivFrac = locFlatDerivFrac,
-      locFlatHardDerivFrac = locFlatHardDerivFrac,
-      locLeftLowRel = locLeftLowRel,
-      locLeftLowAbs = locLeftLowAbs,
-      locLeftCellFrac = locLeftCellFrac,
-      locLeftLengthFrac = locLeftLengthFrac,
-      locMarginalPurityRel = locMarginalPurityRel,
-      locMarginalCellBinRatio = locMarginalCellBinRatio,
-      locMarginalRefQuantile = locMarginalRefQuantile,
-      locTolRefPeak = locTolRefPeak
-    ),
-    prefix = ""
-  )
-
-  validGateCombns <- c("no", "min", "median", "max", "prejoin")
-  if (
-    !is.character(gateCombn) ||
-      length(gateCombn) == 0L ||
-      !all(gateCombn %in% validGateCombns)
-  ) {
-    stop(sprintf(
-      "`gateCombn` must contain only: %s",
-      paste(validGateCombns, collapse = ", ")
-    ))
-  }
-  if (
-    !is.numeric(gateQuant) ||
-      length(gateQuant) != 2 ||
-      any(gateQuant < 0 | gateQuant > 1)
-  ) {
+  isMissing <- vapply(settings[required], .verifyIsNullOrNa, logical(1))
+  if (any(isMissing)) {
     stop(
-      "`gateQuant` must be a numeric vector of two probabilities between 0 and 1."
+      "Must be supplied (not NULL or NA): ",
+      paste0("`", required[isMissing], "`", collapse = ", ")
     )
   }
+  .verifyChnlSettingsChnl(settings = settings, prefix = "")
 
   # Channel presence
   chnlLab <- .chnlLab(.data)
@@ -330,323 +191,167 @@
 
 #' @keywords internal
 .verifyChnlSettings <- function(chnlSettings, chnl, markerSettings, marker) {
-  # Added 'bwMin' which was previously missing
-  permissibleSettings <- c(
-    "biasUns",
-    "biasUnsFactor",
-    "excMin",
-    "cpMin",
-    "bw",
-    "bwMin",
-    "bwMax",
-    "bwFallback",
-    "bwMtd",
-    "bwAdj",
-    "bwNcellMin",
-    "bwNcellMax",
-    "minCell",
-    "tolClust",
-    "locProbCol",
-    "locMinPeakProb",
-    "locDipAlpha",
-    "locAntimodeHeightFrac",
-    "locAntimodeLowRel",
-    "locAntimodeLowAbs",
-    "locFlatDerivFrac",
-    "locFlatHardDerivFrac",
-    "locLeftLowRel",
-    "locLeftLowAbs",
-    "locLeftCellFrac",
-    "locLeftLengthFrac",
-    "locMarginalPurityRel",
-    "locMarginalCellBinRatio",
-    "locMarginalRefQuantile",
-    "locTolRefPeak",
-    "maxPosProbX",
-    "bwCluster",
-    "bwAdaptive",
-    "bwAdaptiveDensityN",
-    "bwAdaptivePadFrac",
-    "bwAdaptiveCore",
-    "bwAdaptiveExtra",
-    "bwAdaptiveCrossover",
-    "bwAdaptiveTransitionWidth",
-    "normPeakFrac",
-    "normPeakMinRel",
-    "normExtraFrac",
-    "normExtraMax",
-    "normExtraJitterFrac",
-    "normLambda",
-    "normDensityN",
-    "normExcessBwMtd",
-    "normExcessNcell",
-    "normAdaptiveNcell",
-    "normMtd",
-    "popGate",
-    "gateCombn",
-    "gateQuant"
+  # `.verifyGateInputs()` (the only caller's precondition) guarantees that at
+  # most one of `chnlSettings` and `markerSettings` is supplied.
+  isChnl <- !is.null(chnlSettings)
+  settingsList <- if (isChnl) chnlSettings else markerSettings
+  if (is.null(settingsList)) {
+    return(invisible(TRUE))
+  }
+  arg <- if (isChnl) "chnlSettings" else "markerSettings"
+  type <- if (isChnl) "channel" else "marker"
+  allowed <- if (isChnl) chnl else marker
+
+  if (!is.list(settingsList)) {
+    stop(sprintf("`%s` must be a list of %s-specific settings.", arg, type))
+  }
+  nms <- names(settingsList)
+  if (length(settingsList) > 0L) {
+    if (is.null(nms)) {
+      stop(sprintf("`%s` elements must be named.", arg))
+    }
+    if (anyDuplicated(nms) > 0L) {
+      stop(sprintf("`%s` must have unique %s names.", arg, type))
+    }
+    if (!all(nms %in% allowed)) {
+      stop(sprintf(
+        "All %ss in `%s` must be included in `%s`",
+        type, arg, if (isChnl) "chnl" else "marker"
+      ))
+    }
+  }
+
+  # Every per-channel-capable `gateStim()` argument. `locEnforceShapeThreshold`
+  # is legacy and deliberately global only.
+  permissibleSettings <- setdiff(
+    names(formals(gateStim)),
+    c(
+      "pathProject", ".data", "batchList", "chnl", "marker", "chnlSettings",
+      "markerSettings", "calcCytPosGates", "locEnforceShapeThreshold"
+    )
   )
-
-  if (!is.null(chnlSettings) && !is.null(markerSettings)) {
-    stop("Specify only one of `chnlSettings` or `markerSettings`, not both.")
-  }
-  if (!is.null(chnlSettings) && !is.list(chnlSettings)) {
-    stop("`chnlSettings` must be a list of channel-specific settings.")
-  }
-  if (!is.null(markerSettings) && !is.list(markerSettings)) {
-    stop("`markerSettings` must be a list of marker-specific settings.")
-  }
-
-  if (!is.null(chnlSettings) && length(chnlSettings) > 0L) {
-    chnlVec <- names(chnlSettings)
-    if (length(chnlVec) == 0L || length(chnlVec) != length(chnlSettings)) {
-      stop("`chnlSettings` elements must be named.")
+  purrr::walk(nms, function(nm) {
+    settingsCurr <- settingsList[[nm]]
+    if (!is.list(settingsCurr)) {
+      stop(sprintf("%s '%s' setting must be a list.", type, nm))
     }
-    if (length(chnlVec) != length(unique(chnlVec))) {
-      stop("`chnlSettings` must have unique channel names.")
+    invalidSettings <- setdiff(names(settingsCurr), permissibleSettings)
+    if (length(invalidSettings) > 0L) {
+      stop(
+        sprintf("Invalid settings for %s '%s': ", type, nm),
+        paste(invalidSettings, collapse = ", ")
+      )
     }
-    if (!all(chnlVec %in% chnl)) {
-      stop("All channels in `chnlSettings` must be included in `chnl`")
-    }
-  } else if (!is.null(markerSettings) && length(markerSettings) > 0L) {
-    markerVec <- names(markerSettings)
-    if (
-      length(markerVec) == 0L || length(markerVec) != length(markerSettings)
-    ) {
-      stop("`markerSettings` elements must be named.")
-    }
-    if (length(markerVec) != length(unique(markerVec))) {
-      stop("`markerSettings` must have unique marker names.")
-    }
-    if (!all(markerVec %in% marker)) {
-      stop("All markers in `markerSettings` must be included in `marker`")
-    }
-  }
-
-  if (!is.null(chnlSettings)) {
-    purrr::walk(names(chnlSettings), function(chnlCurr) {
-      settingsCurr <- chnlSettings[[chnlCurr]]
-      if (!is.list(settingsCurr)) {
-        stop(sprintf("Channel '%s' setting must be a list.", chnlCurr))
-      }
-      invalidSettings <- setdiff(names(settingsCurr), permissibleSettings)
-      if (length(invalidSettings) > 0L) {
-        stop(
-          sprintf("Invalid settings for channel '%s': ", chnlCurr),
-          paste(invalidSettings, collapse = ", ")
-        )
-      }
-      .verifyChnlSettingsChnl(chnlCurr, settingsCurr)
-    })
-  }
-  if (!is.null(markerSettings)) {
-    purrr::walk(names(markerSettings), function(markerCurr) {
-      settingsCurr <- markerSettings[[markerCurr]]
-      if (!is.list(settingsCurr)) {
-        stop(sprintf("Marker '%s' setting must be a list.", markerCurr))
-      }
-      invalidSettings <- setdiff(names(settingsCurr), permissibleSettings)
-      if (length(invalidSettings) > 0L) {
-        stop(
-          sprintf("Invalid settings for marker '%s': ", markerCurr),
-          paste(invalidSettings, collapse = ", ")
-        )
-      }
-      .verifyChnlSettingsChnl(markerCurr, settingsCurr)
-    })
-  }
+    .verifyChnlSettingsChnl(nm, settingsCurr)
+  })
   invisible(TRUE)
 }
 
-#' @keywords internal
-.verifyChnlSettingsChnl <- function(chnlCurr, settings) {
-  prefix <- sprintf("Channel '%s' setting error: ", chnlCurr)
+.verifyBwMtdsOrdinary <- c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
+.verifyBwMtds <- c(.verifyBwMtdsOrdinary, paste0(.verifyBwMtdsOrdinary, "Norm"))
+.verifyGateCombns <- c("no", "min", "median", "max", "prejoin")
 
-  # Check logical flags
+#' @keywords internal
+.verifyChnlSettingsChnl <- function(
+    chnlCurr,
+    settings,
+    prefix = sprintf("Channel '%s' setting error: ", chnlCurr)) {
   if (
-    !.verifyIsNullOrNa(settings$excMin) &&
-      (!is.logical(settings$excMin) || length(settings$excMin) != 1)
+    !.verifyIsNullOrNa(settings[["excMin"]]) &&
+      (!is.logical(settings[["excMin"]]) || length(settings[["excMin"]]) != 1)
   ) {
     stop(paste0(prefix, "`excMin` must be a single logical value."))
   }
-  # Check numeric scalars
-  if (
-    !.verifyIsNullOrNa(settings$biasUns) &&
-      (!is.numeric(settings$biasUns) || length(settings$biasUns) != 1)
-  ) {
-    stop(paste0(prefix, "`biasUns` must be a single numeric value."))
+  for (nm in c("biasUns", "cpMin", "maxPosProbX")) {
+    val <- settings[[nm]]
+    if (!.verifyIsNullOrNa(val) && (!is.numeric(val) || length(val) != 1)) {
+      stop(paste0(prefix, "`", nm, "` must be a single numeric value."))
+    }
   }
-  if (
-    !.verifyIsNullOrNa(settings$biasUnsFactor) &&
-      (!is.numeric(settings$biasUnsFactor) ||
-        length(settings$biasUnsFactor) != 1 ||
-        settings$biasUnsFactor <= 0)
-  ) {
-    stop(paste0(prefix, "`biasUnsFactor` must be a single positive number."))
+  for (nm in c("biasUnsFactor", "bwAdj")) {
+    .check_positive_n(
+      nm,
+      allow_inf = TRUE, settings = settings, prefix = prefix
+    )
   }
-  if (
-    !.verifyIsNullOrNa(settings$bw) &&
-      (!is.numeric(settings$bw) ||
-        length(settings$bw) != 1 ||
-        !is.finite(settings$bw) ||
-        settings$bw <= 0)
-  ) {
-    stop(paste0(prefix, "`bw` must be a single positive numeric value."))
+  for (nm in c("bw", "bwCluster", "tolClust")) {
+    .check_positive_n(nm, settings = settings, prefix = prefix)
   }
+
+  bwMin <- settings[["bwMin"]]
+  bwMax <- settings[["bwMax"]]
+  .verifyBwLimitSetting(
+    bwMin, "bwMin",
+    allow_neg = TRUE, allow_inf = TRUE, prefix = prefix
+  )
+  .verifyBwLimitSetting(bwMax, "bwMax", allow_inf = TRUE, prefix = prefix)
+  .verifyBwLimitSetting(
+    settings[["bwFallback"]], "bwFallback",
+    allow_none = FALSE, prefix = prefix
+  )
   if (
-    is.numeric(settings$bwMin) &&
-      length(settings$bwMin) == 1L &&
-      is.finite(settings$bwMin) &&
-      is.numeric(settings$bwMax) &&
-      length(settings$bwMax) == 1L &&
-      is.finite(settings$bwMax) &&
-      settings$bwMax < settings$bwMin
+    is.numeric(bwMin) && is.numeric(bwMax) && all(is.finite(c(bwMin, bwMax))) &&
+      bwMax < bwMin
   ) {
     stop(paste0(prefix, "`bwMax` must be >= `bwMin`."))
   }
-  if (
-    !.verifyIsNullOrNa(settings$bwAdj) &&
-      (!is.numeric(settings$bwAdj) ||
-        length(settings$bwAdj) != 1 ||
-        settings$bwAdj <= 0)
-  ) {
-    stop(paste0(prefix, "`bwAdj` must be a positive numeric multiplier."))
-  }
-  if (
-    !.verifyIsNullOrNa(settings$cpMin) &&
-      (!is.numeric(settings$cpMin) || length(settings$cpMin) != 1)
-  ) {
-    stop(paste0(prefix, "`cpMin` must be a single numeric value."))
-  }
-  if (
-    !.verifyIsNullOrNa(settings$maxPosProbX) &&
-      (!is.numeric(settings$maxPosProbX) || length(settings$maxPosProbX) != 1)
-  ) {
-    stop(paste0(prefix, "`maxPosProbX` must be a single numeric value."))
-  }
 
-  .verifyBwLimitSetting(
-    settings$bwMin,
-    "bwMin",
-    allow_none = TRUE,
-    allow_neg = TRUE,
-    allow_inf = TRUE,
-    prefix = prefix
-  )
-  .verifyBwLimitSetting(
-    settings$bwMax,
-    "bwMax",
-    allow_none = TRUE,
-    allow_inf = TRUE,
-    prefix = prefix
-  )
-  .verifyBwLimitSetting(
-    settings$bwFallback,
-    "bwFallback",
-    allow_none = FALSE,
-    prefix = prefix
-  )
-
-  # Check Character strings
   if (
-    "popGate" %in%
-      names(settings) &&
-      (!is.character(settings$popGate) || length(settings$popGate) != 1)
+    "popGate" %in% names(settings) &&
+      (!is.character(settings[["popGate"]]) ||
+        length(settings[["popGate"]]) != 1)
   ) {
     stop(paste0(prefix, "`popGate` must be a single character string."))
   }
 
-  validBwMtds <- c(
-    "nrd0",
-    "sj",
-    "hpi0",
-    "hpi1",
-    "hpi2",
-    "hpi3",
-    "nrd0Norm",
-    "sjNorm",
-    "hpi0Norm",
-    "hpi1Norm",
-    "hpi2Norm",
-    "hpi3Norm"
-  )
+  bwMtd <- settings[["bwMtd"]]
   if (
-    !.verifyIsNullOrNa(settings$bwMtd) &&
-      (!is.character(settings$bwMtd) ||
-        length(settings$bwMtd) != 1 ||
-        !settings$bwMtd %in% validBwMtds)
+    !.verifyIsNullOrNa(bwMtd) &&
+      (!is.character(bwMtd) || length(bwMtd) != 1 || !bwMtd %in% .verifyBwMtds)
   ) {
     stop(paste0(
-      prefix,
-      "`bwMtd` must be one of: ",
-      paste(validBwMtds, collapse = ", "),
-      "."
+      prefix, "`bwMtd` must be one of: ",
+      paste(.verifyBwMtds, collapse = ", "), "."
     ))
   }
 
+  gateCombn <- settings[["gateCombn"]]
   if (
-    !.verifyIsNullOrNa(settings$bwCluster) &&
-      (!is.numeric(settings$bwCluster) ||
-        length(settings$bwCluster) != 1 ||
-        !is.finite(settings$bwCluster) ||
-        settings$bwCluster <= 0)
-  ) {
-    stop(paste0(prefix, "`bwCluster` must be a single positive numeric value."))
-  }
-
-  if (
-    !.verifyIsNullOrNa(settings$tolClust) &&
-      (!is.numeric(settings$tolClust) ||
-        length(settings$tolClust) != 1 ||
-        !is.finite(settings$tolClust) ||
-        settings$tolClust <= 0)
+    !.verifyIsNullOrNa(gateCombn) &&
+      (!is.character(gateCombn) ||
+        length(gateCombn) == 0L ||
+        !all(gateCombn %in% .verifyGateCombns))
   ) {
     stop(paste0(
-      prefix,
-      "`tolClust` must be a positive numeric value, or NULL."
+      prefix, "`gateCombn` must contain only: ",
+      paste(.verifyGateCombns, collapse = ", "), "."
     ))
   }
 
-  validGateCombns <- c("no", "min", "median", "max", "prejoin")
+  gateQuant <- settings[["gateQuant"]]
   if (
-    !.verifyIsNullOrNa(settings$gateCombn) &&
-      (!is.character(settings$gateCombn) ||
-        length(settings$gateCombn) == 0L ||
-        !all(settings$gateCombn %in% validGateCombns))
+    !.verifyIsNullOrNa(gateQuant) &&
+      (!is.numeric(gateQuant) ||
+        length(gateQuant) != 2 ||
+        any(gateQuant < 0 | gateQuant > 1))
   ) {
     stop(paste0(
-      prefix,
-      "`gateCombn` must contain only: ",
-      paste(validGateCombns, collapse = ", "),
-      "."
-    ))
-  }
-
-  if (
-    !.verifyIsNullOrNa(settings$gateQuant) &&
-      (!is.numeric(settings$gateQuant) ||
-        length(settings$gateQuant) != 2 ||
-        any(settings$gateQuant < 0 | settings$gateQuant > 1))
-  ) {
-    stop(paste0(
-      prefix,
-      "`gateQuant` must be two probabilities between 0 and 1."
+      prefix, "`gateQuant` must be two probabilities between 0 and 1."
     ))
   }
 
   .verifyNormBwSettings(settings = settings, prefix = prefix)
-
   .verifyLocSettings(settings = settings, prefix = prefix)
 
   invisible(TRUE)
 }
 
-
 #' @keywords internal
 .verifyNormBwSettings <- function(settings, prefix = "") {
   if (
-    !.verifyIsNullOrNa(settings$bwAdaptive) &&
-      (!is.logical(settings$bwAdaptive) || length(settings$bwAdaptive) != 1L)
+    !.verifyIsNullOrNa(settings[["bwAdaptive"]]) &&
+      (!is.logical(settings[["bwAdaptive"]]) ||
+        length(settings[["bwAdaptive"]]) != 1L)
   ) {
     stop(paste0(prefix, "`bwAdaptive` must be a single logical value."))
   }
@@ -666,21 +371,18 @@
   .check_positive_n("normExcessNcell", settings = settings, prefix = prefix)
   .check_positive_n("normAdaptiveNcell", settings = settings, prefix = prefix)
   .check_positive_n("bwAdaptiveDensityN", settings = settings, prefix = prefix)
-  if (!.verifyIsNullOrNa(settings$bwAdaptivePadFrac)) {
-    val <- settings$bwAdaptivePadFrac
-    if (!is.numeric(val) || length(val) != 1L || !is.finite(val) || val < 0) {
-      stop(paste0(
-        prefix,
-        "`bwAdaptivePadFrac` must be a single non-negative numeric value."
-      ))
-    }
-  }
+  .check_positive_n(
+    "bwAdaptivePadFrac",
+    allow_zero = TRUE,
+    settings = settings,
+    prefix = prefix
+  )
 
   .check_positive_n("bwAdaptiveCore", settings = settings, prefix = prefix)
   .check_positive_n("bwAdaptiveExtra", settings = settings, prefix = prefix)
 
-  if (!.verifyIsNullOrNa(settings$bwAdaptiveCrossover)) {
-    val <- settings$bwAdaptiveCrossover
+  if (!.verifyIsNullOrNa(settings[["bwAdaptiveCrossover"]])) {
+    val <- settings[["bwAdaptiveCrossover"]]
     if (!is.numeric(val) || length(val) != 1L || !is.finite(val)) {
       stop(paste0(
         prefix,
@@ -689,50 +391,49 @@
     }
   }
 
-  if (!.verifyIsNullOrNa(settings$bwAdaptiveTransitionWidth)) {
-    val <- settings$bwAdaptiveTransitionWidth
-    if (!is.numeric(val) || length(val) != 1L || !is.finite(val) || val < 0) {
-      stop(paste0(
-        prefix,
-        "`bwAdaptiveTransitionWidth` must be a single non-negative numeric value."
-      ))
-    }
-  }
+  .check_positive_n(
+    "bwAdaptiveTransitionWidth",
+    allow_zero = TRUE,
+    settings = settings,
+    prefix = prefix
+  )
 
-  if (!.verifyIsNullOrNa(settings$normLambda)) {
-    val <- settings$normLambda
+  if (!.verifyIsNullOrNa(settings[["normLambda"]])) {
+    val <- settings[["normLambda"]]
     if (!is.numeric(val) || length(val) == 0L || any(!is.finite(val))) {
       stop(paste0(prefix, "`normLambda` must be a finite numeric vector."))
     }
   }
 
-  if (!.verifyIsNullOrNa(settings$normExcessBwMtd)) {
-    validOrdinaryBwMtds <- c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
+  if (!.verifyIsNullOrNa(settings[["normExcessBwMtd"]])) {
     if (
-      !is.character(settings$normExcessBwMtd) ||
-        length(settings$normExcessBwMtd) != 1L ||
-        !settings$normExcessBwMtd %in% validOrdinaryBwMtds
+      !is.character(settings[["normExcessBwMtd"]]) ||
+        length(settings[["normExcessBwMtd"]]) != 1L ||
+        !settings[["normExcessBwMtd"]] %in% .verifyBwMtdsOrdinary
     ) {
       stop(paste0(
         prefix,
         "`normExcessBwMtd` must be one of: ",
-        paste(validOrdinaryBwMtds, collapse = ", "),
+        paste(.verifyBwMtdsOrdinary, collapse = ", "),
         "."
       ))
     }
   }
 
-  if (!.verifyIsNullOrNa(settings$normMtd)) {
+  if (!.verifyIsNullOrNa(settings[["normMtd"]])) {
     if (
-      !is.character(settings$normMtd) ||
-        length(settings$normMtd) != 1L ||
-        !settings$normMtd %in% c("moments", "boxcox")
+      !is.character(settings[["normMtd"]]) ||
+        length(settings[["normMtd"]]) != 1L ||
+        !settings[["normMtd"]] %in% c("moments", "boxcox")
     ) {
       stop(paste0(prefix, "`normMtd` must be either 'moments' or 'boxcox'."))
     }
   }
 
-  if (isTRUE(settings$bwAdaptive) && identical(settings$normMtd, "boxcox")) {
+  if (
+    isTRUE(settings[["bwAdaptive"]]) &&
+      identical(settings[["normMtd"]], "boxcox")
+  ) {
     stop(paste0(
       prefix,
       "`bwAdaptive = TRUE` currently requires `normMtd = 'moments'`."
@@ -745,10 +446,10 @@
 #' @keywords internal
 .verifyLocSettings <- function(settings, prefix = "") {
   if (
-    !.verifyIsNullOrNa(settings$locProbCol) &&
-      (!is.character(settings$locProbCol) ||
-        length(settings$locProbCol) != 1 ||
-        !settings$locProbCol %in% c("pred", "probSmooth"))
+    !.verifyIsNullOrNa(settings[["locProbCol"]]) &&
+      (!is.character(settings[["locProbCol"]]) ||
+        length(settings[["locProbCol"]]) != 1 ||
+        !settings[["locProbCol"]] %in% c("pred", "probSmooth"))
   ) {
     stop(paste0(prefix, "`locProbCol` must be either 'pred' or 'probSmooth'."))
   }
@@ -783,27 +484,24 @@
     invisible(TRUE)
   })
 
-  if (!.verifyIsNullOrNa(settings$locMarginalCellBinRatio)) {
-    val <- settings$locMarginalCellBinRatio
-    if (!is.numeric(val) || length(val) != 1 || !is.finite(val) || val <= 0) {
-      stop(paste0(
-        prefix,
-        "`locMarginalCellBinRatio` must be a single positive finite numeric value."
-      ))
-    }
-  }
+  .check_positive_n(
+    "locMarginalCellBinRatio",
+    settings = settings,
+    prefix = prefix
+  )
 
   if (
-    !.verifyIsNullOrNa(settings$locTolRefPeak) &&
-      (!is.character(settings$locTolRefPeak) ||
-        length(settings$locTolRefPeak) != 1 ||
-        !settings$locTolRefPeak %in% c("highest", "first"))
+    !.verifyIsNullOrNa(settings[["locTolRefPeak"]]) &&
+      (!is.character(settings[["locTolRefPeak"]]) ||
+        length(settings[["locTolRefPeak"]]) != 1 ||
+        !settings[["locTolRefPeak"]] %in% c("highest", "first"))
   ) {
     stop(paste0(prefix, "`locTolRefPeak` must be either 'highest' or 'first'."))
   }
 
   invisible(TRUE)
 }
+
 
 .verifyBwLimitSetting <- function(
     x,
@@ -815,54 +513,27 @@
   if (.verifyIsNullOrNa(x)) {
     return(invisible(TRUE))
   }
-  if (is.character(x) && length(x) == 1L) {
-    validChar <- if (allow_none) c("auto", "none") else "auto"
-    if (tolower(x) %in% validChar) {
-      return(invisible(TRUE))
-    }
-  }
-  neg_fail <- if (allow_neg) {
-    FALSE
-  } else {
-    x <= 0
-  }
-  inf_fail <- if (allow_inf) {
-    FALSE
-  } else {
-    is.infinite(x)
+  if (
+    is.character(x) &&
+      length(x) == 1L &&
+      tolower(x) %in% c("auto", if (allow_none) "none")
+  ) {
+    return(invisible(TRUE))
   }
   if (
     !is.numeric(x) ||
       length(x) != 1L ||
-      neg_fail ||
-      inf_fail
+      (!allow_inf && is.infinite(x)) ||
+      (!allow_neg && x <= 0)
   ) {
     stop(paste0(
       prefix,
       "`",
       nm,
-      "` must be a positive numeric value",
+      "` must be a single ",
+      if (allow_neg) "" else "positive ",
+      "numeric value",
       if (allow_none) ", `auto`, `none`, or NULL." else " or `auto`."
-    ))
-  }
-  invisible(TRUE)
-}
-
-.verifyBwLimit <- function(x, nm, allow_none = TRUE) {
-  if (.verifyIsNullOrNa(x)) {
-    return(invisible(TRUE))
-  }
-  if (is.character(x) && length(x) == 1L) {
-    validChar <- if (allow_none) c("auto", "none") else "auto"
-    if (tolower(x) %in% validChar) {
-      return(invisible(TRUE))
-    }
-  }
-  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0) {
-    stop(sprintf(
-      "`%s` must be a single positive numeric value%s.",
-      nm,
-      if (allow_none) ", `auto`, `none`, or NULL" else " or `auto`"
     ))
   }
   invisible(TRUE)
@@ -870,26 +541,28 @@
 
 .check_positive_n <- function(
     nm,
-    allow_null = TRUE,
     allow_inf = FALSE,
+    allow_zero = FALSE,
     settings,
     prefix = "") {
   val <- settings[[nm]]
-  if (.verifyIsNullOrNa(val) && isTRUE(allow_null)) {
+  if (.verifyIsNullOrNa(val)) {
     return(invisible(TRUE))
   }
   if (
     !is.numeric(val) ||
       length(val) != 1L ||
       (!allow_inf && !is.finite(val)) ||
-      (allow_inf && !is.finite(val) && !is.infinite(val)) ||
-      val <= 0
+      val < 0 ||
+      (!allow_zero && val == 0)
   ) {
     stop(paste0(
       prefix,
       "`",
       nm,
-      "` must be a single positive numeric value."
+      "` must be a single ",
+      if (allow_zero) "non-negative" else "positive",
+      " numeric value."
     ))
   }
   invisible(TRUE)
