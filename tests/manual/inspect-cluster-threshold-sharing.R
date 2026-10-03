@@ -134,20 +134,6 @@ cluster_threshold_tbl <- stimgate:::.getCpClusterLocApplyQuantiles(
 ) |>
   dplyr::arrange(.data$grp, .data$ind)
 
-pair_tbl <- purrr::map_df(ex_lookup, function(ex_pair) {
-  stim <- stimgate:::.getCut(ex_pair$stim)
-  uns <- stimgate:::.getCut(ex_pair$uns)
-  tibble::tibble(
-    ind = ex_pair$ind,
-    batch = ex_pair$batch,
-    stim_min = min(stim),
-    stim_max = max(stim),
-    uns_min = min(uns),
-    uns_max = max(uns)
-  )
-}) |>
-  dplyr::left_join(cluster_tbl, by = "ind")
-
 inspection_tbl <- cluster_threshold_tbl |>
   dplyr::transmute(
     grp = .data$grp,
@@ -164,28 +150,6 @@ inspection_tbl <- cluster_threshold_tbl |>
     source = .data$locSource,
     reason = .data$locReason
   )
-
-direct_thresholds <- loc_tbl |>
-  dplyr::filter(
-    .data$locGeneratedDirect %in% TRUE,
-    is.finite(.data$gate)
-  ) |>
-  dplyr::group_by(.data$grp) |>
-  dplyr::summarise(
-    direct_thresholds = paste(sort(.data$gate), collapse = ", "),
-    .groups = "drop"
-  )
-
-cluster_summary_tbl <- inspection_tbl |>
-  dplyr::distinct(
-    .data$grp,
-    .data$cluster_n_direct,
-    .data$q15,
-    .data$q60,
-    .data$q85
-  ) |>
-  dplyr::left_join(direct_thresholds, by = "grp") |>
-  dplyr::arrange(.data$grp)
 
 feature_cols <- stimgate:::.getCpClusterLocFeatureCols(feature_tbl)
 feature_long <- feature_tbl |>
@@ -278,9 +242,6 @@ threshold_plot <- ggplot2::ggplot() +
   ) +
   ggplot2::theme_minimal()
 
-cat("\nInput stim/unstim pairs and cluster assignments:\n")
-print(pair_tbl, n = Inf)
-
 cat("\nCommon bandwidth:\n")
 print(common_bw)
 
@@ -291,9 +252,6 @@ print(tibble::tibble(
   max = max(density_grid),
   step = density_grid[[2]] - density_grid[[1]]
 ))
-
-cat("\nWithin-cluster direct-threshold distribution and transfer quantiles:\n")
-print(cluster_summary_tbl, n = Inf)
 
 cat("\nOriginal/final thresholds with provenance:\n")
 print(inspection_tbl, n = Inf)
