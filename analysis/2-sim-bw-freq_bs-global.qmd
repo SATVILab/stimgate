@@ -432,7 +432,6 @@ if (isTRUE(run_simulations)) {
 
   if (nrow(sim_grid) > 0L) {
     old_plan <- future::plan()
-    on.exit(future::plan(old_plan), add = TRUE)
     future::plan(
       future::multisession,
       workers = max(1, .simGetCores())
@@ -440,10 +439,11 @@ if (isTRUE(run_simulations)) {
 
     total_sims <- nrow(sim_grid)
 
-    bw_list_raw <- progressr::with_progress({
-      p <- progressr::progressor(steps = total_sims)
+    bw_list_raw <- tryCatch(
+      progressr::with_progress({
+        p <- progressr::progressor(steps = total_sims)
 
-      furrr::future_pmap(
+        furrr::future_pmap(
         sim_grid,
         function(transformation,
                  prob_response,
@@ -656,9 +656,11 @@ if (isTRUE(run_simulations)) {
 
           out
         },
-        .options = furrr::furrr_options(seed = TRUE, chunk_size = 10L)
-      )
-    })
+          .options = furrr::furrr_options(seed = TRUE, chunk_size = 10L)
+        )
+      }),
+      finally = future::plan(old_plan)
+    )
 
     .write_rds_atomic(
       bw_list_raw,
