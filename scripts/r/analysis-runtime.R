@@ -1,12 +1,12 @@
-.analysis_is_dev <- function() {
-  if (exists(".isDev", mode = "function")) isTRUE(.isDev()) else
-    "dev" %in% trimws(strsplit(Sys.getenv("PROJR_PROFILE"), ",", fixed = TRUE)[[1]])
+# Read PROJR_PROFILE directly, as .isDev()/.isQuick() in .Rprofile do, but
+# without needing projr or the .Rprofile.
+.analysis_has_profile <- function(profile) {
+  profile %in% trimws(strsplit(Sys.getenv("PROJR_PROFILE"), ",", fixed = TRUE)[[1]])
 }
 
-.analysis_is_quick <- function() {
-  if (exists(".isQuick", mode = "function")) isTRUE(.isQuick()) else
-    "quick" %in% trimws(strsplit(Sys.getenv("PROJR_PROFILE"), ",", fixed = TRUE)[[1]])
-}
+.analysis_is_dev <- function() .analysis_has_profile("dev")
+
+.analysis_is_quick <- function() .analysis_has_profile("quick")
 
 .analysis_mode_key <- function(analysis_key) {
   suffix <- if (.analysis_is_dev()) "dev" else if (.analysis_is_quick()) "quick"
