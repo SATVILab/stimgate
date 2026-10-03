@@ -15,16 +15,6 @@ pkg_ns <- asNamespace("stimgate")
   envir = pkg_ns,
   mode = "function"
 )
-.getCpUnsLocGetProbSmoothObjPred <- get(
-  ".getCpUnsLocGetProbSmoothObjPred",
-  envir = pkg_ns,
-  mode = "function"
-)
-.getCpUnsLocGetProbSmoothAttachDeriv <- get(
-  ".getCpUnsLocGetProbSmoothAttachDeriv",
-  envir = pkg_ns,
-  mode = "function"
-)
 .getCpUnsLocGetProbSmoothNewData <- get(
   ".getCpUnsLocGetProbSmoothNewData",
   envir = pkg_ns,
@@ -40,13 +30,8 @@ pkg_ns <- asNamespace("stimgate")
   envir = pkg_ns,
   mode = "function"
 )
-.getCpUnsLocGetProbSmoothActualCheck <- get(
-  ".getCpUnsLocGetProbSmoothActualCheck",
-  envir = pkg_ns,
-  mode = "function"
-)
-.getCpUnsLocGetProbSmoothActualThird <- get(
-  ".getCpUnsLocGetProbSmoothActualThird",
+.getCpUnsLocGetProbSmoothFallback <- get(
+  ".getCpUnsLocGetProbSmoothFallback",
   envir = pkg_ns,
   mode = "function"
 )
@@ -225,39 +210,9 @@ test_that("pure smoothing helpers validate inputs and prediction structures", {
   expect_equal(df_out$pred, c(0.2 - 1e-4, 0.6 - 1e-4))
   expect_null(.getCpUnsLocGetProbSmoothCheckNCellOut(NULL))
 
-  # .getCpUnsLocGetProbSmoothObjPred
-  expect_equal(
-    .getCpUnsLocGetProbSmoothObjPred(list(pred = c(0.1, 0.2))),
-    c(0.1, 0.2)
-  )
-  expect_equal(
-    .getCpUnsLocGetProbSmoothObjPred(c(0.3, 0.4)),
-    c(0.3, 0.4)
-  )
-
-  # .getCpUnsLocGetProbSmoothAttachDeriv
-  df_base <- data.frame(x = 1:3)
-  deriv_mock <- tibble::tibble(
-    x = 1:3,
-    pred = c(0.1, 0.2, 0.3),
-    deriv = c(0, 0, 0)
-  )
-  df_attached <- .getCpUnsLocGetProbSmoothAttachDeriv(
-    dataMod = df_base,
-    smoothObj = list(derivTbl = deriv_mock, method = "scam_mpi")
-  )
-  expect_equal(attr(df_attached, "locProbDerivTbl"), deriv_mock)
-  expect_equal(attr(df_attached, "locProbSmoothMethod"), "scam_mpi")
-
-  # Non-list smoothObj returns unmodified dataMod
-  expect_identical(
-    .getCpUnsLocGetProbSmoothAttachDeriv(df_base, NULL),
-    df_base
-  )
-
-  # .getCpUnsLocGetProbSmoothActualThird fallback constructor
+  # .getCpUnsLocGetProbSmoothFallback fallback constructor
   df_third <- data.frame(probSmooth = c(0.1, 0.5, 0.9))
-  third_out <- .getCpUnsLocGetProbSmoothActualThird(df_third, stage = "init")
+  third_out <- .getCpUnsLocGetProbSmoothFallback(df_third)
   expect_type(third_out, "list")
   expect_equal(third_out$pred, df_third$probSmooth - 0.0001)
   expect_true(is.na(third_out$meanAbsError))
@@ -330,7 +285,12 @@ test_that(".getCpUnsLocGetProbSmoothDerivativeTbl handles edge cases", {
   attr(data_mod, "chnlCut") <- "TNF"
   attr(data_mod, "idxMod") <- seq_along(x_vals)
 
-  fit <- pkg_ns$.getCpUnsLocGetProbSmoothActualFirst(data_mod, stage = "init")
+  fit <- pkg_ns$.fitScam(
+    data_mod,
+    bs = "mpi",
+    family = "quasibinomial",
+    quiet = FALSE
+  )
   expect_false(inherits(fit, "try-error"))
 
   deriv_custom <- .getCpUnsLocGetProbSmoothDerivativeTbl(
