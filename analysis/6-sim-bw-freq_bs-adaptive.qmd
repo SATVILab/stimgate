@@ -73,6 +73,11 @@ analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
 analysis_semantics_version <- "adaptive-bw-freq-v2"
 analysis_quick <- isTRUE(.isQuick())
 analysis_dev <- isTRUE(.isDev())
+n_sample_sim <- 5L
+n_iter_sim <- 5L
+cov_ev_min <- 1.5
+cov_ev_max <- 1.5
+prob_exact <- TRUE
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -275,6 +280,24 @@ if (analysis_quick && !analysis_dev && nrow(sim_grid) > 100L) {
 }
 
 sim_grid_all <- sim_grid
+analysis_grid_spec <- sim_grid_all |>
+  dplyr::select(-.data$sim_seed)
+
+analysis_required_params <- list(
+  analysis_semantics_version = analysis_semantics_version,
+  simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
+  analysis_dev = analysis_dev,
+  n_sample_sim = n_sample_sim,
+  n_iter_sim = n_iter_sim,
+  cov_ev_min = cov_ev_min,
+  cov_ev_max = cov_ev_max,
+  prob_exact = prob_exact,
+  tol_clust = tol_clust,
+  loc_enforce_shape_threshold = loc_enforce_shape_threshold,
+  calc_cyt_pos_gates = calc_cyt_pos_gates,
+  sim_grid_spec = analysis_grid_spec
+)
 
 if (nrow(sim_grid_all) > 0L) {
   set.seed(sim_grid_shuffle_seed)
@@ -342,7 +365,7 @@ for (i in seq_len(nrow(sim_grid))) {
     bwMax = "none",
     nCellStim = sim_grid$n_cell[i],
     probResponse = sim_grid$prob_response[i],
-    probExact = TRUE,
+    probExact = prob_exact,
     meanPos = sim_grid$mean_pos[i],
     transformation = sim_grid$transformation[i],
     samplePerturbationSd = sim_grid$sample_perturbation_sd[i],
@@ -352,8 +375,8 @@ for (i in seq_len(nrow(sim_grid))) {
       sim_grid$background_relative_to_response[i],
     ncellUnsRelativeToStim =
       sim_grid$n_cell_uns_relative_to_stim[i],
-    covEvMin = 1.5,
-    covEvMax = 1.5,
+    covEvMin = cov_ev_min,
+    covEvMax = cov_ev_max,
     tolClust = tol_clust,
     locEnforceShapeThreshold = loc_enforce_shape_threshold,
     calcCytPosGates = calc_cyt_pos_gates
@@ -407,21 +430,15 @@ if (isTRUE(run_simulations)) {
     analysis_key = analysis_key,
     run_id = analysis_run_id,
     path_root = root_dir,
-    params = list(
-      run_simulations = run_simulations,
-      run_plots = run_plots,
-      analysis_semantics_version = analysis_semantics_version,
-      simulation_seed = simulation_seed,
-      analysis_quick = analysis_quick,
-      analysis_dev = analysis_dev,
-      n_sample_sim = 5L,
-      n_iter_sim = 5L,
-      tol_clust = tol_clust,
-      loc_enforce_shape_threshold = loc_enforce_shape_threshold,
-      calc_cyt_pos_gates = calc_cyt_pos_gates,
-      sim_grid_chunk_index = sim_grid_chunk_index,
-      sim_grid_n_chunks = sim_grid_n_chunks,
-      sim_grid_shuffle_seed = sim_grid_shuffle_seed
+    params = c(
+      list(
+        run_simulations = run_simulations,
+        run_plots = run_plots,
+        sim_grid_chunk_index = sim_grid_chunk_index,
+        sim_grid_n_chunks = sim_grid_n_chunks,
+        sim_grid_shuffle_seed = sim_grid_shuffle_seed
+      ),
+      analysis_required_params
     ),
     sim_grid_chunk_index = sim_grid_chunk_index,
     sim_grid_n_chunks = sim_grid_n_chunks
@@ -544,11 +561,11 @@ if (isTRUE(run_simulations)) {
             out <- tryCatch(
               {
                 sim_res <- .simBandwidthBsFreq(
-                  nSample = 5,
+                  nSample = n_sample_sim,
                   nMarker = 1,
                   nCondition = 2,
                   nCluster = 2,
-                  nIter = 5,
+                  nIter = n_iter_sim,
                   biasUns = bias_uns,
                   bw = NULL,
                   bwAdaptive = TRUE,
@@ -561,7 +578,7 @@ if (isTRUE(run_simulations)) {
                   bwMax = "none",
                   nCellStim = n_cell,
                   probResponse = prob_response,
-                  probExact = TRUE,
+                  probExact = prob_exact,
                   meanPos = mean_pos,
                   transformation = transformation,
                   samplePerturbationSd = sample_perturbation_sd,
@@ -569,8 +586,8 @@ if (isTRUE(run_simulations)) {
                   clusterPerturbationSd = cluster_perturbation_sd,
                   backgroundRelativeToResponse = background_relative_to_response,
                   ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
-                  covEvMin = 1.5,
-                  covEvMax = 1.5,
+                  covEvMin = cov_ev_min,
+                  covEvMax = cov_ev_max,
                   tolClust = tol_clust,
                   locEnforceShapeThreshold = loc_enforce_shape_threshold,
                   calcCytPosGates = calc_cyt_pos_gates
@@ -803,12 +820,7 @@ promote_analysis6_if_ready <- function(
 
 if (results_read_only) {
   current_manifest <- .analysis_read_manifest(run_ctx$manifest_path)
-  required_params <- list(
-    analysis_semantics_version = analysis_semantics_version,
-    simulation_seed = simulation_seed,
-    analysis_quick = analysis_quick,
-    analysis_dev = analysis_dev
-  )
+  required_params <- analysis_required_params
   incompatible_params <- names(required_params)[vapply(
     names(required_params),
     function(nm) {
