@@ -99,9 +99,9 @@ if (isTRUE(run_plots)) {
 ```{r}
 #| label: show-scatter
 if (isTRUE(run_plots)) {
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "stimgate")
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "fbeta")
-  .acsCytofValidationPlotScatter(manual_comparison_tbl, "tailgate")
+  for (method in validation_methods) {
+    print(.acsCytofValidationPlotScatter(manual_comparison_tbl, method))
+  }
 }
 ```
 
