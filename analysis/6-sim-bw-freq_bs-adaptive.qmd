@@ -9,6 +9,7 @@ execute:
   message: false
 params:
   analysis_run_id: null
+  simulation_seed: 12345
   sim_grid_chunk_index: 1
   sim_grid_n_chunks: 1
   sim_grid_shuffle_seed: 20260707
@@ -50,6 +51,14 @@ sim_grid_shuffle_seed <- as.integer(.get_qmd_param_env(
   "SIM_GRID_SHUFFLE_SEED",
   20260707L
 ))
+simulation_seed <- as.integer(.get_qmd_param_env(
+  "simulation_seed",
+  "SIMULATION_SEED",
+  12345L
+))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
   "RUN_SIMULATIONS",
@@ -61,6 +70,9 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
+analysis_semantics_version <- "adaptive-bw-freq-v2"
+analysis_quick <- isTRUE(.isQuick())
+analysis_dev <- isTRUE(.isDev())
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -68,8 +80,6 @@ run_plots <- .as_flag(.get_qmd_param_env(
 ))
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
-
-sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
@@ -175,7 +185,7 @@ bias_uns_settings_tbl <- tibble::tribble(
 )
 bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
-if (.isQuick()) {
+if (analysis_quick) {
   n_cell_stim_vec <- c(1e3, 5e4)
   prob_response_vec <- c(0.002, 0.02)
   bw_core_vec <- c(0.01, 0.05, 0.15, 0.5)
@@ -239,10 +249,11 @@ sim_grid <- tidyr::expand_grid(
       )
   ) |>
   dplyr::mutate(
-    sim_id = dplyr::row_number()
+    sim_id = dplyr::row_number(),
+    sim_seed = as.integer(simulation_seed + sim_id - 1L)
   )
 
-if (.isDev()) {
+if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
       n_cell == 1e5,
@@ -257,14 +268,13 @@ if (.isDev()) {
     dplyr::slice_head(n = 5)
 }
 
-sim_grid_all <- sim_grid
-
-.setQuick()
-if (.isQuick() && !.isDev()) {
+if (analysis_quick && !analysis_dev && nrow(sim_grid) > 100L) {
   set.seed(42)
   sim_grid <- sim_grid |>
-    dplyr::sample_n(100)
+    dplyr::slice_sample(n = 100L)
 }
+
+sim_grid_all <- sim_grid
 
 if (nrow(sim_grid_all) > 0L) {
   set.seed(sim_grid_shuffle_seed)
@@ -304,6 +314,7 @@ devtools::load_all()
 bw_list_raw <- vector("list", nrow(sim_grid))
 
 for (i in seq_len(nrow(sim_grid))) {
+  set.seed(as.integer(sim_grid$sim_seed[i]))
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
 
   bw_crossover_curr <- sim_grid$bw_crossover[i]
@@ -368,7 +379,8 @@ for (i in seq_len(nrow(sim_grid))) {
         sim_grid$background_relative_to_response[i],
       n_cell_uns_relative_to_stim =
         sim_grid$n_cell_uns_relative_to_stim[i],
-      sim_id = sim_grid$sim_id[i]
+      sim_id = sim_grid$sim_id[i],
+      sim_seed = sim_grid$sim_seed[i]
     ) |>
     dplyr::select(
       dplyr::any_of(colnames(sim_grid)),
