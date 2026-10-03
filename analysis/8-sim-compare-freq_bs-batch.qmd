@@ -4,9 +4,12 @@ format:
   html:
     embed-resources: true
     toc: true
+execute:
+  warning: false
+  message: false
 params:
   analysis_run_id: null
-  simulation_seed: 1
+  simulation_seed: 12345
   sim_grid_chunk_index: 1
   sim_grid_n_chunks: 1
   run_simulations: true
@@ -42,12 +45,12 @@ analysis_key <- c("sim", "compare", "freq_bs_batch")
 simulation_seed <- as.integer(.get_qmd_param_env(
   "simulation_seed",
   "SIMULATION_SEED",
-  1L
+  12345L
 ))
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v2"
+comparison_semantics_version <- "batch-mismatch-comparison-v3"
 analysis_dev <- isTRUE(.isDev())
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
@@ -134,6 +137,8 @@ stimgate_bw_max <- "none"
 tol_clust <- 1e-7
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
+n_sample_sim <- 5
+n_iter_sim <- 5
 
 fbeta_beta <- 0.8
 fbeta_theta <- 2
@@ -325,7 +330,6 @@ if (sim_grid_n_chunks > 1L && nrow(sim_grid_all) > 0L) {
     )
 }
 
-sim_grid
 print(paste0(
   "Simulation scenarios assigned to chunk ",
   sim_chunk_label,
@@ -341,8 +345,6 @@ print(paste0(
 ```{r}
 #| label: compare-batch-run
 #| results: hide
-n_sample_sim <- 5
-n_iter_sim <- 5
 n_workers <- max(1, .simGetCores())
 
 if (isTRUE(run_simulations)) {
@@ -423,7 +425,6 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     tolClust = tol_clust,
     locEnforceShapeThreshold = loc_enforce_shape_threshold,
     calcCytPosGates = calc_cyt_pos_gates,
-    gateCombn = "min",
     pathFbeta = path_fbeta,
     fbetaBeta = fbeta_beta,
     fbetaTheta = fbeta_theta,
@@ -499,46 +500,16 @@ if (isTRUE(run_simulations)) {
     stop(chunk_error)
   }
 
-  if (.analysis_can_promote(run_ctx)) {
-    scenario_paths <- list.files(
-      run_ctx$staging_run_dir,
-      pattern = "^(compare_raw.*|sim_scenario.*|sim_raw.*)sim_id_[0-9]+[.]rds$",
-      recursive = TRUE,
-      full.names = TRUE
-    )
-    compare_raw_full <- .simCompareCollateScenarioOutputs(
-      pathList = scenario_paths,
-      sim_grid = sim_grid_all
-    )
-    full_status <- .simCompareGridOutputStatus(
-      compare_raw_full,
-      sim_grid = sim_grid_all,
-      nSample = n_sample_sim,
-      nIter = n_iter_sim
-    )
-
-    if (!isTRUE(full_status$validation_ok)) {
-      error_message <- paste0(
-        "Refusing to promote analysis 8: canonical collation is incomplete ",
-        "or contains invalid primary method results."
-      )
-      .analysis_mark_chunk(
-        run_ctx = run_ctx,
-        total_sims = nrow(sim_grid),
-        completed_sims = n_completed,
-        failed_sims = n_failed,
-        collate_ok = full_status$collate_ok,
-        validation_ok = FALSE,
-        error_message = error_message
-      )
-      stop(error_message)
-    }
-
-    path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
-    .write_rds_atomic(compare_raw_full, path_rds_full)
-    compare_raw <- compare_raw_full
-    simulation_promoted <- isTRUE(.analysis_promote_run(run_ctx))
-  }
+  simulation_promoted <- .simComparePromoteIfReady(
+    run_ctx = run_ctx,
+    sim_grid_all = sim_grid_all,
+    total_sims = nrow(sim_grid),
+    completed_sims = n_completed,
+    failed_sims = n_failed,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim,
+    validatePrimary = TRUE
+  )
 
   if (!isTRUE(run_plots)) {
     message("run_plots is false, so stopping after simulation/collation.")
@@ -651,72 +622,21 @@ if (
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_mean_shift <- compare_summary |>
     dplyr::filter(
-      mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
+      mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
     )
-
   for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     summary_mean_shift_curr <- summary_mean_shift |>
       dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
-
-    p_shift <- ggplot(
+    p_shift <- .simComparePlotMeanShift(
       summary_mean_shift_curr,
-      aes(
-        x = mismatch_val,
-        y = med_abs_rel_error,
-        color = method,
-        linetype = mismatch_type,
-        group = interaction(method, mismatch_type)
-      )
-    ) +
-      geom_line(linewidth = 0.8) +
-      geom_point(size = 2) +
-      facet_wrap(~scenario_desc, scales = "free_y") +
-      scale_y_continuous(
-        transform = scales::asinh_trans()
-      ) +
-      cowplot::theme_cowplot(font_size = 10) +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA)
-      ) +
-      theme(
-        legend.position = "bottom",
-        legend.box = "vertical",
-        legend.box.just = "left"
-      ) +
-      guides(
-        colour = guide_legend(nrow = 1, byrow = TRUE),
-        linetype = guide_legend(nrow = 1, byrow = TRUE)
-      ) +
-      labs(
-        title = "Degradation under Stimulated Mean Shift",
-        subtitle = "Median Absolute Relative Error vs Mean Shift",
-        x = "Stimulated Mean Shift",
-        y = "Median Absolute Relative Error (asinh scale)",
-        color = "Method",
-        linetype = "Mismatch Variant"
-      )
-    path_p <- projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs_batch",
-      "mean_shift_degradation",
-      paste0(
-        "plot_med_abs_rel_error_",
-        mean_pos_setting_curr,
-        ".pdf"
-      )
+      statistic = "med_abs_rel_error",
+      label = "Median Absolute Relative Error"
+    )
+    path_p <- file.path(
+      plot_dir, paste0("plot_med_abs_rel_error_", mean_pos_setting_curr, ".pdf")
     )
     dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-    ggsave(
-      path_p,
-      p_shift,
-      width = 20,
-      height = 15,
-      units = "cm"
-    )
+    ggplot2::ggsave(path_p, p_shift, width = 20, height = 15, units = "cm")
     print(p_shift)
   }
 }
@@ -731,72 +651,22 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_mean_shift <- compare_summary |>
     dplyr::filter(
-      mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
+      mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
     )
-
   for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     summary_mean_shift_curr <- summary_mean_shift |>
       dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
-    p_shift_max <- ggplot(
+    p_shift <- .simComparePlotMeanShift(
       summary_mean_shift_curr,
-      aes(
-        x = mismatch_val,
-        y = max_abs_rel_error,
-        color = method,
-        linetype = mismatch_type,
-        group = interaction(method, mismatch_type)
-      )
-    ) +
-      geom_line(linewidth = 0.8) +
-      geom_point(size = 2) +
-      facet_wrap(~scenario_desc, scales = "free_y") +
-      scale_y_continuous(
-        transform = scales::asinh_trans()
-      ) +
-      cowplot::theme_cowplot(font_size = 10) +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA)
-      ) +
-      theme(
-        legend.position = "bottom",
-        legend.box = "vertical",
-        legend.box.just = "left"
-      ) +
-      guides(
-        colour = guide_legend(nrow = 1, byrow = TRUE),
-        linetype = guide_legend(nrow = 1, byrow = TRUE)
-      ) +
-      labs(
-        title = "Degradation under Stimulated Mean Shift",
-        subtitle = "Maximum Absolute Relative Error vs Mean Shift",
-        x = "Stimulated Mean Shift",
-        y = "Maximum Absolute Relative Error (asinh scale)",
-        color = "Method",
-        linetype = "Mismatch Variant"
-      )
-    path_p <- projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs_batch",
-      "mean_shift_degradation",
-      paste0(
-        "plot_max_",
-        mean_pos_setting_curr,
-        ".pdf"
-      )
+      statistic = "max_abs_rel_error",
+      label = "Maximum Absolute Relative Error"
+    )
+    path_p <- file.path(
+      plot_dir, paste0("plot_max_", mean_pos_setting_curr, ".pdf")
     )
     dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-    ggsave(
-      path_p,
-      p_shift_max,
-      width = 20,
-      height = 15,
-      units = "cm"
-    )
-    print(p_shift_max)
+    ggplot2::ggsave(path_p, p_shift, width = 20, height = 15, units = "cm")
+    print(p_shift)
   }
 }
 ```
@@ -810,72 +680,22 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_mean_shift <- compare_summary |>
     dplyr::filter(
-      mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
+      mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
     )
-
   for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
     summary_mean_shift_curr <- summary_mean_shift |>
       dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
-    p_shift_90 <- ggplot(
+    p_shift <- .simComparePlotMeanShift(
       summary_mean_shift_curr,
-      aes(
-        x = mismatch_val,
-        y = q90_abs_rel_error,
-        color = method,
-        linetype = mismatch_type,
-        group = interaction(method, mismatch_type)
-      )
-    ) +
-      geom_line(linewidth = 0.8) +
-      geom_point(size = 2) +
-      facet_wrap(~scenario_desc, scales = "free_y") +
-      scale_y_continuous(
-        transform = scales::asinh_trans()
-      ) +
-      cowplot::theme_cowplot(font_size = 10) +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA)
-      ) +
-      theme(
-        legend.position = "bottom",
-        legend.box = "vertical",
-        legend.box.just = "left"
-      ) +
-      guides(
-        colour = guide_legend(nrow = 1, byrow = TRUE),
-        linetype = guide_legend(nrow = 1, byrow = TRUE)
-      ) +
-      labs(
-        title = "Degradation under Stimulated Mean Shift",
-        subtitle = "90th Percentile Absolute Relative Error vs Mean Shift",
-        x = "Stimulated Mean Shift",
-        y = "90th Percentile Absolute Relative Error (asinh scale)",
-        color = "Method",
-        linetype = "Mismatch Variant"
-      )
-    path_p <- projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs_batch",
-      "mean_shift_degradation",
-      paste0(
-        "plot_q90_",
-        mean_pos_setting_curr,
-        ".pdf"
-      )
+      statistic = "q90_abs_rel_error",
+      label = "90th Percentile Absolute Relative Error"
+    )
+    path_p <- file.path(
+      plot_dir, paste0("plot_q90_", mean_pos_setting_curr, ".pdf")
     )
     dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-    ggsave(
-      path_p,
-      p_shift_90,
-      width = 20,
-      height = 15,
-      units = "cm"
-    )
-    print(p_shift_90)
+    ggplot2::ggsave(path_p, p_shift, width = 20, height = 15, units = "cm")
+    print(p_shift)
   }
 }
 ```
@@ -973,7 +793,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_shifts <- compare_summary |>
     dplyr::filter(
-      mismatch_type %in% c("mean_shift", "mean_shift_all", "mean_shift_negative")
+      mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
     )
 
   for (mean_pos_setting_curr in unique(summary_shifts$mean_pos_setting)) {
@@ -1104,4 +924,39 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     print(p_tail)
   }
 }
+```
+
+A single scenario can be rerun with the production settings and RNG.
+Run the setup, settings and grid chunks first.
+
+```{r}
+#| label: rerun-one-simulation
+#| eval: false
+sim_id_rerun <- 1L
+row_rerun <- sim_grid_all[sim_grid_all$sim_id == sim_id_rerun, , drop = FALSE]
+stopifnot(nrow(row_rerun) == 1L)
+compare_one <- .simCompareRunScenario(
+  row = row_rerun,
+  nSample = n_sample_sim,
+  nIter = n_iter_sim,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  probExact = TRUE,
+  covEvMin = 1.5,
+  covEvMax = 1.5,
+  tolClust = tol_clust,
+  locEnforceShapeThreshold = loc_enforce_shape_threshold,
+  calcCytPosGates = calc_cyt_pos_gates,
+  pathFbeta = path_fbeta,
+  fbetaBeta = fbeta_beta,
+  fbetaTheta = fbeta_theta,
+  fbetaWidth = fbeta_width,
+  tailgateAdjust = tailgate_adjust,
+  tailgateAutoTol = tailgate_auto_tol,
+  tailgateMethod = tailgate_method,
+  tailgateTol = tailgate_tol,
+  tailgateX = tailgate_x,
+  resume = FALSE
+)
 ```

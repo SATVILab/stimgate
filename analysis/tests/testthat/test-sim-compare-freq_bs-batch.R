@@ -1323,3 +1323,27 @@ test_that("alternative comparator exceptions remain explicit run errors", {
   expect_true(is.na(tailgate_row$error[[1]]))
   expect_equal(tailgate_row$gateReturnPoint[[1]], "tailgate_calculated")
 })
+
+test_that("mean-shift plotting shares statistics without writing files", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_comp, local = env)
+  data <- tibble::tibble(
+    mismatch_val = c(0, 0.1), method = "stimgate",
+    mismatch_type = "mean_shift_negative", scenario_desc = "scenario",
+    med_abs_rel_error = c(0.1, 0.2), max_abs_rel_error = c(0.3, 0.4),
+    q90_abs_rel_error = c(0.2, 0.3)
+  )
+  for (statistic in c(
+    "med_abs_rel_error", "max_abs_rel_error", "q90_abs_rel_error"
+  )) {
+    plot <- env$.simComparePlotMeanShift(data, statistic, "Error")
+    built <- ggplot2::ggplot_build(plot)
+    expect_equal(built$data[[1]]$y, asinh(data[[statistic]]))
+    expect_equal(plot$labels$y, "Error (asinh scale)")
+  }
+  content <- paste(readLines(file.path(root_dir, "analysis",
+    "8-sim-compare-freq_bs-batch.qmd")), collapse = "\n")
+  expect_false(grepl('"mean_shift"', content, fixed = TRUE))
+  expect_equal(length(gregexpr(".simComparePlotMeanShift(", content,
+    fixed = TRUE)[[1]]), 3L)
+})
