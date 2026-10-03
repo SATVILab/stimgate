@@ -374,3 +374,25 @@ test_that("analysis 9 builds before saving to the canonical manual output", {
   )
   expect_true(grepl(".write_rds_atomic(", save_body, fixed = TRUE))
 })
+
+
+test_that("ACS summary correlation requires two complete pairs", {
+  env <- .load_acs_method_env()
+  comparison_tbl <- tibble::tibble(
+    method = "stimgate",
+    pop = "CD4 T cells",
+    cyt = "IFNg",
+    stim = "mtb",
+    freq_bs_auto = c(1, NA_real_),
+    freq_bs_man = c(1.1, 1.2),
+    diff = c(-0.1, NA_real_),
+    abs_diff = c(0.1, NA_real_),
+    rel_error = c(-0.1 / 1.1, NA_real_),
+    abs_rel_error = c(abs(-0.1 / 1.1), NA_real_)
+  )
+
+  out <- env$.acsCytofManualSummaryTable(comparison_tbl)
+
+  expect_equal(out$n, 1L)
+  expect_true(is.na(out$pcc))
+})
