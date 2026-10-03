@@ -438,16 +438,13 @@ writeStimFCS <- function(
 
 #' @keywords internal
 .fcsWriteGetBatch <- function(ind, indBatchList) {
-  if (is.null(indBatchList) || !is.list(indBatchList) || length(indBatchList) == 0L) {
-    return(NA_character_)
-  }
   bNames <- names(indBatchList)
-  if (is.null(bNames)) {
+  if (!is.list(indBatchList) || is.null(bNames)) {
     return(NA_character_)
   }
   for (i in seq_along(indBatchList)) {
     items <- indBatchList[[i]]
-    if (ind %in% items || as.character(ind) %in% as.character(items)) {
+    if (as.character(ind) %in% as.character(items)) {
       b <- bNames[i]
       if (!is.na(b) && nzchar(b)) {
         return(as.character(b))
