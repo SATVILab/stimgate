@@ -14,7 +14,8 @@ gateStim(
   biasUns = NULL,
   bw = NULL,
   control = stimControl(),
-  markerControl = NULL
+  markerControl = NULL,
+  parallel = FALSE
 )
 }
 \arguments{
@@ -54,6 +55,8 @@ marker label or channel name, for example
 \code{list(IL2 = list(bw = 0.12, biasUns = 0))}. Settings from \code{\link[=stimControl]{stimControl()}}
 (except the global-only \code{locEnforceShapeThreshold} and \code{calcCytPosGates}),
 plus \code{bw}, \code{biasUns} and \code{popGate}, can be overridden. Default: NULL.}
+
+\item{parallel}{logical If TRUE, gate channels in parallel during the initial gating stage using the active future::plan(). Default: FALSE.}
 }
 \value{
 character. Returns the path to the project directory where all results
@@ -77,6 +80,18 @@ unstimulated control. Thresholds may be shared across similar distributions,
 then refined using cells positive for another cytokine. Results and statistics
 are saved to \code{pathProject} for \code{\link[=getStimGates]{getStimGates()}}, \code{\link[=getStimStats]{getStimStats()}}, and \code{\link[=plotStim]{plotStim()}}.
 Use \code{\link[=stimControl]{stimControl()}} for tuning and \code{markerControl} for per-marker overrides.
+
+To gate channels in parallel, set \code{parallel = TRUE} and select a future
+plan, for example \code{future::plan(future::multisession, workers = 4)}.
+The default \code{parallel = FALSE} runs sequentially regardless of the active
+plan. Only the initial per-channel gating stage is parallel; subsequent
+cytokine-positive gating and statistics remain sequential. Workers read
+expression data from the project disk cache rather than a GatingSet, so
+the project directory must be accessible to all workers.
+With \code{parallel = TRUE}, RNG-dependent subsampling uses parallel-safe
+L'Ecuyer streams (\code{future.seed = TRUE}). Results are reproducible for a
+given \code{set.seed()} and independent of the chosen non-sequential plan,
+but may differ slightly from a sequential run.
 }
 \examples{
 exampleData <- getExampleData()
