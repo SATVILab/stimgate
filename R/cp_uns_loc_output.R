@@ -334,6 +334,13 @@
   if (isTRUE(prejoin) && length(cpVec) != 1L) {
     stop("Prejoin must produce exactly one cutpoint per batch")
   }
+  if (!isTRUE(prejoin) && length(cpVec) != length(indStim) && length(cpVec) > 1L) {
+    stop(sprintf(
+      "Cannot replicate cutpoint vector of length %d across %d stimulated conditions",
+      length(cpVec),
+      length(indStim)
+    ))
+  }
   if (isTRUE(prejoin) || length(cpVec) != length(indStim)) {
     .intSaveNm(
       "prejoinedCpUsed",
