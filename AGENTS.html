@@ -419,6 +419,7 @@
 <code>DESCRIPTION</code>: Package metadata file.</li>
 </ul><div class="section level3">
 <h3 id="analysis-code-layering">Analysis code layering<a class="anchor" aria-label="anchor" href="#analysis-code-layering"></a></h3>
+<p>Before removing an analysis helper, check all repository callers, including QMDs and tests. Preserve explicitly documented compatibility aliases even when current repository analyses no longer call them.</p>
 <p>For new or moved analysis code, use this layering:</p>
 <ol style="list-style-type: decimal"><li>
 <code>R/</code>: installed StimGate package implementation only.</li>
