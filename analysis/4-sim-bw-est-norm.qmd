@@ -769,10 +769,10 @@ promote_analysis4_if_ready <- function(
     "\\1",
     basename(full_output_paths)
   )))
-  expected_full_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
+  expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
   full_outputs_ok <-
-    length(full_output_paths) == length(expected_full_ids) &&
-    identical(sort(unique(full_output_ids)), expected_full_ids)
+    length(full_output_paths) == length(expected_sim_ids) &&
+    identical(sort(unique(full_output_ids)), expected_sim_ids)
 
   if (!isTRUE(full_outputs_ok)) {
     error_message <- paste0(
@@ -805,7 +805,7 @@ promote_analysis4_if_ready <- function(
   full_row_counts <- full_bw_tbl |>
     dplyr::count(.data$sim_id, name = "n_rows")
   full_rows_ok <-
-    nrow(full_row_counts) == length(expected_full_ids) &&
+    nrow(full_row_counts) == length(expected_sim_ids) &&
     all(full_row_counts$n_rows == expected_rows_per_sim)
 
   if (length(full_error_ids) > 0L || !isTRUE(full_rows_ok)) {
