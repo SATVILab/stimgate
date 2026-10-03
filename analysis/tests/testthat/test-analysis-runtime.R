@@ -846,7 +846,7 @@ test_that("project directory fallback is local and can be read-only", {
   env <- .load_runtime_env()
   # Exercise the fallback without depending on installed projr configuration.
   testthat::local_mocked_bindings(
-    requireNamespace = function(...) FALSE,
+    .analysis_projr_dir = function(...) NULL,
     .env = env
   )
   project <- withr::local_tempdir()
@@ -870,24 +870,35 @@ test_that("project directory fallback is local and can be read-only", {
   expect_false(dir.exists(cache))
 })
 
-test_that("project directories tolerate an unavailable projr project", {
+test_that("an unavailable projr project falls back to the local directory", {
   env <- .load_runtime_env()
-  # Simulate an installed projr whose directory resolver raises an error.
-  testthat::local_mocked_bindings(
-    requireNamespace = function(...) TRUE,
-    do.call = function(what, args) {
-      if (identical(what, file.path)) {
-        base::do.call(what, args)
-      } else {
-        stop("No projr project")
-      }
-    },
-    .env = env
-  )
-  project <- withr::local_tempdir()
-  path <- env$.analysis_cache_dir("sim", project, create = FALSE)
+  failing_getter <- function(...) stop("No projr project")
+  expect_null(env$.analysis_projr_dir("cache", "sim", getter = failing_getter))
+  expect_null(env$.analysis_projr_dir(
+    "cache", "sim", getter = function(...) NA_character_
+  ))
   expect_identical(
-    .norm_path(path), .norm_path(file.path(project, "cache", "sim"))
+    env$.analysis_projr_dir("cache", "sim", getter = function(...) "/x/cache"),
+    "/x/cache"
   )
-  expect_false(dir.exists(path))
+})
+
+test_that("seeded evaluation is independent of and restores caller RNG", {
+  env <- .load_runtime_env()
+  withr::local_preserve_seed()
+  old_kind <- RNGkind()
+  withr::defer(RNGkind(old_kind[[1]], old_kind[[2]], old_kind[[3]]))
+  RNGkind("L'Ecuyer-CMRG", "Box-Muller", "Rejection")
+  set.seed(18L)
+  before_kind <- RNGkind()
+  before_seed <- .Random.seed
+  draws <- env$.analysis_with_seed(5L, stats::rnorm(3))
+  expect_identical(RNGkind(), before_kind)
+  expect_identical(.Random.seed, before_seed)
+  RNGkind("default", "default", "default")
+  expect_identical(env$.analysis_with_seed(5L, stats::rnorm(3)), draws)
+  expect_error(env$.analysis_with_seed(5L, stop("boom")), "boom")
+  rm(".Random.seed", envir = .GlobalEnv)
+  env$.analysis_with_seed(5L, stats::runif(1))
+  expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
 })

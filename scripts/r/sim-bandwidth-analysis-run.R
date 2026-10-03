@@ -43,13 +43,7 @@
   if (nrow(row) != 1L || !all(c("sim_id", "sim_seed") %in% names(row))) {
     stop("row must be one sim_grid row with sim_id and sim_seed columns.")
   }
-  res <- withr::with_seed(
-    as.integer(row$sim_seed[[1]]),
-    scenario_fn(row, settings),
-    .rng_kind = .simBandwidthRngKind[["kind"]],
-    .rng_normal_kind = .simBandwidthRngKind[["normal.kind"]],
-    .rng_sample_kind = .simBandwidthRngKind[["sample.kind"]]
-  )
+  res <- .analysis_with_seed(row$sim_seed[[1]], scenario_fn(row, settings))
   res <- tibble::as_tibble(res)
   if (nrow(res) == 0L) {
     stop("scenario_fn must return at least one result row.")
