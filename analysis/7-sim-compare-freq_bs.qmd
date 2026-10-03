@@ -108,18 +108,6 @@ for (fn in c(
   source(file.path(scripts_r_dir, fn))
 }
 
-# Keep scenario-level RNG stable across worker scheduling and grid chunking.
-.simCompareRunScenarioUnseeded <- .simCompareRunScenario
-.simCompareRunScenario <- function(row, ...) {
-  if (
-    "sim_seed" %in% names(row) &&
-      length(row$sim_seed) > 0L &&
-      !is.na(row$sim_seed[[1]])
-  ) {
-    set.seed(as.integer(row$sim_seed[[1]]))
-  }
-  .simCompareRunScenarioUnseeded(row = row, ...)
-}
 ```
 
 ### Aim
@@ -479,9 +467,9 @@ promote_analysis7_if_ready <- function(
     sim_grid = sim_grid_all
   )
   expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
-  full_check <- .simCompareValidateCompletedScenarios(
-    compare_raw = compare_raw_full,
-    sim_ids = expected_sim_ids,
+  full_check <- .simCompareGridOutputStatus(
+    compare_raw_full,
+    sim_grid = sim_grid_all,
     nSample = n_sample_sim,
     nIter = n_iter_sim
   )
@@ -600,34 +588,29 @@ if (isTRUE(run_simulations)) {
     message("No simulations assigned to this chunk.")
   }
 
-  expected_chunk_ids <- sort(unique(as.integer(sim_grid$sim_id)))
-  chunk_check <- .simCompareValidateCompletedScenarios(
-    compare_raw = compare_raw,
-    sim_ids = expected_chunk_ids,
+  chunk_check <- .simCompareGridOutputStatus(
+    compare_raw,
+    sim_grid = sim_grid,
     nSample = n_sample_sim,
     nIter = n_iter_sim
   )
   chunk_collate_ok <- isTRUE(chunk_check$collate_ok)
   chunk_validation_ok <- isTRUE(chunk_check$validation_ok)
-  failed_sim_ids <- sort(unique(c(
-    chunk_check$error_sim_ids,
-    chunk_check$incomplete_sim_ids
-  )))
-  n_failed <- length(failed_sim_ids)
-  n_completed <- length(setdiff(expected_chunk_ids, failed_sim_ids))
+  n_failed <- length(chunk_check$failed_ids)
+  n_completed <- length(chunk_check$completed_ids)
 
   validation_error <- if (!chunk_collate_ok) {
-    "Chunk collation did not contain exactly the assigned sim_id set."
-  } else if (length(chunk_check$error_sim_ids) > 0L) {
     paste0(
-      "Chunk contains simulation errors for sim_id: ",
-      paste(chunk_check$error_sim_ids, collapse = ", "),
+      "Chunk collation does not match the assigned simulation grid. Missing sim_id: ",
+      paste(chunk_check$missing_ids, collapse = ", "),
+      "; extra sim_id: ",
+      paste(chunk_check$extra_ids, collapse = ", "),
       "."
     )
-  } else if (length(chunk_check$incomplete_sim_ids) > 0L) {
+  } else if (length(chunk_check$failed_ids) > 0L) {
     paste0(
-      "Chunk is missing complete stimgate/fbeta/tailgate rows for sim_id: ",
-      paste(chunk_check$incomplete_sim_ids, collapse = ", "),
+      "Chunk contains incomplete, non-finite or errored primary method results for sim_id: ",
+      paste(chunk_check$failed_ids, collapse = ", "),
       "."
     )
   } else {
