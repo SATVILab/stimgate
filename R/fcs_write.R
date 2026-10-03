@@ -179,7 +179,7 @@ writeStimFCS <- function(
 
   # Check if gateTbl already contains all required information
   # (i.e., it has both stimulated and unstimulated gates)
-  hasAllSamples <- length(unique(gateTbl$ind)) >= length(unlist(indBatchList))
+  hasAllSamples <- all(unlist(indBatchList) %in% gateTbl$ind)
 
   if (!"marker" %in% names(gateTbl)) {
     gateTbl <- .fcsWriteGetGateTblAddMarker(
