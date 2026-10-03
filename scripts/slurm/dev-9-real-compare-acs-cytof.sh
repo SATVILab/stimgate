@@ -26,7 +26,12 @@ export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
 export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
 
 export RUN_PREPROCESSING="${RUN_PREPROCESSING:-true}"
-export RUN_METHODS="${RUN_METHODS:-true}"
+
+# RUN_METHODS is retained as a backwards-compatible umbrella default. The QMD
+# reads the stage-specific RUN_STIMGATE and RUN_COMPARATORS controls.
+run_methods_default="${RUN_METHODS:-true}"
+export RUN_STIMGATE="${RUN_STIMGATE:-$run_methods_default}"
+export RUN_COMPARATORS="${RUN_COMPARATORS:-$run_methods_default}"
 export RUN_PLOTS="${RUN_PLOTS:-false}"
 export ACS_N_WORKERS="${ACS_N_WORKERS:-${SLURM_NTASKS:-2}}"
 export PROJECT_ROOT="$project_root"
@@ -41,7 +46,8 @@ echo "SLURM_NTASKS: ${SLURM_NTASKS:-unknown}"
 echo "QMD file: $qmd_file"
 echo "PROJECT_ROOT: $project_root"
 echo "RUN_PREPROCESSING: $RUN_PREPROCESSING"
-echo "RUN_METHODS: $RUN_METHODS"
+echo "RUN_STIMGATE: $RUN_STIMGATE"
+echo "RUN_COMPARATORS: $RUN_COMPARATORS"
 echo "RUN_PLOTS: $RUN_PLOTS"
 echo "ACS_N_WORKERS: $ACS_N_WORKERS"
 echo "OMP_NUM_THREADS: $OMP_NUM_THREADS"
