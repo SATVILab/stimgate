@@ -460,6 +460,10 @@ For new or moved analysis code, use this layering:
 4. Analysis-specific helpers under `scripts/r/`: substantial orchestration, restart/collation, IO and plotting helpers that should not live inline in QMDs.
 5. `analysis/*.qmd`: scientific settings, analysis calls, result-specific transformations and presentation.
 
+QMD set-up must resolve the repository root when Quarto starts in `analysis/`,
+and must tolerate absent `.Rprofile` dev/quick helpers. Cache-read errors should
+name the simulation render needed first, including the matching dev/quick profile.
+
 When displaying ggplot objects inside QMD conditionals or loops, call `print()`
 explicitly. Chunk tests should capture printed plots and check that each requested
 method appears and that disabling plotting produces no printed plots.

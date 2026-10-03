@@ -18,6 +18,10 @@ params:
   sim_retry_errors: true
 ---
 
+This analysis asks how unstimulated-sample bias should be set across a range of fixed bandwidths when the stimulated negative population differs from its matched unstimulated population. Simulated samples use controlled shifts and changes in spread applied only to the stimulated negative/background component, following Analysis 8. Random sample, condition and cluster perturbations are disabled so that the controlled mismatch is the source of disagreement.
+
+## Set-up
+
 ```{r}
 #| label: setup
 #| include: false
@@ -34,6 +38,13 @@ root_dir <- tryCatch(
   error = function(e) getwd()
 )
 
+if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
+  root_dir <- dirname(root_dir)
+}
+root_dir <- normalizePath(root_dir, mustWork = TRUE)
+if (!file.exists(file.path(root_dir, "scripts", "r", "analysis-runtime.R"))) {
+  stop("Render this document from the stimgate repository or its analysis directory.")
+}
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 
@@ -82,8 +93,18 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bias_uns", "freq_bs")
 analysis_semantics_version <- "bias-uns-freq-v2"
-analysis_quick <- isTRUE(.isQuick())
-analysis_dev <- isTRUE(.isDev())
+# Quarto may start without the repository .Rprofile.
+profile_vec <- strsplit(Sys.getenv("PROJR_PROFILE", "default"), ",", fixed = TRUE)[[1]]
+analysis_quick <- if (exists(".isQuick", mode = "function")) {
+  isTRUE(.isQuick())
+} else {
+  "quick" %in% profile_vec
+}
+analysis_dev <- if (exists(".isDev", mode = "function")) {
+  isTRUE(.isDev())
+} else {
+  "dev" %in% profile_vec
+}
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -112,18 +133,7 @@ for (fn in c(
 }
 ```
 
-Analysis 2a identifies a plausible bandwidth range while keeping `bias_uns`
-deliberately simple. This analysis asks the complementary question: across
-those plausible bandwidths, how should `bias_uns` be set when the stimulated
-negative population is displaced relative to its matched unstimulated
-population?
-
-The batch mismatch follows Analysis 8 and is applied only to the stimulated
-negative/background component. Random sample, condition and cluster
-perturbations are disabled so that the controlled mismatch is the source of
-stimulated-versus-unstimulated disagreement.
-
-### Simulation grid
+### Scientific settings
 
 ```{r}
 #| label: bias-uns-settings
@@ -225,8 +235,11 @@ being evaluated. Starting at the dominant negative peak, the right endpoint is
 the first point at which the density reaches 15% of the peak height or the next
 antimode, whichever comes first.
 
+## Simulation
+
 ```{r}
 #| label: bias-uns-grid
+#| include: false
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
   n_cell = n_cell_vec,
@@ -408,6 +421,7 @@ rerun_res <- .simBandwidthRunRow(
 
 ```{r}
 #| label: bias-uns-parallel
+#| include: false
 #| results: hide
 if (interactive()) {
   progressr::handlers(global = TRUE)
@@ -464,21 +478,38 @@ if (isTRUE(run_simulations)) {
     run_plots <- FALSE
   }
 } else if (isTRUE(run_plots)) {
-  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+  run_ctx <- tryCatch(
+    .analysis_results_context(analysis_key, path_root = root_dir),
+    error = function(e) stop(
+      conditionMessage(e), "\nRun from the repository root first: ",
+      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/2b-sim-bias_uns-freq_bs.qmd",
+      " (use the same dev/quick profile; complete all chunks if chunking).",
+      call. = FALSE
+    )
+  )
 }
 ```
 
-### Results
+## Collation
 
 ```{r}
 #| label: bias-uns-collate
+#| include: false
 if (isTRUE(run_plots)) {
   read_current <- function(nm) {
-    readRDS(.analysis_current_file(
-      run_ctx = run_ctx,
-      relative_path = c("collated", paste0(nm, ".rds")),
-      required_params = analysis_required_params
-    ))
+    tryCatch(
+      readRDS(.analysis_current_file(
+        run_ctx = run_ctx,
+        relative_path = c("collated", paste0(nm, ".rds")),
+        required_params = analysis_required_params
+      )),
+      error = function(e) stop(
+        conditionMessage(e), "\nRun from the repository root first: ",
+        "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/2b-sim-bias_uns-freq_bs.qmd",
+        " (use the same dev/quick profile; complete all chunks if chunking).",
+        call. = FALSE
+      )
+    )
   }
   bias_uns_results_raw <- read_current("bias_uns_results_raw")
   bias_uns_results_summary <- read_current("bias_uns_results_summary")
@@ -486,6 +517,8 @@ if (isTRUE(run_plots)) {
   message("run_plots is false, so stopping after simulation/collation.")
 }
 ```
+
+## Results
 
 The primary summaries are relative error and the estimated
 background-subtracted frequencies themselves. Plot each response probability
@@ -495,8 +528,16 @@ results; summaries record `n_sample`, `n_valid`, `n_failed` and `failure_fractio
 Frequency and error summaries use valid estimates only; settings with no valid
 estimates remain in the summary with missing frequency/error values.
 
+### Relative error across bias settings
+
+Bias multiplier is on the horizontal axis and median absolute relative error on the vertical axis. Colour identifies bandwidth and line type the bias scale; facets separate cell counts and mismatch settings. Lower values indicate closer agreement with the simulated truth.
+
 ```{r}
-#| label: plot-relative-error
+#| label: fig-relative-error
+#| fig-cap: "Relative error across bias settings, cell counts and mismatches."
+#| fig-width: 11
+#| fig-height: 6
+#| echo: false
 if (isTRUE(run_plots)) {
   plot_dir <- .analysis_cache_dir(
     c(analysis_key, "relative_error"),
@@ -559,11 +600,16 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-For an overview, average the scenario-level median errors equally over cell
-counts, keeping response probabilities and mismatch settings separate.
+### Relative error averaged over cell counts
+
+Scenario-level median errors are averaged equally over cell counts and plotted against bias multiplier. Colour identifies bandwidth, line type the bias scale, and facets the mismatch settings. Each figure fixes transformation, response location and response probability so the curves can be compared within one biological setting.
 
 ```{r}
-#| label: plot-relative-error-averaged-n-cell
+#| label: fig-relative-error-averaged-n-cell
+#| fig-cap: "Relative error averaged equally over cell counts."
+#| fig-width: 11
+#| fig-height: 6
+#| echo: false
 if (isTRUE(run_plots)) {
   plot_dir <- .analysis_cache_dir(
     c(analysis_key, "relative_error_averaged_n_cell"),
@@ -619,11 +665,16 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-For cell-count-specific inspection, also save each row of the original faceted
-relative-error plots as its own figure.
+### Relative error at each cell count
+
+Each figure shows median absolute relative error against bias multiplier for one cell count. Colour identifies bandwidth, line type the bias scale, and facets the mismatch settings. Compare the curves across cell counts while holding the biological setting fixed.
 
 ```{r}
-#| label: plot-relative-error-by-n-cell
+#| label: fig-relative-error-by-n-cell
+#| fig-cap: "Relative error at each cell count."
+#| fig-width: 11
+#| fig-height: 6
+#| echo: false
 if (isTRUE(run_plots)) {
   plot_dir <- .analysis_cache_dir(
     c(analysis_key, "relative_error_by_n_cell"),
@@ -673,8 +724,16 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Estimated response frequency
+
+Median estimated frequency is plotted against bias multiplier, with colour identifying bandwidth and line type the bias scale. Facets separate cell counts and mismatch settings; dashed lines show the simulated truth. Curves closer to those lines indicate better agreement.
+
 ```{r}
-#| label: plot-estimated-frequency
+#| label: fig-estimated-frequency
+#| fig-cap: "Median final response frequency across bias settings."
+#| fig-width: 11
+#| fig-height: 6
+#| echo: false
 if (isTRUE(run_plots)) {
   plot_dir <- .analysis_cache_dir(
     c(analysis_key, "estimated_frequency"),
