@@ -87,12 +87,6 @@ writeStimFCS <- function(
     mult = FALSE, # whether cells must be multi-positive
     gateUnsMethod = "min") {
   # how to calculate unstim thresholds # nolint
-  # clear and create directory to save to
-  if (dir.exists(pathDirSave)) {
-    unlink(pathDirSave, force = TRUE, recursive = TRUE)
-  }
-  dir.create(pathDirSave, recursive = TRUE)
-
   # get gates
   gateTbl <- .fcsWriteGetGateTbl(
     gateTbl = gateTbl,
@@ -104,6 +98,12 @@ writeStimFCS <- function(
     gateTypeCytPos = gateTypeCytPos,
     pathProject = pathProject
   )
+
+  # clear and create directory to save to
+  if (dir.exists(pathDirSave)) {
+    unlink(pathDirSave, force = TRUE, recursive = TRUE)
+  }
+  dir.create(pathDirSave, recursive = TRUE)
 
   nFn <- length(.data)
 
