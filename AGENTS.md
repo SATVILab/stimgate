@@ -202,6 +202,10 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   with computed values; use a distinct variable name for helper return values.
 - Checks that chunked simulation QMDs use per-scenario deterministic seeds and
   validate complete cross-chunk collation before promoting canonical results.
+- Estimator-comparison simulations should use the same simulated dataset for
+  rows that differ only by estimator or estimator-tuning settings. Derive the
+  data-generation seed from the biological scenario, not from the estimator,
+  cap, chunk index or worker scheduling.
 - Active simulation chunks must collate only their own chunk outputs; canonical
   cross-chunk reads happen after promotion. A render with simulations disabled
   must use the read-only current-results context and must not create staging state.
