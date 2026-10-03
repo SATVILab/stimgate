@@ -115,15 +115,19 @@ run_local_fdr_inspection <- function(scenario) {
     if (length(x) == 0L) NA_real_ else x[[1L]]
   }
 
-  ex_stim <- read_required("exTblStimThreshold")
-  ex_uns <- read_required("exTblUnsThreshold")
-  dens_raw <- read_required("densTblRaw")
-  prob_tables <- read_required("probTblList")
-  data_mod <- read_required("dataMod")
-  trim_info <- read_required("dataModTrimInfo")
-  data_trim <- read_required("dataModTrim")
+  ex_stim <- read_optional("exTblStimThreshold")
+  ex_uns <- read_optional("exTblUnsThreshold")
+  dens_raw <- read_optional("densTblRaw")
+  prob_tables <- read_optional("probTblList")
+  data_mod <- read_optional("dataMod")
+  trim_info <- read_optional("dataModTrimInfo")
+  data_trim <- read_optional("dataModTrim")
   data_threshold <- read_optional("dataThreshold")
-  detail <- read_required("locDetailCondition")
+  detail <- read_optional("locDetailCondition")
+  if (is.null(detail)) {
+    detail <- read_optional("locDetailSample")
+  }
+  cp_ind <- read_optional("cpInd")
 
   bandwidth <- read_optional("bwCpUnsLoc")
   if (is.null(bandwidth)) {
@@ -139,9 +143,23 @@ run_local_fdr_inspection <- function(scenario) {
     detail = attr(data_mod, "locShapeThresholdInfo")
   )
 
-  final_decisions <- trim_info$final
+  final_decisions <- if (is.list(trim_info)) trim_info$final else NULL
   if (!is.list(final_decisions)) {
     final_decisions <- list()
+  }
+
+  returned_threshold <- if (is.data.frame(detail) && nrow(detail) > 0L) {
+    scalar(detail$threshold)
+  } else {
+    scalar(cp_ind)
+  }
+  returned_generated <- is.data.frame(detail) &&
+    nrow(detail) > 0L &&
+    detail$locGenerated[[1L]] %in% TRUE
+  returned_label <- if (returned_generated) {
+    "final local-FDR gate"
+  } else {
+    "returned fallback threshold"
   }
 
   decision_table <- data.frame(
@@ -153,7 +171,7 @@ run_local_fdr_inspection <- function(scenario) {
       "quality boundary",
       "antimode boundary",
       "final filtering boundary",
-      "final local-FDR gate"
+      returned_label
     ),
     x = c(
       scalar(attr(data_mod, "minProbXPos")),
@@ -163,7 +181,7 @@ run_local_fdr_inspection <- function(scenario) {
       scalar(final_decisions$xQual),
       scalar(final_decisions$xAntimode),
       scalar(final_decisions$xSum),
-      scalar(detail$threshold)
+      returned_threshold
     )
   )
 
@@ -176,112 +194,150 @@ run_local_fdr_inspection <- function(scenario) {
   cat("\nFiltering/reference decisions\n")
   print(decision_table, row.names = FALSE)
   cat("\nFiltering details\n")
-  print(trim_info[c("reason", "clear", "marginal", "antimode", "final")])
-  cat("\nFinal threshold and provenance\n")
-  print(detail)
+  if (is.list(trim_info)) {
+    print(trim_info[c("reason", "clear", "marginal", "antimode", "final")])
+  } else {
+    cat("Post-smoothing filtering was not reached.\n")
+  }
+  cat("\nReturned threshold and provenance\n")
+  if (is.data.frame(detail) && nrow(detail) > 0L) {
+    print(detail)
+  } else {
+    print(list(
+      threshold = returned_threshold,
+      locGenerated = FALSE,
+      locReason = "Detailed threshold provenance was not saved"
+    ))
+  }
   cat("\nIntermediate directory\n", path_ind, "\n", sep = "")
-
-  dens_stim <- dens_raw[dens_raw$stim == "yes", , drop = FALSE]
-  dens_uns <- dens_raw[dens_raw$stim == "no", , drop = FALSE]
-  dens_stim <- dens_stim[order(dens_stim$xStim), , drop = FALSE]
-  dens_uns <- dens_uns[order(dens_uns$xStim), , drop = FALSE]
-
-  raw_prob <- prob_tables$all[order(prob_tables$all$xStim), , drop = FALSE]
-  model_prob <- prob_tables$pos[order(prob_tables$pos$xStim), , drop = FALSE]
-  data_mod <- data_mod[order(data_mod$F1), , drop = FALSE]
 
   old_par <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(old_par), add = TRUE)
   graphics::par(mfrow = c(3, 1), mar = c(4, 4, 2, 1))
 
-  graphics::plot(
-    dens_stim$xStim,
-    dens_stim$dens,
-    type = "l",
-    xlab = "F1 expression",
-    ylab = "Density",
-    main = "Stimulated and unstimulated densities"
-  )
-  graphics::lines(dens_uns$xStim, dens_uns$dens, lty = 2)
-  graphics::abline(v = detail$threshold[[1]], lty = 3, lwd = 2)
-  graphics::legend(
-    "topright",
-    legend = c("stimulated", "unstimulated", "final gate"),
-    lty = c(1, 2, 3),
-    lwd = c(1, 1, 2),
-    bty = "n"
-  )
+  if (is.data.frame(dens_raw) && nrow(dens_raw) > 0L) {
+    dens_stim <- dens_raw[dens_raw$stim == "yes", , drop = FALSE]
+    dens_uns <- dens_raw[dens_raw$stim == "no", , drop = FALSE]
+    dens_stim <- dens_stim[order(dens_stim$xStim), , drop = FALSE]
+    dens_uns <- dens_uns[order(dens_uns$xStim), , drop = FALSE]
 
-  graphics::plot(
-    raw_prob$xStim,
-    raw_prob$probStimNorm,
-    type = "l",
-    ylim = c(0, 1),
-    xlab = "F1 expression",
-    ylab = "Response probability",
-    main = "Raw, modelled and smoothed response probability"
-  )
-  graphics::points(
-    model_prob$xStim,
-    model_prob$probStimNorm,
-    pch = 16,
-    cex = 0.45
-  )
-  graphics::lines(data_mod$F1, data_mod$pred, lty = 2, lwd = 2)
+    graphics::plot(
+      dens_stim$xStim,
+      dens_stim$dens,
+      type = "l",
+      xlab = "F1 expression",
+      ylab = "Density",
+      main = "Stimulated and unstimulated densities"
+    )
+    graphics::lines(dens_uns$xStim, dens_uns$dens, lty = 2)
+    if (is.finite(returned_threshold)) {
+      graphics::abline(v = returned_threshold, lty = 3, lwd = 2)
+    }
+    graphics::legend(
+      "topright",
+      legend = c("stimulated", "unstimulated", returned_label),
+      lty = c(1, 2, 3),
+      lwd = c(1, 1, 2),
+      bty = "n"
+    )
+  } else {
+    graphics::plot.new()
+    graphics::title("Density estimation was not reached")
+  }
 
-  plot_decision_names <- c(
-    "preliminary modelling lower bound",
-    "clear-response boundary",
-    "quality boundary",
-    "antimode boundary",
-    "final filtering boundary",
-    "final local-FDR gate"
-  )
-  plot_decisions <- decision_table[
-    match(plot_decision_names, decision_table$decision),
-    ,
-    drop = FALSE
-  ]
-  plot_decisions$lty <- c(3, 4, 5, 6, 2, 1)
-  plot_decisions$label <- c(
-    "preliminary bound",
-    "x_clear",
-    "x_qual",
-    "x_antimode",
-    "x_sum",
-    "final gate"
-  )
-  plot_decisions <- plot_decisions[
-    is.finite(plot_decisions$x),
-    ,
-    drop = FALSE
-  ]
+  if (
+    is.list(prob_tables) &&
+      is.data.frame(prob_tables$all) &&
+      is.data.frame(prob_tables$pos) &&
+      is.data.frame(data_mod) &&
+      all(c("F1", "pred") %in% names(data_mod))
+  ) {
+    raw_prob <- prob_tables$all[
+      order(prob_tables$all$xStim),
+      ,
+      drop = FALSE
+    ]
+    model_prob <- prob_tables$pos[
+      order(prob_tables$pos$xStim),
+      ,
+      drop = FALSE
+    ]
+    data_mod <- data_mod[order(data_mod$F1), , drop = FALSE]
 
-  if (nrow(plot_decisions) > 0L) {
-    for (i in seq_len(nrow(plot_decisions))) {
-      graphics::abline(
-        v = plot_decisions$x[[i]],
-        lty = plot_decisions$lty[[i]],
-        lwd = if (plot_decisions$decision[[i]] == "final local-FDR gate") 2 else 1
+    graphics::plot(
+      raw_prob$xStim,
+      raw_prob$probStimNorm,
+      type = "l",
+      ylim = c(0, 1),
+      xlab = "F1 expression",
+      ylab = "Response probability",
+      main = "Raw, modelled and smoothed response probability"
+    )
+    graphics::points(
+      model_prob$xStim,
+      model_prob$probStimNorm,
+      pch = 16,
+      cex = 0.45
+    )
+    graphics::lines(data_mod$F1, data_mod$pred, lty = 2, lwd = 2)
+
+    plot_decision_names <- c(
+      "preliminary modelling lower bound",
+      "clear-response boundary",
+      "quality boundary",
+      "antimode boundary",
+      "final filtering boundary",
+      returned_label
+    )
+    plot_decisions <- decision_table[
+      match(plot_decision_names, decision_table$decision),
+      ,
+      drop = FALSE
+    ]
+    plot_decisions$lty <- c(3, 4, 5, 6, 2, 1)
+    plot_decisions$label <- c(
+      "preliminary bound",
+      "x_clear",
+      "x_qual",
+      "x_antimode",
+      "x_sum",
+      returned_label
+    )
+    plot_decisions <- plot_decisions[
+      is.finite(plot_decisions$x),
+      ,
+      drop = FALSE
+    ]
+
+    if (nrow(plot_decisions) > 0L) {
+      for (i in seq_len(nrow(plot_decisions))) {
+        graphics::abline(
+          v = plot_decisions$x[[i]],
+          lty = plot_decisions$lty[[i]],
+          lwd = if (plot_decisions$decision[[i]] == returned_label) 2 else 1
+        )
+      }
+    }
+    graphics::legend(
+      "bottomright",
+      legend = c("raw probability", "preliminary model region", "smoothed curve"),
+      lty = c(1, NA, 2),
+      pch = c(NA, 16, NA),
+      bty = "n",
+      cex = 0.8
+    )
+    if (nrow(plot_decisions) > 0L) {
+      graphics::legend(
+        "topleft",
+        legend = plot_decisions$label,
+        lty = plot_decisions$lty,
+        bty = "n",
+        cex = 0.7
       )
     }
-  }
-  graphics::legend(
-    "bottomright",
-    legend = c("raw probability", "preliminary model region", "smoothed curve"),
-    lty = c(1, NA, 2),
-    pch = c(NA, 16, NA),
-    bty = "n",
-    cex = 0.8
-  )
-  if (nrow(plot_decisions) > 0L) {
-    graphics::legend(
-      "topleft",
-      legend = plot_decisions$label,
-      lty = plot_decisions$lty,
-      bty = "n",
-      cex = 0.7
-    )
+  } else {
+    graphics::plot.new()
+    graphics::title("Response-probability smoothing was not reached")
   }
 
   if (is.data.frame(data_threshold) && nrow(data_threshold) > 0L) {
@@ -295,10 +351,12 @@ run_local_fdr_inspection <- function(scenario) {
       main = "Final threshold matching"
     )
     graphics::abline(h = 0, lty = 2)
-    graphics::abline(v = detail$threshold[[1]], lty = 3, lwd = 2)
+    if (is.finite(returned_threshold)) {
+      graphics::abline(v = returned_threshold, lty = 3, lwd = 2)
+    }
   } else {
     graphics::plot.new()
-    graphics::title("No threshold-matching table: local-FDR route returned early")
+    graphics::title("Threshold matching was not reached")
   }
 
   list(
