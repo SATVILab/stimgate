@@ -144,7 +144,7 @@ test_that("analysis 2 is chunk-stable, read-only when not simulating, and valida
   expect_true(grepl("run_ctx$chunk_dir", content, fixed = TRUE))
 
   expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
-  expect_true(grepl("valid_chunk_ids", content, fixed = TRUE))
+  expect_true(grepl("output_error_ids", content, fixed = TRUE))
   expect_true(grepl("expected_full_ids", content, fixed = TRUE))
   expect_true(grepl(
     "Refusing to promote analysis 2",
@@ -163,4 +163,17 @@ test_that("analysis 2 is chunk-stable, read-only when not simulating, and valida
     content,
     fixed = TRUE
   ))
+
+  expect_false(grepl(
+    "make_bw_colour_values <- function",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    "make_bw_linetype_scale <- function",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("format_bw_lab(.data$bw)", content, fixed = TRUE))
+  expect_true(grepl(".write_rds_atomic(", content, fixed = TRUE))
 })
