@@ -1,17 +1,3 @@
-#' @keywords internal
-.getIncVec <- function(chnlCurr, chnlVec, ex, gateTblInd) {
-  incVec <- rep(FALSE, nrow(ex))
-
-  for (chnlAlt in setdiff(chnlVec, chnlCurr)) {
-    cp <- gateTblInd |>
-      dplyr::filter(.data$chnl == chnlAlt) |> # nolint
-      dplyr::pull("gate")
-    incVec <- incVec | ex[[chnlAlt]] > cp
-  }
-
-  incVec
-}
-
 #' Get the safe lower boundary from the full stimulated marginal distribution
 #'
 #' The left/main modal-complex peak is identified in the same way as in the
@@ -70,9 +56,7 @@
     return(out)
   }
 
-  bwMin <- suppressWarnings(
-    as.numeric(bwMin)
-  )[1L]
+  bwMin <- bwMin[1L]
 
   if (
     is.finite(bwMin) &&
@@ -108,9 +92,7 @@
     return(out)
   }
 
-  peakX <- suppressWarnings(
-    as.numeric(dens$x[peakIdx])
-  )[1L]
+  peakX <- dens$x[peakIdx]
 
   if (!is.finite(peakX)) {
     out$reason <- "marginal_left_region_unavailable"
@@ -135,10 +117,6 @@
     )
   )
 
-  windowWidth <- suppressWarnings(
-    as.numeric(windowWidth)
-  )[1L]
-
   if (
     !is.finite(windowWidth) ||
       windowWidth <= 0
@@ -150,43 +128,10 @@
   out$peakX <- peakX
   out$windowWidth <- windowWidth
   out$lowerX <- peakX + windowWidth / 3
-  out$densityBw <- suppressWarnings(
-    as.numeric(dens$bw)
-  )[1L]
+  out$densityBw <- dens$bw
   out$reason <- "marginal_reference_available"
 
   out
-}
-
-#' Fit a taut-string density to cells positive for another cytokine
-#'
-#' @keywords internal
-.getCytPosTautStringDensity <- function(x) {
-  x <- suppressWarnings(as.numeric(x))
-  x <- sort(x[is.finite(x)])
-  if (length(x) < 5L || length(unique(x)) < 3L) {
-    return(NULL)
-  }
-
-  fit <- try(
-    suppressWarnings(.tautStringPmden(x)),
-    silent = TRUE
-  )
-  if (inherits(fit, "try-error")) {
-    return(NULL)
-  }
-
-  y <- suppressWarnings(as.numeric(fit$y))
-  xMid <- (x[-1L] + x[-length(x)]) / 2
-  if (
-    length(xMid) != length(y) ||
-      length(y) < 3L ||
-      all(!is.finite(y))
-  ) {
-    return(NULL)
-  }
-
-  list(x = xMid, y = y, fit = fit)
 }
 
 #' Locate internal troughs in a piecewise-constant taut-string density
@@ -194,7 +139,6 @@
 #' Flat troughs are represented by the midpoint of the complete flat interval.
 #' Boundary runs are never treated as antimodes.
 #'
-#' @keywords internal
 #' @keywords internal
 .getCytPosTautStringAntimodes <- function(density) {
   if (is.null(density)) {
@@ -220,36 +164,11 @@
     )
   )
 
-  runStart <- which(change)
-
-  runEnd <- c(
-    runStart[-1L] - 1L,
-    length(y)
-  )
-
-  runY <- y[runStart]
-  runLeft <- x[runStart]
-  runRight <- x[runEnd]
-
-  if (length(runY) < 3L) {
+  if (sum(change) < 3L) {
     return(numeric(0L))
   }
 
-  internal <- seq.int(
-    2L,
-    length(runY) - 1L
-  )
-
-  minima <- internal[
-    runY[internal] < runY[internal - 1L] &
-      runY[internal] < runY[internal + 1L]
-  ]
-
-  sort(
-    unique(
-      (runLeft[minima] + runRight[minima]) / 2
-    )
-  )
+  .getCpUnsLocPiecewiseConstantAntimodes(x, y)
 }
 
 #' Select a cytokine-positive refinement threshold from a taut-string density
@@ -266,7 +185,7 @@
   cpOrig,
   peakX,
   windowWidth,
-  minCell = 10L
+  lower
 ) {
   out <- list(
     threshold = NA_real_,
@@ -289,7 +208,7 @@
     out$reason <- "invalid_refinement_interval"
     return(out)
   }
-  out$lowerX <- out$peakX + out$windowWidth / 3
+  out$lowerX <- lower
   if (out$lowerX >= out$gateOriginal) {
     out$reason <- "empty_refinement_interval"
     return(out)
@@ -305,12 +224,12 @@
   keep <- inc %in% TRUE & finiteAll & xAll > minX
   xPos <- xAll[keep]
   out$nOtherCytPos <- length(xPos)
-  if (length(xPos) < as.integer(minCell)) {
+  if (length(xPos) < 10L) {
     out$reason <- "too_few_other_cytokine_positive_cells"
     return(out)
   }
 
-  density <- .getCytPosTautStringDensity(xPos)
+  density <- .getCpUnsLocAntimodeDensity(xPos)
   if (is.null(density)) {
     out$reason <- "taut_string_density_failed"
     return(out)
@@ -335,11 +254,6 @@
   out
 }
 
-
-#' @keywords internal
-.getCytPosGatesChnlVecFromChnlList <- function(chnlSettings) {
-  purrr::map_chr(chnlSettings, function(x) x$chnlCut)
-}
 
 #' @keywords internal
 .getCytPosGatesGateTblGet <- function(

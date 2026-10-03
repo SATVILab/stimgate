@@ -4,7 +4,7 @@
 \alias{.getCpPosTautString}
 \title{Select a cytokine-positive refinement threshold from a taut-string density}
 \usage{
-.getCpPosTautString(ex, inc, chnl, cpOrig, peakX, windowWidth, minCell = 10L)
+.getCpPosTautString(ex, inc, chnl, cpOrig, peakX, windowWidth, lower)
 }
 \description{
 The leftmost internal antimode strictly between the marginal lower boundary
