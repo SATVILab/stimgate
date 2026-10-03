@@ -32,7 +32,7 @@ source(script_plot, local = env)
     dplyr::ungroup()
 }
 
-test_that("CCC uses Lin's population-moment estimator", {
+test_that("CCC matches the manuscript cccrm estimator on shifted data", {
   expect_equal(env$.acsCytofValidationCcc(1:5, 1:5), 1)
   expect_equal(
     env$.acsCytofValidationCcc(1:5, 2:6),
