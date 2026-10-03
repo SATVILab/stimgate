@@ -539,15 +539,10 @@ saved `biasUns`; channels without a saved bias use zero.
    For the ACS analysis, requesting a Tailgate/F-beta run removes both prior
    comparator `result.rds` files and recomputes them. Existing results are read only
    when comparator execution is disabled.
-5. **Temporary migration status for `.getCpTg()` (issues #157/#158)**:
-   This is a current-state note rather than a permanent design rule. Verify it against
-   the current implementation and relevant issues before relying on it in later work.
-   At the time of this update, remaining call sites are catalogued by
-   `.get_cp_tg_call_audit()` and summarised by `.get_cp_tg_migration_note_157()`.
-   Current default behaviour still constructs `tgClust` control gates in
-   `.gateBatchAll()`, but the current local-FDR cluster quantile implementation does
-   not consume `gateTblCtrl`, so this branch is dead plumbing for current outputs.
-   Single-positive gating branches have been removed per issue #196.
+5. **Removal of legacy tailgate-as-control path (issues #157/#158)**:
+   The legacy tailgate-as-control path (`.getCpTg()`, `tolCtrl`) has been removed.
+   Tailgate benchmark comparisons use `cytoUtils:::.cytokine_cutpoint()` in
+   `scripts/r/`, per notes 2 and 3.
 6. **Simulation engine migration to `simcyto` (issues #288/#289/#291/#295 / umbrella #271)**:
    Generic cytometry simulations, post-simulation transformations, and condition-mismatch
    controls are progressively migrating to the exported `simcyto` package API (e.g.

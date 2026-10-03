@@ -12,58 +12,30 @@
 #'   indices representing a batch, with the unstimulated control index at the beginning.
 #' @export
 getBatchList <- function(
-    fnTblInfo,
-    colGrp,
-    colStim,
-    unsChr,
-    colNCell,
-    minCell) {
-  fnTblInfo[["rowNumber"]] <- seq_len(nrow(fnTblInfo))
-
-  # Construct group vector combining all grouping columns
-  grpVec <- fnTblInfo[[colGrp[[1]]]]
-  for (i in seq_along(colGrp)[-1]) {
-    grpVec <- paste0(grpVec, "_", fnTblInfo[[colGrp[[i]]]])
-  }
-
+  fnTblInfo,
+  colGrp,
+  colStim,
+  unsChr,
+  colNCell,
+  minCell
+) {
+  grpVec <- do.call(paste, c(fnTblInfo[colGrp], list(sep = "_")))
   grpVecUnique <- unique(grpVec)
 
-  outList <- lapply(grpVecUnique, function(grp) {
+  outList <- stats::setNames(lapply(grpVecUnique, function(grp) {
     selVecInd <- which(grpVec == grp)
-    selVecStim <- fnTblInfo[[colStim]][selVecInd]
-
-    # Early return if no unstim present in the initial group slice
-    if (!unsChr %in% selVecStim) {
-      return(NULL)
-    }
-
-    # Filter by minimum cell count
-    selVecNCell <- fnTblInfo[[colNCell]][selVecInd]
-    selVecInd <- selVecInd[selVecNCell >= minCell]
-
-    # Batch must have at least one stimulated and one unstimulated sample
+    selVecInd <- selVecInd[fnTblInfo[[colNCell]][selVecInd] >= minCell]
     if (length(selVecInd) <= 1L) {
       return(NULL)
     }
 
-    selVecStimFinal <- fnTblInfo[[colStim]][selVecInd]
-    if (!unsChr %in% selVecStimFinal) {
+    isUns <- fnTblInfo[[colStim]][selVecInd] == unsChr
+    if (!any(isUns)) {
       return(NULL)
     }
 
-    fnTblSel <- fnTblInfo[selVecInd, ]
-    rowNumberUns <- fnTblSel[["rowNumber"]][
-      fnTblSel[[colStim]] == unsChr
-    ]
+    c(selVecInd[isUns], selVecInd[!isUns])
+  }), grpVecUnique)
 
-    # Order so that unstim indices always come first
-    c(
-      rowNumberUns,
-      setdiff(fnTblSel[["rowNumber"]], rowNumberUns)
-    )
-  }) |>
-    stats::setNames(grpVecUnique)
-
-  # Remove batches that were excluded during screening
   outList[!vapply(outList, is.null, logical(1))]
 }
