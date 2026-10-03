@@ -25,7 +25,7 @@ test_that("a debug run resets and incrementally saves profiling records", {
   pathOld <- file.path(pathOldRaw, "old.rds")
   saveRDS(data.frame(old = TRUE), pathOld)
 
-  expect_true(.profileInit(pathProject))
+  expect_true(.profileInit(pathProject, reset = TRUE))
   expect_false(file.exists(pathOld))
 
   timer <- .profileStart(

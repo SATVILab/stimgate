@@ -88,7 +88,7 @@
       }
 
       pathProfile <- .profilePath(pathProject)
-      if (dir.exists(pathProfile)) {
+      if (isTRUE(reset) && dir.exists(pathProfile)) {
         unlink(pathProfile, recursive = TRUE, force = TRUE)
       }
       rawDir <- file.path(pathProfile, "raw")
