@@ -4,11 +4,14 @@ format:
   html:
     embed-resources: true
     toc: true
+execute:
+  warning: false
+  message: false
 params:
   run_preprocessing: false
   run_stimgate: false
-  run_comparators: true
-  run_plots: true
+  run_comparators: false
+  run_plots: false
   tester_n_sample: 20
   n_workers: 2
 ---
@@ -74,43 +77,19 @@ if (is.na(n_workers) || n_workers < 1L) {
 .acsCytofBatchList(tester_n_sample)
 
 pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "nk_pre", "b")
-run_preprocessing_vec_by_pop <- stats::setNames(
-  rep(run_preprocessing, length(pop_vec)),
-  pop_vec
-)
-run_stimgate_vec_by_pop <- stats::setNames(
-  rep(run_stimgate, length(pop_vec)),
-  pop_vec
-)
-run_comparators_vec_by_pop <- stats::setNames(
-  rep(run_comparators, length(pop_vec)),
-  pop_vec
-)
-# Diagnostic StimGate plots are only generated from a freshly gated result.
-# The downstream manual-comparison plots remain controlled by run_plots.
-run_stimgate_plots_vec_by_pop <- stats::setNames(
-  rep(run_plots && run_stimgate, length(pop_vec)),
-  pop_vec
-)
+.by_pop <- function(x) stats::setNames(rep(x, length(pop_vec)), pop_vec)
+run_preprocessing_vec_by_pop <- .by_pop(run_preprocessing)
+run_stimgate_vec_by_pop <- .by_pop(run_stimgate)
+run_comparators_vec_by_pop <- .by_pop(run_comparators)
+# Diagnostic plots are only generated from a freshly produced result: StimGate
+# plots need a fresh StimGate run and GatingSet checks a fresh preprocessing.
+run_stimgate_plots_vec_by_pop <- .by_pop(run_plots && run_stimgate)
+run_preprocessing_plots_vec_by_pop <- .by_pop(run_plots && run_preprocessing)
 bias_uns <- 0.15
-bias_uns_vec_by_pop <- stats::setNames(
-  rep(bias_uns, length(pop_vec)),
-  pop_vec
-)
+bias_uns_vec_by_pop <- .by_pop(bias_uns)
 analysis_seed <- 20260823L
 
-desc_path <- file.path(root_dir, "DESCRIPTION")
-if (
-  file.exists(desc_path) &&
-    grepl("Package: stimgate", readLines(desc_path, n = 1))
-) {
-  devtools::load_all(root_dir)
-} else {
-  fn_vec <- list.files(file.path(root_dir, "R"), full.names = TRUE)
-  for (fn in fn_vec) {
-    source(fn)
-  }
-}
+devtools::load_all(root_dir)
 
 # common paths
 path_fcs_base <- projr::projr_path_get(
@@ -145,7 +124,10 @@ batches. If that tester completes successfully, the same preprocessing and
 StimGate flow is applied to every population configured in `pop_vec`.
 
 The reusable helpers fix the six cytokine channels and the method settings.
-StimGate uses `bwMtd = "hpi1"` and `gateCombn = "min"`. F-beta uses its standard
+StimGate uses `bwMtd = "hpi1"` (with `bwNcellMax = 1e4`, `bwFallback = "auto"`
+and no bandwidth bounds), `gateCombn = "min"`, `minCell = 100`,
+`tolClust = NULL`, `calcCytPosGates = TRUE` and an unstimulated-sample bias
+adjustment `biasUns = 0.15`. F-beta uses its standard
 parameters (`beta = 0.8`, `theta = 2`, `width = 10` and automatic bin count).
 The F-beta implementation is adapted from Richards et al. (2014) only in the
 histogram support: common bin edges span the matched stimulated and unstimulated
@@ -175,6 +157,7 @@ tcrgd_tester <- .acsCytofRunPopulation(
   runPreprocessing = run_preprocessing,
   runMethods = run_stimgate,
   runPlots = run_plots && run_stimgate,
+  runPreprocessingPlots = run_plots && run_preprocessing,
   nSample = tester_n_sample,
   biasUns = bias_uns_vec_by_pop[["tcrgd"]],
   outputGroup = "tester"
@@ -204,60 +187,25 @@ the `n_workers` parameter or `ACS_N_WORKERS` environment variable.
 #| label: run-all-populations
 #| results: hide
 if (isTRUE(run_preprocessing) || isTRUE(run_stimgate)) {
-  n_workers_use <- min(n_workers, length(pop_vec))
-  old_plan <- future::plan()
-
-  population_runs <- tryCatch(
-    {
-      if (n_workers_use > 1L) {
-        future::plan(future::multisession, workers = n_workers_use)
-      } else {
-        future::plan(future::sequential)
-      }
-
-      furrr::future_map(
-        pop_vec,
-        function(pop) {
-          .acsCytofRunPopulationSafe(
-            pop = pop,
-            pathFcsBase = path_fcs_base,
-            pathGsBase = path_gs_base,
-            pathScratchBase = path_scratch_base,
-            runPreprocessing = run_preprocessing_vec_by_pop[[pop]],
-            runMethods = run_stimgate_vec_by_pop[[pop]],
-            runPlots = run_stimgate_plots_vec_by_pop[[pop]],
-            biasUns = bias_uns_vec_by_pop[[pop]]
-          )
-        },
-        .options = furrr::furrr_options(
-          seed = analysis_seed,
-          scheduling = Inf
-        )
+  population_runs <- .acsCytofMapPopulations(
+    pop_vec,
+    function(pop) {
+      .acsCytofRunPopulationSafe(
+        pop = pop,
+        pathFcsBase = path_fcs_base,
+        pathGsBase = path_gs_base,
+        pathScratchBase = path_scratch_base,
+        runPreprocessing = run_preprocessing_vec_by_pop[[pop]],
+        runMethods = run_stimgate_vec_by_pop[[pop]],
+        runPlots = run_stimgate_plots_vec_by_pop[[pop]],
+        runPreprocessingPlots = run_preprocessing_plots_vec_by_pop[[pop]],
+        biasUns = bias_uns_vec_by_pop[[pop]]
       )
     },
-    finally = future::plan(old_plan)
+    nWorkers = n_workers,
+    seed = analysis_seed,
+    label = "ACS population preprocessing/StimGate runs"
   )
-  names(population_runs) <- pop_vec
-  failed_pop_vec <- names(population_runs)[
-    !vapply(
-      population_runs,
-      function(x) isTRUE(x$success),
-      logical(1)
-    )
-  ]
-
-  if (length(failed_pop_vec) > 0L) {
-    failure_messages <- vapply(
-      population_runs[failed_pop_vec],
-      function(x) paste0(x$pop, ": ", x$error),
-      character(1)
-    )
-
-    stop(
-      "ACS population preprocessing/StimGate runs failed:\n",
-      paste(failure_messages, collapse = "\n")
-    )
-  }
 }
 ```
 
@@ -266,68 +214,32 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate)) {
 Tailgate and F-beta run concurrently across populations, using the same
 `n_workers` control as StimGate. Within each population, the two methods remain
 sequential so that they do not compete for the same GatingSet. Each method is
-saved immediately to its own `result.rds`. Whenever `run_comparators` is true,
-the previous F-beta and Tailgate results for that population are removed and
-both methods are recomputed. When `run_comparators` is false, existing results
-remain available to the downstream comparison and plotting sections.
+saved to its own `result.rds`. Whenever `run_comparators` is true, both methods
+are recomputed for every population and replace the previous results only once
+both have finished, so a failed rerun keeps the last good results. When
+`run_comparators` is false (the default), existing results remain available to
+the downstream comparison and plotting sections.
 
 ```{r}
 #| label: run-comparison-methods-in-parallel
 #| results: hide
 if (isTRUE(run_comparators)) {
-  n_comparator_workers_use <- min(n_workers, length(pop_vec))
-  old_comparator_plan <- future::plan()
-
-  comparison_method_runs <- tryCatch(
-    {
-      if (n_comparator_workers_use > 1L) {
-        future::plan(
-          future::multisession,
-          workers = n_comparator_workers_use
-        )
-      } else {
-        future::plan(future::sequential)
-      }
-
-      furrr::future_map(
-        pop_vec,
-        function(pop) {
-          .acsCytofRunComparisonMethodsSafe(
-            pop = pop,
-            pathFcsBase = path_fcs_base,
-            pathGsBase = path_gs_base,
-            pathScratchBase = path_scratch_base,
-            runMethods = run_comparators_vec_by_pop[[pop]],
-            pathFbeta = path_fbeta
-          )
-        },
-        .options = furrr::furrr_options(seed = TRUE, scheduling = Inf)
+  comparison_method_runs <- .acsCytofMapPopulations(
+    pop_vec,
+    function(pop) {
+      .acsCytofRunComparisonMethodsSafe(
+        pop = pop,
+        pathFcsBase = path_fcs_base,
+        pathGsBase = path_gs_base,
+        pathScratchBase = path_scratch_base,
+        runMethods = run_comparators_vec_by_pop[[pop]],
+        pathFbeta = path_fbeta
       )
     },
-    finally = future::plan(old_comparator_plan)
+    nWorkers = n_workers,
+    seed = analysis_seed,
+    label = "ACS Tailgate/F-beta runs"
   )
-  names(comparison_method_runs) <- pop_vec
-
-  failed_comparator_pop_vec <- names(comparison_method_runs)[
-    !vapply(
-      comparison_method_runs,
-      function(x) isTRUE(x$success),
-      logical(1)
-    )
-  ]
-
-  if (length(failed_comparator_pop_vec) > 0L) {
-    failure_messages <- vapply(
-      comparison_method_runs[failed_comparator_pop_vec],
-      function(x) paste0(x$pop, ": ", x$error),
-      character(1)
-    )
-
-    stop(
-      "ACS Tailgate/F-beta runs failed:\n",
-      paste(failure_messages, collapse = "\n")
-    )
-  }
 }
 ```
 
@@ -371,10 +283,12 @@ manual_summary_tbl <- attr(manual_comparison_tbl, "summary")
 
 ## Output tables and figures
 
-### Save analysis tables
+### Correlation with the manual gating
 
-The comparison table, its RDS copy and a method/population/cytokine summary are
-written under `path_manual_output` by the formatting step above.
+The comparison table, its RDS copy, a method/population/cytokine summary and
+(when `run_plots` is true) the comparison PNGs are written under
+`path_manual_output` by the formatting step above. Pearson correlations of the
+StimGate and F-beta estimates with the manual frequencies follow.
 
 ```{r}
 #| label: show-manual-summary
@@ -383,15 +297,12 @@ manual_summary_tbl |>
   dplyr::select(
     method:stim, pcc
   ) |>
-  #dplyr::arrange(method:stim, pcc) |>
   tidyr::pivot_wider(
     names_from = method,
     values_from = pcc
   ) |>
   dplyr::mutate(
-    diff_stimgate = stimgate - fbeta,
-    diff_fbeta = fbeta - stimgate,
-    diff_abs = pmax(abs(diff_stimgate), abs(diff_fbeta))
+    diff_abs = abs(stimgate - fbeta)
   ) |>
   dplyr::arrange(desc(diff_abs)) |>
   print(n = Inf)
@@ -402,12 +313,13 @@ manual_summary_tbl |>
 ```{r}
 #| label: plot-manual-comparison
 if (isTRUE(run_plots)) {
-  p <- .acsCytofManualPlotScatter(manual_comparison_tbl)
-  path_p <- file.path(path_manual_output, "scatter.pdf")
-  ggsave(path_p, plot = p, units = "cm", width = 20, height = 20)
-  p <- .acsCytofManualPlotScatter(manual_comparison_tbl |> dplyr::filter(method != "tailgate"))
-  path_p <- file.path(path_manual_output, "scatter-no_tg.pdf")
-  ggsave(path_p, plot = p, units = "cm", width = 20, height = 20)
+  p <- .acsCytofManualPlotScatter(
+    manual_comparison_tbl |> dplyr::filter(method != "tailgate")
+  )
+  ggsave(
+    file.path(path_manual_output, "scatter-no_tg.pdf"),
+    plot = p, units = "cm", width = 20, height = 20
+  )
 }
 ```
 
@@ -416,8 +328,12 @@ if (isTRUE(run_plots)) {
 ```{r}
 #| label: plot-manual-relative-error
 if (isTRUE(run_plots)) {
-  p <- .acsCytofManualPlotRelativeError(manual_comparison_tbl |> dplyr::filter(method != "tailgate"))
-  path_p <- file.path(path_manual_output, "rel_error-no_tg.pdf")
-  ggsave(path_p, plot = p, units = "cm", width = 20, height = 20)
+  p <- .acsCytofManualPlotRelativeError(
+    manual_comparison_tbl |> dplyr::filter(method != "tailgate")
+  )
+  ggsave(
+    file.path(path_manual_output, "rel_error-no_tg.pdf"),
+    plot = p, units = "cm", width = 20, height = 20
+  )
 }
 ```

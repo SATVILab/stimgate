@@ -212,7 +212,8 @@
   runPlots,
   nSample = NULL,
   biasUns = 0.15,
-  outputGroup = NULL
+  outputGroup = NULL,
+  runPreprocessingPlots = FALSE
 ) {
   paths <- .acsCytofPopulationPaths(
     pop = pop,
@@ -226,7 +227,7 @@
     .acsCytofPreprocessPopulation(
       paths = paths,
       nSample = nSample,
-      runPlots = runPlots
+      runPlots = runPreprocessingPlots
     )
   }
 
@@ -260,38 +261,36 @@
   batchList <- .acsCytofBatchList(nSampleActual)
 
   if (isTRUE(runMethods)) {
-    if (dir.exists(paths$stimgate)) {
-      unlink(paths$stimgate, recursive = TRUE)
-    }
-    dir.create(paths$stimgate, recursive = TRUE, showWarnings = FALSE)
-
     restoreDebug <- .acsCytofSetDebug()
     on.exit(restoreDebug(), add = TRUE)
 
-    invisible(stimgate::gateStim(
-      pathProject = paths$stimgate,
-      .data = gs,
-      popGate = "root",
-      batchList = batchList,
-      chnl = c(
-        "Ho165Di",
-        "Gd158Di",
-        "Nd146Di",
-        "Dy164Di",
-        "Gd156Di",
-        "Nd150Di"
-      ),
-      biasUns = biasUns,
-      bwMtd = "hpi1",
-      bwNcellMax = 1e4,
-      bwFallback = "auto",
-      bwMin = "none",
-      bwMax = "none",
-      minCell = 100,
-      gateCombn = "min",
-      tolClust = NULL,
-      calcCytPosGates = TRUE
-    ))
+    # Gate into a temporary sibling so a failed run keeps the last good output.
+    .acsCytofReplaceDir(paths$stimgate, function(pathTmp) {
+      stimgate::gateStim(
+        pathProject = pathTmp,
+        .data = gs,
+        popGate = "root",
+        batchList = batchList,
+        chnl = c(
+          "Ho165Di",
+          "Gd158Di",
+          "Nd146Di",
+          "Dy164Di",
+          "Gd156Di",
+          "Nd150Di"
+        ),
+        biasUns = biasUns,
+        bwMtd = "hpi1",
+        bwNcellMax = 1e4,
+        bwFallback = "auto",
+        bwMin = "none",
+        bwMax = "none",
+        minCell = 100,
+        gateCombn = "min",
+        tolClust = NULL,
+        calcCytPosGates = TRUE
+      )
+    })
   }
 
   if (isTRUE(runPlots)) {
