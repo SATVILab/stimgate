@@ -263,13 +263,7 @@ base_scenario_tbl <- sim_grid |>
     .data$n_cell,
     .data$prob_response,
     .data$mean_pos_setting,
-    .data$mean_pos,
-    .data$mismatch_type,
-    .data$mismatch_val,
-    .data$stim_mean_shift,
-    .data$stim_mean_shift_clusters,
-    .data$stim_sd_multiplier,
-    .data$stim_sd_multiplier_clusters
+    .data$mean_pos
   ) |>
   dplyr::mutate(base_scenario_id = dplyr::row_number())
 
@@ -281,19 +275,13 @@ sim_grid <- sim_grid |>
       "n_cell",
       "prob_response",
       "mean_pos_setting",
-      "mean_pos",
-      "mismatch_type",
-      "mismatch_val",
-      "stim_mean_shift",
-      "stim_mean_shift_clusters",
-      "stim_sd_multiplier",
-      "stim_sd_multiplier_clusters"
+      "mean_pos"
     )
   ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number(),
-    # Rows that differ only by bandwidth or bias rule use identical simulated
-    # data, so tuning comparisons use common random numbers.
+    # Bandwidth, bias rule and deterministic mismatch settings all use the
+    # same underlying simulated data within each biological scenario.
     sim_seed = as.integer(simulation_seed + .data$base_scenario_id - 1L)
   )
 
