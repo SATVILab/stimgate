@@ -200,3 +200,75 @@ test_that("analysis 2 is chunk-stable, read-only when not simulating, and valida
     fixed = TRUE
   ))
 })
+
+
+test_that("analysis 5 matches adaptive estimator semantics and is chunk-stable", {
+  qmd_path <- file.path(
+    root_dir,
+    "analysis",
+    "5-sim-bw-est-adaptive.qmd"
+  )
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("simulation_seed:\\s*12345", content))
+  expect_true(grepl("analysis_semantics_version", content, fixed = TRUE))
+  expect_true(grepl("norm_adaptive_ncell <- 2500L", content, fixed = TRUE))
+  expect_true(grepl(
+    "normAdaptiveNcell = norm_adaptive_ncell",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl("bw_ncell_upper", content, fixed = TRUE))
+  expect_false(grepl("bwNcellMax =", content, fixed = TRUE))
+
+  expect_true(grepl("data_scenario_id", content, fixed = TRUE))
+  expect_true(grepl(
+    "sim_seed = as.integer(simulation_seed + .data$data_scenario_id - 1L)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "set.seed(as.integer(sim_seed))",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_true(grepl(
+    "run_ctx <- .analysis_results_context(",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "collate_output_dir <- if (results_read_only)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("run_ctx$chunk_output_dir", content, fixed = TRUE))
+  expect_true(grepl("expected_sim_ids", content, fixed = TRUE))
+  expect_true(grepl("output_error_ids", content, fixed = TRUE))
+  expect_true(grepl("expected_full_ids", content, fixed = TRUE))
+  expect_true(grepl("promote_analysis5_if_ready", content, fixed = TRUE))
+  expect_true(grepl("nrow(sim_grid) == 0L", content, fixed = TRUE))
+  expect_false(grepl("#| error: true", content, fixed = TRUE))
+
+  expect_true(grepl("n_total = dplyr::n()", content, fixed = TRUE))
+  expect_true(grepl("prop_est = n_est / n_total", content, fixed = TRUE))
+  expect_true(grepl(
+    "means are conditional on finite estimates",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_true(grepl(
+    "run_plots is false, so stopping after simulation/collation.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "Render again with run_simulations = FALSE and run_plots = TRUE.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(".write_rds_atomic(", content, fixed = TRUE))
+  expect_false(grepl("saveRDS(", content, fixed = TRUE))
+})
