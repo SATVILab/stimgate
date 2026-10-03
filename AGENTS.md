@@ -222,6 +222,12 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - Checks that `scripts/r/` helpers source cleanly in dependency order.
 - Checks that QMD files do not call `scripts/r` helpers through
   `stimgate:::`.
+- Checks that QMD setup code does not overwrite sourced helper-function
+  names with computed values; use a distinct variable name for helper
+  return values.
+- Checks that chunked simulation QMDs use per-scenario deterministic
+  seeds and validate complete cross-chunk collation before promoting
+  canonical results.
 - Checks that analysis wrapper parameters forwarded to
   [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
   still exist in the current package API.

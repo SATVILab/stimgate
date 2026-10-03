@@ -194,6 +194,8 @@
 </tr></tbody></table><p><strong>What belongs in the analysis test suite (<code>analysis/tests/testthat/</code>):</strong></p>
 <ul><li>Checks that <code>scripts/r/</code> helpers source cleanly in dependency order.</li>
 <li>Checks that QMD files do not call <code>scripts/r</code> helpers through <code>stimgate:::</code>.</li>
+<li>Checks that QMD setup code does not overwrite sourced helper-function names with computed values; use a distinct variable name for helper return values.</li>
+<li>Checks that chunked simulation QMDs use per-scenario deterministic seeds and validate complete cross-chunk collation before promoting canonical results.</li>
 <li>Checks that analysis wrapper parameters forwarded to <code><a href="reference/gateStim.html">gateStim()</a></code> still exist in the current package API.</li>
 <li>Checks that removed arguments (e.g. <code>calcSinglePosGates</code>) are not reintroduced.</li>
 <li>Smoke calls for representative <code>.simBandwidth*()</code> / comparison-wrapper functions.</li>
