@@ -690,6 +690,8 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
      Windows backslashes are escape sequences there.
    - Use `skip_on_os("windows")`, with a comment giving the reason, for checks of
      Unix-only process or signal behaviour.
+   - Environment-restoration tests must compare the value observed after setup;
+     Windows treats an empty environment value as unset.
 10. **Use the package-shipped example data for routine tests and examples**:
     The package ships one canonical deterministic cytometry example dataset in
     `inst/extdata/stimgate_example_data/` (2 samples × 2 conditions × 2 markers ×
