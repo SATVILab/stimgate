@@ -121,7 +121,7 @@ But for now, let's just have two levels - no variation, slight variation.
 
 Let's keep moderate background at 0.2.
 
-Let's use a low and medium amount of bias.
+Let's include no, low, and high unstimulated-sample bias settings, with transformation-specific magnitudes.
 
 ```{r}
 #| label: actual-settings
@@ -206,11 +206,7 @@ if (analysis_quick) {
 So, now we'll vary the bandwidth from a small value up to to a large value, where "small" is relative to the known spread of the data.
 
 The spread of the data (without any batch effects) around the mean is on average 2, and the spread between the means is up to 8.
-So, we can vary the bandwidth from a small number (say 0.1) to a large number (say 10), and see how estimated background-subtracted frequencies compare to actual.
-
-It should be doable with just the `bw` parameter, but ah, we haven't set that yet.
-
-Okay, we've got the code working above. Now we'll vary the fixed bandwidth from 0.01 to 4, along with making the bias_unstim some reasonably large value (we'll have to fix it).
+We vary the fixed bandwidth over a transformation-dependent range: gamma uses the low end of the common grid (0.001 to 0.15), while Gaussian and skew scenarios use 0.05 to 1.5. We then compare the estimated background-subtracted frequencies with the simulated truth across the other scenario settings.
 
 And we'll do this for varying numbers of cells. 
 
@@ -266,7 +262,7 @@ if (analysis_dev) {
       prob_response == 0.002,
       mean_pos_setting == "high",
       transformation %in% transformation_vec,
-      bw == 0.02,
+      bw == 0.1,
       bias_uns_setting == "low",
       condition_perturbation_sd == 0
     )
@@ -327,11 +323,11 @@ bw_list_raw <- vector("list", nrow(sim_grid_loop))
 # sim_grid_loop$n_cell <- 1e3
 # sim_grid_loop$prob_response <- 0.2
 for (i in seq_len(nrow(sim_grid_loop))[1]) {
-  set.seed(2109)
+  set.seed(as.integer(sim_grid_loop$sim_seed[i]))
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid_loop)))
 
   sim_res <- .simBandwidthBsFreq(
-    nSample = 5,
+    nSample = 25,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
@@ -376,18 +372,19 @@ for (i in seq_len(nrow(sim_grid_loop))[1]) {
         sim_grid_loop$background_relative_to_response[i],
       n_cell_uns_relative_to_stim =
         sim_grid_loop$n_cell_uns_relative_to_stim[i],
-      sim_id = sim_grid_loop$sim_id[i]
+      sim_id = sim_grid_loop$sim_id[i],
+      sim_seed = sim_grid_loop$sim_seed[i]
     ) |>
     dplyr::select(
       transformation, prob_response, n_cell,
       mean_pos_setting, mean_pos, bw, bias_uns_setting, bias_uns,
       sample_perturbation_sd, condition_perturbation_sd,
       cluster_perturbation_sd, background_relative_to_response,
-      n_cell_uns_relative_to_stim, sim_id,
+      n_cell_uns_relative_to_stim, sim_id, sim_seed,
       dplyr::everything()
     )
   if (max(sim_res$propStim, na.rm = TRUE) > 0.3) {
-    print(paste0("j: ", j))
+    print(paste0("i: ", i))
     stop()
   }
 
