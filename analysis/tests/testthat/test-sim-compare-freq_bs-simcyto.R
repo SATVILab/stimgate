@@ -638,8 +638,8 @@ test_that("comparison validation requires complete rows for every method", {
   expect_equal(bad_missing$incomplete_sim_ids, 2L)
 
   errored <- complete
-  errored$error[errored$sim_id == 1L & errored$method == "fbeta"][1] <-
-    "failed"
+  error_row <- which(errored$sim_id == 1L & errored$method == "fbeta")[[1]]
+  errored$error[[error_row]] <- "failed"
   bad_error <- env$.simCompareValidateCompletedScenarios(
     compare_raw = errored,
     sim_ids = c(1L, 2L),
