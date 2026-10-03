@@ -607,13 +607,15 @@ plotting/orchestration code.
 
 ### Saved expression and stimulation gates
 
-Saved expression includes unstimulated samples, while final stimulation
-gate tables omit them. Positivity helpers must treat channels with no
-gate for the current sample as all-FALSE, preserving one logical value
-per cell. Completed `chnlSettings.rds` settings are keyed by marker
-labels, although saved expression columns use channel names. Resolve
-that mapping before applying the saved `biasUns`; channels without a
-saved bias use zero.
+Reuse `.gateGetDirs()` for prefixed directory discovery and
+`.getExChnlPathDir()` for saved expression paths, preserving each
+caller’s validation and missing-path handling. Saved expression includes
+unstimulated samples, while final stimulation gate tables omit them.
+Positivity helpers must treat channels with no gate for the current
+sample as all-FALSE, preserving one logical value per cell. Completed
+`chnlSettings.rds` settings are keyed by marker labels, although saved
+expression columns use channel names. Resolve that mapping before
+applying the saved `biasUns`; channels without a saved bias use zero.
 
 ### Function Signatures & Returns
 
