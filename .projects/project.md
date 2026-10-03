@@ -38,6 +38,7 @@
 
 ## Governance
 
+- Collaboration mode: collaborative administration in a public repository.
 - This is a shared organisation repository. Other collaborators may edit issues and Project state.
 - Assignment is explicit only. Preserve all collaborator, bot and automation changes outside the requested delta.
 - Private operator sources, personal tasks and credentials are forbidden in repository content, issues, comments, commits and logs.
