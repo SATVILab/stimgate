@@ -18,7 +18,10 @@ run_local_fdr_inspection <- function(scenario) {
     stop("Run devtools::load_all() before sourcing this script.")
   }
   if (!requireNamespace("simcyto", quietly = TRUE)) {
-    stop("The manual inspection script requires the development dependency simcyto.")
+    stop(
+      "The manual inspection script requires the development dependency ",
+      "simcyto."
+    )
   }
 
   old_intermediate <- Sys.getenv("STIMGATE_INTERMEDIATE", unset = NA_character_)
@@ -45,7 +48,11 @@ run_local_fdr_inspection <- function(scenario) {
     nCellByCondition = rep(scenario$n_cell, 2L),
     transformationFunc = simcyto::simCytTransformGaussian(),
     mixtureType = "gaussianOnly",
-    meanExprMat = matrix(c(0, scenario$separation), byrow = TRUE, ncol = 1L),
+    meanExprMat = matrix(
+      c(0, scenario$separation),
+      byrow = TRUE,
+      ncol = 1L
+    ),
     clusterLabelVec = c("gn", "gp"),
     probVecUns = c(1 - prob_background, prob_background),
     probExact = TRUE,
@@ -103,6 +110,11 @@ run_local_fdr_inspection <- function(scenario) {
     if (file.exists(path)) readRDS(path) else NULL
   }
 
+  scalar <- function(x) {
+    x <- suppressWarnings(as.numeric(x))
+    if (length(x) == 0L) NA_real_ else x[[1L]]
+  }
+
   ex_stim <- read_required("exTblStimThreshold")
   ex_uns <- read_required("exTblUnsThreshold")
   dens_raw <- read_required("densTblRaw")
@@ -128,6 +140,10 @@ run_local_fdr_inspection <- function(scenario) {
   )
 
   final_decisions <- trim_info$final
+  if (!is.list(final_decisions)) {
+    final_decisions <- list()
+  }
+
   decision_table <- data.frame(
     decision = c(
       "preliminary modelling lower bound",
@@ -140,14 +156,14 @@ run_local_fdr_inspection <- function(scenario) {
       "final local-FDR gate"
     ),
     x = c(
-      attr(data_mod, "minProbXPos"),
-      final_decisions$xClearInit,
-      final_decisions$xDom,
-      final_decisions$xClear,
-      final_decisions$xQual,
-      final_decisions$xAntimode,
-      final_decisions$xSum,
-      detail$threshold[[1]]
+      scalar(attr(data_mod, "minProbXPos")),
+      scalar(final_decisions$xClearInit),
+      scalar(final_decisions$xDom),
+      scalar(final_decisions$xClear),
+      scalar(final_decisions$xQual),
+      scalar(final_decisions$xAntimode),
+      scalar(final_decisions$xSum),
+      scalar(detail$threshold)
     )
   )
 
@@ -213,20 +229,60 @@ run_local_fdr_inspection <- function(scenario) {
   )
   graphics::lines(data_mod$F1, data_mod$pred, lty = 2, lwd = 2)
 
-  finite_decisions <- decision_table[is.finite(decision_table$x), , drop = FALSE]
-  if (nrow(finite_decisions) > 0L) {
-    graphics::abline(
-      v = finite_decisions$x,
-      lty = rep(3:6, length.out = nrow(finite_decisions))
-    )
+  plot_decision_names <- c(
+    "preliminary modelling lower bound",
+    "clear-response boundary",
+    "quality boundary",
+    "antimode boundary",
+    "final filtering boundary",
+    "final local-FDR gate"
+  )
+  plot_decisions <- decision_table[
+    match(plot_decision_names, decision_table$decision),
+    ,
+    drop = FALSE
+  ]
+  plot_decisions$lty <- c(3, 4, 5, 6, 2, 1)
+  plot_decisions$label <- c(
+    "preliminary bound",
+    "x_clear",
+    "x_qual",
+    "x_antimode",
+    "x_sum",
+    "final gate"
+  )
+  plot_decisions <- plot_decisions[
+    is.finite(plot_decisions$x),
+    ,
+    drop = FALSE
+  ]
+
+  if (nrow(plot_decisions) > 0L) {
+    for (i in seq_len(nrow(plot_decisions))) {
+      graphics::abline(
+        v = plot_decisions$x[[i]],
+        lty = plot_decisions$lty[[i]],
+        lwd = if (plot_decisions$decision[[i]] == "final local-FDR gate") 2 else 1
+      )
+    }
   }
   graphics::legend(
     "bottomright",
     legend = c("raw probability", "preliminary model region", "smoothed curve"),
     lty = c(1, NA, 2),
     pch = c(NA, 16, NA),
-    bty = "n"
+    bty = "n",
+    cex = 0.8
   )
+  if (nrow(plot_decisions) > 0L) {
+    graphics::legend(
+      "topleft",
+      legend = plot_decisions$label,
+      lty = plot_decisions$lty,
+      bty = "n",
+      cex = 0.7
+    )
+  }
 
   if (is.data.frame(data_threshold) && nrow(data_threshold) > 0L) {
     data_threshold <- data_threshold[order(data_threshold$F1), , drop = FALSE]
