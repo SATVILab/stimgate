@@ -183,7 +183,7 @@ getStimGatesDetailed <- function(
 
   pathVec <- list.files(
     pathInt,
-    pattern = "^locDetail.*\\.rds$",
+    pattern = "^(locDetail.*|locClusterQuantileTbl)\\.rds$",
     recursive = TRUE,
     full.names = TRUE
   )
@@ -212,6 +212,14 @@ getStimGatesDetailed <- function(
 
 #' @keywords internal
 .gateGetDetailedNormaliseObject <- function(obj, detailObject) {
+  if (detailObject == "locClusterQuantileTbl") {
+    if (!"detailLevel" %in% names(obj)) {
+      obj$detailLevel <- "cluster_final"
+    }
+    if (!"threshold" %in% names(obj) && "cpJoinTgOrig" %in% names(obj)) {
+      obj$threshold <- obj$cpJoinTgOrig
+    }
+  }
   if (detailObject %in% "locDetailClusterFinal") {
     if (!"detailLevel" %in% names(obj)) {
       obj$detailLevel <- "cluster_final"
