@@ -146,6 +146,13 @@ test_that("analysis 9 preprocessing reaches every configured population", {
     content,
     fixed = TRUE
   ))
+  expect_true(grepl("analysis_seed <- 20260823L", content, fixed = TRUE))
+  expect_true(grepl("set.seed(analysis_seed)", content, fixed = TRUE))
+  expect_true(grepl(
+    "seed = analysis_seed",
+    content,
+    fixed = TRUE
+  ))
   expect_false(grepl(
     'Sys.setenv("STIMGATE_DEBUG" = "TRUE")',
     content,
