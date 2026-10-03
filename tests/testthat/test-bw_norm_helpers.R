@@ -62,6 +62,7 @@ test_that("bwCalcOne with nrd0Norm returns finite positive scalar", {
   expect_length(bw, 1L)
   expect_true(is.finite(bw) && bw > 0)
   expect_false(isTRUE(attr(bw, "adaptive")))
+  expect_false(isTRUE(attr(bw, "normFallback")))
 })
 
 test_that("bwCalcOne with sjNorm returns finite positive scalar", {
@@ -111,6 +112,31 @@ test_that("bwCalcOne Norm moments path is sensitive to normExtraFrac", {
   # The two calls use different extra-component sizes, so the resulting
   # synthetic distribution — and therefore the bandwidth — must differ.
   expect_false(isTRUE(all.equal(as.numeric(bw_default), as.numeric(bw_noextra))))
+})
+
+test_that("normalised fallback honours bwNcellMax and records provenance", {
+  x <- seq_len(10)
+
+  set.seed(91L)
+  bw_norm_fallback <- stimgate:::.bwCalcOne(
+    x,
+    bwMtd = "nrd0Norm",
+    bwNcellMax = 5L
+  )
+
+  set.seed(91L)
+  x_capped <- sample(x, size = 5L, replace = FALSE)
+  bw_expected <- stimgate:::.bwCalcOne(
+    x_capped,
+    bwMtd = "nrd0"
+  )
+
+  expect_true(isTRUE(attr(bw_norm_fallback, "normFallback")))
+  expect_equal(
+    as.numeric(bw_norm_fallback),
+    as.numeric(bw_expected),
+    tolerance = 1e-12
+  )
 })
 
 # ---------------------------------------------------------------------------
