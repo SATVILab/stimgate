@@ -2528,14 +2528,14 @@
       expected_n <- if (!is.null(nSample) && !is.null(nIter)) {
         as.integer(nSample) * as.integer(nIter)
       } else {
-        NULL
+        NA_integer_
       }
 
       incomplete_ids <- expected_keys |>
         dplyr::filter(
           is.na(.data$n_rows) |
-            (!is.null(.env$expected_n) & .data$n_rows != .env$expected_n) |
-            (is.null(.env$expected_n) & .data$n_rows < 1L) |
+            (!is.na(.env$expected_n) & .data$n_rows != .env$expected_n) |
+            (is.na(.env$expected_n) & .data$n_rows < 1L) |
             is.na(.data$all_finite) |
             !.data$all_finite
         ) |>
