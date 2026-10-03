@@ -479,20 +479,18 @@ promote_analysis7_if_ready <- function(
     sim_grid = sim_grid_all
   )
   expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
-  collated_sim_ids <- if (
-    nrow(compare_raw_full) > 0L && "sim_id" %in% names(compare_raw_full)
-  ) {
-    sort(unique(as.integer(compare_raw_full$sim_id)))
-  } else {
-    integer()
-  }
-
+  full_check <- .simCompareValidateCompletedScenarios(
+    compare_raw = compare_raw_full,
+    sim_ids = expected_sim_ids,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim
+  )
   full_collate_ok <-
     length(scenario_paths) == length(expected_sim_ids) &&
-    identical(collated_sim_ids, expected_sim_ids)
-  full_validation_ok <- full_collate_ok &&
-    (!"error" %in% names(compare_raw_full) ||
-      !any(!is.na(compare_raw_full$error) & compare_raw_full$error != ""))
+    isTRUE(full_check$collate_ok)
+  full_validation_ok <-
+    full_collate_ok &&
+    isTRUE(full_check$validation_ok)
 
   if (!isTRUE(full_validation_ok)) {
     error_message <- paste0(
@@ -603,40 +601,33 @@ if (isTRUE(run_simulations)) {
   }
 
   expected_chunk_ids <- sort(unique(as.integer(sim_grid$sim_id)))
-  collated_chunk_ids <- if (
-    nrow(compare_raw) > 0L && "sim_id" %in% names(compare_raw)
-  ) {
-    sort(unique(as.integer(compare_raw$sim_id)))
-  } else {
-    integer()
-  }
-
-  error_sim_ids <- if (
-    nrow(compare_raw) > 0L &&
-      "sim_id" %in% names(compare_raw) &&
-      "error" %in% names(compare_raw)
-  ) {
-    sort(unique(as.integer(
-      compare_raw$sim_id[
-        !is.na(compare_raw$error) &
-          nzchar(as.character(compare_raw$error))
-      ]
-    )))
-  } else {
-    integer()
-  }
-
-  chunk_collate_ok <- identical(collated_chunk_ids, expected_chunk_ids)
-  chunk_validation_ok <- chunk_collate_ok && length(error_sim_ids) == 0L
-  n_failed <- length(intersect(expected_chunk_ids, error_sim_ids))
-  n_completed <- length(setdiff(collated_chunk_ids, error_sim_ids))
+  chunk_check <- .simCompareValidateCompletedScenarios(
+    compare_raw = compare_raw,
+    sim_ids = expected_chunk_ids,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim
+  )
+  chunk_collate_ok <- isTRUE(chunk_check$collate_ok)
+  chunk_validation_ok <- isTRUE(chunk_check$validation_ok)
+  failed_sim_ids <- sort(unique(c(
+    chunk_check$error_sim_ids,
+    chunk_check$incomplete_sim_ids
+  )))
+  n_failed <- length(failed_sim_ids)
+  n_completed <- length(setdiff(expected_chunk_ids, failed_sim_ids))
 
   validation_error <- if (!chunk_collate_ok) {
     "Chunk collation did not contain exactly the assigned sim_id set."
-  } else if (length(error_sim_ids) > 0L) {
+  } else if (length(chunk_check$error_sim_ids) > 0L) {
     paste0(
       "Chunk contains simulation errors for sim_id: ",
-      paste(error_sim_ids, collapse = ", "),
+      paste(chunk_check$error_sim_ids, collapse = ", "),
+      "."
+    )
+  } else if (length(chunk_check$incomplete_sim_ids) > 0L) {
+    paste0(
+      "Chunk is missing complete stimgate/fbeta/tailgate rows for sim_id: ",
+      paste(chunk_check$incomplete_sim_ids, collapse = ", "),
       "."
     )
   } else {
