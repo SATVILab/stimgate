@@ -44,6 +44,11 @@
 .acsCytofValidationCorrelationTable <- function(comparisonTbl) {
   comparisonTbl |>
     dplyr::group_by(method, pop, cyt, stim) |>
+    dplyr::filter(
+      stats::quantile(.data$freq_stim_man, 0.75, na.rm = TRUE) >
+        3 * max(0.01, stats::median(.data$freq_uns_man, na.rm = TRUE)),
+      stats::quantile(.data$freq_bs_man, 0.75, na.rm = TRUE) > 0.02
+    ) |>
     dplyr::summarise(
       n = sum(stats::complete.cases(.data$freq_bs_auto, .data$freq_bs_man)),
       pcc = if (n > 1L) {
