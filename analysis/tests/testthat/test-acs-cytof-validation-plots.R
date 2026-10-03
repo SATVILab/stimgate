@@ -39,6 +39,11 @@ test_that("CCC matches the manuscript cccrm estimator on shifted data", {
     0.8,
     tolerance = 1e-12
   )
+  expect_equal(
+    env$.acsCytofValidationCcc(1:5, 2 * (1:5)),
+    8 / 19,
+    tolerance = 1e-12
+  )
   expect_equal(env$.acsCytofValidationCcc(rep(1, 5), 1:5), 0)
   expect_true(is.na(env$.acsCytofValidationCcc(rep(1, 5), rep(1, 5))))
 })
