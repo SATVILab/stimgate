@@ -374,6 +374,15 @@ The `analysis-qmd-tests.yaml` workflow is manual-only
 (`workflow_dispatch`); do not add automatic triggers. See
 `analysis/tests/README.md` for commands and coverage limits.
 
+Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or
+`2a 2b`; validate all target arguments before submitting jobs. Keep
+mocked submission and render checks in
+`analysis/tests/test-slurm-launchers.sh` and run them in analysis CI
+when launchers change. Relative-error plots averaged over cell counts
+and plots for each cell count belong in separate labelled QMD chunks;
+preserve the same scientific inclusion rules and avoid pooling different
+grid dimensions.
+
 ### Website Maintenance (`pkgdown`)
 
 Whenever functions are added, removed, or have their export status
