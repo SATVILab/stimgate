@@ -35,6 +35,10 @@ getStimGates <- function(
   purrr::map_df(pop, function(popCurr) {
     chnlVec <- if (!is.null(marker)) {
       markerLab <- stimgateMetaReadMarkerLab(pathProject)
+      unknown <- marker[!marker %in% names(markerLab)]
+      if (length(unknown) > 0L) {
+        stop("Unknown marker: ", paste(unknown, collapse = ", "))
+      }
       markerLab[marker] |> stats::setNames(NULL)
     } else {
       chnl %|c|% .gateGetChnl(pathProject, popCurr)
