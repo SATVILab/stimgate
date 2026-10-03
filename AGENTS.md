@@ -317,7 +317,8 @@ runner targets. Bias-tuning collation retains invalid final sample estimates,
 reports valid/failed counts, and rejects missing sample outputs before promotion.
 These targets reuse bounded scientific helper and document-contract tests; they do not render
 the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-only
-(`workflow_dispatch`); do not add automatic triggers. See
+(`workflow_dispatch`); do not add automatic triggers. Its `mode: render` input renders
+the QMDs end to end in quick mode instead (simulate, then plot; one job per QMD). See
 `analysis/tests/README.md` for commands and coverage limits.
 
 The default Slurm job list includes both Analysis 2a and 2b. Keep enabled
@@ -350,7 +351,6 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
 |---|---|---|
 | `R-CMD-check.yaml` | `windows-latest` (release) only | Same on pushes to `master`; full OS/R matrix on published releases, manual runs (`full` input) and PRs labelled `full-check` |
 | `analysis-integration.yaml` | `windows-latest`, path-filtered | Same on pushes to `master` |
-| `analysis-qmd-render.yaml` | Not run | Manual-only; renders QMDs end to end in quick mode by default (optional dev), parallel Windows jobs, HTML and figure artifacts |
 | `pkgdown.yaml` | Not run | Builds and deploys on `master`, releases and manual runs (Ubuntu) |
 | `test-coverage.yaml` | Not run | `master` and manual runs (Windows) |
 | `document.yaml` | Pushes touching `R/` (Windows) | Also runnable manually |
