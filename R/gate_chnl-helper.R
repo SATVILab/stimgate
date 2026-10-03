@@ -46,7 +46,7 @@
   # Cluster-based gating
   # =========================
 
-  if (!is.null(chnlSettings$tolClust)) {
+  if (isTRUE(chnlSettings$clusterGates)) {
     gateTblCluster <- purrr::map_df(
       unique(gateTbl$gateName),
       function(gn) {
