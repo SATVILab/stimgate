@@ -109,6 +109,8 @@
   invisible(TRUE)
 }
 
+# For paired, non-repeated two-method data this is algebraically equivalent
+# to the U-statistic CCC used by cccrm::cccUst() in the ACS manuscript code.
 .acsCytofValidationCcc <- function(x, y) {
   finite <- is.finite(x) & is.finite(y)
   x <- as.numeric(x[finite])
