@@ -108,9 +108,7 @@ test_that("empirical threshold selection matches response estimate", {
     dataCount = data_count,
     propBsEst = prop_bs_est,
     exTblStimOrig = df_stim,
-    exTblUnsBias = df_uns,
-    exTblUnsOrig = df_uns,
-    bias = 0
+    exTblUnsOrig = df_uns
   )
 
   expect_s3_class(data_thresh, "data.frame")
