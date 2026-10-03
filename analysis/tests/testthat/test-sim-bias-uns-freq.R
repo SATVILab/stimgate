@@ -20,7 +20,8 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
   }
   run_grid <- function(quick, dev) {
     env <- .bias_uns_test_env()
-    env$analysis_quick <- quick
+    # Mirrors QMD set-up: dev takes precedence over quick.
+    env$analysis_quick <- quick && !dev
     env$analysis_dev <- dev
     env$simulation_seed <- 12345L
     env$sim_grid_shuffle_seed <- 8L

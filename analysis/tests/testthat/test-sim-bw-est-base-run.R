@@ -105,7 +105,8 @@ test_that("base full-grid IDs survive dev filtering and external chunking", {
     lines[(start + 1L):(end - 1L)]
   }
   build <- function(dev, index, chunks, quick = FALSE) {
-    env$analysis_quick <- quick
+    # Mirrors QMD set-up: dev takes precedence over quick.
+    env$analysis_quick <- quick && !dev
     env$analysis_dev <- dev
     env$simulation_seed <- 12345L
     env$sim_grid_shuffle_seed <- 8L

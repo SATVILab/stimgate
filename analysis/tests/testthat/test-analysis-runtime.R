@@ -976,7 +976,7 @@ test_that("seeded evaluation is independent of and restores caller RNG", {
   expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
 })
 
-test_that("analysis profiles fall back to the environment and respect profile helpers", {
+test_that("analysis profiles are read from PROJR_PROFILE", {
   env <- new.env(parent = baseenv())
   source(script_runtime, local = env)
   withr::local_envvar(PROJR_PROFILE = NA)
@@ -985,8 +985,7 @@ test_that("analysis profiles fall back to the environment and respect profile he
   Sys.setenv(PROJR_PROFILE = "dev, quick")
   expect_true(env$.analysis_is_dev())
   expect_true(env$.analysis_is_quick())
-  env$.isDev <- function() FALSE
-  env$.isQuick <- function() FALSE
+  Sys.setenv(PROJR_PROFILE = "default")
   expect_false(env$.analysis_is_dev())
   expect_false(env$.analysis_is_quick())
 })
