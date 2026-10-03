@@ -841,3 +841,53 @@ test_that("results context reads promoted outputs without run state", {
     staging_before
   )
 })
+
+test_that("project directory fallback is local and can be read-only", {
+  env <- .load_runtime_env()
+  # Exercise the fallback without depending on installed projr configuration.
+  testthat::local_mocked_bindings(
+    requireNamespace = function(...) FALSE,
+    .env = env
+  )
+  project <- withr::local_tempdir()
+  expected <- file.path(project, "output", "fig")
+  expect_identical(
+    .norm_path(env$.analysis_project_dir(
+      "output", "fig", project, create = FALSE
+    )),
+    .norm_path(expected)
+  )
+  expect_false(dir.exists(expected))
+  expect_identical(
+    .norm_path(env$.analysis_project_dir("output", "fig", project)),
+    .norm_path(expected)
+  )
+  expect_true(dir.exists(expected))
+  cache <- env$.analysis_cache_dir(c("sim", "test"), project, create = FALSE)
+  expect_identical(.norm_path(cache), .norm_path(file.path(
+    project, "cache", "sim", "test"
+  )))
+  expect_false(dir.exists(cache))
+})
+
+test_that("project directories tolerate an unavailable projr project", {
+  env <- .load_runtime_env()
+  # Simulate an installed projr whose directory resolver raises an error.
+  testthat::local_mocked_bindings(
+    requireNamespace = function(...) TRUE,
+    do.call = function(what, args) {
+      if (identical(what, file.path)) {
+        base::do.call(what, args)
+      } else {
+        stop("No projr project")
+      }
+    },
+    .env = env
+  )
+  project <- withr::local_tempdir()
+  path <- env$.analysis_cache_dir("sim", project, create = FALSE)
+  expect_identical(
+    .norm_path(path), .norm_path(file.path(project, "cache", "sim"))
+  )
+  expect_false(dir.exists(path))
+})

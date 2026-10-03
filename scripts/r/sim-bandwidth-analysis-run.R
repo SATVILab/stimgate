@@ -1,0 +1,577 @@
+# Shared run helpers for the bandwidth-simulation analyses (QMDs 2-6).
+#
+# Source after analysis-runtime.R, sim-misc.R, sim-bandwidth.R and
+# sim-bandwidth-analysis-io.R.
+#
+# Each analysis supplies:
+# - a scenario function `scenario_fn(row, settings)` that runs one row of
+#   `sim_grid` (a one-row tibble) with the fixed `settings` list and returns
+#   a data frame of results. It must not seed the RNG itself.
+# - optionally a `validate_fn(tbl)` returning problem strings (character(0)
+#   when valid), and a `collate_fn(tbl)` returning a named list of objects
+#   saved as `collated/<name>.rds` at promotion.
+#
+# `.simBandwidthRunRow()` is the single code path for one row: the furrr
+# workers call it, and so does an interactive rerun of one `sim_id`, so both
+# use exactly the same random numbers.
+
+# RNG kinds fixed for every simulation row, independent of the caller's
+# (or furrr's L'Ecuyer-CMRG) RNG state.
+.simBandwidthRngKind <- c(
+  kind = "Mersenne-Twister",
+  normal.kind = "Inversion",
+  sample.kind = "Rejection"
+)
+
+#' Run one simulation-grid row with its own seed
+#'
+#' Seeds with `row$sim_seed` under fixed RNG kinds, runs `scenario_fn`,
+#' restores the caller's RNG state, and prefixes the grid-row columns to the
+#' result. The output is what the parallel run stores for that `sim_id`.
+#'
+#' @param row data.frame One row of `sim_grid`, with `sim_id` and `sim_seed`.
+#' @param scenario_fn function `function(row, settings)` returning a data
+#'   frame.
+#' @param settings list Fixed analysis settings passed to `scenario_fn`.
+#' @param error_col character Name of the error column (NA on success).
+#' @return tibble Grid-row columns, scenario results and `error_col`.
+.simBandwidthRunRow <- function(
+    row,
+    scenario_fn,
+    settings = list(),
+    error_col = "error_message") {
+  if (nrow(row) != 1L || !all(c("sim_id", "sim_seed") %in% names(row))) {
+    stop("row must be one sim_grid row with sim_id and sim_seed columns.")
+  }
+  res <- withr::with_seed(
+    as.integer(row$sim_seed[[1]]),
+    scenario_fn(row, settings),
+    .rng_kind = .simBandwidthRngKind[["kind"]],
+    .rng_normal_kind = .simBandwidthRngKind[["normal.kind"]],
+    .rng_sample_kind = .simBandwidthRngKind[["sample.kind"]]
+  )
+  res <- tibble::as_tibble(res)
+  if (nrow(res) == 0L) {
+    stop("scenario_fn must return at least one result row.")
+  }
+  res <- res[, setdiff(names(res), c(names(row), error_col)), drop = FALSE]
+  out <- dplyr::bind_cols(
+    tibble::as_tibble(row)[rep(1L, nrow(res)), , drop = FALSE],
+    res
+  )
+  out[[error_col]] <- rep(NA_character_, nrow(out))
+  out
+}
+
+#' Error row for a failed simulation-grid row
+#'
+#' Grid-row columns plus the error message only. Result columns are absent,
+#' so `dplyr::bind_rows()` / `purrr::list_rbind()` fill them with typed NA
+#' from the success rows instead of clashing with hand-typed NA columns.
+#'
+#' @param row data.frame One row of `sim_grid`.
+#' @param message character Error message.
+#' @param error_col character Name of the error column.
+#' @return tibble One row.
+.simBandwidthErrorRow <- function(row, message, error_col = "error_message") {
+  out <- tibble::as_tibble(row)
+  out[[error_col]] <- as.character(message)
+  out
+}
+
+#' Worker body for one simulation-grid row
+#'
+#' Handles resume, running/completed/error markers, atomic output writing
+#' and error rows around `.simBandwidthRunRow()`. Existing outputs are reused
+#' unless the output or marker recorded an error and `retry_errors` is TRUE,
+#' in which case the row is run again.
+#'
+#' @param row data.frame One row of `sim_grid`.
+#' @param scenario_fn,settings,error_col See `.simBandwidthRunRow()`.
+#' @param run_ctx list Run context from `.analysis_run_context()`.
+#' @param total_sims integer Number of rows in this chunk (for progress).
+#' @param sim_grid_chunk_index,sim_grid_n_chunks integer Chunk settings.
+#' @param retry_errors logical Rerun rows whose saved output has an error.
+#' @param heading character Progress dashboard heading.
+#' @param path_root character or NULL Checkout to load in workers.
+#' @param p function or NULL progressr progressor.
+#' @return tibble Saved or newly computed output for the row.
+.simBandwidthRunRowResumable <- function(
+    row,
+    scenario_fn,
+    settings,
+    run_ctx,
+    total_sims,
+    sim_grid_chunk_index = 1L,
+    sim_grid_n_chunks = 1L,
+    retry_errors = TRUE,
+    error_col = "error_message",
+    heading = "BANDWIDTH SIMULATION PROGRESS",
+    path_root = NULL,
+    p = NULL) {
+  if (isTRUE(run_ctx$read_only)) {
+    stop("Cannot run simulations in a read-only results context.")
+  }
+  if (!is.null(path_root)) {
+    .simBandwidthEnsureCurrentCheckout(path_root)
+  }
+  sim_id <- row$sim_id[[1]]
+  dir_jobs <- run_ctx$chunk_jobs_dir
+  file_running <- file.path(dir_jobs, paste0("running-", sim_id))
+  file_completed <- file.path(dir_jobs, paste0("completed-", sim_id))
+  file_error <- file.path(dir_jobs, paste0("error-", sim_id))
+  file_output <- .path_sim_output(
+    sim_id,
+    dir_output = run_ctx$chunk_output_dir,
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks
+  )
+  update_progress <- function() {
+    .update_progress_summary(
+      path_progress_file = run_ctx$progress_file,
+      dir_jobs_chunk = dir_jobs,
+      total_sims = total_sims,
+      sim_grid_chunk_index = sim_grid_chunk_index,
+      sim_grid_n_chunks = sim_grid_n_chunks,
+      dir_output = run_ctx$chunk_output_dir,
+      heading = heading
+    )
+  }
+  tick <- function(msg) {
+    update_progress()
+    if (!is.null(p)) p(sprintf("%s sim_id: %s", msg, sim_id))
+  }
+
+  existing <- if (file.exists(file_output)) {
+    tryCatch(readRDS(file_output), error = function(e) NULL)
+  }
+  if (
+    !is.null(existing) &&
+      !(isTRUE(retry_errors) && (
+        file.exists(file_error) ||
+          .analysis_output_has_error(existing, error_col)
+      ))
+  ) {
+    .analysis_reconcile_resume_markers(
+      existing_output = existing,
+      file_completed = file_completed,
+      file_error = file_error,
+      file_running = file_running,
+      error_col = error_col
+    )
+    tick("Skipped existing")
+    return(existing)
+  }
+
+  unlink(c(file_error, file_completed))
+  file.create(file_running)
+  update_progress()
+  out <- tryCatch(
+    .simBandwidthRunRow(row, scenario_fn, settings, error_col),
+    error = function(e) {
+      .simBandwidthErrorRow(row, conditionMessage(e), error_col)
+    }
+  )
+  .write_rds_atomic(out, file_output)
+  failed <- .analysis_output_has_error(out, error_col)
+  file.create(if (failed) file_error else file_completed)
+  unlink(file_running)
+  tick(if (failed) "ERROR on" else "Completed")
+  out
+}
+
+#' Run this chunk's simulation-grid rows in parallel
+#'
+#' @param sim_grid data.frame Rows assigned to this chunk.
+#' @param workers integer Number of multisession workers (1 = sequential).
+#' @param ... Passed to `.simBandwidthRunRowResumable()` (`scenario_fn`,
+#'   `settings`, `run_ctx`, chunk settings, `retry_errors`, `error_col`,
+#'   `heading`, `path_root`).
+#' @return list Per-row outputs, in `sim_grid` order.
+.simBandwidthRunGrid <- function(sim_grid, ..., workers = .simGetCores()) {
+  if (nrow(sim_grid) == 0L) {
+    return(list())
+  }
+  old_plan <- future::plan()
+  on.exit(future::plan(old_plan), add = TRUE)
+  workers <- max(1L, as.integer(workers))
+  if (workers > 1L) {
+    future::plan(future::multisession, workers = workers)
+  } else {
+    future::plan(future::sequential)
+  }
+  row_list <- lapply(seq_len(nrow(sim_grid)), function(i) {
+    sim_grid[i, , drop = FALSE]
+  })
+  progressr::with_progress({
+    p <- progressr::progressor(steps = length(row_list))
+    # Arguments go through furrr's `...` (not a closure) so that functions
+    # such as `scenario_fn` ship to workers with their globals. Seeds come
+    # from each row's sim_seed (see .simBandwidthRunRow); furrr's
+    # seed = TRUE only silences RNG warnings and does not affect results.
+    do.call(furrr::future_map, c(
+      list(
+        .x = row_list,
+        .f = .simBandwidthRunRowResumable,
+        total_sims = length(row_list),
+        p = p
+      ),
+      list(...),
+      list(.options = furrr::furrr_options(seed = TRUE, scheduling = Inf))
+    ))
+  })
+}
+
+#' Locate the saved output file for one sim_id
+#'
+#' @param dir character Directory searched recursively (a staged run, a
+#'   chunk directory or `current/`).
+#' @param sim_id integer Simulation ID.
+#' @return character Path, or `character(0)` if not found.
+.simBandwidthFindSimOutput <- function(dir, sim_id) {
+  paths <- .find_bw_list_output_files(
+    output_dir = dir,
+    allow_cache_fallback = FALSE
+  )
+  paths[grepl(sprintf("-sim_id_%06d[.]rds$", as.integer(sim_id)), paths)]
+}
+
+#' Read saved simulation outputs into one tibble
+#'
+#' @param path_vec character Output file paths.
+#' @return tibble Row-bound outputs (empty tibble for no paths).
+.simBandwidthReadOutputs <- function(path_vec) {
+  out <- lapply(path_vec, function(path) {
+    tryCatch(
+      readRDS(path),
+      error = function(e) {
+        stop(
+          "Could not read saved simulation result: ", path, ". ",
+          conditionMessage(e)
+        )
+      }
+    )
+  })
+  if (length(out) == 0L) {
+    return(tibble::tibble())
+  }
+  purrr::list_rbind(out)
+}
+
+#' Validate collated outputs against the expected grid
+#'
+#' Checks that exactly the expected `sim_id` set is present, that no output
+#' recorded an error, that `sim_seed` matches the grid, and any analysis
+#' checks from `validate_fn`.
+#'
+#' @param tbl data.frame Collated outputs.
+#' @param expected_grid data.frame Grid rows expected in `tbl`.
+#' @param validate_fn function or NULL `function(tbl)` returning problems.
+#' @param error_col character Name of the error column.
+#' @return list `ids_ok`, `problems` (character) and `validation_ok`.
+.simBandwidthValidateOutputs <- function(
+    tbl,
+    expected_grid,
+    validate_fn = NULL,
+    error_col = "error_message") {
+  expected <- dplyr::distinct(
+    tibble::tibble(
+      sim_id = as.integer(expected_grid$sim_id),
+      sim_seed = as.integer(expected_grid$sim_seed)
+    )
+  ) |>
+    dplyr::arrange(.data$sim_id)
+  observed <- if (all(c("sim_id", "sim_seed") %in% names(tbl))) {
+    tibble::tibble(
+      sim_id = as.integer(tbl$sim_id),
+      sim_seed = as.integer(tbl$sim_seed)
+    ) |>
+      dplyr::distinct() |>
+      dplyr::arrange(.data$sim_id)
+  } else {
+    expected[0, ]
+  }
+  ids_ok <- identical(unique(observed$sim_id), expected$sim_id)
+  problems <- character()
+  if (!ids_ok) {
+    problems <- "outputs do not contain exactly the expected sim_id set"
+  } else if (!identical(observed, expected)) {
+    problems <- "output sim_seed values do not match the simulation grid"
+  }
+  if (error_col %in% names(tbl)) {
+    err <- !is.na(tbl[[error_col]]) & nzchar(as.character(tbl[[error_col]]))
+    error_ids <- sort(unique(as.integer(tbl$sim_id[err])))
+    if (length(error_ids) > 0L) {
+      problems <- c(problems, paste0(
+        "simulation errors for sim_id: ", paste(error_ids, collapse = ", ")
+      ))
+    }
+  }
+  if (length(problems) == 0L && !is.null(validate_fn)) {
+    problems <- as.character(validate_fn(tbl))
+  }
+  list(
+    ids_ok = ids_ok,
+    problems = problems,
+    validation_ok = length(problems) == 0L
+  )
+}
+
+#' Count completed and failed markers for this chunk
+#'
+#' @param run_ctx list Run context.
+#' @return list `completed` and `failed` counts.
+.simBandwidthChunkMarkerCounts <- function(run_ctx) {
+  files <- list.files(run_ctx$chunk_jobs_dir)
+  ids <- function(prefix) {
+    unique(sub(prefix, "", files[grepl(prefix, files)]))
+  }
+  failed <- ids("^error-")
+  completed <- ids("^completed-")
+  list(
+    completed = length(setdiff(completed, failed)),
+    failed = length(failed)
+  )
+}
+
+#' Promote a staged run once every chunk is complete and valid
+#'
+#' Under a collation lock, checks that the staged outputs cover exactly the
+#' full grid, validates them, writes `collate_fn(tbl)` to `collated/` and
+#' promotes the run. Returns FALSE (without error) while other chunks are
+#' outstanding.
+#'
+#' @param run_ctx list Run context.
+#' @param sim_grid_all data.frame Full grid (all chunks).
+#' @param collate_fn function `function(tbl)` returning a named list.
+#' @param validate_fn,error_col See `.simBandwidthValidateOutputs()`.
+#' @param label character Analysis label for error messages.
+#' @param counts list Chunk counts `total`, `completed`, `failed`.
+#' @return logical Whether the run was promoted.
+.simBandwidthPromoteIfReady <- function(
+    run_ctx,
+    sim_grid_all,
+    collate_fn,
+    validate_fn = NULL,
+    error_col = "error_message",
+    label = "analysis",
+    counts = list(total = 0L, completed = 0L, failed = 0L)) {
+  if (isTRUE(run_ctx$read_only)) {
+    return(invisible(FALSE))
+  }
+  if (!.analysis_can_promote(run_ctx)) {
+    return(invisible(FALSE))
+  }
+  lock <- .analysis_acquire_lock(
+    .analysis_lock_path(run_ctx, "collation"),
+    timeout_sec = 300
+  )
+  if (is.null(lock)) {
+    return(invisible(FALSE))
+  }
+  on.exit(.analysis_release_lock(lock), add = TRUE)
+  if (!.analysis_can_promote(run_ctx)) {
+    return(invisible(FALSE))
+  }
+
+  paths <- .find_bw_list_output_files(
+    output_dir = run_ctx$staging_run_dir,
+    allow_cache_fallback = FALSE
+  )
+  tbl <- .simBandwidthReadOutputs(paths)
+  validation <- .simBandwidthValidateOutputs(
+    tbl,
+    expected_grid = sim_grid_all,
+    validate_fn = validate_fn,
+    error_col = error_col
+  )
+  if (length(paths) != nrow(sim_grid_all)) {
+    validation$problems <- c(
+      "staged output files do not match the full simulation grid",
+      validation$problems
+    )
+  }
+  if (length(validation$problems) > 0L) {
+    error_message <- paste0(
+      "Refusing to promote ", label, ": ",
+      paste(validation$problems, collapse = "; "), "."
+    )
+    .analysis_mark_chunk(
+      run_ctx = run_ctx,
+      total_sims = counts$total,
+      completed_sims = counts$completed,
+      failed_sims = counts$failed,
+      collate_ok = FALSE,
+      validation_ok = FALSE,
+      error_message = error_message
+    )
+    stop(error_message)
+  }
+
+  collated <- collate_fn(tbl)
+  if (
+    !is.list(collated) || length(collated) == 0L ||
+      is.null(names(collated)) || anyNA(names(collated)) ||
+      any(!nzchar(names(collated))) || anyDuplicated(names(collated))
+  ) {
+    stop("collate_fn must return a non-empty list with unique object names.")
+  }
+  for (nm in names(collated)) {
+    .write_rds_atomic(
+      collated[[nm]],
+      file.path(run_ctx$staging_collated_dir, paste0(nm, ".rds"))
+    )
+  }
+  .analysis_promote_run(run_ctx)
+}
+
+#' Validate this chunk, record its status and promote if all chunks are done
+#'
+#' Reads this chunk's outputs, validates them against the chunk grid, marks
+#' the chunk status, stops on errors and then calls
+#' `.simBandwidthPromoteIfReady()`. An empty chunk is marked complete.
+#' Writes no per-chunk collated files.
+#'
+#' @param run_ctx list Run context.
+#' @param sim_grid data.frame Rows assigned to this chunk.
+#' @param sim_grid_all data.frame Full grid.
+#' @param ... Passed to `.simBandwidthPromoteIfReady()` (`collate_fn`,
+#'   `validate_fn`, `error_col`, `label`).
+#' @return logical Whether the run was promoted.
+.simBandwidthFinishChunk <- function(
+    run_ctx,
+    sim_grid,
+    sim_grid_all,
+    validate_fn = NULL,
+    error_col = "error_message",
+    label = "analysis",
+    ...) {
+  if (isTRUE(run_ctx$read_only)) {
+    return(invisible(FALSE))
+  }
+  counts <- .simBandwidthChunkMarkerCounts(run_ctx)
+  counts$total <- nrow(sim_grid)
+  validation <- if (nrow(sim_grid) == 0L) {
+    list(ids_ok = TRUE, problems = character(), validation_ok = TRUE)
+  } else {
+    .simBandwidthValidateOutputs(
+      .simBandwidthReadOutputs(.find_bw_list_output_files(
+        output_dir = run_ctx$chunk_dir,
+        allow_cache_fallback = FALSE
+      )),
+      expected_grid = sim_grid,
+      validate_fn = validate_fn,
+      error_col = error_col
+    )
+  }
+  error_message <- if (!validation$validation_ok) {
+    paste0(
+      "Chunk ", run_ctx$chunk_label, " of ", label, ": ",
+      paste(validation$problems, collapse = "; "), "."
+    )
+  }
+  .analysis_mark_chunk(
+    run_ctx = run_ctx,
+    total_sims = counts$total,
+    completed_sims = counts$completed,
+    failed_sims = counts$failed,
+    collate_ok = validation$ids_ok,
+    validation_ok = validation$validation_ok,
+    error_message = error_message
+  )
+  if (!is.null(error_message)) {
+    stop(error_message)
+  }
+  .simBandwidthPromoteIfReady(
+    run_ctx = run_ctx,
+    sim_grid_all = sim_grid_all,
+    validate_fn = validate_fn,
+    error_col = error_col,
+    label = label,
+    counts = counts,
+    ...
+  )
+}
+
+# ---------------------------------------------------------------------------
+# Analysis 2: fixed-bandwidth background-subtracted frequency (global)
+# ---------------------------------------------------------------------------
+
+#' Analysis 2 scenario: one fixed-bandwidth frequency simulation
+#'
+#' @param row data.frame One row of the analysis 2 `sim_grid`.
+#' @param settings list Fixed `.simBandwidthBsFreq()` arguments (e.g.
+#'   `nSample`, `nIter`, `covEvMin`, `tolClust`).
+#' @return tibble `.simBandwidthBsFreq()` output.
+.simBandwidthFreqBsGlobalScenario <- function(row, settings) {
+  do.call(.simBandwidthBsFreq, c(settings, list(
+    biasUns = row$bias_uns[[1]],
+    bw = row$bw[[1]],
+    bwFallback = row$bw[[1]],
+    nCellStim = row$n_cell[[1]],
+    probResponse = row$prob_response[[1]],
+    meanPos = row$mean_pos[[1]],
+    transformation = row$transformation[[1]],
+    samplePerturbationSd = row$sample_perturbation_sd[[1]],
+    conditionPerturbationSd = row$condition_perturbation_sd[[1]],
+    clusterPerturbationSd = row$cluster_perturbation_sd[[1]],
+    backgroundRelativeToResponse = row$background_relative_to_response[[1]],
+    ncellUnsRelativeToStim = row$n_cell_uns_relative_to_stim[[1]]
+  )))
+}
+
+#' Analysis 2 final sample-level results and scenario summary
+#'
+#' @param tbl data.frame Collated analysis 2 outputs.
+#' @param grid_cols character Grid column names.
+#' @return list `bw_tbl_results_raw` and `bw_tbl_results_summary`.
+.simBandwidthFreqBsGlobalCollate <- function(tbl, grid_cols) {
+  if (all(is.na(tbl$threshold))) {
+    stop(
+      "No valid threshold results were collated. ",
+      "Check the progress log for simulation-level errors."
+    )
+  }
+  results_raw <- tbl |>
+    dplyr::filter(
+      .data$method == "loc_sample",
+      is.finite(.data$threshold),
+      is.finite(.data$propRespTruth),
+      is.finite(.data$propRespEst)
+    ) |>
+    dplyr::select(
+      dplyr::any_of(grid_cols),
+      "iter", "sample", "ind", "method",
+      "propRespTruth", "propRespEst", "threshold"
+    )
+  if (anyDuplicated(results_raw[c("sim_id", "iter", "ind")]) > 0L) {
+    stop(
+      "Expected exactly one final loc_sample result per sim_id/iter/ind, ",
+      "but duplicate result keys were found."
+    )
+  }
+  results_summary <- results_raw |>
+    dplyr::group_by(dplyr::pick(dplyr::any_of(grid_cols))) |>
+    dplyr::summarise(
+      dplyr::across(
+        c("threshold", "propRespTruth", "propRespEst"),
+        list(
+          min = ~ min(.x, na.rm = TRUE),
+          max = ~ max(.x, na.rm = TRUE),
+          mean = ~ mean(.x, na.rm = TRUE),
+          median = ~ stats::median(.x, na.rm = TRUE)
+        )
+      ),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      propRespEst_median_diff =
+        .data$propRespEst_median - .data$propRespTruth_median,
+      propRespEst_median_diff_rel =
+        .data$propRespEst_median_diff / .data$propRespTruth_median
+    )
+  list(
+    bw_tbl_results_raw = results_raw,
+    bw_tbl_results_summary = results_summary
+  )
+}
