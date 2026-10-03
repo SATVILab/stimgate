@@ -639,7 +639,9 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
 8. **Test observable behaviour and explicit integration contracts**:
    Package tests should verify observable outputs and behaviour rather than merely
    asserting implementation details or the existence of internal (`.`-prefixed)
-   functions. Analysis integration tests may directly check helper/API contracts when
+   functions. Output-preserving refactors must retain attributes and row names as
+   well as values; named intermediate vectors can set data-frame row names.
+   Analysis integration tests may directly check helper/API contracts when
    the purpose is to catch drift between `scripts/r/`, QMDs and the installed package.
 9. **Cross-platform compatibility**:
    Tests must pass on macOS, Windows, and Ubuntu. Use `file.path()` (never hard-coded
