@@ -196,6 +196,8 @@
 <li>Checks that QMD files do not call <code>scripts/r</code> helpers through <code>stimgate:::</code>.</li>
 <li>Checks that QMD setup code does not overwrite sourced helper-function names with computed values; use a distinct variable name for helper return values.</li>
 <li>Checks that chunked simulation QMDs use per-scenario deterministic seeds and validate complete cross-chunk collation before promoting canonical results.</li>
+<li>Estimator-comparison simulations should use the same simulated dataset for rows that differ only by estimator or estimator-tuning settings. Derive the data-generation seed from the biological scenario, not from the estimator, cap, chunk index or worker scheduling.</li>
+<li>Keep requested estimator settings distinct from the estimator path actually used after fallbacks. Preserve and summarise fallback provenance rather than labelling fallback rows as though they used the requested estimator.</li>
 <li>Active simulation chunks must collate only their own chunk outputs; canonical cross-chunk reads happen after promotion. A render with simulations disabled must use the read-only current-results context and must not create staging state.</li>
 <li>
 <code>run_plots = FALSE</code> must stop before optional plot/report chunks; multi-chunk simulation renders should not write shared plot files concurrently.</li>
