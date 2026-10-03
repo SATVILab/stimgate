@@ -1229,7 +1229,8 @@ test_that(".simCompareGridOutputStatus catches missing, failed, and empty chunks
   expect_equal(missing$missing_ids, 2L)
 
   failed_data <- complete
-  failed_data$error[failed_data$sim_id == 2L][[1]] <- "failed"
+  failed_idx <- which(failed_data$sim_id == 2L)[[1]]
+  failed_data$error[[failed_idx]] <- "failed"
   failed <- env$.simCompareGridOutputStatus(
     failed_data,
     sim_grid = grid,
