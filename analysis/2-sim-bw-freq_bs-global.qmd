@@ -69,8 +69,6 @@ analysis_key <- c("sim", "bw", "freq_bs", "global")
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
-.sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
-
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
 if (
