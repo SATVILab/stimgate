@@ -202,6 +202,9 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   with computed values; use a distinct variable name for helper return values.
 - Checks that chunked simulation QMDs use per-scenario deterministic seeds and
   validate complete cross-chunk collation before promoting canonical results.
+- Record the scientific simulation grid and fixed scientific settings in the run
+  manifest, and validate the same required parameters before reusing canonical
+  results in a read-only render.
 - Persist each per-scenario output atomically before writing its completed/error
   marker, and pass required run/chunk paths explicitly to progress helpers. This
   keeps restart markers consistent with durable output files.
