@@ -381,18 +381,14 @@
   ]
 
   info$alpha <- alpha
-  info$peakMinRel <- alpha
   info$globalMaxDeriv <- max(peakData$deriv, na.rm = TRUE)
   info$maxPeakDeriv <- maxPeak
-  info$usedGlobalMaximumFallback <- usedGlobalFallback
   info$peakSummary <- data.frame(
     index = peakIndex,
-    idx = peakIndex,
     x = peakData$x[peakIndex],
     prob = peakData$prob[peakIndex],
     deriv = peakData$deriv[peakIndex],
     relativeHeight = peakData$deriv[peakIndex] / maxPeak,
-    relToMaxPeak = peakData$deriv[peakIndex] / maxPeak,
     relToGlobal = peakData$deriv[peakIndex] / info$globalMaxDeriv,
     eligible = peakIndex %in% eligible
   )
@@ -462,9 +458,7 @@
   riseHeight <- abs(psi) * peakHeight
 
   info$omega <- omega
-  info$peakProbMin <- omega
   info$psi <- psi
-  info$riseFrac <- psi
   info$riseHeight <- riseHeight
   info$thresholdProbMin <- thresholdProbMin
 
@@ -544,9 +538,6 @@
   info$thresholdIdxCandidate <- iThreshold
   info$thresholdXCandidate <- peak$data$x[iThreshold]
   info$thresholdProbCandidate <- peak$data$prob[iThreshold]
-  info$riseThresholdIdxCandidate <- iThreshold
-  info$riseThresholdXCandidate <- peak$data$x[iThreshold]
-  info$riseThresholdProbCandidate <- peak$data$prob[iThreshold]
 
   # Optional extra constraint on the threshold itself, independent of omega.
   later <- seq.int(iThreshold, nrow(peak$data))
@@ -562,12 +553,6 @@
   info$thresholdIdx <- iThresholdFinal
   info$thresholdX <- thresholdX
   info$thresholdProb <- peak$data$prob[iThresholdFinal]
-  info$riseThresholdIdx <- iThresholdFinal
-  info$riseThresholdX <- thresholdX
-  info$riseThresholdProb <- peak$data$prob[iThresholdFinal]
-  info$riseThreshold <- riseHeight
-  info$risingFastIdx <- iThresholdFinal
-  info$risingFastX <- thresholdX
   info$shiftedRightForProbability <- iThresholdFinal > iThreshold
 
   list(thresholdX = thresholdX, info = info)
