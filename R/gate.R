@@ -565,9 +565,6 @@ gateStim <- function(
     pathProject = pathProject
   )
 
-  message("")
-  message("")
-  message("")
   message("getting cyt combn frequencies")
 
   .gateStats(
@@ -590,10 +587,7 @@ gateStim <- function(
   indBatchList,
   pathProject
 ) {
-  message("----")
   message("getting base gates")
-  message("----")
-  message("")
 
   purrr::walk(chnlSettings, function(chnlSettingsCurr) {
     txt <- paste0("chnl: ", chnlSettingsCurr$chnlCut)
@@ -608,26 +602,15 @@ gateStim <- function(
       calcCytPosGates = FALSE
     )
 
-    .gateInitSave(
+    pathSave <- .gatesGetPathAll(
       pathProject = pathProject,
-      chnlSettings = chnlSettingsCurr,
-      gateTbl = gateObj$gateTbl
+      pop = chnlSettingsCurr$popGate,
+      chnlCut = chnlSettingsCurr$chnlCut,
+      init = TRUE
     )
+    dir.create(dirname(pathSave), recursive = TRUE, showWarnings = FALSE)
+    saveRDS(gateObj$gateTbl, pathSave)
   })
-}
-
-#' @keywords internal
-.gateInitSave <- function(pathProject, chnlSettings, gateTbl) {
-  pathSave <- .gatesGetPathAll(
-    pathProject = pathProject,
-    pop = chnlSettings$popGate,
-    chnlCut = chnlSettings$chnlCut,
-    init = TRUE
-  )
-  if (!dir.exists(dirname(pathSave))) {
-    dir.create(dirname(pathSave), recursive = TRUE, showWarnings = TRUE)
-  }
-  saveRDS(gateTbl, pathSave)
 }
 
 #' @keywords internal
