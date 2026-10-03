@@ -226,7 +226,20 @@
 #'     \item \code{plots/}: Directory containing visualization plots (if generated)
 #'   }
 #'
+#' @param parallel logical If TRUE, gate channels in parallel during the initial gating stage using the active future::plan(). Default: FALSE.
 #' @details
+#' To gate channels in parallel, set `parallel = TRUE` and select a future
+#' plan, for example `future::plan(future::multisession, workers = 4)`.
+#' The default `parallel = FALSE` runs sequentially regardless of the active
+#' plan. Only the initial per-channel gating stage is parallel; subsequent
+#' cytokine-positive gating and statistics remain sequential. Workers read
+#' expression data from the project disk cache rather than a GatingSet, so
+#' the project directory must be accessible to all workers.
+#' With `parallel = TRUE`, RNG-dependent subsampling uses parallel-safe
+#' L'Ecuyer streams (`future.seed = TRUE`). Results are reproducible for a
+#' given `set.seed()` and independent of the chosen non-sequential plan,
+#' but may differ slightly from a sequential run.
+#'
 #' The function implements a multi-step workflow for identifying cytokine-positive cells:
 #'
 #' \strong{Step 1: Data Preparation}
@@ -350,7 +363,8 @@ gateStim <- function(
   locMarginalRefQuantile = 0.75,
   gateCombn = "min",
   markerSettings = NULL,
-  chnlSettings = NULL
+  chnlSettings = NULL,
+  parallel = FALSE
 ) {
   force(.data)
   if (Sys.getenv("STIMGATE_DEBUG") == "") {
@@ -463,6 +477,13 @@ gateStim <- function(
     stop("`locEnforceShapeThreshold` must be TRUE or FALSE")
   }
 
+  if (!is.logical(parallel) || length(parallel) != 1L || is.na(parallel)) {
+    stop("`parallel` must be TRUE or FALSE")
+  }
+  if (parallel && !requireNamespace("future.apply", quietly = TRUE)) {
+    stop("Install the 'future.apply' package to use `parallel = TRUE`.")
+  }
+
   if (is.null(names(batchList))) {
     batchList <- batchList |>
       stats::setNames(paste0("batch", seq_along(batchList)))
@@ -535,7 +556,8 @@ gateStim <- function(
     chnlSettings = chnlSettings,
     .data = .data,
     indBatchList = batchList,
-    pathProject = pathProject
+    pathProject = pathProject,
+    parallel = parallel
   )
 
   # cytokine-positive gates
@@ -568,32 +590,13 @@ gateStim <- function(
   chnlSettings,
   .data,
   indBatchList,
-  pathProject
+  pathProject,
+  parallel = FALSE
 ) {
   message("getting base gates")
 
-  purrr::walk(chnlSettings, function(chnlSettingsCurr) {
-    txt <- paste0("chnl: ", chnlSettingsCurr$chnlCut)
-    message(txt)
-
-    gateObj <- .gateChnl(
-      .data = .data,
-      indBatchList = indBatchList,
-      chnlSettings = chnlSettingsCurr,
-      pathProject = pathProject,
-      stage = "init",
-      calcCytPosGates = FALSE
-    )
-
-    pathSave <- .gatesGetPathAll(
-      pathProject = pathProject,
-      pop = chnlSettingsCurr$popGate,
-      chnlCut = chnlSettingsCurr$chnlCut,
-      init = TRUE
-    )
-    dir.create(dirname(pathSave), recursive = TRUE, showWarnings = FALSE)
-    saveRDS(gateObj$gateTbl, pathSave)
-  })
+  .gateMapChnl(chnlSettings, .data, indBatchList, pathProject, parallel)
+  invisible(chnlSettings)
 }
 
 #' @keywords internal

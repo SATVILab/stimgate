@@ -672,7 +672,18 @@ rows before drawing reference lines.
    The clustering densities are not reusable as local-FDR densities (different
    bandwidth, range, thinning and unstim cell filtering).
 
-13. **Versioning before the first Bioconductor release**:
+13. **Parallel initial channel gating**:
+   `gateStim(parallel = TRUE)` opts into the active `future::plan()` only for
+   initial per-channel gating, using `future.apply::future_lapply()` with
+   `future.seed = TRUE`. The default `FALSE` never parallelises, preserving
+   the sequential RNG stream and leaving analysis-level future plans unaffected.
+   Populate every sample/channel expression cache in the parent first; workers
+   receive no GatingSet and must error clearly if cached expression is missing.
+   The project directory must be accessible to workers. Later stages remain
+   sequential. Worker debug/profile state attaches without resetting shared
+   directories, and intermediate files remain separated by channel.
+
+14. **Versioning before the first Bioconductor release**:
    Keep `Version` in `DESCRIPTION` at `0.99.z` (three components, no `-n`
    suffix) until stimgate's first Bioconductor release, bumping `z` for each
    change worth marking. Do not move to `0.100.0` or higher; Bioconductor sets

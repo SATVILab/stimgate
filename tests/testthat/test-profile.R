@@ -113,8 +113,8 @@ test_that("profiling records explicit hierarchy and sample context", {
 
 test_that("profiling instrumentation preserves wrapped function arguments", {
   expect_identical(
-    names(formals(.gateInit)),
-    names(formals(.profileOriginalGateInit))
+    formals(.gateInit),
+    formals(.profileOriginalGateInit)
   )
   expect_identical(
     formals(.gateCytPos),

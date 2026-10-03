@@ -60,7 +60,8 @@ gateStim(
   locMarginalRefQuantile = 0.75,
   gateCombn = "min",
   markerSettings = NULL,
-  chnlSettings = NULL
+  chnlSettings = NULL,
+  parallel = FALSE
 )
 }
 \arguments{
@@ -322,6 +323,8 @@ and contain parameter overrides. Default is NULL.}
 \item{chnlSettings}{list. Optional list of channel-specific settings that override
 global defaults. Similar to markerSettings but keyed by channel names.
 Default is NULL.}
+
+\item{parallel}{logical If TRUE, gate channels in parallel during the initial gating stage using the active future::plan(). Default: FALSE.}
 }
 \value{
 character. Returns the path to the project directory where all results
@@ -348,6 +351,18 @@ cells that have likely responded to stimulation. It accounts for batch effects,
 background cytokine production, and technical variability.
 }
 \details{
+To gate channels in parallel, set \code{parallel = TRUE} and select a future
+plan, for example \code{future::plan(future::multisession, workers = 4)}.
+The default \code{parallel = FALSE} runs sequentially regardless of the active
+plan. Only the initial per-channel gating stage is parallel; subsequent
+cytokine-positive gating and statistics remain sequential. Workers read
+expression data from the project disk cache rather than a GatingSet, so
+the project directory must be accessible to all workers.
+With \code{parallel = TRUE}, RNG-dependent subsampling uses parallel-safe
+L'Ecuyer streams (\code{future.seed = TRUE}). Results are reproducible for a
+given \code{set.seed()} and independent of the chosen non-sequential plan,
+but may differ slightly from a sequential run.
+
 The function implements a multi-step workflow for identifying cytokine-positive cells:
 
 \strong{Step 1: Data Preparation}
