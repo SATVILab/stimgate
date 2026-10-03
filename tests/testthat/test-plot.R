@@ -359,3 +359,32 @@ test_that("plotStim keeps univariate plots when excMin = FALSE", {
   expect_no_warning(layerTbl <- ggplot2::layer_data(pList[[1]], 1L))
   expect_gt(nrow(layerTbl), 0L)
 })
+
+test_that("bivariate gate lines are drawn on the axis of their own channel", {
+  pathProjectCopy <- file.path(tempfile("stimgate_plot_gate_axis_"))
+  dir.create(pathProjectCopy)
+  withr::defer(unlink(pathProjectCopy, recursive = TRUE))
+  file.copy(pathProject, pathProjectCopy, recursive = TRUE)
+  pathProjectCopy <- file.path(pathProjectCopy, basename(pathProject))
+  # x channel has no gate; only the y channel is gated
+  unlink(
+    file.path(
+      pathProjectCopy, "gates", "poproot", paste0("chnl", exampleData$chnl[1])
+    ),
+    recursive = TRUE
+  )
+  pList <- plotStim(
+    ind = exampleData$batchList[[1]][[2]],
+    .data = gs,
+    pathProject = pathProjectCopy,
+    chnl = exampleData$chnl,
+    grid = FALSE
+  )
+  geomVec <- vapply(
+    pList[[1]]$layers,
+    function(l) class(l$geom)[[1]],
+    character(1)
+  )
+  expect_false("GeomVline" %in% geomVec)
+  expect_true("GeomHline" %in% geomVec)
+})

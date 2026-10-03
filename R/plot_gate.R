@@ -373,10 +373,14 @@ plotStim <- function(
   if (length(pop) == 0L || !nzchar(pop)) {
     stop("No population found for plotting gates")
   }
-  gateTbl <- .plotGetGateTbl(ind, pop, marker, chnl, pathProject)
+  # only read gates for gated channels, but keep each channel's axis position
   chnlGate <- chnl[chnl %in% .gateGetChnl(pathProject, pop)]
-  for (i in seq_along(chnlGate)) {
-    gateVec <- gateTbl[["gate"]][gateTbl[["chnl"]] == chnlGate[i]]
+  if (length(chnlGate) == 0L) {
+    return(p)
+  }
+  gateTbl <- .plotGetGateTbl(ind, pop, NULL, chnlGate, pathProject)
+  for (i in seq_along(chnl)) {
+    gateVec <- gateTbl[["gate"]][gateTbl[["chnl"]] == chnl[i]]
     for (j in seq_along(gateVec)) {
       gate <- gateVec[[j]]
       if (i == 1) {
