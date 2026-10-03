@@ -199,6 +199,8 @@
 <li>Active simulation chunks must collate only their own chunk outputs; canonical cross-chunk reads happen after promotion. A render with simulations disabled must use the read-only current-results context and must not create staging state.</li>
 <li>
 <code>run_plots = FALSE</code> must stop before optional plot/report chunks; multi-chunk simulation renders should not write shared plot files concurrently.</li>
+<li>Transactional simulation/collation chunks must not use Quarto <code>error: true</code>; validation and promotion errors must fail the render/job.</li>
+<li>When an estimator can legitimately fail to return a finite scientific estimate, retain that failure as analysis data (for example with <code>n_*_finite</code> / <code>prop_*_finite</code>) rather than hiding it behind a magic numeric fallback or averaging only successful estimates without reporting coverage. Distinguish estimator failure from infrastructure/runtime errors.</li>
 <li>For end-to-end background-subtracted-frequency performance, score the final sample-level <code>loc_sample</code> <code>propRespEst</code> against <code>propRespTruth</code>. <code>propBsEst</code> is an internal local-FDR diagnostic used during threshold selection and must not silently replace the final frequency estimand.</li>
 <li>Checks that analysis wrapper parameters forwarded to <code><a href="reference/gateStim.html">gateStim()</a></code> still exist in the current package API.</li>
 <li>Checks that removed arguments (e.g. <code>calcSinglePosGates</code>) are not reintroduced.</li>
