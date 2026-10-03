@@ -609,7 +609,8 @@ rows before drawing reference lines.
    Expensive simulation analyses that support resumable per-scenario/per-chunk outputs must use shared run-management helpers from `scripts/r/analysis-runtime.R`:
    - Treat each logical run as a unique run ID (`analysis_run_id` QMD param or `ANALYSIS_RUN_ID` env var; auto-generated when absent).
    - Write run outputs to `cache/sim/<analysis-key>/staging/<YYYY-MM-DD>/<run-id>/...` and keep canonical outputs in `cache/sim/<analysis-key>/current/`.
-   - Write run progress/state to `cache/log/analysis/<analysis-key>/<YYYY-MM-DD>/<run-id>/` (`progress.txt`, `manifest.rds`, `status.rds`, chunk/job subdirs).
+   - Write run progress/state to `cache/sim/<analysis-key>/runs/<YYYY-MM-DD>/<run-id>/` (`progress.txt`, `manifest.rds`, `status.rds`, chunk/job subdirs and locks). Keep `runs/` separate from `staging/`; promotion copies only the staged run, and staging discovery/cleanup must not touch `runs/`.
+   - Resume discovery reads dated manifests under `staging/` and honours their recorded `path_log_run` (the field name is retained for compatibility), including old `cache/log/analysis/...` paths. Do not relocate existing run state on resume.
    - For external chunking, all chunks of one logical run must use the same run ID and write under the same staged run directory, separated by chunk labels.
    - Slurm chunk launchers render the current top-level QMD and pass chunk controls through environment variables. Do not create or launch physical split-QMD copies; all chunks of one submission must receive the same `ANALYSIS_RUN_ID`.
    - Never promote on partial/incomplete runs. Promote only after required chunks are complete and collated outputs validate.

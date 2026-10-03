@@ -19,6 +19,10 @@ Rscript analysis/tests/run_qmd_tests.R all
 Analysis 2 is split into targets `2a` and `2b`. For example,
 `Rscript analysis/tests/run_qmd_tests.R "2a,2b"` runs both.
 Both targets include the shared seeded runner, resume and promotion tests.
+Run state lives in `cache/sim/<analysis-key>/runs/<YYYY-MM-DD>/<run-id>/`,
+beside `staging/` and `current/`. Runtime tests check this layout, exclusion of
+run state from promotion, and resumption at legacy `cache/log/analysis/...`
+paths recorded in staged manifests' `path_log_run` field.
 Their plot fixtures check relative-error summaries averaged over cell counts
 and separate outputs for each cell count without rendering the research grid.
 

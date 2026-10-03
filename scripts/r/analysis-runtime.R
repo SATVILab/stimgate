@@ -481,10 +481,8 @@
   run_time <- format(start_time, "%H%M%S")
 
   sim_root <- .analysis_cache_dir(analysis_key, path_root)
-  log_root <- .analysis_cache_dir(
-    c("log", "analysis", analysis_key),
-    path_root
-  )
+  # Manifests keep the legacy `path_log_run` field; old runs resume in place.
+  runs_root <- file.path(sim_root, "runs")
 
   staging_root <- file.path(sim_root, "staging")
   current_dir <- file.path(sim_root, "current")
@@ -492,7 +490,7 @@
   if (is.null(existing_run)) {
     run_date <- run_date_now
     staging_run_dir <- file.path(staging_root, run_date, run_id)
-    progress_run_dir <- file.path(log_root, run_date, run_id)
+    progress_run_dir <- file.path(runs_root, run_date, run_id)
   } else {
     run_date <- existing_run$run_date
     staging_run_dir <- existing_run$staging_run_dir
@@ -503,7 +501,7 @@
     ) {
       as.character(existing_run$manifest$path_log_run)
     } else {
-      file.path(log_root, run_date, run_id)
+      file.path(runs_root, run_date, run_id)
     }
   }
 
@@ -579,7 +577,7 @@
     run_date = run_date,
     run_time = run_time,
     sim_root = sim_root,
-    log_root = log_root,
+    runs_root = runs_root,
     current_dir = current_dir,
     staging_root = staging_root,
     staging_run_dir = staging_run_dir,
