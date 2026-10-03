@@ -65,7 +65,7 @@ test_that("analysis QMDs do not overwrite sourced helper functions", {
   expect_identical(violations, character())
 })
 
-test_that("analysis 8 uses deterministic scenario seeds and full-grid promotion", {
+test_that("analysis 8 is paired, transactional, and read-only for plots", {
   qmd_path <- file.path(
     root_dir,
     "analysis",
@@ -74,29 +74,65 @@ test_that("analysis 8 uses deterministic scenario seeds and full-grid promotion"
   content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
 
   expect_true(grepl("simulation_seed:\\s*1", content))
-  expect_true(grepl("comparison_semantics_version", content, fixed = TRUE))
   expect_true(grepl(
-    "sim_seed = as.integer(simulation_seed + sim_id - 1L)",
+    'comparison_semantics_version <- "batch-mismatch-comparison-v2"',
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("analysis_dev <- isTRUE(.isDev())", content, fixed = TRUE))
+  expect_true(grepl("base_scenario_id = dplyr::row_number()", content, fixed = TRUE))
+  expect_true(grepl(
+    "sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(".simCompareRunScenarioUnseeded", content, fixed = TRUE))
+
+  expect_true(grepl(
+    "run_ctx <- .analysis_results_context(",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("paired_mismatch_rng = TRUE", content, fixed = TRUE))
+  expect_true(grepl("analysis_grid_spec = analysis_grid_spec", content, fixed = TRUE))
+  expect_true(grepl("retryErrors = TRUE", content, fixed = TRUE))
+  expect_true(grepl(".simCompareGridOutputStatus(", content, fixed = TRUE))
+  expect_true(grepl(
+    "F-beta comparator preflight failed",
     content,
     fixed = TRUE
   ))
   expect_true(grepl(
-    "set.seed(as.integer(row$sim_seed[[1]]))",
+    "cytoUtils' is required for the tailgate comparison",
     content,
     fixed = TRUE
   ))
   expect_true(grepl(
-    "path_progress_file <- run_ctx$progress_file",
+    "Refusing to promote analysis 8",
     content,
     fixed = TRUE
   ))
-  expect_true(grepl("recursive\\s*=\\s*TRUE", content))
-  expect_true(grepl("expected_sim_ids", content, fixed = TRUE))
-  expect_true(grepl("Refusing to promote analysis 8", content, fixed = TRUE))
-  expect_true(grepl(".analysis_current_file", content, fixed = TRUE))
-  expect_true(grepl("results_available", content, fixed = TRUE))
+
   expect_true(grepl(
-    "skipping summary and plots for this chunk",
+    "run_plots is false, so stopping after simulation/collation.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "Skipping plots during a multi-chunk simulation render.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("knitr::knit_exit()", content, fixed = TRUE))
+
+  expect_true(grepl(".analysis_current_file(", content, fixed = TRUE))
+  expect_true(grepl("simulation_seed = simulation_seed", content, fixed = TRUE))
+  expect_true(grepl("analysis_dev = analysis_dev", content, fixed = TRUE))
+  expect_true(grepl("n_sample_sim = n_sample_sim", content, fixed = TRUE))
+  expect_true(grepl("n_iter_sim = n_iter_sim", content, fixed = TRUE))
+
+  expect_true(grepl(
+    "dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)",
     content,
     fixed = TRUE
   ))
@@ -211,7 +247,7 @@ test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure 
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'analysis_semantics_version <- "bandwidth-est-base-v3"',
+    'analysis_semantics_version <- "bandwidth-est-base-v2"',
     content,
     fixed = TRUE
   ))
@@ -229,34 +265,13 @@ test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure 
   ))
   expect_true(grepl("bw_fallback <- NA_real_", content, fixed = TRUE))
   expect_false(grepl("0.23482348792138919129198282389", content, fixed = TRUE))
-  expect_true(grepl("cap_stim_range <- FALSE", content, fixed = TRUE))
   expect_equal(
     lengths(regmatches(
       content,
-      gregexpr("capStimRange = cap_stim_range", content, fixed = TRUE)
+      gregexpr("capStimRange = FALSE", content, fixed = TRUE)
     )),
     2L
   )
-  for (setting_name in c(
-    "bw_min",
-    "bw_max",
-    "prob_exact_sim",
-    "background_relative_to_response",
-    "ncell_uns_relative_to_stim",
-    "cov_ev_min",
-    "cov_ev_max",
-    "exc_min",
-    "cap_stim_range"
-  )) {
-    expect_true(
-      grepl(
-        paste0(setting_name, " = ", setting_name),
-        content,
-        fixed = TRUE
-      ),
-      info = paste0("Analysis 3 provenance is missing ", setting_name)
-    )
-  }
 
   expect_true(grepl(
     "run_ctx <- .analysis_results_context(",

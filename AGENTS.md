@@ -218,11 +218,21 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - `run_plots = FALSE` must stop before optional plot/report chunks; multi-chunk
   simulation renders should not write shared plot files concurrently.
 - Comparison analyses must fail before simulation when a required competitor
-  dependency is unavailable. Do not let a missing package or script be converted
-  into an algorithmic fallback and then score that fallback as a method result.
-- When plotting summaries over a simulation grid, every varying scenario
+  dependency is unavailable. Do not let a missing package/script be converted
+  into an algorithmic fallback and then score that fallback as a real method result.
+- When plotting a summary over a simulation grid, every varying scenario
   dimension must be filtered, faceted or included in the plot grouping. Do not
-  implicitly connect distinct scenario settings into one line.
+  connect or aggregate distinct scenario settings into one line implicitly.
+- Controlled mismatch/degradation simulations should use common random numbers
+  within each baseline biological scenario when the mismatch itself is
+  deterministic, so curve differences are not driven by different simulated draws.
+- Compatibility wrappers for optional upstream features must apply an effect
+  exactly once. If upstream supports the feature, pass it through without also
+  applying a local fallback; otherwise neutralise the upstream global effect
+  before applying the local selective fallback.
+- Comparator exceptions in benchmarking analyses must remain explicit runtime
+  errors. A numerical fallback may be retained for diagnostics, but the
+  exception must not be silently promoted or scored as a valid prediction.
 - Transactional simulation/collation chunks must not use Quarto
   `error: true`; validation and promotion errors must fail the render/job.
 - For adaptive normalised bandwidth estimation, `normAdaptiveNcell` controls
@@ -241,10 +251,10 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
   selection and must not silently replace the final frequency estimand.
-- Preserve final StimGate threshold provenance in method-comparison outputs.
-  A finite high-value threshold can still mean that no local threshold was
-  generated; use `locGenerated`, `locGeneratedDirect`, `locSource` and
-  `locReason` rather than inferring success solely from threshold finiteness.
+- Preserve StimGate threshold provenance in method-comparison outputs. A finite
+  high-value fallback is still a fallback: use `locGenerated`,
+  `locGeneratedDirect`, `locSource` and `locReason` from the final gate
+  table rather than inferring success solely from `is.finite(threshold)`.
 - Checks that analysis wrapper parameters forwarded to `gateStim()` still exist
   in the current package API.
 - Checks that removed arguments (e.g. `calcSinglePosGates`) are not reintroduced.

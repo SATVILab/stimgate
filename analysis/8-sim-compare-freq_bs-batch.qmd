@@ -47,7 +47,8 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v1"
+comparison_semantics_version <- "batch-mismatch-comparison-v2"
+analysis_dev <- isTRUE(.isDev())
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -68,11 +69,12 @@ if (
   }
 }
 
-# Tailgate comparisons use the cytoUtils package directly.
-if (!requireNamespace("cytoUtils", quietly = TRUE)) {
-  warning(
-    "Package 'cytoUtils' is not installed. Tailgate comparisons will fail if run."
-  )
+# Tailgate is a required primary comparator when simulations are requested.
+if (
+  isTRUE(run_simulations) &&
+    !requireNamespace("cytoUtils", quietly = TRUE)
+) {
+  stop("Package 'cytoUtils' is required for the tailgate comparison.")
 }
 
 # Source simulation helpers in dependency order:
@@ -87,18 +89,6 @@ for (fn in c(
   source(file.path(scripts_r_dir, fn))
 }
 
-# Keep scenario-level RNG stable across worker scheduling and grid chunking.
-.simCompareRunScenarioUnseeded <- .simCompareRunScenario
-.simCompareRunScenario <- function(row, ...) {
-  if (
-    "sim_seed" %in% names(row) &&
-      length(row$sim_seed) > 0L &&
-      !is.na(row$sim_seed[[1]])
-  ) {
-    set.seed(as.integer(row$sim_seed[[1]]))
-  }
-  .simCompareRunScenarioUnseeded(row = row, ...)
-}
 ```
 
 ### Aim
@@ -116,15 +106,18 @@ observed unstimulated range from being omitted from the F-beta calculation.
 The simulation isolates two deterministic post-transformation mismatch
 mechanisms provided by `simcyto`:
 
-1. **Mean shift** (`stimMeanShift`): An additive shift applied to all stimulated
-   cells on the transformed expression scale.
+1. **Mean shift** (`stimMeanShift`): An additive shift on the transformed
+   expression scale, applied either to all stimulated cells or only to the
+   stimulated negative/background component.
 2. **SD inflation** (`stimSdMultiplier`): A multiplicative scaling of the
-   within-component standard deviation for stimulated cells around each
-   component's realised mean.
+   stimulated negative/background component's within-component standard
+   deviation around its realised mean.
 
-In all primary mismatch comparisons, random perturbations are disabled
+Random perturbations are disabled
 (`samplePerturbationSd = 0`, `conditionPerturbationSd = 0`,
-`clusterPerturbationSd = 0`) to isolate the effects of the controlled mismatch.
+`clusterPerturbationSd = 0`). Within each baseline scenario, all mismatch
+magnitudes and variants use the same random seed, so the degradation curves
+compare deterministic changes to the same simulated draws.
 
 ### Simulation settings
 
@@ -151,6 +144,22 @@ path_fbeta <- projr::projr_path_get(
   "python",
   "fbeta.py"
 )
+
+if (isTRUE(run_simulations)) {
+  if (!requireNamespace("reticulate", quietly = TRUE)) {
+    stop("Package 'reticulate' is required for the F-beta comparison.")
+  }
+  if (!file.exists(path_fbeta)) {
+    stop("Required F-beta implementation is missing: ", path_fbeta)
+  }
+  fbeta_preflight <- tryCatch(
+    .simCompareFbetaEnvironment(pathFbeta = path_fbeta),
+    error = function(e) {
+      stop("F-beta comparator preflight failed: ", conditionMessage(e))
+    }
+  )
+  rm(fbeta_preflight)
+}
 
 tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
@@ -179,6 +188,7 @@ targeted_scenarios_tbl <- tibble::tribble(
     by = c("transformation", "mean_pos_setting")
   ) |>
   dplyr::mutate(
+    base_scenario_id = dplyr::row_number(),
     bias_uns = dplyr::case_when(
       transformation == "gamma" ~ 0.01,
       transformation %in% c("gaussian", "skew") ~ 0.15,
@@ -202,8 +212,8 @@ targeted_scenarios_tbl <- tibble::tribble(
 ```{r}
 #| label: mismatch-grids
 # 1. Mean-shift grid (all components):
-# Gaussian and Skew: 0, 0.025, 0.05, 0.1, 0.2
-# Gamma: 0, 0.005, 0.01, 0.025, 0.05
+# Gaussian and Skew: 0, 0.025, 0.05, 0.1, 0.2, 0.5, 1
+# Gamma: 0, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2
 mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.1, 0.2, 0.5, 1)
 mean_shift_gamma <- c(0, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2)
 
@@ -255,7 +265,7 @@ grid_mean_shift_negative <- purrr::map_df(
 )
 
 # 3. SD-inflation grid (negative/background component only):
-# Fractional SD increase: 0, 0.01, 0.025, 0.05, 0.10, 0.20
+# Fractional SD increase: 0, 0.01, 0.025, 0.05, 0.10, 0.20, 0.5, 1
 sd_increase_vec <- c(0, 0.01, 0.025, 0.05, 0.10, 0.20, 0.5, 1)
 
 grid_sd_inflation <- tidyr::expand_grid(
@@ -279,10 +289,12 @@ sim_grid <- dplyr::bind_rows(
 ) |>
   dplyr::mutate(
     sim_id = dplyr::row_number(),
-    sim_seed = as.integer(simulation_seed + sim_id - 1L)
+    # Use common random numbers within each baseline scenario so that
+    # degradation across mismatch magnitudes/variants is paired.
+    sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)
   )
 
-if (.isDev()) {
+if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
       transformation == "gaussian",
@@ -302,6 +314,8 @@ sim_grid_n_chunks <- as.integer(
 sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
 
 sim_grid_all <- sim_grid
+analysis_grid_spec <- sim_grid_all |>
+  dplyr::select(-dplyr::any_of("sim_seed"))
 
 if (sim_grid_n_chunks > 1L && nrow(sim_grid_all) > 0L) {
   sim_grid <- sim_grid_all |>
@@ -312,7 +326,14 @@ if (sim_grid_n_chunks > 1L && nrow(sim_grid_all) > 0L) {
 }
 
 sim_grid
-print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
+print(paste0(
+  "Simulation scenarios assigned to chunk ",
+  sim_chunk_label,
+  ": ",
+  nrow(sim_grid),
+  " of ",
+  nrow(sim_grid_all)
+))
 ```
 
 ### Simulation execution
@@ -324,53 +345,63 @@ n_sample_sim <- 5
 n_iter_sim <- 5
 n_workers <- max(1, .simGetCores())
 
-run_ctx <- .analysis_run_context(
-  analysis_key = analysis_key,
-  run_id = analysis_run_id,
-  path_root = root_dir,
-  params = list(
-    run_simulations = run_simulations,
-    run_plots = run_plots,
-    comparison_semantics_version = comparison_semantics_version,
-    simulation_seed = simulation_seed,
-    sim_grid_shuffle_seed = simulation_seed,
-    n_sample_sim = n_sample_sim,
-    n_iter_sim = n_iter_sim,
-    stimgate_bw_mtd = stimgate_bw_mtd,
-    stimgate_bw_ncell_max = stimgate_bw_ncell_max,
-    stimgate_bw_fallback = stimgate_bw_fallback,
-    stimgate_bw_min = stimgate_bw_min,
-    stimgate_bw_max = stimgate_bw_max,
-    tol_clust = tol_clust,
-    loc_enforce_shape_threshold = loc_enforce_shape_threshold,
-    calc_cyt_pos_gates = calc_cyt_pos_gates,
-    fbeta_beta = fbeta_beta,
-    fbeta_theta = fbeta_theta,
-    fbeta_width = fbeta_width,
-    tailgate_adjust = tailgate_adjust,
-    tailgate_method = tailgate_method,
-    tailgate_tol = tailgate_tol,
-    tailgate_auto_tol = tailgate_auto_tol,
-    tailgate_x = tailgate_x,
+if (isTRUE(run_simulations)) {
+  run_ctx <- .analysis_run_context(
+    analysis_key = analysis_key,
+    run_id = analysis_run_id,
+    path_root = root_dir,
+    params = list(
+      run_simulations = run_simulations,
+      run_plots = run_plots,
+      comparison_semantics_version = comparison_semantics_version,
+      simulation_seed = simulation_seed,
+      analysis_dev = analysis_dev,
+      paired_mismatch_rng = TRUE,
+      analysis_grid_spec = analysis_grid_spec,
+      n_sample_sim = n_sample_sim,
+      n_iter_sim = n_iter_sim,
+      stimgate_bw_mtd = stimgate_bw_mtd,
+      stimgate_bw_ncell_max = stimgate_bw_ncell_max,
+      stimgate_bw_fallback = stimgate_bw_fallback,
+      stimgate_bw_min = stimgate_bw_min,
+      stimgate_bw_max = stimgate_bw_max,
+      tol_clust = tol_clust,
+      loc_enforce_shape_threshold = loc_enforce_shape_threshold,
+      calc_cyt_pos_gates = calc_cyt_pos_gates,
+      fbeta_beta = fbeta_beta,
+      fbeta_theta = fbeta_theta,
+      fbeta_width = fbeta_width,
+      tailgate_adjust = tailgate_adjust,
+      tailgate_method = tailgate_method,
+      tailgate_tol = tailgate_tol,
+      tailgate_auto_tol = tailgate_auto_tol,
+      tailgate_x = tailgate_x,
+      sim_grid_chunk_index = sim_grid_chunk_index,
+      sim_grid_n_chunks = sim_grid_n_chunks
+    ),
     sim_grid_chunk_index = sim_grid_chunk_index,
     sim_grid_n_chunks = sim_grid_n_chunks
-  ),
-  sim_grid_chunk_index = sim_grid_chunk_index,
-  sim_grid_n_chunks = sim_grid_n_chunks
-)
-path_progress_file <- run_ctx$progress_file
-dir_output <- run_ctx$chunk_output_dir
-dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
-dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+  )
 
-path_rds <- file.path(
-  run_ctx$staging_collated_dir,
-  if (sim_grid_n_chunks > 1L) {
-    sprintf("compare_raw_chunk_%s.rds", sim_chunk_label)
-  } else {
-    "compare_raw.rds"
-  }
-)
+  path_progress_file <- run_ctx$progress_file
+  dir_output <- run_ctx$chunk_output_dir
+  dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
+  dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+
+  path_rds <- file.path(
+    run_ctx$staging_collated_dir,
+    if (sim_grid_n_chunks > 1L) {
+      sprintf("compare_raw_chunk_%s.rds", sim_chunk_label)
+    } else {
+      "compare_raw.rds"
+    }
+  )
+} else {
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key,
+    path_root = root_dir
+  )
+}
 
 if (interactive()) {
   progressr::handlers(global = TRUE)
@@ -407,6 +438,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     dirCache = dir_output,
     pathProgress = path_progress_file,
     resume = TRUE,
+    retryErrors = TRUE,
     sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) {
       sim_grid_chunk_index
     } else {
@@ -427,34 +459,45 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
   message("Skipping simulations because run_simulations is FALSE.")
 }
 
-if (isTRUE(run_simulations)) {
-  sim_status_tbl <- if (nrow(compare_raw) > 0L && "sim_id" %in% names(compare_raw)) {
-    compare_raw |>
-      dplyr::filter(.data$sim_id %in% sim_grid$sim_id) |>
-      dplyr::group_by(.data$sim_id) |>
-      dplyr::summarise(
-        has_error = if ("error" %in% names(compare_raw)) {
-          any(!is.na(.data$error) & .data$error != "")
-        } else {
-          FALSE
-        },
-        .groups = "drop"
-      )
-  } else {
-    tibble::tibble(sim_id = integer(), has_error = logical())
-  }
+simulation_promoted <- FALSE
 
-  n_failed <- sum(sim_status_tbl$has_error)
-  n_completed <- sum(!sim_status_tbl$has_error)
+if (isTRUE(run_simulations)) {
+  chunk_status <- .simCompareGridOutputStatus(
+    compare_raw,
+    sim_grid = sim_grid,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim
+  )
+  n_failed <- length(chunk_status$failed_ids)
+  n_completed <- length(chunk_status$completed_ids)
+
+  chunk_error <- if (!isTRUE(chunk_status$validation_ok)) {
+    paste0(
+      "Analysis 8 chunk output is incomplete or invalid. Missing sim_id: ",
+      paste(chunk_status$missing_ids, collapse = ", "),
+      "; failed sim_id: ",
+      paste(chunk_status$failed_ids, collapse = ", "),
+      "; extra sim_id: ",
+      paste(chunk_status$extra_ids, collapse = ", "),
+      "."
+    )
+  } else {
+    NULL
+  }
 
   .analysis_mark_chunk(
     run_ctx = run_ctx,
     total_sims = nrow(sim_grid),
     completed_sims = n_completed,
     failed_sims = n_failed,
-    collate_ok = nrow(compare_raw) > 0L,
-    validation_ok = nrow(compare_raw) > 0L
+    collate_ok = chunk_status$collate_ok,
+    validation_ok = chunk_status$validation_ok,
+    error_message = chunk_error
   )
+
+  if (!isTRUE(chunk_status$validation_ok)) {
+    stop(chunk_error)
+  }
 
   if (.analysis_can_promote(run_ctx)) {
     scenario_paths <- list.files(
@@ -467,30 +510,24 @@ if (isTRUE(run_simulations)) {
       pathList = scenario_paths,
       sim_grid = sim_grid_all
     )
-    expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
-    collated_sim_ids <- if (
-      nrow(compare_raw_full) > 0L && "sim_id" %in% names(compare_raw_full)
-    ) {
-      sort(unique(as.integer(compare_raw_full$sim_id)))
-    } else {
-      integer()
-    }
-    full_collate_ok <- identical(collated_sim_ids, expected_sim_ids)
-    full_validation_ok <- full_collate_ok &&
-      (!"error" %in% names(compare_raw_full) ||
-        !any(!is.na(compare_raw_full$error) & compare_raw_full$error != ""))
+    full_status <- .simCompareGridOutputStatus(
+      compare_raw_full,
+      sim_grid = sim_grid_all,
+      nSample = n_sample_sim,
+      nIter = n_iter_sim
+    )
 
-    if (!isTRUE(full_validation_ok)) {
+    if (!isTRUE(full_status$validation_ok)) {
       error_message <- paste0(
-        "Refusing to promote analysis 8: canonical collation did not contain ",
-        "exactly the complete error-free simulation grid."
+        "Refusing to promote analysis 8: canonical collation is incomplete ",
+        "or contains invalid primary method results."
       )
       .analysis_mark_chunk(
         run_ctx = run_ctx,
         total_sims = nrow(sim_grid),
         completed_sims = n_completed,
         failed_sims = n_failed,
-        collate_ok = full_collate_ok,
+        collate_ok = full_status$collate_ok,
         validation_ok = FALSE,
         error_message = error_message
       )
@@ -500,7 +537,25 @@ if (isTRUE(run_simulations)) {
     path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
     .write_rds_atomic(compare_raw_full, path_rds_full)
     compare_raw <- compare_raw_full
-    .analysis_promote_run(run_ctx)
+    simulation_promoted <- isTRUE(.analysis_promote_run(run_ctx))
+  }
+
+  if (!isTRUE(run_plots)) {
+    message("run_plots is false, so stopping after simulation/collation.")
+    knitr::knit_exit()
+  }
+
+  if (sim_grid_n_chunks > 1L) {
+    message(
+      "Skipping plots during a multi-chunk simulation render. ",
+      "Render again with run_simulations = FALSE after promotion."
+    )
+    knitr::knit_exit()
+  }
+
+  if (!isTRUE(simulation_promoted)) {
+    message("The simulation run has not been promoted; skipping summary and plots.")
+    knitr::knit_exit()
   }
 }
 ```
@@ -509,56 +564,63 @@ if (isTRUE(run_simulations)) {
 
 ```{r}
 #| label: compare-summary
-# Without `run_ctx` (simulation chunk not run in this session), read the
-# canonical promoted results under `current/`.
-if (!exists("run_ctx")) {
-  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+path_rds <- .analysis_current_file(
+  run_ctx = run_ctx,
+  relative_path = c("collated", "compare_raw.rds"),
+  required_params = list(
+    comparison_semantics_version = comparison_semantics_version,
+    simulation_seed = simulation_seed,
+    analysis_dev = analysis_dev,
+    paired_mismatch_rng = TRUE,
+    analysis_grid_spec = analysis_grid_spec,
+    n_sample_sim = n_sample_sim,
+    n_iter_sim = n_iter_sim
+  )
+)
+compare_raw <- readRDS(path_rds)
+
+if (nrow(compare_raw) == 0L) {
+  stop("Canonical compare_raw.rds is empty. Rerun the simulation analysis.")
 }
 
-results_available <- file.exists(file.path(run_ctx$current_dir, "COMPLETE"))
-
-if (isTRUE(results_available)) {
-  path_rds <- .analysis_current_file(
-    run_ctx = run_ctx,
-    relative_path = c("collated", "compare_raw.rds"),
-    required_params = list(
-      comparison_semantics_version = comparison_semantics_version
-    )
-  )
-  compare_raw <- readRDS(path_rds)
-
-  if (nrow(compare_raw) == 0L) {
-    stop("Canonical compare_raw.rds is empty. Rerun the simulation analysis.")
-  }
-
-  compare_summary <- .simCompareSummariseFreqBs(
-    compare_raw,
-    scenarioCols = c(
-      "mismatch_type",
-      "mismatch_val",
-      "stim_mean_shift",
-      "stim_mean_shift_clusters",
-      "stim_sd_multiplier",
-      "stim_sd_multiplier_clusters",
-      "sd_increase",
-      "transformation",
-      "mean_pos_setting",
-      "mean_pos",
-      "prob_response",
-      "n_cell",
-      "scenario_desc",
-      "approach",
-      "method"
-    )
-  )
-
-  compare_summary
-} else {
-  compare_summary <- tibble::tibble()
-  message(
-    "Canonical results are not complete yet; skipping summary and plots for this chunk."
+canonical_status <- .simCompareGridOutputStatus(
+  compare_raw,
+  sim_grid = sim_grid_all,
+  nSample = n_sample_sim,
+  nIter = n_iter_sim
+)
+if (!isTRUE(canonical_status$validation_ok)) {
+  stop(
+    "Canonical compare_raw.rds does not contain a complete valid result ",
+    "for every analysis 8 scenario."
   )
 }
+
+results_available <- TRUE
+
+compare_summary <- .simCompareSummariseFreqBs(
+  compare_raw,
+  scenarioCols = c(
+    "base_scenario_id",
+    "mismatch_type",
+    "mismatch_val",
+    "stim_mean_shift",
+    "stim_mean_shift_clusters",
+    "stim_sd_multiplier",
+    "stim_sd_multiplier_clusters",
+    "sd_increase",
+    "transformation",
+    "mean_pos_setting",
+    "mean_pos",
+    "prob_response",
+    "n_cell",
+    "scenario_desc",
+    "approach",
+    "method"
+  )
+)
+
+compare_summary
 ```
 
 ### Mean-shift degradation curves (all components vs negative only)
@@ -647,6 +709,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_shift,
@@ -725,6 +788,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_shift_max,
@@ -803,6 +867,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_shift_90,
@@ -886,6 +951,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_sd,
@@ -962,6 +1028,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_placement,
@@ -1026,6 +1093,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
+    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
     ggsave(
       path_p,
       p_tail,
