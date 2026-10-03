@@ -356,6 +356,7 @@ test_that("getStimExpr and plotStim filter using saved stimulation gates", {
       }
       p <- do.call(plotStim, c(list(
         pathProject = pathProject,
+        .data = gs,
         ind = unique(exAll$ind),
         excMin = FALSE,
         grid = FALSE
