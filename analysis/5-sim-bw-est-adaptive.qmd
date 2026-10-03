@@ -473,6 +473,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
             sim_seed,
             bw_mtd,
             sim_id) {
+          .simBandwidthEnsureCurrentCheckout(root_dir)
           set.seed(as.integer(sim_seed))
 
           settings_row <- paste0(
