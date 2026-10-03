@@ -1,5 +1,5 @@
 ---
-title: Simulate best adaptive bandwidth
+title: Simulate adaptive bandwidth estimates
 format:
   html:
     embed-resources: true
@@ -9,6 +9,7 @@ execute:
   message: false
 params:
   analysis_run_id: null
+  simulation_seed: 12345
   sim_grid_chunk_index: 1
   sim_grid_n_chunks: 1
   sim_grid_shuffle_seed: 20260707
@@ -50,6 +51,14 @@ sim_grid_shuffle_seed <- as.integer(.get_qmd_param_env(
   "SIM_GRID_SHUFFLE_SEED",
   20260707L
 ))
+simulation_seed <- as.integer(.get_qmd_param_env(
+  "simulation_seed",
+  "SIMULATION_SEED",
+  12345L
+))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
   "RUN_SIMULATIONS",
@@ -61,6 +70,12 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "adaptive")
+analysis_semantics_version <- "adaptive-bw-est-v2"
+analysis_dev <- isTRUE(.isDev())
+n_sample_sim <- if (analysis_dev) 1L else 5L
+n_iter_sim <- if (analysis_dev) 1L else 5L
+norm_adaptive_ncell <- 2500L
+
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -100,9 +115,11 @@ for (fn in c(
 
 Get the parameters over which we simulate.
 
-We mainly need to consider two variations: whether the number of parent population cells is large or small, and whether the size of the responding population is large enough to impact the estimator. We can also vary the amount of separation.
+We mainly need to consider whether the number of parent-population cells is large or small, whether the responding population is large enough to affect the estimator, and the amount of separation.
 
-We'll vary over a range of parent population sizes, as that tells us how the estimator behaves over the most important dimension apart from the transformation.
+We'll vary over a range of parent-population sizes, as that tells us how the estimator behaves over the most important dimension apart from the transformation.
+
+The current adaptive normalised estimator calculates the core and extra bandwidths from fixed-size synthetic normal components. That internal sample size is controlled by `normAdaptiveNcell`, not by `bwNcellMax`. We therefore keep `normAdaptiveNcell = 2500` fixed here rather than varying the non-adaptive cell-count cap.
 
 For the adaptive estimator, the output has separate bandwidths for the background-core and high-expression-extra components, and those are estimated separately for the stimulated and unstimulated samples. The collation therefore works with four bandwidth columns:
 
@@ -127,11 +144,6 @@ mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 # Adaptive core/extra bandwidths are only produced for the normalised methods.
 # Keep the hpi methods used in the norm QMD, but exclude hpi0 as there.
 bandwidth_method_vec <- c("hpi1Norm", "hpi2Norm", "hpi3Norm")
-
-bandwidth_ncell_upper_vec <- c(
-  5e2, 1e3, 2.5e3, 5e3, 1e4, 2e4, 5e4, Inf
-)
-bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
 
 bias_uns_settings_tbl <- tibble::tribble(
   ~bias_uns_setting, ~transformation, ~bias_uns,
@@ -160,13 +172,11 @@ bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
 ```{r}
 #| label: bw-estimate-grid
-sim_grid <- tidyr::expand_grid(
+data_scenario_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
-  prob_response  = prob_response_vec,
-  n_cell         = n_cell_stim_vec,
-  bw_mtd         = bandwidth_method_vec,
-  bw_ncell_upper = bandwidth_ncell_upper_vec,
-  bias_uns       = bias_uns_vec
+  prob_response = prob_response_vec,
+  n_cell = n_cell_stim_vec,
+  bias_uns = bias_uns_vec
 ) |>
   dplyr::inner_join(
     bias_uns_settings_tbl,
@@ -174,22 +184,27 @@ sim_grid <- tidyr::expand_grid(
   ) |>
   dplyr::select(
     transformation, prob_response, n_cell,
-    mean_pos_setting, mean_pos, bw_mtd,
-    bw_ncell_upper, bias_uns_setting, bias_uns
-  ) |>
-  dplyr::mutate(
-    sim_id = dplyr::row_number()
+    mean_pos_setting, mean_pos, bias_uns_setting, bias_uns
   ) |>
   dplyr::arrange(
     .data$n_cell,
     dplyr::desc(.data$prob_response),
     .data$transformation,
-    .data$mean_pos_setting,
-    .data$bw_mtd,
-    .data$bw_ncell_upper
+    .data$mean_pos_setting
+  ) |>
+  dplyr::mutate(
+    data_scenario_id = dplyr::row_number(),
+    sim_seed = as.integer(simulation_seed + .data$data_scenario_id - 1L)
   )
 
-if (.isDev()) {
+sim_grid <- tidyr::crossing(
+  data_scenario_grid,
+  bw_mtd = bandwidth_method_vec
+) |>
+  dplyr::arrange(.data$data_scenario_id, .data$bw_mtd) |>
+  dplyr::mutate(sim_id = dplyr::row_number())
+
+if (analysis_dev) {
   set.seed(3)
   sim_grid <- sim_grid |>
     dplyr::filter(
@@ -221,8 +236,7 @@ if (nrow(sim_grid_all) > 0L) {
       dplyr::desc(.data$prob_response),
       .data$transformation,
       .data$mean_pos_setting,
-      .data$bw_mtd,
-      .data$bw_ncell_upper
+      .data$bw_mtd
     ) |>
     dplyr::select(-.shuffle_order, -.sim_grid_chunk)
 } else {
