@@ -99,7 +99,7 @@ plotStim <- function(
   if (is.null(marker) && is.null(chnl)) {
     stop("Must specify one of marker or chnl")
   }
-  pop <- pop %|c|% .gateGetPop(pathProject)
+  pop <- as.character(pop %||% .gateGetPop(pathProject))
   if (length(pop) > 1L) {
     stop("Cannot plot gates for multiple populations")
   }

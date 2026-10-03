@@ -216,20 +216,22 @@ getStimExpr <- function(
   transMarker = NULL
 ) {
   .assertString(pathProject)
-  pop <- pop %|c|% .getExProjectPop(pathProject)
+  pop <- as.character(pop %||% .getExProjectPop(pathProject))
   if (!is.null(chnl) && !is.null(marker)) {
     stop("Must not specify both marker and chnl")
   }
   .assertStringVector(pop)
   exList <- purrr::map(pop, function(popCurr) {
-    indCurrVec <- ind %|c|% .getExProjectInd(pathProject, popCurr)
+    indCurrVec <- as.character(ind %||% .getExProjectInd(pathProject, popCurr))
     .assertStringVector(indCurrVec)
     purrr::map(indCurrVec, function(indCurr) {
       isMarker <- !is.null(marker)
       chnl <- if (isMarker) {
         stimgateMetaReadMarkerLab(pathProject)[as.character(marker)]
       } else {
-        chnl %|c|% .getExProjectChnl(pathProject, popCurr, indCurr)
+        as.character(
+          chnl %||% .getExProjectChnl(pathProject, popCurr, indCurr)
+        )
       }
       .assertStringVector(chnl)
       ex <- .dataGetExInit(
