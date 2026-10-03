@@ -698,6 +698,49 @@ if (!exists("run_ctx")) {
 }
 results_read_only <- isTRUE(run_ctx$read_only)
 
+promote_analysis2_if_ready <- function(
+    run_ctx,
+    sim_grid_all,
+    total_sims,
+    completed_sims,
+    failed_sims) {
+  if (!.analysis_can_promote(run_ctx)) {
+    return(invisible(FALSE))
+  }
+
+  full_output_paths <- .find_bw_list_output_files(
+    output_dir = run_ctx$staging_run_dir,
+    allow_cache_fallback = FALSE
+  )
+  full_output_ids <- suppressWarnings(as.integer(sub(
+    "^.*-sim_id_([0-9]+)[.]rds$",
+    "\\1",
+    basename(full_output_paths)
+  )))
+  expected_full_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
+  full_outputs_ok <- length(full_output_paths) == length(expected_full_ids) &&
+    identical(sort(unique(full_output_ids)), expected_full_ids)
+
+  if (!isTRUE(full_outputs_ok)) {
+    error_message <- paste0(
+      "Refusing to promote analysis 2: staged outputs do not contain ",
+      "exactly the complete simulation grid."
+    )
+    .analysis_mark_chunk(
+      run_ctx = run_ctx,
+      total_sims = total_sims,
+      completed_sims = completed_sims,
+      failed_sims = failed_sims,
+      collate_ok = FALSE,
+      validation_ok = FALSE,
+      error_message = error_message
+    )
+    stop(error_message)
+  }
+
+  .analysis_promote_run(run_ctx)
+}
+
 if (results_read_only) {
   current_manifest <- .analysis_read_manifest(run_ctx$manifest_path)
   required_params <- list(
@@ -725,6 +768,28 @@ if (results_read_only) {
       ". Rerun the simulation before plotting."
     )
   }
+}
+
+if (!results_read_only && nrow(sim_grid) == 0L) {
+  .analysis_mark_chunk(
+    run_ctx = run_ctx,
+    total_sims = 0L,
+    completed_sims = 0L,
+    failed_sims = 0L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+  promote_analysis2_if_ready(
+    run_ctx = run_ctx,
+    sim_grid_all = sim_grid_all,
+    total_sims = 0L,
+    completed_sims = 0L,
+    failed_sims = 0L
+  )
+  message(
+    "No simulations were assigned to this chunk; marked it complete."
+  )
+  knitr::knit_exit()
 }
 
 collate_output_dir <- if (results_read_only) {
@@ -968,39 +1033,13 @@ if (!results_read_only) {
     )
   }
 
-  if (.analysis_can_promote(run_ctx)) {
-    full_output_paths <- .find_bw_list_output_files(
-      output_dir = run_ctx$staging_run_dir,
-      allow_cache_fallback = FALSE
-    )
-    full_output_ids <- suppressWarnings(as.integer(sub(
-      "^.*-sim_id_([0-9]+)[.]rds$",
-      "\\1",
-      basename(full_output_paths)
-    )))
-    expected_full_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
-    full_outputs_ok <- length(full_output_paths) == length(expected_full_ids) &&
-      identical(sort(unique(full_output_ids)), expected_full_ids)
-
-    if (!isTRUE(full_outputs_ok)) {
-      error_message <- paste0(
-        "Refusing to promote analysis 2: staged outputs do not contain ",
-        "exactly the complete simulation grid."
-      )
-      .analysis_mark_chunk(
-        run_ctx = run_ctx,
-        total_sims = nrow(sim_grid),
-        completed_sims = length(chunk_completed_ids),
-        failed_sims = length(chunk_failed_ids),
-        collate_ok = FALSE,
-        validation_ok = FALSE,
-        error_message = error_message
-      )
-      stop(error_message)
-    }
-
-    .analysis_promote_run(run_ctx)
-  }
+  promote_analysis2_if_ready(
+    run_ctx = run_ctx,
+    sim_grid_all = sim_grid_all,
+    total_sims = nrow(sim_grid),
+    completed_sims = length(chunk_completed_ids),
+    failed_sims = length(chunk_failed_ids)
+  )
 }
 
 if (!isTRUE(run_plots)) {
