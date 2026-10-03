@@ -341,9 +341,9 @@ dir.create(
   showWarnings = FALSE
 )
 
-saveRDS(
+.write_rds_atomic(
   bw_list_raw_loop,
-  file = projr::projr_path_get(
+  projr::projr_path_get(
     "cache",
     "sim",
     "bw",
@@ -929,7 +929,7 @@ bw_tbl_results <- bw_tbl_long |>
   dplyr::summarise(
     n_total = dplyr::n(),
     n_est = sum(is.finite(.data$bw_est)),
-    prop_est = .data$n_est / .data$n_total,
+    prop_est = n_est / n_total,
     mean_bw = if (any(is.finite(.data$bw_est))) {
       mean(.data$bw_est, na.rm = TRUE)
     } else {
