@@ -102,3 +102,65 @@ test_that("analysis 8 uses deterministic scenario seeds and full-grid promotion"
     ignore.case = TRUE
   ))
 })
+
+
+test_that("analysis 2 is chunk-stable, read-only when not simulating, and validates promotion", {
+  qmd_path <- file.path(
+    root_dir,
+    "analysis",
+    "2-sim-bw-freq_bs-global.qmd"
+  )
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("simulation_seed:\\s*12345", content))
+  expect_true(grepl("analysis_semantics_version", content, fixed = TRUE))
+  expect_true(grepl(
+    "sim_seed = as.integer(simulation_seed + sim_id - 1L)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "set.seed(as.integer(sim_seed))",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl("furrr:::make_seeds", content, fixed = TRUE))
+  expect_false(grepl(
+    "12345 + as.integer(sim_grid_chunk_index)",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_true(grepl(
+    "run_ctx <- .analysis_results_context(",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "collate_output_dir <- if (results_read_only)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("run_ctx$chunk_dir", content, fixed = TRUE))
+
+  expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
+  expect_true(grepl("valid_chunk_ids", content, fixed = TRUE))
+  expect_true(grepl("expected_full_ids", content, fixed = TRUE))
+  expect_true(grepl(
+    "Refusing to promote analysis 2",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_true(grepl(
+    "run_plots is false, so stopping after simulation/collation.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("knitr::knit_exit()", content, fixed = TRUE))
+  expect_true(grepl(
+    "Skipping plots during a multi-chunk simulation render.",
+    content,
+    fixed = TRUE
+  ))
+})
