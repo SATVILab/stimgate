@@ -500,3 +500,34 @@ test_that("analysis 6 presentation chunks are guarded and rerun is singular", {
   expect_false(any(grepl("projr::projr_path_get", lines[-seq_len(40L)],
                         fixed = TRUE)))
 })
+
+
+test_that("bandwidth-estimator plot-only renders explain how to create missing results", {
+  missing_dir <- tempfile("missing-bandwidth-results-")
+  for (filename in c(
+    "3-sim-bw-est-base.qmd", "4-sim-bw-est-norm.qmd",
+    "5-sim-bw-est-adaptive.qmd"
+  )) {
+    lines <- readLines(file.path(root_dir, "analysis", filename))
+    chunks <- .qmd_r_chunks(lines)
+    chunk <- Filter(function(x) {
+      any(x == "#| label: bw-estimate-parallel")
+    }, chunks)[[1]]
+    env <- new.env(parent = baseenv())
+    env$interactive <- function() FALSE
+    env$run_simulations <- FALSE
+    env$run_plots <- TRUE
+    env$root_dir <- root_dir
+    env$analysis_key <- c("sim", "bw", "est")
+    env$.analysis_cache_dir <- function(path_parts, path_root, create) {
+      expect_false(create)
+      missing_dir
+    }
+    expect_error(
+      eval(parse(text = chunk), envir = env),
+      paste0("RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/", filename),
+      fixed = TRUE
+    )
+    expect_false(dir.exists(missing_dir))
+  }
+})

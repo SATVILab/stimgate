@@ -18,6 +18,10 @@ params:
   sim_retry_errors: true
 ---
 
+This analysis compares ordinary and normalised HPI bandwidth estimators as cell count, response frequency and separation vary. Matched stimulated and unstimulated samples are simulated under three transformations. Methods and cell-count caps within each biological scenario use the same simulated dataset.
+
+## Set-up
+
 ```{r}
 #| label: setup
 #| include: false
@@ -33,6 +37,18 @@ root_dir <- tryCatch(
   projr::projr_path_get("project"),
   error = function(e) getwd()
 )
+
+# Quarto may start in analysis/ when no project working directory is set.
+if (!file.exists(file.path(root_dir, "DESCRIPTION")) &&
+    file.exists(file.path(dirname(root_dir), "DESCRIPTION"))) {
+  root_dir <- dirname(root_dir)
+}
+if (!file.exists(file.path(root_dir, "scripts", "r", "analysis-runtime.R"))) {
+  stop("Cannot locate the stimgate checkout; render from its root or analysis/.")
+}
+if (!exists(".isDev", mode = "function")) {
+  .isDev <- function() "dev" %in% projr::projr_profile_get()
+}
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
@@ -113,13 +129,13 @@ for (fn in c(
 }
 ```
 
-### Comparing ordinary and normalised bandwidth estimators
+## Scientific settings
 
-Get the parameters over which we simulate.
+The maximum number of cells used by the bandwidth estimator varies alongside the biological scenario. Only low unstimulated-sample bias is studied, with transformation-specific magnitudes.
 
-We compare the ordinary and normalised HPI estimators across parent-population size, response frequency, response separation and transformation.
-
-We also vary the maximum number of cells used by the bandwidth estimator. For a fair comparison, estimator methods and cell caps within the same biological scenario use the same simulated dataset.
+External chunks share one run ID and promote results only after all selected
+scenarios validate. For cached plots, use the same dev profile and scientific
+settings as the simulation render.
 
 ```{r}
 #| label: actual-settings
@@ -158,6 +174,7 @@ bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
 ```{r}
 #| label: bw-estimate-grid
+#| include: false
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
   prob_response = prob_response_vec,
@@ -304,6 +321,8 @@ analysis_required_params <- list(
 )
 ```
 
+## Simulation
+
 Rerun one simulation interactively, for example to see why it failed.
 Each row is seeded from its own `sim_seed` with a fixed RNG kind inside
 `.simBandwidthRunRow()`, which the parallel run also calls, so this
@@ -313,6 +332,7 @@ step through it.
 
 ```{r}
 #| label: rerun-one-simulation
+#| include: false
 #| eval: false
 sim_id_target <- 1L
 
@@ -341,6 +361,7 @@ chunk and promote the run once every chunk is complete.
 
 ```{r}
 #| label: bw-estimate-parallel
+#| include: false
 #| results: hide
 if (interactive()) {
   progressr::handlers(global = TRUE)
@@ -399,12 +420,25 @@ if (isTRUE(run_simulations)) {
     knitr::knit_exit()
   }
 } else if (isTRUE(run_plots)) {
+  current_dir <- .analysis_cache_dir(
+    c(analysis_key, "current"), path_root = root_dir, create = FALSE
+  )
+  if (!file.exists(file.path(current_dir, "COMPLETE"))) {
+    stop(
+      "No complete canonical results are available. First run from the repository root: ",
+      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/4-sim-bw-est-norm.qmd",
+      " (with the same dev profile and settings; complete all chunks if chunked).",
+      call. = FALSE
+    )
+  }
   # Read-only: plots use the canonical promoted results under current/.
   run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
 } else {
   message("Skipping simulations because run_simulations is FALSE.")
 }
 ```
+
+## Collation
 
 Read the canonical promoted results for plotting (both run contexts point
 at the same `current/` directory). In the collated `bw_tbl_results`,
@@ -413,6 +447,7 @@ at the same `current/` directory). In the collated `bw_tbl_results`,
 
 ```{r}
 #| label: bw-estimate-collate
+#| echo: false
 if (isTRUE(run_plots)) {
   bw_tbl_results <- readRDS(.analysis_current_file(
     run_ctx = run_ctx,
@@ -424,10 +459,16 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-Plot the mean bandwidth against the number of cells.
+## Results
+
+Mean bandwidth estimates are plotted against cell count on a logarithmic axis. Colours distinguish the HPI methods, while line types and point shapes distinguish requested normalisation; facets separate transformations and response frequencies. Each figure fixes response separation, bias and cell-count cap, so compare the ordinary and normalised curves within each panel.
 
 ```{r}
-#| label: bw-estimate-plots
+#| label: fig-bw-estimate-plots
+#| echo: false
+#| fig-cap: "Mean ordinary and normalised HPI bandwidth estimates at each cell-count cap."
+#| fig-width: 10
+#| fig-height: 8
 if (isTRUE(run_plots)) {
   # bw_mtd_norm describes the requested estimator. Normalised estimators can
   # fall back internally to the corresponding ordinary HPI estimator;
