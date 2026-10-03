@@ -25,8 +25,8 @@ getStimGatesDetailed(
 
 - pop:
 
-  character. Optional population name(s) to retain. Population is
-  currently recorded as `NA` for intermediate diagnostics.
+  character. Optional population name(s) to filter gates by. Default is
+  NULL (all populations).
 
 - marker:
 

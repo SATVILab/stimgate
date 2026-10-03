@@ -121,14 +121,9 @@ background cytokine production, and technical variability.</p>
 <span>  locAntimodeLowAbs <span class="op">=</span> <span class="fl">0.15</span>,</span>
 <span>  locFlatDerivFrac <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">2</span>,</span>
 <span>  locFlatHardDerivFrac <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">4</span>,</span>
-<span>  locLeftLowRel <span class="op">=</span> <span class="fl">0.25</span>,</span>
-<span>  locLeftLowAbs <span class="op">=</span> <span class="fl">0.15</span>,</span>
-<span>  locLeftCellFrac <span class="op">=</span> <span class="fl">0.5</span>,</span>
-<span>  locLeftLengthFrac <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  locMarginalPurityRel <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  locMarginalCellBinRatio <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  locMarginalRefQuantile <span class="op">=</span> <span class="fl">0.75</span>,</span>
-<span>  locTolRefPeak <span class="op">=</span> <span class="st">"highest"</span>,</span>
 <span>  gateCombn <span class="op">=</span> <span class="st">"min"</span>,</span>
 <span>  markerSettings <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  chnlSettings <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -449,37 +444,6 @@ conservative hard exclusion of the very flat far-left region before the
 marginal bin scan. Default is 0.25.</p></dd>
 
 
-<dt id="arg-locleftlowrel">locLeftLowRel<a class="anchor" aria-label="anchor" href="#arg-locleftlowrel"></a></dt>
-<dd><p>numeric. Retained for backwards compatibility. The current
-derivative/marginal left-tail trim no longer uses this overall-region check.
-Candidate left-tail regions not separated by an
-antimode are considered low response when their mean response probability is
-below this fraction of the peak response probability.</p></dd>
-
-
-<dt id="arg-locleftlowabs">locLeftLowAbs<a class="anchor" aria-label="anchor" href="#arg-locleftlowabs"></a></dt>
-<dd><p>numeric. Retained for backwards compatibility. The
-current derivative/marginal left-tail trim no longer uses this overall-region
-check. Absolute response-probability cutoff for the non-antimode left-tail
-trimming rule.</p></dd>
-
-
-<dt id="arg-locleftcellfrac">locLeftCellFrac<a class="anchor" aria-label="anchor" href="#arg-locleftcellfrac"></a></dt>
-<dd><p>numeric. Retained for backwards compatibility. The
-current derivative/marginal left-tail trim no longer uses this overall-region
-check. Minimum size of the candidate low-response
-left-tail region, expressed as a fraction of the number of cells to the right
-of the start of the main probability rise.</p></dd>
-
-
-<dt id="arg-locleftlengthfrac">locLeftLengthFrac<a class="anchor" aria-label="anchor" href="#arg-locleftlengthfrac"></a></dt>
-<dd><p>numeric. Retained for backwards compatibility. The
-current derivative/marginal left-tail trim no longer uses this overall-region
-check. Minimum length of the candidate low-response left-tail region,
-expressed as a fraction of the expression interval over which the response
-probability rises from its minimum to its maximum.</p></dd>
-
-
 <dt id="arg-locmarginalpurityrel">locMarginalPurityRel<a class="anchor" aria-label="anchor" href="#arg-locmarginalpurityrel"></a></dt>
 <dd><p>numeric. Minimum allowed purity of each additional
 leftward bin, expressed as a fraction of the average response probability
@@ -499,12 +463,6 @@ counted. Default is 2.</p></dd>
 the initial derivative-based boundary used to define the reference interval
 for cells-per-bin calculations. Purity is still calculated using all cells to
 the right of the initial boundary. Default is 0.75.</p></dd>
-
-
-<dt id="arg-loctolrefpeak">locTolRefPeak<a class="anchor" aria-label="anchor" href="#arg-loctolrefpeak"></a></dt>
-<dd><p>character. Deprecated clustering setting retained for
-backwards compatibility. Joint-density quantile transfer does not use a
-derivative-tolerance reference peak. Default is <code>"highest"</code>.</p></dd>
 
 
 <dt id="arg-gatecombn">gateCombn<a class="anchor" aria-label="anchor" href="#arg-gatecombn"></a></dt>
@@ -592,7 +550,7 @@ clustered gate when none is available</p></li>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpctcbqK/demonstration"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpaQNVNG/demonstration"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create plots</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"hexbin"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>

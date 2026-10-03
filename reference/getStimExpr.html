@@ -155,8 +155,12 @@ using marker names. Default is NULL (transforms all markers).</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A tibble with columns <code>pop</code>, <code>ind</code> and one column per requested
-channel. Rows correspond to cells.</p>
+    <p>A tibble with columns <code>pop</code>, <code>ind</code> and one column per
+requested channel. Rows correspond to cells. Samples with no positive cells
+have zero rows in the tibble, and cell counts for every requested
+population and sample combination are attached as the <code>"nCellPos"</code>
+attribute (a tibble with columns <code>pop</code>, <code>ind</code>, and
+<code>nCellPos</code>).</p>
     </div>
 
     <div class="section level2">

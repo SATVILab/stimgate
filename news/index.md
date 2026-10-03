@@ -1,5 +1,37 @@
 # Changelog
 
+## stimgate 0.99.5
+
+### Breaking changes
+
+- Removed the no-op
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  arguments `locLeftLowRel`, `locLeftLowAbs`, `locLeftCellFrac`,
+  `locLeftLengthFrac` and `locTolRefPeak`.
+- Dropped the `gtools` dependency.
+
+### New features
+
+- [`writeStimFCS()`](https://satvilab.github.io/stimgate/reference/writeStimFCS.md)
+  writes `manifest.csv` (one row per sample: `ind`, `batch`, `fileName`,
+  `nCellPos`, `written`, `reason`) and returns it invisibly, so samples
+  without an FCS file are explained.
+- [`getStimExpr()`](https://satvilab.github.io/stimgate/reference/getStimExpr.md)
+  attaches `attr(, "nCellPos")`, giving the positive-cell count for
+  every requested sample, including those with none.
+- `getStimGatesDetailed(pop = )` now filters by population.
+
+### Bug fixes
+
+- [`writeStimFCS()`](https://satvilab.github.io/stimgate/reference/writeStimFCS.md)
+  exports events from the chosen `pop`, passes inferred channels on, and
+  no longer deletes existing output when gate preparation fails.
+- Cluster bandwidths honour the `norm*` settings; known cytokine
+  positivity is kept when another marker’s expression is NA.
+- [`getStimExpr()`](https://satvilab.github.io/stimgate/reference/getStimExpr.md)
+  with `ind = NULL` no longer reuses the first population’s samples for
+  later populations.
+
 ## stimgate 0.99.4
 
 ### Breaking changes

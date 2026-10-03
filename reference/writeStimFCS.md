@@ -78,7 +78,8 @@ writeStimFCS(
 
 ## Value
 
-The output directory path, invisibly.
+A tibble manifest with one row per sample, invisibly. The output
+directory path is attached as the attribute `"pathDirSave"`.
 
 ## Details
 

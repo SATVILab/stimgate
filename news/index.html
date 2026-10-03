@@ -38,6 +38,31 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.5" id="stimgate-0995">stimgate 0.99.5<a class="anchor" aria-label="anchor" href="#stimgate-0995"></a></h2>
+<div class="section level3">
+<h3 id="breaking-changes-0-99-5">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-99-5"></a></h3>
+<ul><li>Removed the no-op <code><a href="../reference/gateStim.html">gateStim()</a></code> arguments <code>locLeftLowRel</code>, <code>locLeftLowAbs</code>, <code>locLeftCellFrac</code>, <code>locLeftLengthFrac</code> and <code>locTolRefPeak</code>.</li>
+<li>Dropped the <code>gtools</code> dependency.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="new-features-0-99-5">New features<a class="anchor" aria-label="anchor" href="#new-features-0-99-5"></a></h3>
+<ul><li>
+<code><a href="../reference/writeStimFCS.html">writeStimFCS()</a></code> writes <code>manifest.csv</code> (one row per sample: <code>ind</code>, <code>batch</code>, <code>fileName</code>, <code>nCellPos</code>, <code>written</code>, <code>reason</code>) and returns it invisibly, so samples without an FCS file are explained.</li>
+<li>
+<code><a href="../reference/getStimExpr.html">getStimExpr()</a></code> attaches <code>attr(, "nCellPos")</code>, giving the positive-cell count for every requested sample, including those with none.</li>
+<li>
+<code>getStimGatesDetailed(pop = )</code> now filters by population.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-0-99-5">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-99-5"></a></h3>
+<ul><li>
+<code><a href="../reference/writeStimFCS.html">writeStimFCS()</a></code> exports events from the chosen <code>pop</code>, passes inferred channels on, and no longer deletes existing output when gate preparation fails.</li>
+<li>Cluster bandwidths honour the <code>norm*</code> settings; known cytokine positivity is kept when another marker’s expression is NA.</li>
+<li>
+<code><a href="../reference/getStimExpr.html">getStimExpr()</a></code> with <code>ind = NULL</code> no longer reuses the first population’s samples for later populations.</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.4" id="stimgate-0994">stimgate 0.99.4<a class="anchor" aria-label="anchor" href="#stimgate-0994"></a></h2>
 <div class="section level3">
 <h3 id="breaking-changes-0-99-4">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-99-4"></a></h3>

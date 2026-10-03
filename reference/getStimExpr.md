@@ -109,7 +109,10 @@ getStimExpr(
 ## Value
 
 A tibble with columns `pop`, `ind` and one column per requested channel.
-Rows correspond to cells.
+Rows correspond to cells. Samples with no positive cells have zero rows
+in the tibble, and cell counts for every requested population and sample
+combination are attached as the `"nCellPos"` attribute (a tibble with
+columns `pop`, `ind`, and `nCellPos`).
 
 ## Examples
 
