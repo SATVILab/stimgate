@@ -12,3 +12,4 @@ directories:
     path: ../stimgate-store/_tmp_analysis/cache
   docs:
     path: docs
+
