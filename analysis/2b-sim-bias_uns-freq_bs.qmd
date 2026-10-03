@@ -355,7 +355,7 @@ sim_grid <- withr::with_seed(
       ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L
   ) |>
   dplyr::filter(.data$.sim_grid_chunk == sim_grid_chunk_index) |>
-  dplyr::select(-.data$.sim_grid_chunk)
+  dplyr::select(-.sim_grid_chunk)
 
 print(
   paste0(
