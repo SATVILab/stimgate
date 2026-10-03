@@ -31,7 +31,7 @@ getStimGates <- function(
   marker = NULL,
   chnl = NULL
 ) {
-  pop <- pop %|c|% .gateGetPop(pathProject)
+  pop <- as.character(pop %||% .gateGetPop(pathProject))
 
   markerChnl <- NULL
   if (!is.null(marker) && length(pop) > 0L) {
@@ -47,7 +47,7 @@ getStimGates <- function(
     chnlVec <- if (!is.null(marker)) {
       markerChnl
     } else {
-      chnl %|c|% .gateGetChnl(pathProject, popCurr)
+      as.character(chnl %||% .gateGetChnl(pathProject, popCurr))
     }
     chnlLab <- if (length(chnlVec) > 0L) {
       stimgateMetaReadChnlLab(pathProject)

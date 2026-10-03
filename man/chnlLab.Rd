@@ -2,11 +2,6 @@
 % Please edit documentation in R/UtilsCytoRSV-chnl_lab.R
 \name{chnlLab}
 \alias{chnlLab}
-\alias{markerLab,}
-\alias{chnlToMarker,}
-\alias{markerToChnl,}
-\alias{getMarker,}
-\alias{getChnl}
 \title{Get markers and channels}
 \usage{
 chnlLab(data)

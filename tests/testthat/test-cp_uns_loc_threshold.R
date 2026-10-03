@@ -108,9 +108,7 @@ test_that("empirical threshold selection matches response estimate", {
     dataCount = data_count,
     propBsEst = prop_bs_est,
     exTblStimOrig = df_stim,
-    exTblUnsBias = df_uns,
-    exTblUnsOrig = df_uns,
-    bias = 0
+    exTblUnsOrig = df_uns
   )
 
   expect_s3_class(data_thresh, "data.frame")
@@ -271,6 +269,56 @@ test_that(".getCpUnsLocSampleCpRep averages only generated thresholds", {
     meta_none$locReason[meta_none$ind == "uns"],
     "no_generated_local_fdr_thresholds"
   )
+})
+
+test_that(".getCpUnsLocSampleCpRep errors informatively on length mismatch when prejoin is FALSE", {
+  tmp_dir <- file.path(tempdir(), "test_sample_cp_rep_mismatch")
+  dir.create(tmp_dir, showWarnings = FALSE, recursive = TRUE)
+  withr::defer(unlink(tmp_dir, recursive = TRUE))
+
+  obj1 <- list(
+    cp = 4.0,
+    locGenerated = TRUE,
+    locGeneratedDirect = TRUE,
+    locSource = "direct",
+    locReason = "selected"
+  )
+  obj2 <- list(
+    cp = 3.0,
+    locGenerated = TRUE,
+    locGeneratedDirect = TRUE,
+    locSource = "direct",
+    locReason = "selected"
+  )
+  obj_list <- list("stim1" = obj1, "stim2" = obj2)
+
+  expect_error(
+    .getCpUnsLocSampleCpRep(
+      stage = "init",
+      cpUnsLocObjList = obj_list,
+      indUns = "uns",
+      indStim = c("stim1", "stim2", "stim3"),
+      pathProject = tmp_dir,
+      chnl = "IFNg",
+      prejoin = FALSE
+    ),
+    "Cannot replicate cutpoint vector"
+  )
+
+  # Length-1 replication behaviour is preserved
+  rep_single <- .getCpUnsLocSampleCpRep(
+    stage = "init",
+    cpUnsLocObjList = list("stim1" = obj1),
+    indUns = "uns",
+    indStim = c("stim1", "stim2"),
+    pathProject = tmp_dir,
+    chnl = "IFNg",
+    prejoin = FALSE
+  )
+  expect_named(rep_single, c("stim1", "stim2", "uns"))
+  expect_equal(as.numeric(rep_single["stim1"]), 4.0)
+  expect_equal(as.numeric(rep_single["stim2"]), 4.0)
+  expect_equal(as.numeric(rep_single["uns"]), 4.0)
 })
 
 test_that(".getCpUnsLocCombineCpWithMeta propagates combined metadata", {
