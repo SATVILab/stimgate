@@ -365,12 +365,18 @@
     return(force(expr))
   }
 
-  timer <- .profileStart(
-    level = level,
-    major = major,
-    minor = minor,
-    operation = operation,
-    pathProject = pathProject
+  timer <- tryCatch(
+    .profileStart(
+      level = level,
+      major = major,
+      minor = minor,
+      operation = operation,
+      pathProject = pathProject
+    ),
+    error = function(e) {
+      .profileMessage(conditionMessage(e))
+      NULL
+    }
   )
   if (is.null(timer)) {
     return(force(expr))
