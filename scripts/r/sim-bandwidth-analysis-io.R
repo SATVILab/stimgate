@@ -40,8 +40,6 @@
   )
 }
 
-path_sim_output <- .path_sim_output
-
 .update_progress_summary <- function(
     path_progress_file,
     dir_jobs_chunk,
@@ -110,8 +108,6 @@ path_sim_output <- .path_sim_output
   )
   invisible(summary_text)
 }
-
-update_progress_summary <- .update_progress_summary
 
 .find_bw_list_output_files <- function(
     output_dir = NULL,

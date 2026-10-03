@@ -19,8 +19,6 @@ safe_file_lab <- function(x) {
   x
 }
 
-.file_safe <- safe_file_lab
-
 make_bw_colour_values <- function(bw_vec, base_col_vec = NULL) {
   if (is.null(base_col_vec) || length(base_col_vec) == 0L) {
     base_col_vec <- c(

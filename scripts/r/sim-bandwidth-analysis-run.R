@@ -842,3 +842,84 @@
     dplyr::mutate(bw_mtd_base = gsub("Norm$", "", .data$bw_mtd))
   list(bw_list_raw = tbl, bw_tbl_results = results)
 }
+
+# ---------------------------------------------------------------------------
+# Analysis 6: manually adaptive background-subtracted frequency
+# ---------------------------------------------------------------------------
+
+# One scientific scenario; RNG and grid metadata belong to the shared runner.
+.simBandwidthFreqBsAdaptiveScenario <- function(row, settings) {
+  crossover <- row$bw_crossover[[1]]
+  do.call(.simBandwidthBsFreq, c(settings, list(
+    biasUns = row$bias_uns[[1]],
+    bwAdaptiveCore = row$bw_core[[1]],
+    bwAdaptiveExtra = row$bw_extra[[1]],
+    bwAdaptiveCrossover = if (is.finite(crossover)) crossover else NULL,
+    bwAdaptiveTransitionWidth = row$bw_transition_width[[1]],
+    bwFallback = row$bw_fallback[[1]],
+    nCellStim = row$n_cell[[1]],
+    probResponse = row$prob_response[[1]],
+    meanPos = row$mean_pos[[1]],
+    transformation = row$transformation[[1]],
+    samplePerturbationSd = row$sample_perturbation_sd[[1]],
+    conditionPerturbationSd = row$condition_perturbation_sd[[1]],
+    clusterPerturbationSd = row$cluster_perturbation_sd[[1]],
+    backgroundRelativeToResponse = row$background_relative_to_response[[1]],
+    ncellUnsRelativeToStim = row$n_cell_uns_relative_to_stim[[1]]
+  )))
+}
+
+# Infrastructure failures are checked by the shared validator first.
+.simBandwidthFreqBsAdaptiveValidate <- function(tbl) {
+  required <- c(
+    "method", "threshold", "propRespTruth", "propRespEst",
+    "sim_id", "iter", "ind"
+  )
+  if (!all(required %in% names(tbl))) {
+    return("Missing final sample result columns")
+  }
+  final <- tbl |>
+    dplyr::filter(
+      .data$method == "loc_sample",
+      is.finite(.data$threshold),
+      is.finite(.data$propRespTruth),
+      is.finite(.data$propRespEst)
+    )
+  problems <- character()
+  if (!setequal(final$sim_id, tbl$sim_id)) {
+    problems <- "At least one sim_id had no finite final loc_sample result"
+  }
+  if (anyDuplicated(final[c("sim_id", "iter", "ind")]) > 0L) {
+    problems <- c(problems, "Duplicate final sim_id/iter/ind result keys")
+  }
+  problems
+}
+
+# The frequency estimand and scenario summary match analysis 2. Persist the
+# additional threshold summary during promotion, never during read-only plots.
+.simBandwidthFreqBsAdaptiveCollate <- function(tbl, grid_cols) {
+  results <- .simBandwidthFreqBsGlobalCollate(tbl, grid_cols)
+  summary_tbl <- results$bw_tbl_results_raw |>
+    dplyr::group_by(
+      dplyr::pick(dplyr::any_of(grid_cols))
+    ) |>
+    dplyr::summarise(
+      threshold_min = min(threshold, na.rm = TRUE),
+      threshold_max = max(threshold, na.rm = TRUE),
+      threshold_median = stats::median(threshold, na.rm = TRUE),
+      threshold_iqr_lower = stats::quantile(threshold, 0.25, na.rm = TRUE),
+      threshold_iqr_upper = stats::quantile(threshold, 0.75, na.rm = TRUE),
+      threshold_sd = stats::sd(threshold, na.rm = TRUE),
+      threshold_mad = stats::mad(threshold, na.rm = TRUE),
+      threshold_iqr_length = .data$threshold_iqr_upper - .data$threshold_iqr_lower,
+      propRespTruth_median = stats::median(propRespTruth, na.rm = TRUE),
+      propRespEst_median = stats::median(propRespEst, na.rm = TRUE),
+      propRespEst_median_diff =
+        .data$propRespEst_median - .data$propRespTruth_median,
+      propRespEst_median_diff_rel =
+        (.data$propRespEst_median - .data$propRespTruth_median) /
+          .data$propRespTruth_median,
+      .groups = "drop"
+    )
+  c(results, list(summary_tbl = summary_tbl))
+}

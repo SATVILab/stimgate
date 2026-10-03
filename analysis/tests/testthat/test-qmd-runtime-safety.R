@@ -476,3 +476,27 @@ test_that("analysis 5 uses shared seeded runners and canonical reads", {
     expect_identical(code[[1]], "if (isTRUE(run_plots)) {")
   }
 })
+
+test_that("analysis 6 presentation chunks are guarded and rerun is singular", {
+  lines <- readLines(file.path(
+    root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd"
+  ), warn = FALSE)
+  expect_equal(length(grep("^```\\{r", lines)),
+               length(grep("^```\\s*$", lines)))
+  chunks <- .qmd_r_chunks(lines)
+  disabled <- vapply(chunks, function(x) {
+    any(grepl("^#\\|\\s*eval:\\s*false", x))
+  }, logical(1))
+  expect_equal(sum(disabled), 1L)
+  expect_true(any(grepl("label: rerun-one-simulation",
+                       chunks[disabled][[1]], fixed = TRUE)))
+  for (chunk in chunks[!disabled]) {
+    code <- chunk[!grepl("^#\\|", chunk) & nzchar(trimws(chunk))]
+    expect_no_error(parse(text = code))
+    if (any(grepl("ggsave|bw_tbl_results_|knitr::kable", code))) {
+      expect_identical(code[[1]], "if (isTRUE(run_plots)) {")
+    }
+  }
+  expect_false(any(grepl("projr::projr_path_get", lines[-seq_len(40L)],
+                        fixed = TRUE)))
+})
