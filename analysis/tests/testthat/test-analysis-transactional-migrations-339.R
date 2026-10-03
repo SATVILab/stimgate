@@ -34,8 +34,14 @@ test_that("analyses 3 and 4 use resumable transactional run contexts", {
     expect_true(grepl(".analysis_mark_chunk", content, fixed = TRUE))
     expect_true(grepl(".analysis_can_promote", content, fixed = TRUE))
     expect_true(grepl(".analysis_promote_run", content, fixed = TRUE))
-    expect_true(grepl("expected_sim_ids", content, fixed = TRUE))
-    expect_true(grepl("run_ctx$current_dir", content, fixed = TRUE))
+    expect_true(
+      grepl("expected_sim_ids", content, fixed = TRUE) ||
+        grepl("expected_full_ids", content, fixed = TRUE)
+    )
+    expect_true(
+      grepl("run_ctx$current_dir", content, fixed = TRUE) ||
+        grepl(".analysis_current_file", content, fixed = TRUE)
+    )
   }
 })
 

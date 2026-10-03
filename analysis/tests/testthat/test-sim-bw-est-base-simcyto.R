@@ -80,6 +80,10 @@ test_that(".simBandwidthEstBwDirect calls simcyto::simCytExperiment and produces
       expect_true(all(is.finite(res_gauss$bw)))
       expect_true(all(res_gauss$bw > 0))
       expect_true(all(c("bw_uns", "bw_stim", "bw") %in% colnames(res_gauss)))
+      expect_equal(
+        res_gauss$bw,
+        pmin(res_gauss$bw_stim, res_gauss$bw_uns)
+      )
     }
   )
 })

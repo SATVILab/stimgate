@@ -133,21 +133,37 @@ test_that("QMDs with run contexts can read canonical results without run_ctx", {
       grepl("analysis_key = analysis_key", chunks[[ind_sim]], fixed = TRUE),
       info = qmd_name
     )
-    expect_true(
-      grepl(
-        paste0(
-          'if (!exists("run_ctx")) {\n',
-          "  run_ctx <- .analysis_results_context(analysis_key"
-        ),
-        first_use,
-        fixed = TRUE
+    inline_read_only_branch <- grepl(
+      "if (isTRUE(run_simulations))",
+      chunks[[ind_sim]],
+      fixed = TRUE
+    ) && grepl(
+      "run_ctx <- .analysis_results_context(",
+      chunks[[ind_sim]],
+      fixed = TRUE
+    )
+    later_read_only_fallback <- grepl(
+      paste0(
+        'if (!exists("run_ctx")) {\n',
+        "  run_ctx <- .analysis_results_context(analysis_key"
       ),
-      info = paste0("First run_ctx chunk lacks read-only fallback: ", qmd_name)
+      first_use,
+      fixed = TRUE
     )
 
-    # Collation chunks that write must skip writes, marking and promotion when
-    # reading without a run.
-    if (grepl(".analysis_promote_run(run_ctx)", first_use, fixed = TRUE)) {
+    expect_true(
+      inline_read_only_branch || later_read_only_fallback,
+      info = paste0("QMD lacks a read-only results path: ", qmd_name)
+    )
+
+    # Older QMDs select read-only mode in the later collation chunk. For that
+    # layout, writes and promotion must sit behind the read-only guard. QMDs
+    # that branch before creating run_ctx already prevent the read-only path
+    # from entering active-run orchestration.
+    if (
+      !inline_read_only_branch &&
+        grepl(".analysis_promote_run(run_ctx)", first_use, fixed = TRUE)
+    ) {
       guard <- regexpr("if (!results_read_only) {", first_use, fixed = TRUE)
       expect_gt(guard, 0L, label = qmd_name)
       writes <- gregexpr(
