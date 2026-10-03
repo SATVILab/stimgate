@@ -223,6 +223,9 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - When plotting a summary over a simulation grid, every varying scenario
   dimension must be filtered, faceted or included in the plot grouping. Do not
   connect or aggregate distinct scenario settings into one line implicitly.
+- When porting a validation figure or summary from an authoritative analysis,
+  preserve its scientific inclusion/exclusion rules as well as its metric and
+  aesthetics; otherwise the reproduced number is answering a different question.
 - Controlled mismatch/degradation simulations should use common random numbers
   within each baseline biological scenario when the mismatch itself is
   deterministic, so curve differences are not driven by different simulated draws.
