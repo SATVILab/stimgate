@@ -162,7 +162,6 @@ stringInfo cpPmden(const std::vector<double>& xIn) {
   eps[(nsamp-1)]=0.0;
 
   std::vector<double> x_string((nsamp-1),0.0);
-  std::vector<int> x_string_compare((nsamp-2),0);
   long first_jump = -1, last_jump = -1;
   std::vector<double> lower(nsamp,0.0);
   std::vector<double> upper(nsamp,0.0);
@@ -171,7 +170,6 @@ stringInfo cpPmden(const std::vector<double>& xIn) {
   std::vector<double> differences(nsamp,0.0);
   std::vector<double> empirical_sum(nsamp,0.0);
   std::vector<double> currkkuip(maxkuipnr,0.0);
-  std::vector<int> kuipinds(maxkuipnr,0);
   int first_kuiper_ind = -1;
   double cur_kuiper_val = 0.0;
   double tmp_eps = 0.0;
@@ -206,9 +204,6 @@ stringInfo cpPmden(const std::vector<double>& xIn) {
 	last_jump = i;
 	anyJumpDetected = true;
       }
-      else {
-	x_string_compare[i] = 0;
-      }
     }
     if (anyJumpDetected) {
       if (x_string[first_jump] > x_string[(first_jump + 1)]) {
@@ -230,21 +225,13 @@ stringInfo cpPmden(const std::vector<double>& xIn) {
     //update kuiper bounds and check points where they exceed the current kuiper bounds
     currkkuip = kkuiper(differences,nsamp,maxkuipnr);
     if (currkkuip[0] > (currbounds[0] + 1e-08)) {
-      kuipinds[0] = 1;
       first_kuiper_ind = 0;
-    }
-    else {
-      kuipinds[0] = 0;
     }
     for (int i = 1; i < maxkuipnr; i++) {
       if ((currkkuip[i]-currkkuip[(i-1)])> (currbounds[i] + 1e-08)) {
-	kuipinds[i] = 1;
 	if (first_kuiper_ind == -1) {
 	  first_kuiper_ind = i;
 	}
-      }
-      else {
-	kuipinds[i] = 0;
       }
     }
     if (first_kuiper_ind != -1) {

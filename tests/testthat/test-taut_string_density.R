@@ -1,3 +1,10 @@
+test_that(".tautStringPmden preserves uniform density across sample-size branches", {
+  for (n in c(50L, 10001L)) {
+    x <- seq(0, 1, length.out = n)
+    expect_equal(.tautStringPmden(x)$y, rep(1, n - 1L), tolerance = 1e-8)
+  }
+})
+
 test_that(".tautStringPmden returns a list with y of length n-1", {
   set.seed(42)
   x <- sort(rnorm(200))

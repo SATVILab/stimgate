@@ -530,6 +530,8 @@ rows before drawing reference lines.
    provided by the internal helper `.tautStringPmden()` (in
    `cp_uns_loc_filtering.R`), which wraps the native FAUST-derived C++ implementation
    `stimgate_cpPmden()` compiled via `cpp11` (`src/stimgate_cppmden.cpp` and `src/cpPmden.cpp`).
+   Record cleanups to FAUST-derived native code in `inst/COPYRIGHTS`, preserving
+   licence notices, numerical calculations and native entrypoint signatures.
 2. **Comparison code vs. package code**:
    `R/` contains only StimGate implementation code. Benchmark comparisons against
    the tailgate method call `cytoUtils:::.cytokine_cutpoint()` from the
