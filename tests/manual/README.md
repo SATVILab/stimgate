@@ -1,17 +1,13 @@
 # Manual inspection workflows
 
-This directory contains small, reproducible scripts for inspecting current StimGate behaviour interactively. They are exploratory aids, not automated regression tests, and deliberately sit outside `tests/testthat/`.
+These scripts are for reproducible, exploratory inspection of the current StimGate implementation. They sit outside `tests/testthat/`, so `devtools::test()` does not run them.
 
-Run scripts from the repository root. For example:
+Run them from the repository root. Each script loads the current checkout with `devtools::load_all()` and then uses package functions and saved intermediates rather than copying the algorithm into the script.
+
+For example:
 
 ```r
-source("tests/manual/inspect-cluster-threshold-sharing.R")
+source("tests/manual/cytokine-positive-thresholding.R")
 ```
 
-or, for console/table output without interactive plots:
-
-```bash
-Rscript tests/manual/inspect-cluster-threshold-sharing.R
-```
-
-Each script calls `devtools::load_all()` so it uses the current checkout. Keep inputs small and deterministic, and call current package functions or helpers rather than copying package algorithms. If an exploratory check becomes a stable behavioural contract, promote that invariant to an automated test under `tests/testthat/`.
+The scripts may print small tables and plots, and may leave temporary intermediate files under the session `tempdir()` so they can be inspected after the run.
