@@ -600,3 +600,61 @@ test_that("StimGate comparison fallback flags preserve final gate provenance", {
   expect_equal(cluster$thresholdOrigin, "calculated_clustered")
   expect_equal(cluster$gateReturnPoint, "stimgate_clustered")
 })
+
+
+test_that("comparison validation requires complete rows for every method", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(script_comp, local = env)
+
+  complete <- tidyr::expand_grid(
+    sim_id = c(1L, 2L),
+    method = c("stimgate", "fbeta", "tailgate"),
+    replicate = seq_len(4L)
+  ) |>
+    dplyr::mutate(error = NA_character_)
+
+  ok <- env$.simCompareValidateCompletedScenarios(
+    compare_raw = complete,
+    sim_ids = c(1L, 2L),
+    nSample = 2L,
+    nIter = 2L
+  )
+  expect_true(ok$collate_ok)
+  expect_true(ok$validation_ok)
+  expect_length(ok$incomplete_sim_ids, 0L)
+
+  missing <- complete |>
+    dplyr::filter(!(sim_id == 2L & method == "tailgate"))
+  bad_missing <- env$.simCompareValidateCompletedScenarios(
+    compare_raw = missing,
+    sim_ids = c(1L, 2L),
+    nSample = 2L,
+    nIter = 2L
+  )
+  expect_true(bad_missing$collate_ok)
+  expect_false(bad_missing$validation_ok)
+  expect_equal(bad_missing$incomplete_sim_ids, 2L)
+
+  errored <- complete
+  errored$error[errored$sim_id == 1L & errored$method == "fbeta"][1] <-
+    "failed"
+  bad_error <- env$.simCompareValidateCompletedScenarios(
+    compare_raw = errored,
+    sim_ids = c(1L, 2L),
+    nSample = 2L,
+    nIter = 2L
+  )
+  expect_false(bad_error$validation_ok)
+  expect_equal(bad_error$error_sim_ids, 1L)
+
+  empty <- env$.simCompareValidateCompletedScenarios(
+    compare_raw = tibble::tibble(),
+    sim_ids = integer(),
+    nSample = 2L,
+    nIter = 2L
+  )
+  expect_true(empty$collate_ok)
+  expect_true(empty$validation_ok)
+})
