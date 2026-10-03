@@ -75,7 +75,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "global")
-analysis_semantics_version <- "global-bw-freq-v2"
+analysis_semantics_version <- "global-bw-freq-v3"
 analysis_quick <- isTRUE(.isQuick())
 analysis_dev <- isTRUE(.isDev())
 
@@ -866,7 +866,10 @@ bw_tbl <- .simBandwidthAddMissingColumns(
     iter = NA_integer_,
     sample = NA_character_,
     ind = NA_character_,
+    propRespTruth = NA_real_,
+    propRespEst = NA_real_,
     propBsEst = NA_real_,
+    method = NA_character_,
     threshold = NA_real_,
     bias_uns_setting = NA_character_,
     sim_seed = NA_integer_,
@@ -893,32 +896,37 @@ bw_tbl <- bw_tbl |>
   dplyr::filter(!is.na(.data$bias_uns_setting))
 
 bw_tbl_results_raw <- bw_tbl |>
+  dplyr::filter(
+    .data$method == "loc_sample",
+    is.finite(.data$threshold),
+    is.finite(.data$propRespTruth),
+    is.finite(.data$propRespEst)
+  ) |>
   dplyr::select(
     dplyr::any_of(colnames(sim_grid_all)),
     iter,
     sample,
     ind,
-    propBsEst,
+    method,
+    propRespTruth,
+    propRespEst,
     threshold
-  ) |>
-  dplyr::filter(is.finite(threshold) & is.finite(propBsEst)) |>
-  dplyr::group_by(sim_id, iter, ind) |>
-  dplyr::mutate(
-    threshold = unique(threshold[is.finite(threshold)])[[1]],
-    propBsEst = unique(propBsEst[is.finite(propBsEst)])[[1]]
-  ) |>
-  dplyr::ungroup() |>
-  dplyr::group_by(
-    dplyr::pick(dplyr::any_of(colnames(sim_grid_all))),
-    iter,
-    ind
-  ) |>
-  dplyr::slice(1) |>
-  dplyr::ungroup()
+  )
+
+duplicate_result_keys <- bw_tbl_results_raw |>
+  dplyr::count(.data$sim_id, .data$iter, .data$ind) |>
+  dplyr::filter(.data$n != 1L)
+
+if (nrow(duplicate_result_keys) > 0L) {
+  stop(
+    "Expected exactly one final loc_sample result per sim_id/iter/ind, ",
+    "but duplicate result keys were found."
+  )
+}
 
 if (nrow(bw_tbl_results_raw) == 0L) {
   warning(
-    "No valid bandwidth-frequency results were collated. ",
+    "No valid final bandwidth-frequency results were collated. ",
     "Check the progress log for simulation-level errors."
   )
 }
@@ -929,7 +937,7 @@ bw_tbl_results_summary <- bw_tbl_results_raw |>
   ) |>
   dplyr::summarise(
     dplyr::across(
-      c(threshold, propBsEst),
+      c(threshold, propRespTruth, propRespEst),
       list(
         min = ~ min(.x, na.rm = TRUE),
         max = ~ max(.x, na.rm = TRUE),
@@ -940,9 +948,11 @@ bw_tbl_results_summary <- bw_tbl_results_raw |>
     .groups = "drop"
   ) |>
   dplyr::mutate(
-    propBsEst_median_diff = propBsEst_median - prob_response,
-    propBsEst_median_diff_rel = (propBsEst_median - prob_response) /
-      prob_response
+    propRespEst_median_diff =
+      .data$propRespEst_median - .data$propRespTruth_median,
+    propRespEst_median_diff_rel =
+      (.data$propRespEst_median - .data$propRespTruth_median) /
+        .data$propRespTruth_median
   )
 
 if (!results_read_only) {
@@ -1481,11 +1491,11 @@ if (isTRUE(run_plots)) {
 
       p <- ggplot(
         plot_tbl,
-        aes(x = n_cell, y = propBsEst_median, color = factor(bw))
+        aes(x = n_cell, y = propRespEst_median, color = factor(bw))
       ) +
         geom_line() +
         geom_hline(
-          mapping = aes(yintercept = prob_response),
+          mapping = aes(yintercept = propRespTruth_median),
           linetype = "dashed",
           color = "black"
         ) +
@@ -1571,11 +1581,11 @@ if (isTRUE(run_plots)) {
 
         p <- ggplot(
           plot_tbl,
-          aes(x = factor(n_cell), y = propBsEst, color = factor(bw))
+          aes(x = factor(n_cell), y = propRespEst, color = factor(bw))
         ) +
           ggforce::geom_sina(position = "dodge") +
           geom_hline(
-            mapping = aes(yintercept = prob_response),
+            mapping = aes(yintercept = propRespTruth),
             linetype = "dashed",
             color = "black"
           ) +
@@ -1590,12 +1600,12 @@ if (isTRUE(run_plots)) {
           expand_limits(y = 0) +
           labs(
             title = paste0(
-              "Actual background-subtracted frequency vs number of cells ",
+              "Estimated background-subtracted frequency vs number of cells ",
               "(mean_pos_setting = ", mean_pos_setting_curr,
               ", bias_uns_setting = ", bias_uns_setting_curr, ")"
             ),
             x = "Number of cells",
-            y = "Actual background-subtracted frequency",
+            y = "Estimated background-subtracted frequency",
             colour = "Bandwidth"
           ) +
           scale_colour_manual(
@@ -1640,13 +1650,13 @@ bw_tbl_results_raw |>
   ) |>
   dplyr::group_by(transformation, n_cell, bw, condition_perturbation_sd, prob_response) |>
   dplyr::summarise(
-    perc_g_005 = sum(propBsEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_01 = sum(propBsEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_02 = sum(propBsEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_05 = sum(propBsEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_1 = sum(propBsEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_2 = sum(propBsEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_5 = sum(propBsEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_01 = sum(propRespEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_02 = sum(propRespEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_05 = sum(propRespEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_1 = sum(propRespEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_2 = sum(propRespEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
     .groups = "drop"
   ) |>
   dplyr::arrange(transformation, condition_perturbation_sd, n_cell, bw) |>
@@ -1667,9 +1677,9 @@ for (mean_pos_setting_curr in unique(mean_pos_settings_tbl$mean_pos_setting)) {
     ) |>
     dplyr::group_by(transformation, n_cell, bw, condition_perturbation_sd, prob_response) |>
     dplyr::summarise(
-      err_rel_median = median(abs(propBsEst - prob_response) / prob_response, na.rm = TRUE),
-      err_rel_95 = quantile(abs(propBsEst - prob_response) / prob_response, probs = 0.95, na.rm = TRUE),
-      err_rel_max = max(abs(propBsEst - prob_response) / prob_response, na.rm = TRUE),
+      err_rel_median = median(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE),
+      err_rel_95 = quantile(abs(propRespEst - propRespTruth) / propRespTruth, probs = 0.95, na.rm = TRUE),
+      err_rel_max = max(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE),
       .groups = "drop"
     )
   err_tbl_rel_mean_trans_bw <- err_rel_tbl |>
@@ -1793,13 +1803,13 @@ bw_tbl_results_raw |>
   ) |>
   dplyr::group_by(transformation, n_cell, bw, sample_perturbation_sd, condition_perturbation_sd, cluster_perturbation_sd) |>
   dplyr::summarise(
-    perc_g_005 = sum(propBsEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_01 = sum(propBsEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_02 = sum(propBsEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_05 = sum(propBsEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_1 = sum(propBsEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_2 = sum(propBsEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_5 = sum(propBsEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_01 = sum(propRespEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_02 = sum(propRespEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_05 = sum(propRespEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_1 = sum(propRespEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_2 = sum(propRespEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
     .groups = "drop"
   ) |>
   dplyr::arrange(transformation, condition_perturbation_sd, n_cell, bw) |>
@@ -1815,13 +1825,13 @@ bw_tbl_results_raw |>
   dplyr::filter(prob_response == 0.002, transformation == "gaussian") |>
   dplyr::group_by(n_cell, bw, sample_perturbation_sd, condition_perturbation_sd, cluster_perturbation_sd) |>
   dplyr::summarise(
-    perc_g_005 = sum(propBsEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_01 = sum(propBsEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_02 = sum(propBsEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_05 = sum(propBsEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_1 = sum(propBsEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_2 = sum(propBsEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_5 = sum(propBsEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_01 = sum(propRespEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_02 = sum(propRespEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_05 = sum(propRespEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_1 = sum(propRespEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_2 = sum(propRespEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
+    perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
     .groups = "drop"
   ) |>
   dplyr::arrange(condition_perturbation_sd, sample_perturbation_sd, cluster_perturbation_sd, n_cell, bw)
