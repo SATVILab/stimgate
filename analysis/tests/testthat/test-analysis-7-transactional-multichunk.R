@@ -73,6 +73,7 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
     content,
     fixed = TRUE
   ))
+  expect_false(grepl("#| error: true", content, fixed = TRUE))
 })
 
 test_that("analysis 7 nested chunk outputs can be collated without simulations", {
