@@ -8,11 +8,11 @@
 test_that("QMD registry covers all top-level documents with real test files", {
   loaded <- .load_qmd_test_targets()
   targets <- loaded$env$.qmd_test_targets(loaded$root_dir)
-  expect_length(targets, 10L)
+  expect_length(targets, 11L)
   expect_setequal(names(targets), list.files(
     file.path(loaded$root_dir, "analysis"), pattern = "[.]qmd$"
   ))
-  expect_identical(targets[[9]], c("test-acs-cytof-gate.R", "test-acs-cytof-methods.R"))
+  expect_identical(targets[[10]], c("test-acs-cytof-gate.R", "test-acs-cytof-methods.R"))
 })
 
 test_that("QMD selection accepts defaults, aliases, sets and deduplicates", {
@@ -21,10 +21,12 @@ test_that("QMD selection accepts defaults, aliases, sets and deduplicates", {
   select <- loaded$env$.select_qmd_test_targets
   expect_identical(select(character(), targets), targets)
   expect_identical(select("all", targets), targets)
-  expect_identical(select(c("1,3", "9"), targets), targets[c(1, 3, 9)])
-  expect_identical(select("1 3 9", targets), targets[c(1, 3, 9)])
+  expect_identical(select(c("1,3", "9"), targets), targets[c(1, 4, 10)])
+  expect_identical(select("1 3 9", targets), targets[c(1, 4, 10)])
+  expect_identical(select("2a,2b", targets), targets[2:3])
+  expect_identical(select("analysis/2b-sim-bias_uns-freq_bs.qmd", targets), targets[3])
   expect_identical(select(c("1", "1-sim-trans", "analysis/1-sim-trans.qmd"), targets), targets[1])
-  expect_identical(select("analysis\\10-real-compare-acs-cytof-validation.qmd", targets), targets[10])
+  expect_identical(select("analysis\\10-real-compare-acs-cytof-validation.qmd", targets), targets[11])
 })
 
 test_that("QMD selection rejects explicit empty and unknown requests", {
@@ -34,7 +36,7 @@ test_that("QMD selection rejects explicit empty and unknown requests", {
   for (selection in list("", "  ", ",,,", c("1", ""))) {
     expect_error(select(selection, targets), "must not be empty")
   }
-  for (selection in list("11", "missing.qmd", c("all", "1"), c("--list", "1"))) {
+  for (selection in list("12", "missing.qmd", c("all", "1"), c("--list", "1"))) {
     expect_error(select(selection, targets), "Unknown QMD selection")
   }
 })

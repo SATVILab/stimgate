@@ -2,7 +2,8 @@
 .qmd_test_targets <- function(root_dir = ".") {
   targets <- list(
     "1-sim-trans.qmd" = "test-sim-trans.R",
-    "2-sim-bw-freq_bs-global.qmd" = "test-sim-bw-freq_bs-global-simcyto.R",
+    "2a-sim-bw-freq_bs-global.qmd" = "test-sim-bw-freq_bs-global-simcyto.R",
+    "2b-sim-bias_uns-freq_bs.qmd" = "test-sim-bias-uns-freq.R",
     "3-sim-bw-est-base.qmd" = "test-sim-bw-est-base-simcyto.R",
     "4-sim-bw-est-norm.qmd" = "test-sim-bw-est-norm-simcyto.R",
     "5-sim-bw-est-adaptive.qmd" = "test-sim-bw-est-adaptive-simcyto.R",

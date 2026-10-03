@@ -615,21 +615,9 @@
   )))
 }
 
-.simBandwidthBiasUnsCollate <- function(tbl, grid_cols) {
-  if (all(is.na(tbl$threshold))) {
-    stop(
-      "No valid threshold results were collated. ",
-      "Check the progress log for simulation-level errors."
-    )
-  }
-
+.simBandwidthBiasUnsCollate <- function(tbl, grid_cols, n_sample_expected = NULL) {
   results_raw <- tbl |>
-    dplyr::filter(
-      .data$method == "loc_sample",
-      is.finite(.data$threshold),
-      is.finite(.data$propRespTruth),
-      is.finite(.data$propRespEst)
-    ) |>
+    dplyr::filter(.data$method == "loc_sample") |>
     dplyr::select(
       dplyr::any_of(grid_cols),
       "iter", "sample", "ind", "method",
@@ -641,7 +629,14 @@
       "biasUns", "biasUnsNegativeWidth"
     ) |>
     dplyr::mutate(
-      error = .data$propRespEst - .data$propRespTruth,
+      valid_estimate = is.finite(.data$threshold) &
+        is.finite(.data$propRespTruth) & .data$propRespTruth > 0 &
+        is.finite(.data$propRespEst),
+      error = dplyr::if_else(
+        .data$valid_estimate,
+        .data$propRespEst - .data$propRespTruth,
+        NA_real_
+      ),
       rel_error = .data$error / .data$propRespTruth,
       abs_rel_error = abs(.data$rel_error)
     )
@@ -653,12 +648,28 @@
     )
   }
 
+  if (!setequal(unique(results_raw$sim_id), unique(tbl$sim_id))) {
+    stop("Missing final loc_sample results for one or more simulation IDs.")
+  }
+  if (!is.null(n_sample_expected)) {
+    counts <- dplyr::count(results_raw, .data$sim_id, .data$iter)
+    if (any(counts$n != n_sample_expected)) {
+      stop("Expected ", n_sample_expected, " final sample results per sim_id/iter.")
+    }
+  }
+
   results_summary <- results_raw |>
     dplyr::group_by(dplyr::pick(dplyr::any_of(grid_cols))) |>
     dplyr::summarise(
+      n_sample = dplyr::n(),
+      n_valid = sum(.data$valid_estimate),
+      n_failed = sum(!.data$valid_estimate),
+      failure_fraction = mean(!.data$valid_estimate),
       propRespTruth = stats::median(.data$propRespTruth, na.rm = TRUE),
-      propRespEst_median = stats::median(.data$propRespEst, na.rm = TRUE),
-      propRespEst_mean = mean(.data$propRespEst, na.rm = TRUE),
+      propRespEst_median = stats::median(
+        .data$propRespEst[.data$valid_estimate], na.rm = TRUE
+      ),
+      propRespEst_mean = mean(.data$propRespEst[.data$valid_estimate], na.rm = TRUE),
       median_rel_error = stats::median(.data$rel_error, na.rm = TRUE),
       median_abs_rel_error = stats::median(.data$abs_rel_error, na.rm = TRUE),
       q90_abs_rel_error = stats::quantile(
@@ -673,7 +684,9 @@
       } else {
         NA_real_
       },
-      threshold_median = stats::median(.data$threshold, na.rm = TRUE),
+      threshold_median = stats::median(
+        .data$threshold[.data$valid_estimate], na.rm = TRUE
+      ),
       prop_stim_median = stats::median(.data$propStim, na.rm = TRUE),
       prop_uns_median = stats::median(.data$propUns, na.rm = TRUE),
       .groups = "drop"
