@@ -425,6 +425,10 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
 
 ### Analysis code layering
 
+Before removing an analysis helper, check all repository callers, including QMDs
+and tests. Preserve explicitly documented compatibility aliases even when current
+repository analyses no longer call them.
+
 For new or moved analysis code, use this layering:
 
 1. `R/`: installed StimGate package implementation only.

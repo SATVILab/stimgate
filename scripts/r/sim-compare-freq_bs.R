@@ -33,15 +33,6 @@
 }
 
 #' @keywords internal
-.simCompareSampleFromInd <- function(ind, nCondition) {
-  if (exists(".simBandwidthSampleFromInd", mode = "function")) {
-    return(.simBandwidthSampleFromInd(ind, nCondition))
-  }
-  ind_num <- suppressWarnings(as.numeric(ind))
-  as.character(((ind_num - 1) %/% nCondition) + 1)
-}
-
-#' @keywords internal
 .simCompareReadLocDetails <- function(pathProject, nSample, nCondition) {
   if (!exists(".simBandwidthReadLocDetails", mode = "function")) {
     stop(
