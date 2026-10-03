@@ -139,7 +139,6 @@
       .profileState$initialized <- TRUE
       .profileState$pathProject <- pathProject
       .profileState$rawDir <- rawDir
-      .profileState$context <- .profileContextDefault()
       .profileState$stack <- character()
       .profileState$runTimer <- NULL
       invisible(TRUE)
