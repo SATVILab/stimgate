@@ -437,96 +437,98 @@ test_that("analysis 4 uses paired estimator seeds and transactional chunk promot
 })
 
 
-test_that("analysis 5 matches adaptive estimator semantics and is chunk-stable", {
+test_that("analysis 5 uses shared seeded runners and canonical reads", {
   qmd_path <- file.path(
     root_dir,
     "analysis",
     "5-sim-bw-est-adaptive.qmd"
   )
-  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+  lines <- readLines(qmd_path, warn = FALSE)
+  content <- paste(lines, collapse = "\n")
+  has <- function(x) grepl(x, content, fixed = TRUE)
+  pos <- function(x) regexpr(x, content, fixed = TRUE)[[1]]
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
-  expect_true(grepl(
-    'analysis_semantics_version <- "adaptive-bw-est-v2"',
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl("analysis_grid_spec", content, fixed = TRUE))
-  expect_true(grepl("sim_grid_spec = analysis_grid_spec", content, fixed = TRUE))
-  expect_true(grepl("bw_fallback <- NA_real_", content, fixed = TRUE))
+  expect_true(grepl("sim_retry_errors:\\s*true", content))
+  expect_true(grepl("warning:\\s*false", content))
+  expect_true(grepl("message:\\s*false", content))
+  expect_true(has('analysis_semantics_version <- "adaptive-bw-est-v3"'))
+  expect_true(has("norm_adaptive_ncell <- 2500L"))
+  expect_true(has("normAdaptiveNcell = norm_adaptive_ncell"))
+  expect_false(has("bw_ncell_upper"))
+  expect_false(has("bwNcellMax ="))
+  expect_true(has("n_cell_stim_vec <- c(1e3, 5e3, 2e4, 1e5)"))
 
-  expect_true(grepl("norm_adaptive_ncell <- 2500L", content, fixed = TRUE))
-  expect_true(grepl(
-    "normAdaptiveNcell = norm_adaptive_ncell",
-    content,
-    fixed = TRUE
+  # Scenario seeds belong to the data scenario and are fixed on the full grid
+  # before the dev filter, shuffling and chunking.
+  expect_true(has(
+    "sim_seed = as.integer(simulation_seed + .data$data_scenario_id - 1L)"
   ))
-  expect_false(grepl("bw_ncell_upper", content, fixed = TRUE))
-  expect_false(grepl("bwNcellMax =", content, fixed = TRUE))
+  expect_lt(pos("sim_seed = as.integer("), pos("sim_grid_full <- sim_grid"))
+  expect_lt(pos("sim_grid_full <- sim_grid"), pos("if (analysis_dev)"))
+  expect_lt(
+    pos("if (analysis_dev)"),
+    pos("dplyr::slice_sample(sim_grid_all, prop = 1)")
+  )
+  expect_false(has("1e4"))
+  expect_false(has("sample_n("))
 
-  expect_true(grepl("data_scenario_id", content, fixed = TRUE))
-  expect_true(grepl(
-    "sim_seed = as.integer(simulation_seed + .data$data_scenario_id - 1L)",
-    content,
-    fixed = TRUE
+  expect_true(has('"sim-bandwidth-analysis-run.R"'))
+  expect_true(has(".simBandwidthRunGrid("))
+  expect_true(has("scenario_fn = .simBandwidthEstAdaptiveScenario"))
+  expect_true(has("retry_errors = sim_retry_errors"))
+  expect_true(has(".simBandwidthFinishChunk("))
+  expect_true(has(".simBandwidthEstAdaptiveValidate("))
+  expect_true(has(".simBandwidthEstAdaptiveCollate("))
+  expect_true(has("run_ctx <- .analysis_results_context("))
+  expect_true(has(".analysis_current_file("))
+  expect_true(has("required_params = analysis_required_params"))
+  expect_true(has("sim_grid_spec = analysis_grid_spec"))
+  expect_true(has("scenario_settings = scenario_settings"))
+  expect_true(has("Skipping plots during a simulation render."))
+  expect_true(has(
+    "run_plots is false, so stopping after simulation/collation."
   ))
-  expect_true(grepl(
-    "set.seed(as.integer(sim_seed))",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    ".simBandwidthEnsureCurrentCheckout(root_dir)",
-    content,
-    fixed = TRUE
-  ))
+  expect_true(has("means are conditional on finite"))
 
-  expect_true(grepl(
-    "run_ctx <- .analysis_results_context(",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(".analysis_current_file(", content, fixed = TRUE))
-  expect_true(grepl("analysis_required_params", content, fixed = TRUE))
-  expect_true(grepl("run_ctx$chunk_dir", content, fixed = TRUE))
-
-  expect_true(grepl("expected_rows_per_sim", content, fixed = TRUE))
-  expect_true(grepl("row_count_bad_ids", content, fixed = TRUE))
-  expect_true(grepl("seed_ok", content, fixed = TRUE))
-  expect_true(grepl("expected_full_ids", content, fixed = TRUE))
-  expect_true(grepl("promote_analysis5_if_ready", content, fixed = TRUE))
-  expect_true(grepl("nrow(sim_grid) == 0L", content, fixed = TRUE))
-  expect_true(grepl(
-    "Refusing to promote analysis 5",
-    content,
-    fixed = TRUE
-  ))
+  expect_false(has("set.seed(as.integer(sim_seed))"))
+  expect_false(has("promote_analysis5_if_ready"))
+  expect_false(has("knitr::knit_exit()"))
+  expect_false(has("old_plan <- future::plan()"))
+  expect_false(has("bw_list_raw_chunk"))
+  expect_false(has("collate_suffix"))
+  expect_false(has("bw_mtd_norm"))
+  expect_false(has("bw_tbl_long"))
+  expect_false(has("saveRDS("))
   expect_false(grepl("#\\| error:\\s*true", content))
+  expect_identical(
+    lengths(regmatches(content, gregexpr("projr_path_get(", content,
+      fixed = TRUE
+    ))),
+    1L
+  )
 
-  expect_true(grepl("n_total = dplyr::n()", content, fixed = TRUE))
-  expect_true(grepl("prop_est = n_est / n_total", content, fixed = TRUE))
-  expect_true(grepl(
-    "means are conditional on finite estimates",
-    content,
-    fixed = TRUE
-  ))
+  expect_identical(
+    length(grep("^```\\{r", lines)),
+    length(grep("^```\\s*$", lines))
+  )
+  chunks <- .qmd_r_chunks(lines)
+  is_eval_false <- vapply(chunks, function(x) {
+    any(grepl("^#\\|\\s*eval:\\s*false", x))
+  }, logical(1))
+  expect_identical(sum(is_eval_false), 1L)
+  rerun <- chunks[is_eval_false][[1]]
+  expect_true(any(grepl("label: rerun-one-simulation", rerun, fixed = TRUE)))
+  expect_true(any(grepl("sim_grid_full", rerun, fixed = TRUE)))
+  expect_true(any(grepl(".simBandwidthRunRow(", rerun, fixed = TRUE)))
 
-  expect_true(grepl("old_plan <- future::plan()", content, fixed = TRUE))
-  expect_true(grepl(
-    "finally = future::plan(old_plan)",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "run_plots is false, so stopping after simulation/collation.",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(
-    "Render again with run_simulations = FALSE and run_plots = TRUE.",
-    content,
-    fixed = TRUE
-  ))
-  expect_true(grepl(".write_rds_atomic(", content, fixed = TRUE))
-  expect_false(grepl("saveRDS(", content, fixed = TRUE))
+  # Every chunk that plots or saves figures is guarded by run_plots.
+  plots <- vapply(chunks, function(x) {
+    any(grepl("ggsave|ggplot\\(", x[!grepl("^#\\|", x)]))
+  }, logical(1))
+  expect_gt(sum(plots), 0L)
+  for (x in chunks[plots]) {
+    code <- x[!grepl("^#\\|", x) & nzchar(trimws(x))]
+    expect_identical(code[[1]], "if (isTRUE(run_plots)) {")
+  }
 })
