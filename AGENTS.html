@@ -404,7 +404,8 @@
 <li>Analysis-specific helpers under <code>scripts/r/</code>: substantial orchestration, restart/collation, IO and plotting helpers that should not live inline in QMDs.</li>
 <li>
 <code>analysis/*.qmd</code>: scientific settings, analysis calls, result-specific transformations and presentation.</li>
-</ol><p>Source analysis helper files explicitly in dependency order. Do not move analysis-only helpers into <code>R/</code> unless they have genuinely become part of the installed package implementation or API. Keep large domain helper files such as <code>sim-bandwidth.R</code> focused on their domain rather than using them as catch-all locations for generic QMD runtime or unrelated plotting/orchestration code.</p>
+</ol><p>Plot-construction helpers under <code>scripts/r/</code> should return plot objects without creating directories or writing files. Keep filesystem side effects in the corresponding save/orchestration helper or QMD.</p>
+<p>Source analysis helper files explicitly in dependency order. Do not move analysis-only helpers into <code>R/</code> unless they have genuinely become part of the installed package implementation or API. Keep large domain helper files such as <code>sim-bandwidth.R</code> focused on their domain rather than using them as catch-all locations for generic QMD runtime or unrelated plotting/orchestration code.</p>
 <hr></div>
 </div>
 <div class="section level2">
