@@ -165,7 +165,7 @@
 <span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"styler::style_pkg()"</span></span>
 <span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"lintr::lint_package()"</span></span></code></pre></div>
 <div class="section level3">
-<h3 id="checklist-before-each-commit--opening-a-pr">Checklist before each commit / opening a PR<a class="anchor" aria-label="anchor" href="#checklist-before-each-commit--opening-a-pr"></a></h3>
+<h3 id="checklist-before-opening-a-pr">Checklist before opening a PR<a class="anchor" aria-label="anchor" href="#checklist-before-opening-a-pr"></a></h3>
 <ol style="list-style-type: decimal"><li><code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code></li>
 <li><code>styler::style_pkg()</code></li>
 <li><code>lintr::lint_package()</code></li>
@@ -173,6 +173,11 @@
 <li>If <code>analysis/</code> or <code>scripts/r/</code> changed, <code>Rscript analysis/tests/run_analysis_tests.R</code>
 </li>
 </ol></div>
+<div class="section level3">
+<h3 id="test-runs-while-iterating">Test runs while iterating<a class="anchor" aria-label="anchor" href="#test-runs-while-iterating"></a></h3>
+<p>The full suites are slow. While iterating, run only the test files that cover the code you changed, e.g. <code>devtools::test(filter = "cp_uns_loc|pos_ind")</code> or <code><a href="https://testthat.r-lib.org/reference/test_file.html" class="external-link">testthat::test_file()</a></code> for analysis tests. Run the full suite once, on the finished change, before opening the PR; CI runs it again.</p>
+<p>When several agents work in parallel (subagents, separate worktrees), each agent runs targeted tests only and the coordinating agent runs the full suite once on the combined result. Worktrees share one <code>git stash</code>, so parallel agents must not use it; use a patch file or a temporary commit instead.</p>
+</div>
 <div class="section level3">
 <h3 id="analysis--repository-integration-tests">Analysis / Repository Integration Tests<a class="anchor" aria-label="anchor" href="#analysis--repository-integration-tests"></a></h3>
 <p>In addition to the package test suite (<code>tests/testthat/</code>), there is a separate analysis integration test suite in <code>analysis/tests/testthat/</code>.</p>

@@ -180,7 +180,7 @@ Rscript -e "styler::style_pkg()"
 Rscript -e "lintr::lint_package()"
 ```
 
-### Checklist before each commit / opening a PR
+### Checklist before opening a PR
 
 1.  [`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
 2.  `styler::style_pkg()`
@@ -188,6 +188,21 @@ Rscript -e "lintr::lint_package()"
 4.  [`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
 5.  If `analysis/` or `scripts/r/` changed,
     `Rscript analysis/tests/run_analysis_tests.R`
+
+### Test runs while iterating
+
+The full suites are slow. While iterating, run only the test files that
+cover the code you changed,
+e.g. `devtools::test(filter = "cp_uns_loc|pos_ind")` or
+[`testthat::test_file()`](https://testthat.r-lib.org/reference/test_file.html)
+for analysis tests. Run the full suite once, on the finished change,
+before opening the PR; CI runs it again.
+
+When several agents work in parallel (subagents, separate worktrees),
+each agent runs targeted tests only and the coordinating agent runs the
+full suite once on the combined result. Worktrees share one `git stash`,
+so parallel agents must not use it; use a patch file or a temporary
+commit instead.
 
 ### Analysis / Repository Integration Tests
 
