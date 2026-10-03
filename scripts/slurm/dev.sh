@@ -10,6 +10,7 @@ project_root=$(cd -- "$script_dir/../.." &> /dev/null && pwd)
 scripts=(
   "dev-1-sim-trans.sh"
   "dev-2a-stim-bw-freq_bs-global.sh"
+  "dev-2b-stim-bias_uns-freq_bs.sh"
   "dev-3-sim-bw-est-base.sh"
   "dev-4-sim-bw-est-norm.sh"
   # "dev-5-sim-bw-est-adaptive.sh"
