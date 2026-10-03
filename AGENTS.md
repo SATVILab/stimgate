@@ -214,6 +214,10 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   `n_*_finite` / `prop_*_finite`) rather than hiding it behind a magic
   numeric fallback or averaging only successful estimates without reporting
   coverage. Distinguish estimator failure from infrastructure/runtime errors.
+- Simulation wrappers that claim to mirror a current package calculation must
+  use the same preprocessing as the package implementation. If a wrapper keeps
+  a legacy preprocessing option for other analyses, set the current behaviour
+  explicitly in the QMD rather than relying on the wrapper default.
 - For end-to-end background-subtracted-frequency performance, score the final
   sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
