@@ -109,6 +109,23 @@ test_that("comparator execution errors are not converted into fallback gates", {
   )
 })
 
+test_that("Tailgate execution errors are not converted into fallback gates", {
+  env <- .load_acs_method_env()
+  env$.simCompareTailgateThreshold <- function(...) {
+    stop("tailgate worker failure")
+  }
+
+  expect_error(
+    env$.acsCytofThresholdOne(
+      method = "tailgate",
+      xUns = c(0, 1),
+      xStim = c(0, 2),
+      settings = env$.acsCytofComparatorSettings("tailgate")
+    ),
+    "tailgate worker failure"
+  )
+})
+
 test_that("thresholded cells are saved as a complete combination table", {
   env <- .load_acs_method_env()
   channels <- c("A", "B")
