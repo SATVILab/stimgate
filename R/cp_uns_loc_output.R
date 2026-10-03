@@ -294,10 +294,7 @@
     pathProject
   )
   .debug("done getting loc gate at sample level") # nolint
-  list(
-    "loc" = cpVec,
-    "pList" = list()
-  )
+  list("loc" = cpVec)
 }
 
 

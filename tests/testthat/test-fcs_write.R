@@ -478,7 +478,6 @@ test_that("writeStimFCS removes the requested cytokine combinations exactly", {
     gateTbl = gateTbl,
     chnlPos = exampleData$chnl[[1]],
     chnlNeg = setdiff(exampleData$chnl, exampleData$chnl[[1]]),
-    chnlAlt = NULL,
     gateTypeCytPos = "base"
   )
   expected <- exOrig[incVec & !excVec, exampleData$chnl, drop = FALSE]

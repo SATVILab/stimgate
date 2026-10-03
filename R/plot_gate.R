@@ -74,28 +74,28 @@
 #' }
 #' @export
 plotStim <- function(
-    ind,
-    .data,
-    pathProject,
-    marker = NULL,
-    chnl = NULL,
-    pop = NULL,
-    indLab = NULL,
-    axisLab = NULL,
-    excMin = TRUE,
-    limitsExpand = NULL,
-    limitsEqual = FALSE,
-    grid = TRUE,
-    gridNCol = 2,
-    showGate = TRUE,
-    minCell = 10,
-    bias = FALSE,
-    combnExc = NULL,
-    chnlGate = NULL,
-    markerGate = NULL,
-    gateTypeCytPos = "cyt",
-    mult = FALSE,
-    gateUnsMethod = "min") {
+  ind,
+  .data,
+  pathProject,
+  marker = NULL,
+  chnl = NULL,
+  pop = NULL,
+  indLab = NULL,
+  axisLab = NULL,
+  excMin = TRUE,
+  limitsExpand = NULL,
+  limitsEqual = FALSE,
+  grid = TRUE,
+  gridNCol = 2,
+  showGate = TRUE,
+  minCell = 10,
+  bias = FALSE,
+  combnExc = NULL,
+  chnlGate = NULL,
+  markerGate = NULL,
+  gateTypeCytPos = "cyt",
+  mult = FALSE
+) {
   if (is.null(marker) && is.null(chnl)) {
     stop("Must specify one of marker or chnl")
   }
@@ -106,27 +106,49 @@ plotStim <- function(
   if (length(pop) == 0L || !nzchar(pop)) {
     stop("No population found for plotting gates")
   }
-  pList <- .plotGate(
-    ind = ind,
-    indLab = indLab,
+  # getStimExpr arguments shared by every plot
+  exArgs <- list(
+    pathProject = pathProject,
     .data = .data,
+    pop = pop,
     marker = marker,
     chnl = chnl,
-    pop = pop,
-    axisLab = axisLab,
-    pathProject = pathProject,
     excMin = excMin,
-    limitsExpand = limitsExpand,
-    limitsEqual = limitsEqual,
-    showGate = showGate,
-    minCell = minCell,
     bias = bias,
     combnExc = combnExc,
     chnlGate = chnlGate,
     markerGate = markerGate,
     gateTypeCytPos = gateTypeCytPos,
-    mult = mult,
-    gateUnsMethod = gateUnsMethod
+    mult = mult
+  )
+  pList <- append(
+    .plotGateBv(
+      ind = ind,
+      indLab = indLab,
+      marker = marker,
+      chnl = chnl,
+      pop = pop,
+      axisLab = axisLab,
+      pathProject = pathProject,
+      limitsExpand = limitsExpand,
+      limitsEqual = limitsEqual,
+      showGate = showGate,
+      minCell = minCell,
+      exArgs = exArgs
+    ),
+    .plotGateUv(
+      ind = ind,
+      indLab = indLab,
+      marker = marker,
+      chnl = chnl,
+      pop = pop,
+      excMin = excMin,
+      axisLab = axisLab,
+      showGate = showGate,
+      pathProject = pathProject,
+      minCell = minCell,
+      exArgs = exArgs
+    )
   )
   if (length(pList) == 0L) {
     return(NULL)
@@ -135,195 +157,55 @@ plotStim <- function(
 }
 
 #' @keywords internal
-.plotGate <- function(
-    marker,
-    chnl,
-    pop,
-    ind,
-    indLab,
-    .data,
-    axisLab,
-    pathProject,
-    excMin,
-    limitsExpand,
-    limitsEqual,
-    showGate,
-    minCell,
-    bias,
-    combnExc,
-    chnlGate,
-    markerGate,
-    gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
-  # bv
-  pListBv <- .plotGateBv(
-    marker = marker,
-    chnl = chnl,
-    pop = pop,
-    ind = ind,
-    indLab = indLab,
-    .data = .data,
-    axisLab = axisLab,
-    pathProject = pathProject,
-    excMin = excMin,
-    limitsExpand = limitsExpand,
-    limitsEqual = limitsEqual,
-    showGate = showGate,
-    minCell = minCell,
-    bias = bias,
-    combnExc = combnExc,
-    chnlGate = chnlGate,
-    markerGate = markerGate,
-    gateTypeCytPos = gateTypeCytPos,
-    mult = mult,
-    gateUnsMethod = gateUnsMethod
-  )
-
-  # uv
-  pListUv <- .plotGateUv(
-    ind = ind,
-    indLab = indLab,
-    .data = .data,
-    marker = marker,
-    chnl = chnl,
-    pop = pop,
-    excMin = excMin,
-    axisLab = axisLab,
-    showGate = showGate,
-    pathProject = pathProject,
-    minCell = minCell,
-    bias = bias,
-    combnExc = combnExc,
-    chnlGate = chnlGate,
-    markerGate = markerGate,
-    gateTypeCytPos = gateTypeCytPos,
-    mult = mult,
-    gateUnsMethod = gateUnsMethod
-  )
-
-  pListBv |> append(pListUv)
-}
-
-#' @keywords internal
 .plotGateBv <- function(
-    marker,
-    chnl,
-    pop,
-    ind,
-    indLab,
-    .data,
-    axisLab,
-    pathProject,
-    excMin,
-    limitsExpand,
-    limitsEqual,
-    showGate,
-    minCell,
-    bias,
-    combnExc,
-    chnlGate,
-    markerGate,
-    gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
-  oneChnl <- is.null(marker) && !is.null(chnl) && length(chnl) == 1L
-  oneMarker <- is.null(chnl) && !is.null(marker) && length(marker) == 1L
-  oneVar <- oneChnl || oneMarker
-  if (oneVar) {
+  ind,
+  indLab,
+  marker,
+  chnl,
+  pop,
+  axisLab,
+  pathProject,
+  limitsExpand,
+  limitsEqual,
+  showGate,
+  minCell,
+  exArgs
+) {
+  if (xor(is.null(marker), is.null(chnl)) && length(marker %||% chnl) == 1L) {
     return(NULL)
   }
   if (!requireNamespace("hexbin", quietly = TRUE)) {
     stop("The 'hexbin' package is required for bivariate plots.")
   }
+  varVec <- (chnl %||% marker)[1:2]
   pList <- lapply(seq_along(ind), function(i) {
-    indCurr <- ind[[i]]
-    exTbl <- .plotGetExTbl(
-      ind = indCurr,
-      .data = .data,
-      pop = pop,
-      marker = marker,
-      chnl = chnl,
-      excMin = excMin,
-      pathProject = pathProject,
-      bias = bias,
-      combnExc = combnExc,
-      chnlGate = chnlGate,
-      markerGate = markerGate,
-      gateTypeCytPos = gateTypeCytPos,
-      mult = mult,
-      gateUnsMethod = gateUnsMethod
-    )
+    exTbl <- do.call(getStimExpr, c(exArgs, list(ind = ind[[i]])))
     if (nrow(exTbl) < minCell) {
       return(NULL)
     }
-    p <- plotCyto(
-      data = exTbl,
-      marker = chnl %||% marker,
-      excMin = FALSE,
-      limitsExpand = limitsExpand,
-      limitsEqual = limitsEqual
-    ) +
+    plotTbl <- exTbl[, varVec, drop = FALSE]
+    colnames(plotTbl) <- c("V1", "V2")
+    p <- ggplot(plotTbl, aes(x = V1, y = V2)) + # nolint
+      cowplot::theme_cowplot(14) +
       theme(
         plot.background = element_rect(fill = "white"),
         panel.background = element_rect(fill = "white")
-      )
-    p <- .plotAddAxisTitle(p, marker, chnl, axisLab)
-    p <- .plotAddTitle(p, indCurr, i, indLab)
-    p <- .plotAddGate(
-      p = p,
-      ind = indCurr,
-      marker = marker,
-      chnl = chnl,
-      pop = pop,
-      pathProject = pathProject,
-      showGate = showGate
-    )
-    p
+      ) +
+      geom_hex() +
+      scale_fill_viridis_c(trans = "log10", name = "Count") +
+      cowplot::background_grid(major = "xy") +
+      coord_equal()
+    p <- .axisLimits(p, limitsExpand = limitsExpand, limitsEqual = limitsEqual)
+    p <- .plotAddAxisTitle(p, marker, chnl, axisLab) +
+      ggtitle(.plotGetLab(ind[[i]], indLab, i))
+    .plotAddGate(p, ind[[i]], marker, chnl, pop, pathProject, showGate)
   }) |>
     stats::setNames(.plotGetLab(ind, indLab))
-  pList <- pList[vapply(pList, Negate(is.null), logical(1))]
+  pList <- Filter(Negate(is.null), pList)
   if (length(pList) == 0L) {
     return(NULL)
   }
   pList
-}
-
-#' @keywords internal
-.plotGetExTbl <- function(
-    ind,
-    .data,
-    pop,
-    marker,
-    chnl,
-    excMin,
-    pathProject,
-    bias,
-    combnExc,
-    chnlGate,
-    markerGate,
-    gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
-  lapply(ind, function(indCurr) {
-    getStimExpr(
-      pathProject = pathProject,
-      .data = .data,
-      pop = pop,
-      ind = indCurr,
-      chnl = chnl,
-      marker = marker,
-      bias = bias,
-      excMin = excMin,
-      combnExc = combnExc,
-      chnlGate = chnlGate,
-      markerGate = markerGate,
-      gateTypeCytPos = gateTypeCytPos,
-      mult = mult,
-      gateUnsMethod = gateUnsMethod
-    )
-  }) |>
-    Reduce(rbind, x = _)
 }
 
 #' @keywords internal
@@ -339,11 +221,6 @@ plotStim <- function(
     p <- p + labs(y = lab[[2]])
   }
   p
-}
-
-#' @keywords internal
-.plotAddTitle <- function(p, ind, i, indLab) {
-  p + ggtitle(.plotGetLab(ind, indLab, i))
 }
 
 #' @keywords internal
@@ -364,39 +241,29 @@ plotStim <- function(
   if (!showGate) {
     return(p)
   }
-  marker <- marker %||% stimgateMetaReadChnlLab(pathProject)[chnl]
   chnl <- chnl %||% stimgateMetaReadMarkerLab(pathProject)[marker]
-  pop <- pop %||% .gateGetPop(pathProject)
-  if (length(pop) > 1L) {
-    stop("Cannot plot gates for multiple populations")
-  }
-  if (length(pop) == 0L || !nzchar(pop)) {
-    stop("No population found for plotting gates")
-  }
-  gateTbl <- .plotGetGateTbl(ind, pop, marker, chnl, pathProject)
+  # only read gates for gated channels, but keep each channel's axis position
   chnlGate <- chnl[chnl %in% .gateGetChnl(pathProject, pop)]
-  for (i in seq_along(chnlGate)) {
-    gateVec <- gateTbl[["gate"]][gateTbl[["chnl"]] == chnlGate[i]]
-    for (j in seq_along(gateVec)) {
-      gate <- gateVec[[j]]
-      if (i == 1) {
-        p <- p +
-          geom_vline(
-            xintercept = gate,
-            color = "red",
-            alpha = 0.5
-          ) +
-          expand_limits(
-            x = gate * 1.1
-          )
-      } else if (i == 2) {
-        p <- p +
-          geom_hline(
-            yintercept = gate,
-            color = "red",
-            alpha = 0.5
-          ) +
+  if (length(chnlGate) == 0L) {
+    return(p)
+  }
+  gateTbl <- getStimGates(pathProject, pop = pop, chnl = chnlGate) |>
+    dplyr::group_by(gateName, chnl, marker, ind, batch) |>
+    dplyr::slice(1) |>
+    dplyr::ungroup()
+  gateTbl <- gateTbl[gateTbl[["ind"]] %in% ind, ]
+  for (i in seq_len(min(2L, length(chnl)))) {
+    for (gate in gateTbl[["gate"]][gateTbl[["chnl"]] == chnl[i]]) {
+      p <- p + if (i == 1L) {
+        list(
+          geom_vline(xintercept = gate, color = "red", alpha = 0.5),
+          expand_limits(x = gate * 1.1)
+        )
+      } else {
+        list(
+          geom_hline(yintercept = gate, color = "red", alpha = 0.5),
           expand_limits(y = gate * 1.1)
+        )
       }
     }
   }
@@ -404,78 +271,39 @@ plotStim <- function(
 }
 
 #' @keywords internal
-.plotGetGateTbl <- function(ind, pop, marker, chnl, pathProject) {
-  gateTbl <- getStimGates(
-    pathProject = pathProject,
-    pop = pop,
-    chnl = chnl,
-    marker = marker
-  ) |>
-    dplyr::group_by(gateName, chnl, marker, ind, batch) |>
-    dplyr::slice(1) |>
-    dplyr::ungroup()
-  gateTbl <- gateTbl[gateTbl[["ind"]] %in% ind, ]
-  indVec <- NULL
-  if (!is.null(marker)) {
-    for (i in seq_along(marker)) {
-      indVec[[i]] <- which(gateTbl[["marker"]] == marker[i])
-    }
-  } else {
-    for (i in seq_along(chnl)) {
-      indVec[[i]] <- which(gateTbl[["chnl"]] == chnl[i])
-    }
-  }
-  indVec <- indVec |> unlist()
-  gateTbl[indVec, ]
-}
-
-#' @keywords internal
 .plotGateUv <- function(
-    ind,
-    indLab,
-    .data,
-    marker,
-    chnl,
-    pop,
-    excMin,
-    axisLab,
-    showGate,
-    pathProject,
-    minCell,
-    bias,
-    combnExc,
-    chnlGate,
-    markerGate,
-    gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
+  ind,
+  indLab,
+  marker,
+  chnl,
+  pop,
+  excMin,
+  axisLab,
+  showGate,
+  pathProject,
+  minCell,
+  exArgs
+) {
   varLoop <- if (!is.null(marker)) marker else chnl
   pList <- lapply(varLoop, function(v) {
-    markerCurr <- if (!is.null(marker)) v else NULL
-    chnlCurr <- if (!is.null(chnl)) v else NULL
+    exArgs[["marker"]] <- if (!is.null(marker)) v
+    exArgs[["chnl"]] <- if (!is.null(chnl)) v
     .plotGateUvMarker(
-      marker = markerCurr,
-      chnl = chnlCurr,
       ind = ind,
-      .data = .data,
+      indLab = indLab,
+      marker = exArgs[["marker"]],
+      chnl = exArgs[["chnl"]],
       pop = pop,
       excMin = excMin,
-      indLab = indLab,
       axisLab = axisLab,
       showGate = showGate,
       pathProject = pathProject,
       minCell = minCell,
-      bias = bias,
-      combnExc = combnExc,
-      chnlGate = chnlGate,
-      markerGate = markerGate,
-      gateTypeCytPos = gateTypeCytPos,
-      mult = mult,
-      gateUnsMethod = gateUnsMethod
+      exArgs = exArgs
     )
   }) |>
     stats::setNames(.plotGetLab(varLoop, axisLab))
-  pList <- pList[vapply(pList, Negate(is.null), logical(1))]
+  pList <- Filter(Negate(is.null), pList)
   if (length(pList) == 0L) {
     return(NULL)
   }
@@ -484,24 +312,18 @@ plotStim <- function(
 
 #' @keywords internal
 .plotGateUvMarker <- function(
-    marker,
-    chnl,
-    pop,
-    ind,
-    .data,
-    excMin,
-    indLab,
-    axisLab,
-    showGate,
-    pathProject,
-    minCell,
-    bias,
-    combnExc,
-    chnlGate,
-    markerGate,
-    gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
+  ind,
+  indLab,
+  marker,
+  chnl,
+  pop,
+  excMin,
+  axisLab,
+  showGate,
+  pathProject,
+  minCell,
+  exArgs
+) {
   if (length(ind) == 0L) {
     return(NULL)
   }
@@ -527,208 +349,37 @@ plotStim <- function(
   } else {
     "nrd0"
   }
-  plotTbl <- .plotGateUvMarkerGetPlotTbl(
-    marker = marker,
-    chnl = chnl,
-    pop = pop,
-    ind = ind,
-    .data = .data,
-    excMin = excMin,
-    bw = bw,
-    indLab = indLab,
-    minCell = minCell,
-    pathProject = pathProject,
-    bias = bias,
-    combnExc = combnExc,
-    chnlGate = chnlGate,
-    markerGate = markerGate,
-    gateTypeCytPos = gateTypeCytPos,
-    mult = mult,
-    gateUnsMethod = gateUnsMethod
-  )
-  if (is.null(plotTbl)) {
-    return(NULL)
-  }
-  .plotGateUvMarkerPlot(
-    plotTbl = plotTbl,
-    excMin = excMin,
-    ind = ind,
-    indLab = indLab,
-    pop = pop,
-    marker = marker,
-    chnl = chnl,
-    axisLab = axisLab,
-    showGate = showGate,
-    pathProject = pathProject
-  )
-}
-
-#' @keywords internal
-.plotGateUvMarkerGetPlotTbl <- function(
-    ind,
-    .data,
-    marker,
-    chnl,
-    pop,
-    excMin,
-    bw,
-    indLab,
-    minCell,
-    pathProject,
-    bias,
-    combnExc,
-    chnlGate,
-    markerGate,
-    gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
+  .var <- if (!is.null(marker)) marker else chnl
   plotTblList <- lapply(seq_along(ind), function(i) {
-    plotTbl <- .plotGateUvMarkerGetPlotTblInd(
-      ind = ind[[i]],
-      .data = .data,
-      pop = pop,
-      marker = marker,
-      chnl = chnl,
-      excMin = excMin,
-      bw = bw,
-      minCell = minCell,
-      pathProject = pathProject,
-      bias = bias,
-      combnExc = combnExc,
-      chnlGate = chnlGate,
-      markerGate = markerGate,
-      gateTypeCytPos = gateTypeCytPos,
-      mult = mult,
-      gateUnsMethod = gateUnsMethod
-    )
-    if (is.null(plotTbl)) {
+    exTbl <- do.call(getStimExpr, c(exArgs, list(ind = ind[[i]])))
+    if (nrow(exTbl) < minCell) {
       return(NULL)
+    }
+    densObj <- stats::density(exTbl[[.var]], na.rm = TRUE, bw = bw)
+    plotTbl <- tibble::tibble(x = densObj$x, y = densObj$y, type = "raw")
+    if (excMin) {
+      # rescale the density to the proportion of cells above the minimum
+      probGMin <- attr(exTbl, "probGMin")[[1]][[1]][[1]]
+      plotTbl <- plotTbl |>
+        dplyr::bind_rows(
+          tibble::tibble(x = densObj$x, y = densObj$y * probGMin, type = "adj")
+        )
     }
     plotTbl[, "ind"] <- as.character(ind[[i]])
     plotTbl[, "indLab"] <- .plotGetLab(as.character(ind[[i]]), indLab, i)
     plotTbl
   })
-  plotTblList <- plotTblList[
-    vapply(plotTblList, Negate(is.null), logical(1))
-  ]
+  plotTblList <- Filter(Negate(is.null), plotTblList)
   if (length(plotTblList) == 0L) {
     return(NULL)
   }
-  Reduce(rbind, plotTblList)
-}
-
-#' @keywords internal
-.plotGateUvMarkerGetPlotTblInd <- function(
-    ind,
-    .data,
-    marker,
-    chnl,
-    pop,
-    excMin,
-    bw,
-    minCell,
-    pathProject,
-    bias,
-    combnExc,
-    chnlGate,
-    markerGate,
-    gateTypeCytPos,
-    mult,
-    gateUnsMethod) {
-  exTbl <- getStimExpr(
-    pathProject = pathProject,
-    .data = .data,
-    pop = pop,
-    ind = ind,
-    chnl = chnl,
-    marker = marker,
-    bias = bias,
-    excMin = excMin,
-    combnExc = combnExc,
-    chnlGate = chnlGate,
-    markerGate = markerGate,
-    gateTypeCytPos = gateTypeCytPos,
-    mult = mult,
-    gateUnsMethod = gateUnsMethod
-  )
-  if (nrow(exTbl) < minCell) {
-    return(NULL)
-  }
-  .var <- if (!is.null(marker)) marker else chnl
-  densObjRaw <- stats::density(exTbl[[.var]], na.rm = TRUE, bw = bw)
-  plotTbl <- tibble::tibble(x = densObjRaw$x, y = densObjRaw$y)
-  .plotGateUvMarkerAddAdj(
-    excMin = excMin,
-    plotTbl = plotTbl,
-    densObjRaw = densObjRaw,
-    exTbl = exTbl
-  )
-}
-
-#' @keywords internal
-.plotGateUvMarkerAddAdj <- function(
-    excMin,
-    plotTbl,
-    densObjRaw,
-    exTbl) {
-  if (!excMin) {
-    return(NULL)
-  }
-  probGMin <- attr(exTbl, "probGMin")[[1]][[1]][[1]]
-  plotTbl[, "type"] <- "raw"
-  densObjAdj <- densObjRaw
-  densObjAdj$y <- densObjAdj$y * probGMin
-  plotTblAdj <- tibble::tibble(
-    x = densObjAdj$x,
-    y = densObjAdj$y,
-    type = "adj"
-  )
-  plotTbl |>
-    dplyr::bind_rows(plotTblAdj)
-}
-
-#' @keywords internal
-.plotGateUvMarkerPlot <- function(
-    plotTbl,
-    excMin,
-    ind,
-    indLab,
-    marker,
-    chnl,
-    pop,
-    axisLab,
-    showGate,
-    pathProject) {
-  p <- .plotGateUvMarkerPlotInit(plotTbl, excMin, ind, indLab)
-  p <- .plotAddAxisTitle(p, marker, chnl, axisLab)
-  p <- p + ggplot2::labs(y = "Density")
-  .var <- if (!is.null(marker)) marker else chnl
-  p <- .plotAddTitle(p, .var, NULL, axisLab)
-  p <- .plotAddGate(p, ind, marker, chnl, pop, pathProject, showGate)
-  p
-}
-
-#' @keywords internal
-.plotGateUvMarkerPlotInit <- function(plotTbl, excMin, ind, indLab) {
-  alphaLabVec <- c("raw" = 0.5, "adj" = 1)
-  p <- if (excMin) {
-    if (length(ind) > 1L) {
-      ggplot(plotTbl, aes(x = x, y = y, alpha = type, color = indLab)) +
-        scale_alpha_manual(values = alphaLabVec)
-    } else {
-      ggplot(plotTbl, aes(x = x, y = y, alpha = type)) +
-        scale_alpha_manual(values = alphaLabVec)
-    }
-  } else {
-    if (length(ind) > 1L) {
-      ggplot(plotTbl, aes(x = x, y = y, colour = indLab)) +
-        scale_alpha_manual(values = alphaLabVec)
-    } else {
-      ggplot(plotTbl, aes(x = x, y = y)) +
-        scale_alpha_manual(values = alphaLabVec)
-    }
-  }
-  p +
+  aesVec <- c("x", "y", if (excMin) "alpha", if (length(ind) > 1L) "colour")
+  p <- ggplot(
+    Reduce(rbind, plotTblList),
+    aes(x = x, y = y, alpha = type, colour = indLab)[aesVec] # nolint
+  ) +
+    if (excMin) scale_alpha_manual(values = c("raw" = 0.5, "adj" = 1))
+  p <- p +
     geom_line() +
     cowplot::theme_cowplot() +
     cowplot::background_grid(major = "x") +
@@ -736,6 +387,10 @@ plotStim <- function(
       plot.background = element_rect(fill = "white"),
       panel.background = element_rect(fill = "white")
     )
+  p <- .plotAddAxisTitle(p, marker, chnl, axisLab) +
+    labs(y = "Density") +
+    ggtitle(.plotGetLab(.var, axisLab))
+  .plotAddGate(p, ind, marker, chnl, pop, pathProject, showGate)
 }
 
 #' @keywords internal

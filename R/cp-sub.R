@@ -1,13 +1,13 @@
-# Prepare expression data list with bias and noise adjustments
-# Gets measurements for samples and applies bias and noise modifications
-# Returns a list where each element is a numeric vector
+# Prepare expression data list with bias adjustment
+# Optionally drops minimum-expression cells and shifts the cut channel by bias
+# Returns a list of expression tables
 #' @keywords internal
 .prepareExListWithBiasAndNoise <- function(
-    exList,
-    ind,
-    excMin,
-    bias = 0,
-    noiseSd = NULL) {
+  exList,
+  ind,
+  excMin,
+  bias = 0
+) {
   purrr::map(ind, function(indCurr) {
     cutTbl <- exList[[as.character(indCurr)]]
     attrList <- attributes(cutTbl)
@@ -20,10 +20,6 @@
       attr(cutTbl, "probGMin") <- nRowFin / nRowInit
     }
     cutTbl[[attr(cutTbl, "chnlCut")]] <- .getCut(cutTbl) + bias # nolint
-    if (!is.null(noiseSd)) {
-      cutTbl <- cutTbl[[attr(cutTbl, "chnlCut")]] +
-        stats::rnorm(nrow(cutTbl), sd = noiseSd) # nolint
-    }
     cutTbl |>
       .prepareExListWithBiasAndNoiseAddAttr(attrList)
   }) |>
@@ -67,11 +63,12 @@
 
 #' @keywords internal
 .getCpTg <- function(
-    exList,
-    chnlSettings,
-    tgType,
-    stage,
-    pathProject) {
+  exList,
+  chnlSettings,
+  tgType,
+  stage,
+  pathProject
+) {
   # get native StimGate tailgate cutpoint
   .debug("Getting tg cutpoint")
 
@@ -133,7 +130,7 @@
       )
     }
 
-    tailgate <- .getCpTailgate(
+    tailgate <- .getStimGateTailgate(
       density = data.frame(x = densityObj$x, y = densityObj$y),
       peakX = densityObj$x[which.max(densityObj$y)],
       fraction = 1 / 200

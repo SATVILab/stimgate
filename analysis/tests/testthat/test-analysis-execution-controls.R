@@ -106,3 +106,61 @@ test_that("execution flag contract respects render defaults, interactive fallbac
   expect_false(override_sims)
   expect_true(override_plots)
 })
+
+test_that("QMDs with run contexts can read canonical results without run_ctx", {
+  for (qmd_name in primary_qmds) {
+    lines <- readLines(file.path(analysis_dir, qmd_name), warn = FALSE)
+    text <- paste(lines, collapse = "\n")
+    if (!grepl("run_ctx <- .analysis_run_context(", text, fixed = TRUE)) {
+      next
+    }
+
+    starts <- grep("^```\\{r", lines)
+    ends <- grep("^```$", lines)
+    chunks <- vapply(starts, function(s) {
+      paste(lines[(s + 1L):(min(ends[ends > s]) - 1L)], collapse = "\n")
+    }, character(1))
+    pattern_sim <- "run_ctx <- .analysis_run_context("
+    ind_sim <- which(grepl(pattern_sim, chunks, fixed = TRUE))[[1]]
+    ind_use <- which(
+      seq_along(chunks) > ind_sim & grepl("run_ctx", chunks, fixed = TRUE)
+    )
+    expect_gt(length(ind_use), 0L, label = qmd_name)
+    first_use <- chunks[[ind_use[[1]]]]
+
+    # analysis_key is shared by the run context and the read-only fallback.
+    expect_true(
+      grepl("analysis_key = analysis_key", chunks[[ind_sim]], fixed = TRUE),
+      info = qmd_name
+    )
+    expect_true(
+      grepl(
+        paste0(
+          'if (!exists("run_ctx")) {\n',
+          "  run_ctx <- .analysis_results_context(analysis_key"
+        ),
+        first_use,
+        fixed = TRUE
+      ),
+      info = paste0("First run_ctx chunk lacks read-only fallback: ", qmd_name)
+    )
+
+    # Collation chunks that write must skip writes, marking and promotion when
+    # reading without a run.
+    if (grepl(".analysis_promote_run(run_ctx)", first_use, fixed = TRUE)) {
+      guard <- regexpr("if (!results_read_only) {", first_use, fixed = TRUE)
+      expect_gt(guard, 0L, label = qmd_name)
+      writes <- gregexpr(
+        paste0(
+          "saveRDS\\(|\\.write_rds_atomic\\(|",
+          "\\.analysis_mark_chunk\\(|\\.analysis_promote_run\\("
+        ),
+        first_use
+      )[[1]]
+      expect_true(
+        all(writes > guard),
+        info = paste0("Collation writes outside read-only guard: ", qmd_name)
+      )
+    }
+  }
+})

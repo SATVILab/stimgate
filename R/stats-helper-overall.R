@@ -202,33 +202,19 @@
       )
 
     # Calculate context-dependent positivity once for the stimulated sample.
-    posCacheStim <- .getPosIndCache(
-      ex = ex,
-      gateTbl = gateTblGnInd,
-      chnl = chnl
-    )
-
     posByChnlStim <- .getPosIndByChnl(
       ex = ex,
       gateTbl = gateTblGnInd,
       chnl = chnl,
-      gateTypeCytPos = gateTypeCytPosCalc,
-      posCache = posCacheStim
+      gateTypeCytPos = gateTypeCytPosCalc
     )
 
     # And once for the corresponding unstimulated sample.
-    posCacheUns <- .getPosIndCache(
-      ex = exUns,
-      gateTbl = gateTblGnIndUns,
-      chnl = chnl
-    )
-
     posByChnlUns <- .getPosIndByChnl(
       ex = exUns,
       gateTbl = gateTblGnIndUns,
       chnl = chnl,
-      gateTypeCytPos = gateTypeCytPosCalc,
-      posCache = posCacheUns
+      gateTypeCytPos = gateTypeCytPosCalc
     )
 
     combnTbl <- purrr::map_df(
@@ -308,7 +294,6 @@
         gateTbl = gateTblGnInd,
         chnlPos = chnlPos,
         chnlNeg = chnlNeg,
-        chnlAlt = NULL,
         gateTypeCytPos = gateTypeCytPosCalc,
         posByChnl = posByChnlStim
       )
@@ -320,7 +305,6 @@
         gateTbl = gateTblGnInd,
         chnlPos = chnlPos,
         chnlNeg = chnlNeg,
-        chnlAlt = NULL,
         gateTypeCytPos = gateTypeCytPosCalc,
         posByChnl = posByChnlUns
       )

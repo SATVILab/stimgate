@@ -4,7 +4,7 @@
 \alias{.getCpUnsLocDerivParams}
 \title{Get appendix parameters (alpha, omega, psi) for one filtering stage}
 \usage{
-.getCpUnsLocDerivParams(chnlSettings, stage)
+.getCpUnsLocDerivParams(stage)
 }
 \description{
 Get appendix parameters (alpha, omega, psi) for one filtering stage

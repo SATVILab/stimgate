@@ -5,15 +5,16 @@
 # by the monotone smoother.
 
 .getCpUnsLocGetProb <- function(
-    exTblStimNoMin,
-    exTblStimThreshold,
-    exTblUnsThreshold,
-    exTblUnsBias,
-    bias,
-    exTblUnsOrig,
-    stage,
-    pathProject,
-    chnlSettings) {
+  exTblStimNoMin,
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  exTblUnsBias,
+  bias,
+  exTblUnsOrig,
+  stage,
+  pathProject,
+  chnlSettings
+) {
   ordinary <- .getCpUnsLocGetProbFit(
     exTblStimNoMin = exTblStimNoMin,
     exTblStimThreshold = exTblStimThreshold,
@@ -124,18 +125,19 @@
 #' admissible modelling region.
 #' @keywords internal
 .getCpUnsLocGetProbFit <- function(
-    exTblStimNoMin,
-    exTblStimThreshold,
-    exTblUnsThreshold,
-    exTblUnsBias,
-    bias,
-    exTblUnsOrig,
-    stage,
-    pathProject,
-    chnlSettings,
-    applyPreliminaryFilter = TRUE,
-    peakX = NULL,
-    windowWidth = NULL) {
+  exTblStimNoMin,
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  exTblUnsBias,
+  bias,
+  exTblUnsOrig,
+  stage,
+  pathProject,
+  chnlSettings,
+  applyPreliminaryFilter = TRUE,
+  peakX = NULL,
+  windowWidth = NULL
+) {
   ind <- .getInd(exTblStimNoMin)
   chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
   stageChnl <- file.path(stage, chnl)
@@ -204,9 +206,10 @@
 #' density tailgate plus its window-width margin.
 #' @keywords internal
 .getCpUnsLocGetShapeThreshold <- function(
-    exTblStimThreshold,
-    probTblList,
-    chnlSettings) {
+  exTblStimThreshold,
+  probTblList,
+  chnlSettings
+) {
   info <- list(
     applied = FALSE,
     reason = "shape_threshold_unavailable",
@@ -258,11 +261,7 @@
 
   stimX <- suppressWarnings(as.numeric(.getCut(exTblStimThreshold)))
   stimX <- stimX[is.finite(stimX)]
-  antimodeDensity <- .getCpUnsLocAntimodeDensity(
-    expr = stimX,
-    chnlSettings = chnlSettings,
-    originalBw = probTblList$densityBw
-  )
+  antimodeDensity <- .getCpUnsLocAntimodeDensity(expr = stimX)
   antimodes <- if (is.null(antimodeDensity)) {
     numeric(0L)
   } else {
@@ -337,11 +336,12 @@
 #' Attach shape-route diagnostics to the selected model data
 #' @keywords internal
 .getCpUnsLocAttachShapeFitInfo <- function(
-    dataMod,
-    shape,
-    requested,
-    applied,
-    ordinaryDataMod) {
+  dataMod,
+  shape,
+  requested,
+  applied,
+  ordinaryDataMod
+) {
   if (!is.data.frame(dataMod)) {
     return(dataMod)
   }
@@ -385,11 +385,12 @@
 # -----------------------
 #' @keywords internal
 .getCpUnsLocGetDensRaw <- function(
-    exTblStimThreshold,
-    exTblUnsThreshold,
-    stage,
-    pathProject,
-    chnlSettings) {
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  stage,
+  pathProject,
+  chnlSettings
+) {
   .debug("Calculating densities") # nolint
 
   densList <- .getCpUnsLocGetDensRawDensities(
@@ -414,11 +415,12 @@
 
 #' @keywords internal
 .getCpUnsLocGetDensRawDensities <- function(
-    exTblStimThreshold,
-    exTblUnsThreshold,
-    stage,
-    pathProject,
-    chnlSettings) {
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  stage,
+  pathProject,
+  chnlSettings
+) {
   useAdaptive <- .getCpUnsLocUseAdaptiveBw(chnlSettings)
 
   if (isTRUE(useAdaptive)) {
@@ -445,14 +447,6 @@
   bw <- .getCpUnsLocGetDensRawDensitiesBw(
     exTblStimThreshold = exTblStimThreshold,
     exTblUnsThreshold = exTblUnsThreshold,
-    bw = chnlSettings$bw,
-    bwMin = chnlSettings$bwMin,
-    bwMax = chnlSettings$bwMax,
-    bwFallback = chnlSettings$bwFallback,
-    bwMtd = chnlSettings$bwMtd,
-    bwAdj = chnlSettings$bwAdj,
-    bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax,
     chnlSettings = chnlSettings
   )
   chnl <- .getCpUnsLocGetChnl(exTblStimThreshold)
@@ -536,9 +530,10 @@
 
 #' @keywords internal
 .getCpUnsLocGetDensRawDensitiesAdaptive <- function(
-    exTblStimThreshold,
-    exTblUnsThreshold,
-    chnlSettings) {
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  chnlSettings
+) {
   xStim <- .getCut(exTblStimThreshold)
   xUns <- .getCut(exTblUnsThreshold)
   xStim <- suppressWarnings(as.numeric(xStim))
@@ -688,40 +683,44 @@
 
 #' @keywords internal
 .getCpUnsLocGetDensRawDensitiesBwAdaptiveOne <- function(
-    x,
-    chnlSettings) {
-  .bwCalcOne(
+  x,
+  chnlSettings
+) {
+  .getCpUnsLocBwCalcOne(
     x = x,
+    chnlSettings = chnlSettings,
     bwMtd = chnlSettings$bwMtd %||% "hpi1Norm",
     bwAdj = chnlSettings$bwAdj %||% 1,
-    bwNcellMin = chnlSettings$bwNcellMin,
-    bwNcellMax = chnlSettings$bwNcellMax,
-    normPeakFrac = chnlSettings$normPeakFrac %||% 0.1,
-    normPeakMinRel = chnlSettings$normPeakMinRel %||% 0.75,
-    normExtraFrac = chnlSettings$normExtraFrac %||% 0.2,
-    normExtraMax = chnlSettings$normExtraMax %||% Inf,
-    normExtraJitterFrac = chnlSettings$normExtraJitterFrac %||% 0.25,
-    normLambda = chnlSettings$normLambda %||% seq(-2, 2, length.out = 81),
-    normDensityN = chnlSettings$normDensityN %||% 512L,
-    normExcessBwMtd = chnlSettings$normExcessBwMtd %||% "hpi3",
-    normExcessNcell = chnlSettings$normExcessNcell %||% 10000L,
-    normAdaptiveNcell = chnlSettings$normAdaptiveNcell %||%
-      chnlSettings$bwAdaptiveNcell %||%
-      2500L,
-    bwAdaptiveCore = chnlSettings$bwAdaptiveCore,
-    bwAdaptiveExtra = chnlSettings$bwAdaptiveExtra,
-    bwAdaptiveCrossover = chnlSettings$bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth = chnlSettings$bwAdaptiveTransitionWidth %||% 0,
-    normMtd = chnlSettings$normMtd %||% "moments",
     adaptive = TRUE
   )
 }
 
+# .bwCalcOne() with the bandwidth settings from chnlSettings. Unset settings
+# fall back to .bwCalcOne()'s own defaults.
+#' @keywords internal
+.getCpUnsLocBwCalcOne <- function(x, chnlSettings, bwMtd, bwAdj, adaptive) {
+  argNm <- c(
+    "bwNcellMin", "bwNcellMax", "normPeakMinRel",
+    "normExtraFrac", "normExtraMax", "normLambda",
+    "normDensityN", "normExcessBwMtd", "normExcessNcell", "bwAdaptiveCore",
+    "bwAdaptiveExtra", "bwAdaptiveCrossover", "bwAdaptiveTransitionWidth",
+    "normMtd"
+  )
+  bwArgs <- chnlSettings[intersect(argNm, names(chnlSettings))]
+  bwArgs$normAdaptiveNcell <- chnlSettings$normAdaptiveNcell %||%
+    chnlSettings$bwAdaptiveNcell
+  do.call(.bwCalcOne, c(
+    list(x = x, bwMtd = bwMtd, bwAdj = bwAdj, adaptive = adaptive),
+    Filter(Negate(is.null), bwArgs)
+  ))
+}
+
 #' @keywords internal
 .getCpUnsLocAdaptiveGrid <- function(
-    x,
-    n = 512L,
-    padFrac = 0.15) {
+  x,
+  n = 512L,
+  padFrac = 0.15
+) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -755,9 +754,10 @@
 
 #' @keywords internal
 .getCpUnsLocAdaptiveBwOnGrid <- function(
-    bwObj,
-    grid,
-    fallback = NULL) {
+  bwObj,
+  grid,
+  fallback = NULL
+) {
   grid <- suppressWarnings(as.numeric(grid))
   grid <- grid[is.finite(grid)]
 
@@ -806,11 +806,12 @@
 
 #' @keywords internal
 .getCpUnsLocDensityAdaptiveGrid <- function(
-    x,
-    grid,
-    bwGrid,
-    normalise = TRUE,
-    probGMin = NULL) {
+  x,
+  grid,
+  bwGrid,
+  normalise = TRUE,
+  probGMin = NULL
+) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -886,10 +887,11 @@
 
 #' @keywords internal
 .getCpUnsLocDensityNormalizeAndScale <- function(
-    grid,
-    y,
-    normalise = TRUE,
-    probGMin = NULL) {
+  grid,
+  y,
+  normalise = TRUE,
+  probGMin = NULL
+) {
   grid <- suppressWarnings(as.numeric(grid))
   y <- suppressWarnings(as.numeric(y))
 
@@ -918,40 +920,19 @@
 
 #' @keywords internal
 .getCpUnsLocGetDensRawDensitiesBw <- function(
-    exTblStimThreshold,
-    exTblUnsThreshold,
-    bw,
-    bwMin,
-    bwMax,
-    bwFallback,
-    bwMtd,
-    bwAdj,
-    bwNcellMin,
-    bwNcellMax,
-    chnlSettings = NULL) {
-  if (!is.null(bw)) {
-    return(bw)
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  chnlSettings
+) {
+  if (!is.null(chnlSettings$bw)) {
+    return(chnlSettings$bw)
   }
   bwStim <- .getCpUnsLocGetDensRawDensitiesBwInit(
     .data = .getCut(exTblStimThreshold),
-    bwMin = bwMin,
-    bwMax = bwMax,
-    bwFallback = bwFallback,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax,
     chnlSettings = chnlSettings
   )
   bwUns <- .getCpUnsLocGetDensRawDensitiesBwInit(
     .data = .getCut(exTblUnsThreshold),
-    bwMin = bwMin,
-    bwMax = bwMax,
-    bwFallback = bwFallback,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax,
     chnlSettings = chnlSettings
   )
   min(bwUns, bwStim)
@@ -960,8 +941,9 @@
 
 #' @keywords internal
 .getCpUnsLocGetDensRawDensitiesStim <- function(
-    exTblStimThreshold,
-    bw) {
+  exTblStimThreshold,
+  bw
+) {
   densObj <- stats::density(.getCut(exTblStimThreshold), bw = bw)
   if (is.null(attr(exTblStimThreshold, "probGMin"))) {
     return(densObj)
@@ -972,9 +954,10 @@
 
 #' @keywords internal
 .getCpUnsLocGetDensRawDensitiesUns <- function(
-    exTblUnsThreshold,
-    densStim,
-    bw) {
+  exTblUnsThreshold,
+  densStim,
+  bw
+) {
   densObj <- stats::density(
     .getCut(exTblUnsThreshold),
     from = min(densStim$x),
@@ -990,10 +973,11 @@
 
 #' @keywords internal
 .getCpUnsLocGetDensRawTabulate <- function(
-    stimX,
-    stimY,
-    unsX,
-    unsY) {
+  stimX,
+  stimY,
+  unsX,
+  unsY
+) {
   densTblRawStim <- tibble::tibble(xStim = stimX, yStim = stimY)
   densTblRawWide <- .getCpUnsLocGetDensRawTabulateUnsInterp(
     .data = densTblRawStim,
@@ -1005,9 +989,10 @@
 
 #' @keywords internal
 .getCpUnsLocGetDensRawTabulateUnsInterp <- function(
-    .data,
-    unsX,
-    unsY) {
+  .data,
+  unsX,
+  unsY
+) {
   yUns <- stats::approx(
     x = suppressWarnings(as.numeric(unsX)),
     y = suppressWarnings(as.numeric(unsY)),
@@ -1031,11 +1016,12 @@
 # -------------------
 #' @keywords internal
 .getCpUnsLocGetProbTbl <- function(
-    densTblRaw,
-    stage,
-    cpMin,
-    exVecStimThreshold,
-    exVecUnsThreshold) {
+  densTblRaw,
+  stage,
+  cpMin,
+  exVecStimThreshold,
+  exVecUnsThreshold
+) {
   .debug("Normalising probabilities") # nolint
 
   probTbl <- .getCpUnsLocGetProbTblInit(densTblRaw, cpMin)
@@ -1052,7 +1038,6 @@
   peakUnsX <- densTblUns$xStim[peakUnsIdx]
 
   probTblPosList <- .getCpUnsLocProbTblFilter(
-    densTbl = densTblRaw,
     probTbl = probTbl,
     exVecStim = exVecStimThreshold,
     exVecUns = exVecUnsThreshold,
@@ -1100,16 +1085,10 @@
 
 #' @keywords internal
 .getCpUnsLocGetDensRawDensitiesBwInit <- function(
-    .data,
-    bwMin,
-    bwMax,
-    bwFallback,
-    bwMtd,
-    bwAdj,
-    bwNcellMin,
-    bwNcellMax,
-    chnlSettings = NULL) {
-  chnlSettings <- chnlSettings %||% list()
+  .data,
+  chnlSettings
+) {
+  bwFallback <- chnlSettings$bwFallback
   .data <- suppressWarnings(as.numeric(.data))
   .data <- .data[is.finite(.data)]
 
@@ -1117,29 +1096,11 @@
     return(bwFallback)
   }
 
-  bwCalc <- .bwCalcOne(
+  bwCalc <- .getCpUnsLocBwCalcOne(
     x = .data,
-    bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    bwNcellMin = bwNcellMin,
-    bwNcellMax = bwNcellMax,
-    normPeakFrac = chnlSettings$normPeakFrac %||% 0.1,
-    normPeakMinRel = chnlSettings$normPeakMinRel %||% 0.75,
-    normExtraFrac = chnlSettings$normExtraFrac %||% 0.2,
-    normExtraMax = chnlSettings$normExtraMax %||% Inf,
-    normExtraJitterFrac = chnlSettings$normExtraJitterFrac %||% 0.25,
-    normLambda = chnlSettings$normLambda %||% seq(-2, 2, length.out = 81),
-    normDensityN = chnlSettings$normDensityN %||% 512L,
-    normExcessBwMtd = chnlSettings$normExcessBwMtd %||% "hpi3",
-    normExcessNcell = chnlSettings$normExcessNcell %||% 10000L,
-    normAdaptiveNcell = chnlSettings$normAdaptiveNcell %||%
-      chnlSettings$bwAdaptiveNcell %||%
-      2500L,
-    bwAdaptiveCore = chnlSettings$bwAdaptiveCore,
-    bwAdaptiveExtra = chnlSettings$bwAdaptiveExtra,
-    bwAdaptiveCrossover = chnlSettings$bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth = chnlSettings$bwAdaptiveTransitionWidth %||% 0,
-    normMtd = chnlSettings$normMtd %||% "moments",
+    chnlSettings = chnlSettings,
+    bwMtd = chnlSettings$bwMtd,
+    bwAdj = chnlSettings$bwAdj,
     adaptive = FALSE
   )
 
@@ -1147,33 +1108,20 @@
     return(bwFallback)
   }
 
-  max(bwMin, min(as.numeric(bwCalc)[1], bwMax))
+  max(chnlSettings$bwMin, min(as.numeric(bwCalc)[1], chnlSettings$bwMax))
 }
 
 
 #' @keywords internal
 .getCpUnsLocProbTblFilter <- function(
-    densTbl,
-    probTbl,
-    exVecStim,
-    exVecUns,
-    stage,
-    peakStimX = NULL,
-    peakUnsX = NULL) {
+  probTbl,
+  exVecStim,
+  exVecUns,
+  stage,
+  peakStimX,
+  peakUnsX
+) {
   .debug("Filtering before smoothing") # nolint
-  densTblStim <- densTbl |>
-    dplyr::filter(stim == "yes")
-  densTblUns <- densTbl |>
-    dplyr::filter(stim == "no")
-
-  if (is.null(peakStimX) || !is.finite(peakStimX)) {
-    peakStimIdx <- .getPeakMainLeftIdx(densTblStim$dens)
-    peakStimX <- densTblStim$xStim[peakStimIdx]
-  }
-  if (is.null(peakUnsX) || !is.finite(peakUnsX)) {
-    peakUnsIdx <- .getPeakMainLeftIdx(densTblUns$dens)
-    peakUnsX <- densTblUns$xStim[peakUnsIdx]
-  }
   peakX <- max(peakStimX, peakUnsX)
 
   windowWidthStim <- abs(diff(stats::quantile(
@@ -1245,13 +1193,14 @@
 
 #' @keywords internal
 .getCpUnsLocGetDataMod <- function(
-    exTblStimThreshold,
-    exTblStimNoMin,
-    exTblUnsThreshold,
-    exTblUnsBias,
-    probTblList,
-    cpMin,
-    stage) {
+  exTblStimThreshold,
+  exTblStimNoMin,
+  exTblUnsThreshold,
+  exTblUnsBias,
+  probTblList,
+  cpMin,
+  stage
+) {
   if (.getCpUnsLocCheckResponse(probTblList$pos, exTblStimNoMin)) {
     return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,
@@ -1329,8 +1278,9 @@
 
 #' @keywords internal
 .getCpUnsLocGetDataModMargin <- function(
-    exTblStimNoMin,
-    exTblUnsNoMin) {
+  exTblStimNoMin,
+  exTblUnsNoMin
+) {
   spanStim <- diff(stats::quantile(
     .getCut(exTblStimNoMin),
     probs = c(0.05, 0.95),
@@ -1346,8 +1296,9 @@
 }
 
 .getCpUnsLocGetDataModBinVec <- function(
-    exTblStimThreshold,
-    exTblUnsThreshold) {
+  exTblStimThreshold,
+  exTblUnsThreshold
+) {
   stimVals <- .getCut(exTblStimThreshold)
   unsVals <- .getCut(exTblUnsThreshold)
 

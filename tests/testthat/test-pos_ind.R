@@ -3,7 +3,7 @@ pkg_ns <- asNamespace("stimgate")
 .getPosIndCache <- get(".getPosIndCache", envir = pkg_ns, mode = "function")
 .getPosIndCacheGet <- get(".getPosIndCacheGet", envir = pkg_ns, mode = "function")
 .getPosIndCacheCount <- get(".getPosIndCacheCount", envir = pkg_ns, mode = "function")
-.getPosIndCacheAnyFromCount <- get(".getPosIndCacheAnyFromCount", envir = pkg_ns, mode = "function")
+.getPosIndCacheAnyExcept <- get(".getPosIndCacheAnyExcept", envir = pkg_ns, mode = "function")
 .getPosIndMult <- get(".getPosIndMult", envir = pkg_ns, mode = "function")
 .getPosIndByChnl <- get(".getPosIndByChnl", envir = pkg_ns, mode = "function")
 .getPosInd <- get(".getPosInd", envir = pkg_ns, mode = "function")
@@ -48,6 +48,19 @@ test_that(".getPosIndCache records and validates per-channel threshold compariso
   )
 })
 
+test_that("missing gates produce one FALSE positivity value per cell", {
+  ex <- tibble::tibble(A = c(1, NA_real_, Inf), B = c(0, 3, 4))
+  gates <- tibble::tibble(chnl = "B", gate = 2, gateCyt = 1)
+  cache <- .getPosIndCache(ex, gates, chnl = c("A", "B"))
+  expect_identical(cache$base$A, rep(FALSE, nrow(ex)))
+  expect_identical(cache$cyt$A, rep(FALSE, nrow(ex)))
+  expect_identical(cache$base$B, c(FALSE, TRUE, TRUE))
+
+  cache <- .getPosIndCache(ex, gates[0, ], chnl = c("A", "B"))
+  expect_identical(cache$base$B, rep(FALSE, nrow(ex)))
+  expect_identical(cache$cyt$B, rep(FALSE, nrow(ex)))
+})
+
 test_that(".getPosIndMult and .getPosIndByChnl preserve NA semantics and combination logic", {
   ex <- data.frame(
     A = c(11, 8, 9, NA_real_),
@@ -75,8 +88,12 @@ test_that(".getPosIndMult and .getPosIndByChnl preserve NA semantics and combina
   )
 
   expect_equal(
-    .getPosIndCacheAnyFromCount(countBase),
+    .getPosIndCacheAnyExcept(posCache, countBase, "A", "base"),
     c(TRUE, FALSE, FALSE, TRUE)
+  )
+  expect_equal(
+    .getPosIndCacheAnyExcept(posCache, countBase, "B", "base"),
+    c(TRUE, FALSE, FALSE, NA)
   )
   expect_equal(
     .getPosIndMult(
@@ -152,7 +169,6 @@ test_that(".getPosInd, .getPosIndButSinglePosForOneCyt and .getPosIndCytCombn ma
       gateTbl = gateTbl,
       chnlPos = "A",
       chnlNeg = "B",
-      chnlAlt = character(0),
       gateTypeCytPos = "cyt"
     ),
     c(FALSE, FALSE, FALSE, FALSE)
