@@ -187,7 +187,10 @@ globalVariables(c(
         dir.create(dirDebug, recursive = TRUE, showWarnings = FALSE)
       }
       pathDebugFile <- file.path(dirDebug, "debug.txt")
-      file.create(pathDebugFile, showWarnings = FALSE)
+      if (!file.create(pathDebugFile, showWarnings = FALSE)) {
+        .debugStateReset()
+        return(FALSE)
+      }
       .debugState$file <- pathDebugFile
       .debugState$initialized <- TRUE
       TRUE
