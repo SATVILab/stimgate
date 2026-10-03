@@ -373,8 +373,10 @@ valid/failed counts, and rejects missing sample outputs before
 promotion. These targets reuse bounded scientific helper and
 document-contract tests; they do not render the full research analyses.
 The `analysis-qmd-tests.yaml` workflow is manual-only
-(`workflow_dispatch`); do not add automatic triggers. See
-`analysis/tests/README.md` for commands and coverage limits.
+(`workflow_dispatch`); do not add automatic triggers. Its `mode: render`
+input renders the QMDs end to end in quick mode instead (simulate, then
+plot; one job per QMD). See `analysis/tests/README.md` for commands and
+coverage limits.
 
 The default Slurm job list includes both Analysis 2a and 2b. Keep
 enabled chunked analyses in the `scripts` list and
@@ -580,6 +582,13 @@ For new or moved analysis code, use this layering:
     should not live inline in QMDs.
 5.  `analysis/*.qmd`: scientific settings, analysis calls,
     result-specific transformations and presentation.
+
+QMDs locate the checkout root before sourcing `analysis-runtime.R` and
+set knitr’s working directory there for workers. Use
+`.analysis_is_dev()` and `.analysis_is_quick()` for profile fallbacks
+and the shared cache readers for errors naming the analysis, render
+command, matching dev/quick profile and required completion of all
+chunks.
 
 When displaying ggplot objects inside QMD conditionals or loops, call
 [`print()`](https://rdrr.io/r/base/print.html) explicitly. Chunk tests
@@ -810,8 +819,15 @@ deduplicates identical rows before drawing reference lines.
       `cache/sim/<analysis-key>/staging/<YYYY-MM-DD>/<run-id>/...` and
       keep canonical outputs in `cache/sim/<analysis-key>/current/`.
     - Write run progress/state to
-      `cache/log/analysis/<analysis-key>/<YYYY-MM-DD>/<run-id>/`
-      (`progress.txt`, `manifest.rds`, `status.rds`, chunk/job subdirs).
+      `cache/sim/<analysis-key>/runs/<YYYY-MM-DD>/<run-id>/`
+      (`progress.txt`, `manifest.rds`, `status.rds`, chunk/job subdirs
+      and locks). Keep `runs/` separate from `staging/`; promotion
+      copies only the staged run, and staging discovery/cleanup must not
+      touch `runs/`.
+    - Resume discovery reads dated manifests under `staging/` and
+      honours their recorded `path_log_run` (the field name is retained
+      for compatibility), including old `cache/log/analysis/...` paths.
+      Do not relocate existing run state on resume.
     - For external chunking, all chunks of one logical run must use the
       same run ID and write under the same staged run directory,
       separated by chunk labels.
@@ -848,13 +864,18 @@ deduplicates identical rows before drawing reference lines.
 9.  **Shared analysis runners and cached settings**: Bandwidth QMDs 2-6
     use `.simBandwidthRunRow()`, `.simBandwidthRunGrid()` and
     `.simBandwidthFinishChunk()`. Assign IDs and seeds on the full grid
-    before dev/quick filters, shuffling or chunking. Workers and
-    interactive single-row reruns use the same explicitly seeded row
-    runner; resume retries failed rows by default. Comparison scenarios
-    in QMDs 7/8 use explicit RNG kinds and restore the caller’s RNG
-    state; do not reintroduce `gateCombn` plumbing in the comparison
-    layer. Analysis 1 seeds each row and saves and validates its
-    scientific settings with the cache.
+    before dev/quick filters, shuffling or chunking. Quick mode selects
+    the smallest, cheapest grid that still exercises every figure; dev
+    mode retains its single debugging scenario and takes precedence when
+    both profiles are active. Results for dev and quick runs are kept
+    under `<analysis-key>/dev/` and `<analysis-key>/quick/`; full runs
+    keep the existing analysis key. Workers and interactive single-row
+    reruns use the same explicitly seeded row runner; resume retries
+    failed rows by default. Comparison scenarios in QMDs 7/8 use
+    explicit RNG kinds and restore the caller’s RNG state; do not
+    reintroduce `gateCombn` plumbing in the comparison layer. Analysis 1
+    seeds each row and saves and validates its scientific settings with
+    the cache.
 
 10. **Exact reruns of one simulation row**: Assign `sim_id` and
     `sim_seed` on the full grid before dev/quick filtering, shuffling
@@ -872,7 +893,11 @@ deduplicates identical rows before drawing reference lines.
     temporary sibling and swap it in on success
     (`.acsCytofReplaceDir()`), or compute all results before atomically
     writing them. Never delete the previous output before the new one is
-    complete.
+    complete. ACS stage controls inherit `run_simulations` when their
+    parameters are NULL; explicit stage parameters/environment variables
+    override that default. Cached comparison renders read the saved
+    manual-comparison table without raw FCS or manual CSV inputs;
+    GatingSet diagnostics are optional when those caches are absent.
 
 12. **Shared local-FDR bandwidths (`bwScope`, issue \#417)**: The scalar
     local-FDR bandwidth is chosen once per channel during settings
