@@ -370,6 +370,16 @@ test_that("analysis 9 builds the comparison before replacing saved output", {
     content,
     fixed = TRUE
   ))
+  expect_true(grepl(
+    'path_manual_output <- projr::projr_path_get_dir(',
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    'path_manual_output <- file.path(\n  path_scratch_base',
+    content,
+    fixed = TRUE
+  ))
   expect_false(grepl(
     "unlink(path_manual_output, recursive = TRUE)",
     content,
