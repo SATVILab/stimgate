@@ -76,6 +76,8 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bw", "freq_bs", "global")
 analysis_semantics_version <- "global-bw-freq-v2"
+analysis_quick <- isTRUE(.isQuick())
+analysis_dev <- isTRUE(.isDev())
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -190,10 +192,9 @@ bias_uns_settings_tbl <- tibble::tribble(
 )
 bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
-if (.isQuick()) {
+if (analysis_quick) {
   n_cell_stim_vec <- c(1e3, 5e4)
   prob_response_vec <- c(0.002, 0.02)
-  bandwidth_value_vec <- c(0.01, 0.1, 0.5, 0.5, 1)
   bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
   bandwidth_value_vec <- c(0.05, 0.1, 0.25, 0.5, 0.75)
   condition_perturbation_sd_vec <- 0
@@ -258,7 +259,7 @@ sim_grid <- tidyr::expand_grid(
     sim_seed = as.integer(simulation_seed + sim_id - 1L)
   )
 
-if (.isDev()) {
+if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
       n_cell == 1e5,
@@ -415,6 +416,8 @@ if (isTRUE(run_simulations)) {
       run_plots = run_plots,
       analysis_semantics_version = analysis_semantics_version,
       simulation_seed = simulation_seed,
+      analysis_quick = analysis_quick,
+      analysis_dev = analysis_dev,
       sim_grid_chunk_index = sim_grid_chunk_index,
       sim_grid_n_chunks = sim_grid_n_chunks,
       sim_grid_shuffle_seed = sim_grid_shuffle_seed
@@ -702,7 +705,9 @@ if (results_read_only) {
   current_manifest <- .analysis_read_manifest(run_ctx$manifest_path)
   required_params <- list(
     analysis_semantics_version = analysis_semantics_version,
-    simulation_seed = simulation_seed
+    simulation_seed = simulation_seed,
+    analysis_quick = analysis_quick,
+    analysis_dev = analysis_dev
   )
   incompatible_params <- names(required_params)[vapply(
     names(required_params),
