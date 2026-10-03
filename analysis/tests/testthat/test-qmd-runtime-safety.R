@@ -247,7 +247,7 @@ test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure 
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'analysis_semantics_version <- "bandwidth-est-base-v2"',
+    'analysis_semantics_version <- "bandwidth-est-base-v3"',
     content,
     fixed = TRUE
   ))
@@ -265,10 +265,11 @@ test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure 
   ))
   expect_true(grepl("bw_fallback <- NA_real_", content, fixed = TRUE))
   expect_false(grepl("0.23482348792138919129198282389", content, fixed = TRUE))
+  expect_true(grepl("cap_stim_range <- FALSE", content, fixed = TRUE))
   expect_equal(
     lengths(regmatches(
       content,
-      gregexpr("capStimRange = FALSE", content, fixed = TRUE)
+      gregexpr("capStimRange = cap_stim_range", content, fixed = TRUE)
     )),
     2L
   )
@@ -380,9 +381,10 @@ test_that("analysis 4 uses paired estimator seeds and transactional chunk promot
     content,
     fixed = TRUE
   ))
-  expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
+  expect_true(grepl("row_count_bad_ids", content, fixed = TRUE))
+  expect_true(grepl("seed_ok", content, fixed = TRUE))
   expect_true(grepl("expected_sim_ids", content, fixed = TRUE))
-  expect_true(grepl("output_error_ids", content, fixed = TRUE))
+  expect_true(grepl("validation$error_ids", content, fixed = TRUE))
   expect_true(grepl("promote_analysis4_if_ready", content, fixed = TRUE))
   expect_true(grepl("nrow(sim_grid) == 0L", content, fixed = TRUE))
   expect_true(grepl(
@@ -410,7 +412,16 @@ test_that("analysis 4 uses paired estimator seeds and transactional chunk promot
 
   expect_true(grepl("n_total = dplyr::n()", content, fixed = TRUE))
   expect_true(grepl("estimate_rate = .data$n_est / .data$n_total", content, fixed = TRUE))
-  expect_true(grepl("sim_grid_definition", content, fixed = TRUE))
+  expect_true(grepl("analysis_grid_spec", content, fixed = TRUE))
+  expect_true(grepl(
+    "sim_grid_spec = analysis_grid_spec",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("bw_fallback <- NA_real_", content, fixed = TRUE))
+  expect_true(grepl("capStimRange = FALSE", content, fixed = TRUE))
+  expect_false(grepl("#\\| error:\\s*true", content))
+  expect_true(grepl("analysis4-collation", content, fixed = TRUE))
   expect_true(grepl("Requested normalisation", content, fixed = TRUE))
   expect_true(grepl("n_norm_fallback", content, fixed = TRUE))
   expect_true(grepl("norm_fallback_rate", content, fixed = TRUE))

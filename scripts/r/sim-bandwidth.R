@@ -1130,6 +1130,7 @@
         normMtd = normMtd
       )
 
+      bw_stim_norm_fallback <- isTRUE(attr(bw_stim, "normFallback"))
       bw_stim <- .simBandwidthRemoveFallbackBw(
         bw = bw_stim,
         bwFallback = bwFallback
@@ -1155,6 +1156,7 @@
         normMtd = normMtd
       )
 
+      bw_uns_norm_fallback <- isTRUE(attr(bw_uns, "normFallback"))
       bw_uns <- .simBandwidthRemoveFallbackBw(
         bw = bw_uns,
         bwFallback = bwFallback
@@ -1171,6 +1173,19 @@
           min(bw_vec)
         }
       }
+
+      bw_source <- dplyr::case_when(
+        !is.null(bw) ~ "fixed",
+        is.finite(bw_stim) &
+          (!is.finite(bw_uns) || bw_stim <= bw_uns) ~ "stim",
+        is.finite(bw_uns) ~ "unstim",
+        TRUE ~ NA_character_
+      )
+      bw_norm_fallback <- dplyr::case_when(
+        bw_source == "stim" ~ bw_stim_norm_fallback,
+        bw_source == "unstim" ~ bw_uns_norm_fallback,
+        TRUE ~ NA
+      )
 
       tibble::tibble(
         transformation = transformation,
@@ -1190,13 +1205,10 @@
         bw_uns = bw_uns,
         bw_stim = bw_stim,
         bw = bw_final,
-        bw_source = dplyr::case_when(
-          !is.null(bw) ~ "fixed",
-          is.finite(bw_stim) &
-            (!is.finite(bw_uns) || bw_stim <= bw_uns) ~ "stim",
-          is.finite(bw_uns) ~ "unstim",
-          TRUE ~ NA_character_
-        )
+        bw_source = bw_source,
+        bw_norm_fallback_stim = bw_stim_norm_fallback,
+        bw_norm_fallback_uns = bw_uns_norm_fallback,
+        bw_norm_fallback = bw_norm_fallback
       )
     })
   })
@@ -1714,10 +1726,14 @@
     )
   }
 
+  norm_fallback <- isTRUE(attr(bw_calc, "normFallback"))
   bw_calc <- suppressWarnings(as.numeric(bw_calc)[1])
 
   if (!is.finite(bw_calc) || bw_calc <= 0) {
-    return(.simBandwidthBwFallbackOrNa(bwFallback))
+    return(structure(
+      .simBandwidthBwFallbackOrNa(bwFallback),
+      normFallback = norm_fallback
+    ))
   }
 
   if (.simBandwidthIsFiniteScalar(bwMin)) {
@@ -1727,7 +1743,10 @@
     bw_calc <- min(as.numeric(bwMax)[1], bw_calc)
   }
 
-  bw_calc
+  structure(
+    bw_calc,
+    normFallback = norm_fallback
+  )
 }
 
 #' @keywords internal
