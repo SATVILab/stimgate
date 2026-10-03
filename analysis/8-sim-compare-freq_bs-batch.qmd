@@ -534,56 +534,62 @@ if (isTRUE(run_simulations)) {
 
 ```{r}
 #| label: compare-summary
-# Without `run_ctx` (simulation chunk not run in this session), read the
-# canonical promoted results under `current/`.
-if (!exists("run_ctx")) {
-  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+path_rds <- .analysis_current_file(
+  run_ctx = run_ctx,
+  relative_path = c("collated", "compare_raw.rds"),
+  required_params = list(
+    comparison_semantics_version = comparison_semantics_version,
+    simulation_seed = simulation_seed,
+    analysis_dev = analysis_dev,
+    paired_mismatch_rng = TRUE,
+    n_sample_sim = n_sample_sim,
+    n_iter_sim = n_iter_sim
+  )
+)
+compare_raw <- readRDS(path_rds)
+
+if (nrow(compare_raw) == 0L) {
+  stop("Canonical compare_raw.rds is empty. Rerun the simulation analysis.")
 }
 
-results_available <- file.exists(file.path(run_ctx$current_dir, "COMPLETE"))
-
-if (isTRUE(results_available)) {
-  path_rds <- .analysis_current_file(
-    run_ctx = run_ctx,
-    relative_path = c("collated", "compare_raw.rds"),
-    required_params = list(
-      comparison_semantics_version = comparison_semantics_version
-    )
-  )
-  compare_raw <- readRDS(path_rds)
-
-  if (nrow(compare_raw) == 0L) {
-    stop("Canonical compare_raw.rds is empty. Rerun the simulation analysis.")
-  }
-
-  compare_summary <- .simCompareSummariseFreqBs(
-    compare_raw,
-    scenarioCols = c(
-      "mismatch_type",
-      "mismatch_val",
-      "stim_mean_shift",
-      "stim_mean_shift_clusters",
-      "stim_sd_multiplier",
-      "stim_sd_multiplier_clusters",
-      "sd_increase",
-      "transformation",
-      "mean_pos_setting",
-      "mean_pos",
-      "prob_response",
-      "n_cell",
-      "scenario_desc",
-      "approach",
-      "method"
-    )
-  )
-
-  compare_summary
-} else {
-  compare_summary <- tibble::tibble()
-  message(
-    "Canonical results are not complete yet; skipping summary and plots for this chunk."
+canonical_status <- .simCompareGridOutputStatus(
+  compare_raw,
+  sim_grid = sim_grid_all,
+  nSample = n_sample_sim,
+  nIter = n_iter_sim
+)
+if (!isTRUE(canonical_status$validation_ok)) {
+  stop(
+    "Canonical compare_raw.rds does not contain a complete valid result ",
+    "for every analysis 8 scenario."
   )
 }
+
+results_available <- TRUE
+
+compare_summary <- .simCompareSummariseFreqBs(
+  compare_raw,
+  scenarioCols = c(
+    "base_scenario_id",
+    "mismatch_type",
+    "mismatch_val",
+    "stim_mean_shift",
+    "stim_mean_shift_clusters",
+    "stim_sd_multiplier",
+    "stim_sd_multiplier_clusters",
+    "sd_increase",
+    "transformation",
+    "mean_pos_setting",
+    "mean_pos",
+    "prob_response",
+    "n_cell",
+    "scenario_desc",
+    "approach",
+    "method"
+  )
+)
+
+compare_summary
 ```
 
 ### Mean-shift degradation curves (all components vs negative only)
