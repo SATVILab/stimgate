@@ -6,27 +6,26 @@
 #' Calculate bandwidth using ordinary or background-normalised methods
 #' @keywords internal
 .bwCalcOne <- function(
-    x,
-    bwMtd,
-    bwAdj = 1,
-    bwNcellMin = NULL,
-    bwNcellMax = NULL,
-    normPeakFrac = 0.1,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.2,
-    normExtraMax = Inf,
-    normExtraJitterFrac = 0.25,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    bwAdaptiveCore = NULL,
-    bwAdaptiveExtra = NULL,
-    bwAdaptiveCrossover = NULL,
-    bwAdaptiveTransitionWidth = 0,
-    normMtd = "moments",
-    adaptive = FALSE) {
+  x,
+  bwMtd,
+  bwAdj = 1,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
+  normMtd = "moments",
+  adaptive = FALSE
+) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -44,11 +43,9 @@
       bwAdj = bwAdj,
       bwNcellMin = bwNcellMin,
       bwNcellMax = bwNcellMax,
-      normPeakFrac = normPeakFrac,
       normPeakMinRel = normPeakMinRel,
       normExtraFrac = normExtraFrac,
       normExtraMax = normExtraMax,
-      normExtraJitterFrac = normExtraJitterFrac,
       normLambda = normLambda,
       normDensityN = normDensityN,
       normExcessBwMtd = normExcessBwMtd,
@@ -97,11 +94,12 @@
 
 #' @keywords internal
 .bwNormBwFromCrossover <- function(
-    bin,
-    bwCore,
-    bwExtra,
-    crossover,
-    transitionWidth = 0) {
+  bin,
+  bwCore,
+  bwExtra,
+  crossover,
+  transitionWidth = 0
+) {
   bin <- suppressWarnings(as.numeric(bin))
   bwCore <- suppressWarnings(as.numeric(bwCore)[1])
   bwExtra <- suppressWarnings(as.numeric(bwExtra)[1])
@@ -129,9 +127,10 @@
 
 #' @keywords internal
 .bwCalcOneSampleOrdinary <- function(
-    x,
-    bwNcellMin = NULL,
-    bwNcellMax = NULL) {
+  x,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL
+) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -220,27 +219,26 @@
 
 #' @keywords internal
 .bwCalcOneNorm <- function(
-    x,
-    bwMtd,
-    bwAdj = 1,
-    bwNcellMin = NULL,
-    bwNcellMax = NULL,
-    normPeakFrac = 0.1,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.2,
-    normExtraMax = Inf,
-    normExtraJitterFrac = 0.25,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    bwAdaptiveCore = NULL,
-    bwAdaptiveExtra = NULL,
-    bwAdaptiveCrossover = NULL,
-    bwAdaptiveTransitionWidth = 0,
-    normMtd = c("moments", "boxcox"),
-    adaptive = FALSE) {
+  x,
+  bwMtd,
+  bwAdj = 1,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
+  normMtd = c("moments", "boxcox"),
+  adaptive = FALSE
+) {
   normMtd <- match.arg(normMtd)
 
   if (isTRUE(adaptive) && identical(normMtd, "boxcox")) {
@@ -270,7 +268,6 @@
 
   coreObj <- .bwNormFindBackgroundCore(
     x = x,
-    peakFrac = normPeakFrac,
     peakMinRel = normPeakMinRel,
     densityN = normDensityN,
     pilotN = corePilotN
@@ -305,11 +302,9 @@
     coreObj = coreObj,
     normExtraFrac = normExtraFrac,
     normExtraMax = normExtraMax,
-    normExtraJitterFrac = normExtraJitterFrac,
     densityN = normDensityN,
     normExcessBwMtd = normExcessBwMtd,
-    normExcessNcell = normExcessNcell,
-    normPeakFrac = normPeakFrac
+    normExcessNcell = normExcessNcell
   )
   xExtra <- xExtra[is.finite(xExtra)]
 
@@ -592,11 +587,11 @@
 
 #' @keywords internal
 .bwNormFindBackgroundCore <- function(
-    x,
-    peakFrac = 0.1,
-    peakMinRel = 0.75,
-    densityN = 1024L,
-    pilotN = 100000L) {
+  x,
+  peakMinRel = 0.75,
+  densityN = 1024L,
+  pilotN = 100000L
+) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -778,7 +773,6 @@
     thresholdIdx = thresholdIdx,
     peakX = peakMainLeftX,
     peakHeight = peakHeight,
-    lowHeight = peakFrac * peakHeight,
     density = tibble::tibble(
       x = dx,
       y = dy
@@ -787,12 +781,13 @@
 }
 
 .bwNormFindBackgroundCoreThresholdTrough <- function(
-    dx,
-    dy,
-    peakMainLeftIdx,
-    troughMaxRelMain = 0.75,
-    troughMaxRelNext = 0.75,
-    troughMaxRelAbs = 0.75) {
+  dx,
+  dy,
+  peakMainLeftIdx,
+  troughMaxRelMain = 0.75,
+  troughMaxRelNext = 0.75,
+  troughMaxRelAbs = 0.75
+) {
   dx <- suppressWarnings(as.numeric(dx))
   dy <- suppressWarnings(as.numeric(dy))
   dy <- pmax(dy, 0)
@@ -844,13 +839,14 @@
 }
 
 .bwNormFindBackgroundCoreThresholdFlattened <- function(
-    dx,
-    dy,
-    peakMainLeftIdx,
-    peakMinRel = 0.75,
-    autoTol = TRUE,
-    tol = 1e-8,
-    moveBackFrac = 0.1) {
+  dx,
+  dy,
+  peakMainLeftIdx,
+  peakMinRel = 0.75,
+  autoTol = TRUE,
+  tol = 1e-8,
+  moveBackFrac = 0.1
+) {
   dx <- suppressWarnings(as.numeric(dx))
   dy <- suppressWarnings(as.numeric(dy))
   dy <- pmax(dy, 0)
@@ -928,8 +924,9 @@
 
 
 .bwNormChooseBoxCox <- function(
-    xCore,
-    lambda = seq(-2, 2, length.out = 81)) {
+  xCore,
+  lambda = seq(-2, 2, length.out = 81)
+) {
   xCore <- suppressWarnings(as.numeric(xCore))
   xCore <- xCore[is.finite(xCore)]
 
@@ -988,9 +985,10 @@
 
 #' @keywords internal
 .bwBoxCoxTransform <- function(
-    x,
-    lambda,
-    winsoriseMin) {
+  x,
+  lambda,
+  winsoriseMin
+) {
   x <- pmax(x, winsoriseMin)
   if (abs(lambda) < 1e-8) {
     return(log(x))
@@ -1030,16 +1028,15 @@
 #' @keywords internal
 
 .bwNormSampleExcess <- function(
-    x,
-    coreObj,
-    normExtraFrac = 0.2,
-    normExtraMax = Inf,
-    normExtraJitterFrac = 0.25,
-    densityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normPeakFrac = 0.1,
-    normScamK = 30L) {
+  x,
+  coreObj,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  densityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normScamK = 30L
+) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -1067,7 +1064,6 @@
     bwMtd = normExcessBwMtd,
     nCell = normExcessNcell,
     densityN = densityN,
-    peakFrac = normPeakFrac,
     scamK = normScamK
   )
 
@@ -1182,10 +1178,11 @@
 
 #' @keywords internal
 .bwNormSampleNormalComponent <- function(
-    mu,
-    sd,
-    n = NULL,
-    fallbackSd = NULL) {
+  mu,
+  sd,
+  n = NULL,
+  fallbackSd = NULL
+) {
   n <- .bwAsSafeSampleN(n, default = 0L, lower = 0L)
   if (is.null(n) || n <= 0L) {
     return(numeric(0L))
@@ -1236,13 +1233,13 @@
 
 #' @keywords internal
 .bwNormExcessDensityDecreasing <- function(
-    x,
-    coreObj,
-    bwMtd = "hpi3",
-    nCell = 10000L,
-    densityN = 512L,
-    peakFrac = 0.1,
-    scamK = 30L) {
+  x,
+  coreObj,
+  bwMtd = "hpi3",
+  nCell = 10000L,
+  densityN = 512L,
+  scamK = 30L
+) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -1325,13 +1322,14 @@
 
 #' @keywords internal
 .bwNormFitDecreasingDensity <- function(
-    x,
-    dx,
-    dy,
-    thresholdX,
-    peakX,
-    peakIdx,
-    scamK = 30L) {
+  x,
+  dx,
+  dy,
+  thresholdX,
+  peakX,
+  peakIdx,
+  scamK = 30L
+) {
   n <- length(dx)
 
   if (peakIdx >= n - 3L) {
@@ -1500,9 +1498,10 @@
 
 #' @keywords internal
 .bwNormThinXByDensityGrid <- function(
-    x,
-    maxPerBin = 20L,
-    dx) {
+  x,
+  maxPerBin = 20L,
+  dx
+) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
 
@@ -1577,10 +1576,11 @@
 
 #' @keywords internal
 .bwAsSafeSampleN <- function(
-    x,
-    default = NULL,
-    lower = 0L,
-    upper = .Machine$integer.max) {
+  x,
+  default = NULL,
+  lower = 0L,
+  upper = .Machine$integer.max
+) {
   if (is.null(x) || length(x) == 0L) {
     return(default)
   }
@@ -1600,16 +1600,17 @@
 
 #' @keywords internal
 .bwNormSampleNormalMixture <- function(
-    muCore,
-    sdCore,
-    nCore,
-    fallbackSdCore,
-    muExtra,
-    sdExtra,
-    nExtra,
-    fallbackSdExtra,
-    bwNcellMin = NULL,
-    bwNcellMax = NULL) {
+  muCore,
+  sdCore,
+  nCore,
+  fallbackSdCore,
+  muExtra,
+  sdExtra,
+  nExtra,
+  fallbackSdExtra,
+  bwNcellMin = NULL,
+  bwNcellMax = NULL
+) {
   nCore <- .bwAsSafeSampleN(
     nCore,
     default = 0L,

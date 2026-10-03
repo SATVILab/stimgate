@@ -3,11 +3,12 @@
 # Returns a list where each element is a numeric vector
 #' @keywords internal
 .prepareExListWithBiasAndNoise <- function(
-    exList,
-    ind,
-    excMin,
-    bias = 0,
-    noiseSd = NULL) {
+  exList,
+  ind,
+  excMin,
+  bias = 0,
+  noiseSd = NULL
+) {
   purrr::map(ind, function(indCurr) {
     cutTbl <- exList[[as.character(indCurr)]]
     attrList <- attributes(cutTbl)
@@ -67,11 +68,12 @@
 
 #' @keywords internal
 .getCpTg <- function(
-    exList,
-    chnlSettings,
-    tgType,
-    stage,
-    pathProject) {
+  exList,
+  chnlSettings,
+  tgType,
+  stage,
+  pathProject
+) {
   # get native StimGate tailgate cutpoint
   .debug("Getting tg cutpoint")
 

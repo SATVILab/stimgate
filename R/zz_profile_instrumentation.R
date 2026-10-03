@@ -20,10 +20,11 @@
 .profileOriginalGetCpUnsLocFilterMarginal <- .getCpUnsLocFilterMarginal
 
 .gateInit <- function(
-    chnlSettings,
-    .data,
-    indBatchList,
-    pathProject) {
+  chnlSettings,
+  .data,
+  indBatchList,
+  pathProject
+) {
   if (!.profileEnabled()) {
     return(.profileOriginalGateInit(
       chnlSettings = chnlSettings,
@@ -52,13 +53,14 @@
 }
 
 .gateCytPos <- function(
-    chnlSettings,
-    indBatchList,
-    .data,
-    gateName = NULL,
-    calcCytPos = TRUE,
-    stage,
-    pathProject) {
+  chnlSettings,
+  indBatchList,
+  .data,
+  gateName = NULL,
+  calcCytPos = TRUE,
+  stage,
+  pathProject
+) {
   if (!.profileEnabled()) {
     return(.profileOriginalGateCytPos(
       chnlSettings = chnlSettings,
@@ -92,12 +94,13 @@
 }
 
 .gateStats <- function(
-    .data,
-    gateTbl = NULL,
-    calcCytPosGates,
-    chnlSettings,
-    indBatchList,
-    pathProject) {
+  .data,
+  gateTbl = NULL,
+  calcCytPosGates,
+  chnlSettings,
+  indBatchList,
+  pathProject
+) {
   if (!.profileEnabled()) {
     return(.profileOriginalGateStats(
       .data = .data,
@@ -130,14 +133,15 @@
 }
 
 .gateChnl <- function(
-    .data,
-    indBatchList,
-    chnlSettings,
-    gateTbl = NULL,
-    tolGateSingle = NULL,
-    calcCytPosGates,
-    pathProject,
-    stage) {
+  .data,
+  indBatchList,
+  chnlSettings,
+  gateTbl = NULL,
+  tolGateSingle = NULL,
+  calcCytPosGates,
+  pathProject,
+  stage
+) {
   if (!.profileEnabled() || !identical(stage, "init")) {
     return(.profileOriginalGateChnl(
       .data = .data,
@@ -177,12 +181,13 @@
 }
 
 .gateBatch <- function(
-    .data,
-    indBatch,
-    chnlSettings,
-    batch,
-    stage,
-    pathProject) {
+  .data,
+  indBatch,
+  chnlSettings,
+  batch,
+  stage,
+  pathProject
+) {
   if (!.profileEnabled() || !identical(stage, "init")) {
     return(.profileOriginalGateBatch(
       .data = .data,
@@ -216,11 +221,12 @@
 }
 
 .getCpUnsLoc <- function(
-    exList,
-    .data,
-    chnlSettings,
-    stage,
-    pathProject) {
+  exList,
+  .data,
+  chnlSettings,
+  stage,
+  pathProject
+) {
   if (!.profileEnabled() || !identical(stage, "init")) {
     return(.profileOriginalGetCpUnsLoc(
       exList = exList,
@@ -248,17 +254,18 @@
 }
 
 .getCpCluster <- function(
-    .data,
-    gateTbl,
-    gateStatsTbl,
-    gateTblCtrl,
-    chnlSettings,
-    stage,
-    pathProject,
-    control = list(),
-    filterOtherCytPos,
-    calcCytPosGates,
-    indBatchList) {
+  .data,
+  gateTbl,
+  gateStatsTbl,
+  gateTblCtrl,
+  chnlSettings,
+  stage,
+  pathProject,
+  control = list(),
+  filterOtherCytPos,
+  calcCytPosGates,
+  indBatchList
+) {
   if (!.profileEnabled() || !identical(stage, "init")) {
     return(.profileOriginalGetCpCluster(
       .data = .data,
@@ -298,16 +305,17 @@
 }
 
 .getCpUnsLocCondition <- function(
-    exTblUnsBias,
-    exTblStimNoMin,
-    chnlSettings,
-    exTblStimOrig,
-    exTblUnsOrig,
-    plot = TRUE,
-    probMin = 0.1,
-    bias,
-    pathProject,
-    stage) {
+  exTblUnsBias,
+  exTblStimNoMin,
+  chnlSettings,
+  exTblStimOrig,
+  exTblUnsOrig,
+  plot = TRUE,
+  probMin = 0.1,
+  bias,
+  pathProject,
+  stage
+) {
   if (!.profileEnabled() || !identical(stage, "init")) {
     return(.profileOriginalGetCpUnsLocCondition(
       exTblUnsBias = exTblUnsBias,
@@ -359,15 +367,16 @@
 }
 
 .getCpUnsLocGetProb <- function(
-    exTblStimNoMin,
-    exTblStimThreshold,
-    exTblUnsThreshold,
-    exTblUnsBias,
-    bias,
-    exTblUnsOrig,
-    stage,
-    pathProject,
-    chnlSettings) {
+  exTblStimNoMin,
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  exTblUnsBias,
+  bias,
+  exTblUnsOrig,
+  stage,
+  pathProject,
+  chnlSettings
+) {
   if (!.profileEnabled() || !.profileInitialSampleActive()) {
     return(.profileOriginalGetCpUnsLocGetProb(
       exTblStimNoMin = exTblStimNoMin,
@@ -403,11 +412,12 @@
 }
 
 .getCpUnsLocGetDensRawDensities <- function(
-    exTblStimThreshold,
-    exTblUnsThreshold,
-    stage,
-    pathProject,
-    chnlSettings) {
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  stage,
+  pathProject,
+  chnlSettings
+) {
   if (!.profileEnabled() || !.profileInitialSampleActive()) {
     return(.profileOriginalGetCpUnsLocGetDensRawDensities(
       exTblStimThreshold = exTblStimThreshold,
@@ -449,16 +459,17 @@
 }
 
 .getCpUnsLocGetCp <- function(
-    dataMod,
-    exTblStimOrig,
-    exTblStimNoMin,
-    exTblUnsOrig,
-    exTblUnsBias,
-    bias,
-    cpMin,
-    stage,
-    pathProject,
-    chnlSettings = list()) {
+  dataMod,
+  exTblStimOrig,
+  exTblStimNoMin,
+  exTblUnsOrig,
+  exTblUnsBias,
+  bias,
+  cpMin,
+  stage,
+  pathProject,
+  chnlSettings = list()
+) {
   if (!.profileEnabled() || !.profileInitialSampleActive()) {
     return(.profileOriginalGetCpUnsLocGetCp(
       dataMod = dataMod,
@@ -496,14 +507,15 @@
 }
 
 .getCpUnsLocFilterMarginal <- function(
-    dataMod,
-    chnlSettings,
-    probCol,
-    antimodeX = NULL,
-    threshold = NULL,
-    dominance = NULL,
-    globalLowerBoundX = NA_real_,
-    shapeLowerBoundX = NA_real_) {
+  dataMod,
+  chnlSettings,
+  probCol,
+  antimodeX = NULL,
+  threshold = NULL,
+  dominance = NULL,
+  globalLowerBoundX = NA_real_,
+  shapeLowerBoundX = NA_real_
+) {
   if (!.profileEnabled() || !.profileInitialSampleActive()) {
     return(.profileOriginalGetCpUnsLocFilterMarginal(
       dataMod = dataMod,

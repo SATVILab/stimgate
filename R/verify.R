@@ -11,67 +11,66 @@
 
 #' @keywords internal
 .verifyGateInputs <- function(
-    pathProject,
-    .data,
-    batchList,
-    popGate,
-    chnl,
-    marker,
-    chnlSettings,
-    markerSettings,
-    calcCytPosGates,
-    biasUns,
-    biasUnsFactor,
-    excMin,
-    cpMin,
-    bw,
-    bwMin,
-    bwMax,
-    bwFallback,
-    bwMtd,
-    bwAdj,
-    bwNcellMin,
-    bwNcellMax,
-    bwCluster,
-    bwAdaptive,
-    bwAdaptiveDensityN,
-    bwAdaptivePadFrac,
-    bwAdaptiveCore,
-    bwAdaptiveExtra,
-    bwAdaptiveCrossover,
-    bwAdaptiveTransitionWidth,
-    normPeakFrac,
-    normPeakMinRel,
-    normExtraFrac,
-    normExtraMax,
-    normExtraJitterFrac,
-    normLambda,
-    normDensityN,
-    normExcessBwMtd,
-    normExcessNcell,
-    normAdaptiveNcell,
-    normMtd,
-    minCell,
-    tolClust,
-    locProbCol,
-    locMinPeakProb,
-    locDipAlpha,
-    locAntimodeHeightFrac,
-    locAntimodeLowRel,
-    locAntimodeLowAbs,
-    locFlatDerivFrac,
-    locFlatHardDerivFrac,
-    locLeftLowRel,
-    locLeftLowAbs,
-    locLeftCellFrac,
-    locLeftLengthFrac,
-    locMarginalPurityRel,
-    locMarginalCellBinRatio,
-    locMarginalRefQuantile,
-    locTolRefPeak,
-    maxPosProbX,
-    gateCombn,
-    gateQuant) {
+  pathProject,
+  .data,
+  batchList,
+  popGate,
+  chnl,
+  marker,
+  chnlSettings,
+  markerSettings,
+  calcCytPosGates,
+  biasUns,
+  biasUnsFactor,
+  excMin,
+  cpMin,
+  bw,
+  bwMin,
+  bwMax,
+  bwFallback,
+  bwMtd,
+  bwAdj,
+  bwNcellMin,
+  bwNcellMax,
+  bwCluster,
+  bwAdaptive,
+  bwAdaptiveDensityN,
+  bwAdaptivePadFrac,
+  bwAdaptiveCore,
+  bwAdaptiveExtra,
+  bwAdaptiveCrossover,
+  bwAdaptiveTransitionWidth,
+  normPeakMinRel,
+  normExtraFrac,
+  normExtraMax,
+  normLambda,
+  normDensityN,
+  normExcessBwMtd,
+  normExcessNcell,
+  normAdaptiveNcell,
+  normMtd,
+  minCell,
+  tolClust,
+  locProbCol,
+  locMinPeakProb,
+  locDipAlpha,
+  locAntimodeHeightFrac,
+  locAntimodeLowRel,
+  locAntimodeLowAbs,
+  locFlatDerivFrac,
+  locFlatHardDerivFrac,
+  locLeftLowRel,
+  locLeftLowAbs,
+  locLeftCellFrac,
+  locLeftLengthFrac,
+  locMarginalPurityRel,
+  locMarginalCellBinRatio,
+  locMarginalRefQuantile,
+  locTolRefPeak,
+  maxPosProbX,
+  gateCombn,
+  gateQuant
+) {
   # Snapshot of all arguments, taken before any local variable exists.
   settings <- as.list(environment())
 
@@ -253,9 +252,10 @@
 
 #' @keywords internal
 .verifyChnlSettingsChnl <- function(
-    chnlCurr,
-    settings,
-    prefix = sprintf("Channel '%s' setting error: ", chnlCurr)) {
+  chnlCurr,
+  settings,
+  prefix = sprintf("Channel '%s' setting error: ", chnlCurr)
+) {
   if (
     !.verifyIsNullOrNa(settings[["excMin"]]) &&
       (!is.logical(settings[["excMin"]]) || length(settings[["excMin"]]) != 1)
@@ -356,10 +356,8 @@
     stop(paste0(prefix, "`bwAdaptive` must be a single logical value."))
   }
 
-  .check_prob("normPeakFrac", settings = settings, prefix = prefix)
   .check_prob("normPeakMinRel", settings = settings, prefix = prefix)
   .check_prob("normExtraFrac", settings = settings, prefix = prefix)
-  .check_prob("normExtraJitterFrac", settings = settings, prefix = prefix)
 
   .check_positive_n(
     "normExtraMax",
@@ -504,12 +502,13 @@
 
 
 .verifyBwLimitSetting <- function(
-    x,
-    nm,
-    allow_none = TRUE,
-    allow_neg = FALSE,
-    allow_inf = FALSE,
-    prefix = "") {
+  x,
+  nm,
+  allow_none = TRUE,
+  allow_neg = FALSE,
+  allow_inf = FALSE,
+  prefix = ""
+) {
   if (.verifyIsNullOrNa(x)) {
     return(invisible(TRUE))
   }
@@ -540,11 +539,12 @@
 }
 
 .check_positive_n <- function(
-    nm,
-    allow_inf = FALSE,
-    allow_zero = FALSE,
-    settings,
-    prefix = "") {
+  nm,
+  allow_inf = FALSE,
+  allow_zero = FALSE,
+  settings,
+  prefix = ""
+) {
   val <- settings[[nm]]
   if (.verifyIsNullOrNa(val)) {
     return(invisible(TRUE))

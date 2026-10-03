@@ -97,9 +97,6 @@
 #' @param bwAdaptiveTransitionWidth numeric. Width, in expression units, of the
 #'   optional smooth transition around `bwAdaptiveCrossover`. Use `0` for a hard
 #'   switch at the crossover. Default is `0`.
-#' @param normPeakFrac numeric. Fraction of the selected background-core peak
-#'   height used by normalised bandwidth helpers when identifying low-density tail
-#'   regions. Default is `0.1`.
 #' @param normPeakMinRel numeric. Relative peak/trough threshold used to identify
 #'   the main background modal complex for `*Norm` bandwidth methods. Default is
 #'   `0.75`.
@@ -107,9 +104,6 @@
 #'   sampled for the normalised high component. Default is `0.2`.
 #' @param normExtraMax numeric. Maximum number of additional high-side values used
 #'   by normalised bandwidth methods. May be `Inf`. Default is `Inf`.
-#' @param normExtraJitterFrac numeric. Jitter scale, as a fraction of a robust
-#'   expression-scale standard deviation, applied to sampled high-side values.
-#'   Default is `0.25`.
 #' @param normLambda numeric vector. Box-Cox lambda search grid used only when
 #'   `normMtd = "boxcox"`. Default is `seq(-2, 2, length.out = 81)`.
 #' @param normDensityN numeric. Number of grid points used inside normalised
@@ -306,68 +300,67 @@
 #' }
 #' @export
 gateStim <- function(
-    pathProject,
-    .data,
-    popGate = "root",
-    batchList,
-    chnl = NULL,
-    marker = NULL,
-    calcCytPosGates = TRUE,
-    biasUns = NULL,
-    biasUnsFactor = 1,
-    excMin = TRUE,
-    cpMin = NULL,
-    bw = NULL,
-    bwMin = "auto",
-    bwMax = "auto",
-    bwFallback = "auto",
-    bwMtd = "hpi1",
-    bwAdj = 1,
-    bwNcellMin = 1e2,
-    bwNcellMax = 1e5,
-    bwCluster = NULL,
-    bwAdaptive = FALSE,
-    bwAdaptiveDensityN = NULL,
-    bwAdaptivePadFrac = 0.15,
-    bwAdaptiveCore = NULL,
-    bwAdaptiveExtra = NULL,
-    bwAdaptiveCrossover = NULL,
-    bwAdaptiveTransitionWidth = 0,
-    normPeakFrac = 0.1,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.2,
-    normExtraMax = Inf,
-    normExtraJitterFrac = 0.25,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    normMtd = "moments",
-    minCell = 1e2,
-    maxPosProbX = Inf,
-    gateQuant = c(0.25, 0.75),
-    tolClust = 1e-7,
-    locProbCol = "pred",
-    locMinPeakProb = 0.25,
-    locEnforceShapeThreshold = FALSE,
-    locDipAlpha = 0.2,
-    locAntimodeHeightFrac = 1 / 6,
-    locAntimodeLowRel = 0.25,
-    locAntimodeLowAbs = 0.15,
-    locFlatDerivFrac = 1 / 2,
-    locFlatHardDerivFrac = 1 / 4,
-    locLeftLowRel = 0.25,
-    locLeftLowAbs = 0.15,
-    locLeftCellFrac = 0.5,
-    locLeftLengthFrac = 0.5,
-    locMarginalPurityRel = 0.5,
-    locMarginalCellBinRatio = 2,
-    locMarginalRefQuantile = 0.75,
-    locTolRefPeak = "highest",
-    gateCombn = "min",
-    markerSettings = NULL,
-    chnlSettings = NULL) {
+  pathProject,
+  .data,
+  popGate = "root",
+  batchList,
+  chnl = NULL,
+  marker = NULL,
+  calcCytPosGates = TRUE,
+  biasUns = NULL,
+  biasUnsFactor = 1,
+  excMin = TRUE,
+  cpMin = NULL,
+  bw = NULL,
+  bwMin = "auto",
+  bwMax = "auto",
+  bwFallback = "auto",
+  bwMtd = "hpi1",
+  bwAdj = 1,
+  bwNcellMin = 1e2,
+  bwNcellMax = 1e5,
+  bwCluster = NULL,
+  bwAdaptive = FALSE,
+  bwAdaptiveDensityN = NULL,
+  bwAdaptivePadFrac = 0.15,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  normMtd = "moments",
+  minCell = 1e2,
+  maxPosProbX = Inf,
+  gateQuant = c(0.25, 0.75),
+  tolClust = 1e-7,
+  locProbCol = "pred",
+  locMinPeakProb = 0.25,
+  locEnforceShapeThreshold = FALSE,
+  locDipAlpha = 0.2,
+  locAntimodeHeightFrac = 1 / 6,
+  locAntimodeLowRel = 0.25,
+  locAntimodeLowAbs = 0.15,
+  locFlatDerivFrac = 1 / 2,
+  locFlatHardDerivFrac = 1 / 4,
+  locLeftLowRel = 0.25,
+  locLeftLowAbs = 0.15,
+  locLeftCellFrac = 0.5,
+  locLeftLengthFrac = 0.5,
+  locMarginalPurityRel = 0.5,
+  locMarginalCellBinRatio = 2,
+  locMarginalRefQuantile = 0.75,
+  locTolRefPeak = "highest",
+  gateCombn = "min",
+  markerSettings = NULL,
+  chnlSettings = NULL
+) {
   force(.data)
   if (Sys.getenv("STIMGATE_DEBUG") == "") {
     Sys.setenv("STIMGATE_DEBUG" = "FALSE")
@@ -443,11 +436,9 @@ gateStim <- function(
     bwAdaptiveExtra = bwAdaptiveExtra,
     bwAdaptiveCrossover = bwAdaptiveCrossover,
     bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
-    normPeakFrac = normPeakFrac,
     normPeakMinRel = normPeakMinRel,
     normExtraFrac = normExtraFrac,
     normExtraMax = normExtraMax,
-    normExtraJitterFrac = normExtraJitterFrac,
     normLambda = normLambda,
     normDensityN = normDensityN,
     normExcessBwMtd = normExcessBwMtd,
@@ -521,11 +512,9 @@ gateStim <- function(
     bwAdaptiveExtra = bwAdaptiveExtra,
     bwAdaptiveCrossover = bwAdaptiveCrossover,
     bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
-    normPeakFrac = normPeakFrac,
     normPeakMinRel = normPeakMinRel,
     normExtraFrac = normExtraFrac,
     normExtraMax = normExtraMax,
-    normExtraJitterFrac = normExtraJitterFrac,
     normLambda = normLambda,
     normDensityN = normDensityN,
     normExcessBwMtd = normExcessBwMtd,
@@ -596,10 +585,11 @@ gateStim <- function(
 
 #' @keywords internal
 .gateInit <- function(
-    chnlSettings,
-    .data,
-    indBatchList,
-    pathProject) {
+  chnlSettings,
+  .data,
+  indBatchList,
+  pathProject
+) {
   message("----")
   message("getting base gates")
   message("----")
@@ -642,12 +632,13 @@ gateStim <- function(
 
 #' @keywords internal
 .gateStats <- function(
-    .data,
-    gateTbl = NULL,
-    calcCytPosGates,
-    chnlSettings,
-    indBatchList,
-    pathProject) {
+  .data,
+  gateTbl = NULL,
+  calcCytPosGates,
+  chnlSettings,
+  indBatchList,
+  pathProject
+) {
   force(.data)
   .getStats(
     gateTbl = gateTbl,
