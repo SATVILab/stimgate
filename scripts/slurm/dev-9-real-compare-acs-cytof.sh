@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=10
+#SBATCH --ntasks=6
 #SBATCH --job-name="dev-9-acs-cytof"
 #SBATCH --partition=ada
 
@@ -17,8 +17,9 @@ if [[ ! -f "$qmd_abs" ]]; then
   exit 1
 fi
 
-# Analysis 9 runs populations across two R workers. Keep native-library thread
-# pools single-threaded so the two-worker Slurm allocation is not oversubscribed.
+# Analysis 9 has six configured populations and runs at most one R worker per
+# population. Keep native-library thread pools single-threaded so workers do not
+# oversubscribe the Slurm allocation.
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
