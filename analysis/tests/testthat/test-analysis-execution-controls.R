@@ -10,7 +10,8 @@ analysis_dir <- file.path(root_dir, "analysis")
 
 primary_qmds <- c(
   "1-sim-trans.qmd",
-  "2-sim-bw-freq_bs-global.qmd",
+  "2a-sim-bw-freq_bs-global.qmd",
+  "2b-sim-bias_uns-freq_bs.qmd",
   "3-sim-bw-est-base.qmd",
   "4-sim-bw-est-norm.qmd",
   "5-sim-bw-est-adaptive.qmd",
