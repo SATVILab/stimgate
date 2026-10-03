@@ -90,7 +90,7 @@ run_pak_stimgate_cran() {
     pak::pkg_install(
         c(
             "cowplot", "dplyr", "ggplot2", "purrr", "rlang", "tibble", "tidyr",
-            "scam", "ks", "gtools", "cluster", "MASS", "mvtnorm", "cpp11",
+            "scam", "ks", "cluster", "MASS", "mvtnorm", "cpp11",
             "testthat", "here", "knitr", "rmarkdown", "hexbin", "withr", "filelock"
         ),
         upgrade = FALSE,

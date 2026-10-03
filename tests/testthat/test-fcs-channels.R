@@ -14,7 +14,7 @@ test_that("inferred FCS channels match explicit channels with exclusions", {
     chnl = chnl, gateTbl = gates, gateTypeCytPos = "base",
     combnExc = list(chnl[[1]])
   )
-  file <- list.files(output, full.names = TRUE)[[1]]
+  file <- list.files(output, pattern = "\\.fcs$", full.names = TRUE)[[1]]
   expected <- flowCore::exprs(flowCore::read.FCS(file, transformation = FALSE))
   writeStimFCS(tempdir(), gs,
     indBatchList = list(1L), pathDirSave = output,
@@ -45,7 +45,7 @@ test_that("inferred FCS channels support a single event", {
     indBatchList = list(1L), pathDirSave = output,
     gateTbl = gates, gateTypeCytPos = "base"
   )
-  files <- list.files(output, full.names = TRUE)
+  files <- list.files(output, pattern = "\\.fcs$", full.names = TRUE)
   expect_length(files, 1L)
   expect_identical(nrow(flowCore::exprs(flowCore::read.FCS(files[[1]]))), 1L)
 })

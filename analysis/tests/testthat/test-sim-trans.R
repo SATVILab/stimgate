@@ -168,64 +168,80 @@ test_that("sim_trans_univariate_experiment_one fixed-seed parity matches direct 
   run_case(seed = 303L, transformation = "skew", mean_pos = 6, prob_response = 0.002)
 })
 
-test_that("legacy sim_trans helpers use exported simcyto::simCytExperiment and run as smoke checks", {
+test_that("removed legacy sim_trans helpers are not reintroduced", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_trans, local = env)
+  for (fn in c(
+    "sim_trans_univariate_one", "sim_trans_bivariate_one",
+    "sim_trans_downsample_for_display", "plot_univariate_transformation",
+    "plot_bivariate_transformation"
+  )) {
+    expect_false(exists(fn, envir = env, inherits = FALSE), info = fn)
+  }
+})
+
+test_that("sim_trans_set_row_seed regenerates one row identically", {
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)
   source(script_trans, local = env)
 
-  orig_simcyto_experiment <- simcyto::simCytExperiment
-  called_n <- 0L
+  draw <- function(row_index) {
+    env$sim_trans_set_row_seed(12345L, row_index)
+    stats::rnorm(3)
+  }
+  expect_equal(draw(3L), draw(3L))
+  expect_false(isTRUE(all.equal(draw(3L), draw(4L))))
+  expect_identical(RNGkind()[1:3], c("Mersenne-Twister", "Inversion", "Rejection"))
 
-  testthat::with_mocked_bindings(
-    simCytExperiment = function(...) {
-      called_n <<- called_n + 1L
-      orig_simcyto_experiment(...)
-    },
-    .package = "simcyto",
-    {
-      set.seed(123)
-      uni_out <- env$sim_trans_univariate_one(
-        transformation = "gaussian",
-        n_cell = 500L,
-        mean_pos = 4.5,
-        prob_response = 0.01,
-        background_relative_to_response = 0.2,
-        prob_exact = TRUE,
-        mixture_type = "gaussianOnly",
-        cluster_perturbation_sd = 0,
-        cov_ev_min = 1.5,
-        cov_ev_max = 1.5
-      )
-      expect_s3_class(uni_out, "data.frame")
-      expect_true(all(c("unstimulated", "stimulated") %in% unique(uni_out$condition)))
-      expect_true(all(uni_out$response_class %in% c("negative", "response")))
+  # Row 2 alone matches row 2 after other rows have been drawn.
+  invisible(draw(1L))
+  expect_equal(draw(2L), {
+    env$sim_trans_set_row_seed(12345L, 2L)
+    stats::rnorm(3)
+  })
+})
 
-      set.seed(124)
-      bi_out <- env$sim_trans_bivariate_one(
-        transformation = "gamma",
-        n_cell = 400L,
-        mean_pos = 4,
-        prob_response = 0.02,
-        background_relative_to_response = 0.2,
-        prob_exact = TRUE,
-        mixture_type = "gaussianOnly",
-        cluster_perturbation_sd = 0,
-        cov_ev_min = 1.5,
-        cov_ev_max = 1.5
-      )
-      expect_s3_class(bi_out, "data.frame")
-      expect_true(all(c("F1", "F2") %in% names(bi_out)))
-      expect_true(all(bi_out$condition == "stimulated"))
-      expect_true(all(bi_out$response_class %in% c(
-        "negative",
-        "F1 response",
-        "F2 response",
-        "F1 and F2 response"
-      )))
-    }
+test_that("sim_trans cache stores settings and rejects mismatched ones", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(file.path(root_dir, "scripts", "r", "analysis-runtime.R"), local = env)
+  source(script_misc, local = env)
+  source(script_trans, local = env)
+
+  mean_pos_tbl <- tibble::tibble(
+    transformation = "gaussian", mean_pos_setting = "low",
+    mean_pos = 4.5, prob_response = 0.002
   )
+  settings <- env$sim_trans_cache_settings(
+    settings_tbl, mean_pos_tbl, c("gaussian", "skew", "gamma"), 12345L
+  )
+  path <- file.path(withr::local_tempdir(), "sub", "uni_tbl.rds")
+  uni_tbl <- tibble::tibble(F1 = c(0.1, 0.2))
 
-  expect_equal(called_n, 2L)
+  expect_error(env$sim_trans_read_cache(path, settings), "not found")
+  env$sim_trans_write_cache(uni_tbl, settings, path)
+  expect_equal(env$sim_trans_read_cache(path, settings), uni_tbl)
+
+  changed_seed <- env$sim_trans_cache_settings(
+    settings_tbl, mean_pos_tbl, c("gaussian", "skew", "gamma"), 1L
+  )
+  expect_error(env$sim_trans_read_cache(path, changed_seed), "different settings")
+  changed_trans <- env$sim_trans_cache_settings(
+    settings_tbl, mean_pos_tbl, c("gaussian", "gamma", "skew"), 12345L
+  )
+  expect_error(env$sim_trans_read_cache(path, changed_trans), "different settings")
+
+  saveRDS(uni_tbl, path)
+  expect_error(env$sim_trans_read_cache(path, settings), "legacy")
+})
+
+test_that("1-sim-trans.qmd uses seeded rows, cache helpers and no unconditional projr", {
+  lines <- readLines(file.path(root_dir, "analysis", "1-sim-trans.qmd"), warn = FALSE)
+  expect_false(any(grepl("projr_path_get(\"cache\"", lines, fixed = TRUE)))
+  expect_false(any(grepl("set.seed(1)", lines, fixed = TRUE)))
+  expect_true(any(grepl("sim_trans_set_row_seed", lines, fixed = TRUE)))
+  expect_true(any(grepl("SIMULATION_SEED", lines, fixed = TRUE)))
+  expect_false(any(grepl("levels = c(\"gaussian\"", lines, fixed = TRUE)))
 })
 
 test_that("make_density_tbl handles gamma fixed-range and non-gamma densities without browser debugging", {

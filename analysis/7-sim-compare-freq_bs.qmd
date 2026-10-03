@@ -4,9 +4,12 @@ format:
   html:
     embed-resources: true
     toc: true
+execute:
+  warning: false
+  message: false
 params:
   analysis_run_id: null
-  simulation_seed: 1
+  simulation_seed: 12345
   sim_grid_chunk_index: 1
   sim_grid_n_chunks: 1
   run_simulations: true
@@ -46,12 +49,12 @@ analysis_key <- c("sim", "compare", "freq_bs")
 simulation_seed <- as.integer(.get_qmd_param_env(
   "simulation_seed",
   "SIMULATION_SEED",
-  1L
+  12345L
 ))
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v2"
+comparison_semantics_version <- "corrected-comparison-v3"
 analysis_dev <- isTRUE(.isDev())
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
@@ -108,18 +111,6 @@ for (fn in c(
   source(file.path(scripts_r_dir, fn))
 }
 
-# Keep scenario-level RNG stable across worker scheduling and grid chunking.
-.simCompareRunScenarioUnseeded <- .simCompareRunScenario
-.simCompareRunScenario <- function(row, ...) {
-  if (
-    "sim_seed" %in% names(row) &&
-      length(row$sim_seed) > 0L &&
-      !is.na(row$sim_seed[[1]])
-  ) {
-    set.seed(as.integer(row$sim_seed[[1]]))
-  }
-  .simCompareRunScenarioUnseeded(row = row, ...)
-}
 ```
 
 ### Aim
@@ -197,19 +188,20 @@ stimgate_bw_ncell_max <- 1e4
 stimgate_bw_fallback <- "auto"
 stimgate_bw_min <- "none"
 stimgate_bw_max <- "none"
-stimgate_gate_combn <- "min"
 
 # StimGate method settings for the full method comparison.
 # Cluster refinement is enabled to represent the full one-marker procedure.
 tol_clust <- 1e-7
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
+n_sample_sim <- 10
+n_iter_sim <- 2
 
 fbeta_beta <- 0.8
 fbeta_theta <- 2
 fbeta_width <- 10
-path_fbeta <- projr::projr_path_get(
-  "project",
+path_fbeta <- file.path(
+  root_dir,
   "scripts",
   "python",
   "fbeta.py"
@@ -238,7 +230,6 @@ sim_grid <- tidyr::expand_grid(
   bw_fallback = stimgate_bw_fallback,
   bw_min = stimgate_bw_min,
   bw_max = stimgate_bw_max,
-  gate_combn = stimgate_gate_combn,
   sample_perturbation_sd = sample_perturbation_sd_vec,
   condition_perturbation_sd = condition_perturbation_sd_vec,
   cluster_perturbation_sd = cluster_perturbation_sd_vec,
@@ -263,7 +254,6 @@ sim_grid <- tidyr::expand_grid(
     bw_fallback,
     bw_min,
     bw_max,
-    gate_combn,
     bias_uns,
     sample_perturbation_sd,
     condition_perturbation_sd,
@@ -284,6 +274,9 @@ sim_grid <- tidyr::expand_grid(
   dplyr::mutate(
     sim_seed = as.integer(simulation_seed + sim_id - 1L)
   )
+
+# Keep every seeded row available for an exact interactive rerun.
+sim_grid_full <- sim_grid
 
 if (analysis_dev) {
   sim_grid <- sim_grid |>
@@ -310,113 +303,13 @@ sim_grid
 print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
 ```
 
-A loop for debugging a single failure or inspecting intermediate objects.
-
-```{r}
-#| label: compare-loop
-#| eval: false
-compare_list_raw_loop <- vector("list", nrow(sim_grid))
-for (i in seq_len(nrow(sim_grid))) {
-  message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
-  set.seed(sim_grid$sim_seed[i])
-
-  compare_list_raw_loop[[i]] <- .simCompareFreqBs(
-    nSample = 10,
-    nMarker = 1,
-    nCondition = 2,
-    nCluster = 2,
-    nIter = 2,
-    biasUns = sim_grid$bias_uns[i],
-    bw = NULL,
-    bwFallback = sim_grid$bw_fallback[i],
-    bwMin = sim_grid$bw_min[i],
-    bwMax = sim_grid$bw_max[i],
-    bwMtd = sim_grid$bw_mtd[i],
-    bwNcellMax = sim_grid$bw_ncell_max[i],
-    nCellStim = sim_grid$n_cell[i],
-    probResponse = sim_grid$prob_response[i],
-    probExact = TRUE,
-    meanPos = sim_grid$mean_pos[i],
-    transformation = sim_grid$transformation[i],
-    samplePerturbationSd = sim_grid$sample_perturbation_sd[i],
-    conditionPerturbationSd = sim_grid$condition_perturbation_sd[i],
-    clusterPerturbationSd = sim_grid$cluster_perturbation_sd[i],
-    backgroundRelativeToResponse =
-      sim_grid$background_relative_to_response[i],
-    ncellUnsRelativeToStim =
-      sim_grid$n_cell_uns_relative_to_stim[i],
-    covEvMin = 1.5,
-    covEvMax = 1.5,
-    tolClust = tol_clust,
-    locEnforceShapeThreshold = loc_enforce_shape_threshold,
-    calcCytPosGates = calc_cyt_pos_gates,
-    pathFbeta = path_fbeta,
-    fbetaBeta = fbeta_beta,
-    fbetaTheta = fbeta_theta,
-    fbetaWidth = fbeta_width,
-    tailgateAdjust = tailgate_adjust,
-    tailgateAutoTol = tailgate_auto_tol,
-    tailgateMethod = tailgate_method,
-    tailgateTol = tailgate_tol,
-    tailgateX = tailgate_x
-  ) |>
-    dplyr::mutate(
-      transformation = sim_grid$transformation[i],
-      prob_response = sim_grid$prob_response[i],
-      n_cell = sim_grid$n_cell[i],
-      mean_pos_setting = sim_grid$mean_pos_setting[i],
-      mean_pos = sim_grid$mean_pos[i],
-      bw_mtd = sim_grid$bw_mtd[i],
-      bw_ncell_max = sim_grid$bw_ncell_max[i],
-      bw_fallback = sim_grid$bw_fallback[i],
-      bw_min = sim_grid$bw_min[i],
-      bw_max = sim_grid$bw_max[i],
-      bias_uns = sim_grid$bias_uns[i],
-      sample_perturbation_sd = sim_grid$sample_perturbation_sd[i],
-      condition_perturbation_sd =
-        sim_grid$condition_perturbation_sd[i],
-      cluster_perturbation_sd =
-        sim_grid$cluster_perturbation_sd[i],
-      background_relative_to_response =
-        sim_grid$background_relative_to_response[i],
-      n_cell_uns_relative_to_stim =
-        sim_grid$n_cell_uns_relative_to_stim[i],
-      sim_id = sim_grid$sim_id[i],
-      sim_seed = sim_grid$sim_seed[i]
-    ) |>
-    dplyr::select(
-      transformation,
-      prob_response,
-      n_cell,
-      mean_pos_setting,
-      mean_pos,
-      bw_mtd,
-      bw_ncell_max,
-      bw_fallback,
-      bw_min,
-      bw_max,
-      bias_uns,
-      sample_perturbation_sd,
-      condition_perturbation_sd,
-      cluster_perturbation_sd,
-      background_relative_to_response,
-      n_cell_uns_relative_to_stim,
-      sim_id,
-      sim_seed,
-      dplyr::everything()
-    )
-}
-```
-
 Run the simulations in parallel, with progress reporting. Each scenario has a
-deterministic seed derived from `sim_id`, so its simulation is stable across
-worker scheduling and grid chunking.
+deterministic seed `simulation_seed + sim_id - 1`, so its simulation is stable
+across worker scheduling and grid chunking.
 
 ```{r}
 #| label: compare-parallel
 #| results: hide
-n_sample_sim <- 10
-n_iter_sim <- 2
 n_workers <- max(1, .simGetCores())
 
 analysis_result_params <- list(
@@ -444,7 +337,6 @@ analysis_result_params <- list(
   stimgate_bw_fallback = stimgate_bw_fallback,
   stimgate_bw_min = stimgate_bw_min,
   stimgate_bw_max = stimgate_bw_max,
-  stimgate_gate_combn = stimgate_gate_combn,
   tol_clust = tol_clust,
   loc_enforce_shape_threshold = loc_enforce_shape_threshold,
   calc_cyt_pos_gates = calc_cyt_pos_gates,
@@ -458,62 +350,6 @@ analysis_result_params <- list(
   tailgate_x = tailgate_x
 )
 
-promote_analysis7_if_ready <- function(
-    run_ctx,
-    sim_grid_all,
-    total_sims,
-    completed_sims,
-    failed_sims) {
-  if (!.analysis_can_promote(run_ctx)) {
-    return(invisible(FALSE))
-  }
-
-  scenario_paths <- list.files(
-    run_ctx$staging_run_dir,
-    pattern = "^(compare_raw.*|sim_scenario.*|sim_raw.*)sim_id_[0-9]+[.]rds$",
-    recursive = TRUE,
-    full.names = TRUE
-  )
-  compare_raw_full <- .simCompareCollateScenarioOutputs(
-    pathList = scenario_paths,
-    sim_grid = sim_grid_all
-  )
-  expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
-  full_check <- .simCompareValidateCompletedScenarios(
-    compare_raw = compare_raw_full,
-    sim_ids = expected_sim_ids,
-    nSample = n_sample_sim,
-    nIter = n_iter_sim
-  )
-  full_collate_ok <-
-    length(scenario_paths) == length(expected_sim_ids) &&
-    isTRUE(full_check$collate_ok)
-  full_validation_ok <-
-    full_collate_ok &&
-    isTRUE(full_check$validation_ok)
-
-  if (!isTRUE(full_validation_ok)) {
-    error_message <- paste0(
-      "Refusing to promote analysis 7: canonical collation did not contain ",
-      "exactly the complete error-free simulation grid."
-    )
-    .analysis_mark_chunk(
-      run_ctx = run_ctx,
-      total_sims = total_sims,
-      completed_sims = completed_sims,
-      failed_sims = failed_sims,
-      collate_ok = full_collate_ok,
-      validation_ok = FALSE,
-      error_message = error_message
-    )
-    stop(error_message)
-  }
-
-  path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
-  .write_rds_atomic(compare_raw_full, path_rds_full)
-  .analysis_promote_run(run_ctx)
-  invisible(TRUE)
-}
 
 compare_raw <- tibble::tibble()
 
@@ -526,7 +362,6 @@ if (isTRUE(run_simulations)) {
       list(
         run_simulations = run_simulations,
         run_plots = run_plots,
-        sim_grid_shuffle_seed = simulation_seed,
         sim_grid_chunk_index = sim_grid_chunk_index,
         sim_grid_n_chunks = sim_grid_n_chunks
       ),
@@ -568,7 +403,6 @@ if (isTRUE(run_simulations)) {
       tolClust = tol_clust,
       locEnforceShapeThreshold = loc_enforce_shape_threshold,
       calcCytPosGates = calc_cyt_pos_gates,
-      gateCombn = stimgate_gate_combn,
       pathFbeta = path_fbeta,
       fbetaBeta = fbeta_beta,
       fbetaTheta = fbeta_theta,
@@ -583,6 +417,7 @@ if (isTRUE(run_simulations)) {
       dirCache = dir_output,
       pathProgress = path_progress_file,
       resume = TRUE,
+      retryErrors = TRUE,
       sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) {
         sim_grid_chunk_index
       } else {
@@ -600,34 +435,29 @@ if (isTRUE(run_simulations)) {
     message("No simulations assigned to this chunk.")
   }
 
-  expected_chunk_ids <- sort(unique(as.integer(sim_grid$sim_id)))
-  chunk_check <- .simCompareValidateCompletedScenarios(
-    compare_raw = compare_raw,
-    sim_ids = expected_chunk_ids,
+  chunk_check <- .simCompareGridOutputStatus(
+    compare_raw,
+    sim_grid = sim_grid,
     nSample = n_sample_sim,
     nIter = n_iter_sim
   )
   chunk_collate_ok <- isTRUE(chunk_check$collate_ok)
   chunk_validation_ok <- isTRUE(chunk_check$validation_ok)
-  failed_sim_ids <- sort(unique(c(
-    chunk_check$error_sim_ids,
-    chunk_check$incomplete_sim_ids
-  )))
-  n_failed <- length(failed_sim_ids)
-  n_completed <- length(setdiff(expected_chunk_ids, failed_sim_ids))
+  n_failed <- length(chunk_check$failed_ids)
+  n_completed <- length(chunk_check$completed_ids)
 
   validation_error <- if (!chunk_collate_ok) {
-    "Chunk collation did not contain exactly the assigned sim_id set."
-  } else if (length(chunk_check$error_sim_ids) > 0L) {
     paste0(
-      "Chunk contains simulation errors for sim_id: ",
-      paste(chunk_check$error_sim_ids, collapse = ", "),
+      "Chunk collation does not match the assigned simulation grid. Missing sim_id: ",
+      paste(chunk_check$missing_ids, collapse = ", "),
+      "; extra sim_id: ",
+      paste(chunk_check$extra_ids, collapse = ", "),
       "."
     )
-  } else if (length(chunk_check$incomplete_sim_ids) > 0L) {
+  } else if (length(chunk_check$failed_ids) > 0L) {
     paste0(
-      "Chunk is missing complete stimgate/fbeta/tailgate rows for sim_id: ",
-      paste(chunk_check$incomplete_sim_ids, collapse = ", "),
+      "Chunk contains incomplete, non-finite or errored primary method results for sim_id: ",
+      paste(chunk_check$failed_ids, collapse = ", "),
       "."
     )
   } else {
@@ -648,12 +478,14 @@ if (isTRUE(run_simulations)) {
     stop(validation_error)
   }
 
-  promote_analysis7_if_ready(
+  .simComparePromoteIfReady(
     run_ctx = run_ctx,
     sim_grid_all = sim_grid_all,
     total_sims = nrow(sim_grid),
     completed_sims = n_completed,
-    failed_sims = n_failed
+    failed_sims = n_failed,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim
   )
 
   if (sim_grid_n_chunks > 1L) {
@@ -717,34 +549,32 @@ compare_summary <- .simCompareSummariseFreqBs(
   scenarioCols = scenario_cols
 )
 
-compare_summary |>
-  dplyr::arrange(rmse) |>
-  dplyr::select(
-    any_of(colnames(sim_grid)),
-    approach,
-    method,
-    n_est,
-    n_threshold_fallback,
-    propRespTruth_mean,
-    propRespEst_mean,
-    bias,
-    mean_abs_error,
-    rmse,
-    threshold_median
-  )
+if (isTRUE(run_plots)) {
+  compare_summary |>
+    dplyr::arrange(rmse) |>
+    dplyr::select(
+      any_of(colnames(sim_grid)),
+      approach,
+      method,
+      n_est,
+      n_threshold_fallback,
+      propRespTruth_mean,
+      propRespEst_mean,
+      bias,
+      mean_abs_error,
+      rmse,
+      threshold_median
+    )
+}
 
 if (!isTRUE(run_plots)) {
   message("run_plots is false, so stopping after the canonical comparison summary.")
   knitr::knit_exit()
 }
 
-plot_dir <- projr::projr_path_get(
-  "cache",
-  "sim",
-  "compare",
-  "freq_bs"
-)
-dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+if (isTRUE(run_plots)) {
+  plot_dir <- .analysis_cache_dir(analysis_key, path_root = root_dir)
+}
 ```
 
 ### Mean absolute error by cell count
@@ -1125,29 +955,32 @@ if (isTRUE(run_plots)) {
 ```
 
 ```{r}
-compare_summary |>
-  dplyr::filter(
-    condition_perturbation_sd == 0
-  ) |>
-  dplyr::select(
-    approach, max_abs_rel_error,
-    transformation, prob_response, n_cell, mean_pos_setting,
-    max_abs_rel_error, med_abs_rel_error, q90_abs_rel_error, q95_abs_rel_error
-  ) |>
-  dplyr::group_by(
-    mean_pos_setting,
-    transformation,
-    prob_response,
-    n_cell
-  ) |>
-  tidyr::pivot_wider(
-    names_from = approach,
-    values_from = c(max_abs_rel_error, med_abs_rel_error, q90_abs_rel_error, q95_abs_rel_error)
-  ) |>
-  dplyr::arrange(
-    dplyr::desc(q95_abs_rel_error_fbeta)
-  ) |>
-  print(n = Inf, width = Inf)
+#| label: compare-relative-error-summary
+if (isTRUE(run_plots)) {
+  compare_summary |>
+    dplyr::filter(
+      condition_perturbation_sd == 0
+    ) |>
+    dplyr::select(
+      approach, max_abs_rel_error,
+      transformation, prob_response, n_cell, mean_pos_setting,
+      max_abs_rel_error, med_abs_rel_error, q90_abs_rel_error, q95_abs_rel_error
+    ) |>
+    dplyr::group_by(
+      mean_pos_setting,
+      transformation,
+      prob_response,
+      n_cell
+    ) |>
+    tidyr::pivot_wider(
+      names_from = approach,
+      values_from = c(max_abs_rel_error, med_abs_rel_error, q90_abs_rel_error, q95_abs_rel_error)
+    ) |>
+    dplyr::arrange(
+      dplyr::desc(q95_abs_rel_error_fbeta)
+    ) |>
+    print(n = Inf, width = Inf)
+}
 ```
 
 ### Max relative error by cell count
@@ -1483,4 +1316,39 @@ if (isTRUE(run_plots)) {
     )
   }
 }
+```
+
+A single scenario can be rerun with the production settings and RNG.
+Run the setup, settings and grid chunks first.
+
+```{r}
+#| label: rerun-one-simulation
+#| eval: false
+sim_id_rerun <- 1L
+row_rerun <- sim_grid_full[sim_grid_full$sim_id == sim_id_rerun, , drop = FALSE]
+stopifnot(nrow(row_rerun) == 1L)
+compare_one <- .simCompareRunScenario(
+  row = row_rerun,
+  nSample = n_sample_sim,
+  nIter = n_iter_sim,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  probExact = TRUE,
+  covEvMin = 1.5,
+  covEvMax = 1.5,
+  tolClust = tol_clust,
+  locEnforceShapeThreshold = loc_enforce_shape_threshold,
+  calcCytPosGates = calc_cyt_pos_gates,
+  pathFbeta = path_fbeta,
+  fbetaBeta = fbeta_beta,
+  fbetaTheta = fbeta_theta,
+  fbetaWidth = fbeta_width,
+  tailgateAdjust = tailgate_adjust,
+  tailgateAutoTol = tailgate_auto_tol,
+  tailgateMethod = tailgate_method,
+  tailgateTol = tailgate_tol,
+  tailgateX = tailgate_x,
+  resume = FALSE
+)
 ```

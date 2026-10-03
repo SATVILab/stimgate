@@ -5,7 +5,7 @@ test_that("clustering without stimulated samples retains its schema", {
     .intSave = function(...) NULL
   )
   out <- .getCpCluster(
-    .data = NULL, gateTbl = gate_tbl, gateStatsTbl = NULL, gateTblCtrl = NULL,
+    .data = NULL, gateTbl = gate_tbl,
     chnlSettings = list(chnlCut = "expr"), stage = "init",
     pathProject = tempdir(), filterOtherCytPos = FALSE,
     calcCytPosGates = FALSE, indBatchList = list()

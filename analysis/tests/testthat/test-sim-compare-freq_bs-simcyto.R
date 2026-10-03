@@ -437,9 +437,9 @@ test_that(
     expect_true(grepl("\\.simCompareFreqBsGrid", content))
     expect_true(grepl("dirCache\\s*=\\s*dir_output", content))
 
-    # Calls .analysis_mark_chunk and .analysis_promote_run
+    # Marks chunks and delegates full-grid promotion to the shared helper
     expect_true(grepl("\\.analysis_mark_chunk", content))
-    expect_true(grepl("\\.analysis_promote_run", content))
+    expect_true(grepl("\\.simComparePromoteIfReady", content))
 
     # Reads only a complete canonical current result with corrected semantics
     # and does NOT write/read fixed legacy compare_list_raw.rds
@@ -448,7 +448,15 @@ test_that(
       content
     ))
     expect_true(grepl(
-      "required_params\\s*=\\s*list\\(\\s*comparison_semantics_version",
+      "analysis_result_params\\s*<-\\s*list\\(",
+      content
+    ))
+    expect_true(grepl(
+      "comparison_semantics_version\\s*=\\s*comparison_semantics_version",
+      content
+    ))
+    expect_true(grepl(
+      "required_params\\s*=\\s*analysis_result_params",
       content
     ))
     expect_false(grepl("compare_list_raw\\.rds", content))
@@ -602,59 +610,79 @@ test_that("StimGate comparison fallback flags preserve final gate provenance", {
 })
 
 
-test_that("comparison validation requires complete rows for every method", {
+test_that("QMD scenario calls use package defaults and reproducible RNG", {
   env <- new.env(parent = getNamespace("stimgate"))
-  source(script_misc, local = env)
-  source(script_bw, local = env)
   source(script_comp, local = env)
-
-  complete <- tidyr::expand_grid(
-    sim_id = c(1L, 2L),
-    method = c("stimgate", "fbeta", "tailgate"),
-    replicate = seq_len(4L)
-  ) |>
-    dplyr::mutate(error = NA_character_)
-
-  ok <- env$.simCompareValidateCompletedScenarios(
-    compare_raw = complete,
-    sim_ids = c(1L, 2L),
-    nSample = 2L,
-    nIter = 2L
+  env$.simCompareEnsureCurrentCheckout <- function() invisible(NULL)
+  env$.simCompareFreqBs <- function(...) {
+    # stopifnot, not expect_*: this mock also runs inside a future, where
+    # testthat expectations cannot be muffled.
+    stopifnot(!"gateCombn" %in% names(list(...)))
+    tibble::tibble(
+      method = "stimgate", propRespEst = runif(1), propRespTruth = 0.05,
+      error = NA_character_
+    )
+  }
+  withr::local_preserve_seed()
+  original_kind <- RNGkind()
+  withr::defer(do.call(RNGkind, as.list(original_kind)))
+  row <- tibble::tibble(sim_id = 7L, sim_seed = 12351L)
+  settings <- list(
+    nSample = 10, nIter = 2, nMarker = 1, nCondition = 2, nCluster = 2,
+    probExact = TRUE, covEvMin = 1.5, covEvMax = 1.5,
+    tolClust = 1e-7, locEnforceShapeThreshold = FALSE,
+    calcCytPosGates = FALSE, pathFbeta = "fbeta.py", fbetaBeta = 0.8,
+    fbetaTheta = 2, fbetaWidth = 10, tailgateAdjust = 1,
+    tailgateAutoTol = TRUE, tailgateMethod = "tail", tailgateTol = 0.01,
+    tailgateX = NULL, resume = FALSE
   )
-  expect_true(ok$collate_ok)
-  expect_true(ok$validation_ok)
-  expect_length(ok$incomplete_sim_ids, 0L)
+  set.seed(99, kind = "Mersenne-Twister")
+  seed_before <- .Random.seed
+  direct <- do.call(env$.simCompareRunScenario, c(list(row = row), settings))
+  expect_identical(.Random.seed, seed_before)
+  set.seed(99, kind = "L'Ecuyer-CMRG")
+  kind_before <- RNGkind()
+  seed_before <- .Random.seed
+  repeated <- do.call(env$.simCompareRunScenario, c(list(row = row), settings))
+  expect_identical(RNGkind(), kind_before)
+  expect_identical(.Random.seed, seed_before)
+  expect_equal(repeated, direct)
+  expect_true(all(is.na(direct$error)))
+  grid <- do.call(env$.simCompareFreqBsGrid, c(
+    list(sim_grid = row, parallel = FALSE, progress = FALSE), settings
+  ))
+  expect_equal(grid, direct)
 
-  missing <- complete |>
-    dplyr::filter(!(sim_id == 2L & method == "tailgate"))
-  bad_missing <- env$.simCompareValidateCompletedScenarios(
-    compare_raw = missing,
-    sim_ids = c(1L, 2L),
-    nSample = 2L,
-    nIter = 2L
-  )
-  expect_true(bad_missing$collate_ok)
-  expect_false(bad_missing$validation_ok)
-  expect_equal(bad_missing$incomplete_sim_ids, 2L)
+  rm(".Random.seed", envir = .GlobalEnv)
+  do.call(env$.simCompareRunScenario, c(list(row = row), settings))
+  expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+  expect_identical(RNGkind(), kind_before)
+  env$.simCompareFreqBs <- function(...) stop("simulation failed")
+  failed <- do.call(env$.simCompareRunScenario, c(list(row = row), settings))
+  expect_match(failed$error, "simulation failed")
+  expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+  expect_identical(RNGkind(), kind_before)
 
-  errored <- complete
-  error_row <- which(errored$sim_id == 1L & errored$method == "fbeta")[[1]]
-  errored$error[[error_row]] <- "failed"
-  bad_error <- env$.simCompareValidateCompletedScenarios(
-    compare_raw = errored,
-    sim_ids = c(1L, 2L),
-    nSample = 2L,
-    nIter = 2L
-  )
-  expect_false(bad_error$validation_ok)
-  expect_equal(bad_error$error_sim_ids, 1L)
-
-  empty <- env$.simCompareValidateCompletedScenarios(
-    compare_raw = tibble::tibble(),
-    sim_ids = integer(),
-    nSample = 2L,
-    nIter = 2L
-  )
-  expect_true(empty$collate_ok)
-  expect_true(empty$validation_ok)
+  for (qmd_name in c(
+    "7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd"
+  )) {
+    content <- paste(readLines(file.path(root_dir, "analysis", qmd_name)),
+      collapse = "\n"
+    )
+    expect_false(grepl("gate_combn|gateCombn", content))
+    expect_false(grepl(".simCompareRunScenario <-", content, fixed = TRUE))
+    expect_match(content, "#\\| label: rerun-one-simulation")
+    expect_match(content,
+      "row_rerun <- sim_grid_full[sim_grid_full$sim_id == sim_id_rerun",
+      fixed = TRUE
+    )
+    expect_lt(
+      regexpr("sim_grid_full <- sim_grid", content, fixed = TRUE)[[1]],
+      regexpr("if (analysis_dev) {", content, fixed = TRUE)[[1]]
+    )
+    expect_match(content, "retryErrors = TRUE", fixed = TRUE)
+    expect_match(content, "warning: false", fixed = TRUE)
+    expect_match(content, "message: false", fixed = TRUE)
+  }
+  expect_false(any(grepl("gate_combn|gateCombn", readLines(script_comp))))
 })

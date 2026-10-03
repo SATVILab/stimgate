@@ -5,12 +5,15 @@ script_misc <- file.path(root_dir, "scripts", "r", "sim-misc.R")
 script_cyt <- file.path(root_dir, "scripts", "r", "functionsForBenchmarking-Cyt.R")
 script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
 script_bw_io <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-io.R")
+script_bw_run <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-run.R")
 script_bw_plot <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-plot.R")
 script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 script_trans <- file.path(root_dir, "scripts", "r", "sim-trans.R")
 script_acs_helper <- file.path(root_dir, "scripts", "r", "acs_cytof-helper.R")
 script_acs_preprocess <- file.path(root_dir, "scripts", "r", "acs_cytof-preprocess.R")
 script_acs_gate <- file.path(root_dir, "scripts", "r", "acs_cytof-gate.R")
+script_acs_methods <- file.path(root_dir, "scripts", "r", "acs_cytof-methods.R")
+script_acs_manual <- file.path(root_dir, "scripts", "r", "acs_cytof-manual.R")
 
 test_that("scripts/r helpers source without error in dependency order", {
   for (f in c(
@@ -19,12 +22,15 @@ test_that("scripts/r helpers source without error in dependency order", {
     script_cyt,
     script_bw,
     script_bw_io,
+    script_bw_run,
     script_bw_plot,
     script_comp,
     script_trans,
     script_acs_helper,
     script_acs_preprocess,
-    script_acs_gate
+    script_acs_gate,
+    script_acs_methods,
+    script_acs_manual
   )) {
     if (!file.exists(f)) {
       stop("Expected analysis helper not found: ", f)
@@ -37,12 +43,15 @@ test_that("scripts/r helpers source without error in dependency order", {
   expect_no_error(source(script_cyt, local = env))
   expect_no_error(source(script_bw, local = env))
   expect_no_error(source(script_bw_io, local = env))
+  expect_no_error(source(script_bw_run, local = env))
   expect_no_error(source(script_bw_plot, local = env))
   expect_no_error(source(script_comp, local = env))
   expect_no_error(source(script_trans, local = env))
   expect_no_error(source(script_acs_helper, local = env))
   expect_no_error(source(script_acs_preprocess, local = env))
   expect_no_error(source(script_acs_gate, local = env))
+  expect_no_error(source(script_acs_methods, local = env))
+  expect_no_error(source(script_acs_manual, local = env))
 })
 
 test_that("QMD analysis scripts do not call scripts/r helpers via stimgate:::", {
@@ -58,6 +67,7 @@ test_that("QMD analysis scripts do not call scripts/r helpers via stimgate:::", 
   source(script_cyt, local = env)
   source(script_bw, local = env)
   source(script_bw_io, local = env)
+  source(script_bw_run, local = env)
   source(script_bw_plot, local = env)
   source(script_comp, local = env)
   source(script_trans, local = env)

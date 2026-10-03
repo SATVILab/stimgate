@@ -1,51 +1,3 @@
-sim_trans_univariate_one <- function(
-    transformation,
-    n_cell = main_settings$n_cell[[1]],
-    mean_pos = main_settings$mean_pos[[1]],
-    prob_response = main_settings$prob_response[[1]],
-    background_relative_to_response = main_settings$background_relative_to_response[[
-      1
-    ]],
-    prob_exact = main_settings$prob_exact[[1]],
-    mixture_type = main_settings$mixture_type[[1]],
-    cluster_perturbation_sd = main_settings$cluster_perturbation_sd[[1]],
-    cov_ev_min = main_settings$cov_ev_min[[1]],
-    cov_ev_max = main_settings$cov_ev_max[[1]]) {
-  trans_func <- .simMiscGetTrans(transformation)
-  attr(trans_func, "sim_transformation") <- transformation
-
-  prob_background <- prob_response * background_relative_to_response
-  prob_uns <- c(1 - prob_background, prob_background)
-  out <- simcyto::simCytExperiment(
-    nSample = 1L,
-    nMarker = 1L,
-    nCondition = 2L,
-    nCluster = 2L,
-    nCellByCondition = c(n_cell, n_cell),
-    transformationFunc = trans_func,
-    mixtureType = mixture_type,
-    meanExprMat = matrix(c(0, mean_pos), byrow = TRUE, ncol = 1),
-    clusterLabelVec = c("negative", "response"),
-    probVecUns = prob_uns,
-    probExact = prob_exact,
-    probResponseVecByStimCondition = list(c(-prob_response, prob_response)),
-    samplePerturbationSd = 0,
-    conditionPerturbationSd = 0,
-    clusterPerturbationSd = cluster_perturbation_sd,
-    covEvMin = cov_ev_min,
-    covEvMax = cov_ev_max
-  )
-
-  purrr::map_dfr(seq_along(out$flowFrameList), function(ind) {
-    tibble::tibble(
-      transformation = transformation,
-      condition = c("unstimulated", "stimulated")[[ind]],
-      response_class = out$labelsList[[ind]],
-      F1 = as.numeric(flowCore::exprs(out$flowFrameList[[ind]])[, "F1"])
-    )
-  })
-}
-
 sim_trans_univariate_experiment_one <- function(
     transformation,
     mean_pos,
@@ -107,104 +59,6 @@ sim_trans_univariate_experiment_one <- function(
   })
 }
 
-sim_trans_bivariate_one <- function(
-    transformation,
-    n_cell = main_settings$n_cell[[1]],
-    mean_pos = main_settings$mean_pos[[1]],
-    prob_response = main_settings$prob_response[[1]],
-    background_relative_to_response = main_settings$background_relative_to_response[[
-      1
-    ]],
-    prob_exact = main_settings$prob_exact[[1]],
-    mixture_type = main_settings$mixture_type[[1]],
-    cluster_perturbation_sd = main_settings$cluster_perturbation_sd[[1]],
-    cov_ev_min = main_settings$cov_ev_min[[1]],
-    cov_ev_max = main_settings$cov_ev_max[[1]]) {
-  trans_func <- .simMiscGetTrans(transformation)
-  attr(trans_func, "sim_transformation") <- transformation
-
-  prob_background <- prob_response * background_relative_to_response
-  prob_background_each <- prob_background / 3
-  prob_response_each <- prob_response / 3
-
-  prob_vec <- c(
-    1 - prob_background - prob_response,
-    prob_background_each + prob_response_each,
-    prob_background_each + prob_response_each,
-    prob_background_each + prob_response_each
-  )
-
-  mean_expr_mat <- matrix(
-    c(
-      0,
-      0,
-      mean_pos,
-      0,
-      0,
-      mean_pos,
-      mean_pos,
-      mean_pos
-    ),
-    byrow = TRUE,
-    ncol = 2
-  )
-
-  cluster_label_vec <- c(
-    "negative",
-    "F1 response",
-    "F2 response",
-    "F1 and F2 response"
-  )
-
-  out <- simcyto::simCytExperiment(
-    nSample = 1L,
-    nMarker = 2L,
-    nCondition = 2L,
-    nCluster = 4L,
-    nCellByCondition = c(n_cell, n_cell),
-    transformationFunc = trans_func,
-    mixtureType = mixture_type,
-    meanExprMat = mean_expr_mat,
-    clusterLabelVec = cluster_label_vec,
-    probVecUns = prob_vec,
-    probExact = prob_exact,
-    probResponseVecByStimCondition = list(rep(0, length(prob_vec))),
-    samplePerturbationSd = 0,
-    conditionPerturbationSd = 0,
-    clusterPerturbationSd = cluster_perturbation_sd,
-    covEvMin = cov_ev_min,
-    covEvMax = cov_ev_max
-  )
-
-  tibble::tibble(
-    transformation = transformation,
-    condition = "stimulated",
-    response_class = out$labelsList[[2]]
-  ) |>
-    dplyr::bind_cols(as.data.frame(flowCore::exprs(out$flowFrameList[[2]])))
-}
-
-sim_trans_downsample_for_display <- function(
-    .data,
-    background_n = 12000,
-    response_n = Inf) {
-  background_tbl <- .data |>
-    dplyr::filter(.data$response_class == "negative")
-
-  response_tbl <- .data |>
-    dplyr::filter(.data$response_class != "negative")
-
-  if (nrow(background_tbl) > background_n) {
-    background_tbl <- dplyr::slice_sample(background_tbl, n = background_n)
-  }
-
-  if (is.finite(response_n) && nrow(response_tbl) > response_n) {
-    response_tbl <- dplyr::slice_sample(response_tbl, n = response_n)
-  }
-
-  dplyr::bind_rows(background_tbl, response_tbl)
-}
-
 make_density_tbl <- function(.data, gamma_range, n = 2048) {
   .data |>
     dplyr::group_by(
@@ -247,84 +101,57 @@ make_density_tbl <- function(.data, gamma_range, n = 2048) {
     dplyr::ungroup()
 }
 
-plot_univariate_transformation <- function(plot_tbl, transformation) {
-  trans_curr <- transformation
-  x_ref <- .simMiscGetTrans(trans_curr)(
-    c(0, main_settings$mean_pos[[1]])
+# Set the RNG for one simulation row so that any single row can be
+# regenerated with identical random numbers.
+sim_trans_set_row_seed <- function(simulation_seed, row_index) {
+  set.seed(
+    as.integer(simulation_seed) + as.integer(row_index) - 1L,
+    kind = "Mersenne-Twister",
+    normal.kind = "Inversion",
+    sample.kind = "Rejection"
   )
-
-  plot_tbl |>
-    dplyr::filter(.data$transformation == trans_curr) |>
-    ggplot(
-      aes(
-        x = .data$F1,
-        colour = .data$condition,
-        fill = .data$condition
-      )
-    ) +
-    geom_density(alpha = 0.2, linewidth = 0.6) +
-    geom_rug(
-      data = function(x) dplyr::filter(x, .data$response_class != "negative"),
-      aes(x = .data$F1),
-      sides = "b",
-      alpha = 0.35,
-      inherit.aes = FALSE
-    ) +
-    geom_vline(xintercept = x_ref, linetype = "dotted") +
-    scale_y_sqrt() +
-    labs(
-      title = trans_curr,
-      x = "F1 expression",
-      y = "Density, square-root scale",
-      colour = NULL,
-      fill = NULL
-    ) +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy", minor = "none") +
-    theme(
-      plot.background = element_rect(fill = "white", colour = NA),
-      panel.background = element_rect(fill = "white", colour = NA)
-    ) +
-    theme(
-      legend.position = "bottom",
-      panel.grid.minor = element_blank()
-    )
 }
 
-plot_bivariate_transformation <- function(plot_tbl, transformation) {
-  trans_curr <- transformation
-  ref <- .simMiscGetTrans(trans_curr)(
-    c(0, main_settings$mean_pos[[1]])
+# Provenance stored next to the cached table: everything the table depends on.
+sim_trans_cache_settings <- function(
+    main_settings,
+    mean_pos_settings_tbl,
+    transformation_vec,
+    simulation_seed) {
+  list(
+    main_settings = as.data.frame(main_settings),
+    mean_pos_settings_tbl = as.data.frame(mean_pos_settings_tbl),
+    transformation_vec = as.character(transformation_vec),
+    simulation_seed = as.integer(simulation_seed)
   )
+}
 
-  plot_tbl |>
-    dplyr::filter(.data$transformation == trans_curr) |>
-    sim_trans_downsample_for_display() |>
-    ggplot(
-      aes(
-        x = .data$F1,
-        y = .data$F2,
-        colour = .data$response_class
-      )
-    ) +
-    geom_point(size = 0.25, alpha = 0.35) +
-    geom_hline(yintercept = ref, linetype = "dotted") +
-    geom_vline(xintercept = ref, linetype = "dotted") +
-    coord_equal() +
-    labs(
-      title = trans_curr,
-      x = "F1 expression",
-      y = "F2 expression",
-      colour = NULL
-    ) +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy", minor = "none") +
-    theme(
-      plot.background = element_rect(fill = "white", colour = NA),
-      panel.background = element_rect(fill = "white", colour = NA)
-    ) +
-    theme(
-      legend.position = "bottom",
-      panel.grid.minor = element_blank()
+sim_trans_write_cache <- function(uni_tbl, settings, path) {
+  .write_rds_atomic(list(settings = settings, uni_tbl = uni_tbl), path)
+}
+
+# Read the cached table, stopping if it was made with different settings.
+sim_trans_read_cache <- function(path, settings) {
+  if (!file.exists(path)) {
+    stop("Cached uni_tbl.rds not found. Run simulations first.")
+  }
+  cached <- readRDS(path)
+  if (
+    !is.list(cached) ||
+      !all(c("settings", "uni_tbl") %in% names(cached))
+  ) {
+    stop(
+      "Cached uni_tbl.rds at ", path, " has no stored settings (legacy ",
+      "cache). Rerun with run_simulations = TRUE."
     )
+  }
+  if (!isTRUE(all.equal(cached$settings, settings))) {
+    stop(
+      "Cached uni_tbl.rds at ", path, " was made with different settings ",
+      "(main_settings, mean_pos settings, transformations or ",
+      "simulation_seed) from the current ones. Rerun with ",
+      "run_simulations = TRUE."
+    )
+  }
+  cached$uni_tbl
 }

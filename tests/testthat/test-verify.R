@@ -103,14 +103,9 @@ test_that("verifyGlobalAndPerChannelAgreeOnSharedSettings", {
     list("locAntimodeLowAbs", 1.5, 0.3),
     list("locFlatDerivFrac", 1.5, 0.3),
     list("locFlatHardDerivFrac", 1.5, 0.3),
-    list("locLeftLowRel", 1.5, 0.3),
-    list("locLeftLowAbs", 1.5, 0.3),
-    list("locLeftCellFrac", 1.5, 0.3),
-    list("locLeftLengthFrac", 1.5, 0.3),
     list("locMarginalPurityRel", 1.5, 0.3),
     list("locMarginalRefQuantile", "a", 0.3),
-    list("locMarginalCellBinRatio", 0, 3),
-    list("locTolRefPeak", "foo", "first")
+    list("locMarginalCellBinRatio", 0, 3)
   )
   for (case in cases) {
     nm <- case[[1]]

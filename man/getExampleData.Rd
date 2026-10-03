@@ -2,12 +2,9 @@
 % Please edit documentation in R/example_data.R
 \name{getExampleData}
 \alias{getExampleData}
-\alias{getTestData}
 \title{Get example GatingSet}
 \usage{
 getExampleData()
-
-getTestData()
 }
 \value{
 A list with the saved example-data path, channel labels, marker labels,

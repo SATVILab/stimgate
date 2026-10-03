@@ -173,8 +173,12 @@
 #'   channel names. Default is NULL (transforms all channels).
 #' @param transMarker character or NULL Marker name(s) to transform when
 #'   using marker names. Default is NULL (transforms all markers).
-#' @return A tibble with columns `pop`, `ind` and one column per requested
-#'   channel. Rows correspond to cells.
+#' @return A tibble with columns \code{pop}, \code{ind} and one column per
+#'   requested channel. Rows correspond to cells. Samples with no positive cells
+#'   have zero rows in the tibble, and cell counts for every requested
+#'   population and sample combination are attached as the \code{"nCellPos"}
+#'   attribute (a tibble with columns \code{pop}, \code{ind}, and
+#'   \code{nCellPos}).
 #' @examples
 #' \dontrun{
 #' tmp <- tempdir()
@@ -212,20 +216,22 @@ getStimExpr <- function(
   transMarker = NULL
 ) {
   .assertString(pathProject)
-  pop <- pop %|c|% .getExProjectPop(pathProject)
+  pop <- as.character(pop %||% .getExProjectPop(pathProject))
   if (!is.null(chnl) && !is.null(marker)) {
     stop("Must not specify both marker and chnl")
   }
   .assertStringVector(pop)
   exList <- purrr::map(pop, function(popCurr) {
-    ind <- ind %|c|% .getExProjectInd(pathProject, popCurr)
-    .assertStringVector(ind)
-    purrr::map(ind, function(indCurr) {
+    indCurrVec <- as.character(ind %||% .getExProjectInd(pathProject, popCurr))
+    .assertStringVector(indCurrVec)
+    purrr::map(indCurrVec, function(indCurr) {
       isMarker <- !is.null(marker)
       chnl <- if (isMarker) {
         stimgateMetaReadMarkerLab(pathProject)[as.character(marker)]
       } else {
-        chnl %|c|% .getExProjectChnl(pathProject, popCurr, indCurr)
+        as.character(
+          chnl %||% .getExProjectChnl(pathProject, popCurr, indCurr)
+        )
       }
       .assertStringVector(chnl)
       ex <- .dataGetExInit(
@@ -260,9 +266,9 @@ getStimExpr <- function(
       ex <- .dataGetExMeta(ex, popCurr, indCurr)
       ex
     }) |>
-      stats::setNames(ind)
+      stats::setNames(as.character(indCurrVec))
   }) |>
-    stats::setNames(pop)
+    stats::setNames(as.character(pop))
   exDf <- exList |> purrr::map_df(function(x) x |> dplyr::bind_rows())
   probGMinList <- purrr::map(
     exList,
@@ -279,6 +285,24 @@ getStimExpr <- function(
   ) |>
     stats::setNames(names(exList))
   attr(exDf, "probGMin") <- probGMinList
+  nCellPosDf <- if (length(exList) == 0L) {
+    tibble::tibble(
+      pop = character(0),
+      ind = character(0),
+      nCellPos = integer(0)
+    )
+  } else {
+    purrr::map_df(names(exList), function(popCurr) {
+      purrr::map_df(names(exList[[popCurr]]), function(indCurr) {
+        tibble::tibble(
+          pop = as.character(popCurr),
+          ind = as.character(indCurr),
+          nCellPos = as.integer(nrow(exList[[popCurr]][[indCurr]]))
+        )
+      })
+    })
+  }
+  attr(exDf, "nCellPos") <- nCellPosDf
   exDf
 }
 

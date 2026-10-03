@@ -976,15 +976,9 @@
   locAntimodeLowAbs = 0.15,
   locFlatDerivFrac = 1 / 2,
   locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
-  gateCombn = "min",
   tolClust = NULL,
   locEnforceShapeThreshold = FALSE,
   calcCytPosGates = FALSE,
@@ -1047,15 +1041,9 @@
         locAntimodeLowAbs = locAntimodeLowAbs,
         locFlatDerivFrac = locFlatDerivFrac,
         locFlatHardDerivFrac = locFlatHardDerivFrac,
-        locLeftLowRel = locLeftLowRel,
-        locLeftLowAbs = locLeftLowAbs,
-        locLeftCellFrac = locLeftCellFrac,
-        locLeftLengthFrac = locLeftLengthFrac,
         locMarginalPurityRel = locMarginalPurityRel,
         locMarginalCellBinRatio = locMarginalCellBinRatio,
-        locMarginalRefQuantile = locMarginalRefQuantile,
-        locTolRefPeak = locTolRefPeak,
-        gateCombn = gateCombn
+        locMarginalRefQuantile = locMarginalRefQuantile
       ))
 
       # Extract final cluster-refined StimGate gates and statistics
@@ -1358,15 +1346,9 @@
   locAntimodeLowAbs = 0.15,
   locFlatDerivFrac = 1 / 2,
   locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
-  gateCombn = "min",
   calcCytPosGates = FALSE,
   includeLocCondition = FALSE,
   includeLocDetails = includeLocCondition,
@@ -1513,15 +1495,9 @@
       locAntimodeLowAbs = locAntimodeLowAbs,
       locFlatDerivFrac = locFlatDerivFrac,
       locFlatHardDerivFrac = locFlatHardDerivFrac,
-      locLeftLowRel = locLeftLowRel,
-      locLeftLowAbs = locLeftLowAbs,
-      locLeftCellFrac = locLeftCellFrac,
-      locLeftLengthFrac = locLeftLengthFrac,
       locMarginalPurityRel = locMarginalPurityRel,
       locMarginalCellBinRatio = locMarginalCellBinRatio,
       locMarginalRefQuantile = locMarginalRefQuantile,
-      locTolRefPeak = locTolRefPeak,
-      gateCombn = gateCombn,
       tolClust = tolClust,
       locEnforceShapeThreshold = locEnforceShapeThreshold,
       calcCytPosGates = calcCytPosGates,
@@ -1927,12 +1903,6 @@
     if ("bias_uns" %in% names(row)) {
       paste0("bias = ", row$bias_uns[[1]])
     },
-    if ("gate_combn" %in% names(row)) {
-      paste0("gate_combn = ", row$gate_combn[[1]])
-    },
-    if ("gateCombn" %in% names(row)) {
-      paste0("gate_combn = ", row$gateCombn[[1]])
-    },
     if ("sim_seed" %in% names(row)) {
       paste0("sim_seed = ", row$sim_seed[[1]])
     },
@@ -2101,7 +2071,22 @@
       length(row$sim_seed) > 0L &&
       is.finite(as.numeric(row$sim_seed[[1]]))
   ) {
-    set.seed(as.integer(row$sim_seed[[1]]))
+    rng_kind <- RNGkind()
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    rng_seed <- if (had_seed) get(".Random.seed", envir = .GlobalEnv) else NULL
+    on.exit({
+      do.call(RNGkind, as.list(rng_kind))
+      if (had_seed) {
+        assign(".Random.seed", rng_seed, envir = .GlobalEnv)
+      } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        rm(".Random.seed", envir = .GlobalEnv)
+      }
+    }, add = TRUE)
+    sim_seed <- as.integer(row$sim_seed[[1]])
+    set.seed(
+      sim_seed, kind = "Mersenne-Twister",
+      normal.kind = "Inversion", sample.kind = "Rejection"
+    )
   }
 
   settings_log <- .simCompareFormatScenarioLog(row, sim_id)
@@ -2141,7 +2126,8 @@
     } else {
       as.character(val)
     }
-  } else if (identical(row$mismatch_type[[1]], "mean_shift_negative")) {
+  } else if ("mismatch_type" %in% names(row) &&
+    identical(row$mismatch_type[[1]], "mean_shift_negative")) {
     "gn"
   } else {
     NULL
@@ -2163,7 +2149,8 @@
     } else {
       as.character(val)
     }
-  } else if (identical(row$mismatch_type[[1]], "sd_inflation_negative")) {
+  } else if ("mismatch_type" %in% names(row) &&
+    identical(row$mismatch_type[[1]], "sd_inflation_negative")) {
     "gn"
   } else {
     NULL
@@ -2245,13 +2232,6 @@
         calcCytPosGates = calcCytPosGates,
         includeLocCondition = includeLocCondition,
         includeLocDetails = includeLocDetails,
-        gateCombn = if ("gate_combn" %in% names(row)) {
-          row$gate_combn[[1]]
-        } else if ("gateCombn" %in% names(row)) {
-          row$gateCombn[[1]]
-        } else {
-          "min"
-        },
         stimMeanShift = stimMeanShiftVal,
         stimSdMultiplier = stimSdMultVal,
         stimMeanShiftClusters = stimMeanShiftClustersVal,
@@ -2557,110 +2537,6 @@
   collated
 }
 
-#' Validate completeness of comparison scenario outputs
-#'
-#' @keywords internal
-.simCompareValidateCompletedScenarios <- function(
-  compare_raw,
-  sim_ids,
-  methods = c("stimgate", "fbeta", "tailgate"),
-  nSample = NULL,
-  nIter = NULL
-) {
-  expected_ids <- sort(unique(as.integer(sim_ids)))
-  if (length(expected_ids) == 0L) {
-    return(list(
-      collated_sim_ids = integer(),
-      error_sim_ids = integer(),
-      incomplete_sim_ids = integer(),
-      collate_ok = TRUE,
-      validation_ok = TRUE
-    ))
-  }
-
-  if (
-    !is.data.frame(compare_raw) ||
-      nrow(compare_raw) == 0L ||
-      !"sim_id" %in% names(compare_raw)
-  ) {
-    return(list(
-      collated_sim_ids = integer(),
-      error_sim_ids = integer(),
-      incomplete_sim_ids = expected_ids,
-      collate_ok = FALSE,
-      validation_ok = FALSE
-    ))
-  }
-
-  compare_use <- compare_raw |>
-    dplyr::filter(.data$sim_id %in% .env$expected_ids)
-
-  collated_ids <- sort(unique(as.integer(compare_use$sim_id)))
-  collate_ok <- identical(collated_ids, expected_ids)
-
-  error_ids <- if ("error" %in% names(compare_use)) {
-    sort(unique(as.integer(
-      compare_use$sim_id[
-        !is.na(compare_use$error) &
-          nzchar(as.character(compare_use$error))
-      ]
-    )))
-  } else {
-    integer()
-  }
-
-  incomplete_ids <- integer()
-  if (length(methods) > 0L) {
-    if (!"method" %in% names(compare_use)) {
-      incomplete_ids <- expected_ids
-    } else {
-      method_counts <- compare_use |>
-        dplyr::filter(.data$method %in% .env$methods) |>
-        dplyr::count(.data$sim_id, .data$method, name = "n_rows")
-
-      expected_keys <- tidyr::expand_grid(
-        sim_id = expected_ids,
-        method = methods
-      ) |>
-        dplyr::left_join(
-          method_counts,
-          by = c("sim_id", "method")
-        )
-
-      if (!is.null(nSample) && !is.null(nIter)) {
-        expected_n <- as.integer(nSample) * as.integer(nIter)
-        incomplete_ids <- expected_keys |>
-          dplyr::filter(
-            is.na(.data$n_rows) |
-              .data$n_rows != .env$expected_n
-          ) |>
-          dplyr::pull(.data$sim_id) |>
-          unique() |>
-          sort()
-      } else {
-        incomplete_ids <- expected_keys |>
-          dplyr::filter(is.na(.data$n_rows) | .data$n_rows < 1L) |>
-          dplyr::pull(.data$sim_id) |>
-          unique() |>
-          sort()
-      }
-    }
-  }
-
-  validation_ok <-
-    collate_ok &&
-    length(error_ids) == 0L &&
-    length(incomplete_ids) == 0L
-
-  list(
-    collated_sim_ids = collated_ids,
-    error_sim_ids = error_ids,
-    incomplete_sim_ids = incomplete_ids,
-    collate_ok = collate_ok,
-    validation_ok = validation_ok
-  )
-}
-
 #' Validate primary comparison output coverage for a simulation grid
 #'
 #' @keywords internal
@@ -2852,5 +2728,107 @@
           )
         )
       )
+    )
+}
+
+# Promote only a complete cross-chunk comparison grid.
+.simComparePromoteIfReady <- function(
+    run_ctx,
+    sim_grid_all,
+    total_sims,
+    completed_sims,
+    failed_sims,
+    nSample,
+    nIter) {
+  if (isTRUE(run_ctx$read_only) || !.analysis_can_promote(run_ctx)) {
+    return(invisible(FALSE))
+  }
+
+  scenario_paths <- list.files(
+    run_ctx$staging_run_dir,
+    pattern = "^(compare_raw.*|sim_scenario.*|sim_raw.*)sim_id_[0-9]+[.]rds$",
+    recursive = TRUE,
+    full.names = TRUE
+  )
+  compare_raw_full <- .simCompareCollateScenarioOutputs(
+    pathList = scenario_paths,
+    sim_grid = sim_grid_all
+  )
+  expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
+  full_check <- .simCompareGridOutputStatus(
+    compare_raw_full,
+    sim_grid = sim_grid_all,
+    nSample = nSample,
+    nIter = nIter
+  )
+  full_collate_ok <-
+    length(scenario_paths) == length(expected_sim_ids) &&
+    isTRUE(full_check$collate_ok)
+  full_validation_ok <-
+    full_collate_ok &&
+    isTRUE(full_check$validation_ok)
+
+  if (!isTRUE(full_validation_ok)) {
+    error_message <- paste0(
+      "Refusing to promote comparison: canonical collation did not contain ",
+      "exactly the complete error-free simulation grid."
+    )
+    .analysis_mark_chunk(
+      run_ctx = run_ctx,
+      total_sims = total_sims,
+      completed_sims = completed_sims,
+      failed_sims = failed_sims,
+      collate_ok = full_collate_ok,
+      validation_ok = FALSE,
+      error_message = error_message
+    )
+    stop(error_message)
+  }
+
+  path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
+  .write_rds_atomic(compare_raw_full, path_rds_full)
+  invisible(isTRUE(.analysis_promote_run(run_ctx)))
+}
+
+# Construct mean-shift degradation plots; callers own output paths and writes.
+.simComparePlotMeanShift <- function(summary_data, statistic, label) {
+  ggplot2::ggplot(
+    summary_data,
+    ggplot2::aes(
+      x = mismatch_val,
+      y = .data[[statistic]],
+      color = method,
+      linetype = mismatch_type,
+      group = interaction(method, mismatch_type)
+    )
+  ) +
+    ggplot2::geom_line(linewidth = 0.8) +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::facet_wrap(~scenario_desc, scales = "free_y") +
+    ggplot2::scale_y_continuous(
+      transform = scales::asinh_trans()
+    ) +
+    cowplot::theme_cowplot(font_size = 10) +
+    cowplot::background_grid(major = "xy", minor = "none") +
+    ggplot2::theme(
+      panel.background = ggplot2::element_rect(fill = "white", color = NA),
+      plot.background = ggplot2::element_rect(fill = "white", color = NA)
+    ) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      legend.box = "vertical",
+      legend.box.just = "left"
+    ) +
+    ggplot2::guides(
+      colour = ggplot2::guide_legend(nrow = 1, byrow = TRUE),
+      linetype = ggplot2::guide_legend(nrow = 1, byrow = TRUE)
+    ) +
+    ggplot2::labs(
+      title = "Degradation under Stimulated Mean Shift",
+      subtitle = paste(label, "vs Mean Shift"),
+      x = "Stimulated Mean Shift",
+      y = paste(label, "(asinh scale)"),
+      color = "Method",
+      linetype = "Mismatch Variant"
     )
 }

@@ -18,133 +18,93 @@
   ind <- .getInd(exTblStimNoMin)
   chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
   stageChnl <- file.path(stage, chnl)
+  dataThreshold <- NULL
+
   if (!is.data.frame(dataMod)) {
     .intSaveNm("noDataModDf", NULL, ind, stageChnl, pathProject)
     .intSaveNm("cpInd", dataMod, ind, stageChnl, pathProject)
-    objOut <- .getCpUnsLocGetCpEnsureMeta(
-      obj = dataMod,
-      cpMin = cpMin,
+    if (is.list(dataMod) && "cp" %in% names(dataMod)) {
+      cpObj <- dataMod
+      cpObj$locGenerated <- cpObj$locGenerated %||% FALSE
+      cpObj$locGeneratedDirect <- cpObj$locGeneratedDirect %||% FALSE
+      cpObj$locSource <- cpObj$locSource %||% "not_calculated"
+      cpObj$locReason <- cpObj$locReason %||% "data_mod_not_available"
+    } else {
+      cpObj <- .getCpUnsLocConditionOut(
+        cp = .getCpUnsLocConditionCpNonLoc(
+          cpMin = cpMin,
+          exTblStimNoMin = exTblStimNoMin,
+          exTblUnsBias = exTblUnsBias
+        ),
+        locGenerated = FALSE,
+        locGeneratedDirect = FALSE,
+        locSource = "not_calculated",
+        locReason = "data_mod_not_available"
+      )
+    }
+  } else {
+    trimObj <- .getCpUnsLocFilterAfterSmoothing(
+      dataMod = dataMod,
       exTblStimNoMin = exTblStimNoMin,
       exTblUnsBias = exTblUnsBias,
-      stage = stage,
-      reason = "data_mod_not_available"
-    )
-    locDetailCondition <- .getCpUnsLocConditionDetailRow(
-      cpObj = objOut,
-      dataThreshold = NULL,
-      exTblStimOrig = exTblStimOrig,
-      exTblUnsOrig = exTblUnsOrig,
-      exTblStimNoMin = exTblStimNoMin,
-      bias = bias,
-      stage = stage,
-      chnl = chnl
-    )
-    .intSaveNm(
-      "locDetailCondition",
-      locDetailCondition,
-      ind,
-      stageChnl,
-      pathProject
-    )
-    return(objOut)
-  }
-
-  trimObj <- .getCpUnsLocFilterAfterSmoothing(
-    dataMod = dataMod,
-    exTblStimNoMin = exTblStimNoMin,
-    exTblUnsBias = exTblUnsBias,
-    cpMin = cpMin,
-    stage = stage,
-    chnlSettings = chnlSettings
-  )
-  .intSaveNm("dataModTrimInfo", trimObj$info, ind, stageChnl, pathProject)
-  .intSaveNm("dataModTrim", trimObj$dataMod, ind, stageChnl, pathProject)
-
-  if (!is.null(trimObj$cp)) {
-    cpInd <- trimObj$cp
-    .intSave(ind, stageChnl, pathProject, cpInd)
-    .debug("Completed loc gate for single sample") # nolint
-    objOut <- .getCpUnsLocConditionOut(
-      cp = cpInd,
-      locGenerated = FALSE,
-      locGeneratedDirect = FALSE,
-      locSource = "not_calculated",
-      locReason = trimObj$info$reason %||% "trim_returned_non_local_cutpoint"
-    )
-    locDetailCondition <- .getCpUnsLocConditionDetailRow(
-      cpObj = objOut,
-      dataThreshold = NULL,
-      exTblStimOrig = exTblStimOrig,
-      exTblUnsOrig = exTblUnsOrig,
-      exTblStimNoMin = exTblStimNoMin,
-      bias = bias,
-      stage = stage,
-      chnl = chnl
-    )
-    .intSaveNm(
-      "locDetailCondition",
-      locDetailCondition,
-      ind,
-      stageChnl,
-      pathProject
-    )
-    return(objOut)
-  }
-
-  dataMod <- trimObj$dataMod
-  if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
-    cpInd <- .getCpUnsLocConditionCpNonLoc(
       cpMin = cpMin,
-      exTblStimNoMin = exTblStimNoMin,
-      exTblUnsBias = exTblUnsBias
-    )
-    .intSave(ind, stageChnl, pathProject, cpInd)
-    .debug("Completed loc gate for single sample") # nolint
-    objOut <- .getCpUnsLocConditionOut(
-      cp = cpInd,
-      locGenerated = FALSE,
-      locGeneratedDirect = FALSE,
-      locSource = "not_calculated",
-      locReason = "empty_data_mod_after_trimming"
-    )
-    locDetailCondition <- .getCpUnsLocConditionDetailRow(
-      cpObj = objOut,
-      dataThreshold = NULL,
-      exTblStimOrig = exTblStimOrig,
-      exTblUnsOrig = exTblUnsOrig,
-      exTblStimNoMin = exTblStimNoMin,
-      bias = bias,
       stage = stage,
-      chnl = chnl
+      chnlSettings = chnlSettings
     )
-    .intSaveNm(
-      "locDetailCondition",
-      locDetailCondition,
-      ind,
-      stageChnl,
-      pathProject
-    )
-    return(objOut)
+    .intSaveNm("dataModTrimInfo", trimObj$info, ind, stageChnl, pathProject)
+    .intSaveNm("dataModTrim", trimObj$dataMod, ind, stageChnl, pathProject)
+
+    if (!is.null(trimObj$cp)) {
+      cpInd <- trimObj$cp
+      .intSave(ind, stageChnl, pathProject, cpInd)
+      .debug("Completed loc gate for single sample") # nolint
+      cpObj <- .getCpUnsLocConditionOut(
+        cp = cpInd,
+        locGenerated = FALSE,
+        locGeneratedDirect = FALSE,
+        locSource = "not_calculated",
+        locReason = trimObj$info$reason %||% "trim_returned_non_local_cutpoint"
+      )
+    } else {
+      dataMod <- trimObj$dataMod
+      if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
+        cpInd <- .getCpUnsLocConditionCpNonLoc(
+          cpMin = cpMin,
+          exTblStimNoMin = exTblStimNoMin,
+          exTblUnsBias = exTblUnsBias
+        )
+        .intSave(ind, stageChnl, pathProject, cpInd)
+        .debug("Completed loc gate for single sample") # nolint
+        cpObj <- .getCpUnsLocConditionOut(
+          cp = cpInd,
+          locGenerated = FALSE,
+          locGeneratedDirect = FALSE,
+          locSource = "not_calculated",
+          locReason = "empty_data_mod_after_trimming"
+        )
+      } else {
+        dataThreshold <- .getCpUnsLocGetCpDataThreshold(
+          dataMod = dataMod,
+          exTblStimOrig = exTblStimOrig,
+          exTblStimNoMin = exTblStimNoMin,
+          exTblUnsOrig = exTblUnsOrig,
+          stage = stage,
+          pathProject = pathProject
+        )
+        .intSave(ind, stageChnl, pathProject, dataThreshold)
+        cpObj <- .getCpUnsLocGetCpActual(
+          dataThreshold = dataThreshold,
+          exTblStimNoMin = exTblStimNoMin,
+          exTblUnsBias = exTblUnsBias,
+          cpMin = cpMin,
+          stage = stage
+        )
+        .intSave(ind, stageChnl, pathProject, cpObj$cp)
+        .debug("Completed loc gate for single sample") # nolint
+      }
+    }
   }
 
-  dataThreshold <- .getCpUnsLocGetCpDataThreshold(
-    dataMod = dataMod,
-    exTblStimOrig = exTblStimOrig,
-    exTblStimNoMin = exTblStimNoMin,
-    exTblUnsBias = exTblUnsBias,
-    exTblUnsOrig = exTblUnsOrig,
-    bias = bias,
-    stage = stage,
-    pathProject = pathProject
-  )
-  .intSave(ind, stageChnl, pathProject, dataThreshold)
-  cpObj <- .getCpUnsLocGetCpActual(
-    dataThreshold = dataThreshold,
-    exTblStimNoMin = exTblStimNoMin,
-    exTblUnsBias = exTblUnsBias,
-    cpMin = cpMin,
-    stage = stage
-  )
   locDetailCondition <- .getCpUnsLocConditionDetailRow(
     cpObj = cpObj,
     dataThreshold = dataThreshold,
@@ -162,49 +122,16 @@
     stageChnl,
     pathProject
   )
-  .intSave(ind, stageChnl, pathProject, cpObj$cp)
-  .debug("Completed loc gate for single sample") # nolint
   cpObj
 }
 
-#' @keywords internal
-.getCpUnsLocGetCpEnsureMeta <- function(
-    obj,
-    cpMin,
-    exTblStimNoMin,
-    exTblUnsBias,
-    stage,
-    reason) {
-  if (is.list(obj) && "cp" %in% names(obj)) {
-    obj$locGenerated <- obj$locGenerated %||% FALSE
-    obj$locGeneratedDirect <- obj$locGeneratedDirect %||% FALSE
-    obj$locSource <- obj$locSource %||% "not_calculated"
-    obj$locReason <- obj$locReason %||% reason
-    return(obj)
-  }
-  .getCpUnsLocConditionOut(
-    cp = .getCpUnsLocConditionCpNonLoc(
-      cpMin = cpMin,
-      exTblStimNoMin = exTblStimNoMin,
-      exTblUnsBias = exTblUnsBias
-    ),
-    locGenerated = FALSE,
-    locGeneratedDirect = FALSE,
-    locSource = "not_calculated",
-    locReason = reason
-  )
-}
-
 
 #' @keywords internal
-
 .getCpUnsLocGetCpDataThreshold <- function(
     dataMod,
     exTblStimOrig,
     exTblStimNoMin,
-    exTblUnsBias,
     exTblUnsOrig,
-    bias,
     pathProject,
     stage) {
   # Remove the lower-margin values retained only to anchor the smoother at the
@@ -213,10 +140,7 @@
   dataModEstimate <- .getCpUnsLocGetCpDataThresholdExcludeMargin(dataMod)
 
   dataCount <- .getCpUnsLocGetCpDataThresholdCount(dataModEstimate)
-  probBsEst <- .getCpUnsLocGetCpDataThresholdPropBsEst(
-    dataCount = dataCount,
-    exTblStimOrig = exTblStimOrig
-  )
+  probBsEst <- sum(dataCount$pred) / nrow(exTblStimOrig)
   .intSaveNm(
     "probBsEstConditionRaw",
     probBsEst,
@@ -228,9 +152,7 @@
     dataCount = dataCount,
     propBsEst = probBsEst,
     exTblStimOrig = exTblStimOrig,
-    exTblUnsBias = exTblUnsBias,
-    exTblUnsOrig = exTblUnsOrig,
-    bias = bias
+    exTblUnsOrig = exTblUnsOrig
   )
 }
 
@@ -248,7 +170,7 @@
   }
 
   x <- suppressWarnings(as.numeric(.getCut(dataMod)))
-  .getCpUnsLocGetCpTrimSubset(
+  .getCpUnsLocSubsetRows(
     dataMod = dataMod,
     keep = is.finite(x) & x >= minProbXPos
   )
@@ -271,13 +193,6 @@
     dplyr::mutate(nRow = seq_len(dplyr::n())) |>
     dplyr::filter(cumsum(pred > probSmooth) != nRow) |> # nolint
     dplyr::select(-nRow)
-}
-
-#' @keywords internal
-.getCpUnsLocGetCpDataThresholdPropBsEst <- function(
-    dataCount,
-    exTblStimOrig) {
-  sum(dataCount$pred) / nrow(exTblStimOrig)
 }
 
 .getCpUnsLocTailPropAtThresholds <- function(x, thresholds, denominator) {
@@ -320,11 +235,7 @@
     dataCount,
     propBsEst,
     exTblStimOrig,
-    exTblUnsBias,
-    exTblUnsOrig,
-    bias) {
-  dataCount <- dataCount[order(.getCut(dataCount)), ]
-
+    exTblUnsOrig) {
   thresholds <- .getCut(dataCount)
 
   propStimVec <- .getCpUnsLocTailPropAtThresholds(
@@ -366,12 +277,10 @@
       msg = "Too few responding cells"
     ))
   }
-  dataThreshold <- dataThreshold |>
-    dplyr::filter(abs(propBsDiff) == min(abs(propBsDiff))) |> # nolint
-    dplyr::slice(1) |>
-    .getCut()
+  bestIdx <- which.min(abs(dataThreshold$propBsDiff))
+  cpVal <- .getCut(dataThreshold)[bestIdx]
 
-  if (!is.finite(dataThreshold)) {
+  if (!is.finite(cpVal)) {
     return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,
       exTblStimNoMin = exTblStimNoMin,
@@ -382,14 +291,10 @@
   }
 
   .getCpUnsLocConditionOut(
-    cp = dataThreshold,
+    cp = cpVal,
     locGenerated = TRUE,
     locGeneratedDirect = TRUE,
     locSource = "direct",
     locReason = "local_fdr_threshold_selected"
   )
-}
-
-.getCpUnsLocGetCpTrimSubset <- function(dataMod, keep) {
-  .getCpUnsLocSubsetRows(dataMod, keep)
 }
