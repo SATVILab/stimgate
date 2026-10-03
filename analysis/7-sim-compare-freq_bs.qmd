@@ -316,7 +316,6 @@ A loop for debugging a single failure or inspecting intermediate objects.
 #| label: compare-loop
 #| eval: false
 compare_list_raw_loop <- vector("list", nrow(sim_grid))
-source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
 for (i in seq_len(nrow(sim_grid))) {
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
   set.seed(sim_grid$sim_seed[i])
@@ -424,6 +423,20 @@ analysis_result_params <- list(
   comparison_semantics_version = comparison_semantics_version,
   simulation_seed = simulation_seed,
   analysis_dev = analysis_dev,
+  n_cell_stim_vec = n_cell_stim_vec,
+  prob_response_vec = prob_response_vec,
+  transformation_vec = transformation_vec,
+  mean_pos_settings_tbl = mean_pos_settings_tbl,
+  sample_perturbation_sd_vec = sample_perturbation_sd_vec,
+  condition_perturbation_sd_vec = condition_perturbation_sd_vec,
+  cluster_perturbation_sd_vec = cluster_perturbation_sd_vec,
+  background_relative_to_response_vec = background_relative_to_response_vec,
+  n_cell_uns_relative_to_stim_vec = n_cell_uns_relative_to_stim_vec,
+  bias_uns_gamma = 0.01,
+  bias_uns_gaussian_skew = 0.15,
+  prob_exact = TRUE,
+  cov_ev_min = 1.5,
+  cov_ev_max = 1.5,
   n_sample_sim = n_sample_sim,
   n_iter_sim = n_iter_sim,
   stimgate_bw_mtd = stimgate_bw_mtd,
@@ -730,15 +743,18 @@ compare_summary |>
     threshold_median
   )
 
+if (!isTRUE(run_plots)) {
+  message("run_plots is false, so stopping after the canonical comparison summary.")
+  knitr::knit_exit()
+}
+
 plot_dir <- projr::projr_path_get(
   "cache",
   "sim",
   "compare",
   "freq_bs"
 )
-if (isTRUE(run_plots)) {
-  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
-}
+dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
 ```
 
 ### Mean absolute error by cell count
