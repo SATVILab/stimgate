@@ -271,6 +271,7 @@ for (i in seq_len(nrow(sim_grid))) {
     covEvMin = 1.5,
     covEvMax = 1.5,
     tolClust = NULL,
+    capStimRange = FALSE,
     summarise = FALSE
   ) |>
     dplyr::mutate(
@@ -549,6 +550,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
                 covEvMin = 1.5,
                 covEvMax = 1.5,
                 tolClust = NULL,
+                capStimRange = FALSE,
                 summarise = FALSE
               ) |>
                 dplyr::mutate(
