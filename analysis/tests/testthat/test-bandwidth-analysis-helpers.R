@@ -265,6 +265,15 @@ test_that("QMD 3 defines chunk controls and use the run-scoped output dir", {
       qmd_lines,
       fixed = TRUE
     )))
+    if (identical(qmd_lines, qmd_3)) {
+      expect_true(any(grepl(
+        ".simBandwidthRunGrid(", qmd_lines, fixed = TRUE
+      )))
+      expect_true(any(grepl(
+        "run_ctx = run_ctx", qmd_lines, fixed = TRUE
+      )))
+      next
+    }
     expect_true(any(grepl(
       "dir_output <- run_ctx$chunk_output_dir",
       qmd_lines,

@@ -571,6 +571,87 @@
 }
 
 # ---------------------------------------------------------------------------
+# Analysis 3: base bandwidth estimators
+# ---------------------------------------------------------------------------
+
+# One scenario, without seeding; both workers and reruns use RunRow's RNG.
+.simBandwidthEstBaseScenario <- function(row, settings) {
+  do.call(.simBandwidthEstBwDirect, c(settings, list(
+    biasUns = row$bias_uns[[1]],
+    bwMtd = row$bw_mtd[[1]],
+    nCellStim = row$n_cell[[1]],
+    probResponse = row$prob_response[[1]],
+    meanPos = row$mean_pos[[1]],
+    transformation = row$transformation[[1]]
+  )))
+}
+
+# Non-finite estimates are scientific outcomes, not runtime errors.
+# Require the full sample/iteration count even when estimates are non-finite.
+.simBandwidthEstBaseValidate <- function(tbl, settings) {
+  expected_rows_per_sim <- as.integer(settings$nSample * settings$nIter)
+  bad_ids <- tbl |>
+    dplyr::count(.data$sim_id, name = "n_rows") |>
+    dplyr::filter(.data$n_rows != expected_rows_per_sim) |>
+    dplyr::pull(.data$sim_id)
+  if (length(bad_ids) == 0L) {
+    character()
+  } else {
+    paste0(
+      "unexpected sample-row counts for sim_id: ",
+      paste(sort(bad_ids), collapse = ", ")
+    )
+  }
+}
+
+.simBandwidthEstBaseSummary <- function(.data, grid_cols) {
+  .data |>
+    dplyr::group_by(
+      dplyr::pick(dplyr::any_of(grid_cols))
+    ) |>
+    dplyr::summarise(
+      n_bw_total = dplyr::n(),
+      n_bw_stim_finite = sum(is.finite(.data$bw_stim)),
+      n_bw_uns_finite = sum(is.finite(.data$bw_uns)),
+      n_bw_finite = sum(
+        is.finite(.data$bw_stim) & is.finite(.data$bw_uns)
+      ),
+      prop_bw_finite = mean(
+        is.finite(.data$bw_stim) & is.finite(.data$bw_uns)
+      ),
+      mean_bw_stim = .simBandwidthFiniteMean(.data$bw_stim),
+      mean_bw_uns = .simBandwidthFiniteMean(.data$bw_uns),
+      mean_bw = .simBandwidthFiniteMean(
+        dplyr::if_else(
+          is.finite(.data$bw_stim) & is.finite(.data$bw_uns),
+          pmin(.data$bw_stim, .data$bw_uns),
+          NA_real_
+        )
+      ),
+      .groups = "drop"
+    ) |>
+    dplyr::select(
+      dplyr::any_of(grid_cols),
+      n_bw_total,
+      n_bw_stim_finite,
+      n_bw_uns_finite,
+      n_bw_finite,
+      prop_bw_finite,
+      mean_bw_stim,
+      mean_bw_uns,
+      mean_bw
+    )
+}
+
+
+.simBandwidthEstBaseCollate <- function(tbl, grid_cols) {
+  list(
+    bw_list_raw_mtd = tbl,
+    bw_tbl_results = .simBandwidthEstBaseSummary(tbl, grid_cols)
+  )
+}
+
+# ---------------------------------------------------------------------------
 # Analysis 4: ordinary vs normalised bandwidth estimators
 # ---------------------------------------------------------------------------
 
