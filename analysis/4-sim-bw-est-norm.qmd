@@ -265,7 +265,7 @@ print(
   )
 )
 
-bw_fallback <- 0.23482348792138919129198282389
+bw_fallback <- NA_real_
 analysis_semantics_version <- "bandwidth-est-norm-v2"
 n_sample_sim <- 10L
 n_iter_sim <- 1L
@@ -318,6 +318,7 @@ for (i in seq_len(nrow(sim_grid))) {
     bwNcellMax = sim_grid$bw_ncell_upper[i],
     bwFallback = bw_fallback,
     bwCluster = 0.5,
+    capStimRange = FALSE,
     nCellStim = sim_grid$n_cell[i],
     probResponse = sim_grid$prob_response[i],
     probExact = TRUE,
@@ -559,6 +560,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
                 bwMax = Inf,
                 bwNcellMax = bw_ncell_upper,
                 bwCluster = 0.5,
+                capStimRange = FALSE,
                 nCellStim = n_cell,
                 probResponse = prob_response,
                 probExact = TRUE,
@@ -718,11 +720,25 @@ summarise_bw_results <- function(bw_tbl) {
     ) |>
     dplyr::summarise(
       n_total = dplyr::n(),
-      n_est = sum(is.finite(.data$bw)),
-      n_norm_fallback = sum(.data$bw_norm_fallback %in% TRUE),
+      n_bw_stim_finite = sum(is.finite(.data$bw_stim)),
+      n_bw_uns_finite = sum(is.finite(.data$bw_uns)),
+      n_est = sum(
+        is.finite(.data$bw_stim) & is.finite(.data$bw_uns)
+      ),
+      n_norm_fallback = sum(
+        is.finite(.data$bw_stim) &
+          is.finite(.data$bw_uns) &
+          .data$bw_norm_fallback %in% TRUE
+      ),
       mean_bw_stim = .simBandwidthFiniteMean(.data$bw_stim),
       mean_bw_uns = .simBandwidthFiniteMean(.data$bw_uns),
-      mean_bw = .simBandwidthFiniteMean(.data$bw),
+      mean_bw = .simBandwidthFiniteMean(
+        dplyr::if_else(
+          is.finite(.data$bw_stim) & is.finite(.data$bw_uns),
+          pmin(.data$bw_stim, .data$bw_uns),
+          NA_real_
+        )
+      ),
       .groups = "drop"
     ) |>
     dplyr::mutate(
