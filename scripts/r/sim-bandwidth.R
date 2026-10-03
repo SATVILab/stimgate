@@ -335,11 +335,10 @@
 
   rightIdx <- seq.int(peakIdx + 1L, length(dens$y))
   heightIdx <- rightIdx[dens$y[rightIdx] <= heightFrac * dens$y[[peakIdx]]]
-  antimodeIdx <- rightIdx[
-    rightIdx > 1L &
-      rightIdx < length(dens$y) &
-      dens$y[rightIdx] <= dens$y[rightIdx - 1L] &
-      dens$y[rightIdx] < dens$y[rightIdx + 1L]
+  antimodeCandidates <- rightIdx[rightIdx < length(dens$y)]
+  antimodeIdx <- antimodeCandidates[
+    dens$y[antimodeCandidates] <= dens$y[antimodeCandidates - 1L] &
+      dens$y[antimodeCandidates] < dens$y[antimodeCandidates + 1L]
   ]
 
   endpointIdx <- min(
