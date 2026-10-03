@@ -3,8 +3,6 @@
   .data,
   indBatchList,
   chnlSettings,
-  gateTbl = NULL,
-  tolGateSingle = NULL,
   calcCytPosGates,
   pathProject,
   stage

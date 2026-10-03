@@ -3,7 +3,6 @@
   chnlSettings,
   indBatchList,
   .data,
-  gateName = NULL,
   calcCytPos = TRUE,
   stage,
   pathProject

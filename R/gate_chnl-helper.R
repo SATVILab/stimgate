@@ -55,8 +55,6 @@
           .data = .data,
           gateTbl = gateTbl |>
             dplyr::filter(gateName == gn), # nolint
-          gateStatsTbl = NULL,
-          gateTblCtrl = NULL,
           chnlSettings = chnlSettings,
           filterOtherCytPos = FALSE,
           stage = stage,

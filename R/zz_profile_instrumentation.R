@@ -47,7 +47,6 @@
   chnlSettings,
   indBatchList,
   .data,
-  gateName = NULL,
   calcCytPos = TRUE,
   stage,
   pathProject
@@ -58,7 +57,6 @@
         chnlSettings = chnlSettings,
         indBatchList = indBatchList,
         .data = .data,
-        gateName = gateName,
         calcCytPos = calcCytPos,
         stage = stage,
         pathProject = pathProject
@@ -104,8 +102,6 @@
   .data,
   indBatchList,
   chnlSettings,
-  gateTbl = NULL,
-  tolGateSingle = NULL,
   calcCytPosGates,
   pathProject,
   stage
@@ -115,8 +111,6 @@
       .data = .data,
       indBatchList = indBatchList,
       chnlSettings = chnlSettings,
-      gateTbl = gateTbl,
-      tolGateSingle = tolGateSingle,
       calcCytPosGates = calcCytPosGates,
       pathProject = pathProject,
       stage = stage
@@ -130,8 +124,6 @@
         .data = .data,
         indBatchList = indBatchList,
         chnlSettings = chnlSettings,
-        gateTbl = gateTbl,
-        tolGateSingle = tolGateSingle,
         calcCytPosGates = calcCytPosGates,
         pathProject = pathProject,
         stage = stage
@@ -224,8 +216,6 @@
 .getCpCluster <- function(
   .data,
   gateTbl,
-  gateStatsTbl,
-  gateTblCtrl,
   chnlSettings,
   stage,
   pathProject,
@@ -238,8 +228,6 @@
     return(.profileOriginalGetCpCluster(
       .data = .data,
       gateTbl = gateTbl,
-      gateStatsTbl = gateStatsTbl,
-      gateTblCtrl = gateTblCtrl,
       chnlSettings = chnlSettings,
       stage = stage,
       pathProject = pathProject,
@@ -254,8 +242,6 @@
     .profileOriginalGetCpCluster(
       .data = .data,
       gateTbl = gateTbl,
-      gateStatsTbl = gateStatsTbl,
-      gateTblCtrl = gateTblCtrl,
       chnlSettings = chnlSettings,
       stage = stage,
       pathProject = pathProject,
@@ -278,8 +264,6 @@
   chnlSettings,
   exTblStimOrig,
   exTblUnsOrig,
-  plot = TRUE,
-  probMin = 0.1,
   bias,
   pathProject,
   stage
@@ -291,8 +275,6 @@
       chnlSettings = chnlSettings,
       exTblStimOrig = exTblStimOrig,
       exTblUnsOrig = exTblUnsOrig,
-      plot = plot,
-      probMin = probMin,
       bias = bias,
       pathProject = pathProject,
       stage = stage
@@ -314,8 +296,6 @@
         chnlSettings = chnlSettings,
         exTblStimOrig = exTblStimOrig,
         exTblUnsOrig = exTblUnsOrig,
-        plot = plot,
-        probMin = probMin,
         bias = bias,
         pathProject = pathProject,
         stage = stage

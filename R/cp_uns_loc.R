@@ -495,8 +495,6 @@
   chnlSettings,
   exTblStimOrig,
   exTblUnsOrig,
-  plot = TRUE,
-  probMin = 0.1,
   bias,
   pathProject,
   stage
