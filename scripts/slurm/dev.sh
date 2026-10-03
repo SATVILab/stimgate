@@ -9,7 +9,8 @@ project_root=$(cd -- "$script_dir/../.." &> /dev/null && pwd)
 
 scripts=(
   "dev-1-sim-trans.sh"
-  "dev-2-stim-bw-freq_bs-global.sh"
+  "dev-2a-stim-bw-freq_bs-global.sh"
+  # "dev-2b-stim-bias_uns-freq_bs.sh"
   "dev-3-sim-bw-est-base.sh"
   "dev-4-sim-bw-est-norm.sh"
   # "dev-5-sim-bw-est-adaptive.sh"
@@ -28,8 +29,11 @@ install_script="$script_dir/install.sh"
 
 chunked_qmd_stem_for_script() {
   case "$1" in
-    dev-2-stim-bw-freq_bs-global.sh)
-      echo "2-sim-bw-freq_bs-global"
+    dev-2a-stim-bw-freq_bs-global.sh)
+      echo "2a-sim-bw-freq_bs-global"
+      ;;
+    dev-2b-stim-bias_uns-freq_bs.sh)
+      echo "2b-sim-bias_uns-freq_bs"
       ;;
     dev-3-sim-bw-est-base.sh)
       echo "3-sim-bw-est-base"
