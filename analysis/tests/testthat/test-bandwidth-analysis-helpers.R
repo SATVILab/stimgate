@@ -179,6 +179,10 @@ test_that("output discovery does not use implicit legacy fallbacks", {
 test_that("QMD 6 does not retain the stale adaptive shim reference", {
   qmd_lines <- readLines(qmd_6, warn = FALSE)
   expect_false(any(grepl("\\.run_sim_bandwidth_bs_freq_adaptive", qmd_lines)))
+  expect_true(any(grepl("sim-bandwidth-analysis-run.R",
+                       qmd_lines, fixed = TRUE)))
+  expect_true(any(grepl(".simBandwidthFreqBsAdaptiveScenario",
+                       qmd_lines, fixed = TRUE)))
 })
 
 test_that(".update_progress_summary() works without chunk/output metadata for non-chunked analyses", {

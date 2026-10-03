@@ -154,3 +154,16 @@ test_that("promoted bandwidth outputs are discoverable without a simulation run"
   expect_length(discovered, 1L)
   expect_equal(readRDS(discovered[[1]])$sim_id, 1L)
 })
+
+test_that("analysis 6 promotes its summaries through the shared runner", {
+  content <- read_project_file("analysis", "6-sim-bw-freq_bs-adaptive.qmd")
+  expect_true(grepl(".simBandwidthFinishChunk(", content, fixed = TRUE))
+  expect_true(grepl(".simBandwidthFreqBsAdaptiveCollate(tbl,",
+                   content, fixed = TRUE))
+  expect_true(grepl("sim_grid_spec = analysis_grid_spec",
+                   content, fixed = TRUE))
+  expect_true(grepl('relative_path = c("collated", "summary_tbl.rds")',
+                   content, fixed = TRUE))
+  expect_false(grepl("staging_collated_dir", content, fixed = TRUE))
+  expect_false(grepl(".write_rds_atomic(", content, fixed = TRUE))
+})
