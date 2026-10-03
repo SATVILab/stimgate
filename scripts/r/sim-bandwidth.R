@@ -352,14 +352,9 @@
   locAntimodeLowAbs = 0.15,
   locFlatDerivFrac = 1 / 2,
   locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
   gateCombn = "min",
   calcCytPosGates = FALSE
 ) {
@@ -479,14 +474,9 @@
       locAntimodeLowAbs = locAntimodeLowAbs,
       locFlatDerivFrac = locFlatDerivFrac,
       locFlatHardDerivFrac = locFlatHardDerivFrac,
-      locLeftLowRel = locLeftLowRel,
-      locLeftLowAbs = locLeftLowAbs,
-      locLeftCellFrac = locLeftCellFrac,
-      locLeftLengthFrac = locLeftLengthFrac,
       locMarginalPurityRel = locMarginalPurityRel,
       locMarginalCellBinRatio = locMarginalCellBinRatio,
       locMarginalRefQuantile = locMarginalRefQuantile,
-      locTolRefPeak = locTolRefPeak,
       gateCombn = gateCombn
     ))
 

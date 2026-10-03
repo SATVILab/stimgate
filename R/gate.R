@@ -168,26 +168,6 @@
 #'   how far left of this anchor to extend, one bin at a time. Default is 0.5.
 #' @param locFlatHardDerivFrac numeric. Lower derivative fraction used for a
 #'   conservative hard exclusion of the very flat far-left region before the
-#'   marginal bin scan. Default is 0.25.
-#' @param locLeftLowRel numeric. Retained for backwards compatibility. The current
-#'   derivative/marginal left-tail trim no longer uses this overall-region check.
-#'   Candidate left-tail regions not separated by an
-#'   antimode are considered low response when their mean response probability is
-#'   below this fraction of the peak response probability.
-#' @param locLeftLowAbs numeric. Retained for backwards compatibility. The
-#'   current derivative/marginal left-tail trim no longer uses this overall-region
-#'   check. Absolute response-probability cutoff for the non-antimode left-tail
-#'   trimming rule.
-#' @param locLeftCellFrac numeric. Retained for backwards compatibility. The
-#'   current derivative/marginal left-tail trim no longer uses this overall-region
-#'   check. Minimum size of the candidate low-response
-#'   left-tail region, expressed as a fraction of the number of cells to the right
-#'   of the start of the main probability rise.
-#' @param locLeftLengthFrac numeric. Retained for backwards compatibility. The
-#'   current derivative/marginal left-tail trim no longer uses this overall-region
-#'   check. Minimum length of the candidate low-response left-tail region,
-#'   expressed as a fraction of the expression interval over which the response
-#'   probability rises from its minimum to its maximum.
 #' @param locMarginalPurityRel numeric. Minimum allowed purity of each additional
 #'   leftward bin, expressed as a fraction of the average response probability
 #'   among cells to the right of the initial derivative-based local-FDR boundary.
@@ -200,9 +180,6 @@
 #'   the initial derivative-based boundary used to define the reference interval
 #'   for cells-per-bin calculations. Purity is still calculated using all cells to
 #'   the right of the initial boundary. Default is 0.75.
-#' @param locTolRefPeak character. Deprecated clustering setting retained for
-#'   backwards compatibility. Joint-density quantile transfer does not use a
-#'   derivative-tolerance reference peak. Default is `"highest"`.
 #' @param gateCombn character vector. Method(s) for combining condition-level
 #'   local-FDR gates within a batch. Supported values are `"no"`, `"min"`,
 #'   `"median"`, `"max"`, and `"prejoin"`. Combination uses only thresholds that
@@ -349,14 +326,9 @@ gateStim <- function(
   locAntimodeLowAbs = 0.15,
   locFlatDerivFrac = 1 / 2,
   locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
   gateCombn = "min",
   markerSettings = NULL,
   chnlSettings = NULL
@@ -457,14 +429,9 @@ gateStim <- function(
     locAntimodeLowAbs = locAntimodeLowAbs,
     locFlatDerivFrac = locFlatDerivFrac,
     locFlatHardDerivFrac = locFlatHardDerivFrac,
-    locLeftLowRel = locLeftLowRel,
-    locLeftLowAbs = locLeftLowAbs,
-    locLeftCellFrac = locLeftCellFrac,
-    locLeftLengthFrac = locLeftLengthFrac,
     locMarginalPurityRel = locMarginalPurityRel,
     locMarginalCellBinRatio = locMarginalCellBinRatio,
     locMarginalRefQuantile = locMarginalRefQuantile,
-    locTolRefPeak = locTolRefPeak,
     gateCombn = gateCombn
   )
 
@@ -533,14 +500,9 @@ gateStim <- function(
     locAntimodeLowAbs = locAntimodeLowAbs,
     locFlatDerivFrac = locFlatDerivFrac,
     locFlatHardDerivFrac = locFlatHardDerivFrac,
-    locLeftLowRel = locLeftLowRel,
-    locLeftLowAbs = locLeftLowAbs,
-    locLeftCellFrac = locLeftCellFrac,
-    locLeftLengthFrac = locLeftLengthFrac,
     locMarginalPurityRel = locMarginalPurityRel,
     locMarginalCellBinRatio = locMarginalCellBinRatio,
     locMarginalRefQuantile = locMarginalRefQuantile,
-    locTolRefPeak = locTolRefPeak,
     maxPosProbX = maxPosProbX,
     gateCombn = gateCombn,
     gateQuant = gateQuant,

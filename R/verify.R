@@ -59,14 +59,9 @@
   locAntimodeLowAbs,
   locFlatDerivFrac,
   locFlatHardDerivFrac,
-  locLeftLowRel,
-  locLeftLowAbs,
-  locLeftCellFrac,
-  locLeftLengthFrac,
   locMarginalPurityRel,
   locMarginalCellBinRatio,
   locMarginalRefQuantile,
-  locTolRefPeak,
   maxPosProbX,
   gateCombn,
   gateQuant
@@ -460,10 +455,6 @@
     "locAntimodeLowAbs",
     "locFlatDerivFrac",
     "locFlatHardDerivFrac",
-    "locLeftLowRel",
-    "locLeftLowAbs",
-    "locLeftCellFrac",
-    "locLeftLengthFrac",
     "locMarginalPurityRel",
     "locMarginalRefQuantile"
   )
@@ -487,15 +478,6 @@
     settings = settings,
     prefix = prefix
   )
-
-  if (
-    !.verifyIsNullOrNa(settings[["locTolRefPeak"]]) &&
-      (!is.character(settings[["locTolRefPeak"]]) ||
-        length(settings[["locTolRefPeak"]]) != 1 ||
-        !settings[["locTolRefPeak"]] %in% c("highest", "first"))
-  ) {
-    stop(paste0(prefix, "`locTolRefPeak` must be either 'highest' or 'first'."))
-  }
 
   invisible(TRUE)
 }

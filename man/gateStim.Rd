@@ -54,14 +54,9 @@ gateStim(
   locAntimodeLowAbs = 0.15,
   locFlatDerivFrac = 1/2,
   locFlatHardDerivFrac = 1/4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
   gateCombn = "min",
   markerSettings = NULL,
   chnlSettings = NULL
@@ -277,31 +272,7 @@ used to define the marginal-trimming anchor. The marginal scan then decides
 how far left of this anchor to extend, one bin at a time. Default is 0.5.}
 
 \item{locFlatHardDerivFrac}{numeric. Lower derivative fraction used for a
-conservative hard exclusion of the very flat far-left region before the
-marginal bin scan. Default is 0.25.}
-
-\item{locLeftLowRel}{numeric. Retained for backwards compatibility. The current
-derivative/marginal left-tail trim no longer uses this overall-region check.
-Candidate left-tail regions not separated by an
-antimode are considered low response when their mean response probability is
-below this fraction of the peak response probability.}
-
-\item{locLeftLowAbs}{numeric. Retained for backwards compatibility. The
-current derivative/marginal left-tail trim no longer uses this overall-region
-check. Absolute response-probability cutoff for the non-antimode left-tail
-trimming rule.}
-
-\item{locLeftCellFrac}{numeric. Retained for backwards compatibility. The
-current derivative/marginal left-tail trim no longer uses this overall-region
-check. Minimum size of the candidate low-response
-left-tail region, expressed as a fraction of the number of cells to the right
-of the start of the main probability rise.}
-
-\item{locLeftLengthFrac}{numeric. Retained for backwards compatibility. The
-current derivative/marginal left-tail trim no longer uses this overall-region
-check. Minimum length of the candidate low-response left-tail region,
-expressed as a fraction of the expression interval over which the response
-probability rises from its minimum to its maximum.}
+conservative hard exclusion of the very flat far-left region before the}
 
 \item{locMarginalPurityRel}{numeric. Minimum allowed purity of each additional
 leftward bin, expressed as a fraction of the average response probability
@@ -317,10 +288,6 @@ counted. Default is 2.}
 the initial derivative-based boundary used to define the reference interval
 for cells-per-bin calculations. Purity is still calculated using all cells to
 the right of the initial boundary. Default is 0.75.}
-
-\item{locTolRefPeak}{character. Deprecated clustering setting retained for
-backwards compatibility. Joint-density quantile transfer does not use a
-derivative-tolerance reference peak. Default is \code{"highest"}.}
 
 \item{gateCombn}{character vector. Method(s) for combining condition-level
 local-FDR gates within a batch. Supported values are \code{"no"}, \code{"min"},
