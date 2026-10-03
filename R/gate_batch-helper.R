@@ -22,19 +22,6 @@
     pathProject = pathProject
   )
 
-  if (!is.null(chnlSettings$tolCtrl)) {
-    for (tol in chnlSettings$tolCtrl) {
-      .debug("getting tg-based cutpoint as a control") # nolint
-      gateList[[paste0("tgCtrl_", tol)]] <- .getCpTg(
-        exList = exList,
-        chnlSettings = chnlSettings,
-        tgType = "tolCtrl",
-        stage = stage,
-        pathProject = pathProject
-      )
-    }
-  }
-
   .gateBatchTbl(gateList, attr(exList[[1]], "batch")) # nolint
 }
 
