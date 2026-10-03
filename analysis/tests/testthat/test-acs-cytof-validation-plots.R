@@ -121,8 +121,7 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
   }
 
   setup <- paste(
-    deparse(chunk_code("setup"), width.cutoff = 500L),
-    collapse = "\n"
+    deparse(chunk_code("setup"), width.cutoff = 500L), collapse = "\n"
   )
   expect_true(grepl(
     'source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))',

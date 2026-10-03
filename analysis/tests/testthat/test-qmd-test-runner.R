@@ -10,8 +10,7 @@ test_that("QMD registry covers all top-level documents with real test files", {
   targets <- loaded$env$.qmd_test_targets(loaded$root_dir)
   expect_length(targets, 10L)
   expect_setequal(names(targets), list.files(
-    file.path(loaded$root_dir, "analysis"),
-    pattern = "[.]qmd$"
+    file.path(loaded$root_dir, "analysis"), pattern = "[.]qmd$"
   ))
   expect_identical(targets[[9]], c("test-acs-cytof-gate.R", "test-acs-cytof-methods.R"))
   expect_true("test-sim-bandwidth-analysis-run.R" %in% targets[[2]])
