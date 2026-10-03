@@ -98,8 +98,7 @@ test_that("analysis 8 uses deterministic scenario seeds and full-grid promotion"
   expect_true(grepl(
     "skipping summary and plots for this chunk",
     content,
-    fixed = TRUE,
-    ignore.case = TRUE
+    fixed = TRUE
   ))
 })
 
@@ -287,6 +286,12 @@ test_that("analysis 3 is chunk-stable, read-only, and retains estimator failure 
   ))
   expect_true(grepl(
     "Skipping plots during a multi-chunk simulation render.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("promotion_done <-", content, fixed = TRUE))
+  expect_true(grepl(
+    "Refusing to plot analysis 3: this run was not promoted",
     content,
     fixed = TRUE
   ))
