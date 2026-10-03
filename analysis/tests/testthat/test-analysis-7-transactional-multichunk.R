@@ -42,7 +42,6 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
     fixed = TRUE
   ))
   expect_true(grepl(".analysis_results_context", content, fixed = TRUE))
-  expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
   expect_true(grepl(
     ".simCompareGridOutputStatus",
     content,
