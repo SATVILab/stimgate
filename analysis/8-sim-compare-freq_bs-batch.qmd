@@ -442,23 +442,28 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
 simulation_promoted <- FALSE
 
 if (isTRUE(run_simulations)) {
-  chunk_status <- .simCompareGridOutputStatus(
-    compare_raw,
-    sim_grid = sim_grid,
+  expected_chunk_ids <- sort(unique(as.integer(sim_grid$sim_id)))
+  chunk_status <- .simCompareValidateCompletedScenarios(
+    compare_raw = compare_raw,
+    sim_ids = expected_chunk_ids,
     nSample = n_sample_sim,
     nIter = n_iter_sim
   )
-  n_failed <- length(chunk_status$failed_ids)
-  n_completed <- length(chunk_status$completed_ids)
+  failed_sim_ids <- sort(unique(c(
+    chunk_status$error_sim_ids,
+    chunk_status$incomplete_sim_ids
+  )))
+  n_failed <- length(failed_sim_ids)
+  n_completed <- length(setdiff(expected_chunk_ids, failed_sim_ids))
 
   chunk_error <- if (!isTRUE(chunk_status$validation_ok)) {
     paste0(
       "Analysis 8 chunk output is incomplete or invalid. Missing sim_id: ",
-      paste(chunk_status$missing_ids, collapse = ", "),
-      "; failed sim_id: ",
-      paste(chunk_status$failed_ids, collapse = ", "),
+      paste(chunk_status$missing_sim_ids, collapse = ", "),
+      "; failed/incomplete sim_id: ",
+      paste(failed_sim_ids, collapse = ", "),
       "; extra sim_id: ",
-      paste(chunk_status$extra_ids, collapse = ", "),
+      paste(chunk_status$extra_sim_ids, collapse = ", "),
       "."
     )
   } else {
@@ -490,9 +495,10 @@ if (isTRUE(run_simulations)) {
       pathList = scenario_paths,
       sim_grid = sim_grid_all
     )
-    full_status <- .simCompareGridOutputStatus(
-      compare_raw_full,
-      sim_grid = sim_grid_all,
+    expected_full_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
+    full_status <- .simCompareValidateCompletedScenarios(
+      compare_raw = compare_raw_full,
+      sim_ids = expected_full_ids,
       nSample = n_sample_sim,
       nIter = n_iter_sim
     )
@@ -562,9 +568,9 @@ if (nrow(compare_raw) == 0L) {
   stop("Canonical compare_raw.rds is empty. Rerun the simulation analysis.")
 }
 
-canonical_status <- .simCompareGridOutputStatus(
-  compare_raw,
-  sim_grid = sim_grid_all,
+canonical_status <- .simCompareValidateCompletedScenarios(
+  compare_raw = compare_raw,
+  sim_ids = sort(unique(as.integer(sim_grid_all$sim_id))),
   nSample = n_sample_sim,
   nIter = n_iter_sim
 )
