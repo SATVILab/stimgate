@@ -24,23 +24,14 @@
 #'   background cytokine production. When NULL (default), 1/4 of `bwFallback` is used
 #'   (scaled by `biasUnsFactor`). Positive values shift the unstimulated distribution higher,
 #'   making gates more conservative. Default is NULL.
-#' @param minCell numeric. Minimum number of cells required for reliable gating.
-#'   Default is 100. Samples with fewer cells will be skipped as they don't provide
-#'   sufficient statistical power for accurate gate identification.
-#' @param calcCytPosGates logical. Whether to refine each clustered one-marker
-#'   gate using the target-marker distribution among cells positive for at least
-#'   one other cytokine. A taut-string density is fitted to those cells. The
-#'   clustered gate is lowered to the leftmost internal antimode strictly between
-#'   the full stimulated marginal peak plus one third of its left-window width
-#'   and the clustered gate. If no eligible antimode exists, the clustered gate
-#'   is retained. Default is TRUE.
+#' @param bw numeric. Specify the bandwith for density estimation. When NULL (default), bandwidth is estimated automatically. A bandwidth may also be set per marker through `markerControl`. Default is `NULL`.
 #' @param control stimControl Tuning settings from [stimControl()].
 #'   Most users do not need to change these. Default: `stimControl()`.
 #' @param markerControl list or NULL. Named per-marker overrides, keyed by
 #'   marker label or channel name, for example
 #'   `list(IL2 = list(bw = 0.12, biasUns = 0))`. Settings from [stimControl()]
-#'   (except `locEnforceShapeThreshold`), `biasUns`, `minCell`, and `popGate`
-#'   can be overridden. Default: NULL.
+#'   (except the global-only `locEnforceShapeThreshold` and `calcCytPosGates`),
+#'   plus `bw`, `biasUns` and `popGate`, can be overridden. Default: NULL.
 #' @return character. Returns the path to the project directory where all results
 #'   have been saved. The directory structure created includes:
 #'   \itemize{
@@ -78,6 +69,7 @@
 #'   .data = gs,
 #'   batchList = exampleData$batchList,
 #'   marker = exampleData$marker,
+#'   bw = 0.1,
 #'   control = stimControl(bwAdj = 1.5, clusterGates = FALSE),
 #'   markerControl = stats::setNames(
 #'     list(list(bw = 0.12, biasUns = 0)), exampleData$marker[1]
@@ -102,9 +94,8 @@ gateStim <- function(
   marker = NULL,
   chnl = NULL,
   popGate = "root",
-  calcCytPosGates = TRUE,
   biasUns = NULL,
-  minCell = 1e2,
+  bw = NULL,
   control = stimControl(),
   markerControl = NULL
 ) {
@@ -152,6 +143,8 @@ gateStim <- function(
     add = TRUE
   )
 
+  calcCytPosGates <- control$calcCytPosGates
+
   # Verify global function inputs
   .verifyGateInputs(
     pathProject = pathProject,
@@ -160,9 +153,8 @@ gateStim <- function(
     popGate = popGate,
     chnl = chnl,
     marker = marker,
-    calcCytPosGates = calcCytPosGates,
     biasUns = biasUns,
-    minCell = minCell,
+    bw = bw,
     control = control,
     markerControl = markerControl
   )
@@ -181,7 +173,7 @@ gateStim <- function(
     markerControl = markerControl,
     control = control,
     biasUns = biasUns,
-    minCell = minCell,
+    bw = bw,
     .data = .data,
     popGate = popGate,
     indBatchList = batchList,

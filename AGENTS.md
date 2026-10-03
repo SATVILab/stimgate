@@ -543,12 +543,15 @@ saved `biasUns`; channels without a saved bias use zero.
 
 ## 7. Specific Package Policies & Design Notes
 
-`gateStim()` keeps data, batch, marker/channel and population arguments plus
-`calcCytPosGates`, `biasUns` and `minCell`. Tuning belongs in the validated
-`stimControl()` object passed as `control`; per-marker overrides belong in
-`markerControl`, keyed by marker labels or channel names. Threshold sharing is
-controlled by logical `clusterGates`. Do not restore the removed tuning arguments
-on `gateStim()` or the dead `gateQuant` / `maxPosProbX` settings.
+`gateStim()` keeps data, batch, marker/channel and population arguments plus the
+user-facing `biasUns` and `bw` tuning knobs. All other tuning belongs in the
+validated `stimControl()` object passed as `control`; that includes the gating
+switches `calcCytPosGates` and `minCell`. Per-marker overrides belong in
+`markerControl`, keyed by marker labels or channel names: `bw` and `minCell` are
+allowed per marker, whereas `calcCytPosGates` is global-only and rejected there.
+Threshold sharing is controlled by logical `clusterGates`. Do not restore the
+removed tuning arguments on `gateStim()` or the dead `gateQuant` / `maxPosProbX`
+settings.
 
 Vectorised gate-line layers must preserve overlapping lines for coincident
 thresholds: give each line a distinct group, since ggplot2 deduplicates identical

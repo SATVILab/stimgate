@@ -17,9 +17,8 @@
   popGate,
   chnl,
   marker,
-  calcCytPosGates,
   biasUns,
-  minCell,
+  bw,
   control,
   markerControl
 ) {
@@ -61,13 +60,6 @@
   }
 
   # 3. Global-only checks
-  if (!is.logical(calcCytPosGates) || length(calcCytPosGates) != 1) {
-    stop("`calcCytPosGates` must be a single logical value (TRUE/FALSE).")
-  }
-  if (!is.numeric(minCell) || length(minCell) != 1 || minCell <= 0) {
-    stop("`minCell` must be a positive number.")
-  }
-
   if (!inherits(control, "stimControl")) {
     stop("`control` must be a stimControl object; use `stimControl()`.")
   }
@@ -75,7 +67,8 @@
     stop("`markerControl` must be NULL or a named list.")
   }
   .verifyChnlSettingsChnl(
-    settings = list(popGate = popGate, biasUns = biasUns), prefix = ""
+    settings = list(popGate = popGate, biasUns = biasUns, bw = bw),
+    prefix = ""
   )
 
   # Channel presence
@@ -132,6 +125,40 @@
     .check_positive_n(nm, settings = settings, prefix = prefix)
   }
 
+  if (
+    !.verifyIsNullOrNa(settings[["minCell"]]) &&
+      (!is.numeric(settings[["minCell"]]) ||
+        length(settings[["minCell"]]) != 1L ||
+        settings[["minCell"]] <= 0)
+  ) {
+    stop(paste0(prefix, "`minCell` must be a positive number."))
+  }
+
+  # The bandwidth-selector settings are only used when no fixed bandwidth is
+  # supplied for this channel.
+  if (.verifyIsNullOrNa(settings[["bw"]])) {
+    bwNcellMin <- settings[["bwNcellMin"]]
+    bwNcellMax <- settings[["bwNcellMax"]]
+    if (!.verifyIsNullOrNa(bwNcellMin) && !is.numeric(bwNcellMin)) {
+      stop(paste0(prefix, "`bwNcellMin` must be numeric."))
+    }
+    if (!.verifyIsNullOrNa(bwNcellMax)) {
+      if (!is.numeric(bwNcellMax)) {
+        stop(paste0(prefix, "`bwNcellMax` must be numeric."))
+      }
+      if (
+        !.verifyIsNullOrNa(bwNcellMin) &&
+          is.numeric(bwNcellMin) &&
+          length(bwNcellMin) == 1L &&
+          is.finite(bwNcellMin) &&
+          is.finite(bwNcellMax) &&
+          bwNcellMax < bwNcellMin
+      ) {
+        stop(paste0(prefix, "`bwNcellMax` must be >= `bwNcellMin`."))
+      }
+    }
+  }
+
   bwMin <- settings[["bwMin"]]
   bwMax <- settings[["bwMax"]]
   .verifyBwLimitSetting(
@@ -160,7 +187,8 @@
 
   bwMtd <- settings[["bwMtd"]]
   if (
-    !.verifyIsNullOrNa(bwMtd) &&
+    .verifyIsNullOrNa(settings[["bw"]]) &&
+      !.verifyIsNullOrNa(bwMtd) &&
       (!is.character(bwMtd) || length(bwMtd) != 1 || !bwMtd %in% .verifyBwMtds)
   ) {
     stop(paste0(

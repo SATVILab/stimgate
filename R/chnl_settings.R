@@ -7,7 +7,7 @@
   markerControl,
   control,
   biasUns,
-  minCell,
+  bw,
   .data,
   popGate,
   indBatchList,
@@ -20,7 +20,7 @@
     chnlLab = chnlLab
   )
   chnlSettingsCommon <- c(
-    list(popGate = popGate, biasUns = biasUns, minCell = minCell),
+    list(popGate = popGate, biasUns = biasUns, bw = bw),
     unclass(control)
   )
   chnlList <- purrr::map(chnl, function(chnlCurr) {
@@ -591,8 +591,11 @@ stimgateMetaReadBatchList <- function(pathProject) {
     stop("`markerControl` elements must have non-empty names.")
   }
   allowed <- c(
-    setdiff(names(formals(stimControl)), "locEnforceShapeThreshold"),
-    "biasUns", "minCell", "popGate"
+    setdiff(
+      names(formals(stimControl)),
+      c("locEnforceShapeThreshold", "calcCytPosGates")
+    ),
+    "biasUns", "bw", "popGate"
   )
   resolved <- vapply(seq_along(markerControl), function(i) {
     nm <- nms[[i]]

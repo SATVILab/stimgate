@@ -1,5 +1,15 @@
 #' @title Tuning settings for stimulation gating
 #' @description Construct validated tuning settings for [gateStim()].
+#' @param calcCytPosGates logical. Whether to refine each clustered one-marker
+#'   gate using the target-marker distribution among cells positive for at least
+#'   one other cytokine. A taut-string density is fitted to those cells. The
+#'   clustered gate is lowered to the leftmost internal antimode strictly between
+#'   the full stimulated marginal peak plus one third of its left-window width
+#'   and the clustered gate. If no eligible antimode exists, the clustered gate
+#'   is retained. Default is TRUE.
+#' @param minCell numeric. Minimum number of cells required for reliable gating.
+#'   Default is 100. Samples with fewer cells will be skipped as they don't provide
+#'   sufficient statistical power for accurate gate identification.
 #' @param biasUnsFactor numeric. Multiplicative factor applied to biasUns.
 #'   Default is 1. Values > 1 increase the bias effect, values < 1 decrease it.
 #'   This provides fine-tuning of the bias correction.
@@ -9,7 +19,6 @@
 #' @param cpMin numeric. Minimum allowable cutpoint value. When NULL (default),
 #'   no minimum is enforced. Useful for ensuring gates don't fall below known
 #'   technical thresholds or background levels.
-#' @param bw numeric. Specify the bandwith for density estimation. When NULL (default), bandwidth is estimated automatically. Default is `NULL`.
 #' @param bwMtd character. Method for automated bandwidth selection. Options include `"nrd0"`, `"sj"`, `"hpi0"`, `"hpi1"`, `"hpi2"` and `"hpi3"`, plus background-normalised variants `"nrd0Norm"`, `"sjNorm"`, `"hpi0Norm"`, `"hpi1Norm"`, `"hpi2Norm"` and `"hpi3Norm"`. The normalised variants first identify a background core and a high-side component, then estimate bandwidths after component normalisation. By default this uses moment-matched normal components (`normMtd = "moments"`); the older Box-Cox route remains available for scalar bandwidths with `normMtd = "boxcox"`. Ignored if `bw` is set. Default is `"hpi1"`.
 #' @param bwScope "cytokine", "cluster" or "sample". Which samples share the
 #'   scalar local-FDR bandwidth. `"cytokine"` estimates the bandwidths of
@@ -162,10 +171,13 @@
 #'   bandwidths only. Default is `"moments"`.
 #' @details
 #' Most users never need to change these settings. Arguments are grouped into
-#' bias and expression limits (`biasUnsFactor`, `excMin`, `cpMin`), bandwidth
-#' selection (`bw` through `bwCluster`), threshold sharing (`clusterGates`,
+#' gating behaviour (`calcCytPosGates`), cell-count limits (`minCell`), bias and
+#' expression limits (`biasUnsFactor`, `excMin`, `cpMin`), bandwidth selection
+#' (`bwMtd` through `bwCluster`), threshold sharing (`clusterGates`,
 #' `gateCombn`), local-FDR thresholding (`loc*`), and advanced/experimental
 #' adaptive and normalised bandwidths (`bwAdaptive*`, `norm*`).
+#' A fixed bandwidth is set on [gateStim()] through `bw`, or per marker through
+#' `markerControl`; when it is fixed the bandwidth-selector settings are ignored.
 #' Use `markerControl` in [gateStim()] for per-marker overrides.
 #' @return A list of class `stimControl`.
 #' @examples
@@ -173,10 +185,11 @@
 #' stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #' @export
 stimControl <- function(
+  calcCytPosGates = TRUE,
+  minCell = 1e2,
   biasUnsFactor = 1,
   excMin = TRUE,
   cpMin = NULL,
-  bw = NULL,
   bwMtd = "hpi1",
   bwScope = "cytokine",
   bwAdj = 1,
@@ -220,26 +233,13 @@ stimControl <- function(
   ctrl <- as.list(environment())
 
   if (
-    .verifyIsNullOrNa(bw) &&
-      !.verifyIsNullOrNa(bwNcellMin) &&
-      !is.numeric(bwNcellMin)
+    !is.logical(calcCytPosGates) || length(calcCytPosGates) != 1L ||
+      is.na(calcCytPosGates)
   ) {
-    stop("`bwNcellMin` must be numeric.")
+    stop("`calcCytPosGates` must be a single logical value (TRUE/FALSE).")
   }
-  if (.verifyIsNullOrNa(bw) && !.verifyIsNullOrNa(bwNcellMax)) {
-    if (!is.numeric(bwNcellMax)) {
-      stop("`bwNcellMax` must be numeric.")
-    }
-    if (
-      !.verifyIsNullOrNa(bwNcellMin) &&
-        is.numeric(bwNcellMin) &&
-        length(bwNcellMin) == 1L &&
-        is.finite(bwNcellMin) &&
-        is.finite(bwNcellMax) &&
-        bwNcellMax < bwNcellMin
-    ) {
-      stop("`bwNcellMax` must be >= `bwNcellMin`.")
-    }
+  if (!is.numeric(minCell) || length(minCell) != 1L || minCell <= 0) {
+    stop("`minCell` must be a positive number.")
   }
   if (
     !is.logical(locEnforceShapeThreshold) ||
@@ -256,24 +256,20 @@ stimControl <- function(
     stop("`clusterGates` must be TRUE or FALSE")
   }
 
-  # NULL/NA overrides can inherit values, but common required settings cannot.
-  settings <- ctrl
-  if (!.verifyIsNullOrNa(bw)) {
-    settings[["bwMtd"]] <- NULL
-    settings[["bwScope"]] <- NULL
-  }
+  # Required global settings must be supplied explicitly; per-channel NULL/NA
+  # overrides inherit these values.
   required <- c(
     "excMin", "biasUnsFactor", "bwAdj", "gateCombn", "bwFallback",
-    if (.verifyIsNullOrNa(bw)) c("bwMtd", "bwScope")
+    "bwMtd", "bwScope"
   )
-  isMissing <- vapply(settings[required], .verifyIsNullOrNa, logical(1))
+  isMissing <- vapply(ctrl[required], .verifyIsNullOrNa, logical(1))
   if (any(isMissing)) {
     stop(
       "Must be supplied (not NULL or NA): ",
       paste0("`", required[isMissing], "`", collapse = ", ")
     )
   }
-  .verifyChnlSettingsChnl(settings = settings, prefix = "")
+  .verifyChnlSettingsChnl(settings = ctrl, prefix = "")
 
   structure(ctrl, class = "stimControl")
 }
