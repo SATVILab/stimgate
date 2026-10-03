@@ -66,11 +66,28 @@
 #' @param bwAdj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
 #' @param bwNcellMin numeric. Minimum number of cells requested by the bandwidth selector. For ordinary methods this controls internal up-sampling with jitter. For `*Norm` methods it is passed into the background-core/right-excess selector so rare right-tail cells are considered before any sampling is done. Ignored if `bw` is set. Default is 100.
 #' @param bwNcellMax numeric. Maximum number of cells requested by the bandwidth selector. For ordinary methods this controls internal down-sampling. For `*Norm` methods it limits the constructed background-core/right-excess bandwidth sample after the full distribution has been inspected. Ignored if `bw` is set. Default is 100 000.
-#' @param bwCluster numeric. Optional fallback bandwidth for cluster-based
-#'   local-FDR refinement. The cluster step first tries to use the median
-#'   bandwidth across samples with directly generated local-FDR thresholds.
-#'   `bwCluster` is used when that common bandwidth cannot be estimated. Default
-#'   is `NULL`.
+#' @param bwCluster numeric or NULL. Bandwidth for the densities clustered by
+#'   the cluster-based threshold sharing (`tolClust`). When `NULL`, the shared
+#'   local-FDR bandwidth (see `bwScope`) is used, or, with
+#'   `bwScope = "sample"`, the median bandwidth across samples with directly
+#'   generated local-FDR thresholds. Default is `NULL`.
+#' @param bwScope "cytokine", "cluster" or "sample". Which samples share the
+#'   scalar local-FDR bandwidth. `"cytokine"` estimates the bandwidths of
+#'   about 100 tubes spread across the batches (all tubes when there are
+#'   fewer) and uses their 10% trimmed mean for every sample of the channel.
+#'   `"cluster"` clusters all tubes on their densities up to the right shoulder
+#'   of the left modal complex, estimates bandwidths for about 100 tubes spread
+#'   across the clusters (all tubes when there are fewer, and at least one per
+#'   cluster) and gives each tube its cluster's median bandwidth. `"sample"`
+#'   estimates the bandwidth separately for every stimulated sample. Tubes with
+#'   fewer than `minCell` cells are excluded from shared bandwidths. In every
+#'   case a sample uses the smaller of its stimulated and unstimulated tube
+#'   bandwidths. The chosen values are reported while gating and saved as
+#'   `bwShared` (and, for `"cluster"`, the per-tube table `bwSharedTbl`) in
+#'   `stimgateMetaReadSettingsChnls(pathProject)`, so an automatic value can be
+#'   inspected and then fixed for a marker through `bw` in `markerSettings`.
+#'   Ignored if `bw` is set or the adaptive bandwidth is used.
+#'   Default is `"cytokine"`.
 #' @param bwAdaptive logical. Whether local-FDR density estimation should use an
 #'   adaptive location-specific bandwidth curve when `bw` is `NULL`. The adaptive
 #'   path estimates separate normalised bandwidth curves for the stimulated and
@@ -298,6 +315,7 @@ gateStim <- function(
   bwNcellMin = 1e2,
   bwNcellMax = 1e5,
   bwCluster = NULL,
+  bwScope = "cytokine",
   bwAdaptive = FALSE,
   bwAdaptiveDensityN = NULL,
   bwAdaptivePadFrac = 0.15,
@@ -402,6 +420,7 @@ gateStim <- function(
     bwNcellMin = bwNcellMin,
     bwNcellMax = bwNcellMax,
     bwCluster = bwCluster,
+    bwScope = bwScope,
     bwAdaptive = bwAdaptive,
     bwAdaptiveDensityN = bwAdaptiveDensityN,
     bwAdaptivePadFrac = bwAdaptivePadFrac,
@@ -473,6 +492,7 @@ gateStim <- function(
     bwNcellMin = bwNcellMin,
     bwNcellMax = bwNcellMax,
     bwCluster = bwCluster,
+    bwScope = bwScope,
     bwAdaptive = bwAdaptive,
     bwAdaptiveDensityN = bwAdaptiveDensityN,
     bwAdaptivePadFrac = bwAdaptivePadFrac,

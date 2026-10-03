@@ -33,6 +33,7 @@
   bwNcellMin,
   bwNcellMax,
   bwCluster,
+  bwScope,
   bwAdaptive,
   bwAdaptiveDensityN,
   bwAdaptivePadFrac,
@@ -144,13 +145,15 @@
 
   # 4. Settings shared with per-channel validation. Per channel, NULL means
   # "inherit the global value", so the global value must itself be supplied.
-  # `bwMtd` is only used (and so only checked) when `bw` is not fixed.
+  # `bwMtd` and `bwScope` are only used (and so only checked) when `bw` is not
+  # fixed.
   if (!.verifyIsNullOrNa(bw)) {
     settings[["bwMtd"]] <- NULL
+    settings[["bwScope"]] <- NULL
   }
   required <- c(
     "excMin", "biasUnsFactor", "maxPosProbX", "bwAdj", "gateCombn",
-    "gateQuant", if (.verifyIsNullOrNa(bw)) "bwMtd"
+    "gateQuant", if (.verifyIsNullOrNa(bw)) c("bwMtd", "bwScope")
   )
   isMissing <- vapply(settings[required], .verifyIsNullOrNa, logical(1))
   if (any(isMissing)) {
@@ -421,6 +424,18 @@
     ) {
       stop(paste0(prefix, "`normMtd` must be either 'moments' or 'boxcox'."))
     }
+  }
+
+  if (
+    !.verifyIsNullOrNa(settings[["bwScope"]]) &&
+      (!is.character(settings[["bwScope"]]) ||
+        length(settings[["bwScope"]]) != 1L ||
+        !settings[["bwScope"]] %in% c("cytokine", "cluster", "sample"))
+  ) {
+    stop(paste0(
+      prefix,
+      "`bwScope` must be one of 'cytokine', 'cluster' or 'sample'."
+    ))
   }
 
   if (

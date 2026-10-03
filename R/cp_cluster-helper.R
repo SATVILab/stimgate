@@ -68,6 +68,14 @@
   exLookup,
   chnlSettings
 ) {
+  # A user-specified cluster bandwidth, then the shared local-FDR bandwidth
+  for (bwSet in list(chnlSettings$bwCluster, chnlSettings$bwShared)) {
+    bwSet <- suppressWarnings(as.numeric(bwSet))[1]
+    if (is.finite(bwSet) && bwSet > 0) {
+      return(bwSet)
+    }
+  }
+
   bwUnsCache <- new.env(parent = emptyenv()) # nolint: object_usage_linter.
 
   bwVec <- purrr::map_dbl(
@@ -116,14 +124,8 @@
   }
 
   bwFallback <- suppressWarnings(
-    as.numeric(chnlSettings$bwCluster)
+    as.numeric(chnlSettings$bw)
   )[1]
-
-  if (!is.finite(bwFallback) || bwFallback <= 0) {
-    bwFallback <- suppressWarnings(
-      as.numeric(chnlSettings$bw)
-    )[1]
-  }
 
   if (is.finite(bwFallback) && bwFallback > 0) {
     return(bwFallback)
@@ -330,7 +332,7 @@
 
 #' @keywords internal
 .getCpClusterLocFeatureCols <- function(featureTbl) {
-  grep("^(uns|stim)_x\\d+$", names(featureTbl), value = TRUE)
+  grep("^((uns|stim)_)?x\\d+$", names(featureTbl), value = TRUE)
 }
 
 #' @keywords internal

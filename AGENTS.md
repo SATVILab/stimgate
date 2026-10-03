@@ -371,6 +371,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `UtilsCytoRSV-chnl_lab.R`: Channel label utilities (get markers/channels from cytometry objects).
   - `UtilsGGSV-axisLimits.R`: `ggplot2` axis limit helpers.
   - `bw_norm_helpers.R`: Shared bandwidth helpers for standard and normalised bandwidth methods.
+  - `bw_shared.R`: Per-cytokine and per-tube-cluster shared local-FDR bandwidths (`bwScope`).
   - `check.R`: Input validation helpers.
   - `chnl_settings.R`: Complete channel parameter list with all required settings.
   - `cp-sub.R`: Auxiliary functions for getting clusters.
@@ -627,7 +628,22 @@ rows before drawing reference lines.
 11. **Real-data analyses replace outputs non-destructively**:
    Real-data analyses that recompute cached outputs (e.g. ACS CyTOF) build into a temporary sibling and swap it in on success (`.acsCytofReplaceDir()`), or compute all results before atomically writing them. Never delete the previous output before the new one is complete.
 
-12. **Versioning before the first Bioconductor release**:
+12. **Shared local-FDR bandwidths (`bwScope`, issue #417)**:
+   The scalar local-FDR bandwidth is chosen once per channel during settings
+   completion (`.completeChnlSettingsBwShared()`) and read in
+   `.getCpUnsLocGetDensRawDensitiesBw()` via `chnlSettings$bwShared` /
+   `bwSharedTbl`. `"cytokine"` (default) is the trimmed mean over about 100
+   spread tubes; tubes with fewer than `minCell` cells are excluded;
+   `"cluster"` clusters tubes up front on densities up to the left-complex
+   shoulder, independently of the threshold-sharing clusters in
+   `cp_cluster.R`; `"sample"` keeps per-sample estimation. Fixed `bw` and the
+   adaptive path bypass shared bandwidths. A sample still uses the smaller of
+   its stim and unstim tube bandwidths. Threshold sharing uses a supplied
+   `bwCluster`, else `bwShared`; `bwCluster` is not estimated automatically.
+   The clustering densities are not reusable as local-FDR densities (different
+   bandwidth, range, thinning and unstim cell filtering).
+
+13. **Versioning before the first Bioconductor release**:
    Keep `Version` in `DESCRIPTION` at `0.99.z` (three components, no `-n`
    suffix) until stimgate's first Bioconductor release, bumping `z` for each
    change worth marking. Do not move to `0.100.0` or higher; Bioconductor sets

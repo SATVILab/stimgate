@@ -25,6 +25,7 @@ gateStim(
   bwNcellMin = 100,
   bwNcellMax = 1e+05,
   bwCluster = NULL,
+  bwScope = "cytokine",
   bwAdaptive = FALSE,
   bwAdaptiveDensityN = NULL,
   bwAdaptivePadFrac = 0.15,
@@ -142,11 +143,29 @@ Default is \code{"auto"}.}
 
 \item{bwNcellMax}{numeric. Maximum number of cells requested by the bandwidth selector. For ordinary methods this controls internal down-sampling. For \verb{*Norm} methods it limits the constructed background-core/right-excess bandwidth sample after the full distribution has been inspected. Ignored if \code{bw} is set. Default is 100 000.}
 
-\item{bwCluster}{numeric. Optional fallback bandwidth for cluster-based
-local-FDR refinement. The cluster step first tries to use the median
-bandwidth across samples with directly generated local-FDR thresholds.
-\code{bwCluster} is used when that common bandwidth cannot be estimated. Default
-is \code{NULL}.}
+\item{bwCluster}{numeric or NULL. Bandwidth for the densities clustered by
+the cluster-based threshold sharing (\code{tolClust}). When \code{NULL}, the shared
+local-FDR bandwidth (see \code{bwScope}) is used, or, with
+\code{bwScope = "sample"}, the median bandwidth across samples with directly
+generated local-FDR thresholds. Default is \code{NULL}.}
+
+\item{bwScope}{"cytokine", "cluster" or "sample". Which samples share the
+scalar local-FDR bandwidth. \code{"cytokine"} estimates the bandwidths of
+about 100 tubes spread across the batches (all tubes when there are
+fewer) and uses their 10\% trimmed mean for every sample of the channel.
+\code{"cluster"} clusters all tubes on their densities up to the right shoulder
+of the left modal complex, estimates bandwidths for about 100 tubes spread
+across the clusters (all tubes when there are fewer, and at least one per
+cluster) and gives each tube its cluster's median bandwidth. \code{"sample"}
+estimates the bandwidth separately for every stimulated sample. Tubes with
+fewer than \code{minCell} cells are excluded from shared bandwidths. In every
+case a sample uses the smaller of its stimulated and unstimulated tube
+bandwidths. The chosen values are reported while gating and saved as
+\code{bwShared} (and, for \code{"cluster"}, the per-tube table \code{bwSharedTbl}) in
+\code{stimgateMetaReadSettingsChnls(pathProject)}, so an automatic value can be
+inspected and then fixed for a marker through \code{bw} in \code{markerSettings}.
+Ignored if \code{bw} is set or the adaptive bandwidth is used.
+Default is \code{"cytokine"}.}
 
 \item{bwAdaptive}{logical. Whether local-FDR density estimation should use an
 adaptive location-specific bandwidth curve when \code{bw} is \code{NULL}. The adaptive

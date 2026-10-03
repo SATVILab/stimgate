@@ -22,6 +22,7 @@
   bwNcellMin,
   bwNcellMax,
   bwCluster,
+  bwScope,
   bwAdaptive,
   bwAdaptiveDensityN,
   bwAdaptivePadFrac,
@@ -80,6 +81,7 @@
     bwNcellMin = bwNcellMin,
     bwNcellMax = bwNcellMax,
     bwCluster = bwCluster,
+    bwScope = bwScope,
     bwAdaptive = bwAdaptive,
     bwAdaptiveDensityN = bwAdaptiveDensityN,
     bwAdaptivePadFrac = bwAdaptivePadFrac,
@@ -220,15 +222,11 @@
     bwFallback = chnlSettings$bwFallback
   )
 
-  chnlSettings$bwCluster <- .completeChnlSettingsBwCluster(
+  chnlSettings <- .completeChnlSettingsBwShared(
+    chnlSettings = chnlSettings,
     indBatchList = indBatchList,
     .data = .data,
-    popGate = chnlSettings$popGate,
-    chnlCut = chnl,
-    pathProject = pathProject,
-    bwCluster = chnlSettings$bwCluster,
-    bwFallback = chnlSettings$bwFallback,
-    bwArgs = bwArgs
+    pathProject = pathProject
   )
 
   chnlSettings$cpMin <- .completeChnlSettingsCpMin(
@@ -433,86 +431,6 @@
   }
 
   stats::median(bwVec, na.rm = TRUE)
-}
-
-#' @keywords internal
-.completeChnlSettingsBwCluster <- function(
-  indBatchList,
-  .data,
-  popGate,
-  chnlCut,
-  pathProject,
-  bwCluster,
-  bwFallback,
-  bwArgs
-) {
-  if (!is.null(bwCluster)) {
-    if (
-      is.numeric(bwCluster) &&
-        length(bwCluster) == 1L &&
-        is.finite(bwCluster) &&
-        bwCluster > 0
-    ) {
-      return(bwCluster)
-    }
-    return(bwFallback)
-  }
-
-  bwVec <- purrr::map(
-    .completeChnlSettingsBatchInd(indBatchList),
-    function(i) {
-      exList <- try(
-        .getExList(
-          .data = .data,
-          indBatch = indBatchList[[i]],
-          pop = popGate,
-          chnlCut,
-          batch = names(indBatchList)[i],
-          pathProject = pathProject
-        ),
-        silent = TRUE
-      )
-
-      if (inherits(exList, "try-error")) {
-        return(bwFallback)
-      }
-
-      purrr::map_dbl(exList, function(ex) {
-        xVec <- .getCut(ex)
-        xVec <- xVec[is.finite(xVec)]
-
-        if (length(xVec) < 2L) {
-          return(bwFallback)
-        }
-
-        xVec <- xVec[xVec > min(xVec, na.rm = TRUE)]
-
-        if (length(xVec) < 2L || length(unique(xVec)) < 2L) {
-          return(bwFallback)
-        }
-
-        bwOut <- as.numeric(do.call(.bwCalcOne, c(
-          list(x = xVec, bwNcellMin = 1e4, bwNcellMax = 1e4),
-          bwArgs
-        )))[1]
-
-        if (!is.finite(bwOut) || bwOut <= 0) {
-          return(bwFallback)
-        }
-
-        bwOut
-      })
-    }
-  ) |>
-    unlist()
-
-  bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
-
-  if (length(bwVec) == 0L) {
-    return(bwFallback)
-  }
-
-  mean(bwVec, trim = 0.1, na.rm = TRUE)
 }
 
 #' @keywords internal
