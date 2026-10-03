@@ -42,75 +42,60 @@ run_preprocessing <- .as_flag(.get_qmd_param_env(
   "RUN_PREPROCESSING",
   FALSE
 ))
-pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "nk_pre", "b")
-run_preprocessing_vec_by_pop <- c(
-  tcrgd = NULL %||% run_preprocessing,
-  cd4 = NULL %||% run_preprocessing,
-  cd8 = NULL %||% run_preprocessing,
-  nk = NULL %||% run_preprocessing,
-  nk_pre = NULL %||% run_preprocessing,
-  b = NULL %||% run_preprocessing
-)
 run_stimgate <- .as_flag(.get_qmd_param_env(
   "run_stimgate",
   "RUN_STIMGATE",
   FALSE
 ))
-run_stimgate_vec_by_pop <- c(
-  tcrgd = NULL %||% run_stimgate,
-  cd4 = NULL %||% run_stimgate,
-  cd8 = NULL %||% run_stimgate,
-  nk = NULL %||% run_stimgate,
-  nk_pre = NULL %||% run_stimgate,
-  b = NULL %||% run_stimgate
-)
 run_comparators <- .as_flag(.get_qmd_param_env(
   "run_comparators",
   "RUN_COMPARATORS",
   FALSE
 ))
-run_comparators_vec_by_pop <- c(
-  tcrgd = NULL %||% run_comparators,
-  cd4 = NULL %||% run_comparators,
-  cd8 = NULL %||% run_comparators,
-  nk = NULL %||% run_comparators,
-  nk_pre = NULL %||% run_comparators,
-  b = NULL %||% run_comparators
-)
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
   TRUE
 ))
-run_plots_vec_by_pop <- c(
-  tcrgd = NULL %||% run_plots,
-  cd4 = NULL %||% run_plots,
-  cd8 = NULL %||% run_plots,
-  nk = NULL %||% run_plots,
-  nk_pre = NULL %||% run_plots,
-  b = NULL %||% run_plots
-)
-tester_n_sample <- .get_qmd_param_env(
+tester_n_sample <- as.integer(.get_qmd_param_env(
   "tester_n_sample",
   "TESTER_N_SAMPLE",
   20L
+))
+n_workers <- as.integer(.get_qmd_param_env(
+  "n_workers",
+  "ACS_N_WORKERS",
+  2L
+))
+
+if (is.na(n_workers) || n_workers < 1L) {
+  stop("n_workers must be coercible to an integer of at least one.")
+}
+.acsCytofBatchList(tester_n_sample)
+
+pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "nk_pre", "b")
+run_preprocessing_vec_by_pop <- stats::setNames(
+  rep(run_preprocessing, length(pop_vec)),
+  pop_vec
 )
-n_workers <- max(
-  1L,
-  as.integer(.get_qmd_param_env(
-    "n_workers",
-    "ACS_N_WORKERS",
-    2L
-  ))
+run_stimgate_vec_by_pop <- stats::setNames(
+  rep(run_stimgate, length(pop_vec)),
+  pop_vec
+)
+run_comparators_vec_by_pop <- stats::setNames(
+  rep(run_comparators, length(pop_vec)),
+  pop_vec
+)
+# Diagnostic StimGate plots are only generated from a freshly gated result.
+# The downstream manual-comparison plots remain controlled by run_plots.
+run_stimgate_plots_vec_by_pop <- stats::setNames(
+  rep(run_plots && run_stimgate, length(pop_vec)),
+  pop_vec
 )
 bias_uns <- 0.15
-bias_uns_vec_by_pop <- c(
-  tcrgd = NULL %||% bias_uns,
-  cd4 = NULL %||% bias_uns,
-  cd8 = NULL %||% bias_uns,
-  nk = NULL %||% bias_uns,
-  nk_pre = NULL %||% bias_uns,
-  b = NULL %||% bias_uns
+bias_uns_vec_by_pop <- stats::setNames(
+  rep(bias_uns, length(pop_vec)),
+  pop_vec
 )
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
@@ -186,22 +171,24 @@ tcrgd_tester <- .acsCytofRunPopulation(
   pathScratchBase = path_scratch_base,
   runPreprocessing = run_preprocessing,
   runMethods = run_stimgate,
-  runPlots = run_plots,
+  runPlots = run_plots && run_stimgate,
   nSample = tester_n_sample,
   biasUns = bias_uns_vec_by_pop[["tcrgd"]],
   outputGroup = "tester"
 )
 
-tcrgd_comparison_tester <- .acsCytofRunComparisonMethods(
-  pop = "tcrgd",
-  pathFcsBase = path_fcs_base,
-  pathGsBase = path_gs_base,
-  pathScratchBase = path_scratch_base,
-  runMethods = run_comparators,
-  nSample = tester_n_sample,
-  outputGroup = "tester",
-  pathFbeta = path_fbeta
-)
+if (isTRUE(run_comparators)) {
+  tcrgd_comparison_tester <- .acsCytofRunComparisonMethods(
+    pop = "tcrgd",
+    pathFcsBase = path_fcs_base,
+    pathGsBase = path_gs_base,
+    pathScratchBase = path_scratch_base,
+    runMethods = TRUE,
+    nSample = tester_n_sample,
+    outputGroup = "tester",
+    pathFbeta = path_fbeta
+  )
+}
 ```
 
 ### Across populations, in parallel
@@ -213,11 +200,9 @@ the `n_workers` parameter or `ACS_N_WORKERS` environment variable.
 ```{r}
 #| label: run-all-populations
 #| results: hide
-if (isTRUE(run_stimgate)) {
+if (isTRUE(run_preprocessing) || isTRUE(run_stimgate)) {
   n_workers_use <- min(n_workers, length(pop_vec))
   old_plan <- future::plan()
-
-  Sys.setenv("STIMGATE_DEBUG" = "TRUE")
 
   population_runs <- tryCatch(
     {
@@ -237,7 +222,7 @@ if (isTRUE(run_stimgate)) {
             pathScratchBase = path_scratch_base,
             runPreprocessing = run_preprocessing_vec_by_pop[[pop]],
             runMethods = run_stimgate_vec_by_pop[[pop]],
-            runPlots = run_plots_vec_by_pop[[pop]],
+            runPlots = run_stimgate_plots_vec_by_pop[[pop]],
             biasUns = bias_uns_vec_by_pop[[pop]]
           )
         },
@@ -256,18 +241,16 @@ if (isTRUE(run_stimgate)) {
   ]
 
   if (length(failed_pop_vec) > 0L) {
-    warning(
-      "ACS CyTOF populations failed: ",
-      paste(failed_pop_vec, collapse = ", ")
+    failure_messages <- vapply(
+      population_runs[failed_pop_vec],
+      function(x) paste0(x$pop, ": ", x$error),
+      character(1)
     )
 
-    for (pop in failed_pop_vec) {
-      message(
-        pop,
-        ": ",
-        population_runs[[pop]]$error
-      )
-    }
+    stop(
+      "ACS population preprocessing/StimGate runs failed:\n",
+      paste(failure_messages, collapse = "\n")
+    )
   }
 }
 ```
@@ -353,34 +336,31 @@ manual file has no matching population.
 
 ```{r}
 #| label: format-manual-comparison
-path_manual_output <- file.path(
-  path_scratch_base,
+path_manual_output <- projr::projr_path_get_dir(
+  "cache",
+  "acs_cytof",
   "manual-comparison"
 )
-if (dir.exists(path_manual_output)) {
-  unlink(path_manual_output, recursive = TRUE)
-}
-dir.create(path_manual_output, showWarnings = FALSE, recursive = TRUE)
 data("fn_to_sampleid_map", package = "DataTidyACSCyTOFFAUST")
 
+# Build the complete comparison before touching the last good saved output.
 manual_comparison_tbl <- comp_against_manual_cyt(
   fn = "Cytokines_10Jun2021_2.csv",
   path_scratch_base = path_scratch_base,
   path_fcs_base = path_fcs_base,
   pop = pop_vec,
   methods = c("stimgate", "tailgate", "fbeta"),
-  path_dir_save = path_manual_output,
-  save_plots = run_plots,
+  path_dir_save = NULL,
+  save_plots = FALSE,
   sample_map = fn_to_sampleid_map
 )
 manual_summary_tbl <- attr(manual_comparison_tbl, "summary")
-path_comparison <- projr::projr_path_get(
-  "cache",
-  "acs_cytof",
-  "manual-comparison",
-  "manual-comparison.rds"
+
+.acsCytofManualSave(
+  comparisonTbl = manual_comparison_tbl,
+  pathDirSave = path_manual_output,
+  savePlots = run_plots
 )
-saveRDS(manual_comparison_tbl, path_comparison)
 ```
 
 ## Output tables and figures

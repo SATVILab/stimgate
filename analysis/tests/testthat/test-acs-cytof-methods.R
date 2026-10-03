@@ -1,4 +1,5 @@
 root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
+script_runtime <- file.path(root_dir, "scripts", "r", "analysis-runtime.R")
 script_gate <- file.path(root_dir, "scripts", "r", "acs_cytof-gate.R")
 script_methods <- file.path(root_dir, "scripts", "r", "acs_cytof-methods.R")
 script_manual <- file.path(root_dir, "scripts", "r", "acs_cytof-manual.R")
@@ -8,6 +9,7 @@ qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
 
 .load_acs_method_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
+  source(script_runtime, local = env)
   source(script_gate, local = env)
   source(script_methods, local = env)
   source(script_manual, local = env)
@@ -306,4 +308,69 @@ test_that("combination counts collapse to one positive row per cytokine", {
   expect_equal(out$countStim, rep(32L, length(channels)))
   expect_equal(as.character(out$cyt), unname(env$.acsCytofChannelMap()))
   expect_equal(out$cytCombn, paste0(out$cyt, "+"))
+})
+
+
+test_that("manual comparison save preserves the last good RDS on pre-save failure", {
+  env <- .load_acs_method_env()
+  comparison_tbl <- tibble::tibble(
+    method = c("stimgate", "stimgate"),
+    pop = c("CD4 T cells", "CD4 T cells"),
+    cyt = c("IFNg", "IFNg"),
+    stim = c("mtb", "ebv"),
+    freq_bs_auto = c(1.0, 2.0),
+    freq_bs_man = c(1.1, 1.8)
+  ) |>
+    dplyr::mutate(
+      diff = .data$freq_bs_auto - .data$freq_bs_man,
+      abs_diff = abs(.data$diff),
+      rel_error = .data$diff / .data$freq_bs_man,
+      abs_rel_error = abs(.data$rel_error)
+    )
+
+  path_dir <- tempfile("acs-manual-output-")
+  withr::defer(unlink(path_dir, recursive = TRUE))
+
+  expect_no_error(env$.acsCytofManualSave(
+    comparisonTbl = comparison_tbl,
+    pathDirSave = path_dir,
+    savePlots = FALSE
+  ))
+  path_rds <- file.path(path_dir, "manual-comparison.rds")
+  expect_equal(readRDS(path_rds), comparison_tbl)
+
+  expect_error(env$.acsCytofManualSave(
+    comparisonTbl = tibble::tibble(),
+    pathDirSave = path_dir,
+    savePlots = FALSE
+  ))
+  expect_equal(readRDS(path_rds), comparison_tbl)
+})
+
+test_that("analysis 9 builds before saving to the canonical manual output", {
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("path_dir_save = NULL", content, fixed = TRUE))
+  expect_true(grepl(".acsCytofManualSave(", content, fixed = TRUE))
+  expect_true(grepl(
+    'path_manual_output <- projr::projr_path_get_dir(',
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    'path_manual_output <- file.path(\n  path_scratch_base',
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    "unlink(path_manual_output, recursive = TRUE)",
+    content,
+    fixed = TRUE
+  ))
+
+  save_body <- paste(
+    deparse(body(.load_acs_method_env()$.acsCytofManualSave)),
+    collapse = "\n"
+  )
+  expect_true(grepl(".write_rds_atomic(", save_body, fixed = TRUE))
 })
