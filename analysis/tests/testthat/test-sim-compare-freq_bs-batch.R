@@ -1121,3 +1121,198 @@ test_that(
     expect_equal(res_clean[common_cols], res_zero_sd[common_cols])
   }
 )
+
+
+test_that(".simComparePrimaryOutputComplete requires exact primary coverage", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(script_comp, local = env)
+
+  primary <- tidyr::expand_grid(
+    iter = 1:2,
+    sample = as.character(1:2),
+    method = c("stimgate", "fbeta", "tailgate")
+  ) |>
+    dplyr::mutate(
+      propRespTruth = 0.1,
+      propRespEst = 0.1,
+      error = NA_character_
+    )
+
+  expect_true(
+    env$.simComparePrimaryOutputComplete(
+      primary,
+      nSample = 2,
+      nIter = 2
+    )
+  )
+  expect_false(
+    env$.simComparePrimaryOutputComplete(
+      primary[-1, , drop = FALSE],
+      nSample = 2,
+      nIter = 2
+    )
+  )
+
+  duplicated <- dplyr::bind_rows(primary, primary[1, , drop = FALSE])
+  expect_false(
+    env$.simComparePrimaryOutputComplete(
+      duplicated,
+      nSample = 2,
+      nIter = 2
+    )
+  )
+
+  failed <- primary
+  failed$error[[1]] <- "competitor failed"
+  expect_false(
+    env$.simComparePrimaryOutputComplete(
+      failed,
+      nSample = 2,
+      nIter = 2
+    )
+  )
+
+  nonfinite <- primary
+  nonfinite$propRespEst[[1]] <- NA_real_
+  expect_false(
+    env$.simComparePrimaryOutputComplete(
+      nonfinite,
+      nSample = 2,
+      nIter = 2
+    )
+  )
+})
+
+test_that(".simCompareGridOutputStatus catches missing, failed, and empty chunks", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(script_comp, local = env)
+
+  make_scenario <- function(sim_id) {
+    tidyr::expand_grid(
+      sim_id = sim_id,
+      iter = 1:2,
+      sample = as.character(1:2),
+      method = c("stimgate", "fbeta", "tailgate")
+    ) |>
+      dplyr::mutate(
+        propRespTruth = 0.1,
+        propRespEst = 0.1,
+        error = NA_character_
+      )
+  }
+
+  grid <- tibble::tibble(sim_id = 1:2)
+  complete <- dplyr::bind_rows(make_scenario(1L), make_scenario(2L))
+  status <- env$.simCompareGridOutputStatus(
+    complete,
+    sim_grid = grid,
+    nSample = 2,
+    nIter = 2
+  )
+  expect_true(status$collate_ok)
+  expect_true(status$validation_ok)
+  expect_equal(status$completed_ids, 1:2)
+  expect_length(status$failed_ids, 0L)
+
+  missing <- env$.simCompareGridOutputStatus(
+    make_scenario(1L),
+    sim_grid = grid,
+    nSample = 2,
+    nIter = 2
+  )
+  expect_false(missing$collate_ok)
+  expect_false(missing$validation_ok)
+  expect_equal(missing$missing_ids, 2L)
+
+  failed_data <- complete
+  failed_data$error[failed_data$sim_id == 2L][[1]] <- "failed"
+  failed <- env$.simCompareGridOutputStatus(
+    failed_data,
+    sim_grid = grid,
+    nSample = 2,
+    nIter = 2
+  )
+  expect_true(failed$collate_ok)
+  expect_false(failed$validation_ok)
+  expect_equal(failed$failed_ids, 2L)
+
+  empty <- env$.simCompareGridOutputStatus(
+    tibble::tibble(),
+    sim_grid = tibble::tibble(sim_id = integer()),
+    nSample = 2,
+    nIter = 2
+  )
+  expect_true(empty$collate_ok)
+  expect_true(empty$validation_ok)
+  expect_length(empty$completed_ids, 0L)
+})
+
+test_that("alternative comparator exceptions remain explicit run errors", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(script_comp, local = env)
+
+  assign(
+    ".simCompareFbetaEnvironment",
+    function(...) new.env(parent = emptyenv()),
+    envir = env
+  )
+  assign(
+    ".simCompareFbetaThreshold",
+    function(...) stop("fbeta boom"),
+    envir = env
+  )
+  assign(
+    ".simCompareTailgateThreshold",
+    function(...) {
+      list(
+        threshold = 0,
+        thresholdMetric = NA_real_,
+        thresholdOrigin = "calculated"
+      )
+    },
+    envir = env
+  )
+
+  x_uns <- matrix(c(-2, -1, 0, 1), ncol = 1)
+  x_stim <- matrix(c(-1, 0, 1, 2), ncol = 1)
+  colnames(x_uns) <- "F1"
+  colnames(x_stim) <- "F1"
+
+  flow_frames <- list(
+    flowCore::flowFrame(expr = x_uns),
+    flowCore::flowFrame(expr = x_stim)
+  )
+  labels <- list(
+    c("gn", "gn", "gp", "gp"),
+    c("gn", "gn", "gp", "gp")
+  )
+
+  res <- env$.simCompareAlternativeRows(
+    flowFrameList = flow_frames,
+    labelsList = labels,
+    nSample = 1,
+    nCondition = 2,
+    chnl = "F1",
+    fallbackHighValue = TRUE
+  )
+
+  fbeta_row <- res[res$method == "fbeta", , drop = FALSE]
+  tailgate_row <- res[res$method == "tailgate", , drop = FALSE]
+
+  expect_equal(fbeta_row$error[[1]], "fbeta boom")
+  expect_equal(
+    fbeta_row$gateReturnPoint[[1]],
+    "fbeta_error_fallback_high_value"
+  )
+  expect_true(isTRUE(fbeta_row$thresholdFallbackUsed[[1]]))
+  expect_true(is.finite(fbeta_row$propRespEst[[1]]))
+
+  expect_true(is.na(tailgate_row$error[[1]]))
+  expect_equal(tailgate_row$gateReturnPoint[[1]], "tailgate_calculated")
+})
