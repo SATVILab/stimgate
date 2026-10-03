@@ -667,7 +667,6 @@ if (isTRUE(run_simulations)) {
   )
   message("Skipping simulations; using canonical promoted results.")
 }
-}
 ```
 
 ### Collate results
