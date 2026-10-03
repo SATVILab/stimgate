@@ -320,6 +320,9 @@ the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-onl
 (`workflow_dispatch`); do not add automatic triggers. See
 `analysis/tests/README.md` for commands and coverage limits.
 
+The default Slurm job list includes both Analysis 2a and 2b. Keep enabled
+chunked analyses in the `scripts` list and `chunked_qmd_stem_for_script()`
+mapping, sharing run ID, chunk count and shuffle seed across each run.
 Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`;
 validate all target arguments before submitting jobs. Keep mocked submission and
 render checks in `analysis/tests/test-slurm-launchers.sh` and run them in analysis
@@ -379,6 +382,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `UtilsCytoRSV-chnl_lab.R`: Channel label utilities (get markers/channels from cytometry objects).
   - `UtilsGGSV-axisLimits.R`: `ggplot2` axis limit helpers.
   - `bw_norm_helpers.R`: Shared bandwidth helpers for standard and normalised bandwidth methods.
+  - `bw_shared.R`: Per-cytokine and per-tube-cluster shared local-FDR bandwidths (`bwScope`).
   - `check.R`: Input validation helpers.
   - `chnl_settings.R`: Complete channel parameter list with all required settings.
   - `cp-sub.R`: Auxiliary functions for getting clusters.
@@ -653,7 +657,22 @@ rows before drawing reference lines.
    comparison renders read the saved manual-comparison table without raw FCS or
    manual CSV inputs; GatingSet diagnostics are optional when those caches are absent.
 
-12. **Versioning before the first Bioconductor release**:
+12. **Shared local-FDR bandwidths (`bwScope`, issue #417)**:
+   The scalar local-FDR bandwidth is chosen once per channel during settings
+   completion (`.completeChnlSettingsBwShared()`) and read in
+   `.getCpUnsLocGetDensRawDensitiesBw()` via `chnlSettings$bwShared` /
+   `bwSharedTbl`. `"cytokine"` (default) is the trimmed mean over about 100
+   spread tubes; tubes with fewer than `minCell` cells are excluded;
+   `"cluster"` clusters tubes up front on densities up to the left-complex
+   shoulder, independently of the threshold-sharing clusters in
+   `cp_cluster.R`; `"sample"` keeps per-sample estimation. Fixed `bw` and the
+   adaptive path bypass shared bandwidths. A sample still uses the smaller of
+   its stim and unstim tube bandwidths. Threshold sharing uses a supplied
+   `bwCluster`, else `bwShared`; `bwCluster` is not estimated automatically.
+   The clustering densities are not reusable as local-FDR densities (different
+   bandwidth, range, thinning and unstim cell filtering).
+
+13. **Versioning before the first Bioconductor release**:
    Keep `Version` in `DESCRIPTION` at `0.99.z` (three components, no `-n`
    suffix) until stimgate's first Bioconductor release, bumping `z` for each
    change worth marking. Do not move to `0.100.0` or higher; Bioconductor sets

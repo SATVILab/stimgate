@@ -66,6 +66,7 @@ test_that("verifyGlobalAndPerChannelAgreeOnSharedSettings", {
     list("bw", -1, 0.5),
     list("bwAdj", 0, 2),
     list("bwCluster", -1, 0.5),
+    list("bwScope", "batch", "cluster"),
     list("tolClust", 0, 1e-5),
     list("bwMtd", "foo", "sj"),
     list("gateCombn", "foo", c("min", "max")),

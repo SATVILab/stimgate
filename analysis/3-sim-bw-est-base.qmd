@@ -83,7 +83,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "base")
-analysis_semantics_version <- "bandwidth-est-base-v4"
+analysis_semantics_version <- "bandwidth-est-base-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)

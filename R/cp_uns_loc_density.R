@@ -927,6 +927,12 @@
   if (!is.null(chnlSettings$bw)) {
     return(chnlSettings$bw)
   }
+  if (!is.null(chnlSettings$bwShared)) {
+    return(min(
+      .bwSharedGet(chnlSettings, .getInd(exTblStimThreshold)),
+      .bwSharedGet(chnlSettings, .getInd(exTblUnsThreshold))
+    ))
+  }
   bwStim <- .getCpUnsLocGetDensRawDensitiesBwInit(
     .data = .getCut(exTblStimThreshold),
     chnlSettings = chnlSettings
