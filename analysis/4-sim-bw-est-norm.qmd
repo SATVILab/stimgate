@@ -6,6 +6,7 @@ format:
     toc: true
 params:
   analysis_run_id: null
+  simulation_seed: 12345
   sim_grid_chunk_index: 1
   sim_grid_n_chunks: 1
   sim_grid_shuffle_seed: 20260707
@@ -47,6 +48,14 @@ sim_grid_shuffle_seed <- as.integer(.get_qmd_param_env(
   "SIM_GRID_SHUFFLE_SEED",
   20260707L
 ))
+simulation_seed <- as.integer(.get_qmd_param_env(
+  "simulation_seed",
+  "SIMULATION_SEED",
+  12345L
+))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
   "RUN_SIMULATIONS",
@@ -58,6 +67,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "norm")
+analysis_dev <- isTRUE(.isDev())
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -106,19 +116,19 @@ Initially, we will ignore setting maximum/minimum number of cells.
 ```{r}
 #| label: actual-settings
 # simulation settings
-n_cell_stim_vec <- c(1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6)[c(1, 3, 5, 7)]
+n_cell_stim_vec <- c(1e3, 5e3, 2e4, 1e5)
 prob_response_vec <- c(0.002, 0.2)
 mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
 
 transformation_vec <- c("gaussian", "gamma", "skew")
-mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 
-# bandwidth settings
-bandwidth_method_vec <- c("hpi0Norm", "hpi1Norm", "hpi2Norm", "hpi3Norm", "sjNorm", "nrd0Norm", "hpi1", "hpi2", "hpi3", "sj", "nrd0")
-bandwidth_method_vec <- bandwidth_method_vec[grepl("hpi", bandwidth_method_vec)]
-bandwidth_method_vec <- bandwidth_method_vec[!grepl("hpi0", bandwidth_method_vec)]
+# Compare each HPI derivative estimator with its normalised counterpart.
+bandwidth_method_vec <- c(
+  "hpi1", "hpi1Norm",
+  "hpi2", "hpi2Norm",
+  "hpi3", "hpi3Norm"
+)
 
-# set this later
 bandwidth_ncell_upper_vec <- c(
   500,
   2500,
@@ -126,7 +136,6 @@ bandwidth_ncell_upper_vec <- c(
   50000,
   Inf
 )
-bandwidth_ncell_lower_vec <- c(0, 10, 20, 30, 50, 100, 200, 500, 1e3)
 bias_uns_settings_tbl <- tibble::tribble(
   ~bias_uns_setting, ~transformation, ~bias_uns,
   "none", "gaussian", 0,
@@ -183,25 +192,43 @@ sim_grid <- tidyr::expand_grid(
       .data$bw_ncell_upper < .data$n_cell
   ) |>
   dplyr::arrange(
+    transformation,
+    prob_response,
     n_cell,
-    dplyr::desc(prob_response)
+    mean_pos_setting,
+    mean_pos,
+    bias_uns_setting,
+    bias_uns,
+    bw_mtd,
+    bw_ncell_upper
   ) |>
+  dplyr::group_by(
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos_setting,
+    mean_pos,
+    bias_uns_setting,
+    bias_uns
+  ) |>
+  dplyr::mutate(
+    # Estimator/cap comparisons must use exactly the same simulated data.
+    sim_seed = as.integer(simulation_seed + dplyr::cur_group_id() - 1L)
+  ) |>
+  dplyr::ungroup() |>
   dplyr::mutate(
     sim_id = dplyr::row_number()
   )
 
-if (.isDev()) {
+if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
-      n_cell %in% c(5e3, 1e4, 2e4),
+      n_cell == 5e3,
       prob_response == 0.002,
       mean_pos_setting == "high",
       transformation %in% transformation_vec,
-      grepl("hpi1", bw_mtd),
-      grepl("hpi1Norm", bw_mtd)
-    ) |>
-    dplyr::sample_n(
-      min(5L, dplyr::n())
+      bw_mtd %in% c("hpi1", "hpi1Norm"),
+      bw_ncell_upper %in% c(2500, Inf)
     )
 }
 
@@ -241,6 +268,9 @@ print(
 )
 
 bw_fallback <- 0.23482348792138919129198282389
+analysis_semantics_version <- "bandwidth-est-norm-v2"
+n_sample_sim <- 10L
+n_iter_sim <- 1L
 ```
 
 A loop we only run when we want to see why particular runs failed.
@@ -254,6 +284,7 @@ bw_list_raw_mtd_loop <- lapply(seq_len(nrow(sim_grid)), function(i) {
 })
 
 for (i in seq_len(nrow(sim_grid))) {
+  set.seed(as.integer(sim_grid$sim_seed[i]))
   settings_row <- paste0(
     "trans = ",
     sim_grid$transformation[i],
@@ -277,11 +308,11 @@ for (i in seq_len(nrow(sim_grid))) {
 
   message("Running: ", settings_row)
   bw_list_raw_mtd_loop[[i]] <- .simBandwidthEstBwDirect(
-    nSample = if (.isDev()) 1 else 10,
+    nSample = n_sample_sim,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
-    nIter = 1,
+    nIter = n_iter_sim,
     biasUns = sim_grid$bias_uns[i],
     bwMtd = sim_grid$bw_mtd[i],
     bwMin = -Inf,
@@ -311,6 +342,7 @@ for (i in seq_len(nrow(sim_grid))) {
       bw_ncell_upper = sim_grid$bw_ncell_upper[i],
       bias_uns_setting = sim_grid$bias_uns_setting[i],
       bias_uns = sim_grid$bias_uns[i],
+      sim_seed = sim_grid$sim_seed[i],
       sim_id = sim_grid$sim_id[i]
     ) |>
     dplyr::select(
@@ -323,6 +355,7 @@ for (i in seq_len(nrow(sim_grid))) {
       bw_ncell_upper,
       bias_uns_setting,
       bias_uns,
+      sim_seed,
       sim_id,
       dplyr::everything()
     )
