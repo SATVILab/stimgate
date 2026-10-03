@@ -496,6 +496,15 @@ the `flowWorkspace` stack from source.
   - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for
     phenotype simulation.
   - `sim-bandwidth.R`: Simulation bandwidth utilities.
+  - `sim-bandwidth-analysis-io.R` / `sim-bandwidth-analysis-plot.R`:
+    Output-file lookup and plotting helpers for the bandwidth QMDs.
+  - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable
+    grid runner, typed error rows, validation and promotion for
+    bandwidth QMDs 2-6, followed by one delimited section of
+    scenario/validation/collation callbacks per analysis.
+  - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating,
+    comparator, manual-comparison and plotting helpers for analyses 9
+    and 10.
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for
     simulation.
   - `sim-misc.R`: Miscellaneous simulation utilities.
@@ -643,6 +652,7 @@ saved bias use zero.
     (in `cp_uns_loc_filtering.R`), which wraps the native FAUST-derived
     C++ implementation `stimgate_cpPmden()` compiled via `cpp11`
     (`src/stimgate_cppmden.cpp` and `src/cpPmden.cpp`).
+
 2.  **Comparison code vs. package code**: `R/` contains only StimGate
     implementation code. Benchmark comparisons against the tailgate
     method call `cytoUtils:::.cytokine_cutpoint()` from the `cytoUtils`
@@ -650,10 +660,12 @@ saved bias use zero.
     `scripts/r/sim-compare-freq_bs.R` and
     `analysis/7-sim-compare-freq_bs.qmd`. Cytokine simulation logic
     remains in `scripts/r/` and is not installed with the package.
+
 3.  **Legacy comparator policy**: Tailgate comparator functions are
     invoked directly from the `cytoUtils` package via
     `cytoUtils:::.cytokine_cutpoint()`. Do not reintroduce vendored
     legacy tailgate helpers under `scripts/r/` or `R/`.
+
 4.  **F-beta comparator provenance**: `scripts/python/fbeta.py` is
     adapted from the Richards et al. (2014) positivity threshold
     implementation. Preserve its F-beta scoring, standard parameters,
@@ -669,11 +681,13 @@ saved bias use zero.
     removes both prior comparator `result.rds` files and recomputes
     them. Existing results are read only when comparator execution is
     disabled.
+
 5.  **Removal of legacy tailgate-as-control path (issues \#157/#158)**:
     The legacy tailgate-as-control path (`.getCpTg()`, `tolCtrl`) has
     been removed. Tailgate benchmark comparisons use
     `cytoUtils:::.cytokine_cutpoint()` in `scripts/r/`, per notes 2 and
     3.
+
 6.  **Simulation engine migration to `simcyto` (issues
     \#288/#289/#291/#295 / umbrella \#271)**: Generic cytometry
     simulations, post-simulation transformations, and condition-mismatch
@@ -688,9 +702,11 @@ saved bias use zero.
     source `functionsForBenchmarking-Cyt.R`. StimGate scientific
     scenario calculations, downstream comparison orchestration, and
     method evaluations remain StimGate-side under `scripts/r/`.
+
 7.  **Standardised simulation and plotting controls across analysis QMDs
     (issue \#299)**: All analysis QMDs follow a unified execution
     control pattern sourced from `scripts/r/analysis-runtime.R`:
+
     - YAML headers declare
       `params: run_simulations: true, run_plots: false` (along with any
       chunking parameters).
@@ -705,10 +721,12 @@ saved bias use zero.
     - Collation chunks read cached output RDS files unconditionally so
       downstream summaries and diagnostics work whether simulations just
       ran or were loaded from cache.
+
 8.  **Run-scoped staging, progress and promotion for expensive analysis
     simulations (issue \#304)**: Expensive simulation analyses that
     support resumable per-scenario/per-chunk outputs must use shared
     run-management helpers from `scripts/r/analysis-runtime.R`:
+
     - Treat each logical run as a unique run ID (`analysis_run_id` QMD
       param or `ANALYSIS_RUN_ID` env var; auto-generated when absent).
     - Write run outputs to
@@ -743,7 +761,43 @@ saved bias use zero.
       Reusing an explicit run ID must match those settings; only
       operational controls such as plotting, simulation execution and
       the current chunk index may differ across invocations.
-9.  **Versioning before the first Bioconductor release**: Keep `Version`
+    - Record the complete selected cross-chunk grid specification (not
+      just a few scalars) as a required parameter, so editing the grid
+      under the same `analysis_semantics_version` is detected. Bump the
+      semantics version when results change.
+    - Resume retries rows whose saved output or marker recorded an
+      error, so a run ID with a failed simulation can still complete.
+
+9.  **Shared analysis runners and cached settings**: Bandwidth QMDs 2-6
+    use `.simBandwidthRunRow()`, `.simBandwidthRunGrid()` and
+    `.simBandwidthFinishChunk()`. Assign IDs and seeds on the full grid
+    before dev/quick filters, shuffling or chunking. Workers and
+    interactive single-row reruns use the same explicitly seeded row
+    runner; resume retries failed rows by default. Comparison scenarios
+    in QMDs 7/8 use explicit RNG kinds and restore the caller’s RNG
+    state; do not reintroduce `gateCombn` plumbing in the comparison
+    layer. Analysis 1 seeds each row and saves and validates its
+    scientific settings with the cache.
+
+10. **Exact reruns of one simulation row**: Assign `sim_id` and
+    `sim_seed` on the full grid before dev/quick filtering, shuffling
+    and chunking. Each row is seeded with its own `sim_seed` under fixed
+    RNG kinds (`Mersenne-Twister`, `Inversion`, `Rejection`) and the
+    caller’s RNG state is restored afterwards (`.analysis_with_seed()`,
+    `.simBandwidthRunRow()`, `.simCompareRunScenario()`), so results do
+    not depend on furrr’s L’Ecuyer state, chunking or scheduling. Each
+    simulation QMD has one `eval: false` “rerun one simulation” chunk
+    that selects a `sim_id` from the full grid and calls the same
+    scenario code path as the workers. Do not add separate debug loops.
+
+11. **Real-data analyses replace outputs non-destructively**: Real-data
+    analyses that recompute cached outputs (e.g. ACS CyTOF) build into a
+    temporary sibling and swap it in on success
+    (`.acsCytofReplaceDir()`), or compute all results before atomically
+    writing them. Never delete the previous output before the new one is
+    complete.
+
+12. **Versioning before the first Bioconductor release**: Keep `Version`
     in `DESCRIPTION` at `0.99.z` (three components, no `-n` suffix)
     until stimgate’s first Bioconductor release, bumping `z` for each
     change worth marking. Do not move to `0.100.0` or higher;
@@ -815,6 +869,9 @@ both suites.
     - Compare paths after
       `normalizePath(path, winslash = "/", mustWork = FALSE)`, since
       equivalent paths may differ in separator style.
+    - Normalise an existing temporary root before appending paths that
+      do not exist yet; Windows cannot resolve short/long path aliases
+      in a missing path.
     - Embed only forward-slash paths in R code run through `Rscript -e`;
       Windows backslashes are escape sequences there.
     - Use `skip_on_os("windows")`, with a comment giving the reason, for
