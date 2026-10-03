@@ -13,6 +13,9 @@ test_that("QMD registry covers all top-level documents with real test files", {
     file.path(loaded$root_dir, "analysis"), pattern = "[.]qmd$"
   ))
   expect_identical(targets[[10]], c("test-acs-cytof-gate.R", "test-acs-cytof-methods.R"))
+  expect_true("test-sim-bandwidth-analysis-run.R" %in% targets[[2]])
+  expect_true("test-sim-bw-est-base-run.R" %in% targets[[4]])
+  expect_true("test-analysis-7-transactional-multichunk.R" %in% targets[[8]])
 })
 
 test_that("QMD selection accepts defaults, aliases, sets and deduplicates", {

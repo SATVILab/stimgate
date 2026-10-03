@@ -2,13 +2,19 @@
 .qmd_test_targets <- function(root_dir = ".") {
   targets <- list(
     "1-sim-trans.qmd" = "test-sim-trans.R",
-    "2a-sim-bw-freq_bs-global.qmd" = "test-sim-bw-freq_bs-global-simcyto.R",
+    "2a-sim-bw-freq_bs-global.qmd" = c(
+      "test-sim-bw-freq_bs-global-simcyto.R", "test-sim-bandwidth-analysis-run.R"
+    ),
     "2b-sim-bias_uns-freq_bs.qmd" = "test-sim-bias-uns-freq.R",
-    "3-sim-bw-est-base.qmd" = "test-sim-bw-est-base-simcyto.R",
+    "3-sim-bw-est-base.qmd" = c(
+      "test-sim-bw-est-base-simcyto.R", "test-sim-bw-est-base-run.R"
+    ),
     "4-sim-bw-est-norm.qmd" = "test-sim-bw-est-norm-simcyto.R",
     "5-sim-bw-est-adaptive.qmd" = "test-sim-bw-est-adaptive-simcyto.R",
     "6-sim-bw-freq_bs-adaptive.qmd" = "test-sim-bw-freq_bs-adaptive-simcyto.R",
-    "7-sim-compare-freq_bs.qmd" = "test-sim-compare-freq_bs-simcyto.R",
+    "7-sim-compare-freq_bs.qmd" = c(
+      "test-sim-compare-freq_bs-simcyto.R", "test-analysis-7-transactional-multichunk.R"
+    ),
     "8-sim-compare-freq_bs-batch.qmd" = "test-sim-compare-freq_bs-batch.R",
     "9-real-compare-acs-cytof.qmd" = c(
       "test-acs-cytof-gate.R", "test-acs-cytof-methods.R"
