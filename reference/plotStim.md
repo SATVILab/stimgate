@@ -168,7 +168,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpUoBcDo/stimgate_example_data_1b5f13255072/stimgate"
+#> [1] "/tmp/RtmpebqLP9/stimgate_example_data_1b546baaad4c/stimgate"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
