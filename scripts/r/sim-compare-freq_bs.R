@@ -976,14 +976,9 @@
   locAntimodeLowAbs = 0.15,
   locFlatDerivFrac = 1 / 2,
   locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
   tolClust = NULL,
   locEnforceShapeThreshold = FALSE,
   calcCytPosGates = FALSE,
@@ -1046,14 +1041,9 @@
         locAntimodeLowAbs = locAntimodeLowAbs,
         locFlatDerivFrac = locFlatDerivFrac,
         locFlatHardDerivFrac = locFlatHardDerivFrac,
-        locLeftLowRel = locLeftLowRel,
-        locLeftLowAbs = locLeftLowAbs,
-        locLeftCellFrac = locLeftCellFrac,
-        locLeftLengthFrac = locLeftLengthFrac,
         locMarginalPurityRel = locMarginalPurityRel,
         locMarginalCellBinRatio = locMarginalCellBinRatio,
-        locMarginalRefQuantile = locMarginalRefQuantile,
-        locTolRefPeak = locTolRefPeak
+        locMarginalRefQuantile = locMarginalRefQuantile
       ))
 
       # Extract final cluster-refined StimGate gates and statistics
@@ -1356,14 +1346,9 @@
   locAntimodeLowAbs = 0.15,
   locFlatDerivFrac = 1 / 2,
   locFlatHardDerivFrac = 1 / 4,
-  locLeftLowRel = 0.25,
-  locLeftLowAbs = 0.15,
-  locLeftCellFrac = 0.5,
-  locLeftLengthFrac = 0.5,
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  locTolRefPeak = "highest",
   calcCytPosGates = FALSE,
   includeLocCondition = FALSE,
   includeLocDetails = includeLocCondition,
@@ -1510,14 +1495,9 @@
       locAntimodeLowAbs = locAntimodeLowAbs,
       locFlatDerivFrac = locFlatDerivFrac,
       locFlatHardDerivFrac = locFlatHardDerivFrac,
-      locLeftLowRel = locLeftLowRel,
-      locLeftLowAbs = locLeftLowAbs,
-      locLeftCellFrac = locLeftCellFrac,
-      locLeftLengthFrac = locLeftLengthFrac,
       locMarginalPurityRel = locMarginalPurityRel,
       locMarginalCellBinRatio = locMarginalCellBinRatio,
       locMarginalRefQuantile = locMarginalRefQuantile,
-      locTolRefPeak = locTolRefPeak,
       tolClust = tolClust,
       locEnforceShapeThreshold = locEnforceShapeThreshold,
       calcCytPosGates = calcCytPosGates,
@@ -2555,110 +2535,6 @@
   collated
 }
 
-#' Validate completeness of comparison scenario outputs
-#'
-#' @keywords internal
-.simCompareValidateCompletedScenarios <- function(
-  compare_raw,
-  sim_ids,
-  methods = c("stimgate", "fbeta", "tailgate"),
-  nSample = NULL,
-  nIter = NULL
-) {
-  expected_ids <- sort(unique(as.integer(sim_ids)))
-  if (length(expected_ids) == 0L) {
-    return(list(
-      collated_sim_ids = integer(),
-      error_sim_ids = integer(),
-      incomplete_sim_ids = integer(),
-      collate_ok = TRUE,
-      validation_ok = TRUE
-    ))
-  }
-
-  if (
-    !is.data.frame(compare_raw) ||
-      nrow(compare_raw) == 0L ||
-      !"sim_id" %in% names(compare_raw)
-  ) {
-    return(list(
-      collated_sim_ids = integer(),
-      error_sim_ids = integer(),
-      incomplete_sim_ids = expected_ids,
-      collate_ok = FALSE,
-      validation_ok = FALSE
-    ))
-  }
-
-  compare_use <- compare_raw |>
-    dplyr::filter(.data$sim_id %in% .env$expected_ids)
-
-  collated_ids <- sort(unique(as.integer(compare_use$sim_id)))
-  collate_ok <- identical(collated_ids, expected_ids)
-
-  error_ids <- if ("error" %in% names(compare_use)) {
-    sort(unique(as.integer(
-      compare_use$sim_id[
-        !is.na(compare_use$error) &
-          nzchar(as.character(compare_use$error))
-      ]
-    )))
-  } else {
-    integer()
-  }
-
-  incomplete_ids <- integer()
-  if (length(methods) > 0L) {
-    if (!"method" %in% names(compare_use)) {
-      incomplete_ids <- expected_ids
-    } else {
-      method_counts <- compare_use |>
-        dplyr::filter(.data$method %in% .env$methods) |>
-        dplyr::count(.data$sim_id, .data$method, name = "n_rows")
-
-      expected_keys <- tidyr::expand_grid(
-        sim_id = expected_ids,
-        method = methods
-      ) |>
-        dplyr::left_join(
-          method_counts,
-          by = c("sim_id", "method")
-        )
-
-      if (!is.null(nSample) && !is.null(nIter)) {
-        expected_n <- as.integer(nSample) * as.integer(nIter)
-        incomplete_ids <- expected_keys |>
-          dplyr::filter(
-            is.na(.data$n_rows) |
-              .data$n_rows != .env$expected_n
-          ) |>
-          dplyr::pull(.data$sim_id) |>
-          unique() |>
-          sort()
-      } else {
-        incomplete_ids <- expected_keys |>
-          dplyr::filter(is.na(.data$n_rows) | .data$n_rows < 1L) |>
-          dplyr::pull(.data$sim_id) |>
-          unique() |>
-          sort()
-      }
-    }
-  }
-
-  validation_ok <-
-    collate_ok &&
-    length(error_ids) == 0L &&
-    length(incomplete_ids) == 0L
-
-  list(
-    collated_sim_ids = collated_ids,
-    error_sim_ids = error_ids,
-    incomplete_sim_ids = incomplete_ids,
-    collate_ok = collate_ok,
-    validation_ok = validation_ok
-  )
-}
-
 #' Validate primary comparison output coverage for a simulation grid
 #'
 #' @keywords internal
@@ -2861,8 +2737,7 @@
     completed_sims,
     failed_sims,
     nSample,
-    nIter,
-    validatePrimary = FALSE) {
+    nIter) {
   if (isTRUE(run_ctx$read_only) || !.analysis_can_promote(run_ctx)) {
     return(invisible(FALSE))
   }
@@ -2878,9 +2753,9 @@
     sim_grid = sim_grid_all
   )
   expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
-  full_check <- .simCompareValidateCompletedScenarios(
-    compare_raw = compare_raw_full,
-    sim_ids = expected_sim_ids,
+  full_check <- .simCompareGridOutputStatus(
+    compare_raw_full,
+    sim_grid = sim_grid_all,
     nSample = nSample,
     nIter = nIter
   )
@@ -2890,13 +2765,6 @@
   full_validation_ok <-
     full_collate_ok &&
     isTRUE(full_check$validation_ok)
-  if (isTRUE(validatePrimary)) {
-    primary_check <- .simCompareGridOutputStatus(
-      compare_raw_full, sim_grid_all, nSample = nSample, nIter = nIter
-    )
-    full_validation_ok <- full_validation_ok &&
-      isTRUE(primary_check$validation_ok)
-  }
 
   if (!isTRUE(full_validation_ok)) {
     error_message <- paste0(

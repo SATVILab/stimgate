@@ -43,14 +43,20 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
     helper_content,
     fixed = TRUE
   ))
-  expect_true(grepl(".analysis_results_context", content, fixed = TRUE))
-  expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
-  expect_true(grepl(
-    ".simCompareValidateCompletedScenarios",
+  expect_false(grepl(
+    ".simCompareRunScenarioUnseeded",
     content,
     fixed = TRUE
   ))
-  expect_true(grepl("incomplete_sim_ids", content, fixed = TRUE))
+  expect_true(grepl(".analysis_results_context", content, fixed = TRUE))
+  expect_true(grepl(
+    ".simCompareGridOutputStatus",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("failed_ids", content, fixed = TRUE))
+  expect_true(grepl("missing_ids", content, fixed = TRUE))
+  expect_true(grepl("extra_ids", content, fixed = TRUE))
   expect_true(grepl("analysis_dev", content, fixed = TRUE))
   expect_false(grepl("bias_uns == 0.05", content, fixed = TRUE))
   expect_true(grepl("knitr::knit_exit()", content, fixed = TRUE))
@@ -152,9 +158,9 @@ test_that("shared comparison promotion validates all nested scenario outputs", {
   env$.analysis_mark_chunk <- function(...) invisible(NULL)
   env$.write_rds_atomic <- function(object, path) saveRDS(object, path)
   grid <- tibble::tibble(sim_id = c(1L, 2L))
-  promote <- function(primary = FALSE) env$.simComparePromoteIfReady(
+  promote <- function() env$.simComparePromoteIfReady(
     ctx, grid, total_sims = 1L, completed_sims = 1L, failed_sims = 0L,
-    nSample = 1L, nIter = 1L, validatePrimary = primary
+    nSample = 1L, nIter = 1L
   )
   expect_false(promote())
   expect_false(promoted)
@@ -170,10 +176,10 @@ test_that("shared comparison promotion validates all nested scenario outputs", {
     saveRDS(result, file.path(chunk, sprintf("sim_raw-sim_id_%06d.rds", id)))
   }
   ctx$read_only <- TRUE
-  expect_false(promote(primary = TRUE))
+  expect_false(promote())
   expect_false(promoted)
   ctx$read_only <- FALSE
-  expect_true(promote(primary = TRUE))
+  expect_true(promote())
   expect_true(promoted)
   expect_equal(nrow(readRDS(file.path(ctx$staging_collated_dir,
     "compare_raw.rds"))), 6L)
@@ -185,7 +191,7 @@ test_that("shared comparison promotion validates all nested scenario outputs", {
   result$error <- NA_character_
   result$propRespEst[1] <- NA_real_
   saveRDS(result, file.path(chunk, sprintf("sim_raw-sim_id_%06d.rds", id)))
-  expect_error(promote(primary = TRUE), "Refusing to promote comparison")
+  expect_error(promote(), "Refusing to promote comparison")
   expect_false(promoted)
   unlink(file.path(chunk, sprintf("sim_raw-sim_id_%06d.rds", id)))
   expect_error(promote(), "Refusing to promote comparison")

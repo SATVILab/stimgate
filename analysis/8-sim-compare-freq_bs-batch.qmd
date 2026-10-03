@@ -507,8 +507,7 @@ if (isTRUE(run_simulations)) {
     completed_sims = n_completed,
     failed_sims = n_failed,
     nSample = n_sample_sim,
-    nIter = n_iter_sim,
-    validatePrimary = TRUE
+    nIter = n_iter_sim
   )
 
   if (!isTRUE(run_plots)) {

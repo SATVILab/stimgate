@@ -46,7 +46,7 @@ unstimulated background.
 | Data manipulation | `dplyr`, `purrr`, `tidyr`, `tibble`, `stringr`, `rlang` |
 | Plotting | `ggplot2`, `cowplot` |
 | Statistical modelling | `scam`, `mgcv` |
-| Clustering | `cluster`, `gtools` |
+| Clustering | `cluster` |
 | Dependency management | `renv` |
 | CI | GitHub Actions (R-CMD-check, pkgdown, Codecov) |
 
@@ -223,6 +223,15 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - When plotting a summary over a simulation grid, every varying scenario
   dimension must be filtered, faceted or included in the plot grouping. Do not
   connect or aggregate distinct scenario settings into one line implicitly.
+- When porting a validation figure or summary from an authoritative analysis,
+  preserve its scientific inclusion/exclusion rules as well as its metric and
+  aesthetics; otherwise the reproduced number is answering a different question.
+- Agreement metrics must match the reference estimator, not only the population
+  formula. Add a shifted/scaled regression case so denominator conventions such
+  as `n` versus `n - 1` cannot pass unnoticed behind an identity-only test.
+- Regenerated validation/report directories must be built in a sibling staging
+  directory and swapped into place only after every table and figure succeeds.
+  Do not delete the last good output directory before rendering the replacement.
 - Controlled mismatch/degradation simulations should use common random numbers
   within each baseline biological scenario when the mismatch itself is
   deterministic, so curve differences are not driven by different simulated draws.
