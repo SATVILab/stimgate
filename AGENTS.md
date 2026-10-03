@@ -414,7 +414,6 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `r/`: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by `devtools::load_all()` and are not part of the installed package.
   - `analysis-runtime.R`: Shared QMD execution/runtime plumbing for parameter lookup, env overrides, chunk validation and atomic RDS output.
   - `functionsForBenchmarking-Cyt.R`: Cytokine simulation utilities.
-  - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for phenotype simulation.
   - `sim-bandwidth.R`: Simulation bandwidth utilities.
   - `sim-bandwidth-analysis-io.R` / `sim-bandwidth-analysis-plot.R`: Output-file lookup and plotting helpers for the bandwidth QMDs.
   - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2-6, followed by one delimited section of scenario/validation/collation callbacks per analysis.
@@ -663,6 +662,9 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
    Each test must clean up its own temporary files/directories created during execution
    (e.g., `unlink(tmp_dir, recursive = TRUE)` or `withr::defer()`).
 6. **Shared test fixtures**:
+   Scope expensive file-shared fixtures in `local({ ... })` and register deferred
+   cleanup there; seeded tests must restore RNG state rather than leaking it into
+   later files.
    If multiple tests need the same setup data, create it within each test or create it
    once at the top with clear documentation. Never delete shared fixtures mid-file.
 7. **Test data files compatibility**:
