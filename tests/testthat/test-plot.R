@@ -1,4 +1,7 @@
+# Share one expensive fixture within this file and clean it on exit.
+local({
 exampleData <- getExampleData()
+withr::defer(unlink(dirname(exampleData$pathGs), recursive = TRUE))
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
 pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
 
@@ -205,9 +208,7 @@ test_that("plotStim keeps univariate plots when excMin = FALSE", {
 })
 
 test_that("bivariate gate lines are drawn on the axis of their own channel", {
-  pathProjectCopy <- file.path(tempfile("stimgate_plot_gate_axis_"))
-  dir.create(pathProjectCopy)
-  withr::defer(unlink(pathProjectCopy, recursive = TRUE))
+  pathProjectCopy <- withr::local_tempdir()
   file.copy(pathProject, pathProjectCopy, recursive = TRUE)
   pathProjectCopy <- file.path(pathProjectCopy, basename(pathProject))
   # x channel has no gate; only the y channel is gated
@@ -231,4 +232,5 @@ test_that("bivariate gate lines are drawn on the axis of their own channel", {
   )
   expect_false("GeomVline" %in% geomVec)
   expect_true("GeomHline" %in% geomVec)
+})
 })
