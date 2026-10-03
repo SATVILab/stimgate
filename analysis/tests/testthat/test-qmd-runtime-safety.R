@@ -274,9 +274,6 @@ test_that("analysis 4 uses paired estimator seeds and transactional chunk promot
   expect_true(grepl("estimate_rate = .data$n_est / .data$n_total", content, fixed = TRUE))
   expect_true(grepl("sim_grid_definition", content, fixed = TRUE))
   expect_true(grepl("Requested normalisation", content, fixed = TRUE))
-  expect_true(grepl(
-    "fallback is not yet exposed in row-level",
-    content,
-    fixed = TRUE
-  ))
+  expect_true(grepl("n_norm_fallback", content, fixed = TRUE))
+  expect_true(grepl("norm_fallback_rate", content, fixed = TRUE))
 })
