@@ -4,25 +4,27 @@ root_dir <- normalizePath(
 )
 
 test_that("analysis QMDs do not overwrite sourced helper functions", {
-  helper_env <- new.env(parent = getNamespace("stimgate"))
-  for (file in c(
-    "analysis-runtime.R",
-    "sim-misc.R",
-    "sim-bandwidth.R",
-    "sim-bandwidth-analysis-io.R",
-    "sim-bandwidth-analysis-plot.R",
-    "sim-compare-freq_bs.R",
-    "sim-trans.R"
-  )) {
-    source(file.path(root_dir, "scripts", "r", file), local = helper_env)
-  }
-
-  helper_names <- ls(helper_env, all.names = TRUE)
-  helper_names <- helper_names[vapply(
-    helper_names,
-    function(name) is.function(get(name, helper_env, inherits = FALSE)),
-    logical(1)
-  )]
+  script_paths <- list.files(
+    file.path(root_dir, "scripts", "r"),
+    pattern = "[.]R$",
+    full.names = TRUE
+  )
+  helper_names <- unique(unlist(lapply(script_paths, function(path) {
+    lines <- readLines(path, warn = FALSE)
+    matches <- regmatches(
+      lines,
+      regexec(
+        "^\\s*([.A-Za-z][A-Za-z0-9._]*)\\s*<-\\s*function\\s*\\(",
+        lines,
+        perl = TRUE
+      )
+    )
+    vapply(
+      matches[lengths(matches) > 0L],
+      function(match) match[[2]],
+      character(1)
+    )
+  })))
 
   violations <- character()
   qmd_paths <- list.files(
