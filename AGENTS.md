@@ -506,6 +506,12 @@ saved `biasUns`; channels without a saved bias use zero.
    - To read canonical results without running the simulation chunk (so no `run_ctx` exists), collation chunks fall back to `.analysis_results_context()`, a read-only stand-in whose staging paths point at `current/` and which creates no run state. Guard all writes, chunk marking and promotion with `if (!isTRUE(run_ctx$read_only))`.
    - Record scientific and semantic settings in the run manifest. Reusing an explicit run ID must match those settings; only operational controls such as plotting, simulation execution and the current chunk index may differ across invocations.
 
+9. **Versioning before the first Bioconductor release**:
+   Keep `Version` in `DESCRIPTION` at `0.99.z` (three components, no `-n`
+   suffix) until stimgate's first Bioconductor release, bumping `z` for each
+   change worth marking. Do not move to `0.100.0` or higher; Bioconductor sets
+   the release version itself.
+
 ---
 
 ## 8. Testing Best Practices & Guidelines
