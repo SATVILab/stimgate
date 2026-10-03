@@ -552,23 +552,6 @@ test_that("Analysis 7 and Analysis 8 namespaces are isolated", {
     ) &&
       grepl("analysis_key = analysis_key", content8, fixed = TRUE)
   )
-
-  env <- new.env(parent = getNamespace("stimgate"))
-  source(file.path(root_dir, "scripts", "r", "analysis-runtime.R"), local = env)
-  tmp_project <- withr::local_tempdir()
-  withr::local_dir(tmp_project)
-  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
-  ctx <- env$.analysis_run_context(
-    analysis_key = c("sim", "compare", "freq_bs_batch"),
-    run_id = "batch-state-test"
-  )
-  expect_identical(
-    normalizePath(ctx$progress_run_dir, winslash = "/"),
-    normalizePath(file.path(
-      tmp_project, "cache", "sim", "compare", "freq_bs_batch", "runs",
-      ctx$run_date, ctx$run_id
-    ), winslash = "/")
-  )
 })
 
 test_that("Inner nIter execution remains serial without nested parallelism", {

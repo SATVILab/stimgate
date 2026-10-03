@@ -12,7 +12,9 @@ params:
   run_plots: false
 ---
 
-This analysis compares automated and manual background-subtracted cytokine frequencies in the ACS CyTOF dataset. It uses the matched comparison table saved by analysis 9 to plot frequencies and calculate Pearson and concordance correlations for StimGate, F-beta and Tailgate. The correlation summaries retain the manuscript eligibility rules.
+Reproduce the ACS manuscript-style validation plots for StimGate, F-beta and
+Tailgate using the comparison table produced by the main ACS analysis.
+The figures use saved results from analysis 9 without rerunning the gating methods.
 
 ## Set-up
 
@@ -24,17 +26,9 @@ The saved `acs_cytof/manual-comparison/manual-comparison.rds` table is sufficien
 library(ggplot2)
 library(dplyr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
-# Quarto may start in analysis/ when no project execution directory is set.
-if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  root_dir <- normalizePath(file.path(getwd(), ".."), mustWork = TRUE)
-}
-if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  stop("Cannot find the stimgate repository root; render from the checkout.")
-}
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
@@ -60,15 +54,9 @@ path_comparison <- file.path(
   path_manual_output,
   "manual-comparison.rds"
 )
-if (!file.exists(path_comparison)) {
-  stop(
-    "ACS manual comparison table not found at: ",
-    path_comparison,
-    ". Run RUN_SIMULATIONS=true RUN_PLOTS=false quarto render ",
-    "analysis/9-real-compare-acs-cytof.qmd first with the ACS data available."
-  )
-}
-manual_comparison_tbl <- readRDS(path_comparison)
+manual_comparison_tbl <- .analysis_read_rds(
+  path_comparison, "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd"
+)
 validation_methods <- .acsCytofValidationMethods()
 .acsCytofValidationValidateComparisonTable(
   manual_comparison_tbl,
@@ -91,7 +79,9 @@ CD4, CD8 and TCRgd T cells and another uses every matched population. This
 keeps the original manuscript comparison available while also showing the
 additional populations in the current benchmark.
 
-## Correlation table
+## Results
+
+### Correlation table
 
 ```{r}
 #| label: correlation-table
@@ -100,7 +90,7 @@ correlation_tbl <- .acsCytofValidationCorrelationTable(manual_comparison_tbl)
 correlation_tbl
 ```
 
-## Validation figures
+### Validation figures
 
 ```{r}
 #| label: save-validation-figures

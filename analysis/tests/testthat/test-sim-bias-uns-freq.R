@@ -144,13 +144,14 @@ test_that("Analysis 2b runtime guards simulations and reads canonical results", 
   env$analysis_required_params <- list(
     analysis_semantics_version = "bias-uns-freq-v1", simulation_seed = 12345L
   )
-  env$.analysis_results_context <- function(analysis_key, path_root) {
+  env$analysis_qmd <- "analysis/2b-sim-bias_uns-freq_bs.qmd"
+  env$.analysis_results_context <- function(analysis_key, path_root, qmd_path) {
     expect_identical(analysis_key, env$analysis_key)
     expect_identical(path_root, root)
     list(read_only = TRUE)
   }
   reads <- list()
-  env$.analysis_current_file <- function(run_ctx, relative_path, required_params) {
+  env$.analysis_read_current <- function(run_ctx, relative_path, required_params) {
     expect_true(run_ctx$read_only)
     expect_identical(required_params, env$analysis_required_params)
     reads[[length(reads) + 1L]] <<- relative_path

@@ -33,25 +33,13 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
-
-# Quarto may start in analysis/ when no project working directory is set.
-if (!file.exists(file.path(root_dir, "DESCRIPTION")) &&
-    file.exists(file.path(dirname(root_dir), "DESCRIPTION"))) {
-  root_dir <- dirname(root_dir)
-}
-if (!file.exists(file.path(root_dir, "scripts", "r", "analysis-runtime.R"))) {
-  stop("Cannot locate the stimgate checkout; render from its root or analysis/.")
-}
-if (!exists(".isDev", mode = "function")) {
-  .isDev <- function() "dev" %in% projr::projr_profile_get()
-}
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/5-sim-bw-est-adaptive.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
   "sim_grid_chunk_index",
@@ -94,7 +82,7 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bw", "est", "adaptive")
 analysis_semantics_version <- "adaptive-bw-est-v3"
-analysis_dev <- isTRUE(.isDev())
+analysis_dev <- .analysis_is_dev()
 n_sample_sim <- if (analysis_dev) 1L else 5L
 n_iter_sim <- if (analysis_dev) 1L else 5L
 norm_adaptive_ncell <- 2500L
@@ -137,11 +125,20 @@ for (fn in c(
 
 ## Scientific settings
 
-The current adaptive normalised estimator calculates core and extra bandwidths from fixed-size synthetic normal components. Their sample size is controlled by `normAdaptiveNcell`, not by `bwNcellMax`; `normAdaptiveNcell = 2500` is fixed here. Collation retains separate core and extra bandwidths for each condition, including the proportion of finite estimates.
+Get the parameters over which we simulate.
 
-External chunks share one run ID and promote results only after all selected
-scenarios validate. For cached plots, use the same dev profile and scientific
-settings as the simulation render.
+We mainly need to consider whether the number of parent-population cells is large or small, whether the responding population is large enough to affect the estimator, and the amount of separation.
+
+We'll vary over a range of parent-population sizes, as that tells us how the estimator behaves over the most important dimension apart from the transformation.
+
+The current adaptive normalised estimator calculates the core and extra bandwidths from fixed-size synthetic normal components. That internal sample size is controlled by `normAdaptiveNcell`, not by `bwNcellMax`. We therefore keep `normAdaptiveNcell = 2500` fixed here rather than varying the non-adaptive cell-count cap.
+
+For the adaptive estimator, the output has separate bandwidths for the background-core and high-expression-extra components, and those are estimated separately for the stimulated and unstimulated samples. The collation therefore works with four bandwidth columns:
+
+- `bw_uns_core`
+- `bw_stim_core`
+- `bw_uns_extra`
+- `bw_stim_extra`
 
 ```{r}
 #| label: actual-settings
@@ -271,6 +268,7 @@ row, and the manifest parameters that canonical results must match.
 
 ```{r}
 #| label: bw-estimate-settings
+#| include: false
 scenario_settings <- list(
   nSample = n_sample_sim,
   nMarker = 1L,
@@ -342,7 +340,6 @@ chunk and promote the run once every chunk is complete.
 ```{r}
 #| label: bw-estimate-parallel
 #| include: false
-#| results: hide
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
@@ -351,6 +348,7 @@ if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
     path_root = root_dir,
     params = c(
       list(
@@ -399,19 +397,10 @@ if (isTRUE(run_simulations)) {
     run_plots <- FALSE
   }
 } else if (isTRUE(run_plots)) {
-  current_dir <- .analysis_cache_dir(
-    c(analysis_key, "current"), path_root = root_dir, create = FALSE
-  )
-  if (!file.exists(file.path(current_dir, "COMPLETE"))) {
-    stop(
-      "No complete canonical results are available. First run from the repository root: ",
-      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/5-sim-bw-est-adaptive.qmd",
-      " (with the same dev profile and settings; complete all chunks if chunked).",
-      call. = FALSE
-    )
-  }
   # Read-only: plots use the canonical promoted results under current/.
-  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key, path_root = root_dir, qmd_path = analysis_qmd
+  )
 }
 ```
 
@@ -423,11 +412,11 @@ Read the canonical promoted results for plotting.
 #| label: bw-estimate-collate
 #| echo: false
 if (isTRUE(run_plots)) {
-  bw_tbl_results <- readRDS(.analysis_current_file(
+  bw_tbl_results <- .analysis_read_current(
     run_ctx = run_ctx,
     relative_path = c("collated", "bw_tbl_results.rds"),
     required_params = analysis_required_params
-  ))
+  )
 
   bw_tbl_results |>
     dplyr::group_by(.data$bw_mtd, .data$bw_component, .data$bw_condition) |>
@@ -460,8 +449,8 @@ Mean bandwidth estimates are plotted against cell count on a logarithmic axis, w
 #| label: fig-bw-estimate-plots
 #| echo: false
 #| fig-cap: "Adaptive core and extra bandwidth estimates by cell count and condition."
-#| fig-width: 7
-#| fig-height: 10
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   dir_results <- .analysis_cache_dir(c(analysis_key, "plots"), root_dir)
 

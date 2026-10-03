@@ -35,24 +35,13 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
-if (
-  !file.exists(file.path(root_dir, "DESCRIPTION")) &&
-    file.exists(file.path(dirname(root_dir), "DESCRIPTION"))
-) {
-  root_dir <- dirname(root_dir)
-}
-
-if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  stop("Cannot find the stimgate repository root. Render from the repository root.")
-}
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
 knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/7-sim-compare-freq_bs.qmd"
 
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
@@ -74,12 +63,7 @@ if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
 comparison_semantics_version <- "corrected-comparison-v3"
-if (!exists(".isDev", mode = "function")) {
-  .isDev <- function() {
-    "dev" %in% strsplit(Sys.getenv("PROJR_PROFILE"), ",", fixed = TRUE)[[1]]
-  }
-}
-analysis_dev <- isTRUE(.isDev())
+analysis_dev <- .analysis_is_dev()
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -105,23 +89,8 @@ if (
   stop("Expected the stimgate DESCRIPTION at the repository root: ", root_dir)
 }
 
-# Tailgate failures are otherwise converted to high-threshold fallbacks by the
-# comparison helper, so missing cytoUtils must fail before a comparison run.
-if (
-  isTRUE(run_simulations) &&
-    !requireNamespace("cytoUtils", quietly = TRUE)
-) {
-  stop("Package 'cytoUtils' is required for tailgate comparisons.")
-}
-if (
-  isTRUE(run_simulations) &&
-    !requireNamespace("reticulate", quietly = TRUE)
-) {
-  stop("Package 'reticulate' is required for F-beta comparisons.")
-}
-
-if (isTRUE(run_simulations) && !requireNamespace("simcyto", quietly = TRUE)) {
-  stop("Package 'simcyto' is required for the comparison simulations.")
+if (isTRUE(run_simulations)) {
+  .analysis_require_packages(c("cytoUtils", "simcyto"))
 }
 
 # Source simulation helpers in dependency order:
@@ -138,26 +107,7 @@ for (fn in c(
 
 ```
 
-```{r}
-#| label: canonical-results-check
-#| include: false
-if (!isTRUE(run_simulations) && isTRUE(run_plots)) {
-  current_dir <- file.path(
-    .analysis_cache_dir(analysis_key, path_root = root_dir, create = FALSE),
-    "current"
-  )
-  if (
-    !file.exists(file.path(current_dir, "COMPLETE")) ||
-      !file.exists(file.path(current_dir, "collated", "compare_raw.rds"))
-  ) {
-    stop(
-      "Canonical comparison results are missing or incomplete. Run from the repository root: ",
-      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/7-sim-compare-freq_bs.qmd. ",
-      "Use the same dev profile for both renders; complete all chunks before plotting."
-    )
-  }
-}
-```
+## Scientific settings
 
 ### Aim
 
@@ -252,17 +202,8 @@ path_fbeta <- file.path(
   "python",
   "fbeta.py"
 )
-if (isTRUE(run_simulations) && !file.exists(path_fbeta)) {
-  stop("F-beta comparison script not found: ", path_fbeta)
-}
 if (isTRUE(run_simulations)) {
-  fbeta_preflight <- tryCatch(
-    .simCompareFbetaEnvironment(pathFbeta = path_fbeta),
-    error = function(e) {
-      stop("F-beta comparator preflight failed: ", conditionMessage(e))
-    }
-  )
-  rm(fbeta_preflight)
+  .simCompareFbetaEnvironment(pathFbeta = path_fbeta)
 }
 
 tailgate_adjust <- 1
@@ -368,7 +309,6 @@ across worker scheduling and grid chunking.
 ```{r}
 #| label: compare-parallel
 #| include: false
-#| results: hide
 n_workers <- max(1, .simGetCores())
 
 analysis_result_params <- list(
@@ -416,6 +356,7 @@ if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
     path_root = root_dir,
     params = c(
       list(
@@ -558,7 +499,8 @@ if (isTRUE(run_simulations)) {
 } else {
   run_ctx <- .analysis_results_context(
     analysis_key = analysis_key,
-    path_root = root_dir
+    path_root = root_dir,
+    qmd_path = analysis_qmd
   )
   message("Skipping simulations; using canonical promoted results.")
 }
@@ -572,7 +514,9 @@ if (isTRUE(run_simulations)) {
 # Without `run_ctx` (simulation chunk not run in this session), read the
 # canonical promoted results under `current/`.
 if (!exists("run_ctx")) {
-  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key, path_root = root_dir, qmd_path = analysis_qmd
+  )
 }
 
 path_rds <- .analysis_current_file(
@@ -580,7 +524,7 @@ path_rds <- .analysis_current_file(
   relative_path = c("collated", "compare_raw.rds"),
   required_params = analysis_result_params
 )
-compare_raw <- readRDS(path_rds)
+compare_raw <- .analysis_read_rds(path_rds, analysis_key, analysis_qmd)
 
 compare_tbl <- compare_raw
 
@@ -637,7 +581,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-## Results and figures
+## Results
 
 ### Mean absolute error by cell count
 
@@ -696,9 +640,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -812,9 +754,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -924,9 +864,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -1036,9 +974,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -1178,9 +1114,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -1274,9 +1208,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p_est_truth)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -1356,9 +1288,7 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p_fallback)
-
-    ggsave(
+    .analysis_save_plot(
       filename = file.path(
         plot_dir,
         paste0(
@@ -1440,8 +1370,6 @@ if (isTRUE(run_plots)) {
         legend.position = "bottom"
       )
 
-    print(p)
-
     path_p <- file.path(
       plot_dir,
       paste0(
@@ -1450,7 +1378,7 @@ if (isTRUE(run_plots)) {
         ".png"
       )
     )
-    ggplot2::ggsave(
+    .analysis_save_plot(
       filename = path_p,
       plot = p,
       width = 18,
@@ -1468,6 +1396,7 @@ Run the setup, settings and grid chunks first.
 
 ```{r}
 #| label: rerun-one-simulation
+#| include: false
 #| eval: false
 sim_id_rerun <- 1L
 row_rerun <- sim_grid_full[sim_grid_full$sim_id == sim_id_rerun, , drop = FALSE]

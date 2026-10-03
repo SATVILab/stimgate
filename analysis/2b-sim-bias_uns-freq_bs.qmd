@@ -18,7 +18,11 @@ params:
   sim_retry_errors: true
 ---
 
-This analysis asks how unstimulated-sample bias should be set across a range of fixed bandwidths when the stimulated negative population differs from its matched unstimulated population. Simulated samples use controlled shifts and changes in spread applied only to the stimulated negative/background component, following Analysis 8. Random sample, condition and cluster perturbations are disabled so that the controlled mismatch is the source of disagreement.
+Analysis 2a identifies a plausible bandwidth range while keeping `bias_uns`
+deliberately simple. This analysis asks the complementary question: across
+those plausible bandwidths, how should `bias_uns` be set when the stimulated
+negative population is displaced relative to its matched unstimulated
+population?
 
 ## Set-up
 
@@ -33,20 +37,13 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
-if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  root_dir <- dirname(root_dir)
-}
-root_dir <- normalizePath(root_dir, mustWork = TRUE)
-if (!file.exists(file.path(root_dir, "scripts", "r", "analysis-runtime.R"))) {
-  stop("Render this document from the stimgate repository or its analysis directory.")
-}
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/2b-sim-bias_uns-freq_bs.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
   "sim_grid_chunk_index",
@@ -95,14 +92,10 @@ analysis_key <- c("sim", "bias_uns", "freq_bs")
 analysis_semantics_version <- "bias-uns-freq-v2"
 # Quarto may start without the repository .Rprofile.
 profile_vec <- strsplit(Sys.getenv("PROJR_PROFILE", "default"), ",", fixed = TRUE)[[1]]
-analysis_quick <- if (exists(".isQuick", mode = "function")) {
-  isTRUE(.isQuick())
-} else {
+analysis_quick <- .analysis_is_quick() else {
   "quick" %in% profile_vec
 }
-analysis_dev <- if (exists(".isDev", mode = "function")) {
-  isTRUE(.isDev())
-} else {
+analysis_dev <- .analysis_is_dev() else {
   "dev" %in% profile_vec
 }
 
@@ -133,7 +126,12 @@ for (fn in c(
 }
 ```
 
-### Scientific settings
+## Scientific settings
+
+The batch mismatch follows Analysis 8 and is applied only to the stimulated
+negative/background component. Random sample, condition and cluster
+perturbations are disabled so that the controlled mismatch is the source of
+stimulated-versus-unstimulated disagreement.
 
 ```{r}
 #| label: bias-uns-settings
@@ -375,6 +373,7 @@ print(
 
 ```{r}
 #| label: bias-uns-run-settings
+#| include: false
 scenario_settings <- list(
   nSample = 25,
   nMarker = 1,
@@ -407,6 +406,7 @@ used by the parallel run.
 
 ```{r}
 #| label: rerun-one-simulation
+#| include: false
 #| eval: false
 sim_id_target <- 1L
 row_target <- sim_grid_full |>
@@ -422,7 +422,6 @@ rerun_res <- .simBandwidthRunRow(
 ```{r}
 #| label: bias-uns-parallel
 #| include: false
-#| results: hide
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
@@ -431,6 +430,7 @@ if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
     path_root = root_dir,
     params = c(
       list(
@@ -478,14 +478,8 @@ if (isTRUE(run_simulations)) {
     run_plots <- FALSE
   }
 } else if (isTRUE(run_plots)) {
-  run_ctx <- tryCatch(
-    .analysis_results_context(analysis_key, path_root = root_dir),
-    error = function(e) stop(
-      conditionMessage(e), "\nRun from the repository root first: ",
-      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/2b-sim-bias_uns-freq_bs.qmd",
-      " (use the same dev/quick profile; complete all chunks if chunking).",
-      call. = FALSE
-    )
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key, path_root = root_dir, qmd_path = analysis_qmd
   )
 }
 ```
@@ -496,23 +490,16 @@ if (isTRUE(run_simulations)) {
 #| label: bias-uns-collate
 #| include: false
 if (isTRUE(run_plots)) {
-  read_current <- function(nm) {
-    tryCatch(
-      readRDS(.analysis_current_file(
-        run_ctx = run_ctx,
-        relative_path = c("collated", paste0(nm, ".rds")),
-        required_params = analysis_required_params
-      )),
-      error = function(e) stop(
-        conditionMessage(e), "\nRun from the repository root first: ",
-        "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/2b-sim-bias_uns-freq_bs.qmd",
-        " (use the same dev/quick profile; complete all chunks if chunking).",
-        call. = FALSE
-      )
-    )
-  }
-  bias_uns_results_raw <- read_current("bias_uns_results_raw")
-  bias_uns_results_summary <- read_current("bias_uns_results_summary")
+  bias_uns_results_raw <- .analysis_read_current(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "bias_uns_results_raw.rds"),
+    required_params = analysis_required_params
+  )
+  bias_uns_results_summary <- .analysis_read_current(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "bias_uns_results_summary.rds"),
+    required_params = analysis_required_params
+  )
 } else {
   message("run_plots is false, so stopping after simulation/collation.")
 }
@@ -535,7 +522,7 @@ Bias multiplier is on the horizontal axis and median absolute relative error on 
 ```{r}
 #| label: fig-relative-error
 #| fig-cap: "Relative error across bias settings, cell counts and mismatches."
-#| fig-width: 11
+#| fig-width: 10
 #| fig-height: 6
 #| echo: false
 if (isTRUE(run_plots)) {
@@ -602,12 +589,15 @@ if (isTRUE(run_plots)) {
 
 ### Relative error averaged over cell counts
 
-Scenario-level median errors are averaged equally over cell counts and plotted against bias multiplier. Colour identifies bandwidth, line type the bias scale, and facets the mismatch settings. Each figure fixes transformation, response location and response probability so the curves can be compared within one biological setting.
+For an overview, average the scenario-level median errors equally over cell
+counts, keeping response probabilities and mismatch settings separate.
+
+Colour identifies bandwidth and line type the bias scale; facets separate mismatch settings.
 
 ```{r}
 #| label: fig-relative-error-averaged-n-cell
 #| fig-cap: "Relative error averaged equally over cell counts."
-#| fig-width: 11
+#| fig-width: 10
 #| fig-height: 6
 #| echo: false
 if (isTRUE(run_plots)) {
@@ -667,12 +657,15 @@ if (isTRUE(run_plots)) {
 
 ### Relative error at each cell count
 
-Each figure shows median absolute relative error against bias multiplier for one cell count. Colour identifies bandwidth, line type the bias scale, and facets the mismatch settings. Compare the curves across cell counts while holding the biological setting fixed.
+For cell-count-specific inspection, also save each row of the original faceted
+relative-error plots as its own figure.
+
+Compare the curves across cell counts while holding the biological setting fixed.
 
 ```{r}
 #| label: fig-relative-error-by-n-cell
 #| fig-cap: "Relative error at each cell count."
-#| fig-width: 11
+#| fig-width: 10
 #| fig-height: 6
 #| echo: false
 if (isTRUE(run_plots)) {
@@ -731,7 +724,7 @@ Median estimated frequency is plotted against bias multiplier, with colour ident
 ```{r}
 #| label: fig-estimated-frequency
 #| fig-cap: "Median final response frequency across bias settings."
-#| fig-width: 11
+#| fig-width: 10
 #| fig-height: 6
 #| echo: false
 if (isTRUE(run_plots)) {

@@ -34,24 +34,13 @@ library(progressr)
 library(dplyr)
 library(tidyr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
-if (
-  !file.exists(file.path(root_dir, "DESCRIPTION")) &&
-    file.exists(file.path(dirname(root_dir), "DESCRIPTION"))
-) {
-  root_dir <- dirname(root_dir)
-}
-
-if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  stop("Cannot find the stimgate repository root. Render from the repository root.")
-}
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
 knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/8-sim-compare-freq_bs-batch.qmd"
 
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
@@ -73,12 +62,7 @@ if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
 comparison_semantics_version <- "batch-mismatch-comparison-v3"
-if (!exists(".isDev", mode = "function")) {
-  .isDev <- function() {
-    "dev" %in% strsplit(Sys.getenv("PROJR_PROFILE"), ",", fixed = TRUE)[[1]]
-  }
-}
-analysis_dev <- isTRUE(.isDev())
+analysis_dev <- .analysis_is_dev()
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -96,16 +80,8 @@ if (
   stop("Expected the stimgate DESCRIPTION at the repository root: ", root_dir)
 }
 
-# Tailgate is a required primary comparator when simulations are requested.
-if (
-  isTRUE(run_simulations) &&
-    !requireNamespace("cytoUtils", quietly = TRUE)
-) {
-  stop("Package 'cytoUtils' is required for the tailgate comparison.")
-}
-
-if (isTRUE(run_simulations) && !requireNamespace("simcyto", quietly = TRUE)) {
-  stop("Package 'simcyto' is required for the comparison simulations.")
+if (isTRUE(run_simulations)) {
+  .analysis_require_packages(c("cytoUtils", "simcyto"))
 }
 
 # Source simulation helpers in dependency order:
@@ -122,26 +98,7 @@ for (fn in c(
 
 ```
 
-```{r}
-#| label: canonical-results-check
-#| include: false
-if (!isTRUE(run_simulations) && isTRUE(run_plots)) {
-  current_dir <- file.path(
-    .analysis_cache_dir(analysis_key, path_root = root_dir, create = FALSE),
-    "current"
-  )
-  if (
-    !file.exists(file.path(current_dir, "COMPLETE")) ||
-      !file.exists(file.path(current_dir, "collated", "compare_raw.rds"))
-  ) {
-    stop(
-      "Canonical comparison results are missing or incomplete. Run from the repository root: ",
-      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/8-sim-compare-freq_bs-batch.qmd. ",
-      "Use the same dev profile for both renders; complete all chunks before plotting."
-    )
-  }
-}
-```
+## Scientific settings
 
 ### Aim
 
@@ -200,19 +157,7 @@ path_fbeta <- file.path(
 )
 
 if (isTRUE(run_simulations)) {
-  if (!requireNamespace("reticulate", quietly = TRUE)) {
-    stop("Package 'reticulate' is required for the F-beta comparison.")
-  }
-  if (!file.exists(path_fbeta)) {
-    stop("Required F-beta implementation is missing: ", path_fbeta)
-  }
-  fbeta_preflight <- tryCatch(
-    .simCompareFbetaEnvironment(pathFbeta = path_fbeta),
-    error = function(e) {
-      stop("F-beta comparator preflight failed: ", conditionMessage(e))
-    }
-  )
-  rm(fbeta_preflight)
+  .simCompareFbetaEnvironment(pathFbeta = path_fbeta)
 }
 
 tailgate_adjust <- 1
@@ -400,13 +345,13 @@ print(paste0(
 ```{r}
 #| label: compare-batch-run
 #| include: false
-#| results: hide
 n_workers <- max(1, .simGetCores())
 
 if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
     path_root = root_dir,
     params = list(
       run_simulations = run_simulations,
@@ -457,7 +402,8 @@ if (isTRUE(run_simulations)) {
 } else {
   run_ctx <- .analysis_results_context(
     analysis_key = analysis_key,
-    path_root = root_dir
+    path_root = root_dir,
+    qmd_path = analysis_qmd
   )
 }
 
@@ -604,7 +550,7 @@ path_rds <- .analysis_current_file(
     n_iter_sim = n_iter_sim
   )
 )
-compare_raw <- readRDS(path_rds)
+compare_raw <- .analysis_read_rds(path_rds, analysis_key, analysis_qmd)
 
 if (nrow(compare_raw) == 0L) {
   stop("Canonical compare_raw.rds is empty. Rerun the simulation analysis.")
@@ -655,7 +601,7 @@ if (!isTRUE(run_plots)) {
 }
 ```
 
-## Results and figures
+## Results
 
 ### Mean-shift degradation curves (all components vs negative only)
 
@@ -701,9 +647,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     path_p <- file.path(
       plot_dir, paste0("plot_med_abs_rel_error_", mean_pos_setting_curr, ".pdf")
     )
-    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-    ggplot2::ggsave(path_p, p_shift, width = 20, height = 15, units = "cm")
-    print(p_shift)
+    .analysis_save_plot(p_shift, path_p, width = 20, height = 15)
   }
 }
 ```
@@ -737,9 +681,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     path_p <- file.path(
       plot_dir, paste0("plot_max_", mean_pos_setting_curr, ".pdf")
     )
-    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-    ggplot2::ggsave(path_p, p_shift, width = 20, height = 15, units = "cm")
-    print(p_shift)
+    .analysis_save_plot(p_shift, path_p, width = 20, height = 15)
   }
 }
 ```
@@ -773,9 +715,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     path_p <- file.path(
       plot_dir, paste0("plot_q90_", mean_pos_setting_curr, ".pdf")
     )
-    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-    ggplot2::ggsave(path_p, p_shift, width = 20, height = 15, units = "cm")
-    print(p_shift)
+    .analysis_save_plot(p_shift, path_p, width = 20, height = 15)
   }
 }
 ```
@@ -805,7 +745,7 @@ axis is the unchanged background spread.
 #| fig-cap: "Median absolute relative frequency error under background SD inflation."
 #| echo: false
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 9
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_sd <- compare_summary |>
     dplyr::filter(mismatch_type == "sd_inflation")
@@ -850,15 +790,13 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
-    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-    ggsave(
-      path_p,
-      p_sd,
+    .analysis_save_plot(
+      filename = path_p,
+      plot = p_sd,
       width = 20,
       height = 15,
       units = "cm"
     )
-    print(p_sd)
   }
 }
 ```
@@ -930,15 +868,13 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
-    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-    ggsave(
-      path_p,
-      p_placement,
+    .analysis_save_plot(
+      filename = path_p,
+      plot = p_placement,
       width = 20,
       height = 15,
       units = "cm"
     )
-    print(p_placement)
   }
 }
 ```
@@ -956,7 +892,7 @@ within each panel, since mean shift and SD inflation use different units.
 #| fig-cap: "90th percentile absolute relative frequency error across mismatch settings."
 #| echo: false
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 9
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     compare_summary_curr <- compare_summary |>
@@ -999,15 +935,13 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ".pdf"
       )
     )
-    dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-    ggsave(
-      path_p,
-      p_tail,
+    .analysis_save_plot(
+      filename = path_p,
+      plot = p_tail,
       width = 20,
       height = 15,
       units = "cm"
     )
-    print(p_tail)
   }
 }
 ```
@@ -1019,6 +953,7 @@ Run the setup, settings and grid chunks first.
 
 ```{r}
 #| label: rerun-one-simulation
+#| include: false
 #| eval: false
 sim_id_rerun <- 1L
 row_rerun <- sim_grid_full[sim_grid_full$sim_id == sim_id_rerun, , drop = FALSE]

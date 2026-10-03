@@ -147,7 +147,6 @@ create_gatingset <- function(
   stats::setNames(plots, unique(expr_tbl_long$trans))
 }
 
-# Save/orchestration wrapper; callers can reuse the plots for HTML display.
 plot_gatingset_check <- function(path_gs, path_plot_dir, plots = NULL) {
   if (is.null(plots)) plots <- .acsCytofPlotGatingSetCheck(path_gs)
   dir.create(path_plot_dir, recursive = TRUE, showWarnings = FALSE)

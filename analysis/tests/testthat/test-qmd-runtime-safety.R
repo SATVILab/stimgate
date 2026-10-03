@@ -79,7 +79,7 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
     content,
     fixed = TRUE
   ))
-  expect_true(grepl("analysis_dev <- isTRUE(.isDev())", content, fixed = TRUE))
+  expect_true(grepl("analysis_dev <- .analysis_is_dev()", content, fixed = TRUE))
   expect_true(grepl("base_scenario_id = dplyr::row_number()", content, fixed = TRUE))
   expect_true(grepl(
     "sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)",
@@ -98,12 +98,12 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
   expect_true(grepl("retryErrors = TRUE", content, fixed = TRUE))
   expect_true(grepl(".simCompareGridOutputStatus(", content, fixed = TRUE))
   expect_true(grepl(
-    "F-beta comparator preflight failed",
+    ".simCompareFbetaEnvironment(pathFbeta = path_fbeta)",
     content,
     fixed = TRUE
   ))
   expect_true(grepl(
-    "cytoUtils' is required for the tailgate comparison",
+    '.analysis_require_packages(c("cytoUtils", "simcyto"))',
     content,
     fixed = TRUE
   ))
@@ -132,7 +132,7 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
   expect_true(grepl("n_iter_sim = n_iter_sim", content, fixed = TRUE))
 
   expect_true(grepl(
-    "dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)",
+    ".analysis_save_plot(",
     content,
     fixed = TRUE
   ))
@@ -214,7 +214,7 @@ test_that("analysis 2a uses shared seeded runners and canonical reads", {
   expect_true(has("retry_errors = sim_retry_errors"))
   expect_true(has(".simBandwidthFinishChunk("))
   expect_true(has(".simBandwidthFreqBsGlobalCollate("))
-  expect_true(has(".analysis_current_file("))
+  expect_true(has(".analysis_read_current("))
   expect_true(has("required_params = analysis_required_params"))
   expect_true(has("sim_grid_spec = analysis_grid_spec"))
   expect_true(has("scenario_settings = scenario_settings"))
@@ -233,12 +233,6 @@ test_that("analysis 2a uses shared seeded runners and canonical reads", {
   expect_false(has("tibble::tibble(\n                transformation"))
   expect_false(grepl("dens_tbl|rug_tbl|mean_line_tbl|main_settings", content))
   expect_false(has("current_manifest$params"))
-  expect_identical(
-    lengths(regmatches(content, gregexpr("projr_path_get(", content,
-      fixed = TRUE
-    ))),
-    1L
-  )
   expect_false(has("make_bw_colour_values <- function"))
   expect_false(has("make_bw_linetype_scale <- function"))
   expect_true(has("format_bw_lab(.data$bw)"))
@@ -322,7 +316,7 @@ test_that("analysis 4 uses shared seeded runners and canonical reads", {
   expect_true(has(".simBandwidthFinishChunk("))
   expect_true(has(".simBandwidthEstNormCollate("))
   expect_true(has(".simBandwidthEstNormValidator("))
-  expect_true(has(".analysis_current_file("))
+  expect_true(has(".analysis_read_current("))
   expect_true(has("required_params = analysis_required_params"))
   expect_true(has("sim_grid_spec = analysis_grid_spec"))
   expect_true(has("scenario_settings = scenario_settings"))
@@ -425,7 +419,7 @@ test_that("analysis 5 uses shared seeded runners and canonical reads", {
   expect_true(has(".simBandwidthEstAdaptiveValidate("))
   expect_true(has(".simBandwidthEstAdaptiveCollate("))
   expect_true(has("run_ctx <- .analysis_results_context("))
-  expect_true(has(".analysis_current_file("))
+  expect_true(has(".analysis_read_current("))
   expect_true(has("required_params = analysis_required_params"))
   expect_true(has("sim_grid_spec = analysis_grid_spec"))
   expect_true(has("scenario_settings = scenario_settings"))
@@ -445,12 +439,6 @@ test_that("analysis 5 uses shared seeded runners and canonical reads", {
   expect_false(has("bw_tbl_long"))
   expect_false(has("saveRDS("))
   expect_false(grepl("#\\| error:\\s*true", content))
-  expect_identical(
-    lengths(regmatches(content, gregexpr("projr_path_get(", content,
-      fixed = TRUE
-    ))),
-    1L
-  )
 
   expect_identical(
     length(grep("^```\\{r", lines)),
@@ -499,35 +487,4 @@ test_that("analysis 6 presentation chunks are guarded and rerun is singular", {
   }
   expect_false(any(grepl("projr::projr_path_get", lines[-seq_len(40L)],
                         fixed = TRUE)))
-})
-
-
-test_that("bandwidth-estimator plot-only renders explain how to create missing results", {
-  missing_dir <- tempfile("missing-bandwidth-results-")
-  for (filename in c(
-    "3-sim-bw-est-base.qmd", "4-sim-bw-est-norm.qmd",
-    "5-sim-bw-est-adaptive.qmd"
-  )) {
-    lines <- readLines(file.path(root_dir, "analysis", filename))
-    chunks <- .qmd_r_chunks(lines)
-    chunk <- Filter(function(x) {
-      any(x == "#| label: bw-estimate-parallel")
-    }, chunks)[[1]]
-    env <- new.env(parent = baseenv())
-    env$interactive <- function() FALSE
-    env$run_simulations <- FALSE
-    env$run_plots <- TRUE
-    env$root_dir <- root_dir
-    env$analysis_key <- c("sim", "bw", "est")
-    env$.analysis_cache_dir <- function(path_parts, path_root, create) {
-      expect_false(create)
-      missing_dir
-    }
-    expect_error(
-      eval(parse(text = chunk), envir = env),
-      paste0("RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/", filename),
-      fixed = TRUE
-    )
-    expect_false(dir.exists(missing_dir))
-  }
 })

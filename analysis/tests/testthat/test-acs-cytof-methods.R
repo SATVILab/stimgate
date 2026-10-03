@@ -370,6 +370,7 @@ test_that("combination counts collapse to one positive row per cytokine", {
   expect_equal(out$cytCombn, paste0(out$cyt, "+"))
 })
 
+
 test_that("manual comparison save preserves the last good RDS on pre-save failure", {
   env <- .load_acs_method_env()
   comparison_tbl <- tibble::tibble(
@@ -442,6 +443,8 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   # Supply the configured cache path without requiring projr or external data.
   expect_identical(as.character(code[[1]][[2]]), "path_manual_output")
   env <- .load_acs_method_env()
+  source(file.path(root_dir, "scripts", "r", "analysis-runtime.R"), local = env)
+  env$analysis_qmd <- "analysis/9-real-compare-acs-cytof.qmd"
   env$path_manual_output <- tempfile("acs-manual-cache-")
   dir.create(env$path_manual_output)
   withr::defer(unlink(env$path_manual_output, recursive = TRUE))

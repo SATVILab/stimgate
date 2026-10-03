@@ -13,7 +13,7 @@ params:
   simulation_seed: 12345
 ---
 
-This analysis checks the expression distributions used in the bandwidth simulations. One unstimulated and one stimulated sample are simulated under Gaussian, skewed and gamma transformations, with low and high positive-component means chosen separately for each transformation. The density plots show how the rare responding cells sit relative to the negative population.
+This page checks that the simulated expression distributions look sensible under the three transformation settings used in the bandwidth simulations. Here, `mean_pos` is chosen separately for each transformation, with low and high settings selected after inspecting the transformed distributions.
 
 ## Set-up
 
@@ -29,22 +29,9 @@ suppressPackageStartupMessages({
   library(cowplot)
 })
 
-if (requireNamespace("projr", quietly = TRUE)) {
-  root_dir <- tryCatch(
-    projr::projr_path_get("project"),
-    error = function(e) getwd()
-  )
-} else {
-  root_dir <- getwd()
-}
-
-# Quarto may start in analysis/ when no project execution directory is set.
-if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  root_dir <- normalizePath(file.path(getwd(), ".."), mustWork = TRUE)
-}
-if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  stop("Cannot find the stimgate repository root; render from the checkout.")
-}
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
@@ -121,7 +108,7 @@ main_settings
 
 The figures below simulate one unstimulated and one stimulated condition for each selected transformation-specific `mean_pos` setting. The stimulated sample has an excess response probability of `r mean_pos_settings_tbl$prob_response[[1]]`, while the unstimulated sample has background response probability equal to `prob_response * background_relative_to_response`.
 
-## Simulation and collation
+## Simulation
 
 Each grid row has its own seed. The cached expression table records the scientific settings so a later plotting render cannot silently use a different configuration.
 
@@ -188,23 +175,13 @@ if (isTRUE(run_simulations)) {
     )
 
   sim_trans_write_cache(uni_tbl, cache_settings, path_uni_tbl)
-} else {
-  if (!file.exists(path_uni_tbl)) {
-    stop(
-      "No transformation cache found at: ", path_uni_tbl,
-      ". Run RUN_SIMULATIONS=true RUN_PLOTS=false quarto render ",
-      "analysis/1-sim-trans.qmd first."
-    )
-  }
-  uni_tbl <- sim_trans_read_cache(path_uni_tbl, cache_settings)
 }
-
 ```
 
 ```{r}
 #| label: rerun-one-simulation
-#| eval: false
 #| include: false
+#| eval: false
 sim_id_target <- 1L
 purrr::pmap_dfr(
   uni_grid |> dplyr::filter(.data$row_index == sim_id_target),
@@ -212,11 +189,25 @@ purrr::pmap_dfr(
 )
 ```
 
+## Collation
+
+Read the matching cached expression table when simulations are disabled.
+
+```{r}
+#| label: transformation-collate
+#| include: false
+if (!isTRUE(run_simulations)) {
+  uni_tbl <- sim_trans_read_cache(path_uni_tbl, cache_settings)
+}
+
+```
+
+
 ## Results
 
 ### Mean-positive transformation grid
 
-Rows show the low and high positive-component means; columns show the transformations. Colour distinguishes stimulated and unstimulated samples, and the square-root density axis makes rare components easier to see. Vertical lines mark realised component means, while the rug marks positive-component cells; compare their separation from the negative density.
+Each row corresponds to the low or high transformation-specific `mean_pos` setting, and each column corresponds to one transformation. The y-axis is square-root transformed to make rare response components easier to see. Vertical lines (line type distinguishes the component) mark the realised negative component mean in the unstimulated condition and the realised positive component mean in the stimulated condition. The rug along the bottom axis shows the individual positive-component cells.
 
 ```{r}
 #| label: fig-mean-pos-grid-univariate

@@ -460,9 +460,11 @@ For new or moved analysis code, use this layering:
 4. Analysis-specific helpers under `scripts/r/`: substantial orchestration, restart/collation, IO and plotting helpers that should not live inline in QMDs.
 5. `analysis/*.qmd`: scientific settings, analysis calls, result-specific transformations and presentation.
 
-QMD set-up must resolve the repository root when Quarto starts in `analysis/`,
-and must tolerate absent `.Rprofile` dev/quick helpers. Cache-read errors should
-name the simulation render needed first, including the matching dev/quick profile.
+QMDs locate the checkout root before sourcing `analysis-runtime.R` and set
+knitr's working directory there for workers. Use `.analysis_is_dev()` and
+`.analysis_is_quick()` for profile fallbacks and the shared cache readers for
+errors naming the analysis, render command, matching dev/quick profile and
+required completion of all chunks.
 
 When displaying ggplot objects inside QMD conditionals or loops, call `print()`
 explicitly. Chunk tests should capture printed plots and check that each requested
@@ -471,10 +473,6 @@ method appears and that disabling plotting produces no printed plots.
 Plot-construction helpers under `scripts/r/` should return plot objects without
 creating directories or writing files. Keep filesystem side effects in the
 corresponding save/orchestration helper or QMD.
-
-QMD setup must locate the repository root before sourcing helpers, including
-when Quarto starts in `analysis/`. Provide a fallback for profile-only helpers
-used during setup when the project `.Rprofile` has not been loaded.
 
 Source analysis helper files explicitly in dependency order. Do not move analysis-only
 helpers into `R/` unless they have genuinely become part of the installed package
@@ -639,10 +637,6 @@ rows before drawing reference lines.
    kinds and restore the caller's RNG state; do not reintroduce `gateCombn`
    plumbing in the comparison layer. Analysis 1 seeds each row and saves and
    validates its scientific settings with the cache.
-   Plot-only comparison renders must report missing canonical outputs with the
-   exact simulation render command and remind readers to use the same dev profile.
-   Set the knitr working directory to the checkout root so simulation workers
-   load the current package even when Quarto starts in `analysis/`.
 
 10. **Exact reruns of one simulation row**:
    Assign `sim_id` and `sim_seed` on the full grid before dev/quick filtering, shuffling and chunking. Each row is seeded with its own `sim_seed` under fixed RNG kinds (`Mersenne-Twister`, `Inversion`, `Rejection`) and the caller's RNG state is restored afterwards (`.analysis_with_seed()`, `.simBandwidthRunRow()`, `.simCompareRunScenario()`), so results do not depend on furrr's L'Ecuyer state, chunking or scheduling. Each simulation QMD has one `eval: false` "rerun one simulation" chunk that selects a `sim_id` from the full grid and calls the same scenario code path as the workers. Do not add separate debug loops.

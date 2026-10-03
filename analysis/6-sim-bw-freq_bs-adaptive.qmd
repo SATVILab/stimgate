@@ -17,7 +17,7 @@ params:
   run_plots: false
 ---
 
-How do the core and extra bandwidths of an adaptive density affect the estimated background-subtracted response frequency? Matched unstimulated and stimulated samples are simulated with Gaussian, gamma and skewed expression distributions. The analysis varies both bandwidths, cell counts, response frequencies and the unstimulated bias, then compares final sample estimates with the simulated truth.
+This analysis asks how the core and extra bandwidths of an adaptive density affect the estimated background-subtracted response frequency. Matched unstimulated and stimulated samples are simulated with Gaussian, gamma and skewed expression distributions. The analysis varies both bandwidths, cell counts, response frequencies and unstimulated-sample bias, then compares final sample estimates with the simulated truth.
 
 ## Set-up
 
@@ -32,17 +32,13 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
-while (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  parent_dir <- dirname(root_dir)
-  if (identical(parent_dir, root_dir)) {
-    stop("Render analysis/6-sim-bw-freq_bs-adaptive.qmd from the stimgate checkout.")
-  }
-  root_dir <- parent_dir
-}
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/6-sim-bw-freq_bs-adaptive.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
   "sim_grid_chunk_index",
@@ -79,18 +75,10 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
 analysis_semantics_version <- "adaptive-bw-freq-v3"
-analysis_profiles <- tryCatch(
-  projr::projr_profile_get(),
-  error = function(e) strsplit(Sys.getenv("PROJR_PROFILE"), ",", fixed = TRUE)[[1]]
-)
-analysis_quick <- if (exists(".isQuick", mode = "function")) {
-  isTRUE(.isQuick())
-} else {
+analysis_quick <- .analysis_is_quick() else {
   "quick" %in% analysis_profiles
 }
-analysis_dev <- if (exists(".isDev", mode = "function")) {
-  isTRUE(.isDev())
-} else {
+analysis_dev <- .analysis_is_dev() else {
   "dev" %in% analysis_profiles
 }
 run_plots <- .as_flag(.get_qmd_param_env(
@@ -98,13 +86,6 @@ run_plots <- .as_flag(.get_qmd_param_env(
   "RUN_PLOTS",
   TRUE
 ))
-
-cache_render_hint <- paste0(
-  "\nFirst run RUN_SIMULATIONS=true RUN_PLOTS=false quarto render ",
-  "analysis/6-sim-bw-freq_bs-adaptive.qmd from the repository root ",
-  "with the same dev/quick profile and scientific settings; ",
-  "complete all chunks before rendering plots."
-)
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -134,7 +115,7 @@ for (fn in c(
 }
 ```
 
-## Simulation and method settings
+## Scientific settings
 
 The core bandwidth describes the background density; the extra bandwidth describes the high-expression component. Cluster refinement and cytokine-positive refinement are disabled to isolate the bandwidth settings.
 
@@ -357,6 +338,7 @@ The manifest includes the complete selected cross-chunk scientific grid.
 
 ```{r}
 #| label: bw-manual-settings
+#| include: false
 scenario_settings <- list(
   nSample = n_sample_sim,
   nMarker = 1L,
@@ -389,6 +371,7 @@ used by the parallel runner, regardless of chunk or worker scheduling.
 
 ```{r}
 #| label: rerun-one-simulation
+#| include: false
 #| eval: false
 sim_id_target <- 1L
 row_target <- sim_grid_full[sim_grid_full$sim_id == sim_id_target, ]
@@ -419,6 +402,7 @@ if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
     path_root = root_dir,
     params = c(list(
       run_simulations = run_simulations,
@@ -456,11 +440,9 @@ if (isTRUE(run_simulations)) {
     run_plots <- FALSE
   }
 } else if (isTRUE(run_plots)) {
-  tryCatch({
-    run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
-  }, error = function(e) {
-    stop(conditionMessage(e), cache_render_hint, call. = FALSE)
-  })
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key, path_root = root_dir, qmd_path = analysis_qmd
+  )
 }
 ```
 
@@ -472,25 +454,21 @@ Only complete, validated results are promoted to the canonical cache. Plot-only 
 #| label: bw-manual-collate
 #| include: false
 if (isTRUE(run_plots)) {
-  tryCatch({
-    bw_tbl_results_raw <- readRDS(.analysis_current_file(
-      run_ctx = run_ctx,
-      relative_path = c("collated", "bw_tbl_results_raw.rds"),
-      required_params = analysis_required_params
-    ))
-    bw_tbl_results_summary <- readRDS(.analysis_current_file(
-      run_ctx = run_ctx,
-      relative_path = c("collated", "bw_tbl_results_summary.rds"),
-      required_params = analysis_required_params
-    ))
-    summary_tbl <- readRDS(.analysis_current_file(
-      run_ctx = run_ctx,
-      relative_path = c("collated", "summary_tbl.rds"),
-      required_params = analysis_required_params
-    ))
-  }, error = function(e) {
-    stop(conditionMessage(e), cache_render_hint, call. = FALSE)
-  })
+  bw_tbl_results_raw <- .analysis_read_current(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "bw_tbl_results_raw.rds"),
+    required_params = analysis_required_params
+  )
+  bw_tbl_results_summary <- .analysis_read_current(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "bw_tbl_results_summary.rds"),
+    required_params = analysis_required_params
+  )
+  summary_tbl <- .analysis_read_current(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "summary_tbl.rds"),
+    required_params = analysis_required_params
+  )
 } else {
   message("run_plots is false, so stopping after simulation/collation.")
 }
@@ -506,9 +484,11 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-## Estimated background-subtracted frequency
+## Results
 
-### Fixed core bandwidth, varying extra bandwidth
+### Estimated background-subtracted frequency
+
+#### Fixed core bandwidth, varying extra bandwidth
 
 Cell count is on the logarithmic horizontal axis and median estimated frequency is on the vertical axis. Colour distinguishes extra bandwidths, panels separate response frequencies, and dashed lines mark the simulated truth; estimates nearer these lines indicate closer agreement.
 
@@ -611,7 +591,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Fixed extra bandwidth, varying core bandwidth
+#### Fixed extra bandwidth, varying core bandwidth
 
 Cell count is on the logarithmic horizontal axis and median estimated frequency is on the vertical axis. Colour distinguishes core bandwidths and panels separate response frequencies. Compare estimates with the dashed lines marking the simulated truth.
 
@@ -714,9 +694,9 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-## Raw background-subtracted frequency estimates
+### Raw background-subtracted frequency estimates
 
-### Fixed core bandwidth, varying extra bandwidth
+#### Fixed core bandwidth, varying extra bandwidth
 
 Each point is a final sample estimate, with cell count on the horizontal axis and estimated frequency on the vertical axis. Colour distinguishes extra bandwidths and panels separate response frequencies. The spread around the dashed truth lines shows variation across samples and simulation iterations.
 
@@ -817,7 +797,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Fixed extra bandwidth, varying core bandwidth
+#### Fixed extra bandwidth, varying core bandwidth
 
 Each point is a final sample estimate, with cell count on the horizontal axis and estimated frequency on the vertical axis. Colour distinguishes core bandwidths and panels separate response frequencies. Compare the spread of points with the dashed lines marking the simulated truth.
 
@@ -918,13 +898,13 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-## Threshold plots
+### Threshold plots
 
 Threshold plots show final thresholds as vertical lines. Median plots
 vary one bandwidth component at a time; raw plots also show sample thresholds
 and their interquartile range.
 
-### Median thresholds: fixed core bandwidth, varying extra bandwidth
+#### Median thresholds: fixed core bandwidth, varying extra bandwidth
 
 Vertical lines mark median thresholds on the marker-expression axis; line type distinguishes extra bandwidths. Rows separate response frequencies and columns separate cell counts. Compare the positions of the lines to see how the extra bandwidth changes the gate.
 
@@ -1035,7 +1015,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Median thresholds: fixed extra bandwidth, varying core bandwidth
+#### Median thresholds: fixed extra bandwidth, varying core bandwidth
 
 Vertical lines mark median thresholds on the marker-expression axis; line type distinguishes core bandwidths. Rows separate response frequencies and columns separate cell counts. Compare the positions of the lines to see how the core bandwidth changes the gate.
 
@@ -1146,7 +1126,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Raw thresholds: fixed core bandwidth, varying extra bandwidth
+#### Raw thresholds: fixed core bandwidth, varying extra bandwidth
 
 Faint vertical lines mark individual sample thresholds on the marker-expression axis, coloured by extra bandwidth. Solid lines mark medians and dashed lines mark the lower and upper quartiles. Rows separate response frequencies and columns separate cell counts, allowing the threshold spread to be compared within each setting.
 
@@ -1300,7 +1280,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Raw thresholds: fixed extra bandwidth, varying core bandwidth
+#### Raw thresholds: fixed extra bandwidth, varying core bandwidth
 
 Faint vertical lines mark individual sample thresholds on the marker-expression axis, coloured by core bandwidth. Solid lines mark medians and dashed lines mark the lower and upper quartiles. Rows separate response frequencies and columns separate cell counts, allowing the threshold spread to be compared within each setting.
 
@@ -1454,7 +1434,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-## Threshold summary table
+### Threshold summary table
 
 The tables summarise threshold variation and relative frequency error for each bandwidth pair. The ranked table averages threshold-variation ranks and absolute relative error over cell counts and response frequencies within each transformation, bias and mean-expression setting.
 

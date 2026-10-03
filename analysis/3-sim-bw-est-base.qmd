@@ -33,25 +33,13 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
-
-# Quarto may start in analysis/ when no project working directory is set.
-if (!file.exists(file.path(root_dir, "DESCRIPTION")) &&
-    file.exists(file.path(dirname(root_dir), "DESCRIPTION"))) {
-  root_dir <- dirname(root_dir)
-}
-if (!file.exists(file.path(root_dir, "scripts", "r", "analysis-runtime.R"))) {
-  stop("Cannot locate the stimgate checkout; render from its root or analysis/.")
-}
-if (!exists(".isDev", mode = "function")) {
-  .isDev <- function() "dev" %in% projr::projr_profile_get()
-}
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/3-sim-bw-est-base.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
   "sim_grid_chunk_index",
@@ -96,7 +84,7 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bw", "est", "base")
 analysis_semantics_version <- "bandwidth-est-base-v4"
-analysis_dev <- isTRUE(.isDev())
+analysis_dev <- .analysis_is_dev()
 n_sample_sim <- 50L
 n_iter_sim <- 1L
 bw_fallback <- NA_real_
@@ -145,11 +133,21 @@ for (fn in c(
 
 ## Scientific settings
 
-The grid varies cell count, response frequency, response separation and bandwidth method. Only low unstimulated-sample bias is studied, with transformation-specific magnitudes. Bandwidth estimates are unbounded (`bw_min = -Inf`, `bw_max = Inf`); cell-count limits use the wrapper defaults (`NULL`).
+Get the parameters over which we simulate.
+
+We mainly need to consider two variations - whether the number of parent population cells is large or small, and whether the size of the responding population is large enough to impact the estimator.
+We can also vary the amount of separation, I suppose.
+
+We'll need to vary over a range of parent population sizes, however, as that will tell us how the estimator behaves over the most crucial dimension (apart from the actual transformation, of course).
+
+Only low unstimulated-sample bias is studied, with transformation-specific
+magnitudes. Bandwidth estimates are unbounded (`bw_min = -Inf`,
+`bw_max = Inf`); cell-count limits use the wrapper defaults (`NULL`).
 
 External chunks share one run ID and promote results only after all selected
-scenarios validate. For cached plots, use the same dev profile and scientific
-settings as the simulation render.
+scenarios validate. Failed simulations are retried on resume. Plots require
+matching promoted results; render with simulations disabled after a multi-chunk
+run completes.
 
 ```{r}
 #| label: actual-settings
@@ -248,6 +246,7 @@ manifest and required when reading canonical results.
 
 ```{r}
 #| label: bw-estimate-settings
+#| include: false
 scenario_settings <- list(
   nSample = n_sample_sim,
   nMarker = 1,
@@ -306,7 +305,6 @@ Run the simulations and validate this chunk. Promotion waits for all chunks.
 ```{r}
 #| label: bw-estimate-parallel
 #| include: false
-#| results: hide
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
@@ -315,6 +313,7 @@ if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
     path_root = root_dir,
     params = c(
       list(
@@ -363,29 +362,19 @@ if (isTRUE(run_simulations)) {
     run_plots <- FALSE
   }
 } else if (isTRUE(run_plots)) {
-  current_dir <- .analysis_cache_dir(
-    c(analysis_key, "current"), path_root = root_dir, create = FALSE
-  )
-  if (!file.exists(file.path(current_dir, "COMPLETE"))) {
-    stop(
-      "No complete canonical results are available. First run from the repository root: ",
-      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/3-sim-bw-est-base.qmd",
-      " (with the same dev profile and settings; complete all chunks if chunked).",
-      call. = FALSE
-    )
-  }
   run_ctx <- .analysis_results_context(
     analysis_key = analysis_key,
-    path_root = root_dir
+    path_root = root_dir,
+    qmd_path = analysis_qmd
   )
 }
 ```
 
 ## Collation
 
-Read matching canonical results. The plotted mean uses the smaller stimulated
-and unstimulated bandwidth for each complete finite pair;
-`prop_bw_finite` records the proportion of such pairs.
+Read matching canonical results and plot the scenario means.
+
+The plotted mean uses the smaller stimulated and unstimulated bandwidth for each complete finite pair; `prop_bw_finite` records the proportion of such pairs.
 
 ```{r}
 #| label: bw-estimate-collate
@@ -401,8 +390,8 @@ if (isTRUE(run_plots)) {
     relative_path = c("collated", "bw_tbl_results.rds"),
     required_params = analysis_required_params
   )
-  bw_tbl <- readRDS(path_raw)
-  bw_tbl_results <- readRDS(path_results)
+  bw_tbl <- .analysis_read_rds(path_raw, analysis_key, analysis_qmd)
+  bw_tbl_results <- .analysis_read_rds(path_results, analysis_key, analysis_qmd)
   if (any(bw_tbl_results$n_bw_finite < bw_tbl_results$n_bw_total)) {
     message(
       "Some bandwidth estimates are non-finite; prop_bw_finite records ",
@@ -422,7 +411,7 @@ Mean bandwidth estimates are plotted against cell count on a logarithmic axis, w
 #| label: fig-bw-estimate-plots
 #| echo: false
 #| fig-cap: "Mean ordinary bandwidth estimates by cell count, transformation and response frequency."
-#| fig-width: 7
+#| fig-width: 10
 #| fig-height: 9
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {

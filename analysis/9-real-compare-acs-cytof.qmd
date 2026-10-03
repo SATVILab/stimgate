@@ -17,7 +17,9 @@ params:
   n_workers: 2
 ---
 
-This analysis compares StimGate, Tailgate and F-beta estimates of background-subtracted cytokine frequencies with manual gating in the ACS CyTOF dataset. Each batch contains one unstimulated and four stimulated samples, analysed separately for six cell populations. Automated marker-combination counts are reduced to single-cytokine frequencies and matched to the manual reference counts.
+Validate StimGate on the ACS CyTOF dataset and compare its estimated
+background-subtracted response frequencies with Tailgate and F-beta.
+Each batch contains one unstimulated and four stimulated samples, analysed separately for six cell populations.
 
 ## Set-up
 
@@ -32,21 +34,13 @@ library(dplyr)
 library(tidyr)
 library(purrr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
-
-# Quarto may start in analysis/ when no project execution directory is set.
-if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  root_dir <- normalizePath(file.path(getwd(), ".."), mustWork = TRUE)
-}
-if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  stop("Cannot find the stimgate repository root; render from the checkout.")
-}
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/9-real-compare-acs-cytof.qmd"
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))
 source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
@@ -273,7 +267,9 @@ if (isTRUE(run_comparators)) {
 }
 ```
 
-## Compare methods with the ACS reference counts
+## Collation
+
+### Compare methods with the ACS reference counts
 
 The cached combination tables for all three methods are reduced to one
 frequency per cytokine with `UtilsCytoRSV::sum_over_markers()`. Combination
@@ -312,19 +308,14 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
     savePlots = FALSE
   )
 } else {
-  if (!file.exists(path_comparison)) {
-    stop(
-      "No canonical ACS comparison found at: ", path_comparison,
-      ". Run RUN_SIMULATIONS=true RUN_PLOTS=false quarto render ",
-      "analysis/9-real-compare-acs-cytof.qmd first with the ACS data available."
-    )
-  }
-  manual_comparison_tbl <- readRDS(path_comparison)
+  manual_comparison_tbl <- .analysis_read_rds(
+    path_comparison, "acs_cytof", analysis_qmd
+  )
 }
 manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 ```
 
-## Output tables and figures
+## Results
 
 ### Correlation with the manual gating
 
@@ -363,12 +354,14 @@ Manual background-subtracted frequency is on the horizontal axis and automated f
 #| fig-height: 10
 #| fig-cap: "Automated and manual background-subtracted frequencies for all three methods."
 if (isTRUE(run_plots)) {
-  manual_plots <- .acsCytofManualSave(
-    comparisonTbl = manual_comparison_tbl,
-    pathDirSave = path_manual_output,
-    savePlots = TRUE
+  manual_plots <- list(
+    scatter = .acsCytofManualPlotScatter(manual_comparison_tbl),
+    relativeError = .acsCytofManualPlotRelativeError(manual_comparison_tbl)
   )
-  print(manual_plots$scatter)
+  .analysis_save_plot(
+    manual_plots$scatter, file.path(path_manual_output, "manual-comparison-scatter.png"),
+    width = 30, height = max(16, 5 * dplyr::n_distinct(manual_comparison_tbl$pop))
+  )
 }
 ```
 
@@ -383,7 +376,11 @@ Boxplots show absolute relative error by method, with separate panels for popula
 #| fig-height: 10
 #| fig-cap: "Absolute relative error for StimGate, Tailgate and F-beta."
 if (isTRUE(run_plots)) {
-  print(manual_plots$relativeError)
+  .analysis_save_plot(
+    manual_plots$relativeError,
+    file.path(path_manual_output, "manual-comparison-relative-error.png"),
+    width = 30, height = max(16, 5 * dplyr::n_distinct(manual_comparison_tbl$pop))
+  )
 }
 ```
 

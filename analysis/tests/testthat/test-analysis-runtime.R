@@ -975,3 +975,54 @@ test_that("seeded evaluation is independent of and restores caller RNG", {
   env$.analysis_with_seed(5L, stats::runif(1))
   expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
 })
+
+test_that("analysis profiles fall back to the environment and respect profile helpers", {
+  env <- new.env(parent = baseenv())
+  source(script_runtime, local = env)
+  withr::local_envvar(PROJR_PROFILE = NA)
+  expect_false(env$.analysis_is_dev())
+  expect_false(env$.analysis_is_quick())
+  Sys.setenv(PROJR_PROFILE = "dev, quick")
+  expect_true(env$.analysis_is_dev())
+  expect_true(env$.analysis_is_quick())
+  env$.isDev <- function() FALSE
+  env$.isQuick <- function() FALSE
+  expect_false(env$.analysis_is_dev())
+  expect_false(env$.analysis_is_quick())
+})
+
+test_that("canonical cache failures give render guidance and successful reads retain data", {
+  env <- .load_runtime_env()
+  cache <- withr::local_tempdir()
+  ctx <- list(
+    analysis_key = c("sim", "test"), current_dir = cache,
+    qmd_path = "analysis/test.qmd"
+  )
+  path <- file.path(cache, "result.rds")
+  command <- "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/test.qmd"
+  expect_error(env$.analysis_read_current(ctx, "result.rds"), command, fixed = TRUE)
+  file.create(file.path(cache, "COMPLETE"))
+  expect_error(env$.analysis_read_current(ctx, "result.rds"), command, fixed = TRUE)
+  saveRDS(list(analysis_key = ctx$analysis_key, params = list(version = 1L)),
+          file.path(cache, "manifest.rds"))
+  expect_error(env$.analysis_read_current(ctx, "result.rds"), command, fixed = TRUE)
+  object <- data.frame(value = 1:2, row.names = c("a", "b"))
+  saveRDS(object, path)
+  expect_identical(env$.analysis_read_current(ctx, "result.rds", list(version = 1L)), object)
+  expect_error(env$.analysis_read_current(ctx, "result.rds", list(version = 2L)), command, fixed = TRUE)
+  writeLines("corrupt RDS", path)
+  expect_error(suppressWarnings(env$.analysis_read_current(ctx, "result.rds")), command, fixed = TRUE)
+})
+
+test_that("the shared plot saver writes and prints the supplied plot once", {
+  env <- .load_runtime_env()
+  printed <- list()
+  env$print <- function(x) printed[[length(printed) + 1L]] <<- x
+  directory <- withr::local_tempdir()
+  path <- file.path(directory, "figures", "plot.pdf")
+  plot <- ggplot2::ggplot(data.frame(x = 1:2, y = 1:2), ggplot2::aes(x, y)) +
+    ggplot2::geom_point()
+  expect_identical(env$.analysis_save_plot(plot, path, width = 5, height = 5), path)
+  expect_true(file.exists(path))
+  expect_identical(printed, list(plot))
+})

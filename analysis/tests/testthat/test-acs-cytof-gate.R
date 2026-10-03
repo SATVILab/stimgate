@@ -112,6 +112,7 @@ test_that("analysis 9 uses one runner for the tester and configured populations"
   ))
 })
 
+
 test_that("analysis 9 validates execution controls before running", {
   content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
 

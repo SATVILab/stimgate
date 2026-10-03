@@ -33,20 +33,13 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
-if (!file.exists(file.path(root_dir, "DESCRIPTION"))) {
-  root_dir <- dirname(root_dir)
-}
-root_dir <- normalizePath(root_dir, mustWork = TRUE)
-if (!file.exists(file.path(root_dir, "scripts", "r", "analysis-runtime.R"))) {
-  stop("Render this document from the stimgate repository or its analysis directory.")
-}
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/2a-sim-bw-freq_bs-global.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
   "sim_grid_chunk_index",
@@ -96,14 +89,10 @@ analysis_key <- c("sim", "bw", "freq_bs", "global")
 analysis_semantics_version <- "global-bw-freq-v4"
 # Quarto may start without the repository .Rprofile.
 profile_vec <- strsplit(Sys.getenv("PROJR_PROFILE", "default"), ",", fixed = TRUE)[[1]]
-analysis_quick <- if (exists(".isQuick", mode = "function")) {
-  isTRUE(.isQuick())
-} else {
+analysis_quick <- .analysis_is_quick() else {
   "quick" %in% profile_vec
 }
-analysis_dev <- if (exists(".isDev", mode = "function")) {
-  isTRUE(.isDev())
-} else {
+analysis_dev <- .analysis_is_dev() else {
   "dev" %in% profile_vec
 }
 
@@ -135,9 +124,22 @@ for (fn in c(
 }
 ```
 
-### Scientific settings
+## Scientific settings
 
-The grid varies the number of cells, response probability, response location and transformation. Background is fixed relative to the response, with two levels of condition perturbation and transformation-specific bias settings.
+Get the parameters over which we simulate.
+
+So, as with checking what the actual estimated bandwidths are, we are going to have to vary over the number of cells, the probability of response, the mean position of the response, and the transformation applied to the data.
+
+We will need to vary over more response probabilities, however, and of course need to vary over the bandwidths themselves.
+
+Regarding the bandwidths themselves, as the `gamma` scenario is estimating such low bandwidths, we're going to have to start low.
+
+We should probably allow varying amounts of intra-sample variation between the stimulated and unstimulated conditions.
+But for now, let's just have two levels - no variation, slight variation.
+
+Let's keep moderate background at 0.2.
+
+Let's include no, low, and high unstimulated-sample bias settings, with transformation-specific magnitudes.
 
 ```{r}
 #| label: actual-settings
@@ -217,7 +219,14 @@ prob_response_grid_vec <- unique(c(prob_response_vec, 0.02))
 
 ## Simulation
 
-Fixed bandwidths cover 0.001 to 0.15 for gamma scenarios and 0.05 to 1.5 for Gaussian and skew scenarios. Stable row IDs and seeds are assigned before dev/quick filtering and chunking.
+So, now we'll vary the bandwidth from a small value up to to a large value, where "small" is relative to the known spread of the data.
+
+The spread of the data (without any batch effects) around the mean is on average 2, and the spread between the means is up to 8.
+We vary the fixed bandwidth over a transformation-dependent range: gamma uses the low end of the common grid (0.001 to 0.15), while Gaussian and skew scenarios use 0.05 to 1.5. We then compare the estimated background-subtracted frequencies with the simulated truth across the other scenario settings.
+
+And we'll do this for varying numbers of cells.
+
+Generate the grid of parameters to simulate.
 
 ```{r}
 #| label: bw-manual-grid
@@ -347,6 +356,7 @@ manifest parameters that canonical results must match.
 
 ```{r}
 #| label: bw-manual-settings
+#| include: false
 scenario_settings <- list(
   nSample = 200,
   nMarker = 1,
@@ -382,6 +392,7 @@ step through it.
 
 ```{r}
 #| label: rerun-one-simulation
+#| include: false
 #| eval: false
 sim_id_target <- 1L
 
@@ -412,7 +423,6 @@ chunk and promote the run once every chunk is complete.
 ```{r}
 #| label: bw-manual-parallel
 #| include: false
-#| results: hide
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
@@ -421,6 +431,7 @@ if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
     path_root = root_dir,
     params = c(
       list(
@@ -467,14 +478,8 @@ if (isTRUE(run_simulations)) {
   }
 } else if (isTRUE(run_plots)) {
   # Read-only: plots use the canonical promoted results under current/.
-  run_ctx <- tryCatch(
-    .analysis_results_context(analysis_key, path_root = root_dir),
-    error = function(e) stop(
-      conditionMessage(e), "\nRun from the repository root first: ",
-      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/2a-sim-bw-freq_bs-global.qmd",
-      " (use the same dev/quick profile; complete all chunks if chunking).",
-      call. = FALSE
-    )
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key, path_root = root_dir, qmd_path = analysis_qmd
   )
 }
 ```
@@ -488,23 +493,16 @@ at the same `current/` directory).
 #| label: bw-manual-collate
 #| include: false
 if (isTRUE(run_plots)) {
-  read_current <- function(nm) {
-    tryCatch(
-      readRDS(.analysis_current_file(
-        run_ctx = run_ctx,
-        relative_path = c("collated", paste0(nm, ".rds")),
-        required_params = analysis_required_params
-      )),
-      error = function(e) stop(
-        conditionMessage(e), "\nRun from the repository root first: ",
-        "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/2a-sim-bw-freq_bs-global.qmd",
-        " (use the same dev/quick profile; complete all chunks if chunking).",
-        call. = FALSE
-      )
-    )
-  }
-  bw_tbl_results_raw <- read_current("bw_tbl_results_raw")
-  bw_tbl_results_summary <- read_current("bw_tbl_results_summary")
+  bw_tbl_results_raw <- .analysis_read_current(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "bw_tbl_results_raw.rds"),
+    required_params = analysis_required_params
+  )
+  bw_tbl_results_summary <- .analysis_read_current(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "bw_tbl_results_summary.rds"),
+    required_params = analysis_required_params
+  )
   bias_uns_setting_vec_plot <- bias_uns_settings_tbl |>
     dplyr::distinct(.data$bias_uns_setting) |>
     dplyr::pull(.data$bias_uns_setting)
@@ -514,6 +512,8 @@ if (isTRUE(run_plots)) {
 ```
 
 ## Results
+
+Okay, now we must plot which bandwidths are best for which scenarios.
 
 ```{r}
 #| include: false
@@ -529,7 +529,15 @@ if (isTRUE(run_plots)) {
 
 ### Median response frequency
 
-Median estimated frequency is plotted against cell count on a log scale, with colour indicating bandwidth. Facets separate transformations, response probabilities and condition perturbations; dashed lines show the simulated truth. Curves closer to those lines indicate better agreement.
+Okay, so we varied the transformation, the prob_response, the n_cell, the mean_pos_setting, the bw, as well as now bias_uns.
+
+So, let's plot it perhaps how we did it for the bandwidth estimators? We have one line for each bandwidth, and then the x-axis as the number of cells, and the y-axis as the estimated background-subtracted frequency.
+We'll do one plot for each of the mean_pos_settings.
+Then, we have transformation along the x-axis, as usual, and the response probability along the y-axis (ito the facet, i.e. response probability gives you the row, transformation gives you the column).
+Okay, and we can plot the median estimated background-subtracted frequency.
+Let's leave error bars out for now.
+
+Dashed lines show the simulated truth; compare the curves with those lines.
 
 ```{r}
 #| label: fig-frequency-median
@@ -622,7 +630,9 @@ if (isTRUE(run_plots)) {
 
 ### Sample response frequencies
 
-Each point is a final sample-level frequency estimate, grouped by cell count and coloured by bandwidth. Facets separate transformations and response probabilities, and each figure uses one condition-perturbation setting. Compare the spread of estimates with the dashed truth lines.
+Okay, now, let's do the same plot using the individual final sample-level frequency estimates rather than the scenario median. We'll treat the number of cells as a categorical variable and dodge the bandwidths.
+
+Compare the spread of estimates with the dashed truth lines.
 
 ```{r}
 #| label: fig-frequency-samples
@@ -748,13 +758,18 @@ if (isTRUE(run_plots)) {
 
 ### Relative error averaged over cell counts
 
-Relative error is plotted against bandwidth, with colour distinguishing the median, 95th percentile and maximum error. Scenario-level summaries are averaged equally over cell counts and response probabilities, using low bias and no condition perturbation; facets separate transformations. Lower values indicate closer agreement with the simulated truth.
+So, no large errors as long as we don't put any perturbation (well, 0.5 is quite large).
+
+The table above is hard to read.
+Can't we, for example, compare the average error to the mean?
+
+Relative error is plotted against bandwidth. Scenario-level median, 95th-percentile and maximum errors are averaged equally over cell counts and response probabilities, using low bias and no condition perturbation; facets separate transformations.
 
 ```{r}
 #| label: fig-relative-error-averaged-n-cell
 #| fig-cap: "Relative errors averaged over cell counts and response probabilities."
-#| fig-width: 9
-#| fig-height: 5
+#| fig-width: 10
+#| fig-height: 6
 #| echo: false
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
@@ -890,13 +905,15 @@ if (isTRUE(run_plots)) {
 
 ### Relative error at each cell count
 
-These plots retain each cell count separately and average scenario-level errors over response probabilities. Bandwidth is on the horizontal axis, colour identifies the error summary, and facets separate transformations. Compare the curves across cell counts under the same low-bias, unperturbed conditions.
+The following plots retain each cell count separately. As above, median,
+95th-percentile and maximum errors are calculated within each response-probability
+scenario before averaging those summaries over response probabilities.
 
 ```{r}
 #| label: fig-relative-error-by-n-cell
 #| fig-cap: "Relative errors at each cell count, averaged over response probabilities."
-#| fig-width: 9
-#| fig-height: 5
+#| fig-width: 10
+#| fig-height: 6
 #| echo: false
 if (isTRUE(run_plots)) {
   err_rel_by_cell <- bw_tbl_results_raw |>
@@ -1029,7 +1046,11 @@ if (isTRUE(run_plots)) {
 
 ### Median expression thresholds
 
-Vertical lines show median expression thresholds, with line type indicating bandwidth. Facets separate response probability, cell count, transformation and condition perturbation; each figure fixes response location and bias. Compare where the lines fall along the marker-expression axis.
+Now we plot the median thresholds themselves, as vertical lines with one
+line type per bandwidth.
+We facet with the rows being the probability of a response and the columns
+the transformation, and write one file per mean_pos_setting and
+bias_uns_setting.
 
 ```{r}
 #| label: fig-threshold-median
@@ -1128,7 +1149,11 @@ if (isTRUE(run_plots)) {
 
 ### Sample expression thresholds
 
-Thin vertical lines show individual sample thresholds for one bandwidth, response location and bias setting. Solid and dashed lines mark the median and interquartile limits within each scenario, with facets separating the remaining settings. Wider spreads indicate greater variation between sample thresholds.
+Okay, now let's do the same, but we will make also one plot for each bandwidth setting, and show the actual thresholds all the samples and iterations.
+
+So, now, we loop not just over mean_pos_settings, but also over the bandwidths.
+
+Solid and dashed lines mark the median and interquartile limits within each scenario.
 
 ```{r}
 #| label: fig-threshold-samples
@@ -1270,7 +1295,7 @@ if (isTRUE(run_plots)) {
 
 ### Threshold summaries
 
-The table ranks bandwidth settings by threshold variability within each scenario.
+Okay, let's get a summary table, where for each setting above, for each bandwidth we have the min, max, median, iqr lower, iqr upper, sd, mad, iqr length.
 
 ```{r}
 #| echo: false
