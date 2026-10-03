@@ -346,7 +346,7 @@ manifest parameters that canonical results must match.
 ```{r}
 #| label: bw-manual-settings
 scenario_settings <- list(
-  nSample = 25,
+  nSample = 200,
   nMarker = 1,
   nCondition = 2,
   nCluster = 2,
