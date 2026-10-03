@@ -32,7 +32,9 @@
     control$leftThresholdQuantile <= 1,
     is.numeric(control$nGrid),
     length(control$nGrid) == 1L,
+    is.finite(control$nGrid),
     control$nGrid >= 16,
+    control$nGrid <= .Machine$integer.max,
     is.numeric(control$winsorLower),
     is.numeric(control$imputeQuantile),
     is.numeric(control$winsorUpper),
@@ -62,9 +64,10 @@
 
 #' @keywords internal
 .getCpClusterLocCommonBw <- function(
-    gateTblStim,
-    exLookup,
-    chnlSettings) {
+  gateTblStim,
+  exLookup,
+  chnlSettings
+) {
   indDirect <- gateTblStim |>
     dplyr::filter(
       .data$locGeneratedDirect %in% TRUE,
@@ -304,9 +307,10 @@
 
 #' @keywords internal
 .getCpClusterLocJointFeatureTbl <- function(
-    exLookup,
-    densityGrid,
-    bw) {
+  exLookup,
+  densityGrid,
+  bw
+) {
   if (length(densityGrid) < 2L) {
     return(tibble::tibble(
       ind = character(),
@@ -417,8 +421,9 @@
 
 #' @keywords internal
 .getCpClusterLocInitialNClusters <- function(
-    featureTbl,
-    control) {
+  featureTbl,
+  control
+) {
   featureCols <- .getCpClusterLocFeatureCols(featureTbl)
   x <- as.matrix(featureTbl[, featureCols, drop = FALSE])
   nUnique <- nrow(unique(as.data.frame(x)))
@@ -553,10 +558,11 @@
 
 #' @keywords internal
 .getCpClusterDensTblGetBatchPrepExListFilter <- function(
-    exList,
-    chnlCut,
-    gateTbl,
-    calcCytPosGates) {
+  exList,
+  chnlCut,
+  gateTbl,
+  calcCytPosGates
+) {
   .debug("Filtering other cytokine positive cells")
   exListFilter <- purrr::map(seq_along(exList), function(i) {
     if (i == 1L) {
@@ -575,10 +581,11 @@
 
 #' @keywords internal
 .getCpClusterDensTblGetBatchPrepExListFilterInd <- function(
-    exTbl,
-    gateTbl,
-    chnlCut,
-    calcCytPosGates) {
+  exTbl,
+  gateTbl,
+  chnlCut,
+  calcCytPosGates
+) {
   posInd <- .getPosIndButSinglePosForOneCyt(
     ex = exTbl,
     gateTbl = gateTbl[gateTbl[["ind"]] == attr(exTbl, "ind"), ],
