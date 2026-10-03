@@ -401,23 +401,31 @@ if (interactive()) {
   progressr::handlers(global = TRUE)
 }
 
+analysis_required_params <- list(
+  analysis_semantics_version = analysis_semantics_version,
+  simulation_seed = simulation_seed,
+  analysis_dev = analysis_dev,
+  n_sample_sim = n_sample_sim,
+  n_iter_sim = n_iter_sim,
+  norm_adaptive_ncell = norm_adaptive_ncell,
+  bw_fallback = bw_fallback,
+  sim_grid_spec = analysis_grid_spec
+)
+
 if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
     path_root = root_dir,
-    params = list(
-      run_simulations = run_simulations,
-      run_plots = run_plots,
-      analysis_semantics_version = analysis_semantics_version,
-      simulation_seed = simulation_seed,
-      analysis_dev = analysis_dev,
-      n_sample_sim = n_sample_sim,
-      n_iter_sim = n_iter_sim,
-      norm_adaptive_ncell = norm_adaptive_ncell,
-      sim_grid_chunk_index = sim_grid_chunk_index,
-      sim_grid_n_chunks = sim_grid_n_chunks,
-      sim_grid_shuffle_seed = sim_grid_shuffle_seed
+    params = c(
+      list(
+        run_simulations = run_simulations,
+        run_plots = run_plots,
+        sim_grid_chunk_index = sim_grid_chunk_index,
+        sim_grid_n_chunks = sim_grid_n_chunks,
+        sim_grid_shuffle_seed = sim_grid_shuffle_seed
+      ),
+      analysis_required_params
     ),
     sim_grid_chunk_index = sim_grid_chunk_index,
     sim_grid_n_chunks = sim_grid_n_chunks
