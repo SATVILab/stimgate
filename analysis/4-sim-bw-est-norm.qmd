@@ -1,5 +1,5 @@
 ---
-title: Simulate best bandwidth
+title: Simulate normalised bandwidth estimators
 format:
   html:
     embed-resources: true
@@ -75,7 +75,6 @@ run_plots <- .as_flag(.get_qmd_param_env(
 ))
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
-sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
@@ -106,12 +105,9 @@ for (fn in c(
 
 Get the parameters over which we simulate.
 
-We mainly need to consider two variations - whether the number of parent population cells is large or small, and whether the size of the responding population is large enough to impact the estimator.
-We can also vary the amount of separation, I suppose.
+We compare the ordinary and normalised HPI estimators across parent-population size, response frequency, response separation and transformation.
 
-We'll need to vary over a range of parent population sizes, however, as that will tell us how the estimator behaves over the most crucial dimension (apart from the actual transformation, of course).
-
-Initially, we will ignore setting maximum/minimum number of cells.
+We also vary the maximum number of cells used by the bandwidth estimator. For a fair comparison, estimator methods and cell caps within the same biological scenario use the same simulated dataset.
 
 ```{r}
 #| label: actual-settings
@@ -363,9 +359,9 @@ for (i in seq_len(nrow(sim_grid))) {
   message("Completed: ", settings_row)
 }
 
-saveRDS(
+.write_rds_atomic(
   bw_list_raw_mtd_loop,
-  file = projr::projr_path_get(
+  projr::projr_path_get(
     "cache",
     "sim",
     "bw",
