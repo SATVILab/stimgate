@@ -652,6 +652,10 @@ applying the saved `biasUns`; channels without a saved bias use zero.
 
 ## 7. Specific Package Policies & Design Notes
 
+Vectorised gate-line layers must preserve overlapping lines for
+coincident thresholds: give each line a distinct group, since ggplot2
+deduplicates identical rows before drawing reference lines.
+
 1.  **Taut-string density**: The piecewise-constant taut-string density
     used for antimode detection is provided by the internal helper
     [`.tautStringPmden()`](https://satvilab.github.io/stimgate/reference/dot-tautStringPmden.md)
