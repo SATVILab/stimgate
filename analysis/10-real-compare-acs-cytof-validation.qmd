@@ -54,10 +54,15 @@ Tailgate using the comparison table produced by the main ACS analysis.
 
 The raw-frequency plots show automated against manual background-subtracted
 frequencies for every matched population and cytokine. The correlation outputs
-show both Pearson correlation (PCC) and concordance correlation (CCC), with one
-set restricted to CD4, CD8 and TCRgd T cells and another using every matched
-population. This keeps the original manuscript comparison available while also
-showing the additional populations in the current benchmark.
+follow the manuscript eligibility rule before calculating Pearson correlation
+(PCC) and concordance correlation (CCC): within each population/cytokine/stimulus
+stratum, the 75th percentile of the manual stimulated frequency must exceed
+three times the larger of 0.01% and the median manual unstimulated frequency,
+and the 75th percentile of the manual background-subtracted frequency must
+exceed 0.02%. One set of heatmaps is restricted to CD4, CD8 and TCRgd T cells
+and another uses every matched population. This keeps the original manuscript
+comparison available while also showing the additional populations in the
+current benchmark.
 
 ## Correlation table
 
