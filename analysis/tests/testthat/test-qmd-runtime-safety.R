@@ -102,3 +102,101 @@ test_that("analysis 8 uses deterministic scenario seeds and full-grid promotion"
     ignore.case = TRUE
   ))
 })
+
+
+test_that("analysis 2 is chunk-stable, read-only when not simulating, and validates promotion", {
+  qmd_path <- file.path(
+    root_dir,
+    "analysis",
+    "2-sim-bw-freq_bs-global.qmd"
+  )
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("simulation_seed:\\s*12345", content))
+  expect_true(grepl("analysis_semantics_version", content, fixed = TRUE))
+  expect_true(grepl("analysis_quick", content, fixed = TRUE))
+  expect_true(grepl("analysis_dev", content, fixed = TRUE))
+  expect_true(grepl(
+    "sim_seed = as.integer(simulation_seed + sim_id - 1L)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "set.seed(as.integer(sim_seed))",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl("furrr:::make_seeds", content, fixed = TRUE))
+  expect_false(grepl(
+    "12345 + as.integer(sim_grid_chunk_index)",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_true(grepl(
+    "run_ctx <- .analysis_results_context(",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "collate_output_dir <- if (results_read_only)",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("run_ctx$chunk_dir", content, fixed = TRUE))
+
+  expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
+  expect_true(grepl("output_error_ids", content, fixed = TRUE))
+  expect_true(grepl("expected_full_ids", content, fixed = TRUE))
+  expect_true(grepl("promote_analysis2_if_ready", content, fixed = TRUE))
+  expect_true(grepl("nrow(sim_grid) == 0L", content, fixed = TRUE))
+  expect_true(grepl(
+    "No simulations were assigned to this chunk; marked it complete.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "Refusing to promote analysis 2",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_true(grepl(
+    "run_plots is false, so stopping after simulation/collation.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("knitr::knit_exit()", content, fixed = TRUE))
+  expect_true(grepl(
+    "Skipping plots during a multi-chunk simulation render.",
+    content,
+    fixed = TRUE
+  ))
+
+  expect_false(grepl(
+    "make_bw_colour_values <- function",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    "make_bw_linetype_scale <- function",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("format_bw_lab(.data$bw)", content, fixed = TRUE))
+  expect_true(grepl(".write_rds_atomic(", content, fixed = TRUE))
+
+  expect_true(grepl('.data$method == "loc_sample"', content, fixed = TRUE))
+  expect_true(grepl("is.finite(.data$propRespTruth)", content, fixed = TRUE))
+  expect_true(grepl("is.finite(.data$propRespEst)", content, fixed = TRUE))
+  expect_true(grepl(
+    "abs(propRespEst - propRespTruth) / propRespTruth",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    "filter(is.finite(threshold) & is.finite(propBsEst))",
+    content,
+    fixed = TRUE
+  ))
+})

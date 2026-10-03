@@ -202,6 +202,15 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   with computed values; use a distinct variable name for helper return values.
 - Checks that chunked simulation QMDs use per-scenario deterministic seeds and
   validate complete cross-chunk collation before promoting canonical results.
+- Active simulation chunks must collate only their own chunk outputs; canonical
+  cross-chunk reads happen after promotion. A render with simulations disabled
+  must use the read-only current-results context and must not create staging state.
+- `run_plots = FALSE` must stop before optional plot/report chunks; multi-chunk
+  simulation renders should not write shared plot files concurrently.
+- For end-to-end background-subtracted-frequency performance, score the final
+  sample-level `loc_sample` `propRespEst` against `propRespTruth`.
+  `propBsEst` is an internal local-FDR diagnostic used during threshold
+  selection and must not silently replace the final frequency estimand.
 - Checks that analysis wrapper parameters forwarded to `gateStim()` still exist
   in the current package API.
 - Checks that removed arguments (e.g. `calcSinglePosGates`) are not reintroduced.
