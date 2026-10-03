@@ -269,25 +269,25 @@ for (i in seq_len(nrow(sim_grid))) {
     " | n_cell = ", sim_grid$n_cell[i],
     " | mean = ", sim_grid$mean_pos[i],
     " | bw_mtd = ", sim_grid$bw_mtd[i],
-    " | bw_ncell_upper = ", sim_grid$bw_ncell_upper[i],
     " | bias_uns_setting = ", sim_grid$bias_uns_setting[i],
     " | bias_uns = ", sim_grid$bias_uns[i],
     " | sim_id = ", sim_grid$sim_id[i]
   )
 
   message("Running: ", settings_row)
+  set.seed(as.integer(sim_grid$sim_seed[i]))
   bw_list_raw_loop[[i]] <- .simBandwidthEstBwDirectAdaptive(
-    nSample = if (.isDev()) 1L else 5L,
+    nSample = n_sample_sim,
     nMarker = 1L,
     nCondition = 2L,
     nCluster = 2L,
-    nIter = if (.isDev()) 1L else 5L,
+    nIter = n_iter_sim,
     biasUns = sim_grid$bias_uns[i],
     bwMtd = sim_grid$bw_mtd[i],
     bwMin = -Inf,
     bwMax = Inf,
-    bwNcellMax = sim_grid$bw_ncell_upper[i],
     bwFallback = bw_fallback,
+    normAdaptiveNcell = norm_adaptive_ncell,
     bwCluster = 0.5,
     nCellStim = sim_grid$n_cell[i],
     probResponse = sim_grid$prob_response[i],
@@ -308,10 +308,11 @@ for (i in seq_len(nrow(sim_grid))) {
       mean_pos_setting = sim_grid$mean_pos_setting[i],
       mean_pos = sim_grid$mean_pos[i],
       bw_mtd = sim_grid$bw_mtd[i],
-      bw_ncell_upper = sim_grid$bw_ncell_upper[i],
       bias_uns_setting = sim_grid$bias_uns_setting[i],
       bias_uns = sim_grid$bias_uns[i],
+      data_scenario_id = sim_grid$data_scenario_id[i],
       sim_id = sim_grid$sim_id[i],
+      sim_seed = sim_grid$sim_seed[i],
       error_message = NA_character_
     ) |>
     dplyr::select(
@@ -321,10 +322,11 @@ for (i in seq_len(nrow(sim_grid))) {
       mean_pos_setting,
       mean_pos,
       bw_mtd,
-      bw_ncell_upper,
       bias_uns_setting,
       bias_uns,
+      data_scenario_id,
       sim_id,
+      sim_seed,
       dplyr::everything()
     )
 
@@ -360,7 +362,6 @@ bw_list_raw_loop |>
     mean_pos_setting,
     mean_pos,
     bw_mtd,
-    bw_ncell_upper,
     bias_uns_setting,
     bias_uns,
     chnl,
@@ -381,7 +382,6 @@ bw_list_raw_loop |>
   dplyr::select(
     transformation,
     bw_mtd,
-    bw_ncell_upper,
     bias_uns_setting,
     bias_uns,
     dplyr::starts_with("n_est"),
