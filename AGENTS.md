@@ -594,7 +594,11 @@ plotting/orchestration code.
 - `zz_profile_instrumentation.R` deliberately loads after the
   implementation files and wraps selected internal functions without
   changing their arguments. Preserve wrapped function signatures when
-  profiling boundaries change.
+  profiling boundaries change. When removing unused internal arguments,
+  update the implementation, both wrapper paths, callers and profiling
+  tests together. Compare complete
+  [`formals()`](https://rdrr.io/r/base/formals.html) so wrapper defaults
+  stay aligned as well as argument names.
 - Use the `stage` parameter to track algorithm stages (`"init"`,
   `"cytPos"`, or `"single"`). Pass `stage` through function calls to
   enable intermediate data saving via `.intSave()` or `.intSaveNm()`
