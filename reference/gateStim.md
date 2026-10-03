@@ -45,11 +45,9 @@ gateStim(
   bwAdaptiveExtra = NULL,
   bwAdaptiveCrossover = NULL,
   bwAdaptiveTransitionWidth = 0,
-  normPeakFrac = 0.1,
   normPeakMinRel = 0.75,
   normExtraFrac = 0.2,
   normExtraMax = Inf,
-  normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
   normDensityN = 512L,
   normExcessBwMtd = "hpi3",
@@ -285,12 +283,6 @@ gateStim(
   around `bwAdaptiveCrossover`. Use `0` for a hard switch at the
   crossover. Default is `0`.
 
-- normPeakFrac:
-
-  numeric. Fraction of the selected background-core peak height used by
-  normalised bandwidth helpers when identifying low-density tail
-  regions. Default is `0.1`.
-
 - normPeakMinRel:
 
   numeric. Relative peak/trough threshold used to identify the main
@@ -306,12 +298,6 @@ gateStim(
 
   numeric. Maximum number of additional high-side values used by
   normalised bandwidth methods. May be `Inf`. Default is `Inf`.
-
-- normExtraJitterFrac:
-
-  numeric. Jitter scale, as a fraction of a robust expression-scale
-  standard deviation, applied to sampled high-side values. Default is
-  `0.25`.
 
 - normLambda:
 
@@ -622,7 +608,7 @@ gateStim(
 #> 
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpHt3X6Z/demonstration"
+#> [1] "/tmp/Rtmpp3I3C8/demonstration"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
