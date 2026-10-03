@@ -69,11 +69,12 @@ if (
   }
 }
 
-# Tailgate comparisons use the cytoUtils package directly.
-if (!requireNamespace("cytoUtils", quietly = TRUE)) {
-  warning(
-    "Package 'cytoUtils' is not installed. Tailgate comparisons will fail if run."
-  )
+# Tailgate is a required primary comparator when simulations are requested.
+if (
+  isTRUE(run_simulations) &&
+    !requireNamespace("cytoUtils", quietly = TRUE)
+) {
+  stop("Package 'cytoUtils' is required for the tailgate comparison.")
 }
 
 # Source simulation helpers in dependency order:
@@ -143,6 +144,22 @@ path_fbeta <- projr::projr_path_get(
   "python",
   "fbeta.py"
 )
+
+if (isTRUE(run_simulations)) {
+  if (!requireNamespace("reticulate", quietly = TRUE)) {
+    stop("Package 'reticulate' is required for the F-beta comparison.")
+  }
+  if (!file.exists(path_fbeta)) {
+    stop("Required F-beta implementation is missing: ", path_fbeta)
+  }
+  fbeta_preflight <- tryCatch(
+    .simCompareFbetaEnvironment(pathFbeta = path_fbeta),
+    error = function(e) {
+      stop("F-beta comparator preflight failed: ", conditionMessage(e))
+    }
+  )
+  rm(fbeta_preflight)
+}
 
 tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
@@ -297,6 +314,8 @@ sim_grid_n_chunks <- as.integer(
 sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
 
 sim_grid_all <- sim_grid
+analysis_grid_spec <- sim_grid_all |>
+  dplyr::select(-dplyr::any_of("sim_seed"))
 
 if (sim_grid_n_chunks > 1L && nrow(sim_grid_all) > 0L) {
   sim_grid <- sim_grid_all |>
@@ -338,6 +357,7 @@ if (isTRUE(run_simulations)) {
       simulation_seed = simulation_seed,
       analysis_dev = analysis_dev,
       paired_mismatch_rng = TRUE,
+      analysis_grid_spec = analysis_grid_spec,
       n_sample_sim = n_sample_sim,
       n_iter_sim = n_iter_sim,
       stimgate_bw_mtd = stimgate_bw_mtd,
@@ -552,6 +572,7 @@ path_rds <- .analysis_current_file(
     simulation_seed = simulation_seed,
     analysis_dev = analysis_dev,
     paired_mismatch_rng = TRUE,
+    analysis_grid_spec = analysis_grid_spec,
     n_sample_sim = n_sample_sim,
     n_iter_sim = n_iter_sim
   )
