@@ -228,6 +228,11 @@ test_that("analysis 6 QMD is chunk-stable and scores final sample frequencies", 
     fixed = TRUE
   ))
   expect_false(grepl(".setQuick()", content, fixed = TRUE))
+  expect_true(grepl(
+    "if (analysis_quick && !analysis_dev)",
+    content,
+    fixed = TRUE
+  ))
   expect_false(grepl("update_progress_summary()", content, fixed = TRUE))
   expect_false(grepl(
     "future::plan(future::sequential)",
@@ -248,6 +253,7 @@ test_that("analysis 6 QMD is chunk-stable and scores final sample frequencies", 
   ))
   expect_true(grepl("run_ctx$chunk_dir", content, fixed = TRUE))
   expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
+  expect_true(grepl("valid_result_ids", content, fixed = TRUE))
   expect_true(grepl("output_error_ids", content, fixed = TRUE))
   expect_true(grepl("expected_full_ids", content, fixed = TRUE))
   expect_true(grepl("promote_analysis6_if_ready", content, fixed = TRUE))
