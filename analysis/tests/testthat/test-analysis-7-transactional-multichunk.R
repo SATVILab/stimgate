@@ -32,12 +32,40 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
   ))
   expect_true(grepl(".analysis_current_file", content, fixed = TRUE))
   expect_true(grepl(
-    "required_params = list(",
+    "required_params = analysis_result_params",
     content,
     fixed = TRUE
   ))
   expect_true(grepl(
     "set.seed(as.integer(row$sim_seed[[1]]))",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(".analysis_results_context", content, fixed = TRUE))
+  expect_true(grepl("expected_chunk_ids", content, fixed = TRUE))
+  expect_true(grepl("collated_chunk_ids", content, fixed = TRUE))
+  expect_true(grepl("error_sim_ids", content, fixed = TRUE))
+  expect_true(grepl("analysis_dev", content, fixed = TRUE))
+  expect_false(grepl("bias_uns == 0.05", content, fixed = TRUE))
+  expect_true(grepl("knitr::knit_exit()", content, fixed = TRUE))
+  expect_true(grepl(
+    "Package 'cytoUtils' is required for tailgate comparisons.",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "F-beta comparison script not found:",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "condition_perturbation_sd == 0",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl("after_stat(density)", content, fixed = TRUE))
+  expect_true(grepl(
+    "Median absolute relative error",
     content,
     fixed = TRUE
   ))
