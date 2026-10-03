@@ -35,7 +35,12 @@ test_that("analyses 3 and 4 use resumable transactional run contexts", {
     expect_true(grepl(".analysis_can_promote", content, fixed = TRUE))
     expect_true(grepl(".analysis_promote_run", content, fixed = TRUE))
     expect_true(grepl("expected_sim_ids", content, fixed = TRUE))
-    expect_true(grepl("run_ctx$current_dir", content, fixed = TRUE))
+    if (identical(spec$key, "norm")) {
+      expect_true(grepl(".analysis_results_context", content, fixed = TRUE))
+      expect_true(grepl(".analysis_current_file", content, fixed = TRUE))
+    } else {
+      expect_true(grepl("run_ctx$current_dir", content, fixed = TRUE))
+    }
   }
 })
 
