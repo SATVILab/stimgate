@@ -1154,16 +1154,6 @@ if (!isTRUE(run_plots)) {
 
 ```{r}
 #| label: plot-helpers
-col_vec_bw <- c(
-  "#e0ecf4",
-  "#bfd3e6",
-  "#9ebcda",
-  "#8c96c6",
-  "#8c6bb1",
-  "#88419d",
-  "#810f7c"
-)
-
 bias_uns_setting_vec_plot <- bias_uns_settings_tbl |>
   dplyr::distinct(.data$bias_uns_setting) |>
   dplyr::pull(.data$bias_uns_setting)
@@ -1200,11 +1190,11 @@ for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
 
         p <- ggplot(
           plot_tbl,
-          aes(x = n_cell, y = propBsEst_median, colour = bw_extra_lab)
+          aes(x = n_cell, y = propRespEst_median, colour = bw_extra_lab)
         ) +
           geom_line() +
           geom_hline(
-            mapping = aes(yintercept = prob_response),
+            mapping = aes(yintercept = propRespTruth_median),
             linetype = "dashed",
             colour = "black"
           ) +
@@ -1294,11 +1284,11 @@ for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
 
         p <- ggplot(
           plot_tbl,
-          aes(x = n_cell, y = propBsEst_median, colour = bw_core_lab)
+          aes(x = n_cell, y = propRespEst_median, colour = bw_core_lab)
         ) +
           geom_line() +
           geom_hline(
-            mapping = aes(yintercept = prob_response),
+            mapping = aes(yintercept = propRespTruth_median),
             linetype = "dashed",
             colour = "black"
           ) +
@@ -1390,11 +1380,11 @@ for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
 
         p <- ggplot(
           plot_tbl,
-          aes(x = factor(n_cell), y = propBsEst, colour = bw_extra_lab)
+          aes(x = factor(n_cell), y = propRespEst, colour = bw_extra_lab)
         ) +
           ggforce::geom_sina(position = "dodge") +
           geom_hline(
-            mapping = aes(yintercept = prob_response),
+            mapping = aes(yintercept = propRespTruth),
             linetype = "dashed",
             colour = "black"
           ) +
@@ -1482,11 +1472,11 @@ for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
 
         p <- ggplot(
           plot_tbl,
-          aes(x = factor(n_cell), y = propBsEst, colour = bw_core_lab)
+          aes(x = factor(n_cell), y = propRespEst, colour = bw_core_lab)
         ) +
           ggforce::geom_sina(position = "dodge") +
           geom_hline(
-            mapping = aes(yintercept = prob_response),
+            mapping = aes(yintercept = propRespTruth),
             linetype = "dashed",
             colour = "black"
           ) +
