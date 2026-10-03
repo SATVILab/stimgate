@@ -381,28 +381,34 @@ test_that("F-beta threshold metric is preserved as diagnostic without altering t
   source(script_bw, local = env)
   source(script_comp, local = env)
 
-  set.seed(42)
-  trans <- simcyto::simCytTransformGaussian()
-  exp_data <- simcyto::simCytExperiment(
-    nSample = 1,
-    nMarker = 1,
-    nCondition = 2,
-    nCluster = 2,
-    nCellByCondition = c(300, 300),
-    transformationFunc = trans,
-    mixtureType = "gaussianOnly",
-    meanExprMat = matrix(c(0, 5), ncol = 1),
-    clusterLabelVec = c("gn", "gp"),
-    probVecUns = c(0.99, 0.01),
-    probExact = TRUE,
-    probResponseVecByStimCondition = list(c(-0.05, 0.05)),
-    covEvMin = 1.5,
-    covEvMax = 1.5
-  )
+  # Test diagnostic forwarding independently of optional comparator runtimes.
+  env$.simCompareFbetaEnvironment <- function(...) new.env(parent = emptyenv())
+  env$.simCompareFbetaThreshold <- function(...) {
+    list(
+      threshold = 2,
+      thresholdMetric = 0.75,
+      thresholdOrigin = "calculated"
+    )
+  }
+  env$.simCompareTailgateThreshold <- function(...) {
+    list(
+      threshold = 2,
+      thresholdMetric = NA_real_,
+      thresholdOrigin = "calculated"
+    )
+  }
 
+  x_uns <- matrix(c(-2, -1, 0, 1), ncol = 1, dimnames = list(NULL, "F1"))
+  x_stim <- matrix(c(0, 1, 3, 4), ncol = 1, dimnames = list(NULL, "F1"))
   alt <- env$.simCompareAlternativeRows(
-    flowFrameList = exp_data$flowFrameList,
-    labelsList = exp_data$labelsList,
+    flowFrameList = list(
+      flowCore::flowFrame(expr = x_uns),
+      flowCore::flowFrame(expr = x_stim)
+    ),
+    labelsList = list(
+      c("gn", "gn", "gn", "gn"),
+      c("gn", "gn", "gp", "gp")
+    ),
     nSample = 1,
     nCondition = 2,
     chnl = "F1"
@@ -410,8 +416,12 @@ test_that("F-beta threshold metric is preserved as diagnostic without altering t
 
   fbeta_row <- alt[alt$method == "fbeta", ]
   expect_equal(nrow(fbeta_row), 1L)
-  expect_true(is.numeric(fbeta_row$thresholdMetric))
-  expect_true(is.finite(fbeta_row$threshold))
+  expect_equal(fbeta_row$thresholdMetric, 0.75)
+  expect_equal(fbeta_row$threshold, 2)
+  expect_equal(fbeta_row$thresholdOrigin, "calculated")
+  expect_false(fbeta_row$thresholdFallbackUsed)
+  expect_true(is.na(fbeta_row$error))
+  expect_equal(fbeta_row$propRespEst, 0.5)
 })
 
 test_that(

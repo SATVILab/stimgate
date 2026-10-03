@@ -1,8 +1,8 @@
 test_that("stimgateGateRuns", {
   exampleData <- getExampleData()
+  withr::defer(unlink(dirname(exampleData$pathGs), recursive = TRUE))
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
-  Sys.setenv("stimgateIntermediate" = "true")
   invisible(gateStim(
     .data = gs,
     pathProject = pathProject,
