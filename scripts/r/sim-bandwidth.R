@@ -304,6 +304,54 @@
     )
 }
 
+
+.simBandwidthNegativeShoulderWidth <- function(
+  x,
+  bw,
+  heightFrac = 0.15,
+  densityN = 512L
+) {
+  x <- as.numeric(x)
+  x <- x[is.finite(x)]
+  if (
+    length(x) < 2L ||
+      length(unique(x)) < 2L ||
+      length(bw) != 1L ||
+      !is.finite(bw) ||
+      bw <= 0 ||
+      length(heightFrac) != 1L ||
+      !is.finite(heightFrac) ||
+      heightFrac <= 0 ||
+      heightFrac >= 1
+  ) {
+    return(NA_real_)
+  }
+
+  dens <- stats::density(x, bw = bw, n = as.integer(densityN))
+  peakIdx <- which.max(dens$y)
+  if (peakIdx >= length(dens$y)) {
+    return(NA_real_)
+  }
+
+  rightIdx <- seq.int(peakIdx + 1L, length(dens$y))
+  heightIdx <- rightIdx[dens$y[rightIdx] <= heightFrac * dens$y[[peakIdx]]]
+  antimodeCandidates <- rightIdx[rightIdx < length(dens$y)]
+  antimodeIdx <- antimodeCandidates[
+    dens$y[antimodeCandidates] <= dens$y[antimodeCandidates - 1L] &
+      dens$y[antimodeCandidates] < dens$y[antimodeCandidates + 1L]
+  ]
+
+  endpointIdx <- min(
+    c(
+      if (length(heightIdx) > 0L) heightIdx[[1]] else Inf,
+      if (length(antimodeIdx) > 0L) antimodeIdx[[1]] else Inf,
+      length(dens$x)
+    )
+  )
+  width <- dens$x[[endpointIdx]] - dens$x[[peakIdx]]
+  if (is.finite(width) && width > 0) width else NA_real_
+}
+
 .simBandwidthBsFreq <- function(
   nSample,
   nMarker,
@@ -311,6 +359,8 @@
   nCluster,
   nIter,
   biasUns,
+  biasUnsWidthMultiplier = NULL,
+  biasUnsWidthHeightFrac = 0.15,
   bw = NULL,
   bwAdaptive = FALSE,
   bwAdaptiveDensityN = NULL,
@@ -337,6 +387,10 @@
   clusterPerturbationSd,
   backgroundRelativeToResponse,
   ncellUnsRelativeToStim,
+  stimMeanShift = 0,
+  stimSdMultiplier = 1,
+  stimMeanShiftClusters = NULL,
+  stimSdMultiplierClusters = NULL,
   covEvMin = 1,
   covEvMax = 2,
   tolClust = NULL,
@@ -380,7 +434,7 @@
     probVecUns <- c(1 - probResponseUns, probResponseUns)
     probResponseVecByStimCondition <- list(c(-probResponse, probResponse))
 
-    outListExperiment <- simcyto::simCytExperiment(
+    simArgs <- list(
       nSample = nSample,
       nMarker = nMarker,
       nCondition = nCondition,
@@ -399,10 +453,54 @@
       covEvMin = covEvMin,
       covEvMax = covEvMax
     )
+    hasMismatch <- !identical(as.numeric(stimMeanShift), 0) ||
+      !identical(as.numeric(stimSdMultiplier), 1) ||
+      !is.null(stimMeanShiftClusters) ||
+      !is.null(stimSdMultiplierClusters)
+    if (hasMismatch) {
+      if (!exists(".simCompareSimCytExperiment", mode = "function")) {
+        stop(
+          "Batch-mismatch simulations require .simCompareSimCytExperiment(). ",
+          "Source scripts/r/sim-compare-freq_bs.R before running this scenario."
+        )
+      }
+      simArgs <- c(simArgs, list(
+        stimMeanShift = stimMeanShift,
+        stimSdMultiplier = stimSdMultiplier,
+        stimMeanShiftClusters = stimMeanShiftClusters,
+        stimSdMultiplierClusters = stimSdMultiplierClusters
+      ))
+      outListExperiment <- do.call(.simCompareSimCytExperiment, simArgs)
+    } else {
+      outListExperiment <- do.call(simcyto::simCytExperiment, simArgs)
+    }
 
-    fs <- as(outListExperiment[["flowFrameList"]], "flowSet")
-    gs <- flowWorkspace::GatingSet(fs)
+    flowFrameList <- outListExperiment[["flowFrameList"]]
     labelsList <- outListExperiment[["labelsList"]]
+
+    biasUnsNegativeWidth <- NA_real_
+    biasUnsUse <- biasUns
+    if (!is.null(biasUnsWidthMultiplier)) {
+      if (is.null(bw) || length(bw) != 1L || !is.finite(bw) || bw <= 0) {
+        stop("Width-based biasUns requires one finite positive fixed bandwidth.")
+      }
+      indUns <- seq.int(1L, length(flowFrameList), by = nCondition)
+      xUns <- unlist(lapply(indUns, function(ind) {
+        flowCore::exprs(flowFrameList[[ind]])[, 1L]
+      }), use.names = FALSE)
+      biasUnsNegativeWidth <- .simBandwidthNegativeShoulderWidth(
+        x = xUns,
+        bw = bw,
+        heightFrac = biasUnsWidthHeightFrac
+      )
+      if (!is.finite(biasUnsNegativeWidth)) {
+        stop("Could not calculate a finite negative-population shoulder width.")
+      }
+      biasUnsUse <- biasUnsWidthMultiplier * biasUnsNegativeWidth
+    }
+
+    fs <- as(flowFrameList, "flowSet")
+    gs <- flowWorkspace::GatingSet(fs)
 
     pathProject <- file.path(
       tempdir(),
@@ -455,7 +553,7 @@
       batchList = batchList,
       marker = paste0("MarkerF", seq_len(nMarker)),
       calcCytPosGates = calcCytPosGates,
-      biasUns = biasUns,
+      biasUns = biasUnsUse,
       bw = bw,
       bwAdaptive = bwAdaptive,
       bwAdaptiveDensityN = bwAdaptiveDensityN,
@@ -616,7 +714,25 @@
         iter = iterNum,
         nCellStimSim = nCellStim,
         nCellUnsSim = nCellUns,
-        biasUns = biasUns,
+        biasUns = biasUnsUse,
+        biasUnsNegativeWidth = biasUnsNegativeWidth,
+        biasUnsWidthMultiplier = if (is.null(biasUnsWidthMultiplier)) {
+          NA_real_
+        } else {
+          biasUnsWidthMultiplier
+        },
+        stimMeanShift = stimMeanShift,
+        stimSdMultiplier = stimSdMultiplier,
+        stimMeanShiftClusters = if (is.null(stimMeanShiftClusters)) {
+          NA_character_
+        } else {
+          paste(stimMeanShiftClusters, collapse = ",")
+        },
+        stimSdMultiplierClusters = if (is.null(stimSdMultiplierClusters)) {
+          NA_character_
+        } else {
+          paste(stimSdMultiplierClusters, collapse = ",")
+        },
         bw = if (is.null(bw)) NA_real_ else bw,
         bwAdaptive = bwAdaptive,
         bwAdaptiveDensityN = if (is.null(bwAdaptiveDensityN)) {

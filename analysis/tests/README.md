@@ -10,11 +10,14 @@ Rscript analysis/tests/run_analysis_tests.R
 # List the QMD targets and the test files each runs
 Rscript analysis/tests/run_qmd_tests.R --list
 
-# One QMD, a selected set, or all ten targets
+# One QMD, a selected set, or all eleven targets
 Rscript analysis/tests/run_qmd_tests.R 3
 Rscript analysis/tests/run_qmd_tests.R "1,3,10"
 Rscript analysis/tests/run_qmd_tests.R all
 ```
+
+Analysis 2 is split into targets `2a` and `2b`. For example,
+`Rscript analysis/tests/run_qmd_tests.R "2a,2b"` runs both.
 
 Targets also accept document stems or paths, such as `3-sim-bw-est-base` or
 `analysis/3-sim-bw-est-base.qmd`. Each target runs its existing scientific helper

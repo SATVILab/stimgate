@@ -48,7 +48,7 @@ root_dir <- normalizePath(
   )
 }
 
-test_that("analysis 2 scenario rerun is identical whatever the prior RNG", {
+test_that("analysis 2a scenario rerun is identical whatever the prior RNG", {
   env <- .load_bw_run_env()
   settings <- list(
     nSample = 2L, nMarker = 1L, nCondition = 2L, nCluster = 2L, nIter = 1L,
@@ -379,9 +379,9 @@ test_that("analysis 2 collates final sample estimates", {
   )
 })
 
-test_that("analysis 2 dev and quick filters preserve full-grid IDs and seeds", {
+test_that("analysis 2a dev and quick filters preserve full-grid IDs and seeds", {
   lines <- readLines(file.path(
-    root_dir, "analysis", "2-sim-bw-freq_bs-global.qmd"
+    root_dir, "analysis", "2a-sim-bw-freq_bs-global.qmd"
   ))
   chunk <- function(label) {
     start <- which(lines == paste0("#| label: ", label))
@@ -440,4 +440,79 @@ test_that("shared run helpers cannot write to a read-only results context", {
     "read-only results context"
   )
   expect_false(dir.exists(ctx$sim_root))
+})
+
+
+test_that("analysis 2b bias rules forward the intended realised settings", {
+  env <- .load_bw_run_env()
+  captured <- NULL
+  env$.simBandwidthBsFreq <- function(...) {
+    captured <<- list(...)
+    tibble::tibble(method = "loc_sample")
+  }
+
+  row <- tibble::tibble(
+    bias_uns_basis = "bandwidth",
+    bias_uns_multiplier = 0.25,
+    bw = 0.1,
+    n_cell = 1e4,
+    prob_response = 0.002,
+    mean_pos = 8,
+    transformation = "gaussian",
+    background_relative_to_response = 0.2,
+    n_cell_uns_relative_to_stim = 1,
+    stim_mean_shift = 0.05,
+    stim_sd_multiplier = 1,
+    stim_mean_shift_clusters = "gn",
+    stim_sd_multiplier_clusters = NA_character_
+  )
+  env$.simBandwidthBiasUnsScenario(row, list(nSample = 25))
+  expect_equal(captured$biasUns, 0.025)
+  expect_null(captured$biasUnsWidthMultiplier)
+  expect_equal(captured$stimMeanShift, 0.05)
+  expect_identical(captured$stimMeanShiftClusters, "gn")
+
+  row$bias_uns_basis <- "negative_width"
+  row$bias_uns_multiplier <- 0.5
+  env$.simBandwidthBiasUnsScenario(row, list(nSample = 25))
+  expect_equal(captured$biasUns, 0)
+  expect_equal(captured$biasUnsWidthMultiplier, 0.5)
+})
+
+test_that("analysis 2b declares the agreed grid and common-random-number seeds", {
+  content <- paste(readLines(file.path(
+    root_dir, "analysis", "2b-sim-bias_uns-freq_bs.qmd"
+  ), warn = FALSE), collapse = "\n")
+  has <- function(x) grepl(x, content, fixed = TRUE)
+
+  expect_true(has("n_cell_vec <- c(1e4, 5e4)"))
+  expect_true(has("prob_response_vec <- c(0.002, 0.05)"))
+  expect_true(has("nSample = 25"))
+  expect_true(has("if (nrow(sim_grid) != 6720L)"))
+  expect_true(has("biasUnsWidthHeightFrac = 0.15"))
+  expect_true(has("stim_mean_shift_clusters = \"gn\""))
+  expect_true(has("stim_sd_multiplier = 1.10"))
+  expect_true(has("sim_seed = as.integer(simulation_seed + .data$base_scenario_id - 1L)"))
+  expect_true(has("scenario_fn = .simBandwidthBiasUnsScenario"))
+  expect_true(has(".simBandwidthBiasUnsCollate("))
+})
+
+
+test_that("negative shoulder width extends as the density-height cutoff falls", {
+  env <- .load_bw_run_env()
+  x <- stats::qnorm(seq(0.001, 0.999, length.out = 2000))
+  width_50 <- env$.simBandwidthNegativeShoulderWidth(
+    x,
+    bw = 0.25,
+    heightFrac = 0.50
+  )
+  width_15 <- env$.simBandwidthNegativeShoulderWidth(
+    x,
+    bw = 0.25,
+    heightFrac = 0.15
+  )
+
+  expect_true(is.finite(width_50))
+  expect_true(is.finite(width_15))
+  expect_gt(width_15, width_50)
 })

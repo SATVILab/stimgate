@@ -571,6 +571,134 @@
 }
 
 # ---------------------------------------------------------------------------
+# Analysis 2b: biasUns tuning across fixed bandwidths and batch mismatch
+# ---------------------------------------------------------------------------
+
+.simBandwidthBiasUnsScenario <- function(row, settings) {
+  cluster_arg <- function(x) {
+    x <- as.character(x)[1]
+    if (is.na(x) || !nzchar(x)) NULL else x
+  }
+
+  bias_basis <- row$bias_uns_basis[[1]]
+  bias_multiplier <- row$bias_uns_multiplier[[1]]
+  if (!bias_basis %in% c("bandwidth", "negative_width")) {
+    stop("Unknown bias_uns_basis: ", bias_basis)
+  }
+
+  do.call(.simBandwidthBsFreq, c(settings, list(
+    biasUns = if (bias_basis == "bandwidth") {
+      bias_multiplier * row$bw[[1]]
+    } else {
+      0
+    },
+    biasUnsWidthMultiplier = if (bias_basis == "negative_width") {
+      bias_multiplier
+    } else {
+      NULL
+    },
+    bw = row$bw[[1]],
+    bwFallback = row$bw[[1]],
+    nCellStim = row$n_cell[[1]],
+    probResponse = row$prob_response[[1]],
+    meanPos = row$mean_pos[[1]],
+    transformation = row$transformation[[1]],
+    samplePerturbationSd = 0,
+    conditionPerturbationSd = 0,
+    clusterPerturbationSd = 0,
+    backgroundRelativeToResponse = row$background_relative_to_response[[1]],
+    ncellUnsRelativeToStim = row$n_cell_uns_relative_to_stim[[1]],
+    stimMeanShift = row$stim_mean_shift[[1]],
+    stimSdMultiplier = row$stim_sd_multiplier[[1]],
+    stimMeanShiftClusters = cluster_arg(row$stim_mean_shift_clusters[[1]]),
+    stimSdMultiplierClusters = cluster_arg(row$stim_sd_multiplier_clusters[[1]])
+  )))
+}
+
+.simBandwidthBiasUnsCollate <- function(tbl, grid_cols, n_sample_expected = NULL) {
+  results_raw <- tbl |>
+    dplyr::filter(.data$method == "loc_sample") |>
+    dplyr::select(
+      dplyr::any_of(grid_cols),
+      "iter", "sample", "ind", "method",
+      "propRespTruth", "propRespEst", "threshold",
+      "nCellStim", "nCellUns", "nPosStim", "nPosUns",
+      "propStim", "propUns",
+      "thresholdOrigin", "gateReturnPoint",
+      "locGenerated", "locGeneratedDirect", "locSource", "locReason",
+      "biasUns", "biasUnsNegativeWidth"
+    ) |>
+    dplyr::mutate(
+      valid_estimate = is.finite(.data$threshold) &
+        is.finite(.data$propRespTruth) & .data$propRespTruth > 0 &
+        is.finite(.data$propRespEst),
+      error = dplyr::if_else(
+        .data$valid_estimate,
+        .data$propRespEst - .data$propRespTruth,
+        NA_real_
+      ),
+      rel_error = .data$error / .data$propRespTruth,
+      abs_rel_error = abs(.data$rel_error)
+    )
+
+  if (anyDuplicated(results_raw[c("sim_id", "iter", "ind")]) > 0L) {
+    stop(
+      "Expected exactly one final loc_sample result per sim_id/iter/ind, ",
+      "but duplicate result keys were found."
+    )
+  }
+
+  if (!setequal(unique(results_raw$sim_id), unique(tbl$sim_id))) {
+    stop("Missing final loc_sample results for one or more simulation IDs.")
+  }
+  if (!is.null(n_sample_expected)) {
+    counts <- dplyr::count(results_raw, .data$sim_id, .data$iter)
+    if (any(counts$n != n_sample_expected)) {
+      stop("Expected ", n_sample_expected, " final sample results per sim_id/iter.")
+    }
+  }
+
+  results_summary <- results_raw |>
+    dplyr::group_by(dplyr::pick(dplyr::any_of(grid_cols))) |>
+    dplyr::summarise(
+      n_sample = dplyr::n(),
+      n_valid = sum(.data$valid_estimate),
+      n_failed = sum(!.data$valid_estimate),
+      failure_fraction = mean(!.data$valid_estimate),
+      propRespTruth = stats::median(.data$propRespTruth, na.rm = TRUE),
+      propRespEst_median = stats::median(
+        .data$propRespEst[.data$valid_estimate], na.rm = TRUE
+      ),
+      propRespEst_mean = mean(.data$propRespEst[.data$valid_estimate], na.rm = TRUE),
+      median_rel_error = stats::median(.data$rel_error, na.rm = TRUE),
+      median_abs_rel_error = stats::median(.data$abs_rel_error, na.rm = TRUE),
+      q90_abs_rel_error = stats::quantile(
+        .data$abs_rel_error,
+        probs = 0.9,
+        na.rm = TRUE,
+        names = FALSE
+      ),
+      bias_uns_realised = stats::median(.data$biasUns, na.rm = TRUE),
+      negative_width = if (any(is.finite(.data$biasUnsNegativeWidth))) {
+        stats::median(.data$biasUnsNegativeWidth, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      threshold_median = stats::median(
+        .data$threshold[.data$valid_estimate], na.rm = TRUE
+      ),
+      prop_stim_median = stats::median(.data$propStim, na.rm = TRUE),
+      prop_uns_median = stats::median(.data$propUns, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  list(
+    bias_uns_results_raw = results_raw,
+    bias_uns_results_summary = results_summary
+  )
+}
+
+# ---------------------------------------------------------------------------
 # Analysis 3: base bandwidth estimators
 # ---------------------------------------------------------------------------
 

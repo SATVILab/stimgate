@@ -1,5 +1,5 @@
 ---
-title: Simulate best bandwidth
+title: Simulate best bandwidth (2a)
 format:
   html:
     embed-resources: true
@@ -298,7 +298,7 @@ if (analysis_dev) {
 # Keep the complete grid for later collation.
 sim_grid_all <- sim_grid
 if (nrow(sim_grid_all) == 0L) {
-  stop("The analysis 2 simulation grid is empty; check the dev/quick filters.")
+  stop("The analysis 2a simulation grid is empty; check the dev/quick filters.")
 }
 analysis_grid_spec <- sim_grid_all |>
   dplyr::select(-sim_seed)
@@ -452,7 +452,7 @@ if (isTRUE(run_simulations)) {
     collate_fn = function(tbl) {
       .simBandwidthFreqBsGlobalCollate(tbl, colnames(sim_grid_all))
     },
-    label = "analysis 2"
+    label = "analysis 2a"
   )
 
   if (isTRUE(run_plots) && sim_grid_n_chunks > 1L) {

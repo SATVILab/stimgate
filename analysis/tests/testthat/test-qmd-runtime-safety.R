@@ -148,9 +148,9 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
   })
 }
 
-test_that("analysis 2 chunks are balanced and plot chunks are guarded", {
+test_that("analysis 2a chunks are balanced and plot chunks are guarded", {
   lines <- readLines(
-    file.path(root_dir, "analysis", "2-sim-bw-freq_bs-global.qmd"),
+    file.path(root_dir, "analysis", "2a-sim-bw-freq_bs-global.qmd"),
     warn = FALSE
   )
   expect_identical(
@@ -183,11 +183,11 @@ test_that("analysis 2 chunks are balanced and plot chunks are guarded", {
   }
 })
 
-test_that("analysis 2 uses shared seeded runners and canonical reads", {
+test_that("analysis 2a uses shared seeded runners and canonical reads", {
   qmd_path <- file.path(
     root_dir,
     "analysis",
-    "2-sim-bw-freq_bs-global.qmd"
+    "2a-sim-bw-freq_bs-global.qmd"
   )
   content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
   has <- function(x) grepl(x, content, fixed = TRUE)
