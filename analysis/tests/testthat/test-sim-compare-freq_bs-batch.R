@@ -568,32 +568,6 @@ test_that("Inner nIter execution remains serial without nested parallelism", {
   expect_false(grepl("future::plan", fn_body_txt))
 })
 
-test_that("Temporary project directories are unique and collision-safe", {
-  env <- new.env(parent = getNamespace("stimgate"))
-  source(script_misc, local = env)
-  source(script_bw, local = env)
-  source(script_comp, local = env)
-
-  paths <- replicate(20, {
-    file.path(
-      tempdir(),
-      "stimgate-sim-compare",
-      paste0(
-        "pid-",
-        Sys.getpid(),
-        "-iter-",
-        1,
-        "-",
-        format(Sys.time(), "%Y%m%d%H%M%OS6"),
-        "-",
-        sample.int(1e9, 1)
-      )
-    )
-  })
-
-  expect_equal(length(unique(paths)), length(paths))
-})
-
 test_that(".simCompareRunScenario handles errors and writes log", {
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)

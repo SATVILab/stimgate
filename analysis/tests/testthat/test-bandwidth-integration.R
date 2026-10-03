@@ -55,10 +55,6 @@ test_that(".simBandwidthBwOne resolves the current stimgate namespace in future 
   skip_if_not_installed("future")
   skip_if_not_installed("pkgload")
 
-  if (!requireNamespace("stimgate", quietly = TRUE)) {
-    skip("stimgate package not available")
-  }
-
   root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
 
   x_sample <- rnorm(200, mean = 5, sd = 1.5)
