@@ -75,12 +75,9 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
 analysis_semantics_version <- "adaptive-bw-freq-v3"
-analysis_quick <- .analysis_is_quick() else {
-  "quick" %in% analysis_profiles
-}
-analysis_dev <- .analysis_is_dev() else {
-  "dev" %in% analysis_profiles
-}
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -258,7 +255,7 @@ sim_grid <- tidyr::expand_grid(
 # Fix identities on the full grid before selecting execution subsets.
 sim_grid_full <- sim_grid
 
-if (analysis_quick && !analysis_dev) {
+if (analysis_quick) {
   sim_grid <- sim_grid |>
     dplyr::filter(
       n_cell %in% c(1e3, 5e4),
@@ -289,7 +286,7 @@ if (analysis_dev) {
     dplyr::slice_head(n = 5)
 }
 
-if (analysis_quick && !analysis_dev && nrow(sim_grid) > 100L) {
+if (analysis_quick && nrow(sim_grid) > 100L) {
   sim_grid <- withr::with_seed(
     42L,
     dplyr::slice_sample(sim_grid, n = 100L),

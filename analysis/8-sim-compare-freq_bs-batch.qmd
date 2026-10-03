@@ -63,6 +63,8 @@ if (is.na(simulation_seed)) {
 }
 comparison_semantics_version <- "batch-mismatch-comparison-v3"
 analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -143,8 +145,8 @@ stimgate_bw_max <- "none"
 tol_clust <- 1e-7
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
-n_sample_sim <- 5
-n_iter_sim <- 5
+n_sample_sim <- if (analysis_quick) 1L else 5
+n_iter_sim <- if (analysis_quick) 1L else 5
 
 fbeta_beta <- 0.8
 fbeta_theta <- 2
@@ -157,6 +159,9 @@ path_fbeta <- file.path(
 )
 
 if (isTRUE(run_simulations)) {
+  if (!file.exists(path_fbeta)) {
+    stop("F-beta comparison script not found: ", path_fbeta)
+  }
   .simCompareFbetaEnvironment(pathFbeta = path_fbeta)
 }
 
@@ -299,6 +304,16 @@ sim_grid <- dplyr::bind_rows(
 # Keep every seeded row available for an exact interactive rerun.
 sim_grid_full <- sim_grid
 
+# Quick mode keeps baseline scenario, mismatch magnitude (including zero) and mechanism.
+# Smallest grid covering every figure; dev takes precedence.
+if (analysis_quick) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      base_scenario_id %in% c(4L, 5L),
+      mismatch_val %in% c(0, 0.05)
+    )
+}
+
 if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
@@ -358,6 +373,7 @@ if (isTRUE(run_simulations)) {
       run_plots = run_plots,
       comparison_semantics_version = comparison_semantics_version,
       simulation_seed = simulation_seed,
+      analysis_quick = analysis_quick,
       analysis_dev = analysis_dev,
       paired_mismatch_rng = TRUE,
       analysis_grid_spec = analysis_grid_spec,
@@ -543,6 +559,7 @@ path_rds <- .analysis_current_file(
   required_params = list(
     comparison_semantics_version = comparison_semantics_version,
     simulation_seed = simulation_seed,
+    analysis_quick = analysis_quick,
     analysis_dev = analysis_dev,
     paired_mismatch_rng = TRUE,
     analysis_grid_spec = analysis_grid_spec,

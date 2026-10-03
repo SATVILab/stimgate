@@ -64,6 +64,8 @@ if (is.na(simulation_seed)) {
 }
 comparison_semantics_version <- "corrected-comparison-v3"
 analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -190,8 +192,8 @@ stimgate_bw_max <- "none"
 tol_clust <- 1e-7
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
-n_sample_sim <- 10
-n_iter_sim <- 2
+n_sample_sim <- if (analysis_quick) 1L else 10
+n_iter_sim <- if (analysis_quick) 1L else 2
 
 fbeta_beta <- 0.8
 fbeta_theta <- 2
@@ -203,6 +205,9 @@ path_fbeta <- file.path(
   "fbeta.py"
 )
 if (isTRUE(run_simulations)) {
+  if (!file.exists(path_fbeta)) {
+    stop("F-beta comparison script not found: ", path_fbeta)
+  }
   .simCompareFbetaEnvironment(pathFbeta = path_fbeta)
 }
 
@@ -277,6 +282,19 @@ sim_grid <- tidyr::expand_grid(
 # Keep every seeded row available for an exact interactive rerun.
 sim_grid_full <- sim_grid
 
+# Quick mode keeps cells, response and transformation; all comparison methods remain.
+# Smallest grid covering every figure; dev takes precedence.
+if (analysis_quick) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell %in% c(5e3, 2e4),
+      prob_response %in% c(0.002, 0.2),
+      transformation %in% c("gaussian", "gamma"),
+      mean_pos_setting == "high",
+      condition_perturbation_sd == 0
+    )
+}
+
 if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
@@ -314,6 +332,7 @@ n_workers <- max(1, .simGetCores())
 analysis_result_params <- list(
   comparison_semantics_version = comparison_semantics_version,
   simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
   n_cell_stim_vec = n_cell_stim_vec,
   prob_response_vec = prob_response_vec,

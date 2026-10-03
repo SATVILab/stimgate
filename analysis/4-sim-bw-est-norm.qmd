@@ -83,6 +83,8 @@ analysis_run_id <- .get_qmd_param_env(
 analysis_key <- c("sim", "bw", "est", "norm")
 analysis_semantics_version <- "bandwidth-est-norm-v3"
 analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -221,9 +223,23 @@ sim_grid <- tidyr::expand_grid(
     sim_id = dplyr::row_number()
   )
 
-# sim_id and sim_seed are fixed on the full grid, before the dev filter,
+# sim_id and sim_seed are fixed on the full grid, before dev/quick filters,
 # shuffling and chunking, so each row keeps its seed in every run.
 sim_grid_full <- sim_grid
+
+# Quick mode keeps cells, HPI method, normalisation, transformation, response and cap.
+# Smallest grid covering every figure; dev takes precedence.
+if (analysis_quick) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell %in% c(1e3, 5e3),
+      prob_response %in% c(0.002, 0.2),
+      transformation %in% c("gaussian", "gamma"),
+      mean_pos_setting == "high",
+      bw_mtd %in% c("hpi1", "hpi1Norm", "hpi2", "hpi2Norm"),
+      bw_ncell_upper %in% c(500, Inf)
+    )
+}
 
 if (analysis_dev) {
   sim_grid <- sim_grid |>
@@ -278,7 +294,7 @@ the manifest parameters that canonical results must match.
 ```{r}
 #| label: bw-estimate-settings
 #| include: false
-n_sample_sim <- 10L
+n_sample_sim <- if (analysis_quick) 1L else 10L
 n_iter_sim <- 1L
 
 scenario_settings <- list(
@@ -304,6 +320,7 @@ scenario_settings <- list(
 analysis_required_params <- list(
   analysis_semantics_version = analysis_semantics_version,
   simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
   scenario_settings = scenario_settings,
   sim_grid_spec = analysis_grid_spec

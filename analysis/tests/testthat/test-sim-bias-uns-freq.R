@@ -103,6 +103,18 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
   expect_true(all(grouped$n_rule == 14L))
   expect_true(all(grouped$n_mismatch == 5L))
   expect_true(all(grouped$n_bw == 4L))
+  quick <- run_grid(TRUE, FALSE)
+  expect_equal(nrow(quick$sim_grid_all), 120L)
+  expect_setequal(quick$sim_grid_all$n_cell, c(1e4, 5e4))
+  expect_setequal(quick$sim_grid_all$mismatch_label, c("mean shift 0", "SD inflation 10%"))
+  expect_setequal(quick$sim_grid_all$bias_uns_basis, c("bandwidth", "negative_width"))
+  for (transformation in unique(quick$sim_grid_all$transformation)) {
+    expect_equal(dplyr::n_distinct(quick$sim_grid_all$bw[
+      quick$sim_grid_all$transformation == transformation
+    ]), 2L)
+  }
+  expect_identical(quick$scenario_settings$nSample, 1L)
+  expect_identical(run_grid(TRUE, TRUE)$sim_grid_all, run_grid(FALSE, TRUE)$sim_grid_all)
   for (mode in list(c(TRUE, FALSE), c(FALSE, TRUE), c(TRUE, TRUE))) {
     reduced <- run_grid(mode[[1L]], mode[[2L]])
     expect_gt(nrow(reduced$sim_grid_all), 0L)

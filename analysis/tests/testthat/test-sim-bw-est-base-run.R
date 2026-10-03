@@ -104,7 +104,8 @@ test_that("base full-grid IDs survive dev filtering and external chunking", {
     end <- start + which(lines[(start + 1L):length(lines)] == "```")[1]
     lines[(start + 1L):(end - 1L)]
   }
-  build <- function(dev, index, chunks) {
+  build <- function(dev, index, chunks, quick = FALSE) {
+    env$analysis_quick <- quick
     env$analysis_dev <- dev
     env$simulation_seed <- 12345L
     env$sim_grid_shuffle_seed <- 8L
@@ -129,6 +130,18 @@ test_that("base full-grid IDs survive dev filtering and external chunking", {
   expect_equal(combined$sim_seed, 12345L + combined$sim_id - 1L)
   expect_equal(sort(unique(full$selected$n_cell)), c(1e3, 5e3, 2e4, 1e5))
   expect_identical(unique(full$selected$bias_uns_setting), "low")
+  quick <- build(FALSE, 1L, 1L, quick = TRUE)
+  expect_equal(nrow(quick$selected), 16L)
+  expect_setequal(quick$selected$n_cell, c(1e3, 5e3))
+  expect_setequal(quick$selected$bw_mtd, c("hpi1", "nrd0"))
+  expect_setequal(quick$selected$transformation, c("gaussian", "gamma"))
+  expect_setequal(quick$selected$prob_response, c(0.002, 0.2))
+  expect_identical(quick$full, full$full)
+  expected <- full$full |>
+    dplyr::filter(.data$sim_id %in% quick$selected$sim_id) |>
+    dplyr::arrange(.data$n_cell, dplyr::desc(.data$prob_response))
+  expect_identical(quick$selected, expected)
+  expect_identical(build(TRUE, 1L, 2L, quick = TRUE)$selected, one$selected)
 })
 
 test_that("base failures use typed shared error rows and retry on resume", {

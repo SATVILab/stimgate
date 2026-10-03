@@ -419,7 +419,10 @@ test_that("analysis 2a dev and quick filters preserve full-grid IDs and seeds", 
       dplyr::filter(.data$sim_id %in% env$sim_grid_all$sim_id)
     expect_identical(env$sim_grid_all, expected)
   }
-  expect_true(5e4 %in% quick$sim_grid_all$n_cell)
+  expect_equal(nrow(quick$sim_grid_all), 432L)
+  expect_setequal(quick$sim_grid_all$n_cell, c(1e3, 5e3))
+  expect_setequal(quick$sim_grid_all$condition_perturbation_sd, c(0, 0.5))
+  expect_identical(both$sim_grid_all, dev$sim_grid_all)
   expect_true(0.02 %in% quick$sim_grid_all$prob_response)
   expect_identical(nrow(both$sim_grid_all), 3L)
 })

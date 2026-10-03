@@ -41,6 +41,9 @@ run_simulations <- .as_flag(.get_qmd_param_env(
   "RUN_SIMULATIONS",
   FALSE
 ))
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -116,14 +119,10 @@ Each grid row has its own seed. The cached expression table records the scientif
 #| label: simulate-mean-pos-grid-univariate
 #| include: false
 
-dir_trans <- .analysis_cache_dir(c("sim", "trans"), root_dir, create = run_simulations)
+analysis_key <- c("sim", "trans")
+analysis_key <- .analysis_mode_key(analysis_key)
+dir_trans <- .analysis_cache_dir(analysis_key, root_dir, create = run_simulations)
 path_uni_tbl <- file.path(dir_trans, "uni_tbl.rds")
-cache_settings <- sim_trans_cache_settings(
-  main_settings,
-  mean_pos_settings_tbl,
-  transformation_vec,
-  simulation_seed
-)
 
 run_trans_row <- function(
     transformation, mean_pos_setting, mean_pos, prob_response, row_index) {
@@ -133,7 +132,7 @@ run_trans_row <- function(
       transformation = transformation,
       mean_pos = mean_pos,
       prob_response = prob_response,
-      settings = main_settings
+      settings = main_settings_run
     ) |>
       dplyr::mutate(mean_pos_setting = mean_pos_setting) |>
       dplyr::mutate(prob_response = prob_response)
@@ -142,6 +141,24 @@ run_trans_row <- function(
 uni_grid <- dplyr::mutate(
   mean_pos_settings_tbl,
   row_index = dplyr::row_number()
+)
+
+uni_grid_full <- uni_grid
+main_settings_run <- main_settings
+# Quick mode keeps transformation (including gamma), mean position and both conditions/components.
+# Smallest grid covering every figure; dev takes precedence.
+if (analysis_quick) {
+  uni_grid <- uni_grid |>
+    dplyr::filter(transformation %in% c("gaussian", "gamma"))
+  main_settings_run <- main_settings_run |>
+    dplyr::mutate(n_cell = 5e3)
+}
+cache_settings <- c(
+  sim_trans_cache_settings(
+    main_settings_run, dplyr::select(uni_grid, -row_index),
+    transformation_vec, simulation_seed
+  ),
+  list(analysis_quick = analysis_quick, analysis_dev = analysis_dev)
 )
 
 if (isTRUE(run_simulations)) {
@@ -184,7 +201,7 @@ if (isTRUE(run_simulations)) {
 #| eval: false
 sim_id_target <- 1L
 purrr::pmap_dfr(
-  uni_grid |> dplyr::filter(.data$row_index == sim_id_target),
+  uni_grid_full |> dplyr::filter(.data$row_index == sim_id_target),
   run_trans_row
 )
 ```

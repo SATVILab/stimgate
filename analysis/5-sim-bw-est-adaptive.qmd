@@ -83,6 +83,8 @@ analysis_run_id <- .get_qmd_param_env(
 analysis_key <- c("sim", "bw", "est", "adaptive")
 analysis_semantics_version <- "adaptive-bw-est-v3"
 analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
 n_sample_sim <- if (analysis_dev) 1L else 5L
 n_iter_sim <- if (analysis_dev) 1L else 5L
 norm_adaptive_ncell <- 2500L

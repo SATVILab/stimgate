@@ -85,7 +85,9 @@ analysis_run_id <- .get_qmd_param_env(
 analysis_key <- c("sim", "bw", "est", "base")
 analysis_semantics_version <- "bandwidth-est-base-v4"
 analysis_dev <- .analysis_is_dev()
-n_sample_sim <- 50L
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
+n_sample_sim <- if (analysis_quick) 1L else 50L
 n_iter_sim <- 1L
 bw_fallback <- NA_real_
 bw_min <- -Inf
@@ -198,6 +200,19 @@ sim_grid_full <- sim_grid
 sim_grid <- sim_grid |>
   dplyr::arrange(n_cell, dplyr::desc(prob_response))
 
+# Quick mode keeps cells, method, transformation and response.
+# Smallest grid covering every figure; dev takes precedence.
+if (analysis_quick) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell %in% c(1e3, 5e3),
+      prob_response %in% c(0.002, 0.2),
+      transformation %in% c("gaussian", "gamma"),
+      mean_pos_setting == "high",
+      bw_mtd %in% c("hpi1", "nrd0")
+    )
+}
+
 if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
@@ -268,6 +283,7 @@ scenario_settings <- list(
 analysis_required_params <- list(
   analysis_semantics_version = analysis_semantics_version,
   simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
   scenario_settings = scenario_settings,
   sim_grid_spec = analysis_grid_spec

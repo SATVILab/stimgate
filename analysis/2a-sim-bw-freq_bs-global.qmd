@@ -87,14 +87,9 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bw", "freq_bs", "global")
 analysis_semantics_version <- "global-bw-freq-v4"
-# Quarto may start without the repository .Rprofile.
-profile_vec <- strsplit(Sys.getenv("PROJR_PROFILE", "default"), ",", fixed = TRUE)[[1]]
-analysis_quick <- .analysis_is_quick() else {
-  "quick" %in% profile_vec
-}
-analysis_dev <- .analysis_is_dev() else {
-  "dev" %in% profile_vec
-}
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -276,13 +271,15 @@ sim_grid <- tidyr::expand_grid(
 # shuffling and chunking, so each row keeps its seed in every run.
 sim_grid_full <- sim_grid
 
+# Quick mode keeps cells, response, bandwidth, transformation and condition perturbation.
+# Smallest grid covering every figure; dev takes precedence.
 if (analysis_quick) {
   sim_grid <- sim_grid |>
     dplyr::filter(
-      n_cell %in% c(1e3, 5e4),
+      n_cell %in% c(1e3, 5e3),
       prob_response %in% c(0.002, 0.02),
       bw %in% c(0.05, 0.1, 0.25, 0.5, 0.75),
-      condition_perturbation_sd == 0
+      condition_perturbation_sd %in% c(0, 0.5)
     )
 } else {
   sim_grid <- sim_grid |>
@@ -358,7 +355,7 @@ manifest parameters that canonical results must match.
 #| label: bw-manual-settings
 #| include: false
 scenario_settings <- list(
-  nSample = 200,
+  nSample = if (analysis_quick) 1L else 200,
   nMarker = 1,
   nCondition = 2,
   nCluster = 2,

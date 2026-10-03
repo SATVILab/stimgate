@@ -199,8 +199,8 @@ test_that("analysis 2a uses shared seeded runners and canonical reads", {
   expect_true(has("sim_seed = as.integer(simulation_seed + sim_id - 1L)"))
   # sim_id/sim_seed are fixed on the full grid before filtering/shuffling.
   expect_lt(pos("sim_seed = as.integer("), pos("sim_grid_full <- sim_grid"))
-  expect_lt(pos("sim_grid_full <- sim_grid"), pos("if (analysis_quick)"))
-  expect_lt(pos("if (analysis_quick)"), pos("if (analysis_dev) {"))
+  expect_lt(pos("sim_grid_full <- sim_grid"), pos("# Quick mode keeps"))
+  expect_lt(pos("# Quick mode keeps"), pos("if (analysis_dev) {"))
   expect_lt(
     pos("if (analysis_dev) {"),
     pos("dplyr::slice_sample(sim_grid_all, prop = 1)")
@@ -487,4 +487,53 @@ test_that("analysis 6 presentation chunks are guarded and rerun is singular", {
   }
   expect_false(any(grepl("projr::projr_path_get", lines[-seq_len(40L)],
                         fixed = TRUE)))
+})
+
+test_that("all simulation QMDs use shared mode keys and dev precedence", {
+  files <- list.files(file.path(root_dir, "analysis"),
+                      pattern = "^(1|2a|2b|3|4|5|6|7|8)-.*\\.qmd$",
+                      full.names = TRUE)
+  expect_length(files, 9L)
+  for (file in files) {
+    content <- paste(readLines(file), collapse = "\n")
+    expect_true(grepl("analysis_dev <- .analysis_is_dev()", content, fixed = TRUE))
+    expect_true(grepl("analysis_quick <- .analysis_is_quick() && !analysis_dev",
+                     content, fixed = TRUE))
+    expect_true(grepl("analysis_key <- .analysis_mode_key(analysis_key)",
+                     content, fixed = TRUE))
+    expect_false(grepl("analysis_quick && !analysis_dev", content, fixed = TRUE))
+  }
+})
+
+test_that("simulation quick filters follow seeded full grids and isolate their caches", {
+  files <- c(
+    "1-sim-trans.qmd", "2a-sim-bw-freq_bs-global.qmd",
+    "2b-sim-bias_uns-freq_bs.qmd", "3-sim-bw-est-base.qmd",
+    "4-sim-bw-est-norm.qmd", "7-sim-compare-freq_bs.qmd",
+    "8-sim-compare-freq_bs-batch.qmd"
+  )
+  for (file in files) {
+    content <- paste(readLines(file.path(root_dir, "analysis", file)), collapse = "\n")
+    pos <- function(text) regexpr(text, content, fixed = TRUE)[[1L]]
+    full_grid <- if (file == "1-sim-trans.qmd") "uni_grid_full <-" else "sim_grid_full <-"
+    expect_gt(pos(full_grid), 0L)
+    expect_lt(pos(full_grid), pos("# Quick mode keeps"))
+    filter_text <- substring(content, pos("# Quick mode keeps"))
+    expect_true(grepl(
+      "if (analysis_quick) {", filter_text, fixed = TRUE
+    ), info = file)
+    expect_true(grepl(
+      "analysis_key <- .analysis_mode_key(analysis_key)", content, fixed = TRUE
+    ), info = file)
+    expect_true(grepl(
+      "analysis_quick = analysis_quick", content, fixed = TRUE
+    ), info = file)
+    # Parse the R chunks, including setup, without running simulations.
+    lines <- strsplit(content, "\n", fixed = TRUE)[[1L]]
+    starts <- which(startsWith(lines, "```{r"))
+    for (start in starts) {
+      end <- start + which(lines[(start + 1L):length(lines)] == "```")[1L]
+      expect_no_error(parse(text = lines[(start + 1L):(end - 1L)]))
+    }
+  }
 })

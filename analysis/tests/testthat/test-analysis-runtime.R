@@ -126,7 +126,7 @@ test_that("run contexts are isolated by logical run ID", {
   expect_identical(
     .norm_path(ctx_a$progress_run_dir),
     .norm_path(file.path(
-      tmp_project, "cache", "sim", "analysis-runtime-test", "runs",
+      ctx_a$sim_root, "runs",
       ctx_a$run_date, "run-a"
     ))
   )
@@ -989,6 +989,20 @@ test_that("analysis profiles fall back to the environment and respect profile he
   env$.isQuick <- function() FALSE
   expect_false(env$.analysis_is_dev())
   expect_false(env$.analysis_is_quick())
+})
+
+test_that("analysis mode keys isolate dev and quick results with dev precedence", {
+  env <- new.env(parent = baseenv())
+  source(script_runtime, local = env)
+  key <- c("sim", "test")
+  withr::local_envvar(PROJR_PROFILE = NA)
+  expect_identical(env$.analysis_mode_key(key), key)
+  Sys.setenv(PROJR_PROFILE = "quick")
+  expect_identical(env$.analysis_mode_key(key), c(key, "quick"))
+  Sys.setenv(PROJR_PROFILE = "dev")
+  expect_identical(env$.analysis_mode_key(key), c(key, "dev"))
+  Sys.setenv(PROJR_PROFILE = "dev, quick")
+  expect_identical(env$.analysis_mode_key(key), c(key, "dev"))
 })
 
 test_that("canonical cache failures give render guidance and successful reads retain data", {

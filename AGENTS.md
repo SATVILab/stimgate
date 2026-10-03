@@ -631,8 +631,12 @@ rows before drawing reference lines.
 9. **Shared analysis runners and cached settings**:
    Bandwidth QMDs 2-6 use `.simBandwidthRunRow()`, `.simBandwidthRunGrid()`
    and `.simBandwidthFinishChunk()`. Assign IDs and seeds on the full grid
-   before dev/quick filters, shuffling or chunking. Workers and interactive
-   single-row reruns use the same explicitly seeded row runner; resume retries
+   before dev/quick filters, shuffling or chunking. Quick mode selects the smallest,
+   cheapest grid that still exercises every figure; dev mode retains its single
+   debugging scenario and takes precedence when both profiles are active.
+   Results for dev and quick runs are kept under `<analysis-key>/dev/` and
+   `<analysis-key>/quick/`; full runs keep the existing analysis key.
+   Workers and interactive single-row reruns use the same explicitly seeded row runner; resume retries
    failed rows by default. Comparison scenarios in QMDs 7/8 use explicit RNG
    kinds and restore the caller's RNG state; do not reintroduce `gateCombn`
    plumbing in the comparison layer. Analysis 1 seeds each row and saves and

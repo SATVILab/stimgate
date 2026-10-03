@@ -8,6 +8,11 @@
     "quick" %in% trimws(strsplit(Sys.getenv("PROJR_PROFILE"), ",", fixed = TRUE)[[1]])
 }
 
+.analysis_mode_key <- function(analysis_key) {
+  suffix <- if (.analysis_is_dev()) "dev" else if (.analysis_is_quick()) "quick"
+  c(analysis_key, suffix)
+}
+
 .analysis_cache_error <- function(analysis_key, detail, qmd_path = NULL) {
   render <- if (is.null(qmd_path)) "render this analysis" else
     paste("quarto render", qmd_path)

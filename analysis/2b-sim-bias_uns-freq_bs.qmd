@@ -90,14 +90,9 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bias_uns", "freq_bs")
 analysis_semantics_version <- "bias-uns-freq-v2"
-# Quarto may start without the repository .Rprofile.
-profile_vec <- strsplit(Sys.getenv("PROJR_PROFILE", "default"), ",", fixed = TRUE)[[1]]
-analysis_quick <- .analysis_is_quick() else {
-  "quick" %in% profile_vec
-}
-analysis_dev <- .analysis_is_dev() else {
-  "dev" %in% profile_vec
-}
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -306,15 +301,16 @@ if (nrow(sim_grid) != 6720L) {
 
 sim_grid_full <- sim_grid
 
-# Dev mode selects a smaller fixture and takes precedence over quick mode.
-if (analysis_quick && !analysis_dev) {
+# Quick mode keeps cells, mismatch, bandwidth, bias multiplier and bias basis.
+# Smallest grid covering every figure; dev takes precedence.
+if (analysis_quick) {
   sim_grid <- sim_grid |>
     dplyr::filter(
-      n_cell == 1e4,
+      n_cell %in% c(1e4, 5e4),
       prob_response == 0.002,
       mean_pos_setting == "high",
       mismatch_label %in% c("mean shift 0", "SD inflation 10%"),
-      bw %in% c(0.05, 0.1, 0.005),
+      bw %in% c(0.05, 0.1, 0.0025, 0.005),
       bias_uns_multiplier %in% c(0, 0.25, 0.5)
     )
 }
@@ -375,7 +371,7 @@ print(
 #| label: bias-uns-run-settings
 #| include: false
 scenario_settings <- list(
-  nSample = 25,
+  nSample = if (analysis_quick) 1L else 25,
   nMarker = 1,
   nCondition = 2,
   nCluster = 2,
