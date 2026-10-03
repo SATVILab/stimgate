@@ -139,19 +139,5 @@
     }
   }
 
-  limitsExpandArg <- purrr::map_chr(seq_along(limitsExpand), function(i) {
-    vals <- paste0(limitsExpand[[i]], collapse = ", ")
-    paste0(names(limitsExpand)[i], " = c(", vals, ")")
-  }) |>
-    paste0(collapse = ", ")
-
-  parseText <- paste0(
-    "p <- p + ggplot2::expand_limits(",
-    limitsExpandArg,
-    ")"
-  )
-  env <- environment()
-  eval(parse(text = parseText), envir = env)
-
-  p
+  p + do.call(ggplot2::expand_limits, limitsExpand)
 }
