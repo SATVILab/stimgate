@@ -94,8 +94,19 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
     fixed = TRUE
   ))
   expect_true(grepl("paired_mismatch_rng = TRUE", content, fixed = TRUE))
+  expect_true(grepl("analysis_grid_spec = analysis_grid_spec", content, fixed = TRUE))
   expect_true(grepl("retryErrors = TRUE", content, fixed = TRUE))
   expect_true(grepl(".simCompareGridOutputStatus(", content, fixed = TRUE))
+  expect_true(grepl(
+    "F-beta comparator preflight failed",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "cytoUtils' is required for the tailgate comparison",
+    content,
+    fixed = TRUE
+  ))
   expect_true(grepl(
     "Refusing to promote analysis 8",
     content,
