@@ -118,8 +118,11 @@ test_that("writeStimFCS works with different gateUnsMethod options", {
     expect_equal(attr(result, "pathDirSave"), pathDirSave)
     expect_s3_class(result, "tbl_df")
     expect_true(dir.exists(pathDirSave))
-    # Should have some files (at least one sample should have positive cells)
-    expect_true(length(list.files(pathDirSave, pattern = "\\.fcs$")) >= 0)
+    # Samples without positive cells legitimately produce no FCS file.
+    expect_setequal(
+      list.files(pathDirSave, pattern = "\\.fcs$"),
+      result$fileName[result$written]
+    )
     unlink(pathDirSave, recursive = TRUE)
   }
 })
@@ -257,7 +260,7 @@ test_that("writeStimFCS respects mult and gateTypeCytPos when exporting exact ce
 test_that("writeStimFCS validates output file contents", {
   pathDirSave <- file.path(tempdir(), "fcs_output_validation")
 
-  writeStimFCS(
+  result <- writeStimFCS(
     pathProject = pathProject,
     .data = gs,
     indBatchList = exampleData$batchList,
@@ -268,6 +271,8 @@ test_that("writeStimFCS validates output file contents", {
   # Get list of FCS files
   fcsFiles <- list.files(pathDirSave, pattern = "\\.fcs$", full.names = TRUE)
 
+  expect_setequal(basename(fcsFiles), result$fileName[result$written])
+
   # Test that we can read each file and it has the expected structure
   for (fcsFile in fcsFiles) {
     ff <- flowCore::read.FCS(fcsFile)
@@ -277,8 +282,12 @@ test_that("writeStimFCS validates output file contents", {
 
     exprMat <- flowCore::exprs(ff)
 
-    # Check that it has data
-    expect_true(nrow(exprMat) >= 0)
+    # Only positive-cell samples are written, with counts recorded in the manifest.
+    expect_gt(nrow(exprMat), 0L)
+    expect_equal(
+      nrow(exprMat),
+      result$nCellPos[match(basename(fcsFile), result$fileName)]
+    )
 
     # Check that it has the expected channels
     expect_true(all(exampleData$chnl[[1]] %in% colnames(exprMat)))
@@ -395,7 +404,7 @@ test_that("writeStimFCS handles transformation parameters", {
 
   # Verify files were created
   fcsFiles <- list.files(pathDirSave, pattern = "\\.fcs$")
-  expect_true(length(fcsFiles) >= 0)
+  expect_setequal(fcsFiles, result$fileName[result$written])
   unlink(pathDirSave, recursive = TRUE)
 })
 
@@ -627,12 +636,18 @@ test_that("writeStimFCS integrates with stimgate workflow", {
   # Verify that gate information was properly used
   fcsFiles <- list.files(pathDirSave, pattern = "\\.fcs$", full.names = TRUE)
 
+  expect_setequal(basename(fcsFiles), result$fileName[result$written])
+
   # Should have created files for samples with positive cells
   for (fcsFile in fcsFiles) {
     ff <- flowCore::read.FCS(fcsFile)
     expect_true(inherits(ff, "flowFrame"))
-    expect_true(nrow(ff) >= 0)
     exMat <- flowCore::exprs(ff)
+    expect_gt(nrow(exMat), 0L)
+    expect_equal(
+      nrow(exMat),
+      result$nCellPos[match(basename(fcsFile), result$fileName)]
+    )
 
     # Verify that all gated channels are present
     expect_true(all(exampleData$chnl %in% colnames(exMat)))
