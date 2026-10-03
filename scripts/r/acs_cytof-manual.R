@@ -635,7 +635,7 @@
         .data$freq_bs_auto,
         .data$freq_bs_man
       )),
-      pcc = if (dplyr::n() > 1L) {
+      pcc = if (.data$n > 1L) {
         suppressWarnings(stats::cor(
           .data$freq_bs_auto,
           .data$freq_bs_man,
