@@ -73,9 +73,9 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
   )
   content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
 
-  expect_true(grepl("simulation_seed:\\s*1", content))
+  expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'comparison_semantics_version <- "batch-mismatch-comparison-v2"',
+    'comparison_semantics_version <- "batch-mismatch-comparison-v3"',
     content,
     fixed = TRUE
   ))
@@ -108,7 +108,7 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
     fixed = TRUE
   ))
   expect_true(grepl(
-    "Refusing to promote analysis 8",
+    ".simComparePromoteIfReady(",
     content,
     fixed = TRUE
   ))
