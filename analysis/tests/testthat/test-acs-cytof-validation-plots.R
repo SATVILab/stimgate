@@ -146,7 +146,8 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
     invisible(x)
   }
   plot_labels <- c(
-    "show-scatter", "show-real-pop-heatmaps", "show-all-pop-heatmaps"
+    "fig-acs-validation-scatter", "fig-acs-validation-t-cell-correlations",
+    "fig-acs-validation-all-correlations"
   )
   chunk_env$run_plots <- TRUE
   for (label in plot_labels) {
