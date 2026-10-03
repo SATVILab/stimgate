@@ -759,6 +759,66 @@
   ))
 }
 
+.acsCytofManualSaveTransactional <- function(
+  comparisonTbl,
+  pathDirSave,
+  savePlots = TRUE
+) {
+  parentDir <- dirname(pathDirSave)
+  dir.create(parentDir, recursive = TRUE, showWarnings = FALSE)
+
+  baseName <- basename(pathDirSave)
+  stagingDir <- tempfile(
+    pattern = paste0(".", baseName, "-staging-"),
+    tmpdir = parentDir
+  )
+  backupDir <- tempfile(
+    pattern = paste0(".", baseName, "-backup-"),
+    tmpdir = parentDir
+  )
+
+  on.exit({
+    if (dir.exists(stagingDir)) {
+      unlink(stagingDir, recursive = TRUE)
+    }
+  }, add = TRUE)
+
+  saveResult <- .acsCytofManualSave(
+    comparisonTbl = comparisonTbl,
+    pathDirSave = stagingDir,
+    savePlots = savePlots
+  )
+
+  hadPrevious <- dir.exists(pathDirSave)
+  if (hadPrevious && !file.rename(pathDirSave, backupDir)) {
+    stop(
+      "Could not move the previous ACS manual-comparison output aside: ",
+      pathDirSave
+    )
+  }
+
+  promoted <- file.rename(stagingDir, pathDirSave)
+  if (!promoted) {
+    if (hadPrevious && dir.exists(backupDir)) {
+      restored <- file.rename(backupDir, pathDirSave)
+      if (!restored) {
+        stop(
+          "Could not promote the new ACS manual comparison and could not ",
+          "restore the previous output. Previous output remains at: ",
+          backupDir
+        )
+      }
+    }
+    stop("Could not promote the new ACS manual-comparison output.")
+  }
+
+  if (hadPrevious && dir.exists(backupDir)) {
+    unlink(backupDir, recursive = TRUE)
+  }
+
+  invisible(saveResult)
+}
+
 comp_against_manual_cyt <- function(
   fn,
   path_scratch_base,
