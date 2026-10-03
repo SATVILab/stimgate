@@ -307,3 +307,72 @@ test_that("combination counts collapse to one positive row per cytokine", {
   expect_equal(as.character(out$cyt), unname(env$.acsCytofChannelMap()))
   expect_equal(out$cytCombn, paste0(out$cyt, "+"))
 })
+
+
+test_that("manual comparison output is replaced only after a successful save", {
+  env <- .load_acs_method_env()
+  comparison_tbl <- tibble::tibble(
+    method = c("stimgate", "stimgate"),
+    pop = c("CD4 T cells", "CD4 T cells"),
+    cyt = c("IFNg", "IFNg"),
+    stim = c("mtb", "ebv"),
+    freq_bs_auto = c(1.0, 2.0),
+    freq_bs_man = c(1.1, 1.8)
+  ) |>
+    dplyr::mutate(
+      diff = .data$freq_bs_auto - .data$freq_bs_man,
+      abs_diff = abs(.data$diff),
+      rel_error = .data$diff / .data$freq_bs_man,
+      abs_rel_error = abs(.data$rel_error)
+    )
+
+  path_dir <- tempfile("acs-manual-output-")
+  dir.create(path_dir, recursive = TRUE)
+  withr::defer(unlink(path_dir, recursive = TRUE))
+  sentinel <- file.path(path_dir, "previous.txt")
+  writeLines("last good output", sentinel)
+
+  expect_error(
+    env$.acsCytofManualSaveTransactional(
+      comparisonTbl = tibble::tibble(),
+      pathDirSave = path_dir,
+      savePlots = FALSE
+    )
+  )
+  expect_true(file.exists(sentinel))
+
+  expect_no_error(
+    env$.acsCytofManualSaveTransactional(
+      comparisonTbl = comparison_tbl,
+      pathDirSave = path_dir,
+      savePlots = FALSE
+    )
+  )
+  expect_false(file.exists(sentinel))
+  expect_true(file.exists(file.path(path_dir, "manual-comparison.rds")))
+  expect_true(file.exists(file.path(path_dir, "manual-comparison.csv")))
+  expect_true(file.exists(file.path(
+    path_dir,
+    "manual-comparison-summary.csv"
+  )))
+})
+
+test_that("analysis 9 builds the comparison before replacing saved output", {
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl(
+    "path_dir_save = NULL",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    ".acsCytofManualSaveTransactional(",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    "unlink(path_manual_output, recursive = TRUE)",
+    content,
+    fixed = TRUE
+  ))
+})
