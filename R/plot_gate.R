@@ -253,18 +253,23 @@ plotStim <- function(
     dplyr::ungroup()
   gateTbl <- gateTbl[gateTbl[["ind"]] %in% ind, ]
   for (i in seq_len(min(2L, length(chnl)))) {
-    for (gate in gateTbl[["gate"]][gateTbl[["chnl"]] == chnl[i]]) {
-      p <- p + if (i == 1L) {
-        list(
-          geom_vline(xintercept = gate, color = "red", alpha = 0.5),
-          expand_limits(x = gate * 1.1)
-        )
-      } else {
-        list(
-          geom_hline(yintercept = gate, color = "red", alpha = 0.5),
-          expand_limits(y = gate * 1.1)
-        )
-      }
+    gates <- gateTbl[["gate"]][gateTbl[["chnl"]] == chnl[i]]
+    if (length(gates) == 0L) next
+    # Distinct groups retain overlapping lines at identical thresholds.
+    p <- p + if (i == 1L) {
+      list(
+        geom_vline(
+          xintercept = gates, group = seq_along(gates), color = "red", alpha = 0.5
+        ),
+        expand_limits(x = gates * 1.1)
+      )
+    } else {
+      list(
+        geom_hline(
+          yintercept = gates, group = seq_along(gates), color = "red", alpha = 0.5
+        ),
+        expand_limits(y = gates * 1.1)
+      )
     }
   }
   p
