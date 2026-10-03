@@ -63,12 +63,8 @@
     )
 }
 
-.acsCytofValidationPlotScatter <- function(comparisonTbl, method, pathDirSave) {
+.acsCytofValidationPlotScatter <- function(comparisonTbl, method) {
   method <- match.arg(method, c("stimgate", "fbeta", "tailgate"))
-  pathDirSaveMethod <- file.path(pathDirSave, method)
-  if (!dir.exists(pathDirSaveMethod)) {
-    dir.create(pathDirSaveMethod, recursive = TRUE)
-  }
   plotTbl <- comparisonTbl |>
     dplyr::filter(.data$method == .env$method) |>
     dplyr::mutate(
