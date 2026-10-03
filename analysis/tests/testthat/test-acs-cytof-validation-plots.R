@@ -2,9 +2,16 @@ root_dir <- normalizePath(
   file.path(testthat::test_path(), "../../.."),
   mustWork = TRUE
 )
+script_runtime <- file.path(root_dir, "scripts", "r", "analysis-runtime.R")
 script_plot <- file.path(root_dir, "scripts", "r", "acs_cytof-plot_cyt.R")
+qmd_path <- file.path(
+  root_dir,
+  "analysis",
+  "10-real-compare-acs-cytof-validation.qmd"
+)
 
 env <- new.env(parent = getNamespace("stimgate"))
+source(script_runtime, local = env)
 source(script_plot, local = env)
 
 .acs_validation_fixture <- function() {
@@ -25,9 +32,15 @@ source(script_plot, local = env)
     dplyr::ungroup()
 }
 
-test_that("CCC is one for identical vectors", {
+test_that("CCC uses Lin's population-moment estimator", {
   expect_equal(env$.acsCytofValidationCcc(1:5, 1:5), 1)
-  expect_true(is.na(env$.acsCytofValidationCcc(rep(1, 5), 1:5)))
+  expect_equal(
+    env$.acsCytofValidationCcc(1:5, 2:6),
+    0.8,
+    tolerance = 1e-12
+  )
+  expect_equal(env$.acsCytofValidationCcc(rep(1, 5), 1:5), 0)
+  expect_true(is.na(env$.acsCytofValidationCcc(rep(1, 5), rep(1, 5))))
 })
 
 test_that("correlation table contains PCC and CCC by method and stratum", {
@@ -90,4 +103,125 @@ test_that("validation plotting helpers return ggplot objects", {
     ),
     "ggplot"
   )
+})
+
+
+test_that("validation input checks schema, methods, and duplicate keys", {
+  comparison_tbl <- .acs_validation_fixture()
+
+  expect_no_error(env$.acsCytofValidationValidateComparisonTable(
+    comparison_tbl,
+    requiredMethods = c("stimgate", "fbeta", "tailgate")
+  ))
+
+  expect_error(
+    env$.acsCytofValidationValidateComparisonTable(
+      dplyr::select(comparison_tbl, -freq_stim_man)
+    ),
+    "missing required column"
+  )
+
+  expect_error(
+    env$.acsCytofValidationValidateComparisonTable(
+      dplyr::filter(comparison_tbl, .data$method != "tailgate"),
+      requiredMethods = c("stimgate", "fbeta", "tailgate")
+    ),
+    "missing required method"
+  )
+
+  expect_error(
+    env$.acsCytofValidationValidateComparisonTable(
+      dplyr::bind_rows(comparison_tbl, comparison_tbl[1, , drop = FALSE])
+    ),
+    "duplicate"
+  )
+})
+
+test_that("validation directory replacement swaps complete output sets", {
+  parent_dir <- tempfile("acs-validation-parent-")
+  dir.create(parent_dir)
+  withr::defer(unlink(parent_dir, recursive = TRUE))
+
+  target_dir <- file.path(parent_dir, "validation-figures")
+  staged_dir <- file.path(parent_dir, "staged")
+  dir.create(target_dir)
+  dir.create(staged_dir)
+  writeLines("old", file.path(target_dir, "old.txt"))
+  writeLines("new", file.path(staged_dir, "new.txt"))
+
+  expect_no_error(env$.acsCytofValidationReplaceDirectory(
+    stagedDir = staged_dir,
+    targetDir = target_dir
+  ))
+  expect_false(file.exists(file.path(target_dir, "old.txt")))
+  expect_equal(readLines(file.path(target_dir, "new.txt")), "new")
+})
+
+test_that("failed validation rendering preserves the last good output directory", {
+  comparison_tbl <- .acs_validation_fixture()
+  parent_dir <- tempfile("acs-validation-save-")
+  dir.create(parent_dir)
+  withr::defer(unlink(parent_dir, recursive = TRUE))
+
+  target_dir <- file.path(parent_dir, "validation-figures")
+  dir.create(target_dir)
+  marker_path <- file.path(target_dir, "last-good.txt")
+  writeLines("keep me", marker_path)
+
+  old_scatter <- env$.acsCytofValidationPlotScatter
+  withr::defer(assign(
+    ".acsCytofValidationPlotScatter",
+    old_scatter,
+    envir = env
+  ))
+  assign(
+    ".acsCytofValidationPlotScatter",
+    function(...) stop("plot boom"),
+    envir = env
+  )
+
+  expect_error(
+    env$.acsCytofValidationSavePlots(
+      comparisonTbl = comparison_tbl,
+      pathDirSave = target_dir
+    ),
+    "plot boom"
+  )
+  expect_equal(readLines(marker_path), "keep me")
+})
+
+test_that("analysis 10 validates its input and does not delete last good figures", {
+  content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl(
+    ".acsCytofValidationValidateComparisonTable(",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "requiredMethods = validation_methods",
+    content,
+    fixed = TRUE
+  ))
+  expect_false(grepl(
+    "unlink(path_dir_save",
+    content,
+    fixed = TRUE
+  ))
+  expect_true(grepl(
+    "non-secreted-protein (\`p4\`) stimulation",
+    content,
+    fixed = TRUE
+  ))
+
+  save_body <- paste(
+    deparse(body(env$.acsCytofValidationSavePlots)),
+    collapse = "\n"
+  )
+  expect_true(grepl(".write_rds_atomic(", save_body, fixed = TRUE))
+  expect_true(grepl(
+    ".acsCytofValidationReplaceDirectory(",
+    save_body,
+    fixed = TRUE
+  ))
 })
