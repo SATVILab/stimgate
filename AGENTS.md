@@ -507,8 +507,6 @@ the `flowWorkspace` stack from source.
     parameter lookup, env overrides, chunk validation and atomic RDS
     output.
   - `functionsForBenchmarking-Cyt.R`: Cytokine simulation utilities.
-  - `functionsForBenchmarking-Pheno.R`: Benchmarking helpers for
-    phenotype simulation.
   - `sim-bandwidth.R`: Simulation bandwidth utilities.
   - `sim-bandwidth-analysis-io.R` / `sim-bandwidth-analysis-plot.R`:
     Output-file lookup and plotting helpers for the bandwidth QMDs.
@@ -881,9 +879,12 @@ both suites.
     `unlink(tmp_dir, recursive = TRUE)` or
     [`withr::defer()`](https://withr.r-lib.org/reference/defer.html)).
 
-6.  **Shared test fixtures**: If multiple tests need the same setup
-    data, create it within each test or create it once at the top with
-    clear documentation. Never delete shared fixtures mid-file.
+6.  **Shared test fixtures**: Scope expensive file-shared fixtures in
+    `local({ ... })` and register deferred cleanup there; seeded tests
+    must restore RNG state rather than leaking it into later files. If
+    multiple tests need the same setup data, create it within each test
+    or create it once at the top with clear documentation. Never delete
+    shared fixtures mid-file.
 
 7.  **Test data files compatibility**: Test data files (`.rds` in
     `tests/testthat/`) may need regeneration when major dependencies
