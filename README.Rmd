@@ -69,28 +69,11 @@ plotStim(
 )
 ```
 
-For real data, `gateStim()` requires a compatible flow-cytometry object, the population to gate, the marker or channel names to analyse, and a `batchList` describing the matched samples.
-
-Method and bandwidth controls are passed as a single `stimControl()` object through `control`, and per-marker overrides are passed through `markerControl` keyed by marker label or channel name.
-
-```r
-# Tuning settings for the whole run
-path_project <- gateStim(
-  pathProject = path_project,
-  .data = gs,
-  batchList = example_data$batchList,
-  marker = example_data$marker,
-  control = stimControl(clusterGates = FALSE, bwMtd = "nrd0"),
-  markerControl = list(MarkerF1 = list(bw = 0.12))
-)
-```
-
-Most users never need to change the defaults, which are identical to those used above.
+For real data, `gateStim()` requires a compatible flow-cytometry object, the population to gate, the marker or channel names to analyse, and a `batchList` describing the matched samples. Its user-facing tuning arguments are `biasUns` and `bw`; all other method, bandwidth and thresholding settings are supplied as a `stimControl()` object through `control`, with per-marker overrides in `markerControl` keyed by marker label or channel name. Most users never need to change the defaults.
 
 ## Main functions
 
 - `gateStim()` runs the StimGate gating workflow and saves the project results.
-- `stimControl()` collects the tuning settings for `gateStim()`, and `markerControl` overrides them per marker or channel.
 - `plotStim()` plots univariate or bivariate expression together with the fitted gates.
 - `getStimExpr()` reads expression data saved by a StimGate project and can optionally apply the saved gates.
 - `getStimGatesDetailed()` reads detailed saved threshold diagnostics when these are available.

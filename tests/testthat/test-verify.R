@@ -10,7 +10,8 @@ test_that("stimControl validates every tuning setting eagerly", {
     list("excMin", "yes", FALSE),
     list("biasUnsFactor", 0, 2),
     list("cpMin", "a", 0.1),
-    list("bw", -1, 0.5),
+    list("calcCytPosGates", "yes", FALSE),
+    list("minCell", 0, 1e2),
     list("bwAdj", 0, 2),
     list("bwCluster", -1, 0.5),
     list("bwScope", "batch", "cluster"),
@@ -107,8 +108,7 @@ test_that("verifyGateInputs rejects invalid gateStim-level arguments", {
     list(popGate = c("root", "x")),
     list(.data = data.frame(x = 1)),
     list(batchList = list()),
-    list(calcCytPosGates = "yes"),
-    list(minCell = 0),
+    list(bw = -1),
     list(marker = "notAMarker"),
     list(marker = NULL, chnl = "notAChannel"),
     list(chnl = exampleData$chnl),
@@ -119,7 +119,7 @@ test_that("verifyGateInputs rejects invalid gateStim-level arguments", {
     expect_error(globalCall(vals), info = paste(names(vals), collapse = ","))
   }
 
-  expect_no_error(globalCall(list(minCell = 10)))
+  expect_no_error(globalCall(list(bw = 0.5)))
   expect_no_error(globalCall(list(marker = NULL, chnl = exampleData$chnl)))
 })
 

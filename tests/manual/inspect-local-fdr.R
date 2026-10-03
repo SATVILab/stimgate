@@ -80,10 +80,10 @@ run_local_fdr_inspection <- function(scenario) {
     popGate = "root",
     batchList = list(c(1L, 2L)),
     marker = "MarkerF1",
-    calcCytPosGates = FALSE,
     biasUns = 0,
+    bw = scenario$bandwidth,
     control = stimControl(
-      bw = scenario$bandwidth,
+      calcCytPosGates = FALSE,
       clusterGates = FALSE,
       gateCombn = "no",
       locEnforceShapeThreshold = FALSE

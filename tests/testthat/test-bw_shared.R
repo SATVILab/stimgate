@@ -12,9 +12,10 @@ test_that("bwScope sets shared local-FDR bandwidths in the channel settings", {
       pathProject = pathProject,
       batchList = exampleData$batchList,
       marker = exampleData$marker,
-      minCell = minCell,
-      calcCytPosGates = FALSE,
-      control = stimControl(clusterGates = FALSE, ...)
+      control = stimControl(
+        calcCytPosGates = FALSE, clusterGates = FALSE,
+        minCell = minCell, ...
+      )
     ))
     stimgateMetaReadSettingsChnls(pathProject)
   }

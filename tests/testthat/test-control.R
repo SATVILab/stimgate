@@ -1,6 +1,7 @@
 # Contract tests for the gateStim() tuning controls: the stimControl() object
-# holds the tuning settings and markerControl holds per-channel overrides keyed
-# by marker label or channel name.
+# holds the tuning settings, gateStim() keeps only its data/marker arguments
+# plus biasUns and the fixed bw, and markerControl holds per-channel overrides
+# keyed by marker label or channel name.
 
 test_that("stimControl returns a documented stimControl object", {
   control <- stimControl()
@@ -12,7 +13,8 @@ test_that("stimControl returns a documented stimControl object", {
   expect_identical(control$biasUnsFactor, 1)
   expect_true(control$excMin)
   expect_null(control$cpMin)
-  expect_null(control$bw)
+  expect_true(control$calcCytPosGates)
+  expect_identical(control$minCell, 1e2)
   expect_identical(control$bwMtd, "hpi1")
   expect_identical(control$bwScope, "cytokine")
   expect_identical(control$bwAdj, 1)
@@ -48,9 +50,18 @@ test_that("stimControl rejects invalid settings eagerly", {
   expect_error(stimControl(normDensityN = 0))
   expect_error(stimControl(excMin = NULL))
   expect_error(stimControl(bwMtd = NULL))
+  expect_error(stimControl(calcCytPosGates = "yes"))
+  expect_error(stimControl(minCell = 0))
   expect_error(stimControl(locEnforceShapeThreshold = "yes"))
   expect_no_error(stimControl(bwMtd = "sj", locProbCol = "probSmooth"))
   expect_no_error(stimControl(locEnforceShapeThreshold = TRUE))
+})
+
+test_that("bw is a gateStim argument, not a stimControl setting", {
+  # `bw` is the user-facing fixed bandwidth and lives on gateStim().
+  expect_false("bw" %in% names(formals(stimControl)))
+  expect_true("bw" %in% names(formals(gateStim)))
+  expect_error(stimControl(bw = 0.1))
 })
 
 test_that("clusterGates is a logical switch", {
@@ -98,8 +109,9 @@ test_that("markerControl accepts marker and channel names", {
   pathProject <- file.path(withr::local_tempdir(), "project")
 
   # One key is a marker label, the other the channel name of another channel.
+  # `bw` is a per-marker fixed-bandwidth override.
   markerControl <- stats::setNames(
-    list(list(bwAdj = 2), list(bwAdj = 2)),
+    list(list(bw = 0.1), list(bwAdj = 2)),
     c(exampleData$marker[[1]], exampleData$chnl[[2]])
   )
   gateStim(
@@ -107,13 +119,16 @@ test_that("markerControl accepts marker and channel names", {
     .data = gs,
     batchList = exampleData$batchList,
     marker = exampleData$marker,
-    calcCytPosGates = FALSE,
-    control = stimControl(clusterGates = FALSE),
+    control = stimControl(calcCytPosGates = FALSE, clusterGates = FALSE),
     markerControl = markerControl
   )
 
   expect_true(file.exists(file.path(pathProject, "gateStats.rds")))
   expect_gt(nrow(getStimGates(pathProject)), 0L)
+
+  # The per-marker fixed bandwidth reaches the saved channel settings.
+  settings <- stimgateMetaReadSettingsChnls(pathProject)
+  expect_identical(settings[[exampleData$marker[[1]]]]$bw, 0.1)
 })
 
 test_that("markerControl rejects unknown names and settings", {
@@ -140,9 +155,12 @@ test_that("markerControl rejects unknown names and settings", {
   expect_error(
     gateWith(stats::setNames(list(list(notASetting = 1)), markerChnl))
   )
-  # locEnforceShapeThreshold is global only.
+  # locEnforceShapeThreshold and calcCytPosGates are global only.
   expect_error(gateWith(stats::setNames(
     list(list(locEnforceShapeThreshold = TRUE)), markerChnl
+  )))
+  expect_error(gateWith(stats::setNames(
+    list(list(calcCytPosGates = FALSE)), markerChnl
   )))
   # Two keys that resolve to the same channel.
   expect_error(gateWith(stats::setNames(
