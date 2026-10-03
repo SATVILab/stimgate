@@ -114,6 +114,8 @@ test_that("analysis 2 is chunk-stable, read-only when not simulating, and valida
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl("analysis_semantics_version", content, fixed = TRUE))
+  expect_true(grepl("analysis_quick", content, fixed = TRUE))
+  expect_true(grepl("analysis_dev", content, fixed = TRUE))
   expect_true(grepl(
     "sim_seed = as.integer(simulation_seed + sim_id - 1L)",
     content,
