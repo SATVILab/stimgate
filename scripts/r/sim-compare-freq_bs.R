@@ -827,6 +827,81 @@
     )
 }
 
+#' Extract final StimGate threshold provenance for comparison outputs
+#'
+#' @keywords internal
+.simCompareStimgateGateProvenance <- function(gRow, gateVal, isClustered) {
+  has_row <- is.data.frame(gRow) && nrow(gRow) > 0L
+
+  locGenerated <- if (
+    has_row &&
+      "locGenerated" %in% names(gRow) &&
+      !is.na(gRow$locGenerated[[1]])
+  ) {
+    isTRUE(gRow$locGenerated[[1]])
+  } else {
+    is.finite(gateVal)
+  }
+
+  locGeneratedDirect <- if (
+    has_row &&
+      "locGeneratedDirect" %in% names(gRow) &&
+      !is.na(gRow$locGeneratedDirect[[1]])
+  ) {
+    isTRUE(gRow$locGeneratedDirect[[1]])
+  } else {
+    isTRUE(locGenerated) && !isTRUE(isClustered)
+  }
+
+  locSource <- if (
+    has_row &&
+      "locSource" %in% names(gRow) &&
+      !is.na(gRow$locSource[[1]])
+  ) {
+    as.character(gRow$locSource[[1]])
+  } else if (isTRUE(isClustered)) {
+    "cluster"
+  } else if (isTRUE(locGenerated)) {
+    "sample"
+  } else {
+    "not_calculated"
+  }
+
+  locReason <- if (
+    has_row &&
+      "locReason" %in% names(gRow) &&
+      !is.na(gRow$locReason[[1]])
+  ) {
+    as.character(gRow$locReason[[1]])
+  } else {
+    NA_character_
+  }
+
+  thresholdFallbackUsed <- !isTRUE(locGenerated)
+
+  list(
+    thresholdOrigin = if (thresholdFallbackUsed) {
+      "fallback_high_value"
+    } else if (isTRUE(isClustered)) {
+      "calculated_clustered"
+    } else {
+      "calculated"
+    },
+    gateReturnPoint = if (thresholdFallbackUsed) {
+      "stimgate_fallback_high_value"
+    } else if (isTRUE(isClustered)) {
+      "stimgate_clustered"
+    } else {
+      "stimgate_calculated"
+    },
+    thresholdFallbackUsed = thresholdFallbackUsed,
+    locGenerated = locGenerated,
+    locGeneratedDirect = locGeneratedDirect,
+    locSource = locSource,
+    locReason = locReason
+  )
+}
+
 #' @keywords internal
 .simCompareStimgateRows <- function(
   gs,
@@ -1044,6 +1119,11 @@
             }
 
             isClustered <- grepl("Clust$", gateNm %||% "")
+            provenance <- .simCompareStimgateGateProvenance(
+              gRow = gRow,
+              gateVal = gateVal,
+              isClustered = isClustered
+            )
 
             tibble::tibble(
               sample = as.character(sampleCurr),
@@ -1052,18 +1132,10 @@
               approach = "stimgate",
               method = "stimgate",
               threshold = gateVal,
-              thresholdOrigin = if (is.finite(gateVal)) {
-                if (isClustered) "calculated_clustered" else "calculated"
-              } else {
-                "failed_no_cutpoint"
-              },
-              gateReturnPoint = if (isClustered) {
-                "stimgate_clustered"
-              } else {
-                "stimgate_calculated"
-              },
+              thresholdOrigin = provenance$thresholdOrigin,
+              gateReturnPoint = provenance$gateReturnPoint,
               thresholdMetric = NA_real_,
-              thresholdFallbackUsed = !is.finite(gateVal),
+              thresholdFallbackUsed = provenance$thresholdFallbackUsed,
               nCellStim = nCellStimVal,
               nCellUns = nCellUnsVal,
               nPosStim = nPosStimVal,
@@ -1076,10 +1148,10 @@
               } else {
                 "sample_final"
               },
-              locGenerated = is.finite(gateVal),
-              locGeneratedDirect = !isClustered,
-              locSource = if (isClustered) "cluster" else "sample",
-              locReason = NA_character_,
+              locGenerated = provenance$locGenerated,
+              locGeneratedDirect = provenance$locGeneratedDirect,
+              locSource = provenance$locSource,
+              locReason = provenance$locReason,
               error = NA_character_
             )
           })
