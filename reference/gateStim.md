@@ -73,7 +73,8 @@ gateStim(
   locMarginalRefQuantile = 0.75,
   gateCombn = "min",
   markerSettings = NULL,
-  chnlSettings = NULL
+  chnlSettings = NULL,
+  parallel = FALSE
 )
 ```
 
@@ -481,6 +482,11 @@ gateStim(
   defaults. Similar to markerSettings but keyed by channel names.
   Default is NULL.
 
+- parallel:
+
+  logical If TRUE, gate channels in parallel during the initial gating
+  stage using the active future::plan(). Default: FALSE.
+
 ## Value
 
 character. Returns the path to the project directory where all results
@@ -497,6 +503,19 @@ have been saved. The directory structure created includes:
 - `plots/`: Directory containing visualization plots (if generated)
 
 ## Details
+
+To gate channels in parallel, set `parallel = TRUE` and select a future
+plan, for example `future::plan(future::multisession, workers = 4)`. The
+default `parallel = FALSE` runs sequentially regardless of the active
+plan. Only the initial per-channel gating stage is parallel; subsequent
+cytokine-positive gating and statistics remain sequential. Workers read
+expression data from the project disk cache rather than a GatingSet, so
+the project directory must be accessible to all workers. With
+`parallel = TRUE`, RNG-dependent subsampling uses parallel-safe L'Ecuyer
+streams (`future.seed = TRUE`). Results are reproducible for a given
+[`set.seed()`](https://rdrr.io/r/base/Random.html) and independent of
+the chosen non-sequential plan, but may differ slightly from a
+sequential run.
 
 The function implements a multi-step workflow for identifying
 cytokine-positive cells:
@@ -584,7 +603,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpTDkL0D/demonstration"
+#> [1] "/tmp/Rtmp4GOC8L/demonstration"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {

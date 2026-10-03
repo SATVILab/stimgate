@@ -25,7 +25,7 @@ background cytokine production, and technical variability."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.8</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -127,7 +127,8 @@ background cytokine production, and technical variability.</p>
 <span>  locMarginalRefQuantile <span class="op">=</span> <span class="fl">0.75</span>,</span>
 <span>  gateCombn <span class="op">=</span> <span class="st">"min"</span>,</span>
 <span>  markerSettings <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  chnlSettings <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  chnlSettings <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  parallel <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -505,6 +506,10 @@ and contain parameter overrides. Default is NULL.</p></dd>
 global defaults. Similar to markerSettings but keyed by channel names.
 Default is NULL.</p></dd>
 
+
+<dt id="arg-parallel">parallel<a class="anchor" aria-label="anchor" href="#arg-parallel"></a></dt>
+<dd><p>logical If TRUE, gate channels in parallel during the initial gating stage using the active future::plan(). Default: FALSE.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -517,7 +522,18 @@ have been saved. The directory structure created includes:</p><ul><li><p><code>p
 </ul></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The function implements a multi-step workflow for identifying cytokine-positive cells:</p>
+    <p>To gate channels in parallel, set <code>parallel = TRUE</code> and select a future
+plan, for example <code>future::plan(future::multisession, workers = 4)</code>.
+The default <code>parallel = FALSE</code> runs sequentially regardless of the active
+plan. Only the initial per-channel gating stage is parallel; subsequent
+cytokine-positive gating and statistics remain sequential. Workers read
+expression data from the project disk cache rather than a GatingSet, so
+the project directory must be accessible to all workers.
+With <code>parallel = TRUE</code>, RNG-dependent subsampling uses parallel-safe
+L'Ecuyer streams (<code>future.seed = TRUE</code>). Results are reproducible for a
+given <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> and independent of the chosen non-sequential plan,
+but may differ slightly from a sequential run.</p>
+<p>The function implements a multi-step workflow for identifying cytokine-positive cells:</p>
 <p><strong>Step 1: Data Preparation</strong></p><ul><li><p>Validates input parameters and GatingSet structure</p></li>
 <li><p>Completes marker specifications with default values</p></li>
 <li><p>Organizes samples by batch for proper background subtraction</p></li>
@@ -573,7 +589,7 @@ clustered gate when none is available</p></li>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpTDkL0D/demonstration"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmp4GOC8L/demonstration"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create plots</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"hexbin"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
