@@ -700,8 +700,8 @@
 #' @keywords internal
 .getCpUnsLocBwCalcOne <- function(x, chnlSettings, bwMtd, bwAdj, adaptive) {
   argNm <- c(
-    "bwNcellMin", "bwNcellMax", "normPeakFrac", "normPeakMinRel",
-    "normExtraFrac", "normExtraMax", "normExtraJitterFrac", "normLambda",
+    "bwNcellMin", "bwNcellMax", "normPeakMinRel",
+    "normExtraFrac", "normExtraMax", "normLambda",
     "normDensityN", "normExcessBwMtd", "normExcessNcell", "bwAdaptiveCore",
     "bwAdaptiveExtra", "bwAdaptiveCrossover", "bwAdaptiveTransitionWidth",
     "normMtd"

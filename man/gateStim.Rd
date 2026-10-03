@@ -32,11 +32,9 @@ gateStim(
   bwAdaptiveExtra = NULL,
   bwAdaptiveCrossover = NULL,
   bwAdaptiveTransitionWidth = 0,
-  normPeakFrac = 0.1,
   normPeakMinRel = 0.75,
   normExtraFrac = 0.2,
   normExtraMax = Inf,
-  normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
   normDensityN = 512L,
   normExcessBwMtd = "hpi3",
@@ -188,10 +186,6 @@ is \code{NULL}.}
 optional smooth transition around \code{bwAdaptiveCrossover}. Use \code{0} for a hard
 switch at the crossover. Default is \code{0}.}
 
-\item{normPeakFrac}{numeric. Fraction of the selected background-core peak
-height used by normalised bandwidth helpers when identifying low-density tail
-regions. Default is \code{0.1}.}
-
 \item{normPeakMinRel}{numeric. Relative peak/trough threshold used to identify
 the main background modal complex for \verb{*Norm} bandwidth methods. Default is
 \code{0.75}.}
@@ -201,10 +195,6 @@ sampled for the normalised high component. Default is \code{0.2}.}
 
 \item{normExtraMax}{numeric. Maximum number of additional high-side values used
 by normalised bandwidth methods. May be \code{Inf}. Default is \code{Inf}.}
-
-\item{normExtraJitterFrac}{numeric. Jitter scale, as a fraction of a robust
-expression-scale standard deviation, applied to sampled high-side values.
-Default is \code{0.25}.}
 
 \item{normLambda}{numeric vector. Box-Cox lambda search grid used only when
 \code{normMtd = "boxcox"}. Default is \code{seq(-2, 2, length.out = 81)}.}

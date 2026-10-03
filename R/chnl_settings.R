@@ -29,11 +29,9 @@
   bwAdaptiveExtra,
   bwAdaptiveCrossover,
   bwAdaptiveTransitionWidth,
-  normPeakFrac,
   normPeakMinRel,
   normExtraFrac,
   normExtraMax,
-  normExtraJitterFrac,
   normLambda,
   normDensityN,
   normExcessBwMtd,
@@ -94,11 +92,9 @@
     bwAdaptiveExtra = bwAdaptiveExtra,
     bwAdaptiveCrossover = bwAdaptiveCrossover,
     bwAdaptiveTransitionWidth = bwAdaptiveTransitionWidth,
-    normPeakFrac = normPeakFrac,
     normPeakMinRel = normPeakMinRel,
     normExtraFrac = normExtraFrac,
     normExtraMax = normExtraMax,
-    normExtraJitterFrac = normExtraJitterFrac,
     normLambda = normLambda,
     normDensityN = normDensityN,
     normExcessBwMtd = normExcessBwMtd,
@@ -185,8 +181,8 @@
   # Bandwidth-method settings shared by every automatic bandwidth below
   bwArgs <- lapply(
     stats::setNames(nm = c(
-      "bwMtd", "bwAdj", "normPeakFrac", "normPeakMinRel", "normExtraFrac",
-      "normExtraMax", "normExtraJitterFrac", "normLambda", "normDensityN",
+      "bwMtd", "bwAdj", "normPeakMinRel", "normExtraFrac",
+      "normExtraMax", "normLambda", "normDensityN",
       "normExcessBwMtd", "normExcessNcell", "normAdaptiveNcell", "normMtd"
     )),
     function(nm) chnlSettings[[nm]]

@@ -11,11 +11,9 @@
   bwAdj = 1,
   bwNcellMin = NULL,
   bwNcellMax = NULL,
-  normPeakFrac = 0.1,
   normPeakMinRel = 0.75,
   normExtraFrac = 0.2,
   normExtraMax = Inf,
-  normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
   normDensityN = 512L,
   normExcessBwMtd = "hpi3",
@@ -45,11 +43,9 @@
       bwAdj = bwAdj,
       bwNcellMin = bwNcellMin,
       bwNcellMax = bwNcellMax,
-      normPeakFrac = normPeakFrac,
       normPeakMinRel = normPeakMinRel,
       normExtraFrac = normExtraFrac,
       normExtraMax = normExtraMax,
-      normExtraJitterFrac = normExtraJitterFrac,
       normLambda = normLambda,
       normDensityN = normDensityN,
       normExcessBwMtd = normExcessBwMtd,
@@ -228,11 +224,9 @@
   bwAdj = 1,
   bwNcellMin = NULL,
   bwNcellMax = NULL,
-  normPeakFrac = 0.1,
   normPeakMinRel = 0.75,
   normExtraFrac = 0.2,
   normExtraMax = Inf,
-  normExtraJitterFrac = 0.25,
   normLambda = seq(-2, 2, length.out = 81),
   normDensityN = 512L,
   normExcessBwMtd = "hpi3",
@@ -274,7 +268,6 @@
 
   coreObj <- .bwNormFindBackgroundCore(
     x = x,
-    peakFrac = normPeakFrac,
     peakMinRel = normPeakMinRel,
     densityN = normDensityN,
     pilotN = corePilotN
@@ -309,11 +302,9 @@
     coreObj = coreObj,
     normExtraFrac = normExtraFrac,
     normExtraMax = normExtraMax,
-    normExtraJitterFrac = normExtraJitterFrac,
     densityN = normDensityN,
     normExcessBwMtd = normExcessBwMtd,
-    normExcessNcell = normExcessNcell,
-    normPeakFrac = normPeakFrac
+    normExcessNcell = normExcessNcell
   )
   xExtra <- xExtra[is.finite(xExtra)]
 
@@ -597,7 +588,6 @@
 #' @keywords internal
 .bwNormFindBackgroundCore <- function(
   x,
-  peakFrac = 0.1,
   peakMinRel = 0.75,
   densityN = 1024L,
   pilotN = 100000L
@@ -783,7 +773,6 @@
     thresholdIdx = thresholdIdx,
     peakX = peakMainLeftX,
     peakHeight = peakHeight,
-    lowHeight = peakFrac * peakHeight,
     density = tibble::tibble(
       x = dx,
       y = dy
@@ -1043,11 +1032,9 @@
   coreObj,
   normExtraFrac = 0.2,
   normExtraMax = Inf,
-  normExtraJitterFrac = 0.25,
   densityN = 512L,
   normExcessBwMtd = "hpi3",
   normExcessNcell = 10000L,
-  normPeakFrac = 0.1,
   normScamK = 30L
 ) {
   x <- suppressWarnings(as.numeric(x))
@@ -1077,7 +1064,6 @@
     bwMtd = normExcessBwMtd,
     nCell = normExcessNcell,
     densityN = densityN,
-    peakFrac = normPeakFrac,
     scamK = normScamK
   )
 
@@ -1252,7 +1238,6 @@
   bwMtd = "hpi3",
   nCell = 10000L,
   densityN = 512L,
-  peakFrac = 0.1,
   scamK = 30L
 ) {
   x <- suppressWarnings(as.numeric(x))

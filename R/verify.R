@@ -40,11 +40,9 @@
   bwAdaptiveExtra,
   bwAdaptiveCrossover,
   bwAdaptiveTransitionWidth,
-  normPeakFrac,
   normPeakMinRel,
   normExtraFrac,
   normExtraMax,
-  normExtraJitterFrac,
   normLambda,
   normDensityN,
   normExcessBwMtd,
@@ -358,10 +356,8 @@
     stop(paste0(prefix, "`bwAdaptive` must be a single logical value."))
   }
 
-  .check_prob("normPeakFrac", settings = settings, prefix = prefix)
   .check_prob("normPeakMinRel", settings = settings, prefix = prefix)
   .check_prob("normExtraFrac", settings = settings, prefix = prefix)
-  .check_prob("normExtraJitterFrac", settings = settings, prefix = prefix)
 
   .check_positive_n(
     "normExtraMax",
