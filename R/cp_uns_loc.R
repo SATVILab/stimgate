@@ -519,7 +519,7 @@
 
       # remove any cytokine-positive cells from unstim using gates from
       # sample for which gates are required
-      exTblUnsBias <- .getCpUnsLocSampleUnsRmCytPos(
+      exTblUnsBiasRm <- .getCpUnsLocSampleUnsRmCytPos(
         exTblUnsOrig = exTblUnsOrig,
         chnlSettings = chnlSettings,
         exTblStimNoMin = exTblNoMinStim,
@@ -527,6 +527,18 @@
         exTblUnsBias = exTblUnsBias,
         stage = stage
       )
+      # removal can leave too few unstim cells, so check again
+      if (nrow(exTblUnsBiasRm) < chnlSettings$minCell) {
+        objOut <- .getCpUnsLocSampleTooFew(
+          stage = stage,
+          pathProject = pathProject,
+          exTblNoMinStim = exTblNoMinStim,
+          exTblUnsBias = exTblUnsBias,
+          cpMin = chnlSettings$cpMin
+        )
+        return(objOut)
+      }
+      exTblUnsBias <- exTblUnsBiasRm
       .intSave(ind, stageChnl, pathProject, exTblUnsBias)
 
       .getCpUnsLocCondition(
