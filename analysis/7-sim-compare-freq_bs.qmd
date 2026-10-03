@@ -51,7 +51,8 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v1"
+comparison_semantics_version <- "corrected-comparison-v2"
+analysis_dev <- isTRUE(.isDev())
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -80,11 +81,19 @@ if (
   }
 }
 
-# Tailgate comparisons use the cytoUtils package directly.
-if (!requireNamespace("cytoUtils", quietly = TRUE)) {
-  warning(
-    "Package 'cytoUtils' is not installed. Tailgate comparisons will fail if run."
-  )
+# Tailgate failures are otherwise converted to high-threshold fallbacks by the
+# comparison helper, so missing cytoUtils must fail before a comparison run.
+if (
+  isTRUE(run_simulations) &&
+    !requireNamespace("cytoUtils", quietly = TRUE)
+) {
+  stop("Package 'cytoUtils' is required for tailgate comparisons.")
+}
+if (
+  isTRUE(run_simulations) &&
+    !requireNamespace("reticulate", quietly = TRUE)
+) {
+  stop("Package 'reticulate' is required for F-beta comparisons.")
 }
 
 # Source simulation helpers in dependency order:
@@ -205,6 +214,9 @@ path_fbeta <- projr::projr_path_get(
   "python",
   "fbeta.py"
 )
+if (isTRUE(run_simulations) && !file.exists(path_fbeta)) {
+  stop("F-beta comparison script not found: ", path_fbeta)
+}
 
 tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
@@ -273,14 +285,13 @@ sim_grid <- tidyr::expand_grid(
     sim_seed = as.integer(simulation_seed + sim_id - 1L)
   )
 
-if (.isDev()) {
+if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
       n_cell == 1e5,
       prob_response == 0.002,
       mean_pos_setting == "high",
       transformation %in% transformation_vec,
-      bias_uns == 0.05,
       condition_perturbation_sd == 0
     )
 }
@@ -305,13 +316,12 @@ A loop for debugging a single failure or inspecting intermediate objects.
 #| label: compare-loop
 #| eval: false
 compare_list_raw_loop <- vector("list", nrow(sim_grid))
-source("scripts/r/sim-compare-freq_bs.R")
 for (i in seq_len(nrow(sim_grid))) {
   message(paste0("Running simulation ", i, " of ", nrow(sim_grid)))
   set.seed(sim_grid$sim_seed[i])
 
   compare_list_raw_loop[[i]] <- .simCompareFreqBs(
-    nSample = 5,
+    nSample = 10,
     nMarker = 1,
     nCondition = 2,
     nCluster = 2,
@@ -409,184 +419,257 @@ n_sample_sim <- 10
 n_iter_sim <- 2
 n_workers <- max(1, .simGetCores())
 
-run_ctx <- .analysis_run_context(
-  analysis_key = analysis_key,
-  run_id = analysis_run_id,
-  path_root = root_dir,
-  params = list(
-    run_simulations = run_simulations,
-    run_plots = run_plots,
-    comparison_semantics_version = comparison_semantics_version,
-    simulation_seed = simulation_seed,
-    sim_grid_shuffle_seed = simulation_seed,
-    n_sample_sim = n_sample_sim,
-    n_iter_sim = n_iter_sim,
-    stimgate_bw_mtd = stimgate_bw_mtd,
-    stimgate_bw_ncell_max = stimgate_bw_ncell_max,
-    stimgate_bw_fallback = stimgate_bw_fallback,
-    stimgate_bw_min = stimgate_bw_min,
-    stimgate_bw_max = stimgate_bw_max,
-    stimgate_gate_combn = stimgate_gate_combn,
-    tol_clust = tol_clust,
-    loc_enforce_shape_threshold = loc_enforce_shape_threshold,
-    calc_cyt_pos_gates = calc_cyt_pos_gates,
-    fbeta_beta = fbeta_beta,
-    fbeta_theta = fbeta_theta,
-    fbeta_width = fbeta_width,
-    tailgate_adjust = tailgate_adjust,
-    tailgate_method = tailgate_method,
-    tailgate_tol = tailgate_tol,
-    tailgate_auto_tol = tailgate_auto_tol,
-    tailgate_x = tailgate_x,
-    sim_grid_chunk_index = sim_grid_chunk_index,
-    sim_grid_n_chunks = sim_grid_n_chunks
-  ),
-  sim_grid_chunk_index = sim_grid_chunk_index,
-  sim_grid_n_chunks = sim_grid_n_chunks
+analysis_result_params <- list(
+  comparison_semantics_version = comparison_semantics_version,
+  simulation_seed = simulation_seed,
+  analysis_dev = analysis_dev,
+  n_cell_stim_vec = n_cell_stim_vec,
+  prob_response_vec = prob_response_vec,
+  transformation_vec = transformation_vec,
+  mean_pos_settings_tbl = mean_pos_settings_tbl,
+  sample_perturbation_sd_vec = sample_perturbation_sd_vec,
+  condition_perturbation_sd_vec = condition_perturbation_sd_vec,
+  cluster_perturbation_sd_vec = cluster_perturbation_sd_vec,
+  background_relative_to_response_vec = background_relative_to_response_vec,
+  n_cell_uns_relative_to_stim_vec = n_cell_uns_relative_to_stim_vec,
+  bias_uns_gamma = 0.01,
+  bias_uns_gaussian_skew = 0.15,
+  prob_exact = TRUE,
+  cov_ev_min = 1.5,
+  cov_ev_max = 1.5,
+  n_sample_sim = n_sample_sim,
+  n_iter_sim = n_iter_sim,
+  stimgate_bw_mtd = stimgate_bw_mtd,
+  stimgate_bw_ncell_max = stimgate_bw_ncell_max,
+  stimgate_bw_fallback = stimgate_bw_fallback,
+  stimgate_bw_min = stimgate_bw_min,
+  stimgate_bw_max = stimgate_bw_max,
+  stimgate_gate_combn = stimgate_gate_combn,
+  tol_clust = tol_clust,
+  loc_enforce_shape_threshold = loc_enforce_shape_threshold,
+  calc_cyt_pos_gates = calc_cyt_pos_gates,
+  fbeta_beta = fbeta_beta,
+  fbeta_theta = fbeta_theta,
+  fbeta_width = fbeta_width,
+  tailgate_adjust = tailgate_adjust,
+  tailgate_method = tailgate_method,
+  tailgate_tol = tailgate_tol,
+  tailgate_auto_tol = tailgate_auto_tol,
+  tailgate_x = tailgate_x
 )
-path_progress_file <- run_ctx$progress_file
-dir_output <- run_ctx$chunk_output_dir
-dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
-dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
 
-path_rds <- file.path(
-  run_ctx$staging_collated_dir,
-  if (sim_grid_n_chunks > 1L) {
-    sprintf("compare_raw_chunk_%s.rds", sim_chunk_label)
-  } else {
-    "compare_raw.rds"
+promote_analysis7_if_ready <- function(
+    run_ctx,
+    sim_grid_all,
+    total_sims,
+    completed_sims,
+    failed_sims) {
+  if (!.analysis_can_promote(run_ctx)) {
+    return(invisible(FALSE))
   }
-)
 
-if (interactive()) {
-  progressr::handlers(global = TRUE)
+  scenario_paths <- list.files(
+    run_ctx$staging_run_dir,
+    pattern = "^(compare_raw.*|sim_scenario.*|sim_raw.*)sim_id_[0-9]+[.]rds$",
+    recursive = TRUE,
+    full.names = TRUE
+  )
+  compare_raw_full <- .simCompareCollateScenarioOutputs(
+    pathList = scenario_paths,
+    sim_grid = sim_grid_all
+  )
+  expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
+  full_check <- .simCompareValidateCompletedScenarios(
+    compare_raw = compare_raw_full,
+    sim_ids = expected_sim_ids,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim
+  )
+  full_collate_ok <-
+    length(scenario_paths) == length(expected_sim_ids) &&
+    isTRUE(full_check$collate_ok)
+  full_validation_ok <-
+    full_collate_ok &&
+    isTRUE(full_check$validation_ok)
+
+  if (!isTRUE(full_validation_ok)) {
+    error_message <- paste0(
+      "Refusing to promote analysis 7: canonical collation did not contain ",
+      "exactly the complete error-free simulation grid."
+    )
+    .analysis_mark_chunk(
+      run_ctx = run_ctx,
+      total_sims = total_sims,
+      completed_sims = completed_sims,
+      failed_sims = failed_sims,
+      collate_ok = full_collate_ok,
+      validation_ok = FALSE,
+      error_message = error_message
+    )
+    stop(error_message)
+  }
+
+  path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
+  .write_rds_atomic(compare_raw_full, path_rds_full)
+  .analysis_promote_run(run_ctx)
+  invisible(TRUE)
 }
 
 compare_raw <- tibble::tibble()
 
-if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
-  compare_raw <- .simCompareFreqBsGrid(
-    sim_grid = sim_grid,
-    nSample = n_sample_sim,
-    nIter = n_iter_sim,
-    nMarker = 1,
-    nCondition = 2,
-    nCluster = 2,
-    probExact = TRUE,
-    covEvMin = 1.5,
-    covEvMax = 1.5,
-    tolClust = tol_clust,
-    locEnforceShapeThreshold = loc_enforce_shape_threshold,
-    calcCytPosGates = calc_cyt_pos_gates,
-    gateCombn = stimgate_gate_combn,
-    pathFbeta = path_fbeta,
-    fbetaBeta = fbeta_beta,
-    fbetaTheta = fbeta_theta,
-    fbetaWidth = fbeta_width,
-    tailgateAdjust = tailgate_adjust,
-    tailgateAutoTol = tailgate_auto_tol,
-    tailgateMethod = tailgate_method,
-    tailgateTol = tailgate_tol,
-    tailgateX = tailgate_x,
-    parallel = (n_workers > 1L),
-    workers = n_workers,
-    dirCache = dir_output,
-    pathProgress = path_progress_file,
-    resume = TRUE,
-    sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) {
-      sim_grid_chunk_index
+if (isTRUE(run_simulations)) {
+  run_ctx <- .analysis_run_context(
+    analysis_key = analysis_key,
+    run_id = analysis_run_id,
+    path_root = root_dir,
+    params = c(
+      list(
+        run_simulations = run_simulations,
+        run_plots = run_plots,
+        sim_grid_shuffle_seed = simulation_seed,
+        sim_grid_chunk_index = sim_grid_chunk_index,
+        sim_grid_n_chunks = sim_grid_n_chunks
+      ),
+      analysis_result_params
+    ),
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks
+  )
+
+  path_progress_file <- run_ctx$progress_file
+  dir_output <- run_ctx$chunk_output_dir
+  dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
+  dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+
+  path_rds <- file.path(
+    run_ctx$staging_collated_dir,
+    if (sim_grid_n_chunks > 1L) {
+      sprintf("compare_raw_chunk_%s.rds", sim_chunk_label)
     } else {
-      NULL
-    },
-    sim_grid_n_chunks = if (sim_grid_n_chunks > 1L) {
-      sim_grid_n_chunks
-    } else {
-      NULL
+      "compare_raw.rds"
     }
   )
 
-  .write_rds_atomic(compare_raw, path_rds)
-} else if (isTRUE(run_simulations)) {
-  message("No simulations assigned to this chunk.")
-} else {
-  message("Skipping simulations because run_simulations is FALSE.")
-}
-
-if (isTRUE(run_simulations)) {
-  sim_status_tbl <- if (nrow(compare_raw) > 0L && "sim_id" %in% names(compare_raw)) {
-    compare_raw |>
-      dplyr::filter(.data$sim_id %in% sim_grid$sim_id) |>
-      dplyr::group_by(.data$sim_id) |>
-      dplyr::summarise(
-        has_error = if ("error" %in% names(compare_raw)) {
-          any(!is.na(.data$error) & .data$error != "")
-        } else {
-          FALSE
-        },
-        .groups = "drop"
-      )
-  } else {
-    tibble::tibble(sim_id = integer(), has_error = logical())
+  if (interactive()) {
+    progressr::handlers(global = TRUE)
   }
 
-  n_failed <- sum(sim_status_tbl$has_error)
-  n_completed <- sum(!sim_status_tbl$has_error)
+  if (nrow(sim_grid) > 0L) {
+    compare_raw <- .simCompareFreqBsGrid(
+      sim_grid = sim_grid,
+      nSample = n_sample_sim,
+      nIter = n_iter_sim,
+      nMarker = 1,
+      nCondition = 2,
+      nCluster = 2,
+      probExact = TRUE,
+      covEvMin = 1.5,
+      covEvMax = 1.5,
+      tolClust = tol_clust,
+      locEnforceShapeThreshold = loc_enforce_shape_threshold,
+      calcCytPosGates = calc_cyt_pos_gates,
+      gateCombn = stimgate_gate_combn,
+      pathFbeta = path_fbeta,
+      fbetaBeta = fbeta_beta,
+      fbetaTheta = fbeta_theta,
+      fbetaWidth = fbeta_width,
+      tailgateAdjust = tailgate_adjust,
+      tailgateAutoTol = tailgate_auto_tol,
+      tailgateMethod = tailgate_method,
+      tailgateTol = tailgate_tol,
+      tailgateX = tailgate_x,
+      parallel = (n_workers > 1L),
+      workers = n_workers,
+      dirCache = dir_output,
+      pathProgress = path_progress_file,
+      resume = TRUE,
+      sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) {
+        sim_grid_chunk_index
+      } else {
+        NULL
+      },
+      sim_grid_n_chunks = if (sim_grid_n_chunks > 1L) {
+        sim_grid_n_chunks
+      } else {
+        NULL
+      }
+    )
+
+    .write_rds_atomic(compare_raw, path_rds)
+  } else {
+    message("No simulations assigned to this chunk.")
+  }
+
+  expected_chunk_ids <- sort(unique(as.integer(sim_grid$sim_id)))
+  chunk_check <- .simCompareValidateCompletedScenarios(
+    compare_raw = compare_raw,
+    sim_ids = expected_chunk_ids,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim
+  )
+  chunk_collate_ok <- isTRUE(chunk_check$collate_ok)
+  chunk_validation_ok <- isTRUE(chunk_check$validation_ok)
+  failed_sim_ids <- sort(unique(c(
+    chunk_check$error_sim_ids,
+    chunk_check$incomplete_sim_ids
+  )))
+  n_failed <- length(failed_sim_ids)
+  n_completed <- length(setdiff(expected_chunk_ids, failed_sim_ids))
+
+  validation_error <- if (!chunk_collate_ok) {
+    "Chunk collation did not contain exactly the assigned sim_id set."
+  } else if (length(chunk_check$error_sim_ids) > 0L) {
+    paste0(
+      "Chunk contains simulation errors for sim_id: ",
+      paste(chunk_check$error_sim_ids, collapse = ", "),
+      "."
+    )
+  } else if (length(chunk_check$incomplete_sim_ids) > 0L) {
+    paste0(
+      "Chunk is missing complete stimgate/fbeta/tailgate rows for sim_id: ",
+      paste(chunk_check$incomplete_sim_ids, collapse = ", "),
+      "."
+    )
+  } else {
+    NULL
+  }
 
   .analysis_mark_chunk(
     run_ctx = run_ctx,
     total_sims = nrow(sim_grid),
     completed_sims = n_completed,
     failed_sims = n_failed,
-    collate_ok = nrow(compare_raw) > 0L,
-    validation_ok = nrow(compare_raw) > 0L
+    collate_ok = chunk_collate_ok,
+    validation_ok = chunk_validation_ok,
+    error_message = validation_error
   )
 
-  if (.analysis_can_promote(run_ctx)) {
-    scenario_paths <- list.files(
-      run_ctx$staging_run_dir,
-      pattern = "^(compare_raw.*|sim_scenario.*|sim_raw.*)sim_id_[0-9]+[.]rds$",
-      recursive = TRUE,
-      full.names = TRUE
-    )
-    compare_raw_full <- .simCompareCollateScenarioOutputs(
-      pathList = scenario_paths,
-      sim_grid = sim_grid_all
-    )
-    expected_sim_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
-    collated_sim_ids <- if (
-      nrow(compare_raw_full) > 0L && "sim_id" %in% names(compare_raw_full)
-    ) {
-      sort(unique(as.integer(compare_raw_full$sim_id)))
-    } else {
-      integer()
-    }
-    full_collate_ok <- identical(collated_sim_ids, expected_sim_ids)
-    full_validation_ok <- full_collate_ok &&
-      (!"error" %in% names(compare_raw_full) ||
-        !any(!is.na(compare_raw_full$error) & compare_raw_full$error != ""))
-
-    if (!isTRUE(full_validation_ok)) {
-      error_message <- paste0(
-        "Refusing to promote analysis 7: canonical collation did not contain ",
-        "exactly the complete error-free simulation grid."
-      )
-      .analysis_mark_chunk(
-        run_ctx = run_ctx,
-        total_sims = nrow(sim_grid),
-        completed_sims = n_completed,
-        failed_sims = n_failed,
-        collate_ok = full_collate_ok,
-        validation_ok = FALSE,
-        error_message = error_message
-      )
-      stop(error_message)
-    }
-
-    path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")
-    .write_rds_atomic(compare_raw_full, path_rds_full)
-    compare_raw <- compare_raw_full
-    .analysis_promote_run(run_ctx)
+  if (!isTRUE(chunk_validation_ok)) {
+    stop(validation_error)
   }
+
+  promote_analysis7_if_ready(
+    run_ctx = run_ctx,
+    sim_grid_all = sim_grid_all,
+    total_sims = nrow(sim_grid),
+    completed_sims = n_completed,
+    failed_sims = n_failed
+  )
+
+  if (sim_grid_n_chunks > 1L) {
+    message(
+      "Completed this simulation chunk. ",
+      "Render with run_simulations = FALSE after all chunks are promoted ",
+      "to inspect summaries or write plots."
+    )
+    knitr::knit_exit()
+  }
+} else {
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key,
+    path_root = root_dir
+  )
+  message("Skipping simulations; using canonical promoted results.")
 }
 ```
 
@@ -604,9 +687,7 @@ if (!exists("run_ctx")) {
 path_rds <- .analysis_current_file(
   run_ctx = run_ctx,
   relative_path = c("collated", "compare_raw.rds"),
-  required_params = list(
-    comparison_semantics_version = comparison_semantics_version
-  )
+  required_params = analysis_result_params
 )
 compare_raw <- readRDS(path_rds)
 
@@ -652,6 +733,19 @@ compare_summary |>
     rmse,
     threshold_median
   )
+
+if (!isTRUE(run_plots)) {
+  message("run_plots is false, so stopping after the canonical comparison summary.")
+  knitr::knit_exit()
+}
+
+plot_dir <- projr::projr_path_get(
+  "cache",
+  "sim",
+  "compare",
+  "freq_bs"
+)
+dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
 ```
 
 ### Mean absolute error by cell count
@@ -662,7 +756,8 @@ if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
     plot_tbl <- compare_summary |>
       dplyr::filter(
-        mean_pos_setting == !!mean_pos_setting_curr
+        mean_pos_setting == !!mean_pos_setting_curr,
+        condition_perturbation_sd == 0
       )
 
     p <- ggplot(
@@ -703,11 +798,8 @@ if (isTRUE(run_plots)) {
     print(p)
 
     ggsave(
-      filename = projr::projr_path_get(
-        "cache",
-        "sim",
-        "compare",
-        "freq_bs",
+      filename = file.path(
+        plot_dir,
         paste0(
           "freq_bs_mae_meanpos_setting_",
           mean_pos_setting_curr,
@@ -792,7 +884,7 @@ if (isTRUE(run_plots)) {
           mean_pos_setting_curr
         ),
         x = "Number of stimulated cells",
-        y = "Median relative error",
+        y = "Median absolute relative error",
         color = "Method"
       ) +
       cowplot::theme_cowplot() +
@@ -812,11 +904,8 @@ if (isTRUE(run_plots)) {
     print(p)
 
     ggsave(
-      filename = projr::projr_path_get(
-        "cache",
-        "sim",
-        "compare",
-        "freq_bs",
+      filename = file.path(
+        plot_dir,
         paste0(
           "freq_bs_med_rel_error_meanpos_setting_",
           mean_pos_setting_curr,
@@ -897,7 +986,7 @@ if (isTRUE(run_plots)) {
           mean_pos_setting_curr
         ),
         x = "Number of stimulated cells",
-        y = "90th percentile relative error",
+        y = "90th percentile absolute relative error",
         color = "Method"
       ) +
       cowplot::theme_cowplot() +
@@ -917,11 +1006,8 @@ if (isTRUE(run_plots)) {
     print(p)
 
     ggsave(
-      filename = projr::projr_path_get(
-        "cache",
-        "sim",
-        "compare",
-        "freq_bs",
+      filename = file.path(
+        plot_dir,
         paste0(
           "freq_bs_q90_rel_error_meanpos_setting_",
           mean_pos_setting_curr,
@@ -1002,7 +1088,7 @@ if (isTRUE(run_plots)) {
           mean_pos_setting_curr
         ),
         x = "Number of stimulated cells",
-        y = "95th percentile relative error",
+        y = "95th percentile absolute relative error",
         color = "Method"
       ) +
       cowplot::theme_cowplot() +
@@ -1022,11 +1108,8 @@ if (isTRUE(run_plots)) {
     print(p)
 
     ggsave(
-      filename = projr::projr_path_get(
-        "cache",
-        "sim",
-        "compare",
-        "freq_bs",
+      filename = file.path(
+        plot_dir,
         paste0(
           "freq_bs_q95_rel_error_meanpos_setting_",
           mean_pos_setting_curr,
@@ -1133,7 +1216,7 @@ if (isTRUE(run_plots)) {
           mean_pos_setting_curr
         ),
         x = "Number of stimulated cells",
-        y = "Maximum relative error",
+        y = "Maximum absolute relative error",
         color = "Method"
       ) +
       cowplot::theme_cowplot() +
@@ -1153,11 +1236,8 @@ if (isTRUE(run_plots)) {
     print(p)
 
     ggsave(
-      filename = projr::projr_path_get(
-        "cache",
-        "sim",
-        "compare",
-        "freq_bs",
+      filename = file.path(
+        plot_dir,
         paste0(
           "freq_bs_max_rel_error_meanpos_setting_",
           mean_pos_setting_curr,
@@ -1242,11 +1322,8 @@ if (isTRUE(run_plots)) {
     print(p_est_truth)
 
     ggsave(
-      filename = projr::projr_path_get(
-        "cache",
-        "sim",
-        "compare",
-        "freq_bs",
+      filename = file.path(
+        plot_dir,
         paste0(
           "freq_bs_est_vs_truth_",
           mean_pos_setting_curr,
@@ -1268,6 +1345,7 @@ if (isTRUE(run_plots)) {
 #| label: plot-threshold-fallback
 if (isTRUE(run_plots)) {
   fallback_tbl <- compare_summary |>
+    dplyr::filter(condition_perturbation_sd == 0) |>
     dplyr::mutate(
       fallback_rate = n_threshold_fallback / n
     )
@@ -1316,11 +1394,8 @@ if (isTRUE(run_plots)) {
     print(p_fallback)
 
     ggsave(
-      filename = projr::projr_path_get(
-        "cache",
-        "sim",
-        "compare",
-        "freq_bs",
+      filename = file.path(
+        plot_dir,
         paste0(
           "freq_bs_threshold_fallback_rate_",
           mean_pos_setting_curr,
@@ -1359,11 +1434,12 @@ if (isTRUE(run_plots)) {
       plot_tbl_curr,
       aes(
         x = threshold,
+        y = after_stat(density),
         fill = approach,
         colour = approach
       )
     ) +
-      geom_histogram(alpha = 0.5) +
+      geom_histogram(alpha = 0.5, position = "identity") +
       facet_grid(prob_response ~ transformation, scales = "free") +
       labs(
         title = paste0(
@@ -1391,11 +1467,8 @@ if (isTRUE(run_plots)) {
 
     print(p)
 
-    path_p <- projr::projr_path_get(
-      "cache",
-      "sim",
-      "compare",
-      "freq_bs",
+    path_p <- file.path(
+      plot_dir,
       paste0(
         "freq_bs_threshold_density_",
         mean_pos_setting_curr,
