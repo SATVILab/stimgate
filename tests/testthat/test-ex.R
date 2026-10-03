@@ -546,3 +546,32 @@ test_that("cytokine-positive filtering helpers respect gate context and exclusio
     check.attributes = FALSE
   )
 })
+
+test_that("getStimExpr returns zero rows when no cells are stimulation-positive", {
+  tmp <- tempfile("stimgate_ex_zero_pos_")
+  withr::defer(unlink(tmp, recursive = TRUE))
+  dir.create(file.path(tmp, "sampleData", "pop_root", "ind_1"), recursive = TRUE)
+  saveRDS(
+    c(0, 5, 3, 3, 5, 5, 3),
+    file.path(tmp, "sampleData", "pop_root", "ind_1", "chnl_IFNg.rds")
+  )
+  dir.create(
+    file.path(tmp, "gates", "poproot", "chnlIFNg", "all"),
+    recursive = TRUE
+  )
+  saveRDS(
+    tibble::tibble(chnl = "IFNg", ind = "1", gate = 100, gateCyt = 100),
+    file.path(tmp, "gates", "poproot", "chnlIFNg", "all", "gateTbl.rds")
+  )
+
+  res <- suppressMessages(getStimExpr(
+    tmp,
+    pop = "root",
+    chnl = "IFNg",
+    chnlGate = "IFNg",
+    excMin = TRUE
+  ))
+  expect_identical(nrow(res), 0L)
+  expect_identical(colnames(res), c("pop", "ind", "IFNg"))
+  expect_equal(attr(res, "probGMin")[["root"]][["1"]][["IFNg"]], 6 / 7)
+})

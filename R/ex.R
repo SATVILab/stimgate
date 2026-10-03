@@ -537,7 +537,6 @@ getStimExpr <- function(
   if (!is.null(chnlGate) && !is.null(markerGate)) {
     stop("Must not specify both chnlGate and markerGate")
   }
-  cnVec <- colnames(ex)
   chnlGate <- if (!is.null(markerGate)) {
     isMarker <- TRUE
     stimgateMetaReadMarkerLab(pathProject)[markerGate]
@@ -559,7 +558,7 @@ getStimExpr <- function(
 
   if (nrow(ex) == 0L) {
     message("No stimulation-positive cells.")
-    return(.dataGetExZeroTbl(cnVec))
+    return(ex)
   }
 
   ex <- .dataGetExCytPosExc(
@@ -574,16 +573,10 @@ getStimExpr <- function(
     message(
       "No stimulation-positive cells after excluding specified cytokine combinations."
     ) # nolint
-    return(.dataGetExZeroTbl(cnVec))
+    return(ex)
   }
 
   ex
-}
-
-.dataGetExZeroTbl <- function(cn) {
-  outDf <- matrix(rep(NA_real_, length(cn)), ncol = length(cn))
-  colnames(outDf) <- cn
-  tibble::as_tibble(outDf)
 }
 
 #' @keywords internal
@@ -677,8 +670,8 @@ getStimExpr <- function(
 #' @keywords internal
 .dataGetExMeta <- function(ex, pop, ind) {
   metaDf <- tibble::tibble(
-    pop = pop,
-    ind = ind
+    pop = rep(pop, nrow(ex)),
+    ind = rep(ind, nrow(ex))
   )
   attrList <- attributes(ex)
   attrVecNmOrig <- names(attrList)
