@@ -193,12 +193,9 @@
 
 #' Return the smallest finite numeric value
 #' @keywords internal
-.getCpUnsLocFiniteMin <- function(x, positive = FALSE) {
+.getCpUnsLocFiniteMin <- function(x) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
-  if (isTRUE(positive)) {
-    x <- x[x > 0]
-  }
   if (length(x) == 0L) NA_real_ else min(x)
 }
 
@@ -241,7 +238,6 @@
   }
 
   # Fallback for direct calls or failed derivative storage.
-  x <- suppressWarnings(as.numeric(.getCut(dataMod)))
   prob <- .getCpUnsLocProbability(dataMod, probCol)
 
   keep <- is.finite(x) & is.finite(prob)
@@ -430,13 +426,7 @@
     leftRiseFrac = leftRiseFrac
   )
   info <- peak$info
-  if (
-    is.null(peak$data) ||
-      length(peak$index) != 1L ||
-      !is.finite(peak$index) ||
-      peak$index < 1L ||
-      peak$index > nrow(peak$data)
-  ) {
+  if (is.na(peak$index)) {
     return(list(thresholdX = NA_real_, info = info))
   }
 
@@ -506,16 +496,6 @@
     iThreshold <- min(candidate)
   }
 
-  if (
-    length(iThreshold) != 1L ||
-      !is.finite(iThreshold) ||
-      iThreshold < 1L ||
-      iThreshold > nrow(peak$data)
-  ) {
-    info$reason <- "invalid_derivative_threshold_index"
-    return(list(thresholdX = NA_real_, info = info))
-  }
-
   info$rightFractionThresholdIdx <- iThreshold
   info$rightFractionThresholdX <- peak$data$x[iThreshold]
   info$rightWidthCapApplied <- FALSE
@@ -575,19 +555,8 @@
     leftFrac = leftFrac
   )
 
-  if (
-    !is.data.frame(peakData) ||
-      !all(c("x", "deriv") %in% names(peakData)) ||
-      !is.finite(iPeak) ||
-      iPeak < 2L ||
-      iPeak > nrow(peakData) ||
-      !is.finite(rightFrac) ||
-      rightFrac <= 0 ||
-      rightFrac >= 1 ||
-      !is.finite(leftFrac) ||
-      leftFrac <= 0 ||
-      leftFrac >= 1
-  ) {
+  # The caller guarantees iPeak >= 2 and rightFrac in (0, 1].
+  if (rightFrac >= 1) {
     return(list(index = NA_integer_, info = info))
   }
 
@@ -600,38 +569,27 @@
     return(list(index = NA_integer_, info = info))
   }
 
+  # deriv[iLeft] < leftHeight <= deriv[iRight], so the change is positive.
   iLeft <- max(below)
   iRight <- iLeft + 1L
-  derivChange <- peakData$deriv[iRight] - peakData$deriv[iLeft]
-  leftX <- if (!is.finite(derivChange) || derivChange == 0) {
-    peakData$x[iRight]
-  } else {
-    peakData$x[iLeft] +
-      (leftHeight - peakData$deriv[iLeft]) *
-        (peakData$x[iRight] - peakData$x[iLeft]) /
-        derivChange
-  }
+  leftX <- peakData$x[iLeft] +
+    (leftHeight - peakData$deriv[iLeft]) *
+      (peakData$x[iRight] - peakData$x[iLeft]) /
+      (peakData$deriv[iRight] - peakData$deriv[iLeft])
 
   peakX <- peakData$x[iPeak]
   leftWidth <- peakX - leftX
+  if (!is.finite(leftWidth) || leftWidth <= 0) {
+    info$reason <- "invalid_right_width_cap"
+    return(list(index = NA_integer_, info = info))
+  }
+
   widthRatio <- sqrt(log(1 / rightFrac) / log(1 / leftFrac))
   widthCapX <- peakX + widthRatio * leftWidth
   rightOfPeak <- seq.int(iPeak, nrow(peakData))
   capIndex <- rightOfPeak[
     which.min(abs(peakData$x[rightOfPeak] - widthCapX))
   ]
-
-  if (
-    !is.finite(leftX) ||
-      !is.finite(leftWidth) ||
-      leftWidth <= 0 ||
-      !is.finite(widthRatio) ||
-      !is.finite(widthCapX) ||
-      length(capIndex) == 0L
-  ) {
-    info$reason <- "invalid_right_width_cap"
-    return(list(index = NA_integer_, info = info))
-  }
 
   info$reason <- "identified_gaussian_matched_right_width_cap"
   info$leftX <- leftX
@@ -653,7 +611,7 @@
 ) {
   params <- .getCpUnsLocDerivParams(chnlSettings, stage)
   derivTbl <- .getCpUnsLocDerivTbl(dataMod, probCol)
-  if (is.null(derivTbl) || nrow(derivTbl) < 3L) {
+  if (is.null(derivTbl)) {
     return(list(
       thresholdX = NA_real_,
       info = list(
