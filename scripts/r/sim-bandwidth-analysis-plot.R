@@ -15,9 +15,7 @@ format_bw_file <- function(x) {
 
 safe_file_lab <- function(x) {
   x <- as.character(x)
-  x <- gsub("[^A-Za-z0-9]+", "_", x)
-  x <- gsub("_+", "_", x)
-  x
+  gsub("[^A-Za-z0-9]+", "_", x)
 }
 
 make_bw_colour_values <- function(bw_vec, base_col_vec = NULL) {
