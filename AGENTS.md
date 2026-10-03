@@ -54,7 +54,7 @@ unstimulated background.
 
 - Use `@import` or `@importFrom` directives in roxygen comments; explicitly
   qualify all package calls with `pkg::fun()`. The only exceptions are
-  `ggplot2` (imported wholesale via `#' @import ggplot2` in `R/misc.R`) and
+  `ggplot2` (imported wholesale via `#' @import ggplot2` in `R/stimgate-package.R`) and
   `flowCore::exprs`, which may be called without a namespace qualifier and do
   not require `@importFrom` tags.
 - Modify `.Rd` files manually; regenerate them with `devtools::document()`.
@@ -377,7 +377,6 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `getCpTg_audit.R`: Audit helpers for `.getCpTg()` migration tracking.
   - `ind_batch.R`: Get the list of indices grouped by batch.
   - `peaks_and_troughs.R`: Peak and trough detection helpers.
-  - `pipe.R`: Pipe operator and related utilities.
   - `plot_gate.R`: Plot the identified gates (`plotStim`).
   - `pos_ind.R`: Identify the indices of the cytokine-positive cells.
   - `stats-helper-overall.R`: Helper functions for overall statistics.
@@ -495,7 +494,7 @@ saved `biasUns`; channels without a saved bias use zero.
 
 - Reference all external functions explicitly as `pkg::fun()`.
 - Exceptions: `ggplot2` is imported wholesale via `#' @import ggplot2` in
-  `R/misc.R`, so `ggplot2` functions and `flowCore::exprs` may be called without
+  `R/stimgate-package.R`, so `ggplot2` functions and `flowCore::exprs` may be called without
   a namespace qualifier and do not require `@importFrom` tags.
 
 ---

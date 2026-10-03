@@ -32,7 +32,6 @@
 #' }
 #' }
 #'
-#' @aliases markerLab, chnlToMarker, markerToChnl, getMarker, getChnl
 #' @export
 chnlLab <- function(data) {
   adf <- switch(class(data)[1],
@@ -53,11 +52,8 @@ chnlLab <- function(data) {
   )
 
   labVec <- stats::setNames(adf$desc, adf$name)
-  for (i in seq_along(labVec)) {
-    if (is.na(labVec[i])) {
-      labVec[i] <- names(labVec)[i]
-    }
-  }
+  isNa <- is.na(labVec)
+  labVec[isNa] <- names(labVec)[isNa]
 
   labVec
 }

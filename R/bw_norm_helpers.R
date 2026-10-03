@@ -815,7 +815,7 @@
     return(numeric(0L))
   }
 
-  troughIdxAll <- .getLocalMinimaIdx(dy)
+  troughIdxAll <- .getLocalMaximaIdx(-dy)
   troughIdxAll <- troughIdxAll[troughIdxAll > peakMainLeftIdx]
   if (length(troughIdxAll) == 0L) {
     return(numeric(0L))
