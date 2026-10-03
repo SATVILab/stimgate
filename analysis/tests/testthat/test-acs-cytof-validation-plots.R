@@ -209,7 +209,7 @@ test_that("analysis 10 validates its input and does not delete last good figures
     fixed = TRUE
   ))
   expect_true(grepl(
-    "non-secreted-protein (\`p4\`) stimulation",
+    "non-secreted-protein (`p4`) stimulation",
     content,
     fixed = TRUE
   ))
