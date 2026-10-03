@@ -448,9 +448,16 @@ test_that(
       content
     ))
     expect_true(grepl(
-      "required_params = analysis_result_params",
-      content,
-      fixed = TRUE
+      "analysis_result_params\\s*<-\\s*list\\(",
+      content
+    ))
+    expect_true(grepl(
+      "comparison_semantics_version\\s*=\\s*comparison_semantics_version",
+      content
+    ))
+    expect_true(grepl(
+      "required_params\\s*=\\s*analysis_result_params",
+      content
     ))
     expect_false(grepl("compare_list_raw\\.rds", content))
 
