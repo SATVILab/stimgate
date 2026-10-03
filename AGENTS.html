@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.10</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -457,7 +457,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="saved-expression-and-stimulation-gates">Saved expression and stimulation gates<a class="anchor" aria-label="anchor" href="#saved-expression-and-stimulation-gates"></a></h3>
-<p>Reuse <code>.gateGetDirs()</code> for prefixed directory discovery and <code>.getExChnlPathDir()</code> for saved expression paths, preserving each caller’s validation and missing-path handling. Saved expression includes unstimulated samples, while final stimulation gate tables omit them. Positivity helpers must treat channels with no gate for the current sample as all-FALSE, preserving one logical value per cell. Completed <code>chnlSettings.rds</code> settings are keyed by marker labels, although saved expression columns use channel names. Resolve that mapping before applying the saved <code>biasUns</code>; channels without a saved bias use zero.</p>
+<p>Reuse <code>.gateGetDirs()</code> for prefixed directory discovery and <code>.getExChnlPathDir()</code> for saved expression paths, preserving each caller’s validation and missing-path handling. Saved expression includes unstimulated samples, while final stimulation gate tables omit them. Positivity helpers must treat channels with no gate for the current sample as all-FALSE, preserving one logical value per cell. Completed <code>chnlSettings.rds</code> settings are keyed by marker labels, although saved expression columns use channel names. Resolve that mapping before applying the saved <code>biasUns</code>; channels without a saved bias use zero. <code><a href="reference/gateStim.html">gateStim()</a></code> clears the run populations’ cached expression and gates at start. It warms the expression cache once per sample before settings completion, allowing subsequent stages to read expression directly from the cache. Keep all caching and reuse result-preserving, including the order of random number generation calls.</p>
 </div>
 <div class="section level3">
 <h3 id="function-signatures--returns">Function Signatures &amp; Returns<a class="anchor" aria-label="anchor" href="#function-signatures--returns"></a></h3>

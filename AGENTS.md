@@ -659,6 +659,12 @@ sample as all-FALSE, preserving one logical value per cell. Completed
 `chnlSettings.rds` settings are keyed by marker labels, although saved
 expression columns use channel names. Resolve that mapping before
 applying the saved `biasUns`; channels without a saved bias use zero.
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+clears the run populations’ cached expression and gates at start. It
+warms the expression cache once per sample before settings completion,
+allowing subsequent stages to read expression directly from the cache.
+Keep all caching and reuse result-preserving, including the order of
+random number generation calls.
 
 ### Function Signatures & Returns
 
