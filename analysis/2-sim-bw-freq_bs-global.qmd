@@ -15,6 +15,7 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
+  sim_retry_errors: true
 ---
 
 ```{r}
@@ -69,13 +70,19 @@ run_plots <- .as_flag(.get_qmd_param_env(
   "RUN_PLOTS",
   TRUE
 ))
+# On resume, rerun simulations whose saved output recorded an error.
+sim_retry_errors <- .as_flag(.get_qmd_param_env(
+  "sim_retry_errors",
+  "SIM_RETRY_ERRORS",
+  TRUE
+))
 analysis_run_id <- .get_qmd_param_env(
   "analysis_run_id",
   "ANALYSIS_RUN_ID",
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "global")
-analysis_semantics_version <- "global-bw-freq-v3"
+analysis_semantics_version <- "global-bw-freq-v4"
 analysis_quick <- isTRUE(.isQuick())
 analysis_dev <- isTRUE(.isDev())
 
@@ -100,6 +107,7 @@ for (fn in c(
   "sim-misc.R",
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
+  "sim-bandwidth-analysis-run.R",
   "sim-bandwidth-analysis-plot.R"
 )) {
   source(file.path(scripts_r_dir, fn))
@@ -255,10 +263,15 @@ sim_grid <- tidyr::expand_grid(
     sim_seed = as.integer(simulation_seed + sim_id - 1L)
   )
 
+# sim_id and sim_seed are fixed on the full grid, before the dev filter,
+# shuffling and chunking, so each row keeps its seed in every run.
+sim_grid_full <- sim_grid
+
 if (analysis_dev) {
   sim_grid <- sim_grid |>
     dplyr::filter(
-      n_cell == 1e5,
+      # The largest n_cell (1e5 in the full grid) also exists in quick mode.
+      n_cell == max(n_cell),
       prob_response == 0.002,
       mean_pos_setting == "high",
       transformation %in% transformation_vec,
@@ -270,26 +283,26 @@ if (analysis_dev) {
 
 # Keep the complete grid for later collation.
 sim_grid_all <- sim_grid
+if (nrow(sim_grid_all) == 0L) {
+  stop("The analysis 2 simulation grid is empty; check the dev/quick filters.")
+}
+analysis_grid_spec <- sim_grid_all |>
+  dplyr::select(-sim_seed)
 
 # Randomise execution order, then distribute rows evenly across external chunks.
-if (nrow(sim_grid_all) > 0L) {
-  set.seed(sim_grid_shuffle_seed)
-
-  sim_grid <- sim_grid_all |>
-    dplyr::slice_sample(prop = 1) |>
-    dplyr::mutate(
-      .sim_grid_chunk =
-        ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L
-    ) |>
-    dplyr::filter(
-      .data$.sim_grid_chunk == sim_grid_chunk_index
-    ) |>
-    dplyr::select(
-      -.sim_grid_chunk
-    )
-}
-
-sim_grid_loop <- sim_grid
+set.seed(sim_grid_shuffle_seed)
+sim_grid <- sim_grid_all |>
+  dplyr::slice_sample(prop = 1) |>
+  dplyr::mutate(
+    .sim_grid_chunk =
+      ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L
+  ) |>
+  dplyr::filter(
+    .data$.sim_grid_chunk == sim_grid_chunk_index
+  ) |>
+  dplyr::select(
+    -.sim_grid_chunk
+  )
 
 sim_grid
 
@@ -309,90 +322,72 @@ print(
 )
 ```
 
-A loop we only run when we want to see why particular runs failed.
+Fixed settings passed to `.simBandwidthBsFreq()` for every grid row, and the
+manifest parameters that canonical results must match.
 
 ```{r}
-#| label: bw-manual-loop
+#| label: bw-manual-settings
+scenario_settings <- list(
+  nSample = 25,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  nIter = 1,
+  bwMin = "none",
+  bwMax = "none",
+  probExact = TRUE,
+  covEvMin = 1.5,
+  covEvMax = 1.5,
+  tolClust = tol_clust,
+  locEnforceShapeThreshold = loc_enforce_shape_threshold,
+  calcCytPosGates = calc_cyt_pos_gates
+)
+
+analysis_required_params <- list(
+  analysis_semantics_version = analysis_semantics_version,
+  simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
+  analysis_dev = analysis_dev,
+  scenario_settings = scenario_settings,
+  sim_grid_spec = analysis_grid_spec
+)
+```
+
+Rerun one simulation interactively, for example to see why it failed.
+Each row is seeded from its own `sim_seed` with a fixed RNG kind inside
+`.simBandwidthRunRow()`, which the parallel run also calls, so this
+reproduces the random numbers of that row exactly, whatever the chunking,
+shuffling or worker scheduling. Call `debugonce()` on any helper first to
+step through it.
+
+```{r}
+#| label: rerun-one-simulation
 #| eval: false
-devtools::load_all()
-bw_list_raw <- vector("list", nrow(sim_grid_loop))
+sim_id_target <- 1L
 
-# sim_grid_loop$n_cell <- 1e5
-# debugonce(gateStim)
+row_target <- sim_grid_full |>
+  dplyr::filter(.data$sim_id == sim_id_target)
+rerun_res <- .simBandwidthRunRow(
+  row_target,
+  scenario_fn = .simBandwidthFreqBsGlobalScenario,
+  settings = scenario_settings
+)
 
-# sim_grid_loop$n_cell <- 1e3
-# sim_grid_loop$prob_response <- 0.2
-for (i in seq_len(nrow(sim_grid_loop))[1]) {
-  set.seed(as.integer(sim_grid_loop$sim_seed[i]))
-  message(paste0("Running simulation ", i, " of ", nrow(sim_grid_loop)))
-
-  sim_res <- .simBandwidthBsFreq(
-    nSample = 25,
-    nMarker = 1,
-    nCondition = 2,
-    nCluster = 2,
-    nIter = 1,
-    biasUns = sim_grid_loop$bias_uns[i],
-    bw = sim_grid_loop$bw[i],
-    bwFallback = sim_grid_loop$bw[i],
-    bwMin = "none",
-    bwMax = "none",
-    nCellStim = sim_grid_loop$n_cell[i],
-    probResponse = sim_grid_loop$prob_response[i],
-    probExact = TRUE,
-    meanPos = sim_grid_loop$mean_pos[i],
-    transformation = sim_grid_loop$transformation[i],
-    samplePerturbationSd = sim_grid_loop$sample_perturbation_sd[i],
-    conditionPerturbationSd = sim_grid_loop$condition_perturbation_sd[i],
-    clusterPerturbationSd = sim_grid_loop$cluster_perturbation_sd[i],
-    backgroundRelativeToResponse =
-      sim_grid_loop$background_relative_to_response[i],
-    ncellUnsRelativeToStim =
-      sim_grid_loop$n_cell_uns_relative_to_stim[i],
-    covEvMin = 1.5,
-    covEvMax = 1.5,
-    tolClust = tol_clust,
-    locEnforceShapeThreshold = loc_enforce_shape_threshold,
-    calcCytPosGates = calc_cyt_pos_gates
-  ) |>
-    dplyr::mutate(
-      transformation = sim_grid_loop$transformation[i],
-      prob_response = sim_grid_loop$prob_response[i],
-      n_cell = sim_grid_loop$n_cell[i],
-      mean_pos_setting = sim_grid_loop$mean_pos_setting[i],
-      mean_pos = sim_grid_loop$mean_pos[i],
-      bw = sim_grid_loop$bw[i],
-      bias_uns_setting = sim_grid_loop$bias_uns_setting[i],
-      bias_uns = sim_grid_loop$bias_uns[i],
-      sample_perturbation_sd = sim_grid_loop$sample_perturbation_sd[i],
-      condition_perturbation_sd =
-        sim_grid_loop$condition_perturbation_sd[i],
-      cluster_perturbation_sd = sim_grid_loop$cluster_perturbation_sd[i],
-      background_relative_to_response =
-        sim_grid_loop$background_relative_to_response[i],
-      n_cell_uns_relative_to_stim =
-        sim_grid_loop$n_cell_uns_relative_to_stim[i],
-      sim_id = sim_grid_loop$sim_id[i],
-      sim_seed = sim_grid_loop$sim_seed[i]
-    ) |>
-    dplyr::select(
-      transformation, prob_response, n_cell,
-      mean_pos_setting, mean_pos, bw, bias_uns_setting, bias_uns,
-      sample_perturbation_sd, condition_perturbation_sd,
-      cluster_perturbation_sd, background_relative_to_response,
-      n_cell_uns_relative_to_stim, sim_id, sim_seed,
-      dplyr::everything()
-    )
-  if (max(sim_res$propStim, na.rm = TRUE) > 0.3) {
-    print(paste0("i: ", i))
-    stop()
-  }
-
-  # bw_list_raw[[i]] <- sim_res
+# Optionally compare with the stored output for this sim_id. Point `dir_run`
+# at a staged run directory instead to check a run that was not promoted.
+dir_run <- .analysis_cache_dir(
+  c(analysis_key, "current"),
+  path_root = root_dir,
+  create = FALSE
+)
+path_stored <- .simBandwidthFindSimOutput(dir_run, sim_id_target)
+if (length(path_stored) == 1L) {
+  all.equal(rerun_res, readRDS(path_stored))
 }
 ```
 
-Run the simulations in parallel, with progress reporting.
+Run the simulations in parallel, with progress reporting, then validate this
+chunk and promote the run once every chunk is complete.
 
 ```{r}
 #| label: bw-manual-parallel
@@ -401,1046 +396,81 @@ if (interactive()) {
   progressr::handlers(global = TRUE)
 }
 
-bw_list_raw <- list()
-
 if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
     path_root = root_dir,
-    params = list(
-      run_simulations = run_simulations,
-      run_plots = run_plots,
-      analysis_semantics_version = analysis_semantics_version,
-      simulation_seed = simulation_seed,
-      analysis_quick = analysis_quick,
-      analysis_dev = analysis_dev,
-      sim_grid_chunk_index = sim_grid_chunk_index,
-      sim_grid_n_chunks = sim_grid_n_chunks,
-      sim_grid_shuffle_seed = sim_grid_shuffle_seed
+    params = c(
+      list(
+        run_simulations = run_simulations,
+        run_plots = run_plots,
+        sim_grid_chunk_index = sim_grid_chunk_index,
+        sim_grid_n_chunks = sim_grid_n_chunks,
+        sim_grid_shuffle_seed = sim_grid_shuffle_seed
+      ),
+      analysis_required_params
     ),
     sim_grid_chunk_index = sim_grid_chunk_index,
     sim_grid_n_chunks = sim_grid_n_chunks
   )
 
-  path_progress_file <- run_ctx$progress_file
-  dir_jobs_chunk <- run_ctx$chunk_jobs_dir
-  dir_output <- run_ctx$chunk_output_dir
-
-  dir.create(dir_jobs_chunk, recursive = TRUE, showWarnings = FALSE)
-  dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
-
-  if (nrow(sim_grid) > 0L) {
-    old_plan <- future::plan()
-    future::plan(
-      future::multisession,
-      workers = max(1, .simGetCores())
-    )
-
-    total_sims <- nrow(sim_grid)
-
-    bw_list_raw <- tryCatch(
-      progressr::with_progress({
-        p <- progressr::progressor(steps = total_sims)
-
-        furrr::future_pmap(
-        sim_grid,
-        function(transformation,
-                 prob_response,
-                 n_cell,
-                 mean_pos_setting,
-                 mean_pos,
-                 bw,
-                 bias_uns_setting,
-                 bias_uns,
-                 sample_perturbation_sd,
-                 condition_perturbation_sd,
-                 cluster_perturbation_sd,
-                 background_relative_to_response,
-                 n_cell_uns_relative_to_stim,
-                 sim_id,
-                 sim_seed) {
-          set.seed(as.integer(sim_seed))
-
-          file_running <- file.path(dir_jobs_chunk, paste0("running-", sim_id))
-          file_completed <- file.path(dir_jobs_chunk, paste0("completed-", sim_id))
-          file_error <- file.path(dir_jobs_chunk, paste0("error-", sim_id))
-          file_output <- .path_sim_output(
-            sim_id,
-            dir_output = dir_output,
-            sim_grid_chunk_index = sim_grid_chunk_index,
-            sim_grid_n_chunks = sim_grid_n_chunks
-          )
-
-          existing_output <- if (file.exists(file_output)) {
-            tryCatch(readRDS(file_output), error = function(e) NULL)
-          } else {
-            NULL
-          }
-
-          if (!is.null(existing_output)) {
-            .analysis_reconcile_resume_markers(
-              existing_output = existing_output,
-              file_completed = file_completed,
-              file_error = file_error,
-              file_running = file_running,
-              error_col = "error_message"
-            )
-            .update_progress_summary(
-              path_progress_file = path_progress_file,
-              dir_jobs_chunk = dir_jobs_chunk,
-              total_sims = total_sims,
-              sim_grid_chunk_index = sim_grid_chunk_index,
-              sim_grid_n_chunks = sim_grid_n_chunks,
-              dir_output = dir_output
-            )
-            p(sprintf("Skipped existing sim_id: %s", sim_id))
-            return(existing_output)
-          }
-
-          file.create(file_running)
-          .update_progress_summary(
-            path_progress_file = path_progress_file,
-            dir_jobs_chunk = dir_jobs_chunk,
-            total_sims = total_sims,
-            sim_grid_chunk_index = sim_grid_chunk_index,
-            sim_grid_n_chunks = sim_grid_n_chunks,
-            dir_output = dir_output
-          )
-
-          out <- tryCatch(
-            {
-              sim_res <- .simBandwidthBsFreq(
-                nSample = 25,
-                nMarker = 1,
-                nCondition = 2,
-                nCluster = 2,
-                nIter = 1,
-                biasUns = bias_uns,
-                bw = bw,
-                bwMin = "none",
-                bwMax = "none",
-                bwFallback = bw,
-                nCellStim = n_cell,
-                probResponse = prob_response,
-                probExact = TRUE,
-                meanPos = mean_pos,
-                transformation = transformation,
-                samplePerturbationSd = sample_perturbation_sd,
-                conditionPerturbationSd = condition_perturbation_sd,
-                clusterPerturbationSd = cluster_perturbation_sd,
-                backgroundRelativeToResponse = background_relative_to_response,
-                ncellUnsRelativeToStim = n_cell_uns_relative_to_stim,
-                covEvMin = 1.5,
-                covEvMax = 1.5,
-                tolClust = tol_clust,
-                locEnforceShapeThreshold = loc_enforce_shape_threshold,
-                calcCytPosGates = calc_cyt_pos_gates
-              ) |>
-                dplyr::mutate(
-                  transformation = transformation,
-                  prob_response = prob_response,
-                  n_cell = n_cell,
-                  mean_pos_setting = mean_pos_setting,
-                  mean_pos = mean_pos,
-                  bw = bw,
-                  bias_uns_setting = bias_uns_setting,
-                  bias_uns = bias_uns,
-                  sample_perturbation_sd = sample_perturbation_sd,
-                  condition_perturbation_sd = condition_perturbation_sd,
-                  cluster_perturbation_sd = cluster_perturbation_sd,
-                  background_relative_to_response = background_relative_to_response,
-                  n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim,
-                  sim_id = sim_id,
-                  sim_seed = sim_seed,
-                  sim_grid_chunk_index = sim_grid_chunk_index,
-                  sim_grid_n_chunks = sim_grid_n_chunks,
-                  error_message = NA_character_
-                ) |>
-                dplyr::select(
-                  transformation,
-                  prob_response,
-                  n_cell,
-                  mean_pos_setting,
-                  mean_pos,
-                  bw,
-                  bias_uns_setting,
-                  bias_uns,
-                  sample_perturbation_sd,
-                  condition_perturbation_sd,
-                  cluster_perturbation_sd,
-                  background_relative_to_response,
-                  n_cell_uns_relative_to_stim,
-                  sim_id,
-                  sim_seed,
-                  sim_grid_chunk_index,
-                  sim_grid_n_chunks,
-                  dplyr::everything()
-                )
-
-              .write_rds_atomic(sim_res, file_output)
-
-              file.create(file_completed)
-              if (file.exists(file_running)) file.remove(file_running)
-
-              .update_progress_summary(
-                path_progress_file = path_progress_file,
-                dir_jobs_chunk = dir_jobs_chunk,
-                total_sims = total_sims,
-                sim_grid_chunk_index = sim_grid_chunk_index,
-                sim_grid_n_chunks = sim_grid_n_chunks,
-                dir_output = dir_output
-              )
-              p(sprintf("Completed sim_id: %s", sim_id))
-
-              sim_res
-            },
-            error = function(e) {
-              err_res <- tibble::tibble(
-                transformation = transformation,
-                prob_response = prob_response,
-                n_cell = n_cell,
-                mean_pos_setting = mean_pos_setting,
-                mean_pos = mean_pos,
-                bw = bw,
-                bias_uns_setting = bias_uns_setting,
-                bias_uns = bias_uns,
-                sample_perturbation_sd = sample_perturbation_sd,
-                condition_perturbation_sd = condition_perturbation_sd,
-                cluster_perturbation_sd = cluster_perturbation_sd,
-                background_relative_to_response = background_relative_to_response,
-                n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim,
-                sim_id = sim_id,
-                sim_seed = sim_seed,
-                sim_grid_chunk_index = sim_grid_chunk_index,
-                sim_grid_n_chunks = sim_grid_n_chunks,
-                iter = NA_integer_,
-                chnl = NA_character_,
-                sample = NA_character_,
-                ind = NA_character_,
-                method = NA_character_,
-                propRespTruth = NA_real_,
-                propRespEst = NA_real_,
-                propBsEst = NA_real_,
-                threshold = NA_real_,
-                thresholdOrigin = NA_character_,
-                gateReturnPoint = NA_character_,
-                locGenerated = NA,
-                locGeneratedDirect = NA,
-                locSource = NA_character_,
-                locReason = NA_character_,
-                detailLevel = NA_character_,
-                nCellStim = NA_real_,
-                nCellUns = NA_real_,
-                nPosStim = NA_integer_,
-                nPosUns = NA_integer_,
-                error_message = conditionMessage(e)
-              )
-
-              .write_rds_atomic(err_res, file_output)
-              file.create(file_error)
-              if (file.exists(file_running)) file.remove(file_running)
-              .update_progress_summary(
-                path_progress_file = path_progress_file,
-                dir_jobs_chunk = dir_jobs_chunk,
-                total_sims = total_sims,
-                sim_grid_chunk_index = sim_grid_chunk_index,
-                sim_grid_n_chunks = sim_grid_n_chunks,
-                dir_output = dir_output
-              )
-              p(sprintf("ERROR on sim_id: %s", sim_id))
-
-              err_res
-            }
-          )
-
-          out
-        },
-          .options = furrr::furrr_options(seed = TRUE, chunk_size = 10L)
-        )
-      }),
-      finally = future::plan(old_plan)
-    )
-
-    .write_rds_atomic(
-      bw_list_raw,
-      file.path(
-        run_ctx$staging_collated_dir,
-        sprintf(
-          "bw_list_raw_chunk_%03d-of_%03d.rds",
-          sim_grid_chunk_index,
-          sim_grid_n_chunks
-        )
-      )
-    )
-  } else {
-    message("No simulations assigned to this chunk.")
-  }
-} else {
-  run_ctx <- .analysis_results_context(
-    analysis_key = analysis_key,
+  .simBandwidthRunGrid(
+    sim_grid,
+    scenario_fn = .simBandwidthFreqBsGlobalScenario,
+    settings = scenario_settings,
+    run_ctx = run_ctx,
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks,
+    retry_errors = sim_retry_errors,
+    heading = "GLOBAL BANDWIDTH FREQUENCY PROGRESS",
     path_root = root_dir
   )
-  message("Skipping simulations because run_simulations is FALSE.")
-}
 
+  .simBandwidthFinishChunk(
+    run_ctx = run_ctx,
+    sim_grid = sim_grid,
+    sim_grid_all = sim_grid_all,
+    collate_fn = function(tbl) {
+      .simBandwidthFreqBsGlobalCollate(tbl, colnames(sim_grid_all))
+    },
+    label = "analysis 2"
+  )
+
+  if (isTRUE(run_plots) && sim_grid_n_chunks > 1L) {
+    message(
+      "Skipping plots during a multi-chunk simulation render. ",
+      "Render again with run_simulations = FALSE after promotion."
+    )
+    run_plots <- FALSE
+  }
+} else if (isTRUE(run_plots)) {
+  # Read-only: plots use the canonical promoted results under current/.
+  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+}
 ```
 
-
-Collate the results and calculate the metrics of interest.
+Read the canonical promoted results for plotting (both run contexts point
+at the same `current/` directory).
 
 ```{r}
 #| label: bw-manual-collate
-# Without `run_ctx` (simulation chunk not run in this session), read the
-# canonical promoted results under `current/` and skip all writes below.
-if (!exists("run_ctx")) {
-  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
-}
-results_read_only <- isTRUE(run_ctx$read_only)
-
-promote_analysis2_if_ready <- function(
-    run_ctx,
-    sim_grid_all,
-    total_sims,
-    completed_sims,
-    failed_sims) {
-  if (!.analysis_can_promote(run_ctx)) {
-    return(invisible(FALSE))
-  }
-
-  full_output_paths <- .find_bw_list_output_files(
-    output_dir = run_ctx$staging_run_dir,
-    allow_cache_fallback = FALSE
-  )
-  full_output_ids <- suppressWarnings(as.integer(sub(
-    "^.*-sim_id_([0-9]+)[.]rds$",
-    "\\1",
-    basename(full_output_paths)
-  )))
-  expected_full_ids <- sort(unique(as.integer(sim_grid_all$sim_id)))
-  full_outputs_ok <- length(full_output_paths) == length(expected_full_ids) &&
-    identical(sort(unique(full_output_ids)), expected_full_ids)
-
-  if (!isTRUE(full_outputs_ok)) {
-    error_message <- paste0(
-      "Refusing to promote analysis 2: staged outputs do not contain ",
-      "exactly the complete simulation grid."
-    )
-    .analysis_mark_chunk(
+if (isTRUE(run_plots)) {
+  read_current <- function(nm) {
+    readRDS(.analysis_current_file(
       run_ctx = run_ctx,
-      total_sims = total_sims,
-      completed_sims = completed_sims,
-      failed_sims = failed_sims,
-      collate_ok = FALSE,
-      validation_ok = FALSE,
-      error_message = error_message
-    )
-    stop(error_message)
+      relative_path = c("collated", paste0(nm, ".rds")),
+      required_params = analysis_required_params
+    ))
   }
-
-  .analysis_promote_run(run_ctx)
-}
-
-if (results_read_only) {
-  current_manifest <- .analysis_read_manifest(run_ctx$manifest_path)
-  required_params <- list(
-    analysis_semantics_version = analysis_semantics_version,
-    simulation_seed = simulation_seed,
-    analysis_quick = analysis_quick,
-    analysis_dev = analysis_dev
-  )
-  incompatible_params <- names(required_params)[vapply(
-    names(required_params),
-    function(nm) {
-      is.null(current_manifest) ||
-        is.null(current_manifest$params) ||
-        !nm %in% names(current_manifest$params) ||
-        !identical(current_manifest$params[[nm]], required_params[[nm]])
-    },
-    logical(1)
-  )]
-
-  if (length(incompatible_params) > 0L) {
-    stop(
-      "Canonical analysis 2 results are incompatible with the current ",
-      "analysis semantics: ",
-      paste(incompatible_params, collapse = ", "),
-      ". Rerun the simulation before plotting."
-    )
-  }
-}
-
-if (!results_read_only && nrow(sim_grid) == 0L) {
-  .analysis_mark_chunk(
-    run_ctx = run_ctx,
-    total_sims = 0L,
-    completed_sims = 0L,
-    failed_sims = 0L,
-    collate_ok = TRUE,
-    validation_ok = TRUE
-  )
-  promote_analysis2_if_ready(
-    run_ctx = run_ctx,
-    sim_grid_all = sim_grid_all,
-    total_sims = 0L,
-    completed_sims = 0L,
-    failed_sims = 0L
-  )
-  message(
-    "No simulations were assigned to this chunk; marked it complete."
-  )
-  knitr::knit_exit()
-}
-
-collate_output_dir <- if (results_read_only) {
-  run_ctx$current_dir
+  bw_tbl_results_raw <- read_current("bw_tbl_results_raw")
+  bw_tbl_results_summary <- read_current("bw_tbl_results_summary")
+  bias_uns_setting_vec_plot <- bias_uns_settings_tbl |>
+    dplyr::distinct(.data$bias_uns_setting) |>
+    dplyr::pull(.data$bias_uns_setting)
 } else {
-  run_ctx$chunk_dir
-}
-
-bw_list_path_vec <- .find_bw_list_output_files(
-  output_dir = collate_output_dir,
-  cache_dir = run_ctx$current_dir,
-  allow_cache_fallback = results_read_only,
-  merge_dirs = FALSE
-)
-
-if (length(bw_list_path_vec) > 0L) {
-  message(
-    "Collating ",
-    length(bw_list_path_vec),
-    " saved simulation result files from ",
-    collate_output_dir,
-    "."
-  )
-
-  bw_list_raw_collate <- purrr::map(
-    bw_list_path_vec,
-    function(path) {
-      tryCatch(
-        readRDS(file = path),
-        error = function(e) {
-          warning("Could not read saved simulation result: ", path)
-          NULL
-        }
-      )
-    }
-  ) |>
-    purrr::compact()
-} else if (!results_read_only && length(bw_list_raw) > 0L) {
-  message(
-    "No saved simulation result files found for this chunk; ",
-    "using bw_list_raw from memory."
-  )
-  bw_list_raw_collate <- bw_list_raw
-} else if (results_read_only) {
-  collated_dir <- file.path(run_ctx$current_dir, "collated")
-  path_vec <- if (dir.exists(collated_dir)) {
-    list.files(
-      collated_dir,
-      pattern = "^bw_list_raw([-_]chunk_[0-9]+-of_[0-9]+)?[.]rds$",
-      full.names = TRUE
-    )
-  } else {
-    character(0)
-  }
-  path_vec <- path_vec[file.exists(path_vec)]
-  if (length(path_vec) == 0L) {
-    stop(
-      "Could not find canonical simulation output files or bw_list_raw ",
-      "under current/."
-    )
-  }
-  bw_list_raw_collate <- purrr::map(path_vec, readRDS) |>
-    purrr::flatten()
-} else {
-  stop("No saved simulation results were available for the current chunk.")
-}
-
-bw_tbl_raw <- bw_list_raw_collate |>
-  purrr::list_rbind()
-
-bw_tbl <- .simBandwidthAddMissingColumns(
-  bw_tbl_raw,
-  list(
-    iter = NA_integer_,
-    sample = NA_character_,
-    ind = NA_character_,
-    propRespTruth = NA_real_,
-    propRespEst = NA_real_,
-    propBsEst = NA_real_,
-    method = NA_character_,
-    threshold = NA_real_,
-    bias_uns_setting = NA_character_,
-    sim_seed = NA_integer_,
-    sim_grid_chunk_index = NA_integer_,
-    sim_grid_n_chunks = NA_integer_,
-    error_message = NA_character_
-  )
-)
-
-if (all(is.na(bw_tbl$threshold))) {
-  stop("No valid threshold results were collated. Check the progress log for simulation-level errors.")
-}
-
-if (all(is.na(bw_tbl$bias_uns_setting))) {
-  bw_tbl <- bw_tbl |>
-    dplyr::select(-bias_uns_setting) |>
-    dplyr::left_join(
-      bias_uns_settings_tbl,
-      by = c("transformation", "bias_uns")
-    )
-}
-
-bw_tbl <- bw_tbl |>
-  dplyr::filter(!is.na(.data$bias_uns_setting))
-
-bw_tbl_results_raw <- bw_tbl |>
-  dplyr::filter(
-    .data$method == "loc_sample",
-    is.finite(.data$threshold),
-    is.finite(.data$propRespTruth),
-    is.finite(.data$propRespEst)
-  ) |>
-  dplyr::select(
-    dplyr::any_of(colnames(sim_grid_all)),
-    iter,
-    sample,
-    ind,
-    method,
-    propRespTruth,
-    propRespEst,
-    threshold
-  )
-
-duplicate_result_keys <- bw_tbl_results_raw |>
-  dplyr::count(.data$sim_id, .data$iter, .data$ind) |>
-  dplyr::filter(.data$n != 1L)
-
-if (nrow(duplicate_result_keys) > 0L) {
-  stop(
-    "Expected exactly one final loc_sample result per sim_id/iter/ind, ",
-    "but duplicate result keys were found."
-  )
-}
-
-if (nrow(bw_tbl_results_raw) == 0L) {
-  warning(
-    "No valid final bandwidth-frequency results were collated. ",
-    "Check the progress log for simulation-level errors."
-  )
-}
-
-bw_tbl_results_summary <- bw_tbl_results_raw |>
-  dplyr::group_by(
-    dplyr::pick(dplyr::any_of(colnames(sim_grid_all)))
-  ) |>
-  dplyr::summarise(
-    dplyr::across(
-      c(threshold, propRespTruth, propRespEst),
-      list(
-        min = ~ min(.x, na.rm = TRUE),
-        max = ~ max(.x, na.rm = TRUE),
-        mean = ~ mean(.x, na.rm = TRUE),
-        median = ~ stats::median(.x, na.rm = TRUE)
-      )
-    ),
-    .groups = "drop"
-  ) |>
-  dplyr::mutate(
-    propRespEst_median_diff =
-      .data$propRespEst_median - .data$propRespTruth_median,
-    propRespEst_median_diff_rel =
-      (.data$propRespEst_median - .data$propRespTruth_median) /
-        .data$propRespTruth_median
-  )
-
-if (!results_read_only) {
-  collate_suffix <- if (sim_grid_n_chunks > 1L) {
-    sprintf("_chunk_%03d-of_%03d", sim_grid_chunk_index, sim_grid_n_chunks)
-  } else {
-    ""
-  }
-
-  .write_rds_atomic(
-    bw_tbl,
-    file.path(run_ctx$staging_collated_dir, paste0("bw_tbl", collate_suffix, ".rds"))
-  )
-  .write_rds_atomic(
-    bw_tbl_results_raw,
-    file.path(
-      run_ctx$staging_collated_dir,
-      paste0("bw_tbl_results_raw", collate_suffix, ".rds")
-    )
-  )
-  .write_rds_atomic(
-    bw_tbl_results_summary,
-    file.path(
-      run_ctx$staging_collated_dir,
-      paste0("bw_tbl_results_summary", collate_suffix, ".rds")
-    )
-  )
-
-  chunk_job_files <- list.files(dir_jobs_chunk, full.names = FALSE)
-  chunk_completed_ids <- unique(sub(
-    "^completed-",
-    "",
-    chunk_job_files[grepl("^completed-", chunk_job_files)]
-  ))
-  chunk_failed_ids <- unique(sub(
-    "^error-",
-    "",
-    chunk_job_files[grepl("^error-", chunk_job_files)]
-  ))
-  chunk_completed_ids <- setdiff(chunk_completed_ids, chunk_failed_ids)
-
-  expected_chunk_ids <- sort(unique(as.integer(sim_grid$sim_id)))
-  collated_chunk_ids <- sort(unique(as.integer(bw_tbl$sim_id)))
-  output_error_ids <- sort(unique(as.integer(
-    bw_tbl$sim_id[
-      !is.na(bw_tbl$error_message) &
-        nzchar(as.character(bw_tbl$error_message))
-    ]
-  )))
-
-  chunk_collate_ok <- identical(collated_chunk_ids, expected_chunk_ids)
-  chunk_validation_ok <- chunk_collate_ok &&
-    length(output_error_ids) == 0L
-
-  validation_error <- if (!chunk_collate_ok) {
-    "Chunk collation did not contain exactly the assigned sim_id set."
-  } else if (length(output_error_ids) > 0L) {
-    paste0(
-      "Chunk contains simulation errors for sim_id: ",
-      paste(output_error_ids, collapse = ", "),
-      "."
-    )
-  } else {
-    NULL
-  }
-
-  .analysis_mark_chunk(
-    run_ctx = run_ctx,
-    total_sims = nrow(sim_grid),
-    completed_sims = length(chunk_completed_ids),
-    failed_sims = length(chunk_failed_ids),
-    collate_ok = chunk_collate_ok,
-    validation_ok = chunk_validation_ok,
-    error_message = validation_error
-  )
-
-  if (!isTRUE(chunk_validation_ok) || length(chunk_failed_ids) > 0L) {
-    stop(
-      if (!is.null(validation_error)) {
-        validation_error
-      } else {
-        paste0(
-          "Chunk contains ",
-          length(chunk_failed_ids),
-          " failed simulation(s)."
-        )
-      }
-    )
-  }
-
-  promote_analysis2_if_ready(
-    run_ctx = run_ctx,
-    sim_grid_all = sim_grid_all,
-    total_sims = nrow(sim_grid),
-    completed_sims = length(chunk_completed_ids),
-    failed_sims = length(chunk_failed_ids)
-  )
-}
-
-if (!isTRUE(run_plots)) {
   message("run_plots is false, so stopping after simulation/collation.")
-  knitr::knit_exit()
 }
-
-if (!results_read_only && sim_grid_n_chunks > 1L) {
-  message(
-    "Skipping plots during a multi-chunk simulation render. ",
-    "Render again with run_simulations = FALSE after promotion."
-  )
-  knitr::knit_exit()
-}
-```
-
-```{r}
-#| eval: false
-#| # low thresholds
-devtools::load_all()
-filter_tbl_error <- bw_tbl_results_raw |>
-  dplyr::filter(
-    transformation == "skew"
-  ) |>
-  dplyr::filter(
-    !is.na(threshold) & threshold < 5 & bias_uns > 0
-  ) |>
-  dplyr::filter(prob_response == min(prob_response)) |>
-  dplyr::filter(n_cell == min(n_cell)) |>
-  dplyr::filter(sim_id == min(sim_id)) |>
-  dplyr::select(dplyr::all_of(colnames(sim_grid)), iter, sample) |>
-  dplyr::distinct() |>
-  dplyr::filter(iter == min(iter)) |>
-  dplyr::filter(sample == min(sample)) |>
-  dplyr::slice(1)
-
-filter_tbl_error |> print(width = Inf)
-
-sim_grid_loop <- sim_grid |>
-  dplyr::inner_join(filter_tbl_error, by = colnames(sim_grid) |> setdiff(c("iter", "sample")))
-target_sim_id <- filter_tbl_error$sim_id[[1]]
-target_iter <- filter_tbl_error$iter[[1]]
-target_sample <- filter_tbl_error$sample[[1]]
-
-i <- match(target_sim_id, sim_grid$sim_id)
-stopifnot(!is.na(i))
-
-row <- sim_grid[i, , drop = FALSE]
-
-set.seed(as.integer(row$sim_seed[[1]]))
-
-# debugonce(.simBandwidthBsFreq)
-# undebug(.getCpUnsLocGetProb)
-# undebug(.getCpUnsLocGetCp)
-debug(.getCpUnsLocCondition)
-# debugonce(.simBandwidthBsFreq)
-sim_res <- .simBandwidthBsFreq(
-  nSample = 100,
-  nMarker = 1,
-  nCondition = 2,
-  nCluster = 2,
-  nIter = target_iter,
-  biasUns = row[["bias_uns"]],
-  bw = row[["bw"]],
-  bwMin = "none",
-  bwMax = "none",
-  bwFallback = row[["bw"]],
-  nCellStim = row[["n_cell"]],
-  probResponse = row[["prob_response"]],
-  probExact = TRUE,
-  meanPos = row[["mean_pos"]],
-  transformation = row[["transformation"]],
-  samplePerturbationSd = row[["sample_perturbation_sd"]],
-  conditionPerturbationSd = row[["condition_perturbation_sd"]],
-  clusterPerturbationSd = row[["cluster_perturbation_sd"]],
-  backgroundRelativeToResponse = row[["background_relative_to_response"]],
-  ncellUnsRelativeToStim = row[["n_cell_uns_relative_to_stim"]],
-  covEvMin = 1.5,
-  covEvMax = 1.5,
-  tolClust = tol_clust,
-  locEnforceShapeThreshold = loc_enforce_shape_threshold,
-  calcCytPosGates = calc_cyt_pos_gates
-)
-
-# NEXT
-# ======================
-# investigate ind 6 - cp was 1.2
-# also, we should note if the marginal
-# threhsold was just in the end the
-# derivative rise threohsld.
-# if so, when it comes to clustering,
-# we should ignore that one.
-# ======================
-```
-
-```{r}
-#| eval: false
-# once inside
-.getCpUnsLocGetCp(
-  dataMod = dataMod,
-  exTblStimNoMin = exTblStimNoMin,
-  exTblStimOrig = exTblStimOrig,
-  exTblUnsOrig = exTblUnsOrig,
-  exTblUnsBias = exTblUnsBias,
-  bias = bias,
-  cpMin = chnlSettings$cpMin,
-  stage = stage,
-  pathProject = pathProject,
-  chnlSettings = chnlSettings
-)$cp
-
-debugonce(.getCpUnsLocGetCp)
-debugonce(.getCpUnsLocFilterAfterSmoothing)
-```
-
-```{r}
-#| eval: false
-# plots
-debugonce(.getCpUnsLocGetProbFit)
-dataMod <- .getCpUnsLocGetProb(
-  exTblStimNoMin = exTblStimNoMin,
-  exTblStimThreshold = exTblStimThreshold, exTblUnsThreshold = exTblUnsThreshold,
-  exTblUnsBias = exTblUnsBias, stage = stage, bias = bias,
-  exTblUnsOrig = exTblUnsOrig, pathProject = pathProject,
-  chnlSettings = chnlSettings
-)
-
-# raw densities
-p <- ggplot(densTblRaw, aes(x = xStim, y = dens, color = stim)) +
-  geom_line() +
-  cowplot::theme_cowplot() +
-  theme(
-    plot.background = element_rect(fill = "white", color = NA),
-    panel.background = element_rect(fill = "white", color = NA),
-    legend.background = element_rect(fill = "white", color = NA)
-  ) +
-  cowplot::background_grid(major = "xy", minor = "x")
-path_p <- projr::projr_path_get(
-  "cache",
-  "scratch",
-  "p-density-stims-orig.png"
-)
-ggsave(
-  filename = path_p,
-  plot = p,
-  width = 10,
-  height = 10,
-  units = "cm",
-  dpi = 300
-)
-
-# taut string
-# Create the tibble using the coordinates from tautFit
-plotTblTaut <- tibble::tibble(
-  x = density$x,
-  y = density$y
-)
-
-# Plot using geom_step() instead of geom_line()
-p <- ggplot(plotTblTaut, aes(x = x, y = y)) +
-  geom_step() +
-  cowplot::theme_cowplot() +
-  theme(
-    plot.background = element_rect(fill = "white", color = NA),
-    panel.background = element_rect(fill = "white", color = NA),
-    legend.background = element_rect(fill = "white", color = NA)
-  ) +
-  cowplot::background_grid(major = "xy", minor = "x")
-
-# Save the plot
-path_p <- projr::projr_path_get(
-  "cache",
-  "scratch",
-  "p-taut.png"
-)
-
-ggsave(
-  filename = path_p,
-  plot = p,
-  width = 10,
-  height = 10,
-  units = "cm",
-  dpi = 300
-)
-```
-
-```{r}
-#| eval: false
-debugonce(.getCpUnsLocFilterAfterSmoothing)
-```
-
-```{r}
-#| eval: false
-#| include: false
-debugonce(.getCpUnsLocStageThreshold)
-try(.getCpUnsLocStageThreshold(
-  dataMod,
-  chnlSettings,
-  probCol,
-  stage = "antimode"
-))
-debugonce(.getCpUnsLocDerivThreshold)
-p0 <- ggplot(derivTbl, aes(x = x, y = deriv)) +
-  geom_line() +
-  cowplot::theme_cowplot() +
-  theme(
-    plot.background = element_rect(fill = "white", color = NA),
-    panel.background = element_rect(fill = "white", color = NA),
-    legend.background = element_rect(fill = "white", color = NA)
-  ) +
-  cowplot::background_grid(major = "xy", minor = "x")
-
-# Save the plot
-path_p <- projr::projr_path_get(
-  "cache",
-  "scratch",
-  "p-deriv.png"
-)
-
-ggsave(
-  filename = path_p,
-  plot = p0,
-  width = 10,
-  height = 10,
-  units = "cm",
-  dpi = 300
-)
-
-# raw dat
-p1 <- ggplot(dataMod, aes(x = F1)) +
-  geom_density(bw = 0.25) +
-  cowplot::theme_cowplot() +
-  theme(
-    plot.background = element_rect(fill = "white", color = NA),
-    panel.background = element_rect(fill = "white", color = NA),
-    legend.background = element_rect(fill = "white", color = NA)
-  ) +
-  cowplot::background_grid(major = "xy", minor = "x")
-
-# Save the plot
-path_p <- projr::projr_path_get(
-  "cache",
-  "scratch",
-  "p-density-stim.png"
-)
-
-ggsave(
-  filename = path_p,
-  plot = p1,
-  width = 10,
-  height = 10,
-  units = "cm",
-  dpi = 300
-)
-
-# raw dat
-plotPred <- dataMod |>
-  tidyr::pivot_longer(
-    cols = -F1,
-    names_to = "pred_type",
-    values_to = "pred_value"
-  )
-p2 <- ggplot(plotPred, aes(x = F1, y = pred_value, col = pred_type)) +
-  geom_line() +
-  scale_colour_manual(
-    values = c(
-      "probSmooth" = "#1f78b4",
-      "pred" = "#33a02c"
-    )
-  ) +
-  expand_limits(y = c(0, 1)) +
-  cowplot::theme_cowplot() +
-  theme(
-    plot.background = element_rect(fill = "white", color = NA),
-    panel.background = element_rect(fill = "white", color = NA),
-    legend.background = element_rect(fill = "white", color = NA)
-  ) +
-  cowplot::background_grid(major = "xy", minor = "x") +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_blank()
-  )
-
-# Save the plot
-path_p <- projr::projr_path_get(
-  "cache",
-  "scratch",
-  "p-prob-smooth.png"
-)
-
-ggsave(
-  filename = path_p,
-  plot = p2,
-  width = 10,
-  height = 10,
-  units = "cm",
-  dpi = 300
-)
-
-
-
-binVec <- attr(dataMod, "binVec")
-nCellRespNormVec <- NULL
-nCellRespPredVec <- NULL
-for (i in seq(2, length(binVec))) {
-  binRange <- c(binVec[i - 1], binVec[i])
-  inBinVec <- dataMod$F1 >= binRange[1] & dataMod$F1 < binRange[2]
-  nCell <- sum(inBinVec)
-  respProbNorm <- mean(dataMod$probSmooth[inBinVec], na.rm = TRUE)
-  nCellRespNormVec[i - 1] <- nCell * respProbNorm
-  respProbPred <- mean(dataMod$pred[inBinVec], na.rm = TRUE)
-  nCellRespPredVec[i - 1] <- nCell * respProbPred
-}
-binVecPlot <- binVec[-1] - diff(binVec) / 2
-plotTblNCellResp <- tibble::tibble(
-  bin = binVecPlot,
-  nCellRespNorm = nCellRespNormVec,
-  nCellRespPred = nCellRespPredVec
-) |>
-  tidyr::pivot_longer(
-    cols = c(nCellRespNorm, nCellRespPred),
-    names_to = "resp_type",
-    values_to = "n_cell_resp"
-  ) |>
-  dplyr::filter(
-    !is.na(n_cell_resp) & !is.nan(n_cell_resp) & is.finite(n_cell_resp)
-  )
-p3 <- ggplot(plotTblNCellResp, aes(x = bin, y = n_cell_resp, col = resp_type)) +
-  geom_line() +
-  scale_colour_manual(
-    values = c(
-      "nCellRespNorm" = "#1f78b4",
-      "nCellRespPred" = "#33a02c"
-    )
-  ) +
-  cowplot::theme_cowplot() +
-  theme(
-    plot.background = element_rect(fill = "white", color = NA),
-    panel.background = element_rect(fill = "white", color = NA),
-    legend.background = element_rect(fill = "white", color = NA)
-  ) +
-  cowplot::background_grid(major = "xy", minor = "x") +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_blank()
-  )
-
-p_grid <- cowplot::plot_grid(
-  p0, p1, p2, p3,
-  ncol = 2,
-  labels = c("A", "B", "C", "D"),
-  label_size = 12,
-  align = "hv"
-)
-path_p <- projr::projr_path_get(
-  "cache",
-  "scratch",
-  "p-deriv-grid.png"
-)
-
-ggsave(
-  filename = path_p,
-  plot = p_grid,
-  width = 20,
-  height = 20,
-  units = "cm",
-  dpi = 300
-)
-
-labelVec <- outListExperiment[["labelsList"]][["sample002_stim1"]]
-fr <- outListExperiment[["flowFrameList"]][["sample002_stim1"]]
-expr_tbl <- flowCore::exprs(fr) |>
-  tibble::as_tibble() |>
-  dplyr::mutate(
-    label = labelVec
-  )
-expr_tbl |> dplyr::filter(label == "gp")
-out <- .getCpUnsLocDerivThreshold(
-  x = derivTbl$x,
-  prob = derivTbl$prob,
-  deriv = derivTbl$deriv,
-  alpha = params$alpha,
-  omega = params$omega,
-  psi = params$psi,
-  capRightWidth = identical(stage, "marginal")
-)
-```
-
-```{r}
-#| eval: false
-debugonce(.getCpUnsLocFilterMarginal)
 ```
 
 Okay, now we must plot which bandwidths are best for which scenarios.
@@ -1466,9 +496,6 @@ Let's leave error bars out for now.
 
 ```{r}
 if (isTRUE(run_plots)) {
-  bias_uns_setting_vec_plot <- bias_uns_settings_tbl |>
-    dplyr::distinct(.data$bias_uns_setting) |>
-    dplyr::pull(.data$bias_uns_setting)
   for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
     for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
       plot_tbl <- bw_tbl_results_summary |>
@@ -1524,14 +551,8 @@ if (isTRUE(run_plots)) {
         ) +
         expand_limits(y = c(0))
 
-      path_p <- projr::projr_path_get(
-        "cache",
-        "sim",
-        "bw",
-        "freq_bs",
-        "global",
-        "est",
-        "median",
+      path_p <- file.path(
+        .analysis_cache_dir(c(analysis_key, "est", "median"), root_dir),
         paste0(
           "est_vs_n_cell_mean_pos_setting_",
           mean_pos_setting_curr,
@@ -1612,14 +633,17 @@ if (isTRUE(run_plots)) {
             values = col_vec_bw_curr
           )
 
-        path_p <- projr::projr_path_get(
-          "cache",
-          "sim",
-          "bw",
-          "freq_bs", "global",
-          "est",
-          "raw",
-          paste0("condition_perturbation_sd_", condition_perturbation_sd_curr),
+        path_p <- file.path(
+          .analysis_cache_dir(
+            c(
+              analysis_key, "est", "raw",
+              paste0(
+                "condition_perturbation_sd_",
+                condition_perturbation_sd_curr
+              )
+            ),
+            root_dir
+          ),
           paste0(
             "actual_freq_vs_n_cell_mean_pos_setting_",
             mean_pos_setting_curr,
@@ -1643,24 +667,28 @@ if (isTRUE(run_plots)) {
 ```
 
 ```{r}
-bw_tbl_results_raw |>
-  dplyr::filter(
-    mean_pos_setting == "high",
-    bias_uns_setting == "low"
-  ) |>
-  dplyr::group_by(transformation, n_cell, bw, condition_perturbation_sd, prob_response) |>
-  dplyr::summarise(
-    perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_01 = sum(propRespEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_02 = sum(propRespEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_05 = sum(propRespEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_1 = sum(propRespEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_2 = sum(propRespEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
-    .groups = "drop"
-  ) |>
-  dplyr::arrange(transformation, condition_perturbation_sd, n_cell, bw) |>
-  print(width = Inf, n = Inf)
+if (isTRUE(run_plots)) {
+  bw_tbl_results_raw |>
+    dplyr::filter(
+      mean_pos_setting == "high",
+      bias_uns_setting == "low"
+    ) |>
+    dplyr::group_by(
+      transformation, n_cell, bw, condition_perturbation_sd, prob_response
+    ) |>
+    dplyr::summarise(
+      perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_01 = sum(propRespEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_02 = sum(propRespEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_05 = sum(propRespEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_1 = sum(propRespEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_2 = sum(propRespEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
+      .groups = "drop"
+    ) |>
+    dplyr::arrange(transformation, condition_perturbation_sd, n_cell, bw) |>
+    print(width = Inf, n = Inf)
+}
 ```
 
 So, no large errors as long as we don't put any perturbation (well, 0.5 is quite large).
@@ -1669,247 +697,188 @@ The table above is hard to read.
 Can't we, for example, compare the average error to the mean?
 
 ```{r}
-for (mean_pos_setting_curr in unique(mean_pos_settings_tbl$mean_pos_setting)) {
-  err_rel_tbl <- bw_tbl_results_raw |>
-    dplyr::filter(
-      mean_pos_setting == mean_pos_setting_curr,
-      bias_uns_setting == "low"
-    ) |>
-    dplyr::group_by(transformation, n_cell, bw, condition_perturbation_sd, prob_response) |>
-    dplyr::summarise(
-      err_rel_median = median(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE),
-      err_rel_95 = quantile(abs(propRespEst - propRespTruth) / propRespTruth, probs = 0.95, na.rm = TRUE),
-      err_rel_max = max(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE),
-      .groups = "drop"
-    )
-  err_tbl_rel_mean_trans_bw <- err_rel_tbl |>
-    dplyr::filter(
-      condition_perturbation_sd == 0
-    ) |>
-    dplyr::group_by(transformation, bw) |>
-    dplyr::summarise(
-      err_rel_median_avg = mean(err_rel_median, na.rm = TRUE),
-      err_rel_95_avg = mean(err_rel_95, na.rm = TRUE),
-      err_rel_max_avg = mean(err_rel_max, na.rm = TRUE),
-      .groups = "drop"
-    ) |>
-    dplyr::mutate(
-      dplyr::across(
-        dplyr::starts_with("err_rel_"),
-        ~ signif(.x, digits = 3) * 1e2
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
+    err_rel_tbl <- bw_tbl_results_raw |>
+      dplyr::filter(
+        mean_pos_setting == mean_pos_setting_curr,
+        bias_uns_setting == "low"
+      ) |>
+      dplyr::group_by(transformation, n_cell, bw, condition_perturbation_sd, prob_response) |>
+      dplyr::summarise(
+        err_rel_median = median(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE),
+        err_rel_95 = quantile(abs(propRespEst - propRespTruth) / propRespTruth, probs = 0.95, na.rm = TRUE),
+        err_rel_max = max(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE),
+        .groups = "drop"
       )
-    ) |>
-    dplyr::arrange(transformation, bw)
-  plot_tbl_error_rel_mean_trans_bw <- err_tbl_rel_mean_trans_bw |>
-    tidyr::pivot_longer(
-      cols = dplyr::starts_with("err_rel_"),
-      names_to = "err_type",
-      values_to = "err_value"
-    )
-  p <- ggplot(
-    plot_tbl_error_rel_mean_trans_bw |>
+    if (!any(err_rel_tbl$condition_perturbation_sd == 0)) {
+      next
+    }
+    err_tbl_rel_mean_trans_bw <- err_rel_tbl |>
+      dplyr::filter(
+        condition_perturbation_sd == 0
+      ) |>
+      dplyr::group_by(transformation, bw) |>
+      dplyr::summarise(
+        err_rel_median_avg = mean(err_rel_median, na.rm = TRUE),
+        err_rel_95_avg = mean(err_rel_95, na.rm = TRUE),
+        err_rel_max_avg = mean(err_rel_max, na.rm = TRUE),
+        .groups = "drop"
+      ) |>
       dplyr::mutate(
-        err_type = factor(
-          err_type,
-          levels = c(
-            "err_rel_median_avg",
-            "err_rel_95_avg",
-            "err_rel_max_avg"
+        dplyr::across(
+          dplyr::starts_with("err_rel_"),
+          ~ signif(.x, digits = 3) * 1e2
+        )
+      ) |>
+      dplyr::arrange(transformation, bw)
+    plot_tbl_error_rel_mean_trans_bw <- err_tbl_rel_mean_trans_bw |>
+      tidyr::pivot_longer(
+        cols = dplyr::starts_with("err_rel_"),
+        names_to = "err_type",
+        values_to = "err_value"
+      )
+    p <- ggplot(
+      plot_tbl_error_rel_mean_trans_bw |>
+        dplyr::mutate(
+          err_type = factor(
+            err_type,
+            levels = c(
+              "err_rel_median_avg",
+              "err_rel_95_avg",
+              "err_rel_max_avg"
+            )
+          ),
+          transformation = factor(
+            transformation,
+            levels = c(
+              "gaussian",
+              "skew",
+              "gamma"
+            )
           )
         ),
-        transformation = factor(
-          transformation,
-          levels = c(
-            "gaussian",
-            "skew",
-            "gamma"
+      aes(x = factor(bw), y = err_value, color = err_type, group = err_type)
+    ) +
+      geom_line() +
+      geom_point() +
+      cowplot::theme_cowplot() +
+      cowplot::background_grid(major = "xy") +
+      theme(
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA),
+        legend.position = "bottom"
+      ) +
+      labs(
+        x = "Bandwidth",
+        y = "Relative error (%)",
+        color = "Error type"
+      ) +
+      expand_limits(y = 0) +
+      facet_wrap(
+        ~transformation,
+        scales = "free",
+        labeller = labeller(
+          transformation = c(
+            gamma = "Gamma",
+            gaussian = "Gaussian",
+            skew = "Skew"
           )
         )
-      ),
-    aes(x = factor(bw), y = err_value, color = err_type, group = err_type)
-  ) +
-    geom_line() +
-    geom_point() +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
-    theme(
-      panel.background = element_rect(fill = "white", color = NA),
-      plot.background = element_rect(fill = "white", color = NA),
-      legend.position = "bottom"
-    ) +
-    labs(
-      x = "Bandwidth",
-      y = "Relative error (%)",
-      color = "Error type"
-    ) +
-    expand_limits(y = 0) +
-    facet_wrap(
-      ~transformation,
-      scales = "free",
-      labeller = labeller(
-        transformation = c(
-          gamma = "Gamma",
-          gaussian = "Gaussian",
-          skew = "Skew"
+      ) +
+      scale_colour_manual(
+        values = c(
+          "err_rel_median_avg" = "#0072B2",
+          "err_rel_95_avg" = "#56B4E9",
+          "err_rel_max_avg" = "#8C8DBA"
+        ),
+        labels = c(
+          "err_rel_median_avg" = "Median",
+          "err_rel_95_avg" = "95th percentile",
+          "err_rel_max_avg" = "Maximum"
         )
+      ) +
+      theme(
+        strip.background = element_rect(fill = "white", color = "black")
+      ) +
+      theme(
+        axis.text.x = element_text(angle = 90, hjust = 1, size = 10)
+      ) +
+      theme(
+        panel.background = element_rect(fill = "white", colour = NA),
+        plot.background = element_rect(fill = "white", colour = NA),
+        legend.position = "bottom",
+        legend.justification = "center",
+        legend.box.just = "center"
       )
-    ) +
-    scale_colour_manual(
-      values = c(
-        "err_rel_median_avg" = "#0072B2",
-        "err_rel_95_avg" = "#56B4E9",
-        "err_rel_max_avg" = "#8C8DBA"
-      ),
-      labels = c(
-        "err_rel_median_avg" = "Median",
-        "err_rel_95_avg" = "95th percentile",
-        "err_rel_max_avg" = "Maximum"
+    path_p <- file.path(
+      .analysis_project_dir("output", "fig", root_dir),
+      paste0(
+        "avg_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf"
       )
-    ) +
-    theme(
-      strip.background = element_rect(fill = "white", color = "black")
-    ) +
-    theme(
-      axis.text.x = element_text(angle = 90, hjust = 1, size = 10)
-    ) +
-    theme(
-      panel.background = element_rect(fill = "white", colour = NA),
-      plot.background = element_rect(fill = "white", colour = NA),
-      legend.position = "bottom",
-      legend.justification = "center",
-      legend.box.just = "center"
     )
-  path_p <- projr::projr_path_get(
-    "output",
-    "fig",
-    paste0("avg_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf")
-  )
-  dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-  ggsave(
-    filename = path_p,
-    plot = p,
-    width = 18,
-    height = 12,
-    units = "cm"
-  )
-}
-```
-
-```{r}
-bw_tbl_results_raw |>
-  dplyr::filter(
-    mean_pos_setting == "high",
-    bias_uns_setting == "low"
-  ) |>
-  dplyr::group_by(transformation, n_cell, bw, sample_perturbation_sd, condition_perturbation_sd, cluster_perturbation_sd) |>
-  dplyr::summarise(
-    perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_01 = sum(propRespEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_02 = sum(propRespEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_05 = sum(propRespEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_1 = sum(propRespEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_2 = sum(propRespEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
-    .groups = "drop"
-  ) |>
-  dplyr::arrange(transformation, condition_perturbation_sd, n_cell, bw) |>
-  print(width = Inf, n = Inf)
-```
-
-```{r}
-bw_tbl_results_raw |>
-  dplyr::filter(
-    mean_pos_setting == "high",
-    bias_uns_setting == "low"
-  ) |>
-  dplyr::filter(prob_response == 0.002, transformation == "gaussian") |>
-  dplyr::group_by(n_cell, bw, sample_perturbation_sd, condition_perturbation_sd, cluster_perturbation_sd) |>
-  dplyr::summarise(
-    perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_01 = sum(propRespEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_02 = sum(propRespEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_05 = sum(propRespEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_1 = sum(propRespEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_2 = sum(propRespEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
-    perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
-    .groups = "drop"
-  ) |>
-  dplyr::arrange(condition_perturbation_sd, sample_perturbation_sd, cluster_perturbation_sd, n_cell, bw)
-```
-```
-
-Okay, now we wanto plot the actual thresholds.
-We should take the same plot as used to display the simulations, and plot those.
-Except now we'll facet with the rows being probability of a response, and a file per mean_pos_setting. Column transformation again.
-We'll just keep the number of cells high.
-
-```{r}
-#| label: main-settings
-if (isTRUE(run_plots)) {
-  main_settings <- tibble::tibble(
-    n_cell = 1e5,
-    background_relative_to_response = 0.2,
-    prob_exact = TRUE,
-    mixture_type = "gaussianOnly",
-    cluster_perturbation_sd = 0,
-    cov_ev_min = 1.5,
-    cov_ev_max = 1.5
-  )
-
-  mean_pos_settings_tbl <- purrr::map_df(
-    unique(sim_grid$prob_response), function(prob_response) {
-      .simMiscGetMeanPosTbl() |>
-        dplyr::mutate(
-          prob_response = prob_response
-        )
-    }
-  )
-  transformation_vec <- c("gaussian", "gamma", "skew")
-  mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
-
-  main_settings
+    ggsave(
+      filename = path_p,
+      plot = p,
+      width = 18,
+      height = 12,
+      units = "cm"
+    )
+  }
 }
 ```
 
 ```{r}
 if (isTRUE(run_plots)) {
-  # These objects are only needed for the optional density/rug overlay in the
-  # threshold plots. Keep the document renderable if they have not been prepared
-  # in this run.
-  if (!exists("dens_tbl")) {
-    dens_tbl <- tibble::tibble(
-      F1 = numeric(),
-      density = numeric(),
-      condition = character(),
-      prob_response = numeric(),
-      transformation = character(),
-      mean_pos_setting = character(),
-      bw = numeric(),
-      bias_uns_setting = character(),
-      bias_uns = numeric()
-    )
-  }
-
-  if (!exists("rug_tbl")) {
-    rug_tbl <- tibble::tibble(
-      F1 = numeric(),
-      condition = character(),
-      prob_response = numeric(),
-      transformation = character(),
-      mean_pos_setting = character(),
-      bw = numeric(),
-      bias_uns_setting = character(),
-      bias_uns = numeric()
-    )
-  }
-
-  if (!exists("mean_line_tbl")) {
-    mean_line_tbl <- tibble::tibble(
-      mean_pos_setting = character()
-    )
-  }
+  bw_tbl_results_raw |>
+    dplyr::filter(
+      mean_pos_setting == "high",
+      bias_uns_setting == "low"
+    ) |>
+    dplyr::group_by(transformation, n_cell, bw, sample_perturbation_sd, condition_perturbation_sd, cluster_perturbation_sd) |>
+    dplyr::summarise(
+      perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_01 = sum(propRespEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_02 = sum(propRespEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_05 = sum(propRespEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_1 = sum(propRespEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_2 = sum(propRespEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
+      .groups = "drop"
+    ) |>
+    dplyr::arrange(transformation, condition_perturbation_sd, n_cell, bw) |>
+    print(width = Inf, n = Inf)
 }
 ```
+
+```{r}
+if (isTRUE(run_plots)) {
+  bw_tbl_results_raw |>
+    dplyr::filter(
+      mean_pos_setting == "high",
+      bias_uns_setting == "low"
+    ) |>
+    dplyr::filter(prob_response == 0.002, transformation == "gaussian") |>
+    dplyr::group_by(n_cell, bw, sample_perturbation_sd, condition_perturbation_sd, cluster_perturbation_sd) |>
+    dplyr::summarise(
+      perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_01 = sum(propRespEst > 0.01, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_02 = sum(propRespEst > 0.02, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_05 = sum(propRespEst > 0.05, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_1 = sum(propRespEst > 0.1, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_2 = sum(propRespEst > 0.2, na.rm = TRUE) / dplyr::n() * 1e2,
+      perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
+      .groups = "drop"
+    ) |>
+    dplyr::arrange(condition_perturbation_sd, sample_perturbation_sd, cluster_perturbation_sd, n_cell, bw)
+}
+```
+
+Now we plot the median thresholds themselves, as vertical lines with one
+line type per bandwidth.
+We facet with the rows being the probability of a response and the columns
+the transformation, and write one file per mean_pos_setting and
+bias_uns_setting.
 
 ```{r}
 if (isTRUE(run_plots)) {
@@ -1931,21 +900,7 @@ if (isTRUE(run_plots)) {
         next
       }
 
-      mean_line_tbl_curr <- mean_line_tbl |>
-        dplyr::filter(mean_pos_setting == !!mean_pos_setting)
-      rug_tbl_curr <- rug_tbl |>
-        dplyr::filter(
-          mean_pos_setting == !!mean_pos_setting,
-          bias_uns_setting == !!bias_uns_setting_curr
-        )
-      dens_tbl_curr <- dens_tbl |>
-        dplyr::filter(
-          mean_pos_setting == !!mean_pos_setting,
-          bias_uns_setting == !!bias_uns_setting_curr
-        )
-
       bw_scale <- make_bw_linetype_scale(threshold_tbl_curr$bw)
-
 
       threshold_tbl_curr <- threshold_tbl_curr |>
         dplyr::mutate(
@@ -1956,33 +911,11 @@ if (isTRUE(run_plots)) {
         )
 
       p <- ggplot() +
-        geom_area(
-          data = dens_tbl_curr,
-          mapping = aes(x = F1, y = density, colour = condition, fill = condition),
-          alpha = 0.18,
-          position = "identity"
-        ) +
-        geom_line(
-          data = dens_tbl_curr,
-          mapping = aes(x = F1, y = density, colour = condition),
-          linewidth = 0.25
-        ) +
-        geom_rug(
-          data = rug_tbl_curr,
-          aes(
-            x = F1,
-            colour = condition
-          ),
-          sides = "b",
-          alpha = 0.25,
-          linewidth = 0.15
-        ) +
         facet_grid(
           rows = vars(.data$prob_response),
           cols = vars(.data$transformation),
           scales = "free_x"
         ) +
-        scale_y_sqrt() +
         cowplot::theme_cowplot() +
         cowplot::background_grid(major = "xy", minor = "none") +
         theme(
@@ -1991,19 +924,13 @@ if (isTRUE(run_plots)) {
           legend.position = "bottom",
           strip.text.y = element_text(angle = 0)
         ) +
-        coord_cartesian(ylim = c(0, 1)) +
-        scale_colour_manual(
-          values = .simMiscGetStimColVec()
-        ) +
         labs(
           title = paste0(
             "Median thresholds (mean_pos_setting = ", mean_pos_setting,
             ", bias_uns_setting = ", bias_uns_setting_curr, ")"
           ),
           x = "Marker expression",
-          y = "Density, square-root scale",
-          colour = NULL,
-          fill = NULL,
+          y = NULL,
           linetype = "Bandwidth"
         ) +
         geom_vline(
@@ -2015,16 +942,9 @@ if (isTRUE(run_plots)) {
           values = bw_scale$values,
           breaks = bw_scale$levels,
           labels = bw_scale$levels
-        ) +
-        expand_limits(y = c(0))
-      path_p <- projr::projr_path_get(
-        "cache",
-        "sim",
-        "bw",
-        "freq_bs",
-        "global",
-        "thresholds",
-        "median",
+        )
+      path_p <- file.path(
+        .analysis_cache_dir(c(analysis_key, "thresholds", "median"), root_dir),
         paste0(
           "threshold_vs_n_cell_mean_pos_setting_",
           mean_pos_setting,
@@ -2102,47 +1022,12 @@ if (isTRUE(run_plots)) {
               )
             )
           )
-        rug_tbl_curr <- rug_tbl |>
-          dplyr::filter(
-            mean_pos_setting == !!mean_pos_setting,
-            bw == !!bw_curr,
-            bias_uns_setting == !!bias_uns_setting_curr
-          )
-        dens_tbl_curr <- dens_tbl |>
-          dplyr::filter(
-            mean_pos_setting == !!mean_pos_setting,
-            bw == !!bw_curr,
-            bias_uns_setting == !!bias_uns_setting_curr
-          )
-
         p <- ggplot() +
-          geom_area(
-            data = dens_tbl_curr,
-            mapping = aes(x = F1, y = density, colour = condition, fill = condition),
-            alpha = 0.18,
-            position = "identity"
-          ) +
-          geom_line(
-            data = dens_tbl_curr,
-            mapping = aes(x = F1, y = density, colour = condition),
-            linewidth = 0.25
-          ) +
-          geom_rug(
-            data = rug_tbl_curr,
-            aes(
-              x = F1,
-              colour = condition
-            ),
-            sides = "b",
-            alpha = 0.25,
-            linewidth = 0.15
-          ) +
           facet_grid(
             rows = vars(.data$prob_response),
             cols = vars(.data$transformation),
             scales = "free_x"
           ) +
-          scale_y_sqrt() +
           cowplot::theme_cowplot() +
           cowplot::background_grid(major = "xy", minor = "none") +
           theme(
@@ -2151,10 +1036,6 @@ if (isTRUE(run_plots)) {
             legend.position = "bottom",
             strip.text.y = element_text(angle = 0)
           ) +
-          coord_cartesian(ylim = c(0, 1)) +
-          scale_colour_manual(
-            values = .simMiscGetStimColVec()
-          ) +
           labs(
             title = paste0(
               "Raw thresholds (mean_pos_setting = ", mean_pos_setting,
@@ -2162,9 +1043,7 @@ if (isTRUE(run_plots)) {
               ", bias_uns_setting = ", bias_uns_setting_curr, ")"
             ),
             x = "Marker expression",
-            y = "Density, square-root scale",
-            colour = NULL,
-            fill = NULL
+            y = NULL
           ) +
           geom_vline(
             data = threshold_tbl_curr,
@@ -2187,15 +1066,15 @@ if (isTRUE(run_plots)) {
             labels = c("IQR lower", "Median", "IQR upper")
           )
 
-        path_p <- projr::projr_path_get(
-          "cache",
-          "sim",
-          "bw",
-          "freq_bs", "global",
-          "thresholds",
-          "raw",
-          paste0("bias_uns_", bias_uns_setting_curr),
-          signif(bw_curr),
+        path_p <- file.path(
+          .analysis_cache_dir(
+            c(
+              analysis_key, "thresholds", "raw",
+              paste0("bias_uns_", bias_uns_setting_curr),
+              signif(bw_curr)
+            ),
+            root_dir
+          ),
           paste0(
             "threshold_vs_n_cell_mean_pos_setting_bw_",
             mean_pos_setting,

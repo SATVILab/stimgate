@@ -341,22 +341,32 @@
   invisible(TRUE)
 }
 
-.analysis_cache_dir <- function(path_parts, path_root = NULL, create = TRUE) {
+# Project directory under the projr `label` directory ("cache", "output",
+# ...), falling back to `<path_root>/<label>/...` when projr is unavailable.
+.analysis_project_dir <- function(
+    label,
+    path_parts = character(),
+    path_root = NULL,
+    create = TRUE) {
   if (requireNamespace("projr", quietly = TRUE)) {
     return(do.call(
       projr::projr_path_get_dir,
-      c(list("cache"), as.list(path_parts), list(create = create))
+      c(list(label), as.list(path_parts), list(create = create))
     ))
   }
   root_local <- normalizePath(
     if (is.null(path_root) || !nzchar(path_root)) "." else path_root,
     mustWork = FALSE
   )
-  path <- do.call(file.path, c(list(root_local, "cache"), as.list(path_parts)))
+  path <- do.call(file.path, c(list(root_local, label), as.list(path_parts)))
   if (isTRUE(create)) {
     dir.create(path, recursive = TRUE, showWarnings = FALSE)
   }
   path
+}
+
+.analysis_cache_dir <- function(path_parts, path_root = NULL, create = TRUE) {
+  .analysis_project_dir("cache", path_parts, path_root, create)
 }
 
 # Read-only stand-in for `.analysis_run_context()` when only the canonical
