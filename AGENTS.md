@@ -364,9 +364,13 @@ Each top-level analysis QMD also has an independently runnable target in
 `analysis/tests/run_qmd_tests.R`. Use `--list` to inspect the
 QMD-to-test mapping, one target number/path to run it, a
 comma/space-separated set, or `all`. Maintain the registry when adding
-or renaming top-level QMDs. These targets reuse bounded scientific
-helper and document-contract tests; they do not render the full research
-analyses. The `analysis-qmd-tests.yaml` workflow is manual-only
+or renaming top-level QMDs. Analysis 2 is split into `2a` (bandwidth
+performance) and `2b` (bias tuning), with separate runner targets.
+Bias-tuning collation retains invalid final sample estimates, reports
+valid/failed counts, and rejects missing sample outputs before
+promotion. These targets reuse bounded scientific helper and
+document-contract tests; they do not render the full research analyses.
+The `analysis-qmd-tests.yaml` workflow is manual-only
 (`workflow_dispatch`); do not add automatic triggers. See
 `analysis/tests/README.md` for commands and coverage limits.
 
@@ -728,7 +732,8 @@ deduplicates identical rows before drawing reference lines.
     package API (e.g.
     [`simcyto::simCytExperiment()`](https://rdrr.io/pkg/simcyto/man/simCytExperiment.html),
     `simcyto::simCytTransform*()`).
-    `analysis/2-sim-bw-freq_bs-global.qmd`,
+    `analysis/2a-sim-bw-freq_bs-global.qmd`,
+    `analysis/2b-sim-bias_uns-freq_bs.qmd`,
     `analysis/3-sim-bw-est-base.qmd`,
     `analysis/7-sim-compare-freq_bs.qmd`, and
     `analysis/8-sim-compare-freq_bs-batch.qmd` use `simcyto` and do not
