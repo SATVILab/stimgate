@@ -87,6 +87,7 @@ analysis_semantics_version <- "bandwidth-est-base-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
+fig_key <- .analysis_mode_key("3-sim-bw-est-base")
 n_sample_sim <- if (analysis_quick) 1L else 50L
 n_iter_sim <- 1L
 bw_fallback <- NA_real_
@@ -499,7 +500,7 @@ if (isTRUE(run_plots)) {
         )
 
       path_plot <- file.path(
-        root_dir, "output", "fig",
+        .analysis_fig_dir(c(fig_key, "est_bw_base"), root_dir),
         paste0(
           "est_bw_base",
           "_meanpos_",

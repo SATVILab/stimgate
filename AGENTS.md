@@ -487,6 +487,10 @@ Plot-construction helpers under `scripts/r/` should return plot objects without
 creating directories or writing files. Keep filesystem side effects in the
 corresponding save/orchestration helper or QMD.
 
+Figures from analysis QMDs are saved under `output/fig/<QMD name>/<figure type>/`
+via `.analysis_fig_dir()`, with `fig_key <- .analysis_mode_key("<QMD name>")`;
+keep figures out of `cache/`.
+
 Source analysis helper files explicitly in dependency order. Do not move analysis-only
 helpers into `R/` unless they have genuinely become part of the installed package
 implementation or API. Keep large domain helper files such as `sim-bandwidth.R`

@@ -142,6 +142,7 @@ test_that("Analysis 2b runtime guards simulations and reads canonical results", 
   env$.simBandwidthRunGrid <- unexpected
   env$.simBandwidthFinishChunk <- unexpected
   env$.analysis_cache_dir <- unexpected
+  env$.analysis_fig_dir <- unexpected
   env$ggplot <- unexpected
   for (label in c(
     "bias-uns-parallel", "bias-uns-collate",

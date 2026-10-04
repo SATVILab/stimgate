@@ -121,6 +121,7 @@ Each grid row has its own seed. The cached expression table records the scientif
 
 analysis_key <- c("sim", "trans")
 analysis_key <- .analysis_mode_key(analysis_key)
+fig_key <- .analysis_mode_key("1-sim-trans")
 dir_trans <- .analysis_cache_dir(analysis_key, root_dir, create = run_simulations)
 path_uni_tbl <- file.path(dir_trans, "uni_tbl.rds")
 
@@ -357,7 +358,7 @@ if (isTRUE(run_plots)) {
   ext_vec <- c("png", "pdf")
   for (ext in ext_vec) {
     path_p <- file.path(
-      dir_trans,
+      .analysis_fig_dir(c(fig_key, "mean_pos_grid_univariate"), root_dir),
       paste0("mean-pos-grid-univariate.", ext)
     )
     ggsave(

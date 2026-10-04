@@ -32,6 +32,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+fig_key <- .analysis_mode_key("10-real-compare-acs-cytof-validation")
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
@@ -96,8 +97,10 @@ correlation_tbl
 #| label: save-validation-figures
 #| include: false
 if (isTRUE(run_plots)) {
-  path_dir_save <- file.path(
-    path_manual_output, "validation-figures"
+  # The figure directory is swapped in whole, so it must not be pre-created.
+  path_dir_save <- .analysis_fig_dir(
+    c(fig_key, "validation_figures"), root_dir,
+    create = FALSE
   )
   .acsCytofValidationSavePlots(
     comparisonTbl = manual_comparison_tbl,

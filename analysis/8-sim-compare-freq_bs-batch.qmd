@@ -65,6 +65,7 @@ comparison_semantics_version <- "batch-mismatch-comparison-v4"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
+fig_key <- .analysis_mode_key("8-sim-compare-freq_bs-batch")
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -624,7 +625,7 @@ if (!isTRUE(run_plots)) {
 
 ```{r}
 #| include: false
-plot_dir <- .analysis_cache_dir(c(analysis_key, "mean_shift_degradation"), path_root = root_dir)
+plot_dir <- .analysis_fig_dir(c(fig_key, "mean_shift_degradation"), path_root = root_dir, create = FALSE)
 if (
   isTRUE(run_plots) &&
     isTRUE(results_available) &&
@@ -741,7 +742,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 
 ```{r}
 #| include: false
-plot_dir <- .analysis_cache_dir(c(analysis_key, "sd_inflation_degradation"), path_root = root_dir)
+plot_dir <- .analysis_fig_dir(c(fig_key, "sd_inflation_degradation"), path_root = root_dir, create = FALSE)
 if (
   isTRUE(run_plots) &&
     isTRUE(results_available) &&
@@ -800,7 +801,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         color = "Method"
       )
     path_p <- file.path(
-      .analysis_cache_dir(c(analysis_key, "sd_inflation_degradation"), path_root = root_dir),
+      .analysis_fig_dir(c(fig_key, "sd_inflation_degradation"), path_root = root_dir),
       paste0(
         "plot_",
         mean_pos_setting_curr,
@@ -878,7 +879,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         linetype = "Mismatch Variant"
       )
     path_p <- file.path(
-      .analysis_cache_dir(c(analysis_key, "threshold_placement_unstim"), path_root = root_dir),
+      .analysis_fig_dir(c(fig_key, "threshold_placement_unstim"), path_root = root_dir),
       paste0(
         "plot_",
         mean_pos_setting_curr,
@@ -945,7 +946,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         color = "Method"
       )
     path_p <- file.path(
-      .analysis_cache_dir(c(analysis_key, "upper_tail_and_fallbacks"), path_root = root_dir),
+      .analysis_fig_dir(c(fig_key, "upper_tail_and_fallbacks"), path_root = root_dir),
       paste0(
         "plot_",
         mean_pos_setting_curr,

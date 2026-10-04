@@ -93,6 +93,7 @@ analysis_semantics_version <- "bias-uns-freq-v3"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
+fig_key <- .analysis_mode_key("2b-sim-bias_uns-freq_bs")
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -570,8 +571,8 @@ if (isTRUE(run_plots)) {
 #| fig-height: 12
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_cache_dir(
-    c(analysis_key, "relative_error"),
+  plot_dir <- .analysis_fig_dir(
+    c(fig_key, "relative_error"),
     path_root = root_dir
   )
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
@@ -630,8 +631,8 @@ Colour identifies bandwidth; columns of panels separate mismatch settings and ro
 #| fig-height: 8
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_cache_dir(
-    c(analysis_key, "relative_error_averaged_n_cell"),
+  plot_dir <- .analysis_fig_dir(
+    c(fig_key, "relative_error_averaged_n_cell"),
     path_root = root_dir
   )
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
@@ -699,8 +700,8 @@ Compare the curves across cell counts while holding the biological setting fixed
 #| fig-height: 8
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_cache_dir(
-    c(analysis_key, "relative_error_by_n_cell"),
+  plot_dir <- .analysis_fig_dir(
+    c(fig_key, "relative_error_by_n_cell"),
     path_root = root_dir
   )
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
@@ -758,8 +759,8 @@ The plots above use the size of the error only. Here relative error, (estimate -
 #| fig-height: 12
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_cache_dir(
-    c(analysis_key, "signed_error"),
+  plot_dir <- .analysis_fig_dir(
+    c(fig_key, "signed_error"),
     path_root = root_dir
   )
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
@@ -815,8 +816,8 @@ The scenario-level statistics and shares for each direction are averaged equally
 #| fig-height: 8
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_cache_dir(
-    c(analysis_key, "signed_error_averaged_n_cell"),
+  plot_dir <- .analysis_fig_dir(
+    c(fig_key, "signed_error_averaged_n_cell"),
     path_root = root_dir
   )
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
@@ -877,8 +878,8 @@ Each cell count is shown on its own.
 #| fig-height: 8
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_cache_dir(
-    c(analysis_key, "signed_error_by_n_cell"),
+  plot_dir <- .analysis_fig_dir(
+    c(fig_key, "signed_error_by_n_cell"),
     path_root = root_dir
   )
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
@@ -937,8 +938,8 @@ Median estimated frequency is plotted against bias multiplier, with colour ident
 #| fig-height: 6
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_cache_dir(
-    c(analysis_key, "estimated_frequency"),
+  plot_dir <- .analysis_fig_dir(
+    c(fig_key, "estimated_frequency"),
     path_root = root_dir
   )
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)

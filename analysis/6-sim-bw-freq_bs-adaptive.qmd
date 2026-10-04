@@ -78,6 +78,7 @@ analysis_semantics_version <- "adaptive-bw-freq-v3"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
+fig_key <- .analysis_mode_key("6-sim-bw-freq_bs-adaptive")
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -554,11 +555,7 @@ if (isTRUE(run_plots)) {
             scale_colour_manual(values = col_vec_bw_curr)
 
           path_p <- file.path(
-            .analysis_cache_dir(character(), root_dir),
-            "sim",
-            "bw",
-            "freq_bs",
-            "adaptive",
+            .analysis_fig_dir(fig_key, root_dir),
             "est",
             "median",
             "fixed_core_vary_extra",
@@ -657,11 +654,7 @@ if (isTRUE(run_plots)) {
             scale_colour_manual(values = col_vec_bw_curr)
 
           path_p <- file.path(
-            .analysis_cache_dir(character(), root_dir),
-            "sim",
-            "bw",
-            "freq_bs",
-            "adaptive",
+            .analysis_fig_dir(fig_key, root_dir),
             "est",
             "median",
             "fixed_extra_vary_core",
@@ -760,11 +753,7 @@ if (isTRUE(run_plots)) {
             scale_colour_manual(values = col_vec_bw_curr)
 
           path_p <- file.path(
-            .analysis_cache_dir(character(), root_dir),
-            "sim",
-            "bw",
-            "freq_bs",
-            "adaptive",
+            .analysis_fig_dir(fig_key, root_dir),
             "est",
             "raw",
             "fixed_core_vary_extra",
@@ -861,11 +850,7 @@ if (isTRUE(run_plots)) {
             scale_colour_manual(values = col_vec_bw_curr)
 
           path_p <- file.path(
-            .analysis_cache_dir(character(), root_dir),
-            "sim",
-            "bw",
-            "freq_bs",
-            "adaptive",
+            .analysis_fig_dir(fig_key, root_dir),
             "est",
             "raw",
             "fixed_extra_vary_core",
@@ -978,11 +963,7 @@ if (isTRUE(run_plots)) {
             )
 
           path_p <- file.path(
-            .analysis_cache_dir(character(), root_dir),
-            "sim",
-            "bw",
-            "freq_bs",
-            "adaptive",
+            .analysis_fig_dir(fig_key, root_dir),
             "thresholds",
             "median",
             "fixed_core_vary_extra",
@@ -1089,11 +1070,7 @@ if (isTRUE(run_plots)) {
             )
 
           path_p <- file.path(
-            .analysis_cache_dir(character(), root_dir),
-            "sim",
-            "bw",
-            "freq_bs",
-            "adaptive",
+            .analysis_fig_dir(fig_key, root_dir),
             "thresholds",
             "median",
             "fixed_extra_vary_core",
@@ -1243,11 +1220,7 @@ if (isTRUE(run_plots)) {
             )
 
           path_p <- file.path(
-            .analysis_cache_dir(character(), root_dir),
-            "sim",
-            "bw",
-            "freq_bs",
-            "adaptive",
+            .analysis_fig_dir(fig_key, root_dir),
             "thresholds",
             "raw",
             "fixed_core_vary_extra",
@@ -1397,11 +1370,7 @@ if (isTRUE(run_plots)) {
             )
 
           path_p <- file.path(
-            .analysis_cache_dir(character(), root_dir),
-            "sim",
-            "bw",
-            "freq_bs",
-            "adaptive",
+            .analysis_fig_dir(fig_key, root_dir),
             "thresholds",
             "raw",
             "fixed_extra_vary_core",

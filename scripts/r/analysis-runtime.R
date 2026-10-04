@@ -477,6 +477,13 @@
   .analysis_project_dir("cache", path_parts, path_root, create)
 }
 
+# Figures go under output/fig/<QMD name>/<figure type>/..., so each analysis
+# and kind of figure has its own folder. `fig_key` comes from
+# `.analysis_mode_key(<QMD name>)`, which adds a dev/quick folder when needed.
+.analysis_fig_dir <- function(path_parts, path_root = NULL, create = TRUE) {
+  .analysis_project_dir("output", c("fig", path_parts), path_root, create)
+}
+
 # Read-only stand-in for `.analysis_run_context()` when only the canonical
 # promoted results are needed (e.g. interactively, without running the
 # simulation chunk). Staging fields point at `current/`, so collation code

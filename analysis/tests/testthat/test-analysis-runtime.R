@@ -943,6 +943,19 @@ test_that("project directory fallback is local and can be read-only", {
   expect_false(dir.exists(cache))
 })
 
+test_that("figure directories are nested under output/fig and created", {
+  env <- .load_runtime_env()
+  env$.analysis_projr_dir <- function(...) NULL
+  project <- .norm_path(withr::local_tempdir())
+  expected <- file.path(project, "output", "fig", "2a-x", "quick", "signed_error")
+  fig_dir <- env$.analysis_fig_dir(
+    c("2a-x", "quick", "signed_error"),
+    path_root = project
+  )
+  expect_identical(.norm_path(fig_dir), .norm_path(expected))
+  expect_true(dir.exists(expected))
+})
+
 test_that("an unavailable projr project falls back to the local directory", {
   env <- .load_runtime_env()
   failing_getter <- function(...) stop("No projr project")

@@ -40,6 +40,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+fig_key <- .analysis_mode_key("9-real-compare-acs-cytof")
 analysis_qmd <- "analysis/9-real-compare-acs-cytof.qmd"
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))
@@ -319,10 +320,11 @@ manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 
 ### Correlation with the manual gating
 
-The comparison table, its RDS copy, a method/population/cytokine summary and
-(when `run_plots` is true) the comparison PNGs are written under
-`path_manual_output`. Pearson correlations of the
-StimGate and F-beta estimates with the manual frequencies follow.
+The comparison table, its RDS copy and a method/population/cytokine summary
+are written under `path_manual_output`. When `run_plots` is true, the
+figures are saved under `output/fig/9-real-compare-acs-cytof/`. Pearson
+correlations of the StimGate and F-beta estimates with the manual frequencies
+follow.
 
 ```{r}
 #| label: show-manual-summary
@@ -359,7 +361,11 @@ if (isTRUE(run_plots)) {
     relativeError = .acsCytofManualPlotRelativeError(manual_comparison_tbl)
   )
   .analysis_save_plot(
-    manual_plots$scatter, file.path(path_manual_output, "manual-comparison-scatter.png"),
+    manual_plots$scatter,
+    file.path(
+      .analysis_fig_dir(c(fig_key, "manual_comparison_scatter"), root_dir),
+      "manual-comparison-scatter.png"
+    ),
     width = 30, height = max(16, 5 * dplyr::n_distinct(manual_comparison_tbl$pop))
   )
 }
@@ -378,7 +384,10 @@ Boxplots show absolute relative error by method, with separate panels for popula
 if (isTRUE(run_plots)) {
   .analysis_save_plot(
     manual_plots$relativeError,
-    file.path(path_manual_output, "manual-comparison-relative-error.png"),
+    file.path(
+      .analysis_fig_dir(c(fig_key, "manual_comparison_relative_error"), root_dir),
+      "manual-comparison-relative-error.png"
+    ),
     width = 30, height = max(16, 5 * dplyr::n_distinct(manual_comparison_tbl$pop))
   )
 }
@@ -399,7 +408,10 @@ if (isTRUE(run_plots)) {
     manual_comparison_tbl |> dplyr::filter(method != "tailgate")
   )
   ggsave(
-    file.path(path_manual_output, "scatter-no_tg.pdf"),
+    file.path(
+      .analysis_fig_dir(c(fig_key, "manual_comparison_scatter_no_tailgate"), root_dir),
+      "scatter-no_tg.pdf"
+    ),
     plot = p, units = "cm", width = 20, height = 20
   )
   print(p)
@@ -421,7 +433,10 @@ if (isTRUE(run_plots)) {
     manual_comparison_tbl |> dplyr::filter(method != "tailgate")
   )
   ggsave(
-    file.path(path_manual_output, "rel_error-no_tg.pdf"),
+    file.path(
+      .analysis_fig_dir(c(fig_key, "manual_comparison_relative_error_no_tailgate"), root_dir),
+      "rel_error-no_tg.pdf"
+    ),
     plot = p, units = "cm", width = 20, height = 20
   )
   print(p)
@@ -483,7 +498,14 @@ if (isTRUE(run_plots)) {
       ind = 2L, .data = gs, pathProject = paths$stimgate,
       pop = "root", chnl = c("Ho165Di", "Nd146Di")
     )
-    ggplot2::ggsave(paths$stimgateCheck, plot = p,
+    path_check <- file.path(
+      .analysis_fig_dir(
+        c(fig_key, "gate_diagnostics", gsub("[^A-Za-z0-9_.-]+", "_", pop)),
+        root_dir
+      ),
+      "stimgate_check.pdf"
+    )
+    ggplot2::ggsave(path_check, plot = p,
       width = 18, height = 16, units = "cm"
     )
     print(p + ggplot2::labs(subtitle = pop))
