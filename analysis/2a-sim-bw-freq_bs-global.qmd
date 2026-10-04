@@ -994,7 +994,7 @@ if (isTRUE(run_plots)) {
 
 ### Over- and under-estimates averaged over cell counts
 
-The overall plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: over-estimates (solid lines) sit above zero and under-estimates (dashed lines) below. Within each scenario, the median, 95th-percentile and maximum error sizes are calculated separately for over- and under-estimates; these are then averaged equally over cell counts and response probabilities, using low bias and no condition perturbation. Line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero. Facets separate transformations.
+The overall plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: over-estimates (teal) sit above zero and under-estimates (brown) below, with darker shades for larger statistics. Within each scenario, the median, 95th-percentile and maximum error sizes are calculated separately for over- and under-estimates; these are then averaged equally over cell counts and response probabilities, using low bias and no condition perturbation. Line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero. Facets separate transformations.
 
 ```{r}
 #| label: fig-signed-error-averaged-n-cell
