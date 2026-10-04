@@ -58,7 +58,8 @@ testthat::test_that("matrix and data-frame lists align channels and name samples
     )
     testthat::expect_identical(
       chnlLab(converted),
-      stats::setNames(colnames(matrices[[1]]), colnames(matrices[[1]]))
+      stats::setNames(colnames(matrices[[1]]), colnames(matrices[[1]])),
+      info = paste(deparse(chnlLab(converted)), collapse = "")
     )
     for (i in seq_along(gs)) {
       testthat::expect_identical(
