@@ -1314,27 +1314,98 @@ test_that("alternative comparator exceptions remain explicit run errors", {
   expect_equal(tailgate_row$gateReturnPoint[[1]], "tailgate_calculated")
 })
 
-test_that("mean-shift plotting shares statistics without writing files", {
+test_that("mismatch error summaries average scenario statistics equally", {
   env <- .compare_plot_env()
-  data <- tibble::tibble(
-    mismatch_val = c(0, 0.1), method = "stimgate",
-    mismatch_type = "mean_shift_negative", scenario_desc = "scenario",
-    med_abs_rel_error = c(0.1, 0.2), max_abs_rel_error = c(0.3, 0.4),
-    q90_abs_rel_error = c(0.2, 0.3)
+  # Two scenarios (cell counts) of one transformation and mismatch size. The
+  # first has samples with relative errors 0.1 and 0.3 (truth 1); the second
+  # has a single sample with relative error 0.5; a zero-truth sample is
+  # ignored.
+  raw <- tibble::tibble(
+    base_scenario_id = c(1L, 1L, 2L, 2L),
+    transformation = "gaussian", mean_pos_setting = "high",
+    prob_response = 0.1, n_cell = c(100, 100, 1000, 1000),
+    mismatch_type = "sd_inflation", mismatch_val = 0.1, method = "stimgate",
+    propRespTruth = c(1, 1, 1, 0),
+    propRespEst = c(1.1, 0.7, 1.5, 0.2)
   )
-  for (statistic in c(
-    "med_abs_rel_error", "max_abs_rel_error", "q90_abs_rel_error"
-  )) {
-    plot <- env$.simComparePlotMeanShift(data, statistic, "Error")
-    built <- ggplot2::ggplot_build(plot)
-    expect_equal(built$data[[1]]$y, asinh(data[[statistic]]))
-    expect_equal(plot$labels$y, "Error (asinh scale)")
+  scen <- env$.simCompareUnsignedErrorSummary(
+    raw, scenarioCols = c("base_scenario_id", "n_cell", "transformation",
+      "mean_pos_setting", "prob_response", "mismatch_type", "mismatch_val",
+      "method")
+  )
+  expect_equal(scen$median, c(0.2, 0.5))
+  expect_equal(scen$max, c(0.3, 0.5))
+  expect_equal(scen$q95, c(0.1 + 0.95 * 0.2, 0.5))
+  # Equal weight per scenario, not per sample (which would give 0.3).
+  avg <- env$.simCompareErrorAverage(
+    scen, c("transformation", "mismatch_type", "mismatch_val", "method")
+  )
+  expect_equal(nrow(avg), 1L)
+  expect_equal(avg$median, 0.35)
+  expect_equal(avg$max, 0.4)
+  # Averaging over response probabilities only keeps cell counts apart.
+  by_cell <- env$.simCompareErrorAverage(
+    scen, c("transformation", "mismatch_type", "mismatch_val", "method",
+      "n_cell")
+  )
+  expect_equal(by_cell$median, c(0.2, 0.5))
+
+  signed <- env$.simCompareSignedErrorSummary(
+    raw, scenarioCols = c("base_scenario_id", "n_cell", "transformation",
+      "mismatch_type", "mismatch_val", "method")
+  )
+  signed_avg <- env$.simBandwidthSignedErrorAverage(
+    signed, c("transformation", "mismatch_type", "mismatch_val", "method")
+  )
+  over <- signed_avg[signed_avg$direction == "over", ]
+  # Scenario 1: over 0.1 (share 1/2); scenario 2: over 0.5 (share 1).
+  expect_equal(over$median, 0.3)
+  expect_equal(over$prop, 0.75)
+
+  for (by_prob in c(FALSE, TRUE)) {
+    plot_unsigned <- env$.simComparePlotMismatchError(scen, by_prob = by_prob)
+    expect_no_error(ggplot2::ggplotGrob(plot_unsigned))
+    expect_setequal(
+      as.character(plot_unsigned$data$statistic),
+      c("Median", "95th percentile", "Maximum")
+    )
+    plot_signed <- env$.simComparePlotSignedError(
+      signed, x = "mismatch_val", x_log = FALSE, by_prob = FALSE
+    )
+    expect_no_error(ggplot2::ggplotGrob(plot_signed))
   }
-  content <- paste(readLines(file.path(root_dir, "analysis",
-    "8-sim-compare-freq_bs-batch.qmd")), collapse = "\n")
-  expect_false(grepl('"mean_shift"', content, fixed = TRUE))
-  expect_equal(length(gregexpr(".simComparePlotMeanShift(", content,
-    fixed = TRUE)[[1]]), 3L)
+})
+
+test_that("figure loop combines several extra columns in one heading", {
+  env <- .compare_plot_env()
+  dir <- tempfile("compare-fig-")
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  data <- tidyr::expand_grid(
+    method = c("stimgate", "tailgate"), mean_pos_setting = "high",
+    mismatch_type = c("sd_inflation", "mean_shift_all"), n_cell = c(100, 1000),
+    mismatch_val = c(0, 1)
+  ) |>
+    dplyr::mutate(value = seq_len(dplyr::n()))
+  out <- utils::capture.output(
+    env$.simCompareFigureLoop(
+      data,
+      make_plot = function(d) {
+        ggplot2::ggplot(d, ggplot2::aes(mismatch_val, value, colour = method)) +
+          ggplot2::geom_line()
+      },
+      dir = dir,
+      file_fn = function(pos, extra) {
+        paste0(extra$mismatch_type, "_", extra$n_cell, ".png")
+      },
+      extra_col = c("mismatch_type", "n_cell"),
+      extra_heading = function(extra) {
+        paste0(extra$mismatch_type, "; cells: ", extra$n_cell)
+      },
+      height = 6, level = 4L
+    )
+  )
+  expect_true(any(out == "###### mean_shift_all; cells: 100"))
+  expect_true(file.exists(file.path(dir, "no_tailgate", "sd_inflation_1000.png")))
 })
 
 test_that(".simCompareFreqBsGrid writes the bandwidth-style progress summary", {
