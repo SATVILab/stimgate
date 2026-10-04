@@ -8,16 +8,16 @@ script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 project_root=$(cd -- "$script_dir/../.." &> /dev/null && pwd)
 
 scripts=(
-  # "dev-1-sim-trans.sh"
-  # "dev-2a-stim-bw-freq_bs-global.sh"
+  "dev-1-sim-trans.sh"
+  "dev-2a-stim-bw-freq_bs-global.sh"
   "dev-2b-stim-bias_uns-freq_bs.sh"
-  # "dev-3-sim-bw-est-base.sh"
-  # "dev-4-sim-bw-est-norm.sh"
+  "dev-3-sim-bw-est-base.sh"
+  "dev-4-sim-bw-est-norm.sh"
   # "dev-5-sim-bw-est-adaptive.sh"
   # "dev-6-sim-bw-freq_bs-adaptive.sh"
-  # "dev-7-sim-compare-freq_bs.sh"
-  # "dev-8-sim-compare-freq_bs-batch.sh"
-  # "dev-9-real-compare-acs-cytof.sh"
+  "dev-7-sim-compare-freq_bs.sh"
+  "dev-8-sim-compare-freq_bs-batch.sh"
+  "dev-9-real-compare-acs-cytof.sh"
 )
 
 # With arguments, submit only those analysis IDs or launcher filenames.
