@@ -109,6 +109,15 @@
   .debug("Getting gate stats for a batch") # nolint
   .debug("indBatch: ", paste0(indBatch, collapse = "-")) # nolint
 
+  if (combn && !filterOtherCytPos) {
+    return(.getStatsBatchCombn(
+      indBatch = indBatch, batch = batch, .data = .data, popGate = popGate,
+      gateTbl = gateTbl, gateName = gateName, chnl = chnl,
+      combnMatList = combnMatList, cytCombnVecList = cytCombnVecList,
+      gateTypeCytPosCalc = gateTypeCytPosCalc, pathProject = pathProject
+    ))
+  }
+
   exList <- .getExList(
     .data = .data,
     indBatch = indBatch,
@@ -119,220 +128,191 @@
   )
 
   purrr::map_df(gateName, function(gn) {
-    .getStatsBatchGn(
-      gn = gn,
-      exList = exList,
-      gateTbl = gateTbl,
-      chnl = chnl,
-      filterOtherCytPos = filterOtherCytPos,
-      gateTypeCytPosFilter = gateTypeCytPosFilter,
-      gateTypeCytPosCalc = gateTypeCytPosCalc,
-      combn = combn,
-      combnMatList = combnMatList,
-      cytCombnVecList = cytCombnVecList,
-      indBatch = indBatch
-    )
-  })
-}
-
-#' @keywords internal
-.getStatsBatchGn <- function(
-  gn,
-  exList,
-  gateTbl,
-  chnl,
-  filterOtherCytPos,
-  gateTypeCytPosFilter,
-  gateTypeCytPosCalc,
-  combn,
-  combnMatList,
-  cytCombnVecList,
-  indBatch
-) {
-  .debug("gate name: ", gn) # nolint
-  gateTblGn <- gateTbl |> dplyr::filter(gateName == gn) # nolint
-  if (filterOtherCytPos || !combn) {
-    statTblGn <- .getStatsBatchGnFilterOrNonCombn(
+    .debug("gate name: ", gn) # nolint
+    .getStatsBatchGnFilterOrNonCombn(
       exList = exList,
       indBatch = indBatch,
-      gateTblGn = gateTblGn,
+      gateTblGn = gateTbl |> dplyr::filter(gateName == gn), # nolint
       gn = gn,
       chnl = chnl,
       filterOtherCytPos = filterOtherCytPos,
       gateTypeCytPosFilter = gateTypeCytPosFilter
     )
-    return(statTblGn)
-  }
-
-  .getStatsBatchGnCombnLoopInd(
-    exList = exList,
-    gateTblGn = gateTblGn,
-    gn = gn,
-    chnl = chnl,
-    combnMatList = combnMatList,
-    cytCombnVecList = cytCombnVecList,
-    gateTypeCytPosCalc = gateTypeCytPosCalc
-  )
-}
-
-#' @keywords internal
-.getStatsBatchGnCombnLoopInd <- function(
-  exList,
-  gateTblGn,
-  gn,
-  chnl,
-  combnMatList,
-  cytCombnVecList,
-  gateTypeCytPosCalc
-) {
-  exListStim <- exList[-1]
-  exUns <- exList[[1]]
-  nCellUns <- nrow(exUns) # nolint
-
-  purrr::map_df(seq_along(exListStim), function(i) {
-    .debug("i: ", i) # nolint
-
-    ex <- exListStim[[i]]
-
-    gateTblGnInd <- gateTblGn |>
-      dplyr::filter(
-        ind == attr(ex, "ind") # nolint
-      )
-
-    # The unstimulated cells are classified using the gates belonging
-    # to the corresponding stimulated condition.
-    gateTblGnIndUns <- gateTblGnInd |>
-      dplyr::mutate(
-        ind = attr(exUns, "ind")
-      )
-
-    # Calculate context-dependent positivity once for the stimulated sample.
-    posByChnlStim <- .getPosIndByChnl(
-      ex = ex,
-      gateTbl = gateTblGnInd,
-      chnl = chnl,
-      gateTypeCytPos = gateTypeCytPosCalc
-    )
-
-    # And once for the corresponding unstimulated sample.
-    posByChnlUns <- .getPosIndByChnl(
-      ex = exUns,
-      gateTbl = gateTblGnIndUns,
-      chnl = chnl,
-      gateTypeCytPos = gateTypeCytPosCalc
-    )
-
-    combnTbl <- purrr::map_df(
-      names(combnMatList),
-      function(j) {
-        .getStatsBatchGnCombn(
-          j = j,
-          ex = ex,
-          exUns = exUns,
-          gateTblGnInd = gateTblGnInd,
-          gn = gn,
-          chnl = chnl,
-          combnMatList = combnMatList,
-          cytCombnVecList = cytCombnVecList,
-          gateTypeCytPosCalc = gateTypeCytPosCalc,
-          posByChnlStim = posByChnlStim,
-          posByChnlUns = posByChnlUns
-        )
-      }
-    ) |>
-      dplyr::mutate(
-        nCellStim = nrow(ex),
-        nCellUns = .env$nCellUns # nolint
-      )
-
-    combnTbl |>
-      .getStatsBatchGnCombnNeg(chnl)
   })
 }
 
-
 #' @keywords internal
-.getStatsBatchGnCombn <- function(
-  j,
-  ex,
-  exUns,
-  gateTblGnInd,
-  gn,
+.getStatsBatchCombn <- function(
+  indBatch,
+  batch,
+  .data,
+  popGate,
+  gateTbl,
+  gateName,
   chnl,
   combnMatList,
   cytCombnVecList,
   gateTypeCytPosCalc,
-  posByChnlStim,
-  posByChnlUns
+  pathProject
 ) {
-  .debug("number of cytokines positive: ", j) # nolint
-
-  combnMat <- combnMatList[[j]]
-  cytCombn <- cytCombnVecList[[j]]
-
-  statTblGnInd <- tibble::tibble(
-    ind = attr(ex, "ind"),
-    gateName = gn,
-    cytCombn = cytCombn,
-    countStim = NA_integer_,
-    nCellStim = NA_integer_,
-    countUns = NA_integer_,
-    nCellUns = NA_integer_
-  )
-
-  for (i in seq_len(nrow(statTblGnInd))) {
-    .debug("i: ", i) # nolint
-
-    chnlPos <- chnl[
-      combnMat[i, , drop = TRUE]
-    ]
-
-    chnlNeg <- chnl[
-      setdiff(
-        seq_along(chnl),
-        combnMat[i, , drop = TRUE]
-      )
-    ]
-
-    statTblGnInd[i, "countStim"] <- sum(
-      .getPosIndCytCombn(
-        ex = ex,
-        gateTbl = gateTblGnInd,
-        chnlPos = chnlPos,
-        chnlNeg = chnlNeg,
-        gateTypeCytPos = gateTypeCytPosCalc,
-        posByChnl = posByChnlStim
-      )
-    )
-
-    statTblGnInd[i, "countUns"] <- sum(
-      .getPosIndCytCombn(
-        ex = exUns,
-        gateTbl = gateTblGnInd,
-        chnlPos = chnlPos,
-        chnlNeg = chnlNeg,
-        gateTypeCytPos = gateTypeCytPosCalc,
-        posByChnl = posByChnlUns
-      )
-    )
+  if (length(chnl) > 30L) {
+    stop("Combination statistics support at most 30 channels.")
   }
+  # Preserve combination-size order, then the original combn() row order.
+  bitIndex <- unlist(lapply(combnMatList, function(mat) {
+    as.integer(rowSums(2^(mat - 1L)))
+  }), use.names = FALSE)
+  cytCombn <- c(
+    unlist(cytCombnVecList, use.names = FALSE),
+    paste0(chnl, "~-~", collapse = "")
+  )
+  bitIndex <- c(bitIndex, 0L)
+  # The old batch loader obtained tube sizes from the gated expression channels.
+  chnlUns <- if (nrow(gateTbl) > 0L) unique(gateTbl$chnl) else chnl[[1]]
+  nCellChnl <- chnlUns[[1]]
+  exUns <- NULL
 
-  statTblGnInd
+  purrr::map_df(gateName, function(gn) {
+    .debug("gate name: ", gn)
+    gateTblGn <- gateTbl |> dplyr::filter(gateName == gn) # nolint
+    purrr::map_df(seq_along(indBatch[-1]), function(i) {
+      .debug("i: ", i)
+      ind <- indBatch[[i + 1L]]
+      gates <- gateTblGn |> dplyr::filter(.data$ind == .env$ind)
+      stim <- .getStatsCombnTube(
+        .data, ind, indBatch[[1]], batch, popGate, pathProject,
+        chnl, nCellChnl, gates, gateTypeCytPosCalc, combnMatList, bitIndex
+      )
+      # Retain one raw unstim tube's required double-expression channels per
+      # batch, avoiding repeated disk reads for each stim sample and gate name.
+      # Stim tubes stay streamed; memory remains below the old whole-batch load.
+      if (is.null(exUns)) {
+        exUns <<- .getEx(
+          .data = if (is.null(.data)) NULL else .data[[indBatch[[1]]]],
+          pop = popGate, chnlCut = chnlUns, ind = indBatch[[1]],
+          indUns = indBatch[[1]], batch = batch, pathProject = pathProject
+        )
+      }
+      uns <- .getStatsCombnTube(
+        .data, indBatch[[1]], indBatch[[1]], batch, popGate, pathProject,
+        chnl, nCellChnl, gates, gateTypeCytPosCalc, combnMatList, bitIndex,
+        exTube = exUns
+      )
+      tibble::tibble(
+        ind = as.character(ind), gateName = gn, cytCombn = cytCombn,
+        countStim = stim$count, nCellStim = stim$n,
+        countUns = uns$count, nCellUns = uns$n
+      )
+    })
+  })
 }
 
 #' @keywords internal
-.getStatsBatchGnCombnNeg <- function(.data, chnl) {
-  allNegRow <- .data |>
-    dplyr::mutate(cytCombn = paste0(chnl, "~-~", collapse = "")) |>
-    dplyr::group_by(ind, cytCombn, gateName) |>
-    dplyr::summarise(
-      countStim = nCellStim[[1]] - sum(countStim),
-      nCellStim = nCellStim[[1]],
-      countUns = nCellUns[[1]] - sum(countUns),
-      nCellUns = nCellUns[[1]],
-      .groups = "drop"
+.getStatsCombnTube <- function(
+  .data,
+  ind,
+  indUns,
+  batch,
+  popGate,
+  pathProject,
+  chnl,
+  nCellChnl,
+  gateTbl,
+  gateTypeCytPos,
+  combnMatList,
+  bitIndex,
+  exTube = NULL
+) {
+  gateTypeCytPos <- match.arg(gateTypeCytPos, c("base", "cyt"))
+  .readChnl <- function(chnlCurr) {
+    if (!is.null(exTube)) {
+      return(exTube[, chnlCurr, drop = FALSE])
+    }
+    .getEx(
+      .data = if (is.null(.data)) NULL else .data[[ind]],
+      pop = popGate, chnlCut = chnlCurr, ind = ind, indUns = indUns,
+      batch = batch, pathProject = pathProject
     )
-  .data |> dplyr::bind_rows(allNegRow)
+  }
+  firstChnl <- c(chnl[chnl %in% gateTbl$chnl], nCellChnl)[[1]]
+  exFirst <- if (is.null(exTube)) .readChnl(firstChnl) else NULL
+  n <- if (is.null(exTube)) nrow(exFirst) else nrow(exTube)
+  if (nrow(gateTbl) == 0L) {
+    return(list(count = rep(NA_integer_, length(bitIndex)), n = n))
+  }
+
+  posCache <- NULL
+  code <- integer(n)
+  hasNa <- logical(length(chnl))
+  # Keep logical comparisons for cyt+ context. Base comparisons are discarded
+  # after adding their bits and rebuilt only if the NA fallback is needed.
+  # Discard streamed double expression immediately after comparison.
+  for (k in seq_along(chnl)) {
+    ex <- if (chnl[[k]] %in% gateTbl$chnl) {
+      if (!is.null(exFirst) && chnl[[k]] == firstChnl) {
+        exFirst
+      } else {
+        .readChnl(chnl[[k]])
+      }
+    } else {
+      tibble::tibble(.rows = n)
+    }
+    if (chnl[[k]] == firstChnl) {
+      exFirst <- NULL
+    }
+    posCache <- .getPosIndCache(ex, gateTbl, chnl[[k]], posCache)
+    if (gateTypeCytPos == "base") {
+      hasNa[[k]] <- anyNA(posCache$base[[chnl[[k]]]])
+      code <- code + as.integer(posCache$base[[chnl[[k]]]]) *
+        bitwShiftL(1L, k - 1L)
+      posCache <- NULL
+    }
+    rm(ex)
+  }
+  # Only nrow(ex) is used when the logical cache is already complete.
+  ex <- tibble::tibble(.rows = n)
+  posByChnl <- NULL
+  if (gateTypeCytPos == "base" && any(hasNa)) {
+    for (chnlCurr in chnl) {
+      exCurr <- if (chnlCurr %in% gateTbl$chnl) {
+        .readChnl(chnlCurr)
+      } else {
+        ex
+      }
+      posCache <- .getPosIndCache(exCurr, gateTbl, chnlCurr, posCache)
+      rm(exCurr)
+    }
+  }
+  if (gateTypeCytPos == "cyt" || any(hasNa)) {
+    posByChnl <- .getPosIndByChnl(
+      ex, gateTbl, chnl, gateTypeCytPos, posCache
+    )
+  }
+  if (any(vapply(posByChnl, anyNA, logical(1)))) {
+    .debug("Combination statistics: using NA-preserving Reduce fallback")
+    # Logical AND/OR can resolve some NA cells to FALSE. Tabulation cannot
+    # reproduce that per-combination behaviour, so use the original helper.
+    count <- unlist(lapply(combnMatList, function(mat) {
+      vapply(seq_len(nrow(mat)), function(i) {
+        chnlPos <- chnl[mat[i, , drop = TRUE]]
+        as.integer(sum(.getPosIndCytCombn(
+          ex = ex, gateTbl = gateTbl, chnlPos = chnlPos,
+          chnlNeg = setdiff(chnl, chnlPos), gateTypeCytPos = gateTypeCytPos,
+          posByChnl = posByChnl
+        )))
+      }, integer(1))
+    }), use.names = FALSE)
+    return(list(count = c(count, as.integer(n - sum(count))), n = n))
+  }
+  if (gateTypeCytPos == "cyt") {
+    for (k in seq_along(chnl)) {
+      code <- code + as.integer(posByChnl[[chnl[[k]]]]) *
+        bitwShiftL(1L, k - 1L)
+    }
+  }
+  rm(posCache, posByChnl, ex)
+  count <- tabulate(code + 1L, nbins = 2^length(chnl))
+  list(count = count[bitIndex + 1L], n = n)
 }
 
 #' @keywords internal
