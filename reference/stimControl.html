@@ -50,7 +50,7 @@ set only the options you need to change.</p>
 <span>  excMin <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  cpMin <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  bwMtd <span class="op">=</span> <span class="st">"hpi1"</span>,</span>
-<span>  bwScope <span class="op">=</span> <span class="st">"cytokine"</span>,</span>
+<span>  bwScope <span class="op">=</span> <span class="st">"sample"</span>,</span>
 <span>  bwAdj <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  bwMin <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  bwMax <span class="op">=</span> <span class="st">"auto"</span>,</span>
@@ -137,7 +137,7 @@ and uses cluster medians from about 100 tubes (at least one per cluster);
 datasets use all tubes. Shared estimates exclude tubes below <code>minCell</code>.
 Each pair uses the smaller tube bandwidth. Inspect <code>bwShared</code> and, for
 clusters, <code>bwSharedTbl</code> with <code><a href="stimgateMetaReadSettingsChnls.html">stimgateMetaReadSettingsChnls()</a></code>. Ignored
-with fixed <code>bw</code> or adaptive bandwidths. Default: "cytokine".</p></dd>
+with fixed <code>bw</code> or adaptive bandwidths. Default: "sample".</p></dd>
 
 
 <dt id="arg-bwadj">bwAdj<a class="anchor" aria-label="anchor" href="#arg-bwadj"></a></dt>
