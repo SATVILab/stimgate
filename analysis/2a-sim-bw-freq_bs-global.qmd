@@ -39,6 +39,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 analysis_qmd <- "analysis/2a-sim-bw-freq_bs-global.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
@@ -86,7 +87,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "global")
-analysis_semantics_version <- "global-bw-freq-v4"
+analysis_semantics_version <- "global-bw-freq-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -130,8 +131,8 @@ We will need to vary over more response probabilities, however, and of course ne
 
 Regarding the bandwidths themselves, as the `gamma` scenario is estimating such low bandwidths, we're going to have to start low.
 
-We should probably allow varying amounts of intra-sample variation between the stimulated and unstimulated conditions.
-But for now, let's just have two levels - no variation, slight variation.
+We could allow varying amounts of intra-sample variation between the stimulated and unstimulated conditions.
+For now, the stimulated and unstimulated conditions are simulated without any such variation (no condition perturbation).
 
 Let's keep moderate background at 0.2.
 
@@ -161,10 +162,10 @@ prob_response_vec <- c(
   1 / 2
 )[c(2, 4, 6, 8, 10, 16)]
 mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
-transformation_vec <- c("gaussian", "gamma", "skew")
+transformation_vec <- c("gaussian", "skew", "gamma")
 mean_pos_vec <- sort(unique(mean_pos_settings_tbl$mean_pos))
 sample_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
-condition_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1:2]
+condition_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
 cluster_perturbation_sd_vec <- c(0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2)[1]
 background_relative_to_response_vec <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.001)[4]
 n_cell_uns_relative_to_stim_vec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)[4]
@@ -272,15 +273,14 @@ sim_grid <- tidyr::expand_grid(
 # shuffling and chunking, so each row keeps its seed in every run.
 sim_grid_full <- sim_grid
 
-# Quick mode keeps cells, response, bandwidth, transformation and condition perturbation.
+# Quick mode keeps cells, response, bandwidth and transformation.
 # Smallest grid covering every figure; dev takes precedence.
 if (analysis_quick) {
   sim_grid <- sim_grid |>
     dplyr::filter(
       n_cell %in% c(1e3, 5e3),
       prob_response %in% c(0.002, 0.02),
-      bw %in% c(0.05, 0.1, 0.25, 0.5, 0.75),
-      condition_perturbation_sd %in% c(0, 0.5)
+      bw %in% c(0.05, 0.1, 0.25, 0.5, 0.75)
     )
 } else {
   sim_grid <- sim_grid |>
@@ -527,29 +527,31 @@ if (isTRUE(run_plots)) {
 
 ### Median response frequency
 
-Okay, so we varied the transformation, the prob_response, the n_cell, the mean_pos_setting, the bw, as well as now bias_uns.
+Okay, so we varied the transformation, the response probability, the number of cells, the mean position and the bandwidth, as well as the unstimulated-sample bias.
 
 So, let's plot it perhaps how we did it for the bandwidth estimators? We have one line for each bandwidth, and then the x-axis as the number of cells, and the y-axis as the estimated background-subtracted frequency.
-We'll do one plot for each of the mean_pos_settings.
-Then, we have transformation along the x-axis, as usual, and the response probability along the y-axis (ito the facet, i.e. response probability gives you the row, transformation gives you the column).
+There is one figure for each mean position and bias setting, under its own heading.
+Columns of panels separate transformations (Gaussian, Skew, Gamma) and rows the response probability.
 Okay, and we can plot the median estimated background-subtracted frequency.
 Let's leave error bars out for now.
 
 Dashed lines show the simulated truth; compare the curves with those lines.
 
 ```{r}
-#| label: fig-frequency-median
-#| fig-cap: "Median final response frequencies across cell counts."
-#| fig-width: 8
-#| fig-height: 12
+#| label: frequency-median
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 8.7
 #| echo: false
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
     for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
       plot_tbl <- bw_tbl_results_summary |>
         dplyr::filter(
           mean_pos_setting == !!mean_pos_setting_curr,
-          bias_uns_setting == !!bias_uns_setting_curr
+          bias_uns_setting == !!bias_uns_setting_curr,
+          condition_perturbation_sd == 0
         )
 
       if (nrow(plot_tbl) == 0L) {
@@ -563,36 +565,38 @@ if (isTRUE(run_plots)) {
       }
 
       col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw)
+      plot_tbl <- plot_tbl |>
+        dplyr::mutate(
+          transformation = .analysis_trans_factor(transformation),
+          bw_lab = factor(format_bw_lab(bw), levels = names(col_vec_bw_curr))
+        )
 
       p <- ggplot(
         plot_tbl,
-        aes(x = n_cell, y = propRespEst_median, color = factor(bw))
+        aes(x = n_cell, y = propRespEst_median, color = bw_lab)
       ) +
-        geom_line() +
+        geom_line(alpha = 0.75) +
         geom_hline(
           mapping = aes(yintercept = propRespTruth_median),
           linetype = "dashed",
           color = "black"
         ) +
-        geom_point() +
-        scale_x_log10() +
+        geom_point(alpha = 0.75) +
+        scale_x_log10(
+          breaks = sort(unique(plot_tbl$n_cell)),
+          labels = .analysis_label_number
+        ) +
+        scale_y_continuous(labels = .analysis_label_percent) +
         facet_grid(
-          rows = vars(prob_response, condition_perturbation_sd),
-          cols = vars(transformation), scales = "free_y"
+          rows = vars(prob_response),
+          cols = vars(transformation), scales = "free_y",
+          labeller = labeller(
+            prob_response = .analysis_labeller_percent("Response: ")
+          )
         ) +
-        cowplot::theme_cowplot() +
-        cowplot::background_grid(major = "xy") +
-        theme(
-          panel.background = element_rect(fill = "white", color = NA),
-          plot.background = element_rect(fill = "white", color = NA),
-          legend.position = "bottom"
-        ) +
+        .analysis_theme() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
         labs(
-          title = paste0(
-            "Estimated background-subtracted frequency vs number of cells ",
-            "(mean_pos_setting = ", mean_pos_setting_curr,
-            ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-          ),
           x = "Number of cells (log scale)",
           y = "Estimated background-subtracted frequency (median)",
           color = "Bandwidth"
@@ -612,15 +616,9 @@ if (isTRUE(run_plots)) {
           ".png"
         )
       )
-      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-      ggsave(
-        filename = path_p,
-        plot = p,
-        width = 18,
-        height = 30,
-        units = "cm"
-      )
-      print(p)
+      .analysis_save_fig(p, path_p, height = 22)
+      .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
+      .analysis_print_fig(p)
     }
   }
 }
@@ -628,101 +626,127 @@ if (isTRUE(run_plots)) {
 
 ### Sample response frequencies
 
-Okay, now, let's do the same plot using the individual final sample-level frequency estimates rather than the scenario median. We'll treat the number of cells as a categorical variable and dodge the bandwidths.
+Okay, now, let's do the same plot using the individual final sample-level frequency estimates rather than the scenario median. We'll treat the number of cells as a categorical variable and place the bandwidths side by side at each cell count.
 
-Compare the spread of estimates with the dashed truth lines.
+Each bandwidth's estimates are drawn as a sina plot (points spread sideways in proportion to how many estimates lie at that height). The black point and vertical bar on top mark the median and the interquartile range (25th to 75th percentile). Compare the spread of estimates with the dashed truth lines.
 
 ```{r}
-#| label: fig-frequency-samples
-#| fig-cap: "Final sample-level response frequencies across cell counts."
-#| fig-width: 8
-#| fig-height: 12
+#| label: frequency-samples
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 8.7
 #| echo: false
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
     for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
-      for (condition_perturbation_sd_curr in unique(bw_tbl_results_raw$condition_perturbation_sd)) {
-        plot_tbl <- bw_tbl_results_raw |>
-          dplyr::filter(
-            mean_pos_setting == !!mean_pos_setting_curr,
-            bias_uns_setting == !!bias_uns_setting_curr,
-            condition_perturbation_sd == !!condition_perturbation_sd_curr
-          )
-
-        if (nrow(plot_tbl) == 0L) {
-          warning(
-            "No raw estimate results for mean_pos_setting = ",
-            mean_pos_setting_curr,
-            ", bias_uns_setting = ",
-            bias_uns_setting_curr
-          )
-          next
-        }
-
-        col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw)
-
-        p <- ggplot(
-          plot_tbl,
-          aes(x = factor(n_cell), y = propRespEst, color = factor(bw))
-        ) +
-          ggforce::geom_sina(position = "dodge") +
-          geom_hline(
-            mapping = aes(yintercept = propRespTruth),
-            linetype = "dashed",
-            color = "black"
-          ) +
-          facet_wrap(transformation ~ prob_response, scales = "free") +
-          cowplot::theme_cowplot() +
-          cowplot::background_grid(major = "xy") +
-          theme(
-            panel.background = element_rect(fill = "white", color = NA),
-            plot.background = element_rect(fill = "white", color = NA),
-            legend.position = "bottom"
-          ) +
-          expand_limits(y = 0) +
-          labs(
-            title = paste0(
-              "Estimated background-subtracted frequency vs number of cells ",
-              "(mean_pos_setting = ", mean_pos_setting_curr,
-              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-            ),
-            x = "Number of cells",
-            y = "Estimated background-subtracted frequency",
-            colour = "Bandwidth"
-          ) +
-          scale_colour_manual(
-            values = col_vec_bw_curr
-          )
-
-        path_p <- file.path(
-          .analysis_fig_dir(
-            c(
-              fig_key, "est", "raw",
-              paste0(
-                "condition_perturbation_sd_",
-                condition_perturbation_sd_curr
-              )
-            ),
-            root_dir
-          ),
-          paste0(
-            "actual_freq_vs_n_cell_mean_pos_setting_",
-            mean_pos_setting_curr,
-            "_bias_uns_",
-            bias_uns_setting_curr,
-            ".png"
-          )
+      plot_tbl <- bw_tbl_results_raw |>
+        dplyr::filter(
+          mean_pos_setting == !!mean_pos_setting_curr,
+          bias_uns_setting == !!bias_uns_setting_curr,
+          condition_perturbation_sd == 0
         )
-        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-        ggsave(
-          filename = path_p,
-          plot = p,
-          width = 18,
-          height = 30,
-          units = "cm"
+
+      if (nrow(plot_tbl) == 0L) {
+        warning(
+          "No raw estimate results for mean_pos_setting = ",
+          mean_pos_setting_curr,
+          ", bias_uns_setting = ",
+          bias_uns_setting_curr
         )
-        print(p)
+        next
       }
+
+      col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw)
+      n_cell_levels <- sort(unique(plot_tbl$n_cell))
+      # Place the bandwidths side by side within each cell count: each
+      # transformation's bandwidths share 90% of the space between cell counts.
+      plot_tbl <- plot_tbl |>
+        dplyr::group_by(transformation) |>
+        dplyr::mutate(
+          bw_idx = match(bw, sort(unique(bw))),
+          n_bw = dplyr::n_distinct(bw)
+        ) |>
+        dplyr::ungroup() |>
+        dplyr::mutate(
+          transformation = .analysis_trans_factor(transformation),
+          bw_lab = factor(format_bw_lab(bw), levels = names(col_vec_bw_curr)),
+          x_pos = match(n_cell, n_cell_levels) +
+            0.9 * ((bw_idx - 0.5) / n_bw - 0.5),
+          x_group = interaction(n_cell, bw)
+        )
+      truth_tbl <- plot_tbl |>
+        dplyr::distinct(transformation, prob_response, propRespTruth)
+
+      p <- ggplot(
+        plot_tbl,
+        aes(x = x_pos, y = propRespEst, color = bw_lab, group = x_group)
+      ) +
+        # Each sina stays within its bandwidth's slot.
+        ggforce::geom_sina(
+          maxwidth = 0.8 * 0.9 / max(plot_tbl$n_bw),
+          size = 0.4,
+          alpha = 0.5
+        ) +
+        stat_summary(
+          fun = function(z) stats::median(z, na.rm = TRUE),
+          fun.min = function(z) stats::quantile(z, 0.25, na.rm = TRUE),
+          fun.max = function(z) stats::quantile(z, 0.75, na.rm = TRUE),
+          geom = "pointrange",
+          colour = "black",
+          size = 0.1,
+          linewidth = 0.4
+        ) +
+        geom_hline(
+          data = truth_tbl,
+          mapping = aes(yintercept = propRespTruth),
+          linetype = "dashed",
+          color = "black"
+        ) +
+        scale_x_continuous(
+          breaks = seq_along(n_cell_levels),
+          labels = .analysis_label_number(n_cell_levels),
+          minor_breaks = NULL
+        ) +
+        scale_y_continuous(labels = .analysis_label_percent) +
+        facet_grid(
+          rows = vars(prob_response),
+          cols = vars(transformation),
+          scales = "free_y",
+          labeller = labeller(
+            prob_response = .analysis_labeller_percent("Response: ")
+          )
+        ) +
+        .analysis_theme() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+        expand_limits(y = 0) +
+        labs(
+          x = "Number of cells",
+          y = "Estimated background-subtracted frequency",
+          colour = "Bandwidth"
+        ) +
+        scale_colour_manual(
+          values = col_vec_bw_curr
+        ) +
+        guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1)))
+
+      path_p <- file.path(
+        .analysis_fig_dir(
+          # Only condition perturbation 0 is simulated; the folder name is kept.
+          c(fig_key, "est", "raw", "condition_perturbation_sd_0"),
+          root_dir
+        ),
+        paste0(
+          "actual_freq_vs_n_cell_mean_pos_setting_",
+          mean_pos_setting_curr,
+          "_bias_uns_",
+          bias_uns_setting_curr,
+          ".png"
+        )
+      )
+      .analysis_save_fig(p, path_p, height = 22)
+      .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
+      .analysis_print_fig(p)
     }
   }
 }
@@ -734,10 +758,12 @@ if (isTRUE(run_plots)) {
   bw_tbl_results_raw |>
     dplyr::filter(
       mean_pos_setting == "high",
-      bias_uns_setting == "low"
+      bias_uns_setting == "low",
+      condition_perturbation_sd == 0
     ) |>
+    dplyr::mutate(transformation = .analysis_trans_factor(transformation)) |>
     dplyr::group_by(
-      transformation, n_cell, bw, condition_perturbation_sd, prob_response
+      transformation, n_cell, bw, prob_response
     ) |>
     dplyr::summarise(
       perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
@@ -749,47 +775,43 @@ if (isTRUE(run_plots)) {
       perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
       .groups = "drop"
     ) |>
-    dplyr::arrange(transformation, condition_perturbation_sd, n_cell, bw) |>
+    dplyr::arrange(transformation, n_cell, bw) |>
     print(width = Inf, n = Inf)
 }
 ```
 
 ### Relative error averaged over cell counts
 
-So, no large errors as long as we don't put any perturbation (well, 0.5 is quite large).
-
 The table above is hard to read.
 Can't we, for example, compare the average error to the mean?
 
-Relative error is plotted against bandwidth. Scenario-level median, 95th-percentile and maximum errors are averaged equally over cell counts and response probabilities, using low bias and no condition perturbation; facets separate transformations.
+Relative error is plotted against bandwidth, with one figure per mean position. Scenario-level median, 95th-percentile and maximum errors are averaged equally over cell counts and response probabilities, using low bias; panels separate transformations.
 
 ```{r}
-#| label: fig-relative-error-averaged-n-cell
-#| fig-cap: "Relative errors averaged over cell counts and response probabilities."
-#| fig-width: 10
-#| fig-height: 6
+#| label: relative-error-averaged-n-cell
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 4.7
 #| echo: false
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
     err_rel_tbl <- bw_tbl_results_raw |>
       dplyr::filter(
         mean_pos_setting == mean_pos_setting_curr,
-        bias_uns_setting == "low"
+        bias_uns_setting == "low",
+        condition_perturbation_sd == 0
       ) |>
-      dplyr::group_by(transformation, n_cell, bw, condition_perturbation_sd, prob_response) |>
+      dplyr::group_by(transformation, n_cell, bw, prob_response) |>
       dplyr::summarise(
         err_rel_median = median(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE),
         err_rel_95 = quantile(abs(propRespEst - propRespTruth) / propRespTruth, probs = 0.95, na.rm = TRUE),
         err_rel_max = max(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE),
         .groups = "drop"
       )
-    if (!any(err_rel_tbl$condition_perturbation_sd == 0)) {
+    if (nrow(err_rel_tbl) == 0L) {
       next
     }
     err_tbl_rel_mean_trans_bw <- err_rel_tbl |>
-      dplyr::filter(
-        condition_perturbation_sd == 0
-      ) |>
       dplyr::group_by(transformation, bw) |>
       dplyr::summarise(
         err_rel_median_avg = mean(err_rel_median, na.rm = TRUE),
@@ -809,60 +831,41 @@ if (isTRUE(run_plots)) {
         cols = dplyr::starts_with("err_rel_"),
         names_to = "err_type",
         values_to = "err_value"
-      )
-    p <- ggplot(
-      plot_tbl_error_rel_mean_trans_bw |>
-        dplyr::mutate(
-          err_type = factor(
-            err_type,
-            levels = c(
-              "err_rel_median_avg",
-              "err_rel_95_avg",
-              "err_rel_max_avg"
-            )
-          ),
-          transformation = factor(
-            transformation,
-            levels = c(
-              "gaussian",
-              "skew",
-              "gamma"
-            )
+      ) |>
+      dplyr::mutate(
+        err_type = factor(
+          err_type,
+          levels = c(
+            "err_rel_median_avg",
+            "err_rel_95_avg",
+            "err_rel_max_avg"
           )
         ),
-      aes(x = factor(bw), y = err_value, color = err_type, group = err_type)
+        transformation = .analysis_trans_factor(transformation),
+        bw_fct = factor(
+          .analysis_label_number(bw),
+          levels = .analysis_label_number(sort(unique(bw)))
+        )
+      )
+    p <- ggplot(
+      plot_tbl_error_rel_mean_trans_bw,
+      aes(x = bw_fct, y = err_value, color = err_type, group = err_type)
     ) +
-      geom_line() +
-      geom_point() +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy") +
-      theme(
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA),
-        legend.position = "bottom"
-      ) +
+      geom_line(alpha = 0.75) +
+      geom_point(alpha = 0.75) +
+      .analysis_theme() +
       labs(
         x = "Bandwidth",
         y = "Relative error (%)",
         color = "Error type"
       ) +
       expand_limits(y = 0) +
-      facet_wrap(
-        ~transformation,
-        scales = "free",
-        labeller = labeller(
-          transformation = c(
-            gamma = "Gamma",
-            gaussian = "Gaussian",
-            skew = "Skew"
-          )
-        )
-      ) +
+      facet_wrap(~transformation, scales = "free") +
       scale_colour_manual(
         values = c(
-          "err_rel_median_avg" = "#0072B2",
-          "err_rel_95_avg" = "#56B4E9",
-          "err_rel_max_avg" = "#8C8DBA"
+          "err_rel_median_avg" = .analysis_stat_colours[["median"]],
+          "err_rel_95_avg" = .analysis_stat_colours[["upper"]],
+          "err_rel_max_avg" = .analysis_stat_colours[["max"]]
         ),
         labels = c(
           "err_rel_median_avg" = "Median",
@@ -871,17 +874,7 @@ if (isTRUE(run_plots)) {
         )
       ) +
       theme(
-        strip.background = element_rect(fill = "white", color = "black")
-      ) +
-      theme(
-        axis.text.x = element_text(angle = 90, hjust = 1, size = 10)
-      ) +
-      theme(
-        panel.background = element_rect(fill = "white", colour = NA),
-        plot.background = element_rect(fill = "white", colour = NA),
-        legend.position = "bottom",
-        legend.justification = "center",
-        legend.box.just = "center"
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
       )
     path_p <- file.path(
       .analysis_fig_dir(c(fig_key, "relative_error_averaged"), root_dir),
@@ -889,14 +882,9 @@ if (isTRUE(run_plots)) {
         "avg_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf"
       )
     )
-    ggsave(
-      filename = path_p,
-      plot = p,
-      width = 18,
-      height = 12,
-      units = "cm"
-    )
-    print(p)
+    .analysis_save_fig(p, path_p, height = 12)
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
+    .analysis_print_fig(p)
   }
 }
 ```
@@ -908,10 +896,10 @@ The following plots retain each cell count separately. As above, median,
 scenario before averaging those summaries over response probabilities.
 
 ```{r}
-#| label: fig-relative-error-by-n-cell
-#| fig-cap: "Relative errors at each cell count, averaged over response probabilities."
-#| fig-width: 10
-#| fig-height: 6
+#| label: relative-error-by-n-cell
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 4.7
 #| echo: false
 if (isTRUE(run_plots)) {
   err_rel_by_cell <- bw_tbl_results_raw |>
@@ -941,27 +929,33 @@ if (isTRUE(run_plots)) {
     tidyr::pivot_longer(
       cols = dplyr::starts_with("err_rel_"),
       names_to = "err_type", values_to = "err_value"
-    )
+    ) |>
+    dplyr::mutate(transformation = .analysis_trans_factor(transformation))
 
   for (mean_pos_setting_curr in unique(err_rel_by_cell$mean_pos_setting)) {
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
     for (n_cell_curr in sort(unique(err_rel_by_cell$n_cell))) {
       plot_tbl <- err_rel_by_cell |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr)
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
+        dplyr::mutate(bw_fct = factor(
+          .analysis_label_number(bw),
+          levels = .analysis_label_number(sort(unique(bw)))
+        ))
       if (nrow(plot_tbl) == 0L) next
       p <- ggplot(
         plot_tbl,
-        aes(x = factor(bw), y = err_value, colour = err_type, group = err_type)
+        aes(x = bw_fct, y = err_value, colour = err_type, group = err_type)
       ) +
-        geom_line() +
-        geom_point() +
+        geom_line(alpha = 0.75) +
+        geom_point(alpha = 0.75) +
         facet_wrap(~transformation, scales = "free") +
-        cowplot::theme_cowplot() +
-        cowplot::background_grid(major = "xy") +
+        .analysis_theme() +
         expand_limits(y = 0) +
         scale_colour_manual(
           values = c(
-            err_rel_median_avg = "#0072B2", err_rel_95_avg = "#56B4E9",
-            err_rel_max_avg = "#8C8DBA"
+            err_rel_median_avg = .analysis_stat_colours[["median"]],
+            err_rel_95_avg = .analysis_stat_colours[["upper"]],
+            err_rel_max_avg = .analysis_stat_colours[["max"]]
           ),
           labels = c(
             err_rel_median_avg = "Median", err_rel_95_avg = "95th percentile",
@@ -969,15 +963,9 @@ if (isTRUE(run_plots)) {
           )
         ) +
         labs(
-          title = paste0(
-            "Cells = ", n_cell_curr, "; mean position = ", mean_pos_setting_curr
-          ),
           x = "Bandwidth", y = "Relative error (%)", colour = "Error type"
         ) +
-        theme(
-          legend.position = "bottom",
-          axis.text.x = element_text(angle = 90, hjust = 1)
-        )
+        theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
       path_p <- file.path(
         .analysis_fig_dir(
           c(
@@ -991,9 +979,9 @@ if (isTRUE(run_plots)) {
           "_n_cell_", n_cell_curr, ".pdf"
         )
       )
-      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-      ggsave(path_p, p, width = 18, height = 12, units = "cm")
-      print(p)
+      .analysis_save_fig(p, path_p, height = 12)
+      .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
+      .analysis_print_fig(p)
     }
   }
 }
@@ -1001,13 +989,13 @@ if (isTRUE(run_plots)) {
 
 ### Over- and under-estimates averaged over cell counts
 
-The overall plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: over-estimates (teal) sit above zero and under-estimates (brown) below, with darker shades for larger statistics. Within each scenario, the median, 95th-percentile and maximum error sizes are calculated separately for over- and under-estimates; these are then averaged equally over cell counts and response probabilities, using low bias and no condition perturbation. Line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Facets separate transformations.
+The overall plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: over-estimates (teal) sit above zero and under-estimates (brown) below, with darker shades for larger statistics. Within each scenario, the median, 95th-percentile and maximum error sizes are calculated separately for over- and under-estimates; these are then averaged equally over cell counts and response probabilities, using low bias. Line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Panels separate transformations, and there is one figure per mean position.
 
 ```{r}
-#| label: fig-signed-error-averaged-n-cell
-#| fig-cap: "Over- and under-estimates averaged over cell counts and response probabilities."
-#| fig-width: 10
-#| fig-height: 6
+#| label: signed-error-averaged-n-cell
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 5.5
 #| echo: false
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
@@ -1035,14 +1023,9 @@ if (isTRUE(run_plots)) {
         "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf"
       )
     )
-    ggsave(
-      filename = path_p,
-      plot = p,
-      width = 18,
-      height = 14,
-      units = "cm"
-    )
-    print(p)
+    .analysis_save_fig(p, path_p, height = 14)
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
+    .analysis_print_fig(p)
   }
 }
 ```
@@ -1052,10 +1035,10 @@ if (isTRUE(run_plots)) {
 As above, but keeping each cell count separate and averaging only over response probabilities.
 
 ```{r}
-#| label: fig-signed-error-by-n-cell
-#| fig-cap: "Over- and under-estimates at each cell count, averaged over response probabilities."
-#| fig-width: 10
-#| fig-height: 6
+#| label: signed-error-by-n-cell
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 5.5
 #| echo: false
 if (isTRUE(run_plots)) {
   err_rel_by_cell <- bw_tbl_results_raw |>
@@ -1069,16 +1052,12 @@ if (isTRUE(run_plots)) {
     )
 
   for (mean_pos_setting_curr in unique(err_rel_by_cell$mean_pos_setting)) {
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
     for (n_cell_curr in sort(unique(err_rel_by_cell$n_cell))) {
       plot_tbl <- err_rel_by_cell |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr)
       if (nrow(plot_tbl) == 0L) next
-      p <- .simBandwidthGlobalSignedErrorPlot(
-        plot_tbl,
-        title = paste0(
-          "Cells = ", n_cell_curr, "; mean position = ", mean_pos_setting_curr
-        )
-      )
+      p <- .simBandwidthGlobalSignedErrorPlot(plot_tbl)
       path_p <- file.path(
         .analysis_fig_dir(
           c(
@@ -1092,9 +1071,9 @@ if (isTRUE(run_plots)) {
           "_n_cell_", n_cell_curr, ".pdf"
         )
       )
-      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-      ggsave(path_p, p, width = 18, height = 14, units = "cm")
-      print(p)
+      .analysis_save_fig(p, path_p, height = 14)
+      .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
+      .analysis_print_fig(p)
     }
   }
 }
@@ -1107,10 +1086,10 @@ separate response probabilities, so large over-estimates can be traced to
 particular (for example, low) response probabilities.
 
 ```{r}
-#| label: fig-signed-error-by-n-cell-prob
-#| fig-cap: "Over- and under-estimates at each cell count and response probability."
-#| fig-width: 10
-#| fig-height: 16
+#| label: signed-error-by-n-cell-prob
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 8.7
 #| echo: false
 if (isTRUE(run_plots)) {
   err_rel_by_cell_prob <- bw_tbl_results_raw |>
@@ -1121,19 +1100,14 @@ if (isTRUE(run_plots)) {
     )
 
   for (mean_pos_setting_curr in unique(err_rel_by_cell_prob$mean_pos_setting)) {
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
     for (n_cell_curr in sort(unique(err_rel_by_cell_prob$n_cell))) {
       plot_tbl <- err_rel_by_cell_prob |>
         dplyr::filter(
           mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr
         )
       if (nrow(plot_tbl) == 0L) next
-      p <- .simBandwidthGlobalSignedErrorPlot(
-        plot_tbl,
-        title = paste0(
-          "Cells = ", n_cell_curr, "; mean position = ", mean_pos_setting_curr
-        ),
-        by_prob = TRUE
-      )
+      p <- .simBandwidthGlobalSignedErrorPlot(plot_tbl, by_prob = TRUE)
       path_p <- file.path(
         .analysis_fig_dir(
           c(
@@ -1147,10 +1121,10 @@ if (isTRUE(run_plots)) {
           "_n_cell_", n_cell_curr, "_by_prob.pdf"
         )
       )
-      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
       n_prob <- length(unique(plot_tbl$prob_response))
-      ggsave(path_p, p, width = 18, height = 6 + 4 * n_prob, units = "cm", limitsize = FALSE)
-      print(p)
+      .analysis_save_fig(p, path_p, height = min(22, 6 + 3 * n_prob))
+      .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
+      .analysis_print_fig(p)
     }
   }
 }
@@ -1165,6 +1139,7 @@ if (isTRUE(run_plots)) {
       mean_pos_setting == "high",
       bias_uns_setting == "low"
     ) |>
+    dplyr::mutate(transformation = .analysis_trans_factor(transformation)) |>
     dplyr::group_by(transformation, n_cell, bw, sample_perturbation_sd, condition_perturbation_sd, cluster_perturbation_sd) |>
     dplyr::summarise(
       perc_g_005 = sum(propRespEst > 0.005, na.rm = TRUE) / dplyr::n() * 1e2,
@@ -1208,24 +1183,25 @@ if (isTRUE(run_plots)) {
 ### Median expression thresholds
 
 Now we plot the median thresholds themselves, as vertical lines with one
-line type per bandwidth.
-We facet with the rows being the probability of a response and the columns
-the transformation, and write one file per mean_pos_setting and
-bias_uns_setting.
+line type per bandwidth, with one figure per mean position and bias setting.
+Rows of panels are the response probability and number of cells, and
+columns the transformation.
 
 ```{r}
-#| label: fig-threshold-median
-#| fig-cap: "Median expression thresholds across simulation scenarios."
-#| fig-width: 10
-#| fig-height: 12
+#| label: threshold-median
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 11.8
 #| echo: false
 if (isTRUE(run_plots)) {
   for (mean_pos_setting in unique(bw_tbl_results_summary$mean_pos_setting)) {
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting), 4)
     for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
       threshold_tbl_curr <- bw_tbl_results_summary |>
         dplyr::filter(
           mean_pos_setting == !!mean_pos_setting,
-          bias_uns_setting == !!bias_uns_setting_curr
+          bias_uns_setting == !!bias_uns_setting_curr,
+          condition_perturbation_sd == 0
         )
 
       if (nrow(threshold_tbl_curr) == 0L) {
@@ -1245,28 +1221,25 @@ if (isTRUE(run_plots)) {
           bw_lab = factor(
             format_bw_lab(.data$bw),
             levels = bw_scale$levels
-          )
+          ),
+          transformation = .analysis_trans_factor(.data$transformation)
         )
 
       p <- ggplot() +
         facet_grid(
           rows = vars(.data$prob_response, .data$n_cell),
-          cols = vars(.data$transformation, .data$condition_perturbation_sd),
-          scales = "free_x"
+          cols = vars(.data$transformation),
+          scales = "free_x",
+          labeller = labeller(
+            prob_response = .analysis_labeller_percent("Response: "),
+            n_cell = function(x) {
+              paste0("Cells: ", .analysis_label_number(as.numeric(x)))
+            }
+          )
         ) +
-        cowplot::theme_cowplot() +
-        cowplot::background_grid(major = "xy", minor = "none") +
-        theme(
-          panel.background = element_rect(fill = "white", colour = NA),
-          plot.background = element_rect(fill = "white", colour = NA),
-          legend.position = "bottom",
-          strip.text.y = element_text(angle = 0)
-        ) +
+        .analysis_theme() +
+        theme(strip.text.y = element_text(angle = 0)) +
         labs(
-          title = paste0(
-            "Median thresholds (mean_pos_setting = ", mean_pos_setting,
-            ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-          ),
           x = "Marker expression",
           y = NULL,
           linetype = "Bandwidth"
@@ -1277,7 +1250,8 @@ if (isTRUE(run_plots)) {
             xintercept = threshold_median, linetype = bw_lab,
             group = seq_len(nrow(threshold_tbl_curr))
           ),
-          linewidth = 0.45
+          linewidth = 0.45,
+          alpha = 0.75
         ) +
         scale_linetype_manual(
           values = bw_scale$values,
@@ -1294,15 +1268,10 @@ if (isTRUE(run_plots)) {
           ".png"
         )
       )
-      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-      ggsave(
-        filename = path_p,
-        plot = p,
-        width = 18,
-        height = 30,
-        units = "cm"
-      )
-      print(p)
+      # One row of panels per response probability and cell count.
+      .analysis_save_fig(p, path_p, height = 30, allow_tall = TRUE)
+      .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
+      .analysis_print_fig(p)
     }
   }
 }
@@ -1312,28 +1281,31 @@ if (isTRUE(run_plots)) {
 
 Okay, now let's do the same, but we will make also one plot for each bandwidth setting, and show the actual thresholds all the samples and iterations.
 
-So, now, we loop not just over mean_pos_settings, but also over the bandwidths.
+So, now, we loop not just over mean positions, but also over the bandwidths; headings give the mean position, bandwidth and bias setting.
 
 Solid and dashed lines mark the median and interquartile limits within each scenario.
 
 ```{r}
-#| label: fig-threshold-samples
-#| fig-cap: "Sample expression thresholds with scenario medians and interquartile limits."
-#| fig-width: 10
-#| fig-height: 12
+#| label: threshold-samples
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 11.8
 #| echo: false
 if (isTRUE(run_plots)) {
   for (mean_pos_setting in unique(bw_tbl_results_raw$mean_pos_setting)) {
-    for (bw_curr in unique(bw_tbl_results_raw$bw)) {
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting), 4)
+    for (bw_curr in sort(unique(bw_tbl_results_raw$bw))) {
       if (!is.finite(bw_curr)) {
         next
       }
+      .analysis_heading(paste0("Bandwidth: ", .analysis_label_number(bw_curr)), 5)
       for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
         threshold_tbl_curr <- bw_tbl_results_raw |>
           dplyr::filter(
             mean_pos_setting == !!mean_pos_setting,
             bw == !!bw_curr,
-            bias_uns_setting == !!bias_uns_setting_curr
+            bias_uns_setting == !!bias_uns_setting_curr,
+            condition_perturbation_sd == 0
           )
 
         if (nrow(threshold_tbl_curr) == 0L) {
@@ -1371,28 +1343,26 @@ if (isTRUE(run_plots)) {
                 "median",
                 "iqr_upper"
               )
-            )
+            ),
+            transformation = .analysis_trans_factor(transformation)
           )
+        threshold_tbl_curr <- threshold_tbl_curr |>
+          dplyr::mutate(transformation = .analysis_trans_factor(transformation))
         p <- ggplot() +
           facet_grid(
             rows = vars(.data$prob_response, .data$n_cell),
-            cols = vars(.data$transformation, .data$condition_perturbation_sd),
-            scales = "free_x"
+            cols = vars(.data$transformation),
+            scales = "free_x",
+            labeller = labeller(
+              prob_response = .analysis_labeller_percent("Response: "),
+              n_cell = function(x) {
+                paste0("Cells: ", .analysis_label_number(as.numeric(x)))
+              }
+            )
           ) +
-          cowplot::theme_cowplot() +
-          cowplot::background_grid(major = "xy", minor = "none") +
-          theme(
-            panel.background = element_rect(fill = "white", colour = NA),
-            plot.background = element_rect(fill = "white", colour = NA),
-            legend.position = "bottom",
-            strip.text.y = element_text(angle = 0)
-          ) +
+          .analysis_theme() +
+          theme(strip.text.y = element_text(angle = 0)) +
           labs(
-            title = paste0(
-              "Raw thresholds (mean_pos_setting = ", mean_pos_setting,
-              ", bw = ", signif(bw_curr, 6),
-              ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-            ),
             x = "Marker expression",
             y = NULL
           ) +
@@ -1439,15 +1409,10 @@ if (isTRUE(run_plots)) {
             ".png"
           )
         )
-        dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-        ggsave(
-          filename = path_p,
-          plot = p,
-          width = 18,
-          height = 30,
-          units = "cm"
-        )
-        print(p)
+        # One row of panels per response probability and cell count.
+        .analysis_save_fig(p, path_p, height = 30, allow_tall = TRUE)
+        .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 6)
+        .analysis_print_fig(p)
       }
     }
   }
@@ -1500,6 +1465,7 @@ if (isTRUE(run_plots)) {
     ) |>
     dplyr::arrange(bias_uns_setting, mean_rank) |>
     dplyr::filter(!transformation == "gamma") |>
+    dplyr::mutate(transformation = .analysis_trans_factor(transformation)) |>
     knitr::kable()
 }
 ```

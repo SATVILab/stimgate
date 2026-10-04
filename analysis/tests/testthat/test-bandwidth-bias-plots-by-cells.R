@@ -7,12 +7,16 @@
   parse(text = lines[seq.int(start + 1L, end - 1L)])
 }
 
+# Evaluate a plot chunk, returning the Markdown it writes (headings).
+.bandwidth_cell_plot_eval <- function(code, env) {
+  paste(utils::capture.output(eval(code, env)), collapse = "\n")
+}
+
 .bandwidth_cell_plot_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
-  source(
-    file.path(testthat::test_path(), "../../../scripts/r/sim-bandwidth-analysis-plot.R"),
-    local = env
-  )
+  for (fn in c("analysis-plot-style.R", "sim-bandwidth-analysis-plot.R")) {
+    source(file.path(testthat::test_path(), "../../../scripts/r", fn), local = env)
+  }
   env$root_dir <- tempfile("cell-plots-")
   env$analysis_key <- "bias_uns"
   env$run_plots <- TRUE
@@ -25,9 +29,12 @@
   env$.analysis_cache_dir <- function(parts, path_root) {
     file.path(path_root, paste(parts, collapse = "/"))
   }
-  env$ggsave <- function(filename, plot, ...) {
-    env$saved[[length(env$saved) + 1L]] <- list(path = filename, plot = plot)
-    invisible(NULL)
+  env$.analysis_save_fig <- function(plot, path, height = 12, width = 16,
+                                     allow_tall = FALSE) {
+    env$saved[[length(env$saved) + 1L]] <- list(
+      path = path, plot = plot, height = height
+    )
+    invisible(path)
   }
   env$print <- function(x, ...) {
     env$printed[[length(env$printed) + 1L]] <- x
@@ -57,9 +64,11 @@ test_that("2a per-cell plots average scenario errors before combining probabilit
       )
     )
   code <- .bandwidth_cell_plot_chunk(
-    "2a-sim-bw-freq_bs-global.qmd", "fig-relative-error-by-n-cell"
+    "2a-sim-bw-freq_bs-global.qmd", "relative-error-by-n-cell"
   )
-  eval(code, env)
+  md <- .bandwidth_cell_plot_eval(code, env)
+  expect_match(md, "#### Mean position: low", fixed = TRUE)
+  expect_match(md, "##### Cells: 1,000", fixed = TRUE)
   expect_length(env$saved, 4L)
   expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
@@ -68,7 +77,9 @@ test_that("2a per-cell plots average scenario errors before combining probabilit
     data <- saved$plot$data
     expect_length(unique(data$n_cell), 1L)
     expect_length(unique(data$mean_pos_setting), 1L)
-    expect_setequal(unique(data$transformation), c("gaussian", "gamma"))
+    # Transformations are labelled and ordered Gaussian, Skew, Gamma.
+    expect_identical(levels(data$transformation)[1:3], c("Gaussian", "Skew", "Gamma"))
+    expect_setequal(as.character(unique(data$transformation)), c("Gaussian", "Gamma"))
     expect_true(grepl(paste0("_n_cell_", data$n_cell[1L], ".pdf"), saved$path, fixed = TRUE))
     expected <- c(err_rel_median_avg = 550, err_rel_95_avg = 595, err_rel_max_avg = 600)
     multiplier <- if (data$n_cell[1L] == 100) 1 else 2
@@ -80,7 +91,7 @@ test_that("2a per-cell plots average scenario errors before combining probabilit
   env$saved <- list()
   env$printed <- list()
   env$run_plots <- FALSE
-  eval(code, env)
+  expect_identical(.bandwidth_cell_plot_eval(code, env), "")
   expect_length(env$saved, 0L)
   expect_length(env$printed, 0L)
   expect_false(dir.exists(env$root_dir))
@@ -106,12 +117,19 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
       max_abs_rel_error = 3 * median_abs_rel_error
     )
   average_code <- .bandwidth_cell_plot_chunk(
-    "2b-sim-bias_uns-freq_bs.qmd", "fig-relative-error-averaged-n-cell"
+    "2b-sim-bias_uns-freq_bs.qmd", "relative-error-averaged-n-cell"
   )
   cell_code <- .bandwidth_cell_plot_chunk(
-    "2b-sim-bias_uns-freq_bs.qmd", "fig-relative-error-by-n-cell"
+    "2b-sim-bias_uns-freq_bs.qmd", "relative-error-by-n-cell"
   )
-  eval(average_code, env)
+  md <- .bandwidth_cell_plot_eval(average_code, env)
+  # Gaussian comes before Gamma; headings nest one level per loop.
+  expect_lt(
+    regexpr("#### Transformation: Gaussian", md, fixed = TRUE),
+    regexpr("#### Transformation: Gamma", md, fixed = TRUE)
+  )
+  expect_match(md, "##### Mean position: low", fixed = TRUE)
+  expect_match(md, "###### Response probability: 1%", fixed = TRUE)
   expect_length(env$saved, 8L)
   for (saved in env$saved) {
     data <- saved$plot$data
@@ -122,7 +140,8 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
           data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
     )
   }
-  eval(cell_code, env)
+  md <- .bandwidth_cell_plot_eval(cell_code, env)
+  expect_match(md, "###### Response probability: 10%; cells: 1,000", fixed = TRUE)
   expect_length(env$saved, 24L)
   expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
@@ -139,6 +158,10 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
     expect_named(saved$plot$facet$params$cols, "mismatch_label")
     expect_setequal(as.character(data$statistic), names(stat_mult))
     expect_identical(rlang::as_label(saved$plot$mapping$group), "interaction(bw, bias_uns_basis)")
+    # Bandwidth is the only colour legend; there is no bias-scale line type.
+    expect_identical(rlang::as_label(saved$plot$mapping$colour), "bw_lab")
+    expect_null(saved$plot$mapping$linetype)
+    expect_null(saved$plot$labels$title)
     if ("n_cell" %in% names(data)) {
       expect_length(unique(data$n_cell), 1L)
       expect_true(grepl(paste0("_n_cell_", data$n_cell[1L], ".pdf"), saved$path, fixed = TRUE))
@@ -182,9 +205,10 @@ test_that("2a per-cell signed-error plots average scenario errors by direction",
       )
     )
   code <- .bandwidth_cell_plot_chunk(
-    "2a-sim-bw-freq_bs-global.qmd", "fig-signed-error-by-n-cell"
+    "2a-sim-bw-freq_bs-global.qmd", "signed-error-by-n-cell"
   )
-  eval(code, env)
+  md <- .bandwidth_cell_plot_eval(code, env)
+  expect_match(md, "##### Cells: 100", fixed = TRUE)
   expect_length(env$saved, 4L)
   expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
@@ -193,7 +217,7 @@ test_that("2a per-cell signed-error plots average scenario errors by direction",
     data <- saved$plot$data
     expect_length(unique(data$n_cell), 1L)
     expect_length(unique(data$mean_pos_setting), 1L)
-    expect_setequal(unique(data$transformation), c("gaussian", "gamma"))
+    expect_setequal(as.character(unique(data$transformation)), c("Gaussian", "Gamma"))
     expect_true(grepl(paste0("_n_cell_", data$n_cell[1L], ".pdf"), saved$path, fixed = TRUE))
     # All errors are over-estimates, so no under-estimate curves are drawn.
     expect_true(all(data$direction == "over"))
@@ -242,12 +266,12 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     ) |>
     dplyr::select(-sign)
   average_code <- .bandwidth_cell_plot_chunk(
-    "2b-sim-bias_uns-freq_bs.qmd", "fig-signed-error-averaged-n-cell"
+    "2b-sim-bias_uns-freq_bs.qmd", "signed-error-averaged-n-cell"
   )
   cell_code <- .bandwidth_cell_plot_chunk(
-    "2b-sim-bias_uns-freq_bs.qmd", "fig-signed-error-by-n-cell"
+    "2b-sim-bias_uns-freq_bs.qmd", "signed-error-by-n-cell"
   )
-  eval(average_code, env)
+  .bandwidth_cell_plot_eval(average_code, env)
   expect_length(env$saved, 8L)
   for (saved in env$saved) {
     data <- saved$plot$data
@@ -261,7 +285,7 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
           data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
     )
   }
-  eval(cell_code, env)
+  .bandwidth_cell_plot_eval(cell_code, env)
   expect_length(env$saved, 24L)
   expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
@@ -281,6 +305,9 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
       rlang::as_label(saved$plot$mapping$group),
       "interaction(bw, bias_uns_basis, direction)"
     )
+    expect_null(saved$plot$mapping$linetype)
+    # Errors above +1500% are drawn at the cap; `value` keeps the actual error.
+    expect_equal(data$value_shown, pmin(data$value, 15))
     if ("n_cell" %in% names(data)) {
       expect_length(unique(data$n_cell), 1L)
       expect_true(grepl(paste0("_n_cell_", data$n_cell[1L], ".pdf"), saved$path, fixed = TRUE))
@@ -391,8 +418,9 @@ test_that("2b leaves negative-width results out of figures and tables", {
   eval(.bandwidth_cell_plot_chunk(
     "2b-sim-bias_uns-freq_bs.qmd", "bias-uns-hide-negative-width"
   ), env)
-  expect_identical(env$bias_uns_results_raw$bias_uns_multiplier, c(0, 1))
-  expect_identical(env$bias_uns_results_summary$bias_uns_multiplier, c(0, 1))
+  # Negative-width results and bias multiplier 0 are both left out.
+  expect_identical(env$bias_uns_results_raw$bias_uns_multiplier, 1)
+  expect_identical(env$bias_uns_results_summary$bias_uns_multiplier, 1)
 })
 
 test_that("signed-error plots draw dashed lines whose weight varies", {
@@ -438,5 +466,76 @@ test_that("signed-error plots draw dashed lines whose weight varies", {
       ),
     title = "test"
   )
+  expect_no_error(ggplot2::ggplotGrob(bias))
+  # Titles are not drawn; headings in the QMD carry that information.
+  expect_null(bias$labels$title)
+})
+
+test_that("signed relative errors above +1500% are drawn at a labelled cap", {
+  env <- .bandwidth_cell_plot_env()
+  expect_equal(env$.simBandwidthSignedErrorCap, 15)
+  expect_equal(
+    env$.simBandwidthSignedErrorSquish(c(-1, 3, 15, 40, NA)),
+    c(-1, 3, 15, 15, NA)
+  )
+  expect_true(env$.simBandwidthSignedErrorIsCapped(c(1, 40, NA)))
+  expect_false(env$.simBandwidthSignedErrorIsCapped(c(1, 15, NA)))
+  # Without a cap the +1500% tick is a plain doubling; with it, "at least".
+  expect_identical(
+    env$.simBandwidthSignedErrorLabel(c(-1, 1, 7, 15)),
+    c("-100% (0x)", "+100% (2x)", "+700% (8x)", "+1500% (16x)")
+  )
+  expect_identical(
+    env$.simBandwidthSignedErrorLabel(c(-1, 0.5, 1, 15), cap = 15),
+    c("-100% (0x)", "+50%", "+100% (2x)", "\u2265 +1500% (16x)")
+  )
+  # The cap is one of the breaks whenever the data reach it.
+  expect_true(15 %in% env$.simBandwidthSignedErrorTrans()$breaks(c(-1, 15)))
+
+  sides <- tidyr::expand_grid(
+    bw = c(0.1, 0.2), direction = c("over", "under")
+  ) |>
+    dplyr::mutate(
+      transformation = "gaussian",
+      prop = 0.5,
+      over = direction == "over",
+      median = ifelse(over, 2, -0.5),
+      q95 = ifelse(over, 10, -0.8),
+      max = ifelse(over, 40, -0.9)
+    ) |>
+    dplyr::select(-over)
+  global <- env$.simBandwidthGlobalSignedErrorPlot(sides)
+  expect_equal(max(global$data$err_value), 40)
+  expect_equal(max(global$data$err_value_shown), 15)
+  expect_identical(rlang::as_label(global$mapping$y), "err_value_shown")
+  y_labels <- global$scales$get_scales("y")$labels
+  expect_identical(y_labels(c(1, 15)), c("+100% (2x)", "\u2265 +1500% (16x)"))
+  expect_no_error(ggplot2::ggplotGrob(global))
+
+  # Without any capped value, the top tick keeps its plain label.
+  uncapped <- env$.simBandwidthGlobalSignedErrorPlot(
+    dplyr::mutate(sides, max = pmin(max, 15))
+  )
+  expect_identical(
+    uncapped$scales$get_scales("y")$labels(15), "+1500% (16x)"
+  )
+
+  bias <- env$.simBandwidthBiasSignedErrorPlot(
+    sides |>
+      dplyr::mutate(
+        bias_uns_multiplier = bw, bw = 0.1, mismatch_label = "mean shift 0",
+        bias_uns_basis = "bandwidth", q90 = q95
+      )
+  )
+  expect_equal(max(bias$data$value_shown), 15)
+  expect_identical(
+    bias$scales$get_scales("y")$labels(15), "\u2265 +1500% (16x)"
+  )
+  # Over/under lines and points are slightly transparent.
+  alphas <- vapply(bias$layers, function(l) {
+    if (is.null(l$aes_params$alpha)) NA_real_ else l$aes_params$alpha
+  }, numeric(1))
+  expect_true(all(alphas[!is.na(alphas)] == 0.75))
+  expect_gte(sum(!is.na(alphas)), 2L)
   expect_no_error(ggplot2::ggplotGrob(bias))
 })
