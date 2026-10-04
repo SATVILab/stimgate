@@ -94,6 +94,7 @@ if (isTRUE(run_simulations)) {
 for (fn in c(
   "sim-misc.R",
   "sim-bandwidth.R",
+  "sim-bandwidth-analysis-io.R",
   "sim-compare-freq_bs.R"
 )) {
   source(file.path(scripts_r_dir, fn))
@@ -457,6 +458,8 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     workers = n_workers,
     dirCache = dir_output,
     pathProgress = path_progress_file,
+    dirJobs = run_ctx$chunk_jobs_dir,
+    progressHeading = "BATCH MISMATCH COMPARISON SIMULATION PROGRESS",
     resume = TRUE,
     retryErrors = TRUE,
     sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) {

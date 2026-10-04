@@ -1326,3 +1326,62 @@ test_that("mean-shift plotting shares statistics without writing files", {
   expect_equal(length(gregexpr(".simComparePlotMeanShift(", content,
     fixed = TRUE)[[1]]), 3L)
 })
+
+test_that(".simCompareFreqBsGrid writes the bandwidth-style progress summary", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(
+    file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-io.R"),
+    local = env
+  )
+  source(script_comp, local = env)
+
+  tmp_dir <- tempfile("compare-progress-")
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+  dir_cache <- file.path(tmp_dir, "output")
+  dir_jobs <- file.path(tmp_dir, "jobs")
+  path_progress <- file.path(tmp_dir, "progress.txt")
+
+  grid <- data.frame(
+    sim_id = c(1L, 2L),
+    transformation = c("gaussian", "gaussian"),
+    mean_pos = c(5, 5),
+    prob_response = c(0.1, 0.1),
+    n_cell = c(100, 100),
+    bias_uns = c(0, 0),
+    bw = c(0.1, 0.1),
+    sample_perturbation_sd = c(0, 0),
+    condition_perturbation_sd = c(0, 0),
+    cluster_perturbation_sd = c(0, 0),
+    background_relative_to_response = c(0.1, 0.1),
+    n_cell_uns_relative_to_stim = c(1, 1),
+    stringsAsFactors = FALSE
+  )
+  run_grid <- function() {
+    env$.simCompareFreqBsGrid(
+      sim_grid = grid, nSample = 1, nIter = 1, nMarker = 1,
+      nCondition = 2, nCluster = 2, probExact = TRUE,
+      tailgateAutoTol = TRUE, dirCache = dir_cache,
+      pathProgress = path_progress, dirJobs = dir_jobs,
+      progressHeading = "TEST PROGRESS",
+      resume = TRUE, parallel = FALSE, progress = FALSE
+    )
+  }
+
+  run_grid()
+  expect_setequal(list.files(dir_jobs), c("completed-1", "completed-2"))
+  summary_lines <- readLines(path_progress, warn = FALSE)
+  expect_true(any(grepl("TEST PROGRESS", summary_lines, fixed = TRUE)))
+  expect_true(any(grepl("Total Simulations  : 2", summary_lines, fixed = TRUE)))
+  expect_true(any(grepl("Completed (Success): 2", summary_lines, fixed = TRUE)))
+  expect_false(any(grepl("^Running: ", summary_lines)))
+
+  # Resumed rows keep their completed markers and leave none running.
+  run_grid()
+  expect_setequal(list.files(dir_jobs), c("completed-1", "completed-2"))
+  expect_true(any(grepl(
+    "In Progress        : 0", readLines(path_progress, warn = FALSE),
+    fixed = TRUE
+  )))
+})
