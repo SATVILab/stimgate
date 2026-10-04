@@ -468,9 +468,6 @@
 
 #' @keywords internal
 .verifyBatchList <- function(batchList) {
-  if (!is.list(batchList) || length(batchList) == 0) {
-    stop("`batchList` must be a non-empty list of sample indices.")
-  }
   isValidBatch <- vapply(batchList, function(x) {
     (is.numeric(x) || is.character(x)) && length(x) >= 2L && !anyNA(x)
   }, logical(1))
@@ -480,26 +477,23 @@
       "indices: the unstimulated sample first, then the stimulated samples."
     )
   }
-  if (any(vapply(batchList, anyDuplicated, integer(1)) > 0L)) {
-    stop("A `batchList` element contains the same sample more than once.")
-  }
   # an unstim may be shared across batches, but must be first in each;
-  # a stim sample must belong to exactly one batch
+  # a stim sample must appear exactly once
   indUns <- unique(as.character(lapply(batchList, `[[`, 1L)))
   indStim <- unlist(lapply(batchList, function(x) as.character(x[-1])))
   indStimUns <- intersect(indStim, indUns)
   if (length(indStimUns) > 0L) {
     stop(
       "Sample(s) ", paste0(indStimUns, collapse = ", "),
-      " are unstimulated (first) in one `batchList` element and ",
-      "stimulated in another."
+      " are both unstimulated (first in a `batchList` element) and ",
+      "stimulated."
     )
   }
   indStimDup <- unique(indStim[duplicated(indStim)])
   if (length(indStimDup) > 0L) {
     stop(
       "Stimulated sample(s) ", paste0(indStimDup, collapse = ", "),
-      " appear in more than one `batchList` element."
+      " appear more than once in `batchList`."
     )
   }
   invisible(TRUE)

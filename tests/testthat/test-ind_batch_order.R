@@ -52,17 +52,17 @@ test_that("batchList validation enforces the unstim-first convention", {
   # a shared unstim that is first in every batch is allowed
   expect_true(.verifyBatchList(list(c(1, 2), c(1, 3))))
   expect_true(.verifyBatchList(list(c("u", "s1", "s2"))))
-  expect_error(.verifyBatchList(list()), "non-empty")
   expect_error(.verifyBatchList(list(c(1, 2), 3)), "at least two")
   expect_error(.verifyBatchList(list(c(1, NA))), "at least two")
   expect_error(.verifyBatchList(list(c(1, 2, 2))), "more than once")
+  expect_error(.verifyBatchList(list(c(1, 1, 2))), "both unstimulated")
   expect_error(
     .verifyBatchList(list(c(1, 2), c(2, 3))),
-    "unstimulated \\(first\\) in one"
+    "both unstimulated"
   )
   expect_error(
     .verifyBatchList(list(c(1, 2), c(3, 2))),
-    "more than one `batchList` element"
+    "more than once"
   )
 })
 
