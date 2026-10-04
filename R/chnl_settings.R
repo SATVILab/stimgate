@@ -461,7 +461,7 @@
 #'   for projects created by [gateStim()]).
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"))
+#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
 #' saveRDS(list(IFNg = list(bw = 0.1)),
 #'   file.path(pathProject, "metaData", "chnlSettings.rds")
 #' )
@@ -482,7 +482,7 @@ stimgateMetaReadSettingsChnls <- function(pathProject) {
 #' @return A list with names replaced by marker labels; unmatched keys become NA.
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"))
+#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
 #' saveRDS(list(BC1 = list(bw = 0.1)),
 #'   file.path(pathProject, "metaData", "chnlSettings.rds")
 #' )
@@ -504,7 +504,7 @@ stimgateMetaReadSettingsMarkers <- function(pathProject) {
 #' @return A list of settings for the key; an unknown key raises an error.
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"))
+#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
 #' saveRDS(list(IFNg = list(bw = 0.1)),
 #'   file.path(pathProject, "metaData", "chnlSettings.rds")
 #' )
@@ -525,7 +525,7 @@ stimgateMetaReadSettingsChnl <- function(pathProject, chnl) {
 #' @return A list of marker settings; an unknown key raises an error.
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"))
+#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
 #' saveRDS(list(IFNg = list(bw = 0.1)),
 #'   file.path(pathProject, "metaData", "chnlSettings.rds")
 #' )
@@ -549,7 +549,7 @@ stimgateMetaReadSettingsMarker <- function(pathProject, marker) {
 #'   `stimgateMetaReadMarkerLab()`.
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"))
+#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
 #' saveRDS(c(BC1 = "IFNg"), file.path(pathProject, "metaData", "chnlLab.rds"))
 #' stimgateMetaReadChnlLab(pathProject)
 #' stimgateMetaReadMarkerLab(pathProject)
@@ -602,7 +602,7 @@ stimgateMetaReadMarkerLab <- function(pathProject) {
 #' @return A list of sample indices by batch, with unstimulated controls first.
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"))
+#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
 #' saveRDS(list(batch1 = c(1, 2)),
 #'   file.path(pathProject, "metaData", "batchList.rds")
 #' )
