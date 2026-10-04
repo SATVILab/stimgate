@@ -662,13 +662,19 @@ plotting/orchestration code.
 
 Reuse `.gateGetDirs()` for prefixed directory discovery and
 `.getExChnlPathDir()` for saved expression paths, preserving each
-caller’s validation and missing-path handling. Saved expression includes
-unstimulated samples, while final stimulation gate tables omit them.
-Positivity helpers must treat channels with no gate for the current
-sample as all-FALSE, preserving one logical value per cell. Completed
-`chnlSettings.rds` settings are keyed by marker labels, although saved
-expression columns use channel names. Resolve that mapping before
-applying the saved `biasUns`; channels without a saved bias use zero.
+caller’s validation and missing-path handling. The first sample of each
+`batchList` element is its unstimulated sample; no other argument, name
+pattern or rule identifies it. `.verifyBatchList()` requires at least
+one stimulated sample per batch and lets an unstimulated sample be
+shared across batches only if it is first in each; a stimulated sample
+belongs to exactly one batch. Code that needs a sample’s unstim relies
+on these rules. Saved expression includes unstimulated samples, while
+final stimulation gate tables omit them. Positivity helpers must treat
+channels with no gate for the current sample as all-FALSE, preserving
+one logical value per cell. Completed `chnlSettings.rds` settings are
+keyed by marker labels, although saved expression columns use channel
+names. Resolve that mapping before applying the saved `biasUns`;
+channels without a saved bias use zero.
 [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
 clears the run populations’ cached expression and gates at start. It
 warms the expression cache once per sample before settings completion,

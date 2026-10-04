@@ -41,7 +41,9 @@ writeStimFCS(
 
 - indBatchList:
 
-  list. List of indices grouped by batch.
+  list. List of indices grouped by batch, with the unstimulated sample
+  first in each element (as for `batchList` in
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)).
 
 - pathDirSave:
 

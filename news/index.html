@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.12</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.13</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,23 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.13" id="stimgate-09913">stimgate 0.99.13<a class="anchor" aria-label="anchor" href="#stimgate-09913"></a></h2>
+<div class="section level3">
+<h3 id="breaking-changes-0-99-13">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-99-13"></a></h3>
+<ul><li>
+<code><a href="../reference/gateStim.html">gateStim()</a></code> validates <code>batchList</code>: each batch needs its unstimulated sample first and at least one stimulated sample; a shared unstimulated sample must be first in every batch, and a stimulated sample may belong to only one batch.</li>
+<li>
+<code><a href="../reference/getBatchList.html">getBatchList()</a></code> errors when a group has more than one unstimulated sample.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-0-99-13">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-99-13"></a></h3>
+<ul><li>
+<code><a href="../reference/writeStimFCS.html">writeStimFCS()</a></code> matches unstimulated gates to batches by stimulated-sample membership, so indices of different digit widths (e.g. 9 and 10) and stimulated samples without gate rows no longer fail.</li>
+<li>
+<code><a href="../reference/plotStim.html">plotStim()</a></code> reads saved local-FDR bandwidths from stimulated samples, rather than always falling back to <code>"nrd0"</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.12" id="stimgate-09912">stimgate 0.99.12<a class="anchor" aria-label="anchor" href="#stimgate-09912"></a></h2>
 <div class="section level3">

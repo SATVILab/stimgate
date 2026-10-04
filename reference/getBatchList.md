@@ -3,7 +3,8 @@
 Groups sample rows by batch/donor identifiers, screens out samples
 falling below a minimum cell count threshold, and structures the output
 so that the unstimulated control index is always positioned as the first
-element of each batch.
+element of each batch. Groups without an unstimulated sample are
+dropped; a group with more than one unstimulated sample is an error.
 
 ## Usage
 

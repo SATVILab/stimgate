@@ -47,7 +47,10 @@ gateStim(
   correspond to the unstimulated samples for batches 1 and 2,
   respectively. If `batchList` is named, e.g.
   `list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))`, then these names will be
-  used for batch identification.
+  used for batch identification. Each element needs the unstimulated
+  sample and at least one stimulated sample. An unstimulated sample may
+  be shared across batches (first in each), but a stimulated sample may
+  belong to only one batch.
 
 - marker:
 
@@ -190,7 +193,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmpeawdwu/demonstration"
+#> [1] "/tmp/Rtmpk07wSm/demonstration"
 
 # Customise tuning and override the bandwidth for the first marker
 gateStim(
@@ -215,7 +218,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmpeawdwu/custom-gating"
+#> [1] "/tmp/Rtmpk07wSm/custom-gating"
 
 # Use in-memory matrices, with channel names also serving as marker labels
 matrices <- lapply(seq_along(gs), function(i) {
@@ -239,7 +242,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmpeawdwu/matrix-gating"
+#> [1] "/tmp/Rtmpk07wSm/matrix-gating"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {

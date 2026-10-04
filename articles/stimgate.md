@@ -15,12 +15,16 @@ stimulated tubes from the same sample.
 
 The package provides several key functions:
 
-- `stimgate_gate()`: Main function to identify cytokine-positive cells
-  by gating
-- `get_stats()`: Generate statistics from gating results
-- `stimgate_plot()`: Visualize identified gates
-- `stimgate_gate_get()`: Extract gate information
-- `stimgate_fcs_write()`: Write FCS files of cytokine-positive cells
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md):
+  Main function to identify cytokine-positive cells by gating
+- [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md):
+  Get statistics from gating results
+- [`plotStim()`](https://satvilab.github.io/stimgate/reference/plotStim.md):
+  Visualise identified gates
+- [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md):
+  Extract gate information
+- [`writeStimFCS()`](https://satvilab.github.io/stimgate/reference/writeStimFCS.md):
+  Write FCS files of cytokine-positive cells
 
 ### Input formats
 
@@ -44,9 +48,7 @@ StimGate adds no arcsinh or logicle transformation; prepare the desired
 scale before gating. FCS reading uses the defaults of
 [`flowWorkspace::load_cytoset_from_fcs()`](https://rdrr.io/pkg/flowWorkspace/man/load_cytoset_from_fcs.html).
 
-`batchList` accepts indices or sample names, with the unstimulated
-control first. Use the same sample order when supplying data to
-downstream functions.
+Use the same sample order when supplying data to downstream functions.
 
 ``` r
 
@@ -58,30 +60,51 @@ gateStim(
 )
 ```
 
+### Specifying batches
+
+`batchList` tells
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+which samples to compare. Each element is one batch (typically one donor
+or sample) and holds its samples, as indices into `.data` or as sample
+names. **The first sample in each element is the unstimulated sample**;
+the remaining samples are the stimulated samples from the same batch. No
+other argument identifies the unstimulated sample.
+
+``` r
+
+# Sample 3 is the unstimulated sample for donor 1 (stimulated: 1, 2),
+# and sample 6 for donor 2 (stimulated: 4, 5)
+batchList <- list(donor1 = c(3, 1, 2), donor2 = c(6, 4, 5))
+```
+
+Every batch needs an unstimulated sample and at least one stimulated
+sample. An unstimulated sample may be shared by several batches,
+provided it is first in each; a stimulated sample may belong to only one
+batch.
+[`getBatchList()`](https://satvilab.github.io/stimgate/reference/getBatchList.md)
+builds a `batchList` in this order from a table of sample metadata.
+
 ### Basic Usage
 
 ``` r
 
 # Basic gating workflow
-result <- stimgate_gate(
+gateStim(
   pathProject = "/path/to/project",
   .data = gs, # GatingSet object
-  batchList = list(batch1 = 1:10, batch2 = 11:20),
-  marker = list(
-    list(cut = "IL2", tol = 0.5e-8),
-    list(cut = "TNFa", tol = 0.5e-8)
-  )
+  batchList = batchList,
+  marker = c("IL2", "TNFa")
 )
 
 # Get statistics
-stats <- get_stats("/path/to/project")
+stats <- getStimStats("/path/to/project")
 
 # Get gate table
-gates <- get_gate_tbl("/path/to/project")
+gates <- getStimGates("/path/to/project")
 
-# Plot gates
-plots <- stimgate_plot(
-  ind = 1:3,
+# Plot gates for the first batch
+plots <- plotStim(
+  ind = batchList[[1]],
   .data = gs,
   pathProject = "/path/to/project",
   marker = c("IL2", "TNFa")
@@ -124,7 +147,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] stimgate_0.99.12
+#> [1] stimgate_0.99.13
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] gtable_0.3.6        jsonlite_2.0.0      dplyr_1.2.1        
