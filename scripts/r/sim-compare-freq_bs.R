@@ -2818,45 +2818,367 @@
   invisible(isTRUE(.analysis_promote_run(run_ctx)))
 }
 
-# Construct mean-shift degradation plots; callers own output paths and writes.
+# ---------------------------------------------------------------------------
+# Figure helpers for analyses 7 and 8. These need `analysis-plot-style.R` (and,
+# for the signed-error plots, `sim-bandwidth-analysis-plot.R`) sourced first.
+# ---------------------------------------------------------------------------
+
+# Method sets shown for every method-comparison figure. Tailgate performs very
+# poorly without more tuning and squashes the other methods' scale, so each
+# figure is also drawn without it.
+.simCompareMethodSets <- function() {
+  list(
+    all_methods = list(
+      heading = "All methods",
+      methods = c("stimgate", "tailgate", "fbeta")
+    ),
+    no_tailgate = list(
+      heading = "Without Tailgate",
+      methods = c("stimgate", "fbeta")
+    )
+  )
+}
+
+.simCompareMismatchLabels <- c(
+  mean_shift_all = "Shift all cells",
+  mean_shift_negative = "Shift background cells only",
+  sd_inflation = "Increase background spread"
+)
+
+# Print, save and describe one figure per method set, mean position setting
+# and (optionally) a third setting, with a heading for each loop level. Use in
+# a `results: asis` chunk. `level` is the heading level of the method set;
+# mean position headings are one deeper and the optional third loop deeper
+# still. Figures go to `dir/<method set>/<file_fn(pos, extra)>`.
+.simCompareFigureLoop <- function(
+    data,
+    make_plot,
+    dir,
+    file_fn,
+    height,
+    level,
+    extra_col = NULL,
+    extra_heading = function(x) as.character(x),
+    method_col = "method",
+    pos_col = "mean_pos_setting",
+    allow_tall = FALSE) {
+  if (level + 1L + as.integer(!is.null(extra_col)) > 6L) {
+    stop("Figure loop headings would be deeper than level 6.")
+  }
+  sets <- .simCompareMethodSets()
+  for (set_name in names(sets)) {
+    set <- sets[[set_name]]
+    .analysis_heading(set$heading, level)
+    set_data <- data[data[[method_col]] %in% set$methods, , drop = FALSE]
+    for (pos in unique(as.character(data[[pos_col]]))) {
+      .analysis_heading(paste0("Mean position: ", pos), level + 1L)
+      pos_data <- set_data[as.character(set_data[[pos_col]]) == pos, ,
+        drop = FALSE
+      ]
+      extras <- if (is.null(extra_col)) {
+        NA
+      } else {
+        sort(unique(data[[extra_col]][as.character(data[[pos_col]]) == pos]))
+      }
+      for (extra in extras) {
+        curr <- pos_data
+        if (!is.null(extra_col)) {
+          .analysis_heading(extra_heading(extra), level + 2L)
+          curr <- pos_data[pos_data[[extra_col]] == extra, , drop = FALSE]
+        }
+        if (nrow(curr) == 0L) next
+        p <- make_plot(curr)
+        .analysis_save_fig(
+          p, file.path(dir, set_name, file_fn(pos, extra)),
+          height = height, allow_tall = allow_tall
+        )
+        .analysis_print_fig(p)
+      }
+    }
+  }
+  invisible(NULL)
+}
+
+# Error statistic against stimulated cell count, one panel per response
+# frequency and transformation.
+.simComparePlotByCell <- function(
+    data, y, y_label, zero_line = FALSE, free_y = FALSE, percent_y = FALSE) {
+  data$transformation <- .analysis_trans_factor(data$transformation)
+  p <- ggplot2::ggplot(
+    data,
+    ggplot2::aes(x = n_cell, y = .data[[y]], colour = method)
+  )
+  if (zero_line) {
+    p <- p + ggplot2::geom_hline(
+      yintercept = 0, colour = "gray25", linetype = "dashed"
+    )
+  }
+  p +
+    ggplot2::geom_line(alpha = 0.75) +
+    ggplot2::geom_point(alpha = 0.75) +
+    ggplot2::scale_x_log10(
+      breaks = sort(unique(data$n_cell)),
+      labels = .analysis_label_number,
+      guide = ggplot2::guide_axis(angle = 45)
+    ) +
+    ggplot2::scale_y_continuous(
+      labels = if (percent_y) .analysis_label_percent else .analysis_label_number
+    ) +
+    .analysis_scale_method() +
+    ggplot2::facet_grid(
+      prob_response ~ transformation,
+      scales = if (free_y) "free_y" else "fixed",
+      labeller = ggplot2::labeller(
+        prob_response = .analysis_labeller_percent()
+      )
+    ) +
+    ggplot2::labs(
+      x = "Number of stimulated cells", y = y_label, colour = "Method"
+    ) +
+    .analysis_theme()
+}
+
+# Estimated against true background-subtracted frequency.
+.simComparePlotEstVsTruth <- function(data) {
+  data$transformation <- .analysis_trans_factor(data$transformation)
+  top <- max(data$propRespTruth, na.rm = TRUE) * 2
+  ggplot2::ggplot(
+    data,
+    ggplot2::aes(x = propRespTruth, y = propRespEst, colour = method)
+  ) +
+    ggplot2::geom_point(alpha = 0.35, size = 1) +
+    ggplot2::expand_limits(x = c(0, top), y = c(0, top)) +
+    ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    ggplot2::scale_x_continuous(labels = .analysis_label_percent) +
+    ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
+    .analysis_scale_method() +
+    ggplot2::facet_wrap(~transformation) +
+    ggplot2::labs(
+      x = "True background-subtracted response frequency",
+      y = "Estimated background-subtracted response frequency",
+      colour = "Method"
+    ) +
+    .analysis_theme()
+}
+
+# Share of estimates that used a threshold fallback.
+.simComparePlotFallback <- function(data) {
+  .simComparePlotByCell(
+    data, "fallback_rate", "Share of estimates using a threshold fallback",
+    percent_y = TRUE
+  )
+}
+
+# Histograms of finite thresholds by method; `data` has `approach`.
+.simComparePlotThresholdDensity <- function(data) {
+  data$transformation <- .analysis_trans_factor(data$transformation)
+  ggplot2::ggplot(
+    data,
+    ggplot2::aes(
+      x = threshold, y = ggplot2::after_stat(density),
+      fill = approach, colour = approach
+    )
+  ) +
+    ggplot2::geom_histogram(alpha = 0.5, position = "identity", bins = 30) +
+    ggplot2::facet_grid(
+      prob_response ~ transformation, scales = "free",
+      labeller = ggplot2::labeller(
+        prob_response = .analysis_labeller_percent()
+      )
+    ) +
+    ggplot2::scale_x_continuous(labels = .analysis_label_number) +
+    ggplot2::scale_y_continuous(labels = .analysis_label_number) +
+    .analysis_scale_method(aesthetics = c("colour", "fill")) +
+    ggplot2::labs(
+      x = "Threshold", y = "Density", colour = "Method", fill = "Method"
+    ) +
+    .analysis_theme()
+}
+
+# Shared pieces of the analysis 8 mismatch plots.
+.simCompareMismatchScales <- function(x_label) {
+  list(
+    ggplot2::scale_x_continuous(labels = .analysis_label_number),
+    .analysis_scale_method(),
+    ggplot2::labs(x = x_label, colour = "Method"),
+    .analysis_theme()
+  )
+}
+
+.simCompareStripWrap <- function() ggplot2::label_wrap_gen(width = 22)
+
+# Mean-shift degradation plots; callers own output paths and writes.
 .simComparePlotMeanShift <- function(summary_data, statistic, label) {
   ggplot2::ggplot(
     summary_data,
     ggplot2::aes(
       x = mismatch_val,
       y = .data[[statistic]],
-      color = method,
+      colour = method,
       linetype = mismatch_type,
       group = interaction(method, mismatch_type)
     )
   ) +
-    ggplot2::geom_line(linewidth = 0.8) +
-    ggplot2::geom_point(size = 2) +
-    ggplot2::facet_wrap(~scenario_desc, scales = "free_y") +
+    ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
+    ggplot2::geom_point(size = 2, alpha = 0.75) +
+    ggplot2::facet_wrap(
+      ~scenario_desc, scales = "free_y", labeller = .simCompareStripWrap()
+    ) +
     ggplot2::scale_y_continuous(
-      transform = scales::asinh_trans()
+      transform = scales::asinh_trans(),
+      labels = .analysis_label_number
     ) +
-    cowplot::theme_cowplot(font_size = 10) +
-    cowplot::background_grid(major = "xy", minor = "none") +
-    ggplot2::theme(
-      panel.background = ggplot2::element_rect(fill = "white", color = NA),
-      plot.background = ggplot2::element_rect(fill = "white", color = NA)
-    ) +
-    ggplot2::theme(
-      legend.position = "bottom",
-      legend.box = "vertical",
-      legend.box.just = "left"
-    ) +
+    ggplot2::scale_linetype_discrete(labels = .simCompareMismatchLabels) +
+    .simCompareMismatchScales("Stimulated mean shift") +
     ggplot2::guides(
       colour = ggplot2::guide_legend(nrow = 1, byrow = TRUE),
       linetype = ggplot2::guide_legend(nrow = 1, byrow = TRUE)
     ) +
     ggplot2::labs(
-      title = "Degradation under Stimulated Mean Shift",
-      subtitle = paste(label, "vs Mean Shift"),
-      x = "Stimulated Mean Shift",
       y = paste(label, "(asinh scale)"),
-      color = "Method",
-      linetype = "Mismatch Variant"
+      linetype = "Mismatch variant"
     )
+}
+
+# Median error against the fractional increase in background spread.
+.simComparePlotSdInflation <- function(data) {
+  ggplot2::ggplot(
+    data,
+    ggplot2::aes(
+      x = mismatch_val, y = med_abs_rel_error, colour = method, group = method
+    )
+  ) +
+    ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
+    ggplot2::geom_point(size = 2, alpha = 0.75) +
+    ggplot2::facet_wrap(
+      ~scenario_desc, scales = "free_y", labeller = .simCompareStripWrap()
+    ) +
+    ggplot2::scale_y_continuous(
+      transform = scales::asinh_trans(), labels = .analysis_label_number
+    ) +
+    .simCompareMismatchScales("Fractional increase in background spread") +
+    ggplot2::labs(y = "Median absolute relative error (asinh scale)")
+}
+
+# Share of unstimulated cells above the gate against the mean shift.
+.simComparePlotPlacement <- function(data) {
+  ggplot2::ggplot(
+    data,
+    ggplot2::aes(
+      x = mismatch_val, y = propUns_mean, colour = method,
+      linetype = mismatch_type,
+      group = interaction(method, mismatch_type)
+    )
+  ) +
+    ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
+    ggplot2::geom_point(size = 2, alpha = 0.75) +
+    ggplot2::facet_wrap(
+      ~scenario_desc, scales = "free_y", labeller = .simCompareStripWrap()
+    ) +
+    ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
+    ggplot2::scale_linetype_discrete(labels = .simCompareMismatchLabels) +
+    .simCompareMismatchScales("Stimulated mean shift") +
+    ggplot2::guides(
+      colour = ggplot2::guide_legend(nrow = 1, byrow = TRUE),
+      linetype = ggplot2::guide_legend(nrow = 1, byrow = TRUE)
+    ) +
+    ggplot2::labs(
+      y = "Unstimulated cells above the gate",
+      linetype = "Mismatch variant"
+    )
+}
+
+# 90th percentile error for every mismatch mechanism.
+.simComparePlotUpperTail <- function(data) {
+  data$mismatch_type <- factor(
+    data$mismatch_type, levels = names(.simCompareMismatchLabels)
+  )
+  ggplot2::ggplot(
+    data,
+    ggplot2::aes(
+      x = mismatch_val, y = q90_abs_rel_error, colour = method, group = method
+    )
+  ) +
+    ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
+    ggplot2::geom_point(size = 2, alpha = 0.75) +
+    ggplot2::facet_grid(
+      mismatch_type ~ scenario_desc, scales = "free",
+      labeller = ggplot2::labeller(
+        mismatch_type = .simCompareMismatchLabels,
+        scenario_desc = .simCompareStripWrap()
+      )
+    ) +
+    ggplot2::scale_y_continuous(
+      transform = scales::asinh_trans(), labels = .analysis_label_number
+    ) +
+    .simCompareMismatchScales("Mismatch size") +
+    ggplot2::labs(y = "90th percentile absolute relative error (asinh scale)")
+}
+
+# Over- and under-estimate summary of signed relative error per scenario and
+# method, from raw comparison rows, with the same rows and estimand as
+# `.simCompareSummariseFreqBs()`.
+.simCompareSignedErrorSummary <- function(
+    .data,
+    scenarioCols,
+    keepMethods = c("stimgate", "fbeta", "tailgate")) {
+  .data |>
+    dplyr::filter(.data$method %in% keepMethods) |>
+    dplyr::mutate(
+      rel_error = dplyr::if_else(
+        .data$propRespTruth != 0,
+        (.data$propRespEst - .data$propRespTruth) / .data$propRespTruth,
+        NA_real_
+      )
+    ) |>
+    .simBandwidthSignedErrorSummary(scenarioCols)
+}
+
+# Signed relative error against `x`: rows of panels are statistics, columns
+# are `col_var`; over-estimates sit above zero and under-estimates below, and
+# line weight is the share of estimates in that direction.
+.simComparePlotSignedError <- function(
+    tbl,
+    x = "n_cell",
+    x_label = "Number of stimulated cells",
+    col_var = "transformation",
+    x_log = TRUE,
+    stat_cols = c(median = "Median", q95 = "95th percentile", max = "Maximum")) {
+  if ("transformation" %in% names(tbl)) {
+    tbl$transformation <- .analysis_trans_factor(tbl$transformation)
+  }
+  tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
+  x_scale <- if (x_log) {
+    ggplot2::scale_x_log10(
+      breaks = sort(unique(tbl[[x]])),
+      labels = .analysis_label_number,
+      guide = ggplot2::guide_axis(angle = 45)
+    )
+  } else {
+    ggplot2::scale_x_continuous(labels = .analysis_label_number)
+  }
+  ggplot2::ggplot(
+    tbl,
+    ggplot2::aes(
+      x = .data[[x]], y = value, colour = method,
+      group = interaction(method, direction)
+    )
+  ) +
+    .simBandwidthSignedErrorLayers("Relative error") +
+    .simBandwidthSignedErrorSegmentLayer(
+      tbl, x, "value", c("statistic", col_var, "method", "direction"),
+      alpha = 0.75
+    ) +
+    ggplot2::geom_point(size = 1, alpha = 0.75) +
+    x_scale +
+    .analysis_scale_method() +
+    ggplot2::facet_grid(
+      stats::as.formula(paste("statistic ~", col_var)),
+      scales = "free_y",
+      labeller = ggplot2::labeller(
+        scenario_desc = .simCompareStripWrap()
+      )
+    ) +
+    ggplot2::labs(x = x_label, colour = "Method") +
+    .analysis_theme()
 }

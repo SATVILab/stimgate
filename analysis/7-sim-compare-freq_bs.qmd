@@ -41,6 +41,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 analysis_qmd <- "analysis/7-sim-compare-freq_bs.qmd"
 
 run_simulations <- .as_flag(.get_qmd_param_env(
@@ -104,6 +105,7 @@ for (fn in c(
   "sim-misc.R",
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
+  "sim-bandwidth-analysis-plot.R",
   "sim-compare-freq_bs.R"
 )) {
   source(file.path(scripts_r_dir, fn))
@@ -606,412 +608,141 @@ if (isTRUE(run_plots)) {
 
 ## Results
 
+Every comparison figure is shown twice. "All methods" includes StimGate,
+Tailgate and F-beta. "Without Tailgate" leaves Tailgate out, because it
+performs very poorly without more tuning and squashes the scale for the other
+two methods. The two versions are saved in the `all_methods` and `no_tailgate`
+subfolders of each figure folder. Within each version there is one figure per
+mean position setting.
+
 ### Mean absolute error by cell count
 
 Mean absolute frequency error is plotted against stimulated cell count on a
-logarithmic axis, with colour identifying the method. Facets separate response
-frequencies and expression distributions; each plot uses one mean position
-setting and no random condition perturbation. Lower values indicate closer
-agreement with the true frequency.
+logarithmic axis, with colour identifying the method. Panels separate response
+frequencies (rows) and expression distributions (columns). Each plot uses one
+mean position setting and no random condition perturbation. Lower values
+indicate closer agreement with the true frequency.
 
 ```{r}
-#| label: fig-mae-cell-count
-#| fig-cap: "Mean absolute frequency error by stimulated cell count."
+#| label: mae-cell-count
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-    plot_tbl <- compare_summary |>
-      dplyr::filter(
-        mean_pos_setting == !!mean_pos_setting_curr,
-        condition_perturbation_sd == 0
+  plot_tbl <- compare_summary |>
+    dplyr::filter(condition_perturbation_sd == 0)
+  .simCompareFigureLoop(
+    plot_tbl,
+    make_plot = function(d) {
+      .simComparePlotByCell(
+        d, "mean_abs_error", "Mean absolute error", percent_y = TRUE
       )
-
-    p <- ggplot(
-      plot_tbl,
-      aes(
-        x = n_cell,
-        y = mean_abs_error,
-        color = method
-      )
-    ) +
-      geom_line() +
-      geom_point() +
-      scale_x_log10() +
-      facet_grid(prob_response ~ transformation) +
-      labs(
-        title = paste0(
-          "Mean position setting: ",
-          mean_pos_setting_curr
-        ),
-        x = "Number of stimulated cells",
-        y = "Mean absolute error",
-        color = "Method"
-      ) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        plot.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        legend.position = "bottom"
-      )
-
-    .analysis_save_plot(
-      filename = file.path(
-        file.path(plot_dir, "mae_by_n_cell"),
-        paste0(
-          "freq_bs_mae_meanpos_setting_",
-          mean_pos_setting_curr,
-          ".png"
-        )
-      ),
-      plot = p,
-      width = 18,
-      height = 15,
-      units = "cm"
-    )
-  }
+    },
+    dir = file.path(plot_dir, "mae_by_n_cell"),
+    file_fn = function(pos, extra) {
+      paste0("freq_bs_mae_meanpos_setting_", pos, ".png")
+    },
+    height = 20,
+    level = 4L
+  )
 }
 ```
 
 ### Median relative error by cell count
 
 Median absolute relative error is plotted against stimulated cell count, with
-colour identifying the method and facets separating response frequencies and
+colour identifying the method and panels separating response frequencies and
 expression distributions. Each plot uses one mean position setting and no random
 condition perturbation. Values nearer the dashed zero line indicate smaller
 errors relative to the true frequency.
 
 ```{r}
-#| label: fig-med-rel-error-cell-count
-#| fig-cap: "Median absolute relative frequency error by stimulated cell count."
+#| label: med-rel-error-cell-count
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-    print(paste0("Plotting median relative error for mean position setting: ", mean_pos_setting_curr))
-    plot_tbl <- compare_summary |>
-      dplyr::filter(
-        mean_pos_setting == !!mean_pos_setting_curr
-      ) |>
-      dplyr::filter(
-        condition_perturbation_sd == 0
+  plot_tbl <- compare_summary |>
+    dplyr::filter(condition_perturbation_sd == 0)
+  .simCompareFigureLoop(
+    plot_tbl,
+    make_plot = function(d) {
+      .simComparePlotByCell(
+        d, "med_abs_rel_error", "Median absolute relative error",
+        zero_line = TRUE, free_y = TRUE
       )
-    plot_tbl |>
-      dplyr::select(
-        approach, med_abs_rel_error,
-        transformation, prob_response, n_cell, mean_pos_setting,
-      ) |>
-      tidyr::pivot_wider(
-        names_from = approach,
-        values_from = med_abs_rel_error
-      ) |>
-      dplyr::select(-mean_pos_setting) |>
-      dplyr::mutate(
-        winner = dplyr::case_when(
-          stimgate < fbeta &
-            stimgate < tailgate ~ "stimgate",
-          fbeta < stimgate &
-            fbeta < tailgate ~ "fbeta",
-          tailgate < stimgate &
-            tailgate < fbeta ~ "tailgate",
-          TRUE ~ "tie"
-        )
-      ) |>
-      dplyr::mutate(
-        big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
-      ) |>
-      dplyr::mutate(
-        max_error = pmax(fbeta, stimgate, tailgate)
-      ) |>
-      # dplyr::arrange(dplyr::desc(big_winner), winner) |>
-      dplyr::arrange(dplyr::desc(fbeta)) |>
-      print(n = Inf, width = Inf)
-
-
-    p <- ggplot(
-      plot_tbl,
-      aes(
-        x = n_cell,
-        y = med_abs_rel_error,
-        color = method
-      )
-    ) +
-      geom_hline(
-        yintercept = 0,
-        colour = "gray25",
-        linetype = "dashed"
-      ) +
-      geom_line() +
-      geom_point() +
-      scale_x_log10() +
-      facet_grid(prob_response ~ transformation, scales = "free_y") +
-      labs(
-        title = paste0(
-          "Mean position setting: ",
-          mean_pos_setting_curr
-        ),
-        x = "Number of stimulated cells",
-        y = "Median absolute relative error",
-        color = "Method"
-      ) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        plot.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        legend.position = "bottom"
-      )
-
-    .analysis_save_plot(
-      filename = file.path(
-        file.path(plot_dir, "median_relative_error_by_n_cell"),
-        paste0(
-          "freq_bs_med_rel_error_meanpos_setting_",
-          mean_pos_setting_curr,
-          ".png"
-        )
-      ),
-      plot = p,
-      width = 18,
-      height = 15,
-      units = "cm"
-    )
-  }
+    },
+    dir = file.path(plot_dir, "median_relative_error_by_n_cell"),
+    file_fn = function(pos, extra) {
+      paste0("freq_bs_med_rel_error_meanpos_setting_", pos, ".png")
+    },
+    height = 20,
+    level = 4L
+  )
 }
 ```
 
 ### 90th percentile relative error by cell count
 
 The 90th percentile of absolute relative error is plotted against stimulated
-cell count, with colour identifying the method. Facets separate response
+cell count, with colour identifying the method. Panels separate response
 frequencies and expression distributions, with one mean position setting per
 plot and no random condition perturbation. Compare the upper-tail errors with
 the dashed zero line.
 
 ```{r}
-#| label: fig-90th-rel-error-cell-count
-#| fig-cap: "90th percentile absolute relative frequency error by cell count."
+#| label: q90-rel-error-cell-count
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-    plot_tbl <- compare_summary |>
-      dplyr::filter(
-        mean_pos_setting == !!mean_pos_setting_curr
-      ) |>
-      dplyr::filter(
-        condition_perturbation_sd == 0
+  plot_tbl <- compare_summary |>
+    dplyr::filter(condition_perturbation_sd == 0)
+  .simCompareFigureLoop(
+    plot_tbl,
+    make_plot = function(d) {
+      .simComparePlotByCell(
+        d, "q90_abs_rel_error", "90th percentile absolute relative error",
+        zero_line = TRUE, free_y = TRUE
       )
-    plot_tbl |>
-      dplyr::select(
-        approach, q90_abs_rel_error,
-        transformation, prob_response, n_cell, mean_pos_setting,
-      ) |>
-      tidyr::pivot_wider(
-        names_from = approach,
-        values_from = q90_abs_rel_error
-      ) |>
-      dplyr::select(-mean_pos_setting) |>
-      dplyr::mutate(
-        winner = dplyr::case_when(
-          stimgate < fbeta &
-            stimgate < tailgate ~ "stimgate",
-          fbeta < stimgate &
-            fbeta < tailgate ~ "fbeta",
-          tailgate < stimgate &
-            tailgate < fbeta ~ "tailgate",
-          TRUE ~ "tie"
-        )
-      ) |>
-      dplyr::mutate(
-        big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
-      ) |>
-      dplyr::arrange(dplyr::desc(big_winner), winner) |>
-      dplyr::arrange(dplyr::desc(fbeta)) |>
-      print(n = Inf, width = Inf)
-
-
-    p <- ggplot(
-      plot_tbl,
-      aes(
-        x = n_cell,
-        y = q90_abs_rel_error,
-        color = method
-      )
-    ) +
-      geom_hline(
-        yintercept = 0,
-        colour = "gray25",
-        linetype = "dashed"
-      ) +
-      geom_line() +
-      geom_point() +
-      scale_x_log10() +
-      facet_grid(prob_response ~ transformation, scales = "free_y") +
-      labs(
-        title = paste0(
-          "Mean position setting: ",
-          mean_pos_setting_curr
-        ),
-        x = "Number of stimulated cells",
-        y = "90th percentile absolute relative error",
-        color = "Method"
-      ) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        plot.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        legend.position = "bottom"
-      )
-
-    .analysis_save_plot(
-      filename = file.path(
-        file.path(plot_dir, "q90_relative_error_by_n_cell"),
-        paste0(
-          "freq_bs_q90_rel_error_meanpos_setting_",
-          mean_pos_setting_curr,
-          ".png"
-        )
-      ),
-      plot = p,
-      width = 18,
-      height = 15,
-      units = "cm"
-    )
-  }
+    },
+    dir = file.path(plot_dir, "q90_relative_error_by_n_cell"),
+    file_fn = function(pos, extra) {
+      paste0("freq_bs_q90_rel_error_meanpos_setting_", pos, ".png")
+    },
+    height = 20,
+    level = 4L
+  )
 }
 ```
 
 ### 95th percentile relative error by cell count
 
 The 95th percentile of absolute relative error is plotted against stimulated
-cell count, with colour identifying the method. Facets separate response
+cell count, with colour identifying the method. Panels separate response
 frequencies and expression distributions, with one mean position setting per
 plot and no random condition perturbation. This shows errors further into the
 upper tail; the dashed line marks zero error.
 
 ```{r}
-#| label: fig-95th-rel-error-cell-count
-#| fig-cap: "95th percentile absolute relative frequency error by cell count."
+#| label: q95-rel-error-cell-count
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-    plot_tbl <- compare_summary |>
-      dplyr::filter(
-        mean_pos_setting == !!mean_pos_setting_curr
-      ) |>
-      dplyr::filter(
-        condition_perturbation_sd == 0
+  plot_tbl <- compare_summary |>
+    dplyr::filter(condition_perturbation_sd == 0)
+  .simCompareFigureLoop(
+    plot_tbl,
+    make_plot = function(d) {
+      .simComparePlotByCell(
+        d, "q95_abs_rel_error", "95th percentile absolute relative error",
+        zero_line = TRUE, free_y = TRUE
       )
-    plot_tbl |>
-      dplyr::select(
-        approach, q95_abs_rel_error,
-        transformation, prob_response, n_cell, mean_pos_setting,
-      ) |>
-      tidyr::pivot_wider(
-        names_from = approach,
-        values_from = q95_abs_rel_error
-      ) |>
-      dplyr::select(-mean_pos_setting) |>
-      dplyr::mutate(
-        winner = dplyr::case_when(
-          stimgate < fbeta &
-            stimgate < tailgate ~ "stimgate",
-          fbeta < stimgate &
-            fbeta < tailgate ~ "fbeta",
-          tailgate < stimgate &
-            tailgate < fbeta ~ "tailgate",
-          TRUE ~ "tie"
-        )
-      ) |>
-      dplyr::mutate(
-        big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
-      ) |>
-      dplyr::arrange(dplyr::desc(big_winner), winner) |>
-      dplyr::arrange(dplyr::desc(fbeta)) |>
-      print(n = Inf, width = Inf)
-
-
-    p <- ggplot(
-      plot_tbl,
-      aes(
-        x = n_cell,
-        y = q95_abs_rel_error,
-        color = method
-      )
-    ) +
-      geom_hline(
-        yintercept = 0,
-        colour = "gray25",
-        linetype = "dashed"
-      ) +
-      geom_line() +
-      geom_point() +
-      scale_x_log10() +
-      facet_grid(prob_response ~ transformation, scales = "free_y") +
-      labs(
-        title = paste0(
-          "Mean position setting: ",
-          mean_pos_setting_curr
-        ),
-        x = "Number of stimulated cells",
-        y = "95th percentile absolute relative error",
-        color = "Method"
-      ) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        plot.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        legend.position = "bottom"
-      )
-
-    .analysis_save_plot(
-      filename = file.path(
-        file.path(plot_dir, "q95_relative_error_by_n_cell"),
-        paste0(
-          "freq_bs_q95_rel_error_meanpos_setting_",
-          mean_pos_setting_curr,
-          ".png"
-        )
-      ),
-      plot = p,
-      width = 18,
-      height = 15,
-      units = "cm"
-    )
-  }
+    },
+    dir = file.path(plot_dir, "q95_relative_error_by_n_cell"),
+    file_fn = function(pos, extra) {
+      paste0("freq_bs_q95_rel_error_meanpos_setting_", pos, ".png")
+    },
+    height = 20,
+    level = 4L
+  )
 }
 ```
 
@@ -1023,6 +754,7 @@ if (isTRUE(run_plots)) {
     dplyr::filter(
       condition_perturbation_sd == 0
     ) |>
+    dplyr::mutate(transformation = .analysis_trans_factor(transformation)) |>
     dplyr::select(
       approach, max_abs_rel_error,
       transformation, prob_response, n_cell, mean_pos_setting,
@@ -1048,127 +780,89 @@ if (isTRUE(run_plots)) {
 ### Max relative error by cell count
 
 Maximum absolute relative error is plotted against stimulated cell count,
-with colour identifying the method. Facets separate response frequencies and
+with colour identifying the method. Panels separate response frequencies and
 expression distributions, with one mean position setting per plot and no random
 condition perturbation. The dashed zero line provides a reference for the
 largest observed errors.
 
 ```{r}
-#| label: fig-max-rel-error-cell-count
-#| fig-cap: "Maximum absolute relative frequency error by stimulated cell count."
+#| label: max-rel-error-cell-count
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-    plot_tbl <- compare_summary |>
-      dplyr::filter(
-        mean_pos_setting == !!mean_pos_setting_curr
-      ) |>
-      dplyr::filter(
-        condition_perturbation_sd == 0
+  plot_tbl <- compare_summary |>
+    dplyr::filter(condition_perturbation_sd == 0)
+  .simCompareFigureLoop(
+    plot_tbl,
+    make_plot = function(d) {
+      .simComparePlotByCell(
+        d, "max_abs_rel_error", "Maximum absolute relative error",
+        zero_line = TRUE, free_y = TRUE
       )
-    plot_tbl |>
-      dplyr::select(
-        approach, max_abs_rel_error,
-        transformation, prob_response, n_cell, mean_pos_setting,
-      ) |>
-      tidyr::pivot_wider(
-        names_from = approach,
-        values_from = max_abs_rel_error
-      ) |>
-      dplyr::select(-mean_pos_setting) |>
-      dplyr::mutate(
-        winner = dplyr::case_when(
-          stimgate < fbeta &
-            stimgate < tailgate ~ "stimgate",
-          fbeta < stimgate &
-            fbeta < tailgate ~ "fbeta",
-          tailgate < stimgate &
-            tailgate < fbeta ~ "tailgate",
-          TRUE ~ "tie"
-        )
-      ) |>
-      dplyr::mutate(
-        big_winner = ifelse(pmax(fbeta, stimgate, tailgate) > 1, "yes", "no")
-      ) |>
-      dplyr::arrange(dplyr::desc(big_winner), winner) |>
-      dplyr::arrange(dplyr::desc(fbeta)) |>
-      print(n = Inf, width = Inf)
+    },
+    dir = file.path(plot_dir, "max_relative_error_by_n_cell"),
+    file_fn = function(pos, extra) {
+      paste0("freq_bs_max_rel_error_meanpos_setting_", pos, ".png")
+    },
+    height = 20,
+    level = 4L
+  )
+}
+```
 
+### Over- and under-estimates by cell count
 
-    p <- ggplot(
-      plot_tbl,
-      aes(
-        x = n_cell,
-        y = max_abs_rel_error,
-        color = method
+The relative error, (estimate - truth) / truth, is summarised separately for
+over-estimates and under-estimates in each scenario, using the same simulated
+rows as the figures above. Over-estimates are drawn above zero and
+under-estimates below. Rows of panels show the median, 95th percentile and
+maximum, and columns separate expression distributions. Colour identifies the
+method, and a thicker line means a larger share of the estimates lies in that
+direction. The vertical scale is linear down to -100% (nothing gated) and
+doubles at each step above, so -100% and a two-fold over-estimate are equally
+far from zero. Each plot uses one mean position setting, one response frequency
+and no random condition perturbation.
+
+```{r}
+#| label: signed-error-cell-count
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  signed_tbl <- compare_tbl |>
+    dplyr::filter(condition_perturbation_sd == 0) |>
+    .simCompareSignedErrorSummary(scenarioCols = scenario_cols)
+  .simCompareFigureLoop(
+    signed_tbl,
+    make_plot = function(d) .simComparePlotSignedError(d),
+    dir = file.path(plot_dir, "signed_error_by_n_cell"),
+    file_fn = function(pos, extra) {
+      paste0(
+        "freq_bs_signed_error_meanpos_setting_", pos, "_prob_response_",
+        gsub("[^0-9a-z]+", "_", .analysis_label_percent(extra)), ".png"
       )
-    ) +
-      geom_hline(
-        yintercept = 0,
-        colour = "gray25",
-        linetype = "dashed"
-      ) +
-      geom_line() +
-      geom_point() +
-      scale_x_log10() +
-      facet_grid(prob_response ~ transformation, scales = "free_y") +
-      labs(
-        title = paste0(
-          "Mean position setting: ",
-          mean_pos_setting_curr
-        ),
-        x = "Number of stimulated cells",
-        y = "Maximum absolute relative error",
-        color = "Method"
-      ) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        plot.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        legend.position = "bottom"
-      )
-
-    .analysis_save_plot(
-      filename = file.path(
-        file.path(plot_dir, "max_relative_error_by_n_cell"),
-        paste0(
-          "freq_bs_max_rel_error_meanpos_setting_",
-          mean_pos_setting_curr,
-          ".png"
-        )
-      ),
-      plot = p,
-      width = 18,
-      height = 15,
-      units = "cm"
-    )
-  }
+    },
+    height = 14,
+    level = 4L,
+    extra_col = "prob_response",
+    extra_heading = function(x) {
+      paste0("Response probability: ", .analysis_label_percent(x))
+    }
+  )
 }
 ```
 
 ### Estimated versus true response frequency
 
 Estimated frequency is plotted against the true background-subtracted frequency,
-with colour identifying the method and facets separating expression distributions.
+with colour identifying the method and panels separating expression distributions.
 Each plot uses one mean position setting and pools the simulated cell counts
 without random condition perturbation. Points closer to the dashed identity
 line indicate better agreement.
 
 ```{r}
-#| label: fig-est-vs-truth
-#| fig-cap: "Estimated and true background-subtracted response frequencies."
+#| label: est-vs-truth
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots)) {
   plot_tbl <- compare_tbl_focus |>
     dplyr::filter(
@@ -1178,171 +872,62 @@ if (isTRUE(run_plots)) {
     dplyr::filter(
       condition_perturbation_sd == 0
     )
-
-  for (mean_pos_setting_curr in unique(plot_tbl$mean_pos_setting)) {
-    plot_tbl_curr <- plot_tbl |>
-      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr)
-
-    p_est_truth <- ggplot(
-      plot_tbl_curr,
-      aes(
-        x = propRespTruth,
-        y = propRespEst,
-        color = method
-      )
-    ) +
-      geom_point(alpha = 0.35, size = 1) +
-      expand_limits(
-        y = c(
-          0,
-          max(plot_tbl_curr$propRespTruth, na.rm = TRUE) * 2
-        ),
-        x = c(
-          0,
-          max(plot_tbl_curr$propRespTruth, na.rm = TRUE) * 2
-        )
-      ) +
-      geom_abline(
-        slope = 1,
-        intercept = 0,
-        linetype = "dashed"
-      ) +
-      facet_wrap(~transformation) +
-      labs(
-        title = paste0(
-          "Mean position setting: ",
-          mean_pos_setting_curr
-        ),
-        x = "True background-subtracted response frequency",
-        y = "Estimated background-subtracted response frequency",
-        color = "Method"
-      ) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        plot.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        legend.position = "bottom"
-      )
-
-    .analysis_save_plot(
-      filename = file.path(
-        file.path(plot_dir, "estimated_vs_true_frequency"),
-        paste0(
-          "freq_bs_est_vs_truth_",
-          mean_pos_setting_curr,
-          ".png"
-        )
-      ),
-      plot = p_est_truth,
-      width = 18,
-      height = 15,
-      units = "cm"
-    )
-  }
+  .simCompareFigureLoop(
+    plot_tbl,
+    make_plot = .simComparePlotEstVsTruth,
+    dir = file.path(plot_dir, "estimated_vs_true_frequency"),
+    file_fn = function(pos, extra) {
+      paste0("freq_bs_est_vs_truth_", pos, ".png")
+    },
+    height = 9,
+    level = 4L
+  )
 }
 ```
 
 ### Threshold fallback rate
 
-The proportion of estimates using a threshold fallback is plotted against
-stimulated cell count, with colour identifying the method. Facets separate
+The share of estimates using a threshold fallback is plotted against
+stimulated cell count, with colour identifying the method. Panels separate
 response frequencies and expression distributions, with one mean position
 setting per plot and no random condition perturbation. Read this alongside
 frequency error to distinguish calculated gates from fallbacks.
 
 ```{r}
-#| label: fig-threshold-fallback
-#| fig-cap: "Threshold fallback rates by stimulated cell count."
+#| label: threshold-fallback
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots)) {
   fallback_tbl <- compare_summary |>
     dplyr::filter(condition_perturbation_sd == 0) |>
     dplyr::mutate(
       fallback_rate = n_threshold_fallback / n
     )
-
-  for (mean_pos_setting_curr in unique(fallback_tbl$mean_pos_setting)) {
-    fallback_tbl_curr <- fallback_tbl |>
-      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr)
-
-    p_fallback <- ggplot(
-      fallback_tbl_curr,
-      aes(
-        x = n_cell,
-        y = fallback_rate,
-        color = method
-      )
-    ) +
-      geom_line() +
-      geom_point() +
-      scale_x_log10() +
-      facet_grid(
-        prob_response ~ transformation
-      ) +
-      labs(
-        title = paste0(
-          "Mean position setting: ",
-          mean_pos_setting_curr
-        ),
-        x = "Number of stimulated cells",
-        y = "Threshold fallback rate",
-        color = "Method"
-      ) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        plot.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        legend.position = "bottom"
-      )
-
-    .analysis_save_plot(
-      filename = file.path(
-        file.path(plot_dir, "threshold_fallback_rate"),
-        paste0(
-          "freq_bs_threshold_fallback_rate_",
-          mean_pos_setting_curr,
-          ".png"
-        )
-      ),
-      plot = p_fallback,
-      width = 18,
-      height = 15,
-      units = "cm"
-    )
-  }
+  .simCompareFigureLoop(
+    fallback_tbl,
+    make_plot = .simComparePlotFallback,
+    dir = file.path(plot_dir, "threshold_fallback_rate"),
+    file_fn = function(pos, extra) {
+      paste0("freq_bs_threshold_fallback_rate_", pos, ".png")
+    },
+    height = 20,
+    level = 4L
+  )
 }
 ```
 
 ### Threshold distributions
 
 Histograms show the density of finite thresholds, with colour and fill
-identifying the approach. Facets separate response frequencies and expression
+identifying the method. Panels separate response frequencies and expression
 distributions; each plot uses one mean position setting and pools cell counts
 without random condition perturbation. Compare the spread and overlap of the
 threshold distributions, including finite fallback thresholds.
 
 ```{r}
-#| label: fig-threshold-density
-#| fig-cap: "Distributions of finite thresholds from the comparison methods."
+#| label: threshold-density
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots)) {
   plot_tbl <- compare_tbl |>
     dplyr::filter(
@@ -1353,62 +938,17 @@ if (isTRUE(run_plots)) {
       approach, threshold,
       transformation, prob_response, n_cell, mean_pos_setting
     )
-
-  for (mean_pos_setting_curr in unique(plot_tbl$mean_pos_setting)) {
-    plot_tbl_curr <- plot_tbl |>
-      dplyr::filter(mean_pos_setting == !!mean_pos_setting_curr)
-
-    p <- ggplot(
-      plot_tbl_curr,
-      aes(
-        x = threshold,
-        y = after_stat(density),
-        fill = approach,
-        colour = approach
-      )
-    ) +
-      geom_histogram(alpha = 0.5, position = "identity") +
-      facet_grid(prob_response ~ transformation, scales = "free") +
-      labs(
-        title = paste0(
-          "Mean position setting: ",
-          mean_pos_setting_curr
-        ),
-        x = "Threshold",
-        y = "Density",
-        fill = "Method",
-        colour = "Method"
-      ) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        plot.background = element_rect(
-          fill = "white",
-          color = NA
-        ),
-        legend.position = "bottom"
-      )
-
-    path_p <- file.path(
-      file.path(plot_dir, "threshold_distributions"),
-      paste0(
-        "freq_bs_threshold_density_",
-        mean_pos_setting_curr,
-        ".png"
-      )
-    )
-    .analysis_save_plot(
-      filename = path_p,
-      plot = p,
-      width = 18,
-      height = 15,
-      units = "cm"
-    )
-  }
+  .simCompareFigureLoop(
+    plot_tbl,
+    make_plot = .simComparePlotThresholdDensity,
+    dir = file.path(plot_dir, "threshold_distributions"),
+    file_fn = function(pos, extra) {
+      paste0("freq_bs_threshold_density_", pos, ".png")
+    },
+    height = 20,
+    level = 4L,
+    method_col = "approach"
+  )
 }
 ```
 
