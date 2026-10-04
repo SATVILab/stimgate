@@ -423,7 +423,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `verify.R`: Input verification helpers.
 - `scripts/`:
   - Shell scripts (`dev.sh`, `install.sh`, `patch.sh`, `minor.sh`, `major.sh`, `dev-*.sh`) for workflow, benchmarking, and version bumping.
-  - `agents/`: Cloud coding-agent setup scripts, with setup guidance in `scripts/agents/README.md`.
+  - `agents/`: Cloud coding-agent setup scripts.
   - `python/`: Python helper scripts used by analysis (not part of the R package).
     - `fbeta.py`: Richards F-beta thresholding implementation (comparison method).
   - `r/`: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by `devtools::load_all()` and are not part of the installed package.
