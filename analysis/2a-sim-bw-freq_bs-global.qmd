@@ -90,6 +90,7 @@ analysis_semantics_version <- "global-bw-freq-v4"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
+fig_key <- .analysis_mode_key("2a-sim-bw-freq_bs-global")
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -602,7 +603,7 @@ if (isTRUE(run_plots)) {
         expand_limits(y = c(0))
 
       path_p <- file.path(
-        .analysis_cache_dir(c(analysis_key, "est", "median"), root_dir),
+        .analysis_fig_dir(c(fig_key, "est", "median"), root_dir),
         paste0(
           "est_vs_n_cell_mean_pos_setting_",
           mean_pos_setting_curr,
@@ -694,9 +695,9 @@ if (isTRUE(run_plots)) {
           )
 
         path_p <- file.path(
-          .analysis_cache_dir(
+          .analysis_fig_dir(
             c(
-              analysis_key, "est", "raw",
+              fig_key, "est", "raw",
               paste0(
                 "condition_perturbation_sd_",
                 condition_perturbation_sd_curr
@@ -883,7 +884,7 @@ if (isTRUE(run_plots)) {
         legend.box.just = "center"
       )
     path_p <- file.path(
-      .analysis_project_dir("output", "fig", root_dir),
+      .analysis_fig_dir(c(fig_key, "relative_error_averaged"), root_dir),
       paste0(
         "avg_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf"
       )
@@ -978,7 +979,7 @@ if (isTRUE(run_plots)) {
           axis.text.x = element_text(angle = 90, hjust = 1)
         )
       path_p <- file.path(
-        .analysis_project_dir("output", "fig", root_dir),
+        .analysis_fig_dir(c(fig_key, "relative_error_by_n_cell", paste0("mean_pos_setting_", mean_pos_setting_curr)), root_dir),
         paste0(
           "avg_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr,
           "_n_cell_", n_cell_curr, ".pdf"
@@ -1023,7 +1024,7 @@ if (isTRUE(run_plots)) {
       .simBandwidthSignedErrorAverage(c("transformation", "bw"))
     p <- .simBandwidthGlobalSignedErrorPlot(err_rel_avg_tbl)
     path_p <- file.path(
-      .analysis_project_dir("output", "fig", root_dir),
+      .analysis_fig_dir(c(fig_key, "signed_error_averaged"), root_dir),
       paste0(
         "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf"
       )
@@ -1073,7 +1074,7 @@ if (isTRUE(run_plots)) {
         )
       )
       path_p <- file.path(
-        .analysis_project_dir("output", "fig", root_dir),
+        .analysis_fig_dir(c(fig_key, "signed_error_by_n_cell", paste0("mean_pos_setting_", mean_pos_setting_curr)), root_dir),
         paste0(
           "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr,
           "_n_cell_", n_cell_curr, ".pdf"
@@ -1122,7 +1123,7 @@ if (isTRUE(run_plots)) {
         by_prob = TRUE
       )
       path_p <- file.path(
-        .analysis_project_dir("output", "fig", root_dir),
+        .analysis_fig_dir(c(fig_key, "signed_error_by_n_cell_prob", paste0("mean_pos_setting_", mean_pos_setting_curr)), root_dir),
         paste0(
           "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr,
           "_n_cell_", n_cell_curr, "_by_prob.pdf"
@@ -1266,7 +1267,7 @@ if (isTRUE(run_plots)) {
           labels = bw_scale$levels
         )
       path_p <- file.path(
-        .analysis_cache_dir(c(analysis_key, "thresholds", "median"), root_dir),
+        .analysis_fig_dir(c(fig_key, "thresholds", "median"), root_dir),
         paste0(
           "threshold_vs_n_cell_mean_pos_setting_",
           mean_pos_setting,
@@ -1402,9 +1403,9 @@ if (isTRUE(run_plots)) {
           )
 
         path_p <- file.path(
-          .analysis_cache_dir(
+          .analysis_fig_dir(
             c(
-              analysis_key, "thresholds", "raw",
+              fig_key, "thresholds", "raw",
               paste0("bias_uns_", bias_uns_setting_curr),
               signif(bw_curr)
             ),

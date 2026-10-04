@@ -85,6 +85,7 @@ analysis_semantics_version <- "adaptive-bw-est-v3"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
+fig_key <- .analysis_mode_key("5-sim-bw-est-adaptive")
 n_sample_sim <- if (analysis_dev) 1L else 5L
 n_iter_sim <- if (analysis_dev) 1L else 5L
 norm_adaptive_ncell <- 2500L
@@ -454,7 +455,7 @@ Mean bandwidth estimates are plotted against cell count on a logarithmic axis, w
 #| fig-width: 10
 #| fig-height: 9
 if (isTRUE(run_plots)) {
-  dir_results <- .analysis_cache_dir(c(analysis_key, "plots"), root_dir)
+  dir_results <- .analysis_fig_dir(c(fig_key, "est_bw_adaptive"), root_dir)
 
   for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
     bw_tbl_mean_pos <- bw_tbl_results |>

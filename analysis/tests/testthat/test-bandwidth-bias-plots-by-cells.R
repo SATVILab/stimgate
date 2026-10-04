@@ -18,10 +18,9 @@
   env$run_plots <- TRUE
   env$saved <- list()
   env$printed <- list()
-  env$.analysis_project_dir <- function(type, subdir, root_dir) {
-    path <- file.path(env$root_dir, "fig")
-    dir.create(path, recursive = TRUE, showWarnings = FALSE)
-    path
+  env$fig_key <- "2a-test"
+  env$.analysis_fig_dir <- function(path_parts, path_root = NULL, create = TRUE) {
+    file.path(path_root, "output", "fig", paste(path_parts, collapse = "/"))
   }
   env$.analysis_cache_dir <- function(parts, path_root) {
     file.path(path_root, paste(parts, collapse = "/"))

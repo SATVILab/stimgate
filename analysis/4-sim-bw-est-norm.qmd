@@ -85,6 +85,7 @@ analysis_semantics_version <- "bandwidth-est-norm-v4"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
+fig_key <- .analysis_mode_key("4-sim-bw-est-norm")
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -529,7 +530,7 @@ if (isTRUE(run_plots)) {
           )
 
         path_plot <- file.path(
-          .analysis_cache_dir(c(analysis_key, "plots"), root_dir),
+          .analysis_fig_dir(c(fig_key, "est_bw_norm"), root_dir),
           paste0(
             "bw_estimate_meanpos_setting_", mean_pos_setting_curr,
             "_bias_uns_", bias_uns_setting_curr,

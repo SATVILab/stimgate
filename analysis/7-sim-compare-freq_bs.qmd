@@ -66,6 +66,7 @@ comparison_semantics_version <- "corrected-comparison-v4"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
+fig_key <- .analysis_mode_key("7-sim-compare-freq_bs")
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -596,7 +597,7 @@ if (!isTRUE(run_plots)) {
 }
 
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_cache_dir(analysis_key, path_root = root_dir)
+  plot_dir <- .analysis_fig_dir(fig_key, path_root = root_dir)
 }
 ```
 
@@ -661,7 +662,7 @@ if (isTRUE(run_plots)) {
 
     .analysis_save_plot(
       filename = file.path(
-        plot_dir,
+        file.path(plot_dir, "mae_by_n_cell"),
         paste0(
           "freq_bs_mae_meanpos_setting_",
           mean_pos_setting_curr,
@@ -775,7 +776,7 @@ if (isTRUE(run_plots)) {
 
     .analysis_save_plot(
       filename = file.path(
-        plot_dir,
+        file.path(plot_dir, "median_relative_error_by_n_cell"),
         paste0(
           "freq_bs_med_rel_error_meanpos_setting_",
           mean_pos_setting_curr,
@@ -885,7 +886,7 @@ if (isTRUE(run_plots)) {
 
     .analysis_save_plot(
       filename = file.path(
-        plot_dir,
+        file.path(plot_dir, "q90_relative_error_by_n_cell"),
         paste0(
           "freq_bs_q90_rel_error_meanpos_setting_",
           mean_pos_setting_curr,
@@ -995,7 +996,7 @@ if (isTRUE(run_plots)) {
 
     .analysis_save_plot(
       filename = file.path(
-        plot_dir,
+        file.path(plot_dir, "q95_relative_error_by_n_cell"),
         paste0(
           "freq_bs_q95_rel_error_meanpos_setting_",
           mean_pos_setting_curr,
@@ -1135,7 +1136,7 @@ if (isTRUE(run_plots)) {
 
     .analysis_save_plot(
       filename = file.path(
-        plot_dir,
+        file.path(plot_dir, "max_relative_error_by_n_cell"),
         paste0(
           "freq_bs_max_rel_error_meanpos_setting_",
           mean_pos_setting_curr,
@@ -1229,7 +1230,7 @@ if (isTRUE(run_plots)) {
 
     .analysis_save_plot(
       filename = file.path(
-        plot_dir,
+        file.path(plot_dir, "estimated_vs_true_frequency"),
         paste0(
           "freq_bs_est_vs_truth_",
           mean_pos_setting_curr,
@@ -1309,7 +1310,7 @@ if (isTRUE(run_plots)) {
 
     .analysis_save_plot(
       filename = file.path(
-        plot_dir,
+        file.path(plot_dir, "threshold_fallback_rate"),
         paste0(
           "freq_bs_threshold_fallback_rate_",
           mean_pos_setting_curr,
@@ -1390,7 +1391,7 @@ if (isTRUE(run_plots)) {
       )
 
     path_p <- file.path(
-      plot_dir,
+      file.path(plot_dir, "threshold_distributions"),
       paste0(
         "freq_bs_threshold_density_",
         mean_pos_setting_curr,
