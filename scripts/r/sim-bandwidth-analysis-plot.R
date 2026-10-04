@@ -159,7 +159,14 @@ add_bw_labs <- function(.data) {
     )
 }
 
-# 2a curves: colour is the statistic, line type the direction of the error.
+# ColorBrewer BrBG: teal for over-estimates, brown for under-estimates.
+.simBandwidthSignedErrorColours <- c(
+  over_median = "#80CDC1", over_q95 = "#35978F", over_max = "#01665E",
+  under_median = "#DFC27D", under_q95 = "#BF812D", under_max = "#8C510A"
+)
+
+# 2a curves: colour is the direction (two halves of a diverging palette, so
+# neither looks worse) and shade the statistic (darker = further from truth).
 # With `by_prob`, rows of panels separate response probabilities.
 .simBandwidthGlobalSignedErrorPlot <- function(tbl, title = NULL, by_prob = FALSE) {
   tbl <- tbl |>
@@ -175,13 +182,17 @@ add_bw_labs <- function(.data) {
         transformation,
         levels = c("gaussian", "skew", "gamma")
       ),
-      bw_fct = factor(bw)
+      bw_fct = factor(bw),
+      series = factor(
+        paste0(direction, "_", err_type),
+        levels = names(.simBandwidthSignedErrorColours)
+      )
     )
   transformation_lab <- c(gamma = "Gamma", gaussian = "Gaussian", skew = "Skew")
   ggplot2::ggplot(
     tbl,
     ggplot2::aes(
-      x = bw_fct, y = err_value, colour = err_type, linetype = direction,
+      x = bw_fct, y = err_value, colour = series,
       group = interaction(err_type, direction)
     )
   ) +
@@ -210,17 +221,16 @@ add_bw_labs <- function(.data) {
     cowplot::theme_cowplot() +
     cowplot::background_grid(major = "xy") +
     ggplot2::scale_colour_manual(
-      values = c(median = "#0072B2", q95 = "#56B4E9", max = "#8C8DBA"),
-      labels = c(median = "Median", q95 = "95th percentile", max = "Maximum")
+      values = .simBandwidthSignedErrorColours,
+      labels = c(
+        over_median = "Over: median", over_q95 = "Over: 95th percentile",
+        over_max = "Over: maximum", under_median = "Under: median",
+        under_q95 = "Under: 95th percentile", under_max = "Under: maximum"
+      ),
+      drop = FALSE,
+      guide = ggplot2::guide_legend(nrow = 2, byrow = TRUE)
     ) +
-    ggplot2::scale_linetype_manual(
-      values = c(over = "solid", under = "dashed"),
-      labels = c(over = "Over-estimate", under = "Under-estimate")
-    ) +
-    ggplot2::labs(
-      title = title, x = "Bandwidth", colour = "Error size",
-      linetype = "Direction"
-    ) +
+    ggplot2::labs(title = title, x = "Bandwidth", colour = NULL) +
     ggplot2::theme(
       panel.background = ggplot2::element_rect(fill = "white", colour = NA),
       plot.background = ggplot2::element_rect(fill = "white", colour = NA),
@@ -346,7 +356,7 @@ add_bw_labs <- function(.data) {
     ),
     ggplot2::expand_limits(y = 0),
     ggplot2::scale_linewidth_continuous(
-      range = c(0.2, 2), limits = c(0, 1), labels = scales::percent
+      range = c(0.4, 2), limits = c(0, 1), labels = scales::percent
     ),
     ggplot2::labs(
       y = y_label, linewidth = "Share of estimates\nin this direction"
