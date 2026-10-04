@@ -219,7 +219,7 @@ add_bw_labs <- function(.data) {
       )
     }) +
     cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
+    cowplot::background_grid(major = "xy", minor = "y") +
     ggplot2::scale_colour_manual(
       values = .simBandwidthSignedErrorColours,
       labels = c(
