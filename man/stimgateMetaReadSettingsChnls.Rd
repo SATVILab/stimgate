@@ -16,10 +16,11 @@ A named list of marker settings (as saved by .completeChnlSettingsSave()).
 Read the saved marker settings list from the project's metaData folder.
 }
 \examples{
-\dontrun{
-tmp <- tempdir()
-dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
-saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "metaData", "markerList.rds"))
-stimgateMetaReadSettingsChnls(tmp)
-}
+pathProject <- tempfile("stimgate_meta_")
+dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
+saveRDS(
+  list(BC1 = list(bw = 0.1)),
+  file.path(pathProject, "metaData", "chnlSettings.rds")
+)
+stimgateMetaReadSettingsChnls(pathProject)
 }
