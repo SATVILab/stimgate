@@ -16,3 +16,10 @@ Load the canonical packaged example dataset shipped under
 examples and tests on a deterministic, realistic dataset without requiring
 the simulation machinery to be installed with the package.
 }
+\examples{
+exampleData <- getExampleData()
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+gs
+exampleData$batchList
+exampleData$marker
+}

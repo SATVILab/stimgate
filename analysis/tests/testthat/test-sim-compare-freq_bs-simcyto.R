@@ -18,6 +18,16 @@ test_that("comparison simulation helpers source cleanly without legacy functions
   expect_false(exists("simCytExperiment", envir = env, inherits = FALSE))
 })
 
+test_that("F-beta script lookup works from nested analysis directories", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_comp, local = env)
+  withr::local_dir(file.path(root_dir, "analysis", "tests", "testthat"))
+  expect_identical(
+    normalizePath(env$.simCompareFbetaPath(), winslash = "/"),
+    normalizePath(file.path(root_dir, "scripts", "python", "fbeta.py"), winslash = "/")
+  )
+})
+
 test_that("analysis/7-sim-compare-freq_bs.qmd does not source functionsForBenchmarking-Cyt.R", {
   qmd_path <- file.path(root_dir, "analysis", "7-sim-compare-freq_bs.qmd")
   expect_true(file.exists(qmd_path))

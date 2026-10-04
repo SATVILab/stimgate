@@ -396,7 +396,8 @@ test_that("analysis 2a dev and quick filters preserve full-grid IDs and seeds", 
   }
   run_grid <- function(quick, dev) {
     env <- .load_bw_run_env()
-    env$analysis_quick <- quick
+    # Mirrors QMD set-up: dev takes precedence over quick.
+    env$analysis_quick <- quick && !dev
     env$analysis_dev <- dev
     env$simulation_seed <- 12345L
     env$sim_grid_shuffle_seed <- 8L
@@ -419,7 +420,10 @@ test_that("analysis 2a dev and quick filters preserve full-grid IDs and seeds", 
       dplyr::filter(.data$sim_id %in% env$sim_grid_all$sim_id)
     expect_identical(env$sim_grid_all, expected)
   }
-  expect_true(5e4 %in% quick$sim_grid_all$n_cell)
+  expect_equal(nrow(quick$sim_grid_all), 432L)
+  expect_setequal(quick$sim_grid_all$n_cell, c(1e3, 5e3))
+  expect_setequal(quick$sim_grid_all$condition_perturbation_sd, c(0, 0.5))
+  expect_identical(both$sim_grid_all, dev$sim_grid_all)
   expect_true(0.02 %in% quick$sim_grid_all$prob_response)
   expect_identical(nrow(both$sim_grid_all), 3L)
 })
@@ -493,7 +497,7 @@ test_that("analysis 2b declares the agreed grid and common-random-number seeds",
 
   expect_true(has("n_cell_vec <- c(1e4, 5e4)"))
   expect_true(has("prob_response_vec <- c(0.002, 0.05)"))
-  expect_true(has("nSample = 25"))
+  expect_true(has("nSample = if (analysis_quick) 1L else 25"))
   expect_true(has("if (nrow(sim_grid) != 6720L)"))
   expect_true(has("biasUnsWidthHeightFrac = 0.15"))
   expect_true(has("stim_mean_shift_clusters = \"gn\""))

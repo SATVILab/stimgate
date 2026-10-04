@@ -18,6 +18,10 @@ params:
   sim_retry_errors: true
 ---
 
+This analysis asks how ordinary bandwidth estimates depend on cell count, response frequency and separation. Matched stimulated and unstimulated samples are simulated with Gaussian, gamma and skew transformations, then bandwidths are estimated separately for each condition.
+
+## Set-up
+
 ```{r}
 #| label: setup
 #| include: false
@@ -29,13 +33,13 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/3-sim-bw-est-base.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
   "sim_grid_chunk_index",
@@ -80,8 +84,10 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bw", "est", "base")
 analysis_semantics_version <- "bandwidth-est-base-v5"
-analysis_dev <- isTRUE(.isDev())
-n_sample_sim <- 50L
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
+n_sample_sim <- if (analysis_quick) 1L else 50L
 n_iter_sim <- 1L
 bw_fallback <- NA_real_
 bw_min <- -Inf
@@ -127,7 +133,7 @@ for (fn in c(
 }
 ```
 
-### Checking what the estimators actually estimate
+## Scientific settings
 
 Get the parameters over which we simulate.
 
@@ -167,6 +173,7 @@ bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
 ```{r}
 #| label: bw-estimate-grid
+#| include: false
 sim_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
   prob_response  = prob_response_vec,
@@ -192,6 +199,19 @@ sim_grid_full <- sim_grid
 
 sim_grid <- sim_grid |>
   dplyr::arrange(n_cell, dplyr::desc(prob_response))
+
+# Quick mode keeps cells, method, transformation and response.
+# Smallest grid covering every figure; dev takes precedence.
+if (analysis_quick) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell %in% c(1e3, 5e3),
+      prob_response %in% c(0.002, 0.2),
+      transformation %in% c("gaussian", "gamma"),
+      mean_pos_setting == "high",
+      bw_mtd %in% c("hpi1", "nrd0")
+    )
+}
 
 if (analysis_dev) {
   sim_grid <- sim_grid |>
@@ -241,6 +261,7 @@ manifest and required when reading canonical results.
 
 ```{r}
 #| label: bw-estimate-settings
+#| include: false
 scenario_settings <- list(
   nSample = n_sample_sim,
   nMarker = 1,
@@ -262,17 +283,21 @@ scenario_settings <- list(
 analysis_required_params <- list(
   analysis_semantics_version = analysis_semantics_version,
   simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
   scenario_settings = scenario_settings,
   sim_grid_spec = analysis_grid_spec
 )
 ```
 
+## Simulation
+
 Rerun one full-grid simulation with the same random numbers as its worker.
 Call `debugonce()` on a helper first to investigate a failure.
 
 ```{r}
 #| label: rerun-one-simulation
+#| include: false
 #| eval: false
 sim_id_target <- 1L
 row_target <- sim_grid_full[sim_grid_full$sim_id == sim_id_target, ]
@@ -295,7 +320,7 @@ Run the simulations and validate this chunk. Promotion waits for all chunks.
 
 ```{r}
 #| label: bw-estimate-parallel
-#| results: hide
+#| include: false
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
@@ -304,6 +329,7 @@ if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
     path_root = root_dir,
     params = c(
       list(
@@ -354,15 +380,21 @@ if (isTRUE(run_simulations)) {
 } else if (isTRUE(run_plots)) {
   run_ctx <- .analysis_results_context(
     analysis_key = analysis_key,
-    path_root = root_dir
+    path_root = root_dir,
+    qmd_path = analysis_qmd
   )
 }
 ```
 
+## Collation
+
 Read matching canonical results and plot the scenario means.
+
+The plotted mean uses the smaller stimulated and unstimulated bandwidth for each complete finite pair; `prop_bw_finite` records the proportion of such pairs.
 
 ```{r}
 #| label: bw-estimate-collate
+#| include: false
 if (isTRUE(run_plots)) {
   path_raw <- .analysis_current_file(
     run_ctx = run_ctx,
@@ -374,8 +406,8 @@ if (isTRUE(run_plots)) {
     relative_path = c("collated", "bw_tbl_results.rds"),
     required_params = analysis_required_params
   )
-  bw_tbl <- readRDS(path_raw)
-  bw_tbl_results <- readRDS(path_results)
+  bw_tbl <- .analysis_read_rds(path_raw, analysis_key, analysis_qmd)
+  bw_tbl_results <- .analysis_read_rds(path_results, analysis_key, analysis_qmd)
   if (any(bw_tbl_results$n_bw_finite < bw_tbl_results$n_bw_total)) {
     message(
       "Some bandwidth estimates are non-finite; prop_bw_finite records ",
@@ -387,8 +419,16 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+## Results
+
+Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the estimator. Facets separate transformations and response frequencies; each figure uses one response-separation and bias setting. Compare the methods within each panel and follow how their estimates change with cell count.
+
 ```{r}
-#| label: bw-estimate-plots
+#| label: fig-bw-estimate-plots
+#| echo: false
+#| fig-cap: "Mean ordinary bandwidth estimates by cell count, transformation and response frequency."
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
     for (bias_uns_setting_curr in unique(bw_tbl_results$bias_uns_setting)) {
@@ -430,6 +470,10 @@ if (isTRUE(run_plots)) {
           )
         ) +
         labs(
+          title = paste0(
+            "Mean position setting: ", mean_pos_setting_curr,
+            ", bias_uns_setting: ", bias_uns_setting_curr
+          ),
           x = "Number of Cells",
           y = "Estimated Bandwidth",
           colour = "Bandwidth Method"

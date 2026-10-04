@@ -18,21 +18,24 @@
   control = list(),
   filterOtherCytPos,
   calcCytPosGates,
-  indBatchList
+  indBatchList,
+  exLookup = NULL
 ) {
   stageChnl <- file.path(stage, chnlSettings$chnlCut)
   control <- .getCpClusterControlUpdate(control)
   gateTbl <- .getCpClusterLocGateTblPrepare(gateTbl)
 
-  exLookup <- .getCpClusterLocExLookup(
-    .data = .data,
-    indBatchList = indBatchList,
-    chnlSettings = chnlSettings,
-    filterOtherCytPos = filterOtherCytPos,
-    calcCytPosGates = calcCytPosGates,
-    gateTbl = gateTbl,
-    pathProject = pathProject
-  )
+  if (is.null(exLookup)) {
+    exLookup <- .getCpClusterLocExLookup(
+      .data = .data,
+      indBatchList = indBatchList,
+      chnlSettings = chnlSettings,
+      filterOtherCytPos = filterOtherCytPos,
+      calcCytPosGates = calcCytPosGates,
+      gateTbl = gateTbl,
+      pathProject = pathProject
+    )
+  }
   gateTblStim <- gateTbl |>
     dplyr::filter(
       .data$ind %in% names(.env$exLookup),

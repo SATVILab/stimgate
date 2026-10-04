@@ -12,8 +12,12 @@ test_that("bandwidth frequency simulations restore intermediate saving after suc
   )
   failure <- "none"
   gating_calls <- 0L
-  env$gateStim <- function(pathProject, ...) {
+  env$gateStim <- function(pathProject, control, bw = NULL, ...) {
     expect_identical(Sys.getenv("STIMGATE_INTERMEDIATE"), "TRUE")
+    expect_s3_class(control, "stimControl")
+    expect_identical(control$clusterGates, FALSE)
+    expect_identical(bw, 0.1)
+    expect_true(all(names(list(...)) %in% names(formals(stimgate::gateStim))))
     gating_calls <<- gating_calls + 1L
     if (failure == "gate") stop("mock gating failure")
     saveRDS(tibble::tibble(), file.path(pathProject, "gateStats.rds"))

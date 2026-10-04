@@ -1,3 +1,60 @@
+# Read PROJR_PROFILE directly, as .isDev()/.isQuick() in .Rprofile do, but
+# without needing projr or the .Rprofile.
+.analysis_has_profile <- function(profile) {
+  profile %in% trimws(strsplit(Sys.getenv("PROJR_PROFILE"), ",", fixed = TRUE)[[1]])
+}
+
+.analysis_is_dev <- function() .analysis_has_profile("dev")
+
+.analysis_is_quick <- function() .analysis_has_profile("quick")
+
+.analysis_mode_key <- function(analysis_key) {
+  suffix <- if (.analysis_is_dev()) "dev" else if (.analysis_is_quick()) "quick"
+  c(analysis_key, suffix)
+}
+
+.analysis_cache_error <- function(analysis_key, detail, qmd_path = NULL) {
+  render <- if (is.null(qmd_path)) "render this analysis" else
+    paste("quarto render", qmd_path)
+  stop(
+    "Analysis key: ", paste(analysis_key, collapse = "/"), ". ", detail,
+    "\nRun from the repository root first: RUN_SIMULATIONS=true RUN_PLOTS=false ",
+    render, ". Use the same dev/quick profile and scientific settings; complete all chunks.",
+    call. = FALSE
+  )
+}
+
+.analysis_read_rds <- function(path, analysis_key, qmd_path = NULL) {
+  if (!file.exists(path)) {
+    .analysis_cache_error(analysis_key, paste("Required cache file is missing:", path), qmd_path)
+  }
+  tryCatch(readRDS(path), error = function(e) {
+    .analysis_cache_error(analysis_key, conditionMessage(e), qmd_path)
+  })
+}
+
+.analysis_read_current <- function(run_ctx, relative_path, required_params = list()) {
+  .analysis_read_rds(
+    .analysis_current_file(run_ctx, relative_path, required_params),
+    run_ctx$analysis_key, run_ctx$qmd_path
+  )
+}
+
+.analysis_require_packages <- function(packages) {
+  for (package in packages) {
+    if (!requireNamespace(package, quietly = TRUE)) {
+      stop("Package '", package, "' is required for this analysis.", call. = FALSE)
+    }
+  }
+}
+
+.analysis_save_plot <- function(plot, filename, width, height, units = "cm") {
+  dir.create(dirname(filename), recursive = TRUE, showWarnings = FALSE)
+  ggplot2::ggsave(filename, plot = plot, width = width, height = height, units = units)
+  print(plot)
+  invisible(filename)
+}
+
 .get_qmd_param <- function(nm, default = NULL) {
   if (
     exists("params", inherits = TRUE) &&
@@ -204,6 +261,9 @@
     run_ctx,
     relative_path,
     required_params = list()) {
+  cache_error <- function(...) {
+    .analysis_cache_error(run_ctx$analysis_key, paste0(...), run_ctx$qmd_path)
+  }
   if (
     length(relative_path) == 0L ||
       any(is.na(relative_path)) ||
@@ -220,24 +280,20 @@
 
   complete_path <- file.path(run_ctx$current_dir, "COMPLETE")
   if (!file.exists(complete_path)) {
-    stop(
-      "No complete canonical current result is available for analysis key: ",
-      paste(run_ctx$analysis_key, collapse = "/"),
-      "."
-    )
+    cache_error("No complete canonical current result is available.")
   }
 
   manifest_path <- file.path(run_ctx$current_dir, "manifest.rds")
   manifest <- .analysis_read_manifest(manifest_path)
   if (is.null(manifest)) {
-    stop("Canonical current result has no readable manifest.rds.")
+    cache_error("Canonical current result has no readable manifest.rds.")
   }
 
   if (!identical(
     as.character(manifest$analysis_key),
     as.character(run_ctx$analysis_key)
   )) {
-    stop("Canonical current manifest does not match the requested analysis key.")
+    cache_error("Canonical current manifest does not match the requested analysis key.")
   }
 
   if (length(required_params) > 0L) {
@@ -257,11 +313,11 @@
     )]
 
     if (length(mismatched_params) > 0L) {
-      stop(
+      cache_error(
         "Canonical current result is incompatible with the required manifest ",
         "parameters: ",
         paste(mismatched_params, collapse = ", "),
-        ". Rerun the analysis before using these results."
+        "."
       )
     }
   }
@@ -271,7 +327,7 @@
     c(list(run_ctx$current_dir), as.list(as.character(relative_path)))
   )
   if (!file.exists(path)) {
-    stop(
+    cache_error(
       "Canonical current result is complete but the required file is missing: ",
       paste(as.character(relative_path), collapse = "/"),
       "."
@@ -425,21 +481,22 @@
 # promoted results are needed (e.g. interactively, without running the
 # simulation chunk). Staging fields point at `current/`, so collation code
 # reads the promoted outputs. Creates no directories, manifests or logs.
-.analysis_results_context <- function(analysis_key, path_root = NULL) {
+.analysis_results_context <- function(analysis_key, path_root = NULL, qmd_path = NULL) {
   if (length(analysis_key) == 0L || !all(nzchar(analysis_key))) {
     stop("analysis_key must be a non-empty character vector.")
   }
   sim_root <- .analysis_cache_dir(analysis_key, path_root, create = FALSE)
   current_dir <- file.path(sim_root, "current")
   if (!file.exists(file.path(current_dir, "COMPLETE"))) {
-    stop(
+    .analysis_cache_error(analysis_key, paste0(
       "No complete canonical current result is available for analysis key: ",
       paste(analysis_key, collapse = "/"),
       " (looked in ", current_dir, ")."
-    )
+    ), qmd_path)
   }
   list(
     analysis_key = analysis_key,
+    qmd_path = qmd_path,
     sim_root = sim_root,
     current_dir = current_dir,
     staging_run_dir = current_dir,
@@ -456,7 +513,8 @@
     path_root = NULL,
     params = list(),
     sim_grid_chunk_index = 1L,
-    sim_grid_n_chunks = 1L) {
+    sim_grid_n_chunks = 1L,
+    qmd_path = NULL) {
   if (length(analysis_key) == 0L || !all(nzchar(analysis_key))) {
     stop("analysis_key must be a non-empty character vector.")
   }
@@ -481,10 +539,8 @@
   run_time <- format(start_time, "%H%M%S")
 
   sim_root <- .analysis_cache_dir(analysis_key, path_root)
-  log_root <- .analysis_cache_dir(
-    c("log", "analysis", analysis_key),
-    path_root
-  )
+  # Manifests keep the legacy `path_log_run` field; old runs resume in place.
+  runs_root <- file.path(sim_root, "runs")
 
   staging_root <- file.path(sim_root, "staging")
   current_dir <- file.path(sim_root, "current")
@@ -492,7 +548,7 @@
   if (is.null(existing_run)) {
     run_date <- run_date_now
     staging_run_dir <- file.path(staging_root, run_date, run_id)
-    progress_run_dir <- file.path(log_root, run_date, run_id)
+    progress_run_dir <- file.path(runs_root, run_date, run_id)
   } else {
     run_date <- existing_run$run_date
     staging_run_dir <- existing_run$staging_run_dir
@@ -503,7 +559,7 @@
     ) {
       as.character(existing_run$manifest$path_log_run)
     } else {
-      file.path(log_root, run_date, run_id)
+      file.path(runs_root, run_date, run_id)
     }
   }
 
@@ -575,11 +631,12 @@
 
   list(
     analysis_key = analysis_key,
+    qmd_path = qmd_path,
     run_id = run_id,
     run_date = run_date,
     run_time = run_time,
     sim_root = sim_root,
-    log_root = log_root,
+    runs_root = runs_root,
     current_dir = current_dir,
     staging_root = staging_root,
     staging_run_dir = staging_run_dir,

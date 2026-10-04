@@ -3,16 +3,33 @@ name: analysis-qmd-tests
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'tests runs the bounded QMD tests; render renders QMDs end to end (simulate, then plot)'
+        required: true
+        type: choice
+        default: tests
+        options:
+          - tests
+          - render
       qmds:
-        description: 'QMD numbers, stems or paths, separated by commas/spaces; all runs every target'
+        description: 'QMD numbers, stems or paths, separated by commas/spaces; all runs every target (render: all simulation QMDs except 5, 6)'
         required: true
         default: 'all'
         type: string
+      profile:
+        description: 'Profile for render mode'
+        required: true
+        type: choice
+        default: quick
+        options:
+          - quick
+          - dev
 
 permissions: read-all
 
 jobs:
   qmd-tests:
+    if: inputs.mode == 'tests'
     # Reuse the analysis integration environment: Windows has Bioconductor binaries.
     runs-on: windows-latest
     timeout-minutes: 90
@@ -54,3 +71,132 @@ jobs:
         env:
           RETICULATE_PYTHON: ${{ steps.python.outputs.python-path }}
         run: Rscript analysis/tests/run_qmd_tests.R "$env:QMD_TEST_TARGETS"
+
+  prepare:
+    if: inputs.mode == 'render'
+    runs-on: ubuntu-latest
+    outputs:
+      qmds: ${{ steps.matrix.outputs.qmds }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare QMD matrix
+        id: matrix
+        env:
+          QMD_INPUT: ${{ inputs.qmds }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          tokens = [x for x in re.split(r'[,\s]+', os.environ['QMD_INPUT'].strip()) if x]
+          if tokens == ['all']:
+              tokens = ['1', '2a', '2b', '3', '4', '7', '8']
+          qmds = []
+          for token in tokens:
+              stem = Path(token).stem
+              hits = sorted(p.stem for p in Path('analysis').glob('*.qmd')
+                            if p.stem == stem or p.stem.startswith(stem + '-'))
+              if len(hits) != 1:
+                  raise SystemExit(f'QMD {token!r} matched {hits}')
+              qmds.append(hits[0])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('qmds=' + json.dumps(list(dict.fromkeys(qmds))) + '\n')
+          PY
+
+  render:
+    needs: prepare
+    if: inputs.mode == 'render'
+    runs-on: windows-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        qmd: ${{ fromJSON(needs.prepare.outputs.qmds) }}
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      PROJR_PROFILE: ${{ inputs.profile }}
+      QMD: ${{ matrix.qmd }}
+      # GITHUB_ACTIONS=true makes the repository .Rprofile skip renv activation.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: r-lib/actions/setup-pandoc@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+
+      - uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+        with:
+          r-version: 'release'
+          use-public-rspm: true
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: python
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: python -m pip install numpy
+
+      - uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+        with:
+          extra-packages: |
+            local::.
+            any::devtools
+            any::testthat
+            any::decor
+            any::reticulate
+            any::future
+            any::furrr
+            any::progressr
+            any::withr
+            SATVILab/simcyto
+            github::RGLab/cytoUtils
+            bioc::openCyto
+            bioc::flowStats
+            any::quarto
+            any::rmarkdown
+            any::knitr
+            any::ggforce
+            any::pkgload
+            any::scales
+            any::RColorBrewer
+          needs: check
+          cache: always
+
+      - uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2
+        with:
+          tinytex: false
+
+      - name: Prepare render and cache directories
+        shell: bash
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/render/simulate" "$GITHUB_WORKSPACE/render/plots"
+
+      - name: Render simulations
+        shell: bash
+        env:
+          RETICULATE_PYTHON: ${{ steps.python.outputs.python-path }}
+          RUN_SIMULATIONS: 'true'
+          RUN_PLOTS: 'false'
+        run: quarto render "analysis/$QMD.qmd" --output-dir "$GITHUB_WORKSPACE/render/simulate"
+
+      - name: Render plots from saved simulations
+        shell: bash
+        env:
+          RETICULATE_PYTHON: ${{ steps.python.outputs.python-path }}
+          RUN_SIMULATIONS: 'false'
+          RUN_PLOTS: 'true'
+        run: quarto render "analysis/$QMD.qmd" --output-dir "$GITHUB_WORKSPACE/render/plots"
+
+      - name: Upload rendered HTML and saved figures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: render-${{ matrix.qmd }}
+          retention-days: 7
+          path: |
+            ${{ github.workspace }}/render/plots/**/*.html
+            ${{ github.workspace }}/render/simulate/**/*.html
+            ${{ github.workspace }}/output/fig/**/*.png
+            ${{ github.workspace }}/output/fig/**/*.pdf
+            ${{ github.workspace }}/cache/**/*.png
+            ${{ github.workspace }}/cache/**/*.pdf

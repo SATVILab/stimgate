@@ -413,7 +413,7 @@ test_that("analysis 9 builds before saving to the canonical manual output", {
   expect_true(grepl("path_dir_save = NULL", content, fixed = TRUE))
   expect_true(grepl(".acsCytofManualSave(", content, fixed = TRUE))
   expect_true(grepl(
-    'path_manual_output <- projr::projr_path_get_dir(',
+    'path_manual_output <- projr::projr_path_get(',
     content,
     fixed = TRUE
   ))
@@ -433,4 +433,37 @@ test_that("analysis 9 builds before saving to the canonical manual output", {
     collapse = "\n"
   )
   expect_true(grepl(".write_rds_atomic(", save_body, fixed = TRUE))
+})
+
+test_that("analysis 9 reads the canonical comparison without rebuilding raw inputs", {
+  lines <- readLines(qmd_path, warn = FALSE)
+  start <- which(lines == "#| label: format-manual-comparison")
+  end <- which(lines == "```" & seq_along(lines) > start)[1L]
+  code <- parse(text = lines[seq.int(start + 1L, end - 1L)])
+  # Supply the configured cache path without requiring projr or external data.
+  expect_identical(as.character(code[[1]][[2]]), "path_manual_output")
+  env <- .load_acs_method_env()
+  source(file.path(root_dir, "scripts", "r", "analysis-runtime.R"), local = env)
+  env$analysis_qmd <- "analysis/9-real-compare-acs-cytof.qmd"
+  env$path_manual_output <- tempfile("acs-manual-cache-")
+  dir.create(env$path_manual_output)
+  withr::defer(unlink(env$path_manual_output, recursive = TRUE))
+  env$run_preprocessing <- FALSE
+  env$run_stimgate <- FALSE
+  env$run_comparators <- FALSE
+  env$comp_against_manual_cyt <- function(...) stop("Raw-data rebuild was called")
+  env$.acsCytofManualSave <- function(...) stop("Cache write was called")
+  env$.acsCytofManualSummaryTable <- function(x) x
+  cached <- tibble::tibble(method = "stimgate", freq_bs_auto = 0.1)
+  path <- file.path(env$path_manual_output, "manual-comparison.rds")
+  saveRDS(cached, path)
+  for (expr in as.list(code)[-1L]) eval(expr, env)
+  expect_identical(env$manual_comparison_tbl, cached)
+  expect_identical(env$manual_summary_tbl, cached)
+
+  unlink(path)
+  expect_error(
+    for (expr in as.list(code)[-1L]) eval(expr, env),
+    "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/9"
+  )
 })

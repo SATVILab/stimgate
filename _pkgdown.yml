@@ -7,6 +7,7 @@ reference:
   desc: Main functions for identifying cytokine-positive cells
   contents:
   - gateStim
+  - stimControl
   - getStimGates
   - getStimGatesDetailed
   - getStimStats

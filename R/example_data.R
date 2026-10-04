@@ -7,6 +7,12 @@
 #'
 #' @return A list with the saved example-data path, channel labels, marker labels,
 #'   and sample-to-condition mapping.
+#' @examples
+#' exampleData <- getExampleData()
+#' gs <- flowWorkspace::load_gs(exampleData$pathGs)
+#' gs
+#' exampleData$batchList
+#' exampleData$marker
 #' @export
 getExampleData <- function() {
   example_dir <- system.file(

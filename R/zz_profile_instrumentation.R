@@ -44,7 +44,8 @@
   chnlSettings,
   .data,
   indBatchList,
-  pathProject
+  pathProject,
+  parallel = FALSE
 ) {
   .profileInit(pathProject)
   .profileWithContext(
@@ -53,7 +54,8 @@
         chnlSettings = chnlSettings,
         .data = .data,
         indBatchList = indBatchList,
-        pathProject = pathProject
+        pathProject = pathProject,
+        parallel = parallel
       ),
       level = "major",
       major = "initial_gating",
@@ -243,7 +245,8 @@
   control = list(),
   filterOtherCytPos,
   calcCytPosGates,
-  indBatchList
+  indBatchList,
+  exLookup = NULL
 ) {
   if (!.profileEnabled() || !identical(stage, "init")) {
     return(.profileOriginalGetCpCluster(
@@ -255,7 +258,8 @@
       control = control,
       filterOtherCytPos = filterOtherCytPos,
       calcCytPosGates = calcCytPosGates,
-      indBatchList = indBatchList
+      indBatchList = indBatchList,
+      exLookup = exLookup
     ))
   }
 
@@ -269,7 +273,8 @@
       control = control,
       filterOtherCytPos = filterOtherCytPos,
       calcCytPosGates = calcCytPosGates,
-      indBatchList = indBatchList
+      indBatchList = indBatchList,
+      exLookup = exLookup
     ),
     level = "minor",
     major = "initial_gating",

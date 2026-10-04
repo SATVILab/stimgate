@@ -18,6 +18,10 @@ params:
   sim_retry_errors: true
 ---
 
+This analysis asks how adaptive normalised bandwidth estimates vary with cell count, response frequency and separation. Matched stimulated and unstimulated samples are simulated under Gaussian, gamma and skew transformations. The background-core and high-expression-extra bandwidths are estimated separately for each condition.
+
+## Set-up
+
 ```{r}
 #| label: setup
 #| include: false
@@ -29,13 +33,13 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- tryCatch(
-  projr::projr_path_get("project"),
-  error = function(e) getwd()
-)
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+analysis_qmd <- "analysis/5-sim-bw-est-adaptive.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
   "sim_grid_chunk_index",
@@ -78,7 +82,9 @@ analysis_run_id <- .get_qmd_param_env(
 )
 analysis_key <- c("sim", "bw", "est", "adaptive")
 analysis_semantics_version <- "adaptive-bw-est-v3"
-analysis_dev <- isTRUE(.isDev())
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_key <- .analysis_mode_key(analysis_key)
 n_sample_sim <- if (analysis_dev) 1L else 5L
 n_iter_sim <- if (analysis_dev) 1L else 5L
 norm_adaptive_ncell <- 2500L
@@ -119,7 +125,7 @@ for (fn in c(
 }
 ```
 
-### Checking what the adaptive estimators actually estimate
+## Scientific settings
 
 Get the parameters over which we simulate.
 
@@ -177,6 +183,7 @@ bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
 ```{r}
 #| label: bw-estimate-grid
+#| include: false
 data_scenario_grid <- tidyr::expand_grid(
   mean_pos_settings_tbl,
   prob_response = prob_response_vec,
@@ -263,6 +270,7 @@ row, and the manifest parameters that canonical results must match.
 
 ```{r}
 #| label: bw-estimate-settings
+#| include: false
 scenario_settings <- list(
   nSample = n_sample_sim,
   nMarker = 1L,
@@ -292,6 +300,8 @@ analysis_required_params <- list(
 )
 ```
 
+## Simulation
+
 Rerun one simulation interactively, for example to see why it failed.
 Each row is seeded from its own `sim_seed` with a fixed RNG kind inside
 `.simBandwidthRunRow()`, which the parallel run also calls, so this
@@ -301,6 +311,7 @@ step through it.
 
 ```{r}
 #| label: rerun-one-simulation
+#| include: false
 #| eval: false
 sim_id_target <- 1L
 
@@ -330,7 +341,7 @@ chunk and promote the run once every chunk is complete.
 
 ```{r}
 #| label: bw-estimate-parallel
-#| results: hide
+#| include: false
 if (interactive()) {
   progressr::handlers(global = TRUE)
 }
@@ -339,6 +350,7 @@ if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
     path_root = root_dir,
     params = c(
       list(
@@ -388,20 +400,25 @@ if (isTRUE(run_simulations)) {
   }
 } else if (isTRUE(run_plots)) {
   # Read-only: plots use the canonical promoted results under current/.
-  run_ctx <- .analysis_results_context(analysis_key, path_root = root_dir)
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key, path_root = root_dir, qmd_path = analysis_qmd
+  )
 }
 ```
+
+## Collation
 
 Read the canonical promoted results for plotting.
 
 ```{r}
 #| label: bw-estimate-collate
+#| echo: false
 if (isTRUE(run_plots)) {
-  bw_tbl_results <- readRDS(.analysis_current_file(
+  bw_tbl_results <- .analysis_read_current(
     run_ctx = run_ctx,
     relative_path = c("collated", "bw_tbl_results.rds"),
     required_params = analysis_required_params
-  ))
+  )
 
   bw_tbl_results |>
     dplyr::group_by(.data$bw_mtd, .data$bw_component, .data$bw_condition) |>
@@ -426,10 +443,16 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+## Results
+
+Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the HPI method. Facets separate transformations and response frequencies; separate figures show each core or extra component and each condition at fixed response separation and bias. Compare the curves within a panel, bearing in mind that means use only finite estimates and the table above reports their coverage.
+
 ```{r}
-#| label: bw-estimate-plots
-#| fig-width: 7
-#| fig-height: 10
+#| label: fig-bw-estimate-plots
+#| echo: false
+#| fig-cap: "Adaptive core and extra bandwidth estimates by cell count and condition."
+#| fig-width: 10
+#| fig-height: 9
 if (isTRUE(run_plots)) {
   dir_results <- .analysis_cache_dir(c(analysis_key, "plots"), root_dir)
 
@@ -501,13 +524,13 @@ if (isTRUE(run_plots)) {
             dir_results,
             paste0(
               "bw_estimate_meanpos_setting_",
-              .file_safe(mean_pos_setting_curr),
+              as.character(mean_pos_setting_curr),
               "_bias_uns_",
-              .file_safe(bias_uns_setting_curr),
+              as.character(bias_uns_setting_curr),
               "_component_",
-              .file_safe(bw_component_curr),
+              as.character(bw_component_curr),
               "_condition_",
-              .file_safe(bw_condition_curr),
+              as.character(bw_condition_curr),
               ".png"
             )
           )

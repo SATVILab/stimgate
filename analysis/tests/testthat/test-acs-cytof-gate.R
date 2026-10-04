@@ -218,33 +218,47 @@ test_that("analysis 9 Slurm launcher exports the controls the QMD reads", {
   expect_true(grepl("#SBATCH --ntasks=6", content, fixed = TRUE))
 })
 
-test_that("analysis 9 YAML defaults agree with the env fallbacks and are safe", {
+test_that("analysis 9 stages inherit simulation controls and allow overrides", {
   lines <- readLines(qmd_path, warn = FALSE)
   yaml_end <- which(lines == "---")[2L]
   yaml_params <- yaml::yaml.load(paste(lines[2:(yaml_end - 1L)], collapse = "\n"))
-  content <- paste(lines, collapse = "\n")
-
-  expect_false(yaml_params$params$run_preprocessing)
-  expect_false(yaml_params$params$run_stimgate)
-  expect_false(yaml_params$params$run_comparators)
+  expect_true(yaml_params$params$run_simulations)
   expect_false(yaml_params$params$run_plots)
   expect_false(yaml_params$execute$warning)
   expect_false(yaml_params$execute$message)
-
-  # The setup-chunk fallback must equal the YAML value for every flag; run_plots
-  # is the one deliberate exception (interactive default TRUE, as in the other
-  # QMDs).
   for (flag in c("run_preprocessing", "run_stimgate", "run_comparators")) {
-    pattern <- paste0(
-      '"', flag, '",\\s*"[A-Z_]+",\\s*(TRUE|FALSE)'
-    )
-    fallback <- sub(
-      ".*,\\s*(TRUE|FALSE)$",
-      "\\1",
-      regmatches(content, regexpr(pattern, content))
-    )
-    expect_identical(fallback, "FALSE", info = flag)
+    expect_null(yaml_params$params[[flag]])
   }
+
+  env <- .load_acs_gate_env()
+  source(file.path(root_dir, "scripts", "r", "analysis-runtime.R"), local = env)
+  withr::local_envvar(c(
+    RUN_SIMULATIONS = NA, RUN_PREPROCESSING = NA, RUN_STIMGATE = NA,
+    RUN_COMPARATORS = NA, RUN_PLOTS = NA
+  ))
+  start <- which(lines == "#| label: setup")
+  end <- which(lines == "```" & seq_along(lines) > start)[1L]
+  code <- parse(text = lines[seq.int(start + 1L, end - 1L)])
+  controls <- Filter(function(expr) {
+    is.call(expr) && identical(expr[[1]], as.name("<-")) &&
+      as.character(expr[[2]]) %in% c(
+        "run_simulations", "run_preprocessing", "run_stimgate", "run_comparators"
+      )
+  }, as.list(code))
+  expect_length(controls, 4L)
+  stages <- c("run_preprocessing", "run_stimgate", "run_comparators")
+  for (enabled in c(TRUE, FALSE)) {
+    env$params <- yaml_params$params
+    env$params$run_simulations <- enabled
+    for (expr in controls) eval(expr, env)
+    expect_identical(vapply(stages, get, logical(1), envir = env),
+                     stats::setNames(rep(enabled, 3L), stages))
+  }
+  Sys.setenv(RUN_SIMULATIONS = "true", RUN_PREPROCESSING = "false")
+  for (expr in controls) eval(expr, env)
+  expect_false(env$run_preprocessing)
+  expect_true(env$run_stimgate)
+  expect_true(env$run_comparators)
 })
 
 test_that("a replaced directory keeps its last good content on failure", {

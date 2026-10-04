@@ -123,6 +123,18 @@ test_that("run contexts are isolated by logical run ID", {
   expect_true(file.exists(ctx_b$manifest_path))
   expect_true(file.exists(ctx_a$status_path))
   expect_true(file.exists(ctx_b$status_path))
+  expect_identical(
+    .norm_path(ctx_a$progress_run_dir),
+    .norm_path(file.path(
+      ctx_a$sim_root, "runs",
+      ctx_a$run_date, "run-a"
+    ))
+  )
+  expect_identical(
+    readRDS(ctx_a$manifest_path)$path_log_run,
+    ctx_a$progress_run_dir
+  )
+  expect_false(dir.exists(file.path(tmp_project, "cache", "log")))
 })
 
 test_that("promotion only occurs after all expected chunks complete and validate", {
@@ -174,6 +186,11 @@ test_that("promotion only occurs after all expected chunks complete and validate
   expect_true(isTRUE(env$.analysis_promote_run(ctx_2)))
   expect_true(dir.exists(ctx_2$current_dir))
   expect_true(file.exists(file.path(ctx_2$staging_run_dir, "COMPLETE")))
+  expect_true(dir.exists(ctx_2$progress_run_dir))
+  expect_true(file.exists(ctx_2$status_path))
+  expect_false(dir.exists(file.path(ctx_2$current_dir, "runs")))
+  expect_false(file.exists(file.path(ctx_2$current_dir, "status.rds")))
+  expect_false(dir.exists(file.path(ctx_2$current_dir, "jobs")))
 
   status <- env$.analysis_read_status(ctx_2)
   expect_identical(status$status, "completed")
@@ -557,7 +574,7 @@ test_that("explicit run ID reuses the original dated run directory", {
 
   target_date <- "1999-12-31"
   moved_staging_dir <- file.path(ctx_initial$staging_root, target_date, run_id)
-  moved_progress_dir <- file.path(ctx_initial$log_root, target_date, run_id)
+  moved_progress_dir <- file.path(ctx_initial$runs_root, target_date, run_id)
   dir.create(dirname(moved_staging_dir), recursive = TRUE, showWarnings = FALSE)
   dir.create(dirname(moved_progress_dir), recursive = TRUE, showWarnings = FALSE)
   expect_true(file.rename(ctx_initial$staging_run_dir, moved_staging_dir))
@@ -587,6 +604,63 @@ test_that("explicit run ID reuses the original dated run directory", {
     .norm_path(ctx_resume$progress_run_dir),
     .norm_path(moved_progress_dir)
   )
+})
+
+test_that("legacy run state resumes at the path recorded in the staged manifest", {
+  env <- .load_runtime_env()
+  tmp_project <- withr::local_tempdir()
+  withr::local_dir(tmp_project)
+  writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
+
+  analysis_key <- c("sim", "analysis-runtime-legacy-resume")
+  ctx <- env$.analysis_run_context(
+    analysis_key = analysis_key,
+    run_id = "legacy-run",
+    sim_grid_n_chunks = 2L
+  )
+  env$.analysis_mark_chunk(
+    run_ctx = ctx,
+    total_sims = 1L,
+    completed_sims = 1L,
+    collate_ok = TRUE,
+    validation_ok = TRUE
+  )
+  writeLines("existing progress", ctx$progress_file)
+  file.create(file.path(ctx$chunk_jobs_dir, "completed-1"))
+  status_before <- readRDS(ctx$status_path)
+
+  # Recreate the old runtime layout, including its leading "sim" key component.
+  legacy_dir <- file.path(
+    tmp_project, "cache", "log", "analysis", "sim",
+    "analysis-runtime-legacy-resume", ctx$run_date, ctx$run_id
+  )
+  dir.create(dirname(legacy_dir), recursive = TRUE, showWarnings = FALSE)
+  expect_true(file.rename(ctx$progress_run_dir, legacy_dir))
+  manifest <- readRDS(ctx$manifest_path)
+  manifest$path_log_run <- legacy_dir
+  saveRDS(manifest, ctx$manifest_path)
+  saveRDS(manifest, file.path(legacy_dir, "manifest.rds"))
+
+  resumed <- env$.analysis_run_context(
+    analysis_key = analysis_key,
+    run_id = ctx$run_id,
+    sim_grid_chunk_index = 2L,
+    sim_grid_n_chunks = 2L
+  )
+  expect_identical(.norm_path(resumed$staging_run_dir), .norm_path(ctx$staging_run_dir))
+  expect_identical(.norm_path(resumed$progress_run_dir), .norm_path(legacy_dir))
+  expect_identical(readRDS(resumed$status_path), status_before)
+  expect_identical(readLines(resumed$progress_file), "existing progress")
+  expect_true(file.exists(file.path(
+    legacy_dir, "jobs", ctx$chunk_label, "completed-1"
+  )))
+  expect_true(dir.exists(file.path(legacy_dir, "jobs", resumed$chunk_label)))
+  expect_true(ctx$chunk_label %in% names(env$.analysis_read_chunk_statuses(resumed)))
+  expect_identical(
+    .norm_path(env$.analysis_lock_path(resumed, "promotion")),
+    .norm_path(file.path(legacy_dir, "promotion.lock"))
+  )
+  expect_false(dir.exists(ctx$progress_run_dir))
 })
 
 test_that("a promoted run cannot be reset to running or lose collation/validation state", {
@@ -900,4 +974,68 @@ test_that("seeded evaluation is independent of and restores caller RNG", {
   rm(".Random.seed", envir = .GlobalEnv)
   env$.analysis_with_seed(5L, stats::runif(1))
   expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+})
+
+test_that("analysis profiles are read from PROJR_PROFILE", {
+  env <- new.env(parent = baseenv())
+  source(script_runtime, local = env)
+  withr::local_envvar(PROJR_PROFILE = NA)
+  expect_false(env$.analysis_is_dev())
+  expect_false(env$.analysis_is_quick())
+  Sys.setenv(PROJR_PROFILE = "dev, quick")
+  expect_true(env$.analysis_is_dev())
+  expect_true(env$.analysis_is_quick())
+  Sys.setenv(PROJR_PROFILE = "default")
+  expect_false(env$.analysis_is_dev())
+  expect_false(env$.analysis_is_quick())
+})
+
+test_that("analysis mode keys isolate dev and quick results with dev precedence", {
+  env <- new.env(parent = baseenv())
+  source(script_runtime, local = env)
+  key <- c("sim", "test")
+  withr::local_envvar(PROJR_PROFILE = NA)
+  expect_identical(env$.analysis_mode_key(key), key)
+  Sys.setenv(PROJR_PROFILE = "quick")
+  expect_identical(env$.analysis_mode_key(key), c(key, "quick"))
+  Sys.setenv(PROJR_PROFILE = "dev")
+  expect_identical(env$.analysis_mode_key(key), c(key, "dev"))
+  Sys.setenv(PROJR_PROFILE = "dev, quick")
+  expect_identical(env$.analysis_mode_key(key), c(key, "dev"))
+})
+
+test_that("canonical cache failures give render guidance and successful reads retain data", {
+  env <- .load_runtime_env()
+  cache <- withr::local_tempdir()
+  ctx <- list(
+    analysis_key = c("sim", "test"), current_dir = cache,
+    qmd_path = "analysis/test.qmd"
+  )
+  path <- file.path(cache, "result.rds")
+  command <- "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/test.qmd"
+  expect_error(env$.analysis_read_current(ctx, "result.rds"), command, fixed = TRUE)
+  file.create(file.path(cache, "COMPLETE"))
+  expect_error(env$.analysis_read_current(ctx, "result.rds"), command, fixed = TRUE)
+  saveRDS(list(analysis_key = ctx$analysis_key, params = list(version = 1L)),
+          file.path(cache, "manifest.rds"))
+  expect_error(env$.analysis_read_current(ctx, "result.rds"), command, fixed = TRUE)
+  object <- data.frame(value = 1:2, row.names = c("a", "b"))
+  saveRDS(object, path)
+  expect_identical(env$.analysis_read_current(ctx, "result.rds", list(version = 1L)), object)
+  expect_error(env$.analysis_read_current(ctx, "result.rds", list(version = 2L)), command, fixed = TRUE)
+  writeLines("corrupt RDS", path)
+  expect_error(suppressWarnings(env$.analysis_read_current(ctx, "result.rds")), command, fixed = TRUE)
+})
+
+test_that("the shared plot saver writes and prints the supplied plot once", {
+  env <- .load_runtime_env()
+  printed <- list()
+  env$print <- function(x) printed[[length(printed) + 1L]] <<- x
+  directory <- withr::local_tempdir()
+  path <- file.path(directory, "figures", "plot.pdf")
+  plot <- ggplot2::ggplot(data.frame(x = 1:2, y = 1:2), ggplot2::aes(x, y)) +
+    ggplot2::geom_point()
+  expect_identical(env$.analysis_save_plot(plot, path, width = 5, height = 5), path)
+  expect_true(file.exists(path))
+  expect_identical(printed, list(plot))
 })

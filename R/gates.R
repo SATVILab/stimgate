@@ -143,6 +143,19 @@ getStimGates <- function(
 #'   `file.path(pathProject, "gatesDetailed.rds")`.
 #'
 #' @return A tibble with one row per saved threshold diagnostic.
+#' @examples
+#' exampleData <- getExampleData()
+#' gs <- flowWorkspace::load_gs(exampleData$pathGs)
+#' pathProject <- gateStim(
+#'   pathProject = file.path(tempdir(), "getStimGatesDetailedExample"),
+#'   .data = gs,
+#'   batchList = exampleData$batchList,
+#'   marker = exampleData$marker,
+#'   popGate = "root"
+#' )
+#'
+#' # Get threshold diagnostics
+#' detailTbl <- getStimGatesDetailed(pathProject)
 #' @export
 getStimGatesDetailed <- function(
   pathProject,

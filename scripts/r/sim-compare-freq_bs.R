@@ -55,9 +55,12 @@
     return(pathFbeta)
   }
   if (requireNamespace("projr", quietly = TRUE)) {
-    return(projr::projr_path_get("project", "scripts", "python", "fbeta.py"))
+    pathCandidate <- projr::projr_path_get("project", "scripts", "python", "fbeta.py")
+    if (file.exists(pathCandidate)) {
+      return(pathCandidate)
+    }
   }
-  # Without projr, look for the checkout's copy above the working directory
+  # If projr did not locate the script, look above the working directory
   # (e.g. analysis tests run from analysis/tests/testthat).
   pathDir <- normalizePath(".", winslash = "/", mustWork = FALSE)
   repeat {
@@ -72,7 +75,7 @@
     pathDir <- pathParent
   }
   stop(
-    "pathFbeta was not supplied, projr is not available and ",
+    "pathFbeta was not supplied and ",
     "scripts/python/fbeta.py was not found above the working directory. ",
     "Pass pathFbeta explicitly."
   )
@@ -955,6 +958,7 @@
   bwNcellMax = 1e5,
   bwCluster = NULL,
   minCell = 1e2,
+  # Retained for callers/manifests; gateStim no longer uses these settings.
   maxPosProbX = Inf,
   gateQuant = c(0.25, 0.75),
   locProbCol = "pred",
@@ -1006,33 +1010,33 @@
         popGate = "root",
         batchList = batchList,
         marker = paste0("MarkerF", seq_len(nMarker)),
-        calcCytPosGates = calcCytPosGates,
         biasUns = biasUns,
         bw = bw,
-        bwFallback = bwFallback,
-        bwMin = bwMin,
-        bwMax = bwMax,
-        bwMtd = bwMtd,
-        bwAdj = bwAdj,
-        bwNcellMin = bwNcellMin,
-        bwNcellMax = bwNcellMax,
-        bwCluster = bwCluster,
-        minCell = minCell,
-        maxPosProbX = maxPosProbX,
-        gateQuant = gateQuant,
-        tolClust = tolClust,
-        locProbCol = locProbCol,
-        locMinPeakProb = locMinPeakProb,
-        locEnforceShapeThreshold = locEnforceShapeThreshold,
-        locDipAlpha = locDipAlpha,
-        locAntimodeHeightFrac = locAntimodeHeightFrac,
-        locAntimodeLowRel = locAntimodeLowRel,
-        locAntimodeLowAbs = locAntimodeLowAbs,
-        locFlatDerivFrac = locFlatDerivFrac,
-        locFlatHardDerivFrac = locFlatHardDerivFrac,
-        locMarginalPurityRel = locMarginalPurityRel,
-        locMarginalCellBinRatio = locMarginalCellBinRatio,
-        locMarginalRefQuantile = locMarginalRefQuantile
+        control = stimgate::stimControl(
+          bwFallback = bwFallback,
+          bwMin = bwMin,
+          bwMax = bwMax,
+          bwMtd = bwMtd,
+          bwAdj = bwAdj,
+          bwNcellMin = bwNcellMin,
+          bwNcellMax = bwNcellMax,
+          bwCluster = bwCluster,
+          clusterGates = !is.null(tolClust),
+          locProbCol = locProbCol,
+          locMinPeakProb = locMinPeakProb,
+          locEnforceShapeThreshold = locEnforceShapeThreshold,
+          locDipAlpha = locDipAlpha,
+          locAntimodeHeightFrac = locAntimodeHeightFrac,
+          locAntimodeLowRel = locAntimodeLowRel,
+          locAntimodeLowAbs = locAntimodeLowAbs,
+          locFlatDerivFrac = locFlatDerivFrac,
+          locFlatHardDerivFrac = locFlatHardDerivFrac,
+          locMarginalPurityRel = locMarginalPurityRel,
+          locMarginalCellBinRatio = locMarginalCellBinRatio,
+          locMarginalRefQuantile = locMarginalRefQuantile,
+          calcCytPosGates = calcCytPosGates,
+          minCell = minCell
+        )
       ))
 
       # Extract final cluster-refined StimGate gates and statistics
@@ -1325,6 +1329,7 @@
   tolClust = NULL,
   locEnforceShapeThreshold = FALSE,
   minCell = 1e2,
+  # Retained for callers/manifests; gateStim no longer uses these settings.
   maxPosProbX = Inf,
   gateQuant = c(0.25, 0.75),
   locProbCol = "pred",

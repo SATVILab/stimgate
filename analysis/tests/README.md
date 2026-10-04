@@ -1,5 +1,7 @@
 # Analysis test targets
 
+With `mode: render`, the manual-only **analysis-qmd-tests** workflow renders QMDs end to end instead (quick mode by default, optionally dev): one parallel Windows job per QMD runs the simulation render, then the plot render, and uploads the HTML and saved figures. `qmds: all` renders every simulation QMD except 5 and 6. For example: `gh workflow run analysis-qmd-tests.yaml -f mode=render -f qmds='2a,7'`.
+
 Run commands from the repository root. The package is loaded from the current
 checkout, and failed expectations cause a nonzero exit status.
 
@@ -19,6 +21,10 @@ Rscript analysis/tests/run_qmd_tests.R all
 Analysis 2 is split into targets `2a` and `2b`. For example,
 `Rscript analysis/tests/run_qmd_tests.R "2a,2b"` runs both.
 Both targets include the shared seeded runner, resume and promotion tests.
+Run state lives in `cache/sim/<analysis-key>/runs/<YYYY-MM-DD>/<run-id>/`,
+beside `staging/` and `current/`. Runtime tests check this layout, exclusion of
+run state from promotion, and resumption at legacy `cache/log/analysis/...`
+paths recorded in staged manifests' `path_log_run` field.
 Their plot fixtures check relative-error summaries averaged over cell counts
 and separate outputs for each cell count without rendering the research grid.
 

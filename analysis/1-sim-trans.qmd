@@ -13,6 +13,10 @@ params:
   simulation_seed: 12345
 ---
 
+This page checks that the simulated expression distributions look sensible under the three transformation settings used in the bandwidth simulations. Here, `mean_pos` is chosen separately for each transformation, with low and high settings selected after inspecting the transformed distributions.
+
+## Set-up
+
 ```{r}
 #| label: setup
 #| include: false
@@ -25,14 +29,9 @@ suppressPackageStartupMessages({
   library(cowplot)
 })
 
-if (requireNamespace("projr", quietly = TRUE)) {
-  root_dir <- tryCatch(
-    projr::projr_path_get("project"),
-    error = function(e) getwd()
-  )
-} else {
-  root_dir <- getwd()
-}
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
@@ -42,6 +41,9 @@ run_simulations <- .as_flag(.get_qmd_param_env(
   "RUN_SIMULATIONS",
   FALSE
 ))
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+
 run_plots <- .as_flag(.get_qmd_param_env(
   "run_plots",
   "RUN_PLOTS",
@@ -81,9 +83,7 @@ for (fn in c("sim-misc.R", "sim-trans.R")) {
 }
 ```
 
-## Aim
-
-This page checks that the simulated expression distributions look sensible under the three transformation settings used in the bandwidth simulations. Here, `mean_pos` is chosen separately for each transformation, with low and high settings selected after inspecting the transformed distributions.
+## Scientific settings
 
 ```{r}
 #| label: main-settings
@@ -111,46 +111,60 @@ main_settings
 
 The figures below simulate one unstimulated and one stimulated condition for each selected transformation-specific `mean_pos` setting. The stimulated sample has an excess response probability of `r mean_pos_settings_tbl$prob_response[[1]]`, while the unstimulated sample has background response probability equal to `prob_response * background_relative_to_response`.
 
-## Mean-positive transformation grid
+## Simulation
 
-Each row corresponds to the low or high transformation-specific `mean_pos` setting, and each column corresponds to one transformation. The y-axis is square-root transformed to make rare response components easier to see. Vertical lines (line type distinguishes the component) mark the realised negative component mean in the unstimulated condition and the realised positive component mean in the stimulated condition. The rug along the bottom axis shows the individual positive-component cells.
+Each grid row has its own seed. The cached expression table records the scientific settings so a later plotting render cannot silently use a different configuration.
 
 ```{r}
 #| label: simulate-mean-pos-grid-univariate
-#| fig-width: 12
-#| fig-height: 8
-#| fig-cap: "Univariate simulated expression for transformation-specific low and high mean_pos settings. The y-axis is square-root transformed to make the rare response component easier to see."
+#| include: false
 
-dir_trans <- .analysis_cache_dir(c("sim", "trans"), root_dir)
+analysis_key <- c("sim", "trans")
+analysis_key <- .analysis_mode_key(analysis_key)
+dir_trans <- .analysis_cache_dir(analysis_key, root_dir, create = run_simulations)
 path_uni_tbl <- file.path(dir_trans, "uni_tbl.rds")
-cache_settings <- sim_trans_cache_settings(
-  main_settings,
+
+run_trans_row <- function(
+    transformation, mean_pos_setting, mean_pos, prob_response, row_index) {
+  .analysis_with_seed(as.integer(simulation_seed + row_index - 1L), {
+    sim_trans_set_row_seed(simulation_seed, row_index)
+    sim_trans_univariate_experiment_one(
+      transformation = transformation,
+      mean_pos = mean_pos,
+      prob_response = prob_response,
+      settings = main_settings_run
+    ) |>
+      dplyr::mutate(mean_pos_setting = mean_pos_setting) |>
+      dplyr::mutate(prob_response = prob_response)
+  })
+}
+uni_grid <- dplyr::mutate(
   mean_pos_settings_tbl,
-  transformation_vec,
-  simulation_seed
+  row_index = dplyr::row_number()
+)
+
+uni_grid_full <- uni_grid
+main_settings_run <- main_settings
+# Quick mode keeps transformation (including gamma), mean position and both conditions/components.
+# Smallest grid covering every figure; dev takes precedence.
+if (analysis_quick) {
+  uni_grid <- uni_grid |>
+    dplyr::filter(transformation %in% c("gaussian", "gamma"))
+  main_settings_run <- main_settings_run |>
+    dplyr::mutate(n_cell = 5e3)
+}
+cache_settings <- c(
+  sim_trans_cache_settings(
+    main_settings_run, dplyr::select(uni_grid, -row_index),
+    transformation_vec, simulation_seed
+  ),
+  list(analysis_quick = analysis_quick, analysis_dev = analysis_dev)
 )
 
 if (isTRUE(run_simulations)) {
-  uni_grid <- dplyr::mutate(
-    mean_pos_settings_tbl,
-    row_index = dplyr::row_number()
-  )
-
   uni_tbl <- purrr::pmap_dfr(
     uni_grid,
-    function(
-        transformation, mean_pos_setting, mean_pos, prob_response,
-        row_index) {
-      sim_trans_set_row_seed(simulation_seed, row_index)
-      sim_trans_univariate_experiment_one(
-        transformation = transformation,
-        mean_pos = mean_pos,
-        prob_response = prob_response,
-        settings = main_settings
-      ) |>
-        dplyr::mutate(mean_pos_setting = mean_pos_setting) |>
-        dplyr::mutate(prob_response = prob_response)
-    }
+    run_trans_row
   ) |>
     dplyr::mutate(
       transformation = factor(
@@ -178,10 +192,46 @@ if (isTRUE(run_simulations)) {
     )
 
   sim_trans_write_cache(uni_tbl, cache_settings, path_uni_tbl)
-} else {
+}
+```
+
+```{r}
+#| label: rerun-one-simulation
+#| include: false
+#| eval: false
+sim_id_target <- 1L
+purrr::pmap_dfr(
+  uni_grid_full |> dplyr::filter(.data$row_index == sim_id_target),
+  run_trans_row
+)
+```
+
+## Collation
+
+Read the matching cached expression table when simulations are disabled.
+
+```{r}
+#| label: transformation-collate
+#| include: false
+if (!isTRUE(run_simulations)) {
   uni_tbl <- sim_trans_read_cache(path_uni_tbl, cache_settings)
 }
 
+```
+
+
+## Results
+
+### Mean-positive transformation grid
+
+Each row corresponds to the low or high transformation-specific `mean_pos` setting, and each column corresponds to one transformation. The y-axis is square-root transformed to make rare response components easier to see. Vertical lines (line type distinguishes the component) mark the realised negative component mean in the unstimulated condition and the realised positive component mean in the stimulated condition. The rug along the bottom axis shows the individual positive-component cells.
+
+```{r}
+#| label: fig-mean-pos-grid-univariate
+#| echo: false
+#| fig-width: 12
+#| fig-height: 8
+#| fig-cap: "Simulated expression distributions at low and high positive-component means."
 if (isTRUE(run_plots)) {
   gamma_range_vec <- uni_tbl |>
     dplyr::filter(
@@ -247,7 +297,8 @@ if (isTRUE(run_plots)) {
       data = mean_line_tbl,
       aes(
         xintercept = .data$F1,
-        linetype = .data$component
+        linetype = .data$component,
+        group = .data$component
       ),
       inherit.aes = FALSE,
       linewidth = 0.6,
@@ -323,8 +374,13 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Component counts
+
+Counts and proportions show the realised numbers of negative and positive cells in each condition.
+
 ```{r}
 #| label: univariate-counts-by-mean-pos
+#| echo: false
 uni_tbl |>
   dplyr::count(
     .data$mean_pos_setting,

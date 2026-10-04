@@ -88,6 +88,19 @@
 #'
 #' @param pathProject character. Path to the project directory.
 #' @return A data frame with gating statistics.
+#' @examples
+#' exampleData <- getExampleData()
+#' gs <- flowWorkspace::load_gs(exampleData$pathGs)
+#' pathProject <- gateStim(
+#'   pathProject = file.path(tempdir(), "getStimStatsExample"),
+#'   .data = gs,
+#'   batchList = exampleData$batchList,
+#'   marker = exampleData$marker,
+#'   popGate = "root"
+#' )
+#'
+#' # Get gating statistics
+#' statTbl <- getStimStats(pathProject)
 #' @export
 getStimStats <- function(pathProject) {
   pathStatsPartial <- file.path(pathProject, "gateStats")

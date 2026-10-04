@@ -18,19 +18,15 @@
 #' @return A named character vector.
 #'
 #' @examples
-#' \donttest{
-#' if (requireNamespace("flowCore", quietly = TRUE)) {
-#'   exprs <- matrix(
-#'     seq_len(8),
-#'     ncol = 2,
-#'     dimnames = list(NULL, c("FSC-A", "FL1-H"))
-#'   )
-#'   ff <- flowCore::flowFrame(exprs)
+#' exprs <- matrix(
+#'   seq_len(8),
+#'   ncol = 2,
+#'   dimnames = list(NULL, c("FSC-A", "FL1-H"))
+#' )
+#' ff <- flowCore::flowFrame(exprs)
 #'
-#'   # Get channel to marker mapping
-#'   chnlLab(ff)
-#' }
-#' }
+#' # Get channel to marker mapping
+#' chnlLab(ff)
 #'
 #' @export
 chnlLab <- function(data) {

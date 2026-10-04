@@ -10,6 +10,21 @@
 #' @param minCell numeric. Minimum number of cells required to retain a sample.
 #' @return A named list where each element contains a numeric vector of sample
 #'   indices representing a batch, with the unstimulated control index at the beginning.
+#' @examples
+#' fnTblInfo <- data.frame(
+#'   donor = c("d1", "d1", "d2", "d2", "d3", "d3"),
+#'   stim = c("stim", "uns", "uns", "stim", "uns", "stim"),
+#'   nCell = c(5000, 4000, 6000, 5500, 3000, 50)
+#' )
+#' # Donor d3 is dropped because its stimulated sample has too few cells
+#' getBatchList(
+#'   fnTblInfo,
+#'   colGrp = "donor",
+#'   colStim = "stim",
+#'   unsChr = "uns",
+#'   colNCell = "nCell",
+#'   minCell = 100
+#' )
 #' @export
 getBatchList <- function(
   fnTblInfo,

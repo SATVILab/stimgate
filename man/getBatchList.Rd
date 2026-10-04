@@ -28,3 +28,19 @@ Groups sample rows by batch/donor identifiers, screens out samples
 falling below a minimum cell count threshold, and structures the output so that
 the unstimulated control index is always positioned as the first element of each batch.
 }
+\examples{
+fnTblInfo <- data.frame(
+  donor = c("d1", "d1", "d2", "d2", "d3", "d3"),
+  stim = c("stim", "uns", "uns", "stim", "uns", "stim"),
+  nCell = c(5000, 4000, 6000, 5500, 3000, 50)
+)
+# Donor d3 is dropped because its stimulated sample has too few cells
+getBatchList(
+  fnTblInfo,
+  colGrp = "donor",
+  colStim = "stim",
+  unsChr = "uns",
+  colNCell = "nCell",
+  minCell = 100
+)
+}
