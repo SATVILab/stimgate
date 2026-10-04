@@ -36,3 +36,17 @@ Read detailed local-FDR threshold diagnostics saved during gating, including
 condition-level, sample-level and final cluster-level thresholds with the
 corresponding background-subtracted frequencies.
 }
+\examples{
+exampleData <- getExampleData()
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+pathProject <- gateStim(
+  pathProject = file.path(tempdir(), "getStimGatesDetailedExample"),
+  .data = gs,
+  batchList = exampleData$batchList,
+  marker = exampleData$marker,
+  popGate = "root"
+)
+
+# Get threshold diagnostics
+detailTbl <- getStimGatesDetailed(pathProject)
+}
