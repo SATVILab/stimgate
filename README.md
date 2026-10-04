@@ -14,12 +14,13 @@ samples with matched unstimulated controls and estimates marker-specific
 expression gates relative to the unstimulated background, rather than
 applying one fixed positivity threshold across samples.
 
-The package works with `flowWorkspace::GatingSet` objects. Its main
-entry point, `gateStim()`, performs the gating workflow and writes the
-resulting gates, cached expression data and response statistics to a
-project directory. Plotting, expression extraction and FCS export
-functions can then use those saved results without rerunning the full
-gating procedure.
+The package accepts a `flowWorkspace::GatingSet`, other
+`flowCore`/`flowWorkspace` objects, FCS files or expression matrices.
+Its main entry point, `gateStim()`, performs the gating workflow and
+writes the resulting gates, cached expression data and response
+statistics to a project directory. Plotting, expression extraction and
+FCS export functions can then use those saved results without rerunning
+the full gating procedure.
 
 ## Method overview
 
@@ -32,10 +33,8 @@ among cells positive for other cytokines. The final project output
 includes marker-level gates and statistics for marker-positive and
 marker-combination populations.
 
-The statistical method is still under active development, so the README
-should give only this high-level overview. Detailed algorithmic settings
-belong in the function documentation and research analyses rather than
-here.
+The method is still under active development. See the function help
+pages for its settings.
 
 ## Installation
 
@@ -78,8 +77,9 @@ path_project <- gateStim(
   marker = example_data$marker
 )
 
-# Gating statistics written by gateStim()
-gate_stats <- readRDS(file.path(path_project, "gateStats.rds"))
+# Gates and response statistics saved by gateStim()
+gates <- getStimGates(path_project)
+gate_stats <- getStimStats(path_project)
 
 # Plot the samples in the first matched batch
 plotStim(
@@ -91,15 +91,20 @@ plotStim(
 )
 ```
 
-For real data, `gateStim()` requires a compatible flow-cytometry object,
-the population to gate, the marker or channel names to analyse, and a
-`batchList` describing the matched samples. See the function
-documentation for the full set of method and bandwidth controls.
+For real data, `gateStim()` needs your cytometry data, the markers or
+channels to gate, and a `batchList` that groups each donor's samples
+with the unstimulated sample first. Its user-facing tuning arguments are
+`biasUns` and `bw`; all other method, bandwidth and thresholding
+settings are supplied as a `stimControl()` object through `control`,
+with per-marker overrides in `markerControl` keyed by marker label or
+channel name. Most users never need to change the defaults.
 
 ## Main functions
 
 - `gateStim()` runs the StimGate gating workflow and saves the project
   results.
+- `getStimGates()` and `getStimStats()` read the saved gates and
+  response statistics.
 - `plotStim()` plots univariate or bivariate expression together with
   the fitted gates.
 - `getStimExpr()` reads expression data saved by a StimGate project and
@@ -110,8 +115,7 @@ documentation for the full set of method and bandwidth controls.
   fitted gates.
 - `getBatchList()` constructs matched sample batches from sample
   metadata.
-- `getExampleData()` loads the packaged canonical dataset for examples
-  and package tests.
+- `getExampleData()` loads the packaged example dataset.
 
 ## Repository structure
 
@@ -120,8 +124,8 @@ Method-development, simulation and comparison analyses are kept
 separately under `analysis/`; these are research/development analyses
 and are not required to use the package.
 
-Developer and coding-agent setup instructions are in `AGENTS.md`. Build
-history for the research project is recorded in `BUILDLOG.md`.
+Development conventions are in `AGENTS.md`. Build history for the
+research project is recorded in `BUILDLOG.md`.
 
 ## Licence
 
