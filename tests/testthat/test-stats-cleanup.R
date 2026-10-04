@@ -38,7 +38,7 @@ test_that("statistics gate filtering accepts multiple gate names without recycli
   project <- tempfile("stats-gate-names-")
   withr::defer(unlink(project, recursive = TRUE))
   gates <- tibble::tibble(
-    chnl = "A", gateName = c("g", "other", "gClust"),
+    chnl = "A", marker = "MarkerA", gateName = c("g", "other", "gClust"),
     batch = "batch", ind = "2", gate = c(1, 2, 3), gateCyt = c(0, 1, 2)
   )
   .getStatsGateTblSave(
