@@ -128,7 +128,7 @@ add_bw_labs <- function(.data) {
 # `.simBandwidthSignedErrorSummary()`: over-estimates sit above zero and
 # under-estimates below; line weight is each direction's share.
 .simBandwidthBiasSignedErrorPlot <- function(
-    tbl, title, y_label = "Relative error",
+    tbl, title, y_label = "Relative error (multiple of true response)",
     facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
     stat_cols = c(median = "Median", q90 = "90th percentile", max = "Maximum")) {
   tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
@@ -323,8 +323,11 @@ add_bw_labs <- function(.data) {
 
 .simBandwidthSignedErrorLabel <- function(x) {
   lab <- ifelse(x > 0, sprintf("+%g%%", 100 * x), sprintf("%g%%", 100 * x))
-  # Every non-zero tick also reads as a multiple of the truth: -100% is 0x.
-  fold <- x != 0 & is.finite(x)
+  # Nothing gated (-100%, 0x) and each doubling (+100% 2x, +300% 4x, ...)
+  # also show the multiple of the true response.
+  doublings <- log2(1 + pmax(x, 0))
+  fold <- is.finite(x) &
+    (abs(x + 1) < 1e-8 | (x > 0 & abs(doublings - round(doublings)) < 1e-8))
   lab[fold] <- paste0(lab[fold], " (", sprintf("%g", 1 + x[fold]), "x)")
   lab
 }
@@ -350,7 +353,8 @@ add_bw_labs <- function(.data) {
 }
 
 # Shared y scale, zero line and line-weight scale for signed-error plots.
-.simBandwidthSignedErrorLayers <- function(y_label = "Relative error") {
+.simBandwidthSignedErrorLayers <- function(
+    y_label = "Relative error (multiple of true response)") {
   list(
     ggplot2::geom_hline(yintercept = 0, colour = "grey40"),
     ggplot2::scale_y_continuous(

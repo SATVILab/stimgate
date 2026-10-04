@@ -346,8 +346,11 @@ test_that("signed error scale puts nothing gated and two-fold equally far from z
   # Small errors get ordinary breaks rather than only zero.
   expect_equal(trans$breaks(c(-0.02, 0.03)), pretty(c(-0.02, 0.03)))
   expect_identical(
-    env$.simBandwidthSignedErrorLabel(c(-1, -0.5, 0, 1)),
-    c("-100% (0x)", "-50% (0.5x)", "0%", "+100% (2x)")
+    env$.simBandwidthSignedErrorLabel(c(-1, -0.5, 0, 0.5, 1, 3, 7)),
+    c(
+      "-100% (0x)", "-50%", "0%", "+50%", "+100% (2x)", "+300% (4x)",
+      "+700% (8x)"
+    )
   )
 })
 
