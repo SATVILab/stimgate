@@ -547,6 +547,11 @@ allowing subsequent stages to read expression directly from the cache. Keep all
 caching and reuse result-preserving, including the order of random number
 generation calls.
 
+Combination statistics classify raw unstimulated expression with the paired stim
+sample's gates, without `biasUns`. Stream expression by channel; retain logical
+comparisons for cyt+ context and preserve Reduce-based NA semantics. Samples
+with no gates report NA counts, while missing individual channel gates are FALSE.
+
 ### Function Signatures & Returns
 
 - Validate inputs and provide meaningful error messages.

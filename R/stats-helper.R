@@ -22,7 +22,7 @@
         readRDS()
       if (!is.null(gateName)) {
         gateTblCurr <- gateTblCurr |>
-          dplyr::filter(gateName == .env$gateName) # nolint
+          dplyr::filter(gateName %in% .env$gateName) # nolint
       }
       if (!is.null(tolClust)) {
         if (tolClust) {
@@ -51,6 +51,9 @@
 
 #' @keywords internal
 .getStatsCombnMatListGet <- function(nChnl) {
+  if (nChnl > 30L) {
+    stop("Combination statistics support at most 30 channels.")
+  }
   purrr::map(
     seq_len(nChnl),
     function(nPos) t(utils::combn(nChnl, nPos))

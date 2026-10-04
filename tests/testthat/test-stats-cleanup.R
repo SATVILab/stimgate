@@ -32,3 +32,23 @@ test_that("statistics disk fallback retains gate filters and channel labels", {
   expect_identical(actual$gate, 2)
   expect_identical(actual$gateCyt, 1)
 })
+
+
+test_that("statistics gate filtering accepts multiple gate names without recycling", {
+  project <- tempfile("stats-gate-names-")
+  withr::defer(unlink(project, recursive = TRUE))
+  gates <- tibble::tibble(
+    chnl = "A", gateName = c("g", "other", "gClust"),
+    batch = "batch", ind = "2", gate = c(1, 2, 3), gateCyt = c(0, 1, 2)
+  )
+  .getStatsGateTblSave(
+    gateTbl = gates, pathProject = project, popGate = "root",
+    chnlLab = c(A = "MarkerA"), chnl = "A", save = TRUE
+  )
+  actual <- .getStatsGateTblGet(
+    gateTbl = NULL, chnlLab = c(A = "MarkerA"), pathProject = project,
+    popGate = "root", gateName = c("gClust", "g")
+  )
+  expect_identical(actual$gateName, c("g", "gClust"))
+  expect_identical(actual$gate, c(1, 3))
+})
