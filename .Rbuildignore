@@ -1,24 +1,5 @@
 ^renv$
 ^renv\.lock$
-^.*\.Rproj$
-^\.Rproj\.user$
-^LICENSE\.md$
-^_tmp$
-^_reference$
-^\.github$
-^data-raw$
-^_dependencies\.R$
-^BIOCONDUCTOR_PREPARATION\.md$
-^scripts/
-^CHANGES_SUMMARY\.md$
-^_pkgdown\.yml$
-^docs$
-^pkgdown$
-^README\.html$
-^analysis/
-^analysis$
-^\.agents$
-^\.projects$
 
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
 ^_raw/data/small/
@@ -39,6 +20,7 @@
 ^CHANGES_SUMMARY\.md$
 ^LICENSE\.md$
 ^manifest\.csv$
+^NEWS\.md$
 ^README\.html$
 ^Rplots\.pdf$
 ^\.github/
