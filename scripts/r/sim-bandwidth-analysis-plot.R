@@ -412,6 +412,30 @@ add_bw_labs <- function(.data) {
   lab
 }
 
+# Absolute relative error on the over-estimate part of the signed scale (fold
+# scale above zero), capped at 1500%; the cap's tick then reads ">= 1500%".
+.simBandwidthAbsErrorLabel <- function(x, cap = Inf) {
+  lab <- .analysis_label_percent(x)
+  at_cap <- is.finite(x) & is.finite(cap) & x >= cap - 1e-8
+  lab[at_cap] <- paste0("\u2265 ", lab[at_cap])
+  lab
+}
+
+.simBandwidthAbsErrorLayers <- function(
+  y_label = "Absolute relative error",
+  capped = FALSE
+) {
+  cap <- if (isTRUE(capped)) .simBandwidthSignedErrorCap else Inf
+  list(
+    ggplot2::scale_y_continuous(
+      transform = .simBandwidthSignedErrorTrans(),
+      labels = function(x) .simBandwidthAbsErrorLabel(x, cap = cap)
+    ),
+    ggplot2::expand_limits(y = c(0, 1)),
+    ggplot2::labs(y = y_label)
+  )
+}
+
 # ggplot2 cannot vary line width along a dashed line, so draw each line as
 # segments between neighbouring points, weighted by the mean share at their ends.
 .simBandwidthSignedErrorSegmentLayer <- function(

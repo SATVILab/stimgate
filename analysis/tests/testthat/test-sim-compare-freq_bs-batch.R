@@ -1596,3 +1596,33 @@ test_that("a missing bias_uns lets StimGate set the bias from its bandwidth", {
   suppressWarnings(env$.simCompareRunScenario(row, nSample = 1, nIter = 1))
   expect_identical(captured$bias, 0.15)
 })
+
+test_that("comparison error plots cap errors at 16 times the truth", {
+  env <- .compare_plot_env()
+  scen <- tidyr::expand_grid(
+    transformation = "gaussian", method = c("stimgate", "fbeta"),
+    mismatch_val = c(0, 0.1)
+  ) |>
+    dplyr::mutate(median = c(0.1, 30, 0.2, 0.4), q95 = 2 * median, max = 3 * median)
+  unsigned <- env$.simComparePlotMismatchError(scen)
+  expect_equal(max(unsigned$data$value_shown), 15)
+  expect_equal(max(unsigned$data$value), 90)
+  expect_no_error(ggplot2::ggplotGrob(unsigned))
+  y_labels <- ggplot2::layer_scales(unsigned)$y$get_labels()
+  expect_true(any(grepl("≥ 1,500%", y_labels, fixed = TRUE)))
+
+  signed <- scen |>
+    dplyr::mutate(direction = "over", prop = 1) |>
+    dplyr::bind_rows(
+      scen |> dplyr::mutate(
+        direction = "under", prop = 0.5,
+        dplyr::across(c(median, q95, max), ~ -pmin(.x, 0.9))
+      )
+    )
+  plot_signed <- env$.simComparePlotSignedError(
+    signed, x = "mismatch_val", x_log = FALSE
+  )
+  expect_equal(max(plot_signed$data$value_shown), 15)
+  expect_no_error(ggplot2::ggplotGrob(plot_signed))
+  expect_equal(env$.simBandwidthAbsErrorLabel(c(0.5, 15), cap = 15), c("50%", "≥ 1,500%"))
+})
