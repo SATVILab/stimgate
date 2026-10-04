@@ -1,15 +1,4 @@
----
-title: "Setting up coding agents for StimGate"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Setting up coding agents for StimGate}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
----
-
-```{r, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-```
+# Setting up coding agents for StimGate
 
 Set up a cloud coding agent with the repository's scripts or workflow, then check that StimGate loads. Agents must read `AGENTS.md` before changing code; it defines coding conventions and required checks.
 
@@ -134,7 +123,7 @@ The GitHub Actions workflows provide a smaller baseline for agents that only nee
 
 Refresh `simcyto` in an existing development library:
 
-```{r refresh-simcyto, eval=FALSE}
+```r
 pak::pkg_install("SATVILab/simcyto", upgrade = TRUE, ask = FALSE)
 ```
 

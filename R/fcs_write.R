@@ -1,6 +1,6 @@
 #' @title Export stimulation-positive cells as FCS files
 #' @description Select positive cells using saved or supplied gates and write
-#'   one FCS file per sample with retained cells, plus `manifest.csv`.
+#'   one FCS file per sample that has positive cells, plus `manifest.csv`.
 #' @param pathProject character Project directory from [gateStim()].
 #' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
 #'   list or data.frame Data passed to [gateStim()], in the same sample order.
@@ -23,13 +23,13 @@
 #' @param gateUnsMethod character Summary of stimulated gates used for missing
 #'   control gates: "min", "max", "mean", "tmean" (20% trimmed mean), or "med".
 #'   Default: "min".
-#' @param transFn function or NULL Transformation of retained expression before
+#' @param transFn function or NULL Transformation applied to the selected cells before
 #'   export. Default: NULL.
 #' @param transChnl character vector or NULL Columns to transform; NULL transforms
 #'   all expression columns. Default: NULL.
 #' @return Invisibly, a tibble with one row per sample and columns `ind`, `batch`,
 #'   `fileName`, `nCellPos`, `written`, `reason`. The `pathDirSave` attribute holds
-#'   the output path. Samples with no retained cells have no FCS file.
+#'   the output path. Samples with no positive cells get no FCS file.
 #' @examples
 #' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)

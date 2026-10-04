@@ -8,7 +8,7 @@
 #' @param colStim character Column containing stimulation labels.
 #' @param unsChr character Label identifying unstimulated controls.
 #' @param colNCell character Column containing sample cell counts.
-#' @param minCell numeric Minimum cell count to retain a sample.
+#' @param minCell numeric Minimum cell count to keep a sample.
 #' @return A named list of integer row indices per batch. Names join group values
 #'   with underscores; control indices precede stimulated indices.
 #' @examples

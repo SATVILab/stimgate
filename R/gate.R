@@ -25,7 +25,8 @@
 #'   automatically. Per-marker values go in `markerControl`. Default: NULL.
 #' @param control stimControl Tuning settings from [stimControl()].
 #'   Default: stimControl().
-#' @param markerControl list or NULL Overrides keyed by marker label or channel,
+#' @param markerControl list or NULL Settings for single markers, named by marker
+#'   label or channel,
 #'   e.g. `list(IL2 = list(bw = 0.12, biasUns = 0))`. Accepts [stimControl()]
 #'   settings except `locEnforceShapeThreshold` and `calcCytPosGates`, plus
 #'   `bw`, `biasUns` and `popGate`. Default: NULL.

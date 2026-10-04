@@ -423,6 +423,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `verify.R`: Input verification helpers.
 - `scripts/`:
   - Shell scripts (`dev.sh`, `install.sh`, `patch.sh`, `minor.sh`, `major.sh`, `dev-*.sh`) for workflow, benchmarking, and version bumping.
+  - `agents/`: Cloud coding-agent setup scripts, with setup guidance in `scripts/agents/README.md`.
   - `python/`: Python helper scripts used by analysis (not part of the R package).
     - `fbeta.py`: Richards F-beta thresholding implementation (comparison method).
   - `r/`: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by `devtools::load_all()` and are not part of the installed package.
@@ -437,7 +438,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `sim-trans.R`: Simulation transformation utilities.
 - `src/`: C++ source code compiled into the package via `cpp11` (`cpPmden.cpp`, `stimgate_cppmden.cpp`, `tautstring.cpp`, etc.).
 - `analysis/`: Quarto (`.qmd`) documents for research, simulation, and benchmarking analysis.
-- `vignettes/`: Package vignettes (`stimgate.Rmd`).
+- `vignettes/`: User-facing package vignettes (`stimgate.Rmd`). Keep developer and agent setup out of vignettes.
 - `inst/extdata/`: Canonical saved example datasets consumed by `getExampleData()` and by package examples/tests.
 - `inst/`: Installed package material (e.g. `COPYRIGHTS`).
 - `.github/`: GitHub CI workflows and Copilot setup.

@@ -11,13 +11,13 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-`stimgate` identifies cells that may have responded to stimulation by comparing stimulated tubes with an unstimulated control from the same donor. Run the following chunks in order to save gates, read response statistics and inspect plots.
+`stimgate` finds cells that may have responded to stimulation. For each donor, it compares the stimulated samples with an unstimulated sample from the same donor. This guide gates the example data, reads the results and plots them.
 
 ## 1. Load the data
 
-`getExampleData()` returns a list with a saved GatingSet path, marker and channel labels, and tube indices grouped by donor. Load that GatingSet:
+`getExampleData()` loads a small example dataset that comes with the package: two donors, each with an unstimulated and a stimulated sample, and two markers. It returns where the data are saved, the marker names, and `batchList`, which groups each donor's samples.
 
-```{r data, eval=FALSE}
+```{r data, message = FALSE}
 library(stimgate)
 exampleData <- getExampleData()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
@@ -27,20 +27,27 @@ exampleData$marker
 
 ### Your own data
 
-`.data` can be a GatingSet, a flowSet/cytoset or flowFrame, FCS file paths or a directory of FCS files, a list of numeric matrices or data frames (one per tube, cells by channels), or one data frame with a `sample` column. Each element of `batchList` lists one donor's tubes, by index or sample name. **The first tube is the unstimulated control**; the rest are that donor's stimulated tubes. A control may be shared by several batches (first in each), but a stimulated tube may belong to only one. `getBatchList()` builds `batchList` from a table of sample metadata.
+You can give `gateStim()` any of these:
 
-```{r own-data, eval=FALSE}
-tubes <- list(uns = unsMatrix, stim = stimMatrix) # columns named by channel
+- a GatingSet, flowSet, cytoset or flowFrame;
+- FCS file paths, or a folder of FCS files;
+- a list of numeric matrices or data frames, one per sample, with a column per channel;
+- one data frame with a `sample` column saying which sample each cell is from.
+
+Each element of `batchList` lists one donor's samples, by number or by name. **The first sample is the unstimulated one**; the rest are that donor's stimulated samples. Several donors can share one unstimulated sample (it must be first in each), but a stimulated sample can belong to only one donor. `getBatchList()` can build `batchList` from a table describing your samples.
+
+```{r own-data, eval = FALSE}
+samples <- list(uns = unsMatrix, stim = stimMatrix) # columns named by channel
 batchList <- list(donor1 = c("uns", "stim"))
 ```
 
-StimGate does not transform data, so supply it on the scale you want gated. Only GatingSets carry populations other than `"root"`. With matrices, column names serve as both channels and markers. See `?gateStim` for how sample order is set for each input type. Pass the same data to `plotStim()` and `writeStimFCS()` later.
+StimGate does not transform your data (for example with arcsinh), so give it values on the scale you want to gate. With matrices, the column names are used as both channel and marker names. Only a GatingSet can hold gated populations other than all cells (`"root"`). Use the same data, in the same sample order, when you later call `plotStim()` or `writeStimFCS()`.
 
-## 2. Find gates
+## 2. Find the gates
 
-Choose an output directory and the markers to gate. `gateStim()` saves results there and returns the directory path as a character string. The default `popGate = "root"` uses all cells; choose an existing GatingSet population to restrict gating.
+Give `gateStim()` a folder for its results and the markers to gate. It saves everything in that folder and returns the folder's path. By default it uses all cells; set `popGate` to gate within a population already in your GatingSet.
 
-```{r gate, eval=FALSE}
+```{r gate, message = FALSE}
 pathProject <- gateStim(
   pathProject = tempfile("stimgate_"),
   .data = gs,
@@ -49,30 +56,39 @@ pathProject <- gateStim(
 )
 ```
 
-Use `chnl` instead of `marker` to select channels by name. Start with the defaults; see `?stimControl` for tuning settings and `?gateStim` for per-marker overrides through `markerControl`.
+To pick channels by channel name instead, use `chnl` instead of `marker`. The defaults suit most data; see `?stimControl` for the settings you can change, and `?gateStim` for setting them separately for each marker.
 
-## 3. Read gates and statistics
+## 3. Read the gates and statistics
 
-`getStimGates()` returns a tibble of stimulated-tube thresholds. Columns include `pop`, `marker`, `chnl`, `batch`, `ind` (tube index), `gateName`, `gate` and `gateCyt` (the threshold used for cells positive for another cytokine).
+`getStimGates()` gives the gates for each stimulated sample (`ind`) and marker. `gate` is the gate value. `gateCyt` is the gate used for cells already positive for another cytokine; it can be lower than `gate`.
 
-```{r results, eval=FALSE}
+```{r gates}
 gates <- getStimGates(pathProject)
 head(gates)
-stats <- getStimStats(pathProject)
-head(stats)
 ```
 
-`getStimStats()` reads a data frame with rows for tubes (`ind`), gate methods (`gateName`) and marker combinations (`cytCombn`). `countStim` and `countUns` count cells in each combination; `nCellStim` and `nCellUns` give total cells. `propBs = propStim - propUns` subtracts control from stimulated proportions. `freqStim` and `freqUns` are percentages; `freqBs` is their difference in percentage points.
+`getStimStats()` gives, for each stimulated sample (`ind`), the number and percentage of cells positive for each combination of markers (`cytCombn`), in the stimulated sample and in its unstimulated sample. `freqBs` is the stimulated percentage minus the unstimulated percentage: the response after removing background.
 
-## 4. Inspect plots
+```{r stats}
+stats <- getStimStats(pathProject)
+head(stats[, c("ind", "cytCombn", "countStim", "freqStim", "freqUns", "freqBs")])
+```
 
-Plot the first donor's tubes to compare control and stimulated expression with the gate lines. One marker gives density plots; two also give bivariate hex plots (requiring `hexbin`). The default output is a ggplot grid; `grid = FALSE` returns a list of ggplot objects.
+## 4. Plot the results
 
-```{r plots, eval=FALSE}
+Plot the first donor's samples to compare unstimulated and stimulated expression, with the gate drawn on. One marker gives density curves; two markers also give two-dimensional plots, which need the `hexbin` package.
+
+```{r plots, fig.width = 7, fig.height = 4}
 plotStim(
   ind = exampleData$batchList[[1]], .data = gs,
   pathProject = pathProject, marker = exampleData$marker[1]
 )
 ```
 
-For threshold diagnostics, see `?getStimGatesDetailed`. To export positive cells as FCS files, see `?writeStimFCS`. Keep `pathProject` to read saved gates and statistics in later sessions.
+The results stay in `pathProject`, so you can read them again in a later R session. To see more detail on how each gate was chosen, see `?getStimGatesDetailed`. To save the positive cells as FCS files, see `?writeStimFCS`.
+
+## Session information
+
+```{r session}
+sessionInfo()
+```

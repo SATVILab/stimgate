@@ -141,7 +141,7 @@
 #' @param pathProject character Project directory from [gateStim()].
 #' @param .data GatingSet, other input accepted by [gateStim()], or NULL Data
 #'   passed to [gateStim()], in the same sample order; used only when
-#'   expression is not cached. Default: NULL.
+#'   the expression values were not saved. Default: NULL.
 #' @param pop character or NULL Population names; NULL selects all saved
 #'   populations. Default: NULL.
 #' @param ind character or numeric vector or NULL Sample indices; NULL selects
@@ -171,11 +171,11 @@
 #'   NULL transforms all expression columns. Default: NULL.
 #' @param transMarker character or NULL Columns to transform when using markers;
 #'   NULL transforms all expression columns. Default: NULL.
-#' @return A tibble with one row per retained cell, `pop`, `ind`, and expression
+#' @return A tibble with one row per selected cell, `pop`, `ind`, and expression
 #'   columns named by channel (or marker when `marker` is supplied). Empty
 #'   selections have zero rows. The `nCellPos` attribute is a tibble with `pop`,
 #'   `ind`, `nCellPos` for every requested population/sample pair; `probGMin`
-#'   records the fraction retained by minimum-expression filtering.
+#'   records the fraction of cells kept after removing minimum-expression cells.
 #' @examples
 #' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
