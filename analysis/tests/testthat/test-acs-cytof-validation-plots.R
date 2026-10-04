@@ -122,14 +122,17 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
     parse(text = lines[seq.int(start + 1L, end - 1L)])
   }
 
-  setup <- paste(
-    deparse(chunk_code("setup"), width.cutoff = 500L), collapse = "\n"
+  # Deparse each setup expression on its own so line wrapping cannot split it.
+  setup <- vapply(
+    chunk_code("setup"),
+    function(expr) paste(deparse(expr, width.cutoff = 500L), collapse = " "),
+    character(1)
   )
-  expect_true(grepl(
+  expect_true(any(grepl(
     'source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))',
     setup,
     fixed = TRUE
-  ))
+  )))
 
   chunk_env <- new.env(parent = getNamespace("stimgate"))
   source(script_style, local = chunk_env)
