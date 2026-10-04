@@ -24,7 +24,7 @@
 #'   datasets use all tubes. Shared estimates exclude tubes below `minCell`.
 #'   Each pair uses the smaller tube bandwidth. Inspect `bwShared` and, for
 #'   clusters, `bwSharedTbl` with [stimgateMetaReadSettingsChnls()]. Ignored
-#'   with fixed `bw` or adaptive bandwidths. Default: "cytokine".
+#'   with fixed `bw` or adaptive bandwidths. Default: "sample".
 #' @param bwAdj numeric Bandwidth multiplier; ignored with fixed `bw`. Default: 1.
 #' @param bwMin numeric or character Lower bandwidth limit: "auto"
 #'   estimates it, "none" disables it, or supply a number. Ignored with
@@ -142,7 +142,7 @@ stimControl <- function(
   excMin = TRUE,
   cpMin = NULL,
   bwMtd = "hpi1",
-  bwScope = "cytokine",
+  bwScope = "sample",
   bwAdj = 1,
   bwMin = "auto",
   bwMax = "auto",
