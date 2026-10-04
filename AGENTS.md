@@ -388,7 +388,12 @@ checks in `analysis/tests/test-slurm-launchers.sh` and run them in
 analysis CI when launchers change. Relative-error plots averaged over
 cell counts and plots for each cell count belong in separate labelled
 QMD chunks; preserve the same scientific inclusion rules and avoid
-pooling different grid dimensions.
+pooling different grid dimensions. Signed relative-error plots
+(`.simBandwidthSignedError*()` in `sim-bandwidth-analysis-plot.R`) sit
+alongside, not instead of, the absolute ones: they summarise over- and
+under-estimates separately, weight lines by each direction’s share, and
+use a scale on which -100% and a two-fold over-estimate are equally far
+from zero.
 
 ### Website Maintenance (`pkgdown`)
 
