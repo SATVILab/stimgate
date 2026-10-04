@@ -51,7 +51,8 @@ automatically. Per-marker values go in \code{markerControl}. Default: NULL.}
 \item{control}{stimControl Tuning settings from \code{\link[=stimControl]{stimControl()}}.
 Default: stimControl().}
 
-\item{markerControl}{list or NULL Overrides keyed by marker label or channel,
+\item{markerControl}{list or NULL Settings for single markers, named by marker
+label or channel,
 e.g. \code{list(IL2 = list(bw = 0.12, biasUns = 0))}. Accepts \code{\link[=stimControl]{stimControl()}}
 settings except \code{locEnforceShapeThreshold} and \code{calcCytPosGates}, plus
 \code{bw}, \code{biasUns} and \code{popGate}. Default: NULL.}

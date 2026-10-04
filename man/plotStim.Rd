@@ -51,7 +51,7 @@ population and errors if several exist. Default: NULL.}
 or in their order. Default: NULL (marker/channel names).}
 
 \item{excMin}{logical Exclude minimum expression values and show densities
-scaled by the retained fraction alongside raw densities. Default: TRUE.}
+scaled by the fraction of cells kept, alongside the unscaled densities. Default: TRUE.}
 
 \item{limitsExpand}{list or NULL Axis limits to expand to, e.g.
 \code{list(x = c(0, 5), y = c(0, 5))}. Default: NULL.}
@@ -64,7 +64,7 @@ scaled by the retained fraction alongside raw densities. Default: TRUE.}
 
 \item{showGate}{logical Draw gate lines. Default: TRUE.}
 
-\item{minCell}{numeric Minimum retained cell count to plot a sample.
+\item{minCell}{numeric Minimum number of cells needed to plot a sample.
 Default: 10.}
 
 \item{bias}{logical Add the saved \code{biasUns} shift to controls. Default: FALSE.}
