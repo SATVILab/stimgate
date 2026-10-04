@@ -199,9 +199,11 @@ add_bw_labs <- function(.data) {
     .simBandwidthSignedErrorLayers() +
     .simBandwidthSignedErrorSegmentLayer(
       tbl, "bw_fct", "err_value",
-      c("transformation", "prob_response", "err_type", "direction")
+      c("transformation", "prob_response", "err_type", "direction"),
+      alpha = 0.75
     ) +
-    ggplot2::geom_point(size = 1) +
+    # Slight transparency shows overlapping lines; legend keys match.
+    ggplot2::geom_point(size = 1, alpha = 0.75) +
     (if (by_prob) {
       ggplot2::facet_grid(
         prob_response ~ transformation,
@@ -328,7 +330,7 @@ add_bw_labs <- function(.data) {
 
 # ggplot2 cannot vary line width along a dashed line, so draw each line as
 # segments between neighbouring points, weighted by the mean share at their ends.
-.simBandwidthSignedErrorSegmentLayer <- function(tbl, x, y, line_cols) {
+.simBandwidthSignedErrorSegmentLayer <- function(tbl, x, y, line_cols, alpha = 1) {
   segments <- tbl |>
     dplyr::group_by(dplyr::across(dplyr::any_of(line_cols))) |>
     dplyr::arrange(.data[[x]], .by_group = TRUE) |>
@@ -342,7 +344,7 @@ add_bw_labs <- function(.data) {
   ggplot2::geom_segment(
     data = segments,
     ggplot2::aes(xend = x_end, yend = y_end, linewidth = prop_segment),
-    lineend = "round"
+    lineend = "round", alpha = alpha
   )
 }
 
