@@ -272,7 +272,16 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - Controlled mismatch/degradation simulations should use common random
   numbers within each baseline biological scenario when the mismatch
   itself is deterministic, so curve differences are not driven by
-  different simulated draws.
+  different simulated draws. A shared row seed is not enough with
+  several replicates: draw one seed per replicate before any method runs
+  (as `.simCompareFreqBs()` does), because methods consume different
+  amounts of randomness in different settings.
+- Gate purity outcomes (FDP, sensitivity) come from label-based
+  confusion-matrix counts saved at simulation time for each method’s
+  applied gate, using the package’s strict `x > gate` rule; StimGate’s
+  counts use the single-precision GatingSet expression it gated. Cache
+  validation requires the counts to reproduce each method’s `nPosStim`.
+  Undefined proportions are NA, never zero.
 - Compatibility wrappers for optional upstream features must apply an
   effect exactly once. If upstream supports the feature, pass it through
   without also applying a local fallback; otherwise neutralise the
