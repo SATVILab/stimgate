@@ -22,6 +22,21 @@ simulated for selected baseline scenarios, then the stimulated expression is
 shifted or its background spread is increased. The same simulated draws are
 used across mismatch settings within each baseline scenario.
 
+The question is whether misalignment between the stimulated and unstimulated
+negative components makes a method call cells in the right-hand tail of the
+stimulated negative component positive. The main outcomes are therefore the
+purity and the detection rate of each method's final gate in the stimulated
+tube, measured against the simulation's own labels:
+
+- **False discovery proportion (FDP):** of the stimulated cells classified as
+  positive, the proportion that are genuinely negative.
+- **Sensitivity:** of the genuinely positive stimulated cells, the proportion
+  classified as positive.
+
+Both lie between 0 and 1 in every scenario. The relative error of the
+background-subtracted frequency, which becomes very large when the true
+response is rare, is kept as a secondary result.
+
 ## Set-up
 
 ```{r}
@@ -62,7 +77,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v4"
+comparison_semantics_version <- "batch-mismatch-comparison-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -128,11 +143,21 @@ mechanisms provided by `simcyto`:
    stimulated negative/background component's within-component standard
    deviation around its realised mean.
 
+The two mean-shift variants are different mechanisms. Shifting all
+stimulated cells misaligns the background while keeping the separation
+between positive and negative cells within the stimulated tube. Shifting only
+the stimulated negatives misaligns the background and also moves it towards
+the unchanged positive component. Neither is assumed to degrade performance
+steadily as the mismatch grows.
+
 Random perturbations are disabled
 (`samplePerturbationSd = 0`, `conditionPerturbationSd = 0`,
 `clusterPerturbationSd = 0`). Within each baseline scenario, all mismatch
 magnitudes and variants use the same random seed, so the degradation curves
-compare deterministic changes to the same simulated draws.
+compare deterministic changes to the same simulated draws. Each replicate
+draws its own seed from that scenario seed before any method runs, so later
+replicates stay paired even though the methods use different amounts of
+randomness in different mismatch settings.
 
 ### Simulation settings
 
@@ -308,6 +333,26 @@ sim_grid <- dplyr::bind_rows(
 # Keep every seeded row available for an exact interactive rerun.
 sim_grid_full <- sim_grid
 
+# Gate diagnostic: the very clean gamma baseline before and after the jump in
+# StimGate's error near a shift of 0.1, for both shift variants. The rows
+# come from the full grid, so they keep their production seeds.
+gate_diagnostic_spec <- list(
+  base_scenario_id = 3L,
+  mismatch_type = c("mean_shift_all", "mean_shift_negative"),
+  mismatch_val = c(0, 0.05, 0.1)
+)
+gate_diagnostic_grid <- sim_grid_full |>
+  dplyr::filter(
+    base_scenario_id == gate_diagnostic_spec$base_scenario_id,
+    mismatch_type %in% gate_diagnostic_spec$mismatch_type,
+    mismatch_val %in% gate_diagnostic_spec$mismatch_val
+  )
+stopifnot(
+  nrow(gate_diagnostic_grid) ==
+    length(gate_diagnostic_spec$mismatch_type) *
+      length(gate_diagnostic_spec$mismatch_val)
+)
+
 # Quick mode keeps baseline scenario, mismatch magnitude (including zero) and mechanism.
 # Smallest grid covering every figure; dev takes precedence.
 if (analysis_quick) {
@@ -381,6 +426,7 @@ if (isTRUE(run_simulations)) {
       analysis_dev = analysis_dev,
       paired_mismatch_rng = TRUE,
       analysis_grid_spec = analysis_grid_spec,
+      gate_diagnostic_spec = gate_diagnostic_spec,
       n_sample_sim = n_sample_sim,
       n_iter_sim = n_iter_sim,
       stimgate_bw_mtd = stimgate_bw_mtd,
@@ -484,6 +530,42 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
   message("Skipping simulations because run_simulations is FALSE.")
 }
 
+# The gate diagnostic needs the cells, which the grid run does not keep, so
+# the first chunk reruns its few rows for one replicate and saves them with
+# the run. It runs before the chunk is marked complete, so a promoted run
+# always includes it.
+path_gate_diagnostic <- NULL
+if (isTRUE(run_simulations) && sim_grid_chunk_index == 1L) {
+  path_gate_diagnostic <- file.path(
+    run_ctx$staging_collated_dir, "gate_diagnostic.rds"
+  )
+  if (!file.exists(path_gate_diagnostic)) {
+    gate_diagnostic <- .simCompareGateDiagnosticRun(
+      gate_diagnostic_grid,
+      nSample = n_sample_sim,
+      nMarker = 1,
+      nCondition = 2,
+      nCluster = 2,
+      probExact = TRUE,
+      covEvMin = 1.5,
+      covEvMax = 1.5,
+      tolClust = tol_clust,
+      locEnforceShapeThreshold = loc_enforce_shape_threshold,
+      calcCytPosGates = calc_cyt_pos_gates,
+      pathFbeta = path_fbeta,
+      fbetaBeta = fbeta_beta,
+      fbetaTheta = fbeta_theta,
+      fbetaWidth = fbeta_width,
+      tailgateAdjust = tailgate_adjust,
+      tailgateAutoTol = tailgate_auto_tol,
+      tailgateMethod = tailgate_method,
+      tailgateTol = tailgate_tol,
+      tailgateX = tailgate_x
+    )
+    .write_rds_atomic(gate_diagnostic, path_gate_diagnostic)
+  }
+}
+
 simulation_promoted <- FALSE
 
 if (isTRUE(run_simulations)) {
@@ -559,19 +641,21 @@ if (isTRUE(run_simulations)) {
 ```{r}
 #| label: compare-summary
 #| echo: false
+analysis_result_params <- list(
+  comparison_semantics_version = comparison_semantics_version,
+  simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
+  analysis_dev = analysis_dev,
+  paired_mismatch_rng = TRUE,
+  analysis_grid_spec = analysis_grid_spec,
+  gate_diagnostic_spec = gate_diagnostic_spec,
+  n_sample_sim = n_sample_sim,
+  n_iter_sim = n_iter_sim
+)
 path_rds <- .analysis_current_file(
   run_ctx = run_ctx,
   relative_path = c("collated", "compare_raw.rds"),
-  required_params = list(
-    comparison_semantics_version = comparison_semantics_version,
-    simulation_seed = simulation_seed,
-    analysis_quick = analysis_quick,
-    analysis_dev = analysis_dev,
-    paired_mismatch_rng = TRUE,
-    analysis_grid_spec = analysis_grid_spec,
-    n_sample_sim = n_sample_sim,
-    n_iter_sim = n_iter_sim
-  )
+  required_params = analysis_result_params
 )
 compare_raw <- .analysis_read_rds(path_rds, analysis_key, analysis_qmd)
 
@@ -619,6 +703,85 @@ compare_summary <- .simCompareSummariseFreqBs(
 )
 
 compare_summary
+```
+
+## Validation checks
+
+Three checks run on the saved results before any figure is drawn; the render
+stops if one fails.
+
+- **Counts match the gates.** For every stimulated tube, replicate and method,
+  the confusion-matrix counts must add up to the number of stimulated cells,
+  and the cells above the gate (true plus false positives) must equal the
+  number of stimulated cells the method itself gated. Results that lack the
+  counts are rejected as incomplete.
+- **Pairing across mismatch settings.** Within each baseline scenario,
+  replicate and sample, every mismatch setting must have the same
+  unstimulated tube (which no mismatch changes), the same number of genuine
+  positives and the same number of stimulated cells.
+- **Zero mismatch.** With no mismatch, shifting only the stimulated negatives
+  must give exactly the same gates and counts as shifting all stimulated
+  cells. Zero SD inflation is compared too; it rescales the background by
+  one, which can change the last bit of a value, so it is reported rather
+  than required to match exactly.
+
+```{r}
+#| label: validation-checks
+#| echo: false
+counts_ok <- .simCompareCountsConsistent(
+  compare_raw[compare_raw$method %in% c("stimgate", "fbeta", "tailgate"), ]
+)
+if (!isTRUE(counts_ok)) {
+  stop("Confusion-matrix counts do not reproduce the gated stimulated counts.")
+}
+
+pairing_check <- .simComparePairingCheck(compare_raw)
+if (!all(pairing_check$paired)) {
+  stop(
+    "Simulated data differ across mismatch settings within a baseline ",
+    "scenario, replicate and sample, so the settings are not paired."
+  )
+}
+
+zero_agreement <- .simCompareZeroMismatchAgreement(compare_raw)
+zero_shift <- zero_agreement[
+  zero_agreement$mismatch_type == "mean_shift_negative",
+]
+if (
+  nrow(zero_shift) == 0L ||
+    any(zero_shift$n_same_threshold != zero_shift$n_compared) ||
+    any(zero_shift$n_same_counts != zero_shift$n_compared)
+) {
+  stop(
+    "With no mismatch, shifting only the stimulated negatives did not ",
+    "reproduce shifting all stimulated cells."
+  )
+}
+
+cat(
+  "Counts reproduce the gated stimulated counts in all",
+  sum(compare_raw$method %in% c("stimgate", "fbeta", "tailgate")),
+  "tube-level results.\n"
+)
+cat(
+  "Paired data in all", nrow(pairing_check),
+  "baseline-scenario, replicate and sample groups.\n"
+)
+knitr::kable(
+  zero_agreement |>
+    dplyr::mutate(
+      mismatch_type = unname(.simCompareMismatchLabels[mismatch_type]),
+      method = unname(.analysis_method_labels[method])
+    ),
+  col.names = c(
+    "Zero-mismatch variant", "Method", "Compared", "Same gate",
+    "Same counts", "Largest gate difference"
+  ),
+  caption = paste(
+    "Agreement of each zero-mismatch variant with the zero shift of all",
+    "stimulated cells, on the same replicates."
+  )
+)
 
 if (!isTRUE(run_plots)) {
   message("run_plots is false, so stopping after the canonical comparison summary.")
@@ -633,7 +796,354 @@ Tailgate and F-beta. "Without Tailgate" leaves Tailgate out, because it
 performs very poorly without more tuning and squashes the scale for the other
 two methods. The two versions are saved in the `all_methods` and `no_tailgate`
 subfolders of each figure folder. Within each version there is one figure per
-mean position setting.
+mean position setting and mismatch mechanism.
+
+Mean shifts are additive shifts on the transformed expression scale, the
+scale the methods gate on. SD inflation is the fractional increase in the
+standard deviation of the stimulated background (negative) cells.
+
+```{r}
+#| label: figure-helpers
+#| echo: false
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  # Start each figure folder afresh.
+  .compare_fresh_fig_dir <- function(name) {
+    path <- .analysis_fig_dir(c(fig_key, name), path_root = root_dir, create = FALSE)
+    if (dir.exists(path)) unlink(path, recursive = TRUE)
+    .analysis_fig_dir(c(fig_key, name), path_root = root_dir)
+  }
+  .compare_mismatch_heading <- function(extra) {
+    type <- if (is.list(extra)) extra$mismatch_type else extra
+    out <- paste0("Mismatch: ", unname(.simCompareMismatchLabels[type]))
+    if (is.list(extra)) {
+      out <- paste0(out, "; cells: ", .analysis_label_number(extra$n_cell))
+    }
+    out
+  }
+  .compare_mismatch_file <- function(pos, extra) {
+    type <- if (is.list(extra)) extra$mismatch_type else extra
+    cells <- if (is.list(extra)) paste0("_n_cell_", extra$n_cell) else ""
+    paste0("plot_", type, "_mean_pos_setting_", pos, cells, ".pdf")
+  }
+  .compare_mismatch_x <- function(type) {
+    unname(.simCompareMismatchAxisLabels[type])
+  }
+  # Plot function for one figure: the x axis label depends on the mechanism.
+  .compare_mismatch_plot <- function(plot_fn, ...) {
+    function(d) {
+      plot_fn(d, x_label = .compare_mismatch_x(d$mismatch_type[[1]]), ...)
+    }
+  }
+}
+```
+
+## Gate purity and detection
+
+For every stimulated tube, replicate and method, the method's final gate is
+applied to the stimulated cells and compared with the simulation labels. As
+in the package, a cell is positive when its expression is strictly above the
+gate; a cell exactly at the gate is negative. StimGate is scored with its
+final gate, which is the cluster-refined gate where clustering applies.
+Positive cells that are part of the background in the stimulated tube count
+as genuine positives: these outcomes describe the purity and detection rate
+of the stimulated gate, not which positive cells were induced by
+stimulation. The background-subtracted frequency is a separate estimand and
+is covered in the secondary results.
+
+From the counts of true positives (TP), false positives (FP), false
+negatives (FN) and true negatives (TN):
+
+- FDP = FP / (TP + FP), undefined when the gate selects no stimulated cells;
+- sensitivity = TP / (TP + FN), so an empty gate has zero sensitivity;
+- false-positive rate = FP / (FP + TN);
+- selected fraction = (TP + FP) / (TP + FP + FN + TN).
+
+Each replicate gives one value of each outcome, and the figures summarise
+these replicate-level values directly; cell counts are never pooled across
+replicates. **FDP summaries leave out replicates whose gate selected no
+cells**, because FDP is undefined there; the tables below give how many such
+replicates there are. FDP and sensitivity are always shown together, so a
+gate that selects almost nothing cannot look successful merely because it
+contains few negatives.
+
+```{r}
+#| label: classification-summary
+#| echo: false
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  classification_cols <- c(
+    "base_scenario_id", "scenario_desc", "transformation", "mean_pos_setting",
+    "prob_response", "n_cell", "mismatch_type", "mismatch_val", "method"
+  )
+  class_scenario <- .simCompareClassificationSummary(
+    compare_raw, scenarioCols = classification_cols
+  )
+}
+```
+
+### FDP and sensitivity against mismatch size
+
+The upper row of each figure is FDP and the lower row sensitivity, both on
+fixed 0-100% scales. Solid lines are medians over replicates; dashed lines
+are the worse tail, the 90th percentile of FDP and the 10th percentile of
+sensitivity. Columns are baseline scenarios, each with its own horizontal
+range (on a square-root scale) because mismatch sizes differ between
+transformations. Each mismatch mechanism has its own figure.
+
+```{r}
+#| label: fdp-sensitivity
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .simCompareFigureLoop(
+    class_scenario,
+    make_plot = .compare_mismatch_plot(
+      .simComparePlotClassification, outcomes = c("fdp", "sensitivity")
+    ),
+    dir = .compare_fresh_fig_dir("fdp_sensitivity"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = "mismatch_type",
+    height = 13,
+    level = 4L
+  )
+}
+```
+
+### Observation counts
+
+Each cell gives, for one method and setting, the number of valid replicates
+(no run error), the number with a defined FDP (the gate selected at least one
+cell), the number of empty gates and the number of gates that used a
+threshold fallback. Fallback gates are included in the outcomes above, as
+they are the gates the methods applied.
+
+```{r}
+#| label: classification-counts
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  for (type in intersect(names(.simCompareMismatchLabels), class_scenario$mismatch_type)) {
+    .analysis_heading(
+      paste0("Mismatch: ", unname(.simCompareMismatchLabels[type])), 4L
+    )
+    print(knitr::kable(
+      .simCompareClassificationCountTable(
+        class_scenario[class_scenario$mismatch_type == type, ]
+      ),
+      caption = "Valid / FDP defined / empty gates / fallbacks."
+    ))
+    cat("\n\n")
+  }
+}
+```
+
+### False-positive rate
+
+The false-positive rate is the share of the genuinely negative stimulated
+cells that lie above the gate. It is a secondary diagnostic. FDP depends on
+how common genuine positives are as well as on the gate: the same
+false-positive rate gives a much larger FDP when the response is rare, so
+differences in FDP between rare- and common-response scenarios are not all
+due to the methods. The vertical scales here are not fixed, because the
+rates are small.
+
+```{r}
+#| label: false-positive-rate
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .simCompareFigureLoop(
+    class_scenario,
+    make_plot = .compare_mismatch_plot(
+      .simComparePlotClassification, outcomes = "fpr", unit_scale = FALSE
+    ),
+    dir = .compare_fresh_fig_dir("false_positive_rate"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = "mismatch_type",
+    height = 9,
+    level = 4L
+  )
+}
+```
+
+## Very clean gamma baseline: gate diagnostic
+
+In the very clean gamma baseline, StimGate's median absolute relative error
+jumped to about 1 near a mean shift of 0.1. The direction of a relative error
+of 1 is not clear from its size alone, so this section shows the cells, their
+true labels and the final gates before and after the jump, for both shift
+variants. The rows below were rerun during the simulation step for one
+replicate with the production seeds and cells kept; they are saved with the
+results, so nothing is simulated here. The replicate is the same simulated
+draw in every setting, and (with the same number of samples) it is the first
+replicate of the main results.
+
+```{r}
+#| label: gate-diagnostic-data
+#| echo: false
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  path_gate_diagnostic <- .analysis_current_file(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "gate_diagnostic.rds"),
+    required_params = analysis_result_params
+  )
+  gate_diagnostic <- .analysis_read_rds(
+    path_gate_diagnostic, analysis_key, analysis_qmd
+  )
+  diag_results <- gate_diagnostic$results
+  diag_primary <- diag_results |>
+    dplyr::filter(method %in% c("stimgate", "fbeta", "tailgate")) |>
+    .simCompareClassificationMetrics()
+  # StimGate's sample-level gate, before cluster refinement.
+  diag_sample_gate <- diag_results |>
+    dplyr::filter(method == "stimgate_loc_sample") |>
+    dplyr::select(
+      sim_id, sample, sample_gate = threshold,
+      sample_gate_source = gateReturnPoint
+    )
+
+  # Where the main results contain the same rows, the diagnostic replicate
+  # must reproduce their first replicate exactly.
+  diag_match <- diag_primary |>
+    dplyr::select(sim_id, sample, method, threshold) |>
+    dplyr::inner_join(
+      compare_raw |>
+        dplyr::filter(iter == 1L) |>
+        dplyr::select(sim_id, sample, method, threshold_main = threshold),
+      by = c("sim_id", "sample", "method")
+    )
+  if (nrow(diag_match) > 0L) {
+    cat(
+      "The diagnostic replicate reproduces the first replicate of the main",
+      "results for", sum(diag_match$threshold == diag_match$threshold_main),
+      "of", nrow(diag_match), "matching gates.\n"
+    )
+  } else {
+    cat(
+      "The main results of this run do not include the diagnostic scenario,",
+      "so the diagnostic replicate is not compared with them.\n"
+    )
+  }
+}
+```
+
+The table summarises each setting over samples: median FDP (over samples
+with a defined FDP), median sensitivity and median selected fraction, with
+the number of empty gates and fallbacks. The second table lists StimGate's
+gates for every sample, with the sample-level gate chosen before cluster
+refinement and how it was chosen.
+
+```{r}
+#| label: gate-diagnostic-tables
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  q <- .simCompareQuantileFinite
+  diag_summary <- diag_primary |>
+    dplyr::group_by(mismatch_type, mismatch_val, method) |>
+    dplyr::summarise(
+      samples = dplyr::n(),
+      fdp_defined = sum(is.finite(fdp)),
+      fdp = .analysis_label_percent(q(fdp, 0.5)),
+      sensitivity = .analysis_label_percent(q(sensitivity, 0.5)),
+      selected = .analysis_label_percent(q(selected_fraction, 0.5)),
+      empty = sum(gate_empty %in% TRUE),
+      fallback = sum(gate_status %in% c("fallback_empty", "fallback_selected")),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      mismatch_type = unname(.simCompareMismatchLabels[mismatch_type]),
+      method = unname(.analysis_method_labels[method])
+    )
+  print(knitr::kable(
+    diag_summary,
+    col.names = c(
+      "Mismatch", "Shift", "Method", "Samples", "FDP defined", "Median FDP",
+      "Median sensitivity", "Median selected", "Empty gates", "Fallbacks"
+    )
+  ))
+  cat("\n\n")
+
+  diag_stimgate <- diag_primary |>
+    dplyr::filter(method == "stimgate") |>
+    dplyr::left_join(diag_sample_gate, by = c("sim_id", "sample")) |>
+    dplyr::transmute(
+      mismatch = unname(.simCompareMismatchLabels[mismatch_type]),
+      shift = mismatch_val,
+      sample,
+      final_gate = .analysis_label_number(threshold),
+      sample_gate = .analysis_label_number(sample_gate),
+      sample_gate_source,
+      final_gate_source = gateReturnPoint,
+      fdp = .analysis_label_percent(fdp),
+      sensitivity = .analysis_label_percent(sensitivity),
+      selected = .analysis_label_percent(selected_fraction),
+      status = gate_status
+    )
+  print(knitr::kable(
+    diag_stimgate,
+    col.names = c(
+      "Mismatch", "Shift", "Sample", "Final gate", "Sample-level gate",
+      "Sample-level gate source", "Final gate source", "FDP", "Sensitivity",
+      "Selected", "Gate status"
+    )
+  ))
+}
+```
+
+When this diagnostic was developed with the full settings (five samples,
+production seeds), it showed the following. Without a shift, every StimGate
+gate lay in the gap between the components (about 1.6-1.7), with no false
+discoveries and at least 99.8% sensitivity. At a shift of 0.05 the gates
+became unstable: some fell into the right-hand tail of the stimulated
+negatives (about 1.03, FDP about 20%, all positives detected), others jumped
+into the positive component (2.8-3.2, sensitivity 1-4%). At a shift of 0.1,
+in both variants, every gate lay inside the positive component (2.3-3.7):
+FDP was 0, or undefined for one empty gate, and sensitivity was mostly below
+2% (at most 41%). These were StimGate's own sample-level local-FDR gates,
+which cluster refinement kept; they were not fallbacks (one sample-level
+fallback was replaced by a calculated cluster gate). The jump in absolute
+relative error to about 1 is therefore missed positives, an under-estimate
+close to -100%, caused by a change in where StimGate places its gate, not
+by negative contamination or a fallback. F-beta and Tailgate gates stayed
+between the components (1.1-1.4), with FDP at most 0.2% and full
+sensitivity. The tables above show the same quantities for the current run.
+
+Each figure is one sample. Grey bars are the stimulated cells, stacked by
+true label; the black outline is the unstimulated tube; vertical lines are
+each method's final gate. Rows are shift sizes and columns the two shift
+variants.
+
+```{r}
+#| label: gate-diagnostic-figures
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  dir_diag <- .compare_fresh_fig_dir("gate_diagnostic_clean_gamma")
+  for (s in sort(unique(gate_diagnostic$cells$sample))) {
+    .analysis_heading(paste0("Sample ", s), 3L)
+    p <- .simComparePlotGateDiagnostic(
+      gate_diagnostic$cells[gate_diagnostic$cells$sample == s, ],
+      diag_primary[diag_primary$sample == s, ]
+    )
+    .analysis_save_fig(
+      p, file.path(dir_diag, paste0("plot_sample_", s, ".pdf")),
+      height = 16
+    )
+    .analysis_print_fig(p)
+  }
+}
+```
+
+## Secondary results: background-subtracted frequency error
+
+The figures below describe the accuracy of the background-subtracted
+frequency estimate, which answers a different question from the gate purity
+and detection above. A gate can be pure yet miss most responding cells (a
+large under-estimate with zero FDP), and an impure gate can still give an
+accurate background-subtracted frequency if the unstimulated tube is
+contaminated to the same extent. Both are needed to judge a method.
 
 ### Relative error summaries
 
@@ -682,39 +1192,6 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   err_by_cell <- .simCompareErrorAverage(err_scenario, group_cell)
   signed_averaged <- .simBandwidthSignedErrorAverage(signed_scenario, group_all)
   signed_by_cell <- .simBandwidthSignedErrorAverage(signed_scenario, group_cell)
-
-  # Start each figure folder afresh.
-  .compare_fresh_fig_dir <- function(name) {
-    path <- .analysis_fig_dir(c(fig_key, name), path_root = root_dir, create = FALSE)
-    if (dir.exists(path)) unlink(path, recursive = TRUE)
-    .analysis_fig_dir(c(fig_key, name), path_root = root_dir)
-  }
-  .compare_mismatch_heading <- function(extra) {
-    type <- if (is.list(extra)) extra$mismatch_type else extra
-    out <- paste0("Mismatch: ", unname(.simCompareMismatchLabels[type]))
-    if (is.list(extra)) {
-      out <- paste0(out, "; cells: ", .analysis_label_number(extra$n_cell))
-    }
-    out
-  }
-  .compare_mismatch_file <- function(pos, extra) {
-    type <- if (is.list(extra)) extra$mismatch_type else extra
-    cells <- if (is.list(extra)) paste0("_n_cell_", extra$n_cell) else ""
-    paste0("plot_", type, "_mean_pos_setting_", pos, cells, ".pdf")
-  }
-  .compare_mismatch_x <- function(type) {
-    if (type == "sd_inflation") {
-      "Fractional increase in background spread"
-    } else {
-      "Stimulated mean shift"
-    }
-  }
-  # Plot function for one figure: the x axis label depends on the mechanism.
-  .compare_mismatch_plot <- function(plot_fn, ...) {
-    function(d) {
-      plot_fn(d, x_label = .compare_mismatch_x(d$mismatch_type[[1]]), ...)
-    }
-  }
 }
 ```
 

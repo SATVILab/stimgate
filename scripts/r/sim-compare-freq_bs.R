@@ -581,7 +581,8 @@
   xUns,
   threshold,
   fallbackHighValue = TRUE,
-  fallbackMargin = 0.05
+  fallbackMargin = 0.05,
+  labelsStim = NULL
 ) {
   xStim <- as.numeric(xStim)
   xUns <- as.numeric(xUns)
@@ -614,17 +615,97 @@
   propUns <- nPosUns / nCellUns
   propRespEst <- propStim - propUns
 
-  list(
-    threshold = thresholdUsed,
-    thresholdFallbackUsed = usedFallback,
-    nCellStim = nCellStim,
-    nCellUns = nCellUns,
-    nPosStim = nPosStim,
-    nPosUns = nPosUns,
-    propStim = propStim,
-    propUns = propUns,
-    propRespEst = propRespEst
+  c(
+    list(
+      threshold = thresholdUsed,
+      thresholdFallbackUsed = usedFallback,
+      nCellStim = nCellStim,
+      nCellUns = nCellUns,
+      nPosStim = nPosStim,
+      nPosUns = nPosUns,
+      propStim = propStim,
+      propUns = propUns,
+      propRespEst = propRespEst
+    ),
+    if (!is.null(labelsStim)) {
+      .simCompareConfusionCounts(xStim, labelsStim, thresholdUsed)
+    }
   )
+}
+
+# Confusion-matrix counts of one stimulated tube against its simulation labels.
+# A cell is classified positive when its expression is strictly above the gate
+# (`x > gate`), as in the package (`R/pos_ind.R` and the statistics helpers),
+# so a cell exactly at the gate is negative. Cells labelled `positiveLabel`
+# ("gp") are genuine positives, whether induced by stimulation or part of the
+# positive background; all other cells ("gn") are genuine negatives. Counts
+# are NA when the gate is not finite.
+.simCompareConfusionCounts <- function(
+    x,
+    labels,
+    threshold,
+    positiveLabel = "gp") {
+  x <- as.numeric(x)
+  labels <- as.character(labels)
+  if (length(x) != length(labels)) {
+    stop("Expression and label vectors must have the same length.")
+  }
+  threshold <- as.numeric(threshold)[1]
+  if (length(threshold) == 0L || !is.finite(threshold)) {
+    return(list(
+      nTruePos = NA_integer_, nFalsePos = NA_integer_,
+      nFalseNeg = NA_integer_, nTrueNeg = NA_integer_
+    ))
+  }
+  pos <- x > threshold
+  truth <- labels %in% positiveLabel
+  list(
+    nTruePos = sum(pos & truth),
+    nFalsePos = sum(pos & !truth),
+    nFalseNeg = sum(!pos & truth),
+    nTrueNeg = sum(!pos & !truth)
+  )
+}
+
+# Replicate-level classification outcomes from the confusion-matrix counts.
+# Proportions with a zero denominator are NA, not zero: FDP is undefined when
+# the gate selects no stimulated cells, sensitivity when the tube has no
+# genuine positives and the false-positive rate when it has no genuine
+# negatives. `gate_status` separates failed runs, fallback gates and
+# calculated gates, each split by whether any stimulated cell was selected.
+.simCompareClassificationMetrics <- function(.data) {
+  ratio <- function(num, den) {
+    dplyr::if_else(!is.na(den) & den > 0, num / den, NA_real_)
+  }
+  has_error <- if ("error" %in% names(.data)) {
+    !is.na(.data$error) & nzchar(as.character(.data$error))
+  } else {
+    rep(FALSE, nrow(.data))
+  }
+  fallback <- if ("thresholdFallbackUsed" %in% names(.data)) {
+    .data$thresholdFallbackUsed %in% TRUE
+  } else {
+    rep(FALSE, nrow(.data))
+  }
+  .data |>
+    dplyr::mutate(
+      n_selected = .data$nTruePos + .data$nFalsePos,
+      n_genuine_pos = .data$nTruePos + .data$nFalseNeg,
+      n_genuine_neg = .data$nFalsePos + .data$nTrueNeg,
+      n_classified = .data$n_selected + .data$nFalseNeg + .data$nTrueNeg,
+      fdp = ratio(.data$nFalsePos, .data$n_selected),
+      sensitivity = ratio(.data$nTruePos, .data$n_genuine_pos),
+      false_positive_rate = ratio(.data$nFalsePos, .data$n_genuine_neg),
+      selected_fraction = ratio(.data$n_selected, .data$n_classified),
+      gate_empty = .data$n_selected == 0L,
+      gate_status = dplyr::case_when(
+        has_error | is.na(.data$n_selected) ~ "failed",
+        fallback & .data$gate_empty ~ "fallback_empty",
+        fallback ~ "fallback_selected",
+        .data$gate_empty ~ "calculated_empty",
+        TRUE ~ "calculated_selected"
+      )
+    )
 }
 
 #' @keywords internal
@@ -709,6 +790,7 @@
 
     purrr::map_df(indStimVec, function(indStim) {
       xStim <- as.numeric(flowCore::exprs(flowFrameList[[indStim]])[, chnl])
+      labelsStim <- labelsList[[indStim]]
 
       fbetaError <- NA_character_
       fbetaObj <- tryCatch(
@@ -738,7 +820,8 @@
         xUns = xUnsFbeta,
         threshold = fbetaObj$threshold,
         fallbackHighValue = fallbackHighValue,
-        fallbackMargin = fallbackMargin
+        fallbackMargin = fallbackMargin,
+        labelsStim = labelsStim
       )
 
       xTail <- switch(
@@ -778,7 +861,8 @@
         xUns = xUnsTailgate,
         threshold = tailgateObj$threshold,
         fallbackHighValue = fallbackHighValue,
-        fallbackMargin = fallbackMargin
+        fallbackMargin = fallbackMargin,
+        labelsStim = labelsStim
       )
 
       tibble::tibble(
@@ -823,6 +907,10 @@
         propStim = c(fbetaEst$propStim, tailgateEst$propStim),
         propUns = c(fbetaEst$propUns, tailgateEst$propUns),
         propRespEst = c(fbetaEst$propRespEst, tailgateEst$propRespEst),
+        nTruePos = c(fbetaEst$nTruePos, tailgateEst$nTruePos),
+        nFalsePos = c(fbetaEst$nFalsePos, tailgateEst$nFalsePos),
+        nFalseNeg = c(fbetaEst$nFalseNeg, tailgateEst$nFalseNeg),
+        nTrueNeg = c(fbetaEst$nTrueNeg, tailgateEst$nTrueNeg),
         detailLevel = NA_character_,
         locGenerated = NA,
         locGeneratedDirect = NA,
@@ -855,6 +943,10 @@
       propStim = NA_real_,
       propUns = NA_real_,
       propRespEst = NA_real_,
+      nTruePos = NA_integer_,
+      nFalsePos = NA_integer_,
+      nFalseNeg = NA_integer_,
+      nTrueNeg = NA_integer_,
       detailLevel = NA_character_,
       locGenerated = NA,
       locGeneratedDirect = NA,
@@ -1144,6 +1236,18 @@
               NA_real_
             }
 
+            # Classify the stimulated cells with the final (cluster-refined
+            # where applicable) gate, exactly as StimGate's statistics do.
+            # Read the GatingSet copy that StimGate gated: it stores
+            # expression in single precision, so a cell next to the gate can
+            # fall on the other side of it in the double-precision simulation.
+            xStim <- flowCore::exprs(
+              flowWorkspace::gh_pop_get_data(gs[[indStim]], "root")
+            )[, "F1"]
+            counts <- .simCompareConfusionCounts(
+              xStim, labelsList[[indStim]], gateVal
+            )
+
             isClustered <- grepl("Clust$", gateNm %||% "")
             provenance <- .simCompareStimgateGateProvenance(
               gRow = gRow,
@@ -1169,6 +1273,10 @@
               propStim = propStimVal,
               propUns = propUnsVal,
               propRespEst = propBsVal,
+              nTruePos = counts$nTruePos,
+              nFalsePos = counts$nFalsePos,
+              nFalseNeg = counts$nFalseNeg,
+              nTrueNeg = counts$nTrueNeg,
               detailLevel = if (isClustered) {
                 "cluster_final"
               } else {
@@ -1272,6 +1380,7 @@
           propStim,
           propUns,
           propRespEst,
+          dplyr::any_of(c("nTruePos", "nFalsePos", "nFalseNeg", "nTrueNeg")),
           propStimTruth,
           propUnsTruth,
           propRespTruth,
@@ -1368,7 +1477,8 @@
   stimSdMultiplier = 1,
   stimMeanShiftClusters = NULL,
   stimSdMultiplierClusters = NULL,
-  pathProject = NULL
+  pathProject = NULL,
+  keepCells = FALSE
 ) {
   if (!identical(as.integer(nMarker), 1L)) {
     stop("This comparison helper currently expects nMarker = 1.")
@@ -1383,7 +1493,15 @@
   tailgateX <- match.arg(tailgateX)
   tailgateMethod <- match.arg(tailgateMethod)
 
-  purrr::map_df(seq_len(nIter), function(iterNum) {
+  # One seed per iteration, drawn before any method runs. The methods consume
+  # different amounts of randomness in different mismatch settings, so without
+  # this the data of later iterations would not be paired across settings.
+  # Drawing with replacement makes the first seeds independent of `nIter`.
+  iterSeeds <- sample.int(.Machine$integer.max, nIter, replace = TRUE)
+  cellsList <- list()
+
+  out <- purrr::map_df(seq_len(nIter), function(iterNum) {
+    set.seed(iterSeeds[[iterNum]])
     nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
     nCellByCondition <- c(nCellUns, nCellStim)
     transformationFunc <- .simCompareGetTrans(transformation)
@@ -1423,6 +1541,21 @@
 
     flowFrameList <- outListExperiment[["flowFrameList"]]
     labelsList <- outListExperiment[["labelsList"]]
+    # Fingerprint of each sample's unstimulated tube, which no mismatch
+    # changes: equal values across mismatch settings show the data are paired.
+    unsTbl <- tibble::tibble(
+      sample = as.character(seq_len(nSample)),
+      unsExprSum = vapply(seq_len(nSample), function(sampleCurr) {
+        sum(flowCore::exprs(
+          flowFrameList[[(sampleCurr - 1L) * nCondition + 1L]]
+        )[, "F1"])
+      }, numeric(1))
+    )
+    if (isTRUE(keepCells)) {
+      cellsList[[iterNum]] <<- .simCompareCellTable(
+        flowFrameList, labelsList, nSample, nCondition, iterNum
+      )
+    }
     fs <- as(flowFrameList, "flowSet")
     gs <- flowWorkspace::GatingSet(fs)
 
@@ -1527,6 +1660,7 @@
     )
 
     dplyr::bind_rows(stimgateTbl, alternativeTbl) |>
+      dplyr::left_join(unsTbl, by = "sample") |>
       dplyr::mutate(
         iter = iterNum,
         nCellStimSim = nCellStim,
@@ -1586,6 +1720,38 @@
         method,
         dplyr::everything()
       )
+  })
+
+  if (isTRUE(keepCells)) {
+    attr(out, "cells") <- dplyr::bind_rows(cellsList)
+  }
+  out
+}
+
+# Cell-level expression and simulation labels of every tube, for diagnostics
+# that need to show the distributions behind a gate.
+.simCompareCellTable <- function(
+    flowFrameList,
+    labelsList,
+    nSample,
+    nCondition,
+    iter = 1L,
+    chnl = "F1") {
+  purrr::map_df(seq_len(nSample), function(sampleCurr) {
+    indUns <- (sampleCurr - 1L) * nCondition + 1L
+    purrr::map_df(seq.int(indUns, sampleCurr * nCondition), function(ind) {
+      # Evaluate before `tibble()`, whose `ind` column would mask the index.
+      expr <- as.numeric(flowCore::exprs(flowFrameList[[ind]])[, chnl])
+      label <- as.character(labelsList[[ind]])
+      tibble::tibble(
+        iter = as.integer(iter),
+        sample = as.character(sampleCurr),
+        ind = as.character(ind),
+        condition = if (ind == indUns) "unstim" else "stim",
+        expr = expr,
+        label = label
+      )
+    })
   })
 }
 
@@ -1654,12 +1820,19 @@
   nIter,
   methods = c("stimgate", "fbeta", "tailgate")
 ) {
+  # The label-based confusion-matrix counts (and the unstimulated-data
+  # fingerprint used to check pairing) are required, so outputs saved before
+  # they were recorded cannot satisfy the classification analysis.
   required_cols <- c(
     "iter",
     "sample",
     "method",
     "propRespTruth",
-    "propRespEst"
+    "propRespEst",
+    "nCellStim",
+    "nPosStim",
+    .simCompareCountCols,
+    "unsExprSum"
   )
   if (
     !is.data.frame(.data) ||
@@ -1702,7 +1875,26 @@
   }
 
   all(is.finite(primary$propRespTruth)) &&
-    all(is.finite(primary$propRespEst))
+    all(is.finite(primary$propRespEst)) &&
+    .simCompareCountsConsistent(primary) &&
+    all(is.finite(primary$unsExprSum))
+}
+
+.simCompareCountCols <- c("nTruePos", "nFalsePos", "nFalseNeg", "nTrueNeg")
+
+# TRUE when every row has complete confusion-matrix counts that reproduce the
+# method's own gated stimulated count (`nPosStim`) and stimulated cell count.
+.simCompareCountsConsistent <- function(.data) {
+  if (!all(c(.simCompareCountCols, "nPosStim", "nCellStim") %in% names(.data))) {
+    return(FALSE)
+  }
+  counts <- as.matrix(.data[, .simCompareCountCols])
+  if (anyNA(counts) || any(counts < 0)) {
+    return(FALSE)
+  }
+  n_selected <- .data$nTruePos + .data$nFalsePos
+  isTRUE(all(n_selected == .data$nPosStim)) &&
+    isTRUE(all(rowSums(counts) == .data$nCellStim))
 }
 
 #' Validate scenario cached output against grid row settings
@@ -2265,6 +2457,7 @@
         ...
       )
 
+      cells <- attr(sim_res, "cells")
       sim_res <- sim_res |>
         dplyr::select(-dplyr::any_of(names(row)))
 
@@ -2272,7 +2465,6 @@
         row[rep(1L, nrow(sim_res)), , drop = FALSE],
         sim_res
       )
-
       if (length(file_output) > 0L) {
         if (exists(".write_rds_atomic", mode = "function")) {
           .write_rds_atomic(res, file_output)
@@ -2291,6 +2483,10 @@
         p(sprintf("Completed sim_id: %s", sim_id))
       }
 
+      # Cell-level data (only with `keepCells = TRUE`) are returned, not cached.
+      if (!is.null(cells)) {
+        attr(res, "cells") <- cells
+      }
       res
     },
     error = function(e) {
@@ -2323,6 +2519,11 @@
           propUns = NA_real_,
           propStimTruth = NA_real_,
           propUnsTruth = NA_real_,
+          nTruePos = NA_integer_,
+          nFalsePos = NA_integer_,
+          nFalseNeg = NA_integer_,
+          nTrueNeg = NA_integer_,
+          unsExprSum = NA_real_,
           detailLevel = NA_character_,
           locGenerated = NA,
           locGeneratedDirect = NA,
@@ -2840,9 +3041,18 @@
 }
 
 .simCompareMismatchLabels <- c(
-  mean_shift_all = "Shift all cells",
-  mean_shift_negative = "Shift background cells only",
-  sd_inflation = "Increase background spread"
+  mean_shift_all = "Shift all stimulated cells",
+  mean_shift_negative = "Shift stimulated negatives only",
+  sd_inflation = "Inflate stimulated background SD"
+)
+
+# Horizontal axis label for each mismatch mechanism.
+.simCompareMismatchAxisLabels <- c(
+  mean_shift_all =
+    "Additive shift of all stimulated cells (transformed expression scale)",
+  mean_shift_negative =
+    "Additive shift of stimulated negatives (transformed expression scale)",
+  sd_inflation = "Fractional increase in stimulated background SD"
 )
 
 # Print, save and describe one figure per method set, mean position setting
@@ -3045,7 +3255,7 @@
     ) +
     ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
     ggplot2::scale_linetype_discrete(labels = .simCompareMismatchLabels) +
-    .simCompareMismatchScales("Stimulated mean shift") +
+    .simCompareMismatchScales("Additive mean shift (transformed expression scale)") +
     ggplot2::guides(
       colour = ggplot2::guide_legend(nrow = 1, byrow = TRUE),
       linetype = ggplot2::guide_legend(nrow = 1, byrow = TRUE)
@@ -3230,5 +3440,348 @@
     .analysis_scale_method() +
     .simCompareMismatchFacet(by_prob) +
     ggplot2::labs(x = x_label, colour = "Method") +
+    .analysis_theme()
+}
+
+# ---------------------------------------------------------------------------
+# Gate purity and detection (analysis 8): replicate-level classification of
+# stimulated cells against the simulation labels.
+# ---------------------------------------------------------------------------
+
+# Quantile of the finite values, NA when there are none.
+.simCompareQuantileFinite <- function(x, prob) {
+  x <- x[is.finite(x)]
+  if (length(x) == 0L) {
+    return(NA_real_)
+  }
+  unname(stats::quantile(x, probs = prob, names = FALSE))
+}
+
+# Replicate-level classification summary per scenario and method. Each
+# stimulated tube in each replicate gives one FDP, sensitivity and
+# false-positive rate; these are summarised directly, never pooled over cells.
+# FDP summaries use only replicates whose gate selected at least one cell
+# (`n_fdp_defined`), whereas an empty gate contributes zero sensitivity.
+.simCompareClassificationSummary <- function(
+    .data,
+    scenarioCols,
+    keepMethods = c("stimgate", "fbeta", "tailgate")) {
+  q <- .simCompareQuantileFinite
+  .data |>
+    dplyr::filter(.data$method %in% keepMethods) |>
+    .simCompareClassificationMetrics() |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
+    dplyr::summarise(
+      n = dplyr::n(),
+      n_valid = sum(.data$gate_status != "failed"),
+      n_failed = sum(.data$gate_status == "failed"),
+      n_fdp_defined = sum(is.finite(.data$fdp)),
+      n_empty = sum(.data$gate_empty %in% TRUE),
+      n_fallback = sum(
+        .data$gate_status %in% c("fallback_empty", "fallback_selected")
+      ),
+      n_fallback_empty = sum(.data$gate_status == "fallback_empty"),
+      fdp_median = q(.data$fdp, 0.5),
+      fdp_q90 = q(.data$fdp, 0.9),
+      sensitivity_median = q(.data$sensitivity, 0.5),
+      sensitivity_q10 = q(.data$sensitivity, 0.1),
+      fpr_median = q(.data$false_positive_rate, 0.5),
+      fpr_q90 = q(.data$false_positive_rate, 0.9),
+      selected_fraction_median = q(.data$selected_fraction, 0.5),
+      prevalence_median = q(.data$n_genuine_pos / .data$n_classified, 0.5),
+      .groups = "drop"
+    )
+}
+
+# Pairing check: within each baseline scenario, replicate and sample, every
+# mismatch setting must use the same simulated draws. The unstimulated tube is
+# never changed by a mismatch and the labels are not changed by it, so the
+# unstimulated-expression fingerprint, the number of genuine positives and the
+# stimulated cell count must each take one value. Returns one row per group.
+.simComparePairingCheck <- function(
+    .data,
+    pairCols = "base_scenario_id",
+    keepMethods = c("stimgate", "fbeta", "tailgate")) {
+  .data |>
+    dplyr::filter(.data$method %in% keepMethods) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(c(pairCols, "iter", "sample")))) |>
+    dplyr::summarise(
+      n_settings = dplyr::n_distinct(.data$sim_id),
+      n_uns_values = dplyr::n_distinct(.data$unsExprSum),
+      n_genuine_pos_values = dplyr::n_distinct(.data$nTruePos + .data$nFalseNeg),
+      n_cell_values = dplyr::n_distinct(.data$nCellStim),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      paired = .data$n_uns_values == 1L &
+        .data$n_genuine_pos_values == 1L &
+        .data$n_cell_values == 1L
+    )
+}
+
+# Agreement of the zero-mismatch rows of each mechanism with the zero-shift
+# "shift all stimulated cells" rows on the same replicate, sample and method.
+# The shift variants add exactly zero, so they must agree exactly; zero SD
+# inflation rescales by one, which can change the last bit of a value.
+.simCompareZeroMismatchAgreement <- function(
+    .data,
+    pairCols = "base_scenario_id",
+    reference = "mean_shift_all",
+    keepMethods = c("stimgate", "fbeta", "tailgate")) {
+  keys <- c(pairCols, "iter", "sample", "method")
+  zero <- .data |>
+    dplyr::filter(.data$method %in% keepMethods, .data$mismatch_val == 0) |>
+    dplyr::select(dplyr::all_of(c(
+      keys, "mismatch_type", "threshold", .simCompareCountCols
+    )))
+  ref <- zero |>
+    dplyr::filter(.data$mismatch_type == reference) |>
+    dplyr::select(-"mismatch_type") |>
+    dplyr::rename_with(~ paste0(.x, "_ref"), -dplyr::all_of(keys))
+  zero |>
+    dplyr::filter(.data$mismatch_type != reference) |>
+    dplyr::inner_join(ref, by = keys) |>
+    dplyr::mutate(
+      same_threshold = .data$threshold == .data$threshold_ref,
+      same_counts = .data$nTruePos == .data$nTruePos_ref &
+        .data$nFalsePos == .data$nFalsePos_ref &
+        .data$nFalseNeg == .data$nFalseNeg_ref &
+        .data$nTrueNeg == .data$nTrueNeg_ref
+    ) |>
+    dplyr::group_by(.data$mismatch_type, .data$method) |>
+    dplyr::summarise(
+      n_compared = dplyr::n(),
+      n_same_threshold = sum(.data$same_threshold %in% TRUE),
+      n_same_counts = sum(.data$same_counts %in% TRUE),
+      max_abs_threshold_diff = max(abs(.data$threshold - .data$threshold_ref)),
+      .groups = "drop"
+    )
+}
+
+# Facet label for each baseline scenario: transformation and description,
+# ordered Gaussian, Skew, Gamma and then by baseline scenario.
+.simCompareScenarioLabel <- function(data) {
+  trans <- .analysis_trans_factor(data$transformation)
+  lab <- paste0(as.character(trans), ": ", data$scenario_desc)
+  ord <- order(as.integer(trans), data$base_scenario_id)
+  factor(lab, levels = unique(lab[ord]))
+}
+
+.simCompareClassificationOutcomes <- list(
+  fdp = c(
+    label = "False discovery proportion",
+    median = "fdp_median", tail = "fdp_q90"
+  ),
+  sensitivity = c(
+    label = "Sensitivity",
+    median = "sensitivity_median", tail = "sensitivity_q10"
+  ),
+  fpr = c(
+    label = "False-positive rate",
+    median = "fpr_median", tail = "fpr_q90"
+  )
+)
+
+# Classification outcomes against mismatch size from
+# `.simCompareClassificationSummary()`. Rows of panels are outcomes, columns
+# are baseline scenarios, each with its own horizontal range; colour is the
+# method and line type the statistic (median, or the worse tail: 90th
+# percentile for FDP and false-positive rate, 10th for sensitivity). With
+# `unit_scale`, every vertical scale is fixed at 0-100%.
+.simComparePlotClassification <- function(
+    tbl,
+    outcomes = c("fdp", "sensitivity"),
+    x_label = "Mismatch size",
+    unit_scale = TRUE) {
+  spec <- .simCompareClassificationOutcomes[outcomes]
+  long <- purrr::map_df(names(spec), function(nm) {
+    s <- spec[[nm]]
+    dplyr::bind_rows(
+      dplyr::mutate(tbl, outcome = s[["label"]], statistic = "median",
+        value = .data[[s[["median"]]]]),
+      dplyr::mutate(tbl, outcome = s[["label"]], statistic = "tail",
+        value = .data[[s[["tail"]]]])
+    )
+  })
+  long$outcome <- factor(
+    long$outcome,
+    levels = vapply(spec, function(s) s[["label"]], character(1))
+  )
+  long$scenario <- .simCompareScenarioLabel(long)
+  p <- ggplot2::ggplot(
+    long,
+    ggplot2::aes(
+      x = mismatch_val, y = value, colour = method, linetype = statistic,
+      group = interaction(method, statistic)
+    )
+  ) +
+    ggplot2::geom_line(linewidth = 0.7, alpha = 0.8, na.rm = TRUE) +
+    ggplot2::geom_point(size = 1.2, alpha = 0.8, na.rm = TRUE) +
+    ggplot2::facet_grid(
+      outcome ~ scenario,
+      scales = if (unit_scale) "free_x" else "free",
+      labeller = ggplot2::labeller(
+        scenario = ggplot2::label_wrap_gen(width = 16),
+        outcome = ggplot2::label_wrap_gen(width = 14)
+      )
+    ) +
+    ggplot2::scale_x_continuous(
+      transform = "sqrt", labels = .analysis_label_number,
+      guide = ggplot2::guide_axis(angle = 45)
+    ) +
+    .analysis_scale_method() +
+    ggplot2::scale_linetype_manual(
+      values = c(median = "solid", tail = "22"),
+      labels = c(
+        median = "Median",
+        tail = "90th percentile (FDP, false-positive rate) or 10th (sensitivity)"
+      )
+    ) +
+    ggplot2::guides(
+      colour = ggplot2::guide_legend(order = 1),
+      linetype = ggplot2::guide_legend(order = 2, ncol = 1)
+    ) +
+    ggplot2::labs(
+      x = x_label, y = NULL, colour = "Method", linetype = "Statistic"
+    ) +
+    .analysis_theme()
+  if (unit_scale) {
+    p + ggplot2::scale_y_continuous(
+      limits = c(0, 1), breaks = seq(0, 1, 0.25),
+      labels = .analysis_label_percent
+    )
+  } else {
+    p + ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
+      ggplot2::expand_limits(y = 0)
+  }
+}
+
+# Counts behind each plotted setting, one column per method:
+# "valid / FDP defined / empty gates / fallbacks".
+.simCompareClassificationCountTable <- function(summary_tbl) {
+  method_labels <- .analysis_method_labels[
+    intersect(names(.analysis_method_labels), unique(summary_tbl$method))
+  ]
+  summary_tbl |>
+    dplyr::mutate(
+      scenario = .simCompareScenarioLabel(summary_tbl),
+      counts = paste(
+        .data$n_valid, .data$n_fdp_defined, .data$n_empty, .data$n_fallback,
+        sep = " / "
+      ),
+      method = factor(.data$method, levels = names(method_labels))
+    ) |>
+    dplyr::arrange(.data$scenario, .data$mismatch_val, .data$method) |>
+    dplyr::mutate(
+      method = unname(method_labels[as.character(.data$method)]),
+      mismatch_val = .analysis_label_number(.data$mismatch_val)
+    ) |>
+    dplyr::select("scenario", "mismatch_val", "method", "counts") |>
+    tidyr::pivot_wider(names_from = "method", values_from = "counts") |>
+    dplyr::rename(Scenario = "scenario", `Mismatch size` = "mismatch_val")
+}
+
+# ---------------------------------------------------------------------------
+# Gate diagnostic for one baseline scenario: the cells, their labels and the
+# final gates, on matched replicates across mismatch settings.
+# ---------------------------------------------------------------------------
+
+# Rerun `rows` (from the full grid, so with their production `sim_seed`) for
+# one replicate, keeping the cells and StimGate's sample-level details. With
+# the same `nSample`, the replicate equals iteration 1 of the production run
+# of each row. Returns `list(results, cells)`.
+.simCompareGateDiagnosticRun <- function(rows, nSample, ...) {
+  out <- lapply(seq_len(nrow(rows)), function(i) {
+    row <- rows[i, , drop = FALSE]
+    res <- .simCompareRunScenario(
+      row = row,
+      nSample = nSample,
+      nIter = 1L,
+      resume = FALSE,
+      includeLocDetails = TRUE,
+      keepCells = TRUE,
+      ...
+    )
+    cells <- attr(res, "cells")
+    if (is.null(cells)) {
+      stop("Gate diagnostic for sim_id ", row$sim_id[[1]], " failed: ",
+        paste(unique(stats::na.omit(res$error)), collapse = "; "))
+    }
+    attr(res, "cells") <- NULL
+    list(
+      results = res,
+      cells = dplyr::bind_cols(
+        row[rep(1L, nrow(cells)), c("sim_id", "mismatch_type", "mismatch_val")],
+        cells
+      )
+    )
+  })
+  list(
+    results = purrr::list_rbind(purrr::map(out, "results")),
+    cells = purrr::list_rbind(purrr::map(out, "cells"))
+  )
+}
+
+# Stimulated cells stacked by true label, the unstimulated tube as an outline
+# and each method's final gate, for one sample. Rows of panels are mismatch
+# sizes and columns the mismatch mechanisms. `gates` has `mismatch_type`,
+# `mismatch_val`, `method` and `threshold`.
+.simComparePlotGateDiagnostic <- function(
+    cells,
+    gates,
+    x_label = "Expression (transformed scale)",
+    bins = 80) {
+  binwidth <- diff(range(cells$expr)) / bins
+  boundary <- min(cells$expr)
+  type_levels <- intersect(names(.simCompareMismatchLabels), cells$mismatch_type)
+  prep <- function(d) {
+    d$mismatch_type <- factor(d$mismatch_type, levels = type_levels)
+    d
+  }
+  stim <- prep(cells[cells$condition == "stim", , drop = FALSE])
+  stim$label <- factor(
+    ifelse(stim$label == "gp", "Genuine positive", "Genuine negative"),
+    levels = c("Genuine negative", "Genuine positive")
+  )
+  uns <- prep(cells[cells$condition == "unstim", , drop = FALSE])
+  gates <- prep(gates)
+  # A distinct group per line keeps coincident gates visible.
+  gates$line_id <- seq_len(nrow(gates))
+  ggplot2::ggplot() +
+    ggplot2::geom_histogram(
+      data = stim,
+      ggplot2::aes(x = expr, fill = label),
+      binwidth = binwidth, boundary = boundary, position = "stack"
+    ) +
+    ggplot2::geom_freqpoly(
+      data = uns,
+      ggplot2::aes(x = expr, linetype = "Unstimulated tube"),
+      binwidth = binwidth, boundary = boundary, colour = "black",
+      linewidth = 0.4
+    ) +
+    ggplot2::geom_vline(
+      data = gates,
+      ggplot2::aes(xintercept = threshold, colour = method, group = line_id),
+      linewidth = 0.7
+    ) +
+    ggplot2::facet_grid(
+      mismatch_val ~ mismatch_type,
+      labeller = ggplot2::labeller(
+        mismatch_val = function(x) paste0("Shift: ", .analysis_label_number(as.numeric(x))),
+        mismatch_type = .simCompareMismatchLabels
+      )
+    ) +
+    ggplot2::scale_fill_manual(
+      values = c("Genuine negative" = "grey78", "Genuine positive" = "grey35")
+    ) +
+    ggplot2::scale_x_continuous(labels = .analysis_label_number) +
+    # A square-root scale keeps the small positive component visible.
+    ggplot2::scale_y_sqrt(labels = .analysis_label_number) +
+    .analysis_scale_method() +
+    ggplot2::labs(
+      x = x_label, y = "Number of cells (square-root scale)",
+      fill = "Stimulated cells",
+      colour = "Final gate", linetype = NULL
+    ) +
     .analysis_theme()
 }

@@ -19,7 +19,9 @@
     "7-sim-compare-freq_bs.qmd" = c(
       "test-sim-compare-freq_bs-simcyto.R", "test-analysis-7-transactional-multichunk.R"
     ),
-    "8-sim-compare-freq_bs-batch.qmd" = "test-sim-compare-freq_bs-batch.R",
+    "8-sim-compare-freq_bs-batch.qmd" = c(
+      "test-sim-compare-freq_bs-batch.R", "test-sim-compare-classification.R"
+    ),
     "9-real-compare-acs-cytof.qmd" = c(
       "test-acs-cytof-gate.R", "test-acs-cytof-methods.R"
     ),
