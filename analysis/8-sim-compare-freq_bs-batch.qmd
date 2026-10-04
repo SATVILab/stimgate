@@ -77,7 +77,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v6"
+comparison_semantics_version <- "batch-mismatch-comparison-v7"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -138,7 +138,8 @@ mechanisms provided by `simcyto`:
 
 1. **Mean shift** (`stimMeanShift`): An additive shift on the transformed
    expression scale, applied either to all stimulated cells or only to the
-   stimulated negative/background component.
+   stimulated negative/background component. Shifts go up to 0.35 for the
+   Gaussian and Skew transformations and up to 0.2 for Gamma.
 2. **SD inflation** (`stimSdMultiplier`): A multiplicative scaling of the
    stimulated negative/background component's within-component standard
    deviation around its realised mean.
@@ -248,9 +249,9 @@ targeted_scenarios_tbl <- tibble::tribble(
 #| label: mismatch-grids
 #| include: false
 # 1. Mean-shift grid (all components):
-# Gaussian and Skew: 0, 0.025, 0.05, 0.1, 0.2, 0.5, 1
+# Gaussian and Skew: 0 to 0.35
 # Gamma: 0, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2
-mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.1, 0.2, 0.5, 1)
+mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35)
 mean_shift_gamma <- c(0, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2)
 
 grid_mean_shift_all <- purrr::map_df(

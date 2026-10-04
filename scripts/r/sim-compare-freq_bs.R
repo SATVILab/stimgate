@@ -3399,20 +3399,22 @@
     stat_cols = c(median = "Median", q95 = "95th percentile", max = "Maximum")) {
   tbl$transformation <- .analysis_trans_factor(tbl$transformation)
   tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
+  # Errors above 1500% (16 times the truth) are drawn at the cap.
+  capped <- .simBandwidthSignedErrorIsCapped(tbl$value)
+  tbl$value_shown <- .simBandwidthSignedErrorSquish(tbl$value)
   ggplot2::ggplot(
     tbl,
-    ggplot2::aes(x = mismatch_val, y = value, colour = method, group = method)
+    ggplot2::aes(
+      x = mismatch_val, y = value_shown, colour = method, group = method
+    )
   ) +
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
     ggplot2::geom_point(size = 1.5, alpha = 0.75) +
-    ggplot2::expand_limits(y = 0) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
-    ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
+    .simBandwidthAbsErrorLayers(capped = capped) +
     .analysis_scale_method() +
     .simCompareMismatchFacet(by_prob) +
-    ggplot2::labs(
-      x = x_label, y = "Absolute relative error", colour = "Method"
-    ) +
+    ggplot2::labs(x = x_label, colour = "Method") +
     .analysis_theme()
 }
 
@@ -3442,16 +3444,19 @@
     "statistic", "transformation", if (by_prob) "prob_response",
     "method", "direction"
   )
+  # Over-estimates above +1500% (16 times the truth) are drawn at the cap.
+  capped <- .simBandwidthSignedErrorIsCapped(tbl$value)
+  tbl$value_shown <- .simBandwidthSignedErrorSquish(tbl$value)
   ggplot2::ggplot(
     tbl,
     ggplot2::aes(
-      x = .data[[x]], y = value, colour = method,
+      x = .data[[x]], y = value_shown, colour = method,
       group = interaction(method, direction)
     )
   ) +
-    .simBandwidthSignedErrorLayers("Relative error") +
+    .simBandwidthSignedErrorLayers("Relative error", capped = capped) +
     .simBandwidthSignedErrorSegmentLayer(
-      tbl, x, "value", line_cols, alpha = 0.75
+      tbl, x, "value_shown", line_cols, alpha = 0.75
     ) +
     ggplot2::geom_point(size = 1, alpha = 0.75) +
     x_scale +
