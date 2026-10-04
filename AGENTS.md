@@ -946,17 +946,19 @@ deduplicates identical rows before drawing reference lines.
     local-FDR bandwidth is chosen once per channel during settings
     completion (`.completeChnlSettingsBwShared()`) and read in
     `.getCpUnsLocGetDensRawDensitiesBw()` via `chnlSettings$bwShared` /
-    `bwSharedTbl`. `"cytokine"` (default) is the trimmed mean over about
-    100 spread tubes; tubes with fewer than `minCell` cells are
-    excluded; `"cluster"` clusters tubes up front on densities up to the
-    left-complex shoulder, independently of the threshold-sharing
-    clusters in `cp_cluster.R`; `"sample"` keeps per-sample estimation.
-    Fixed `bw` and the adaptive path bypass shared bandwidths. A sample
-    still uses the smaller of its stim and unstim tube bandwidths.
-    Threshold sharing uses a supplied `bwCluster`, else `bwShared`;
-    `bwCluster` is not estimated automatically. The clustering densities
-    are not reusable as local-FDR densities (different bandwidth, range,
-    thinning and unstim cell filtering).
+    `bwSharedTbl`. `"sample"` is the default for now (shared bandwidths
+    are opt-in until they are reviewed); `"cytokine"` is the trimmed
+    mean over about 100 spread tubes; tubes with fewer than `minCell`
+    cells are excluded; `"cluster"` clusters tubes up front on densities
+    up to the left-complex shoulder, independently of the
+    threshold-sharing clusters in `cp_cluster.R`; `"sample"` keeps
+    per-sample estimation. Fixed `bw` and the adaptive path bypass
+    shared bandwidths. A sample still uses the smaller of its stim and
+    unstim tube bandwidths. Threshold sharing uses a supplied
+    `bwCluster`, else `bwShared`; `bwCluster` is not estimated
+    automatically. The clustering densities are not reusable as
+    local-FDR densities (different bandwidth, range, thinning and unstim
+    cell filtering).
 
 13. **Parallel initial channel gating**: `gateStim(parallel = TRUE)`
     opts into the active

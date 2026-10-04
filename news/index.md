@@ -1,5 +1,16 @@
 # Changelog
 
+## stimgate 0.99.16
+
+### Breaking changes
+
+- [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
+  now defaults to `bwScope = "sample"`, so
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  estimates the local-FDR bandwidth separately for each sample again.
+  Shared per-marker bandwidths remain available with
+  `bwScope = "cytokine"`.
+
 ## stimgate 0.99.15
 
 ### Performance

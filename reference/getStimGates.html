@@ -9,7 +9,7 @@ populations and markers. For more detail on how gates were chosen, use getStimGa
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.15</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.16</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,7 +32,7 @@ populations and markers. For more detail on how gates were chosen, use getStimGa
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Read stimulation gates</h1>
-      <small class="dont-index">Source: <a href="https://github.com/SATVILab/stimgate/blob/analysis-html-20261004-1743/R/gates.R" class="external-link"><code>R/gates.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/SATVILab/stimgate/blob/master/R/gates.R" class="external-link"><code>R/gates.R</code></a></small>
       <div class="d-none name"><code>getStimGates.Rd</code></div>
     </div>
 
@@ -86,8 +86,6 @@ was found.</p>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"stimgate_"</span><span class="op">)</span>, <span class="va">gs</span>, <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span>,</span></span>
 <span class="r-in"><span>  marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF1: 0.329</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF2: 0.334</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting base gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
@@ -103,10 +101,10 @@ was found.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 4 × 8</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   pop   gateName    chnl         marker   ind   batch   gate gateCyt</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;I&lt;chr&gt;&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.42    4.42</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.79    3.79</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.40    4.40</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.87    3.87</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> root  locminClust BC2(Pr141)Dd MarkerF2 2     batch1  3.40    2.17</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.91    2.91</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.90    2.90</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

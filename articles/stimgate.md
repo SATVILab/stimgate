@@ -103,10 +103,10 @@ head(gates)
 #> # A tibble: 4 × 8
 #>   pop   gateName    chnl         marker   ind   batch   gate gateCyt
 #>   <chr> <chr>       <chr>        <I<chr>> <chr> <chr>  <dbl>   <dbl>
-#> 1 root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.42    4.42
-#> 2 root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.79    3.79
+#> 1 root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.40    4.40
+#> 2 root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.87    3.87
 #> 3 root  locminClust BC2(Pr141)Dd MarkerF2 2     batch1  3.40    2.17
-#> 4 root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.91    2.91
+#> 4 root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.90    2.90
 ```
 
 [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
@@ -123,12 +123,12 @@ head(stats[, c("ind", "cytCombn", "countStim", "freqStim", "freqUns", "freqBs")]
 #> # A tibble: 6 × 6
 #>   ind   cytCombn                       countStim freqStim freqUns freqBs
 #>   <chr> <chr>                              <int>    <dbl>   <dbl>  <dbl>
-#> 1 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        50     0.5     0.06   0.44
-#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       427     4.27    1.54   2.73
+#> 1 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        51     0.51    0.06   0.45
+#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       425     4.25    1.54   2.71
 #> 3 2     BC1(La139)Dd~+~BC2(Pr141)Dd~+~        47     0.47    0.02   0.45
-#> 4 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      9476    94.8    98.4   -3.62
-#> 5 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        99     0.99    0.27   0.72
-#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       509     5.09    1.18   3.91
+#> 4 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      9477    94.8    98.4   -3.61
+#> 5 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        94     0.94    0.25   0.69
+#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       516     5.16    1.19   3.97
 ```
 
 ## 4. Plot the results
@@ -180,7 +180,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] stimgate_0.99.15
+#> [1] stimgate_0.99.16
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] gtable_0.3.6         xfun_0.61            bslib_0.12.0        

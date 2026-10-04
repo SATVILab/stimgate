@@ -344,7 +344,7 @@ stimControl()
 #> [1] "hpi1"
 #> 
 #> $bwScope
-#> [1] "cytokine"
+#> [1] "sample"
 #> 
 #> $bwAdj
 #> [1] 1
@@ -485,7 +485,7 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> [1] "hpi1"
 #> 
 #> $bwScope
-#> [1] "cytokine"
+#> [1] "sample"
 #> 
 #> $bwAdj
 #> [1] 1.5

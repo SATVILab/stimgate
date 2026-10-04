@@ -35,8 +35,6 @@ pathProject <- gateStim(
   tempfile("stimgate_"), gs, exampleData$batchList,
   marker = exampleData$marker
 )
-#> shared bandwidth for MarkerF1: 0.329
-#> shared bandwidth for MarkerF2: 0.334
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -52,13 +50,13 @@ getStimStats(pathProject)
 #> # A tibble: 8 × 13
 #>   gateName ind   cytCombn countStim nCellStim countUns nCellUns propStim propUns
 #>   <chr>    <chr> <chr>        <int>     <int>    <int>    <int>    <dbl>   <dbl>
-#> 1 locminC… 2     BC1(La1…        50     10000        6    10000   0.005   0.0006
-#> 2 locminC… 2     BC1(La1…       427     10000      154    10000   0.0427  0.0154
+#> 1 locminC… 2     BC1(La1…        51     10000        6    10000   0.0051  0.0006
+#> 2 locminC… 2     BC1(La1…       425     10000      154    10000   0.0425  0.0154
 #> 3 locminC… 2     BC1(La1…        47     10000        2    10000   0.0047  0.0002
-#> 4 locminC… 2     BC1(La1…      9476     10000     9838    10000   0.948   0.984 
-#> 5 locminC… 4     BC1(La1…        99     10000       27    10000   0.0099  0.0027
-#> 6 locminC… 4     BC1(La1…       509     10000      118    10000   0.0509  0.0118
-#> 7 locminC… 4     BC1(La1…        53     10000        7    10000   0.0053  0.0007
-#> 8 locminC… 4     BC1(La1…      9339     10000     9848    10000   0.934   0.985 
+#> 4 locminC… 2     BC1(La1…      9477     10000     9838    10000   0.948   0.984 
+#> 5 locminC… 4     BC1(La1…        94     10000       25    10000   0.0094  0.0025
+#> 6 locminC… 4     BC1(La1…       516     10000      119    10000   0.0516  0.0119
+#> 7 locminC… 4     BC1(La1…        50     10000        6    10000   0.005   0.0006
+#> 8 locminC… 4     BC1(La1…      9340     10000     9850    10000   0.934   0.985 
 #> # ℹ 4 more variables: propBs <dbl>, freqStim <dbl>, freqUns <dbl>, freqBs <dbl>
 ```
