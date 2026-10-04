@@ -82,25 +82,225 @@ add_bw_labs <- function(.data) {
     )
 }
 
-# Bias curves share the same dimensions in averaged and per-cell-count views.
+# Error statistics as rows of panels: `stat_cols` maps wide columns to labels.
+.simBandwidthErrorStatLong <- function(tbl, stat_cols) {
+  tbl |>
+    tidyr::pivot_longer(
+      cols = dplyr::all_of(names(stat_cols)),
+      names_to = "statistic", values_to = "value"
+    ) |>
+    dplyr::filter(!is.na(.data$value)) |>
+    dplyr::mutate(statistic = factor(
+      unname(stat_cols[.data$statistic]),
+      levels = unname(stat_cols)
+    ))
+}
+
+# Bias curves share the same dimensions in all absolute-error views.
 .simBandwidthBiasRelativeErrorPlot <- function(
-    tbl, title, y_label = "Median absolute relative error") {
+    tbl, title, y_label = "Absolute relative error",
+    facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
+    stat_cols = c(
+      median_abs_rel_error = "Median", q90_abs_rel_error = "90th percentile",
+      max_abs_rel_error = "Maximum"
+    ),
+    x = "bias_uns_multiplier", x_label = "Bias multiplier") {
   ggplot2::ggplot(
-    tbl,
+    .simBandwidthErrorStatLong(tbl, stat_cols),
     ggplot2::aes(
-      x = bias_uns_multiplier, y = median_abs_rel_error,
+      x = .data[[x]], y = value,
       colour = factor(bw), linetype = bias_uns_basis,
       group = interaction(bw, bias_uns_basis)
     )
   ) +
     ggplot2::geom_line() +
     ggplot2::geom_point() +
-    ggplot2::facet_wrap(~mismatch_label, scales = "free_y") +
+    facet +
     cowplot::theme_cowplot() +
     cowplot::background_grid(major = "xy") +
     ggplot2::theme(legend.position = "bottom") +
     ggplot2::labs(
-      title = title, x = "Bias multiplier", y = y_label,
+      title = title, x = x_label, y = y_label,
       colour = "Bandwidth", linetype = "Bias scale"
     )
+}
+
+# Signed-error version of the bias curves. `tbl` comes from
+# `.simBandwidthSignedErrorSummary()`: over-estimates sit above zero and
+# under-estimates below; line weight is each direction's share.
+.simBandwidthBiasSignedErrorPlot <- function(
+    tbl, title, y_label = "Relative error",
+    facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
+    stat_cols = c(median = "Median", q90 = "90th percentile", max = "Maximum")) {
+  ggplot2::ggplot(
+    .simBandwidthErrorStatLong(tbl, stat_cols),
+    ggplot2::aes(
+      x = bias_uns_multiplier, y = value,
+      colour = factor(bw), linetype = bias_uns_basis, linewidth = prop,
+      group = interaction(bw, bias_uns_basis, direction)
+    )
+  ) +
+    .simBandwidthSignedErrorLayers(y_label) +
+    ggplot2::geom_line() +
+    ggplot2::geom_point(size = 1) +
+    facet +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy") +
+    ggplot2::theme(legend.position = "bottom") +
+    ggplot2::labs(
+      title = title, x = "Bias multiplier",
+      colour = "Bandwidth", linetype = "Bias scale"
+    )
+}
+
+# 2a curves: colour is the statistic, line type the direction of the error.
+.simBandwidthGlobalSignedErrorPlot <- function(tbl, title = NULL) {
+  tbl <- tbl |>
+    tidyr::pivot_longer(
+      cols = c("median", "q95", "max"),
+      names_to = "err_type", values_to = "err_value"
+    ) |>
+    dplyr::filter(!is.na(.data$err_value)) |>
+    dplyr::mutate(
+      err_type = factor(err_type, levels = c("median", "q95", "max")),
+      direction = factor(direction, levels = c("over", "under")),
+      transformation = factor(
+        transformation,
+        levels = c("gaussian", "skew", "gamma")
+      )
+    )
+  ggplot2::ggplot(
+    tbl,
+    ggplot2::aes(
+      x = factor(bw), y = err_value, colour = err_type, linetype = direction,
+      linewidth = prop, group = interaction(err_type, direction)
+    )
+  ) +
+    .simBandwidthSignedErrorLayers() +
+    ggplot2::geom_line() +
+    ggplot2::geom_point(size = 1) +
+    ggplot2::facet_wrap(
+      ~transformation,
+      scales = "free",
+      labeller = ggplot2::labeller(transformation = c(
+        gamma = "Gamma", gaussian = "Gaussian", skew = "Skew"
+      ))
+    ) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy") +
+    ggplot2::scale_colour_manual(
+      values = c(median = "#0072B2", q95 = "#56B4E9", max = "#8C8DBA"),
+      labels = c(median = "Median", q95 = "95th percentile", max = "Maximum")
+    ) +
+    ggplot2::scale_linetype_manual(
+      values = c(over = "solid", under = "dashed"),
+      labels = c(over = "Over-estimate", under = "Under-estimate")
+    ) +
+    ggplot2::labs(
+      title = title, x = "Bandwidth", colour = "Error size",
+      linetype = "Direction"
+    ) +
+    ggplot2::theme(
+      panel.background = ggplot2::element_rect(fill = "white", colour = NA),
+      plot.background = ggplot2::element_rect(fill = "white", colour = NA),
+      strip.background = ggplot2::element_rect(fill = "white", colour = "black"),
+      axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 10),
+      legend.position = "bottom",
+      legend.box = "vertical"
+    )
+}
+
+# Signed relative error, (estimate - truth) / truth, summarised separately for
+# over- and under-estimates. `prop` is each side's share of finite errors; the
+# other statistics are signed and use that side's errors only.
+.simBandwidthSignedErrorSides <- function(rel_error) {
+  rel_error <- rel_error[is.finite(rel_error)]
+  side <- function(direction) {
+    sgn <- if (direction == "over") 1 else -1
+    x <- sgn * rel_error[sgn * rel_error > 0]
+    if (length(x) == 0L) {
+      return(tibble::tibble(
+        direction = direction, prop = if (length(rel_error)) 0 else NA_real_,
+        median = NA_real_, q90 = NA_real_, q95 = NA_real_, max = NA_real_
+      ))
+    }
+    tibble::tibble(
+      direction = direction,
+      prop = length(x) / length(rel_error),
+      median = sgn * stats::median(x),
+      q90 = sgn * stats::quantile(x, probs = 0.9, names = FALSE),
+      q95 = sgn * stats::quantile(x, probs = 0.95, names = FALSE),
+      max = sgn * max(x)
+    )
+  }
+  dplyr::bind_rows(side("over"), side("under"))
+}
+
+# One row per group and direction; `tbl` must have a `rel_error` column.
+.simBandwidthSignedErrorSummary <- function(tbl, group_cols) {
+  tbl |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
+    dplyr::reframe(.simBandwidthSignedErrorSides(.data$rel_error))
+}
+
+# Average side summaries equally over scenarios, ignoring empty sides.
+.simBandwidthSignedErrorAverage <- function(tbl, group_cols) {
+  tbl |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(c(group_cols, "direction")))) |>
+    dplyr::summarise(
+      dplyr::across(
+        dplyr::any_of(c("prop", "median", "q90", "q95", "max")),
+        ~ mean(.x, na.rm = TRUE)
+      ),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(dplyr::across(
+      dplyr::any_of(c("prop", "median", "q90", "q95", "max")),
+      ~ dplyr::if_else(is.nan(.x), NA_real_, .x)
+    ))
+}
+
+# Under-estimates are linear down to -100% (nothing gated); over-estimates are
+# on a log2 fold scale, so -100% and +100% (two-fold) are equally far from zero.
+.simBandwidthSignedErrorTrans <- function() {
+  scales::trans_new(
+    "signed_rel_error",
+    transform = function(x) ifelse(x > 0, log2(1 + x), x),
+    inverse = function(x) ifelse(x > 0, 2^x - 1, x),
+    breaks = function(limits) {
+      lo <- max(limits[1], -1, na.rm = TRUE)
+      hi <- max(limits[2], 0, na.rm = TRUE)
+      # Close to zero the scale is near-linear, so ordinary breaks suffice.
+      if (hi <= 1) {
+        return(pretty(c(lo, hi)))
+      }
+      c(pretty(c(lo, 0), n = 3), 2^seq_len(ceiling(log2(1 + hi))) - 1)
+    },
+    domain = c(-1, Inf)
+  )
+}
+
+.simBandwidthSignedErrorLabel <- function(x) {
+  lab <- ifelse(x > 0, sprintf("+%g%%", 100 * x), sprintf("%g%%", 100 * x))
+  fold <- x > 0 & is.finite(x)
+  lab[fold] <- paste0(lab[fold], " (", format(1 + x[fold], trim = TRUE), "x)")
+  lab
+}
+
+# Shared y scale, zero line and line-weight scale for signed-error plots.
+.simBandwidthSignedErrorLayers <- function(y_label = "Relative error") {
+  list(
+    ggplot2::geom_hline(yintercept = 0, colour = "grey40"),
+    ggplot2::scale_y_continuous(
+      transform = .simBandwidthSignedErrorTrans(),
+      labels = .simBandwidthSignedErrorLabel
+    ),
+    ggplot2::expand_limits(y = 0),
+    ggplot2::scale_linewidth_continuous(
+      range = c(0.2, 2), limits = c(0, 1), labels = scales::percent
+    ),
+    ggplot2::labs(
+      y = y_label, linewidth = "Share of estimates\nin this direction"
+    )
+  )
 }
