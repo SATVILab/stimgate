@@ -326,14 +326,13 @@ manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 The comparison table, its RDS copy and a method/population/cytokine summary
 are written under `path_manual_output`. When `run_plots` is true, the
 figures are saved under `output/fig/9-real-compare-acs-cytof/`. Pearson
-correlations of the StimGate and F-beta estimates with the manual frequencies
+correlations of the StimGate, Tailgate and F-beta estimates with the manual frequencies
 follow.
 
 ```{r}
 #| label: show-manual-summary
 #| echo: false
 manual_summary_tbl |>
-  dplyr::filter(!method == "tailgate") |>
   dplyr::select(
     method:stim, pcc
   ) |>

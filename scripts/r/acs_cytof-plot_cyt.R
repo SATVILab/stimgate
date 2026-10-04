@@ -405,41 +405,37 @@
     stop("No supported ACS validation methods are available to plot.")
   }
 
-  # Each method set (all methods, without Tailgate) gets its own subfolders
-  # inside the one staged directory, which is swapped in whole below.
-  for (setName in names(.acsCytofMethodSets())) {
-    setMethods <- intersect(methods, .acsCytofMethodSets()[[setName]]$methods)
-    pathDirSaveHeatmap <- file.path(stagedDir, setName, "heatmaps")
-    pathDirSaveScatter <- file.path(stagedDir, setName, "scatter-plots")
-    dir.create(pathDirSaveHeatmap, recursive = TRUE, showWarnings = FALSE)
-    dir.create(pathDirSaveScatter, recursive = TRUE, showWarnings = FALSE)
+  # Every validation figure shows one method, so each is saved once.
+  pathDirSaveHeatmap <- file.path(stagedDir, "heatmaps")
+  pathDirSaveScatter <- file.path(stagedDir, "scatter-plots")
+  dir.create(pathDirSaveHeatmap, recursive = TRUE, showWarnings = FALSE)
+  dir.create(pathDirSaveScatter, recursive = TRUE, showWarnings = FALSE)
 
-    for (method in setMethods) {
-      scatter <- .acsCytofValidationPlotScatter(comparisonTbl, method)
-      .analysis_save_fig(
-        scatter,
-        file.path(pathDirSaveScatter, paste0(method, ".pdf")),
-        height = 22
-      )
+  for (method in methods) {
+    scatter <- .acsCytofValidationPlotScatter(comparisonTbl, method)
+    .analysis_save_fig(
+      scatter,
+      file.path(pathDirSaveScatter, paste0(method, ".pdf")),
+      height = 22
+    )
 
-      for (realOnly in c(TRUE, FALSE)) {
-        populationSuffix <- if (realOnly) "real-pops" else "all-pops"
-        for (metric in c("pcc", "ccc")) {
-          correlationPlot <- .acsCytofValidationPlotCorrelation(
-            correlationTbl = correlationTbl,
-            method = method,
-            metric = metric,
-            realPopulationsOnly = realOnly
-          )
-          .analysis_save_fig(
-            correlationPlot,
-            file.path(
-              pathDirSaveHeatmap,
-              paste0(metric, "-", method, "-", populationSuffix, ".pdf")
-            ),
-            height = if (realOnly) 9 else 12
-          )
-        }
+    for (realOnly in c(TRUE, FALSE)) {
+      populationSuffix <- if (realOnly) "real-pops" else "all-pops"
+      for (metric in c("pcc", "ccc")) {
+        correlationPlot <- .acsCytofValidationPlotCorrelation(
+          correlationTbl = correlationTbl,
+          method = method,
+          metric = metric,
+          realPopulationsOnly = realOnly
+        )
+        .analysis_save_fig(
+          correlationPlot,
+          file.path(
+            pathDirSaveHeatmap,
+            paste0(metric, "-", method, "-", populationSuffix, ".pdf")
+          ),
+          height = if (realOnly) 9 else 12
+        )
       }
     }
   }

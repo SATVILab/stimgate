@@ -153,13 +153,13 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
     "acs-validation-all-correlations"
   )
   chunk_env$run_plots <- TRUE
-  # Two method sets: all three methods, then StimGate and F-beta only.
+  # Each figure shows one method, so there is no method-set duplication.
   for (label in plot_labels) {
     out <- capture.output(eval(chunk_code(label), envir = chunk_env))
-    expect_true(any(grepl("#### All methods", out, fixed = TRUE)))
-    expect_true(any(grepl("#### Without Tailgate", out, fixed = TRUE)))
+    expect_true(any(grepl("#### Method: StimGate", out, fixed = TRUE)))
+    expect_false(any(grepl("Without Tailgate", out, fixed = TRUE)))
   }
-  expect_length(plots, 25L)
+  expect_length(plots, 15L)
   expect_true(all(vapply(plots, inherits, logical(1), what = "ggplot")))
   expect_equal(
     vapply(
@@ -168,14 +168,6 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
       character(1)
     ),
     chunk_env$validation_methods
-  )
-  expect_equal(
-    vapply(
-      plots[4:5],
-      function(plot) as.character(unique(plot$data$method)),
-      character(1)
-    ),
-    c("stimgate", "fbeta")
   )
 
   plots <- list()
@@ -307,7 +299,7 @@ test_that("analysis 10 validates its input and does not delete last good figures
   ))
 })
 
-test_that("validation figures are saved for both method sets in one directory", {
+test_that("validation figures are saved once per method in one directory", {
   comparison_tbl <- .acs_validation_fixture()
   parent_dir <- tempfile("acs-validation-sets-")
   dir.create(parent_dir)
@@ -316,12 +308,10 @@ test_that("validation figures are saved for both method sets in one directory", 
 
   env$.acsCytofValidationSavePlots(comparison_tbl, target_dir)
 
-  scatter_all <- list.files(file.path(target_dir, "all_methods", "scatter-plots"))
-  scatter_no_tg <- list.files(file.path(target_dir, "no_tailgate", "scatter-plots"))
-  expect_setequal(scatter_all, paste0(c("stimgate", "fbeta", "tailgate"), ".pdf"))
-  expect_setequal(scatter_no_tg, paste0(c("stimgate", "fbeta"), ".pdf"))
-  expect_length(
-    list.files(file.path(target_dir, "no_tailgate", "heatmaps")),
-    2L * 2L * 2L
+  expect_setequal(
+    list.files(file.path(target_dir, "scatter-plots")),
+    paste0(c("stimgate", "fbeta", "tailgate"), ".pdf")
   )
+  expect_length(list.files(file.path(target_dir, "heatmaps")), 3L * 2L * 2L)
+  expect_false(dir.exists(file.path(target_dir, "no_tailgate")))
 })

@@ -110,9 +110,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-Every figure is made twice: once with all methods and once without Tailgate,
-which performs poorly without more tuning. The saved files are in the
-`all_methods` and `no_tailgate` folders of each figure type.
+Each figure shows one method, so every figure is made once per method.
 
 ### Raw background-subtracted frequencies
 
@@ -123,16 +121,13 @@ Manual background-subtracted frequency (%) is on the horizontal axis and automat
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots)) {
-  for (method_set in .acsCytofMethodSets()) {
-    .analysis_heading(method_set$label, 4)
-    for (method in intersect(validation_methods, method_set$methods)) {
-      .analysis_heading(
-        paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 5
-      )
-      .analysis_print_fig(
-        .acsCytofValidationPlotScatter(manual_comparison_tbl, method)
-      )
-    }
+  for (method in validation_methods) {
+    .analysis_heading(
+      paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 4
+    )
+    .analysis_print_fig(
+      .acsCytofValidationPlotScatter(manual_comparison_tbl, method)
+    )
   }
 }
 ```
@@ -146,24 +141,21 @@ Cytokines run across columns and the three T-cell populations across rows, with 
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots)) {
-  for (method_set in .acsCytofMethodSets()) {
-    .analysis_heading(method_set$label, 4)
-    for (method in intersect(validation_methods, method_set$methods)) {
+  for (method in validation_methods) {
+    .analysis_heading(
+      paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 4
+    )
+    for (metric in c("pcc", "ccc")) {
       .analysis_heading(
-        paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 5
+        if (metric == "pcc") "Pearson correlation" else "Concordance correlation",
+        5
       )
-      for (metric in c("pcc", "ccc")) {
-        .analysis_heading(
-          if (metric == "pcc") "Pearson correlation" else "Concordance correlation",
-          6
-        )
-        .analysis_print_fig(.acsCytofValidationPlotCorrelation(
-          correlationTbl = correlation_tbl,
-          method = method,
-          metric = metric,
-          realPopulationsOnly = TRUE
-        ))
-      }
+      .analysis_print_fig(.acsCytofValidationPlotCorrelation(
+        correlationTbl = correlation_tbl,
+        method = method,
+        metric = metric,
+        realPopulationsOnly = TRUE
+      ))
     }
   }
 }
@@ -178,24 +170,21 @@ These heatmaps use the same cytokine, stimulus and correlation scales for all ma
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots)) {
-  for (method_set in .acsCytofMethodSets()) {
-    .analysis_heading(method_set$label, 4)
-    for (method in intersect(validation_methods, method_set$methods)) {
+  for (method in validation_methods) {
+    .analysis_heading(
+      paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 4
+    )
+    for (metric in c("pcc", "ccc")) {
       .analysis_heading(
-        paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 5
+        if (metric == "pcc") "Pearson correlation" else "Concordance correlation",
+        5
       )
-      for (metric in c("pcc", "ccc")) {
-        .analysis_heading(
-          if (metric == "pcc") "Pearson correlation" else "Concordance correlation",
-          6
-        )
-        .analysis_print_fig(.acsCytofValidationPlotCorrelation(
-          correlationTbl = correlation_tbl,
-          method = method,
-          metric = metric,
-          realPopulationsOnly = FALSE
-        ))
-      }
+      .analysis_print_fig(.acsCytofValidationPlotCorrelation(
+        correlationTbl = correlation_tbl,
+        method = method,
+        metric = metric,
+        realPopulationsOnly = FALSE
+      ))
     }
   }
 }
