@@ -131,16 +131,23 @@ add_bw_labs <- function(.data) {
     tbl, title, y_label = "Relative error",
     facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
     stat_cols = c(median = "Median", q90 = "90th percentile", max = "Maximum")) {
+  tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
   ggplot2::ggplot(
-    .simBandwidthErrorStatLong(tbl, stat_cols),
+    tbl,
     ggplot2::aes(
       x = bias_uns_multiplier, y = value,
-      colour = factor(bw), linetype = bias_uns_basis, linewidth = prop,
+      colour = factor(bw), linetype = bias_uns_basis,
       group = interaction(bw, bias_uns_basis, direction)
     )
   ) +
     .simBandwidthSignedErrorLayers(y_label) +
-    ggplot2::geom_line() +
+    .simBandwidthSignedErrorSegmentLayer(
+      tbl, "bias_uns_multiplier", "value",
+      c(
+        "statistic", "mismatch_label", "n_cell", "bw", "bias_uns_basis",
+        "direction"
+      )
+    ) +
     ggplot2::geom_point(size = 1) +
     facet +
     cowplot::theme_cowplot() +
@@ -166,17 +173,20 @@ add_bw_labs <- function(.data) {
       transformation = factor(
         transformation,
         levels = c("gaussian", "skew", "gamma")
-      )
+      ),
+      bw_fct = factor(bw)
     )
   ggplot2::ggplot(
     tbl,
     ggplot2::aes(
-      x = factor(bw), y = err_value, colour = err_type, linetype = direction,
-      linewidth = prop, group = interaction(err_type, direction)
+      x = bw_fct, y = err_value, colour = err_type, linetype = direction,
+      group = interaction(err_type, direction)
     )
   ) +
     .simBandwidthSignedErrorLayers() +
-    ggplot2::geom_line() +
+    .simBandwidthSignedErrorSegmentLayer(
+      tbl, "bw_fct", "err_value", c("transformation", "err_type", "direction")
+    ) +
     ggplot2::geom_point(size = 1) +
     ggplot2::facet_wrap(
       ~transformation,
@@ -264,8 +274,16 @@ add_bw_labs <- function(.data) {
 .simBandwidthSignedErrorTrans <- function() {
   scales::trans_new(
     "signed_rel_error",
-    transform = function(x) ifelse(x > 0, log2(1 + x), x),
-    inverse = function(x) ifelse(x > 0, 2^x - 1, x),
+    transform = function(x) {
+      pos <- !is.na(x) & x > 0
+      x[pos] <- log2(1 + x[pos])
+      x
+    },
+    inverse = function(x) {
+      pos <- !is.na(x) & x > 0
+      x[pos] <- 2^x[pos] - 1
+      x
+    },
     breaks = function(limits) {
       lo <- max(limits[1], -1, na.rm = TRUE)
       hi <- max(limits[2], 0, na.rm = TRUE)
@@ -284,6 +302,26 @@ add_bw_labs <- function(.data) {
   fold <- x > 0 & is.finite(x)
   lab[fold] <- paste0(lab[fold], " (", format(1 + x[fold], trim = TRUE), "x)")
   lab
+}
+
+# ggplot2 cannot vary line width along a dashed line, so draw each line as
+# segments between neighbouring points, weighted by the mean share at their ends.
+.simBandwidthSignedErrorSegmentLayer <- function(tbl, x, y, line_cols) {
+  segments <- tbl |>
+    dplyr::group_by(dplyr::across(dplyr::any_of(line_cols))) |>
+    dplyr::arrange(.data[[x]], .by_group = TRUE) |>
+    dplyr::mutate(
+      x_end = dplyr::lead(.data[[x]]),
+      y_end = dplyr::lead(.data[[y]]),
+      prop_segment = (.data$prop + dplyr::lead(.data$prop)) / 2
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::filter(!is.na(.data$x_end))
+  ggplot2::geom_segment(
+    data = segments,
+    ggplot2::aes(xend = x_end, yend = y_end, linewidth = prop_segment),
+    lineend = "round"
+  )
 }
 
 # Shared y scale, zero line and line-weight scale for signed-error plots.
