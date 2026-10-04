@@ -3,6 +3,7 @@ root_dir <- normalizePath(
   mustWork = TRUE
 )
 script_runtime <- file.path(root_dir, "scripts", "r", "analysis-runtime.R")
+script_style <- file.path(root_dir, "scripts", "r", "analysis-plot-style.R")
 script_plot <- file.path(root_dir, "scripts", "r", "acs_cytof-plot_cyt.R")
 qmd_path <- file.path(
   root_dir,
@@ -12,6 +13,7 @@ qmd_path <- file.path(
 
 env <- new.env(parent = getNamespace("stimgate"))
 source(script_runtime, local = env)
+source(script_style, local = env)
 source(script_plot, local = env)
 
 .acs_validation_fixture <- function() {
@@ -130,6 +132,7 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
   ))
 
   chunk_env <- new.env(parent = getNamespace("stimgate"))
+  source(script_style, local = chunk_env)
   source(script_plot, local = chunk_env)
   chunk_env$manual_comparison_tbl <- .acs_validation_fixture()
   chunk_env$validation_methods <- chunk_env$.acsCytofValidationMethods()
@@ -146,12 +149,15 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
     invisible(x)
   }
   plot_labels <- c(
-    "fig-acs-validation-scatter", "fig-acs-validation-t-cell-correlations",
-    "fig-acs-validation-all-correlations"
+    "acs-validation-scatter", "acs-validation-t-cell-correlations",
+    "acs-validation-all-correlations"
   )
   chunk_env$run_plots <- TRUE
+  # Each figure shows one method, so there is no method-set duplication.
   for (label in plot_labels) {
-    eval(chunk_code(label), envir = chunk_env)
+    out <- capture.output(eval(chunk_code(label), envir = chunk_env))
+    expect_true(any(grepl("#### Method: StimGate", out, fixed = TRUE)))
+    expect_false(any(grepl("Without Tailgate", out, fixed = TRUE)))
   }
   expect_length(plots, 15L)
   expect_true(all(vapply(plots, inherits, logical(1), what = "ggplot")))
@@ -167,7 +173,8 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
   plots <- list()
   chunk_env$run_plots <- FALSE
   for (label in plot_labels) {
-    eval(chunk_code(label), envir = chunk_env)
+    out <- capture.output(eval(chunk_code(label), envir = chunk_env))
+    expect_false(any(grepl("^#", out)))
   }
   expect_length(plots, 0L)
 })
@@ -290,4 +297,21 @@ test_that("analysis 10 validates its input and does not delete last good figures
     save_body,
     fixed = TRUE
   ))
+})
+
+test_that("validation figures are saved once per method in one directory", {
+  comparison_tbl <- .acs_validation_fixture()
+  parent_dir <- tempfile("acs-validation-sets-")
+  dir.create(parent_dir)
+  withr::defer(unlink(parent_dir, recursive = TRUE))
+  target_dir <- file.path(parent_dir, "validation-figures")
+
+  env$.acsCytofValidationSavePlots(comparison_tbl, target_dir)
+
+  expect_setequal(
+    list.files(file.path(target_dir, "scatter-plots")),
+    paste0(c("stimgate", "fbeta", "tailgate"), ".pdf")
+  )
+  expect_length(list.files(file.path(target_dir, "heatmaps")), 3L * 2L * 2L)
+  expect_false(dir.exists(file.path(target_dir, "no_tailgate")))
 })

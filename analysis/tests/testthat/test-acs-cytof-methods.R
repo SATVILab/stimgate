@@ -4,6 +4,9 @@ script_helper <- file.path(root_dir, "scripts", "r", "acs_cytof-helper.R")
 script_gate <- file.path(root_dir, "scripts", "r", "acs_cytof-gate.R")
 script_methods <- file.path(root_dir, "scripts", "r", "acs_cytof-methods.R")
 script_manual <- file.path(root_dir, "scripts", "r", "acs_cytof-manual.R")
+script_style <- file.path(root_dir, "scripts", "r", "analysis-plot-style.R")
+script_bw_plot <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-plot.R")
+script_plot_cyt <- file.path(root_dir, "scripts", "r", "acs_cytof-plot_cyt.R")
 script_compare <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 script_fbeta <- file.path(root_dir, "scripts", "python", "fbeta.py")
 qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
@@ -11,10 +14,13 @@ qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
 .load_acs_method_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_runtime, local = env)
+  source(script_style, local = env)
+  source(script_bw_plot, local = env)
   source(script_helper, local = env)
   source(script_gate, local = env)
   source(script_methods, local = env)
   source(script_manual, local = env)
+  source(script_plot_cyt, local = env)
   env
 }
 
@@ -466,4 +472,50 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
     for (expr in as.list(code)[-1L]) eval(expr, env),
     "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/9"
   )
+})
+
+test_that("ACS manual-comparison plots use method colours and no titles", {
+  env <- .load_acs_method_env()
+  tbl <- tidyr::expand_grid(
+    method = c("stimgate", "tailgate", "fbeta"),
+    pop = c("CD4 T cells", "B cells"),
+    cyt = c("IFNg", "IL2"),
+    stim = c("mtb", "p1"),
+    sample = 1:6
+  ) |>
+    dplyr::mutate(
+      freq_bs_man = 0.1 * sample,
+      freq_bs_auto = freq_bs_man * ifelse(sample %% 2 == 0, 1.5, 0.5),
+      rel_error = (freq_bs_auto - freq_bs_man) / freq_bs_man,
+      abs_rel_error = abs(rel_error)
+    )
+  plots <- list(
+    scatter = env$.acsCytofManualPlotScatter(tbl),
+    relative = env$.acsCytofManualPlotRelativeError(tbl),
+    signed = env$.acsCytofManualPlotSignedError(tbl)
+  )
+  for (p in plots) {
+    expect_s3_class(p, "ggplot")
+    expect_null(p$labels$title)
+    expect_no_error(ggplot2::ggplotGrob(p))
+  }
+  # Signed error summarises both directions for each method.
+  expect_setequal(as.character(plots$signed$data$direction), c("over", "under"))
+  expect_setequal(
+    as.character(plots$signed$data$method),
+    c("stimgate", "tailgate", "fbeta")
+  )
+  without_tg <- env$.acsCytofManualPlotSignedError(
+    dplyr::filter(tbl, method != "tailgate")
+  )
+  expect_setequal(as.character(without_tg$data$method), c("stimgate", "fbeta"))
+})
+
+test_that("ACS method sets cover all methods and without Tailgate", {
+  env <- .load_acs_method_env()
+  sets <- env$.acsCytofMethodSets()
+  expect_named(sets, c("all_methods", "no_tailgate"))
+  expect_identical(sets$all_methods$label, "All methods")
+  expect_identical(sets$no_tailgate$label, "Without Tailgate")
+  expect_false("tailgate" %in% sets$no_tailgate$methods)
 })

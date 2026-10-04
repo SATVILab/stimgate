@@ -24,6 +24,22 @@
   )
 }
 
+# Method sets for every method-comparison figure: all methods, and without
+# Tailgate (which performs poorly without more tuning). Names are the figure
+# subfolders; `label` is the heading.
+.acsCytofMethodSets <- function() {
+  list(
+    all_methods = list(
+      label = "All methods",
+      methods = c("stimgate", "tailgate", "fbeta")
+    ),
+    no_tailgate = list(
+      label = "Without Tailgate",
+      methods = c("stimgate", "fbeta")
+    )
+  )
+}
+
 .acsCytofValidationRealPopulations <- function() {
   c("CD4 T cells", "CD8 T cells", "TCRgd T cells")
 }
@@ -192,12 +208,8 @@
     )
 
   ggplot2::ggplot(plotTbl) +
-    cowplot::theme_cowplot() +
-    ggplot2::theme(
-      plot.background = ggplot2::element_rect(fill = "white"),
-      panel.background = ggplot2::element_rect(fill = "white")
-    ) +
-    cowplot::background_grid(major = "xy") +
+    .analysis_theme() +
+    ggplot2::theme(strip.text = ggplot2::element_text(size = 7)) +
     ggplot2::geom_vline(xintercept = 0) +
     ggplot2::geom_hline(yintercept = 0) +
     ggplot2::geom_abline(intercept = 0, slope = 1) +
@@ -206,8 +218,15 @@
         x = .data$freq_bs_man,
         y = .data$freq_bs_auto,
         colour = .data$stim
-      )
+      ),
+      alpha = 0.75
     ) +
+    ggplot2::scale_x_continuous(
+      labels = .analysis_label_number,
+      n.breaks = 3,
+      guide = ggplot2::guide_axis(check.overlap = TRUE)
+    ) +
+    ggplot2::scale_y_continuous(labels = .analysis_label_number, n.breaks = 3) +
     ggplot2::facet_wrap(
       ggplot2::vars(pop, cyt),
       scales = "free",
@@ -218,14 +237,9 @@
       labels = .acsCytofValidationStimLabels()
     ) +
     ggplot2::labs(
-      title = unname(.acsCytofValidationMethodLabels()[[method]]),
       x = "Background-subtracted frequency\n(manual gating)",
       y = "Background-subtracted frequency\n(automated gating)",
       colour = NULL
-    ) +
-    ggplot2::theme(
-      legend.position = "bottom",
-      legend.justification = "center"
     )
 }
 
@@ -290,7 +304,7 @@
     plotTbl,
     ggplot2::aes(x = .data$cyt, y = .data$pop)
   ) +
-    cowplot::theme_cowplot() +
+    .analysis_theme(grid = "none") +
     ggplot2::geom_raster(ggplot2::aes(fill = .data[[metric]])) +
     ggplot2::geom_text(
       ggplot2::aes(label = round(.data[[metric]], 2)),
@@ -305,16 +319,11 @@
       name = metricLabel
     ) +
     ggplot2::labs(
-      title = unname(.acsCytofValidationMethodLabels()[[method]]),
       x = "Cytokine",
       y = "Population"
     ) +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1),
-      strip.background = ggplot2::element_rect(
-        fill = "white",
-        colour = "black"
-      ),
       strip.text = ggplot2::element_text(size = 9.5),
       legend.title = ggplot2::element_text(size = 10)
     )
@@ -377,11 +386,6 @@
     add = TRUE
   )
 
-  pathDirSaveHeatmap <- file.path(stagedDir, "heatmaps")
-  pathDirSaveScatter <- file.path(stagedDir, "scatter-plots")
-  dir.create(pathDirSaveHeatmap, recursive = TRUE, showWarnings = FALSE)
-  dir.create(pathDirSaveScatter, recursive = TRUE, showWarnings = FALSE)
-
   correlationTbl <- .acsCytofValidationCorrelationTable(comparisonTbl)
   utils::write.csv(
     correlationTbl,
@@ -401,14 +405,18 @@
     stop("No supported ACS validation methods are available to plot.")
   }
 
+  # Every validation figure shows one method, so each is saved once.
+  pathDirSaveHeatmap <- file.path(stagedDir, "heatmaps")
+  pathDirSaveScatter <- file.path(stagedDir, "scatter-plots")
+  dir.create(pathDirSaveHeatmap, recursive = TRUE, showWarnings = FALSE)
+  dir.create(pathDirSaveScatter, recursive = TRUE, showWarnings = FALSE)
+
   for (method in methods) {
     scatter <- .acsCytofValidationPlotScatter(comparisonTbl, method)
-    ggplot2::ggsave(
+    .analysis_save_fig(
+      scatter,
       file.path(pathDirSaveScatter, paste0(method, ".pdf")),
-      plot = scatter,
-      height = 25,
-      width = 40,
-      units = "cm"
+      height = 22
     )
 
     for (realOnly in c(TRUE, FALSE)) {
@@ -420,22 +428,13 @@
           metric = metric,
           realPopulationsOnly = realOnly
         )
-        ggplot2::ggsave(
+        .analysis_save_fig(
+          correlationPlot,
           file.path(
             pathDirSaveHeatmap,
-            paste0(
-              metric,
-              "-",
-              method,
-              "-",
-              populationSuffix,
-              ".pdf"
-            )
+            paste0(metric, "-", method, "-", populationSuffix, ".pdf")
           ),
-          plot = correlationPlot,
-          height = 12.5,
-          width = 30,
-          units = "cm"
+          height = if (realOnly) 9 else 12
         )
       }
     }

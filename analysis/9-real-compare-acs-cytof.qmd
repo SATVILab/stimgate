@@ -40,6 +40,8 @@ knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "sim-bandwidth-analysis-plot.R"))
 fig_key <- .analysis_mode_key("9-real-compare-acs-cytof")
 analysis_qmd <- "analysis/9-real-compare-acs-cytof.qmd"
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
@@ -49,6 +51,7 @@ source(file.path(scripts_r_dir, "sim-misc.R"))
 source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
 source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
 source(file.path(scripts_r_dir, "acs_cytof-manual.R"))
+source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
@@ -323,14 +326,13 @@ manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 The comparison table, its RDS copy and a method/population/cytokine summary
 are written under `path_manual_output`. When `run_plots` is true, the
 figures are saved under `output/fig/9-real-compare-acs-cytof/`. Pearson
-correlations of the StimGate and F-beta estimates with the manual frequencies
+correlations of the StimGate, Tailgate and F-beta estimates with the manual frequencies
 follow.
 
 ```{r}
 #| label: show-manual-summary
 #| echo: false
 manual_summary_tbl |>
-  dplyr::filter(!method == "tailgate") |>
   dplyr::select(
     method:stim, pcc
   ) |>
@@ -347,99 +349,97 @@ manual_summary_tbl |>
 
 ### Estimated versus reference response frequency
 
-Manual background-subtracted frequency is on the horizontal axis and automated frequency on the vertical axis. Colour identifies the method, shapes identify stimuli, and panels separate populations and cytokines. Points closer to the dashed identity line indicate closer agreement.
+Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Manual background-subtracted frequency (%) is on the horizontal axis and automated frequency (%) on the vertical axis. Colour identifies the method, shapes identify stimuli, and panels separate populations and cytokines. Points closer to the dashed identity line indicate closer agreement.
 
 ```{r}
-#| label: fig-manual-comparison-all-methods
+#| label: manual-comparison
 #| echo: false
-#| fig-width: 12
-#| fig-height: 10
-#| fig-cap: "Automated and manual background-subtracted frequencies for all three methods."
+#| results: asis
 if (isTRUE(run_plots)) {
-  manual_plots <- list(
-    scatter = .acsCytofManualPlotScatter(manual_comparison_tbl),
-    relativeError = .acsCytofManualPlotRelativeError(manual_comparison_tbl)
-  )
-  .analysis_save_plot(
-    manual_plots$scatter,
-    file.path(
-      .analysis_fig_dir(c(fig_key, "manual_comparison_scatter"), root_dir),
-      "manual-comparison-scatter.png"
-    ),
-    width = 30, height = max(16, 5 * dplyr::n_distinct(manual_comparison_tbl$pop))
-  )
+  method_sets <- .acsCytofMethodSets()
+  for (set_name in names(method_sets)) {
+    method_set <- method_sets[[set_name]]
+    .analysis_heading(method_set$label, 4)
+    p <- .acsCytofManualPlotScatter(
+      manual_comparison_tbl |> dplyr::filter(method %in% method_set$methods)
+    )
+    .analysis_save_fig(
+      p,
+      file.path(
+        .analysis_fig_dir(
+          c(fig_key, "manual_comparison_scatter", set_name),
+          root_dir
+        ),
+        "manual-comparison-scatter.png"
+      ),
+      height = 22
+    )
+    .analysis_print_fig(p)
+  }
 }
 ```
 
-### Relative error across all methods
+### Relative error
 
-Boxplots show absolute relative error by method, with separate panels for populations and cytokines. Smaller values indicate closer agreement; rows with non-positive manual background-subtracted frequencies have no relative-error estimate.
+Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Boxplots show absolute relative error by method, with separate panels for populations and cytokines. Smaller values indicate closer agreement; rows with non-positive manual background-subtracted frequencies have no relative-error estimate.
 
 ```{r}
-#| label: fig-manual-relative-error-all-methods
+#| label: manual-relative-error
 #| echo: false
-#| fig-width: 12
-#| fig-height: 10
-#| fig-cap: "Absolute relative error for StimGate, Tailgate and F-beta."
+#| results: asis
 if (isTRUE(run_plots)) {
-  .analysis_save_plot(
-    manual_plots$relativeError,
-    file.path(
-      .analysis_fig_dir(c(fig_key, "manual_comparison_relative_error"), root_dir),
-      "manual-comparison-relative-error.png"
-    ),
-    width = 30, height = max(16, 5 * dplyr::n_distinct(manual_comparison_tbl$pop))
-  )
+  method_sets <- .acsCytofMethodSets()
+  for (set_name in names(method_sets)) {
+    method_set <- method_sets[[set_name]]
+    .analysis_heading(method_set$label, 4)
+    p <- .acsCytofManualPlotRelativeError(
+      manual_comparison_tbl |> dplyr::filter(method %in% method_set$methods)
+    )
+    .analysis_save_fig(
+      p,
+      file.path(
+        .analysis_fig_dir(
+          c(fig_key, "manual_comparison_relative_error", set_name),
+          root_dir
+        ),
+        "manual-comparison-relative-error.png"
+      ),
+      height = 22
+    )
+    .analysis_print_fig(p)
+  }
 }
 ```
 
-### StimGate and F-beta frequencies
+### Over- and under-estimates
 
-The same frequency comparison is shown for StimGate and F-beta alone. Colours identify methods and shapes identify stimuli; the dashed line marks equal automated and manual frequencies.
-
-```{r}
-#| label: fig-manual-comparison
-#| echo: false
-#| fig-width: 12
-#| fig-height: 10
-#| fig-cap: "StimGate and F-beta frequencies against manual gating."
-if (isTRUE(run_plots)) {
-  p <- .acsCytofManualPlotScatter(
-    manual_comparison_tbl |> dplyr::filter(method != "tailgate")
-  )
-  ggsave(
-    file.path(
-      .analysis_fig_dir(c(fig_key, "manual_comparison_scatter_no_tailgate"), root_dir),
-      "scatter-no_tg.pdf"
-    ),
-    plot = p, units = "cm", width = 20, height = 20
-  )
-  print(p)
-}
-```
-
-### StimGate and F-beta relative error
-
-Absolute relative error is shown by method, population and cytokine after omitting Tailgate. Compare the boxes and their spread, allowing for the separate vertical scales across panels.
+Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Relative error is (automated - manual) / manual for each sample, using the same samples as the figure above. Over-estimates are plotted above zero and under-estimates below, summarised separately by median, 95th percentile and maximum for each method, population (columns) and cytokine. Larger points mean more samples fell in that direction. The scale is linear down to -100% (nothing gated) and doubles above zero, so -100% and a two-fold over-estimate are equally far from zero.
 
 ```{r}
-#| label: fig-manual-relative-error
+#| label: manual-signed-error
 #| echo: false
-#| fig-width: 12
-#| fig-height: 10
-#| fig-cap: "Absolute relative error for StimGate and F-beta."
+#| results: asis
 if (isTRUE(run_plots)) {
-  p <- .acsCytofManualPlotRelativeError(
-    manual_comparison_tbl |> dplyr::filter(method != "tailgate")
-  )
-  ggsave(
-    file.path(
-      .analysis_fig_dir(c(fig_key, "manual_comparison_relative_error_no_tailgate"), root_dir),
-      "rel_error-no_tg.pdf"
-    ),
-    plot = p, units = "cm", width = 20, height = 20
-  )
-  print(p)
+  method_sets <- .acsCytofMethodSets()
+  for (set_name in names(method_sets)) {
+    method_set <- method_sets[[set_name]]
+    .analysis_heading(method_set$label, 4)
+    p <- .acsCytofManualPlotSignedError(
+      manual_comparison_tbl |> dplyr::filter(method %in% method_set$methods)
+    )
+    .analysis_save_fig(
+      p,
+      file.path(
+        .analysis_fig_dir(
+          c(fig_key, "manual_comparison_signed_error", set_name),
+          root_dir
+        ),
+        "manual-comparison-signed-error.png"
+      ),
+      height = 22
+    )
+    .analysis_print_fig(p)
+  }
 }
 ```
 
@@ -448,11 +448,9 @@ if (isTRUE(run_plots)) {
 Histograms compare untransformed and asinh-transformed expression in the first sample of each cached GatingSet, with one panel per marker. The gate plots show the second sample for two cytokine channels, with the saved StimGate thresholds overlaid. These checks require cached GatingSets and gate projects; the frequency figures above use only the canonical comparison table.
 
 ```{r}
-#| label: fig-acs-expression-diagnostics
+#| label: acs-expression-diagnostics
 #| echo: false
-#| fig-width: 12
-#| fig-height: 9
-#| fig-cap: "Marker expression before and after transformation, by population."
+#| results: asis
 if (isTRUE(run_plots)) {
   diagnostic_paths <- c(
     list(.acsCytofPopulationPaths(
@@ -468,12 +466,17 @@ if (isTRUE(run_plots)) {
   for (pop in names(diagnostic_paths)) {
     paths <- diagnostic_paths[[pop]]
     if (!dir.exists(paths$gs)) {
-      cat("Cached GatingSet unavailable for ", pop, "; expression diagnostics skipped.\n", sep = "")
+      cat("\nCached GatingSet unavailable for ", pop, "; expression diagnostics skipped.\n\n", sep = "")
       next
     }
+    .analysis_heading(paste0("Population: ", pop), 4)
     plots <- .acsCytofPlotGatingSetCheck(paths$gs)
     plot_gatingset_check(paths$gs, paths$gsCheck, plots = plots)
-    for (p in plots) print(p + ggplot2::labs(subtitle = pop))
+    trans_labels <- c(none = "Untransformed", asinh = "Asinh-transformed")
+    for (trans in names(plots)) {
+      .analysis_heading(trans_labels[[trans]], 5)
+      .analysis_print_fig(plots[[trans]])
+    }
   }
 }
 ```
@@ -481,18 +484,17 @@ if (isTRUE(run_plots)) {
 Scatter panels show expression in the two cytokine channels, and marginal panels show their densities in the second sample. Lines mark the saved gate thresholds; compare their position with the expression distributions.
 
 ```{r}
-#| label: fig-acs-gate-diagnostics
+#| label: acs-gate-diagnostics
 #| echo: false
-#| fig-width: 8
-#| fig-height: 7
-#| fig-cap: "Saved StimGate thresholds for the second sample of each population run."
+#| results: asis
 if (isTRUE(run_plots)) {
   for (pop in names(diagnostic_paths)) {
     paths <- diagnostic_paths[[pop]]
     if (!dir.exists(paths$gs) || !dir.exists(paths$stimgate)) {
-      cat("Cached GatingSet or gate project unavailable for ", pop, "; gate diagnostics skipped.\n", sep = "")
+      cat("\nCached GatingSet or gate project unavailable for ", pop, "; gate diagnostics skipped.\n\n", sep = "")
       next
     }
+    .analysis_heading(paste0("Population: ", pop), 4)
     gs <- flowWorkspace::load_gs(paths$gs)
     p <- stimgate::plotStim(
       ind = 2L, .data = gs, pathProject = paths$stimgate,
@@ -505,10 +507,8 @@ if (isTRUE(run_plots)) {
       ),
       "stimgate_check.pdf"
     )
-    ggplot2::ggsave(path_check, plot = p,
-      width = 18, height = 16, units = "cm"
-    )
-    print(p + ggplot2::labs(subtitle = pop))
+    .analysis_save_fig(p, path_check, height = 14)
+    .analysis_print_fig(p)
   }
 }
 ```

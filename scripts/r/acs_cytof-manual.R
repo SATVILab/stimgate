@@ -571,7 +571,18 @@
     )
 }
 
+# Method as a factor in the standard order (StimGate, Tailgate, F-beta).
+.acsCytofManualMethodFactor <- function(method) {
+  method <- as.character(method)
+  levels <- c(
+    intersect(names(.analysis_method_labels), method),
+    setdiff(unique(method), names(.analysis_method_labels))
+  )
+  factor(method, levels = levels)
+}
+
 .acsCytofManualPlotScatter <- function(comparisonTbl) {
+  comparisonTbl$method <- .acsCytofManualMethodFactor(comparisonTbl$method)
   ggplot2::ggplot(
     comparisonTbl,
     ggplot2::aes(
@@ -587,24 +598,31 @@
       colour = "grey45",
       linetype = "dashed"
     ) +
-    ggplot2::geom_point(alpha = 0.7) +
+    ggplot2::geom_point(alpha = 0.75) +
     ggplot2::facet_grid(
       rows = ggplot2::vars(pop),
       cols = ggplot2::vars(cyt),
       scales = "free"
     ) +
+    ggplot2::scale_x_continuous(
+      labels = .analysis_label_number,
+      n.breaks = 3,
+      guide = ggplot2::guide_axis(check.overlap = TRUE)
+    ) +
+    ggplot2::scale_y_continuous(labels = .analysis_label_number, n.breaks = 3) +
+    .analysis_scale_method() +
     ggplot2::labs(
       x = "Background-subtracted frequency (manual gating, %)",
       y = "Background-subtracted frequency (automated gating, %)",
       colour = "Method",
       shape = "Stimulus"
     ) +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
-    ggplot2::theme(legend.position = "bottom")
+    .analysis_theme() +
+    ggplot2::theme(strip.text = ggplot2::element_text(size = 7))
 }
 
 .acsCytofManualPlotRelativeError <- function(comparisonTbl) {
+  comparisonTbl$method <- .acsCytofManualMethodFactor(comparisonTbl$method)
   ggplot2::ggplot(
     comparisonTbl,
     ggplot2::aes(
@@ -619,12 +637,80 @@
       cols = ggplot2::vars(cyt),
       scales = "free_y"
     ) +
+    ggplot2::scale_x_discrete(labels = .analysis_method_labels) +
+    ggplot2::scale_y_continuous(labels = .analysis_label_number) +
+    .analysis_scale_method("fill") +
     ggplot2::labs(x = NULL, y = "Absolute relative error") +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "y") +
+    .analysis_theme(grid = "y") +
     ggplot2::theme(
       legend.position = "none",
+      strip.text = ggplot2::element_text(size = 7),
       axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+    )
+}
+
+# Over- and under-estimates of the relative error (estimate - manual) / manual,
+# summarised over samples for each method, population and cytokine. Uses the
+# same rows as `.acsCytofManualPlotRelativeError()`: rows with a non-positive
+# manual frequency have no relative error. Over-estimates plot above zero and
+# under-estimates below; point size is the share of samples in that direction.
+# Needs `.simBandwidthSignedErrorSummary()` and `.simBandwidthSignedErrorLayers()`
+# from `sim-bandwidth-analysis-plot.R`.
+.acsCytofManualPlotSignedError <- function(comparisonTbl) {
+  comparisonTbl$method <- .acsCytofManualMethodFactor(comparisonTbl$method)
+  summaryTbl <- .simBandwidthSignedErrorSummary(
+    comparisonTbl,
+    c("method", "pop", "cyt")
+  )
+  statCols <- c(median = "Median", q95 = "95th percentile", max = "Maximum")
+  plotTbl <- summaryTbl |>
+    tidyr::pivot_longer(
+      dplyr::all_of(names(statCols)),
+      names_to = "statistic",
+      values_to = "value"
+    ) |>
+    dplyr::mutate(
+      statistic = factor(
+        .data$statistic,
+        levels = names(statCols),
+        labels = statCols
+      )
+    )
+  ggplot2::ggplot(
+    plotTbl,
+    ggplot2::aes(
+      x = .data$cyt,
+      y = .data$value,
+      colour = .data$method,
+      size = .data$prop,
+      group = interaction(.data$method, .data$direction)
+    )
+  ) +
+    .simBandwidthSignedErrorLayers("Relative error") +
+    ggplot2::geom_point(
+      alpha = 0.75,
+      position = ggplot2::position_dodge(width = 0.6)
+    ) +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(.data$statistic),
+      cols = ggplot2::vars(.data$pop),
+      scales = "free_y"
+    ) +
+    ggplot2::scale_size_continuous(
+      range = c(0.5, 3),
+      limits = c(0, 1),
+      labels = .analysis_label_percent
+    ) +
+    .analysis_scale_method() +
+    ggplot2::labs(
+      x = "Cytokine",
+      colour = "Method",
+      size = "Share of samples\nin this direction"
+    ) +
+    .analysis_theme() +
+    ggplot2::theme(
+      strip.text = ggplot2::element_text(size = 7),
+      axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1)
     )
 }
 
