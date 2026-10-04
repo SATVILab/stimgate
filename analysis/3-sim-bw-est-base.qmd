@@ -39,6 +39,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 analysis_qmd <- "analysis/3-sim-bw-est-base.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
@@ -422,16 +423,15 @@ if (isTRUE(run_plots)) {
 
 ## Results
 
-Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the estimator. Facets separate transformations and response frequencies; each figure uses one response-separation and bias setting. Compare the methods within each panel and follow how their estimates change with cell count.
+Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the estimator. Facets separate transformations (Gaussian, Skew, Gamma) and response frequencies, shown as percentages; each figure sits under a heading naming its response-separation and bias setting. Compare the methods within each panel and follow how their estimates change with cell count.
 
 ```{r}
-#| label: fig-bw-estimate-plots
+#| label: bw-estimate-plots
 #| echo: false
-#| fig-cap: "Mean ordinary bandwidth estimates by cell count, transformation and response frequency."
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots)) {
   for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 3)
     for (bias_uns_setting_curr in unique(bw_tbl_results$bias_uns_setting)) {
       plot_tbl <- bw_tbl_results |>
         dplyr::filter(
@@ -441,63 +441,44 @@ if (isTRUE(run_plots)) {
 
       if (nrow(plot_tbl) == 0L) next
 
+      .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 4)
+
       plot_tbl <- plot_tbl |>
         dplyr::mutate(
           bw_mtd = factor(
             .data$bw_mtd,
             levels = c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
           ),
-          transformation = factor(
-            .data$transformation,
-            levels = c("gaussian", "skew", "gamma")
-          )
+          transformation = .analysis_trans_factor(.data$transformation)
         )
 
       p <- ggplot(
         plot_tbl,
         aes(x = .data$n_cell, y = .data$mean_bw, color = .data$bw_mtd)
       ) +
-        geom_line() +
-        geom_point() +
+        geom_line(alpha = 0.75) +
+        geom_point(alpha = 0.75) +
         facet_grid(
           transformation ~ prob_response,
           scales = "free_y",
-          labeller = labeller(
-            transformation = c(
-              gamma = "Gamma",
-              gaussian = "Gaussian",
-              skew = "Skew"
-            )
-          )
+          labeller = labeller(prob_response = .analysis_labeller_percent())
         ) +
         labs(
-          title = paste0(
-            "Mean position setting: ", mean_pos_setting_curr,
-            ", bias_uns_setting: ", bias_uns_setting_curr
-          ),
-          x = "Number of Cells",
-          y = "Estimated Bandwidth",
-          colour = "Bandwidth Method"
+          x = "Number of cells",
+          y = "Estimated bandwidth",
+          colour = "Bandwidth method"
         ) +
-        cowplot::theme_cowplot() +
-        cowplot::background_grid(major = "xy") +
-        theme(
-          panel.background = element_rect(fill = "white", color = NA),
-          plot.background = element_rect(fill = "white", color = NA),
-          strip.background = element_rect(fill = "white", color = "black"),
-          legend.position = "bottom",
-          legend.justification = "center",
-          legend.box.just = "center",
-          panel.spacing.x = grid::unit(0.9, "cm")
-        ) +
+        .analysis_theme() +
         scale_colour_manual(
           values = .simBwMtdColVec,
           labels = .simBwMtdLabVec
         ) +
         scale_x_log10(
           breaks = c(1e3, 1e4, 1e5),
-          labels = scales::label_comma()
-        )
+          labels = .analysis_label_number,
+          guide = guide_axis(angle = 45)
+        ) +
+        scale_y_continuous(labels = .analysis_label_number)
 
       path_plot <- file.path(
         .analysis_fig_dir(c(fig_key, "est_bw_base"), root_dir),
@@ -510,16 +491,8 @@ if (isTRUE(run_plots)) {
           ".pdf"
         )
       )
-      dir.create(dirname(path_plot), recursive = TRUE, showWarnings = FALSE)
-
-      ggsave(
-        filename = path_plot,
-        plot = p,
-        width = 15,
-        height = 20,
-        units = "cm"
-      )
-      print(p)
+      .analysis_save_fig(p, path_plot, height = 15)
+      .analysis_print_fig(p)
     }
   }
 }
