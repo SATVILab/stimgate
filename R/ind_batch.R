@@ -2,6 +2,8 @@
 #' @description Groups sample rows by batch/donor identifiers, screens out samples
 #'   falling below a minimum cell count threshold, and structures the output so that
 #'   the unstimulated control index is always positioned as the first element of each batch.
+#'   Groups without an unstimulated sample are dropped; a group with more than
+#'   one unstimulated sample is an error.
 #' @param fnTblInfo data.frame. Sample metadata containing annotations.
 #' @param colGrp character vector. One or more column names used to define batches/groups.
 #' @param colStim character. Column name containing stimulation identifiers.
@@ -44,9 +46,16 @@ getBatchList <- function(
       return(NULL)
     }
 
-    isUns <- fnTblInfo[[colStim]][selVecInd] == unsChr
+    isUns <- fnTblInfo[[colStim]][selVecInd] %in% unsChr
     if (!any(isUns)) {
       return(NULL)
+    }
+    if (sum(isUns) > 1L) {
+      stop(
+        "Group '", grp, "' has ", sum(isUns), " unstimulated samples; ",
+        "each batch needs exactly one. ",
+        "Add columns to `colGrp` to separate them."
+      )
     }
 
     c(selVecInd[isUns], selVecInd[!isUns])
