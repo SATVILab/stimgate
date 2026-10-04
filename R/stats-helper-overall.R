@@ -168,7 +168,9 @@
   )
   bitIndex <- c(bitIndex, 0L)
   # The old batch loader obtained tube sizes from the gated expression channels.
-  nCellChnl <- if (nrow(gateTbl) > 0L) unique(gateTbl$chnl)[[1]] else chnl[[1]]
+  chnlUns <- if (nrow(gateTbl) > 0L) unique(gateTbl$chnl) else chnl[[1]]
+  nCellChnl <- chnlUns[[1]]
+  exUns <- NULL
 
   purrr::map_df(gateName, function(gn) {
     .debug("gate name: ", gn)
@@ -181,12 +183,20 @@
         .data, ind, indBatch[[1]], batch, popGate, pathProject,
         chnl, nCellChnl, gates, gateTypeCytPosCalc, combnMatList, bitIndex
       )
-      # Re-read raw unstim expression for each stim sample's gates. Extra disk
-      # reads keep memory bounded to one tube's logical comparisons and codes,
-      # rather than retaining a full unstim double-expression table per batch.
+      # Retain one raw unstim tube's required double-expression channels per
+      # batch, avoiding repeated disk reads for each stim sample and gate name.
+      # Stim tubes stay streamed; memory remains below the old whole-batch load.
+      if (is.null(exUns)) {
+        exUns <<- .getEx(
+          .data = if (is.null(.data)) NULL else .data[[indBatch[[1]]]],
+          pop = popGate, chnlCut = chnlUns, ind = indBatch[[1]],
+          indUns = indBatch[[1]], batch = batch, pathProject = pathProject
+        )
+      }
       uns <- .getStatsCombnTube(
         .data, indBatch[[1]], indBatch[[1]], batch, popGate, pathProject,
-        chnl, nCellChnl, gates, gateTypeCytPosCalc, combnMatList, bitIndex
+        chnl, nCellChnl, gates, gateTypeCytPosCalc, combnMatList, bitIndex,
+        exTube = exUns
       )
       tibble::tibble(
         ind = as.character(ind), gateName = gn, cytCombn = cytCombn,
@@ -210,45 +220,74 @@
   gateTbl,
   gateTypeCytPos,
   combnMatList,
-  bitIndex
+  bitIndex,
+  exTube = NULL
 ) {
   gateTypeCytPos <- match.arg(gateTypeCytPos, c("base", "cyt"))
   .readChnl <- function(chnlCurr) {
+    if (!is.null(exTube)) {
+      return(exTube[, chnlCurr, drop = FALSE])
+    }
     .getEx(
       .data = if (is.null(.data)) NULL else .data[[ind]],
       pop = popGate, chnlCut = chnlCurr, ind = ind, indUns = indUns,
       batch = batch, pathProject = pathProject
     )
   }
-  ex <- .readChnl(nCellChnl)
-  n <- nrow(ex)
-  rm(ex)
+  firstChnl <- c(chnl[chnl %in% gateTbl$chnl], nCellChnl)[[1]]
+  exFirst <- if (is.null(exTube)) .readChnl(firstChnl) else NULL
+  n <- if (is.null(exTube)) nrow(exFirst) else nrow(exTube)
   if (nrow(gateTbl) == 0L) {
     return(list(count = rep(NA_integer_, length(bitIndex)), n = n))
   }
 
   posCache <- NULL
   code <- integer(n)
-  # Retain only logical comparisons for cyt+ context and the NA fallback;
-  # discard each channel's double expression immediately after comparison.
+  hasNa <- logical(length(chnl))
+  # Keep logical comparisons for cyt+ context. Base comparisons are discarded
+  # after adding their bits and rebuilt only if the NA fallback is needed.
+  # Discard streamed double expression immediately after comparison.
   for (k in seq_along(chnl)) {
     ex <- if (chnl[[k]] %in% gateTbl$chnl) {
-      .readChnl(chnl[[k]])
+      if (!is.null(exFirst) && chnl[[k]] == firstChnl) {
+        exFirst
+      } else {
+        .readChnl(chnl[[k]])
+      }
     } else {
       tibble::tibble(.rows = n)
     }
+    if (chnl[[k]] == firstChnl) {
+      exFirst <- NULL
+    }
     posCache <- .getPosIndCache(ex, gateTbl, chnl[[k]], posCache)
     if (gateTypeCytPos == "base") {
+      hasNa[[k]] <- anyNA(posCache$base[[chnl[[k]]]])
       code <- code + as.integer(posCache$base[[chnl[[k]]]]) *
         bitwShiftL(1L, k - 1L)
+      posCache <- NULL
     }
     rm(ex)
   }
   # Only nrow(ex) is used when the logical cache is already complete.
   ex <- tibble::tibble(.rows = n)
-  posByChnl <- .getPosIndByChnl(
-    ex, gateTbl, chnl, gateTypeCytPos, posCache
-  )
+  posByChnl <- NULL
+  if (gateTypeCytPos == "base" && any(hasNa)) {
+    for (chnlCurr in chnl) {
+      exCurr <- if (chnlCurr %in% gateTbl$chnl) {
+        .readChnl(chnlCurr)
+      } else {
+        ex
+      }
+      posCache <- .getPosIndCache(exCurr, gateTbl, chnlCurr, posCache)
+      rm(exCurr)
+    }
+  }
+  if (gateTypeCytPos == "cyt" || any(hasNa)) {
+    posByChnl <- .getPosIndByChnl(
+      ex, gateTbl, chnl, gateTypeCytPos, posCache
+    )
+  }
   if (any(vapply(posByChnl, anyNA, logical(1)))) {
     .debug("Combination statistics: using NA-preserving Reduce fallback")
     # Logical AND/OR can resolve some NA cells to FALSE. Tabulation cannot

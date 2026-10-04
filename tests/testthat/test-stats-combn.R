@@ -1,6 +1,6 @@
 local({
   # Cached vectors exercise the production streaming path without a GatingSet.
-  .statsCombnFixture <- function(exList, gates, gateType = "base") {
+  .statsCombnFixture <- function(exList, gates, gateType = "base", gateName = "g") {
     project <- tempfile("stats-combn-")
     withr::defer(unlink(project, recursive = TRUE), envir = parent.frame())
     chnl <- names(exList[[1]])
@@ -13,7 +13,7 @@ local({
     }
     .getStats(
       gateTbl = gates, chnl = chnl, chnlLab = stats::setNames(chnl, chnl),
-      gateName = "g", gateTypeCytPosCalc = gateType, popGate = "root",
+      gateName = gateName, gateTypeCytPosCalc = gateType, popGate = "root",
       .data = NULL, indBatchList = list(batch = seq_along(exList)),
       pathProject = project
     )
@@ -86,6 +86,38 @@ local({
     expect_identical(actual$countUns[actual$ind == "2"], rep(1L, 8L))
     expect_identical(actual$countUns[actual$ind == "3"], c(rep(0L, 7L), 8L))
     expect_identical(actual$countStim, actual$countUns)
+  })
+
+  test_that("combination reads reuse unstim channels and classification cell counts", {
+    readEx <- .getEx
+    reads <- list()
+    testthat::local_mocked_bindings(.getEx = function(...) {
+      args <- list(...)
+      reads[[length(reads) + 1L]] <<- list(ind = args$ind, chnl = args$chnlCut)
+      do.call(readEx, args)
+    }, .package = "stimgate")
+    ex <- .statsCombnExpression(0:7)
+    gates <- dplyr::bind_rows(
+      .statsCombnGates(chnl = "A"), .statsCombnGates(3L, "B")
+    )
+    gates <- dplyr::bind_rows(gates, dplyr::mutate(gates, gateName = "h", gate = 2))
+    for (gateType in c("base", "cyt")) {
+      reads <- list()
+      actual <- .statsCombnFixture(list(ex, ex, ex, ex), gates, gateType, c("g", "h"))
+      unsReads <- Filter(function(x) x$ind == 1L, reads)
+      stimReads <- Filter(function(x) x$ind != 1L, reads)
+      expect_length(unsReads, 1L)
+      expect_identical(unsReads[[1]]$chnl, c("A", "B"))
+      expect_identical(
+        vapply(stimReads, function(x) x$ind, integer(1)),
+        c(2L, 3L, 4L, 2L, 3L, 4L)
+      )
+      expect_true(all(lengths(lapply(stimReads, function(x) x$chnl)) == 1L))
+      expect_identical(actual$countStim, actual$countUns)
+      expect_true(all(is.na(actual$countStim[actual$ind == "4"])))
+      expect_identical(actual$nCellStim, rep(8L, nrow(actual)))
+      expect_identical(actual$nCellUns, rep(8L, nrow(actual)))
+    }
   })
 
   test_that("missing channel gates are FALSE and missing sample gates yield integer NAs", {
