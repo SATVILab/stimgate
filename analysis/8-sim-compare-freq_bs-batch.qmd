@@ -40,6 +40,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 analysis_qmd <- "analysis/8-sim-compare-freq_bs-batch.qmd"
 
 run_simulations <- .as_flag(.get_qmd_param_env(
@@ -95,6 +96,7 @@ for (fn in c(
   "sim-misc.R",
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
+  "sim-bandwidth-analysis-plot.R",
   "sim-compare-freq_bs.R"
 )) {
   source(file.path(scripts_r_dir, fn))
@@ -592,26 +594,28 @@ if (!isTRUE(canonical_status$validation_ok)) {
 
 results_available <- TRUE
 
+scenario_cols <- c(
+  "base_scenario_id",
+  "mismatch_type",
+  "mismatch_val",
+  "stim_mean_shift",
+  "stim_mean_shift_clusters",
+  "stim_sd_multiplier",
+  "stim_sd_multiplier_clusters",
+  "sd_increase",
+  "transformation",
+  "mean_pos_setting",
+  "mean_pos",
+  "prob_response",
+  "n_cell",
+  "scenario_desc",
+  "approach",
+  "method"
+)
+
 compare_summary <- .simCompareSummariseFreqBs(
   compare_raw,
-  scenarioCols = c(
-    "base_scenario_id",
-    "mismatch_type",
-    "mismatch_val",
-    "stim_mean_shift",
-    "stim_mean_shift_clusters",
-    "stim_sd_multiplier",
-    "stim_sd_multiplier_clusters",
-    "sd_increase",
-    "transformation",
-    "mean_pos_setting",
-    "mean_pos",
-    "prob_response",
-    "n_cell",
-    "scenario_desc",
-    "approach",
-    "method"
-  )
+  scenarioCols = scenario_cols
 )
 
 compare_summary
@@ -623,6 +627,13 @@ if (!isTRUE(run_plots)) {
 ```
 
 ## Results
+
+Every comparison figure is shown twice. "All methods" includes StimGate,
+Tailgate and F-beta. "Without Tailgate" leaves Tailgate out, because it
+performs very poorly without more tuning and squashes the scale for the other
+two methods. The two versions are saved in the `all_methods` and `no_tailgate`
+subfolders of each figure folder. Within each version there is one figure per
+mean position setting.
 
 ### Mean-shift degradation curves (all components vs negative only)
 
@@ -643,33 +654,32 @@ if (
 Median absolute relative error is plotted against the stimulated mean shift
 on an inverse-hyperbolic-sine vertical scale. Colour identifies the method,
 line type distinguishes shifts of all cells from shifts of background cells
-only, and facets separate baseline scenarios. Lower curves indicate smaller
+only, and panels separate baseline scenarios. Lower curves indicate smaller
 errors at the same shift.
 
 ```{r}
-#| label: fig-mean-shift-degradation-median
-#| fig-cap: "Median absolute relative frequency error under mean shifts."
+#| label: mean-shift-degradation-median
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_mean_shift <- compare_summary |>
     dplyr::filter(
       mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
     )
-  for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
-    summary_mean_shift_curr <- summary_mean_shift |>
-      dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
-    p_shift <- .simComparePlotMeanShift(
-      summary_mean_shift_curr,
-      statistic = "med_abs_rel_error",
-      label = "Median Absolute Relative Error"
-    )
-    path_p <- file.path(
-      plot_dir, paste0("plot_med_abs_rel_error_", mean_pos_setting_curr, ".pdf")
-    )
-    .analysis_save_plot(p_shift, path_p, width = 20, height = 15)
-  }
+  .simCompareFigureLoop(
+    summary_mean_shift,
+    make_plot = function(d) {
+      .simComparePlotMeanShift(
+        d,
+        statistic = "med_abs_rel_error",
+        label = "Median absolute relative error"
+      )
+    },
+    dir = plot_dir,
+    file_fn = function(pos, extra) paste0("plot_med_abs_rel_error_", pos, ".pdf"),
+    height = 16,
+    level = 5L
+  )
 }
 ```
 
@@ -677,33 +687,32 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 
 Maximum absolute relative error is plotted against the stimulated mean shift
 on an inverse-hyperbolic-sine vertical scale. Colour identifies the method,
-line type identifies which cells are shifted, and facets separate baseline
+line type identifies which cells are shifted, and panels separate baseline
 scenarios. Compare how the largest errors vary with shift magnitude.
 
 ```{r}
-#| label: fig-mean-shift-degradation-max
-#| fig-cap: "Maximum absolute relative frequency error under mean shifts."
+#| label: mean-shift-degradation-max
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_mean_shift <- compare_summary |>
     dplyr::filter(
       mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
     )
-  for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
-    summary_mean_shift_curr <- summary_mean_shift |>
-      dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
-    p_shift <- .simComparePlotMeanShift(
-      summary_mean_shift_curr,
-      statistic = "max_abs_rel_error",
-      label = "Maximum Absolute Relative Error"
-    )
-    path_p <- file.path(
-      plot_dir, paste0("plot_max_", mean_pos_setting_curr, ".pdf")
-    )
-    .analysis_save_plot(p_shift, path_p, width = 20, height = 15)
-  }
+  .simCompareFigureLoop(
+    summary_mean_shift,
+    make_plot = function(d) {
+      .simComparePlotMeanShift(
+        d,
+        statistic = "max_abs_rel_error",
+        label = "Maximum absolute relative error"
+      )
+    },
+    dir = plot_dir,
+    file_fn = function(pos, extra) paste0("plot_max_", pos, ".pdf"),
+    height = 16,
+    level = 5L
+  )
 }
 ```
 
@@ -712,258 +721,155 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 The 90th percentile of absolute relative error is plotted against the
 stimulated mean shift on an inverse-hyperbolic-sine vertical scale. Colour
 identifies the method, line type identifies which cells are shifted, and
-facets separate baseline scenarios. Compare upper-tail errors at each shift.
+panels separate baseline scenarios. Compare upper-tail errors at each shift.
 
 ```{r}
-#| label: fig-mean-shift-degradation-q90
-#| fig-cap: "90th percentile absolute relative frequency error under mean shifts."
+#| label: mean-shift-degradation-q90
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_mean_shift <- compare_summary |>
     dplyr::filter(
       mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
     )
-  for (mean_pos_setting_curr in unique(summary_mean_shift$mean_pos_setting)) {
-    summary_mean_shift_curr <- summary_mean_shift |>
-      dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
-    p_shift <- .simComparePlotMeanShift(
-      summary_mean_shift_curr,
-      statistic = "q90_abs_rel_error",
-      label = "90th Percentile Absolute Relative Error"
-    )
-    path_p <- file.path(
-      plot_dir, paste0("plot_q90_", mean_pos_setting_curr, ".pdf")
-    )
-    .analysis_save_plot(p_shift, path_p, width = 20, height = 15)
-  }
+  .simCompareFigureLoop(
+    summary_mean_shift,
+    make_plot = function(d) {
+      .simComparePlotMeanShift(
+        d,
+        statistic = "q90_abs_rel_error",
+        label = "90th percentile absolute relative error"
+      )
+    },
+    dir = plot_dir,
+    file_fn = function(pos, extra) paste0("plot_q90_", pos, ".pdf"),
+    height = 16,
+    level = 5L
+  )
 }
 ```
 
 ### SD-inflation degradation curves
 
-```{r}
-#| include: false
-plot_dir <- .analysis_fig_dir(c(fig_key, "sd_inflation_degradation"), path_root = root_dir, create = FALSE)
-if (
-  isTRUE(run_plots) &&
-    isTRUE(results_available) &&
-    dir.exists(plot_dir)
-) {
-  unlink(plot_dir, recursive = TRUE)
-}
-```
-
 Median absolute relative error is plotted against the fractional increase
 in stimulated background standard deviation on an inverse-hyperbolic-sine
-vertical scale. Colour identifies the method and facets separate baseline
+vertical scale. Colour identifies the method and panels separate baseline
 scenarios, with one mean position setting per plot. Zero on the horizontal
 axis is the unchanged background spread.
 
 ```{r}
-#| label: fig-sd-inflation-degradation
-#| fig-cap: "Median absolute relative frequency error under background SD inflation."
+#| label: sd-inflation-degradation
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
+sd_dir <- .analysis_fig_dir(c(fig_key, "sd_inflation_degradation"), path_root = root_dir, create = FALSE)
 if (isTRUE(run_plots) && isTRUE(results_available)) {
+  if (dir.exists(sd_dir)) unlink(sd_dir, recursive = TRUE)
   summary_sd <- compare_summary |>
     dplyr::filter(mismatch_type == "sd_inflation")
-
-  for (mean_pos_setting_curr in unique(summary_sd$mean_pos_setting)) {
-    summary_sd_curr <- summary_sd |>
-      dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
-    p_sd <- ggplot(
-      summary_sd_curr,
-      aes(
-        x = mismatch_val,
-        y = med_abs_rel_error,
-        color = method,
-        group = method
-      )
-    ) +
-      geom_line(linewidth = 0.8) +
-      geom_point(size = 2) +
-      facet_wrap(~scenario_desc, scales = "free_y") +
-      scale_y_continuous(
-        transform = scales::asinh_trans()
-      ) +
-      cowplot::theme_cowplot(font_size = 10) +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA),
-        legend.position = "bottom"
-      ) +
-      labs(
-        title = "Degradation under Stimulated SD Inflation",
-        subtitle = "Median Absolute Relative Error vs Fractional SD Increase (Negative Component Only)",
-        x = "Fractional SD Increase",
-        y = "Median Absolute Relative Error (asinh scale)",
-        color = "Method"
-      )
-    path_p <- file.path(
-      .analysis_fig_dir(c(fig_key, "sd_inflation_degradation"), path_root = root_dir),
-      paste0(
-        "plot_",
-        mean_pos_setting_curr,
-        ".pdf"
-      )
-    )
-    .analysis_save_plot(
-      filename = path_p,
-      plot = p_sd,
-      width = 20,
-      height = 15,
-      units = "cm"
-    )
-  }
+  .simCompareFigureLoop(
+    summary_sd,
+    make_plot = .simComparePlotSdInflation,
+    dir = sd_dir,
+    file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
+    height = 16,
+    level = 4L
+  )
 }
 ```
 
 ### Threshold placement diagnostic (unstimulated background intrusion)
 
-The mean proportion of unstimulated cells above the gate is plotted against
+The mean share of unstimulated cells above the gate is plotted against
 the stimulated mean shift. Colour identifies the method, line type identifies
-which stimulated cells are shifted, and facets separate baseline scenarios.
+which stimulated cells are shifted, and panels separate baseline scenarios.
 Higher values indicate that more unstimulated cells lie above the chosen gate.
 
 ```{r}
-#| label: fig-threshold-placement-unstim
-#| fig-cap: "Unstimulated cells above the gate under stimulated mean shifts."
+#| label: threshold-placement-unstim
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   summary_shifts <- compare_summary |>
     dplyr::filter(
       mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
     )
-
-  for (mean_pos_setting_curr in unique(summary_shifts$mean_pos_setting)) {
-    summary_shifts_curr <- summary_shifts |>
-      dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
-
-    p_placement <- ggplot(
-      summary_shifts_curr,
-      aes(
-        x = mismatch_val,
-        y = propUns_mean,
-        color = method,
-        linetype = mismatch_type,
-        group = interaction(method, mismatch_type)
-      )
-    ) +
-      geom_line(linewidth = 0.8) +
-      geom_point(size = 2) +
-      facet_wrap(~scenario_desc, scales = "free_y") +
-      cowplot::theme_cowplot(font_size = 10) +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA)
-      ) +
-      theme(
-        legend.position = "bottom",
-        legend.box = "vertical",
-        legend.box.just = "left"
-      ) +
-      guides(
-        colour = guide_legend(nrow = 1, byrow = TRUE),
-        linetype = guide_legend(nrow = 1, byrow = TRUE)
-      ) +
-      labs(
-        title = "Threshold Placement: Unstimulated Background Intrusion",
-        subtitle = "Proportion of unstimulated cells above threshold vs shift",
-        x = "Stimulated Mean Shift",
-        y = "Proportion of Unstimulated Cells Above Gate",
-        color = "Method",
-        linetype = "Mismatch Variant"
-      )
-    path_p <- file.path(
-      .analysis_fig_dir(c(fig_key, "threshold_placement_unstim"), path_root = root_dir),
-      paste0(
-        "plot_",
-        mean_pos_setting_curr,
-        ".pdf"
-      )
-    )
-    .analysis_save_plot(
-      filename = path_p,
-      plot = p_placement,
-      width = 20,
-      height = 15,
-      units = "cm"
-    )
-  }
+  .simCompareFigureLoop(
+    summary_shifts,
+    make_plot = .simComparePlotPlacement,
+    dir = .analysis_fig_dir(c(fig_key, "threshold_placement_unstim"), path_root = root_dir),
+    file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
+    height = 16,
+    level = 4L
+  )
 }
 ```
 
 ### Upper-tail error analysis
 
 The 90th percentile of absolute relative error is plotted against mismatch
-magnitude on an inverse-hyperbolic-sine vertical scale, with colour identifying
-the method. Facet rows separate mismatch mechanisms and columns separate
+size on an inverse-hyperbolic-sine vertical scale, with colour identifying
+the method. Rows of panels separate mismatch mechanisms and columns separate
 baseline scenarios, with one mean position setting per plot. Compare curves
-within each panel, since mean shift and SD inflation use different units.
+within each panel, since mean shift and spread increase use different units.
 
 ```{r}
-#| label: fig-upper-tail-and-fallbacks
-#| fig-cap: "90th percentile absolute relative frequency error across mismatch settings."
+#| label: upper-tail-and-fallbacks
 #| echo: false
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
-  for (mean_pos_setting_curr in unique(compare_summary$mean_pos_setting)) {
-    compare_summary_curr <- compare_summary |>
-      dplyr::filter(mean_pos_setting == mean_pos_setting_curr)
+  .simCompareFigureLoop(
+    compare_summary,
+    make_plot = .simComparePlotUpperTail,
+    dir = .analysis_fig_dir(c(fig_key, "upper_tail_and_fallbacks"), path_root = root_dir),
+    file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
+    height = 18,
+    level = 4L
+  )
+}
+```
 
-    p_tail <- ggplot(
-      compare_summary_curr,
-      aes(
-        x = mismatch_val,
-        y = q90_abs_rel_error,
-        color = method,
-        group = method
-      )
-    ) +
-      geom_line(linewidth = 0.8) +
-      geom_point(size = 2) +
-      facet_grid(mismatch_type ~ scenario_desc, scales = "free") +
-      scale_y_continuous(
-        transform = scales::asinh_trans()
-      ) +
-      cowplot::theme_cowplot(font_size = 10) +
-      cowplot::background_grid(major = "xy", minor = "none") +
-      theme(
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA),
-        legend.position = "bottom"
-      ) +
-      labs(
-        title = "90th Percentile Relative Error under Mismatch",
-        subtitle = paste0("Mean position setting: ", mean_pos_setting_curr),
-        x = "Mismatch Magnitude",
-        y = "90th Percentile Absolute Relative Error (asinh scale)",
-        color = "Method"
-      )
-    path_p <- file.path(
-      .analysis_fig_dir(c(fig_key, "upper_tail_and_fallbacks"), path_root = root_dir),
-      paste0(
-        "plot_",
-        mean_pos_setting_curr,
-        ".pdf"
-      )
+### Over- and under-estimates across mismatch settings
+
+The relative error, (estimate - truth) / truth, is summarised separately for
+over-estimates and under-estimates in each scenario, from the same simulated
+rows as the figures above. Over-estimates are drawn above zero and
+under-estimates below. Rows of panels show the median, 95th percentile and
+maximum, and columns separate baseline scenarios. Colour identifies the
+method, and a thicker line means a larger share of the estimates lies in that
+direction. The vertical scale is linear down to -100% (nothing gated) and
+doubles at each step above, so -100% and a two-fold over-estimate are equally
+far from zero. Each plot uses one mean position setting and one mismatch
+mechanism.
+
+```{r}
+#| label: signed-error-mismatch
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  signed_tbl <- compare_raw |>
+    .simCompareSignedErrorSummary(
+      scenarioCols = scenario_cols
     )
-    .analysis_save_plot(
-      filename = path_p,
-      plot = p_tail,
-      width = 20,
-      height = 15,
-      units = "cm"
-    )
-  }
+  .simCompareFigureLoop(
+    signed_tbl,
+    make_plot = function(d) {
+      .simComparePlotSignedError(
+        d,
+        x = "mismatch_val",
+        x_label = "Mismatch size",
+        col_var = "scenario_desc",
+        x_log = FALSE
+      )
+    },
+    dir = .analysis_fig_dir(c(fig_key, "signed_error_by_mismatch"), path_root = root_dir),
+    file_fn = function(pos, extra) paste0("plot_signed_error_", pos, "_", extra, ".pdf"),
+    height = 18,
+    level = 4L,
+    extra_col = "mismatch_type",
+    extra_heading = function(x) {
+      paste0("Mismatch: ", unname(.simCompareMismatchLabels[x]))
+    }
+  )
 }
 ```
 

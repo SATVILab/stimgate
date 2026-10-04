@@ -7,6 +7,17 @@ script_misc <- file.path(root_dir, "scripts", "r", "sim-misc.R")
 script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
 script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 
+.compare_plot_env <- function() {
+  env <- new.env(parent = getNamespace("stimgate"))
+  for (fn in c(
+    "analysis-plot-style.R", "sim-bandwidth-analysis-plot.R",
+    "sim-compare-freq_bs.R"
+  )) {
+    source(file.path(root_dir, "scripts", "r", fn), local = env)
+  }
+  env
+}
+
 test_that(
   "analysis/8-sim-compare-freq_bs-batch.qmd does not source benchmarking cyt",
   {
@@ -1304,8 +1315,7 @@ test_that("alternative comparator exceptions remain explicit run errors", {
 })
 
 test_that("mean-shift plotting shares statistics without writing files", {
-  env <- new.env(parent = getNamespace("stimgate"))
-  source(script_comp, local = env)
+  env <- .compare_plot_env()
   data <- tibble::tibble(
     mismatch_val = c(0, 0.1), method = "stimgate",
     mismatch_type = "mean_shift_negative", scenario_desc = "scenario",
@@ -1384,4 +1394,66 @@ test_that(".simCompareFreqBsGrid writes the bandwidth-style progress summary", {
     "In Progress        : 0", readLines(path_progress, warn = FALSE),
     fixed = TRUE
   )))
+})
+
+test_that("signed-error plot draws varying-width lines for methods and directions", {
+  env <- .compare_plot_env()
+  raw <- tidyr::expand_grid(
+    n_cell = c(1000, 10000, 100000),
+    method = c("stimgate", "fbeta"),
+    rep = 1:6
+  ) |>
+    dplyr::mutate(
+      transformation = "gaussian",
+      propRespTruth = 0.01,
+      propRespEst = 0.01 * (1 + c(-0.5, -0.2, 0.1, 0.3, 0.8, 1.5)[rep])
+    )
+  tbl <- env$.simCompareSignedErrorSummary(
+    raw, scenarioCols = c("transformation", "n_cell", "method")
+  )
+  expect_setequal(tbl$direction, c("over", "under"))
+  plot <- env$.simComparePlotSignedError(tbl)
+  expect_no_error(ggplot2::ggplotGrob(plot))
+  expect_setequal(
+    unique(as.character(plot$data$statistic)),
+    c("Median", "95th percentile", "Maximum")
+  )
+  segment_layers <- Filter(
+    function(l) inherits(l$geom, "GeomSegment"), plot$layers
+  )
+  expect_length(segment_layers, 1L)
+  expect_true("linewidth" %in% names(segment_layers[[1]]$mapping))
+  expect_gt(length(unique(segment_layers[[1]]$data$prop_segment)), 1L)
+  expect_true(all(c("stimgate", "fbeta") %in% plot$data$method))
+})
+
+test_that("figure loop writes each method set to its own folder with headings", {
+  env <- .compare_plot_env()
+  dir <- tempfile("compare-fig-")
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  data <- tidyr::expand_grid(
+    method = c("stimgate", "tailgate", "fbeta"),
+    mean_pos_setting = c("low", "high"),
+    mismatch_val = c(0, 1)
+  ) |>
+    dplyr::mutate(value = seq_len(dplyr::n()))
+  make_plot <- function(d) {
+    ggplot2::ggplot(d, ggplot2::aes(mismatch_val, value, colour = method)) +
+      ggplot2::geom_line() +
+      env$.analysis_scale_method()
+  }
+  out <- utils::capture.output(
+    env$.simCompareFigureLoop(
+      data, make_plot, dir = dir,
+      file_fn = function(pos, extra) paste0("fig_", pos, ".png"),
+      height = 6, level = 4L
+    )
+  )
+  expect_true(any(out == "#### All methods"))
+  expect_true(any(out == "#### Without Tailgate"))
+  expect_true(any(out == "##### Mean position: low"))
+  for (set in c("all_methods", "no_tailgate")) {
+    expect_true(file.exists(file.path(dir, set, "fig_low.png")))
+    expect_true(file.exists(file.path(dir, set, "fig_high.png")))
+  }
 })

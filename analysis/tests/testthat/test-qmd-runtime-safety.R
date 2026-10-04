@@ -132,7 +132,7 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
   expect_true(grepl("n_iter_sim = n_iter_sim", content, fixed = TRUE))
 
   expect_true(grepl(
-    ".analysis_save_plot(",
+    ".simCompareFigureLoop(",
     content,
     fixed = TRUE
   ))
