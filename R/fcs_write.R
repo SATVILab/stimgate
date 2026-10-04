@@ -4,7 +4,8 @@
 #' @param pathProject character Project directory from [gateStim()].
 #' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
 #'   list or data.frame Data passed to [gateStim()], in the same sample order.
-#' @param indBatchList list Sample indices grouped by batch, control first.
+#' @param indBatchList list Sample indices or names grouped by batch,
+#'   unstimulated sample first, as for `batchList` in [gateStim()].
 #' @param pathDirSave character Output directory; existing contents are deleted.
 #' @param pop character or NULL Population to export. NULL uses the single saved
 #'   population, or "root" when `gateTbl` is supplied. Default: NULL.
@@ -76,6 +77,7 @@ writeStimFCS <- function(
 
   if (!is.null(.data)) {
     .data <- .asStimGatingSet(.data, pop)
+    indBatchList <- .resolveBatchList(indBatchList, .data)
   }
 
   # get gates
@@ -260,7 +262,7 @@ writeStimFCS <- function(
   gateTblDistinct |>
     dplyr::group_by(chnl, marker, batch) |> # nolint
     dplyr::summarise(
-      indStim = paste0(ind |> sort(), collapse = "_"),
+      indStim = list(as.character(ind)),
       dplyr::across(c("gate", dplyr::any_of("gateCyt")), calc),
       .groups = "drop"
     ) |>
@@ -272,21 +274,27 @@ writeStimFCS <- function(
   gateTbl,
   indBatchList
 ) {
-  indBatchVec <- lapply(indBatchList, function(x) {
-    (x[-1]) |>
-      sort() |>
-      paste0(collapse = "_")
-  }) |>
-    unlist()
-  indUnsVec <- lapply(indBatchList, function(x) x[[1]]) |>
-    unlist()
+  # match each batch's stim gates to the batch containing those stim samples
+  # (stim samples belong to exactly one batch), then take its first sample
+  indStimList <- lapply(indBatchList, function(x) as.character(x[-1]))
   indVec <- vapply(gateTbl$indStim, function(indStim) {
-    indMatch <- which(indBatchVec == indStim)
-    stopifnot(length(indMatch) == 1L)
-    as.character(indUnsVec[indMatch])
+    indMatch <- which(vapply(
+      indStimList,
+      function(x) all(indStim %in% x),
+      logical(1)
+    ))
+    if (length(indMatch) != 1L) {
+      stop(
+        "Could not match stimulated samples ",
+        paste0(indStim, collapse = ", "),
+        " to exactly one batch in `indBatchList`."
+      )
+    }
+    as.character(indBatchList[[indMatch]][[1]])
   }, character(1), USE.NAMES = FALSE)
   gateTbl |>
     dplyr::mutate(ind = indVec) |>
+    dplyr::select(-"indStim") |>
     dplyr::select(chnl, marker, batch, ind, dplyr::everything()) |> # nolint
     dplyr::arrange(chnl, marker, batch, ind)
 }

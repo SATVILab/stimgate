@@ -306,6 +306,8 @@ plotStim <- function(
     stimgateMetaReadMarkerLab(pathProject)[marker],
     error = function(e) NULL
   )
+  # bandwidths are saved under stimulated samples, so use the first
+  # plotted sample that has one (the unstim, if plotted, has none)
   pathBwProject <- if (!is.null(chnlBw)) {
     file.path(
       pathProject,
@@ -313,14 +315,15 @@ plotStim <- function(
       "init",
       chnlBw,
       "ind",
-      ind[[1]],
+      as.character(ind),
       "bwCpUnsLoc.rds"
     )
   } else {
-    ""
+    character(0)
   }
-  bw <- if (nzchar(pathBwProject) && file.exists(pathBwProject)) {
-    tryCatch(readRDS(pathBwProject), error = function(e) "nrd0")
+  pathBwProject <- pathBwProject[file.exists(pathBwProject)]
+  bw <- if (length(pathBwProject) > 0L) {
+    tryCatch(readRDS(pathBwProject[[1]]), error = function(e) "nrd0")
   } else {
     "nrd0"
   }

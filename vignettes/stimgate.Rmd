@@ -27,7 +27,7 @@ exampleData$marker
 
 ### Your own data
 
-`.data` can be a GatingSet, a flowSet/cytoset or flowFrame, FCS file paths or a directory of FCS files, a list of numeric matrices or data frames (one per tube, cells by channels), or one data frame with a `sample` column. Each element of `batchList` lists one donor's tubes, by index or sample name, with the unstimulated tube first:
+`.data` can be a GatingSet, a flowSet/cytoset or flowFrame, FCS file paths or a directory of FCS files, a list of numeric matrices or data frames (one per tube, cells by channels), or one data frame with a `sample` column. Each element of `batchList` lists one donor's tubes, by index or sample name. **The first tube is the unstimulated control**; the rest are that donor's stimulated tubes. A control may be shared by several batches (first in each), but a stimulated tube may belong to only one. `getBatchList()` builds `batchList` from a table of sample metadata.
 
 ```{r own-data, eval=FALSE}
 tubes <- list(uns = unsMatrix, stim = stimMatrix) # columns named by channel

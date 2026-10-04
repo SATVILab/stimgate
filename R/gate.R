@@ -10,7 +10,9 @@
 #'   with a `sample` column. See Details.
 #' @param batchList list Samples grouped by donor or batch, as indices or
 #'   sample names, with the unstimulated control first in each vector, e.g.
-#'   `list(donor1 = c(3, 1, 2))`. List names identify batches.
+#'   `list(donor1 = c(3, 1, 2))`. List names identify batches. Each batch
+#'   needs at least one stimulated sample; a control may be shared by batches
+#'   (first in each), but a stimulated sample may belong to only one.
 #' @param marker character vector or NULL Marker labels to gate; supply
 #'   either `marker` or `chnl`. Default: NULL.
 #' @param chnl character vector or NULL Channel names to gate. Default: NULL.
@@ -158,20 +160,7 @@ gateStim <- function(
   if (!isGatingSet) {
     .checkStimInputPop(unlist(lapply(markerControl, function(x) x$popGate)))
   }
-  sampleNames <- flowWorkspace::sampleNames(.data)
-  batchList <- lapply(batchList, function(batch) {
-    if (!is.character(batch)) {
-      return(batch)
-    }
-    indices <- match(batch, sampleNames)
-    if (anyNA(indices)) {
-      stop(
-        "Unknown sample name(s) in `batchList`: ",
-        paste(batch[is.na(indices)], collapse = ", ")
-      )
-    }
-    indices
-  })
+  batchList <- .resolveBatchList(batchList, .data)
 
   calcCytPosGates <- control$calcCytPosGates
 
@@ -182,6 +171,7 @@ gateStim <- function(
     stop("Install the 'future.apply' package to use `parallel = TRUE`.")
   }
 
+  .verifyBatchList(batchList)
   if (is.null(names(batchList))) {
     batchList <- batchList |>
       stats::setNames(paste0("batch", seq_along(batchList)))

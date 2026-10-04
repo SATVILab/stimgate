@@ -1,7 +1,8 @@
 #' @title Group samples into batches
 #' @description Group metadata rows by donor or batch, keeping the unstimulated
 #'   control first. Drop samples below `minCell` and groups with fewer than two
-#'   remaining samples or no control.
+#'   remaining samples or no control. A group with more than one control is an
+#'   error.
 #' @param fnTblInfo data.frame Sample metadata, one row per sample.
 #' @param colGrp character vector Column names defining batches.
 #' @param colStim character Column containing stimulation labels.
@@ -37,9 +38,16 @@ getBatchList <- function(
       return(NULL)
     }
 
-    isUns <- fnTblInfo[[colStim]][selVecInd] == unsChr
+    isUns <- fnTblInfo[[colStim]][selVecInd] %in% unsChr
     if (!any(isUns)) {
       return(NULL)
+    }
+    if (sum(isUns) > 1L) {
+      stop(
+        "Group '", grp, "' has ", sum(isUns), " unstimulated samples; ",
+        "each batch needs exactly one. ",
+        "Add columns to `colGrp` to separate them."
+      )
     }
 
     c(selVecInd[isUns], selVecInd[!isUns])

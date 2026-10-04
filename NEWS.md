@@ -1,3 +1,40 @@
+# stimgate 0.99.15
+
+## Performance
+
+- `gateStim()` computes combination gate statistics in a single pass over each
+  tube, rather than once per marker combination, and streams expression by
+  channel instead of loading a whole batch.
+
+## Bug fixes
+
+- In combination statistics, stimulated samples without any gates now report
+  `NA` counts (with cell counts retained) rather than counts of zero.
+
+# stimgate 0.99.14
+
+## New features
+
+- `writeStimFCS()` accepts sample names in `indBatchList`, resolved to indices
+  as in `gateStim()`.
+
+# stimgate 0.99.13
+
+## Breaking changes
+
+- `gateStim()` validates `batchList`: each batch needs its unstimulated sample
+  first and at least one stimulated sample; a shared unstimulated sample must be
+  first in every batch, and a stimulated sample may belong to only one batch.
+- `getBatchList()` errors when a group has more than one unstimulated sample.
+
+## Bug fixes
+
+- `writeStimFCS()` matches unstimulated gates to batches by stimulated-sample
+  membership, so indices of different digit widths (e.g. 9 and 10) and stimulated
+  samples without gate rows no longer fail.
+- `plotStim()` reads saved local-FDR bandwidths from stimulated samples, rather
+  than always falling back to `"nrd0"`.
+
 # stimgate 0.99.12
 
 ## New features

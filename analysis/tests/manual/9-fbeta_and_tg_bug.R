@@ -2,10 +2,11 @@
 # Setup
 # -------------------------------------------------------------------------
 
-# IMPORTANT: ACS batches contain four stimulated files followed by one
-# unstimulated file. The current package comparator assumes that the first
-# file is unstimulated. This standalone diagnostic uses the correct ordering
-# and stops if the filenames do not confirm it.
+# ACS FCS files come in blocks of four stimulated files followed by one
+# unstimulated file. `.acsCytofBatchList()` reorders each block so that the
+# unstimulated sample is first, as `gateStim()` expects. This standalone
+# diagnostic uses that same batch list and stops if the filenames do not
+# confirm the unstimulated sample is first in every batch.
 
 library(dplyr)
 library(ggplot2)
@@ -122,7 +123,7 @@ reticulate::py_config()
         position = seq_along(indBatch),
         ind = indBatch,
         expectedRole = if_else(
-          seq_along(indBatch) == length(indBatch),
+          seq_along(indBatch) == 1L,
           "unstimulated",
           "stimulated"
         ),
@@ -136,16 +137,16 @@ reticulate::py_config()
     group_by(.data$batch) |>
     summarise(
       nFiles = n(),
-      finalFileIsUnstimulated = last(.data$filenameLooksUnstimulated),
-      earlierFileLooksUnstimulated = any(
-        head(.data$filenameLooksUnstimulated, -1L)
+      firstFileIsUnstimulated = first(.data$filenameLooksUnstimulated),
+      laterFileLooksUnstimulated = any(
+        .data$filenameLooksUnstimulated[-1L]
       ),
       .groups = "drop"
     ) |>
     filter(
       .data$nFiles != 5L |
-        !.data$finalFileIsUnstimulated |
-        .data$earlierFileLooksUnstimulated
+        !.data$firstFileIsUnstimulated |
+        .data$laterFileLooksUnstimulated
     )
 
   if (nrow(invalidBatch) > 0L) {
@@ -156,8 +157,8 @@ reticulate::py_config()
       width = Inf
     )
     stop(
-      "The FCS ordering does not match four stimulated files followed by ",
-      "one unstimulated file in every five-file batch."
+      "The batch list does not place the one unstimulated file first, ",
+      "followed by four stimulated files, in every five-file batch."
     )
   }
 
@@ -198,10 +199,7 @@ reticulate::py_config()
   }
 
   gs <- flowWorkspace::load_gs(paths$gs)
-  batchList <- lapply(
-    seq.int(1L, length(gs), by = 5L),
-    \(indStart) seq.int(indStart, length.out = 5L)
-  )
+  batchList <- .acsCytofBatchList(length(gs))
   fcsFiles <- .acsCytofFcsFiles(paths$fcs)
   fcsFiles <- fcsFiles[seq_len(length(gs))]
   batchLayout <- .acsBatchLayout(
@@ -222,11 +220,9 @@ reticulate::py_config()
     stop("Each ACS batch must contain exactly five samples.")
   }
 
-  # ACS ordering is four stimulated samples followed by the unstimulated
-  # sample. This differs from the old comparator assumption that the first
-  # sample in each batch was unstimulated.
-  indStimVec <- indBatch[seq_len(4L)]
-  indUns <- indBatch[[5L]]
+  # The unstimulated sample is first in each batch, as for `gateStim()`.
+  indUns <- indBatch[[1L]]
+  indStimVec <- indBatch[-1L]
   indStim <- indStimVec[[stimOffset]]
 
   cat("\nSelected five-file batch layout\n")
