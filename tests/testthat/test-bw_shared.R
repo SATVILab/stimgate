@@ -20,8 +20,8 @@ test_that("bwScope sets shared local-FDR bandwidths in the channel settings", {
     stimgateMetaReadSettingsChnls(pathProject)
   }
 
-  # Default: one trimmed-mean bandwidth per channel
-  for (settings in runSettings()) {
+  # "cytokine": one trimmed-mean bandwidth per channel
+  for (settings in runSettings(bwScope = "cytokine")) {
     expect_identical(settings$bwScope, "cytokine")
     expect_false(isTRUE(settings$clusterGates))
     expect_length(settings$bwShared, 1L)
@@ -44,7 +44,7 @@ test_that("bwScope sets shared local-FDR bandwidths in the channel settings", {
     expect_null(settings$bwSharedTbl)
     expect_identical(settings$bwShared, settings$bwFallback)
   }
-  for (settings in runSettings(minCell = 1e7)) {
+  for (settings in runSettings(bwScope = "cytokine", minCell = 1e7)) {
     expect_identical(settings$bwShared, settings$bwFallback)
   }
 

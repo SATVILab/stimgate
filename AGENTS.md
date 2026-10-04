@@ -709,7 +709,8 @@ rows before drawing reference lines.
    The scalar local-FDR bandwidth is chosen once per channel during settings
    completion (`.completeChnlSettingsBwShared()`) and read in
    `.getCpUnsLocGetDensRawDensitiesBw()` via `chnlSettings$bwShared` /
-   `bwSharedTbl`. `"cytokine"` (default) is the trimmed mean over about 100
+   `bwSharedTbl`. `"sample"` is the default for now (shared bandwidths are
+   opt-in until they are reviewed); `"cytokine"` is the trimmed mean over about 100
    spread tubes; tubes with fewer than `minCell` cells are excluded;
    `"cluster"` clusters tubes up front on densities up to the left-complex
    shoulder, independently of the threshold-sharing clusters in

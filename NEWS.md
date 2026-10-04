@@ -1,3 +1,11 @@
+# stimgate 0.99.16
+
+## Breaking changes
+
+- `stimControl()` now defaults to `bwScope = "sample"`, so `gateStim()`
+  estimates the local-FDR bandwidth separately for each sample again. Shared
+  per-marker bandwidths remain available with `bwScope = "cytokine"`.
+
 # stimgate 0.99.15
 
 ## Performance
