@@ -116,3 +116,21 @@
     "or a data frame with a `sample` column."
   )
 }
+
+#' @keywords internal
+.resolveBatchList <- function(batchList, .data) {
+  sampleNames <- flowWorkspace::sampleNames(.data)
+  lapply(batchList, function(batch) {
+    if (!is.character(batch)) {
+      return(batch)
+    }
+    indices <- match(batch, sampleNames)
+    if (anyNA(indices)) {
+      stop(
+        "Unknown sample name(s) in `batchList`: ",
+        paste(batch[is.na(indices)], collapse = ", ")
+      )
+    }
+    indices
+  })
+}

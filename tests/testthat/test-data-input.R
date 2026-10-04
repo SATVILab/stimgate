@@ -262,6 +262,23 @@ testthat::test_that("matrix gating and named batches preserve GatingSet threshol
     names(expectedBatches) <- paste0("batch", seq_along(expectedBatches))
   }
   testthat::expect_identical(savedBatches, expectedBatches)
+  manifests <- lapply(list(namedBatches, expectedBatches), function(batches) {
+    writeStimFCS(
+      pathProject = paths[[3]], .data = matrices, indBatchList = batches,
+      pathDirSave = file.path(withr::local_tempdir(), "fcs")
+    )
+  })
+  testthat::expect_gt(sum(manifests[[1]]$written), 0L)
+  cols <- c("ind", "batch", "nCellPos", "written")
+  testthat::expect_identical(manifests[[1]][cols], manifests[[2]][cols])
+  testthat::expect_error(
+    writeStimFCS(
+      pathProject = paths[[3]], .data = matrices,
+      indBatchList = list(c("missing", names(matrices)[[2]])),
+      pathDirSave = file.path(withr::local_tempdir(), "fcs")
+    ),
+    "Unknown sample name"
+  )
 })
 
 testthat::test_that("getStimExpr reads matrix input on a cache miss", {

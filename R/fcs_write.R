@@ -7,8 +7,8 @@
 #' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
 #'   list or data.frame Cytometry input as accepted by [gateStim()], in
 #'   the same sample order used for gating.
-#' @param indBatchList list. List of indices grouped by batch, with the
-#'   unstimulated sample first in each element (as for `batchList` in
+#' @param indBatchList list. Sample indices or names grouped by batch, with
+#'   the unstimulated sample first in each element (as for `batchList` in
 #'   `gateStim()`).
 #' @param pathDirSave character. Directory path to save the FCS files to.
 #' @param pop character. Population that was gated on.
@@ -113,6 +113,7 @@ writeStimFCS <- function(
 
   if (!is.null(.data)) {
     .data <- .asStimGatingSet(.data, pop)
+    indBatchList <- .resolveBatchList(indBatchList, .data)
   }
 
   # get gates
