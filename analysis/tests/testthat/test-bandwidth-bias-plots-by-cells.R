@@ -118,10 +118,9 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
     data <- saved$plot$data
     expect_false("n_cell" %in% names(data))
     expect_equal(data$value,
-      stat_mult[as.character(data$statistic)] *
+      unname(stat_mult[as.character(data$statistic)]) *
         (5.5 + data$bw + data$bias_uns_multiplier + data$mismatch_val +
-          data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2)),
-      ignore_attr = TRUE
+          data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
     )
   }
   eval(cell_code, env)
@@ -145,11 +144,10 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
       expect_length(unique(data$n_cell), 1L)
       expect_true(grepl(paste0("_n_cell_", data$n_cell[1L], ".pdf"), saved$path, fixed = TRUE))
       expect_equal(data$value,
-        stat_mult[as.character(data$statistic)] *
+        unname(stat_mult[as.character(data$statistic)]) *
           (data$n_cell / 100 + data$bw + data$bias_uns_multiplier +
             data$mismatch_val + data$prob_response +
-            ifelse(data$bias_uns_basis == "bandwidth", 0, 2)),
-        ignore_attr = TRUE
+            ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
       )
     }
   }
@@ -258,11 +256,10 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     expect_setequal(data$direction, c("over", "under"))
     expect_equal(data$prop, ifelse(data$direction == "over", 0.7, 0.3))
     expect_equal(data$value,
-      stat_mult[as.character(data$statistic)] *
+      unname(stat_mult[as.character(data$statistic)]) *
         ifelse(data$direction == "over", 1, -0.01) *
         (5.5 + data$bw + data$bias_uns_multiplier + data$mismatch_val +
-          data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2)),
-      ignore_attr = TRUE
+          data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
     )
   }
   eval(cell_code, env)
@@ -289,12 +286,11 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
       expect_length(unique(data$n_cell), 1L)
       expect_true(grepl(paste0("_n_cell_", data$n_cell[1L], ".pdf"), saved$path, fixed = TRUE))
       expect_equal(data$value,
-        stat_mult[as.character(data$statistic)] *
+        unname(stat_mult[as.character(data$statistic)]) *
           ifelse(data$direction == "over", 1, -0.01) *
           (data$n_cell / 100 + data$bw + data$bias_uns_multiplier +
             data$mismatch_val + data$prob_response +
-            ifelse(data$bias_uns_basis == "bandwidth", 0, 2)),
-        ignore_attr = TRUE
+            ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
       )
     }
   }
