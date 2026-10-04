@@ -1087,6 +1087,56 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Over- and under-estimates by cell count and response probability
+
+As above, but without averaging over response probabilities: rows of panels
+separate response probabilities, so large over-estimates can be traced to
+particular (for example, low) response probabilities.
+
+```{r}
+#| label: fig-signed-error-by-n-cell-prob
+#| fig-cap: "Over- and under-estimates at each cell count and response probability."
+#| fig-width: 10
+#| fig-height: 16
+#| echo: false
+if (isTRUE(run_plots)) {
+  err_rel_by_cell_prob <- bw_tbl_results_raw |>
+    dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0) |>
+    dplyr::mutate(rel_error = (propRespEst - propRespTruth) / propRespTruth) |>
+    .simBandwidthSignedErrorSummary(
+      c("mean_pos_setting", "transformation", "n_cell", "bw", "prob_response")
+    )
+
+  for (mean_pos_setting_curr in unique(err_rel_by_cell_prob$mean_pos_setting)) {
+    for (n_cell_curr in sort(unique(err_rel_by_cell_prob$n_cell))) {
+      plot_tbl <- err_rel_by_cell_prob |>
+        dplyr::filter(
+          mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr
+        )
+      if (nrow(plot_tbl) == 0L) next
+      p <- .simBandwidthGlobalSignedErrorPlot(
+        plot_tbl,
+        title = paste0(
+          "Cells = ", n_cell_curr, "; mean position = ", mean_pos_setting_curr
+        ),
+        by_prob = TRUE
+      )
+      path_p <- file.path(
+        .analysis_project_dir("output", "fig", root_dir),
+        paste0(
+          "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr,
+          "_n_cell_", n_cell_curr, "_by_prob.pdf"
+        )
+      )
+      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+      n_prob <- length(unique(plot_tbl$prob_response))
+      ggsave(path_p, p, width = 18, height = 6 + 4 * n_prob, units = "cm", limitsize = FALSE)
+      print(p)
+    }
+  }
+}
+```
+
 
 ```{r}
 #| echo: false

@@ -160,7 +160,8 @@ add_bw_labs <- function(.data) {
 }
 
 # 2a curves: colour is the statistic, line type the direction of the error.
-.simBandwidthGlobalSignedErrorPlot <- function(tbl, title = NULL) {
+# With `by_prob`, rows of panels separate response probabilities.
+.simBandwidthGlobalSignedErrorPlot <- function(tbl, title = NULL, by_prob = FALSE) {
   tbl <- tbl |>
     tidyr::pivot_longer(
       cols = c("median", "q95", "max"),
@@ -176,6 +177,7 @@ add_bw_labs <- function(.data) {
       ),
       bw_fct = factor(bw)
     )
+  transformation_lab <- c(gamma = "Gamma", gaussian = "Gaussian", skew = "Skew")
   ggplot2::ggplot(
     tbl,
     ggplot2::aes(
@@ -185,16 +187,26 @@ add_bw_labs <- function(.data) {
   ) +
     .simBandwidthSignedErrorLayers() +
     .simBandwidthSignedErrorSegmentLayer(
-      tbl, "bw_fct", "err_value", c("transformation", "err_type", "direction")
+      tbl, "bw_fct", "err_value",
+      c("transformation", "prob_response", "err_type", "direction")
     ) +
     ggplot2::geom_point(size = 1) +
-    ggplot2::facet_wrap(
-      ~transformation,
-      scales = "free",
-      labeller = ggplot2::labeller(transformation = c(
-        gamma = "Gamma", gaussian = "Gaussian", skew = "Skew"
-      ))
-    ) +
+    (if (by_prob) {
+      ggplot2::facet_grid(
+        prob_response ~ transformation,
+        scales = "free",
+        labeller = ggplot2::labeller(
+          transformation = transformation_lab,
+          prob_response = function(x) paste0("p = ", x)
+        )
+      )
+    } else {
+      ggplot2::facet_wrap(
+        ~transformation,
+        scales = "free",
+        labeller = ggplot2::labeller(transformation = transformation_lab)
+      )
+    }) +
     cowplot::theme_cowplot() +
     cowplot::background_grid(major = "xy") +
     ggplot2::scale_colour_manual(
