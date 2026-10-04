@@ -340,6 +340,8 @@ test_that("signed error scale puts nothing gated and two-fold equally far from z
   x <- c(-1, -0.5, 0, 1, 3)
   expect_equal(trans$transform(x), c(-1, -0.5, 0, 1, 2))
   expect_equal(trans$inverse(trans$transform(x)), x)
+  # Values below -100% (from axis expansion) stay linear without warnings.
+  expect_no_warning(expect_equal(trans$transform(c(-2, 1)), c(-2, 1)))
   expect_equal(trans$breaks(c(-1, 2.5)), c(-1, -0.5, 0, 1, 3))
   # Small errors get ordinary breaks rather than only zero.
   expect_equal(trans$breaks(c(-0.02, 0.03)), pretty(c(-0.02, 0.03)))
@@ -389,4 +391,34 @@ test_that("2b leaves negative-width results out of figures and tables", {
   ), env)
   expect_identical(env$bias_uns_results_raw$bias_uns_multiplier, c(0, 1))
   expect_identical(env$bias_uns_results_summary$bias_uns_multiplier, c(0, 1))
+})
+
+test_that("signed-error plots draw dashed lines whose weight varies", {
+  env <- .bandwidth_cell_plot_env()
+  sides <- tidyr::expand_grid(
+    bw = c(0.1, 0.2, 0.5), direction = c("over", "under")
+  ) |>
+    dplyr::mutate(
+      prop = ifelse(direction == "over", 1, 0) + c(0.2, 0.8, 0.4, 0.6, 0.7, 0.3) *
+        ifelse(direction == "over", -1, 1),
+      sign = ifelse(direction == "over", 1, -1),
+      median = sign * 0.05 * seq_len(dplyr::n()),
+      q90 = 2 * median, q95 = 3 * median, max = 4 * median
+    ) |>
+    dplyr::select(-sign)
+
+  global <- env$.simBandwidthGlobalSignedErrorPlot(
+    dplyr::mutate(sides, transformation = "gaussian")
+  )
+  expect_no_error(ggplot2::ggplotGrob(global))
+
+  bias <- env$.simBandwidthBiasSignedErrorPlot(
+    sides |>
+      dplyr::mutate(
+        bias_uns_multiplier = bw, bw = 0.1, mismatch_label = "mean shift 0",
+        bias_uns_basis = rep(c("bandwidth", "bandwidth", "negative_width"), each = 2)
+      ),
+    title = "test"
+  )
+  expect_no_error(ggplot2::ggplotGrob(bias))
 })
