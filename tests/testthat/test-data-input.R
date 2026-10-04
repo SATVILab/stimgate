@@ -262,11 +262,14 @@ testthat::test_that("matrix gating and named batches preserve GatingSet threshol
     names(expectedBatches) <- paste0("batch", seq_along(expectedBatches))
   }
   testthat::expect_identical(savedBatches, expectedBatches)
-  manifests <- lapply(list(namedBatches, expectedBatches), function(batches) {
-    writeStimFCS(
+  indexBatches <- lapply(namedBatches, function(x) match(x, names(matrices)))
+  manifests <- lapply(list(namedBatches, indexBatches), function(batches) {
+    manifest <- writeStimFCS(
       pathProject = paths[[3]], .data = matrices, indBatchList = batches,
       pathDirSave = file.path(withr::local_tempdir(), "fcs")
     )
+    attr(manifest, "pathDirSave") <- NULL
+    manifest
   })
   testthat::expect_gt(sum(manifests[[1]]$written), 0L)
   cols <- c("ind", "batch", "nCellPos", "written")
