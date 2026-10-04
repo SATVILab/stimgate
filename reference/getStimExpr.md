@@ -41,8 +41,8 @@ getStimExpr(
   [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
   or NULL Data passed to
   [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
-  in the same sample order; used only when expression is not cached.
-  Default: NULL.
+  in the same sample order; used only when the expression values were
+  not saved. Default: NULL.
 
 - pop:
 
@@ -117,12 +117,12 @@ getStimExpr(
 
 ## Value
 
-A tibble with one row per retained cell, `pop`, `ind`, and expression
+A tibble with one row per selected cell, `pop`, `ind`, and expression
 columns named by channel (or marker when `marker` is supplied). Empty
 selections have zero rows. The `nCellPos` attribute is a tibble with
 `pop`, `ind`, `nCellPos` for every requested population/sample pair;
-`probGMin` records the fraction retained by minimum-expression
-filtering.
+`probGMin` records the fraction of cells kept after removing
+minimum-expression cells.
 
 ## Examples
 

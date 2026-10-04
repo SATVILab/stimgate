@@ -1,7 +1,7 @@
 # Export stimulation-positive cells as FCS files
 
 Select positive cells using saved or supplied gates and write one FCS
-file per sample with retained cells, plus `manifest.csv`.
+file per sample that has positive cells, plus `manifest.csv`.
 
 ## Usage
 
@@ -64,8 +64,8 @@ writeStimFCS(
 
 - transFn:
 
-  function or NULL Transformation of retained expression before export.
-  Default: NULL.
+  function or NULL Transformation applied to the selected cells before
+  export. Default: NULL.
 
 - transChnl:
 
@@ -97,7 +97,7 @@ writeStimFCS(
 
 Invisibly, a tibble with one row per sample and columns `ind`, `batch`,
 `fileName`, `nCellPos`, `written`, `reason`. The `pathDirSave` attribute
-holds the output path. Samples with no retained cells have no FCS file.
+holds the output path. Samples with no positive cells get no FCS file.
 
 ## Examples
 

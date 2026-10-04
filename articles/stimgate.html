@@ -31,12 +31,6 @@
       <ul class="navbar-nav me-auto">
 <li class="active nav-item"><a class="nav-link" href="../articles/stimgate.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/coding-agents.html">Setting up coding agents for StimGate</a></li>
-  </ul>
-</li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -66,54 +60,67 @@
 
     
     
-<p><code>stimgate</code> identifies cells that may have responded to
-stimulation by comparing stimulated tubes with an unstimulated control
-from the same donor. Run the following chunks in order to save gates,
-read response statistics and inspect plots.</p>
+<p><code>stimgate</code> finds cells that may have responded to
+stimulation. For each donor, it compares the stimulated samples with an
+unstimulated sample from the same donor. This guide gates the example
+data, reads the results and plots them.</p>
 <div class="section level2">
 <h2 id="load-the-data">1. Load the data<a class="anchor" aria-label="anchor" href="#load-the-data"></a>
 </h2>
-<p><code><a href="../reference/getExampleData.html">getExampleData()</a></code> returns a list with a saved GatingSet
-path, marker and channel labels, and tube indices grouped by donor. Load
-that GatingSet:</p>
+<p><code><a href="../reference/getExampleData.html">getExampleData()</a></code> loads a small example dataset that
+comes with the package: two donors, each with an unstimulated and a
+stimulated sample, and two markers. It returns where the data are saved,
+the marker names, and <code>batchList</code>, which groups each donor’s
+samples.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://satvilab.github.io/stimgate/">stimgate</a></span><span class="op">)</span></span>
 <span><span class="va">exampleData</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/getExampleData.html">getExampleData</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">gs</span> <span class="op">&lt;-</span> <span class="fu">flowWorkspace</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/flowWorkspace/man/save_gs.html" class="external-link">load_gs</a></span><span class="op">(</span><span class="va">exampleData</span><span class="op">$</span><span class="va">pathGs</span><span class="op">)</span></span>
 <span><span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span></span>
-<span><span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span></span></code></pre></div>
+<span><span class="co">#&gt; [[1]]</span></span>
+<span><span class="co">#&gt; [1] 1 2</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; [[2]]</span></span>
+<span><span class="co">#&gt; [1] 3 4</span></span>
+<span><span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span></span>
+<span><span class="co">#&gt; [1] "MarkerF1" "MarkerF2"</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="your-own-data">Your own data<a class="anchor" aria-label="anchor" href="#your-own-data"></a>
 </h3>
-<p><code>.data</code> can be a GatingSet, a flowSet/cytoset or
-flowFrame, FCS file paths or a directory of FCS files, a list of numeric
-matrices or data frames (one per tube, cells by channels), or one data
-frame with a <code>sample</code> column. Each element of
-<code>batchList</code> lists one donor’s tubes, by index or sample name.
-<strong>The first tube is the unstimulated control</strong>; the rest
-are that donor’s stimulated tubes. A control may be shared by several
-batches (first in each), but a stimulated tube may belong to only one.
-<code><a href="../reference/getBatchList.html">getBatchList()</a></code> builds <code>batchList</code> from a table
-of sample metadata.</p>
+<p>You can give <code><a href="../reference/gateStim.html">gateStim()</a></code> any of these:</p>
+<ul>
+<li>a GatingSet, flowSet, cytoset or flowFrame;</li>
+<li>FCS file paths, or a folder of FCS files;</li>
+<li>a list of numeric matrices or data frames, one per sample, with a
+column per channel;</li>
+<li>one data frame with a <code>sample</code> column saying which sample
+each cell is from.</li>
+</ul>
+<p>Each element of <code>batchList</code> lists one donor’s samples, by
+number or by name. <strong>The first sample is the unstimulated
+one</strong>; the rest are that donor’s stimulated samples. Several
+donors can share one unstimulated sample (it must be first in each), but
+a stimulated sample can belong to only one donor.
+<code><a href="../reference/getBatchList.html">getBatchList()</a></code> can build <code>batchList</code> from a
+table describing your samples.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">tubes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>uns <span class="op">=</span> <span class="va">unsMatrix</span>, stim <span class="op">=</span> <span class="va">stimMatrix</span><span class="op">)</span> <span class="co"># columns named by channel</span></span>
+<code class="sourceCode R"><span><span class="va">samples</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>uns <span class="op">=</span> <span class="va">unsMatrix</span>, stim <span class="op">=</span> <span class="va">stimMatrix</span><span class="op">)</span> <span class="co"># columns named by channel</span></span>
 <span><span class="va">batchList</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>donor1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"uns"</span>, <span class="st">"stim"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>StimGate does not transform data, so supply it on the scale you want
-gated. Only GatingSets carry populations other than <code>"root"</code>.
-With matrices, column names serve as both channels and markers. See
-<code><a href="../reference/gateStim.html">?gateStim</a></code> for how sample order is set for each input type.
-Pass the same data to <code><a href="../reference/plotStim.html">plotStim()</a></code> and
-<code><a href="../reference/writeStimFCS.html">writeStimFCS()</a></code> later.</p>
+<p>StimGate does not transform your data (for example with arcsinh), so
+give it values on the scale you want to gate. With matrices, the column
+names are used as both channel and marker names. Only a GatingSet can
+hold gated populations other than all cells (<code>"root"</code>). Use
+the same data, in the same sample order, when you later call
+<code><a href="../reference/plotStim.html">plotStim()</a></code> or <code><a href="../reference/writeStimFCS.html">writeStimFCS()</a></code>.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="find-gates">2. Find gates<a class="anchor" aria-label="anchor" href="#find-gates"></a>
+<h2 id="find-the-gates">2. Find the gates<a class="anchor" aria-label="anchor" href="#find-the-gates"></a>
 </h2>
-<p>Choose an output directory and the markers to gate.
-<code><a href="../reference/gateStim.html">gateStim()</a></code> saves results there and returns the directory
-path as a character string. The default <code>popGate = "root"</code>
-uses all cells; choose an existing GatingSet population to restrict
-gating.</p>
+<p>Give <code><a href="../reference/gateStim.html">gateStim()</a></code> a folder for its results and the markers
+to gate. It saves everything in that folder and returns the folder’s
+path. By default it uses all cells; set <code>popGate</code> to gate
+within a population already in your GatingSet.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pathProject</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gateStim.html">gateStim</a></span><span class="op">(</span></span>
 <span>  pathProject <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"stimgate_"</span><span class="op">)</span>,</span>
@@ -121,51 +128,119 @@ gating.</p>
 <span>  batchList <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span>,</span>
 <span>  marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Use <code>chnl</code> instead of <code>marker</code> to select
-channels by name. Start with the defaults; see <code><a href="../reference/stimControl.html">?stimControl</a></code>
-for tuning settings and <code><a href="../reference/gateStim.html">?gateStim</a></code> for per-marker overrides
-through <code>markerControl</code>.</p>
+<p>To pick channels by channel name instead, use <code>chnl</code>
+instead of <code>marker</code>. The defaults suit most data; see
+<code><a href="../reference/stimControl.html">?stimControl</a></code> for the settings you can change, and
+<code><a href="../reference/gateStim.html">?gateStim</a></code> for setting them separately for each marker.</p>
 </div>
 <div class="section level2">
-<h2 id="read-gates-and-statistics">3. Read gates and statistics<a class="anchor" aria-label="anchor" href="#read-gates-and-statistics"></a>
+<h2 id="read-the-gates-and-statistics">3. Read the gates and statistics<a class="anchor" aria-label="anchor" href="#read-the-gates-and-statistics"></a>
 </h2>
-<p><code><a href="../reference/getStimGates.html">getStimGates()</a></code> returns a tibble of stimulated-tube
-thresholds. Columns include <code>pop</code>, <code>marker</code>,
-<code>chnl</code>, <code>batch</code>, <code>ind</code> (tube index),
-<code>gateName</code>, <code>gate</code> and <code>gateCyt</code> (the
-threshold used for cells positive for another cytokine).</p>
+<p><code><a href="../reference/getStimGates.html">getStimGates()</a></code> gives the gates for each stimulated
+sample (<code>ind</code>) and marker. <code>gate</code> is the gate
+value. <code>gateCyt</code> is the gate used for cells already positive
+for another cytokine; it can be lower than <code>gate</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gates</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/getStimGates.html">getStimGates</a></span><span class="op">(</span><span class="va">pathProject</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">gates</span><span class="op">)</span></span>
-<span><span class="va">stats</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/getStimStats.html">getStimStats</a></span><span class="op">(</span><span class="va">pathProject</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">stats</span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/getStimStats.html">getStimStats()</a></code> reads a data frame with rows for tubes
-(<code>ind</code>), gate methods (<code>gateName</code>) and marker
-combinations (<code>cytCombn</code>). <code>countStim</code> and
-<code>countUns</code> count cells in each combination;
-<code>nCellStim</code> and <code>nCellUns</code> give total cells.
-<code>propBs = propStim - propUns</code> subtracts control from
-stimulated proportions. <code>freqStim</code> and <code>freqUns</code>
-are percentages; <code>freqBs</code> is their difference in percentage
-points.</p>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 8</span></span></span>
+<span><span class="co">#&gt;   pop   gateName    chnl         marker   ind   batch   gate gateCyt</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;I&lt;chr&gt;&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.42    4.42</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.79    3.79</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> root  locminClust BC2(Pr141)Dd MarkerF2 2     batch1  3.40    2.17</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.91    2.91</span></span></code></pre></div>
+<p><code><a href="../reference/getStimStats.html">getStimStats()</a></code> gives, for each stimulated sample
+(<code>ind</code>), the number and percentage of cells positive for each
+combination of markers (<code>cytCombn</code>), in the stimulated sample
+and in its unstimulated sample. <code>freqBs</code> is the stimulated
+percentage minus the unstimulated percentage: the response after
+removing background.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stats</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/getStimStats.html">getStimStats</a></span><span class="op">(</span><span class="va">pathProject</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">stats</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ind"</span>, <span class="st">"cytCombn"</span>, <span class="st">"countStim"</span>, <span class="st">"freqStim"</span>, <span class="st">"freqUns"</span>, <span class="st">"freqBs"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 6</span></span></span>
+<span><span class="co">#&gt;   ind   cytCombn                       countStim freqStim freqUns freqBs</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                              <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        50     0.5     0.06   0.44</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       427     4.27    1.54   2.73</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 2     BC1(La139)Dd~+~BC2(Pr141)Dd~+~        47     0.47    0.02   0.45</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      <span style="text-decoration: underline;">9</span>476    94.8    98.4   -<span style="color: #BB0000;">3.62</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        99     0.99    0.27   0.72</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       509     5.09    1.18   3.91</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="inspect-plots">4. Inspect plots<a class="anchor" aria-label="anchor" href="#inspect-plots"></a>
+<h2 id="plot-the-results">4. Plot the results<a class="anchor" aria-label="anchor" href="#plot-the-results"></a>
 </h2>
-<p>Plot the first donor’s tubes to compare control and stimulated
-expression with the gate lines. One marker gives density plots; two also
-give bivariate hex plots (requiring <code>hexbin</code>). The default
-output is a ggplot grid; <code>grid = FALSE</code> returns a list of
-ggplot objects.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p>Plot the first donor’s samples to compare unstimulated and stimulated
+expression, with the gate drawn on. One marker gives density curves; two
+markers also give two-dimensional plots, which need the
+<code>hexbin</code> package.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plotStim.html">plotStim</a></span><span class="op">(</span></span>
 <span>  ind <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, .data <span class="op">=</span> <span class="va">gs</span>,</span>
 <span>  pathProject <span class="op">=</span> <span class="va">pathProject</span>, marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>For threshold diagnostics, see <code><a href="../reference/getStimGatesDetailed.html">?getStimGatesDetailed</a></code>. To
-export positive cells as FCS files, see <code><a href="../reference/writeStimFCS.html">?writeStimFCS</a></code>. Keep
-<code>pathProject</code> to read saved gates and statistics in later
-sessions.</p>
+<p><img src="stimgate_files/figure-html/plots-1.png" class="r-plt" alt="" width="672"></p>
+<p>The results stay in <code>pathProject</code>, so you can read them
+again in a later R session. To see more detail on how each gate was
+chosen, see <code><a href="../reference/getStimGatesDetailed.html">?getStimGatesDetailed</a></code>. To save the positive
+cells as FCS files, see <code><a href="../reference/writeStimFCS.html">?writeStimFCS</a></code>.</p>
+</div>
+<div class="section level2">
+<h2 id="session-information">Session information<a class="anchor" aria-label="anchor" href="#session-information"></a>
+</h2>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; R version 4.6.1 (2026-06-24)</span></span>
+<span><span class="co">#&gt; Platform: x86_64-pc-linux-gnu</span></span>
+<span><span class="co">#&gt; Running under: Ubuntu 24.04.5 LTS</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Matrix products: default</span></span>
+<span><span class="co">#&gt; BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 </span></span>
+<span><span class="co">#&gt; LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; locale:</span></span>
+<span><span class="co">#&gt;  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       </span></span>
+<span><span class="co">#&gt;  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   </span></span>
+<span><span class="co">#&gt;  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          </span></span>
+<span><span class="co">#&gt; [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; time zone: UTC</span></span>
+<span><span class="co">#&gt; tzcode source: system (glibc)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; attached base packages:</span></span>
+<span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; other attached packages:</span></span>
+<span><span class="co">#&gt; [1] stimgate_0.99.15</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
+<span><span class="co">#&gt;  [1] gtable_0.3.6         xfun_0.61            bslib_0.12.0        </span></span>
+<span><span class="co">#&gt;  [4] ggplot2_4.0.3        htmlwidgets_1.6.4    ks_1.15.3           </span></span>
+<span><span class="co">#&gt;  [7] Biobase_2.72.0       lattice_0.22-9       vctrs_0.7.3         </span></span>
+<span><span class="co">#&gt; [10] tools_4.6.1          generics_0.1.4       stats4_4.6.1        </span></span>
+<span><span class="co">#&gt; [13] tibble_3.3.1         flowWorkspace_4.24.0 pkgconfig_2.0.3     </span></span>
+<span><span class="co">#&gt; [16] Matrix_1.7-5         KernSmooth_2.23-26   data.table_1.18.6.1 </span></span>
+<span><span class="co">#&gt; [19] RColorBrewer_1.1-3   S7_0.2.2             desc_1.4.3          </span></span>
+<span><span class="co">#&gt; [22] S4Vectors_0.50.3     graph_1.90.0         lifecycle_1.0.5     </span></span>
+<span><span class="co">#&gt; [25] scam_1.2-22          compiler_4.6.1       farver_2.1.2        </span></span>
+<span><span class="co">#&gt; [28] textshaping_1.0.5    htmltools_0.5.9      sass_0.4.10         </span></span>
+<span><span class="co">#&gt; [31] yaml_2.3.12          flowCore_2.24.0      pracma_2.4.6        </span></span>
+<span><span class="co">#&gt; [34] pillar_1.11.1        pkgdown_2.2.1        jquerylib_0.1.4     </span></span>
+<span><span class="co">#&gt; [37] tidyr_1.3.2          cachem_1.1.0         mclust_6.1.3        </span></span>
+<span><span class="co">#&gt; [40] nlme_3.1-169         RProtoBufLib_2.24.0  tidyselect_1.2.1    </span></span>
+<span><span class="co">#&gt; [43] digest_0.6.39        mvtnorm_1.4-2        dplyr_1.2.1         </span></span>
+<span><span class="co">#&gt; [46] purrr_1.2.2          labeling_0.4.3       splines_4.6.1       </span></span>
+<span><span class="co">#&gt; [49] cowplot_1.2.0        fastmap_1.2.0        grid_4.6.1          </span></span>
+<span><span class="co">#&gt; [52] cli_3.6.6            magrittr_2.0.5       ncdfFlow_2.58.0     </span></span>
+<span><span class="co">#&gt; [55] XML_3.99-0.25        utf8_1.2.6           withr_3.0.3         </span></span>
+<span><span class="co">#&gt; [58] scales_1.4.0         rmarkdown_2.32       matrixStats_1.5.0   </span></span>
+<span><span class="co">#&gt; [61] otel_0.2.0           cytolib_2.24.0       ragg_1.5.2          </span></span>
+<span><span class="co">#&gt; [64] evaluate_1.0.5       knitr_1.52           mgcv_1.9-4          </span></span>
+<span><span class="co">#&gt; [67] rlang_1.3.0          glue_1.8.1           Rgraphviz_2.56.0    </span></span>
+<span><span class="co">#&gt; [70] BiocManager_1.30.27  BiocGenerics_0.58.1  jsonlite_2.0.0      </span></span>
+<span><span class="co">#&gt; [73] R6_2.6.1             systemfonts_1.3.2    fs_2.1.0</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

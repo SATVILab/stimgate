@@ -21,10 +21,6 @@ background-subtracted statistics to a project directory."></head><body>
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/stimgate.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/coding-agents.html">Setting up coding agents for StimGate</a></li>
-  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -120,7 +116,8 @@ Default: stimControl().</p></dd>
 
 
 <dt id="arg-markercontrol">markerControl<a class="anchor" aria-label="anchor" href="#arg-markercontrol"></a></dt>
-<dd><p>list or NULL Overrides keyed by marker label or channel,
+<dd><p>list or NULL Settings for single markers, named by marker
+label or channel,
 e.g. <code>list(IL2 = list(bw = 0.12, biasUns = 0))</code>. Accepts <code><a href="stimControl.html">stimControl()</a></code>
 settings except <code>locEnforceShapeThreshold</code> and <code>calcCytPosGates</code>, plus
 <code>bw</code>, <code>biasUns</code> and <code>popGate</code>. Default: NULL.</p></dd>
@@ -211,7 +208,7 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpEEaYH9/custom_gating_1b6d4d8d7e5"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpEzub9N/custom_gating_1b721e738bfd"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Gate in-memory matrices; column names act as channels and markers</span></span></span>
 <span class="r-in"><span><span class="va">matrices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">gs</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span></span>
@@ -234,7 +231,7 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpEEaYH9/matrix_gating_1b6d4003863b"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpEzub9N/matrix_gating_1b7253a3cd9e"</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

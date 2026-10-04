@@ -2,8 +2,8 @@
 
 Read final gates saved by
 [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
-optionally selecting populations and markers. For threshold diagnostics,
-use
+optionally selecting populations and markers. For more detail on how
+gates were chosen, use
 [`getStimGatesDetailed()`](https://satvilab.github.io/stimgate/reference/getStimGatesDetailed.md).
 
 ## Usage
@@ -21,23 +21,23 @@ getStimGates(pathProject, pop = NULL, marker = NULL, chnl = NULL)
 
 - pop:
 
-  character or NULL Populations to retain; NULL selects all. Default:
-  NULL.
+  character or NULL Populations to keep; NULL keeps all. Default: NULL.
 
 - marker:
 
-  character or NULL Marker labels to retain; takes precedence over
-  `chnl`. Default: NULL (all markers).
+  character or NULL Marker labels to keep; takes precedence over `chnl`.
+  Default: NULL (all markers).
 
 - chnl:
 
-  character or NULL Channels to retain. Default: NULL (all channels).
+  character or NULL Channels to keep. Default: NULL (all channels).
 
 ## Value
 
 A tibble of stimulated-sample gates with identifiers `pop`, `marker`,
-`chnl`, `batch`, `ind`, `gateName`, threshold `gate`, and refinement and
-threshold-provenance columns when available.
+`chnl`, `batch`, `ind`, `gateName`, the gate value `gate`, and, when
+available, the cytokine-positive gate `gateCyt` and columns recording
+how each gate was found.
 
 ## Examples
 

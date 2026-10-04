@@ -19,10 +19,6 @@ stimulation-positive cells. Supply marker labels or channel names."></head><body
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/stimgate.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/coding-agents.html">Setting up coding agents for StimGate</a></li>
-  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -78,7 +74,7 @@ stimulation-positive cells. Supply marker labels or channel names.</p>
 <dt id="arg--data">.data<a class="anchor" aria-label="anchor" href="#arg--data"></a></dt>
 <dd><p>GatingSet, other input accepted by <code><a href="gateStim.html">gateStim()</a></code>, or NULL Data
 passed to <code><a href="gateStim.html">gateStim()</a></code>, in the same sample order; used only when
-expression is not cached. Default: NULL.</p></dd>
+the expression values were not saved. Default: NULL.</p></dd>
 
 
 <dt id="arg-pop">pop<a class="anchor" aria-label="anchor" href="#arg-pop"></a></dt>
@@ -154,11 +150,11 @@ NULL transforms all expression columns. Default: NULL.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A tibble with one row per retained cell, <code>pop</code>, <code>ind</code>, and expression
+    <p>A tibble with one row per selected cell, <code>pop</code>, <code>ind</code>, and expression
 columns named by channel (or marker when <code>marker</code> is supplied). Empty
 selections have zero rows. The <code>nCellPos</code> attribute is a tibble with <code>pop</code>,
 <code>ind</code>, <code>nCellPos</code> for every requested population/sample pair; <code>probGMin</code>
-records the fraction retained by minimum-expression filtering.</p>
+records the fraction of cells kept after removing minimum-expression cells.</p>
     </div>
 
     <div class="section level2">

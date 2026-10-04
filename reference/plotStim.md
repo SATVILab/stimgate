@@ -77,7 +77,8 @@ plotStim(
 - excMin:
 
   logical Exclude minimum expression values and show densities scaled by
-  the retained fraction alongside raw densities. Default: TRUE.
+  the fraction of cells kept, alongside the unscaled densities. Default:
+  TRUE.
 
 - limitsExpand:
 
@@ -102,7 +103,7 @@ plotStim(
 
 - minCell:
 
-  numeric Minimum retained cell count to plot a sample. Default: 10.
+  numeric Minimum number of cells needed to plot a sample. Default: 10.
 
 - bias:
 

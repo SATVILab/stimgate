@@ -1,15 +1,17 @@
 # Getting Started with stimgate
 
-`stimgate` identifies cells that may have responded to stimulation by
-comparing stimulated tubes with an unstimulated control from the same
-donor. Run the following chunks in order to save gates, read response
-statistics and inspect plots.
+`stimgate` finds cells that may have responded to stimulation. For each
+donor, it compares the stimulated samples with an unstimulated sample
+from the same donor. This guide gates the example data, reads the
+results and plots them.
 
 ## 1. Load the data
 
 [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
-returns a list with a saved GatingSet path, marker and channel labels,
-and tube indices grouped by donor. Load that GatingSet:
+loads a small example dataset that comes with the package: two donors,
+each with an unstimulated and a stimulated sample, and two markers. It
+returns where the data are saved, the marker names, and `batchList`,
+which groups each donor’s samples.
 
 ``` r
 
@@ -17,45 +19,58 @@ library(stimgate)
 exampleData <- getExampleData()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
 exampleData$batchList
+#> [[1]]
+#> [1] 1 2
+#> 
+#> [[2]]
+#> [1] 3 4
 exampleData$marker
+#> [1] "MarkerF1" "MarkerF2"
 ```
 
 ### Your own data
 
-`.data` can be a GatingSet, a flowSet/cytoset or flowFrame, FCS file
-paths or a directory of FCS files, a list of numeric matrices or data
-frames (one per tube, cells by channels), or one data frame with a
-`sample` column. Each element of `batchList` lists one donor’s tubes, by
-index or sample name. **The first tube is the unstimulated control**;
-the rest are that donor’s stimulated tubes. A control may be shared by
-several batches (first in each), but a stimulated tube may belong to
-only one.
+You can give
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+any of these:
+
+- a GatingSet, flowSet, cytoset or flowFrame;
+- FCS file paths, or a folder of FCS files;
+- a list of numeric matrices or data frames, one per sample, with a
+  column per channel;
+- one data frame with a `sample` column saying which sample each cell is
+  from.
+
+Each element of `batchList` lists one donor’s samples, by number or by
+name. **The first sample is the unstimulated one**; the rest are that
+donor’s stimulated samples. Several donors can share one unstimulated
+sample (it must be first in each), but a stimulated sample can belong to
+only one donor.
 [`getBatchList()`](https://satvilab.github.io/stimgate/reference/getBatchList.md)
-builds `batchList` from a table of sample metadata.
+can build `batchList` from a table describing your samples.
 
 ``` r
 
-tubes <- list(uns = unsMatrix, stim = stimMatrix) # columns named by channel
+samples <- list(uns = unsMatrix, stim = stimMatrix) # columns named by channel
 batchList <- list(donor1 = c("uns", "stim"))
 ```
 
-StimGate does not transform data, so supply it on the scale you want
-gated. Only GatingSets carry populations other than `"root"`. With
-matrices, column names serve as both channels and markers. See
-[`?gateStim`](https://satvilab.github.io/stimgate/reference/gateStim.md)
-for how sample order is set for each input type. Pass the same data to
+StimGate does not transform your data (for example with arcsinh), so
+give it values on the scale you want to gate. With matrices, the column
+names are used as both channel and marker names. Only a GatingSet can
+hold gated populations other than all cells (`"root"`). Use the same
+data, in the same sample order, when you later call
 [`plotStim()`](https://satvilab.github.io/stimgate/reference/plotStim.md)
-and
-[`writeStimFCS()`](https://satvilab.github.io/stimgate/reference/writeStimFCS.md)
-later.
+or
+[`writeStimFCS()`](https://satvilab.github.io/stimgate/reference/writeStimFCS.md).
 
-## 2. Find gates
+## 2. Find the gates
 
-Choose an output directory and the markers to gate.
+Give
 [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
-saves results there and returns the directory path as a character
-string. The default `popGate = "root"` uses all cells; choose an
-existing GatingSet population to restrict gating.
+a folder for its results and the markers to gate. It saves everything in
+that folder and returns the folder’s path. By default it uses all cells;
+set `popGate` to gate within a population already in your GatingSet.
 
 ``` r
 
@@ -67,42 +82,61 @@ pathProject <- gateStim(
 )
 ```
 
-Use `chnl` instead of `marker` to select channels by name. Start with
-the defaults; see
+To pick channels by channel name instead, use `chnl` instead of
+`marker`. The defaults suit most data; see
 [`?stimControl`](https://satvilab.github.io/stimgate/reference/stimControl.md)
-for tuning settings and
+for the settings you can change, and
 [`?gateStim`](https://satvilab.github.io/stimgate/reference/gateStim.md)
-for per-marker overrides through `markerControl`.
+for setting them separately for each marker.
 
-## 3. Read gates and statistics
+## 3. Read the gates and statistics
 
 [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md)
-returns a tibble of stimulated-tube thresholds. Columns include `pop`,
-`marker`, `chnl`, `batch`, `ind` (tube index), `gateName`, `gate` and
-`gateCyt` (the threshold used for cells positive for another cytokine).
+gives the gates for each stimulated sample (`ind`) and marker. `gate` is
+the gate value. `gateCyt` is the gate used for cells already positive
+for another cytokine; it can be lower than `gate`.
 
 ``` r
 
 gates <- getStimGates(pathProject)
 head(gates)
-stats <- getStimStats(pathProject)
-head(stats)
+#> # A tibble: 4 × 8
+#>   pop   gateName    chnl         marker   ind   batch   gate gateCyt
+#>   <chr> <chr>       <chr>        <I<chr>> <chr> <chr>  <dbl>   <dbl>
+#> 1 root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.42    4.42
+#> 2 root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.79    3.79
+#> 3 root  locminClust BC2(Pr141)Dd MarkerF2 2     batch1  3.40    2.17
+#> 4 root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.91    2.91
 ```
 
 [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
-reads a data frame with rows for tubes (`ind`), gate methods
-(`gateName`) and marker combinations (`cytCombn`). `countStim` and
-`countUns` count cells in each combination; `nCellStim` and `nCellUns`
-give total cells. `propBs = propStim - propUns` subtracts control from
-stimulated proportions. `freqStim` and `freqUns` are percentages;
-`freqBs` is their difference in percentage points.
+gives, for each stimulated sample (`ind`), the number and percentage of
+cells positive for each combination of markers (`cytCombn`), in the
+stimulated sample and in its unstimulated sample. `freqBs` is the
+stimulated percentage minus the unstimulated percentage: the response
+after removing background.
 
-## 4. Inspect plots
+``` r
 
-Plot the first donor’s tubes to compare control and stimulated
-expression with the gate lines. One marker gives density plots; two also
-give bivariate hex plots (requiring `hexbin`). The default output is a
-ggplot grid; `grid = FALSE` returns a list of ggplot objects.
+stats <- getStimStats(pathProject)
+head(stats[, c("ind", "cytCombn", "countStim", "freqStim", "freqUns", "freqBs")])
+#> # A tibble: 6 × 6
+#>   ind   cytCombn                       countStim freqStim freqUns freqBs
+#>   <chr> <chr>                              <int>    <dbl>   <dbl>  <dbl>
+#> 1 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        50     0.5     0.06   0.44
+#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       427     4.27    1.54   2.73
+#> 3 2     BC1(La139)Dd~+~BC2(Pr141)Dd~+~        47     0.47    0.02   0.45
+#> 4 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      9476    94.8    98.4   -3.62
+#> 5 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        99     0.99    0.27   0.72
+#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       509     5.09    1.18   3.91
+```
+
+## 4. Plot the results
+
+Plot the first donor’s samples to compare unstimulated and stimulated
+expression, with the gate drawn on. One marker gives density curves; two
+markers also give two-dimensional plots, which need the `hexbin`
+package.
 
 ``` r
 
@@ -112,8 +146,66 @@ plotStim(
 )
 ```
 
-For threshold diagnostics, see
+![](stimgate_files/figure-html/plots-1.png)
+
+The results stay in `pathProject`, so you can read them again in a later
+R session. To see more detail on how each gate was chosen, see
 [`?getStimGatesDetailed`](https://satvilab.github.io/stimgate/reference/getStimGatesDetailed.md).
-To export positive cells as FCS files, see
+To save the positive cells as FCS files, see
 [`?writeStimFCS`](https://satvilab.github.io/stimgate/reference/writeStimFCS.md).
-Keep `pathProject` to read saved gates and statistics in later sessions.
+
+## Session information
+
+``` r
+
+sessionInfo()
+#> R version 4.6.1 (2026-06-24)
+#> Platform: x86_64-pc-linux-gnu
+#> Running under: Ubuntu 24.04.5 LTS
+#> 
+#> Matrix products: default
+#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
+#> 
+#> locale:
+#>  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+#>  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+#>  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+#> [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
+#> 
+#> time zone: UTC
+#> tzcode source: system (glibc)
+#> 
+#> attached base packages:
+#> [1] stats     graphics  grDevices utils     datasets  methods   base     
+#> 
+#> other attached packages:
+#> [1] stimgate_0.99.15
+#> 
+#> loaded via a namespace (and not attached):
+#>  [1] gtable_0.3.6         xfun_0.61            bslib_0.12.0        
+#>  [4] ggplot2_4.0.3        htmlwidgets_1.6.4    ks_1.15.3           
+#>  [7] Biobase_2.72.0       lattice_0.22-9       vctrs_0.7.3         
+#> [10] tools_4.6.1          generics_0.1.4       stats4_4.6.1        
+#> [13] tibble_3.3.1         flowWorkspace_4.24.0 pkgconfig_2.0.3     
+#> [16] Matrix_1.7-5         KernSmooth_2.23-26   data.table_1.18.6.1 
+#> [19] RColorBrewer_1.1-3   S7_0.2.2             desc_1.4.3          
+#> [22] S4Vectors_0.50.3     graph_1.90.0         lifecycle_1.0.5     
+#> [25] scam_1.2-22          compiler_4.6.1       farver_2.1.2        
+#> [28] textshaping_1.0.5    htmltools_0.5.9      sass_0.4.10         
+#> [31] yaml_2.3.12          flowCore_2.24.0      pracma_2.4.6        
+#> [34] pillar_1.11.1        pkgdown_2.2.1        jquerylib_0.1.4     
+#> [37] tidyr_1.3.2          cachem_1.1.0         mclust_6.1.3        
+#> [40] nlme_3.1-169         RProtoBufLib_2.24.0  tidyselect_1.2.1    
+#> [43] digest_0.6.39        mvtnorm_1.4-2        dplyr_1.2.1         
+#> [46] purrr_1.2.2          labeling_0.4.3       splines_4.6.1       
+#> [49] cowplot_1.2.0        fastmap_1.2.0        grid_4.6.1          
+#> [52] cli_3.6.6            magrittr_2.0.5       ncdfFlow_2.58.0     
+#> [55] XML_3.99-0.25        utf8_1.2.6           withr_3.0.3         
+#> [58] scales_1.4.0         rmarkdown_2.32       matrixStats_1.5.0   
+#> [61] otel_0.2.0           cytolib_2.24.0       ragg_1.5.2          
+#> [64] evaluate_1.0.5       knitr_1.52           mgcv_1.9-4          
+#> [67] rlang_1.3.0          glue_1.8.1           Rgraphviz_2.56.0    
+#> [70] BiocManager_1.30.27  BiocGenerics_0.58.1  jsonlite_2.0.0      
+#> [73] R6_2.6.1             systemfonts_1.3.2    fs_2.1.0
+```

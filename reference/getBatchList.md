@@ -35,7 +35,7 @@ getBatchList(fnTblInfo, colGrp, colStim, unsChr, colNCell, minCell)
 
 - minCell:
 
-  numeric Minimum cell count to retain a sample.
+  numeric Minimum cell count to keep a sample.
 
 ## Value
 

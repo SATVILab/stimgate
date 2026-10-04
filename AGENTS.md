@@ -514,6 +514,7 @@ the `flowWorkspace` stack from source.
   - Shell scripts (`dev.sh`, `install.sh`, `patch.sh`, `minor.sh`,
     `major.sh`, `dev-*.sh`) for workflow, benchmarking, and version
     bumping.
+  - `agents/`: Cloud coding-agent setup scripts.
   - `python/`: Python helper scripts used by analysis (not part of the R
     package).
     - `fbeta.py`: Richards F-beta thresholding implementation
@@ -545,7 +546,8 @@ the `flowWorkspace` stack from source.
   (`cpPmden.cpp`, `stimgate_cppmden.cpp`, `tautstring.cpp`, etc.).
 - `analysis/`: Quarto (`.qmd`) documents for research, simulation, and
   benchmarking analysis.
-- `vignettes/`: Package vignettes (`stimgate.Rmd`).
+- `vignettes/`: User-facing package vignettes (`stimgate.Rmd`). Keep
+  developer and agent setup out of vignettes.
 - `inst/extdata/`: Canonical saved example datasets consumed by
   [`getExampleData()`](https://satvilab.github.io/stimgate/reference/getExampleData.md)
   and by package examples/tests.

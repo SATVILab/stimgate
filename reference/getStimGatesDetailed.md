@@ -1,7 +1,7 @@
-# Read threshold diagnostics
+# Read details of how gates were chosen
 
-Read saved condition, sample and cluster threshold diagnostics with
-background-subtracted frequencies. Use
+Read the intermediate gates saved at each step (per condition, per
+sample and per cluster) with background-subtracted frequencies. Use
 [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md)
 for final gates.
 
@@ -27,15 +27,15 @@ getStimGatesDetailed(
 
 - pop:
 
-  character or NULL Populations to retain. Default: NULL (all).
+  character or NULL Populations to keep. Default: NULL (all).
 
 - marker:
 
-  character or NULL Marker labels to retain. Default: NULL (all).
+  character or NULL Marker labels to keep. Default: NULL (all).
 
 - chnl:
 
-  character or NULL Channels to retain. Default: NULL (all).
+  character or NULL Channels to keep. Default: NULL (all).
 
 - save:
 
@@ -48,15 +48,15 @@ getStimGatesDetailed(
 
 ## Value
 
-A tibble with one row per saved diagnostic, including `pop`, `marker`,
-`chnl`, threshold and frequency columns, and source-file metadata.
+A tibble with one row per saved gate, including `pop`, `marker`, `chnl`,
+gate and frequency columns, and the file each row was read from.
 
 ## Details
 
-Enable diagnostic saving with
-`Sys.setenv(STIMGATE_INTERMEDIATE = "all")` before running
+To save these details, run `Sys.setenv(STIMGATE_INTERMEDIATE = "all")`
+before
 [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
-Without saved diagnostics, returns an empty tibble.
+If nothing was saved, an empty tibble is returned.
 
 ## Examples
 

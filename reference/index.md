@@ -11,7 +11,7 @@ Main functions for identifying cytokine-positive cells
 - [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md)
   : Read stimulation gates
 - [`getStimGatesDetailed()`](https://satvilab.github.io/stimgate/reference/getStimGatesDetailed.md)
-  : Read threshold diagnostics
+  : Read details of how gates were chosen
 - [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
   : Read gating statistics
 

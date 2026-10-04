@@ -78,8 +78,8 @@ gateStim(
 
 - markerControl:
 
-  list or NULL Overrides keyed by marker label or channel, e.g.
-  `list(IL2 = list(bw = 0.12, biasUns = 0))`. Accepts
+  list or NULL Settings for single markers, named by marker label or
+  channel, e.g. `list(IL2 = list(bw = 0.12, biasUns = 0))`. Accepts
   [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
   settings except `locEnforceShapeThreshold` and `calcCytPosGates`, plus
   `bw`, `biasUns` and `popGate`. Default: NULL.
@@ -187,7 +187,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpEEaYH9/custom_gating_1b6d4d8d7e5"
+#> [1] "/tmp/RtmpEzub9N/custom_gating_1b721e738bfd"
 
 # Gate in-memory matrices; column names act as channels and markers
 matrices <- lapply(seq_along(gs), function(i) {
@@ -210,5 +210,5 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpEEaYH9/matrix_gating_1b6d4003863b"
+#> [1] "/tmp/RtmpEzub9N/matrix_gating_1b7253a3cd9e"
 ```
