@@ -75,7 +75,8 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
     content,
     fixed = TRUE
   ))
-  expect_true(grepl("after_stat(density)", content, fixed = TRUE))
+  # Threshold densities are drawn by the QMD 7 plot helper.
+  expect_true(grepl("after_stat(density)", helper_content, fixed = TRUE))
   expect_true(grepl(
     "Median absolute relative error",
     content,
