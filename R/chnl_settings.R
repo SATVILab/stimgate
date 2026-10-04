@@ -454,15 +454,15 @@
   )
 }
 
-#' @title Read marker settings from project
-#' @description Read the saved marker settings list from the project's metaData folder.
-#' @param pathProject character Path to project.
-#' @return A named list of marker settings (as saved by .completeChnlSettingsSave()).
+#' @title Read saved gating settings
+#' @description Read settings saved by [gateStim()].
+#' @param pathProject character Project directory.
+#' @return A list of settings per marker, named by the saved keys (marker labels
+#'   for projects created by [gateStim()]).
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-#' saveRDS(
-#'   list(BC1 = list(bw = 0.1)),
+#' dir.create(file.path(pathProject, "metaData"))
+#' saveRDS(list(IFNg = list(bw = 0.1)),
 #'   file.path(pathProject, "metaData", "chnlSettings.rds")
 #' )
 #' stimgateMetaReadSettingsChnls(pathProject)
@@ -475,22 +475,18 @@ stimgateMetaReadSettingsChnls <- function(pathProject) {
   readRDS(pathChnlList)
 }
 
-#' @title Read marker list with channel labels
-#' @description Read the project's marker list and return it with element names
-#'   replaced by channel labels (from chnlLab).
-#' @param pathProject character Path to project.
-#' @return A named list of marker settings where names are channel labels.
+#' @title Relabel saved settings
+#' @description Read [stimgateMetaReadSettingsChnls()] and map its names through
+#'   [stimgateMetaReadChnlLab()]. Use only when the saved keys are channel names.
+#' @param pathProject character Project directory.
+#' @return A list with names replaced by marker labels; unmatched keys become NA.
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-#' saveRDS(
-#'   list(BC1 = list(bw = 0.1)),
+#' dir.create(file.path(pathProject, "metaData"))
+#' saveRDS(list(BC1 = list(bw = 0.1)),
 #'   file.path(pathProject, "metaData", "chnlSettings.rds")
 #' )
-#' saveRDS(
-#'   c(BC1 = "IFNg"),
-#'   file.path(pathProject, "metaData", "chnlLab.rds")
-#' )
+#' saveRDS(c(BC1 = "IFNg"), file.path(pathProject, "metaData", "chnlLab.rds"))
 #' stimgateMetaReadSettingsMarkers(pathProject)
 #' @export
 stimgateMetaReadSettingsMarkers <- function(pathProject) {
@@ -500,21 +496,19 @@ stimgateMetaReadSettingsMarkers <- function(pathProject) {
   markerList
 }
 
-#' @title Get marker settings for a single channel
-#' @description Retrieve the marker settings for a single channel. The function
-#'   accepts either a channel label (as returned by stimgateMetaReadChnlLab)
-#'   or the original channel name/key used in markerList.
-#' @param pathProject character Path to project.
-#' @param chnl character Channel label or channel name.
-#' @return A list of settings for the requested channel.
+#' @title Read settings by saved key
+#' @description Extract one entry from [stimgateMetaReadSettingsChnls()].
+#'   The key must match exactly; channel names are not converted to marker labels.
+#' @param pathProject character Project directory.
+#' @param chnl character Exact saved key, usually a marker label.
+#' @return A list of settings for the key; an unknown key raises an error.
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-#' saveRDS(
-#'   list(BC1 = list(bw = 0.1)),
+#' dir.create(file.path(pathProject, "metaData"))
+#' saveRDS(list(IFNg = list(bw = 0.1)),
 #'   file.path(pathProject, "metaData", "chnlSettings.rds")
 #' )
-#' stimgateMetaReadSettingsChnl(pathProject, "BC1")
+#' stimgateMetaReadSettingsChnl(pathProject, "IFNg")
 #' @export
 stimgateMetaReadSettingsChnl <- function(pathProject, chnl) {
   chnlList <- stimgateMetaReadSettingsChnls(pathProject)
@@ -524,19 +518,18 @@ stimgateMetaReadSettingsChnl <- function(pathProject, chnl) {
   chnlList[[chnl]]
 }
 
-#' @title Get settings for a named marker
-#' @description Retrieve the settings for a marker by its original name/key.
-#' @param pathProject character Path to project.
-#' @param marker character Marker name/key as stored in markerList.
-#' @return A list of settings for the requested marker.
+#' @title Read settings for a marker
+#' @description Extract one entry from [stimgateMetaReadSettingsChnls()].
+#' @param pathProject character Project directory.
+#' @param marker character Exact saved marker key.
+#' @return A list of marker settings; an unknown key raises an error.
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-#' saveRDS(
-#'   list(BC1 = list(bw = 0.1)),
+#' dir.create(file.path(pathProject, "metaData"))
+#' saveRDS(list(IFNg = list(bw = 0.1)),
 #'   file.path(pathProject, "metaData", "chnlSettings.rds")
 #' )
-#' stimgateMetaReadSettingsMarker(pathProject, "BC1")
+#' stimgateMetaReadSettingsMarker(pathProject, "IFNg")
 #' @export
 stimgateMetaReadSettingsMarker <- function(pathProject, marker) {
   markerList <- stimgateMetaReadSettingsChnls(pathProject)
@@ -547,17 +540,17 @@ stimgateMetaReadSettingsMarker <- function(pathProject, marker) {
 }
 
 #' @rdname stimgateMetaReadLab
-#' @title Read channel or marker label mapping
-#' @description Read the saved channel label mapping (chnlLab.rds) from the project's metaData folder.
-#' @param pathProject character Path to project.
-#' @return Named character vector mapping channel names to labels.
+#' @title Read channel and marker mappings
+#' @description Read channel-to-marker labels with `stimgateMetaReadChnlLab()`;
+#'   read the reverse mapping with `stimgateMetaReadMarkerLab()`.
+#' @param pathProject character Project directory from [gateStim()].
+#' @return A named character vector: channel names to marker labels for
+#'   `stimgateMetaReadChnlLab()`, marker labels to channels for
+#'   `stimgateMetaReadMarkerLab()`.
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-#' saveRDS(
-#'   c(BC1 = "IFNg"),
-#'   file.path(pathProject, "metaData", "chnlLab.rds")
-#' )
+#' dir.create(file.path(pathProject, "metaData"))
+#' saveRDS(c(BC1 = "IFNg"), file.path(pathProject, "metaData", "chnlLab.rds"))
 #' stimgateMetaReadChnlLab(pathProject)
 #' stimgateMetaReadMarkerLab(pathProject)
 #' @export
@@ -603,15 +596,14 @@ stimgateMetaReadMarkerLab <- function(pathProject) {
   )
 }
 
-#' @title Read batch list from project
-#' @description Read the saved batchList object from the project's metaData folder.
-#' @param pathProject character Path to project.
-#' @return A list describing sample grouping into batches (as saved by .saveMetaDataBatchList()).
+#' @title Read saved batches
+#' @description Read the sample grouping saved by [gateStim()].
+#' @param pathProject character Project directory from [gateStim()].
+#' @return A list of sample indices by batch, with unstimulated controls first.
 #' @examples
 #' pathProject <- tempfile("stimgate_meta_")
-#' dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-#' saveRDS(
-#'   list(batch1 = c(1, 2)),
+#' dir.create(file.path(pathProject, "metaData"))
+#' saveRDS(list(batch1 = c(1, 2)),
 #'   file.path(pathProject, "metaData", "batchList.rds")
 #' )
 #' stimgateMetaReadBatchList(pathProject)

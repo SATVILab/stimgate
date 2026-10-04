@@ -1,185 +1,136 @@
-#' @title Tuning settings for stimulation gating
-#' @description Construct validated tuning settings for [gateStim()].
-#' @param calcCytPosGates logical. Whether to refine each clustered one-marker
-#'   gate using the target-marker distribution among cells positive for at least
-#'   one other cytokine. A taut-string density is fitted to those cells. The
-#'   clustered gate is lowered to the leftmost internal antimode strictly between
-#'   the full stimulated marginal peak plus one third of its left-window width
-#'   and the clustered gate. If no eligible antimode exists, the clustered gate
-#'   is retained. Default is TRUE.
-#' @param minCell numeric. Minimum number of cells required for reliable gating.
-#'   Default is 100. Samples with fewer cells will be skipped as they don't provide
-#'   sufficient statistical power for accurate gate identification.
-#' @param biasUnsFactor numeric. Multiplicative factor applied to biasUns.
-#'   Default is 1. Values > 1 increase the bias effect, values < 1 decrease it.
-#'   This provides fine-tuning of the bias correction.
-#' @param excMin logical. Whether to exclude minimum expression values during
-#'   analysis. Default is TRUE. Minimum values often represent technical artifacts
-#'   or compensation spillover and should typically be excluded.
-#' @param cpMin numeric. Minimum allowable cutpoint value. When NULL (default),
-#'   no minimum is enforced. Useful for ensuring gates don't fall below known
-#'   technical thresholds or background levels.
-#' @param bwMtd character. Method for automated bandwidth selection. Options include `"nrd0"`, `"sj"`, `"hpi0"`, `"hpi1"`, `"hpi2"` and `"hpi3"`, plus background-normalised variants `"nrd0Norm"`, `"sjNorm"`, `"hpi0Norm"`, `"hpi1Norm"`, `"hpi2Norm"` and `"hpi3Norm"`. The normalised variants first identify a background core and a high-side component, then estimate bandwidths after component normalisation. By default this uses moment-matched normal components (`normMtd = "moments"`); the older Box-Cox route remains available for scalar bandwidths with `normMtd = "boxcox"`. Ignored if `bw` is set. Default is `"hpi1"`.
-#' @param bwScope "cytokine", "cluster" or "sample". Which samples share the
-#'   scalar local-FDR bandwidth. `"cytokine"` estimates the bandwidths of
-#'   about 100 tubes spread across the batches (all tubes when there are
-#'   fewer) and uses their 10% trimmed mean for every sample of the channel.
-#'   `"cluster"` clusters all tubes on their densities up to the right shoulder
-#'   of the left modal complex, estimates bandwidths for about 100 tubes spread
-#'   across the clusters (all tubes when there are fewer, and at least one per
-#'   cluster) and gives each tube its cluster's median bandwidth. `"sample"`
-#'   estimates the bandwidth separately for every stimulated sample. Tubes with
-#'   fewer than `minCell` cells are excluded from shared bandwidths. In every
-#'   case a sample uses the smaller of its stimulated and unstimulated tube
-#'   bandwidths. The chosen values are reported while gating and saved as
-#'   `bwShared` (and, for `"cluster"`, the per-tube table `bwSharedTbl`) in
-#'   `stimgateMetaReadSettingsChnls(pathProject)`, so an automatic value can be
-#'   inspected and then fixed for a marker through `bw` in `markerControl`.
-#'   Ignored if `bw` is set or the adaptive bandwidth is used.
-#'   Default is `"cytokine"`.
-#' @param bwAdj numeric. Adjustment factor for bandwidth. Default is 1. Ignored if `bw` is set. Default is 1.
-#' @param bwMin numeric or character. Minimum bandwidth for density estimation.
-#'   Ignored if `bw` is set. Use `"auto"` to calculate automatically, `"none"`
-#'   to apply no lower bound, or a numeric value to specify the lower bound.
-#'   This is only a clipping limit; if automatic bandwidth estimation fails,
-#'   `bwFallback` is used instead. Default is `"auto"`.
-#' @param bwMax numeric or character. Maximum bandwidth for density estimation.
-#'   Ignored if `bw` is set. Use `"auto"` to calculate automatically, `"none"`
-#'   to apply no upper bound, or a numeric value to specify the upper bound.
-#'   This is only a clipping limit; if automatic bandwidth estimation fails,
-#'   `bwFallback` is used instead. Default is `"auto"`.
-#' @param bwFallback numeric or character. Fallback bandwidth used whenever
-#'   `bw` is `NULL` and automatic bandwidth estimation fails for a sample.
-#'   Must be either `"auto"` or a single positive numeric value. Unlike
-#'   `bwMin` and `bwMax`, `bwFallback` cannot be `NULL`, `"none"`, non-finite,
-#'   zero, or negative, because a valid fallback bandwidth is always required.
-#'   When `"auto"`, the fallback is calculated from randomly selected samples
-#'   using the same bandwidth selector specified by `bwMtd`.
-#'   Default is `"auto"`.
-#' @param bwNcellMin numeric. Minimum number of cells requested by the bandwidth selector. For ordinary methods this controls internal up-sampling with jitter. For `*Norm` methods it is passed into the background-core/right-excess selector so rare right-tail cells are considered before any sampling is done. Ignored if `bw` is set. Default is 100.
-#' @param bwNcellMax numeric. Maximum number of cells requested by the bandwidth selector. For ordinary methods this controls internal down-sampling. For `*Norm` methods it limits the constructed background-core/right-excess bandwidth sample after the full distribution has been inspected. Ignored if `bw` is set. Default is 100 000.
-#' @param bwCluster numeric or NULL. Bandwidth for the densities clustered by
-#'   the cluster-based threshold sharing (`clusterGates`). When `NULL`, the shared
-#'   local-FDR bandwidth (see `bwScope`) is used, or, with
-#'   `bwScope = "sample"`, the median bandwidth across samples with directly
-#'   generated local-FDR thresholds. Default is `NULL`.
-#' @param clusterGates logical. Whether to calculate cluster-adjusted local-FDR
-#'   gates. When `FALSE`, cluster adjustment is skipped. When `TRUE`, paired
-#'   stimulated and unstimulated densities are clustered
-#'   on a common absolute-expression grid. Direct thresholds are winsorised
-#'   within each cluster to its 15th and 85th percentiles when at least three
-#'   direct thresholds are available. Every non-direct threshold is replaced by
-#'   the cluster's 60th percentile when at least one direct threshold is
-#'   available. A cluster without a direct threshold retains its original high
-#'   thresholds.
-#'   Default is `TRUE`.
-#' @param gateCombn character vector. Method(s) for combining condition-level
-#'   local-FDR gates within a batch. Supported values are `"no"`, `"min"`,
-#'   `"median"`, `"max"`, and `"prejoin"`. Combination uses only thresholds that
-#'   were actually generated by the local-FDR procedure, not fallback above-range
-#'   cutpoints.
-#' @param locProbCol character. Probability column used by the local-FDR trimming
-#'   step. Defaults to `"pred"`, the monotone smoothed response-probability
-#'   estimate. Use `"probSmooth"` to force the raw/interpolated probability.
-#' @param locMinPeakProb numeric. Minimum peak estimated response probability
-#'   required before a local-FDR gate is considered credible. If the maximum
-#'   probability is below this value, no true local-FDR threshold is marked as
-#'   generated.
-#' @param locEnforceShapeThreshold logical. Whether density shape must first
-#'   define the lowest expression value allowed to inform local-FDR
-#'   thresholding. When `TRUE`, the lower of the first stimulated-density
-#'   antimode to the right of the main negative peak and the adjusted
-#'   stimulated-density tailgate is applied to both samples before densities,
-#'   response probabilities, and the monotone probability curve are refitted.
-#'   All subsequent marginal filtering is restricted to this refitted region.
-#'   Default is `FALSE`.
-#' @param locDipAlpha numeric. Liberal dip-test p-value cutoff used to decide
-#'   whether to inspect expression-density antimodes before thresholding.
-#' @param locAntimodeHeightFrac numeric. Maximum allowed antimode height as a
-#'   fraction of the highest density peak when identifying deep antimodes.
-#' @param locAntimodeLowRel numeric. Antimode-separated regions to the left of the
-#'   highest-response region are excluded when their mean response probability is
-#'   below this fraction of the highest region's mean probability.
-#' @param locAntimodeLowAbs numeric. Absolute response-probability cutoff for
-#'   excluding low-response antimode-separated regions to the left of the
-#'   highest-response region.
-#' @param locFlatDerivFrac numeric. Fraction of the maximum positive derivative
-#'   used to define the marginal-trimming anchor. The marginal scan then decides
-#'   how far left of this anchor to extend, one bin at a time. Default is 0.5.
-#' @param locFlatHardDerivFrac numeric. Lower derivative fraction used for a
-#'   conservative hard exclusion of the very flat far-left region before the
-#'   marginal bin scan. Default is 0.25.
-#' @param locMarginalPurityRel numeric. Minimum allowed purity of each additional
-#'   leftward bin, expressed as a fraction of the average response probability
-#'   among cells to the right of the initial derivative-based local-FDR boundary.
-#'   Default is 0.5.
-#' @param locMarginalCellBinRatio numeric. Maximum number of cells allowed in each
-#'   additional leftward bin, expressed as a multiple of the average number of
-#'   cells per bin in the right-side reference interval. Empty reference bins are
-#'   counted. Default is 2.
-#' @param locMarginalRefQuantile numeric. Upper quantile of cells to the right of
-#'   the initial derivative-based boundary used to define the reference interval
-#'   for cells-per-bin calculations. Purity is still calculated using all cells to
-#'   the right of the initial boundary. Default is 0.75.
-#' @param bwAdaptive logical. Whether local-FDR density estimation should use an
-#'   adaptive location-specific bandwidth curve when `bw` is `NULL`. The adaptive
-#'   path estimates separate normalised bandwidth curves for the stimulated and
-#'   unstimulated samples, blends them by their preliminary density heights on a
-#'   shared padded grid, and then evaluates both final densities with that shared
-#'   bandwidth vector. Default is `FALSE`.
-#' @param bwAdaptiveDensityN numeric. Number of grid points for the adaptive
-#'   local-FDR density grid. When `NULL`, `normDensityN` is used. Default is `NULL`.
-#' @param bwAdaptivePadFrac numeric. Fraction of the combined expression range by
-#'   which the adaptive density grid is extended on both sides before area
-#'   normalisation. Default is `0.15`.
-#' @param bwAdaptiveCore numeric or NULL. Optional manually specified
-#'   bandwidth for the background-core side of the adaptive local-FDR density
-#'   curve. When supplied, it overrides the estimated core-component bandwidth
-#'   for adaptive bandwidth construction. Default is `NULL`.
-#' @param bwAdaptiveExtra numeric or NULL. Optional manually specified
-#'   bandwidth for the high-expression/extra side of the adaptive local-FDR
-#'   density curve. When supplied, it overrides the estimated extra-component
-#'   bandwidth for adaptive bandwidth construction. Default is `NULL`.
-#' @param bwAdaptiveCrossover numeric or NULL. Optional expression value at
-#'   which the adaptive bandwidth curve crosses from the core bandwidth to the
-#'   extra bandwidth. When `NULL`, component-density weighting is used. Default
-#'   is `NULL`.
-#' @param bwAdaptiveTransitionWidth numeric. Width, in expression units, of the
-#'   optional smooth transition around `bwAdaptiveCrossover`. Use `0` for a hard
-#'   switch at the crossover. Default is `0`.
-#' @param normPeakMinRel numeric. Relative peak/trough threshold used to identify
-#'   the main background modal complex for `*Norm` bandwidth methods. Default is
-#'   `0.75`.
-#' @param normExtraFrac numeric. Target fraction of additional high-side values
-#'   sampled for the normalised high component. Default is `0.2`.
-#' @param normExtraMax numeric. Maximum number of additional high-side values used
-#'   by normalised bandwidth methods. May be `Inf`. Default is `Inf`.
-#' @param normLambda numeric vector. Box-Cox lambda search grid used only when
-#'   `normMtd = "boxcox"`. Default is `seq(-2, 2, length.out = 81)`.
-#' @param normDensityN numeric. Number of grid points used inside normalised
-#'   bandwidth helpers. Default is `512`.
-#' @param normExcessBwMtd character. Ordinary bandwidth selector used for the
-#'   right-side excess-density helper. Default is `"hpi3"`.
-#' @param normExcessNcell numeric. Maximum number of cells used when estimating
-#'   the excess-density helper bandwidth. Default is `10000`.
-#' @param normAdaptiveNcell numeric. Fixed number of simulated normal-component
-#'   values used per component when estimating adaptive normalised bandwidths.
-#'   Default is `2500`.
-#' @param normMtd character. Normalisation method for `*Norm` bandwidth selectors.
-#'   `"moments"` replaces core and high components by normal components with
-#'   matching moments; `"boxcox"` uses the older Box-Cox route for scalar
-#'   bandwidths only. Default is `"moments"`.
+#' @title Tune stimulation gating
+#' @description Set tuning options for [gateStim()]. Start with the defaults;
+#'   set only the options you need to change.
+#' @param calcCytPosGates logical Refine gates using cells positive for another
+#'   cytokine. Lower a clustered gate to the leftmost internal antimode between
+#'   the stimulated marginal peak plus one third of its left-window width and
+#'   that gate; keep the gate if none exists. Default: TRUE.
+#' @param minCell numeric Minimum cells required for gating; samples below this
+#'   count are skipped. Default: 100.
+#' @param biasUnsFactor numeric Multiplier for automatically chosen `biasUns`.
+#'   Default: 1.
+#' @param excMin logical Exclude cells with minimum expression during gating.
+#'   Default: TRUE.
+#' @param cpMin numeric or NULL Minimum cutpoint. NULL estimates a 10% trimmed
+#'   mean of tube medians after excluding minimum expression. Default: NULL.
+#' @param bwMtd character Bandwidth selector: "nrd0", "sj", "hpi0", "hpi1",
+#'   "hpi2", "hpi3", or any of these with a "Norm" suffix for background
+#'   normalisation. Ignored with fixed `bw`. Default: "hpi1".
+#' @param bwScope character Scalar bandwidth sharing: "cytokine" uses a 10%
+#'   trimmed mean over about 100 tubes spread across batches; "cluster" groups
+#'   tube densities up to the right shoulder of the background modal complex
+#'   and uses cluster medians from about 100 tubes (at least one per cluster);
+#'   "sample" estimates each stimulated/control pair separately. Smaller
+#'   datasets use all tubes. Shared estimates exclude tubes below `minCell`.
+#'   Each pair uses the smaller tube bandwidth. Inspect `bwShared` and, for
+#'   clusters, `bwSharedTbl` with [stimgateMetaReadSettingsChnls()]. Ignored
+#'   with fixed `bw` or adaptive bandwidths. Default: "cytokine".
+#' @param bwAdj numeric Bandwidth multiplier; ignored with fixed `bw`. Default: 1.
+#' @param bwMin numeric or character Lower bandwidth limit: "auto"
+#'   estimates it, "none" disables it, or supply a number. Ignored with
+#'   fixed `bw`; estimation failures use `bwFallback`. Default: "auto".
+#' @param bwMax numeric or character Upper bandwidth limit: "auto"
+#'   estimates it, "none" disables it, or supply a number. Ignored with
+#'   fixed `bw`; estimation failures use `bwFallback`. Default: "auto".
+#' @param bwFallback numeric or character Bandwidth when automatic estimation
+#'   fails: "auto" estimates it from spread-out samples using `bwMtd`,
+#'   or supply one finite positive number. NULL and "none" are invalid.
+#'   Default: "auto".
+#' @param bwNcellMin numeric Minimum selector sample size. Ordinary methods
+#'   upsample with jitter; scalar "Norm" methods use it when selecting
+#'   background-core and right-excess cells. Ignored with fixed `bw`. Default: 100.
+#' @param bwNcellMax numeric Maximum selector sample size. Ordinary methods
+#'   downsample; scalar "Norm" methods cap the constructed sample after
+#'   inspecting the full distribution. Adaptive methods use
+#'   `normAdaptiveNcell`. Ignored with fixed `bw`. Default: 100000.
+#' @param bwCluster numeric or NULL Density bandwidth for threshold clustering.
+#'   NULL uses the shared local-FDR bandwidth, or with `bwScope = "sample"`,
+#'   the median bandwidth of samples with direct thresholds. Default: NULL.
+#' @param clusterGates logical Share thresholds across clusters of paired
+#'   stimulated/control densities on a common expression grid. With at least
+#'   three direct thresholds, clip them to the cluster's 15th and 85th
+#'   percentiles. Replace non-direct thresholds by the 60th percentile of
+#'   available direct thresholds; retain high thresholds when none are
+#'   available. Default: TRUE.
+#' @param gateCombn character vector Combine direct condition-level thresholds
+#'   within a batch: "no", "min", "median", "max", or "prejoin". Excludes
+#'   fallback above-range cutpoints. Default: "min".
+#' @param locProbCol character Probability used for trimming: "pred" (monotone
+#'   smoothed response probability) or "probSmooth" (raw/interpolated
+#'   probability). Default: "pred".
+#' @param locMinPeakProb numeric Minimum peak response probability for a
+#'   directly generated local-FDR threshold. Default: 0.25.
+#' @param locEnforceShapeThreshold logical Refit densities and probabilities
+#'   above the lower of the first stimulated-density antimode right of the main
+#'   negative peak and the adjusted stimulated-density tailgate. Restrict later
+#'   marginal filtering to this region. Default: FALSE.
+#' @param locDipAlpha numeric Dip-test p-value cutoff for inspecting density
+#'   antimodes before thresholding. Default: 0.2.
+#' @param locAntimodeHeightFrac numeric Maximum antimode height as a fraction
+#'   of the highest density peak. Default: 1/6.
+#' @param locAntimodeLowRel numeric Exclude antimode-separated regions left of
+#'   the highest-response region when their mean response probability is below
+#'   this fraction of its mean. Default: 0.25.
+#' @param locAntimodeLowAbs numeric Absolute mean response-probability cutoff
+#'   for excluding those left-hand regions. Default: 0.15.
+#' @param locFlatDerivFrac numeric Fraction of the maximum positive derivative
+#'   defining the marginal-trimming anchor; scan leftward from there one bin at
+#'   a time. Default: 0.5.
+#' @param locFlatHardDerivFrac numeric Derivative fraction for hard exclusion
+#'   of the flat far-left region before the marginal scan. Default: 0.25.
+#' @param locMarginalPurityRel numeric Minimum purity of each added leftward
+#'   bin, relative to average response probability right of the initial
+#'   derivative boundary. Default: 0.5.
+#' @param locMarginalCellBinRatio numeric Maximum cells per added leftward bin,
+#'   as a multiple of average cells per reference bin, including empty bins.
+#'   Default: 2.
+#' @param locMarginalRefQuantile numeric Upper cell quantile right of the
+#'   initial derivative boundary defining the cells-per-bin reference interval.
+#'   Purity uses all cells right of that boundary. Default: 0.75.
+#' @param bwAdaptive logical Use location-specific bandwidths when `bw` is
+#'   NULL. Blend stimulated and control normalised bandwidth curves by
+#'   preliminary density heights; use the shared curve for both final
+#'   densities. Default: FALSE.
+#' @param bwAdaptiveDensityN numeric or NULL Adaptive density grid points; NULL
+#'   uses `normDensityN`. Default: NULL.
+#' @param bwAdaptivePadFrac numeric Extend each end of the adaptive grid by
+#'   this fraction of the combined expression range before area normalisation.
+#'   Default: 0.15.
+#' @param bwAdaptiveCore numeric or NULL Override the estimated
+#'   background-component bandwidth in the adaptive curve. Default: NULL.
+#' @param bwAdaptiveExtra numeric or NULL Override the estimated
+#'   high-expression-component bandwidth in the adaptive curve. Default: NULL.
+#' @param bwAdaptiveCrossover numeric or NULL Expression value at which the
+#'   adaptive curve switches between components; NULL uses component-density
+#'   weighting. Default: NULL.
+#' @param bwAdaptiveTransitionWidth numeric Transition width in expression
+#'   units around `bwAdaptiveCrossover`; 0 makes a hard switch. Default: 0.
+#' @param normPeakMinRel numeric Relative peak/trough threshold identifying the
+#'   background modal complex for "Norm" methods. Default: 0.75.
+#' @param normExtraFrac numeric Target fraction of additional high-side values
+#'   sampled for the normalised high component. Default: 0.2.
+#' @param normExtraMax numeric Maximum additional high-side values for
+#'   normalised methods; Inf allows no cap. Default: Inf.
+#' @param normLambda numeric vector Box-Cox search grid; used only with
+#'   `normMtd = "boxcox"`. Default: seq(-2, 2, length.out = 81).
+#' @param normDensityN numeric Grid points for normalised bandwidth estimation.
+#'   Default: 512.
+#' @param normExcessBwMtd character Ordinary bandwidth selector for right-side
+#'   excess density: "nrd0", "sj", "hpi0", "hpi1", "hpi2", or "hpi3".
+#'   Default: "hpi3".
+#' @param normExcessNcell numeric Maximum cells for estimating the
+#'   excess-density bandwidth. Default: 10000.
+#' @param normAdaptiveNcell numeric Fixed synthetic normal sample size per
+#'   component for adaptive normalised bandwidths. Default: 2500.
+#' @param normMtd character Normalisation for "Norm" selectors: "moments"
+#'   replaces components with normals having matching moments; "boxcox" uses
+#'   Box-Cox transformations for scalar bandwidths only. Default: "moments".
 #' @details
-#' Most users never need to change these settings. Arguments are grouped into
-#' gating behaviour (`calcCytPosGates`), cell-count limits (`minCell`), bias and
-#' expression limits (`biasUnsFactor`, `excMin`, `cpMin`), bandwidth selection
-#' (`bwMtd` through `bwCluster`), threshold sharing (`clusterGates`,
-#' `gateCombn`), local-FDR thresholding (`loc*`), and advanced/experimental
-#' adaptive and normalised bandwidths (`bwAdaptive*`, `norm*`).
-#' A fixed bandwidth is set on [gateStim()] through `bw`, or per marker through
-#' `markerControl`; when it is fixed the bandwidth-selector settings are ignored.
-#' Use `markerControl` in [gateStim()] for per-marker overrides.
-#' @return A list of class `stimControl`.
+#' Settings follow the gating workflow: cell and expression limits, bandwidth
+#' selection and sharing, threshold sharing, local-FDR filtering, then adaptive
+#' and normalised bandwidths. A fixed `bw` on [gateStim()] overrides automatic
+#' bandwidth selection. Use its `markerControl` for per-marker settings.
+#' @return A named list of class `stimControl`, with one element per setting.
 #' @examples
 #' stimControl()
 #' stimControl(bwAdj = 1.5, clusterGates = FALSE)

@@ -82,25 +82,22 @@
   )
 }
 
-#' @title Get gating statistics
-#'
-#' @description Read and return gating statistics computed during gating.
-#'
-#' @param pathProject character. Path to the project directory.
-#' @return A data frame with gating statistics.
+#' @title Read gating statistics
+#' @description Read cell counts and background-subtracted frequencies saved
+#'   by [gateStim()].
+#' @param pathProject character Project directory from [gateStim()].
+#' @return A tibble (or data.frame when read from CSV) with sample and gate
+#'   identifiers, `countStim`, `countUns`, `nCellStim`, `nCellUns`, proportions
+#'   `propStim`, `propUns`, `propBs`, and percentages `freqStim`, `freqUns`,
+#'   `freqBs`. Background subtraction is stimulated minus unstimulated.
 #' @examples
 #' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
 #' pathProject <- gateStim(
-#'   pathProject = file.path(tempdir(), "getStimStatsExample"),
-#'   .data = gs,
-#'   batchList = exampleData$batchList,
-#'   marker = exampleData$marker,
-#'   popGate = "root"
+#'   tempfile("stimgate_"), gs, exampleData$batchList,
+#'   marker = exampleData$marker
 #' )
-#'
-#' # Get gating statistics
-#' statTbl <- getStimStats(pathProject)
+#' getStimStats(pathProject)
 #' @export
 getStimStats <- function(pathProject) {
   pathStatsPartial <- file.path(pathProject, "gateStats")

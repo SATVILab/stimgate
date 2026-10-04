@@ -1,77 +1,43 @@
-#' Plot stimulation gate
+#' Plot stimulation gates
 #'
-#' Plot bivariate hex and univariate density plots for batches of samples, along
-#' with their gates.
+#' Plot expression densities with saved gates from [gateStim()]. With two
+#' markers, also draw hexbin plots (requires the hexbin package).
 #'
-#' @param ind numeric vector. Specifies indices in `.data` to plot.
-#' @param .data GatingSet. Same GatingSet passed to `gateStim`.
-#' @param pathProject character.
-#' Path to the project directory used for `gateStim`.
-#' @param marker character vector of length one or two. Specifies markers
-#' to be plotted. If only one is passed, then only univariate plots are created.
-#' @param chnl character vector of length one or two. Specifies channels
-#' to be plotted. Ignored if `marker` is provided.
-#' @param pop character. Specifies population within GatingSet that
-#' gates were calculated on. If `NULL`, defaults to population specified
-#' by folder name in `project_path/gates/pop_<pop>`, but throws
-#' an error if more than one population is detected (i.e. more
-#' than one directory in `gates/`). Default is `NULL`.
-#' @param indLab named character vector.
-#' Labels for `ind` used in plot.
-#' Optional.
-#' @param axisLab named character vector.
-#' Labels for axis titles, applied to `marker` or `chnl`.
-#' Optional.
-#' @param excMin Logical.
-#' If `TRUE`, excludes the minimum expression values when processing the data.
-#' Default is `TRUE`.
-#' @param limitsExpand list.
-#' Expand the limits of the plot axes.
-#' Default is `NULL`.
-#' @param limitsEqual Logical.
-#' If TRUE, forces equal lengths of the limits.
-#' @param grid Logical.
-#' If TRUE, arranges the resulting plots in a grid format
-#' using `cowplot::plot_grid`.
-#' Default is `TRUE`.
-#' @param gridNCol Integer.
-#' Number of columns in grid layout.
-#' @param showGate Logical.
-#' If `TRUE`, overlays gate lines on the plots.
-#' Default is `TRUE`.
-#' @param minCell integer.
-#' Minimum number of cells to be plotted.
-#' Will skip plots with fewer cells.
-#' Default is 10.
+#' @param ind numeric vector Sample indices to plot.
+#' @param .data GatingSet Data used for gating; supplies uncached expression.
+#' @param pathProject character Project directory from [gateStim()].
+#' @param marker character vector or NULL One or two marker labels to plot;
+#'   supply either `marker` or `chnl`. Default: NULL.
+#' @param chnl character vector or NULL One or two channels to plot. Default: NULL.
+#' @param pop character or NULL Gated population; NULL selects the single saved
+#'   population and errors if several exist. Default: NULL.
+#' @param indLab character vector or NULL Sample labels, named by index or in
+#'   `ind` order. Default: NULL (sample indices).
+#' @param axisLab character vector or NULL Axis labels, named by marker/channel
+#'   or in their order. Default: NULL (marker/channel names).
+#' @param excMin logical Exclude minimum expression values and show densities
+#'   scaled by the retained fraction alongside raw densities. Default: TRUE.
+#' @param limitsExpand list or NULL Axis limits to expand to, e.g.
+#'   `list(x = c(0, 5), y = c(0, 5))`. Default: NULL.
+#' @param limitsEqual logical Give bivariate axes equal ranges. Default: FALSE.
+#' @param grid logical Arrange plots in a grid. Default: TRUE.
+#' @param gridNCol integer Grid columns. Default: 2.
+#' @param showGate logical Draw gate lines. Default: TRUE.
+#' @param minCell numeric Minimum retained cell count to plot a sample.
+#'   Default: 10.
 #' @inheritParams getStimExpr
-#'
-#' @return A grid of plots if `grid` is TRUE, otherwise a list of ggplot objects.
-#'
+#' @return A ggplot grid if `grid = TRUE`; otherwise a list of bivariate plots
+#'   by sample and univariate plots by marker. NULL if no sample meets `minCell`.
 #' @examples
-#' # Create example data and run gating
 #' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
-#' pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
-#'
-#' # Run gating
-#' gateStim(
-#'   .data = gs,
-#'   pathProject = pathProject,
-#'   popGate = "root",
-#'   batchList = exampleData$batchList,
+#' pathProject <- gateStim(
+#'   tempfile("stimgate_"), gs, exampleData$batchList,
 #'   marker = exampleData$marker
 #' )
-#'
-#' # Create plots
-#' if (requireNamespace("hexbin", quietly = TRUE)) {
-#'   plots <- plotStim(
-#'     ind = exampleData$batchList[[1]], # indices in `gs` to plot
-#'     .data = gs, # GatingSet
-#'     pathProject = pathProject,
-#'     marker = exampleData$marker,
-#'     grid = TRUE
-#'   )
-#' }
+#' plotStim(exampleData$batchList[[1]], gs, pathProject,
+#'   marker = exampleData$marker[1]
+#' )
 #' @export
 plotStim <- function(
   ind,

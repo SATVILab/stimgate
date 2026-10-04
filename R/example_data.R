@@ -1,18 +1,14 @@
-#' Get example GatingSet
+#' Load example cytometry data
 #'
-#' Load the canonical packaged example dataset shipped under
-#' \code{inst/extdata/stimgate_example_data/}. This keeps the regular package
-#' examples and tests on a deterministic, realistic dataset without requiring
-#' the simulation machinery to be installed with the package.
+#' Load the packaged dataset and save a GatingSet in a temporary directory.
+#' Use the returned paths and labels to try [gateStim()].
 #'
-#' @return A list with the saved example-data path, channel labels, marker labels,
-#'   and sample-to-condition mapping.
+#' @return A list with `pathGs` (saved GatingSet path), `batchList` (sample
+#'   indices by batch, control first), `chnl` (channels) and `marker` (labels).
 #' @examples
 #' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
-#' gs
 #' exampleData$batchList
-#' exampleData$marker
 #' @export
 getExampleData <- function() {
   example_dir <- system.file(

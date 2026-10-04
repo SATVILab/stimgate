@@ -8,63 +8,62 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-```{r setup}
+`stimgate` identifies cells that may have responded to stimulation by comparing stimulated tubes with an unstimulated control from the same donor. Run the following chunks in order to save gates, read response statistics and inspect plots.
+
+## 1. Load the data
+
+`getExampleData()` returns a list with a saved GatingSet path, marker and channel labels, and tube indices grouped by donor. Load that GatingSet:
+
+```{r data, eval=FALSE}
 library(stimgate)
+exampleData <- getExampleData()
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+exampleData$batchList
+exampleData$marker
 ```
 
-# Introduction
+For your own data, supply a `flowWorkspace` GatingSet with consistent channels across tubes. In each `batchList` element, put the unstimulated tube index first, followed by its matched stimulated tubes.
 
-The `stimgate` package provides tools to identify cells that have possibly responded to stimulation by comparing unstimulated and stimulated tubes from the same sample.
+## 2. Find gates
 
-## Main Functions
+Choose an output directory and the markers to gate. `gateStim()` saves results there and returns the directory path as a character string. The default `popGate = "root"` uses all cells; choose an existing GatingSet population to restrict gating.
 
-The package provides several key functions:
-
-- `stimgate_gate()`: Main function to identify cytokine-positive cells by gating
-- `get_stats()`: Generate statistics from gating results
-- `stimgate_plot()`: Visualize identified gates
-- `stimgate_gate_get()`: Extract gate information
-- `stimgate_fcs_write()`: Write FCS files of cytokine-positive cells
-
-## Basic Usage
-
-```{r eval=FALSE}
-# Basic gating workflow
-result <- stimgate_gate(
-  pathProject = "/path/to/project",
-  .data = gs, # GatingSet object
-  batchList = list(batch1 = 1:10, batch2 = 11:20),
-  marker = list(
-    list(cut = "IL2", tol = 0.5e-8),
-    list(cut = "TNFa", tol = 0.5e-8)
-  )
-)
-
-# Get statistics
-stats <- get_stats("/path/to/project")
-
-# Get gate table
-gates <- get_gate_tbl("/path/to/project")
-
-# Plot gates
-plots <- stimgate_plot(
-  ind = 1:3,
+```{r gate, eval=FALSE}
+pathProject <- gateStim(
+  pathProject = tempfile("stimgate_"),
   .data = gs,
-  pathProject = "/path/to/project",
-  marker = c("IL2", "TNFa")
+  batchList = exampleData$batchList,
+  marker = exampleData$marker
 )
 ```
 
-For more detailed examples and advanced usage, please refer to the function documentation.
+Use `chnl` instead of `marker` to select channels by name. Start with the defaults; see `?stimControl` for tuning settings and `?gateStim` for per-marker overrides through `markerControl`.
 
-`gateStim()` takes its data and marker arguments directly (`pathProject`, `.data`, `batchList`, `marker` or `chnl`, `popGate`, `biasUns`, `bw`). All other method, bandwidth and thresholding settings are supplied through its `control` argument as a `stimControl()` object, and per-marker overrides through `markerControl`, keyed by marker label or channel name.
+## 3. Read gates and statistics
 
-```{r}
-sessionInfo()
+`getStimGates()` returns a tibble of stimulated-tube thresholds. Columns include `pop`, `marker`, `chnl`, `batch`, `ind` (tube index), `gateName`, `gate` and `gateCyt` (the threshold used for cells positive for another cytokine).
+
+```{r results, eval=FALSE}
+gates <- getStimGates(pathProject)
+head(gates)
+stats <- getStimStats(pathProject)
+head(stats)
 ```
+
+`getStimStats()` reads a data frame with rows for tubes (`ind`), gate methods (`gateName`) and marker combinations (`cytCombn`). `countStim` and `countUns` count cells in each combination; `nCellStim` and `nCellUns` give total cells. `propBs = propStim - propUns` subtracts control from stimulated proportions. `freqStim` and `freqUns` are percentages; `freqBs` is their difference in percentage points.
+
+## 4. Inspect plots
+
+Plot the first donor's tubes to compare control and stimulated expression with the gate lines. One marker gives density plots; two also give bivariate hex plots (requiring `hexbin`). The default output is a ggplot grid; `grid = FALSE` returns a list of ggplot objects.
+
+```{r plots, eval=FALSE}
+plotStim(
+  ind = exampleData$batchList[[1]], .data = gs,
+  pathProject = pathProject, marker = exampleData$marker[1]
+)
+```
+
+For threshold diagnostics, see `?getStimGatesDetailed`. To export positive cells as FCS files, see `?writeStimFCS`. Keep `pathProject` to read saved gates and statistics in later sessions.
