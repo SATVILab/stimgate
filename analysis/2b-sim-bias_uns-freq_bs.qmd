@@ -538,6 +538,7 @@ if (isTRUE(run_plots)) {
       } else {
         NA_real_
       },
+      bias_uns_realised = stats::median(biasUns, na.rm = TRUE),
       .groups = "drop"
     )
   # Over- and under-estimates summarised separately.
@@ -725,6 +726,87 @@ if (isTRUE(run_plots)) {
           ggsave(path_p, p, width = 28, height = 20, units = "cm")
           print(p)
         }
+      }
+    }
+  }
+}
+```
+
+### Relative error against the bias applied
+
+The two bias rules use the same multipliers on very different bases: the
+bandwidth (0.05 to 0.5 on the Gaussian and skew scales) and the negative
+population's shoulder width (roughly two standard deviations of the negative
+population). Plotting against the bias actually applied, in expression units,
+shows whether the rules differ beyond that scale. If both rules fall on one
+curve, the negative-width rule is not worse in itself; its multipliers simply
+give much larger biases.
+
+```{r}
+#| label: tbl-negative-width
+#| echo: false
+if (isTRUE(run_plots)) {
+  bias_uns_results_raw |>
+    dplyr::filter(bias_uns_basis == "negative_width") |>
+    dplyr::group_by(transformation, mean_pos_setting, n_cell, bw) |>
+    dplyr::summarise(
+      negative_width = stats::median(biasUnsNegativeWidth, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(width_over_bw = signif(negative_width / bw, 3)) |>
+    print(n = Inf)
+}
+```
+
+```{r}
+#| label: fig-relative-error-vs-bias
+#| fig-cap: "Relative error against the bias applied, for both bias rules."
+#| fig-width: 10
+#| fig-height: 12
+#| echo: false
+if (isTRUE(run_plots)) {
+  plot_dir <- .analysis_cache_dir(
+    c(analysis_key, "relative_error_vs_bias"),
+    path_root = root_dir
+  )
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+
+  for (transformation_curr in unique(bias_uns_abs_error$transformation)) {
+    for (mean_pos_setting_curr in unique(bias_uns_abs_error$mean_pos_setting)) {
+      for (prob_response_curr in unique(bias_uns_abs_error$prob_response)) {
+        plot_tbl <- bias_uns_abs_error |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          )
+
+        p <- .simBandwidthBiasRelativeErrorPlot(
+          plot_tbl,
+          title = paste0(
+            transformation_curr,
+            "; mean position = ", mean_pos_setting_curr,
+            "; response probability = ", prob_response_curr
+          ),
+          facet = ggplot2::facet_grid(
+            statistic + n_cell ~ mismatch_label,
+            scales = "free_y"
+          ),
+          x = "bias_uns_realised",
+          x_label = "Bias applied (expression units)"
+        )
+
+        path_p <- file.path(
+          plot_dir,
+          paste0(
+            transformation_curr,
+            "_", mean_pos_setting_curr,
+            "_p_", format(prob_response_curr, scientific = TRUE),
+            ".pdf"
+          )
+        )
+        ggsave(path_p, p, width = 28, height = 30, units = "cm")
+        print(p)
       }
     }
   }

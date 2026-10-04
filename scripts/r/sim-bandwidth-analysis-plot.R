@@ -103,11 +103,12 @@ add_bw_labs <- function(.data) {
     stat_cols = c(
       median_abs_rel_error = "Median", q90_abs_rel_error = "90th percentile",
       max_abs_rel_error = "Maximum"
-    )) {
+    ),
+    x = "bias_uns_multiplier", x_label = "Bias multiplier") {
   ggplot2::ggplot(
     .simBandwidthErrorStatLong(tbl, stat_cols),
     ggplot2::aes(
-      x = bias_uns_multiplier, y = value,
+      x = .data[[x]], y = value,
       colour = factor(bw), linetype = bias_uns_basis,
       group = interaction(bw, bias_uns_basis)
     )
@@ -119,7 +120,7 @@ add_bw_labs <- function(.data) {
     cowplot::background_grid(major = "xy") +
     ggplot2::theme(legend.position = "bottom") +
     ggplot2::labs(
-      title = title, x = "Bias multiplier", y = y_label,
+      title = title, x = x_label, y = y_label,
       colour = "Bandwidth", linetype = "Bias scale"
     )
 }

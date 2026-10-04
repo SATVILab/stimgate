@@ -362,7 +362,10 @@ test_that("2b error summary keeps the median, 90th percentile and maximum", {
     bias_uns_basis = "bandwidth", bias_uns_multiplier = c(0, 1),
     rel_error = c(-0.1, 0.05, 0.2, 0.4, NA)
   ) |>
-    dplyr::mutate(abs_rel_error = abs(rel_error))
+    dplyr::mutate(
+      abs_rel_error = abs(rel_error),
+      biasUns = bias_uns_multiplier * bw
+    )
   eval(.bandwidth_cell_plot_chunk(
     "2b-sim-bias_uns-freq_bs.qmd", "bias-uns-error-summary"
   ), env)
@@ -374,6 +377,7 @@ test_that("2b error summary keeps the median, 90th percentile and maximum", {
     rep(stats::quantile(c(0.1, 0.05, 0.2, 0.4), 0.9, names = FALSE), 2)
   )
   expect_equal(abs_error$max_abs_rel_error, c(0.4, 0.4))
+  expect_equal(abs_error$bias_uns_realised, c(0, 0.1))
   signed <- env$bias_uns_signed_error
   expect_equal(nrow(signed), 4L)
   expect_equal(signed$max[signed$direction == "over"], c(0.4, 0.4))
