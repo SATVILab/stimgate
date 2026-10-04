@@ -174,7 +174,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpeWH9C3/demonstration"
+#> [1] "/tmp/Rtmp29tuQd/demonstration"
 
 # Customise tuning and override the bandwidth for the first marker
 gateStim(
@@ -199,7 +199,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpeWH9C3/custom-gating"
+#> [1] "/tmp/Rtmp29tuQd/custom-gating"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
