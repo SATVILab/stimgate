@@ -86,7 +86,7 @@ calc_skew <- function(x, epsilon = 0.5, delta = 1) {
 }
 
 .simMiscGetTransPretty <- function() {
-  c("gaussian" = "Gaussian", "gamma" = "Gamma", "skew" = "Skew")
+  c("gaussian" = "Gaussian", "skew" = "Skew", "gamma" = "Gamma")
 }
 
 .simMiscGetMeanPosPretty <- function() {

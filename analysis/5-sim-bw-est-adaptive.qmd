@@ -39,6 +39,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 analysis_qmd <- "analysis/5-sim-bw-est-adaptive.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
@@ -446,14 +447,12 @@ if (isTRUE(run_plots)) {
 
 ## Results
 
-Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the HPI method. Facets separate transformations and response frequencies; separate figures show each core or extra component and each condition at fixed response separation and bias. Compare the curves within a panel, bearing in mind that means use only finite estimates and the table above reports their coverage.
+Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the HPI method. Facets separate transformations and response frequencies; response frequencies are shown as percentages. Headings name the response separation, bias, core or extra component and condition of each figure. Compare the curves within a panel, bearing in mind that means use only finite estimates and the table above reports their coverage.
 
 ```{r}
-#| label: fig-bw-estimate-plots
+#| label: bw-estimate-plots
 #| echo: false
-#| fig-cap: "Adaptive core and extra bandwidth estimates by cell count and condition."
-#| fig-width: 10
-#| fig-height: 9
+#| results: asis
 if (isTRUE(run_plots)) {
   dir_results <- .analysis_fig_dir(c(fig_key, "est_bw_adaptive"), root_dir)
 
@@ -464,6 +463,7 @@ if (isTRUE(run_plots)) {
     if (nrow(bw_tbl_mean_pos) == 0L) {
       next
     }
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 3)
 
     for (bias_uns_setting_curr in unique(bw_tbl_mean_pos$bias_uns_setting)) {
       bw_tbl_bias <- bw_tbl_mean_pos |>
@@ -472,6 +472,7 @@ if (isTRUE(run_plots)) {
       if (nrow(bw_tbl_bias) == 0L) {
         next
       }
+      .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 4)
 
       for (bw_component_curr in levels(bw_tbl_bias$bw_component)) {
         bw_tbl_comp <- bw_tbl_bias |>
@@ -480,6 +481,7 @@ if (isTRUE(run_plots)) {
         if (nrow(bw_tbl_comp) == 0L) {
           next
         }
+        .analysis_heading(paste0("Component: ", bw_component_curr), 5)
 
         for (bw_condition_curr in levels(bw_tbl_comp$bw_condition)) {
           plot_tbl <- bw_tbl_comp |>
@@ -488,6 +490,11 @@ if (isTRUE(run_plots)) {
           if (nrow(plot_tbl) == 0L) {
             next
           }
+          .analysis_heading(paste0("Condition: ", bw_condition_curr), 6)
+          plot_tbl <- plot_tbl |>
+            dplyr::mutate(
+              transformation = .analysis_trans_factor(.data$transformation)
+            )
 
           p <- ggplot(
             plot_tbl,
@@ -497,28 +504,24 @@ if (isTRUE(run_plots)) {
               colour = .data$bw_mtd_base
             )
           ) +
-            geom_line(linetype = "solid") +
-            geom_point() +
-            scale_x_log10() +
-            facet_grid(transformation ~ prob_response, scales = "free_y") +
+            geom_line(linetype = "solid", alpha = 0.75) +
+            geom_point(alpha = 0.75) +
+            scale_x_log10(
+              labels = .analysis_label_number,
+              guide = guide_axis(angle = 45)
+            ) +
+            scale_y_continuous(labels = .analysis_label_number) +
+            facet_grid(
+              transformation ~ prob_response,
+              scales = "free_y",
+              labeller = labeller(prob_response = .analysis_labeller_percent())
+            ) +
             labs(
-              title = paste0(
-                "Mean position setting: ", mean_pos_setting_curr,
-                ",\nbias_uns_setting: ", bias_uns_setting_curr,
-                ",\ncomponent: ", bw_component_curr,
-                ",\ncondition: ", bw_condition_curr
-              ),
               x = "Number of cells",
               y = "Estimated bandwidth",
               colour = "Method"
             ) +
-            cowplot::theme_cowplot() +
-            cowplot::background_grid(major = "xy") +
-            theme(
-              panel.background = element_rect(fill = "white", colour = NA),
-              plot.background = element_rect(fill = "white", colour = NA),
-              legend.position = "bottom"
-            ) +
+            .analysis_theme() +
             scale_colour_manual(values = .simBwMtdColVec, drop = FALSE)
 
           path_plot <- file.path(
@@ -536,14 +539,8 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_plot), recursive = TRUE, showWarnings = FALSE)
-          ggsave(
-            filename = path_plot,
-            plot = p,
-            width = 12,
-            height = 20,
-            units = "cm"
-          )
-          print(p)
+          .analysis_save_fig(p, path_plot, height = 15)
+          .analysis_print_fig(p)
         }
       }
     }

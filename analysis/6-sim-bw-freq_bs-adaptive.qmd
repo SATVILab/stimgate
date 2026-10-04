@@ -38,6 +38,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 analysis_qmd <- "analysis/6-sim-bw-freq_bs-adaptive.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
@@ -484,22 +485,32 @@ if (isTRUE(run_plots)) {
 
 ## Results
 
-### Estimated background-subtracted frequency
-
-#### Fixed core bandwidth, varying extra bandwidth
+### Estimated frequency: fixed core bandwidth, varying extra bandwidth
 
 Cell count is on the logarithmic horizontal axis and median estimated frequency is on the vertical axis. Colour distinguishes extra bandwidths, panels separate response frequencies, and dashed lines mark the simulated truth; estimates nearer these lines indicate closer agreement.
 
 ```{r}
-#| label: fig-est-fixed-core
-#| fig-cap: "Median response-frequency estimates with fixed core bandwidth."
-#| fig-width: 9
-#| fig-height: 4
+#| label: est-fixed-core
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
+  for (transformation_curr in .analysis_trans_order(bw_tbl_results_summary$transformation)) {
+    .analysis_heading(
+      paste0(
+        "Transformation: ",
+        as.character(.analysis_trans_factor(transformation_curr))
+      ),
+      4
+    )
     for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
       for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+        .analysis_heading(
+          paste0(
+            "Mean position: ", mean_pos_setting_curr,
+            "; bias: ", bias_uns_setting_curr
+          ),
+          5
+        )
         for (bw_core_curr in unique(bw_tbl_results_summary$bw_core)) {
           plot_tbl <- bw_tbl_results_summary |>
             dplyr::filter(
@@ -514,6 +525,11 @@ if (isTRUE(run_plots)) {
             next
           }
 
+          .analysis_heading(
+            paste0("Core bandwidth: ", format_bw_lab(bw_core_curr)),
+            6
+          )
+
           col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw_extra)
           plot_tbl <- plot_tbl |>
             dplyr::mutate(
@@ -524,30 +540,25 @@ if (isTRUE(run_plots)) {
             plot_tbl,
             aes(x = n_cell, y = propRespEst_median, colour = bw_extra_lab)
           ) +
-            geom_line() +
+            geom_line(alpha = 0.75) +
             geom_hline(
               mapping = aes(yintercept = propRespTruth_median),
               linetype = "dashed",
               colour = "black"
             ) +
-            geom_point() +
-            scale_x_log10() +
-            facet_grid(. ~ prob_response, scales = "free_y") +
-            cowplot::theme_cowplot() +
-            cowplot::background_grid(major = "xy") +
-            theme(
-              panel.background = element_rect(fill = "white", colour = NA),
-              plot.background = element_rect(fill = "white", colour = NA),
-              legend.position = "bottom"
+            geom_point(alpha = 0.75) +
+            scale_x_log10(
+              labels = .analysis_label_number,
+              guide = guide_axis(angle = 45)
             ) +
+            scale_y_continuous(labels = .analysis_label_percent) +
+            facet_grid(
+              . ~ prob_response,
+              scales = "free_y",
+              labeller = labeller(prob_response = .analysis_labeller_percent())
+            ) +
+            .analysis_theme() +
             labs(
-              title = paste0(
-                "Estimated frequency: fixed core bandwidth = ",
-                format_bw_lab(bw_core_curr),
-                " (", transformation_curr,
-                ", mean_pos_setting = ", mean_pos_setting_curr,
-                ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-              ),
               x = "Number of cells (log scale)",
               y = "Estimated background-subtracted frequency (median)",
               colour = "Extra bandwidth"
@@ -570,14 +581,8 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          print(p)
-          ggsave(
-            filename = path_p,
-            plot = p,
-            width = 22,
-            height = 10,
-            units = "cm"
-          )
+          .analysis_save_fig(p, path_p, height = 8)
+          .analysis_print_fig(p)
         }
       }
     }
@@ -585,20 +590,32 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-#### Fixed extra bandwidth, varying core bandwidth
+### Estimated frequency: fixed extra bandwidth, varying core bandwidth
 
 Cell count is on the logarithmic horizontal axis and median estimated frequency is on the vertical axis. Colour distinguishes core bandwidths and panels separate response frequencies. Compare estimates with the dashed lines marking the simulated truth.
 
 ```{r}
-#| label: fig-est-fixed-extra
-#| fig-cap: "Median response-frequency estimates with fixed extra bandwidth."
-#| fig-width: 9
-#| fig-height: 4
+#| label: est-fixed-extra
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
+  for (transformation_curr in .analysis_trans_order(bw_tbl_results_summary$transformation)) {
+    .analysis_heading(
+      paste0(
+        "Transformation: ",
+        as.character(.analysis_trans_factor(transformation_curr))
+      ),
+      4
+    )
     for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
       for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+        .analysis_heading(
+          paste0(
+            "Mean position: ", mean_pos_setting_curr,
+            "; bias: ", bias_uns_setting_curr
+          ),
+          5
+        )
         for (bw_extra_curr in unique(bw_tbl_results_summary$bw_extra)) {
           plot_tbl <- bw_tbl_results_summary |>
             dplyr::filter(
@@ -613,6 +630,11 @@ if (isTRUE(run_plots)) {
             next
           }
 
+          .analysis_heading(
+            paste0("Extra bandwidth: ", format_bw_lab(bw_extra_curr)),
+            6
+          )
+
           col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw_core)
           plot_tbl <- plot_tbl |>
             dplyr::mutate(
@@ -623,30 +645,25 @@ if (isTRUE(run_plots)) {
             plot_tbl,
             aes(x = n_cell, y = propRespEst_median, colour = bw_core_lab)
           ) +
-            geom_line() +
+            geom_line(alpha = 0.75) +
             geom_hline(
               mapping = aes(yintercept = propRespTruth_median),
               linetype = "dashed",
               colour = "black"
             ) +
-            geom_point() +
-            scale_x_log10() +
-            facet_grid(. ~ prob_response, scales = "free_y") +
-            cowplot::theme_cowplot() +
-            cowplot::background_grid(major = "xy") +
-            theme(
-              panel.background = element_rect(fill = "white", colour = NA),
-              plot.background = element_rect(fill = "white", colour = NA),
-              legend.position = "bottom"
+            geom_point(alpha = 0.75) +
+            scale_x_log10(
+              labels = .analysis_label_number,
+              guide = guide_axis(angle = 45)
             ) +
+            scale_y_continuous(labels = .analysis_label_percent) +
+            facet_grid(
+              . ~ prob_response,
+              scales = "free_y",
+              labeller = labeller(prob_response = .analysis_labeller_percent())
+            ) +
+            .analysis_theme() +
             labs(
-              title = paste0(
-                "Estimated frequency: fixed extra bandwidth = ",
-                format_bw_lab(bw_extra_curr),
-                " (", transformation_curr,
-                ", mean_pos_setting = ", mean_pos_setting_curr,
-                ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-              ),
               x = "Number of cells (log scale)",
               y = "Estimated background-subtracted frequency (median)",
               colour = "Core bandwidth"
@@ -669,14 +686,8 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          print(p)
-          ggsave(
-            filename = path_p,
-            plot = p,
-            width = 22,
-            height = 10,
-            units = "cm"
-          )
+          .analysis_save_fig(p, path_p, height = 8)
+          .analysis_print_fig(p)
         }
       }
     }
@@ -684,22 +695,32 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Raw background-subtracted frequency estimates
-
-#### Fixed core bandwidth, varying extra bandwidth
+### Raw frequency estimates: fixed core bandwidth, varying extra bandwidth
 
 Each point is a final sample estimate, with cell count on the horizontal axis and estimated frequency on the vertical axis. Colour distinguishes extra bandwidths and panels separate response frequencies. The spread around the dashed truth lines shows variation across samples and simulation iterations.
 
 ```{r}
-#| label: fig-raw-fixed-core
-#| fig-cap: "Sample response-frequency estimates with fixed core bandwidth."
-#| fig-width: 9
-#| fig-height: 4
+#| label: raw-fixed-core
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
+  for (transformation_curr in .analysis_trans_order(bw_tbl_results_raw$transformation)) {
+    .analysis_heading(
+      paste0(
+        "Transformation: ",
+        as.character(.analysis_trans_factor(transformation_curr))
+      ),
+      4
+    )
     for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
       for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+        .analysis_heading(
+          paste0(
+            "Mean position: ", mean_pos_setting_curr,
+            "; bias: ", bias_uns_setting_curr
+          ),
+          5
+        )
         for (bw_core_curr in unique(bw_tbl_results_raw$bw_core)) {
           plot_tbl <- bw_tbl_results_raw |>
             dplyr::filter(
@@ -714,6 +735,11 @@ if (isTRUE(run_plots)) {
             next
           }
 
+          .analysis_heading(
+            paste0("Core bandwidth: ", format_bw_lab(bw_core_curr)),
+            6
+          )
+
           col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw_extra)
           plot_tbl <- plot_tbl |>
             dplyr::mutate(
@@ -724,28 +750,24 @@ if (isTRUE(run_plots)) {
             plot_tbl,
             aes(x = factor(n_cell), y = propRespEst, colour = bw_extra_lab)
           ) +
-            ggforce::geom_sina(position = "dodge") +
+            ggforce::geom_sina(position = "dodge", alpha = 0.75) +
             geom_hline(
               mapping = aes(yintercept = propRespTruth),
               linetype = "dashed",
               colour = "black"
             ) +
-            facet_grid(. ~ prob_response, scales = "free_y") +
-            cowplot::theme_cowplot() +
-            cowplot::background_grid(major = "xy") +
-            theme(
-              panel.background = element_rect(fill = "white", colour = NA),
-              plot.background = element_rect(fill = "white", colour = NA),
-              legend.position = "bottom"
+            scale_x_discrete(
+              labels = function(x) .analysis_label_number(as.numeric(x)),
+              guide = guide_axis(angle = 45)
             ) +
+            scale_y_continuous(labels = .analysis_label_percent) +
+            facet_grid(
+              . ~ prob_response,
+              scales = "free_y",
+              labeller = labeller(prob_response = .analysis_labeller_percent())
+            ) +
+            .analysis_theme() +
             labs(
-              title = paste0(
-                "Raw estimated frequency: fixed core bandwidth = ",
-                format_bw_lab(bw_core_curr),
-                " (", transformation_curr,
-                ", mean_pos_setting = ", mean_pos_setting_curr,
-                ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-              ),
               x = "Number of cells",
               y = "Estimated background-subtracted frequency",
               colour = "Extra bandwidth"
@@ -768,14 +790,8 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          print(p)
-          ggsave(
-            filename = path_p,
-            plot = p,
-            width = 22,
-            height = 10,
-            units = "cm"
-          )
+          .analysis_save_fig(p, path_p, height = 8)
+          .analysis_print_fig(p)
         }
       }
     }
@@ -783,20 +799,32 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-#### Fixed extra bandwidth, varying core bandwidth
+### Raw frequency estimates: fixed extra bandwidth, varying core bandwidth
 
 Each point is a final sample estimate, with cell count on the horizontal axis and estimated frequency on the vertical axis. Colour distinguishes core bandwidths and panels separate response frequencies. Compare the spread of points with the dashed lines marking the simulated truth.
 
 ```{r}
-#| label: fig-raw-fixed-extra
-#| fig-cap: "Sample response-frequency estimates with fixed extra bandwidth."
-#| fig-width: 9
-#| fig-height: 4
+#| label: raw-fixed-extra
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
+  for (transformation_curr in .analysis_trans_order(bw_tbl_results_raw$transformation)) {
+    .analysis_heading(
+      paste0(
+        "Transformation: ",
+        as.character(.analysis_trans_factor(transformation_curr))
+      ),
+      4
+    )
     for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
       for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+        .analysis_heading(
+          paste0(
+            "Mean position: ", mean_pos_setting_curr,
+            "; bias: ", bias_uns_setting_curr
+          ),
+          5
+        )
         for (bw_extra_curr in unique(bw_tbl_results_raw$bw_extra)) {
           plot_tbl <- bw_tbl_results_raw |>
             dplyr::filter(
@@ -811,6 +839,11 @@ if (isTRUE(run_plots)) {
             next
           }
 
+          .analysis_heading(
+            paste0("Extra bandwidth: ", format_bw_lab(bw_extra_curr)),
+            6
+          )
+
           col_vec_bw_curr <- make_bw_colour_values(plot_tbl$bw_core)
           plot_tbl <- plot_tbl |>
             dplyr::mutate(
@@ -821,28 +854,24 @@ if (isTRUE(run_plots)) {
             plot_tbl,
             aes(x = factor(n_cell), y = propRespEst, colour = bw_core_lab)
           ) +
-            ggforce::geom_sina(position = "dodge") +
+            ggforce::geom_sina(position = "dodge", alpha = 0.75) +
             geom_hline(
               mapping = aes(yintercept = propRespTruth),
               linetype = "dashed",
               colour = "black"
             ) +
-            facet_grid(. ~ prob_response, scales = "free_y") +
-            cowplot::theme_cowplot() +
-            cowplot::background_grid(major = "xy") +
-            theme(
-              panel.background = element_rect(fill = "white", colour = NA),
-              plot.background = element_rect(fill = "white", colour = NA),
-              legend.position = "bottom"
+            scale_x_discrete(
+              labels = function(x) .analysis_label_number(as.numeric(x)),
+              guide = guide_axis(angle = 45)
             ) +
+            scale_y_continuous(labels = .analysis_label_percent) +
+            facet_grid(
+              . ~ prob_response,
+              scales = "free_y",
+              labeller = labeller(prob_response = .analysis_labeller_percent())
+            ) +
+            .analysis_theme() +
             labs(
-              title = paste0(
-                "Raw estimated frequency: fixed extra bandwidth = ",
-                format_bw_lab(bw_extra_curr),
-                " (", transformation_curr,
-                ", mean_pos_setting = ", mean_pos_setting_curr,
-                ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-              ),
               x = "Number of cells",
               y = "Estimated background-subtracted frequency",
               colour = "Core bandwidth"
@@ -865,14 +894,8 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          print(p)
-          ggsave(
-            filename = path_p,
-            plot = p,
-            width = 22,
-            height = 10,
-            units = "cm"
-          )
+          .analysis_save_fig(p, path_p, height = 8)
+          .analysis_print_fig(p)
         }
       }
     }
@@ -886,20 +909,32 @@ Threshold plots show final thresholds as vertical lines. Median plots
 vary one bandwidth component at a time; raw plots also show sample thresholds
 and their interquartile range.
 
-#### Median thresholds: fixed core bandwidth, varying extra bandwidth
+### Median thresholds: fixed core bandwidth, varying extra bandwidth
 
 Vertical lines mark median thresholds on the marker-expression axis; line type distinguishes extra bandwidths. Rows separate response frequencies and columns separate cell counts. Compare the positions of the lines to see how the extra bandwidth changes the gate.
 
 ```{r}
-#| label: fig-threshold-median-fixed-core
-#| fig-cap: "Median thresholds with fixed core bandwidth."
-#| fig-width: 10
-#| fig-height: 8
+#| label: threshold-median-fixed-core
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
+  for (transformation_curr in .analysis_trans_order(bw_tbl_results_summary$transformation)) {
+    .analysis_heading(
+      paste0(
+        "Transformation: ",
+        as.character(.analysis_trans_factor(transformation_curr))
+      ),
+      4
+    )
     for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
       for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+        .analysis_heading(
+          paste0(
+            "Mean position: ", mean_pos_setting_curr,
+            "; bias: ", bias_uns_setting_curr
+          ),
+          5
+        )
         for (bw_core_curr in unique(bw_tbl_results_summary$bw_core)) {
           threshold_tbl_curr <- bw_tbl_results_summary |>
             dplyr::filter(
@@ -914,6 +949,11 @@ if (isTRUE(run_plots)) {
             next
           }
 
+          .analysis_heading(
+            paste0("Core bandwidth: ", format_bw_lab(bw_core_curr)),
+            6
+          )
+
           bw_scale <- make_bw_linetype_scale(threshold_tbl_curr$bw_extra)
           threshold_tbl_curr <- threshold_tbl_curr |>
             dplyr::mutate(
@@ -924,24 +964,15 @@ if (isTRUE(run_plots)) {
             facet_grid(
               rows = vars(.data$prob_response),
               cols = vars(.data$n_cell),
-              scales = "free_x"
+              scales = "free_x",
+              labeller = labeller(
+                prob_response = .analysis_labeller_percent(),
+                n_cell = function(x) .analysis_label_number(as.numeric(x))
+              )
             ) +
-            cowplot::theme_cowplot() +
-            cowplot::background_grid(major = "xy", minor = "none") +
-            theme(
-              panel.background = element_rect(fill = "white", colour = NA),
-              plot.background = element_rect(fill = "white", colour = NA),
-              legend.position = "bottom",
-              strip.text.y = element_text(angle = 0)
-            ) +
+            .analysis_theme() +
+            theme(strip.text.y = element_text(angle = 0)) +
             labs(
-              title = paste0(
-                "Median thresholds: fixed core bandwidth = ",
-                format_bw_lab(bw_core_curr),
-                " (", transformation_curr,
-                ", mean_pos_setting = ", mean_pos_setting_curr,
-                ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-              ),
               x = "Marker expression",
               y = NULL,
               colour = NULL,
@@ -978,14 +1009,8 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          print(p)
-          ggsave(
-            filename = path_p,
-            plot = p,
-            width = 14,
-            height = 22,
-            units = "cm"
-          )
+          .analysis_save_fig(p, path_p, height = 22)
+          .analysis_print_fig(p)
         }
       }
     }
@@ -993,20 +1018,32 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-#### Median thresholds: fixed extra bandwidth, varying core bandwidth
+### Median thresholds: fixed extra bandwidth, varying core bandwidth
 
 Vertical lines mark median thresholds on the marker-expression axis; line type distinguishes core bandwidths. Rows separate response frequencies and columns separate cell counts. Compare the positions of the lines to see how the core bandwidth changes the gate.
 
 ```{r}
-#| label: fig-threshold-median-fixed-extra
-#| fig-cap: "Median thresholds with fixed extra bandwidth."
-#| fig-width: 10
-#| fig-height: 8
+#| label: threshold-median-fixed-extra
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (transformation_curr in unique(bw_tbl_results_summary$transformation)) {
+  for (transformation_curr in .analysis_trans_order(bw_tbl_results_summary$transformation)) {
+    .analysis_heading(
+      paste0(
+        "Transformation: ",
+        as.character(.analysis_trans_factor(transformation_curr))
+      ),
+      4
+    )
     for (mean_pos_setting_curr in unique(bw_tbl_results_summary$mean_pos_setting)) {
       for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+        .analysis_heading(
+          paste0(
+            "Mean position: ", mean_pos_setting_curr,
+            "; bias: ", bias_uns_setting_curr
+          ),
+          5
+        )
         for (bw_extra_curr in unique(bw_tbl_results_summary$bw_extra)) {
           threshold_tbl_curr <- bw_tbl_results_summary |>
             dplyr::filter(
@@ -1021,6 +1058,11 @@ if (isTRUE(run_plots)) {
             next
           }
 
+          .analysis_heading(
+            paste0("Extra bandwidth: ", format_bw_lab(bw_extra_curr)),
+            6
+          )
+
           bw_scale <- make_bw_linetype_scale(threshold_tbl_curr$bw_core)
           threshold_tbl_curr <- threshold_tbl_curr |>
             dplyr::mutate(
@@ -1031,24 +1073,15 @@ if (isTRUE(run_plots)) {
             facet_grid(
               rows = vars(.data$prob_response),
               cols = vars(.data$n_cell),
-              scales = "free_x"
+              scales = "free_x",
+              labeller = labeller(
+                prob_response = .analysis_labeller_percent(),
+                n_cell = function(x) .analysis_label_number(as.numeric(x))
+              )
             ) +
-            cowplot::theme_cowplot() +
-            cowplot::background_grid(major = "xy", minor = "none") +
-            theme(
-              panel.background = element_rect(fill = "white", colour = NA),
-              plot.background = element_rect(fill = "white", colour = NA),
-              legend.position = "bottom",
-              strip.text.y = element_text(angle = 0)
-            ) +
+            .analysis_theme() +
+            theme(strip.text.y = element_text(angle = 0)) +
             labs(
-              title = paste0(
-                "Median thresholds: fixed extra bandwidth = ",
-                format_bw_lab(bw_extra_curr),
-                " (", transformation_curr,
-                ", mean_pos_setting = ", mean_pos_setting_curr,
-                ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-              ),
               x = "Marker expression",
               y = NULL,
               colour = NULL,
@@ -1085,14 +1118,8 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          print(p)
-          ggsave(
-            filename = path_p,
-            plot = p,
-            width = 14,
-            height = 22,
-            units = "cm"
-          )
+          .analysis_save_fig(p, path_p, height = 22)
+          .analysis_print_fig(p)
         }
       }
     }
@@ -1100,20 +1127,32 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-#### Raw thresholds: fixed core bandwidth, varying extra bandwidth
+### Raw thresholds: fixed core bandwidth, varying extra bandwidth
 
 Faint vertical lines mark individual sample thresholds on the marker-expression axis, coloured by extra bandwidth. Solid lines mark medians and dashed lines mark the lower and upper quartiles. Rows separate response frequencies and columns separate cell counts, allowing the threshold spread to be compared within each setting.
 
 ```{r}
-#| label: fig-threshold-raw-fixed-core
-#| fig-cap: "Sample thresholds and interquartile ranges with fixed core bandwidth."
-#| fig-width: 10
-#| fig-height: 8
+#| label: threshold-raw-fixed-core
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
+  for (transformation_curr in .analysis_trans_order(bw_tbl_results_raw$transformation)) {
+    .analysis_heading(
+      paste0(
+        "Transformation: ",
+        as.character(.analysis_trans_factor(transformation_curr))
+      ),
+      4
+    )
     for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
       for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+        .analysis_heading(
+          paste0(
+            "Mean position: ", mean_pos_setting_curr,
+            "; bias: ", bias_uns_setting_curr
+          ),
+          5
+        )
         for (bw_core_curr in unique(bw_tbl_results_raw$bw_core)) {
           threshold_tbl_curr <- bw_tbl_results_raw |>
             dplyr::filter(
@@ -1127,6 +1166,11 @@ if (isTRUE(run_plots)) {
           if (nrow(threshold_tbl_curr) == 0L) {
             next
           }
+
+          .analysis_heading(
+            paste0("Core bandwidth: ", format_bw_lab(bw_core_curr)),
+            6
+          )
 
           col_vec_bw_curr <- make_bw_colour_values(threshold_tbl_curr$bw_extra)
           threshold_tbl_curr <- threshold_tbl_curr |>
@@ -1162,27 +1206,18 @@ if (isTRUE(run_plots)) {
             facet_grid(
               rows = vars(.data$prob_response),
               cols = vars(.data$n_cell),
-              scales = "free_x"
+              scales = "free_x",
+              labeller = labeller(
+                prob_response = .analysis_labeller_percent(),
+                n_cell = function(x) .analysis_label_number(as.numeric(x))
+              )
             ) +
-            cowplot::theme_cowplot() +
-            cowplot::background_grid(major = "xy", minor = "none") +
-            theme(
-              panel.background = element_rect(fill = "white", colour = NA),
-              plot.background = element_rect(fill = "white", colour = NA),
-              legend.position = "bottom",
-              strip.text.y = element_text(angle = 0)
-            ) +
+            .analysis_theme() +
+            theme(strip.text.y = element_text(angle = 0)) +
             scale_colour_manual(
               values = col_vec_bw_curr
             ) +
             labs(
-              title = paste0(
-                "Raw thresholds: fixed core bandwidth = ",
-                format_bw_lab(bw_core_curr),
-                " (", transformation_curr,
-                ", mean_pos_setting = ", mean_pos_setting_curr,
-                ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-              ),
               x = "Marker expression",
               y = NULL,
               colour = "Extra bandwidth",
@@ -1235,14 +1270,8 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          print(p)
-          ggsave(
-            filename = path_p,
-            plot = p,
-            width = 14,
-            height = 22,
-            units = "cm"
-          )
+          .analysis_save_fig(p, path_p, height = 22)
+          .analysis_print_fig(p)
         }
       }
     }
@@ -1250,20 +1279,32 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-#### Raw thresholds: fixed extra bandwidth, varying core bandwidth
+### Raw thresholds: fixed extra bandwidth, varying core bandwidth
 
 Faint vertical lines mark individual sample thresholds on the marker-expression axis, coloured by core bandwidth. Solid lines mark medians and dashed lines mark the lower and upper quartiles. Rows separate response frequencies and columns separate cell counts, allowing the threshold spread to be compared within each setting.
 
 ```{r}
-#| label: fig-threshold-raw-fixed-extra
-#| fig-cap: "Sample thresholds and interquartile ranges with fixed extra bandwidth."
-#| fig-width: 10
-#| fig-height: 8
+#| label: threshold-raw-fixed-extra
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (transformation_curr in unique(bw_tbl_results_raw$transformation)) {
+  for (transformation_curr in .analysis_trans_order(bw_tbl_results_raw$transformation)) {
+    .analysis_heading(
+      paste0(
+        "Transformation: ",
+        as.character(.analysis_trans_factor(transformation_curr))
+      ),
+      4
+    )
     for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
       for (bias_uns_setting_curr in bias_uns_setting_vec_plot) {
+        .analysis_heading(
+          paste0(
+            "Mean position: ", mean_pos_setting_curr,
+            "; bias: ", bias_uns_setting_curr
+          ),
+          5
+        )
         for (bw_extra_curr in unique(bw_tbl_results_raw$bw_extra)) {
           threshold_tbl_curr <- bw_tbl_results_raw |>
             dplyr::filter(
@@ -1277,6 +1318,11 @@ if (isTRUE(run_plots)) {
           if (nrow(threshold_tbl_curr) == 0L) {
             next
           }
+
+          .analysis_heading(
+            paste0("Extra bandwidth: ", format_bw_lab(bw_extra_curr)),
+            6
+          )
 
           col_vec_bw_curr <- make_bw_colour_values(threshold_tbl_curr$bw_core)
           threshold_tbl_curr <- threshold_tbl_curr |>
@@ -1312,27 +1358,18 @@ if (isTRUE(run_plots)) {
             facet_grid(
               rows = vars(.data$prob_response),
               cols = vars(.data$n_cell),
-              scales = "free_x"
+              scales = "free_x",
+              labeller = labeller(
+                prob_response = .analysis_labeller_percent(),
+                n_cell = function(x) .analysis_label_number(as.numeric(x))
+              )
             ) +
-            cowplot::theme_cowplot() +
-            cowplot::background_grid(major = "xy", minor = "none") +
-            theme(
-              panel.background = element_rect(fill = "white", colour = NA),
-              plot.background = element_rect(fill = "white", colour = NA),
-              legend.position = "bottom",
-              strip.text.y = element_text(angle = 0)
-            ) +
+            .analysis_theme() +
+            theme(strip.text.y = element_text(angle = 0)) +
             scale_colour_manual(
               values = col_vec_bw_curr
             ) +
             labs(
-              title = paste0(
-                "Raw thresholds: fixed extra bandwidth = ",
-                format_bw_lab(bw_extra_curr),
-                " (", transformation_curr,
-                ", mean_pos_setting = ", mean_pos_setting_curr,
-                ", bias_uns_setting = ", bias_uns_setting_curr, ")"
-              ),
               x = "Marker expression",
               y = NULL,
               colour = "Core bandwidth",
@@ -1385,14 +1422,8 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          print(p)
-          ggsave(
-            filename = path_p,
-            plot = p,
-            width = 14,
-            height = 22,
-            units = "cm"
-          )
+          .analysis_save_fig(p, path_p, height = 22)
+          .analysis_print_fig(p)
         }
       }
     }
@@ -1409,7 +1440,13 @@ The tables summarise threshold variation and relative frequency error for each b
 #| echo: false
 if (isTRUE(run_plots)) {
   # summary_tbl was collated and validated during promotion.
-  print(summary_tbl)
+  summary_tbl |>
+    dplyr::mutate(
+      transformation = .analysis_trans_factor(.data$transformation)
+    ) |>
+    dplyr::arrange(.data$transformation) |>
+    dplyr::mutate(dplyr::across(where(is.numeric), .analysis_label_number)) |>
+    print(width = Inf)
 }
 ```
 
@@ -1438,7 +1475,11 @@ if (isTRUE(run_plots)) {
       mean_abs_rel_error = mean(abs(propRespEst_median_diff_rel), na.rm = TRUE),
       .groups = "drop"
     ) |>
+    dplyr::mutate(
+      transformation = .analysis_trans_factor(.data$transformation)
+    ) |>
     dplyr::arrange(transformation, bias_uns_setting, mean_threshold_sd_rank) |>
+    dplyr::mutate(dplyr::across(where(is.numeric), .analysis_label_number)) |>
     knitr::kable() |>
     print()
 }
