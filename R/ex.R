@@ -119,19 +119,9 @@
 
 #' @keywords internal
 .getIndUns <- function(ind, indBatchList) {
-  hasInd <- vapply(
-    indBatchList,
-    function(x) ind %in% x,
-    logical(1)
-  )
-  if (sum(hasInd) > 1L) {
-    # this is an unstim, as it appears
-    # in more than one batch
-    return(ind)
-  }
-  hasInd <- which(hasInd)
-  indBatch <- indBatchList[hasInd] |>
-    unlist()
+  # the unstim is the first sample of the batch containing `ind`;
+  # a shared unstim is first in every batch it appears in
+  indBatch <- Filter(function(x) ind %in% x, indBatchList)[[1]]
   indBatch[[1]]
 }
 

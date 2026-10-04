@@ -27,7 +27,7 @@ statistics, and plots. The directory will be created if it doesn't exist.}
 list or data.frame Cytometry samples, FCS paths/directory, numeric matrices
 or data frames per sample, or a long data frame with a \code{sample} column.}
 
-\item{batchList}{list. List where each element contains integer indices or character names of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if \code{batchList = list(c(3, 1, 2), c(6, 4, 5))}, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If \code{batchList} is named, e.g. \code{list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))}, then these names will be used for batch identification.}
+\item{batchList}{list. List where each element contains integer indices or character names of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if \code{batchList = list(c(3, 1, 2), c(6, 4, 5))}, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If \code{batchList} is named, e.g. \code{list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))}, then these names will be used for batch identification. Each element needs the unstimulated sample and at least one stimulated sample. An unstimulated sample may be shared across batches (first in each), but a stimulated sample may belong to only one batch.}
 
 \item{marker}{character vector. Alternative way to specify markers to gate on.
 When provided, this is used instead of chnl to determine which markers to analyze.

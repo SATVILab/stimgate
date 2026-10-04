@@ -11,7 +11,7 @@
 #' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
 #'   list or data.frame Cytometry samples, FCS paths/directory, numeric matrices
 #'   or data frames per sample, or a long data frame with a `sample` column.
-#' @param batchList list. List where each element contains integer indices or character names of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if `batchList = list(c(3, 1, 2), c(6, 4, 5))`, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If `batchList` is named, e.g. `list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))`, then these names will be used for batch identification.
+#' @param batchList list. List where each element contains integer indices or character names of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if `batchList = list(c(3, 1, 2), c(6, 4, 5))`, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If `batchList` is named, e.g. `list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))`, then these names will be used for batch identification. Each element needs the unstimulated sample and at least one stimulated sample. An unstimulated sample may be shared across batches (first in each), but a stimulated sample may belong to only one batch.
 #' @param chnl character vector. Channel names to gate on. Specify either
 #'   `chnl` or `marker`. Default is NULL.
 #' @param marker character vector. Alternative way to specify markers to gate on.
@@ -223,6 +223,7 @@ gateStim <- function(
     stop("Install the 'future.apply' package to use `parallel = TRUE`.")
   }
 
+  .verifyBatchList(batchList)
   if (is.null(names(batchList))) {
     batchList <- batchList |>
       stats::setNames(paste0("batch", seq_along(batchList)))
