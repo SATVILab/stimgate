@@ -29,8 +29,8 @@ the same sample order used for gating.}
 
 \item{pop}{character. Population that was gated on.}
 
-\item{indBatchList}{list. List of indices grouped by batch, with the
-unstimulated sample first in each element (as for \code{batchList} in
+\item{indBatchList}{list. Sample indices or names grouped by batch, with
+the unstimulated sample first in each element (as for \code{batchList} in
 \code{gateStim()}).}
 
 \item{pathDirSave}{character. Directory path to save the FCS files to.}

@@ -199,20 +199,7 @@ gateStim <- function(
   if (!isGatingSet) {
     .checkStimInputPop(unlist(lapply(markerControl, function(x) x$popGate)))
   }
-  sampleNames <- flowWorkspace::sampleNames(.data)
-  batchList <- lapply(batchList, function(batch) {
-    if (!is.character(batch)) {
-      return(batch)
-    }
-    indices <- match(batch, sampleNames)
-    if (anyNA(indices)) {
-      stop(
-        "Unknown sample name(s) in `batchList`: ",
-        paste(batch[is.na(indices)], collapse = ", ")
-      )
-    }
-    indices
-  })
+  batchList <- .resolveBatchList(batchList, .data)
 
   calcCytPosGates <- control$calcCytPosGates
 
