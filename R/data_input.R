@@ -93,10 +93,6 @@
       params <- flowCore::parameters(fr)
       params@data$desc <- colnames(m)
       flowCore::parameters(fr) <- params
-      # cytoframes take marker labels from the $PnS keywords, not `desc`
-      flowCore::keyword(fr) <- stats::setNames(
-        as.list(colnames(m)), paste0("$P", seq_len(ncol(m)), "S")
-      )
       fr
     })
     sampleNames <- names(.data)

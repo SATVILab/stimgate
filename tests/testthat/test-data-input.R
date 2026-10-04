@@ -56,10 +56,10 @@ testthat::test_that("matrix and data-frame lists align channels and name samples
     testthat::expect_identical(
       flowWorkspace::sampleNames(converted), paste0("sample", seq_along(gs))
     )
+    # flowCore stores `desc` as AsIs; compare the labels themselves.
     testthat::expect_identical(
-      chnlLab(converted),
-      stats::setNames(colnames(matrices[[1]]), colnames(matrices[[1]])),
-      info = paste(deparse(chnlLab(converted)), collapse = "")
+      unclass(chnlLab(converted)),
+      stats::setNames(colnames(matrices[[1]]), colnames(matrices[[1]]))
     )
     for (i in seq_along(gs)) {
       testthat::expect_identical(
