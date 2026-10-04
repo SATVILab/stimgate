@@ -39,7 +39,11 @@ plotStim(
 
 - .data:
 
-  GatingSet. Same GatingSet passed to `gateStim`.
+  GatingSet, flowSet, cytoset, flowFrame, cytoframe, character, list,
+  data.frame or NULL Cytometry input as accepted by
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
+  in the same sample order used for gating. NULL uses saved expression
+  where supported.
 
 - pathProject:
 
@@ -170,7 +174,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp29tuQd/stimgate_example_data_1b5d5e966137/stimgate"
+#> [1] "/tmp/Rtmpeawdwu/stimgate_example_data_1b5f7a90bd0d/stimgate"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {

@@ -34,8 +34,11 @@ getStimExpr(
 
 - .data:
 
-  GatingSet or NULL GatingSet object to extract expression data from.
-  Default is NULL.
+  GatingSet, flowSet, cytoset, flowFrame, cytoframe, character, list,
+  data.frame or NULL Cytometry input as accepted by
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
+  in the same sample order used for gating. NULL uses saved expression
+  where supported. Default: NULL.
 
 - pop:
 

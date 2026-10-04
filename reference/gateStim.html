@@ -11,7 +11,7 @@ Saves gates and background-subtracted statistics to a project directory."></head
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.11</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,13 +76,13 @@ statistics, and plots. The directory will be created if it doesn't exist.</p></d
 
 
 <dt id="arg--data">.data<a class="anchor" aria-label="anchor" href="#arg--data"></a></dt>
-<dd><p>GatingSet. A flowWorkspace GatingSet object containing the flow cytometry
-data with both stimulated and unstimulated samples. The GatingSet should have
-consistent channel names across all samples and include proper sample annotations.</p></dd>
+<dd><p>GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+list or data.frame Cytometry samples, FCS paths/directory, numeric matrices
+or data frames per sample, or a long data frame with a <code>sample</code> column.</p></dd>
 
 
 <dt id="arg-batchlist">batchList<a class="anchor" aria-label="anchor" href="#arg-batchlist"></a></dt>
-<dd><p>list. List where each element contains indices of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if <code>batchList = list(c(3, 1, 2), c(6, 4, 5))</code>, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If <code>batchList</code> is named, e.g. <code>list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))</code>, then these names will be used for batch identification.</p></dd>
+<dd><p>list. List where each element contains integer indices or character names of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if <code>batchList = list(c(3, 1, 2), c(6, 4, 5))</code>, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If <code>batchList</code> is named, e.g. <code>list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))</code>, then these names will be used for batch identification.</p></dd>
 
 
 <dt id="arg-marker">marker<a class="anchor" aria-label="anchor" href="#arg-marker"></a></dt>
@@ -146,6 +146,18 @@ unstimulated control. Thresholds may be shared across similar distributions,
 then refined using cells positive for another cytokine. Results and statistics
 are saved to <code>pathProject</code> for <code><a href="getStimGates.html">getStimGates()</a></code>, <code><a href="getStimStats.html">getStimStats()</a></code>, and <code><a href="plotStim.html">plotStim()</a></code>.
 Use <code><a href="stimControl.html">stimControl()</a></code> for tuning and <code>markerControl</code> for per-marker overrides.</p>
+<p>Inputs are normalised to a GatingSet; only GatingSet inputs can contain
+populations other than "root", including in <code>markerControl</code>. StimGate applies
+no transformation (such as arcsinh or logicle): provide FCS/matrix data on
+the scale you want gated, as with a GatingSet. FCS files are read using
+<code><a href="https://rdrr.io/pkg/flowWorkspace/man/load_cytoset_from_fcs.html" class="external-link">flowWorkspace::load_cytoset_from_fcs()</a></code> with its default reader behaviour.
+A directory is searched non-recursively for case-insensitive <code>.fcs</code> filenames,
+sorted with <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort()</a></code>; a file vector preserves its supplied order. FCS sample
+names are basenames. List names are sample names, or default to sample1,
+sample2, etc. Channel columns must be numeric with matching names; their
+order is aligned to the first sample and marker labels equal channel names.
+Long data frames use observed factor-level order or first appearance of
+<code>sample</code>. The first sample in each batch is always the unstimulated control.</p>
 <p>To gate channels in parallel, set <code>parallel = TRUE</code> and select a future
 plan, for example <code>future::plan(future::multisession, workers = 4)</code>.
 The default <code>parallel = FALSE</code> runs sequentially regardless of the active
@@ -188,7 +200,7 @@ but may differ slightly from a sequential run.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmp29tuQd/demonstration"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmpeawdwu/demonstration"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Customise tuning and override the bandwidth for the first marker</span></span></span>
 <span class="r-in"><span><span class="fu">gateStim</span><span class="op">(</span></span></span>
@@ -213,7 +225,31 @@ but may differ slightly from a sequential run.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmp29tuQd/custom-gating"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmpeawdwu/custom-gating"</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Use in-memory matrices, with channel names also serving as marker labels</span></span></span>
+<span class="r-in"><span><span class="va">matrices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">gs</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="fu">flowCore</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Biobase/man/exprs.html" class="external-link">exprs</a></span><span class="op">(</span><span class="fu">flowWorkspace</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/flowWorkspace/man/gh_pop_get_data.html" class="external-link">gh_pop_get_data</a></span><span class="op">(</span><span class="va">gs</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span>, y <span class="op">=</span> <span class="st">"root"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">gateStim</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  pathProject <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"matrix-gating"</span><span class="op">)</span>, .data <span class="op">=</span> <span class="va">matrices</span>,</span></span>
+<span class="r-in"><span>  batchList <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span>, chnl <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">chnl</span>,</span></span>
+<span class="r-in"><span>  control <span class="op">=</span> <span class="fu"><a href="stimControl.html">stimControl</a></span><span class="op">(</span>calcCytPosGates <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for BC1(La139)Dd: 0.329</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for BC2(Pr141)Dd: 0.334</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting base gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC2(Pr141)Dd</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmpeawdwu/matrix-gating"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create plots</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"hexbin"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>

@@ -30,7 +30,10 @@ writeStimFCS(
 
 - .data:
 
-  GatingSet. GatingSet object containing the flow cytometry data.
+  GatingSet, flowSet, cytoset, flowFrame, cytoframe, character, list or
+  data.frame Cytometry input as accepted by
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
+  in the same sample order used for gating.
 
 - pop:
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## stimgate 0.99.12
+
+### New features
+
+- Cytometry entry points now accept FCS paths/directories, flowSets,
+  cytosets, individual frames, lists of numeric matrices/data frames,
+  and long data frames with a `sample` column. Non-GatingSet inputs
+  expose only the root population.
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  accepts sample names in `batchList` and saves resolved indices.
+
 ## stimgate 0.99.8
 
 ### New features

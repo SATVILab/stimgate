@@ -34,18 +34,18 @@ gateStim(
 
 - .data:
 
-  GatingSet. A flowWorkspace GatingSet object containing the flow
-  cytometry data with both stimulated and unstimulated samples. The
-  GatingSet should have consistent channel names across all samples and
-  include proper sample annotations.
+  GatingSet, flowSet, cytoset, flowFrame, cytoframe, character, list or
+  data.frame Cytometry samples, FCS paths/directory, numeric matrices or
+  data frames per sample, or a long data frame with a `sample` column.
 
 - batchList:
 
-  list. List where each element contains indices of samples belonging to
-  the same batch/donor. The first index per element is the unstimulated
-  control sample, e.g. if `batchList = list(c(3, 1, 2), c(6, 4, 5))`,
-  then indices 3 and 6 correspond to the unstimulated samples for
-  batches 1 and 2, respectively. If `batchList` is named, e.g.
+  list. List where each element contains integer indices or character
+  names of samples belonging to the same batch/donor. The first index
+  per element is the unstimulated control sample, e.g. if
+  `batchList = list(c(3, 1, 2), c(6, 4, 5))`, then indices 3 and 6
+  correspond to the unstimulated samples for batches 1 and 2,
+  respectively. If `batchList` is named, e.g.
   `list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))`, then these names will be
   used for batch identification.
 
@@ -131,6 +131,22 @@ Use
 [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
 for tuning and `markerControl` for per-marker overrides.
 
+Inputs are normalised to a GatingSet; only GatingSet inputs can contain
+populations other than "root", including in `markerControl`. StimGate
+applies no transformation (such as arcsinh or logicle): provide
+FCS/matrix data on the scale you want gated, as with a GatingSet. FCS
+files are read using
+[`flowWorkspace::load_cytoset_from_fcs()`](https://rdrr.io/pkg/flowWorkspace/man/load_cytoset_from_fcs.html)
+with its default reader behaviour. A directory is searched
+non-recursively for case-insensitive `.fcs` filenames, sorted with
+[`sort()`](https://rdrr.io/r/base/sort.html); a file vector preserves
+its supplied order. FCS sample names are basenames. List names are
+sample names, or default to sample1, sample2, etc. Channel columns must
+be numeric with matching names; their order is aligned to the first
+sample and marker labels equal channel names. Long data frames use
+observed factor-level order or first appearance of `sample`. The first
+sample in each batch is always the unstimulated control.
+
 To gate channels in parallel, set `parallel = TRUE` and select a future
 plan, for example `future::plan(future::multisession, workers = 4)`. The
 default `parallel = FALSE` runs sequentially regardless of the active
@@ -174,7 +190,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp29tuQd/demonstration"
+#> [1] "/tmp/Rtmpeawdwu/demonstration"
 
 # Customise tuning and override the bandwidth for the first marker
 gateStim(
@@ -199,7 +215,31 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp29tuQd/custom-gating"
+#> [1] "/tmp/Rtmpeawdwu/custom-gating"
+
+# Use in-memory matrices, with channel names also serving as marker labels
+matrices <- lapply(seq_along(gs), function(i) {
+  flowCore::exprs(flowWorkspace::gh_pop_get_data(gs[[i]], y = "root"))
+})
+gateStim(
+  pathProject = file.path(tempdir(), "matrix-gating"), .data = matrices,
+  batchList = exampleData$batchList, chnl = exampleData$chnl,
+  control = stimControl(calcCytPosGates = FALSE)
+)
+#> shared bandwidth for BC1(La139)Dd: 0.329
+#> shared bandwidth for BC2(Pr141)Dd: 0.334
+#> getting base gates
+#> chnl: BC1(La139)Dd
+#> getting pre-adjustment gates
+#> batch 2 of 2
+#> getting clustered and/or controlled gates
+#> chnl: BC2(Pr141)Dd
+#> getting pre-adjustment gates
+#> batch 2 of 2
+#> getting clustered and/or controlled gates
+#> getting cyt combn frequencies
+#> batch 2 of 2
+#> [1] "/tmp/Rtmpeawdwu/matrix-gating"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {
