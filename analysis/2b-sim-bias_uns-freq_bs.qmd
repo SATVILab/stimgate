@@ -713,6 +713,197 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Over- and under-estimates across bias settings
+
+The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: the median is taken separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero. Colour identifies bandwidth and line type the bias scale; facets separate cell counts and mismatch settings.
+
+```{r}
+#| label: bias-uns-signed-error
+#| include: false
+if (isTRUE(run_plots)) {
+  # Over- and under-estimates summarised separately for each grid setting.
+  bias_uns_signed_error <- .simBandwidthSignedErrorSummary(
+    bias_uns_results_raw,
+    c(
+      "transformation", "mean_pos_setting", "prob_response", "n_cell",
+      "mismatch_label", "mismatch_type", "mismatch_val", "bw",
+      "bias_uns_basis", "bias_uns_multiplier"
+    )
+  )
+}
+```
+
+```{r}
+#| label: fig-signed-error
+#| fig-cap: "Over- and under-estimates across bias settings, cell counts and mismatches."
+#| fig-width: 10
+#| fig-height: 6
+#| echo: false
+if (isTRUE(run_plots)) {
+  plot_dir <- .analysis_cache_dir(
+    c(analysis_key, "signed_error"),
+    path_root = root_dir
+  )
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+
+  for (transformation_curr in unique(bias_uns_signed_error$transformation)) {
+    for (mean_pos_setting_curr in unique(bias_uns_signed_error$mean_pos_setting)) {
+      for (prob_response_curr in unique(bias_uns_signed_error$prob_response)) {
+        plot_tbl <- bias_uns_signed_error |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          )
+
+        p <- .simBandwidthBiasSignedErrorPlot(
+          plot_tbl,
+          title = paste0(
+            transformation_curr,
+            "; mean position = ", mean_pos_setting_curr,
+            "; response probability = ", prob_response_curr
+          ),
+          facet = ggplot2::facet_grid(n_cell ~ mismatch_label)
+        )
+
+        path_p <- file.path(
+          plot_dir,
+          paste0(
+            transformation_curr,
+            "_", mean_pos_setting_curr,
+            "_p_", format(prob_response_curr, scientific = TRUE),
+            ".pdf"
+          )
+        )
+        ggsave(path_p, p, width = 28, height = 13, units = "cm")
+        print(p)
+      }
+    }
+  }
+}
+```
+
+### Over- and under-estimates averaged over cell counts
+
+The scenario-level medians and shares for each direction are averaged equally over cell counts, keeping response probabilities and mismatch settings separate.
+
+```{r}
+#| label: fig-signed-error-averaged-n-cell
+#| fig-cap: "Over- and under-estimates averaged equally over cell counts."
+#| fig-width: 10
+#| fig-height: 6
+#| echo: false
+if (isTRUE(run_plots)) {
+  plot_dir <- .analysis_cache_dir(
+    c(analysis_key, "signed_error_averaged_n_cell"),
+    path_root = root_dir
+  )
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Average scenario medians equally across cell counts; do not pool samples.
+  bias_uns_error_avg <- bias_uns_signed_error |>
+    .simBandwidthSignedErrorAverage(c(
+      "transformation", "mean_pos_setting", "prob_response", "mismatch_label",
+      "mismatch_type", "mismatch_val", "bw", "bias_uns_basis",
+      "bias_uns_multiplier"
+    ))
+
+  for (transformation_curr in unique(bias_uns_signed_error$transformation)) {
+    for (mean_pos_setting_curr in unique(bias_uns_signed_error$mean_pos_setting)) {
+      for (prob_response_curr in unique(bias_uns_signed_error$prob_response)) {
+        plot_tbl <- bias_uns_error_avg |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          )
+
+        p <- .simBandwidthBiasSignedErrorPlot(
+          plot_tbl,
+          y_label = "Mean of cell-count median relative errors",
+          title = paste0(
+            transformation_curr,
+            "; mean position = ", mean_pos_setting_curr,
+            "; response probability = ", prob_response_curr
+          )
+        )
+
+        path_p <- file.path(
+          plot_dir,
+          paste0(
+            transformation_curr,
+            "_", mean_pos_setting_curr,
+            "_p_", format(prob_response_curr, scientific = TRUE),
+            ".pdf"
+          )
+        )
+        ggsave(path_p, p, width = 28, height = 13, units = "cm")
+        print(p)
+      }
+    }
+  }
+}
+```
+
+### Over- and under-estimates at each cell count
+
+Each cell count is shown on its own.
+
+```{r}
+#| label: fig-signed-error-by-n-cell
+#| fig-cap: "Over- and under-estimates at each cell count."
+#| fig-width: 10
+#| fig-height: 6
+#| echo: false
+if (isTRUE(run_plots)) {
+  plot_dir <- .analysis_cache_dir(
+    c(analysis_key, "signed_error_by_n_cell"),
+    path_root = root_dir
+  )
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+
+  for (transformation_curr in unique(bias_uns_signed_error$transformation)) {
+    for (mean_pos_setting_curr in unique(bias_uns_signed_error$mean_pos_setting)) {
+      for (prob_response_curr in unique(bias_uns_signed_error$prob_response)) {
+        for (n_cell_curr in sort(unique(bias_uns_signed_error$n_cell))) {
+          plot_tbl <- bias_uns_signed_error |>
+            dplyr::filter(
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr,
+              n_cell == n_cell_curr
+            )
+
+          if (nrow(plot_tbl) == 0L) next
+
+          p <- .simBandwidthBiasSignedErrorPlot(
+            plot_tbl,
+            title = paste0(
+              transformation_curr,
+              "; mean position = ", mean_pos_setting_curr,
+              "; response probability = ", prob_response_curr,
+              "; cells = ", n_cell_curr
+            )
+          )
+
+          path_p <- file.path(
+            plot_dir,
+            paste0(
+              transformation_curr,
+              "_", mean_pos_setting_curr,
+              "_p_", format(prob_response_curr, scientific = TRUE),
+              "_n_cell_", n_cell_curr, ".pdf"
+            )
+          )
+          ggsave(path_p, p, width = 28, height = 13, units = "cm")
+          print(p)
+        }
+      }
+    }
+  }
+}
+```
+
 ### Estimated response frequency
 
 Median estimated frequency is plotted against bias multiplier, with colour identifying bandwidth and line type the bias scale. Facets separate cell counts and mismatch settings; dashed lines show the simulated truth. Curves closer to those lines indicate better agreement.

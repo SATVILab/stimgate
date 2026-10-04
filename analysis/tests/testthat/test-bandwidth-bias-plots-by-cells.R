@@ -153,3 +153,180 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
   expect_length(env$printed, 0L)
   expect_false(dir.exists(env$root_dir))
 })
+
+test_that("2a per-cell signed-error plots average scenario errors by direction", {
+  env <- .bandwidth_cell_plot_env()
+  on.exit(unlink(env$root_dir, recursive = TRUE), add = TRUE)
+  env$bw_tbl_results_raw <- tidyr::expand_grid(
+    transformation = c("gaussian", "gamma"),
+    mean_pos_setting = c("low", "high"),
+    n_cell = c(100, 1000), bw = c(0.1, 0.2),
+    bias_uns_setting = c("low", "high"), condition_perturbation_sd = c(0, 0.5)
+  ) |>
+    dplyr::cross_join(tibble::tibble(
+      prob_response = c(0.01, 0.01, 0.1), err = c(1, 3, 9)
+    )) |>
+    dplyr::mutate(
+      propRespTruth = prob_response,
+      propRespEst = propRespTruth * (1 + err * ifelse(n_cell == 100, 1, 2)),
+      propRespEst = ifelse(
+        bias_uns_setting != "low" | condition_perturbation_sd != 0,
+        propRespTruth * 1000, propRespEst
+      )
+    )
+  code <- .bandwidth_cell_plot_chunk(
+    "2a-sim-bw-freq_bs-global.qmd", "fig-signed-error-by-n-cell"
+  )
+  eval(code, env)
+  expect_length(env$saved, 4L)
+  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
+  paths <- vapply(env$saved, `[[`, character(1), "path")
+  expect_equal(length(unique(paths)), 4L)
+  for (saved in env$saved) {
+    data <- saved$plot$data
+    expect_length(unique(data$n_cell), 1L)
+    expect_length(unique(data$mean_pos_setting), 1L)
+    expect_setequal(unique(data$transformation), c("gaussian", "gamma"))
+    expect_true(grepl(paste0("_n_cell_", data$n_cell[1L], ".pdf"), saved$path, fixed = TRUE))
+    # All errors are over-estimates, so no under-estimate curves are drawn.
+    expect_true(all(data$direction == "over"))
+    expect_equal(data$prop, rep(1, nrow(data)))
+    expected <- c(median = 5.5, q95 = 5.95, max = 6)
+    multiplier <- if (data$n_cell[1L] == 100) 1 else 2
+    expect_equal(
+      data$err_value,
+      unname(expected[as.character(data$err_type)]) * multiplier
+    )
+    expect_named(saved$plot$facet$params$facets, "transformation")
+    expect_identical(
+      rlang::as_label(saved$plot$mapping$group), "interaction(err_type, direction)"
+    )
+  }
+  unlink(env$root_dir, recursive = TRUE)
+  env$saved <- list()
+  env$printed <- list()
+  env$run_plots <- FALSE
+  eval(code, env)
+  expect_length(env$saved, 0L)
+  expect_length(env$printed, 0L)
+  expect_false(dir.exists(env$root_dir))
+})
+
+test_that("2b signed-error plots preserve all bias scenario dimensions", {
+  env <- .bandwidth_cell_plot_env()
+  on.exit(unlink(env$root_dir, recursive = TRUE), add = TRUE)
+  env$bias_uns_signed_error <- tidyr::expand_grid(
+    transformation = c("gaussian", "gamma"),
+    mean_pos_setting = c("low", "high"), prob_response = c(0.01, 0.1),
+    n_cell = c(100, 1000), bw = c(0.1, 0.2),
+    bias_uns_basis = c("bandwidth", "negative_width"), bias_uns_multiplier = c(0, 1),
+    mismatch_val = c(0, 0.1), direction = c("over", "under")
+  ) |>
+    dplyr::mutate(
+      mismatch_type = "mean_shift",
+      mismatch_label = paste0("mean shift ", mismatch_val),
+      sign = ifelse(direction == "over", 1, -0.01),
+      prop = ifelse(direction == "over", 0.7, 0.3),
+      median = sign * (n_cell / 100 + bw + bias_uns_multiplier +
+        mismatch_val + prob_response + ifelse(bias_uns_basis == "bandwidth", 0, 2))
+    ) |>
+    dplyr::select(-sign)
+  average_code <- .bandwidth_cell_plot_chunk(
+    "2b-sim-bias_uns-freq_bs.qmd", "fig-signed-error-averaged-n-cell"
+  )
+  cell_code <- .bandwidth_cell_plot_chunk(
+    "2b-sim-bias_uns-freq_bs.qmd", "fig-signed-error-by-n-cell"
+  )
+  eval(average_code, env)
+  expect_length(env$saved, 8L)
+  for (saved in env$saved) {
+    data <- saved$plot$data
+    expect_false("n_cell" %in% names(data))
+    expect_setequal(data$direction, c("over", "under"))
+    expect_equal(data$prop, ifelse(data$direction == "over", 0.7, 0.3))
+    expect_equal(data$median,
+      ifelse(data$direction == "over", 1, -0.01) *
+        (5.5 + data$bw + data$bias_uns_multiplier + data$mismatch_val +
+          data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
+    )
+  }
+  eval(cell_code, env)
+  expect_length(env$saved, 24L)
+  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
+  paths <- vapply(env$saved, `[[`, character(1), "path")
+  expect_equal(length(unique(paths)), 24L)
+  for (saved in env$saved) {
+    data <- saved$plot$data
+    for (key in c("transformation", "mean_pos_setting", "prob_response")) {
+      expect_length(unique(data[[key]]), 1L)
+    }
+    expect_setequal(unique(data$mismatch_val), c(0, 0.1))
+    expect_setequal(unique(data$bw), c(0.1, 0.2))
+    expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
+    expect_named(saved$plot$facet$params$facets, "mismatch_label")
+    expect_identical(
+      rlang::as_label(saved$plot$mapping$group),
+      "interaction(bw, bias_uns_basis, direction)"
+    )
+    if ("n_cell" %in% names(data)) {
+      expect_length(unique(data$n_cell), 1L)
+      expect_true(grepl(paste0("_n_cell_", data$n_cell[1L], ".pdf"), saved$path, fixed = TRUE))
+      expect_equal(data$median,
+        ifelse(data$direction == "over", 1, -0.01) *
+          (data$n_cell / 100 + data$bw + data$bias_uns_multiplier +
+            data$mismatch_val + data$prob_response +
+            ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
+      )
+    }
+  }
+  unlink(env$root_dir, recursive = TRUE)
+  env$saved <- list()
+  env$printed <- list()
+  env$run_plots <- FALSE
+  eval(average_code, env)
+  eval(cell_code, env)
+  expect_length(env$saved, 0L)
+  expect_length(env$printed, 0L)
+  expect_false(dir.exists(env$root_dir))
+})
+
+test_that("signed relative errors are summarised separately by direction", {
+  env <- .bandwidth_cell_plot_env()
+  sides <- env$.simBandwidthSignedErrorSides(c(-1, -0.5, 0.2, 1, NA, 0))
+  expect_identical(sides$direction, c("over", "under"))
+  # Zero errors count towards the total but neither direction.
+  expect_equal(sides$prop, c(0.4, 0.4))
+  expect_equal(sides$median, c(0.6, -0.75))
+  expect_equal(sides$q95, c(0.96, -0.975))
+  expect_equal(sides$max, c(1, -1))
+
+  empty <- env$.simBandwidthSignedErrorSides(c(0.5, 1))
+  expect_equal(empty$prop, c(1, 0))
+  expect_true(all(is.na(empty[empty$direction == "under", c("median", "q95", "max")])))
+
+  summary <- env$.simBandwidthSignedErrorSummary(
+    tibble::tibble(g = c(1, 1, 2, 2), rel_error = c(-0.5, 1, 3, 1)),
+    "g"
+  )
+  avg <- env$.simBandwidthSignedErrorAverage(summary, character(0))
+  over <- avg[avg$direction == "over", ]
+  under <- avg[avg$direction == "under", ]
+  expect_equal(over$prop, 0.75)
+  expect_equal(over$median, 1.5)
+  # Groups with no under-estimates do not dilute the under-estimate size.
+  expect_equal(under$prop, 0.25)
+  expect_equal(under$median, -0.5)
+})
+
+test_that("signed error scale puts nothing gated and two-fold equally far from zero", {
+  env <- .bandwidth_cell_plot_env()
+  trans <- env$.simBandwidthSignedErrorTrans()
+  x <- c(-1, -0.5, 0, 1, 3)
+  expect_equal(trans$transform(x), c(-1, -0.5, 0, 1, 2))
+  expect_equal(trans$inverse(trans$transform(x)), x)
+  expect_equal(trans$breaks(c(-1, 2.5)), c(-1, -0.5, 0, 1, 3))
+  expect_identical(
+    env$.simBandwidthSignedErrorLabel(c(-1, 0, 1)),
+    c("-100%", "0%", "+100% (2x)")
+  )
+})

@@ -145,7 +145,8 @@ test_that("Analysis 2b runtime guards simulations and reads canonical results", 
   env$ggplot <- unexpected
   for (label in c(
     "bias-uns-parallel", "bias-uns-collate",
-    "fig-relative-error", "fig-estimated-frequency"
+    "fig-relative-error", "bias-uns-signed-error", "fig-signed-error",
+    "fig-estimated-frequency"
   )) {
     expect_no_error(eval(parse(text = chunk(label)), envir = env))
   }

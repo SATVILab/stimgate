@@ -992,6 +992,101 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Over- and under-estimates averaged over cell counts
+
+The overall plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: over-estimates (solid lines) sit above zero and under-estimates (dashed lines) below. Within each scenario, the median, 95th-percentile and maximum error sizes are calculated separately for over- and under-estimates; these are then averaged equally over cell counts and response probabilities, using low bias and no condition perturbation. Line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero. Facets separate transformations.
+
+```{r}
+#| label: fig-signed-error-averaged-n-cell
+#| fig-cap: "Over- and under-estimates averaged over cell counts and response probabilities."
+#| fig-width: 10
+#| fig-height: 6
+#| echo: false
+if (isTRUE(run_plots)) {
+  for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
+    err_rel_tbl <- bw_tbl_results_raw |>
+      dplyr::filter(
+        mean_pos_setting == mean_pos_setting_curr,
+        bias_uns_setting == "low",
+        condition_perturbation_sd == 0
+      ) |>
+      dplyr::mutate(rel_error = (propRespEst - propRespTruth) / propRespTruth)
+    if (nrow(err_rel_tbl) == 0L) {
+      next
+    }
+    # Summarise each scenario, then average equally over cell counts and
+    # response probabilities.
+    err_rel_avg_tbl <- err_rel_tbl |>
+      .simBandwidthSignedErrorSummary(
+        c("transformation", "n_cell", "bw", "prob_response")
+      ) |>
+      .simBandwidthSignedErrorAverage(c("transformation", "bw"))
+    p <- .simBandwidthGlobalSignedErrorPlot(err_rel_avg_tbl)
+    path_p <- file.path(
+      .analysis_project_dir("output", "fig", root_dir),
+      paste0(
+        "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf"
+      )
+    )
+    ggsave(
+      filename = path_p,
+      plot = p,
+      width = 18,
+      height = 14,
+      units = "cm"
+    )
+    print(p)
+  }
+}
+```
+
+### Over- and under-estimates at each cell count
+
+As above, but keeping each cell count separate and averaging only over response probabilities.
+
+```{r}
+#| label: fig-signed-error-by-n-cell
+#| fig-cap: "Over- and under-estimates at each cell count, averaged over response probabilities."
+#| fig-width: 10
+#| fig-height: 6
+#| echo: false
+if (isTRUE(run_plots)) {
+  err_rel_by_cell <- bw_tbl_results_raw |>
+    dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0) |>
+    dplyr::mutate(rel_error = (propRespEst - propRespTruth) / propRespTruth) |>
+    .simBandwidthSignedErrorSummary(
+      c("mean_pos_setting", "transformation", "n_cell", "bw", "prob_response")
+    ) |>
+    .simBandwidthSignedErrorAverage(
+      c("mean_pos_setting", "transformation", "n_cell", "bw")
+    )
+
+  for (mean_pos_setting_curr in unique(err_rel_by_cell$mean_pos_setting)) {
+    for (n_cell_curr in sort(unique(err_rel_by_cell$n_cell))) {
+      plot_tbl <- err_rel_by_cell |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr)
+      if (nrow(plot_tbl) == 0L) next
+      p <- .simBandwidthGlobalSignedErrorPlot(
+        plot_tbl,
+        title = paste0(
+          "Cells = ", n_cell_curr, "; mean position = ", mean_pos_setting_curr
+        )
+      )
+      path_p <- file.path(
+        .analysis_project_dir("output", "fig", root_dir),
+        paste0(
+          "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr,
+          "_n_cell_", n_cell_curr, ".pdf"
+        )
+      )
+      dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
+      ggsave(path_p, p, width = 18, height = 14, units = "cm")
+      print(p)
+    }
+  }
+}
+```
+
 
 ```{r}
 #| echo: false
