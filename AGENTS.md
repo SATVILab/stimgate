@@ -415,6 +415,7 @@ the `flowWorkspace` stack from source.
 | `pkgdown.yaml` | Not run | Builds and deploys on `master`, releases and manual runs (Ubuntu) |
 | `test-coverage.yaml` | Not run | `master` and manual runs (Windows) |
 | `document.yaml` | Pushes touching `R/` (Windows) | Also runnable manually |
+| `validate-project-contract.yml` | Not run | Pushes to `master` touching `.projects/` or `AGENTS.md`, and manual runs |
 
 - Add the `full-check` label to a PR, or run R-CMD-check manually, when
   a change needs Linux, macOS or older-R coverage, and before releases.
@@ -681,6 +682,15 @@ warms the expression cache once per sample before settings completion,
 allowing subsequent stages to read expression directly from the cache.
 Keep all caching and reuse result-preserving, including the order of
 random number generation calls.
+
+Combination statistics classify raw unstimulated expression with the
+paired stim sample’s gates, without `biasUns`. Load the batch’s required
+unstimulated channels once, stream stimulated expression by channel, and
+reuse the first classification read for its cell count (read one channel
+for samples without gates). Retain logical comparisons for cyt+ context;
+discard base comparisons after adding their bits and recompute them only
+for the Reduce-based NA fallback. Samples with no gates report NA
+counts, while missing individual channel gates are FALSE.
 
 ### Function Signatures & Returns
 
@@ -955,6 +965,26 @@ deduplicates identical rows before drawing reference lines.
     until stimgate’s first Bioconductor release, bumping `z` for each
     change worth marking. Do not move to `0.100.0` or higher;
     Bioconductor sets the release version itself.
+
+- Bump `z` by one in each PR that changes package behaviour, output or
+  performance (not for documentation-, test- or analysis-only PRs).
+- The bump is relative to `master` at merge time. When rebasing onto a
+  `master` whose version has moved on, set the PR’s version to
+  `master`’s version plus one, rather than keeping the version chosen
+  when the branch was cut.
+
+15. **`NEWS.md`**: Every version bump gets a matching
+    `# stimgate 0.99.z` section at the top of `NEWS.md`, newest first.
+
+- Group entries under `## Breaking changes`, `## New features`,
+  `## Bug fixes` or `## Performance`, omitting empty groups.
+- Write short user-facing bullets that name exported functions in
+  backticks
+  (e.g. [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)).
+  Describe changed results or behaviour, not internal refactors or
+  tests.
+- On rebase, keep `master`’s entries and move this PR’s section to the
+  top under its new version.
 
 ------------------------------------------------------------------------
 

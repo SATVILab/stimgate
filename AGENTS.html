@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.14</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.15</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -271,6 +271,9 @@
 </tr><tr><td><code>document.yaml</code></td>
 <td>Pushes touching <code>R/</code> (Windows)</td>
 <td>Also runnable manually</td>
+</tr><tr><td><code>validate-project-contract.yml</code></td>
+<td>Not run</td>
+<td>Pushes to <code>master</code> touching <code>.projects/</code> or <code>AGENTS.md</code>, and manual runs</td>
 </tr></tbody></table><ul><li>Add the <code>full-check</code> label to a PR, or run R-CMD-check manually, when a change needs Linux, macOS or older-R coverage, and before releases.</li>
 <li>
 <code>analysis-integration.yaml</code> installs Python, <code>numpy</code> and <code>reticulate</code> and sets <code>RETICULATE_PYTHON</code>, because the F-beta comparator tests call <code>scripts/python/fbeta.py</code>.</li>
@@ -461,6 +464,7 @@
 <div class="section level3">
 <h3 id="saved-expression-and-stimulation-gates">Saved expression and stimulation gates<a class="anchor" aria-label="anchor" href="#saved-expression-and-stimulation-gates"></a></h3>
 <p>Reuse <code>.gateGetDirs()</code> for prefixed directory discovery and <code>.getExChnlPathDir()</code> for saved expression paths, preserving each caller’s validation and missing-path handling. The first sample of each <code>batchList</code> element is its unstimulated sample; no other argument, name pattern or rule identifies it. <code>.verifyBatchList()</code> requires at least one stimulated sample per batch and lets an unstimulated sample be shared across batches only if it is first in each; a stimulated sample belongs to exactly one batch. Code that needs a sample’s unstim relies on these rules. Saved expression includes unstimulated samples, while final stimulation gate tables omit them. Positivity helpers must treat channels with no gate for the current sample as all-FALSE, preserving one logical value per cell. Completed <code>chnlSettings.rds</code> settings are keyed by marker labels, although saved expression columns use channel names. Resolve that mapping before applying the saved <code>biasUns</code>; channels without a saved bias use zero. <code><a href="reference/gateStim.html">gateStim()</a></code> clears the run populations’ cached expression and gates at start. It warms the expression cache once per sample before settings completion, allowing subsequent stages to read expression directly from the cache. Keep all caching and reuse result-preserving, including the order of random number generation calls.</p>
+<p>Combination statistics classify raw unstimulated expression with the paired stim sample’s gates, without <code>biasUns</code>. Load the batch’s required unstimulated channels once, stream stimulated expression by channel, and reuse the first classification read for its cell count (read one channel for samples without gates). Retain logical comparisons for cyt+ context; discard base comparisons after adding their bits and recompute them only for the Reduce-based NA fallback. Samples with no gates report NA counts, while missing individual channel gates are FALSE.</p>
 </div>
 <div class="section level3">
 <h3 id="function-signatures--returns">Function Signatures &amp; Returns<a class="anchor" aria-label="anchor" href="#function-signatures--returns"></a></h3>
@@ -527,7 +531,14 @@
 <li><p><strong>Shared local-FDR bandwidths (<code>bwScope</code>, issue #417)</strong>: The scalar local-FDR bandwidth is chosen once per channel during settings completion (<code>.completeChnlSettingsBwShared()</code>) and read in <code>.getCpUnsLocGetDensRawDensitiesBw()</code> via <code>chnlSettings$bwShared</code> / <code>bwSharedTbl</code>. <code>"cytokine"</code> (default) is the trimmed mean over about 100 spread tubes; tubes with fewer than <code>minCell</code> cells are excluded; <code>"cluster"</code> clusters tubes up front on densities up to the left-complex shoulder, independently of the threshold-sharing clusters in <code>cp_cluster.R</code>; <code>"sample"</code> keeps per-sample estimation. Fixed <code>bw</code> and the adaptive path bypass shared bandwidths. A sample still uses the smaller of its stim and unstim tube bandwidths. Threshold sharing uses a supplied <code>bwCluster</code>, else <code>bwShared</code>; <code>bwCluster</code> is not estimated automatically. The clustering densities are not reusable as local-FDR densities (different bandwidth, range, thinning and unstim cell filtering).</p></li>
 <li><p><strong>Parallel initial channel gating</strong>: <code>gateStim(parallel = TRUE)</code> opts into the active <code><a href="https://future.futureverse.org/reference/plan.html" class="external-link">future::plan()</a></code> only for initial per-channel gating, using <code><a href="https://future.apply.futureverse.org/reference/future_lapply.html" class="external-link">future.apply::future_lapply()</a></code> with <code>future.seed = TRUE</code>. The default <code>FALSE</code> never parallelises, preserving the sequential RNG stream and leaving analysis-level future plans unaffected. Populate every sample/channel expression cache in the parent first; workers receive no GatingSet and must error clearly if cached expression is missing. The project directory must be accessible to workers. Later stages remain sequential. Worker debug/profile state attaches without resetting shared directories, and intermediate files remain separated by channel.</p></li>
 <li><p><strong>Versioning before the first Bioconductor release</strong>: Keep <code>Version</code> in <code>DESCRIPTION</code> at <code>0.99.z</code> (three components, no <code>-n</code> suffix) until stimgate’s first Bioconductor release, bumping <code>z</code> for each change worth marking. Do not move to <code>0.100.0</code> or higher; Bioconductor sets the release version itself.</p></li>
-</ol><hr></div>
+</ol><ul><li>Bump <code>z</code> by one in each PR that changes package behaviour, output or performance (not for documentation-, test- or analysis-only PRs).</li>
+<li>The bump is relative to <code>master</code> at merge time. When rebasing onto a <code>master</code> whose version has moved on, set the PR’s version to <code>master</code>’s version plus one, rather than keeping the version chosen when the branch was cut.</li>
+</ul><ol start="15" style="list-style-type: decimal"><li>
+<strong><code>NEWS.md</code></strong>: Every version bump gets a matching <code># stimgate 0.99.z</code> section at the top of <code>NEWS.md</code>, newest first.</li>
+</ol><ul><li>Group entries under <code>## Breaking changes</code>, <code>## New features</code>, <code>## Bug fixes</code> or <code>## Performance</code>, omitting empty groups.</li>
+<li>Write short user-facing bullets that name exported functions in backticks (e.g. <code><a href="reference/gateStim.html">gateStim()</a></code>). Describe changed results or behaviour, not internal refactors or tests.</li>
+<li>On rebase, keep <code>master</code>’s entries and move this PR’s section to the top under its new version.</li>
+</ul><hr></div>
 <div class="section level2">
 <h2 id="id_8-testing-best-practices--guidelines">8. Testing Best Practices &amp; Guidelines<a class="anchor" aria-label="anchor" href="#id_8-testing-best-practices--guidelines"></a></h2>
 <p>Package unit/integration tests belong in <code>tests/testthat/</code>. Tests whose subject is analysis code, <code>scripts/r/</code> helpers or QMD/package-API drift belong in <code>analysis/tests/testthat/</code>. Use <code>test-&lt;topic&gt;.R</code> filenames in both suites.</p>
