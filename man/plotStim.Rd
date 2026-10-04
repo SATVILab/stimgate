@@ -31,7 +31,10 @@ plotStim(
 \arguments{
 \item{ind}{numeric vector. Specifies indices in \code{.data} to plot.}
 
-\item{.data}{GatingSet. Same GatingSet passed to \code{gateStim}.}
+\item{.data}{GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+list, data.frame or NULL Cytometry input as accepted by \code{\link[=gateStim]{gateStim()}}, in
+the same sample order used for gating. NULL uses saved expression where
+supported.}
 
 \item{pathProject}{character.
 Path to the project directory used for \code{gateStim}.}

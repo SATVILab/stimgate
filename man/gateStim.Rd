@@ -23,11 +23,11 @@ gateStim(
 This directory will contain subdirectories for each marker with gate tables,
 statistics, and plots. The directory will be created if it doesn't exist.}
 
-\item{.data}{GatingSet. A flowWorkspace GatingSet object containing the flow cytometry
-data with both stimulated and unstimulated samples. The GatingSet should have
-consistent channel names across all samples and include proper sample annotations.}
+\item{.data}{GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+list or data.frame Cytometry samples, FCS paths/directory, numeric matrices
+or data frames per sample, or a long data frame with a \code{sample} column.}
 
-\item{batchList}{list. List where each element contains indices of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if \code{batchList = list(c(3, 1, 2), c(6, 4, 5))}, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If \code{batchList} is named, e.g. \code{list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))}, then these names will be used for batch identification.}
+\item{batchList}{list. List where each element contains integer indices or character names of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if \code{batchList = list(c(3, 1, 2), c(6, 4, 5))}, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If \code{batchList} is named, e.g. \code{list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))}, then these names will be used for batch identification.}
 
 \item{marker}{character vector. Alternative way to specify markers to gate on.
 When provided, this is used instead of chnl to determine which markers to analyze.
@@ -81,6 +81,19 @@ then refined using cells positive for another cytokine. Results and statistics
 are saved to \code{pathProject} for \code{\link[=getStimGates]{getStimGates()}}, \code{\link[=getStimStats]{getStimStats()}}, and \code{\link[=plotStim]{plotStim()}}.
 Use \code{\link[=stimControl]{stimControl()}} for tuning and \code{markerControl} for per-marker overrides.
 
+Inputs are normalised to a GatingSet; only GatingSet inputs can contain
+populations other than "root", including in \code{markerControl}. StimGate applies
+no transformation (such as arcsinh or logicle): provide FCS/matrix data on
+the scale you want gated, as with a GatingSet. FCS files are read using
+\code{flowWorkspace::load_cytoset_from_fcs()} with its default reader behaviour.
+A directory is searched non-recursively for case-insensitive \code{.fcs} filenames,
+sorted with \code{sort()}; a file vector preserves its supplied order. FCS sample
+names are basenames. List names are sample names, or default to sample1,
+sample2, etc. Channel columns must be numeric with matching names; their
+order is aligned to the first sample and marker labels equal channel names.
+Long data frames use observed factor-level order or first appearance of
+\code{sample}. The first sample in each batch is always the unstimulated control.
+
 To gate channels in parallel, set \code{parallel = TRUE} and select a future
 plan, for example \code{future::plan(future::multisession, workers = 4)}.
 The default \code{parallel = FALSE} runs sequentially regardless of the active
@@ -118,6 +131,16 @@ gateStim(
   markerControl = stats::setNames(
     list(list(bw = 0.12, biasUns = 0)), exampleData$marker[1]
   )
+)
+
+# Use in-memory matrices, with channel names also serving as marker labels
+matrices <- lapply(seq_along(gs), function(i) {
+  flowCore::exprs(flowWorkspace::gh_pop_get_data(gs[[i]], y = "root"))
+})
+gateStim(
+  pathProject = file.path(tempdir(), "matrix-gating"), .data = matrices,
+  batchList = exampleData$batchList, chnl = exampleData$chnl,
+  control = stimControl(calcCytPosGates = FALSE)
 )
 
 # Create plots

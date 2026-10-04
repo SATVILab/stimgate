@@ -23,7 +23,9 @@ writeStimFCS(
 \arguments{
 \item{pathProject}{character. Path to project directory.}
 
-\item{.data}{GatingSet. GatingSet object containing the flow cytometry data.}
+\item{.data}{GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+list or data.frame Cytometry input as accepted by \code{\link[=gateStim]{gateStim()}}, in
+the same sample order used for gating.}
 
 \item{pop}{character. Population that was gated on.}
 
