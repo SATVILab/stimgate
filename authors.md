@@ -8,7 +8,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/SATVILab/stimgate/blob/master/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/SATVILab/stimgate/blob/analysis-html-20261004-1743/DESCRIPTION)
 
 Rodo M (2026). *stimgate: Identify Responding Cells as Outliers*. R
 package version 0.99.15, <https://satvilab.github.io/stimgate/>.
