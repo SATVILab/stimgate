@@ -635,142 +635,238 @@ two methods. The two versions are saved in the `all_methods` and `no_tailgate`
 subfolders of each figure folder. Within each version there is one figure per
 mean position setting.
 
-### Mean-shift degradation curves (all components vs negative only)
+### Relative error summaries
+
+The relative error of an estimate is (estimate - truth) / truth. Each scenario
+is one baseline (transformation, mean position setting, response probability and
+number of stimulated cells), one mismatch mechanism and one mismatch size. For
+each scenario and method, the median, 95th percentile and maximum are
+calculated over the simulated samples, using the same scored samples as the
+summary table above. Samples with a true frequency of zero are left out. The
+figures below then either average these scenario statistics equally over
+cell counts and response probabilities, over response probabilities only, or
+not at all. Mismatch sizes differ between transformations, so scenarios are
+only ever averaged within one transformation and mismatch size.
+
+Two kinds of figure are shown, each in three views. The first kind shows the
+size of the relative error, ignoring direction. The second kind splits the
+relative error into over-estimates (above zero) and under-estimates (below
+zero), as in analysis 2a. Every figure is shown with all methods and without
+Tailgate, with colour identifying the method, rows of panels showing the
+median, 95th percentile and maximum, columns separating transformations, and
+one figure per mean position setting, mismatch mechanism and (where
+applicable) cell count.
 
 ```{r}
-#| include: false
-plot_dir <- .analysis_fig_dir(c(fig_key, "mean_shift_degradation"), path_root = root_dir, create = FALSE)
-if (
-  isTRUE(run_plots) &&
-    isTRUE(results_available) &&
-    dir.exists(plot_dir)
-) {
-  unlink(plot_dir, recursive = TRUE)
+#| label: mismatch-error-summaries
+#| echo: false
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  scenario_error_cols <- c(
+    "base_scenario_id", "transformation", "mean_pos_setting",
+    "prob_response", "n_cell", "mismatch_type", "mismatch_val", "method"
+  )
+  # Scenario statistics, one row per scenario and method.
+  err_scenario <- .simCompareUnsignedErrorSummary(
+    compare_raw, scenarioCols = scenario_error_cols
+  )
+  signed_scenario <- .simCompareSignedErrorSummary(
+    compare_raw, scenarioCols = scenario_error_cols
+  )
+  # Averaging drops the baseline scenario columns left out of the groups.
+  group_all <- c(
+    "mean_pos_setting", "transformation", "mismatch_type", "mismatch_val",
+    "method"
+  )
+  group_cell <- c(group_all, "n_cell")
+  err_averaged <- .simCompareErrorAverage(err_scenario, group_all)
+  err_by_cell <- .simCompareErrorAverage(err_scenario, group_cell)
+  signed_averaged <- .simBandwidthSignedErrorAverage(signed_scenario, group_all)
+  signed_by_cell <- .simBandwidthSignedErrorAverage(signed_scenario, group_cell)
+
+  # Start each figure folder afresh.
+  .compare_fresh_fig_dir <- function(name) {
+    path <- .analysis_fig_dir(c(fig_key, name), path_root = root_dir, create = FALSE)
+    if (dir.exists(path)) unlink(path, recursive = TRUE)
+    .analysis_fig_dir(c(fig_key, name), path_root = root_dir)
+  }
+  .compare_mismatch_heading <- function(extra) {
+    type <- if (is.list(extra)) extra$mismatch_type else extra
+    out <- paste0("Mismatch: ", unname(.simCompareMismatchLabels[type]))
+    if (is.list(extra)) {
+      out <- paste0(out, "; cells: ", .analysis_label_number(extra$n_cell))
+    }
+    out
+  }
+  .compare_mismatch_file <- function(pos, extra) {
+    type <- if (is.list(extra)) extra$mismatch_type else extra
+    cells <- if (is.list(extra)) paste0("_n_cell_", extra$n_cell) else ""
+    paste0("plot_", type, "_mean_pos_setting_", pos, cells, ".pdf")
+  }
+  .compare_mismatch_x <- function(type) {
+    if (type == "sd_inflation") {
+      "Fractional increase in background spread"
+    } else {
+      "Stimulated mean shift"
+    }
+  }
+  # Plot function for one figure: the x axis label depends on the mechanism.
+  .compare_mismatch_plot <- function(plot_fn, ...) {
+    function(d) {
+      plot_fn(d, x_label = .compare_mismatch_x(d$mismatch_type[[1]]), ...)
+    }
+  }
 }
 ```
 
-#### Median
+### Relative error averaged over cell counts
 
-Median absolute relative error is plotted against the stimulated mean shift
-on an inverse-hyperbolic-sine vertical scale. Colour identifies the method,
-line type distinguishes shifts of all cells from shifts of background cells
-only, and panels separate baseline scenarios. Lower curves indicate smaller
-errors at the same shift.
+The size of the relative error is plotted against mismatch size, with scenario
+statistics averaged equally over cell counts and response probabilities within
+each transformation.
 
 ```{r}
-#| label: mean-shift-degradation-median
+#| label: relative-error-averaged
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
-  summary_mean_shift <- compare_summary |>
-    dplyr::filter(
-      mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
-    )
   .simCompareFigureLoop(
-    summary_mean_shift,
-    make_plot = function(d) {
-      .simComparePlotMeanShift(
-        d,
-        statistic = "med_abs_rel_error",
-        label = "Median absolute relative error"
-      )
-    },
-    dir = plot_dir,
-    file_fn = function(pos, extra) paste0("plot_med_abs_rel_error_", pos, ".pdf"),
-    height = 16,
-    level = 5L
+    err_averaged,
+    make_plot = .compare_mismatch_plot(.simComparePlotMismatchError),
+    dir = .compare_fresh_fig_dir("relative_error_averaged"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = "mismatch_type",
+    height = 14,
+    level = 4L
   )
 }
 ```
 
-#### Maximum
+### Relative error at each cell count
 
-Maximum absolute relative error is plotted against the stimulated mean shift
-on an inverse-hyperbolic-sine vertical scale. Colour identifies the method,
-line type identifies which cells are shifted, and panels separate baseline
-scenarios. Compare how the largest errors vary with shift magnitude.
+As above, but keeping each cell count separate and averaging only over response
+probabilities.
 
 ```{r}
-#| label: mean-shift-degradation-max
+#| label: relative-error-by-n-cell
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
-  summary_mean_shift <- compare_summary |>
-    dplyr::filter(
-      mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
-    )
   .simCompareFigureLoop(
-    summary_mean_shift,
-    make_plot = function(d) {
-      .simComparePlotMeanShift(
-        d,
-        statistic = "max_abs_rel_error",
-        label = "Maximum absolute relative error"
-      )
-    },
-    dir = plot_dir,
-    file_fn = function(pos, extra) paste0("plot_max_", pos, ".pdf"),
-    height = 16,
-    level = 5L
+    err_by_cell,
+    make_plot = .compare_mismatch_plot(.simComparePlotMismatchError),
+    dir = .compare_fresh_fig_dir("relative_error_by_n_cell"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = c("mismatch_type", "n_cell"),
+    height = 14,
+    level = 4L
   )
 }
 ```
 
-#### 90th percentile
+### Relative error at each cell count and response probability
 
-The 90th percentile of absolute relative error is plotted against the
-stimulated mean shift on an inverse-hyperbolic-sine vertical scale. Colour
-identifies the method, line type identifies which cells are shifted, and
-panels separate baseline scenarios. Compare upper-tail errors at each shift.
+As above, but without averaging: each cell count and response probability is
+shown separately, with the response probability given in the column heading.
 
 ```{r}
-#| label: mean-shift-degradation-q90
+#| label: relative-error-by-n-cell-prob
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
-  summary_mean_shift <- compare_summary |>
-    dplyr::filter(
-      mismatch_type %in% c("mean_shift_all", "mean_shift_negative")
-    )
   .simCompareFigureLoop(
-    summary_mean_shift,
-    make_plot = function(d) {
-      .simComparePlotMeanShift(
-        d,
-        statistic = "q90_abs_rel_error",
-        label = "90th percentile absolute relative error"
-      )
-    },
-    dir = plot_dir,
-    file_fn = function(pos, extra) paste0("plot_q90_", pos, ".pdf"),
-    height = 16,
-    level = 5L
+    err_scenario,
+    make_plot = .compare_mismatch_plot(
+      .simComparePlotMismatchError, by_prob = TRUE
+    ),
+    dir = .compare_fresh_fig_dir("relative_error_by_n_cell_prob"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = c("mismatch_type", "n_cell"),
+    height = 14,
+    level = 4L
   )
 }
 ```
 
-### SD-inflation degradation curves
+### Over- and under-estimates averaged over cell counts
 
-Median absolute relative error is plotted against the fractional increase
-in stimulated background standard deviation on an inverse-hyperbolic-sine
-vertical scale. Colour identifies the method and panels separate baseline
-scenarios, with one mean position setting per plot. Zero on the horizontal
-axis is the unchanged background spread.
+Relative error is split by direction: over-estimates sit above zero and
+under-estimates below. Within each scenario, the median, 95th percentile and
+maximum are calculated separately for over- and under-estimates, then averaged
+equally over cell counts and response probabilities within each
+transformation. Line weight shows the share of estimates in that direction.
+Under-estimates are on a linear scale down to -100% (nothing gated), and
+over-estimates on a fold scale, so -100% and +100% (twice the truth) are the
+same distance from zero.
 
 ```{r}
-#| label: sd-inflation-degradation
+#| label: signed-error-averaged
 #| echo: false
 #| results: asis
-sd_dir <- .analysis_fig_dir(c(fig_key, "sd_inflation_degradation"), path_root = root_dir, create = FALSE)
 if (isTRUE(run_plots) && isTRUE(results_available)) {
-  if (dir.exists(sd_dir)) unlink(sd_dir, recursive = TRUE)
-  summary_sd <- compare_summary |>
-    dplyr::filter(mismatch_type == "sd_inflation")
   .simCompareFigureLoop(
-    summary_sd,
-    make_plot = .simComparePlotSdInflation,
-    dir = sd_dir,
-    file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
+    signed_averaged,
+    make_plot = .compare_mismatch_plot(
+      .simComparePlotSignedError, x = "mismatch_val", x_log = FALSE
+    ),
+    dir = .compare_fresh_fig_dir("signed_error_averaged"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = "mismatch_type",
+    height = 16,
+    level = 4L
+  )
+}
+```
+
+### Over- and under-estimates at each cell count
+
+As above, but keeping each cell count separate and averaging only over response
+probabilities.
+
+```{r}
+#| label: signed-error-by-n-cell
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .simCompareFigureLoop(
+    signed_by_cell,
+    make_plot = .compare_mismatch_plot(
+      .simComparePlotSignedError, x = "mismatch_val", x_log = FALSE
+    ),
+    dir = .compare_fresh_fig_dir("signed_error_by_n_cell"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = c("mismatch_type", "n_cell"),
+    height = 16,
+    level = 4L
+  )
+}
+```
+
+### Over- and under-estimates at each cell count and response probability
+
+As above, but without averaging: each cell count and response probability is
+shown separately, so large over-estimates can be traced to particular response
+probabilities, which are given in the column headings.
+
+```{r}
+#| label: signed-error-by-n-cell-prob
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .simCompareFigureLoop(
+    signed_scenario,
+    make_plot = .compare_mismatch_plot(
+      .simComparePlotSignedError, x = "mismatch_val", x_log = FALSE,
+      by_prob = TRUE
+    ),
+    dir = .compare_fresh_fig_dir("signed_error_by_n_cell_prob"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = c("mismatch_type", "n_cell"),
     height = 16,
     level = 4L
   )
@@ -824,51 +920,6 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
     height = 18,
     level = 4L
-  )
-}
-```
-
-### Over- and under-estimates across mismatch settings
-
-The relative error, (estimate - truth) / truth, is summarised separately for
-over-estimates and under-estimates in each scenario, from the same simulated
-rows as the figures above. Over-estimates are drawn above zero and
-under-estimates below. Rows of panels show the median, 95th percentile and
-maximum, and columns separate baseline scenarios. Colour identifies the
-method, and a thicker line means a larger share of the estimates lies in that
-direction. The vertical scale is linear down to -100% (nothing gated) and
-doubles at each step above, so -100% and a two-fold over-estimate are equally
-far from zero. Each plot uses one mean position setting and one mismatch
-mechanism.
-
-```{r}
-#| label: signed-error-mismatch
-#| echo: false
-#| results: asis
-if (isTRUE(run_plots) && isTRUE(results_available)) {
-  signed_tbl <- compare_raw |>
-    .simCompareSignedErrorSummary(
-      scenarioCols = scenario_cols
-    )
-  .simCompareFigureLoop(
-    signed_tbl,
-    make_plot = function(d) {
-      .simComparePlotSignedError(
-        d,
-        x = "mismatch_val",
-        x_label = "Mismatch size",
-        col_var = "scenario_desc",
-        x_log = FALSE
-      )
-    },
-    dir = .analysis_fig_dir(c(fig_key, "signed_error_by_mismatch"), path_root = root_dir),
-    file_fn = function(pos, extra) paste0("plot_signed_error_", pos, "_", extra, ".pdf"),
-    height = 18,
-    level = 4L,
-    extra_col = "mismatch_type",
-    extra_heading = function(x) {
-      paste0("Mismatch: ", unname(.simCompareMismatchLabels[x]))
-    }
   )
 }
 ```
