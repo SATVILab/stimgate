@@ -63,7 +63,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v5"
+comparison_semantics_version <- "corrected-comparison-v6"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -130,9 +130,11 @@ stimulated and unstimulated distributions. The published code derives the bin
 range from the negative distribution alone, which can omit a simulated response
 tail beyond the observed negative range.
 
-For StimGate, bandwidth is estimated automatically using the ordinary `hpi1`
-selector, without background normalisation, with the bandwidth-estimation sample
-capped at 10,000 cells. Tailgate is deliberately left to use its usual automatic
+For StimGate, bandwidth is estimated automatically using the `nrd0` selector
+(Silverman's rule of thumb), without background normalisation, with the
+bandwidth-estimation sample capped at 10,000 cells. StimGate's
+unstimulated-sample bias is not fixed: it equals the bandwidth StimGate
+estimates at the start (`biasUns = NULL` with `biasUnsFactor = 4`). Tailgate is deliberately left to use its usual automatic
 bandwidth estimation so that it is evaluated as it would normally run.
 
 ### Simulation settings
@@ -185,7 +187,10 @@ n_cell_uns_relative_to_stim_vec <- c(
 )[4]
 
 # StimGate bandwidth settings.
-stimgate_bw_mtd <- "hpi1"
+stimgate_bw_mtd <- "nrd0"
+# StimGate's unstimulated-sample bias equals its initial bandwidth estimate:
+# with biasUns = NULL, gateStim() uses 0.25 * bwFallback * biasUnsFactor.
+stimgate_bias_uns_factor <- 4
 stimgate_bw_ncell_max <- 1e4
 stimgate_bw_fallback <- "auto"
 stimgate_bw_min <- "none"
@@ -245,11 +250,8 @@ sim_grid <- tidyr::expand_grid(
   n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim_vec
 ) |>
   dplyr::mutate(
-    bias_uns = dplyr::case_when(
-      transformation == "gamma" ~ 0.01,
-      transformation %in% c("gaussian", "skew") ~ 0.15,
-      TRUE ~ NA_real_
-    )
+    bias_uns = NA_real_,
+    bias_uns_factor = stimgate_bias_uns_factor
   ) |>
   dplyr::select(
     transformation,
@@ -263,6 +265,7 @@ sim_grid <- tidyr::expand_grid(
     bw_min,
     bw_max,
     bias_uns,
+    bias_uns_factor,
     sample_perturbation_sd,
     condition_perturbation_sd,
     cluster_perturbation_sd,
@@ -347,8 +350,7 @@ analysis_result_params <- list(
   cluster_perturbation_sd_vec = cluster_perturbation_sd_vec,
   background_relative_to_response_vec = background_relative_to_response_vec,
   n_cell_uns_relative_to_stim_vec = n_cell_uns_relative_to_stim_vec,
-  bias_uns_gamma = 0.01,
-  bias_uns_gaussian_skew = 0.15,
+  stimgate_bias_uns_factor = stimgate_bias_uns_factor,
   prob_exact = TRUE,
   cov_ev_min = 1.5,
   cov_ev_max = 1.5,

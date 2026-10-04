@@ -1041,6 +1041,7 @@
   nMarker,
   biasUns,
   bw,
+  biasUnsFactor = 1,
   bwFallback = bw,
   bwMin = "none",
   bwMax = "none",
@@ -1105,6 +1106,7 @@
         biasUns = biasUns,
         bw = bw,
         control = stimgate::stimControl(
+          biasUnsFactor = biasUnsFactor,
           bwFallback = bwFallback,
           bwMin = bwMin,
           bwMax = bwMax,
@@ -1415,6 +1417,7 @@
   nIter,
   biasUns,
   bw,
+  biasUnsFactor = 1,
   bwFallback = bw,
   bwMin = "none",
   bwMax = "none",
@@ -1603,6 +1606,7 @@
       nMarker = nMarker,
       biasUns = biasUns,
       bw = bw,
+      biasUnsFactor = biasUnsFactor,
       bwFallback = bwFallback,
       bwMin = bwMin,
       bwMax = bwMax,
@@ -1665,7 +1669,9 @@
         iter = iterNum,
         nCellStimSim = nCellStim,
         nCellUnsSim = nCellUns,
-        biasUns = biasUns,
+        # NULL biasUns: StimGate sets it from the initial bandwidth estimate.
+        biasUns = biasUns %||% NA_real_,
+        biasUnsFactor = biasUnsFactor,
         bw = bw,
         bwFallback = bwFallback,
         bwMin = bwMin,
@@ -2382,7 +2388,19 @@
         nCondition = nCondition,
         nCluster = nCluster,
         nIter = nIter,
-        biasUns = if ("bias_uns" %in% names(row)) row$bias_uns[[1]] else 0,
+        # A missing bias_uns lets StimGate derive it from the bandwidth.
+        biasUns = if (!"bias_uns" %in% names(row)) {
+          0
+        } else if (is.na(row$bias_uns[[1]])) {
+          NULL
+        } else {
+          row$bias_uns[[1]]
+        },
+        biasUnsFactor = if ("bias_uns_factor" %in% names(row)) {
+          row$bias_uns_factor[[1]]
+        } else {
+          1
+        },
         bw = if ("bw" %in% names(row)) row$bw[[1]] else NULL,
         bwFallback = if ("bw_fallback" %in% names(row)) {
           row$bw_fallback[[1]]
