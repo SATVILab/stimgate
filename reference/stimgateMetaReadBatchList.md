@@ -1,6 +1,7 @@
-# Read batch list from project
+# Read saved batches
 
-Read the saved batchList object from the project's metaData folder.
+Read the sample grouping saved by
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
 
 ## Usage
 
@@ -12,20 +13,19 @@ stimgateMetaReadBatchList(pathProject)
 
 - pathProject:
 
-  character Path to project.
+  character Project directory from
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
 
 ## Value
 
-A list describing sample grouping into batches (as saved by
-.saveMetaDataBatchList()).
+A list of sample indices by batch, with unstimulated controls first.
 
 ## Examples
 
 ``` r
 pathProject <- tempfile("stimgate_meta_")
 dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-saveRDS(
-  list(batch1 = c(1, 2)),
+saveRDS(list(batch1 = c(1, 2)),
   file.path(pathProject, "metaData", "batchList.rds")
 )
 stimgateMetaReadBatchList(pathProject)

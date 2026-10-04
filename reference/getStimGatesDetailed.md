@@ -1,8 +1,9 @@
-# Get detailed gate diagnostics
+# Read threshold diagnostics
 
-Read detailed local-FDR threshold diagnostics saved during gating,
-including condition-level, sample-level and final cluster-level
-thresholds with the corresponding background-subtracted frequencies.
+Read saved condition, sample and cluster threshold diagnostics with
+background-subtracted frequencies. Use
+[`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md)
+for final gates.
 
 ## Usage
 
@@ -21,33 +22,41 @@ getStimGatesDetailed(
 
 - pathProject:
 
-  character. Path to the project directory.
+  character Project directory from
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
 
 - pop:
 
-  character. Optional population name(s) to filter gates by. Default is
-  NULL (all populations).
+  character or NULL Populations to retain. Default: NULL (all).
 
 - marker:
 
-  character. Optional marker name(s) to retain.
+  character or NULL Marker labels to retain. Default: NULL (all).
 
 - chnl:
 
-  character. Optional channel name(s) to retain.
+  character or NULL Channels to retain. Default: NULL (all).
 
 - save:
 
-  logical. If TRUE, save the detailed table as an RDS file.
+  logical Save the returned table as RDS. Default: FALSE.
 
 - pathSave:
 
-  character. Optional path for the saved RDS file. Defaults to
-  `file.path(pathProject, "gatesDetailed.rds")`.
+  character or NULL Output path; NULL uses
+  `file.path(pathProject, "gatesDetailed.rds")`. Default: NULL.
 
 ## Value
 
-A tibble with one row per saved threshold diagnostic.
+A tibble with one row per saved diagnostic, including `pop`, `marker`,
+`chnl`, threshold and frequency columns, and source-file metadata.
+
+## Details
+
+Enable diagnostic saving with
+`Sys.setenv(STIMGATE_INTERMEDIATE = "all")` before running
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
+Without saved diagnostics, returns an empty tibble.
 
 ## Examples
 
@@ -56,12 +65,10 @@ exampleData <- getExampleData()
 #> Done
 #> To reload it, use 'load_gs' function
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
+Sys.setenv(STIMGATE_INTERMEDIATE = "all")
 pathProject <- gateStim(
-  pathProject = file.path(tempdir(), "getStimGatesDetailedExample"),
-  .data = gs,
-  batchList = exampleData$batchList,
-  marker = exampleData$marker,
-  popGate = "root"
+  tempfile("stimgate_"), gs, exampleData$batchList,
+  marker = exampleData$marker
 )
 #> shared bandwidth for MarkerF1: 0.329
 #> shared bandwidth for MarkerF2: 0.334
@@ -76,7 +83,28 @@ pathProject <- gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-
-# Get threshold diagnostics
-detailTbl <- getStimGatesDetailed(pathProject)
+Sys.unsetenv("STIMGATE_INTERMEDIATE")
+getStimGatesDetailed(pathProject)
+#> # A tibble: 12 × 58
+#>    pop   marker   chnl         detailLevel stage ind   threshold thresholdOrigin
+#>    <chr> <I<chr>> <chr>        <chr>       <chr> <chr>     <dbl> <chr>          
+#>  1 root  MarkerF1 BC1(La139)Dd condition   init  2          4.42 condition_dete…
+#>  2 root  MarkerF1 BC1(La139)Dd sample      init  2          4.42 condition_dete…
+#>  3 root  MarkerF1 BC1(La139)Dd condition   init  4          3.79 condition_dete…
+#>  4 root  MarkerF1 BC1(La139)Dd sample      init  4          3.79 condition_dete…
+#>  5 root  MarkerF1 BC1(La139)Dd cluster_fi… NA    2          4.42 NA             
+#>  6 root  MarkerF1 BC1(La139)Dd cluster_fi… NA    4          3.79 NA             
+#>  7 root  MarkerF2 BC2(Pr141)Dd condition   init  2          3.40 condition_dete…
+#>  8 root  MarkerF2 BC2(Pr141)Dd sample      init  2          3.40 condition_dete…
+#>  9 root  MarkerF2 BC2(Pr141)Dd condition   init  4          2.91 condition_dete…
+#> 10 root  MarkerF2 BC2(Pr141)Dd sample      init  4          2.91 condition_dete…
+#> 11 root  MarkerF2 BC2(Pr141)Dd cluster_fi… NA    2          3.40 NA             
+#> 12 root  MarkerF2 BC2(Pr141)Dd cluster_fi… NA    4          2.91 NA             
+#> # ℹ 50 more variables: locGenerated <lgl>, locGeneratedDirect <lgl>,
+#> #   locSource <chr>, locReason <chr>, bias <dbl>, propBsEst <dbl>,
+#> #   propBsDiff <dbl>, nCellStim <int>, nCellUns <int>, propStim <dbl>,
+#> #   propUns <dbl>, propBs <dbl>, detailObject <chr>, detailPathStage <chr>,
+#> #   detailPathChnl <chr>, detailPathInd <chr>, detailPathPop <chr>,
+#> #   detailSourceFile <chr>, grp <chr>, grpUns <chr>, grpStim <chr>,
+#> #   cpOrigQuantMin <dbl>, cpJoin <dbl>, cpJoinLse <dbl>, cpJoinLseOrig <dbl>, …
 ```

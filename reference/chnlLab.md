@@ -1,9 +1,7 @@
-# Get markers and channels
+# Get channel-to-marker labels
 
-From a cytometry object (e.g. flowFrame or flowSet), either get a
-character vector of markers or channels (getChnl and getMarker), or get
-a named vector that converts between channel names and marker names
-(e.g. chnlToMarker).
+Map channel names to marker labels in a cytometry object. Channels
+without a marker label use their channel name.
 
 ## Usage
 
@@ -15,30 +13,21 @@ chnlLab(data)
 
 - data:
 
-  object of class flowFrame, flowSet. Channel and corresponding marker
-  names are drawn from here.
+  flowFrame, flowSet, GatingSet, GatingHierarchy, cytoframe or cytoset
+  Cytometry data. For sets, labels come from the first sample.
 
 ## Value
 
-A named character vector.
-
-## Details
-
-Note that chnlLab is equivalent to chnlToMarker, and markerLab is
-equivalent to markerToChnl.
+A character vector of marker labels, named by channel.
 
 ## Examples
 
 ``` r
-exprs <- matrix(
-  seq_len(8),
-  ncol = 2,
-  dimnames = list(NULL, c("FSC-A", "FL1-H"))
-)
-ff <- flowCore::flowFrame(exprs)
-
-# Get channel to marker mapping
-chnlLab(ff)
-#>   FSC-A   FL1-H 
-#> "FSC-A" "FL1-H" 
+exampleData <- getExampleData()
+#> Done
+#> To reload it, use 'load_gs' function
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+chnlLab(gs)
+#> BC1(La139)Dd BC2(Pr141)Dd 
+#>   "MarkerF1"   "MarkerF2" 
 ```

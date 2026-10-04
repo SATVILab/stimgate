@@ -1,7 +1,8 @@
-# Plot stimulation gate
+# Plot stimulation gates
 
-Plot bivariate hex and univariate density plots for batches of samples,
-along with their gates.
+Plot expression densities with saved gates from
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
+With two markers, also draw hexbin plots (requires the hexbin package).
 
 ## Usage
 
@@ -35,130 +36,120 @@ plotStim(
 
 - ind:
 
-  numeric vector. Specifies indices in `.data` to plot.
+  numeric vector Sample indices to plot.
 
 - .data:
 
-  GatingSet, flowSet, cytoset, flowFrame, cytoframe, character, list,
-  data.frame or NULL Cytometry input as accepted by
+  GatingSet, flowSet, cytoset, flowFrame, cytoframe, character, list or
+  data.frame Data passed to
   [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
-  in the same sample order used for gating. NULL uses saved expression
-  where supported.
+  in the same sample order.
 
 - pathProject:
 
-  character. Path to the project directory used for `gateStim`.
+  character Project directory from
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
 
 - marker:
 
-  character vector of length one or two. Specifies markers to be
-  plotted. If only one is passed, then only univariate plots are
-  created.
+  character vector or NULL One or two marker labels to plot; supply
+  either `marker` or `chnl`. Default: NULL.
 
 - chnl:
 
-  character vector of length one or two. Specifies channels to be
-  plotted. Ignored if `marker` is provided.
+  character vector or NULL One or two channels to plot. Default: NULL.
 
 - pop:
 
-  character. Specifies population within GatingSet that gates were
-  calculated on. If `NULL`, defaults to population specified by folder
-  name in `project_path/gates/pop_<pop>`, but throws an error if more
-  than one population is detected (i.e. more than one directory in
-  `gates/`). Default is `NULL`.
+  character or NULL Gated population; NULL selects the single saved
+  population and errors if several exist. Default: NULL.
 
 - indLab:
 
-  named character vector. Labels for `ind` used in plot. Optional.
+  character vector or NULL Sample labels, named by index or in `ind`
+  order. Default: NULL (sample indices).
 
 - axisLab:
 
-  named character vector. Labels for axis titles, applied to `marker` or
-  `chnl`. Optional.
+  character vector or NULL Axis labels, named by marker/channel or in
+  their order. Default: NULL (marker/channel names).
 
 - excMin:
 
-  Logical. If `TRUE`, excludes the minimum expression values when
-  processing the data. Default is `TRUE`.
+  logical Exclude minimum expression values and show densities scaled by
+  the retained fraction alongside raw densities. Default: TRUE.
 
 - limitsExpand:
 
-  list. Expand the limits of the plot axes. Default is `NULL`.
+  list or NULL Axis limits to expand to, e.g.
+  `list(x = c(0, 5), y = c(0, 5))`. Default: NULL.
 
 - limitsEqual:
 
-  Logical. If TRUE, forces equal lengths of the limits.
+  logical Give bivariate axes equal ranges. Default: FALSE.
 
 - grid:
 
-  Logical. If TRUE, arranges the resulting plots in a grid format using
-  [`cowplot::plot_grid`](https://wilkelab.org/cowplot/reference/plot_grid.html).
-  Default is `TRUE`.
+  logical Arrange plots in a grid. Default: TRUE.
 
 - gridNCol:
 
-  Integer. Number of columns in grid layout.
+  integer Grid columns. Default: 2.
 
 - showGate:
 
-  Logical. If `TRUE`, overlays gate lines on the plots. Default is
-  `TRUE`.
+  logical Draw gate lines. Default: TRUE.
 
 - minCell:
 
-  integer. Minimum number of cells to be plotted. Will skip plots with
-  fewer cells. Default is 10.
+  numeric Minimum retained cell count to plot a sample. Default: 10.
 
 - bias:
 
-  logical Whether to add bias to unstimulated sample used in the gating.
-  Default is `FALSE`.
+  logical Add the saved `biasUns` shift to controls. Default: FALSE.
 
 - combnExc:
 
-  list or NULL Combinations of channels to exclude. Default is NULL.
+  list or NULL Channel combinations to exclude: each vector specifies
+  positive channels, with other gating channels negative. Applies only
+  when gating channels are supplied. Default: NULL.
 
 - chnlGate:
 
-  character or NULL Channel name(s) to use for gating. Cannot be
-  specified with `marker_gate`. Default is NULL.
+  character or NULL Channels used to select positive cells; include
+  these in the requested expression columns. Default: NULL.
 
 - markerGate:
 
-  character or NULL Marker name(s) to use for gating. Cannot be
-  specified with `chnl_gate`. Default is NULL.
+  character or NULL Marker labels used to select positive cells; cannot
+  be combined with `chnlGate`. Default: NULL.
 
 - gateTypeCytPos:
 
-  character Gate type to use for cytokine-positive cells. Default is
-  "cyt".
+  character Positivity rule: "base" uses the main gate; "cyt" also
+  admits cells above a refined gate when another marker clears its main
+  gate. Default: "cyt".
 
 - mult:
 
-  logical Whether to return only multi-functional cells (positive for
-  multiple markers). Default is FALSE.
+  logical Require positivity for at least two gating markers. Applies
+  only when `chnlGate` or `markerGate` is supplied. Default: FALSE.
 
 ## Value
 
-A grid of plots if `grid` is TRUE, otherwise a list of ggplot objects.
+A ggplot grid if `grid = TRUE`; otherwise a list of bivariate plots by
+sample and univariate plots by marker. NULL if no sample meets
+`minCell`.
 
 ## Examples
 
 ``` r
-# Create example data and run gating
 exampleData <- getExampleData()
 #> Done
 #> To reload it, use 'load_gs' function
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
-pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
-
-# Run gating
-gateStim(
-  .data = gs,
-  pathProject = pathProject,
-  popGate = "root",
-  batchList = exampleData$batchList,
+pathProject <- gateStim(
+  tempfile("stimgate_"), gs, exampleData$batchList,
   marker = exampleData$marker
 )
 #> shared bandwidth for MarkerF1: 0.329
@@ -174,16 +165,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp4aZJen/stimgate_example_data_1b677af92e73/stimgate"
-
-# Create plots
-if (requireNamespace("hexbin", quietly = TRUE)) {
-  plots <- plotStim(
-    ind = exampleData$batchList[[1]], # indices in `gs` to plot
-    .data = gs, # GatingSet
-    pathProject = pathProject,
-    marker = exampleData$marker,
-    grid = TRUE
-  )
-}
+plotStim(exampleData$batchList[[1]], gs, pathProject,
+  marker = exampleData$marker[1]
+)
 ```

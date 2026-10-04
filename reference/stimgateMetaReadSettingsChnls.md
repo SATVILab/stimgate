@@ -1,6 +1,7 @@
-# Read marker settings from project
+# Read saved gating settings
 
-Read the saved marker settings list from the project's metaData folder.
+Read settings saved by
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
 
 ## Usage
 
@@ -12,25 +13,25 @@ stimgateMetaReadSettingsChnls(pathProject)
 
 - pathProject:
 
-  character Path to project.
+  character Project directory.
 
 ## Value
 
-A named list of marker settings (as saved by
-.completeChnlSettingsSave()).
+A list of settings per marker, named by the saved keys (marker labels
+for projects created by
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)).
 
 ## Examples
 
 ``` r
 pathProject <- tempfile("stimgate_meta_")
 dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-saveRDS(
-  list(BC1 = list(bw = 0.1)),
+saveRDS(list(IFNg = list(bw = 0.1)),
   file.path(pathProject, "metaData", "chnlSettings.rds")
 )
 stimgateMetaReadSettingsChnls(pathProject)
-#> $BC1
-#> $BC1$bw
+#> $IFNg
+#> $IFNg$bw
 #> [1] 0.1
 #> 
 #> 

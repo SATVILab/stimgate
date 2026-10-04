@@ -1,7 +1,7 @@
-# Read channel or marker label mapping
+# Read channel and marker mappings
 
-Read the saved channel label mapping (chnlLab.rds) from the project's
-metaData folder.
+Read channel-to-marker labels with `stimgateMetaReadChnlLab()`; read the
+reverse mapping with `stimgateMetaReadMarkerLab()`.
 
 ## Usage
 
@@ -15,21 +15,21 @@ stimgateMetaReadMarkerLab(pathProject)
 
 - pathProject:
 
-  character Path to project.
+  character Project directory from
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
 
 ## Value
 
-Named character vector mapping channel names to labels.
+A named character vector: channel names to marker labels for
+`stimgateMetaReadChnlLab()`, marker labels to channels for
+`stimgateMetaReadMarkerLab()`.
 
 ## Examples
 
 ``` r
 pathProject <- tempfile("stimgate_meta_")
 dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-saveRDS(
-  c(BC1 = "IFNg"),
-  file.path(pathProject, "metaData", "chnlLab.rds")
-)
+saveRDS(c(BC1 = "IFNg"), file.path(pathProject, "metaData", "chnlLab.rds"))
 stimgateMetaReadChnlLab(pathProject)
 #>    BC1 
 #> "IFNg" 

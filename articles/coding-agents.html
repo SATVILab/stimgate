@@ -66,198 +66,111 @@
 
     
     
+<p>Set up a cloud coding agent with the repository’s scripts or
+workflow, then check that StimGate loads. Agents must read
+<code>AGENTS.md</code> before changing code; it defines coding
+conventions and required checks.</p>
 <div class="section level2">
-<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+<h2 id="choose-the-setup">Choose the setup<a class="anchor" aria-label="anchor" href="#choose-the-setup"></a>
 </h2>
-<p>StimGate can be developed with remote coding agents as long as the
-agent environment contains the same core R, Bioconductor, system and
-analysis dependencies used by the repository.</p>
-<p>This guide currently covers:</p>
-<ul>
-<li>Google Jules</li>
-<li>OpenAI Codex Cloud</li>
-<li>GitHub Copilot coding agent</li>
-</ul>
-<p>The repository-level instructions for coding agents live in
-<code>AGENTS.md</code>. Agents should read that file before changing
-code. The environment scripts described below are kept under
-<code>scripts/agents/</code> where appropriate so that the setup is
-version-controlled alongside the package rather than copied
-independently between agent products.</p>
-<p>The recommended cloud-agent environment is deliberately different
-from ordinary local development. In local development, StimGate may
-activate an <code>renv</code> profile through <code>.Rprofile</code>.
-Cloud agents instead use a directly installed development library and
-should run with <code>CI=true</code>, which tells the repository not to
-activate <code>renv</code>.</p>
-<p>The current setup targets:</p>
-<ul>
-<li>R 4.6</li>
-<li>Bioconductor 3.23</li>
-<li>the current <code>SATVILab/simcyto</code> default branch</li>
-<li>Quarto</li>
-<li>the StimGate <code>DESCRIPTION</code> dependencies and Suggests</li>
-<li>development tools such as <code>devtools</code>,
-<code>rcmdcheck</code>, <code>roxygen2</code>, <code>styler</code>,
-<code>lintr</code>, <code>covr</code> and <code>pkgdown</code>
-</li>
-<li>analysis dependencies used by the simulation and comparison
-workflows, including <code>future</code>, <code>furrr</code>,
-<code>progressr</code>, <code>reticulate</code> and
-<code>cytoUtils</code>
-</li>
-</ul>
-<p><code>simcyto</code> is intentionally not pinned to a commit.
-StimGate development normally targets the latest version in
-<code>SATVILab/simcyto</code>. Codex maintenance explicitly refreshes
-it, and the Copilot and analysis GitHub Actions workflows install the
-unpinned repository package.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Agent</th>
+<th>Configuration in this repository</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>OpenAI Codex Cloud</td>
+<td>
+<code>scripts/agents/setup-codex.sh</code> and
+<code>scripts/agents/maintenance-codex.sh</code>
+</td>
+</tr>
+<tr class="even">
+<td>Google Jules</td>
+<td><code>scripts/agents/setup-jules.sh</code></td>
+</tr>
+<tr class="odd">
+<td>GitHub Copilot coding agent</td>
+<td><code>.github/workflows/copilot-setup-steps.yml</code></td>
+</tr>
+</tbody>
+</table>
+<p>Keep setup changes in these files. If a platform requires pasted
+script text, copy the current repository file rather than maintaining
+another version.</p>
 </div>
 <div class="section level2">
-<h2 id="shared-principles">Shared principles<a class="anchor" aria-label="anchor" href="#shared-principles"></a>
+<h2 id="shared-environment-rules">Shared environment rules<a class="anchor" aria-label="anchor" href="#shared-environment-rules"></a>
 </h2>
-<div class="section level3">
-<h3 id="prefer-repository-scripts-or-workflows-over-duplicated-ui-scripts">Prefer repository scripts or workflows over duplicated UI
-scripts<a class="anchor" aria-label="anchor" href="#prefer-repository-scripts-or-workflows-over-duplicated-ui-scripts"></a>
-</h3>
-<p>The recommended approach is to make the agent platform use
-configuration stored in the repository whenever possible. This keeps the
-authoritative setup in Git, makes changes reviewable, and avoids having
-different Jules, Codex and documentation copies drift apart.</p>
-<p>For Codex and Jules, repository setup scripts live under
-<code>scripts/agents/</code>. GitHub Copilot uses the repository
-workflow <code>.github/workflows/copilot-setup-steps.yml</code>
-directly.</p>
-<p>If an agent product only accepts pasted setup text, copy the current
-contents of the corresponding repository file rather than maintaining a
-separate unmanaged version.</p>
-</div>
-<div class="section level3">
-<h3 id="do-not-restore-renv-in-the-cloud-agent-environment">Do not restore <code>renv</code> in the cloud-agent environment<a class="anchor" aria-label="anchor" href="#do-not-restore-renv-in-the-cloud-agent-environment"></a>
-</h3>
-<p>The cloud environment installs the packages it needs directly and
-then runs commands such as:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">#| eval: false</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">test</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>Do not run <code>renv::restore()</code> merely because the project
-contains <code>renv</code> files. For these cloud environments, a
-missing package should normally be treated as an environment-setup
-problem.</p>
-</div>
-<div class="section level3">
-<h3 id="use-posit-linux-binaries-in-a-form-pak-recognises">Use Posit Linux binaries in a form pak recognises<a class="anchor" aria-label="anchor" href="#use-posit-linux-binaries-in-a-form-pak-recognises"></a>
-</h3>
-<p>The Codex and Jules scripts use:</p>
+<ul>
+<li>
+<strong>Cloud library:</strong> set persistent <code>CI=true</code>
+so <code>.Rprofile</code> skips <code>renv</code>. Use the installed
+development library; missing packages indicate a setup problem. Do not
+run <code>renv::restore()</code> in these cloud environments.</li>
+<li>
+<strong>Local library:</strong> ordinary local development still
+uses the project’s <code>renv</code> profiles when a reproducible
+library is needed.</li>
+<li>
+<strong>Dependencies:</strong> Codex/Jules scripts target R 4.6 and
+Bioconductor 3.23. They install system libraries, Quarto,
+<code>DESCRIPTION</code> development dependencies, and tools including
+<code>devtools</code>, <code>rcmdcheck</code>, <code>roxygen2</code>,
+<code>styler</code>, <code>lintr</code>, <code>covr</code> and
+<code>pkgdown</code>.</li>
+<li>
+<strong>Analysis support:</strong> Codex/Jules also install
+Python/NumPy, <code>simcyto</code>, <code>future</code>,
+<code>furrr</code>, <code>progressr</code>, <code>reticulate</code> and
+<code>cytoUtils</code>. F-beta comparisons use Python through
+<code>reticulate</code>.</li>
+<li>
+<strong><code>simcyto</code>:</strong> use unpinned
+<code>SATVILab/simcyto</code> for development, including Copilot and
+analysis CI. Pin a SHA only for a task that requires historical
+reproduction or a version-specific regression check.</li>
+<li>
+<strong>Validation:</strong> the scripts check required packages and
+<code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code>. Codex/Jules repair failed
+installation stages before these final checks; an intermediate failure
+alone does not establish that setup failed.</li>
+</ul>
+<p>Codex/Jules use this Posit CRAN URL for Linux binaries:</p>
 <pre class="text"><code>https://packagemanager.posit.co/cran/__linux__/noble/latest</code></pre>
-<p>for ordinary CRAN packages. Keep this <code>__linux__</code> form
-unless pak adds equivalent support for the newer Posit
-<code>/bin/linux/...</code> repository layout. In testing, pak
-classified the newer URL as a source repository and attempted to rebuild
-more than 100 ordinary CRAN dependencies from source. The
-<code>__linux__</code> URL lets pak use prebuilt Linux binaries where
-available, which makes initial cloud setup substantially faster and less
-fragile.</p>
-</div>
-<div class="section level3">
-<h3 id="keep-simcyto-current">Keep <code>simcyto</code> current<a class="anchor" aria-label="anchor" href="#keep-simcyto-current"></a>
-</h3>
-<p>Use:</p>
-<pre class="text"><code><span><span class="va">SATVILab</span><span class="op">/</span><span class="va">simcyto</span></span></code></pre>
-<p>rather than a commit-pinned package specification unless a particular
-historical analysis explicitly requires an old API.</p>
-<p>This rule also applies to CI and coding-agent setup. A stale
-<code>simcyto</code> pin can make the agent test StimGate against an API
-that is no longer the one used by current development.</p>
-</div>
-<div class="section level3">
-<h3 id="validate-the-environment-not-just-the-installer-exit-code">Validate the environment, not just the installer exit code<a class="anchor" aria-label="anchor" href="#validate-the-environment-not-just-the-installer-exit-code"></a>
-</h3>
-<p>The setup environments finish by checking that the important packages
-are actually available and that:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">#| eval: false</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>succeeds. Intermediate package-install failures may be recoverable,
-especially for Bioconductor dependencies, so the Codex and Jules scripts
-use a pak-first, Bioconductor-repair, pak-again strategy before applying
-the final hard checks.</p>
-</div>
+<p>Keep the <code>__linux__</code> form used by the scripts. The
+<code>/bin/linux/...</code> form has been classified as a source
+repository by pak, causing ordinary CRAN packages to compile from
+source.</p>
 </div>
 <div class="section level2">
 <h2 id="openai-codex-cloud">OpenAI Codex Cloud<a class="anchor" aria-label="anchor" href="#openai-codex-cloud"></a>
 </h2>
+<p>Use the universal container image, <strong>Manual</strong> setup and
+container caching. Configure <code>CI=true</code> as a persistent
+environment variable: setup runs in a separate shell, so an export there
+does not reach later agent commands. See the <a href="https://learn.chatgpt.com/docs/environments/cloud-environment" class="external-link">OpenAI
+environment guide</a> for platform settings.</p>
+<p>Setup script:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">bash</span> scripts/agents/setup-codex.sh</span></code></pre></div>
+<p>Maintenance script:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">bash</span> scripts/agents/maintenance-codex.sh</span></code></pre></div>
+<p>Maintenance installs newly declared development dependencies,
+refreshes <code>SATVILab/simcyto</code>, ensures repository tools remain
+available, and checks that StimGate loads.</p>
 <div class="section level3">
-<h3 id="recommended-codex-settings">Recommended Codex settings<a class="anchor" aria-label="anchor" href="#recommended-codex-settings"></a>
+<h3 id="network-access">Network access<a class="anchor" aria-label="anchor" href="#network-access"></a>
 </h3>
-<p>Create a Codex Cloud environment for the StimGate repository and use
-the universal container image.</p>
-<p>The preinstalled language versions in the universal image can
-normally be left at their defaults. Python is the only preinstalled
-language that is directly relevant to current StimGate analysis code;
-the comparison workflow calls the historical F-beta Python
-implementation through <code>reticulate</code>. The setup script
-separately installs NumPy and the R-side Python integration
-requirements.</p>
-<p>Add the following persistent environment variable:</p>
-<pre class="text"><code><span><span class="va">CI</span><span class="op">=</span><span class="va">true</span></span></code></pre>
-<p>This setting is important. The setup script itself runs in a separate
-shell from later agent commands, so exporting <code>CI=true</code> only
-inside the setup script is not sufficient. StimGate’s
-<code>.Rprofile</code> uses <code>CI=true</code> to avoid activating
-<code>renv</code> in the cloud-agent session.</p>
-<p>Enable container caching. The initial R/Bioconductor installation is
-substantial, and caching avoids rebuilding the environment for every
-task.</p>
-</div>
-<div class="section level3">
-<h3 id="setup-script">Setup script<a class="anchor" aria-label="anchor" href="#setup-script"></a>
-</h3>
-<p>Choose <strong>Manual</strong> setup and use:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">bash</span> scripts/agents/setup-codex.sh</span></code></pre></div>
-<p>The full script is stored at:</p>
-<pre class="text"><code><span><span class="va">scripts</span><span class="op">/</span><span class="va">agents</span><span class="op">/</span><span class="va">setup</span><span class="op">-</span><span class="va">codex.sh</span></span></code></pre>
-<p>It installs R and Bioconductor, the system libraries required by the
-package, Quarto, StimGate’s development dependencies, the latest
-<code>SATVILab/simcyto</code>, and the additional analysis tooling used
-by the repository.</p>
-</div>
-<div class="section level3">
-<h3 id="maintenance-script">Maintenance script<a class="anchor" aria-label="anchor" href="#maintenance-script"></a>
-</h3>
-<p>Use:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">bash</span> scripts/agents/maintenance-codex.sh</span></code></pre></div>
-<p>The maintenance script is intentionally lighter than the initial
-setup. It:</p>
-<ol style="list-style-type: decimal">
-<li>installs any newly declared StimGate development dependencies;</li>
-<li>explicitly refreshes <code>SATVILab/simcyto</code> from its current
-default branch;</li>
-<li>ensures the repository-wide tools that are not declared in
-<code>DESCRIPTION</code> remain available; and</li>
-<li>checks that StimGate still loads.</li>
-</ol>
-<p>The full script is stored at:</p>
-<pre class="text"><code><span><span class="va">scripts</span><span class="op">/</span><span class="va">agents</span><span class="op">/</span><span class="va">maintenance</span><span class="op">-</span><span class="va">codex.sh</span></span></code></pre>
-</div>
-<div class="section level3">
-<h3 id="internet-access">Internet access<a class="anchor" aria-label="anchor" href="#internet-access"></a>
-</h3>
-<p>Agent internet access is useful for StimGate because an agent may
-need to inspect current package documentation or fetch a GitHub
-dependency after the cached environment was created.</p>
-<p>A practical configuration is:</p>
-<ul>
-<li>Agent internet access: <strong>On</strong>
-</li>
-<li>Domain allowlist: <strong>Common dependencies</strong>, plus the
-domains needed for GitHub, R, Posit Package Manager and
-Bioconductor</li>
-<li>HTTP methods: <strong>All methods</strong> if that is the only
-option that permits Git-over-HTTPS operations</li>
-</ul>
-<p>Useful additional domains include:</p>
+<p>For task-time documentation lookup or dependency downloads, enable
+agent internet access with <strong>Common dependencies</strong> and add
+the domains needed below. Allow additional HTTP methods only when
+required, for example for Git-over-HTTPS operations. See the <a href="https://learn.chatgpt.com/docs/cloud/internet-access" class="external-link">OpenAI
+internet-access guide</a> for allowlist controls.</p>
 <pre class="text"><code><span><span class="va">github.com</span></span>
 <span><span class="va">api.github.com</span></span>
 <span><span class="va">codeload.github.com</span></span>
@@ -270,265 +183,125 @@ option that permits Git-over-HTTPS operations</li>
 <span><span class="va">packagemanager.posit.co</span></span>
 <span><span class="va">p3m.dev</span></span>
 <span><span class="va">bioconductor.org</span></span></code></pre>
-<p>Keep the allowlist narrower than unrestricted internet access. The
-setup script itself should contain the normal software-installation
-endpoints, while task-time network access should be limited to domains
-the agent is likely to need.</p>
-</div>
-<div class="section level3">
-<h3 id="after-setup">After setup<a class="anchor" aria-label="anchor" href="#after-setup"></a>
-</h3>
-<p>A normal coding task can use the current checkout directly. The
-standard package test sequence is documented in <code>AGENTS.md</code>,
-but common commands are:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::load_all(); devtools::test()"</span></span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="ex">Rscript</span> analysis/tests/run_analysis_tests.R</span></code></pre></div>
-<p>Run the analysis integration suite when changes touch
-<code>analysis/</code> or <code>scripts/r/</code>, rather than for every
-unrelated package change.</p>
+<p>Keep task-time access limited to needed domains. Setup scripts have
+internet access for installing dependencies.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="google-jules">Google Jules<a class="anchor" aria-label="anchor" href="#google-jules"></a>
 </h2>
-<div class="section level3">
-<h3 id="setup">Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
-</h3>
-<p>For Jules, use the repository setup script:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">bash</span> scripts/agents/setup-jules.sh</span></code></pre></div>
-<p>The full script is stored at:</p>
-<pre class="text"><code><span><span class="va">scripts</span><span class="op">/</span><span class="va">agents</span><span class="op">/</span><span class="va">setup</span><span class="op">-</span><span class="va">jules.sh</span></span></code></pre>
-<p>The Jules version follows the same dependency strategy as the Codex
-setup, but retains the Jules checkout convention used by the working
-StimGate environment.</p>
-<p>It sets <code>CI=true</code> during setup so that R processes
-launched by the installer do not activate the project <code>renv</code>
-environment. If Jules provides a persistent environment-variable setting
-for a project, also set <code>CI=true</code> there so later agent R
-sessions use the same direct development library.</p>
-</div>
-<div class="section level3">
-<h3 id="network-and-repository-access">Network and repository access<a class="anchor" aria-label="anchor" href="#network-and-repository-access"></a>
-</h3>
-<p>Jules needs access to the StimGate repository and to the package
-sources used during environment setup. If network controls are
-available, allow the same R, Bioconductor, Posit and GitHub domains
-listed for Codex rather than enabling unrelated destinations.</p>
-</div>
-<div class="section level3">
-<h3 id="keeping-the-environment-current">Keeping the environment current<a class="anchor" aria-label="anchor" href="#keeping-the-environment-current"></a>
-</h3>
-<p>When the Jules environment is rebuilt, <code>setup-jules.sh</code>
-installs the latest <code>SATVILab/simcyto</code> rather than a pinned
-revision.</p>
-<p>If a long-lived Jules environment becomes stale, rerun the setup or
-explicitly refresh the GitHub package from R:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">#| eval: false</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pkg_install</a></span><span class="op">(</span><span class="st">"SATVILab/simcyto"</span>, upgrade <span class="op">=</span> <span class="cn">TRUE</span>, ask <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-</div>
+<p>Use this setup command:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">bash</span> scripts/agents/setup-jules.sh</span></code></pre></div>
+<p>The script expects the checkout under <code>/app</code> and exports
+<code>CI=true</code> during installation. If Jules offers persistent
+project environment variables, also set <code>CI=true</code> there for
+later R sessions.</p>
+<p>Use the same package-source domains listed above if network controls
+are available. Rebuilding installs unpinned
+<code>SATVILab/simcyto</code>; to refresh a long-lived environment,
+rerun setup or use the refresh command under Troubleshooting.</p>
 </div>
 <div class="section level2">
 <h2 id="github-copilot-coding-agent">GitHub Copilot coding agent<a class="anchor" aria-label="anchor" href="#github-copilot-coding-agent"></a>
 </h2>
-<div class="section level3">
-<h3 id="how-stimgate-configures-copilot">How StimGate configures Copilot<a class="anchor" aria-label="anchor" href="#how-stimgate-configures-copilot"></a>
-</h3>
-<p>The GitHub Copilot coding agent does not use the Codex or Jules setup
-scripts. Its environment is configured by the repository workflow:</p>
-<pre class="text"><code><span><span class="va">.github</span><span class="op">/</span><span class="va">workflows</span><span class="op">/</span><span class="va">copilot</span><span class="op">-</span><span class="va">setup</span><span class="op">-</span><span class="va">steps.yml</span></span></code></pre>
-<p>That file is the source of truth for Copilot’s cloud environment.
-Keep Copilot environment changes there so that every Copilot task gets
-the same setup and the configuration remains reviewable in Git.</p>
-<p>The workflow currently:</p>
-<ul>
-<li>installs the Linux system libraries needed by StimGate;</li>
-<li>checks out the repository;</li>
-<li>installs the current R release with Posit Package Manager
-enabled;</li>
-<li>installs StimGate package and development dependencies;</li>
-<li>installs <code>devtools</code>, <code>rcmdcheck</code> and
-<code>decor</code>;</li>
-<li>installs the latest <code>SATVILab/simcyto</code> from its default
-branch;</li>
-<li>verifies the important R packages and
-<code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code>; and</li>
-<li>installs Quarto.</li>
-</ul>
-<p>The repository <code>.Rprofile</code> treats the Copilot agent as CI,
-so Copilot should use the directly installed development library rather
-than running <code>renv::restore()</code>.</p>
-</div>
-<div class="section level3">
-<h3 id="simcyto-policy-for-copilot">
-<code>simcyto</code> policy for Copilot<a class="anchor" aria-label="anchor" href="#simcyto-policy-for-copilot"></a>
-</h3>
-<p>Do not pin <code>simcyto</code> to a commit in
-<code>.github/workflows/copilot-setup-steps.yml</code>.</p>
-<p>The expected package specification is:</p>
-<pre class="text"><code><span><span class="va">SATVILab</span><span class="op">/</span><span class="va">simcyto</span></span></code></pre>
-<p>This ensures newly started Copilot tasks are built against the latest
-<code>simcyto</code> development API.</p>
-<p>The analysis integration workflow follows the same rule.
-<code>.github/workflows/analysis-integration.yaml</code> also installs
-unpinned <code>SATVILab/simcyto</code>, so Copilot, analysis CI and
-current StimGate development test the same moving dependency rather than
-different historical revisions.</p>
-<p>Pinning a SHA is only appropriate for a deliberately historical
-reproduction or version-regression task. If that is required, make the
-pin task-specific rather than changing the default Copilot setup.</p>
-</div>
-<div class="section level3">
-<h3 id="using-copilot-on-stimgate">Using Copilot on StimGate<a class="anchor" aria-label="anchor" href="#using-copilot-on-stimgate"></a>
-</h3>
-<p>Before changing code, the agent should follow <code>AGENTS.md</code>,
-which defines the repository architecture, coding style, testing rules
-and which test suite to run for each kind of change.</p>
-<p>Typical package work can validate with:</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::load_all(); devtools::test()"</span></span></code></pre></div>
-<p>Changes involving <code>analysis/</code> or <code>scripts/r/</code>
-should also run:</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="ex">Rscript</span> analysis/tests/run_analysis_tests.R</span></code></pre></div>
-<p>The Copilot setup workflow is intentionally closer to the GitHub
-Actions environment than to the heavier Codex/Jules scripts. That makes
-it fast enough for repeated cloud-agent tasks while still covering the
-normal package-development path.</p>
-</div>
-<div class="section level3">
-<h3 id="updating-the-copilot-environment">Updating the Copilot environment<a class="anchor" aria-label="anchor" href="#updating-the-copilot-environment"></a>
-</h3>
-<p>When StimGate gains a new dependency:</p>
+<p>Configure Copilot through
+<code>.github/workflows/copilot-setup-steps.yml</code>. It installs
+Linux system libraries, the current R release with Posit Package
+Manager, package/development dependencies, <code>devtools</code>,
+<code>rcmdcheck</code>, <code>decor</code>, unpinned
+<code>SATVILab/simcyto</code> and Quarto. Its verification step checks
+core packages and loads StimGate.</p>
+<p><code>.Rprofile</code> recognises Copilot as CI and skips
+<code>renv</code>. Use its installed library directly.</p>
+<p>When adding a dependency:</p>
 <ol style="list-style-type: decimal">
-<li>add ordinary package dependencies to <code>DESCRIPTION</code> where
-they belong;</li>
-<li>add agent-only or repository-wide development tools to
-<code>copilot-setup-steps.yml</code> only when they are genuinely needed
-for Copilot tasks;</li>
-<li>keep <code>SATVILab/simcyto</code> unpinned; and</li>
-<li>extend the verification step if the dependency is important enough
-that a missing installation should make the environment fail
-immediately.</li>
+<li>Put package dependencies in <code>DESCRIPTION</code>.</li>
+<li>Add agent-only tools to the workflow when Copilot tasks need
+them.</li>
+<li>Keep <code>SATVILab/simcyto</code> unpinned, as in analysis CI.</li>
+<li>Extend verification when a missing dependency should fail
+setup.</li>
 </ol>
-<p>Avoid duplicating a large independent shell installer for Copilot
-unless the GitHub Actions setup becomes unable to express the required
-environment cleanly.</p>
-</div>
+<p>Keep configuration in the workflow; add a separate installer only if
+the workflow cannot express the required setup.</p>
 </div>
 <div class="section level2">
-<h2 id="alternative-environment-strategies">Alternative environment strategies<a class="anchor" aria-label="anchor" href="#alternative-environment-strategies"></a>
+<h2 id="check-a-coding-task">Check a coding task<a class="anchor" aria-label="anchor" href="#check-a-coding-task"></a>
 </h2>
-<div class="section level3">
-<h3 id="use-the-github-actions-environment-as-the-minimal-baseline">Use the GitHub Actions environment as the minimal baseline<a class="anchor" aria-label="anchor" href="#use-the-github-actions-environment-as-the-minimal-baseline"></a>
-</h3>
-<p>The repository’s GitHub Actions workflows are useful references for
-the minimum environment needed for package and analysis tests. They are
-deliberately more compact than the Codex and Jules cloud-agent scripts.
-This is a good option when an agent only needs package tests and not the
-full range of research analyses.</p>
-</div>
-<div class="section level3">
-<h3 id="use-renv-for-local-or-long-lived-interactive-development">Use <code>renv</code> for local or long-lived interactive
-development<a class="anchor" aria-label="anchor" href="#use-renv-for-local-or-long-lived-interactive-development"></a>
-</h3>
-<p>The direct cloud-agent installation is not intended to replace the
-project’s <code>renv</code> profiles for ordinary local development.
-<code>renv</code> remains useful when an exact reproducible local
-library is more important than fast cloud-agent provisioning.</p>
-</div>
-<div class="section level3">
-<h3 id="pin-dependencies-only-for-reproducibility-exercises">Pin dependencies only for reproducibility exercises<a class="anchor" aria-label="anchor" href="#pin-dependencies-only-for-reproducibility-exercises"></a>
-</h3>
-<p>The agent environment normally follows the current
-<code>simcyto</code> repository. Pinning a GitHub SHA is appropriate
-when reproducing a historical result or debugging a version-specific
-regression, but it should be an explicit task-level decision rather than
-the default development environment.</p>
-</div>
-<div class="section level3">
-<h3 id="reduce-the-environment-for-narrow-tasks">Reduce the environment for narrow tasks<a class="anchor" aria-label="anchor" href="#reduce-the-environment-for-narrow-tasks"></a>
-</h3>
-<p>An agent working only on documentation or a small package function
-may not need Quarto, the comparison stack, or all analysis dependencies.
-A smaller environment can start faster. The full Codex and Jules scripts
-are intentionally broad because those agents are expected to handle
-package code, tests and current analyses without frequent environment
-rebuilds.</p>
-</div>
+<p>Run commands from the repository root. Follow the full checklist in
+<code>AGENTS.md</code>; common package checks are:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"devtools::load_all(); devtools::test()"</span></span></code></pre></div>
+<p>When changing <code>analysis/</code> or <code>scripts/r/</code>, also
+run:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="ex">Rscript</span> analysis/tests/run_analysis_tests.R</span></code></pre></div>
+<p>The GitHub Actions workflows provide a smaller baseline for agents
+that only need package tests. Narrow documentation or package tasks may
+not need Quarto or the comparison stack; the full Codex/Jules setup
+covers research analyses too.</p>
 </div>
 <div class="section level2">
 <h2 id="troubleshooting">Troubleshooting<a class="anchor" aria-label="anchor" href="#troubleshooting"></a>
 </h2>
-<div class="section level3">
-<h3 id="r-starts-by-activating-renv">R starts by activating <code>renv</code><a class="anchor" aria-label="anchor" href="#r-starts-by-activating-renv"></a>
-</h3>
-<p>Check that <code>CI=true</code> is present in the agent’s task-time
-environment, not only exported during setup. For Copilot, also check
-that the repository <code>.Rprofile</code> still recognises the
-Copilot/CI environment.</p>
-</div>
-<div class="section level3">
-<h3 id="pak-starts-building-large-numbers-of-ordinary-cran-packages">pak starts building large numbers of ordinary CRAN packages<a class="anchor" aria-label="anchor" href="#pak-starts-building-large-numbers-of-ordinary-cran-packages"></a>
-</h3>
-<p>Check the repository URL printed by <code><a href="https://pak.r-lib.org/reference/repo_status.html" class="external-link">pak::repo_status()</a></code>.
-For Codex/Jules, CRAN should use:</p>
-<pre class="text"><code>https://packagemanager.posit.co/cran/__linux__/noble/latest</code></pre>
-<p>If pak reports CRAN as a source repository and starts compiling
-ordinary packages such as <code>jsonlite</code>, <code>callr</code>,
-<code>otel</code>, <code>rlang</code> or <code>ggplot2</code>, check
-that the newer <code>/bin/linux/...</code> Posit URL has not been
-substituted into the agent script.</p>
-</div>
-<div class="section level3">
-<h3 id="simcyto-is-installed-but-appears-stale">
-<code>simcyto</code> is installed but appears stale<a class="anchor" aria-label="anchor" href="#simcyto-is-installed-but-appears-stale"></a>
-</h3>
-<p>In Codex, rerun the maintenance script:</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="fu">bash</span> scripts/agents/maintenance-codex.sh</span></code></pre></div>
-<p>For another environment, run:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">#| eval: false</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pkg_install</a></span><span class="op">(</span><span class="st">"SATVILab/simcyto"</span>, upgrade <span class="op">=</span> <span class="cn">TRUE</span>, ask <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>For Copilot, inspect
-<code>.github/workflows/copilot-setup-steps.yml</code> and confirm that
-<code>SATVILab/simcyto</code> is unpinned. A newly provisioned Copilot
-environment should then install the current default branch.</p>
-</div>
-<div class="section level3">
-<h3 id="a-bioconductor-package-fails-during-installation">A Bioconductor package fails during installation<a class="anchor" aria-label="anchor" href="#a-bioconductor-package-fails-during-installation"></a>
-</h3>
-<p>The Codex and Jules setup scripts deliberately continue through a
-repair cycle rather than treating the first pak failure as final. If the
-final validation still fails, inspect the missing package and its Linux
-system requirements before changing the package code. For Copilot,
-diagnose the <code>setup-r-dependencies</code> job and system-library
-step in the setup workflow.</p>
-</div>
-<div class="section level3">
-<h3 id="stimgate-installs-but-analysis-tests-fail">StimGate installs but analysis tests fail<a class="anchor" aria-label="anchor" href="#stimgate-installs-but-analysis-tests-fail"></a>
-</h3>
-<p>Remember that the analysis code has dependencies beyond the installed
-package <code>DESCRIPTION</code>, including <code>simcyto</code> and the
-comparison tooling. Use the full Codex/Jules setup when the task
-involves <code>analysis/</code> or <code>scripts/r/</code>. For Copilot,
-add a missing analysis dependency to its workflow only when Copilot is
-expected to execute that analysis path.</p>
-</div>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Symptom</th>
+<th>Check or action</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>R activates <code>renv</code>
+</td>
+<td>Check task-time <code>CI=true</code>, not just the setup export. For
+Copilot, check <code>.Rprofile</code> still recognises its
+environment.</td>
+</tr>
+<tr class="even">
+<td>pak compiles many ordinary CRAN packages</td>
+<td>Inspect <code><a href="https://pak.r-lib.org/reference/repo_status.html" class="external-link">pak::repo_status()</a></code>. Codex/Jules should use the
+<code>__linux__/noble/latest</code> URL above; check it was not replaced
+with <code>/bin/linux/...</code>.</td>
+</tr>
+<tr class="odd">
+<td>
+<code>simcyto</code> is stale</td>
+<td>Run Codex maintenance, or refresh with the R command below. For
+Copilot, check the workflow is unpinned and provision a new
+environment.</td>
+</tr>
+<tr class="even">
+<td>Bioconductor installation fails</td>
+<td>If final validation fails after repair, inspect the missing
+package’s system requirements. For Copilot, inspect the system-library
+and <code>setup-r-dependencies</code> steps.</td>
+</tr>
+<tr class="odd">
+<td>StimGate loads but analysis tests fail</td>
+<td>Check analysis dependencies, including <code>simcyto</code> and
+comparison tools. Use full Codex/Jules setup, or add the needed
+dependency to Copilot’s workflow.</td>
+</tr>
+</tbody>
+</table>
+<p>Refresh <code>simcyto</code> in an existing development library:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pkg_install</a></span><span class="op">(</span><span class="st">"SATVILab/simcyto"</span>, upgrade <span class="op">=</span> <span class="cn">TRUE</span>, ask <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="adding-another-coding-agent">Adding another coding agent<a class="anchor" aria-label="anchor" href="#adding-another-coding-agent"></a>
+<h2 id="add-another-agent">Add another agent<a class="anchor" aria-label="anchor" href="#add-another-agent"></a>
 </h2>
-<p>When adding another remote coding agent, prefer this pattern:</p>
 <ol style="list-style-type: decimal">
-<li>add a small agent-specific script under
-<code>scripts/agents/</code>, or use the platform’s repository-native
-workflow if it has one;</li>
-<li>reuse the same R/Bioconductor and package strategy unless the
-platform supplies a better native equivalent;</li>
-<li>keep <code>AGENTS.md</code> as the coding-agent source of truth for
-repository conventions;</li>
-<li>add the new platform to this guide; and</li>
-<li>avoid copying version-pinned dependency lists into several unrelated
-configuration files unless reproducibility requires it.</li>
+<li>Add a small script under <code>scripts/agents/</code>, or use the
+platform’s repository workflow.</li>
+<li>Reuse the R/Bioconductor dependency strategy unless the platform has
+a suitable native equivalent.</li>
+<li>Keep repository conventions in <code>AGENTS.md</code> and add setup
+instructions to this guide.</li>
+<li>Avoid duplicating pinned dependency lists across configuration
+files.</li>
 </ol>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

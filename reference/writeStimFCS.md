@@ -1,6 +1,7 @@
-# Write FCS files of marker-positive FCS files
+# Export stimulation-positive cells as FCS files
 
-Uses the gates to write FCS files of marker-positive FCS files.
+Select positive cells using saved or supplied gates and write one FCS
+file per sample with retained cells, plus `manifest.csv`.
 
 ## Usage
 
@@ -26,123 +27,114 @@ writeStimFCS(
 
 - pathProject:
 
-  character. Path to project directory.
+  character Project directory from
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
 
 - .data:
 
   GatingSet, flowSet, cytoset, flowFrame, cytoframe, character, list or
-  data.frame Cytometry input as accepted by
+  data.frame Data passed to
   [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
-  in the same sample order used for gating.
+  in the same sample order.
 
 - pop:
 
-  character. Population that was gated on.
+  character or NULL Population to export. NULL uses the single saved
+  population, or "root" when `gateTbl` is supplied. Default: NULL.
 
 - indBatchList:
 
-  list. Sample indices or names grouped by batch, with the unstimulated
-  sample first in each element (as for `batchList` in
-  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)).
+  list Sample indices or names grouped by batch, unstimulated sample
+  first, as for `batchList` in
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
 
 - pathDirSave:
 
-  character. Directory path to save the FCS files to.
+  character Output directory; existing contents are deleted.
 
 - chnl:
 
-  character vector. Specific channels to gate on.
+  character vector or NULL Channels used to select positive cells; NULL
+  uses all channels in the gate table. Default: NULL.
 
 - gateTbl:
 
-  data.frame. Pre-computed gate table, if available.
+  data.frame or NULL Gates with `chnl`, `batch`, `ind`, `gate` and, for
+  refined gates, `gateCyt`. NULL reads saved gates. Default: NULL.
 
 - transFn:
 
-  function. Transformation function to apply.
+  function or NULL Transformation of retained expression before export.
+  Default: NULL.
 
 - transChnl:
 
-  character vector. Columns to transform.
+  character vector or NULL Columns to transform; NULL transforms all
+  expression columns. Default: NULL.
 
 - combnExc:
 
-  list. Combinations of channels to exclude.
+  list or NULL Channel combinations to exclude: each vector specifies
+  positive channels, with other selected channels negative. Default:
+  NULL.
 
 - gateTypeCytPos:
 
-  character. Gate type to use for cytokine-positive cells.
+  character Positivity rule: "base" uses main gates; "cyt" also uses
+  refined gates for cells positive for another marker. Default: "cyt".
 
 - mult:
 
-  logical. Whether cells must be multi-positive.
+  logical Require positivity for at least two markers. Default: FALSE.
 
 - gateUnsMethod:
 
-  character. Method to calculate unstimulated thresholds.
+  character Summary of stimulated gates used for missing control gates:
+  "min", "max", "mean", "tmean" (20% trimmed mean), or "med". Default:
+  "min".
 
 ## Value
 
-A tibble manifest with one row per sample, invisibly. The output
-directory path is attached as the attribute `"pathDirSave"`.
-
-## Details
-
-This function processes flow cytometry data to identify and export
-cytokine-positive cells to FCS files. It requires that gates have been
-pre-computed using
-[`gateStim`](https://satvilab.github.io/stimgate/reference/gateStim.md)
-or that a complete gate table is provided.
-
-The function will create the output directory and write FCS files for
-samples that contain cytokine-positive cells. If no positive cells are
-found in a sample, no FCS file will be written for that sample.
+Invisibly, a tibble with one row per sample and columns `ind`, `batch`,
+`fileName`, `nCellPos`, `written`, `reason`. The `pathDirSave` attribute
+holds the output path. Samples with no retained cells have no FCS file.
 
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-# Complete workflow example
-# Load your GatingSet (gs) and define batch structure
-# batchList <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
-# where the first element in each batch is the unstimulated sample
-
-# First, run gating to create gates
-pathProject <- tempfile("stimgate_project")
-# gateStim(
-#   .data = gs,
-#   pathProject = pathProject,
-#   popGate = "root",
-#   batchList = batchList,
-#   marker = c("IL2", "IFNg")  # your cytokine markers
-# )
-
-# Then write FCS files of cytokine-positive cells
-pathOutput <- tempfile("fcs_output")
-# writeStimFCS(
-#   pathProject = pathProject,
-#   .data = gs,
-#   indBatchList = batchList,
-#   pathDirSave = pathOutput,
-#   chnl = c("IL2", "IFNg")
-# )
-
-# Alternative: provide your own gate table
-# gateTbl <- data.frame(
-#   chnl = c("IL2", "IFNg"),
-#   marker = c("IL2", "IFNg"),
-#   batch = c(1, 1),
-#   ind = c(1, 1),
-#   gate = c(0.5, 0.3),
-#   gateName = c("gate", "gate")
-# )
-# writeStimFCS(
-#   pathProject = pathProject,
-#   .data = gs,
-#   indBatchList = batchList,
-#   pathDirSave = pathOutput,
-#   chnl = c("IL2", "IFNg"),
-#   gateTbl = gateTbl
-# )
-} # }
+exampleData <- getExampleData()
+#> Done
+#> To reload it, use 'load_gs' function
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+pathProject <- gateStim(
+  tempfile("stimgate_"), gs, exampleData$batchList,
+  marker = exampleData$marker
+)
+#> shared bandwidth for MarkerF1: 0.329
+#> shared bandwidth for MarkerF2: 0.334
+#> getting base gates
+#> chnl: BC1(La139)Dd
+#> getting pre-adjustment gates
+#> batch 2 of 2
+#> getting clustered and/or controlled gates
+#> chnl: BC2(Pr141)Dd
+#> getting pre-adjustment gates
+#> batch 2 of 2
+#> getting clustered and/or controlled gates
+#> getting cyt combn frequencies
+#> batch 2 of 2
+manifest <- writeStimFCS(
+  pathProject, gs, indBatchList = exampleData$batchList,
+  pathDirSave = tempfile("positive_fcs_")
+)
+#> Using population 'root' from project directory.
+#> Using channels 'BC1(La139)Dd, BC2(Pr141)Dd' from project directory.
+#> Writing 1 of 4 files
+#> Wrote sample001_unstim.fcs
+#> Writing 2 of 4 files
+#> Wrote sample001_stim1.fcs
+#> Writing 3 of 4 files
+#> Wrote sample002_unstim.fcs
+#> Writing 4 of 4 files
+#> Wrote sample002_stim1.fcs
 ```

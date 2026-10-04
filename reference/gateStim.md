@@ -1,9 +1,8 @@
-# Identify cytokine-positive cells through automated gating
+# Gate cells responding to stimulation
 
-Identify cells responding to stimulation by comparing cytokine
-expression in stimulated samples with unstimulated controls from the
-same donor/batch. Saves gates and background-subtracted statistics to a
-project directory.
+Compare cytokine expression in stimulated samples with an unstimulated
+control from the same donor or batch. Save gates and
+background-subtracted statistics to a project directory.
 
 ## Usage
 
@@ -27,141 +26,113 @@ gateStim(
 
 - pathProject:
 
-  character. Path to project directory where all results will be saved.
-  This directory will contain subdirectories for each marker with gate
-  tables, statistics, and plots. The directory will be created if it
-  doesn't exist.
+  character Directory for results; created if needed.
 
 - .data:
 
   GatingSet, flowSet, cytoset, flowFrame, cytoframe, character, list or
-  data.frame Cytometry samples, FCS paths/directory, numeric matrices or
-  data frames per sample, or a long data frame with a `sample` column.
+  data.frame Cytometry samples: a GatingSet or other flowCore/
+  flowWorkspace object, FCS file paths or one FCS directory, a list of
+  numeric matrices or data frames (cells by channels), or one data frame
+  with a `sample` column. See Details.
 
 - batchList:
 
-  list. List where each element contains integer indices or character
-  names of samples belonging to the same batch/donor. The first index
-  per element is the unstimulated control sample, e.g. if
-  `batchList = list(c(3, 1, 2), c(6, 4, 5))`, then indices 3 and 6
-  correspond to the unstimulated samples for batches 1 and 2,
-  respectively. If `batchList` is named, e.g.
-  `list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))`, then these names will be
-  used for batch identification. Each element needs the unstimulated
-  sample and at least one stimulated sample. An unstimulated sample may
-  be shared across batches (first in each), but a stimulated sample may
-  belong to only one batch.
+  list Samples grouped by donor or batch, as indices or sample names,
+  with the unstimulated control first in each vector, e.g.
+  `list(donor1 = c(3, 1, 2))`. List names identify batches. Each batch
+  needs at least one stimulated sample; a control may be shared by
+  batches (first in each), but a stimulated sample may belong to only
+  one.
 
 - marker:
 
-  character vector. Alternative way to specify markers to gate on. When
-  provided, this is used instead of chnl to determine which markers to
-  analyze. Default is NULL.
+  character vector or NULL Marker labels to gate; supply either `marker`
+  or `chnl`. Default: NULL.
 
 - chnl:
 
-  character vector. Channel names to gate on. Specify either `chnl` or
-  `marker`. Default is NULL.
+  character vector or NULL Channel names to gate. Default: NULL.
 
 - popGate:
 
-  character vector. Population(s) within which to perform gating.
-  Default is "root" to gate on all cells. Can specify other populations
-  like "CD3+" or "CD4+" if these gates already exist in the GatingSet.
+  character Population(s) already present in `.data`; only GatingSets
+  have populations other than "root". Default: "root" (all cells).
 
 - biasUns:
 
-  numeric. Bias adjustment for unstimulated samples to account for
-  background cytokine production. When NULL (default), 1/4 of
-  `bwFallback` is used (scaled by `biasUnsFactor`). Positive values
-  shift the unstimulated distribution higher, making gates more
-  conservative. Default is NULL.
+  numeric or NULL Upward shift of unstimulated expression. NULL uses one
+  quarter of `bwFallback`, scaled by `biasUnsFactor`. Positive shifts
+  make gating more conservative. Default: NULL.
 
 - bw:
 
-  numeric. Specify the bandwith for density estimation. When NULL
-  (default), bandwidth is estimated automatically. A bandwidth may also
-  be set per marker through `markerControl`. Default is `NULL`.
+  numeric or NULL Fixed density bandwidth; NULL estimates it
+  automatically. Per-marker values go in `markerControl`. Default: NULL.
 
 - control:
 
   stimControl Tuning settings from
   [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md).
-  Most users do not need to change these. Default:
-  [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md).
+  Default: stimControl().
 
 - markerControl:
 
-  list or NULL. Named per-marker overrides, keyed by marker label or
-  channel name, for example `list(IL2 = list(bw = 0.12, biasUns = 0))`.
-  Settings from
+  list or NULL Overrides keyed by marker label or channel, e.g.
+  `list(IL2 = list(bw = 0.12, biasUns = 0))`. Accepts
   [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
-  (except the global-only `locEnforceShapeThreshold` and
-  `calcCytPosGates`), plus `bw`, `biasUns` and `popGate`, can be
-  overridden. Default: NULL.
+  settings except `locEnforceShapeThreshold` and `calcCytPosGates`, plus
+  `bw`, `biasUns` and `popGate`. Default: NULL.
 
 - parallel:
 
-  logical If TRUE, gate channels in parallel during the initial gating
-  stage using the active future::plan(). Default: FALSE.
+  logical Use the active
+  [`future::plan()`](https://future.futureverse.org/reference/plan.html)
+  for initial channel gating. Default: FALSE.
 
 ## Value
 
-character. Returns the path to the project directory where all results
-have been saved. The directory structure created includes:
-
-- `pathProject/[markerName]/`: Directory for each marker containing:
-
-- `gateTblInit.rds`: Initial gate table with preliminary gates
-
-- `gateTbl.rds`: Final refined gate table
-
-- `stats/`: Directory containing statistics files
-
-- `plots/`: Directory containing visualization plots (if generated)
+A character string: `pathProject`. Gates are saved under `gates/`,
+expression under `sampleData/`, settings under `metaData/`, and
+statistics in `gateStats.rds` and `gateStats.csv`.
 
 ## Details
 
-Initial local-FDR gates compare each stimulated sample with its batch's
-unstimulated control. Thresholds may be shared across similar
-distributions, then refined using cells positive for another cytokine.
-Results and statistics are saved to `pathProject` for
+Thresholds can be shared across similar distributions, then refined
+using cells positive for another cytokine. Read results with
 [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md),
-[`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md),
+[`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
 and
+[`getStimExpr()`](https://satvilab.github.io/stimgate/reference/getStimExpr.md);
+inspect them with
 [`plotStim()`](https://satvilab.github.io/stimgate/reference/plotStim.md).
-Use
-[`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
-for tuning and `markerControl` for per-marker overrides.
 
-Inputs are normalised to a GatingSet; only GatingSet inputs can contain
-populations other than "root", including in `markerControl`. StimGate
-applies no transformation (such as arcsinh or logicle): provide
-FCS/matrix data on the scale you want gated, as with a GatingSet. FCS
-files are read using
-[`flowWorkspace::load_cytoset_from_fcs()`](https://rdrr.io/pkg/flowWorkspace/man/load_cytoset_from_fcs.html)
-with its default reader behaviour. A directory is searched
-non-recursively for case-insensitive `.fcs` filenames, sorted with
-[`sort()`](https://rdrr.io/r/base/sort.html); a file vector preserves
-its supplied order. FCS sample names are basenames. List names are
-sample names, or default to sample1, sample2, etc. Channel columns must
-be numeric with matching names; their order is aligned to the first
-sample and marker labels equal channel names. Long data frames use
-observed factor-level order or first appearance of `sample`. The first
-sample in each batch is always the unstimulated control.
+**Input data.** Non-GatingSet inputs are converted to a GatingSet with
+only the "root" population. StimGate does not transform data (e.g.
+arcsinh), so supply values on the scale to gate. Sample order, which
+`batchList` indices refer to, is:
 
-To gate channels in parallel, set `parallel = TRUE` and select a future
-plan, for example `future::plan(future::multisession, workers = 4)`. The
-default `parallel = FALSE` runs sequentially regardless of the active
-plan. Only the initial per-channel gating stage is parallel; subsequent
-cytokine-positive gating and statistics remain sequential. Workers read
-expression data from the project disk cache rather than a GatingSet, so
-the project directory must be accessible to all workers. With
-`parallel = TRUE`, RNG-dependent subsampling uses parallel-safe L'Ecuyer
-streams (`future.seed = TRUE`). Results are reproducible for a given
-[`set.seed()`](https://rdrr.io/r/base/Random.html) and independent of
-the chosen non-sequential plan, but may differ slightly from a
-sequential run.
+- FCS directory: `.fcs` files (any case, not recursive) in sorted order;
+  a vector of paths keeps its order. Sample names are file basenames.
+
+- List of matrices/data frames: list order; names are sample names
+  (default `sample1`, `sample2`, ...). Columns must have the same unique
+  names in every sample and serve as both channels and markers.
+
+- Data frame with `sample`: factor-level order, otherwise first
+  appearance.
+
+Pass the same data, in the same order, to
+[`plotStim()`](https://satvilab.github.io/stimgate/reference/plotStim.md),
+[`getStimExpr()`](https://satvilab.github.io/stimgate/reference/getStimExpr.md)
+and
+[`writeStimFCS()`](https://satvilab.github.io/stimgate/reference/writeStimFCS.md).
+
+For parallel gating, set `parallel = TRUE` and choose a future plan,
+e.g. `future::plan(future::multisession, workers = 4)`. All workers must
+be able to access `pathProject`. Later stages run sequentially. Set a
+seed for reproducible parallel subsampling; results may differ from
+sequential runs.
 
 ## Examples
 
@@ -170,14 +141,8 @@ exampleData <- getExampleData()
 #> Done
 #> To reload it, use 'load_gs' function
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
-pathProject <- file.path(tempdir(), "demonstration")
-
-# Run gating
-gateStim(
-  .data = gs,
-  pathProject = pathProject,
-  popGate = "root",
-  batchList = exampleData$batchList,
+pathProject <- gateStim(
+  tempfile("stimgate_"), gs, exampleData$batchList,
   marker = exampleData$marker
 )
 #> shared bandwidth for MarkerF1: 0.329
@@ -193,20 +158,24 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp4aZJen/demonstration"
+getStimGates(pathProject)
+#> # A tibble: 4 × 8
+#>   pop   gateName    chnl         marker   ind   batch   gate gateCyt
+#>   <chr> <chr>       <chr>        <I<chr>> <chr> <chr>  <dbl>   <dbl>
+#> 1 root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.42    4.42
+#> 2 root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.79    3.79
+#> 3 root  locminClust BC2(Pr141)Dd MarkerF2 2     batch1  3.40    2.17
+#> 4 root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.91    2.91
 
-# Customise tuning and override the bandwidth for the first marker
+# Disable gate sharing and fix the first marker's bandwidth
 gateStim(
-  pathProject = file.path(tempdir(), "custom-gating"),
-  .data = gs,
-  batchList = exampleData$batchList,
-  marker = exampleData$marker,
-  bw = 0.1,
-  control = stimControl(bwAdj = 1.5, clusterGates = FALSE),
+  tempfile("custom_gating_"), gs, exampleData$batchList,
+  marker = exampleData$marker, control = stimControl(clusterGates = FALSE),
   markerControl = stats::setNames(
     list(list(bw = 0.12, biasUns = 0)), exampleData$marker[1]
   )
 )
+#> shared bandwidth for MarkerF2: 0.334
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -218,16 +187,15 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp4aZJen/custom-gating"
+#> [1] "/tmp/RtmpaC1J3l/custom_gating_1c04fd2a6e6"
 
-# Use in-memory matrices, with channel names also serving as marker labels
+# Gate in-memory matrices; column names act as channels and markers
 matrices <- lapply(seq_along(gs), function(i) {
-  flowCore::exprs(flowWorkspace::gh_pop_get_data(gs[[i]], y = "root"))
+  flowCore::exprs(flowWorkspace::gh_pop_get_data(gs[[i]]))
 })
 gateStim(
-  pathProject = file.path(tempdir(), "matrix-gating"), .data = matrices,
-  batchList = exampleData$batchList, chnl = exampleData$chnl,
-  control = stimControl(calcCytPosGates = FALSE)
+  tempfile("matrix_gating_"), matrices, exampleData$batchList,
+  chnl = exampleData$chnl, control = stimControl(calcCytPosGates = FALSE)
 )
 #> shared bandwidth for BC1(La139)Dd: 0.329
 #> shared bandwidth for BC2(Pr141)Dd: 0.334
@@ -242,16 +210,5 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp4aZJen/matrix-gating"
-
-# Create plots
-if (requireNamespace("hexbin", quietly = TRUE)) {
-  plots <- plotStim(
-    ind = exampleData$batchList[[1]], # indices in `gs` to plot
-    .data = gs, # GatingSet
-    pathProject = pathProject,
-    marker = exampleData$marker,
-    grid = TRUE
-  )
-}
+#> [1] "/tmp/RtmpaC1J3l/matrix_gating_1c0422b395c6"
 ```
