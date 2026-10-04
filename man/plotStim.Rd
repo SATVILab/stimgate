@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_gate.R
 \name{plotStim}
 \alias{plotStim}
-\title{Plot stimulation gate}
+\title{Plot stimulation gates}
 \usage{
 plotStim(
   ind,
@@ -29,112 +29,79 @@ plotStim(
 )
 }
 \arguments{
-\item{ind}{numeric vector. Specifies indices in \code{.data} to plot.}
+\item{ind}{numeric vector Sample indices to plot.}
 
 \item{.data}{GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
-list, data.frame or NULL Cytometry input as accepted by \code{\link[=gateStim]{gateStim()}}, in
-the same sample order used for gating. NULL uses saved expression where
-supported.}
+list or data.frame Data passed to \code{\link[=gateStim]{gateStim()}}, in the same sample order.}
 
-\item{pathProject}{character.
-Path to the project directory used for \code{gateStim}.}
+\item{pathProject}{character Project directory from \code{\link[=gateStim]{gateStim()}}.}
 
-\item{marker}{character vector of length one or two. Specifies markers
-to be plotted. If only one is passed, then only univariate plots are created.}
+\item{marker}{character vector or NULL One or two marker labels to plot;
+supply either \code{marker} or \code{chnl}. Default: NULL.}
 
-\item{chnl}{character vector of length one or two. Specifies channels
-to be plotted. Ignored if \code{marker} is provided.}
+\item{chnl}{character vector or NULL One or two channels to plot. Default: NULL.}
 
-\item{pop}{character. Specifies population within GatingSet that
-gates were calculated on. If \code{NULL}, defaults to population specified
-by folder name in \verb{project_path/gates/pop_<pop>}, but throws
-an error if more than one population is detected (i.e. more
-than one directory in \verb{gates/}). Default is \code{NULL}.}
+\item{pop}{character or NULL Gated population; NULL selects the single saved
+population and errors if several exist. Default: NULL.}
 
-\item{indLab}{named character vector.
-Labels for \code{ind} used in plot.
-Optional.}
+\item{indLab}{character vector or NULL Sample labels, named by index or in
+\code{ind} order. Default: NULL (sample indices).}
 
-\item{axisLab}{named character vector.
-Labels for axis titles, applied to \code{marker} or \code{chnl}.
-Optional.}
+\item{axisLab}{character vector or NULL Axis labels, named by marker/channel
+or in their order. Default: NULL (marker/channel names).}
 
-\item{excMin}{Logical.
-If \code{TRUE}, excludes the minimum expression values when processing the data.
-Default is \code{TRUE}.}
+\item{excMin}{logical Exclude minimum expression values and show densities
+scaled by the retained fraction alongside raw densities. Default: TRUE.}
 
-\item{limitsExpand}{list.
-Expand the limits of the plot axes.
-Default is \code{NULL}.}
+\item{limitsExpand}{list or NULL Axis limits to expand to, e.g.
+\code{list(x = c(0, 5), y = c(0, 5))}. Default: NULL.}
 
-\item{limitsEqual}{Logical.
-If TRUE, forces equal lengths of the limits.}
+\item{limitsEqual}{logical Give bivariate axes equal ranges. Default: FALSE.}
 
-\item{grid}{Logical.
-If TRUE, arranges the resulting plots in a grid format
-using \code{cowplot::plot_grid}.
-Default is \code{TRUE}.}
+\item{grid}{logical Arrange plots in a grid. Default: TRUE.}
 
-\item{gridNCol}{Integer.
-Number of columns in grid layout.}
+\item{gridNCol}{integer Grid columns. Default: 2.}
 
-\item{showGate}{Logical.
-If \code{TRUE}, overlays gate lines on the plots.
-Default is \code{TRUE}.}
+\item{showGate}{logical Draw gate lines. Default: TRUE.}
 
-\item{minCell}{integer.
-Minimum number of cells to be plotted.
-Will skip plots with fewer cells.
-Default is 10.}
+\item{minCell}{numeric Minimum retained cell count to plot a sample.
+Default: 10.}
 
-\item{bias}{logical Whether to add bias to unstimulated sample used in the
-gating. Default is \code{FALSE}.}
+\item{bias}{logical Add the saved \code{biasUns} shift to controls. Default: FALSE.}
 
-\item{combnExc}{list or NULL Combinations of channels to exclude. Default
-is NULL.}
+\item{combnExc}{list or NULL Channel combinations to exclude: each vector
+specifies positive channels, with other gating channels negative.
+Applies only when gating channels are supplied. Default: NULL.}
 
-\item{chnlGate}{character or NULL Channel name(s) to use for gating.
-Cannot be specified with \code{marker_gate}. Default is NULL.}
+\item{chnlGate}{character or NULL Channels used to select positive cells;
+include these in the requested expression columns. Default: NULL.}
 
-\item{markerGate}{character or NULL Marker name(s) to use for gating.
-Cannot be specified with \code{chnl_gate}. Default is NULL.}
+\item{markerGate}{character or NULL Marker labels used to select positive
+cells; cannot be combined with \code{chnlGate}. Default: NULL.}
 
-\item{gateTypeCytPos}{character Gate type to use for cytokine-positive
-cells. Default is "cyt".}
+\item{gateTypeCytPos}{character Positivity rule: "base" uses the main gate;
+"cyt" also admits cells above a refined gate when another marker clears
+its main gate. Default: "cyt".}
 
-\item{mult}{logical Whether to return only multi-functional cells (positive
-for multiple markers). Default is FALSE.}
+\item{mult}{logical Require positivity for at least two gating markers.
+Applies only when \code{chnlGate} or \code{markerGate} is supplied. Default: FALSE.}
 }
 \value{
-A grid of plots if \code{grid} is TRUE, otherwise a list of ggplot objects.
+A ggplot grid if \code{grid = TRUE}; otherwise a list of bivariate plots
+by sample and univariate plots by marker. NULL if no sample meets \code{minCell}.
 }
 \description{
-Plot bivariate hex and univariate density plots for batches of samples, along
-with their gates.
+Plot expression densities with saved gates from \code{\link[=gateStim]{gateStim()}}. With two
+markers, also draw hexbin plots (requires the hexbin package).
 }
 \examples{
-# Create example data and run gating
 exampleData <- getExampleData()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
-pathProject <- file.path(dirname(exampleData$pathGs), "stimgate")
-
-# Run gating
-gateStim(
-  .data = gs,
-  pathProject = pathProject,
-  popGate = "root",
-  batchList = exampleData$batchList,
+pathProject <- gateStim(
+  tempfile("stimgate_"), gs, exampleData$batchList,
   marker = exampleData$marker
 )
-
-# Create plots
-if (requireNamespace("hexbin", quietly = TRUE)) {
-  plots <- plotStim(
-    ind = exampleData$batchList[[1]], # indices in `gs` to plot
-    .data = gs, # GatingSet
-    pathProject = pathProject,
-    marker = exampleData$marker,
-    grid = TRUE
-  )
-}
+plotStim(exampleData$batchList[[1]], gs, pathProject,
+  marker = exampleData$marker[1]
+)
 }

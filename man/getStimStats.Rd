@@ -2,30 +2,29 @@
 % Please edit documentation in R/stats.R
 \name{getStimStats}
 \alias{getStimStats}
-\title{Get gating statistics}
+\title{Read gating statistics}
 \usage{
 getStimStats(pathProject)
 }
 \arguments{
-\item{pathProject}{character. Path to the project directory.}
+\item{pathProject}{character Project directory from \code{\link[=gateStim]{gateStim()}}.}
 }
 \value{
-A data frame with gating statistics.
+A tibble (or data.frame when read from CSV) with sample and gate
+identifiers, \code{countStim}, \code{countUns}, \code{nCellStim}, \code{nCellUns}, proportions
+\code{propStim}, \code{propUns}, \code{propBs}, and percentages \code{freqStim}, \code{freqUns},
+\code{freqBs}. Background subtraction is stimulated minus unstimulated.
 }
 \description{
-Read and return gating statistics computed during gating.
+Read cell counts and background-subtracted frequencies saved
+by \code{\link[=gateStim]{gateStim()}}.
 }
 \examples{
 exampleData <- getExampleData()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
 pathProject <- gateStim(
-  pathProject = file.path(tempdir(), "getStimStatsExample"),
-  .data = gs,
-  batchList = exampleData$batchList,
-  marker = exampleData$marker,
-  popGate = "root"
+  tempfile("stimgate_"), gs, exampleData$batchList,
+  marker = exampleData$marker
 )
-
-# Get gating statistics
-statTbl <- getStimStats(pathProject)
+getStimStats(pathProject)
 }

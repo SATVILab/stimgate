@@ -2,29 +2,27 @@
 % Please edit documentation in R/chnl_settings.R
 \name{stimgateMetaReadSettingsChnl}
 \alias{stimgateMetaReadSettingsChnl}
-\title{Get marker settings for a single channel}
+\title{Read settings by saved key}
 \usage{
 stimgateMetaReadSettingsChnl(pathProject, chnl)
 }
 \arguments{
-\item{pathProject}{character Path to project.}
+\item{pathProject}{character Project directory.}
 
-\item{chnl}{character Channel label or channel name.}
+\item{chnl}{character Exact saved key, usually a marker label.}
 }
 \value{
-A list of settings for the requested channel.
+A list of settings for the key; an unknown key raises an error.
 }
 \description{
-Retrieve the marker settings for a single channel. The function
-accepts either a channel label (as returned by stimgateMetaReadChnlLab)
-or the original channel name/key used in markerList.
+Extract one entry from \code{\link[=stimgateMetaReadSettingsChnls]{stimgateMetaReadSettingsChnls()}}.
+The key must match exactly; channel names are not converted to marker labels.
 }
 \examples{
 pathProject <- tempfile("stimgate_meta_")
 dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-saveRDS(
-  list(BC1 = list(bw = 0.1)),
+saveRDS(list(IFNg = list(bw = 0.1)),
   file.path(pathProject, "metaData", "chnlSettings.rds")
 )
-stimgateMetaReadSettingsChnl(pathProject, "BC1")
+stimgateMetaReadSettingsChnl(pathProject, "IFNg")
 }

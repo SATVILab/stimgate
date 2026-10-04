@@ -1,29 +1,23 @@
-#' @title Get gates
-#'
-#' @description Get all the gates for each of the markers gated.
-#'
-#' @param pathProject character. Path to the project directory.
-#' @param pop character. Optional population name(s) to filter gates by. Default is NULL (all populations).
-#' @param marker character. Optional marker name(s) to filter gates by. Default is NULL (all markers).
-#' @param chnl character. Optional channel name(s) to filter gates by. Default is NULL (all channels).
-#'
-#' @return Gate table with gates for each sample for each marker.
+#' @title Read stimulation gates
+#' @description Read final gates saved by [gateStim()], optionally selecting
+#'   populations and markers. For threshold diagnostics, use [getStimGatesDetailed()].
+#' @param pathProject character Project directory from [gateStim()].
+#' @param pop character or NULL Populations to retain; NULL selects all.
+#'   Default: NULL.
+#' @param marker character or NULL Marker labels to retain; takes precedence
+#'   over `chnl`. Default: NULL (all markers).
+#' @param chnl character or NULL Channels to retain. Default: NULL (all channels).
+#' @return A tibble of stimulated-sample gates with identifiers `pop`, `marker`,
+#'   `chnl`, `batch`, `ind`, `gateName`, threshold `gate`, and refinement and
+#'   threshold-provenance columns when available.
 #' @examples
-#' # Get example dataset
 #' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
-#'
-#' # Run the stimgate pipeline
 #' pathProject <- gateStim(
-#'   pathProject = file.path(tempdir(), "getGateExample"),
-#'   .data = gs,
-#'   batchList = exampleData$batchList,
-#'   marker = exampleData$marker,
-#'   popGate = "root"
+#'   tempfile("stimgate_"), gs, exampleData$batchList,
+#'   marker = exampleData$marker
 #' )
-#'
-#' # Get identified gates
-#' gates <- getStimGates(pathProject)
+#' getStimGates(pathProject)
 #' @export
 getStimGates <- function(
   pathProject,
@@ -126,36 +120,31 @@ getStimGates <- function(
 }
 
 
-#' @title Get detailed gate diagnostics
-#'
-#' @description
-#' Read detailed local-FDR threshold diagnostics saved during gating, including
-#' condition-level, sample-level and final cluster-level thresholds with the
-#' corresponding background-subtracted frequencies.
-#'
-#' @param pathProject character. Path to the project directory.
-#' @param pop character. Optional population name(s) to filter gates by. Default
-#'   is NULL (all populations).
-#' @param marker character. Optional marker name(s) to retain.
-#' @param chnl character. Optional channel name(s) to retain.
-#' @param save logical. If TRUE, save the detailed table as an RDS file.
-#' @param pathSave character. Optional path for the saved RDS file. Defaults to
-#'   `file.path(pathProject, "gatesDetailed.rds")`.
-#'
-#' @return A tibble with one row per saved threshold diagnostic.
+#' @title Read threshold diagnostics
+#' @description Read saved condition, sample and cluster threshold diagnostics
+#'   with background-subtracted frequencies. Use [getStimGates()] for final gates.
+#' @param pathProject character Project directory from [gateStim()].
+#' @param pop character or NULL Populations to retain. Default: NULL (all).
+#' @param marker character or NULL Marker labels to retain. Default: NULL (all).
+#' @param chnl character or NULL Channels to retain. Default: NULL (all).
+#' @param save logical Save the returned table as RDS. Default: FALSE.
+#' @param pathSave character or NULL Output path; NULL uses
+#'   `file.path(pathProject, "gatesDetailed.rds")`. Default: NULL.
+#' @details
+#' Enable diagnostic saving with `Sys.setenv(STIMGATE_INTERMEDIATE = "all")`
+#' before running [gateStim()]. Without saved diagnostics, returns an empty tibble.
+#' @return A tibble with one row per saved diagnostic, including `pop`, `marker`,
+#'   `chnl`, threshold and frequency columns, and source-file metadata.
 #' @examples
 #' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
+#' Sys.setenv(STIMGATE_INTERMEDIATE = "all")
 #' pathProject <- gateStim(
-#'   pathProject = file.path(tempdir(), "getStimGatesDetailedExample"),
-#'   .data = gs,
-#'   batchList = exampleData$batchList,
-#'   marker = exampleData$marker,
-#'   popGate = "root"
+#'   tempfile("stimgate_"), gs, exampleData$batchList,
+#'   marker = exampleData$marker
 #' )
-#'
-#' # Get threshold diagnostics
-#' detailTbl <- getStimGatesDetailed(pathProject)
+#' Sys.unsetenv("STIMGATE_INTERMEDIATE")
+#' getStimGatesDetailed(pathProject)
 #' @export
 getStimGatesDetailed <- function(
   pathProject,

@@ -135,66 +135,55 @@
   names(indBatchList)[hasInd]
 }
 
-#' @title Read saved expression data from project
-#' @description Read channel expression vectors saved under a project's
-#'   sampleData directory and return them as a tibble with sample metadata
-#'   columns.
-#' @param pathProject character Path to project.
-#' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
-#'   list, data.frame or NULL Cytometry input as accepted by [gateStim()], in
-#'   the same sample order used for gating. NULL uses saved expression where
-#'   supported. Default: NULL.
-#' @param pop character or NULL Population name(s). Default is detected from
-#'   project sampleData.
-#' @param ind character or NULL Index/indices of samples. Default is detected
-#'   from project sampleData.
-#' @param chnl character or NULL Channel name(s) to return. Default is
-#'   detected from project sampleData.
-#' @param marker character or NULL Marker name(s) to return. Cannot be
-#'   specified with `chnl`. Default is NULL.
-#' @param bias logical Whether to add bias to unstimulated sample used in the
-#'   gating. Default is `FALSE`.
-#' @param excMin logical Whether to exclude cells with the minimum
-#'   expression for any channels. Default is FALSE.
-#' @param combnExc list or NULL Combinations of channels to exclude. Default
-#'   is NULL.
-#' @param chnlGate character or NULL Channel name(s) to use for gating.
-#'   Cannot be specified with `marker_gate`. Default is NULL.
-#' @param markerGate character or NULL Marker name(s) to use for gating.
-#'   Cannot be specified with `chnl_gate`. Default is NULL.
-#' @param gateTypeCytPos character Gate type to use for cytokine-positive
-#'   cells. Default is "cyt".
-#' @param mult logical Whether to return only multi-functional cells (positive
-#'   for multiple markers). Default is FALSE.
-#' @param transFn function or NULL Transformation function to apply to
-#'   expression values. Default is NULL.
-#' @param transChnl character or NULL Channel name(s) to transform when using
-#'   channel names. Default is NULL (transforms all channels).
-#' @param transMarker character or NULL Marker name(s) to transform when
-#'   using marker names. Default is NULL (transforms all markers).
-#' @return A tibble with columns \code{pop}, \code{ind} and one column per
-#'   requested channel. Rows correspond to cells. Samples with no positive cells
-#'   have zero rows in the tibble, and cell counts for every requested
-#'   population and sample combination are attached as the \code{"nCellPos"}
-#'   attribute (a tibble with columns \code{pop}, \code{ind}, and
-#'   \code{nCellPos}).
+#' @title Read cell expression values
+#' @description Read expression saved by [gateStim()], optionally selecting
+#'   stimulation-positive cells. Supply marker labels or channel names.
+#' @param pathProject character Project directory from [gateStim()].
+#' @param .data GatingSet, other input accepted by [gateStim()], or NULL Data
+#'   passed to [gateStim()], in the same sample order; used only when
+#'   expression is not cached. Default: NULL.
+#' @param pop character or NULL Population names; NULL selects all saved
+#'   populations. Default: NULL.
+#' @param ind character or numeric vector or NULL Sample indices; NULL selects
+#'   all saved samples, including controls. Default: NULL.
+#' @param chnl character or NULL Channels to return; NULL selects all saved
+#'   channels unless `marker` is supplied. Default: NULL.
+#' @param marker character or NULL Marker labels to return; cannot be combined
+#'   with `chnl`. Default: NULL.
+#' @param bias logical Add the saved `biasUns` shift to controls. Default: FALSE.
+#' @param excMin logical Exclude cells at the minimum of any requested channel.
+#'   Default: FALSE.
+#' @param chnlGate character or NULL Channels used to select positive cells;
+#'   include these in the requested expression columns. Default: NULL.
+#' @param markerGate character or NULL Marker labels used to select positive
+#'   cells; cannot be combined with `chnlGate`. Default: NULL.
+#' @param gateTypeCytPos character Positivity rule: "base" uses the main gate;
+#'   "cyt" also admits cells above a refined gate when another marker clears
+#'   its main gate. Default: "cyt".
+#' @param mult logical Require positivity for at least two gating markers.
+#'   Applies only when `chnlGate` or `markerGate` is supplied. Default: FALSE.
+#' @param combnExc list or NULL Channel combinations to exclude: each vector
+#'   specifies positive channels, with other gating channels negative.
+#'   Applies only when gating channels are supplied. Default: NULL.
+#' @param transFn function or NULL Transformation applied to the expression
+#'   tibble before adding metadata columns. Default: NULL.
+#' @param transChnl character or NULL Columns to transform when using channels;
+#'   NULL transforms all expression columns. Default: NULL.
+#' @param transMarker character or NULL Columns to transform when using markers;
+#'   NULL transforms all expression columns. Default: NULL.
+#' @return A tibble with one row per retained cell, `pop`, `ind`, and expression
+#'   columns named by channel (or marker when `marker` is supplied). Empty
+#'   selections have zero rows. The `nCellPos` attribute is a tibble with `pop`,
+#'   `ind`, `nCellPos` for every requested population/sample pair; `probGMin`
+#'   records the fraction retained by minimum-expression filtering.
 #' @examples
-#' \dontrun{
-#' tmp <- tempdir()
-#' dir.create(file.path(tmp, "sampleData", "POP1", "ind_1"),
-#'   recursive = TRUE
+#' exampleData <- getExampleData()
+#' gs <- flowWorkspace::load_gs(exampleData$pathGs)
+#' pathProject <- gateStim(
+#'   tempfile("stimgate_"), gs, exampleData$batchList,
+#'   marker = exampleData$marker
 #' )
-#' saveRDS(
-#'   c(1, 2, 3),
-#'   file.path(tmp, "sampleData", "POP1", "ind_1", "chnl_BC1.rds")
-#' )
-#' saveRDS(
-#'   c(4, 5, 6),
-#'   file.path(tmp, "sampleData", "POP1", "ind_1", "chnl_BC2.rds")
-#' )
-#' getStimExpr(tmp)
-#' getStimExpr(tmp, chnl = "BC1")
-#' }
+#' getStimExpr(pathProject, marker = exampleData$marker)
 #' @export
 getStimExpr <- function(
   pathProject,

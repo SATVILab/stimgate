@@ -2,47 +2,39 @@
 % Please edit documentation in R/ind_batch.R
 \name{getBatchList}
 \alias{getBatchList}
-\title{Generate a batch list of sample indices}
+\title{Group samples into batches}
 \usage{
 getBatchList(fnTblInfo, colGrp, colStim, unsChr, colNCell, minCell)
 }
 \arguments{
-\item{fnTblInfo}{data.frame. Sample metadata containing annotations.}
+\item{fnTblInfo}{data.frame Sample metadata, one row per sample.}
 
-\item{colGrp}{character vector. One or more column names used to define batches/groups.}
+\item{colGrp}{character vector Column names defining batches.}
 
-\item{colStim}{character. Column name containing stimulation identifiers.}
+\item{colStim}{character Column containing stimulation labels.}
 
-\item{unsChr}{character. Name/string specifying the unstimulated control sample.}
+\item{unsChr}{character Label identifying unstimulated controls.}
 
-\item{colNCell}{character. Column name containing the cell count for each sample.}
+\item{colNCell}{character Column containing sample cell counts.}
 
-\item{minCell}{numeric. Minimum number of cells required to retain a sample.}
+\item{minCell}{numeric Minimum cell count to retain a sample.}
 }
 \value{
-A named list where each element contains a numeric vector of sample
-indices representing a batch, with the unstimulated control index at the beginning.
+A named list of integer row indices per batch. Names join group values
+with underscores; control indices precede stimulated indices.
 }
 \description{
-Groups sample rows by batch/donor identifiers, screens out samples
-falling below a minimum cell count threshold, and structures the output so that
-the unstimulated control index is always positioned as the first element of each batch.
-Groups without an unstimulated sample are dropped; a group with more than
-one unstimulated sample is an error.
+Group metadata rows by donor or batch, keeping the unstimulated
+control first. Drop samples below \code{minCell} and groups with fewer than two
+remaining samples or no control. A group with more than one control is an
+error.
 }
 \examples{
-fnTblInfo <- data.frame(
-  donor = c("d1", "d1", "d2", "d2", "d3", "d3"),
-  stim = c("stim", "uns", "uns", "stim", "uns", "stim"),
-  nCell = c(5000, 4000, 6000, 5500, 3000, 50)
+samples <- data.frame(
+  donor = c("d1", "d1", "d2", "d2"),
+  stim = c("stim", "uns", "uns", "stim"),
+  nCell = c(5000, 4000, 3000, 50)
 )
-# Donor d3 is dropped because its stimulated sample has too few cells
-getBatchList(
-  fnTblInfo,
-  colGrp = "donor",
-  colStim = "stim",
-  unsChr = "uns",
-  colNCell = "nCell",
-  minCell = 100
-)
+# d2 is dropped: only its control meets the cell-count limit
+getBatchList(samples, "donor", "stim", "uns", "nCell", minCell = 100)
 }
