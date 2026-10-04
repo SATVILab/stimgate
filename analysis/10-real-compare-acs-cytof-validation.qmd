@@ -32,6 +32,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 fig_key <- .analysis_mode_key("10-real-compare-acs-cytof-validation")
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
 
@@ -109,19 +110,29 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+Every figure is made twice: once with all methods and once without Tailgate,
+which performs poorly without more tuning. The saved files are in the
+`all_methods` and `no_tailgate` folders of each figure type.
+
 ### Raw background-subtracted frequencies
 
-Manual background-subtracted frequency is on the horizontal axis and automated frequency on the vertical axis. Colours identify stimuli, and panels separate populations and cytokines within each method. Points closer to the identity line indicate closer agreement; horizontal and vertical lines mark zero frequency.
+Manual background-subtracted frequency (%) is on the horizontal axis and automated frequency (%) on the vertical axis. Colours identify stimuli, and panels separate populations and cytokines within each method. Points closer to the identity line indicate closer agreement; horizontal and vertical lines mark zero frequency.
 
 ```{r}
-#| label: fig-acs-validation-scatter
+#| label: acs-validation-scatter
 #| echo: false
-#| fig-width: 12
-#| fig-height: 9
-#| fig-cap: "Automated versus manual background-subtracted frequencies, one figure per method."
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (method in validation_methods) {
-    print(.acsCytofValidationPlotScatter(manual_comparison_tbl, method))
+  for (method_set in .acsCytofMethodSets()) {
+    .analysis_heading(method_set$label, 4)
+    for (method in intersect(validation_methods, method_set$methods)) {
+      .analysis_heading(
+        paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 5
+      )
+      .analysis_print_fig(
+        .acsCytofValidationPlotScatter(manual_comparison_tbl, method)
+      )
+    }
   }
 }
 ```
@@ -131,25 +142,29 @@ if (isTRUE(run_plots)) {
 Cytokines run across columns and the three T-cell populations across rows, with panels for stimuli. Colour and text show Pearson or concordance correlation for each method after applying the eligibility rules. Values closer to one indicate stronger agreement; grey cells mark unavailable correlations.
 
 ```{r}
-#| label: fig-acs-validation-t-cell-correlations
+#| label: acs-validation-t-cell-correlations
 #| echo: false
-#| fig-width: 12
-#| fig-height: 5
-#| fig-cap: "Pearson and concordance correlations for CD4, CD8 and TCRgd T cells."
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (method in validation_methods) {
-    print(.acsCytofValidationPlotCorrelation(
-      correlationTbl = correlation_tbl,
-      method = method,
-      metric = "pcc",
-      realPopulationsOnly = TRUE
-    ))
-    print(.acsCytofValidationPlotCorrelation(
-      correlationTbl = correlation_tbl,
-      method = method,
-      metric = "ccc",
-      realPopulationsOnly = TRUE
-    ))
+  for (method_set in .acsCytofMethodSets()) {
+    .analysis_heading(method_set$label, 4)
+    for (method in intersect(validation_methods, method_set$methods)) {
+      .analysis_heading(
+        paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 5
+      )
+      for (metric in c("pcc", "ccc")) {
+        .analysis_heading(
+          if (metric == "pcc") "Pearson correlation" else "Concordance correlation",
+          6
+        )
+        .analysis_print_fig(.acsCytofValidationPlotCorrelation(
+          correlationTbl = correlation_tbl,
+          method = method,
+          metric = metric,
+          realPopulationsOnly = TRUE
+        ))
+      }
+    }
   }
 }
 ```
@@ -159,25 +174,29 @@ if (isTRUE(run_plots)) {
 These heatmaps use the same cytokine, stimulus and correlation scales for all matched populations, including B and NK cells. Compare methods within the same population and cytokine, keeping the eligibility rules in mind.
 
 ```{r}
-#| label: fig-acs-validation-all-correlations
+#| label: acs-validation-all-correlations
 #| echo: false
-#| fig-width: 12
-#| fig-height: 6
-#| fig-cap: "Pearson and concordance correlations across all matched populations."
+#| results: asis
 if (isTRUE(run_plots)) {
-  for (method in validation_methods) {
-    print(.acsCytofValidationPlotCorrelation(
-      correlationTbl = correlation_tbl,
-      method = method,
-      metric = "pcc",
-      realPopulationsOnly = FALSE
-    ))
-    print(.acsCytofValidationPlotCorrelation(
-      correlationTbl = correlation_tbl,
-      method = method,
-      metric = "ccc",
-      realPopulationsOnly = FALSE
-    ))
+  for (method_set in .acsCytofMethodSets()) {
+    .analysis_heading(method_set$label, 4)
+    for (method in intersect(validation_methods, method_set$methods)) {
+      .analysis_heading(
+        paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 5
+      )
+      for (metric in c("pcc", "ccc")) {
+        .analysis_heading(
+          if (metric == "pcc") "Pearson correlation" else "Concordance correlation",
+          6
+        )
+        .analysis_print_fig(.acsCytofValidationPlotCorrelation(
+          correlationTbl = correlation_tbl,
+          method = method,
+          metric = metric,
+          realPopulationsOnly = FALSE
+        ))
+      }
+    }
   }
 }
 ```

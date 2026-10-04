@@ -129,20 +129,21 @@ create_gatingset <- function(
   plots <- lapply(unique(expr_tbl_long$trans), function(x) {
     plot_tbl <- expr_tbl_long |> dplyr::filter(trans == x)
     ggplot2::ggplot(plot_tbl, ggplot2::aes(x = expr, fill = marker)) +
-      cowplot::theme_cowplot() +
-      cowplot::background_grid(major = "x") +
-      ggplot2::theme(
-        plot.background = ggplot2::element_rect(fill = "white", colour = "white"),
-        panel.background = ggplot2::element_rect(fill = "white", colour = "white")
-      ) +
+      .analysis_theme(grid = "x") +
       ggplot2::geom_histogram(bins = 30) +
       ggplot2::facet_wrap(~marker, scales = "free", ncol = 8) +
+      ggplot2::scale_x_continuous(
+        labels = .analysis_label_number,
+        n.breaks = 3,
+        guide = ggplot2::guide_axis(check.overlap = TRUE)
+      ) +
       ggplot2::theme(
         legend.position = "none",
+        strip.text = ggplot2::element_text(size = 7),
         axis.ticks.y = ggplot2::element_blank(),
         axis.text.y = ggplot2::element_blank()
       ) +
-      ggplot2::labs(y = "Count", x = "Marker expression", title = x)
+      ggplot2::labs(y = "Count", x = "Marker expression")
   })
   stats::setNames(plots, unique(expr_tbl_long$trans))
 }
@@ -154,10 +155,7 @@ plot_gatingset_check <- function(path_gs, path_plot_dir, plots = NULL) {
     path_plot <- file.path(
       path_plot_dir, paste0("all_markers-trans_", trans, ".png")
     )
-    ggplot2::ggsave(
-      filename = path_plot, plot = plots[[trans]],
-      width = 20, height = 16, units = "cm"
-    )
+    .analysis_save_fig(plots[[trans]], path_plot, height = 12)
     path_plot
   }, character(1))
   unname(paths)
