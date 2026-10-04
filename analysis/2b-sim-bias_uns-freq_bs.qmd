@@ -841,7 +841,7 @@ if (isTRUE(run_plots)) {
 
         p <- .simBandwidthBiasSignedErrorPlot(
           plot_tbl,
-          y_label = "Mean over cell counts of relative error",
+          y_label = "Mean over cell counts of relative error (multiple of true response)",
           title = paste0(
             transformation_curr,
             "; mean position = ", mean_pos_setting_curr,
