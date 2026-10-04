@@ -412,6 +412,18 @@ test_that("signed-error plots draw dashed lines whose weight varies", {
   )
   expect_no_error(ggplot2::ggplotGrob(global))
 
+  by_prob <- env$.simBandwidthGlobalSignedErrorPlot(
+    dplyr::bind_rows(
+      dplyr::mutate(sides, prob_response = 0.001),
+      dplyr::mutate(sides, prob_response = 0.01)
+    ) |>
+      dplyr::mutate(transformation = "gaussian"),
+    by_prob = TRUE
+  )
+  expect_named(by_prob$facet$params$rows, "prob_response")
+  expect_named(by_prob$facet$params$cols, "transformation")
+  expect_no_error(ggplot2::ggplotGrob(by_prob))
+
   bias <- env$.simBandwidthBiasSignedErrorPlot(
     sides |>
       dplyr::mutate(
