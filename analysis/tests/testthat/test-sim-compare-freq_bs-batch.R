@@ -1567,3 +1567,32 @@ test_that("figure loop writes each method set to its own folder with headings", 
     expect_true(file.exists(file.path(dir, set, "fig_high.png")))
   }
 })
+
+test_that("a missing bias_uns lets StimGate set the bias from its bandwidth", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  source(script_comp, local = env)
+  env$.simCompareEnsureCurrentCheckout <- function(...) invisible(TRUE)
+  captured <- new.env()
+  env$.simCompareFreqBs <- function(...) {
+    args <- list(...)
+    captured$has_bias <- "biasUns" %in% names(args)
+    captured$bias <- args$biasUns
+    captured$factor <- args$biasUnsFactor
+    stop("stop after capturing arguments")
+  }
+  row <- data.frame(
+    sim_id = 1L, transformation = "gaussian", mean_pos = 5,
+    prob_response = 0.1, n_cell = 100, bias_uns = NA_real_,
+    bias_uns_factor = 4, bw_mtd = "nrd0"
+  )
+  suppressWarnings(env$.simCompareRunScenario(row, nSample = 1, nIter = 1))
+  expect_true(captured$has_bias)
+  expect_null(captured$bias)
+  expect_identical(captured$factor, 4)
+
+  row$bias_uns <- 0.15
+  suppressWarnings(env$.simCompareRunScenario(row, nSample = 1, nIter = 1))
+  expect_identical(captured$bias, 0.15)
+})

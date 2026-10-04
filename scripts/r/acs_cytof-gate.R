@@ -211,7 +211,8 @@
   runMethods,
   runPlots,
   nSample = NULL,
-  biasUns = 0.15,
+  biasUns = NULL,
+  biasUnsFactor = 4,
   outputGroup = NULL,
   runPreprocessingPlots = FALSE
 ) {
@@ -279,9 +280,12 @@
           "Gd156Di",
           "Nd150Di"
         ),
-        biasUns = biasUns,
+        # NULL or NA biasUns: StimGate sets it to 0.25 * biasUnsFactor times
+        # its initial bandwidth estimate, i.e. the bandwidth with factor 4.
+        biasUns = if (length(biasUns) == 1L && is.na(biasUns)) NULL else biasUns,
         control = stimgate::stimControl(
-          bwMtd = "hpi1",
+          biasUnsFactor = biasUnsFactor,
+          bwMtd = "nrd0",
           bwNcellMax = 1e4,
           bwFallback = "auto",
           bwMin = "none",

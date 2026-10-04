@@ -77,7 +77,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v5"
+comparison_semantics_version <- "batch-mismatch-comparison-v6"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -164,7 +164,10 @@ randomness in different mismatch settings.
 ```{r}
 #| label: actual-settings
 # Method settings inherited from analysis 7:
-stimgate_bw_mtd <- "hpi1"
+stimgate_bw_mtd <- "nrd0"
+# StimGate's unstimulated-sample bias equals its initial bandwidth estimate:
+# with biasUns = NULL, gateStim() uses 0.25 * bwFallback * biasUnsFactor.
+stimgate_bias_uns_factor <- 4
 stimgate_bw_ncell_max <- 1e4
 stimgate_bw_fallback <- "auto"
 stimgate_bw_min <- "none"
@@ -222,11 +225,8 @@ targeted_scenarios_tbl <- tibble::tribble(
   ) |>
   dplyr::mutate(
     base_scenario_id = dplyr::row_number(),
-    bias_uns = dplyr::case_when(
-      transformation == "gamma" ~ 0.01,
-      transformation %in% c("gaussian", "skew") ~ 0.15,
-      TRUE ~ NA_real_
-    ),
+    bias_uns = NA_real_,
+    bias_uns_factor = stimgate_bias_uns_factor,
     bw_mtd = stimgate_bw_mtd,
     bw_ncell_max = stimgate_bw_ncell_max,
     bw_fallback = stimgate_bw_fallback,
@@ -430,6 +430,7 @@ if (isTRUE(run_simulations)) {
       n_sample_sim = n_sample_sim,
       n_iter_sim = n_iter_sim,
       stimgate_bw_mtd = stimgate_bw_mtd,
+      stimgate_bias_uns_factor = stimgate_bias_uns_factor,
       stimgate_bw_ncell_max = stimgate_bw_ncell_max,
       stimgate_bw_fallback = stimgate_bw_fallback,
       stimgate_bw_min = stimgate_bw_min,
@@ -1092,8 +1093,12 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 }
 ```
 
-When this diagnostic was developed with the full settings (five samples,
-production seeds), it showed the following. Without a shift, every StimGate
+When this diagnostic was developed, StimGate used the `hpi1` bandwidth
+selector and a fixed unstimulated-sample bias (0.01 for gamma); it now uses
+`nrd0` with the bias set to its initial bandwidth estimate, so check the
+tables and figures above against this earlier result before relying on it.
+With those earlier settings (five samples, production seeds), it showed the
+following. Without a shift, every StimGate
 gate lay in the gap between the components (about 1.6-1.7), with no false
 discoveries and at least 99.8% sensitivity. At a shift of 0.05 the gates
 became unstable: some fell into the right-hand tail of the stimulated

@@ -73,7 +73,10 @@ test_that("the reusable population runner preserves the ACS StimGate contract", 
     "nSample", "biasUns", "outputGroup"
   ) %in% runner_formals))
   expect_true(grepl('gateCombn = "min"', runner_body, fixed = TRUE))
-  expect_true(grepl('bwMtd = "hpi1"', runner_body, fixed = TRUE))
+  expect_true(grepl('bwMtd = "nrd0"', runner_body, fixed = TRUE))
+  expect_true(grepl("biasUnsFactor = biasUnsFactor", runner_body, fixed = TRUE))
+  expect_null(formals(env$.acsCytofRunPopulation)$biasUns)
+  expect_identical(formals(env$.acsCytofRunPopulation)$biasUnsFactor, 4)
   expect_true(grepl("calcCytPosGates = TRUE", runner_body, fixed = TRUE))
 })
 
