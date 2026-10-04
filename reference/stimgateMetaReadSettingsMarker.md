@@ -25,10 +25,14 @@ A list of settings for the requested marker.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-tmp <- tempdir()
-dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
-saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "metaData", "markerList.rds"))
-stimgateMetaReadSettingsMarker(tmp, "BC1")
-} # }
+pathProject <- tempfile("stimgate_meta_")
+dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
+saveRDS(
+  list(BC1 = list(bw = 0.1)),
+  file.path(pathProject, "metaData", "chnlSettings.rds")
+)
+stimgateMetaReadSettingsMarker(pathProject, "BC1")
+#> $bw
+#> [1] 0.1
+#> 
 ```

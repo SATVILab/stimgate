@@ -15,3 +15,23 @@ getExampleData()
 
 A list with the saved example-data path, channel labels, marker labels,
 and sample-to-condition mapping.
+
+## Examples
+
+``` r
+exampleData <- getExampleData()
+#> Done
+#> To reload it, use 'load_gs' function
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+gs
+#> A GatingSet with 4 samples
+exampleData$batchList
+#> [[1]]
+#> [1] 1 2
+#> 
+#> [[2]]
+#> [1] 3 4
+#> 
+exampleData$marker
+#> [1] "MarkerF1" "MarkerF2"
+```

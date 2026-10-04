@@ -48,3 +48,35 @@ getStimGatesDetailed(
 ## Value
 
 A tibble with one row per saved threshold diagnostic.
+
+## Examples
+
+``` r
+exampleData <- getExampleData()
+#> Done
+#> To reload it, use 'load_gs' function
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+pathProject <- gateStim(
+  pathProject = file.path(tempdir(), "getStimGatesDetailedExample"),
+  .data = gs,
+  batchList = exampleData$batchList,
+  marker = exampleData$marker,
+  popGate = "root"
+)
+#> shared bandwidth for MarkerF1: 0.329
+#> shared bandwidth for MarkerF2: 0.334
+#> getting base gates
+#> chnl: BC1(La139)Dd
+#> getting pre-adjustment gates
+#> batch 2 of 2
+#> getting clustered and/or controlled gates
+#> chnl: BC2(Pr141)Dd
+#> getting pre-adjustment gates
+#> batch 2 of 2
+#> getting clustered and/or controlled gates
+#> getting cyt combn frequencies
+#> batch 2 of 2
+
+# Get threshold diagnostics
+detailTbl <- getStimGatesDetailed(pathProject)
+```

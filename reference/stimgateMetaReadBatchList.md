@@ -22,10 +22,14 @@ A list describing sample grouping into batches (as saved by
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-tmp <- tempdir()
-dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
-saveRDS(list(batch1 = c(1, 2)), file.path(tmp, "metaData", "batchList.rds"))
-stimgateMetaReadBatchList(tmp)
-} # }
+pathProject <- tempfile("stimgate_meta_")
+dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
+saveRDS(
+  list(batch1 = c(1, 2)),
+  file.path(pathProject, "metaData", "batchList.rds")
+)
+stimgateMetaReadBatchList(pathProject)
+#> $batch1
+#> [1] 1 2
+#> 
 ```

@@ -22,11 +22,20 @@ A named list of marker settings where names are channel labels.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-tmp <- tempdir()
-dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
-saveRDS(list(BC1 = list(a = 1)), file.path(tmp, "metaData", "markerList.rds"))
-saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "metaData", "chnlLab.rds"))
-stimgateMetaReadSettingsChnls(tmp)
-} # }
+pathProject <- tempfile("stimgate_meta_")
+dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
+saveRDS(
+  list(BC1 = list(bw = 0.1)),
+  file.path(pathProject, "metaData", "chnlSettings.rds")
+)
+saveRDS(
+  c(BC1 = "IFNg"),
+  file.path(pathProject, "metaData", "chnlLab.rds")
+)
+stimgateMetaReadSettingsMarkers(pathProject)
+#> $IFNg
+#> $IFNg$bw
+#> [1] 0.1
+#> 
+#> 
 ```

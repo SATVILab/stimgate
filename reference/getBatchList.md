@@ -43,3 +43,28 @@ getBatchList(fnTblInfo, colGrp, colStim, unsChr, colNCell, minCell)
 A named list where each element contains a numeric vector of sample
 indices representing a batch, with the unstimulated control index at the
 beginning.
+
+## Examples
+
+``` r
+fnTblInfo <- data.frame(
+  donor = c("d1", "d1", "d2", "d2", "d3", "d3"),
+  stim = c("stim", "uns", "uns", "stim", "uns", "stim"),
+  nCell = c(5000, 4000, 6000, 5500, 3000, 50)
+)
+# Donor d3 is dropped because its stimulated sample has too few cells
+getBatchList(
+  fnTblInfo,
+  colGrp = "donor",
+  colStim = "stim",
+  unsChr = "uns",
+  colNCell = "nCell",
+  minCell = 100
+)
+#> $d1
+#> [1] 2 1
+#> 
+#> $d2
+#> [1] 3 4
+#> 
+```

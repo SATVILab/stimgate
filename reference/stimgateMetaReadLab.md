@@ -24,10 +24,16 @@ Named character vector mapping channel names to labels.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-tmp <- tempdir()
-dir.create(file.path(tmp, "metaData"), showWarnings = FALSE)
-saveRDS(c(BC1 = "BC1 label"), file.path(tmp, "metaData", "chnlLab.rds"))
-stimgateMetaReadChnlLab(tmp)
-} # }
+pathProject <- tempfile("stimgate_meta_")
+dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
+saveRDS(
+  c(BC1 = "IFNg"),
+  file.path(pathProject, "metaData", "chnlLab.rds")
+)
+stimgateMetaReadChnlLab(pathProject)
+#>    BC1 
+#> "IFNg" 
+stimgateMetaReadMarkerLab(pathProject)
+#>  IFNg 
+#> "BC1" 
 ```
