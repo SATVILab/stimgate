@@ -75,7 +75,7 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'comparison_semantics_version <- "batch-mismatch-comparison-v7"',
+    'comparison_semantics_version <- "batch-mismatch-comparison-v8"',
     content,
     fixed = TRUE
   ))
