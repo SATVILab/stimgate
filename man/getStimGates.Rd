@@ -2,39 +2,36 @@
 % Please edit documentation in R/gates.R
 \name{getStimGates}
 \alias{getStimGates}
-\title{Get gates}
+\title{Read stimulation gates}
 \usage{
 getStimGates(pathProject, pop = NULL, marker = NULL, chnl = NULL)
 }
 \arguments{
-\item{pathProject}{character. Path to the project directory.}
+\item{pathProject}{character Project directory from \code{\link[=gateStim]{gateStim()}}.}
 
-\item{pop}{character. Optional population name(s) to filter gates by. Default is NULL (all populations).}
+\item{pop}{character or NULL Populations to retain; NULL selects all.
+Default: NULL.}
 
-\item{marker}{character. Optional marker name(s) to filter gates by. Default is NULL (all markers).}
+\item{marker}{character or NULL Marker labels to retain; takes precedence
+over \code{chnl}. Default: NULL (all markers).}
 
-\item{chnl}{character. Optional channel name(s) to filter gates by. Default is NULL (all channels).}
+\item{chnl}{character or NULL Channels to retain. Default: NULL (all channels).}
 }
 \value{
-Gate table with gates for each sample for each marker.
+A tibble of stimulated-sample gates with identifiers \code{pop}, \code{marker},
+\code{chnl}, \code{batch}, \code{ind}, \code{gateName}, threshold \code{gate}, and refinement and
+threshold-provenance columns when available.
 }
 \description{
-Get all the gates for each of the markers gated.
+Read final gates saved by \code{\link[=gateStim]{gateStim()}}, optionally selecting
+populations and markers. For threshold diagnostics, use \code{\link[=getStimGatesDetailed]{getStimGatesDetailed()}}.
 }
 \examples{
-# Get example dataset
 exampleData <- getExampleData()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
-
-# Run the stimgate pipeline
 pathProject <- gateStim(
-  pathProject = file.path(tempdir(), "getGateExample"),
-  .data = gs,
-  batchList = exampleData$batchList,
-  marker = exampleData$marker,
-  popGate = "root"
+  tempfile("stimgate_"), gs, exampleData$batchList,
+  marker = exampleData$marker
 )
-
-# Get identified gates
-gates <- getStimGates(pathProject)
+getStimGates(pathProject)
 }

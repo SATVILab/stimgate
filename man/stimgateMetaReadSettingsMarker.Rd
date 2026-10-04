@@ -2,27 +2,26 @@
 % Please edit documentation in R/chnl_settings.R
 \name{stimgateMetaReadSettingsMarker}
 \alias{stimgateMetaReadSettingsMarker}
-\title{Get settings for a named marker}
+\title{Read settings for a marker}
 \usage{
 stimgateMetaReadSettingsMarker(pathProject, marker)
 }
 \arguments{
-\item{pathProject}{character Path to project.}
+\item{pathProject}{character Project directory.}
 
-\item{marker}{character Marker name/key as stored in markerList.}
+\item{marker}{character Exact saved marker key.}
 }
 \value{
-A list of settings for the requested marker.
+A list of marker settings; an unknown key raises an error.
 }
 \description{
-Retrieve the settings for a marker by its original name/key.
+Extract one entry from \code{\link[=stimgateMetaReadSettingsChnls]{stimgateMetaReadSettingsChnls()}}.
 }
 \examples{
 pathProject <- tempfile("stimgate_meta_")
-dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-saveRDS(
-  list(BC1 = list(bw = 0.1)),
+dir.create(file.path(pathProject, "metaData"))
+saveRDS(list(IFNg = list(bw = 0.1)),
   file.path(pathProject, "metaData", "chnlSettings.rds")
 )
-stimgateMetaReadSettingsMarker(pathProject, "BC1")
+stimgateMetaReadSettingsMarker(pathProject, "IFNg")
 }

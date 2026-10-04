@@ -2,24 +2,24 @@
 % Please edit documentation in R/chnl_settings.R
 \name{stimgateMetaReadSettingsChnls}
 \alias{stimgateMetaReadSettingsChnls}
-\title{Read marker settings from project}
+\title{Read saved gating settings}
 \usage{
 stimgateMetaReadSettingsChnls(pathProject)
 }
 \arguments{
-\item{pathProject}{character Path to project.}
+\item{pathProject}{character Project directory.}
 }
 \value{
-A named list of marker settings (as saved by .completeChnlSettingsSave()).
+A list of settings per marker, named by the saved keys (marker labels
+for projects created by \code{\link[=gateStim]{gateStim()}}).
 }
 \description{
-Read the saved marker settings list from the project's metaData folder.
+Read settings saved by \code{\link[=gateStim]{gateStim()}}.
 }
 \examples{
 pathProject <- tempfile("stimgate_meta_")
-dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-saveRDS(
-  list(BC1 = list(bw = 0.1)),
+dir.create(file.path(pathProject, "metaData"))
+saveRDS(list(IFNg = list(bw = 0.1)),
   file.path(pathProject, "metaData", "chnlSettings.rds")
 )
 stimgateMetaReadSettingsChnls(pathProject)

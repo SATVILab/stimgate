@@ -2,24 +2,20 @@
 % Please edit documentation in R/example_data.R
 \name{getExampleData}
 \alias{getExampleData}
-\title{Get example GatingSet}
+\title{Load example cytometry data}
 \usage{
 getExampleData()
 }
 \value{
-A list with the saved example-data path, channel labels, marker labels,
-and sample-to-condition mapping.
+A list with \code{pathGs} (saved GatingSet path), \code{batchList} (sample
+indices by batch, control first), \code{chnl} (channels) and \code{marker} (labels).
 }
 \description{
-Load the canonical packaged example dataset shipped under
-\code{inst/extdata/stimgate_example_data/}. This keeps the regular package
-examples and tests on a deterministic, realistic dataset without requiring
-the simulation machinery to be installed with the package.
+Load the packaged dataset and save a GatingSet in a temporary directory.
+Use the returned paths and labels to try \code{\link[=gateStim]{gateStim()}}.
 }
 \examples{
 exampleData <- getExampleData()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
-gs
 exampleData$batchList
-exampleData$marker
 }

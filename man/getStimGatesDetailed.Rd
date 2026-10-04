@@ -2,7 +2,7 @@
 % Please edit documentation in R/gates.R
 \name{getStimGatesDetailed}
 \alias{getStimGatesDetailed}
-\title{Get detailed gate diagnostics}
+\title{Read threshold diagnostics}
 \usage{
 getStimGatesDetailed(
   pathProject,
@@ -14,39 +14,39 @@ getStimGatesDetailed(
 )
 }
 \arguments{
-\item{pathProject}{character. Path to the project directory.}
+\item{pathProject}{character Project directory from \code{\link[=gateStim]{gateStim()}}.}
 
-\item{pop}{character. Optional population name(s) to filter gates by. Default
-is NULL (all populations).}
+\item{pop}{character or NULL Populations to retain. Default: NULL (all).}
 
-\item{marker}{character. Optional marker name(s) to retain.}
+\item{marker}{character or NULL Marker labels to retain. Default: NULL (all).}
 
-\item{chnl}{character. Optional channel name(s) to retain.}
+\item{chnl}{character or NULL Channels to retain. Default: NULL (all).}
 
-\item{save}{logical. If TRUE, save the detailed table as an RDS file.}
+\item{save}{logical Save the returned table as RDS. Default: FALSE.}
 
-\item{pathSave}{character. Optional path for the saved RDS file. Defaults to
-\code{file.path(pathProject, "gatesDetailed.rds")}.}
+\item{pathSave}{character or NULL Output path; NULL uses
+\code{file.path(pathProject, "gatesDetailed.rds")}. Default: NULL.}
 }
 \value{
-A tibble with one row per saved threshold diagnostic.
+A tibble with one row per saved diagnostic, including \code{pop}, \code{marker},
+\code{chnl}, threshold and frequency columns, and source-file metadata.
 }
 \description{
-Read detailed local-FDR threshold diagnostics saved during gating, including
-condition-level, sample-level and final cluster-level thresholds with the
-corresponding background-subtracted frequencies.
+Read saved condition, sample and cluster threshold diagnostics
+with background-subtracted frequencies. Use \code{\link[=getStimGates]{getStimGates()}} for final gates.
+}
+\details{
+Enable diagnostic saving with \code{Sys.setenv(STIMGATE_INTERMEDIATE = "all")}
+before running \code{\link[=gateStim]{gateStim()}}. Without saved diagnostics, returns an empty tibble.
 }
 \examples{
 exampleData <- getExampleData()
 gs <- flowWorkspace::load_gs(exampleData$pathGs)
+Sys.setenv(STIMGATE_INTERMEDIATE = "all")
 pathProject <- gateStim(
-  pathProject = file.path(tempdir(), "getStimGatesDetailedExample"),
-  .data = gs,
-  batchList = exampleData$batchList,
-  marker = exampleData$marker,
-  popGate = "root"
+  tempfile("stimgate_"), gs, exampleData$batchList,
+  marker = exampleData$marker
 )
-
-# Get threshold diagnostics
-detailTbl <- getStimGatesDetailed(pathProject)
+Sys.unsetenv("STIMGATE_INTERMEDIATE")
+getStimGatesDetailed(pathProject)
 }

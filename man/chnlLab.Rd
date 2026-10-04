@@ -2,37 +2,23 @@
 % Please edit documentation in R/UtilsCytoRSV-chnl_lab.R
 \name{chnlLab}
 \alias{chnlLab}
-\title{Get markers and channels}
+\title{Get channel-to-marker labels}
 \usage{
 chnlLab(data)
 }
 \arguments{
-\item{data}{object of class flowFrame, flowSet. Channel and corresponding
-marker names are drawn from here.}
+\item{data}{flowFrame, flowSet, GatingSet, GatingHierarchy, cytoframe or
+cytoset Cytometry data. For sets, labels come from the first sample.}
 }
 \value{
-A named character vector.
+A character vector of marker labels, named by channel.
 }
 \description{
-From a cytometry object (e.g. flowFrame or flowSet),
-either get a character vector of markers
-or channels (getChnl and getMarker),
-or get a named vector that converts
-between channel names and marker names (e.g. chnlToMarker).
-}
-\details{
-Note that chnlLab is equivalent to chnlToMarker,
-and markerLab is equivalent to markerToChnl.
+Map channel names to marker labels in a cytometry object.
+Channels without a marker label use their channel name.
 }
 \examples{
-exprs <- matrix(
-  seq_len(8),
-  ncol = 2,
-  dimnames = list(NULL, c("FSC-A", "FL1-H"))
-)
-ff <- flowCore::flowFrame(exprs)
-
-# Get channel to marker mapping
-chnlLab(ff)
-
+exampleData <- getExampleData()
+gs <- flowWorkspace::load_gs(exampleData$pathGs)
+chnlLab(gs)
 }

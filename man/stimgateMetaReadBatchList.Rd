@@ -2,24 +2,23 @@
 % Please edit documentation in R/chnl_settings.R
 \name{stimgateMetaReadBatchList}
 \alias{stimgateMetaReadBatchList}
-\title{Read batch list from project}
+\title{Read saved batches}
 \usage{
 stimgateMetaReadBatchList(pathProject)
 }
 \arguments{
-\item{pathProject}{character Path to project.}
+\item{pathProject}{character Project directory from \code{\link[=gateStim]{gateStim()}}.}
 }
 \value{
-A list describing sample grouping into batches (as saved by .saveMetaDataBatchList()).
+A list of sample indices by batch, with unstimulated controls first.
 }
 \description{
-Read the saved batchList object from the project's metaData folder.
+Read the sample grouping saved by \code{\link[=gateStim]{gateStim()}}.
 }
 \examples{
 pathProject <- tempfile("stimgate_meta_")
-dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-saveRDS(
-  list(batch1 = c(1, 2)),
+dir.create(file.path(pathProject, "metaData"))
+saveRDS(list(batch1 = c(1, 2)),
   file.path(pathProject, "metaData", "batchList.rds")
 )
 stimgateMetaReadBatchList(pathProject)

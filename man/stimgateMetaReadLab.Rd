@@ -3,28 +3,28 @@
 \name{stimgateMetaReadChnlLab}
 \alias{stimgateMetaReadChnlLab}
 \alias{stimgateMetaReadMarkerLab}
-\title{Read channel or marker label mapping}
+\title{Read channel and marker mappings}
 \usage{
 stimgateMetaReadChnlLab(pathProject)
 
 stimgateMetaReadMarkerLab(pathProject)
 }
 \arguments{
-\item{pathProject}{character Path to project.}
+\item{pathProject}{character Project directory from \code{\link[=gateStim]{gateStim()}}.}
 }
 \value{
-Named character vector mapping channel names to labels.
+A named character vector: channel names to marker labels for
+\code{stimgateMetaReadChnlLab()}, marker labels to channels for
+\code{stimgateMetaReadMarkerLab()}.
 }
 \description{
-Read the saved channel label mapping (chnlLab.rds) from the project's metaData folder.
+Read channel-to-marker labels with \code{stimgateMetaReadChnlLab()};
+read the reverse mapping with \code{stimgateMetaReadMarkerLab()}.
 }
 \examples{
 pathProject <- tempfile("stimgate_meta_")
-dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
-saveRDS(
-  c(BC1 = "IFNg"),
-  file.path(pathProject, "metaData", "chnlLab.rds")
-)
+dir.create(file.path(pathProject, "metaData"))
+saveRDS(c(BC1 = "IFNg"), file.path(pathProject, "metaData", "chnlLab.rds"))
 stimgateMetaReadChnlLab(pathProject)
 stimgateMetaReadMarkerLab(pathProject)
 }
