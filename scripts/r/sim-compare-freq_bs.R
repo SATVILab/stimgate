@@ -2014,6 +2014,9 @@
   sim_grid_n_chunks = NULL,
   retryErrors = FALSE,
   p = NULL,
+  dirJobs = NULL,
+  totalSims = NULL,
+  progressHeading = "COMPARISON SIMULATION PROGRESS",
   ...
 ) {
   .simCompareEnsureCurrentCheckout()
@@ -2035,6 +2038,35 @@
     character(0)
   }
 
+  # With `dirJobs`, keep per-row marker files and rewrite `pathProgress` as the
+  # same summary the bandwidth analyses use; otherwise append log lines.
+  use_dashboard <- !is.null(dirJobs) && nzchar(dirJobs)
+  report <- function(status, msg) {
+    if (!use_dashboard) {
+      .simCompareLogMessage(pathProgress, msg)
+      return(invisible(NULL))
+    }
+    markers <- file.path(
+      dirJobs, paste0(c("running-", "completed-", "error-"), sim_id)
+    )
+    names(markers) <- c("running", "completed", "error")
+    dir.create(dirJobs, recursive = TRUE, showWarnings = FALSE)
+    unlink(markers)
+    file.create(markers[[status]])
+    if (!is.null(pathProgress) && nzchar(pathProgress)) {
+      .update_progress_summary(
+        path_progress_file = pathProgress,
+        dir_jobs_chunk = dirJobs,
+        total_sims = totalSims,
+        sim_grid_chunk_index = sim_grid_chunk_index,
+        sim_grid_n_chunks = sim_grid_n_chunks,
+        dir_output = dirCache,
+        heading = progressHeading
+      )
+    }
+    invisible(NULL)
+  }
+
   if (isTRUE(resume) && length(file_output) > 0L && file.exists(file_output)) {
     cached <- tryCatch(readRDS(file_output), error = function(e) NULL)
     if (
@@ -2049,9 +2081,9 @@
       if (!is.null(p)) {
         p(sprintf("Skipped existing sim_id: %s", sim_id))
       }
-      .simCompareLogMessage(
-        pathProgress = pathProgress,
-        msg = paste0(
+      report(
+        "completed",
+        paste0(
           "Skipped (cached): ",
           .simCompareFormatScenarioLog(row, sim_id)
         )
@@ -2084,7 +2116,7 @@
   }
 
   settings_log <- .simCompareFormatScenarioLog(row, sim_id)
-  .simCompareLogMessage(pathProgress, paste0("Running: ", settings_log))
+  report("running", paste0("Running: ", settings_log))
 
   stimMeanShiftVal <- if ("stim_mean_shift" %in% names(row)) {
     row$stim_mean_shift[[1]]
@@ -2254,7 +2286,7 @@
         }
       }
 
-      .simCompareLogMessage(pathProgress, paste0("Completed: ", settings_log))
+      report("completed", paste0("Completed: ", settings_log))
       if (!is.null(p)) {
         p(sprintf("Completed sim_id: %s", sim_id))
       }
@@ -2262,10 +2294,7 @@
       res
     },
     error = function(e) {
-      .simCompareLogMessage(
-        pathProgress,
-        paste0("Error [", settings_log, "]: ", e$message)
-      )
+      report("error", paste0("Error [", settings_log, "]: ", e$message))
       if (!is.null(p)) {
         p(sprintf("ERROR on sim_id: %s", sim_id))
       }
@@ -2350,6 +2379,8 @@
   sim_grid_chunk_index = NULL,
   sim_grid_n_chunks = NULL,
   retryErrors = FALSE,
+  dirJobs = NULL,
+  progressHeading = "COMPARISON SIMULATION PROGRESS",
   ...
 ) {
   if (nrow(sim_grid) == 0L) {
@@ -2392,6 +2423,9 @@
       sim_grid_n_chunks = sim_grid_n_chunks,
       retryErrors = retryErrors,
       p = p,
+      dirJobs = dirJobs,
+      totalSims = nrow(sim_grid),
+      progressHeading = progressHeading,
       ...
     )
   }
