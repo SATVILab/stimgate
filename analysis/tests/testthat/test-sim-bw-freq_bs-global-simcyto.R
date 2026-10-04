@@ -50,9 +50,7 @@ test_that("Analysis 2a executes its original bandwidth and fixed-bias design", {
     dplyr::distinct(.data$n_cell, .data$prob_response) |>
     dplyr::arrange(.data$n_cell, .data$prob_response)
   expect_equal(actual_pairs, expected_pairs)
-  expect_equal(
-    sort(unique(env$sim_grid_all$condition_perturbation_sd)), c(0, 0.5)
-  )
+  expect_equal(unique(env$sim_grid_all$condition_perturbation_sd), 0)
   expect_true(all(env$sim_grid_all$sample_perturbation_sd == 0))
   expect_true(all(env$sim_grid_all$cluster_perturbation_sd == 0))
   expect_true(all(env$sim_grid_all$background_relative_to_response == 0.2))

@@ -102,10 +102,31 @@ add_bw_labs <- function(.data) {
     )
 }
 
-# Bias curves share the same dimensions in all absolute-error views.
+# Bandwidth colours (the sequential purple ramp) with every bandwidth shown in
+# the legend, which sits underneath the plot in one row.
+.simBandwidthBwColourScale <- function(bw_vec) {
+  col_vec <- make_bw_colour_values(bw_vec)
+  ggplot2::scale_colour_manual(
+    values = col_vec,
+    breaks = names(col_vec),
+    limits = names(col_vec),
+    drop = FALSE,
+    guide = ggplot2::guide_legend(nrow = 1, order = 1)
+  )
+}
+
+# Bandwidth labels as a factor in increasing order, matching the colour scale.
+.simBandwidthBwLabFactor <- function(bw) {
+  factor(format_bw_lab(bw), levels = names(make_bw_colour_values(bw)))
+}
+
+# Bias curves share the same dimensions in all absolute-error views. Colour is
+# the bandwidth; curves for different bias scales stay separate (`group`)
+# although only the bandwidth rule is shown in Analysis 2b. `title` is ignored
+# (figure titles go in headings) and is kept so older calls still work.
 .simBandwidthBiasRelativeErrorPlot <- function(
   tbl,
-  title,
+  title = NULL,
   y_label = "Absolute relative error",
   facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
   stat_cols = c(
@@ -114,57 +135,64 @@ add_bw_labs <- function(.data) {
     max_abs_rel_error = "Maximum"
   )
 ) {
-  ggplot2::ggplot(
-    .simBandwidthErrorStatLong(tbl, stat_cols),
-    ggplot2::aes(
-      x = bias_uns_multiplier,
-      y = value,
-      colour = factor(bw),
-      linetype = bias_uns_basis,
-      group = interaction(bw, bias_uns_basis)
-    )
-  ) +
-    ggplot2::geom_line() +
-    ggplot2::geom_point() +
-    facet +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
-    ggplot2::theme(legend.position = "bottom") +
-    ggplot2::labs(
-      title = title,
-      x = "Bias multiplier",
-      y = y_label,
-      colour = "Bandwidth",
-      linetype = "Bias scale"
-    )
-}
-
-# Signed-error version of the bias curves. `tbl` comes from
-# `.simBandwidthSignedErrorSummary()`: over-estimates sit above zero and
-# under-estimates below; line weight is each direction's share.
-.simBandwidthBiasSignedErrorPlot <- function(
-  tbl,
-  title,
-  y_label = "Relative error",
-  facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
-  stat_cols = c(median = "Median", q90 = "90th percentile", max = "Maximum")
-) {
-  tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
+  tbl <- .simBandwidthErrorStatLong(tbl, stat_cols) |>
+    dplyr::mutate(bw_lab = .simBandwidthBwLabFactor(.data$bw))
   ggplot2::ggplot(
     tbl,
     ggplot2::aes(
       x = bias_uns_multiplier,
       y = value,
-      colour = factor(bw),
-      linetype = bias_uns_basis,
+      colour = bw_lab,
+      group = interaction(bw, bias_uns_basis)
+    )
+  ) +
+    # Slight transparency shows overlapping lines.
+    ggplot2::geom_line(alpha = 0.75) +
+    ggplot2::geom_point(alpha = 0.75) +
+    facet +
+    .simBandwidthBwColourScale(tbl$bw) +
+    ggplot2::scale_x_continuous(labels = .analysis_label_number) +
+    .analysis_theme() +
+    ggplot2::labs(
+      x = "Bias multiplier",
+      y = y_label,
+      colour = "Bandwidth"
+    )
+}
+
+# Signed-error version of the bias curves. `tbl` comes from
+# `.simBandwidthSignedErrorSummary()`: over-estimates sit above zero and
+# under-estimates below; line weight is each direction's share. Errors above
+# +1500% are drawn at +1500% (`value_shown`); `value` keeps the actual error.
+.simBandwidthBiasSignedErrorPlot <- function(
+  tbl,
+  title = NULL,
+  y_label = "Relative error",
+  facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
+  stat_cols = c(median = "Median", q90 = "90th percentile", max = "Maximum")
+) {
+  tbl <- .simBandwidthErrorStatLong(tbl, stat_cols) |>
+    dplyr::mutate(
+      bw_lab = .simBandwidthBwLabFactor(.data$bw),
+      value_shown = .simBandwidthSignedErrorSquish(.data$value)
+    )
+  ggplot2::ggplot(
+    tbl,
+    ggplot2::aes(
+      x = bias_uns_multiplier,
+      y = value_shown,
+      colour = bw_lab,
       group = interaction(bw, bias_uns_basis, direction)
     )
   ) +
-    .simBandwidthSignedErrorLayers(y_label) +
+    .simBandwidthSignedErrorLayers(
+      y_label,
+      capped = .simBandwidthSignedErrorIsCapped(tbl$value)
+    ) +
     .simBandwidthSignedErrorSegmentLayer(
       tbl,
       "bias_uns_multiplier",
-      "value",
+      "value_shown",
       c(
         "statistic",
         "mismatch_label",
@@ -172,19 +200,16 @@ add_bw_labs <- function(.data) {
         "bw",
         "bias_uns_basis",
         "direction"
-      )
+      ),
+      alpha = 0.75
     ) +
-    ggplot2::geom_point(size = 1) +
+    # Slight transparency shows overlapping lines; legend keys match.
+    ggplot2::geom_point(size = 1, alpha = 0.75) +
     facet +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy") +
-    ggplot2::theme(legend.position = "bottom") +
-    ggplot2::labs(
-      title = title,
-      x = "Bias multiplier",
-      colour = "Bandwidth",
-      linetype = "Bias scale"
-    )
+    .simBandwidthBwColourScale(tbl$bw) +
+    ggplot2::scale_x_continuous(labels = .analysis_label_number) +
+    .analysis_theme() +
+    ggplot2::labs(x = "Bias multiplier", colour = "Bandwidth")
 }
 
 # ColorBrewer BrBG: teal for over-estimates, brown for under-estimates.
@@ -199,12 +224,15 @@ add_bw_labs <- function(.data) {
 
 # 2a curves: colour is the direction (two halves of a diverging palette, so
 # neither looks worse) and shade the statistic (darker = further from truth).
-# With `by_prob`, rows of panels separate response probabilities.
+# With `by_prob`, rows of panels separate response probabilities. Errors above
+# +1500% are drawn at +1500% (`err_value_shown`). `title` is ignored (figure
+# titles go in headings) and is kept so older calls still work.
 .simBandwidthGlobalSignedErrorPlot <- function(
   tbl,
   title = NULL,
   by_prob = FALSE
 ) {
+  bw_levels <- .analysis_label_number(sort(unique(tbl$bw)))
   tbl <- tbl |>
     tidyr::pivot_longer(
       cols = c("median", "q95", "max"),
@@ -215,31 +243,30 @@ add_bw_labs <- function(.data) {
     dplyr::mutate(
       err_type = factor(err_type, levels = c("median", "q95", "max")),
       direction = factor(direction, levels = c("over", "under")),
-      transformation = factor(
-        transformation,
-        levels = c("gaussian", "skew", "gamma")
-      ),
-      bw_fct = factor(bw),
+      transformation = .analysis_trans_factor(.data$transformation),
+      bw_fct = factor(.analysis_label_number(.data$bw), levels = bw_levels),
+      err_value_shown = .simBandwidthSignedErrorSquish(.data$err_value),
       series = factor(
         paste0(direction, "_", err_type),
         levels = names(.simBandwidthSignedErrorColours)
       )
     )
-  transformation_lab <- c(gamma = "Gamma", gaussian = "Gaussian", skew = "Skew")
   ggplot2::ggplot(
     tbl,
     ggplot2::aes(
       x = bw_fct,
-      y = err_value,
+      y = err_value_shown,
       colour = series,
       group = interaction(err_type, direction)
     )
   ) +
-    .simBandwidthSignedErrorLayers() +
+    .simBandwidthSignedErrorLayers(
+      capped = .simBandwidthSignedErrorIsCapped(tbl$err_value)
+    ) +
     .simBandwidthSignedErrorSegmentLayer(
       tbl,
       "bw_fct",
-      "err_value",
+      "err_value_shown",
       c("transformation", "prob_response", "err_type", "direction"),
       alpha = 0.75
     ) +
@@ -250,19 +277,13 @@ add_bw_labs <- function(.data) {
         prob_response ~ transformation,
         scales = "free",
         labeller = ggplot2::labeller(
-          transformation = transformation_lab,
-          prob_response = function(x) paste0("p = ", x)
+          prob_response = .analysis_labeller_percent("Response: ")
         )
       )
     } else {
-      ggplot2::facet_wrap(
-        ~transformation,
-        scales = "free",
-        labeller = ggplot2::labeller(transformation = transformation_lab)
-      )
+      ggplot2::facet_wrap(~transformation, scales = "free")
     }) +
-    cowplot::theme_cowplot() +
-    cowplot::background_grid(major = "xy", minor = "y") +
+    .analysis_theme() +
     ggplot2::scale_colour_manual(
       values = .simBandwidthSignedErrorColours,
       labels = c(
@@ -276,17 +297,9 @@ add_bw_labs <- function(.data) {
       drop = FALSE,
       guide = ggplot2::guide_legend(nrow = 2, byrow = TRUE)
     ) +
-    ggplot2::labs(title = title, x = "Bandwidth", colour = NULL) +
+    ggplot2::labs(x = "Bandwidth", colour = NULL) +
     ggplot2::theme(
-      panel.background = ggplot2::element_rect(fill = "white", colour = NA),
-      plot.background = ggplot2::element_rect(fill = "white", colour = NA),
-      strip.background = ggplot2::element_rect(
-        fill = "white",
-        colour = "black"
-      ),
-      axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 10),
-      legend.position = "bottom",
-      legend.box = "vertical"
+      axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5)
     )
 }
 
@@ -372,7 +385,21 @@ add_bw_labs <- function(.data) {
   )
 }
 
-.simBandwidthSignedErrorLabel <- function(x) {
+# Over-estimates are capped at +1500% (16 times the truth): larger errors are
+# drawn at the cap, whose tick then reads ">= +1500% (16x)". The cap is a
+# doubling, so it is always one of the scale's breaks.
+.simBandwidthSignedErrorCap <- 15
+
+.simBandwidthSignedErrorSquish <- function(x, cap = .simBandwidthSignedErrorCap) {
+  pmin(x, cap)
+}
+
+.simBandwidthSignedErrorIsCapped <- function(x, cap = .simBandwidthSignedErrorCap) {
+  any(x > cap, na.rm = TRUE)
+}
+
+# `cap`: errors drawn at this value may be larger, so its label gets a ">=" sign.
+.simBandwidthSignedErrorLabel <- function(x, cap = Inf) {
   lab <- ifelse(x > 0, sprintf("+%g%%", 100 * x), sprintf("%g%%", 100 * x))
   # Nothing gated (-100%, 0x) and each doubling (+100% 2x, +300% 4x, ...)
   # also show the multiple of the true response.
@@ -380,6 +407,8 @@ add_bw_labs <- function(.data) {
   fold <- is.finite(x) &
     (abs(x + 1) < 1e-8 | (x > 0 & abs(doublings - round(doublings)) < 1e-8))
   lab[fold] <- paste0(lab[fold], " (", sprintf("%g", 1 + x[fold]), "x)")
+  at_cap <- is.finite(x) & is.finite(cap) & x >= cap - 1e-8
+  lab[at_cap] <- paste0("\u2265 ", lab[at_cap])
   lab
 }
 
@@ -411,14 +440,17 @@ add_bw_labs <- function(.data) {
 }
 
 # Shared y scale, zero line and line-weight scale for signed-error plots.
+# `capped`: some errors were drawn at the +1500% cap, so label that tick with ">=".
 .simBandwidthSignedErrorLayers <- function(
-  y_label = "Relative error"
+  y_label = "Relative error",
+  capped = FALSE
 ) {
+  cap <- if (isTRUE(capped)) .simBandwidthSignedErrorCap else Inf
   list(
     ggplot2::geom_hline(yintercept = 0, colour = "grey40"),
     ggplot2::scale_y_continuous(
       transform = .simBandwidthSignedErrorTrans(),
-      labels = .simBandwidthSignedErrorLabel
+      labels = function(x) .simBandwidthSignedErrorLabel(x, cap = cap)
     ),
     # Always show losing the whole response (-100%) and doubling it (+100%).
     ggplot2::expand_limits(y = c(-1, 1)),
