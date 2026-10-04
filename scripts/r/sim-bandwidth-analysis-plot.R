@@ -82,20 +82,39 @@ add_bw_labs <- function(.data) {
     )
 }
 
-# Bias curves share the same dimensions in averaged and per-cell-count views.
+# Error statistics as rows of panels: `stat_cols` maps wide columns to labels.
+.simBandwidthErrorStatLong <- function(tbl, stat_cols) {
+  tbl |>
+    tidyr::pivot_longer(
+      cols = dplyr::all_of(names(stat_cols)),
+      names_to = "statistic", values_to = "value"
+    ) |>
+    dplyr::filter(!is.na(.data$value)) |>
+    dplyr::mutate(statistic = factor(
+      unname(stat_cols[.data$statistic]),
+      levels = unname(stat_cols)
+    ))
+}
+
+# Bias curves share the same dimensions in all absolute-error views.
 .simBandwidthBiasRelativeErrorPlot <- function(
-    tbl, title, y_label = "Median absolute relative error") {
+    tbl, title, y_label = "Absolute relative error",
+    facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
+    stat_cols = c(
+      median_abs_rel_error = "Median", q90_abs_rel_error = "90th percentile",
+      max_abs_rel_error = "Maximum"
+    )) {
   ggplot2::ggplot(
-    tbl,
+    .simBandwidthErrorStatLong(tbl, stat_cols),
     ggplot2::aes(
-      x = bias_uns_multiplier, y = median_abs_rel_error,
+      x = bias_uns_multiplier, y = value,
       colour = factor(bw), linetype = bias_uns_basis,
       group = interaction(bw, bias_uns_basis)
     )
   ) +
     ggplot2::geom_line() +
     ggplot2::geom_point() +
-    ggplot2::facet_wrap(~mismatch_label, scales = "free_y") +
+    facet +
     cowplot::theme_cowplot() +
     cowplot::background_grid(major = "xy") +
     ggplot2::theme(legend.position = "bottom") +
@@ -109,12 +128,13 @@ add_bw_labs <- function(.data) {
 # `.simBandwidthSignedErrorSummary()`: over-estimates sit above zero and
 # under-estimates below; line weight is each direction's share.
 .simBandwidthBiasSignedErrorPlot <- function(
-    tbl, title, y_label = "Median relative error",
-    facet = ggplot2::facet_wrap(~mismatch_label)) {
+    tbl, title, y_label = "Relative error",
+    facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
+    stat_cols = c(median = "Median", q90 = "90th percentile", max = "Maximum")) {
   ggplot2::ggplot(
-    dplyr::filter(tbl, !is.na(.data$median)),
+    .simBandwidthErrorStatLong(tbl, stat_cols),
     ggplot2::aes(
-      x = bias_uns_multiplier, y = median,
+      x = bias_uns_multiplier, y = value,
       colour = factor(bw), linetype = bias_uns_basis, linewidth = prop,
       group = interaction(bw, bias_uns_basis, direction)
     )
@@ -200,13 +220,14 @@ add_bw_labs <- function(.data) {
     if (length(x) == 0L) {
       return(tibble::tibble(
         direction = direction, prop = if (length(rel_error)) 0 else NA_real_,
-        median = NA_real_, q95 = NA_real_, max = NA_real_
+        median = NA_real_, q90 = NA_real_, q95 = NA_real_, max = NA_real_
       ))
     }
     tibble::tibble(
       direction = direction,
       prop = length(x) / length(rel_error),
       median = sgn * stats::median(x),
+      q90 = sgn * stats::quantile(x, probs = 0.9, names = FALSE),
       q95 = sgn * stats::quantile(x, probs = 0.95, names = FALSE),
       max = sgn * max(x)
     )
@@ -227,13 +248,13 @@ add_bw_labs <- function(.data) {
     dplyr::group_by(dplyr::across(dplyr::all_of(c(group_cols, "direction")))) |>
     dplyr::summarise(
       dplyr::across(
-        dplyr::any_of(c("prop", "median", "q95", "max")),
+        dplyr::any_of(c("prop", "median", "q90", "q95", "max")),
         ~ mean(.x, na.rm = TRUE)
       ),
       .groups = "drop"
     ) |>
     dplyr::mutate(dplyr::across(
-      dplyr::any_of(c("prop", "median", "q95", "max")),
+      dplyr::any_of(c("prop", "median", "q90", "q95", "max")),
       ~ dplyr::if_else(is.nan(.x), NA_real_, .x)
     ))
 }
@@ -246,8 +267,13 @@ add_bw_labs <- function(.data) {
     transform = function(x) ifelse(x > 0, log2(1 + x), x),
     inverse = function(x) ifelse(x > 0, 2^x - 1, x),
     breaks = function(limits) {
-      n_fold <- max(1, ceiling(log2(1 + max(limits[2], 0, na.rm = TRUE))))
-      c(-1, -0.5, 0, 2^seq_len(n_fold) - 1)
+      lo <- max(limits[1], -1, na.rm = TRUE)
+      hi <- max(limits[2], 0, na.rm = TRUE)
+      # Close to zero the scale is near-linear, so ordinary breaks suffice.
+      if (hi <= 1) {
+        return(pretty(c(lo, hi)))
+      }
+      c(pretty(c(lo, 0), n = 3), 2^seq_len(ceiling(log2(1 + hi))) - 1)
     },
     domain = c(-1, Inf)
   )
@@ -268,7 +294,7 @@ add_bw_labs <- function(.data) {
       transform = .simBandwidthSignedErrorTrans(),
       labels = .simBandwidthSignedErrorLabel
     ),
-    ggplot2::expand_limits(y = c(-1, 1)),
+    ggplot2::expand_limits(y = 0),
     ggplot2::scale_linewidth_continuous(
       range = c(0.2, 2), limits = c(0, 1), labels = scales::percent
     ),

@@ -88,9 +88,10 @@ test_that("2a per-cell plots average scenario errors before combining probabilit
 })
 
 test_that("2b averaged and per-cell plots preserve all bias scenario dimensions", {
+  stat_mult <- c(Median = 1, "90th percentile" = 2, Maximum = 3)
   env <- .bandwidth_cell_plot_env()
   on.exit(unlink(env$root_dir, recursive = TRUE), add = TRUE)
-  env$bias_uns_results_summary <- tidyr::expand_grid(
+  env$bias_uns_abs_error <- tidyr::expand_grid(
     transformation = c("gaussian", "gamma"),
     mean_pos_setting = c("low", "high"), prob_response = c(0.01, 0.1),
     n_cell = c(100, 1000), bw = c(0.1, 0.2),
@@ -101,7 +102,9 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
       mismatch_type = "mean_shift",
       mismatch_label = paste0("mean shift ", mismatch_val),
       median_abs_rel_error = n_cell / 100 + bw + bias_uns_multiplier +
-        mismatch_val + prob_response + ifelse(bias_uns_basis == "bandwidth", 0, 2)
+        mismatch_val + prob_response + ifelse(bias_uns_basis == "bandwidth", 0, 2),
+      q90_abs_rel_error = 2 * median_abs_rel_error,
+      max_abs_rel_error = 3 * median_abs_rel_error
     )
   average_code <- .bandwidth_cell_plot_chunk(
     "2b-sim-bias_uns-freq_bs.qmd", "fig-relative-error-averaged-n-cell"
@@ -114,9 +117,11 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
   for (saved in env$saved) {
     data <- saved$plot$data
     expect_false("n_cell" %in% names(data))
-    expect_equal(data$median_abs_rel_error,
-      5.5 + data$bw + data$bias_uns_multiplier + data$mismatch_val +
-        data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2)
+    expect_equal(data$value,
+      stat_mult[as.character(data$statistic)] *
+        (5.5 + data$bw + data$bias_uns_multiplier + data$mismatch_val +
+          data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2)),
+      ignore_attr = TRUE
     )
   }
   eval(cell_code, env)
@@ -132,14 +137,19 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
     expect_setequal(unique(data$mismatch_val), c(0, 0.1))
     expect_setequal(unique(data$bw), c(0.1, 0.2))
     expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
-    expect_named(saved$plot$facet$params$facets, "mismatch_label")
+    expect_named(saved$plot$facet$params$rows, "statistic")
+    expect_named(saved$plot$facet$params$cols, "mismatch_label")
+    expect_setequal(as.character(data$statistic), names(stat_mult))
     expect_identical(rlang::as_label(saved$plot$mapping$group), "interaction(bw, bias_uns_basis)")
     if ("n_cell" %in% names(data)) {
       expect_length(unique(data$n_cell), 1L)
       expect_true(grepl(paste0("_n_cell_", data$n_cell[1L], ".pdf"), saved$path, fixed = TRUE))
-      expect_equal(data$median_abs_rel_error,
-        data$n_cell / 100 + data$bw + data$bias_uns_multiplier + data$mismatch_val +
-          data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2)
+      expect_equal(data$value,
+        stat_mult[as.character(data$statistic)] *
+          (data$n_cell / 100 + data$bw + data$bias_uns_multiplier +
+            data$mismatch_val + data$prob_response +
+            ifelse(data$bias_uns_basis == "bandwidth", 0, 2)),
+        ignore_attr = TRUE
       )
     }
   }
@@ -213,6 +223,7 @@ test_that("2a per-cell signed-error plots average scenario errors by direction",
 })
 
 test_that("2b signed-error plots preserve all bias scenario dimensions", {
+  stat_mult <- c(Median = 1, "90th percentile" = 2, Maximum = 3)
   env <- .bandwidth_cell_plot_env()
   on.exit(unlink(env$root_dir, recursive = TRUE), add = TRUE)
   env$bias_uns_signed_error <- tidyr::expand_grid(
@@ -228,7 +239,9 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
       sign = ifelse(direction == "over", 1, -0.01),
       prop = ifelse(direction == "over", 0.7, 0.3),
       median = sign * (n_cell / 100 + bw + bias_uns_multiplier +
-        mismatch_val + prob_response + ifelse(bias_uns_basis == "bandwidth", 0, 2))
+        mismatch_val + prob_response + ifelse(bias_uns_basis == "bandwidth", 0, 2)),
+      q90 = 2 * median,
+      max = 3 * median
     ) |>
     dplyr::select(-sign)
   average_code <- .bandwidth_cell_plot_chunk(
@@ -244,10 +257,12 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     expect_false("n_cell" %in% names(data))
     expect_setequal(data$direction, c("over", "under"))
     expect_equal(data$prop, ifelse(data$direction == "over", 0.7, 0.3))
-    expect_equal(data$median,
-      ifelse(data$direction == "over", 1, -0.01) *
+    expect_equal(data$value,
+      stat_mult[as.character(data$statistic)] *
+        ifelse(data$direction == "over", 1, -0.01) *
         (5.5 + data$bw + data$bias_uns_multiplier + data$mismatch_val +
-          data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
+          data$prob_response + ifelse(data$bias_uns_basis == "bandwidth", 0, 2)),
+      ignore_attr = TRUE
     )
   }
   eval(cell_code, env)
@@ -263,7 +278,9 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     expect_setequal(unique(data$mismatch_val), c(0, 0.1))
     expect_setequal(unique(data$bw), c(0.1, 0.2))
     expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
-    expect_named(saved$plot$facet$params$facets, "mismatch_label")
+    expect_named(saved$plot$facet$params$rows, "statistic")
+    expect_named(saved$plot$facet$params$cols, "mismatch_label")
+    expect_setequal(as.character(data$statistic), names(stat_mult))
     expect_identical(
       rlang::as_label(saved$plot$mapping$group),
       "interaction(bw, bias_uns_basis, direction)"
@@ -271,11 +288,13 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     if ("n_cell" %in% names(data)) {
       expect_length(unique(data$n_cell), 1L)
       expect_true(grepl(paste0("_n_cell_", data$n_cell[1L], ".pdf"), saved$path, fixed = TRUE))
-      expect_equal(data$median,
-        ifelse(data$direction == "over", 1, -0.01) *
+      expect_equal(data$value,
+        stat_mult[as.character(data$statistic)] *
+          ifelse(data$direction == "over", 1, -0.01) *
           (data$n_cell / 100 + data$bw + data$bias_uns_multiplier +
             data$mismatch_val + data$prob_response +
-            ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
+            ifelse(data$bias_uns_basis == "bandwidth", 0, 2)),
+        ignore_attr = TRUE
       )
     }
   }
@@ -297,6 +316,7 @@ test_that("signed relative errors are summarised separately by direction", {
   # Zero errors count towards the total but neither direction.
   expect_equal(sides$prop, c(0.4, 0.4))
   expect_equal(sides$median, c(0.6, -0.75))
+  expect_equal(sides$q90, c(0.92, -0.95))
   expect_equal(sides$q95, c(0.96, -0.975))
   expect_equal(sides$max, c(1, -1))
 
@@ -325,8 +345,37 @@ test_that("signed error scale puts nothing gated and two-fold equally far from z
   expect_equal(trans$transform(x), c(-1, -0.5, 0, 1, 2))
   expect_equal(trans$inverse(trans$transform(x)), x)
   expect_equal(trans$breaks(c(-1, 2.5)), c(-1, -0.5, 0, 1, 3))
+  # Small errors get ordinary breaks rather than only zero.
+  expect_equal(trans$breaks(c(-0.02, 0.03)), pretty(c(-0.02, 0.03)))
   expect_identical(
     env$.simBandwidthSignedErrorLabel(c(-1, 0, 1)),
     c("-100%", "0%", "+100% (2x)")
   )
+})
+
+test_that("2b error summary keeps the median, 90th percentile and maximum", {
+  env <- .bandwidth_cell_plot_env()
+  env$bias_uns_results_raw <- tidyr::expand_grid(
+    transformation = "gaussian", mean_pos_setting = "high",
+    prob_response = 0.05, n_cell = 100, mismatch_label = "mean shift 0",
+    mismatch_type = "mean_shift", mismatch_val = 0, bw = 0.1,
+    bias_uns_basis = "bandwidth", bias_uns_multiplier = c(0, 1),
+    rel_error = c(-0.1, 0.05, 0.2, 0.4, NA)
+  ) |>
+    dplyr::mutate(abs_rel_error = abs(rel_error))
+  eval(.bandwidth_cell_plot_chunk(
+    "2b-sim-bias_uns-freq_bs.qmd", "bias-uns-error-summary"
+  ), env)
+  abs_error <- env$bias_uns_abs_error
+  expect_equal(nrow(abs_error), 2L)
+  expect_equal(abs_error$median_abs_rel_error, c(0.15, 0.15))
+  expect_equal(
+    abs_error$q90_abs_rel_error,
+    rep(stats::quantile(c(0.1, 0.05, 0.2, 0.4), 0.9, names = FALSE), 2)
+  )
+  expect_equal(abs_error$max_abs_rel_error, c(0.4, 0.4))
+  signed <- env$bias_uns_signed_error
+  expect_equal(nrow(signed), 4L)
+  expect_equal(signed$max[signed$direction == "over"], c(0.4, 0.4))
+  expect_equal(signed$max[signed$direction == "under"], c(-0.1, -0.1))
 })
