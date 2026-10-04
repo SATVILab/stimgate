@@ -32,6 +32,34 @@ The package provides several key functions:
 - `stimgate_gate_get()`: Extract gate information
 - `stimgate_fcs_write()`: Write FCS files of cytokine-positive cells
 
+## Input formats
+
+`gateStim()`, `plotStim()`, `writeStimFCS()` and `getStimExpr()` accept a
+GatingSet, flowSet/cytoset, individual flowFrame/cytoframe, FCS file paths or a
+single FCS directory, and a list of numeric matrices or data frames (cells by
+channels). Lists use their names as sample names, or `sample1`, `sample2`, etc.
+Columns must have matching names; their order is aligned to the first sample.
+A long data frame may instead contain a `sample` column: samples follow observed
+factor levels or first appearance. Matrix column names work as channels and markers.
+
+FCS directories are searched non-recursively, case-insensitively, with sorted
+filenames. Explicit file vectors preserve order; sample names are file basenames.
+Only GatingSets provide populations beyond `root`. StimGate adds no arcsinh or
+logicle transformation; prepare the desired scale before gating. FCS reading
+uses the defaults of `flowWorkspace::load_cytoset_from_fcs()`.
+
+`batchList` accepts indices or sample names, with the unstimulated control first.
+Use the same sample order when supplying data to downstream functions.
+
+```{r eval=FALSE}
+matrices <- list(control = control_matrix, stimulated = stimulated_matrix)
+gateStim(
+  pathProject = "matrix-results", .data = matrices,
+  batchList = list(donor1 = c("control", "stimulated")),
+  chnl = colnames(control_matrix)
+)
+```
+
 ## Basic Usage
 
 ```{r eval=FALSE}

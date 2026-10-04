@@ -8,10 +8,10 @@
 #' @param pathProject character. Path to project directory where all results will be saved.
 #'   This directory will contain subdirectories for each marker with gate tables,
 #'   statistics, and plots. The directory will be created if it doesn't exist.
-#' @param .data GatingSet. A flowWorkspace GatingSet object containing the flow cytometry
-#'   data with both stimulated and unstimulated samples. The GatingSet should have
-#'   consistent channel names across all samples and include proper sample annotations.
-#' @param batchList list. List where each element contains indices of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if `batchList = list(c(3, 1, 2), c(6, 4, 5))`, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If `batchList` is named, e.g. `list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))`, then these names will be used for batch identification.
+#' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+#'   list or data.frame Cytometry samples, FCS paths/directory, numeric matrices
+#'   or data frames per sample, or a long data frame with a `sample` column.
+#' @param batchList list. List where each element contains integer indices or character names of samples belonging to the same batch/donor. The first index per element is the unstimulated control sample, e.g. if `batchList = list(c(3, 1, 2), c(6, 4, 5))`, then indices 3 and 6 correspond to the unstimulated samples for batches 1 and 2, respectively. If `batchList` is named, e.g. `list(pid1 = c(3, 1, 2), pid2 = c(6, 4, 5))`, then these names will be used for batch identification.
 #' @param chnl character vector. Channel names to gate on. Specify either
 #'   `chnl` or `marker`. Default is NULL.
 #' @param marker character vector. Alternative way to specify markers to gate on.
@@ -49,6 +49,19 @@
 #' then refined using cells positive for another cytokine. Results and statistics
 #' are saved to `pathProject` for [getStimGates()], [getStimStats()], and [plotStim()].
 #' Use [stimControl()] for tuning and `markerControl` for per-marker overrides.
+#'
+#' Inputs are normalised to a GatingSet; only GatingSet inputs can contain
+#' populations other than "root", including in `markerControl`. StimGate applies
+#' no transformation (such as arcsinh or logicle): provide FCS/matrix data on
+#' the scale you want gated, as with a GatingSet. FCS files are read using
+#' `flowWorkspace::load_cytoset_from_fcs()` with its default reader behaviour.
+#' A directory is searched non-recursively for case-insensitive `.fcs` filenames,
+#' sorted with `sort()`; a file vector preserves its supplied order. FCS sample
+#' names are basenames. List names are sample names, or default to sample1,
+#' sample2, etc. Channel columns must be numeric with matching names; their
+#' order is aligned to the first sample and marker labels equal channel names.
+#' Long data frames use observed factor-level order or first appearance of
+#' `sample`. The first sample in each batch is always the unstimulated control.
 #'
 #' To gate channels in parallel, set `parallel = TRUE` and select a future
 #' plan, for example `future::plan(future::multisession, workers = 4)`.
@@ -89,6 +102,16 @@
 #'   )
 #' )
 #'
+#' # Use in-memory matrices, with channel names also serving as marker labels
+#' matrices <- lapply(seq_along(gs), function(i) {
+#'   flowCore::exprs(flowWorkspace::gh_pop_get_data(gs[[i]], y = "root"))
+#' })
+#' gateStim(
+#'   pathProject = file.path(tempdir(), "matrix-gating"), .data = matrices,
+#'   batchList = exampleData$batchList, chnl = exampleData$chnl,
+#'   control = stimControl(calcCytPosGates = FALSE)
+#' )
+#'
 #' # Create plots
 #' if (requireNamespace("hexbin", quietly = TRUE)) {
 #'   plots <- plotStim(
@@ -113,7 +136,8 @@ gateStim <- function(
   markerControl = NULL,
   parallel = FALSE
 ) {
-  force(.data)
+  isGatingSet <- inherits(.data, "GatingSet")
+  .data <- .asStimGatingSet(.data, popGate)
   if (Sys.getenv("STIMGATE_DEBUG") == "") {
     Sys.setenv("STIMGATE_DEBUG" = "FALSE")
     on.exit(Sys.unsetenv("STIMGATE_DEBUG"), add = TRUE)
@@ -171,6 +195,24 @@ gateStim <- function(
     control = control,
     markerControl = markerControl
   )
+
+  if (!isGatingSet) {
+    .checkStimInputPop(unlist(lapply(markerControl, function(x) x$popGate)))
+  }
+  sampleNames <- flowWorkspace::sampleNames(.data)
+  batchList <- lapply(batchList, function(batch) {
+    if (!is.character(batch)) {
+      return(batch)
+    }
+    indices <- match(batch, sampleNames)
+    if (anyNA(indices)) {
+      stop(
+        "Unknown sample name(s) in `batchList`: ",
+        paste(batch[is.na(indices)], collapse = ", ")
+      )
+    }
+    indices
+  })
 
   calcCytPosGates <- control$calcCytPosGates
 
