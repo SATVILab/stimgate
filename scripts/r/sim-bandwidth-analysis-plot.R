@@ -354,7 +354,8 @@ add_bw_labs <- function(.data) {
       transform = .simBandwidthSignedErrorTrans(),
       labels = .simBandwidthSignedErrorLabel
     ),
-    ggplot2::expand_limits(y = 0),
+    # Always show losing the whole response (-100%) and doubling it (+100%).
+    ggplot2::expand_limits(y = c(-1, 1)),
     ggplot2::scale_linewidth_continuous(
       range = c(0.4, 2), limits = c(0, 1), labels = scales::percent
     ),

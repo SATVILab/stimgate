@@ -411,6 +411,10 @@ test_that("signed-error plots draw dashed lines whose weight varies", {
     dplyr::mutate(sides, transformation = "gaussian")
   )
   expect_no_error(ggplot2::ggplotGrob(global))
+  # Small errors still show the full -100% to +100% range.
+  y_range <- ggplot2::layer_scales(global)$y$range$range
+  expect_lte(y_range[[1]], -1)
+  expect_gte(y_range[[2]], 1)
 
   by_prob <- env$.simBandwidthGlobalSignedErrorPlot(
     dplyr::bind_rows(
