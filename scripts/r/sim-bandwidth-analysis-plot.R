@@ -323,8 +323,9 @@ add_bw_labs <- function(.data) {
 
 .simBandwidthSignedErrorLabel <- function(x) {
   lab <- ifelse(x > 0, sprintf("+%g%%", 100 * x), sprintf("%g%%", 100 * x))
-  fold <- x > 0 & is.finite(x)
-  lab[fold] <- paste0(lab[fold], " (", format(1 + x[fold], trim = TRUE), "x)")
+  # Every non-zero tick also reads as a multiple of the truth: -100% is 0x.
+  fold <- x != 0 & is.finite(x)
+  lab[fold] <- paste0(lab[fold], " (", sprintf("%g", 1 + x[fold]), "x)")
   lab
 }
 
