@@ -18,7 +18,7 @@ Read \code{\link[=stimgateMetaReadSettingsChnls]{stimgateMetaReadSettingsChnls()
 }
 \examples{
 pathProject <- tempfile("stimgate_meta_")
-dir.create(file.path(pathProject, "metaData"))
+dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
 saveRDS(list(BC1 = list(bw = 0.1)),
   file.path(pathProject, "metaData", "chnlSettings.rds")
 )

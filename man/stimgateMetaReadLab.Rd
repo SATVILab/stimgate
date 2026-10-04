@@ -23,7 +23,7 @@ read the reverse mapping with \code{stimgateMetaReadMarkerLab()}.
 }
 \examples{
 pathProject <- tempfile("stimgate_meta_")
-dir.create(file.path(pathProject, "metaData"))
+dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
 saveRDS(c(BC1 = "IFNg"), file.path(pathProject, "metaData", "chnlLab.rds"))
 stimgateMetaReadChnlLab(pathProject)
 stimgateMetaReadMarkerLab(pathProject)

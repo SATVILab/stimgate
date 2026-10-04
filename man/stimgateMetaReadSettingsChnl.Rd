@@ -20,7 +20,7 @@ The key must match exactly; channel names are not converted to marker labels.
 }
 \examples{
 pathProject <- tempfile("stimgate_meta_")
-dir.create(file.path(pathProject, "metaData"))
+dir.create(file.path(pathProject, "metaData"), recursive = TRUE)
 saveRDS(list(IFNg = list(bw = 0.1)),
   file.path(pathProject, "metaData", "chnlSettings.rds")
 )
