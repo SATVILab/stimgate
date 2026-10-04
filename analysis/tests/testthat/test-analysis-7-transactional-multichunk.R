@@ -13,7 +13,7 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'comparison_semantics_version <- "corrected-comparison-v4"',
+    'comparison_semantics_version <- "corrected-comparison-v5"',
     content, fixed = TRUE
   ))
   expect_false(grepl("sim_grid_shuffle_seed", content, fixed = TRUE))
@@ -172,7 +172,9 @@ test_that("shared comparison promotion validates all nested scenario outputs", {
     result <- tibble::tibble(
       sim_id = id, iter = 1L, sample = 1L,
       method = c("stimgate", "fbeta", "tailgate"),
-      propRespEst = 0.05, propRespTruth = 0.05, error = NA_character_
+      propRespEst = 0.05, propRespTruth = 0.05, error = NA_character_,
+      nCellStim = 100, nPosStim = 5L, nTruePos = 5L, nFalsePos = 0L,
+      nFalseNeg = 0L, nTrueNeg = 95L, unsExprSum = 1
     )
     saveRDS(result, file.path(chunk, sprintf("sim_raw-sim_id_%06d.rds", id)))
   }

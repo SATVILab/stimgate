@@ -1133,6 +1133,13 @@ test_that(".simComparePrimaryOutputComplete requires exact primary coverage", {
     dplyr::mutate(
       propRespTruth = 0.1,
       propRespEst = 0.1,
+      nCellStim = 100,
+      nPosStim = 12L,
+      nTruePos = 10L,
+      nFalsePos = 2L,
+      nFalseNeg = 1L,
+      nTrueNeg = 87L,
+      unsExprSum = 1.5,
       error = NA_character_
     )
 
@@ -1179,6 +1186,31 @@ test_that(".simComparePrimaryOutputComplete requires exact primary coverage", {
       nIter = 2
     )
   )
+
+  # Outputs saved before the label-based counts existed are incomplete.
+  for (col in c("nTruePos", "nFalsePos", "nFalseNeg", "nTrueNeg", "unsExprSum")) {
+    legacy <- primary[, setdiff(names(primary), col)]
+    expect_false(
+      env$.simComparePrimaryOutputComplete(legacy, nSample = 2, nIter = 2),
+      info = col
+    )
+  }
+  missing_count <- primary
+  missing_count$nTruePos[[1]] <- NA_integer_
+  expect_false(
+    env$.simComparePrimaryOutputComplete(missing_count, nSample = 2, nIter = 2)
+  )
+  # Counts must reproduce the method's own gated count and the tube size.
+  wrong_gated <- primary
+  wrong_gated$nPosStim[[1]] <- 13L
+  expect_false(
+    env$.simComparePrimaryOutputComplete(wrong_gated, nSample = 2, nIter = 2)
+  )
+  wrong_total <- primary
+  wrong_total$nTrueNeg[[1]] <- 86L
+  expect_false(
+    env$.simComparePrimaryOutputComplete(wrong_total, nSample = 2, nIter = 2)
+  )
 })
 
 test_that(".simCompareGridOutputStatus catches missing, failed, and empty chunks", {
@@ -1197,6 +1229,13 @@ test_that(".simCompareGridOutputStatus catches missing, failed, and empty chunks
       dplyr::mutate(
         propRespTruth = 0.1,
         propRespEst = 0.1,
+        nCellStim = 100,
+        nPosStim = 12L,
+        nTruePos = 10L,
+        nFalsePos = 2L,
+        nFalseNeg = 1L,
+        nTrueNeg = 87L,
+        unsExprSum = 1.5,
         error = NA_character_
       )
   }
