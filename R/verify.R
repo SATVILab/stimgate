@@ -43,25 +43,11 @@
       "`pathProject` must be a single, non-empty character string specifying a directory."
     )
   }
-  if (
-    !inherits(
-      .data,
-      c(
-        "GatingSet",
-        "GatingHierarchy",
-        "flowFrame",
-        "flowSet",
-        "cytoframe",
-        "cytoset"
-      )
-    )
-  ) {
-    stop(
-      "`.data` must be a valid flow core/workspace object (e.g., GatingSet, flowFrame)."
-    )
+  if (!inherits(.data, "GatingSet")) {
+    stop("`.data` must be a GatingSet after input conversion.")
   }
   if (!is.list(batchList) || length(batchList) == 0) {
-    stop("`batchList` must be a non-empty list of sample indices.")
+    stop("`batchList` must be a non-empty list of sample indices or names.")
   }
 
   # 4. Global-only checks

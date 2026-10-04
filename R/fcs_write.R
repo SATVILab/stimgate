@@ -4,7 +4,9 @@
 #' Uses the gates to write FCS files of marker-positive FCS files.
 #'
 #' @param pathProject character. Path to project directory.
-#' @param .data GatingSet. GatingSet object containing the flow cytometry data.
+#' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+#'   list or data.frame Cytometry input as accepted by [gateStim()], in
+#'   the same sample order used for gating.
 #' @param indBatchList list. List of indices grouped by batch, with the
 #'   unstimulated sample first in each element (as for `batchList` in
 #'   `gateStim()`).
@@ -107,6 +109,10 @@ writeStimFCS <- function(
   }
   if (popUnspecified && is.null(gateTbl)) {
     message(paste0("Using population '", pop, "' from project directory."))
+  }
+
+  if (!is.null(.data)) {
+    .data <- .asStimGatingSet(.data, pop)
   }
 
   # get gates

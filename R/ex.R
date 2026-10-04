@@ -140,8 +140,10 @@
 #'   sampleData directory and return them as a tibble with sample metadata
 #'   columns.
 #' @param pathProject character Path to project.
-#' @param .data GatingSet or NULL GatingSet object to extract expression data
-#'   from. Default is NULL.
+#' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+#'   list, data.frame or NULL Cytometry input as accepted by [gateStim()], in
+#'   the same sample order used for gating. NULL uses saved expression where
+#'   supported. Default: NULL.
 #' @param pop character or NULL Population name(s). Default is detected from
 #'   project sampleData.
 #' @param ind character or NULL Index/indices of samples. Default is detected
@@ -218,6 +220,9 @@ getStimExpr <- function(
     stop("Must not specify both marker and chnl")
   }
   .assertStringVector(pop)
+  if (!is.null(.data)) {
+    .data <- .asStimGatingSet(.data, pop)
+  }
   exList <- purrr::map(pop, function(popCurr) {
     indCurrVec <- as.character(ind %||% .getExProjectInd(pathProject, popCurr))
     .assertStringVector(indCurrVec)
@@ -232,7 +237,7 @@ getStimExpr <- function(
       }
       .assertStringVector(chnl)
       ex <- .dataGetExInit(
-        .data,
+        if (is.null(.data)) NULL else .data[[as.integer(indCurr)]],
         popCurr,
         chnl,
         indCurr,

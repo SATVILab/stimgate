@@ -26,8 +26,10 @@ getStimExpr(
 \arguments{
 \item{pathProject}{character Path to project.}
 
-\item{.data}{GatingSet or NULL GatingSet object to extract expression data
-from. Default is NULL.}
+\item{.data}{GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+list, data.frame or NULL Cytometry input as accepted by \code{\link[=gateStim]{gateStim()}}, in
+the same sample order used for gating. NULL uses saved expression where
+supported. Default: NULL.}
 
 \item{pop}{character or NULL Population name(s). Default is detected from
 project sampleData.}

@@ -398,6 +398,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `cpp11.R`: Automatically generated C++ wrapper functions via `cpp11`.
   - `cyt_pos_gates-helper.R`: Helper functions for cytokine-positive cell gates.
   - `cyt_pos_gates.R`: Functions for more aggressive gates applied to cytokine-positive cells.
+  - `data_input.R`: Normalise supported cytometry inputs to a GatingSet.
   - `debug.R`: Debugging utilities (`.debug()`) and global variable declarations.
   - `profile.R`: Structured debug timing, incremental persistence and final collation helpers.
   - `zz_profile_instrumentation.R`: Debug-only profiling wrappers around selected workflow boundaries.
@@ -582,6 +583,14 @@ allowed per marker, whereas `calcCytPosGates` is global-only and rejected there.
 Threshold sharing is controlled by logical `clusterGates`. Do not restore the
 removed tuning arguments on `gateStim()` or the dead `gateQuant` / `maxPosProbX`
 settings.
+
+Cytometry entry points (`gateStim()`, `plotStim()`, `writeStimFCS()` and
+`getStimExpr()`) normalise inputs with `.asStimGatingSet()`. Accepted inputs are
+GatingSets, flowSets/cytosets, individual frames, FCS paths/directories, numeric
+matrix/data-frame lists and long data frames with a `sample` column. Only
+GatingSets support non-root populations, including per-marker overrides.
+Matrix channel descriptions equal column names; no gating transformation is
+added. Character `batchList` sample names resolve to indices before persistence.
 
 Vectorised gate-line layers must preserve overlapping lines for coincident
 thresholds: give each line a distinct group, since ggplot2 deduplicates identical

@@ -4,7 +4,10 @@
 #' with their gates.
 #'
 #' @param ind numeric vector. Specifies indices in `.data` to plot.
-#' @param .data GatingSet. Same GatingSet passed to `gateStim`.
+#' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+#'   list, data.frame or NULL Cytometry input as accepted by [gateStim()], in
+#'   the same sample order used for gating. NULL uses saved expression where
+#'   supported.
 #' @param pathProject character.
 #' Path to the project directory used for `gateStim`.
 #' @param marker character vector of length one or two. Specifies markers
@@ -105,6 +108,9 @@ plotStim <- function(
   }
   if (length(pop) == 0L || !nzchar(pop)) {
     stop("No population found for plotting gates")
+  }
+  if (!is.null(.data)) {
+    .data <- .asStimGatingSet(.data, pop)
   }
   # getStimExpr arguments shared by every plot
   exArgs <- list(
