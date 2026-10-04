@@ -17,7 +17,7 @@ getBatchList(fnTblInfo, colGrp, colStim, unsChr, colNCell, minCell)
 
 \item{colNCell}{character Column containing sample cell counts.}
 
-\item{minCell}{numeric Minimum cell count to retain a sample.}
+\item{minCell}{numeric Minimum cell count to keep a sample.}
 }
 \value{
 A named list of integer row indices per batch. Names join group values

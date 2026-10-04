@@ -40,7 +40,7 @@ NULL uses all channels in the gate table. Default: NULL.}
 \item{gateTbl}{data.frame or NULL Gates with \code{chnl}, \code{batch}, \code{ind}, \code{gate}
 and, for refined gates, \code{gateCyt}. NULL reads saved gates. Default: NULL.}
 
-\item{transFn}{function or NULL Transformation of retained expression before
+\item{transFn}{function or NULL Transformation applied to the selected cells before
 export. Default: NULL.}
 
 \item{transChnl}{character vector or NULL Columns to transform; NULL transforms
@@ -63,11 +63,11 @@ Default: "min".}
 \value{
 Invisibly, a tibble with one row per sample and columns \code{ind}, \code{batch},
 \code{fileName}, \code{nCellPos}, \code{written}, \code{reason}. The \code{pathDirSave} attribute holds
-the output path. Samples with no retained cells have no FCS file.
+the output path. Samples with no positive cells get no FCS file.
 }
 \description{
 Select positive cells using saved or supplied gates and write
-one FCS file per sample with retained cells, plus \code{manifest.csv}.
+one FCS file per sample that has positive cells, plus \code{manifest.csv}.
 }
 \examples{
 exampleData <- getExampleData()

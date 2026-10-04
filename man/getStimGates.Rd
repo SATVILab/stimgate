@@ -9,22 +9,23 @@ getStimGates(pathProject, pop = NULL, marker = NULL, chnl = NULL)
 \arguments{
 \item{pathProject}{character Project directory from \code{\link[=gateStim]{gateStim()}}.}
 
-\item{pop}{character or NULL Populations to retain; NULL selects all.
+\item{pop}{character or NULL Populations to keep; NULL keeps all.
 Default: NULL.}
 
-\item{marker}{character or NULL Marker labels to retain; takes precedence
+\item{marker}{character or NULL Marker labels to keep; takes precedence
 over \code{chnl}. Default: NULL (all markers).}
 
-\item{chnl}{character or NULL Channels to retain. Default: NULL (all channels).}
+\item{chnl}{character or NULL Channels to keep. Default: NULL (all channels).}
 }
 \value{
 A tibble of stimulated-sample gates with identifiers \code{pop}, \code{marker},
-\code{chnl}, \code{batch}, \code{ind}, \code{gateName}, threshold \code{gate}, and refinement and
-threshold-provenance columns when available.
+\code{chnl}, \code{batch}, \code{ind}, \code{gateName}, the gate value \code{gate}, and, when available,
+the cytokine-positive gate \code{gateCyt} and columns recording how each gate
+was found.
 }
 \description{
 Read final gates saved by \code{\link[=gateStim]{gateStim()}}, optionally selecting
-populations and markers. For threshold diagnostics, use \code{\link[=getStimGatesDetailed]{getStimGatesDetailed()}}.
+populations and markers. For more detail on how gates were chosen, use \code{\link[=getStimGatesDetailed]{getStimGatesDetailed()}}.
 }
 \examples{
 exampleData <- getExampleData()

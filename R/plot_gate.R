@@ -17,14 +17,14 @@
 #' @param axisLab character vector or NULL Axis labels, named by marker/channel
 #'   or in their order. Default: NULL (marker/channel names).
 #' @param excMin logical Exclude minimum expression values and show densities
-#'   scaled by the retained fraction alongside raw densities. Default: TRUE.
+#'   scaled by the fraction of cells kept, alongside the unscaled densities. Default: TRUE.
 #' @param limitsExpand list or NULL Axis limits to expand to, e.g.
 #'   `list(x = c(0, 5), y = c(0, 5))`. Default: NULL.
 #' @param limitsEqual logical Give bivariate axes equal ranges. Default: FALSE.
 #' @param grid logical Arrange plots in a grid. Default: TRUE.
 #' @param gridNCol integer Grid columns. Default: 2.
 #' @param showGate logical Draw gate lines. Default: TRUE.
-#' @param minCell numeric Minimum retained cell count to plot a sample.
+#' @param minCell numeric Minimum number of cells needed to plot a sample.
 #'   Default: 10.
 #' @inheritParams getStimExpr
 #' @return A ggplot grid if `grid = TRUE`; otherwise a list of bivariate plots

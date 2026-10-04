@@ -28,7 +28,7 @@ getStimExpr(
 
 \item{.data}{GatingSet, other input accepted by \code{\link[=gateStim]{gateStim()}}, or NULL Data
 passed to \code{\link[=gateStim]{gateStim()}}, in the same sample order; used only when
-expression is not cached. Default: NULL.}
+the expression values were not saved. Default: NULL.}
 
 \item{pop}{character or NULL Population names; NULL selects all saved
 populations. Default: NULL.}
@@ -74,11 +74,11 @@ NULL transforms all expression columns. Default: NULL.}
 NULL transforms all expression columns. Default: NULL.}
 }
 \value{
-A tibble with one row per retained cell, \code{pop}, \code{ind}, and expression
+A tibble with one row per selected cell, \code{pop}, \code{ind}, and expression
 columns named by channel (or marker when \code{marker} is supplied). Empty
 selections have zero rows. The \code{nCellPos} attribute is a tibble with \code{pop},
 \code{ind}, \code{nCellPos} for every requested population/sample pair; \code{probGMin}
-records the fraction retained by minimum-expression filtering.
+records the fraction of cells kept after removing minimum-expression cells.
 }
 \description{
 Read expression saved by \code{\link[=gateStim]{gateStim()}}, optionally selecting

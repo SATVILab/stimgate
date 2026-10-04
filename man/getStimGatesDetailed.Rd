@@ -2,7 +2,7 @@
 % Please edit documentation in R/gates.R
 \name{getStimGatesDetailed}
 \alias{getStimGatesDetailed}
-\title{Read threshold diagnostics}
+\title{Read details of how gates were chosen}
 \usage{
 getStimGatesDetailed(
   pathProject,
@@ -16,11 +16,11 @@ getStimGatesDetailed(
 \arguments{
 \item{pathProject}{character Project directory from \code{\link[=gateStim]{gateStim()}}.}
 
-\item{pop}{character or NULL Populations to retain. Default: NULL (all).}
+\item{pop}{character or NULL Populations to keep. Default: NULL (all).}
 
-\item{marker}{character or NULL Marker labels to retain. Default: NULL (all).}
+\item{marker}{character or NULL Marker labels to keep. Default: NULL (all).}
 
-\item{chnl}{character or NULL Channels to retain. Default: NULL (all).}
+\item{chnl}{character or NULL Channels to keep. Default: NULL (all).}
 
 \item{save}{logical Save the returned table as RDS. Default: FALSE.}
 
@@ -28,16 +28,17 @@ getStimGatesDetailed(
 \code{file.path(pathProject, "gatesDetailed.rds")}. Default: NULL.}
 }
 \value{
-A tibble with one row per saved diagnostic, including \code{pop}, \code{marker},
-\code{chnl}, threshold and frequency columns, and source-file metadata.
+A tibble with one row per saved gate, including \code{pop}, \code{marker},
+\code{chnl}, gate and frequency columns, and the file each row was read from.
 }
 \description{
-Read saved condition, sample and cluster threshold diagnostics
+Read the intermediate gates saved at each step (per condition,
+per sample and per cluster)
 with background-subtracted frequencies. Use \code{\link[=getStimGates]{getStimGates()}} for final gates.
 }
 \details{
-Enable diagnostic saving with \code{Sys.setenv(STIMGATE_INTERMEDIATE = "all")}
-before running \code{\link[=gateStim]{gateStim()}}. Without saved diagnostics, returns an empty tibble.
+To save these details, run \code{Sys.setenv(STIMGATE_INTERMEDIATE = "all")}
+before \code{\link[=gateStim]{gateStim()}}. If nothing was saved, an empty tibble is returned.
 }
 \examples{
 exampleData <- getExampleData()

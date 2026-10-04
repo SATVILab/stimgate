@@ -1,15 +1,16 @@
 #' @title Read stimulation gates
 #' @description Read final gates saved by [gateStim()], optionally selecting
-#'   populations and markers. For threshold diagnostics, use [getStimGatesDetailed()].
+#'   populations and markers. For more detail on how gates were chosen, use [getStimGatesDetailed()].
 #' @param pathProject character Project directory from [gateStim()].
-#' @param pop character or NULL Populations to retain; NULL selects all.
+#' @param pop character or NULL Populations to keep; NULL keeps all.
 #'   Default: NULL.
-#' @param marker character or NULL Marker labels to retain; takes precedence
+#' @param marker character or NULL Marker labels to keep; takes precedence
 #'   over `chnl`. Default: NULL (all markers).
-#' @param chnl character or NULL Channels to retain. Default: NULL (all channels).
+#' @param chnl character or NULL Channels to keep. Default: NULL (all channels).
 #' @return A tibble of stimulated-sample gates with identifiers `pop`, `marker`,
-#'   `chnl`, `batch`, `ind`, `gateName`, threshold `gate`, and refinement and
-#'   threshold-provenance columns when available.
+#'   `chnl`, `batch`, `ind`, `gateName`, the gate value `gate`, and, when available,
+#'   the cytokine-positive gate `gateCyt` and columns recording how each gate
+#'   was found.
 #' @examples
 #' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
@@ -120,21 +121,22 @@ getStimGates <- function(
 }
 
 
-#' @title Read threshold diagnostics
-#' @description Read saved condition, sample and cluster threshold diagnostics
+#' @title Read details of how gates were chosen
+#' @description Read the intermediate gates saved at each step (per condition,
+#'   per sample and per cluster)
 #'   with background-subtracted frequencies. Use [getStimGates()] for final gates.
 #' @param pathProject character Project directory from [gateStim()].
-#' @param pop character or NULL Populations to retain. Default: NULL (all).
-#' @param marker character or NULL Marker labels to retain. Default: NULL (all).
-#' @param chnl character or NULL Channels to retain. Default: NULL (all).
+#' @param pop character or NULL Populations to keep. Default: NULL (all).
+#' @param marker character or NULL Marker labels to keep. Default: NULL (all).
+#' @param chnl character or NULL Channels to keep. Default: NULL (all).
 #' @param save logical Save the returned table as RDS. Default: FALSE.
 #' @param pathSave character or NULL Output path; NULL uses
 #'   `file.path(pathProject, "gatesDetailed.rds")`. Default: NULL.
 #' @details
-#' Enable diagnostic saving with `Sys.setenv(STIMGATE_INTERMEDIATE = "all")`
-#' before running [gateStim()]. Without saved diagnostics, returns an empty tibble.
-#' @return A tibble with one row per saved diagnostic, including `pop`, `marker`,
-#'   `chnl`, threshold and frequency columns, and source-file metadata.
+#' To save these details, run `Sys.setenv(STIMGATE_INTERMEDIATE = "all")`
+#' before [gateStim()]. If nothing was saved, an empty tibble is returned.
+#' @return A tibble with one row per saved gate, including `pop`, `marker`,
+#'   `chnl`, gate and frequency columns, and the file each row was read from.
 #' @examples
 #' exampleData <- getExampleData()
 #' gs <- flowWorkspace::load_gs(exampleData$pathGs)
