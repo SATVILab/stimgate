@@ -1,3 +1,16 @@
+# stimgate 0.99.15
+
+## Performance
+
+- `gateStim()` computes combination gate statistics in a single pass over each
+  tube, rather than once per marker combination, and streams expression by
+  channel instead of loading a whole batch.
+
+## Bug fixes
+
+- In combination statistics, stimulated samples without any gates now report
+  `NA` counts (with cell counts retained) rather than counts of zero.
+
 # stimgate 0.99.14
 
 ## New features
