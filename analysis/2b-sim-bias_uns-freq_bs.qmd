@@ -749,7 +749,7 @@ if (isTRUE(run_plots)) {
 
 ### Over- and under-estimates across bias settings
 
-The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: each statistic is calculated separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero. Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth.
+The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: each statistic is calculated separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth.
 
 ```{r}
 #| label: fig-signed-error
