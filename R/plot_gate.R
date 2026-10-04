@@ -4,7 +4,8 @@
 #' markers, also draw hexbin plots (requires the hexbin package).
 #'
 #' @param ind numeric vector Sample indices to plot.
-#' @param .data GatingSet Data used for gating; supplies uncached expression.
+#' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+#'   list or data.frame Data passed to [gateStim()], in the same sample order.
 #' @param pathProject character Project directory from [gateStim()].
 #' @param marker character vector or NULL One or two marker labels to plot;
 #'   supply either `marker` or `chnl`. Default: NULL.
@@ -71,6 +72,9 @@ plotStim <- function(
   }
   if (length(pop) == 0L || !nzchar(pop)) {
     stop("No population found for plotting gates")
+  }
+  if (!is.null(.data)) {
+    .data <- .asStimGatingSet(.data, pop)
   }
   # getStimExpr arguments shared by every plot
   exArgs <- list(

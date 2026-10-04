@@ -25,7 +25,16 @@ exampleData$batchList
 exampleData$marker
 ```
 
-For your own data, supply a `flowWorkspace` GatingSet with consistent channels across tubes. In each `batchList` element, put the unstimulated tube index first, followed by its matched stimulated tubes.
+### Your own data
+
+`.data` can be a GatingSet, a flowSet/cytoset or flowFrame, FCS file paths or a directory of FCS files, a list of numeric matrices or data frames (one per tube, cells by channels), or one data frame with a `sample` column. Each element of `batchList` lists one donor's tubes, by index or sample name, with the unstimulated tube first:
+
+```{r own-data, eval=FALSE}
+tubes <- list(uns = unsMatrix, stim = stimMatrix) # columns named by channel
+batchList <- list(donor1 = c("uns", "stim"))
+```
+
+StimGate does not transform data, so supply it on the scale you want gated. Only GatingSets carry populations other than `"root"`. With matrices, column names serve as both channels and markers. See `?gateStim` for how sample order is set for each input type. Pass the same data to `plotStim()` and `writeStimFCS()` later.
 
 ## 2. Find gates
 

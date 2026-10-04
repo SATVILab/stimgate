@@ -2,7 +2,7 @@
 % Please edit documentation in R/ex.R
 \name{getStimExpr}
 \alias{getStimExpr}
-\title{Read cell expression values}
+\title{Read saved expression data from project}
 \usage{
 getStimExpr(
   pathProject,
@@ -24,71 +24,83 @@ getStimExpr(
 )
 }
 \arguments{
-\item{pathProject}{character Project directory from \code{\link[=gateStim]{gateStim()}}.}
+\item{pathProject}{character Path to project.}
 
-\item{.data}{GatingSet or NULL Data to read if expression is not cached.
-Default: NULL.}
+\item{.data}{GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+list, data.frame or NULL Cytometry input as accepted by \code{\link[=gateStim]{gateStim()}}, in
+the same sample order used for gating. NULL uses saved expression where
+supported. Default: NULL.}
 
-\item{pop}{character or NULL Population names; NULL selects all saved
-populations. Default: NULL.}
+\item{pop}{character or NULL Population name(s). Default is detected from
+project sampleData.}
 
-\item{ind}{character or numeric vector or NULL Sample indices; NULL selects
-all saved samples, including controls. Default: NULL.}
+\item{ind}{character or NULL Index/indices of samples. Default is detected
+from project sampleData.}
 
-\item{chnl}{character or NULL Channels to return; NULL selects all saved
-channels unless \code{marker} is supplied. Default: NULL.}
+\item{chnl}{character or NULL Channel name(s) to return. Default is
+detected from project sampleData.}
 
-\item{marker}{character or NULL Marker labels to return; cannot be combined
-with \code{chnl}. Default: NULL.}
+\item{marker}{character or NULL Marker name(s) to return. Cannot be
+specified with \code{chnl}. Default is NULL.}
 
-\item{bias}{logical Add the saved \code{biasUns} shift to controls. Default: FALSE.}
+\item{bias}{logical Whether to add bias to unstimulated sample used in the
+gating. Default is \code{FALSE}.}
 
-\item{excMin}{logical Exclude cells at the minimum of any requested channel.
-Default: FALSE.}
+\item{excMin}{logical Whether to exclude cells with the minimum
+expression for any channels. Default is FALSE.}
 
-\item{combnExc}{list or NULL Channel combinations to exclude: each vector
-specifies positive channels, with other gating channels negative.
-Applies only when gating channels are supplied. Default: NULL.}
+\item{combnExc}{list or NULL Combinations of channels to exclude. Default
+is NULL.}
 
-\item{chnlGate}{character or NULL Channels used to select positive cells;
-include these in the requested expression columns. Default: NULL.}
+\item{chnlGate}{character or NULL Channel name(s) to use for gating.
+Cannot be specified with \code{marker_gate}. Default is NULL.}
 
-\item{markerGate}{character or NULL Marker labels used to select positive
-cells; cannot be combined with \code{chnlGate}. Default: NULL.}
+\item{markerGate}{character or NULL Marker name(s) to use for gating.
+Cannot be specified with \code{chnl_gate}. Default is NULL.}
 
-\item{gateTypeCytPos}{character Positivity rule: "base" uses the main gate;
-"cyt" also admits cells above a refined gate when another marker clears
-its main gate. Default: "cyt".}
+\item{gateTypeCytPos}{character Gate type to use for cytokine-positive
+cells. Default is "cyt".}
 
-\item{mult}{logical Require positivity for at least two gating markers.
-Applies only when \code{chnlGate} or \code{markerGate} is supplied. Default: FALSE.}
+\item{mult}{logical Whether to return only multi-functional cells (positive
+for multiple markers). Default is FALSE.}
 
-\item{transFn}{function or NULL Transformation applied to the expression
-tibble before adding metadata columns. Default: NULL.}
+\item{transFn}{function or NULL Transformation function to apply to
+expression values. Default is NULL.}
 
-\item{transChnl}{character or NULL Columns to transform when using channels;
-NULL transforms all expression columns. Default: NULL.}
+\item{transChnl}{character or NULL Channel name(s) to transform when using
+channel names. Default is NULL (transforms all channels).}
 
-\item{transMarker}{character or NULL Columns to transform when using markers;
-NULL transforms all expression columns. Default: NULL.}
+\item{transMarker}{character or NULL Marker name(s) to transform when
+using marker names. Default is NULL (transforms all markers).}
 }
 \value{
-A tibble with one row per retained cell, \code{pop}, \code{ind}, and expression
-columns named by channel (or marker when \code{marker} is supplied). Empty
-selections have zero rows. The \code{nCellPos} attribute is a tibble with \code{pop},
-\code{ind}, \code{nCellPos} for every requested population/sample pair; \code{probGMin}
-records the fraction retained by minimum-expression filtering.
+A tibble with columns \code{pop}, \code{ind} and one column per
+requested channel. Rows correspond to cells. Samples with no positive cells
+have zero rows in the tibble, and cell counts for every requested
+population and sample combination are attached as the \code{"nCellPos"}
+attribute (a tibble with columns \code{pop}, \code{ind}, and
+\code{nCellPos}).
 }
 \description{
-Read expression saved by \code{\link[=gateStim]{gateStim()}}, optionally selecting
-stimulation-positive cells. Supply marker labels or channel names.
+Read channel expression vectors saved under a project's
+sampleData directory and return them as a tibble with sample metadata
+columns.
 }
 \examples{
-exampleData <- getExampleData()
-gs <- flowWorkspace::load_gs(exampleData$pathGs)
-pathProject <- gateStim(
-  tempfile("stimgate_"), gs, exampleData$batchList,
-  marker = exampleData$marker
+\dontrun{
+tmp <- tempdir()
+dir.create(file.path(tmp, "sampleData", "POP1", "ind_1"),
+  recursive = TRUE
 )
-getStimExpr(pathProject, marker = exampleData$marker)
+saveRDS(
+  c(1, 2, 3),
+  file.path(tmp, "sampleData", "POP1", "ind_1", "chnl_BC1.rds")
+)
+saveRDS(
+  c(4, 5, 6),
+  file.path(tmp, "sampleData", "POP1", "ind_1", "chnl_BC2.rds")
+)
+getStimExpr(tmp)
+getStimExpr(tmp, chnl = "BC1")
+}
 }

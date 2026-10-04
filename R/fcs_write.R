@@ -2,7 +2,8 @@
 #' @description Select positive cells using saved or supplied gates and write
 #'   one FCS file per sample with retained cells, plus `manifest.csv`.
 #' @param pathProject character Project directory from [gateStim()].
-#' @param .data GatingSet Cytometry data used for gating.
+#' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+#'   list or data.frame Data passed to [gateStim()], in the same sample order.
 #' @param indBatchList list Sample indices grouped by batch, control first.
 #' @param pathDirSave character Output directory; existing contents are deleted.
 #' @param pop character or NULL Population to export. NULL uses the single saved
@@ -71,6 +72,10 @@ writeStimFCS <- function(
   }
   if (popUnspecified && is.null(gateTbl)) {
     message(paste0("Using population '", pop, "' from project directory."))
+  }
+
+  if (!is.null(.data)) {
+    .data <- .asStimGatingSet(.data, pop)
   }
 
   # get gates

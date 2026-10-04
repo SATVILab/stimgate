@@ -3,16 +3,19 @@
 #'   unstimulated control from the same donor or batch. Save gates and
 #'   background-subtracted statistics to a project directory.
 #' @param pathProject character Directory for results; created if needed.
-#' @param .data GatingSet Cytometry data containing stimulated and control
-#'   samples with consistent channel names.
-#' @param batchList list Sample indices grouped by donor or batch, with the
-#'   unstimulated control first in each vector, e.g. `list(donor1 = c(3, 1, 2))`.
-#'   List names identify batches.
+#' @param .data GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+#'   list or data.frame Cytometry samples: a GatingSet or other flowCore/
+#'   flowWorkspace object, FCS file paths or one FCS directory, a list of
+#'   numeric matrices or data frames (cells by channels), or one data frame
+#'   with a `sample` column. See Details.
+#' @param batchList list Samples grouped by donor or batch, as indices or
+#'   sample names, with the unstimulated control first in each vector, e.g.
+#'   `list(donor1 = c(3, 1, 2))`. List names identify batches.
 #' @param marker character vector or NULL Marker labels to gate; supply
 #'   either `marker` or `chnl`. Default: NULL.
 #' @param chnl character vector or NULL Channel names to gate. Default: NULL.
-#' @param popGate character Population(s) already present in `.data`.
-#'   Default: "root" (all cells).
+#' @param popGate character Population(s) already present in `.data`; only
+#'   GatingSets have populations other than "root". Default: "root" (all cells).
 #' @param biasUns numeric or NULL Upward shift of unstimulated expression.
 #'   NULL uses one quarter of `bwFallback`, scaled by `biasUnsFactor`.
 #'   Positive shifts make gating more conservative. Default: NULL.
@@ -30,6 +33,20 @@
 #' Thresholds can be shared across similar distributions, then refined using
 #' cells positive for another cytokine. Read results with [getStimGates()],
 #' [getStimStats()] and [getStimExpr()]; inspect them with [plotStim()].
+#'
+#' **Input data.** Non-GatingSet inputs are converted to a GatingSet with only
+#' the "root" population. StimGate does not transform data (e.g. arcsinh), so
+#' supply values on the scale to gate. Sample order, which `batchList` indices
+#' refer to, is:
+#' * FCS directory: `.fcs` files (any case, not recursive) in sorted order;
+#'   a vector of paths keeps its order. Sample names are file basenames.
+#' * List of matrices/data frames: list order; names are sample names
+#'   (default `sample1`, `sample2`, ...). Columns must have the same unique
+#'   names in every sample and serve as both channels and markers.
+#' * Data frame with `sample`: factor-level order, otherwise first appearance.
+#'
+#' Pass the same data, in the same order, to [plotStim()], [getStimExpr()]
+#' and [writeStimFCS()].
 #'
 #' For parallel gating, set `parallel = TRUE` and choose a future plan, e.g.
 #' `future::plan(future::multisession, workers = 4)`. All workers must be able
@@ -55,6 +72,15 @@
 #'     list(list(bw = 0.12, biasUns = 0)), exampleData$marker[1]
 #'   )
 #' )
+#'
+#' # Gate in-memory matrices; column names act as channels and markers
+#' matrices <- lapply(seq_along(gs), function(i) {
+#'   flowCore::exprs(flowWorkspace::gh_pop_get_data(gs[[i]]))
+#' })
+#' gateStim(
+#'   tempfile("matrix_gating_"), matrices, exampleData$batchList,
+#'   chnl = exampleData$chnl, control = stimControl(calcCytPosGates = FALSE)
+#' )
 #' @export
 gateStim <- function(
   pathProject,
@@ -69,7 +95,8 @@ gateStim <- function(
   markerControl = NULL,
   parallel = FALSE
 ) {
-  force(.data)
+  isGatingSet <- inherits(.data, "GatingSet")
+  .data <- .asStimGatingSet(.data, popGate)
   if (Sys.getenv("STIMGATE_DEBUG") == "") {
     Sys.setenv("STIMGATE_DEBUG" = "FALSE")
     on.exit(Sys.unsetenv("STIMGATE_DEBUG"), add = TRUE)
@@ -127,6 +154,24 @@ gateStim <- function(
     control = control,
     markerControl = markerControl
   )
+
+  if (!isGatingSet) {
+    .checkStimInputPop(unlist(lapply(markerControl, function(x) x$popGate)))
+  }
+  sampleNames <- flowWorkspace::sampleNames(.data)
+  batchList <- lapply(batchList, function(batch) {
+    if (!is.character(batch)) {
+      return(batch)
+    }
+    indices <- match(batch, sampleNames)
+    if (anyNA(indices)) {
+      stop(
+        "Unknown sample name(s) in `batchList`: ",
+        paste(batch[is.na(indices)], collapse = ", ")
+      )
+    }
+    indices
+  })
 
   calcCytPosGates <- control$calcCytPosGates
 

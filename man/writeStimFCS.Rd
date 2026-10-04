@@ -2,7 +2,7 @@
 % Please edit documentation in R/fcs_write.R
 \name{writeStimFCS}
 \alias{writeStimFCS}
-\title{Export stimulation-positive cells as FCS files}
+\title{Write FCS files of marker-positive FCS files}
 \usage{
 writeStimFCS(
   pathProject,
@@ -21,61 +21,93 @@ writeStimFCS(
 )
 }
 \arguments{
-\item{pathProject}{character Project directory from \code{\link[=gateStim]{gateStim()}}.}
+\item{pathProject}{character. Path to project directory.}
 
-\item{.data}{GatingSet Cytometry data used for gating.}
+\item{.data}{GatingSet, flowSet, cytoset, flowFrame, cytoframe, character,
+list or data.frame Cytometry input as accepted by \code{\link[=gateStim]{gateStim()}}, in
+the same sample order used for gating.}
 
-\item{pop}{character or NULL Population to export. NULL uses the single saved
-population, or "root" when \code{gateTbl} is supplied. Default: NULL.}
+\item{pop}{character. Population that was gated on.}
 
-\item{indBatchList}{list Sample indices grouped by batch, control first.}
+\item{indBatchList}{list. List of indices grouped by batch.}
 
-\item{pathDirSave}{character Output directory; existing contents are deleted.}
+\item{pathDirSave}{character. Directory path to save the FCS files to.}
 
-\item{chnl}{character vector or NULL Channels used to select positive cells;
-NULL uses all channels in the gate table. Default: NULL.}
+\item{chnl}{character vector. Specific channels to gate on.}
 
-\item{gateTbl}{data.frame or NULL Gates with \code{chnl}, \code{batch}, \code{ind}, \code{gate}
-and, for refined gates, \code{gateCyt}. NULL reads saved gates. Default: NULL.}
+\item{gateTbl}{data.frame. Pre-computed gate table, if available.}
 
-\item{transFn}{function or NULL Transformation of retained expression before
-export. Default: NULL.}
+\item{transFn}{function. Transformation function to apply.}
 
-\item{transChnl}{character vector or NULL Columns to transform; NULL transforms
-all expression columns. Default: NULL.}
+\item{transChnl}{character vector. Columns to transform.}
 
-\item{combnExc}{list or NULL Channel combinations to exclude: each vector
-specifies positive channels, with other selected channels negative.
-Default: NULL.}
+\item{combnExc}{list. Combinations of channels to exclude.}
 
-\item{gateTypeCytPos}{character Positivity rule: "base" uses main gates;
-"cyt" also uses refined gates for cells positive for another marker.
-Default: "cyt".}
+\item{gateTypeCytPos}{character. Gate type to use for cytokine-positive cells.}
 
-\item{mult}{logical Require positivity for at least two markers. Default: FALSE.}
+\item{mult}{logical. Whether cells must be multi-positive.}
 
-\item{gateUnsMethod}{character Summary of stimulated gates used for missing
-control gates: "min", "max", "mean", "tmean" (20\% trimmed mean), or "med".
-Default: "min".}
+\item{gateUnsMethod}{character. Method to calculate unstimulated thresholds.}
 }
 \value{
-Invisibly, a tibble with one row per sample and columns \code{ind}, \code{batch},
-\code{fileName}, \code{nCellPos}, \code{written}, \code{reason}. The \code{pathDirSave} attribute holds
-the output path. Samples with no retained cells have no FCS file.
+A tibble manifest with one row per sample, invisibly. The output
+directory path is attached as the attribute \code{"pathDirSave"}.
 }
 \description{
-Select positive cells using saved or supplied gates and write
-one FCS file per sample with retained cells, plus \code{manifest.csv}.
+Uses the gates to write FCS files of marker-positive FCS files.
+}
+\details{
+This function processes flow cytometry data to identify and export cytokine-positive
+cells to FCS files. It requires that gates have been pre-computed using
+\code{\link{gateStim}} or that a complete gate table is provided.
+
+The function will create the output directory and write FCS files for samples
+that contain cytokine-positive cells. If no positive cells are found in a sample,
+no FCS file will be written for that sample.
 }
 \examples{
-exampleData <- getExampleData()
-gs <- flowWorkspace::load_gs(exampleData$pathGs)
-pathProject <- gateStim(
-  tempfile("stimgate_"), gs, exampleData$batchList,
-  marker = exampleData$marker
-)
-manifest <- writeStimFCS(
-  pathProject, gs, indBatchList = exampleData$batchList,
-  pathDirSave = tempfile("positive_fcs_")
-)
+\dontrun{
+# Complete workflow example
+# Load your GatingSet (gs) and define batch structure
+# batchList <- list(batch1 = c(1, 2, 3), batch2 = c(4, 5, 6))
+# where the first element in each batch is the unstimulated sample
+
+# First, run gating to create gates
+pathProject <- tempfile("stimgate_project")
+# gateStim(
+#   .data = gs,
+#   pathProject = pathProject,
+#   popGate = "root",
+#   batchList = batchList,
+#   marker = c("IL2", "IFNg")  # your cytokine markers
+# )
+
+# Then write FCS files of cytokine-positive cells
+pathOutput <- tempfile("fcs_output")
+# writeStimFCS(
+#   pathProject = pathProject,
+#   .data = gs,
+#   indBatchList = batchList,
+#   pathDirSave = pathOutput,
+#   chnl = c("IL2", "IFNg")
+# )
+
+# Alternative: provide your own gate table
+# gateTbl <- data.frame(
+#   chnl = c("IL2", "IFNg"),
+#   marker = c("IL2", "IFNg"),
+#   batch = c(1, 1),
+#   ind = c(1, 1),
+#   gate = c(0.5, 0.3),
+#   gateName = c("gate", "gate")
+# )
+# writeStimFCS(
+#   pathProject = pathProject,
+#   .data = gs,
+#   indBatchList = batchList,
+#   pathDirSave = pathOutput,
+#   chnl = c("IL2", "IFNg"),
+#   gateTbl = gateTbl
+# )
+}
 }

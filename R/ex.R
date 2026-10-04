@@ -149,8 +149,9 @@
 #' @description Read expression saved by [gateStim()], optionally selecting
 #'   stimulation-positive cells. Supply marker labels or channel names.
 #' @param pathProject character Project directory from [gateStim()].
-#' @param .data GatingSet or NULL Data to read if expression is not cached.
-#'   Default: NULL.
+#' @param .data GatingSet, other input accepted by [gateStim()], or NULL Data
+#'   passed to [gateStim()], in the same sample order; used only when
+#'   expression is not cached. Default: NULL.
 #' @param pop character or NULL Population names; NULL selects all saved
 #'   populations. Default: NULL.
 #' @param ind character or numeric vector or NULL Sample indices; NULL selects
@@ -218,6 +219,9 @@ getStimExpr <- function(
     stop("Must not specify both marker and chnl")
   }
   .assertStringVector(pop)
+  if (!is.null(.data)) {
+    .data <- .asStimGatingSet(.data, pop)
+  }
   exList <- purrr::map(pop, function(popCurr) {
     indCurrVec <- as.character(ind %||% .getExProjectInd(pathProject, popCurr))
     .assertStringVector(indCurrVec)
@@ -232,7 +236,7 @@ getStimExpr <- function(
       }
       .assertStringVector(chnl)
       ex <- .dataGetExInit(
-        .data,
+        if (is.null(.data)) NULL else .data[[as.integer(indCurr)]],
         popCurr,
         chnl,
         indCurr,
