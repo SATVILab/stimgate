@@ -193,7 +193,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmpk07wSm/demonstration"
+#> [1] "/tmp/Rtmp5SWz0S/demonstration"
 
 # Customise tuning and override the bandwidth for the first marker
 gateStim(
@@ -218,7 +218,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmpk07wSm/custom-gating"
+#> [1] "/tmp/Rtmp5SWz0S/custom-gating"
 
 # Use in-memory matrices, with channel names also serving as marker labels
 matrices <- lapply(seq_along(gs), function(i) {
@@ -242,7 +242,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmpk07wSm/matrix-gating"
+#> [1] "/tmp/Rtmp5SWz0S/matrix-gating"
 
 # Create plots
 if (requireNamespace("hexbin", quietly = TRUE)) {

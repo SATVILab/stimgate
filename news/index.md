@@ -1,5 +1,13 @@
 # Changelog
 
+## stimgate 0.99.14
+
+### New features
+
+- [`writeStimFCS()`](https://satvilab.github.io/stimgate/reference/writeStimFCS.md)
+  accepts sample names in `indBatchList`, resolved to indices as in
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
+
 ## stimgate 0.99.13
 
 ### Breaking changes
