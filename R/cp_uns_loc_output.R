@@ -58,8 +58,8 @@
       propBs = NA_real_
     ))
   }
-  propStim <- sum(.getCut(exTblStim) >= cp, na.rm = TRUE) / nrow(exTblStim)
-  propUns <- sum(.getCut(exTblUns) >= cp, na.rm = TRUE) / nrow(exTblUns)
+  propStim <- sum(.getCut(exTblStim) > cp, na.rm = TRUE) / nrow(exTblStim)
+  propUns <- sum(.getCut(exTblUns) > cp, na.rm = TRUE) / nrow(exTblUns)
   tibble::tibble(
     nCellStim = nrow(exTblStim),
     nCellUns = nrow(exTblUns),

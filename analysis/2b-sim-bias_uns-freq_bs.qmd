@@ -95,7 +95,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bias_uns", "freq_bs")
-analysis_semantics_version <- "bias-uns-freq-v5"
+analysis_semantics_version <- "bias-uns-freq-v7"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -665,6 +665,12 @@ if (isTRUE(run_plots)) {
           6
         )
         .analysis_print_fig(p)
+        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          ))
       }
     }
   }
@@ -672,6 +678,14 @@ if (isTRUE(run_plots)) {
 ```
 
 ### Relative error averaged over cell counts
+
+Only valid estimates contribute to error statistics. Coverage tables beside each
+figure report all expected samples and the failure fraction; the fallback
+fraction uses all samples with known gate provenance, including failures.
+`n_scenario_valid` gives the number of contributing scenarios. Averaged panels
+show **Mean of scenario medians**, **Mean of scenario 90th percentiles** and
+**Mean of scenario maxima**; signed-direction contributions exclude scenarios
+with no estimates in that direction (the counts are shown separately).
 
 For an overview, average the scenario-level statistics equally over cell
 counts, keeping response probabilities and mismatch settings separate.
@@ -700,6 +714,11 @@ if (isTRUE(run_plots)) {
       ),
       stats = c("median_abs_rel_error", "q90_abs_rel_error", "max_abs_rel_error")
     ) |>
+    dplyr::rename(
+      n_scenario_median = n_scenario_median_abs_rel_error,
+      n_scenario_q90 = n_scenario_q90_abs_rel_error,
+      n_scenario_max = n_scenario_max_abs_rel_error
+    ) |>
     dplyr::mutate(dplyr::across(dplyr::ends_with("_lower"), ~ pmax(.x, 0)))
 
   for (transformation_curr in .analysis_trans_order(bias_uns_error_avg$transformation)) {
@@ -718,7 +737,7 @@ if (isTRUE(run_plots)) {
 
         p <- .simBandwidthBiasRelativeErrorPlot(
           plot_tbl,
-          y_label = "Mean over cell counts of absolute relative error",
+          y_label = "Mean of scenario statistics (absolute relative error)",
           mcse = show_mcse
         )
 
@@ -739,6 +758,12 @@ if (isTRUE(run_plots)) {
           6
         )
         .analysis_print_fig(p)
+        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          ))
       }
     }
   }
@@ -801,6 +826,13 @@ if (isTRUE(run_plots)) {
             6
           )
           .analysis_print_fig(p)
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr,
+              n_cell == n_cell_curr
+            ))
         }
       }
     }
@@ -810,7 +842,7 @@ if (isTRUE(run_plots)) {
 
 ### Over- and under-estimates across bias settings
 
-The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: each statistic is calculated separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth; lines and points are slightly transparent so overlapping curves stay visible. The bandwidth and line-weight legends sit underneath each plot. Error bars come from the sorted errors in each direction; the number of errors in each direction is itself random, so the bars for a rare direction understate the uncertainty a little (the line weight shows how rare it is).
+The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: each statistic is calculated separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale, including errors below -100% for negative background-subtracted estimates, with -100% (0x, an estimate of zero), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth; lines and points are slightly transparent so overlapping curves stay visible. The bandwidth and line-weight legends sit underneath each plot. Error bars come from the sorted errors in each direction; the number of errors in each direction is itself random, so the bars for a rare direction understate the uncertainty a little (the line weight shows how rare it is).
 
 ```{r}
 #| label: signed-error
@@ -867,6 +899,12 @@ if (isTRUE(run_plots)) {
           6
         )
         .analysis_print_fig(p)
+        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          ))
       }
     }
   }
@@ -913,7 +951,7 @@ if (isTRUE(run_plots)) {
 
         p <- .simBandwidthBiasSignedErrorPlot(
           plot_tbl,
-          y_label = "Mean over cell counts of relative error (multiple of true response)",
+          y_label = "Mean of scenario statistics (relative error)",
           mcse = show_mcse
         )
 
@@ -934,6 +972,12 @@ if (isTRUE(run_plots)) {
           6
         )
         .analysis_print_fig(p)
+        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          ))
       }
     }
   }
@@ -996,6 +1040,13 @@ if (isTRUE(run_plots)) {
             6
           )
           .analysis_print_fig(p)
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr,
+              n_cell == n_cell_curr
+            ))
         }
       }
     }
@@ -1102,6 +1153,12 @@ if (isTRUE(run_plots)) {
           6
         )
         .analysis_print_fig(p)
+        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          ))
       }
     }
   }

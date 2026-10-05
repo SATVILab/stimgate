@@ -135,10 +135,10 @@
 
 # Equal-weight average of k independent scenario estimates, each with its own
 # MCSE: estimate = mean, MCSE = sqrt(sum(mcse^2)) / k. Scenarios with a
-# missing estimate are left out (as the plotted averages leave them out); the
+# non-finite estimate are left out (as the plotted averages leave them out); the
 # combined MCSE is NA if any remaining scenario has no MCSE.
 .analysis_mcse_average <- function(estimate, mcse) {
-  keep <- !is.na(estimate)
+  keep <- is.finite(estimate)
   estimate <- estimate[keep]
   mcse <- mcse[keep]
   k <- length(estimate)
@@ -209,7 +209,7 @@
     }
   }
   grouped <- dplyr::group_by(tbl, dplyr::across(dplyr::all_of(group_cols)))
-  out <- dplyr::summarise(grouped, .groups = "drop")
+  out <- dplyr::summarise(grouped, n_scenario = dplyr::n(), .groups = "drop")
   for (s in stats) {
     avg <- dplyr::summarise(
       grouped,
@@ -225,6 +225,7 @@
       ),
       avg
     )
+    out[[paste0("n_scenario_", s)]] <- avg$k
     out[[s]] <- avg$estimate
     out[[paste0(s, "_mcse")]] <- avg$mcse
     out[[paste0(s, "_lower")]] <- avg$lower

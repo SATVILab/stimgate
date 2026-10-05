@@ -658,7 +658,7 @@ test_that("legacy run state resumes at the path recorded in the staged manifest"
   expect_true(ctx$chunk_label %in% names(env$.analysis_read_chunk_statuses(resumed)))
   expect_identical(
     .norm_path(env$.analysis_lock_path(resumed, "promotion")),
-    .norm_path(file.path(legacy_dir, "promotion.lock"))
+    .norm_path(file.path(dirname(resumed$current_dir), "promotion.lock"))
   )
   expect_false(dir.exists(ctx$progress_run_dir))
 })

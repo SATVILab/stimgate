@@ -216,6 +216,7 @@ test_that("sim_trans cache stores settings and rejects mismatched ones", {
   settings <- env$sim_trans_cache_settings(
     settings_tbl, mean_pos_tbl, c("gaussian", "skew", "gamma"), 12345L
   )
+  expect_identical(settings$analysis_semantics_version, "sim-trans-v1")
   path <- file.path(withr::local_tempdir(), "sub", "uni_tbl.rds")
   uni_tbl <- tibble::tibble(F1 = c(0.1, 0.2))
 

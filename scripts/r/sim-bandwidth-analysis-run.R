@@ -518,25 +518,30 @@
 #'
 #' @param tbl data.frame Collated analysis 2 outputs.
 #' @param grid_cols character Grid column names.
+#' @param n_sample_expected integer Expected final samples per iteration.
+#' @param n_iter_expected integer Expected iterations per simulation.
 #' @return list `bw_tbl_results_raw` and `bw_tbl_results_summary`.
-.simBandwidthFreqBsGlobalCollate <- function(tbl, grid_cols) {
-  if (all(is.na(tbl$threshold))) {
-    stop(
-      "No valid threshold results were collated. ",
-      "Check the progress log for simulation-level errors."
-    )
+.simBandwidthFreqBsGlobalCollate <- function(
+  tbl, grid_cols, n_sample_expected = NULL, n_iter_expected = NULL
+) {
+  provenance <- c("locGenerated", "locGeneratedDirect", "locSource", "locReason")
+  if (!is.null(n_sample_expected) && !all(provenance %in% names(tbl))) {
+    stop("Missing final gate provenance columns.")
   }
   results_raw <- tbl |>
-    dplyr::filter(
-      .data$method == "loc_sample",
-      is.finite(.data$threshold),
-      is.finite(.data$propRespTruth),
-      is.finite(.data$propRespEst)
-    ) |>
+    dplyr::filter(.data$method == "loc_sample") |>
     dplyr::select(
       dplyr::any_of(grid_cols),
       "iter", "sample", "ind", "method",
-      "propRespTruth", "propRespEst", "threshold"
+      "propRespTruth", "propRespEst", "threshold",
+      dplyr::any_of(c(
+        "locGenerated", "locGeneratedDirect", "locSource", "locReason"
+      ))
+    ) |>
+    dplyr::mutate(
+      valid_estimate = is.finite(.data$threshold) &
+        is.finite(.data$propRespTruth) & .data$propRespTruth > 0 &
+        is.finite(.data$propRespEst)
     )
   if (anyDuplicated(results_raw[c("sim_id", "iter", "ind")]) > 0L) {
     stop(
@@ -544,16 +549,41 @@
       "but duplicate result keys were found."
     )
   }
+  if (!setequal(unique(results_raw$sim_id), unique(tbl$sim_id))) {
+    stop("Missing final loc_sample results for one or more simulation IDs.")
+  }
+  if (!is.null(n_sample_expected)) {
+    counts <- dplyr::count(results_raw, .data$sim_id, .data$iter)
+    if (any(counts$n != n_sample_expected)) {
+      stop("Expected ", n_sample_expected, " final sample results per sim_id/iter.")
+    }
+    if (!is.null(n_iter_expected)) {
+      counts <- dplyr::count(results_raw, .data$sim_id)
+      if (any(counts$n != n_sample_expected * n_iter_expected)) {
+        stop("Unexpected final sample count per sim_id (missing iterations).")
+      }
+    }
+  }
+  # Analysis 6 also calls this helper. Its legacy outputs may lack provenance;
+  # keep that unknown rather than classifying a finite threshold as generated.
+  if (!"locGenerated" %in% names(results_raw)) results_raw$locGenerated <- NA
   results_summary <- results_raw |>
     dplyr::group_by(dplyr::pick(dplyr::any_of(grid_cols))) |>
     dplyr::summarise(
+      n_sample = dplyr::n(),
+      n_valid = sum(.data$valid_estimate),
+      n_failed = sum(!.data$valid_estimate),
+      failure_fraction = mean(!.data$valid_estimate),
+      n_provenance = sum(!is.na(.data$locGenerated)),
+      n_fallback = sum(.data$locGenerated %in% FALSE),
+      fallback_fraction = if (n_provenance > 0L) n_fallback / n_provenance else NA_real_,
       dplyr::across(
         c("threshold", "propRespTruth", "propRespEst"),
         list(
-          min = ~ min(.x, na.rm = TRUE),
-          max = ~ max(.x, na.rm = TRUE),
-          mean = ~ mean(.x, na.rm = TRUE),
-          median = ~ stats::median(.x, na.rm = TRUE)
+          min = ~ if (any(.data$valid_estimate)) min(.x[.data$valid_estimate]) else NA_real_,
+          max = ~ if (any(.data$valid_estimate)) max(.x[.data$valid_estimate]) else NA_real_,
+          mean = ~ if (any(.data$valid_estimate)) mean(.x[.data$valid_estimate]) else NA_real_,
+          median = ~ stats::median(.x[.data$valid_estimate])
         )
       ),
       .groups = "drop"
@@ -665,6 +695,9 @@
       n_valid = sum(.data$valid_estimate),
       n_failed = sum(!.data$valid_estimate),
       failure_fraction = mean(!.data$valid_estimate),
+      n_provenance = sum(!is.na(.data$locGenerated)),
+      n_fallback = sum(.data$locGenerated %in% FALSE),
+      fallback_fraction = if (n_provenance > 0L) n_fallback / n_provenance else NA_real_,
       propRespTruth = stats::median(.data$propRespTruth, na.rm = TRUE),
       propRespEst_median = stats::median(
         .data$propRespEst[.data$valid_estimate], na.rm = TRUE
@@ -733,12 +766,17 @@
 }
 
 .simBandwidthEstBaseSummary <- function(.data, grid_cols) {
+  if (!"bw_norm_fallback" %in% names(.data)) .data$bw_norm_fallback <- NA
   .data |>
     dplyr::group_by(
       dplyr::pick(dplyr::any_of(grid_cols))
     ) |>
     dplyr::summarise(
       n_bw_total = dplyr::n(),
+      n_norm_fallback = sum(.data$bw_norm_fallback %in% TRUE),
+      norm_fallback_rate = if (any(!is.na(.data$bw_norm_fallback))) {
+        mean(.data$bw_norm_fallback, na.rm = TRUE)
+      } else NA_real_,
       n_bw_stim_finite = sum(is.finite(.data$bw_stim)),
       n_bw_uns_finite = sum(is.finite(.data$bw_uns)),
       n_bw_finite = sum(
@@ -761,6 +799,8 @@
     dplyr::select(
       dplyr::any_of(grid_cols),
       n_bw_total,
+      n_norm_fallback,
+      norm_fallback_rate,
       n_bw_stim_finite,
       n_bw_uns_finite,
       n_bw_finite,
@@ -801,38 +841,31 @@
   )))
 }
 
-#' Analysis 4 validation of collated outputs
+#' Analysis 4 validation of output structure and row counts
 #'
+#' Non-finite bandwidths are scientific outcomes, including zero coverage.
+#' Runtime errors and missing scenario IDs are checked by the shared validator.
 #' @param n_rows_per_sim integer Expected result rows per `sim_id`.
-#' @return function `function(tbl)` returning problem strings: `sim_id`s with
-#'   an unexpected row count, or with no finite stim/unstim bandwidth pair.
+#' @return function `function(tbl)` returning structural problem strings.
 .simBandwidthEstNormValidator <- function(n_rows_per_sim) {
   function(tbl) {
-    if (nrow(tbl) == 0L) {
-      return(character())
+    required <- c("sim_id", "bw_stim", "bw_uns", "bw_norm_fallback")
+    if (!all(required %in% names(tbl))) {
+      return("missing required bandwidth output columns")
     }
-    per_sim <- tbl |>
-      dplyr::group_by(.data$sim_id) |>
-      dplyr::summarise(
-        n_rows = dplyr::n(),
-        n_pair = sum(is.finite(.data$bw_stim) & is.finite(.data$bw_uns)),
-        .groups = "drop"
+    if (!is.numeric(tbl$bw_stim) || !is.numeric(tbl$bw_uns)) {
+      return("bandwidth output columns must be numeric")
+    }
+    per_sim <- dplyr::count(tbl, .data$sim_id, name = "n_rows")
+    bad_ids <- per_sim$sim_id[per_sim$n_rows != n_rows_per_sim]
+    if (length(bad_ids) == 0L) {
+      character()
+    } else {
+      paste0(
+        "unexpected row counts for sim_id: ",
+        paste(sort(as.integer(bad_ids)), collapse = ", ")
       )
-    ids <- function(x) paste(sort(as.integer(x)), collapse = ", ")
-    c(
-      if (any(per_sim$n_rows != n_rows_per_sim)) {
-        paste0(
-          "unexpected row counts for sim_id: ",
-          ids(per_sim$sim_id[per_sim$n_rows != n_rows_per_sim])
-        )
-      },
-      if (any(per_sim$n_pair == 0L)) {
-        paste0(
-          "no finite stim/unstim bandwidth pair for sim_id: ",
-          ids(per_sim$sim_id[per_sim$n_pair == 0L])
-        )
-      }
-    )
+    }
   }
 }
 
