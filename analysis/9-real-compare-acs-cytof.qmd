@@ -97,10 +97,12 @@ if (is.na(n_workers) || n_workers < 1L) {
 
 .acsCytofEnsureCurrentCheckout(root_dir)
 
-# common paths
+# Setup starts in the QMD directory; later chunks and workers use root_dir.
+# Keep configured paths absolute across that working-directory change.
 path_fcs_base <- projr::projr_path_get(
   "raw-data-large",
-  "comparison_data", "acscytof", "fcs"
+  "comparison_data", "acscytof", "fcs",
+  format = "absolute"
 )
 if (isTRUE(run_preprocessing) && !dir.exists(path_fcs_base)) {
   stop("Path to FCS files does not exist: ", path_fcs_base)
@@ -108,12 +110,14 @@ if (isTRUE(run_preprocessing) && !dir.exists(path_fcs_base)) {
 path_gs_base <- projr::projr_path_get(
   "cache",
   "acs_cytof",
-  "gs"
+  "gs",
+  format = "absolute"
 )
 path_scratch_base <- projr::projr_path_get(
   "cache",
   "acs_cytof",
-  "scratch"
+  "scratch",
+  format = "absolute"
 )
 path_fbeta <- file.path(root_dir, "scripts", "python", "fbeta.py")
 if (isTRUE(run_comparators)) {
@@ -301,7 +305,8 @@ manual file has no matching population.
 path_manual_output <- projr::projr_path_get(
   "cache",
   "acs_cytof",
-  "manual-comparison"
+  "manual-comparison",
+  format = "absolute"
 )
 path_comparison <- file.path(path_manual_output, "manual-comparison.rds")
 if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)) {

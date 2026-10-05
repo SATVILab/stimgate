@@ -128,7 +128,7 @@
   if (is.null(pathRoot) || !nzchar(pathRoot)) {
     if (requireNamespace("projr", quietly = TRUE)) {
       pathRoot <- tryCatch(
-        projr::projr_path_get("project"),
+        projr::projr_path_get("project", format = "absolute"),
         error = function(e) normalizePath(".", winslash = "/", mustWork = FALSE)
       )
     } else {

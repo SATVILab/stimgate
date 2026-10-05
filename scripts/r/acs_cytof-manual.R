@@ -14,7 +14,8 @@
     "raw-data-small",
     "comparison_data",
     "acscytof",
-    fn
+    fn,
+    format = "absolute"
   )
   if (!file.exists(pathManual)) {
     stop("Manual ACS cytokine file not found at: ", pathManual)
