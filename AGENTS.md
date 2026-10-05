@@ -661,7 +661,11 @@ appears and that disabling plotting produces no printed plots.
 
 Plot-construction helpers under `scripts/r/` should return plot objects
 without creating directories or writing files. Keep filesystem side
-effects in the corresponding save/orchestration helper or QMD.
+effects in the corresponding save/orchestration helper or QMD. Reference
+densities for threshold plots use seeded, render-local reference
+simulations, cache each biological setting independently of method
+settings and cell count, and retain the original threshold layers above
+fills.
 
 Figures from analysis QMDs are saved under
 `output/fig/<QMD name>/<figure type>/` via `.analysis_fig_dir()`, with
