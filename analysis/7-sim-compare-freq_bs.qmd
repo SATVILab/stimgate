@@ -15,7 +15,7 @@ params:
   run_simulations: true
   run_plots: false
   show_mcse: both
-  sim_size: draft
+  sim_size: final
 ---
 
 This analysis compares background-subtracted response frequencies from StimGate,

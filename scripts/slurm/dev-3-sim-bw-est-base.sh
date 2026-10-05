@@ -48,7 +48,7 @@ cd "$project_root"
 start_time=$(date +%s)
 
 echo "HOSTNAME: $HOSTNAME"
-echo "SIM_SIZE: ${SIM_SIZE:-draft}"
+echo "SIM_SIZE: ${SIM_SIZE:-final}"
 echo "SLURM_JOB_ID: ${SLURM_JOB_ID:-unknown}"
 echo "ANALYSIS_RUN_ID: $ANALYSIS_RUN_ID"
 echo "SIM_GRID_CHUNK_INDEX: $SIM_GRID_CHUNK_INDEX"

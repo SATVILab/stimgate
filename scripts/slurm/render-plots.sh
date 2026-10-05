@@ -31,7 +31,7 @@ export ANALYSIS_EXPECTED_RUN_ID="${ANALYSIS_RUN_ID:-}"
 
 start_time=$(date +%s)
 echo "HOSTNAME: $HOSTNAME"
-echo "SIM_SIZE: ${SIM_SIZE:-draft}"
+echo "SIM_SIZE: ${SIM_SIZE:-final}"
 echo "SLURM_JOB_ID: ${SLURM_JOB_ID:-unknown}"
 echo "PROJECT_ROOT: $project_root"
 echo "QMD files: $qmd_files"

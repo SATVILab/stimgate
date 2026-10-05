@@ -15,7 +15,7 @@ params:
   run_simulations: true
   run_plots: false
   show_mcse: both
-  sim_size: draft
+  sim_size: final
 ---
 
 This analysis compares StimGate, F-beta and Tailgate when stimulated and
