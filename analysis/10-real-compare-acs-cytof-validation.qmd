@@ -39,6 +39,7 @@ scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 fig_key <- .analysis_mode_key("10-real-compare-acs-cytof-validation")
+source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
@@ -64,6 +65,7 @@ path_comparison <- file.path(
 manual_comparison_tbl <- .analysis_read_rds(
   path_comparison, "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd"
 )
+.acsCytofValidateComparisonManifest(manual_comparison_tbl)
 validation_methods <- .acsCytofValidationMethods()
 .acsCytofValidationValidateComparisonTable(
   manual_comparison_tbl,

@@ -320,6 +320,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
     path_comparison, "acs_cytof", analysis_qmd
   )
 }
+.acsCytofValidateComparisonManifest(manual_comparison_tbl)
 manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 ```
 

@@ -129,3 +129,14 @@
   }
   invisible(TRUE)
 }
+
+.acsCytofValidateComparisonManifest <- function(table) {
+  manifest <- attr(table, "manifest")
+  if (is.null(manifest$methods) || !length(manifest$methods) ||
+      is.null(manifest$comparisonSettings) || is.null(manifest$manualInputHash) ||
+      !"thresholdFailed" %in% names(table)) {
+    stop("Legacy or incomplete ACS comparison manifest; re-run analysis 9 with RUN_SIMULATIONS=true RUN_PLOTS=false.")
+  }
+  for (population in manifest$methods) .acsCytofValidateManifests(population)
+  invisible(TRUE)
+}

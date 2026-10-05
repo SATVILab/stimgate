@@ -438,7 +438,7 @@ test_that("analysis 9 builds before saving to the canonical manual output", {
   ))
 
   save_body <- paste(
-    deparse(body(.load_acs_method_env()$.acsCytofManualSave)),
+    deparse(body(.load_acs_method_env()$.acsCytofManualWrite)),
     collapse = "\n"
   )
   expect_true(grepl(".write_rds_atomic(", save_body, fixed = TRUE))
@@ -463,7 +463,11 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   env$comp_against_manual_cyt <- function(...) stop("Raw-data rebuild was called")
   env$.acsCytofManualSave <- function(...) stop("Cache write was called")
   env$.acsCytofManualSummaryTable <- function(x) x
-  cached <- tibble::tibble(method = "stimgate", freq_bs_auto = 0.1)
+  cached <- tibble::tibble(method = "stimgate", freq_bs_auto = 0.1, thresholdFailed = FALSE)
+  attr(cached, "manifest") <- list(
+    methods = list(cd4 = list(stimgate = list(context = list(gitSha = "abc")))),
+    comparisonSettings = list(methods = "stimgate"), manualInputHash = "abc"
+  )
   path <- file.path(env$path_manual_output, "manual-comparison.rds")
   saveRDS(cached, path)
   for (expr in as.list(code)[-1L]) eval(expr, env)
@@ -621,4 +625,16 @@ test_that("ACS saves exclusions and manifests with the comparison transaction", 
   env$.acsCytofManualWrite <- function(...) stop("failed replacement")
   expect_error(env$.acsCytofManualSave(rows, path, FALSE), "failed replacement")
   expect_identical(readRDS(file.path(path, "manual-comparison.rds")), rows)
+})
+
+test_that("ACS cached comparisons reject legacy and mixed method manifests", {
+  env <- .load_acs_method_env()
+  table <- tibble::tibble(thresholdFailed = FALSE)
+  expect_error(env$.acsCytofValidateComparisonManifest(table), "Legacy or incomplete")
+  attr(table, "manifest") <- list(
+    methods = list(cd4 = list(stimgate = list(context = list(gitSha = "a")),
+                             fbeta = list(context = list(gitSha = "b")))),
+    comparisonSettings = list(methods = c("stimgate", "fbeta")), manualInputHash = "abc"
+  )
+  expect_error(env$.acsCytofValidateComparisonManifest(table), "Mismatched ACS")
 })
