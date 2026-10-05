@@ -787,10 +787,13 @@ rows before drawing reference lines.
    Results for dev and quick runs are kept under `<analysis-key>/dev/` and
    `<analysis-key>/quick/`; full runs keep the existing analysis key.
    Full-grid runs take `sim_size` (QMD param, `SIM_SIZE` env, read by
-   `.analysis_sim_size()`): `"final"` (default) or `"draft"`, about a quarter
+   `.analysis_sim_size()`): `"draft"` (default) or `"final"`; draft uses about a quarter
    of the samples (datasets in 7/8) on the same grid, stored under
    `<analysis-key>/draft/` and recorded as `sim_size` in required run settings;
-   draft is for iterating, not reporting, and dev/quick take precedence.
+   draft is for iterating, not reporting, and dev/quick take precedence. Set
+   `SIM_SIZE=final` explicitly for reported runs. Draft 7/8 retain all 20
+   jointly gated samples per dataset and reduce only replicate datasets;
+   missing `sim_size` in legacy manifests still means final.
    Workers and interactive single-row reruns use the same explicitly seeded row runner; resume retries
    failed rows by default. Comparison scenarios in QMDs 7/8 use explicit RNG
    kinds and restore the caller's RNG state; do not reintroduce `gateCombn`

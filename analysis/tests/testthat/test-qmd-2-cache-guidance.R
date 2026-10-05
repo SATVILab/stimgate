@@ -35,7 +35,7 @@ test_that("simulation QMDs share actionable cache errors without creating run st
         grepl("run_ctx <- .analysis_run_context(", paste(deparse(expr), collapse = "\n"), fixed = TRUE)
     }, as.list(parse(text = code)))[[1L]]
     expect_error(eval(branch, env), paste0(
-      "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/", documents[[i]]
+      "RUN_SIMULATIONS=true RUN_PLOTS=false SIM_SIZE=final quarto render analysis/", documents[[i]]
     ), fixed = TRUE)
     expect_false(dir.exists(missing_dir))
     expect_false(exists("run_ctx", env, inherits = FALSE))

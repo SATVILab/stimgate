@@ -481,7 +481,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   unlink(path)
   expect_error(
     for (expr in as.list(code)[-1L]) eval(expr, env),
-    "RUN_SIMULATIONS=true RUN_PLOTS=false quarto render analysis/9"
+    "RUN_SIMULATIONS=true RUN_PLOTS=false SIM_SIZE=final quarto render analysis/9"
   )
 })
 

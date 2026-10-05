@@ -15,7 +15,7 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
-  sim_size: final
+  sim_size: draft
 ---
 
 This analysis asks how the core and extra bandwidths of an adaptive density affect the estimated background-subtracted response frequency. Matched unstimulated and stimulated samples are simulated with Gaussian, gamma and skewed expression distributions. The analysis varies both bandwidths, cell counts, response frequencies and unstimulated-sample bias, then compares final sample estimates with the simulated truth.
@@ -79,7 +79,7 @@ analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
 analysis_semantics_version <- "adaptive-bw-freq-v6"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
-# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+# "draft" (default) or "final" sample/dataset counts; dev and quick win.
 sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("6-sim-bw-freq_bs-adaptive")

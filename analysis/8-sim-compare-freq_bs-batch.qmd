@@ -15,7 +15,7 @@ params:
   run_simulations: true
   run_plots: false
   show_mcse: both
-  sim_size: final
+  sim_size: draft
 ---
 
 This analysis compares StimGate, F-beta and Tailgate when stimulated and
@@ -83,7 +83,7 @@ if (is.na(simulation_seed)) {
 comparison_semantics_version <- "batch-mismatch-comparison-v14"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
-# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+# "draft" (default) or "final" sample/dataset counts; dev and quick win.
 sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("8-sim-compare-freq_bs-batch")
