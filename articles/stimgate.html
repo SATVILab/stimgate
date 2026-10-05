@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.20</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.21</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -143,13 +143,14 @@ for another cytokine; it can be lower than <code>gate</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gates</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/getStimGates.html">getStimGates</a></span><span class="op">(</span><span class="va">pathProject</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">gates</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 8</span></span></span>
-<span><span class="co">#&gt;   pop   gateName    chnl         marker   ind   batch   gate gateCyt</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;I&lt;chr&gt;&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.42    4.42</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.79    3.79</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> root  locminClust BC2(Pr141)Dd MarkerF2 2     batch1  3.40    2.17</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.91    2.91</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 12</span></span></span>
+<span><span class="co">#&gt;   pop   gateName  chnl  marker ind   batch  gate locGenerated locGeneratedDirect</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;I&lt;ch&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>             </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> root  locminCl… BC1(… Marke… 2     batc…  4.42 TRUE         TRUE              </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> root  locminCl… BC1(… Marke… 4     batc…  3.79 TRUE         TRUE              </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> root  locminCl… BC2(… Marke… 2     batc…  3.40 TRUE         TRUE              </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> root  locminCl… BC2(… Marke… 4     batc…  2.91 TRUE         TRUE              </span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 3 more variables: locSource &lt;chr&gt;, locReason &lt;chr&gt;, gateCyt &lt;dbl&gt;</span></span></span></code></pre></div>
 <p><code><a href="../reference/getStimStats.html">getStimStats()</a></code> gives, for each stimulated sample
 (<code>ind</code>), the number and percentage of cells positive for each
 combination of markers (<code>cytCombn</code>), in the stimulated sample
@@ -213,7 +214,7 @@ cells as FCS files, see <code><a href="../reference/writeStimFCS.html">?writeSti
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] stimgate_0.99.20</span></span>
+<span><span class="co">#&gt; [1] stimgate_0.99.21</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] gtable_0.3.6         xfun_0.61            bslib_0.12.0        </span></span>

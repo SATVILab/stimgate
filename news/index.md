@@ -1,5 +1,14 @@
 # Changelog
 
+## stimgate 0.99.21
+
+### Bug fixes
+
+- [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md)
+  preserves threshold-generation provenance for clustered gates,
+  including cluster-derived thresholds and retained finite fallback
+  gates.
+
 ## stimgate 0.99.20
 
 ### Bug fixes

@@ -100,13 +100,14 @@ for another cytokine; it can be lower than `gate`.
 
 gates <- getStimGates(pathProject)
 head(gates)
-#> # A tibble: 4 × 8
-#>   pop   gateName    chnl         marker   ind   batch   gate gateCyt
-#>   <chr> <chr>       <chr>        <I<chr>> <chr> <chr>  <dbl>   <dbl>
-#> 1 root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.42    4.42
-#> 2 root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.79    3.79
-#> 3 root  locminClust BC2(Pr141)Dd MarkerF2 2     batch1  3.40    2.17
-#> 4 root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.91    2.91
+#> # A tibble: 4 × 12
+#>   pop   gateName  chnl  marker ind   batch  gate locGenerated locGeneratedDirect
+#>   <chr> <chr>     <chr> <I<ch> <chr> <chr> <dbl> <lgl>        <lgl>             
+#> 1 root  locminCl… BC1(… Marke… 2     batc…  4.42 TRUE         TRUE              
+#> 2 root  locminCl… BC1(… Marke… 4     batc…  3.79 TRUE         TRUE              
+#> 3 root  locminCl… BC2(… Marke… 2     batc…  3.40 TRUE         TRUE              
+#> 4 root  locminCl… BC2(… Marke… 4     batc…  2.91 TRUE         TRUE              
+#> # ℹ 3 more variables: locSource <chr>, locReason <chr>, gateCyt <dbl>
 ```
 
 [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
@@ -180,7 +181,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] stimgate_0.99.20
+#> [1] stimgate_0.99.21
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] gtable_0.3.6         xfun_0.61            bslib_0.12.0        

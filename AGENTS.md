@@ -424,22 +424,27 @@ preserve the same scientific inclusion rules and avoid pooling different
 grid dimensions. For controlled negative-component mismatch analyses,
 report stimulated-negative mean shifts and SD inflation in separate
 figure sections and sibling folders, including the matching coverage
-summaries. Label which tube and component change. Signed relative-error
-plots (`.simBandwidthSignedError*()` in `sim-bandwidth-analysis-plot.R`)
-sit alongside, not instead of, the absolute ones: they summarise over-
-and under-estimates separately, weight lines by each direction’s share,
-and use a scale on which -100% and a two-fold over-estimate are equally
-far from zero. Monte Carlo error bars (`show_mcse` QMD parameter /
-`SHOW_MCSE`, default on; plot helpers take `mcse = FALSE` by default)
-use `analysis-mcse.R` and only existing replicates: sd/sqrt(n) for
-means, order-statistic intervals (x\_(l), x\_(u)) with l = qbinom(0.025,
-n, p), u = qbinom(0.975, n, p) + 1 for percentiles (NA if n \< 5 or l \<
-1 or u \> n), none for maxima, and sqrt(sum(se^2))/k for equal-weight
-scenario averages. In QMDs 7/8 samples within a dataset are dependent,
-so the unit is the dataset (`iter`): MCSE = sd(per-dataset
-statistic)/sqrt(D), NA when D \< 5. Final runs use 20 datasets per
-scenario and draft runs use 5, the minimum for these bars; keep MCSE
-prose aligned with the selected `sim_size` settings.
+summaries. Label which tube and component change. Ratio companions
+preserve signed-error geometry and intervals, relabelling ticks as
+`1 + relative error` (estimate/reference). Keep originals and save
+companions in sibling ratio folders. Absolute relative errors lose
+direction and cannot be relabelled as estimate/reference ratios. Signed
+relative-error plots (`.simBandwidthSignedError*()` in
+`sim-bandwidth-analysis-plot.R`) sit alongside, not instead of, the
+absolute ones: they summarise over- and under-estimates separately,
+weight lines by each direction’s share, and use a scale on which -100%
+and a two-fold over-estimate are equally far from zero. Monte Carlo
+error bars (`show_mcse` QMD parameter / `SHOW_MCSE`, default on; plot
+helpers take `mcse = FALSE` by default) use `analysis-mcse.R` and only
+existing replicates: sd/sqrt(n) for means, order-statistic intervals
+(x\_(l), x\_(u)) with l = qbinom(0.025, n, p), u = qbinom(0.975, n, p) +
+1 for percentiles (NA if n \< 5 or l \< 1 or u \> n), none for maxima,
+and sqrt(sum(se^2))/k for equal-weight scenario averages. In QMDs 7/8
+samples within a dataset are dependent, so the unit is the dataset
+(`iter`): MCSE = sd(per-dataset statistic)/sqrt(D), NA when D \< 5.
+Final runs use 20 datasets per scenario and draft runs use 5, the
+minimum for these bars; keep MCSE prose aligned with the selected
+`sim_size` settings.
 
 For background-subtracted signed relative error, an estimate of zero
 gives -100% (0x); negative estimates can give errors below -100% and
@@ -843,7 +848,6 @@ deduplicates identical rows before drawing reference lines.
     to FAUST-derived native code in `inst/COPYRIGHTS`, preserving
     licence notices, numerical calculations and native entrypoint
     signatures.
-
 2.  **Comparison code vs. package code**: `R/` contains only StimGate
     implementation code. Benchmark comparisons against the tailgate
     method call `cytoUtils:::.cytokine_cutpoint()` from the `cytoUtils`
@@ -851,12 +855,10 @@ deduplicates identical rows before drawing reference lines.
     `scripts/r/sim-compare-freq_bs.R` and
     `analysis/7-sim-compare-freq_bs.qmd`. Cytokine simulation logic
     remains in `scripts/r/` and is not installed with the package.
-
 3.  **Legacy comparator policy**: Tailgate comparator functions are
     invoked directly from the `cytoUtils` package via
     `cytoUtils:::.cytokine_cutpoint()`. Do not reintroduce vendored
     legacy tailgate helpers under `scripts/r/` or `R/`.
-
 4.  **F-beta comparator provenance**: `scripts/python/fbeta.py` is
     adapted from the Richards et al. (2014) positivity threshold
     implementation. Preserve its F-beta scoring, standard parameters,
@@ -872,13 +874,11 @@ deduplicates identical rows before drawing reference lines.
     removes both prior comparator `result.rds` files and recomputes
     them. Existing results are read only when comparator execution is
     disabled.
-
 5.  **Removal of legacy tailgate-as-control path (issues \#157/#158)**:
     The legacy tailgate-as-control path (`.getCpTg()`, `tolCtrl`) has
     been removed. Tailgate benchmark comparisons use
     `cytoUtils:::.cytokine_cutpoint()` in `scripts/r/`, per notes 2 and
     3.
-
 6.  **Simulation engine migration to `simcyto` (issues
     \#288/#289/#291/#295 / umbrella \#271)**: Generic cytometry
     simulations, post-simulation transformations, and condition-mismatch
@@ -894,11 +894,9 @@ deduplicates identical rows before drawing reference lines.
     source `functionsForBenchmarking-Cyt.R`. StimGate scientific
     scenario calculations, downstream comparison orchestration, and
     method evaluations remain StimGate-side under `scripts/r/`.
-
 7.  **Standardised simulation and plotting controls across analysis QMDs
     (issue \#299)**: All analysis QMDs follow a unified execution
     control pattern sourced from `scripts/r/analysis-runtime.R`:
-
     - YAML headers declare
       `params: run_simulations: true, run_plots: false` (along with any
       chunking parameters).
@@ -913,12 +911,10 @@ deduplicates identical rows before drawing reference lines.
     - Collation chunks read cached output RDS files unconditionally so
       downstream summaries and diagnostics work whether simulations just
       ran or were loaded from cache.
-
 8.  **Run-scoped staging, progress and promotion for expensive analysis
     simulations (issue \#304)**: Expensive simulation analyses that
     support resumable per-scenario/per-chunk outputs must use shared
     run-management helpers from `scripts/r/analysis-runtime.R`:
-
     - Treat each logical run as a unique run ID (`analysis_run_id` QMD
       param or `ANALYSIS_RUN_ID` env var; auto-generated when absent).
     - Write run outputs to
@@ -946,34 +942,37 @@ deduplicates identical rows before drawing reference lines.
       because Quarto keeps working files named after the QMD next to it
       and concurrent renders of one QMD otherwise collide; the copy and
       its outputs are removed when the job exits.
-    - Never promote on partial/incomplete runs. Promote only after
-      required chunks are complete and collated outputs validate.
-    - Promotion updates `current/` only after a complete staged run is
-      available; failed/interrupted staged runs remain inspectable and
-      resumable.
-    - Read canonical outputs through `.analysis_current_file()`, which
-      requires a `COMPLETE` marker, a readable manifest for the
-      requested analysis key, and any analysis-specific semantic version
-      required by the caller.
-    - To read canonical results without running the simulation chunk (so
-      no `run_ctx` exists), collation chunks fall back to
-      `.analysis_results_context()`, a read-only stand-in whose staging
-      paths point at `current/` and which creates no run state. Guard
-      all writes, chunk marking and promotion with
-      `if (!isTRUE(run_ctx$read_only))`.
-    - Record scientific and semantic settings in the run manifest.
-      Reusing an explicit run ID must match those settings; only
-      operational controls such as plotting, simulation execution and
-      the current chunk index may differ across invocations.
-    - Record the complete selected cross-chunk grid specification (not
-      just a few scalars) as a required parameter, so editing the grid
-      under the same `analysis_semantics_version` is detected. Bump the
-      semantics version when results change. During integrations, check
-      master and every merged branch, including merge history
-      (`git log -m -S`), and choose a new identifier above every
-      previously used version.
-    - Resume retries rows whose saved output or marker recorded an
-      error, so a run ID with a failed simulation can still complete.
+
+- Never promote on partial/incomplete runs. Promote only after required
+  chunks are complete and collated outputs validate.
+- Reject invalid Slurm chunk counts before any submission. Atomic RDS
+  writers must fail if both rename and fallback copy fail, retaining the
+  pending output instead of allowing a completion marker.
+- Promotion updates `current/` only after a complete staged run is
+  available; failed/interrupted staged runs remain inspectable and
+  resumable.
+- Read canonical outputs through `.analysis_current_file()`, which
+  requires a `COMPLETE` marker, a readable manifest for the requested
+  analysis key, and any analysis-specific semantic version required by
+  the caller.
+- To read canonical results without running the simulation chunk (so no
+  `run_ctx` exists), collation chunks fall back to
+  `.analysis_results_context()`, a read-only stand-in whose staging
+  paths point at `current/` and which creates no run state. Guard all
+  writes, chunk marking and promotion with
+  `if (!isTRUE(run_ctx$read_only))`.
+- Record scientific and semantic settings in the run manifest. Reusing
+  an explicit run ID must match those settings; only operational
+  controls such as plotting, simulation execution and the current chunk
+  index may differ across invocations.
+- Record the complete selected cross-chunk grid specification (not just
+  a few scalars) as a required parameter, so editing the grid under the
+  same `analysis_semantics_version` is detected. Bump the semantics
+  version when results change. During integrations, check master and
+  every merged branch, including merge history (`git log -m -S`), and
+  choose a new identifier above every previously used version.
+- Resume retries rows whose saved output or marker recorded an error, so
+  a run ID with a failed simulation can still complete.
 
 9.  **Shared analysis runners and cached settings**: Bandwidth QMDs 2-6
     use `.simBandwidthRunRow()`, `.simBandwidthRunGrid()` and
@@ -1014,7 +1013,13 @@ L’Ecuyer state, chunking or scheduling. Each simulation QMD has one
 the full grid and calls the same scenario code path as the workers. Do
 not add separate debug loops.
 
-11. **Real-data analyses replace outputs non-destructively**: Real-data
+11. **Real-data analyses replace outputs non-destructively**: ACS error
+    summaries separate stimuli, report positive-manual relative-error
+    denominators, and retain zero/negative manual frequencies in
+    absolute error. Donor-bootstrap intervals reuse common donor draws
+    across methods and strata, keeping stimulated tubes with their
+    shared control. Label the mean-error estimand and finite donor
+    coverage; manual gating is an imperfect reference. Real-data
     analyses that recompute cached outputs (e.g. ACS CyTOF) build into a
     temporary sibling and swap it in on success
     (`.acsCytofReplaceDir()`), or compute all results before atomically
@@ -1024,6 +1029,15 @@ not add separate debug loops.
     override that default. Cached comparison renders read the saved
     manual-comparison table without raw FCS or manual CSV inputs;
     GatingSet diagnostics are optional when those caches are absent.
+
+ACS batches use the mapped SampleID and stimulus, never filename
+position. Saved ACS method outputs must carry identical
+input/preprocessing manifests before comparison. Keep per-marker
+threshold provenance and failure coverage; exclude failed estimates from
+agreement metrics and persist cohort exclusions rather than hiding
+omitted rows behind render warnings. With ACS clustering and
+cytokine-positive refinement enabled, score `loc_minClust`, and preserve
+cluster provenance when assembling the final package gate rows.
 
 12. **Shared local-FDR bandwidths (`bwScope`, issue \#417)**: The scalar
     local-FDR bandwidth is chosen once per channel during settings
