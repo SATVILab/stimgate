@@ -4,40 +4,85 @@
 #SBATCH --job-name="dev-7-compare"
 #SBATCH --partition=ada
 
-# Record the start time
+set -euo pipefail
+
+chunk_index="${1:-${SIM_GRID_CHUNK_INDEX:-${SLURM_ARRAY_TASK_ID:-1}}}"
+n_chunks="${SIM_GRID_N_CHUNKS:-4}"
+
+# Under sbatch, the script may be copied into Slurm's spool directory.
+# So do not infer the project root from ${BASH_SOURCE[0]}. Use the submit
+# directory, or an explicit PROJECT_ROOT passed from the launcher.
+project_root="${PROJECT_ROOT:-${SLURM_SUBMIT_DIR:-$(pwd)}}"
+qmd_file="${SIM_GRID_QMD_FILE:-analysis/7-sim-compare-freq_bs.qmd}"
+qmd_abs="$project_root/$qmd_file"
+
+if [[ ! "$n_chunks" =~ ^[0-9]+$ ]] || (( n_chunks < 1 )); then
+  echo "ERROR: SIM_GRID_N_CHUNKS must be a positive integer. Got: $n_chunks" >&2
+  exit 1
+fi
+
+if [[ ! "$chunk_index" =~ ^[0-9]+$ ]] || (( chunk_index < 1 || chunk_index > n_chunks )); then
+  echo "ERROR: chunk_index must be an integer between 1 and $n_chunks. Got: $chunk_index" >&2
+  exit 1
+fi
+
+analysis_run_id="${ANALYSIS_RUN_ID:-}"
+if [[ -z "$analysis_run_id" && -n "${SLURM_ARRAY_JOB_ID:-}" ]]; then
+  analysis_run_id="analysis-7-slurm-${SLURM_ARRAY_JOB_ID}"
+elif [[ -z "$analysis_run_id" && "$n_chunks" == "1" ]]; then
+  analysis_run_id="analysis-7-slurm-${SLURM_JOB_ID:-$(date -u +%Y%m%dT%H%M%S)}"
+elif [[ -z "$analysis_run_id" ]]; then
+  echo "ERROR: ANALYSIS_RUN_ID is required for separately submitted multi-chunk jobs." >&2
+  exit 1
+fi
+
+if [[ ! -f "$qmd_abs" ]]; then
+  echo "ERROR: Could not find QMD: $qmd_abs" >&2
+  exit 1
+fi
+
+export ANALYSIS_RUN_ID="$analysis_run_id"
+export SIM_GRID_CHUNK_INDEX="$chunk_index"
+export SIM_GRID_N_CHUNKS="$n_chunks"
+export RUN_SIMULATIONS="${RUN_SIMULATIONS:-true}"
+export RUN_PLOTS="${RUN_PLOTS:-false}"
+export PROJECT_ROOT="$project_root"
+
+cd "$project_root"
+
 start_time=$(date +%s)
 
 echo "HOSTNAME: $HOSTNAME"
 echo "SIM_SIZE: ${SIM_SIZE:-final}"
+echo "SLURM_JOB_ID: ${SLURM_JOB_ID:-unknown}"
+echo "ANALYSIS_RUN_ID: $ANALYSIS_RUN_ID"
+echo "SIM_GRID_CHUNK_INDEX: $SIM_GRID_CHUNK_INDEX"
+echo "SIM_GRID_N_CHUNKS: $SIM_GRID_N_CHUNKS"
+echo "QMD file: $qmd_file"
+echo "PROJECT_ROOT: $project_root"
 
 echo " "
 echo " "
 echo " "
 
 echo "-------------------"
-echo "Run projr"
+echo "Render Quarto directly"
 date
-
-apptainer-rscript -f stimgate -- \
-  'projr::projr_build_dev(profile = "", file = "analysis/7-sim-compare-freq_bs.qmd")'
-
-echo "Completed running projr"
+# Render a job-specific copy so concurrent chunk jobs don't share Quarto's
+# working files (see render-qmd-isolated.sh).
+source "$project_root/scripts/slurm/render-qmd-isolated.sh"
+render_qmd_isolated "$qmd_file" "chunk${chunk_index}-job${SLURM_JOB_ID:-$$}"
+echo "Completed rendering Quarto"
 date
 echo "-------------------"
 echo " "
 
-# Record the end time
 end_time=$(date +%s)
-
-# Calculate the duration
 duration=$((end_time - start_time))
-
-# Convert the duration to human-readable format
 hours=$((duration / 3600))
-minutes=$(((duration % 3600) / 60))
+minutes=$(( (duration % 3600) / 60 ))
 seconds=$((duration % 60))
 
 echo "--- Script Duration ---"
-printf "Elapsed time: %02d:%02d:%02d\n" \
-  "$hours" "$minutes" "$seconds"
+printf "Elapsed time: %02d:%02d:%02d\n" $hours $minutes $seconds
 echo "-----------------------"

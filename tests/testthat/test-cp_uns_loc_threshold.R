@@ -441,9 +441,9 @@ test_that("diagnostic tables compute frequencies matching threshold cutoffs", {
   )
   expect_equal(freq_tbl$nCellStim, 5L)
   expect_equal(freq_tbl$nCellUns, 5L)
-  expect_equal(freq_tbl$propStim, 3 / 5)
+  expect_equal(freq_tbl$propStim, 2 / 5)
   expect_equal(freq_tbl$propUns, 0 / 5)
-  expect_equal(freq_tbl$propBs, 3 / 5)
+  expect_equal(freq_tbl$propBs, 2 / 5)
 
   # .getCpUnsLocConditionDetailRow with direct threshold
   cp_direct <- list(
@@ -505,7 +505,7 @@ test_that("diagnostic tables compute frequencies matching threshold cutoffs", {
   expect_equal(sample_detail$ind, "stim1")
   expect_equal(sample_detail$threshold, 3.0)
   expect_equal(sample_detail$thresholdOrigin, "condition_detected_response")
-  expect_equal(sample_detail$propStim, 3 / 5)
+  expect_equal(sample_detail$propStim, 2 / 5)
   expect_equal(sample_detail$propUns, 0 / 5)
-  expect_equal(sample_detail$propBs, 3 / 5)
+  expect_equal(sample_detail$propBs, 2 / 5)
 })

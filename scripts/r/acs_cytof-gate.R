@@ -213,6 +213,8 @@
   nSample = NULL,
   biasUns = NULL,
   biasUnsFactor = 4,
+  bwMtd = "nrd0",
+  bwScope = "cytokine",
   outputGroup = NULL,
   runPreprocessingPlots = FALSE
 ) {
@@ -286,7 +288,8 @@
         biasUns = if (length(biasUns) == 1L && is.na(biasUns)) NULL else biasUns,
         control = stimgate::stimControl(
           biasUnsFactor = biasUnsFactor,
-          bwMtd = "nrd0",
+          bwMtd = bwMtd,
+          bwScope = bwScope,
           bwNcellMax = 1e4,
           bwFallback = "auto",
           bwMin = "none",

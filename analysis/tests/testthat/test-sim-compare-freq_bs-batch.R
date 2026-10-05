@@ -1344,13 +1344,93 @@ test_that("alternative comparator exceptions remain explicit run errors", {
   expect_equal(fbeta_row$error[[1]], "fbeta boom")
   expect_equal(
     fbeta_row$gateReturnPoint[[1]],
-    "fbeta_error_fallback_high_value"
+    "fbeta_error"
   )
-  expect_true(isTRUE(fbeta_row$thresholdFallbackUsed[[1]]))
-  expect_true(is.finite(fbeta_row$propRespEst[[1]]))
+  expect_false(fbeta_row$thresholdFallbackUsed[[1]])
+  expect_true(is.na(fbeta_row$threshold[[1]]))
+  expect_true(is.na(fbeta_row$propRespEst[[1]]))
+  expect_true(all(is.na(fbeta_row[env$.simCompareCountCols])))
 
   expect_true(is.na(tailgate_row$error[[1]]))
   expect_equal(tailgate_row$gateReturnPoint[[1]], "tailgate_calculated")
+
+  # A normal no-cutpoint return uses the documented empty-gate convention;
+  # an estimation exception from either method must never use it.
+  env$.simCompareFbetaThreshold <- function(...) {
+    list(threshold = NA_real_, thresholdMetric = NA_real_,
+         thresholdOrigin = "failed_no_cutpoint")
+  }
+  env$.simCompareTailgateThreshold <- function(...) stop("bandwidth boom")
+  res <- env$.simCompareAlternativeRows(
+    flowFrameList = flow_frames, labelsList = labels,
+    nSample = 1, nCondition = 2, chnl = "F1", fallbackHighValue = TRUE
+  )
+  fbeta_row <- res[res$method == "fbeta", , drop = FALSE]
+  tailgate_row <- res[res$method == "tailgate", , drop = FALSE]
+  expect_true(is.na(fbeta_row$error[[1]]))
+  expect_equal(fbeta_row$thresholdOrigin[[1]], "failed_no_cutpoint")
+  expect_equal(fbeta_row$gateReturnPoint[[1]], "fbeta_fallback_high_value")
+  expect_true(fbeta_row$thresholdFallbackUsed[[1]])
+  expect_equal(fbeta_row$propRespEst[[1]], 0)
+  expect_equal(tailgate_row$error[[1]], "bandwidth boom")
+  expect_equal(tailgate_row$gateReturnPoint[[1]], "tailgate_error")
+  expect_false(tailgate_row$thresholdFallbackUsed[[1]])
+  expect_true(is.na(tailgate_row$propRespEst[[1]]))
+  expect_true(all(is.na(tailgate_row[env$.simCompareCountCols])))
+
+  res$iter <- 1L
+  res$unsExprSum <- 0
+  expect_false(env$.simComparePrimaryOutputComplete(
+    res, nSample = 1, nIter = 1, methods = c("fbeta", "tailgate")
+  ))
+  res$sim_id <- 1L
+  status <- env$.simCompareGridOutputStatus(
+    res, sim_grid = tibble::tibble(sim_id = 1L), nSample = 1, nIter = 1
+  )
+  expect_false(status$validation_ok)
+  expect_equal(status$failed_ids, 1L)
+
+  # Even legacy diagnostic rows with finite error fallbacks stay unscored.
+  res$propRespEst[res$method == "tailgate"] <- 0
+  res[res$method == "tailgate", env$.simCompareCountCols] <-
+    fbeta_row[env$.simCompareCountCols]
+  freq <- env$.simCompareSummariseFreqBs(res, scenarioCols = "method")
+  cls <- env$.simCompareClassificationSummary(res, scenarioCols = "method")
+  expect_equal(freq$n_est[freq$method == "tailgate"], 0L)
+  expect_equal(freq$n_run_error[freq$method == "tailgate"], 1L)
+  expect_equal(freq$n_no_cutpoint[freq$method == "fbeta"], 1L)
+  expect_equal(freq$n_threshold_fallback[freq$method == "fbeta"], 1L)
+  expect_equal(cls$n_run_error[cls$method == "tailgate"], 1L)
+  expect_equal(cls$n_valid[cls$method == "tailgate"], 0L)
+  expect_equal(cls$n_fdp_defined[cls$method == "tailgate"], 0L)
+  expect_true(is.na(cls$sensitivity_median[cls$method == "tailgate"]))
+  expect_equal(cls$n_no_cutpoint[cls$method == "fbeta"], 1L)
+  expect_equal(cls$n_fallback_empty[cls$method == "fbeta"], 1L)
+
+  # Tailgate's genuine no-cutpoint return has the same provenance contract.
+  env$.simCompareTailgateThreshold <- env$.simCompareFbetaThreshold
+  res <- env$.simCompareAlternativeRows(
+    flowFrameList = flow_frames, labelsList = labels,
+    nSample = 1, nCondition = 2, chnl = "F1", fallbackHighValue = TRUE
+  )
+  expect_true(all(is.na(res$error)))
+  expect_true(all(res$thresholdFallbackUsed))
+  expect_true(all(res$thresholdOrigin == "failed_no_cutpoint"))
+  expect_equal(res$propRespEst, c(0, 0))
+})
+
+test_that("Tailgate bandwidth exceptions propagate instead of becoming cutpoint failures", {
+  skip_if_not_installed("cytoUtils")
+  skip_if_not_installed("ks")
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_comp, local = env)
+  testthat::local_mocked_bindings(
+    hpi = function(...) stop("hpi estimation failed"), .package = "ks"
+  )
+  expect_error(env$.simCompareTailgateThreshold(c(1, 2, 3)), "hpi estimation failed")
+  expect_error(env$.simCompareTailgateThreshold(c(1, 2, 3), bandwidth = NA_real_),
+               "finite positive scalar")
+  expect_error(env$.simCompareTailgateThreshold(c(1, 1)), "distinct finite cells")
 })
 
 test_that("mismatch error summaries average scenario statistics equally", {
@@ -1580,6 +1660,7 @@ test_that("a missing bias_uns lets StimGate set the bias from its bandwidth", {
     captured$has_bias <- "biasUns" %in% names(args)
     captured$bias <- args$biasUns
     captured$factor <- args$biasUnsFactor
+    captured$scope <- args$bwScope
     stop("stop after capturing arguments")
   }
   row <- data.frame(
@@ -1591,6 +1672,11 @@ test_that("a missing bias_uns lets StimGate set the bias from its bandwidth", {
   expect_true(captured$has_bias)
   expect_null(captured$bias)
   expect_identical(captured$factor, 4)
+  expect_identical(captured$scope, "cytokine")
+
+  row$bw_scope <- "sample"
+  suppressWarnings(env$.simCompareRunScenario(row, nSample = 1, nIter = 1))
+  expect_identical(captured$scope, "sample")
 
   row$bias_uns <- 0.15
   suppressWarnings(env$.simCompareRunScenario(row, nSample = 1, nIter = 1))

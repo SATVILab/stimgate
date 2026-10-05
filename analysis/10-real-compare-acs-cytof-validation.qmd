@@ -62,6 +62,14 @@ path_comparison <- file.path(
   path_manual_output,
   "manual-comparison.rds"
 )
+.analysis_check_expected_run(
+  .analysis_read_rds(
+    file.path(path_manual_output, "manifest.rds"), "acs_cytof",
+    "analysis/9-real-compare-acs-cytof.qmd"
+  ),
+  "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd",
+  semantics_version = "acs-cytof-v2"
+)
 manual_comparison_tbl <- .analysis_read_rds(
   path_comparison, "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd"
 )

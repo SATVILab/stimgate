@@ -281,6 +281,13 @@ test_that("analysis 5 validation checks sample-row counts per sim_id", {
     .adaptive_fake_result(1L, 2L), .adaptive_fake_result(2L, 2L)
   )
   expect_identical(env$.simBandwidthEstAdaptiveValidate(tbl, 2L), character())
+  bw_cols <- c("bw_uns_core", "bw_stim_core", "bw_uns_extra", "bw_stim_extra")
+  tbl[bw_cols] <- NA_real_
+  expect_identical(env$.simBandwidthEstAdaptiveValidate(tbl, 2L), character())
+  zero <- env$.simBandwidthEstAdaptiveCollate(tbl, c("sim_id", "bw_mtd"))$bw_tbl_results
+  expect_true(all(zero$n_est == 0L))
+  expect_true(all(zero$prop_est == 0))
+  expect_true(all(is.na(zero$mean_bw)))
   expect_match(
     env$.simBandwidthEstAdaptiveValidate(tbl, 3L),
     "sim_id: 1, 2"
