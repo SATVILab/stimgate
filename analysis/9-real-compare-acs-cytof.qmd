@@ -93,7 +93,7 @@ n_workers <- as.integer(.get_qmd_param_env(
 if (is.na(n_workers) || n_workers < 1L) {
   stop("n_workers must be coercible to an integer of at least one.")
 }
-.acsCytofBatchList(tester_n_sample)
+.acsCytofValidateSampleCount(tester_n_sample)
 
 .acsCytofEnsureCurrentCheckout(root_dir)
 
@@ -158,7 +158,10 @@ The reusable helpers fix the six cytokine channels and the method settings.
 StimGate uses `bwMtd = "nrd0"` (with `bwNcellMax = 1e4`, `bwFallback = "auto"`
 and no bandwidth bounds); bandwidths are shared per marker
 (`bwScope = "cytokine"`). StimGate uses `gateCombn = "min"`, `minCell = 100`,
-threshold clustering off (`clusterGates = FALSE`) and `calcCytPosGates = TRUE`.
+threshold clustering on (`clusterGates = TRUE`) and cytokine-positive refinement
+on (`calcCytPosGates = TRUE`). The comparison scores the final clustered
+`loc_minClust` gates after cytokine-positive refinement. Both settings are
+recorded with the saved run.
 Its unstimulated-sample bias
 is not fixed: it equals the bandwidth StimGate estimates at the start
 (`biasUns = NULL` with `biasUnsFactor = 4`). F-beta uses its standard
@@ -323,7 +326,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .write_rds_atomic(
     list(
-      analysis_semantics_version = "acs-cytof-v1",
+      analysis_semantics_version = "acs-cytof-v2",
       run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))
     ),
     file.path(path_manual_output, "manifest.rds")
@@ -333,12 +336,13 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
     .analysis_read_rds(
       file.path(path_manual_output, "manifest.rds"), "acs_cytof", analysis_qmd
     ),
-    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v1"
+    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v2"
   )
   manual_comparison_tbl <- .analysis_read_rds(
     path_comparison, "acs_cytof", analysis_qmd
   )
 }
+.acsCytofValidateComparisonManifest(manual_comparison_tbl)
 manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 ```
 
@@ -348,8 +352,12 @@ manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 
 The comparison table, its RDS copy and a method/population/cytokine summary
 are written under `path_manual_output`. When `run_plots` is true, the
-figures are saved under `output/fig/9-real-compare-acs-cytof/`. Pearson
-correlations of the StimGate, Tailgate and F-beta estimates with the manual frequencies
+figures are saved under `output/fig/9-real-compare-acs-cytof/`. Failed thresholds (including finite fallback gates) remain in the comparison
+with missing scored frequencies. Summary tables state total, failed and scored
+counts; agreement statistics use successful estimates only. The exclusion CSV
+records unmatched manual/automated keys. Methods must have identical sample and
+stratum keys and matching data/preprocessing manifests before joining.
+Pearson correlations of the StimGate, Tailgate and F-beta estimates with the manual frequencies
 follow.
 
 ```{r}
@@ -438,6 +446,10 @@ if (isTRUE(run_plots)) {
 
 Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Relative error is (automated - manual) / manual for each sample, using the same samples as the figure above. Over-estimates are plotted above zero and under-estimates below, summarised separately by median, 95th percentile and maximum for each method, population (columns) and cytokine. Larger points mean more samples fell in that direction. The scale is linear down to -100% (0x, an estimate of zero) and doubles above zero, so -100% and a two-fold over-estimate are equally far from zero.
 
+The companion ratio figures show automated/manual frequency with identical
+curves: 1x agrees with the manual reference, 0x is zero automated frequency
+and 2x is twice the manual frequency. Manual gating remains an imperfect reference.
+
 ```{r}
 #| label: manual-signed-error
 #| echo: false
@@ -462,8 +474,71 @@ if (isTRUE(run_plots)) {
       height = 22
     )
     .analysis_print_fig(p)
+    .simBandwidthPrintRatioTwin(p,
+      file.path(.analysis_fig_dir(c(fig_key, "manual_comparison_signed_error", set_name), root_dir),
+        "manual-comparison-ratio.png"), height = 22, level = 5L)
   }
 }
+```
+
+### Absolute frequency error and results by stimulus
+
+Manual gating is an imperfect reference: these errors describe agreement with it,
+not error against known biological truth. Absolute frequency differences, in
+percentage points, retain zero and negative manual net frequencies. Relative
+errors require a positive manual net frequency and can be large when it is tiny.
+The coverage table reports every matched row, method failure, missing manual
+frequency and relative-error exclusion by method, population, cytokine and stimulus;
+unmatched cohort keys remain in the separate exclusion CSV.
+
+```{r}
+#| label: manual-error-coverage
+#| echo: false
+print(manual_summary_tbl, n = Inf)
+```
+
+The following figures separate stimuli so a strong response in one stimulus does
+not conceal poorer agreement in another. Both error measures use successful
+method estimates only; the table above supplies their denominators.
+
+```{r}
+#| label: manual-errors-by-stimulus
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  for (stimulus in unique(as.character(manual_comparison_tbl$stim))) {
+    .analysis_heading(paste("Stimulus:", stimulus), 4)
+    rows <- manual_comparison_tbl |> dplyr::filter(stim == stimulus)
+    for (metric in c("absolute", "relative")) {
+      .analysis_heading(paste(tools::toTitleCase(metric), "error"), 5)
+      p <- if (metric == "absolute") .acsCytofManualPlotAbsoluteError(rows) else .acsCytofManualPlotRelativeError(rows)
+      .analysis_save_fig(p, file.path(
+        .analysis_fig_dir(c(fig_key, "manual_comparison_errors_by_stimulus", stimulus, metric), root_dir),
+        paste0("manual-comparison-", metric, "-error.png")
+      ), height = 22)
+      .analysis_print_fig(p)
+    }
+  }
+}
+```
+
+### Donor uncertainty for mean errors
+
+The intervals below are percentile donor-bootstrap intervals for **mean absolute
+frequency error** and **mean absolute relative error**, rather than the medians
+or tail quantiles in the figures above. Each of 999 replicates resamples donors,
+keeping all their stimulated tubes together with their shared, already-subtracted
+unstimulated control. The same donor draws are used for all methods, stimuli,
+populations and cytokines. Means use finite successful estimates; relative means
+also require positive manual net frequency. Fewer than two contributing donors
+leaves an interval unavailable. These intervals reflect variation across donors,
+not uncertainty about whether manual gating is biologically correct.
+
+```{r}
+#| label: manual-donor-uncertainty
+#| echo: false
+manual_uncertainty_tbl <- .acsCytofManualUncertainty(manual_comparison_tbl)
+print(manual_uncertainty_tbl, n = Inf)
 ```
 
 ### Expression and gate diagnostics

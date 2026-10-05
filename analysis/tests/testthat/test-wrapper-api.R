@@ -62,7 +62,8 @@ test_that("analysis calls use the gateStim and stimControl argument contracts", 
         if (target == "stimgate::stimControl" && "clusterGates" %in% forwarded) {
           expect_true(
             identical(as.list(node)$clusterGates, quote(clusterGates)) ||
-              identical(as.list(node)$clusterGates, FALSE)
+              identical(as.list(node)$clusterGates, FALSE) ||
+              identical(as.list(node)$clusterGates, TRUE)
           )
         }
       }

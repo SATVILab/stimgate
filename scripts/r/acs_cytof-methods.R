@@ -252,7 +252,7 @@
   gs,
   pop,
   method = c("tailgate", "fbeta"),
-  batchList = .acsCytofBatchList(length(gs)),
+  batchList,
   pathFbeta = NULL
 ) {
   method <- match.arg(method)
@@ -532,19 +532,22 @@
       ". Re-run tester preprocessing."
     )
   }
-  batchList <- .acsCytofBatchList(nSampleActual)
+  preprocessing <- .acsCytofReadPreprocessing(paths$gs, gs)
+  batchList <- .acsCytofBatchList(preprocessing$sampleMap)
 
   # Compute every method before writing any, so a failure keeps the previous
   # results. Each write is itself atomic.
   resultList <- lapply(methodVec, function(method) {
     message("Running ", method, " for ", pop, ".")
-    .acsCytofRunComparator(
+    result <- .acsCytofRunComparator(
       gs = gs,
       pop = pop,
       method = method,
       batchList = batchList,
       pathFbeta = pathFbeta
     )
+    result$manifest <- list(context = .acsCytofManifest(preprocessing), settings = result$settings)
+    result
   })
   names(resultList) <- methodVec
   for (method in methodVec) {

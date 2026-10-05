@@ -3316,7 +3316,8 @@
     extra_heading = function(x) as.character(x),
     method_col = "method",
     pos_col = "mean_pos_setting",
-    allow_tall = FALSE) {
+    allow_tall = FALSE,
+    ratio_twins = FALSE) {
   if (level + 1L + as.integer(!is.null(extra_col)) > 6L) {
     stop("Figure loop headings would be deeper than level 6.")
   }
@@ -3357,6 +3358,10 @@
           height = height, allow_tall = allow_tall
         )
         .analysis_print_fig(p)
+        if (isTRUE(ratio_twins)) {
+          .simBandwidthPrintRatioTwin(p, file.path(dir, set_name, file_fn(pos, extra)),
+            height = height, allow_tall = allow_tall)
+        }
       }
     }
   }

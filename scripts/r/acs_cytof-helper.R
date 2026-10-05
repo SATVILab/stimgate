@@ -73,3 +73,74 @@
 
   invisible(runList)
 }
+
+# Identity is independent of directory location, but preserves loaded tube order.
+.acsCytofHash <- function(object) {
+  path <- tempfile("acs-hash-")
+  on.exit(unlink(path), add = TRUE)
+  saveRDS(object, path, version = 2)
+  unname(tools::md5sum(path))
+}
+
+.acsCytofMapFiles <- function(files, sampleLookup = NULL) {
+  if (is.null(sampleLookup)) {
+    env <- new.env()
+    utils::data("fn_to_sampleid_map", package = "DataTidyACSCyTOFFAUST", envir = env)
+    sampleLookup <- env$fn_to_sampleid_map
+  }
+  clean <- DataTidyACSCyTOFFAUST::clean_fcs_for_matching(basename(files))
+  if (anyDuplicated(clean) || anyDuplicated(sampleLookup$MatchFCSName)) {
+    stop("Duplicate ACS FCS filenames or filename lookup keys.")
+  }
+  index <- match(clean, sampleLookup$MatchFCSName)
+  if (anyNA(index)) {
+    stop("Unmapped ACS FCS files: ", paste(basename(files)[is.na(index)], collapse = ", "))
+  }
+  tibble::tibble(
+    ind = as.character(seq_along(files)),
+    file = basename(files),
+    SampleID = as.character(sampleLookup$SampleID[index]),
+    stim = sub("^mtbaux$", "mtb", as.character(sampleLookup$Stim[index]))
+  )
+}
+
+.acsCytofReadPreprocessing <- function(path, gs = NULL) {
+  file <- file.path(path, "acs-preprocessing.rds")
+  if (!file.exists(file)) stop("ACS preprocessing manifest missing; re-run preprocessing: ", path)
+  manifest <- readRDS(file)
+  .acsCytofBatchList(manifest$sampleMap)
+  if (!is.null(gs) && !identical(basename(flowWorkspace::sampleNames(gs)), manifest$sampleMap$file)) {
+    stop("ACS GatingSet files are missing, duplicated or reordered relative to preprocessing; re-run preprocessing.")
+  }
+  manifest
+}
+
+.acsCytofManifest <- function(preprocessing) {
+  sha <- system2("git", c("rev-parse", "HEAD"), stdout = TRUE)
+  if (length(sha) != 1L || !nzchar(sha)) stop("Cannot record ACS git SHA.")
+  list(version = 1L, gitSha = sha, preprocessing = preprocessing)
+}
+
+.acsCytofValidateManifests <- function(manifests) {
+  contexts <- lapply(manifests, function(x) {
+    context <- x$context
+    context$gitSha <- NULL
+    context
+  })
+  if (!length(contexts) || any(vapply(contexts, is.null, logical(1))) ||
+      !all(vapply(contexts, identical, logical(1), contexts[[1]]))) {
+    stop("Mismatched ACS result manifests (data or preprocessing). Re-run all methods together.")
+  }
+  invisible(TRUE)
+}
+
+.acsCytofValidateComparisonManifest <- function(table) {
+  manifest <- attr(table, "manifest")
+  if (is.null(manifest$methods) || !length(manifest$methods) ||
+      is.null(manifest$comparisonSettings) || is.null(manifest$manualInputHash) ||
+      !"thresholdFailed" %in% names(table)) {
+    stop("Legacy or incomplete ACS comparison manifest; re-run analysis 9 with RUN_SIMULATIONS=true RUN_PLOTS=false.")
+  }
+  for (population in manifest$methods) .acsCytofValidateManifests(population)
+  invisible(TRUE)
+}

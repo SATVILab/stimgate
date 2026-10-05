@@ -272,7 +272,12 @@
     ) |>
       readRDS() |>
       dplyr::mutate(chnl = chnlCurr, marker = chnlLab[chnlCurr]) |>
-      dplyr::select(chnl, marker, gateName, batch, ind, gate) # nolint
+      dplyr::select(
+        chnl, marker, gateName, batch, ind, gate,
+        dplyr::any_of(c(
+          "locGenerated", "locGeneratedDirect", "locSource", "locReason"
+        ))
+      ) # nolint
   })
 }
 

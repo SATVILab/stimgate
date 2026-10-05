@@ -360,6 +360,13 @@ render checks in `analysis/tests/test-slurm-launchers.sh` and run them in analys
 CI when launchers change. Relative-error plots averaged over cell counts and
 plots for each cell count belong in separate labelled QMD chunks; preserve the
 same scientific inclusion rules and avoid pooling different grid dimensions.
+For controlled negative-component mismatch analyses, report stimulated-negative
+mean shifts and SD inflation in separate figure sections and sibling folders,
+including the matching coverage summaries. Label which tube and component change.
+Ratio companions preserve signed-error geometry and intervals, relabelling ticks
+as `1 + relative error` (estimate/reference). Keep originals and save companions
+in sibling ratio folders. Absolute relative errors lose direction and cannot
+be relabelled as estimate/reference ratios.
 Signed relative-error plots (`.simBandwidthSignedError*()` in
 `sim-bandwidth-analysis-plot.R`) sit alongside, not instead of, the absolute
 ones: they summarise over- and under-estimates separately, weight lines by each
@@ -533,7 +540,10 @@ method appears and that disabling plotting produces no printed plots.
 
 Plot-construction helpers under `scripts/r/` should return plot objects without
 creating directories or writing files. Keep filesystem side effects in the
-corresponding save/orchestration helper or QMD.
+corresponding save/orchestration helper or QMD. Reference densities for threshold
+plots use seeded, render-local reference simulations, cache each biological
+setting independently of method settings and cell count, and retain the original
+threshold layers above fills.
 
 Figures from analysis QMDs are saved under `output/fig/<QMD name>/<figure type>/`
 via `.analysis_fig_dir()`, with `fig_key <- .analysis_mode_key("<QMD name>")`;
@@ -764,11 +774,24 @@ rows before drawing reference lines.
    Assign `sim_id` and `sim_seed` on the full grid before dev/quick filtering, shuffling and chunking. Each row is seeded with its own `sim_seed` under fixed RNG kinds (`Mersenne-Twister`, `Inversion`, `Rejection`) and the caller's RNG state is restored afterwards (`.analysis_with_seed()`, `.simBandwidthRunRow()`, `.simCompareRunScenario()`), so results do not depend on furrr's L'Ecuyer state, chunking or scheduling. Each simulation QMD has one `eval: false` "rerun one simulation" chunk that selects a `sim_id` from the full grid and calls the same scenario code path as the workers. Do not add separate debug loops.
 
 11. **Real-data analyses replace outputs non-destructively**:
+   ACS error summaries separate stimuli, report positive-manual relative-error
+   denominators, and retain zero/negative manual frequencies in absolute error.
+   Donor-bootstrap intervals reuse common donor draws across methods and strata,
+   keeping stimulated tubes with their shared control. Label the mean-error
+   estimand and finite donor coverage; manual gating is an imperfect reference.
    Real-data analyses that recompute cached outputs (e.g. ACS CyTOF) build into a temporary sibling and swap it in on success (`.acsCytofReplaceDir()`), or compute all results before atomically writing them. Never delete the previous output before the new one is complete.
    ACS stage controls inherit `run_simulations` when their parameters are NULL;
    explicit stage parameters/environment variables override that default. Cached
    comparison renders read the saved manual-comparison table without raw FCS or
    manual CSV inputs; GatingSet diagnostics are optional when those caches are absent.
+
+   ACS batches use the mapped SampleID and stimulus, never filename position.
+   Saved ACS method outputs must carry identical input/preprocessing
+   manifests before comparison. Keep per-marker threshold provenance and failure
+   coverage; exclude failed estimates from agreement metrics and persist cohort
+   exclusions rather than hiding omitted rows behind render warnings. With ACS
+   clustering and cytokine-positive refinement enabled, score `loc_minClust`,
+   and preserve cluster provenance when assembling the final package gate rows.
 
 12. **Shared local-FDR bandwidths (`bwScope`, issue #417)**:
    The scalar local-FDR bandwidth is chosen once per channel during settings
