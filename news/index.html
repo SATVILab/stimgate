@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.19</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.20</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,19 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.20" id="stimgate-09920">stimgate 0.99.20<a class="anchor" aria-label="anchor" href="#stimgate-09920"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-0-99-20">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-99-20"></a></h3>
+<ul><li>
+<code><a href="../reference/gateStim.html">gateStim()</a></code> now excludes cells exactly at the gate from sample-level frequencies, matching the strict gate applied to cells.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="analysis-0-99-20">Analysis<a class="anchor" aria-label="anchor" href="#analysis-0-99-20"></a></h3>
+<ul><li>Reject stale caches and unsafe partial HPC outputs. Preserve comparator errors, threshold provenance and finite-estimate coverage in summaries.</li>
+<li>Report method differences and uncertainty across paired simulated datasets, and retain negative background-subtracted estimates in signed-error plots.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.19" id="stimgate-09919">stimgate 0.99.19<a class="anchor" aria-label="anchor" href="#stimgate-09919"></a></h2>
 <div class="section level3">

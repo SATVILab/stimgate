@@ -234,6 +234,12 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   completed/error marker, and pass required run/chunk paths explicitly
   to progress helpers. This keeps restart markers consistent with
   durable output files.
+- In method comparisons with shared settings or cluster gates, `iter`
+  (the simulated dataset) is the independent unit. Label pooled sample
+  quantiles as tube-level distributions. Compute paired method
+  differences within datasets before reporting their between-dataset
+  uncertainty, and report finite-pair coverage; do not use the number of
+  tubes as the interval denominator.
 - Estimator-comparison simulations should use the same simulated dataset
   for rows that differ only by estimator or estimator-tuning settings.
   Derive the data-generation seed from the biological scenario, not from
@@ -289,7 +295,11 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - Comparator exceptions in benchmarking analyses must remain explicit
   runtime errors. A numerical fallback may be retained for diagnostics,
   but the exception must not be silently promoted or scored as a valid
-  prediction.
+  prediction. In comparisons 7/8, bandwidth/estimation exceptions leave
+  estimates and gate counts missing; only a genuine no-cutpoint outcome
+  may use an explicitly recorded empty-gate fallback. Summaries
+  distinguish runtime errors, no-cutpoint outcomes and threshold
+  fallbacks.
 - Transactional simulation/collation chunks must not use Quarto
   `error: true`; validation and promotion errors must fail the
   render/job.
@@ -387,18 +397,26 @@ input renders the QMDs end to end in quick mode instead (simulate, then
 plot; one job per QMD). See `analysis/tests/README.md` for commands and
 coverage limits.
 
-The default Slurm job list includes both Analysis 2a and 2b. Keep
-enabled chunked analyses in the `scripts` list and
+The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked
+runs. Keep enabled chunked analyses in the `scripts` list and
 `chunked_qmd_stem_for_script()` mapping, sharing run ID, chunk count and
-shuffle seed across each run. Select Slurm analyses with
-`bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`; validate all target
-arguments before submitting jobs. After the simulation jobs, `dev.sh`
-submits one `scripts/slurm/render-plots.sh` job per analysis that
-renders the real QMD with simulations off and plots on
-(`plot_qmds_for_script()`; 9 also renders 10). It depends `afterok` on
-its own simulation jobs and `afterany` on the submission’s other
-simulation jobs, because projr builds clear projr’s output folder (where
-figures go) before building. Keep mocked submission and render checks in
+shuffle seed across each run. Every simulation launcher must propagate
+render failures. Plot jobs receive the submission’s run ID and set
+`ANALYSIS_EXPECTED_RUN_ID` so cached reads reject results from another
+run; manual renders leave it unset. Plot jobs explicitly set all ACS
+stage controls to false. Promotion locks live next to `current/`, shared
+by every run of the analysis. Analysis 8 validates pairing and
+zero-shift agreement on the full collated table before promotion and
+uses one scientific settings list for manifest recording and canonical
+reads. Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`,
+or `2a 2b`; validate all target arguments before submitting jobs. After
+the simulation jobs, `dev.sh` submits one
+`scripts/slurm/render-plots.sh` job per analysis that renders the real
+QMD with simulations off and plots on (`plot_qmds_for_script()`; 9 also
+renders 10). It depends `afterok` on its own simulation jobs and
+`afterany` on the submission’s other simulation jobs, because projr
+builds clear projr’s output folder (where figures go) before building.
+Keep mocked submission and render checks in
 `analysis/tests/test-slurm-launchers.sh` and run them in analysis CI
 when launchers change. Relative-error plots averaged over cell counts
 and plots for each cell count belong in separate labelled QMD chunks;
@@ -419,6 +437,13 @@ so the unit is the dataset (`iter`): MCSE = sd(per-dataset
 statistic)/sqrt(D), NA when D \< 5. Final runs use 20 datasets per
 scenario and draft runs use 5, the minimum for these bars; keep MCSE
 prose aligned with the selected `sim_size` settings.
+
+For background-subtracted signed relative error, an estimate of zero
+gives -100% (0x); negative estimates can give errors below -100% and
+must remain visible. Averages of per-scenario statistics must be
+labelled as means of scenario medians/quantiles/maxima, with finite
+contributing-scenario counts. Display coverage and fallback provenance
+beside performance plots, keeping their sample denominators explicit.
 
 ### Website Maintenance (`pkgdown`)
 
@@ -708,13 +733,15 @@ pattern or rule identifies it. `.verifyBatchList()` requires at least
 one stimulated sample per batch and lets an unstimulated sample be
 shared across batches only if it is first in each; a stimulated sample
 belongs to exactly one batch. Code that needs a sample’s unstim relies
-on these rules. Saved expression includes unstimulated samples, while
-final stimulation gate tables omit them. Positivity helpers must treat
-channels with no gate for the current sample as all-FALSE, preserving
-one logical value per cell. Completed `chnlSettings.rds` settings are
-keyed by marker labels, although saved expression columns use channel
-names. Resolve that mapping before applying the saved `biasUns`;
-channels without a saved bias use zero.
+on these rules. Sample-level diagnostic frequencies count positives with
+strict `x > gate`, matching applied gates; keep threshold-selection tail
+calculations separate. Saved expression includes unstimulated samples,
+while final stimulation gate tables omit them. Positivity helpers must
+treat channels with no gate for the current sample as all-FALSE,
+preserving one logical value per cell. Completed `chnlSettings.rds`
+settings are keyed by marker labels, although saved expression columns
+use channel names. Resolve that mapping before applying the saved
+`biasUns`; channels without a saved bias use zero.
 [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
 clears the run populations’ cached expression and gates at start. It
 warms the expression cache once per sample before settings completion,
@@ -934,7 +961,10 @@ deduplicates identical rows before drawing reference lines.
     - Record the complete selected cross-chunk grid specification (not
       just a few scalars) as a required parameter, so editing the grid
       under the same `analysis_semantics_version` is detected. Bump the
-      semantics version when results change.
+      semantics version when results change. During integrations, check
+      master and every merged branch, including merge history
+      (`git log -m -S`), and choose a new identifier above every
+      previously used version.
     - Resume retries rows whose saved output or marker recorded an
       error, so a run ID with a failed simulation can still complete.
 
@@ -1081,10 +1111,12 @@ both suites.
 
 6.  **Shared test fixtures**: Scope expensive file-shared fixtures in
     `local({ ... })` and register deferred cleanup there; seeded tests
-    must restore RNG state rather than leaking it into later files. If
-    multiple tests need the same setup data, create it within each test
-    or create it once at the top with clear documentation. Never delete
-    shared fixtures mid-file.
+    must restore RNG state rather than leaking it into later files.
+    Run-context fixtures must isolate projr directory lookup as well as
+    `path_root`; configured projr paths take precedence and can
+    otherwise reuse checkout caches. If multiple tests need the same
+    setup data, create it within each test or create it once at the top
+    with clear documentation. Never delete shared fixtures mid-file.
 
 7.  **Test data files compatibility**: Test data files (`.rds` in
     `tests/testthat/`) may need regeneration when major dependencies
