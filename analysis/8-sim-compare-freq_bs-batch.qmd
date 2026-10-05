@@ -14,7 +14,7 @@ params:
   sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
-  show_mcse: true
+  show_mcse: both
   sim_size: final
 ---
 
@@ -80,7 +80,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v12"
+comparison_semantics_version <- "batch-mismatch-comparison-v14"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -93,7 +93,8 @@ run_plots <- .as_flag(.get_qmd_param_env(
   TRUE
 ))
 # Monte Carlo error bars on the summary plots (see analysis-mcse.R).
-show_mcse <- .as_flag(.get_qmd_param_env("show_mcse", "SHOW_MCSE", TRUE))
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))
+show_mcse <- mcse_mode != "off"
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
@@ -119,7 +120,8 @@ for (fn in c(
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-plot.R",
-  "sim-compare-freq_bs.R"
+  "sim-compare-freq_bs.R",
+  "sim-compare-performance-plot.R"
 )) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -172,8 +174,8 @@ the `nrd0` selector with the bandwidth-estimation sample capped at 10,000 cells.
 
 ### Simulation settings
 
-Each scenario simulates 20 datasets of 10 samples in final runs and 5 datasets
-of 10 samples in draft runs (`SIM_SIZE=draft`). The samples in a dataset are
+Each scenario simulates 20 datasets of 20 samples in final runs and 5 datasets
+of 20 samples in draft runs (`SIM_SIZE=draft`). The samples in a dataset are
 gated together, with shared settings and cluster gates, so the dataset is the
 unit for uncertainty. Draft results are kept separately and are for iterating,
 not for reporting.
@@ -199,7 +201,7 @@ calc_cyt_pos_gates <- FALSE
 # Each dataset of `n_sample_sim` samples is gated together (shared settings
 # and cluster gates), so the dataset is the unit for uncertainty. Draft keeps
 # the samples per dataset and uses a quarter of the datasets (at least 5).
-n_sample_sim <- if (analysis_quick) 1L else 10L
+n_sample_sim <- if (analysis_quick) 1L else 20L
 n_iter_sim <- if (analysis_quick) 1L else c(final = 20L, draft = 5L)[[sim_size]]
 
 fbeta_beta <- 0.8
@@ -756,7 +758,7 @@ pairing_check <- mismatch_validation$pairing_check
 zero_agreement <- mismatch_validation$zero_agreement
 
 knitr::kable(
-  .simCompareClassificationSummary(compare_raw, scenarioCols = "method") |>
+  .simCompareMethodOutcomeCounts(compare_raw) |>
     dplyr::select(method, n, n_valid, n_run_error, n_no_cutpoint, n_fallback),
   caption = "Method outcomes: runtime errors are unscored; no-cutpoint empty gates are recorded fallbacks."
 )
@@ -805,28 +807,22 @@ Mean shifts are additive shifts on the transformed expression scale, the
 scale the methods gate on. SD inflation is the fractional increase in the
 standard deviation of the stimulated background (negative) cells.
 
-**Monte Carlo error bars.** With `show_mcse` on (the default; set the
-`show_mcse` parameter or the `SHOW_MCSE` environment variable to false to
-turn it off), the summary plots show error bars for how much each plotted
-value could move if the simulation were repeated, using only the results
-already simulated. The simulated samples are not independent of each other:
-within one simulated dataset, StimGate estimates its bandwidth and bias once
-across the dataset's samples and can cluster their gates. So the unit is the
-simulated dataset. Each statistic (for example the median FDP) is also
-calculated within each dataset, and its standard error is the standard
-deviation of these per-dataset values divided by the square root of the
-number of datasets; the datasets are treated as independent draws. The bar is
-the plotted value plus or minus 1.96 of these standard errors. The plotted
-values themselves are unchanged: they are still calculated over all samples
-of all datasets. No bar is drawn with fewer than five datasets per scenario.
-Final runs use 20 datasets per scenario and draft runs use five, the minimum
-for bars, so bars are drawn in both modes. A standard deviation from five
-values is itself rough; increase the number of datasets (`n_iter_sim`) for
-firmer intervals. Bars are kept within 0-100% for proportions. For averages over cell counts and response
-probabilities, the bar is the average plus or minus 1.96 combined standard
-errors, treating these scenarios as independent, which holds across
-biological scenarios. Maxima never have error bars: the results say little
-about how much larger the maximum could be.
+**Monte Carlo intervals.** `show_mcse` / `SHOW_MCSE` accepts `off`, `on`
+or `both` (default); false/true still selects off/on. Both versions are printed
+and saved in sibling `mcse_off/` and `mcse_on/` folders, with identical points
+and axes. With error bars on, 95% percentile-bootstrap
+intervals resample independent whole datasets (`iter`) with all selected samples
+and their multiplicity. Each draw recalculates the actual pooled tube statistic
+shown, including classification distributions. Point estimates are unchanged
+when intervals are disabled. At least five contributing datasets and 95% finite
+bootstrap draws are required; coverage and suppressed intervals are reported.
+Final runs use 20 datasets of 20 samples and draft runs use five datasets of 20
+samples, so draft intervals are rough. Tiny quick-mode datasets are smoke checks.
+Averaged figures recompute the full equal-weight scenario average in each draw,
+with the same dataset indices for methods and deterministic mismatch settings
+sharing biological random draws. They do not combine scenario SEs as though
+paired settings were independent. Maxima have their own occurrence and
+conditional-severity figures below.
 
 ```{r}
 #| label: figure-helpers
@@ -860,7 +856,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
       if ("n_scenario_median" %in% names(d)) {
         count_cols <- c(
           "transformation", "mismatch_val", "method", "n_cell", "direction",
-          "n_scenario_median", "n_scenario_q95", "n_scenario_max"
+          "n_scenario_median", "n_scenario_q95"
         )
         cat("\n\nContributing scenarios per statistic:\n\n",
             knitr::kable(dplyr::select(d, dplyr::any_of(count_cols))), sep = "\n")
@@ -868,8 +864,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
           d, x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
           stat_cols = c(
             median = "Mean of scenario medians",
-            q95 = "Mean of scenario 95th percentiles",
-            max = "Mean of scenario maxima"
+            q95 = "Mean of scenario 95th percentiles"
           ), ...
         ) + ggplot2::labs(caption = .simBandwidthScenarioCaption(d))
       } else {
@@ -922,6 +917,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     compare_raw,
     scenarioCols = classification_cols, mcse = show_mcse
   )
+  print(knitr::kable(.simComparePerformanceCoverage(class_scenario, classification_cols),
+    caption = "Tube-level classification bootstrap coverage and unavailable intervals."))
 }
 ```
 
@@ -979,8 +976,9 @@ are the worse tail, the 90th percentile of FDP and the 10th percentile of
 sensitivity. Columns are baseline scenarios, each with its own horizontal
 range (on a square-root scale) because mismatch sizes differ between
 transformations. Each mismatch mechanism has its own figure. Error bars (with
-`show_mcse` on) come from the spread between datasets of each dataset's own
-median or tail percentile, as described above.
+`show_mcse` on) resample whole datasets and recalculate the pooled tube-level
+median or tail percentile, as described above. Undefined bootstrap draws and
+suppressed intervals are reported in the coverage table.
 
 ```{r}
 #| label: fdp-sensitivity
@@ -998,7 +996,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 13,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1057,7 +1055,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 9,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1248,38 +1246,29 @@ contaminated to the same extent. Both are needed to judge a method.
 
 ### Relative error summaries
 
-The relative error of an estimate is (estimate - truth) / truth. Each scenario
-is one baseline (transformation, mean position setting, response probability and
-number of stimulated cells), one mismatch mechanism and one mismatch size. For
-each scenario and method, the median, 95th percentile and maximum are
-calculated over the simulated samples, using the same scored samples as the
-summary table above. Samples with a true frequency of zero are left out. The
-figures below then either average these scenario statistics equally over
-cell counts and response probabilities, over response probabilities only, or
-not at all. Mismatch sizes differ between transformations, so scenarios are
-only ever averaged within one transformation and mismatch size. Averaged panels
-are labelled **Mean of scenario medians**, **Mean of scenario 95th percentiles**
-and **Mean of scenario maxima**. The table beside each averaged figure gives
-the finite contributing-scenario count for each statistic and setting; empty
-signed directions contribute no statistic.
+The relative error is (estimate - truth) / truth. Within each biological
+scenario and method, the median and existing tail percentiles pool all valid
+sample estimates across independent datasets. Samples with zero true frequency
+have no relative error. Main percentile figures omit maxima.
 
-Two kinds of figure are shown, each in three views. The first kind shows the
-size of the relative error, ignoring direction. The second kind splits the
-relative error into over-estimates (above zero) and under-estimates (below
-zero), as in analysis 2a. Every figure is shown with all methods and without
-Tailgate, with colour identifying the method, rows of panels showing the
-median, 95th percentile and maximum, columns separating transformations, and
-one figure per mean position setting, mismatch mechanism and (where
-applicable) cell count.
+The views below average scenario statistics equally over cell counts and
+response probabilities, over response probabilities only, or not at all.
+Averages stay within one transformation, mismatch mechanism and mismatch size;
+labels say **Mean of scenario medians** and **Mean of scenario 95th percentiles**.
+Counts beside figures report finite contributing scenarios. Whole-dataset
+bootstrap draws recalculate the entire average, preserving shared biological
+random draws across methods and deterministic mismatch settings. A draw in
+which an originally contributing scenario has no finite statistic is undefined;
+its coverage is reported and unreliable intervals are suppressed. Point
+estimates and their contributing scenarios stay the same with intervals on/off.
 
-Error bars (with `show_mcse` on) are drawn for the median and 95th
-percentile, not the maximum. Within one scenario they come from the spread
-between datasets of each dataset's statistic. In the averaged views they are
-the average plus or minus 1.96 combined standard errors, treating the
-averaged scenarios as independent. For over- and under-estimates, the number
-of errors in each direction is itself random, so the bars for a rare
-direction understate the uncertainty a little (the line weight shows how rare
-it is). Bars never extend past the +1500% cap.
+Absolute-error figures ignore direction; signed figures split over- and
+under-estimates and retain the share of valid samples in each direction.
+Exact agreement belongs to neither direction. Every figure has all-method and
+no-Tailgate versions. Main rows show median and 95th percentile, while the
+separate dataset-maximum figures below show occurrence and conditional severity.
+Whole-dataset intervals need five contributing datasets and 95% finite draws.
+Bars and points share the +1500% cap; negative signed estimates remain visible.
 
 ```{r}
 #| label: mismatch-error-summaries
@@ -1304,10 +1293,18 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     "method"
   )
   group_cell <- c(group_all, "n_cell")
-  err_averaged <- .simCompareErrorAverage(err_scenario, group_all)
-  err_by_cell <- .simCompareErrorAverage(err_scenario, group_cell)
-  signed_averaged <- .simBandwidthSignedErrorAverage(signed_scenario, group_all)
-  signed_by_cell <- .simBandwidthSignedErrorAverage(signed_scenario, group_cell)
+  err_averaged <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_all, mcse = show_mcse)
+  err_by_cell <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_cell, mcse = show_mcse)
+  signed_averaged <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_all, signed = TRUE, mcse = show_mcse)
+  signed_by_cell <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_cell, signed = TRUE, mcse = show_mcse)
+  coverage_summaries <- list(err_scenario, signed_scenario, err_averaged,
+    err_by_cell, signed_averaged, signed_by_cell)
+  coverage_keys <- list(scenario_error_cols, scenario_error_cols, group_all,
+    group_cell, group_all, group_cell)
+  for (i in seq_along(coverage_summaries)) {
+    print(knitr::kable(.simComparePerformanceCoverage(coverage_summaries[[i]], coverage_keys[[i]]),
+      caption = "Pooled or scenario-average bootstrap coverage; undefined draws and unavailable intervals."))
+  }
 }
 ```
 
@@ -1333,7 +1330,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 14,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1359,7 +1356,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"),
     height = 14,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1385,7 +1382,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"),
     height = 14,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1398,8 +1395,7 @@ visible; a capped upper tick reads “≥ 16x”.
 ### Over- and under-estimates averaged over cell counts
 
 Relative error is split by direction: over-estimates sit above zero and
-under-estimates below. Within each scenario, the median, 95th percentile and
-maximum are calculated separately for over- and under-estimates, then averaged
+under-estimates below. Within each scenario, the median and 95th percentile are calculated separately for over- and under-estimates, then averaged
 equally over cell counts and response probabilities within each
 transformation. Line weight shows the share of estimates in that direction.
 Under-estimates are on a linear scale, including errors below -100% for negative background-subtracted estimates, with -100% (0x, an estimate of zero), and
@@ -1423,7 +1419,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = "mismatch_type",
     ratio_twins = TRUE,
     height = 16,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1450,7 +1446,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = c("mismatch_type", "n_cell"),
     ratio_twins = TRUE,
     height = 16,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1478,8 +1474,73 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = c("mismatch_type", "n_cell"),
     ratio_twins = TRUE,
     height = 16,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
+}
+```
+
+### Dataset-maximum occurrence and conditional severity
+
+The fixed-size maximum summaries use only datasets with valid relative errors
+for all 20 intended samples. Incomplete datasets stay in the coverage table;
+methods can have different eligible cohorts. Tiny quick-mode smoke checks use
+their one intended sample and cannot provide reportable intervals. For each
+direction, occurrence is the share of eligible datasets containing at least
+one such error. Severity is the mean within-dataset maximum among affected
+datasets. No affected datasets means zero occurrence and undefined severity.
+
+Bootstrap draws resample all datasets, including unaffected and incomplete ones,
+and jointly recalculate occurrence and severity. Occurrence intervals need five
+eligible datasets and 95% finite draws; severity additionally needs five affected
+datasets. Suppressed intervals and undefined-bootstrap coverage appear beside
+method-specific eligible, incomplete and affected counts. Conditional maxima
+need not exceed the pooled sample percentiles above.
+
+```{r}
+#| label: dataset-max-coverage
+#| echo: false
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  dataset_max <- .simCompareDatasetMaxSummary(compare_raw,
+    scenarioCols = scenario_error_cols, expected_samples = n_sample_sim,
+    expected_datasets = seq_len(n_iter_sim), mcse = show_mcse)
+  print(knitr::kable(.simCompareDatasetMaxCoverage(dataset_max), digits = 3,
+    caption = "Method-specific eligible, incomplete and affected dataset cohorts; bootstrap coverage."))
+}
+```
+
+```{r}
+#| label: dataset-max-occurrence
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .simCompareFigureLoop(dataset_max,
+    make_plot = function(d) .simCompareDatasetMaxPlot(d, "occurrence",
+      x = "mismatch_val", x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
+      x_log = FALSE, mcse = show_mcse),
+    dir = .compare_fresh_fig_dir("dataset_max_occurrence_by_n_cell_prob"),
+    file_fn = .compare_mismatch_file, extra_heading = .compare_mismatch_heading,
+    extra_col = c("mismatch_type", "n_cell"), height = 14, level = 4L, mcse_mode = mcse_mode)
+}
+```
+
+### Conditional dataset maxima: signed errors and ratio companions
+
+Severity is shown with its direction: over-estimates above zero, under-estimates
+below. Each signed-error figure has an identical estimate/reference ratio twin.
+
+```{r}
+#| label: dataset-max-severity
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .simCompareFigureLoop(dataset_max,
+    make_plot = function(d) .simCompareDatasetMaxPlot(d, "severity",
+      x = "mismatch_val", x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
+      x_log = FALSE, mcse = show_mcse),
+    dir = .compare_fresh_fig_dir("dataset_max_signed_error_severity_by_n_cell_prob"),
+    file_fn = .compare_mismatch_file, extra_heading = .compare_mismatch_heading,
+    extra_col = c("mismatch_type", "n_cell"), ratio_twins = TRUE,
+    height = 14, level = 4L, mcse_mode = mcse_mode)
 }
 ```
 
@@ -1489,8 +1550,8 @@ The mean share of unstimulated cells above the gate is plotted against
 the stimulated mean shift. Colour identifies the method, line type identifies
 which stimulated cells are shifted, and panels separate baseline scenarios.
 Higher values indicate that more unstimulated cells lie above the chosen gate.
-Error bars (with `show_mcse` on) come from the spread of each dataset's mean
-between datasets.
+Error bars (with `show_mcse` on) are whole-dataset bootstrap intervals for
+the plotted pooled mean.
 
 ```{r}
 #| label: threshold-placement-unstim
@@ -1507,7 +1568,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     dir = .analysis_fig_dir(c(fig_key, "threshold_placement_unstim"), path_root = root_dir),
     file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
     height = 16,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1519,8 +1580,8 @@ size on an inverse-hyperbolic-sine vertical scale, with colour identifying
 the method. Rows of panels separate mismatch mechanisms and columns separate
 baseline scenarios, with one mean position setting per plot. Compare curves
 within each panel, since mean shift and spread increase use different units.
-Error bars (with `show_mcse` on) come from the spread of each dataset's 90th
-percentile between datasets.
+Error bars (with `show_mcse` on) resample whole datasets and recalculate the
+pooled tube-level 90th percentile in each draw.
 
 ```{r}
 #| label: upper-tail-and-fallbacks
@@ -1533,7 +1594,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     dir = .analysis_fig_dir(c(fig_key, "upper_tail_and_fallbacks"), path_root = root_dir),
     file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
     height = 18,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```

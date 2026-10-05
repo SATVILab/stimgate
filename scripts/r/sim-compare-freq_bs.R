@@ -657,7 +657,17 @@
 # genuine positives and the false-positive rate when it has no genuine
 # negatives. `gate_status` separates failed runs, fallback gates and
 # calculated gates, each split by whether any stimulated cell was selected.
+# Runtime failures belong to the primary method's failure cohort. Keep their
+# error/provenance fields while recognizing the historical diagnostic label.
+.simComparePrimaryMethodRows <- function(.data) {
+  if (!"method" %in% names(.data)) return(.data)
+  .data$method <- as.character(.data$method)
+  .data$method[.data$method %in% "stimgate_error"] <- "stimgate"
+  .data
+}
+
 .simCompareClassificationMetrics <- function(.data) {
+  .data <- .simComparePrimaryMethodRows(.data)
   ratio <- function(num, den) {
     dplyr::if_else(!is.na(den) & den > 0, num / den, NA_real_)
   }
@@ -2877,6 +2887,68 @@
   )
 }
 
+# Counts aggregate across biological scenarios without pretending they share a
+# bootstrap family. This validation table contains no performance intervals.
+.simCompareMethodOutcomeCounts <- function(raw) {
+  raw <- .simComparePrimaryMethodRows(raw)
+  if (!"error" %in% names(raw)) raw$error <- NA_character_
+  if (!"thresholdOrigin" %in% names(raw)) raw$thresholdOrigin <- NA_character_
+  raw |>
+    dplyr::filter(.data$method %in% c("stimgate", "fbeta", "tailgate")) |>
+    .simCompareClassificationMetrics() |>
+    dplyr::group_by(.data$method) |>
+    dplyr::summarise(n = dplyr::n(),
+      n_valid = sum(.data$gate_status != "failed"),
+      n_run_error = sum(!is.na(.data$error) & nzchar(.data$error)),
+      n_no_cutpoint = sum(.data$thresholdOrigin %in% "failed_no_cutpoint"),
+      n_fallback = sum(.data$gate_status %in% c("fallback_empty", "fallback_selected")),
+      .groups = "drop")
+}
+
+# sim_seed identifies biological draws shared across methods and deterministic
+# mismatches. Fallback biological keys support small fixtures without grid seeds.
+.simCompareBootstrapContext <- function(data, unit = "iter") {
+  .simCompareRequireUnit(data, unit)
+  if ("sim_seed" %in% names(data)) {
+    if (any(!is.finite(data$sim_seed))) stop("Bootstrap requires finite biological sim_seed values.")
+    family <- paste0("sim_seed:", data$sim_seed)
+  } else {
+    keys <- intersect(c("base_scenario_id", "transformation", "mean_pos_setting", "mean_pos",
+      "prob_response", "n_cell", "sample_perturbation_sd", "condition_perturbation_sd",
+      "cluster_perturbation_sd", "background_relative_to_response", "n_cell_uns_relative_to_stim"), names(data))
+    family <- if (length(keys)) do.call(paste, c(lapply(data[keys], as.character), sep = "|")) else rep("fixture", nrow(data))
+  }
+  units <- lapply(split(data[[unit]], family), function(ids) {
+    ids <- ids[!is.na(ids)]
+    if (is.numeric(ids) && length(ids) && all(ids == as.integer(ids) & ids > 0)) {
+      seq_len(max(ids))
+    } else sort(unique(ids))
+  })
+  data$.bootstrap_family <- family
+  data$.bootstrap_units <- unname(units[family])
+  data
+}
+
+.simComparePooledStats <- function(data, scenarioCols, spec, unit, mcse) {
+  data <- .simCompareBootstrapContext(data, unit)
+  data |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
+    dplyr::group_modify(function(rows, key) {
+      families <- unique(rows$.bootstrap_family)
+      if (length(families) != 1L) stop("A pooled scenario must have one biological bootstrap family.")
+      intended <- rows$.bootstrap_units[[1]]
+      missing <- setdiff(as.character(intended), as.character(rows[[unit]]))
+      units <- c(as.character(rows[[unit]]), missing)
+      out <- dplyr::bind_cols(purrr::imap(spec, function(item, name) {
+        x <- c(rows[[item$column]], rep(NA_real_, length(missing)))
+        .analysis_mcse_pooled_cols(x, units, item$stat, name, families, mcse)
+      }))
+      out$n_dataset_total <- length(intended)
+      out
+    }) |>
+    dplyr::ungroup()
+}
+
 #' Summarise comparison runs by scenario and method
 #'
 #' @keywords internal
@@ -2884,8 +2956,9 @@
 # and `<stat>_upper` (`analysis-mcse.R`): samples within one simulated
 # dataset are not independent (bandwidth and bias are estimated across the
 # dataset's samples and gates can be clustered), so the MCSE comes from the
-# spread between datasets (`unit`) of each dataset's own statistic, and is NA
-# with fewer than five datasets. The plotted (pooled) values are unchanged.
+# dataset-block bootstrap of the plotted pooled statistic. At least five
+# contributing datasets and 95% finite bootstrap statistics are required.
+# Point estimates are identical with intervals on or off.
 .simCompareSummariseFreqBs <- function(
   .data,
   scenarioCols = NULL,
@@ -2893,6 +2966,7 @@
   mcse = FALSE,
   unit = "iter"
 ) {
+  .data <- .simComparePrimaryMethodRows(.data)
   if (!"error" %in% names(.data)) {
     .data$error <- NA_character_
   }
@@ -2987,7 +3061,6 @@
         probs = 0.95,
         na.rm = TRUE
       ),
-      max_abs_rel_error = .simCompareQuantileFinite(abs(.data$rel_error), 1),
       threshold_mean = mean(.data$threshold, na.rm = TRUE),
       threshold_median = stats::median(.data$threshold, na.rm = TRUE),
       .groups = "drop"
@@ -3007,49 +3080,22 @@
         )
       )
     )
-  if (!isTRUE(mcse)) {
-    return(out)
-  }
-  .simCompareRequireUnit(scored, unit)
-  q <- .analysis_mcse_quantile_finite
-  fmean <- function(v) mean(v[is.finite(v)])
-  mc <- scored |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
-    dplyr::summarise(
-      mean_abs_error_mcse = .analysis_mcse_between_units(
-        .data$abs_error, .data[[unit]], fmean
-      ),
-      med_abs_rel_error_mcse = .analysis_mcse_between_units(
-        abs(.data$rel_error), .data[[unit]], function(v) q(v, 0.5)
-      ),
-      q90_abs_rel_error_mcse = .analysis_mcse_between_units(
-        abs(.data$rel_error), .data[[unit]], function(v) q(v, 0.9)
-      ),
-      q95_abs_rel_error_mcse = .analysis_mcse_between_units(
-        abs(.data$rel_error), .data[[unit]], function(v) q(v, 0.95)
-      ),
-      fallback_rate_mcse = .analysis_mcse_between_units(
-        .data$thresholdFallbackUsed %in% TRUE, .data[[unit]], mean
-      ),
-      propUns_mean_mcse = .analysis_mcse_between_units(
-        .data$propUns, .data[[unit]], fmean
-      ),
-      .groups = "drop"
-    )
-  out |>
-    dplyr::mutate(fallback_rate = .data$n_threshold_fallback / .data$n) |>
-    dplyr::left_join(mc, by = scenarioCols) |>
-    .analysis_mcse_add_bounds(
-      c(
-        "mean_abs_error", "med_abs_rel_error", "q90_abs_rel_error",
-        "q95_abs_rel_error"
-      ),
-      range = c(0, Inf)
-    ) |>
-    .analysis_mcse_add_bounds(
-      c("fallback_rate", "propUns_mean"),
-      range = c(0, 1)
-    )
+  q <- .simCompareQuantileFinite
+  fmean <- function(v) { v <- v[is.finite(v)]; if (length(v)) mean(v) else NA_real_ }
+  item <- function(column, stat) list(column = column, stat = stat)
+  scored$fallback <- scored$thresholdFallbackUsed %in% TRUE &
+    (is.na(scored$run_error) | !nzchar(scored$run_error))
+  spec <- list(
+    mean_abs_error = item("abs_error", fmean),
+    med_abs_rel_error = item("rel_error", function(v) q(abs(v), 0.5)),
+    q90_abs_rel_error = item("rel_error", function(v) q(abs(v), 0.9)),
+    q95_abs_rel_error = item("rel_error", function(v) q(abs(v), 0.95)),
+    fallback_rate = item("fallback", fmean),
+    propUns_mean = item("propUns", fmean)
+  )
+  bootstrap <- .simComparePooledStats(scored, scenarioCols, spec, unit, mcse)
+  out <- dplyr::select(out, -dplyr::any_of(c(names(spec), "max_abs_rel_error")))
+  dplyr::left_join(out, bootstrap, by = scenarioCols)
 }
 
 # Stop unless `.data` has the dataset column used as the Monte Carlo unit.
@@ -3104,6 +3150,7 @@
     .data, scenarioCols,
     outcomes = c("abs_error", "abs_rel_error"),
     competitors = c("fbeta", "tailgate")) {
+  .data <- .simComparePrimaryMethodRows(.data)
   scenarioCols <- setdiff(
     scenarioCols, c("method", "approach", "sim_id", "sim_seed", "iter", "sample", "ind")
   )
@@ -3317,7 +3364,8 @@
     method_col = "method",
     pos_col = "mean_pos_setting",
     allow_tall = FALSE,
-    ratio_twins = FALSE) {
+    ratio_twins = FALSE,
+    mcse_mode = NULL) {
   if (level + 1L + as.integer(!is.null(extra_col)) > 6L) {
     stop("Figure loop headings would be deeper than level 6.")
   }
@@ -3355,12 +3403,12 @@
         p <- make_plot(curr)
         .analysis_save_fig(
           p, file.path(dir, set_name, file_fn(pos, extra)),
-          height = height, allow_tall = allow_tall
+          height = height, allow_tall = allow_tall, mcse_mode = mcse_mode
         )
-        .analysis_print_fig(p)
+        .analysis_print_fig(p, mcse_mode = mcse_mode)
         if (isTRUE(ratio_twins)) {
           .simBandwidthPrintRatioTwin(p, file.path(dir, set_name, file_fn(pos, extra)),
-            height = height, allow_tall = allow_tall)
+            height = height, allow_tall = allow_tall, mcse_mode = mcse_mode)
         }
       }
     }
@@ -3562,97 +3610,159 @@
 # Over- and under-estimate summary of signed relative error per scenario and
 # method, from raw comparison rows, with the same rows and estimand as
 # `.simCompareSummariseFreqBs()`. With `mcse`, the Monte Carlo errors come
-# from the spread between datasets (`unit`), as in that function.
+# from whole-dataset (`unit`) resampling of those pooled statistics.
 .simCompareSignedErrorSummary <- function(
     .data,
     scenarioCols,
     keepMethods = c("stimgate", "fbeta", "tailgate"),
     mcse = FALSE,
     unit = "iter") {
-  if (isTRUE(mcse)) {
-    .simCompareRequireUnit(.data, unit)
-  }
-  .data |>
-    dplyr::filter(.data$method %in% keepMethods) |>
-    dplyr::mutate(
-      rel_error = dplyr::if_else(
-        .data$propRespTruth != 0,
-        (.data$propRespEst - .data$propRespTruth) / .data$propRespTruth,
-        NA_real_
+  .data <- .simComparePrimaryMethodRows(.data)
+  rows <- .simCompareBootstrapContext(.data, unit) |>
+    dplyr::filter(.data$method %in% keepMethods)
+  if (!"error" %in% names(rows)) rows$error <- NA_character_
+  rows <- rows |> dplyr::mutate(rel_error = dplyr::if_else(
+    .data$propRespTruth != 0 & (is.na(.data$error) | !nzchar(.data$error)),
+    (.data$propRespEst - .data$propRespTruth) / .data$propRespTruth, NA_real_))
+  rows |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
+    dplyr::group_modify(function(data, key) {
+      family <- unique(data$.bootstrap_family)
+      if (length(family) != 1L) stop("A signed scenario must have one bootstrap family.")
+      missing <- setdiff(as.character(data$.bootstrap_units[[1]]), as.character(data[[unit]]))
+      .simBandwidthSignedErrorSides(
+        c(data$rel_error, rep(NA_real_, length(missing))), mcse = mcse,
+        unit = c(as.character(data[[unit]]), missing), bootstrap_family = family
       )
-    ) |>
-    .simBandwidthSignedErrorSummary(
-      scenarioCols,
-      mcse = mcse,
-      unit = if (isTRUE(mcse)) unit else NULL
-    )
+    }) |>
+    dplyr::ungroup()
 }
 
 # Size of the relative error, |estimate - truth| / truth, per scenario and
-# method: median, 95th percentile and maximum over the sample-level errors.
+# method: median and 95th percentile over pooled sample-level errors.
 # Uses the same rows and estimand as `.simCompareSummariseFreqBs()`; samples
 # with a true frequency of zero have no relative error and are left out.
-# With `mcse`, the median and 95th percentile get between-dataset Monte Carlo
-# errors and bounds (as in `.simCompareSummariseFreqBs()`); the maximum none.
+# Bounds use whole-dataset resampling of the same pooled percentiles. Maxima
+# belong to `.simCompareDatasetMaxSummary()`, not these main figures.
 .simCompareUnsignedErrorSummary <- function(
     .data,
     scenarioCols,
     keepMethods = c("stimgate", "fbeta", "tailgate"),
     mcse = FALSE,
     unit = "iter") {
-  if (isTRUE(mcse)) {
-    .simCompareRequireUnit(.data, unit)
-  }
+  .data <- .simComparePrimaryMethodRows(.data)
+  rows <- .data |> dplyr::filter(.data$method %in% keepMethods)
+  if (!"error" %in% names(rows)) rows$error <- NA_character_
+  rows <- rows |> dplyr::mutate(abs_rel_error = dplyr::if_else(
+    .data$propRespTruth != 0 & (is.na(.data$error) | !nzchar(.data$error)),
+    abs((.data$propRespEst - .data$propRespTruth) / .data$propRespTruth), NA_real_))
   q <- .simCompareQuantileFinite
-  out <- .data |>
-    dplyr::filter(.data$method %in% keepMethods) |>
-    dplyr::mutate(
-      abs_rel_error = dplyr::if_else(
-        .data$propRespTruth != 0,
-        abs((.data$propRespEst - .data$propRespTruth) / .data$propRespTruth),
-        NA_real_
-      )
-    ) |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
-    dplyr::summarise(
-      median = stats::median(.data$abs_rel_error, na.rm = TRUE),
-      q95 = unname(stats::quantile(
-        .data$abs_rel_error, probs = 0.95, na.rm = TRUE
-      )),
-      max = suppressWarnings(max(.data$abs_rel_error, na.rm = TRUE)),
-      median_mcse = if (isTRUE(mcse)) {
-        .analysis_mcse_between_units(
-          .data$abs_rel_error, .data[[unit]], function(v) q(v, 0.5)
-        )
-      } else {
-        NA_real_
-      },
-      q95_mcse = if (isTRUE(mcse)) {
-        .analysis_mcse_between_units(
-          .data$abs_rel_error, .data[[unit]], function(v) q(v, 0.95)
-        )
-      } else {
-        NA_real_
-      },
-      .groups = "drop"
-    ) |>
-    dplyr::mutate(dplyr::across(
-      c("median", "q95", "max"),
-      ~ dplyr::if_else(is.finite(.x), .x, NA_real_)
-    ))
-  if (!isTRUE(mcse)) {
-    return(dplyr::select(out, -"median_mcse", -"q95_mcse"))
+  spec <- list(
+    median = list(column = "abs_rel_error", stat = function(v) q(v, 0.5)),
+    q95 = list(column = "abs_rel_error", stat = function(v) q(v, 0.95))
+  )
+  .simComparePooledStats(rows, scenarioCols, spec, unit, mcse)
+}
+
+# Bootstrap the complete plotted scenario average, retaining CRN covariance.
+.simComparePerformanceAverage <- function(
+    raw, scenarioCols, group_cols, signed = FALSE, mcse = FALSE) {
+  summary <- if (isTRUE(signed)) .simCompareSignedErrorSummary(raw, scenarioCols, mcse = mcse) else
+    .simCompareUnsignedErrorSummary(raw, scenarioCols, mcse = mcse)
+  stats <- if (isTRUE(signed)) c("prop", "median", "q90", "q95") else c("median", "q95")
+  groups <- c(group_cols, if (isTRUE(signed)) "direction")
+  out <- .analysis_mcse_bootstrap_average(summary, groups, stats, mcse)
+  if (isTRUE(signed)) .simBandwidthSignedErrorClipSide(out) else out
+}
+
+# Fixed-size maxima use complete datasets only. All intended dataset IDs remain
+# in the joint bootstrap, including incomplete and unaffected datasets.
+.simCompareDatasetMaxSummary <- function(
+    raw, scenarioCols, expected_samples = 20L, expected_datasets = NULL,
+    mcse = FALSE) {
+  raw <- .simComparePrimaryMethodRows(raw)
+  if (length(expected_samples) != 1L || !is.finite(expected_samples) ||
+      expected_samples < 1L || expected_samples != as.integer(expected_samples)) {
+    stop("Dataset maxima require a positive integer expected sample count.")
   }
-  out$max_mcse <- NA_real_
-  .analysis_mcse_add_bounds(out, c("median", "q95", "max"), range = c(0, Inf))
+  required <- c(scenarioCols, "iter", "sample", "method", "propRespTruth", "propRespEst")
+  if (!all(required %in% names(raw))) stop("Dataset maxima need scenario keys, iter, sample and frequency outcomes.")
+  rows <- .simCompareBootstrapContext(raw) |> dplyr::filter(.data$method %in% c("stimgate", "fbeta", "tailgate"))
+  if (!"error" %in% names(rows)) rows$error <- NA_character_
+  rows <- rows |> dplyr::mutate(rel_error = dplyr::if_else(
+    .data$propRespTruth != 0 & (is.na(.data$error) | !nzchar(.data$error)),
+    (.data$propRespEst - .data$propRespTruth) / .data$propRespTruth, NA_real_))
+  out <- rows |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
+    dplyr::group_modify(function(data, key) {
+      families <- unique(data$.bootstrap_family)
+      if (length(families) != 1L) stop("A maximum scenario must have one biological bootstrap family.")
+      intended <- expected_datasets
+      if (is.null(intended)) intended <- data$.bootstrap_units[[1]]
+      if (length(intended) == 1L && is.numeric(intended) && intended > 1L) intended <- seq_len(intended)
+      intended <- sort(unique(as.character(intended)))
+      if (!length(intended) || anyNA(intended)) stop("Dataset maxima need complete intended dataset IDs.")
+      if (anyNA(data$iter) || any(!as.character(data$iter) %in% intended)) stop("Dataset IDs fall outside the intended maximum cohort.")
+      datasets <- purrr::map_dfr(intended, function(id) {
+        block <- data[as.character(data$iter) == id, , drop = FALSE]
+        eligible <- nrow(block) == expected_samples && !anyNA(block$sample) &&
+          !anyDuplicated(block$sample) &&
+          setequal(as.character(block$sample), as.character(seq_len(expected_samples))) &&
+          all(is.finite(block$rel_error))
+        tibble::tibble(id = id, eligible = eligible,
+          over = if (eligible) max(c(0, block$rel_error)) else NA_real_,
+          under = if (eligible) max(c(0, -block$rel_error)) else NA_real_)
+      })
+      purrr::map_dfr(c("over", "under"), function(direction) {
+        magnitude <- datasets[[direction]]
+        affected <- datasets$eligible & is.finite(magnitude) & magnitude > 0
+        n_eligible <- sum(datasets$eligible)
+        occurrence_fn <- function(index) {
+          eligible <- datasets$eligible[index]
+          if (any(eligible)) mean(affected[index][eligible]) else NA_real_
+        }
+        severity_fn <- function(index) {
+          selected <- affected[index]
+          if (any(selected)) mean(magnitude[index][selected]) else NA_real_
+        }
+        index <- seq_len(nrow(datasets))
+        occurrence_draws <- if (isTRUE(mcse)) .analysis_mcse_block_draws(index, datasets$id, occurrence_fn, families) else numeric()
+        severity_draws <- if (isTRUE(mcse)) .analysis_mcse_block_draws(index, datasets$id, severity_fn, families) else numeric()
+        result <- dplyr::bind_cols(
+          tibble::tibble(direction = direction, n_dataset_total = nrow(datasets),
+            n_eligible = n_eligible, n_incomplete = nrow(datasets) - n_eligible,
+            n_affected = sum(affected), eligible_dataset_ids = paste(datasets$id[datasets$eligible], collapse = ",")),
+          .analysis_mcse_bootstrap_cols(occurrence_fn(index), occurrence_draws,
+            "occurrence", nrow(datasets), n_eligible, mcse),
+          .analysis_mcse_bootstrap_cols(severity_fn(index), severity_draws,
+            "severity", nrow(datasets), sum(affected), mcse)
+        )
+        result
+      })
+    }) |>
+    dplyr::ungroup()
+  if ("method" %in% names(out)) {
+    keys <- setdiff(c(scenarioCols, "direction"), c("method", "approach"))
+    reference <- out |> dplyr::filter(.data$method == "stimgate") |>
+      dplyr::select(dplyr::all_of(keys), reference_ids = eligible_dataset_ids)
+    out <- dplyr::left_join(out, reference, by = keys) |>
+      dplyr::mutate(cohort_matches_stimgate = .data$eligible_dataset_ids == .data$reference_ids) |>
+      dplyr::select(-"reference_ids")
+  }
+  out
 }
 
 # Average the scenario statistics equally over the scenarios in each group
 # (each scenario counts once, however many samples it has). Scenarios are
 # averaged only over the columns left out of `group_cols`.
-# With Monte Carlo errors (`<stat>_mcse`), these are combined as for
-# independent scenarios (`.analysis_mcse_average()`).
+# Dataset-bootstrap summaries average aligned bootstrap draws, preserving
+# covariance between scenarios with common biological seeds. Legacy independent
+# sample summaries retain their independent-scenario MCSE calculation.
 .simCompareErrorAverage <- function(tbl, group_cols) {
+  if (".boot_median" %in% names(tbl)) {
+    return(.analysis_mcse_bootstrap_average(tbl, group_cols, c("median", "q95"),
+      mcse = any(lengths(tbl$.boot_median) > 0L)))
+  }
   if (any(c("median_mcse", "q95_mcse", "max_mcse") %in% names(tbl))) {
     out <- .analysis_mcse_average_cols(tbl, group_cols, c("median", "q95", "max"))
     for (s in c("median", "q95", "max")) {
@@ -3695,7 +3805,7 @@
     tbl,
     x_label = "Mismatch size",
     by_prob = FALSE,
-    stat_cols = c(median = "Median", q95 = "95th percentile", max = "Maximum"),
+    stat_cols = c(median = "Median", q95 = "95th percentile"),
     mcse = FALSE) {
   tbl$transformation <- .analysis_trans_factor(tbl$transformation)
   tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
@@ -3729,7 +3839,7 @@
     x_label = "Number of stimulated cells",
     x_log = TRUE,
     by_prob = FALSE,
-    stat_cols = c(median = "Median", q95 = "95th percentile", max = "Maximum"),
+    stat_cols = c(median = "Median", q95 = "95th percentile"),
     mcse = FALSE) {
   tbl$transformation <- .analysis_trans_factor(tbl$transformation)
   tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
@@ -3790,15 +3900,16 @@
 # (`n_fdp_defined`), whereas an empty gate contributes zero sensitivity.
 # With `mcse`, each plotted percentile gets `<stat>_mcse`, `<stat>_lower` and
 # `<stat>_upper`: the percentile is also computed within each dataset
-# (`unit`), and its MCSE is the spread of these between datasets (NA with
-# fewer than five datasets); bounds are clipped to 0-100%. The plotted values,
-# pooled over the datasets' replicates, are unchanged.
+# (`unit`) is resampled as a block and the pooled percentile recomputed.
+# At least five contributing datasets and 95% finite draws are required.
+# Percentile-bootstrap bounds stay within 0-100%; the pooled points are unchanged.
 .simCompareClassificationSummary <- function(
     .data,
     scenarioCols,
     keepMethods = c("stimgate", "fbeta", "tailgate"),
     mcse = FALSE,
     unit = "iter") {
+  .data <- .simComparePrimaryMethodRows(.data)
   if (isTRUE(mcse)) {
     .simCompareRequireUnit(.data, unit)
   }
@@ -3835,37 +3946,17 @@
       prevalence_median = q(.data$n_genuine_pos / .data$n_classified, 0.5),
       .groups = "drop"
     )
-  if (!isTRUE(mcse)) {
-    return(out)
-  }
-  spec <- list(
-    fdp_median = c("fdp", 0.5), fdp_q90 = c("fdp", 0.9),
-    sensitivity_median = c("sensitivity", 0.5),
-    sensitivity_q10 = c("sensitivity", 0.1),
-    fpr_median = c("false_positive_rate", 0.5),
-    fpr_q90 = c("false_positive_rate", 0.9)
-  )
   metrics <- .data |>
     dplyr::filter(.data$method %in% keepMethods) |>
     .simCompareClassificationMetrics()
-  grouped <- dplyr::group_by(
-    metrics, dplyr::across(dplyr::all_of(scenarioCols))
+  item <- function(column, p) list(column = column, stat = function(v) q(v, p))
+  spec <- list(
+    fdp_median = item("fdp", 0.5), fdp_q90 = item("fdp", 0.9),
+    sensitivity_median = item("sensitivity", 0.5), sensitivity_q10 = item("sensitivity", 0.1),
+    fpr_median = item("false_positive_rate", 0.5), fpr_q90 = item("false_positive_rate", 0.9)
   )
-  mc <- dplyr::summarise(grouped, .groups = "drop")
-  for (nm in names(spec)) {
-    col <- spec[[nm]][[1]]
-    p <- as.numeric(spec[[nm]][[2]])
-    mc[[paste0(nm, "_mcse")]] <- dplyr::summarise(
-      grouped,
-      .se = .analysis_mcse_between_units(
-        .data[[col]], .data[[unit]], function(v) q(v, p)
-      ),
-      .groups = "drop"
-    )$.se
-  }
-  out |>
-    dplyr::left_join(mc, by = scenarioCols) |>
-    .analysis_mcse_add_bounds(names(spec), range = c(0, 1))
+  out <- dplyr::select(out, -dplyr::any_of(names(spec)))
+  dplyr::left_join(out, .simComparePooledStats(metrics, scenarioCols, spec, unit, mcse), by = scenarioCols)
 }
 
 # Pairing check: within each baseline scenario, replicate and sample, every

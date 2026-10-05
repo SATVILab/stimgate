@@ -6,7 +6,7 @@ root_dir <- normalizePath(
 .classification_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   for (fn in c(
-    "analysis-runtime.R", "analysis-plot-style.R", "sim-misc.R",
+    "analysis-runtime.R", "analysis-plot-style.R", "analysis-mcse.R", "sim-misc.R",
     "sim-bandwidth.R", "sim-bandwidth-analysis-plot.R", "sim-compare-freq_bs.R"
   )) {
     source(file.path(root_dir, "scripts", "r", fn), local = env)
@@ -131,6 +131,7 @@ test_that("classification summary uses tube values and excludes undefined FDP", 
   raw <- tibble::tibble(
     scenario = "a",
     method = "stimgate",
+    iter = 1:3,
     nTruePos = c(10L, 5L, 0L),
     nFalsePos = c(0L, 5L, 0L),
     nFalseNeg = c(0L, 5L, 10L),

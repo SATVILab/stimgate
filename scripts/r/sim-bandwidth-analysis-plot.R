@@ -89,6 +89,7 @@ add_bw_labs <- function(.data) {
 # columns (`<stat>_lower`, `<stat>_upper`; see `analysis-mcse.R`), when
 # present, become `lower` and `upper` (NA for statistics without them).
 .simBandwidthStatLongBounds <- function(tbl, stats, names_to, values_to) {
+  tbl <- dplyr::select(tbl, -dplyr::starts_with(".boot_"))
   bound_names <- as.vector(outer(stats, c("_lower", "_upper", "_mcse"), paste0))
   has_bounds <- any(bound_names %in% names(tbl))
   # pivot_longer() emits each input row's statistics in turn, so the bounds
@@ -372,14 +373,34 @@ add_bw_labs <- function(.data) {
 # `<stat>_mcse` (`analysis-mcse.R`; NA for the maximum). Without `unit`, these
 # come from order statistics of that side's values, treated as independent.
 # With `unit` (one value per error, e.g. the simulated dataset), the plotted
-# percentile is unchanged and its MCSE is the between-unit spread of the
-# per-unit percentile of that side. Bounds stay on their side of zero.
-.simBandwidthSignedErrorSides <- function(rel_error, mcse = FALSE, unit = NULL) {
+# percentile is unchanged; uncertainty resamples all datasets and recomputes
+# that same pooled percentile. Conditional draws without this direction remain
+# undefined. Five contributing datasets and 95% finite draws are required.
+.simBandwidthSignedErrorSides <- function(
+    rel_error, mcse = FALSE, unit = NULL, bootstrap_family = "default") {
+  if (!is.null(unit)) {
+    direction_stats <- function(direction) {
+      sign <- if (direction == "over") 1 else -1
+      stat <- function(p) function(v) {
+        x <- sign * v[is.finite(v) & sign * v > 0]
+        .analysis_mcse_quantile_finite(x, p) * sign
+      }
+      share <- function(v) {
+        x <- v[is.finite(v)]
+        if (length(x)) mean(sign * x > 0) else NA_real_
+      }
+      specs <- list(prop = share, median = stat(0.5), q90 = stat(0.9), q95 = stat(0.95))
+      out <- dplyr::bind_cols(purrr::imap(specs, function(fn, name) {
+        .analysis_mcse_pooled_cols(rel_error, unit, fn, name, bootstrap_family, mcse)
+      }))
+      out$direction <- direction
+      out$n_dataset_total <- dplyr::n_distinct(unit, na.rm = TRUE)
+      .simBandwidthSignedErrorClipSide(out)
+    }
+    return(dplyr::bind_rows(direction_stats("over"), direction_stats("under")))
+  }
   keep <- is.finite(rel_error)
   rel_error <- rel_error[keep]
-  if (!is.null(unit)) {
-    unit <- unit[keep]
-  }
   probs <- c(median = 0.5, q90 = 0.9, q95 = 0.95)
   side <- function(direction) {
     sgn <- if (direction == "over") 1 else -1
@@ -408,21 +429,11 @@ add_bw_labs <- function(.data) {
       return(out)
     }
     for (s in names(probs)) {
-      if (is.null(unit)) {
-        q <- .analysis_mcse_quantile(x, probs[[s]])
-        bounds <- sgn * c(q$lower, q$upper)
-        out[[paste0(s, "_mcse")]] <- q$mcse
-        out[[paste0(s, "_lower")]] <- min(bounds)
-        out[[paste0(s, "_upper")]] <- max(bounds)
-      } else {
-        p <- probs[[s]]
-        se <- .analysis_mcse_between_units(
-          x, unit[in_side], function(v) .analysis_mcse_quantile_finite(v, p)
-        )
-        out[[paste0(s, "_mcse")]] <- se
-        out[[paste0(s, "_lower")]] <- out[[s]] - .analysis_mcse_z * se
-        out[[paste0(s, "_upper")]] <- out[[s]] + .analysis_mcse_z * se
-      }
+      q <- .analysis_mcse_quantile(x, probs[[s]])
+      bounds <- sgn * c(q$lower, q$upper)
+      out[[paste0(s, "_mcse")]] <- q$mcse
+      out[[paste0(s, "_lower")]] <- min(bounds)
+      out[[paste0(s, "_upper")]] <- max(bounds)
     }
     out$max_mcse <- NA_real_
     out$max_lower <- NA_real_
@@ -471,6 +482,12 @@ add_bw_labs <- function(.data) {
 # as for independent scenarios (`.analysis_mcse_average()`), with bounds at
 # the average +/- 1.96 combined MCSE, kept on their side of zero.
 .simBandwidthSignedErrorAverage <- function(tbl, group_cols) {
+  if (".boot_median" %in% names(tbl)) {
+    stats <- intersect(c("prop", "median", "q90", "q95"), names(tbl))
+    mcse <- any(lengths(tbl$.boot_median) > 0L)
+    return(.simBandwidthSignedErrorClipSide(.analysis_mcse_bootstrap_average(
+      tbl, c(group_cols, "direction"), stats, mcse)))
+  }
   stats <- intersect(c("prop", "median", "q90", "q95", "max"), names(tbl))
   if (any(paste0(stats, "_mcse") %in% names(tbl))) {
     out <- .analysis_mcse_average_cols(tbl, c(group_cols, "direction"), stats)
@@ -702,12 +719,12 @@ add_bw_labs <- function(.data) {
 }
 
 # Signed-error companions live in sibling ratio folders with the same dimensions.
-.simBandwidthPrintRatioTwin <- function(plot, path, height, level = 6L, allow_tall = FALSE) {
+.simBandwidthPrintRatioTwin <- function(plot, path, height, level = 6L, allow_tall = FALSE, mcse_mode = NULL) {
   ratio <- .simBandwidthRatioPlot(plot)
   .analysis_save_fig(ratio, sub("signed_error", "ratio", path, fixed = TRUE),
-    height = height, allow_tall = allow_tall)
+    height = height, allow_tall = allow_tall, mcse_mode = mcse_mode)
   .analysis_heading("Estimate / reference ratio", level)
-  .analysis_print_fig(ratio)
+  .analysis_print_fig(ratio, mcse_mode = mcse_mode)
   invisible(NULL)
 }
 

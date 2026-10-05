@@ -73,6 +73,33 @@
     )
 }
 
+# Construct variants from one completed plot. Removing marked MC layers leaves
+# all points, axes, non-MC intervals and ratio coordinates unchanged.
+.analysis_mcse_plot_variants <- function(plot, mcse_mode = NULL) {
+  if (is.null(mcse_mode)) return(list(original = plot))
+  mode <- .analysis_mcse_mode(mcse_mode)
+  variants <- if (mode == "both") c("off", "on") else mode
+  stats::setNames(lapply(variants, function(version) {
+    out <- plot
+    if (version == "off") {
+      out$layers <- lapply(plot$layers, function(layer) {
+        if (!isTRUE(attr(layer, "analysis_mcse"))) return(layer)
+        # Keep interval scale training (including facet ranges and bar widths),
+        # but draw nothing. Copy the layer instead of mutating the original.
+        blank <- ggplot2::ggproto(NULL, ggplot2::GeomBlank,
+          setup_data = layer$geom$setup_data, setup_params = layer$geom$setup_params,
+          required_aes = layer$geom$required_aes, default_aes = layer$geom$default_aes)
+        ggplot2::ggproto(NULL, layer, geom = blank, show.legend = FALSE)
+      })
+    }
+    out
+  }), variants)
+}
+
+.analysis_mcse_fig_path <- function(path, version) {
+  if (version == "original") path else file.path(dirname(path), paste0("mcse_", version), basename(path))
+}
+
 # Save at the standard width so text matches across figures. Heights above a
 # page are capped unless `allow_tall` is TRUE for figures that cannot fit.
 .analysis_save_fig <- function(
@@ -80,16 +107,21 @@
     path,
     height = 12,
     width = .analysis_fig_width,
-    allow_tall = FALSE) {
+    allow_tall = FALSE,
+    mcse_mode = NULL) {
   if (!isTRUE(allow_tall)) {
     height <- min(height, .analysis_fig_max_height)
   }
-  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  ggplot2::ggsave(
-    filename = path, plot = plot, width = width, height = height,
-    units = "cm", limitsize = FALSE
-  )
-  invisible(path)
+  variants <- .analysis_mcse_plot_variants(plot, mcse_mode)
+  paths <- vapply(names(variants), function(version) .analysis_mcse_fig_path(path, version), character(1))
+  for (version in names(variants)) {
+    dir.create(dirname(paths[[version]]), recursive = TRUE, showWarnings = FALSE)
+    ggplot2::ggsave(
+      filename = paths[[version]], plot = variants[[version]], width = width, height = height,
+      units = "cm", limitsize = FALSE
+    )
+  }
+  invisible(unname(paths))
 }
 
 # Markdown heading for one level of a plot loop. Use in chunks with
@@ -100,9 +132,15 @@
 }
 
 # Print a plot inside a `results: asis` loop, separated from the next heading.
-.analysis_print_fig <- function(plot) {
-  print(plot)
-  cat("\n\n")
+.analysis_print_fig <- function(plot, mcse_mode = NULL) {
+  variants <- .analysis_mcse_plot_variants(plot, mcse_mode)
+  for (version in names(variants)) {
+    if (version != "original") {
+      cat("\n\n**Monte Carlo error bars: ", version, "**\n\n", sep = "")
+    }
+    print(variants[[version]])
+    cat("\n\n")
+  }
   invisible(plot)
 }
 

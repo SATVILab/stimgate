@@ -310,6 +310,8 @@ test_that("primary StimGate comparator scores full cluster-refined procedure (#3
   expect_true(all(stimgate_loc_sample$detailLevel == "sample"))
 
   # Summaries default to keeping c("stimgate", "fbeta", "tailgate")
+  source(file.path(root_dir, "scripts/r/analysis-runtime.R"), local = env)
+  source(file.path(root_dir, "scripts/r/analysis-mcse.R"), local = env)
   summ <- env$.simCompareSummariseFreqBs(res)
   expect_setequal(unique(summ$method), c("stimgate", "fbeta", "tailgate"))
 

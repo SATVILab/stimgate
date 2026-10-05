@@ -37,10 +37,10 @@ test_that("ratio companions save beside originals and print their own heading", 
   for (file in c("analysis-plot-style.R", "sim-bandwidth-analysis-plot.R")) {
     source(file.path(testthat::test_path(), "../../../scripts/r", file), local = env)
   }
-  env$.analysis_save_fig <- function(plot, path, height, allow_tall) {
+  env$.analysis_save_fig <- function(plot, path, height, allow_tall, mcse_mode = NULL) {
     env$saved <- list(plot = plot, path = path, height = height, allow_tall = allow_tall)
   }
-  env$.analysis_print_fig <- function(plot) env$printed <- plot
+  env$.analysis_print_fig <- function(plot, mcse_mode = NULL) env$printed <- plot
   p <- ggplot2::ggplot() + env$.simBandwidthSignedErrorLayers()
   md <- utils::capture.output(env$.simBandwidthPrintRatioTwin(p,
     "output/fig/draft/signed_error_by_n_cell/sd_inflation/a.pdf", 22))

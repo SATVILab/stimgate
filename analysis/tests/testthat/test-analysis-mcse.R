@@ -6,7 +6,7 @@ root_dir <- normalizePath(
 .mcse_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   for (fn in c(
-    "analysis-plot-style.R", "analysis-mcse.R",
+    "analysis-runtime.R", "analysis-plot-style.R", "analysis-mcse.R",
     "sim-bandwidth-analysis-plot.R", "sim-compare-freq_bs.R"
   )) {
     source(file.path(root_dir, "scripts", "r", fn), local = env)
@@ -158,15 +158,16 @@ test_that("signed summaries add per-direction intervals on their own side", {
   expect_lte(under$median_upper, 0)
   expect_true(all(is.na(sides$max_lower)))
 
-  # Per dataset: the MCSE is the spread of the datasets' own medians.
+  # Dataset bootstrap recalculates the pooled directional median, preserving
+  # every sample of a selected dataset, rather than an SE of dataset medians.
   unit <- rep(1:5, length.out = length(rel_error))
   by_unit <- env$.simBandwidthSignedErrorSides(rel_error, mcse = TRUE, unit = unit)
   expect_equal(by_unit$median, plain$median)
-  pos <- rel_error > 0
-  expect_equal(
-    by_unit$median_mcse[[1]],
-    env$.analysis_mcse_between_units(rel_error[pos], unit[pos], stats::median)
-  )
+  median_over <- function(v) stats::median(v[is.finite(v) & v > 0])
+  draws <- env$.analysis_mcse_block_draws(rel_error, unit, median_over, "default")
+  expect_equal(by_unit$median_mcse[[1]], stats::sd(draws))
+  expect_equal(c(by_unit$median_lower[[1]], by_unit$median_upper[[1]]),
+    unname(stats::quantile(draws, c(0.025, 0.975))))
   expect_gte(by_unit$median_lower[[1]], 0)
 
   summ <- env$.simBandwidthSignedErrorSummary(
@@ -254,7 +255,7 @@ test_that("plots draw interval layers only when the toggle is on", {
   expect_true(all(bars$ymin >= 0 & bars$ymax <= 1))
 })
 
-test_that("comparison summaries take MCSEs from the spread between datasets", {
+test_that("comparison summaries bootstrap the plotted pooled statistic by dataset", {
   env <- .mcse_env()
   set.seed(3)
   make_raw <- function(n_iter) {
@@ -262,7 +263,7 @@ test_that("comparison summaries take MCSEs from the spread between datasets", {
       method = c("stimgate", "fbeta"), iter = seq_len(n_iter), sample = 1:4
     ) |>
       dplyr::mutate(
-        n_cell = 1000,
+        n_cell = 1000, sim_seed = 54321L,
         propRespTruth = 0.01,
         propRespEst = 0.01 * (1 + stats::rnorm(dplyr::n(), 0, 0.3)),
         thresholdFallbackUsed = stats::runif(dplyr::n()) < 0.2,
@@ -278,14 +279,14 @@ test_that("comparison summaries take MCSEs from the spread between datasets", {
   expect_equal(summ$med_abs_rel_error, plain$med_abs_rel_error)
   stim <- raw[raw$method == "stimgate", ]
   rel <- abs(stim$propRespEst - stim$propRespTruth) / stim$propRespTruth
-  expect_equal(
-    summ$med_abs_rel_error_mcse[summ$method == "stimgate"],
-    env$.analysis_mcse_between_units(rel, stim$iter, stats::median)
-  )
-  expect_equal(
-    summ$med_abs_rel_error_upper - summ$med_abs_rel_error,
-    stats::qnorm(0.975) * summ$med_abs_rel_error_mcse
-  )
+  draws <- env$.analysis_mcse_block_draws(rel, stim$iter,
+    stats::median, "sim_seed:54321")
+  expect_equal(summ$med_abs_rel_error_mcse[summ$method == "stimgate"],
+    stats::sd(draws))
+  expect_equal(c(
+    summ$med_abs_rel_error_lower[summ$method == "stimgate"],
+    summ$med_abs_rel_error_upper[summ$method == "stimgate"]
+  ), unname(stats::quantile(draws, c(0.025, 0.975))))
   expect_true(all(summ$fallback_rate_lower >= 0 & summ$fallback_rate_upper <= 1))
 
   few <- env$.simCompareSummariseFreqBs(make_raw(4), c("n_cell", "method"), mcse = TRUE)
@@ -308,11 +309,13 @@ test_that("comparison summaries take MCSEs from the spread between datasets", {
   )
 
   err <- env$.simCompareUnsignedErrorSummary(raw, c("n_cell", "method"), mcse = TRUE)
-  expect_true(all(is.na(err$max_lower)))
+  expect_false("max" %in% names(err))
   expect_false(anyNA(err$median_mcse))
   plain_err <- env$.simCompareUnsignedErrorSummary(raw, c("n_cell", "method"))
-  expect_named(plain_err, c("n_cell", "method", "median", "q95", "max"))
-  avg <- env$.simCompareErrorAverage(err, "method")
+  expect_true(all(c("n_cell", "method", "median", "q95") %in% names(plain_err)))
+  expect_false("max" %in% names(plain_err))
+  avg <- env$.simComparePerformanceAverage(raw, c("n_cell", "method"),
+    "method", mcse = TRUE)
   expect_equal(avg$median_mcse, err$median_mcse[match(avg$method, err$method)])
 })
 
@@ -323,9 +326,9 @@ test_that("summary-plot QMDs declare and read the show_mcse toggle", {
     "7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd"
   )) {
     lines <- readLines(file.path(root_dir, "analysis", file), warn = FALSE)
-    expect_true("  show_mcse: true" %in% lines, info = file)
+    expect_true("  show_mcse: both" %in% lines, info = file)
     expect_true(any(grepl(
-      'show_mcse <- .as_flag(.get_qmd_param_env("show_mcse", "SHOW_MCSE", TRUE))',
+      'mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))',
       lines,
       fixed = TRUE
     )), info = file)

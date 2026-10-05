@@ -1,5 +1,5 @@
 # Monte Carlo uncertainty of simulation summaries, from the replicates that
-# were already simulated (no new simulations and no bootstrap resampling).
+# were already simulated (dataset bootstrap resamples saved results only).
 # Source after analysis-plot-style.R. The functions return tibbles or plain
 # vectors; the error-bar layer returns a ggplot2 layer and writes no files.
 #
@@ -17,11 +17,16 @@
 #   larger the maximum could be.
 # - Equal-weight averages of k independent scenarios: MCSE =
 #   sqrt(sum(MCSE_i^2)) / k (`.analysis_mcse_average()`).
-# - Between-unit MCSE (`.analysis_mcse_between_units()`): when the samples of
-#   one simulated dataset are not independent (analyses 7 and 8: shared
-#   bandwidth/bias estimation and cluster gating), the dataset is the unit.
-#   The statistic is computed within each dataset, and its MCSE is
-#   sd(dataset statistics) / sqrt(D) for D datasets; NA when D < 5.
+# - Between-unit MCSE (`.analysis_mcse_between_units()`): for a mean of
+#   dataset statistics (including paired method differences), MCSE is
+#   sd(dataset statistics) / sqrt(D); NA when D < 5. This is distinct from
+#   the uncertainty of a pooled sample percentile.
+# - Pooled sample distributions in analyses 7/8: 999 deterministic whole-
+#   dataset bootstrap draws recompute the plotted statistic, preserving CRN
+#   pairing across methods/mismatches and joint scenario averages. Intervals
+#   are bootstrap percentiles; MCSE is bootstrap SD. Require five contributing
+#   datasets and at least 95% finite draws. Conditional dataset maxima additionally
+#   require five affected eligible datasets; occurrence requires five eligible.
 # Everything assumes the units (samples or datasets) are independent draws.
 
 .analysis_mcse_z <- stats::qnorm(0.975)
@@ -178,6 +183,94 @@
   stats::sd(vals) / sqrt(length(vals))
 }
 
+# Dataset bootstrap streams are shared by true common-random-number families.
+# Numeric sim_seed is the production family; textual keys support fixtures.
+.analysis_mcse_family_seed <- function(family) {
+  key <- paste(as.character(family), collapse = "|")
+  value <- 20261005
+  for (byte in utf8ToInt(key)) value <- (value * 131 + byte) %% 2147483646
+  as.integer(value + 1)
+}
+
+.analysis_mcse_bootstrap_indices <- function(unit, family, reps = 999L) {
+  ids <- sort(unique(as.character(unit[!is.na(unit)])))
+  if (!length(ids)) return(matrix(integer(), 0L, reps))
+  if (length(reps) != 1L || !is.finite(reps) || reps < 2L || reps != as.integer(reps)) {
+    stop("Dataset bootstrap needs at least two integer replicates.")
+  }
+  withr::with_seed(.analysis_mcse_family_seed(family),
+    matrix(sample.int(length(ids), length(ids) * reps, replace = TRUE), nrow = length(ids)),
+    .rng_kind = "Mersenne-Twister", .rng_normal_kind = "Inversion", .rng_sample_kind = "Rejection")
+}
+
+.analysis_mcse_block_draws <- function(x, unit, stat, family, reps = 999L) {
+  if (length(x) != length(unit)) stop("Dataset bootstrap needs one unit ID per value.")
+  blocks <- split(x[!is.na(unit)], as.character(unit[!is.na(unit)]))
+  indices <- .analysis_mcse_bootstrap_indices(unit, family, reps)
+  if (!length(blocks)) return(rep(NA_real_, reps))
+  vapply(seq_len(reps), function(i) {
+    value <- suppressWarnings(stat(unlist(blocks[indices[, i]], use.names = FALSE)))
+    if (length(value) != 1L) NA_real_ else as.numeric(value)
+  }, numeric(1))
+}
+
+# Bootstrap coverage is explicit. Missing conditional statistics are never zero.
+.analysis_mcse_bootstrap_cols <- function(
+    estimate, draws, name, n_dataset, n_contributing,
+    mcse = TRUE, min_contributing = 5L, coverage_min = 0.95) {
+  finite <- draws[is.finite(draws)]
+  coverage <- if (length(draws)) length(finite) / length(draws) else NA_real_
+  available <- isTRUE(mcse) && is.finite(estimate) && n_dataset >= 5L &&
+    n_contributing >= min_contributing && is.finite(coverage) && coverage >= coverage_min
+  bounds <- if (available) stats::quantile(finite, c(0.025, 0.975), names = FALSE) else c(NA_real_, NA_real_)
+  out <- tibble::tibble(value = estimate)
+  names(out) <- name
+  out[[paste0(name, "_mcse")]] <- if (available) stats::sd(finite) else NA_real_
+  out[[paste0(name, "_lower")]] <- bounds[1]
+  out[[paste0(name, "_upper")]] <- bounds[2]
+  out[[paste0("n_bootstrap_", name)]] <- length(draws)
+  out[[paste0("n_bootstrap_finite_", name)]] <- if (isTRUE(mcse)) length(finite) else NA_integer_
+  out[[paste0("bootstrap_coverage_", name)]] <- if (isTRUE(mcse)) coverage else NA_real_
+  out[[paste0("interval_available_", name)]] <- available
+  out[[paste0("n_dataset_", name)]] <- n_contributing
+  out[[paste0(".boot_", name)]] <- list(draws)
+  out
+}
+
+.analysis_mcse_pooled_cols <- function(x, unit, stat, name, family, mcse = TRUE) {
+  blocks <- split(x[!is.na(unit)], as.character(unit[!is.na(unit)]))
+  contributing <- sum(vapply(blocks, function(v) is.finite(suppressWarnings(stat(v))), logical(1)))
+  estimate <- suppressWarnings(stat(x[!is.na(unit)]))
+  draws <- if (isTRUE(mcse)) .analysis_mcse_block_draws(x, unit, stat, family) else numeric()
+  .analysis_mcse_bootstrap_cols(estimate, draws, name, length(blocks), contributing, mcse)
+}
+
+# Average a fixed set of originally finite scenario statistics in every draw.
+# Vectors are aligned across CRN families; independent families have independent
+# streams. An undefined constituent makes the whole draw undefined.
+.analysis_mcse_bootstrap_average <- function(tbl, group_cols, stats, mcse = TRUE) {
+  tbl |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
+    dplyr::group_modify(function(rows, keys) {
+      result <- tibble::tibble(n_scenario = nrow(rows))
+      for (name in stats) {
+        keep <- is.finite(rows[[name]])
+        estimate <- if (any(keep)) mean(rows[[name]][keep]) else NA_real_
+        vectors <- rows[[paste0(".boot_", name)]][keep]
+        draws <- if (isTRUE(mcse) && length(vectors) && all(lengths(vectors) == 999L)) {
+          matrix <- do.call(cbind, vectors)
+          apply(matrix, 1L, function(v) if (all(is.finite(v))) mean(v) else NA_real_)
+        } else numeric()
+        contributing <- if (any(keep)) min(rows[[paste0("n_dataset_", name)]][keep]) else 0L
+        cols <- .analysis_mcse_bootstrap_cols(estimate, draws, name, contributing, contributing, mcse)
+        result <- dplyr::bind_cols(result, cols)
+        result[[paste0("n_scenario_", name)]] <- sum(keep)
+      }
+      result
+    }) |>
+    dplyr::ungroup()
+}
+
 # Quantile of the finite values, NA when there are none.
 .analysis_mcse_quantile_finite <- function(x, p) {
   x <- .analysis_mcse_finite(x)
@@ -245,11 +338,11 @@
     is.finite(data[[ymin]]) & is.finite(data[[ymax]]), ,
     drop = FALSE
   ]
-  ggplot2::geom_errorbar(
+  .analysis_mcse_layer(ggplot2::geom_errorbar(
     data = data,
     mapping = ggplot2::aes(ymin = .data[[ymin]], ymax = .data[[ymax]]),
     width = width,
     alpha = alpha,
     linewidth = linewidth
-  )
+  ))
 }

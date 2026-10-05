@@ -15,7 +15,7 @@
 .bandwidth_cell_plot_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   for (fn in c(
-    "analysis-plot-style.R", "analysis-mcse.R", "sim-bandwidth-analysis-plot.R"
+    "analysis-runtime.R", "analysis-plot-style.R", "analysis-mcse.R", "sim-bandwidth-analysis-plot.R"
   )) {
     source(file.path(testthat::test_path(), "../../../scripts/r", fn), local = env)
   }
@@ -23,6 +23,7 @@
   env$analysis_key <- "bias_uns"
   env$run_plots <- TRUE
   env$show_mcse <- TRUE
+  env$mcse_mode <- "on"
   env$saved <- list()
   env$printed <- list()
   env$fig_key <- "2a-test"
@@ -37,7 +38,7 @@
     file.path(path_root, paste(parts, collapse = "/"))
   }
   env$.analysis_save_fig <- function(plot, path, height = 12, width = 16,
-                                     allow_tall = FALSE) {
+                                     allow_tall = FALSE, mcse_mode = NULL) {
     env$saved[[length(env$saved) + 1L]] <- list(
       path = path, plot = plot, height = height
     )
