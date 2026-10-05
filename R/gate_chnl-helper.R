@@ -78,9 +78,11 @@
         )
 
         gateTblCluster |>
-          dplyr::transmute(
-            ind, gate = cpJoinTgOrig, locGenerated, locGeneratedDirect,
-            locSource, locReason
+          dplyr::select(
+            ind, gate = cpJoinTgOrig,
+            dplyr::any_of(c(
+              "locGenerated", "locGeneratedDirect", "locSource", "locReason"
+            ))
           ) |> # nolint
           dplyr::left_join(
             gateTbl |>
