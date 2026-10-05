@@ -23,6 +23,7 @@ test_that("Analysis 2a executes its original bandwidth and fixed-bias design", {
   }
   env$analysis_quick <- FALSE
   env$analysis_dev <- FALSE
+  env$sim_size <- "final"
   env$analysis_semantics_version <- "test"
   env$simulation_seed <- 12345L
   env$sim_grid_shuffle_seed <- 8L

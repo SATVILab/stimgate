@@ -15,6 +15,7 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
+  sim_size: final
   sim_retry_errors: true
 ---
 
@@ -87,9 +88,11 @@ analysis_key <- c("sim", "bw", "est", "base")
 analysis_semantics_version <- "bandwidth-est-base-v6"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("3-sim-bw-est-base")
-n_sample_sim <- if (analysis_quick) 1L else 50L
+n_sample_sim <- if (analysis_quick) 1L else c(final = 50L, draft = 15L)[[sim_size]]
 n_iter_sim <- 1L
 bw_fallback <- NA_real_
 bw_min <- -Inf
@@ -268,7 +271,9 @@ print(paste0(
 ```
 
 Fixed settings and the complete selected cross-chunk grid are recorded in the
-manifest and required when reading canonical results.
+manifest and required when reading canonical results. Each scenario simulates
+50 samples in final runs and 15 in draft runs (`SIM_SIZE=draft`); draft results
+are kept separately and are for iterating, not for reporting.
 
 ```{r}
 #| label: bw-estimate-settings
@@ -296,6 +301,7 @@ analysis_required_params <- list(
   simulation_seed = simulation_seed,
   analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
+  sim_size = sim_size,
   scenario_settings = scenario_settings,
   sim_grid_spec = analysis_grid_spec
 )

@@ -499,7 +499,7 @@ test_that("all simulation QMDs use shared mode keys and dev precedence", {
     expect_true(grepl("analysis_dev <- .analysis_is_dev()", content, fixed = TRUE))
     expect_true(grepl("analysis_quick <- .analysis_is_quick() && !analysis_dev",
                      content, fixed = TRUE))
-    expect_true(grepl("analysis_key <- .analysis_mode_key(analysis_key)",
+    expect_true(grepl("analysis_key <- .analysis_mode_key(analysis_key",
                      content, fixed = TRUE))
     expect_false(grepl("analysis_quick && !analysis_dev", content, fixed = TRUE))
   }
@@ -523,7 +523,7 @@ test_that("simulation quick filters follow seeded full grids and isolate their c
       "if (analysis_quick) {", filter_text, fixed = TRUE
     ), info = file)
     expect_true(grepl(
-      "analysis_key <- .analysis_mode_key(analysis_key)", content, fixed = TRUE
+      "analysis_key <- .analysis_mode_key(analysis_key", content, fixed = TRUE
     ), info = file)
     expect_true(grepl(
       "analysis_quick = analysis_quick", content, fixed = TRUE

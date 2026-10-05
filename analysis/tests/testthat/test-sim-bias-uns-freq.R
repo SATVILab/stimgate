@@ -23,6 +23,7 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
     # Mirrors QMD set-up: dev takes precedence over quick.
     env$analysis_quick <- quick && !dev
     env$analysis_dev <- dev
+    env$sim_size <- "final"
     env$simulation_seed <- 12345L
     env$sim_grid_shuffle_seed <- 8L
     env$sim_grid_chunk_index <- 1L

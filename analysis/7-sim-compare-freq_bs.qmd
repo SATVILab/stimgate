@@ -14,6 +14,7 @@ params:
   sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
+  sim_size: final
 ---
 
 This analysis compares background-subtracted response frequencies from StimGate,
@@ -66,6 +67,8 @@ if (is.na(simulation_seed)) {
 comparison_semantics_version <- "corrected-comparison-v7"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("7-sim-compare-freq_bs")
 run_plots <- .as_flag(.get_qmd_param_env(
@@ -139,6 +142,12 @@ bandwidth estimation so that it is evaluated as it would normally run.
 
 ### Simulation settings
 
+Each scenario simulates 20 datasets of 10 samples in final runs and 5 datasets
+of 10 samples in draft runs (`SIM_SIZE=draft`). The samples in a dataset are
+gated together, with shared settings and cluster gates, so the dataset is the
+unit for uncertainty. Draft results are kept separately and are for iterating,
+not for reporting.
+
 ```{r}
 #| label: actual-settings
 n_cell_stim_vec <- c(
@@ -201,8 +210,11 @@ stimgate_bw_max <- "none"
 tol_clust <- 1e-7
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
-n_sample_sim <- if (analysis_quick) 1L else 10
-n_iter_sim <- if (analysis_quick) 1L else 2
+# Each dataset of `n_sample_sim` samples is gated together (shared settings
+# and cluster gates), so the dataset is the unit for uncertainty. Draft keeps
+# the samples per dataset and uses a quarter of the datasets (at least 5).
+n_sample_sim <- if (analysis_quick) 1L else 10L
+n_iter_sim <- if (analysis_quick) 1L else c(final = 20L, draft = 5L)[[sim_size]]
 
 fbeta_beta <- 0.8
 fbeta_theta <- 2
@@ -351,6 +363,7 @@ analysis_result_params <- list(
   simulation_seed = simulation_seed,
   analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
+  sim_size = sim_size,
   n_cell_stim_vec = n_cell_stim_vec,
   prob_response_vec = prob_response_vec,
   transformation_vec = transformation_vec,

@@ -8,18 +8,47 @@
 
 .analysis_is_quick <- function() .analysis_has_profile("quick")
 
-.analysis_mode_key <- function(analysis_key) {
-  suffix <- if (.analysis_is_dev()) "dev" else if (.analysis_is_quick()) "quick"
+# Simulation size for full-grid runs: "final" (default, for reported results)
+# or "draft" (fewer samples/datasets, for iterating). Set by the QMD param
+# `sim_size` or the SIM_SIZE environment variable. Dev and quick runs use their
+# own sizes, so they always count as "final" here.
+.analysis_sim_size <- function() {
+  size <- .get_qmd_param_env("sim_size", "SIM_SIZE", "final")
+  size <- tolower(trimws(as.character(size)))
+  if (length(size) != 1L || is.na(size) || !size %in% c("final", "draft")) {
+    stop(
+      "sim_size (QMD param) / SIM_SIZE (environment variable) must be ",
+      "\"final\" or \"draft\", not \"", paste(size, collapse = ", "), "\".",
+      call. = FALSE
+    )
+  }
+  if (.analysis_is_dev() || .analysis_is_quick()) "final" else size
+}
+
+# `sized = FALSE` is for analyses without a sample/dataset count, whose results
+# do not depend on `sim_size`.
+.analysis_mode_key <- function(analysis_key, sized = TRUE) {
+  suffix <- if (.analysis_is_dev()) {
+    "dev"
+  } else if (.analysis_is_quick()) {
+    "quick"
+  } else if (sized && .analysis_sim_size() == "draft") {
+    "draft"
+  }
   c(analysis_key, suffix)
 }
 
 .analysis_cache_error <- function(analysis_key, detail, qmd_path = NULL) {
   render <- if (is.null(qmd_path)) "render this analysis" else
     paste("quarto render", qmd_path)
+  draft <- identical(utils::tail(as.character(analysis_key), 1L), "draft")
+  size_env <- if (draft) "SIM_SIZE=draft " else ""
   stop(
     "Analysis key: ", paste(analysis_key, collapse = "/"), ". ", detail,
     "\nRun from the repository root first: RUN_SIMULATIONS=true RUN_PLOTS=false ",
-    render, ". Use the same dev/quick profile and scientific settings; complete all chunks.",
+    size_env, render, ". Use the same dev/quick profile, SIM_SIZE setting (",
+    if (draft) "draft" else "final, the default", ") and scientific settings; ",
+    "complete all chunks.",
     call. = FALSE
   )
 }
@@ -298,6 +327,10 @@
 
   if (length(required_params) > 0L) {
     manifest_params <- manifest$params
+    # Results from before `sim_size` was recorded were full-size runs.
+    if (!is.null(manifest_params) && !"sim_size" %in% names(manifest_params)) {
+      manifest_params$sim_size <- "final"
+    }
     mismatched_params <- names(required_params)[vapply(
       names(required_params),
       function(nm) {
@@ -479,7 +512,8 @@
 
 # Figures go under output/fig/<QMD name>/<figure type>/..., so each analysis
 # and kind of figure has its own folder. `fig_key` comes from
-# `.analysis_mode_key(<QMD name>)`, which adds a dev/quick folder when needed.
+# `.analysis_mode_key(<QMD name>)`, which adds a dev/quick/draft folder when
+# needed.
 .analysis_fig_dir <- function(path_parts, path_root = NULL, create = TRUE) {
   .analysis_project_dir("output", c("fig", path_parts), path_root, create)
 }

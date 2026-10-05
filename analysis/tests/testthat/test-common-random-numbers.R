@@ -9,6 +9,7 @@ test_that("full simulation grids seed biological scenarios rather than tuning ro
     env$root_dir <- root
     env$run_simulations <- FALSE
     env$analysis_dev <- env$analysis_quick <- FALSE
+    env$sim_size <- "final"
     env$simulation_seed <- 12345L
     env$sim_grid_shuffle_seed <- 8L
     env$sim_grid_chunk_index <- env$sim_grid_n_chunks <- 1L
