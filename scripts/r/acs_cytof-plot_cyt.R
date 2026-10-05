@@ -153,6 +153,7 @@
 .acsCytofValidationCorrelationTable <- function(comparisonTbl) {
   .acsCytofValidationValidateComparisonTable(comparisonTbl)
 
+  if (!"thresholdFailed" %in% names(comparisonTbl)) comparisonTbl$thresholdFailed <- FALSE
   comparisonTbl |>
     dplyr::group_by(method, pop, cyt, stim) |>
     dplyr::filter(
@@ -161,6 +162,8 @@
       stats::quantile(.data$freq_bs_man, 0.75, na.rm = TRUE) > 0.02
     ) |>
     dplyr::summarise(
+      n_total = dplyr::n(),
+      n_failed = sum(.data$thresholdFailed),
       n = sum(is.finite(.data$freq_bs_auto) & is.finite(.data$freq_bs_man)),
       pcc = {
         finite <- is.finite(.data$freq_bs_auto) &

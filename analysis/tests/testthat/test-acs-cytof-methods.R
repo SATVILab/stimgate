@@ -211,6 +211,11 @@ test_that("a failed comparator rerun keeps the previous results", {
     load_gs = function(...) as.list(seq_len(10L)),
     .package = "flowWorkspace"
   )
+  env$.acsCytofReadPreprocessing <- function(...) list(sampleMap = data.frame(
+    SampleID = rep(c("a", "b"), each = 5),
+    stim = rep(c("uns", "p1", "mtb", "ebv", "p4"), 2),
+    ind = 1:10
+  ))
   run_with <- function(fail_method) {
     env$.acsCytofRunComparator <- function(gs, pop, method, ...) {
       if (identical(method, fail_method)) stop("boom")
@@ -294,7 +299,7 @@ test_that("ACS comparator populations run in parallel", {
   expect_true(grepl("future::plan(oldPlan)", helper_body, fixed = TRUE))
 })
 
-test_that("FCS files missing from the manual sample map are dropped with a warning", {
+test_that("FCS files missing from the manual sample map fail explicitly", {
   skip_if_not_installed("DataTidyACSCyTOFFAUST")
   env <- .load_acs_method_env()
   path_fcs <- tempfile("acs-fcs-")
@@ -309,12 +314,10 @@ test_that("FCS files missing from the manual sample map are dropped with a warni
     Stim = "mtb"
   )
 
-  expect_warning(
-    out <- env$.acsCytofManualSampleMapFromFcs(path_fcs, "cd4", lookup),
+  expect_error(
+    env$.acsCytofManualSampleMapFromFcs(path_fcs, "cd4", lookup),
     "file03.fcs"
   )
-  expect_equal(nrow(out), 9L)
-  expect_false("3" %in% out$ind)
 })
 
 test_that("manual formatting uses the shared cytometry combination utilities", {
@@ -518,4 +521,73 @@ test_that("ACS method sets cover all methods and without Tailgate", {
   expect_identical(sets$all_methods$label, "All methods")
   expect_identical(sets$no_tailgate$label, "Without Tailgate")
   expect_false("tailgate" %in% sets$no_tailgate$methods)
+})
+
+test_that("ACS finite fallback gates remain failures in comparison and coverage", {
+  env <- .load_acs_method_env()
+  single <- tibble::tibble(
+    method = "stimgate", ind = c("2", "3", "4"), cyt = "IFNg",
+    freq_stim_auto = c(1, 2, 0), freq_uns_auto = 0,
+    freq_bs_auto = c(1, 2, 0), freq_bs_man = c(1, 2, 10),
+    pop = "CD4 T cells", stim = "mtb"
+  )
+  thresholds <- tibble::tibble(
+    ind = c("2", "3", "4"), cyt = "IFNg", threshold = c(1, 2, 100),
+    thresholdOrigin = c("direct", "cluster", "high_value"),
+    thresholdFallbackUsed = c(FALSE, FALSE, TRUE),
+    locGenerated = c(TRUE, TRUE, FALSE),
+    locGeneratedDirect = c(TRUE, FALSE, FALSE),
+    locSource = thresholdOrigin, locReason = c(NA, NA, "no_threshold")
+  )
+  out <- env$.acsCytofJoinProvenance(single, thresholds) |>
+    dplyr::mutate(diff = freq_bs_auto - freq_bs_man, abs_diff = abs(diff),
+                  abs_rel_error = abs(diff / freq_bs_man))
+  expect_true(is.na(out$freq_bs_auto[3]))
+  expect_identical(out$locReason[3], "no_threshold")
+  coverage <- env$.acsCytofManualSummaryTable(out)
+  expect_equal(coverage$n_total, 3L)
+  expect_equal(coverage$n_failed, 1L)
+  expect_equal(coverage$n, 2L)
+  expect_equal(coverage$pcc, 1)
+  expect_error(env$.acsCytofJoinProvenance(single, thresholds[-1, ]), "Missing or duplicate")
+})
+
+test_that("ACS refuses mismatched data, preprocessing and revision manifests", {
+  env <- .load_acs_method_env()
+  context <- list(gitSha = "abc", preprocessing = list(
+    settings = list(transform = "asinh(x / 5)"), inputFileListHash = "files"
+  ))
+  manifest <- list(context = context, settings = list(clusterGates = TRUE))
+  expect_no_error(env$.acsCytofValidateManifests(list(manifest, manifest)))
+  for (changed in list(
+    list(gitSha = "other", preprocessing = context$preprocessing),
+    list(gitSha = "abc", preprocessing = list(inputFileListHash = "other")),
+    list(gitSha = "abc", preprocessing = list(settings = list(transform = "none")))
+  )) {
+    expect_error(env$.acsCytofValidateManifests(list(manifest, list(context = changed))), "Mismatched ACS")
+  }
+  expect_error(env$.acsCytofValidateManifests(list(manifest, NULL)), "Mismatched ACS")
+})
+
+test_that("ACS compares identical cohorts and rejects missing or duplicate strata", {
+  env <- .load_acs_method_env()
+  rows <- tibble::tibble(method = rep(c("stimgate", "fbeta"), each = 2),
+                         SampleID = rep(c("a", "b"), 2),
+                         stim = "mtb", pop = "CD4 T cells", cyt = "IFNg")
+  expect_no_error(env$.acsCytofValidateCohorts(rows, c("stimgate", "fbeta")))
+  expect_error(env$.acsCytofValidateCohorts(rows[-4, ], c("stimgate", "fbeta")), "different or duplicate")
+  expect_error(env$.acsCytofValidateCohorts(dplyr::bind_rows(rows, rows[4, ]), c("stimgate", "fbeta")), "different or duplicate")
+})
+
+test_that("ACS detects reordered saved GatingSet files", {
+  env <- .load_acs_method_env()
+  path <- tempfile("acs-manifest-")
+  dir.create(path)
+  withr::defer(unlink(path, recursive = TRUE))
+  map <- data.frame(SampleID = "a", stim = c("uns", "p1", "mtb", "ebv", "p4"),
+                    ind = 1:5, file = paste0(1:5, ".fcs"))
+  saveRDS(list(sampleMap = map), file.path(path, "acs-preprocessing.rds"))
+  testthat::local_mocked_bindings(sampleNames = function(...) rev(map$file),
+                                  .package = "flowWorkspace")
+  expect_error(env$.acsCytofReadPreprocessing(path, list()), "reordered")
 })

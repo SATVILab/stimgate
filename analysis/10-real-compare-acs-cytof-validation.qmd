@@ -18,6 +18,11 @@ The figures use saved results from analysis 9 without rerunning the gating metho
 
 ## Set-up
 
+Failed method/marker estimates remain missing and are excluded from agreement
+statistics; correlation tables state total, failed and scored counts for each
+included stratum. Analysis 9 also saves coverage for all strata and an exclusion
+table for unmatched cohort keys.
+
 The saved `acs_cytof/manual-comparison/manual-comparison.rds` table is sufficient; raw FCS files are not needed here. Render analysis 9 with `RUN_SIMULATIONS=true RUN_PLOTS=false` first if that table is missing. `RUN_PLOTS=true` displays and saves the validation figures; this document does not rerun the gating methods.
 
 ```{r}

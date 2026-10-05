@@ -37,6 +37,14 @@ create_gatingset <- function(
     fcs_vec <- fcs_vec[seq_len(n_sample)]
   }
 
+  sampleMap <- .acsCytofMapFiles(fcs_vec)
+  .acsCytofBatchList(sampleMap)
+  preprocessing <- list(
+    settings = list(transform = "asinh(x / 5)", pairingVersion = 1L),
+    sampleMap = sampleMap,
+    inputFileListHash = .acsCytofHash(basename(fcs_vec)),
+    inputContentHash = .acsCytofHash(unname(tools::md5sum(fcs_vec)))
+  )
   cs <- flowWorkspace::load_cytoset_from_fcs(fcs_vec)
 
   gs <- flowWorkspace::GatingSet(cs)
@@ -94,6 +102,7 @@ create_gatingset <- function(
   gs_trans <- flowWorkspace::transform(gs, trans)
   .acsCytofReplaceDir(path_gs, function(path_tmp) {
     flowWorkspace::save_gs(gs = gs_trans, path = path_tmp)
+    saveRDS(preprocessing, file.path(path_tmp, "acs-preprocessing.rds"))
   })
   path_gs
 }

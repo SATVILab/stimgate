@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------
 
 # ACS FCS files come in blocks of four stimulated files followed by one
-# unstimulated file. `.acsCytofBatchList()` reorders each block so that the
+# unstimulated file. `.acsCytofBatchList()` uses the saved lookup so that the
 # unstimulated sample is first, as `gateStim()` expects. This standalone
 # diagnostic uses that same batch list and stops if the filenames do not
 # confirm the unstimulated sample is first in every batch.
@@ -119,7 +119,7 @@ reticulate::py_config()
     batchList,
     function(indBatch, batchIndex) {
       tibble(
-        batch = as.integer(batchIndex),
+        batch = as.character(batchIndex),
         position = seq_along(indBatch),
         ind = indBatch,
         expectedRole = if_else(
@@ -199,7 +199,7 @@ reticulate::py_config()
   }
 
   gs <- flowWorkspace::load_gs(paths$gs)
-  batchList <- .acsCytofBatchList(length(gs))
+  batchList <- .acsCytofBatchList(.acsCytofReadPreprocessing(paths$gs, gs)$sampleMap)
   fcsFiles <- .acsCytofFcsFiles(paths$fcs)
   fcsFiles <- fcsFiles[seq_len(length(gs))]
   batchLayout <- .acsBatchLayout(

@@ -727,6 +727,12 @@ rows before drawing reference lines.
    comparison renders read the saved manual-comparison table without raw FCS or
    manual CSV inputs; GatingSet diagnostics are optional when those caches are absent.
 
+   ACS batches use the mapped SampleID and stimulus, never filename position.
+   Saved ACS method outputs must carry identical input/preprocessing/revision
+   manifests before comparison. Keep per-marker threshold provenance and failure
+   coverage; exclude failed estimates from agreement metrics and persist cohort
+   exclusions rather than hiding omitted rows behind render warnings.
+
 12. **Shared local-FDR bandwidths (`bwScope`, issue #417)**:
    The scalar local-FDR bandwidth is chosen once per channel during settings
    completion (`.completeChnlSettingsBwShared()`) and read in

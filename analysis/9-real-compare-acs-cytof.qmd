@@ -93,7 +93,7 @@ n_workers <- as.integer(.get_qmd_param_env(
 if (is.na(n_workers) || n_workers < 1L) {
   stop("n_workers must be coercible to an integer of at least one.")
 }
-.acsCytofBatchList(tester_n_sample)
+.acsCytofValidateSampleCount(tester_n_sample)
 
 .acsCytofEnsureCurrentCheckout(root_dir)
 
@@ -155,7 +155,8 @@ StimGate flow is applied to every population configured in `pop_vec`.
 The reusable helpers fix the six cytokine channels and the method settings.
 StimGate uses `bwMtd = "nrd0"` (with `bwNcellMax = 1e4`, `bwFallback = "auto"`
 and no bandwidth bounds), `gateCombn = "min"`, `minCell = 100`,
-threshold clustering off (`clusterGates = FALSE`) and `calcCytPosGates = TRUE`.
+threshold clustering on (`clusterGates = TRUE`) and cytokine-positive refinement
+on (`calcCytPosGates = TRUE`). Both settings are recorded with the saved run.
 Its unstimulated-sample bias
 is not fixed: it equals the bandwidth StimGate estimates at the start
 (`biasUns = NULL` with `biasUnsFactor = 4`). F-beta uses its standard
@@ -328,8 +329,12 @@ manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 
 The comparison table, its RDS copy and a method/population/cytokine summary
 are written under `path_manual_output`. When `run_plots` is true, the
-figures are saved under `output/fig/9-real-compare-acs-cytof/`. Pearson
-correlations of the StimGate, Tailgate and F-beta estimates with the manual frequencies
+figures are saved under `output/fig/9-real-compare-acs-cytof/`. Failed thresholds (including finite fallback gates) remain in the comparison
+with missing scored frequencies. Summary tables state total, failed and scored
+counts; agreement statistics use successful estimates only. The exclusion CSV
+records unmatched manual/automated keys. Methods must have identical sample and
+stratum keys and matching data/preprocessing/revision manifests before joining.
+Pearson correlations of the StimGate, Tailgate and F-beta estimates with the manual frequencies
 follow.
 
 ```{r}
