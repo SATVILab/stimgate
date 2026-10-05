@@ -1828,73 +1828,70 @@
   sort(unique(files))
 }
 
-#' Check that a scenario has one complete primary result per replicate and method
-#'
-#' @keywords internal
+# Explicit comparator exceptions are completed observations with missing scientific
+# outputs, not empty gates or whole-scenario infrastructure failures.
+.simCompareRecordedComparatorErrors <- function(data) {
+  required <- c("method", "error", "threshold", "thresholdOrigin", "gateReturnPoint",
+    "thresholdFallbackUsed", "propRespEst", "nPosStim", .simCompareCountCols)
+  if (!is.data.frame(data) || !all(required %in% names(data))) return(rep(FALSE, nrow(data)))
+  missing_cols <- intersect(c("threshold", "thresholdMetric", "propRespEst", "propStim", "propUns",
+    "nPosStim", "nPosUns", .simCompareCountCols), names(data))
+  missing_outputs <- rowSums(!is.na(as.matrix(data[, missing_cols, drop = FALSE]))) == 0L
+  recorded <- data$method %in% c("fbeta", "tailgate") &
+    !is.na(data$error) & nzchar(trimws(as.character(data$error))) &
+    !is.na(data$thresholdOrigin) & startsWith(data$thresholdOrigin, "error: ") &
+    !is.na(data$gateReturnPoint) & data$gateReturnPoint == paste0(data$method, "_error") &
+    !is.na(data$thresholdFallbackUsed) & !data$thresholdFallbackUsed & missing_outputs
+  recorded %in% TRUE
+}
+
+# Give one concise reason for invalid structure; method failures remain separate
+# from completion so promotion and resume use exactly the same contract.
+.simComparePrimaryOutputStatus <- function(
+    data, nSample, nIter, methods = c("stimgate", "fbeta", "tailgate")) {
+  invalid <- function(reason) list(complete = FALSE, reason = reason)
+  required <- c("iter", "sample", "method", "propRespTruth", "propRespEst", "nCellStim",
+    "nPosStim", .simCompareCountCols, "unsExprSum")
+  if (!is.data.frame(data) || !nrow(data) || !all(required %in% names(data))) {
+    return(invalid("missing primary outcome columns or rows"))
+  }
+  recorded <- .simCompareRecordedComparatorErrors(data)
+  error <- if ("error" %in% names(data)) !is.na(data$error) & nzchar(as.character(data$error)) else rep(FALSE, nrow(data))
+  if (any(error & !recorded)) return(invalid("unrecognised, malformed or whole-scenario runtime error"))
+  primary <- data[data$method %in% methods, , drop = FALSE]
+  expected <- as.integer(nSample) * as.integer(nIter)
+  if (nrow(primary) != expected * length(methods)) return(invalid("missing or extra primary method/sample rows"))
+  if (anyNA(primary$iter) || anyNA(primary$sample) ||
+      !all(as.character(primary$iter) %in% as.character(seq_len(nIter))) ||
+      !all(as.character(primary$sample) %in% as.character(seq_len(nSample)))) {
+    return(invalid("sample or iteration IDs differ from the intended grid"))
+  }
+  if (anyDuplicated(primary[c("iter", "sample", "method")])) return(invalid("duplicate primary method/sample rows"))
+  method_counts <- table(factor(primary$method, levels = methods))
+  if (any(method_counts != expected)) return(invalid("incomplete primary method coverage"))
+  if (!all(is.finite(primary$propRespTruth)) || !all(is.finite(primary$unsExprSum)) ||
+      !all(is.finite(primary$nCellStim) & primary$nCellStim > 0)) {
+    return(invalid("missing simulated truth, cell counts or pairing fingerprint"))
+  }
+  shared_truth <- primary |>
+    dplyr::group_by(.data$iter, .data$sample) |>
+    dplyr::summarise(dplyr::across(c("propRespTruth", "nCellStim", "unsExprSum"),
+      dplyr::n_distinct),
+      n_genuine = dplyr::n_distinct(.data$nTruePos + .data$nFalseNeg, na.rm = TRUE),
+      .groups = "drop")
+  if (any(shared_truth$n_genuine > 1L) || any(as.matrix(shared_truth[c("propRespTruth", "nCellStim", "unsExprSum")]) != 1L)) {
+    return(invalid("simulated truth, biological counts or pairing fingerprints differ across methods"))
+  }
+  valid <- primary[!.simCompareRecordedComparatorErrors(primary), , drop = FALSE]
+  if (!all(is.finite(valid$propRespEst)) || !.simCompareCountsConsistent(valid)) {
+    return(invalid("unlabelled missing estimates or inconsistent gate counts"))
+  }
+  list(complete = TRUE, reason = NA_character_)
+}
+
 .simComparePrimaryOutputComplete <- function(
-  .data,
-  nSample,
-  nIter,
-  methods = c("stimgate", "fbeta", "tailgate")
-) {
-  # The label-based confusion-matrix counts (and the unstimulated-data
-  # fingerprint used to check pairing) are required, so outputs saved before
-  # they were recorded cannot satisfy the classification analysis.
-  required_cols <- c(
-    "iter",
-    "sample",
-    "method",
-    "propRespTruth",
-    "propRespEst",
-    "nCellStim",
-    "nPosStim",
-    .simCompareCountCols,
-    "unsExprSum"
-  )
-  if (
-    !is.data.frame(.data) ||
-      nrow(.data) == 0L ||
-      !all(required_cols %in% names(.data))
-  ) {
-    return(FALSE)
-  }
-
-  if (
-    "error" %in% names(.data) &&
-      any(!is.na(.data$error) & nzchar(as.character(.data$error)))
-  ) {
-    return(FALSE)
-  }
-
-  primary <- .data |>
-    dplyr::filter(.data$method %in% methods)
-
-  expected_n_per_method <- as.integer(nSample) * as.integer(nIter)
-  if (nrow(primary) != expected_n_per_method * length(methods)) {
-    return(FALSE)
-  }
-
-  key_counts <- primary |>
-    dplyr::count(.data$iter, .data$sample, .data$method, name = "n")
-
-  if (any(key_counts$n != 1L)) {
-    return(FALSE)
-  }
-
-  method_counts <- primary |>
-    dplyr::count(.data$method, name = "n")
-
-  if (
-    !setequal(as.character(method_counts$method), methods) ||
-      any(method_counts$n != expected_n_per_method)
-  ) {
-    return(FALSE)
-  }
-
-  all(is.finite(primary$propRespTruth)) &&
-    all(is.finite(primary$propRespEst)) &&
-    .simCompareCountsConsistent(primary) &&
-    all(is.finite(primary$unsExprSum))
+    .data, nSample, nIter, methods = c("stimgate", "fbeta", "tailgate")) {
+  .simComparePrimaryOutputStatus(.data, nSample, nIter, methods)$complete
 }
 
 .simCompareCountCols <- c("nTruePos", "nFalsePos", "nFalseNeg", "nTrueNeg")
@@ -1931,9 +1928,12 @@
   has_error <- "error" %in%
     names(cached) &&
     any(!is.na(cached$error) & nzchar(as.character(cached$error)))
-  if (isTRUE(retryErrors) && has_error) {
-    return(FALSE)
-  }
+  # retryErrors retries scenario/infrastructure failures. A fully recorded
+  # comparator failure is valid missing scientific data and is reused.
+  if (has_error && any(
+    !is.na(cached$error) & nzchar(as.character(cached$error)) &
+      !.simCompareRecordedComparatorErrors(cached)
+  )) return(FALSE)
 
   # Ensure selective SD cluster settings are matched even if cached is missing the column
   if ("stim_sd_multiplier_clusters" %in% names(row)) {
@@ -2049,31 +2049,28 @@
     }
   }
 
-  if (!has_error) {
-    if (!is.null(nIter) && "iter" %in% names(cached)) {
-      cached_iters <- unique(cached$iter[!is.na(cached$iter)])
-      if (length(cached_iters) != as.integer(nIter)) {
-        return(FALSE)
-      }
-    }
-    if (!is.null(nSample) && "sample" %in% names(cached)) {
-      cached_samples <- unique(cached$sample[!is.na(cached$sample)])
-      if (length(cached_samples) != as.integer(nSample)) {
-        return(FALSE)
-      }
-    }
-    if (
-      !is.null(nIter) &&
-        !is.null(nSample) &&
-        "method" %in% names(cached) &&
-        !.simComparePrimaryOutputComplete(
-          cached,
-          nSample = nSample,
-          nIter = nIter
-        )
-    ) {
+  if (!is.null(nIter) && "iter" %in% names(cached)) {
+    cached_iters <- unique(cached$iter[!is.na(cached$iter)])
+    if (length(cached_iters) != as.integer(nIter)) {
       return(FALSE)
     }
+  }
+  if (!is.null(nSample) && "sample" %in% names(cached)) {
+    cached_samples <- unique(cached$sample[!is.na(cached$sample)])
+    if (length(cached_samples) != as.integer(nSample)) {
+      return(FALSE)
+    }
+  }
+  if (
+    !is.null(nIter) &&
+      !is.null(nSample) &&
+      !.simComparePrimaryOutputComplete(
+        cached,
+        nSample = nSample,
+        nIter = nIter
+      )
+  ) {
+    return(FALSE)
   }
 
   TRUE
@@ -2850,22 +2847,18 @@
 
   completed_ids <- integer()
   failed_ids <- integer()
+  failure_reasons <- character()
 
   for (sim_id in intersect(expected_ids, observed_ids)) {
     sim_data <- .data[as.integer(.data$sim_id) == sim_id, , drop = FALSE]
-    has_error <- "error" %in% names(sim_data) &&
-      any(!is.na(sim_data$error) & nzchar(as.character(sim_data$error)))
-    complete <- !has_error &&
-      .simComparePrimaryOutputComplete(
-        sim_data,
-        nSample = nSample,
-        nIter = nIter
-      )
+    status <- .simComparePrimaryOutputStatus(sim_data, nSample, nIter)
+    complete <- status$complete
 
     if (isTRUE(complete)) {
       completed_ids <- c(completed_ids, sim_id)
     } else {
       failed_ids <- c(failed_ids, sim_id)
+      failure_reasons[as.character(sim_id)] <- status$reason
     }
   }
 
@@ -2880,6 +2873,7 @@
     observed_ids = observed_ids,
     completed_ids = sort(completed_ids),
     failed_ids = sort(failed_ids),
+    failure_reasons = failure_reasons,
     missing_ids = sort(missing_ids),
     extra_ids = sort(extra_ids),
     collate_ok = collate_ok,
@@ -3112,7 +3106,8 @@
 # Validate cross-setting invariants on the complete table before promotion.
 .simCompareValidateMismatch <- function(compare_raw) {
   counts_ok <- .simCompareCountsConsistent(
-    compare_raw[compare_raw$method %in% c("stimgate", "fbeta", "tailgate"), ]
+    compare_raw[compare_raw$method %in% c("stimgate", "fbeta", "tailgate") &
+      !.simCompareRecordedComparatorErrors(compare_raw), ]
   )
   if (!isTRUE(counts_ok)) {
     stop("Confusion-matrix counts do not reproduce the gated stimulated counts.")
@@ -3280,7 +3275,8 @@
   if (!isTRUE(full_validation_ok)) {
     error_message <- paste0(
       "Refusing to promote comparison: canonical collation did not contain ",
-      "exactly the complete error-free simulation grid."
+      "exactly the complete simulation grid. ",
+      paste(names(full_check$failure_reasons), full_check$failure_reasons, collapse = "; ")
     )
     .analysis_mark_chunk(
       run_ctx = run_ctx,
@@ -3974,7 +3970,7 @@
     dplyr::summarise(
       n_settings = dplyr::n_distinct(.data$sim_id),
       n_uns_values = dplyr::n_distinct(.data$unsExprSum),
-      n_genuine_pos_values = dplyr::n_distinct(.data$nTruePos + .data$nFalseNeg),
+      n_genuine_pos_values = dplyr::n_distinct(.data$nTruePos + .data$nFalseNeg, na.rm = TRUE),
       n_cell_values = dplyr::n_distinct(.data$nCellStim),
       .groups = "drop"
     ) |>
@@ -4016,10 +4012,15 @@
     ) |>
     dplyr::group_by(.data$mismatch_type, .data$method) |>
     dplyr::summarise(
-      n_compared = dplyr::n(),
+      n_pairs = dplyr::n(),
+      n_failed_pairs = sum(is.na(.data$same_threshold) | is.na(.data$same_counts)),
+      n_compared = sum(!is.na(.data$same_threshold) & !is.na(.data$same_counts)),
       n_same_threshold = sum(.data$same_threshold %in% TRUE),
       n_same_counts = sum(.data$same_counts %in% TRUE),
-      max_abs_threshold_diff = max(abs(.data$threshold - .data$threshold_ref)),
+      max_abs_threshold_diff = {
+        diff <- abs(.data$threshold - .data$threshold_ref)
+        if (any(is.finite(diff))) max(diff[is.finite(diff)]) else NA_real_
+      },
       .groups = "drop"
     )
 }

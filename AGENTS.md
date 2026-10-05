@@ -560,7 +560,10 @@ For new or moved analysis code, use this layering:
 5. `analysis/*.qmd`: scientific settings, analysis calls, result-specific transformations and presentation.
 
 QMDs locate the checkout root before sourcing `analysis-runtime.R` and set
-knitr's working directory there for workers. Use `.analysis_is_dev()` and
+knitr's working directory there for workers. Paths returned by projr and kept
+across chunks or passed to workers must use `format = "absolute"`: setup can
+run from `analysis/` before later chunks switch to the checkout root.
+Use `.analysis_is_dev()` and
 `.analysis_is_quick()` for profile fallbacks and the shared cache readers for
 errors naming the analysis, render command, matching dev/quick profile and
 required completion of all chunks.
@@ -788,11 +791,11 @@ rows before drawing reference lines.
    Results for dev and quick runs are kept under `<analysis-key>/dev/` and
    `<analysis-key>/quick/`; full runs keep the existing analysis key.
    Full-grid runs take `sim_size` (QMD param, `SIM_SIZE` env, read by
-   `.analysis_sim_size()`): `"draft"` (default) or `"final"`; draft uses about a quarter
+   `.analysis_sim_size()`): `"final"` (default) or `"draft"`; draft uses about a quarter
    of the samples (datasets in 7/8) on the same grid, stored under
    `<analysis-key>/draft/` and recorded as `sim_size` in required run settings;
    draft is for iterating, not reporting, and dev/quick take precedence. Set
-   `SIM_SIZE=final` explicitly for reported runs. Draft 7/8 retain all 20
+   `SIM_SIZE=draft` explicitly for faster iterations. Draft 7/8 retain all 20
    jointly gated samples per dataset and reduce only replicate datasets;
    missing `sim_size` in legacy manifests still means final.
    Workers and interactive single-row reruns use the same explicitly seeded row runner; resume retries
@@ -994,3 +997,12 @@ example ACS donor intervals). Performance figure callers pass `mcse_mode` to
 shared save/print orchestration and ratio companions. Both versions are printed
 with explicit labels and saved in sibling `mcse_off/` and `mcse_on/` folders;
 non-MC figures retain a single output. Never rerun simulations for these twins.
+
+Comparison completion and promotion require every intended method/sample/iteration
+row, finite simulated truth and pairing fingerprints, and consistent successful
+gate counts. Explicit F-beta/Tailgate error rows with method-error provenance and
+missing estimates/counts are completed scientific observations, reused on resume
+even with `retryErrors = TRUE`; report them as missing outcomes, never zero gates.
+Missing/malformed rows, unlabelled missing outcomes, StimGate or whole-scenario
+runtime failures remain incomplete. Mismatch checks use defined gate counts and
+report failed zero-mismatch pairs separately from finite comparisons.

@@ -13,7 +13,8 @@ test_that("QMD registry covers all top-level documents with real test files", {
     file.path(loaded$root_dir, "analysis"), pattern = "[.]qmd$"
   ))
   expect_identical(targets[[10]], c(
-    "test-acs-cytof-gate.R", "test-acs-cytof-methods.R", "test-ratio-companion-plots.R"
+    "test-acs-cytof-gate.R", "test-acs-cytof-methods.R", "test-ratio-companion-plots.R",
+    "test-acs-cytof-paths.R"
   ))
   for (target in c(2L, 3L, 8L, 9L, 10L)) {
     expect_true("test-ratio-companion-plots.R" %in% targets[[target]])

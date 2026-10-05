@@ -15,7 +15,7 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
-  sim_size: draft
+  sim_size: final
   sim_retry_errors: true
 ---
 
@@ -86,7 +86,7 @@ analysis_key <- c("sim", "bw", "est", "adaptive")
 analysis_semantics_version <- "adaptive-bw-est-v6"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
-# "draft" (default) or "final" sample/dataset counts; dev and quick win.
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
 sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("5-sim-bw-est-adaptive")

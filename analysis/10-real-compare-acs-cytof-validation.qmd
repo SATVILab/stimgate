@@ -57,7 +57,8 @@ run_plots <- .as_flag(.get_qmd_param_env(
 path_manual_output <- projr::projr_path_get(
   "cache",
   "acs_cytof",
-  "manual-comparison"
+  "manual-comparison",
+  format = "absolute"
 )
 path_comparison <- file.path(
   path_manual_output,

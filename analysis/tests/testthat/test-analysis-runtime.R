@@ -1029,7 +1029,7 @@ test_that("analysis mode keys isolate dev and quick results with dev precedence"
   source(script_runtime, local = env)
   key <- c("sim", "test")
   withr::local_envvar(PROJR_PROFILE = NA, SIM_SIZE = NA)
-  expect_identical(env$.analysis_mode_key(key), c(key, "draft"))
+  expect_identical(env$.analysis_mode_key(key), key)
   Sys.setenv(PROJR_PROFILE = "quick")
   expect_identical(env$.analysis_mode_key(key), c(key, "quick"))
   Sys.setenv(PROJR_PROFILE = "dev")
