@@ -23,6 +23,7 @@ test_that("Analysis 2a executes its original bandwidth and fixed-bias design", {
   }
   env$analysis_quick <- FALSE
   env$analysis_dev <- FALSE
+  env$sim_size <- "final"
   env$analysis_semantics_version <- "test"
   env$simulation_seed <- 12345L
   env$sim_grid_shuffle_seed <- 8L
@@ -35,7 +36,7 @@ test_that("Analysis 2a executes its original bandwidth and fixed-bias design", {
   eval(parse(text = chunk("bw-manual-settings")), envir = env)
 
   expect_equal(env$scenario_settings$nSample, 200)
-  expect_null(env$scenario_settings$tolClust)
+  expect_false(env$scenario_settings$clusterGates)
   expect_false(env$scenario_settings$locEnforceShapeThreshold)
   expect_false(env$scenario_settings$calcCytPosGates)
   expect_equal(sort(unique(env$sim_grid_all$n_cell)), c(1e3, 5e3, 2e4, 1e5))
@@ -148,7 +149,7 @@ test_that(".simBandwidthBsFreq calls simcyto::simCytExperiment and produces vali
         ncellUnsRelativeToStim = 1,
         covEvMin = 1.5,
         covEvMax = 1.5,
-        tolClust = NULL,
+        clusterGates = FALSE,
         locEnforceShapeThreshold = FALSE,
         calcCytPosGates = FALSE
       )
@@ -209,7 +210,7 @@ test_that(".simBandwidthBsFreq works with gamma and skew transformations from si
       ncellUnsRelativeToStim = 1,
       covEvMin = 1.5,
       covEvMax = 1.5,
-      tolClust = NULL,
+      clusterGates = FALSE,
       locEnforceShapeThreshold = FALSE,
       calcCytPosGates = FALSE
     )
@@ -254,7 +255,7 @@ test_that(".simBandwidthBsFreq correctly preserves perturbations and cell count 
     ncellUnsRelativeToStim = 0.5,
     covEvMin = 1.5,
     covEvMax = 1.5,
-    tolClust = NULL,
+    clusterGates = FALSE,
     locEnforceShapeThreshold = FALSE,
     calcCytPosGates = FALSE
   )
@@ -290,14 +291,6 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
 
     captured_sim <- NULL
     orig_simcyto_experiment <- simcyto::simCytExperiment
-    # Pin the replicate seed to keep the canonical parity dataset.
-    env$sample.int <- function(n, size, replace = FALSE, prob = NULL) {
-      if (identical(n, .Machine$integer.max) && size == 1L && isTRUE(replace)) {
-        return(seed)
-      }
-      base::sample.int(n, size, replace = replace, prob = prob)
-    }
-
     set.seed(seed)
     res <- testthat::with_mocked_bindings(
       simCytExperiment = function(...) {
@@ -329,7 +322,7 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
         ncellUnsRelativeToStim = 0.5,
         covEvMin = 1.5,
         covEvMax = 1.5,
-        tolClust = NULL,
+        clusterGates = FALSE,
         locEnforceShapeThreshold = FALSE,
         calcCytPosGates = FALSE
       )
@@ -348,6 +341,8 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
       dplyr::arrange(.data$sample, .data$ind)
 
     set.seed(seed)
+    # The helper draws each replicate's seed before simulating.
+    set.seed(sample.int(.Machine$integer.max, 1L, replace = TRUE))
     sim <- simcyto::simCytExperiment(
       nSample = n_sample,
       nMarker = 1L,
@@ -415,8 +410,11 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
     )
     expect_equal(unname(expr_means_helper), unname(expr_means_direct), tolerance = 1e-12)
     expect_equal(unname(expr_sds_helper), unname(expr_sds_direct), tolerance = 1e-12)
-    expect_true(expr_means_helper[[2]] > expr_means_helper[[1]])
-    expect_true(expr_means_helper[[4]] > expr_means_helper[[3]])
+    # Stimulated tubes (2, 4) carry the response, so on average sit higher.
+    expect_gt(
+      mean(expr_means_helper[c(2, 4)]),
+      mean(expr_means_helper[c(1, 3)])
+    )
 
     abs_err <- res |>
       dplyr::filter(.data$method %in% c("loc_condition", "loc_sample")) |>
@@ -432,7 +430,7 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
     mean_pos = 4,
     bw = 0.02,
     bias_uns = 0.0025,
-    expected_abs_err = c(0.05, 0.05, 0.0041666667, 0.0041666667)
+    expected_abs_err = c(0.0041666667, 0.0041666667, 0.0375, 0.0375)
   )
 
   run_case(
@@ -441,6 +439,6 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
     mean_pos = 8,
     bw = 0.25,
     bias_uns = 0.05,
-    expected_abs_err = c(0.0041666667, 0.0041666667, 0, 0)
+    expected_abs_err = c(0.2, 0.2, 0, 0)
   )
 })

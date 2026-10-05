@@ -14,6 +14,7 @@ params:
   sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
+  sim_size: final
 ---
 
 This analysis compares StimGate, F-beta and Tailgate when stimulated and
@@ -77,9 +78,11 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v9"
+comparison_semantics_version <- "batch-mismatch-comparison-v10"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("8-sim-compare-freq_bs-batch")
 run_plots <- .as_flag(.get_qmd_param_env(
@@ -165,6 +168,12 @@ the `nrd0` selector with the bandwidth-estimation sample capped at 10,000 cells.
 
 ### Simulation settings
 
+Each scenario simulates 20 datasets of 10 samples in final runs and 5 datasets
+of 10 samples in draft runs (`SIM_SIZE=draft`). The samples in a dataset are
+gated together, with shared settings and cluster gates, so the dataset is the
+unit for uncertainty. Draft results are kept separately and are for iterating,
+not for reporting.
+
 ```{r}
 #| label: actual-settings
 # Method settings inherited from analysis 7:
@@ -179,11 +188,15 @@ stimgate_bw_min <- "none"
 stimgate_bw_max <- "none"
 
 # Cluster refinement enabled for the full one-marker procedure
-tol_clust <- 1e-7
+# Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
+cluster_gates <- TRUE
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
-n_sample_sim <- if (analysis_quick) 1L else 5
-n_iter_sim <- if (analysis_quick) 1L else 5
+# Each dataset of `n_sample_sim` samples is gated together (shared settings
+# and cluster gates), so the dataset is the unit for uncertainty. Draft keeps
+# the samples per dataset and uses a quarter of the datasets (at least 5).
+n_sample_sim <- if (analysis_quick) 1L else 10L
+n_iter_sim <- if (analysis_quick) 1L else c(final = 20L, draft = 5L)[[sim_size]]
 
 fbeta_beta <- 0.8
 fbeta_theta <- 2
@@ -430,6 +443,7 @@ if (isTRUE(run_simulations)) {
       simulation_seed = simulation_seed,
       analysis_quick = analysis_quick,
       analysis_dev = analysis_dev,
+      sim_size = sim_size,
       paired_mismatch_rng = TRUE,
       analysis_grid_spec = analysis_grid_spec,
       gate_diagnostic_spec = gate_diagnostic_spec,
@@ -442,7 +456,7 @@ if (isTRUE(run_simulations)) {
       stimgate_bw_fallback = stimgate_bw_fallback,
       stimgate_bw_min = stimgate_bw_min,
       stimgate_bw_max = stimgate_bw_max,
-      tol_clust = tol_clust,
+      cluster_gates = cluster_gates,
       loc_enforce_shape_threshold = loc_enforce_shape_threshold,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
       fbeta_beta = fbeta_beta,
@@ -498,7 +512,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     probExact = TRUE,
     covEvMin = 1.5,
     covEvMax = 1.5,
-    tolClust = tol_clust,
+    clusterGates = cluster_gates,
     locEnforceShapeThreshold = loc_enforce_shape_threshold,
     calcCytPosGates = calc_cyt_pos_gates,
     pathFbeta = path_fbeta,
@@ -557,7 +571,7 @@ if (isTRUE(run_simulations) && sim_grid_chunk_index == 1L) {
       probExact = TRUE,
       covEvMin = 1.5,
       covEvMax = 1.5,
-      tolClust = tol_clust,
+      clusterGates = cluster_gates,
       locEnforceShapeThreshold = loc_enforce_shape_threshold,
       calcCytPosGates = calc_cyt_pos_gates,
       pathFbeta = path_fbeta,
@@ -654,6 +668,7 @@ analysis_result_params <- list(
   simulation_seed = simulation_seed,
   analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
+  sim_size = sim_size,
   paired_mismatch_rng = TRUE,
   analysis_grid_spec = analysis_grid_spec,
   gate_diagnostic_spec = gate_diagnostic_spec,
@@ -1435,7 +1450,7 @@ compare_one <- .simCompareRunScenario(
   probExact = TRUE,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = tol_clust,
+  clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
   calcCytPosGates = calc_cyt_pos_gates,
   pathFbeta = path_fbeta,

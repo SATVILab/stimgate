@@ -23,6 +23,7 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
     # Mirrors QMD set-up: dev takes precedence over quick.
     env$analysis_quick <- quick && !dev
     env$analysis_dev <- dev
+    env$sim_size <- "final"
     env$simulation_seed <- 12345L
     env$sim_grid_shuffle_seed <- 8L
     env$sim_grid_chunk_index <- 1L
@@ -43,7 +44,7 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
   expect_equal(full$scenario_settings$biasUnsWidthHeightFrac, 0.15)
   expect_equal(full$scenario_settings$covEvMin, 1.5)
   expect_equal(full$scenario_settings$covEvMax, 1.5)
-  expect_null(full$scenario_settings$tolClust)
+  expect_false(full$scenario_settings$clusterGates)
   expect_false(full$scenario_settings$calcCytPosGates)
   expect_false(full$scenario_settings$locEnforceShapeThreshold)
   expect_identical(full$analysis_required_params$simulation_seed, 12345L)
@@ -315,7 +316,7 @@ test_that("Analysis 2b runs width-based bias with selective batch mismatch", {
     probExact = TRUE,
     covEvMin = 1.5,
     covEvMax = 1.5,
-    tolClust = NULL,
+    clusterGates = FALSE,
     locEnforceShapeThreshold = FALSE,
     calcCytPosGates = FALSE
   )

@@ -78,7 +78,7 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
   expect_true(grepl("stimgate_bw_scope = stimgate_bw_scope", content, fixed = TRUE))
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'comparison_semantics_version <- "batch-mismatch-comparison-v9"',
+    'comparison_semantics_version <- "batch-mismatch-comparison-v10"',
     content,
     fixed = TRUE
   ))
@@ -198,7 +198,7 @@ test_that("analysis 2a uses shared seeded runners and canonical reads", {
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl("sim_retry_errors:\\s*true", content))
-  expect_true(has('analysis_semantics_version <- "global-bw-freq-v6"'))
+  expect_true(has('analysis_semantics_version <- "global-bw-freq-v7"'))
   expect_true(has("sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)"))
   # sim_id/sim_seed are fixed on the full grid before filtering/shuffling.
   expect_lt(pos("sim_seed = as.integer("), pos("sim_grid_full <- sim_grid"))
@@ -297,7 +297,7 @@ test_that("analysis 4 uses shared seeded runners and canonical reads", {
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl("sim_retry_errors:\\s*true", content))
   expect_true(grepl("warning:\\s*false", content))
-  expect_true(has('analysis_semantics_version <- "bandwidth-est-norm-v5"'))
+  expect_true(has('analysis_semantics_version <- "bandwidth-est-norm-v6"'))
   expect_true(has(
     "sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)"
   ))
@@ -393,7 +393,7 @@ test_that("analysis 5 uses shared seeded runners and canonical reads", {
   expect_true(grepl("sim_retry_errors:\\s*true", content))
   expect_true(grepl("warning:\\s*false", content))
   expect_true(grepl("message:\\s*false", content))
-  expect_true(has('analysis_semantics_version <- "adaptive-bw-est-v4"'))
+  expect_true(has('analysis_semantics_version <- "adaptive-bw-est-v5"'))
   expect_true(has("norm_adaptive_ncell <- 2500L"))
   expect_true(has("normAdaptiveNcell = norm_adaptive_ncell"))
   expect_false(has("bw_ncell_upper"))
@@ -502,7 +502,7 @@ test_that("all simulation QMDs use shared mode keys and dev precedence", {
     expect_true(grepl("analysis_dev <- .analysis_is_dev()", content, fixed = TRUE))
     expect_true(grepl("analysis_quick <- .analysis_is_quick() && !analysis_dev",
                      content, fixed = TRUE))
-    expect_true(grepl("analysis_key <- .analysis_mode_key(analysis_key)",
+    expect_true(grepl("analysis_key <- .analysis_mode_key(analysis_key",
                      content, fixed = TRUE))
     expect_false(grepl("analysis_quick && !analysis_dev", content, fixed = TRUE))
   }
@@ -526,7 +526,7 @@ test_that("simulation quick filters follow seeded full grids and isolate their c
       "if (analysis_quick) {", filter_text, fixed = TRUE
     ), info = file)
     expect_true(grepl(
-      "analysis_key <- .analysis_mode_key(analysis_key)", content, fixed = TRUE
+      "analysis_key <- .analysis_mode_key(analysis_key", content, fixed = TRUE
     ), info = file)
     expect_true(grepl(
       "analysis_quick = analysis_quick", content, fixed = TRUE

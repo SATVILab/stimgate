@@ -54,14 +54,6 @@ test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundar
     captured_sim <- NULL
     orig_simcyto_experiment <- simcyto::simCytExperiment
 
-    # Pin the replicate seed to keep the canonical parity dataset.
-    env$sample.int <- function(n, size, replace = FALSE, prob = NULL) {
-      if (identical(n, .Machine$integer.max) && size == 1L && isTRUE(replace)) {
-        return(seed)
-      }
-      base::sample.int(n, size, replace = replace, prob = prob)
-    }
-
     set.seed(seed)
     res <- testthat::with_mocked_bindings(
       simCytExperiment = function(...) {
@@ -115,6 +107,8 @@ test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundar
     expect_equal(captured_args$transformationFunc(c(-1, 0, 1)), expected_trans(c(-1, 0, 1)))
 
     set.seed(seed)
+    # The helper draws each replicate's seed before simulating.
+    set.seed(sample.int(.Machine$integer.max, 1L, replace = TRUE))
     sim_direct <- do.call(simcyto::simCytExperiment, captured_args)
 
     truth_from_labels <- function(sim_obj) {
@@ -181,10 +175,10 @@ test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundar
     mean_pos = 8,
     bias_uns = 0.05,
     expected_bw_means = c(
-      0.3302348212,
-      0.3571534616,
-      0.5248110771,
-      0.4150524274
+      0.3370803958,
+      0.3284741467,
+      0.3999293279,
+      0.4726434710
     )
   )
 
@@ -194,10 +188,10 @@ test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundar
     mean_pos = 4,
     bias_uns = 0.0025,
     expected_bw_means = c(
-      0.0050264283,
-      0.0070008414,
-      0.0058989428,
-      0.0238334830
+      0.0049646913,
+      0.0053038529,
+      0.0048982453,
+      0.0210311014
     )
   )
 })

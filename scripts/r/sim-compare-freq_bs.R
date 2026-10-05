@@ -1066,12 +1066,16 @@
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  tolClust = NULL,
+  clusterGates = FALSE,
   locEnforceShapeThreshold = FALSE,
   calcCytPosGates = FALSE,
   includeLocCondition = FALSE,
   includeLocDetails = includeLocCondition
 ) {
+  if (!is.logical(clusterGates) || length(clusterGates) != 1L || is.na(clusterGates)) {
+    stop("clusterGates must be a single TRUE or FALSE.")
+  }
+
   truthTbl <- .simCompareTruthTable(
     labelsList = labelsList,
     nSample = nSample,
@@ -1117,7 +1121,7 @@
           bwNcellMin = bwNcellMin,
           bwNcellMax = bwNcellMax,
           bwCluster = bwCluster,
-          clusterGates = !is.null(tolClust),
+          clusterGates = clusterGates,
           locProbCol = locProbCol,
           locMinPeakProb = locMinPeakProb,
           locEnforceShapeThreshold = locEnforceShapeThreshold,
@@ -1441,7 +1445,7 @@
   ncellUnsRelativeToStim,
   covEvMin = 1,
   covEvMax = 2,
-  tolClust = NULL,
+  clusterGates = FALSE,
   locEnforceShapeThreshold = FALSE,
   minCell = 1e2,
   # Retained for callers/manifests; gateStim no longer uses these settings.
@@ -1486,6 +1490,10 @@
   pathProject = NULL,
   keepCells = FALSE
 ) {
+  if (!is.logical(clusterGates) || length(clusterGates) != 1L || is.na(clusterGates)) {
+    stop("clusterGates must be a single TRUE or FALSE.")
+  }
+
   if (!identical(as.integer(nMarker), 1L)) {
     stop("This comparison helper currently expects nMarker = 1.")
   }
@@ -1633,7 +1641,7 @@
       locMarginalPurityRel = locMarginalPurityRel,
       locMarginalCellBinRatio = locMarginalCellBinRatio,
       locMarginalRefQuantile = locMarginalRefQuantile,
-      tolClust = tolClust,
+      clusterGates = clusterGates,
       locEnforceShapeThreshold = locEnforceShapeThreshold,
       calcCytPosGates = calcCytPosGates,
       includeLocCondition = includeLocCondition,
@@ -1686,7 +1694,7 @@
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
         bwCluster = bwCluster %||% NA_real_,
-        tolClust = tolClust %||% NA_real_,
+        clusterGates = clusterGates,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
         calcCytPosGates = calcCytPosGates,
         samplePerturbationSd = samplePerturbationSd,
@@ -2205,7 +2213,7 @@
   probExact = TRUE,
   covEvMin = 2,
   covEvMax = 2,
-  tolClust = NULL,
+  clusterGates = FALSE,
   locEnforceShapeThreshold = FALSE,
   calcCytPosGates = FALSE,
   includeLocCondition = FALSE,
@@ -2222,6 +2230,10 @@
   progressHeading = "COMPARISON SIMULATION PROGRESS",
   ...
 ) {
+  if (!is.logical(clusterGates) || length(clusterGates) != 1L || is.na(clusterGates)) {
+    stop("clusterGates must be a single TRUE or FALSE.")
+  }
+
   .simCompareEnsureCurrentCheckout()
 
   sim_id <- if ("sim_id" %in% names(row)) {
@@ -2469,7 +2481,7 @@
         },
         covEvMin = covEvMin,
         covEvMax = covEvMax,
-        tolClust = tolClust,
+        clusterGates = clusterGates,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
         calcCytPosGates = calcCytPosGates,
         includeLocCondition = includeLocCondition,
@@ -2590,7 +2602,7 @@
   probExact = TRUE,
   covEvMin = 2,
   covEvMax = 2,
-  tolClust = NULL,
+  clusterGates = FALSE,
   locEnforceShapeThreshold = FALSE,
   calcCytPosGates = FALSE,
   includeLocCondition = FALSE,
@@ -2608,6 +2620,10 @@
   progressHeading = "COMPARISON SIMULATION PROGRESS",
   ...
 ) {
+  if (!is.logical(clusterGates) || length(clusterGates) != 1L || is.na(clusterGates)) {
+    stop("clusterGates must be a single TRUE or FALSE.")
+  }
+
   if (nrow(sim_grid) == 0L) {
     return(tibble::tibble())
   }
@@ -2636,7 +2652,7 @@
       probExact = probExact,
       covEvMin = covEvMin,
       covEvMax = covEvMax,
-      tolClust = tolClust,
+      clusterGates = clusterGates,
       locEnforceShapeThreshold = locEnforceShapeThreshold,
       calcCytPosGates = calcCytPosGates,
       includeLocCondition = includeLocCondition,

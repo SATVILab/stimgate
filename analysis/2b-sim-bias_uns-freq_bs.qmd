@@ -15,6 +15,7 @@ params:
   sim_grid_shuffle_seed: 20261003
   run_simulations: true
   run_plots: false
+  sim_size: final
   sim_retry_errors: true
 ---
 
@@ -90,9 +91,11 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bias_uns", "freq_bs")
-analysis_semantics_version <- "bias-uns-freq-v4"
+analysis_semantics_version <- "bias-uns-freq-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("2b-sim-bias_uns-freq_bs")
 
@@ -219,7 +222,8 @@ mismatch_settings_tbl <- dplyr::bind_rows(
 background_relative_to_response <- 0.2
 n_cell_uns_relative_to_stim <- 1
 
-tol_clust <- NULL
+# Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
+cluster_gates <- FALSE
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
 ```
@@ -371,11 +375,16 @@ print(
 )
 ```
 
+Each scenario simulates 25 samples in final runs and 10 in draft runs
+(`SIM_SIZE=draft`); draft results are kept separately and are for iterating,
+not for reporting.
+
 ```{r}
 #| label: bias-uns-run-settings
 #| include: false
+n_sample_sim <- if (analysis_quick) 1L else c(final = 25L, draft = 10L)[[sim_size]]
 scenario_settings <- list(
-  nSample = if (analysis_quick) 1L else 25,
+  nSample = n_sample_sim,
   nMarker = 1,
   nCondition = 2,
   nCluster = 2,
@@ -386,7 +395,7 @@ scenario_settings <- list(
   probExact = TRUE,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = tol_clust,
+  clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
   calcCytPosGates = calc_cyt_pos_gates
 )
@@ -396,6 +405,7 @@ analysis_required_params <- list(
   simulation_seed = simulation_seed,
   analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
+  sim_size = sim_size,
   scenario_settings = scenario_settings,
   sim_grid_spec = analysis_grid_spec
 )

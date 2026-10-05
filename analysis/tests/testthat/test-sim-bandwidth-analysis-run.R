@@ -56,7 +56,7 @@ test_that("analysis 2a scenario rerun is identical whatever the prior RNG", {
   settings <- list(
     nSample = 2L, nMarker = 1L, nCondition = 2L, nCluster = 2L, nIter = 1L,
     bwMin = "none", bwMax = "none", probExact = TRUE,
-    covEvMin = 1.5, covEvMax = 1.5, tolClust = NULL,
+    covEvMin = 1.5, covEvMax = 1.5, clusterGates = FALSE,
     locEnforceShapeThreshold = FALSE, calcCytPosGates = FALSE
   )
   row <- tibble::tibble(
@@ -498,7 +498,10 @@ test_that("analysis 2b declares the agreed grid and common-random-number seeds",
 
   expect_true(has("n_cell_vec <- c(1e4, 5e4)"))
   expect_true(has("prob_response_vec <- c(0.002, 0.05)"))
-  expect_true(has("nSample = if (analysis_quick) 1L else 25"))
+  expect_true(has(
+    "n_sample_sim <- if (analysis_quick) 1L else c(final = 25L, draft = 10L)[[sim_size]]"
+  ))
+  expect_true(has("nSample = n_sample_sim"))
   expect_true(has("if (nrow(sim_grid) != 6720L)"))
   expect_true(has("biasUnsWidthHeightFrac = 0.15"))
   expect_true(has("stim_mean_shift_clusters = \"gn\""))
