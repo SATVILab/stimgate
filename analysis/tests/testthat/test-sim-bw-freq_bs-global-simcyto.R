@@ -416,6 +416,8 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
       mean(expr_means_helper[c(1, 3)])
     )
 
+    # Condition diagnostics retain selection tails; sample diagnostics use
+    # strict applied gates, excluding the cell tied at the threshold.
     abs_err <- res |>
       dplyr::filter(.data$method %in% c("loc_condition", "loc_sample")) |>
       dplyr::arrange(.data$sample, .data$ind, .data$method) |>
@@ -430,7 +432,7 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
     mean_pos = 4,
     bw = 0.02,
     bias_uns = 0.0025,
-    expected_abs_err = c(0.0041666667, 0.0041666667, 0.0375, 0.0375)
+    expected_abs_err = c(1 / 240, 0, 0.0375, 10 / 240)
   )
 
   run_case(
@@ -439,6 +441,6 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
     mean_pos = 8,
     bw = 0.25,
     bias_uns = 0.05,
-    expected_abs_err = c(0.2, 0.2, 0, 0)
+    expected_abs_err = c(0.2, 47 / 240, 0, 1 / 240)
   )
 })
