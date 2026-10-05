@@ -61,7 +61,8 @@ test_that("both versions save separately and print labelled plots exactly once",
   dir <- withr::local_tempdir()
   paths <- env$.analysis_save_fig(plot, file.path(dir, "fixture.png"),
     height = 3, width = 4, mcse_mode = "both")
-  expect_setequal(paths, file.path(dir, c("mcse_off", "mcse_on"), "fixture.png"))
+  expect_setequal(normalizePath(paths, winslash = "/"),
+    normalizePath(file.path(dir, c("mcse_off", "mcse_on"), "fixture.png"), winslash = "/"))
   expect_true(all(file.exists(paths)))
   captured <- list()
   env$print <- function(x) captured[[length(captured) + 1L]] <<- x

@@ -660,6 +660,7 @@
 # Runtime failures belong to the primary method's failure cohort. Keep their
 # error/provenance fields while recognizing the historical diagnostic label.
 .simComparePrimaryMethodRows <- function(.data) {
+  if (!"method" %in% names(.data)) return(.data)
   .data$method <- as.character(.data$method)
   .data$method[.data$method %in% "stimgate_error"] <- "stimgate"
   .data

@@ -177,6 +177,9 @@ the code you changed, e.g. `devtools::test(filter = "cp_uns_loc|pos_ind")` or
 `testthat::test_file()` for analysis tests. Run the full suite once, on the
 finished change, before opening the PR; CI runs it again.
 
+Compare existing filesystem paths after `normalizePath(..., winslash = "/")`
+in tests, so Windows separator conventions do not cause false failures.
+
 When several agents work in parallel (subagents, separate worktrees), the
 subagents do not run R locally: concurrent R runs overload the machine. The
 coordinating agent tests once, locally, on the combined result before opening
