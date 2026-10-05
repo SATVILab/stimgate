@@ -662,6 +662,18 @@ test_that("ACS error denominators retain zero manual values only for absolute er
   expect_true(is.na(uncertainty$mean_abs_rel_error_lower))
 })
 
+test_that("ACS scientific manifests work when a diagnostic git revision is unavailable", {
+  env <- .load_acs_method_env()
+  env$.git_sha <- function(...) NA_character_
+  preprocessing <- list(settings = list(transform = "asinh(x / 5)"))
+  manifest <- env$.acsCytofManifest(preprocessing)
+  expect_true(is.na(manifest$gitSha))
+  expect_identical(manifest$preprocessing, preprocessing)
+  expect_no_error(env$.acsCytofValidateManifests(list(
+    list(context = manifest), list(context = manifest)
+  )))
+})
+
 test_that("ACS bootstrap keeps common donor draws across tubes, methods and stimuli", {
   env <- .load_acs_method_env()
   rows <- tidyr::expand_grid(SampleID = letters[1:4], method = c("stimgate", "fbeta"), stim = c("mtb", "p4")) |>

@@ -116,9 +116,7 @@
 }
 
 .acsCytofManifest <- function(preprocessing) {
-  sha <- system2("git", c("rev-parse", "HEAD"), stdout = TRUE)
-  if (length(sha) != 1L || !nzchar(sha)) stop("Cannot record ACS git SHA.")
-  list(version = 1L, gitSha = sha, preprocessing = preprocessing)
+  list(version = 1L, gitSha = .git_sha(), preprocessing = preprocessing)
 }
 
 .acsCytofValidateManifests <- function(manifests) {
