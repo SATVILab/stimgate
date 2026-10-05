@@ -83,7 +83,7 @@ if (is.na(simulation_seed)) {
 comparison_semantics_version <- "batch-mismatch-comparison-v14"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
-# "draft" (default) or "final" sample/dataset counts; dev and quick win.
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
 sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("8-sim-compare-freq_bs-batch")
@@ -618,6 +618,7 @@ if (isTRUE(run_simulations)) {
       paste(chunk_status$missing_ids, collapse = ", "),
       "; failed sim_id: ",
       paste(chunk_status$failed_ids, collapse = ", "),
+      "; reasons: ", paste(names(chunk_status$failure_reasons), chunk_status$failure_reasons, collapse = "; "),
       "; extra sim_id: ",
       paste(chunk_status$extra_ids, collapse = ", "),
       "."
@@ -765,8 +766,9 @@ knitr::kable(
 
 cat(
   "Counts reproduce the gated stimulated counts in all",
-  sum(compare_raw$method %in% c("stimgate", "fbeta", "tailgate")),
-  "tube-level results.\n"
+  sum(compare_raw$method %in% c("stimgate", "fbeta", "tailgate") &
+    !.simCompareRecordedComparatorErrors(compare_raw)),
+  "successful tube-level results; recorded comparator failures remain missing.\n"
 )
 cat(
   "Paired data in all", nrow(pairing_check),
@@ -779,12 +781,12 @@ knitr::kable(
       method = unname(.analysis_method_labels[method])
     ),
   col.names = c(
-    "Zero-mismatch variant", "Method", "Compared", "Same gate",
+    "Zero-mismatch variant", "Method", "Pairs", "Failed pairs", "Compared", "Same gate",
     "Same counts", "Largest gate difference"
   ),
   caption = paste(
     "Agreement of each zero-mismatch variant with the zero shift of all",
-    "stimulated cells, on the same replicates."
+    "stimulated cells, on the same replicates. Failed pairs retain missing outcomes; only finite pairs are compared."
   )
 )
 

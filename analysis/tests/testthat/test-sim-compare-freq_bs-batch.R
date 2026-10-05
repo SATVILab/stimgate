@@ -7,6 +7,16 @@ script_misc <- file.path(root_dir, "scripts", "r", "sim-misc.R")
 script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
 script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 
+# Metadata-setting fixtures also satisfy the primary-output shape contract.
+.compare_complete_cache_fixture <- function(metadata) {
+  metadata <- metadata[, setdiff(names(metadata), c("iter", "sample")), drop = FALSE]
+  dplyr::cross_join(metadata, tibble::tibble(
+    iter = 1L, sample = "1", method = c("stimgate", "fbeta", "tailgate"),
+    propRespTruth = 0.1, propRespEst = 0.1, nCellStim = 100L, nPosStim = 12L,
+    nTruePos = 10L, nFalsePos = 2L, nFalseNeg = 1L, nTrueNeg = 87L,
+    unsExprSum = 1.5, error = NA_character_))
+}
+
 .compare_plot_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   for (fn in c(
@@ -725,6 +735,7 @@ test_that(
       stim_mean_shift_clusters = NA_character_,
       stringsAsFactors = FALSE
     )
+    cached_all <- .compare_complete_cache_fixture(cached_all)
 
     row_neg <- data.frame(
       sim_id = 1L,
@@ -757,6 +768,7 @@ test_that(
       stim_mean_shift_clusters = "gn",
       stringsAsFactors = FALSE
     )
+    cached_neg <- .compare_complete_cache_fixture(cached_neg)
 
     # Cached negative-only output SHOULD validate for negative-only row
     expect_true(
@@ -990,6 +1002,7 @@ test_that(
       stim_sd_multiplier_clusters = NA_character_,
       stringsAsFactors = FALSE
     )
+    cached_all_sd <- .compare_complete_cache_fixture(cached_all_sd)
 
     row_neg_sd <- data.frame(
       sim_id = 2L,
@@ -1022,6 +1035,7 @@ test_that(
       stim_sd_multiplier = 1.10,
       stringsAsFactors = FALSE
     )
+    cached_legacy <- .compare_complete_cache_fixture(cached_legacy)
     expect_false(
       env$.simCompareValidateScenarioCache(
         cached = cached_legacy,
@@ -1042,6 +1056,7 @@ test_that(
       stim_sd_multiplier_clusters = "gn",
       stringsAsFactors = FALSE
     )
+    cached_neg_sd <- .compare_complete_cache_fixture(cached_neg_sd)
 
     # Cached negative-only SD output SHOULD validate for negative-only row
     expect_true(
@@ -1383,7 +1398,7 @@ test_that("alternative comparator exceptions remain explicit run errors", {
 
   res$iter <- 1L
   res$unsExprSum <- 0
-  expect_false(env$.simComparePrimaryOutputComplete(
+  expect_true(env$.simComparePrimaryOutputComplete(
     res, nSample = 1, nIter = 1, methods = c("fbeta", "tailgate")
   ))
   res$sim_id <- 1L

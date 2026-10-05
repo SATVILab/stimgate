@@ -69,7 +69,7 @@ if (is.na(simulation_seed)) {
 comparison_semantics_version <- "corrected-comparison-v12"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
-# "draft" (default) or "final" sample/dataset counts; dev and quick win.
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
 sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("7-sim-compare-freq_bs")

@@ -26,6 +26,7 @@
       "test-analysis-mcse.R", "test-sim-compare-dataset-differences.R", "test-ratio-companion-plots.R",
       "test-sim-performance-estimands.R", "test-sim-performance-figures.R",
       "test-analysis-mcse-modes.R", "test-sim-performance-failures.R",
+      "test-sim-compare-recorded-errors.R",
       "test-analysis-sim-size.R"
     ),
     "8-sim-compare-freq_bs-batch.qmd" = c(
@@ -33,6 +34,7 @@
       "test-analysis-mcse.R", "test-sim-compare-dataset-differences.R", "test-ratio-companion-plots.R",
       "test-sim-performance-estimands.R", "test-sim-performance-figures.R",
       "test-analysis-mcse-modes.R", "test-sim-performance-failures.R",
+      "test-sim-compare-recorded-errors.R",
       "test-analysis-sim-size.R"
     ),
     "9-real-compare-acs-cytof.qmd" = c(
