@@ -208,6 +208,11 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - Persist each per-scenario output atomically before writing its completed/error
   marker, and pass required run/chunk paths explicitly to progress helpers. This
   keeps restart markers consistent with durable output files.
+- In method comparisons with shared settings or cluster gates, `iter` (the
+  simulated dataset) is the independent unit. Label pooled sample quantiles as
+  tube-level distributions. Compute paired method differences within datasets
+  before reporting their between-dataset uncertainty, and report finite-pair
+  coverage; do not use the number of tubes as the interval denominator.
 - Estimator-comparison simulations should use the same simulated dataset for
   rows that differ only by estimator or estimator-tuning settings. Derive the
   data-generation seed from the biological scenario, not from the estimator,

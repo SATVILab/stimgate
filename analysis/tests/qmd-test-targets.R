@@ -17,10 +17,12 @@
     "5-sim-bw-est-adaptive.qmd" = "test-sim-bw-est-adaptive-simcyto.R",
     "6-sim-bw-freq_bs-adaptive.qmd" = "test-sim-bw-freq_bs-adaptive-simcyto.R",
     "7-sim-compare-freq_bs.qmd" = c(
-      "test-sim-compare-freq_bs-simcyto.R", "test-analysis-7-transactional-multichunk.R"
+      "test-sim-compare-freq_bs-simcyto.R", "test-analysis-7-transactional-multichunk.R",
+      "test-sim-compare-dataset-differences.R"
     ),
     "8-sim-compare-freq_bs-batch.qmd" = c(
-      "test-sim-compare-freq_bs-batch.R", "test-sim-compare-classification.R"
+      "test-sim-compare-freq_bs-batch.R", "test-sim-compare-classification.R",
+      "test-sim-compare-dataset-differences.R"
     ),
     "9-real-compare-acs-cytof.qmd" = c(
       "test-acs-cytof-gate.R", "test-acs-cytof-methods.R"

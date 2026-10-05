@@ -232,7 +232,22 @@ test_that("analysis 4 collation takes pmin of finite pairs and validates", {
   expect_length(validate(tbl), 0L)
   expect_match(validate(tbl[-1, ]), "unexpected row counts for sim_id: 1")
   tbl$bw_stim[3:4] <- NA
-  expect_match(validate(tbl), "no finite stim/unstim bandwidth pair")
+  expect_identical(validate(tbl), character())
+  zero <- suppressWarnings(
+    env$.simBandwidthEstNormCollate(tbl, c("sim_id", "sim_seed", "bw_mtd"))
+  )$bw_tbl_results
+  expect_equal(zero$n_est, c(2L, 0L))
+  expect_equal(zero$estimate_rate, c(1, 0))
+  expect_true(is.na(zero$mean_bw[[2]]))
+  expect_match(validate(tbl[setdiff(names(tbl), "bw_uns")]), "missing required")
+  grid <- dplyr::distinct(tbl, sim_id, sim_seed)
+  expect_true(env$.simBandwidthValidateOutputs(tbl, grid, validate)$validation_ok)
+  expect_false(env$.simBandwidthValidateOutputs(tbl[1:2, ], grid, validate)$validation_ok)
+  tbl$error_message[3] <- "worker failed"
+  expect_match(
+    env$.simBandwidthValidateOutputs(tbl, grid, validate)$problems,
+    "simulation errors"
+  )
 })
 
 test_that("analysis 4 scenario rerun is identical whatever the prior RNG", {

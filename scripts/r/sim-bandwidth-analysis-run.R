@@ -801,38 +801,31 @@
   )))
 }
 
-#' Analysis 4 validation of collated outputs
+#' Analysis 4 validation of output structure and row counts
 #'
+#' Non-finite bandwidths are scientific outcomes, including zero coverage.
+#' Runtime errors and missing scenario IDs are checked by the shared validator.
 #' @param n_rows_per_sim integer Expected result rows per `sim_id`.
-#' @return function `function(tbl)` returning problem strings: `sim_id`s with
-#'   an unexpected row count, or with no finite stim/unstim bandwidth pair.
+#' @return function `function(tbl)` returning structural problem strings.
 .simBandwidthEstNormValidator <- function(n_rows_per_sim) {
   function(tbl) {
-    if (nrow(tbl) == 0L) {
-      return(character())
+    required <- c("sim_id", "bw_stim", "bw_uns", "bw_norm_fallback")
+    if (!all(required %in% names(tbl))) {
+      return("missing required bandwidth output columns")
     }
-    per_sim <- tbl |>
-      dplyr::group_by(.data$sim_id) |>
-      dplyr::summarise(
-        n_rows = dplyr::n(),
-        n_pair = sum(is.finite(.data$bw_stim) & is.finite(.data$bw_uns)),
-        .groups = "drop"
+    if (!is.numeric(tbl$bw_stim) || !is.numeric(tbl$bw_uns)) {
+      return("bandwidth output columns must be numeric")
+    }
+    per_sim <- dplyr::count(tbl, .data$sim_id, name = "n_rows")
+    bad_ids <- per_sim$sim_id[per_sim$n_rows != n_rows_per_sim]
+    if (length(bad_ids) == 0L) {
+      character()
+    } else {
+      paste0(
+        "unexpected row counts for sim_id: ",
+        paste(sort(as.integer(bad_ids)), collapse = ", ")
       )
-    ids <- function(x) paste(sort(as.integer(x)), collapse = ", ")
-    c(
-      if (any(per_sim$n_rows != n_rows_per_sim)) {
-        paste0(
-          "unexpected row counts for sim_id: ",
-          ids(per_sim$sim_id[per_sim$n_rows != n_rows_per_sim])
-        )
-      },
-      if (any(per_sim$n_pair == 0L)) {
-        paste0(
-          "no finite stim/unstim bandwidth pair for sim_id: ",
-          ids(per_sim$sim_id[per_sim$n_pair == 0L])
-        )
-      }
-    )
+    }
   }
 }
 

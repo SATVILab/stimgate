@@ -2994,6 +2994,99 @@
     )
 }
 
+# Paired comparisons use the simulated dataset (iter), not its dependent tubes,
+# as the independent unit. Scenario columns must include every varying setting.
+# Method summaries use finite tubes; dataset-pair coverage stays explicit.
+.simCompareDatasetDifferences <- function(
+    .data, scenarioCols,
+    outcomes = c("abs_error", "abs_rel_error"),
+    competitors = c("fbeta", "tailgate")) {
+  scenarioCols <- setdiff(
+    scenarioCols, c("method", "approach", "sim_id", "sim_seed", "iter", "sample", "ind")
+  )
+  allowed <- c("abs_error", "abs_rel_error", "fdp", "sensitivity")
+  if (!length(outcomes) || any(!outcomes %in% allowed)) {
+    stop("Unknown dataset comparison outcome")
+  }
+  required <- c(scenarioCols, "iter", "method", "sample")
+  if (!all(required %in% names(.data)) || !is.numeric(.data$iter) || any(!is.finite(.data$iter))) {
+    stop("Dataset comparisons require scenario columns, method, sample and finite iter IDs")
+  }
+  primary <- .data[.data$method %in% c("stimgate", competitors), , drop = FALSE]
+  keys <- c(scenarioCols, "iter", "method", "sample")
+  if (anyDuplicated(primary[keys])) {
+    stop("Dataset comparisons require one primary row per tube and method")
+  }
+  if (any(outcomes %in% c("fdp", "sensitivity"))) {
+    primary <- .simCompareClassificationMetrics(primary)
+  }
+  if (any(outcomes %in% c("abs_error", "abs_rel_error"))) {
+    primary <- primary |>
+      dplyr::mutate(
+        abs_error = abs(.data$propRespEst - .data$propRespTruth),
+        abs_rel_error = dplyr::if_else(
+          .data$propRespTruth != 0,
+          .data$abs_error / abs(.data$propRespTruth), NA_real_
+        )
+      )
+  }
+  dataset <- purrr::map_dfr(outcomes, function(outcome) {
+    primary |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(c(scenarioCols, "iter", "method")))) |>
+      dplyr::summarise(
+        n_tube = dplyr::n(),
+        n_finite = sum(is.finite(.data[[outcome]])),
+        value = {
+          x <- .data[[outcome]]
+          x <- x[is.finite(x)]
+          if (!length(x)) NA_real_ else if (outcome %in% c("abs_error", "abs_rel_error")) {
+            mean(x)
+          } else {
+            stats::median(x)
+          }
+        },
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(outcome = outcome)
+  })
+  join_cols <- c(scenarioCols, "iter", "outcome")
+  reference <- dataset |>
+    dplyr::filter(.data$method == "stimgate") |>
+    dplyr::select(-"method")
+  purrr::map_dfr(competitors, function(competitor) {
+    other <- dataset |>
+      dplyr::filter(.data$method == competitor) |>
+      dplyr::select(-"method")
+    dplyr::full_join(reference, other, by = join_cols, suffix = c("_stim", "_other")) |>
+      dplyr::mutate(difference = .data$value_stim - .data$value_other) |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(c(scenarioCols, "outcome")))) |>
+      dplyr::summarise(
+        n_dataset = dplyr::n(),
+        n_pair = sum(is.finite(.data$difference)),
+        tube_coverage_stimgate = sum(.data$n_finite_stim, na.rm = TRUE) /
+          sum(.data$n_tube_stim, na.rm = TRUE),
+        tube_coverage_competitor = sum(.data$n_finite_other, na.rm = TRUE) /
+          sum(.data$n_tube_other, na.rm = TRUE),
+        mean_difference = {
+          x <- .data$difference[is.finite(.data$difference)]
+          if (length(x)) mean(x) else NA_real_
+        },
+        half_width = {
+          x <- .data$difference[is.finite(.data$difference)]
+          if (length(x) >= 5L) 1.96 * stats::sd(x) / sqrt(length(x)) else NA_real_
+        },
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(
+        method = competitor,
+        pair_coverage = .data$n_pair / .data$n_dataset,
+        lower = .data$mean_difference - .data$half_width,
+        upper = .data$mean_difference + .data$half_width
+      ) |>
+      dplyr::select(-"half_width")
+  })
+}
+
 # Promote only a complete cross-chunk comparison grid.
 .simComparePromoteIfReady <- function(
     run_ctx,
@@ -3265,7 +3358,7 @@
   list(
     ggplot2::scale_x_continuous(labels = .analysis_label_number),
     .analysis_scale_method(),
-    ggplot2::labs(x = x_label, colour = "Method"),
+    ggplot2::labs(x = x_label, colour = "Method", subtitle = "Tube-level summaries"),
     .analysis_theme()
   )
 }
@@ -3324,7 +3417,7 @@
       transform = scales::asinh_trans(), labels = .analysis_label_number
     ) +
     .simCompareMismatchScales("Mismatch size") +
-    ggplot2::labs(y = "90th percentile absolute relative error (asinh scale)")
+    ggplot2::labs(y = "Tube-level 90th percentile absolute relative error (asinh scale)")
 }
 
 # Over- and under-estimate summary of signed relative error per scenario and
@@ -3430,7 +3523,7 @@
     .simBandwidthAbsErrorLayers(capped = capped) +
     .analysis_scale_method() +
     .simCompareMismatchFacet(by_prob) +
-    ggplot2::labs(x = x_label, colour = "Method") +
+    ggplot2::labs(x = x_label, colour = "Method", subtitle = "Tube-level error distributions") +
     .analysis_theme()
 }
 
@@ -3470,7 +3563,7 @@
       group = interaction(method, direction)
     )
   ) +
-    .simBandwidthSignedErrorLayers("Relative error", capped = capped) +
+    .simBandwidthSignedErrorLayers("Tube-level relative error", capped = capped) +
     .simBandwidthSignedErrorSegmentLayer(
       tbl, x, "value_shown", line_cols, alpha = 0.75
     ) +
@@ -3478,12 +3571,12 @@
     x_scale +
     .analysis_scale_method() +
     .simCompareMismatchFacet(by_prob) +
-    ggplot2::labs(x = x_label, colour = "Method") +
+    ggplot2::labs(x = x_label, colour = "Method", subtitle = "Tube-level error distributions") +
     .analysis_theme()
 }
 
 # ---------------------------------------------------------------------------
-# Gate purity and detection (analysis 8): replicate-level classification of
+# Gate purity and detection (analysis 8): tube-level classification of
 # stimulated cells against the simulation labels.
 # ---------------------------------------------------------------------------
 
@@ -3496,10 +3589,10 @@
   unname(stats::quantile(x, probs = prob, names = FALSE))
 }
 
-# Replicate-level classification summary per scenario and method. Each
-# stimulated tube in each replicate gives one FDP, sensitivity and
+# Tube-level distribution per scenario and method. Each
+# stimulated tube in each dataset gives one FDP, sensitivity and
 # false-positive rate; these are summarised directly, never pooled over cells.
-# FDP summaries use only replicates whose gate selected at least one cell
+# FDP summaries use only tubes whose gate selected at least one cell
 # (`n_fdp_defined`), whereas an empty gate contributes zero sensitivity.
 .simCompareClassificationSummary <- function(
     .data,
@@ -3672,8 +3765,8 @@
     ggplot2::scale_linetype_manual(
       values = c(median = "solid", tail = "22"),
       labels = c(
-        median = "Median",
-        tail = "90th percentile (FDP, false-positive rate) or 10th (sensitivity)"
+        median = "Tube-level median",
+        tail = "Tube-level 90th percentile (FDP, FPR) or 10th (sensitivity)"
       )
     ) +
     ggplot2::guides(
@@ -3681,7 +3774,7 @@
       linetype = ggplot2::guide_legend(order = 2, ncol = 1)
     ) +
     ggplot2::labs(
-      x = x_label, y = NULL, colour = "Method", linetype = "Statistic"
+      x = x_label, y = NULL, colour = "Method", linetype = "Tube-level distribution"
     ) +
     .analysis_theme()
   if (unit_scale) {
