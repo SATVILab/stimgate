@@ -42,7 +42,7 @@ scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 source(file.path(scripts_r_dir, "sim-bandwidth-analysis-plot.R"))
-fig_key <- .analysis_mode_key("9-real-compare-acs-cytof")
+fig_key <- .analysis_mode_key("9-real-compare-acs-cytof", sized = FALSE)
 analysis_qmd <- "analysis/9-real-compare-acs-cytof.qmd"
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))

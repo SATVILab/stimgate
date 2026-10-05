@@ -35,6 +35,26 @@ test_that("invalid sim_size values give a clear error", {
   expect_error(env$.analysis_sim_size(), "not \"full\"", fixed = TRUE)
 })
 
+test_that("ACS figure paths ignore simulation sizes and retain explicit profiles", {
+  env <- .sim_size_runtime_env()
+  withr::local_envvar(PROJR_PROFILE = NA, SIM_SIZE = NA)
+  stems <- c("9-real-compare-acs-cytof", "10-real-compare-acs-cytof-validation")
+  for (stem in stems) {
+    line <- grep("^fig_key <-", readLines(file.path(.sim_size_root(), "analysis", paste0(stem, ".qmd"))), value = TRUE)
+    for (size in c(NA_character_, "draft", "final")) {
+      if (is.na(size)) Sys.unsetenv("SIM_SIZE") else Sys.setenv(SIM_SIZE = size)
+      eval(parse(text = line), envir = env)
+      expect_identical(env$fig_key, stem)
+    }
+    for (profile in c("quick", "dev")) {
+      Sys.setenv(PROJR_PROFILE = profile)
+      eval(parse(text = line), envir = env)
+      expect_identical(env$fig_key, c(stem, profile))
+    }
+    Sys.unsetenv("PROJR_PROFILE")
+  }
+})
+
 test_that("dev and quick runs take precedence over draft sizes", {
   env <- .sim_size_runtime_env()
   key <- c("sim", "test")
