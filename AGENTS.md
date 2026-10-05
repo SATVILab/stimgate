@@ -356,7 +356,9 @@ existing replicates: sd/sqrt(n) for means, order-statistic intervals
 percentiles (NA if n < 5 or l < 1 or u > n), none for maxima, and
 sqrt(sum(se^2))/k for equal-weight scenario averages. In QMDs 7/8 samples within
 a dataset are dependent, so the unit is the dataset (`iter`): MCSE =
-sd(per-dataset statistic)/sqrt(D), NA when D < 5.
+sd(per-dataset statistic)/sqrt(D), NA when D < 5. Final runs use 20 datasets
+per scenario and draft runs use 5, the minimum for these bars; keep MCSE
+prose aligned with the selected `sim_size` settings.
 
 ### Website Maintenance (`pkgdown`)
 
@@ -625,6 +627,7 @@ allowed per marker, whereas `calcCytPosGates` is global-only and rejected there.
 Threshold sharing is controlled by logical `clusterGates`. Do not restore the
 removed tuning arguments on `gateStim()` or the dead `gateQuant` / `maxPosProbX`
 settings.
+Analyses toggle threshold clustering with logical `cluster_gates` / `clusterGates`, not a tolerance.
 
 Cytometry entry points (`gateStim()`, `plotStim()`, `writeStimFCS()` and
 `getStimExpr()`) normalise inputs with `.asStimGatingSet()`. Accepted inputs are
@@ -707,11 +710,18 @@ rows before drawing reference lines.
 9. **Shared analysis runners and cached settings**:
    Bandwidth QMDs 2-6 use `.simBandwidthRunRow()`, `.simBandwidthRunGrid()`
    and `.simBandwidthFinishChunk()`. Assign IDs and seeds on the full grid
-   before dev/quick filters, shuffling or chunking. Quick mode selects the smallest,
+   before dev/quick filters, shuffling or chunking. Biological scenario IDs exclude
+   all method settings, including bias; pre-draw replicate seeds in bandwidth wrappers.
+   Quick mode selects the smallest,
    cheapest grid that still exercises every figure; dev mode retains its single
    debugging scenario and takes precedence when both profiles are active.
    Results for dev and quick runs are kept under `<analysis-key>/dev/` and
    `<analysis-key>/quick/`; full runs keep the existing analysis key.
+   Full-grid runs take `sim_size` (QMD param, `SIM_SIZE` env, read by
+   `.analysis_sim_size()`): `"final"` (default) or `"draft"`, about a quarter
+   of the samples (datasets in 7/8) on the same grid, stored under
+   `<analysis-key>/draft/` and recorded as `sim_size` in required run settings;
+   draft is for iterating, not reporting, and dev/quick take precedence.
    Workers and interactive single-row reruns use the same explicitly seeded row runner; resume retries
    failed rows by default. Comparison scenarios in QMDs 7/8 use explicit RNG
    kinds and restore the caller's RNG state; do not reintroduce `gateCombn`

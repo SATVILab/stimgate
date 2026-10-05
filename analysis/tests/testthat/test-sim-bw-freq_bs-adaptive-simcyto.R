@@ -95,7 +95,7 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
         ncellUnsRelativeToStim = 0.5,
         covEvMin = 1.5,
         covEvMax = 1.5,
-        tolClust = NULL,
+        clusterGates = FALSE,
         locEnforceShapeThreshold = FALSE,
         calcCytPosGates = FALSE
       )
@@ -121,6 +121,8 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
       dplyr::arrange(.data$sample, .data$ind)
 
     set.seed(seed)
+    # The helper draws each replicate's seed before simulating.
+    set.seed(sample.int(.Machine$integer.max, 1L, replace = TRUE))
     sim <- simcyto::simCytExperiment(
       nSample = n_sample,
       nMarker = 1L,
@@ -188,7 +190,7 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
     bw_fallback = 0.01,
     bw_crossover = NA_real_,
     bw_transition_width = 0,
-    expected_abs_err = c(0, 0, 0.0416666667, 0.0416666667)
+    expected_abs_err = c(0.0375, 0.0375, 0.0083333333, 0.0083333333)
   )
 
   run_case(
@@ -201,7 +203,7 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
     bw_fallback = 0.5,
     bw_crossover = 5.5,
     bw_transition_width = 0.25,
-    expected_abs_err = c(0.0041666667, 0.0041666667, 0.0083333333, 0.0083333333)
+    expected_abs_err = c(0, 0, 0.0083333333, 0.0083333333)
   )
 })
 
@@ -211,7 +213,7 @@ test_that("analysis 6 uses shared transactional runners and full-grid reruns", {
     root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd"
   )), collapse = "\n")
   for (contract in c(
-    'analysis_semantics_version <- "adaptive-bw-freq-v3"',
+    'analysis_semantics_version <- "adaptive-bw-freq-v5"',
     "sim_grid_full <- sim_grid",
     "sim_grid_spec = analysis_grid_spec",
     "scenario_settings = scenario_settings",
@@ -331,7 +333,7 @@ test_that("adaptive failed rows retry and promoted reads enforce grid settings",
   writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
   row <- .adaptive_grid_row()
   required <- list(
-    analysis_semantics_version = "adaptive-bw-freq-v3",
+    analysis_semantics_version = "adaptive-bw-freq-v5",
     sim_grid_spec = row[, setdiff(names(row), "sim_seed")],
     scenario_settings = list(nSample = 5L, nIter = 5L)
   )

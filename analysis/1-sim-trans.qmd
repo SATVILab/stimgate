@@ -121,8 +121,9 @@ Each grid row has its own seed. The cached expression table records the scientif
 #| include: false
 
 analysis_key <- c("sim", "trans")
-analysis_key <- .analysis_mode_key(analysis_key)
-fig_key <- .analysis_mode_key("1-sim-trans")
+# One sample per row, so `sim_size` (draft/final) does not apply here.
+analysis_key <- .analysis_mode_key(analysis_key, sized = FALSE)
+fig_key <- .analysis_mode_key("1-sim-trans", sized = FALSE)
 dir_trans <- .analysis_cache_dir(analysis_key, root_dir, create = run_simulations)
 path_uni_tbl <- file.path(dir_trans, "uni_tbl.rds")
 

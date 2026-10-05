@@ -287,11 +287,14 @@ test_that("primary StimGate comparator scores full cluster-refined procedure (#3
     clusterPerturbationSd = 0,
     backgroundRelativeToResponse = 0.1,
     ncellUnsRelativeToStim = 1,
-    tolClust = 0.01,
+    clusterGates = TRUE,
     includeLocCondition = TRUE,
     includeLocDetails = TRUE,
     tailgateX = "stim"
   )
+
+  expect_type(res$clusterGates, "logical")
+  expect_true(all(res$clusterGates))
 
   # Primary stimgate rows must exist and be named 'stimgate'
   stimgate_primary <- res[res$method == "stimgate", ]
@@ -655,7 +658,7 @@ test_that("QMD scenario calls use package defaults and reproducible RNG", {
   settings <- list(
     nSample = 10, nIter = 2, nMarker = 1, nCondition = 2, nCluster = 2,
     probExact = TRUE, covEvMin = 1.5, covEvMax = 1.5,
-    tolClust = 1e-7, locEnforceShapeThreshold = FALSE,
+    clusterGates = TRUE, locEnforceShapeThreshold = FALSE,
     calcCytPosGates = FALSE, pathFbeta = "fbeta.py", fbetaBeta = 0.8,
     fbetaTheta = 2, fbetaWidth = 10, tailgateAdjust = 1,
     tailgateAutoTol = TRUE, tailgateMethod = "tail", tailgateTol = 0.01,

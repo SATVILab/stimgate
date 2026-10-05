@@ -16,6 +16,7 @@ params:
   run_simulations: true
   run_plots: false
   show_mcse: true
+  sim_size: final
   sim_retry_errors: true
 ---
 
@@ -94,9 +95,11 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bias_uns", "freq_bs")
-analysis_semantics_version <- "bias-uns-freq-v3"
+analysis_semantics_version <- "bias-uns-freq-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("2b-sim-bias_uns-freq_bs")
 
@@ -223,7 +226,8 @@ mismatch_settings_tbl <- dplyr::bind_rows(
 background_relative_to_response <- 0.2
 n_cell_uns_relative_to_stim <- 1
 
-tol_clust <- NULL
+# Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
+cluster_gates <- FALSE
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
 ```
@@ -235,6 +239,8 @@ the first point at which the density reaches 15% of the peak height or the next
 antimode, whichever comes first.
 
 ## Simulation
+
+Method and tuning settings share the same biological-scenario seed, assigned on the full grid before execution filters or chunking. Each replicate has a seed drawn before any method runs, so later replicates remain paired despite method RNG use.
 
 ```{r}
 #| label: bias-uns-grid
@@ -373,11 +379,16 @@ print(
 )
 ```
 
+Each scenario simulates 25 samples in final runs and 10 in draft runs
+(`SIM_SIZE=draft`); draft results are kept separately and are for iterating,
+not for reporting.
+
 ```{r}
 #| label: bias-uns-run-settings
 #| include: false
+n_sample_sim <- if (analysis_quick) 1L else c(final = 25L, draft = 10L)[[sim_size]]
 scenario_settings <- list(
-  nSample = if (analysis_quick) 1L else 25,
+  nSample = n_sample_sim,
   nMarker = 1,
   nCondition = 2,
   nCluster = 2,
@@ -388,7 +399,7 @@ scenario_settings <- list(
   probExact = TRUE,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = tol_clust,
+  clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
   calcCytPosGates = calc_cyt_pos_gates
 )
@@ -398,6 +409,7 @@ analysis_required_params <- list(
   simulation_seed = simulation_seed,
   analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
+  sim_size = sim_size,
   scenario_settings = scenario_settings,
   sim_grid_spec = analysis_grid_spec
 )
@@ -533,8 +545,8 @@ which holds here: the bandwidth and bias are fixed for each setting and gates
 are not clustered across samples. For a median or other percentile, the bar
 is a 95% interval taken from the sorted sample values themselves (no
 assumption about the shape of the distribution). It is left out when there
-are too few samples: with 25 samples per setting, the median has an interval
-but the 90th percentile does not. For averages over cell counts, the bar is
+are too few samples: with 25 samples per setting in final runs (10 in
+draft runs), the median has an interval but the 90th percentile does not. For averages over cell counts, the bar is
 the average plus or minus 1.96 combined standard errors, treating the cell
 counts as independent scenarios, which holds across biological scenarios.
 Maxima have no error bar: the samples say little about how much larger the

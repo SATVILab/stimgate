@@ -15,6 +15,7 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
+  sim_size: final
 ---
 
 This analysis asks how the core and extra bandwidths of an adaptive density affect the estimated background-subtracted response frequency. Matched unstimulated and stimulated samples are simulated with Gaussian, gamma and skewed expression distributions. The analysis varies both bandwidths, cell counts, response frequencies and unstimulated-sample bias, then compares final sample estimates with the simulated truth.
@@ -75,9 +76,11 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
-analysis_semantics_version <- "adaptive-bw-freq-v3"
+analysis_semantics_version <- "adaptive-bw-freq-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("6-sim-bw-freq_bs-adaptive")
 run_plots <- .as_flag(.get_qmd_param_env(
@@ -169,10 +172,11 @@ bw_crossover_vec <- c(NA_real_, 4.5, 5.5, 6.5)[[1]]
 bw_transition_width_vec <- c(0, 0.25)[[1]]
 
 # StimGate method settings for bandwidth-performance analysis:
-# Cluster refinement (tolClust) is intentionally set to NULL (OFF) to isolate and
+# Threshold clustering is intentionally OFF to isolate and
 # measure the effect of the bandwidth selector itself without multi-sample
 # cluster adjustments modifying thresholds post-local-FDR.
-tol_clust <- NULL
+# Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
+cluster_gates <- FALSE
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
 
@@ -190,8 +194,11 @@ bias_uns_settings_tbl <- tibble::tribble(
 )
 bias_uns_vec <- sort(unique(bias_uns_settings_tbl$bias_uns))
 
+# Each scenario simulates 5 replicates of 5 samples in final runs and 2
+# replicates in draft runs (`SIM_SIZE=draft`); draft results are kept separately
+# and are for iterating, not for reporting.
 n_sample_sim <- 5L
-n_iter_sim <- 5L
+n_iter_sim <- c(final = 5L, draft = 2L)[[sim_size]]
 
 ```
 
@@ -249,10 +256,24 @@ sim_grid <- tidyr::expand_grid(
           .data$bw_extra >= 0.05
       )
   ) |>
+  dplyr::group_by(
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos_setting,
+    mean_pos,
+    sample_perturbation_sd,
+    condition_perturbation_sd,
+    cluster_perturbation_sd,
+    background_relative_to_response,
+    n_cell_uns_relative_to_stim
+  ) |>
   dplyr::mutate(
-    sim_id = dplyr::row_number(),
-    sim_seed = as.integer(simulation_seed + sim_id - 1L)
-  )
+    base_scenario_id = dplyr::cur_group_id(),
+    sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(sim_id = dplyr::row_number())
 
 # Fix identities on the full grid before selecting execution subsets.
 sim_grid_full <- sim_grid
@@ -332,6 +353,8 @@ print(paste0(
 
 ## Simulation
 
+Method and tuning settings share the same biological-scenario seed, assigned on the full grid before execution filters or chunking. Each replicate has a seed drawn before any method runs, so later replicates remain paired despite method RNG use.
+
 Fixed settings are shared by the parallel worker and interactive rerun.
 The manifest includes the complete selected cross-chunk scientific grid.
 
@@ -351,7 +374,7 @@ scenario_settings <- list(
   probExact = TRUE,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = tol_clust,
+  clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
   calcCytPosGates = calc_cyt_pos_gates
 )
@@ -360,6 +383,7 @@ analysis_required_params <- list(
   simulation_seed = simulation_seed,
   analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
+  sim_size = sim_size,
   scenario_settings = scenario_settings,
   sim_grid_spec = analysis_grid_spec
 )

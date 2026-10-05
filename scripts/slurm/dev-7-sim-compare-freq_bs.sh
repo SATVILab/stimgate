@@ -8,6 +8,7 @@
 start_time=$(date +%s)
 
 echo "HOSTNAME: $HOSTNAME"
+echo "SIM_SIZE: ${SIM_SIZE:-final}"
 
 echo " "
 echo " "

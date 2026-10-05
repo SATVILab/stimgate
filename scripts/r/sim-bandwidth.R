@@ -393,7 +393,7 @@
   stimSdMultiplierClusters = NULL,
   covEvMin = 1,
   covEvMax = 2,
-  tolClust = NULL,
+  clusterGates = FALSE,
   minCell = 1e2,
   # Retained for callers/manifests; gateStim no longer uses these settings.
   maxPosProbX = Inf,
@@ -413,6 +413,10 @@
   gateCombn = "min",
   calcCytPosGates = FALSE
 ) {
+  if (!is.logical(clusterGates) || length(clusterGates) != 1L || is.na(clusterGates)) {
+    stop("clusterGates must be a single TRUE or FALSE.")
+  }
+
   bwMtdGate <- .simBandwidthAdaptiveBwMtd(
     bwMtd = bwMtd,
     bwAdaptive = bwAdaptive,
@@ -421,7 +425,10 @@
     bwAdaptiveCrossover = bwAdaptiveCrossover
   )
 
+  # Draw all replicate seeds before methods can consume random numbers.
+  iterSeeds <- sample.int(.Machine$integer.max, nIter, replace = TRUE)
   purrr::map_df(seq_len(nIter), function(iterNum) {
+    set.seed(iterSeeds[[iterNum]])
     nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
     nCellByCondition <- c(nCellUns, nCellStim)
     transformationFunc <- .simMiscGetTrans(transformation)
@@ -571,7 +578,7 @@
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
         bwCluster = bwCluster,
-        clusterGates = !is.null(tolClust),
+        clusterGates = clusterGates,
         locProbCol = locProbCol,
         locMinPeakProb = locMinPeakProb,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
@@ -767,7 +774,7 @@
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
         bwCluster = if (is.null(bwCluster)) NA_real_ else bwCluster,
-        tolClust = if (is.null(tolClust)) NA_real_ else tolClust,
+        clusterGates = clusterGates,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
         calcCytPosGates = calcCytPosGates,
         samplePerturbationSd = samplePerturbationSd,
@@ -807,7 +814,6 @@
   bwNcellMin = NULL,
   bwNcellMax = NULL,
   bwCluster = NULL, # retained only for signature compatibility
-  tolClust = NULL, # retained only for signature compatibility
   probExact = TRUE,
   nCellStim,
   probResponse,
@@ -860,7 +866,10 @@
     c(-probResponse, probResponse)
   )
 
+  # Draw all replicate seeds before methods can consume random numbers.
+  iterSeeds <- sample.int(.Machine$integer.max, nIter, replace = TRUE)
   raw_tbl <- purrr::map_dfr(seq_len(nIter), function(iterNum) {
+    set.seed(iterSeeds[[iterNum]])
     outListExperiment <- simcyto::simCytExperiment(
       nSample = nSample,
       nMarker = nMarker,
@@ -1040,7 +1049,6 @@
   bwNcellMin = NULL,
   bwNcellMax = NULL,
   bwCluster = NULL,
-  tolClust = NULL,
   probExact = TRUE,
   nCellStim,
   probResponse,
@@ -1102,7 +1110,10 @@
     bwAdaptive = TRUE
   )
 
+  # Draw all replicate seeds before methods can consume random numbers.
+  iterSeeds <- sample.int(.Machine$integer.max, nIter, replace = TRUE)
   raw_tbl <- purrr::map_dfr(seq_len(nIter), function(iterNum) {
+    set.seed(iterSeeds[[iterNum]])
     outListExperiment <- simcyto::simCytExperiment(
       nSample = nSample,
       nMarker = nMarker,

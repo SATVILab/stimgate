@@ -13,7 +13,7 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'comparison_semantics_version <- "corrected-comparison-v6"',
+    'comparison_semantics_version <- "corrected-comparison-v8"',
     content, fixed = TRUE
   ))
   expect_false(grepl("sim_grid_shuffle_seed", content, fixed = TRUE))

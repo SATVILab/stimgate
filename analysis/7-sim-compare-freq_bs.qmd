@@ -15,6 +15,7 @@ params:
   run_simulations: true
   run_plots: false
   show_mcse: true
+  sim_size: final
 ---
 
 This analysis compares background-subtracted response frequencies from StimGate,
@@ -65,9 +66,11 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v6"
+comparison_semantics_version <- "corrected-comparison-v8"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("7-sim-compare-freq_bs")
 run_plots <- .as_flag(.get_qmd_param_env(
@@ -143,6 +146,12 @@ bandwidth estimation so that it is evaluated as it would normally run.
 
 ### Simulation settings
 
+Each scenario simulates 20 datasets of 10 samples in final runs and 5 datasets
+of 10 samples in draft runs (`SIM_SIZE=draft`). The samples in a dataset are
+gated together, with shared settings and cluster gates, so the dataset is the
+unit for uncertainty. Draft results are kept separately and are for iterating,
+not for reporting.
+
 ```{r}
 #| label: actual-settings
 n_cell_stim_vec <- c(
@@ -202,11 +211,15 @@ stimgate_bw_max <- "none"
 
 # StimGate method settings for the full method comparison.
 # Cluster refinement is enabled to represent the full one-marker procedure.
-tol_clust <- 1e-7
+# Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
+cluster_gates <- TRUE
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
-n_sample_sim <- if (analysis_quick) 1L else 10
-n_iter_sim <- if (analysis_quick) 1L else 2
+# Each dataset of `n_sample_sim` samples is gated together (shared settings
+# and cluster gates), so the dataset is the unit for uncertainty. Draft keeps
+# the samples per dataset and uses a quarter of the datasets (at least 5).
+n_sample_sim <- if (analysis_quick) 1L else 10L
+n_iter_sim <- if (analysis_quick) 1L else c(final = 20L, draft = 5L)[[sim_size]]
 
 fbeta_beta <- 0.8
 fbeta_theta <- 2
@@ -232,6 +245,8 @@ tailgate_x <- "stim"
 ```
 
 ## Simulation
+
+Method and tuning settings share the same biological-scenario seed, assigned on the full grid before execution filters or chunking. Each replicate has a seed drawn before any method runs, so later replicates remain paired despite method RNG use.
 
 ### Simulation grid
 
@@ -279,16 +294,24 @@ sim_grid <- tidyr::expand_grid(
   dplyr::filter(
     !(n_cell * prob_response < 5 & prob_response < 0.04)
   ) |>
-  dplyr::mutate(
-    sim_id = dplyr::row_number()
-  ) |>
-  dplyr::arrange(
+  dplyr::group_by(
+    transformation,
+    prob_response,
     n_cell,
-    dplyr::desc(prob_response)
+    mean_pos_setting,
+    mean_pos,
+    sample_perturbation_sd,
+    condition_perturbation_sd,
+    cluster_perturbation_sd,
+    background_relative_to_response,
+    n_cell_uns_relative_to_stim
   ) |>
   dplyr::mutate(
-    sim_seed = as.integer(simulation_seed + sim_id - 1L)
-  )
+    base_scenario_id = dplyr::cur_group_id(),
+    sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(sim_id = dplyr::row_number())
 
 # Keep every seeded row available for an exact interactive rerun.
 sim_grid_full <- sim_grid
@@ -345,6 +368,7 @@ analysis_result_params <- list(
   simulation_seed = simulation_seed,
   analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
+  sim_size = sim_size,
   n_cell_stim_vec = n_cell_stim_vec,
   prob_response_vec = prob_response_vec,
   transformation_vec = transformation_vec,
@@ -365,7 +389,7 @@ analysis_result_params <- list(
   stimgate_bw_fallback = stimgate_bw_fallback,
   stimgate_bw_min = stimgate_bw_min,
   stimgate_bw_max = stimgate_bw_max,
-  tol_clust = tol_clust,
+  cluster_gates = cluster_gates,
   loc_enforce_shape_threshold = loc_enforce_shape_threshold,
   calc_cyt_pos_gates = calc_cyt_pos_gates,
   fbeta_beta = fbeta_beta,
@@ -429,7 +453,7 @@ if (isTRUE(run_simulations)) {
       probExact = TRUE,
       covEvMin = 1.5,
       covEvMax = 1.5,
-      tolClust = tol_clust,
+      clusterGates = cluster_gates,
       locEnforceShapeThreshold = loc_enforce_shape_threshold,
       calcCytPosGates = calc_cyt_pos_gates,
       pathFbeta = path_fbeta,
@@ -636,10 +660,11 @@ square root of the number of datasets; the datasets are treated as
 independent draws. The bar is the plotted value plus or minus 1.96 of these
 standard errors. The plotted values themselves are unchanged: they are still
 calculated over all samples of all datasets. No bar is drawn with fewer than
-five datasets per scenario, which is the case with the current settings (two
-datasets per scenario); increase the number of datasets (`n_iter_sim`) to
-see them. Maxima never have error bars: the results say little about how
-much larger the maximum could be.
+five datasets per scenario. Final runs use 20 datasets per scenario and
+draft runs use five, the minimum for bars, so bars are drawn in both modes.
+Estimates from five datasets are rough; increase the number of datasets
+(`n_iter_sim`) for firmer intervals. Maxima never have error bars: the
+results say little about how much larger the maximum could be.
 
 ### Mean absolute error by cell count
 
@@ -1010,7 +1035,7 @@ compare_one <- .simCompareRunScenario(
   probExact = TRUE,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = tol_clust,
+  clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
   calcCytPosGates = calc_cyt_pos_gates,
   pathFbeta = path_fbeta,

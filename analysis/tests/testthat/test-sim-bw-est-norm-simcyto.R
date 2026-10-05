@@ -66,7 +66,6 @@ test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parit
     ncellUnsRelativeToStim = 0.5,
     covEvMin = 1.5,
     covEvMax = 1.5,
-    tolClust = NULL,
     summarise = FALSE
   )
 
@@ -99,6 +98,8 @@ test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parit
   expect_equal(captured_args$clusterPerturbationSd, 0)
 
   set.seed(seed)
+  # The helper draws each replicate's seed before simulating.
+  set.seed(sample.int(.Machine$integer.max, 1L, replace = TRUE))
   sim_direct <- simcyto::simCytExperiment(
     nSample = n_sample,
     nMarker = 1L,
@@ -187,8 +188,8 @@ test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parit
   expect_true(all(res_hpi1$bw > 0))
   expect_true(all(res_norm$bw > 0))
 
-  expect_equal(res_hpi1$bw, c(0.529433696153644, 0.48829492916954), tolerance = 1e-12)
-  expect_equal(res_norm$bw, c(0.570753196215079, 0.580931838697578), tolerance = 1e-12)
+  expect_equal(res_hpi1$bw, c(0.522495273174226, 0.533712452505094), tolerance = 1e-12)
+  expect_equal(res_norm$bw, c(0.402556647536268, 0.638370719482481), tolerance = 1e-12)
   expect_false(isTRUE(all.equal(res_hpi1$bw, res_norm$bw, tolerance = 0)))
 })
 
@@ -242,7 +243,7 @@ test_that("analysis 4 scenario rerun is identical whatever the prior RNG", {
     bwFallback = NA_real_, bwMin = -Inf, bwMax = Inf, bwCluster = 0.5,
     capStimRange = FALSE, probExact = TRUE,
     backgroundRelativeToResponse = 0.2, ncellUnsRelativeToStim = 1,
-    covEvMin = 1.5, covEvMax = 1.5, tolClust = NULL, summarise = FALSE
+    covEvMin = 1.5, covEvMax = 1.5, summarise = FALSE
   )
   row <- tibble::tibble(
     transformation = "gaussian", prob_response = 0.05, n_cell = 200,
