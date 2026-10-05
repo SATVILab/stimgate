@@ -10,6 +10,9 @@ cat > "$test_dir/bin/slurm-sbatch" <<'EOF'
 #!/usr/bin/env bash
 printf '%s|' "$@" >> "$SLURM_TEST_LOG"
 printf '\n' >> "$SLURM_TEST_LOG"
+n=$(( $(cat "$SLURM_TEST_LOG.n" 2>/dev/null || echo 100) + 1 ))
+echo "$n" > "$SLURM_TEST_LOG.n"
+echo "Submitted batch job $n"
 EOF
 cat > "$test_dir/bin/apptainer-rscript" <<'EOF'
 #!/usr/bin/env bash
@@ -30,6 +33,7 @@ unset SIM_GRID_QMD_FILE SIM_GRID_CHUNK_INDEX SLURM_ARRAY_TASK_ID
 
 run_selection() {
   : > "$SLURM_TEST_LOG"
+  echo 100 > "$SLURM_TEST_LOG.n"
   bash "$project_root/scripts/slurm/dev.sh" "$@" > "$test_dir/output" 2>&1
 }
 
@@ -42,7 +46,8 @@ done
 
 for analysis_id in 2a 2b; do
   run_selection "$analysis_id"
-  [[ $(wc -l < "$SLURM_TEST_LOG") -eq 2 ]]
+  # Two chunk jobs and one plot render.
+  [[ $(wc -l < "$SLURM_TEST_LOG") -eq 3 ]]
   [[ $(grep -c "dev-${analysis_id}-" "$SLURM_TEST_LOG") -eq 2 ]]
   grep -Fq -- 'ANALYSIS_RUN_ID=slurm-test-run' "$SLURM_TEST_LOG"
   grep -Fq -- 'SIM_GRID_CHUNK_INDEX=1,SIM_GRID_N_CHUNKS=2' "$SLURM_TEST_LOG"
@@ -50,11 +55,30 @@ for analysis_id in 2a 2b; do
 done
 
 run_selection 2a 2b 2a
-[[ $(wc -l < "$SLURM_TEST_LOG") -eq 4 ]]
+[[ $(wc -l < "$SLURM_TEST_LOG") -eq 6 ]]
 [[ $(grep -c 'dev-2a-' "$SLURM_TEST_LOG") -eq 2 ]]
 [[ $(grep -c 'dev-2b-' "$SLURM_TEST_LOG") -eq 2 ]]
 run_selection dev-2b-stim-bias_uns-freq_bs.sh
-[[ $(wc -l < "$SLURM_TEST_LOG") -eq 2 ]]
+[[ $(wc -l < "$SLURM_TEST_LOG") -eq 3 ]]
+
+# Plot renders wait for their own simulation jobs to succeed and for every
+# other simulation job of the submission to finish.
+run_selection 2a 7
+plot_2a=$(grep -F 'render-plots.sh' "$SLURM_TEST_LOG" | grep -F 'plots-2a-')
+plot_7=$(grep -F 'render-plots.sh' "$SLURM_TEST_LOG" | grep -F 'plots-7-')
+[[ "$plot_2a" == *"--dependency=afterok:101:102,afterany:103|"* ]]
+[[ "$plot_7" == *"--dependency=afterok:103,afterany:101:102|"* ]]
+[[ "$plot_2a" == *"PLOT_QMD_FILES=analysis/2a-sim-bw-freq_bs-global.qmd,RUN_SIMULATIONS=false,RUN_PLOTS=true"* ]]
+[[ "$plot_7" == *"PLOT_QMD_FILES=analysis/7-sim-compare-freq_bs.qmd,"* ]]
+run_selection 9
+grep -Fq -- 'PLOT_QMD_FILES=analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd,' "$SLURM_TEST_LOG"
+
+# The plot launcher renders each listed QMD itself with simulations off.
+: > "$SLURM_TEST_LOG"
+PLOT_QMD_FILES="analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd" \
+  bash "$project_root/scripts/slurm/render-plots.sh" > "$test_dir/output" 2>&1
+grep -Fq -- "render_file_exists=analysis/9-real-compare-acs-cytof.qmd" "$SLURM_TEST_LOG"
+grep -Fq -- "render_file_exists=analysis/10-real-compare-acs-cytof-validation.qmd" "$SLURM_TEST_LOG"
 
 : > "$SLURM_TEST_LOG"
 if bash "$project_root/scripts/slurm/dev.sh" 2a missing > "$test_dir/output" 2>&1; then
