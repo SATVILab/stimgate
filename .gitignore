@@ -129,3 +129,20 @@ analysis/4-sim-bw-est-norm.knit.md
 
 analysis/tests/_tmp/
 
+_tmp/log/sbatch/7-sim-compare-freq_bs/chunk-1
+_tmp/log/sbatch/7-sim-compare-freq_bs/chunk-2
+_tmp/log/sbatch/7-sim-compare-freq_bs/chunk-3
+_tmp/log/sbatch/7-sim-compare-freq_bs/chunk-4
+_tmp/log/sbatch/8-sim-compare-freq_bs-batch/chunk-1
+_tmp/log/sbatch/8-sim-compare-freq_bs-batch/chunk-2
+_tmp/log/sbatch/8-sim-compare-freq_bs-batch/chunk-3
+_tmp/log/sbatch/8-sim-compare-freq_bs-batch/chunk-4
+_tmp/log/sbatch/plots/1-sim-trans
+_tmp/log/sbatch/plots/2a-stim-bw-freq_bs-global
+_tmp/log/sbatch/plots/2b-stim-bias_uns-freq_bs
+_tmp/log/sbatch/plots/3-sim-bw-est-base
+_tmp/log/sbatch/plots/4-sim-bw-est-norm
+_tmp/log/sbatch/plots/7-sim-compare-freq_bs
+_tmp/log/sbatch/plots/8-sim-compare-freq_bs-batch
+_tmp/log/sbatch/plots/9-real-compare-acs-cytof
+
