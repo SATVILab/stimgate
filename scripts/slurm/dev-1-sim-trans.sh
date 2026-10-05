@@ -4,6 +4,8 @@
 #SBATCH --job-name="dev-1-trans"
 #SBATCH --partition=ada
 
+set -euo pipefail
+
 # Record the start time
 start_time=$(date +%s)
 

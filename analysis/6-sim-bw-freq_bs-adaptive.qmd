@@ -76,7 +76,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
-analysis_semantics_version <- "adaptive-bw-freq-v5"
+analysis_semantics_version <- "adaptive-bw-freq-v6"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.

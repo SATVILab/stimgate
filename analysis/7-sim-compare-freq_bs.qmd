@@ -14,6 +14,7 @@ params:
   sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
+  show_mcse: true
   sim_size: final
 ---
 
@@ -43,6 +44,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-mcse.R"))
 analysis_qmd <- "analysis/7-sim-compare-freq_bs.qmd"
 
 run_simulations <- .as_flag(.get_qmd_param_env(
@@ -64,7 +66,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v9"
+comparison_semantics_version <- "corrected-comparison-v10"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -76,6 +78,8 @@ run_plots <- .as_flag(.get_qmd_param_env(
   "RUN_PLOTS",
   TRUE
 ))
+# Monte Carlo error bars on the summary plots (see analysis-mcse.R).
+show_mcse <- .as_flag(.get_qmd_param_env("show_mcse", "SHOW_MCSE", TRUE))
 sim_grid_chunk_index <- as.integer(
   .get_qmd_param_env("sim_grid_chunk_index", "SIM_GRID_CHUNK_INDEX", 1L)
 )
@@ -606,7 +610,8 @@ scenario_cols <- c(
 
 compare_summary <- .simCompareSummariseFreqBs(
   compare_tbl,
-  scenarioCols = scenario_cols
+  scenarioCols = scenario_cols,
+  mcse = show_mcse
 )
 
 if (isTRUE(run_plots)) {
@@ -617,6 +622,8 @@ if (isTRUE(run_plots)) {
       approach,
       method,
       n_est,
+      n_run_error,
+      n_no_cutpoint,
       n_threshold_fallback,
       propRespTruth_mean,
       propRespEst_mean,
@@ -639,12 +646,82 @@ if (isTRUE(run_plots)) {
 
 ## Results
 
+Pooled means and quantiles below describe tube-level distributions across
+simulated datasets. Tubes within a dataset share gating settings and are not
+independent replicates; uncertainty for method comparisons uses datasets.
+
 Every comparison figure is shown twice. "All methods" includes StimGate,
 Tailgate and F-beta. "Without Tailgate" leaves Tailgate out, because it
 performs very poorly without more tuning and squashes the scale for the other
 two methods. The two versions are saved in the `all_methods` and `no_tailgate`
 subfolders of each figure folder. Within each version there is one figure per
 mean position setting.
+
+**Monte Carlo error bars.** With `show_mcse` on (the default; set the
+`show_mcse` parameter or the `SHOW_MCSE` environment variable to false to
+turn it off), the summary plots show error bars for how much each plotted
+value could move if the simulation were repeated, using only the results
+already simulated. Here the simulated samples are not independent of each
+other: within one simulated dataset, StimGate estimates its bandwidth and
+bias once across the dataset's samples and can cluster their gates. So the
+unit is the simulated dataset. Each statistic (for example the median
+relative error) is also calculated within each dataset, and its standard
+error is the standard deviation of these per-dataset values divided by the
+square root of the number of datasets; the datasets are treated as
+independent draws. The bar is the plotted value plus or minus 1.96 of these
+standard errors. The plotted values themselves are unchanged: they are still
+calculated over all samples of all datasets. No bar is drawn with fewer than
+five datasets per scenario. Final runs use 20 datasets per scenario and
+draft runs use five, the minimum for bars, so bars are drawn in both modes.
+Estimates from five datasets are rough; increase the number of datasets
+(`n_iter_sim`) for firmer intervals. Maxima never have error bars: the
+results say little about how much larger the maximum could be.
+
+### Paired differences between datasets
+
+The independent unit is the simulated dataset (`iter`), whose tubes are gated
+with shared settings and cluster gates. Within each scenario and dataset, we
+compute each method's mean absolute frequency error and mean absolute relative
+frequency error, then subtract the competitor's value from
+StimGate's value. Each dataset has equal weight. The tables report the mean
+paired difference and a 95% interval, mean ± 1.96 SD / √D, using the spread
+between the D datasets with finite paired summaries. Intervals are NA for D < 5.
+Dataset-pair coverage and finite-tube coverage are reported explicitly;
+undefined outcomes are omitted from the corresponding method summary and a
+dataset with no finite outcomes has no paired difference.
+Negative differences favour StimGate for both errors.
+
+```{r}
+#| label: dataset-paired-differences
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  dataset_differences <- .simCompareDatasetDifferences(
+    compare_tbl, scenarioCols = scenario_cols,
+    outcomes = c("abs_error", "abs_rel_error")
+  )
+  for (set in .simCompareMethodSets()) {
+    .analysis_heading(set$heading, 4L)
+    for (pos in unique(dataset_differences$mean_pos_setting)) {
+      .analysis_heading(paste0("Mean position: ", pos), 5L)
+      table <- dataset_differences |>
+        dplyr::filter(.data$method %in% set$methods, .data$mean_pos_setting == pos) |>
+        dplyr::mutate(
+          interval_95 = sprintf("[%.4f, %.4f]", .data$lower, .data$upper),
+          paired_datasets = paste0(.data$n_pair, " / ", .data$n_dataset)
+        ) |>
+        dplyr::select(dplyr::all_of(c(
+          "transformation", "prob_response", "n_cell", "condition_perturbation_sd",
+          "outcome", "method", "paired_datasets", "mean_difference", "interval_95",
+          "tube_coverage_stimgate", "tube_coverage_competitor"
+        )))
+      print(knitr::kable(table, digits = 4,
+        caption = "Dataset-level paired differences: StimGate minus competitor."))
+      cat("\n\n")
+    }
+  }
+}
+```
 
 ### Mean absolute error by cell count
 
@@ -665,7 +742,7 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "mean_abs_error", "Mean absolute error", percent_y = TRUE
+        d, "mean_abs_error", "Tube-level mean absolute error", percent_y = TRUE, mcse = show_mcse
       )
     },
     dir = file.path(plot_dir, "mae_by_n_cell"),
@@ -697,8 +774,8 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "med_abs_rel_error", "Median absolute relative error",
-        zero_line = TRUE, free_y = TRUE
+        d, "med_abs_rel_error", "Tube-level median absolute relative error",
+        zero_line = TRUE, free_y = TRUE, mcse = show_mcse
       )
     },
     dir = file.path(plot_dir, "median_relative_error_by_n_cell"),
@@ -730,8 +807,8 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "q90_abs_rel_error", "90th percentile absolute relative error",
-        zero_line = TRUE, free_y = TRUE
+        d, "q90_abs_rel_error", "Tube-level 90th percentile absolute relative error",
+        zero_line = TRUE, free_y = TRUE, mcse = show_mcse
       )
     },
     dir = file.path(plot_dir, "q90_relative_error_by_n_cell"),
@@ -763,8 +840,8 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "q95_abs_rel_error", "95th percentile absolute relative error",
-        zero_line = TRUE, free_y = TRUE
+        d, "q95_abs_rel_error", "Tube-level 95th percentile absolute relative error",
+        zero_line = TRUE, free_y = TRUE, mcse = show_mcse
       )
     },
     dir = file.path(plot_dir, "q95_relative_error_by_n_cell"),
@@ -814,7 +891,8 @@ Maximum absolute relative error is plotted against stimulated cell count,
 with colour identifying the method. Panels separate response frequencies and
 expression distributions, with one mean position setting per plot and no random
 condition perturbation. The dashed zero line provides a reference for the
-largest observed errors.
+largest observed errors. There are no error bars: the results say little
+about how much larger the maximum could be.
 
 ```{r}
 #| label: max-rel-error-cell-count
@@ -827,7 +905,7 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "max_abs_rel_error", "Maximum absolute relative error",
+        d, "max_abs_rel_error", "Tube-level maximum absolute relative error",
         zero_line = TRUE, free_y = TRUE
       )
     },
@@ -849,10 +927,14 @@ rows as the figures above. Over-estimates are drawn above zero and
 under-estimates below. Rows of panels show the median, 95th percentile and
 maximum, and columns separate expression distributions. Colour identifies the
 method, and a thicker line means a larger share of the estimates lies in that
-direction. The vertical scale is linear down to -100% (nothing gated) and
+direction. The vertical scale is linear, including errors below -100% for negative background-subtracted estimates, with -100% (0x, an estimate of zero) and
 doubles at each step above, so -100% and a two-fold over-estimate are equally
 far from zero. Each plot uses one mean position setting, one response frequency
-and no random condition perturbation.
+and no random condition perturbation. Error bars (with `show_mcse` on and at
+least five datasets) come from the spread between datasets of each dataset's
+statistic in that direction. The number of errors in each direction is
+itself random, so the bars for a rare direction understate the uncertainty a
+little (the line weight shows how rare it is).
 
 ```{r}
 #| label: signed-error-cell-count
@@ -861,10 +943,12 @@ and no random condition perturbation.
 if (isTRUE(run_plots)) {
   signed_tbl <- compare_tbl |>
     dplyr::filter(condition_perturbation_sd == 0) |>
-    .simCompareSignedErrorSummary(scenarioCols = scenario_cols)
+    .simCompareSignedErrorSummary(
+      scenarioCols = scenario_cols, mcse = show_mcse
+    )
   .simCompareFigureLoop(
     signed_tbl,
-    make_plot = function(d) .simComparePlotSignedError(d),
+    make_plot = function(d) .simComparePlotSignedError(d, mcse = show_mcse),
     dir = file.path(plot_dir, "signed_error_by_n_cell"),
     file_fn = function(pos, extra) {
       paste0(
@@ -922,7 +1006,9 @@ The share of estimates using a threshold fallback is plotted against
 stimulated cell count, with colour identifying the method. Panels separate
 response frequencies and expression distributions, with one mean position
 setting per plot and no random condition perturbation. Read this alongside
-frequency error to distinguish calculated gates from fallbacks.
+frequency error to distinguish calculated gates from fallbacks. Error bars
+(with `show_mcse` on and at least five datasets) come from the spread of the
+fallback rate between datasets.
 
 ```{r}
 #| label: threshold-fallback
@@ -936,7 +1022,7 @@ if (isTRUE(run_plots)) {
     )
   .simCompareFigureLoop(
     fallback_tbl,
-    make_plot = .simComparePlotFallback,
+    make_plot = function(d) .simComparePlotFallback(d, mcse = show_mcse),
     dir = file.path(plot_dir, "threshold_fallback_rate"),
     file_fn = function(pos, extra) {
       paste0("freq_bs_threshold_fallback_rate_", pos, ".png")

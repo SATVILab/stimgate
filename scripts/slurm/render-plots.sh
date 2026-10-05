@@ -23,6 +23,11 @@ cd "$project_root"
 export PROJECT_ROOT="$project_root"
 export RUN_SIMULATIONS=false
 export RUN_PLOTS=true
+export RUN_PREPROCESSING=false
+export RUN_STIMGATE=false
+export RUN_COMPARATORS=false
+# Empty for manual renders; submitted reports must use this submission's run.
+export ANALYSIS_EXPECTED_RUN_ID="${ANALYSIS_RUN_ID:-}"
 
 start_time=$(date +%s)
 echo "HOSTNAME: $HOSTNAME"

@@ -17,13 +17,15 @@ EOF
 cat > "$test_dir/bin/apptainer-rscript" <<'EOF'
 #!/usr/bin/env bash
 printf '%s|' "$@" >> "$SLURM_TEST_LOG"
-printf 'run=%s|chunk=%s|n_chunks=%s\n' "$ANALYSIS_RUN_ID" "$SIM_GRID_CHUNK_INDEX" "$SIM_GRID_N_CHUNKS" >> "$SLURM_TEST_LOG"
+printf 'run=%s|chunk=%s|n_chunks=%s\n' "${ANALYSIS_RUN_ID:-}" "${SIM_GRID_CHUNK_INDEX:-}" "${SIM_GRID_N_CHUNKS:-}" >> "$SLURM_TEST_LOG"
+printf 'expected_run=%s|preprocessing=%s|stimgate=%s|comparators=%s|simulations=%s|plots=%s\n' "${ANALYSIS_EXPECTED_RUN_ID:-}" "${RUN_PREPROCESSING:-}" "${RUN_STIMGATE:-}" "${RUN_COMPARATORS:-}" "${RUN_SIMULATIONS:-}" "${RUN_PLOTS:-}" >> "$SLURM_TEST_LOG"
 printf 'sim_size=%s\n' "${SIM_SIZE:-}" >> "$SLURM_TEST_LOG"
 # Record whether the QMD being rendered exists at render time.
 qmd=$(printf '%s' "${!#}" | sed -n "s/^qmd_file <- '\([^']*\)'.*/\1/p")
 if [[ -n "$qmd" && -f "$qmd" ]]; then
   printf 'render_file_exists=%s\n' "$qmd" >> "$SLURM_TEST_LOG"
 fi
+exit "${MOCK_RENDER_STATUS:-0}"
 EOF
 chmod +x "$test_dir/bin/"*
 export PATH="$test_dir/bin:$PATH"
@@ -46,7 +48,7 @@ for chunk in 1 2; do
 done
 grep -Fq -- 'SIM_SIZE: final' "$test_dir/output"
 
-for analysis_id in 2a 2b; do
+for analysis_id in 2a 2b 7 8; do
   run_selection "$analysis_id"
   # Two chunk jobs and one plot render.
   [[ $(wc -l < "$SLURM_TEST_LOG") -eq 3 ]]
@@ -68,9 +70,9 @@ run_selection dev-2b-stim-bias_uns-freq_bs.sh
 run_selection 2a 7
 plot_2a=$(grep -F 'render-plots.sh' "$SLURM_TEST_LOG" | grep -F 'plots-2a-')
 plot_7=$(grep -F 'render-plots.sh' "$SLURM_TEST_LOG" | grep -F 'plots-7-')
-[[ "$plot_2a" == *"--dependency=afterok:101:102,afterany:103|"* ]]
-[[ "$plot_7" == *"--dependency=afterok:103,afterany:101:102|"* ]]
-[[ "$plot_2a" == *"PLOT_QMD_FILES=analysis/2a-sim-bw-freq_bs-global.qmd,RUN_SIMULATIONS=false,RUN_PLOTS=true"* ]]
+[[ "$plot_2a" == *"--dependency=afterok:101:102,afterany:103:104|"* ]]
+[[ "$plot_7" == *"--dependency=afterok:103:104,afterany:101:102|"* ]]
+[[ "$plot_2a" == *"PLOT_QMD_FILES=analysis/2a-sim-bw-freq_bs-global.qmd,ANALYSIS_RUN_ID=slurm-test-run,RUN_SIMULATIONS=false,RUN_PLOTS=true"* ]]
 [[ "$plot_7" == *"PLOT_QMD_FILES=analysis/7-sim-compare-freq_bs.qmd,"* ]]
 [[ "$plot_2a" == *",RUN_PLOTS=true,SIM_SIZE=final|"* ]]
 
@@ -78,7 +80,7 @@ plot_7=$(grep -F 'render-plots.sh' "$SLURM_TEST_LOG" | grep -F 'plots-7-')
 export SIM_SIZE=draft
 run_selection 2a 7
 grep -Fq -- 'SIM_SIZE: draft' "$test_dir/output"
-[[ $(grep -c ',RUN_SIMULATIONS=true,RUN_PLOTS=false,SIM_SIZE=draft|' "$SLURM_TEST_LOG") -eq 2 ]]
+[[ $(grep -c ',RUN_SIMULATIONS=true,RUN_PLOTS=false,SIM_SIZE=draft|' "$SLURM_TEST_LOG") -eq 4 ]]
 [[ $(grep -c ',RUN_SIMULATIONS=false,RUN_PLOTS=true,SIM_SIZE=draft|' "$SLURM_TEST_LOG") -eq 2 ]]
 : > "$SLURM_TEST_LOG"
 bash "$project_root/scripts/slurm/dev-2a-stim-bw-freq_bs-global.sh" 2 > "$test_dir/output" 2>&1
@@ -108,12 +110,21 @@ unset SIM_SIZE
 run_selection 9
 grep -Fq -- 'PLOT_QMD_FILES=analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd,' "$SLURM_TEST_LOG"
 
+# Non-chunked simulation jobs share the plot job's submission run ID.
+run_selection 1 9
+[[ $(grep -c 'ANALYSIS_RUN_ID=slurm-test-run' "$SLURM_TEST_LOG") -eq 4 ]]
+
+# The plot launcher overrides inherited ACS stage controls.
+export RUN_PREPROCESSING=true RUN_STIMGATE=true RUN_COMPARATORS=true
 # The plot launcher renders each listed QMD itself with simulations off.
 : > "$SLURM_TEST_LOG"
 PLOT_QMD_FILES="analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd" \
   bash "$project_root/scripts/slurm/render-plots.sh" > "$test_dir/output" 2>&1
 grep -Fq -- "render_file_exists=analysis/9-real-compare-acs-cytof.qmd" "$SLURM_TEST_LOG"
 grep -Fq -- "render_file_exists=analysis/10-real-compare-acs-cytof-validation.qmd" "$SLURM_TEST_LOG"
+grep -Fq -- 'expected_run=slurm-test-run|preprocessing=false|stimgate=false|comparators=false|simulations=false|plots=true' "$SLURM_TEST_LOG"
+unset RUN_PREPROCESSING RUN_STIMGATE RUN_COMPARATORS
+
 
 : > "$SLURM_TEST_LOG"
 if bash "$project_root/scripts/slurm/dev.sh" 2a missing > "$test_dir/output" 2>&1; then
@@ -123,7 +134,7 @@ fi
 [[ ! -s "$SLURM_TEST_LOG" ]]
 grep -Fq -- 'Unknown analysis target: missing' "$test_dir/output"
 
-for stem in 2a-stim-bw-freq_bs-global 2b-stim-bias_uns-freq_bs 3-sim-bw-est-base 4-sim-bw-est-norm; do
+for stem in 2a-stim-bw-freq_bs-global 2b-stim-bias_uns-freq_bs 3-sim-bw-est-base 4-sim-bw-est-norm 7-sim-compare-freq_bs 8-sim-compare-freq_bs-batch; do
   : > "$SLURM_TEST_LOG"
   bash "$project_root/scripts/slurm/dev-${stem}.sh" 2 > "$test_dir/output" 2>&1
   # Launcher filenames use 'stim'; the corresponding QMD uses 'sim'.
@@ -137,4 +148,22 @@ for stem in 2a-stim-bw-freq_bs-global 2b-stim-bias_uns-freq_bs 3-sim-bw-est-base
     exit 1
   fi
 done
-echo 'Slurm 2a/2b selection and render contracts passed.'
+# Every simulation launcher and the plot launcher propagate renderer failures.
+export MOCK_RENDER_STATUS=23
+for launcher_path in "$project_root"/scripts/slurm/dev-*.sh; do
+  if bash "$launcher_path" > "$test_dir/output" 2>&1; then
+    echo "Renderer failure must fail $launcher_path." >&2
+    exit 1
+  else
+    [[ $? -eq 23 ]]
+  fi
+  grep -Fq -- 'SIM_SIZE:' "$test_dir/output" || [[ "$launcher_path" == *dev-9-* ]]
+done
+if PLOT_QMD_FILES="analysis/1-sim-trans.qmd" bash "$project_root/scripts/slurm/render-plots.sh" > "$test_dir/output" 2>&1; then
+  echo 'Renderer failure must fail the plot launcher.' >&2
+  exit 1
+else
+  [[ $? -eq 23 ]]
+fi
+unset MOCK_RENDER_STATUS
+echo 'Slurm selection, run provenance, stage controls and render failure contracts passed.'

@@ -14,15 +14,22 @@
 
 .bandwidth_cell_plot_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
-  for (fn in c("analysis-plot-style.R", "sim-bandwidth-analysis-plot.R")) {
+  for (fn in c(
+    "analysis-plot-style.R", "analysis-mcse.R", "sim-bandwidth-analysis-plot.R"
+  )) {
     source(file.path(testthat::test_path(), "../../../scripts/r", fn), local = env)
   }
   env$root_dir <- tempfile("cell-plots-")
   env$analysis_key <- "bias_uns"
   env$run_plots <- TRUE
+  env$show_mcse <- TRUE
   env$saved <- list()
   env$printed <- list()
   env$fig_key <- "2a-test"
+  # Coverage-table behaviour is tested below independently of these plot fixtures.
+  env$bw_tbl_results_summary <- tibble::tibble()
+  env$bias_uns_results_summary <- tibble::tibble()
+  env$.simBandwidthPrintCoverage <- function(plot, summary) invisible(NULL)
   env$.analysis_fig_dir <- function(path_parts, path_root = NULL, create = TRUE) {
     file.path(path_root, "output", "fig", paste(path_parts, collapse = "/"))
   }
@@ -98,7 +105,12 @@ test_that("2a per-cell plots average scenario errors before combining probabilit
 })
 
 test_that("2b averaged and per-cell plots preserve all bias scenario dimensions", {
-  stat_mult <- c(Median = 1, "90th percentile" = 2, Maximum = 3)
+  stat_mult <- c(
+    Median = 1, "90th percentile" = 2, Maximum = 3,
+    "Mean of scenario medians" = 1,
+    "Mean of scenario 90th percentiles" = 2,
+    "Mean of scenario maxima" = 3
+  )
   env <- .bandwidth_cell_plot_env()
   on.exit(unlink(env$root_dir, recursive = TRUE), add = TRUE)
   env$bias_uns_abs_error <- tidyr::expand_grid(
@@ -156,7 +168,10 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
     expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
     expect_named(saved$plot$facet$params$rows, "statistic")
     expect_named(saved$plot$facet$params$cols, "mismatch_label")
-    expect_setequal(as.character(data$statistic), names(stat_mult))
+    expected_labels <- if ("n_scenario_median" %in% names(data)) {
+      names(stat_mult)[4:6]
+    } else names(stat_mult)[1:3]
+    expect_setequal(as.character(data$statistic), expected_labels)
     expect_identical(rlang::as_label(saved$plot$mapping$group), "interaction(bw, bias_uns_basis)")
     # Bandwidth is the only colour legend; there is no bias-scale line type.
     expect_identical(rlang::as_label(saved$plot$mapping$colour), "bw_lab")
@@ -244,7 +259,12 @@ test_that("2a per-cell signed-error plots average scenario errors by direction",
 })
 
 test_that("2b signed-error plots preserve all bias scenario dimensions", {
-  stat_mult <- c(Median = 1, "90th percentile" = 2, Maximum = 3)
+  stat_mult <- c(
+    Median = 1, "90th percentile" = 2, Maximum = 3,
+    "Mean of scenario medians" = 1,
+    "Mean of scenario 90th percentiles" = 2,
+    "Mean of scenario maxima" = 3
+  )
   env <- .bandwidth_cell_plot_env()
   on.exit(unlink(env$root_dir, recursive = TRUE), add = TRUE)
   env$bias_uns_signed_error <- tidyr::expand_grid(
@@ -300,7 +320,10 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
     expect_named(saved$plot$facet$params$rows, "statistic")
     expect_named(saved$plot$facet$params$cols, "mismatch_label")
-    expect_setequal(as.character(data$statistic), names(stat_mult))
+    expected_labels <- if ("n_scenario_median" %in% names(data)) {
+      names(stat_mult)[4:6]
+    } else names(stat_mult)[1:3]
+    expect_setequal(as.character(data$statistic), expected_labels)
     expect_identical(
       rlang::as_label(saved$plot$mapping$group),
       "interaction(bw, bias_uns_basis, direction)"
@@ -360,13 +383,16 @@ test_that("signed relative errors are summarised separately by direction", {
   expect_equal(under$median, -0.5)
 })
 
-test_that("signed error scale puts nothing gated and two-fold equally far from zero", {
+test_that("signed error scale puts a zero estimate and two-fold equally far from zero", {
   env <- .bandwidth_cell_plot_env()
   trans <- env$.simBandwidthSignedErrorTrans()
-  x <- c(-1, -0.5, 0, 1, 3)
-  expect_equal(trans$transform(x), c(-1, -0.5, 0, 1, 2))
+  x <- c(-2, -1.5, -1, -0.5, 0, 1, 3)
+  expect_equal(trans$transform(x), c(-2, -1.5, -1, -0.5, 0, 1, 2))
   expect_equal(trans$inverse(trans$transform(x)), x)
-  # Values below -100% (from axis expansion) stay linear without warnings.
+  expect_equal(trans$domain, c(-Inf, Inf))
+  expect_true(all(c(-2, -1) %in% trans$breaks(c(-2, 3))))
+  expect_identical(env$.simBandwidthSignedErrorLabel(-1.5), "-150%")
+  # Negative background-subtracted response estimates stay linear without warnings.
   expect_no_warning(expect_equal(trans$transform(c(-2, 1)), c(-2, 1)))
   expect_equal(trans$breaks(c(-1, 2.5)), c(-1, -0.5, 0, 1, 3))
   # Small errors get ordinary breaks rather than only zero.
@@ -538,4 +564,60 @@ test_that("signed relative errors above +1500% are drawn at a labelled cap", {
   expect_true(all(alphas[!is.na(alphas)] == 0.75))
   expect_gte(sum(!is.na(alphas)), 2L)
   expect_no_error(ggplot2::ggplotGrob(bias))
+})
+
+
+test_that("coverage companions preserve finite fallbacks and all failed samples", {
+  env <- .bandwidth_cell_plot_env()
+  on.exit(unlink(env$root_dir, recursive = TRUE), add = TRUE)
+  summary <- tibble::tibble(
+    transformation = "gaussian", mean_pos_setting = c("low", "low", "high"),
+    bw = 0.1, n_cell = c(100, 1000, 100),
+    n_sample = 4L, n_valid = c(3L, 0L, 4L), n_failed = c(1L, 4L, 0L),
+    n_provenance = 4L, n_fallback = c(2L, 4L, 0L)
+  )
+  p <- ggplot2::ggplot(tibble::tibble(
+    transformation = env$.analysis_trans_factor("gaussian"),
+    mean_pos_setting = "low", bw = 0.1
+  ))
+  companion <- env$.simBandwidthCoverageForPlot(p, summary)
+  expect_equal(companion$n_scenario, 2L)
+  expect_equal(companion$n_scenario_valid, 1L)
+  expect_equal(companion$n_sample, 8L)
+  expect_equal(companion$n_valid, 3L)
+  expect_equal(companion$failure_fraction, 5 / 8)
+  expect_equal(companion$fallback_fraction, 6 / 8)
+  failed_bandwidth <- dplyr::mutate(
+    summary[1, ], bw = 0.2, n_valid = 0L, n_failed = n_sample
+  )
+  all_settings <- env$.simBandwidthCoverageForPlot(
+    p, dplyr::bind_rows(summary, failed_bandwidth)
+  )
+  expect_setequal(all_settings$bw, c("0.1", "0.2"))
+  expect_equal(all_settings$failure_fraction[all_settings$bw == "0.2"], 1)
+  # Per-cell figures retain only the corresponding expected scenario.
+  p$data$n_cell <- factor(1000)
+  companion <- env$.simBandwidthCoverageForPlot(p, summary)
+  expect_equal(companion$n_scenario_valid, 0L)
+  expect_equal(companion$failure_fraction, 1)
+})
+
+test_that("negative background-subtracted estimates survive signed plot building", {
+  env <- .bandwidth_cell_plot_env()
+  on.exit(unlink(env$root_dir, recursive = TRUE), add = TRUE)
+  data <- tibble::tibble(
+    transformation = "gaussian", bw = c(0.1, 0.2), direction = "under",
+    prop = 1, median = -1.5, q95 = -2, max = -3
+  )
+  plot <- env$.simBandwidthGlobalSignedErrorPlot(data)
+  built <- ggplot2::ggplot_build(plot)
+  expect_true(any(vapply(built$data, function(layer) {
+    "y" %in% names(layer) && any(layer$y < -1, na.rm = TRUE)
+  }, logical(1))))
+  summary <- env$.simBandwidthSignedErrorAverage(
+    dplyr::bind_rows(data, dplyr::mutate(data, median = NA_real_)),
+    c("transformation", "bw")
+  )
+  expect_equal(summary$n_scenario_median, c(1L, 1L))
+  expect_equal(summary$n_scenario_max, c(2L, 2L))
 })

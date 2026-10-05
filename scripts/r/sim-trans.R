@@ -119,6 +119,7 @@ sim_trans_cache_settings <- function(
     transformation_vec,
     simulation_seed) {
   list(
+    analysis_semantics_version = "sim-trans-v1",
     main_settings = as.data.frame(main_settings),
     mean_pos_settings_tbl = as.data.frame(mean_pos_settings_tbl),
     transformation_vec = as.character(transformation_vec),
@@ -127,7 +128,10 @@ sim_trans_cache_settings <- function(
 }
 
 sim_trans_write_cache <- function(uni_tbl, settings, path) {
-  .write_rds_atomic(list(settings = settings, uni_tbl = uni_tbl), path)
+  .write_rds_atomic(list(
+    settings = settings, uni_tbl = uni_tbl,
+    run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))
+  ), path)
 }
 
 # Read the cached table, stopping if it was made with different settings.
@@ -143,6 +147,7 @@ sim_trans_read_cache <- function(path, settings) {
       "analysis/1-sim-trans.qmd"
     )
   }
+  .analysis_check_expected_run(cached, c("sim", "trans"), "analysis/1-sim-trans.qmd")
   if (!isTRUE(all.equal(cached$settings, settings))) {
     .analysis_cache_error(
       c("sim", "trans"), paste0("Cached uni_tbl.rds at ", path,

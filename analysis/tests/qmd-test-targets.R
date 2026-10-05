@@ -5,23 +5,29 @@
     "2a-sim-bw-freq_bs-global.qmd" = c(
       "test-sim-bw-freq_bs-global-simcyto.R", "test-sim-bandwidth-analysis-run.R",
       "test-bandwidth-bias-plots-by-cells.R", "test-qmd-2-cache-guidance.R",
-      "test-threshold-density-plots.R"
+      "test-threshold-density-plots.R", "test-analysis-mcse.R"
     ),
     "2b-sim-bias_uns-freq_bs.qmd" = c(
       "test-sim-bias-uns-freq.R", "test-sim-bandwidth-analysis-run.R",
-      "test-bandwidth-bias-plots-by-cells.R", "test-qmd-2-cache-guidance.R"
+      "test-bandwidth-bias-plots-by-cells.R", "test-qmd-2-cache-guidance.R",
+      "test-analysis-mcse.R"
     ),
     "3-sim-bw-est-base.qmd" = c(
-      "test-sim-bw-est-base-simcyto.R", "test-sim-bw-est-base-run.R"
+      "test-sim-bw-est-base-simcyto.R", "test-sim-bw-est-base-run.R",
+      "test-analysis-mcse.R"
     ),
-    "4-sim-bw-est-norm.qmd" = "test-sim-bw-est-norm-simcyto.R",
+    "4-sim-bw-est-norm.qmd" = c(
+      "test-sim-bw-est-norm-simcyto.R", "test-analysis-mcse.R"
+    ),
     "5-sim-bw-est-adaptive.qmd" = "test-sim-bw-est-adaptive-simcyto.R",
     "6-sim-bw-freq_bs-adaptive.qmd" = "test-sim-bw-freq_bs-adaptive-simcyto.R",
     "7-sim-compare-freq_bs.qmd" = c(
-      "test-sim-compare-freq_bs-simcyto.R", "test-analysis-7-transactional-multichunk.R"
+      "test-sim-compare-freq_bs-simcyto.R", "test-analysis-7-transactional-multichunk.R",
+      "test-analysis-mcse.R", "test-sim-compare-dataset-differences.R"
     ),
     "8-sim-compare-freq_bs-batch.qmd" = c(
-      "test-sim-compare-freq_bs-batch.R", "test-sim-compare-classification.R"
+      "test-sim-compare-freq_bs-batch.R", "test-sim-compare-classification.R",
+      "test-analysis-mcse.R", "test-sim-compare-dataset-differences.R"
     ),
     "9-real-compare-acs-cytof.qmd" = c(
       "test-acs-cytof-gate.R", "test-acs-cytof-methods.R"
