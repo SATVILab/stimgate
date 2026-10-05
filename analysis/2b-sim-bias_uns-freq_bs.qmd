@@ -891,6 +891,11 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+Each signed-error figure also has an estimate/reference ratio companion in a
+sibling `ratio*` folder. The curves and intervals are identical: 1x is exact,
+0x is an estimate of zero and 2x is twice the reference. Negative ratios remain
+visible; a capped upper tick reads “≥ 16x”.
+
 ## Over- and under-estimates across bias settings
 
 The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: each statistic is calculated separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale, including errors below -100% for negative background-subtracted estimates, with -100% (0x, an estimate of zero), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth; lines and points are slightly transparent so overlapping curves stay visible. The bandwidth and line-weight legends sit underneath each plot. Error bars come from the sorted errors in each direction; the number of errors in each direction is itself random, so the bars for a rare direction understate the uncertainty a little (the line weight shows how rare it is).
@@ -957,6 +962,7 @@ if (isTRUE(run_plots)) {
             6
           )
           .analysis_print_fig(p)
+          .simBandwidthPrintRatioTwin(p, path_p, height = 22)
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
               mismatch_type == mismatch_type_curr,
@@ -1039,6 +1045,7 @@ if (isTRUE(run_plots)) {
             6
           )
           .analysis_print_fig(p)
+          .simBandwidthPrintRatioTwin(p, path_p, height = 14)
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
               mismatch_type == mismatch_type_curr,
@@ -1116,6 +1123,7 @@ if (isTRUE(run_plots)) {
               6
             )
             .analysis_print_fig(p)
+            .simBandwidthPrintRatioTwin(p, path_p, height = 14)
             .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
               dplyr::filter(
                 mismatch_type == mismatch_type_curr,

@@ -62,6 +62,10 @@ fi
 
 poll_seconds="${POLL_SECONDS:-5}"
 sim_grid_n_chunks="${SIM_GRID_N_CHUNKS:-4}"
+if [[ ! "$sim_grid_n_chunks" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: SIM_GRID_N_CHUNKS must be a positive integer. Got: $sim_grid_n_chunks" >&2
+  exit 1
+fi
 sim_grid_shuffle_seed="${SIM_GRID_SHUFFLE_SEED:-20260707}"
 analysis_run_id="${ANALYSIS_RUN_ID:-analysis-slurm-$(date -u +%Y%m%dT%H%M%S)-$$}"
 

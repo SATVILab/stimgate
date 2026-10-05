@@ -97,6 +97,27 @@ test_that("atomic RDS writes are readable and preserve object contents", {
   expect_equal(readRDS(path), obj)
 })
 
+test_that("atomic RDS fallback fails explicitly and retains the pending output", {
+  env <- .load_runtime_env()
+  folder <- withr::local_tempdir()
+  path <- file.path(folder, "result.rds")
+  original <- list(value = "last good result")
+  replacement <- list(value = "new result")
+  saveRDS(original, path)
+  env$file.rename <- function(...) FALSE
+
+  expect_identical(env$.write_rds_atomic(replacement, path), path)
+  expect_equal(readRDS(path), replacement)
+  expect_length(list.files(folder), 1L)
+
+  env$file.copy <- function(...) FALSE
+  expect_error(env$.write_rds_atomic(original, path), "Temporary output retained")
+  expect_equal(readRDS(path), replacement)
+  pending <- list.files(folder, pattern = "\\.tmp-", full.names = TRUE)
+  expect_length(pending, 1L)
+  expect_equal(readRDS(pending), original)
+})
+
 test_that("run contexts are isolated by logical run ID", {
   env <- .load_runtime_env()
 

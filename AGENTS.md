@@ -363,6 +363,10 @@ same scientific inclusion rules and avoid pooling different grid dimensions.
 For controlled negative-component mismatch analyses, report stimulated-negative
 mean shifts and SD inflation in separate figure sections and sibling folders,
 including the matching coverage summaries. Label which tube and component change.
+Ratio companions preserve signed-error geometry and intervals, relabelling ticks
+as `1 + relative error` (estimate/reference). Keep originals and save companions
+in sibling ratio folders. Absolute relative errors lose direction and cannot
+be relabelled as estimate/reference ratios.
 Signed relative-error plots (`.simBandwidthSignedError*()` in
 `sim-bandwidth-analysis-plot.R`) sit alongside, not instead of, the absolute
 ones: they summarise over- and under-estimates separately, weight lines by each
@@ -729,7 +733,8 @@ rows before drawing reference lines.
    - Resume discovery reads dated manifests under `staging/` and honours their recorded `path_log_run` (the field name is retained for compatibility), including old `cache/log/analysis/...` paths. Do not relocate existing run state on resume.
    - For external chunking, all chunks of one logical run must use the same run ID and write under the same staged run directory, separated by chunk labels.
    - Slurm chunk launchers render the current top-level QMD and pass chunk controls through environment variables. Do not create split-QMD variants whose content differs per chunk; all chunks of one submission must receive the same `ANALYSIS_RUN_ID`. Each chunk job renders an identical, job-specific temporary copy of the QMD in the same folder (`scripts/slurm/render-qmd-isolated.sh`), because Quarto keeps working files named after the QMD next to it and concurrent renders of one QMD otherwise collide; the copy and its outputs are removed when the job exits.
-   - Never promote on partial/incomplete runs. Promote only after required chunks are complete and collated outputs validate.
+  - Never promote on partial/incomplete runs. Promote only after required chunks are complete and collated outputs validate.
+  - Reject invalid Slurm chunk counts before any submission. Atomic RDS writers must fail if both rename and fallback copy fail, retaining the pending output instead of allowing a completion marker.
    - Promotion updates `current/` only after a complete staged run is available; failed/interrupted staged runs remain inspectable and resumable.
    - Read canonical outputs through `.analysis_current_file()`, which requires a `COMPLETE` marker, a readable manifest for the requested analysis key, and any analysis-specific semantic version required by the caller.
    - To read canonical results without running the simulation chunk (so no `run_ctx` exists), collation chunks fall back to `.analysis_results_context()`, a read-only stand-in whose staging paths point at `current/` and which creates no run state. Guard all writes, chunk marking and promotion with `if (!isTRUE(run_ctx$read_only))`.
@@ -769,11 +774,24 @@ rows before drawing reference lines.
    Assign `sim_id` and `sim_seed` on the full grid before dev/quick filtering, shuffling and chunking. Each row is seeded with its own `sim_seed` under fixed RNG kinds (`Mersenne-Twister`, `Inversion`, `Rejection`) and the caller's RNG state is restored afterwards (`.analysis_with_seed()`, `.simBandwidthRunRow()`, `.simCompareRunScenario()`), so results do not depend on furrr's L'Ecuyer state, chunking or scheduling. Each simulation QMD has one `eval: false` "rerun one simulation" chunk that selects a `sim_id` from the full grid and calls the same scenario code path as the workers. Do not add separate debug loops.
 
 11. **Real-data analyses replace outputs non-destructively**:
+   ACS error summaries separate stimuli, report positive-manual relative-error
+   denominators, and retain zero/negative manual frequencies in absolute error.
+   Donor-bootstrap intervals reuse common donor draws across methods and strata,
+   keeping stimulated tubes with their shared control. Label the mean-error
+   estimand and finite donor coverage; manual gating is an imperfect reference.
    Real-data analyses that recompute cached outputs (e.g. ACS CyTOF) build into a temporary sibling and swap it in on success (`.acsCytofReplaceDir()`), or compute all results before atomically writing them. Never delete the previous output before the new one is complete.
    ACS stage controls inherit `run_simulations` when their parameters are NULL;
    explicit stage parameters/environment variables override that default. Cached
    comparison renders read the saved manual-comparison table without raw FCS or
    manual CSV inputs; GatingSet diagnostics are optional when those caches are absent.
+
+   ACS batches use the mapped SampleID and stimulus, never filename position.
+   Saved ACS method outputs must carry identical input/preprocessing
+   manifests before comparison. Keep per-marker threshold provenance and failure
+   coverage; exclude failed estimates from agreement metrics and persist cohort
+   exclusions rather than hiding omitted rows behind render warnings. With ACS
+   clustering and cytokine-positive refinement enabled, score `loc_minClust`,
+   and preserve cluster provenance when assembling the final package gate rows.
 
 12. **Shared local-FDR bandwidths (`bwScope`, issue #417)**:
    The scalar local-FDR bandwidth is chosen once per channel during settings

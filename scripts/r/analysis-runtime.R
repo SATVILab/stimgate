@@ -176,18 +176,14 @@
 .write_rds_atomic <- function(object, path) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
 
-  tmp <- paste0(
-    path,
-    ".tmp-",
-    Sys.getpid(),
-    "-",
-    as.integer(Sys.time())
-  )
+  tmp <- tempfile(pattern = paste0(basename(path), ".tmp-"), tmpdir = dirname(path))
 
   saveRDS(object, file = tmp)
 
   if (!file.rename(tmp, path)) {
-    file.copy(tmp, path, overwrite = TRUE)
+    if (!file.copy(tmp, path, overwrite = TRUE)) {
+      stop("Could not save RDS to ", path, ". Temporary output retained at: ", tmp)
+    }
     unlink(tmp, force = TRUE)
   }
 
