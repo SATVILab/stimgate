@@ -254,6 +254,10 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - Comparator exceptions in benchmarking analyses must remain explicit runtime
   errors. A numerical fallback may be retained for diagnostics, but the
   exception must not be silently promoted or scored as a valid prediction.
+  In comparisons 7/8, bandwidth/estimation exceptions leave estimates and gate
+  counts missing; only a genuine no-cutpoint outcome may use an explicitly
+  recorded empty-gate fallback. Summaries distinguish runtime errors,
+  no-cutpoint outcomes and threshold fallbacks.
 - Transactional simulation/collation chunks must not use Quarto
   `error: true`; validation and promotion errors must fail the render/job.
 - For adaptive normalised bandwidth estimation, `normAdaptiveNcell` controls

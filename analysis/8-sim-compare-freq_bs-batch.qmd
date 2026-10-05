@@ -356,8 +356,8 @@ sim_grid <- dplyr::bind_rows(
 # Keep every seeded row available for an exact interactive rerun.
 sim_grid_full <- sim_grid
 
-# Gate diagnostic: the very clean gamma baseline before and after the jump in
-# StimGate's error near a shift of 0.1, for both shift variants. The rows
+# Gate diagnostic: examine the very clean gamma baseline across selected
+# mean shifts for both shift variants. The rows
 # come from the full grid, so they keep their production seeds.
 gate_diagnostic_spec <- list(
   base_scenario_id = 3L,
@@ -755,6 +755,12 @@ mismatch_validation <- .simCompareValidateMismatch(compare_raw)
 pairing_check <- mismatch_validation$pairing_check
 zero_agreement <- mismatch_validation$zero_agreement
 
+knitr::kable(
+  .simCompareClassificationSummary(compare_raw, scenarioCols = "method") |>
+    dplyr::select(method, n, n_valid, n_run_error, n_no_cutpoint, n_fallback),
+  caption = "Method outcomes: runtime errors are unscored; no-cutpoint empty gates are recorded fallbacks."
+)
+
 cat(
   "Counts reproduce the gated stimulated counts in all",
   sum(compare_raw$method %in% c("stimgate", "fbeta", "tailgate")),
@@ -994,11 +1000,13 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 
 ## Very clean gamma baseline: gate diagnostic
 
-In the very clean gamma baseline, StimGate's median absolute relative error
-jumped to about 1 near a mean shift of 0.1. The direction of a relative error
-of 1 is not clear from its size alone, so this section shows the cells, their
-true labels and the final gates before and after the jump, for both shift
-variants. The rows below were rerun during the simulation step for one
+This diagnostic examines how mean shifts change gate placement, false
+discoveries and missed positives in the very clean gamma baseline, for both
+shift variants. An earlier run with `hpi1`, fixed bias and five samples showed
+an error increase near a shift of 0.1; that observation is historical and
+is not a claim about the current settings. The current tables and figures
+show the cells, their true labels and each method's final gates. The rows
+below were rerun during the simulation step for one
 replicate with the production seeds and cells kept; they are saved with the
 results, so nothing is simulated here. The replicate is the same simulated
 draw in every setting, and (with the same number of samples) it is the first

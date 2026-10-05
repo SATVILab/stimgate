@@ -622,6 +622,8 @@ if (isTRUE(run_plots)) {
       approach,
       method,
       n_est,
+      n_run_error,
+      n_no_cutpoint,
       n_threshold_fallback,
       propRespTruth_mean,
       propRespEst_mean,
