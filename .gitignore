@@ -146,3 +146,17 @@ _tmp/log/sbatch/plots/7-sim-compare-freq_bs
 _tmp/log/sbatch/plots/8-sim-compare-freq_bs-batch
 _tmp/log/sbatch/plots/9-real-compare-acs-cytof
 
+analysis/2a-sim-bw-freq_bs-global--chunk1-job1412273.qmd
+analysis/2a-sim-bw-freq_bs-global--chunk2-job1412274.qmd
+analysis/2a-sim-bw-freq_bs-global--chunk3-job1412275.qmd
+analysis/2a-sim-bw-freq_bs-global--chunk4-job1412276.qmd
+analysis/2b-sim-bias_uns-freq_bs--chunk1-job1412277.qmd
+analysis/2b-sim-bias_uns-freq_bs--chunk2-job1412278.qmd
+analysis/2b-sim-bias_uns-freq_bs--chunk3-job1412279.qmd
+analysis/2b-sim-bias_uns-freq_bs--chunk4-job1412280.qmd
+analysis/3-sim-bw-est-base--chunk1-job1412281.qmd
+analysis/3-sim-bw-est-base--chunk2-job1412282.qmd
+analysis/3-sim-bw-est-base--chunk3-job1412283.qmd
+analysis/3-sim-bw-est-base--chunk4-job1412284.qmd
+analysis/4-sim-bw-est-norm--chunk1-job1412285.qmd
+
