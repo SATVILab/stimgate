@@ -145,6 +145,8 @@ pathProject <- gateStim(
   tempfile("stimgate_"), gs, exampleData$batchList,
   marker = exampleData$marker
 )
+#> shared bandwidth for MarkerF1: 0.329
+#> shared bandwidth for MarkerF2: 0.334
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -160,10 +162,10 @@ getStimGates(pathProject)
 #> # A tibble: 4 × 8
 #>   pop   gateName    chnl         marker   ind   batch   gate gateCyt
 #>   <chr> <chr>       <chr>        <I<chr>> <chr> <chr>  <dbl>   <dbl>
-#> 1 root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.40    4.40
-#> 2 root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.87    3.87
+#> 1 root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.42    4.42
+#> 2 root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.79    3.79
 #> 3 root  locminClust BC2(Pr141)Dd MarkerF2 2     batch1  3.40    2.17
-#> 4 root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.90    2.90
+#> 4 root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.91    2.91
 
 # Disable gate sharing and fix the first marker's bandwidth
 gateStim(
@@ -173,6 +175,7 @@ gateStim(
     list(list(bw = 0.12, biasUns = 0)), exampleData$marker[1]
   )
 )
+#> shared bandwidth for MarkerF2: 0.334
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -184,7 +187,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpxC6edm/custom_gating_1aaf3a1bab5"
+#> [1] "/tmp/Rtmpxk0a3U/custom_gating_1acb564e9ce2"
 
 # Gate in-memory matrices; column names act as channels and markers
 matrices <- lapply(seq_along(gs), function(i) {
@@ -194,6 +197,8 @@ gateStim(
   tempfile("matrix_gating_"), matrices, exampleData$batchList,
   chnl = exampleData$chnl, control = stimControl(calcCytPosGates = FALSE)
 )
+#> shared bandwidth for BC1(La139)Dd: 0.329
+#> shared bandwidth for BC2(Pr141)Dd: 0.334
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -205,5 +210,5 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpxC6edm/matrix_gating_1aaf29790d1c"
+#> [1] "/tmp/Rtmpxk0a3U/matrix_gating_1acb340e9b83"
 ```

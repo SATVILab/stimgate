@@ -11,7 +11,7 @@ background-subtracted statistics to a project directory."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.18</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.19</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -166,6 +166,8 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"stimgate_"</span><span class="op">)</span>, <span class="va">gs</span>, <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span>,</span></span>
 <span class="r-in"><span>  marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF1: 0.329</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF2: 0.334</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting base gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
@@ -181,10 +183,10 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 4 × 8</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   pop   gateName    chnl         marker   ind   batch   gate gateCyt</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;I&lt;chr&gt;&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.40    4.40</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.87    3.87</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.42    4.42</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.79    3.79</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> root  locminClust BC2(Pr141)Dd MarkerF2 2     batch1  3.40    2.17</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.90    2.90</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.91    2.91</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Disable gate sharing and fix the first marker's bandwidth</span></span></span>
 <span class="r-in"><span><span class="fu">gateStim</span><span class="op">(</span></span></span>
@@ -194,6 +196,7 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>bw <span class="op">=</span> <span class="fl">0.12</span>, biasUns <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span>, <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF2: 0.334</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting base gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
@@ -205,7 +208,7 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpxC6edm/custom_gating_1aaf3a1bab5"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmpxk0a3U/custom_gating_1acb564e9ce2"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Gate in-memory matrices; column names act as channels and markers</span></span></span>
 <span class="r-in"><span><span class="va">matrices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">gs</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span></span>
@@ -215,6 +218,8 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"matrix_gating_"</span><span class="op">)</span>, <span class="va">matrices</span>, <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span>,</span></span>
 <span class="r-in"><span>  chnl <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">chnl</span>, control <span class="op">=</span> <span class="fu"><a href="stimControl.html">stimControl</a></span><span class="op">(</span>calcCytPosGates <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for BC1(La139)Dd: 0.329</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for BC2(Pr141)Dd: 0.334</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting base gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
@@ -226,7 +231,7 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpxC6edm/matrix_gating_1aaf29790d1c"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmpxk0a3U/matrix_gating_1acb340e9b83"</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

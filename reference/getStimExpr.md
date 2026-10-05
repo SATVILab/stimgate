@@ -135,6 +135,8 @@ pathProject <- gateStim(
   tempfile("stimgate_"), gs, exampleData$batchList,
   marker = exampleData$marker
 )
+#> shared bandwidth for MarkerF1: 0.329
+#> shared bandwidth for MarkerF2: 0.334
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates

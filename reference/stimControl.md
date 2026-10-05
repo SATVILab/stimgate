@@ -14,7 +14,7 @@ stimControl(
   excMin = TRUE,
   cpMin = NULL,
   bwMtd = "hpi1",
-  bwScope = "sample",
+  bwScope = "cytokine",
   bwAdj = 1,
   bwMin = "auto",
   bwMax = "auto",
@@ -100,7 +100,7 @@ stimControl(
   `minCell`. Each pair uses the smaller tube bandwidth. Inspect
   `bwShared` and, for clusters, `bwSharedTbl` with
   [`stimgateMetaReadSettingsChnls()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsChnls.md).
-  Ignored with fixed `bw` or adaptive bandwidths. Default: "sample".
+  Ignored with fixed `bw` or adaptive bandwidths. Default: "cytokine".
 
 - bwAdj:
 
@@ -344,7 +344,7 @@ stimControl()
 #> [1] "hpi1"
 #> 
 #> $bwScope
-#> [1] "sample"
+#> [1] "cytokine"
 #> 
 #> $bwAdj
 #> [1] 1
@@ -485,7 +485,7 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> [1] "hpi1"
 #> 
 #> $bwScope
-#> [1] "sample"
+#> [1] "cytokine"
 #> 
 #> $bwAdj
 #> [1] 1.5

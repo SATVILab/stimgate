@@ -50,6 +50,8 @@ pathProject <- gateStim(
   tempfile("stimgate_"), gs, exampleData$batchList,
   marker = exampleData$marker
 )
+#> shared bandwidth for MarkerF1: 0.329
+#> shared bandwidth for MarkerF2: 0.334
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -65,8 +67,8 @@ getStimGates(pathProject)
 #> # A tibble: 4 × 8
 #>   pop   gateName    chnl         marker   ind   batch   gate gateCyt
 #>   <chr> <chr>       <chr>        <I<chr>> <chr> <chr>  <dbl>   <dbl>
-#> 1 root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.40    4.40
-#> 2 root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.87    3.87
+#> 1 root  locminClust BC1(La139)Dd MarkerF1 2     batch1  4.42    4.42
+#> 2 root  locminClust BC1(La139)Dd MarkerF1 4     batch2  3.79    3.79
 #> 3 root  locminClust BC2(Pr141)Dd MarkerF2 2     batch1  3.40    2.17
-#> 4 root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.90    2.90
+#> 4 root  locminClust BC2(Pr141)Dd MarkerF2 4     batch2  2.91    2.91
 ```
