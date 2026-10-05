@@ -1,3 +1,10 @@
+# stimgate 0.99.20
+
+## Bug fixes
+
+- `gateStim()` now excludes cells exactly at the gate from sample-level
+  frequencies, matching the strict gate applied to cells.
+
 # stimgate 0.99.19
 
 ## Breaking changes
@@ -5,6 +12,7 @@
 - `stimControl()` defaults to `bwScope = "cytokine"` again, so `gateStim()`
   shares one local-FDR bandwidth per marker. Per-sample estimation remains
   available with `bwScope = "sample"`.
+
 
 # stimgate 0.99.16
 
