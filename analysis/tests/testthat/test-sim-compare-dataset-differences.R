@@ -65,6 +65,11 @@ test_that("incomplete pairs retain coverage and suppress small-D intervals", {
   expect_true(all(fb$pair_coverage == 0.8))
   expect_true(all(fb$tube_coverage_competitor == 0.8))
   expect_true(all(is.na(fb$lower) & is.na(fb$upper)))
+  missing <- env$.simCompareDatasetDifferences(tbl[tbl$method != "fbeta", ], "scenario")
+  fb_missing <- missing[missing$method == "fbeta", ]
+  expect_true(all(fb_missing$n_pair == 0L))
+  expect_true(all(is.na(fb_missing$tube_coverage_competitor)))
+  expect_true(all(is.na(fb_missing$mean_difference)))
   tbl$propRespTruth <- 0
   zero <- env$.simCompareDatasetDifferences(tbl, "scenario", outcomes = "abs_rel_error")
   expect_true(all(zero$n_pair == 0L))

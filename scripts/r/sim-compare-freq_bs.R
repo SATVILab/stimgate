@@ -3063,10 +3063,12 @@
       dplyr::summarise(
         n_dataset = dplyr::n(),
         n_pair = sum(is.finite(.data$difference)),
-        tube_coverage_stimgate = sum(.data$n_finite_stim, na.rm = TRUE) /
-          sum(.data$n_tube_stim, na.rm = TRUE),
-        tube_coverage_competitor = sum(.data$n_finite_other, na.rm = TRUE) /
-          sum(.data$n_tube_other, na.rm = TRUE),
+        tube_coverage_stimgate = if (sum(.data$n_tube_stim, na.rm = TRUE) > 0) {
+          sum(.data$n_finite_stim, na.rm = TRUE) / sum(.data$n_tube_stim, na.rm = TRUE)
+        } else NA_real_,
+        tube_coverage_competitor = if (sum(.data$n_tube_other, na.rm = TRUE) > 0) {
+          sum(.data$n_finite_other, na.rm = TRUE) / sum(.data$n_tube_other, na.rm = TRUE)
+        } else NA_real_,
         mean_difference = {
           x <- .data$difference[is.finite(.data$difference)]
           if (length(x)) mean(x) else NA_real_
