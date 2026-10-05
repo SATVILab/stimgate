@@ -1580,6 +1580,7 @@ test_that("a missing bias_uns lets StimGate set the bias from its bandwidth", {
     captured$has_bias <- "biasUns" %in% names(args)
     captured$bias <- args$biasUns
     captured$factor <- args$biasUnsFactor
+    captured$scope <- args$bwScope
     stop("stop after capturing arguments")
   }
   row <- data.frame(
@@ -1591,6 +1592,11 @@ test_that("a missing bias_uns lets StimGate set the bias from its bandwidth", {
   expect_true(captured$has_bias)
   expect_null(captured$bias)
   expect_identical(captured$factor, 4)
+  expect_identical(captured$scope, "cytokine")
+
+  row$bw_scope <- "sample"
+  suppressWarnings(env$.simCompareRunScenario(row, nSample = 1, nIter = 1))
+  expect_identical(captured$scope, "sample")
 
   row$bias_uns <- 0.15
   suppressWarnings(env$.simCompareRunScenario(row, nSample = 1, nIter = 1))

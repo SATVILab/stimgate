@@ -63,7 +63,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v7"
+comparison_semantics_version <- "corrected-comparison-v8"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -132,7 +132,8 @@ tail beyond the observed negative range.
 
 For StimGate, bandwidth is estimated automatically using the `nrd0` selector
 (Silverman's rule of thumb), without background normalisation, with the
-bandwidth-estimation sample capped at 10,000 cells. StimGate's
+bandwidth-estimation sample capped at 10,000 cells. Bandwidths are shared per
+marker (`bwScope = "cytokine"`). StimGate's
 unstimulated-sample bias is not fixed: it equals the bandwidth StimGate
 estimates at the start (`biasUns = NULL` with `biasUnsFactor = 4`). Tailgate is deliberately left to use its usual automatic
 bandwidth estimation so that it is evaluated as it would normally run.
@@ -188,6 +189,7 @@ n_cell_uns_relative_to_stim_vec <- c(
 
 # StimGate bandwidth settings.
 stimgate_bw_mtd <- "nrd0"
+stimgate_bw_scope <- "cytokine"
 # StimGate's unstimulated-sample bias equals its initial bandwidth estimate:
 # with biasUns = NULL, gateStim() uses 0.25 * bwFallback * biasUnsFactor.
 stimgate_bias_uns_factor <- 4
@@ -241,6 +243,7 @@ sim_grid <- tidyr::expand_grid(
   prob_response = prob_response_vec,
   n_cell = n_cell_stim_vec,
   bw_mtd = stimgate_bw_mtd,
+  bw_scope = stimgate_bw_scope,
   bw_ncell_max = stimgate_bw_ncell_max,
   bw_fallback = stimgate_bw_fallback,
   bw_min = stimgate_bw_min,
@@ -262,6 +265,7 @@ sim_grid <- tidyr::expand_grid(
     mean_pos_setting,
     mean_pos,
     bw_mtd,
+    bw_scope,
     bw_ncell_max,
     bw_fallback,
     bw_min,
@@ -367,6 +371,7 @@ analysis_result_params <- list(
   n_sample_sim = n_sample_sim,
   n_iter_sim = n_iter_sim,
   stimgate_bw_mtd = stimgate_bw_mtd,
+  stimgate_bw_scope = stimgate_bw_scope,
   stimgate_bw_ncell_max = stimgate_bw_ncell_max,
   stimgate_bw_fallback = stimgate_bw_fallback,
   stimgate_bw_min = stimgate_bw_min,

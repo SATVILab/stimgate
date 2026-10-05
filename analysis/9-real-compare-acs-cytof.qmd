@@ -140,6 +140,8 @@ run_comparators_vec_by_pop <- .by_pop(run_comparators)
 # Display diagnostics sequentially below, including when using cached runs.
 run_stimgate_plots_vec_by_pop <- .by_pop(FALSE)
 run_preprocessing_plots_vec_by_pop <- .by_pop(FALSE)
+stimgate_bw_mtd <- "nrd0"
+stimgate_bw_scope <- "cytokine"
 # NA: StimGate's unstimulated-sample bias equals its initial bandwidth estimate.
 bias_uns <- NA_real_
 bias_uns_vec_by_pop <- .by_pop(bias_uns)
@@ -154,7 +156,8 @@ StimGate flow is applied to every population configured in `pop_vec`.
 
 The reusable helpers fix the six cytokine channels and the method settings.
 StimGate uses `bwMtd = "nrd0"` (with `bwNcellMax = 1e4`, `bwFallback = "auto"`
-and no bandwidth bounds), `gateCombn = "min"`, `minCell = 100`,
+and no bandwidth bounds); bandwidths are shared per marker
+(`bwScope = "cytokine"`). StimGate uses `gateCombn = "min"`, `minCell = 100`,
 `tolClust = NULL` and `calcCytPosGates = TRUE`. Its unstimulated-sample bias
 is not fixed: it equals the bandwidth StimGate estimates at the start
 (`biasUns = NULL` with `biasUnsFactor = 4`). F-beta uses its standard
@@ -190,6 +193,8 @@ tcrgd_tester <- .acsCytofRunPopulation(
   runPreprocessingPlots = FALSE,
   nSample = tester_n_sample,
   biasUns = bias_uns_vec_by_pop[["tcrgd"]],
+  bwMtd = stimgate_bw_mtd,
+  bwScope = stimgate_bw_scope,
   outputGroup = "tester"
 )
 
@@ -229,6 +234,8 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate)) {
         runMethods = run_stimgate_vec_by_pop[[pop]],
         runPlots = run_stimgate_plots_vec_by_pop[[pop]],
         runPreprocessingPlots = run_preprocessing_plots_vec_by_pop[[pop]],
+        bwMtd = stimgate_bw_mtd,
+        bwScope = stimgate_bw_scope,
         biasUns = bias_uns_vec_by_pop[[pop]]
       )
     },

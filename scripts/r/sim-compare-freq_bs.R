@@ -1046,6 +1046,7 @@
   bwMin = "none",
   bwMax = "none",
   bwMtd = "hpi1",
+  bwScope = "cytokine",
   bwAdj = 1,
   bwNcellMin = 1e2,
   bwNcellMax = 1e5,
@@ -1111,6 +1112,7 @@
           bwMin = bwMin,
           bwMax = bwMax,
           bwMtd = bwMtd,
+          bwScope = bwScope,
           bwAdj = bwAdj,
           bwNcellMin = bwNcellMin,
           bwNcellMax = bwNcellMax,
@@ -1422,6 +1424,7 @@
   bwMin = "none",
   bwMax = "none",
   bwMtd = "hpi1",
+  bwScope = "cytokine",
   bwAdj = 1,
   bwNcellMin = 1e2,
   bwNcellMax = 1e5,
@@ -1611,6 +1614,7 @@
       bwMin = bwMin,
       bwMax = bwMax,
       bwMtd = bwMtd,
+      bwScope = bwScope,
       bwAdj = bwAdj,
       bwNcellMin = bwNcellMin,
       bwNcellMax = bwNcellMax,
@@ -1677,6 +1681,7 @@
         bwMin = bwMin,
         bwMax = bwMax,
         bwMtd = bwMtd,
+        bwScope = bwScope,
         bwAdj = bwAdj,
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
@@ -2412,6 +2417,7 @@
         bwMin = if ("bw_min" %in% names(row)) row$bw_min[[1]] else "none",
         bwMax = if ("bw_max" %in% names(row)) row$bw_max[[1]] else "none",
         bwMtd = if ("bw_mtd" %in% names(row)) row$bw_mtd[[1]] else "hpi1",
+        bwScope = if ("bw_scope" %in% names(row)) row$bw_scope[[1]] else "cytokine",
         bwNcellMax = if ("bw_ncell_max" %in% names(row)) {
           row$bw_ncell_max[[1]]
         } else {

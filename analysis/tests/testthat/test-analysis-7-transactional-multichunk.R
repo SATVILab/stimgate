@@ -11,9 +11,12 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
 
   content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
 
+  expect_true(grepl('stimgate_bw_scope <- "cytokine"', content, fixed = TRUE))
+  expect_true(grepl("bw_scope = stimgate_bw_scope", content, fixed = TRUE))
+  expect_true(grepl("stimgate_bw_scope = stimgate_bw_scope", content, fixed = TRUE))
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'comparison_semantics_version <- "corrected-comparison-v7"',
+    'comparison_semantics_version <- "corrected-comparison-v8"',
     content, fixed = TRUE
   ))
   expect_false(grepl("sim_grid_shuffle_seed", content, fixed = TRUE))
