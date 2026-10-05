@@ -198,6 +198,10 @@ e.g. `devtools::test(filter = "cp_uns_loc|pos_ind")` or
 for analysis tests. Run the full suite once, on the finished change,
 before opening the PR; CI runs it again.
 
+Compare existing filesystem paths after
+`normalizePath(..., winslash = "/")` in tests, so Windows separator
+conventions do not cause false failures.
+
 When several agents work in parallel (subagents, separate worktrees),
 the subagents do not run R locally: concurrent R runs overload the
 machine. The coordinating agent tests once, locally, on the combined
@@ -436,15 +440,46 @@ weight lines by each direction’s share, and use a scale on which -100%
 and a two-fold over-estimate are equally far from zero. Monte Carlo
 error bars (`show_mcse` QMD parameter / `SHOW_MCSE`, default on; plot
 helpers take `mcse = FALSE` by default) use `analysis-mcse.R` and only
-existing replicates: sd/sqrt(n) for means, order-statistic intervals
-(x\_(l), x\_(u)) with l = qbinom(0.025, n, p), u = qbinom(0.975, n, p) +
-1 for percentiles (NA if n \< 5 or l \< 1 or u \> n), none for maxima,
-and sqrt(sum(se^2))/k for equal-weight scenario averages. In QMDs 7/8
-samples within a dataset are dependent, so the unit is the dataset
-(`iter`): MCSE = sd(per-dataset statistic)/sqrt(D), NA when D \< 5.
-Final runs use 20 datasets per scenario and draft runs use 5, the
-minimum for these bars; keep MCSE prose aligned with the selected
-`sim_size` settings.
+existing replicates. For independent sample-replication analyses, use
+sd/sqrt(n) for means and order-statistic intervals (x\_(l), x\_(u)) with
+l = qbinom(0.025, n, p), u = qbinom(0.975, n, p) + 1 for percentiles (NA
+if n \< 5 or l \< 1 or u \> n), none for maxima, and sqrt(sum(se^2))/k
+for equal-weight independent-scenario averages. Analyses 2a and the
+displayed bandwidth-bias subset of 2b use fixed bandwidth/bias with
+cluster gates disabled; preserve their independent-sample uncertainty
+and their scientific exclusions. The unplotted negative-width bias
+subset of 2b shares a pooled estimated bias and must not silently
+inherit that independence claim. In QMDs 7/8, main medians and existing
+tail percentiles pool valid sample outcomes across jointly gated
+datasets. Bootstrap whole independent datasets (`iter`) with
+multiplicity and recalculate the plotted pooled statistic; do not use
+SEs of within-dataset percentiles for pooled points. Point estimates
+stay identical with intervals on/off. Final runs use 20 datasets of 20
+samples; draft runs use 5 datasets of 20 samples. Tiny quick-mode
+exceptions are smoke checks. Size and scientific cache settings must
+reject old ten-sample results rather than combining two separately gated
+datasets.
+
+Remove maxima from main pooled-percentile figures. Separate
+dataset-maximum occurrence from mean maximum conditional on that
+direction occurring. Primary maxima require valid outcomes for every
+intended sample in each dataset; retain incomplete datasets in coverage
+and show method-specific eligible cohorts. Unaffected eligible datasets
+contribute zero occurrence and no severity. Bootstrap all datasets
+jointly; no affected datasets means zero occurrence and undefined
+severity. Occurrence intervals require at least 5 eligible datasets and
+95% finite bootstrap draws; severity additionally requires 5 affected
+datasets. Report eligible/incomplete/affected counts, undefined-draw
+coverage and suppressed intervals. Conditional mean dataset maxima need
+not exceed pooled sample percentiles.
+
+For scenario averages in jointly gated comparisons, bootstrap the
+complete plotted equal-weight average. Reuse the same dataset indices
+across methods and deterministic mismatch settings sharing biological
+random draws; do not RSS scenario SEs while ignoring that dependence. A
+draw with a missing originally contributing scenario statistic is
+undefined, rather than silently changing its averaging cohort. Report
+bootstrap validity beside the figure.
 
 For background-subtracted signed relative error, an estimate of zero
 gives -100% (0x); negative estimates can give errors below -100% and
@@ -1015,20 +1050,22 @@ not add separate debug loops.
 
 11. **Real-data analyses replace outputs non-destructively**: ACS error
     summaries separate stimuli, report positive-manual relative-error
-    denominators, and retain zero/negative manual frequencies in
-    absolute error. Donor-bootstrap intervals reuse common donor draws
-    across methods and strata, keeping stimulated tubes with their
-    shared control. Label the mean-error estimand and finite donor
-    coverage; manual gating is an imperfect reference. Real-data
-    analyses that recompute cached outputs (e.g. ACS CyTOF) build into a
-    temporary sibling and swap it in on success
-    (`.acsCytofReplaceDir()`), or compute all results before atomically
-    writing them. Never delete the previous output before the new one is
-    complete. ACS stage controls inherit `run_simulations` when their
-    parameters are NULL; explicit stage parameters/environment variables
-    override that default. Cached comparison renders read the saved
-    manual-comparison table without raw FCS or manual CSV inputs;
-    GatingSet diagnostics are optional when those caches are absent.
+    denominators, and retain zero manual frequencies in absolute error.
+    The existing manual and automated net-frequency reference is clipped
+    at zero; describe that preprocessing accurately without changing its
+    estimand. Donor-bootstrap intervals reuse common donor draws across
+    methods and strata, keeping stimulated tubes with their shared
+    control. Label the mean-error estimand and finite donor coverage;
+    manual gating is an imperfect reference. Real-data analyses that
+    recompute cached outputs (e.g. ACS CyTOF) build into a temporary
+    sibling and swap it in on success (`.acsCytofReplaceDir()`), or
+    compute all results before atomically writing them. Never delete the
+    previous output before the new one is complete. ACS stage controls
+    inherit `run_simulations` when their parameters are NULL; explicit
+    stage parameters/environment variables override that default. Cached
+    comparison renders read the saved manual-comparison table without
+    raw FCS or manual CSV inputs; GatingSet diagnostics are optional
+    when those caches are absent.
 
 ACS batches use the mapped SampleID and stimulus, never filename
 position. Saved ACS method outputs must carry identical
@@ -1232,3 +1269,15 @@ here: add focused `testthat` coverage in the appropriate suite (Section
 For GitHub issue or Project administration, use
 `.agents/skills/github-projects/SKILL.md` and read
 `.projects/project.md` before acting.
+
+Monte Carlo figure selection accepts `show_mcse` / `SHOW_MCSE` values
+`off`, `on` or `both` (default); historical Boolean false/true selects
+off/on. Compute the requested interval summaries once and derive off/on
+plots from that same plot. Mark only Monte Carlo interval layers with
+`.analysis_mcse_layer()`; removing MC intervals must preserve points,
+scales and other uncertainty (for example ACS donor intervals).
+Performance figure callers pass `mcse_mode` to shared save/print
+orchestration and ratio companions. Both versions are printed with
+explicit labels and saved in sibling `mcse_off/` and `mcse_on/` folders;
+non-MC figures retain a single output. Never rerun simulations for these
+twins.
