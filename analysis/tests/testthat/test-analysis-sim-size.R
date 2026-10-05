@@ -145,7 +145,8 @@ test_that("each simulation QMD sets final and draft sample counts in one place",
     for (size in c("final", "draft")) {
       expect_equal(counts(size), expected[[id]][[size]], info = paste(id, size))
     }
-    expect_equal(counts("draft", quick = TRUE), expected[[id]]$quick, info = id)
+    # Under quick, `.analysis_sim_size()` returns "final" (tested above).
+    expect_equal(counts("final", quick = TRUE), expected[[id]]$quick, info = id)
   }
   # Analyses 7 and 8 gate each dataset together, so draft reduces datasets:
   # a quarter of the final number, at least 5 and never more than final.
