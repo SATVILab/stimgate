@@ -884,9 +884,14 @@ deduplicates identical rows before drawing reference lines.
       same run ID and write under the same staged run directory,
       separated by chunk labels.
     - Slurm chunk launchers render the current top-level QMD and pass
-      chunk controls through environment variables. Do not create or
-      launch physical split-QMD copies; all chunks of one submission
-      must receive the same `ANALYSIS_RUN_ID`.
+      chunk controls through environment variables. Do not create
+      split-QMD variants whose content differs per chunk; all chunks of
+      one submission must receive the same `ANALYSIS_RUN_ID`. Each chunk
+      job renders an identical, job-specific temporary copy of the QMD
+      in the same folder (`scripts/slurm/render-qmd-isolated.sh`),
+      because Quarto keeps working files named after the QMD next to it
+      and concurrent renders of one QMD otherwise collide; the copy and
+      its outputs are removed when the job exits.
     - Never promote on partial/incomplete runs. Promote only after
       required chunks are complete and collated outputs validate.
     - Promotion updates `current/` only after a complete staged run is
