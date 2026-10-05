@@ -766,7 +766,9 @@ object passed as `control`; that includes the gating switches
 global-only and rejected there. Threshold sharing is controlled by
 logical `clusterGates`. Do not restore the removed tuning arguments on
 [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
-or the dead `gateQuant` / `maxPosProbX` settings.
+or the dead `gateQuant` / `maxPosProbX` settings. Analyses toggle
+threshold clustering with logical `cluster_gates` / `clusterGates`, not
+a tolerance.
 
 Cytometry entry points
 ([`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
