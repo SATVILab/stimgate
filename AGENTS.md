@@ -578,7 +578,8 @@ threshold layers above fills.
 
 Figures from analysis QMDs are saved under `output/fig/<QMD name>/<figure type>/`
 via `.analysis_fig_dir()`, with `fig_key <- .analysis_mode_key("<QMD name>")`;
-keep figures out of `cache/`.
+keep figures out of `cache/`. Analyses without a simulation-size setting,
+including real-data analyses, pass `sized = FALSE` to `.analysis_mode_key()`.
 
 Source analysis helper files explicitly in dependency order. Do not move analysis-only
 helpers into `R/` unless they have genuinely become part of the installed package
