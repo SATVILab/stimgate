@@ -684,6 +684,87 @@ add_bw_labs <- function(.data) {
   )
 }
 
+# Generating distributions for threshold companions, computed once per distinct
+# biological setting in a render. Cell counts, bandwidth and bias are not part
+# of this reference: these are not densities of the gated simulation samples.
+.simBandwidthThresholdDensities <- function(
+    panels, settings, n_cell = 1e5, seed = 271L, density_n = 2048L) {
+  keys <- c(
+    "transformation", "mean_pos", "prob_response",
+    "sample_perturbation_sd", "condition_perturbation_sd",
+    "cluster_perturbation_sd", "background_relative_to_response"
+  )
+  panels <- panels |>
+    dplyr::select(dplyr::all_of(keys)) |>
+    dplyr::distinct()
+  purrr::map_dfr(seq_len(nrow(panels)), function(i) {
+    row <- panels[i, ]
+    out <- .analysis_with_seed(seed, {
+      prob_uns <- row$prob_response * row$background_relative_to_response
+      simcyto::simCytExperiment(
+        nSample = 1L, nMarker = 1L, nCondition = 2L, nCluster = 2L,
+        nCellByCondition = c(n_cell, n_cell),
+        transformationFunc = .simMiscGetTrans(as.character(row$transformation)),
+        mixtureType = "gaussianOnly",
+        meanExprMat = matrix(c(0, row$mean_pos), ncol = 1),
+        clusterLabelVec = c("gn", "gp"),
+        probVecUns = c(1 - prob_uns, prob_uns),
+        probResponseVecByStimCondition = list(c(-row$prob_response, row$prob_response)),
+        probExact = settings$probExact,
+        covEvMin = settings$covEvMin, covEvMax = settings$covEvMax,
+        samplePerturbationSd = row$sample_perturbation_sd,
+        conditionPerturbationSd = row$condition_perturbation_sd,
+        clusterPerturbationSd = row$cluster_perturbation_sd
+      )
+    })
+    x_uns <- flowCore::exprs(out$flowFrameList[[1]])[, 1]
+    x_uns <- x_uns[out$labelsList[[1]] == "gn"]
+    x_stim <- flowCore::exprs(out$flowFrameList[[2]])[, 1]
+    bw <- if (row$transformation == "gamma") 0.025 else 0.15
+    limits <- range(c(x_uns, x_stim), finite = TRUE) + c(-3, 3) * bw
+    purrr::map_dfr(c("unstimulated", "stimulated"), function(condition) {
+      x <- if (condition == "unstimulated") x_uns else x_stim
+      dens <- stats::density(
+        x, bw = bw, n = density_n, from = limits[1], to = limits[2]
+      )
+      dplyr::bind_cols(
+        row[rep(1L, length(dens$x)), ],
+        tibble::tibble(condition = condition, expression = dens$x, density = dens$y)
+      )
+    })
+  }) |>
+    dplyr::mutate(transformation = .analysis_trans_factor(.data$transformation))
+}
+
+# Add the reference curves underneath the original threshold layers, retaining
+# their facets, groups, line types, colours and alpha values exactly.
+.simBandwidthThresholdDensityPlot <- function(plot, panels, densities) {
+  keys <- intersect(names(panels), names(densities))
+  keys <- setdiff(keys, c("condition", "expression", "density"))
+  density_panels <- panels |>
+    dplyr::select(dplyr::all_of(c(keys, "n_cell"))) |>
+    dplyr::distinct() |>
+    dplyr::inner_join(densities, by = keys, relationship = "many-to-many")
+  curves <- ggplot2::ggplot() +
+    ggplot2::geom_area(
+      data = density_panels,
+      ggplot2::aes(x = expression, y = density, fill = condition, group = condition),
+      inherit.aes = FALSE, alpha = 0.18, position = "identity"
+    ) +
+    ggplot2::geom_line(
+      data = density_panels,
+      ggplot2::aes(x = expression, y = density, colour = condition, group = condition),
+      inherit.aes = FALSE, linewidth = 0.3, alpha = 0.75
+    )
+  plot$layers <- c(curves$layers, plot$layers)
+  labels <- c(unstimulated = "Unstimulated negative component", stimulated = "Stimulated (all cells)")
+  plot +
+    ggplot2::scale_y_sqrt(labels = .analysis_label_number) +
+    ggplot2::scale_colour_manual(values = .simMiscGetStimColVec(), labels = labels) +
+    ggplot2::scale_fill_manual(values = .simMiscGetStimColVec(), labels = labels) +
+    ggplot2::labs(y = "Density, square-root scale", colour = NULL, fill = NULL)
+}
+
 # Match a figure's displayed dimensions, then show coverage beside that figure.
 # Omitted scenario dimensions are pooled only for this sample-count diagnostic;
 # error curves themselves average per-scenario statistics equally.
