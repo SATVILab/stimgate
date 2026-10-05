@@ -43,7 +43,7 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
   expect_equal(full$scenario_settings$biasUnsWidthHeightFrac, 0.15)
   expect_equal(full$scenario_settings$covEvMin, 1.5)
   expect_equal(full$scenario_settings$covEvMax, 1.5)
-  expect_null(full$scenario_settings$tolClust)
+  expect_false(full$scenario_settings$clusterGates)
   expect_false(full$scenario_settings$calcCytPosGates)
   expect_false(full$scenario_settings$locEnforceShapeThreshold)
   expect_identical(full$analysis_required_params$simulation_seed, 12345L)
@@ -315,7 +315,7 @@ test_that("Analysis 2b runs width-based bias with selective batch mismatch", {
     probExact = TRUE,
     covEvMin = 1.5,
     covEvMax = 1.5,
-    tolClust = NULL,
+    clusterGates = FALSE,
     locEnforceShapeThreshold = FALSE,
     calcCytPosGates = FALSE
   )

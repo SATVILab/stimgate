@@ -95,7 +95,7 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
         ncellUnsRelativeToStim = 0.5,
         covEvMin = 1.5,
         covEvMax = 1.5,
-        tolClust = NULL,
+        clusterGates = FALSE,
         locEnforceShapeThreshold = FALSE,
         calcCytPosGates = FALSE
       )
@@ -211,7 +211,7 @@ test_that("analysis 6 uses shared transactional runners and full-grid reruns", {
     root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd"
   )), collapse = "\n")
   for (contract in c(
-    'analysis_semantics_version <- "adaptive-bw-freq-v4"',
+    'analysis_semantics_version <- "adaptive-bw-freq-v5"',
     "sim_grid_full <- sim_grid",
     "sim_grid_spec = analysis_grid_spec",
     "scenario_settings = scenario_settings",
@@ -331,7 +331,7 @@ test_that("adaptive failed rows retry and promoted reads enforce grid settings",
   writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
   row <- .adaptive_grid_row()
   required <- list(
-    analysis_semantics_version = "adaptive-bw-freq-v4",
+    analysis_semantics_version = "adaptive-bw-freq-v5",
     sim_grid_spec = row[, setdiff(names(row), "sim_seed")],
     scenario_settings = list(nSample = 5L, nIter = 5L)
   )

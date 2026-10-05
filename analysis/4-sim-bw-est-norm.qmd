@@ -82,7 +82,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "norm")
-analysis_semantics_version <- "bandwidth-est-norm-v5"
+analysis_semantics_version <- "bandwidth-est-norm-v6"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -311,7 +311,6 @@ scenario_settings <- list(
   ncellUnsRelativeToStim = 1,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = NULL,
   summarise = FALSE
 )
 

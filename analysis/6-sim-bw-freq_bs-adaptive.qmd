@@ -75,7 +75,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
-analysis_semantics_version <- "adaptive-bw-freq-v4"
+analysis_semantics_version <- "adaptive-bw-freq-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -169,10 +169,11 @@ bw_crossover_vec <- c(NA_real_, 4.5, 5.5, 6.5)[[1]]
 bw_transition_width_vec <- c(0, 0.25)[[1]]
 
 # StimGate method settings for bandwidth-performance analysis:
-# Cluster refinement (tolClust) is intentionally set to NULL (OFF) to isolate and
+# Threshold clustering is intentionally OFF to isolate and
 # measure the effect of the bandwidth selector itself without multi-sample
 # cluster adjustments modifying thresholds post-local-FDR.
-tol_clust <- NULL
+# Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
+cluster_gates <- FALSE
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
 
@@ -367,7 +368,7 @@ scenario_settings <- list(
   probExact = TRUE,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = tol_clust,
+  clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
   calcCytPosGates = calc_cyt_pos_gates
 )

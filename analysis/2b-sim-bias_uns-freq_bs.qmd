@@ -90,7 +90,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bias_uns", "freq_bs")
-analysis_semantics_version <- "bias-uns-freq-v4"
+analysis_semantics_version <- "bias-uns-freq-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -219,7 +219,8 @@ mismatch_settings_tbl <- dplyr::bind_rows(
 background_relative_to_response <- 0.2
 n_cell_uns_relative_to_stim <- 1
 
-tol_clust <- NULL
+# Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
+cluster_gates <- FALSE
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
 ```
@@ -386,7 +387,7 @@ scenario_settings <- list(
   probExact = TRUE,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = tol_clust,
+  clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
   calcCytPosGates = calc_cyt_pos_gates
 )

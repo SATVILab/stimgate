@@ -56,7 +56,7 @@ test_that("analysis 2a scenario rerun is identical whatever the prior RNG", {
   settings <- list(
     nSample = 2L, nMarker = 1L, nCondition = 2L, nCluster = 2L, nIter = 1L,
     bwMin = "none", bwMax = "none", probExact = TRUE,
-    covEvMin = 1.5, covEvMax = 1.5, tolClust = NULL,
+    covEvMin = 1.5, covEvMax = 1.5, clusterGates = FALSE,
     locEnforceShapeThreshold = FALSE, calcCytPosGates = FALSE
   )
   row <- tibble::tibble(
