@@ -14,6 +14,7 @@ params:
   sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
+  show_mcse: true
 ---
 
 This analysis compares StimGate, F-beta and Tailgate when stimulated and
@@ -56,6 +57,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-mcse.R"))
 analysis_qmd <- "analysis/8-sim-compare-freq_bs-batch.qmd"
 
 run_simulations <- .as_flag(.get_qmd_param_env(
@@ -87,6 +89,8 @@ run_plots <- .as_flag(.get_qmd_param_env(
   "RUN_PLOTS",
   TRUE
 ))
+# Monte Carlo error bars on the summary plots (see analysis-mcse.R).
+show_mcse <- .as_flag(.get_qmd_param_env("show_mcse", "SHOW_MCSE", TRUE))
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
@@ -701,7 +705,8 @@ scenario_cols <- c(
 
 compare_summary <- .simCompareSummariseFreqBs(
   compare_raw,
-  scenarioCols = scenario_cols
+  scenarioCols = scenario_cols,
+  mcse = show_mcse
 )
 
 compare_summary
@@ -804,6 +809,29 @@ Mean shifts are additive shifts on the transformed expression scale, the
 scale the methods gate on. SD inflation is the fractional increase in the
 standard deviation of the stimulated background (negative) cells.
 
+**Monte Carlo error bars.** With `show_mcse` on (the default; set the
+`show_mcse` parameter or the `SHOW_MCSE` environment variable to false to
+turn it off), the summary plots show error bars for how much each plotted
+value could move if the simulation were repeated, using only the results
+already simulated. The simulated samples are not independent of each other:
+within one simulated dataset, StimGate estimates its bandwidth and bias once
+across the dataset's samples and can cluster their gates. So the unit is the
+simulated dataset. Each statistic (for example the median FDP) is also
+calculated within each dataset, and its standard error is the standard
+deviation of these per-dataset values divided by the square root of the
+number of datasets; the datasets are treated as independent draws. The bar is
+the plotted value plus or minus 1.96 of these standard errors. The plotted
+values themselves are unchanged: they are still calculated over all samples
+of all datasets. No bar is drawn with fewer than five datasets per scenario.
+The current settings have exactly five datasets per scenario, so bars are
+drawn, but a standard deviation from five values is itself rough; increase
+the number of datasets (`n_iter_sim`) for firmer intervals. Bars are kept
+within 0-100% for proportions. For averages over cell counts and response
+probabilities, the bar is the average plus or minus 1.96 combined standard
+errors, treating these scenarios as independent, which holds across
+biological scenarios. Maxima never have error bars: the results say little
+about how much larger the maximum could be.
+
 ```{r}
 #| label: figure-helpers
 #| echo: false
@@ -877,7 +905,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     "prob_response", "n_cell", "mismatch_type", "mismatch_val", "method"
   )
   class_scenario <- .simCompareClassificationSummary(
-    compare_raw, scenarioCols = classification_cols
+    compare_raw,
+    scenarioCols = classification_cols, mcse = show_mcse
   )
 }
 ```
@@ -889,7 +918,9 @@ fixed 0-100% scales. Solid lines are medians over replicates; dashed lines
 are the worse tail, the 90th percentile of FDP and the 10th percentile of
 sensitivity. Columns are baseline scenarios, each with its own horizontal
 range (on a square-root scale) because mismatch sizes differ between
-transformations. Each mismatch mechanism has its own figure.
+transformations. Each mismatch mechanism has its own figure. Error bars (with
+`show_mcse` on) come from the spread between datasets of each dataset's own
+median or tail percentile, as described above.
 
 ```{r}
 #| label: fdp-sensitivity
@@ -899,7 +930,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
     class_scenario,
     make_plot = .compare_mismatch_plot(
-      .simComparePlotClassification, outcomes = c("fdp", "sensitivity")
+      .simComparePlotClassification,
+      outcomes = c("fdp", "sensitivity"), mcse = show_mcse
     ),
     dir = .compare_fresh_fig_dir("fdp_sensitivity"),
     file_fn = .compare_mismatch_file,
@@ -957,7 +989,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
     class_scenario,
     make_plot = .compare_mismatch_plot(
-      .simComparePlotClassification, outcomes = "fpr", unit_scale = FALSE
+      .simComparePlotClassification,
+      outcomes = "fpr", unit_scale = FALSE, mcse = show_mcse
     ),
     dir = .compare_fresh_fig_dir("false_positive_rate"),
     file_fn = .compare_mismatch_file,
@@ -1173,6 +1206,15 @@ median, 95th percentile and maximum, columns separating transformations, and
 one figure per mean position setting, mismatch mechanism and (where
 applicable) cell count.
 
+Error bars (with `show_mcse` on) are drawn for the median and 95th
+percentile, not the maximum. Within one scenario they come from the spread
+between datasets of each dataset's statistic. In the averaged views they are
+the average plus or minus 1.96 combined standard errors, treating the
+averaged scenarios as independent. For over- and under-estimates, the number
+of errors in each direction is itself random, so the bars for a rare
+direction understate the uncertainty a little (the line weight shows how rare
+it is). Bars never extend past the +1500% cap.
+
 ```{r}
 #| label: mismatch-error-summaries
 #| echo: false
@@ -1183,10 +1225,12 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   )
   # Scenario statistics, one row per scenario and method.
   err_scenario <- .simCompareUnsignedErrorSummary(
-    compare_raw, scenarioCols = scenario_error_cols
+    compare_raw,
+    scenarioCols = scenario_error_cols, mcse = show_mcse
   )
   signed_scenario <- .simCompareSignedErrorSummary(
-    compare_raw, scenarioCols = scenario_error_cols
+    compare_raw,
+    scenarioCols = scenario_error_cols, mcse = show_mcse
   )
   # Averaging drops the baseline scenario columns left out of the groups.
   group_all <- c(
@@ -1214,7 +1258,10 @@ each transformation.
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
     err_averaged,
-    make_plot = .compare_mismatch_plot(.simComparePlotMismatchError),
+    make_plot = .compare_mismatch_plot(
+      .simComparePlotMismatchError,
+      mcse = show_mcse
+    ),
     dir = .compare_fresh_fig_dir("relative_error_averaged"),
     file_fn = .compare_mismatch_file,
     extra_heading = .compare_mismatch_heading,
@@ -1237,7 +1284,10 @@ probabilities.
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
     err_by_cell,
-    make_plot = .compare_mismatch_plot(.simComparePlotMismatchError),
+    make_plot = .compare_mismatch_plot(
+      .simComparePlotMismatchError,
+      mcse = show_mcse
+    ),
     dir = .compare_fresh_fig_dir("relative_error_by_n_cell"),
     file_fn = .compare_mismatch_file,
     extra_heading = .compare_mismatch_heading,
@@ -1261,7 +1311,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
     err_scenario,
     make_plot = .compare_mismatch_plot(
-      .simComparePlotMismatchError, by_prob = TRUE
+      .simComparePlotMismatchError,
+      by_prob = TRUE, mcse = show_mcse
     ),
     dir = .compare_fresh_fig_dir("relative_error_by_n_cell_prob"),
     file_fn = .compare_mismatch_file,
@@ -1292,7 +1343,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
     signed_averaged,
     make_plot = .compare_mismatch_plot(
-      .simComparePlotSignedError, x = "mismatch_val", x_log = FALSE
+      .simComparePlotSignedError,
+      x = "mismatch_val", x_log = FALSE, mcse = show_mcse
     ),
     dir = .compare_fresh_fig_dir("signed_error_averaged"),
     file_fn = .compare_mismatch_file,
@@ -1317,7 +1369,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
     signed_by_cell,
     make_plot = .compare_mismatch_plot(
-      .simComparePlotSignedError, x = "mismatch_val", x_log = FALSE
+      .simComparePlotSignedError,
+      x = "mismatch_val", x_log = FALSE, mcse = show_mcse
     ),
     dir = .compare_fresh_fig_dir("signed_error_by_n_cell"),
     file_fn = .compare_mismatch_file,
@@ -1343,8 +1396,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
     signed_scenario,
     make_plot = .compare_mismatch_plot(
-      .simComparePlotSignedError, x = "mismatch_val", x_log = FALSE,
-      by_prob = TRUE
+      .simComparePlotSignedError,
+      x = "mismatch_val", x_log = FALSE, by_prob = TRUE, mcse = show_mcse
     ),
     dir = .compare_fresh_fig_dir("signed_error_by_n_cell_prob"),
     file_fn = .compare_mismatch_file,
@@ -1362,6 +1415,8 @@ The mean share of unstimulated cells above the gate is plotted against
 the stimulated mean shift. Colour identifies the method, line type identifies
 which stimulated cells are shifted, and panels separate baseline scenarios.
 Higher values indicate that more unstimulated cells lie above the chosen gate.
+Error bars (with `show_mcse` on) come from the spread of each dataset's mean
+between datasets.
 
 ```{r}
 #| label: threshold-placement-unstim
@@ -1374,7 +1429,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     )
   .simCompareFigureLoop(
     summary_shifts,
-    make_plot = .simComparePlotPlacement,
+    make_plot = function(d) .simComparePlotPlacement(d, mcse = show_mcse),
     dir = .analysis_fig_dir(c(fig_key, "threshold_placement_unstim"), path_root = root_dir),
     file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
     height = 16,
@@ -1390,6 +1445,8 @@ size on an inverse-hyperbolic-sine vertical scale, with colour identifying
 the method. Rows of panels separate mismatch mechanisms and columns separate
 baseline scenarios, with one mean position setting per plot. Compare curves
 within each panel, since mean shift and spread increase use different units.
+Error bars (with `show_mcse` on) come from the spread of each dataset's 90th
+percentile between datasets.
 
 ```{r}
 #| label: upper-tail-and-fallbacks
@@ -1398,7 +1455,7 @@ within each panel, since mean shift and spread increase use different units.
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
     compare_summary,
-    make_plot = .simComparePlotUpperTail,
+    make_plot = function(d) .simComparePlotUpperTail(d, mcse = show_mcse),
     dir = .analysis_fig_dir(c(fig_key, "upper_tail_and_fallbacks"), path_root = root_dir),
     file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
     height = 18,

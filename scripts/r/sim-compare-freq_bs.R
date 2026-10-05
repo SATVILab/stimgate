@@ -2870,10 +2870,18 @@
 #' Summarise comparison runs by scenario and method
 #'
 #' @keywords internal
+# With `mcse`, the plotted statistics also get `<stat>_mcse`, `<stat>_lower`
+# and `<stat>_upper` (`analysis-mcse.R`): samples within one simulated
+# dataset are not independent (bandwidth and bias are estimated across the
+# dataset's samples and gates can be clustered), so the MCSE comes from the
+# spread between datasets (`unit`) of each dataset's own statistic, and is NA
+# with fewer than five datasets. The plotted (pooled) values are unchanged.
 .simCompareSummariseFreqBs <- function(
   .data,
   scenarioCols = NULL,
-  keepMethods = c("stimgate", "fbeta", "tailgate")
+  keepMethods = c("stimgate", "fbeta", "tailgate"),
+  mcse = FALSE,
+  unit = "iter"
 ) {
   if (!"error" %in% names(.data)) {
     .data$error <- NA_character_
@@ -2913,7 +2921,7 @@
     )
   }
 
-  .data |>
+  scored <- .data |>
     dplyr::filter(.data$method %in% keepMethods) |>
     dplyr::mutate(
       run_error = .data$error,
@@ -2925,7 +2933,8 @@
         .data$freq_error / .data$propRespTruth,
         NA_real_
       )
-    ) |>
+    )
+  out <- scored |>
     dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
     dplyr::summarise(
       n = dplyr::n(),
@@ -2976,6 +2985,60 @@
         )
       )
     )
+  if (!isTRUE(mcse)) {
+    return(out)
+  }
+  .simCompareRequireUnit(scored, unit)
+  q <- .analysis_mcse_quantile_finite
+  fmean <- function(v) mean(v[is.finite(v)])
+  mc <- scored |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
+    dplyr::summarise(
+      mean_abs_error_mcse = .analysis_mcse_between_units(
+        .data$abs_error, .data[[unit]], fmean
+      ),
+      med_abs_rel_error_mcse = .analysis_mcse_between_units(
+        abs(.data$rel_error), .data[[unit]], function(v) q(v, 0.5)
+      ),
+      q90_abs_rel_error_mcse = .analysis_mcse_between_units(
+        abs(.data$rel_error), .data[[unit]], function(v) q(v, 0.9)
+      ),
+      q95_abs_rel_error_mcse = .analysis_mcse_between_units(
+        abs(.data$rel_error), .data[[unit]], function(v) q(v, 0.95)
+      ),
+      fallback_rate_mcse = .analysis_mcse_between_units(
+        .data$thresholdFallbackUsed %in% TRUE, .data[[unit]], mean
+      ),
+      propUns_mean_mcse = .analysis_mcse_between_units(
+        .data$propUns, .data[[unit]], fmean
+      ),
+      .groups = "drop"
+    )
+  out |>
+    dplyr::mutate(fallback_rate = .data$n_threshold_fallback / .data$n) |>
+    dplyr::left_join(mc, by = scenarioCols) |>
+    .analysis_mcse_add_bounds(
+      c(
+        "mean_abs_error", "med_abs_rel_error", "q90_abs_rel_error",
+        "q95_abs_rel_error"
+      ),
+      range = c(0, Inf)
+    ) |>
+    .analysis_mcse_add_bounds(
+      c("fallback_rate", "propUns_mean"),
+      range = c(0, 1)
+    )
+}
+
+# Stop unless `.data` has the dataset column used as the Monte Carlo unit.
+.simCompareRequireUnit <- function(.data, unit) {
+  if (!is.character(unit) || length(unit) != 1L || !unit %in% names(.data)) {
+    stop(
+      "Monte Carlo errors need the dataset column `", paste(unit, collapse = ""),
+      "` in the comparison results."
+    )
+  }
+  invisible(TRUE)
 }
 
 # Promote only a complete cross-chunk comparison grid.
@@ -3150,8 +3213,10 @@
 
 # Error statistic against stimulated cell count, one panel per response
 # frequency and transformation.
+# `mcse`: draw the `<y>_lower`/`<y>_upper` Monte Carlo intervals.
 .simComparePlotByCell <- function(
-    data, y, y_label, zero_line = FALSE, free_y = FALSE, percent_y = FALSE) {
+    data, y, y_label, zero_line = FALSE, free_y = FALSE, percent_y = FALSE,
+    mcse = FALSE) {
   data$transformation <- .analysis_trans_factor(data$transformation)
   p <- ggplot2::ggplot(
     data,
@@ -3161,6 +3226,10 @@
     p <- p + ggplot2::geom_hline(
       yintercept = 0, colour = "gray25", linetype = "dashed"
     )
+  }
+  bounds <- paste0(y, c("_lower", "_upper"))
+  if (isTRUE(mcse) && all(bounds %in% names(data))) {
+    p <- p + .analysis_mcse_errorbar(data, bounds[[1]], bounds[[2]])
   }
   p +
     ggplot2::geom_line(alpha = 0.75) +
@@ -3211,10 +3280,10 @@
 }
 
 # Share of estimates that used a threshold fallback.
-.simComparePlotFallback <- function(data) {
+.simComparePlotFallback <- function(data, mcse = FALSE) {
   .simComparePlotByCell(
     data, "fallback_rate", "Share of estimates using a threshold fallback",
-    percent_y = TRUE
+    percent_y = TRUE, mcse = mcse
   )
 }
 
@@ -3257,7 +3326,10 @@
 .simCompareStripWrap <- function() ggplot2::label_wrap_gen(width = 22)
 
 # Share of unstimulated cells above the gate against the mean shift.
-.simComparePlotPlacement <- function(data) {
+.simComparePlotPlacement <- function(data, mcse = FALSE) {
+  bars <- if (isTRUE(mcse) && "propUns_mean_lower" %in% names(data)) {
+    .analysis_mcse_errorbar(data, "propUns_mean_lower", "propUns_mean_upper")
+  }
   ggplot2::ggplot(
     data,
     ggplot2::aes(
@@ -3268,6 +3340,7 @@
   ) +
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
     ggplot2::geom_point(size = 2, alpha = 0.75) +
+    bars +
     ggplot2::facet_wrap(
       ~scenario_desc, scales = "free_y", labeller = .simCompareStripWrap()
     ) +
@@ -3285,10 +3358,15 @@
 }
 
 # 90th percentile error for every mismatch mechanism.
-.simComparePlotUpperTail <- function(data) {
+.simComparePlotUpperTail <- function(data, mcse = FALSE) {
   data$mismatch_type <- factor(
     data$mismatch_type, levels = names(.simCompareMismatchLabels)
   )
+  bars <- if (isTRUE(mcse) && "q90_abs_rel_error_lower" %in% names(data)) {
+    .analysis_mcse_errorbar(
+      data, "q90_abs_rel_error_lower", "q90_abs_rel_error_upper"
+    )
+  }
   ggplot2::ggplot(
     data,
     ggplot2::aes(
@@ -3297,6 +3375,7 @@
   ) +
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
     ggplot2::geom_point(size = 2, alpha = 0.75) +
+    bars +
     ggplot2::facet_grid(
       mismatch_type ~ scenario_desc, scales = "free",
       labeller = ggplot2::labeller(
@@ -3313,11 +3392,17 @@
 
 # Over- and under-estimate summary of signed relative error per scenario and
 # method, from raw comparison rows, with the same rows and estimand as
-# `.simCompareSummariseFreqBs()`.
+# `.simCompareSummariseFreqBs()`. With `mcse`, the Monte Carlo errors come
+# from the spread between datasets (`unit`), as in that function.
 .simCompareSignedErrorSummary <- function(
     .data,
     scenarioCols,
-    keepMethods = c("stimgate", "fbeta", "tailgate")) {
+    keepMethods = c("stimgate", "fbeta", "tailgate"),
+    mcse = FALSE,
+    unit = "iter") {
+  if (isTRUE(mcse)) {
+    .simCompareRequireUnit(.data, unit)
+  }
   .data |>
     dplyr::filter(.data$method %in% keepMethods) |>
     dplyr::mutate(
@@ -3327,18 +3412,30 @@
         NA_real_
       )
     ) |>
-    .simBandwidthSignedErrorSummary(scenarioCols)
+    .simBandwidthSignedErrorSummary(
+      scenarioCols,
+      mcse = mcse,
+      unit = if (isTRUE(mcse)) unit else NULL
+    )
 }
 
 # Size of the relative error, |estimate - truth| / truth, per scenario and
 # method: median, 95th percentile and maximum over the sample-level errors.
 # Uses the same rows and estimand as `.simCompareSummariseFreqBs()`; samples
 # with a true frequency of zero have no relative error and are left out.
+# With `mcse`, the median and 95th percentile get between-dataset Monte Carlo
+# errors and bounds (as in `.simCompareSummariseFreqBs()`); the maximum none.
 .simCompareUnsignedErrorSummary <- function(
     .data,
     scenarioCols,
-    keepMethods = c("stimgate", "fbeta", "tailgate")) {
-  .data |>
+    keepMethods = c("stimgate", "fbeta", "tailgate"),
+    mcse = FALSE,
+    unit = "iter") {
+  if (isTRUE(mcse)) {
+    .simCompareRequireUnit(.data, unit)
+  }
+  q <- .simCompareQuantileFinite
+  out <- .data |>
     dplyr::filter(.data$method %in% keepMethods) |>
     dplyr::mutate(
       abs_rel_error = dplyr::if_else(
@@ -3354,18 +3451,46 @@
         .data$abs_rel_error, probs = 0.95, na.rm = TRUE
       )),
       max = suppressWarnings(max(.data$abs_rel_error, na.rm = TRUE)),
+      median_mcse = if (isTRUE(mcse)) {
+        .analysis_mcse_between_units(
+          .data$abs_rel_error, .data[[unit]], function(v) q(v, 0.5)
+        )
+      } else {
+        NA_real_
+      },
+      q95_mcse = if (isTRUE(mcse)) {
+        .analysis_mcse_between_units(
+          .data$abs_rel_error, .data[[unit]], function(v) q(v, 0.95)
+        )
+      } else {
+        NA_real_
+      },
       .groups = "drop"
     ) |>
     dplyr::mutate(dplyr::across(
       c("median", "q95", "max"),
       ~ dplyr::if_else(is.finite(.x), .x, NA_real_)
     ))
+  if (!isTRUE(mcse)) {
+    return(dplyr::select(out, -"median_mcse", -"q95_mcse"))
+  }
+  out$max_mcse <- NA_real_
+  .analysis_mcse_add_bounds(out, c("median", "q95", "max"), range = c(0, Inf))
 }
 
 # Average the scenario statistics equally over the scenarios in each group
 # (each scenario counts once, however many samples it has). Scenarios are
 # averaged only over the columns left out of `group_cols`.
+# With Monte Carlo errors (`<stat>_mcse`), these are combined as for
+# independent scenarios (`.analysis_mcse_average()`).
 .simCompareErrorAverage <- function(tbl, group_cols) {
+  if (any(c("median_mcse", "q95_mcse", "max_mcse") %in% names(tbl))) {
+    out <- .analysis_mcse_average_cols(tbl, group_cols, c("median", "q95", "max"))
+    for (s in c("median", "q95", "max")) {
+      out[[paste0(s, "_lower")]] <- pmax(out[[paste0(s, "_lower")]], 0)
+    }
+    return(out)
+  }
   tbl |>
     dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
     dplyr::summarise(
@@ -3396,7 +3521,8 @@
     tbl,
     x_label = "Mismatch size",
     by_prob = FALSE,
-    stat_cols = c(median = "Median", q95 = "95th percentile", max = "Maximum")) {
+    stat_cols = c(median = "Median", q95 = "95th percentile", max = "Maximum"),
+    mcse = FALSE) {
   tbl$transformation <- .analysis_trans_factor(tbl$transformation)
   tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
   # Errors above 1500% (16 times the truth) are drawn at the cap.
@@ -3410,6 +3536,7 @@
   ) +
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
     ggplot2::geom_point(size = 1.5, alpha = 0.75) +
+    (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl)) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
     .simBandwidthAbsErrorLayers(capped = capped) +
     .analysis_scale_method() +
@@ -3428,7 +3555,8 @@
     x_label = "Number of stimulated cells",
     x_log = TRUE,
     by_prob = FALSE,
-    stat_cols = c(median = "Median", q95 = "95th percentile", max = "Maximum")) {
+    stat_cols = c(median = "Median", q95 = "95th percentile", max = "Maximum"),
+    mcse = FALSE) {
   tbl$transformation <- .analysis_trans_factor(tbl$transformation)
   tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
   x_scale <- if (x_log) {
@@ -3459,6 +3587,7 @@
       tbl, x, "value_shown", line_cols, alpha = 0.75
     ) +
     ggplot2::geom_point(size = 1, alpha = 0.75) +
+    (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl)) +
     x_scale +
     .analysis_scale_method() +
     .simCompareMismatchFacet(by_prob) +
@@ -3485,12 +3614,22 @@
 # false-positive rate; these are summarised directly, never pooled over cells.
 # FDP summaries use only replicates whose gate selected at least one cell
 # (`n_fdp_defined`), whereas an empty gate contributes zero sensitivity.
+# With `mcse`, each plotted percentile gets `<stat>_mcse`, `<stat>_lower` and
+# `<stat>_upper`: the percentile is also computed within each dataset
+# (`unit`), and its MCSE is the spread of these between datasets (NA with
+# fewer than five datasets); bounds are clipped to 0-100%. The plotted values,
+# pooled over the datasets' replicates, are unchanged.
 .simCompareClassificationSummary <- function(
     .data,
     scenarioCols,
-    keepMethods = c("stimgate", "fbeta", "tailgate")) {
+    keepMethods = c("stimgate", "fbeta", "tailgate"),
+    mcse = FALSE,
+    unit = "iter") {
+  if (isTRUE(mcse)) {
+    .simCompareRequireUnit(.data, unit)
+  }
   q <- .simCompareQuantileFinite
-  .data |>
+  out <- .data |>
     dplyr::filter(.data$method %in% keepMethods) |>
     .simCompareClassificationMetrics() |>
     dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
@@ -3514,6 +3653,37 @@
       prevalence_median = q(.data$n_genuine_pos / .data$n_classified, 0.5),
       .groups = "drop"
     )
+  if (!isTRUE(mcse)) {
+    return(out)
+  }
+  spec <- list(
+    fdp_median = c("fdp", 0.5), fdp_q90 = c("fdp", 0.9),
+    sensitivity_median = c("sensitivity", 0.5),
+    sensitivity_q10 = c("sensitivity", 0.1),
+    fpr_median = c("false_positive_rate", 0.5),
+    fpr_q90 = c("false_positive_rate", 0.9)
+  )
+  metrics <- .data |>
+    dplyr::filter(.data$method %in% keepMethods) |>
+    .simCompareClassificationMetrics()
+  grouped <- dplyr::group_by(
+    metrics, dplyr::across(dplyr::all_of(scenarioCols))
+  )
+  mc <- dplyr::summarise(grouped, .groups = "drop")
+  for (nm in names(spec)) {
+    col <- spec[[nm]][[1]]
+    p <- as.numeric(spec[[nm]][[2]])
+    mc[[paste0(nm, "_mcse")]] <- dplyr::summarise(
+      grouped,
+      .se = .analysis_mcse_between_units(
+        .data[[col]], .data[[unit]], function(v) q(v, p)
+      ),
+      .groups = "drop"
+    )$.se
+  }
+  out |>
+    dplyr::left_join(mc, by = scenarioCols) |>
+    .analysis_mcse_add_bounds(names(spec), range = c(0, 1))
 }
 
 # Pairing check: within each baseline scenario, replicate and sample, every
@@ -3615,15 +3785,26 @@
     tbl,
     outcomes = c("fdp", "sensitivity"),
     x_label = "Mismatch size",
-    unit_scale = TRUE) {
+    unit_scale = TRUE,
+    mcse = FALSE) {
   spec <- .simCompareClassificationOutcomes[outcomes]
+  # One statistic's rows, with its Monte Carlo bounds when present.
+  stat_rows <- function(label, statistic, col) {
+    bound <- function(suffix) {
+      b <- paste0(col, suffix)
+      if (b %in% names(tbl)) tbl[[b]] else rep(NA_real_, nrow(tbl))
+    }
+    dplyr::mutate(
+      tbl,
+      outcome = label, statistic = statistic, value = tbl[[col]],
+      lower = bound("_lower"), upper = bound("_upper")
+    )
+  }
   long <- purrr::map_df(names(spec), function(nm) {
     s <- spec[[nm]]
     dplyr::bind_rows(
-      dplyr::mutate(tbl, outcome = s[["label"]], statistic = "median",
-        value = .data[[s[["median"]]]]),
-      dplyr::mutate(tbl, outcome = s[["label"]], statistic = "tail",
-        value = .data[[s[["tail"]]]])
+      stat_rows(s[["label"]], "median", s[["median"]]),
+      stat_rows(s[["label"]], "tail", s[["tail"]])
     )
   })
   long$outcome <- factor(
@@ -3640,6 +3821,7 @@
   ) +
     ggplot2::geom_line(linewidth = 0.7, alpha = 0.8, na.rm = TRUE) +
     ggplot2::geom_point(size = 1.2, alpha = 0.8, na.rm = TRUE) +
+    (if (isTRUE(mcse)) .analysis_mcse_errorbar(long)) +
     ggplot2::facet_grid(
       outcome ~ scenario,
       scales = if (unit_scale) "free_x" else "free",

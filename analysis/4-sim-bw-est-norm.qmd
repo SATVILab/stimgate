@@ -15,6 +15,7 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
+  show_mcse: true
   sim_retry_errors: true
 ---
 
@@ -40,6 +41,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-mcse.R"))
 analysis_qmd <- "analysis/4-sim-bw-est-norm.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
@@ -92,6 +94,8 @@ run_plots <- .as_flag(.get_qmd_param_env(
   "RUN_PLOTS",
   TRUE
 ))
+# Monte Carlo error bars on the summary plots (see analysis-mcse.R).
+show_mcse <- .as_flag(.get_qmd_param_env("show_mcse", "SHOW_MCSE", TRUE))
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -453,6 +457,12 @@ if (isTRUE(run_plots)) {
     relative_path = c("collated", "bw_tbl_results.rds"),
     required_params = analysis_required_params
   )
+  # Sample-level estimates, for the Monte Carlo error bars.
+  bw_tbl <- .analysis_read_current(
+    run_ctx = run_ctx,
+    relative_path = c("collated", "bw_list_raw_mtd.rds"),
+    required_params = analysis_required_params
+  )
 } else {
   message("run_plots is false, so stopping after simulation/collation.")
 }
@@ -464,6 +474,8 @@ Plot the mean bandwidth against the number of cells.
 
 The cell-count axis is logarithmic. Colours distinguish the HPI methods, while line types and point shapes distinguish requested normalisation; facets separate transformations and response frequencies. Response frequencies are shown as percentages. Each figure sits under headings naming its response separation, bias and cell-count cap, so compare the ordinary and normalised curves within each panel.
 
+With `show_mcse` on (the default; set the `show_mcse` parameter or the `SHOW_MCSE` environment variable to false to turn it off), each mean has a thin error bar in its line's colour: the mean plus or minus 1.96 Monte Carlo standard errors (the standard deviation of the scenario's bandwidth estimates divided by the square root of their number). The error bars use only the estimates already simulated and treat them as independent draws, which holds here: each simulated sample is drawn and its bandwidth estimated separately, with no sharing across samples.
+
 ```{r}
 #| label: bw-estimate-plots
 #| echo: false
@@ -472,6 +484,19 @@ if (isTRUE(run_plots)) {
   # bw_mtd_norm describes the requested estimator. Normalised estimators can
   # fall back internally to the corresponding ordinary HPI estimator;
   # norm_fallback_rate records how often the selected final bandwidth did so.
+  # Monte Carlo interval for each scenario's mean bandwidth: mean +/- 1.96
+  # sd / sqrt(n) over its complete finite stim/unstim pairs.
+  bw_mean_mcse <- bw_tbl |>
+    dplyr::mutate(
+      bw_pair = dplyr::if_else(
+        is.finite(bw_stim) & is.finite(bw_uns),
+        pmin(bw_stim, bw_uns),
+        NA_real_
+      )
+    ) |>
+    dplyr::group_by(sim_id) |>
+    dplyr::reframe(.analysis_mcse_mean(bw_pair)) |>
+    dplyr::select(sim_id, mean_bw_lower = lower, mean_bw_upper = upper)
   for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
     .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 3)
     for (bias_uns_setting_curr in unique(bw_tbl_results$bias_uns_setting)) {
@@ -494,6 +519,7 @@ if (isTRUE(run_plots)) {
           5
         )
         plot_tbl <- plot_tbl |>
+          dplyr::left_join(bw_mean_mcse, by = "sim_id") |>
           dplyr::mutate(
             transformation = .analysis_trans_factor(.data$transformation)
           )
@@ -516,6 +542,9 @@ if (isTRUE(run_plots)) {
             size = 1.7,
             alpha = 0.75
           ) +
+          (if (isTRUE(show_mcse)) {
+            .analysis_mcse_errorbar(plot_tbl, "mean_bw_lower", "mean_bw_upper")
+          }) +
           scale_x_log10(
             labels = .analysis_label_number,
             guide = guide_axis(angle = 45)
