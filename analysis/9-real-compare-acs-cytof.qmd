@@ -485,7 +485,8 @@ if (isTRUE(run_plots)) {
 
 Manual gating is an imperfect reference: these errors describe agreement with it,
 not error against known biological truth. Absolute frequency differences, in
-percentage points, retain zero and negative manual net frequencies. Relative
+percentage points, retain zero manual net frequencies. The current manual and
+automated net frequencies are truncated at zero after background subtraction. Relative
 errors require a positive manual net frequency and can be large when it is tiny.
 The coverage table reports every matched row, method failure, missing manual
 frequency and relative-error exclusion by method, population, cytokine and stimulus;
@@ -537,8 +538,10 @@ not uncertainty about whether manual gating is biologically correct.
 ```{r}
 #| label: manual-donor-uncertainty
 #| echo: false
-manual_uncertainty_tbl <- .acsCytofManualUncertainty(manual_comparison_tbl)
-print(manual_uncertainty_tbl, n = Inf)
+if (isTRUE(run_plots)) {
+  manual_uncertainty_tbl <- .acsCytofManualUncertainty(manual_comparison_tbl)
+  print(manual_uncertainty_tbl, n = Inf)
+}
 ```
 
 ### Expression and gate diagnostics

@@ -101,7 +101,8 @@ additional populations in the current benchmark.
 
 Manual gating is an imperfect reference, so agreement is not proof of biological
 accuracy. Analysis 9 provides absolute frequency-error and relative-error figures
-for each stimulus. Absolute error includes zero and negative manual net frequencies;
+for each stimulus. Absolute error includes zero manual net frequencies; the current
+manual and automated net frequencies are truncated at zero after subtraction.
 relative error needs a positive manual net frequency, and very small denominators
 can dominate it. The table reports matched-row and exclusion denominators.
 
@@ -122,7 +123,9 @@ bias or uncertainty in manual gating itself.
 ```{r}
 #| label: validation-donor-uncertainty
 #| echo: false
-print(.acsCytofManualUncertainty(manual_comparison_tbl), n = Inf)
+if (isTRUE(run_plots)) {
+  print(.acsCytofManualUncertainty(manual_comparison_tbl), n = Inf)
+}
 ```
 
 ## Results
