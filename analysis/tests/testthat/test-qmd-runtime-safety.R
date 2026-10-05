@@ -73,9 +73,12 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
   )
   content <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
 
+  expect_true(grepl('stimgate_bw_scope <- "cytokine"', content, fixed = TRUE))
+  expect_true(grepl("bw_scope = stimgate_bw_scope", content, fixed = TRUE))
+  expect_true(grepl("stimgate_bw_scope = stimgate_bw_scope", content, fixed = TRUE))
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'comparison_semantics_version <- "batch-mismatch-comparison-v9"',
+    'comparison_semantics_version <- "batch-mismatch-comparison-v10"',
     content,
     fixed = TRUE
   ))

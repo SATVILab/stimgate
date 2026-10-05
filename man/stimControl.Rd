@@ -11,7 +11,7 @@ stimControl(
   excMin = TRUE,
   cpMin = NULL,
   bwMtd = "hpi1",
-  bwScope = "sample",
+  bwScope = "cytokine",
   bwAdj = 1,
   bwMin = "auto",
   bwMax = "auto",
@@ -81,7 +81,7 @@ and uses cluster medians from about 100 tubes (at least one per cluster);
 datasets use all tubes. Shared estimates exclude tubes below \code{minCell}.
 Each pair uses the smaller tube bandwidth. Inspect \code{bwShared} and, for
 clusters, \code{bwSharedTbl} with \code{\link[=stimgateMetaReadSettingsChnls]{stimgateMetaReadSettingsChnls()}}. Ignored
-with fixed \code{bw} or adaptive bandwidths. Default: "sample".}
+with fixed \code{bw} or adaptive bandwidths. Default: "cytokine".}
 
 \item{bwAdj}{numeric Bandwidth multiplier; ignored with fixed \code{bw}. Default: 1.}
 
