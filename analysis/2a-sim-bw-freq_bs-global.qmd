@@ -1102,6 +1102,7 @@ if (isTRUE(run_plots)) {
     .analysis_save_fig(p, path_p, height = 14)
     .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
     .analysis_print_fig(p)
+    .simBandwidthPrintRatioTwin(p, path_p, height = 14)
     .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
       dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
       dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
@@ -1154,6 +1155,7 @@ if (isTRUE(run_plots)) {
       .analysis_save_fig(p, path_p, height = 14)
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
       .analysis_print_fig(p)
+      .simBandwidthPrintRatioTwin(p, path_p, height = 14)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
         dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
@@ -1213,6 +1215,7 @@ if (isTRUE(run_plots)) {
       .analysis_save_fig(p, path_p, height = min(22, 6 + 3 * n_prob))
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
       .analysis_print_fig(p)
+      .simBandwidthPrintRatioTwin(p, path_p, height = min(22, 6 + 3 * n_prob))
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
         dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))

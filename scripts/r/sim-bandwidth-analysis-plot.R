@@ -684,6 +684,33 @@ add_bw_labs <- function(.data) {
   )
 }
 
+# Keep signed-error coordinates and intervals; only express ticks as estimate/truth.
+.simBandwidthRatioPlot <- function(plot) {
+  scale <- plot$scales$get_scales("y")$clone()
+  capped <- startsWith(scale$labels(.simBandwidthSignedErrorCap), "\u2265")
+  scale$labels <- function(x) {
+    lab <- paste0(.analysis_label_number(1 + x), "x")
+    lab[is.finite(x) & abs(x) < 1e-8] <- "1x (exact)"
+    at_cap <- isTRUE(capped) & is.finite(x) & x >= .simBandwidthSignedErrorCap - 1e-8
+    lab[at_cap] <- paste0("\u2265 ", lab[at_cap])
+    lab
+  }
+  plot$scales <- plot$scales$clone()
+  plot$scales$scales[[which(vapply(plot$scales$scales,
+    function(x) "y" %in% x$aesthetics, logical(1)))]] <- scale
+  plot + ggplot2::labs(y = "Estimate / reference (multiple)")
+}
+
+# Signed-error companions live in sibling ratio folders with the same dimensions.
+.simBandwidthPrintRatioTwin <- function(plot, path, height, level = 6L, allow_tall = FALSE) {
+  ratio <- .simBandwidthRatioPlot(plot)
+  .analysis_save_fig(ratio, sub("signed_error", "ratio", path, fixed = TRUE),
+    height = height, allow_tall = allow_tall)
+  .analysis_heading("Estimate / reference ratio", level)
+  .analysis_print_fig(ratio)
+  invisible(NULL)
+}
+
 # Generating distributions for threshold companions, computed once per distinct
 # biological setting in a render. Cell counts, bandwidth and bias are not part
 # of this reference: these are not densities of the gated simulation samples.

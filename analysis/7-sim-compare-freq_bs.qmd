@@ -956,6 +956,7 @@ if (isTRUE(run_plots)) {
         gsub("[^0-9a-z]+", "_", .analysis_label_percent(extra)), ".png"
       )
     },
+    ratio_twins = TRUE,
     height = 14,
     level = 4L,
     extra_col = "prob_response",
