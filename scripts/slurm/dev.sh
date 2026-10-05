@@ -87,6 +87,12 @@ chunked_qmd_stem_for_script() {
     dev-6-sim-bw-freq_bs-adaptive.sh)
       echo "6-sim-bw-freq_bs-adaptive"
       ;;
+    dev-7-sim-compare-freq_bs.sh)
+      echo "7-sim-compare-freq_bs"
+      ;;
+    dev-8-sim-compare-freq_bs-batch.sh)
+      echo "8-sim-compare-freq_bs-batch"
+      ;;
     *)
       echo ""
       ;;
@@ -246,7 +252,8 @@ for script in "${scripts[@]}"; do
     done
   else
     echo "Submitting $script"
-    submit_job "$script_dir/$script"
+    submit_job "$script_dir/$script" -- \
+      --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",RUN_SIMULATIONS=true,RUN_PLOTS=false,SIM_SIZE="$sim_size"
     script_job_ids["$script"]=":$submitted_job_id"
     all_sim_job_ids+=("$submitted_job_id")
   fi
@@ -283,7 +290,7 @@ for script in "${scripts[@]}"; do
   submit_job -l "_tmp/log/sbatch/plots/${plot_stem}" -n "$script_dir/render-plots.sh" -- \
     --job-name="plots-${plot_stem}" \
     --dependency="$dependency" \
-    --export=ALL,PROJECT_ROOT="$project_root",PLOT_QMD_FILES="$plot_qmds",RUN_SIMULATIONS=false,RUN_PLOTS=true,SIM_SIZE="$sim_size"
+    --export=ALL,PROJECT_ROOT="$project_root",PLOT_QMD_FILES="$plot_qmds",ANALYSIS_RUN_ID="$analysis_run_id",RUN_SIMULATIONS=false,RUN_PLOTS=true,SIM_SIZE="$sim_size"
 done
 
 echo "All downstream jobs submitted"
