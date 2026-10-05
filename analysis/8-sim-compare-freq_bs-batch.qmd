@@ -857,7 +857,24 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   # Plot function for one figure: the x axis label depends on the mechanism.
   .compare_mismatch_plot <- function(plot_fn, ...) {
     function(d) {
-      plot_fn(d, x_label = .compare_mismatch_x(d$mismatch_type[[1]]), ...)
+      if ("n_scenario_median" %in% names(d)) {
+        count_cols <- c(
+          "transformation", "mismatch_val", "method", "n_cell", "direction",
+          "n_scenario_median", "n_scenario_q95", "n_scenario_max"
+        )
+        cat("\n\nContributing scenarios per statistic:\n\n",
+            knitr::kable(dplyr::select(d, dplyr::any_of(count_cols))), sep = "\n")
+        plot_fn(
+          d, x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
+          stat_cols = c(
+            median = "Mean of scenario medians",
+            q95 = "Mean of scenario 95th percentiles",
+            max = "Mean of scenario maxima"
+          ), ...
+        ) + ggplot2::labs(caption = .simBandwidthScenarioCaption(d))
+      } else {
+        plot_fn(d, x_label = .compare_mismatch_x(d$mismatch_type[[1]]), ...)
+      }
     }
   }
 }
@@ -1193,7 +1210,11 @@ summary table above. Samples with a true frequency of zero are left out. The
 figures below then either average these scenario statistics equally over
 cell counts and response probabilities, over response probabilities only, or
 not at all. Mismatch sizes differ between transformations, so scenarios are
-only ever averaged within one transformation and mismatch size.
+only ever averaged within one transformation and mismatch size. Averaged panels
+are labelled **Mean of scenario medians**, **Mean of scenario 95th percentiles**
+and **Mean of scenario maxima**. The table beside each averaged figure gives
+the finite contributing-scenario count for each statistic and setting; empty
+signed directions contribute no statistic.
 
 Two kinds of figure are shown, each in three views. The first kind shows the
 size of the relative error, ignoring direction. The second kind splits the
@@ -1238,6 +1259,21 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   group_cell <- c(group_all, "n_cell")
   err_averaged <- .simCompareErrorAverage(err_scenario, group_all)
   err_by_cell <- .simCompareErrorAverage(err_scenario, group_cell)
+  # Finite per-statistic counts, rather than the number of pooled samples.
+  for (groups in list(group_all, group_cell)) {
+    counts <- err_scenario |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(groups))) |>
+      dplyr::summarise(
+        dplyr::across(c(median, q95, max), ~ sum(is.finite(.x)),
+                      .names = "n_scenario_{.col}"),
+        .groups = "drop"
+      )
+    if (identical(groups, group_all)) {
+      err_averaged <- dplyr::left_join(err_averaged, counts, by = groups)
+    } else {
+      err_by_cell <- dplyr::left_join(err_by_cell, counts, by = groups)
+    }
+  }
   signed_averaged <- .simBandwidthSignedErrorAverage(signed_scenario, group_all)
   signed_by_cell <- .simBandwidthSignedErrorAverage(signed_scenario, group_cell)
 }
@@ -1329,7 +1365,7 @@ under-estimates below. Within each scenario, the median, 95th percentile and
 maximum are calculated separately for over- and under-estimates, then averaged
 equally over cell counts and response probabilities within each
 transformation. Line weight shows the share of estimates in that direction.
-Under-estimates are on a linear scale down to -100% (nothing gated), and
+Under-estimates are on a linear scale, including errors below -100% for negative background-subtracted estimates, with -100% (an estimate of zero, zero background-subtracted response), and
 over-estimates on a fold scale, so -100% and +100% (twice the truth) are the
 same distance from zero.
 

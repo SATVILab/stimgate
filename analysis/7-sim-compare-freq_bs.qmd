@@ -878,7 +878,7 @@ rows as the figures above. Over-estimates are drawn above zero and
 under-estimates below. Rows of panels show the median, 95th percentile and
 maximum, and columns separate expression distributions. Colour identifies the
 method, and a thicker line means a larger share of the estimates lies in that
-direction. The vertical scale is linear down to -100% (nothing gated) and
+direction. The vertical scale is linear, including errors below -100% for negative background-subtracted estimates, with -100% (an estimate of zero, zero background-subtracted response) and
 doubles at each step above, so -100% and a two-fold over-estimate are equally
 far from zero. Each plot uses one mean position setting, one response frequency
 and no random condition perturbation. Error bars (with `show_mcse` on and at

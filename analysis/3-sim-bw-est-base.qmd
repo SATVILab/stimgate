@@ -431,6 +431,8 @@ if (isTRUE(run_plots)) {
   )
   bw_tbl <- .analysis_read_rds(path_raw, analysis_key, analysis_qmd)
   bw_tbl_results <- .analysis_read_rds(path_results, analysis_key, analysis_qmd)
+  # Derive diagnostics from saved raw provenance, including older summaries.
+  bw_tbl_results <- .simBandwidthEstBaseSummary(bw_tbl, colnames(sim_grid_all))
   if (any(bw_tbl_results$n_bw_finite < bw_tbl_results$n_bw_total)) {
     message(
       "Some bandwidth estimates are non-finite; prop_bw_finite records ",
@@ -443,6 +445,12 @@ if (isTRUE(run_plots)) {
 ```
 
 ## Results
+
+Each figure has a companion table showing finite paired bandwidth estimates
+out of the expected sample count and the selected bandwidth's normalisation
+fallback share. Means use complete finite stim/unstim pairs. Analysis 3 disables
+numeric bandwidth fallbacks; an estimator failure remains a coverage failure,
+rather than a fallback estimate.
 
 Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the estimator. Facets separate transformations (Gaussian, Skew, Gamma) and response frequencies, shown as percentages; each figure sits under a heading naming its response-separation and bias setting. Compare the methods within each panel and follow how their estimates change with cell count.
 
@@ -533,6 +541,10 @@ if (isTRUE(run_plots)) {
       )
       .analysis_save_fig(p, path_plot, height = 15)
       .analysis_print_fig(p)
+      cat("\n\n", knitr::kable(plot_tbl |> dplyr::select(
+        transformation, prob_response, n_cell, bw_mtd,
+        n_bw_finite, n_bw_total, prop_bw_finite, norm_fallback_rate
+      ), digits = 3), sep = "\n")
     }
   }
 }

@@ -530,3 +530,45 @@ test_that("negative shoulder width extends as the density-height cutoff falls", 
   expect_true(is.finite(width_15))
   expect_gt(width_15, width_50)
 })
+
+
+test_that("2a retains invalid final samples and validates complete expected counts", {
+  env <- .load_bw_run_env()
+  tbl <- tibble::tibble(
+    sim_id = 1L, iter = 1L, ind = as.character(1:4), sample = as.character(1:4),
+    method = "loc_sample", threshold = c(3, 8, Inf, NA_real_),
+    propRespTruth = 0.1, propRespEst = c(-0.05, 0.1, 0, NA_real_),
+    locGenerated = c(TRUE, FALSE, FALSE, FALSE),
+    locGeneratedDirect = c(TRUE, FALSE, FALSE, FALSE),
+    locSource = c("direct", "fallback", "fallback", "fallback"),
+    locReason = c("selected", "high_value", "no_response", "unavailable")
+  )
+  result <- env$.simBandwidthFreqBsGlobalCollate(
+    tbl, "sim_id", n_sample_expected = 4L, n_iter_expected = 1L
+  )
+  expect_equal(nrow(result$bw_tbl_results_raw), 4L)
+  expect_identical(result$bw_tbl_results_raw$locSource, tbl$locSource)
+  expect_identical(result$bw_tbl_results_raw$valid_estimate, c(TRUE, TRUE, FALSE, FALSE))
+  summary <- result$bw_tbl_results_summary
+  expect_equal(summary$n_sample, 4L)
+  expect_equal(summary$n_valid, 2L)
+  expect_equal(summary$n_failed, 2L)
+  expect_equal(summary$failure_fraction, 0.5)
+  expect_equal(summary$fallback_fraction, 0.75)
+  expect_equal(summary$propRespEst_mean, 0.025)
+  expect_error(env$.simBandwidthFreqBsGlobalCollate(
+    tbl[-4, ], "sim_id", n_sample_expected = 4L
+  ), "final sample results")
+  expect_error(env$.simBandwidthFreqBsGlobalCollate(
+    tbl, "sim_id", n_sample_expected = 4L, n_iter_expected = 2L
+  ), "missing iterations")
+  missing <- dplyr::mutate(tbl[1, ], sim_id = 2L, method = "propRespPred")
+  expect_error(env$.simBandwidthFreqBsGlobalCollate(
+    dplyr::bind_rows(tbl, missing), "sim_id", n_sample_expected = 4L
+  ), "Missing final loc_sample")
+  tbl$threshold <- NA_real_
+  result <- env$.simBandwidthFreqBsGlobalCollate(tbl, "sim_id", 4L, 1L)
+  expect_equal(result$bw_tbl_results_summary$n_failed, 4L)
+  expect_true(is.na(result$bw_tbl_results_summary$propRespEst_mean))
+  expect_true(is.na(result$bw_tbl_results_summary$threshold_min))
+})
