@@ -10,7 +10,8 @@ script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 .compare_plot_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   for (fn in c(
-    "analysis-plot-style.R", "sim-bandwidth-analysis-plot.R",
+    "analysis-runtime.R", "analysis-plot-style.R", "analysis-mcse.R",
+    "sim-bandwidth-analysis-plot.R",
     "sim-compare-freq_bs.R"
   )) {
     source(file.path(root_dir, "scripts", "r", fn), local = env)
@@ -305,15 +306,17 @@ test_that(
     expect_s3_class(raw_res, "data.frame")
     expect_true(nrow(raw_res) > 0)
 
+    source(file.path(root_dir, "scripts/r/analysis-runtime.R"), local = env)
+    source(file.path(root_dir, "scripts/r/analysis-mcse.R"), local = env)
     summ <- env$.simCompareSummariseFreqBs(raw_res)
     expect_s3_class(summ, "data.frame")
     req_cols <- c(
       "med_abs_rel_error",
       "q90_abs_rel_error",
-      "q95_abs_rel_error",
-      "max_abs_rel_error"
+      "q95_abs_rel_error"
     )
     expect_true(all(req_cols %in% names(summ)))
+    expect_false("max_abs_rel_error" %in% names(summ))
     expect_true("mismatch_val" %in% names(summ))
     expect_true(nrow(summ) > 0)
   }
@@ -1394,6 +1397,8 @@ test_that("alternative comparator exceptions remain explicit run errors", {
   res$propRespEst[res$method == "tailgate"] <- 0
   res[res$method == "tailgate", env$.simCompareCountCols] <-
     fbeta_row[env$.simCompareCountCols]
+  source(file.path(root_dir, "scripts/r/analysis-runtime.R"), local = env)
+  source(file.path(root_dir, "scripts/r/analysis-mcse.R"), local = env)
   freq <- env$.simCompareSummariseFreqBs(res, scenarioCols = "method")
   cls <- env$.simCompareClassificationSummary(res, scenarioCols = "method")
   expect_equal(freq$n_est[freq$method == "tailgate"], 0L)
@@ -1440,7 +1445,7 @@ test_that("mismatch error summaries average scenario statistics equally", {
   # has a single sample with relative error 0.5; a zero-truth sample is
   # ignored.
   raw <- tibble::tibble(
-    base_scenario_id = c(1L, 1L, 2L, 2L),
+    base_scenario_id = c(1L, 1L, 2L, 2L), iter = c(1L, 2L, 1L, 2L),
     transformation = "gaussian", mean_pos_setting = "high",
     prob_response = 0.1, n_cell = c(100, 100, 1000, 1000),
     mismatch_type = "sd_inflation", mismatch_val = 0.1, method = "stimgate",
@@ -1453,7 +1458,7 @@ test_that("mismatch error summaries average scenario statistics equally", {
       "method")
   )
   expect_equal(scen$median, c(0.2, 0.5))
-  expect_equal(scen$max, c(0.3, 0.5))
+  expect_false("max" %in% names(scen))
   expect_equal(scen$q95, c(0.1 + 0.95 * 0.2, 0.5))
   # Equal weight per scenario, not per sample (which would give 0.3).
   avg <- env$.simCompareErrorAverage(
@@ -1461,7 +1466,7 @@ test_that("mismatch error summaries average scenario statistics equally", {
   )
   expect_equal(nrow(avg), 1L)
   expect_equal(avg$median, 0.35)
-  expect_equal(avg$max, 0.4)
+  expect_false("max" %in% names(avg))
   # Averaging over response probabilities only keeps cell counts apart.
   by_cell <- env$.simCompareErrorAverage(
     scen, c("transformation", "mismatch_type", "mismatch_val", "method",
@@ -1473,8 +1478,10 @@ test_that("mismatch error summaries average scenario statistics equally", {
     raw, scenarioCols = c("base_scenario_id", "n_cell", "transformation",
       "mismatch_type", "mismatch_val", "method")
   )
-  signed_avg <- env$.simBandwidthSignedErrorAverage(
-    signed, c("transformation", "mismatch_type", "mismatch_val", "method")
+  signed_avg <- env$.simComparePerformanceAverage(
+    raw, c("base_scenario_id", "n_cell", "transformation",
+      "mismatch_type", "mismatch_val", "method"),
+    c("transformation", "mismatch_type", "mismatch_val", "method"), signed = TRUE
   )
   over <- signed_avg[signed_avg$direction == "over", ]
   # Scenario 1: over 0.1 (share 1/2); scenario 2: over 0.5 (share 1).
@@ -1486,7 +1493,7 @@ test_that("mismatch error summaries average scenario statistics equally", {
     expect_no_error(ggplot2::ggplotGrob(plot_unsigned))
     expect_setequal(
       as.character(plot_unsigned$data$statistic),
-      c("Median", "95th percentile", "Maximum")
+      c("Median", "95th percentile")
     )
     plot_signed <- env$.simComparePlotSignedError(
       signed, x = "mismatch_val", x_log = FALSE, by_prob = FALSE
@@ -1596,7 +1603,8 @@ test_that("signed-error plot draws varying-width lines for methods and direction
     dplyr::mutate(
       transformation = "gaussian",
       propRespTruth = 0.01,
-      propRespEst = 0.01 * (1 + c(-0.5, -0.2, 0.1, 0.3, 0.8, 1.5)[rep])
+      propRespEst = 0.01 * (1 + c(-0.5, -0.2, 0.1, 0.3, 0.8, 1.5)[rep]),
+      iter = rep
     )
   tbl <- env$.simCompareSignedErrorSummary(
     raw, scenarioCols = c("transformation", "n_cell", "method")
@@ -1606,7 +1614,7 @@ test_that("signed-error plot draws varying-width lines for methods and direction
   expect_no_error(ggplot2::ggplotGrob(plot))
   expect_setequal(
     unique(as.character(plot$data$statistic)),
-    c("Median", "95th percentile", "Maximum")
+    c("Median", "95th percentile")
   )
   segment_layers <- Filter(
     function(l) inherits(l$geom, "GeomSegment"), plot$layers
@@ -1692,7 +1700,7 @@ test_that("comparison error plots cap errors at 16 times the truth", {
     dplyr::mutate(median = c(0.1, 30, 0.2, 0.4), q95 = 2 * median, max = 3 * median)
   unsigned <- env$.simComparePlotMismatchError(scen)
   expect_equal(max(unsigned$data$value_shown), 15)
-  expect_equal(max(unsigned$data$value), 90)
+  expect_equal(max(unsigned$data$value), 60)
   expect_no_error(ggplot2::ggplotGrob(unsigned))
   y_labels <- ggplot2::layer_scales(unsigned)$y$get_labels()
   expect_true(any(grepl("≥ 1,500%", y_labels, fixed = TRUE)))

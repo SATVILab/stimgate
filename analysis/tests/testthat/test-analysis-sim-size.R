@@ -115,8 +115,8 @@ test_that("each simulation QMD sets final and draft sample counts in one place",
     `4` = list(final = c(10L, 1L), draft = c(5L, 1L), quick = c(1L, 1L)),
     `5` = list(final = c(5L, 5L), draft = c(5L, 2L), quick = c(5L, 5L)),
     `6` = list(final = c(5L, 5L), draft = c(5L, 2L), quick = c(5L, 5L)),
-    `7` = list(final = c(10L, 20L), draft = c(10L, 5L), quick = c(1L, 1L)),
-    `8` = list(final = c(10L, 20L), draft = c(10L, 5L), quick = c(1L, 1L))
+    `7` = list(final = c(20L, 20L), draft = c(20L, 5L), quick = c(1L, 1L)),
+    `8` = list(final = c(20L, 20L), draft = c(20L, 5L), quick = c(1L, 1L))
   )
   for (id in names(expected)) {
     file <- list.files(file.path(root, "analysis"), paste0("^", id, "-.*qmd$"),

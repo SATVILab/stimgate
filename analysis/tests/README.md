@@ -64,3 +64,17 @@ gh workflow run analysis-qmd-tests.yaml --ref YOUR_BRANCH -f qmds='1,3,10'
 GitHub makes a new manual workflow available once its definition is on the
 default branch. The existing automatic analysis integration workflow remains
 the complete integration-suite check.
+
+The bounded performance fixture renders five constructed-data plots (pooled
+signed percentiles and ratio, dataset maximum occurrence, conditional signed
+severity and ratio), plus a coverage table, without generating or gating data:
+
+```sh
+Rscript --no-init-file analysis/tests/render_performance_fixture.R /tmp/stimgate-performance-figures
+```
+
+The numerical regressions distinguish pooled tube percentiles from means of
+within-dataset percentiles, recompute whole-dataset bootstrap statistics with
+multiplicity and paired biological seeds, and keep incomplete datasets separate
+from unaffected datasets. These fixtures do not validate full twenty-sample
+research simulations; those require fresh HPC runs.
