@@ -34,6 +34,7 @@ Submit the corresponding Slurm analyses independently or together:
 bash scripts/slurm/dev.sh 2a
 bash scripts/slurm/dev.sh 2b
 bash scripts/slurm/dev.sh 2a 2b
+SIM_SIZE=draft bash scripts/slurm/dev.sh 2a  # fewer samples, kept separately
 ```
 
 The Slurm launcher accepts analysis IDs or launcher filenames. With no arguments,

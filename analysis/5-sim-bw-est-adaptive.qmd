@@ -15,6 +15,7 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
+  sim_size: final
   sim_retry_errors: true
 ---
 
@@ -85,10 +86,12 @@ analysis_key <- c("sim", "bw", "est", "adaptive")
 analysis_semantics_version <- "adaptive-bw-est-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
+# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("5-sim-bw-est-adaptive")
 n_sample_sim <- if (analysis_dev) 1L else 5L
-n_iter_sim <- if (analysis_dev) 1L else 5L
+n_iter_sim <- if (analysis_dev) 1L else c(final = 5L, draft = 2L)[[sim_size]]
 norm_adaptive_ncell <- 2500L
 
 run_plots <- .as_flag(.get_qmd_param_env(
@@ -277,7 +280,10 @@ print(paste0(
 
 
 Fixed settings passed to `.simBandwidthEstBwDirectAdaptive()` for every grid
-row, and the manifest parameters that canonical results must match.
+row, and the manifest parameters that canonical results must match. Each
+scenario simulates 5 replicates of 5 samples in final runs and 2 replicates in
+draft runs (`SIM_SIZE=draft`); draft results are kept separately and are for
+iterating, not for reporting.
 
 ```{r}
 #| label: bw-estimate-settings
@@ -305,6 +311,7 @@ analysis_required_params <- list(
   analysis_semantics_version = analysis_semantics_version,
   simulation_seed = simulation_seed,
   analysis_dev = analysis_dev,
+  sim_size = sim_size,
   scenario_settings = scenario_settings,
   sim_grid_spec = analysis_grid_spec
 )
