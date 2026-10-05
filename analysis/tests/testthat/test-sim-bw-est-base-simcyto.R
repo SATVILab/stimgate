@@ -69,7 +69,6 @@ test_that(".simBandwidthEstBwDirect calls simcyto::simCytExperiment and produces
         ncellUnsRelativeToStim = 1,
         covEvMin = 1.5,
         covEvMax = 1.5,
-        tolClust = NULL,
         summarise = FALSE
       )
 
@@ -118,7 +117,6 @@ test_that(".simBandwidthEstBwDirect works with gamma and skew transformations fr
       ncellUnsRelativeToStim = 1,
       covEvMin = 1.5,
       covEvMax = 1.5,
-      tolClust = NULL,
       summarise = FALSE
     )
 

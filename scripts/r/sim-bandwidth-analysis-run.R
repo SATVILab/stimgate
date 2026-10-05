@@ -495,7 +495,7 @@
 #'
 #' @param row data.frame One row of the analysis 2 `sim_grid`.
 #' @param settings list Fixed `.simBandwidthBsFreq()` arguments (e.g.
-#'   `nSample`, `nIter`, `covEvMin`, `tolClust`).
+#'   `nSample`, `nIter`, `covEvMin`, `clusterGates`).
 #' @return tibble `.simBandwidthBsFreq()` output.
 .simBandwidthFreqBsGlobalScenario <- function(row, settings) {
   do.call(.simBandwidthBsFreq, c(settings, list(

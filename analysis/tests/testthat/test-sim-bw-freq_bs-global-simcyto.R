@@ -35,7 +35,7 @@ test_that("Analysis 2a executes its original bandwidth and fixed-bias design", {
   eval(parse(text = chunk("bw-manual-settings")), envir = env)
 
   expect_equal(env$scenario_settings$nSample, 200)
-  expect_null(env$scenario_settings$tolClust)
+  expect_false(env$scenario_settings$clusterGates)
   expect_false(env$scenario_settings$locEnforceShapeThreshold)
   expect_false(env$scenario_settings$calcCytPosGates)
   expect_equal(sort(unique(env$sim_grid_all$n_cell)), c(1e3, 5e3, 2e4, 1e5))
@@ -148,7 +148,7 @@ test_that(".simBandwidthBsFreq calls simcyto::simCytExperiment and produces vali
         ncellUnsRelativeToStim = 1,
         covEvMin = 1.5,
         covEvMax = 1.5,
-        tolClust = NULL,
+        clusterGates = FALSE,
         locEnforceShapeThreshold = FALSE,
         calcCytPosGates = FALSE
       )
@@ -209,7 +209,7 @@ test_that(".simBandwidthBsFreq works with gamma and skew transformations from si
       ncellUnsRelativeToStim = 1,
       covEvMin = 1.5,
       covEvMax = 1.5,
-      tolClust = NULL,
+      clusterGates = FALSE,
       locEnforceShapeThreshold = FALSE,
       calcCytPosGates = FALSE
     )
@@ -254,7 +254,7 @@ test_that(".simBandwidthBsFreq correctly preserves perturbations and cell count 
     ncellUnsRelativeToStim = 0.5,
     covEvMin = 1.5,
     covEvMax = 1.5,
-    tolClust = NULL,
+    clusterGates = FALSE,
     locEnforceShapeThreshold = FALSE,
     calcCytPosGates = FALSE
   )
@@ -321,7 +321,7 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
         ncellUnsRelativeToStim = 0.5,
         covEvMin = 1.5,
         covEvMax = 1.5,
-        tolClust = NULL,
+        clusterGates = FALSE,
         locEnforceShapeThreshold = FALSE,
         calcCytPosGates = FALSE
       )

@@ -393,7 +393,7 @@
   stimSdMultiplierClusters = NULL,
   covEvMin = 1,
   covEvMax = 2,
-  tolClust = NULL,
+  clusterGates = FALSE,
   minCell = 1e2,
   # Retained for callers/manifests; gateStim no longer uses these settings.
   maxPosProbX = Inf,
@@ -413,6 +413,10 @@
   gateCombn = "min",
   calcCytPosGates = FALSE
 ) {
+  if (!is.logical(clusterGates) || length(clusterGates) != 1L || is.na(clusterGates)) {
+    stop("clusterGates must be a single TRUE or FALSE.")
+  }
+
   bwMtdGate <- .simBandwidthAdaptiveBwMtd(
     bwMtd = bwMtd,
     bwAdaptive = bwAdaptive,
@@ -574,7 +578,7 @@
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
         bwCluster = bwCluster,
-        clusterGates = !is.null(tolClust),
+        clusterGates = clusterGates,
         locProbCol = locProbCol,
         locMinPeakProb = locMinPeakProb,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
@@ -770,7 +774,7 @@
         bwNcellMin = bwNcellMin,
         bwNcellMax = bwNcellMax,
         bwCluster = if (is.null(bwCluster)) NA_real_ else bwCluster,
-        tolClust = if (is.null(tolClust)) NA_real_ else tolClust,
+        clusterGates = clusterGates,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
         calcCytPosGates = calcCytPosGates,
         samplePerturbationSd = samplePerturbationSd,
@@ -810,7 +814,6 @@
   bwNcellMin = NULL,
   bwNcellMax = NULL,
   bwCluster = NULL, # retained only for signature compatibility
-  tolClust = NULL, # retained only for signature compatibility
   probExact = TRUE,
   nCellStim,
   probResponse,
@@ -1046,7 +1049,6 @@
   bwNcellMin = NULL,
   bwNcellMax = NULL,
   bwCluster = NULL,
-  tolClust = NULL,
   probExact = TRUE,
   nCellStim,
   probResponse,

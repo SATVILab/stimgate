@@ -82,7 +82,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "adaptive")
-analysis_semantics_version <- "adaptive-bw-est-v4"
+analysis_semantics_version <- "adaptive-bw-est-v5"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -298,7 +298,6 @@ scenario_settings <- list(
   ncellUnsRelativeToStim = 1,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = NULL,
   summarise = FALSE
 )
 

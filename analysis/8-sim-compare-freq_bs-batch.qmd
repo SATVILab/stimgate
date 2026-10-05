@@ -77,7 +77,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v8"
+comparison_semantics_version <- "batch-mismatch-comparison-v9"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -175,7 +175,8 @@ stimgate_bw_min <- "none"
 stimgate_bw_max <- "none"
 
 # Cluster refinement enabled for the full one-marker procedure
-tol_clust <- 1e-7
+# Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
+cluster_gates <- TRUE
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
 n_sample_sim <- if (analysis_quick) 1L else 5
@@ -436,7 +437,7 @@ if (isTRUE(run_simulations)) {
       stimgate_bw_fallback = stimgate_bw_fallback,
       stimgate_bw_min = stimgate_bw_min,
       stimgate_bw_max = stimgate_bw_max,
-      tol_clust = tol_clust,
+      cluster_gates = cluster_gates,
       loc_enforce_shape_threshold = loc_enforce_shape_threshold,
       calc_cyt_pos_gates = calc_cyt_pos_gates,
       fbeta_beta = fbeta_beta,
@@ -492,7 +493,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     probExact = TRUE,
     covEvMin = 1.5,
     covEvMax = 1.5,
-    tolClust = tol_clust,
+    clusterGates = cluster_gates,
     locEnforceShapeThreshold = loc_enforce_shape_threshold,
     calcCytPosGates = calc_cyt_pos_gates,
     pathFbeta = path_fbeta,
@@ -551,7 +552,7 @@ if (isTRUE(run_simulations) && sim_grid_chunk_index == 1L) {
       probExact = TRUE,
       covEvMin = 1.5,
       covEvMax = 1.5,
-      tolClust = tol_clust,
+      clusterGates = cluster_gates,
       locEnforceShapeThreshold = loc_enforce_shape_threshold,
       calcCytPosGates = calc_cyt_pos_gates,
       pathFbeta = path_fbeta,
@@ -1429,7 +1430,7 @@ compare_one <- .simCompareRunScenario(
   probExact = TRUE,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  tolClust = tol_clust,
+  clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
   calcCytPosGates = calc_cyt_pos_gates,
   pathFbeta = path_fbeta,

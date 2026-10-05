@@ -66,7 +66,6 @@ test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parit
     ncellUnsRelativeToStim = 0.5,
     covEvMin = 1.5,
     covEvMax = 1.5,
-    tolClust = NULL,
     summarise = FALSE
   )
 
@@ -242,7 +241,7 @@ test_that("analysis 4 scenario rerun is identical whatever the prior RNG", {
     bwFallback = NA_real_, bwMin = -Inf, bwMax = Inf, bwCluster = 0.5,
     capStimRange = FALSE, probExact = TRUE,
     backgroundRelativeToResponse = 0.2, ncellUnsRelativeToStim = 1,
-    covEvMin = 1.5, covEvMax = 1.5, tolClust = NULL, summarise = FALSE
+    covEvMin = 1.5, covEvMax = 1.5, summarise = FALSE
   )
   row <- tibble::tibble(
     transformation = "gaussian", prob_response = 0.05, n_cell = 200,

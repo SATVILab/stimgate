@@ -616,6 +616,7 @@ allowed per marker, whereas `calcCytPosGates` is global-only and rejected there.
 Threshold sharing is controlled by logical `clusterGates`. Do not restore the
 removed tuning arguments on `gateStim()` or the dead `gateQuant` / `maxPosProbX`
 settings.
+Analyses toggle threshold clustering with logical `cluster_gates` / `clusterGates`, not a tolerance.
 
 Cytometry entry points (`gateStim()`, `plotStim()`, `writeStimFCS()` and
 `getStimExpr()`) normalise inputs with `.asStimGatingSet()`. Accepted inputs are
