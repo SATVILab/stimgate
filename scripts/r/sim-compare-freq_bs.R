@@ -244,11 +244,7 @@
   xStim <- xStim[is.finite(xStim)]
 
   if (length(xUns) < 2L || length(xStim) < 2L) {
-    return(list(
-      threshold = NA_real_,
-      thresholdMetric = NA_real_,
-      thresholdOrigin = "failed_too_few_cells"
-    ))
+    stop("F-beta estimation requires at least two finite cells per tube.")
   }
 
   if (is.null(fbetaEnv)) {
@@ -316,11 +312,7 @@
   x <- x[is.finite(x)]
 
   if (length(x) < 2L || length(unique(x)) < 2L) {
-    return(list(
-      threshold = NA_real_,
-      thresholdMetric = NA_real_,
-      thresholdOrigin = "failed_too_few_unique_cells"
-    ))
+    stop("Tailgate estimation requires at least two distinct finite cells.")
   }
 
   if (!requireNamespace("cytoUtils", quietly = TRUE)) {
@@ -328,12 +320,7 @@
   }
 
   bandwidthUse <- if (is.null(bandwidth)) {
-    suppressWarnings(
-      tryCatch(
-        ks::hpi(x, deriv.order = 1L),
-        error = function(e) NA_real_
-      )
-    )
+    suppressWarnings(ks::hpi(x, deriv.order = 1L))
   } else {
     bandwidth
   }
@@ -343,11 +330,7 @@
       !is.finite(bandwidthUse) ||
       bandwidthUse <= 0
   ) {
-    return(list(
-      threshold = NA_real_,
-      thresholdMetric = NA_real_,
-      thresholdOrigin = "failed_bandwidth_nonfinite"
-    ))
+    stop("Tailgate bandwidth must be a finite positive scalar.")
   }
 
   threshold <- cytoUtils:::.cytokine_cutpoint(
@@ -367,8 +350,9 @@
     bandwidth = bandwidthUse
   )
 
+  threshold <- as.numeric(threshold)[1]
   list(
-    threshold = as.numeric(threshold)[1],
+    threshold = threshold,
     thresholdMetric = NA_real_,
     thresholdOrigin = if (is.finite(threshold)) {
       "calculated"
@@ -689,6 +673,10 @@
   }
   .data |>
     dplyr::mutate(
+      dplyr::across(
+        dplyr::all_of(.simCompareCountCols),
+        ~ dplyr::if_else(has_error, NA_integer_, .x)
+      ),
       n_selected = .data$nTruePos + .data$nFalsePos,
       n_genuine_pos = .data$nTruePos + .data$nFalseNeg,
       n_genuine_neg = .data$nFalsePos + .data$nTrueNeg,
@@ -819,7 +807,7 @@
         xStim = xStim,
         xUns = xUnsFbeta,
         threshold = fbetaObj$threshold,
-        fallbackHighValue = fallbackHighValue,
+        fallbackHighValue = is.na(fbetaError) && isTRUE(fallbackHighValue),
         fallbackMargin = fallbackMargin,
         labelsStim = labelsStim
       )
@@ -860,7 +848,7 @@
         xStim = xStim,
         xUns = xUnsTailgate,
         threshold = tailgateObj$threshold,
-        fallbackHighValue = fallbackHighValue,
+        fallbackHighValue = is.na(tailgateError) && isTRUE(fallbackHighValue),
         fallbackMargin = fallbackMargin,
         labelsStim = labelsStim
       )
@@ -878,14 +866,14 @@
         ),
         gateReturnPoint = c(
           if (!is.na(fbetaError)) {
-            "fbeta_error_fallback_high_value"
+            "fbeta_error"
           } else if (isTRUE(fbetaEst$thresholdFallbackUsed)) {
             "fbeta_fallback_high_value"
           } else {
             "fbeta_calculated"
           },
           if (!is.na(tailgateError)) {
-            "tailgate_error_fallback_high_value"
+            "tailgate_error"
           } else if (isTRUE(tailgateEst$thresholdFallbackUsed)) {
             "tailgate_fallback_high_value"
           } else {
@@ -2895,6 +2883,10 @@
     .data$error <- NA_character_
   }
 
+  if (!"thresholdOrigin" %in% names(.data)) {
+    .data$thresholdOrigin <- NA_character_
+  }
+
   if (is.null(scenarioCols)) {
     scenarioCols <- intersect(
       c(
@@ -2933,6 +2925,12 @@
     dplyr::filter(.data$method %in% keepMethods) |>
     dplyr::mutate(
       run_error = .data$error,
+      dplyr::across(
+        dplyr::all_of(c("propRespEst", "propStim", "propUns", "threshold")),
+        ~ dplyr::if_else(
+          !is.na(.data$run_error) & nzchar(.data$run_error), NA_real_, .x
+        )
+      ),
       freq_error = .data$propRespEst - .data$propRespTruth,
       abs_error = abs(.data$freq_error),
       sq_error = .data$freq_error^2,
@@ -2947,8 +2945,10 @@
       n = dplyr::n(),
       n_est = sum(is.finite(.data$propRespEst)),
       n_run_error = sum(!is.na(.data$run_error) & .data$run_error != ""),
+      n_no_cutpoint = sum(.data$thresholdOrigin %in% "failed_no_cutpoint"),
       n_threshold_fallback = sum(
-        .data$thresholdFallbackUsed %in% TRUE,
+        .data$thresholdFallbackUsed %in% TRUE &
+          (is.na(.data$run_error) | !nzchar(.data$run_error)),
         na.rm = TRUE
       ),
       propRespTruth_mean = mean(.data$propRespTruth, na.rm = TRUE),
@@ -2972,7 +2972,7 @@
         probs = 0.95,
         na.rm = TRUE
       ),
-      max_abs_rel_error = max(abs(.data$rel_error), na.rm = TRUE),
+      max_abs_rel_error = .simCompareQuantileFinite(abs(.data$rel_error), 1),
       threshold_mean = mean(.data$threshold, na.rm = TRUE),
       threshold_median = stats::median(.data$threshold, na.rm = TRUE),
       .groups = "drop"
@@ -3506,6 +3506,12 @@
     scenarioCols,
     keepMethods = c("stimgate", "fbeta", "tailgate")) {
   q <- .simCompareQuantileFinite
+  if (!"error" %in% names(.data)) {
+    .data$error <- NA_character_
+  }
+  if (!"thresholdOrigin" %in% names(.data)) {
+    .data$thresholdOrigin <- NA_character_
+  }
   .data |>
     dplyr::filter(.data$method %in% keepMethods) |>
     .simCompareClassificationMetrics() |>
@@ -3514,6 +3520,8 @@
       n = dplyr::n(),
       n_valid = sum(.data$gate_status != "failed"),
       n_failed = sum(.data$gate_status == "failed"),
+      n_run_error = sum(!is.na(.data$error) & nzchar(.data$error)),
+      n_no_cutpoint = sum(.data$thresholdOrigin %in% "failed_no_cutpoint"),
       n_fdp_defined = sum(is.finite(.data$fdp)),
       n_empty = sum(.data$gate_empty %in% TRUE),
       n_fallback = sum(
