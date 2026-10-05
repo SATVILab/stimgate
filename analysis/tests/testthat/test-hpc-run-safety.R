@@ -159,16 +159,20 @@ test_that("new unchunked cache schemas require their semantics identifier", {
   withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA_character_)
   expect_error(
     env$.analysis_check_expected_run(list(), "acs_cytof",
-      semantics_version = "acs-cytof-v1"),
+      semantics_version = "acs-cytof-v2"),
     "analysis_semantics_version"
   )
-  expect_no_error(env$.analysis_check_expected_run(
+  expect_error(env$.analysis_check_expected_run(
     list(analysis_semantics_version = "acs-cytof-v1"), "acs_cytof",
-    semantics_version = "acs-cytof-v1"
+    semantics_version = "acs-cytof-v2"
+  ), "analysis_semantics_version")
+  expect_no_error(env$.analysis_check_expected_run(
+    list(analysis_semantics_version = "acs-cytof-v2"), "acs_cytof",
+    semantics_version = "acs-cytof-v2"
   ))
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   for (file in c("9-real-compare-acs-cytof.qmd", "10-real-compare-acs-cytof-validation.qmd")) {
     text <- paste(readLines(file.path(root, "analysis", file)), collapse = "\n")
-    expect_match(text, 'semantics_version = "acs-cytof-v1"', fixed = TRUE)
+    expect_match(text, 'semantics_version = "acs-cytof-v2"', fixed = TRUE)
   }
 })
