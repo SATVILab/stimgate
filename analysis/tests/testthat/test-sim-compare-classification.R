@@ -322,8 +322,8 @@ test_that("analysis 8 leads with FDP and sensitivity and keeps error results", {
     regexpr("## Gate purity and detection", content, fixed = TRUE),
     regexpr("## Secondary results", content, fixed = TRUE)
   )
-  expect_true(grepl(".simComparePairingCheck(compare_raw)", content, fixed = TRUE))
-  expect_true(grepl(".simCompareZeroMismatchAgreement(compare_raw)", content, fixed = TRUE))
+  expect_true(grepl("validate_full = .simCompareValidateMismatch", content, fixed = TRUE))
+  expect_true(grepl("mismatch_validation <- .simCompareValidateMismatch(compare_raw)", content, fixed = TRUE))
   expect_true(grepl("gate_diagnostic_spec = gate_diagnostic_spec", content, fixed = TRUE))
   expect_true(grepl('c("collated", "gate_diagnostic.rds")', content, fixed = TRUE))
   # The diagnostic chunk reads saved results and never simulates at plot time.
