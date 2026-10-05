@@ -558,11 +558,12 @@
     dplyr::summarise(
       n_total = dplyr::n(),
       n_failed = sum(.data$thresholdFailed),
+      n_manual_nonpositive = sum(is.finite(.data$freq_bs_man) & .data$freq_bs_man <= 0),
+      n_manual_missing = sum(!is.finite(.data$freq_bs_man)),
+      n_relative = sum(is.finite(.data$abs_rel_error)),
+      n_relative_excluded = dplyr::n() - n_relative,
       prop_failed = mean(.data$thresholdFailed),
-      n = sum(stats::complete.cases(
-        .data$freq_bs_auto,
-        .data$freq_bs_man
-      )),
+      n = sum(is.finite(.data$freq_bs_auto) & is.finite(.data$freq_bs_man)),
       pcc = if (n > 1L) {
         suppressWarnings(stats::cor(
           .data$freq_bs_auto,
@@ -579,6 +580,71 @@
       ),
       .groups = "drop"
     )
+}
+
+# Resample donors once for the whole comparison. Every stimulated tube and its
+# already-subtracted shared control travel together, across stimuli and methods.
+.acsCytofManualUncertainty <- function(comparisonTbl, reps = 999L, seed = 20261005L) {
+  if (!"SampleID" %in% names(comparisonTbl) || anyNA(comparisonTbl$SampleID)) {
+    stop("ACS donor bootstrap requires complete SampleID values.")
+  }
+  if (length(reps) != 1L || !is.finite(reps) || reps < 2L || reps != as.integer(reps)) {
+    stop("ACS donor bootstrap needs at least two integer replicates.")
+  }
+  donors <- unique(as.character(comparisonTbl$SampleID))
+  weights <- .analysis_with_seed(seed, replicate(reps, tabulate(
+    sample.int(length(donors), length(donors), replace = TRUE), length(donors)
+  )))
+  weights <- matrix(weights, nrow = length(donors))
+  comparisonTbl |>
+    dplyr::group_by(method, pop, cyt, stim) |>
+    dplyr::group_modify(function(rows, key) {
+      failed <- if ("thresholdFailed" %in% names(rows)) rows$thresholdFailed %in% TRUE else FALSE
+      valid <- !failed & is.finite(rows$freq_bs_auto) & is.finite(rows$freq_bs_man)
+      absError <- abs(rows$freq_bs_auto - rows$freq_bs_man)
+      relative <- valid & rows$freq_bs_man > 0
+      interval <- function(values, keep) {
+        if (dplyr::n_distinct(rows$SampleID[keep]) < 2L) return(c(NA_real_, NA_real_, 0L))
+        sums <- counts <- numeric(length(donors))
+        for (i in seq_along(donors)) {
+          selected <- keep & as.character(rows$SampleID) == donors[i]
+          sums[i] <- sum(values[selected])
+          counts[i] <- sum(selected)
+        }
+        denominator <- as.numeric(crossprod(counts, weights))
+        draws <- as.numeric(crossprod(sums, weights)) / denominator
+        c(stats::quantile(draws[is.finite(draws)], c(0.025, 0.975), names = FALSE), sum(is.finite(draws)))
+      }
+      absCi <- interval(absError, valid)
+      relCi <- interval(absError / rows$freq_bs_man, relative)
+      tibble::tibble(
+        n_donors = dplyr::n_distinct(rows$SampleID[valid]),
+        n_relative_donors = dplyr::n_distinct(rows$SampleID[relative]),
+        mae = if (any(valid)) mean(absError[valid]) else NA_real_,
+        mae_lower = absCi[1], mae_upper = absCi[2],
+        mean_abs_rel_error = if (any(relative)) mean(absError[relative] / rows$freq_bs_man[relative]) else NA_real_,
+        mean_abs_rel_error_lower = relCi[1], mean_abs_rel_error_upper = relCi[2],
+        n_absolute_bootstrap_finite = as.integer(absCi[3]),
+        n_relative_bootstrap_finite = as.integer(relCi[3]),
+        bootstrap_reps = reps
+      )
+    }) |>
+    dplyr::ungroup()
+}
+
+.acsCytofManualPlotAbsoluteError <- function(comparisonTbl) {
+  comparisonTbl$method <- .acsCytofManualMethodFactor(comparisonTbl$method)
+  ggplot2::ggplot(comparisonTbl, ggplot2::aes(
+    x = .data$method, y = .data$abs_diff, fill = .data$method
+  )) +
+    ggplot2::geom_boxplot(outlier.alpha = 0.25) +
+    ggplot2::facet_grid(rows = ggplot2::vars(pop), cols = ggplot2::vars(cyt), scales = "free_y") +
+    ggplot2::scale_x_discrete(labels = .analysis_method_labels) +
+    ggplot2::scale_y_continuous(labels = .analysis_label_number) +
+    .analysis_scale_method("fill") +
+    ggplot2::labs(x = NULL, y = "Absolute frequency difference (percentage points)") +
+    .analysis_theme(grid = "y") +
+    ggplot2::theme(legend.position = "none", axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
 }
 
 # Method as a factor in the standard order (StimGate, Tailgate, F-beta).
@@ -731,6 +797,8 @@
 ) {
   dir.create(pathDirSave, recursive = TRUE, showWarnings = FALSE)
   summaryTbl <- .acsCytofManualSummaryTable(comparisonTbl)
+  uncertaintyTbl <- .acsCytofManualUncertainty(comparisonTbl)
+  utils::write.csv(uncertaintyTbl, file.path(pathDirSave, "manual-comparison-donor-uncertainty.csv"), row.names = FALSE)
   exclusions <- attr(comparisonTbl, "exclusions")
   if (is.null(exclusions)) exclusions <- data.frame(exclusionReason = character())
   utils::write.csv(exclusions, file.path(pathDirSave, "manual-comparison-exclusions.csv"), row.names = FALSE)

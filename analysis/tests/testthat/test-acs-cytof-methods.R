@@ -383,6 +383,7 @@ test_that("combination counts collapse to one positive row per cytokine", {
 test_that("manual comparison save preserves the last good RDS on pre-save failure", {
   env <- .load_acs_method_env()
   comparison_tbl <- tibble::tibble(
+    SampleID = c("a", "b"),
     method = c("stimgate", "stimgate"),
     pop = c("CD4 T cells", "CD4 T cells"),
     cyt = c("IFNg", "IFNg"),
@@ -559,15 +560,16 @@ test_that("ACS finite fallback gates remain failures in comparison and coverage"
   expect_error(env$.acsCytofJoinProvenance(single, thresholds[-1, ]), "Missing or duplicate")
 })
 
-test_that("ACS refuses mismatched data, preprocessing and revision manifests", {
+test_that("ACS refuses mismatched data and preprocessing manifests", {
   env <- .load_acs_method_env()
   context <- list(gitSha = "abc", preprocessing = list(
     settings = list(transform = "asinh(x / 5)"), inputFileListHash = "files"
   ))
   manifest <- list(context = context, settings = list(clusterGates = TRUE))
   expect_no_error(env$.acsCytofValidateManifests(list(manifest, manifest)))
+  expect_no_error(env$.acsCytofValidateManifests(list(manifest,
+    list(context = list(gitSha = "other", preprocessing = context$preprocessing)))))
   for (changed in list(
-    list(gitSha = "other", preprocessing = context$preprocessing),
     list(gitSha = "abc", preprocessing = list(inputFileListHash = "other")),
     list(gitSha = "abc", preprocessing = list(settings = list(transform = "none")))
   )) {
@@ -613,7 +615,7 @@ test_that("ACS coverage excludes every failed estimate even when a fallback is f
 
 test_that("ACS saves exclusions and manifests with the comparison transaction", {
   env <- .load_acs_method_env()
-  rows <- tibble::tibble(method = "fbeta", pop = "CD4 T cells", cyt = "IFNg", stim = "mtb",
+  rows <- tibble::tibble(SampleID = "a", method = "fbeta", pop = "CD4 T cells", cyt = "IFNg", stim = "mtb",
                          freq_bs_auto = 1, freq_bs_man = 1,
                          thresholdFailed = FALSE, abs_diff = 0, abs_rel_error = 0)
   attr(rows, "manifest") <- list(manualInputHash = "abc", methods = list())
@@ -636,8 +638,42 @@ test_that("ACS cached comparisons reject legacy and mixed method manifests", {
   expect_error(env$.acsCytofValidateComparisonManifest(table), "Legacy or incomplete")
   attr(table, "manifest") <- list(
     methods = list(cd4 = list(stimgate = list(context = list(gitSha = "a")),
-                             fbeta = list(context = list(gitSha = "b")))),
+                             fbeta = list(context = list(gitSha = "b", preprocessing = list(inputFileListHash = "other"))))),
     comparisonSettings = list(methods = c("stimgate", "fbeta")), manualInputHash = "abc"
   )
   expect_error(env$.acsCytofValidateComparisonManifest(table), "Mismatched ACS")
+})
+
+
+test_that("ACS error denominators retain zero manual values only for absolute errors", {
+  env <- .load_acs_method_env()
+  rows <- tibble::tibble(SampleID = letters[1:4], method = "stimgate", pop = "CD4", cyt = "IFNg", stim = "mtb",
+    freq_bs_auto = c(1, 2, 3, NA_real_), freq_bs_man = c(0, -1, 1, 1),
+    abs_diff = c(1, 3, 2, NA_real_), abs_rel_error = c(NA_real_, NA_real_, 2, NA_real_), thresholdFailed = c(FALSE, FALSE, FALSE, TRUE))
+  out <- env$.acsCytofManualSummaryTable(rows)
+  expect_equal(out$n, 3)
+  expect_equal(out$n_relative, 1)
+  expect_equal(out$n_relative_excluded, 3)
+  expect_equal(out$n_manual_nonpositive, 2)
+  expect_equal(out$mae, 2)
+  uncertainty <- env$.acsCytofManualUncertainty(rows, reps = 99)
+  expect_equal(uncertainty$n_donors, 3)
+  expect_equal(uncertainty$n_relative_donors, 1)
+  expect_true(is.na(uncertainty$mean_abs_rel_error_lower))
+})
+
+test_that("ACS bootstrap keeps common donor draws across tubes, methods and stimuli", {
+  env <- .load_acs_method_env()
+  rows <- tidyr::expand_grid(SampleID = letters[1:4], method = c("stimgate", "fbeta"), stim = c("mtb", "p4")) |>
+    dplyr::mutate(pop = "CD4", cyt = "IFNg", freq_bs_man = 1,
+      freq_bs_auto = match(SampleID, letters), thresholdFailed = FALSE)
+  set.seed(43)
+  seed <- .Random.seed
+  out <- env$.acsCytofManualUncertainty(rows, reps = 99)
+  expect_identical(.Random.seed, seed)
+  expect_equal(dplyr::n_distinct(out$mae_lower), 1L)
+  expect_equal(dplyr::n_distinct(out$mae_upper), 1L)
+  duplicated <- env$.acsCytofManualUncertainty(dplyr::bind_rows(rows, rows), reps = 99)
+  expect_equal(out, duplicated)
+  expect_error(env$.acsCytofManualUncertainty(rows, reps = 0), "at least two")
 })

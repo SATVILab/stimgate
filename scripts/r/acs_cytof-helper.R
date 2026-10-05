@@ -122,10 +122,14 @@
 }
 
 .acsCytofValidateManifests <- function(manifests) {
-  contexts <- lapply(manifests, function(x) x$context)
+  contexts <- lapply(manifests, function(x) {
+    context <- x$context
+    context$gitSha <- NULL
+    context
+  })
   if (!length(contexts) || any(vapply(contexts, is.null, logical(1))) ||
       !all(vapply(contexts, identical, logical(1), contexts[[1]]))) {
-    stop("Mismatched ACS result manifests (data, preprocessing or git SHA). Re-run all methods together.")
+    stop("Mismatched ACS result manifests (data or preprocessing). Re-run all methods together.")
   }
   invisible(TRUE)
 }

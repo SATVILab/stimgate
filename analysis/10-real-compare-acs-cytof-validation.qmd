@@ -40,6 +40,7 @@ source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 fig_key <- .analysis_mode_key("10-real-compare-acs-cytof-validation")
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
+source(file.path(scripts_r_dir, "acs_cytof-manual.R"))
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
@@ -95,6 +96,34 @@ matching the manuscript-style display. One set of heatmaps is restricted to
 CD4, CD8 and TCRgd T cells and another uses every matched population. This
 keeps the original manuscript comparison available while also showing the
 additional populations in the current benchmark.
+
+## Frequency-error coverage and donor uncertainty
+
+Manual gating is an imperfect reference, so agreement is not proof of biological
+accuracy. Analysis 9 provides absolute frequency-error and relative-error figures
+for each stimulus. Absolute error includes zero and negative manual net frequencies;
+relative error needs a positive manual net frequency, and very small denominators
+can dominate it. The table reports matched-row and exclusion denominators.
+
+```{r}
+#| label: validation-error-coverage
+#| echo: false
+print(.acsCytofManualSummaryTable(manual_comparison_tbl), n = Inf)
+```
+
+These 95% percentile intervals estimate between-donor uncertainty of mean absolute
+frequency and relative errors. All tubes belonging to a donor, including their
+shared already-subtracted control, are resampled together using the same donor
+draws across stimuli and methods. Finite successful estimates determine the mean;
+relative error also requires a positive manual net frequency. Intervals are missing
+with fewer than two contributing donors. The bootstrap does not quantify possible
+bias or uncertainty in manual gating itself.
+
+```{r}
+#| label: validation-donor-uncertainty
+#| echo: false
+print(.acsCytofManualUncertainty(manual_comparison_tbl), n = Inf)
+```
 
 ## Results
 
