@@ -901,11 +901,12 @@ negatives (FN) and true negatives (TN):
 - false-positive rate = FP / (FP + TN);
 - selected fraction = (TP + FP) / (TP + FP + FN + TN).
 
-Each replicate gives one value of each outcome, and the figures summarise
-these replicate-level values directly; cell counts are never pooled across
-replicates. **FDP summaries leave out replicates whose gate selected no
-cells**, because FDP is undefined there; the tables below give how many such
-replicates there are. FDP and sensitivity are always shown together, so a
+Each stimulated tube in each dataset gives one value of each outcome. The
+pooled quantiles describe tube-level distributions; cell counts are never
+pooled across tubes. Tubes within a dataset share gating settings and are not
+independent replicates. **FDP summaries leave out tubes whose gate selected no
+cells**, because FDP is undefined there; the tables below count these tubes.
+FDP and sensitivity are always shown together, so a
 gate that selects almost nothing cannot look successful merely because it
 contains few negatives.
 
@@ -924,10 +925,56 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 }
 ```
 
+### Paired differences between datasets
+
+The independent unit is the simulated dataset (`iter`), whose tubes are gated
+with shared settings and cluster gates. Within each scenario and dataset, we
+compute each method's median FDP and median sensitivity, then subtract the
+competitor's value from
+StimGate's value. Each dataset has equal weight. The tables report the mean
+paired difference and a 95% interval, mean ± 1.96 SD / √D, using the spread
+between the D datasets with finite paired summaries. Intervals are NA for D < 5.
+Dataset-pair coverage and finite-tube coverage are reported explicitly;
+undefined outcomes are omitted from the corresponding method summary and a
+dataset with no finite outcomes has no paired difference.
+Negative FDP differences and positive sensitivity differences favour StimGate.
+
+```{r}
+#| label: dataset-paired-differences
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  dataset_differences <- .simCompareDatasetDifferences(
+    compare_raw, scenarioCols = classification_cols,
+    outcomes = c("fdp", "sensitivity")
+  )
+  for (set in .simCompareMethodSets()) {
+    .analysis_heading(set$heading, 4L)
+    for (pos in unique(dataset_differences$mean_pos_setting)) {
+      .analysis_heading(paste0("Mean position: ", pos), 5L)
+      table <- dataset_differences |>
+        dplyr::filter(.data$method %in% set$methods, .data$mean_pos_setting == pos) |>
+        dplyr::mutate(
+          interval_95 = sprintf("[%.4f, %.4f]", .data$lower, .data$upper),
+          paired_datasets = paste0(.data$n_pair, " / ", .data$n_dataset)
+        ) |>
+        dplyr::select(dplyr::all_of(c(
+          "scenario_desc", "mismatch_type", "mismatch_val",
+          "outcome", "method", "paired_datasets", "mean_difference", "interval_95",
+          "tube_coverage_stimgate", "tube_coverage_competitor"
+        )))
+      print(knitr::kable(table, digits = 4,
+        caption = "Dataset-level paired differences: StimGate minus competitor."))
+      cat("\n\n")
+    }
+  }
+}
+```
+
 ### FDP and sensitivity against mismatch size
 
 The upper row of each figure is FDP and the lower row sensitivity, both on
-fixed 0-100% scales. Solid lines are medians over replicates; dashed lines
+fixed 0-100% scales. Solid lines are tube-level medians; dashed lines
 are the worse tail, the 90th percentile of FDP and the 10th percentile of
 sensitivity. Columns are baseline scenarios, each with its own horizontal
 range (on a square-root scale) because mismatch sizes differ between
@@ -958,7 +1005,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 
 ### Observation counts
 
-Each cell gives, for one method and setting, the number of valid replicates
+Each cell gives, for one method and setting, the number of valid tubes
 (no run error), the number with a defined FDP (the gate selected at least one
 cell), the number of empty gates and the number of gates that used a
 threshold fallback. Fallback gates are included in the outcomes above, as
@@ -977,7 +1024,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
       .simCompareClassificationCountTable(
         class_scenario[class_scenario$mismatch_type == type, ]
       ),
-      caption = "Valid / FDP defined / empty gates / fallbacks."
+      caption = "Tube counts: valid / FDP defined / empty gates / fallbacks."
     ))
     cat("\n\n")
   }

@@ -449,7 +449,9 @@ if (isTRUE(run_simulations)) {
 Read the canonical promoted results for plotting (both run contexts point
 at the same `current/` directory). In the collated `bw_tbl_results`,
 `mean_bw` is the mean over complete finite stim/unstim pairs of
-`pmin(bw_stim, bw_uns)`.
+`pmin(bw_stim, bw_uns)`. Scenarios with no finite pairs remain scientific
+outcomes: `n_est` is zero, `estimate_rate` is zero and `mean_bw` is undefined.
+The table reports coverage alongside these conditional means.
 
 ```{r}
 #| label: bw-estimate-collate
@@ -477,6 +479,17 @@ Each figure has a companion table showing coverage (`n_est / n_total`, where
 `n_total` is the validated expected sample count) and the share of finite pairs
 whose selected bandwidth used a normalisation fallback (`norm_fallback_rate`).
 Means use complete finite stim/unstim pairs.
+
+```{r}
+#| label: bandwidth-estimate-coverage
+#| echo: false
+if (isTRUE(run_plots)) {
+  print(knitr::kable(dplyr::select(
+    bw_tbl_results, dplyr::any_of(colnames(sim_grid_all)),
+    n_total, n_est, estimate_rate, mean_bw
+  ), caption = "Finite-pair bandwidth coverage by scenario (including zero coverage)."))
+}
+```
 
 Plot the mean bandwidth against the number of cells.
 

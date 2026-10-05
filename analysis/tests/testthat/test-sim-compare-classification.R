@@ -126,7 +126,7 @@ test_that("classification metrics handle empty, perfect and failed gates", {
   expect_true(all(props >= 0 & props <= 1))
 })
 
-test_that("classification summary uses replicate values and excludes undefined FDP", {
+test_that("classification summary uses tube values and excludes undefined FDP", {
   env <- .classification_env()
   raw <- tibble::tibble(
     scenario = "a",
@@ -145,7 +145,7 @@ test_that("classification summary uses replicate values and excludes undefined F
   expect_equal(out$n_empty, 1L)
   expect_equal(out$n_fallback, 1L)
   expect_equal(out$n_fallback_empty, 1L)
-  # FDP over the two defined replicates only (0 and 0.5).
+  # FDP over the two defined tubes only (0 and 0.5).
   expect_equal(out$fdp_median, 0.25)
   expect_equal(out$fdp_q90, stats::quantile(c(0, 0.5), 0.9, names = FALSE))
   # Sensitivity includes the empty gate's zero.

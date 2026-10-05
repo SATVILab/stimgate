@@ -646,6 +646,10 @@ if (isTRUE(run_plots)) {
 
 ## Results
 
+Pooled means and quantiles below describe tube-level distributions across
+simulated datasets. Tubes within a dataset share gating settings and are not
+independent replicates; uncertainty for method comparisons uses datasets.
+
 Every comparison figure is shown twice. "All methods" includes StimGate,
 Tailgate and F-beta. "Without Tailgate" leaves Tailgate out, because it
 performs very poorly without more tuning and squashes the scale for the other
@@ -673,6 +677,52 @@ Estimates from five datasets are rough; increase the number of datasets
 (`n_iter_sim`) for firmer intervals. Maxima never have error bars: the
 results say little about how much larger the maximum could be.
 
+### Paired differences between datasets
+
+The independent unit is the simulated dataset (`iter`), whose tubes are gated
+with shared settings and cluster gates. Within each scenario and dataset, we
+compute each method's mean absolute frequency error and mean absolute relative
+frequency error, then subtract the competitor's value from
+StimGate's value. Each dataset has equal weight. The tables report the mean
+paired difference and a 95% interval, mean ± 1.96 SD / √D, using the spread
+between the D datasets with finite paired summaries. Intervals are NA for D < 5.
+Dataset-pair coverage and finite-tube coverage are reported explicitly;
+undefined outcomes are omitted from the corresponding method summary and a
+dataset with no finite outcomes has no paired difference.
+Negative differences favour StimGate for both errors.
+
+```{r}
+#| label: dataset-paired-differences
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  dataset_differences <- .simCompareDatasetDifferences(
+    compare_tbl, scenarioCols = scenario_cols,
+    outcomes = c("abs_error", "abs_rel_error")
+  )
+  for (set in .simCompareMethodSets()) {
+    .analysis_heading(set$heading, 4L)
+    for (pos in unique(dataset_differences$mean_pos_setting)) {
+      .analysis_heading(paste0("Mean position: ", pos), 5L)
+      table <- dataset_differences |>
+        dplyr::filter(.data$method %in% set$methods, .data$mean_pos_setting == pos) |>
+        dplyr::mutate(
+          interval_95 = sprintf("[%.4f, %.4f]", .data$lower, .data$upper),
+          paired_datasets = paste0(.data$n_pair, " / ", .data$n_dataset)
+        ) |>
+        dplyr::select(dplyr::all_of(c(
+          "transformation", "prob_response", "n_cell", "condition_perturbation_sd",
+          "outcome", "method", "paired_datasets", "mean_difference", "interval_95",
+          "tube_coverage_stimgate", "tube_coverage_competitor"
+        )))
+      print(knitr::kable(table, digits = 4,
+        caption = "Dataset-level paired differences: StimGate minus competitor."))
+      cat("\n\n")
+    }
+  }
+}
+```
+
 ### Mean absolute error by cell count
 
 Mean absolute frequency error is plotted against stimulated cell count on a
@@ -692,8 +742,7 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "mean_abs_error", "Mean absolute error", percent_y = TRUE,
-        mcse = show_mcse
+        d, "mean_abs_error", "Tube-level mean absolute error", percent_y = TRUE, mcse = show_mcse
       )
     },
     dir = file.path(plot_dir, "mae_by_n_cell"),
@@ -725,7 +774,7 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "med_abs_rel_error", "Median absolute relative error",
+        d, "med_abs_rel_error", "Tube-level median absolute relative error",
         zero_line = TRUE, free_y = TRUE, mcse = show_mcse
       )
     },
@@ -758,7 +807,7 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "q90_abs_rel_error", "90th percentile absolute relative error",
+        d, "q90_abs_rel_error", "Tube-level 90th percentile absolute relative error",
         zero_line = TRUE, free_y = TRUE, mcse = show_mcse
       )
     },
@@ -791,7 +840,7 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "q95_abs_rel_error", "95th percentile absolute relative error",
+        d, "q95_abs_rel_error", "Tube-level 95th percentile absolute relative error",
         zero_line = TRUE, free_y = TRUE, mcse = show_mcse
       )
     },
@@ -856,7 +905,7 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "max_abs_rel_error", "Maximum absolute relative error",
+        d, "max_abs_rel_error", "Tube-level maximum absolute relative error",
         zero_line = TRUE, free_y = TRUE
       )
     },
