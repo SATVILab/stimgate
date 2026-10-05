@@ -326,7 +326,10 @@ test_that("summary-plot QMDs declare and read the show_mcse toggle", {
       fixed = TRUE
     )), info = file)
     style <- grep("analysis-plot-style.R", lines, fixed = TRUE)
-    mcse <- grep("analysis-mcse.R", lines, fixed = TRUE)
+    mcse <- grep(
+      'source(file.path(scripts_r_dir, "analysis-mcse.R"))', lines,
+      fixed = TRUE
+    )
     expect_length(mcse, 1L)
     expect_gt(mcse, style[[1]])
     expect_true(any(grepl("show_mcse", lines[-seq_len(mcse)], fixed = TRUE)), info = file)

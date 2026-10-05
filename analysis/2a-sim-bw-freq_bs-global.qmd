@@ -844,6 +844,9 @@ if (isTRUE(run_plots)) {
     # Scenario statistics, averaged equally over cell counts and response
     # probabilities, in percent.
     err_tbl_rel_mean_trans_bw <- err_rel_tbl |>
+      dplyr::mutate(
+        abs_rel_error = abs(propRespEst - propRespTruth) / propRespTruth
+      ) |>
       .simBandwidthGlobalAbsErrorAverage(
         c("transformation", "n_cell", "bw", "prob_response"),
         c("transformation", "bw")
@@ -931,6 +934,9 @@ probabilities.
 if (isTRUE(run_plots)) {
   err_rel_by_cell <- bw_tbl_results_raw |>
     dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0) |>
+    dplyr::mutate(
+      abs_rel_error = abs(propRespEst - propRespTruth) / propRespTruth
+    ) |>
     .simBandwidthGlobalAbsErrorAverage(
       c("mean_pos_setting", "transformation", "n_cell", "bw", "prob_response"),
       c("mean_pos_setting", "transformation", "n_cell", "bw")

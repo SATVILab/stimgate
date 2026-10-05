@@ -468,7 +468,8 @@ add_bw_labs <- function(.data) {
 }
 
 # Analysis 2a absolute relative error: median, 95th percentile and maximum of
-# |estimate - truth| / truth within each scenario (`scenario_cols`), then
+# `abs_rel_error` (|estimate - truth| / truth) within each scenario
+# (`scenario_cols`), then
 # averaged equally over the scenarios in each `group_cols` group, in percent
 # (three significant figures). Monte Carlo bounds (`<stat>_lower`/`_upper`,
 # `analysis-mcse.R`) combine each scenario's order-statistic half-width as for
@@ -477,10 +478,7 @@ add_bw_labs <- function(.data) {
   stats <- c("err_rel_median_avg", "err_rel_95_avg", "err_rel_max_avg")
   bounds <- as.vector(outer(stats, c("_lower", "_upper"), paste0))
   tbl |>
-    dplyr::mutate(
-      .abs_rel = abs(.data$propRespEst - .data$propRespTruth) /
-        .data$propRespTruth
-    ) |>
+    dplyr::mutate(.abs_rel = .data$abs_rel_error) |>
     dplyr::group_by(dplyr::across(dplyr::all_of(scenario_cols))) |>
     dplyr::summarise(
       err_rel_median_avg = stats::median(.data$.abs_rel, na.rm = TRUE),
