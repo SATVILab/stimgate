@@ -830,7 +830,7 @@ comp_against_manual_cyt <- function(
   provenance <- thresholds |>
     dplyr::mutate(ind = as.character(.data$ind)) |>
     dplyr::select(dplyr::all_of(required), dplyr::any_of(c(
-      "thresholdRaw", "locGenerated", "locGeneratedDirect", "locSource", "locReason"
+      "thresholdRaw", "gateCyt", "locGenerated", "locGeneratedDirect", "locSource", "locReason"
     )))
   keys <- c("ind", "cyt")
   if (anyDuplicated(provenance[keys]) ||

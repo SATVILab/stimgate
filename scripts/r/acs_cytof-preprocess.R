@@ -46,6 +46,7 @@ create_gatingset <- function(
     inputContentHash = .acsCytofHash(unname(tools::md5sum(fcs_vec)))
   )
   cs <- flowWorkspace::load_cytoset_from_fcs(fcs_vec)
+  flowWorkspace::sampleNames(cs) <- basename(fcs_vec)
 
   gs <- flowWorkspace::GatingSet(cs)
   forwardTransform <- function(x) {
