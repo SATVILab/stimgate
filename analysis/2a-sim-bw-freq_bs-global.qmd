@@ -530,7 +530,6 @@ if (isTRUE(run_plots)) {
     required_params = analysis_required_params
   )
   # Persisted raw rows retain failures; plots and errors use valid estimates.
-  bw_tbl_results_all <- bw_tbl_results_raw
   bw_tbl_results_raw <- bw_tbl_results_raw |>
     dplyr::mutate(
       propRespEst = dplyr::if_else(valid_estimate, propRespEst, NA_real_),
@@ -664,7 +663,7 @@ if (isTRUE(run_plots)) {
       .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
       .analysis_print_fig(p)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr))
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, bias_uns_setting == bias_uns_setting_curr))
     }
   }
 }
@@ -794,7 +793,7 @@ if (isTRUE(run_plots)) {
       .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
       .analysis_print_fig(p)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr))
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, bias_uns_setting == bias_uns_setting_curr))
     }
   }
 }
@@ -1044,7 +1043,7 @@ if (isTRUE(run_plots)) {
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
       .analysis_print_fig(p)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
         dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
     }
   }
@@ -1143,7 +1142,7 @@ if (isTRUE(run_plots)) {
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
       .analysis_print_fig(p)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
         dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
     }
   }
@@ -1197,7 +1196,7 @@ if (isTRUE(run_plots)) {
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
       .analysis_print_fig(p)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
         dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
     }
   }
@@ -1347,7 +1346,7 @@ if (isTRUE(run_plots)) {
       .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
       .analysis_print_fig(p)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr))
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, bias_uns_setting == bias_uns_setting_curr))
     }
   }
 }
@@ -1490,7 +1489,7 @@ if (isTRUE(run_plots)) {
         .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 6)
         .analysis_print_fig(p)
         .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-          dplyr::filter(mean_pos_setting == mean_pos_setting_curr))
+          dplyr::filter(mean_pos_setting == mean_pos_setting_curr, bias_uns_setting == bias_uns_setting_curr))
       }
     }
   }

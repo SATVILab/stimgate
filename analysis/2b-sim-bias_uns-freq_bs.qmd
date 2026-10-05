@@ -639,7 +639,12 @@ if (isTRUE(run_plots)) {
           6
         )
         .analysis_print_fig(p)
-        .simBandwidthPrintCoverage(p, bias_uns_results_summary)
+        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          ))
       }
     }
   }
@@ -707,7 +712,7 @@ if (isTRUE(run_plots)) {
 
         p <- .simBandwidthBiasRelativeErrorPlot(
           plot_tbl,
-          y_label = "Mean of scenario medians / 90th percentiles / maxima (absolute relative error)"
+          y_label = "Mean of scenario statistics (absolute relative error)"
         )
 
         path_p <- file.path(
@@ -727,7 +732,12 @@ if (isTRUE(run_plots)) {
           6
         )
         .analysis_print_fig(p)
-        .simBandwidthPrintCoverage(p, bias_uns_results_summary)
+        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          ))
       }
     }
   }
@@ -790,7 +800,13 @@ if (isTRUE(run_plots)) {
             6
           )
           .analysis_print_fig(p)
-          .simBandwidthPrintCoverage(p, bias_uns_results_summary)
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr,
+              n_cell == n_cell_curr
+            ))
         }
       }
     }
@@ -856,7 +872,12 @@ if (isTRUE(run_plots)) {
           6
         )
         .analysis_print_fig(p)
-        .simBandwidthPrintCoverage(p, bias_uns_results_summary)
+        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          ))
       }
     }
   }
@@ -901,10 +922,9 @@ if (isTRUE(run_plots)) {
             prob_response == prob_response_curr
           )
 
-
         p <- .simBandwidthBiasSignedErrorPlot(
           plot_tbl,
-          y_label = "Mean of scenario medians / 90th percentiles / maxima (relative error)"
+          y_label = "Mean of scenario statistics (relative error)"
         )
 
         path_p <- file.path(
@@ -924,7 +944,12 @@ if (isTRUE(run_plots)) {
           6
         )
         .analysis_print_fig(p)
-        .simBandwidthPrintCoverage(p, bias_uns_results_summary)
+        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          ))
       }
     }
   }
@@ -987,7 +1012,13 @@ if (isTRUE(run_plots)) {
             6
           )
           .analysis_print_fig(p)
-          .simBandwidthPrintCoverage(p, bias_uns_results_summary)
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr,
+              n_cell == n_cell_curr
+            ))
         }
       }
     }
@@ -1077,7 +1108,12 @@ if (isTRUE(run_plots)) {
           6
         )
         .analysis_print_fig(p)
-        .simBandwidthPrintCoverage(p, bias_uns_results_summary)
+        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+          dplyr::filter(
+            transformation == transformation_curr,
+            mean_pos_setting == mean_pos_setting_curr,
+            prob_response == prob_response_curr
+          ))
       }
     }
   }

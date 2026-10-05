@@ -87,6 +87,16 @@ add_bw_labs <- function(.data) {
 
 # Error statistics as rows of panels: `stat_cols` maps wide columns to labels.
 .simBandwidthErrorStatLong <- function(tbl, stat_cols) {
+  if ("n_scenario_median" %in% names(tbl)) {
+    averaged_labels <- c(
+      Median = "Mean of scenario medians",
+      "90th percentile" = "Mean of scenario 90th percentiles",
+      "95th percentile" = "Mean of scenario 95th percentiles",
+      Maximum = "Mean of scenario maxima"
+    )
+    matched <- stat_cols %in% names(averaged_labels)
+    stat_cols[matched] <- averaged_labels[stat_cols[matched]]
+  }
   tbl |>
     tidyr::pivot_longer(
       cols = dplyr::all_of(names(stat_cols)),
@@ -210,8 +220,10 @@ add_bw_labs <- function(.data) {
     .simBandwidthBwColourScale(tbl$bw) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
     .analysis_theme() +
-    ggplot2::labs(x = "Bias multiplier", colour = "Bandwidth",
-                  caption = .simBandwidthScenarioCaption(tbl))
+    ggplot2::labs(
+      x = "Bias multiplier", colour = "Bandwidth",
+      caption = .simBandwidthScenarioCaption(tbl)
+    )
 }
 
 # ColorBrewer BrBG: teal for over-estimates, brown for under-estimates.
@@ -288,7 +300,14 @@ add_bw_labs <- function(.data) {
     .analysis_theme() +
     ggplot2::scale_colour_manual(
       values = .simBandwidthSignedErrorColours,
-      labels = c(
+      labels = if ("n_scenario" %in% names(tbl)) c(
+        over_median = "Over: mean of scenario medians",
+        over_q95 = "Over: mean of scenario 95th percentiles",
+        over_max = "Over: mean of scenario maxima",
+        under_median = "Under: mean of scenario medians",
+        under_q95 = "Under: mean of scenario 95th percentiles",
+        under_max = "Under: mean of scenario maxima"
+      ) else c(
         over_median = "Over: median",
         over_q95 = "Over: 95th percentile",
         over_max = "Over: maximum",
@@ -301,7 +320,7 @@ add_bw_labs <- function(.data) {
     ) +
     ggplot2::labs(
       x = "Bandwidth", colour = NULL,
-      y = if ("n_scenario" %in% names(tbl)) "Mean of scenario medians / 95th percentiles / maxima (relative error)" else "Relative error",
+      y = if ("n_scenario" %in% names(tbl)) "Mean of scenario statistics (relative error)" else "Relative error",
       caption = .simBandwidthScenarioCaption(tbl)
     ) +
     ggplot2::theme(
@@ -525,7 +544,17 @@ add_bw_labs <- function(.data) {
     dplyr::mutate(dplyr::across(dplyr::all_of(keys), as.character))
   selected <- selected |>
     dplyr::mutate(dplyr::across(dplyr::all_of(keys), as.character))
-  if (length(keys)) summary <- dplyr::semi_join(summary, selected, by = keys)
+  # Keep all expected curve settings, even when ErrorStatLong removed a failed
+  # setting's NA statistics. Match only the dimensions selecting the figure.
+  figure_keys <- intersect(keys, c(
+    "mean_pos_setting", "bias_uns_setting", "n_cell", "bw_ncell_upper"
+  ))
+  if (length(figure_keys) && nrow(selected)) {
+    summary <- dplyr::semi_join(
+      summary, dplyr::distinct(selected, dplyr::across(dplyr::all_of(figure_keys))),
+      by = figure_keys
+    )
+  }
   summary |>
     dplyr::group_by(dplyr::across(dplyr::all_of(keys))) |>
     dplyr::summarise(
@@ -563,6 +592,7 @@ add_bw_labs <- function(.data) {
 }
 
 .simBandwidthScenarioCaption <- function(tbl) {
+  if (!nrow(tbl)) return("No finite scenario statistics")
   cols <- intersect(c("median", "q90", "q95", "max"),
                     sub("^n_scenario_", "", names(tbl)[startsWith(names(tbl), "n_scenario_")]))
   if (!length(cols)) return(NULL)

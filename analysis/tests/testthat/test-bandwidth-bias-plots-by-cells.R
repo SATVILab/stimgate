@@ -102,7 +102,12 @@ test_that("2a per-cell plots average scenario errors before combining probabilit
 })
 
 test_that("2b averaged and per-cell plots preserve all bias scenario dimensions", {
-  stat_mult <- c(Median = 1, "90th percentile" = 2, Maximum = 3)
+  stat_mult <- c(
+    Median = 1, "90th percentile" = 2, Maximum = 3,
+    "Mean of scenario medians" = 1,
+    "Mean of scenario 90th percentiles" = 2,
+    "Mean of scenario maxima" = 3
+  )
   env <- .bandwidth_cell_plot_env()
   on.exit(unlink(env$root_dir, recursive = TRUE), add = TRUE)
   env$bias_uns_abs_error <- tidyr::expand_grid(
@@ -160,7 +165,10 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
     expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
     expect_named(saved$plot$facet$params$rows, "statistic")
     expect_named(saved$plot$facet$params$cols, "mismatch_label")
-    expect_setequal(as.character(data$statistic), names(stat_mult))
+    expected_labels <- if ("n_scenario_median" %in% names(data)) {
+      names(stat_mult)[4:6]
+    } else names(stat_mult)[1:3]
+    expect_setequal(as.character(data$statistic), expected_labels)
     expect_identical(rlang::as_label(saved$plot$mapping$group), "interaction(bw, bias_uns_basis)")
     # Bandwidth is the only colour legend; there is no bias-scale line type.
     expect_identical(rlang::as_label(saved$plot$mapping$colour), "bw_lab")
@@ -248,7 +256,12 @@ test_that("2a per-cell signed-error plots average scenario errors by direction",
 })
 
 test_that("2b signed-error plots preserve all bias scenario dimensions", {
-  stat_mult <- c(Median = 1, "90th percentile" = 2, Maximum = 3)
+  stat_mult <- c(
+    Median = 1, "90th percentile" = 2, Maximum = 3,
+    "Mean of scenario medians" = 1,
+    "Mean of scenario 90th percentiles" = 2,
+    "Mean of scenario maxima" = 3
+  )
   env <- .bandwidth_cell_plot_env()
   on.exit(unlink(env$root_dir, recursive = TRUE), add = TRUE)
   env$bias_uns_signed_error <- tidyr::expand_grid(
@@ -304,7 +317,10 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
     expect_named(saved$plot$facet$params$rows, "statistic")
     expect_named(saved$plot$facet$params$cols, "mismatch_label")
-    expect_setequal(as.character(data$statistic), names(stat_mult))
+    expected_labels <- if ("n_scenario_median" %in% names(data)) {
+      names(stat_mult)[4:6]
+    } else names(stat_mult)[1:3]
+    expect_setequal(as.character(data$statistic), expected_labels)
     expect_identical(
       rlang::as_label(saved$plot$mapping$group),
       "interaction(bw, bias_uns_basis, direction)"
@@ -568,6 +584,14 @@ test_that("coverage companions preserve finite fallbacks and all failed samples"
   expect_equal(companion$n_valid, 3L)
   expect_equal(companion$failure_fraction, 5 / 8)
   expect_equal(companion$fallback_fraction, 6 / 8)
+  failed_bandwidth <- dplyr::mutate(
+    summary[1, ], bw = 0.2, n_valid = 0L, n_failed = n_sample
+  )
+  all_settings <- env$.simBandwidthCoverageForPlot(
+    p, dplyr::bind_rows(summary, failed_bandwidth)
+  )
+  expect_setequal(all_settings$bw, c("0.1", "0.2"))
+  expect_equal(all_settings$failure_fraction[all_settings$bw == "0.2"], 1)
   # Per-cell figures retain only the corresponding expected scenario.
   p$data$n_cell <- factor(1000)
   companion <- env$.simBandwidthCoverageForPlot(p, summary)

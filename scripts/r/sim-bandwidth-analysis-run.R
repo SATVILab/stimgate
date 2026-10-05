@@ -518,6 +518,8 @@
 #'
 #' @param tbl data.frame Collated analysis 2 outputs.
 #' @param grid_cols character Grid column names.
+#' @param n_sample_expected integer Expected final samples per iteration.
+#' @param n_iter_expected integer Expected iterations per simulation.
 #' @return list `bw_tbl_results_raw` and `bw_tbl_results_summary`.
 .simBandwidthFreqBsGlobalCollate <- function(
   tbl, grid_cols, n_sample_expected = NULL, n_iter_expected = NULL
