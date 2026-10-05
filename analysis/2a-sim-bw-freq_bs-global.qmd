@@ -1204,6 +1204,31 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Reference densities for threshold plots
+
+The “With densities” companions below show the true generating distributions
+approximated by a large reference simulation (100,000 cells per tube), rather
+than the individual simulated samples. The blue curve uses only the
+unstimulated tube's negative component; the vermillion curve uses all stimulated
+cells. The reference uses each panel's transformation, mean position, response
+probability and perturbation settings, with the same covariance and exact
+mixture settings as the scenarios. Unstimulated background probability is the
+response probability multiplied by `background_relative_to_response`, as in
+the simulations. Curves are cached in memory once per distinct biological
+setting and reused across cell counts, bandwidths and bias settings. They do
+not include the gating bias applied to the unstimulated sample.
+
+```{r}
+#| label: threshold-reference-densities
+#| include: false
+if (isTRUE(run_plots)) {
+  threshold_reference_densities <- .simBandwidthThresholdDensities(
+    sim_grid |> dplyr::filter(condition_perturbation_sd == 0),
+    scenario_settings
+  )
+}
+```
+
 ### Median expression thresholds
 
 Now we plot the median thresholds themselves, as vertical lines with one
@@ -1296,6 +1321,16 @@ if (isTRUE(run_plots)) {
       .analysis_save_fig(p, path_p, height = 30, allow_tall = TRUE)
       .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
       .analysis_print_fig(p)
+      p_density <- .simBandwidthThresholdDensityPlot(
+        p, threshold_tbl_curr, threshold_reference_densities
+      )
+      path_density <- file.path(
+        .analysis_fig_dir(c(fig_key, "thresholds_density", "median"), root_dir),
+        basename(path_p)
+      )
+      .analysis_save_fig(p_density, path_density, height = 30, allow_tall = TRUE)
+      .analysis_heading("With densities", 6)
+      .analysis_print_fig(p_density)
     }
   }
 }
@@ -1437,6 +1472,20 @@ if (isTRUE(run_plots)) {
         .analysis_save_fig(p, path_p, height = 30, allow_tall = TRUE)
         .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 6)
         .analysis_print_fig(p)
+        p_density <- .simBandwidthThresholdDensityPlot(
+          p, threshold_tbl_curr, threshold_reference_densities
+        )
+        path_density <- file.path(
+          .analysis_fig_dir(
+            c(fig_key, "thresholds_density", "raw",
+              paste0("bias_uns_", bias_uns_setting_curr), signif(bw_curr)),
+            root_dir
+          ),
+          basename(path_p)
+        )
+        .analysis_save_fig(p_density, path_density, height = 30, allow_tall = TRUE)
+        .analysis_heading("With densities", 6)
+        .analysis_print_fig(p_density)
       }
     }
   }
