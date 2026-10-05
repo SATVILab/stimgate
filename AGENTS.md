@@ -731,7 +731,9 @@ rows before drawing reference lines.
    Saved ACS method outputs must carry identical input/preprocessing/revision
    manifests before comparison. Keep per-marker threshold provenance and failure
    coverage; exclude failed estimates from agreement metrics and persist cohort
-   exclusions rather than hiding omitted rows behind render warnings.
+   exclusions rather than hiding omitted rows behind render warnings. With ACS
+   clustering and cytokine-positive refinement enabled, score `loc_minClust`,
+   and preserve cluster provenance when assembling the final package gate rows.
 
 12. **Shared local-FDR bandwidths (`bwScope`, issue #417)**:
    The scalar local-FDR bandwidth is chosen once per channel during settings

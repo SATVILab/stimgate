@@ -156,7 +156,9 @@ The reusable helpers fix the six cytokine channels and the method settings.
 StimGate uses `bwMtd = "nrd0"` (with `bwNcellMax = 1e4`, `bwFallback = "auto"`
 and no bandwidth bounds), `gateCombn = "min"`, `minCell = 100`,
 threshold clustering on (`clusterGates = TRUE`) and cytokine-positive refinement
-on (`calcCytPosGates = TRUE`). Both settings are recorded with the saved run.
+on (`calcCytPosGates = TRUE`). The comparison scores the final clustered
+`loc_minClust` gates after cytokine-positive refinement. Both settings are
+recorded with the saved run.
 Its unstimulated-sample bias
 is not fixed: it equals the bandwidth StimGate estimates at the start
 (`biasUns = NULL` with `biasUnsFactor = 4`). F-beta uses its standard

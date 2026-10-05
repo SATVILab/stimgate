@@ -377,7 +377,7 @@
   cyt = NULL,
   methods = c("stimgate", "tailgate", "fbeta"),
   outputGroup = NULL,
-  gateName = "loc_min",
+  gateName = "loc_minClust",
   sampleMap = NULL
 ) {
   methods <- match.arg(
@@ -479,7 +479,7 @@
   cyt = NULL,
   methods = c("stimgate", "tailgate", "fbeta"),
   outputGroup = NULL,
-  gateName = "loc_min",
+  gateName = "loc_minClust",
   sampleMap = NULL
 ) {
   autoTbl <- .acsCytofManualAutoTable(
@@ -796,7 +796,7 @@ comp_against_manual_cyt <- function(
   cyt = NULL,
   methods = c("stimgate", "tailgate", "fbeta"),
   output_group = NULL,
-  gate_name = "loc_min",
+  gate_name = "loc_minClust",
   sample_map = NULL,
   path_dir_save = NULL,
   save_plots = TRUE
