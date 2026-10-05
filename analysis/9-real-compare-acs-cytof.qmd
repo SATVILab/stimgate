@@ -356,7 +356,7 @@ figures are saved under `output/fig/9-real-compare-acs-cytof/`. Failed threshold
 with missing scored frequencies. Summary tables state total, failed and scored
 counts; agreement statistics use successful estimates only. The exclusion CSV
 records unmatched manual/automated keys. Methods must have identical sample and
-stratum keys and matching data/preprocessing/revision manifests before joining.
+stratum keys and matching data/preprocessing manifests before joining.
 Pearson correlations of the StimGate, Tailgate and F-beta estimates with the manual frequencies
 follow.
 

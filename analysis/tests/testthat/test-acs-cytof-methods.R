@@ -559,15 +559,16 @@ test_that("ACS finite fallback gates remain failures in comparison and coverage"
   expect_error(env$.acsCytofJoinProvenance(single, thresholds[-1, ]), "Missing or duplicate")
 })
 
-test_that("ACS refuses mismatched data, preprocessing and revision manifests", {
+test_that("ACS refuses mismatched data and preprocessing manifests", {
   env <- .load_acs_method_env()
   context <- list(gitSha = "abc", preprocessing = list(
     settings = list(transform = "asinh(x / 5)"), inputFileListHash = "files"
   ))
   manifest <- list(context = context, settings = list(clusterGates = TRUE))
   expect_no_error(env$.acsCytofValidateManifests(list(manifest, manifest)))
+  expect_no_error(env$.acsCytofValidateManifests(list(manifest,
+    list(context = list(gitSha = "other", preprocessing = context$preprocessing)))))
   for (changed in list(
-    list(gitSha = "other", preprocessing = context$preprocessing),
     list(gitSha = "abc", preprocessing = list(inputFileListHash = "other")),
     list(gitSha = "abc", preprocessing = list(settings = list(transform = "none")))
   )) {
@@ -636,7 +637,7 @@ test_that("ACS cached comparisons reject legacy and mixed method manifests", {
   expect_error(env$.acsCytofValidateComparisonManifest(table), "Legacy or incomplete")
   attr(table, "manifest") <- list(
     methods = list(cd4 = list(stimgate = list(context = list(gitSha = "a")),
-                             fbeta = list(context = list(gitSha = "b")))),
+                             fbeta = list(context = list(gitSha = "b", preprocessing = list(inputFileListHash = "other"))))),
     comparisonSettings = list(methods = c("stimgate", "fbeta")), manualInputHash = "abc"
   )
   expect_error(env$.acsCytofValidateComparisonManifest(table), "Mismatched ACS")

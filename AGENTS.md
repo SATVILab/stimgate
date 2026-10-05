@@ -770,7 +770,7 @@ rows before drawing reference lines.
    manual CSV inputs; GatingSet diagnostics are optional when those caches are absent.
 
    ACS batches use the mapped SampleID and stimulus, never filename position.
-   Saved ACS method outputs must carry identical input/preprocessing/revision
+   Saved ACS method outputs must carry identical input/preprocessing
    manifests before comparison. Keep per-marker threshold provenance and failure
    coverage; exclude failed estimates from agreement metrics and persist cohort
    exclusions rather than hiding omitted rows behind render warnings. With ACS
