@@ -38,9 +38,12 @@
       "test-analysis-sim-size.R"
     ),
     "9-real-compare-acs-cytof.qmd" = c(
-      "test-acs-cytof-gate.R", "test-acs-cytof-methods.R", "test-ratio-companion-plots.R"
+      "test-acs-cytof-gate.R", "test-acs-cytof-methods.R", "test-ratio-companion-plots.R",
+      "test-acs-cytof-paths.R"
     ),
-    "10-real-compare-acs-cytof-validation.qmd" = "test-acs-cytof-validation-plots.R"
+    "10-real-compare-acs-cytof-validation.qmd" = c(
+      "test-acs-cytof-validation-plots.R", "test-acs-cytof-paths.R"
+    )
   )
   documents <- list.files(file.path(root_dir, "analysis"), pattern = "[.]qmd$")
   if (!setequal(documents, names(targets))) {

@@ -78,6 +78,9 @@ test_that("recorded errors cannot conceal absent, unlabelled or malformed outcom
     cases[[paste0(field, "_differs")]] <- bad
   }
   cases$missing_method_column <- dplyr::select(raw, -"method")
+  cases$missing_method_without_error <- dplyr::select(
+    raw[is.na(raw$error) | !nzchar(raw$error), ], -"method"
+  )
   bad <- raw
   bad$thresholdFallbackUsed[failed] <- TRUE
   cases$fallback_disguised_as_error <- bad

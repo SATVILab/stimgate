@@ -560,7 +560,10 @@ For new or moved analysis code, use this layering:
 5. `analysis/*.qmd`: scientific settings, analysis calls, result-specific transformations and presentation.
 
 QMDs locate the checkout root before sourcing `analysis-runtime.R` and set
-knitr's working directory there for workers. Use `.analysis_is_dev()` and
+knitr's working directory there for workers. Paths returned by projr and kept
+across chunks or passed to workers must use `format = "absolute"`: setup can
+run from `analysis/` before later chunks switch to the checkout root.
+Use `.analysis_is_dev()` and
 `.analysis_is_quick()` for profile fallbacks and the shared cache readers for
 errors naming the analysis, render command, matching dev/quick profile and
 required completion of all chunks.

@@ -2064,7 +2064,6 @@
   if (
     !is.null(nIter) &&
       !is.null(nSample) &&
-      "method" %in% names(cached) &&
       !.simComparePrimaryOutputComplete(
         cached,
         nSample = nSample,
