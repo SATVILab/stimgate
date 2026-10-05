@@ -14,7 +14,7 @@ params:
   sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
-  show_mcse: true
+  show_mcse: both
   sim_size: final
 ---
 
@@ -79,7 +79,8 @@ run_plots <- .as_flag(.get_qmd_param_env(
   TRUE
 ))
 # Monte Carlo error bars on the summary plots (see analysis-mcse.R).
-show_mcse <- .as_flag(.get_qmd_param_env("show_mcse", "SHOW_MCSE", TRUE))
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))
+show_mcse <- mcse_mode != "off"
 sim_grid_chunk_index <- as.integer(
   .get_qmd_param_env("sim_grid_chunk_index", "SIM_GRID_CHUNK_INDEX", 1L)
 )
@@ -612,7 +613,7 @@ scenario_cols <- c(
 compare_summary <- .simCompareSummariseFreqBs(
   compare_tbl,
   scenarioCols = scenario_cols,
-  mcse = show_mcse
+  mcse = show_mcse && isTRUE(run_plots)
 )
 
 if (isTRUE(run_plots)) {
@@ -658,7 +659,10 @@ two methods. The two versions are saved in the `all_methods` and `no_tailgate`
 subfolders of each figure folder. Within each version there is one figure per
 mean position setting.
 
-**Monte Carlo intervals.** With `show_mcse` on, 95% percentile-bootstrap
+**Monte Carlo intervals.** `show_mcse` / `SHOW_MCSE` accepts `off`, `on`
+or `both` (default); false/true still selects off/on. Both versions are printed
+and saved in sibling `mcse_off/` and `mcse_on/` folders, with identical points
+and axes. With error bars on, 95% percentile-bootstrap
 intervals resample whole independent datasets (`iter`), retaining all samples
 of each selected dataset with multiplicity. Each draw recalculates the actual
 pooled sample statistic shown, rather than a mean of within-dataset percentiles.
@@ -751,7 +755,7 @@ if (isTRUE(run_plots)) {
       paste0("freq_bs_mae_meanpos_setting_", pos, ".png")
     },
     height = 20,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -784,7 +788,7 @@ if (isTRUE(run_plots)) {
       paste0("freq_bs_med_rel_error_meanpos_setting_", pos, ".png")
     },
     height = 20,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -817,7 +821,7 @@ if (isTRUE(run_plots)) {
       paste0("freq_bs_q90_rel_error_meanpos_setting_", pos, ".png")
     },
     height = 20,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -850,7 +854,7 @@ if (isTRUE(run_plots)) {
       paste0("freq_bs_q95_rel_error_meanpos_setting_", pos, ".png")
     },
     height = 20,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -927,7 +931,7 @@ if (isTRUE(run_plots)) {
     make_plot = function(d) .simCompareDatasetMaxPlot(d, "occurrence", mcse = show_mcse),
     dir = file.path(plot_dir, "dataset_max_occurrence_by_n_cell"),
     file_fn = function(pos, extra) paste0("dataset_max_occurrence_", pos, ".png"),
-    height = 14, level = 4L)
+    height = 14, level = 4L, mcse_mode = mcse_mode)
 }
 ```
 
@@ -946,7 +950,7 @@ if (isTRUE(run_plots)) {
     make_plot = function(d) .simCompareDatasetMaxPlot(d, "severity", mcse = show_mcse),
     dir = file.path(plot_dir, "dataset_max_signed_error_severity_by_n_cell"),
     file_fn = function(pos, extra) paste0("dataset_max_severity_", pos, ".png"),
-    ratio_twins = TRUE, height = 14, level = 4L)
+    ratio_twins = TRUE, height = 14, level = 4L, mcse_mode = mcse_mode)
 }
 ```
 
@@ -1001,7 +1005,7 @@ if (isTRUE(run_plots)) {
     extra_col = "prob_response",
     extra_heading = function(x) {
       paste0("Response probability: ", .analysis_label_percent(x))
-    }
+    }, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1047,8 +1051,8 @@ stimulated cell count, with colour identifying the method. Panels separate
 response frequencies and expression distributions, with one mean position
 setting per plot and no random condition perturbation. Read this alongside
 frequency error to distinguish calculated gates from fallbacks. Error bars
-(with `show_mcse` on and at least five datasets) come from the spread of the
-fallback rate between datasets.
+(with `show_mcse` on and at least five datasets) resample whole datasets and recalculate the
+pooled tube-level fallback proportion.
 
 ```{r}
 #| label: threshold-fallback
@@ -1068,7 +1072,7 @@ if (isTRUE(run_plots)) {
       paste0("freq_bs_threshold_fallback_rate_", pos, ".png")
     },
     height = 20,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```

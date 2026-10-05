@@ -67,7 +67,8 @@ the complete integration-suite check.
 
 The bounded performance fixture renders five constructed-data plots (pooled
 signed percentiles and ratio, dataset maximum occurrence, conditional signed
-severity and ratio), plus a coverage table, without generating or gating data:
+severity and ratio), plus a coverage table, without generating or gating data. It writes both
+versions under `mcse_off/` and `mcse_on/`:
 
 ```sh
 Rscript --no-init-file analysis/tests/render_performance_fixture.R /tmp/stimgate-performance-figures

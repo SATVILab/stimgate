@@ -25,12 +25,14 @@
       "test-sim-compare-freq_bs-simcyto.R", "test-analysis-7-transactional-multichunk.R",
       "test-analysis-mcse.R", "test-sim-compare-dataset-differences.R", "test-ratio-companion-plots.R",
       "test-sim-performance-estimands.R", "test-sim-performance-figures.R",
+      "test-analysis-mcse-modes.R", "test-sim-performance-failures.R",
       "test-analysis-sim-size.R"
     ),
     "8-sim-compare-freq_bs-batch.qmd" = c(
       "test-sim-compare-freq_bs-batch.R", "test-sim-compare-classification.R",
       "test-analysis-mcse.R", "test-sim-compare-dataset-differences.R", "test-ratio-companion-plots.R",
       "test-sim-performance-estimands.R", "test-sim-performance-figures.R",
+      "test-analysis-mcse-modes.R", "test-sim-performance-failures.R",
       "test-analysis-sim-size.R"
     ),
     "9-real-compare-acs-cytof.qmd" = c(

@@ -14,7 +14,7 @@ params:
   sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
-  show_mcse: true
+  show_mcse: both
   sim_size: final
 ---
 
@@ -93,7 +93,8 @@ run_plots <- .as_flag(.get_qmd_param_env(
   TRUE
 ))
 # Monte Carlo error bars on the summary plots (see analysis-mcse.R).
-show_mcse <- .as_flag(.get_qmd_param_env("show_mcse", "SHOW_MCSE", TRUE))
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))
+show_mcse <- mcse_mode != "off"
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
 
@@ -757,7 +758,7 @@ pairing_check <- mismatch_validation$pairing_check
 zero_agreement <- mismatch_validation$zero_agreement
 
 knitr::kable(
-  .simCompareClassificationSummary(compare_raw, scenarioCols = "method") |>
+  .simCompareMethodOutcomeCounts(compare_raw) |>
     dplyr::select(method, n, n_valid, n_run_error, n_no_cutpoint, n_fallback),
   caption = "Method outcomes: runtime errors are unscored; no-cutpoint empty gates are recorded fallbacks."
 )
@@ -806,7 +807,10 @@ Mean shifts are additive shifts on the transformed expression scale, the
 scale the methods gate on. SD inflation is the fractional increase in the
 standard deviation of the stimulated background (negative) cells.
 
-**Monte Carlo intervals.** With `show_mcse` on, 95% percentile-bootstrap
+**Monte Carlo intervals.** `show_mcse` / `SHOW_MCSE` accepts `off`, `on`
+or `both` (default); false/true still selects off/on. Both versions are printed
+and saved in sibling `mcse_off/` and `mcse_on/` folders, with identical points
+and axes. With error bars on, 95% percentile-bootstrap
 intervals resample independent whole datasets (`iter`) with all selected samples
 and their multiplicity. Each draw recalculates the actual pooled tube statistic
 shown, including classification distributions. Point estimates are unchanged
@@ -992,7 +996,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 13,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1051,7 +1055,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 9,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1293,9 +1297,12 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   err_by_cell <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_cell, mcse = show_mcse)
   signed_averaged <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_all, signed = TRUE, mcse = show_mcse)
   signed_by_cell <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_cell, signed = TRUE, mcse = show_mcse)
-  for (summary in list(err_scenario, signed_scenario, err_averaged,
-                       err_by_cell, signed_averaged, signed_by_cell)) {
-    print(knitr::kable(.simComparePerformanceCoverage(summary, group_cell),
+  coverage_summaries <- list(err_scenario, signed_scenario, err_averaged,
+    err_by_cell, signed_averaged, signed_by_cell)
+  coverage_keys <- list(scenario_error_cols, scenario_error_cols, group_all,
+    group_cell, group_all, group_cell)
+  for (i in seq_along(coverage_summaries)) {
+    print(knitr::kable(.simComparePerformanceCoverage(coverage_summaries[[i]], coverage_keys[[i]]),
       caption = "Pooled or scenario-average bootstrap coverage; undefined draws and unavailable intervals."))
   }
 }
@@ -1323,7 +1330,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 14,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1349,7 +1356,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"),
     height = 14,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1375,7 +1382,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"),
     height = 14,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1412,7 +1419,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = "mismatch_type",
     ratio_twins = TRUE,
     height = 16,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1439,7 +1446,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = c("mismatch_type", "n_cell"),
     ratio_twins = TRUE,
     height = 16,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1467,7 +1474,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = c("mismatch_type", "n_cell"),
     ratio_twins = TRUE,
     height = 16,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1512,7 +1519,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
       x_log = FALSE, mcse = show_mcse),
     dir = .compare_fresh_fig_dir("dataset_max_occurrence_by_n_cell_prob"),
     file_fn = .compare_mismatch_file, extra_heading = .compare_mismatch_heading,
-    extra_col = c("mismatch_type", "n_cell"), height = 14, level = 4L)
+    extra_col = c("mismatch_type", "n_cell"), height = 14, level = 4L, mcse_mode = mcse_mode)
 }
 ```
 
@@ -1533,7 +1540,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     dir = .compare_fresh_fig_dir("dataset_max_signed_error_severity_by_n_cell_prob"),
     file_fn = .compare_mismatch_file, extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"), ratio_twins = TRUE,
-    height = 14, level = 4L)
+    height = 14, level = 4L, mcse_mode = mcse_mode)
 }
 ```
 
@@ -1561,7 +1568,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     dir = .analysis_fig_dir(c(fig_key, "threshold_placement_unstim"), path_root = root_dir),
     file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
     height = 16,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1587,7 +1594,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     dir = .analysis_fig_dir(c(fig_key, "upper_tail_and_fallbacks"), path_root = root_dir),
     file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
     height = 18,
-    level = 4L
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```

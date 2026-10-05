@@ -3363,7 +3363,8 @@
     method_col = "method",
     pos_col = "mean_pos_setting",
     allow_tall = FALSE,
-    ratio_twins = FALSE) {
+    ratio_twins = FALSE,
+    mcse_mode = NULL) {
   if (level + 1L + as.integer(!is.null(extra_col)) > 6L) {
     stop("Figure loop headings would be deeper than level 6.")
   }
@@ -3401,12 +3402,12 @@
         p <- make_plot(curr)
         .analysis_save_fig(
           p, file.path(dir, set_name, file_fn(pos, extra)),
-          height = height, allow_tall = allow_tall
+          height = height, allow_tall = allow_tall, mcse_mode = mcse_mode
         )
-        .analysis_print_fig(p)
+        .analysis_print_fig(p, mcse_mode = mcse_mode)
         if (isTRUE(ratio_twins)) {
           .simBandwidthPrintRatioTwin(p, file.path(dir, set_name, file_fn(pos, extra)),
-            height = height, allow_tall = allow_tall)
+            height = height, allow_tall = allow_tall, mcse_mode = mcse_mode)
         }
       }
     }

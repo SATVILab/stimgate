@@ -134,6 +134,22 @@
   }
 }
 
+# Rendering mode; historical Boolean values select a single version.
+.analysis_mcse_mode <- function(x = "both") {
+  if (length(x) != 1L || is.na(x)) stop("show_mcse must be off, on or both.")
+  value <- tolower(trimws(as.character(x)))
+  if (value %in% c("true", "t", "yes", "y", "1")) value <- "on"
+  if (value %in% c("false", "f", "no", "n", "0")) value <- "off"
+  if (!value %in% c("off", "on", "both")) stop("show_mcse must be off, on or both.")
+  value
+}
+
+# Mark only Monte Carlo intervals, leaving other uncertainty layers intact.
+.analysis_mcse_layer <- function(layer) {
+  attr(layer, "analysis_mcse") <- TRUE
+  layer
+}
+
 .as_flag <- function(x) {
   if (is.logical(x)) {
     return(isTRUE(x))

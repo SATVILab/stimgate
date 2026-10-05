@@ -326,9 +326,9 @@ test_that("summary-plot QMDs declare and read the show_mcse toggle", {
     "7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd"
   )) {
     lines <- readLines(file.path(root_dir, "analysis", file), warn = FALSE)
-    expect_true("  show_mcse: true" %in% lines, info = file)
+    expect_true("  show_mcse: both" %in% lines, info = file)
     expect_true(any(grepl(
-      'show_mcse <- .as_flag(.get_qmd_param_env("show_mcse", "SHOW_MCSE", TRUE))',
+      'mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))',
       lines,
       fixed = TRUE
     )), info = file)

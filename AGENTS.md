@@ -977,3 +977,13 @@ For GitHub issue or Project administration, use
 `.agents/skills/github-projects/SKILL.md` and read
 `.projects/project.md` before acting.
 <!-- github-projects:end -->
+
+Monte Carlo figure selection accepts `show_mcse` / `SHOW_MCSE` values `off`,
+`on` or `both` (default); historical Boolean false/true selects off/on. Compute
+the requested interval summaries once and derive off/on plots from that same
+plot. Mark only Monte Carlo interval layers with `.analysis_mcse_layer()`;
+removing MC intervals must preserve points, scales and other uncertainty (for
+example ACS donor intervals). Performance figure callers pass `mcse_mode` to
+shared save/print orchestration and ratio companions. Both versions are printed
+with explicit labels and saved in sibling `mcse_off/` and `mcse_on/` folders;
+non-MC figures retain a single output. Never rerun simulations for these twins.

@@ -719,12 +719,12 @@ add_bw_labs <- function(.data) {
 }
 
 # Signed-error companions live in sibling ratio folders with the same dimensions.
-.simBandwidthPrintRatioTwin <- function(plot, path, height, level = 6L, allow_tall = FALSE) {
+.simBandwidthPrintRatioTwin <- function(plot, path, height, level = 6L, allow_tall = FALSE, mcse_mode = NULL) {
   ratio <- .simBandwidthRatioPlot(plot)
   .analysis_save_fig(ratio, sub("signed_error", "ratio", path, fixed = TRUE),
-    height = height, allow_tall = allow_tall)
+    height = height, allow_tall = allow_tall, mcse_mode = mcse_mode)
   .analysis_heading("Estimate / reference ratio", level)
-  .analysis_print_fig(ratio)
+  .analysis_print_fig(ratio, mcse_mode = mcse_mode)
   invisible(NULL)
 }
 

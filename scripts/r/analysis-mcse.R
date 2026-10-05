@@ -338,11 +338,11 @@
     is.finite(data[[ymin]]) & is.finite(data[[ymax]]), ,
     drop = FALSE
   ]
-  ggplot2::geom_errorbar(
+  .analysis_mcse_layer(ggplot2::geom_errorbar(
     data = data,
     mapping = ggplot2::aes(ymin = .data[[ymin]], ymax = .data[[ymax]]),
     width = width,
     alpha = alpha,
     linewidth = linewidth
-  )
+  ))
 }
