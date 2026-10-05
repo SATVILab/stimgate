@@ -560,6 +560,8 @@ other argument, name pattern or rule identifies it. `.verifyBatchList()` require
 at least one stimulated sample per batch and lets an unstimulated sample be
 shared across batches only if it is first in each; a stimulated sample belongs
 to exactly one batch. Code that needs a sample's unstim relies on these rules.
+Sample-level diagnostic frequencies count positives with strict `x > gate`,
+matching applied gates; keep threshold-selection tail calculations separate.
 Saved expression includes unstimulated samples, while final stimulation gate
 tables omit them. Positivity helpers must treat channels with no gate for the
 current sample as all-FALSE, preserving one logical value per cell.

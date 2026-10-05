@@ -1,3 +1,10 @@
+# stimgate 0.99.20
+
+## Bug fixes
+
+- `gateStim()` now excludes cells exactly at the gate from sample-level
+  frequencies, matching the strict gate applied to cells.
+
 # stimgate 0.99.16
 
 ## Breaking changes
