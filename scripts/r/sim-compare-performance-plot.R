@@ -5,7 +5,8 @@
     "n_bootstrap_finite_occurrence", "n_bootstrap_finite_severity",
     "bootstrap_coverage_occurrence", "bootstrap_coverage_severity",
     "interval_available_occurrence", "interval_available_severity")
-  keys <- setdiff(names(tbl), c(counts, "occurrence", "severity",
+  keys <- setdiff(names(tbl), c(names(tbl)[startsWith(names(tbl), ".boot_")],
+    counts, "occurrence", "severity",
     paste0(rep(c("occurrence", "severity"), each = 3), c("_lower", "_upper", "_mcse"))))
   dplyr::select(tbl, dplyr::any_of(c(keys, counts)))
 }
