@@ -18,6 +18,11 @@ The figures use saved results from analysis 9 without rerunning the gating metho
 
 ## Set-up
 
+Failed method/marker estimates remain missing and are excluded from agreement
+statistics; correlation tables state total, failed and scored counts for each
+included stratum. Analysis 9 also saves coverage for all strata and an exclusion
+table for unmatched cohort keys.
+
 The saved `acs_cytof/manual-comparison/manual-comparison.rds` table is sufficient; raw FCS files are not needed here. Render analysis 9 with `RUN_SIMULATIONS=true RUN_PLOTS=false` first if that table is missing. `RUN_PLOTS=true` displays and saves the validation figures; this document does not rerun the gating methods.
 
 ```{r}
@@ -34,6 +39,7 @@ scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 fig_key <- .analysis_mode_key("10-real-compare-acs-cytof-validation")
+source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
@@ -62,11 +68,12 @@ path_comparison <- file.path(
     "analysis/9-real-compare-acs-cytof.qmd"
   ),
   "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd",
-  semantics_version = "acs-cytof-v1"
+  semantics_version = "acs-cytof-v2"
 )
 manual_comparison_tbl <- .analysis_read_rds(
   path_comparison, "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd"
 )
+.acsCytofValidateComparisonManifest(manual_comparison_tbl)
 validation_methods <- .acsCytofValidationMethods()
 .acsCytofValidationValidateComparisonTable(
   manual_comparison_tbl,

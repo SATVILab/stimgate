@@ -23,7 +23,7 @@ params:
 Analysis 2a identifies a plausible bandwidth range while keeping `bias_uns`
 deliberately simple. This analysis asks the complementary question: across
 those plausible bandwidths, how should `bias_uns` be set when the stimulated
-negative population is displaced relative to its matched unstimulated
+negative population is shifted or widened relative to its matched unstimulated
 population?
 
 ## Set-up
@@ -237,6 +237,30 @@ unstimulated cells in the simulation row, using the same fixed KDE bandwidth
 being evaluated. Starting at the dominant negative peak, the right endpoint is
 the first point at which the density reaches 15% of the peak height or the next
 antimode, whichever comes first.
+
+## Two kinds of stimulated-negative mismatch
+
+Mean shifts and SD inflation are reported separately in every figure family,
+with separate `mean_shift/` and `sd_inflation/` figure folders. Both changes
+apply to the **stimulated negative component**, while the unstimulated
+component is unchanged.
+
+A rightward location shift moves the stimulated negative peak. StimGate uses
+the farther-right negative peak to set the start of the local-FDR region, so
+this safeguard can move the modelling region beyond part of the mismatch.
+This is a possible explanation for a smaller additional benefit from `biasUns`.
+
+Increasing the stimulated negative SD broadens its right shoulder. For a
+Gaussian component the population mean and mode stay fixed, so the peak-based
+safeguard may offer less protection from excess stimulated negative density in
+the region being modelled. Moving the unstimulated density right with `biasUns`
+can then reduce the excess attributed to response locally, even though a
+location adjustment does not generally correct a scale mismatch. Mode behaviour
+can differ for skewed/gamma shapes, transformations and finite-sample KDEs;
+these are interpretations to assess against the results, not guarantees.
+
+The SD-inflation plots therefore provide a distinct check on bias choice and
+should be considered alongside the mean-shift plots.
 
 ## Simulation
 
@@ -569,7 +593,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Relative error across bias settings
+## Relative error across bias settings
 
 Bias multiplier is on the horizontal axis and absolute relative error on the vertical axis. Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth, with the legend underneath; columns of panels separate mismatch settings, and rows the statistic and cell count. Headings give the transformation, mean position and response probability. Lower values indicate closer agreement with the simulated truth.
 
@@ -617,67 +641,76 @@ if (isTRUE(run_plots)) {
 #| fig-height: 8.7
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_fig_dir(
-    c(fig_key, "relative_error"),
-    path_root = root_dir
-  )
-
-  for (transformation_curr in .analysis_trans_order(bias_uns_abs_error$transformation)) {
-    .analysis_heading(
-      paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+  for (mismatch_type_curr in unique(bias_uns_abs_error$mismatch_type)) {
+    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
+      "Mean shift of the stimulated negative component"
+    } else {
+      "SD inflation of the stimulated negative component"
+    }, 3)
+    plot_dir <- .analysis_fig_dir(
+      c(fig_key, "relative_error", mismatch_type_curr),
+      path_root = root_dir
     )
-    for (mean_pos_setting_curr in unique(bias_uns_abs_error$mean_pos_setting)) {
-      .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
-      for (prob_response_curr in unique(bias_uns_abs_error$prob_response)) {
-        plot_tbl <- bias_uns_abs_error |>
-          dplyr::filter(
-            transformation == transformation_curr,
-            mean_pos_setting == mean_pos_setting_curr,
-            prob_response == prob_response_curr
+
+    for (transformation_curr in .analysis_trans_order(bias_uns_abs_error$transformation)) {
+      .analysis_heading(
+        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+      )
+      for (mean_pos_setting_curr in unique(bias_uns_abs_error$mean_pos_setting)) {
+        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
+        for (prob_response_curr in unique(bias_uns_abs_error$prob_response)) {
+          plot_tbl <- bias_uns_abs_error |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            )
+
+          p <- .simBandwidthBiasRelativeErrorPlot(
+            plot_tbl,
+            facet = ggplot2::facet_grid(
+              statistic + n_cell ~ mismatch_label,
+              scales = "free_y",
+              labeller = ggplot2::labeller(n_cell = function(x) {
+                paste0("Cells: ", .analysis_label_number(as.numeric(x)))
+              })
+            ),
+            mcse = show_mcse
           )
 
-        p <- .simBandwidthBiasRelativeErrorPlot(
-          plot_tbl,
-          facet = ggplot2::facet_grid(
-            statistic + n_cell ~ mismatch_label,
-            scales = "free_y",
-            labeller = ggplot2::labeller(n_cell = function(x) {
-              paste0("Cells: ", .analysis_label_number(as.numeric(x)))
-            })
-          ),
-          mcse = show_mcse
-        )
-
-        path_p <- file.path(
-          plot_dir,
-          paste0(
-            transformation_curr,
-            "_", mean_pos_setting_curr,
-            "_p_", format(prob_response_curr, scientific = TRUE),
-            ".pdf"
+          path_p <- file.path(
+            plot_dir,
+            paste0(
+              transformation_curr,
+              "_", mean_pos_setting_curr,
+              "_p_", format(prob_response_curr, scientific = TRUE),
+              ".pdf"
+            )
           )
-        )
-        .analysis_save_fig(p, path_p, height = 22)
-        .analysis_heading(
-          paste0(
-            "Response probability: ", .analysis_label_percent(prob_response_curr)
-          ),
-          6
-        )
-        .analysis_print_fig(p)
-        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
-          dplyr::filter(
-            transformation == transformation_curr,
-            mean_pos_setting == mean_pos_setting_curr,
-            prob_response == prob_response_curr
-          ))
+          .analysis_save_fig(p, path_p, height = 22)
+          .analysis_heading(
+            paste0(
+              "Response probability: ", .analysis_label_percent(prob_response_curr)
+            ),
+            6
+          )
+          .analysis_print_fig(p)
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            ))
+        }
       }
     }
   }
 }
 ```
 
-### Relative error averaged over cell counts
+## Relative error averaged over cell counts
 
 Only valid estimates contribute to error statistics. Coverage tables beside each
 figure report all expected samples and the failure fraction; the fallback
@@ -699,11 +732,6 @@ Colour identifies bandwidth; columns of panels separate mismatch settings and ro
 #| fig-height: 5.5
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_fig_dir(
-    c(fig_key, "relative_error_averaged_n_cell"),
-    path_root = root_dir
-  )
-
   # Average scenario statistics equally across cell counts; do not pool samples.
   bias_uns_error_avg <- bias_uns_abs_error |>
     .analysis_mcse_average_cols(
@@ -721,56 +749,70 @@ if (isTRUE(run_plots)) {
     ) |>
     dplyr::mutate(dplyr::across(dplyr::ends_with("_lower"), ~ pmax(.x, 0)))
 
-  for (transformation_curr in .analysis_trans_order(bias_uns_error_avg$transformation)) {
-    .analysis_heading(
-      paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+  for (mismatch_type_curr in unique(bias_uns_error_avg$mismatch_type)) {
+    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
+      "Mean shift of the stimulated negative component"
+    } else {
+      "SD inflation of the stimulated negative component"
+    }, 3)
+    plot_dir <- .analysis_fig_dir(
+      c(fig_key, "relative_error_averaged_n_cell", mismatch_type_curr),
+      path_root = root_dir
     )
-    for (mean_pos_setting_curr in unique(bias_uns_error_avg$mean_pos_setting)) {
-      .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
-      for (prob_response_curr in unique(bias_uns_error_avg$prob_response)) {
-        plot_tbl <- bias_uns_error_avg |>
-          dplyr::filter(
-            transformation == transformation_curr,
-            mean_pos_setting == mean_pos_setting_curr,
-            prob_response == prob_response_curr
+
+    for (transformation_curr in .analysis_trans_order(bias_uns_error_avg$transformation)) {
+      .analysis_heading(
+        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+      )
+      for (mean_pos_setting_curr in unique(bias_uns_error_avg$mean_pos_setting)) {
+        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
+        for (prob_response_curr in unique(bias_uns_error_avg$prob_response)) {
+          plot_tbl <- bias_uns_error_avg |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            )
+
+          p <- .simBandwidthBiasRelativeErrorPlot(
+            plot_tbl,
+            y_label = "Mean of scenario statistics (absolute relative error)",
+            mcse = show_mcse
           )
 
-        p <- .simBandwidthBiasRelativeErrorPlot(
-          plot_tbl,
-          y_label = "Mean of scenario statistics (absolute relative error)",
-          mcse = show_mcse
-        )
-
-        path_p <- file.path(
-          plot_dir,
-          paste0(
-            transformation_curr,
-            "_", mean_pos_setting_curr,
-            "_p_", format(prob_response_curr, scientific = TRUE),
-            ".pdf"
+          path_p <- file.path(
+            plot_dir,
+            paste0(
+              transformation_curr,
+              "_", mean_pos_setting_curr,
+              "_p_", format(prob_response_curr, scientific = TRUE),
+              ".pdf"
+            )
           )
-        )
-        .analysis_save_fig(p, path_p, height = 14)
-        .analysis_heading(
-          paste0(
-            "Response probability: ", .analysis_label_percent(prob_response_curr)
-          ),
-          6
-        )
-        .analysis_print_fig(p)
-        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
-          dplyr::filter(
-            transformation == transformation_curr,
-            mean_pos_setting == mean_pos_setting_curr,
-            prob_response == prob_response_curr
-          ))
+          .analysis_save_fig(p, path_p, height = 14)
+          .analysis_heading(
+            paste0(
+              "Response probability: ", .analysis_label_percent(prob_response_curr)
+            ),
+            6
+          )
+          .analysis_print_fig(p)
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            ))
+        }
       }
     }
   }
 }
 ```
 
-### Relative error at each cell count
+## Relative error at each cell count
 
 Compare the curves across cell counts while holding the biological setting fixed.
 
@@ -781,58 +823,67 @@ Compare the curves across cell counts while holding the biological setting fixed
 #| fig-height: 5.5
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_fig_dir(
-    c(fig_key, "relative_error_by_n_cell"),
-    path_root = root_dir
-  )
-
-  for (transformation_curr in .analysis_trans_order(bias_uns_abs_error$transformation)) {
-    .analysis_heading(
-      paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+  for (mismatch_type_curr in unique(bias_uns_abs_error$mismatch_type)) {
+    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
+      "Mean shift of the stimulated negative component"
+    } else {
+      "SD inflation of the stimulated negative component"
+    }, 3)
+    plot_dir <- .analysis_fig_dir(
+      c(fig_key, "relative_error_by_n_cell", mismatch_type_curr),
+      path_root = root_dir
     )
-    for (mean_pos_setting_curr in unique(bias_uns_abs_error$mean_pos_setting)) {
-      .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
-      for (prob_response_curr in unique(bias_uns_abs_error$prob_response)) {
-        for (n_cell_curr in sort(unique(bias_uns_abs_error$n_cell))) {
-          plot_tbl <- bias_uns_abs_error |>
-            dplyr::filter(
-              transformation == transformation_curr,
-              mean_pos_setting == mean_pos_setting_curr,
-              prob_response == prob_response_curr,
-              n_cell == n_cell_curr
-            )
-          if (nrow(plot_tbl) == 0L) next
 
-          p <- .simBandwidthBiasRelativeErrorPlot(plot_tbl, mcse = show_mcse)
+    for (transformation_curr in .analysis_trans_order(bias_uns_abs_error$transformation)) {
+      .analysis_heading(
+        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+      )
+      for (mean_pos_setting_curr in unique(bias_uns_abs_error$mean_pos_setting)) {
+        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
+        for (prob_response_curr in unique(bias_uns_abs_error$prob_response)) {
+          for (n_cell_curr in sort(unique(bias_uns_abs_error$n_cell))) {
+            plot_tbl <- bias_uns_abs_error |>
+              dplyr::filter(
+                mismatch_type == mismatch_type_curr,
+                transformation == transformation_curr,
+                mean_pos_setting == mean_pos_setting_curr,
+                prob_response == prob_response_curr,
+                n_cell == n_cell_curr
+              )
+            if (nrow(plot_tbl) == 0L) next
 
-          path_p <- file.path(
-            plot_dir,
-            paste0(
-              transformation_curr,
-              "_", mean_pos_setting_curr,
-              "_p_", format(prob_response_curr, scientific = TRUE),
-              "_n_cell_", n_cell_curr,
-              ".pdf"
+            p <- .simBandwidthBiasRelativeErrorPlot(plot_tbl, mcse = show_mcse)
+
+            path_p <- file.path(
+              plot_dir,
+              paste0(
+                transformation_curr,
+                "_", mean_pos_setting_curr,
+                "_p_", format(prob_response_curr, scientific = TRUE),
+                "_n_cell_", n_cell_curr,
+                ".pdf"
+              )
             )
-          )
-          .analysis_save_fig(p, path_p, height = 14)
-          # Response probability and cells share one heading level, so the
-          # headings stay within six levels.
-          .analysis_heading(
-            paste0(
-              "Response probability: ", .analysis_label_percent(prob_response_curr),
-              "; cells: ", .analysis_label_number(n_cell_curr)
-            ),
-            6
-          )
-          .analysis_print_fig(p)
-          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
-            dplyr::filter(
-              transformation == transformation_curr,
-              mean_pos_setting == mean_pos_setting_curr,
-              prob_response == prob_response_curr,
-              n_cell == n_cell_curr
-            ))
+            .analysis_save_fig(p, path_p, height = 14)
+            # Response probability and cells share one heading level, so the
+            # headings stay within six levels.
+            .analysis_heading(
+              paste0(
+                "Response probability: ", .analysis_label_percent(prob_response_curr),
+                "; cells: ", .analysis_label_number(n_cell_curr)
+              ),
+              6
+            )
+            .analysis_print_fig(p)
+            .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+              dplyr::filter(
+                mismatch_type == mismatch_type_curr,
+                transformation == transformation_curr,
+                mean_pos_setting == mean_pos_setting_curr,
+                prob_response == prob_response_curr,
+                n_cell == n_cell_curr
+              ))
+          }
         }
       }
     }
@@ -840,7 +891,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Over- and under-estimates across bias settings
+## Over- and under-estimates across bias settings
 
 The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: each statistic is calculated separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale, including errors below -100% for negative background-subtracted estimates, with -100% (0x, an estimate of zero), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth; lines and points are slightly transparent so overlapping curves stay visible. The bandwidth and line-weight legends sit underneath each plot. Error bars come from the sorted errors in each direction; the number of errors in each direction is itself random, so the bars for a rare direction understate the uncertainty a little (the line weight shows how rare it is).
 
@@ -851,67 +902,76 @@ The plots above use the size of the error only. Here relative error, (estimate -
 #| fig-height: 8.7
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_fig_dir(
-    c(fig_key, "signed_error"),
-    path_root = root_dir
-  )
-
-  for (transformation_curr in .analysis_trans_order(bias_uns_signed_error$transformation)) {
-    .analysis_heading(
-      paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+  for (mismatch_type_curr in unique(bias_uns_signed_error$mismatch_type)) {
+    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
+      "Mean shift of the stimulated negative component"
+    } else {
+      "SD inflation of the stimulated negative component"
+    }, 3)
+    plot_dir <- .analysis_fig_dir(
+      c(fig_key, "signed_error", mismatch_type_curr),
+      path_root = root_dir
     )
-    for (mean_pos_setting_curr in unique(bias_uns_signed_error$mean_pos_setting)) {
-      .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
-      for (prob_response_curr in unique(bias_uns_signed_error$prob_response)) {
-        plot_tbl <- bias_uns_signed_error |>
-          dplyr::filter(
-            transformation == transformation_curr,
-            mean_pos_setting == mean_pos_setting_curr,
-            prob_response == prob_response_curr
+
+    for (transformation_curr in .analysis_trans_order(bias_uns_signed_error$transformation)) {
+      .analysis_heading(
+        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+      )
+      for (mean_pos_setting_curr in unique(bias_uns_signed_error$mean_pos_setting)) {
+        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
+        for (prob_response_curr in unique(bias_uns_signed_error$prob_response)) {
+          plot_tbl <- bias_uns_signed_error |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            )
+
+          p <- .simBandwidthBiasSignedErrorPlot(
+            plot_tbl,
+            facet = ggplot2::facet_grid(
+              statistic + n_cell ~ mismatch_label,
+              scales = "free_y",
+              labeller = ggplot2::labeller(n_cell = function(x) {
+                paste0("Cells: ", .analysis_label_number(as.numeric(x)))
+              })
+            ),
+            mcse = show_mcse
           )
 
-        p <- .simBandwidthBiasSignedErrorPlot(
-          plot_tbl,
-          facet = ggplot2::facet_grid(
-            statistic + n_cell ~ mismatch_label,
-            scales = "free_y",
-            labeller = ggplot2::labeller(n_cell = function(x) {
-              paste0("Cells: ", .analysis_label_number(as.numeric(x)))
-            })
-          ),
-          mcse = show_mcse
-        )
-
-        path_p <- file.path(
-          plot_dir,
-          paste0(
-            transformation_curr,
-            "_", mean_pos_setting_curr,
-            "_p_", format(prob_response_curr, scientific = TRUE),
-            ".pdf"
+          path_p <- file.path(
+            plot_dir,
+            paste0(
+              transformation_curr,
+              "_", mean_pos_setting_curr,
+              "_p_", format(prob_response_curr, scientific = TRUE),
+              ".pdf"
+            )
           )
-        )
-        .analysis_save_fig(p, path_p, height = 22)
-        .analysis_heading(
-          paste0(
-            "Response probability: ", .analysis_label_percent(prob_response_curr)
-          ),
-          6
-        )
-        .analysis_print_fig(p)
-        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
-          dplyr::filter(
-            transformation == transformation_curr,
-            mean_pos_setting == mean_pos_setting_curr,
-            prob_response == prob_response_curr
-          ))
+          .analysis_save_fig(p, path_p, height = 22)
+          .analysis_heading(
+            paste0(
+              "Response probability: ", .analysis_label_percent(prob_response_curr)
+            ),
+            6
+          )
+          .analysis_print_fig(p)
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            ))
+        }
       }
     }
   }
 }
 ```
 
-### Over- and under-estimates averaged over cell counts
+## Over- and under-estimates averaged over cell counts
 
 The scenario-level statistics and shares for each direction are averaged equally over cell counts, keeping response probabilities and mismatch settings separate. Error bars are the average plus or minus 1.96 combined standard errors, treating cell counts as independent scenarios.
 
@@ -922,11 +982,6 @@ The scenario-level statistics and shares for each direction are averaged equally
 #| fig-height: 5.5
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_fig_dir(
-    c(fig_key, "signed_error_averaged_n_cell"),
-    path_root = root_dir
-  )
-
   # Average scenario statistics equally across cell counts; do not pool samples.
   bias_uns_signed_error_avg <- bias_uns_signed_error |>
     .simBandwidthSignedErrorAverage(c(
@@ -935,56 +990,70 @@ if (isTRUE(run_plots)) {
       "bias_uns_multiplier"
     ))
 
-  for (transformation_curr in .analysis_trans_order(bias_uns_signed_error_avg$transformation)) {
-    .analysis_heading(
-      paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+  for (mismatch_type_curr in unique(bias_uns_signed_error_avg$mismatch_type)) {
+    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
+      "Mean shift of the stimulated negative component"
+    } else {
+      "SD inflation of the stimulated negative component"
+    }, 3)
+    plot_dir <- .analysis_fig_dir(
+      c(fig_key, "signed_error_averaged_n_cell", mismatch_type_curr),
+      path_root = root_dir
     )
-    for (mean_pos_setting_curr in unique(bias_uns_signed_error_avg$mean_pos_setting)) {
-      .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
-      for (prob_response_curr in unique(bias_uns_signed_error_avg$prob_response)) {
-        plot_tbl <- bias_uns_signed_error_avg |>
-          dplyr::filter(
-            transformation == transformation_curr,
-            mean_pos_setting == mean_pos_setting_curr,
-            prob_response == prob_response_curr
+
+    for (transformation_curr in .analysis_trans_order(bias_uns_signed_error_avg$transformation)) {
+      .analysis_heading(
+        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+      )
+      for (mean_pos_setting_curr in unique(bias_uns_signed_error_avg$mean_pos_setting)) {
+        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
+        for (prob_response_curr in unique(bias_uns_signed_error_avg$prob_response)) {
+          plot_tbl <- bias_uns_signed_error_avg |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            )
+
+          p <- .simBandwidthBiasSignedErrorPlot(
+            plot_tbl,
+            y_label = "Mean of scenario statistics (relative error)",
+            mcse = show_mcse
           )
 
-        p <- .simBandwidthBiasSignedErrorPlot(
-          plot_tbl,
-          y_label = "Mean of scenario statistics (relative error)",
-          mcse = show_mcse
-        )
-
-        path_p <- file.path(
-          plot_dir,
-          paste0(
-            transformation_curr,
-            "_", mean_pos_setting_curr,
-            "_p_", format(prob_response_curr, scientific = TRUE),
-            ".pdf"
+          path_p <- file.path(
+            plot_dir,
+            paste0(
+              transformation_curr,
+              "_", mean_pos_setting_curr,
+              "_p_", format(prob_response_curr, scientific = TRUE),
+              ".pdf"
+            )
           )
-        )
-        .analysis_save_fig(p, path_p, height = 14)
-        .analysis_heading(
-          paste0(
-            "Response probability: ", .analysis_label_percent(prob_response_curr)
-          ),
-          6
-        )
-        .analysis_print_fig(p)
-        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
-          dplyr::filter(
-            transformation == transformation_curr,
-            mean_pos_setting == mean_pos_setting_curr,
-            prob_response == prob_response_curr
-          ))
+          .analysis_save_fig(p, path_p, height = 14)
+          .analysis_heading(
+            paste0(
+              "Response probability: ", .analysis_label_percent(prob_response_curr)
+            ),
+            6
+          )
+          .analysis_print_fig(p)
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            ))
+        }
       }
     }
   }
 }
 ```
 
-### Over- and under-estimates at each cell count
+## Over- and under-estimates at each cell count
 
 Each cell count is shown on its own.
 
@@ -995,58 +1064,67 @@ Each cell count is shown on its own.
 #| fig-height: 5.5
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_fig_dir(
-    c(fig_key, "signed_error_by_n_cell"),
-    path_root = root_dir
-  )
-
-  for (transformation_curr in .analysis_trans_order(bias_uns_signed_error$transformation)) {
-    .analysis_heading(
-      paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+  for (mismatch_type_curr in unique(bias_uns_signed_error$mismatch_type)) {
+    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
+      "Mean shift of the stimulated negative component"
+    } else {
+      "SD inflation of the stimulated negative component"
+    }, 3)
+    plot_dir <- .analysis_fig_dir(
+      c(fig_key, "signed_error_by_n_cell", mismatch_type_curr),
+      path_root = root_dir
     )
-    for (mean_pos_setting_curr in unique(bias_uns_signed_error$mean_pos_setting)) {
-      .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
-      for (prob_response_curr in unique(bias_uns_signed_error$prob_response)) {
-        for (n_cell_curr in sort(unique(bias_uns_signed_error$n_cell))) {
-          plot_tbl <- bias_uns_signed_error |>
-            dplyr::filter(
-              transformation == transformation_curr,
-              mean_pos_setting == mean_pos_setting_curr,
-              prob_response == prob_response_curr,
-              n_cell == n_cell_curr
-            )
-          if (nrow(plot_tbl) == 0L) next
 
-          p <- .simBandwidthBiasSignedErrorPlot(plot_tbl, mcse = show_mcse)
+    for (transformation_curr in .analysis_trans_order(bias_uns_signed_error$transformation)) {
+      .analysis_heading(
+        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+      )
+      for (mean_pos_setting_curr in unique(bias_uns_signed_error$mean_pos_setting)) {
+        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
+        for (prob_response_curr in unique(bias_uns_signed_error$prob_response)) {
+          for (n_cell_curr in sort(unique(bias_uns_signed_error$n_cell))) {
+            plot_tbl <- bias_uns_signed_error |>
+              dplyr::filter(
+                mismatch_type == mismatch_type_curr,
+                transformation == transformation_curr,
+                mean_pos_setting == mean_pos_setting_curr,
+                prob_response == prob_response_curr,
+                n_cell == n_cell_curr
+              )
+            if (nrow(plot_tbl) == 0L) next
 
-          path_p <- file.path(
-            plot_dir,
-            paste0(
-              transformation_curr,
-              "_", mean_pos_setting_curr,
-              "_p_", format(prob_response_curr, scientific = TRUE),
-              "_n_cell_", n_cell_curr,
-              ".pdf"
+            p <- .simBandwidthBiasSignedErrorPlot(plot_tbl, mcse = show_mcse)
+
+            path_p <- file.path(
+              plot_dir,
+              paste0(
+                transformation_curr,
+                "_", mean_pos_setting_curr,
+                "_p_", format(prob_response_curr, scientific = TRUE),
+                "_n_cell_", n_cell_curr,
+                ".pdf"
+              )
             )
-          )
-          .analysis_save_fig(p, path_p, height = 14)
-          # Response probability and cells share one heading level, so the
-          # headings stay within six levels.
-          .analysis_heading(
-            paste0(
-              "Response probability: ", .analysis_label_percent(prob_response_curr),
-              "; cells: ", .analysis_label_number(n_cell_curr)
-            ),
-            6
-          )
-          .analysis_print_fig(p)
-          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
-            dplyr::filter(
-              transformation == transformation_curr,
-              mean_pos_setting == mean_pos_setting_curr,
-              prob_response == prob_response_curr,
-              n_cell == n_cell_curr
-            ))
+            .analysis_save_fig(p, path_p, height = 14)
+            # Response probability and cells share one heading level, so the
+            # headings stay within six levels.
+            .analysis_heading(
+              paste0(
+                "Response probability: ", .analysis_label_percent(prob_response_curr),
+                "; cells: ", .analysis_label_number(n_cell_curr)
+              ),
+              6
+            )
+            .analysis_print_fig(p)
+            .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+              dplyr::filter(
+                mismatch_type == mismatch_type_curr,
+                transformation == transformation_curr,
+                mean_pos_setting == mean_pos_setting_curr,
+                prob_response == prob_response_curr,
+                n_cell == n_cell_curr
+              ))
+          }
         }
       }
     }
@@ -1055,7 +1133,7 @@ if (isTRUE(run_plots)) {
 ```
 
 
-### Estimated response frequency
+## Estimated response frequency
 
 Median estimated frequency is plotted against bias multiplier, with colour identifying bandwidth. Rows of panels separate cell counts and columns mismatch settings; dashed lines show the simulated truth. Curves closer to those lines indicate better agreement. Error bars are 95% intervals for each median from the sorted valid estimates of that setting.
 
@@ -1066,11 +1144,6 @@ Median estimated frequency is plotted against bias multiplier, with colour ident
 #| fig-height: 4.3
 #| echo: false
 if (isTRUE(run_plots)) {
-  plot_dir <- .analysis_fig_dir(
-    c(fig_key, "estimated_frequency"),
-    path_root = root_dir
-  )
-
   # 95% order-statistic interval for each setting's median valid estimate.
   freq_median_mcse <- bias_uns_results_raw |>
     dplyr::filter(valid_estimate) |>
@@ -1082,83 +1155,97 @@ if (isTRUE(run_plots)) {
       propRespEst_median_upper = upper
     )
 
-  for (transformation_curr in .analysis_trans_order(bias_uns_results_summary$transformation)) {
-    .analysis_heading(
-      paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+  for (mismatch_type_curr in unique(bias_uns_results_summary$mismatch_type)) {
+    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
+      "Mean shift of the stimulated negative component"
+    } else {
+      "SD inflation of the stimulated negative component"
+    }, 3)
+    plot_dir <- .analysis_fig_dir(
+      c(fig_key, "estimated_frequency", mismatch_type_curr),
+      path_root = root_dir
     )
-    for (mean_pos_setting_curr in unique(bias_uns_results_summary$mean_pos_setting)) {
-      .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
-      for (prob_response_curr in unique(bias_uns_results_summary$prob_response)) {
-        plot_tbl <- bias_uns_results_summary |>
-          dplyr::filter(
-            transformation == transformation_curr,
-            mean_pos_setting == mean_pos_setting_curr,
-            prob_response == prob_response_curr
-          ) |>
-          dplyr::left_join(freq_median_mcse, by = "sim_id") |>
-          dplyr::mutate(bw_lab = .simBandwidthBwLabFactor(bw))
 
-        p <- ggplot(
-          plot_tbl,
-          aes(
-            x = bias_uns_multiplier,
-            y = propRespEst_median,
-            colour = bw_lab,
-            group = interaction(bw, bias_uns_basis)
-          )
-        ) +
-          geom_hline(
-            aes(yintercept = propRespTruth),
-            linetype = "dashed",
-            colour = "black"
-          ) +
-          geom_line(alpha = 0.75) +
-          geom_point(alpha = 0.75) +
-          (if (isTRUE(show_mcse)) {
-            .analysis_mcse_errorbar(
-              plot_tbl, "propRespEst_median_lower", "propRespEst_median_upper"
+    for (transformation_curr in .analysis_trans_order(bias_uns_results_summary$transformation)) {
+      .analysis_heading(
+        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+      )
+      for (mean_pos_setting_curr in unique(bias_uns_results_summary$mean_pos_setting)) {
+        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
+        for (prob_response_curr in unique(bias_uns_results_summary$prob_response)) {
+          plot_tbl <- bias_uns_results_summary |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            ) |>
+            dplyr::left_join(freq_median_mcse, by = "sim_id") |>
+            dplyr::mutate(bw_lab = .simBandwidthBwLabFactor(bw))
+
+          p <- ggplot(
+            plot_tbl,
+            aes(
+              x = bias_uns_multiplier,
+              y = propRespEst_median,
+              colour = bw_lab,
+              group = interaction(bw, bias_uns_basis)
             )
-          }) +
-          facet_grid(
-            n_cell ~ mismatch_label,
-            scales = "free_y",
-            labeller = labeller(n_cell = function(x) {
-              paste0("Cells: ", .analysis_label_number(as.numeric(x)))
-            })
           ) +
-          .simBandwidthBwColourScale(plot_tbl$bw) +
-          scale_x_continuous(labels = .analysis_label_number) +
-          scale_y_continuous(labels = .analysis_label_percent) +
-          .analysis_theme() +
-          labs(
-            x = "Bias multiplier",
-            y = "Estimated background-subtracted frequency (median)",
-            colour = "Bandwidth"
-          )
+            geom_hline(
+              aes(yintercept = propRespTruth),
+              linetype = "dashed",
+              colour = "black"
+            ) +
+            geom_line(alpha = 0.75) +
+            geom_point(alpha = 0.75) +
+            (if (isTRUE(show_mcse)) {
+              .analysis_mcse_errorbar(
+                plot_tbl, "propRespEst_median_lower", "propRespEst_median_upper"
+              )
+            }) +
+            facet_grid(
+              n_cell ~ mismatch_label,
+              scales = "free_y",
+              labeller = labeller(n_cell = function(x) {
+                paste0("Cells: ", .analysis_label_number(as.numeric(x)))
+              })
+            ) +
+            .simBandwidthBwColourScale(plot_tbl$bw) +
+            scale_x_continuous(labels = .analysis_label_number) +
+            scale_y_continuous(labels = .analysis_label_percent) +
+            .analysis_theme() +
+            labs(
+              x = "Bias multiplier",
+              y = "Estimated background-subtracted frequency (median)",
+              colour = "Bandwidth"
+            )
 
-        path_p <- file.path(
-          plot_dir,
-          paste0(
-            transformation_curr,
-            "_", mean_pos_setting_curr,
-            "_p_", format(prob_response_curr, scientific = TRUE),
-            ".pdf"
+          path_p <- file.path(
+            plot_dir,
+            paste0(
+              transformation_curr,
+              "_", mean_pos_setting_curr,
+              "_p_", format(prob_response_curr, scientific = TRUE),
+              ".pdf"
+            )
           )
-        )
-        .analysis_save_fig(p, path_p, height = 11)
-        .analysis_heading(
-          paste0(
-            "Response probability: ", .analysis_label_percent(prob_response_curr)
-          ),
-          6
-        )
-        .analysis_print_fig(p)
-        .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
-          dplyr::filter(
-            transformation == transformation_curr,
-            mean_pos_setting == mean_pos_setting_curr,
-            prob_response == prob_response_curr
-          ))
+          .analysis_save_fig(p, path_p, height = 11)
+          .analysis_heading(
+            paste0(
+              "Response probability: ", .analysis_label_percent(prob_response_curr)
+            ),
+            6
+          )
+          .analysis_print_fig(p)
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            ))
+        }
       }
     }
   }

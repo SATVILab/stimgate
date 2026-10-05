@@ -16,16 +16,24 @@ launcher_path <- file.path(
   env
 }
 
-test_that("ACS CyTOF batches contain one unstimulated and four stimulated samples", {
+test_that("ACS batches use mapped donors and stimuli regardless of file order", {
   env <- .load_acs_gate_env()
-
-  expect_equal(
-    env$.acsCytofBatchList(20L),
-    # The fifth sample of each block is unstimulated and is listed first.
-    list(c(5L, 1:4), c(10L, 6:9), c(15L, 11:14), c(20L, 16:19))
+  mapped <- data.frame(
+    SampleID = rep(c("a", "b"), each = 5),
+    stim = rep(c("uns", "p1", "mtb", "ebv", "p4"), 2),
+    ind = 1:10
   )
-  expect_error(env$.acsCytofBatchList(19L), "multiple of five")
-  expect_error(env$.acsCytofBatchList(0L), "at least 5")
+  expect_equal(env$.acsCytofBatchList(mapped), list(a = 1:5, b = 6:10))
+  shuffled <- mapped[c(8, 5, 1, 9, 2, 7, 4, 10, 3, 6), ]
+  shuffled$ind <- seq_len(nrow(shuffled))
+  batches <- env$.acsCytofBatchList(shuffled)
+  expect_equal(shuffled$stim[batches$a], c("uns", "p1", "mtb", "ebv", "p4"))
+  expect_true(all(shuffled$SampleID[batches$a] == "a"))
+  expect_error(env$.acsCytofBatchList(mapped[-3, ]), "Missing or duplicate")
+  mapped$stim[3] <- "uns"
+  expect_error(env$.acsCytofBatchList(mapped), "Missing or duplicate")
+  expect_error(env$.acsCytofValidateSampleCount(19L), "multiple of five")
+  expect_error(env$.acsCytofValidateSampleCount(0L), "at least 5")
 })
 
 test_that("the TCRgd tester and full population use separate output paths", {
@@ -81,6 +89,7 @@ test_that("the reusable population runner preserves the ACS StimGate contract", 
   expect_null(formals(env$.acsCytofRunPopulation)$biasUns)
   expect_identical(formals(env$.acsCytofRunPopulation)$biasUnsFactor, 4)
   expect_true(grepl("calcCytPosGates = TRUE", runner_body, fixed = TRUE))
+  expect_true(grepl("clusterGates = TRUE", runner_body, fixed = TRUE))
 })
 
 test_that("analysis 9 uses one runner for the tester and configured populations", {
@@ -127,7 +136,7 @@ test_that("analysis 9 validates execution controls before running", {
     content,
     fixed = TRUE
   ))
-  expect_true(grepl(".acsCytofBatchList(tester_n_sample)", content, fixed = TRUE))
+  expect_true(grepl(".acsCytofValidateSampleCount(tester_n_sample)", content, fixed = TRUE))
   expect_true(grepl(
     'n_workers <- as.integer(.get_qmd_param_env(',
     content,

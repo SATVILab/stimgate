@@ -33,34 +33,34 @@
   )
 }
 
-.acsCytofBatchList <- function(nSample) {
-  if (
-    !is.numeric(nSample) ||
-      length(nSample) != 1L ||
-      is.na(nSample) ||
-      !is.finite(nSample) ||
-      nSample != as.integer(nSample) ||
-      nSample < 5L
-  ) {
-    stop("nSample must be one integer of at least 5.")
+.acsCytofValidateSampleCount <- function(nSample) {
+  if (length(nSample) != 1L || !is.numeric(nSample) ||
+      !is.finite(nSample) || nSample < 5L || nSample %% 5L != 0L) {
+    stop("ACS sample count must be a positive multiple of five (at least 5).")
   }
+  invisible(nSample)
+}
 
-  nSample <- as.integer(nSample)
-  nPerBatch <- 5L
-  if (nSample %% nPerBatch != 0L) {
-    stop(
-      "The ACS CyTOF sample count must be a multiple of five so that ",
-      "every batch contains one unstimulated and four stimulated samples."
-    )
+.acsCytofBatchList <- function(sampleMap) {
+  if (!is.data.frame(sampleMap) ||
+      !all(c("SampleID", "stim", "ind") %in% names(sampleMap)) ||
+      anyNA(sampleMap[c("SampleID", "stim", "ind")]) ||
+      nrow(sampleMap) == 0L ||
+      anyDuplicated(sampleMap$ind) ||
+      any(!nzchar(as.character(sampleMap$SampleID))) ||
+      anyNA(suppressWarnings(as.integer(sampleMap$ind)))) {
+    stop("ACS batches require a complete mapped SampleID/stim/ind table.")
   }
-
-  lapply(seq.int(1L, nSample, by = 5L), function(indStart) {
-    indRaw <- seq.int(indStart, length.out = 5L)
-
-    c(
-      indRaw[[5L]], # unstimulated
-      indRaw[1:4] # four stimulated samples
-    )
+  stimuli <- c("uns", "p1", "mtb", "ebv", "p4")
+  batches <- split(sampleMap, sampleMap$SampleID)
+  lapply(batches, function(batch) {
+    if (nrow(batch) != length(stimuli) ||
+        anyDuplicated(batch$stim) || !setequal(batch$stim, stimuli)) {
+      stop("ACS batch '", batch$SampleID[[1]],
+           "' must contain exactly one tube for each of: ",
+           paste(stimuli, collapse = ", "), ". Missing or duplicate tubes.")
+    }
+    as.integer(batch$ind[match(stimuli, batch$stim)])
   })
 }
 
@@ -96,7 +96,7 @@
 ) {
   fcsFiles <- .acsCytofFcsFiles(paths$fcs)
   if (!is.null(nSample)) {
-    .acsCytofBatchList(nSample)
+    .acsCytofValidateSampleCount(nSample)
     if (nSample > length(fcsFiles)) {
       stop(
         "Requested ",
@@ -261,7 +261,8 @@
       ". Re-run tester preprocessing."
     )
   }
-  batchList <- .acsCytofBatchList(nSampleActual)
+  preprocessing <- .acsCytofReadPreprocessing(paths$gs, gs)
+  batchList <- .acsCytofBatchList(preprocessing$sampleMap)
 
   if (isTRUE(runMethods)) {
     restoreDebug <- .acsCytofSetDebug()
@@ -294,10 +295,17 @@
           bwMin = "none",
           bwMax = "none",
           gateCombn = "min",
-          clusterGates = FALSE,
+          clusterGates = TRUE,
           calcCytPosGates = TRUE,
           minCell = 100
         )
+      )
+      saveRDS(
+        list(context = .acsCytofManifest(preprocessing),
+             settings = list(biasUns = biasUns, biasUnsFactor = biasUnsFactor,
+                             clusterGates = TRUE, calcCytPosGates = TRUE),
+             channelSettings = stimgate::stimgateMetaReadSettingsChnls(pathTmp)),
+        file.path(pathTmp, "acs-manifest.rds")
       )
     })
   }

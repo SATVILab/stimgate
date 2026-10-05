@@ -360,6 +360,9 @@ render checks in `analysis/tests/test-slurm-launchers.sh` and run them in analys
 CI when launchers change. Relative-error plots averaged over cell counts and
 plots for each cell count belong in separate labelled QMD chunks; preserve the
 same scientific inclusion rules and avoid pooling different grid dimensions.
+For controlled negative-component mismatch analyses, report stimulated-negative
+mean shifts and SD inflation in separate figure sections and sibling folders,
+including the matching coverage summaries. Label which tube and component change.
 Signed relative-error plots (`.simBandwidthSignedError*()` in
 `sim-bandwidth-analysis-plot.R`) sit alongside, not instead of, the absolute
 ones: they summarise over- and under-estimates separately, weight lines by each
@@ -771,6 +774,14 @@ rows before drawing reference lines.
    explicit stage parameters/environment variables override that default. Cached
    comparison renders read the saved manual-comparison table without raw FCS or
    manual CSV inputs; GatingSet diagnostics are optional when those caches are absent.
+
+   ACS batches use the mapped SampleID and stimulus, never filename position.
+   Saved ACS method outputs must carry identical input/preprocessing/revision
+   manifests before comparison. Keep per-marker threshold provenance and failure
+   coverage; exclude failed estimates from agreement metrics and persist cohort
+   exclusions rather than hiding omitted rows behind render warnings. With ACS
+   clustering and cytokine-positive refinement enabled, score `loc_minClust`,
+   and preserve cluster provenance when assembling the final package gate rows.
 
 12. **Shared local-FDR bandwidths (`bwScope`, issue #417)**:
    The scalar local-FDR bandwidth is chosen once per channel during settings

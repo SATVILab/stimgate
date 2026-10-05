@@ -160,29 +160,9 @@
   sampleLookup
 ) {
   fcsFiles <- .acsCytofFcsFiles(file.path(pathFcsBase, popCode))
-  fcsFilesClean <- DataTidyACSCyTOFFAUST::clean_fcs_for_matching(
-    fcsFiles |> basename()
-  )
-  lookupIndex <- match(fcsFilesClean, sampleLookup$MatchFCSName)
-  unmatched <- is.na(lookupIndex)
-  if (any(unmatched)) {
-    warning(
-      sum(unmatched),
-      " FCS file(s) in population '",
-      popCode,
-      "' could not be matched to the manual file and will be omitted: ",
-      paste(basename(fcsFiles)[unmatched], collapse = ", ")
-    )
-  }
-  matched <- sampleLookup[lookupIndex, , drop = FALSE]
+  .acsCytofMapFiles(fcsFiles, sampleLookup) |>
+    dplyr::mutate(popCode = .env$popCode)
 
-  tibble::tibble(
-    popCode = popCode,
-    ind = as.character(seq_along(fcsFiles)),
-    SampleID = matched$SampleID,
-    stim = matched$Stim
-  ) |>
-    dplyr::filter(!is.na(.data$SampleID), !is.na(.data$stim))
 }
 
 .acsCytofManualValidateSampleMap <- function(sampleMap, popCodes) {
@@ -359,14 +339,8 @@
     dplyr::select(ind, SampleID, stim)
   unmatchedIndex <- setdiff(unique(singleTbl$ind), mapPopulation$ind)
   if (length(unmatchedIndex) > 0L) {
-    warning(
-      length(unmatchedIndex),
-      " ",
-      method,
-      " sample(s) in population '",
-      popCode,
-      "' could not be matched to the manual file and will be omitted."
-    )
+    stop("Unmapped ", method, " sample indices for '", popCode, "': ",
+         paste(unmatchedIndex, collapse = ", "))
   }
 
   singleTbl |>
@@ -403,7 +377,7 @@
   cyt = NULL,
   methods = c("stimgate", "tailgate", "fbeta"),
   outputGroup = NULL,
-  gateName = "loc_min",
+  gateName = "loc_minClust",
   sampleMap = NULL
 ) {
   methods <- match.arg(
@@ -442,37 +416,59 @@
     stop("No requested ACS population has an automated and manual result.")
   }
 
-  sampleMap <- purrr::map_dfr(popCodes, function(popCode) {
-    .acsCytofManualSampleMapFromFcs(
-      pathFcsBase = pathFcsBase,
-      popCode = popCode,
-      sampleLookup = sampleMap
-    )
-  })
-  sampleMap <- .acsCytofManualValidateSampleMap(sampleMap, popCodes)
-
-  purrr::map_dfr(popCodes, function(popCode) {
+  manifests <- list()
+  result <- purrr::map_dfr(popCodes, function(popCode) {
+    paths <- lapply(methods, function(method) {
+      .acsCytofManualMethodPath(pathScratchBase, popCode, method, outputGroup)
+    })
+    names(paths) <- methods
+    saved <- lapply(methods, function(method) {
+      if (method == "stimgate") {
+        pathManifest <- file.path(paths[[method]], "acs-manifest.rds")
+        if (!file.exists(pathManifest)) stop("ACS StimGate manifest missing; re-run all methods.")
+        manifest <- readRDS(pathManifest)
+        if (!identical(manifest$channelSettings, stimgate::stimgateMetaReadSettingsChnls(paths[[method]]))) {
+          stop("Mismatched ACS StimGate settings manifest; re-run all methods.")
+        }
+        manifest
+      } else {
+        object <- .acsCytofReadComparatorCache(paths[[method]], method)
+        if (!identical(object$manifest$settings, object$settings)) {
+          stop("Mismatched ACS comparator manifest settings; re-run all methods.")
+        }
+        object$manifest
+      }
+    })
+    names(saved) <- methods
+    .acsCytofValidateManifests(saved)
+    manifests[[popCode]] <<- saved
+    mapped <- saved[[1]]$context$preprocessing$sampleMap |>
+      dplyr::mutate(popCode = .env$popCode)
+    mapped <- .acsCytofManualValidateSampleMap(mapped, popCode)
     purrr::map_dfr(methods, function(method) {
-      statsTbl <- .acsCytofManualReadStats(
-        path = .acsCytofManualMethodPath(
-          pathScratchBase,
-          popCode,
-          method,
-          outputGroup
-        ),
-        method = method,
-        gateName = gateName
+      statsTbl <- .acsCytofManualReadStats(paths[[method]], method, gateName)
+      single <- .acsCytofStatsSingleMarkers(
+        statsTbl, method, popCode, unname(popMap[[popCode]]), mapped, cyt
       )
-      .acsCytofStatsSingleMarkers(
-        statsTbl = statsTbl,
-        method = method,
-        popCode = popCode,
-        popLabel = unname(popMap[[popCode]]),
-        sampleMap = sampleMap,
-        cyt = cyt
-      )
+      thresholds <- if (method == "stimgate") {
+        stimgate::getStimGates(paths[[method]]) |>
+          dplyr::filter(.data$gateName == .env$gateName) |>
+          dplyr::mutate(
+            threshold = .data$gate,
+            thresholdOrigin = .data$locSource,
+            thresholdFallbackUsed = !(.data$locGenerated %in% TRUE),
+            cyt = unname(.acsCytofChannelMap()[.data$chnl])
+          )
+      } else {
+        .acsCytofReadComparatorCache(paths[[method]], method)$thresholds
+      }
+      .acsCytofJoinProvenance(single, thresholds)
     })
   })
+  .acsCytofValidateCohorts(result, methods)
+  attr(result, "manifest") <- manifests
+  result
+
 }
 
 .acsCytofManualComparisonTable <- function(
@@ -483,7 +479,7 @@
   cyt = NULL,
   methods = c("stimgate", "tailgate", "fbeta"),
   outputGroup = NULL,
-  gateName = "loc_min",
+  gateName = "loc_minClust",
   sampleMap = NULL
 ) {
   autoTbl <- .acsCytofManualAutoTable(
@@ -508,21 +504,17 @@
     dplyr::anti_join(manualTbl, by = joinBy)
   unmatchedManual <- manualTbl |>
     dplyr::anti_join(autoTbl, by = joinBy)
-  if (nrow(unmatchedAuto) > 0L || nrow(unmatchedManual) > 0L) {
-    warning(
-      "The manual join omitted ",
-      nrow(unmatchedAuto),
-      " automated row(s) and ",
-      nrow(unmatchedManual),
-      " manual row(s) with no matching key."
-    )
-  }
+  exclusions <- dplyr::bind_rows(
+    dplyr::mutate(unmatchedAuto, exclusionReason = "no_manual_key"),
+    dplyr::mutate(unmatchedManual, exclusionReason = "no_automated_key")
+  )
+  if (anyDuplicated(manualTbl[joinBy])) stop("Duplicate ACS manual comparison keys.")
 
   methodLevels <- c("stimgate", "tailgate", "fbeta")
   popLevels <- stats::na.omit(unname(.acsCytofManualPopulationMap()))
   cytLevels <- unname(.acsCytofChannelMap())
 
-  autoTbl |>
+  result <- autoTbl |>
     dplyr::inner_join(manualTbl, by = joinBy) |>
     dplyr::mutate(
       method = factor(.data$method, levels = methodLevels),
@@ -543,17 +535,35 @@
       .data$cyt,
       dplyr::desc(.data$abs_diff)
     )
+  attr(result, "manifest") <- list(
+    methods = attr(autoTbl, "manifest"),
+    comparisonSettings = list(gateName = gateName, pop = pop, cyt = cyt, methods = methods),
+    manualInputHash = .acsCytofHash(manualTbl)
+  )
+  attr(result, "exclusions") <- dplyr::bind_rows(
+    exclusions,
+    tibble::tibble(popCode = setdiff(.acsCytofManualResolvePopCodes(pop, .acsCytofManualPopulationMap()), unique(autoTbl$popCode)),
+                   exclusionReason = "population_without_manual_result")
+  )
+  result
+
 }
 
 .acsCytofManualSummaryTable <- function(comparisonTbl) {
+  if (!"thresholdFailed" %in% names(comparisonTbl)) comparisonTbl$thresholdFailed <- FALSE
   comparisonTbl |>
+    dplyr::mutate(dplyr::across(c(freq_bs_auto, abs_diff, abs_rel_error),
+                              ~ dplyr::if_else(.data$thresholdFailed, NA_real_, .x))) |>
     dplyr::group_by(method, pop, cyt, stim) |>
     dplyr::summarise(
+      n_total = dplyr::n(),
+      n_failed = sum(.data$thresholdFailed),
+      prop_failed = mean(.data$thresholdFailed),
       n = sum(stats::complete.cases(
         .data$freq_bs_auto,
         .data$freq_bs_man
       )),
-      pcc = if (dplyr::n() > 1L) {
+      pcc = if (n > 1L) {
         suppressWarnings(stats::cor(
           .data$freq_bs_auto,
           .data$freq_bs_man,
@@ -714,13 +724,17 @@
     )
 }
 
-.acsCytofManualSave <- function(
+.acsCytofManualWrite <- function(
   comparisonTbl,
   pathDirSave,
   savePlots = TRUE
 ) {
   dir.create(pathDirSave, recursive = TRUE, showWarnings = FALSE)
   summaryTbl <- .acsCytofManualSummaryTable(comparisonTbl)
+  exclusions <- attr(comparisonTbl, "exclusions")
+  if (is.null(exclusions)) exclusions <- data.frame(exclusionReason = character())
+  utils::write.csv(exclusions, file.path(pathDirSave, "manual-comparison-exclusions.csv"), row.names = FALSE)
+  saveRDS(attr(comparisonTbl, "manifest"), file.path(pathDirSave, "acs-manifest.rds"))
 
   utils::write.csv(
     comparisonTbl,
@@ -766,6 +780,14 @@
   ))
 }
 
+.acsCytofManualSave <- function(comparisonTbl, pathDirSave, savePlots = TRUE) {
+  result <- NULL
+  .acsCytofReplaceDir(pathDirSave, function(pathTmp) {
+    result <<- .acsCytofManualWrite(comparisonTbl, pathTmp, savePlots)
+  })
+  invisible(result)
+}
+
 comp_against_manual_cyt <- function(
   fn,
   path_scratch_base,
@@ -774,7 +796,7 @@ comp_against_manual_cyt <- function(
   cyt = NULL,
   methods = c("stimgate", "tailgate", "fbeta"),
   output_group = NULL,
-  gate_name = "loc_min",
+  gate_name = "loc_minClust",
   sample_map = NULL,
   path_dir_save = NULL,
   save_plots = TRUE
@@ -800,4 +822,40 @@ comp_against_manual_cyt <- function(
     )
   }
   invisible(comparisonTbl)
+}
+
+.acsCytofJoinProvenance <- function(single, thresholds) {
+  required <- c("ind", "cyt", "threshold", "thresholdOrigin", "thresholdFallbackUsed")
+  if (!all(required %in% names(thresholds))) stop("Missing ACS threshold provenance; re-run methods.")
+  provenance <- thresholds |>
+    dplyr::mutate(ind = as.character(.data$ind)) |>
+    dplyr::select(dplyr::all_of(required), dplyr::any_of(c(
+      "thresholdRaw", "gateCyt", "locGenerated", "locGeneratedDirect", "locSource", "locReason"
+    )))
+  keys <- c("ind", "cyt")
+  if (anyDuplicated(provenance[keys]) ||
+      nrow(dplyr::anti_join(single, provenance, by = keys))) {
+    stop("Missing or duplicate ACS per-marker threshold provenance.")
+  }
+  single |>
+    dplyr::left_join(provenance, by = keys) |>
+    dplyr::mutate(
+      thresholdFailed = !(.data$thresholdFallbackUsed %in% FALSE) | !is.finite(.data$threshold),
+      dplyr::across(c(freq_stim_auto, freq_uns_auto, freq_bs_auto),
+                    ~ dplyr::if_else(.data$thresholdFailed, NA_real_, .x))
+    )
+}
+
+.acsCytofValidateCohorts <- function(table, methods) {
+  keys <- c("SampleID", "stim", "pop", "cyt")
+  reference <- table[as.character(table$method) == methods[[1]], keys]
+  for (method in methods) {
+    cohort <- table[as.character(table$method) == method, keys]
+    if (anyNA(cohort) || anyDuplicated(cohort) ||
+        nrow(dplyr::anti_join(reference, cohort, by = keys)) ||
+        nrow(dplyr::anti_join(cohort, reference, by = keys))) {
+      stop("ACS methods have different or duplicate sample/stratum keys: ", method)
+    }
+  }
+  invisible(TRUE)
 }

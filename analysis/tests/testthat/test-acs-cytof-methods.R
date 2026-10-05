@@ -211,6 +211,11 @@ test_that("a failed comparator rerun keeps the previous results", {
     load_gs = function(...) as.list(seq_len(10L)),
     .package = "flowWorkspace"
   )
+  env$.acsCytofReadPreprocessing <- function(...) list(sampleMap = data.frame(
+    SampleID = rep(c("a", "b"), each = 5),
+    stim = rep(c("uns", "p1", "mtb", "ebv", "p4"), 2),
+    ind = 1:10
+  ))
   run_with <- function(fail_method) {
     env$.acsCytofRunComparator <- function(gs, pop, method, ...) {
       if (identical(method, fail_method)) stop("boom")
@@ -294,7 +299,7 @@ test_that("ACS comparator populations run in parallel", {
   expect_true(grepl("future::plan(oldPlan)", helper_body, fixed = TRUE))
 })
 
-test_that("FCS files missing from the manual sample map are dropped with a warning", {
+test_that("FCS files missing from the manual sample map fail explicitly", {
   skip_if_not_installed("DataTidyACSCyTOFFAUST")
   env <- .load_acs_method_env()
   path_fcs <- tempfile("acs-fcs-")
@@ -309,12 +314,10 @@ test_that("FCS files missing from the manual sample map are dropped with a warni
     Stim = "mtb"
   )
 
-  expect_warning(
-    out <- env$.acsCytofManualSampleMapFromFcs(path_fcs, "cd4", lookup),
+  expect_error(
+    env$.acsCytofManualSampleMapFromFcs(path_fcs, "cd4", lookup),
     "file03.fcs"
   )
-  expect_equal(nrow(out), 9L)
-  expect_false("3" %in% out$ind)
 })
 
 test_that("manual formatting uses the shared cytometry combination utilities", {
@@ -435,7 +438,7 @@ test_that("analysis 9 builds before saving to the canonical manual output", {
   ))
 
   save_body <- paste(
-    deparse(body(.load_acs_method_env()$.acsCytofManualSave)),
+    deparse(body(.load_acs_method_env()$.acsCytofManualWrite)),
     collapse = "\n"
   )
   expect_true(grepl(".write_rds_atomic(", save_body, fixed = TRUE))
@@ -460,10 +463,14 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   env$comp_against_manual_cyt <- function(...) stop("Raw-data rebuild was called")
   env$.acsCytofManualSave <- function(...) stop("Cache write was called")
   env$.acsCytofManualSummaryTable <- function(x) x
-  cached <- tibble::tibble(method = "stimgate", freq_bs_auto = 0.1)
+  cached <- tibble::tibble(method = "stimgate", freq_bs_auto = 0.1, thresholdFailed = FALSE)
+  attr(cached, "manifest") <- list(
+    methods = list(cd4 = list(stimgate = list(context = list(gitSha = "abc")))),
+    comparisonSettings = list(methods = "stimgate"), manualInputHash = "abc"
+  )
   path <- file.path(env$path_manual_output, "manual-comparison.rds")
   saveRDS(cached, path)
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v1"),
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v2"),
     file.path(env$path_manual_output, "manifest.rds"))
   withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA_character_)
   for (expr in as.list(code)[-1L]) eval(expr, env)
@@ -521,4 +528,116 @@ test_that("ACS method sets cover all methods and without Tailgate", {
   expect_identical(sets$all_methods$label, "All methods")
   expect_identical(sets$no_tailgate$label, "Without Tailgate")
   expect_false("tailgate" %in% sets$no_tailgate$methods)
+})
+
+test_that("ACS finite fallback gates remain failures in comparison and coverage", {
+  env <- .load_acs_method_env()
+  single <- tibble::tibble(
+    method = "stimgate", ind = c("2", "3", "4"), cyt = "IFNg",
+    freq_stim_auto = c(1, 2, 0), freq_uns_auto = 0,
+    freq_bs_auto = c(1, 2, 0), freq_bs_man = c(1, 2, 10),
+    pop = "CD4 T cells", stim = "mtb"
+  )
+  thresholds <- tibble::tibble(
+    ind = c("2", "3", "4"), cyt = "IFNg", threshold = c(1, 2, 100),
+    thresholdOrigin = c("direct", "cluster", "high_value"),
+    thresholdFallbackUsed = c(FALSE, FALSE, TRUE),
+    locGenerated = c(TRUE, TRUE, FALSE),
+    locGeneratedDirect = c(TRUE, FALSE, FALSE),
+    locSource = thresholdOrigin, locReason = c(NA, NA, "no_threshold")
+  )
+  out <- env$.acsCytofJoinProvenance(single, thresholds) |>
+    dplyr::mutate(diff = freq_bs_auto - freq_bs_man, abs_diff = abs(diff),
+                  abs_rel_error = abs(diff / freq_bs_man))
+  expect_true(is.na(out$freq_bs_auto[3]))
+  expect_identical(out$locReason[3], "no_threshold")
+  coverage <- env$.acsCytofManualSummaryTable(out)
+  expect_equal(coverage$n_total, 3L)
+  expect_equal(coverage$n_failed, 1L)
+  expect_equal(coverage$n, 2L)
+  expect_equal(coverage$pcc, 1)
+  expect_error(env$.acsCytofJoinProvenance(single, thresholds[-1, ]), "Missing or duplicate")
+})
+
+test_that("ACS refuses mismatched data, preprocessing and revision manifests", {
+  env <- .load_acs_method_env()
+  context <- list(gitSha = "abc", preprocessing = list(
+    settings = list(transform = "asinh(x / 5)"), inputFileListHash = "files"
+  ))
+  manifest <- list(context = context, settings = list(clusterGates = TRUE))
+  expect_no_error(env$.acsCytofValidateManifests(list(manifest, manifest)))
+  for (changed in list(
+    list(gitSha = "other", preprocessing = context$preprocessing),
+    list(gitSha = "abc", preprocessing = list(inputFileListHash = "other")),
+    list(gitSha = "abc", preprocessing = list(settings = list(transform = "none")))
+  )) {
+    expect_error(env$.acsCytofValidateManifests(list(manifest, list(context = changed))), "Mismatched ACS")
+  }
+  expect_error(env$.acsCytofValidateManifests(list(manifest, NULL)), "Mismatched ACS")
+})
+
+test_that("ACS compares identical cohorts and rejects missing or duplicate strata", {
+  env <- .load_acs_method_env()
+  rows <- tibble::tibble(method = rep(c("stimgate", "fbeta"), each = 2),
+                         SampleID = rep(c("a", "b"), 2),
+                         stim = "mtb", pop = "CD4 T cells", cyt = "IFNg")
+  expect_no_error(env$.acsCytofValidateCohorts(rows, c("stimgate", "fbeta")))
+  expect_error(env$.acsCytofValidateCohorts(rows[-4, ], c("stimgate", "fbeta")), "different or duplicate")
+  expect_error(env$.acsCytofValidateCohorts(dplyr::bind_rows(rows, rows[4, ]), c("stimgate", "fbeta")), "different or duplicate")
+})
+
+test_that("ACS detects reordered saved GatingSet files", {
+  env <- .load_acs_method_env()
+  path <- tempfile("acs-manifest-")
+  dir.create(path)
+  withr::defer(unlink(path, recursive = TRUE))
+  map <- data.frame(SampleID = "a", stim = c("uns", "p1", "mtb", "ebv", "p4"),
+                    ind = 1:5, file = paste0(1:5, ".fcs"))
+  saveRDS(list(sampleMap = map), file.path(path, "acs-preprocessing.rds"))
+  testthat::local_mocked_bindings(sampleNames = function(...) rev(map$file),
+                                  .package = "flowWorkspace")
+  expect_error(env$.acsCytofReadPreprocessing(path, list()), "reordered")
+})
+
+test_that("ACS coverage excludes every failed estimate even when a fallback is finite", {
+  env <- .load_acs_method_env()
+  rows <- tibble::tibble(method = "fbeta", pop = "CD4 T cells", cyt = "IFNg", stim = "mtb",
+                         freq_bs_auto = c(0, 0), freq_bs_man = c(1, 2),
+                         thresholdFailed = TRUE, abs_diff = c(1, 2), abs_rel_error = 1)
+  summary <- env$.acsCytofManualSummaryTable(rows)
+  expect_equal(summary$n, 0L)
+  expect_equal(summary$n_failed, 2L)
+  expect_true(is.na(summary$pcc))
+  expect_true(is.na(summary$mae))
+})
+
+test_that("ACS saves exclusions and manifests with the comparison transaction", {
+  env <- .load_acs_method_env()
+  rows <- tibble::tibble(method = "fbeta", pop = "CD4 T cells", cyt = "IFNg", stim = "mtb",
+                         freq_bs_auto = 1, freq_bs_man = 1,
+                         thresholdFailed = FALSE, abs_diff = 0, abs_rel_error = 0)
+  attr(rows, "manifest") <- list(manualInputHash = "abc", methods = list())
+  attr(rows, "exclusions") <- tibble::tibble(SampleID = "excluded", exclusionReason = "no_manual_key")
+  path <- tempfile("acs-save-")
+  withr::defer(unlink(path, recursive = TRUE))
+  env$.acsCytofManualSave(rows, path, FALSE)
+  expect_identical(readRDS(file.path(path, "acs-manifest.rds")), attr(rows, "manifest"))
+  expect_identical(readRDS(file.path(path, "manual-comparison.rds")), rows)
+  exclusions <- utils::read.csv(file.path(path, "manual-comparison-exclusions.csv"))
+  expect_equal(exclusions$SampleID, "excluded")
+  env$.acsCytofManualWrite <- function(...) stop("failed replacement")
+  expect_error(env$.acsCytofManualSave(rows, path, FALSE), "failed replacement")
+  expect_identical(readRDS(file.path(path, "manual-comparison.rds")), rows)
+})
+
+test_that("ACS cached comparisons reject legacy and mixed method manifests", {
+  env <- .load_acs_method_env()
+  table <- tibble::tibble(thresholdFailed = FALSE)
+  expect_error(env$.acsCytofValidateComparisonManifest(table), "Legacy or incomplete")
+  attr(table, "manifest") <- list(
+    methods = list(cd4 = list(stimgate = list(context = list(gitSha = "a")),
+                             fbeta = list(context = list(gitSha = "b")))),
+    comparisonSettings = list(methods = c("stimgate", "fbeta")), manualInputHash = "abc"
+  )
+  expect_error(env$.acsCytofValidateComparisonManifest(table), "Mismatched ACS")
 })

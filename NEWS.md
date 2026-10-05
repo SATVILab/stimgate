@@ -1,3 +1,10 @@
+# stimgate 0.99.21
+
+## Bug fixes
+
+- `getStimGates()` preserves threshold-generation provenance for clustered
+  gates, including cluster-derived thresholds and retained finite fallback gates.
+
 # stimgate 0.99.20
 
 ## Bug fixes
