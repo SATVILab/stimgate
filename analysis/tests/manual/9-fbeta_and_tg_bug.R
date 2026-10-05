@@ -2,8 +2,8 @@
 # Setup
 # -------------------------------------------------------------------------
 
-# ACS FCS files come in blocks of four stimulated files followed by one
-# unstimulated file. `.acsCytofBatchList()` uses the saved lookup so that the
+# ACS batches are formed from mapped donor IDs and stimuli.
+# `.acsCytofBatchList()` uses the saved lookup so that the
 # unstimulated sample is first, as `gateStim()` expects. This standalone
 # diagnostic uses that same batch list and stops if the filenames do not
 # confirm the unstimulated sample is first in every batch.

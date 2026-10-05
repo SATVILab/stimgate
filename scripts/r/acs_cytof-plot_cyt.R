@@ -155,6 +155,7 @@
 
   if (!"thresholdFailed" %in% names(comparisonTbl)) comparisonTbl$thresholdFailed <- FALSE
   comparisonTbl |>
+    dplyr::mutate(freq_bs_auto = dplyr::if_else(.data$thresholdFailed, NA_real_, .data$freq_bs_auto)) |>
     dplyr::group_by(method, pop, cyt, stim) |>
     dplyr::filter(
       stats::quantile(.data$freq_stim_man, 0.75, na.rm = TRUE) >

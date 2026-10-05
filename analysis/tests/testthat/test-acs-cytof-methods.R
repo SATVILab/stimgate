@@ -591,3 +591,34 @@ test_that("ACS detects reordered saved GatingSet files", {
                                   .package = "flowWorkspace")
   expect_error(env$.acsCytofReadPreprocessing(path, list()), "reordered")
 })
+
+test_that("ACS coverage excludes every failed estimate even when a fallback is finite", {
+  env <- .load_acs_method_env()
+  rows <- tibble::tibble(method = "fbeta", pop = "CD4 T cells", cyt = "IFNg", stim = "mtb",
+                         freq_bs_auto = c(0, 0), freq_bs_man = c(1, 2),
+                         thresholdFailed = TRUE, abs_diff = c(1, 2), abs_rel_error = 1)
+  summary <- env$.acsCytofManualSummaryTable(rows)
+  expect_equal(summary$n, 0L)
+  expect_equal(summary$n_failed, 2L)
+  expect_true(is.na(summary$pcc))
+  expect_true(is.na(summary$mae))
+})
+
+test_that("ACS saves exclusions and manifests with the comparison transaction", {
+  env <- .load_acs_method_env()
+  rows <- tibble::tibble(method = "fbeta", pop = "CD4 T cells", cyt = "IFNg", stim = "mtb",
+                         freq_bs_auto = 1, freq_bs_man = 1,
+                         thresholdFailed = FALSE, abs_diff = 0, abs_rel_error = 0)
+  attr(rows, "manifest") <- list(manualInputHash = "abc", methods = list())
+  attr(rows, "exclusions") <- tibble::tibble(SampleID = "excluded", exclusionReason = "no_manual_key")
+  path <- tempfile("acs-save-")
+  withr::defer(unlink(path, recursive = TRUE))
+  env$.acsCytofManualSave(rows, path, FALSE)
+  expect_identical(readRDS(file.path(path, "acs-manifest.rds")), attr(rows, "manifest"))
+  expect_identical(readRDS(file.path(path, "manual-comparison.rds")), rows)
+  exclusions <- utils::read.csv(file.path(path, "manual-comparison-exclusions.csv"))
+  expect_equal(exclusions$SampleID, "excluded")
+  env$.acsCytofManualWrite <- function(...) stop("failed replacement")
+  expect_error(env$.acsCytofManualSave(rows, path, FALSE), "failed replacement")
+  expect_identical(readRDS(file.path(path, "manual-comparison.rds")), rows)
+})

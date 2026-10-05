@@ -535,8 +535,16 @@
       .data$cyt,
       dplyr::desc(.data$abs_diff)
     )
-  attr(result, "manifest") <- attr(autoTbl, "manifest")
-  attr(result, "exclusions") <- exclusions
+  attr(result, "manifest") <- list(
+    methods = attr(autoTbl, "manifest"),
+    comparisonSettings = list(gateName = gateName, pop = pop, cyt = cyt, methods = methods),
+    manualInputHash = .acsCytofHash(manualTbl)
+  )
+  attr(result, "exclusions") <- dplyr::bind_rows(
+    exclusions,
+    tibble::tibble(popCode = setdiff(.acsCytofManualResolvePopCodes(pop, .acsCytofManualPopulationMap()), unique(autoTbl$popCode)),
+                   exclusionReason = "population_without_manual_result")
+  )
   result
 
 }
@@ -544,6 +552,8 @@
 .acsCytofManualSummaryTable <- function(comparisonTbl) {
   if (!"thresholdFailed" %in% names(comparisonTbl)) comparisonTbl$thresholdFailed <- FALSE
   comparisonTbl |>
+    dplyr::mutate(dplyr::across(c(freq_bs_auto, abs_diff, abs_rel_error),
+                              ~ dplyr::if_else(.data$thresholdFailed, NA_real_, .x))) |>
     dplyr::group_by(method, pop, cyt, stim) |>
     dplyr::summarise(
       n_total = dplyr::n(),
@@ -714,7 +724,7 @@
     )
 }
 
-.acsCytofManualSave <- function(
+.acsCytofManualWrite <- function(
   comparisonTbl,
   pathDirSave,
   savePlots = TRUE
@@ -770,6 +780,14 @@
   ))
 }
 
+.acsCytofManualSave <- function(comparisonTbl, pathDirSave, savePlots = TRUE) {
+  result <- NULL
+  .acsCytofReplaceDir(pathDirSave, function(pathTmp) {
+    result <<- .acsCytofManualWrite(comparisonTbl, pathTmp, savePlots)
+  })
+  invisible(result)
+}
+
 comp_against_manual_cyt <- function(
   fn,
   path_scratch_base,
@@ -822,7 +840,7 @@ comp_against_manual_cyt <- function(
   single |>
     dplyr::left_join(provenance, by = keys) |>
     dplyr::mutate(
-      thresholdFailed = .data$thresholdFallbackUsed | !is.finite(.data$threshold),
+      thresholdFailed = !(.data$thresholdFallbackUsed %in% FALSE) | !is.finite(.data$threshold),
       dplyr::across(c(freq_stim_auto, freq_uns_auto, freq_bs_auto),
                     ~ dplyr::if_else(.data$thresholdFailed, NA_real_, .x))
     )
