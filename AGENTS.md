@@ -421,12 +421,15 @@ Keep mocked submission and render checks in
 when launchers change. Relative-error plots averaged over cell counts
 and plots for each cell count belong in separate labelled QMD chunks;
 preserve the same scientific inclusion rules and avoid pooling different
-grid dimensions. Signed relative-error plots
-(`.simBandwidthSignedError*()` in `sim-bandwidth-analysis-plot.R`) sit
-alongside, not instead of, the absolute ones: they summarise over- and
-under-estimates separately, weight lines by each direction’s share, and
-use a scale on which -100% and a two-fold over-estimate are equally far
-from zero. Monte Carlo error bars (`show_mcse` QMD parameter /
+grid dimensions. For controlled negative-component mismatch analyses,
+report stimulated-negative mean shifts and SD inflation in separate
+figure sections and sibling folders, including the matching coverage
+summaries. Label which tube and component change. Signed relative-error
+plots (`.simBandwidthSignedError*()` in `sim-bandwidth-analysis-plot.R`)
+sit alongside, not instead of, the absolute ones: they summarise over-
+and under-estimates separately, weight lines by each direction’s share,
+and use a scale on which -100% and a two-fold over-estimate are equally
+far from zero. Monte Carlo error bars (`show_mcse` QMD parameter /
 `SHOW_MCSE`, default on; plot helpers take `mcse = FALSE` by default)
 use `analysis-mcse.R` and only existing replicates: sd/sqrt(n) for
 means, order-statistic intervals (x\_(l), x\_(u)) with l = qbinom(0.025,
