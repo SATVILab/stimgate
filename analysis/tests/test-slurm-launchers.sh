@@ -15,6 +15,11 @@ cat > "$test_dir/bin/apptainer-rscript" <<'EOF'
 #!/usr/bin/env bash
 printf '%s|' "$@" >> "$SLURM_TEST_LOG"
 printf 'run=%s|chunk=%s|n_chunks=%s\n' "$ANALYSIS_RUN_ID" "$SIM_GRID_CHUNK_INDEX" "$SIM_GRID_N_CHUNKS" >> "$SLURM_TEST_LOG"
+# Record whether the QMD being rendered exists at render time.
+qmd=$(printf '%s' "${!#}" | sed -n "s/^qmd_file <- '\([^']*\)'.*/\1/p")
+if [[ -n "$qmd" && -f "$qmd" ]]; then
+  printf 'render_file_exists=%s\n' "$qmd" >> "$SLURM_TEST_LOG"
+fi
 EOF
 chmod +x "$test_dir/bin/"*
 export PATH="$test_dir/bin:$PATH"
@@ -59,12 +64,18 @@ fi
 [[ ! -s "$SLURM_TEST_LOG" ]]
 grep -Fq -- 'Unknown analysis target: missing' "$test_dir/output"
 
-for stem in 2a-stim-bw-freq_bs-global 2b-stim-bias_uns-freq_bs; do
+for stem in 2a-stim-bw-freq_bs-global 2b-stim-bias_uns-freq_bs 3-sim-bw-est-base 4-sim-bw-est-norm; do
   : > "$SLURM_TEST_LOG"
   bash "$project_root/scripts/slurm/dev-${stem}.sh" 2 > "$test_dir/output" 2>&1
   # Launcher filenames use 'stim'; the corresponding QMD uses 'sim'.
   qmd_stem="${stem/-stim-/-sim-}"
-  grep -Fq -- "analysis/${qmd_stem}.qmd" "$SLURM_TEST_LOG"
+  # Each chunk renders its own copy of the QMD, which exists during the
+  # render and is removed afterwards.
+  grep -Fq -- "render_file_exists=analysis/${qmd_stem}--chunk2-job" "$SLURM_TEST_LOG"
   grep -Fq -- 'run=slurm-test-run|chunk=2|n_chunks=2' "$SLURM_TEST_LOG"
+  if compgen -G "$project_root/analysis/${qmd_stem}--chunk*" > /dev/null; then
+    echo "Temporary render copy of ${qmd_stem} was not removed." >&2
+    exit 1
+  fi
 done
 echo 'Slurm 2a/2b selection and render contracts passed.'

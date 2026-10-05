@@ -58,8 +58,10 @@ echo "PROJECT_ROOT: $project_root"
 echo "-------------------"
 echo "Render Quarto directly"
 date
-r_expr="qmd_file <- '$qmd_file'; if (requireNamespace('quarto', quietly = TRUE)) { quarto::quarto_render(input = qmd_file) } else { status <- system2('quarto', c('render', qmd_file)); if (!identical(status, 0L)) quit(status = status) }"
-apptainer-rscript -f stimgate -- "$r_expr"
+# Render a job-specific copy so concurrent chunk jobs don't share Quarto's
+# working files (see render-qmd-isolated.sh).
+source "$project_root/scripts/slurm/render-qmd-isolated.sh"
+render_qmd_isolated "$qmd_file" "chunk${chunk_index}-job${SLURM_JOB_ID:-$$}"
 echo "Completed rendering Quarto"
 date
 echo "-------------------"
