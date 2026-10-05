@@ -360,6 +360,9 @@ render checks in `analysis/tests/test-slurm-launchers.sh` and run them in analys
 CI when launchers change. Relative-error plots averaged over cell counts and
 plots for each cell count belong in separate labelled QMD chunks; preserve the
 same scientific inclusion rules and avoid pooling different grid dimensions.
+For controlled negative-component mismatch analyses, report stimulated-negative
+mean shifts and SD inflation in separate figure sections and sibling folders,
+including the matching coverage summaries. Label which tube and component change.
 Signed relative-error plots (`.simBandwidthSignedError*()` in
 `sim-bandwidth-analysis-plot.R`) sit alongside, not instead of, the absolute
 ones: they summarise over- and under-estimates separately, weight lines by each
