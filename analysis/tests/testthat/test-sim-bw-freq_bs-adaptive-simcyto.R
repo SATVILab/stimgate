@@ -121,6 +121,8 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
       dplyr::arrange(.data$sample, .data$ind)
 
     set.seed(seed)
+    # The helper draws each replicate's seed before simulating.
+    set.seed(sample.int(.Machine$integer.max, 1L, replace = TRUE))
     sim <- simcyto::simCytExperiment(
       nSample = n_sample,
       nMarker = 1L,
@@ -188,7 +190,7 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
     bw_fallback = 0.01,
     bw_crossover = NA_real_,
     bw_transition_width = 0,
-    expected_abs_err = c(0, 0, 0.0416666667, 0.0416666667)
+    expected_abs_err = c(0.0375, 0.0375, 0.0083333333, 0.0083333333)
   )
 
   run_case(
@@ -201,7 +203,7 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
     bw_fallback = 0.5,
     bw_crossover = 5.5,
     bw_transition_width = 0.25,
-    expected_abs_err = c(0.0041666667, 0.0041666667, 0.0083333333, 0.0083333333)
+    expected_abs_err = c(0, 0, 0.0083333333, 0.0083333333)
   )
 })
 

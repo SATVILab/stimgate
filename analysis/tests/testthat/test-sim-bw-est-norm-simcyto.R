@@ -98,6 +98,8 @@ test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parit
   expect_equal(captured_args$clusterPerturbationSd, 0)
 
   set.seed(seed)
+  # The helper draws each replicate's seed before simulating.
+  set.seed(sample.int(.Machine$integer.max, 1L, replace = TRUE))
   sim_direct <- simcyto::simCytExperiment(
     nSample = n_sample,
     nMarker = 1L,
@@ -186,8 +188,8 @@ test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parit
   expect_true(all(res_hpi1$bw > 0))
   expect_true(all(res_norm$bw > 0))
 
-  expect_equal(res_hpi1$bw, c(0.529433696153644, 0.48829492916954), tolerance = 1e-12)
-  expect_equal(res_norm$bw, c(0.570753196215079, 0.580931838697578), tolerance = 1e-12)
+  expect_equal(res_hpi1$bw, c(0.522495273174226, 0.533712452505094), tolerance = 1e-12)
+  expect_equal(res_norm$bw, c(0.402556647536268, 0.638370719482481), tolerance = 1e-12)
   expect_false(isTRUE(all.equal(res_hpi1$bw, res_norm$bw, tolerance = 0)))
 })
 
