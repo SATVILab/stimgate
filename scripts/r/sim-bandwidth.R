@@ -421,7 +421,10 @@
     bwAdaptiveCrossover = bwAdaptiveCrossover
   )
 
+  # Draw all replicate seeds before methods can consume random numbers.
+  iterSeeds <- sample.int(.Machine$integer.max, nIter, replace = TRUE)
   purrr::map_df(seq_len(nIter), function(iterNum) {
+    set.seed(iterSeeds[[iterNum]])
     nCellUns <- round(nCellStim * ncellUnsRelativeToStim)
     nCellByCondition <- c(nCellUns, nCellStim)
     transformationFunc <- .simMiscGetTrans(transformation)
@@ -860,7 +863,10 @@
     c(-probResponse, probResponse)
   )
 
+  # Draw all replicate seeds before methods can consume random numbers.
+  iterSeeds <- sample.int(.Machine$integer.max, nIter, replace = TRUE)
   raw_tbl <- purrr::map_dfr(seq_len(nIter), function(iterNum) {
+    set.seed(iterSeeds[[iterNum]])
     outListExperiment <- simcyto::simCytExperiment(
       nSample = nSample,
       nMarker = nMarker,
@@ -1102,7 +1108,10 @@
     bwAdaptive = TRUE
   )
 
+  # Draw all replicate seeds before methods can consume random numbers.
+  iterSeeds <- sample.int(.Machine$integer.max, nIter, replace = TRUE)
   raw_tbl <- purrr::map_dfr(seq_len(nIter), function(iterNum) {
+    set.seed(iterSeeds[[iterNum]])
     outListExperiment <- simcyto::simCytExperiment(
       nSample = nSample,
       nMarker = nMarker,

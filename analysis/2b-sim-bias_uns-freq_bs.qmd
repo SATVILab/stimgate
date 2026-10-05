@@ -90,7 +90,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bias_uns", "freq_bs")
-analysis_semantics_version <- "bias-uns-freq-v3"
+analysis_semantics_version <- "bias-uns-freq-v4"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -231,6 +231,8 @@ the first point at which the density reaches 15% of the peak height or the next
 antimode, whichever comes first.
 
 ## Simulation
+
+Method and tuning settings share the same biological-scenario seed, assigned on the full grid before execution filters or chunking. Each replicate has a seed drawn before any method runs, so later replicates remain paired despite method RNG use.
 
 ```{r}
 #| label: bias-uns-grid

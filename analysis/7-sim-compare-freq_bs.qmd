@@ -63,7 +63,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v6"
+comparison_semantics_version <- "corrected-comparison-v7"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -229,6 +229,8 @@ tailgate_x <- "stim"
 
 ## Simulation
 
+Method and tuning settings share the same biological-scenario seed, assigned on the full grid before execution filters or chunking. Each replicate has a seed drawn before any method runs, so later replicates remain paired despite method RNG use.
+
 ### Simulation grid
 
 ```{r}
@@ -275,16 +277,24 @@ sim_grid <- tidyr::expand_grid(
   dplyr::filter(
     !(n_cell * prob_response < 5 & prob_response < 0.04)
   ) |>
-  dplyr::mutate(
-    sim_id = dplyr::row_number()
-  ) |>
-  dplyr::arrange(
+  dplyr::group_by(
+    transformation,
+    prob_response,
     n_cell,
-    dplyr::desc(prob_response)
+    mean_pos_setting,
+    mean_pos,
+    sample_perturbation_sd,
+    condition_perturbation_sd,
+    cluster_perturbation_sd,
+    background_relative_to_response,
+    n_cell_uns_relative_to_stim
   ) |>
   dplyr::mutate(
-    sim_seed = as.integer(simulation_seed + sim_id - 1L)
-  )
+    base_scenario_id = dplyr::cur_group_id(),
+    sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(sim_id = dplyr::row_number())
 
 # Keep every seeded row available for an exact interactive rerun.
 sim_grid_full <- sim_grid

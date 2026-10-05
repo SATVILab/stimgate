@@ -195,8 +195,8 @@ test_that("analysis 2a uses shared seeded runners and canonical reads", {
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl("sim_retry_errors:\\s*true", content))
-  expect_true(has('analysis_semantics_version <- "global-bw-freq-v5"'))
-  expect_true(has("sim_seed = as.integer(simulation_seed + sim_id - 1L)"))
+  expect_true(has('analysis_semantics_version <- "global-bw-freq-v6"'))
+  expect_true(has("sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)"))
   # sim_id/sim_seed are fixed on the full grid before filtering/shuffling.
   expect_lt(pos("sim_seed = as.integer("), pos("sim_grid_full <- sim_grid"))
   expect_lt(pos("sim_grid_full <- sim_grid"), pos("# Quick mode keeps"))
@@ -246,11 +246,11 @@ test_that("analysis 3 uses the shared runner and matching canonical results", {
   ), warn = FALSE), collapse = "\n")
   has <- function(x) grepl(x, content, fixed = TRUE)
   expect_true(has(
-    'analysis_semantics_version <- "bandwidth-est-base-v5"'
+    'analysis_semantics_version <- "bandwidth-est-base-v6"'
   ))
   for (contract in c(
     "sim_grid_full <- sim_grid",
-    "sim_seed = as.integer(simulation_seed + sim_id - 1L)",
+    "sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)",
     "sim_grid_spec = analysis_grid_spec",
     "scenario_settings = scenario_settings",
     "sim-bandwidth-analysis-run.R",
@@ -294,9 +294,9 @@ test_that("analysis 4 uses shared seeded runners and canonical reads", {
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl("sim_retry_errors:\\s*true", content))
   expect_true(grepl("warning:\\s*false", content))
-  expect_true(has('analysis_semantics_version <- "bandwidth-est-norm-v4"'))
+  expect_true(has('analysis_semantics_version <- "bandwidth-est-norm-v5"'))
   expect_true(has(
-    "sim_seed = as.integer(simulation_seed + dplyr::cur_group_id() - 1L)"
+    "sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)"
   ))
   # IDs and paired estimator seeds are fixed before the dev filter/shuffle.
   expect_lt(pos("sim_seed = as.integer("), pos("sim_grid_full <- sim_grid"))
@@ -390,7 +390,7 @@ test_that("analysis 5 uses shared seeded runners and canonical reads", {
   expect_true(grepl("sim_retry_errors:\\s*true", content))
   expect_true(grepl("warning:\\s*false", content))
   expect_true(grepl("message:\\s*false", content))
-  expect_true(has('analysis_semantics_version <- "adaptive-bw-est-v3"'))
+  expect_true(has('analysis_semantics_version <- "adaptive-bw-est-v4"'))
   expect_true(has("norm_adaptive_ncell <- 2500L"))
   expect_true(has("normAdaptiveNcell = norm_adaptive_ncell"))
   expect_false(has("bw_ncell_upper"))
@@ -400,7 +400,7 @@ test_that("analysis 5 uses shared seeded runners and canonical reads", {
   # Scenario seeds belong to the data scenario and are fixed on the full grid
   # before the dev filter, shuffling and chunking.
   expect_true(has(
-    "sim_seed = as.integer(simulation_seed + .data$data_scenario_id - 1L)"
+    "sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)"
   ))
   expect_lt(pos("sim_seed = as.integer("), pos("sim_grid_full <- sim_grid"))
   expect_lt(pos("sim_grid_full <- sim_grid"), pos("if (analysis_dev) {"))

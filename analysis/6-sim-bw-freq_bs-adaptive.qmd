@@ -75,7 +75,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
-analysis_semantics_version <- "adaptive-bw-freq-v3"
+analysis_semantics_version <- "adaptive-bw-freq-v4"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -249,10 +249,24 @@ sim_grid <- tidyr::expand_grid(
           .data$bw_extra >= 0.05
       )
   ) |>
+  dplyr::group_by(
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos_setting,
+    mean_pos,
+    sample_perturbation_sd,
+    condition_perturbation_sd,
+    cluster_perturbation_sd,
+    background_relative_to_response,
+    n_cell_uns_relative_to_stim
+  ) |>
   dplyr::mutate(
-    sim_id = dplyr::row_number(),
-    sim_seed = as.integer(simulation_seed + sim_id - 1L)
-  )
+    base_scenario_id = dplyr::cur_group_id(),
+    sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(sim_id = dplyr::row_number())
 
 # Fix identities on the full grid before selecting execution subsets.
 sim_grid_full <- sim_grid
@@ -331,6 +345,8 @@ print(paste0(
 ```
 
 ## Simulation
+
+Method and tuning settings share the same biological-scenario seed, assigned on the full grid before execution filters or chunking. Each replicate has a seed drawn before any method runs, so later replicates remain paired despite method RNG use.
 
 Fixed settings are shared by the parallel worker and interactive rerun.
 The manifest includes the complete selected cross-chunk scientific grid.

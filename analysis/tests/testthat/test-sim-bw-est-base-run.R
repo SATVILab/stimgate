@@ -128,7 +128,7 @@ test_that("base full-grid IDs survive dev filtering and external chunking", {
   combined <- dplyr::bind_rows(one$chunk, two$chunk)
   expect_setequal(combined$sim_id, one$selected$sim_id)
   expect_identical(anyDuplicated(combined$sim_id), 0L)
-  expect_equal(combined$sim_seed, 12345L + combined$sim_id - 1L)
+  expect_equal(combined$sim_seed, 12345L + combined$base_scenario_id - 1L)
   expect_equal(sort(unique(full$selected$n_cell)), c(1e3, 5e3, 2e4, 1e5))
   expect_identical(unique(full$selected$bias_uns_setting), "low")
   quick <- build(FALSE, 1L, 1L, quick = TRUE)
