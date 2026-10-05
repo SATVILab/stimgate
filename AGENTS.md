@@ -374,14 +374,42 @@ direction's share, and use a scale on which -100% and a two-fold over-estimate
 are equally far from zero.
 Monte Carlo error bars (`show_mcse` QMD parameter / `SHOW_MCSE`, default on;
 plot helpers take `mcse = FALSE` by default) use `analysis-mcse.R` and only
-existing replicates: sd/sqrt(n) for means, order-statistic intervals
+existing replicates. For independent sample-replication analyses, use
+sd/sqrt(n) for means and order-statistic intervals
 (x_(l), x_(u)) with l = qbinom(0.025, n, p), u = qbinom(0.975, n, p) + 1 for
 percentiles (NA if n < 5 or l < 1 or u > n), none for maxima, and
-sqrt(sum(se^2))/k for equal-weight scenario averages. In QMDs 7/8 samples within
-a dataset are dependent, so the unit is the dataset (`iter`): MCSE =
-sd(per-dataset statistic)/sqrt(D), NA when D < 5. Final runs use 20 datasets
-per scenario and draft runs use 5, the minimum for these bars; keep MCSE
-prose aligned with the selected `sim_size` settings.
+sqrt(sum(se^2))/k for equal-weight independent-scenario averages. Analyses 2a
+and the displayed bandwidth-bias subset of 2b use fixed bandwidth/bias with
+cluster gates disabled; preserve their independent-sample uncertainty and their
+scientific exclusions. The unplotted negative-width bias subset of 2b shares a
+pooled estimated bias and must not silently inherit that independence claim.
+In QMDs 7/8, main medians and existing tail percentiles
+pool valid sample outcomes across jointly gated datasets. Bootstrap whole
+independent datasets (`iter`) with multiplicity and recalculate the plotted
+pooled statistic; do not use SEs of within-dataset percentiles for pooled points.
+Point estimates stay identical with intervals on/off. Final runs use 20 datasets
+of 20 samples; draft runs use 5 datasets of 20 samples. Tiny quick-mode exceptions
+are smoke checks. Size and scientific cache settings must reject old ten-sample
+results rather than combining two separately gated datasets.
+
+Remove maxima from main pooled-percentile figures. Separate dataset-maximum
+occurrence from mean maximum conditional on that direction occurring. Primary
+maxima require valid outcomes for every intended sample in each dataset; retain
+incomplete datasets in coverage and show method-specific eligible cohorts.
+Unaffected eligible datasets contribute zero occurrence and no severity.
+Bootstrap all datasets jointly; no affected datasets means zero occurrence and
+undefined severity. Occurrence intervals require at least 5 eligible datasets
+and 95% finite bootstrap draws; severity additionally requires 5 affected
+datasets. Report eligible/incomplete/affected counts, undefined-draw coverage and
+suppressed intervals. Conditional mean dataset maxima need not exceed pooled
+sample percentiles.
+
+For scenario averages in jointly gated comparisons, bootstrap the complete
+plotted equal-weight average. Reuse the same dataset indices across methods and
+deterministic mismatch settings sharing biological random draws; do not RSS
+scenario SEs while ignoring that dependence. A draw with a missing originally
+contributing scenario statistic is undefined, rather than silently changing
+its averaging cohort. Report bootstrap validity beside the figure.
 
 For background-subtracted signed relative error, an estimate of zero gives
 -100% (0x); negative estimates can give errors below -100% and must remain visible.
@@ -775,7 +803,9 @@ rows before drawing reference lines.
 
 11. **Real-data analyses replace outputs non-destructively**:
    ACS error summaries separate stimuli, report positive-manual relative-error
-   denominators, and retain zero/negative manual frequencies in absolute error.
+   denominators, and retain zero manual frequencies in absolute error. The
+   existing manual and automated net-frequency reference is clipped at zero; describe that
+   preprocessing accurately without changing its estimand.
    Donor-bootstrap intervals reuse common donor draws across methods and strata,
    keeping stimulated tubes with their shared control. Label the mean-error
    estimand and finite donor coverage; manual gating is an imperfect reference.

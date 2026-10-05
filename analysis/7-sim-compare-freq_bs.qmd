@@ -66,7 +66,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v10"
+comparison_semantics_version <- "corrected-comparison-v12"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -113,7 +113,8 @@ for (fn in c(
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-plot.R",
-  "sim-compare-freq_bs.R"
+  "sim-compare-freq_bs.R",
+  "sim-compare-performance-plot.R"
 )) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -147,8 +148,8 @@ bandwidth estimation so that it is evaluated as it would normally run.
 
 ### Simulation settings
 
-Each scenario simulates 20 datasets of 10 samples in final runs and 5 datasets
-of 10 samples in draft runs (`SIM_SIZE=draft`). The samples in a dataset are
+Each scenario simulates 20 datasets of 20 samples in final runs and 5 datasets
+of 20 samples in draft runs (`SIM_SIZE=draft`). The samples in a dataset are
 gated together, with shared settings and cluster gates, so the dataset is the
 unit for uncertainty. Draft results are kept separately and are for iterating,
 not for reporting.
@@ -220,7 +221,7 @@ calc_cyt_pos_gates <- FALSE
 # Each dataset of `n_sample_sim` samples is gated together (shared settings
 # and cluster gates), so the dataset is the unit for uncertainty. Draft keeps
 # the samples per dataset and uses a quarter of the datasets (at least 5).
-n_sample_sim <- if (analysis_quick) 1L else 10L
+n_sample_sim <- if (analysis_quick) 1L else 20L
 n_iter_sim <- if (analysis_quick) 1L else c(final = 20L, draft = 5L)[[sim_size]]
 
 fbeta_beta <- 0.8
@@ -657,25 +658,25 @@ two methods. The two versions are saved in the `all_methods` and `no_tailgate`
 subfolders of each figure folder. Within each version there is one figure per
 mean position setting.
 
-**Monte Carlo error bars.** With `show_mcse` on (the default; set the
-`show_mcse` parameter or the `SHOW_MCSE` environment variable to false to
-turn it off), the summary plots show error bars for how much each plotted
-value could move if the simulation were repeated, using only the results
-already simulated. Here the simulated samples are not independent of each
-other: within one simulated dataset, StimGate estimates its bandwidth and
-bias once across the dataset's samples and can cluster their gates. So the
-unit is the simulated dataset. Each statistic (for example the median
-relative error) is also calculated within each dataset, and its standard
-error is the standard deviation of these per-dataset values divided by the
-square root of the number of datasets; the datasets are treated as
-independent draws. The bar is the plotted value plus or minus 1.96 of these
-standard errors. The plotted values themselves are unchanged: they are still
-calculated over all samples of all datasets. No bar is drawn with fewer than
-five datasets per scenario. Final runs use 20 datasets per scenario and
-draft runs use five, the minimum for bars, so bars are drawn in both modes.
-Estimates from five datasets are rough; increase the number of datasets
-(`n_iter_sim`) for firmer intervals. Maxima never have error bars: the
-results say little about how much larger the maximum could be.
+**Monte Carlo intervals.** With `show_mcse` on, 95% percentile-bootstrap
+intervals resample whole independent datasets (`iter`), retaining all samples
+of each selected dataset with multiplicity. Each draw recalculates the actual
+pooled sample statistic shown, rather than a mean of within-dataset percentiles.
+Point estimates are identical with intervals on or off. At least five
+contributing datasets and 95% finite bootstrap draws are required; unavailable
+intervals and their coverage are reported. Final runs use 20 independent datasets
+of 20 samples each; draft runs use five datasets of 20 samples and give rougher
+intervals. Tiny quick-mode datasets are smoke checks only. Maxima are reported
+separately through dataset occurrence and conditional severity.
+
+```{r}
+#| label: pooled-bootstrap-coverage
+#| echo: false
+if (isTRUE(run_plots)) {
+  print(knitr::kable(.simComparePerformanceCoverage(compare_summary, scenario_cols),
+    caption = "Pooled-statistic bootstrap coverage and unavailable intervals by scenario and method."))
+}
+```
 
 ### Paired differences between datasets
 
@@ -864,9 +865,9 @@ if (isTRUE(run_plots)) {
     ) |>
     dplyr::mutate(transformation = .analysis_trans_factor(transformation)) |>
     dplyr::select(
-      approach, max_abs_rel_error,
+      approach,
       transformation, prob_response, n_cell, mean_pos_setting,
-      max_abs_rel_error, med_abs_rel_error, q90_abs_rel_error, q95_abs_rel_error
+      med_abs_rel_error, q90_abs_rel_error, q95_abs_rel_error
     ) |>
     dplyr::group_by(
       mean_pos_setting,
@@ -876,7 +877,7 @@ if (isTRUE(run_plots)) {
     ) |>
     tidyr::pivot_wider(
       names_from = approach,
-      values_from = c(max_abs_rel_error, med_abs_rel_error, q90_abs_rel_error, q95_abs_rel_error)
+      values_from = c(med_abs_rel_error, q90_abs_rel_error, q95_abs_rel_error)
     ) |>
     dplyr::arrange(
       dplyr::desc(q95_abs_rel_error_fbeta)
@@ -885,37 +886,67 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Max relative error by cell count
+### Dataset-maximum occurrence and conditional severity
 
-Maximum absolute relative error is plotted against stimulated cell count,
-with colour identifying the method. Panels separate response frequencies and
-expression distributions, with one mean position setting per plot and no random
-condition perturbation. The dashed zero line provides a reference for the
-largest observed errors. There are no error bars: the results say little
-about how much larger the maximum could be.
+These figures answer two separate questions for each direction: how often does
+an eligible dataset contain an over- or under-estimate, and how large is its
+maximum error on average when that direction occurs? An eligible dataset has
+valid relative errors for all 20 intended samples; incomplete datasets remain
+in the coverage table. Methods can have different eligible cohorts, so compare
+those counts before comparing curves. Tiny quick-mode smoke checks use their
+single intended sample instead and do not provide reportable intervals.
+
+Unaffected datasets count towards occurrence, but not conditional severity.
+With no affected dataset occurrence is zero and severity is undefined. All
+datasets are resampled together, including unaffected and incomplete ones.
+Occurrence intervals require at least five eligible datasets and 95% finite
+bootstrap draws; severity also needs at least five affected datasets. The table
+reports undefined-bootstrap coverage and suppressed intervals. Conditional mean
+dataset maxima need not exceed pooled sample percentiles.
 
 ```{r}
-#| label: max-rel-error-cell-count
+#| label: dataset-max-coverage
+#| echo: false
+if (isTRUE(run_plots)) {
+  dataset_max <- .simCompareDatasetMaxSummary(
+    compare_tbl |> dplyr::filter(condition_perturbation_sd == 0),
+    scenarioCols = scenario_cols, expected_samples = n_sample_sim,
+    expected_datasets = seq_len(n_iter_sim), mcse = show_mcse
+  )
+  print(knitr::kable(.simCompareDatasetMaxCoverage(dataset_max), digits = 3,
+    caption = "Method-specific eligible, incomplete and affected dataset cohorts; bootstrap coverage."))
+}
+```
+
+```{r}
+#| label: dataset-max-occurrence
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots)) {
-  plot_tbl <- compare_summary |>
-    dplyr::filter(condition_perturbation_sd == 0)
-  .simCompareFigureLoop(
-    plot_tbl,
-    make_plot = function(d) {
-      .simComparePlotByCell(
-        d, "max_abs_rel_error", "Tube-level maximum absolute relative error",
-        zero_line = TRUE, free_y = TRUE
-      )
-    },
-    dir = file.path(plot_dir, "max_relative_error_by_n_cell"),
-    file_fn = function(pos, extra) {
-      paste0("freq_bs_max_rel_error_meanpos_setting_", pos, ".png")
-    },
-    height = 20,
-    level = 4L
-  )
+  .simCompareFigureLoop(dataset_max,
+    make_plot = function(d) .simCompareDatasetMaxPlot(d, "occurrence", mcse = show_mcse),
+    dir = file.path(plot_dir, "dataset_max_occurrence_by_n_cell"),
+    file_fn = function(pos, extra) paste0("dataset_max_occurrence_", pos, ".png"),
+    height = 14, level = 4L)
+}
+```
+
+### Conditional dataset maxima: signed errors and ratio companions
+
+Over-estimation severity appears above zero; under-estimation severity appears
+below zero. The ratio companion uses the identical curves and intervals, with
+1x for agreement and 0x for a zero estimate.
+
+```{r}
+#| label: dataset-max-severity
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  .simCompareFigureLoop(dataset_max,
+    make_plot = function(d) .simCompareDatasetMaxPlot(d, "severity", mcse = show_mcse),
+    dir = file.path(plot_dir, "dataset_max_signed_error_severity_by_n_cell"),
+    file_fn = function(pos, extra) paste0("dataset_max_severity_", pos, ".png"),
+    ratio_twins = TRUE, height = 14, level = 4L)
 }
 ```
 
@@ -929,17 +960,17 @@ visible; a capped upper tick reads “≥ 16x”.
 The relative error, (estimate - truth) / truth, is summarised separately for
 over-estimates and under-estimates in each scenario, using the same simulated
 rows as the figures above. Over-estimates are drawn above zero and
-under-estimates below. Rows of panels show the median, 95th percentile and
-maximum, and columns separate expression distributions. Colour identifies the
+under-estimates below. Rows of panels show the median and 95th percentile, and columns separate expression distributions. Colour identifies the
 method, and a thicker line means a larger share of the estimates lies in that
 direction. The vertical scale is linear, including errors below -100% for negative background-subtracted estimates, with -100% (0x, an estimate of zero) and
 doubles at each step above, so -100% and a two-fold over-estimate are equally
 far from zero. Each plot uses one mean position setting, one response frequency
-and no random condition perturbation. Error bars (with `show_mcse` on and at
-least five datasets) come from the spread between datasets of each dataset's
-statistic in that direction. The number of errors in each direction is
-itself random, so the bars for a rare direction understate the uncertainty a
-little (the line weight shows how rare it is).
+and no random condition perturbation. Whole-dataset bootstrap intervals
+recalculate each direction's pooled percentile and retain random changes in
+the number of errors in that direction. At least five contributing datasets
+and 95% finite bootstrap draws are required; rare directions can leave an
+interval unavailable. Line weight shows the share of valid sample estimates
+in each direction; exact agreement belongs to neither direction.
 
 ```{r}
 #| label: signed-error-cell-count
@@ -951,9 +982,12 @@ if (isTRUE(run_plots)) {
     .simCompareSignedErrorSummary(
       scenarioCols = scenario_cols, mcse = show_mcse
     )
+  print(knitr::kable(.simComparePerformanceCoverage(signed_tbl, scenario_cols),
+    caption = "Directional pooled-percentile coverage, including undefined bootstrap draws."))
   .simCompareFigureLoop(
     signed_tbl,
-    make_plot = function(d) .simComparePlotSignedError(d, mcse = show_mcse),
+    make_plot = function(d) .simComparePlotSignedError(d,
+      stat_cols = c(median = "Median", q95 = "95th percentile"), mcse = show_mcse),
     dir = file.path(plot_dir, "signed_error_by_n_cell"),
     file_fn = function(pos, extra) {
       paste0(
