@@ -65,6 +65,17 @@ run_selection 2a 2b 2a
 run_selection dev-2b-stim-bias_uns-freq_bs.sh
 [[ $(wc -l < "$SLURM_TEST_LOG") -eq 3 ]]
 
+# Reject invalid chunk counts before submitting even a nonchunked analysis.
+for invalid_chunks in 0 invalid 1.5; do
+  : > "$SLURM_TEST_LOG"
+  if SIM_GRID_N_CHUNKS="$invalid_chunks" run_selection 1 2a; then
+    echo "Accepted invalid chunk count: $invalid_chunks" >&2
+    exit 1
+  fi
+  [[ ! -s "$SLURM_TEST_LOG" ]]
+  grep -Fq 'SIM_GRID_N_CHUNKS must be a positive integer' "$test_dir/output"
+done
+
 # Plot renders wait for their own simulation jobs to succeed and for every
 # other simulation job of the submission to finish.
 run_selection 2a 7
