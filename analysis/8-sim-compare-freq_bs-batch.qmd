@@ -78,7 +78,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v10"
+comparison_semantics_version <- "batch-mismatch-comparison-v11"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -163,6 +163,9 @@ draws its own seed from that scenario seed before any method runs, so later
 replicates stay paired even though the methods use different amounts of
 randomness in different mismatch settings.
 
+StimGate bandwidths are shared per marker (`bwScope = "cytokine"`), using
+the `nrd0` selector with the bandwidth-estimation sample capped at 10,000 cells.
+
 ### Simulation settings
 
 Each scenario simulates 20 datasets of 10 samples in final runs and 5 datasets
@@ -175,6 +178,7 @@ not for reporting.
 #| label: actual-settings
 # Method settings inherited from analysis 7:
 stimgate_bw_mtd <- "nrd0"
+stimgate_bw_scope <- "cytokine"
 # StimGate's unstimulated-sample bias equals its initial bandwidth estimate:
 # with biasUns = NULL, gateStim() uses 0.25 * bwFallback * biasUnsFactor.
 stimgate_bias_uns_factor <- 4
@@ -242,6 +246,7 @@ targeted_scenarios_tbl <- tibble::tribble(
     bias_uns = NA_real_,
     bias_uns_factor = stimgate_bias_uns_factor,
     bw_mtd = stimgate_bw_mtd,
+    bw_scope = stimgate_bw_scope,
     bw_ncell_max = stimgate_bw_ncell_max,
     bw_fallback = stimgate_bw_fallback,
     bw_min = stimgate_bw_min,
@@ -437,6 +442,7 @@ analysis_result_params <- list(
   n_sample_sim = n_sample_sim,
   n_iter_sim = n_iter_sim,
   stimgate_bw_mtd = stimgate_bw_mtd,
+  stimgate_bw_scope = stimgate_bw_scope,
   stimgate_bias_uns_factor = stimgate_bias_uns_factor,
   stimgate_bw_ncell_max = stimgate_bw_ncell_max,
   stimgate_bw_fallback = stimgate_bw_fallback,
