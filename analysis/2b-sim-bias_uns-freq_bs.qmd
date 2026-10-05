@@ -15,6 +15,7 @@ params:
   sim_grid_shuffle_seed: 20261003
   run_simulations: true
   run_plots: false
+  show_mcse: true
   sim_size: final
   sim_retry_errors: true
 ---
@@ -45,6 +46,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-mcse.R"))
 analysis_qmd <- "analysis/2b-sim-bias_uns-freq_bs.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
@@ -80,6 +82,8 @@ run_plots <- .as_flag(.get_qmd_param_env(
   "RUN_PLOTS",
   TRUE
 ))
+# Monte Carlo error bars on the summary plots (see analysis-mcse.R).
+show_mcse <- .as_flag(.get_qmd_param_env("show_mcse", "SHOW_MCSE", TRUE))
 sim_retry_errors <- .as_flag(.get_qmd_param_env(
   "sim_retry_errors",
   "SIM_RETRY_ERRORS",
@@ -532,6 +536,22 @@ bandwidth rule, so the two are not comparable until it is rescaled
 and table below. With only the bandwidth rule shown, colour (bandwidth) is
 the only legend for the curves.
 
+**Monte Carlo error bars.** With `show_mcse` on (the default; set the
+`show_mcse` parameter or the `SHOW_MCSE` environment variable to false to
+turn it off), the summary plots show how much each plotted value could move
+if the simulation were repeated, using only the samples already simulated.
+They treat the simulated samples within a setting as independent draws,
+which holds here: the bandwidth and bias are fixed for each setting and gates
+are not clustered across samples. For a median or other percentile, the bar
+is a 95% interval taken from the sorted sample values themselves (no
+assumption about the shape of the distribution). It is left out when there
+are too few samples: with 25 samples per setting in final runs (10 in
+draft runs), the median has an interval but the 90th percentile does not. For averages over cell counts, the bar is
+the average plus or minus 1.96 combined standard errors, treating the cell
+counts as independent scenarios, which holds across biological scenarios.
+Maxima have no error bar: the samples say little about how much larger the
+maximum could be. Bars are thin and in the colour of their line.
+
 ```{r}
 #| label: bias-uns-hide-negative-width
 #| include: false
@@ -576,11 +596,16 @@ if (isTRUE(run_plots)) {
       } else {
         NA_real_
       },
+      # Monte Carlo intervals (order statistics); none for the maximum.
+      .analysis_mcse_quantile_cols(abs_rel_error, 0.5, "median_abs_rel_error"),
+      .analysis_mcse_quantile_cols(abs_rel_error, 0.9, "q90_abs_rel_error"),
+      max_abs_rel_error_mcse = NA_real_,
       .groups = "drop"
     )
   # Over- and under-estimates summarised separately.
   bias_uns_signed_error <- .simBandwidthSignedErrorSummary(
-    bias_uns_results_raw, bias_uns_error_cols
+    bias_uns_results_raw, bias_uns_error_cols,
+    mcse = show_mcse
   )
 }
 ```
@@ -619,7 +644,8 @@ if (isTRUE(run_plots)) {
             labeller = ggplot2::labeller(n_cell = function(x) {
               paste0("Cells: ", .analysis_label_number(as.numeric(x)))
             })
-          )
+          ),
+          mcse = show_mcse
         )
 
         path_p <- file.path(
@@ -650,7 +676,7 @@ if (isTRUE(run_plots)) {
 For an overview, average the scenario-level statistics equally over cell
 counts, keeping response probabilities and mismatch settings separate.
 
-Colour identifies bandwidth; columns of panels separate mismatch settings and rows the statistic.
+Colour identifies bandwidth; columns of panels separate mismatch settings and rows the statistic. Error bars combine the per-setting standard errors (from the width of each order-statistic interval) as for independent cell counts.
 
 ```{r}
 #| label: relative-error-averaged-n-cell
@@ -666,18 +692,15 @@ if (isTRUE(run_plots)) {
 
   # Average scenario statistics equally across cell counts; do not pool samples.
   bias_uns_error_avg <- bias_uns_abs_error |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(c(
-      "transformation", "mean_pos_setting", "prob_response", "mismatch_label",
-      "mismatch_type", "mismatch_val", "bw", "bias_uns_basis",
-      "bias_uns_multiplier"
-    )))) |>
-    dplyr::summarise(
-      dplyr::across(
-        c(median_abs_rel_error, q90_abs_rel_error, max_abs_rel_error),
-        ~ mean(.x, na.rm = TRUE)
+    .analysis_mcse_average_cols(
+      group_cols = c(
+        "transformation", "mean_pos_setting", "prob_response", "mismatch_label",
+        "mismatch_type", "mismatch_val", "bw", "bias_uns_basis",
+        "bias_uns_multiplier"
       ),
-      .groups = "drop"
-    )
+      stats = c("median_abs_rel_error", "q90_abs_rel_error", "max_abs_rel_error")
+    ) |>
+    dplyr::mutate(dplyr::across(dplyr::ends_with("_lower"), ~ pmax(.x, 0)))
 
   for (transformation_curr in .analysis_trans_order(bias_uns_error_avg$transformation)) {
     .analysis_heading(
@@ -695,7 +718,8 @@ if (isTRUE(run_plots)) {
 
         p <- .simBandwidthBiasRelativeErrorPlot(
           plot_tbl,
-          y_label = "Mean over cell counts of absolute relative error"
+          y_label = "Mean over cell counts of absolute relative error",
+          mcse = show_mcse
         )
 
         path_p <- file.path(
@@ -754,7 +778,7 @@ if (isTRUE(run_plots)) {
             )
           if (nrow(plot_tbl) == 0L) next
 
-          p <- .simBandwidthBiasRelativeErrorPlot(plot_tbl)
+          p <- .simBandwidthBiasRelativeErrorPlot(plot_tbl, mcse = show_mcse)
 
           path_p <- file.path(
             plot_dir,
@@ -786,7 +810,7 @@ if (isTRUE(run_plots)) {
 
 ### Over- and under-estimates across bias settings
 
-The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: each statistic is calculated separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth; lines and points are slightly transparent so overlapping curves stay visible. The bandwidth and line-weight legends sit underneath each plot.
+The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: each statistic is calculated separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth; lines and points are slightly transparent so overlapping curves stay visible. The bandwidth and line-weight legends sit underneath each plot. Error bars come from the sorted errors in each direction; the number of errors in each direction is itself random, so the bars for a rare direction understate the uncertainty a little (the line weight shows how rare it is).
 
 ```{r}
 #| label: signed-error
@@ -822,7 +846,8 @@ if (isTRUE(run_plots)) {
             labeller = ggplot2::labeller(n_cell = function(x) {
               paste0("Cells: ", .analysis_label_number(as.numeric(x)))
             })
-          )
+          ),
+          mcse = show_mcse
         )
 
         path_p <- file.path(
@@ -850,7 +875,7 @@ if (isTRUE(run_plots)) {
 
 ### Over- and under-estimates averaged over cell counts
 
-The scenario-level statistics and shares for each direction are averaged equally over cell counts, keeping response probabilities and mismatch settings separate.
+The scenario-level statistics and shares for each direction are averaged equally over cell counts, keeping response probabilities and mismatch settings separate. Error bars are the average plus or minus 1.96 combined standard errors, treating cell counts as independent scenarios.
 
 ```{r}
 #| label: signed-error-averaged-n-cell
@@ -888,7 +913,8 @@ if (isTRUE(run_plots)) {
 
         p <- .simBandwidthBiasSignedErrorPlot(
           plot_tbl,
-          y_label = "Mean over cell counts of relative error (multiple of true response)"
+          y_label = "Mean over cell counts of relative error (multiple of true response)",
+          mcse = show_mcse
         )
 
         path_p <- file.path(
@@ -947,7 +973,7 @@ if (isTRUE(run_plots)) {
             )
           if (nrow(plot_tbl) == 0L) next
 
-          p <- .simBandwidthBiasSignedErrorPlot(plot_tbl)
+          p <- .simBandwidthBiasSignedErrorPlot(plot_tbl, mcse = show_mcse)
 
           path_p <- file.path(
             plot_dir,
@@ -980,7 +1006,7 @@ if (isTRUE(run_plots)) {
 
 ### Estimated response frequency
 
-Median estimated frequency is plotted against bias multiplier, with colour identifying bandwidth. Rows of panels separate cell counts and columns mismatch settings; dashed lines show the simulated truth. Curves closer to those lines indicate better agreement.
+Median estimated frequency is plotted against bias multiplier, with colour identifying bandwidth. Rows of panels separate cell counts and columns mismatch settings; dashed lines show the simulated truth. Curves closer to those lines indicate better agreement. Error bars are 95% intervals for each median from the sorted valid estimates of that setting.
 
 ```{r}
 #| label: estimated-frequency
@@ -993,6 +1019,17 @@ if (isTRUE(run_plots)) {
     c(fig_key, "estimated_frequency"),
     path_root = root_dir
   )
+
+  # 95% order-statistic interval for each setting's median valid estimate.
+  freq_median_mcse <- bias_uns_results_raw |>
+    dplyr::filter(valid_estimate) |>
+    dplyr::group_by(sim_id) |>
+    dplyr::reframe(.analysis_mcse_quantile(propRespEst, 0.5)) |>
+    dplyr::select(
+      sim_id,
+      propRespEst_median_lower = lower,
+      propRespEst_median_upper = upper
+    )
 
   for (transformation_curr in .analysis_trans_order(bias_uns_results_summary$transformation)) {
     .analysis_heading(
@@ -1007,6 +1044,7 @@ if (isTRUE(run_plots)) {
             mean_pos_setting == mean_pos_setting_curr,
             prob_response == prob_response_curr
           ) |>
+          dplyr::left_join(freq_median_mcse, by = "sim_id") |>
           dplyr::mutate(bw_lab = .simBandwidthBwLabFactor(bw))
 
         p <- ggplot(
@@ -1025,6 +1063,11 @@ if (isTRUE(run_plots)) {
           ) +
           geom_line(alpha = 0.75) +
           geom_point(alpha = 0.75) +
+          (if (isTRUE(show_mcse)) {
+            .analysis_mcse_errorbar(
+              plot_tbl, "propRespEst_median_lower", "propRespEst_median_upper"
+            )
+          }) +
           facet_grid(
             n_cell ~ mismatch_label,
             scales = "free_y",

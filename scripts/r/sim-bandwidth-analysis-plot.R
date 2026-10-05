@@ -85,14 +85,43 @@ add_bw_labs <- function(.data) {
     )
 }
 
+# Pivot the wide statistic columns `stats` to long form. Monte Carlo interval
+# columns (`<stat>_lower`, `<stat>_upper`; see `analysis-mcse.R`), when
+# present, become `lower` and `upper` (NA for statistics without them).
+.simBandwidthStatLongBounds <- function(tbl, stats, names_to, values_to) {
+  bound_names <- as.vector(outer(stats, c("_lower", "_upper", "_mcse"), paste0))
+  has_bounds <- any(bound_names %in% names(tbl))
+  # pivot_longer() emits each input row's statistics in turn, so the bounds
+  # follow the same row-major order.
+  bound_vec <- function(suffix) {
+    m <- do.call(cbind, lapply(stats, function(s) {
+      col <- paste0(s, suffix)
+      if (col %in% names(tbl)) {
+        as.numeric(tbl[[col]])
+      } else {
+        rep(NA_real_, nrow(tbl))
+      }
+    }))
+    as.vector(t(m))
+  }
+  long <- tbl |>
+    dplyr::select(-dplyr::any_of(bound_names)) |>
+    tidyr::pivot_longer(
+      cols = dplyr::all_of(stats),
+      names_to = names_to,
+      values_to = values_to
+    )
+  if (has_bounds) {
+    long$lower <- bound_vec("_lower")
+    long$upper <- bound_vec("_upper")
+  }
+  long
+}
+
 # Error statistics as rows of panels: `stat_cols` maps wide columns to labels.
 .simBandwidthErrorStatLong <- function(tbl, stat_cols) {
   tbl |>
-    tidyr::pivot_longer(
-      cols = dplyr::all_of(names(stat_cols)),
-      names_to = "statistic",
-      values_to = "value"
-    ) |>
+    .simBandwidthStatLongBounds(names(stat_cols), "statistic", "value") |>
     dplyr::filter(!is.na(.data$value)) |>
     dplyr::mutate(
       statistic = factor(
@@ -124,6 +153,7 @@ add_bw_labs <- function(.data) {
 # the bandwidth; curves for different bias scales stay separate (`group`)
 # although only the bandwidth rule is shown in Analysis 2b. `title` is ignored
 # (figure titles go in headings) and is kept so older calls still work.
+# `mcse`: draw the `<stat>_lower`/`<stat>_upper` Monte Carlo intervals.
 .simBandwidthBiasRelativeErrorPlot <- function(
   tbl,
   title = NULL,
@@ -133,7 +163,8 @@ add_bw_labs <- function(.data) {
     median_abs_rel_error = "Median",
     q90_abs_rel_error = "90th percentile",
     max_abs_rel_error = "Maximum"
-  )
+  ),
+  mcse = FALSE
 ) {
   tbl <- .simBandwidthErrorStatLong(tbl, stat_cols) |>
     dplyr::mutate(bw_lab = .simBandwidthBwLabFactor(.data$bw))
@@ -149,6 +180,9 @@ add_bw_labs <- function(.data) {
     # Slight transparency shows overlapping lines.
     ggplot2::geom_line(alpha = 0.75) +
     ggplot2::geom_point(alpha = 0.75) +
+    (if (isTRUE(mcse) && "lower" %in% names(tbl)) {
+      .analysis_mcse_errorbar(tbl)
+    }) +
     facet +
     .simBandwidthBwColourScale(tbl$bw) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
@@ -169,7 +203,8 @@ add_bw_labs <- function(.data) {
   title = NULL,
   y_label = "Relative error",
   facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
-  stat_cols = c(median = "Median", q90 = "90th percentile", max = "Maximum")
+  stat_cols = c(median = "Median", q90 = "90th percentile", max = "Maximum"),
+  mcse = FALSE
 ) {
   tbl <- .simBandwidthErrorStatLong(tbl, stat_cols) |>
     dplyr::mutate(
@@ -205,6 +240,7 @@ add_bw_labs <- function(.data) {
     ) +
     # Slight transparency shows overlapping lines; legend keys match.
     ggplot2::geom_point(size = 1, alpha = 0.75) +
+    (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl)) +
     facet +
     .simBandwidthBwColourScale(tbl$bw) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
@@ -227,17 +263,17 @@ add_bw_labs <- function(.data) {
 # With `by_prob`, rows of panels separate response probabilities. Errors above
 # +1500% are drawn at +1500% (`err_value_shown`). `title` is ignored (figure
 # titles go in headings) and is kept so older calls still work.
+# `mcse`: draw the Monte Carlo intervals carried by the summary.
 .simBandwidthGlobalSignedErrorPlot <- function(
   tbl,
   title = NULL,
-  by_prob = FALSE
+  by_prob = FALSE,
+  mcse = FALSE
 ) {
   bw_levels <- .analysis_label_number(sort(unique(tbl$bw)))
   tbl <- tbl |>
-    tidyr::pivot_longer(
-      cols = c("median", "q95", "max"),
-      names_to = "err_type",
-      values_to = "err_value"
+    .simBandwidthStatLongBounds(
+      c("median", "q95", "max"), "err_type", "err_value"
     ) |>
     dplyr::filter(!is.na(.data$err_value)) |>
     dplyr::mutate(
@@ -272,6 +308,7 @@ add_bw_labs <- function(.data) {
     ) +
     # Slight transparency shows overlapping lines; legend keys match.
     ggplot2::geom_point(size = 1, alpha = 0.75) +
+    (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl, width = 0.3)) +
     (if (by_prob) {
       ggplot2::facet_grid(
         prob_response ~ transformation,
@@ -306,42 +343,115 @@ add_bw_labs <- function(.data) {
 # Signed relative error, (estimate - truth) / truth, summarised separately for
 # over- and under-estimates. `prop` is each side's share of finite errors; the
 # other statistics are signed and use that side's errors only.
-.simBandwidthSignedErrorSides <- function(rel_error) {
-  rel_error <- rel_error[is.finite(rel_error)]
+# With `mcse`, each percentile also gets `<stat>_lower`, `<stat>_upper` and
+# `<stat>_mcse` (`analysis-mcse.R`; NA for the maximum). Without `unit`, these
+# come from order statistics of that side's values, treated as independent.
+# With `unit` (one value per error, e.g. the simulated dataset), the plotted
+# percentile is unchanged and its MCSE is the between-unit spread of the
+# per-unit percentile of that side. Bounds stay on their side of zero.
+.simBandwidthSignedErrorSides <- function(rel_error, mcse = FALSE, unit = NULL) {
+  keep <- is.finite(rel_error)
+  rel_error <- rel_error[keep]
+  if (!is.null(unit)) {
+    unit <- unit[keep]
+  }
+  probs <- c(median = 0.5, q90 = 0.9, q95 = 0.95)
   side <- function(direction) {
     sgn <- if (direction == "over") 1 else -1
-    x <- sgn * rel_error[sgn * rel_error > 0]
-    if (length(x) == 0L) {
-      return(tibble::tibble(
+    in_side <- sgn * rel_error > 0
+    x <- sgn * rel_error[in_side]
+    out <- if (length(x) == 0L) {
+      tibble::tibble(
         direction = direction,
         prop = if (length(rel_error)) 0 else NA_real_,
         median = NA_real_,
         q90 = NA_real_,
         q95 = NA_real_,
         max = NA_real_
-      ))
+      )
+    } else {
+      tibble::tibble(
+        direction = direction,
+        prop = length(x) / length(rel_error),
+        median = sgn * stats::median(x),
+        q90 = sgn * stats::quantile(x, probs = 0.9, names = FALSE),
+        q95 = sgn * stats::quantile(x, probs = 0.95, names = FALSE),
+        max = sgn * max(x)
+      )
     }
-    tibble::tibble(
-      direction = direction,
-      prop = length(x) / length(rel_error),
-      median = sgn * stats::median(x),
-      q90 = sgn * stats::quantile(x, probs = 0.9, names = FALSE),
-      q95 = sgn * stats::quantile(x, probs = 0.95, names = FALSE),
-      max = sgn * max(x)
-    )
+    if (!isTRUE(mcse)) {
+      return(out)
+    }
+    for (s in names(probs)) {
+      if (is.null(unit)) {
+        q <- .analysis_mcse_quantile(x, probs[[s]])
+        bounds <- sgn * c(q$lower, q$upper)
+        out[[paste0(s, "_mcse")]] <- q$mcse
+        out[[paste0(s, "_lower")]] <- min(bounds)
+        out[[paste0(s, "_upper")]] <- max(bounds)
+      } else {
+        p <- probs[[s]]
+        se <- .analysis_mcse_between_units(
+          x, unit[in_side], function(v) .analysis_mcse_quantile_finite(v, p)
+        )
+        out[[paste0(s, "_mcse")]] <- se
+        out[[paste0(s, "_lower")]] <- out[[s]] - .analysis_mcse_z * se
+        out[[paste0(s, "_upper")]] <- out[[s]] + .analysis_mcse_z * se
+      }
+    }
+    out$max_mcse <- NA_real_
+    out$max_lower <- NA_real_
+    out$max_upper <- NA_real_
+    .simBandwidthSignedErrorClipSide(out)
   }
   dplyr::bind_rows(side("over"), side("under"))
 }
 
-# One row per group and direction; `tbl` must have a `rel_error` column.
-.simBandwidthSignedErrorSummary <- function(tbl, group_cols) {
-  tbl |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
-    dplyr::reframe(.simBandwidthSignedErrorSides(.data$rel_error))
+# Keep Monte Carlo bounds on their direction's side of zero.
+.simBandwidthSignedErrorClipSide <- function(tbl) {
+  over <- tbl$direction == "over"
+  for (s in c("median", "q90", "q95")) {
+    lo <- paste0(s, "_lower")
+    hi <- paste0(s, "_upper")
+    if (lo %in% names(tbl)) {
+      tbl[[lo]] <- dplyr::if_else(over, pmax(tbl[[lo]], 0), tbl[[lo]])
+    }
+    if (hi %in% names(tbl)) {
+      tbl[[hi]] <- dplyr::if_else(!over, pmin(tbl[[hi]], 0), tbl[[hi]])
+    }
+  }
+  tbl
 }
 
-# Average side summaries equally over scenarios, ignoring empty sides.
+# One row per group and direction; `tbl` must have a `rel_error` column.
+# `mcse` and `unit` (a column name) are passed to
+# `.simBandwidthSignedErrorSides()`.
+.simBandwidthSignedErrorSummary <- function(
+  tbl,
+  group_cols,
+  mcse = FALSE,
+  unit = NULL
+) {
+  tbl |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
+    dplyr::reframe(.simBandwidthSignedErrorSides(
+      .data$rel_error,
+      mcse = mcse,
+      unit = if (is.null(unit)) NULL else .data[[unit]]
+    ))
+}
+
+# Average side summaries equally over scenarios, ignoring empty sides. When
+# the summaries carry Monte Carlo errors (`<stat>_mcse`), these are combined
+# as for independent scenarios (`.analysis_mcse_average()`), with bounds at
+# the average +/- 1.96 combined MCSE, kept on their side of zero.
 .simBandwidthSignedErrorAverage <- function(tbl, group_cols) {
+  stats <- intersect(c("prop", "median", "q90", "q95", "max"), names(tbl))
+  if (any(paste0(stats, "_mcse") %in% names(tbl))) {
+    out <- .analysis_mcse_average_cols(tbl, c(group_cols, "direction"), stats)
+    out <- out[, setdiff(names(out), c("prop_mcse", "prop_lower", "prop_upper"))]
+    return(.simBandwidthSignedErrorClipSide(out))
+  }
   tbl |>
     dplyr::group_by(dplyr::across(dplyr::all_of(c(group_cols, "direction")))) |>
     dplyr::summarise(
@@ -355,6 +465,50 @@ add_bw_labs <- function(.data) {
       dplyr::any_of(c("prop", "median", "q90", "q95", "max")),
       ~ dplyr::if_else(is.nan(.x), NA_real_, .x)
     ))
+}
+
+# Analysis 2a absolute relative error: median, 95th percentile and maximum of
+# `abs_rel_error` (|estimate - truth| / truth) within each scenario
+# (`scenario_cols`), then
+# averaged equally over the scenarios in each `group_cols` group, in percent
+# (three significant figures). Monte Carlo bounds (`<stat>_lower`/`_upper`,
+# `analysis-mcse.R`) combine each scenario's order-statistic half-width as for
+# independent scenarios; the maximum has none.
+.simBandwidthGlobalAbsErrorAverage <- function(tbl, scenario_cols, group_cols) {
+  stats <- c("err_rel_median_avg", "err_rel_95_avg", "err_rel_max_avg")
+  bounds <- as.vector(outer(stats, c("_lower", "_upper"), paste0))
+  tbl |>
+    dplyr::mutate(.abs_rel = .data$abs_rel_error) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(scenario_cols))) |>
+    dplyr::summarise(
+      err_rel_median_avg = stats::median(.data$.abs_rel, na.rm = TRUE),
+      err_rel_median_avg_mcse = .analysis_mcse_quantile(.data$.abs_rel, 0.5)$mcse,
+      err_rel_95_avg = stats::quantile(
+        .data$.abs_rel,
+        probs = 0.95, na.rm = TRUE, names = FALSE
+      ),
+      err_rel_95_avg_mcse = .analysis_mcse_quantile(.data$.abs_rel, 0.95)$mcse,
+      err_rel_max_avg = max(.data$.abs_rel, na.rm = TRUE),
+      err_rel_max_avg_mcse = NA_real_,
+      .groups = "drop"
+    ) |>
+    .analysis_mcse_average_cols(group_cols, stats) |>
+    dplyr::mutate(
+      dplyr::across(dplyr::all_of(stats), ~ signif(.x, digits = 3) * 1e2),
+      dplyr::across(dplyr::all_of(bounds), ~ pmax(.x, 0) * 1e2)
+    ) |>
+    dplyr::select(-dplyr::all_of(paste0(stats, "_mcse")))
+}
+
+# Monte Carlo error bars for a long signed (or absolute) error table with
+# `lower`/`upper` in data units, squished to the +1500% cap like the values.
+.simBandwidthSignedErrorBars <- function(tbl, width = 0) {
+  if (!all(c("lower", "upper") %in% names(tbl))) {
+    return(NULL)
+  }
+  tbl$lower_shown <- .simBandwidthSignedErrorSquish(tbl$lower)
+  tbl$upper_shown <- .simBandwidthSignedErrorSquish(tbl$upper)
+  .analysis_mcse_errorbar(tbl, "lower_shown", "upper_shown", width = width)
 }
 
 # Under-estimates are linear down to -100% (nothing gated); over-estimates are

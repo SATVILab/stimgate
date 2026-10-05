@@ -15,6 +15,7 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
+  show_mcse: true
   sim_size: final
   sim_retry_errors: true
 ---
@@ -41,6 +42,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-mcse.R"))
 analysis_qmd <- "analysis/3-sim-bw-est-base.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
@@ -109,6 +111,8 @@ run_plots <- .as_flag(.get_qmd_param_env(
   "RUN_PLOTS",
   TRUE
 ))
+# Monte Carlo error bars on the summary plots (see analysis-mcse.R).
+show_mcse <- .as_flag(.get_qmd_param_env("show_mcse", "SHOW_MCSE", TRUE))
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
 
@@ -442,11 +446,26 @@ if (isTRUE(run_plots)) {
 
 Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the estimator. Facets separate transformations (Gaussian, Skew, Gamma) and response frequencies, shown as percentages; each figure sits under a heading naming its response-separation and bias setting. Compare the methods within each panel and follow how their estimates change with cell count.
 
+With `show_mcse` on (the default; set the `show_mcse` parameter or the `SHOW_MCSE` environment variable to false to turn it off), each mean has a thin error bar in its line's colour: the mean plus or minus 1.96 Monte Carlo standard errors (the standard deviation of the scenario's bandwidth estimates divided by the square root of their number). The error bars use only the estimates already simulated and treat them as independent draws, which holds here: each simulated sample is drawn and its bandwidth estimated separately, with no sharing across samples.
+
 ```{r}
 #| label: bw-estimate-plots
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots)) {
+  # Monte Carlo interval for each scenario's mean bandwidth: mean +/- 1.96
+  # sd / sqrt(n) over its complete finite stim/unstim pairs.
+  bw_mean_mcse <- bw_tbl |>
+    dplyr::mutate(
+      bw_pair = dplyr::if_else(
+        is.finite(bw_stim) & is.finite(bw_uns),
+        pmin(bw_stim, bw_uns),
+        NA_real_
+      )
+    ) |>
+    dplyr::group_by(sim_id) |>
+    dplyr::reframe(.analysis_mcse_mean(bw_pair)) |>
+    dplyr::select(sim_id, mean_bw_lower = lower, mean_bw_upper = upper)
   for (mean_pos_setting_curr in unique(bw_tbl_results$mean_pos_setting)) {
     .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 3)
     for (bias_uns_setting_curr in unique(bw_tbl_results$bias_uns_setting)) {
@@ -461,6 +480,7 @@ if (isTRUE(run_plots)) {
       .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 4)
 
       plot_tbl <- plot_tbl |>
+        dplyr::left_join(bw_mean_mcse, by = "sim_id") |>
         dplyr::mutate(
           bw_mtd = factor(
             .data$bw_mtd,
@@ -475,6 +495,9 @@ if (isTRUE(run_plots)) {
       ) +
         geom_line(alpha = 0.75) +
         geom_point(alpha = 0.75) +
+        (if (isTRUE(show_mcse)) {
+          .analysis_mcse_errorbar(plot_tbl, "mean_bw_lower", "mean_bw_upper")
+        }) +
         facet_grid(
           transformation ~ prob_response,
           scales = "free_y",

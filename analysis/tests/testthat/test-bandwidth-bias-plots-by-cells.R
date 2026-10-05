@@ -14,12 +14,15 @@
 
 .bandwidth_cell_plot_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
-  for (fn in c("analysis-plot-style.R", "sim-bandwidth-analysis-plot.R")) {
+  for (fn in c(
+    "analysis-plot-style.R", "analysis-mcse.R", "sim-bandwidth-analysis-plot.R"
+  )) {
     source(file.path(testthat::test_path(), "../../../scripts/r", fn), local = env)
   }
   env$root_dir <- tempfile("cell-plots-")
   env$analysis_key <- "bias_uns"
   env$run_plots <- TRUE
+  env$show_mcse <- TRUE
   env$saved <- list()
   env$printed <- list()
   env$fig_key <- "2a-test"

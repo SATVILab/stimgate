@@ -349,6 +349,16 @@ Signed relative-error plots (`.simBandwidthSignedError*()` in
 ones: they summarise over- and under-estimates separately, weight lines by each
 direction's share, and use a scale on which -100% and a two-fold over-estimate
 are equally far from zero.
+Monte Carlo error bars (`show_mcse` QMD parameter / `SHOW_MCSE`, default on;
+plot helpers take `mcse = FALSE` by default) use `analysis-mcse.R` and only
+existing replicates: sd/sqrt(n) for means, order-statistic intervals
+(x_(l), x_(u)) with l = qbinom(0.025, n, p), u = qbinom(0.975, n, p) + 1 for
+percentiles (NA if n < 5 or l < 1 or u > n), none for maxima, and
+sqrt(sum(se^2))/k for equal-weight scenario averages. In QMDs 7/8 samples within
+a dataset are dependent, so the unit is the dataset (`iter`): MCSE =
+sd(per-dataset statistic)/sqrt(D), NA when D < 5. Final runs use 20 datasets
+per scenario and draft runs use 5, the minimum for these bars; keep MCSE
+prose aligned with the selected `sim_size` settings.
 
 ### Website Maintenance (`pkgdown`)
 
@@ -447,6 +457,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     - `fbeta.py`: Richards F-beta thresholding implementation (comparison method).
   - `r/`: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by `devtools::load_all()` and are not part of the installed package.
   - `analysis-runtime.R`: Shared QMD execution/runtime plumbing for parameter lookup, env overrides, chunk validation and atomic RDS output.
+  - `analysis-mcse.R`: Monte Carlo standard errors and intervals for the simulation summary plots (sourced after `analysis-plot-style.R`).
   - `functionsForBenchmarking-Cyt.R`: Cytokine simulation utilities.
   - `sim-bandwidth.R`: Simulation bandwidth utilities.
   - `sim-bandwidth-analysis-io.R` / `sim-bandwidth-analysis-plot.R`: Output-file lookup and plotting helpers for the bandwidth QMDs.
