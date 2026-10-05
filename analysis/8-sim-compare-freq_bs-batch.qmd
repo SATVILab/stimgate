@@ -1390,6 +1390,11 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 }
 ```
 
+Each signed-error figure also has an estimate/reference ratio companion in a
+sibling `ratio*` folder. The curves and intervals are identical: 1x is exact,
+0x is an estimate of zero and 2x is twice the reference. Negative ratios remain
+visible; a capped upper tick reads “≥ 16x”.
+
 ### Over- and under-estimates averaged over cell counts
 
 Relative error is split by direction: over-estimates sit above zero and

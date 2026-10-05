@@ -446,6 +446,10 @@ if (isTRUE(run_plots)) {
 
 Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Relative error is (automated - manual) / manual for each sample, using the same samples as the figure above. Over-estimates are plotted above zero and under-estimates below, summarised separately by median, 95th percentile and maximum for each method, population (columns) and cytokine. Larger points mean more samples fell in that direction. The scale is linear down to -100% (0x, an estimate of zero) and doubles above zero, so -100% and a two-fold over-estimate are equally far from zero.
 
+The companion ratio figures show automated/manual frequency with identical
+curves: 1x agrees with the manual reference, 0x is zero automated frequency
+and 2x is twice the manual frequency. Manual gating remains an imperfect reference.
+
 ```{r}
 #| label: manual-signed-error
 #| echo: false
@@ -470,6 +474,9 @@ if (isTRUE(run_plots)) {
       height = 22
     )
     .analysis_print_fig(p)
+    .simBandwidthPrintRatioTwin(p,
+      file.path(.analysis_fig_dir(c(fig_key, "manual_comparison_signed_error", set_name), root_dir),
+        "manual-comparison-ratio.png"), height = 22, level = 5L)
   }
 }
 ```

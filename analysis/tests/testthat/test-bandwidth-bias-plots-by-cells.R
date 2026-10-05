@@ -246,6 +246,8 @@ test_that("2a per-cell signed-error plots average scenario errors by direction",
   expect_length(env$saved, 8L)
   expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
+  expect_equal(sum(grepl("/ratio", paths, fixed = TRUE)), length(paths) / 2)
+  expect_equal(sum(grepl("/signed_error", paths, fixed = TRUE)), length(paths) / 2)
   expect_equal(length(unique(paths)), 8L)
   for (saved in env$saved) {
     data <- saved$plot$data
@@ -328,6 +330,8 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
   expect_length(env$saved, 96L)
   expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
+  expect_equal(sum(grepl("/ratio", paths, fixed = TRUE)), length(paths) / 2)
+  expect_equal(sum(grepl("/signed_error", paths, fixed = TRUE)), length(paths) / 2)
   expect_equal(length(unique(paths)), 96L)
   for (saved in env$saved) {
     data <- saved$plot$data
