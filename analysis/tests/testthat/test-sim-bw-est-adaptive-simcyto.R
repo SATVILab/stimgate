@@ -54,6 +54,14 @@ test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundar
     captured_sim <- NULL
     orig_simcyto_experiment <- simcyto::simCytExperiment
 
+    # Pin the replicate seed to keep the canonical parity dataset.
+    env$sample.int <- function(n, size, replace = FALSE, prob = NULL) {
+      if (identical(n, .Machine$integer.max) && size == 1L && isTRUE(replace)) {
+        return(seed)
+      }
+      base::sample.int(n, size, replace = replace, prob = prob)
+    }
+
     set.seed(seed)
     res <- testthat::with_mocked_bindings(
       simCytExperiment = function(...) {

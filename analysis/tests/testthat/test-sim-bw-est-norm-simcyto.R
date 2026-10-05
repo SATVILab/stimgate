@@ -74,6 +74,14 @@ test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parit
   captured_args <- NULL
   orig_simcyto_experiment <- simcyto::simCytExperiment
 
+  # Pin the replicate seed to keep the canonical parity dataset.
+  env$sample.int <- function(n, size, replace = FALSE, prob = NULL) {
+    if (identical(n, .Machine$integer.max) && size == 1L && isTRUE(replace)) {
+      return(seed)
+    }
+    base::sample.int(n, size, replace = replace, prob = prob)
+  }
+
   set.seed(seed)
   res_norm <- testthat::with_mocked_bindings(
     simCytExperiment = function(...) {
