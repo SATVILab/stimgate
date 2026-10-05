@@ -657,7 +657,16 @@
 # genuine positives and the false-positive rate when it has no genuine
 # negatives. `gate_status` separates failed runs, fallback gates and
 # calculated gates, each split by whether any stimulated cell was selected.
+# Runtime failures belong to the primary method's failure cohort. Keep their
+# error/provenance fields while recognizing the historical diagnostic label.
+.simComparePrimaryMethodRows <- function(.data) {
+  .data$method <- as.character(.data$method)
+  .data$method[.data$method %in% "stimgate_error"] <- "stimgate"
+  .data
+}
+
 .simCompareClassificationMetrics <- function(.data) {
+  .data <- .simComparePrimaryMethodRows(.data)
   ratio <- function(num, den) {
     dplyr::if_else(!is.na(den) & den > 0, num / den, NA_real_)
   }
@@ -2877,6 +2886,24 @@
   )
 }
 
+# Counts aggregate across biological scenarios without pretending they share a
+# bootstrap family. This validation table contains no performance intervals.
+.simCompareMethodOutcomeCounts <- function(raw) {
+  raw <- .simComparePrimaryMethodRows(raw)
+  if (!"error" %in% names(raw)) raw$error <- NA_character_
+  if (!"thresholdOrigin" %in% names(raw)) raw$thresholdOrigin <- NA_character_
+  raw |>
+    dplyr::filter(.data$method %in% c("stimgate", "fbeta", "tailgate")) |>
+    .simCompareClassificationMetrics() |>
+    dplyr::group_by(.data$method) |>
+    dplyr::summarise(n = dplyr::n(),
+      n_valid = sum(.data$gate_status != "failed"),
+      n_run_error = sum(!is.na(.data$error) & nzchar(.data$error)),
+      n_no_cutpoint = sum(.data$thresholdOrigin %in% "failed_no_cutpoint"),
+      n_fallback = sum(.data$gate_status %in% c("fallback_empty", "fallback_selected")),
+      .groups = "drop")
+}
+
 # sim_seed identifies biological draws shared across methods and deterministic
 # mismatches. Fallback biological keys support small fixtures without grid seeds.
 .simCompareBootstrapContext <- function(data, unit = "iter") {
@@ -2938,6 +2965,7 @@
   mcse = FALSE,
   unit = "iter"
 ) {
+  .data <- .simComparePrimaryMethodRows(.data)
   if (!"error" %in% names(.data)) {
     .data$error <- NA_character_
   }
@@ -3121,6 +3149,7 @@
     .data, scenarioCols,
     outcomes = c("abs_error", "abs_rel_error"),
     competitors = c("fbeta", "tailgate")) {
+  .data <- .simComparePrimaryMethodRows(.data)
   scenarioCols <- setdiff(
     scenarioCols, c("method", "approach", "sim_id", "sim_seed", "iter", "sample", "ind")
   )
@@ -3586,6 +3615,7 @@
     keepMethods = c("stimgate", "fbeta", "tailgate"),
     mcse = FALSE,
     unit = "iter") {
+  .data <- .simComparePrimaryMethodRows(.data)
   rows <- .simCompareBootstrapContext(.data, unit) |>
     dplyr::filter(.data$method %in% keepMethods)
   if (!"error" %in% names(rows)) rows$error <- NA_character_
@@ -3618,6 +3648,7 @@
     keepMethods = c("stimgate", "fbeta", "tailgate"),
     mcse = FALSE,
     unit = "iter") {
+  .data <- .simComparePrimaryMethodRows(.data)
   rows <- .data |> dplyr::filter(.data$method %in% keepMethods)
   if (!"error" %in% names(rows)) rows$error <- NA_character_
   rows <- rows |> dplyr::mutate(abs_rel_error = dplyr::if_else(
@@ -3647,6 +3678,7 @@
 .simCompareDatasetMaxSummary <- function(
     raw, scenarioCols, expected_samples = 20L, expected_datasets = NULL,
     mcse = FALSE) {
+  raw <- .simComparePrimaryMethodRows(raw)
   if (length(expected_samples) != 1L || !is.finite(expected_samples) ||
       expected_samples < 1L || expected_samples != as.integer(expected_samples)) {
     stop("Dataset maxima require a positive integer expected sample count.")
@@ -3875,6 +3907,7 @@
     keepMethods = c("stimgate", "fbeta", "tailgate"),
     mcse = FALSE,
     unit = "iter") {
+  .data <- .simComparePrimaryMethodRows(.data)
   if (isTRUE(mcse)) {
     .simCompareRequireUnit(.data, unit)
   }
