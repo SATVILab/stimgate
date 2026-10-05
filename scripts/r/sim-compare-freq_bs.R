@@ -3658,6 +3658,11 @@
   tbl |>
     dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
     dplyr::summarise(
+      n_scenario = dplyr::n(),
+      dplyr::across(
+        dplyr::all_of(c("median", "q95", "max")),
+        ~ sum(is.finite(.x)), .names = "n_scenario_{.col}"
+      ),
       dplyr::across(
         dplyr::all_of(c("median", "q95", "max")),
         ~ if (all(is.na(.x))) NA_real_ else mean(.x, na.rm = TRUE)

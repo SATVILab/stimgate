@@ -80,7 +80,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v11"
+comparison_semantics_version <- "batch-mismatch-comparison-v12"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -1306,21 +1306,6 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   group_cell <- c(group_all, "n_cell")
   err_averaged <- .simCompareErrorAverage(err_scenario, group_all)
   err_by_cell <- .simCompareErrorAverage(err_scenario, group_cell)
-  # Finite per-statistic counts, rather than the number of pooled samples.
-  for (groups in list(group_all, group_cell)) {
-    counts <- err_scenario |>
-      dplyr::group_by(dplyr::across(dplyr::all_of(groups))) |>
-      dplyr::summarise(
-        dplyr::across(c(median, q95, max), ~ sum(is.finite(.x)),
-                      .names = "n_scenario_{.col}"),
-        .groups = "drop"
-      )
-    if (identical(groups, group_all)) {
-      err_averaged <- dplyr::left_join(err_averaged, counts, by = groups)
-    } else {
-      err_by_cell <- dplyr::left_join(err_by_cell, counts, by = groups)
-    }
-  }
   signed_averaged <- .simBandwidthSignedErrorAverage(signed_scenario, group_all)
   signed_by_cell <- .simBandwidthSignedErrorAverage(signed_scenario, group_cell)
 }
@@ -1412,7 +1397,7 @@ under-estimates below. Within each scenario, the median, 95th percentile and
 maximum are calculated separately for over- and under-estimates, then averaged
 equally over cell counts and response probabilities within each
 transformation. Line weight shows the share of estimates in that direction.
-Under-estimates are on a linear scale, including errors below -100% for negative background-subtracted estimates, with -100% (an estimate of zero, zero background-subtracted response), and
+Under-estimates are on a linear scale, including errors below -100% for negative background-subtracted estimates, with -100% (0x, an estimate of zero), and
 over-estimates on a fold scale, so -100% and +100% (twice the truth) are the
 same distance from zero.
 

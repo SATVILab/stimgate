@@ -66,7 +66,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v9"
+comparison_semantics_version <- "corrected-comparison-v10"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -927,7 +927,7 @@ rows as the figures above. Over-estimates are drawn above zero and
 under-estimates below. Rows of panels show the median, 95th percentile and
 maximum, and columns separate expression distributions. Colour identifies the
 method, and a thicker line means a larger share of the estimates lies in that
-direction. The vertical scale is linear, including errors below -100% for negative background-subtracted estimates, with -100% (an estimate of zero, zero background-subtracted response) and
+direction. The vertical scale is linear, including errors below -100% for negative background-subtracted estimates, with -100% (0x, an estimate of zero) and
 doubles at each step above, so -100% and a two-fold over-estimate are equally
 far from zero. Each plot uses one mean position setting, one response frequency
 and no random condition perturbation. Error bars (with `show_mcse` on and at

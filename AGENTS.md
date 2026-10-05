@@ -377,7 +377,7 @@ per scenario and draft runs use 5, the minimum for these bars; keep MCSE
 prose aligned with the selected `sim_size` settings.
 
 For background-subtracted signed relative error, an estimate of zero gives
--100%; negative estimates can give errors below -100% and must remain visible.
+-100% (0x); negative estimates can give errors below -100% and must remain visible.
 Averages of per-scenario statistics must be labelled as means of scenario
 medians/quantiles/maxima, with finite contributing-scenario counts. Display
 coverage and fallback provenance beside performance plots, keeping their
@@ -728,7 +728,9 @@ rows before drawing reference lines.
    - Read canonical outputs through `.analysis_current_file()`, which requires a `COMPLETE` marker, a readable manifest for the requested analysis key, and any analysis-specific semantic version required by the caller.
    - To read canonical results without running the simulation chunk (so no `run_ctx` exists), collation chunks fall back to `.analysis_results_context()`, a read-only stand-in whose staging paths point at `current/` and which creates no run state. Guard all writes, chunk marking and promotion with `if (!isTRUE(run_ctx$read_only))`.
    - Record scientific and semantic settings in the run manifest. Reusing an explicit run ID must match those settings; only operational controls such as plotting, simulation execution and the current chunk index may differ across invocations.
-   - Record the complete selected cross-chunk grid specification (not just a few scalars) as a required parameter, so editing the grid under the same `analysis_semantics_version` is detected. Bump the semantics version when results change.
+   - Record the complete selected cross-chunk grid specification (not just a few scalars) as a required parameter, so editing the grid under the same `analysis_semantics_version` is detected. Bump the semantics version when results change. During integrations, check
+     master and every merged branch, including merge history (`git log -m -S`),
+     and choose a new identifier above every previously used version.
    - Resume retries rows whose saved output or marker recorded an error, so a run ID with a failed simulation can still complete.
 
 
@@ -845,6 +847,8 @@ analysis code, `scripts/r/` helpers or QMD/package-API drift belong in
    Scope expensive file-shared fixtures in `local({ ... })` and register deferred
    cleanup there; seeded tests must restore RNG state rather than leaking it into
    later files.
+   Run-context fixtures must isolate projr directory lookup as well as `path_root`;
+   configured projr paths take precedence and can otherwise reuse checkout caches.
    If multiple tests need the same setup data, create it within each test or create it
    once at the top with clear documentation. Never delete shared fixtures mid-file.
 7. **Test data files compatibility**:

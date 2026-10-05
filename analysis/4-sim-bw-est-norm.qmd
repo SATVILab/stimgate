@@ -85,7 +85,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "norm")
-analysis_semantics_version <- "bandwidth-est-norm-v6"
+analysis_semantics_version <- "bandwidth-est-norm-v7"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -597,7 +597,7 @@ if (isTRUE(run_plots)) {
 
         .analysis_save_fig(p, path_plot, height = 16)
         .analysis_print_fig(p)
-      cat("\n\n", knitr::kable(plot_tbl |> dplyr::select(
+        cat("\n\n", knitr::kable(plot_tbl |> dplyr::select(
           transformation, prob_response, n_cell, bw_mtd,
           n_est, n_total, estimate_rate, norm_fallback_rate
         ), digits = 3), sep = "\n")

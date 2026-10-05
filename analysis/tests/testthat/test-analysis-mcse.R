@@ -103,6 +103,10 @@ test_that("scenario averages combine MCSEs as independent scenarios", {
   expect_equal(left_out$estimate, 2)
   expect_equal(left_out$mcse, sqrt(0.02) / 2)
   expect_true(is.na(env$.analysis_mcse_average(c(1, 3), c(0.1, NA))$mcse))
+  nonfinite <- env$.analysis_mcse_average(c(1, Inf, -Inf, NA), c(0.1, 1, 1, NA))
+  expect_equal(nonfinite$estimate, 1)
+  expect_equal(nonfinite$k, 1L)
+  expect_equal(nonfinite$mcse, 0.1)
 
   tbl <- tibble::tibble(
     g = c("a", "a", "b", "b"),
@@ -334,4 +338,25 @@ test_that("summary-plot QMDs declare and read the show_mcse toggle", {
     expect_gt(mcse, style[[1]])
     expect_true(any(grepl("show_mcse", lines[-seq_len(mcse)], fixed = TRUE)), info = file)
   }
+})
+
+test_that("MCSE averages retain finite scenario coverage and averaged labels", {
+  env <- .mcse_env()
+  tbl <- tibble::tibble(
+    bw = 0.1, direction = "over", prop = c(1, 0),
+    median = c(0.2, NA_real_), q95 = c(0.4, NA_real_), max = c(0.8, NA_real_),
+    median_mcse = c(0.01, NA_real_), q95_mcse = c(0.02, NA_real_)
+  )
+  averaged <- env$.simBandwidthSignedErrorAverage(tbl, "bw")
+  expect_equal(averaged$n_scenario, 2L)
+  expect_equal(averaged$n_scenario_median, 1L)
+  expect_equal(averaged$n_scenario_q95, 1L)
+  expect_equal(averaged$n_scenario_max, 1L)
+  expect_equal(averaged$median, 0.2)
+  expect_equal(averaged$median_mcse, 0.01)
+  plot <- env$.simBandwidthGlobalSignedErrorPlot(
+    dplyr::mutate(averaged, transformation = "gaussian"), mcse = TRUE
+  )
+  expect_match(plot$labels$y, "Mean of scenario statistics", fixed = TRUE)
+  expect_match(plot$labels$caption, "median: 1", fixed = TRUE)
 })

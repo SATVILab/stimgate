@@ -518,11 +518,18 @@ add_bw_labs <- function(.data) {
         probs = 0.95, na.rm = TRUE, names = FALSE
       ),
       err_rel_95_avg_mcse = .analysis_mcse_quantile(.data$.abs_rel, 0.95)$mcse,
-      err_rel_max_avg = max(.data$.abs_rel, na.rm = TRUE),
+      err_rel_max_avg = if (any(is.finite(.data$.abs_rel))) {
+        max(.data$.abs_rel, na.rm = TRUE)
+      } else NA_real_,
       err_rel_max_avg_mcse = NA_real_,
       .groups = "drop"
     ) |>
     .analysis_mcse_average_cols(group_cols, stats) |>
+    dplyr::rename(
+      n_scenario_median = n_scenario_err_rel_median_avg,
+      n_scenario_q95 = n_scenario_err_rel_95_avg,
+      n_scenario_max = n_scenario_err_rel_max_avg
+    ) |>
     dplyr::mutate(
       dplyr::across(dplyr::all_of(stats), ~ signif(.x, digits = 3) * 1e2),
       dplyr::across(dplyr::all_of(bounds), ~ pmax(.x, 0) * 1e2)

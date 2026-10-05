@@ -5,6 +5,13 @@
 - `gateStim()` now excludes cells exactly at the gate from sample-level
   frequencies, matching the strict gate applied to cells.
 
+## Analysis
+
+- Reject stale caches and unsafe partial HPC outputs. Preserve comparator
+  errors, threshold provenance and finite-estimate coverage in summaries.
+- Report method differences and uncertainty across paired simulated datasets,
+  and retain negative background-subtracted estimates in signed-error plots.
+
 # stimgate 0.99.19
 
 ## Breaking changes
@@ -12,7 +19,6 @@
 - `stimControl()` defaults to `bwScope = "cytokine"` again, so `gateStim()`
   shares one local-FDR bandwidth per marker. Per-sample estimation remains
   available with `bwScope = "sample"`.
-
 
 # stimgate 0.99.16
 

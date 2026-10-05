@@ -99,7 +99,7 @@ test_that("Analysis 8 uses one complete settings list and pre-promotion mismatch
   expect_equal(sum(grepl("^analysis_result_params <- list", lines)), 1L)
   expect_true(grepl("required_params = analysis_result_params", content, fixed = TRUE))
   expect_true(grepl("validate_full = .simCompareValidateMismatch", content, fixed = TRUE))
-  expect_true(grepl("batch-mismatch-comparison-v11", content, fixed = TRUE))
+  expect_true(grepl("batch-mismatch-comparison-v12", content, fixed = TRUE))
   start <- which(grepl("^analysis_result_params <- list", lines))
   end <- start + which(lines[(start + 1L):length(lines)] == ")")[[1L]]
   expr <- parse(text = lines[start:end])[[1L]][[3L]]
@@ -152,4 +152,23 @@ test_that("mismatch validation rejects unpaired data and different zero-shift ga
   different_counts$nFalseNeg[[2L]] <- 0L
   different_counts$nTrueNeg[[2L]] <- 8L
   expect_error(env$.simCompareValidateMismatch(different_counts), "did not.*reproduce")
+})
+
+test_that("new unchunked cache schemas require their semantics identifier", {
+  env <- .hpc_safety_env()
+  withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA_character_)
+  expect_error(
+    env$.analysis_check_expected_run(list(), "acs_cytof",
+      semantics_version = "acs-cytof-v1"),
+    "analysis_semantics_version"
+  )
+  expect_no_error(env$.analysis_check_expected_run(
+    list(analysis_semantics_version = "acs-cytof-v1"), "acs_cytof",
+    semantics_version = "acs-cytof-v1"
+  ))
+  root <- normalizePath(file.path(testthat::test_path(), "../../.."))
+  for (file in c("9-real-compare-acs-cytof.qmd", "10-real-compare-acs-cytof-validation.qmd")) {
+    text <- paste(readLines(file.path(root, "analysis", file)), collapse = "\n")
+    expect_match(text, 'semantics_version = "acs-cytof-v1"', fixed = TRUE)
+  }
 })

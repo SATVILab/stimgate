@@ -463,6 +463,9 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   cached <- tibble::tibble(method = "stimgate", freq_bs_auto = 0.1)
   path <- file.path(env$path_manual_output, "manual-comparison.rds")
   saveRDS(cached, path)
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v1"),
+    file.path(env$path_manual_output, "manifest.rds"))
+  withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA_character_)
   for (expr in as.list(code)[-1L]) eval(expr, env)
   expect_identical(env$manual_comparison_tbl, cached)
   expect_identical(env$manual_summary_tbl, cached)

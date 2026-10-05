@@ -64,7 +64,18 @@
 
 # Submitted plot jobs must read the results made by their own simulation jobs.
 # Manual renders leave ANALYSIS_EXPECTED_RUN_ID unset and may read any run.
-.analysis_check_expected_run <- function(manifest, analysis_key, qmd_path = NULL) {
+.analysis_check_expected_run <- function(
+    manifest, analysis_key, qmd_path = NULL, semantics_version = NULL) {
+  if (
+    !is.null(semantics_version) &&
+      !identical(manifest$analysis_semantics_version, semantics_version)
+  ) {
+    .analysis_cache_error(
+      analysis_key,
+      paste0("Cached analysis_semantics_version does not match ", semantics_version, "."),
+      qmd_path
+    )
+  }
   expected <- Sys.getenv("ANALYSIS_EXPECTED_RUN_ID", unset = "")
   if (nzchar(expected) && !identical(
     as.character(manifest$run_id), .sanitize_run_id(expected)

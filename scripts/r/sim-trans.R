@@ -119,6 +119,7 @@ sim_trans_cache_settings <- function(
     transformation_vec,
     simulation_seed) {
   list(
+    analysis_semantics_version = "sim-trans-v1",
     main_settings = as.data.frame(main_settings),
     mean_pos_settings_tbl = as.data.frame(mean_pos_settings_tbl),
     transformation_vec = as.character(transformation_vec),
