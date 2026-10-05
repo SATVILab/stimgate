@@ -334,7 +334,12 @@ The default Slurm job list includes both Analysis 2a and 2b. Keep enabled
 chunked analyses in the `scripts` list and `chunked_qmd_stem_for_script()`
 mapping, sharing run ID, chunk count and shuffle seed across each run.
 Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`;
-validate all target arguments before submitting jobs. Keep mocked submission and
+validate all target arguments before submitting jobs. After the simulation jobs,
+`dev.sh` submits one `scripts/slurm/render-plots.sh` job per analysis that
+renders the real QMD with simulations off and plots on (`plot_qmds_for_script()`;
+9 also renders 10). It depends `afterok` on its own simulation jobs and
+`afterany` on the submission's other simulation jobs, because projr builds
+clear projr's output folder (where figures go) before building. Keep mocked submission and
 render checks in `analysis/tests/test-slurm-launchers.sh` and run them in analysis
 CI when launchers change. Relative-error plots averaged over cell counts and
 plots for each cell count belong in separate labelled QMD chunks; preserve the

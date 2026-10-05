@@ -83,6 +83,38 @@ chunked_qmd_stem_for_script() {
   esac
 }
 
+# QMDs rendered with plots (simulations off) once a launcher's jobs finish,
+# separated by ':' so the list passes through --export unchanged.
+plot_qmds_for_script() {
+  case "$1" in
+    dev-1-sim-trans.sh) echo "analysis/1-sim-trans.qmd" ;;
+    dev-7-sim-compare-freq_bs.sh) echo "analysis/7-sim-compare-freq_bs.qmd" ;;
+    dev-8-sim-compare-freq_bs-batch.sh)
+      echo "analysis/8-sim-compare-freq_bs-batch.qmd"
+      ;;
+    # Analysis 10 only presents analysis 9's saved results.
+    dev-9-real-compare-acs-cytof.sh)
+      echo "analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd"
+      ;;
+    *)
+      qmd_stem="$(chunked_qmd_stem_for_script "$1")"
+      if [[ -n "$qmd_stem" ]]; then
+        echo "analysis/${qmd_stem}.qmd"
+      fi
+      ;;
+  esac
+}
+
+# Submit through slurm-sbatch, show its output and set `submitted_job_id`.
+submit_job() {
+  local out
+  out="$(slurm-sbatch "$@")"
+  printf '%s\n' "$out"
+  submitted_job_id="$(
+    printf '%s\n' "$out" | sed -n 's/.*Submitted batch job \([0-9][0-9]*\).*/\1/p' | tail -n 1
+  )"
+}
+
 tmp_before="$(mktemp)"
 trap 'rm -f "$tmp_before"' EXIT
 
@@ -177,8 +209,12 @@ fi
 
 echo "Submitting downstream jobs"
 
+declare -A script_job_ids=()
+all_sim_job_ids=()
+
 for script in "${scripts[@]}"; do
   qmd_stem="$(chunked_qmd_stem_for_script "$script")"
+  script_job_ids["$script"]=""
 
   if [[ -n "$qmd_stem" ]]; then
     echo "Submitting transactional chunks for $script"
@@ -191,14 +227,52 @@ for script in "${scripts[@]}"; do
       echo "Submitting $script chunk $chunk_index of $sim_grid_n_chunks"
       echo "Log directory: $log_dir"
 
-      slurm-sbatch -l "$log_dir" -n "$script_dir/$script" -- \
+      submit_job -l "$log_dir" -n "$script_dir/$script" -- \
         --job-name="$job_name" \
         --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",SIM_GRID_CHUNK_INDEX="$chunk_index",SIM_GRID_N_CHUNKS="$sim_grid_n_chunks",SIM_GRID_SHUFFLE_SEED="$sim_grid_shuffle_seed",RUN_SIMULATIONS=true,RUN_PLOTS=false
+      script_job_ids["$script"]+=":$submitted_job_id"
+      all_sim_job_ids+=("$submitted_job_id")
     done
   else
     echo "Submitting $script"
-    slurm-sbatch "$script_dir/$script"
+    submit_job "$script_dir/$script"
+    script_job_ids["$script"]=":$submitted_job_id"
+    all_sim_job_ids+=("$submitted_job_id")
   fi
+done
+
+# Render each analysis's full report from its saved results (simulations off,
+# plots on). A plot job starts after its own simulation jobs succeed and every
+# other simulation job of this submission has finished: the projr builds clear
+# projr's output folder, so plots must not be written while one may still run.
+echo "Submitting plot renders"
+for script in "${scripts[@]}"; do
+  plot_qmds="$(plot_qmds_for_script "$script")"
+  own_ids="${script_job_ids[$script]}"
+  if [[ -z "$plot_qmds" ]]; then
+    continue
+  fi
+  if [[ "$own_ids" == *"::"* || "$own_ids" == ":" || -z "$own_ids" ]]; then
+    echo "WARNING: Could not read job IDs for $script; skipping its plot render." >&2
+    continue
+  fi
+  other_ids=""
+  for job_id in "${all_sim_job_ids[@]}"; do
+    if [[ "$own_ids:" != *":$job_id:"* ]]; then
+      other_ids+=":$job_id"
+    fi
+  done
+  dependency="afterok${own_ids}"
+  if [[ -n "$other_ids" ]]; then
+    dependency+=",afterany${other_ids}"
+  fi
+  plot_stem="${script#dev-}"
+  plot_stem="${plot_stem%.sh}"
+  echo "Submitting plot render for $script ($plot_qmds)"
+  submit_job -l "_tmp/log/sbatch/plots/${plot_stem}" -n "$script_dir/render-plots.sh" -- \
+    --job-name="plots-${plot_stem}" \
+    --dependency="$dependency" \
+    --export=ALL,PROJECT_ROOT="$project_root",PLOT_QMD_FILES="$plot_qmds",RUN_SIMULATIONS=false,RUN_PLOTS=true
 done
 
 echo "All downstream jobs submitted"
