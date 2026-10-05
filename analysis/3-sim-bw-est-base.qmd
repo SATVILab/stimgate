@@ -84,7 +84,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "base")
-analysis_semantics_version <- "bandwidth-est-base-v5"
+analysis_semantics_version <- "bandwidth-est-base-v6"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -192,10 +192,19 @@ sim_grid <- tidyr::expand_grid(
     mean_pos_setting, mean_pos, bw_mtd,
     bias_uns_setting, bias_uns
   ) |>
+  dplyr::group_by(
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos_setting,
+    mean_pos
+  ) |>
   dplyr::mutate(
-    sim_id = dplyr::row_number(),
-    sim_seed = as.integer(simulation_seed + sim_id - 1L)
-  )
+    base_scenario_id = dplyr::cur_group_id(),
+    sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(sim_id = dplyr::row_number())
 
 sim_grid_full <- sim_grid
 
@@ -293,6 +302,8 @@ analysis_required_params <- list(
 ```
 
 ## Simulation
+
+Method and tuning settings share the same biological-scenario seed, assigned on the full grid before execution filters or chunking. Each replicate has a seed drawn before any method runs, so later replicates remain paired despite method RNG use.
 
 Rerun one full-grid simulation with the same random numbers as its worker.
 Call `debugonce()` on a helper first to investigate a failure.

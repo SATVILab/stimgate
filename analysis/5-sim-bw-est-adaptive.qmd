@@ -82,7 +82,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "est", "adaptive")
-analysis_semantics_version <- "adaptive-bw-est-v3"
+analysis_semantics_version <- "adaptive-bw-est-v4"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 analysis_key <- .analysis_mode_key(analysis_key)
@@ -206,10 +206,19 @@ data_scenario_grid <- tidyr::expand_grid(
     .data$transformation,
     .data$mean_pos_setting
   ) |>
+  dplyr::group_by(
+    transformation,
+    prob_response,
+    n_cell,
+    mean_pos_setting,
+    mean_pos
+  ) |>
   dplyr::mutate(
-    data_scenario_id = dplyr::row_number(),
-    sim_seed = as.integer(simulation_seed + .data$data_scenario_id - 1L)
-  )
+    base_scenario_id = dplyr::cur_group_id(),
+    sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(data_scenario_id = dplyr::row_number())
 
 # Candidate bandwidth methods are compared on the same simulated data.
 # sim_seed therefore belongs to the data-generating scenario, not the method.
@@ -304,8 +313,10 @@ analysis_required_params <- list(
 
 ## Simulation
 
+Method and tuning settings share the same biological-scenario seed, assigned on the full grid before execution filters or chunking. Each replicate has a seed drawn before any method runs, so later replicates remain paired despite method RNG use.
+
 Rerun one simulation interactively, for example to see why it failed.
-Each row is seeded from its own `sim_seed` with a fixed RNG kind inside
+Each row is seeded from its biological scenario’s `sim_seed` with a fixed RNG kind inside
 `.simBandwidthRunRow()`, which the parallel run also calls, so this
 reproduces the random numbers of that row exactly, whatever the chunking,
 shuffling or worker scheduling. Call `debugonce()` on any helper first to
