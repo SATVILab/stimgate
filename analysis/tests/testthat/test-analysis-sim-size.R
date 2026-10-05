@@ -11,10 +11,11 @@
   env
 }
 
-test_that("sim_size defaults to final and follows the QMD param and SIM_SIZE", {
+test_that("sim_size defaults to draft and follows the QMD param and SIM_SIZE", {
   env <- .sim_size_runtime_env()
   withr::local_envvar(PROJR_PROFILE = NA, SIM_SIZE = NA)
-  expect_identical(env$.analysis_sim_size(), "final")
+  expect_identical(env$.analysis_sim_size(), "draft")
+  expect_identical(env$.analysis_mode_key(c("sim", "default")), c("sim", "default", "draft"))
   env$params <- list(sim_size = "draft")
   expect_identical(env$.analysis_sim_size(), "draft")
   Sys.setenv(SIM_SIZE = "final")
@@ -32,6 +33,26 @@ test_that("invalid sim_size values give a clear error", {
   Sys.unsetenv("SIM_SIZE")
   env$params <- list(sim_size = "full")
   expect_error(env$.analysis_sim_size(), "not \"full\"", fixed = TRUE)
+})
+
+test_that("ACS figure paths ignore simulation sizes and retain explicit profiles", {
+  env <- .sim_size_runtime_env()
+  withr::local_envvar(PROJR_PROFILE = NA, SIM_SIZE = NA)
+  stems <- c("9-real-compare-acs-cytof", "10-real-compare-acs-cytof-validation")
+  for (stem in stems) {
+    line <- grep("^fig_key <-", readLines(file.path(.sim_size_root(), "analysis", paste0(stem, ".qmd"))), value = TRUE)
+    for (size in c(NA_character_, "draft", "final")) {
+      if (is.na(size)) Sys.unsetenv("SIM_SIZE") else Sys.setenv(SIM_SIZE = size)
+      eval(parse(text = line), envir = env)
+      expect_identical(env$fig_key, stem)
+    }
+    for (profile in c("quick", "dev")) {
+      Sys.setenv(PROJR_PROFILE = profile)
+      eval(parse(text = line), envir = env)
+      expect_identical(env$fig_key, c(stem, profile))
+    }
+    Sys.unsetenv("PROJR_PROFILE")
+  }
 })
 
 test_that("dev and quick runs take precedence over draft sizes", {
@@ -65,7 +86,7 @@ test_that("cache errors for draft results name the SIM_SIZE setting", {
   )
   expect_error(
     env$.analysis_cache_error(c("sim", "test"), "Missing.", "analysis/x.qmd"),
-    "SIM_SIZE setting (final, the default)",
+    "RUN_SIMULATIONS=true RUN_PLOTS=false SIM_SIZE=final quarto render analysis/x.qmd",
     fixed = TRUE
   )
 })
@@ -124,7 +145,7 @@ test_that("each simulation QMD sets final and draft sample counts in one place",
     expect_length(file, 1L)
     lines <- readLines(file, warn = FALSE)
     content <- paste(lines, collapse = "\n")
-    expect_true(grepl("\n  sim_size: final\n", content, fixed = TRUE), info = id)
+    expect_true(grepl("\n  sim_size: draft\n", content, fixed = TRUE), info = id)
     expect_true(grepl("sim_size <- .analysis_sim_size()", content, fixed = TRUE),
                 info = id)
     expect_true(grepl("  sim_size = sim_size,", content, fixed = TRUE), info = id)

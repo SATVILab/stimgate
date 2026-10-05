@@ -8,12 +8,12 @@
 
 .analysis_is_quick <- function() .analysis_has_profile("quick")
 
-# Simulation size for full-grid runs: "final" (default, for reported results)
-# or "draft" (fewer samples/datasets, for iterating). Set by the QMD param
+# Simulation size for full-grid runs: "draft" (default, fewer replicates)
+# or "final" (for reported results). Set by the QMD param
 # `sim_size` or the SIM_SIZE environment variable. Dev and quick runs use their
 # own sizes, so they always count as "final" here.
 .analysis_sim_size <- function() {
-  size <- .get_qmd_param_env("sim_size", "SIM_SIZE", "final")
+  size <- .get_qmd_param_env("sim_size", "SIM_SIZE", "draft")
   size <- tolower(trimws(as.character(size)))
   if (length(size) != 1L || is.na(size) || !size %in% c("final", "draft")) {
     stop(
@@ -42,12 +42,12 @@
   render <- if (is.null(qmd_path)) "render this analysis" else
     paste("quarto render", qmd_path)
   draft <- identical(utils::tail(as.character(analysis_key), 1L), "draft")
-  size_env <- if (draft) "SIM_SIZE=draft " else ""
+  size_env <- if (draft) "SIM_SIZE=draft " else "SIM_SIZE=final "
   stop(
     "Analysis key: ", paste(analysis_key, collapse = "/"), ". ", detail,
     "\nRun from the repository root first: RUN_SIMULATIONS=true RUN_PLOTS=false ",
     size_env, render, ". Use the same dev/quick profile, SIM_SIZE setting (",
-    if (draft) "draft" else "final, the default", ") and scientific settings; ",
+    if (draft) "draft, the default" else "final", ") and scientific settings; ",
     "complete all chunks.",
     call. = FALSE
   )

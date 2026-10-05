@@ -34,8 +34,13 @@ Submit the corresponding Slurm analyses independently or together:
 bash scripts/slurm/dev.sh 2a
 bash scripts/slurm/dev.sh 2b
 bash scripts/slurm/dev.sh 2a 2b
-SIM_SIZE=draft bash scripts/slurm/dev.sh 2a  # fewer samples, kept separately
+SIM_SIZE=final bash scripts/slurm/dev.sh 2a  # full replicate counts for reported results
 ```
+
+Full-grid simulation runs default to draft: fewer replicates on the same grid,
+with results and figures kept in draft folders. Analyses 7/8 keep 20 samples
+in each dataset and use five datasets (final uses twenty). This is separate
+from the tiny quick profile used for smoke checks.
 
 The Slurm launcher accepts analysis IDs or launcher filenames. With no arguments,
 it submits its default batch. All requested targets are validated before any job

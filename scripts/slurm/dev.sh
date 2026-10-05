@@ -25,13 +25,13 @@ scripts=(
 if [[ "${1:-}" == "--help" ]]; then
   echo "Usage: bash scripts/slurm/dev.sh [analysis ID or launcher filename ...]"
   echo "Examples: dev.sh 2a; dev.sh 2b; dev.sh 2a 2b"
-  echo "Simulation size: SIM_SIZE=final (default, for reported results) or"
-  echo "SIM_SIZE=draft (fewer samples/datasets, kept separately, for iterating)."
-  echo "Example: SIM_SIZE=draft bash scripts/slurm/dev.sh 2a"
+  echo "Simulation size: SIM_SIZE=draft (default, fewer replicates, same grid) or"
+  echo "SIM_SIZE=final (for reported results). Draft results are kept separately."
+  echo "Example: SIM_SIZE=final bash scripts/slurm/dev.sh 2a"
   exit 0
 fi
 # Passed to every simulation and plot job; dev/quick profiles use their own sizes.
-sim_size="${SIM_SIZE:-final}"
+sim_size="${SIM_SIZE:-draft}"
 if [[ "$sim_size" != "final" && "$sim_size" != "draft" ]]; then
   echo "ERROR: SIM_SIZE must be final or draft. Got: $sim_size" >&2
   exit 1
