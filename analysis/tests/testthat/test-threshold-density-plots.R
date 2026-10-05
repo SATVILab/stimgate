@@ -36,6 +36,8 @@ test_that("threshold reference densities preserve RNG and reveal stimulated resp
   expect_identical(.Random.seed, before)
 
   panels$transformation <- env$.analysis_trans_factor(panels$transformation)
+  # Reuse the same curves in different cell-count panels without simulating again.
+  panels <- dplyr::bind_rows(panels, dplyr::mutate(panels, n_cell = 2000))
   original <- ggplot2::ggplot() +
     ggplot2::geom_vline(
       data = panels, ggplot2::aes(xintercept = threshold),
@@ -46,8 +48,6 @@ test_that("threshold reference densities preserve RNG and reveal stimulated resp
       cols = ggplot2::vars(transformation), scales = "free_x",
       labeller = ggplot2::labeller(prob_response = env$.analysis_labeller_percent())
     ) + env$.analysis_theme()
-  # Reuse the same curves in different cell-count panels without simulating again.
-  panels <- dplyr::bind_rows(panels, dplyr::mutate(panels, n_cell = 2000))
   plot <- env$.simBandwidthThresholdDensityPlot(original, panels, densities)
   expect_length(original$layers, 1L)
   expect_identical(plot$layers[[3]], original$layers[[1]])
