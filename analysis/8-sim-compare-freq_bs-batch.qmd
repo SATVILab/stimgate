@@ -78,7 +78,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v9"
+comparison_semantics_version <- "batch-mismatch-comparison-v10"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -425,44 +425,50 @@ print(paste0(
 #| include: false
 n_workers <- max(1, .simGetCores())
 
+analysis_result_params <- list(
+  comparison_semantics_version = comparison_semantics_version,
+  simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
+  analysis_dev = analysis_dev,
+  sim_size = sim_size,
+  paired_mismatch_rng = TRUE,
+  analysis_grid_spec = analysis_grid_spec,
+  gate_diagnostic_spec = gate_diagnostic_spec,
+  n_sample_sim = n_sample_sim,
+  n_iter_sim = n_iter_sim,
+  stimgate_bw_mtd = stimgate_bw_mtd,
+  stimgate_bias_uns_factor = stimgate_bias_uns_factor,
+  stimgate_bw_ncell_max = stimgate_bw_ncell_max,
+  stimgate_bw_fallback = stimgate_bw_fallback,
+  stimgate_bw_min = stimgate_bw_min,
+  stimgate_bw_max = stimgate_bw_max,
+  cluster_gates = cluster_gates,
+  loc_enforce_shape_threshold = loc_enforce_shape_threshold,
+  calc_cyt_pos_gates = calc_cyt_pos_gates,
+  fbeta_beta = fbeta_beta,
+  fbeta_theta = fbeta_theta,
+  fbeta_width = fbeta_width,
+  tailgate_adjust = tailgate_adjust,
+  tailgate_method = tailgate_method,
+  tailgate_tol = tailgate_tol,
+  tailgate_auto_tol = tailgate_auto_tol,
+  tailgate_x = tailgate_x
+)
+
 if (isTRUE(run_simulations)) {
   run_ctx <- .analysis_run_context(
     analysis_key = analysis_key,
     run_id = analysis_run_id,
     qmd_path = analysis_qmd,
     path_root = root_dir,
-    params = list(
-      run_simulations = run_simulations,
-      run_plots = run_plots,
-      comparison_semantics_version = comparison_semantics_version,
-      simulation_seed = simulation_seed,
-      analysis_quick = analysis_quick,
-      analysis_dev = analysis_dev,
-      sim_size = sim_size,
-      paired_mismatch_rng = TRUE,
-      analysis_grid_spec = analysis_grid_spec,
-      gate_diagnostic_spec = gate_diagnostic_spec,
-      n_sample_sim = n_sample_sim,
-      n_iter_sim = n_iter_sim,
-      stimgate_bw_mtd = stimgate_bw_mtd,
-      stimgate_bias_uns_factor = stimgate_bias_uns_factor,
-      stimgate_bw_ncell_max = stimgate_bw_ncell_max,
-      stimgate_bw_fallback = stimgate_bw_fallback,
-      stimgate_bw_min = stimgate_bw_min,
-      stimgate_bw_max = stimgate_bw_max,
-      cluster_gates = cluster_gates,
-      loc_enforce_shape_threshold = loc_enforce_shape_threshold,
-      calc_cyt_pos_gates = calc_cyt_pos_gates,
-      fbeta_beta = fbeta_beta,
-      fbeta_theta = fbeta_theta,
-      fbeta_width = fbeta_width,
-      tailgate_adjust = tailgate_adjust,
-      tailgate_method = tailgate_method,
-      tailgate_tol = tailgate_tol,
-      tailgate_auto_tol = tailgate_auto_tol,
-      tailgate_x = tailgate_x,
-      sim_grid_chunk_index = sim_grid_chunk_index,
-      sim_grid_n_chunks = sim_grid_n_chunks
+    params = c(
+      list(
+        run_simulations = run_simulations,
+        run_plots = run_plots,
+        sim_grid_chunk_index = sim_grid_chunk_index,
+        sim_grid_n_chunks = sim_grid_n_chunks
+      ),
+      analysis_result_params
     ),
     sim_grid_chunk_index = sim_grid_chunk_index,
     sim_grid_n_chunks = sim_grid_n_chunks
@@ -629,7 +635,8 @@ if (isTRUE(run_simulations)) {
     completed_sims = n_completed,
     failed_sims = n_failed,
     nSample = n_sample_sim,
-    nIter = n_iter_sim
+    nIter = n_iter_sim,
+    validate_full = .simCompareValidateMismatch
   )
 
   if (!isTRUE(run_plots)) {
@@ -657,18 +664,6 @@ if (isTRUE(run_simulations)) {
 ```{r}
 #| label: compare-summary
 #| echo: false
-analysis_result_params <- list(
-  comparison_semantics_version = comparison_semantics_version,
-  simulation_seed = simulation_seed,
-  analysis_quick = analysis_quick,
-  analysis_dev = analysis_dev,
-  sim_size = sim_size,
-  paired_mismatch_rng = TRUE,
-  analysis_grid_spec = analysis_grid_spec,
-  gate_diagnostic_spec = gate_diagnostic_spec,
-  n_sample_sim = n_sample_sim,
-  n_iter_sim = n_iter_sim
-)
 path_rds <- .analysis_current_file(
   run_ctx = run_ctx,
   relative_path = c("collated", "compare_raw.rds"),
@@ -724,8 +719,8 @@ compare_summary
 
 ## Validation checks
 
-Three checks run on the saved results before any figure is drawn; the render
-stops if one fails.
+Three checks run on the full collated results before promotion and again before
+any figure is drawn; the render stops if one fails.
 
 - **Counts match the gates.** For every stimulated tube, replicate and method,
   the confusion-matrix counts must add up to the number of stimulated cells,
@@ -745,35 +740,9 @@ stops if one fails.
 ```{r}
 #| label: validation-checks
 #| echo: false
-counts_ok <- .simCompareCountsConsistent(
-  compare_raw[compare_raw$method %in% c("stimgate", "fbeta", "tailgate"), ]
-)
-if (!isTRUE(counts_ok)) {
-  stop("Confusion-matrix counts do not reproduce the gated stimulated counts.")
-}
-
-pairing_check <- .simComparePairingCheck(compare_raw)
-if (!all(pairing_check$paired)) {
-  stop(
-    "Simulated data differ across mismatch settings within a baseline ",
-    "scenario, replicate and sample, so the settings are not paired."
-  )
-}
-
-zero_agreement <- .simCompareZeroMismatchAgreement(compare_raw)
-zero_shift <- zero_agreement[
-  zero_agreement$mismatch_type == "mean_shift_negative",
-]
-if (
-  nrow(zero_shift) == 0L ||
-    any(zero_shift$n_same_threshold != zero_shift$n_compared) ||
-    any(zero_shift$n_same_counts != zero_shift$n_compared)
-) {
-  stop(
-    "With no mismatch, shifting only the stimulated negatives did not ",
-    "reproduce shifting all stimulated cells."
-  )
-}
+mismatch_validation <- .simCompareValidateMismatch(compare_raw)
+pairing_check <- mismatch_validation$pairing_check
+zero_agreement <- mismatch_validation$zero_agreement
 
 cat(
   "Counts reproduce the gated stimulated counts in all",

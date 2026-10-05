@@ -330,9 +330,16 @@ the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-onl
 the QMDs end to end in quick mode instead (simulate, then plot; one job per QMD). See
 `analysis/tests/README.md` for commands and coverage limits.
 
-The default Slurm job list includes both Analysis 2a and 2b. Keep enabled
+The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked runs. Keep enabled
 chunked analyses in the `scripts` list and `chunked_qmd_stem_for_script()`
 mapping, sharing run ID, chunk count and shuffle seed across each run.
+Every simulation launcher must propagate render failures. Plot jobs receive the
+submission's run ID and set `ANALYSIS_EXPECTED_RUN_ID` so cached reads reject
+results from another run; manual renders leave it unset. Plot jobs explicitly
+set all ACS stage controls to false. Promotion locks live next to `current/`,
+shared by every run of the analysis. Analysis 8 validates pairing and zero-shift
+agreement on the full collated table before promotion and uses one scientific
+settings list for manifest recording and canonical reads.
 Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`;
 validate all target arguments before submitting jobs. After the simulation jobs,
 `dev.sh` submits one `scripts/slurm/render-plots.sh` job per analysis that

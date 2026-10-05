@@ -2994,6 +2994,40 @@
     )
 }
 
+# Validate cross-setting invariants on the complete table before promotion.
+.simCompareValidateMismatch <- function(compare_raw) {
+  counts_ok <- .simCompareCountsConsistent(
+    compare_raw[compare_raw$method %in% c("stimgate", "fbeta", "tailgate"), ]
+  )
+  if (!isTRUE(counts_ok)) {
+    stop("Confusion-matrix counts do not reproduce the gated stimulated counts.")
+  }
+
+  pairing_check <- .simComparePairingCheck(compare_raw)
+  if (!all(pairing_check$paired)) {
+    stop(
+      "Simulated data differ across mismatch settings within a baseline ",
+      "scenario, replicate and sample, so the settings are not paired."
+    )
+  }
+
+  zero_agreement <- .simCompareZeroMismatchAgreement(compare_raw)
+  zero_shift <- zero_agreement[
+    zero_agreement$mismatch_type == "mean_shift_negative",
+  ]
+  if (
+    nrow(zero_shift) == 0L ||
+      any(zero_shift$n_same_threshold != zero_shift$n_compared) ||
+      any(zero_shift$n_same_counts != zero_shift$n_compared)
+  ) {
+    stop(
+      "With no mismatch, shifting only the stimulated negatives did not ",
+      "reproduce shifting all stimulated cells."
+    )
+  }
+  invisible(list(pairing_check = pairing_check, zero_agreement = zero_agreement))
+}
+
 # Promote only a complete cross-chunk comparison grid.
 .simComparePromoteIfReady <- function(
     run_ctx,
@@ -3002,7 +3036,8 @@
     completed_sims,
     failed_sims,
     nSample,
-    nIter) {
+    nIter,
+    validate_full = NULL) {
   if (isTRUE(run_ctx$read_only) || !.analysis_can_promote(run_ctx)) {
     return(invisible(FALSE))
   }
@@ -3046,6 +3081,18 @@
       error_message = error_message
     )
     stop(error_message)
+  }
+
+  if (!is.null(validate_full)) {
+    tryCatch(validate_full(compare_raw_full), error = function(e) {
+      .analysis_mark_chunk(
+        run_ctx = run_ctx, total_sims = total_sims,
+        completed_sims = completed_sims, failed_sims = failed_sims,
+        collate_ok = TRUE, validation_ok = FALSE,
+        error_message = conditionMessage(e)
+      )
+      stop(e)
+    })
   }
 
   path_rds_full <- file.path(run_ctx$staging_collated_dir, "compare_raw.rds")

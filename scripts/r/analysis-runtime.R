@@ -62,6 +62,23 @@
   })
 }
 
+# Submitted plot jobs must read the results made by their own simulation jobs.
+# Manual renders leave ANALYSIS_EXPECTED_RUN_ID unset and may read any run.
+.analysis_check_expected_run <- function(manifest, analysis_key, qmd_path = NULL) {
+  expected <- Sys.getenv("ANALYSIS_EXPECTED_RUN_ID", unset = "")
+  if (nzchar(expected) && !identical(
+    as.character(manifest$run_id), .sanitize_run_id(expected)
+  )) {
+    .analysis_cache_error(
+      analysis_key,
+      paste0("Expected run_id '", expected, "' but cached results record '",
+        paste(manifest$run_id, collapse = ", "), "'. Refusing to plot another run."),
+      qmd_path
+    )
+  }
+  invisible(TRUE)
+}
+
 .analysis_read_current <- function(run_ctx, relative_path, required_params = list()) {
   .analysis_read_rds(
     .analysis_current_file(run_ctx, relative_path, required_params),
@@ -325,6 +342,8 @@
     cache_error("Canonical current manifest does not match the requested analysis key.")
   }
 
+  .analysis_check_expected_run(manifest, run_ctx$analysis_key, run_ctx$qmd_path)
+
   if (length(required_params) > 0L) {
     manifest_params <- manifest$params
     # Results from before `sim_size` was recorded were full-size runs.
@@ -408,7 +427,12 @@
 }
 
 .analysis_lock_path <- function(run_ctx, lock_name) {
-  file.path(run_ctx$progress_run_dir, paste0(lock_name, ".lock"))
+  lock_dir <- if (identical(lock_name, "promotion")) {
+    dirname(run_ctx$current_dir)
+  } else {
+    run_ctx$progress_run_dir
+  }
+  file.path(lock_dir, paste0(lock_name, ".lock"))
 }
 
 .analysis_acquire_lock <- function(lock_path, timeout_sec = 120) {

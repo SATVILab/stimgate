@@ -314,7 +314,17 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
     pathDirSave = path_manual_output,
     savePlots = FALSE
   )
+  .write_rds_atomic(
+    list(run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))),
+    file.path(path_manual_output, "manifest.rds")
+  )
 } else {
+  if (nzchar(Sys.getenv("ANALYSIS_EXPECTED_RUN_ID", unset = ""))) {
+    .analysis_check_expected_run(
+      .analysis_read_rds(file.path(path_manual_output, "manifest.rds"), "acs_cytof", analysis_qmd),
+      "acs_cytof", analysis_qmd
+    )
+  }
   manual_comparison_tbl <- .analysis_read_rds(
     path_comparison, "acs_cytof", analysis_qmd
   )
