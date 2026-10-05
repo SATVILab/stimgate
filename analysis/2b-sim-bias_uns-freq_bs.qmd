@@ -957,6 +957,7 @@ if (isTRUE(run_plots)) {
             6
           )
           .analysis_print_fig(p)
+          .simBandwidthPrintRatioTwin(p, path_p, height = 22)
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
               mismatch_type == mismatch_type_curr,
@@ -1039,6 +1040,7 @@ if (isTRUE(run_plots)) {
             6
           )
           .analysis_print_fig(p)
+          .simBandwidthPrintRatioTwin(p, path_p, height = 14)
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
               mismatch_type == mismatch_type_curr,
@@ -1116,6 +1118,7 @@ if (isTRUE(run_plots)) {
               6
             )
             .analysis_print_fig(p)
+            .simBandwidthPrintRatioTwin(p, path_p, height = 14)
             .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
               dplyr::filter(
                 mismatch_type == mismatch_type_curr,

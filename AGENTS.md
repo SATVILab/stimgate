@@ -363,6 +363,10 @@ same scientific inclusion rules and avoid pooling different grid dimensions.
 For controlled negative-component mismatch analyses, report stimulated-negative
 mean shifts and SD inflation in separate figure sections and sibling folders,
 including the matching coverage summaries. Label which tube and component change.
+Ratio companions preserve signed-error geometry and intervals, relabelling ticks
+as `1 + relative error` (estimate/reference). Keep originals and save companions
+in sibling ratio folders. Absolute relative errors lose direction and cannot
+be relabelled as estimate/reference ratios.
 Signed relative-error plots (`.simBandwidthSignedError*()` in
 `sim-bandwidth-analysis-plot.R`) sit alongside, not instead of, the absolute
 ones: they summarise over- and under-estimates separately, weight lines by each

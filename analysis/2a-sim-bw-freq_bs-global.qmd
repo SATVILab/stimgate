@@ -1060,6 +1060,11 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+Each signed-error figure also has an estimate/reference ratio companion in a
+sibling `ratio*` folder. The curves and intervals are identical: 1x is exact,
+0x is an estimate of zero and 2x is twice the reference. Negative ratios remain
+visible; a capped upper tick reads “≥ 16x”.
+
 ### Over- and under-estimates averaged over cell counts
 
 The overall plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: over-estimates (teal) sit above zero and under-estimates (brown) below, with darker shades for larger statistics. Within each scenario, the median, 95th-percentile and maximum error sizes are calculated separately for over- and under-estimates; these are then averaged equally over cell counts and response probabilities, using low bias. Line weight shows the share of estimates in that direction. Under-estimates are on a linear scale, including errors below -100% for negative background-subtracted estimates, with -100% (0x, an estimate of zero), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Panels separate transformations, and there is one figure per mean position.

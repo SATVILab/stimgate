@@ -243,10 +243,10 @@ test_that("2a per-cell signed-error plots average scenario errors by direction",
   )
   md <- .bandwidth_cell_plot_eval(code, env)
   expect_match(md, "##### Cells: 100", fixed = TRUE)
-  expect_length(env$saved, 4L)
+  expect_length(env$saved, 8L)
   expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
-  expect_equal(length(unique(paths)), 4L)
+  expect_equal(length(unique(paths)), 8L)
   for (saved in env$saved) {
     data <- saved$plot$data
     expect_length(unique(data$n_cell), 1L)
@@ -311,7 +311,7 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     "2b-sim-bias_uns-freq_bs.qmd", "signed-error-by-n-cell"
   )
   .bandwidth_cell_plot_eval(average_code, env)
-  expect_length(env$saved, 16L)
+  expect_length(env$saved, 32L)
   for (saved in env$saved) {
     data <- saved$plot$data
     expect_false("n_cell" %in% names(data))
@@ -325,10 +325,10 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     )
   }
   .bandwidth_cell_plot_eval(cell_code, env)
-  expect_length(env$saved, 48L)
+  expect_length(env$saved, 96L)
   expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
-  expect_equal(length(unique(paths)), 48L)
+  expect_equal(length(unique(paths)), 96L)
   for (saved in env$saved) {
     data <- saved$plot$data
     for (key in c(
@@ -371,7 +371,7 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     "2b-sim-bias_uns-freq_bs.qmd", "signed-error"
   )
   .bandwidth_cell_plot_eval(all_cell_code, env)
-  expect_length(env$saved, 16L)
+  expect_length(env$saved, 32L)
   for (saved in env$saved) {
     expect_length(unique(saved$plot$data$mismatch_type), 1L)
     expect_identical(
