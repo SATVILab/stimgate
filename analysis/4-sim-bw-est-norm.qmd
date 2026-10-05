@@ -463,6 +463,11 @@ if (isTRUE(run_plots)) {
 
 ## Results
 
+Each figure has a companion table showing coverage (`n_est / n_total`, where
+`n_total` is the validated expected sample count) and the share of finite pairs
+whose selected bandwidth used a normalisation fallback (`norm_fallback_rate`).
+Means use complete finite stim/unstim pairs.
+
 Plot the mean bandwidth against the number of cells.
 
 The cell-count axis is logarithmic. Colours distinguish the HPI methods, while line types and point shapes distinguish requested normalisation; facets separate transformations and response frequencies. Response frequencies are shown as percentages. Each figure sits under headings naming its response separation, bias and cell-count cap, so compare the ordinary and normalised curves within each panel.
@@ -550,6 +555,10 @@ if (isTRUE(run_plots)) {
 
         .analysis_save_fig(p, path_plot, height = 16)
         .analysis_print_fig(p)
+      cat("\n\n", knitr::kable(plot_tbl |> dplyr::select(
+          transformation, prob_response, n_cell, bw_mtd,
+          n_est, n_total, estimate_rate, norm_fallback_rate
+        ), digits = 3), sep = "\n")
       }
     }
   }

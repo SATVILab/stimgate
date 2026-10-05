@@ -195,7 +195,7 @@ test_that("analysis 2a uses shared seeded runners and canonical reads", {
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl("sim_retry_errors:\\s*true", content))
-  expect_true(has('analysis_semantics_version <- "global-bw-freq-v7"'))
+  expect_true(has('analysis_semantics_version <- "global-bw-freq-v8"'))
   expect_true(has("sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)"))
   # sim_id/sim_seed are fixed on the full grid before filtering/shuffling.
   expect_lt(pos("sim_seed = as.integer("), pos("sim_grid_full <- sim_grid"))

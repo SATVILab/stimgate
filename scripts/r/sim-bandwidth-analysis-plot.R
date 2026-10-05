@@ -156,7 +156,8 @@ add_bw_labs <- function(.data) {
     ggplot2::labs(
       x = "Bias multiplier",
       y = y_label,
-      colour = "Bandwidth"
+      colour = "Bandwidth",
+      caption = .simBandwidthScenarioCaption(tbl)
     )
 }
 
@@ -209,7 +210,8 @@ add_bw_labs <- function(.data) {
     .simBandwidthBwColourScale(tbl$bw) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
     .analysis_theme() +
-    ggplot2::labs(x = "Bias multiplier", colour = "Bandwidth")
+    ggplot2::labs(x = "Bias multiplier", colour = "Bandwidth",
+                  caption = .simBandwidthScenarioCaption(tbl))
 }
 
 # ColorBrewer BrBG: teal for over-estimates, brown for under-estimates.
@@ -297,7 +299,11 @@ add_bw_labs <- function(.data) {
       drop = FALSE,
       guide = ggplot2::guide_legend(nrow = 2, byrow = TRUE)
     ) +
-    ggplot2::labs(x = "Bandwidth", colour = NULL) +
+    ggplot2::labs(
+      x = "Bandwidth", colour = NULL,
+      y = if ("n_scenario" %in% names(tbl)) "Mean of scenario medians / 95th percentiles / maxima (relative error)" else "Relative error",
+      caption = .simBandwidthScenarioCaption(tbl)
+    ) +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5)
     )
@@ -345,6 +351,11 @@ add_bw_labs <- function(.data) {
   tbl |>
     dplyr::group_by(dplyr::across(dplyr::all_of(c(group_cols, "direction")))) |>
     dplyr::summarise(
+      n_scenario = dplyr::n(),
+      dplyr::across(
+        dplyr::any_of(c("prop", "median", "q90", "q95", "max")),
+        ~ sum(is.finite(.x)), .names = "n_scenario_{.col}"
+      ),
       dplyr::across(
         dplyr::any_of(c("prop", "median", "q90", "q95", "max")),
         ~ mean(.x, na.rm = TRUE)
@@ -357,8 +368,8 @@ add_bw_labs <- function(.data) {
     ))
 }
 
-# Under-estimates are linear down to -100% (nothing gated); over-estimates are
-# on a log2 fold scale, so -100% and +100% (two-fold) are equally far from zero.
+# Under-estimates are linear below zero, including negative response estimates;
+# over-estimates are on a log2 fold scale, so -100% and +100% (two-fold) are equally far from zero.
 .simBandwidthSignedErrorTrans <- function() {
   scales::trans_new(
     "signed_rel_error",
@@ -373,15 +384,18 @@ add_bw_labs <- function(.data) {
       x
     },
     breaks = function(limits) {
-      lo <- max(limits[1], -1, na.rm = TRUE)
+      lo <- min(limits[1], 0, na.rm = TRUE)
       hi <- max(limits[2], 0, na.rm = TRUE)
       # Close to zero the scale is near-linear, so ordinary breaks suffice.
       if (hi <= 1) {
-        return(pretty(c(lo, hi)))
+        return(sort(unique(c(pretty(c(lo, hi)), if (lo <= -1) -1))))
       }
-      c(pretty(c(lo, 0), n = 3), 2^seq_len(ceiling(log2(1 + hi))) - 1)
+      sort(unique(c(
+        pretty(c(lo, 0), n = 3), if (lo <= -1) -1,
+        2^seq_len(ceiling(log2(1 + hi))) - 1
+      )))
     },
-    domain = c(-1, Inf)
+    domain = c(-Inf, Inf)
   )
 }
 
@@ -401,7 +415,7 @@ add_bw_labs <- function(.data) {
 # `cap`: errors drawn at this value may be larger, so its label gets a ">=" sign.
 .simBandwidthSignedErrorLabel <- function(x, cap = Inf) {
   lab <- ifelse(x > 0, sprintf("+%g%%", 100 * x), sprintf("%g%%", 100 * x))
-  # Nothing gated (-100%, 0x) and each doubling (+100% 2x, +300% 4x, ...)
+  # An estimate of zero (-100%, 0x) and each doubling (+100% 2x, +300% 4x, ...)
   # also show the multiple of the true response.
   doublings <- log2(1 + pmax(x, 0))
   fold <- is.finite(x) &
@@ -488,4 +502,73 @@ add_bw_labs <- function(.data) {
       linewidth = "Share of estimates\nin this direction"
     )
   )
+}
+
+# Match a figure's displayed dimensions, then show coverage beside that figure.
+# Omitted scenario dimensions are pooled only for this sample-count diagnostic;
+# error curves themselves average per-scenario statistics equally.
+.simBandwidthCoverageForPlot <- function(plot, summary) {
+  dimensions <- c(
+    "mean_pos_setting", "bias_uns_setting", "transformation", "prob_response",
+    "n_cell", "bw", "bias_uns_basis", "bias_uns_multiplier",
+    "mismatch_label", "mismatch_type", "mismatch_val", "bw_mtd", "bw_ncell_upper"
+  )
+  keys <- intersect(dimensions, intersect(names(plot$data), names(summary)))
+  if ("transformation" %in% keys) {
+    summary$transformation <- .analysis_trans_factor(summary$transformation)
+  }
+  selected <- plot$data |>
+    dplyr::select(dplyr::all_of(keys)) |>
+    dplyr::distinct()
+  # Character conversion also handles a figure's numeric/factor cell-count axis.
+  summary <- summary |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(keys), as.character))
+  selected <- selected |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(keys), as.character))
+  if (length(keys)) summary <- dplyr::semi_join(summary, selected, by = keys)
+  summary |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(keys))) |>
+    dplyr::summarise(
+      n_scenario = dplyr::n(),
+      n_scenario_valid = sum(.data$n_valid > 0L),
+      n_sample = sum(.data$n_sample),
+      n_valid = sum(.data$n_valid),
+      n_failed = sum(.data$n_failed),
+      n_provenance = sum(.data$n_provenance),
+      n_fallback = sum(.data$n_fallback),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      failure_fraction = .data$n_failed / .data$n_sample,
+      fallback_fraction = dplyr::if_else(
+        .data$n_provenance > 0L, .data$n_fallback / .data$n_provenance, NA_real_
+      )
+    )
+}
+
+.simBandwidthPrintCoverage <- function(plot, summary) {
+  tbl <- .simBandwidthCoverageForPlot(plot, summary)
+  cat("\n\n", knitr::kable(tbl, digits = 3), sep = "\n")
+  count_cols <- names(plot$data)[startsWith(names(plot$data), "n_scenario_")]
+  if (length(count_cols)) {
+    keys <- intersect(names(tbl), names(plot$data))
+    keys <- setdiff(keys, c("n_sample", "n_valid", "n_failed", "n_provenance", "n_fallback"))
+    counts <- plot$data |>
+      dplyr::select(dplyr::any_of(c(keys, "direction", count_cols))) |>
+      dplyr::distinct()
+    cat("\n\nContributing scenarios per statistic:\n\n",
+        knitr::kable(counts), sep = "\n")
+  }
+  invisible(tbl)
+}
+
+.simBandwidthScenarioCaption <- function(tbl) {
+  cols <- intersect(c("median", "q90", "q95", "max"),
+                    sub("^n_scenario_", "", names(tbl)[startsWith(names(tbl), "n_scenario_")]))
+  if (!length(cols)) return(NULL)
+  counts <- vapply(cols, function(col) {
+    x <- tbl[[paste0("n_scenario_", col)]]
+    paste0(col, ": ", min(x), "–", max(x))
+  }, character(1))
+  paste("Contributing scenarios per setting", paste(counts, collapse = "; "))
 }

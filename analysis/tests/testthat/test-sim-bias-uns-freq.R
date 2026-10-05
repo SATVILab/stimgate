@@ -241,6 +241,7 @@ test_that("Analysis 2b retains invalid final frequency diagnostics", {
   expect_equal(res$bias_uns_results_summary$n_valid, 1L)
   expect_equal(res$bias_uns_results_summary$n_failed, 2L)
   expect_equal(res$bias_uns_results_summary$failure_fraction, 2 / 3)
+  expect_equal(res$bias_uns_results_summary$fallback_fraction, 2 / 3)
   expect_true(all(is.na(res$bias_uns_results_raw$rel_error[2:3])))
 
   invalid <- tbl

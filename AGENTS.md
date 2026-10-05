@@ -350,6 +350,13 @@ ones: they summarise over- and under-estimates separately, weight lines by each
 direction's share, and use a scale on which -100% and a two-fold over-estimate
 are equally far from zero.
 
+For background-subtracted signed relative error, an estimate of zero gives
+-100%; negative estimates can give errors below -100% and must remain visible.
+Averages of per-scenario statistics must be labelled as means of scenario
+medians/quantiles/maxima, with finite contributing-scenario counts. Display
+coverage and fallback provenance beside performance plots, keeping their
+sample denominators explicit.
+
 ### Website Maintenance (`pkgdown`)
 
 Whenever functions are added, removed, or have their export status changed (via

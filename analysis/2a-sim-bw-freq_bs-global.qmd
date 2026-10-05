@@ -88,7 +88,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "global")
-analysis_semantics_version <- "global-bw-freq-v7"
+analysis_semantics_version <- "global-bw-freq-v8"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -486,7 +486,11 @@ if (isTRUE(run_simulations)) {
     sim_grid = sim_grid,
     sim_grid_all = sim_grid_all,
     collate_fn = function(tbl) {
-      .simBandwidthFreqBsGlobalCollate(tbl, colnames(sim_grid_all))
+      .simBandwidthFreqBsGlobalCollate(
+        tbl, colnames(sim_grid_all),
+        n_sample_expected = scenario_settings$nSample,
+        n_iter_expected = scenario_settings$nIter
+      )
     },
     label = "analysis 2a"
   )
@@ -525,6 +529,13 @@ if (isTRUE(run_plots)) {
     relative_path = c("collated", "bw_tbl_results_summary.rds"),
     required_params = analysis_required_params
   )
+  # Persisted raw rows retain failures; plots and errors use valid estimates.
+  bw_tbl_results_all <- bw_tbl_results_raw
+  bw_tbl_results_raw <- bw_tbl_results_raw |>
+    dplyr::mutate(
+      propRespEst = dplyr::if_else(valid_estimate, propRespEst, NA_real_),
+      threshold = dplyr::if_else(valid_estimate, threshold, NA_real_)
+    )
   bias_uns_setting_vec_plot <- bias_uns_settings_tbl |>
     dplyr::distinct(.data$bias_uns_setting) |>
     dplyr::pull(.data$bias_uns_setting)
@@ -535,7 +546,16 @@ if (isTRUE(run_plots)) {
 
 ## Results
 
-Okay, now we must plot which bandwidths are best for which scenarios.
+Error and frequency plots use valid final sample estimates only. Companion
+coverage tables retain every expected sample: failure fractions use all samples,
+and fallback fractions use samples with known `locGenerated` provenance
+(including failed estimates). `n_scenario_valid` counts scenarios with at least
+one valid estimate; all-failed scenarios contribute no error statistic.
+
+Averaged curves show **Mean of scenario medians**, **Mean of scenario 95th
+percentiles** and **Mean of scenario maxima**, rather than pooled statistics.
+The companion tables report the number of contributing scenarios alongside
+the total selected scenarios.
 
 ```{r}
 #| include: false
@@ -643,6 +663,8 @@ if (isTRUE(run_plots)) {
       .analysis_save_fig(p, path_p, height = 22)
       .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
       .analysis_print_fig(p)
+      .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr))
     }
   }
 }
@@ -771,6 +793,8 @@ if (isTRUE(run_plots)) {
       .analysis_save_fig(p, path_p, height = 22)
       .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
       .analysis_print_fig(p)
+      .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr))
     }
   }
 }
@@ -829,7 +853,9 @@ if (isTRUE(run_plots)) {
       dplyr::summarise(
         err_rel_median = median(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE),
         err_rel_95 = quantile(abs(propRespEst - propRespTruth) / propRespTruth, probs = 0.95, na.rm = TRUE),
-        err_rel_max = max(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE),
+        err_rel_max = if (any(is.finite(propRespEst))) {
+          max(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE)
+        } else NA_real_,
         .groups = "drop"
       )
     if (nrow(err_rel_tbl) == 0L) {
@@ -838,6 +864,9 @@ if (isTRUE(run_plots)) {
     err_tbl_rel_mean_trans_bw <- err_rel_tbl |>
       dplyr::group_by(transformation, bw) |>
       dplyr::summarise(
+        n_scenario_median = sum(is.finite(err_rel_median)),
+        n_scenario_q95 = sum(is.finite(err_rel_95)),
+        n_scenario_max = sum(is.finite(err_rel_max)),
         err_rel_median_avg = mean(err_rel_median, na.rm = TRUE),
         err_rel_95_avg = mean(err_rel_95, na.rm = TRUE),
         err_rel_max_avg = mean(err_rel_max, na.rm = TRUE),
@@ -881,7 +910,8 @@ if (isTRUE(run_plots)) {
       labs(
         x = "Bandwidth",
         y = "Relative error (%)",
-        color = "Error type"
+        color = "Error type",
+        caption = .simBandwidthScenarioCaption(plot_tbl_error_rel_mean_trans_bw)
       ) +
       expand_limits(y = 0) +
       facet_wrap(~transformation, scales = "free") +
@@ -892,9 +922,9 @@ if (isTRUE(run_plots)) {
           "err_rel_max_avg" = .analysis_stat_colours[["max"]]
         ),
         labels = c(
-          "err_rel_median_avg" = "Median",
-          "err_rel_95_avg" = "95th percentile",
-          "err_rel_max_avg" = "Maximum"
+          "err_rel_median_avg" = "Mean of scenario medians",
+          "err_rel_95_avg" = "Mean of scenario 95th percentiles",
+          "err_rel_max_avg" = "Mean of scenario maxima"
         )
       ) +
       theme(
@@ -909,6 +939,9 @@ if (isTRUE(run_plots)) {
     .analysis_save_fig(p, path_p, height = 12)
     .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
     .analysis_print_fig(p)
+    .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+      dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
+      dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
   }
 }
 ```
@@ -937,13 +970,16 @@ if (isTRUE(run_plots)) {
         abs(propRespEst - propRespTruth) / propRespTruth,
         probs = 0.95, na.rm = TRUE
       ),
-      err_rel_max_avg = max(
-        abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE
-      ),
+      err_rel_max_avg = if (any(is.finite(propRespEst))) {
+        max(abs(propRespEst - propRespTruth) / propRespTruth, na.rm = TRUE)
+      } else NA_real_,
       .groups = "drop"
     ) |>
     dplyr::group_by(mean_pos_setting, transformation, n_cell, bw) |>
     dplyr::summarise(
+      n_scenario_median = sum(is.finite(err_rel_median_avg)),
+      n_scenario_q95 = sum(is.finite(err_rel_95_avg)),
+      n_scenario_max = sum(is.finite(err_rel_max_avg)),
       dplyr::across(
         dplyr::starts_with("err_rel_"),
         ~ signif(mean(.x, na.rm = TRUE), digits = 3) * 1e2
@@ -982,12 +1018,13 @@ if (isTRUE(run_plots)) {
             err_rel_max_avg = .analysis_stat_colours[["max"]]
           ),
           labels = c(
-            err_rel_median_avg = "Median", err_rel_95_avg = "95th percentile",
-            err_rel_max_avg = "Maximum"
+            err_rel_median_avg = "Mean of scenario medians", err_rel_95_avg = "Mean of scenario 95th percentiles",
+            err_rel_max_avg = "Mean of scenario maxima"
           )
         ) +
         labs(
-          x = "Bandwidth", y = "Relative error (%)", colour = "Error type"
+          x = "Bandwidth", y = "Relative error (%)", colour = "Error type",
+          caption = .simBandwidthScenarioCaption(plot_tbl)
         ) +
         theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
       path_p <- file.path(
@@ -1006,6 +1043,9 @@ if (isTRUE(run_plots)) {
       .analysis_save_fig(p, path_p, height = 12)
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
       .analysis_print_fig(p)
+      .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
+        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
     }
   }
 }
@@ -1013,7 +1053,7 @@ if (isTRUE(run_plots)) {
 
 ### Over- and under-estimates averaged over cell counts
 
-The overall plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: over-estimates (teal) sit above zero and under-estimates (brown) below, with darker shades for larger statistics. Within each scenario, the median, 95th-percentile and maximum error sizes are calculated separately for over- and under-estimates; these are then averaged equally over cell counts and response probabilities, using low bias. Line weight shows the share of estimates in that direction. Under-estimates are on a linear scale down to -100% (nothing gated), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Panels separate transformations, and there is one figure per mean position.
+The overall plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: over-estimates (teal) sit above zero and under-estimates (brown) below, with darker shades for larger statistics. Within each scenario, the median, 95th-percentile and maximum error sizes are calculated separately for over- and under-estimates; these are then averaged equally over cell counts and response probabilities, using low bias. Line weight shows the share of estimates in that direction. Under-estimates are on a linear scale, including errors below -100% for negative background-subtracted estimates, with -100% (an estimate of zero, zero background-subtracted response), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Panels separate transformations, and there is one figure per mean position.
 
 ```{r}
 #| label: signed-error-averaged-n-cell
@@ -1041,6 +1081,7 @@ if (isTRUE(run_plots)) {
       ) |>
       .simBandwidthSignedErrorAverage(c("transformation", "bw"))
     p <- .simBandwidthGlobalSignedErrorPlot(err_rel_avg_tbl)
+
     path_p <- file.path(
       .analysis_fig_dir(c(fig_key, "signed_error_averaged"), root_dir),
       paste0(
@@ -1050,6 +1091,9 @@ if (isTRUE(run_plots)) {
     .analysis_save_fig(p, path_p, height = 14)
     .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
     .analysis_print_fig(p)
+    .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+      dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
+      dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
   }
 }
 ```
@@ -1098,6 +1142,9 @@ if (isTRUE(run_plots)) {
       .analysis_save_fig(p, path_p, height = 14)
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
       .analysis_print_fig(p)
+      .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
+        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
     }
   }
 }
@@ -1149,6 +1196,9 @@ if (isTRUE(run_plots)) {
       .analysis_save_fig(p, path_p, height = min(22, 6 + 3 * n_prob))
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
       .analysis_print_fig(p)
+      .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
+        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
     }
   }
 }
@@ -1296,6 +1346,8 @@ if (isTRUE(run_plots)) {
       .analysis_save_fig(p, path_p, height = 30, allow_tall = TRUE)
       .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
       .analysis_print_fig(p)
+      .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr))
     }
   }
 }
@@ -1437,6 +1489,8 @@ if (isTRUE(run_plots)) {
         .analysis_save_fig(p, path_p, height = 30, allow_tall = TRUE)
         .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 6)
         .analysis_print_fig(p)
+        .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+          dplyr::filter(mean_pos_setting == mean_pos_setting_curr))
       }
     }
   }
