@@ -73,17 +73,14 @@ test_that("Analysis 2c runs chosen settings through the 2a code path", {
       ref$threshold[ref$method == "loc_sample" & ref$ind == result$dbg$ind]
     )
   }
-  table_root <- tempfile("sim-test-tables-")
-  dir.create(table_root)
-  withr::defer(unlink(table_root, recursive = TRUE))
-  env$root_dir <- normalizePath(table_root, winslash = "/")
+  table_root <- .local_projr_root()
+  env$root_dir <- table_root
   env$fig_key <- c("2c-sim-test", "quick")
   env$run_plots <- TRUE
-  env$.analysis_projr_dir <- function(...) NULL
   output <- paste(utils::capture.output(summary <- eval(chunk("test-summary"), envir = env)), collapse = "\n")
   expect_s3_class(summary, "data.frame")
   expect_equal(nrow(summary), length(env$test_results))
-  path_summary <- file.path(table_root, "output", "table", "2c-sim-test", "quick", "test-summary.csv")
+  path_summary <- .projr_output_path(table_root, "table", "2c-sim-test", "quick", "test-summary.csv")
   expect_true(file.exists(path_summary))
   expect_equal(nrow(readr::read_csv(path_summary, show_col_types = FALSE)), nrow(summary))
   expect_match(output, "output/table/2c-sim-test/quick/test-summary.csv", fixed = TRUE)

@@ -7,8 +7,6 @@
   )) {
     source(file.path(root, "scripts", "r", fn), local = env)
   }
-  # Use each test's path_root instead of the checkout's configured projr cache.
-  env$.analysis_projr_dir <- function(...) NULL
   env
 }
 

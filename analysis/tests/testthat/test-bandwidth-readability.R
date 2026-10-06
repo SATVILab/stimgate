@@ -140,10 +140,7 @@ test_that("coverage notes stay compact and export every plotted setting", {
     transformation = "gaussian", bw = seq(0.1, 1, by = 0.1), n_sample = 25L,
     n_valid = c(24L, rep(25L, 9)), n_failed = c(1L, rep(0L, 9)),
     n_provenance = 25L, n_fallback = c(0L, 2L, rep(0L, 8)))
-  root <- tempfile("bandwidth-coverage-")
-  dir.create(root)
-  withr::defer(unlink(root, recursive = TRUE))
-  env$.analysis_projr_dir <- function(...) NULL
+  root <- .local_projr_root()
   out <- paste(utils::capture.output(tbl <- env$.simBandwidthPrintCoverage(plot, summary,
     table_parts = c("analysis-name", "coverage.csv"), path_root = root)),
     collapse = "\n")
@@ -153,7 +150,7 @@ test_that("coverage notes stay compact and export every plotted setting", {
   # No scenario rows are printed; the CSV and returned table retain all settings.
   expect_equal(nrow(tbl), 10L)
   expect_false(grepl("\n|", out, fixed = TRUE))
-  saved <- readr::read_csv(file.path(root, "output", "table", "analysis-name", "coverage.csv"),
+  saved <- readr::read_csv(.projr_output_path(root, "table", "analysis-name", "coverage.csv"),
     show_col_types = FALSE)
   expect_equal(nrow(saved), nrow(tbl))
   expect_equal(saved$n_failed, tbl$n_failed)

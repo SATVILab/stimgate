@@ -482,55 +482,36 @@
   invisible(TRUE)
 }
 
-#' Resolve a project directory, with a checkout-local fallback
+#' Resolve a project path with projr
 #'
-#' Uses projr's configured directory when available. If projr cannot resolve
-#' the project (including when installed without a project configuration),
-#' falls back to `<path_root>/<label>/...`.
+#' projr resolves every analysis path from the project root. Outside a projr
+#' build, "output" resolves to a folder inside projr's cache; a projr build
+#' copies it to the final output folder. Nothing is written to a checkout
+#' `output/` folder directly.
 #'
-#' @param label character Directory label, such as "cache" or "output".
+#' @param label character projr directory label, such as "cache" or "output".
 #' @param path_parts character Relative path components.
-#' @param path_root character or NULL Checkout root (default: working directory).
-#' @param create logical Create the directory. Default: TRUE.
-#' @return character Directory path.
-# Directory from projr when it is installed and resolves the project; NULL
-# otherwise. `getter` exists for tests.
-.analysis_projr_dir <- function(
-    label,
-    path_parts = character(),
-    create = TRUE,
-    getter = NULL) {
-  if (is.null(getter)) {
-    if (!requireNamespace("projr", quietly = TRUE)) {
-      return(NULL)
-    }
-    getter <- projr::projr_path_get_dir
-  }
-  path <- tryCatch(
-    do.call(getter, c(list(label), as.list(path_parts), list(create = create))),
-    error = function(e) NULL
-  )
-  if (length(path) == 1L && !is.na(path) && nzchar(path)) path
-}
-
+#' @param path_root character or NULL Project root that projr resolves from.
+#'   Default: NULL (working directory).
+#' @param create logical Create the directory (for a file, its parent).
+#'   Default: TRUE.
+#' @param dir logical Treat the whole path as a directory
+#'   (`projr::projr_path_get_dir()`); FALSE for a file path
+#'   (`projr::projr_path_get()`). Default: TRUE.
+#' @return character Absolute path.
 .analysis_project_dir <- function(
     label,
     path_parts = character(),
     path_root = NULL,
-    create = TRUE) {
-  path <- .analysis_projr_dir(label, path_parts, create)
-  if (!is.null(path)) {
-    return(path)
+    create = TRUE,
+    dir = TRUE) {
+  getter <- if (isTRUE(dir)) projr::projr_path_get_dir else projr::projr_path_get
+  args <- c(list(label), as.list(path_parts),
+    list(create = create, format = "absolute"))
+  if (is.null(path_root) || !nzchar(path_root)) {
+    return(do.call(getter, args))
   }
-  root_local <- normalizePath(
-    if (is.null(path_root) || !nzchar(path_root)) "." else path_root,
-    mustWork = FALSE
-  )
-  path <- do.call(file.path, c(list(root_local, label), as.list(path_parts)))
-  if (isTRUE(create)) {
-    dir.create(path, recursive = TRUE, showWarnings = FALSE)
-  }
-  path
+  withr::with_dir(path_root, do.call(getter, args))
 }
 
 # Evaluate `code` with RNG seeded by `seed` under fixed RNG kinds, so the
@@ -562,7 +543,8 @@
   .analysis_project_dir("cache", path_parts, path_root, create)
 }
 
-# Figures go under output/fig/<QMD name>/<figure type>/..., so each analysis
+# Figures go under projr's output folder, in fig/<QMD name>/<figure type>/...,
+# so each analysis
 # and kind of figure has its own folder. `fig_key` comes from
 # `.analysis_mode_key(<QMD name>)`, which adds a dev/quick/draft folder when
 # needed.
@@ -580,10 +562,8 @@
 # ranges keep failures, denominators and suppressed intervals visible without
 # printing a scenario grid. They describe rows, not a pooled scientific estimate.
 .analysis_report_table <- function(tbl, path_parts, description, path_root = NULL) {
-  path <- file.path(
-    .analysis_table_dir(utils::head(path_parts, -1L), path_root),
-    utils::tail(path_parts, 1L)
-  )
+  path <- .analysis_project_dir("output", c("table", path_parts), path_root,
+    dir = FALSE)
   csv_tbl <- tbl
   # Bootstrap summaries can retain vectors of draws in list columns. Preserve
   # these in one CSV cell rather than letting write_csv silently omit them.

@@ -1,44 +1,26 @@
 .table_output_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   source(file.path(testthat::test_path(), "../../../scripts/r/analysis-runtime.R"), local = env)
-  # Isolate projr as well as path_root; tests must never reuse checkout output.
-  env$.analysis_projr_dir <- function(...) NULL
   env
 }
 
 test_that("table directories are output siblings and read-only resolution creates nothing", {
   env <- .table_output_env()
-  root <- tempfile("table-output-")
-  dir.create(root)
-  withr::defer(unlink(root, recursive = TRUE))
-  root <- normalizePath(root, winslash = "/")
+  # Tests use a temporary projr project, never the checkout's output.
+  root <- .local_projr_root()
   parts <- c("analysis-name", "draft", "coverage")
   path <- env$.analysis_table_dir(parts, root, create = FALSE)
   expect_equal(normalizePath(path, winslash = "/", mustWork = FALSE),
-    file.path(root, "output", "table", "analysis-name", "draft", "coverage"))
-  expect_false(dir.exists(file.path(root, "output")))
+    .projr_output_path(root, "table", "analysis-name", "draft", "coverage"))
+  expect_false(dir.exists(file.path(root, "_tmp")))
   expect_equal(env$.analysis_table_dir(parts, root), path)
   expect_true(dir.exists(path))
-  expect_false(dir.exists(file.path(root, "cache")))
-
-  # A configured projr output root takes precedence over the checkout fallback.
-  env$.analysis_projr_dir <- function(label, path_parts, create) {
-    expect_identical(label, "output")
-    expect_false(create)
-    do.call(file.path, c(list(root, "configured-output"), as.list(path_parts)))
-  }
-  configured <- env$.analysis_table_dir(parts, root, create = FALSE)
-  expect_equal(configured,
-    file.path(root, "configured-output", "table", "analysis-name", "draft", "coverage"))
-  expect_false(dir.exists(configured))
+  expect_false(dir.exists(file.path(root, "output")))
 })
 
 test_that("CSV companions retain all rows and keep method-specific coverage in prose", {
   env <- .table_output_env()
-  root <- tempfile("table-report-")
-  dir.create(root)
-  withr::defer(unlink(root, recursive = TRUE))
-  root <- normalizePath(root, winslash = "/")
+  root <- .local_projr_root()
   tbl <- data.frame(method = rep(c("stimgate", "fbeta"), each = 12),
     setting = rep(1:12, 2), n_total = 20L,
     n_failed = c(rep(0L, 12), rep(2L, 12)),
@@ -50,7 +32,7 @@ test_that("CSV companions retain all rows and keep method-specific coverage in p
   parts <- c("analysis-name", "draft", "mcse_on", "coverage.csv")
   output <- paste(utils::capture.output(result <- env$.analysis_report_table(
     tbl, parts, "Coverage and estimates by setting.", root)), collapse = "\n")
-  path <- file.path(root, "output", "table", "analysis-name", "draft", "mcse_on", "coverage.csv")
+  path <- .projr_output_path(root, "table", "analysis-name", "draft", "mcse_on", "coverage.csv")
   saved <- readr::read_csv(path, show_col_types = FALSE)
   expect_equal(nrow(saved), 24L)
   expect_equal(saved$estimate, tbl$estimate)
@@ -67,11 +49,12 @@ test_that("CSV companions retain all rows and keep method-specific coverage in p
   expect_match(output, "paired_datasets: 5 to 5 / 20 to 20", fixed = TRUE)
   expect_false(grepl("\n\\s*\\|", output, perl = TRUE))
   expect_false(grepl("# A tibble", output, fixed = TRUE))
-  expect_false(dir.exists(file.path(root, "cache")))
+  expect_false(dir.exists(file.path(root, "_tmp", "sim")))
+  expect_false(dir.exists(file.path(root, "output")))
 
   utils::capture.output(env$.analysis_report_table(tbl[0, ],
     c("analysis-name", "empty.csv"), "Empty coverage.", root))
-  expect_equal(nrow(readr::read_csv(file.path(root, "output", "table", "analysis-name", "empty.csv"),
+  expect_equal(nrow(readr::read_csv(.projr_output_path(root, "table", "analysis-name", "empty.csv"),
     show_col_types = FALSE)), 0L)
 })
 

@@ -428,6 +428,8 @@ test_that("concurrent chunk updates preserve per-chunk status and aggregate coun
 
   cl <- parallel::makePSOCKcluster(2L)
   on.exit(parallel::stopCluster(cl), add = TRUE)
+  # Workers need the project library, where projr resolves their paths.
+  parallel::clusterCall(cl, function(paths) base::.libPaths(paths), .libPaths())
 
   parallel::clusterExport(
     cl,
@@ -546,6 +548,8 @@ test_that("concurrent promotion attempts are serialised safely", {
 
   cl <- parallel::makePSOCKcluster(2L)
   on.exit(parallel::stopCluster(cl), add = TRUE)
+  # Workers need the project library, where projr resolves their paths.
+  parallel::clusterCall(cl, function(paths) base::.libPaths(paths), .libPaths())
   parallel::clusterExport(
     cl,
     varlist = c("tmp_project", "run_id", "analysis_key", "script_path"),
@@ -937,14 +941,10 @@ test_that("results context reads promoted outputs without run state", {
   )
 })
 
-test_that("project directory fallback is local and can be read-only", {
+test_that("project paths resolve through projr from path_root and can be read-only", {
   env <- .load_runtime_env()
-  # Exercise the fallback without depending on installed projr configuration.
-  env$.analysis_projr_dir <- function(...) NULL
-  # Normalize the existing root before appending non-existent paths; Windows
-  # cannot expand RUNNER~1 in a path whose final components do not exist.
-  project <- .norm_path(withr::local_tempdir())
-  expected <- file.path(project, "output", "fig")
+  project <- .local_projr_root()
+  expected <- .projr_output_path(project, "fig")
   expect_identical(
     .norm_path(env$.analysis_project_dir(
       "output", "fig", project, create = FALSE
@@ -957,37 +957,31 @@ test_that("project directory fallback is local and can be read-only", {
     .norm_path(expected)
   )
   expect_true(dir.exists(expected))
+  # A file path creates only its parent folder.
+  file <- env$.analysis_project_dir("output", c("table", "a.csv"), project, dir = FALSE)
+  expect_identical(.norm_path(file), .norm_path(.projr_output_path(project, "table", "a.csv")))
+  expect_true(dir.exists(dirname(file)))
+  expect_false(file.exists(file))
   cache <- env$.analysis_cache_dir(c("sim", "test"), project, create = FALSE)
   expect_identical(.norm_path(cache), .norm_path(file.path(
-    project, "cache", "sim", "test"
+    project, "_tmp", "sim", "test"
   )))
   expect_false(dir.exists(cache))
+  # Output goes to projr's cache, never a committable output/ folder.
+  expect_false(dir.exists(file.path(project, "output")))
+  expect_false(dir.exists(file.path(project, "_output")))
 })
 
-test_that("figure directories are nested under output/fig and created", {
+test_that("figure directories are nested under the output fig folder and created", {
   env <- .load_runtime_env()
-  env$.analysis_projr_dir <- function(...) NULL
-  project <- .norm_path(withr::local_tempdir())
-  expected <- file.path(project, "output", "fig", "2a-x", "quick", "signed_error")
+  project <- .local_projr_root()
+  expected <- .projr_output_path(project, "fig", "2a-x", "quick", "signed_error")
   fig_dir <- env$.analysis_fig_dir(
     c("2a-x", "quick", "signed_error"),
     path_root = project
   )
   expect_identical(.norm_path(fig_dir), .norm_path(expected))
   expect_true(dir.exists(expected))
-})
-
-test_that("an unavailable projr project falls back to the local directory", {
-  env <- .load_runtime_env()
-  failing_getter <- function(...) stop("No projr project")
-  expect_null(env$.analysis_projr_dir("cache", "sim", getter = failing_getter))
-  expect_null(env$.analysis_projr_dir(
-    "cache", "sim", getter = function(...) NA_character_
-  ))
-  expect_identical(
-    env$.analysis_projr_dir("cache", "sim", getter = function(...) "/x/cache"),
-    "/x/cache"
-  )
 })
 
 test_that("seeded evaluation is independent of and restores caller RNG", {

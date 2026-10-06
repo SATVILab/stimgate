@@ -616,7 +616,14 @@ retain their original threshold layers above fills.
 
 Figures from analysis QMDs are saved under `output/fig/<QMD name>/<figure type>/`
 via `.analysis_fig_dir()`, with `fig_key <- .analysis_mode_key("<QMD name>")`;
-keep figures out of `cache/`. Analyses without a simulation-size setting,
+keep figures out of `cache/`. Here `output` and `cache` are projr labels:
+resolve every analysis path through projr (`.analysis_project_dir()`, which
+calls `projr::projr_path_get_dir()` for folders and `projr::projr_path_get()`
+for files), never by hand-building checkout paths. Outside a projr build,
+projr places `output` inside its cache and a build copies it to the final
+output folder, so nothing is written to a committable checkout folder. Tests
+use a temporary projr project (`.local_projr_root()` in
+`analysis/tests/testthat/helper-projr.R`). Analyses without a simulation-size setting,
 including real-data analyses, pass `sized = FALSE` to `.analysis_mode_key()`.
 
 Large report tables belong in CSV companions under `output/table/<fig_key>/`
