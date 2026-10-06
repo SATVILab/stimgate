@@ -334,7 +334,9 @@ Each top-level analysis QMD also has an independently runnable target in
 one target number/path to run it, a comma/space-separated set, or `all`.
 Maintain the registry when adding or renaming top-level QMDs. Analysis 2 is
 split into `2a` (bandwidth performance) and `2b` (bias tuning), with separate
-runner targets. Bias-tuning collation retains invalid final sample estimates,
+runner targets. `2c` (`2c-sim-test.qmd`) runs chosen settings, including
+stimulated-tube mismatch, through the 2a code path with the `.simDebugLoc()`
+figures; it caches nothing and has no Slurm job. Bias-tuning collation retains invalid final sample estimates,
 reports valid/failed counts, and rejects missing sample outputs before promotion.
 These targets reuse bounded scientific helper and document-contract tests; they do not render
 the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-only
@@ -537,6 +539,8 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2-6, followed by one delimited section of scenario/validation/collation callbacks per analysis.
   - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating, comparator, manual-comparison and plotting helpers for analyses 9 and 10.
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
+  - `sim-debug-loc.R`: `.simDebugLoc()` wraps a QMD's rerun call unchanged and uses `trace()` to record, or browse, the local-FDR gating of one sample (optionally every later one too); `.simDebugLocPlots()` / `.simDebugLocSummary()` plot and summarise it.
+  - `sim-debug-compare.R`: `.simDebugCompare()` runs F-beta and Tailgate on a `.simDebugLoc()` sample as Analyses 7/8 do; `.simDebugFigure()` combines simulation settings with each method's plots, settings and result on one x range.
   - `sim-misc.R`: Miscellaneous simulation utilities.
   - `sim-trans.R`: Simulation transformation utilities.
 - `src/`: C++ source code compiled into the package via `cpp11` (`cpPmden.cpp`, `stimgate_cppmden.cpp`, `tautstring.cpp`, etc.).
@@ -837,7 +841,7 @@ rows before drawing reference lines.
    before direct simulator calls: wrappers draw replicate seeds from the outer
    seed before generating data. Do not also mock that draw to the outer seed.
 
-   Assign `sim_id` and `sim_seed` on the full grid before dev/quick filtering, shuffling and chunking. Each row is seeded with its own `sim_seed` under fixed RNG kinds (`Mersenne-Twister`, `Inversion`, `Rejection`) and the caller's RNG state is restored afterwards (`.analysis_with_seed()`, `.simBandwidthRunRow()`, `.simCompareRunScenario()`), so results do not depend on furrr's L'Ecuyer state, chunking or scheduling. Each simulation QMD has one `eval: false` "rerun one simulation" chunk that selects a `sim_id` from the full grid and calls the same scenario code path as the workers. Do not add separate debug loops.
+   Assign `sim_id` and `sim_seed` on the full grid before dev/quick filtering, shuffling and chunking. Each row is seeded with its own `sim_seed` under fixed RNG kinds (`Mersenne-Twister`, `Inversion`, `Rejection`) and the caller's RNG state is restored afterwards (`.analysis_with_seed()`, `.simBandwidthRunRow()`, `.simCompareRunScenario()`), so results do not depend on furrr's L'Ecuyer state, chunking or scheduling. Each simulation QMD has one `eval: false` "rerun one simulation" chunk that selects a `sim_id` from the full grid and calls the same scenario code path as the workers. Do not add separate debug loops. To investigate one sample's gating, wrap that same rerun call in `.simDebugLoc()` (as in the 2a `debug-one-sample` chunk) rather than copying package internals into the QMD; it must not draw random numbers or change the rerun output.
 
 11. **Real-data analyses replace outputs non-destructively**:
    ACS error summaries separate stimuli, report positive-manual relative-error

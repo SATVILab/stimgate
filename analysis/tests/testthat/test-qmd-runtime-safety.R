@@ -165,15 +165,26 @@ test_that("analysis 2a chunks are balanced and plot chunks are guarded", {
   is_eval_false <- vapply(chunks, function(x) {
     any(grepl("^#\\|\\s*eval:\\s*false", x))
   }, logical(1))
-  expect_identical(sum(is_eval_false), 1L)
-  rerun <- chunks[is_eval_false][[1]]
-  expect_true(any(grepl("label: rerun-one-simulation", rerun, fixed = TRUE)))
+  manual <- chunks[is_eval_false]
+  manual_labels <- vapply(manual, function(x) {
+    label <- grep("^#\\|\\s*label:", x, value = TRUE)[1]
+    sub("^#\\|\\s*label:\\s*", "", label)
+  }, character(1))
+  expect_setequal(manual_labels, c("rerun-one-simulation", "debug-one-sample"))
+  rerun <- manual[[which(manual_labels == "rerun-one-simulation")]]
   expect_true(any(grepl("sim_id_target <-", rerun, fixed = TRUE)))
   expect_true(any(grepl("sim_grid_full", rerun, fixed = TRUE)))
   expect_true(any(grepl(".simBandwidthRunRow(", rerun, fixed = TRUE)))
   expect_true(any(grepl(".simBandwidthFindSimOutput(", rerun, fixed = TRUE)))
   expect_false(any(grepl("^#\\|\\s*#", unlist(chunks))))
+  # The debug chunk wraps the same seeded rerun call.
+  debug <- manual[[which(manual_labels == "debug-one-sample")]]
+  expect_true(any(grepl(".simDebugLoc(", debug, fixed = TRUE)))
+  expect_true(any(grepl(".simBandwidthRunRow(", debug, fixed = TRUE)))
+  expect_true(any(grepl("sim_grid_full", debug, fixed = TRUE)))
 
+  # Manual eval: false chunks never run in renders, so need no plot guard.
+  chunks <- chunks[!is_eval_false]
   uses_results <- vapply(chunks, function(x) {
     code <- x[!grepl("^#\\|", x)]
     any(grepl("ggsave|bw_tbl_results_|knitr::kable", code)) &&

@@ -7,7 +7,8 @@
       "test-signed-percentile-plots.R",
       "test-sim-bw-freq_bs-global-simcyto.R", "test-sim-bandwidth-analysis-run.R",
       "test-bandwidth-bias-plots-by-cells.R", "test-qmd-2-cache-guidance.R",
-      "test-threshold-density-plots.R", "test-analysis-mcse.R", "test-ratio-companion-plots.R"
+      "test-threshold-density-plots.R", "test-analysis-mcse.R", "test-ratio-companion-plots.R",
+      "test-sim-debug-loc.R", "test-sim-debug-compare.R"
     ),
     "2b-sim-bias_uns-freq_bs.qmd" = c(
       "test-bandwidth-readability.R",
@@ -52,6 +53,9 @@
     ),
     "10-real-compare-acs-cytof-validation.qmd" = c(
       "test-acs-cytof-validation-plots.R", "test-acs-cytof-paths.R"
+    ),
+    "2c-sim-test.qmd" = c(
+      "test-sim-test-qmd.R", "test-sim-debug-loc.R", "test-sim-debug-compare.R"
     )
   )
   documents <- list.files(file.path(root_dir, "analysis"), pattern = "[.]qmd$")

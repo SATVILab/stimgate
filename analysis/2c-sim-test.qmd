@@ -1,0 +1,289 @@
+---
+title: Test chosen simulation settings (2c)
+format:
+  html:
+    embed-resources: true
+    toc: true
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: true
+  run_plots: false
+---
+
+This document runs one simulated dataset, or a few, for settings you choose, and shows how StimGate gated chosen samples. It uses the same simulation and gating code as Analysis 2a, so a row here behaves exactly like a 2a grid row with the same settings and seed.
+
+For each sample the figure starts with the simulation settings. The StimGate section shows the raw stimulated and unstimulated densities, the raw and smoothed response probability, its derivative, the expected responding cells per bin, the taut-string density and the true labels, with the filtering boundaries and final threshold marked. F-beta and Tailgate are run on the same sample, as in Analyses 7 and 8: their gates are added to StimGate's plots, and their own sections show F-beta's smoothed histograms and scores, and Tailgate's density and slope rule. Each method's plots are followed by its settings and its estimated against true response frequency.
+
+Nothing is cached: each run simulates afresh. To look at a row of the stored 2a run instead, use the `debug-one-sample` chunk in `2a-sim-bw-freq_bs-global.qmd`.
+
+## Set-up
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+
+# This document only runs the settings chosen below, so interactive sessions
+# run them by default too.
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  TRUE
+))
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+fig_key <- .analysis_mode_key("2c-sim-test", sized = FALSE)
+
+devtools::load_all(root_dir)
+for (fn in c(
+  "sim-misc.R",
+  "sim-bandwidth.R",
+  "sim-bandwidth-analysis-io.R",
+  "sim-bandwidth-analysis-run.R",
+  "sim-compare-freq_bs.R",
+  "sim-debug-loc.R",
+  "sim-debug-compare.R"
+)) {
+  source(file.path(scripts_r_dir, fn))
+}
+```
+
+## Settings
+
+Edit this chunk. Each row of `test_grid` is one simulated dataset. Give a
+column several values to compare them: rows that differ only in `bw` or
+`bias_uns` share `sim_seed`, so they gate exactly the same cells. Change
+`sim_seed` for a different random dataset.
+
+The columns are the 2a grid columns plus the stimulated-tube mismatch
+columns of 2b. `mean_pos` is filled in from `mean_pos_setting` and the
+transformation, as in 2a. With no mismatch, a row simulates exactly the data
+2a would for the same settings and seed.
+
+Differences between tubes and samples:
+
+- `sample_perturbation_sd`: random shifts of the population means between
+  samples (donors).
+- `condition_perturbation_sd`: random shifts of the population means between
+  a sample's stimulated and unstimulated tubes.
+- `cluster_perturbation_sd`: random variation of each population during
+  cell-level simulation.
+- `stim_mean_shift`: a fixed shift of the stimulated tube's expression, on the
+  final (transformed) scale. `stim_mean_shift_clusters = "gn"` shifts only its
+  negative (background) cells; `NA` shifts all its cells.
+- `stim_sd_multiplier`: scales the spread of the stimulated tube's cells
+  around their population means, for the populations in
+  `stim_sd_multiplier_clusters` (`"gn"` for the negative cells, `NA` for all).
+
+To change any other `.simBandwidthBsFreq()` setting for some rows only, add a
+column with that argument's name (e.g. `locMinPeakProb = c(0.1, 0.25)`).
+
+```{r}
+#| label: test-settings
+test_grid <- tidyr::expand_grid(
+  # simulated data
+  transformation = "skew", # "gaussian", "skew" or "gamma"
+  prob_response = 0.002,
+  n_cell = 2e4,
+  mean_pos_setting = "high", # "low" or "high"
+  sample_perturbation_sd = 0,
+  condition_perturbation_sd = 0,
+  cluster_perturbation_sd = 0,
+  background_relative_to_response = 0.2,
+  n_cell_uns_relative_to_stim = 1,
+  stim_mean_shift = 0,
+  stim_mean_shift_clusters = "gn",
+  stim_sd_multiplier = 1,
+  stim_sd_multiplier_clusters = "gn",
+  sim_seed = 12345L,
+  # StimGate tuning
+  bw = 0.25,
+  bias_uns = 0.05
+)
+
+# Settings shared by every row, as in 2a. Add any other
+# `.simBandwidthBsFreq()` argument (e.g. locMinPeakProb, locProbCol, minCell,
+# bwMtd) to change it for all rows. 2a uses nSample = 200; the data depend on
+# nSample.
+test_settings <- list(
+  nSample = 200L,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  nIter = 1,
+  bwMin = "none",
+  bwMax = "none",
+  probExact = TRUE,
+  covEvMin = 1.5,
+  covEvMax = 1.5,
+  clusterGates = FALSE,
+  locEnforceShapeThreshold = FALSE,
+  calcCytPosGates = FALSE
+)
+
+# Samples to show: the first sample by default. `test_subsequent = TRUE`
+# also shows every later sample, gating all of them.
+test_sample <- 1L
+test_subsequent <- FALSE
+# Package functions to step through for the shown samples, e.g.
+# ".getCpUnsLocFilterAfterSmoothing" (interactive sessions only).
+test_browse <- character(0L)
+# Common x-axis limits for the plots, e.g. c(3, 8); NULL shows all the data.
+test_xlim <- NULL
+
+# Comparison methods. Settings default to those of Analyses 7 and 8; list
+# only the ones to change, e.g. list(beta = 1) or list(autoTol = FALSE).
+test_compare <- TRUE
+test_fbeta <- list() # beta = 0.8, theta = 2, width = 10, numBins = NULL
+# x = "stim", adjust = 1, bandwidth = NULL, numPeaks = 1, refPeak = 1,
+# tol = 0.01, autoTol = TRUE (tolerance = 1% of the largest |slope|)
+test_tailgate <- list()
+```
+
+```{r}
+#| label: test-grid
+#| include: false
+if (analysis_quick || analysis_dev) {
+  # Quick and dev renders only check that the document runs.
+  test_grid <- test_grid |>
+    dplyr::mutate(n_cell = pmin(.data$n_cell, 2e3)) |>
+    dplyr::slice(1)
+  test_settings$nSample <- min(test_settings$nSample, 2L)
+  test_sample <- 1L
+}
+unknown_settings <- setdiff(names(test_settings), names(formals(.simBandwidthBsFreq)))
+if (length(unknown_settings) > 0L) {
+  stop(
+    "Not .simBandwidthBsFreq() arguments: ",
+    paste(unknown_settings, collapse = ", ")
+  )
+}
+if (test_sample > test_settings$nSample) {
+  stop("test_sample must not exceed nSample (", test_settings$nSample, ").")
+}
+
+test_grid <- test_grid |>
+  dplyr::mutate(
+    mean_pos_setting = as.character(.data$mean_pos_setting)
+  ) |>
+  dplyr::left_join(
+    .simMiscGetMeanPosTbl() |>
+      dplyr::mutate(mean_pos_setting = as.character(.data$mean_pos_setting)),
+    by = c("transformation", "mean_pos_setting")
+  ) |>
+  dplyr::mutate(sim_id = dplyr::row_number())
+if (anyNA(test_grid$mean_pos)) {
+  stop("Unknown transformation or mean_pos_setting in test_grid.")
+}
+test_grid |>
+  print(width = Inf)
+```
+
+## Run
+
+```{r}
+#| label: test-run
+#| include: false
+test_results <- list()
+if (isTRUE(run_simulations)) {
+  for (i in seq_len(nrow(test_grid))) {
+    row_test <- test_grid[i, , drop = FALSE]
+    dbg <- .simDebugLoc(
+      .simBandwidthRunRow(
+        row_test,
+        scenario_fn = .simBandwidthTestScenario,
+        settings = test_settings
+      ),
+      sample = test_sample,
+      subsequent = test_subsequent,
+      browse = if (interactive()) test_browse else character(0L)
+    )
+    dbg_list <- if (inherits(dbg, "simDebugLoc")) list(dbg) else unclass(dbg)
+    dbg_list <- Filter(function(x) isTRUE(x$found), dbg_list)
+    test_results <- c(test_results, lapply(dbg_list, function(x) {
+      list(row = row_test, dbg = x)
+    }))
+  }
+} else {
+  message("run_simulations is false; nothing to show.")
+}
+```
+
+## Results
+
+```{r}
+#| label: test-summary
+#| echo: false
+if (length(test_results) > 0L) {
+  purrr::map(test_results, function(x) {
+    dplyr::bind_cols(
+      x$row |>
+        dplyr::select(
+          "sim_id", "transformation", "prob_response", "n_cell", "bw",
+          "bias_uns", "stim_mean_shift", "stim_sd_multiplier"
+        ),
+      .simDebugLocSummary(x$dbg) |>
+        dplyr::select(-dplyr::any_of(c("locReason", "filterReason")))
+    )
+  }) |>
+    dplyr::bind_rows() |>
+    knitr::kable(digits = 4)
+}
+```
+
+Figures are saved under `output/fig/2c-sim-test/`, in a folder named after
+the settings of each row.
+
+```{r}
+#| label: test-figures
+#| echo: false
+#| fig-width: 11.8
+#| fig-height: 33
+if (isTRUE(run_plots) && length(test_results) > 0L) {
+  for (x in test_results) {
+    row_label <- x$row |>
+      dplyr::select(
+        "transformation", "prob_response", "n_cell", "mean_pos_setting",
+        "sample_perturbation_sd", "condition_perturbation_sd",
+        "stim_mean_shift", "stim_sd_multiplier", "bw", "bias_uns", "sim_seed"
+      ) |>
+      as.list() |>
+      purrr::imap_chr(function(value, name) paste0(name, "-", value)) |>
+      paste(collapse = "_")
+    p_test <- .simDebugFigure(
+      x$dbg,
+      x$row,
+      compare = if (test_compare) {
+        .simDebugCompare(x$dbg, fbeta = test_fbeta, tailgate = test_tailgate)
+      },
+      xlim = test_xlim
+    )
+    dir_test <- .analysis_fig_dir(c(fig_key, row_label), path_root = root_dir)
+    ggsave(
+      file.path(
+        dir_test,
+        paste0("sample-", x$dbg$sample, "_ind-", x$dbg$ind, ".png")
+      ),
+      p_test,
+      width = 30, height = attr(p_test, "height_cm"), units = "cm",
+      dpi = 300, bg = "white", limitsize = FALSE
+    )
+    print(p_test)
+  }
+}
+```

@@ -7,6 +7,8 @@ script_bw <- file.path(root_dir, "scripts", "r", "sim-bandwidth.R")
 script_bw_io <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-io.R")
 script_bw_run <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-run.R")
 script_bw_plot <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-plot.R")
+script_debug_loc <- file.path(root_dir, "scripts", "r", "sim-debug-loc.R")
+script_debug_compare <- file.path(root_dir, "scripts", "r", "sim-debug-compare.R")
 script_comp <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 script_trans <- file.path(root_dir, "scripts", "r", "sim-trans.R")
 script_acs_helper <- file.path(root_dir, "scripts", "r", "acs_cytof-helper.R")
@@ -24,7 +26,9 @@ test_that("scripts/r helpers source without error in dependency order", {
     script_bw_io,
     script_bw_run,
     script_bw_plot,
+    script_debug_loc,
     script_comp,
+    script_debug_compare,
     script_trans,
     script_acs_helper,
     script_acs_preprocess,
@@ -45,7 +49,9 @@ test_that("scripts/r helpers source without error in dependency order", {
   expect_no_error(source(script_bw_io, local = env))
   expect_no_error(source(script_bw_run, local = env))
   expect_no_error(source(script_bw_plot, local = env))
+  expect_no_error(source(script_debug_loc, local = env))
   expect_no_error(source(script_comp, local = env))
+  expect_no_error(source(script_debug_compare, local = env))
   expect_no_error(source(script_trans, local = env))
   expect_no_error(source(script_acs_helper, local = env))
   expect_no_error(source(script_acs_preprocess, local = env))
@@ -69,7 +75,9 @@ test_that("QMD analysis scripts do not call scripts/r helpers via stimgate:::", 
   source(script_bw_io, local = env)
   source(script_bw_run, local = env)
   source(script_bw_plot, local = env)
+  source(script_debug_loc, local = env)
   source(script_comp, local = env)
+  source(script_debug_compare, local = env)
   source(script_trans, local = env)
   helper_names <- sub("^\\.", "", ls(env, all.names = TRUE, pattern = "^\\.sim"))
 
