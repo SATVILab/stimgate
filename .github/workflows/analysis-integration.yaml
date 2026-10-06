@@ -4,6 +4,7 @@ on:
   push:
     branches: [master]
     paths:
+      - '_projr.yml'
       - 'analysis/**'
       - 'scripts/r/**'
       - 'scripts/slurm/**'
@@ -14,6 +15,7 @@ on:
       - '.github/workflows/**'
   pull_request:
     paths:
+      - '_projr.yml'
       - 'analysis/**'
       - 'scripts/r/**'
       - 'scripts/slurm/**'
@@ -67,9 +69,9 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
         with:
           # Deliberately unpinned: analysis validation follows the current
-          # SATVILab/simcyto default branch used by StimGate development.
+          # SATVILab/projr and SATVILab/simcyto default branches used in development.
           # decor is needed by devtools::load_all() to register cpp11 code.
-          extra-packages: any::devtools, any::testthat, any::decor, any::reticulate, any::future, any::furrr, any::progressr, any::withr, SATVILab/simcyto, github::RGLab/cytoUtils, bioc::openCyto, bioc::flowStats
+          extra-packages: any::devtools, any::testthat, any::decor, any::reticulate, any::future, any::furrr, any::progressr, any::withr, SATVILab/projr, SATVILab/simcyto, github::RGLab/cytoUtils, bioc::openCyto, bioc::flowStats
           needs: check
           # Save the package library even when the tests fail, so later runs
           # restore it instead of rebuilding every dependency from source.

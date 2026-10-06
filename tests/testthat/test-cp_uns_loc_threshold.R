@@ -163,6 +163,126 @@ test_that("empirical threshold selection matches response estimate", {
   expect_equal(cp_fallback$locSource, "not_calculated")
 })
 
+test_that("the gate sits below the selected cell and counts what was matched", {
+  df_stim <- data.frame(IFNg = c(1.0, 2.0, 3.0, 3.5, 4.0))
+  attr(df_stim, "chnlCut") <- "IFNg"
+  df_uns <- data.frame(IFNg = c(0.5, 1.0, 2.0, 2.5, 3.0))
+  attr(df_uns, "chnlCut") <- "IFNg"
+  data_thresh <- .getCpUnsLocGetCpDataThresholdActual(
+    dataCount = data.frame(
+      IFNg = c(2.0, 3.0, 4.0), probSmooth = 0.5, pred = 0.5
+    ) |>
+      structure(chnlCut = "IFNg"),
+    propBsEst = 0.40,
+    exTblStimOrig = df_stim,
+    exTblUnsOrig = df_uns
+  )
+  select <- function(bw) {
+    .getCpUnsLocGetCpActual(
+      dataThreshold = data_thresh,
+      exTblStimNoMin = df_stim,
+      exTblUnsBias = df_uns,
+      cpMin = NULL,
+      stage = "init",
+      exTblStimOrig = df_stim,
+      exTblUnsOrig = df_uns,
+      densityBw = bw
+    )
+  }
+
+  # The cell at 3.0 is selected; the next lower cell (either tube) is 2.5.
+  # Half the gap (0.25) is smaller than twice a 0.25 bandwidth.
+  wide <- select(0.25)
+  expect_equal(wide$cp, 2.75)
+  expect_equal(attr(wide, "cpSelected"), 3.0)
+  # Twice a 0.05 bandwidth (0.1) is smaller than half the gap.
+  expect_equal(select(0.05)$cp, 2.9)
+  # Without a usable bandwidth, half the gap is used.
+  expect_equal(select(NULL)$cp, 2.75)
+  expect_equal(select(list(grid = 1))$cp, 2.75)
+
+  # The strict applied gate counts the cells the selection matched.
+  gate <- select(0.05)$cp
+  expect_equal(mean(df_stim$IFNg > gate) - mean(df_uns$IFNg > gate), 0.4)
+})
+
+test_that("selected-cell ties and diagnostics agree with the applied gate", {
+  df_stim <- structure(
+    data.frame(IFNg = c(1, 2, 3, 3, 4)), chnlCut = "IFNg", ind = "stim1"
+  )
+  df_uns <- structure(
+    data.frame(IFNg = c(0.5, 2.5, 3, 3)), chnlCut = "IFNg"
+  )
+  data_thresh <- .getCpUnsLocGetCpDataThresholdActual(
+    dataCount = structure(data.frame(IFNg = c(2.5, 3, 4)), chnlCut = "IFNg"),
+    propBsEst = 0.1,
+    exTblStimOrig = df_stim,
+    exTblUnsOrig = df_uns
+  )
+  cp_obj <- .getCpUnsLocGetCpActual(
+    dataThreshold = data_thresh,
+    exTblStimNoMin = df_stim,
+    exTblUnsBias = df_uns,
+    cpMin = NULL,
+    stage = "init",
+    exTblStimOrig = df_stim,
+    exTblUnsOrig = df_uns,
+    densityBw = 1
+  )
+  expect_equal(cp_obj$cp, 2.75)
+  expect_equal(attr(cp_obj, "cpSelected"), 3)
+  expect_equal(sum(df_stim$IFNg > cp_obj$cp), sum(df_stim$IFNg >= 3))
+  expect_equal(sum(df_uns$IFNg > cp_obj$cp), sum(df_uns$IFNg >= 3))
+
+  # The gate is equally close to the lower candidate, so lookup must use
+  # the selected cell rather than the nearest candidate to the applied gate.
+  detail <- .getCpUnsLocConditionDetailRow(
+    cpObj = cp_obj,
+    dataThreshold = data_thresh,
+    exTblStimOrig = df_stim,
+    exTblUnsOrig = df_uns,
+    exTblStimNoMin = df_stim,
+    bias = 0,
+    stage = "init",
+    chnl = "IFNg"
+  )
+  expect_equal(detail$threshold, cp_obj$cp)
+  expect_equal(detail$propStim, mean(df_stim$IFNg > cp_obj$cp))
+  expect_equal(detail$propUns, mean(df_uns$IFNg > cp_obj$cp))
+  expect_equal(detail$propBsEst, 0.1)
+  expect_equal(detail$propBsDiff, 0, tolerance = 1e-14)
+})
+
+test_that("adaptive gates use shared bandwidth at the selected cell", {
+  gate_below <- get(".getCpUnsLocGateBelowCell", envir = pkg_ns)
+  adaptive <- list(
+    adaptive = TRUE, grid = c(0, 4), sharedGrid = c(0.05, 0.15)
+  )
+  # Interpolation gives bandwidth 0.1 at 2, and the wide gap leaves room
+  # to move down by twice that bandwidth.
+  expect_equal(gate_below(2, c(0, 2), adaptive), 1.8)
+  # Outside the padded density grid, use its nearest endpoint bandwidth.
+  expect_equal(gate_below(8, c(0, 8), adaptive), 7.7)
+  expect_equal(gate_below(-2, c(-4, -2), adaptive), -2.1)
+  # The half-gap limit still prevents including the next lower observation.
+  expect_equal(gate_below(2, c(1.9, 2), adaptive), 1.95)
+  adaptive$sharedGrid <- c(NA_real_, -1)
+  expect_equal(gate_below(2, c(0, 2), adaptive), 1)
+})
+
+test_that("a lone top responding cell is counted by the applied gate", {
+  gate_below <- get(".getCpUnsLocGateBelowCell", envir = pkg_ns)
+  x <- c(stats::qnorm(seq(0.01, 0.99, length.out = 99)), 8.868)
+  # Two bandwidths below the cell, as the gap to the next cell is wider.
+  expect_equal(gate_below(8.868, x, densityBw = 0.1), 8.868 - 0.2)
+  expect_true(sum(x > gate_below(8.868, x, densityBw = 0.1)) == 1L)
+  # No lower cell and no bandwidth: just below the cell.
+  lone <- gate_below(1, 1, densityBw = NULL)
+  expect_lt(lone, 1)
+  expect_gt(lone, 1 - 1e-6)
+  expect_identical(gate_below(3, NULL), 3)
+})
+
 test_that(".getCpUnsLocThresholdOrigin labels all provenance pathways", {
   expect_equal(
     .getCpUnsLocThresholdOrigin(TRUE, TRUE, "direct"),

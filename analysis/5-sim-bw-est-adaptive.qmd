@@ -18,7 +18,6 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
-  sim_size: draft
   sim_retry_errors: true
 ---
 

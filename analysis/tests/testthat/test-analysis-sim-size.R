@@ -11,30 +11,40 @@
   env
 }
 
-test_that("sim_size defaults to draft and follows the QMD param and SIM_SIZE", {
+test_that("sim_size reads native projr configuration and ignores QMD defaults", {
   env <- .sim_size_runtime_env()
+  project <- withr::local_tempdir()
+  file.create(file.path(project, "README.md"))
+  writeLines(c("parameters:", "  sim_size: draft"), file.path(project, "_projr.yml"))
+  writeLines(c("parameters:", "  sim_size: final"), file.path(project, "_projr-report.yml"))
+  withr::local_dir(project)
   withr::local_envvar(PROJR_PROFILE = NA, SIM_SIZE = NA)
   expect_identical(env$.analysis_sim_size(), "draft")
   expect_identical(env$.analysis_mode_key(c("sim", "default")), c("sim", "default", "draft"))
   env$params <- list(sim_size = "final")
-  expect_identical(env$.analysis_sim_size(), "final")
-  env$params <- list(sim_size = "draft")
   expect_identical(env$.analysis_sim_size(), "draft")
-  Sys.setenv(SIM_SIZE = "final")
+  Sys.setenv(PROJR_PROFILE = "report")
   expect_identical(env$.analysis_sim_size(), "final")
-  env$params <- list(sim_size = "final")
   Sys.setenv(SIM_SIZE = " Draft ")
   expect_identical(env$.analysis_sim_size(), "draft")
+  Sys.unsetenv("PROJR_PROFILE")
+  Sys.setenv(SIM_SIZE = "final")
+  expect_identical(env$.analysis_sim_size(), "final")
 })
 
-test_that("invalid sim_size values give a clear error", {
+test_that("invalid global and override sim_size values give a clear error", {
   env <- .sim_size_runtime_env()
+  project <- withr::local_tempdir()
+  file.create(file.path(project, "README.md"))
+  writeLines(c("parameters:", "  sim_size: full"), file.path(project, "_projr.yml"))
+  withr::local_dir(project)
   withr::local_envvar(PROJR_PROFILE = NA, SIM_SIZE = "medium")
   expect_error(env$.analysis_sim_size(), "SIM_SIZE", fixed = TRUE)
   expect_error(env$.analysis_sim_size(), "\"final\" or \"draft\"", fixed = TRUE)
   Sys.unsetenv("SIM_SIZE")
-  env$params <- list(sim_size = "full")
   expect_error(env$.analysis_sim_size(), "not \"full\"", fixed = TRUE)
+  file.remove(file.path(project, "_projr.yml"))
+  expect_error(env$.analysis_sim_size(), "parameters.sim_size", fixed = TRUE)
 })
 
 test_that("ACS figure paths ignore simulation sizes and retain explicit profiles", {
@@ -147,7 +157,7 @@ test_that("each simulation QMD sets final and draft sample counts in one place",
     expect_length(file, 1L)
     lines <- readLines(file, warn = FALSE)
     content <- paste(lines, collapse = "\n")
-    expect_true(grepl("\n  sim_size: draft\n", content, fixed = TRUE), info = id)
+    expect_false(any(grepl("^  sim_size:", lines)), info = id)
     expect_true(grepl("sim_size <- .analysis_sim_size()", content, fixed = TRUE),
                 info = id)
     expect_true(grepl("  sim_size = sim_size,", content, fixed = TRUE), info = id)

@@ -47,10 +47,11 @@ run_selection
 [[ $(grep -c 'dev-2b-' "$SLURM_TEST_LOG") -eq 2 ]]
 for chunk in 1 2; do
   bias_job=$(grep -F "2b-sim-bias_uns-freq_bs/chunk-${chunk}|" "$SLURM_TEST_LOG")
-  [[ "$bias_job" == *"PROJECT_ROOT=$project_root,ANALYSIS_RUN_ID=slurm-test-run,SIM_GRID_CHUNK_INDEX=$chunk,SIM_GRID_N_CHUNKS=2,SIM_GRID_SHUFFLE_SEED=123,RUN_SIMULATIONS=true,RUN_PLOTS=false,SIM_SIZE=draft|"* ]]
+  [[ "$bias_job" == *"PROJECT_ROOT=$project_root,ANALYSIS_RUN_ID=slurm-test-run,SIM_GRID_CHUNK_INDEX=$chunk,SIM_GRID_N_CHUNKS=2,SIM_GRID_SHUFFLE_SEED=123,RUN_SIMULATIONS=true,RUN_PLOTS=false|"* ]]
 done
-# Draft is the current default size.
-grep -Fq -- 'SIM_SIZE: draft' "$test_dir/output"
+# No override: renderers consult the active project parameter.
+! grep -Fq -- 'SIM_SIZE=' "$SLURM_TEST_LOG"
+grep -Fq -- 'SIM_SIZE: parameters.sim_size in _projr.yml' "$test_dir/output"
 
 for analysis_id in 2a 2b 7 8; do
   run_selection "$analysis_id"
@@ -89,7 +90,7 @@ plot_7=$(grep -F 'render-plots.sh' "$SLURM_TEST_LOG" | grep -F 'plots-7-')
 [[ "$plot_7" == *"--dependency=afterok:103:104,afterany:101:102|"* ]]
 [[ "$plot_2a" == *"PLOT_QMD_FILES=analysis/2a-sim-bw-freq_bs-global.qmd,ANALYSIS_RUN_ID=slurm-test-run,RUN_SIMULATIONS=false,RUN_PLOTS=true"* ]]
 [[ "$plot_7" == *"PLOT_QMD_FILES=analysis/7-sim-compare-freq_bs.qmd,"* ]]
-[[ "$plot_2a" == *",RUN_PLOTS=true,SIM_SIZE=draft|"* ]]
+[[ "$plot_2a" == *",RUN_PLOTS=true|"* ]]
 
 # Explicit final still reaches every simulation and plot job.
 export SIM_SIZE=final

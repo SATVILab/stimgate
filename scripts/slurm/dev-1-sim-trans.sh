@@ -10,7 +10,7 @@ set -euo pipefail
 start_time=$(date +%s)
 
 echo "HOSTNAME: $HOSTNAME"
-echo "SIM_SIZE: ${SIM_SIZE:-draft}"
+echo "SIM_SIZE: ${SIM_SIZE:-parameters.sim_size in _projr.yml}"
 
 echo " "
 echo " "

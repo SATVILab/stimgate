@@ -98,9 +98,10 @@
     stage,
     chnl) {
   cp <- suppressWarnings(as.numeric(cpObj$cp))[1]
+  # The gate sits below the selected cell; look up the selected cell itself.
   selectedRow <- .getCpUnsLocSelectedThresholdRow(
     dataThreshold,
-    cp
+    attr(cpObj, "cpSelected") %||% cp
   )
 
   if (

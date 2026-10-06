@@ -73,7 +73,7 @@ path_comparison <- file.path(
     "analysis/9-real-compare-acs-cytof.qmd"
   ),
   "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd",
-  semantics_version = "acs-cytof-v2"
+  semantics_version = "acs-cytof-v3"
 )
 manual_comparison_tbl <- .analysis_read_rds(
   path_comparison, "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd"

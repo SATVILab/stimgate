@@ -262,10 +262,17 @@ test_that("gating wrappers pass the logical clustering toggle to stimControl", {
 
 test_that("analysis code no longer uses the retired clustering tolerance names", {
   retired <- paste0("tol", c("Clust", "_clust"))
-  files <- unlist(lapply(c("analysis", "scripts/r"), function(dir) {
-    list.files(file.path(root_dir, dir), recursive = TRUE, full.names = TRUE,
-               pattern = "\\.(R|qmd|md|sh|ya?ml)$")
-  }))
+  skip_if(Sys.which("git") == "", "Source audit requires git")
+  # Render intermediates can retain retired API names; audit source files only.
+  source_paths <- system2("git", c(
+    "-C", shQuote(root_dir), "ls-files", "--cached", "--others",
+    "--exclude-standard", "--", "analysis", "scripts/r"
+  ), stdout = TRUE)
+  expect_null(attr(source_paths, "status"))
+  files <- file.path(root_dir, unique(source_paths[
+    grepl("\\.(R|qmd|md|sh|ya?ml)$", source_paths)
+  ]))
+  expect_gt(length(files), 0L)
   for (file in files) {
     text <- readLines(file, warn = FALSE)
     expect_false(any(vapply(retired, function(name) {

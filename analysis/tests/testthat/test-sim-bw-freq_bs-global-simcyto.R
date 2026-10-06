@@ -415,14 +415,34 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
       mean(expr_means_helper[c(1, 3)])
     )
 
-    # Condition diagnostics retain selection tails; sample diagnostics use
-    # strict applied gates, excluding the cell tied at the threshold.
-    abs_err <- res |>
+    # The applied gate is below the selected cell in an empty gap, so strict
+    # gate counts now include the same >= selected-cell tails as selection.
+    loc_results <- res |>
       dplyr::filter(.data$method %in% c("loc_condition", "loc_sample")) |>
-      dplyr::arrange(.data$sample, .data$ind, .data$method) |>
-      dplyr::transmute(abs_err = abs(.data$propRespEst - .data$propRespTruth)) |>
-      dplyr::pull(.data$abs_err)
+      dplyr::arrange(.data$sample, .data$ind, .data$method)
+    abs_err <- abs(loc_results$propRespEst - loc_results$propRespTruth)
     expect_equal(abs_err, expected_abs_err, tolerance = 1e-8)
+
+    # Match the package's single-precision expression before independently
+    # counting cells above each returned applied gate.
+    gs_reference <- flowWorkspace::GatingSet(methods::as(sim$flowFrameList, "flowSet"))
+    expr_gated <- lapply(seq_along(sim$flowFrameList), function(ind) {
+      flowCore::exprs(flowWorkspace::gh_pop_get_data(gs_reference[[ind]]))[, 1]
+    })
+    for (i in seq_len(nrow(loc_results))) {
+      row <- loc_results[i, ]
+      ind_stim <- as.integer(row$ind)
+      ind_uns <- (as.integer(row$sample) - 1L) * n_condition + 1L
+      n_pos_stim <- sum(expr_gated[[ind_stim]] > row$threshold)
+      n_pos_uns <- sum(expr_gated[[ind_uns]] > row$threshold)
+      expect_equal(row$nPosStim, n_pos_stim)
+      expect_equal(row$nPosUns, n_pos_uns)
+      expect_equal(
+        row$propRespEst,
+        n_pos_stim / n_cell_stim - n_pos_uns / n_cell_uns,
+        tolerance = 1e-12
+      )
+    }
   }
 
   run_case(
@@ -431,7 +451,7 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
     mean_pos = 4,
     bw = 0.02,
     bias_uns = 0.0025,
-    expected_abs_err = c(1 / 240, 0, 0.0375, 10 / 240)
+    expected_abs_err = c(1 / 240, 1 / 240, 0.0375, 0.0375)
   )
 
   run_case(
@@ -440,6 +460,6 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
     mean_pos = 8,
     bw = 0.25,
     bias_uns = 0.05,
-    expected_abs_err = c(0.2, 47 / 240, 0, 1 / 240)
+    expected_abs_err = c(0.2, 0.2, 0, 0)
   )
 })

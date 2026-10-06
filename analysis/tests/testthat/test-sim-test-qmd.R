@@ -28,20 +28,38 @@ test_that("Analysis 2c runs chosen settings through the 2a code path", {
   }
 
   eval(chunk("test-settings"), envir = env)
-  expect_identical(nrow(env$test_grid), 1L)
-  expect_identical(env$test_settings$nSample, 200L)
+  expect_gt(nrow(env$test_grid), 0L)
+  expect_true(is.numeric(env$test_settings$nSample))
+  expect_gte(env$test_settings$nSample, 1L)
+  configured_n_sample <- env$test_settings$nSample
 
   env$analysis_quick <- TRUE
   env$analysis_dev <- FALSE
   quiet(eval(chunk("test-grid"), envir = env))
-  expect_identical(env$test_settings$nSample, 2L)
-  expect_identical(env$test_grid$mean_pos, 8.5)
+  expect_identical(env$test_settings$nSample, min(configured_n_sample, 2L))
+  expect_identical(nrow(env$test_grid), 1L)
+  mean_settings <- env$.simMiscGetMeanPosTbl()
+  expected_mean <- mean_settings$mean_pos[
+    mean_settings$transformation == env$test_grid$transformation &
+      mean_settings$mean_pos_setting == env$test_grid$mean_pos_setting
+  ]
+  expect_length(expected_mean, 1L)
+  expect_equal(env$test_grid$mean_pos, expected_mean)
 
   env$run_simulations <- TRUE
   quiet(eval(chunk("test-run"), envir = env))
-  expect_length(env$test_results, 1L)
+  expected_samples <- if (env$test_subsequent) {
+    seq.int(env$test_sample, env$test_settings$nSample)
+  } else {
+    env$test_sample
+  }
+  expect_length(env$test_results, length(expected_samples))
+  expect_identical(
+    unname(vapply(env$test_results, function(x) x$dbg$sample, integer(1L))),
+    expected_samples
+  )
   dbg <- env$test_results[[1L]]$dbg
-  expect_identical(dbg$ind, "2")
+  expect_identical(dbg$ind, as.character(2L * env$test_sample))
 
   ref <- NULL
   quiet(ref <- env$.simBandwidthRunRow(
@@ -49,16 +67,20 @@ test_that("Analysis 2c runs chosen settings through the 2a code path", {
     env$.simBandwidthFreqBsGlobalScenario,
     env$test_settings
   ))
-  expect_equal(
-    dbg$cp$cp,
-    ref$threshold[ref$method == "loc_sample" & ref$ind == "2"]
-  )
+  for (result in env$test_results) {
+    expect_equal(
+      result$dbg$cp$cp,
+      ref$threshold[ref$method == "loc_sample" & ref$ind == result$dbg$ind]
+    )
+  }
   expect_s3_class(eval(chunk("test-summary"), envir = env), "knitr_kable")
 
   # A stimulated negative-cell shift and a per-row override change only the
   # stimulated tube; the unstimulated cells are the same draws.
   eval(chunk("test-settings"), envir = env)
   quiet(eval(chunk("test-grid"), envir = env))
+  # Compare the same chosen sample across the baseline and shifted rows.
+  env$test_subsequent <- FALSE
   env$test_grid <- dplyr::bind_rows(
     env$test_grid,
     dplyr::mutate(env$test_grid, stim_mean_shift = 0.3, locMinPeakProb = 0.1)

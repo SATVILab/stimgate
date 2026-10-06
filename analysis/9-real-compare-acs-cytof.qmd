@@ -335,7 +335,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .write_rds_atomic(
     list(
-      analysis_semantics_version = "acs-cytof-v2",
+      analysis_semantics_version = "acs-cytof-v3",
       run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))
     ),
     file.path(path_manual_output, "manifest.rds")
@@ -345,7 +345,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
     .analysis_read_rds(
       file.path(path_manual_output, "manifest.rds"), "acs_cytof", analysis_qmd
     ),
-    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v2"
+    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v3"
   )
   manual_comparison_tbl <- .analysis_read_rds(
     path_comparison, "acs_cytof", analysis_qmd
