@@ -96,7 +96,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "global")
-analysis_semantics_version <- "global-bw-freq-v9"
+analysis_semantics_version <- "global-bw-freq-v10"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "final" (default) or "draft" sample/dataset counts; dev and quick win.
@@ -182,11 +182,11 @@ background_relative_to_response_vec <- c(2, 1, 1 / 2, 0.2, 0.1, 0.05, 0.01, 0.00
 n_cell_uns_relative_to_stim_vec <- c(0.1, 0.2, 0.5, 1, 2, 5, 10)[4]
 
 # fix the bandwidth
+# Ten settings per transformation, so bandwidth shades (ranked within each
+# transformation) mean the same position across Gaussian, Skew and Gamma.
 bandwidth_value_vec <- c(
   # gamma
-  0.001, 0.0025, 0.005, 0.0075, 0.01,
-  0.0125, 0.015, 0.0175, 0.02, 0.03,
-  0.04,
+  0.001, 0.0025, 0.005, 0.01, 0.015, 0.02, 0.04,
   # mixed
   0.05, 0.1, 0.15,
   # skew and gaussian
