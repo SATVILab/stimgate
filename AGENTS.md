@@ -1372,3 +1372,10 @@ Comparison figures that need independent panel ranges use `facet_wrap`,
 not row-shared free-y grids. Split crowded grids with headings and
 unique filenames; reuse the shared method colour/shape/linetype
 definitions.
+
+Use unconditional signed-error percentiles, including exact zero errors,
+as the main signed-error performance views. Put conditional
+over-/under-error plots after them and label them as severity
+diagnostics: zeros contribute to direction share denominators but not
+conditional quantiles, and all-exact groups have no directional curve.
+Keep failed/undefined estimates visible in coverage summaries.
