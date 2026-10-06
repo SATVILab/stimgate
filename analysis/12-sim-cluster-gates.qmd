@@ -45,18 +45,6 @@ devtools::load_all(root_dir)
 source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
 source(file.path(scripts_r_dir, "sim-cluster-lab.R"))
 source(file.path(scripts_r_dir, "sim-cluster-weak.R"))
-# Until the shared CSV writer reaches master, use a minimal one with its signature.
-if (!exists(".analysis_report_table", mode = "function")) {
-  .analysis_report_table <- function(tbl, path_parts, description, path_root = NULL) {
-    path_dir <- .analysis_project_dir("output",
-      c("table", utils::head(path_parts, -1L)), path_root)
-    utils::write.csv(tbl, file.path(path_dir, utils::tail(path_parts, 1L)),
-      row.names = FALSE)
-    cat("\n\n", description, " Full table (", nrow(tbl), " rows) saved to `",
-      paste(c("output", "table", path_parts), collapse = "/"), "`.\n\n", sep = "")
-    invisible(tbl)
-  }
-}
 if (isTRUE(run_simulations)) .analysis_require_packages("simcyto")
 ```
 
