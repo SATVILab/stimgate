@@ -777,6 +777,9 @@ rows before drawing reference lines.
    - Record the complete selected cross-chunk grid specification (not just a few scalars) as a required parameter, so editing the grid under the same `analysis_semantics_version` is detected. Bump the semantics version when results change. During integrations, check
      master and every merged branch, including merge history (`git log -m -S`),
      and choose a new identifier above every previously used version.
+   - When extending a comparison response grid, append new biological scenarios
+     after the legacy grid and preserve existing scenario IDs and seeds. Record
+     the resulting full selected grid in the manifest before chunking.
    - Resume retries rows whose saved output or marker recorded an error, so a run ID with a failed simulation can still complete.
 
 

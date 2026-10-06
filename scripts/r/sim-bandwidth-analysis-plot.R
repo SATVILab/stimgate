@@ -731,8 +731,11 @@ add_bw_labs <- function(.data) {
 # Generating distributions for threshold companions, computed once per distinct
 # biological setting in a render. Cell counts, bandwidth and bias are not part
 # of this reference: these are not densities of the gated simulation samples.
+# By default the unstimulated reference is its negative component (bandwidth
+# analyses); use FALSE for whole-tube comparison references such as QMD 7.
 .simBandwidthThresholdDensities <- function(
-    panels, settings, n_cell = 1e5, seed = 271L, density_n = 2048L) {
+    panels, settings, n_cell = 1e5, seed = 271L, density_n = 2048L,
+    unstimulated_negative_only = TRUE) {
   keys <- c(
     "transformation", "mean_pos", "prob_response",
     "sample_perturbation_sd", "condition_perturbation_sd",
@@ -762,7 +765,9 @@ add_bw_labs <- function(.data) {
       )
     })
     x_uns <- flowCore::exprs(out$flowFrameList[[1]])[, 1]
-    x_uns <- x_uns[out$labelsList[[1]] == "gn"]
+    if (isTRUE(unstimulated_negative_only)) {
+      x_uns <- x_uns[out$labelsList[[1]] == "gn"]
+    }
     x_stim <- flowCore::exprs(out$flowFrameList[[2]])[, 1]
     bw <- if (row$transformation == "gamma") 0.025 else 0.15
     limits <- range(c(x_uns, x_stim), finite = TRUE) + c(-3, 3) * bw

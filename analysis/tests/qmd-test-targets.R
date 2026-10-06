@@ -27,7 +27,7 @@
       "test-sim-performance-estimands.R", "test-sim-performance-figures.R",
       "test-analysis-mcse-modes.R", "test-sim-performance-failures.R",
       "test-sim-compare-recorded-errors.R",
-      "test-analysis-sim-size.R"
+      "test-analysis-sim-size.R", "test-qmd7-presentation.R"
     ),
     "8-sim-compare-freq_bs-batch.qmd" = c(
       "test-sim-compare-freq_bs-batch.R", "test-sim-compare-classification.R",
