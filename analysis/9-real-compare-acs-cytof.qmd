@@ -454,7 +454,45 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Over- and under-estimates
+### Unconditional percentiles of signed relative error against manual gating
+
+These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Intervals bootstrap donors, carrying all their tubes together and using common donor draws across methods and strata. They describe agreement with the imperfect manual reference. All seven percentiles share each population panel; cytokine remains on the x axis.
+
+These percentiles pool all stimuli; intervals use donor bootstrap draws.
+
+```{r}
+#| label: manual-signed-percentiles
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  # Summarise all methods together before subsetting to keep common donor draws.
+  manual_percentiles <- .acsCytofManualSignedPercentiles(manual_comparison_tbl)
+  method_sets <- .acsCytofMethodSets()
+  for (set_name in names(method_sets)) {
+    method_set <- method_sets[[set_name]]
+    .analysis_heading(method_set$label, 4)
+    p <- .simBandwidthSignedPercentilePlot(
+      manual_percentiles |> dplyr::filter(method %in% method_set$methods),
+      x = "cyt", x_label = "Cytokine", mcse = TRUE,
+      facet = ggplot2::facet_wrap(~pop, scales = "free_y")
+    )
+    .analysis_print_save_fig(p,
+      file.path(.analysis_fig_dir(c(fig_key, "signed_percentiles", set_name), root_dir),
+        "manual-comparison-signed-percentiles.png"), height = 22)
+    print(knitr::kable(manual_percentiles |> dplyr::filter(method %in% method_set$methods) |>
+      dplyr::select(method, pop, cyt, dplyr::starts_with("n_"),
+        dplyr::starts_with("bootstrap_coverage_"), dplyr::starts_with("interval_available_")), caption = "Donor-bootstrap validity for unconditional percentiles."))
+  }
+}
+```
+
+### Conditional over- and under-estimates
+
+These are conditional error-severity diagnostics: exact agreement (zero error) is excluded from both directions. The direction shares use all finite errors, including zeros, as their denominator; the remaining share is exact agreement. An all-exact group has no directional curve. Use the unconditional signed-error percentiles for overall performance, and the coverage summaries for failed or undefined estimates.
 
 Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Relative error is (automated - manual) / manual for each sample, using the same samples as the figure above. Over-estimates are plotted above zero and under-estimates below, summarised separately by median, 95th percentile and maximum for each method, population (columns) and cytokine. Larger points mean more samples fell in that direction. The scale is linear down to -100% (0x, an estimate of zero) and doubles above zero, so -100% and a two-fold over-estimate are equally far from zero.
 
@@ -492,39 +530,6 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Percentiles of signed relative error against manual gating
-
-The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
-
-Intervals bootstrap donors, carrying all their tubes together and using common donor draws across methods and strata. They describe agreement with the imperfect manual reference. All seven percentiles share each population panel; cytokine remains on the x axis.
-
-These percentiles pool all stimuli; intervals use donor bootstrap draws.
-
-```{r}
-#| label: manual-signed-percentiles
-#| echo: false
-#| results: asis
-if (isTRUE(run_plots)) {
-  # Summarise all methods together before subsetting to keep common donor draws.
-  manual_percentiles <- .acsCytofManualSignedPercentiles(manual_comparison_tbl)
-  method_sets <- .acsCytofMethodSets()
-  for (set_name in names(method_sets)) {
-    method_set <- method_sets[[set_name]]
-    .analysis_heading(method_set$label, 4)
-    p <- .simBandwidthSignedPercentilePlot(
-      manual_percentiles |> dplyr::filter(method %in% method_set$methods),
-      x = "cyt", x_label = "Cytokine", mcse = TRUE,
-      facet = ggplot2::facet_wrap(~pop, scales = "free_y")
-    )
-    .analysis_print_save_fig(p,
-      file.path(.analysis_fig_dir(c(fig_key, "signed_percentiles", set_name), root_dir),
-        "manual-comparison-signed-percentiles.png"), height = 22)
-    print(knitr::kable(manual_percentiles |> dplyr::filter(method %in% method_set$methods) |>
-      dplyr::select(method, pop, cyt, dplyr::starts_with("n_"),
-        dplyr::starts_with("bootstrap_coverage_"), dplyr::starts_with("interval_available_")), caption = "Donor-bootstrap validity for unconditional percentiles."))
-  }
-}
-```
 
 ### Absolute frequency error and results by stimulus
 
