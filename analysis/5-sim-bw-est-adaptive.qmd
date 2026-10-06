@@ -434,6 +434,7 @@ Read the canonical promoted results for plotting.
 ```{r}
 #| label: bw-estimate-collate
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
   bw_tbl_results <- .analysis_read_current(
     run_ctx = run_ctx,
@@ -450,7 +451,8 @@ if (isTRUE(run_plots)) {
       min_prop_est = min(.data$prop_est),
       .groups = "drop"
     ) |>
-    print(width = Inf)
+    .analysis_report_table(c(fig_key, "adaptive-estimate-coverage.csv"),
+      "Grid-row estimate coverage by bandwidth method, component and condition.", path_root = root_dir)
 
   if (any(bw_tbl_results$prop_est < 1)) {
     message(

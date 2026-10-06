@@ -548,10 +548,12 @@ if (isTRUE(run_plots)) {
         )
       )
       .analysis_print_save_fig(p, path_plot, height = 15, mcse_mode = mcse_mode)
-      cat("\n\n", knitr::kable(plot_tbl |> dplyr::select(
+      .analysis_report_table(plot_tbl |> dplyr::select(
         transformation, prob_response, n_cell, bw_mtd,
         n_bw_finite, n_bw_total, prop_bw_finite, norm_fallback_rate
-      ), digits = 3), sep = "\n")
+      ),
+        c(fig_key, "bandwidth-coverage", paste0(tools::file_path_sans_ext(basename(path_plot)), ".csv")),
+        "Finite bandwidth-estimate coverage and normalisation fallback rates for this figure.", path_root = root_dir)
     }
   }
 }

@@ -946,13 +946,14 @@ comp_against_manual_cyt <- function(
 
 # One donor stream across every method/population/cytokine, including donors
 # absent from a stratum as empty blocks, so resampling retains their pairing.
-.acsCytofManualSignedPercentiles <- function(comparisonTbl) {
+.acsCytofManualSignedPercentiles <- function(
+    comparisonTbl, group_cols = c("method", "pop", "cyt")) {
   if (!"SampleID" %in% names(comparisonTbl) || anyNA(comparisonTbl$SampleID)) {
     stop("ACS donor bootstrap requires complete SampleID values.")
   }
   donors <- sort(unique(as.character(comparisonTbl$SampleID)))
   comparisonTbl |>
-    dplyr::group_by(.data$method, .data$pop, .data$cyt) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
     dplyr::group_modify(function(rows, key) {
       missing <- setdiff(donors, as.character(rows$SampleID))
       errors <- rows$rel_error

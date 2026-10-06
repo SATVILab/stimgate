@@ -73,7 +73,23 @@ test_that("Analysis 2c runs chosen settings through the 2a code path", {
       ref$threshold[ref$method == "loc_sample" & ref$ind == result$dbg$ind]
     )
   }
-  expect_s3_class(eval(chunk("test-summary"), envir = env), "knitr_kable")
+  table_root <- tempfile("sim-test-tables-")
+  dir.create(table_root)
+  withr::defer(unlink(table_root, recursive = TRUE))
+  env$root_dir <- normalizePath(table_root, winslash = "/")
+  env$fig_key <- c("2c-sim-test", "quick")
+  env$run_plots <- TRUE
+  env$.analysis_projr_dir <- function(...) NULL
+  output <- paste(utils::capture.output(summary <- eval(chunk("test-summary"), envir = env)), collapse = "\n")
+  expect_s3_class(summary, "data.frame")
+  expect_equal(nrow(summary), length(env$test_results))
+  path_summary <- file.path(table_root, "output", "table", "2c-sim-test", "quick", "test-summary.csv")
+  expect_true(file.exists(path_summary))
+  expect_equal(nrow(readr::read_csv(path_summary, show_col_types = FALSE)), nrow(summary))
+  expect_match(output, "output/table/2c-sim-test/quick/test-summary.csv", fixed = TRUE)
+  env$run_plots <- FALSE
+  env$.analysis_report_table <- function(...) stop("Disabled summary wrote a CSV")
+  expect_no_error(eval(chunk("test-summary"), envir = env))
 
   # A stimulated negative-cell shift and a per-row override change only the
   # stimulated tube; the unstimulated cells are the same draws.

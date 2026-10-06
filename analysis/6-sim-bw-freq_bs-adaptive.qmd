@@ -1456,6 +1456,7 @@ The tables summarise threshold variation and relative frequency error for each b
 ```{r}
 #| label: threshold-summary
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
   # summary_tbl was collated and validated during promotion.
   summary_tbl |>
@@ -1463,8 +1464,8 @@ if (isTRUE(run_plots)) {
       transformation = .analysis_trans_factor(.data$transformation)
     ) |>
     dplyr::arrange(.data$transformation) |>
-    dplyr::mutate(dplyr::across(where(is.numeric), .analysis_label_number)) |>
-    print(width = Inf)
+    .analysis_report_table(c(fig_key, "threshold-summary.csv"),
+      "Threshold variation and relative frequency error by bandwidth pair.", path_root = root_dir)
 }
 ```
 
@@ -1497,8 +1498,7 @@ if (isTRUE(run_plots)) {
       transformation = .analysis_trans_factor(.data$transformation)
     ) |>
     dplyr::arrange(transformation, bias_uns_setting, mean_threshold_sd_rank) |>
-    dplyr::mutate(dplyr::across(where(is.numeric), .analysis_label_number)) |>
-    knitr::kable() |>
-    print()
+    .analysis_report_table(c(fig_key, "threshold-ranks.csv"),
+      "Mean threshold-variation ranks and absolute relative errors by bandwidth pair.", path_root = root_dir)
 }
 ```

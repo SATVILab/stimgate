@@ -486,11 +486,14 @@ Means use complete finite stim/unstim pairs.
 ```{r}
 #| label: bandwidth-estimate-coverage
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  print(knitr::kable(dplyr::select(
+  .analysis_report_table(dplyr::select(
     bw_tbl_results, dplyr::any_of(colnames(sim_grid_all)),
     n_total, n_est, estimate_rate, mean_bw
-  ), caption = "Finite-pair bandwidth coverage by scenario (including zero coverage)."))
+  ),
+    c(fig_key, "bandwidth-estimate-coverage.csv"),
+    "Finite-pair bandwidth coverage by scenario (including zero coverage).", path_root = root_dir)
 }
 ```
 
@@ -599,10 +602,12 @@ if (isTRUE(run_plots)) {
         )
 
         .analysis_print_save_fig(p, path_plot, height = 16, mcse_mode = mcse_mode)
-        cat("\n\n", knitr::kable(plot_tbl |> dplyr::select(
+        .analysis_report_table(plot_tbl |> dplyr::select(
           transformation, prob_response, n_cell, bw_mtd,
           n_est, n_total, estimate_rate, norm_fallback_rate
-        ), digits = 3), sep = "\n")
+        ),
+          c(fig_key, "bandwidth-coverage", paste0(tools::file_path_sans_ext(basename(path_plot)), ".csv")),
+          "Finite bandwidth-estimate coverage and normalisation fallback rates for this figure.", path_root = root_dir)
       }
     }
   }

@@ -247,7 +247,7 @@ test_that("mismatch settings are paired across replicates and agree at zero", {
   expect_equal(agreement$n_same_counts, agreement$n_compared)
 })
 
-test_that("classification plot fixes 0-100% scales and frees the x range", {
+test_that("classification plot spans 0-100% and frees the x range", {
   env <- .classification_env()
   tbl <- tidyr::expand_grid(
     base_scenario_id = 1:2,
@@ -265,7 +265,9 @@ test_that("classification plot fixes 0-100% scales and frees the x range", {
   p <- env$.simComparePlotClassification(tbl, x_label = "Shift")
   expect_s3_class(p, "ggplot")
   built <- ggplot2::ggplot_build(p)
-  expect_equal(built$layout$panel_scales_y[[1]]$limits, c(0, 1))
+  y_range <- built$layout$panel_params[[1]]$y.range
+  expect_lte(y_range[[1]], 0)
+  expect_gte(y_range[[2]], 1)
   expect_setequal(
     levels(built$layout$layout$outcome),
     c("False discovery proportion", "Sensitivity")
@@ -281,7 +283,11 @@ test_that("classification plot fixes 0-100% scales and frees the x range", {
 
   fpr <- env$.simComparePlotClassification(tbl, outcomes = "fpr", unit_scale = FALSE)
   expect_s3_class(fpr, "ggplot")
-  expect_no_error(ggplot2::ggplot_build(fpr))
+  fpr_built <- ggplot2::ggplot_build(fpr)
+  for (panel in fpr_built$layout$panel_params) {
+    expect_lte(panel$y.range[[1]], 0)
+    expect_gte(panel$y.range[[2]], 0.1)
+  }
 })
 
 test_that("gate diagnostic plot draws every method's gate per setting", {

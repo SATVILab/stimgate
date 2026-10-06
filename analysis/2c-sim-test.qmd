@@ -240,7 +240,8 @@ if (isTRUE(run_simulations)) {
 ```{r}
 #| label: test-summary
 #| echo: false
-if (length(test_results) > 0L) {
+#| results: asis
+if (isTRUE(run_plots) && length(test_results) > 0L) {
   purrr::map(test_results, function(x) {
     dplyr::bind_cols(
       x$row |>
@@ -253,7 +254,8 @@ if (length(test_results) > 0L) {
     )
   }) |>
     dplyr::bind_rows() |>
-    knitr::kable(digits = 4)
+    .analysis_report_table(c(fig_key, "test-summary.csv"),
+      "Chosen scenario settings and per-sample local-FDR gate diagnostics.", path_root = root_dir)
 }
 ```
 

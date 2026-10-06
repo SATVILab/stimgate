@@ -127,7 +127,7 @@ test_that("gate diagnostic IDs stay character and sort in numeric order", {
     sim_id = 1L, sample = env$diag_primary$sample,
     sample_gate = 1.4, sample_gate_source = "calculated"
   )
-  code <- .qmd8_view_extract(text, "(?s)diag_stimgate <-.*?(?=\n  print\\(knitr::kable)")
+  code <- .qmd8_view_extract(text, "(?s)diag_stimgate <-.*?(?=\n  \\.analysis_report_table)")
   eval(parse(text = code), env)
   expect_identical(env$diag_stimgate$sample, c("1", "2", "10", "11"))
 })

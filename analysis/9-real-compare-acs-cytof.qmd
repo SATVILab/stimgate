@@ -372,19 +372,23 @@ follow.
 ```{r}
 #| label: show-manual-summary
 #| echo: false
-manual_summary_tbl |>
-  dplyr::select(
-    method:stim, pcc
-  ) |>
-  tidyr::pivot_wider(
-    names_from = method,
-    values_from = pcc
-  ) |>
-  dplyr::mutate(
-    diff_abs = abs(stimgate - fbeta)
-  ) |>
-  dplyr::arrange(desc(diff_abs)) |>
-  print(n = Inf)
+#| results: asis
+if (isTRUE(run_plots)) {
+  manual_summary_tbl |>
+    dplyr::select(
+      method:stim, pcc
+    ) |>
+    tidyr::pivot_wider(
+      names_from = method,
+      values_from = pcc
+    ) |>
+    dplyr::mutate(
+      diff_abs = abs(stimgate - fbeta)
+    ) |>
+    dplyr::arrange(desc(diff_abs)) |>
+    .analysis_report_table(c(fig_key, "manual-correlations.csv"),
+      "Pearson correlations and absolute differences by population, cytokine and stimulus.", path_root = root_dir)
+}
 ```
 
 ### Estimated versus reference response frequency
@@ -483,9 +487,60 @@ if (isTRUE(run_plots)) {
     .analysis_print_save_fig(p,
       file.path(.analysis_fig_dir(c(fig_key, "signed_percentiles", set_name), root_dir),
         "manual-comparison-signed-percentiles.png"), height = 22)
-    print(knitr::kable(manual_percentiles |> dplyr::filter(method %in% method_set$methods) |>
+    .analysis_report_table(manual_percentiles |> dplyr::filter(method %in% method_set$methods) |>
       dplyr::select(method, pop, cyt, dplyr::starts_with("n_"),
-        dplyr::starts_with("bootstrap_coverage_"), dplyr::starts_with("interval_available_")), caption = "Donor-bootstrap validity for unconditional percentiles."))
+        dplyr::starts_with("bootstrap_coverage_"), dplyr::starts_with("interval_available_")),
+      c(fig_key, "signed_percentiles", set_name, "coverage.csv"),
+      "Donor-bootstrap validity for unconditional percentiles.", path_root = root_dir)
+  }
+}
+```
+
+### Unconditional percentiles of signed relative error by stimulus
+
+These figures keep stimuli separate and include every finite signed relative
+error, including exact agreement at zero. Relative error is (automated - manual)
+/ manual and requires a positive manual net frequency; failed or undefined
+estimates remain in the coverage table. Manual gating is an imperfect reference.
+Each population panel shows all seven percentiles, with cytokine on the x axis.
+The outer pair is 2.5th/97.5th, or 5th/95th throughout a figure if either outer
+interval is unavailable at any finite point; the figure labels that fallback.
+Quantiles are computed on raw errors before the signed display transformation.
+
+Donor-bootstrap intervals carry all tubes for a donor together, using common
+draws across methods, stimuli and strata. They describe between-donor uncertainty,
+not uncertainty in manual gating, and are retained in every render.
+
+```{r}
+#| label: manual-signed-percentiles-by-stimulus
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  manual_percentiles_by_stimulus <- .acsCytofManualSignedPercentiles(
+    manual_comparison_tbl, group_cols = c("method", "pop", "cyt", "stim")
+  )
+  method_sets <- .acsCytofMethodSets()
+  for (stimulus in unique(as.character(manual_percentiles_by_stimulus$stim))) {
+    .analysis_heading(paste("Stimulus:", stimulus), 4)
+    for (set_name in names(method_sets)) {
+      method_set <- method_sets[[set_name]]
+      .analysis_heading(method_set$label, 5)
+      rows <- manual_percentiles_by_stimulus |>
+        dplyr::filter(.data$stim == .env$stimulus, method %in% method_set$methods)
+      p <- .simBandwidthSignedPercentilePlot(
+        rows, x = "cyt", x_label = "Cytokine", mcse = TRUE,
+        facet = ggplot2::facet_wrap(~pop, scales = "free_y")
+      )
+      .analysis_print_save_fig(p,
+        file.path(.analysis_fig_dir(
+          c(fig_key, "signed_percentiles_by_stimulus", stimulus, set_name), root_dir),
+          "manual-comparison-signed-percentiles.png"), height = 22)
+      .analysis_report_table(rows |>
+        dplyr::select(method, pop, cyt, stim, dplyr::starts_with("n_"),
+          dplyr::starts_with("bootstrap_coverage_"), dplyr::starts_with("interval_available_")),
+        c(fig_key, "signed_percentiles_by_stimulus", stimulus, paste0(set_name, ".csv")),
+        "Donor-bootstrap validity for unconditional percentiles by stimulus.", path_root = root_dir)
+    }
   }
 }
 ```
@@ -545,7 +600,11 @@ unmatched cohort keys remain in the separate exclusion CSV.
 ```{r}
 #| label: manual-error-coverage
 #| echo: false
-print(manual_summary_tbl, n = Inf)
+#| results: asis
+if (isTRUE(run_plots)) {
+  .analysis_report_table(manual_summary_tbl, c(fig_key, "manual-error-coverage.csv"),
+    "Matched-row, failed, scored and relative-error exclusion counts by stratum.", path_root = root_dir)
+}
 ```
 
 The following figures separate stimuli so a strong response in one stimulus does
@@ -587,9 +646,11 @@ not uncertainty about whether manual gating is biologically correct.
 ```{r}
 #| label: manual-donor-uncertainty
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
   manual_uncertainty_tbl <- .acsCytofManualUncertainty(manual_comparison_tbl)
-  print(manual_uncertainty_tbl, n = Inf)
+  .analysis_report_table(manual_uncertainty_tbl, c(fig_key, "manual-donor-uncertainty.csv"),
+    "Donor-bootstrap intervals for mean frequency and relative errors.", path_root = root_dir)
 }
 ```
 

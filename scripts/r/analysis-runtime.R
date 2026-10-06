@@ -570,6 +570,77 @@
   .analysis_project_dir("output", c("fig", path_parts), path_root, create)
 }
 
+# CSV companions use the same analysis/profile key as figures. Call only from
+# the surrounding plot/report guard; resolving with create = FALSE is read-only.
+.analysis_table_dir <- function(path_parts, path_root = NULL, create = TRUE) {
+  .analysis_project_dir("output", c("table", path_parts), path_root, create)
+}
+
+# Save the full table and name its output-relative path in the report. Coverage
+# ranges keep failures, denominators and suppressed intervals visible without
+# printing a scenario grid. They describe rows, not a pooled scientific estimate.
+.analysis_report_table <- function(tbl, path_parts, description, path_root = NULL) {
+  path <- file.path(
+    .analysis_table_dir(utils::head(path_parts, -1L), path_root),
+    utils::tail(path_parts, 1L)
+  )
+  csv_tbl <- tbl
+  # Bootstrap summaries can retain vectors of draws in list columns. Preserve
+  # these in one CSV cell rather than letting write_csv silently omit them.
+  list_cols <- vapply(csv_tbl, is.list, logical(1))
+  if (any(list_cols)) {
+    csv_tbl[list_cols] <- lapply(csv_tbl[list_cols], function(col) {
+      vapply(col, function(x) paste(x, collapse = ";"), character(1))
+    })
+  }
+  readr::write_csv(csv_tbl, path)
+  relative <- paste(c("output", "table", path_parts), collapse = "/")
+  cat("\n\n", description, " Full table (", nrow(tbl), " rows) saved to `",
+    relative, "`.\n\n", sep = "")
+  coverage_cols <- grep(
+    paste0("(^n($|_)|^prop_.*finite|coverage|rate$|^interval_available|",
+      "^bootstrap_reps$|^paired_datasets$|^samples$|^fdp_defined$|^empty$|",
+      "fallback|^zero$|^negative$|^positive_at_or_below_floor$)"),
+    names(tbl), value = TRUE
+  )
+  # Method-specific cohorts must stay distinguishable in the HTML.
+  groups <- if ("method" %in% names(tbl)) unique(as.character(tbl$method)) else "all rows"
+  for (group in groups) {
+    rows <- if ("method" %in% names(tbl)) {
+      tbl[as.character(tbl$method) %in% group, , drop = FALSE]
+    } else tbl
+    notes <- vapply(coverage_cols, function(col) {
+      x <- rows[[col]]
+      if (is.logical(x)) {
+        value <- paste0(sum(x %in% TRUE), " / ", length(x), " available; ",
+          sum(x %in% FALSE), " unavailable; ", sum(is.na(x)), " missing")
+      } else if (is.numeric(x)) {
+        finite <- x[is.finite(x)]
+        value <- if (length(finite)) {
+          paste(format(range(finite), trim = TRUE, scientific = FALSE), collapse = " to ")
+        } else "undefined"
+        if (any(!is.finite(x))) {
+          value <- paste0(value, " (", sum(!is.finite(x)), " missing)")
+        }
+      } else if (length(x) && all(is.na(x) | grepl("^[0-9]+ / [0-9]+", x))) {
+        numerator <- as.numeric(sub(" /.*", "", x))
+        denominator <- as.numeric(sub("^[0-9]+ / ([0-9]+).*", "\\1", x))
+        value <- if (any(is.finite(numerator))) paste0(
+          paste(range(numerator, na.rm = TRUE), collapse = " to "), " / ",
+          paste(range(denominator, na.rm = TRUE), collapse = " to ")
+        ) else "undefined"
+      } else {
+        return("")
+      }
+      paste0(col, ": ", value)
+    }, character(1))
+    notes <- notes[nzchar(notes)]
+    if (length(notes)) cat("Coverage for ", group, " (ranges across table rows): ",
+      paste(notes, collapse = "; "), ".\n\n", sep = "")
+  }
+  invisible(tbl)
+}
+
 # Read-only stand-in for `.analysis_run_context()` when only the canonical
 # promoted results are needed (e.g. interactively, without running the
 # simulation chunk). Staging fields point at `current/`, so collation code

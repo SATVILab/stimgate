@@ -52,7 +52,7 @@
       "test-acs-cytof-paths.R"
     ),
     "10-real-compare-acs-cytof-validation.qmd" = c(
-      "test-acs-cytof-validation-plots.R", "test-acs-cytof-paths.R"
+      "test-signed-percentile-plots.R", "test-acs-cytof-validation-plots.R", "test-acs-cytof-paths.R"
     ),
     "2c-sim-test.qmd" = c(
       "test-sim-test-qmd.R", "test-sim-debug-loc.R", "test-sim-debug-compare.R"

@@ -565,6 +565,7 @@ if (isTRUE(run_simulations)) {
 ```{r}
 #| label: compare-collate
 #| echo: false
+#| results: asis
 # Without `run_ctx` (simulation chunk not run in this session), read the
 # canonical promoted results under `current/`.
 if (!exists("run_ctx")) {
@@ -625,7 +626,9 @@ if (isTRUE(run_plots)) {
       mean_abs_error,
       rmse,
       threshold_median
-    )
+    ) |>
+    .analysis_report_table(c(fig_key, paste0("mcse_", mcse_mode), "comparison-summary.csv"),
+      "Frequency-error and threshold summaries by scenario and method.", path_root = root_dir)
 }
 
 if (!isTRUE(run_plots)) {
@@ -667,9 +670,11 @@ separately through dataset occurrence and conditional severity.
 ```{r}
 #| label: pooled-bootstrap-coverage
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  print(knitr::kable(.simComparePerformanceCoverage(compare_summary, scenario_cols),
-    caption = "Pooled-statistic bootstrap coverage and unavailable intervals by scenario and method."))
+  .analysis_report_table(.simComparePerformanceCoverage(compare_summary, scenario_cols),
+    c(fig_key, paste0("mcse_", mcse_mode), "pooled-bootstrap-coverage.csv"),
+    "Pooled-statistic bootstrap coverage and unavailable intervals by scenario and method.", path_root = root_dir)
 }
 ```
 
@@ -708,11 +713,12 @@ if (isTRUE(run_plots)) {
         ) |>
         dplyr::select(dplyr::all_of(c(
           "transformation", "prob_response", "n_cell", "condition_perturbation_sd",
-          "outcome", "method", "paired_datasets", "mean_difference", "interval_95",
+          "outcome", "method", "paired_datasets", "n_pair", "n_dataset", "mean_difference", "interval_95",
           "tube_coverage_stimgate", "tube_coverage_competitor"
         )))
-      print(knitr::kable(table, digits = 4,
-        caption = "Dataset-level paired differences: StimGate minus competitor."))
+      .analysis_report_table(table,
+        c(fig_key, paste0("mcse_", mcse_mode), "paired-differences", paste0(paste(set$methods, collapse = "-"), "-", pos, ".csv")),
+        "Dataset-level paired differences: StimGate minus competitor.", path_root = root_dir)
       cat("\n\n")
     }
   }
@@ -853,6 +859,7 @@ if (isTRUE(run_plots)) {
 ```{r}
 #| label: compare-relative-error-summary
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
   compare_summary |>
     dplyr::filter(
@@ -877,7 +884,52 @@ if (isTRUE(run_plots)) {
     dplyr::arrange(
       dplyr::desc(q95_abs_rel_error_fbeta)
     ) |>
-    print(n = Inf, width = Inf)
+    .analysis_report_table(c(fig_key, paste0("mcse_", mcse_mode), "relative-error-summary.csv"),
+      "Relative-error statistics for each method and scenario.", path_root = root_dir)
+}
+```
+
+### Unconditional percentiles of signed relative error by cell count
+
+These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
+
+```{r}
+#| label: signed-percentiles-cell-count
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  percentile_tbl <- compare_tbl |>
+    dplyr::filter(condition_perturbation_sd == 0) |>
+    .simCompareSignedPercentileSummary(
+      scenarioCols = scenario_cols, mcse = show_mcse
+    )
+  .analysis_report_table(.simComparePerformanceCoverage(percentile_tbl, scenario_cols),
+    c(fig_key, paste0("mcse_", mcse_mode), "signed-percentiles-cell-count.csv"),
+    "Unconditional pooled-percentile coverage, including undefined bootstrap draws.", path_root = root_dir)
+  .simCompareFigureLoop(
+    percentile_tbl,
+    make_plot = function(d) .simBandwidthSignedPercentilePlot(d, x = "n_cell",
+      x_label = "Number of stimulated cells", x_log = TRUE, mcse = show_mcse) +
+      ggplot2::aes(shape = method, linetype = method) +
+      .analysis_scale_method(c("colour", "shape", "linetype")),
+    dir = file.path(plot_dir, "signed_percentiles_by_n_cell"),
+    file_fn = function(pos, extra) {
+      paste0(
+        "freq_bs_signed_percentiles_meanpos_setting_", pos, "_prob_response_",
+        gsub("[^0-9a-z]+", "_", .analysis_label_percent(extra)), ".png"
+      )
+    },
+    height = 14,
+    level = 4L,
+    extra_col = "prob_response",
+    extra_heading = function(x) {
+      paste0("Response probability: ", .analysis_label_percent(x))
+    }, mcse_mode = mcse_mode
+  )
 }
 ```
 
@@ -902,14 +954,16 @@ dataset maxima need not exceed pooled sample percentiles.
 ```{r}
 #| label: dataset-max-coverage
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
   dataset_max <- .simCompareDatasetMaxSummary(
     compare_tbl |> dplyr::filter(condition_perturbation_sd == 0),
     scenarioCols = scenario_cols, expected_samples = n_sample_sim,
     expected_datasets = seq_len(n_iter_sim), mcse = show_mcse
   )
-  print(knitr::kable(.simCompareDatasetMaxCoverage(dataset_max), digits = 3,
-    caption = "Method-specific eligible, incomplete and affected dataset cohorts; bootstrap coverage."))
+  .analysis_report_table(.simCompareDatasetMaxCoverage(dataset_max),
+    c(fig_key, paste0("mcse_", mcse_mode), "dataset-max-coverage.csv"),
+    "Method-specific eligible, incomplete and affected dataset cohorts; bootstrap coverage.", path_root = root_dir)
 }
 ```
 
@@ -956,49 +1010,6 @@ sibling `ratio*` folder. The curves and intervals are identical: 1x is exact,
 0x is an estimate of zero and 2x is twice the reference. Negative ratios remain
 visible; a capped upper tick reads “≥ 16x”.
 
-### Unconditional percentiles of signed relative error by cell count
-
-These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
-
-The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
-
-Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
-
-```{r}
-#| label: signed-percentiles-cell-count
-#| echo: false
-#| results: asis
-if (isTRUE(run_plots)) {
-  percentile_tbl <- compare_tbl |>
-    dplyr::filter(condition_perturbation_sd == 0) |>
-    .simCompareSignedPercentileSummary(
-      scenarioCols = scenario_cols, mcse = show_mcse
-    )
-  print(knitr::kable(.simComparePerformanceCoverage(percentile_tbl, scenario_cols),
-    caption = "Unconditional pooled-percentile coverage, including undefined bootstrap draws."))
-  .simCompareFigureLoop(
-    percentile_tbl,
-    make_plot = function(d) .simBandwidthSignedPercentilePlot(d, x = "n_cell",
-      x_label = "Number of stimulated cells", x_log = TRUE, mcse = show_mcse) +
-      ggplot2::aes(shape = method, linetype = method) +
-      .analysis_scale_method(c("colour", "shape", "linetype")),
-    dir = file.path(plot_dir, "signed_percentiles_by_n_cell"),
-    file_fn = function(pos, extra) {
-      paste0(
-        "freq_bs_signed_percentiles_meanpos_setting_", pos, "_prob_response_",
-        gsub("[^0-9a-z]+", "_", .analysis_label_percent(extra)), ".png"
-      )
-    },
-    height = 14,
-    level = 4L,
-    extra_col = "prob_response",
-    extra_heading = function(x) {
-      paste0("Response probability: ", .analysis_label_percent(x))
-    }, mcse_mode = mcse_mode
-  )
-}
-```
-
 ### Conditional over- and under-estimates by cell count
 
 These are conditional error-severity diagnostics: exact agreement (zero error) is excluded from both directions. The direction shares use all finite errors, including zeros, as their denominator; the remaining share is exact agreement. An all-exact group has no directional curve. Use the unconditional signed-error percentiles for overall performance, and the coverage summaries for failed or undefined estimates.
@@ -1028,8 +1039,9 @@ if (isTRUE(run_plots)) {
     .simCompareSignedErrorSummary(
       scenarioCols = scenario_cols, mcse = show_mcse
     )
-  print(knitr::kable(.simComparePerformanceCoverage(signed_tbl, scenario_cols),
-    caption = "Directional pooled-percentile coverage, including undefined bootstrap draws."))
+  .analysis_report_table(.simComparePerformanceCoverage(signed_tbl, scenario_cols),
+    c(fig_key, paste0("mcse_", mcse_mode), "signed-error-cell-count.csv"),
+    "Directional pooled-percentile coverage, including undefined bootstrap draws.", path_root = root_dir)
   .simCompareFigureLoop(
     signed_tbl,
     make_plot = function(d) .simComparePlotSignedError(d,
@@ -1092,8 +1104,9 @@ if (isTRUE(run_plots)) {
     height = 9,
     level = 4L,
     after_plot = function(d, p) {
-      print(knitr::kable(.simCompareQmd7FloorTable(d, unique(p$data$plot_floor)),
-        caption = "Estimates at or below the plotting floor; denominators count method/sample estimates."))
+      .analysis_report_table(.simCompareQmd7FloorTable(d, unique(p$data$plot_floor)),
+        c(fig_key, paste0("mcse_", mcse_mode), "estimated_vs_true_frequency", paste0(paste(unique(d$method), collapse = "-"), "-", unique(d$mean_pos_setting), ".csv")),
+        "Estimates at or below the plotting floor; denominators count method/sample estimates.", path_root = root_dir)
       cat("\n\n")
     }
   )
@@ -1113,9 +1126,11 @@ can also be threshold fallbacks, so these columns are not disjoint.
 ```{r}
 #| label: threshold-fallback
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  print(knitr::kable(.simCompareQmd7FallbackTable(compare_summary),
-    caption = "Threshold provenance: count / all intended samples (percentage)."))
+  .analysis_report_table(.simCompareQmd7FallbackTable(compare_summary),
+    c(fig_key, paste0("mcse_", mcse_mode), "threshold-fallback.csv"),
+    "Threshold provenance: count / all intended samples (percentage).", path_root = root_dir)
 }
 ```
 

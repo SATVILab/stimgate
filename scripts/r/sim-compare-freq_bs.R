@@ -3362,7 +3362,8 @@
     allow_tall = FALSE,
     ratio_twins = FALSE,
     mcse_mode = NULL,
-    after_plot = NULL) {
+    after_plot = NULL,
+    fit_panels = FALSE) {
   if (level + 1L + as.integer(!is.null(extra_col)) > 6L) {
     stop("Figure loop headings would be deeper than level 6.")
   }
@@ -3398,14 +3399,16 @@
         }
         if (nrow(curr) == 0L) next
         p <- make_plot(curr)
+        plot_height <- if (isTRUE(fit_panels)) .analysis_facet_height(p) else height
         .analysis_print_save_fig(
           p, file.path(dir, set_name, file_fn(pos, extra)),
-          height = height, allow_tall = allow_tall, mcse_mode = mcse_mode
+          height = plot_height, allow_tall = allow_tall, mcse_mode = mcse_mode,
+          fit_panels = fit_panels
         )
         if (!is.null(after_plot)) after_plot(curr, p)
         if (isTRUE(ratio_twins)) {
           .simBandwidthPrintRatioTwin(p, file.path(dir, set_name, file_fn(pos, extra)),
-            height = height, allow_tall = allow_tall, mcse_mode = mcse_mode)
+            height = plot_height, allow_tall = allow_tall || fit_panels, mcse_mode = mcse_mode)
         }
       }
     }
@@ -3603,6 +3606,7 @@
       ~scenario_desc, scales = "free_y", ncol = 2, labeller = .simCompareStripWrap()
     ) +
     ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
+    .analysis_y_floor() +
     .simCompareMismatchScales("Additive mean shift (transformed expression scale)", c("colour", "shape", "linetype")) +
     ggplot2::guides(
       colour = ggplot2::guide_legend(nrow = 1, byrow = TRUE),
@@ -3639,6 +3643,7 @@
       transform = scales::asinh_trans(), labels = .analysis_label_percent,
       breaks = scales::breaks_pretty(n = 4)
     ) +
+    .analysis_y_floor() +
     .simCompareMismatchScales("Mismatch size", c("colour", "shape", "linetype")) +
     ggplot2::labs(y = "Tube-level 90th percentile absolute relative error (asinh scale)")
 }
@@ -4165,8 +4170,10 @@
         tail = tail_label
       )
     ) +
+    # Same order for colour and shape, so they merge into one Method legend.
     ggplot2::guides(
       colour = ggplot2::guide_legend(order = 1),
+      shape = ggplot2::guide_legend(order = 1),
       linetype = ggplot2::guide_legend(order = 2, ncol = 1)
     ) +
     ggplot2::labs(
@@ -4175,12 +4182,12 @@
     .analysis_theme()
   if (unit_scale) {
     p + ggplot2::scale_y_continuous(
-      limits = c(0, 1), breaks = seq(0, 1, 0.25),
+      breaks = seq(0, 1, 0.25),
       labels = .analysis_label_percent
-    )
+    ) + .analysis_y_floor(c(0, 1))
   } else {
     p + ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
-      ggplot2::expand_limits(y = 0)
+      .analysis_y_floor()
   }
 }
 

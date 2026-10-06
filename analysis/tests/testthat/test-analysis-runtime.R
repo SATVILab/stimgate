@@ -1029,8 +1029,9 @@ test_that("analysis mode keys isolate dev and quick results with dev precedence"
   env <- new.env(parent = baseenv())
   source(script_runtime, local = env)
   key <- c("sim", "test")
-  withr::local_envvar(PROJR_PROFILE = NA, SIM_SIZE = NA)
-  # Draft is the current default size; final runs keep the plain key.
+  # _projr.yml chooses the size; SIM_SIZE makes the test independent of it.
+  withr::local_envvar(PROJR_PROFILE = NA, SIM_SIZE = "draft")
+  # Draft results get their own key; final runs keep the plain key.
   expect_identical(env$.analysis_mode_key(key), c(key, "draft"))
   Sys.setenv(SIM_SIZE = "final")
   expect_identical(env$.analysis_mode_key(key), key)

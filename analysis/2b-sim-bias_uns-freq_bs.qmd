@@ -737,7 +737,10 @@ if (isTRUE(run_plots)) {
               transformation == transformation_curr,
               mean_pos_setting == mean_pos_setting_curr,
               prob_response == prob_response_curr
-            ))
+            ),
+            table_parts = c(fig_key, "coverage", "relative-error-averaged-n-cell",
+              paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+            path_root = root_dir)
         }
       }
     }
@@ -814,7 +817,10 @@ if (isTRUE(run_plots)) {
                 mean_pos_setting == mean_pos_setting_curr,
                 prob_response == prob_response_curr,
                 n_cell == n_cell_curr
-              ))
+              ),
+              table_parts = c(fig_key, "coverage", "relative-error-by-n-cell",
+                paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+              path_root = root_dir)
           }
         }
       }
@@ -909,7 +915,10 @@ if (isTRUE(run_plots)) {
               transformation == transformation_curr,
               mean_pos_setting == mean_pos_setting_curr,
               prob_response == prob_response_curr
-            ))
+            ),
+            table_parts = c(fig_key, "coverage", "signed-percentiles",
+              paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+            path_root = root_dir)
         }
       }
     }
@@ -996,7 +1005,10 @@ if (isTRUE(run_plots)) {
               transformation == transformation_curr,
               mean_pos_setting == mean_pos_setting_curr,
               prob_response == prob_response_curr
-            ))
+            ),
+            table_parts = c(fig_key, "coverage", "signed-percentiles-averaged-n-cell",
+              paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+            path_root = root_dir)
         }
       }
     }
@@ -1080,7 +1092,10 @@ if (isTRUE(run_plots)) {
               transformation == transformation_curr,
               mean_pos_setting == mean_pos_setting_curr,
               prob_response == prob_response_curr
-            ))
+            ),
+            table_parts = c(fig_key, "coverage", "signed-error-averaged-n-cell",
+              paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+            path_root = root_dir)
         }
       }
     }
@@ -1164,7 +1179,10 @@ if (isTRUE(run_plots)) {
                 mean_pos_setting == mean_pos_setting_curr,
                 prob_response == prob_response_curr,
                 n_cell == n_cell_curr
-              ))
+              ),
+              table_parts = c(fig_key, "coverage", "signed-percentiles-by-n-cell",
+                paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+              path_root = root_dir)
           }
         }
       }
@@ -1245,7 +1263,10 @@ if (isTRUE(run_plots)) {
                 mean_pos_setting == mean_pos_setting_curr,
                 prob_response == prob_response_curr,
                 n_cell == n_cell_curr
-              ))
+              ),
+              table_parts = c(fig_key, "coverage", "signed-error-by-n-cell",
+                paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+              path_root = root_dir)
           }
         }
       }
@@ -1257,6 +1278,9 @@ if (isTRUE(run_plots)) {
 
 
 ## Estimated response frequency
+
+Rate and absolute-error axes span at least 0–10% and expand to include larger
+values and intervals. Signed-error figures retain their ±100% reference span.
 
 Median estimated frequency is plotted against bias multiplier, with colour identifying bandwidth. Rows of panels separate cell counts and columns mismatch settings; dashed lines show the simulated truth. Curves closer to those lines indicate better agreement. Error bars are 95% intervals for each median from the sorted valid estimates of that setting.
 
@@ -1339,6 +1363,7 @@ if (isTRUE(run_plots)) {
             .simBandwidthRankScales(plot_tbl) +
             scale_x_continuous(labels = .analysis_label_number) +
             scale_y_continuous(labels = .analysis_label_percent) +
+            .analysis_y_floor() +
             .analysis_theme() +
             labs(
               x = "Bias multiplier",
@@ -1368,7 +1393,10 @@ if (isTRUE(run_plots)) {
               transformation == transformation_curr,
               mean_pos_setting == mean_pos_setting_curr,
               prob_response == prob_response_curr
-            ))
+            ),
+            table_parts = c(fig_key, "coverage", "estimated-frequency",
+              paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+            path_root = root_dir)
         }
       }
     }

@@ -782,7 +782,10 @@ if (isTRUE(run_plots)) {
       .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
       .analysis_print_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, bias_uns_setting == bias_uns_setting_curr))
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, bias_uns_setting == bias_uns_setting_curr),
+        table_parts = c(fig_key, "coverage", "frequency-median",
+          paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+        path_root = root_dir)
     }
   }
 }
@@ -907,7 +910,10 @@ if (isTRUE(run_plots)) {
       .analysis_heading(paste0("Bias: ", bias_uns_setting_curr), 5)
       .analysis_print_save_fig(p, path_p, height = 22)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, bias_uns_setting == bias_uns_setting_curr))
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, bias_uns_setting == bias_uns_setting_curr),
+        table_parts = c(fig_key, "coverage", "frequency-samples",
+          paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+        path_root = root_dir)
     }
   }
 }
@@ -915,6 +921,7 @@ if (isTRUE(run_plots)) {
 
 ```{r}
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
   bw_tbl_results_raw |>
     dplyr::filter(
@@ -937,13 +944,14 @@ if (isTRUE(run_plots)) {
       .groups = "drop"
     ) |>
     dplyr::arrange(transformation, n_cell, bw) |>
-    print(width = Inf, n = Inf)
+    .analysis_report_table(c(fig_key, "frequency-tail-counts.csv"),
+      "Sample-frequency exceedance percentages by scenario.", path_root = root_dir)
 }
 ```
 
 ### Relative error averaged over cell counts
 
-The table above is hard to read.
+The full frequency-tail counts are available in the CSV named above.
 Can't we, for example, compare the average error to the mean?
 
 Relative error is plotted against bandwidth, with one figure per mean position. Scenario-level median, 95th-percentile and maximum errors are averaged equally over cell counts and response probabilities, using low bias; panels separate transformations. With `show_mcse` on, the median and 95th percentile have error bars: each scenario's standard error comes from the width of its order-statistic interval, and the averaged value has plus or minus 1.96 combined standard errors (treating scenarios as independent). The maximum has none.
@@ -1039,7 +1047,10 @@ if (isTRUE(run_plots)) {
     .analysis_print_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
     .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
       dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
-      dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
+      dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0),
+      table_parts = c(fig_key, "coverage", "relative-error-averaged-n-cell",
+        paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+      path_root = root_dir)
   }
 }
 ```
@@ -1131,7 +1142,10 @@ if (isTRUE(run_plots)) {
       .analysis_print_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
-        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
+        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0),
+        table_parts = c(fig_key, "coverage", "relative-error-by-n-cell",
+          paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+        path_root = root_dir)
     }
   }
 }
@@ -1190,7 +1204,10 @@ if (isTRUE(run_plots)) {
 
     .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
       dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
-      dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
+      dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0),
+      table_parts = c(fig_key, "coverage", "signed-percentiles-averaged-n-cell",
+        paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+      path_root = root_dir)
   }
 }
 ```
@@ -1241,7 +1258,10 @@ if (isTRUE(run_plots)) {
     .simBandwidthPrintRatioTwin(p, path_p, height = 18, mcse_mode = mcse_mode)
     .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
       dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
-      dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
+      dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0),
+      table_parts = c(fig_key, "coverage", "signed-error-averaged-n-cell",
+        paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+      path_root = root_dir)
   }
 }
 ```
@@ -1300,7 +1320,10 @@ if (isTRUE(run_plots)) {
 
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
-        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
+        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0),
+        table_parts = c(fig_key, "coverage", "signed-percentiles-by-n-cell",
+          paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+        path_root = root_dir)
     }
   }
 }
@@ -1355,7 +1378,10 @@ if (isTRUE(run_plots)) {
       .simBandwidthPrintRatioTwin(p, path_p, height = 18, mcse_mode = mcse_mode)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
-        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
+        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0),
+        table_parts = c(fig_key, "coverage", "signed-error-by-n-cell",
+          paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+        path_root = root_dir)
     }
   }
 }
@@ -1418,7 +1444,10 @@ if (isTRUE(run_plots)) {
 
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
-        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
+        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0),
+        table_parts = c(fig_key, "coverage", "signed-percentiles-by-n-cell-prob",
+          paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+        path_root = root_dir)
     }
   }
 }
@@ -1479,7 +1508,10 @@ if (isTRUE(run_plots)) {
       .simBandwidthPrintRatioTwin(p, path_p, height = min(22, 6 + 3 * n_prob), mcse_mode = mcse_mode)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
-        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
+        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0),
+        table_parts = c(fig_key, "coverage", "signed-error-by-n-cell-prob",
+          paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+        path_root = root_dir)
     }
   }
 }
@@ -1489,6 +1521,7 @@ if (isTRUE(run_plots)) {
 
 ```{r}
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
   bw_tbl_results_raw |>
     dplyr::filter(
@@ -1508,12 +1541,14 @@ if (isTRUE(run_plots)) {
       .groups = "drop"
     ) |>
     dplyr::arrange(transformation, condition_perturbation_sd, n_cell, bw) |>
-    print(width = Inf, n = Inf)
+    .analysis_report_table(c(fig_key, "condition-mismatch-tail-counts.csv"),
+      "Sample-frequency exceedance percentages by scenario.", path_root = root_dir)
 }
 ```
 
 ```{r}
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
   bw_tbl_results_raw |>
     dplyr::filter(
@@ -1532,7 +1567,9 @@ if (isTRUE(run_plots)) {
       perc_g_5 = sum(propRespEst > 0.5, na.rm = TRUE) / dplyr::n() * 1e2,
       .groups = "drop"
     ) |>
-    dplyr::arrange(condition_perturbation_sd, sample_perturbation_sd, cluster_perturbation_sd, n_cell, bw)
+    dplyr::arrange(condition_perturbation_sd, sample_perturbation_sd, cluster_perturbation_sd, n_cell, bw) |>
+    .analysis_report_table(c(fig_key, "perturbation-tail-counts.csv"),
+      "Frequency exceedance percentages across all perturbation settings.", path_root = root_dir)
 }
 ```
 
@@ -1602,7 +1639,10 @@ if (isTRUE(run_plots)) {
         .analysis_print_save_fig(p, path_p, height = 22)
         .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
           dplyr::filter(mean_pos_setting == mean_pos_setting_curr, bias_uns_setting == bias_uns_setting_curr,
-            prob_response == prob_response_curr))
+            prob_response == prob_response_curr),
+          table_parts = c(fig_key, "coverage", "threshold-median",
+            paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+          path_root = root_dir)
       }
     }
   }
@@ -1638,7 +1678,10 @@ if (isTRUE(run_plots)) {
         .analysis_print_save_fig(p, path_p, height = 22)
         .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
           dplyr::filter(mean_pos_setting == mean_pos_setting_curr, bias_uns_setting == bias_uns_setting_curr,
-            prob_response == prob_response_curr))
+            prob_response == prob_response_curr),
+          table_parts = c(fig_key, "coverage", "threshold-samples",
+            paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
+          path_root = root_dir)
       }
     }
   }
@@ -1673,6 +1716,7 @@ if (isTRUE(run_plots)) {
 
 ```{r}
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
   summary_tbl |>
     dplyr::select(
@@ -1692,6 +1736,7 @@ if (isTRUE(run_plots)) {
     dplyr::arrange(bias_uns_setting, mean_rank) |>
     dplyr::filter(!transformation == "gamma") |>
     dplyr::mutate(transformation = .analysis_trans_factor(transformation)) |>
-    knitr::kable()
+    .analysis_report_table(c(fig_key, "threshold-variation.csv"),
+      "Threshold SD by transformation, bias and bandwidth setting.", path_root = root_dir)
 }
 ```

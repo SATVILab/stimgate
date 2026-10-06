@@ -37,16 +37,14 @@
   )) +
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
     ggplot2::geom_point(size = 1.5, alpha = 0.75) +
-    (if (quantity == "occurrence") ggplot2::facet_grid(
-      if (by_prob) direction ~ transformation + prob_response else direction ~ transformation,
-      labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent("Response probability: "))
-    ) else ggplot2::facet_wrap(
+    ggplot2::facet_wrap(
       if (by_prob) ggplot2::vars(direction, transformation, prob_response) else
         ggplot2::vars(direction, transformation),
-      ncol = length(unique(tbl$transformation)) * if (by_prob) length(unique(tbl$prob_response)) else 1L,
-      scales = "free_y",
+      ncol = min(3L, length(unique(tbl$transformation)) *
+        if (by_prob) length(unique(tbl$prob_response)) else 1L),
+      scales = if (quantity == "occurrence") "fixed" else "free_y",
       labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent("Response probability: "))
-    )) +
+    ) +
     (if (x_log) ggplot2::scale_x_log10(
       breaks = sort(unique(tbl[[x]])), labels = .analysis_label_number,
       guide = ggplot2::guide_axis(angle = 45)
@@ -54,7 +52,8 @@
     .analysis_scale_method(c("colour", "shape", "linetype")) + .analysis_theme() +
     ggplot2::labs(x = x_label, colour = "Method")
   if (quantity == "occurrence") {
-    p <- p + ggplot2::scale_y_continuous(limits = c(0, 1), labels = .analysis_label_percent) +
+    p <- p + ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
+      .analysis_y_floor(c(0, 1)) +
       ggplot2::labs(y = "Eligible datasets with at least one directional error")
     if (isTRUE(mcse)) p <- p + .analysis_mcse_errorbar(tbl)
   } else {

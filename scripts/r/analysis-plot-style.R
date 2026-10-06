@@ -73,6 +73,22 @@
     )
 }
 
+# Train every facet in data space without setting limits or clipping intervals.
+# Omitting facet variables broadcasts the two invisible endpoints to every panel,
+# including free-y panels, without training their x scales or aesthetic legends.
+.analysis_y_floor <- function(range = c(0, 0.1)) {
+  ggplot2::geom_blank(
+    data = data.frame(.axis_floor = range),
+    mapping = ggplot2::aes(y = .axis_floor), inherit.aes = FALSE
+  )
+}
+
+# Reserve room for strips, axes and legends, plus 5 cm per facet row.
+.analysis_facet_height <- function(plot) {
+  layout <- ggplot2::ggplot_build(plot)$layout$layout
+  5 + 5 * max(layout$ROW)
+}
+
 # Construct variants from one completed plot. Removing marked MC layers leaves
 # all points, axes, non-MC intervals and ratio coordinates unchanged.
 .analysis_mcse_plot_variants <- function(plot, mcse_mode = NULL) {
@@ -132,23 +148,51 @@
 }
 
 # Print a plot inside a `results: asis` loop, separated from the next heading.
-.analysis_print_fig <- function(plot, mcse_mode = NULL) {
+.analysis_print_fig <- function(plot, mcse_mode = NULL, width = NULL, height = NULL) {
   variants <- .analysis_mcse_plot_variants(plot, mcse_mode)
   for (version in names(variants)) {
     if (version != "original") {
       cat("\n\n**Monte Carlo error bars: ", version, "**\n\n", sep = "")
     }
-    print(variants[[version]])
+    if (!is.null(height) && isTRUE(getOption("knitr.in.progress"))) {
+      # A loop can contain different facet counts. A PNG device per plot makes
+      # HTML use the same dimensions as the saved figure, independent of the
+      # chunk's fixed fig.width/fig.height. Embed it as a data URI: Quarto only
+      # embeds figures knitr recorded, and drops other files in its figure
+      # folder, while a knit_print() of include_graphics() in a
+      # `results: asis` chunk prints only the path.
+      path <- tempfile("analysis-figure-", fileext = ".png")
+      on.exit(unlink(path), add = TRUE)
+      (function() {
+        grDevices::png(path, width = width, height = height, units = "cm", res = 150)
+        on.exit(grDevices::dev.off())
+        print(variants[[version]])
+      })()
+      cat("![](", knitr::image_uri(path), "){width=100%}", sep = "")
+    } else {
+      print(variants[[version]])
+    }
     cat("\n\n")
   }
   invisible(plot)
 }
 
 # Print before opening a save device so asis headings keep their own figure.
-.analysis_print_save_fig <- function(plot, path, ..., mcse_mode = NULL) {
-  .analysis_print_fig(plot, mcse_mode = mcse_mode)
+.analysis_print_save_fig <- function(plot, path, ..., mcse_mode = NULL,
+                                     fit_panels = FALSE) {
+  sizes <- if (isTRUE(fit_panels)) list(
+    width = .analysis_fig_width, height = .analysis_facet_height(plot), allow_tall = TRUE
+  ) else list()
+  if (isTRUE(fit_panels)) {
+    .analysis_print_fig(plot, mcse_mode = mcse_mode,
+      width = sizes$width, height = sizes$height)
+  } else {
+    .analysis_print_fig(plot, mcse_mode = mcse_mode)
+  }
   if (exists(".simBandwidthDisplayNote", mode = "function")) .simBandwidthDisplayNote(.analysis_mcse_plot_variants(plot, mcse_mode)[[1L]], path)
-  .analysis_save_fig(plot, path, ..., mcse_mode = mcse_mode)
+  args <- list(...)
+  args[names(sizes)] <- sizes
+  do.call(.analysis_save_fig, c(list(plot = plot, path = path, mcse_mode = mcse_mode), args))
 }
 
 # Colour roles, kept distinct so a colour means one thing across the analyses:

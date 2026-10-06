@@ -41,6 +41,8 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-mcse.R"))
+source(file.path(scripts_r_dir, "sim-bandwidth-analysis-plot.R"))
 fig_key <- .analysis_mode_key("10-real-compare-acs-cytof-validation", sized = FALSE)
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-manual.R"))
@@ -113,7 +115,12 @@ can dominate it. The table reports matched-row and exclusion denominators.
 ```{r}
 #| label: validation-error-coverage
 #| echo: false
-print(.acsCytofManualSummaryTable(manual_comparison_tbl), n = Inf)
+#| results: asis
+if (isTRUE(run_plots)) {
+  .analysis_report_table(.acsCytofManualSummaryTable(manual_comparison_tbl),
+    c(fig_key, "validation-error-coverage.csv"),
+    "Matched-row, failed, scored and exclusion denominators by stratum.", path_root = root_dir)
+}
 ```
 
 These 95% percentile intervals estimate between-donor uncertainty of mean absolute
@@ -127,8 +134,11 @@ bias or uncertainty in manual gating itself.
 ```{r}
 #| label: validation-donor-uncertainty
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots)) {
-  print(.acsCytofManualUncertainty(manual_comparison_tbl), n = Inf)
+  .analysis_report_table(.acsCytofManualUncertainty(manual_comparison_tbl),
+    c(fig_key, "validation-donor-uncertainty.csv"),
+    "Donor-bootstrap intervals for mean frequency and relative errors.", path_root = root_dir)
 }
 ```
 
@@ -139,8 +149,59 @@ if (isTRUE(run_plots)) {
 ```{r}
 #| label: correlation-table
 #| echo: false
+#| results: asis
 correlation_tbl <- .acsCytofValidationCorrelationTable(manual_comparison_tbl)
-correlation_tbl
+if (isTRUE(run_plots)) {
+  .analysis_report_table(correlation_tbl, c(fig_key, "validation-correlations.csv"),
+    "Eligible-stratum PCC and CCC with matched-row and exclusion counts.", path_root = root_dir)
+}
+```
+
+### Unconditional percentiles of signed relative error by stimulus
+
+These figures keep stimuli separate and include every finite signed relative
+error, including exact agreement at zero. Relative error is (automated - manual)
+/ manual and requires a positive manual net frequency; failed or undefined
+estimates remain in the coverage table. Manual gating is an imperfect reference.
+Each population panel shows all seven percentiles, with cytokine on the x axis.
+The outer pair is 2.5th/97.5th, or 5th/95th throughout a figure if either outer
+interval is unavailable at any finite point; the figure labels that fallback.
+Quantiles are computed on raw errors before the signed display transformation.
+
+Donor-bootstrap intervals carry all tubes for a donor together, using common
+draws across methods, stimuli and strata. They describe between-donor uncertainty,
+not uncertainty in manual gating, and are retained in every render.
+
+```{r}
+#| label: validation-signed-percentiles-by-stimulus
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  manual_percentiles_by_stimulus <- .acsCytofManualSignedPercentiles(
+    manual_comparison_tbl, group_cols = c("method", "pop", "cyt", "stim")
+  )
+  for (stimulus in unique(as.character(manual_percentiles_by_stimulus$stim))) {
+    .analysis_heading(paste("Stimulus:", stimulus), 4)
+    for (method in validation_methods) {
+      .analysis_heading(paste("Method:", .acsCytofValidationMethodLabels()[[method]]), 5)
+      rows <- manual_percentiles_by_stimulus |>
+        dplyr::filter(.data$stim == .env$stimulus, .data$method == .env$method)
+      p <- .simBandwidthSignedPercentilePlot(
+        rows, x = "cyt", x_label = "Cytokine", mcse = TRUE,
+        facet = ggplot2::facet_wrap(~pop, scales = "free_y")
+      )
+      .analysis_print_save_fig(p,
+        file.path(.analysis_fig_dir(
+          c(fig_key, "signed_percentiles_by_stimulus", stimulus, method), root_dir),
+          "manual-comparison-signed-percentiles.png"), height = 22)
+      .analysis_report_table(rows |>
+        dplyr::select(method, pop, cyt, stim, dplyr::starts_with("n_"),
+          dplyr::starts_with("bootstrap_coverage_"), dplyr::starts_with("interval_available_")),
+        c(fig_key, "signed_percentiles_by_stimulus", stimulus, paste0(method, ".csv")),
+        "Donor-bootstrap validity for unconditional percentiles by stimulus.", path_root = root_dir)
+    }
+  }
+}
 ```
 
 ### Validation figures

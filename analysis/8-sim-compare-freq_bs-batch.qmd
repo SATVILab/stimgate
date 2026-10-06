@@ -679,6 +679,7 @@ if (isTRUE(run_simulations)) {
 ```{r}
 #| label: compare-summary
 #| echo: false
+#| results: asis
 path_rds <- .analysis_current_file(
   run_ctx = run_ctx,
   relative_path = c("collated", "compare_raw.rds"),
@@ -730,7 +731,10 @@ compare_summary <- .simCompareSummariseFreqBs(
   mcse = show_mcse
 )
 
-compare_summary
+if (isTRUE(run_plots)) {
+  .analysis_report_table(compare_summary, c(fig_key, paste0("mcse_", mcse_mode), "comparison-summary.csv"),
+    "Full frequency-performance summary by scenario and method.", path_root = root_dir)
+}
 ```
 
 ## Validation checks
@@ -756,6 +760,7 @@ any figure is drawn; the render stops if one fails.
 ```{r}
 #| label: validation-checks
 #| echo: false
+#| results: asis
 mismatch_validation <- .simCompareValidateMismatch(compare_raw)
 pairing_check <- mismatch_validation$pairing_check
 zero_agreement <- mismatch_validation$zero_agreement
@@ -776,21 +781,19 @@ cat(
   "Paired data in all", nrow(pairing_check),
   "baseline-scenario, replicate and sample groups.\n"
 )
-knitr::kable(
-  zero_agreement |>
-    dplyr::mutate(
-      mismatch_type = unname(.simCompareMismatchLabels[mismatch_type]),
-      method = unname(.analysis_method_labels[method])
-    ),
-  col.names = c(
-    "Zero-mismatch variant", "Method", "Pairs", "Failed pairs", "Compared", "Same gate",
-    "Same counts", "Largest gate difference"
-  ),
-  caption = paste(
-    "Agreement of each zero-mismatch variant with the zero shift of all",
-    "stimulated cells, on the same replicates. Failed pairs retain missing outcomes; only finite pairs are compared."
-  )
-)
+if (isTRUE(run_plots)) {
+  .analysis_report_table(
+    zero_agreement |>
+      dplyr::mutate(
+        mismatch_type = unname(.simCompareMismatchLabels[mismatch_type]),
+        method = unname(.analysis_method_labels[method])
+      ),
+    c(fig_key, paste0("mcse_", mcse_mode), "validation-checks.csv"),
+    paste(
+      "Agreement of each zero-mismatch variant with the zero shift of all",
+      "stimulated cells, on the same replicates. Failed pairs retain missing outcomes; only finite pairs are compared."
+    ), path_root = root_dir)
+}
 
 if (!isTRUE(run_plots)) {
   message("run_plots is false, so stopping after the canonical comparison summary.")
@@ -875,12 +878,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     function(d) {
       .compare_baseline_note(d)
       if ("n_scenario_median" %in% names(d)) {
-        count_cols <- c(
-          "transformation", "mismatch_val", "method", "n_cell", "direction",
-          "n_scenario_median", "n_scenario_q95"
-        )
-        cat("\n\nContributing scenarios per statistic:\n\n",
-            knitr::kable(dplyr::select(d, dplyr::any_of(count_cols))), sep = "\n")
+        # Full per-row contributing counts are in the mismatch-error-summaries CSVs.
+        cat("\n\n", .simBandwidthScenarioCaption(d), ".\n\n", sep = "")
         plot_fn(
           d, x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
           stat_cols = c(
@@ -929,6 +928,7 @@ contains few negatives.
 ```{r}
 #| label: classification-summary
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   classification_cols <- c(
     "base_scenario_id", "scenario_desc", "transformation", "mean_pos_setting",
@@ -938,8 +938,9 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     compare_raw,
     scenarioCols = classification_cols, mcse = show_mcse
   )
-  print(knitr::kable(.simComparePerformanceCoverage(class_scenario, classification_cols),
-    caption = "Tube-level classification bootstrap coverage and unavailable intervals."))
+  .analysis_report_table(.simComparePerformanceCoverage(class_scenario, classification_cols),
+    c(fig_key, paste0("mcse_", mcse_mode), "classification-summary.csv"),
+    "Tube-level classification bootstrap coverage and unavailable intervals.", path_root = root_dir)
 }
 ```
 
@@ -978,16 +979,22 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
         ) |>
         dplyr::select(dplyr::all_of(c(
           "scenario_desc", "mismatch_type", "mismatch_val",
-          "outcome", "method", "paired_datasets", "mean_difference", "interval_95",
+          "outcome", "method", "paired_datasets", "n_pair", "n_dataset", "mean_difference", "interval_95",
           "tube_coverage_stimgate", "tube_coverage_competitor"
         )))
-      print(knitr::kable(table, digits = 4,
-        caption = "Dataset-level paired differences: StimGate minus competitor."))
+      .analysis_report_table(table,
+        c(fig_key, paste0("mcse_", mcse_mode), "paired-differences", paste0(paste(set$methods, collapse = "-"), "-", pos, ".csv")),
+        "Dataset-level paired differences: StimGate minus competitor.", path_root = root_dir)
       cat("\n\n")
     }
   }
 }
 ```
+
+Figures reserve height for each facet row; HTML and saved figures use the
+same proportions. Rate axes span at least 0–10%, while existing 0–100%
+classification and ±100% signed-error reference spans are retained. Ranges
+expand with the data and intervals.
 
 ### FDP and sensitivity against mismatch size
 
@@ -1017,7 +1024,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 13,
-    level = 4L, mcse_mode = mcse_mode
+    level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
 }
 ```
@@ -1039,12 +1046,11 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     .analysis_heading(
       paste0("Mismatch: ", unname(.simCompareMismatchLabels[type])), 4L
     )
-    print(knitr::kable(
-      .simCompareClassificationCountTable(
+    .analysis_report_table(.simCompareClassificationCountTable(
         class_scenario[class_scenario$mismatch_type == type, ]
       ),
-      caption = "Tube counts: valid / FDP defined / empty gates / fallbacks."
-    ))
+      c(fig_key, paste0("mcse_", mcse_mode), "classification-counts", paste0(type, ".csv")),
+      "Tube counts: valid / FDP defined / empty gates / fallbacks.", path_root = root_dir)
     cat("\n\n")
   }
 }
@@ -1057,8 +1063,8 @@ cells that lie above the gate. It is a secondary diagnostic. FDP depends on
 how common genuine positives are as well as on the gate: the same
 false-positive rate gives a much larger FDP when the response is rare, so
 differences in FDP between rare- and common-response scenarios are not all
-due to the methods. The vertical scales here are not fixed, because the
-rates are small. Each panel has independent ranges, arranged in two columns.
+due to the methods. Each panel has an independent vertical range spanning at least 0–10%,
+expanding for larger rates or intervals, arranged in two columns.
 
 ```{r}
 #| label: false-positive-rate
@@ -1076,7 +1082,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 9,
-    level = 4L, mcse_mode = mcse_mode
+    level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
 }
 ```
@@ -1171,13 +1177,9 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
       mismatch_type = unname(.simCompareMismatchLabels[mismatch_type]),
       method = unname(.analysis_method_labels[method])
     )
-  print(knitr::kable(
-    diag_summary,
-    col.names = c(
-      "Mismatch", "Shift", "Method", "Samples", "FDP defined", "Median FDP",
-      "Median sensitivity", "Median selected", "Empty gates", "Fallbacks"
-    )
-  ))
+  .analysis_report_table(diag_summary,
+    c(fig_key, paste0("mcse_", mcse_mode), "gate-diagnostic-summary.csv"),
+    "Median gate-purity outcomes, defined FDP counts, empty gates and fallbacks by mismatch and method.", path_root = root_dir)
   cat("\n\n")
 
   diag_stimgate <- diag_primary |>
@@ -1197,14 +1199,9 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
       status = gate_status
     ) |>
     dplyr::arrange(mismatch, shift, as.integer(sample))
-  print(knitr::kable(
-    diag_stimgate,
-    col.names = c(
-      "Mismatch", "Shift", "Sample", "Final gate", "Sample-level gate",
-      "Sample-level gate source", "Final gate source", "FDP", "Sensitivity",
-      "Selected", "Gate status"
-    )
-  ))
+  .analysis_report_table(diag_stimgate,
+    c(fig_key, paste0("mcse_", mcse_mode), "stimgate-diagnostic-gates.csv"),
+    "StimGate sample-level and final gates, provenance and gate-purity outcomes.", path_root = root_dir)
 }
 ```
 
@@ -1234,7 +1231,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     )
     .analysis_print_save_fig(
       p, file.path(dir_diag, paste0("plot_sample_", s, ".pdf")),
-      height = 16
+      height = 16, fit_panels = TRUE
     )
   }
 }
@@ -1270,7 +1267,8 @@ which an originally contributing scenario has no finite statistic is undefined;
 its coverage is reported and unreliable intervals are suppressed. Point
 estimates and their contributing scenarios stay the same with intervals on/off.
 
-Absolute-error figures ignore direction; signed figures split over- and
+Absolute-error figures ignore direction; unconditional signed percentiles retain
+zeros and both error directions. Conditional diagnostics split over- and
 under-estimates and retain the share of valid samples in each direction.
 Exact agreement belongs to neither direction. Every figure has all-method and
 no-Tailgate versions. Main rows show median and 95th percentile, while the
@@ -1281,6 +1279,7 @@ Bars and points share the +1500% cap; negative signed estimates remain visible.
 ```{r}
 #| label: mismatch-error-summaries
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   scenario_error_cols <- c(
     "base_scenario_id", "transformation", "mean_pos_setting",
@@ -1304,11 +1303,18 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     compare_raw, scenario_error_cols, mcse = show_mcse)
   percentile_averaged <- .analysis_mcse_bootstrap_average(
     percentile_scenario, group_all, names(.simBandwidthSignedErrorProbs), mcse = TRUE)
-  print(knitr::kable(.simComparePerformanceCoverage(percentile_scenario, scenario_error_cols),
-    caption = "Unconditional pooled-percentile bootstrap validity."))
-  print(knitr::kable(.simComparePerformanceCoverage(percentile_averaged, group_all),
-    caption = "Unconditional scenario-percentile average bootstrap validity."))
+  .analysis_report_table(.simComparePerformanceCoverage(percentile_scenario, scenario_error_cols),
+    c(fig_key, paste0("mcse_", mcse_mode), "mismatch-error-summaries", "percentile-scenario.csv"),
+    "Unconditional pooled-percentile bootstrap validity.", path_root = root_dir)
+  .analysis_report_table(.simComparePerformanceCoverage(percentile_averaged, group_all),
+    c(fig_key, paste0("mcse_", mcse_mode), "mismatch-error-summaries", "percentile-averaged.csv"),
+    "Unconditional scenario-percentile average bootstrap validity.", path_root = root_dir)
   group_cell <- c(group_all, "n_cell")
+  percentile_by_cell <- .analysis_mcse_bootstrap_average(
+    percentile_scenario, group_cell, names(.simBandwidthSignedErrorProbs), mcse = TRUE)
+  .analysis_report_table(.simComparePerformanceCoverage(percentile_by_cell, group_cell),
+    c(fig_key, paste0("mcse_", mcse_mode), "mismatch-error-summaries", "percentile-by-cell.csv"),
+    "Unconditional per-cell-count percentile bootstrap validity.", path_root = root_dir)
   err_averaged <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_all, mcse = show_mcse)
   err_by_cell <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_cell, mcse = show_mcse)
   signed_averaged <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_all, signed = TRUE, mcse = show_mcse)
@@ -1318,8 +1324,9 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   coverage_keys <- list(scenario_error_cols, scenario_error_cols, group_all,
     group_cell, group_all, group_cell)
   for (i in seq_along(coverage_summaries)) {
-    print(knitr::kable(.simComparePerformanceCoverage(coverage_summaries[[i]], coverage_keys[[i]]),
-      caption = "Pooled or scenario-average bootstrap coverage; undefined draws and unavailable intervals."))
+    .analysis_report_table(.simComparePerformanceCoverage(coverage_summaries[[i]], coverage_keys[[i]]),
+      c(fig_key, paste0("mcse_", mcse_mode), "mismatch-error-summaries", paste0("coverage-", i, ".csv")),
+      "Pooled or scenario-average bootstrap coverage; undefined draws and unavailable intervals.", path_root = root_dir)
   }
 }
 ```
@@ -1346,7 +1353,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 14,
-    level = 4L, mcse_mode = mcse_mode
+    level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
 }
 ```
@@ -1373,7 +1380,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"),
     height = 14,
-    level = 4L, mcse_mode = mcse_mode
+    level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
 }
 ```
@@ -1407,6 +1414,38 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     file_fn = .compare_mismatch_file,
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
+    height = 16,
+    level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
+  )
+}
+```
+
+### Unconditional percentiles of signed relative error at each cell count
+
+These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Each cell count identifies one baseline response probability within its transformation and mean-position setting; baselines are kept separate.
+
+Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
+
+```{r}
+#| label: signed-percentiles-by-n-cell
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .simCompareFigureLoop(
+    percentile_by_cell,
+    make_plot = function(d) .simBandwidthSignedPercentilePlot(
+      d, x = "mismatch_val", x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
+      x_log = FALSE, mcse = show_mcse) +
+      ggplot2::aes(shape = method, linetype = method) +
+      .analysis_scale_method(c("colour", "shape", "linetype")),
+    dir = .compare_fresh_fig_dir("signed_percentiles_by_n_cell"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = c("mismatch_type", "n_cell"),
     height = 16,
     level = 4L, mcse_mode = mcse_mode
   )
@@ -1442,7 +1481,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = "mismatch_type",
     ratio_twins = TRUE,
     height = 16,
-    level = 4L, mcse_mode = mcse_mode
+    level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
 }
 ```
@@ -1476,7 +1515,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = c("mismatch_type", "n_cell"),
     ratio_twins = TRUE,
     height = 16,
-    level = 4L, mcse_mode = mcse_mode
+    level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
 }
 ```
@@ -1501,12 +1540,14 @@ need not exceed the pooled sample percentiles above.
 ```{r}
 #| label: dataset-max-coverage
 #| echo: false
+#| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   dataset_max <- .simCompareDatasetMaxSummary(compare_raw,
     scenarioCols = scenario_error_cols, expected_samples = n_sample_sim,
     expected_datasets = seq_len(n_iter_sim), mcse = show_mcse)
-  print(knitr::kable(.simCompareDatasetMaxCoverage(dataset_max), digits = 3,
-    caption = "Method-specific eligible, incomplete and affected dataset cohorts; bootstrap coverage."))
+  .analysis_report_table(.simCompareDatasetMaxCoverage(dataset_max),
+    c(fig_key, paste0("mcse_", mcse_mode), "dataset-max-coverage.csv"),
+    "Method-specific eligible, incomplete and affected dataset cohorts; bootstrap coverage.", path_root = root_dir)
 }
 ```
 
@@ -1525,7 +1566,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     dir = .compare_fresh_fig_dir("dataset_max_occurrence_by_n_cell_prob"),
     file_fn = .compare_mismatch_file, extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"), height = 14, level = 4L,
-    mcse_mode = mcse_mode)
+    mcse_mode = mcse_mode, fit_panels = TRUE)
 }
 ```
 
@@ -1549,7 +1590,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     dir = .compare_fresh_fig_dir("dataset_max_signed_error_severity_by_n_cell_prob"),
     file_fn = .compare_mismatch_file, extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"), ratio_twins = TRUE,
-    height = 14, level = 4L, mcse_mode = mcse_mode)
+    height = 14, level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE)
 }
 ```
 
@@ -1584,7 +1625,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = "mismatch_type",
     extra_heading = .compare_mismatch_heading,
     height = 16,
-    level = 4L, mcse_mode = mcse_mode
+    level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
 }
 ```
@@ -1616,7 +1657,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = "mismatch_type",
     extra_heading = .compare_mismatch_heading,
     height = 18,
-    level = 4L, mcse_mode = mcse_mode
+    level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
 }
 ```

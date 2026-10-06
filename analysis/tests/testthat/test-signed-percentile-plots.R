@@ -2,7 +2,8 @@
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   env <- new.env(parent = getNamespace("stimgate"))
   for (file in c("analysis-runtime.R", "analysis-plot-style.R", "analysis-mcse.R",
-    "sim-bandwidth-analysis-plot.R", "sim-compare-freq_bs.R", "acs_cytof-manual.R")) {
+    "sim-bandwidth-analysis-plot.R", "sim-compare-freq_bs.R", "acs_cytof-manual.R",
+    "acs_cytof-plot_cyt.R")) {
     source(file.path(root, "scripts", "r", file), local = env)
   }
   env
@@ -153,12 +154,15 @@ test_that("all requested percentile QMD chunks parse and obey plot controls", {
     "2b-sim-bias_uns-freq_bs.qmd" = c("signed-percentiles",
       "signed-percentiles-averaged-n-cell", "signed-percentiles-by-n-cell"),
     "7-sim-compare-freq_bs.qmd" = "signed-percentiles-cell-count",
-    "8-sim-compare-freq_bs-batch.qmd" = "signed-percentiles-averaged",
-    "9-real-compare-acs-cytof.qmd" = "manual-signed-percentiles"
+    "8-sim-compare-freq_bs-batch.qmd" = c("signed-percentiles-averaged",
+      "signed-percentiles-by-n-cell"),
+    "9-real-compare-acs-cytof.qmd" = c("manual-signed-percentiles",
+      "manual-signed-percentiles-by-stimulus"),
+    "10-real-compare-acs-cytof-validation.qmd" = "validation-signed-percentiles-by-stimulus"
   )
   for (doc in names(labels)) {
     lines <- readLines(file.path(root, "analysis", doc), warn = FALSE)
-    if (startsWith(doc, "9-")) {
+    if (startsWith(doc, "9-") || startsWith(doc, "10-")) {
       expect_true(any(grepl('source(file.path(scripts_r_dir, "analysis-mcse.R"))', lines, fixed = TRUE)))
     }
     for (label in labels[[doc]]) {
@@ -175,4 +179,154 @@ test_that("all requested percentile QMD chunks parse and obey plot controls", {
       expect_false(grepl("RatioTwin|ratio_twins = TRUE", code))
     }
   }
+})
+
+
+test_that("stimulus percentile summaries retain zeros, failures and common donor draws", {
+  env <- .signed_percentile_env()
+  tbl <- tidyr::expand_grid(SampleID = letters[1:6], cyt = c("a", "b"),
+    pop = "CD4", method = c("stimgate", "fbeta"), stim = c("s1", "s2")) |>
+    dplyr::mutate(rel_error = match(SampleID, letters) - 3, thresholdFailed = FALSE)
+  groups <- c("method", "pop", "cyt", "stim")
+  out <- env$.acsCytofManualSignedPercentiles(tbl, group_cols = groups)
+  expect_equal(nrow(out), 8L)
+  expect_true(all(out$n_finite == 6L))
+  expect_true(all(vapply(out$.boot_median,
+    function(v) identical(v, out$.boot_median[[1]]), logical(1))))
+  failed <- tbl
+  failed$thresholdFailed[failed$stim == "s2"] <- TRUE
+  failed_out <- env$.acsCytofManualSignedPercentiles(failed, group_cols = groups)
+  expect_true(all(is.na(failed_out$median[failed_out$stim == "s2"])))
+  expect_true(all(failed_out$n_finite[failed_out$stim == "s2"] == 0L))
+  # A donor absent from one stimulus remains an empty block in its bootstrap.
+  sparse <- tbl[!(tbl$stim == "s2" & tbl$SampleID == "f"), ]
+  sparse_out <- env$.acsCytofManualSignedPercentiles(sparse, group_cols = groups)
+  direct <- env$.simBandwidthSignedErrorPercentiles(c(-2, -1, 0, 1, 2, NA),
+    mcse = TRUE, unit = letters[1:6], bootstrap_family = "acs-donors")
+  expect_equal(sparse_out$.boot_median[[which(sparse_out$stim == "s2")[[1]]]],
+    direct$.boot_median[[1]])
+})
+
+test_that("ACS stimulus percentile chunks print every requested method and keep strata separate", {
+  root <- normalizePath(file.path(testthat::test_path(), "../../.."))
+  docs <- c("9-real-compare-acs-cytof.qmd", "10-real-compare-acs-cytof-validation.qmd")
+  labels <- c("manual-signed-percentiles-by-stimulus", "validation-signed-percentiles-by-stimulus")
+  for (i in seq_along(docs)) {
+    env <- .signed_percentile_env()
+    env$manual_comparison_tbl <- tidyr::expand_grid(SampleID = letters[1:6],
+      cyt = c("a", "b"), pop = c("CD4", "CD8"),
+      method = c("stimgate", "fbeta", "tailgate"), stim = c("s1", "s2")) |>
+      dplyr::mutate(rel_error = match(SampleID, letters) - 3, thresholdFailed = FALSE)
+    env$validation_methods <- env$.acsCytofValidationMethods()
+    env$fig_key <- "test"
+    env$root_dir <- root
+    # Exercise real print orchestration, intercepting filesystem saves only.
+    env$.analysis_fig_dir <- function(parts, ...) file.path("fig", paste(parts, collapse = "/"))
+    env$.simBandwidthDisplayNote <- function(...) invisible(NULL)
+    plots <- list()
+    paths <- character()
+    env$print <- function(x, ...) {
+      if (inherits(x, "ggplot")) plots[[length(plots) + 1L]] <<- x
+      invisible(x)
+    }
+    env$.analysis_save_fig <- function(plot, path, ...) {
+      paths <<- c(paths, path)
+      invisible(NULL)
+    }
+    tables <- list()
+    env$.analysis_report_table <- function(tbl, path_parts, ...) {
+      tables[[length(tables) + 1L]] <<- path_parts
+      invisible(tbl)
+    }
+    lines <- readLines(file.path(root, "analysis", docs[[i]]), warn = FALSE)
+    start <- which(lines == paste0("#| label: ", labels[[i]]))
+    end <- start + which(lines[seq.int(start + 1L, length(lines))] == "```")[[1]]
+    code <- parse(text = lines[seq.int(start + 1L, end - 1L)])
+    env$run_plots <- TRUE
+    capture.output(eval(code, env))
+    expect_length(plots, if (i == 1L) 4L else 6L)
+    expect_length(unique(paths), length(plots))
+    # One bootstrap-validity CSV per figure, each at its own path
+    expect_length(unique(tables), length(plots))
+    for (plot in plots) {
+      expect_equal(dplyr::n_distinct(plot$data$stim), 1L)
+      expect_equal(dplyr::n_distinct(plot$data$percentile), 7L)
+      expect_setequal(plot$data$pop, c("CD4", "CD8"))
+      expect_no_error(ggplot2::ggplot_build(plot))
+    }
+    expect_setequal(unlist(lapply(plots, function(p) as.character(p$data$method))),
+      c("stimgate", "fbeta", "tailgate"))
+    if (i == 1L) {
+      expect_setequal(plots[[1]]$data$method, c("stimgate", "fbeta", "tailgate"))
+      expect_setequal(plots[[2]]$data$method, c("stimgate", "fbeta"))
+    } else {
+      expect_true(all(vapply(plots, function(p) dplyr::n_distinct(p$data$method) == 1L,
+        logical(1))))
+    }
+    plots <- list()
+    paths <- character()
+    env$run_plots <- FALSE
+    capture.output(eval(code, env))
+    expect_length(plots, 0L)
+    expect_length(paths, 0L)
+  }
+})
+
+test_that("main signed percentile views precede conditional severity diagnostics", {
+  root <- normalizePath(file.path(testthat::test_path(), "../../.."))
+  for (doc in c("7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd",
+    "9-real-compare-acs-cytof.qmd")) {
+    lines <- readLines(file.path(root, "analysis", doc), warn = FALSE)
+    main <- which(grepl("^#\\| label: .*signed-percentiles", lines))
+    conditional <- which(grepl("^#\\| label: (signed-error|manual-signed-error|dataset-max-severity)", lines))
+    expect_true(max(main) < min(conditional), info = doc)
+  }
+})
+
+
+test_that("Analysis 8 per-cell percentile chunk keeps cell counts and mismatch types separate", {
+  env <- .signed_percentile_env()
+  root <- normalizePath(file.path(testthat::test_path(), "../../.."))
+  lines <- readLines(file.path(root, "analysis", "8-sim-compare-freq_bs-batch.qmd"),
+    warn = FALSE)
+  chunk <- function(label) {
+    start <- which(lines == paste0("#| label: ", label))
+    end <- start + which(lines[seq.int(start + 1L, length(lines))] == "```")[[1]]
+    parse(text = lines[seq.int(start + 1L, end - 1L)])
+  }
+  env$run_plots <- TRUE
+  env$results_available <- TRUE
+  env$show_mcse <- FALSE
+  env$mcse_mode <- "off"
+  eval(chunk("figure-helpers"), env)
+  env$.compare_fresh_fig_dir <- function(name) name
+  q <- env$.simBandwidthSignedErrorPercentiles(seq(-1, 1, length.out = 300))
+  keys <- tidyr::expand_grid(method = c("stimgate", "fbeta", "tailgate"),
+    n_cell = c(1000, 10000), mismatch_type = c("mean_shift_negative", "sd_inflation"),
+    mismatch_val = c(0, 1)) |>
+    dplyr::mutate(transformation = "gaussian", mean_pos_setting = "high")
+  env$percentile_by_cell <- dplyr::bind_cols(keys, q[rep(1L, nrow(keys)), ])
+  plots <- list()
+  paths <- character()
+  env$.analysis_print_save_fig <- function(plot, path, ..., mcse_mode) {
+    expect_identical(mcse_mode, "off")
+    plots[[length(plots) + 1L]] <<- plot
+    paths <<- c(paths, path)
+    invisible(plot)
+  }
+  capture.output(eval(chunk("signed-percentiles-by-n-cell"), env))
+  expect_length(plots, 8L)
+  expect_length(unique(paths), 8L)
+  for (plot in plots) {
+    expect_equal(dplyr::n_distinct(plot$data$n_cell), 1L)
+    expect_equal(dplyr::n_distinct(plot$data$mismatch_type), 1L)
+    expect_equal(dplyr::n_distinct(plot$data$percentile), 7L)
+    expect_no_error(ggplot2::ggplot_build(plot))
+  }
+  expect_setequal(plots[[1]]$data$method, c("stimgate", "fbeta", "tailgate"))
+  expect_setequal(plots[[5]]$data$method, c("stimgate", "fbeta"))
+  plots <- list()
+  env$results_available <- FALSE
+  capture.output(eval(chunk("signed-percentiles-by-n-cell"), env))
+  expect_length(plots, 0L)
 })

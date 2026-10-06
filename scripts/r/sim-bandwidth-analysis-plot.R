@@ -224,6 +224,7 @@ add_bw_labs <- function(.data) {
     .simBandwidthRankScales(tbl) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
     ggplot2::scale_y_continuous(labels = .analysis_label_percent, guide = ggplot2::guide_axis(check.overlap = TRUE)) +
+    .analysis_y_floor() +
     .analysis_theme() +
     ggplot2::labs(
       x = "Bias multiplier",
@@ -681,7 +682,7 @@ add_bw_labs <- function(.data) {
       guide = ggplot2::guide_axis(check.overlap = TRUE),
       labels = function(x) .simBandwidthAbsErrorLabel(x, cap = cap)
     ),
-    ggplot2::expand_limits(y = c(0, 1)),
+    .analysis_y_floor(c(0, 1)),
     ggplot2::labs(y = y_label)
   )
 }
@@ -766,7 +767,7 @@ add_bw_labs <- function(.data) {
       labels = function(x) .simBandwidthSignedErrorLabel(x, cap = cap)
     ),
     # Always show losing the whole response (-100%) and doubling it (+100%).
-    ggplot2::expand_limits(y = c(-1, 1)),
+    .analysis_y_floor(c(-1, 1)),
     ggplot2::scale_linewidth_continuous(
       range = c(0.4, 2),
       limits = c(0, 1),
@@ -970,10 +971,8 @@ add_bw_labs <- function(.data) {
     )
 }
 
-# Compact coverage beside a figure: overall denominators and failure/fallback
-# totals, then only the plotted settings with failures or fallbacks (full
-# per-setting tables made the reports tens of megabytes).
-.simBandwidthPrintCoverage <- function(plot, summary, max_rows = 20L) {
+# Compact coverage beside a figure, with the full per-setting CSV companion.
+.simBandwidthPrintCoverage <- function(plot, summary, table_parts = NULL, path_root = NULL) {
   tbl <- .simBandwidthCoverageForPlot(plot, summary)
   pct <- function(n, d) if (d > 0) paste0(" (", .analysis_label_percent(n / d), ")") else ""
   n_sample <- sum(tbl$n_sample)
@@ -984,17 +983,10 @@ add_bw_labs <- function(.data) {
     " samples each (", n_sample, " in total). Failed estimates: ", sum(tbl$n_failed),
     pct(sum(tbl$n_failed), n_sample), ". Threshold fallbacks: ", sum(tbl$n_fallback),
     " of ", n_provenance, pct(sum(tbl$n_fallback), n_provenance), ".\n\n", sep = "")
-  flagged <- tbl[tbl$n_failed > 0L | tbl$n_fallback > 0L, , drop = FALSE]
-  if (nrow(flagged)) {
-    # Drop columns that are constant across the flagged rows.
-    keep <- vapply(flagged, function(x) length(unique(x)) > 1L, logical(1)) |
-      names(flagged) %in% c("n_sample", "n_failed", "n_fallback", "n_provenance")
-    shown <- flagged[order(-flagged$n_failed, -flagged$n_fallback), keep, drop = FALSE]
-    cat("Settings with failures or fallbacks",
-      if (nrow(shown) > max_rows) paste0(" (first ", max_rows, " of ", nrow(shown), ")"),
-      ":\n\n", sep = "")
-    cat(knitr::kable(utils::head(shown, max_rows), digits = 3), sep = "\n")
-    cat("\n\n")
+  if (!is.null(table_parts)) {
+    .analysis_report_table(tbl, table_parts,
+      "Per-setting sample coverage and threshold-fallback provenance for this figure.",
+      path_root = path_root)
   }
   plot_data <- .simBandwidthPlotData(plot)
   count_cols <- names(plot_data)[startsWith(names(plot_data), "n_scenario_")]
@@ -1143,7 +1135,7 @@ add_bw_labs <- function(.data) {
     ggplot2::scale_y_continuous(transform = .simBandwidthSignedErrorTrans(),
       labels = function(v) .simBandwidthSignedErrorLabel(v,
         cap = if (.simBandwidthSignedErrorIsCapped(long$value)) .simBandwidthSignedErrorCap else Inf)) +
-    ggplot2::expand_limits(y = c(-1, 1)) +
+    .analysis_y_floor(c(-1, 1)) +
     ggplot2::scale_alpha_manual(values = stats::setNames(unname(alphas[tiers]), labels),
       name = "Percentile", drop = FALSE) +
     ggplot2::scale_linewidth_manual(values = stats::setNames(unname(linewidths[tiers]), labels),

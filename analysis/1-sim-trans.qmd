@@ -368,25 +368,30 @@ Counts and proportions show the realised numbers of negative and positive cells 
 ```{r}
 #| label: univariate-counts-by-mean-pos
 #| echo: false
-uni_tbl |>
-  dplyr::count(
-    .data$mean_pos_setting,
-    .data$mean_pos,
-    .data$transformation,
-    .data$condition,
-    .data$response_class,
-    name = "n_cell"
-  ) |>
-  dplyr::group_by(
-    .data$mean_pos_setting,
-    .data$mean_pos,
-    .data$transformation,
-    .data$condition
-  ) |>
-  dplyr::mutate(
-    prop_cell = .data$n_cell / sum(.data$n_cell)
-  ) |>
-  dplyr::ungroup() |>
-  dplyr::mutate(transformation = .analysis_trans_factor(.data$transformation)) |>
-  dplyr::arrange(.data$transformation)
+#| results: asis
+if (isTRUE(run_plots)) {
+  uni_tbl |>
+    dplyr::count(
+      .data$mean_pos_setting,
+      .data$mean_pos,
+      .data$transformation,
+      .data$condition,
+      .data$response_class,
+      name = "n_cell"
+    ) |>
+    dplyr::group_by(
+      .data$mean_pos_setting,
+      .data$mean_pos,
+      .data$transformation,
+      .data$condition
+    ) |>
+    dplyr::mutate(
+      prop_cell = .data$n_cell / sum(.data$n_cell)
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(transformation = .analysis_trans_factor(.data$transformation)) |>
+    dplyr::arrange(.data$transformation) |>
+    .analysis_report_table(c(fig_key, "univariate-counts-by-mean-pos.csv"),
+      "Realised negative and positive cell counts and proportions by condition.", path_root = root_dir)
+}
 ```

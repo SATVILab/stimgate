@@ -619,6 +619,14 @@ via `.analysis_fig_dir()`, with `fig_key <- .analysis_mode_key("<QMD name>")`;
 keep figures out of `cache/`. Analyses without a simulation-size setting,
 including real-data analyses, pass `sized = FALSE` to `.analysis_mode_key()`.
 
+Large report tables belong in CSV companions under `output/table/<fig_key>/`
+via `.analysis_report_table()` / `.analysis_table_dir()`, guarded by the same
+`run_plots` and result-availability conditions as figures. HTML names the relative
+CSV path and retains compact method-specific coverage/fallback counts beside
+figures. Only small tables (roughly ten rows and a handful of columns) stay
+inline. Loop filenames must distinguish every displayed cohort; bootstrap
+coverage exports in comparisons 7/8 use sibling `mcse_off/` and `mcse_on/` folders.
+
 Source analysis helper files explicitly in dependency order. Do not move analysis-only
 helpers into `R/` unless they have genuinely become part of the installed package
 implementation or API. Keep large domain helper files such as `sim-bandwidth.R`
@@ -864,7 +872,11 @@ rows before drawing reference lines.
    existing manual and automated net-frequency reference is clipped at zero; describe that
    preprocessing accurately without changing its estimand.
    Donor-bootstrap intervals reuse common donor draws across methods and strata,
-   keeping stimulated tubes with their shared control. Label the mean-error
+   keeping stimulated tubes with their shared control. For ACS unconditional
+   percentile views by stimulus, pass `stim` in the grouping columns of
+   `.acsCytofManualSignedPercentiles()` and summarise the full comparison table
+   before display subsetting, preserving a common donor universe across strata.
+   Label the mean-error
    estimand and finite donor coverage; manual gating is an imperfect reference.
    Real-data analyses that recompute cached outputs (e.g. ACS CyTOF) build into a temporary sibling and swap it in on success (`.acsCytofReplaceDir()`), or compute all results before atomically writing them. Never delete the previous output before the new one is complete.
    ACS stage controls inherit `run_simulations` when their parameters are NULL;
@@ -888,7 +900,11 @@ rows before drawing reference lines.
    completion (`.completeChnlSettingsBwShared()`) and read in
    `.getCpUnsLocGetDensRawDensitiesBw()` via `chnlSettings$bwShared` /
    `bwSharedTbl`. `"cytokine"` is the default and uses the trimmed mean over about 100
-   spread tubes; tubes with fewer than `minCell` cells are excluded;
+   tubes; tubes with fewer than `minCell` cells are excluded. Shared
+   selection (`.bwSharedSelect()`) prefers tubes with at least `bwNcellMax`
+   cells, then draws at random from 10%-of-`bwNcellMax` bands below it, highest
+   first, down to half of it (smaller tubes only if none qualify); every
+   selected tube's bandwidth is estimated on `bwNcellMax` cells (upsampled);
    `"cluster"` clusters tubes up front on densities up to the left-complex
    shoulder, independently of the threshold-sharing clusters in
    `cp_cluster.R`; `"sample"` keeps per-sample estimation. Fixed `bw` and the
@@ -1067,3 +1083,13 @@ main signed-error performance views. Put conditional over-/under-error plots
 after them and label them as severity diagnostics: zeros contribute to direction
 share denominators but not conditional quantiles, and all-exact groups have no
 directional curve. Keep failed/undefined estimates visible in coverage summaries.
+
+Error/rate figures must train a scientifically meaningful minimum y range in
+data space with `.analysis_y_floor()` (at least 0–10% for proportions and
+absolute relative errors; preserve wider signed-error reference spans). Do not
+set censoring scale limits. Floor endpoints must reach every free-scale facet.
+Comparison 8 uses `fit_panels = TRUE` for height per facet row and matching HTML
+and saved dimensions; preserve ratio-companion dimensions as well. Fitted HTML
+figures are embedded as data URIs: Quarto drops figure files knitr did not
+record, and `include_graphics()` in `results: asis` prints only a path. Check
+such output changes with a quick-profile render, not only unit tests.

@@ -139,6 +139,7 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
   source(script_plot, local = chunk_env)
   chunk_env$manual_comparison_tbl <- .acs_validation_fixture()
   chunk_env$validation_methods <- chunk_env$.acsCytofValidationMethods()
+  chunk_env$run_plots <- FALSE
   eval(chunk_code("correlation-table"), envir = chunk_env)
   expect_equal(
     chunk_env$correlation_tbl,

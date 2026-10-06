@@ -30,7 +30,7 @@
   # Coverage-table behaviour is tested below independently of these plot fixtures.
   env$bw_tbl_results_summary <- tibble::tibble()
   env$bias_uns_results_summary <- tibble::tibble()
-  env$.simBandwidthPrintCoverage <- function(plot, summary) invisible(NULL)
+  env$.simBandwidthPrintCoverage <- function(plot, summary, ...) invisible(NULL)
   env$.analysis_fig_dir <- function(path_parts, path_root = NULL, create = TRUE) {
     file.path(path_root, "output", "fig", paste(path_parts, collapse = "/"))
   }
@@ -652,7 +652,7 @@ test_that("2b frequency plots and coverage split stimulated-negative mismatch ty
     dplyr::mutate(valid_estimate = TRUE, propRespEst = 0.01)
   # Capture the coverage input too, so each figure keeps its own denominators.
   env$coverage <- list()
-  env$.simBandwidthPrintCoverage <- function(plot, summary) {
+  env$.simBandwidthPrintCoverage <- function(plot, summary, ...) {
     env$coverage[[length(env$coverage) + 1L]] <- summary
   }
   code <- .bandwidth_cell_plot_chunk(

@@ -131,7 +131,7 @@ test_that("owned readability QMD R chunks parse", {
   }
 })
 
-test_that("coverage notes stay compact and list only failing settings", {
+test_that("coverage notes stay compact and export every plotted setting", {
   env <- .bandwidth_readability_env()
   panels <- tibble::tibble(mean_pos_setting = "low", n_cell = 100,
     transformation = env$.analysis_trans_factor("gaussian"), bw = seq(0.1, 1, by = 0.1))
@@ -140,14 +140,25 @@ test_that("coverage notes stay compact and list only failing settings", {
     transformation = "gaussian", bw = seq(0.1, 1, by = 0.1), n_sample = 25L,
     n_valid = c(24L, rep(25L, 9)), n_failed = c(1L, rep(0L, 9)),
     n_provenance = 25L, n_fallback = c(0L, 2L, rep(0L, 8)))
-  out <- paste(utils::capture.output(tbl <- env$.simBandwidthPrintCoverage(plot, summary)),
+  root <- tempfile("bandwidth-coverage-")
+  dir.create(root)
+  withr::defer(unlink(root, recursive = TRUE))
+  env$.analysis_projr_dir <- function(...) NULL
+  out <- paste(utils::capture.output(tbl <- env$.simBandwidthPrintCoverage(plot, summary,
+    table_parts = c("analysis-name", "coverage.csv"), path_root = root)),
     collapse = "\n")
   expect_match(out, "10 plotted settings; 25 samples each (250 in total)", fixed = TRUE)
   expect_match(out, "Failed estimates: 1 (0.4%)", fixed = TRUE)
   expect_match(out, "Threshold fallbacks: 2 of 250 (0.8%)", fixed = TRUE)
-  # Only the two flagged settings are tabulated; the full table is still returned.
+  # No scenario rows are printed; the CSV and returned table retain all settings.
   expect_equal(nrow(tbl), 10L)
-  expect_equal(lengths(regmatches(out, gregexpr("\n\\|", out))), 2L + 2L)
+  expect_false(grepl("\n|", out, fixed = TRUE))
+  saved <- readr::read_csv(file.path(root, "output", "table", "analysis-name", "coverage.csv"),
+    show_col_types = FALSE)
+  expect_equal(nrow(saved), nrow(tbl))
+  expect_equal(saved$n_failed, tbl$n_failed)
+  expect_equal(saved$n_fallback, tbl$n_fallback)
+  expect_match(out, "output/table/analysis-name/coverage.csv", fixed = TRUE)
   clean <- summary; clean$n_failed <- 0L; clean$n_fallback <- 0L
   out <- paste(utils::capture.output(env$.simBandwidthPrintCoverage(plot, clean)), collapse = "\n")
   expect_false(grepl("Settings with failures", out, fixed = TRUE))
