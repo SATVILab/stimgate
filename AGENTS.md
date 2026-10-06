@@ -390,16 +390,18 @@ Each top-level analysis QMD also has an independently runnable target in
 QMD-to-test mapping, one target number/path to run it, a
 comma/space-separated set, or `all`. Maintain the registry when adding
 or renaming top-level QMDs. Analysis 2 is split into `2a` (bandwidth
-performance) and `2b` (bias tuning), with separate runner targets.
-Bias-tuning collation retains invalid final sample estimates, reports
-valid/failed counts, and rejects missing sample outputs before
-promotion. These targets reuse bounded scientific helper and
-document-contract tests; they do not render the full research analyses.
-The `analysis-qmd-tests.yaml` workflow is manual-only
-(`workflow_dispatch`); do not add automatic triggers. Its `mode: render`
-input renders the QMDs end to end in quick mode instead (simulate, then
-plot; one job per QMD). See `analysis/tests/README.md` for commands and
-coverage limits.
+performance) and `2b` (bias tuning), with separate runner targets. `2c`
+(`2c-sim-test.qmd`) runs chosen settings, including stimulated-tube
+mismatch, through the 2a code path with the `.simDebugLoc()` figures; it
+caches nothing and has no Slurm job. Bias-tuning collation retains
+invalid final sample estimates, reports valid/failed counts, and rejects
+missing sample outputs before promotion. These targets reuse bounded
+scientific helper and document-contract tests; they do not render the
+full research analyses. The `analysis-qmd-tests.yaml` workflow is
+manual-only (`workflow_dispatch`); do not add automatic triggers. Its
+`mode: render` input renders the QMDs end to end in quick mode instead
+(simulate, then plot; one job per QMD). See `analysis/tests/README.md`
+for commands and coverage limits.
 
 The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked
 runs. Keep enabled chunked analyses in the `scripts` list and
