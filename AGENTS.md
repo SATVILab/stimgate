@@ -284,6 +284,11 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
   selection and must not silently replace the final frequency estimand.
+- For a same-run threshold-sharing demonstration with cytokine-positive refinement
+  disabled, compare `cpOrigQuantMin` against `cpJoinTgOrig` from the initial
+  `locClusterQuantileTbl` returned by `getStimGatesDetailed()`. Check the
+  latter against the applied `locminClust` gate from `getStimGates()` and
+  both truth-based positive counts against package statistics; do not infer benefit from lower gates alone.
 - Preserve StimGate threshold provenance in method-comparison outputs. A finite
   high-value fallback is still a fallback: use `locGenerated`,
   `locGeneratedDirect`, `locSource` and `locReason` from the final gate
@@ -554,6 +559,9 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `sim-low-separation.R`: Analysis 11 (`11-sim-low-separation-cyt-pos.qmd`): two-marker
     low-separation simulations gated once per dataset, comparing ordinary and
     cytokine-positive gates on the same cells against simulated labels.
+  - `sim-cluster-lab.R` / `sim-cluster-weak.R`: Analysis 12 (`12-sim-cluster-gates.qmd`):
+    threshold-sharing clusters under a between-lab location shift, and
+    original versus cluster-adjusted gates for weak-response samples.
   - `sim-misc.R`: Miscellaneous simulation utilities.
   - `sim-trans.R`: Simulation transformation utilities.
 - `src/`: C++ source code compiled into the package via `cpp11` (`cpPmden.cpp`, `stimgate_cppmden.cpp`, `tautstring.cpp`, etc.).
@@ -570,6 +578,10 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
 - `DESCRIPTION`: Package metadata file.
 
 ### Analysis code layering
+
+Lab location-shift demonstrations must shift both members of each sample pair.
+Keep lab identity separate from `batchList` control-pair definitions, and assess
+separation from observed cluster membership, retaining unassigned samples.
 
 Analysis helpers must restore temporary environment overrides on every exit,
 including errors, preserving whether the variable was originally unset. Formatting
