@@ -61,9 +61,10 @@ gateStim(
 
 - biasUns:
 
-  numeric or NULL Upward shift of unstimulated expression. NULL uses one
-  quarter of `bwFallback`, scaled by `biasUnsFactor`. Positive shifts
-  make gating more conservative. Default: NULL.
+  numeric or NULL Upward shift of unstimulated expression. NULL uses
+  `bwFallback` times `biasUnsFactor` (see
+  [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)).
+  Positive shifts make gating more conservative. Default: NULL.
 
 - bw:
 
@@ -145,8 +146,8 @@ pathProject <- gateStim(
   tempfile("stimgate_"), gs, exampleData$batchList,
   marker = exampleData$marker
 )
-#> shared bandwidth for MarkerF1: 0.329
-#> shared bandwidth for MarkerF2: 0.334
+#> shared bandwidth for MarkerF1: 0.186
+#> shared bandwidth for MarkerF2: 0.19
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -162,10 +163,10 @@ getStimGates(pathProject)
 #> # A tibble: 4 × 12
 #>   pop   gateName  chnl  marker ind   batch  gate locGenerated locGeneratedDirect
 #>   <chr> <chr>     <chr> <I<ch> <chr> <chr> <dbl> <lgl>        <lgl>             
-#> 1 root  locminCl… BC1(… Marke… 2     batc…  4.41 TRUE         TRUE              
-#> 2 root  locminCl… BC1(… Marke… 4     batc…  3.79 TRUE         TRUE              
-#> 3 root  locminCl… BC2(… Marke… 2     batc…  3.40 TRUE         TRUE              
-#> 4 root  locminCl… BC2(… Marke… 4     batc…  2.91 TRUE         TRUE              
+#> 1 root  locminCl… BC1(… Marke… 2     batc…  4.65 TRUE         TRUE              
+#> 2 root  locminCl… BC1(… Marke… 4     batc…  3.91 TRUE         TRUE              
+#> 3 root  locminCl… BC2(… Marke… 2     batc…  4.11 TRUE         TRUE              
+#> 4 root  locminCl… BC2(… Marke… 4     batc…  3.00 TRUE         TRUE              
 #> # ℹ 3 more variables: locSource <chr>, locReason <chr>, gateCyt <dbl>
 
 # Disable gate sharing and fix the first marker's bandwidth
@@ -176,7 +177,7 @@ gateStim(
     list(list(bw = 0.12, biasUns = 0)), exampleData$marker[1]
   )
 )
-#> shared bandwidth for MarkerF2: 0.334
+#> shared bandwidth for MarkerF2: 0.19
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -188,7 +189,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpYDz0OQ/custom_gating_1ac21279a7b1"
+#> [1] "/tmp/Rtmpd5oPOL/custom_gating_1ac316a71d08"
 
 # Gate in-memory matrices; column names act as channels and markers
 matrices <- lapply(seq_along(gs), function(i) {
@@ -198,8 +199,8 @@ gateStim(
   tempfile("matrix_gating_"), matrices, exampleData$batchList,
   chnl = exampleData$chnl, control = stimControl(calcCytPosGates = FALSE)
 )
-#> shared bandwidth for BC1(La139)Dd: 0.329
-#> shared bandwidth for BC2(Pr141)Dd: 0.334
+#> shared bandwidth for BC1(La139)Dd: 0.186
+#> shared bandwidth for BC2(Pr141)Dd: 0.188
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -211,5 +212,5 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpYDz0OQ/matrix_gating_1ac22bed25cf"
+#> [1] "/tmp/Rtmpd5oPOL/matrix_gating_1ac3216f1b42"
 ```

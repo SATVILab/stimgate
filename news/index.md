@@ -1,5 +1,25 @@
 # Changelog
 
+## stimgate 0.99.24
+
+### Breaking changes
+
+- [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
+  now defaults to `bwMtd = "nrd0"` (was `"hpi1"`), `bwNcellMax = 10000`
+  (was 100000) and `bwNcellMin = bwNcellMax` (was 100), so every tube is
+  downsampled or upsampled to 10,000 cells before its bandwidth is
+  chosen.
+- Shared bandwidths (`bwScope = "cytokine"` or `"cluster"`) now prefer
+  tubes with at least `bwNcellMax` cells. If there are too few, they add
+  tubes chosen at random from the next sizes down (9,000-10,000 cells
+  first, then 8,000-9,000, and so on to 5,000 by default), and estimate
+  every bandwidth on `bwNcellMax` cells, upsampling smaller tubes.
+- With `biasUns = NULL`,
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  now sets `biasUns` to `biasUnsFactor` times the fallback bandwidth,
+  rather than a quarter of that. With the default `biasUnsFactor = 1`,
+  the automatic `biasUns` is therefore four times larger than before.
+
 ## stimgate 0.99.23
 
 ### Bug fixes

@@ -9,7 +9,7 @@ set only the options you need to change."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.23</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.24</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,14 +49,14 @@ set only the options you need to change.</p>
 <span>  biasUnsFactor <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  excMin <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  cpMin <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  bwMtd <span class="op">=</span> <span class="st">"hpi1"</span>,</span>
+<span>  bwMtd <span class="op">=</span> <span class="st">"nrd0"</span>,</span>
 <span>  bwScope <span class="op">=</span> <span class="st">"cytokine"</span>,</span>
 <span>  bwAdj <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  bwMin <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  bwMax <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  bwFallback <span class="op">=</span> <span class="st">"auto"</span>,</span>
-<span>  bwNcellMin <span class="op">=</span> <span class="fl">100</span>,</span>
-<span>  bwNcellMax <span class="op">=</span> <span class="fl">1e+05</span>,</span>
+<span>  bwNcellMin <span class="op">=</span> <span class="va">bwNcellMax</span>,</span>
+<span>  bwNcellMax <span class="op">=</span> <span class="fl">10000</span>,</span>
 <span>  bwCluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  clusterGates <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  gateCombn <span class="op">=</span> <span class="st">"min"</span>,</span>
@@ -108,8 +108,8 @@ count are skipped. Default: 100.</p></dd>
 
 
 <dt id="arg-biasunsfactor">biasUnsFactor<a class="anchor" aria-label="anchor" href="#arg-biasunsfactor"></a></dt>
-<dd><p>numeric Multiplier for automatically chosen <code>biasUns</code>.
-Default: 1.</p></dd>
+<dd><p>numeric Automatic <code>biasUns</code> (when <code>biasUns</code> is NULL)
+equals this factor times the fallback bandwidth <code>bwFallback</code>. Default: 1.</p></dd>
 
 
 <dt id="arg-excmin">excMin<a class="anchor" aria-label="anchor" href="#arg-excmin"></a></dt>
@@ -125,7 +125,7 @@ mean of tube medians after excluding minimum expression. Default: NULL.</p></dd>
 <dt id="arg-bwmtd">bwMtd<a class="anchor" aria-label="anchor" href="#arg-bwmtd"></a></dt>
 <dd><p>character Bandwidth selector: "nrd0", "sj", "hpi0", "hpi1",
 "hpi2", "hpi3", or any of these with a "Norm" suffix for background
-normalisation. Ignored with fixed <code>bw</code>. Default: "hpi1".</p></dd>
+normalisation. Ignored with fixed <code>bw</code>. Default: "nrd0".</p></dd>
 
 
 <dt id="arg-bwscope">bwScope<a class="anchor" aria-label="anchor" href="#arg-bwscope"></a></dt>
@@ -164,16 +164,23 @@ Default: "auto".</p></dd>
 
 
 <dt id="arg-bwncellmin">bwNcellMin<a class="anchor" aria-label="anchor" href="#arg-bwncellmin"></a></dt>
-<dd><p>numeric Minimum selector sample size. Ordinary methods
-upsample with jitter; scalar "Norm" methods use it when selecting
-background-core and right-excess cells. Ignored with fixed <code>bw</code>. Default: 100.</p></dd>
+<dd><p>numeric Minimum selector sample size: a tube with fewer
+cells is upsampled (with jitter) to this many before its bandwidth is
+chosen. Scalar "Norm" methods use it when selecting background-core and
+right-excess cells. Ignored with fixed <code>bw</code>. Must not exceed <code>bwNcellMax</code>.
+Default: <code>bwNcellMax</code>, so every tube is resampled to exactly
+<code>bwNcellMax</code> cells.</p></dd>
 
 
 <dt id="arg-bwncellmax">bwNcellMax<a class="anchor" aria-label="anchor" href="#arg-bwncellmax"></a></dt>
 <dd><p>numeric Maximum selector sample size. Ordinary methods
 downsample; scalar "Norm" methods cap the constructed sample after
 inspecting the full distribution. Adaptive methods use
-<code>normAdaptiveNcell</code>. Ignored with fixed <code>bw</code>. Default: 100000.</p></dd>
+<code>normAdaptiveNcell</code>. Shared bandwidths (<code>bwScope</code> "cytokine" or
+"cluster") prefer tubes with at least this many cells, then larger tubes
+down to half of it, and estimate each selected tube's bandwidth on exactly
+this many cells, upsampling smaller tubes. Ignored with fixed <code>bw</code>.
+Default: 10000.</p></dd>
 
 
 <dt id="arg-bwcluster">bwCluster<a class="anchor" aria-label="anchor" href="#arg-bwcluster"></a></dt>
@@ -382,7 +389,7 @@ bandwidth selection. Use its <code>markerControl</code> for per-marker settings.
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwMtd</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "hpi1"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "nrd0"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwScope</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "cytokine"</span>
@@ -400,10 +407,10 @@ bandwidth selection. Use its <code>markerControl</code> for per-marker settings.
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "auto"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwNcellMin</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 10000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwNcellMax</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1e+05</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 10000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwCluster</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
@@ -523,7 +530,7 @@ bandwidth selection. Use its <code>markerControl</code> for per-marker settings.
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwMtd</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "hpi1"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "nrd0"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwScope</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "cytokine"</span>
@@ -541,10 +548,10 @@ bandwidth selection. Use its <code>markerControl</code> for per-marker settings.
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "auto"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwNcellMin</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 10000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwNcellMax</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1e+05</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 10000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwCluster</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>

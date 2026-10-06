@@ -326,6 +326,14 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   final sample-level `loc_sample` `propRespEst` against `propRespTruth`.
   `propBsEst` is an internal local-FDR diagnostic used during threshold
   selection and must not silently replace the final frequency estimand.
+- For a same-run threshold-sharing demonstration with cytokine-positive
+  refinement disabled, compare `cpOrigQuantMin` against `cpJoinTgOrig`
+  from the initial `locClusterQuantileTbl` returned by
+  [`getStimGatesDetailed()`](https://satvilab.github.io/stimgate/reference/getStimGatesDetailed.md).
+  Check the latter against the applied `locminClust` gate from
+  [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md)
+  and both truth-based positive counts against package statistics; do
+  not infer benefit from lower gates alone.
 - Preserve StimGate threshold provenance in method-comparison outputs. A
   finite high-value fallback is still a fallback: use `locGenerated`,
   `locGeneratedDirect`, `locSource` and `locReason` from the final gate
@@ -685,6 +693,10 @@ the `flowWorkspace` stack from source.
     (`11-sim-low-separation-cyt-pos.qmd`): two-marker low-separation
     simulations gated once per dataset, comparing ordinary and
     cytokine-positive gates on the same cells against simulated labels.
+  - `sim-cluster-lab.R` / `sim-cluster-weak.R`: Analysis 12
+    (`12-sim-cluster-gates.qmd`): threshold-sharing clusters under a
+    between-lab location shift, and original versus cluster-adjusted
+    gates for weak-response samples.
   - `sim-misc.R`: Miscellaneous simulation utilities.
   - `sim-trans.R`: Simulation transformation utilities.
 - `src/`: C++ source code compiled into the package via `cpp11`
@@ -707,6 +719,11 @@ the `flowWorkspace` stack from source.
 - `DESCRIPTION`: Package metadata file.
 
 ### Analysis code layering
+
+Lab location-shift demonstrations must shift both members of each sample
+pair. Keep lab identity separate from `batchList` control-pair
+definitions, and assess separation from observed cluster membership,
+retaining unassigned samples.
 
 Analysis helpers must restore temporary environment overrides on every
 exit, including errors, preserving whether the variable was originally
@@ -773,8 +790,26 @@ their original threshold layers above fills.
 Figures from analysis QMDs are saved under
 `output/fig/<QMD name>/<figure type>/` via `.analysis_fig_dir()`, with
 `fig_key <- .analysis_mode_key("<QMD name>")`; keep figures out of
-`cache/`. Analyses without a simulation-size setting, including
-real-data analyses, pass `sized = FALSE` to `.analysis_mode_key()`.
+`cache/`. Here `output` and `cache` are projr labels: resolve every
+analysis path through projr (`.analysis_project_dir()`, which calls
+`projr::projr_path_get_dir()` for folders and `projr::projr_path_get()`
+for files), never by hand-building checkout paths. Outside a projr
+build, projr places `output` inside its cache and a build copies it to
+the final output folder, so nothing is written to a committable checkout
+folder. Tests use a temporary projr project (`.local_projr_root()` in
+`analysis/tests/testthat/helper-projr.R`). Analyses without a
+simulation-size setting, including real-data analyses, pass
+`sized = FALSE` to `.analysis_mode_key()`.
+
+Large report tables belong in CSV companions under
+`output/table/<fig_key>/` via `.analysis_report_table()` /
+`.analysis_table_dir()`, guarded by the same `run_plots` and
+result-availability conditions as figures. HTML names the relative CSV
+path and retains compact method-specific coverage/fallback counts beside
+figures. Only small tables (roughly ten rows and a handful of columns)
+stay inline. Loop filenames must distinguish every displayed cohort;
+bootstrap coverage exports in comparisons 7/8 use sibling `mcse_off/`
+and `mcse_on/` folders.
 
 Source analysis helper files explicitly in dependency order. Do not move
 analysis-only helpers into `R/` unless they have genuinely become part
@@ -1091,27 +1126,26 @@ deduplicates identical rows before drawing reference lines.
     from `_projr.yml` through `projr::projr_par_get()` and
     `.analysis_sim_size()`, with an explicit `SIM_SIZE` environment
     override. QMD frontmatter and Slurm launchers must not supply
-    competing defaults: `"draft"` (the current default, by operator
-    request, until the analyses settle) or `"final"`; draft uses about a
-    quarter of the samples (datasets in 7/8) on the same grid, stored
+    competing defaults, nor export `SIM_SIZE` unless the caller set it:
+    `_projr.yml` alone selects `"draft"` or `"final"`; draft uses about
+    a quarter of the samples (datasets in 7/8) on the same grid, stored
     under `<analysis-key>/draft/` and recorded as `sim_size` in required
     run settings; draft is for iterating, not reporting, and dev/quick
-    take precedence. Set `SIM_SIZE=final` explicitly for reported
-    results. Draft 7/8 retain all 20 jointly gated samples per dataset
-    and reduce only replicate datasets; missing `sim_size` in legacy
-    manifests still means final. Empirical local-FDR selection counts
-    cells at or above the selected cell value. Since gates use strict
-    `x > gate`, place the applied gate below that value by the smaller
-    of twice the density bandwidth and half the gap to the highest
-    excluded value in either tube. For adaptive densities, use the
-    shared bandwidth at the selected value. Retain the selected cell
-    value separately for threshold diagnostics. Workers and interactive
-    single-row reruns use the same explicitly seeded row runner; resume
-    retries failed rows by default. Comparison scenarios in QMDs 7/8 use
-    explicit RNG kinds and restore the caller’s RNG state; do not
-    reintroduce `gateCombn` plumbing in the comparison layer. Analysis 1
-    seeds each row and saves and validates its scientific settings with
-    the cache.
+    take precedence. Report only results from `sim_size: final`. Draft
+    7/8 retain all 20 jointly gated samples per dataset and reduce only
+    replicate datasets; missing `sim_size` in legacy manifests still
+    means final. Empirical local-FDR selection counts cells at or above
+    the selected cell value. Since gates use strict `x > gate`, place
+    the applied gate below that value by the smaller of twice the
+    density bandwidth and half the gap to the highest excluded value in
+    either tube. For adaptive densities, use the shared bandwidth at the
+    selected value. Retain the selected cell value separately for
+    threshold diagnostics. Workers and interactive single-row reruns use
+    the same explicitly seeded row runner; resume retries failed rows by
+    default. Comparison scenarios in QMDs 7/8 use explicit RNG kinds and
+    restore the caller’s RNG state; do not reintroduce `gateCombn`
+    plumbing in the comparison layer. Analysis 1 seeds each row and
+    saves and validates its scientific settings with the cache.
 
 10. **Exact reruns of one simulation row**: Fixed-seed simulation parity
     fixtures must mirror the replicate-seed draw before direct simulator
@@ -1139,42 +1173,60 @@ QMD; it must not draw random numbers or change the rerun output.
     at zero; describe that preprocessing accurately without changing its
     estimand. Donor-bootstrap intervals reuse common donor draws across
     methods and strata, keeping stimulated tubes with their shared
-    control. Label the mean-error estimand and finite donor coverage;
-    manual gating is an imperfect reference. Real-data analyses that
-    recompute cached outputs (e.g. ACS CyTOF) build into a temporary
-    sibling and swap it in on success (`.acsCytofReplaceDir()`), or
-    compute all results before atomically writing them. Never delete the
-    previous output before the new one is complete. ACS stage controls
-    inherit `run_simulations` when their parameters are NULL; explicit
-    stage parameters/environment variables override that default. Cached
-    comparison renders read the saved manual-comparison table without
-    raw FCS or manual CSV inputs; GatingSet diagnostics are optional
-    when those caches are absent.
+    control. For ACS unconditional percentile views by stimulus, pass
+    `stim` in the grouping columns of
+    `.acsCytofManualSignedPercentiles()` and summarise the full
+    comparison table before display subsetting, preserving a common
+    donor universe across strata. Label the mean-error estimand and
+    finite donor coverage; manual gating is an imperfect reference.
+    Real-data analyses that recompute cached outputs (e.g. ACS CyTOF)
+    build into a temporary sibling and swap it in on success
+    (`.acsCytofReplaceDir()`), or compute all results before atomically
+    writing them. Never delete the previous output before the new one is
+    complete. ACS stage controls inherit `run_simulations` when their
+    parameters are NULL; explicit stage parameters/environment variables
+    override that default. Cached comparison renders read the saved
+    manual-comparison table without raw FCS or manual CSV inputs;
+    GatingSet diagnostics are optional when those caches are absent.
 
-ACS batches use the mapped SampleID and stimulus, never filename
-position. Saved ACS method outputs must carry identical
-input/preprocessing manifests before comparison. Keep per-marker
-threshold provenance and failure coverage; exclude failed estimates from
-agreement metrics and persist cohort exclusions rather than hiding
-omitted rows behind render warnings. With ACS clustering and
-cytokine-positive refinement enabled, score `loc_minClust`, and preserve
-cluster provenance when assembling the final package gate rows.
+[`flowWorkspace::load_gs()`](https://rdrr.io/pkg/flowWorkspace/man/save_gs.html)
+rejects any extra file or folder inside a saved GatingSet folder, so ACS
+metadata lives beside it (`.acsCytofPreprocessingFile()`); test such
+layouts with the real `save_gs()`/`load_gs()`, not a stub. ACS batches
+use the mapped SampleID and stimulus, never filename position. Saved ACS
+method outputs must carry identical input/preprocessing manifests before
+comparison. Keep per-marker threshold provenance and failure coverage;
+exclude failed estimates from agreement metrics and persist cohort
+exclusions rather than hiding omitted rows behind render warnings. With
+ACS clustering and cytokine-positive refinement enabled, score
+`loc_minClust`, and preserve cluster provenance when assembling the
+final package gate rows.
 
 12. **Shared local-FDR bandwidths (`bwScope`, issue \#417)**: The scalar
     local-FDR bandwidth is chosen once per channel during settings
     completion (`.completeChnlSettingsBwShared()`) and read in
     `.getCpUnsLocGetDensRawDensitiesBw()` via `chnlSettings$bwShared` /
     `bwSharedTbl`. `"cytokine"` is the default and uses the trimmed mean
-    over about 100 spread tubes; tubes with fewer than `minCell` cells
-    are excluded; `"cluster"` clusters tubes up front on densities up to
-    the left-complex shoulder, independently of the threshold-sharing
-    clusters in `cp_cluster.R`; `"sample"` keeps per-sample estimation.
-    Fixed `bw` and the adaptive path bypass shared bandwidths. A sample
-    still uses the smaller of its stim and unstim tube bandwidths.
-    Threshold sharing uses a supplied `bwCluster`, else `bwShared`;
-    `bwCluster` is not estimated automatically. The clustering densities
-    are not reusable as local-FDR densities (different bandwidth, range,
-    thinning and unstim cell filtering).
+    over about 100 tubes; tubes with fewer than `minCell` cells are
+    excluded. Shared selection (`.bwSharedSelect()`) prefers tubes with
+    at least `bwNcellMax` cells, then draws at random from
+    10%-of-`bwNcellMax` bands below it, highest first, down to half of
+    it (smaller tubes only if none qualify); every selected tube’s
+    bandwidth is estimated on `bwNcellMax` cells (upsampled).
+    `bwNcellMin` defaults to `bwNcellMax` in
+    [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
+    and the analysis wrappers, so every tube is resampled to the same
+    size; QMDs 7/8 record `stimgate_bw_ncell_min` beside
+    `stimgate_bw_ncell_max`; `"cluster"` clusters tubes up front on
+    densities up to the left-complex shoulder, independently of the
+    threshold-sharing clusters in `cp_cluster.R`; `"sample"` keeps
+    per-sample estimation. Fixed `bw` and the adaptive path bypass
+    shared bandwidths. A sample still uses the smaller of its stim and
+    unstim tube bandwidths. Threshold sharing uses a supplied
+    `bwCluster`, else `bwShared`; `bwCluster` is not estimated
+    automatically. The clustering densities are not reusable as
+    local-FDR densities (different bandwidth, range, thinning and unstim
+    cell filtering).
 
 13. **Parallel initial channel gating**: `gateStim(parallel = TRUE)`
     opts into the active
@@ -1390,3 +1442,14 @@ over-/under-error plots after them and label them as severity
 diagnostics: zeros contribute to direction share denominators but not
 conditional quantiles, and all-exact groups have no directional curve.
 Keep failed/undefined estimates visible in coverage summaries.
+
+Error/rate figures must train a scientifically meaningful minimum y
+range in data space with `.analysis_y_floor()` (at least 0–10% for
+proportions and absolute relative errors; preserve wider signed-error
+reference spans). Do not set censoring scale limits. Floor endpoints
+must reach every free-scale facet. Comparison 8 uses `fit_panels = TRUE`
+for height per facet row and matching HTML and saved dimensions;
+preserve ratio-companion dimensions as well. Fitted HTML figures are
+embedded as data URIs: Quarto drops figure files knitr did not record,
+and `include_graphics()` in `results: asis` prints only a path. Check
+such output changes with a quick-profile render, not only unit tests.

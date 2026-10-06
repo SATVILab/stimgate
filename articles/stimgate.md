@@ -103,10 +103,10 @@ head(gates)
 #> # A tibble: 4 × 12
 #>   pop   gateName  chnl  marker ind   batch  gate locGenerated locGeneratedDirect
 #>   <chr> <chr>     <chr> <I<ch> <chr> <chr> <dbl> <lgl>        <lgl>             
-#> 1 root  locminCl… BC1(… Marke… 2     batc…  4.41 TRUE         TRUE              
-#> 2 root  locminCl… BC1(… Marke… 4     batc…  3.79 TRUE         TRUE              
-#> 3 root  locminCl… BC2(… Marke… 2     batc…  3.40 TRUE         TRUE              
-#> 4 root  locminCl… BC2(… Marke… 4     batc…  2.91 TRUE         TRUE              
+#> 1 root  locminCl… BC1(… Marke… 2     batc…  4.65 TRUE         TRUE              
+#> 2 root  locminCl… BC1(… Marke… 4     batc…  3.91 TRUE         TRUE              
+#> 3 root  locminCl… BC2(… Marke… 2     batc…  4.11 TRUE         TRUE              
+#> 4 root  locminCl… BC2(… Marke… 4     batc…  3.00 TRUE         TRUE              
 #> # ℹ 3 more variables: locSource <chr>, locReason <chr>, gateCyt <dbl>
 ```
 
@@ -124,12 +124,12 @@ head(stats[, c("ind", "cytCombn", "countStim", "freqStim", "freqUns", "freqBs")]
 #> # A tibble: 6 × 6
 #>   ind   cytCombn                       countStim freqStim freqUns freqBs
 #>   <chr> <chr>                              <int>    <dbl>   <dbl>  <dbl>
-#> 1 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        51     0.51    0.06   0.45
-#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       428     4.28    1.54   2.74
-#> 3 2     BC1(La139)Dd~+~BC2(Pr141)Dd~+~        47     0.47    0.02   0.45
-#> 4 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      9474    94.7    98.4   -3.64
-#> 5 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~       100     1       0.27   0.73
-#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       510     5.1     1.18   3.92
+#> 1 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        39     0.39    0.03   0.36
+#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       262     2.62    0.62   2   
+#> 3 2     BC1(La139)Dd~+~BC2(Pr141)Dd~+~        40     0.4     0.01   0.39
+#> 4 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      9659    96.6    99.3   -2.75
+#> 5 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        92     0.92    0.23   0.69
+#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       483     4.83    1.12   3.71
 ```
 
 ## 4. Plot the results
@@ -181,32 +181,31 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] stimgate_0.99.23
+#> [1] stimgate_0.99.24
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] gtable_0.3.6         xfun_0.61            bslib_0.12.0        
-#>  [4] ggplot2_4.0.3        htmlwidgets_1.6.4    ks_1.15.3           
-#>  [7] Biobase_2.72.0       lattice_0.22-9       vctrs_0.7.3         
-#> [10] tools_4.6.1          generics_0.1.4       stats4_4.6.1        
-#> [13] tibble_3.3.1         flowWorkspace_4.24.0 pkgconfig_2.0.3     
-#> [16] Matrix_1.7-5         KernSmooth_2.23-26   data.table_1.18.6.1 
-#> [19] RColorBrewer_1.1-3   S7_0.2.2             desc_1.4.3          
-#> [22] S4Vectors_0.50.3     graph_1.90.0         lifecycle_1.0.5     
-#> [25] scam_1.2-22          compiler_4.6.1       farver_2.1.2        
-#> [28] textshaping_1.0.5    htmltools_0.5.9      sass_0.4.10         
-#> [31] yaml_2.3.12          flowCore_2.24.0      pracma_2.4.6        
-#> [34] pillar_1.11.1        pkgdown_2.2.1        jquerylib_0.1.4     
-#> [37] tidyr_1.3.2          cachem_1.1.0         mclust_6.1.3        
-#> [40] nlme_3.1-169         RProtoBufLib_2.24.0  tidyselect_1.2.1    
-#> [43] digest_0.6.39        mvtnorm_1.4-2        dplyr_1.2.1         
-#> [46] purrr_1.2.2          labeling_0.4.3       splines_4.6.1       
-#> [49] cowplot_1.2.0        fastmap_1.2.0        grid_4.6.1          
-#> [52] cli_3.6.6            magrittr_2.0.5       ncdfFlow_2.58.0     
-#> [55] XML_3.99-0.25        utf8_1.2.6           withr_3.0.3         
-#> [58] scales_1.4.0         rmarkdown_2.32       matrixStats_1.5.0   
-#> [61] otel_0.2.0           cytolib_2.24.0       ragg_1.5.2          
-#> [64] evaluate_1.0.5       knitr_1.52           mgcv_1.9-4          
-#> [67] rlang_1.3.0          glue_1.8.1           Rgraphviz_2.56.0    
-#> [70] BiocManager_1.30.27  BiocGenerics_0.58.1  jsonlite_2.0.0      
-#> [73] R6_2.6.1             systemfonts_1.3.2    fs_2.1.0
+#>  [1] utf8_1.2.6           tidyr_1.3.2          sass_0.4.10         
+#>  [4] generics_0.1.4       lattice_0.22-9       digest_0.6.39       
+#>  [7] magrittr_2.0.5       evaluate_1.0.5       grid_4.6.1          
+#> [10] RColorBrewer_1.1-3   fastmap_1.2.0        Matrix_1.7-5        
+#> [13] jsonlite_2.0.0       graph_1.90.0         BiocManager_1.30.27 
+#> [16] mgcv_1.9-4           purrr_1.2.2          flowWorkspace_4.24.0
+#> [19] scales_1.4.0         XML_3.99-0.25        Rgraphviz_2.56.0    
+#> [22] textshaping_1.0.5    jquerylib_0.1.4      cli_3.6.6           
+#> [25] rlang_1.3.0          RProtoBufLib_2.24.0  Biobase_2.72.0      
+#> [28] cowplot_1.2.0        splines_4.6.1        scam_1.2-22         
+#> [31] withr_3.0.3          cachem_1.1.0         yaml_2.3.12         
+#> [34] otel_0.2.0           cytolib_2.24.0       tools_4.6.1         
+#> [37] ncdfFlow_2.58.0      dplyr_1.2.1          ggplot2_4.0.3       
+#> [40] BiocGenerics_0.58.1  vctrs_0.7.3          R6_2.6.1            
+#> [43] matrixStats_1.5.0    stats4_4.6.1         lifecycle_1.0.5     
+#> [46] S4Vectors_0.50.3     fs_2.1.0             flowCore_2.24.0     
+#> [49] htmlwidgets_1.6.4    ragg_1.5.2           pkgconfig_2.0.3     
+#> [52] desc_1.4.3           pkgdown_2.2.1        pillar_1.11.1       
+#> [55] bslib_0.12.0         gtable_0.3.6         glue_1.8.1          
+#> [58] data.table_1.18.6.1  systemfonts_1.3.2    xfun_0.61           
+#> [61] tibble_3.3.1         tidyselect_1.2.1     knitr_1.52          
+#> [64] farver_2.1.2         nlme_3.1-169         htmltools_0.5.9     
+#> [67] labeling_0.4.3       rmarkdown_2.32       compiler_4.6.1      
+#> [70] S7_0.2.2
 ```

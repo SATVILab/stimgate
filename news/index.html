@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.23</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.24</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,16 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.24" id="stimgate-09924">stimgate 0.99.24<a class="anchor" aria-label="anchor" href="#stimgate-09924"></a></h2>
+<div class="section level3">
+<h3 id="breaking-changes-0-99-24">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-99-24"></a></h3>
+<ul><li>
+<code><a href="../reference/stimControl.html">stimControl()</a></code> now defaults to <code>bwMtd = "nrd0"</code> (was <code>"hpi1"</code>), <code>bwNcellMax = 10000</code> (was 100000) and <code>bwNcellMin = bwNcellMax</code> (was 100), so every tube is downsampled or upsampled to 10,000 cells before its bandwidth is chosen.</li>
+<li>Shared bandwidths (<code>bwScope = "cytokine"</code> or <code>"cluster"</code>) now prefer tubes with at least <code>bwNcellMax</code> cells. If there are too few, they add tubes chosen at random from the next sizes down (9,000-10,000 cells first, then 8,000-9,000, and so on to 5,000 by default), and estimate every bandwidth on <code>bwNcellMax</code> cells, upsampling smaller tubes.</li>
+<li>With <code>biasUns = NULL</code>, <code><a href="../reference/gateStim.html">gateStim()</a></code> now sets <code>biasUns</code> to <code>biasUnsFactor</code> times the fallback bandwidth, rather than a quarter of that. With the default <code>biasUnsFactor = 1</code>, the automatic <code>biasUns</code> is therefore four times larger than before.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.23" id="stimgate-09923">stimgate 0.99.23<a class="anchor" aria-label="anchor" href="#stimgate-09923"></a></h2>
 <div class="section level3">

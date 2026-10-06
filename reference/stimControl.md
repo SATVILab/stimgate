@@ -13,14 +13,14 @@ stimControl(
   biasUnsFactor = 1,
   excMin = TRUE,
   cpMin = NULL,
-  bwMtd = "hpi1",
+  bwMtd = "nrd0",
   bwScope = "cytokine",
   bwAdj = 1,
   bwMin = "auto",
   bwMax = "auto",
   bwFallback = "auto",
-  bwNcellMin = 100,
-  bwNcellMax = 1e+05,
+  bwNcellMin = bwNcellMax,
+  bwNcellMax = 10000,
   bwCluster = NULL,
   clusterGates = TRUE,
   gateCombn = "min",
@@ -71,7 +71,8 @@ stimControl(
 
 - biasUnsFactor:
 
-  numeric Multiplier for automatically chosen `biasUns`. Default: 1.
+  numeric Automatic `biasUns` (when `biasUns` is NULL) equals this
+  factor times the fallback bandwidth `bwFallback`. Default: 1.
 
 - excMin:
 
@@ -87,7 +88,7 @@ stimControl(
 
   character Bandwidth selector: "nrd0", "sj", "hpi0", "hpi1", "hpi2",
   "hpi3", or any of these with a "Norm" suffix for background
-  normalisation. Ignored with fixed `bw`. Default: "hpi1".
+  normalisation. Ignored with fixed `bw`. Default: "nrd0".
 
 - bwScope:
 
@@ -126,16 +127,22 @@ stimControl(
 
 - bwNcellMin:
 
-  numeric Minimum selector sample size. Ordinary methods upsample with
-  jitter; scalar "Norm" methods use it when selecting background-core
-  and right-excess cells. Ignored with fixed `bw`. Default: 100.
+  numeric Minimum selector sample size: a tube with fewer cells is
+  upsampled (with jitter) to this many before its bandwidth is chosen.
+  Scalar "Norm" methods use it when selecting background-core and
+  right-excess cells. Ignored with fixed `bw`. Must not exceed
+  `bwNcellMax`. Default: `bwNcellMax`, so every tube is resampled to
+  exactly `bwNcellMax` cells.
 
 - bwNcellMax:
 
   numeric Maximum selector sample size. Ordinary methods downsample;
   scalar "Norm" methods cap the constructed sample after inspecting the
-  full distribution. Adaptive methods use `normAdaptiveNcell`. Ignored
-  with fixed `bw`. Default: 100000.
+  full distribution. Adaptive methods use `normAdaptiveNcell`. Shared
+  bandwidths (`bwScope` "cytokine" or "cluster") prefer tubes with at
+  least this many cells, then larger tubes down to half of it, and
+  estimate each selected tube's bandwidth on exactly this many cells,
+  upsampling smaller tubes. Ignored with fixed `bw`. Default: 10000.
 
 - bwCluster:
 
@@ -341,7 +348,7 @@ stimControl()
 #> NULL
 #> 
 #> $bwMtd
-#> [1] "hpi1"
+#> [1] "nrd0"
 #> 
 #> $bwScope
 #> [1] "cytokine"
@@ -359,10 +366,10 @@ stimControl()
 #> [1] "auto"
 #> 
 #> $bwNcellMin
-#> [1] 100
+#> [1] 10000
 #> 
 #> $bwNcellMax
-#> [1] 1e+05
+#> [1] 10000
 #> 
 #> $bwCluster
 #> NULL
@@ -482,7 +489,7 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> NULL
 #> 
 #> $bwMtd
-#> [1] "hpi1"
+#> [1] "nrd0"
 #> 
 #> $bwScope
 #> [1] "cytokine"
@@ -500,10 +507,10 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> [1] "auto"
 #> 
 #> $bwNcellMin
-#> [1] 100
+#> [1] 10000
 #> 
 #> $bwNcellMax
-#> [1] 1e+05
+#> [1] 10000
 #> 
 #> $bwCluster
 #> NULL
