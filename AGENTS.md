@@ -525,6 +525,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2-6, followed by one delimited section of scenario/validation/collation callbacks per analysis.
   - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating, comparator, manual-comparison and plotting helpers for analyses 9 and 10.
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
+  - `sim-debug-loc.R`: `.simDebugLoc()` wraps a QMD's rerun call unchanged and uses `trace()` to record, or browse, the local-FDR gating of one sample (optionally every later one too); `.simDebugLocPlots()` / `.simDebugLocSummary()` plot and summarise it.
   - `sim-misc.R`: Miscellaneous simulation utilities.
   - `sim-trans.R`: Simulation transformation utilities.
 - `src/`: C++ source code compiled into the package via `cpp11` (`cpPmden.cpp`, `stimgate_cppmden.cpp`, `tautstring.cpp`, etc.).
@@ -809,7 +810,7 @@ rows before drawing reference lines.
    before direct simulator calls: wrappers draw replicate seeds from the outer
    seed before generating data. Do not also mock that draw to the outer seed.
 
-   Assign `sim_id` and `sim_seed` on the full grid before dev/quick filtering, shuffling and chunking. Each row is seeded with its own `sim_seed` under fixed RNG kinds (`Mersenne-Twister`, `Inversion`, `Rejection`) and the caller's RNG state is restored afterwards (`.analysis_with_seed()`, `.simBandwidthRunRow()`, `.simCompareRunScenario()`), so results do not depend on furrr's L'Ecuyer state, chunking or scheduling. Each simulation QMD has one `eval: false` "rerun one simulation" chunk that selects a `sim_id` from the full grid and calls the same scenario code path as the workers. Do not add separate debug loops.
+   Assign `sim_id` and `sim_seed` on the full grid before dev/quick filtering, shuffling and chunking. Each row is seeded with its own `sim_seed` under fixed RNG kinds (`Mersenne-Twister`, `Inversion`, `Rejection`) and the caller's RNG state is restored afterwards (`.analysis_with_seed()`, `.simBandwidthRunRow()`, `.simCompareRunScenario()`), so results do not depend on furrr's L'Ecuyer state, chunking or scheduling. Each simulation QMD has one `eval: false` "rerun one simulation" chunk that selects a `sim_id` from the full grid and calls the same scenario code path as the workers. Do not add separate debug loops. To investigate one sample's gating, wrap that same rerun call in `.simDebugLoc()` (as in the 2a `debug-one-sample` chunk) rather than copying package internals into the QMD; it must not draw random numbers or change the rerun output.
 
 11. **Real-data analyses replace outputs non-destructively**:
    ACS error summaries separate stimuli, report positive-manual relative-error

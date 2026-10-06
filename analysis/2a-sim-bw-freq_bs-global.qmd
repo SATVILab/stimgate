@@ -123,7 +123,8 @@ for (fn in c(
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-run.R",
-  "sim-bandwidth-analysis-plot.R"
+  "sim-bandwidth-analysis-plot.R",
+  "sim-debug-loc.R"
 )) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -442,6 +443,72 @@ path_stored <- .simBandwidthFindSimOutput(dir_run, sim_id_target)
 if (length(path_stored) == 1L) {
   all.equal(rerun_res, readRDS(path_stored))
 }
+```
+
+Debug StimGate's gating of one sample in one simulation. The chunk reruns
+the same `.simBandwidthRunRow()` call as above, so the data are exactly those
+of the stored run. Every earlier sample is gated as usual first.
+`.simDebugLoc()` records the target sample's local-FDR steps and saves a
+figure. It shows the raw stimulated and unstimulated densities, the raw and
+smoothed response probability, its derivative, the expected responding cells
+per bin, the taut-string density and the true labels, with the filtering
+boundaries and final threshold marked. List package functions in
+`debug_browse` to step through them for that sample only (`n` steps, `c`
+continues, `Q` quits). Set `debug_subsequent <- TRUE` to continue through
+every later sample.
+
+```{r}
+#| label: debug-one-sample
+#| include: false
+#| eval: false
+sim_id_target <- 1L
+debug_sample <- 1L # sample within the simulated dataset
+debug_subsequent <- FALSE
+debug_browse <- character(0L) # e.g. ".getCpUnsLocFilterAfterSmoothing"
+
+# To pick a case from the results instead, e.g. a low skew threshold:
+# case <- bw_tbl_results_raw |>
+#   dplyr::filter(transformation == "skew", threshold < 5) |>
+#   dplyr::slice(1)
+# sim_id_target <- case$sim_id
+# debug_sample <- as.integer(case$sample)
+
+row_target <- sim_grid_full |>
+  dplyr::filter(.data$sim_id == sim_id_target)
+dbg <- .simDebugLoc(
+  .simBandwidthRunRow(
+    row_target,
+    scenario_fn = .simBandwidthFreqBsGlobalScenario,
+    settings = scenario_settings
+  ),
+  sample = debug_sample,
+  subsequent = debug_subsequent,
+  browse = debug_browse
+)
+dbg_list <- if (inherits(dbg, "simDebugLoc")) {
+  stats::setNames(list(dbg), paste0("dataset", dbg$dataset, "_ind", dbg$ind))
+} else {
+  dbg
+}
+dbg_list <- Filter(function(x) isTRUE(x$found), dbg_list)
+
+purrr::map(dbg_list, .simDebugLocSummary) |>
+  dplyr::bind_rows() |>
+  print(width = Inf)
+
+dir_debug <- .analysis_fig_dir(
+  c(fig_key, "debug", paste0("sim-", sim_id_target)),
+  path_root = root_dir
+)
+for (nm in names(dbg_list)) {
+  p_debug <- .simDebugLocPlotGrid(.simDebugLocPlots(dbg_list[[nm]]))
+  ggsave(
+    file.path(dir_debug, paste0(nm, ".png")),
+    p_debug,
+    width = 25, height = 30, units = "cm", dpi = 300, bg = "white"
+  )
+}
+dir_debug
 ```
 
 Run the simulations in parallel, with progress reporting, then validate this
