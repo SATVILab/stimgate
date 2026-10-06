@@ -1,0 +1,385 @@
+---
+title: Share thresholds within clusters of similar samples
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: true
+  run_plots: false
+---
+
+This analysis illustrates threshold sharing within clusters of similar paired
+samples. Section A asks whether large expression location shifts between two
+labs lead to separate sample clusters (#558). Section B examines weak-response
+sensitivity when thresholds are adjusted using information from other samples
+in the same cluster (#559). Both demonstrations assess the observed result;
+neither lab membership nor improved sensitivity is assumed in advance.
+
+## Set-up
+
+```{r}
+#| label: setup
+#| include: false
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+run_simulations <- .as_flag(.get_qmd_param_env("run_simulations", "RUN_SIMULATIONS", FALSE))
+run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+analysis_qmd <- "analysis/12-sim-cluster-gates.qmd"
+# A fixed demonstration, without draft/final simulation-size settings.
+analysis_key <- .analysis_mode_key(c("sim", "cluster-gates"), sized = FALSE)
+fig_key <- .analysis_mode_key("12-sim-cluster-gates", sized = FALSE)
+devtools::load_all(root_dir)
+source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
+source(file.path(scripts_r_dir, "sim-cluster-lab.R"))
+source(file.path(scripts_r_dir, "sim-cluster-weak.R"))
+# Until the shared CSV writer reaches master, use a minimal one with its signature.
+if (!exists(".analysis_report_table", mode = "function")) {
+  .analysis_report_table <- function(tbl, path_parts, description, path_root = NULL) {
+    path_dir <- .analysis_project_dir("output",
+      c("table", utils::head(path_parts, -1L)), path_root)
+    utils::write.csv(tbl, file.path(path_dir, utils::tail(path_parts, 1L)),
+      row.names = FALSE)
+    cat("\n\n", description, " Full table (", nrow(tbl), " rows) saved to `",
+      paste(c("output", "table", path_parts), collapse = "/"), "`.\n\n", sep = "")
+    invisible(tbl)
+  }
+}
+if (isTRUE(run_simulations)) .analysis_require_packages("simcyto")
+```
+
+## A. Lab location shifts and sample clusters
+
+Each lab contributes six samples, each with its own unstimulated and stimulated
+tube. The simulated marker has Gaussian negative and positive populations with
+means 10 and 20 and variance 1. The positive fraction is 2% in the unstimulated
+tube and 22% in the stimulated tube. Small sample perturbations (SD 0.05) are
+allowed, with no additional condition or population perturbations. Lab B receives
+an additive shift of four expression units in **both tubes and both populations**.
+This is between-lab location variation, with matched controls in each lab.
+
+All samples are gated together. The `batchList` entries identify the individual
+sample pairs so each has its own control; lab labels are used only for reporting.
+The density bandwidth, clustering bandwidth and unstimulated bias are each 0.3.
+Threshold sharing is enabled and cytokine-positive refinement is disabled.
+The seed is fixed at 558. Quick and development renders use three samples per
+lab and 500 cells per tube; they are smoke checks rather than the full example.
+
+The current method compares paired densities on a common absolute expression
+grid over their left-hand region. A gap statistic selects the number of clusters,
+then k-means assigns samples. It requires at least one directly generated local-FDR
+threshold. Within a cluster, direct thresholds are clipped to its 15th and 85th
+percentiles when at least three are available; non-direct thresholds can receive
+the 60th percentile of direct thresholds. Clusters without direct thresholds keep
+their original thresholds. These threshold-sharing clusters differ from the
+clusters used for shared bandwidth estimation.
+
+```{r}
+#| label: lab-settings
+#| echo: false
+lab_settings <- list(
+  seed = 558L,
+  n_sample_lab = if (analysis_quick || analysis_dev) 3L else 6L,
+  n_cell = if (analysis_quick || analysis_dev) 500L else 2000L,
+  lab_shift = 4
+)
+lab_cache_file <- file.path(
+  .analysis_cache_dir(c(analysis_key, "lab"), root_dir, create = FALSE),
+  "result.rds"
+)
+```
+
+```{r}
+#| label: lab-simulate
+#| include: false
+if (isTRUE(run_simulations)) {
+  lab_new_result <- do.call(.simClusterLabRun, lab_settings)
+  .write_rds_atomic(list(
+    semantics = "cluster-lab-v1", settings = lab_settings, result = lab_new_result
+  ), lab_cache_file)
+}
+```
+
+```{r}
+#| label: lab-read
+#| include: false
+lab_cache <- .analysis_read_rds(lab_cache_file, c(analysis_key, "lab"), analysis_qmd)
+if (!identical(lab_cache$semantics, "cluster-lab-v1") ||
+    !identical(lab_cache$settings, lab_settings)) {
+  .analysis_cache_error(c(analysis_key, "lab"),
+    "Cached lab demonstration has different scientific settings.", analysis_qmd)
+}
+lab_result <- lab_cache$result
+```
+
+### Paired expression distributions
+
+Each line represents one tube; colours identify the lab. The panels use the same
+expression scale, so any lab shift should appear in both conditions.
+
+```{r}
+#| label: lab-distributions
+#| echo: false
+if (isTRUE(run_plots)) {
+  .analysis_print_save_fig(
+    .simClusterLabDistributionPlot(lab_result$expression),
+    file.path(.analysis_fig_dir(c(fig_key, "lab", "distributions"), root_dir),
+      "paired-expression.png"), height = 14
+  )
+}
+```
+
+### Cluster allocations and thresholds
+
+Cluster numbers are arbitrary labels. Separation is supported if every sample
+has an allocation and no assigned cluster contains samples from both labs.
+Each lab may occupy more than one cluster. Missing allocations prevent a complete
+separation claim and remain visible in the figure and table. The threshold columns
+show the original threshold and its value after within-cluster adjustment.
+
+```{r}
+#| label: lab-allocations
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  .analysis_print_save_fig(
+    .simClusterLabAllocationPlot(lab_result$allocations),
+    file.path(.analysis_fig_dir(c(fig_key, "lab", "allocations"), root_dir),
+      "sample-clusters.png"), height = 14
+  )
+  .analysis_report_table(lab_result$allocations,
+    c(fig_key, "lab", "sample-lab-cluster.csv"),
+    "Sample, lab and assigned cluster.", root_dir)
+  print(knitr::kable(lab_result$allocations, digits = 3))
+  .analysis_report_table(lab_result$summary,
+    c(fig_key, "lab", "cluster-separation-summary.csv"),
+    "Cluster separation summary.", root_dir)
+  print(knitr::kable(lab_result$summary))
+  if (isTRUE(lab_result$summary$labs_separated)) {
+    cat("\n\nAll samples were allocated, and no cluster contains samples from both labs. ",
+      "The observed allocation separates the labs in this seeded example.\n\n", sep = "")
+  } else if (is.na(lab_result$summary$labs_separated)) {
+    cat("\n\nSome samples have no recorded cluster allocation. ",
+      "Complete separation cannot be assessed; inspect the saved gate details.\n\n", sep = "")
+  } else {
+    cat("\n\nAt least one cluster contains samples from both labs. ",
+      "This seeded example does not demonstrate complete lab separation.\n\n", sep = "")
+  }
+}
+```
+
+This single dataset illustrates the current procedure, rather than estimating how
+often it separates labs. The common density grid ends at a fraction of a low
+quantile of direct thresholds, so a large shift can leave only part of Lab B's
+background in the clustering region. Review the saved details and allocations
+before interpreting separation as general robustness to lab variation.
+
+## B. Can stronger samples help detect a weak response?
+
+This example asks whether sharing thresholds between comparable samples can
+recover true responding cells in samples with a rare response. Strong and weak
+samples have the same negative and responding expression distributions. Only
+the responding fraction differs. The cells and their truth labels stay fixed
+throughout the comparison; only the gates can change.
+
+### Response settings
+
+The strong responding fraction is 1%. The clearly editable weak fraction below
+is 0.2%, five times smaller. At 50,000 cells per tube this gives approximately
+100 true responders per weak sample, enough to inspect sensitivity without
+relying on just a handful of cells. Four samples of each type provide several
+potential donors while keeping this a single small demonstration. Responders
+have mean expression 4.5, negatives have mean 0, and both have variance 1.5.
+This moderate overlap leaves a real contamination tradeoff when lowering a gate.
+Unstimulated tubes contain only negatives. There are no location shifts,
+response-shape changes or negative-variance changes between samples or tubes.
+
+The fixed bandwidth is 0.25, with an unstimulated bias of 0.25, and
+cytokine-positive refinement is disabled for this one-marker example. These
+settings isolate threshold sharing from additional refinements. They are not
+selected by inspecting the results. Quick and development renders reduce the
+cell count to 2,000 but keep both sample groups; they check execution and are
+not evidence about sensitivity at a rare response frequency.
+
+```{r}
+#| label: weak-settings
+weak_settings <- list(
+  seed = 559L,
+  n_strong = 4L,
+  n_weak = 4L,
+  strong_prob = 0.01,
+  weak_prob = 0.002, # Try 0.001 only as a separately reported scenario.
+  n_cell = if (analysis_quick || analysis_dev) 2000L else 50000L,
+  mean_pos = 4.5,
+  variance = 1.5,
+  bw = 0.25,
+  bias_uns = 0.25
+)
+weak_cache_key <- .analysis_mode_key(c("sim", "cluster-gates", "weak"), sized = FALSE)
+weak_cache_file <- file.path(
+  .analysis_cache_dir(weak_cache_key, root_dir, create = run_simulations), "result.rds"
+)
+```
+
+### Compare gates on the same cells
+
+**Before** is the pre-cluster sample threshold (`cpOrigQuantMin`) reported by
+`getStimGatesDetailed()` during the same run. **After** is its cluster-adjusted
+threshold (`cpJoinTgOrig`), checked against the final applied local-FDR
+gate with `locminClust`. This isolates the adjustment without rerunning simulation or bandwidth
+selection. With one stimulated tube per sample and cytokine-positive refinement
+disabled, the pre-cluster value is also the applied local-FDR gate with
+`loc_min`. Counts for
+both versions are checked against the package's own statistics.
+
+Clustering uses paired stimulated and unstimulated densities on a common
+absolute expression grid in the background region. Strong samples help only
+if they join a weak sample's cluster and supply directly generated thresholds.
+With at least three direct donors, their thresholds are clipped to the cluster's
+15th and 85th percentiles. A non-direct threshold is replaced by the 60th
+percentile of available direct thresholds. A cluster without direct donors
+retains its original thresholds. A weak sample with a direct threshold may
+keep it or even have it raised; no rule here forces a gate down.
+
+```{r}
+#| label: weak-simulate
+#| include: false
+if (isTRUE(run_simulations)) {
+  weak_result <- .simClusterWeakRun(weak_settings)
+  .simClusterWeakValidate(weak_result, weak_settings)
+  .write_rds_atomic(weak_result, weak_cache_file)
+}
+```
+
+```{r}
+#| label: weak-read
+#| include: false
+weak_result <- .analysis_read_rds(
+  weak_cache_file, weak_cache_key, "analysis/12-sim-cluster-gates.qmd"
+)
+.simClusterWeakValidate(weak_result, weak_settings)
+```
+
+```{r}
+#| label: weak-rerun-one-simulation
+#| eval: false
+# Same scenario and seed as the cached run, without writing the cache.
+weak_rerun <- .simClusterWeakRun(weak_settings)
+```
+
+### Cluster allocations and threshold changes
+
+The tables record requested response probabilities, sample seeds, cluster
+allocations, direct donor counts, quantiles, adjustment actions and threshold
+provenance. Negative threshold changes indicate gates moving down. Positive
+values for recovered responders are net gains in true positives; negative
+values mean that responders were lost. Additional false positives show how
+many negative cells changed to positive calls.
+
+```{r}
+#| label: weak-tables
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  .analysis_report_table(weak_result$settings_table, c(fig_key, "weak", "response-settings.csv"), "Table `response-settings`.", root_dir)
+  weak_allocations <- weak_result$allocations |>
+    dplyr::select("ind", "grp", "cpOrigQuantMin", "cpJoinTgOrig",
+      dplyr::starts_with("locCluster"), "locGenerated", "locGeneratedDirect", "locSource", "locReason") |>
+    dplyr::left_join(weak_result$settings_table, by = "ind")
+  .analysis_report_table(weak_allocations, c(fig_key, "weak", "cluster-allocations.csv"), "Table `cluster-allocations`.", root_dir)
+  .analysis_report_table(weak_result$changes, c(fig_key, "weak", "paired-changes.csv"), "Table `paired-changes`.", root_dir)
+  print(knitr::kable(weak_result$changes, digits = 3))
+  .analysis_report_table(weak_result$scores, c(fig_key, "weak", "truth-and-contamination.csv"), "Table `truth-and-contamination`.", root_dir)
+}
+```
+
+### Distributions and gates
+
+Each panel shows one sample. Histogram heights are fractions of the whole
+tube, so the responder curve retains its small population weight. Dashed lines
+show the original gates and solid lines show the adjusted gates; coincident
+lines mean no movement. The second figure enlarges the high-expression region
+without changing the data or renormalising the responder distribution.
+
+```{r}
+#| label: weak-distributions
+#| echo: false
+#| fig-width: 8
+#| fig-height: 10
+if (isTRUE(run_plots)) {
+  weak_fig_dir <- .analysis_fig_dir(c(fig_key, "weak", "distributions"), root_dir)
+  .analysis_print_save_fig(.simClusterWeakDistributions(weak_result),
+    file.path(weak_fig_dir, "whole-distribution.png"), width = 22, height = 28, allow_tall = TRUE)
+  .analysis_print_save_fig(.simClusterWeakDistributions(weak_result, tail = TRUE),
+    file.path(weak_fig_dir, "response-tail.png"), width = 22, height = 28, allow_tall = TRUE)
+}
+```
+
+### Sensitivity and contamination
+
+Sensitivity is the fraction of true responding cells above the gate. The false
+discovery proportion (FDP) is the fraction of positive calls that are actually
+negative; the false positive rate is the fraction of all negative cells called
+positive. All counts use strict `expression > gate` on the single-precision
+GatingSet expression that the package gated. FDP is undefined when there are
+no positive calls, and sensitivity is undefined when there are no responders;
+these outcomes remain missing rather than being replaced by zero.
+
+```{r}
+#| label: weak-outcomes
+#| echo: false
+if (isTRUE(run_plots)) {
+  weak_outcome_dir <- .analysis_fig_dir(c(fig_key, "weak", "outcomes"), root_dir)
+  .analysis_print_save_fig(.simClusterWeakOutcomes(weak_result),
+    file.path(weak_outcome_dir, "paired-gates-and-purity.png"), height = 16)
+}
+```
+
+### What the adjustment did
+
+The summary below is computed from the cached result. Strong and weak samples
+can share one cluster, because they have the same negative and unstimulated
+distributions. Within that cluster, only direct thresholds outside the 15th–85th
+percentile range move. Weak samples whose gates already lie inside that range
+keep them, so the adjustment can lower only the most extreme weak gates.
+
+```{r}
+#| label: weak-interpretation
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  weak_changes <- weak_result$changes
+  weak_rows <- weak_changes[weak_changes$response == "Weak", ]
+  moved <- weak_rows[weak_rows$threshold_change != 0, ]
+  cat("\n\n", nrow(moved), " of ", nrow(weak_rows), " weak samples had their gate changed",
+    if (nrow(moved)) paste0(" (", paste0(moved$sample, ": ",
+      sprintf("%+.2f", moved$threshold_change), collapse = "; "), ")") else "",
+    ". Across weak samples, the adjustment recovered ", sum(weak_rows$responders_recovered),
+    " true responders net, added ", sum(weak_rows$additional_false_positives),
+    " false positives and changed mean sensitivity from ",
+    sprintf("%.3f", mean(weak_rows$sensitivity_before)), " to ",
+    sprintf("%.3f", mean(weak_rows$sensitivity_after)), ". ",
+    "Strong samples recovered ", sum(weak_changes$responders_recovered[weak_changes$response == "Strong"]),
+    " responders net and added ",
+    sum(weak_changes$additional_false_positives[weak_changes$response == "Strong"]),
+    " false positives.\n\n", sep = "")
+}
+```
+
+More positive calls alone would not show a benefit, so read any gain beside the
+extra false positives and FDP. An undefined FDP means no cells were called
+positive; it is not evidence of perfect purity. This is one jointly gated
+dataset: it shows what the current method does here, with no estimate of
+between-dataset uncertainty or general performance.

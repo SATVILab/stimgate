@@ -8,7 +8,7 @@
 test_that("QMD registry covers all top-level documents with real test files", {
   loaded <- .load_qmd_test_targets()
   targets <- loaded$env$.qmd_test_targets(loaded$root_dir)
-  expect_length(targets, 13L)
+  expect_length(targets, 14L)
   expect_setequal(names(targets), list.files(
     file.path(loaded$root_dir, "analysis"), pattern = "[.]qmd$"
   ))
@@ -46,6 +46,7 @@ test_that("QMD selection accepts defaults, aliases, sets and deduplicates", {
   expect_identical(select("analysis\\10-real-compare-acs-cytof-validation.qmd", targets), targets[11])
   expect_identical(select("2c", targets), targets[12])
   expect_identical(select("11", targets), targets[13])
+  expect_identical(select("12", targets), targets[14])
 })
 
 test_that("QMD selection rejects explicit empty and unknown requests", {
@@ -55,7 +56,7 @@ test_that("QMD selection rejects explicit empty and unknown requests", {
   for (selection in list("", "  ", ",,,", c("1", ""))) {
     expect_error(select(selection, targets), "must not be empty")
   }
-  for (selection in list("12", "missing.qmd", c("all", "1"), c("--list", "1"))) {
+  for (selection in list("13", "missing.qmd", c("all", "1"), c("--list", "1"))) {
     expect_error(select(selection, targets), "Unknown QMD selection")
   }
 })
