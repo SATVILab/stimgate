@@ -220,13 +220,19 @@
   )
 }
 
+# StimGate names clustered gates without the underscore of the unclustered
+# ones ("locminClust" beside "loc_min"), so accept either spelling.
+.acsCytofGateNameMatch <- function(x, gateName) {
+  x %in% c(gateName, gsub("_", "", gateName, fixed = TRUE))
+}
+
 .acsCytofManualReadStats <- function(path, method, gateName) {
   if (identical(method, "stimgate")) {
     if (!dir.exists(path)) {
       stop("StimGate output not found at: ", path)
     }
     statsTbl <- stimgate::getStimStats(path) |>
-      dplyr::filter(.data$gateName == .env$gateName) |>
+      dplyr::filter(.acsCytofGateNameMatch(.data$gateName, .env$gateName)) |>
       dplyr::mutate(method = "stimgate")
     if (nrow(statsTbl) == 0L) {
       stop("No '", gateName, "' rows were found at: ", path)
@@ -454,7 +460,7 @@
       )
       thresholds <- if (method == "stimgate") {
         stimgate::getStimGates(paths[[method]]) |>
-          dplyr::filter(.data$gateName == .env$gateName) |>
+          dplyr::filter(.acsCytofGateNameMatch(.data$gateName, .env$gateName)) |>
           dplyr::mutate(
             threshold = .data$gate,
             thresholdOrigin = .data$locSource,
