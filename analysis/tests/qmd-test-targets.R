@@ -56,7 +56,8 @@
     ),
     "2c-sim-test.qmd" = c(
       "test-sim-test-qmd.R", "test-sim-debug-loc.R", "test-sim-debug-compare.R"
-    )
+    ),
+    "11-sim-low-separation-cyt-pos.qmd" = "test-sim-low-separation.R"
   )
   documents <- list.files(file.path(root_dir, "analysis"), pattern = "[.]qmd$")
   if (!setequal(documents, names(targets))) {
