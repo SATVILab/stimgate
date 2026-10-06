@@ -17,7 +17,7 @@ stimControl(
   bwMax = "auto",
   bwFallback = "auto",
   bwNcellMin = 100,
-  bwNcellMax = 1000,
+  bwNcellMax = 10000,
   bwCluster = NULL,
   clusterGates = TRUE,
   gateCombn = "min",
@@ -105,7 +105,11 @@ background-core and right-excess cells. Ignored with fixed \code{bw}. Default: 1
 \item{bwNcellMax}{numeric Maximum selector sample size. Ordinary methods
 downsample; scalar "Norm" methods cap the constructed sample after
 inspecting the full distribution. Adaptive methods use
-\code{normAdaptiveNcell}. Ignored with fixed \code{bw}. Default: 1000.}
+\code{normAdaptiveNcell}. Shared bandwidths (\code{bwScope} "cytokine" or
+"cluster") prefer tubes with at least this many cells, then larger tubes
+down to half of it, and estimate each selected tube's bandwidth on exactly
+this many cells, upsampling smaller tubes. Ignored with fixed \code{bw}.
+Default: 10000.}
 
 \item{bwCluster}{numeric or NULL Density bandwidth for threshold clustering.
 NULL uses the shared local-FDR bandwidth, or with \code{bwScope = "sample"},

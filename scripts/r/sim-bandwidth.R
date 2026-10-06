@@ -376,7 +376,7 @@
   bwMtd = "nrd0",
   bwAdj = 1,
   bwNcellMin = 1e2,
-  bwNcellMax = 1e3,
+  bwNcellMax = 1e4,
   bwCluster = NULL,
   probExact = FALSE,
   nCellStim,

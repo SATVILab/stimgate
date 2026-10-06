@@ -7,9 +7,12 @@
 # up to the right shoulder of the left modal complex, estimates bandwidths for
 # about `.bwSharedNTarget` tubes spread across the clusters (at least one per
 # cluster) and gives each tube its cluster's median bandwidth. Tubes with fewer
-# than `minCell` cells are excluded throughout. A sample then uses the smaller of its stimulated and
-# unstimulated tube bandwidths, as in the per-sample calculation. Fixed (`bw`)
-# and adaptive bandwidths are unaffected.
+# than `minCell` cells are excluded throughout. Within the channel or cluster,
+# tubes with at least `bwNcellMax` cells are preferred (see `.bwSharedSelect()`)
+# and every selected tube's bandwidth is estimated on `bwNcellMax` cells, so the
+# shared bandwidth matches one cell count. A sample then uses the smaller of its
+# stimulated and unstimulated tube bandwidths, as in the per-sample calculation.
+# Fixed (`bw`) and adaptive bandwidths are unaffected.
 
 .bwSharedNTarget <- 100L
 # Fraction of the left-complex peak height at which the clustering range ends
@@ -48,6 +51,13 @@
     }
     batchCache[[key]]
   }
+  # Estimate every selected tube's bandwidth on `bwNcellMax` cells: larger
+  # tubes are downsampled and smaller ones upsampled (smoothed bootstrap).
+  nCellPref <- suppressWarnings(as.numeric(chnlSettings$bwNcellMax))[1]
+  if (length(nCellPref) == 0L || !is.finite(nCellPref)) nCellPref <- NULL
+  chnlSettingsBw <- chnlSettings
+  if (!is.null(nCellPref)) chnlSettingsBw$bwNcellMin <- nCellPref
+
   # Bandwidths of tubes `indSel`, reading only the batches that contain them
   estBw <- function(indSel) {
     batchSel <- which(vapply(
@@ -61,7 +71,7 @@
         xBatch[intersect(names(xBatch), indSel)],
         .getCpUnsLocGetDensRawDensitiesBwInit,
         numeric(1),
-        chnlSettings = chnlSettings
+        chnlSettings = chnlSettingsBw
       )
     }) |>
       unname() |>
@@ -69,22 +79,24 @@
     bwEst[!duplicated(names(bwEst))]
   }
 
-  # Thinned expression of every tube with at least `minCell` cells. Tubes with
-  # fewer cells are not gated by local-FDR and would add noisy bandwidths.
-  xList <- purrr::map(seq_along(indBatchList), function(i) {
+  # Every tube with at least `minCell` cells. Tubes with fewer cells are not
+  # gated by local-FDR and would add noisy bandwidths.
+  tubeList <- purrr::map(seq_along(indBatchList), function(i) {
     readBatch(i) |>
-      purrr::keep(function(x) length(x) >= chnlSettings$minCell) |>
-      purrr::map(function(x) {
-        x <- sort(x)
-        x[.spreadInd(length(x), .bwSharedNCellFeature)]
-      })
+      purrr::keep(function(x) length(x) >= chnlSettings$minCell)
   }) |>
     unname() |>
     purrr::flatten()
-  xList <- xList[!duplicated(names(xList))]
+  tubeList <- tubeList[!duplicated(names(tubeList))]
+  nCell <- lengths(tubeList)
+  # Thinned expression for the clustering densities
+  xList <- purrr::map(tubeList, function(x) {
+    x <- sort(x)
+    x[.spreadInd(length(x), .bwSharedNCellFeature)]
+  })
 
   if (identical(chnlSettings$bwScope, "cytokine")) {
-    bwVec <- estBw(names(xList)[.spreadInd(length(xList), .bwSharedNTarget)])
+    bwVec <- estBw(.bwSharedSelect(nCell, .bwSharedNTarget, nCellPref))
     bwVec <- bwVec[is.finite(bwVec) & bwVec > 0]
     chnlSettings$bwShared <- if (length(bwVec) > 0L) {
       mean(bwVec, trim = 0.1)
@@ -104,10 +116,17 @@
     return(chnlSettings)
   }
 
+  # Tubes per cluster in proportion to cluster size, at least one each; the
+  # tubes themselves are then chosen by cell count within each cluster.
   ord <- order(clusterTbl$grp)
   sel <- ord[.spreadInd(length(ord), .bwSharedNTarget)]
   sel <- union(sel, match(unique(clusterTbl$grp), clusterTbl$grp))
-  bwEst <- estBw(clusterTbl$ind[sel])
+  nTargetGrp <- table(clusterTbl$grp[sel])
+  indSel <- unlist(lapply(names(nTargetGrp), function(g) {
+    indGrp <- clusterTbl$ind[clusterTbl$grp == g]
+    .bwSharedSelect(nCell[indGrp], nTargetGrp[[g]], nCellPref)
+  }), use.names = FALSE)
+  bwEst <- estBw(indSel)
 
   clusterTbl$bwEst <- unname(bwEst[clusterTbl$ind])
   clusterTbl <- clusterTbl |>
@@ -129,6 +148,46 @@
     paste0(bwGrp$grp, " = ", signif(bwGrp$bw, 3), collapse = ", ")
   )
   chnlSettings
+}
+
+# Names of up to `nTarget` tubes for shared bandwidth estimation, from the
+# named cell counts `nCell` (in batch order). Tubes with at least `nCellPref`
+# cells are preferred, spread across the batches. If there are too few, the
+# rest are drawn at random from bands one tenth of `nCellPref` wide below it,
+# the highest band first, down to half of `nCellPref` (9-10k, ..., 5-6k for
+# 10,000). If even that finds no tube, the bands continue down to the smallest
+# tube. Without a finite `nCellPref`, tubes are spread across the batches.
+#' @keywords internal
+.bwSharedSelect <- function(nCell, nTarget, nCellPref) {
+  ind <- names(nCell)
+  if (length(ind) == 0L || nTarget < 1L) {
+    return(character())
+  }
+  if (is.null(nCellPref)) {
+    return(ind[.spreadInd(length(ind), nTarget)])
+  }
+  sel <- ind[nCell >= nCellPref]
+  if (length(sel) >= nTarget) {
+    return(sel[.spreadInd(length(sel), nTarget)])
+  }
+  width <- nCellPref / 10
+  # Add random tubes from each band, highest first, until `nTarget` or `floor`
+  fill <- function(sel, upper, floor) {
+    while (length(sel) < nTarget && upper > floor) {
+      band <- ind[nCell >= upper - width & nCell < upper]
+      nTake <- min(length(band), nTarget - length(sel))
+      if (nTake > 0L) {
+        sel <- c(sel, band[sample.int(length(band), nTake)])
+      }
+      upper <- upper - width
+    }
+    sel
+  }
+  sel <- fill(sel, nCellPref, nCellPref / 2)
+  if (length(sel) > 0L) {
+    return(sel)
+  }
+  fill(sel, nCellPref / 2, min(nCell) - width)
 }
 
 # Named list of each tube's cut-channel expression in batch `i`

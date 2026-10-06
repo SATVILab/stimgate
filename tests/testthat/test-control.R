@@ -16,7 +16,7 @@ test_that("stimControl returns a documented stimControl object", {
   expect_true(control$calcCytPosGates)
   expect_identical(control$minCell, 1e2)
   expect_identical(control$bwMtd, "nrd0")
-  expect_identical(control$bwNcellMax, 1e3)
+  expect_identical(control$bwNcellMax, 1e4)
   expect_identical(control$bwScope, "cytokine")
   expect_identical(control$bwAdj, 1)
   expect_identical(control$bwFallback, "auto")

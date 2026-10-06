@@ -118,3 +118,52 @@ test_that("threshold sharing uses bwCluster, then the shared bandwidth", {
   expect_identical(getBw(list(bwShared = 0.3, bw = 0.5)), 0.3)
   expect_identical(getBw(list(bw = 0.5)), 0.5)
 })
+
+test_that("shared bandwidths prefer large tubes, then the highest size bands", {
+  withr::local_seed(1)
+  nCell <- c(a = 12000, b = 9500, c = 9100, d = 8200, e = 5500, f = 4000)
+  # Enough tubes with at least bwNcellMax cells: only those are used
+  expect_identical(.bwSharedSelect(c(nCell, g = 2e4), 2L, 1e4), c("a", "g"))
+  # Otherwise the shortfall comes from the 9-10k band before 8-9k
+  sel <- .bwSharedSelect(nCell, 3L, 1e4)
+  expect_setequal(sel, c("a", "b", "c"))
+  expect_setequal(.bwSharedSelect(nCell, 4L, 1e4), c("a", "b", "c", "d"))
+  # Bands stop at half of bwNcellMax once some tube has been found
+  expect_setequal(.bwSharedSelect(nCell, 10L, 1e4), c("a", "b", "c", "d", "e"))
+  # With no tube from half of bwNcellMax upwards, smaller tubes are used
+  expect_identical(.bwSharedSelect(c(f = 4000, h = 300), 1L, 1e4), "f")
+  expect_setequal(.bwSharedSelect(c(f = 4000, h = 300), 5L, 1e4), c("f", "h"))
+  # Within a band the choice is random
+  band <- stats::setNames(rep(9500, 20), letters[1:20])
+  draws <- replicate(20, .bwSharedSelect(band, 1L, 1e4))
+  expect_gt(length(unique(draws)), 1L)
+  # Without bwNcellMax, tubes are spread across the batches
+  expect_identical(.bwSharedSelect(nCell, 2L, NULL), c("a", "f"))
+})
+
+test_that("shared bandwidths are estimated on bwNcellMax cells", {
+  calls <- list()
+  testthat::local_mocked_bindings(
+    .getCpUnsLocGetDensRawDensitiesBwInit = function(.data, chnlSettings) {
+      calls[[length(calls) + 1L]] <<- chnlSettings[c("bwNcellMin", "bwNcellMax")]
+      0.3
+    }
+  )
+  exList <- list(t1 = stats::rnorm(6000), t2 = stats::rnorm(12000))
+  testthat::local_mocked_bindings(
+    .bwSharedReadBatch = function(i, ...) exList[i]
+  )
+  settings <- .completeChnlSettingsBwShared(
+    list(bwScope = "cytokine", bw = NULL, minCell = 100, bwNcellMin = 100,
+      bwNcellMax = 1e4, bwFallback = 0.5, marker = "m"),
+    indBatchList = list(b1 = "t1", b2 = "t2"), .data = NULL, pathProject = NULL
+  )
+  expect_identical(settings$bwShared, 0.3)
+  # Both tubes are selected (6,000 cells is in the 6-7k band) and each is
+  # upsampled or downsampled to bwNcellMax cells
+  expect_length(calls, 2L)
+  for (call in calls) {
+    expect_identical(call$bwNcellMin, 1e4)
+    expect_identical(call$bwNcellMax, 1e4)
+  }
+})

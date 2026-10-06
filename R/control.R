@@ -42,7 +42,11 @@
 #' @param bwNcellMax numeric Maximum selector sample size. Ordinary methods
 #'   downsample; scalar "Norm" methods cap the constructed sample after
 #'   inspecting the full distribution. Adaptive methods use
-#'   `normAdaptiveNcell`. Ignored with fixed `bw`. Default: 1000.
+#'   `normAdaptiveNcell`. Shared bandwidths (`bwScope` "cytokine" or
+#'   "cluster") prefer tubes with at least this many cells, then larger tubes
+#'   down to half of it, and estimate each selected tube's bandwidth on exactly
+#'   this many cells, upsampling smaller tubes. Ignored with fixed `bw`.
+#'   Default: 10000.
 #' @param bwCluster numeric or NULL Density bandwidth for threshold clustering.
 #'   NULL uses the shared local-FDR bandwidth, or with `bwScope = "sample"`,
 #'   the median bandwidth of samples with direct thresholds. Default: NULL.
@@ -148,7 +152,7 @@ stimControl <- function(
   bwMax = "auto",
   bwFallback = "auto",
   bwNcellMin = 1e2,
-  bwNcellMax = 1e3,
+  bwNcellMax = 1e4,
   bwCluster = NULL,
   clusterGates = TRUE,
   gateCombn = "min",
