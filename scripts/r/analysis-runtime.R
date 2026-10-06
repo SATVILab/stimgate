@@ -8,12 +8,12 @@
 
 .analysis_is_quick <- function() .analysis_has_profile("quick")
 
-# Simulation size for full-grid runs: "final" (default, for reported results)
-# or "draft" (fewer replicates). Set by the QMD param
+# Simulation size for full-grid runs: "draft" (current default; fewer
+# replicates) or "final" (for reported results). Set by the QMD param
 # `sim_size` or the SIM_SIZE environment variable. Dev and quick runs use their
 # own sizes, so they always count as "final" here.
 .analysis_sim_size <- function() {
-  size <- .get_qmd_param_env("sim_size", "SIM_SIZE", "final")
+  size <- .get_qmd_param_env("sim_size", "SIM_SIZE", "draft")
   size <- tolower(trimws(as.character(size)))
   if (length(size) != 1L || is.na(size) || !size %in% c("final", "draft")) {
     stop(
