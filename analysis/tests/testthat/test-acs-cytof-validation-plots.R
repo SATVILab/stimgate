@@ -162,16 +162,19 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
     expect_true(any(grepl("#### Method: StimGate", out, fixed = TRUE)))
     expect_false(any(grepl("Without Tailgate", out, fixed = TRUE)))
   }
-  expect_length(plots, 15L)
+  expect_length(plots, 18L)
   expect_true(all(vapply(plots, inherits, logical(1), what = "ggplot")))
   expect_equal(
     vapply(
-      plots[1:3],
+      plots[1:6],
       function(plot) as.character(unique(plot$data$method)),
       character(1)
     ),
-    chunk_env$validation_methods
+    rep(chunk_env$validation_methods, each = 2L)
   )
+  expect_true(all(vapply(
+    plots[1:6], function(plot) dplyr::n_distinct(plot$data$pop) == 1L, logical(1)
+  )))
 
   plots <- list()
   chunk_env$run_plots <- FALSE
@@ -302,7 +305,7 @@ test_that("analysis 10 validates its input and does not delete last good figures
   ))
 })
 
-test_that("validation figures are saved once per method in one directory", {
+test_that("validation scatter figures are saved per method and population", {
   comparison_tbl <- .acs_validation_fixture()
   parent_dir <- tempfile("acs-validation-sets-")
   dir.create(parent_dir)
@@ -311,10 +314,65 @@ test_that("validation figures are saved once per method in one directory", {
 
   env$.acsCytofValidationSavePlots(comparison_tbl, target_dir)
 
-  expect_setequal(
-    list.files(file.path(target_dir, "scatter-plots")),
-    paste0(c("stimgate", "fbeta", "tailgate"), ".pdf")
+  for (population in c("CD4_T_cells", "B_cells")) {
+    expect_setequal(
+      list.files(file.path(target_dir, "scatter-plots", population)),
+      paste0(c("stimgate", "fbeta", "tailgate"), ".pdf")
+    )
+  }
+  expect_length(
+    list.files(file.path(target_dir, "scatter-plots"), recursive = TRUE), 6L
   )
   expect_length(list.files(file.path(target_dir, "heatmaps")), 3L * 2L * 2L)
   expect_false(dir.exists(file.path(target_dir, "no_tailgate")))
+})
+
+test_that("validation scatter uses stimulus shapes and independent cytokine axes", {
+  rows <- .acs_validation_fixture() |>
+    dplyr::filter(.data$pop == "CD4 T cells")
+  p <- env$.acsCytofValidationPlotScatter(rows, "stimgate")
+  built <- ggplot2::ggplot_build(p)
+  points <- built$data[[4]]
+  expect_setequal(points$shape, c(17, 15, 3, 16))
+  expect_true(all(points$alpha == 0.5))
+  expect_true(all(points$size == 0.9))
+  expect_equal(length(unique(built$layout$layout$SCALE_X)), 2L)
+  expect_equal(length(unique(built$layout$layout$SCALE_Y)), 2L)
+  expect_equal(p$facet$params$ncol, 3)
+  expect_match(p$labels$x, "%", fixed = TRUE)
+  expect_match(p$labels$y, "%", fixed = TRUE)
+  expect_identical(
+    built$plot$scales$get_scales("colour")$get_labels(),
+    built$plot$scales$get_scales("shape")$get_labels()
+  )
+  expect_no_error(ggplot2::ggplotGrob(p))
+})
+
+test_that("heatmaps distinguish excluded strata from unavailable eligible correlations", {
+  rows <- .acs_validation_fixture() |>
+    dplyr::filter(.data$method == "stimgate", .data$pop == "CD4 T cells")
+  # Low manual signal excludes mtb without changing the manuscript rules.
+  rows$freq_stim_man[rows$stim == "mtb"] <- 0.01
+  # Eligible p1 strata have no finite automated pairs.
+  rows$freq_bs_auto[rows$stim == "p1"] <- NA_real_
+  tbl <- env$.acsCytofValidationCorrelationTable(rows)
+  expect_false("mtb" %in% tbl$stim)
+  expect_true(all(is.na(tbl$pcc[tbl$stim == "p1"])))
+  expect_setequal(attr(tbl, "excludedStrata")$stim, "mtb")
+  p <- env$.acsCytofValidationPlotCorrelation(tbl, "stimgate")
+  expect_true(all(p$data$cellLabel[p$data$excluded] == "excl."))
+  expect_true(all(p$data$cellLabel[as.character(p$data$stim) == "Secreted Mtb proteins"] == "NA"))
+  expect_true(all(p$data$textColour[p$data$excluded] == "black"))
+  expect_true(all(p$data$textColour[as.character(p$data$stim) == "EBV and CMV"] == "white"))
+  built <- ggplot2::ggplot_build(p)
+  expect_true(all(built$data[[2]]$fill == "grey85"))
+  expect_true(all(built$data[[3]]$size == 3))
+  expect_match(p$labels$caption, "eligible but correlation unavailable", fixed = TRUE)
+  expect_no_error(ggplot2::ggplotGrob(p))
+
+  # Both signs use white text at the 0.6 boundary; weaker values use black.
+  tbl$pcc <- rep(c(-0.6, 0.59), length.out = nrow(tbl))
+  p <- env$.acsCytofValidationPlotCorrelation(tbl, "stimgate")
+  expect_true(all(p$data$textColour[!p$data$excluded & p$data$pcc == -0.6] == "white"))
+  expect_true(all(p$data$textColour[!p$data$excluded & p$data$pcc == 0.59] == "black"))
 })

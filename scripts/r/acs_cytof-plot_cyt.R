@@ -154,7 +154,7 @@
   .acsCytofValidationValidateComparisonTable(comparisonTbl)
 
   if (!"thresholdFailed" %in% names(comparisonTbl)) comparisonTbl$thresholdFailed <- FALSE
-  comparisonTbl |>
+  correlationTbl <- comparisonTbl |>
     dplyr::mutate(freq_bs_auto = dplyr::if_else(.data$thresholdFailed, NA_real_, .data$freq_bs_auto)) |>
     dplyr::group_by(method, pop, cyt, stim) |>
     dplyr::filter(
@@ -184,6 +184,11 @@
       ),
       .groups = "drop"
     )
+  keyCols <- c("method", "pop", "cyt", "stim")
+  attr(correlationTbl, "excludedStrata") <- comparisonTbl |>
+    dplyr::distinct(dplyr::across(dplyr::all_of(keyCols))) |>
+    dplyr::anti_join(correlationTbl, by = keyCols)
+  correlationTbl
 }
 
 .acsCytofValidationPlotScatter <- function(comparisonTbl, method) {
@@ -221,9 +226,11 @@
       ggplot2::aes(
         x = .data$freq_bs_man,
         y = .data$freq_bs_auto,
-        colour = .data$stim
+        colour = .data$stim,
+        shape = .data$stim
       ),
-      alpha = 0.75
+      alpha = 0.5,
+      size = 0.9
     ) +
     ggplot2::scale_x_continuous(
       labels = .analysis_label_number,
@@ -232,18 +239,23 @@
     ) +
     ggplot2::scale_y_continuous(labels = .analysis_label_number, n.breaks = 3) +
     ggplot2::facet_wrap(
-      ggplot2::vars(pop, cyt),
+      ggplot2::vars(cyt),
       scales = "free",
-      ncol = dplyr::n_distinct(plotTbl$cyt)
+      ncol = 3
     ) +
     ggplot2::scale_colour_manual(
       values = .acsCytofValidationStimColours(),
       labels = .acsCytofValidationStimLabels()
     ) +
+    ggplot2::scale_shape_manual(
+      values = c(mtb = 17, p1 = 15, p4 = 3, ebv = 16),
+      labels = .acsCytofValidationStimLabels()
+    ) +
     ggplot2::labs(
-      x = "Background-subtracted frequency\n(manual gating)",
-      y = "Background-subtracted frequency\n(automated gating)",
-      colour = NULL
+      x = "Background-subtracted frequency\n(manual gating, %)",
+      y = "Background-subtracted frequency\n(automated gating, %)",
+      colour = NULL,
+      shape = NULL
     )
 }
 
@@ -264,7 +276,14 @@
       "."
     )
   }
-  plotTbl <- correlationTbl |>
+  plotTbl <- correlationTbl |> dplyr::mutate(excluded = FALSE)
+  excludedStrata <- attr(correlationTbl, "excludedStrata")
+  if (!is.null(excludedStrata)) {
+    plotTbl <- dplyr::bind_rows(
+      plotTbl, dplyr::mutate(excludedStrata, excluded = TRUE)
+    )
+  }
+  plotTbl <- plotTbl |>
     dplyr::filter(
       .data$method == .env$method,
       .data$stim != "p4"
@@ -297,6 +316,18 @@
       )
     )
 
+  plotTbl$cellLabel <- ifelse(
+    plotTbl$excluded, "excl.",
+    ifelse(
+      is.finite(plotTbl[[metric]]),
+      format(round(plotTbl[[metric]], 2), trim = TRUE), "NA"
+    )
+  )
+  plotTbl$textColour <- ifelse(
+    !plotTbl$excluded & is.finite(plotTbl[[metric]]) & abs(plotTbl[[metric]]) >= 0.6,
+    "white", "black"
+  )
+
   metricLabel <- if (metric == "pcc") {
     "Pearson correlation"
   } else {
@@ -309,22 +340,30 @@
     ggplot2::aes(x = .data$cyt, y = .data$pop)
   ) +
     .analysis_theme(grid = "none") +
-    ggplot2::geom_raster(ggplot2::aes(fill = .data[[metric]])) +
-    ggplot2::geom_text(
-      ggplot2::aes(label = round(.data[[metric]], 2)),
-      size = 2.25
+    ggplot2::geom_tile(ggplot2::aes(fill = .data[[metric]])) +
+    ggplot2::geom_tile(
+      data = dplyr::filter(plotTbl, .data$excluded), fill = "grey85"
     ) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = .data$cellLabel, colour = .data$textColour),
+      size = 3
+    ) +
+    ggplot2::scale_colour_identity() +
     ggplot2::facet_wrap(ggplot2::vars(stim), ncol = 3, scales = "fixed") +
     ggplot2::scale_fill_gradientn(
       colours = colourValues,
       values = seq(0, 1, length.out = length(colourValues)),
       limits = c(-1, 1),
-      na.value = "gray75",
+      na.value = "white",
       name = metricLabel
     ) +
     ggplot2::labs(
       x = "Cytokine",
-      y = "Population"
+      y = "Population",
+      caption = paste0(
+        "Grey / excl.: excluded by signal eligibility rules.\n",
+        "White / NA: eligible but correlation unavailable."
+      )
     ) +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1),
@@ -416,12 +455,20 @@
   dir.create(pathDirSaveScatter, recursive = TRUE, showWarnings = FALSE)
 
   for (method in methods) {
-    scatter <- .acsCytofValidationPlotScatter(comparisonTbl, method)
-    .analysis_save_fig(
-      scatter,
-      file.path(pathDirSaveScatter, paste0(method, ".pdf")),
-      height = 22
-    )
+    methodRows <- comparisonTbl |> dplyr::filter(.data$method == .env$method)
+    for (population in unique(as.character(methodRows$pop))) {
+      rows <- methodRows |> dplyr::filter(.data$pop == .env$population)
+      populationDir <- file.path(
+        pathDirSaveScatter, gsub("[^A-Za-z0-9_.-]+", "_", population)
+      )
+      dir.create(populationDir, recursive = TRUE, showWarnings = FALSE)
+      scatter <- .acsCytofValidationPlotScatter(rows, method)
+      .analysis_save_fig(
+        scatter,
+        file.path(populationDir, paste0(method, ".pdf")),
+        height = 12
+      )
+    }
 
     for (realOnly in c(TRUE, FALSE)) {
       populationSuffix <- if (realOnly) "real-pops" else "all-pops"

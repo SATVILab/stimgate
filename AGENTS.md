@@ -589,6 +589,11 @@ explicitly. In `results: asis` loops, print before `ggsave()` (use
 `.analysis_print_save_fig()`) so figures stay under their own headings. Chunk
 tests should capture printed plots and check that each requested method appears and that disabling plotting produces no printed plots.
 
+For boxplot display transformations, transform coordinates after computing the
+box statistic so presentation changes preserve quartiles and whiskers. ACS
+correlation tables retain excluded-stratum keys as metadata for heatmaps;
+excluded strata and eligible-but-unavailable correlations must remain distinct.
+
 Plot-construction helpers under `scripts/r/` should return plot objects without
 creating directories or writing files. Keep filesystem side effects in the
 corresponding save/orchestration helper or QMD. Reference densities for threshold
