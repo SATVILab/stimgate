@@ -967,9 +967,6 @@ add_bw_labs <- function(.data) {
     "75th", "90th", if (fallback) "95th" else "97.5th")
   long <- .simBandwidthStatLongBounds(tbl, stats, "percentile", "value")
   long$percentile <- factor(long$percentile, levels = stats, labels = labels)
-  long$side <- factor(c("Below median", "Below median", "Below median", "Median",
-    "Above median", "Above median", "Above median")[match(as.character(long$percentile), labels)],
-    levels = c("Below median", "Median", "Above median"))
   multi <- "method" %in% names(long)
   if ("transformation" %in% names(long)) long$transformation <- .analysis_trans_factor(long$transformation)
   long$value_shown <- .simBandwidthSignedErrorSquish(long$value)
@@ -984,7 +981,8 @@ add_bw_labs <- function(.data) {
     facet <- if (x == "bias_uns_multiplier") {
       ggplot2::facet_grid(bw + bias_uns_basis ~ mismatch_label, scales = "free_y")
     } else if (by_prob) {
-      ggplot2::facet_grid(prob_response ~ transformation, scales = "free")
+      ggplot2::facet_grid(prob_response ~ transformation, scales = "free",
+        labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent("Response: ")))
     } else ggplot2::facet_wrap(~transformation, scales = "free")
   }
   scenario_counts <- grep("^n_scenario_", names(tbl), value = TRUE)
@@ -1000,33 +998,43 @@ add_bw_labs <- function(.data) {
   caption <- paste(counts,
     if (fallback) "5th/95th (too few samples for 2.5th/97.5th intervals)." else "Outer pair: 2.5th/97.5th.",
     "Unavailable intervals are omitted; points remain.")
+  caption <- paste(strwrap(caption, width = 110), collapse = "\n")
   if (is.null(y_label)) y_label <- if ("n_scenario" %in% names(tbl)) {
     "Mean of scenario percentiles (signed relative error)"
   } else "Signed relative error"
+  # Alpha, line width and line type all map to the percentile under one legend
+  # title, so ggplot2 merges them. Single-method figures also colour by
+  # percentile: teal above the median and brown below, matching over/under views.
+  tiers <- c("outer", "tail", "quartile", "median", "quartile", "tail", "outer")
+  linetypes <- stats::setNames(c(rep("dotted", 3), "solid", rep("dashed", 3)), labels)
+  bars <- if (isTRUE(mcse)) .simBandwidthSignedErrorBars(long) else NULL
+  # Intervals are solid regardless of their percentile's line type.
+  if (!is.null(bars)) bars$aes_params$linetype <- "solid"
   p <- ggplot2::ggplot(long, ggplot2::aes(
     x = .data[[x]], y = .data$value_shown, group = .data$series,
-    colour = .data[[if (multi) "method" else "side"]],
+    colour = .data[[if (multi) "method" else "percentile"]],
     alpha = .data$percentile, linewidth = .data$percentile,
-    linetype = .data$side)) +
+    linetype = .data$percentile)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey40", linetype = "dashed") +
     ggplot2::geom_line() + ggplot2::geom_point(size = 1) +
-    (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(long)) + facet +
+    bars + facet +
     ggplot2::scale_y_continuous(transform = .simBandwidthSignedErrorTrans(),
       labels = function(v) .simBandwidthSignedErrorLabel(v,
         cap = if (.simBandwidthSignedErrorIsCapped(long$value)) .simBandwidthSignedErrorCap else Inf)) +
     ggplot2::expand_limits(y = c(-1, 1)) +
-    ggplot2::scale_alpha_manual(values = stats::setNames(unname(alphas[c("outer", "tail", "quartile", "median", "quartile", "tail", "outer")]), labels),
+    ggplot2::scale_alpha_manual(values = stats::setNames(unname(alphas[tiers]), labels),
       name = "Percentile", drop = FALSE) +
-    ggplot2::scale_linewidth_manual(values = stats::setNames(unname(linewidths[c("outer", "tail", "quartile", "median", "quartile", "tail", "outer")]), labels),
+    ggplot2::scale_linewidth_manual(values = stats::setNames(unname(linewidths[tiers]), labels),
       name = "Percentile", drop = FALSE) +
-    ggplot2::scale_linetype_manual(values = c("Below median" = "dotted", "Median" = "solid", "Above median" = "dashed"),
-      name = "Percentile position") +
+    ggplot2::scale_linetype_manual(values = linetypes, name = "Percentile", drop = FALSE) +
     (if (multi) .analysis_scale_method() else ggplot2::scale_colour_manual(
-      values = c("Below median" = .simBandwidthSignedErrorColours[["over_q95"]],
-        "Median" = "#333333", "Above median" = .simBandwidthSignedErrorColours[["under_q95"]]),
-      name = "Percentile position")) +
+      values = stats::setNames(c(rep(.simBandwidthSignedErrorColours[["under_q95"]], 3), "#333333",
+        rep(.simBandwidthSignedErrorColours[["over_q95"]], 3)), labels),
+      name = "Percentile", drop = FALSE)) +
     (if (x_log) ggplot2::scale_x_log10(breaks = sort(unique(tbl[[x]])), labels = .analysis_label_number)
       else if (is.numeric(long[[x]])) ggplot2::scale_x_continuous(labels = .analysis_label_number)) +
-    .analysis_theme() + ggplot2::labs(x = x_label, y = y_label, subtitle = subtitle, caption = caption)
+    .analysis_theme() +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+    ggplot2::labs(x = x_label, y = y_label, subtitle = subtitle, caption = caption)
   p
 }

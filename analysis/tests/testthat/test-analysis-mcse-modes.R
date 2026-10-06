@@ -166,7 +166,7 @@ test_that("analysis HTML keeps retina size bounded and preserves sibling MC file
   files <- list.files(file.path(root, "analysis"), pattern = "\\.qmd$", full.names = TRUE)
   for (file in files) {
     text <- paste(readLines(file, warn = FALSE), collapse = "\n")
-    expect_match(text, "    fig-retina: 1", fixed = TRUE, info = basename(file))
+    expect_match(text, "knitr:\n  opts_chunk:\n    fig.retina: 1", fixed = TRUE, info = basename(file))
     expect_match(text, "    embed-resources: true", fixed = TRUE, info = basename(file))
     expect_false(grepl("unlink(path, recursive = TRUE)", text, fixed = TRUE), info = basename(file))
   }

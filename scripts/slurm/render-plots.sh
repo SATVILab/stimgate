@@ -58,8 +58,14 @@ for qmd_file in "${qmd_file_vec[@]}"; do
     fi
     echo "Render plots: $qmd_file ($mcse_mode) -> $output_file"
     date
-    r_expr="qmd_file <- '$qmd_file'; output_file <- '$output_file'; if (requireNamespace('quarto', quietly = TRUE)) { quarto::quarto_render(input = qmd_file, output_file = output_file) } else { status <- system2('quarto', c('render', qmd_file, '--output', output_file)); if (!identical(status, 0L)) quit(status = status) }"
+    # Render under Quarto's default name and rename afterwards: --output with
+    # embed-resources makes Quarto look for its support files in the wrong place.
+    r_expr="qmd_file <- '$qmd_file'; if (requireNamespace('quarto', quietly = TRUE)) { quarto::quarto_render(input = qmd_file) } else { status <- system2('quarto', c('render', qmd_file)); if (!identical(status, 0L)) quit(status = status) }"
     apptainer-rscript -f stimgate -- "$r_expr"
+    default_html="$(dirname -- "$qmd_file")/${qmd_stem}.html"
+    if [[ "$output_file" != "${qmd_stem}.html" ]]; then
+      mv -f -- "$default_html" "$(dirname -- "$qmd_file")/$output_file"
+    fi
     echo "Completed rendering $output_file"
     date
   done

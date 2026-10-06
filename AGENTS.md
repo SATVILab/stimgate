@@ -1014,7 +1014,7 @@ figure callers pass `mcse_mode` to shared save/print orchestration and ratio
 companions. Save the selected mode in sibling `mcse_off/` or `mcse_on/` folders;
 non-MC figures retain a single output. Ratio companions are saved only.
 Never clear sibling mode files or rerun simulations to produce the other mode.
-Analysis HTML uses `fig-retina: 1` to keep embedded figures bounded in size.
+Analysis HTML sets the knitr chunk option `fig.retina: 1` (YAML `knitr: opts_chunk:`) to keep embedded figures bounded in size; Quarto ignores a `fig-retina` format option.
 
 Comparison completion and promotion require every intended method/sample/iteration
 row, finite simulated truth and pairing fingerprints, and consistent successful

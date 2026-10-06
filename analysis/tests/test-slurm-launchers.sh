@@ -26,9 +26,7 @@ if [[ -n "$qmd" && -f "$qmd" ]]; then
   printf 'render_file_exists=%s\n' "$qmd" >> "$SLURM_TEST_LOG"
 fi
 if [[ "${MOCK_RENDER_ARTIFACTS:-false}" == true ]]; then
-  output_file=$(printf '%s' "${!#}" | sed -n "s/.*output_file <- '\([^']*\)'.*/\1/p")
-  [[ -n "$output_file" ]]
-  printf '%s\n' "${SHOW_MCSE:-none}" > "$(dirname -- "$qmd")/$output_file"
+  printf '%s\n' "${SHOW_MCSE:-none}" > "$(dirname -- "$qmd")/$(basename -- "$qmd" .qmd).html"
 fi
 exit "${MOCK_RENDER_STATUS:-0}"
 EOF
@@ -116,7 +114,10 @@ for launcher in dev-1-sim-trans.sh dev-7-sim-compare-freq_bs.sh dev-8-sim-compar
   grep -Fq -- 'SIM_SIZE: draft' "$test_dir/output"
 done
 : > "$SLURM_TEST_LOG"
-PLOT_QMD_FILES="analysis/2a-sim-bw-freq_bs-global.qmd" \
+# A temporary fixture, so the renamed mock reports stay out of analysis/.
+mkdir -p "$test_dir/draft"
+printf '%s\n' '---' 'params:' '  show_mcse: on' '---' > "$test_dir/draft/fixture.qmd"
+MOCK_RENDER_ARTIFACTS=true PLOT_QMD_FILES="$test_dir/draft/fixture.qmd" \
   bash "$project_root/scripts/slurm/render-plots.sh" > "$test_dir/output" 2>&1
 grep -Fq -- 'sim_size=draft' "$SLURM_TEST_LOG"
 grep -Fq -- 'SIM_SIZE: draft' "$test_dir/output"
@@ -151,11 +152,8 @@ grep -Fq -- 'expected_run=slurm-test-run|preprocessing=false|stimgate=false|comp
 [[ $(grep -c 'mcse=off' "$SLURM_TEST_LOG") -eq 0 ]]
 [[ $(grep -c 'mcse=on' "$SLURM_TEST_LOG") -eq 0 ]]
 [[ $(grep -c 'sim_size=.*|mcse=$' "$SLURM_TEST_LOG") -eq 2 ]]
-for stem in 9-real-compare-acs-cytof 10-real-compare-acs-cytof-validation; do
-  grep -Fq "output_file <- '${stem}.html'" "$SLURM_TEST_LOG"
-done
-grep -Fq 'output_file = output_file' "$SLURM_TEST_LOG"
-grep -Fq "'--output', output_file" "$SLURM_TEST_LOG"
+# Reports are renamed after rendering; --output breaks embed-resources.
+! grep -Fq -- '--output' "$SLURM_TEST_LOG"
 
 unset RUN_PREPROCESSING RUN_STIMGATE RUN_COMPARATORS
 
