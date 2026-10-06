@@ -418,11 +418,12 @@ reads. Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`,
 or `2a 2b`; validate all target arguments before submitting jobs. After
 the simulation jobs, `dev.sh` submits one
 `scripts/slurm/render-plots.sh` job per analysis that renders the real
-QMD with simulations off and plots on (`plot_qmds_for_script()`; 9 also
-renders 10). It depends `afterok` on its own simulation jobs and
-`afterany` on the submission’s other simulation jobs, because projr
-builds clear projr’s output folder (where figures go) before building.
-Keep mocked submission and render checks in
+QMD twice, `SHOW_MCSE=off` then `on`, with simulations off and plots on
+and distinct `<stem>-mcse_off.html` / `<stem>-mcse_on.html` outputs
+(`plot_qmds_for_script()`; 9 also renders 10). It depends `afterok` on
+its own simulation jobs and `afterany` on the submission’s other
+simulation jobs, because projr builds clear projr’s output folder (where
+figures go) before building. Keep mocked submission and render checks in
 `analysis/tests/test-slurm-launchers.sh` and run them in analysis CI
 when launchers change. Relative-error plots averaged over cell counts
 and plots for each cell count belong in separate labelled QMD chunks;
@@ -433,14 +434,26 @@ figure sections and sibling folders, including the matching coverage
 summaries. Label which tube and component change. Ratio companions
 preserve signed-error geometry and intervals, relabelling ticks as
 `1 + relative error` (estimate/reference). Keep originals and save
-companions in sibling ratio folders. Absolute relative errors lose
-direction and cannot be relabelled as estimate/reference ratios. Signed
+companions in sibling ratio folders without printing them into HTML.
+Absolute relative errors lose direction and cannot be relabelled as
+estimate/reference ratios. Unconditional signed-error percentile figures
+calculate quantiles on raw errors, including zeros, and show all seven
+percentiles in each panel. Choose the outer 2.5th/97.5th pair per
+complete figure; if either interval is unavailable at any finite plotted
+point, use 5th/95th throughout that figure and label the fallback. Keep
+uncertainty eligibility independent of interval display, and never clip
+unconditional percentile intervals to one side of zero. Signed
 relative-error plots (`.simBandwidthSignedError*()` in
 `sim-bandwidth-analysis-plot.R`) sit alongside, not instead of, the
 absolute ones: they summarise over- and under-estimates separately,
-weight lines by each direction’s share, and use a scale on which -100%
-and a two-fold over-estimate are equally far from zero. Monte Carlo
-error bars (`show_mcse` QMD parameter / `SHOW_MCSE`, default on; plot
+weight lines by each direction’s share, and use identity on \[-1, 0\],
+log2(1 + x) above zero and -1 - log2(-x) below -1, so -100% and a
+two-fold over-estimate are equally far from zero. Every figure using the
+below -100% region must print a visible HTML note and log its figure
+path. Mark points above the +1500% display cap with an upward triangle
+and explain it beside the figure. Monte Carlo error bars (`show_mcse`
+QMD parameter / `SHOW_MCSE`, one mode per render: `on` (default) or
+`off`; historical true/false maps to on/off; `both` is rejected; plot
 helpers take `mcse = FALSE` by default) use `analysis-mcse.R` and only
 existing replicates. For independent sample-replication analyses, use
 sd/sqrt(n) for means and order-statistic intervals (x\_(l), x\_(u)) with
@@ -707,18 +720,34 @@ chunks switch to the checkout root. Use `.analysis_is_dev()` and
 readers for errors naming the analysis, render command, matching
 dev/quick profile and required completion of all chunks.
 
+Analysis figures carry no titles or subtitles. Identify their method set
+and scenario settings in saved file paths and QMD headings, prose or
+captions. Before removing grid views as duplicates, check the summary
+grouping: one setting per baseline does not mean one baseline per
+plotted group.
+
 When displaying ggplot objects inside QMD conditionals or loops, call
-[`print()`](https://rdrr.io/r/base/print.html) explicitly. Chunk tests
-should capture printed plots and check that each requested method
-appears and that disabling plotting produces no printed plots.
+[`print()`](https://rdrr.io/r/base/print.html) explicitly. In
+`results: asis` loops, print before `ggsave()` (use
+`.analysis_print_save_fig()`) so figures stay under their own headings.
+Chunk tests should capture printed plots and check that each requested
+method appears and that disabling plotting produces no printed plots.
+
+For boxplot display transformations, transform coordinates after
+computing the box statistic so presentation changes preserve quartiles
+and whiskers. ACS correlation tables retain excluded-stratum keys as
+metadata for heatmaps; excluded strata and eligible-but-unavailable
+correlations must remain distinct.
 
 Plot-construction helpers under `scripts/r/` should return plot objects
 without creating directories or writing files. Keep filesystem side
 effects in the corresponding save/orchestration helper or QMD. Reference
 densities for threshold plots use seeded, render-local reference
 simulations, cache each biological setting independently of method
-settings and cell count, and retain the original threshold layers above
-fills.
+settings and cell count. Bandwidth threshold figures use ordered
+bandwidth rows with median/IQR marks and keep reference densities in
+separate contextual figures; density-overlay comparison figures retain
+their original threshold layers above fills.
 
 Figures from analysis QMDs are saved under
 `output/fig/<QMD name>/<figure type>/` via `.analysis_fig_dir()`, with
@@ -1020,6 +1049,10 @@ deduplicates identical rows before drawing reference lines.
   version when results change. During integrations, check master and
   every merged branch, including merge history (`git log -m -S`), and
   choose a new identifier above every previously used version.
+- When extending a comparison response grid, append new biological
+  scenarios after the legacy grid and preserve existing scenario IDs and
+  seeds. Record the resulting full selected grid in the manifest before
+  chunking.
 - Resume retries rows whose saved output or marker recorded an error, so
   a run ID with a failed simulation can still complete.
 
@@ -1034,12 +1067,13 @@ deduplicates identical rows before drawing reference lines.
     profiles are active. Results for dev and quick runs are kept under
     `<analysis-key>/dev/` and `<analysis-key>/quick/`; full runs keep
     the existing analysis key. Full-grid runs take `sim_size` (QMD
-    param, `SIM_SIZE` env, read by `.analysis_sim_size()`): `"final"`
-    (default) or `"draft"`; draft uses about a quarter of the samples
+    param, `SIM_SIZE` env, read by `.analysis_sim_size()`): `"draft"`
+    (the current default, by operator request, until the analyses
+    settle) or `"final"`; draft uses about a quarter of the samples
     (datasets in 7/8) on the same grid, stored under
     `<analysis-key>/draft/` and recorded as `sim_size` in required run
     settings; draft is for iterating, not reporting, and dev/quick take
-    precedence. Set `SIM_SIZE=draft` explicitly for faster iterations.
+    precedence. Set `SIM_SIZE=final` explicitly for reported results.
     Draft 7/8 retain all 20 jointly gated samples per dataset and reduce
     only replicate datasets; missing `sim_size` in legacy manifests
     still means final. Workers and interactive single-row reruns use the
@@ -1291,16 +1325,18 @@ For GitHub issue or Project administration, use
 `.projects/project.md` before acting.
 
 Monte Carlo figure selection accepts `show_mcse` / `SHOW_MCSE` values
-`off`, `on` or `both` (default); historical Boolean false/true selects
-off/on. Compute the requested interval summaries once and derive off/on
-plots from that same plot. Mark only Monte Carlo interval layers with
-`.analysis_mcse_layer()`; removing MC intervals must preserve points,
-scales and other uncertainty (for example ACS donor intervals).
-Performance figure callers pass `mcse_mode` to shared save/print
-orchestration and ratio companions. Both versions are printed with
-explicit labels and saved in sibling `mcse_off/` and `mcse_on/` folders;
-non-MC figures retain a single output. Never rerun simulations for these
-twins.
+`off` or `on` (default); historical Boolean false/true selects off/on.
+Reject `both`: each HTML contains only its selected mode. Mark only
+Monte Carlo interval layers with `.analysis_mcse_layer()`; removing MC
+intervals must preserve points, scales and other uncertainty (for
+example ACS donor intervals). Performance figure callers pass
+`mcse_mode` to shared save/print orchestration and ratio companions.
+Save the selected mode in sibling `mcse_off/` or `mcse_on/` folders;
+non-MC figures retain a single output. Ratio companions are saved only.
+Never clear sibling mode files or rerun simulations to produce the other
+mode. Analysis HTML sets the knitr chunk option `fig.retina: 1` (YAML
+`knitr: opts_chunk:`) to keep embedded figures bounded in size; Quarto
+ignores a `fig-retina` format option.
 
 Comparison completion and promotion require every intended
 method/sample/iteration row, finite simulated truth and pairing
@@ -1312,3 +1348,8 @@ zero gates. Missing/malformed rows, unlabelled missing outcomes,
 StimGate or whole-scenario runtime failures remain incomplete. Mismatch
 checks use defined gate counts and report failed zero-mismatch pairs
 separately from finite comparisons.
+
+Comparison figures that need independent panel ranges use `facet_wrap`,
+not row-shared free-y grids. Split crowded grids with headings and
+unique filenames; reuse the shared method colour/shape/linetype
+definitions.
