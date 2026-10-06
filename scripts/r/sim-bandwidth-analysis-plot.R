@@ -970,19 +970,41 @@ add_bw_labs <- function(.data) {
     )
 }
 
-.simBandwidthPrintCoverage <- function(plot, summary) {
+# Compact coverage beside a figure: overall denominators and failure/fallback
+# totals, then only the plotted settings with failures or fallbacks (full
+# per-setting tables made the reports tens of megabytes).
+.simBandwidthPrintCoverage <- function(plot, summary, max_rows = 20L) {
   tbl <- .simBandwidthCoverageForPlot(plot, summary)
-  cat("\n\n", knitr::kable(tbl, digits = 3), sep = "\n")
+  pct <- function(n, d) if (d > 0) paste0(" (", .analysis_label_percent(n / d), ")") else ""
+  n_sample <- sum(tbl$n_sample)
+  n_provenance <- sum(tbl$n_provenance)
+  per_point <- range(tbl$n_sample)
+  cat("\n\n**Coverage.** ", nrow(tbl), " plotted settings; ",
+    if (per_point[1] == per_point[2]) per_point[1] else paste0(per_point[1], "\u2013", per_point[2]),
+    " samples each (", n_sample, " in total). Failed estimates: ", sum(tbl$n_failed),
+    pct(sum(tbl$n_failed), n_sample), ". Threshold fallbacks: ", sum(tbl$n_fallback),
+    " of ", n_provenance, pct(sum(tbl$n_fallback), n_provenance), ".\n\n", sep = "")
+  flagged <- tbl[tbl$n_failed > 0L | tbl$n_fallback > 0L, , drop = FALSE]
+  if (nrow(flagged)) {
+    # Drop columns that are constant across the flagged rows.
+    keep <- vapply(flagged, function(x) length(unique(x)) > 1L, logical(1)) |
+      names(flagged) %in% c("n_sample", "n_failed", "n_fallback", "n_provenance")
+    shown <- flagged[order(-flagged$n_failed, -flagged$n_fallback), keep, drop = FALSE]
+    cat("Settings with failures or fallbacks",
+      if (nrow(shown) > max_rows) paste0(" (first ", max_rows, " of ", nrow(shown), ")"),
+      ":\n\n", sep = "")
+    cat(knitr::kable(utils::head(shown, max_rows), digits = 3), sep = "\n")
+    cat("\n\n")
+  }
   plot_data <- .simBandwidthPlotData(plot)
   count_cols <- names(plot_data)[startsWith(names(plot_data), "n_scenario_")]
   if (length(count_cols)) {
-    keys <- intersect(names(tbl), names(plot_data))
-    keys <- setdiff(keys, c("n_sample", "n_valid", "n_failed", "n_provenance", "n_fallback"))
-    counts <- plot_data |>
-      dplyr::select(dplyr::any_of(c(keys, "direction", count_cols))) |>
-      dplyr::distinct()
-    cat("\n\nContributing scenarios per statistic:\n\n",
-        knitr::kable(counts), sep = "\n")
+    ranges <- vapply(count_cols, function(col) {
+      x <- plot_data[[col]]
+      paste0(sub("^n_scenario_", "", col), " ", min(x, na.rm = TRUE), "\u2013", max(x, na.rm = TRUE))
+    }, character(1))
+    cat("Contributing scenarios per plotted statistic: ", paste(ranges, collapse = "; "),
+      ".\n\n", sep = "")
   }
   invisible(tbl)
 }

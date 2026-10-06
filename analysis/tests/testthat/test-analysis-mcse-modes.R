@@ -80,7 +80,7 @@ test_that("each render saves and prints one mode and preserves its sibling", {
 test_that("performance QMDs default on and explicitly forward plot modes", {
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   for (stem in c("2a-", "2b-", "3-", "4-", "7-", "8-")) {
-    file <- list.files(file.path(root, "analysis"), pattern = paste0("^", stem), full.names = TRUE)
+    file <- list.files(file.path(root, "analysis"), pattern = paste0("^", stem, ".*[.]qmd$"), full.names = TRUE)
     text <- paste(readLines(file, warn = FALSE), collapse = "\n")
     expect_match(text, '  show_mcse: "on"', fixed = TRUE)
     expect_match(text, 'show_mcse <- mcse_mode != "off"', fixed = TRUE)

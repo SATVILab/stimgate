@@ -1,6 +1,7 @@
 .bandwidth_readability_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
-  for (file in c("analysis-plot-style.R", "analysis-mcse.R", "sim-bandwidth-analysis-plot.R")) {
+  for (file in c("analysis-runtime.R", "analysis-plot-style.R", "analysis-mcse.R",
+                 "sim-bandwidth-analysis-plot.R")) {
     source(file.path(testthat::test_path(), "../../../scripts/r", file), local = env)
   }
   env
@@ -128,4 +129,26 @@ test_that("owned readability QMD R chunks parse", {
       expect_no_error(parse(text = lines[seq.int(start + 1L, end - 1L)]))
     }
   }
+})
+
+test_that("coverage notes stay compact and list only failing settings", {
+  env <- .bandwidth_readability_env()
+  panels <- tibble::tibble(mean_pos_setting = "low", n_cell = 100,
+    transformation = env$.analysis_trans_factor("gaussian"), bw = seq(0.1, 1, by = 0.1))
+  plot <- ggplot2::ggplot(panels, ggplot2::aes(bw, n_cell)) + ggplot2::geom_point()
+  summary <- tibble::tibble(mean_pos_setting = "low", n_cell = 100,
+    transformation = "gaussian", bw = seq(0.1, 1, by = 0.1), n_sample = 25L,
+    n_valid = c(24L, rep(25L, 9)), n_failed = c(1L, rep(0L, 9)),
+    n_provenance = 25L, n_fallback = c(0L, 2L, rep(0L, 8)))
+  out <- paste(utils::capture.output(tbl <- env$.simBandwidthPrintCoverage(plot, summary)),
+    collapse = "\n")
+  expect_match(out, "10 plotted settings; 25 samples each (250 in total)", fixed = TRUE)
+  expect_match(out, "Failed estimates: 1 (0.4%)", fixed = TRUE)
+  expect_match(out, "Threshold fallbacks: 2 of 250 (0.8%)", fixed = TRUE)
+  # Only the two flagged settings are tabulated; the full table is still returned.
+  expect_equal(nrow(tbl), 10L)
+  expect_equal(lengths(regmatches(out, gregexpr("\n\\|", out))), 2L + 2L)
+  clean <- summary; clean$n_failed <- 0L; clean$n_fallback <- 0L
+  out <- paste(utils::capture.output(env$.simBandwidthPrintCoverage(plot, clean)), collapse = "\n")
+  expect_false(grepl("Settings with failures", out, fixed = TRUE))
 })
