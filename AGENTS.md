@@ -372,6 +372,12 @@ Ratio companions preserve signed-error geometry and intervals, relabelling ticks
 as `1 + relative error` (estimate/reference). Keep originals and save companions
 in sibling ratio folders without printing them into HTML. Absolute relative
 errors lose direction and cannot be relabelled as estimate/reference ratios.
+Unconditional signed-error percentile figures calculate quantiles on raw errors,
+including zeros, and show all seven percentiles in each panel. Choose the outer
+2.5th/97.5th pair per complete figure; if either interval is unavailable at any
+finite plotted point, use 5th/95th throughout that figure and label the fallback.
+Keep uncertainty eligibility independent of interval display, and never clip
+unconditional percentile intervals to one side of zero.
 Signed relative-error plots (`.simBandwidthSignedError*()` in
 `sim-bandwidth-analysis-plot.R`) sit alongside, not instead of, the absolute
 ones: they summarise over- and under-estimates separately, weight lines by each
