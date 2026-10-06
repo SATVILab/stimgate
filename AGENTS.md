@@ -571,6 +571,10 @@ Use `.analysis_is_dev()` and
 errors naming the analysis, render command, matching dev/quick profile and
 required completion of all chunks.
 
+Looped comparison figures should identify their method set and scenario settings
+in a subtitle. Before removing grid views as duplicates, check the summary
+grouping: one setting per baseline does not mean one baseline per plotted group.
+
 When displaying ggplot objects inside QMD conditionals or loops, call `print()`
 explicitly. In `results: asis` loops, print before `ggsave()` (use
 `.analysis_print_save_fig()`) so figures stay under their own headings. Chunk

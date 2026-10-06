@@ -31,6 +31,7 @@
     ),
     "8-sim-compare-freq_bs-batch.qmd" = c(
       "test-sim-compare-freq_bs-batch.R", "test-sim-compare-classification.R",
+      "test-qmd-8-diagnostic-views.R",
       "test-analysis-mcse.R", "test-sim-compare-dataset-differences.R", "test-ratio-companion-plots.R",
       "test-sim-performance-estimands.R", "test-sim-performance-figures.R",
       "test-analysis-mcse-modes.R", "test-sim-performance-failures.R",
