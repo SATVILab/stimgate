@@ -13,3 +13,6 @@ directories:
   docs:
     path: docs
 
+# One setting for every full-grid simulation analysis.
+parameters:
+  sim_size: draft

@@ -25,18 +25,22 @@ scripts=(
 if [[ "${1:-}" == "--help" ]]; then
   echo "Usage: bash scripts/slurm/dev.sh [analysis ID or launcher filename ...]"
   echo "Examples: dev.sh 2a; dev.sh 2b; dev.sh 2a 2b"
-  echo "Simulation size: SIM_SIZE=draft (current default: fewer replicates, same grid)"
-  echo "or SIM_SIZE=final (for reported results). Draft results are kept separately."
+  echo "Simulation size: parameters.sim_size in _projr.yml (draft or final)."
+  echo "SIM_SIZE overrides it for this submission. Draft results are kept separately."
   echo "Example: SIM_SIZE=final bash scripts/slurm/dev.sh 2a"
   exit 0
 fi
-# Passed to every simulation and plot job; dev/quick profiles use their own sizes.
-sim_size="${SIM_SIZE:-draft}"
-if [[ "$sim_size" != "final" && "$sim_size" != "draft" ]]; then
+# Without an explicit override, each render reads the active projr parameter.
+sim_size="${SIM_SIZE:-}"
+if [[ -n "$sim_size" && "$sim_size" != "final" && "$sim_size" != "draft" ]]; then
   echo "ERROR: SIM_SIZE must be final or draft. Got: $sim_size" >&2
   exit 1
 fi
-export SIM_SIZE="$sim_size"
+sim_size_export=""
+if [[ -n "$sim_size" ]]; then
+  export SIM_SIZE="$sim_size"
+  sim_size_export=",SIM_SIZE=$sim_size"
+fi
 if (( $# > 0 )); then
   scripts=()
   for target in "$@"; do
@@ -228,7 +232,7 @@ else
 fi
 
 echo "Submitting downstream jobs"
-echo "SIM_SIZE: $sim_size"
+echo "SIM_SIZE: ${sim_size:-parameters.sim_size in _projr.yml}"
 
 declare -A script_job_ids=()
 all_sim_job_ids=()
@@ -250,14 +254,14 @@ for script in "${scripts[@]}"; do
 
       submit_job -l "$log_dir" -n "$script_dir/$script" -- \
         --job-name="$job_name" \
-        --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",SIM_GRID_CHUNK_INDEX="$chunk_index",SIM_GRID_N_CHUNKS="$sim_grid_n_chunks",SIM_GRID_SHUFFLE_SEED="$sim_grid_shuffle_seed",RUN_SIMULATIONS=true,RUN_PLOTS=false,SIM_SIZE="$sim_size"
+        --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",SIM_GRID_CHUNK_INDEX="$chunk_index",SIM_GRID_N_CHUNKS="$sim_grid_n_chunks",SIM_GRID_SHUFFLE_SEED="$sim_grid_shuffle_seed",RUN_SIMULATIONS=true,RUN_PLOTS=false"$sim_size_export"
       script_job_ids["$script"]+=":$submitted_job_id"
       all_sim_job_ids+=("$submitted_job_id")
     done
   else
     echo "Submitting $script"
     submit_job "$script_dir/$script" -- \
-      --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",RUN_SIMULATIONS=true,RUN_PLOTS=false,SIM_SIZE="$sim_size"
+      --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",RUN_SIMULATIONS=true,RUN_PLOTS=false"$sim_size_export"
     script_job_ids["$script"]=":$submitted_job_id"
     all_sim_job_ids+=("$submitted_job_id")
   fi
@@ -294,7 +298,7 @@ for script in "${scripts[@]}"; do
   submit_job -l "_tmp/log/sbatch/plots/${plot_stem}" -n "$script_dir/render-plots.sh" -- \
     --job-name="plots-${plot_stem}" \
     --dependency="$dependency" \
-    --export=ALL,PROJECT_ROOT="$project_root",PLOT_QMD_FILES="$plot_qmds",ANALYSIS_RUN_ID="$analysis_run_id",RUN_SIMULATIONS=false,RUN_PLOTS=true,SIM_SIZE="$sim_size"
+    --export=ALL,PROJECT_ROOT="$project_root",PLOT_QMD_FILES="$plot_qmds",ANALYSIS_RUN_ID="$analysis_run_id",RUN_SIMULATIONS=false,RUN_PLOTS=true"$sim_size_export"
 done
 
 echo "All downstream jobs submitted"

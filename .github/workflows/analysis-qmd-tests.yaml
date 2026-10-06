@@ -63,7 +63,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
         with:
-          extra-packages: any::devtools, any::testthat, any::decor, any::reticulate, any::future, any::furrr, any::progressr, any::withr, any::RColorBrewer, SATVILab/simcyto
+          extra-packages: any::devtools, any::testthat, any::decor, any::reticulate, any::future, any::furrr, any::progressr, any::withr, any::RColorBrewer, SATVILab/projr, SATVILab/simcyto
           needs: check
           cache: always
 
@@ -148,6 +148,7 @@ jobs:
             any::furrr
             any::progressr
             any::withr
+            SATVILab/projr
             SATVILab/simcyto
             github::RGLab/cytoUtils
             bioc::openCyto

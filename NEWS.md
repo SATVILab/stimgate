@@ -1,3 +1,15 @@
+# stimgate 0.99.23
+
+## Bug fixes
+
+- `gateStim()` now places each local-FDR gate just below the cell value it
+  selects, rather than on it. Gates count cells strictly above them, so the
+  selected cell and any ties were previously left out in both tubes; with
+  very rare responses this could reduce the estimate to zero.
+  The gate now sits in the empty gap below that cell, at most twice the
+  density bandwidth at that cell below it (including adaptive bandwidths),
+  so it counts exactly the cells the threshold was selected for.
+
 # stimgate 0.99.21
 
 ## Bug fixes

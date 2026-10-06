@@ -276,7 +276,7 @@ test_that("twenty-sample scientific caches reject ten-sample and old-estimand ou
   saveRDS(1L, file.path(current, "compare_raw.rds"))
   ctx <- list(analysis_key = c("sim", "compare"), current_dir = current,
     qmd_path = "analysis/7-sim-compare-freq_bs.qmd")
-  required <- list(comparison_semantics_version = "corrected-comparison-v12",
+  required <- list(comparison_semantics_version = "corrected-comparison-v13",
     n_sample_sim = 20L, n_iter_sim = 20L, sim_size = "final")
   write_manifest <- function(settings) {
     saveRDS(list(analysis_key = ctx$analysis_key, params = settings),

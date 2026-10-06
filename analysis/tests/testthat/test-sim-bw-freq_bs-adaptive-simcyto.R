@@ -172,14 +172,34 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
     expr_direct <- lapply(sim$flowFrameList, function(ff) flowCore::exprs(ff)[, 1])
     expect_equal(expr_helper, expr_direct, tolerance = 1e-12)
 
-    # Condition diagnostics retain selection tails; sample diagnostics use
-    # strict applied gates, excluding the cell tied at the threshold.
-    abs_err <- res |>
+    # The applied gate is below the selected cell in an empty gap, so strict
+    # gate counts now include the same >= selected-cell tails as selection.
+    loc_results <- res |>
       dplyr::filter(.data$method %in% c("loc_condition", "loc_sample")) |>
-      dplyr::arrange(.data$sample, .data$ind, .data$method) |>
-      dplyr::transmute(abs_err = abs(.data$propRespEst - .data$propRespTruth)) |>
-      dplyr::pull(.data$abs_err)
+      dplyr::arrange(.data$sample, .data$ind, .data$method)
+    abs_err <- abs(loc_results$propRespEst - loc_results$propRespTruth)
     expect_equal(abs_err, expected_abs_err, tolerance = 1e-8)
+
+    # Match the package's single-precision expression before independently
+    # counting cells above each returned applied gate.
+    gs_reference <- flowWorkspace::GatingSet(methods::as(sim$flowFrameList, "flowSet"))
+    expr_gated <- lapply(seq_along(sim$flowFrameList), function(ind) {
+      flowCore::exprs(flowWorkspace::gh_pop_get_data(gs_reference[[ind]]))[, 1]
+    })
+    for (i in seq_len(nrow(loc_results))) {
+      row <- loc_results[i, ]
+      ind_stim <- as.integer(row$ind)
+      ind_uns <- (as.integer(row$sample) - 1L) * n_condition + 1L
+      n_pos_stim <- sum(expr_gated[[ind_stim]] > row$threshold)
+      n_pos_uns <- sum(expr_gated[[ind_uns]] > row$threshold)
+      expect_equal(row$nPosStim, n_pos_stim)
+      expect_equal(row$nPosUns, n_pos_uns)
+      expect_equal(
+        row$propRespEst,
+        n_pos_stim / n_cell_stim - n_pos_uns / n_cell_uns,
+        tolerance = 1e-12
+      )
+    }
   }
 
   run_case(
@@ -192,7 +212,7 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
     bw_fallback = 0.01,
     bw_crossover = NA_real_,
     bw_transition_width = 0,
-    expected_abs_err = c(0.0375, 10 / 240, 2 / 240, 1 / 240)
+    expected_abs_err = c(0.0375, 0.0375, 2 / 240, 2 / 240)
   )
 
   run_case(
@@ -205,7 +225,7 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
     bw_fallback = 0.5,
     bw_crossover = 5.5,
     bw_transition_width = 0.25,
-    expected_abs_err = c(0, 1 / 240, 2 / 240, 1 / 240)
+    expected_abs_err = c(0, 0, 2 / 240, 2 / 240)
   )
 })
 
@@ -215,7 +235,7 @@ test_that("analysis 6 uses shared transactional runners and full-grid reruns", {
     root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd"
   )), collapse = "\n")
   for (contract in c(
-    'analysis_semantics_version <- "adaptive-bw-freq-v6"',
+    'analysis_semantics_version <- "adaptive-bw-freq-v7"',
     "sim_grid_full <- sim_grid",
     "sim_grid_spec = analysis_grid_spec",
     "scenario_settings = scenario_settings",
@@ -335,7 +355,7 @@ test_that("adaptive failed rows retry and promoted reads enforce grid settings",
   writeLines(c("directories:", "  docs:", "    path: docs"), "_projr.yml")
   row <- .adaptive_grid_row()
   required <- list(
-    analysis_semantics_version = "adaptive-bw-freq-v6",
+    analysis_semantics_version = "adaptive-bw-freq-v7",
     sim_grid_spec = row[, setdiff(names(row), "sim_seed")],
     scenario_settings = list(nSample = 5L, nIter = 5L)
   )

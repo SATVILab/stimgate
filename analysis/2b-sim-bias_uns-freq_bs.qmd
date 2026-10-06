@@ -19,7 +19,6 @@ params:
   run_simulations: true
   run_plots: false
   show_mcse: "on"
-  sim_size: draft
   sim_retry_errors: true
 ---
 
@@ -99,7 +98,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bias_uns", "freq_bs")
-analysis_semantics_version <- "bias-uns-freq-v7"
+analysis_semantics_version <- "bias-uns-freq-v8"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.

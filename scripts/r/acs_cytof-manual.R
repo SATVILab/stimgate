@@ -332,7 +332,8 @@
         .data$cytCombn,
         channelMap = channelMap
       ),
-      cyt = stringr::str_remove(.data$cytCombn, "[+-]$")
+      cyt = stringr::str_remove(.data$cytCombn, "[+-]$"),
+      cytCombn = paste0(.data$cyt, "+")
     )
 
   mapPopulation <- sampleMap |>

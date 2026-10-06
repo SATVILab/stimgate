@@ -37,9 +37,11 @@ bash scripts/slurm/dev.sh 2a 2b
 SIM_SIZE=final bash scripts/slurm/dev.sh 2a  # full replicate counts for reported results
 ```
 
-Full-grid simulation runs default to final counts for reported results.
-Use `SIM_SIZE=draft` for fewer replicates on the same grid, with results and
-figures kept in draft folders. Analyses 7/8 keep 20 samples in each dataset:
+Full-grid simulation runs share `parameters.sim_size` in `_projr.yml`, currently
+`draft`. Set it to `final` for reported results, or use `SIM_SIZE=final` for one
+render or Slurm submission. Active projr profile/local parameter overrides also
+apply; QMD frontmatter does not set this value. Draft runs use fewer replicates
+on the same grid, with results and figures kept in draft folders. Analyses 7/8 keep 20 samples in each dataset:
 final uses twenty datasets and draft uses five. This is separate from the
 tiny quick profile used for smoke checks.
 

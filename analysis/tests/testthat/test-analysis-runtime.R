@@ -1025,6 +1025,7 @@ test_that("analysis profiles are read from PROJR_PROFILE", {
 })
 
 test_that("analysis mode keys isolate dev and quick results with dev precedence", {
+  withr::local_dir(root_dir)
   env <- new.env(parent = baseenv())
   source(script_runtime, local = env)
   key <- c("sim", "test")

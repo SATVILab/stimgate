@@ -19,6 +19,7 @@
   chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
   stageChnl <- file.path(stage, chnl)
   dataThreshold <- NULL
+  densityBw <- attr(dataMod, "locDensityBw")
 
   if (!is.data.frame(dataMod)) {
     .intSaveNm("noDataModDf", NULL, ind, stageChnl, pathProject)
@@ -97,7 +98,10 @@
           exTblStimNoMin = exTblStimNoMin,
           exTblUnsBias = exTblUnsBias,
           cpMin = cpMin,
-          stage = stage
+          stage = stage,
+          exTblStimOrig = exTblStimOrig,
+          exTblUnsOrig = exTblUnsOrig,
+          densityBw = densityBw
         )
         .intSave(ind, stageChnl, pathProject, cpObj$cp)
         .debug("Completed loc gate for single sample") # nolint
@@ -261,13 +265,31 @@
     )
 }
 
+#' Select the local-FDR threshold and place the gate below it
+#'
+#' The selected threshold is the candidate cell value whose tail frequency
+#' (cells at or above it) best matches the estimate. Gates are applied with a
+#' strict `x > gate`, so the gate is placed below that cell, within the gap
+#' to the next lower stimulated or unstimulated cell: it moves down by the
+#' smaller of twice the density bandwidth and half that gap. The applied gate
+#' then counts exactly the cells the selection counted.
+#'
+#' @param exTblStimOrig,exTblUnsOrig data.frame or NULL Expression used to
+#'   find the gap below the selected cell; NULL keeps the gate at the cell.
+#' @param densityBw numeric, list or NULL Local-FDR density bandwidth; an
+#'   adaptive bandwidth uses the shared bandwidth at the selected cell.
+#' @return list from `.getCpUnsLocConditionOut()`, with the selected cell value
+#'   as attribute `cpSelected`.
 #' @keywords internal
 .getCpUnsLocGetCpActual <- function(
     dataThreshold,
     exTblStimNoMin,
     exTblUnsBias,
     cpMin,
-    stage) {
+    stage,
+    exTblStimOrig = NULL,
+    exTblUnsOrig = NULL,
+    densityBw = NULL) {
   if (nrow(dataThreshold) == 0L) {
     return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,
@@ -290,11 +312,56 @@
     ))
   }
 
-  .getCpUnsLocConditionOut(
-    cp = cpVal,
+  cpObj <- .getCpUnsLocConditionOut(
+    cp = .getCpUnsLocGateBelowCell(
+      cp = cpVal,
+      x = c(.getCut(exTblStimOrig), .getCut(exTblUnsOrig)),
+      densityBw = densityBw
+    ),
     locGenerated = TRUE,
     locGeneratedDirect = TRUE,
     locSource = "direct",
     locReason = "local_fdr_threshold_selected"
   )
+  attr(cpObj, "cpSelected") <- cpVal
+  cpObj
+}
+
+#' Place a gate in the gap below a selected cell value
+#'
+#' @param cp numeric Selected cell value.
+#' @param x numeric Stimulated and unstimulated expression; NULL keeps `cp`.
+#' @param densityBw numeric, list or NULL Density bandwidth. An adaptive
+#'   bandwidth object is interpolated at `cp`; an unavailable bandwidth leaves
+#'   only the half-gap limit.
+#' @return numeric Gate strictly below `cp` and above every lower value of `x`.
+#' @keywords internal
+.getCpUnsLocGateBelowCell <- function(cp, x, densityBw = NULL) {
+  if (is.null(x) || length(x) == 0L) {
+    return(cp)
+  }
+  below <- x[is.finite(x) & x < cp]
+  halfGap <- if (length(below) > 0L) (cp - max(below)) / 2 else Inf
+  if (is.list(densityBw)) {
+    grid <- densityBw$grid
+    bwGrid <- densityBw$sharedGrid
+    valid <- if (length(grid) == length(bwGrid)) {
+      is.finite(grid) & is.finite(bwGrid) & bwGrid > 0
+    } else {
+      logical(0)
+    }
+    bw <- if (sum(valid) > 1L) {
+      stats::approx(grid[valid], bwGrid[valid], xout = cp, rule = 2)$y
+    } else {
+      NA_real_
+    }
+  } else {
+    bw <- suppressWarnings(as.numeric(densityBw)[1L])
+  }
+  step <- min(halfGap, if (is.finite(bw) && bw > 0) 2 * bw else Inf)
+  if (!is.finite(step)) {
+    # No lower cell and no bandwidth: move just below the cell.
+    step <- sqrt(.Machine$double.eps) * max(1, abs(cp))
+  }
+  cp - step
 }

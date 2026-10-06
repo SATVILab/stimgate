@@ -471,7 +471,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   )
   path <- file.path(env$path_manual_output, "manual-comparison.rds")
   saveRDS(cached, path)
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v2"),
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v3"),
     file.path(env$path_manual_output, "manifest.rds"))
   withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA_character_)
   for (expr in as.list(code)[-1L]) eval(expr, env)

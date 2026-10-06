@@ -19,7 +19,6 @@ params:
   run_simulations: true
   run_plots: false
   show_mcse: "on"
-  sim_size: draft
   sim_retry_errors: true
 ---
 
