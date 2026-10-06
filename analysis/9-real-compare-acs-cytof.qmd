@@ -172,7 +172,7 @@ on (`calcCytPosGates = TRUE`). The comparison scores the final clustered
 recorded with the saved run.
 Its unstimulated-sample bias
 is not fixed: it equals the bandwidth StimGate estimates at the start
-(`biasUns = NULL` with `biasUnsFactor = 4`). F-beta uses its standard
+(`biasUns = NULL` with `biasUnsFactor = 1`). F-beta uses its standard
 parameters (`beta = 0.8`, `theta = 2`, `width = 10` and automatic bin count).
 The F-beta implementation is adapted from Richards et al. (2014) only in the
 histogram support: common bin edges span the matched stimulated and unstimulated

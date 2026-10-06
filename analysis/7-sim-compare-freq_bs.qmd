@@ -151,7 +151,7 @@ For StimGate, bandwidth is estimated automatically using the `nrd0` selector
 bandwidth-estimation sample capped at 10,000 cells. Bandwidths are shared per
 marker (`bwScope = "cytokine"`). StimGate's
 unstimulated-sample bias is not fixed: it equals the bandwidth StimGate
-estimates at the start (`biasUns = NULL` with `biasUnsFactor = 4`). Tailgate is deliberately left to use its usual automatic
+estimates at the start (`biasUns = NULL` with `biasUnsFactor = 1`). Tailgate is deliberately left to use its usual automatic
 bandwidth estimation so that it is evaluated as it would normally run.
 
 ### Simulation settings
@@ -213,8 +213,8 @@ n_cell_uns_relative_to_stim_vec <- c(
 stimgate_bw_mtd <- "nrd0"
 stimgate_bw_scope <- "cytokine"
 # StimGate's unstimulated-sample bias equals its initial bandwidth estimate:
-# with biasUns = NULL, gateStim() uses 0.25 * bwFallback * biasUnsFactor.
-stimgate_bias_uns_factor <- 4
+# with biasUns = NULL, gateStim() uses bwFallback * biasUnsFactor.
+stimgate_bias_uns_factor <- 1
 stimgate_bw_ncell_max <- 1e4
 stimgate_bw_fallback <- "auto"
 stimgate_bw_min <- "none"

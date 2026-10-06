@@ -493,15 +493,19 @@
 
 #' Analysis 2 scenario: one fixed-bandwidth frequency simulation
 #'
-#' @param row data.frame One row of the analysis 2 `sim_grid`.
+#' @param row data.frame One row of the analysis 2 `sim_grid`. An NA `bw`
+#'   chooses the bandwidth with `bwMtd` (fallback "auto"); an NA `bias_uns`
+#'   uses the package's automatic `biasUns`.
 #' @param settings list Fixed `.simBandwidthBsFreq()` arguments (e.g.
 #'   `nSample`, `nIter`, `covEvMin`, `clusterGates`).
 #' @return tibble `.simBandwidthBsFreq()` output.
 .simBandwidthFreqBsGlobalScenario <- function(row, settings) {
+  bw <- row$bw[[1]]
+  biasUns <- row$bias_uns[[1]]
   do.call(.simBandwidthBsFreq, c(settings, list(
-    biasUns = row$bias_uns[[1]],
-    bw = row$bw[[1]],
-    bwFallback = row$bw[[1]],
+    biasUns = if (is.na(biasUns)) NULL else biasUns,
+    bw = if (is.na(bw)) NULL else bw,
+    bwFallback = if (is.na(bw)) "auto" else bw,
     nCellStim = row$n_cell[[1]],
     probResponse = row$prob_response[[1]],
     meanPos = row$mean_pos[[1]],

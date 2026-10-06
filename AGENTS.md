@@ -831,12 +831,12 @@ rows before drawing reference lines.
    Full-grid runs take `parameters.sim_size` from `_projr.yml` through
    `projr::projr_par_get()` and `.analysis_sim_size()`, with an explicit
    `SIM_SIZE` environment override. QMD frontmatter and Slurm launchers must
-   not supply competing defaults: `"draft"` (the current default, by operator request,
-   until the analyses settle) or `"final"`; draft uses about a quarter
+   not supply competing defaults, nor export `SIM_SIZE` unless the caller set
+   it: `_projr.yml` alone selects `"draft"` or `"final"`; draft uses about a quarter
    of the samples (datasets in 7/8) on the same grid, stored under
    `<analysis-key>/draft/` and recorded as `sim_size` in required run settings;
-   draft is for iterating, not reporting, and dev/quick take precedence. Set
-   `SIM_SIZE=final` explicitly for reported results. Draft 7/8 retain all 20
+   draft is for iterating, not reporting, and dev/quick take precedence. Report
+   only results from `sim_size: final`. Draft 7/8 retain all 20
    jointly gated samples per dataset and reduce only replicate datasets;
    missing `sim_size` in legacy manifests still means final.
    Empirical local-FDR selection counts cells at or above the selected cell
@@ -872,6 +872,9 @@ rows before drawing reference lines.
    comparison renders read the saved manual-comparison table without raw FCS or
    manual CSV inputs; GatingSet diagnostics are optional when those caches are absent.
 
+   `flowWorkspace::load_gs()` rejects any extra file or folder inside a saved
+   GatingSet folder, so ACS metadata lives beside it (`.acsCytofPreprocessingFile()`);
+   test such layouts with the real `save_gs()`/`load_gs()`, not a stub.
    ACS batches use the mapped SampleID and stimulus, never filename position.
    Saved ACS method outputs must carry identical input/preprocessing
    manifests before comparison. Keep per-marker threshold provenance and failure

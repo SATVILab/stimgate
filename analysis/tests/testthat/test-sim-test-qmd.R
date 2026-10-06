@@ -64,7 +64,7 @@ test_that("Analysis 2c runs chosen settings through the 2a code path", {
   ref <- NULL
   quiet(ref <- env$.simBandwidthRunRow(
     env$test_grid[1, ],
-    env$.simBandwidthFreqBsGlobalScenario,
+    env$.simBandwidthTestScenario,
     env$test_settings
   ))
   for (result in env$test_results) {

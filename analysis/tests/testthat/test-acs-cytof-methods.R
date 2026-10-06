@@ -591,14 +591,26 @@ test_that("ACS compares identical cohorts and rejects missing or duplicate strat
 test_that("ACS detects reordered saved GatingSet files", {
   env <- .load_acs_method_env()
   path <- tempfile("acs-manifest-")
-  dir.create(path)
-  withr::defer(unlink(path, recursive = TRUE))
+  withr::defer(unlink(env$.acsCytofPreprocessingFile(path)))
   map <- data.frame(SampleID = "a", stim = c("uns", "p1", "mtb", "ebv", "p4"),
                     ind = 1:5, file = paste0(1:5, ".fcs"))
-  saveRDS(list(sampleMap = map), file.path(path, "acs-preprocessing.rds"))
+  saveRDS(list(sampleMap = map), env$.acsCytofPreprocessingFile(path))
   testthat::local_mocked_bindings(sampleNames = function(...) rev(map$file),
                                   .package = "flowWorkspace")
   expect_error(env$.acsCytofReadPreprocessing(path, list()), "reordered")
+})
+
+test_that("ACS preprocessing manifest does not stop load_gs() reading its GatingSet", {
+  env <- .load_acs_method_env()
+  path <- tempfile("acs-gs-")
+  withr::defer(unlink(c(path, env$.acsCytofPreprocessingFile(path)), recursive = TRUE))
+  fr <- flowCore::flowFrame(matrix(1:4, ncol = 2, dimnames = list(NULL, c("A", "B"))))
+  fs <- flowCore::flowSet(list(s1 = fr))
+  flowWorkspace::save_gs(flowWorkspace::GatingSet(flowWorkspace::flowSet_to_cytoset(fs)), path)
+  saveRDS(list(sampleMap = NULL), env$.acsCytofPreprocessingFile(path))
+  gs <- flowWorkspace::load_gs(path)
+  expect_identical(flowWorkspace::sampleNames(gs), "s1")
+  expect_true(file.exists(env$.acsCytofPreprocessingFile(path)))
 })
 
 test_that("ACS coverage excludes every failed estimate even when a fallback is finite", {

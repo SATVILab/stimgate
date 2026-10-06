@@ -188,8 +188,8 @@ not for reporting.
 stimgate_bw_mtd <- "nrd0"
 stimgate_bw_scope <- "cytokine"
 # StimGate's unstimulated-sample bias equals its initial bandwidth estimate:
-# with biasUns = NULL, gateStim() uses 0.25 * bwFallback * biasUnsFactor.
-stimgate_bias_uns_factor <- 4
+# with biasUns = NULL, gateStim() uses bwFallback * biasUnsFactor.
+stimgate_bias_uns_factor <- 1
 stimgate_bw_ncell_max <- 1e4
 stimgate_bw_fallback <- "auto"
 stimgate_bw_min <- "none"

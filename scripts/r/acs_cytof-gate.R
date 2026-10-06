@@ -212,7 +212,7 @@
   runPlots,
   nSample = NULL,
   biasUns = NULL,
-  biasUnsFactor = 4,
+  biasUnsFactor = 1,
   bwMtd = "nrd0",
   bwScope = "cytokine",
   outputGroup = NULL,
@@ -283,8 +283,8 @@
           "Gd156Di",
           "Nd150Di"
         ),
-        # NULL or NA biasUns: StimGate sets it to 0.25 * biasUnsFactor times
-        # its initial bandwidth estimate, i.e. the bandwidth with factor 4.
+        # NULL or NA biasUns: StimGate sets it to biasUnsFactor times its
+        # initial bandwidth estimate, i.e. the bandwidth with factor 1.
         biasUns = if (length(biasUns) == 1L && is.na(biasUns)) NULL else biasUns,
         control = stimgate::stimControl(
           biasUnsFactor = biasUnsFactor,

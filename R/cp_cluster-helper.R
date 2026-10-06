@@ -154,7 +154,7 @@
     return(NA_real_)
   }
 
-  bwMtd <- chnlSettings$bwMtd %||% "hpi1"
+  bwMtd <- chnlSettings$bwMtd %||% "nrd0"
   bwAdj <- chnlSettings$bwAdj %||% 1
   bwMin <- suppressWarnings(as.numeric(chnlSettings$bwMin))[1]
   bwMax <- suppressWarnings(as.numeric(chnlSettings$bwMax))[1]

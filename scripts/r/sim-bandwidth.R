@@ -361,6 +361,7 @@
   biasUns,
   biasUnsWidthMultiplier = NULL,
   biasUnsWidthHeightFrac = 0.15,
+  biasUnsFactor = 1,
   bw = NULL,
   bwAdaptive = FALSE,
   bwAdaptiveDensityN = NULL,
@@ -372,10 +373,10 @@
   bwFallback = "auto",
   bwMin = "auto",
   bwMax = "auto",
-  bwMtd = "hpi1",
+  bwMtd = "nrd0",
   bwAdj = 1,
   bwNcellMin = 1e2,
-  bwNcellMax = 1e5,
+  bwNcellMax = 1e3,
   bwCluster = NULL,
   probExact = FALSE,
   nCellStim,
@@ -563,6 +564,7 @@
       biasUns = biasUnsUse,
       bw = bw,
       control = stimgate::stimControl(
+        biasUnsFactor = biasUnsFactor,
         bwAdaptive = bwAdaptive,
         bwAdaptiveDensityN = bwAdaptiveDensityN,
         bwAdaptivePadFrac = bwAdaptivePadFrac,
@@ -598,6 +600,10 @@
     ))
 
     stopifnot(file.exists(file.path(pathProject, "gateStats.rds")))
+    if (is.null(biasUnsUse)) {
+      # Record the automatically chosen value.
+      biasUnsUse <- stimgate::stimgateMetaReadSettingsChnls(pathProject)[[1]]$biasUns
+    }
 
     propBsTblTruth <- purrr::map_df(
       seq_len(nSample),

@@ -101,10 +101,19 @@ create_gatingset <- function(
     trans.obj
   )
   gs_trans <- flowWorkspace::transform(gs, trans)
+  # Remove the old manifest before the swap, so an interrupted run leaves it
+  # missing rather than paired with the new GatingSet.
+  path_manifest <- .acsCytofPreprocessingFile(path_gs)
+  path_manifest_tmp <- paste0(path_manifest, ".tmp-", Sys.getpid())
+  on.exit(unlink(path_manifest_tmp), add = TRUE)
+  saveRDS(preprocessing, path_manifest_tmp)
+  unlink(path_manifest)
   .acsCytofReplaceDir(path_gs, function(path_tmp) {
     flowWorkspace::save_gs(gs = gs_trans, path = path_tmp)
-    saveRDS(preprocessing, file.path(path_tmp, "acs-preprocessing.rds"))
   })
+  if (!file.rename(path_manifest_tmp, path_manifest)) {
+    stop("Could not move the preprocessing manifest into place: ", path_manifest)
+  }
   path_gs
 }
 

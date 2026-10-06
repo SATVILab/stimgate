@@ -104,8 +104,14 @@
   )
 }
 
+# Stored beside, not inside, the GatingSet folder: flowWorkspace::load_gs()
+# rejects any extra file or folder in it (an ".rds" file as a legacy archive).
+.acsCytofPreprocessingFile <- function(path) {
+  paste0(path, ".acs-preprocessing.rds")
+}
+
 .acsCytofReadPreprocessing <- function(path, gs = NULL) {
-  file <- file.path(path, "acs-preprocessing.rds")
+  file <- .acsCytofPreprocessingFile(path)
   if (!file.exists(file)) stop("ACS preprocessing manifest missing; re-run preprocessing: ", path)
   manifest <- readRDS(file)
   .acsCytofBatchList(manifest$sampleMap)

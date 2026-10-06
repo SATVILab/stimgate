@@ -140,7 +140,7 @@ test_that("stimgateGateRunsWithGateCombnMax", {
   unlink(pathProject, recursive = TRUE)
 })
 
-test_that("completeChnlSettingsBiasUns defaults to 1/4 of bwFallback", {
+test_that("completeChnlSettingsBiasUns defaults to bwFallback", {
   # Default case: biasUns is NULL, biasUnsFactor is 1, bwFallback is 0.4
   expect_equal(
     stimgate:::.completeChnlSettingsBiasUns(
@@ -150,7 +150,7 @@ test_that("completeChnlSettingsBiasUns defaults to 1/4 of bwFallback", {
       bwMax = 1.0,
       bwFallback = 0.4
     ),
-    0.1
+    0.4
   )
 
   # Scaled by biasUnsFactor: biasUnsFactor is 2, bwFallback is 0.4
@@ -162,7 +162,7 @@ test_that("completeChnlSettingsBiasUns defaults to 1/4 of bwFallback", {
       bwMax = 1.0,
       bwFallback = 0.4
     ),
-    0.2
+    0.8
   )
 
   # Explicit biasUns overrides bwFallback
@@ -177,7 +177,7 @@ test_that("completeChnlSettingsBiasUns defaults to 1/4 of bwFallback", {
     0.5
   )
 
-  # bwFallback is NULL: falls back to 1/4 of mean(bwMin, bwMax)
+  # bwFallback is NULL: falls back to mean(bwMin, bwMax)
   expect_equal(
     stimgate:::.completeChnlSettingsBiasUns(
       biasUns = NULL,
@@ -186,7 +186,7 @@ test_that("completeChnlSettingsBiasUns defaults to 1/4 of bwFallback", {
       bwMax = 0.6,
       bwFallback = NULL
     ),
-    0.25 * 0.4
+    0.4
   )
 
   # bwFallback is NULL and no valid bw limits: returns 0
@@ -202,7 +202,7 @@ test_that("completeChnlSettingsBiasUns defaults to 1/4 of bwFallback", {
   )
 })
 
-test_that("gateStim defaults biasUns to 1/4 of bwFallback in metadata", {
+test_that("gateStim defaults biasUns to bwFallback in metadata", {
   skip_if_not_installed("flowWorkspace")
   skip_if_not_installed("flowCore")
 
@@ -223,7 +223,7 @@ test_that("gateStim defaults biasUns to 1/4 of bwFallback in metadata", {
     bwFallback <- chnlSettings[[chnlName]]$bwFallback
     biasUns <- chnlSettings[[chnlName]]$biasUns
     expect_true(is.numeric(bwFallback) && bwFallback > 0)
-    expect_equal(biasUns, 0.25 * bwFallback)
+    expect_equal(biasUns, bwFallback)
   }
 
   unlink(pathProject, recursive = TRUE)

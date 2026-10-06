@@ -152,14 +152,14 @@
 }
 
 # Colour roles, kept distinct so a colour means one thing across the analyses:
-# - methods (QMDs 7-10): Okabe-Ito blue StimGate, bluish-green Tailgate,
-#   orange F-beta, for colour-blind accessibility;
+# - methods (QMDs 7-10): Okabe-Ito orange StimGate, bluish-green Tailgate,
+#   blue F-beta, for colour-blind accessibility;
 # - over/under direction: ColorBrewer BrBG teal and brown (see
 #   `.simBandwidthSignedErrorColours`);
 # - error statistic (median, upper percentile, maximum): blues and lavender;
 # - bandwidth: a sequential purple ramp (`make_bw_colour_values()`).
 .analysis_method_colours <- c(
-  stimgate = "#0072B2", tailgate = "#009E73", fbeta = "#E69F00"
+  stimgate = "#E69F00", tailgate = "#009E73", fbeta = "#0072B2"
 )
 .analysis_method_labels <- c(
   stimgate = "StimGate", tailgate = "Tailgate", fbeta = "F-beta"

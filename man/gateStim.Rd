@@ -42,7 +42,7 @@ either \code{marker} or \code{chnl}. Default: NULL.}
 GatingSets have populations other than "root". Default: "root" (all cells).}
 
 \item{biasUns}{numeric or NULL Upward shift of unstimulated expression.
-NULL uses one quarter of \code{bwFallback}, scaled by \code{biasUnsFactor}.
+NULL uses \code{bwFallback} times \code{biasUnsFactor} (see \code{\link[=stimControl]{stimControl()}}).
 Positive shifts make gating more conservative. Default: NULL.}
 
 \item{bw}{numeric or NULL Fixed density bandwidth; NULL estimates it

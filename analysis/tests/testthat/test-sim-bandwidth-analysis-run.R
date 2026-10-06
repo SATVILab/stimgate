@@ -572,3 +572,23 @@ test_that("2a retains invalid final samples and validates complete expected coun
   expect_true(is.na(result$bw_tbl_results_summary$propRespEst_mean))
   expect_true(is.na(result$bw_tbl_results_summary$threshold_min))
 })
+
+test_that("Analysis 2 scenario treats NA bw and bias_uns as automatic", {
+  env <- .load_bw_run_env()
+  env$.simBandwidthBsFreq <- function(...) list(...)
+  row <- tibble::tibble(
+    bias_uns = c(0.05, NA), bw = c(0.25, NA), n_cell = 1e3,
+    prob_response = 0.01, mean_pos = 2, transformation = "gaussian",
+    sample_perturbation_sd = 0, condition_perturbation_sd = 0,
+    cluster_perturbation_sd = 0, background_relative_to_response = 0.2,
+    n_cell_uns_relative_to_stim = 1
+  )
+  fixed <- env$.simBandwidthFreqBsGlobalScenario(row[1, ], list())
+  expect_identical(fixed[c("biasUns", "bw", "bwFallback")],
+    list(biasUns = 0.05, bw = 0.25, bwFallback = 0.25))
+  auto <- env$.simBandwidthFreqBsGlobalScenario(row[2, ], list())
+  expect_true(all(c("biasUns", "bw") %in% names(auto)))
+  expect_null(auto$biasUns)
+  expect_null(auto$bw)
+  expect_identical(auto$bwFallback, "auto")
+})

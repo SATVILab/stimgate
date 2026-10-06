@@ -7,15 +7,15 @@
 #'   that gate; keep the gate if none exists. Default: TRUE.
 #' @param minCell numeric Minimum cells required for gating; samples below this
 #'   count are skipped. Default: 100.
-#' @param biasUnsFactor numeric Multiplier for automatically chosen `biasUns`.
-#'   Default: 1.
+#' @param biasUnsFactor numeric Automatic `biasUns` (when `biasUns` is NULL)
+#'   equals this factor times the fallback bandwidth `bwFallback`. Default: 1.
 #' @param excMin logical Exclude cells with minimum expression during gating.
 #'   Default: TRUE.
 #' @param cpMin numeric or NULL Minimum cutpoint. NULL estimates a 10% trimmed
 #'   mean of tube medians after excluding minimum expression. Default: NULL.
 #' @param bwMtd character Bandwidth selector: "nrd0", "sj", "hpi0", "hpi1",
 #'   "hpi2", "hpi3", or any of these with a "Norm" suffix for background
-#'   normalisation. Ignored with fixed `bw`. Default: "hpi1".
+#'   normalisation. Ignored with fixed `bw`. Default: "nrd0".
 #' @param bwScope character Scalar bandwidth sharing: "cytokine" uses a 10%
 #'   trimmed mean over about 100 tubes spread across batches; "cluster" groups
 #'   tube densities up to the right shoulder of the background modal complex
@@ -42,7 +42,7 @@
 #' @param bwNcellMax numeric Maximum selector sample size. Ordinary methods
 #'   downsample; scalar "Norm" methods cap the constructed sample after
 #'   inspecting the full distribution. Adaptive methods use
-#'   `normAdaptiveNcell`. Ignored with fixed `bw`. Default: 100000.
+#'   `normAdaptiveNcell`. Ignored with fixed `bw`. Default: 1000.
 #' @param bwCluster numeric or NULL Density bandwidth for threshold clustering.
 #'   NULL uses the shared local-FDR bandwidth, or with `bwScope = "sample"`,
 #'   the median bandwidth of samples with direct thresholds. Default: NULL.
@@ -141,14 +141,14 @@ stimControl <- function(
   biasUnsFactor = 1,
   excMin = TRUE,
   cpMin = NULL,
-  bwMtd = "hpi1",
+  bwMtd = "nrd0",
   bwScope = "cytokine",
   bwAdj = 1,
   bwMin = "auto",
   bwMax = "auto",
   bwFallback = "auto",
   bwNcellMin = 1e2,
-  bwNcellMax = 1e5,
+  bwNcellMax = 1e3,
   bwCluster = NULL,
   clusterGates = TRUE,
   gateCombn = "min",

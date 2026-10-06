@@ -96,35 +96,43 @@ Differences between tubes and samples:
 To change any other `.simBandwidthBsFreq()` setting for some rows only, add a
 column with that argument's name (e.g. `locMinPeakProb = c(0.1, 0.25)`).
 
+Set `bw = NA` to have StimGate choose the bandwidth with the method in
+`bwMtd` (`"nrd0"` unless changed below, or per row with a `bwMtd` column),
+as `gateStim()` does by default. Set `bias_uns = NA` to use StimGate's
+automatic `biasUns` (`biasUnsFactor`, default 1, times the fallback
+bandwidth). The figures show
+the bandwidth and `biasUns` actually used.
+
 ```{r}
 #| label: test-settings
 test_grid <- tidyr::expand_grid(
   # simulated data
-  transformation = "skew", # "gaussian", "skew" or "gamma"
-  prob_response = 0.002,
-  n_cell = 2e4,
+  transformation = "gamma", # "gaussian", "skew" or "gamma"
+  prob_response = 0.2,
+  n_cell = 5e3,
   mean_pos_setting = "high", # "low" or "high"
   sample_perturbation_sd = 0,
   condition_perturbation_sd = 0,
   cluster_perturbation_sd = 0,
   background_relative_to_response = 0.2,
   n_cell_uns_relative_to_stim = 1,
-  stim_mean_shift = 0,
+  stim_mean_shift = 0.05,
   stim_mean_shift_clusters = "gn",
   stim_sd_multiplier = 1,
   stim_sd_multiplier_clusters = "gn",
   sim_seed = 12345L,
-  # StimGate tuning
-  bw = 0.25,
-  bias_uns = 0.05
+  # StimGate tuning; NA chooses automatically (see above)
+  bw = 0.25, # e.g. c(0.25, NA)
+  bias_uns = 0.25 # e.g. c(0.25, NA)
 )
 
 # Settings shared by every row, as in 2a. Add any other
 # `.simBandwidthBsFreq()` argument (e.g. locMinPeakProb, locProbCol, minCell,
 # bwMtd) to change it for all rows. 2a uses nSample = 200; the data depend on
-# nSample.
+# nSample. With `bw = NA`, `bwMin`/`bwMax` limit the chosen bandwidth;
+# gateStim() defaults them to "auto".
 test_settings <- list(
-  nSample = 200L,
+  nSample = 10L,
   nMarker = 1,
   nCondition = 2,
   nCluster = 2,
@@ -142,7 +150,7 @@ test_settings <- list(
 # Samples to show: the first sample by default. `test_subsequent = TRUE`
 # also shows every later sample, gating all of them.
 test_sample <- 1L
-test_subsequent <- FALSE
+test_subsequent <- TRUE
 # Package functions to step through for the shown samples, e.g.
 # ".getCpUnsLocFilterAfterSmoothing" (interactive sessions only).
 test_browse <- character(0L)

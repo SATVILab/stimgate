@@ -212,7 +212,7 @@
     return(biasUns)
   }
   if (!is.null(bwFallback)) {
-    return(0.25 * bwFallback * biasUnsFactor)
+    return(bwFallback * biasUnsFactor)
   }
 
   bwRef <- c(bwMin, bwMax)
@@ -222,7 +222,7 @@
     return(0)
   }
 
-  0.25 * mean(bwRef) * biasUnsFactor
+  mean(bwRef) * biasUnsFactor
 }
 
 

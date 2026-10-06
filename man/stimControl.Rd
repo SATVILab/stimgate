@@ -10,14 +10,14 @@ stimControl(
   biasUnsFactor = 1,
   excMin = TRUE,
   cpMin = NULL,
-  bwMtd = "hpi1",
+  bwMtd = "nrd0",
   bwScope = "cytokine",
   bwAdj = 1,
   bwMin = "auto",
   bwMax = "auto",
   bwFallback = "auto",
   bwNcellMin = 100,
-  bwNcellMax = 1e+05,
+  bwNcellMax = 1000,
   bwCluster = NULL,
   clusterGates = TRUE,
   gateCombn = "min",
@@ -60,8 +60,8 @@ that gate; keep the gate if none exists. Default: TRUE.}
 \item{minCell}{numeric Minimum cells required for gating; samples below this
 count are skipped. Default: 100.}
 
-\item{biasUnsFactor}{numeric Multiplier for automatically chosen \code{biasUns}.
-Default: 1.}
+\item{biasUnsFactor}{numeric Automatic \code{biasUns} (when \code{biasUns} is NULL)
+equals this factor times the fallback bandwidth \code{bwFallback}. Default: 1.}
 
 \item{excMin}{logical Exclude cells with minimum expression during gating.
 Default: TRUE.}
@@ -71,7 +71,7 @@ mean of tube medians after excluding minimum expression. Default: NULL.}
 
 \item{bwMtd}{character Bandwidth selector: "nrd0", "sj", "hpi0", "hpi1",
 "hpi2", "hpi3", or any of these with a "Norm" suffix for background
-normalisation. Ignored with fixed \code{bw}. Default: "hpi1".}
+normalisation. Ignored with fixed \code{bw}. Default: "nrd0".}
 
 \item{bwScope}{character Scalar bandwidth sharing: "cytokine" uses a 10\%
 trimmed mean over about 100 tubes spread across batches; "cluster" groups
@@ -105,7 +105,7 @@ background-core and right-excess cells. Ignored with fixed \code{bw}. Default: 1
 \item{bwNcellMax}{numeric Maximum selector sample size. Ordinary methods
 downsample; scalar "Norm" methods cap the constructed sample after
 inspecting the full distribution. Adaptive methods use
-\code{normAdaptiveNcell}. Ignored with fixed \code{bw}. Default: 100000.}
+\code{normAdaptiveNcell}. Ignored with fixed \code{bw}. Default: 1000.}
 
 \item{bwCluster}{numeric or NULL Density bandwidth for threshold clustering.
 NULL uses the shared local-FDR bandwidth, or with \code{bwScope = "sample"},
