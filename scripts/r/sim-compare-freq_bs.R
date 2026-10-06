@@ -3475,26 +3475,53 @@
 }
 
 # Estimated against true background-subtracted frequency.
-.simComparePlotEstVsTruth <- function(data) {
+.simComparePlotEstVsTruth <- function(data, maxwidth = 0.12, lower_limit = NULL) {
   data$transformation <- .analysis_trans_factor(data$transformation)
-  top <- max(data$propRespTruth, na.rm = TRUE) * 2
-  ggplot2::ggplot(
-    data,
-    ggplot2::aes(x = propRespTruth, y = propRespEst, colour = method)
-  ) +
-    ggplot2::geom_point(alpha = 0.35, size = 1) +
-    ggplot2::expand_limits(x = c(0, top), y = c(0, top)) +
-    ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-    ggplot2::scale_x_continuous(labels = .analysis_label_percent) +
-    ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
+  response_levels <- sort(unique(data$prob_response))
+  methods <- .simCompareMethodSets()$all_methods$methods
+  methods <- methods[methods %in% data$method]
+  offsets <- if (length(methods) == 1L) 0 else seq(-0.25, 0.25, length.out = length(methods))
+  spacing <- if (length(methods) == 1L) 0.5 else min(diff(offsets))
+  if (length(maxwidth) != 1L || !is.finite(maxwidth) || maxwidth <= 0 || maxwidth >= spacing) {
+    stop("maxwidth must be positive and smaller than the method spacing (", spacing, ").")
+  }
+  if (is.null(lower_limit)) {
+    positive <- c(data$propRespEst, response_levels)
+    lower_limit <- min(positive[is.finite(positive) & positive > 0]) / 10
+  }
+  if (length(lower_limit) != 1L || !is.finite(lower_limit) || lower_limit <= 0) {
+    stop("lower_limit must be one finite positive frequency.")
+  }
+  data$response_position <- match(data$prob_response, response_levels)
+  data$method_position <- data$response_position + offsets[match(data$method, methods)]
+  data$estimate_shown <- pmax(data$propRespEst, lower_limit)
+  truth <- data |>
+    dplyr::distinct(.data$transformation, .data$prob_response, .data$response_position)
+  ggplot2::ggplot(data,
+    ggplot2::aes(x = method_position, y = estimate_shown, colour = method,
+      group = interaction(prob_response, method))) +
+    ggplot2::geom_segment(data = truth,
+      ggplot2::aes(x = response_position - 0.4, xend = response_position + 0.4,
+        y = prob_response, yend = prob_response), inherit.aes = FALSE,
+      colour = "gray25", linetype = "dashed") +
+    ggforce::geom_sina(maxwidth = maxwidth, orientation = "x", position = "identity",
+      seed = 271L, jitter_y = FALSE, alpha = 0.35, size = 1) +
+    ggplot2::scale_x_continuous(breaks = seq_along(response_levels),
+      labels = .analysis_label_percent(response_levels)) +
+    ggplot2::scale_y_log10(labels = .analysis_label_percent,
+      breaks = function(limits) sort(unique(c(lower_limit, scales::log_breaks()(limits)))),
+      limits = c(lower_limit, NA), oob = scales::squish) +
     .analysis_scale_method() +
     ggplot2::facet_wrap(~transformation) +
     ggplot2::labs(
-      x = "True background-subtracted response frequency",
+      x = "Simulated response frequency (evenly spaced levels)",
       y = "Estimated background-subtracted response frequency",
-      colour = "Method"
-    ) +
-    .analysis_theme()
+      colour = "Method",
+      caption = paste0("Estimates below ", .analysis_label_percent(lower_limit),
+        " (including zero and negative estimates) are squished to that lower limit; ",
+        sum(is.finite(data$propRespEst) & data$propRespEst < lower_limit),
+        " samples shown at the limit. Dashed segments mark true response frequencies.")
+    ) + .analysis_theme()
 }
 
 # Share of estimates that used a threshold fallback.
@@ -3506,28 +3533,37 @@
 }
 
 # Histograms of finite thresholds by method; `data` has `approach`.
-.simComparePlotThresholdDensity <- function(data) {
+.simComparePlotThresholdDensity <- function(data, densities = NULL, reference_scale = 1) {
+  if (length(reference_scale) != 1L || !is.finite(reference_scale) || reference_scale <= 0) {
+    stop("reference_scale must be one finite positive value.")
+  }
   data$transformation <- .analysis_trans_factor(data$transformation)
-  ggplot2::ggplot(
-    data,
-    ggplot2::aes(
-      x = threshold, y = ggplot2::after_stat(density),
-      fill = approach, colour = approach
-    )
-  ) +
-    ggplot2::geom_histogram(alpha = 0.5, position = "identity", bins = 30) +
-    ggplot2::facet_grid(
-      prob_response ~ transformation, scales = "free",
-      labeller = ggplot2::labeller(
-        prob_response = .analysis_labeller_percent()
-      )
-    ) +
+  p <- ggplot2::ggplot(data,
+    ggplot2::aes(x = threshold, y = ggplot2::after_stat(density),
+      fill = approach, colour = approach))
+  if (!is.null(densities)) {
+    keys <- intersect(c("transformation", "prob_response", "mean_pos",
+      "sample_perturbation_sd", "condition_perturbation_sd",
+      "cluster_perturbation_sd", "background_relative_to_response"), names(data))
+    densities$transformation <- .analysis_trans_factor(densities$transformation)
+    densities <- dplyr::semi_join(densities, dplyr::distinct(data, dplyr::across(dplyr::all_of(keys))), by = keys)
+    p <- p + ggplot2::geom_line(data = densities,
+      ggplot2::aes(x = expression, y = sqrt(pmax(density, 0)) * reference_scale,
+        linetype = condition, group = condition), inherit.aes = FALSE,
+      colour = "gray25", linewidth = 0.5) +
+      ggplot2::scale_linetype_manual(values = c(unstimulated = "dashed", stimulated = "solid"),
+        labels = c(unstimulated = "Unstimulated (all cells)", stimulated = "Stimulated (all cells)"))
+  }
+  p + ggplot2::geom_histogram(alpha = 0.2, position = "identity", bins = 30) +
+    ggplot2::facet_wrap(~ prob_response + transformation, scales = "free", ncol = 3,
+      labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent())) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
-    ggplot2::scale_y_continuous(labels = .analysis_label_number) +
+    ggplot2::scale_y_continuous(labels = .analysis_label_number,
+      sec.axis = if (is.null(densities)) ggplot2::waiver() else ggplot2::sec_axis(
+        ~ . / reference_scale, name = "Square root of expression density")) +
     .analysis_scale_method(aesthetics = c("colour", "fill")) +
-    ggplot2::labs(
-      x = "Threshold", y = "Density", colour = "Method", fill = "Method"
-    ) +
+    ggplot2::labs(x = "Threshold / marker expression", y = "Threshold density",
+      colour = "Method", fill = "Method", linetype = "Reference tube") +
     .analysis_theme()
 }
 
