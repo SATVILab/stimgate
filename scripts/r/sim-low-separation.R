@@ -226,7 +226,7 @@
     on.exit(unlink(path_project, recursive = TRUE), add = TRUE)
     batch_list <- lapply(seq_len(n_sample), function(s) c(2L * s - 1L, 2L * s))
     suppressMessages(gateStim(
-      path_project, gs, batch_list,
+      pathProject = path_project, .data = gs, batchList = batch_list,
       marker = unname(.simLowSepMarkers),
       control = stimControl(
         calcCytPosGates = settings$calc_cyt_pos_gates,
