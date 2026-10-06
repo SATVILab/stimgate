@@ -361,5 +361,5 @@ test_that("MCSE averages retain finite scenario coverage and averaged labels", {
     dplyr::mutate(averaged, transformation = "gaussian"), mcse = TRUE
   )
   expect_match(plot$labels$y, "Mean of scenario statistics", fixed = TRUE)
-  expect_match(plot$labels$caption, "median: 1", fixed = TRUE)
+  expect_match(plot$labels$caption, "Contributing scenarios per point: 1.", fixed = TRUE)
 })
