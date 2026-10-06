@@ -375,7 +375,7 @@
   bwMax = "auto",
   bwMtd = "nrd0",
   bwAdj = 1,
-  bwNcellMin = 1e2,
+  bwNcellMin = bwNcellMax,
   bwNcellMax = 1e4,
   bwCluster = NULL,
   probExact = FALSE,

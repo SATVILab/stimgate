@@ -904,7 +904,10 @@ rows before drawing reference lines.
    selection (`.bwSharedSelect()`) prefers tubes with at least `bwNcellMax`
    cells, then draws at random from 10%-of-`bwNcellMax` bands below it, highest
    first, down to half of it (smaller tubes only if none qualify); every
-   selected tube's bandwidth is estimated on `bwNcellMax` cells (upsampled);
+   selected tube's bandwidth is estimated on `bwNcellMax` cells (upsampled).
+   `bwNcellMin` defaults to `bwNcellMax` in `stimControl()` and the analysis
+   wrappers, so every tube is resampled to the same size; QMDs 7/8 record
+   `stimgate_bw_ncell_min` beside `stimgate_bw_ncell_max`;
    `"cluster"` clusters tubes up front on densities up to the left-complex
    shoulder, independently of the threshold-sharing clusters in
    `cp_cluster.R`; `"sample"` keeps per-sample estimation. Fixed `bw` and the

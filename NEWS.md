@@ -2,8 +2,10 @@
 
 ## Breaking changes
 
-- `stimControl()` now defaults to `bwMtd = "nrd0"` (was `"hpi1"`) and
-  `bwNcellMax = 10000` (was 100000).
+- `stimControl()` now defaults to `bwMtd = "nrd0"` (was `"hpi1"`),
+  `bwNcellMax = 10000` (was 100000) and `bwNcellMin = bwNcellMax` (was 100),
+  so every tube is downsampled or upsampled to 10,000 cells before its
+  bandwidth is chosen.
 - Shared bandwidths (`bwScope = "cytokine"` or `"cluster"`) now prefer tubes
   with at least `bwNcellMax` cells. If there are too few, they add tubes
   chosen at random from the next sizes down (9,000-10,000 cells first, then

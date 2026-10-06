@@ -16,7 +16,7 @@ stimControl(
   bwMin = "auto",
   bwMax = "auto",
   bwFallback = "auto",
-  bwNcellMin = 100,
+  bwNcellMin = bwNcellMax,
   bwNcellMax = 10000,
   bwCluster = NULL,
   clusterGates = TRUE,
@@ -98,9 +98,12 @@ fails: "auto" estimates it from spread-out samples using \code{bwMtd},
 or supply one finite positive number. NULL and "none" are invalid.
 Default: "auto".}
 
-\item{bwNcellMin}{numeric Minimum selector sample size. Ordinary methods
-upsample with jitter; scalar "Norm" methods use it when selecting
-background-core and right-excess cells. Ignored with fixed \code{bw}. Default: 100.}
+\item{bwNcellMin}{numeric Minimum selector sample size: a tube with fewer
+cells is upsampled (with jitter) to this many before its bandwidth is
+chosen. Scalar "Norm" methods use it when selecting background-core and
+right-excess cells. Ignored with fixed \code{bw}. Must not exceed \code{bwNcellMax}.
+Default: \code{bwNcellMax}, so every tube is resampled to exactly
+\code{bwNcellMax} cells.}
 
 \item{bwNcellMax}{numeric Maximum selector sample size. Ordinary methods
 downsample; scalar "Norm" methods cap the constructed sample after

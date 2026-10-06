@@ -68,7 +68,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v16"
+comparison_semantics_version <- "corrected-comparison-v17"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -216,6 +216,8 @@ stimgate_bw_scope <- "cytokine"
 # with biasUns = NULL, gateStim() uses bwFallback * biasUnsFactor.
 stimgate_bias_uns_factor <- 1
 stimgate_bw_ncell_max <- 1e4
+# Tubes with fewer cells are upsampled to this many before bandwidth selection.
+stimgate_bw_ncell_min <- 1e4
 stimgate_bw_fallback <- "auto"
 stimgate_bw_min <- "none"
 stimgate_bw_max <- "none"
@@ -271,6 +273,7 @@ sim_grid <- tidyr::expand_grid(
   bw_mtd = stimgate_bw_mtd,
   bw_scope = stimgate_bw_scope,
   bw_ncell_max = stimgate_bw_ncell_max,
+  bw_ncell_min = stimgate_bw_ncell_min,
   bw_fallback = stimgate_bw_fallback,
   bw_min = stimgate_bw_min,
   bw_max = stimgate_bw_max,
@@ -293,6 +296,7 @@ sim_grid <- tidyr::expand_grid(
     bw_mtd,
     bw_scope,
     bw_ncell_max,
+    bw_ncell_min,
     bw_fallback,
     bw_min,
     bw_max,
@@ -385,6 +389,7 @@ analysis_result_params <- list(
   stimgate_bw_mtd = stimgate_bw_mtd,
   stimgate_bw_scope = stimgate_bw_scope,
   stimgate_bw_ncell_max = stimgate_bw_ncell_max,
+  stimgate_bw_ncell_min = stimgate_bw_ncell_min,
   stimgate_bw_fallback = stimgate_bw_fallback,
   stimgate_bw_min = stimgate_bw_min,
   stimgate_bw_max = stimgate_bw_max,

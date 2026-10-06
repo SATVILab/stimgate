@@ -36,9 +36,12 @@
 #'   fails: "auto" estimates it from spread-out samples using `bwMtd`,
 #'   or supply one finite positive number. NULL and "none" are invalid.
 #'   Default: "auto".
-#' @param bwNcellMin numeric Minimum selector sample size. Ordinary methods
-#'   upsample with jitter; scalar "Norm" methods use it when selecting
-#'   background-core and right-excess cells. Ignored with fixed `bw`. Default: 100.
+#' @param bwNcellMin numeric Minimum selector sample size: a tube with fewer
+#'   cells is upsampled (with jitter) to this many before its bandwidth is
+#'   chosen. Scalar "Norm" methods use it when selecting background-core and
+#'   right-excess cells. Ignored with fixed `bw`. Must not exceed `bwNcellMax`.
+#'   Default: `bwNcellMax`, so every tube is resampled to exactly
+#'   `bwNcellMax` cells.
 #' @param bwNcellMax numeric Maximum selector sample size. Ordinary methods
 #'   downsample; scalar "Norm" methods cap the constructed sample after
 #'   inspecting the full distribution. Adaptive methods use
@@ -151,7 +154,7 @@ stimControl <- function(
   bwMin = "auto",
   bwMax = "auto",
   bwFallback = "auto",
-  bwNcellMin = 1e2,
+  bwNcellMin = bwNcellMax,
   bwNcellMax = 1e4,
   bwCluster = NULL,
   clusterGates = TRUE,

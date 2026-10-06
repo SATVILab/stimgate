@@ -17,6 +17,13 @@ test_that("stimControl returns a documented stimControl object", {
   expect_identical(control$minCell, 1e2)
   expect_identical(control$bwMtd, "nrd0")
   expect_identical(control$bwNcellMax, 1e4)
+  # Tubes below bwNcellMin are upsampled to it and tubes above bwNcellMax
+  # downsampled to it. bwNcellMin defaults to bwNcellMax, so every tube is
+  # resampled to exactly bwNcellMax cells; a lower bwNcellMin leaves tubes
+  # between the two unresampled.
+  expect_identical(control$bwNcellMin, 1e4)
+  expect_identical(stimControl(bwNcellMax = 5000)$bwNcellMin, 5000)
+  expect_identical(stimControl(bwNcellMin = 100)$bwNcellMin, 100)
   expect_identical(control$bwScope, "cytokine")
   expect_identical(control$bwAdj, 1)
   expect_identical(control$bwFallback, "auto")

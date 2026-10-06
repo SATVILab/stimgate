@@ -1046,8 +1046,8 @@
   bwMtd = "hpi1",
   bwScope = "cytokine",
   bwAdj = 1,
-  bwNcellMin = 1e2,
-  bwNcellMax = 1e5,
+  bwNcellMin = bwNcellMax,
+  bwNcellMax = 1e4,
   bwCluster = NULL,
   minCell = 1e2,
   # Retained for callers/manifests; gateStim no longer uses these settings.
@@ -1428,8 +1428,8 @@
   bwMtd = "hpi1",
   bwScope = "cytokine",
   bwAdj = 1,
-  bwNcellMin = 1e2,
-  bwNcellMax = 1e5,
+  bwNcellMin = bwNcellMax,
+  bwNcellMax = 1e4,
   bwCluster = NULL,
   probExact = FALSE,
   nCellStim,
@@ -2426,6 +2426,13 @@
         bwMtd = if ("bw_mtd" %in% names(row)) row$bw_mtd[[1]] else "hpi1",
         bwScope = if ("bw_scope" %in% names(row)) row$bw_scope[[1]] else "cytokine",
         bwNcellMax = if ("bw_ncell_max" %in% names(row)) {
+          row$bw_ncell_max[[1]]
+        } else {
+          1e4
+        },
+        bwNcellMin = if ("bw_ncell_min" %in% names(row)) {
+          row$bw_ncell_min[[1]]
+        } else if ("bw_ncell_max" %in% names(row)) {
           row$bw_ncell_max[[1]]
         } else {
           1e4
