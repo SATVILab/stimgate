@@ -389,7 +389,7 @@ manual_summary_tbl |>
 
 ### Estimated versus reference response frequency
 
-Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Manual background-subtracted frequency (%) is on the horizontal axis and automated frequency (%) on the vertical axis. Colour identifies the method, shapes identify stimuli, and panels separate populations and cytokines. Points closer to the dashed identity line indicate closer agreement.
+Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Manual background-subtracted frequency (%) is on the horizontal axis and automated frequency (%) on the vertical axis. Colour identifies the method and shapes identify stimuli. Each population has its own figure with cytokine panels; both axis ranges differ between panels. Points closer to the dashed identity line indicate closer agreement.
 
 ```{r}
 #| label: manual-comparison
@@ -400,27 +400,32 @@ if (isTRUE(run_plots)) {
   for (set_name in names(method_sets)) {
     method_set <- method_sets[[set_name]]
     .analysis_heading(method_set$label, 4)
-    p <- .acsCytofManualPlotScatter(
-      manual_comparison_tbl |> dplyr::filter(method %in% method_set$methods)
-    )
-    .analysis_print_save_fig(
-      p,
-      file.path(
-        .analysis_fig_dir(
-          c(fig_key, "manual_comparison_scatter", set_name),
-          root_dir
+    for (population in unique(as.character(manual_comparison_tbl$pop))) {
+      .analysis_heading(paste("Population:", population), 5)
+      p <- .acsCytofManualPlotScatter(
+        manual_comparison_tbl |>
+          dplyr::filter(method %in% method_set$methods, pop == population)
+      )
+      .analysis_print_save_fig(
+        p,
+        file.path(
+          .analysis_fig_dir(
+            c(fig_key, "manual_comparison_scatter", set_name,
+              gsub("[^A-Za-z0-9_.-]+", "_", population)),
+            root_dir
+          ),
+          "manual-comparison-scatter.png"
         ),
-        "manual-comparison-scatter.png"
-      ),
-      height = 22
-    )
+        height = 12
+      )
+    }
   }
 }
 ```
 
 ### Relative error
 
-Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Boxplots show absolute relative error by method, with separate panels for populations and cytokines. Smaller values indicate closer agreement; rows with non-positive manual background-subtracted frequencies have no relative-error estimate.
+Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Boxplots show absolute relative error by method, with separate panels for populations and cytokines. The y axis uses a log1p display with ticks in original units, retaining zero errors and compressing outliers; each panel has its own y range. Box statistics remain on the original error scale. Smaller values indicate closer agreement; rows with non-positive manual background-subtracted frequencies have no relative-error estimate.
 
 ```{r}
 #| label: manual-relative-error
@@ -540,7 +545,7 @@ print(manual_summary_tbl, n = Inf)
 
 The following figures separate stimuli so a strong response in one stimulus does
 not conceal poorer agreement in another. Both error measures use successful
-method estimates only; the table above supplies their denominators.
+method estimates only; the table above supplies their denominators. Relative-error panels use the same log1p display and separate y ranges as above.
 
 ```{r}
 #| label: manual-errors-by-stimulus
