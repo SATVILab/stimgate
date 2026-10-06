@@ -732,6 +732,63 @@
 }
 
 # ---------------------------------------------------------------------------
+# Analysis 2c: test chosen settings
+# ---------------------------------------------------------------------------
+
+#' Analysis 2c scenario: one simulation with chosen settings
+#'
+#' Runs the Analysis 2a scenario, adding the stimulated-tube mismatch columns
+#' of Analysis 2b and per-row overrides. Defaults (no mismatch, no overrides)
+#' give exactly the 2a simulation, so the 2a data are reproduced.
+#'
+#' @param row data.frame One row of the 2c `test_grid`. Optional columns:
+#'   `stim_mean_shift` (default 0) and `stim_sd_multiplier` (default 1), with
+#'   `stim_mean_shift_clusters` / `stim_sd_multiplier_clusters` naming the
+#'   stimulated components they apply to (`"gn"` for negatives; NA or `""`
+#'   for all cells). Any column named after a `.simBandwidthBsFreq()`
+#'   argument overrides that setting for the row.
+#' @param settings list Fixed `.simBandwidthBsFreq()` arguments.
+#' @return tibble `.simBandwidthBsFreq()` output.
+.simBandwidthTestScenario <- function(row, settings) {
+  value <- function(col, default) {
+    if (col %in% names(row)) row[[col]][[1]] else default
+  }
+  clusters <- function(col) {
+    x <- as.character(value(col, NA_character_))[1]
+    if (is.na(x) || !nzchar(x)) NULL else x
+  }
+  shift <- value("stim_mean_shift", 0)
+  sdMultiplier <- value("stim_sd_multiplier", 1)
+  mismatch <- list(stimMeanShift = shift, stimSdMultiplier = sdMultiplier)
+  # Only name components for an actual mismatch, so the default path is the
+  # plain 2a simulation.
+  if (!identical(as.numeric(shift), 0)) {
+    mismatch$stimMeanShiftClusters <- clusters("stim_mean_shift_clusters")
+  }
+  if (!identical(as.numeric(sdMultiplier), 1)) {
+    mismatch$stimSdMultiplierClusters <- clusters("stim_sd_multiplier_clusters")
+  }
+  # The 2a scenario sets these from the row's own grid columns.
+  rowArgs <- c(
+    "biasUns", "bw", "bwFallback", "nCellStim", "probResponse", "meanPos",
+    "transformation", "samplePerturbationSd", "conditionPerturbationSd",
+    "clusterPerturbationSd", "backgroundRelativeToResponse",
+    "ncellUnsRelativeToStim"
+  )
+  overrideCols <- setdiff(
+    intersect(names(row), names(formals(.simBandwidthBsFreq))),
+    rowArgs
+  )
+  overrides <- lapply(as.list(row[overrideCols]), `[[`, 1L)
+  # Rows that leave an override column NA keep the shared setting.
+  overrides <- Filter(function(x) !(length(x) == 1L && is.na(x)), overrides)
+  .simBandwidthFreqBsGlobalScenario(
+    row,
+    utils::modifyList(settings, c(mismatch, overrides))
+  )
+}
+
+# ---------------------------------------------------------------------------
 # Analysis 3: base bandwidth estimators
 # ---------------------------------------------------------------------------
 

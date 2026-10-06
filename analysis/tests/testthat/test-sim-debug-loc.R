@@ -62,6 +62,13 @@ test_that(".simDebugLoc records one sample without changing the rerun", {
     c("density", "prob", "deriv", "respCells", "taut", "truth")
   )
   expect_true(all(vapply(plots, ggplot2::is.ggplot, logical(1L))))
+  xr <- vapply(plots, function(p) {
+    paste(p$coordinates$limits$x, collapse = ",")
+  }, character(1L))
+  expect_length(unique(xr), 1L)
+  expect_true(is.data.frame(attr(plots, "lines")))
+  zoomed <- env$.simDebugLocPlots(dbg, xlim = c(3, 8))
+  expect_equal(zoomed$density$coordinates$limits$x, c(3, 8))
   expect_s3_class(env$.simDebugLocPlotGrid(plots), "ggplot")
   info <- env$.simDebugLocInfo(dbg, row)
   expect_named(info, c("gating", "simulation", "estimate"))

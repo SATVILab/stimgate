@@ -334,7 +334,9 @@ Each top-level analysis QMD also has an independently runnable target in
 one target number/path to run it, a comma/space-separated set, or `all`.
 Maintain the registry when adding or renaming top-level QMDs. Analysis 2 is
 split into `2a` (bandwidth performance) and `2b` (bias tuning), with separate
-runner targets. Bias-tuning collation retains invalid final sample estimates,
+runner targets. `2c` (`2c-sim-test.qmd`) runs chosen settings, including
+stimulated-tube mismatch, through the 2a code path with the `.simDebugLoc()`
+figures; it caches nothing and has no Slurm job. Bias-tuning collation retains invalid final sample estimates,
 reports valid/failed counts, and rejects missing sample outputs before promotion.
 These targets reuse bounded scientific helper and document-contract tests; they do not render
 the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-only
