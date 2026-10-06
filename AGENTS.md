@@ -395,19 +395,26 @@ Each top-level analysis QMD also has an independently runnable target in
 `analysis/tests/run_qmd_tests.R`. Use `--list` to inspect the
 QMD-to-test mapping, one target number/path to run it, a
 comma/space-separated set, or `all`. Maintain the registry when adding
-or renaming top-level QMDs. Analysis 2 is split into `2a` (bandwidth
-performance) and `2b` (bias tuning), with separate runner targets. `2c`
-(`2c-sim-test.qmd`) runs chosen settings, including stimulated-tube
-mismatch, through the 2a code path with the `.simDebugLoc()` figures; it
-caches nothing and has no Slurm job. Bias-tuning collation retains
-invalid final sample estimates, reports valid/failed counts, and rejects
-missing sample outputs before promotion. These targets reuse bounded
-scientific helper and document-contract tests; they do not render the
-full research analyses. The `analysis-qmd-tests.yaml` workflow is
-manual-only (`workflow_dispatch`); do not add automatic triggers. Its
-`mode: render` input renders the QMDs end to end in quick mode instead
-(simulate, then plot; one job per QMD). See `analysis/tests/README.md`
-for commands and coverage limits.
+or renaming top-level QMDs. Analysis 11 applies the ordinary and
+cytokine-positive gates from one
+[`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+run to the same cells and requires its recomputed cytokine-positive
+combination counts to equal
+[`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md);
+keep that check when changing the positivity rule. Analysis 2 is split
+into `2a` (bandwidth performance) and `2b` (bias tuning), with separate
+runner targets. `2c` (`2c-sim-test.qmd`) runs chosen settings, including
+stimulated-tube mismatch, through the 2a code path with the
+`.simDebugLoc()` figures; it caches nothing and has no Slurm job.
+Bias-tuning collation retains invalid final sample estimates, reports
+valid/failed counts, and rejects missing sample outputs before
+promotion. These targets reuse bounded scientific helper and
+document-contract tests; they do not render the full research analyses.
+The `analysis-qmd-tests.yaml` workflow is manual-only
+(`workflow_dispatch`); do not add automatic triggers. Its `mode: render`
+input renders the QMDs end to end in quick mode instead (simulate, then
+plot; one job per QMD). See `analysis/tests/README.md` for commands and
+coverage limits.
 
 The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked
 runs. Keep enabled chunked analyses in the `scripts` list and
@@ -674,6 +681,10 @@ the `flowWorkspace` stack from source.
     on a `.simDebugLoc()` sample as Analyses 7/8 do; `.simDebugFigure()`
     combines simulation settings with each method’s plots, settings and
     result on one x range.
+  - `sim-low-separation.R`: Analysis 11
+    (`11-sim-low-separation-cyt-pos.qmd`): two-marker low-separation
+    simulations gated once per dataset, comparing ordinary and
+    cytokine-positive gates on the same cells against simulated labels.
   - `sim-misc.R`: Miscellaneous simulation utilities.
   - `sim-trans.R`: Simulation transformation utilities.
 - `src/`: C++ source code compiled into the package via `cpp11`
