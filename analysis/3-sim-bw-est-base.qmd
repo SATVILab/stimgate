@@ -2,6 +2,7 @@
 title: Simulate base bandwidth estimators
 format:
   html:
+    fig-retina: 1
     embed-resources: true
     toc: true
 execute:
@@ -15,7 +16,7 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
-  show_mcse: both
+  show_mcse: "on"
   sim_size: final
   sim_retry_errors: true
 ---
@@ -112,7 +113,7 @@ run_plots <- .as_flag(.get_qmd_param_env(
   TRUE
 ))
 # Monte Carlo error bars on the summary plots (see analysis-mcse.R).
-mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "on"))
 show_mcse <- mcse_mode != "off"
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
@@ -455,7 +456,7 @@ rather than a fallback estimate.
 
 Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the estimator. Facets separate transformations (Gaussian, Skew, Gamma) and response frequencies, shown as percentages; each figure sits under a heading naming its response-separation and bias setting. Compare the methods within each panel and follow how their estimates change with cell count.
 
-Set `show_mcse` or `SHOW_MCSE` to `off`, `on` or `both` (the default). Both versions are printed and saved in sibling `mcse_off/` and `mcse_on/` folders, with the same points and axes; historical false/true values select off/on. With error bars on, each mean has a thin error bar in its line's colour: the mean plus or minus 1.96 Monte Carlo standard errors (the standard deviation of the scenario's bandwidth estimates divided by the square root of their number). The error bars use only the estimates already simulated and treat them as independent draws, which holds here: each simulated sample is drawn and its bandwidth estimated separately, with no sharing across samples.
+Set `show_mcse` or `SHOW_MCSE` to `off` or `on` (the default). Each render prints one version and saves it under `mcse_off/` or `mcse_on/`, with the same points and axes; historical false/true values select off/on. With error bars on, each mean has a thin error bar in its line's colour: the mean plus or minus 1.96 Monte Carlo standard errors (the standard deviation of the scenario's bandwidth estimates divided by the square root of their number). The error bars use only the estimates already simulated and treat them as independent draws, which holds here: each simulated sample is drawn and its bandwidth estimated separately, with no sharing across samples.
 
 ```{r}
 #| label: bw-estimate-plots
@@ -540,8 +541,7 @@ if (isTRUE(run_plots)) {
           ".pdf"
         )
       )
-      .analysis_save_fig(p, path_plot, height = 15, mcse_mode = mcse_mode)
-      .analysis_print_fig(p, mcse_mode = mcse_mode)
+      .analysis_print_save_fig(p, path_plot, height = 15, mcse_mode = mcse_mode)
       cat("\n\n", knitr::kable(plot_tbl |> dplyr::select(
         transformation, prob_response, n_cell, bw_mtd,
         n_bw_finite, n_bw_total, prop_bw_finite, norm_fallback_rate

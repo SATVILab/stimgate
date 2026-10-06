@@ -32,7 +32,7 @@ test_that("ratio twins preserve signed geometry, intervals and original scales",
     "16x")
 })
 
-test_that("ratio companions save beside originals and print their own heading", {
+test_that("ratio companions save beside originals without printing or headings", {
   env <- new.env(parent = getNamespace("stimgate"))
   for (file in c("analysis-plot-style.R", "sim-bandwidth-analysis-plot.R")) {
     source(file.path(testthat::test_path(), "../../../scripts/r", file), local = env)
@@ -48,6 +48,6 @@ test_that("ratio companions save beside originals and print their own heading", 
     "output/fig/draft/ratio_by_n_cell/sd_inflation/a.pdf")
   expect_identical(env$saved$height, 22)
   expect_identical(env$saved$allow_tall, FALSE)
-  expect_identical(env$printed, env$saved$plot)
-  expect_true(any(grepl("Estimate / reference ratio", md, fixed = TRUE)))
+  expect_false(exists("printed", envir = env, inherits = FALSE))
+  expect_length(md, 0L)
 })

@@ -42,13 +42,20 @@ for qmd_file in "${qmd_file_vec[@]}"; do
     echo "ERROR: Could not find QMD: $project_root/$qmd_file" >&2
     exit 1
   fi
-  echo "-------------------"
-  echo "Render plots: $qmd_file"
-  date
-  r_expr="qmd_file <- '$qmd_file'; if (requireNamespace('quarto', quietly = TRUE)) { quarto::quarto_render(input = qmd_file) } else { status <- system2('quarto', c('render', qmd_file)); if (!identical(status, 0L)) quit(status = status) }"
-  apptainer-rscript -f stimgate -- "$r_expr"
-  echo "Completed rendering $qmd_file"
-  date
+  # Render directly, without projr's build/clean step or the isolated chunk
+  # helper (which deletes its HTML on exit). All reports embed resources;
+  # each HTML is self-contained even if Quarto reuses input-stem _files.
+  qmd_stem=$(basename -- "$qmd_file" .qmd)
+  for mcse_mode in off on; do
+    export SHOW_MCSE="$mcse_mode"
+    output_file="${qmd_stem}-mcse_${mcse_mode}.html"
+    echo "Render plots: $qmd_file ($mcse_mode) -> $output_file"
+    date
+    r_expr="qmd_file <- '$qmd_file'; output_file <- '$output_file'; if (requireNamespace('quarto', quietly = TRUE)) { quarto::quarto_render(input = qmd_file, output_file = output_file) } else { status <- system2('quarto', c('render', qmd_file, '--output', output_file)); if (!identical(status, 0L)) quit(status = status) }"
+    apptainer-rscript -f stimgate -- "$r_expr"
+    echo "Completed rendering $output_file"
+    date
+  done
 done
 
 end_time=$(date +%s)

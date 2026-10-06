@@ -328,11 +328,10 @@
 }
 
 # Error bars for the finite `ymin`/`ymax` columns of `data`, in the colour of
-# the line they belong to (the colour aesthetic is inherited). Use `width = 0`
-# on continuous or transformed horizontal scales and a small width for
-# discrete ones.
+# the line they belong to (the colour aesthetic is inherited). Small caps
+# and opaque strokes keep intervals visible even with a single x value.
 .analysis_mcse_errorbar <- function(
-    data, ymin = "lower", ymax = "upper", width = 0, alpha = 0.5,
+    data, ymin = "lower", ymax = "upper", width = 0.1, alpha = 1,
     linewidth = 0.4) {
   data <- data[
     is.finite(data[[ymin]]) & is.finite(data[[ymax]]), ,

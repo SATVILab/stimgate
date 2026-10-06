@@ -2,6 +2,7 @@
 title: Simulated transformation scenarios
 format:
   html:
+    fig-retina: 1
     embed-resources: true
     toc: true
 execute:
@@ -347,6 +348,7 @@ if (isTRUE(run_plots)) {
       values = .simMiscGetStimColVec()
     )
 
+  .analysis_print_fig(p)
   ext_vec <- c("png", "pdf")
   for (ext in ext_vec) {
     path_p <- file.path(
@@ -356,7 +358,6 @@ if (isTRUE(run_plots)) {
     .analysis_save_fig(p, path_p, height = 14)
   }
 
-  print(p)
 }
 ```
 

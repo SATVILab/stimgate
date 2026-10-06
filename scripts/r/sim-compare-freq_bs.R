@@ -3397,11 +3397,10 @@
         }
         if (nrow(curr) == 0L) next
         p <- make_plot(curr)
-        .analysis_save_fig(
+        .analysis_print_save_fig(
           p, file.path(dir, set_name, file_fn(pos, extra)),
           height = height, allow_tall = allow_tall, mcse_mode = mcse_mode
         )
-        .analysis_print_fig(p, mcse_mode = mcse_mode)
         if (isTRUE(ratio_twins)) {
           .simBandwidthPrintRatioTwin(p, file.path(dir, set_name, file_fn(pos, extra)),
             height = height, allow_tall = allow_tall, mcse_mode = mcse_mode)
@@ -3441,12 +3440,12 @@
     )
   }
   bounds <- paste0(y, c("_lower", "_upper"))
-  if (isTRUE(mcse) && all(bounds %in% names(data))) {
-    p <- p + .analysis_mcse_errorbar(data, bounds[[1]], bounds[[2]])
-  }
   p +
     ggplot2::geom_line(alpha = 0.75) +
     ggplot2::geom_point(alpha = 0.75) +
+    (if (isTRUE(mcse) && all(bounds %in% names(data))) {
+      .analysis_mcse_errorbar(data, bounds[[1]], bounds[[2]])
+    }) +
     ggplot2::scale_x_log10(
       breaks = sort(unique(data$n_cell)),
       labels = .analysis_label_number,

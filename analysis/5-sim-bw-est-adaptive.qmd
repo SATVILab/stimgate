@@ -2,6 +2,7 @@
 title: Simulate adaptive bandwidth estimates
 format:
   html:
+    fig-retina: 1
     embed-resources: true
     toc: true
 execute:
@@ -556,8 +557,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_plot), recursive = TRUE, showWarnings = FALSE)
-          .analysis_save_fig(p, path_plot, height = 15)
-          .analysis_print_fig(p)
+          .analysis_print_save_fig(p, path_plot, height = 15)
         }
       }
     }

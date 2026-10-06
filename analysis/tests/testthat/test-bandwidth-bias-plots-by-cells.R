@@ -78,7 +78,8 @@ test_that("2a per-cell plots average scenario errors before combining probabilit
   expect_match(md, "#### Mean position: low", fixed = TRUE)
   expect_match(md, "##### Cells: 1,000", fixed = TRUE)
   expect_length(env$saved, 4L)
-  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
+  displayed <- Filter(function(x) !grepl("/ratio", x$path, fixed = TRUE), env$saved)
+  expect_identical(env$printed, lapply(displayed, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
   expect_equal(length(unique(paths)), 4L)
   for (saved in env$saved) {
@@ -157,7 +158,8 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
   md <- .bandwidth_cell_plot_eval(cell_code, env)
   expect_match(md, "###### Response probability: 10%; cells: 1,000", fixed = TRUE)
   expect_length(env$saved, 48L)
-  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
+  displayed <- Filter(function(x) !grepl("/ratio", x$path, fixed = TRUE), env$saved)
+  expect_identical(env$printed, lapply(displayed, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
   expect_equal(length(unique(paths)), 48L)
   for (saved in env$saved) {
@@ -245,7 +247,8 @@ test_that("2a per-cell signed-error plots average scenario errors by direction",
   md <- .bandwidth_cell_plot_eval(code, env)
   expect_match(md, "##### Cells: 100", fixed = TRUE)
   expect_length(env$saved, 8L)
-  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
+  displayed <- Filter(function(x) !grepl("/ratio", x$path, fixed = TRUE), env$saved)
+  expect_identical(env$printed, lapply(displayed, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
   expect_equal(sum(grepl("/ratio", paths, fixed = TRUE)), length(paths) / 2)
   expect_equal(sum(grepl("/signed_error", paths, fixed = TRUE)), length(paths) / 2)
@@ -329,7 +332,8 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
   }
   .bandwidth_cell_plot_eval(cell_code, env)
   expect_length(env$saved, 96L)
-  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
+  displayed <- Filter(function(x) !grepl("/ratio", x$path, fixed = TRUE), env$saved)
+  expect_identical(env$printed, lapply(displayed, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
   expect_equal(sum(grepl("/ratio", paths, fixed = TRUE)), length(paths) / 2)
   expect_equal(sum(grepl("/signed_error", paths, fixed = TRUE)), length(paths) / 2)
@@ -702,4 +706,34 @@ test_that("2b frequency plots and coverage split stimulated-negative mismatch ty
   expect_identical(.bandwidth_cell_plot_eval(code, env), "")
   expect_length(env$saved, 0L)
   expect_length(env$coverage, 0L)
+})
+
+test_that("threshold coverage uses layer data when the plot has no global data", {
+  env <- .bandwidth_cell_plot_env()
+  summary <- tibble::tibble(
+    mean_pos_setting = c("low", "high", "low"), n_cell = c(100, 100, 1000),
+    transformation = "gaussian", bw = 0.1,
+    n_sample = 4L, n_valid = c(3L, 4L, 0L), n_failed = c(1L, 0L, 4L),
+    n_provenance = 4L, n_fallback = c(2L, 0L, 4L)
+  )
+  panels <- tibble::tibble(mean_pos_setting = "low", n_cell = 100,
+    transformation = env$.analysis_trans_factor("gaussian"), bw = 0.1, threshold = 2)
+  plot <- ggplot2::ggplot() +
+    ggplot2::geom_vline(data = panels, ggplot2::aes(xintercept = threshold)) +
+    ggplot2::geom_hline(yintercept = 0)
+  expect_false(is.data.frame(plot$data))
+  coverage <- env$.simBandwidthCoverageForPlot(plot, summary)
+  expect_equal(coverage$n_sample, 4L)
+  expect_equal(coverage$n_valid, 3L)
+  expect_equal(coverage$failure_fraction, 1 / 4)
+  # Also exercise the real printer, which chunk fixtures normally stub out.
+  source(file.path(testthat::test_path(), "../../../scripts/r/sim-bandwidth-analysis-plot.R"),
+    local = env)
+  expect_no_error(utils::capture.output(env$.simBandwidthPrintCoverage(plot, summary)))
+  # Data from every data-frame layer are included, not just the first layer.
+  plot <- plot + ggplot2::geom_vline(data = dplyr::mutate(panels, n_cell = 1000),
+    ggplot2::aes(xintercept = threshold))
+  coverage <- env$.simBandwidthCoverageForPlot(plot, summary)
+  expect_setequal(coverage$n_cell, c("100", "1000"))
+  expect_equal(sum(coverage$n_sample), 8L)
 })

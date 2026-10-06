@@ -135,12 +135,16 @@
 }
 
 # Rendering mode; historical Boolean values select a single version.
-.analysis_mcse_mode <- function(x = "both") {
-  if (length(x) != 1L || is.na(x)) stop("show_mcse must be off, on or both.")
+.analysis_mcse_mode <- function(x = "on") {
+  if (length(x) != 1L || is.na(x)) {
+    stop("show_mcse must be off or on (one mode per render; both is unsupported).")
+  }
   value <- tolower(trimws(as.character(x)))
   if (value %in% c("true", "t", "yes", "y", "1")) value <- "on"
   if (value %in% c("false", "f", "no", "n", "0")) value <- "off"
-  if (!value %in% c("off", "on", "both")) stop("show_mcse must be off, on or both.")
+  if (!value %in% c("off", "on")) {
+    stop("show_mcse must be off or on (one mode per render; both is unsupported).")
+  }
   value
 }
 

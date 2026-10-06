@@ -2,6 +2,7 @@
 title: Compare background-subtracted frequency approaches
 format:
   html:
+    fig-retina: 1
     embed-resources: true
     toc: true
 execute:
@@ -14,7 +15,7 @@ params:
   sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
-  show_mcse: both
+  show_mcse: "on"
   sim_size: final
 ---
 
@@ -79,7 +80,7 @@ run_plots <- .as_flag(.get_qmd_param_env(
   TRUE
 ))
 # Monte Carlo error bars on the summary plots (see analysis-mcse.R).
-mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "on"))
 show_mcse <- mcse_mode != "off"
 sim_grid_chunk_index <- as.integer(
   .get_qmd_param_env("sim_grid_chunk_index", "SIM_GRID_CHUNK_INDEX", 1L)
@@ -659,10 +660,9 @@ two methods. The two versions are saved in the `all_methods` and `no_tailgate`
 subfolders of each figure folder. Within each version there is one figure per
 mean position setting.
 
-**Monte Carlo intervals.** `show_mcse` / `SHOW_MCSE` accepts `off`, `on`
-or `both` (default); false/true still selects off/on. Both versions are printed
-and saved in sibling `mcse_off/` and `mcse_on/` folders, with identical points
-and axes. With error bars on, 95% percentile-bootstrap
+**Monte Carlo intervals.** `show_mcse` / `SHOW_MCSE` accepts `off` or `on`
+(default); false/true still selects off/on. Each render prints one version
+and saves it under `mcse_off/` or `mcse_on/`, with identical points and axes. With error bars on, 95% percentile-bootstrap
 intervals resample whole independent datasets (`iter`), retaining all samples
 of each selected dataset with multiplicity. Each draw recalculates the actual
 pooled sample statistic shown, rather than a mean of within-dataset percentiles.

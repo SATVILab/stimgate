@@ -2,6 +2,7 @@
 title: ACS CyTOF validation outputs
 format:
   html:
+    fig-retina: 1
     embed-resources: true
     toc: true
 execute:

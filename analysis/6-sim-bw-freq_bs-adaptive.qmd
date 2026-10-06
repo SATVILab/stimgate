@@ -2,6 +2,7 @@
 title: Manual adaptive bandwidth performance simulation
 format:
   html:
+    fig-retina: 1
     embed-resources: true
     toc: true
 execute:
@@ -605,8 +606,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          .analysis_save_fig(p, path_p, height = 8)
-          .analysis_print_fig(p)
+          .analysis_print_save_fig(p, path_p, height = 8)
         }
       }
     }
@@ -710,8 +710,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          .analysis_save_fig(p, path_p, height = 8)
-          .analysis_print_fig(p)
+          .analysis_print_save_fig(p, path_p, height = 8)
         }
       }
     }
@@ -814,8 +813,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          .analysis_save_fig(p, path_p, height = 8)
-          .analysis_print_fig(p)
+          .analysis_print_save_fig(p, path_p, height = 8)
         }
       }
     }
@@ -918,8 +916,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          .analysis_save_fig(p, path_p, height = 8)
-          .analysis_print_fig(p)
+          .analysis_print_save_fig(p, path_p, height = 8)
         }
       }
     }
@@ -1033,8 +1030,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          .analysis_save_fig(p, path_p, height = 22)
-          .analysis_print_fig(p)
+          .analysis_print_save_fig(p, path_p, height = 22)
         }
       }
     }
@@ -1142,8 +1138,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          .analysis_save_fig(p, path_p, height = 22)
-          .analysis_print_fig(p)
+          .analysis_print_save_fig(p, path_p, height = 22)
         }
       }
     }
@@ -1294,8 +1289,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          .analysis_save_fig(p, path_p, height = 22)
-          .analysis_print_fig(p)
+          .analysis_print_save_fig(p, path_p, height = 22)
         }
       }
     }
@@ -1446,8 +1440,7 @@ if (isTRUE(run_plots)) {
             )
           )
           dir.create(dirname(path_p), recursive = TRUE, showWarnings = FALSE)
-          .analysis_save_fig(p, path_p, height = 22)
-          .analysis_print_fig(p)
+          .analysis_print_save_fig(p, path_p, height = 22)
         }
       }
     }

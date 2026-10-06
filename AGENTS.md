@@ -355,7 +355,9 @@ settings list for manifest recording and canonical reads.
 Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`;
 validate all target arguments before submitting jobs. After the simulation jobs,
 `dev.sh` submits one `scripts/slurm/render-plots.sh` job per analysis that
-renders the real QMD with simulations off and plots on (`plot_qmds_for_script()`;
+renders the real QMD twice, `SHOW_MCSE=off` then `on`, with simulations off
+and plots on and distinct `<stem>-mcse_off.html` / `<stem>-mcse_on.html` outputs
+(`plot_qmds_for_script()`;
 9 also renders 10). It depends `afterok` on its own simulation jobs and
 `afterany` on the submission's other simulation jobs, because projr builds
 clear projr's output folder (where figures go) before building. Keep mocked submission and
@@ -368,15 +370,16 @@ mean shifts and SD inflation in separate figure sections and sibling folders,
 including the matching coverage summaries. Label which tube and component change.
 Ratio companions preserve signed-error geometry and intervals, relabelling ticks
 as `1 + relative error` (estimate/reference). Keep originals and save companions
-in sibling ratio folders. Absolute relative errors lose direction and cannot
-be relabelled as estimate/reference ratios.
+in sibling ratio folders without printing them into HTML. Absolute relative
+errors lose direction and cannot be relabelled as estimate/reference ratios.
 Signed relative-error plots (`.simBandwidthSignedError*()` in
 `sim-bandwidth-analysis-plot.R`) sit alongside, not instead of, the absolute
 ones: they summarise over- and under-estimates separately, weight lines by each
 direction's share, and use a scale on which -100% and a two-fold over-estimate
 are equally far from zero.
-Monte Carlo error bars (`show_mcse` QMD parameter / `SHOW_MCSE`, default on;
-plot helpers take `mcse = FALSE` by default) use `analysis-mcse.R` and only
+Monte Carlo error bars (`show_mcse` QMD parameter / `SHOW_MCSE`, one mode per
+render: `on` (default) or `off`; historical true/false maps to on/off; `both`
+is rejected; plot helpers take `mcse = FALSE` by default) use `analysis-mcse.R` and only
 existing replicates. For independent sample-replication analyses, use
 sd/sqrt(n) for means and order-statistic intervals
 (x_(l), x_(u)) with l = qbinom(0.025, n, p), u = qbinom(0.975, n, p) + 1 for
@@ -569,8 +572,9 @@ errors naming the analysis, render command, matching dev/quick profile and
 required completion of all chunks.
 
 When displaying ggplot objects inside QMD conditionals or loops, call `print()`
-explicitly. Chunk tests should capture printed plots and check that each requested
-method appears and that disabling plotting produces no printed plots.
+explicitly. In `results: asis` loops, print before `ggsave()` (use
+`.analysis_print_save_fig()`) so figures stay under their own headings. Chunk
+tests should capture printed plots and check that each requested method appears and that disabling plotting produces no printed plots.
 
 Plot-construction helpers under `scripts/r/` should return plot objects without
 creating directories or writing files. Keep filesystem side effects in the
@@ -988,15 +992,16 @@ For GitHub issue or Project administration, use
 `.projects/project.md` before acting.
 <!-- github-projects:end -->
 
-Monte Carlo figure selection accepts `show_mcse` / `SHOW_MCSE` values `off`,
-`on` or `both` (default); historical Boolean false/true selects off/on. Compute
-the requested interval summaries once and derive off/on plots from that same
-plot. Mark only Monte Carlo interval layers with `.analysis_mcse_layer()`;
-removing MC intervals must preserve points, scales and other uncertainty (for
-example ACS donor intervals). Performance figure callers pass `mcse_mode` to
-shared save/print orchestration and ratio companions. Both versions are printed
-with explicit labels and saved in sibling `mcse_off/` and `mcse_on/` folders;
-non-MC figures retain a single output. Never rerun simulations for these twins.
+Monte Carlo figure selection accepts `show_mcse` / `SHOW_MCSE` values `off`
+or `on` (default); historical Boolean false/true selects off/on. Reject `both`:
+each HTML contains only its selected mode. Mark only Monte Carlo interval layers
+with `.analysis_mcse_layer()`; removing MC intervals must preserve points,
+scales and other uncertainty (for example ACS donor intervals). Performance
+figure callers pass `mcse_mode` to shared save/print orchestration and ratio
+companions. Save the selected mode in sibling `mcse_off/` or `mcse_on/` folders;
+non-MC figures retain a single output. Ratio companions are saved only.
+Never clear sibling mode files or rerun simulations to produce the other mode.
+Analysis HTML uses `fig-retina: 1` to keep embedded figures bounded in size.
 
 Comparison completion and promotion require every intended method/sample/iteration
 row, finite simulated truth and pairing fingerprints, and consistent successful

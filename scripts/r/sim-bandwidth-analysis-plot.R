@@ -556,7 +556,7 @@ add_bw_labs <- function(.data) {
 
 # Monte Carlo error bars for a long signed (or absolute) error table with
 # `lower`/`upper` in data units, squished to the +1500% cap like the values.
-.simBandwidthSignedErrorBars <- function(tbl, width = 0) {
+.simBandwidthSignedErrorBars <- function(tbl, width = 0.1) {
   if (!all(c("lower", "upper") %in% names(tbl))) {
     return(NULL)
   }
@@ -718,13 +718,11 @@ add_bw_labs <- function(.data) {
   plot + ggplot2::labs(y = "Estimate / reference (multiple)")
 }
 
-# Signed-error companions live in sibling ratio folders with the same dimensions.
+# Signed-error companions are saved only, in sibling ratio folders with the same dimensions.
 .simBandwidthPrintRatioTwin <- function(plot, path, height, level = 6L, allow_tall = FALSE, mcse_mode = NULL) {
   ratio <- .simBandwidthRatioPlot(plot)
   .analysis_save_fig(ratio, sub("signed_error", "ratio", path, fixed = TRUE),
     height = height, allow_tall = allow_tall, mcse_mode = mcse_mode)
-  .analysis_heading("Estimate / reference ratio", level)
-  .analysis_print_fig(ratio, mcse_mode = mcse_mode)
   invisible(NULL)
 }
 
@@ -818,11 +816,16 @@ add_bw_labs <- function(.data) {
     "n_cell", "bw", "bias_uns_basis", "bias_uns_multiplier",
     "mismatch_label", "mismatch_type", "mismatch_val", "bw_mtd", "bw_ncell_upper"
   )
-  keys <- intersect(dimensions, intersect(names(plot$data), names(summary)))
+  plot_data <- if (is.data.frame(plot$data)) plot$data else {
+    dplyr::bind_rows(lapply(plot$layers, function(layer) {
+      if (is.data.frame(layer$data)) layer$data else NULL
+    }))
+  }
+  keys <- intersect(dimensions, intersect(names(plot_data), names(summary)))
   if ("transformation" %in% keys) {
     summary$transformation <- .analysis_trans_factor(summary$transformation)
   }
-  selected <- plot$data |>
+  selected <- plot_data |>
     dplyr::select(dplyr::all_of(keys)) |>
     dplyr::distinct()
   # Character conversion also handles a figure's numeric/factor cell-count axis.

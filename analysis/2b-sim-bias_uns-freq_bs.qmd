@@ -2,6 +2,7 @@
 title: Tune unstimulated-sample bias (2b)
 format:
   html:
+    fig-retina: 1
     embed-resources: true
     toc: true
 execute:
@@ -15,7 +16,7 @@ params:
   sim_grid_shuffle_seed: 20261003
   run_simulations: true
   run_plots: false
-  show_mcse: both
+  show_mcse: "on"
   sim_size: final
   sim_retry_errors: true
 ---
@@ -83,7 +84,7 @@ run_plots <- .as_flag(.get_qmd_param_env(
   TRUE
 ))
 # Monte Carlo error bars on the summary plots (see analysis-mcse.R).
-mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "on"))
 show_mcse <- mcse_mode != "off"
 sim_retry_errors <- .as_flag(.get_qmd_param_env(
   "sim_retry_errors",
@@ -561,9 +562,9 @@ bandwidth rule, so the two are not comparable until it is rescaled
 and table below. With only the bandwidth rule shown, colour (bandwidth) is
 the only legend for the curves.
 
-**Monte Carlo error bars.** Set `show_mcse` or `SHOW_MCSE` to `off`, `on` or `both` (the default).
-Both versions are printed and saved in sibling `mcse_off/` and `mcse_on/`
-folders, with the same points and axes. Historical false/true values select
+**Monte Carlo error bars.** Set `show_mcse` or `SHOW_MCSE` to `off` or `on` (the default).
+Each render prints one version and saves it under `mcse_off/` or `mcse_on/`,
+with the same points and axes. Historical false/true values select
 off/on. With error bars on, the summary plots show how much each plotted value could move
 if the simulation were repeated, using only the samples already simulated.
 They treat the simulated samples within a setting as independent draws,
@@ -690,14 +691,13 @@ if (isTRUE(run_plots)) {
               ".pdf"
             )
           )
-          .analysis_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
           .analysis_heading(
             paste0(
               "Response probability: ", .analysis_label_percent(prob_response_curr)
             ),
             6
           )
-          .analysis_print_fig(p, mcse_mode = mcse_mode)
+          .analysis_print_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
               mismatch_type == mismatch_type_curr,
@@ -792,14 +792,13 @@ if (isTRUE(run_plots)) {
               ".pdf"
             )
           )
-          .analysis_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
           .analysis_heading(
             paste0(
               "Response probability: ", .analysis_label_percent(prob_response_curr)
             ),
             6
           )
-          .analysis_print_fig(p, mcse_mode = mcse_mode)
+          .analysis_print_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
               mismatch_type == mismatch_type_curr,
@@ -866,7 +865,6 @@ if (isTRUE(run_plots)) {
                 ".pdf"
               )
             )
-            .analysis_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
             # Response probability and cells share one heading level, so the
             # headings stay within six levels.
             .analysis_heading(
@@ -876,7 +874,7 @@ if (isTRUE(run_plots)) {
               ),
               6
             )
-            .analysis_print_fig(p, mcse_mode = mcse_mode)
+            .analysis_print_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
             .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
               dplyr::filter(
                 mismatch_type == mismatch_type_curr,
@@ -956,14 +954,13 @@ if (isTRUE(run_plots)) {
               ".pdf"
             )
           )
-          .analysis_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
           .analysis_heading(
             paste0(
               "Response probability: ", .analysis_label_percent(prob_response_curr)
             ),
             6
           )
-          .analysis_print_fig(p, mcse_mode = mcse_mode)
+          .analysis_print_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
           .simBandwidthPrintRatioTwin(p, path_p, height = 22, mcse_mode = mcse_mode)
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
@@ -1039,14 +1036,13 @@ if (isTRUE(run_plots)) {
               ".pdf"
             )
           )
-          .analysis_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
           .analysis_heading(
             paste0(
               "Response probability: ", .analysis_label_percent(prob_response_curr)
             ),
             6
           )
-          .analysis_print_fig(p, mcse_mode = mcse_mode)
+          .analysis_print_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
           .simBandwidthPrintRatioTwin(p, path_p, height = 14, mcse_mode = mcse_mode)
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
@@ -1114,7 +1110,6 @@ if (isTRUE(run_plots)) {
                 ".pdf"
               )
             )
-            .analysis_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
             # Response probability and cells share one heading level, so the
             # headings stay within six levels.
             .analysis_heading(
@@ -1124,7 +1119,7 @@ if (isTRUE(run_plots)) {
               ),
               6
             )
-            .analysis_print_fig(p, mcse_mode = mcse_mode)
+            .analysis_print_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
             .simBandwidthPrintRatioTwin(p, path_p, height = 14, mcse_mode = mcse_mode)
             .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
               dplyr::filter(
@@ -1240,14 +1235,13 @@ if (isTRUE(run_plots)) {
               ".pdf"
             )
           )
-          .analysis_save_fig(p, path_p, height = 11, mcse_mode = mcse_mode)
           .analysis_heading(
             paste0(
               "Response probability: ", .analysis_label_percent(prob_response_curr)
             ),
             6
           )
-          .analysis_print_fig(p, mcse_mode = mcse_mode)
+          .analysis_print_save_fig(p, path_p, height = 11, mcse_mode = mcse_mode)
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
               mismatch_type == mismatch_type_curr,

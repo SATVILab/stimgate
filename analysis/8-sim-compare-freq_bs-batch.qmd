@@ -2,6 +2,7 @@
 title: Compare background-subtracted frequency approaches under condition mismatch
 format:
   html:
+    fig-retina: 1
     embed-resources: true
     toc: true
 execute:
@@ -14,7 +15,7 @@ params:
   sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
-  show_mcse: both
+  show_mcse: "on"
   sim_size: final
 ---
 
@@ -93,7 +94,7 @@ run_plots <- .as_flag(.get_qmd_param_env(
   TRUE
 ))
 # Monte Carlo error bars on the summary plots (see analysis-mcse.R).
-mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "on"))
 show_mcse <- mcse_mode != "off"
 
 desc_path <- file.path(root_dir, "DESCRIPTION")
@@ -809,10 +810,9 @@ Mean shifts are additive shifts on the transformed expression scale, the
 scale the methods gate on. SD inflation is the fractional increase in the
 standard deviation of the stimulated background (negative) cells.
 
-**Monte Carlo intervals.** `show_mcse` / `SHOW_MCSE` accepts `off`, `on`
-or `both` (default); false/true still selects off/on. Both versions are printed
-and saved in sibling `mcse_off/` and `mcse_on/` folders, with identical points
-and axes. With error bars on, 95% percentile-bootstrap
+**Monte Carlo intervals.** `show_mcse` / `SHOW_MCSE` accepts `off` or `on`
+(default); false/true still selects off/on. Each render prints one version
+and saves it under `mcse_off/` or `mcse_on/`, with identical points and axes. With error bars on, 95% percentile-bootstrap
 intervals resample independent whole datasets (`iter`) with all selected samples
 and their multiplicity. Each draw recalculates the actual pooled tube statistic
 shown, including classification distributions. Point estimates are unchanged
@@ -830,10 +830,8 @@ conditional-severity figures below.
 #| label: figure-helpers
 #| echo: false
 if (isTRUE(run_plots) && isTRUE(results_available)) {
-  # Start each figure folder afresh.
+  # Preserve the sibling MC mode from the other render.
   .compare_fresh_fig_dir <- function(name) {
-    path <- .analysis_fig_dir(c(fig_key, name), path_root = root_dir, create = FALSE)
-    if (dir.exists(path)) unlink(path, recursive = TRUE)
     .analysis_fig_dir(c(fig_key, name), path_root = root_dir)
   }
   .compare_mismatch_heading <- function(extra) {
@@ -1228,11 +1226,10 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
       gate_diagnostic$cells[gate_diagnostic$cells$sample == s, ],
       diag_primary[diag_primary$sample == s, ]
     )
-    .analysis_save_fig(
+    .analysis_print_save_fig(
       p, file.path(dir_diag, paste0("plot_sample_", s, ".pdf")),
       height = 16
     )
-    .analysis_print_fig(p)
   }
 }
 ```

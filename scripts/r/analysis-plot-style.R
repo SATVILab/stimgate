@@ -78,7 +78,7 @@
 .analysis_mcse_plot_variants <- function(plot, mcse_mode = NULL) {
   if (is.null(mcse_mode)) return(list(original = plot))
   mode <- .analysis_mcse_mode(mcse_mode)
-  variants <- if (mode == "both") c("off", "on") else mode
+  variants <- mode
   stats::setNames(lapply(variants, function(version) {
     out <- plot
     if (version == "off") {
@@ -144,15 +144,21 @@
   invisible(plot)
 }
 
+# Print before opening a save device so asis headings keep their own figure.
+.analysis_print_save_fig <- function(plot, path, ..., mcse_mode = NULL) {
+  .analysis_print_fig(plot, mcse_mode = mcse_mode)
+  .analysis_save_fig(plot, path, ..., mcse_mode = mcse_mode)
+}
+
 # Colour roles, kept distinct so a colour means one thing across the analyses:
-# - methods (QMDs 7-10): raspberry StimGate, slate-blue Tailgate, saffron
-#   F-beta; distinct in hue and lightness, so colour-blind and greyscale safe;
+# - methods (QMDs 7-10): Okabe-Ito blue StimGate, bluish-green Tailgate,
+#   orange F-beta, for colour-blind accessibility;
 # - over/under direction: ColorBrewer BrBG teal and brown (see
 #   `.simBandwidthSignedErrorColours`);
 # - error statistic (median, upper percentile, maximum): blues and lavender;
 # - bandwidth: a sequential purple ramp (`make_bw_colour_values()`).
 .analysis_method_colours <- c(
-  stimgate = "#C0395A", tailgate = "#3D5A80", fbeta = "#E9A23B"
+  stimgate = "#0072B2", tailgate = "#009E73", fbeta = "#E69F00"
 )
 .analysis_method_labels <- c(
   stimgate = "StimGate", tailgate = "Tailgate", fbeta = "F-beta"

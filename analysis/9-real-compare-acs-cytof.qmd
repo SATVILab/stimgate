@@ -2,6 +2,7 @@
 title: Compare StimGate, Tailgate and F-beta on the ACS CyTOF dataset
 format:
   html:
+    fig-retina: 1
     embed-resources: true
     toc: true
 execute:
@@ -399,7 +400,7 @@ if (isTRUE(run_plots)) {
     p <- .acsCytofManualPlotScatter(
       manual_comparison_tbl |> dplyr::filter(method %in% method_set$methods)
     )
-    .analysis_save_fig(
+    .analysis_print_save_fig(
       p,
       file.path(
         .analysis_fig_dir(
@@ -410,7 +411,6 @@ if (isTRUE(run_plots)) {
       ),
       height = 22
     )
-    .analysis_print_fig(p)
   }
 }
 ```
@@ -431,7 +431,7 @@ if (isTRUE(run_plots)) {
     p <- .acsCytofManualPlotRelativeError(
       manual_comparison_tbl |> dplyr::filter(method %in% method_set$methods)
     )
-    .analysis_save_fig(
+    .analysis_print_save_fig(
       p,
       file.path(
         .analysis_fig_dir(
@@ -442,7 +442,6 @@ if (isTRUE(run_plots)) {
       ),
       height = 22
     )
-    .analysis_print_fig(p)
   }
 }
 ```
@@ -467,7 +466,7 @@ if (isTRUE(run_plots)) {
     p <- .acsCytofManualPlotSignedError(
       manual_comparison_tbl |> dplyr::filter(method %in% method_set$methods)
     )
-    .analysis_save_fig(
+    .analysis_print_save_fig(
       p,
       file.path(
         .analysis_fig_dir(
@@ -478,7 +477,6 @@ if (isTRUE(run_plots)) {
       ),
       height = 22
     )
-    .analysis_print_fig(p)
     .simBandwidthPrintRatioTwin(p,
       file.path(.analysis_fig_dir(c(fig_key, "manual_comparison_signed_error", set_name), root_dir),
         "manual-comparison-ratio.png"), height = 22, level = 5L)
@@ -518,11 +516,10 @@ if (isTRUE(run_plots)) {
     for (metric in c("absolute", "relative")) {
       .analysis_heading(paste(tools::toTitleCase(metric), "error"), 5)
       p <- if (metric == "absolute") .acsCytofManualPlotAbsoluteError(rows) else .acsCytofManualPlotRelativeError(rows)
-      .analysis_save_fig(p, file.path(
+      .analysis_print_save_fig(p, file.path(
         .analysis_fig_dir(c(fig_key, "manual_comparison_errors_by_stimulus", stimulus, metric), root_dir),
         paste0("manual-comparison-", metric, "-error.png")
       ), height = 22)
-      .analysis_print_fig(p)
     }
   }
 }
@@ -577,12 +574,12 @@ if (isTRUE(run_plots)) {
     }
     .analysis_heading(paste0("Population: ", pop), 4)
     plots <- .acsCytofPlotGatingSetCheck(paths$gs)
-    plot_gatingset_check(paths$gs, paths$gsCheck, plots = plots)
     trans_labels <- c(none = "Untransformed", asinh = "Asinh-transformed")
     for (trans in names(plots)) {
       .analysis_heading(trans_labels[[trans]], 5)
       .analysis_print_fig(plots[[trans]])
     }
+    plot_gatingset_check(paths$gs, paths$gsCheck, plots = plots)
   }
 }
 ```
@@ -613,8 +610,7 @@ if (isTRUE(run_plots)) {
       ),
       "stimgate_check.pdf"
     )
-    .analysis_save_fig(p, path_check, height = 14)
-    .analysis_print_fig(p)
+    .analysis_print_save_fig(p, path_check, height = 14)
   }
 }
 ```
