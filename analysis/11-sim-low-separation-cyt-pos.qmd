@@ -1,0 +1,340 @@
+---
+title: Low separation and the cytokine-positive gates
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: true
+  run_plots: false
+  simulation_seed: 55700
+---
+
+This page shows how StimGate performs when the responding cells are only weakly separated from the negative cells, and whether the cytokine-positive gates help in those cases (issue #557).
+
+StimGate first finds an ordinary gate for each cytokine. With the cytokine-positive gates switched on (the default), it also finds a lower gate for each cytokine, used only for cells that are already positive for another cytokine by its ordinary gate. A cell then counts as positive for a cytokine if it is above that cytokine's ordinary gate, or above its cytokine-positive gate while ordinarily positive for another cytokine. The idea is that among TNF+ cells a much larger share of cells respond, so weakly expressed IFNγ can be separated from the background more easily than in all cells.
+
+That this helps is a hypothesis, not an established result. Each dataset below is gated once, and the ordinary and cytokine-positive gates are then compared on the same cells. The simulated labels give the truth, so we can check whether extra positive calls are real responders or negative cells, and whether combination frequencies move towards the truth.
+
+## Set-up
+
+```{r}
+#| label: setup
+#| include: false
+
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(tibble)
+  library(dplyr)
+  library(purrr)
+  library(tidyr)
+})
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  FALSE
+))
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+
+simulation_seed <- as.integer(.get_qmd_param_env(
+  "simulation_seed",
+  "SIMULATION_SEED",
+  55700L
+))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
+
+devtools::load_all(root_dir, quiet = TRUE)
+source(file.path(scripts_r_dir, "sim-low-separation.R"))
+```
+
+## Scientific settings
+
+Both cytokines are simulated on the Gaussian transformation, with negative cells centred at zero and positive cells centred at `mean_pos` for that cytokine, with variance 1.5. The "low" separation (`mean_pos` 4.5) is the low setting used in Analyses 7 and 8; the "lower" separation (`mean_pos` 3.5) is harder still. Of the responding cells, 60% are TNF+ IFNγ+, 25% TNF+ IFNγ- only and 15% TNF- IFNγ+ only. The unstimulated tube has background responders at 0.2 times the response probability, in the same proportions. Each parent population has either 100,000 or 5,000 cells in each tube.
+
+```{r}
+#| label: main-settings
+main_settings <- .simLowSepMainSettings()
+sim_grid_full <- .simLowSepGrid(simulation_seed)
+
+# Samples per dataset: draft runs use about a quarter of the final count.
+sim_size <- .analysis_sim_size()
+n_sample <- if (identical(sim_size, "draft")) 3L else 12L
+
+sim_grid <- sim_grid_full
+# Dev keeps one debugging scenario; quick keeps the smallest grid that still
+# draws every figure (both separations, one cell count and response).
+if (analysis_dev) {
+  sim_grid <- dplyr::filter(
+    sim_grid, .data$separation == "low", .data$response_level == "higher", .data$n_cell == 5e3
+  )
+  n_sample <- 2L
+} else if (analysis_quick) {
+  sim_grid <- dplyr::filter(sim_grid, .data$response_level == "higher", .data$n_cell == 5e3)
+  n_sample <- 2L
+}
+
+sim_grid |>
+  dplyr::mutate(n_sample = n_sample) |>
+  knitr::kable()
+```
+
+Each scenario is one dataset of `r n_sample` samples, each with an unstimulated and a stimulated tube, gated together by `gateStim()` with its default settings (threshold clustering and cytokine-positive gates on). The samples of a dataset share gating settings and clustered gates, so they are not independent: the figures show every sample, without intervals.
+
+## Simulation
+
+```{r}
+#| label: simulate
+#| include: false
+analysis_key <- .analysis_mode_key(c("sim", "low-separation-cyt-pos"))
+fig_key <- .analysis_mode_key("11-sim-low-separation-cyt-pos")
+dir_cache <- .analysis_cache_dir(analysis_key, root_dir, create = run_simulations)
+path_results <- file.path(dir_cache, "results.rds")
+
+cache_settings <- .simLowSepCacheSettings(
+  grid = sim_grid,
+  n_sample = n_sample,
+  settings = main_settings,
+  simulation_seed = simulation_seed,
+  profile = list(analysis_dev = analysis_dev, analysis_quick = analysis_quick, sim_size = sim_size)
+)
+
+if (isTRUE(run_simulations)) {
+  results <- .simLowSepRunGrid(sim_grid, n_sample, main_settings)
+  .simLowSepWriteCache(results, cache_settings, path_results)
+}
+```
+
+```{r}
+#| label: rerun-one-simulation
+#| include: false
+#| eval: false
+sim_id_target <- 1L
+.simLowSepRunScenario(
+  dplyr::filter(sim_grid_full, .data$sim_id == sim_id_target),
+  n_sample, main_settings
+)
+```
+
+## Collation
+
+```{r}
+#| label: collate
+#| include: false
+if (!isTRUE(run_simulations)) {
+  results <- .simLowSepReadCache(path_results, cache_settings, analysis_key)
+}
+recovery <- .simLowSepRecovery(results$counts)
+freq <- .simLowSepFrequencies(results$counts)
+freq_summary <- .simLowSepFrequencySummary(freq)
+n_cell_vec <- sort(unique(sim_grid$n_cell), decreasing = TRUE)
+```
+
+Every scenario checks that the combination counts recomputed here for the cytokine-positive gates equal the counts saved by `gateStim()` (`getStimStats()`), so the before/after comparison uses the package's own rule.
+
+## Results
+
+```{r}
+#| label: tables
+#| include: false
+if (isTRUE(run_plots)) {
+  table_paths <- c(
+    scenario_settings = .simLowSepWriteTable(
+      dplyr::mutate(sim_grid, n_sample = n_sample,
+        response_split = paste(names(main_settings$response_split), main_settings$response_split, sep = "=", collapse = "; "),
+        background_relative_to_response = main_settings$background_relative_to_response,
+        cov_ev = main_settings$cov_ev, transformation = main_settings$transformation),
+      "scenario_settings", fig_key, root_dir
+    ),
+    gates = .simLowSepWriteTable(results$gates, "gates", fig_key, root_dir),
+    cell_counts = .simLowSepWriteTable(recovery, "cell_counts", fig_key, root_dir),
+    combination_frequencies = .simLowSepWriteTable(freq, "combination_frequencies", fig_key, root_dir),
+    combination_frequency_summary = .simLowSepWriteTable(
+      freq_summary, "combination_frequency_summary", fig_key, root_dir
+    )
+  )
+}
+```
+
+The tables are saved as CSV files under `output/table/<fig_key>/` (relative to the repository root):
+
+- `scenario_settings.csv`: the scenario grid and fixed simulation settings.
+- `gates.csv`: each stimulated sample's ordinary and cytokine-positive gate for each cytokine.
+- `cell_counts.csv`: for each stimulated tube, cytokine and gate type, the true positive cells, the cells called positive, the true positives recovered and the negative cells called positive.
+- `combination_frequencies.csv`: for each sample and gate type, the true and estimated background-subtracted frequencies (stimulated minus unstimulated), marginal and exclusive.
+- `combination_frequency_summary.csv`: means over each dataset's samples, with how many samples moved closer to or further from the truth.
+
+### How far the cytokine-positive gates move
+
+Each point is one stimulated sample: how far below the ordinary gate its cytokine-positive gate sits. Zero means the gate did not move.
+
+```{r}
+#| label: fig-gate-shift
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 4.5
+if (isTRUE(run_plots)) {
+  p <- .simLowSepPlotGateShift(results$gates)
+  .analysis_print_save_fig(p, file.path(.analysis_fig_dir(c(fig_key, "gate_shift"), root_dir), "gate_shift.png"),
+    height = 11)
+}
+```
+
+```{r}
+#| label: tbl-gate-shift
+#| echo: false
+results$gates |>
+  dplyr::group_by(.data$separation, .data$response_level, .data$n_cell, .data$marker) |>
+  dplyr::summarise(
+    samples_moved = paste0(sum(.data$gate_cyt < .data$gate), " of ", dplyr::n()),
+    median_shift_when_moved = if (any(.data$gate_cyt < .data$gate)) {
+      stats::median((.data$gate - .data$gate_cyt)[.data$gate_cyt < .data$gate])
+    } else {
+      NA_real_
+    },
+    .groups = "drop"
+  ) |>
+  knitr::kable(digits = 2)
+```
+
+### Joint TNF and IFNγ expression
+
+Hexagonal bins show the stimulated tube of the first sample in each dataset (chosen in advance, not because its gates moved). Dashed grey lines are the ordinary gates, which apply to every cell. Each solid orange line is a cytokine-positive gate, drawn only where it applies: the IFNγ gate across the TNF+ cells (right of the ordinary TNF gate) and the TNF gate across the IFNγ+ cells (above the ordinary IFNγ gate). The shaded areas contain the cells that only the cytokine-positive gates call positive. Where a gate did not move, its orange line lies on the dashed one and nothing is shaded.
+
+```{r}
+#| label: fig-hex
+#| echo: false
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 6.5
+if (isTRUE(run_plots)) {
+  for (n_cell_curr in n_cell_vec) {
+    .analysis_heading(.simLowSepCellLab(n_cell_curr), 4L)
+    p <- .simLowSepPlotHex(
+      dplyr::filter(results$cells, .data$n_cell == n_cell_curr),
+      dplyr::filter(results$gates, .data$n_cell == n_cell_curr)
+    )
+    .analysis_print_save_fig(p, file.path(
+      .analysis_fig_dir(c(fig_key, "hex"), root_dir), paste0("hex-n_cell_", n_cell_curr, ".png")
+    ), height = 17)
+  }
+}
+```
+
+### IFNγ among TNF+ cells
+
+For the same samples, the solid curve is the IFNγ density among all stimulated cells and the dashed curve the IFNγ density among TNF+ cells (by the ordinary TNF gate). Vertical lines mark the ordinary IFNγ gate (grey) and the cytokine-positive IFNγ gate (orange); an arrow and the label show how far the gate moved. Among TNF+ cells most cells are responders, so the IFNγ+ cells can form their own peak even when they are only a shoulder in all cells. The lower gate is used only for these TNF+ cells.
+
+```{r}
+#| label: fig-conditional-density
+#| echo: false
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 5
+if (isTRUE(run_plots)) {
+  for (n_cell_curr in n_cell_vec) {
+    .analysis_heading(.simLowSepCellLab(n_cell_curr), 4L)
+    p <- .simLowSepPlotConditionalDensity(
+      dplyr::filter(results$cells, .data$n_cell == n_cell_curr),
+      dplyr::filter(results$gates, .data$n_cell == n_cell_curr)
+    )
+    .analysis_print_save_fig(p, file.path(
+      .analysis_fig_dir(c(fig_key, "conditional_density"), root_dir),
+      paste0("conditional_density-n_cell_", n_cell_curr, ".png")
+    ), height = 13)
+  }
+}
+```
+
+### Recovered responders and contamination
+
+For each cytokine in each stimulated tube, the top panels show the share of truly positive cells called positive, and the bottom panels the share of called-positive cells that are truly negative for that cytokine. Lines join the same sample under the ordinary and cytokine-positive gates.
+
+```{r}
+#| label: fig-recovery
+#| echo: false
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 8
+if (isTRUE(run_plots)) {
+  for (n_cell_curr in n_cell_vec) {
+    .analysis_heading(.simLowSepCellLab(n_cell_curr), 4L)
+    p <- .simLowSepPlotRecovery(dplyr::filter(recovery, .data$n_cell == n_cell_curr))
+    .analysis_print_save_fig(p, file.path(
+      .analysis_fig_dir(c(fig_key, "recovery"), root_dir), paste0("recovery-n_cell_", n_cell_curr, ".png")
+    ), height = 22)
+  }
+}
+```
+
+### Combination frequencies
+
+Each point is a sample's estimated background-subtracted frequency minus the true one, in percentage points; zero is the truth. Lines join the same sample under the two gate types. Marginal frequencies ("any") count every cell positive for that cytokine; the other three panels are exclusive combinations.
+
+When the IFNγ of a TNF+ IFNγ+ cell is too weak for the ordinary gate, the cell is counted as TNF+ IFNγ- only. Recovering its IFNγ moves it back to TNF+ IFNγ+, so the exclusive TNF+ IFNγ- frequency falls. Here an improvement in an exclusive single-positive frequency can mean a smaller overestimate rather than a larger estimate, while the marginal TNF+ frequency is unchanged unless the TNF gate also moved. Each figure shows one cell count and response level, so the panels share a scale.
+
+```{r}
+#| label: fig-frequency-error
+#| echo: false
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 4.5
+if (isTRUE(run_plots)) {
+  for (n_cell_curr in n_cell_vec) {
+    .analysis_heading(.simLowSepCellLab(n_cell_curr), 4L)
+    for (resp in intersect(c("lower", "higher"), unique(freq$response_level))) {
+      freq_curr <- dplyr::filter(freq, .data$n_cell == n_cell_curr, .data$response_level == resp)
+      .analysis_heading(paste0(
+        tools::toTitleCase(resp), " response (", 100 * freq_curr$prob_response[[1]], "%)"
+      ), 5L)
+      p <- .simLowSepPlotFrequencyError(freq_curr)
+      .analysis_print_save_fig(p, file.path(
+        .analysis_fig_dir(c(fig_key, "frequency_error"), root_dir),
+        paste0("frequency_error-n_cell_", n_cell_curr, "-response_", resp, ".png")
+      ), height = 12)
+    }
+  }
+}
+```
+
+The table gives, for each scenario and quantity, the mean true and estimated frequencies (percent) over the dataset's samples, and how many samples the cytokine-positive gates moved closer to or further from the truth. The full table is in `combination_frequency_summary.csv`.
+
+```{r}
+#| label: tbl-frequency-summary
+#| echo: false
+freq_summary |>
+  dplyr::mutate(
+    scenario = paste0(.data$separation, " sep., ", .data$response_level, " resp., ", .simLowSepCellLab(.data$n_cell)),
+    dplyr::across(dplyr::starts_with("mean_prop"), ~ 100 * .x)
+  ) |>
+  dplyr::select(
+    "scenario", "quantity",
+    truth = "mean_prop_bs_truth",
+    ordinary = "mean_prop_bs_est_ordinary",
+    cytokine_positive = "mean_prop_bs_est_cytpos",
+    closer = "n_closer", further = "n_further", unchanged = "n_unchanged"
+  ) |>
+  knitr::kable(digits = 2)
+```
