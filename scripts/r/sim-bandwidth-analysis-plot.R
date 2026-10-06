@@ -1009,16 +1009,23 @@ add_bw_labs <- function(.data) {
   invisible(tbl)
 }
 
+# "Contributing scenarios" text for a caption: one count when every statistic
+# shares it, otherwise one range per statistic.
+.simBandwidthScenarioCountText <- function(tbl, cols, prefix) {
+  ranges <- vapply(cols, function(col) {
+    x <- tbl[[paste0("n_scenario_", col)]]
+    if (min(x) == max(x)) as.character(min(x)) else paste0(min(x), "\u2013", max(x))
+  }, character(1))
+  if (length(unique(ranges)) == 1L) return(paste0(prefix, " per point: ", ranges[[1]], "."))
+  paste0(prefix, " per point: ", paste(paste(cols, ranges), collapse = "; "), ".")
+}
+
 .simBandwidthScenarioCaption <- function(tbl) {
   if (!nrow(tbl)) return("No finite scenario statistics")
   cols <- intersect(c("median", "q90", "q95", "max"),
                     sub("^n_scenario_", "", names(tbl)[startsWith(names(tbl), "n_scenario_")]))
   if (!length(cols)) return(NULL)
-  counts <- vapply(cols, function(col) {
-    x <- tbl[[paste0("n_scenario_", col)]]
-    paste0(col, ": ", min(x), "–", max(x))
-  }, character(1))
-  paste("Contributing scenarios per setting", paste(counts, collapse = "; "))
+  .simBandwidthScenarioCountText(tbl, cols, "Contributing scenarios")
 }
 
 # Unconditional percentiles are computed on raw signed errors, including zeros.
@@ -1107,9 +1114,8 @@ add_bw_labs <- function(.data) {
     } else ggplot2::facet_wrap(~transformation, scales = "free")
   }
   scenario_counts <- grep("^n_scenario_", names(tbl), value = TRUE)
-  counts <- if (length(scenario_counts)) paste("Finite contributing scenarios:",
-    paste(vapply(scenario_counts, function(name) paste0(sub("^n_scenario_", "", name),
-      " ", min(tbl[[name]]), "–", max(tbl[[name]])), character(1)), collapse = "; ")) else NULL
+  counts <- if (length(scenario_counts)) .simBandwidthScenarioCountText(tbl,
+    sub("^n_scenario_", "", scenario_counts), "Finite contributing scenarios") else NULL
   caption <- paste(counts,
     if (fallback) "5th/95th (too few samples for 2.5th/97.5th intervals)." else "Outer pair: 2.5th/97.5th.",
     "Unavailable intervals are omitted; points remain.")
