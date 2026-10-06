@@ -600,7 +600,7 @@ if (isTRUE(run_plots)) {
 
 ## Relative error across bias settings
 
-Bias multiplier is on the horizontal axis and absolute relative error on the vertical axis. Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth, with the legend underneath; columns of panels separate mismatch settings, and rows the statistic and cell count. Headings give the transformation, mean position and response probability. Lower values indicate closer agreement with the simulated truth.
+Bias multiplier is on the horizontal axis and absolute relative error on the vertical axis. Combined panel strips identify the median, 90th-percentile or maximum error and mismatch setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth, with the legend underneath; columns of panels separate mismatch settings, and rows the statistic and cell count. Headings give the transformation, mean position and response probability. Lower values indicate closer agreement with the simulated truth.
 
 ```{r}
 #| label: bias-uns-error-summary
@@ -642,80 +642,8 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-```{r}
-#| label: relative-error
-#| results: asis
-#| fig-width: 6.3
-#| fig-height: 8.7
-#| echo: false
-if (isTRUE(run_plots)) {
-  for (mismatch_type_curr in unique(bias_uns_abs_error$mismatch_type)) {
-    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
-      "Mean shift of the stimulated negative component"
-    } else {
-      "SD inflation of the stimulated negative component"
-    }, 3)
-    plot_dir <- .analysis_fig_dir(
-      c(fig_key, "relative_error", mismatch_type_curr),
-      path_root = root_dir
-    )
 
-    for (transformation_curr in .analysis_trans_order(bias_uns_abs_error$transformation)) {
-      .analysis_heading(
-        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
-      )
-      for (mean_pos_setting_curr in unique(bias_uns_abs_error$mean_pos_setting)) {
-        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
-        for (prob_response_curr in unique(bias_uns_abs_error$prob_response)) {
-          plot_tbl <- bias_uns_abs_error |>
-            dplyr::filter(
-              mismatch_type == mismatch_type_curr,
-              transformation == transformation_curr,
-              mean_pos_setting == mean_pos_setting_curr,
-              prob_response == prob_response_curr
-            )
-
-          p <- .simBandwidthBiasRelativeErrorPlot(
-            plot_tbl,
-            facet = ggplot2::facet_grid(
-              statistic + n_cell ~ mismatch_label,
-              scales = "free_y",
-              labeller = ggplot2::labeller(n_cell = function(x) {
-                paste0("Cells: ", .analysis_label_number(as.numeric(x)))
-              })
-            ),
-            mcse = show_mcse
-          )
-
-          path_p <- file.path(
-            plot_dir,
-            paste0(
-              transformation_curr,
-              "_", mean_pos_setting_curr,
-              "_p_", format(prob_response_curr, scientific = TRUE),
-              ".pdf"
-            )
-          )
-          .analysis_heading(
-            paste0(
-              "Response probability: ", .analysis_label_percent(prob_response_curr)
-            ),
-            6
-          )
-          .analysis_print_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
-          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
-            dplyr::filter(
-              mismatch_type == mismatch_type_curr,
-              transformation == transformation_curr,
-              mean_pos_setting == mean_pos_setting_curr,
-              prob_response == prob_response_curr
-            ))
-        }
-      }
-    }
-  }
-}
-```
+The averaged and separate cell-count views below are the primary report views; each panel has its own y range.
 
 ## Relative error averaged over cell counts
 
@@ -730,7 +658,7 @@ with no estimates in that direction (the counts are shown separately).
 For an overview, average the scenario-level statistics equally over cell
 counts, keeping response probabilities and mismatch settings separate.
 
-Colour identifies bandwidth; columns of panels separate mismatch settings and rows the statistic. Error bars combine the per-setting standard errors (from the width of each order-statistic interval) as for independent cell counts.
+Colour and point shape identify bandwidth rank. Each panel combines its statistic and mismatch setting in a strip; panel y ranges differ. Error bars combine the per-setting standard errors (from the width of each order-statistic interval) as for independent cell counts.
 
 ```{r}
 #| label: relative-error-averaged-n-cell
@@ -901,85 +829,10 @@ sibling `ratio*` folder. The curves and intervals are identical: 1x is exact,
 0x is an estimate of zero and 2x is twice the reference. Negative ratios remain
 visible; a capped upper tick reads “≥ 16x”.
 
-## Over- and under-estimates across bias settings
+## Signed error across bias settings
 
-The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: each statistic is calculated separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale, including errors below -100% for negative background-subtracted estimates, with -100% (0x, an estimate of zero), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Rows of panels show the median, 90th-percentile and maximum error over the simulated samples in each setting, so a rare large miss is visible even when the typical error does not change. Colour identifies bandwidth; lines and points are slightly transparent so overlapping curves stay visible. The bandwidth and line-weight legends sit underneath each plot. Error bars come from the sorted errors in each direction; the number of errors in each direction is itself random, so the bars for a rare direction understate the uncertainty a little (the line weight shows how rare it is).
+The plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: each statistic is calculated separately over over-estimates (curves above zero) and under-estimates (curves below zero), and line weight shows the share of estimates in that direction. Under-estimates are on a linear scale, between -100% and zero; errors below -100% from negative background-subtracted estimates use a compressed logarithmic scale, with -100% (0x, an estimate of zero), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Combined panel strips identify the median, 90th-percentile or maximum error and mismatch setting, so a rare large miss is visible even when the typical error does not change. Colour and point shape identify bandwidth rank; lines and points are slightly transparent so overlapping curves stay visible. The bandwidth and line-weight legends sit underneath each plot. Error bars come from the sorted errors in each direction; the number of errors in each direction is itself random, so the bars for a rare direction understate the uncertainty a little (the line weight shows how rare it is).
 
-```{r}
-#| label: signed-error
-#| results: asis
-#| fig-width: 6.3
-#| fig-height: 8.7
-#| echo: false
-if (isTRUE(run_plots)) {
-  for (mismatch_type_curr in unique(bias_uns_signed_error$mismatch_type)) {
-    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
-      "Mean shift of the stimulated negative component"
-    } else {
-      "SD inflation of the stimulated negative component"
-    }, 3)
-    plot_dir <- .analysis_fig_dir(
-      c(fig_key, "signed_error", mismatch_type_curr),
-      path_root = root_dir
-    )
-
-    for (transformation_curr in .analysis_trans_order(bias_uns_signed_error$transformation)) {
-      .analysis_heading(
-        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
-      )
-      for (mean_pos_setting_curr in unique(bias_uns_signed_error$mean_pos_setting)) {
-        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
-        for (prob_response_curr in unique(bias_uns_signed_error$prob_response)) {
-          plot_tbl <- bias_uns_signed_error |>
-            dplyr::filter(
-              mismatch_type == mismatch_type_curr,
-              transformation == transformation_curr,
-              mean_pos_setting == mean_pos_setting_curr,
-              prob_response == prob_response_curr
-            )
-
-          p <- .simBandwidthBiasSignedErrorPlot(
-            plot_tbl,
-            facet = ggplot2::facet_grid(
-              statistic + n_cell ~ mismatch_label,
-              scales = "free_y",
-              labeller = ggplot2::labeller(n_cell = function(x) {
-                paste0("Cells: ", .analysis_label_number(as.numeric(x)))
-              })
-            ),
-            mcse = show_mcse
-          )
-
-          path_p <- file.path(
-            plot_dir,
-            paste0(
-              transformation_curr,
-              "_", mean_pos_setting_curr,
-              "_p_", format(prob_response_curr, scientific = TRUE),
-              ".pdf"
-            )
-          )
-          .analysis_heading(
-            paste0(
-              "Response probability: ", .analysis_label_percent(prob_response_curr)
-            ),
-            6
-          )
-          .analysis_print_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
-          .simBandwidthPrintRatioTwin(p, path_p, height = 22, mcse_mode = mcse_mode)
-          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
-            dplyr::filter(
-              mismatch_type == mismatch_type_curr,
-              transformation == transformation_curr,
-              mean_pos_setting == mean_pos_setting_curr,
-              prob_response == prob_response_curr
-            ))
-        }
-      }
-    }
-  }
-}
-```
 
 ### Percentiles of signed relative error by bias and mismatch
 
@@ -1023,9 +876,9 @@ if (isTRUE(run_plots)) {
           p <- .simBandwidthSignedPercentilePlot(
             plot_tbl,
             x = "bias_uns_multiplier", x_label = "Bias multiplier",
-            facet = ggplot2::facet_grid(
-              n_cell + bw + bias_uns_basis ~ mismatch_label,
-              scales = "free_y",
+            facet = ggplot2::facet_wrap(
+              ggplot2::vars(n_cell, bw, bias_uns_basis, mismatch_label),
+              ncol = dplyr::n_distinct(plot_tbl$mismatch_label), scales = "free_y",
               labeller = ggplot2::labeller(n_cell = function(x) {
                 paste0("Cells: ", .analysis_label_number(as.numeric(x)))
               })
@@ -1443,12 +1296,14 @@ if (isTRUE(run_plots)) {
             dplyr::left_join(freq_median_mcse, by = "sim_id") |>
             dplyr::mutate(bw_lab = .simBandwidthBwLabFactor(bw))
 
+          plot_tbl <- .simBandwidthRankData(plot_tbl)
           p <- ggplot(
             plot_tbl,
             aes(
               x = bias_uns_multiplier,
               y = propRespEst_median,
-              colour = bw_lab,
+              colour = bw_rank,
+              shape = bw_rank,
               group = interaction(bw, bias_uns_basis)
             )
           ) +
@@ -1457,21 +1312,21 @@ if (isTRUE(run_plots)) {
               linetype = "dashed",
               colour = "black"
             ) +
-            geom_line(alpha = 0.75) +
-            geom_point(alpha = 0.75) +
             (if (isTRUE(show_mcse)) {
               .analysis_mcse_errorbar(
                 plot_tbl, "propRespEst_median_lower", "propRespEst_median_upper"
               )
             }) +
-            facet_grid(
-              n_cell ~ mismatch_label,
-              scales = "free_y",
+            geom_line(alpha = 0.75) +
+            geom_point(alpha = 0.75) +
+            facet_wrap(
+              vars(n_cell, mismatch_label),
+              ncol = dplyr::n_distinct(plot_tbl$mismatch_label), scales = "free_y",
               labeller = labeller(n_cell = function(x) {
                 paste0("Cells: ", .analysis_label_number(as.numeric(x)))
               })
             ) +
-            .simBandwidthBwColourScale(plot_tbl$bw) +
+            .simBandwidthRankScales(plot_tbl) +
             scale_x_continuous(labels = .analysis_label_number) +
             scale_y_continuous(labels = .analysis_label_percent) +
             .analysis_theme() +

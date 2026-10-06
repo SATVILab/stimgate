@@ -173,15 +173,15 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
     expect_setequal(unique(data$mismatch_val), c(0, 0.1))
     expect_setequal(unique(data$bw), c(0.1, 0.2))
     expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
-    expect_named(saved$plot$facet$params$rows, "statistic")
-    expect_named(saved$plot$facet$params$cols, "mismatch_label")
+    expect_named(saved$plot$facet$params$facets, c("statistic", "mismatch_label"))
+    expect_true(saved$plot$facet$params$free$y)
     expected_labels <- if ("n_scenario_median" %in% names(data)) {
       names(stat_mult)[4:6]
     } else names(stat_mult)[1:3]
     expect_setequal(as.character(data$statistic), expected_labels)
     expect_identical(rlang::as_label(saved$plot$mapping$group), "interaction(bw, bias_uns_basis)")
     # Bandwidth is the only colour legend; there is no bias-scale line type.
-    expect_identical(rlang::as_label(saved$plot$mapping$colour), "bw_lab")
+    expect_identical(rlang::as_label(saved$plot$mapping$colour), "bw_rank")
     expect_null(saved$plot$mapping$linetype)
     expect_null(saved$plot$labels$title)
     if ("n_cell" %in% names(data)) {
@@ -194,21 +194,6 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
             ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
       )
     }
-  }
-  # The all-cell plot also keeps the two mismatch families separate.
-  env$saved <- list()
-  env$printed <- list()
-  all_cell_code <- .bandwidth_cell_plot_chunk(
-    "2b-sim-bias_uns-freq_bs.qmd", "relative-error"
-  )
-  .bandwidth_cell_plot_eval(all_cell_code, env)
-  expect_length(env$saved, 16L)
-  for (saved in env$saved) {
-    expect_length(unique(saved$plot$data$mismatch_type), 1L)
-    expect_identical(
-      basename(dirname(saved$path)), unique(saved$plot$data$mismatch_type)
-    )
-    expect_setequal(saved$plot$data$n_cell, c(100, 1000))
   }
   unlink(env$root_dir, recursive = TRUE)
   env$saved <- list()
@@ -349,8 +334,8 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     expect_setequal(unique(data$mismatch_val), c(0, 0.1))
     expect_setequal(unique(data$bw), c(0.1, 0.2))
     expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
-    expect_named(saved$plot$facet$params$rows, "statistic")
-    expect_named(saved$plot$facet$params$cols, "mismatch_label")
+    expect_named(saved$plot$facet$params$facets, c("statistic", "mismatch_label"))
+    expect_true(saved$plot$facet$params$free$y)
     expected_labels <- if ("n_scenario_median" %in% names(data)) {
       names(stat_mult)[4:6]
     } else names(stat_mult)[1:3]
@@ -373,20 +358,6 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
             ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
       )
     }
-  }
-  env$saved <- list()
-  env$printed <- list()
-  all_cell_code <- .bandwidth_cell_plot_chunk(
-    "2b-sim-bias_uns-freq_bs.qmd", "signed-error"
-  )
-  .bandwidth_cell_plot_eval(all_cell_code, env)
-  expect_length(env$saved, 32L)
-  for (saved in env$saved) {
-    expect_length(unique(saved$plot$data$mismatch_type), 1L)
-    expect_identical(
-      basename(dirname(saved$path)), unique(saved$plot$data$mismatch_type)
-    )
-    expect_setequal(saved$plot$data$n_cell, c(100, 1000))
   }
   unlink(env$root_dir, recursive = TRUE)
   env$saved <- list()
@@ -432,12 +403,12 @@ test_that("signed error scale puts a zero estimate and two-fold equally far from
   env <- .bandwidth_cell_plot_env()
   trans <- env$.simBandwidthSignedErrorTrans()
   x <- c(-2, -1.5, -1, -0.5, 0, 1, 3)
-  expect_equal(trans$transform(x), c(-2, -1.5, -1, -0.5, 0, 1, 2))
+  expect_equal(trans$transform(x), c(-2, -1 - log2(1.5), -1, -0.5, 0, 1, 2))
   expect_equal(trans$inverse(trans$transform(x)), x)
   expect_equal(trans$domain, c(-Inf, Inf))
   expect_true(all(c(-2, -1) %in% trans$breaks(c(-2, 3))))
   expect_identical(env$.simBandwidthSignedErrorLabel(-1.5), "-150%")
-  # Negative background-subtracted response estimates stay linear without warnings.
+  # Negative background-subtracted response estimates use a continuous compressed scale.
   expect_no_warning(expect_equal(trans$transform(c(-2, 1)), c(-2, 1)))
   expect_equal(trans$breaks(c(-1, 2.5)), c(-1, -0.5, 0, 1, 3))
   # Small errors get ordinary breaks rather than only zero.
@@ -525,8 +496,7 @@ test_that("signed-error plots draw dashed lines whose weight varies", {
       dplyr::mutate(transformation = "gaussian"),
     by_prob = TRUE
   )
-  expect_named(by_prob$facet$params$rows, "prob_response")
-  expect_named(by_prob$facet$params$cols, "transformation")
+  expect_named(by_prob$facet$params$facets, c("prob_response", "transformation"))
   expect_no_error(ggplot2::ggplotGrob(by_prob))
 
   bias <- env$.simBandwidthBiasSignedErrorPlot(

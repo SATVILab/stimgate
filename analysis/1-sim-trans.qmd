@@ -230,7 +230,7 @@ if (!isTRUE(run_simulations)) {
 
 ### Mean-positive transformation grid
 
-Each row corresponds to the low or high transformation-specific `mean_pos` setting, and each column corresponds to one transformation. The y-axis is square-root transformed to make rare response components easier to see. Vertical lines (line type distinguishes the component) mark the realised negative component mean in the unstimulated condition and the realised positive component mean in the stimulated condition. The rug along the bottom axis shows the individual positive-component cells.
+Combined panel strips identify the low or high transformation-specific `mean_pos` setting and transformation. Panel x and y ranges differ so Gamma peaks remain visible. The y-axis is square-root transformed to make rare response components easier to see. Vertical lines (line type distinguishes the component) mark the realised negative component mean in the unstimulated condition and the realised positive component mean in the stimulated condition. The rug along the bottom axis shows the individual positive-component cells.
 
 ```{r}
 #| label: fig-mean-pos-grid-univariate
@@ -324,10 +324,9 @@ if (isTRUE(run_plots)) {
       alpha = 0.25,
       linewidth = 0.15
     ) +
-    facet_grid(
-      rows = vars(.data$mean_pos_setting),
-      cols = vars(.data$transformation),
-      scales = "free_x",
+    facet_wrap(
+      vars(.data$mean_pos_setting, .data$transformation),
+      ncol = 3, scales = "free",
       labeller = labeller(
         mean_pos_setting = .simMiscGetMeanPosPretty()
       )
@@ -342,7 +341,6 @@ if (isTRUE(run_plots)) {
     ) +
     .analysis_theme(grid = "x") +
     theme(strip.text.y = element_text(angle = 0)) +
-    coord_cartesian(ylim = c(0, 0.5)) +
     scale_colour_manual(
       values = .simMiscGetStimColVec()
     ) +

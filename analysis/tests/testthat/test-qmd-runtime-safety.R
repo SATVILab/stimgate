@@ -238,7 +238,7 @@ test_that("analysis 2a uses shared seeded runners and canonical reads", {
   expect_false(has("current_manifest$params"))
   expect_false(has("make_bw_colour_values <- function"))
   expect_false(has("make_bw_linetype_scale <- function"))
-  expect_true(has("format_bw_lab(.data$bw)"))
+  expect_true(has(".simBandwidthRankData(plot_tbl)"))
   expect_true(has("abs(propRespEst - propRespTruth) / propRespTruth"))
 })
 

@@ -1,20 +1,23 @@
 # Scientific/API test targets for the top-level analysis documents.
 .qmd_test_targets <- function(root_dir = ".") {
   targets <- list(
-    "1-sim-trans.qmd" = "test-sim-trans.R",
+    "1-sim-trans.qmd" = c("test-sim-trans.R", "test-bandwidth-readability.R"),
     "2a-sim-bw-freq_bs-global.qmd" = c(
+      "test-bandwidth-readability.R",
       "test-signed-percentile-plots.R",
       "test-sim-bw-freq_bs-global-simcyto.R", "test-sim-bandwidth-analysis-run.R",
       "test-bandwidth-bias-plots-by-cells.R", "test-qmd-2-cache-guidance.R",
       "test-threshold-density-plots.R", "test-analysis-mcse.R", "test-ratio-companion-plots.R"
     ),
     "2b-sim-bias_uns-freq_bs.qmd" = c(
+      "test-bandwidth-readability.R",
       "test-signed-percentile-plots.R",
       "test-sim-bias-uns-freq.R", "test-sim-bandwidth-analysis-run.R",
       "test-bandwidth-bias-plots-by-cells.R", "test-qmd-2-cache-guidance.R",
       "test-analysis-mcse.R", "test-ratio-companion-plots.R"
     ),
     "3-sim-bw-est-base.qmd" = c(
+      "test-bandwidth-readability.R",
       "test-sim-bw-est-base-simcyto.R", "test-sim-bw-est-base-run.R",
       "test-analysis-mcse.R"
     ),

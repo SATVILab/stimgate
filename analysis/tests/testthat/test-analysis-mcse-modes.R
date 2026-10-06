@@ -153,7 +153,7 @@ test_that("MC error bars have visible caps and strokes without changing estimate
   data <- tibble::tibble(x = 1, y = 0.2, lower = 0.1, upper = 0.3)
   plot <- ggplot2::ggplot(data, ggplot2::aes(x, y)) + ggplot2::geom_point() +
     env$.analysis_mcse_errorbar(data)
-  expect_gte(plot$layers[[2]]$aes_params$alpha, 0.9)
+  expect_equal(plot$layers[[2]]$aes_params$alpha, 0.6)
   built <- ggplot2::ggplot_build(plot)
   expect_equal(built$data[[1]]$y, data$y)
   expect_true(all(built$data[[2]]$xmax > built$data[[2]]$xmin))

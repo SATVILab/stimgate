@@ -19,15 +19,10 @@ safe_file_lab <- function(x) {
 }
 
 make_bw_colour_values <- function(bw_vec, base_col_vec = NULL) {
+  default_palette <- is.null(base_col_vec) || length(base_col_vec) == 0L
   if (is.null(base_col_vec) || length(base_col_vec) == 0L) {
     base_col_vec <- c(
-      "#e0ecf4",
-      "#bfd3e6",
-      "#9ebcda",
-      "#8c96c6",
-      "#8c6bb1",
-      "#88419d",
-      "#810f7c"
+      "#8c96c6", "#810f7c"
     )
   }
 
@@ -35,7 +30,9 @@ make_bw_colour_values <- function(bw_vec, base_col_vec = NULL) {
   bw_lab <- format_bw_lab(bw_num)
   n_bw <- length(bw_num)
 
-  if (n_bw <= length(base_col_vec)) {
+  if (default_palette) {
+    col_vec <- grDevices::colorRampPalette(base_col_vec)(n_bw)
+  } else if (n_bw <= length(base_col_vec)) {
     col_vec <- base_col_vec[seq(
       length(base_col_vec) - n_bw + 1L,
       length(base_col_vec)
@@ -142,6 +139,36 @@ add_bw_labs <- function(.data) {
     )
 }
 
+# Rank within each transformation; retain every simulated bandwidth.
+.simBandwidthRankData <- function(tbl) {
+  groups <- if ("transformation" %in% names(tbl)) as.character(tbl$transformation) else rep("All", nrow(tbl))
+  rank <- stats::ave(tbl$bw, groups, FUN = function(x) match(x, sort(unique(x))))
+  k <- if (any(is.finite(rank))) max(rank, na.rm = TRUE) else 0L
+  tbl$bw_rank <- factor(rank, levels = seq_len(k))
+  tbl
+}
+
+.simBandwidthRankScales <- function(tbl) {
+  if (!"bw_rank" %in% names(tbl)) tbl <- .simBandwidthRankData(tbl)
+  all_levels <- levels(tbl$bw_rank)
+  levels <- all_levels[all_levels %in% as.character(tbl$bw_rank)]
+  labels <- vapply(levels, function(rank) {
+    rows <- unique(tbl[as.character(tbl$bw_rank) == rank, intersect(c("transformation", "bw"), names(tbl)), drop = FALSE])
+    if (!"transformation" %in% names(rows)) return(paste0(rank, ": ", format_bw_lab(rows$bw[1])))
+    values <- split(as.character(.analysis_trans_factor(rows$transformation)), format_bw_lab(rows$bw))
+    paste0(rank, ": ", paste(vapply(names(values), function(bw) {
+      paste0(bw, " (", paste(values[[bw]], collapse = "/"), ")")
+    }, character(1)), collapse = ", "))
+  }, character(1))
+  guide <- ggplot2::guide_legend(ncol = 1, override.aes = list(alpha = 1, size = 2))
+  list(
+    ggplot2::scale_colour_manual(values = make_bw_colour_values(seq_along(all_levels))[levels],
+      breaks = levels, labels = labels, name = "Bandwidth rank", guide = guide),
+    ggplot2::scale_shape_manual(values = stats::setNames(rep(c(16, 15, 18, 3, 7, 8, 0, 1, 2, 5, 6, 9, 10, 12), length.out = length(all_levels)), all_levels)[levels],
+      breaks = levels, labels = labels, name = "Bandwidth rank", guide = guide)
+  )
+}
+
 # Bandwidth colours (the sequential purple ramp) with every bandwidth shown in
 # the legend, which sits underneath the plot in one row.
 .simBandwidthBwColourScale <- function(bw_vec) {
@@ -167,7 +194,7 @@ add_bw_labs <- function(.data) {
 .simBandwidthBiasRelativeErrorPlot <- function(
   tbl,
   y_label = "Absolute relative error",
-  facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
+  facet = NULL,
   stat_cols = c(
     median_abs_rel_error = "Median",
     q90_abs_rel_error = "90th percentile",
@@ -175,26 +202,28 @@ add_bw_labs <- function(.data) {
   ),
   mcse = FALSE
 ) {
-  tbl <- .simBandwidthErrorStatLong(tbl, stat_cols) |>
+  if (is.null(facet)) facet <- ggplot2::facet_wrap(ggplot2::vars(statistic, mismatch_label),
+    ncol = dplyr::n_distinct(tbl$mismatch_label), scales = "free_y", labeller = ggplot2::label_both)
+  tbl <- .simBandwidthRankData(tbl) |>
+    .simBandwidthErrorStatLong(stat_cols) |>
     dplyr::mutate(bw_lab = .simBandwidthBwLabFactor(.data$bw))
   ggplot2::ggplot(
     tbl,
     ggplot2::aes(
       x = bias_uns_multiplier,
       y = value,
-      colour = bw_lab,
+      colour = bw_rank,
+      shape = bw_rank,
       group = interaction(bw, bias_uns_basis)
     )
   ) +
-    # Slight transparency shows overlapping lines.
+    (if (isTRUE(mcse) && "lower" %in% names(tbl)) .analysis_mcse_errorbar(tbl)) +
     ggplot2::geom_line(alpha = 0.75) +
     ggplot2::geom_point(alpha = 0.75) +
-    (if (isTRUE(mcse) && "lower" %in% names(tbl)) {
-      .analysis_mcse_errorbar(tbl)
-    }) +
     facet +
-    .simBandwidthBwColourScale(tbl$bw) +
+    .simBandwidthRankScales(tbl) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
+    ggplot2::scale_y_continuous(labels = .analysis_label_percent, guide = ggplot2::guide_axis(check.overlap = TRUE)) +
     .analysis_theme() +
     ggplot2::labs(
       x = "Bias multiplier",
@@ -211,11 +240,14 @@ add_bw_labs <- function(.data) {
 .simBandwidthBiasSignedErrorPlot <- function(
   tbl,
   y_label = "Relative error",
-  facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
+  facet = NULL,
   stat_cols = c(median = "Median", q90 = "90th percentile", max = "Maximum"),
   mcse = FALSE
 ) {
-  tbl <- .simBandwidthErrorStatLong(tbl, stat_cols) |>
+  if (is.null(facet)) facet <- ggplot2::facet_wrap(ggplot2::vars(statistic, mismatch_label),
+    ncol = dplyr::n_distinct(tbl$mismatch_label), scales = "free_y", labeller = ggplot2::label_both)
+  tbl <- .simBandwidthRankData(tbl) |>
+    .simBandwidthErrorStatLong(stat_cols) |>
     dplyr::mutate(
       bw_lab = .simBandwidthBwLabFactor(.data$bw),
       value_shown = .simBandwidthSignedErrorSquish(.data$value)
@@ -225,10 +257,12 @@ add_bw_labs <- function(.data) {
     ggplot2::aes(
       x = bias_uns_multiplier,
       y = value_shown,
-      colour = bw_lab,
+      colour = bw_rank,
+      shape = bw_rank,
       group = interaction(bw, bias_uns_basis, direction)
     )
   ) +
+    (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl)) +
     .simBandwidthSignedErrorLayers(
       y_label,
       capped = .simBandwidthSignedErrorIsCapped(tbl$value)
@@ -249,14 +283,13 @@ add_bw_labs <- function(.data) {
     ) +
     # Slight transparency shows overlapping lines; legend keys match.
     ggplot2::geom_point(size = 1, alpha = 0.75) +
-    (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl)) +
     facet +
-    .simBandwidthBwColourScale(tbl$bw) +
+    .simBandwidthRankScales(tbl) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
     .analysis_theme() +
     ggplot2::labs(
       x = "Bias multiplier", colour = "Bandwidth",
-      caption = .simBandwidthScenarioCaption(tbl)
+      caption = .simBandwidthDisplayCaption(tbl$value, .simBandwidthScenarioCaption(tbl))
     )
 }
 
@@ -306,6 +339,7 @@ add_bw_labs <- function(.data) {
       group = interaction(err_type, direction)
     )
   ) +
+    (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl)) +
     .simBandwidthSignedErrorLayers(
       capped = .simBandwidthSignedErrorIsCapped(tbl$err_value)
     ) +
@@ -318,11 +352,10 @@ add_bw_labs <- function(.data) {
     ) +
     # Slight transparency shows overlapping lines; legend keys match.
     ggplot2::geom_point(size = 1, alpha = 0.75) +
-    (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl, width = 0.3)) +
     (if (by_prob) {
-      ggplot2::facet_grid(
-        prob_response ~ transformation,
-        scales = "free",
+      ggplot2::facet_wrap(
+        ggplot2::vars(prob_response, transformation),
+        ncol = dplyr::n_distinct(tbl$transformation), scales = "free",
         labeller = ggplot2::labeller(
           prob_response = .analysis_labeller_percent("Response: ")
         )
@@ -334,12 +367,12 @@ add_bw_labs <- function(.data) {
     ggplot2::scale_colour_manual(
       values = .simBandwidthSignedErrorColours,
       labels = if ("n_scenario" %in% names(tbl)) c(
-        over_median = "Over: mean of scenario medians",
-        over_q95 = "Over: mean of scenario 95th percentiles",
-        over_max = "Over: mean of scenario maxima",
-        under_median = "Under: mean of scenario medians",
-        under_q95 = "Under: mean of scenario 95th percentiles",
-        under_max = "Under: mean of scenario maxima"
+        over_median = "Over: mean median",
+        over_q95 = "Over: mean 95th",
+        over_max = "Over: mean maximum",
+        under_median = "Under: mean median",
+        under_q95 = "Under: mean 95th",
+        under_max = "Under: mean maximum"
       ) else c(
         over_median = "Over: median",
         over_q95 = "Over: 95th percentile",
@@ -349,12 +382,12 @@ add_bw_labs <- function(.data) {
         under_max = "Under: maximum"
       ),
       drop = FALSE,
-      guide = ggplot2::guide_legend(nrow = 2, byrow = TRUE)
+      guide = ggplot2::guide_legend(ncol = 1)
     ) +
     ggplot2::labs(
       x = "Bandwidth", colour = NULL,
       y = if ("n_scenario" %in% names(tbl)) "Mean of scenario statistics (relative error)" else "Relative error",
-      caption = .simBandwidthScenarioCaption(tbl)
+      caption = .simBandwidthDisplayCaption(tbl$err_value, .simBandwidthScenarioCaption(tbl))
     ) +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5)
@@ -551,7 +584,7 @@ add_bw_labs <- function(.data) {
 
 # Monte Carlo error bars for a long signed (or absolute) error table with
 # `lower`/`upper` in data units, squished to the +1500% cap like the values.
-.simBandwidthSignedErrorBars <- function(tbl, width = 0.1) {
+.simBandwidthSignedErrorBars <- function(tbl, width = 0.08) {
   if (!all(c("lower", "upper") %in% names(tbl))) {
     return(NULL)
   }
@@ -560,30 +593,36 @@ add_bw_labs <- function(.data) {
   .analysis_mcse_errorbar(tbl, "lower_shown", "upper_shown", width = width)
 }
 
-# Under-estimates are linear below zero, including negative response estimates;
+# Under-estimates are linear from -100% to zero and logarithmic below -100%;
 # over-estimates are on a log2 fold scale, so -100% and +100% (two-fold) are equally far from zero.
 .simBandwidthSignedErrorTrans <- function() {
   scales::trans_new(
     "signed_rel_error",
     transform = function(x) {
+      neg <- !is.na(x) & x < -1
       pos <- !is.na(x) & x > 0
+      x[neg] <- -1 - log2(-x[neg])
       x[pos] <- log2(1 + x[pos])
       x
     },
     inverse = function(x) {
+      neg <- !is.na(x) & x < -1
       pos <- !is.na(x) & x > 0
+      x[neg] <- -2^(-1 - x[neg])
       x[pos] <- 2^x[pos] - 1
       x
     },
     breaks = function(limits) {
       lo <- min(limits[1], 0, na.rm = TRUE)
       hi <- max(limits[2], 0, na.rm = TRUE)
+      below <- if (lo < -1) -2^seq_len(ceiling(log2(-lo))) else numeric()
+      lo <- max(lo, -1)
       # Close to zero the scale is near-linear, so ordinary breaks suffice.
       if (hi <= 1) {
-        return(sort(unique(c(pretty(c(lo, hi)), if (lo <= -1) -1))))
+        return(sort(unique(c(below, pretty(c(lo, hi)), if (lo <= -1) -1))))
       }
       sort(unique(c(
-        pretty(c(lo, 0), n = 3), if (lo <= -1) -1,
+        below, pretty(c(lo, 0), n = 3), if (lo <= -1) -1,
         2^seq_len(ceiling(log2(1 + hi))) - 1
       )))
     },
@@ -635,6 +674,11 @@ add_bw_labs <- function(.data) {
   list(
     ggplot2::scale_y_continuous(
       transform = .simBandwidthSignedErrorTrans(),
+      breaks = function(limits) {
+        b <- .simBandwidthSignedErrorTrans()$breaks(pmax(limits, 0))
+        b[b >= 0]
+      },
+      guide = ggplot2::guide_axis(check.overlap = TRUE),
       labels = function(x) .simBandwidthAbsErrorLabel(x, cap = cap)
     ),
     ggplot2::expand_limits(y = c(0, 1)),
@@ -669,6 +713,44 @@ add_bw_labs <- function(.data) {
   )
 }
 
+.simBandwidthCapPoints <- function() {
+  ggplot2::geom_point(data = function(data) {
+    column <- intersect(c("value", "err_value", "error", "estimate"), names(data))
+    if (!length(column)) return(data[FALSE, , drop = FALSE])
+    data[is.finite(data[[column[1]]]) & data[[column[1]]] > .simBandwidthSignedErrorCap, , drop = FALSE]
+  }, shape = 17, size = 2, show.legend = FALSE)
+}
+
+# Printed beside the figure and logged with its full output path.
+.simBandwidthDisplayNote <- function(plot, path) {
+  scale <- plot$scales$get_scales("y")
+  if (is.null(scale) || !identical(scale$trans$name, "signed_rel_error")) return(invisible(NULL))
+  data <- .simBandwidthPlotData(plot)
+  columns <- intersect(c("value", "err_value"), names(data))
+  points <- unlist(data[columns], use.names = FALSE)
+  intervals <- lapply(plot$layers, function(layer) {
+    if (!inherits(layer$geom, "GeomErrorbar") || !is.data.frame(layer$data)) return(NULL)
+    cols <- intersect(c("lower", "upper", "lower_shown", "upper_shown"), names(layer$data))
+    unlist(layer$data[cols], use.names = FALSE)
+  })
+  values <- c(points, unlist(intervals, use.names = FALSE))
+  notes <- c(if (any(points > .simBandwidthSignedErrorCap, na.rm = TRUE)) "triangle: above display cap",
+    if (any(values < -1, na.rm = TRUE)) "values below -100% (negative estimates) are drawn on a compressed log scale")
+  if (length(notes)) {
+    note <- paste(notes, collapse = "; ")
+    cat("\n", note, ".\n\n", sep = "")
+    message(path, ": ", note)
+  }
+  invisible(NULL)
+}
+
+.simBandwidthDisplayCaption <- function(values, caption = NULL) {
+  paste(c(caption,
+    if (any(values > .simBandwidthSignedErrorCap, na.rm = TRUE)) "triangle: above display cap",
+    if (any(values < -1, na.rm = TRUE)) "values below -100% (negative estimates) are drawn on a compressed log scale"),
+    collapse = "\n")
+}
+
 # Shared y scale, zero line and line-weight scale for signed-error plots.
 # `capped`: some errors were drawn at the +1500% cap, so label that tick with ">=".
 .simBandwidthSignedErrorLayers <- function(
@@ -677,6 +759,7 @@ add_bw_labs <- function(.data) {
 ) {
   cap <- if (isTRUE(capped)) .simBandwidthSignedErrorCap else Inf
   list(
+    .simBandwidthCapPoints(),
     ggplot2::geom_hline(yintercept = 0, colour = "grey40"),
     ggplot2::scale_y_continuous(
       transform = .simBandwidthSignedErrorTrans(),
@@ -691,6 +774,7 @@ add_bw_labs <- function(.data) {
     ),
     ggplot2::labs(
       y = y_label,
+      caption = if (isTRUE(capped)) "triangle: above display cap",
       linewidth = "Share of estimates\nin this direction"
     )
   )
@@ -778,33 +862,51 @@ add_bw_labs <- function(.data) {
     dplyr::mutate(transformation = .analysis_trans_factor(.data$transformation))
 }
 
-# Add the reference curves underneath the original threshold layers, retaining
-# their facets, groups, line types, colours and alpha values exactly.
+# Context is a separate figure: no threshold marks are drawn over densities.
 .simBandwidthThresholdDensityPlot <- function(plot, panels, densities) {
-  keys <- intersect(names(panels), names(densities))
-  keys <- setdiff(keys, c("condition", "expression", "density"))
-  density_panels <- panels |>
-    dplyr::select(dplyr::all_of(c(keys, "n_cell"))) |>
-    dplyr::distinct() |>
-    dplyr::inner_join(densities, by = keys, relationship = "many-to-many")
-  curves <- ggplot2::ggplot() +
-    ggplot2::geom_area(
-      data = density_panels,
-      ggplot2::aes(x = expression, y = density, fill = condition, group = condition),
-      inherit.aes = FALSE, alpha = 0.18, position = "identity"
-    ) +
-    ggplot2::geom_line(
-      data = density_panels,
-      ggplot2::aes(x = expression, y = density, colour = condition, group = condition),
-      inherit.aes = FALSE, linewidth = 0.3, alpha = 0.75
-    )
-  plot$layers <- c(curves$layers, plot$layers)
+  keys <- setdiff(intersect(names(panels), names(densities)), c("condition", "expression", "density"))
+  density_panels <- dplyr::semi_join(densities, dplyr::distinct(panels[, keys, drop = FALSE]), by = keys)
   labels <- c(unstimulated = "Unstimulated negative component", stimulated = "Stimulated (all cells)")
-  plot +
+  ggplot2::ggplot(density_panels, ggplot2::aes(x = expression, y = density, colour = condition, fill = condition)) +
+    ggplot2::geom_area(alpha = 0.18, position = "identity") +
+    ggplot2::geom_line(linewidth = 0.3, alpha = 0.75) +
+    ggplot2::facet_wrap(ggplot2::vars(prob_response, mean_pos), scales = "free",
+      labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent("Response: "), mean_pos = function(x) paste0("Mean: ", .analysis_label_number(as.numeric(x))))) +
     ggplot2::scale_y_sqrt(labels = .analysis_label_number) +
     ggplot2::scale_colour_manual(values = .simMiscGetStimColVec(), labels = labels) +
     ggplot2::scale_fill_manual(values = .simMiscGetStimColVec(), labels = labels) +
-    ggplot2::labs(y = "Density, square-root scale", colour = NULL, fill = NULL)
+    .analysis_theme() +
+    ggplot2::labs(x = "Marker expression", y = "Density, square-root scale", colour = NULL, fill = NULL)
+}
+
+# Ordered bandwidth rows, horizontal IQR and median; optional raw thresholds
+# jitter only vertically, preserving the threshold value on the x axis.
+.simBandwidthThresholdPlot <- function(tbl, samples = FALSE) {
+  keys <- intersect(c("sim_id", "transformation", "prob_response", "n_cell", "bw"), names(tbl))
+  # The median view matches promoted valid-estimate summaries; the sample
+  # view retains the original all-threshold median/IQR convention.
+  summary_source <- tbl
+  if (!isTRUE(samples) && "valid_estimate" %in% names(tbl)) {
+    summary_source$threshold[!tbl$valid_estimate | is.na(tbl$valid_estimate)] <- NA_real_
+  }
+  summary <- summary_source |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(keys))) |>
+    dplyr::summarise(threshold_median = stats::median(threshold, na.rm = TRUE),
+      threshold_iqr_lower = stats::quantile(threshold, 0.25, na.rm = TRUE, names = FALSE),
+      threshold_iqr_upper = stats::quantile(threshold, 0.75, na.rm = TRUE, names = FALSE), .groups = "drop")
+  prepare <- function(data) dplyr::mutate(data,
+    transformation = .analysis_trans_factor(transformation),
+    bw_lab = .simBandwidthBwLabFactor(bw))
+  summary <- prepare(summary)
+  tbl <- prepare(tbl)
+  ggplot2::ggplot(summary, ggplot2::aes(x = threshold_median, y = bw_lab)) +
+    (if (isTRUE(samples)) ggplot2::geom_point(data = tbl, ggplot2::aes(x = threshold),
+      position = ggplot2::position_jitter(width = 0, height = 0.12, seed = 271L), size = 0.5, alpha = 0.25)) +
+    ggplot2::geom_segment(ggplot2::aes(x = threshold_iqr_lower, xend = threshold_iqr_upper, yend = bw_lab), linewidth = 0.5) +
+    ggplot2::geom_point(size = 1.4) +
+    ggplot2::facet_wrap(ggplot2::vars(n_cell, transformation), ncol = dplyr::n_distinct(tbl$transformation),
+      scales = "free", labeller = ggplot2::labeller(n_cell = function(x) paste0("Cells: ", .analysis_label_number(as.numeric(x))))) +
+    .analysis_theme() + ggplot2::labs(x = "Expression threshold", y = "Bandwidth")
 }
 
 # A plot's data, or its layers' data when it was built as ggplot() + layers.
@@ -974,9 +1076,11 @@ add_bw_labs <- function(.data) {
   long$series <- interaction(long[line_cols], drop = TRUE)
   if (is.null(facet)) {
     facet <- if (x == "bias_uns_multiplier") {
-      ggplot2::facet_grid(bw + bias_uns_basis ~ mismatch_label, scales = "free_y")
+      ggplot2::facet_wrap(ggplot2::vars(bw, bias_uns_basis, mismatch_label),
+        ncol = dplyr::n_distinct(long$mismatch_label), scales = "free_y", labeller = ggplot2::label_both)
     } else if (by_prob) {
-      ggplot2::facet_grid(prob_response ~ transformation, scales = "free",
+      ggplot2::facet_wrap(ggplot2::vars(prob_response, transformation),
+        ncol = dplyr::n_distinct(long$transformation), scales = "free",
         labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent("Response: ")))
     } else ggplot2::facet_wrap(~transformation, scales = "free")
   }
@@ -987,6 +1091,7 @@ add_bw_labs <- function(.data) {
   caption <- paste(counts,
     if (fallback) "5th/95th (too few samples for 2.5th/97.5th intervals)." else "Outer pair: 2.5th/97.5th.",
     "Unavailable intervals are omitted; points remain.")
+  caption <- .simBandwidthDisplayCaption(long$value, caption)
   caption <- paste(strwrap(caption, width = 110), collapse = "\n")
   if (is.null(y_label)) y_label <- if ("n_scenario" %in% names(tbl)) {
     "Mean of scenario percentiles (signed relative error)"
@@ -1005,8 +1110,8 @@ add_bw_labs <- function(.data) {
     alpha = .data$percentile, linewidth = .data$percentile,
     linetype = .data$percentile)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey40", linetype = "dashed") +
-    ggplot2::geom_line() + ggplot2::geom_point(size = 1) +
-    bars + facet +
+    bars + ggplot2::geom_line() + ggplot2::geom_point(size = 1) +
+    .simBandwidthCapPoints() + facet +
     ggplot2::scale_y_continuous(transform = .simBandwidthSignedErrorTrans(),
       labels = function(v) .simBandwidthSignedErrorLabel(v,
         cap = if (.simBandwidthSignedErrorIsCapped(long$value)) .simBandwidthSignedErrorCap else Inf)) +

@@ -381,8 +381,11 @@ unconditional percentile intervals to one side of zero.
 Signed relative-error plots (`.simBandwidthSignedError*()` in
 `sim-bandwidth-analysis-plot.R`) sit alongside, not instead of, the absolute
 ones: they summarise over- and under-estimates separately, weight lines by each
-direction's share, and use a scale on which -100% and a two-fold over-estimate
-are equally far from zero.
+direction's share, and use identity on [-1, 0], log2(1 + x) above zero
+and -1 - log2(-x) below -1, so -100% and a two-fold over-estimate
+are equally far from zero. Every figure using the below -100% region must print
+a visible HTML note and log its figure path. Mark points above the +1500%
+display cap with an upward triangle and explain it beside the figure.
 Monte Carlo error bars (`show_mcse` QMD parameter / `SHOW_MCSE`, one mode per
 render: `on` (default) or `off`; historical true/false maps to on/off; `both`
 is rejected; plot helpers take `mcse = FALSE` by default) use `analysis-mcse.R` and only
@@ -590,8 +593,10 @@ Plot-construction helpers under `scripts/r/` should return plot objects without
 creating directories or writing files. Keep filesystem side effects in the
 corresponding save/orchestration helper or QMD. Reference densities for threshold
 plots use seeded, render-local reference simulations, cache each biological
-setting independently of method settings and cell count, and retain the original
-threshold layers above fills.
+setting independently of method settings and cell count. Bandwidth threshold
+figures use ordered bandwidth rows with median/IQR marks and keep reference
+densities in separate contextual figures; density-overlay comparison figures
+retain their original threshold layers above fills.
 
 Figures from analysis QMDs are saved under `output/fig/<QMD name>/<figure type>/`
 via `.analysis_fig_dir()`, with `fig_key <- .analysis_mode_key("<QMD name>")`;

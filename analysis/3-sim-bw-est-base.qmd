@@ -503,13 +503,13 @@ if (isTRUE(run_plots)) {
 
       p <- ggplot(
         plot_tbl,
-        aes(x = .data$n_cell, y = .data$mean_bw, color = .data$bw_mtd)
+        aes(x = .data$n_cell, y = .data$mean_bw, color = .data$bw_mtd, shape = .data$bw_mtd)
       ) +
-        geom_line(alpha = 0.75) +
-        geom_point(alpha = 0.75) +
         (if (isTRUE(show_mcse)) {
           .analysis_mcse_errorbar(plot_tbl, "mean_bw_lower", "mean_bw_upper")
         }) +
+        geom_line(alpha = 0.75) +
+        geom_point(alpha = 0.75) +
         facet_grid(
           transformation ~ prob_response,
           scales = "free_y",
@@ -523,6 +523,11 @@ if (isTRUE(run_plots)) {
         .analysis_theme() +
         scale_colour_manual(
           values = .simBwMtdColVec,
+          labels = .simBwMtdLabVec
+        ) +
+        scale_shape_manual(
+          name = "Bandwidth method",
+          values = c(nrd0 = 16, sj = 17, hpi0 = 15, hpi1 = 18, hpi2 = 3, hpi3 = 7),
           labels = .simBwMtdLabVec
         ) +
         scale_x_log10(

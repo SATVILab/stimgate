@@ -147,6 +147,7 @@
 # Print before opening a save device so asis headings keep their own figure.
 .analysis_print_save_fig <- function(plot, path, ..., mcse_mode = NULL) {
   .analysis_print_fig(plot, mcse_mode = mcse_mode)
+  if (exists(".simBandwidthDisplayNote", mode = "function")) .simBandwidthDisplayNote(.analysis_mcse_plot_variants(plot, mcse_mode)[[1L]], path)
   .analysis_save_fig(plot, path, ..., mcse_mode = mcse_mode)
 }
 
