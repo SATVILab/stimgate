@@ -739,7 +739,7 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "mean_abs_error", "Tube-level mean absolute error", percent_y = TRUE, mcse = show_mcse
+        d, "mean_abs_error", "Tube-level mean absolute error", percent_y = TRUE, free_y = TRUE, mcse = show_mcse
       )
     },
     dir = file.path(plot_dir, "mae_by_n_cell"),
@@ -920,9 +920,12 @@ if (isTRUE(run_plots)) {
 #| results: asis
 if (isTRUE(run_plots)) {
   .simCompareFigureLoop(dataset_max,
-    make_plot = function(d) .simCompareDatasetMaxPlot(d, "occurrence", mcse = show_mcse),
+    make_plot = function(d) .simCompareDatasetMaxPlot(d, "occurrence", by_prob = FALSE, mcse = show_mcse),
     dir = file.path(plot_dir, "dataset_max_occurrence_by_n_cell"),
-    file_fn = function(pos, extra) paste0("dataset_max_occurrence_", pos, ".png"),
+    file_fn = function(pos, extra) paste0("dataset_max_occurrence_", pos,
+      "_prob_response_", extra, ".png"),
+    extra_col = "prob_response",
+    extra_heading = function(x) paste0("Response probability: ", .analysis_label_percent(x)),
     height = 14, level = 4L, mcse_mode = mcse_mode)
 }
 ```
@@ -939,9 +942,12 @@ below zero. The ratio companion uses the identical curves and intervals, with
 #| results: asis
 if (isTRUE(run_plots)) {
   .simCompareFigureLoop(dataset_max,
-    make_plot = function(d) .simCompareDatasetMaxPlot(d, "severity", mcse = show_mcse),
+    make_plot = function(d) .simCompareDatasetMaxPlot(d, "severity", by_prob = FALSE, mcse = show_mcse),
     dir = file.path(plot_dir, "dataset_max_signed_error_severity_by_n_cell"),
-    file_fn = function(pos, extra) paste0("dataset_max_severity_", pos, ".png"),
+    file_fn = function(pos, extra) paste0("dataset_max_severity_", pos,
+      "_prob_response_", extra, ".png"),
+    extra_col = "prob_response",
+    extra_heading = function(x) paste0("Response probability: ", .analysis_label_percent(x)),
     ratio_twins = TRUE, height = 14, level = 4L, mcse_mode = mcse_mode)
 }
 ```
@@ -1023,7 +1029,9 @@ if (isTRUE(run_plots)) {
   .simCompareFigureLoop(
     percentile_tbl,
     make_plot = function(d) .simBandwidthSignedPercentilePlot(d, x = "n_cell",
-      x_label = "Number of stimulated cells", x_log = TRUE, mcse = show_mcse),
+      x_label = "Number of stimulated cells", x_log = TRUE, mcse = show_mcse) +
+      ggplot2::aes(shape = method, linetype = method) +
+      .analysis_scale_method(c("colour", "shape", "linetype")),
     dir = file.path(plot_dir, "signed_percentiles_by_n_cell"),
     file_fn = function(pos, extra) {
       paste0(
@@ -1040,6 +1048,13 @@ if (isTRUE(run_plots)) {
   )
 }
 ```
+
+Each dataset-maximum figure uses one response probability. Severity panels have
+independent vertical ranges; occurrence panels retain the fixed 0–100% scale.
+
+Error-by-cell-count and signed-error figures also use independent panel ranges;
+compare methods within each panel. Method colour, point shape and line type agree
+across comparison figures.
 
 ### Estimated versus true response frequency
 
@@ -1071,7 +1086,12 @@ if (isTRUE(run_plots)) {
       paste0("freq_bs_est_vs_truth_", pos, ".png")
     },
     height = 9,
-    level = 4L
+    level = 4L,
+    after_plot = function(d, p) {
+      print(knitr::kable(.simCompareQmd7FloorTable(d, unique(p$data$plot_floor)),
+        caption = "Estimates at or below the plotting floor; denominators count method/sample estimates."))
+      cat("\n\n")
+    }
   )
 }
 ```

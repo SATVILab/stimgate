@@ -33,19 +33,25 @@
   tbl$value_shown <- if (quantity == "severity") .simBandwidthSignedErrorSquish(tbl$value) else tbl$value
   tbl$direction <- factor(tbl$direction, c("over", "under"), c("Over-estimates", "Under-estimates"))
   p <- ggplot2::ggplot(tbl, ggplot2::aes(
-    x = .data[[x]], y = value_shown, colour = method, group = method
+    x = .data[[x]], y = value_shown, colour = method, shape = method, linetype = method, group = method
   )) +
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
     ggplot2::geom_point(size = 1.5, alpha = 0.75) +
-    ggplot2::facet_grid(
+    (if (quantity == "occurrence") ggplot2::facet_grid(
       if (by_prob) direction ~ transformation + prob_response else direction ~ transformation,
       labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent("Response probability: "))
-    ) +
+    ) else ggplot2::facet_wrap(
+      if (by_prob) ggplot2::vars(direction, transformation, prob_response) else
+        ggplot2::vars(direction, transformation),
+      ncol = length(unique(tbl$transformation)) * if (by_prob) length(unique(tbl$prob_response)) else 1L,
+      scales = "free_y",
+      labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent("Response probability: "))
+    )) +
     (if (x_log) ggplot2::scale_x_log10(
       breaks = sort(unique(tbl[[x]])), labels = .analysis_label_number,
       guide = ggplot2::guide_axis(angle = 45)
     ) else ggplot2::scale_x_continuous(labels = .analysis_label_number)) +
-    .analysis_scale_method() + .analysis_theme() +
+    .analysis_scale_method(c("colour", "shape", "linetype")) + .analysis_theme() +
     ggplot2::labs(x = x_label, colour = "Method")
   if (quantity == "occurrence") {
     p <- p + ggplot2::scale_y_continuous(limits = c(0, 1), labels = .analysis_label_percent) +

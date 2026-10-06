@@ -1024,3 +1024,7 @@ even with `retryErrors = TRUE`; report them as missing outcomes, never zero gate
 Missing/malformed rows, unlabelled missing outcomes, StimGate or whole-scenario
 runtime failures remain incomplete. Mismatch checks use defined gate counts and
 report failed zero-mismatch pairs separately from finite comparisons.
+
+Comparison figures that need independent panel ranges use `facet_wrap`, not
+row-shared free-y grids. Split crowded grids with headings and unique filenames;
+reuse the shared method colour/shape/linetype definitions.

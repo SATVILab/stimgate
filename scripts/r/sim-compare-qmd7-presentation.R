@@ -34,3 +34,18 @@
       ~ paste0(.x, " / ", .data$n_samples, " (",
         .analysis_label_percent(.x / .data$n_samples), ")")))
 }
+
+# Count the floor pile-up without changing or discarding any estimates.
+.simCompareQmd7FloorTable <- function(data, lower_limit) {
+  data |>
+    dplyr::group_by(.data$method, .data$prob_response) |>
+    dplyr::summarise(
+      n_method_sample_estimates = dplyr::n(),
+      zero = sum(.data$propRespEst == 0, na.rm = TRUE),
+      negative = sum(.data$propRespEst < 0, na.rm = TRUE),
+      positive_at_or_below_floor = sum(.data$propRespEst > 0 &
+        .data$propRespEst <= lower_limit, na.rm = TRUE), .groups = "drop"
+    ) |>
+    dplyr::mutate(dplyr::across(c("zero", "negative", "positive_at_or_below_floor"),
+      ~ paste0(.x, " / ", .data$n_method_sample_estimates)))
+}

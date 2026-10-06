@@ -992,10 +992,10 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 
 ### FDP and sensitivity against mismatch size
 
-The upper row of each figure is FDP and the lower row sensitivity, both on
+Each scenario occupies a row with FDP and sensitivity side by side, both on
 fixed 0-100% scales. Solid lines are tube-level medians; dashed lines
 are the worse tail, the 90th percentile of FDP and the 10th percentile of
-sensitivity. Columns are baseline scenarios, each with its own horizontal
+sensitivity. Wrapped strips name each baseline scenario, each with its own horizontal
 range (on a square-root scale) because mismatch sizes differ between
 transformations. Each mismatch mechanism has its own figure. Error bars (with
 `show_mcse` on) resample whole datasets and recalculate the pooled tube-level
@@ -1059,7 +1059,7 @@ how common genuine positives are as well as on the gate: the same
 false-positive rate gives a much larger FDP when the response is rare, so
 differences in FDP between rare- and common-response scenarios are not all
 due to the methods. The vertical scales here are not fixed, because the
-rates are small.
+rates are small. Each panel has independent ranges, arranged in two columns.
 
 ```{r}
 #| label: false-positive-rate
@@ -1431,7 +1431,9 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     percentile_averaged,
     make_plot = function(d) .simBandwidthSignedPercentilePlot(
       d, x = "mismatch_val", x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
-      x_log = FALSE, mcse = show_mcse),
+      x_log = FALSE, mcse = show_mcse) +
+      ggplot2::aes(shape = method, linetype = method) +
+      .analysis_scale_method(c("colour", "shape", "linetype")),
     dir = .compare_fresh_fig_dir("signed_percentiles_averaged"),
     file_fn = .compare_mismatch_file,
     extra_heading = .compare_mismatch_heading,
@@ -1441,6 +1443,9 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   )
 }
 ```
+
+Signed- and absolute-error panels have independent ranges across transformations.
+Method colours, shapes and line types follow the shared comparison encoding.
 
 ### Over- and under-estimates at each cell count
 
@@ -1545,9 +1550,11 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 ### Threshold placement diagnostic (unstimulated background intrusion)
 
 The mean share of unstimulated cells above the gate is plotted against
-the stimulated mean shift. Colour identifies the method, line type identifies
-which stimulated cells are shifted, and panels separate baseline scenarios.
-Higher values indicate that more unstimulated cells lie above the chosen gate.
+the stimulated mean shift. Colour, point shape and line type identify the
+method, and panels separate baseline scenarios.
+Each mismatch mechanism has its own figure; scenarios wrap into two columns
+with independent vertical ranges. Higher values indicate that more unstimulated
+cells lie above the chosen gate.
 Error bars (with `show_mcse` on) are whole-dataset bootstrap intervals for
 the plotted pooled mean.
 
@@ -1567,7 +1574,9 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
       .simComparePlotPlacement(d, mcse = show_mcse)
     },
     dir = .analysis_fig_dir(c(fig_key, "threshold_placement_unstim"), path_root = root_dir),
-    file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
+    file_fn = .compare_mismatch_file,
+    extra_col = "mismatch_type",
+    extra_heading = .compare_mismatch_heading,
     height = 16,
     level = 4L, mcse_mode = mcse_mode
   )
@@ -1578,8 +1587,9 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 
 The 90th percentile of absolute relative error is plotted against mismatch
 size on an inverse-hyperbolic-sine vertical scale, with colour identifying
-the method. Rows of panels separate mismatch mechanisms and columns separate
-baseline scenarios, with one mean position setting per plot. Compare curves
+the method. Each mismatch mechanism has its own figure and heading, with baseline scenarios
+wrapped into two columns and one mean position setting per plot. Panel ranges
+are independent. Compare curves
 within each panel, since mean shift and spread increase use different units.
 Error bars (with `show_mcse` on) resample whole datasets and recalculate the
 pooled tube-level 90th percentile in each draw.
@@ -1596,7 +1606,9 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
       .simComparePlotUpperTail(d, mcse = show_mcse)
     },
     dir = .analysis_fig_dir(c(fig_key, "upper_tail_and_fallbacks"), path_root = root_dir),
-    file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
+    file_fn = .compare_mismatch_file,
+    extra_col = "mismatch_type",
+    extra_heading = .compare_mismatch_heading,
     height = 18,
     level = 4L, mcse_mode = mcse_mode
   )
