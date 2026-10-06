@@ -336,7 +336,10 @@ Rscript analysis/tests/run_analysis_tests.R
 Each top-level analysis QMD also has an independently runnable target in
 `analysis/tests/run_qmd_tests.R`. Use `--list` to inspect the QMD-to-test mapping,
 one target number/path to run it, a comma/space-separated set, or `all`.
-Maintain the registry when adding or renaming top-level QMDs. Analysis 2 is
+Maintain the registry when adding or renaming top-level QMDs. Analysis 11 applies the ordinary and cytokine-positive gates from one
+`gateStim()` run to the same cells and requires its recomputed cytokine-positive
+combination counts to equal `getStimStats()`; keep that check when changing
+the positivity rule. Analysis 2 is
 split into `2a` (bandwidth performance) and `2b` (bias tuning), with separate
 runner targets. `2c` (`2c-sim-test.qmd`) runs chosen settings, including
 stimulated-tube mismatch, through the 2a code path with the `.simDebugLoc()`
@@ -548,6 +551,9 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
   - `sim-debug-loc.R`: `.simDebugLoc()` wraps a QMD's rerun call unchanged and uses `trace()` to record, or browse, the local-FDR gating of one sample (optionally every later one too); `.simDebugLocPlots()` / `.simDebugLocSummary()` plot and summarise it.
   - `sim-debug-compare.R`: `.simDebugCompare()` runs F-beta and Tailgate on a `.simDebugLoc()` sample as Analyses 7/8 do; `.simDebugFigure()` combines simulation settings with each method's plots, settings and result on one x range.
+  - `sim-low-separation.R`: Analysis 11 (`11-sim-low-separation-cyt-pos.qmd`): two-marker
+    low-separation simulations gated once per dataset, comparing ordinary and
+    cytokine-positive gates on the same cells against simulated labels.
   - `sim-misc.R`: Miscellaneous simulation utilities.
   - `sim-trans.R`: Simulation transformation utilities.
 - `src/`: C++ source code compiled into the package via `cpp11` (`cpPmden.cpp`, `stimgate_cppmden.cpp`, `tautstring.cpp`, etc.).
