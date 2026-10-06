@@ -1435,7 +1435,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 16,
-    level = 4L, mcse_mode = mcse_mode
+    level = 4L, mcse_mode = mcse_mode,
+    subtitle = .compare_loop_subtitle
   )
 }
 ```

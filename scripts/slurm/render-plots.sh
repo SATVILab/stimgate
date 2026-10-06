@@ -46,9 +46,16 @@ for qmd_file in "${qmd_file_vec[@]}"; do
   # helper (which deletes its HTML on exit). All reports embed resources;
   # each HTML is self-contained even if Quarto reuses input-stem _files.
   qmd_stem=$(basename -- "$qmd_file" .qmd)
-  for mcse_mode in off on; do
-    export SHOW_MCSE="$mcse_mode"
-    output_file="${qmd_stem}-mcse_${mcse_mode}.html"
+  # QMDs without Monte Carlo intervals render once, under their usual name.
+  if grep -q "show_mcse" "$qmd_file"; then mcse_modes=(off on); else mcse_modes=(none); fi
+  for mcse_mode in "${mcse_modes[@]}"; do
+    if [[ "$mcse_mode" == "none" ]]; then
+      unset SHOW_MCSE
+      output_file="${qmd_stem}.html"
+    else
+      export SHOW_MCSE="$mcse_mode"
+      output_file="${qmd_stem}-mcse_${mcse_mode}.html"
+    fi
     echo "Render plots: $qmd_file ($mcse_mode) -> $output_file"
     date
     r_expr="qmd_file <- '$qmd_file'; output_file <- '$output_file'; if (requireNamespace('quarto', quietly = TRUE)) { quarto::quarto_render(input = qmd_file, output_file = output_file) } else { status <- system2('quarto', c('render', qmd_file, '--output', output_file)); if (!identical(status, 0L)) quit(status = status) }"

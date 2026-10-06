@@ -1043,14 +1043,13 @@ if (isTRUE(run_plots)) {
               ".pdf"
             )
           )
-          .analysis_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
           .analysis_heading(
             paste0(
               "Response probability: ", .analysis_label_percent(prob_response_curr)
             ),
             6
           )
-          .analysis_print_fig(p, mcse_mode = mcse_mode)
+          .analysis_print_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
 
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
@@ -1214,14 +1213,13 @@ if (isTRUE(run_plots)) {
               ".pdf"
             )
           )
-          .analysis_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
           .analysis_heading(
             paste0(
               "Response probability: ", .analysis_label_percent(prob_response_curr)
             ),
             6
           )
-          .analysis_print_fig(p, mcse_mode = mcse_mode)
+          .analysis_print_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
 
           .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
             dplyr::filter(
@@ -1374,7 +1372,6 @@ if (isTRUE(run_plots)) {
                 ".pdf"
               )
             )
-            .analysis_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
             # Response probability and cells share one heading level, so the
             # headings stay within six levels.
             .analysis_heading(
@@ -1384,7 +1381,7 @@ if (isTRUE(run_plots)) {
               ),
               6
             )
-            .analysis_print_fig(p, mcse_mode = mcse_mode)
+            .analysis_print_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
 
             .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
               dplyr::filter(

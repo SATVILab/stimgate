@@ -1154,9 +1154,8 @@ if (isTRUE(run_plots)) {
         "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf"
       )
     )
-    .analysis_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
     .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
-    .analysis_print_fig(p, mcse_mode = mcse_mode)
+    .analysis_print_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
 
     .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
       dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
@@ -1264,9 +1263,8 @@ if (isTRUE(run_plots)) {
           "_n_cell_", n_cell_curr, ".pdf"
         )
       )
-      .analysis_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
-      .analysis_print_fig(p, mcse_mode = mcse_mode)
+      .analysis_print_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
 
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
@@ -1384,9 +1382,8 @@ if (isTRUE(run_plots)) {
         )
       )
       n_prob <- length(unique(plot_tbl$prob_response))
-      .analysis_save_fig(p, path_p, height = min(22, 6 + 3 * n_prob), mcse_mode = mcse_mode)
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
-      .analysis_print_fig(p, mcse_mode = mcse_mode)
+      .analysis_print_save_fig(p, path_p, height = min(22, 6 + 3 * n_prob), mcse_mode = mcse_mode)
 
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>

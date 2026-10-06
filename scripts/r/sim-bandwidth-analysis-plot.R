@@ -812,6 +812,14 @@ add_bw_labs <- function(.data) {
     ggplot2::labs(y = "Density, square-root scale", colour = NULL, fill = NULL)
 }
 
+# A plot's data, or its layers' data when it was built as ggplot() + layers.
+.simBandwidthPlotData <- function(plot) {
+  if (is.data.frame(plot$data)) return(plot$data)
+  dplyr::bind_rows(lapply(plot$layers, function(layer) {
+    if (is.data.frame(layer$data)) layer$data else NULL
+  }))
+}
+
 # Match a figure's displayed dimensions, then show coverage beside that figure.
 # Omitted scenario dimensions are pooled only for this sample-count diagnostic;
 # error curves themselves average per-scenario statistics equally.
@@ -821,11 +829,7 @@ add_bw_labs <- function(.data) {
     "n_cell", "bw", "bias_uns_basis", "bias_uns_multiplier",
     "mismatch_label", "mismatch_type", "mismatch_val", "bw_mtd", "bw_ncell_upper"
   )
-  plot_data <- if (is.data.frame(plot$data)) plot$data else {
-    dplyr::bind_rows(lapply(plot$layers, function(layer) {
-      if (is.data.frame(layer$data)) layer$data else NULL
-    }))
-  }
+  plot_data <- .simBandwidthPlotData(plot)
   keys <- intersect(dimensions, intersect(names(plot_data), names(summary)))
   if ("transformation" %in% keys) {
     summary$transformation <- .analysis_trans_factor(summary$transformation)
@@ -872,11 +876,12 @@ add_bw_labs <- function(.data) {
 .simBandwidthPrintCoverage <- function(plot, summary) {
   tbl <- .simBandwidthCoverageForPlot(plot, summary)
   cat("\n\n", knitr::kable(tbl, digits = 3), sep = "\n")
-  count_cols <- names(plot$data)[startsWith(names(plot$data), "n_scenario_")]
+  plot_data <- .simBandwidthPlotData(plot)
+  count_cols <- names(plot_data)[startsWith(names(plot_data), "n_scenario_")]
   if (length(count_cols)) {
-    keys <- intersect(names(tbl), names(plot$data))
+    keys <- intersect(names(tbl), names(plot_data))
     keys <- setdiff(keys, c("n_sample", "n_valid", "n_failed", "n_provenance", "n_fallback"))
-    counts <- plot$data |>
+    counts <- plot_data |>
       dplyr::select(dplyr::any_of(c(keys, "direction", count_cols))) |>
       dplyr::distinct()
     cat("\n\nContributing scenarios per statistic:\n\n",

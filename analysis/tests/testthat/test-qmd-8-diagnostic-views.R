@@ -33,10 +33,10 @@ test_that("QMD 8 removes only views duplicated by its baseline grid", {
   counts <- grid |>
     dplyr::count(transformation, mean_pos_setting, n_cell)
   expect_true(all(counts$n == 1L))
-  # Averaging within high Gaussian/gamma combines distinct baselines.
+  # Averaging within high skew/gamma combines distinct baselines.
   high <- grid[grid$mean_pos_setting == "high", ] |>
     dplyr::count(transformation)
-  expect_equal(high$n[match(c("gaussian", "gamma"), high$transformation)], c(2L, 2L))
+  expect_equal(high$n[match(c("skew", "gamma"), high$transformation)], c(2L, 2L))
   for (label in c("relative-error", "signed-error")) {
     expect_false(grepl(paste0("label: ", label, "-by-n-cell-prob"), text, fixed = TRUE))
     expect_true(grepl(paste0("label: ", label, "-by-n-cell\n"), text, fixed = TRUE))

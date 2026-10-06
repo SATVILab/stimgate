@@ -508,10 +508,9 @@ if (isTRUE(run_plots)) {
       facet = ggplot2::facet_wrap(~pop, scales = "free_y"),
       subtitle = paste0(method_set$label, "; all stimuli; donor-bootstrap intervals")
     )
-    .analysis_save_fig(p,
+    .analysis_print_save_fig(p,
       file.path(.analysis_fig_dir(c(fig_key, "signed_percentiles", set_name), root_dir),
         "manual-comparison-signed-percentiles.png"), height = 22)
-    .analysis_print_fig(p)
     print(knitr::kable(manual_percentiles |> dplyr::filter(method %in% method_set$methods) |>
       dplyr::select(method, pop, cyt, dplyr::starts_with("n_"),
         dplyr::starts_with("bootstrap_coverage_"), dplyr::starts_with("interval_available_")), caption = "Donor-bootstrap validity for unconditional percentiles."))

@@ -28,7 +28,7 @@ fi
 if [[ "${MOCK_RENDER_ARTIFACTS:-false}" == true ]]; then
   output_file=$(printf '%s' "${!#}" | sed -n "s/.*output_file <- '\([^']*\)'.*/\1/p")
   [[ -n "$output_file" ]]
-  printf '%s\n' "$SHOW_MCSE" > "$(dirname -- "$qmd")/$output_file"
+  printf '%s\n' "${SHOW_MCSE:-none}" > "$(dirname -- "$qmd")/$output_file"
 fi
 exit "${MOCK_RENDER_STATUS:-0}"
 EOF
@@ -146,14 +146,13 @@ PLOT_QMD_FILES="analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-a
 grep -Fq -- "render_file_exists=analysis/9-real-compare-acs-cytof.qmd" "$SLURM_TEST_LOG"
 grep -Fq -- "render_file_exists=analysis/10-real-compare-acs-cytof-validation.qmd" "$SLURM_TEST_LOG"
 grep -Fq -- 'expected_run=slurm-test-run|preprocessing=false|stimgate=false|comparators=false|simulations=false|plots=true' "$SLURM_TEST_LOG"
-[[ $(grep -c 'render_file_exists=' "$SLURM_TEST_LOG") -eq 4 ]]
-[[ $(grep -c 'mcse=off' "$SLURM_TEST_LOG") -eq 2 ]]
-[[ $(grep -c 'mcse=on' "$SLURM_TEST_LOG") -eq 2 ]]
-[[ $(grep 'sim_size=.*|mcse=' "$SLURM_TEST_LOG" | sed 's/.*mcse=//' | paste -sd ' ') == 'off on off on' ]]
+[[ $(grep -c 'render_file_exists=' "$SLURM_TEST_LOG") -eq 2 ]]
+# QMDs 9 and 10 have no Monte Carlo intervals, so each renders once.
+[[ $(grep -c 'mcse=off' "$SLURM_TEST_LOG") -eq 0 ]]
+[[ $(grep -c 'mcse=on' "$SLURM_TEST_LOG") -eq 0 ]]
+[[ $(grep -c 'sim_size=.*|mcse=$' "$SLURM_TEST_LOG") -eq 2 ]]
 for stem in 9-real-compare-acs-cytof 10-real-compare-acs-cytof-validation; do
-  for mode in off on; do
-    grep -Fq "output_file <- '${stem}-mcse_${mode}.html'" "$SLURM_TEST_LOG"
-  done
+  grep -Fq "output_file <- '${stem}.html'" "$SLURM_TEST_LOG"
 done
 grep -Fq 'output_file = output_file' "$SLURM_TEST_LOG"
 grep -Fq "'--output', output_file" "$SLURM_TEST_LOG"
@@ -163,11 +162,14 @@ unset RUN_PREPROCESSING RUN_STIMGATE RUN_COMPARATORS
 # Persistent output names survive the second render (the isolated chunk helper
 # must not be used for reports, since its exit trap removes HTML outputs).
 mkdir "$test_dir/reports"
-printf '%s\n' '---' 'format: html' '---' > "$test_dir/reports/fixture.qmd"
-MOCK_RENDER_ARTIFACTS=true PLOT_QMD_FILES="$test_dir/reports/fixture.qmd" \
+printf '%s\n' '---' 'format: html' 'params:' '  show_mcse: on' '---' > "$test_dir/reports/fixture.qmd"
+printf '%s\n' '---' 'format: html' '---' > "$test_dir/reports/plain.qmd"
+MOCK_RENDER_ARTIFACTS=true PLOT_QMD_FILES="$test_dir/reports/fixture.qmd:$test_dir/reports/plain.qmd" \
   bash "$project_root/scripts/slurm/render-plots.sh" > "$test_dir/output" 2>&1
 [[ $(cat "$test_dir/reports/fixture-mcse_off.html") == off ]]
 [[ $(cat "$test_dir/reports/fixture-mcse_on.html") == on ]]
+[[ $(cat "$test_dir/reports/plain.html") == none ]]
+[[ ! -e "$test_dir/reports/plain-mcse_off.html" ]]
 
 
 : > "$SLURM_TEST_LOG"
