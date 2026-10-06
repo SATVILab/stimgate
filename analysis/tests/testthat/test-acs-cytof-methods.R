@@ -97,30 +97,31 @@ test_that("F-beta does not retain Python objects in a global R cache", {
   ))
 })
 
-test_that("comparator execution errors are not converted into fallback gates", {
+test_that("comparator execution errors stay explicit missing outcomes, not fallback gates", {
   env <- .load_acs_method_env()
-  env$.simCompareFbetaThreshold <- function(...) {
-    stop("reticulate worker failure")
+  env$.simCompareFbetaThreshold <- function(...) stop("reticulate worker failure")
+  env$.simCompareTailgateThreshold <- function(...) stop("tailgate worker failure")
+  # Tailgate checks its dependency before estimating.
+  methods <- c("fbeta", if (requireNamespace("cytoUtils", quietly = TRUE)) "tailgate")
+  for (method in methods) {
+    expect_message(
+      out <- env$.acsCytofThresholdOne(
+        method = method,
+        xUns = c(0, 1),
+        xStim = c(0, 2),
+        settings = env$.acsCytofComparatorSettings(method),
+        fbetaEnv = new.env(parent = emptyenv())
+      ),
+      "worker failure"
+    )
+    expect_identical(out$thresholdOrigin, "runtime_error")
+    expect_true(is.na(out$threshold))
+    expect_false(out$thresholdFallbackUsed)
   }
-
-  expect_error(
-    env$.acsCytofThresholdOne(
-      method = "fbeta",
-      xUns = c(0, 1),
-      xStim = c(0, 2),
-      settings = env$.acsCytofComparatorSettings("fbeta"),
-      fbetaEnv = new.env(parent = emptyenv())
-    ),
-    "reticulate worker failure"
-  )
 })
 
-test_that("Tailgate execution errors are not converted into fallback gates", {
+test_that("a missing comparator implementation still stops the analysis", {
   env <- .load_acs_method_env()
-  env$.simCompareTailgateThreshold <- function(...) {
-    stop("tailgate worker failure")
-  }
-
   expect_error(
     env$.acsCytofThresholdOne(
       method = "tailgate",
@@ -128,7 +129,7 @@ test_that("Tailgate execution errors are not converted into fallback gates", {
       xStim = c(0, 2),
       settings = env$.acsCytofComparatorSettings("tailgate")
     ),
-    "tailgate worker failure"
+    "Source scripts/r/sim-compare-freq_bs.R"
   )
 })
 

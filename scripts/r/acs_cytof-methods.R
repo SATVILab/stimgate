@@ -169,7 +169,16 @@
   pathFbeta = NULL,
   fbetaEnv = NULL
 ) {
-  thresholdObj <- if (identical(method, "fbeta")) {
+  # A missing dependency must still stop the analysis; only estimation errors
+  # for this sample and marker are recorded as failed thresholds below.
+  fn <- if (identical(method, "fbeta")) ".simCompareFbetaThreshold" else ".simCompareTailgateThreshold"
+  if (!exists(fn, mode = "function", inherits = TRUE)) {
+    stop("Source scripts/r/sim-compare-freq_bs.R before running ", method, ".")
+  }
+  if (!identical(method, "fbeta") && !requireNamespace("cytoUtils", quietly = TRUE)) {
+    stop("Package 'cytoUtils' is required for tailgate comparisons.")
+  }
+  thresholdObj <- tryCatch(if (identical(method, "fbeta")) {
     if (
       !exists(
         ".simCompareFbetaThreshold",
@@ -218,10 +227,18 @@
         autoTol = settings$params$autoTol
       )
     )
-  }
+  }, error = function(e) {
+    # An estimation error stays an explicit runtime error: no threshold, no
+    # fallback gate and missing counts for the sample, rather than stopping
+    # every population. Downstream summaries treat it as a failed estimate.
+    message(method, " threshold failed: ", conditionMessage(e))
+    list(threshold = NA_real_, thresholdMetric = NA_real_,
+      thresholdOrigin = "runtime_error")
+  })
 
   thresholdRaw <- suppressWarnings(as.numeric(thresholdObj$threshold))[[1]]
-  fallbackUsed <- !is.finite(thresholdRaw)
+  runtimeError <- identical(thresholdObj$thresholdOrigin, "runtime_error")
+  fallbackUsed <- !is.finite(thresholdRaw) && !runtimeError
   threshold <- if (fallbackUsed) {
     .acsCytofFallbackThreshold(xStim = xStim, xUns = xUns)
   } else {
@@ -317,12 +334,22 @@
         thresholdTbl$threshold,
         thresholdTbl$chnl
       )
-      statsTbl <- .acsCytofCombinationCounts(
-        xStim = xStim,
-        xUns = xUns,
-        thresholds = thresholdVec[channels],
-        channels = channels
-      ) |>
+      # A runtime error on any marker leaves the sample's counts missing.
+      countTbl <- if (all(is.finite(thresholdVec[channels]))) {
+        .acsCytofCombinationCounts(
+          xStim = xStim,
+          xUns = xUns,
+          thresholds = thresholdVec[channels],
+          channels = channels
+        )
+      } else {
+        tibble::tibble(
+          cytCombn = .acsCytofCombinationLevels(channels),
+          countStim = NA_integer_, nCellStim = nrow(xStim),
+          countUns = NA_integer_, nCellUns = nrow(xUns)
+        )
+      }
+      statsTbl <- countTbl |>
         dplyr::mutate(
           gateName = .env$method,
           method = .env$method,
