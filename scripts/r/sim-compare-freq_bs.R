@@ -3348,8 +3348,6 @@
 # a `results: asis` chunk. `level` is the heading level of the method set;
 # mean position headings are one deeper and the optional third loop deeper
 # still. Figures go to `dir/<method set>/<file_fn(pos, extra)>`.
-# Optional `subtitle(set, pos, extra, data)` identifies the plotted settings;
-# NULL preserves the plot constructor's subtitle.
 .simCompareFigureLoop <- function(
     data,
     make_plot,
@@ -3363,8 +3361,7 @@
     pos_col = "mean_pos_setting",
     allow_tall = FALSE,
     ratio_twins = FALSE,
-    mcse_mode = NULL,
-    subtitle = NULL) {
+    mcse_mode = NULL) {
   if (level + 1L + as.integer(!is.null(extra_col)) > 6L) {
     stop("Figure loop headings would be deeper than level 6.")
   }
@@ -3400,9 +3397,6 @@
         }
         if (nrow(curr) == 0L) next
         p <- make_plot(curr)
-        if (!is.null(subtitle)) {
-          p <- p + ggplot2::labs(subtitle = subtitle(set, pos, extra, curr))
-        }
         .analysis_print_save_fig(
           p, file.path(dir, set_name, file_fn(pos, extra)),
           height = height, allow_tall = allow_tall, mcse_mode = mcse_mode
@@ -3578,7 +3572,7 @@
   list(
     ggplot2::scale_x_continuous(labels = .analysis_label_number),
     .analysis_scale_method(),
-    ggplot2::labs(x = x_label, colour = "Method", subtitle = "Tube-level summaries"),
+    ggplot2::labs(x = x_label, colour = "Method"),
     .analysis_theme()
   )
 }
@@ -3868,7 +3862,7 @@
     .simBandwidthAbsErrorLayers(capped = capped) +
     .analysis_scale_method() +
     .simCompareMismatchFacet(by_prob) +
-    ggplot2::labs(x = x_label, colour = "Method", subtitle = "Tube-level error distributions") +
+    ggplot2::labs(x = x_label, colour = "Method") +
     .analysis_theme()
 }
 
@@ -3918,7 +3912,7 @@
     x_scale +
     .analysis_scale_method() +
     .simCompareMismatchFacet(by_prob) +
-    ggplot2::labs(x = x_label, colour = "Method", subtitle = "Tube-level error distributions") +
+    ggplot2::labs(x = x_label, colour = "Method") +
     .analysis_theme()
 }
 
@@ -4305,15 +4299,6 @@
     ggplot2::scale_y_sqrt(labels = .analysis_label_number) +
     .analysis_scale_method() +
     ggplot2::labs(
-      title = paste0(
-        "Gate diagnostic — sample ", paste(unique(cells$sample), collapse = ", ")
-      ),
-      subtitle = paste0(
-        paste(unname(.simCompareMismatchLabels[type_levels]), collapse = "; "),
-        "; shifts: ", paste(
-          .analysis_label_number(sort(unique(cells$mismatch_val))), collapse = ", "
-        )
-      ),
       x = x_label, y = "Number of cells (square-root scale)",
       fill = "Stimulated cells",
       colour = "Final gate", linetype = NULL

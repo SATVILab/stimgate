@@ -41,19 +41,16 @@ test_that("QMD 8 removes only views duplicated by its baseline grid", {
     expect_false(grepl(paste0("label: ", label, "-by-n-cell-prob"), text, fixed = TRUE))
     expect_true(grepl(paste0("label: ", label, "-by-n-cell\n"), text, fixed = TRUE))
   }
-  # Every shared loop opts into identifying its settings.
-  loops <- strsplit(text, ".simCompareFigureLoop(", fixed = TRUE)[[1]][-1]
-  expect_gt(length(loops), 0L)
-  for (loop in loops) {
-    chunk <- strsplit(loop, "```", fixed = TRUE)[[1]][1]
-    expect_true(grepl("subtitle = .compare_loop_subtitle", chunk, fixed = TRUE))
-  }
+  expect_false(grepl(".compare_loop_subtitle", text, fixed = TRUE))
 })
 
-test_that("figure loop subtitles identify each subset and preserve the default", {
+test_that("figure loops put settings in headings and distinct save paths", {
   env <- .qmd8_view_env()
   plots <- list()
-  env$.analysis_save_fig <- function(...) invisible(NULL)
+  paths <- character()
+  env$.analysis_save_fig <- function(plot, path, ...) {
+    paths <<- c(paths, path)
+  }
   env$.analysis_print_fig <- function(p, ...) {
     plots[[length(plots) + 1L]] <<- p
   }
@@ -62,29 +59,23 @@ test_that("figure loop subtitles identify each subset and preserve the default",
     mean_pos_setting = c("low", "high"),
     mismatch_type = c("mean_shift_all", "sd_inflation")
   )
-  make_plot <- function(d) ggplot2::ggplot(d) + ggplot2::labs(subtitle = "Original")
-  run <- function(subtitle = NULL) {
-    utils::capture.output(env$.simCompareFigureLoop(
-      data, make_plot, dir = tempdir(), file_fn = function(...) "unused.pdf",
-      height = 6, level = 4L, extra_col = "mismatch_type", subtitle = subtitle
-    ))
-  }
-  run()
+  headings <- utils::capture.output(env$.simCompareFigureLoop(
+    data, function(d) ggplot2::ggplot(d), dir = tempdir(),
+    file_fn = function(pos, extra) paste0(pos, "_", extra, ".pdf"),
+    height = 6, level = 4L, extra_col = "mismatch_type"
+  ))
   expect_length(plots, 8L)
-  expect_true(all(vapply(plots, function(p) identical(p$labels$subtitle, "Original"), logical(1))))
-  plots <- list()
-  run(function(set, pos, extra, d) {
-    expect_equal(unique(d$mean_pos_setting), pos)
-    expect_equal(unique(d$mismatch_type), extra)
-    expect_true(all(d$method %in% set$methods))
-    paste(set$heading, pos, extra, sep = "; ")
-  })
-  subtitles <- vapply(plots, function(p) p$labels$subtitle, character(1))
-  expect_length(unique(subtitles), 8L)
-  expect_true("Without Tailgate; high; sd_inflation" %in% subtitles)
+  expect_length(unique(paths), 8L)
+  expect_true(all(vapply(plots, function(p) {
+    is.null(p$labels$title) && is.null(p$labels$subtitle)
+  }, logical(1))))
+  expect_true(any(grepl("Without Tailgate", headings, fixed = TRUE)))
+  expect_true(any(grepl("Mean position: high", headings, fixed = TRUE)))
+  expect_true(any(grepl("sd_inflation", headings, fixed = TRUE)))
+  expect_true(any(grepl("high_sd_inflation.pdf", paths, fixed = TRUE)))
 })
 
-test_that("QMD 8 subtitles name the actual baseline cohort", {
+test_that("QMD 8 prose names the actual baseline cohort", {
   env <- .qmd8_view_env()
   text <- .qmd8_view_text()
   eval(parse(text = .qmd8_view_extract(text,
@@ -95,22 +86,27 @@ test_that("QMD 8 subtitles name the actual baseline cohort", {
   env$results_available <- TRUE
   chunk <- .qmd8_view_extract(text, "(?s)#\\| label: figure-helpers.*?```")
   eval(parse(text = sub("```$", "", chunk)), env)
-  set <- list(heading = "All methods")
-  data <- data.frame(transformation = "gamma", mismatch_type = "mean_shift_negative")
-  subtitle <- env$.compare_loop_subtitle(set, "high", NA, data)
-  expect_match(subtitle, "All methods; mean position: high", fixed = TRUE)
-  expect_match(subtitle, "Shift stimulated negatives only", fixed = TRUE)
-  expect_match(subtitle, "3 (gamma", fixed = TRUE)
-  expect_match(subtitle, "7 (gamma", fixed = TRUE)
+  data <- data.frame(transformation = "gamma", mean_pos_setting = "high",
+    mismatch_type = "mean_shift_negative")
+  note <- paste(utils::capture.output(env$.compare_baseline_note(data)), collapse = "\n")
+  expect_match(note, "Baselines:", fixed = TRUE)
+  expect_identical(env$.compare_mismatch_file("high",
+    list(mismatch_type = "mean_shift_negative", n_cell = 5000)),
+    "plot_mean_shift_negative_mean_pos_setting_high_n_cell_5000.pdf")
+  expect_match(env$.compare_mismatch_heading(
+    list(mismatch_type = "mean_shift_negative", n_cell = 5000)),
+    "Shift stimulated negatives only", fixed = TRUE)
+  expect_match(note, "3 (gamma", fixed = TRUE)
+  expect_match(note, "7 (gamma", fixed = TRUE)
   data$n_cell <- 5000
-  subtitle <- env$.compare_loop_subtitle(set, "high", NA, data)
-  expect_match(subtitle, "3 (gamma", fixed = TRUE)
-  expect_false(grepl("7 (gamma", subtitle, fixed = TRUE))
+  note <- paste(utils::capture.output(env$.compare_baseline_note(data)), collapse = "\n")
+  expect_match(note, "3 (gamma", fixed = TRUE)
+  expect_false(grepl("7 (gamma", note, fixed = TRUE))
   # A dev run can omit a baseline even when its averaged columns match.
   env$compare_raw <- data.frame(base_scenario_id = 3L)
   data$n_cell <- NULL
-  subtitle <- env$.compare_loop_subtitle(set, "high", NA, data)
-  expect_false(grepl("7 (gamma", subtitle, fixed = TRUE))
+  note <- paste(utils::capture.output(env$.compare_baseline_note(data)), collapse = "\n")
+  expect_false(grepl("7 (gamma", note, fixed = TRUE))
 })
 
 test_that("gate diagnostic IDs stay character and sort in numeric order", {
@@ -149,10 +145,11 @@ test_that("gate diagnostic figures name their sample and mismatch settings", {
   ) |>
     dplyr::mutate(threshold = 0.8)
   p <- env$.simComparePlotGateDiagnostic(cells, gates)
-  expect_match(p$labels$title, "sample 10", fixed = TRUE)
-  expect_match(p$labels$subtitle, "Shift all stimulated cells", fixed = TRUE)
-  expect_match(p$labels$subtitle, "Shift stimulated negatives only", fixed = TRUE)
-  expect_match(p$labels$subtitle, "shifts: 0, 0.05, 0.1", fixed = TRUE)
+  expect_null(p$labels$title)
+  expect_null(p$labels$subtitle)
+  text <- .qmd8_view_text()
+  expect_match(text, 'paste0("Sample ", s)', fixed = TRUE)
+  expect_match(text, 'paste0("plot_sample_", s, ".pdf")', fixed = TRUE)
   expect_no_error(ggplot2::ggplot_build(p))
 })
 

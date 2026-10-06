@@ -689,3 +689,33 @@ test_that("ACS bootstrap keeps common donor draws across tubes, methods and stim
   expect_equal(out, duplicated)
   expect_error(env$.acsCytofManualUncertainty(rows, reps = 0), "at least two")
 })
+
+test_that("ACS gate diagnostics remove panel titles before arranging plots", {
+  env <- .load_acs_method_env()
+  panel <- ggplot2::ggplot(data.frame(x = 1), ggplot2::aes(x, x)) +
+    ggplot2::labs(title = "Sample 2", subtitle = "Diagnostic")
+  testthat::local_mocked_bindings(
+    plotStim = function(..., grid) {
+      expect_false(grid)
+      list(panel, panel)
+    }, .package = "stimgate"
+  )
+  captured <- NULL
+  testthat::local_mocked_bindings(
+    plot_grid = function(plotlist, ...) {
+      captured <<- plotlist
+      ggplot2::ggplot()
+    }, .package = "cowplot"
+  )
+  expect_no_error(env$.acsCytofPlotGateCheck(NULL, "unused"))
+  expect_length(captured, 2L)
+  for (p in captured) {
+    expect_null(p$labels$title)
+    expect_null(p$labels$subtitle)
+    expect_identical(p$mapping, panel$mapping)
+  }
+  # The original package plot remains available with its labels.
+  expect_identical(panel$labels$title, "Sample 2")
+  qmd <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+  expect_match(qmd, "stimgate_check_sample_2.pdf", fixed = TRUE)
+})

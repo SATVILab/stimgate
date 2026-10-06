@@ -534,8 +534,7 @@ test_that("signed-error plots draw dashed lines whose weight varies", {
       dplyr::mutate(
         bias_uns_multiplier = bw, bw = 0.1, mismatch_label = "mean shift 0",
         bias_uns_basis = rep(c("bandwidth", "bandwidth", "negative_width"), each = 2)
-      ),
-    title = "test"
+      )
   )
   expect_no_error(ggplot2::ggplotGrob(bias))
   # Titles are not drawn; headings in the QMD carry that information.

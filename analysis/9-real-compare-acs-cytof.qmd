@@ -493,6 +493,8 @@ The seven curves summarise the full signed relative error distribution, includin
 
 Intervals bootstrap donors, carrying all their tubes together and using common donor draws across methods and strata. They describe agreement with the imperfect manual reference. All seven percentiles share each population panel; cytokine remains on the x axis.
 
+These percentiles pool all stimuli; intervals use donor bootstrap draws.
+
 ```{r}
 #| label: manual-signed-percentiles
 #| echo: false
@@ -507,8 +509,7 @@ if (isTRUE(run_plots)) {
     p <- .simBandwidthSignedPercentilePlot(
       manual_percentiles |> dplyr::filter(method %in% method_set$methods),
       x = "cyt", x_label = "Cytokine", mcse = TRUE,
-      facet = ggplot2::facet_wrap(~pop, scales = "free_y"),
-      subtitle = paste0(method_set$label, "; all stimuli; donor-bootstrap intervals")
+      facet = ggplot2::facet_wrap(~pop, scales = "free_y")
     )
     .analysis_print_save_fig(p,
       file.path(.analysis_fig_dir(c(fig_key, "signed_percentiles", set_name), root_dir),
@@ -635,16 +636,13 @@ if (isTRUE(run_plots)) {
     }
     .analysis_heading(paste0("Population: ", pop), 4)
     gs <- flowWorkspace::load_gs(paths$gs)
-    p <- stimgate::plotStim(
-      ind = 2L, .data = gs, pathProject = paths$stimgate,
-      pop = "root", chnl = c("Ho165Di", "Nd146Di")
-    )
+    p <- .acsCytofPlotGateCheck(gs, paths$stimgate)
     path_check <- file.path(
       .analysis_fig_dir(
         c(fig_key, "gate_diagnostics", gsub("[^A-Za-z0-9_.-]+", "_", pop)),
         root_dir
       ),
-      "stimgate_check.pdf"
+      "stimgate_check_sample_2.pdf"
     )
     .analysis_print_save_fig(p, path_check, height = 14)
   }

@@ -76,12 +76,11 @@ test_that("frequency plots separate methods and preserve nonpositive estimates",
   without <- env$.simComparePlotEstVsTruth(dplyr::filter(data, .data$method != "tailgate"))
   expect_equal(sort(unique(without$data$method_position - without$data$response_position)), c(-0.25, 0.25))
   expect_error(env$.simComparePlotEstVsTruth(data, maxwidth = 0.3), "method spacing")
-  labelled <- env$.simCompareQmd7Subtitle(plot, data)
-  expect_match(labelled$labels$subtitle, "All methods")
-  expect_match(labelled$labels$subtitle, "Mean position: high", fixed = TRUE)
-  labelled <- env$.simCompareQmd7Subtitle(without, without$data)
-  expect_match(labelled$labels$subtitle, "Without Tailgate")
-  expect_no_error(ggplot2::ggplotGrob(labelled))
+  for (p in list(plot, without)) {
+    expect_null(p$labels$title)
+    expect_null(p$labels$subtitle)
+    expect_no_error(ggplot2::ggplotGrob(p))
+  }
 })
 
 test_that("provenance table counts errors in the all-sample denominator", {

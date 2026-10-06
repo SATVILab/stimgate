@@ -1033,9 +1033,6 @@ if (isTRUE(run_plots)) {
             mcse = show_mcse
           )
 
-          p <- p + ggplot2::labs(subtitle = paste0("Mean position: ", mean_pos_setting_curr,
-            if ("n_cell" %in% names(plot_tbl)) paste0("; cells: ", paste(unique(plot_tbl$n_cell), collapse = ", ")) else "; averaged over cell counts",
-            if ("prob_response" %in% names(plot_tbl)) paste0("; response: ", paste(unique(plot_tbl$prob_response), collapse = ", ")) else "; averaged over response probabilities"))
           path_p <- file.path(
             plot_dir,
             paste0(
@@ -1203,9 +1200,6 @@ if (isTRUE(run_plots)) {
             mcse = show_mcse
           )
 
-          p <- p + ggplot2::labs(subtitle = paste0("Mean position: ", mean_pos_setting_curr,
-            if ("n_cell" %in% names(plot_tbl)) paste0("; cells: ", paste(unique(plot_tbl$n_cell), collapse = ", ")) else "; averaged over cell counts",
-            if ("prob_response" %in% names(plot_tbl)) paste0("; response: ", paste(unique(plot_tbl$prob_response), collapse = ", ")) else "; averaged over response probabilities"))
           path_p <- file.path(
             plot_dir,
             paste0(
@@ -1361,9 +1355,6 @@ if (isTRUE(run_plots)) {
             p <- .simBandwidthSignedPercentilePlot(plot_tbl,
             x = "bias_uns_multiplier", x_label = "Bias multiplier", mcse = show_mcse)
 
-            p <- p + ggplot2::labs(subtitle = paste0("Mean position: ", mean_pos_setting_curr,
-              if ("n_cell" %in% names(plot_tbl)) paste0("; cells: ", paste(unique(plot_tbl$n_cell), collapse = ", ")) else "; averaged over cell counts",
-              if ("prob_response" %in% names(plot_tbl)) paste0("; response: ", paste(unique(plot_tbl$prob_response), collapse = ", ")) else "; averaged over response probabilities"))
             path_p <- file.path(
               plot_dir,
               paste0(

@@ -852,7 +852,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   .compare_mismatch_x <- function(type) {
     unname(.simCompareMismatchAxisLabels[type])
   }
-  .compare_loop_subtitle <- function(set, pos, extra, d) {
+  .compare_baseline_note <- function(d) {
+    pos <- unique(d$mean_pos_setting)
     baselines <- targeted_scenarios_tbl |>
       dplyr::filter(
         base_scenario_id %in% compare_raw$base_scenario_id,
@@ -861,20 +862,19 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     for (col in intersect(c("base_scenario_id", "n_cell", "prob_response"), names(d))) {
       baselines <- baselines[baselines[[col]] %in% d[[col]], , drop = FALSE]
     }
-    paste0(
-      set$heading, "; mean position: ", pos, "\n",
-      paste(unname(.simCompareMismatchLabels[unique(d$mismatch_type)]), collapse = "; "),
-      "\nBaselines: ", paste0(
+    cat("\n\n", paste0(
+      "Baselines: ", paste0(
         baselines$base_scenario_id, " (", baselines$transformation,
         ", cells=", .analysis_label_number(baselines$n_cell),
         ", response=", .analysis_label_percent(baselines$prob_response), ")",
         collapse = "; "
       )
-    )
+    ), ".\n\n", sep = "")
   }
   # Plot function for one figure: the x axis label depends on the mechanism.
   .compare_mismatch_plot <- function(plot_fn, ...) {
     function(d) {
+      .compare_baseline_note(d)
       if ("n_scenario_median" %in% names(d)) {
         count_cols <- c(
           "transformation", "mismatch_val", "method", "n_cell", "direction",
@@ -1018,7 +1018,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 13,
-    level = 4L, mcse_mode = mcse_mode, subtitle = .compare_loop_subtitle
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1077,7 +1077,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 9,
-    level = 4L, mcse_mode = mcse_mode, subtitle = .compare_loop_subtitle
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1347,7 +1347,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 14,
-    level = 4L, mcse_mode = mcse_mode, subtitle = .compare_loop_subtitle
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1374,7 +1374,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"),
     height = 14,
-    level = 4L, mcse_mode = mcse_mode, subtitle = .compare_loop_subtitle
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1411,7 +1411,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = "mismatch_type",
     ratio_twins = TRUE,
     height = 16,
-    level = 4L, mcse_mode = mcse_mode, subtitle = .compare_loop_subtitle
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1437,8 +1437,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     height = 16,
-    level = 4L, mcse_mode = mcse_mode,
-    subtitle = .compare_loop_subtitle
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1466,7 +1465,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_col = c("mismatch_type", "n_cell"),
     ratio_twins = TRUE,
     height = 16,
-    level = 4L, mcse_mode = mcse_mode, subtitle = .compare_loop_subtitle
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1506,13 +1505,16 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 #| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(dataset_max,
-    make_plot = function(d) .simCompareDatasetMaxPlot(d, "occurrence",
+    make_plot = function(d) {
+      .compare_baseline_note(d)
+      .simCompareDatasetMaxPlot(d, "occurrence",
       x = "mismatch_val", x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
-      x_log = FALSE, mcse = show_mcse),
+      x_log = FALSE, mcse = show_mcse)
+    },
     dir = .compare_fresh_fig_dir("dataset_max_occurrence_by_n_cell_prob"),
     file_fn = .compare_mismatch_file, extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"), height = 14, level = 4L,
-    mcse_mode = mcse_mode, subtitle = .compare_loop_subtitle)
+    mcse_mode = mcse_mode)
 }
 ```
 
@@ -1527,14 +1529,16 @@ below. Each signed-error figure has an identical estimate/reference ratio twin.
 #| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(dataset_max,
-    make_plot = function(d) .simCompareDatasetMaxPlot(d, "severity",
+    make_plot = function(d) {
+      .compare_baseline_note(d)
+      .simCompareDatasetMaxPlot(d, "severity",
       x = "mismatch_val", x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
-      x_log = FALSE, mcse = show_mcse),
+      x_log = FALSE, mcse = show_mcse)
+    },
     dir = .compare_fresh_fig_dir("dataset_max_signed_error_severity_by_n_cell_prob"),
     file_fn = .compare_mismatch_file, extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"), ratio_twins = TRUE,
-    height = 14, level = 4L, mcse_mode = mcse_mode,
-    subtitle = .compare_loop_subtitle)
+    height = 14, level = 4L, mcse_mode = mcse_mode)
 }
 ```
 
@@ -1558,11 +1562,14 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     )
   .simCompareFigureLoop(
     summary_shifts,
-    make_plot = function(d) .simComparePlotPlacement(d, mcse = show_mcse),
+    make_plot = function(d) {
+      .compare_baseline_note(d)
+      .simComparePlotPlacement(d, mcse = show_mcse)
+    },
     dir = .analysis_fig_dir(c(fig_key, "threshold_placement_unstim"), path_root = root_dir),
     file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
     height = 16,
-    level = 4L, mcse_mode = mcse_mode, subtitle = .compare_loop_subtitle
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```
@@ -1584,11 +1591,14 @@ pooled tube-level 90th percentile in each draw.
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
     compare_summary,
-    make_plot = function(d) .simComparePlotUpperTail(d, mcse = show_mcse),
+    make_plot = function(d) {
+      .compare_baseline_note(d)
+      .simComparePlotUpperTail(d, mcse = show_mcse)
+    },
     dir = .analysis_fig_dir(c(fig_key, "upper_tail_and_fallbacks"), path_root = root_dir),
     file_fn = function(pos, extra) paste0("plot_", pos, ".pdf"),
     height = 18,
-    level = 4L, mcse_mode = mcse_mode, subtitle = .compare_loop_subtitle
+    level = 4L, mcse_mode = mcse_mode
   )
 }
 ```

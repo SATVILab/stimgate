@@ -21,26 +21,6 @@
     dplyr::select(-".new_response")
 }
 
-# Keep the plot's existing statistical subtitle and add its loop settings.
-.simCompareQmd7Subtitle <- function(plot, data, method_col = "method") {
-  methods <- unique(as.character(data[[method_col]]))
-  method_set <- if ("tailgate" %in% methods) "All methods" else "Without Tailgate"
-  settings <- c(method_set,
-    paste0("Mean position: ", paste(unique(data$mean_pos_setting), collapse = ", ")))
-  for (col in c("prob_response", "condition_perturbation_sd", "n_cell")) {
-    values <- unique(data[[col]])
-    if (length(values) == 1L) {
-      label <- switch(col, prob_response = "Response probability",
-        condition_perturbation_sd = "Condition perturbation SD", n_cell = "Stimulated cells")
-      value <- if (col == "prob_response") .analysis_label_percent(values) else values
-      settings <- c(settings, paste0(label, ": ", value))
-    }
-  }
-  plot + ggplot2::labs(
-    subtitle = paste(c(plot$labels$subtitle, settings), collapse = " | ")
-  )
-}
-
 .simCompareQmd7FallbackTable <- function(summary) {
   counts <- c("n_threshold_fallback", "n_run_error", "n_no_cutpoint")
   summary |>

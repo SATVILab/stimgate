@@ -738,9 +738,9 @@ if (isTRUE(run_plots)) {
   .simCompareFigureLoop(
     plot_tbl,
     make_plot = function(d) {
-      .simCompareQmd7Subtitle(.simComparePlotByCell(
+      .simComparePlotByCell(
         d, "mean_abs_error", "Tube-level mean absolute error", percent_y = TRUE, mcse = show_mcse
-      ), d)
+      )
     },
     dir = file.path(plot_dir, "mae_by_n_cell"),
     file_fn = function(pos, extra) {
@@ -770,10 +770,10 @@ if (isTRUE(run_plots)) {
   .simCompareFigureLoop(
     plot_tbl,
     make_plot = function(d) {
-      .simCompareQmd7Subtitle(.simComparePlotByCell(
+      .simComparePlotByCell(
         d, "med_abs_rel_error", "Tube-level median absolute relative error",
         zero_line = TRUE, free_y = TRUE, mcse = show_mcse
-      ), d)
+      )
     },
     dir = file.path(plot_dir, "median_relative_error_by_n_cell"),
     file_fn = function(pos, extra) {
@@ -803,10 +803,10 @@ if (isTRUE(run_plots)) {
   .simCompareFigureLoop(
     plot_tbl,
     make_plot = function(d) {
-      .simCompareQmd7Subtitle(.simComparePlotByCell(
+      .simComparePlotByCell(
         d, "q90_abs_rel_error", "Tube-level 90th percentile absolute relative error",
         zero_line = TRUE, free_y = TRUE, mcse = show_mcse
-      ), d)
+      )
     },
     dir = file.path(plot_dir, "q90_relative_error_by_n_cell"),
     file_fn = function(pos, extra) {
@@ -836,10 +836,10 @@ if (isTRUE(run_plots)) {
   .simCompareFigureLoop(
     plot_tbl,
     make_plot = function(d) {
-      .simCompareQmd7Subtitle(.simComparePlotByCell(
+      .simComparePlotByCell(
         d, "q95_abs_rel_error", "Tube-level 95th percentile absolute relative error",
         zero_line = TRUE, free_y = TRUE, mcse = show_mcse
-      ), d)
+      )
     },
     dir = file.path(plot_dir, "q95_relative_error_by_n_cell"),
     file_fn = function(pos, extra) {
@@ -920,7 +920,7 @@ if (isTRUE(run_plots)) {
 #| results: asis
 if (isTRUE(run_plots)) {
   .simCompareFigureLoop(dataset_max,
-    make_plot = function(d) .simCompareQmd7Subtitle(.simCompareDatasetMaxPlot(d, "occurrence", mcse = show_mcse), d),
+    make_plot = function(d) .simCompareDatasetMaxPlot(d, "occurrence", mcse = show_mcse),
     dir = file.path(plot_dir, "dataset_max_occurrence_by_n_cell"),
     file_fn = function(pos, extra) paste0("dataset_max_occurrence_", pos, ".png"),
     height = 14, level = 4L, mcse_mode = mcse_mode)
@@ -939,7 +939,7 @@ below zero. The ratio companion uses the identical curves and intervals, with
 #| results: asis
 if (isTRUE(run_plots)) {
   .simCompareFigureLoop(dataset_max,
-    make_plot = function(d) .simCompareQmd7Subtitle(.simCompareDatasetMaxPlot(d, "severity", mcse = show_mcse), d),
+    make_plot = function(d) .simCompareDatasetMaxPlot(d, "severity", mcse = show_mcse),
     dir = file.path(plot_dir, "dataset_max_signed_error_severity_by_n_cell"),
     file_fn = function(pos, extra) paste0("dataset_max_severity_", pos, ".png"),
     ratio_twins = TRUE, height = 14, level = 4L, mcse_mode = mcse_mode)
@@ -982,8 +982,8 @@ if (isTRUE(run_plots)) {
     caption = "Directional pooled-percentile coverage, including undefined bootstrap draws."))
   .simCompareFigureLoop(
     signed_tbl,
-    make_plot = function(d) .simCompareQmd7Subtitle(.simComparePlotSignedError(d,
-      stat_cols = c(median = "Median", q95 = "95th percentile"), mcse = show_mcse), d),
+    make_plot = function(d) .simComparePlotSignedError(d,
+      stat_cols = c(median = "Median", q95 = "95th percentile"), mcse = show_mcse),
     dir = file.path(plot_dir, "signed_error_by_n_cell"),
     file_fn = function(pos, extra) {
       paste0(
@@ -1065,7 +1065,7 @@ if (isTRUE(run_plots)) {
     )
   .simCompareFigureLoop(
     plot_tbl,
-    make_plot = function(d) .simCompareQmd7Subtitle(.simComparePlotEstVsTruth(d), d),
+    make_plot = function(d) .simComparePlotEstVsTruth(d),
     dir = file.path(plot_dir, "estimated_vs_true_frequency"),
     file_fn = function(pos, extra) {
       paste0("freq_bs_est_vs_truth_", pos, ".png")
@@ -1131,10 +1131,7 @@ if (isTRUE(run_plots)) {
   )
   .simCompareFigureLoop(
     plot_tbl,
-    make_plot = function(d) .simCompareQmd7Subtitle(
-      .simComparePlotThresholdDensity(d, densities = threshold_reference_densities),
-      d, method_col = "approach"
-    ),
+    make_plot = function(d) .simComparePlotThresholdDensity(d, densities = threshold_reference_densities),
     dir = file.path(plot_dir, "threshold_distributions"),
     file_fn = function(pos, extra) {
       paste0("freq_bs_threshold_density_", pos, ".png")

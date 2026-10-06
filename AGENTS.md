@@ -577,8 +577,8 @@ Use `.analysis_is_dev()` and
 errors naming the analysis, render command, matching dev/quick profile and
 required completion of all chunks.
 
-Looped comparison figures should identify their method set and scenario settings
-in a subtitle. Before removing grid views as duplicates, check the summary
+Analysis figures carry no titles or subtitles. Identify their method set and
+scenario settings in saved file paths and QMD headings, prose or captions. Before removing grid views as duplicates, check the summary
 grouping: one setting per baseline does not mean one baseline per plotted group.
 
 When displaying ggplot objects inside QMD conditionals or loops, call `print()`

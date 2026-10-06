@@ -162,12 +162,10 @@ add_bw_labs <- function(.data) {
 
 # Bias curves share the same dimensions in all absolute-error views. Colour is
 # the bandwidth; curves for different bias scales stay separate (`group`)
-# although only the bandwidth rule is shown in Analysis 2b. `title` is ignored
-# (figure titles go in headings) and is kept so older calls still work.
+# although only the bandwidth rule is shown in Analysis 2b.
 # `mcse`: draw the `<stat>_lower`/`<stat>_upper` Monte Carlo intervals.
 .simBandwidthBiasRelativeErrorPlot <- function(
   tbl,
-  title = NULL,
   y_label = "Absolute relative error",
   facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
   stat_cols = c(
@@ -212,7 +210,6 @@ add_bw_labs <- function(.data) {
 # +1500% are drawn at +1500% (`value_shown`); `value` keeps the actual error.
 .simBandwidthBiasSignedErrorPlot <- function(
   tbl,
-  title = NULL,
   y_label = "Relative error",
   facet = ggplot2::facet_grid(statistic ~ mismatch_label, scales = "free_y"),
   stat_cols = c(median = "Median", q90 = "90th percentile", max = "Maximum"),
@@ -276,12 +273,10 @@ add_bw_labs <- function(.data) {
 # 2a curves: colour is the direction (two halves of a diverging palette, so
 # neither looks worse) and shade the statistic (darker = further from truth).
 # With `by_prob`, rows of panels separate response probabilities. Errors above
-# +1500% are drawn at +1500% (`err_value_shown`). `title` is ignored (figure
-# titles go in headings) and is kept so older calls still work.
+# +1500% are drawn at +1500% (`err_value_shown`).
 # `mcse`: draw the Monte Carlo intervals carried by the summary.
 .simBandwidthGlobalSignedErrorPlot <- function(
   tbl,
-  title = NULL,
   by_prob = FALSE,
   mcse = FALSE
 ) {
@@ -957,7 +952,7 @@ add_bw_labs <- function(.data) {
 .simBandwidthSignedPercentilePlot <- function(
     tbl, x = "bw", x_label = "Bandwidth", x_log = FALSE,
     by_prob = FALSE, facet = NULL, mcse = FALSE,
-    y_label = NULL, subtitle = NULL,
+    y_label = NULL,
     alphas = c(outer = 0.35, tail = 0.55, quartile = 0.75, median = 1),
     linewidths = c(outer = 0.4, tail = 0.6, quartile = 0.9, median = 1.2)) {
   outer <- .simBandwidthSignedPercentileOuter(tbl)
@@ -989,12 +984,6 @@ add_bw_labs <- function(.data) {
   counts <- if (length(scenario_counts)) paste("Finite contributing scenarios:",
     paste(vapply(scenario_counts, function(name) paste0(sub("^n_scenario_", "", name),
       " ", min(tbl[[name]]), "–", max(tbl[[name]])), character(1)), collapse = "; ")) else NULL
-  if (is.null(subtitle)) {
-    settings <- intersect(c("mean_pos_setting", "prob_response", "n_cell", "mismatch_type"), names(tbl))
-    settings <- setdiff(settings, x)
-    subtitle <- paste(vapply(settings, function(name) paste0(name, ": ",
-      paste(unique(tbl[[name]]), collapse = ", ")), character(1)), collapse = "; ")
-  }
   caption <- paste(counts,
     if (fallback) "5th/95th (too few samples for 2.5th/97.5th intervals)." else "Outer pair: 2.5th/97.5th.",
     "Unavailable intervals are omitted; points remain.")
@@ -1035,6 +1024,6 @@ add_bw_labs <- function(.data) {
       else if (is.numeric(long[[x]])) ggplot2::scale_x_continuous(labels = .analysis_label_number)) +
     .analysis_theme() +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-    ggplot2::labs(x = x_label, y = y_label, subtitle = subtitle, caption = caption)
+    ggplot2::labs(x = x_label, y = y_label, caption = caption)
   p
 }

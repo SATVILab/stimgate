@@ -1121,6 +1121,8 @@ The seven curves summarise the full signed relative error distribution, includin
 
 Independent-sample intervals use order statistics within scenarios; equal-weight scenario averages combine their standard errors as sqrt(sum(se^2))/k. These views retain the fixed bandwidth/bias subset and its scientific exclusions.
 
+These figures use low bias and no condition perturbation, averaging scenario percentiles equally over cell counts and response probabilities.
+
 ```{r}
 #| label: signed-percentiles-averaged-n-cell
 #| results: asis
@@ -1148,8 +1150,6 @@ if (isTRUE(run_plots)) {
       ) |>
       .simBandwidthSignedPercentileAverage(c("transformation", "bw"))
     p <- .simBandwidthSignedPercentilePlot(err_rel_avg_tbl, mcse = show_mcse)
-    p <- p + ggplot2::labs(subtitle = paste0("Mean position: ", mean_pos_setting_curr,
-      "; averaged over cell counts and response probabilities; low bias"))
     path_p <- file.path(
       .analysis_fig_dir(c(fig_key, "signed_percentiles_averaged"), root_dir),
       paste0(
@@ -1225,6 +1225,8 @@ The seven curves summarise the full signed relative error distribution, includin
 
 Independent-sample intervals use order statistics within scenarios; equal-weight scenario averages combine their standard errors as sqrt(sum(se^2))/k. These views retain the fixed bandwidth/bias subset and its scientific exclusions.
 
+These figures use low bias and no condition perturbation, averaging scenario percentiles equally over response probabilities at each cell count.
+
 ```{r}
 #| label: signed-percentiles-by-n-cell
 #| results: asis
@@ -1250,8 +1252,6 @@ if (isTRUE(run_plots)) {
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr)
       if (nrow(plot_tbl) == 0L) next
       p <- .simBandwidthSignedPercentilePlot(plot_tbl, mcse = show_mcse)
-      p <- p + ggplot2::labs(subtitle = paste0("Mean position: ", mean_pos_setting_curr,
-        "; cells: ", .analysis_label_number(n_cell_curr), "; low bias; no condition perturbation"))
       path_p <- file.path(
         .analysis_fig_dir(
           c(
@@ -1341,6 +1341,8 @@ The seven curves summarise the full signed relative error distribution, includin
 
 Independent-sample intervals use order statistics within scenarios; equal-weight scenario averages combine their standard errors as sqrt(sum(se^2))/k. These views retain the fixed bandwidth/bias subset and its scientific exclusions.
 
+These figures use low bias and no condition perturbation; panels keep response probabilities separate at each cell count.
+
 ```{r}
 #| label: signed-percentiles-by-n-cell-prob
 #| results: asis
@@ -1368,8 +1370,6 @@ if (isTRUE(run_plots)) {
         plot_tbl,
         by_prob = TRUE, mcse = show_mcse
       )
-      p <- p + ggplot2::labs(subtitle = paste0("Mean position: ", mean_pos_setting_curr,
-        "; cells: ", .analysis_label_number(n_cell_curr), "; low bias; no condition perturbation"))
       path_p <- file.path(
         .analysis_fig_dir(
           c(
