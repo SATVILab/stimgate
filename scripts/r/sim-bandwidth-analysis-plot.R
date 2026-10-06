@@ -203,7 +203,7 @@ add_bw_labs <- function(.data) {
   mcse = FALSE
 ) {
   if (is.null(facet)) facet <- ggplot2::facet_wrap(ggplot2::vars(statistic, mismatch_label),
-    ncol = dplyr::n_distinct(tbl$mismatch_label), scales = "free_y", labeller = ggplot2::label_both)
+    ncol = dplyr::n_distinct(tbl$mismatch_label), scales = "free_y", labeller = ggplot2::labeller(.multi_line = FALSE))
   tbl <- .simBandwidthRankData(tbl) |>
     .simBandwidthErrorStatLong(stat_cols) |>
     dplyr::mutate(bw_lab = .simBandwidthBwLabFactor(.data$bw))
@@ -245,7 +245,7 @@ add_bw_labs <- function(.data) {
   mcse = FALSE
 ) {
   if (is.null(facet)) facet <- ggplot2::facet_wrap(ggplot2::vars(statistic, mismatch_label),
-    ncol = dplyr::n_distinct(tbl$mismatch_label), scales = "free_y", labeller = ggplot2::label_both)
+    ncol = dplyr::n_distinct(tbl$mismatch_label), scales = "free_y", labeller = ggplot2::labeller(.multi_line = FALSE))
   tbl <- .simBandwidthRankData(tbl) |>
     .simBandwidthErrorStatLong(stat_cols) |>
     dplyr::mutate(
@@ -1106,7 +1106,7 @@ add_bw_labs <- function(.data) {
   if (is.null(facet)) {
     facet <- if (x == "bias_uns_multiplier") {
       ggplot2::facet_wrap(ggplot2::vars(bw, bias_uns_basis, mismatch_label),
-        ncol = dplyr::n_distinct(long$mismatch_label), scales = "free_y", labeller = ggplot2::label_both)
+        ncol = dplyr::n_distinct(long$mismatch_label), scales = "free_y", labeller = ggplot2::labeller(.multi_line = FALSE))
     } else if (by_prob) {
       ggplot2::facet_wrap(ggplot2::vars(prob_response, transformation),
         ncol = dplyr::n_distinct(long$transformation), scales = "free",
