@@ -4,6 +4,9 @@ format:
   html:
     embed-resources: true
     toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
 execute:
   warning: false
   message: false
@@ -158,11 +161,11 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-Each figure shows one method, so every figure is made once per method.
+Each figure shows one method. Scatterplots also have a separate figure for each population.
 
 ### Raw background-subtracted frequencies
 
-Manual background-subtracted frequency (%) is on the horizontal axis and automated frequency (%) on the vertical axis. Colours identify stimuli, and panels separate populations and cytokines within each method. Points closer to the identity line indicate closer agreement; horizontal and vertical lines mark zero frequency.
+Manual background-subtracted frequency (%) is on the horizontal axis and automated frequency (%) on the vertical axis. Colours and shapes identify stimuli. Each population has its own figure with cytokine panels; both axis ranges differ between panels. Points closer to the identity line indicate closer agreement; horizontal and vertical lines mark zero frequency.
 
 ```{r}
 #| label: acs-validation-scatter
@@ -173,16 +176,22 @@ if (isTRUE(run_plots)) {
     .analysis_heading(
       paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 4
     )
-    .analysis_print_fig(
-      .acsCytofValidationPlotScatter(manual_comparison_tbl, method)
-    )
+    method_rows <- manual_comparison_tbl |> dplyr::filter(.data$method == .env$method)
+    for (population in unique(as.character(method_rows$pop))) {
+      .analysis_heading(paste("Population:", population), 5)
+      .analysis_print_fig(
+        .acsCytofValidationPlotScatter(
+          method_rows |> dplyr::filter(.data$pop == .env$population), method
+        )
+      )
+    }
   }
 }
 ```
 
 ### Correlation heatmaps for CD4, CD8 and TCRgd T cells
 
-Cytokines run across columns and the three T-cell populations across rows, with panels for stimuli. Colour and text show Pearson or concordance correlation for each method after applying the eligibility rules. Values closer to one indicate stronger agreement; grey cells mark unavailable correlations.
+Cytokines run across columns and the three T-cell populations across rows, with panels for stimuli. Colour and text show Pearson or concordance correlation for each method after applying the eligibility rules. Values closer to one indicate stronger agreement; light-grey cells labelled `excl.` mark strata excluded by the signal eligibility rules, while white cells labelled `NA` mark eligible strata whose correlation is unavailable. Blank positions have no matched stratum.
 
 ```{r}
 #| label: acs-validation-t-cell-correlations

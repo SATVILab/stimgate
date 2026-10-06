@@ -4,6 +4,9 @@ format:
   html:
     embed-resources: true
     toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
 execute:
   warning: false
   message: false

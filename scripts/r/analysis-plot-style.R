@@ -78,7 +78,7 @@
 .analysis_mcse_plot_variants <- function(plot, mcse_mode = NULL) {
   if (is.null(mcse_mode)) return(list(original = plot))
   mode <- .analysis_mcse_mode(mcse_mode)
-  variants <- if (mode == "both") c("off", "on") else mode
+  variants <- mode
   stats::setNames(lapply(variants, function(version) {
     out <- plot
     if (version == "off") {
@@ -144,27 +144,43 @@
   invisible(plot)
 }
 
+# Print before opening a save device so asis headings keep their own figure.
+.analysis_print_save_fig <- function(plot, path, ..., mcse_mode = NULL) {
+  .analysis_print_fig(plot, mcse_mode = mcse_mode)
+  if (exists(".simBandwidthDisplayNote", mode = "function")) .simBandwidthDisplayNote(.analysis_mcse_plot_variants(plot, mcse_mode)[[1L]], path)
+  .analysis_save_fig(plot, path, ..., mcse_mode = mcse_mode)
+}
+
 # Colour roles, kept distinct so a colour means one thing across the analyses:
-# - methods (QMDs 7-10): raspberry StimGate, slate-blue Tailgate, saffron
-#   F-beta; distinct in hue and lightness, so colour-blind and greyscale safe;
+# - methods (QMDs 7-10): Okabe-Ito blue StimGate, bluish-green Tailgate,
+#   orange F-beta, for colour-blind accessibility;
 # - over/under direction: ColorBrewer BrBG teal and brown (see
 #   `.simBandwidthSignedErrorColours`);
 # - error statistic (median, upper percentile, maximum): blues and lavender;
 # - bandwidth: a sequential purple ramp (`make_bw_colour_values()`).
 .analysis_method_colours <- c(
-  stimgate = "#C0395A", tailgate = "#3D5A80", fbeta = "#E9A23B"
+  stimgate = "#0072B2", tailgate = "#009E73", fbeta = "#E69F00"
 )
 .analysis_method_labels <- c(
   stimgate = "StimGate", tailgate = "Tailgate", fbeta = "F-beta"
 )
+.analysis_method_shapes <- c(stimgate = 16, tailgate = 17, fbeta = 15)
+.analysis_method_linetypes <- c(stimgate = "solid", tailgate = "22", fbeta = "42")
 .analysis_stat_colours <- c(median = "#0072B2", upper = "#56B4E9", max = "#8C8DBA")
 
-# Colour scale for methods; `aesthetics = "fill"` for fills.
+# Shared method encodings; matching names and labels merge their legends.
 .analysis_scale_method <- function(aesthetics = "colour", ...) {
-  ggplot2::scale_colour_manual(
-    values = .analysis_method_colours,
-    labels = .analysis_method_labels,
-    aesthetics = aesthetics,
-    ...
-  )
+  colour_aesthetics <- intersect(aesthetics, c("colour", "color", "fill"))
+  scales <- list()
+  if (length(colour_aesthetics)) scales <- c(scales, list(ggplot2::scale_colour_manual(
+    values = .analysis_method_colours, labels = .analysis_method_labels,
+    name = "Method", aesthetics = colour_aesthetics, ...
+  )))
+  if ("shape" %in% aesthetics) scales <- c(scales, list(ggplot2::scale_shape_manual(
+    values = .analysis_method_shapes, labels = .analysis_method_labels, name = "Method", ...
+  )))
+  if ("linetype" %in% aesthetics) scales <- c(scales, list(ggplot2::scale_linetype_manual(
+    values = .analysis_method_linetypes, labels = .analysis_method_labels, name = "Method", ...
+  )))
+  if (length(scales) == 1L) scales[[1]] else scales
 }

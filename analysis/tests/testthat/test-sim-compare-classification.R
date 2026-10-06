@@ -276,7 +276,8 @@ test_that("classification plot fixes 0-100% scales and frees the x range", {
     c("Gaussian: Clean", "Gamma: Very clean")
   )
   x_ranges <- lapply(built$layout$panel_scales_x, function(s) s$dimension())
-  expect_false(isTRUE(all.equal(x_ranges[[1]], x_ranges[[2]])))
+  # Paired outcomes now sit together; compare different scenario rows.
+  expect_false(isTRUE(all.equal(x_ranges[[1]], x_ranges[[3]])))
 
   fpr <- env$.simComparePlotClassification(tbl, outcomes = "fpr", unit_scale = FALSE)
   expect_s3_class(fpr, "ggplot")

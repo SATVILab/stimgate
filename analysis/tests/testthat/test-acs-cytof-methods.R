@@ -501,7 +501,7 @@ test_that("ACS manual-comparison plots use method colours and no titles", {
       abs_rel_error = abs(rel_error)
     )
   plots <- list(
-    scatter = env$.acsCytofManualPlotScatter(tbl),
+    scatter = env$.acsCytofManualPlotScatter(dplyr::filter(tbl, pop == "CD4 T cells")),
     relative = env$.acsCytofManualPlotRelativeError(tbl),
     signed = env$.acsCytofManualPlotSignedError(tbl)
   )
@@ -688,4 +688,110 @@ test_that("ACS bootstrap keeps common donor draws across tubes, methods and stim
   duplicated <- env$.acsCytofManualUncertainty(dplyr::bind_rows(rows, rows), reps = 99)
   expect_equal(out, duplicated)
   expect_error(env$.acsCytofManualUncertainty(rows, reps = 0), "at least two")
+})
+
+test_that("ACS gate diagnostics remove panel titles before arranging plots", {
+  env <- .load_acs_method_env()
+  panel <- ggplot2::ggplot(data.frame(x = 1), ggplot2::aes(x, x)) +
+    ggplot2::labs(title = "Sample 2", subtitle = "Diagnostic")
+  testthat::local_mocked_bindings(
+    plotStim = function(..., grid) {
+      expect_false(grid)
+      list(panel, panel)
+    }, .package = "stimgate"
+  )
+  captured <- NULL
+  testthat::local_mocked_bindings(
+    plot_grid = function(plotlist, ...) {
+      captured <<- plotlist
+      ggplot2::ggplot()
+    }, .package = "cowplot"
+  )
+  expect_no_error(env$.acsCytofPlotGateCheck(NULL, "unused"))
+  expect_length(captured, 2L)
+  for (p in captured) {
+    expect_null(p$labels$title)
+    expect_null(p$labels$subtitle)
+    expect_identical(p$mapping, panel$mapping)
+  }
+  # The original package plot remains available with its labels.
+  expect_identical(panel$labels$title, "Sample 2")
+  qmd <- paste(readLines(qmd_path, warn = FALSE), collapse = "\n")
+  expect_match(qmd, "stimgate_check_sample_2.pdf", fixed = TRUE)
+})
+
+test_that("ACS log1p boxplot display preserves raw error statistics and zeros", {
+  env <- .load_acs_method_env()
+  tbl <- tidyr::expand_grid(
+    method = c("stimgate", "fbeta"),
+    pop = c("CD4 T cells", "CD8 T cells"),
+    cyt = c("IFNg", "IL2"),
+    sample = 1:8
+  ) |>
+    dplyr::mutate(
+      abs_rel_error = c(0, 0.01, 0.02, 0.1, 0.2, 0.3, 1, 1000)[sample] *
+        ifelse(cyt == "IL2", 0.01, 1)
+    )
+  p <- env$.acsCytofManualPlotRelativeError(tbl)
+  built <- ggplot2::ggplot_build(p)
+  # Replacing the display coordinates leaves every box statistic identical.
+  linear <- suppressMessages(p + ggplot2::coord_cartesian())
+  expect_equal(built$data[[1]], ggplot2::ggplot_build(linear)$data[[1]])
+  expect_equal(p$coordinates$trans$y$transform(c(0, 1, 1000)), log1p(c(0, 1, 1000)))
+  expect_equal(length(unique(built$layout$layout$SCALE_Y)), 4L)
+  expect_equal(p$data$abs_rel_error, tbl$abs_rel_error)
+  expect_match(p$labels$y, "log1p scale; ticks in original units", fixed = TRUE)
+  expect_no_error(ggplot2::ggplotGrob(p))
+})
+
+test_that("ACS manual scatter has smaller stimulus points and independent cytokine axes", {
+  env <- .load_acs_method_env()
+  tbl <- tidyr::expand_grid(
+    method = c("stimgate", "fbeta"), pop = "CD4 T cells",
+    cyt = c("IFNg", "IL2"), stim = c("mtb", "p1"), sample = 1:4
+  ) |>
+    dplyr::mutate(freq_bs_man = sample / 10, freq_bs_auto = sample / 8)
+  p <- env$.acsCytofManualPlotScatter(tbl)
+  built <- ggplot2::ggplot_build(p)
+  expect_setequal(built$data[[2]]$shape, c(16, 17))
+  expect_true(all(built$data[[2]]$alpha == 0.5))
+  expect_true(all(built$data[[2]]$size == 0.9))
+  expect_equal(length(unique(built$layout$layout$SCALE_X)), 2L)
+  expect_equal(length(unique(built$layout$layout$SCALE_Y)), 2L)
+  expect_equal(p$facet$params$ncol, 3)
+  expect_equal(p$data$freq_bs_auto, tbl$freq_bs_auto)
+})
+
+test_that("analysis 9 scatter chunk prints and saves each method set and population", {
+  env <- .load_acs_method_env()
+  lines <- readLines(qmd_path, warn = FALSE)
+  start <- which(lines == "#| label: manual-comparison")
+  end <- which(lines == "```" & seq_along(lines) > start)[1L]
+  code <- parse(text = lines[seq.int(start + 1L, end - 1L)])
+  env$manual_comparison_tbl <- tidyr::expand_grid(
+    method = c("stimgate", "tailgate", "fbeta"),
+    pop = c("CD4 T cells", "CD8 T cells"), cyt = "IFNg", stim = "mtb"
+  ) |>
+    dplyr::mutate(freq_bs_man = 0.1, freq_bs_auto = 0.12)
+  plots <- paths <- list()
+  env$.analysis_print_save_fig <- function(p, path, ...) {
+    plots[[length(plots) + 1L]] <<- p
+    paths[[length(paths) + 1L]] <<- path
+  }
+  env$.analysis_fig_dir <- function(parts, ...) do.call(file.path, as.list(parts))
+  env$fig_key <- "analysis9"
+  env$root_dir <- root_dir
+  env$run_plots <- TRUE
+  out <- capture.output(eval(code, env))
+  expect_length(plots, 4L)
+  expect_equal(length(unique(unlist(paths))), 4L)
+  expect_true(any(grepl("##### Population: CD4 T cells", out, fixed = TRUE)))
+  expect_true(all(vapply(plots, function(p) dplyr::n_distinct(p$data$pop) == 1L, logical(1))))
+  expect_setequal(as.character(plots[[1]]$data$method), c("stimgate", "tailgate", "fbeta"))
+  expect_setequal(as.character(plots[[3]]$data$method), c("stimgate", "fbeta"))
+  expect_true(all(grepl("CD[48]_T_cells", unlist(paths))))
+  plots <- list()
+  env$run_plots <- FALSE
+  capture.output(eval(code, env))
+  expect_length(plots, 0L)
 })

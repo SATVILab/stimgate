@@ -4,6 +4,9 @@ format:
   html:
     embed-resources: true
     toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
 execute:
   warning: false
   message: false
@@ -15,8 +18,8 @@ params:
   sim_grid_shuffle_seed: 20260707
   run_simulations: true
   run_plots: false
-  show_mcse: both
-  sim_size: final
+  show_mcse: "on"
+  sim_size: draft
   sim_retry_errors: true
 ---
 
@@ -90,7 +93,7 @@ analysis_key <- c("sim", "bw", "est", "base")
 analysis_semantics_version <- "bandwidth-est-base-v7"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
-# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+# "draft" (current default) or "final" sample/dataset counts; dev and quick win.
 sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("3-sim-bw-est-base")
@@ -112,7 +115,7 @@ run_plots <- .as_flag(.get_qmd_param_env(
   TRUE
 ))
 # Monte Carlo error bars on the summary plots (see analysis-mcse.R).
-mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "on"))
 show_mcse <- mcse_mode != "off"
 
 .validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
@@ -455,7 +458,7 @@ rather than a fallback estimate.
 
 Mean bandwidth estimates are plotted against cell count on a logarithmic axis, with colour identifying the estimator. Facets separate transformations (Gaussian, Skew, Gamma) and response frequencies, shown as percentages; each figure sits under a heading naming its response-separation and bias setting. Compare the methods within each panel and follow how their estimates change with cell count.
 
-Set `show_mcse` or `SHOW_MCSE` to `off`, `on` or `both` (the default). Both versions are printed and saved in sibling `mcse_off/` and `mcse_on/` folders, with the same points and axes; historical false/true values select off/on. With error bars on, each mean has a thin error bar in its line's colour: the mean plus or minus 1.96 Monte Carlo standard errors (the standard deviation of the scenario's bandwidth estimates divided by the square root of their number). The error bars use only the estimates already simulated and treat them as independent draws, which holds here: each simulated sample is drawn and its bandwidth estimated separately, with no sharing across samples.
+Set `show_mcse` or `SHOW_MCSE` to `off` or `on` (the default). Each render prints one version and saves it under `mcse_off/` or `mcse_on/`, with the same points and axes; historical false/true values select off/on. With error bars on, each mean has a thin error bar in its line's colour: the mean plus or minus 1.96 Monte Carlo standard errors (the standard deviation of the scenario's bandwidth estimates divided by the square root of their number). The error bars use only the estimates already simulated and treat them as independent draws, which holds here: each simulated sample is drawn and its bandwidth estimated separately, with no sharing across samples.
 
 ```{r}
 #| label: bw-estimate-plots
@@ -500,13 +503,13 @@ if (isTRUE(run_plots)) {
 
       p <- ggplot(
         plot_tbl,
-        aes(x = .data$n_cell, y = .data$mean_bw, color = .data$bw_mtd)
+        aes(x = .data$n_cell, y = .data$mean_bw, color = .data$bw_mtd, shape = .data$bw_mtd)
       ) +
-        geom_line(alpha = 0.75) +
-        geom_point(alpha = 0.75) +
         (if (isTRUE(show_mcse)) {
           .analysis_mcse_errorbar(plot_tbl, "mean_bw_lower", "mean_bw_upper")
         }) +
+        geom_line(alpha = 0.75) +
+        geom_point(alpha = 0.75) +
         facet_grid(
           transformation ~ prob_response,
           scales = "free_y",
@@ -520,6 +523,11 @@ if (isTRUE(run_plots)) {
         .analysis_theme() +
         scale_colour_manual(
           values = .simBwMtdColVec,
+          labels = .simBwMtdLabVec
+        ) +
+        scale_shape_manual(
+          name = "Bandwidth method",
+          values = c(nrd0 = 16, sj = 17, hpi0 = 15, hpi1 = 18, hpi2 = 3, hpi3 = 7),
           labels = .simBwMtdLabVec
         ) +
         scale_x_log10(
@@ -540,8 +548,7 @@ if (isTRUE(run_plots)) {
           ".pdf"
         )
       )
-      .analysis_save_fig(p, path_plot, height = 15, mcse_mode = mcse_mode)
-      .analysis_print_fig(p, mcse_mode = mcse_mode)
+      .analysis_print_save_fig(p, path_plot, height = 15, mcse_mode = mcse_mode)
       cat("\n\n", knitr::kable(plot_tbl |> dplyr::select(
         transformation, prob_response, n_cell, bw_mtd,
         n_bw_finite, n_bw_total, prop_bw_finite, norm_fallback_rate

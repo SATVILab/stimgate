@@ -30,8 +30,10 @@ plots$pooled_ratio_percentiles <- .simBandwidthRatioPlot(plots$pooled_signed_per
 plots$dataset_max_ratio_severity <- .simBandwidthRatioPlot(plots$dataset_max_signed_severity)
 dir.create(out, recursive = TRUE, showWarnings = FALSE)
 for (name in names(plots)) {
-  .analysis_save_fig(plots[[name]], file.path(out, paste0(name, ".png")),
-    width = 23, height = 18, mcse_mode = "both")
+  for (mode in c("off", "on")) {
+    .analysis_save_fig(plots[[name]], file.path(out, paste0(name, ".png")),
+      width = 23, height = 18, mcse_mode = mode)
+  }
 }
 utils::write.csv(.simCompareDatasetMaxCoverage(maxima),
   file.path(out, "dataset_max_coverage.csv"), row.names = FALSE)

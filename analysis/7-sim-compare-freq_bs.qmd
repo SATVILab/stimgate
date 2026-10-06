@@ -4,6 +4,9 @@ format:
   html:
     embed-resources: true
     toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
 execute:
   warning: false
   message: false
@@ -14,8 +17,8 @@ params:
   sim_grid_n_chunks: 1
   run_simulations: true
   run_plots: false
-  show_mcse: both
-  sim_size: final
+  show_mcse: "on"
+  sim_size: draft
 ---
 
 This analysis compares background-subtracted response frequencies from StimGate,
@@ -66,10 +69,10 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v12"
+comparison_semantics_version <- "corrected-comparison-v15"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
-# "final" (default) or "draft" sample/dataset counts; dev and quick win.
+# "draft" (current default) or "final" sample/dataset counts; dev and quick win.
 sim_size <- .analysis_sim_size()
 analysis_key <- .analysis_mode_key(analysis_key)
 fig_key <- .analysis_mode_key("7-sim-compare-freq_bs")
@@ -79,7 +82,7 @@ run_plots <- .as_flag(.get_qmd_param_env(
   TRUE
 ))
 # Monte Carlo error bars on the summary plots (see analysis-mcse.R).
-mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "on"))
 show_mcse <- mcse_mode != "off"
 sim_grid_chunk_index <- as.integer(
   .get_qmd_param_env("sim_grid_chunk_index", "SIM_GRID_CHUNK_INDEX", 1L)
@@ -101,6 +104,10 @@ if (
   stop("Expected the stimgate DESCRIPTION at the repository root: ", root_dir)
 }
 
+if (isTRUE(run_plots)) {
+  .analysis_require_packages(c("simcyto", "ggforce"))
+}
+
 if (isTRUE(run_simulations)) {
   .analysis_require_packages(c("cytoUtils", "openCyto", "flowStats", "simcyto"))
 }
@@ -115,7 +122,8 @@ for (fn in c(
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-plot.R",
   "sim-compare-freq_bs.R",
-  "sim-compare-performance-plot.R"
+  "sim-compare-performance-plot.R",
+  "sim-compare-qmd7-presentation.R"
 )) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -180,7 +188,7 @@ prob_response_vec <- c(
   1 / 1e1,
   1 / 5,
   1 / 2
-)[c(2, 4, 6, 8, 10, 16)]
+)[c(2, 4, 6, 8, 10, 12, 16)]
 
 mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
 
@@ -300,24 +308,7 @@ sim_grid <- tidyr::expand_grid(
   dplyr::filter(
     !(n_cell * prob_response < 5 & prob_response < 0.04)
   ) |>
-  dplyr::group_by(
-    transformation,
-    prob_response,
-    n_cell,
-    mean_pos_setting,
-    mean_pos,
-    sample_perturbation_sd,
-    condition_perturbation_sd,
-    cluster_perturbation_sd,
-    background_relative_to_response,
-    n_cell_uns_relative_to_stim
-  ) |>
-  dplyr::mutate(
-    base_scenario_id = dplyr::cur_group_id(),
-    sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)
-  ) |>
-  dplyr::ungroup() |>
-  dplyr::mutate(sim_id = dplyr::row_number())
+  .simCompareQmd7SeedGrid(simulation_seed)
 
 # Keep every seeded row available for an exact interactive rerun.
 sim_grid_full <- sim_grid
@@ -347,6 +338,7 @@ if (analysis_dev) {
 }
 
 sim_grid_all <- sim_grid
+analysis_grid_spec <- sim_grid_all
 
 if (sim_grid_n_chunks > 1L && nrow(sim_grid_all) > 0L) {
   sim_grid <- sim_grid_all |>
@@ -361,7 +353,7 @@ print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
 ```
 
 Run the simulations in parallel, with progress reporting. Each scenario has a
-deterministic seed `simulation_seed + sim_id - 1`, so its simulation is stable
+deterministic seed recorded in `sim_seed`, so its simulation is stable
 across worker scheduling and grid chunking.
 
 ```{r}
@@ -372,6 +364,7 @@ n_workers <- max(1, .simGetCores())
 analysis_result_params <- list(
   comparison_semantics_version = comparison_semantics_version,
   simulation_seed = simulation_seed,
+  analysis_grid_spec = analysis_grid_spec,
   analysis_quick = analysis_quick,
   analysis_dev = analysis_dev,
   sim_size = sim_size,
@@ -659,10 +652,9 @@ two methods. The two versions are saved in the `all_methods` and `no_tailgate`
 subfolders of each figure folder. Within each version there is one figure per
 mean position setting.
 
-**Monte Carlo intervals.** `show_mcse` / `SHOW_MCSE` accepts `off`, `on`
-or `both` (default); false/true still selects off/on. Both versions are printed
-and saved in sibling `mcse_off/` and `mcse_on/` folders, with identical points
-and axes. With error bars on, 95% percentile-bootstrap
+**Monte Carlo intervals.** `show_mcse` / `SHOW_MCSE` accepts `off` or `on`
+(default); false/true still selects off/on. Each render prints one version
+and saves it under `mcse_off/` or `mcse_on/`, with identical points and axes. With error bars on, 95% percentile-bootstrap
 intervals resample whole independent datasets (`iter`), retaining all samples
 of each selected dataset with multiplicity. Each draw recalculates the actual
 pooled sample statistic shown, rather than a mean of within-dataset percentiles.
@@ -747,7 +739,7 @@ if (isTRUE(run_plots)) {
     plot_tbl,
     make_plot = function(d) {
       .simComparePlotByCell(
-        d, "mean_abs_error", "Tube-level mean absolute error", percent_y = TRUE, mcse = show_mcse
+        d, "mean_abs_error", "Tube-level mean absolute error", percent_y = TRUE, free_y = TRUE, mcse = show_mcse
       )
     },
     dir = file.path(plot_dir, "mae_by_n_cell"),
@@ -928,9 +920,12 @@ if (isTRUE(run_plots)) {
 #| results: asis
 if (isTRUE(run_plots)) {
   .simCompareFigureLoop(dataset_max,
-    make_plot = function(d) .simCompareDatasetMaxPlot(d, "occurrence", mcse = show_mcse),
+    make_plot = function(d) .simCompareDatasetMaxPlot(d, "occurrence", by_prob = FALSE, mcse = show_mcse),
     dir = file.path(plot_dir, "dataset_max_occurrence_by_n_cell"),
-    file_fn = function(pos, extra) paste0("dataset_max_occurrence_", pos, ".png"),
+    file_fn = function(pos, extra) paste0("dataset_max_occurrence_", pos,
+      "_prob_response_", extra, ".png"),
+    extra_col = "prob_response",
+    extra_heading = function(x) paste0("Response probability: ", .analysis_label_percent(x)),
     height = 14, level = 4L, mcse_mode = mcse_mode)
 }
 ```
@@ -947,9 +942,12 @@ below zero. The ratio companion uses the identical curves and intervals, with
 #| results: asis
 if (isTRUE(run_plots)) {
   .simCompareFigureLoop(dataset_max,
-    make_plot = function(d) .simCompareDatasetMaxPlot(d, "severity", mcse = show_mcse),
+    make_plot = function(d) .simCompareDatasetMaxPlot(d, "severity", by_prob = FALSE, mcse = show_mcse),
     dir = file.path(plot_dir, "dataset_max_signed_error_severity_by_n_cell"),
-    file_fn = function(pos, extra) paste0("dataset_max_severity_", pos, ".png"),
+    file_fn = function(pos, extra) paste0("dataset_max_severity_", pos,
+      "_prob_response_", extra, ".png"),
+    extra_col = "prob_response",
+    extra_heading = function(x) paste0("Response probability: ", .analysis_label_percent(x)),
     ratio_twins = TRUE, height = 14, level = 4L, mcse_mode = mcse_mode)
 }
 ```
@@ -1010,13 +1008,62 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Percentiles of signed relative error by cell count
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
+
+```{r}
+#| label: signed-percentiles-cell-count
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  percentile_tbl <- compare_tbl |>
+    dplyr::filter(condition_perturbation_sd == 0) |>
+    .simCompareSignedPercentileSummary(
+      scenarioCols = scenario_cols, mcse = show_mcse
+    )
+  print(knitr::kable(.simComparePerformanceCoverage(percentile_tbl, scenario_cols),
+    caption = "Unconditional pooled-percentile coverage, including undefined bootstrap draws."))
+  .simCompareFigureLoop(
+    percentile_tbl,
+    make_plot = function(d) .simBandwidthSignedPercentilePlot(d, x = "n_cell",
+      x_label = "Number of stimulated cells", x_log = TRUE, mcse = show_mcse) +
+      ggplot2::aes(shape = method, linetype = method) +
+      .analysis_scale_method(c("colour", "shape", "linetype")),
+    dir = file.path(plot_dir, "signed_percentiles_by_n_cell"),
+    file_fn = function(pos, extra) {
+      paste0(
+        "freq_bs_signed_percentiles_meanpos_setting_", pos, "_prob_response_",
+        gsub("[^0-9a-z]+", "_", .analysis_label_percent(extra)), ".png"
+      )
+    },
+    height = 14,
+    level = 4L,
+    extra_col = "prob_response",
+    extra_heading = function(x) {
+      paste0("Response probability: ", .analysis_label_percent(x))
+    }, mcse_mode = mcse_mode
+  )
+}
+```
+
+Each dataset-maximum figure uses one response probability. Severity panels have
+independent vertical ranges; occurrence panels retain the fixed 0–100% scale.
+
+Error-by-cell-count and signed-error figures also use independent panel ranges;
+compare methods within each panel. Method colour, point shape and line type agree
+across comparison figures.
+
 ### Estimated versus true response frequency
 
-Estimated frequency is plotted against the true background-subtracted frequency,
-with colour identifying the method and panels separating expression distributions.
-Each plot uses one mean position setting and pools the simulated cell counts
-without random condition perturbation. Points closer to the dashed identity
-line indicate better agreement.
+Response levels have evenly spaced positions labelled by their simulated
+percentages; methods have centred offsets and sina spreads within each level.
+Dashed horizontal segments mark the true response frequency. The estimated
+frequency uses a log10 percent axis. Zero and negative estimates are placed at
+the labelled lower plotting limit, rather than discarded. Each plot pools cell
+counts at one mean position, without condition perturbation.
 
 ```{r}
 #| label: est-vs-truth
@@ -1033,57 +1080,53 @@ if (isTRUE(run_plots)) {
     )
   .simCompareFigureLoop(
     plot_tbl,
-    make_plot = .simComparePlotEstVsTruth,
+    make_plot = function(d) .simComparePlotEstVsTruth(d),
     dir = file.path(plot_dir, "estimated_vs_true_frequency"),
     file_fn = function(pos, extra) {
       paste0("freq_bs_est_vs_truth_", pos, ".png")
     },
     height = 9,
-    level = 4L
+    level = 4L,
+    after_plot = function(d, p) {
+      print(knitr::kable(.simCompareQmd7FloorTable(d, unique(p$data$plot_floor)),
+        caption = "Estimates at or below the plotting floor; denominators count method/sample estimates."))
+      cat("\n\n")
+    }
   )
 }
 ```
 
 ### Threshold fallback rate
 
-The share of estimates using a threshold fallback is plotted against
-stimulated cell count, with colour identifying the method. Panels separate
-response frequencies and expression distributions, with one mean position
-setting per plot and no random condition perturbation. Read this alongside
-frequency error to distinguish calculated gates from fallbacks. Error bars
-(with `show_mcse` on and at least five datasets) resample whole datasets and recalculate the
-pooled tube-level fallback proportion.
+The table includes both condition-perturbation settings and distinguishes
+threshold fallbacks, run errors and genuine no-cutpoint outcomes. Counts and
+percentages use all intended method/sample outcomes as their denominator,
+including failed runs. Expression distributions and mean positions remain
+separate so failures in a particular biological setting stay visible; response
+levels and cell counts are pooled for this coverage table. No-cutpoint outcomes
+can also be threshold fallbacks, so these columns are not disjoint.
 
 ```{r}
 #| label: threshold-fallback
 #| echo: false
-#| results: asis
 if (isTRUE(run_plots)) {
-  fallback_tbl <- compare_summary |>
-    dplyr::filter(condition_perturbation_sd == 0) |>
-    dplyr::mutate(
-      fallback_rate = n_threshold_fallback / n
-    )
-  .simCompareFigureLoop(
-    fallback_tbl,
-    make_plot = function(d) .simComparePlotFallback(d, mcse = show_mcse),
-    dir = file.path(plot_dir, "threshold_fallback_rate"),
-    file_fn = function(pos, extra) {
-      paste0("freq_bs_threshold_fallback_rate_", pos, ".png")
-    },
-    height = 20,
-    level = 4L, mcse_mode = mcse_mode
-  )
+  print(knitr::kable(.simCompareQmd7FallbackTable(compare_summary),
+    caption = "Threshold provenance: count / all intended samples (percentage)."))
 }
 ```
 
 ### Threshold distributions
 
-Histograms show the density of finite thresholds, with colour and fill
-identifying the method. Panels separate response frequencies and expression
-distributions; each plot uses one mean position setting and pools cell counts
-without random condition perturbation. Compare the spread and overlap of the
-threshold distributions, including finite fallback thresholds.
+Light histograms show finite threshold densities in method colours, including
+finite fallbacks, on the ordinary left density axis. Grey/black lines show
+unstimulated/stimulated sampled expression densities on the square-root right
+axis, making rare response components visible without transforming threshold
+histograms. These seeded reference simulations use the same biological settings
+(`probExact = TRUE`, covariance eigenvalues 1.5), with 100,000 cells per tube;
+they are render-local references, rather than the cells from the gated datasets.
+Both tubes include all sampled components. Each biological reference is computed
+once and reused across method sets and cell counts. Panels have independent x
+and y limits; plots pool cell counts without condition perturbation.
 
 ```{r}
 #| label: threshold-density
@@ -1097,11 +1140,18 @@ if (isTRUE(run_plots)) {
     ) |>
     dplyr::select(
       approach, threshold,
-      transformation, prob_response, n_cell, mean_pos_setting
+      transformation, prob_response, n_cell, mean_pos_setting, mean_pos,
+      sample_perturbation_sd, condition_perturbation_sd,
+      cluster_perturbation_sd, background_relative_to_response
     )
+  threshold_reference_densities <- .simBandwidthThresholdDensities(
+    plot_tbl,
+    settings = list(probExact = TRUE, covEvMin = 1.5, covEvMax = 1.5),
+    seed = 271L, unstimulated_negative_only = FALSE
+  )
   .simCompareFigureLoop(
     plot_tbl,
-    make_plot = .simComparePlotThresholdDensity,
+    make_plot = function(d) .simComparePlotThresholdDensity(d, densities = threshold_reference_densities),
     dir = file.path(plot_dir, "threshold_distributions"),
     file_fn = function(pos, extra) {
       paste0("freq_bs_threshold_density_", pos, ".png")

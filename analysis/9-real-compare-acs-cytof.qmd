@@ -4,6 +4,9 @@ format:
   html:
     embed-resources: true
     toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
 execute:
   warning: false
   message: false
@@ -41,6 +44,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-mcse.R"))
 source(file.path(scripts_r_dir, "sim-bandwidth-analysis-plot.R"))
 fig_key <- .analysis_mode_key("9-real-compare-acs-cytof", sized = FALSE)
 analysis_qmd <- "analysis/9-real-compare-acs-cytof.qmd"
@@ -385,7 +389,7 @@ manual_summary_tbl |>
 
 ### Estimated versus reference response frequency
 
-Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Manual background-subtracted frequency (%) is on the horizontal axis and automated frequency (%) on the vertical axis. Colour identifies the method, shapes identify stimuli, and panels separate populations and cytokines. Points closer to the dashed identity line indicate closer agreement.
+Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Manual background-subtracted frequency (%) is on the horizontal axis and automated frequency (%) on the vertical axis. Colour identifies the method and shapes identify stimuli. Each population has its own figure with cytokine panels; both axis ranges differ between panels. Points closer to the dashed identity line indicate closer agreement.
 
 ```{r}
 #| label: manual-comparison
@@ -396,28 +400,32 @@ if (isTRUE(run_plots)) {
   for (set_name in names(method_sets)) {
     method_set <- method_sets[[set_name]]
     .analysis_heading(method_set$label, 4)
-    p <- .acsCytofManualPlotScatter(
-      manual_comparison_tbl |> dplyr::filter(method %in% method_set$methods)
-    )
-    .analysis_save_fig(
-      p,
-      file.path(
-        .analysis_fig_dir(
-          c(fig_key, "manual_comparison_scatter", set_name),
-          root_dir
+    for (population in unique(as.character(manual_comparison_tbl$pop))) {
+      .analysis_heading(paste("Population:", population), 5)
+      p <- .acsCytofManualPlotScatter(
+        manual_comparison_tbl |>
+          dplyr::filter(method %in% method_set$methods, pop == population)
+      )
+      .analysis_print_save_fig(
+        p,
+        file.path(
+          .analysis_fig_dir(
+            c(fig_key, "manual_comparison_scatter", set_name,
+              gsub("[^A-Za-z0-9_.-]+", "_", population)),
+            root_dir
+          ),
+          "manual-comparison-scatter.png"
         ),
-        "manual-comparison-scatter.png"
-      ),
-      height = 22
-    )
-    .analysis_print_fig(p)
+        height = 12
+      )
+    }
   }
 }
 ```
 
 ### Relative error
 
-Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Boxplots show absolute relative error by method, with separate panels for populations and cytokines. Smaller values indicate closer agreement; rows with non-positive manual background-subtracted frequencies have no relative-error estimate.
+Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Boxplots show absolute relative error by method, with separate panels for populations and cytokines. The y axis uses a log1p display with ticks in original units, retaining zero errors and compressing outliers; each panel has its own y range. Box statistics remain on the original error scale. Smaller values indicate closer agreement; rows with non-positive manual background-subtracted frequencies have no relative-error estimate.
 
 ```{r}
 #| label: manual-relative-error
@@ -431,7 +439,7 @@ if (isTRUE(run_plots)) {
     p <- .acsCytofManualPlotRelativeError(
       manual_comparison_tbl |> dplyr::filter(method %in% method_set$methods)
     )
-    .analysis_save_fig(
+    .analysis_print_save_fig(
       p,
       file.path(
         .analysis_fig_dir(
@@ -442,7 +450,6 @@ if (isTRUE(run_plots)) {
       ),
       height = 22
     )
-    .analysis_print_fig(p)
   }
 }
 ```
@@ -467,7 +474,7 @@ if (isTRUE(run_plots)) {
     p <- .acsCytofManualPlotSignedError(
       manual_comparison_tbl |> dplyr::filter(method %in% method_set$methods)
     )
-    .analysis_save_fig(
+    .analysis_print_save_fig(
       p,
       file.path(
         .analysis_fig_dir(
@@ -478,10 +485,43 @@ if (isTRUE(run_plots)) {
       ),
       height = 22
     )
-    .analysis_print_fig(p)
     .simBandwidthPrintRatioTwin(p,
       file.path(.analysis_fig_dir(c(fig_key, "manual_comparison_signed_error", set_name), root_dir),
         "manual-comparison-ratio.png"), height = 22, level = 5L)
+  }
+}
+```
+
+### Percentiles of signed relative error against manual gating
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Intervals bootstrap donors, carrying all their tubes together and using common donor draws across methods and strata. They describe agreement with the imperfect manual reference. All seven percentiles share each population panel; cytokine remains on the x axis.
+
+These percentiles pool all stimuli; intervals use donor bootstrap draws.
+
+```{r}
+#| label: manual-signed-percentiles
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  # Summarise all methods together before subsetting to keep common donor draws.
+  manual_percentiles <- .acsCytofManualSignedPercentiles(manual_comparison_tbl)
+  method_sets <- .acsCytofMethodSets()
+  for (set_name in names(method_sets)) {
+    method_set <- method_sets[[set_name]]
+    .analysis_heading(method_set$label, 4)
+    p <- .simBandwidthSignedPercentilePlot(
+      manual_percentiles |> dplyr::filter(method %in% method_set$methods),
+      x = "cyt", x_label = "Cytokine", mcse = TRUE,
+      facet = ggplot2::facet_wrap(~pop, scales = "free_y")
+    )
+    .analysis_print_save_fig(p,
+      file.path(.analysis_fig_dir(c(fig_key, "signed_percentiles", set_name), root_dir),
+        "manual-comparison-signed-percentiles.png"), height = 22)
+    print(knitr::kable(manual_percentiles |> dplyr::filter(method %in% method_set$methods) |>
+      dplyr::select(method, pop, cyt, dplyr::starts_with("n_"),
+        dplyr::starts_with("bootstrap_coverage_"), dplyr::starts_with("interval_available_")), caption = "Donor-bootstrap validity for unconditional percentiles."))
   }
 }
 ```
@@ -505,7 +545,7 @@ print(manual_summary_tbl, n = Inf)
 
 The following figures separate stimuli so a strong response in one stimulus does
 not conceal poorer agreement in another. Both error measures use successful
-method estimates only; the table above supplies their denominators.
+method estimates only; the table above supplies their denominators. Relative-error panels use the same log1p display and separate y ranges as above.
 
 ```{r}
 #| label: manual-errors-by-stimulus
@@ -518,11 +558,10 @@ if (isTRUE(run_plots)) {
     for (metric in c("absolute", "relative")) {
       .analysis_heading(paste(tools::toTitleCase(metric), "error"), 5)
       p <- if (metric == "absolute") .acsCytofManualPlotAbsoluteError(rows) else .acsCytofManualPlotRelativeError(rows)
-      .analysis_save_fig(p, file.path(
+      .analysis_print_save_fig(p, file.path(
         .analysis_fig_dir(c(fig_key, "manual_comparison_errors_by_stimulus", stimulus, metric), root_dir),
         paste0("manual-comparison-", metric, "-error.png")
       ), height = 22)
-      .analysis_print_fig(p)
     }
   }
 }
@@ -577,12 +616,12 @@ if (isTRUE(run_plots)) {
     }
     .analysis_heading(paste0("Population: ", pop), 4)
     plots <- .acsCytofPlotGatingSetCheck(paths$gs)
-    plot_gatingset_check(paths$gs, paths$gsCheck, plots = plots)
     trans_labels <- c(none = "Untransformed", asinh = "Asinh-transformed")
     for (trans in names(plots)) {
       .analysis_heading(trans_labels[[trans]], 5)
       .analysis_print_fig(plots[[trans]])
     }
+    plot_gatingset_check(paths$gs, paths$gsCheck, plots = plots)
   }
 }
 ```
@@ -602,19 +641,15 @@ if (isTRUE(run_plots)) {
     }
     .analysis_heading(paste0("Population: ", pop), 4)
     gs <- flowWorkspace::load_gs(paths$gs)
-    p <- stimgate::plotStim(
-      ind = 2L, .data = gs, pathProject = paths$stimgate,
-      pop = "root", chnl = c("Ho165Di", "Nd146Di")
-    )
+    p <- .acsCytofPlotGateCheck(gs, paths$stimgate)
     path_check <- file.path(
       .analysis_fig_dir(
         c(fig_key, "gate_diagnostics", gsub("[^A-Za-z0-9_.-]+", "_", pop)),
         root_dir
       ),
-      "stimgate_check.pdf"
+      "stimgate_check_sample_2.pdf"
     )
-    .analysis_save_fig(p, path_check, height = 14)
-    .analysis_print_fig(p)
+    .analysis_print_save_fig(p, path_check, height = 14)
   }
 }
 ```

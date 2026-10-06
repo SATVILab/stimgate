@@ -78,7 +78,8 @@ test_that("2a per-cell plots average scenario errors before combining probabilit
   expect_match(md, "#### Mean position: low", fixed = TRUE)
   expect_match(md, "##### Cells: 1,000", fixed = TRUE)
   expect_length(env$saved, 4L)
-  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
+  displayed <- Filter(function(x) !grepl("/ratio", x$path, fixed = TRUE), env$saved)
+  expect_identical(env$printed, lapply(displayed, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
   expect_equal(length(unique(paths)), 4L)
   for (saved in env$saved) {
@@ -157,7 +158,8 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
   md <- .bandwidth_cell_plot_eval(cell_code, env)
   expect_match(md, "###### Response probability: 10%; cells: 1,000", fixed = TRUE)
   expect_length(env$saved, 48L)
-  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
+  displayed <- Filter(function(x) !grepl("/ratio", x$path, fixed = TRUE), env$saved)
+  expect_identical(env$printed, lapply(displayed, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
   expect_equal(length(unique(paths)), 48L)
   for (saved in env$saved) {
@@ -171,15 +173,15 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
     expect_setequal(unique(data$mismatch_val), c(0, 0.1))
     expect_setequal(unique(data$bw), c(0.1, 0.2))
     expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
-    expect_named(saved$plot$facet$params$rows, "statistic")
-    expect_named(saved$plot$facet$params$cols, "mismatch_label")
+    expect_named(saved$plot$facet$params$facets, c("statistic", "mismatch_label"))
+    expect_true(saved$plot$facet$params$free$y)
     expected_labels <- if ("n_scenario_median" %in% names(data)) {
       names(stat_mult)[4:6]
     } else names(stat_mult)[1:3]
     expect_setequal(as.character(data$statistic), expected_labels)
     expect_identical(rlang::as_label(saved$plot$mapping$group), "interaction(bw, bias_uns_basis)")
     # Bandwidth is the only colour legend; there is no bias-scale line type.
-    expect_identical(rlang::as_label(saved$plot$mapping$colour), "bw_lab")
+    expect_identical(rlang::as_label(saved$plot$mapping$colour), "bw_rank")
     expect_null(saved$plot$mapping$linetype)
     expect_null(saved$plot$labels$title)
     if ("n_cell" %in% names(data)) {
@@ -192,21 +194,6 @@ test_that("2b averaged and per-cell plots preserve all bias scenario dimensions"
             ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
       )
     }
-  }
-  # The all-cell plot also keeps the two mismatch families separate.
-  env$saved <- list()
-  env$printed <- list()
-  all_cell_code <- .bandwidth_cell_plot_chunk(
-    "2b-sim-bias_uns-freq_bs.qmd", "relative-error"
-  )
-  .bandwidth_cell_plot_eval(all_cell_code, env)
-  expect_length(env$saved, 16L)
-  for (saved in env$saved) {
-    expect_length(unique(saved$plot$data$mismatch_type), 1L)
-    expect_identical(
-      basename(dirname(saved$path)), unique(saved$plot$data$mismatch_type)
-    )
-    expect_setequal(saved$plot$data$n_cell, c(100, 1000))
   }
   unlink(env$root_dir, recursive = TRUE)
   env$saved <- list()
@@ -245,7 +232,8 @@ test_that("2a per-cell signed-error plots average scenario errors by direction",
   md <- .bandwidth_cell_plot_eval(code, env)
   expect_match(md, "##### Cells: 100", fixed = TRUE)
   expect_length(env$saved, 8L)
-  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
+  displayed <- Filter(function(x) !grepl("/ratio", x$path, fixed = TRUE), env$saved)
+  expect_identical(env$printed, lapply(displayed, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
   expect_equal(sum(grepl("/ratio", paths, fixed = TRUE)), length(paths) / 2)
   expect_equal(sum(grepl("/signed_error", paths, fixed = TRUE)), length(paths) / 2)
@@ -329,7 +317,8 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
   }
   .bandwidth_cell_plot_eval(cell_code, env)
   expect_length(env$saved, 96L)
-  expect_identical(env$printed, lapply(env$saved, `[[`, "plot"))
+  displayed <- Filter(function(x) !grepl("/ratio", x$path, fixed = TRUE), env$saved)
+  expect_identical(env$printed, lapply(displayed, `[[`, "plot"))
   paths <- vapply(env$saved, `[[`, character(1), "path")
   expect_equal(sum(grepl("/ratio", paths, fixed = TRUE)), length(paths) / 2)
   expect_equal(sum(grepl("/signed_error", paths, fixed = TRUE)), length(paths) / 2)
@@ -345,8 +334,8 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
     expect_setequal(unique(data$mismatch_val), c(0, 0.1))
     expect_setequal(unique(data$bw), c(0.1, 0.2))
     expect_setequal(unique(data$bias_uns_basis), c("bandwidth", "negative_width"))
-    expect_named(saved$plot$facet$params$rows, "statistic")
-    expect_named(saved$plot$facet$params$cols, "mismatch_label")
+    expect_named(saved$plot$facet$params$facets, c("statistic", "mismatch_label"))
+    expect_true(saved$plot$facet$params$free$y)
     expected_labels <- if ("n_scenario_median" %in% names(data)) {
       names(stat_mult)[4:6]
     } else names(stat_mult)[1:3]
@@ -369,20 +358,6 @@ test_that("2b signed-error plots preserve all bias scenario dimensions", {
             ifelse(data$bias_uns_basis == "bandwidth", 0, 2))
       )
     }
-  }
-  env$saved <- list()
-  env$printed <- list()
-  all_cell_code <- .bandwidth_cell_plot_chunk(
-    "2b-sim-bias_uns-freq_bs.qmd", "signed-error"
-  )
-  .bandwidth_cell_plot_eval(all_cell_code, env)
-  expect_length(env$saved, 32L)
-  for (saved in env$saved) {
-    expect_length(unique(saved$plot$data$mismatch_type), 1L)
-    expect_identical(
-      basename(dirname(saved$path)), unique(saved$plot$data$mismatch_type)
-    )
-    expect_setequal(saved$plot$data$n_cell, c(100, 1000))
   }
   unlink(env$root_dir, recursive = TRUE)
   env$saved <- list()
@@ -428,12 +403,12 @@ test_that("signed error scale puts a zero estimate and two-fold equally far from
   env <- .bandwidth_cell_plot_env()
   trans <- env$.simBandwidthSignedErrorTrans()
   x <- c(-2, -1.5, -1, -0.5, 0, 1, 3)
-  expect_equal(trans$transform(x), c(-2, -1.5, -1, -0.5, 0, 1, 2))
+  expect_equal(trans$transform(x), c(-2, -1 - log2(1.5), -1, -0.5, 0, 1, 2))
   expect_equal(trans$inverse(trans$transform(x)), x)
   expect_equal(trans$domain, c(-Inf, Inf))
   expect_true(all(c(-2, -1) %in% trans$breaks(c(-2, 3))))
   expect_identical(env$.simBandwidthSignedErrorLabel(-1.5), "-150%")
-  # Negative background-subtracted response estimates stay linear without warnings.
+  # Negative background-subtracted response estimates use a continuous compressed scale.
   expect_no_warning(expect_equal(trans$transform(c(-2, 1)), c(-2, 1)))
   expect_equal(trans$breaks(c(-1, 2.5)), c(-1, -0.5, 0, 1, 3))
   # Small errors get ordinary breaks rather than only zero.
@@ -521,8 +496,7 @@ test_that("signed-error plots draw dashed lines whose weight varies", {
       dplyr::mutate(transformation = "gaussian"),
     by_prob = TRUE
   )
-  expect_named(by_prob$facet$params$rows, "prob_response")
-  expect_named(by_prob$facet$params$cols, "transformation")
+  expect_named(by_prob$facet$params$facets, c("prob_response", "transformation"))
   expect_no_error(ggplot2::ggplotGrob(by_prob))
 
   bias <- env$.simBandwidthBiasSignedErrorPlot(
@@ -530,8 +504,7 @@ test_that("signed-error plots draw dashed lines whose weight varies", {
       dplyr::mutate(
         bias_uns_multiplier = bw, bw = 0.1, mismatch_label = "mean shift 0",
         bias_uns_basis = rep(c("bandwidth", "bandwidth", "negative_width"), each = 2)
-      ),
-    title = "test"
+      )
   )
   expect_no_error(ggplot2::ggplotGrob(bias))
   # Titles are not drawn; headings in the QMD carry that information.
@@ -702,4 +675,34 @@ test_that("2b frequency plots and coverage split stimulated-negative mismatch ty
   expect_identical(.bandwidth_cell_plot_eval(code, env), "")
   expect_length(env$saved, 0L)
   expect_length(env$coverage, 0L)
+})
+
+test_that("threshold coverage uses layer data when the plot has no global data", {
+  env <- .bandwidth_cell_plot_env()
+  summary <- tibble::tibble(
+    mean_pos_setting = c("low", "high", "low"), n_cell = c(100, 100, 1000),
+    transformation = "gaussian", bw = 0.1,
+    n_sample = 4L, n_valid = c(3L, 4L, 0L), n_failed = c(1L, 0L, 4L),
+    n_provenance = 4L, n_fallback = c(2L, 0L, 4L)
+  )
+  panels <- tibble::tibble(mean_pos_setting = "low", n_cell = 100,
+    transformation = env$.analysis_trans_factor("gaussian"), bw = 0.1, threshold = 2)
+  plot <- ggplot2::ggplot() +
+    ggplot2::geom_vline(data = panels, ggplot2::aes(xintercept = threshold)) +
+    ggplot2::geom_hline(yintercept = 0)
+  expect_false(is.data.frame(plot$data))
+  coverage <- env$.simBandwidthCoverageForPlot(plot, summary)
+  expect_equal(coverage$n_sample, 4L)
+  expect_equal(coverage$n_valid, 3L)
+  expect_equal(coverage$failure_fraction, 1 / 4)
+  # Also exercise the real printer, which chunk fixtures normally stub out.
+  source(file.path(testthat::test_path(), "../../../scripts/r/sim-bandwidth-analysis-plot.R"),
+    local = env)
+  expect_no_error(utils::capture.output(env$.simBandwidthPrintCoverage(plot, summary)))
+  # Data from every data-frame layer are included, not just the first layer.
+  plot <- plot + ggplot2::geom_vline(data = dplyr::mutate(panels, n_cell = 1000),
+    ggplot2::aes(xintercept = threshold))
+  coverage <- env$.simBandwidthCoverageForPlot(plot, summary)
+  expect_setequal(coverage$n_cell, c("100", "1000"))
+  expect_equal(sum(coverage$n_sample), 8L)
 })

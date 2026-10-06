@@ -675,12 +675,8 @@
       colour = "grey45",
       linetype = "dashed"
     ) +
-    ggplot2::geom_point(alpha = 0.75) +
-    ggplot2::facet_grid(
-      rows = ggplot2::vars(pop),
-      cols = ggplot2::vars(cyt),
-      scales = "free"
-    ) +
+    ggplot2::geom_point(alpha = 0.5, size = 0.9) +
+    ggplot2::facet_wrap(ggplot2::vars(cyt), scales = "free", ncol = 3) +
     ggplot2::scale_x_continuous(
       labels = .analysis_label_number,
       n.breaks = 3,
@@ -699,6 +695,10 @@
 }
 
 .acsCytofManualPlotRelativeError <- function(comparisonTbl) {
+  # The profiles include ggplot2 3.5 and 4.x; avoid the 4.x coord_trans deprecation.
+  coordTransform <- get0(
+    "coord_transform", envir = asNamespace("ggplot2"), ifnotfound = ggplot2::coord_trans
+  )
   comparisonTbl$method <- .acsCytofManualMethodFactor(comparisonTbl$method)
   ggplot2::ggplot(
     comparisonTbl,
@@ -709,15 +709,24 @@
     )
   ) +
     ggplot2::geom_boxplot(outlier.alpha = 0.25) +
-    ggplot2::facet_grid(
-      rows = ggplot2::vars(pop),
-      cols = ggplot2::vars(cyt),
-      scales = "free_y"
+    ggplot2::facet_wrap(
+      ggplot2::vars(pop, cyt),
+      ncol = dplyr::n_distinct(comparisonTbl$cyt),
+      scales = "free_y",
+      labeller = ggplot2::label_wrap_gen(multi_line = FALSE)
     ) +
     ggplot2::scale_x_discrete(labels = .analysis_method_labels) +
-    ggplot2::scale_y_continuous(labels = .analysis_label_number) +
+    ggplot2::scale_y_continuous(
+      labels = .analysis_label_number,
+      expand = ggplot2::expansion(mult = c(0, 0.05))
+    ) +
+    # Transform after the boxplot statistic so quartiles and whiskers stay unchanged.
+    coordTransform(y = scales::transform_log1p()) +
     .analysis_scale_method("fill") +
-    ggplot2::labs(x = NULL, y = "Absolute relative error") +
+    ggplot2::labs(
+      x = NULL,
+      y = "Absolute relative error (log1p scale; ticks in original units)"
+    ) +
     .analysis_theme(grid = "y") +
     ggplot2::theme(
       legend.position = "none",
@@ -824,16 +833,21 @@
     return(invisible(list(summary = summaryTbl)))
   }
 
-  scatter <- .acsCytofManualPlotScatter(comparisonTbl)
+  scatter <- list()
+  for (population in unique(as.character(comparisonTbl$pop))) {
+    rows <- comparisonTbl |> dplyr::filter(.data$pop == .env$population)
+    scatter[[population]] <- .acsCytofManualPlotScatter(rows)
+    populationDir <- file.path(
+      pathDirSave, "scatter-plots", gsub("[^A-Za-z0-9_.-]+", "_", population)
+    )
+    dir.create(populationDir, recursive = TRUE, showWarnings = FALSE)
+    ggplot2::ggsave(
+      file.path(populationDir, "manual-comparison-scatter.png"),
+      plot = scatter[[population]], width = 30, height = 16, units = "cm"
+    )
+  }
   relativeError <- .acsCytofManualPlotRelativeError(comparisonTbl)
   nPop <- max(1L, dplyr::n_distinct(comparisonTbl$pop))
-  ggplot2::ggsave(
-    file.path(pathDirSave, "manual-comparison-scatter.png"),
-    plot = scatter,
-    width = 30,
-    height = max(16, 5 * nPop),
-    units = "cm"
-  )
   ggplot2::ggsave(
     file.path(pathDirSave, "manual-comparison-relative-error.png"),
     plot = relativeError,
@@ -927,4 +941,24 @@ comp_against_manual_cyt <- function(
     }
   }
   invisible(TRUE)
+}
+
+# One donor stream across every method/population/cytokine, including donors
+# absent from a stratum as empty blocks, so resampling retains their pairing.
+.acsCytofManualSignedPercentiles <- function(comparisonTbl) {
+  if (!"SampleID" %in% names(comparisonTbl) || anyNA(comparisonTbl$SampleID)) {
+    stop("ACS donor bootstrap requires complete SampleID values.")
+  }
+  donors <- sort(unique(as.character(comparisonTbl$SampleID)))
+  comparisonTbl |>
+    dplyr::group_by(.data$method, .data$pop, .data$cyt) |>
+    dplyr::group_modify(function(rows, key) {
+      missing <- setdiff(donors, as.character(rows$SampleID))
+      errors <- rows$rel_error
+      if ("thresholdFailed" %in% names(rows)) errors[rows$thresholdFailed %in% TRUE] <- NA_real_
+      .simBandwidthSignedErrorPercentiles(
+        c(errors, rep(NA_real_, length(missing))), mcse = TRUE,
+        unit = c(as.character(rows$SampleID), missing), bootstrap_family = "acs-donors")
+    }) |>
+    dplyr::ungroup()
 }

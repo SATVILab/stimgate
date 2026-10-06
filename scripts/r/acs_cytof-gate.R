@@ -29,7 +29,7 @@
     stimgate = file.path(pathScratch, "stimgate"),
     tailgate = file.path(pathScratch, "tailgate", "result.rds"),
     fbeta = file.path(pathScratch, "fbeta", "result.rds"),
-    stimgateCheck = file.path(pathScratch, "stimgate_check.pdf")
+    stimgateCheck = file.path(pathScratch, "stimgate_check_sample_2.pdf")
   )
 }
 
@@ -321,13 +321,7 @@
       )
     }
 
-    p <- stimgate::plotStim(
-      ind = 2L,
-      .data = gs,
-      pathProject = paths$stimgate,
-      pop = "root",
-      chnl = c("Ho165Di", "Nd146Di")
-    )
+    p <- .acsCytofPlotGateCheck(gs, paths$stimgate)
     dir.create(
       dirname(paths$stimgateCheck),
       recursive = TRUE,
@@ -348,4 +342,23 @@
     batchList = batchList,
     paths = paths
   ))
+}
+
+# Remove package diagnostic panel labels before assembling the analysis figure.
+.acsCytofPlotGateCheck <- function(gs, pathProject) {
+  plots <- stimgate::plotStim(
+    ind = 2L, .data = gs, pathProject = pathProject,
+    pop = "root", chnl = c("Ho165Di", "Nd146Di"), grid = FALSE
+  )
+  if (length(plots) == 0L) return(NULL)
+  plots <- lapply(plots, function(p) {
+    p$labels$title <- NULL
+    p$labels$subtitle <- NULL
+    p
+  })
+  cowplot::plot_grid(plotlist = plots, ncol = 2, align = "hv") +
+    ggplot2::theme(
+      plot.background = ggplot2::element_rect(fill = "white"),
+      panel.background = ggplot2::element_rect(fill = "white")
+    )
 }

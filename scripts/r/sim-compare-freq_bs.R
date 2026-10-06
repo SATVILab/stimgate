@@ -2386,7 +2386,7 @@
       as.character(val)
     }
   } else if ("mismatch_type" %in% names(row) &&
-    identical(row$mismatch_type[[1]], "sd_inflation_negative")) {
+    identical(row$mismatch_type[[1]], "sd_inflation")) {
     "gn"
   } else {
     NULL
@@ -3361,7 +3361,8 @@
     pos_col = "mean_pos_setting",
     allow_tall = FALSE,
     ratio_twins = FALSE,
-    mcse_mode = NULL) {
+    mcse_mode = NULL,
+    after_plot = NULL) {
   if (level + 1L + as.integer(!is.null(extra_col)) > 6L) {
     stop("Figure loop headings would be deeper than level 6.")
   }
@@ -3397,11 +3398,11 @@
         }
         if (nrow(curr) == 0L) next
         p <- make_plot(curr)
-        .analysis_save_fig(
+        .analysis_print_save_fig(
           p, file.path(dir, set_name, file_fn(pos, extra)),
           height = height, allow_tall = allow_tall, mcse_mode = mcse_mode
         )
-        .analysis_print_fig(p, mcse_mode = mcse_mode)
+        if (!is.null(after_plot)) after_plot(curr, p)
         if (isTRUE(ratio_twins)) {
           .simBandwidthPrintRatioTwin(p, file.path(dir, set_name, file_fn(pos, extra)),
             height = height, allow_tall = allow_tall, mcse_mode = mcse_mode)
@@ -3433,7 +3434,7 @@
   data$transformation <- .analysis_trans_factor(data$transformation)
   p <- ggplot2::ggplot(
     data,
-    ggplot2::aes(x = n_cell, y = .data[[y]], colour = method)
+    ggplot2::aes(x = n_cell, y = .data[[y]], colour = method, shape = method, linetype = method)
   )
   if (zero_line) {
     p <- p + ggplot2::geom_hline(
@@ -3441,12 +3442,12 @@
     )
   }
   bounds <- paste0(y, c("_lower", "_upper"))
-  if (isTRUE(mcse) && all(bounds %in% names(data))) {
-    p <- p + .analysis_mcse_errorbar(data, bounds[[1]], bounds[[2]])
-  }
   p +
     ggplot2::geom_line(alpha = 0.75) +
     ggplot2::geom_point(alpha = 0.75) +
+    (if (isTRUE(mcse) && all(bounds %in% names(data))) {
+      .analysis_mcse_errorbar(data, bounds[[1]], bounds[[2]])
+    }) +
     ggplot2::scale_x_log10(
       breaks = sort(unique(data$n_cell)),
       labels = .analysis_label_number,
@@ -3455,9 +3456,10 @@
     ggplot2::scale_y_continuous(
       labels = if (percent_y) .analysis_label_percent else .analysis_label_number
     ) +
-    .analysis_scale_method() +
-    ggplot2::facet_grid(
-      prob_response ~ transformation,
+    .analysis_scale_method(c("colour", "shape", "linetype")) +
+    ggplot2::facet_wrap(
+      ggplot2::vars(prob_response, transformation),
+      ncol = length(unique(data$transformation)),
       scales = if (free_y) "free_y" else "fixed",
       labeller = ggplot2::labeller(
         prob_response = .analysis_labeller_percent()
@@ -3470,26 +3472,60 @@
 }
 
 # Estimated against true background-subtracted frequency.
-.simComparePlotEstVsTruth <- function(data) {
+.simComparePlotEstVsTruth <- function(data, maxwidth = 0.2, lower_limit = NULL) {
   data$transformation <- .analysis_trans_factor(data$transformation)
-  top <- max(data$propRespTruth, na.rm = TRUE) * 2
-  ggplot2::ggplot(
-    data,
-    ggplot2::aes(x = propRespTruth, y = propRespEst, colour = method)
-  ) +
-    ggplot2::geom_point(alpha = 0.35, size = 1) +
-    ggplot2::expand_limits(x = c(0, top), y = c(0, top)) +
-    ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-    ggplot2::scale_x_continuous(labels = .analysis_label_percent) +
-    ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
-    .analysis_scale_method() +
+  response_levels <- sort(unique(data$prob_response))
+  methods <- .simCompareMethodSets()$all_methods$methods
+  methods <- methods[methods %in% data$method]
+  offsets <- if (length(methods) == 1L) 0 else seq(-0.25, 0.25, length.out = length(methods))
+  spacing <- if (length(methods) == 1L) 0.5 else min(diff(offsets))
+  if (length(maxwidth) != 1L || !is.finite(maxwidth) || maxwidth <= 0 || maxwidth >= spacing) {
+    stop("maxwidth must be positive and smaller than the method spacing (", spacing, ").")
+  }
+  if (is.null(lower_limit)) {
+    positive <- c(data$propRespEst, response_levels)
+    lower_limit <- min(positive[is.finite(positive) & positive > 0]) / 10
+  }
+  if (length(lower_limit) != 1L || !is.finite(lower_limit) || lower_limit <= 0) {
+    stop("lower_limit must be one finite positive frequency.")
+  }
+  data$response_position <- match(data$prob_response, response_levels)
+  data$method_position <- data$response_position + offsets[match(data$method, methods)]
+  data$estimate_shown <- pmax(data$propRespEst, lower_limit)
+  data$plot_floor <- lower_limit
+  truth <- data |>
+    dplyr::distinct(.data$transformation, .data$prob_response, .data$response_position)
+  ggplot2::ggplot(data,
+    ggplot2::aes(x = method_position, y = estimate_shown, colour = method, shape = method,
+      group = interaction(prob_response, method))) +
+    ggforce::geom_sina(maxwidth = maxwidth, scale = "width", orientation = "x",
+      position = "identity", seed = 271L, jitter_y = FALSE, alpha = 0.35, size = 1) +
+    # Truth segments go on top so dense groups cannot hide them.
+    ggplot2::geom_segment(data = truth,
+      ggplot2::aes(x = response_position - 0.4, xend = response_position + 0.4,
+        y = prob_response, yend = prob_response), inherit.aes = FALSE,
+      colour = "black", linetype = "dashed", linewidth = 0.6) +
+    ggplot2::scale_x_continuous(breaks = seq_along(response_levels),
+      labels = .analysis_label_percent(response_levels)) +
+    ggplot2::scale_y_log10(labels = function(x) {
+        lab <- .analysis_label_percent(x)
+        floor_at <- !is.na(x) & abs(x / lower_limit - 1) < 1e-8
+        lab[floor_at] <- paste0("\u2264 ", lab[floor_at])
+        lab
+      },
+      breaks = function(limits) sort(unique(c(lower_limit, scales::log_breaks()(limits)))),
+      limits = c(lower_limit, NA), oob = scales::squish) +
+    .analysis_scale_method(c("colour", "shape")) +
     ggplot2::facet_wrap(~transformation) +
     ggplot2::labs(
-      x = "True background-subtracted response frequency",
+      x = "Simulated response frequency (evenly spaced levels)",
       y = "Estimated background-subtracted response frequency",
-      colour = "Method"
-    ) +
-    .analysis_theme()
+      colour = "Method",
+      caption = paste0("Estimates at or below ", .analysis_label_percent(lower_limit),
+        " (including zero and negative estimates) are squished to that lower limit; ",
+        sum(is.finite(data$propRespEst) & data$propRespEst <= lower_limit),
+        " method/sample estimates shown at the limit. Dashed segments mark true response frequencies.")
+    ) + .analysis_theme()
 }
 
 # Share of estimates that used a threshold fallback.
@@ -3501,37 +3537,46 @@
 }
 
 # Histograms of finite thresholds by method; `data` has `approach`.
-.simComparePlotThresholdDensity <- function(data) {
+.simComparePlotThresholdDensity <- function(data, densities = NULL, reference_scale = 1) {
+  if (length(reference_scale) != 1L || !is.finite(reference_scale) || reference_scale <= 0) {
+    stop("reference_scale must be one finite positive value.")
+  }
   data$transformation <- .analysis_trans_factor(data$transformation)
-  ggplot2::ggplot(
-    data,
-    ggplot2::aes(
-      x = threshold, y = ggplot2::after_stat(density),
-      fill = approach, colour = approach
-    )
-  ) +
-    ggplot2::geom_histogram(alpha = 0.5, position = "identity", bins = 30) +
-    ggplot2::facet_grid(
-      prob_response ~ transformation, scales = "free",
-      labeller = ggplot2::labeller(
-        prob_response = .analysis_labeller_percent()
-      )
-    ) +
+  p <- ggplot2::ggplot(data,
+    ggplot2::aes(x = threshold, y = ggplot2::after_stat(density),
+      fill = approach, colour = approach))
+  if (!is.null(densities)) {
+    keys <- intersect(c("transformation", "prob_response", "mean_pos",
+      "sample_perturbation_sd", "condition_perturbation_sd",
+      "cluster_perturbation_sd", "background_relative_to_response"), names(data))
+    densities$transformation <- .analysis_trans_factor(densities$transformation)
+    densities <- dplyr::semi_join(densities, dplyr::distinct(data, dplyr::across(dplyr::all_of(keys))), by = keys)
+    p <- p + ggplot2::geom_line(data = densities,
+      ggplot2::aes(x = expression, y = sqrt(pmax(density, 0)) * reference_scale,
+        linetype = condition, group = condition), inherit.aes = FALSE,
+      colour = "gray25", linewidth = 0.5) +
+      ggplot2::scale_linetype_manual(values = c(unstimulated = "dashed", stimulated = "solid"),
+        labels = c(unstimulated = "Unstimulated (all cells)", stimulated = "Stimulated (all cells)"))
+  }
+  p + ggplot2::geom_histogram(alpha = 0.2, position = "identity", bins = 30) +
+    ggplot2::facet_wrap(~ prob_response + transformation, scales = "free", ncol = 3,
+      labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent())) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
-    ggplot2::scale_y_continuous(labels = .analysis_label_number) +
+    ggplot2::scale_y_continuous(labels = .analysis_label_number,
+      sec.axis = if (is.null(densities)) ggplot2::waiver() else ggplot2::sec_axis(
+        ~ . / reference_scale, name = "Square root of expression density")) +
     .analysis_scale_method(aesthetics = c("colour", "fill")) +
-    ggplot2::labs(
-      x = "Threshold", y = "Density", colour = "Method", fill = "Method"
-    ) +
+    ggplot2::labs(x = "Threshold / marker expression", y = "Threshold density",
+      colour = "Method", fill = "Method", linetype = "Reference tube") +
     .analysis_theme()
 }
 
 # Shared pieces of the analysis 8 mismatch plots.
-.simCompareMismatchScales <- function(x_label) {
+.simCompareMismatchScales <- function(x_label, aesthetics = "colour") {
   list(
     ggplot2::scale_x_continuous(labels = .analysis_label_number),
-    .analysis_scale_method(),
-    ggplot2::labs(x = x_label, colour = "Method", subtitle = "Tube-level summaries"),
+    .analysis_scale_method(aesthetics),
+    ggplot2::labs(x = x_label, colour = "Method"),
     .analysis_theme()
   )
 }
@@ -3546,8 +3591,8 @@
   ggplot2::ggplot(
     data,
     ggplot2::aes(
-      x = mismatch_val, y = propUns_mean, colour = method,
-      linetype = mismatch_type,
+      x = mismatch_val, y = propUns_mean, colour = method, shape = method,
+      linetype = method,
       group = interaction(method, mismatch_type)
     )
   ) +
@@ -3555,18 +3600,17 @@
     ggplot2::geom_point(size = 2, alpha = 0.75) +
     bars +
     ggplot2::facet_wrap(
-      ~scenario_desc, scales = "free_y", labeller = .simCompareStripWrap()
+      ~scenario_desc, scales = "free_y", ncol = 2, labeller = .simCompareStripWrap()
     ) +
     ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
-    ggplot2::scale_linetype_discrete(labels = .simCompareMismatchLabels) +
-    .simCompareMismatchScales("Additive mean shift (transformed expression scale)") +
+    .simCompareMismatchScales("Additive mean shift (transformed expression scale)", c("colour", "shape", "linetype")) +
     ggplot2::guides(
       colour = ggplot2::guide_legend(nrow = 1, byrow = TRUE),
       linetype = ggplot2::guide_legend(nrow = 1, byrow = TRUE)
     ) +
     ggplot2::labs(
       y = "Unstimulated cells above the gate",
-      linetype = "Mismatch variant"
+      linetype = "Method"
     )
 }
 
@@ -3583,23 +3627,19 @@
   ggplot2::ggplot(
     data,
     ggplot2::aes(
-      x = mismatch_val, y = q90_abs_rel_error, colour = method, group = method
+      x = mismatch_val, y = q90_abs_rel_error, colour = method, shape = method, linetype = method, group = method
     )
   ) +
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
     ggplot2::geom_point(size = 2, alpha = 0.75) +
     bars +
-    ggplot2::facet_grid(
-      mismatch_type ~ scenario_desc, scales = "free",
-      labeller = ggplot2::labeller(
-        mismatch_type = .simCompareMismatchLabels,
-        scenario_desc = .simCompareStripWrap()
-      )
-    ) +
+    ggplot2::facet_wrap(~scenario_desc, scales = "free", ncol = 2,
+      labeller = .simCompareStripWrap()) +
     ggplot2::scale_y_continuous(
-      transform = scales::asinh_trans(), labels = .analysis_label_number
+      transform = scales::asinh_trans(), labels = .analysis_label_percent,
+      breaks = scales::breaks_pretty(n = 4)
     ) +
-    .simCompareMismatchScales("Mismatch size") +
+    .simCompareMismatchScales("Mismatch size", c("colour", "shape", "linetype")) +
     ggplot2::labs(y = "Tube-level 90th percentile absolute relative error (asinh scale)")
 }
 
@@ -3782,12 +3822,13 @@
     )
 }
 
-# Panels for the mismatch plots: rows are statistics, columns are
-# transformations (and response probabilities when `by_prob`).
-.simCompareMismatchFacet <- function(by_prob) {
-  ggplot2::facet_grid(
-    if (by_prob) statistic ~ transformation + prob_response else
-      statistic ~ transformation,
+# Panels for mismatch plots, with independent ranges for each statistic,
+# transformation and (when `by_prob`) response probability.
+.simCompareMismatchFacet <- function(by_prob, ncol = 3L) {
+  ggplot2::facet_wrap(
+    if (by_prob) ggplot2::vars(statistic, transformation, prob_response) else
+      ggplot2::vars(statistic, transformation),
+    ncol = ncol,
     scales = "free",
     labeller = ggplot2::labeller(
       prob_response = .analysis_labeller_percent("Response probability: ")
@@ -3811,7 +3852,7 @@
   ggplot2::ggplot(
     tbl,
     ggplot2::aes(
-      x = mismatch_val, y = value_shown, colour = method, group = method
+      x = mismatch_val, y = value_shown, colour = method, shape = method, linetype = method, group = method
     )
   ) +
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
@@ -3819,9 +3860,10 @@
     (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl)) +
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
     .simBandwidthAbsErrorLayers(capped = capped) +
-    .analysis_scale_method() +
-    .simCompareMismatchFacet(by_prob) +
-    ggplot2::labs(x = x_label, colour = "Method", subtitle = "Tube-level error distributions") +
+    .analysis_scale_method(c("colour", "shape", "linetype")) +
+    .simCompareMismatchFacet(by_prob, length(unique(tbl$transformation)) *
+      if (by_prob) length(unique(tbl$prob_response)) else 1L) +
+    ggplot2::labs(x = x_label, colour = "Method") +
     .analysis_theme()
 }
 
@@ -3858,7 +3900,7 @@
   ggplot2::ggplot(
     tbl,
     ggplot2::aes(
-      x = .data[[x]], y = value_shown, colour = method,
+      x = .data[[x]], y = value_shown, colour = method, shape = method, linetype = method,
       group = interaction(method, direction)
     )
   ) +
@@ -3869,9 +3911,10 @@
     ggplot2::geom_point(size = 1, alpha = 0.75) +
     (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl)) +
     x_scale +
-    .analysis_scale_method() +
-    .simCompareMismatchFacet(by_prob) +
-    ggplot2::labs(x = x_label, colour = "Method", subtitle = "Tube-level error distributions") +
+    .analysis_scale_method(c("colour", "shape", "linetype")) +
+    .simCompareMismatchFacet(by_prob, length(unique(tbl$transformation)) *
+      if (by_prob) length(unique(tbl$prob_response)) else 1L) +
+    ggplot2::labs(x = x_label, colour = "Method") +
     .analysis_theme()
 }
 
@@ -4050,8 +4093,8 @@
 )
 
 # Classification outcomes against mismatch size from
-# `.simCompareClassificationSummary()`. Rows of panels are outcomes, columns
-# are baseline scenarios, each with its own horizontal range; colour is the
+# `.simCompareClassificationSummary()`. Each scenario has adjacent outcome
+# panels, each with its own horizontal range; colour and shape identify the
 # method and line type the statistic (median, or the worse tail: 90th
 # percentile for FDP and false-positive rate, 10th for sensitivity). With
 # `unit_scale`, every vertical scale is fixed at 0-100%.
@@ -4062,6 +4105,12 @@
     unit_scale = TRUE,
     mcse = FALSE) {
   spec <- .simCompareClassificationOutcomes[outcomes]
+  tail_label <- if (length(outcomes) == 1L) {
+    if (outcomes == "sensitivity") "10th percentile" else "90th percentile"
+  } else {
+    paste(c(fdp = "90th FDP", sensitivity = "10th sensitivity", fpr = "90th FPR")[outcomes],
+      collapse = " / ")
+  }
   # One statistic's rows, with its Monte Carlo bounds when present.
   stat_rows <- function(label, statistic, col) {
     bound <- function(suffix) {
@@ -4089,31 +4138,31 @@
   p <- ggplot2::ggplot(
     long,
     ggplot2::aes(
-      x = mismatch_val, y = value, colour = method, linetype = statistic,
+      x = mismatch_val, y = value, colour = method, shape = method, linetype = statistic,
       group = interaction(method, statistic)
     )
   ) +
     ggplot2::geom_line(linewidth = 0.7, alpha = 0.8, na.rm = TRUE) +
     ggplot2::geom_point(size = 1.2, alpha = 0.8, na.rm = TRUE) +
     (if (isTRUE(mcse)) .analysis_mcse_errorbar(long)) +
-    ggplot2::facet_grid(
-      outcome ~ scenario,
+    ggplot2::facet_wrap(
+      ggplot2::vars(scenario, outcome), ncol = 2,
       scales = if (unit_scale) "free_x" else "free",
       labeller = ggplot2::labeller(
-        scenario = ggplot2::label_wrap_gen(width = 16),
-        outcome = ggplot2::label_wrap_gen(width = 14)
+        scenario = ggplot2::label_wrap_gen(width = 28),
+        outcome = ggplot2::label_wrap_gen(width = 24)
       )
     ) +
     ggplot2::scale_x_continuous(
       transform = "sqrt", labels = .analysis_label_number,
       guide = ggplot2::guide_axis(angle = 45)
     ) +
-    .analysis_scale_method() +
+    .analysis_scale_method(c("colour", "shape")) +
     ggplot2::scale_linetype_manual(
       values = c(median = "solid", tail = "22"),
       labels = c(
         median = "Tube-level median",
-        tail = "Tube-level 90th percentile (FDP, FPR) or 10th (sensitivity)"
+        tail = tail_label
       )
     ) +
     ggplot2::guides(
@@ -4121,7 +4170,7 @@
       linetype = ggplot2::guide_legend(order = 2, ncol = 1)
     ) +
     ggplot2::labs(
-      x = x_label, y = NULL, colour = "Method", linetype = "Tube-level distribution"
+      x = paste0(x_label, " (square-root spacing)"), y = NULL, colour = "Method", linetype = "Tube-level distribution"
     ) +
     .analysis_theme()
   if (unit_scale) {
@@ -4234,13 +4283,13 @@
     ) +
     ggplot2::geom_freqpoly(
       data = uns,
-      ggplot2::aes(x = expr, linetype = "Unstimulated tube"),
+      ggplot2::aes(x = expr, alpha = "Unstimulated tube"),
       binwidth = binwidth, boundary = boundary, colour = "black",
-      linewidth = 0.4
+      linewidth = 0.4, linetype = "dotted"
     ) +
     ggplot2::geom_vline(
       data = gates,
-      ggplot2::aes(xintercept = threshold, colour = method, group = line_id),
+      ggplot2::aes(xintercept = threshold, colour = method, linetype = method, group = line_id),
       linewidth = 0.7
     ) +
     ggplot2::facet_grid(
@@ -4256,11 +4305,46 @@
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
     # A square-root scale keeps the small positive component visible.
     ggplot2::scale_y_sqrt(labels = .analysis_label_number) +
-    .analysis_scale_method() +
+    .analysis_scale_method(c("colour", "linetype")) +
+    ggplot2::scale_alpha_manual(values = c("Unstimulated tube" = 1), name = "Reference tube") +
     ggplot2::labs(
       x = x_label, y = "Number of cells (square-root scale)",
       fill = "Stimulated cells",
-      colour = "Final gate", linetype = NULL
+      colour = "Method", linetype = "Method"
     ) +
     .analysis_theme()
+}
+
+# Unconditional pooled tube percentiles with the same dataset context and exclusions.
+.simCompareSignedPercentileSummary <- function(
+    .data,
+    scenarioCols,
+    keepMethods = c("stimgate", "fbeta", "tailgate"),
+    mcse = FALSE,
+    unit = "iter") {
+  .data <- .simComparePrimaryMethodRows(.data)
+  rows <- .simCompareBootstrapContext(.data, unit) |>
+    dplyr::filter(.data$method %in% keepMethods)
+  if (!"error" %in% names(rows)) rows$error <- NA_character_
+  rows <- rows |> dplyr::mutate(rel_error = dplyr::if_else(
+    .data$propRespTruth != 0 & (is.na(.data$error) | !nzchar(.data$error)),
+    (.data$propRespEst - .data$propRespTruth) / .data$propRespTruth, NA_real_))
+  rows |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
+    dplyr::group_modify(function(data, key) {
+      family <- unique(data$.bootstrap_family)
+      if (length(family) != 1L) stop("A signed scenario must have one bootstrap family.")
+      missing <- setdiff(as.character(data$.bootstrap_units[[1]]), as.character(data[[unit]]))
+      .simBandwidthSignedErrorPercentiles(
+        c(data$rel_error, rep(NA_real_, length(missing))), mcse = mcse,
+        unit = c(as.character(data[[unit]]), missing), bootstrap_family = family
+      )
+    }) |>
+    dplyr::ungroup()
+}
+
+.simCompareSignedPercentileAverage <- function(raw, scenarioCols, group_cols, mcse = FALSE) {
+  .analysis_mcse_bootstrap_average(
+    .simCompareSignedPercentileSummary(raw, scenarioCols, mcse = mcse),
+    group_cols, names(.simBandwidthSignedErrorProbs), mcse = TRUE)
 }

@@ -31,7 +31,7 @@ export ANALYSIS_EXPECTED_RUN_ID="${ANALYSIS_RUN_ID:-}"
 
 start_time=$(date +%s)
 echo "HOSTNAME: $HOSTNAME"
-echo "SIM_SIZE: ${SIM_SIZE:-final}"
+echo "SIM_SIZE: ${SIM_SIZE:-draft}"
 echo "SLURM_JOB_ID: ${SLURM_JOB_ID:-unknown}"
 echo "PROJECT_ROOT: $project_root"
 echo "QMD files: $qmd_files"
@@ -42,13 +42,33 @@ for qmd_file in "${qmd_file_vec[@]}"; do
     echo "ERROR: Could not find QMD: $project_root/$qmd_file" >&2
     exit 1
   fi
-  echo "-------------------"
-  echo "Render plots: $qmd_file"
-  date
-  r_expr="qmd_file <- '$qmd_file'; if (requireNamespace('quarto', quietly = TRUE)) { quarto::quarto_render(input = qmd_file) } else { status <- system2('quarto', c('render', qmd_file)); if (!identical(status, 0L)) quit(status = status) }"
-  apptainer-rscript -f stimgate -- "$r_expr"
-  echo "Completed rendering $qmd_file"
-  date
+  # Render directly, without projr's build/clean step or the isolated chunk
+  # helper (which deletes its HTML on exit). All reports embed resources;
+  # each HTML is self-contained even if Quarto reuses input-stem _files.
+  qmd_stem=$(basename -- "$qmd_file" .qmd)
+  # QMDs without Monte Carlo intervals render once, under their usual name.
+  if grep -q "show_mcse" "$qmd_file"; then mcse_modes=(off on); else mcse_modes=(none); fi
+  for mcse_mode in "${mcse_modes[@]}"; do
+    if [[ "$mcse_mode" == "none" ]]; then
+      unset SHOW_MCSE
+      output_file="${qmd_stem}.html"
+    else
+      export SHOW_MCSE="$mcse_mode"
+      output_file="${qmd_stem}-mcse_${mcse_mode}.html"
+    fi
+    echo "Render plots: $qmd_file ($mcse_mode) -> $output_file"
+    date
+    # Render under Quarto's default name and rename afterwards: --output with
+    # embed-resources makes Quarto look for its support files in the wrong place.
+    r_expr="qmd_file <- '$qmd_file'; if (requireNamespace('quarto', quietly = TRUE)) { quarto::quarto_render(input = qmd_file) } else { status <- system2('quarto', c('render', qmd_file)); if (!identical(status, 0L)) quit(status = status) }"
+    apptainer-rscript -f stimgate -- "$r_expr"
+    default_html="$(dirname -- "$qmd_file")/${qmd_stem}.html"
+    if [[ "$output_file" != "${qmd_stem}.html" ]]; then
+      mv -f -- "$default_html" "$(dirname -- "$qmd_file")/$output_file"
+    fi
+    echo "Completed rendering $output_file"
+    date
+  done
 done
 
 end_time=$(date +%s)

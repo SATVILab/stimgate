@@ -8,12 +8,12 @@
 
 .analysis_is_quick <- function() .analysis_has_profile("quick")
 
-# Simulation size for full-grid runs: "final" (default, for reported results)
-# or "draft" (fewer replicates). Set by the QMD param
+# Simulation size for full-grid runs: "draft" (current default; fewer
+# replicates) or "final" (for reported results). Set by the QMD param
 # `sim_size` or the SIM_SIZE environment variable. Dev and quick runs use their
 # own sizes, so they always count as "final" here.
 .analysis_sim_size <- function() {
-  size <- .get_qmd_param_env("sim_size", "SIM_SIZE", "final")
+  size <- .get_qmd_param_env("sim_size", "SIM_SIZE", "draft")
   size <- tolower(trimws(as.character(size)))
   if (length(size) != 1L || is.na(size) || !size %in% c("final", "draft")) {
     stop(
@@ -135,12 +135,16 @@
 }
 
 # Rendering mode; historical Boolean values select a single version.
-.analysis_mcse_mode <- function(x = "both") {
-  if (length(x) != 1L || is.na(x)) stop("show_mcse must be off, on or both.")
+.analysis_mcse_mode <- function(x = "on") {
+  if (length(x) != 1L || is.na(x)) {
+    stop("show_mcse must be off or on (one mode per render; both is unsupported).")
+  }
   value <- tolower(trimws(as.character(x)))
   if (value %in% c("true", "t", "yes", "y", "1")) value <- "on"
   if (value %in% c("false", "f", "no", "n", "0")) value <- "off"
-  if (!value %in% c("off", "on", "both")) stop("show_mcse must be off, on or both.")
+  if (!value %in% c("off", "on")) {
+    stop("show_mcse must be off or on (one mode per render; both is unsupported).")
+  }
   value
 }
 

@@ -326,9 +326,9 @@ test_that("summary-plot QMDs declare and read the show_mcse toggle", {
     "7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd"
   )) {
     lines <- readLines(file.path(root_dir, "analysis", file), warn = FALSE)
-    expect_true("  show_mcse: both" %in% lines, info = file)
+    expect_true('  show_mcse: "on"' %in% lines, info = file)
     expect_true(any(grepl(
-      'mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "both"))',
+      'mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "on"))',
       lines,
       fixed = TRUE
     )), info = file)
@@ -361,5 +361,5 @@ test_that("MCSE averages retain finite scenario coverage and averaged labels", {
     dplyr::mutate(averaged, transformation = "gaussian"), mcse = TRUE
   )
   expect_match(plot$labels$y, "Mean of scenario statistics", fixed = TRUE)
-  expect_match(plot$labels$caption, "median: 1", fixed = TRUE)
+  expect_match(plot$labels$caption, "Contributing scenarios per point: 1.", fixed = TRUE)
 })
