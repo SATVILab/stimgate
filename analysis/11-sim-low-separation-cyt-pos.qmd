@@ -237,7 +237,7 @@ if (isTRUE(run_plots)) {
       dplyr::filter(results$gates, .data$n_cell == n_cell_curr)
     )
     .analysis_print_save_fig(p, file.path(
-      .analysis_fig_dir(c(fig_key, "hex"), root_dir), paste0("hex-n_cell_", n_cell_curr, ".png")
+      .analysis_fig_dir(c(fig_key, "hex"), root_dir), paste0("hex-n_cell_", .simLowSepCellKey(n_cell_curr), ".png")
     ), height = 17)
   }
 }
@@ -245,7 +245,7 @@ if (isTRUE(run_plots)) {
 
 ### IFNγ among TNF+ cells
 
-For the same samples, the solid curve is the IFNγ density among all stimulated cells and the dashed curve the IFNγ density among TNF+ cells (by the ordinary TNF gate). Vertical lines mark the ordinary IFNγ gate (grey) and the cytokine-positive IFNγ gate (orange); an arrow and the label show how far the gate moved. Among TNF+ cells most cells are responders, so the IFNγ+ cells can form their own peak even when they are only a shoulder in all cells. The lower gate is used only for these TNF+ cells.
+For the same samples, the solid curve is the IFNγ density among all stimulated cells and the dashed curve the IFNγ density among TNF+ cells (by the ordinary TNF gate). Vertical lines mark the ordinary IFNγ gate (grey) and the cytokine-positive IFNγ gate (orange); an arrow along the bottom and the label show how far the gate moved. Among TNF+ cells most cells are responders, so the IFNγ+ cells can form their own peak even when they are only a shoulder in all cells. The lower gate is used only for these TNF+ cells.
 
 ```{r}
 #| label: fig-conditional-density
@@ -262,7 +262,7 @@ if (isTRUE(run_plots)) {
     )
     .analysis_print_save_fig(p, file.path(
       .analysis_fig_dir(c(fig_key, "conditional_density"), root_dir),
-      paste0("conditional_density-n_cell_", n_cell_curr, ".png")
+      paste0("conditional_density-n_cell_", .simLowSepCellKey(n_cell_curr), ".png")
     ), height = 13)
   }
 }
@@ -283,7 +283,7 @@ if (isTRUE(run_plots)) {
     .analysis_heading(.simLowSepCellLab(n_cell_curr), 4L)
     p <- .simLowSepPlotRecovery(dplyr::filter(recovery, .data$n_cell == n_cell_curr))
     .analysis_print_save_fig(p, file.path(
-      .analysis_fig_dir(c(fig_key, "recovery"), root_dir), paste0("recovery-n_cell_", n_cell_curr, ".png")
+      .analysis_fig_dir(c(fig_key, "recovery"), root_dir), paste0("recovery-n_cell_", .simLowSepCellKey(n_cell_curr), ".png")
     ), height = 22)
   }
 }
@@ -312,7 +312,7 @@ if (isTRUE(run_plots)) {
       p <- .simLowSepPlotFrequencyError(freq_curr)
       .analysis_print_save_fig(p, file.path(
         .analysis_fig_dir(c(fig_key, "frequency_error"), root_dir),
-        paste0("frequency_error-n_cell_", n_cell_curr, "-response_", resp, ".png")
+        paste0("frequency_error-n_cell_", .simLowSepCellKey(n_cell_curr), "-response_", resp, ".png")
       ), height = 12)
     }
   }
