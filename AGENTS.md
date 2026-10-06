@@ -640,6 +640,11 @@ the `flowWorkspace` stack from source.
     and 10.
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for
     simulation.
+  - `sim-debug-loc.R`: `.simDebugLoc()` wraps a QMD’s rerun call
+    unchanged and uses [`trace()`](https://rdrr.io/r/base/trace.html) to
+    record, or browse, the local-FDR gating of one sample (optionally
+    every later one too); `.simDebugLocPlots()` /
+    `.simDebugLocSummary()` plot and summarise it.
   - `sim-misc.R`: Miscellaneous simulation utilities.
   - `sim-trans.R`: Simulation transformation utilities.
 - `src/`: C++ source code compiled into the package via `cpp11`
@@ -688,11 +693,13 @@ For new or moved analysis code, use this layering:
     result-specific transformations and presentation.
 
 QMDs locate the checkout root before sourcing `analysis-runtime.R` and
-set knitr’s working directory there for workers. Use
-`.analysis_is_dev()` and `.analysis_is_quick()` for profile fallbacks
-and the shared cache readers for errors naming the analysis, render
-command, matching dev/quick profile and required completion of all
-chunks.
+set knitr’s working directory there for workers. Paths returned by projr
+and kept across chunks or passed to workers must use
+`format = "absolute"`: setup can run from `analysis/` before later
+chunks switch to the checkout root. Use `.analysis_is_dev()` and
+`.analysis_is_quick()` for profile fallbacks and the shared cache
+readers for errors naming the analysis, render command, matching
+dev/quick profile and required completion of all chunks.
 
 When displaying ggplot objects inside QMD conditionals or loops, call
 [`print()`](https://rdrr.io/r/base/print.html) explicitly. Chunk tests
@@ -1021,20 +1028,20 @@ deduplicates identical rows before drawing reference lines.
     profiles are active. Results for dev and quick runs are kept under
     `<analysis-key>/dev/` and `<analysis-key>/quick/`; full runs keep
     the existing analysis key. Full-grid runs take `sim_size` (QMD
-    param, `SIM_SIZE` env, read by `.analysis_sim_size()`): `"draft"`
-    (default) or `"final"`; draft uses about a quarter of the samples
+    param, `SIM_SIZE` env, read by `.analysis_sim_size()`): `"final"`
+    (default) or `"draft"`; draft uses about a quarter of the samples
     (datasets in 7/8) on the same grid, stored under
     `<analysis-key>/draft/` and recorded as `sim_size` in required run
     settings; draft is for iterating, not reporting, and dev/quick take
-    precedence. Set `SIM_SIZE=final` explicitly for reported runs. Draft
-    7/8 retain all 20 jointly gated samples per dataset and reduce only
-    replicate datasets; missing `sim_size` in legacy manifests still
-    means final. Workers and interactive single-row reruns use the same
-    explicitly seeded row runner; resume retries failed rows by default.
-    Comparison scenarios in QMDs 7/8 use explicit RNG kinds and restore
-    the caller’s RNG state; do not reintroduce `gateCombn` plumbing in
-    the comparison layer. Analysis 1 seeds each row and saves and
-    validates its scientific settings with the cache.
+    precedence. Set `SIM_SIZE=draft` explicitly for faster iterations.
+    Draft 7/8 retain all 20 jointly gated samples per dataset and reduce
+    only replicate datasets; missing `sim_size` in legacy manifests
+    still means final. Workers and interactive single-row reruns use the
+    same explicitly seeded row runner; resume retries failed rows by
+    default. Comparison scenarios in QMDs 7/8 use explicit RNG kinds and
+    restore the caller’s RNG state; do not reintroduce `gateCombn`
+    plumbing in the comparison layer. Analysis 1 seeds each row and
+    saves and validates its scientific settings with the cache.
 
 10. **Exact reruns of one simulation row**: Fixed-seed simulation parity
     fixtures must mirror the replicate-seed draw before direct simulator
@@ -1050,7 +1057,10 @@ filtering, shuffling and chunking. Each row is seeded with its own
 L’Ecuyer state, chunking or scheduling. Each simulation QMD has one
 `eval: false` “rerun one simulation” chunk that selects a `sim_id` from
 the full grid and calls the same scenario code path as the workers. Do
-not add separate debug loops.
+not add separate debug loops. To investigate one sample’s gating, wrap
+that same rerun call in `.simDebugLoc()` (as in the 2a
+`debug-one-sample` chunk) rather than copying package internals into the
+QMD; it must not draw random numbers or change the rerun output.
 
 11. **Real-data analyses replace outputs non-destructively**: ACS error
     summaries separate stimuli, report positive-manual relative-error
@@ -1285,3 +1295,14 @@ orchestration and ratio companions. Both versions are printed with
 explicit labels and saved in sibling `mcse_off/` and `mcse_on/` folders;
 non-MC figures retain a single output. Never rerun simulations for these
 twins.
+
+Comparison completion and promotion require every intended
+method/sample/iteration row, finite simulated truth and pairing
+fingerprints, and consistent successful gate counts. Explicit
+F-beta/Tailgate error rows with method-error provenance and missing
+estimates/counts are completed scientific observations, reused on resume
+even with `retryErrors = TRUE`; report them as missing outcomes, never
+zero gates. Missing/malformed rows, unlabelled missing outcomes,
+StimGate or whole-scenario runtime failures remain incomplete. Mismatch
+checks use defined gate counts and report failed zero-mismatch pairs
+separately from finite comparisons.
