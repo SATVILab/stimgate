@@ -467,6 +467,7 @@ sim_id_target <- 1L
 debug_sample <- 1L # sample within the simulated dataset
 debug_subsequent <- FALSE
 debug_browse <- character(0L) # e.g. ".getCpUnsLocFilterAfterSmoothing"
+debug_xlim <- NULL # e.g. c(3, 8) to zoom every plot in on the threshold
 
 # To pick a case from the results instead, e.g. a low skew threshold:
 # case <- bw_tbl_results_raw |>
@@ -504,7 +505,7 @@ dir_debug <- .analysis_fig_dir(
 )
 for (nm in names(dbg_list)) {
   p_debug <- .simDebugLocPlotGrid(
-    .simDebugLocPlots(dbg_list[[nm]]),
+    .simDebugLocPlots(dbg_list[[nm]], xlim = debug_xlim),
     info = .simDebugLocInfo(dbg_list[[nm]], row_target)
   )
   ggsave(

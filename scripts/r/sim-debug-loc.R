@@ -344,37 +344,69 @@
     )
 }
 
+# Colours, line types and widths of the diagnostic plots.
+.simDebugLocColours <- c(
+  stim = "#C2410C", unstim = "#1D4E89",
+  raw = "#A3A3A3", smoothed = "#111111",
+  gn = "#BDBDBD", gp = "#C2410C"
+)
+.simDebugLocLineStyle <- tibble::tibble(
+  line = c(
+    "minProbXPos", "xClearInit", "xDom", "xQual", "xAntimode", "xSum",
+    "threshold"
+  ),
+  colour = c(
+    "#8C8C8C", "#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#0072B2",
+    "#000000"
+  ),
+  linetype = c(
+    "dotted", "dotdash", "dashed", "longdash", "twodash", "solid", "solid"
+  ),
+  linewidth = c(0.6, 0.7, 0.7, 0.7, 0.7, 0.7, 1.1)
+)
+
 #' Diagnostic plots for one debugged sample
 #'
+#' All plots share one x-axis range: by default the widest range shown in
+#' any of them.
+#'
 #' @param dbg simDebugLoc Output of `.simDebugLoc()`.
+#' @param xlim numeric or NULL Common x-axis limits, e.g. to zoom in on the
+#'   threshold. Default: the widest range of the plotted data.
 #' @return named list of ggplot objects (NULL where data are unavailable):
 #'   `density` (raw stim/unstim densities), `prob` (raw and smoothed response
 #'   probability), `deriv` (probability derivative), `taut` (taut-string
 #'   antimode density), `respCells` (expected responding cells per bin) and
 #'   `truth` (stimulated expression by true label).
-.simDebugLocPlots <- function(dbg) {
+.simDebugLocPlots <- function(dbg, xlim = NULL) {
   if (!isTRUE(dbg$found)) {
     stop("The target sample was not gated; nothing to plot.")
   }
-  lines <- .simDebugLocLines(dbg)
+  lines <- .simDebugLocLines(dbg) |>
+    dplyr::left_join(
+      dplyr::mutate(
+        .simDebugLocLineStyle,
+        line = factor(.data$line, levels = levels(.simDebugLocLines(dbg)$line))
+      ),
+      by = "line"
+    )
+  # Colours and widths are set per line, leaving the colour scale for the
+  # plotted data; `.simDebugLocPlotGrid()` draws one key for all plots.
   vlines <- function() {
     geom_vline(
       data = lines,
       aes(xintercept = .data$x, linetype = .data$line, group = .data$line),
-      colour = "grey30"
+      colour = lines$colour,
+      linewidth = lines$linewidth
     )
   }
   scaleLines <- scale_linetype_manual(
-    values = c(
-      minProbXPos = "dotted", xClearInit = "dotdash", xDom = "longdash",
-      xQual = "twodash", xAntimode = "dashed", xSum = "solid",
-      threshold = "solid"
-    ),
-    drop = TRUE,
-    name = NULL
+    values = stats::setNames(lines$linetype, lines$line),
+    guide = "none"
   )
   style <- function(p) {
     p + vlines() + scaleLines + .analysis_theme() +
+      cowplot::background_grid(major = "xy", minor = "x") +
       theme(legend.position = "bottom")
   }
   chnl <- attr(dbg$inputs$exTblStimOrig, "chnlCut")
@@ -385,7 +417,8 @@
       dplyr::mutate(condition = ifelse(.data$stim == "yes", "stim", "unstim"))
     out$density <- style(
       ggplot(densTbl, aes(.data$xStim, .data$dens, colour = .data$condition)) +
-        geom_line() +
+        geom_line(linewidth = 0.7) +
+        scale_colour_manual(values = .simDebugLocColours) +
         labs(x = chnl, y = "Raw density", colour = NULL)
     )
   }
@@ -402,7 +435,8 @@
       ))
     out$prob <- style(
       ggplot(probTbl, aes(.data$x, .data$value, colour = .data$type)) +
-        geom_line() +
+        geom_line(linewidth = 0.7) +
+        scale_colour_manual(values = .simDebugLocColours) +
         expand_limits(y = c(0, 1)) +
         labs(x = chnl, y = "Response probability", colour = NULL)
     )
@@ -444,7 +478,8 @@
         ))
       out$respCells <- style(
         ggplot(respTbl, aes(.data$x, .data$nResp, colour = .data$type)) +
-          geom_line() +
+          geom_line(linewidth = 0.7) +
+          scale_colour_manual(values = .simDebugLocColours) +
           labs(x = chnl, y = "Expected responding cells", colour = NULL)
       )
     }
@@ -466,12 +501,59 @@
     truthStim <- dbg$truth[dbg$truth$condition == "stim", ]
     out$truth <- style(
       ggplot(truthStim, aes(.data$x, fill = .data$label)) +
-        geom_histogram(bins = 100L, position = "identity", alpha = 0.6) +
+        geom_histogram(bins = 100L, position = "identity", alpha = 0.8) +
+        scale_fill_manual(values = .simDebugLocColours) +
         scale_y_sqrt() +
         labs(x = chnl, y = "Cells (square-root scale)", fill = "True label")
     )
   }
+
+  if (is.null(xlim)) {
+    xlim <- range(unlist(lapply(out, function(p) {
+      x <- rlang::eval_tidy(p$mapping$x, p$data)
+      x[is.finite(x)]
+    })), lines$x)
+  }
+  out <- lapply(out, function(p) p + coord_cartesian(xlim = xlim))
+  attr(out, "lines") <- lines
   out
+}
+
+#' Key to the threshold lines drawn on every diagnostic plot
+#'
+#' @param lines tibble Line positions and styles, as stored on the output of
+#'   `.simDebugLocPlots()`.
+#' @return ggplot object.
+.simDebugLocLineKey <- function(lines) {
+  key <- tibble::tibble(
+    label = paste0(
+      as.character(lines$line), " (",
+      vapply(lines$x, function(x) format(signif(x, 4L)), character(1L)), ")"
+    ),
+    colour = lines$colour,
+    linetype = lines$linetype,
+    linewidth = lines$linewidth,
+    x = (seq_len(nrow(lines)) - 1L) %% 4L,
+    y = -((seq_len(nrow(lines)) - 1L) %/% 4L)
+  )
+  ggplot(key) +
+    geom_segment(
+      aes(
+        x = .data$x + 0.02, xend = .data$x + 0.22, y = .data$y, yend = .data$y,
+        colour = .data$colour, linetype = .data$linetype,
+        linewidth = .data$linewidth
+      )
+    ) +
+    geom_text(
+      aes(x = .data$x + 0.25, y = .data$y, label = .data$label),
+      hjust = 0, size = 3.4
+    ) +
+    scale_colour_identity() +
+    scale_linetype_identity() +
+    scale_linewidth_identity() +
+    scale_x_continuous(limits = c(0, 4), expand = c(0, 0)) +
+    scale_y_continuous(limits = c(min(key$y) - 0.5, 0.5), expand = c(0, 0)) +
+    theme_void()
 }
 
 #' Settings and results shown beside the diagnostic plots
@@ -596,6 +678,7 @@
 #'   blocks below the plots.
 #' @return ggplot object.
 .simDebugLocPlotGrid <- function(plots, info = NULL) {
+  lines <- attr(plots, "lines")
   plots <- Filter(Negate(is.null), plots)
   grid <- cowplot::plot_grid(
     plotlist = plots,
@@ -603,6 +686,13 @@
     labels = LETTERS[seq_along(plots)],
     align = "hv"
   )
+  if (is.data.frame(lines) && nrow(lines) > 0L) {
+    grid <- cowplot::plot_grid(
+      grid, .simDebugLocLineKey(lines),
+      ncol = 1L,
+      rel_heights = c(10 * ceiling(length(plots) / 2), ceiling(nrow(lines) / 4))
+    )
+  }
   if (is.null(info)) {
     return(grid)
   }

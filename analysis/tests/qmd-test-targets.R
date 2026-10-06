@@ -44,7 +44,8 @@
     ),
     "10-real-compare-acs-cytof-validation.qmd" = c(
       "test-acs-cytof-validation-plots.R", "test-acs-cytof-paths.R"
-    )
+    ),
+    "2c-sim-test.qmd" = c("test-sim-test-qmd.R", "test-sim-debug-loc.R")
   )
   documents <- list.files(file.path(root_dir, "analysis"), pattern = "[.]qmd$")
   if (!setequal(documents, names(targets))) {
