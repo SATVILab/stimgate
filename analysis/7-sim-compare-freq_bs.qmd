@@ -956,7 +956,52 @@ sibling `ratio*` folder. The curves and intervals are identical: 1x is exact,
 0x is an estimate of zero and 2x is twice the reference. Negative ratios remain
 visible; a capped upper tick reads “≥ 16x”.
 
-### Over- and under-estimates by cell count
+### Unconditional percentiles of signed relative error by cell count
+
+These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
+
+```{r}
+#| label: signed-percentiles-cell-count
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  percentile_tbl <- compare_tbl |>
+    dplyr::filter(condition_perturbation_sd == 0) |>
+    .simCompareSignedPercentileSummary(
+      scenarioCols = scenario_cols, mcse = show_mcse
+    )
+  print(knitr::kable(.simComparePerformanceCoverage(percentile_tbl, scenario_cols),
+    caption = "Unconditional pooled-percentile coverage, including undefined bootstrap draws."))
+  .simCompareFigureLoop(
+    percentile_tbl,
+    make_plot = function(d) .simBandwidthSignedPercentilePlot(d, x = "n_cell",
+      x_label = "Number of stimulated cells", x_log = TRUE, mcse = show_mcse) +
+      ggplot2::aes(shape = method, linetype = method) +
+      .analysis_scale_method(c("colour", "shape", "linetype")),
+    dir = file.path(plot_dir, "signed_percentiles_by_n_cell"),
+    file_fn = function(pos, extra) {
+      paste0(
+        "freq_bs_signed_percentiles_meanpos_setting_", pos, "_prob_response_",
+        gsub("[^0-9a-z]+", "_", .analysis_label_percent(extra)), ".png"
+      )
+    },
+    height = 14,
+    level = 4L,
+    extra_col = "prob_response",
+    extra_heading = function(x) {
+      paste0("Response probability: ", .analysis_label_percent(x))
+    }, mcse_mode = mcse_mode
+  )
+}
+```
+
+### Conditional over- and under-estimates by cell count
+
+These are conditional error-severity diagnostics: exact agreement (zero error) is excluded from both directions. The direction shares use all finite errors, including zeros, as their denominator; the remaining share is exact agreement. An all-exact group has no directional curve. Use the unconditional signed-error percentiles for overall performance, and the coverage summaries for failed or undefined estimates.
 
 The relative error, (estimate - truth) / truth, is summarised separately for
 over-estimates and under-estimates in each scenario, using the same simulated
@@ -1007,46 +1052,6 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Percentiles of signed relative error by cell count
-
-The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
-
-Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
-
-```{r}
-#| label: signed-percentiles-cell-count
-#| echo: false
-#| results: asis
-if (isTRUE(run_plots)) {
-  percentile_tbl <- compare_tbl |>
-    dplyr::filter(condition_perturbation_sd == 0) |>
-    .simCompareSignedPercentileSummary(
-      scenarioCols = scenario_cols, mcse = show_mcse
-    )
-  print(knitr::kable(.simComparePerformanceCoverage(percentile_tbl, scenario_cols),
-    caption = "Unconditional pooled-percentile coverage, including undefined bootstrap draws."))
-  .simCompareFigureLoop(
-    percentile_tbl,
-    make_plot = function(d) .simBandwidthSignedPercentilePlot(d, x = "n_cell",
-      x_label = "Number of stimulated cells", x_log = TRUE, mcse = show_mcse) +
-      ggplot2::aes(shape = method, linetype = method) +
-      .analysis_scale_method(c("colour", "shape", "linetype")),
-    dir = file.path(plot_dir, "signed_percentiles_by_n_cell"),
-    file_fn = function(pos, extra) {
-      paste0(
-        "freq_bs_signed_percentiles_meanpos_setting_", pos, "_prob_response_",
-        gsub("[^0-9a-z]+", "_", .analysis_label_percent(extra)), ".png"
-      )
-    },
-    height = 14,
-    level = 4L,
-    extra_col = "prob_response",
-    extra_heading = function(x) {
-      paste0("Response probability: ", .analysis_label_percent(x))
-    }, mcse_mode = mcse_mode
-  )
-}
-```
 
 Each dataset-maximum figure uses one response probability. Severity panels have
 independent vertical ranges; occurrence panels retain the fixed 0–100% scale.

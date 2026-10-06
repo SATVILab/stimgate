@@ -1383,7 +1383,39 @@ sibling `ratio*` folder. The curves and intervals are identical: 1x is exact,
 0x is an estimate of zero and 2x is twice the reference. Negative ratios remain
 visible; a capped upper tick reads “≥ 16x”.
 
-### Over- and under-estimates across baseline scenarios
+### Unconditional percentiles of signed relative error averaged over cell counts
+
+These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
+
+```{r}
+#| label: signed-percentiles-averaged
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .simCompareFigureLoop(
+    percentile_averaged,
+    make_plot = function(d) .simBandwidthSignedPercentilePlot(
+      d, x = "mismatch_val", x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
+      x_log = FALSE, mcse = show_mcse) +
+      ggplot2::aes(shape = method, linetype = method) +
+      .analysis_scale_method(c("colour", "shape", "linetype")),
+    dir = .compare_fresh_fig_dir("signed_percentiles_averaged"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = "mismatch_type",
+    height = 16,
+    level = 4L, mcse_mode = mcse_mode
+  )
+}
+```
+
+### Conditional over- and under-estimates across baseline scenarios
+
+These are conditional error-severity diagnostics: exact agreement (zero error) is excluded from both directions. The direction shares use all finite errors, including zeros, as their denominator; the remaining share is exact agreement. An all-exact group has no directional curve. Use the unconditional signed-error percentiles for overall performance, and the coverage summaries for failed or undefined estimates.
 
 Relative error is split by direction: over-estimates sit above zero and
 under-estimates below. Within each scenario, the median and 95th percentile are calculated separately for over- and under-estimates, then averaged
@@ -1415,38 +1447,13 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 }
 ```
 
-### Percentiles of signed relative error averaged over cell counts
-
-The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
-
-Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
-
-```{r}
-#| label: signed-percentiles-averaged
-#| echo: false
-#| results: asis
-if (isTRUE(run_plots) && isTRUE(results_available)) {
-  .simCompareFigureLoop(
-    percentile_averaged,
-    make_plot = function(d) .simBandwidthSignedPercentilePlot(
-      d, x = "mismatch_val", x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
-      x_log = FALSE, mcse = show_mcse) +
-      ggplot2::aes(shape = method, linetype = method) +
-      .analysis_scale_method(c("colour", "shape", "linetype")),
-    dir = .compare_fresh_fig_dir("signed_percentiles_averaged"),
-    file_fn = .compare_mismatch_file,
-    extra_heading = .compare_mismatch_heading,
-    extra_col = "mismatch_type",
-    height = 16,
-    level = 4L, mcse_mode = mcse_mode
-  )
-}
-```
 
 Signed- and absolute-error panels have independent ranges across transformations.
 Method colours, shapes and line types follow the shared comparison encoding.
 
-### Over- and under-estimates at each cell count
+### Conditional over- and under-estimates at each cell count
+
+These are conditional error-severity diagnostics: exact agreement (zero error) is excluded from both directions. The direction shares use all finite errors, including zeros, as their denominator; the remaining share is exact agreement. An all-exact group has no directional curve. Use the unconditional signed-error percentiles for overall performance, and the coverage summaries for failed or undefined estimates.
 
 As above, but keeping each baseline separate by its cell count. Each plotted
 cell count has a single response probability within its transformation and

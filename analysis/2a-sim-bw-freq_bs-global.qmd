@@ -1142,56 +1142,9 @@ sibling `ratio*` folder. The curves and intervals are identical: 1x is exact,
 0x is an estimate of zero and 2x is twice the reference. Negative ratios remain
 visible; a capped upper tick reads “≥ 16x”.
 
-### Over- and under-estimates averaged over cell counts
+### Unconditional percentiles of signed relative error averaged over cell counts
 
-The overall plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: over-estimates (teal) sit above zero and under-estimates (brown) below, with darker shades for larger statistics. Within each scenario, the median, 95th-percentile and maximum error sizes are calculated separately for over- and under-estimates; these are then averaged equally over cell counts and response probabilities, using low bias. Line weight shows the share of estimates in that direction. Under-estimates are on a linear scale between -100% and zero; values below -100% (negative estimates) use a compressed logarithmic scale, with -100% (0x, an estimate of zero), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Panels separate transformations, and there is one figure per mean position.
-
-With `show_mcse` on, the median and 95th percentile of each direction have error bars. Within each scenario they come from the sorted errors in that direction; the number of errors in each direction is itself random, so the bars for a rare direction understate the uncertainty a little (the line weight shows how rare it is). Averaged values have plus or minus 1.96 combined standard errors, treating scenarios as independent. Maxima have none.
-
-```{r}
-#| label: signed-error-averaged-n-cell
-#| results: asis
-#| fig-width: 6.3
-#| fig-height: 5.5
-#| echo: false
-if (isTRUE(run_plots)) {
-  for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
-    err_rel_tbl <- bw_tbl_results_raw |>
-      dplyr::filter(
-        mean_pos_setting == mean_pos_setting_curr,
-        bias_uns_setting == "low",
-        condition_perturbation_sd == 0
-      ) |>
-      dplyr::mutate(rel_error = (propRespEst - propRespTruth) / propRespTruth)
-    if (nrow(err_rel_tbl) == 0L) {
-      next
-    }
-    # Summarise each scenario, then average equally over cell counts and
-    # response probabilities.
-    err_rel_avg_tbl <- err_rel_tbl |>
-      .simBandwidthSignedErrorSummary(
-        c("transformation", "n_cell", "bw", "prob_response"),
-        mcse = show_mcse
-      ) |>
-      .simBandwidthSignedErrorAverage(c("transformation", "bw"))
-    p <- .simBandwidthGlobalSignedErrorPlot(err_rel_avg_tbl, mcse = show_mcse)
-    path_p <- file.path(
-      .analysis_fig_dir(c(fig_key, "signed_error_averaged"), root_dir),
-      paste0(
-        "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf"
-      )
-    )
-    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
-    .analysis_print_save_fig(p, path_p, height = 18, mcse_mode = mcse_mode)
-    .simBandwidthPrintRatioTwin(p, path_p, height = 18, mcse_mode = mcse_mode)
-    .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-      dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
-      dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
-  }
-}
-```
-
-### Percentiles of signed relative error averaged over cell counts
+These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
 
 The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
 
@@ -1242,60 +1195,61 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Over- and under-estimates at each cell count
+### Conditional over- and under-estimates averaged over cell counts
 
-As above, but keeping each cell count separate and averaging only over response probabilities.
+These are conditional error-severity diagnostics: exact agreement (zero error) is excluded from both directions. The direction shares use all finite errors, including zeros, as their denominator; the remaining share is exact agreement. An all-exact group has no directional curve. Use the unconditional signed-error percentiles for overall performance, and the coverage summaries for failed or undefined estimates.
+
+The overall plots above use the size of the error only. Here relative error, (estimate - truth) / truth, is split by direction: over-estimates (teal) sit above zero and under-estimates (brown) below, with darker shades for larger statistics. Within each scenario, the median, 95th-percentile and maximum error sizes are calculated separately for over- and under-estimates; these are then averaged equally over cell counts and response probabilities, using low bias. Line weight shows the share of estimates in that direction. Under-estimates are on a linear scale between -100% and zero; values below -100% (negative estimates) use a compressed logarithmic scale, with -100% (0x, an estimate of zero), and over-estimates on a fold scale, so -100% and +100% (twice the truth) are the same distance from zero; both are always shown. Over-estimates larger than +1500% (16 times the truth) are drawn at +1500%, and that tick is then labelled "≥ +1500% (16x)". Panels separate transformations, and there is one figure per mean position.
+
+With `show_mcse` on, the median and 95th percentile of each direction have error bars. Within each scenario they come from the sorted errors in that direction; the number of errors in each direction is itself random, so the bars for a rare direction understate the uncertainty a little (the line weight shows how rare it is). Averaged values have plus or minus 1.96 combined standard errors, treating scenarios as independent. Maxima have none.
 
 ```{r}
-#| label: signed-error-by-n-cell
+#| label: signed-error-averaged-n-cell
 #| results: asis
 #| fig-width: 6.3
 #| fig-height: 5.5
 #| echo: false
 if (isTRUE(run_plots)) {
-  err_rel_by_cell <- bw_tbl_results_raw |>
-    dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0) |>
-    dplyr::mutate(rel_error = (propRespEst - propRespTruth) / propRespTruth) |>
-    .simBandwidthSignedErrorSummary(
-      c("mean_pos_setting", "transformation", "n_cell", "bw", "prob_response"),
-      mcse = show_mcse
-    ) |>
-    .simBandwidthSignedErrorAverage(
-      c("mean_pos_setting", "transformation", "n_cell", "bw")
-    )
-
-  for (mean_pos_setting_curr in unique(err_rel_by_cell$mean_pos_setting)) {
-    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
-    for (n_cell_curr in sort(unique(err_rel_by_cell$n_cell))) {
-      plot_tbl <- err_rel_by_cell |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr)
-      if (nrow(plot_tbl) == 0L) next
-      p <- .simBandwidthGlobalSignedErrorPlot(plot_tbl, mcse = show_mcse)
-      path_p <- file.path(
-        .analysis_fig_dir(
-          c(
-            fig_key, "signed_error_by_n_cell",
-            paste0("mean_pos_setting_", mean_pos_setting_curr)
-          ),
-          root_dir
-        ),
-        paste0(
-          "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr,
-          "_n_cell_", n_cell_curr, ".pdf"
-        )
-      )
-      .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
-      .analysis_print_save_fig(p, path_p, height = 18, mcse_mode = mcse_mode)
-      .simBandwidthPrintRatioTwin(p, path_p, height = 18, mcse_mode = mcse_mode)
-      .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
-        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
-        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
+  for (mean_pos_setting_curr in unique(bw_tbl_results_raw$mean_pos_setting)) {
+    err_rel_tbl <- bw_tbl_results_raw |>
+      dplyr::filter(
+        mean_pos_setting == mean_pos_setting_curr,
+        bias_uns_setting == "low",
+        condition_perturbation_sd == 0
+      ) |>
+      dplyr::mutate(rel_error = (propRespEst - propRespTruth) / propRespTruth)
+    if (nrow(err_rel_tbl) == 0L) {
+      next
     }
+    # Summarise each scenario, then average equally over cell counts and
+    # response probabilities.
+    err_rel_avg_tbl <- err_rel_tbl |>
+      .simBandwidthSignedErrorSummary(
+        c("transformation", "n_cell", "bw", "prob_response"),
+        mcse = show_mcse
+      ) |>
+      .simBandwidthSignedErrorAverage(c("transformation", "bw"))
+    p <- .simBandwidthGlobalSignedErrorPlot(err_rel_avg_tbl, mcse = show_mcse)
+    path_p <- file.path(
+      .analysis_fig_dir(c(fig_key, "signed_error_averaged"), root_dir),
+      paste0(
+        "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr, ".pdf"
+      )
+    )
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
+    .analysis_print_save_fig(p, path_p, height = 18, mcse_mode = mcse_mode)
+    .simBandwidthPrintRatioTwin(p, path_p, height = 18, mcse_mode = mcse_mode)
+    .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+      dplyr::filter(mean_pos_setting == mean_pos_setting_curr) |>
+      dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
   }
 }
 ```
 
-### Percentiles of signed relative error at each cell count
+
+### Unconditional percentiles of signed relative error at each cell count
+
+These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
 
 The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
 
@@ -1352,57 +1306,53 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Over- and under-estimates by cell count and response probability
+### Conditional over- and under-estimates at each cell count
 
-As above, but without averaging over response probabilities: rows of panels
-separate response probabilities, so large over-estimates can be traced to
-particular (for example, low) response probabilities. Error bars are the
-per-scenario order-statistic intervals.
+These are conditional error-severity diagnostics: exact agreement (zero error) is excluded from both directions. The direction shares use all finite errors, including zeros, as their denominator; the remaining share is exact agreement. An all-exact group has no directional curve. Use the unconditional signed-error percentiles for overall performance, and the coverage summaries for failed or undefined estimates.
+
+As above, but keeping each cell count separate and averaging only over response probabilities.
 
 ```{r}
-#| label: signed-error-by-n-cell-prob
+#| label: signed-error-by-n-cell
 #| results: asis
 #| fig-width: 6.3
-#| fig-height: 8.7
+#| fig-height: 5.5
 #| echo: false
 if (isTRUE(run_plots)) {
-  err_rel_by_cell_prob <- bw_tbl_results_raw |>
+  err_rel_by_cell <- bw_tbl_results_raw |>
     dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0) |>
     dplyr::mutate(rel_error = (propRespEst - propRespTruth) / propRespTruth) |>
     .simBandwidthSignedErrorSummary(
       c("mean_pos_setting", "transformation", "n_cell", "bw", "prob_response"),
       mcse = show_mcse
+    ) |>
+    .simBandwidthSignedErrorAverage(
+      c("mean_pos_setting", "transformation", "n_cell", "bw")
     )
 
-  for (mean_pos_setting_curr in unique(err_rel_by_cell_prob$mean_pos_setting)) {
+  for (mean_pos_setting_curr in unique(err_rel_by_cell$mean_pos_setting)) {
     .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
-    for (n_cell_curr in sort(unique(err_rel_by_cell_prob$n_cell))) {
-      plot_tbl <- err_rel_by_cell_prob |>
-        dplyr::filter(
-          mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr
-        )
+    for (n_cell_curr in sort(unique(err_rel_by_cell$n_cell))) {
+      plot_tbl <- err_rel_by_cell |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr)
       if (nrow(plot_tbl) == 0L) next
-      p <- .simBandwidthGlobalSignedErrorPlot(
-        plot_tbl,
-        by_prob = TRUE, mcse = show_mcse
-      )
+      p <- .simBandwidthGlobalSignedErrorPlot(plot_tbl, mcse = show_mcse)
       path_p <- file.path(
         .analysis_fig_dir(
           c(
-            fig_key, "signed_error_by_n_cell_prob",
+            fig_key, "signed_error_by_n_cell",
             paste0("mean_pos_setting_", mean_pos_setting_curr)
           ),
           root_dir
         ),
         paste0(
           "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr,
-          "_n_cell_", n_cell_curr, "_by_prob.pdf"
+          "_n_cell_", n_cell_curr, ".pdf"
         )
       )
-      n_prob <- length(unique(plot_tbl$prob_response))
       .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
-      .analysis_print_save_fig(p, path_p, height = min(22, 6 + 3 * n_prob), mcse_mode = mcse_mode)
-      .simBandwidthPrintRatioTwin(p, path_p, height = min(22, 6 + 3 * n_prob), mcse_mode = mcse_mode)
+      .analysis_print_save_fig(p, path_p, height = 18, mcse_mode = mcse_mode)
+      .simBandwidthPrintRatioTwin(p, path_p, height = 18, mcse_mode = mcse_mode)
       .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
         dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
         dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
@@ -1411,7 +1361,10 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Percentiles of signed relative error by cell count and response probability
+
+### Unconditional percentiles of signed relative error by cell count and response probability
+
+These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
 
 The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
 
@@ -1470,6 +1423,68 @@ if (isTRUE(run_plots)) {
   }
 }
 ```
+
+### Conditional over- and under-estimates by cell count and response probability
+
+These are conditional error-severity diagnostics: exact agreement (zero error) is excluded from both directions. The direction shares use all finite errors, including zeros, as their denominator; the remaining share is exact agreement. An all-exact group has no directional curve. Use the unconditional signed-error percentiles for overall performance, and the coverage summaries for failed or undefined estimates.
+
+As above, but without averaging over response probabilities: rows of panels
+separate response probabilities, so large over-estimates can be traced to
+particular (for example, low) response probabilities. Error bars are the
+per-scenario order-statistic intervals.
+
+```{r}
+#| label: signed-error-by-n-cell-prob
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 8.7
+#| echo: false
+if (isTRUE(run_plots)) {
+  err_rel_by_cell_prob <- bw_tbl_results_raw |>
+    dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0) |>
+    dplyr::mutate(rel_error = (propRespEst - propRespTruth) / propRespTruth) |>
+    .simBandwidthSignedErrorSummary(
+      c("mean_pos_setting", "transformation", "n_cell", "bw", "prob_response"),
+      mcse = show_mcse
+    )
+
+  for (mean_pos_setting_curr in unique(err_rel_by_cell_prob$mean_pos_setting)) {
+    .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 4)
+    for (n_cell_curr in sort(unique(err_rel_by_cell_prob$n_cell))) {
+      plot_tbl <- err_rel_by_cell_prob |>
+        dplyr::filter(
+          mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr
+        )
+      if (nrow(plot_tbl) == 0L) next
+      p <- .simBandwidthGlobalSignedErrorPlot(
+        plot_tbl,
+        by_prob = TRUE, mcse = show_mcse
+      )
+      path_p <- file.path(
+        .analysis_fig_dir(
+          c(
+            fig_key, "signed_error_by_n_cell_prob",
+            paste0("mean_pos_setting_", mean_pos_setting_curr)
+          ),
+          root_dir
+        ),
+        paste0(
+          "avg_signed_rel_error_vs_bw_mean_pos_setting_", mean_pos_setting_curr,
+          "_n_cell_", n_cell_curr, "_by_prob.pdf"
+        )
+      )
+      n_prob <- length(unique(plot_tbl$prob_response))
+      .analysis_heading(paste0("Cells: ", .analysis_label_number(n_cell_curr)), 5)
+      .analysis_print_save_fig(p, path_p, height = min(22, 6 + 3 * n_prob), mcse_mode = mcse_mode)
+      .simBandwidthPrintRatioTwin(p, path_p, height = min(22, 6 + 3 * n_prob), mcse_mode = mcse_mode)
+      .simBandwidthPrintCoverage(p, bw_tbl_results_summary |>
+        dplyr::filter(mean_pos_setting == mean_pos_setting_curr, n_cell == n_cell_curr) |>
+        dplyr::filter(bias_uns_setting == "low", condition_perturbation_sd == 0))
+    }
+  }
+}
+```
+
 
 
 ```{r}
