@@ -1010,6 +1010,45 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Percentiles of signed relative error by cell count
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
+
+```{r}
+#| label: signed-percentiles-cell-count
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  percentile_tbl <- compare_tbl |>
+    dplyr::filter(condition_perturbation_sd == 0) |>
+    .simCompareSignedPercentileSummary(
+      scenarioCols = scenario_cols, mcse = show_mcse
+    )
+  print(knitr::kable(.simComparePerformanceCoverage(percentile_tbl, scenario_cols),
+    caption = "Unconditional pooled-percentile coverage, including undefined bootstrap draws."))
+  .simCompareFigureLoop(
+    percentile_tbl,
+    make_plot = function(d) .simBandwidthSignedPercentilePlot(d, x = "n_cell",
+      x_label = "Number of stimulated cells", x_log = TRUE, mcse = show_mcse),
+    dir = file.path(plot_dir, "signed_percentiles_by_n_cell"),
+    file_fn = function(pos, extra) {
+      paste0(
+        "freq_bs_signed_percentiles_meanpos_setting_", pos, "_prob_response_",
+        gsub("[^0-9a-z]+", "_", .analysis_label_percent(extra)), ".png"
+      )
+    },
+    height = 14,
+    level = 4L,
+    extra_col = "prob_response",
+    extra_heading = function(x) {
+      paste0("Response probability: ", .analysis_label_percent(x))
+    }, mcse_mode = mcse_mode
+  )
+}
+```
+
 ### Estimated versus true response frequency
 
 Estimated frequency is plotted against the true background-subtracted frequency,

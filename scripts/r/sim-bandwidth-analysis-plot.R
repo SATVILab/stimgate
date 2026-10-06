@@ -888,3 +888,132 @@ add_bw_labs <- function(.data) {
   }, character(1))
   paste("Contributing scenarios per setting", paste(counts, collapse = "; "))
 }
+
+# Unconditional percentiles are computed on raw signed errors, including zeros.
+# Both outer pairs are retained until the complete figure chooses its pair.
+.simBandwidthSignedErrorProbs <- c(
+  q025 = 0.025, q05 = 0.05, q10 = 0.10, q25 = 0.25, median = 0.50,
+  q75 = 0.75, q90 = 0.90, q95 = 0.95, q975 = 0.975
+)
+
+.simBandwidthSignedErrorPercentiles <- function(
+    rel_error, probs = .simBandwidthSignedErrorProbs, mcse = FALSE,
+    unit = NULL, bootstrap_family = "default") {
+  if (is.null(names(probs)) || any(!is.finite(probs) | probs <= 0 | probs >= 1)) {
+    stop("Percentile probabilities must be named and strictly between zero and one.")
+  }
+  # Eligibility of the outer pair must not change when interval display is off.
+  # Compute intervals once; the plot's mcse argument controls their visibility.
+  out <- dplyr::bind_cols(purrr::imap(probs, function(p, name) {
+    if (!is.null(unit)) {
+      return(.analysis_mcse_pooled_cols(rel_error, unit,
+        function(v) .analysis_mcse_quantile_finite(v, p), name,
+        bootstrap_family, mcse = TRUE))
+    }
+    point <- tibble::tibble(value = .analysis_mcse_quantile_finite(rel_error, p))
+    names(point) <- name
+    dplyr::bind_cols(point, .analysis_mcse_quantile_cols(rel_error, p, name))
+  }))
+  out$n_finite <- sum(is.finite(rel_error))
+  out
+}
+
+.simBandwidthSignedPercentileSummary <- function(tbl, group_cols, mcse = FALSE) {
+  tbl |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
+    dplyr::reframe(.simBandwidthSignedErrorPercentiles(.data$rel_error, mcse = mcse))
+}
+
+.simBandwidthSignedPercentileAverage <- function(tbl, group_cols) {
+  .analysis_mcse_average_cols(tbl, group_cols, names(.simBandwidthSignedErrorProbs))
+}
+
+# Choose one pair for all panels and methods, checking only finite plotted points.
+.simBandwidthSignedPercentileOuter <- function(tbl) {
+  available <- vapply(c("q025", "q975"), function(name) {
+    if (!all(paste0(name, c("_lower", "_upper")) %in% names(tbl))) return(FALSE)
+    keep <- is.finite(tbl[[name]])
+    all(is.finite(tbl[[paste0(name, "_lower")]][keep]) &
+      is.finite(tbl[[paste0(name, "_upper")]][keep]))
+  }, logical(1))
+  if (all(available)) c("q025", "q975") else c("q05", "q95")
+}
+
+# All seven percentiles share a panel. Symmetric pairs share alpha/line width.
+# Facets retain scenario dimensions; no direction/share conditioning is applied.
+.simBandwidthSignedPercentilePlot <- function(
+    tbl, x = "bw", x_label = "Bandwidth", x_log = FALSE,
+    by_prob = FALSE, facet = NULL, mcse = FALSE,
+    y_label = NULL, subtitle = NULL,
+    alphas = c(outer = 0.35, tail = 0.55, quartile = 0.75, median = 1),
+    linewidths = c(outer = 0.4, tail = 0.6, quartile = 0.9, median = 1.2)) {
+  outer <- .simBandwidthSignedPercentileOuter(tbl)
+  fallback <- identical(outer, c("q05", "q95"))
+  stats <- c(outer[1], "q10", "q25", "median", "q75", "q90", outer[2])
+  labels <- c(if (fallback) "5th" else "2.5th", "10th", "25th", "50th (median)",
+    "75th", "90th", if (fallback) "95th" else "97.5th")
+  long <- .simBandwidthStatLongBounds(tbl, stats, "percentile", "value")
+  long$percentile <- factor(long$percentile, levels = stats, labels = labels)
+  long$side <- factor(c("Below median", "Below median", "Below median", "Median",
+    "Above median", "Above median", "Above median")[match(as.character(long$percentile), labels)],
+    levels = c("Below median", "Median", "Above median"))
+  multi <- "method" %in% names(long)
+  if ("transformation" %in% names(long)) long$transformation <- .analysis_trans_factor(long$transformation)
+  long$value_shown <- .simBandwidthSignedErrorSquish(long$value)
+  # Bandwidth is an ordered discrete grid, as in the sibling 2a view.
+  if (x == "bw") long$bw <- factor(.analysis_label_number(long$bw),
+    levels = .analysis_label_number(sort(unique(tbl$bw))))
+  line_cols <- intersect(c("method", "percentile", "transformation", "prob_response",
+    "n_cell", "mismatch_label", "bw", "bias_uns_basis", "pop"), names(long))
+  line_cols <- setdiff(line_cols, x)
+  long$series <- interaction(long[line_cols], drop = TRUE)
+  if (is.null(facet)) {
+    facet <- if (x == "bias_uns_multiplier") {
+      ggplot2::facet_grid(bw + bias_uns_basis ~ mismatch_label, scales = "free_y")
+    } else if (by_prob) {
+      ggplot2::facet_grid(prob_response ~ transformation, scales = "free")
+    } else ggplot2::facet_wrap(~transformation, scales = "free")
+  }
+  scenario_counts <- grep("^n_scenario_", names(tbl), value = TRUE)
+  counts <- if (length(scenario_counts)) paste("Finite contributing scenarios:",
+    paste(vapply(scenario_counts, function(name) paste0(sub("^n_scenario_", "", name),
+      " ", min(tbl[[name]]), "–", max(tbl[[name]])), character(1)), collapse = "; ")) else NULL
+  if (is.null(subtitle)) {
+    settings <- intersect(c("mean_pos_setting", "prob_response", "n_cell", "mismatch_type"), names(tbl))
+    settings <- setdiff(settings, x)
+    subtitle <- paste(vapply(settings, function(name) paste0(name, ": ",
+      paste(unique(tbl[[name]]), collapse = ", ")), character(1)), collapse = "; ")
+  }
+  caption <- paste(counts,
+    if (fallback) "5th/95th (too few samples for 2.5th/97.5th intervals)." else "Outer pair: 2.5th/97.5th.",
+    "Unavailable intervals are omitted; points remain.")
+  if (is.null(y_label)) y_label <- if ("n_scenario" %in% names(tbl)) {
+    "Mean of scenario percentiles (signed relative error)"
+  } else "Signed relative error"
+  p <- ggplot2::ggplot(long, ggplot2::aes(
+    x = .data[[x]], y = .data$value_shown, group = .data$series,
+    colour = .data[[if (multi) "method" else "side"]],
+    alpha = .data$percentile, linewidth = .data$percentile,
+    linetype = .data$side)) +
+    ggplot2::geom_hline(yintercept = 0, colour = "grey40", linetype = "dashed") +
+    ggplot2::geom_line() + ggplot2::geom_point(size = 1) +
+    (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(long)) + facet +
+    ggplot2::scale_y_continuous(transform = .simBandwidthSignedErrorTrans(),
+      labels = function(v) .simBandwidthSignedErrorLabel(v,
+        cap = if (.simBandwidthSignedErrorIsCapped(long$value)) .simBandwidthSignedErrorCap else Inf)) +
+    ggplot2::expand_limits(y = c(-1, 1)) +
+    ggplot2::scale_alpha_manual(values = stats::setNames(unname(alphas[c("outer", "tail", "quartile", "median", "quartile", "tail", "outer")]), labels),
+      name = "Percentile", drop = FALSE) +
+    ggplot2::scale_linewidth_manual(values = stats::setNames(unname(linewidths[c("outer", "tail", "quartile", "median", "quartile", "tail", "outer")]), labels),
+      name = "Percentile", drop = FALSE) +
+    ggplot2::scale_linetype_manual(values = c("Below median" = "dotted", "Median" = "solid", "Above median" = "dashed"),
+      name = "Percentile position") +
+    (if (multi) .analysis_scale_method() else ggplot2::scale_colour_manual(
+      values = c("Below median" = .simBandwidthSignedErrorColours[["over_q95"]],
+        "Median" = "#333333", "Above median" = .simBandwidthSignedErrorColours[["under_q95"]]),
+      name = "Percentile position")) +
+    (if (x_log) ggplot2::scale_x_log10(breaks = sort(unique(tbl[[x]])), labels = .analysis_label_number)
+      else if (is.numeric(long[[x]])) ggplot2::scale_x_continuous(labels = .analysis_label_number)) +
+    .analysis_theme() + ggplot2::labs(x = x_label, y = y_label, subtitle = subtitle, caption = caption)
+  p
+}

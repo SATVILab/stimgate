@@ -633,6 +633,9 @@ if (isTRUE(run_plots)) {
     bias_uns_results_raw, bias_uns_error_cols,
     mcse = show_mcse
   )
+  bias_uns_signed_percentiles <- .simBandwidthSignedPercentileSummary(
+    bias_uns_results_raw, bias_uns_error_cols, mcse = show_mcse
+  )
 }
 ```
 
@@ -979,6 +982,93 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Percentiles of signed relative error by bias and mismatch
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Independent-sample intervals use order statistics within scenarios; equal-weight scenario averages combine their standard errors as sqrt(sum(se^2))/k. These views retain the fixed bandwidth/bias subset and its scientific exclusions.
+
+```{r}
+#| label: signed-percentiles
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 8.7
+#| echo: false
+if (isTRUE(run_plots)) {
+  for (mismatch_type_curr in unique(bias_uns_signed_percentiles$mismatch_type)) {
+    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
+      "Mean shift of the stimulated negative component"
+    } else {
+      "SD inflation of the stimulated negative component"
+    }, 3)
+    plot_dir <- .analysis_fig_dir(
+      c(fig_key, "signed_percentiles", mismatch_type_curr),
+      path_root = root_dir
+    )
+
+    for (transformation_curr in .analysis_trans_order(bias_uns_signed_percentiles$transformation)) {
+      .analysis_heading(
+        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+      )
+      for (mean_pos_setting_curr in unique(bias_uns_signed_percentiles$mean_pos_setting)) {
+        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
+        for (prob_response_curr in unique(bias_uns_signed_percentiles$prob_response)) {
+          plot_tbl <- bias_uns_signed_percentiles |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            )
+
+          p <- .simBandwidthSignedPercentilePlot(
+            plot_tbl,
+            x = "bias_uns_multiplier", x_label = "Bias multiplier",
+            facet = ggplot2::facet_grid(
+              n_cell + bw + bias_uns_basis ~ mismatch_label,
+              scales = "free_y",
+              labeller = ggplot2::labeller(n_cell = function(x) {
+                paste0("Cells: ", .analysis_label_number(as.numeric(x)))
+              })
+            ),
+            mcse = show_mcse
+          )
+
+          p <- p + ggplot2::labs(subtitle = paste0("Mean position: ", mean_pos_setting_curr,
+            if ("n_cell" %in% names(plot_tbl)) paste0("; cells: ", paste(unique(plot_tbl$n_cell), collapse = ", ")) else "; averaged over cell counts",
+            if ("prob_response" %in% names(plot_tbl)) paste0("; response: ", paste(unique(plot_tbl$prob_response), collapse = ", ")) else "; averaged over response probabilities"))
+          path_p <- file.path(
+            plot_dir,
+            paste0(
+              transformation_curr,
+              "_", mean_pos_setting_curr,
+              "_p_", format(prob_response_curr, scientific = TRUE),
+              ".pdf"
+            )
+          )
+          .analysis_save_fig(p, path_p, height = 22, mcse_mode = mcse_mode)
+          .analysis_heading(
+            paste0(
+              "Response probability: ", .analysis_label_percent(prob_response_curr)
+            ),
+            6
+          )
+          .analysis_print_fig(p, mcse_mode = mcse_mode)
+
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            ))
+        }
+      }
+    }
+  }
+}
+```
+
 ## Over- and under-estimates averaged over cell counts
 
 The scenario-level statistics and shares for each direction are averaged equally over cell counts, keeping response probabilities and mismatch settings separate. Error bars are the average plus or minus 1.96 combined standard errors, treating cell counts as independent scenarios.
@@ -1062,6 +1152,95 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Percentiles of signed relative error averaged over cell counts
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Independent-sample intervals use order statistics within scenarios; equal-weight scenario averages combine their standard errors as sqrt(sum(se^2))/k. These views retain the fixed bandwidth/bias subset and its scientific exclusions.
+
+```{r}
+#| label: signed-percentiles-averaged-n-cell
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 5.5
+#| echo: false
+if (isTRUE(run_plots)) {
+  # Average scenario statistics equally across cell counts; do not pool samples.
+  bias_uns_signed_percentiles_avg <- bias_uns_signed_percentiles |>
+    .simBandwidthSignedPercentileAverage(c(
+      "transformation", "mean_pos_setting", "prob_response", "mismatch_label",
+      "mismatch_type", "mismatch_val", "bw", "bias_uns_basis",
+      "bias_uns_multiplier"
+    ))
+
+  for (mismatch_type_curr in unique(bias_uns_signed_percentiles_avg$mismatch_type)) {
+    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
+      "Mean shift of the stimulated negative component"
+    } else {
+      "SD inflation of the stimulated negative component"
+    }, 3)
+    plot_dir <- .analysis_fig_dir(
+      c(fig_key, "signed_percentiles_averaged_n_cell", mismatch_type_curr),
+      path_root = root_dir
+    )
+
+    for (transformation_curr in .analysis_trans_order(bias_uns_signed_percentiles_avg$transformation)) {
+      .analysis_heading(
+        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+      )
+      for (mean_pos_setting_curr in unique(bias_uns_signed_percentiles_avg$mean_pos_setting)) {
+        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
+        for (prob_response_curr in unique(bias_uns_signed_percentiles_avg$prob_response)) {
+          plot_tbl <- bias_uns_signed_percentiles_avg |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            )
+
+          p <- .simBandwidthSignedPercentilePlot(
+            plot_tbl,
+            x = "bias_uns_multiplier", x_label = "Bias multiplier",
+            y_label = "Mean of scenario statistics (relative error)",
+            mcse = show_mcse
+          )
+
+          p <- p + ggplot2::labs(subtitle = paste0("Mean position: ", mean_pos_setting_curr,
+            if ("n_cell" %in% names(plot_tbl)) paste0("; cells: ", paste(unique(plot_tbl$n_cell), collapse = ", ")) else "; averaged over cell counts",
+            if ("prob_response" %in% names(plot_tbl)) paste0("; response: ", paste(unique(plot_tbl$prob_response), collapse = ", ")) else "; averaged over response probabilities"))
+          path_p <- file.path(
+            plot_dir,
+            paste0(
+              transformation_curr,
+              "_", mean_pos_setting_curr,
+              "_p_", format(prob_response_curr, scientific = TRUE),
+              ".pdf"
+            )
+          )
+          .analysis_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
+          .analysis_heading(
+            paste0(
+              "Response probability: ", .analysis_label_percent(prob_response_curr)
+            ),
+            6
+          )
+          .analysis_print_fig(p, mcse_mode = mcse_mode)
+
+          .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+            dplyr::filter(
+              mismatch_type == mismatch_type_curr,
+              transformation == transformation_curr,
+              mean_pos_setting == mean_pos_setting_curr,
+              prob_response == prob_response_curr
+            ))
+        }
+      }
+    }
+  }
+}
+```
+
 ## Over- and under-estimates at each cell count
 
 Each cell count is shown on its own.
@@ -1126,6 +1305,92 @@ if (isTRUE(run_plots)) {
             )
             .analysis_print_fig(p, mcse_mode = mcse_mode)
             .simBandwidthPrintRatioTwin(p, path_p, height = 14, mcse_mode = mcse_mode)
+            .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
+              dplyr::filter(
+                mismatch_type == mismatch_type_curr,
+                transformation == transformation_curr,
+                mean_pos_setting == mean_pos_setting_curr,
+                prob_response == prob_response_curr,
+                n_cell == n_cell_curr
+              ))
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Percentiles of signed relative error at each cell count
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Independent-sample intervals use order statistics within scenarios; equal-weight scenario averages combine their standard errors as sqrt(sum(se^2))/k. These views retain the fixed bandwidth/bias subset and its scientific exclusions.
+
+```{r}
+#| label: signed-percentiles-by-n-cell
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 5.5
+#| echo: false
+if (isTRUE(run_plots)) {
+  for (mismatch_type_curr in unique(bias_uns_signed_percentiles$mismatch_type)) {
+    .analysis_heading(if (mismatch_type_curr == "mean_shift") {
+      "Mean shift of the stimulated negative component"
+    } else {
+      "SD inflation of the stimulated negative component"
+    }, 3)
+    plot_dir <- .analysis_fig_dir(
+      c(fig_key, "signed_percentiles_by_n_cell", mismatch_type_curr),
+      path_root = root_dir
+    )
+
+    for (transformation_curr in .analysis_trans_order(bias_uns_signed_percentiles$transformation)) {
+      .analysis_heading(
+        paste0("Transformation: ", .analysis_trans_factor(transformation_curr)), 4
+      )
+      for (mean_pos_setting_curr in unique(bias_uns_signed_percentiles$mean_pos_setting)) {
+        .analysis_heading(paste0("Mean position: ", mean_pos_setting_curr), 5)
+        for (prob_response_curr in unique(bias_uns_signed_percentiles$prob_response)) {
+          for (n_cell_curr in sort(unique(bias_uns_signed_percentiles$n_cell))) {
+            plot_tbl <- bias_uns_signed_percentiles |>
+              dplyr::filter(
+                mismatch_type == mismatch_type_curr,
+                transformation == transformation_curr,
+                mean_pos_setting == mean_pos_setting_curr,
+                prob_response == prob_response_curr,
+                n_cell == n_cell_curr
+              )
+            if (nrow(plot_tbl) == 0L) next
+
+            p <- .simBandwidthSignedPercentilePlot(plot_tbl,
+            x = "bias_uns_multiplier", x_label = "Bias multiplier", mcse = show_mcse)
+
+            p <- p + ggplot2::labs(subtitle = paste0("Mean position: ", mean_pos_setting_curr,
+              if ("n_cell" %in% names(plot_tbl)) paste0("; cells: ", paste(unique(plot_tbl$n_cell), collapse = ", ")) else "; averaged over cell counts",
+              if ("prob_response" %in% names(plot_tbl)) paste0("; response: ", paste(unique(plot_tbl$prob_response), collapse = ", ")) else "; averaged over response probabilities"))
+            path_p <- file.path(
+              plot_dir,
+              paste0(
+                transformation_curr,
+                "_", mean_pos_setting_curr,
+                "_p_", format(prob_response_curr, scientific = TRUE),
+                "_n_cell_", n_cell_curr,
+                ".pdf"
+              )
+            )
+            .analysis_save_fig(p, path_p, height = 14, mcse_mode = mcse_mode)
+            # Response probability and cells share one heading level, so the
+            # headings stay within six levels.
+            .analysis_heading(
+              paste0(
+                "Response probability: ", .analysis_label_percent(prob_response_curr),
+                "; cells: ", .analysis_label_number(n_cell_curr)
+              ),
+              6
+            )
+            .analysis_print_fig(p, mcse_mode = mcse_mode)
+
             .simBandwidthPrintCoverage(p, bias_uns_results_summary |>
               dplyr::filter(
                 mismatch_type == mismatch_type_curr,

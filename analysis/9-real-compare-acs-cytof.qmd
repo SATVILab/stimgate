@@ -41,6 +41,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-mcse.R"))
 source(file.path(scripts_r_dir, "sim-bandwidth-analysis-plot.R"))
 fig_key <- .analysis_mode_key("9-real-compare-acs-cytof", sized = FALSE)
 analysis_qmd <- "analysis/9-real-compare-acs-cytof.qmd"
@@ -482,6 +483,40 @@ if (isTRUE(run_plots)) {
     .simBandwidthPrintRatioTwin(p,
       file.path(.analysis_fig_dir(c(fig_key, "manual_comparison_signed_error", set_name), root_dir),
         "manual-comparison-ratio.png"), height = 22, level = 5L)
+  }
+}
+```
+
+### Percentiles of signed relative error against manual gating
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Intervals bootstrap donors, carrying all their tubes together and using common donor draws across methods and strata. They describe agreement with the imperfect manual reference. All seven percentiles share each population panel; cytokine remains on the x axis.
+
+```{r}
+#| label: manual-signed-percentiles
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  # Summarise all methods together before subsetting to keep common donor draws.
+  manual_percentiles <- .acsCytofManualSignedPercentiles(manual_comparison_tbl)
+  method_sets <- .acsCytofMethodSets()
+  for (set_name in names(method_sets)) {
+    method_set <- method_sets[[set_name]]
+    .analysis_heading(method_set$label, 4)
+    p <- .simBandwidthSignedPercentilePlot(
+      manual_percentiles |> dplyr::filter(method %in% method_set$methods),
+      x = "cyt", x_label = "Cytokine", mcse = TRUE,
+      facet = ggplot2::facet_wrap(~pop, scales = "free_y"),
+      subtitle = paste0(method_set$label, "; all stimuli; donor-bootstrap intervals")
+    )
+    .analysis_save_fig(p,
+      file.path(.analysis_fig_dir(c(fig_key, "signed_percentiles", set_name), root_dir),
+        "manual-comparison-signed-percentiles.png"), height = 22)
+    .analysis_print_fig(p)
+    print(knitr::kable(manual_percentiles |> dplyr::filter(method %in% method_set$methods) |>
+      dplyr::select(method, pop, cyt, dplyr::starts_with("n_"),
+        dplyr::starts_with("bootstrap_coverage_"), dplyr::starts_with("interval_available_")), caption = "Donor-bootstrap validity for unconditional percentiles."))
   }
 }
 ```

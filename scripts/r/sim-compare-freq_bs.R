@@ -4264,3 +4264,37 @@
     ) +
     .analysis_theme()
 }
+
+# Unconditional pooled tube percentiles with the same dataset context and exclusions.
+.simCompareSignedPercentileSummary <- function(
+    .data,
+    scenarioCols,
+    keepMethods = c("stimgate", "fbeta", "tailgate"),
+    mcse = FALSE,
+    unit = "iter") {
+  .data <- .simComparePrimaryMethodRows(.data)
+  rows <- .simCompareBootstrapContext(.data, unit) |>
+    dplyr::filter(.data$method %in% keepMethods)
+  if (!"error" %in% names(rows)) rows$error <- NA_character_
+  rows <- rows |> dplyr::mutate(rel_error = dplyr::if_else(
+    .data$propRespTruth != 0 & (is.na(.data$error) | !nzchar(.data$error)),
+    (.data$propRespEst - .data$propRespTruth) / .data$propRespTruth, NA_real_))
+  rows |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
+    dplyr::group_modify(function(data, key) {
+      family <- unique(data$.bootstrap_family)
+      if (length(family) != 1L) stop("A signed scenario must have one bootstrap family.")
+      missing <- setdiff(as.character(data$.bootstrap_units[[1]]), as.character(data[[unit]]))
+      .simBandwidthSignedErrorPercentiles(
+        c(data$rel_error, rep(NA_real_, length(missing))), mcse = mcse,
+        unit = c(as.character(data[[unit]]), missing), bootstrap_family = family
+      )
+    }) |>
+    dplyr::ungroup()
+}
+
+.simCompareSignedPercentileAverage <- function(raw, scenarioCols, group_cols, mcse = FALSE) {
+  .analysis_mcse_bootstrap_average(
+    .simCompareSignedPercentileSummary(raw, scenarioCols, mcse = mcse),
+    group_cols, names(.simBandwidthSignedErrorProbs), mcse = TRUE)
+}

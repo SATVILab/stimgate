@@ -1294,6 +1294,14 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     "mean_pos_setting", "transformation", "mismatch_type", "mismatch_val",
     "method"
   )
+  percentile_scenario <- .simCompareSignedPercentileSummary(
+    compare_raw, scenario_error_cols, mcse = show_mcse)
+  percentile_averaged <- .analysis_mcse_bootstrap_average(
+    percentile_scenario, group_all, names(.simBandwidthSignedErrorProbs), mcse = TRUE)
+  print(knitr::kable(.simComparePerformanceCoverage(percentile_scenario, scenario_error_cols),
+    caption = "Unconditional pooled-percentile bootstrap validity."))
+  print(knitr::kable(.simComparePerformanceCoverage(percentile_averaged, group_all),
+    caption = "Unconditional scenario-percentile average bootstrap validity."))
   group_cell <- c(group_all, "n_cell")
   err_averaged <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_all, mcse = show_mcse)
   err_by_cell <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_cell, mcse = show_mcse)
@@ -1420,6 +1428,32 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     extra_heading = .compare_mismatch_heading,
     extra_col = "mismatch_type",
     ratio_twins = TRUE,
+    height = 16,
+    level = 4L, mcse_mode = mcse_mode
+  )
+}
+```
+
+### Percentiles of signed relative error averaged over cell counts
+
+The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+
+Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
+
+```{r}
+#| label: signed-percentiles-averaged
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .simCompareFigureLoop(
+    percentile_averaged,
+    make_plot = function(d) .simBandwidthSignedPercentilePlot(
+      d, x = "mismatch_val", x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
+      x_log = FALSE, mcse = show_mcse),
+    dir = .compare_fresh_fig_dir("signed_percentiles_averaged"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = "mismatch_type",
     height = 16,
     level = 4L, mcse_mode = mcse_mode
   )
