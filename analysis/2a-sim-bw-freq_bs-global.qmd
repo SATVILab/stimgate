@@ -452,7 +452,9 @@ of the stored run. Every earlier sample is gated as usual first.
 figure. It shows the raw stimulated and unstimulated densities, the raw and
 smoothed response probability, its derivative, the expected responding cells
 per bin, the taut-string density and the true labels, with the filtering
-boundaries and final threshold marked. List package functions in
+boundaries and final threshold marked. Text blocks below the plots list the
+gating settings used, the simulation settings, and the estimated against the
+true response frequency. List package functions in
 `debug_browse` to step through them for that sample only (`n` steps, `c`
 continues, `Q` quits). Set `debug_subsequent <- TRUE` to continue through
 every later sample.
@@ -501,11 +503,14 @@ dir_debug <- .analysis_fig_dir(
   path_root = root_dir
 )
 for (nm in names(dbg_list)) {
-  p_debug <- .simDebugLocPlotGrid(.simDebugLocPlots(dbg_list[[nm]]))
+  p_debug <- .simDebugLocPlotGrid(
+    .simDebugLocPlots(dbg_list[[nm]]),
+    info = .simDebugLocInfo(dbg_list[[nm]], row_target)
+  )
   ggsave(
     file.path(dir_debug, paste0(nm, ".png")),
     p_debug,
-    width = 25, height = 30, units = "cm", dpi = 300, bg = "white"
+    width = 30, height = 42, units = "cm", dpi = 300, bg = "white"
   )
 }
 dir_debug
