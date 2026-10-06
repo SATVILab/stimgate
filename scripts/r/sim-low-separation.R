@@ -72,6 +72,11 @@
   )
 }
 
+# Cell count without scientific notation, for figure file names.
+.simLowSepCellKey <- function(n_cell) {
+  format(n_cell, scientific = FALSE, trim = TRUE)
+}
+
 .simLowSepCellLab <- function(n_cell) {
   paste0(format(n_cell, big.mark = ",", scientific = FALSE, trim = TRUE), " cells")
 }
@@ -524,7 +529,7 @@
       shift = .data$gate_IFNg - .data$gate_cyt_IFNg,
       shift_lab = dplyr::if_else(
         .data$shift > 0,
-        paste0("Gate lowered by ", formatC(.data$shift, format = "f", digits = 2), " among TNF+ cells"),
+        paste0("Lowered by ", formatC(.data$shift, format = "f", digits = 2), "\namong TNF+ cells"),
         "Gate not lowered"
       )
     )
@@ -544,14 +549,14 @@
     ) +
     geom_segment(
       data = arrows, inherit.aes = FALSE,
-      aes(x = .data$gate_IFNg, xend = .data$gate_cyt_IFNg, y = Inf, yend = Inf),
-      colour = .simLowSepGateColours[["cytpos"]], linewidth = 0.6,
-      arrow = grid::arrow(length = grid::unit(0.15, "cm")), position = position_nudge(y = 0)
+      aes(x = .data$gate_IFNg, xend = .data$gate_cyt_IFNg, y = 0, yend = 0),
+      colour = .simLowSepGateColours[["cytpos"]], linewidth = 0.8,
+      arrow = grid::arrow(length = grid::unit(0.2, "cm"))
     ) +
     geom_text(
       data = g, inherit.aes = FALSE,
-      aes(x = -Inf, y = Inf, label = .data$shift_lab),
-      hjust = -0.05, vjust = 1.5, size = 3
+      aes(x = Inf, y = Inf, label = .data$shift_lab),
+      hjust = 1.02, vjust = 1.3, size = 2.7
     ) +
     scale_colour_manual(values = .simLowSepGateColours, labels = c(
       ordinary = "Ordinary IFN\u03b3 gate", cytpos = "Cytokine-positive IFN\u03b3 gate"
