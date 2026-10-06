@@ -99,6 +99,7 @@
       state$active <- TRUE
       state$capture <- list(
         ind = indCurr,
+        sample = (as.integer(indCurr) - 2L) %/% nCondition + 1L,
         dataset = state$seen[[indCurr]],
         inputs = mget(
           c(
@@ -203,7 +204,7 @@
   out <- if (length(state$tubes) > 0L) {
     state$tubes[[1L]]
   } else {
-    .simDebugLocAssemble(list(ind = ind, dataset = dataset))
+    .simDebugLocAssemble(list(ind = ind, sample = sample, dataset = dataset))
   }
   out$result <- result
   out
@@ -217,6 +218,7 @@
   structure(
     list(
       ind = cap$ind,
+      sample = cap$sample,
       dataset = cap$dataset,
       found = !is.null(cap$cp),
       inputs = cap$inputs,
@@ -472,16 +474,159 @@
   out
 }
 
+#' Settings and results shown beside the diagnostic plots
+#'
+#' @param dbg simDebugLoc Output of `.simDebugLoc()`.
+#' @param row data.frame or NULL The simulation-grid row that was rerun.
+#' @param tuningCols character Grid columns that set StimGate tuning rather
+#'   than the simulated data; shown with the gating settings.
+#' @return named list of tibbles (`name`, `value`): `gating`, `simulation`
+#'   and `estimate`.
+.simDebugLocInfo <- function(
+  dbg,
+  row = NULL,
+  tuningCols = c("bw", "bias_uns", "bias_uns_setting")
+) {
+  fmt <- function(x) {
+    if (is.null(x) || length(x) == 0L) {
+      return(NA_character_)
+    }
+    x <- x[[1L]]
+    if (is.numeric(x)) format(signif(x, 4L)) else as.character(x)
+  }
+  pct <- function(x) {
+    if (is.finite(x)) paste0(format(signif(100 * x, 3L)), "%") else "NA"
+  }
+  row <- if (is.null(row)) list() else as.list(row)
+  cs <- dbg$inputs$chnlSettings %||% list()
+  bwUsed <- attr(dbg$dataMod, "locDensityBw") %||%
+    attr(dbg$densTblRaw, "locDensityBw")
+  gatingNames <- c(
+    "bwScope", "bwMtd", "excMin", "cpMin", "minCell", "gateCombn",
+    "clusterGates", "calcCytPosGates", "locProbCol", "locMinPeakProb",
+    "locEnforceShapeThreshold"
+  )
+  gating <- tibble::tibble(
+    name = c(
+      paste0(intersect(tuningCols, names(row)), " (grid)"),
+      "bandwidth used", "biasUns used", gatingNames
+    ),
+    value = c(
+      unname(vapply(
+        row[intersect(tuningCols, names(row))], fmt, character(1L)
+      )),
+      fmt(if (is.list(bwUsed)) NULL else bwUsed),
+      fmt(dbg$inputs$bias),
+      unname(vapply(cs[gatingNames], fmt, character(1L)))
+    )
+  )
+
+  simCols <- setdiff(names(row), tuningCols)
+  simulation <- tibble::tibble(
+    name = c("sample", "dataset", "tube (GatingSet index)", simCols),
+    value = c(
+      fmt(dbg$sample), fmt(dbg$dataset), fmt(dbg$ind),
+      unname(vapply(row[simCols], fmt, character(1L)))
+    )
+  )
+
+  sm <- .simDebugLocSummary(dbg)
+  relErr <- if (!is.null(sm$propRespTruth) && is.finite(sm$propRespTruth) &&
+    sm$propRespTruth > 0) {
+    (sm$propRespEst - sm$propRespTruth) / sm$propRespTruth
+  } else {
+    NA_real_
+  }
+  estimate <- tibble::tibble(
+    name = c(
+      "threshold", "threshold source", "threshold reason", "filter reason",
+      "stim cells", "unstim cells", "stim above threshold",
+      "unstim above threshold", "response frequency (estimated)",
+      "response frequency (true)", "relative error", "true positives",
+      "stim positives", "true responders (stim)", "false discovery",
+      "sensitivity"
+    ),
+    value = c(
+      fmt(sm$threshold), fmt(sm$locSource), fmt(sm$locReason),
+      fmt(sm$filterReason), fmt(sm$nStim), fmt(sm$nUns),
+      pct(sm$propStimEst), pct(sm$propUnsEst), pct(sm$propRespEst),
+      pct(sm$propRespTruth %||% NA_real_),
+      if (is.finite(relErr)) sprintf("%+.1f%%", 100 * relErr) else "NA",
+      fmt(sm$nTruePos), fmt(sm$nPosStim), fmt(sm$nGpStim),
+      pct(sm$fdp %||% NA_real_), pct(sm$sensitivity %||% NA_real_)
+    )
+  ) |>
+    dplyr::filter(!is.na(.data$value))
+  list(gating = gating, simulation = simulation, estimate = estimate)
+}
+
+#' Text block listing one table of settings or results
+#'
+#' @param tbl tibble (`name`, `value`).
+#' @param heading character Block heading, shown as its first line.
+#' @param nRow integer Rows to allow, so blocks side by side align.
+#' @param width integer Characters per line before wrapping.
+#' @return ggplot object.
+.simDebugLocInfoPanel <- function(tbl, heading, nRow = NULL, width = 45L) {
+  lines <- unlist(lapply(seq_len(nrow(tbl)), function(i) {
+    wrapped <- strwrap(
+      paste0(tbl$name[[i]], ": ", tbl$value[[i]]),
+      width = width,
+      exdent = 4L
+    )
+    if (length(wrapped) == 0L) "" else wrapped
+  }))
+  txt <- tibble::tibble(
+    label = c(heading, lines),
+    face = c("bold", rep("plain", length(lines)))
+  )
+  nRow <- max(nRow %||% 0L, nrow(txt))
+  txt$y <- nRow - seq_len(nrow(txt)) + 1L
+  ggplot(txt, aes(x = 0.03, y = .data$y, label = .data$label)) +
+    geom_text(aes(fontface = .data$face), hjust = 0, size = 3.2) +
+    scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
+    scale_y_continuous(limits = c(0.5, nRow + 0.5), expand = c(0, 0)) +
+    theme_void()
+}
+
 #' Arrange the diagnostic plots in one figure
 #'
 #' @param plots list Output of `.simDebugLocPlots()`.
+#' @param info list or NULL Output of `.simDebugLocInfo()`, shown as text
+#'   blocks below the plots.
 #' @return ggplot object.
-.simDebugLocPlotGrid <- function(plots) {
+.simDebugLocPlotGrid <- function(plots, info = NULL) {
   plots <- Filter(Negate(is.null), plots)
-  cowplot::plot_grid(
+  grid <- cowplot::plot_grid(
     plotlist = plots,
     ncol = 2L,
     labels = LETTERS[seq_along(plots)],
     align = "hv"
+  )
+  if (is.null(info)) {
+    return(grid)
+  }
+  headings <- c(
+    gating = "Gating settings",
+    simulation = "Simulation settings",
+    estimate = "Threshold and response frequency"
+  )
+  info <- info[intersect(names(headings), names(info))]
+  nLines <- vapply(info, function(tbl) {
+    sum(vapply(
+      paste0(tbl$name, ": ", tbl$value),
+      function(x) length(strwrap(x, width = 45L, exdent = 4L)),
+      integer(1L)
+    )) + 1L
+  }, integer(1L))
+  panels <- purrr::imap(info, function(tbl, nm) {
+    .simDebugLocInfoPanel(tbl, headings[[nm]], nRow = max(nLines))
+  })
+  infoRow <- cowplot::plot_grid(plotlist = panels, nrow = 1L)
+  nPlotRows <- ceiling(length(plots) / 2)
+  cowplot::plot_grid(
+    grid, infoRow,
+    ncol = 1L,
+    rel_heights = c(10 * nPlotRows, 0.42 * max(nLines))
   )
 }

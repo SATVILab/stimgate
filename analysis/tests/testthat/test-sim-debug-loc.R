@@ -63,6 +63,20 @@ test_that(".simDebugLoc records one sample without changing the rerun", {
   )
   expect_true(all(vapply(plots, ggplot2::is.ggplot, logical(1L))))
   expect_s3_class(env$.simDebugLocPlotGrid(plots), "ggplot")
+  info <- env$.simDebugLocInfo(dbg, row)
+  expect_named(info, c("gating", "simulation", "estimate"))
+  value <- function(tbl, nm) tbl$value[tbl$name == nm]
+  expect_identical(value(info$gating, "bw (grid)"), "0.25")
+  expect_identical(value(info$gating, "bandwidth used"), "0.25")
+  expect_identical(value(info$gating, "biasUns used"), "0.05")
+  expect_identical(value(info$simulation, "sample"), "2")
+  expect_identical(value(info$simulation, "transformation"), "skew")
+  expect_false("bw" %in% info$simulation$name)
+  expect_true(all(c(
+    "response frequency (estimated)", "response frequency (true)",
+    "relative error"
+  ) %in% info$estimate$name))
+  expect_s3_class(env$.simDebugLocPlotGrid(plots, info), "ggplot")
 
   first <- quiet(env$.simDebugLoc(rerun()))
   expect_identical(first$ind, "2")
