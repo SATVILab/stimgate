@@ -228,10 +228,61 @@
       filter = cap$filter,
       antimodeDensity = cap$antimodeDensity,
       cp = cap$cp,
-      truth = .simDebugLocTruth(cap$inputs, cap$experiment)
+      truth = .simDebugLocTruth(cap$inputs, cap$experiment),
+      sim = .simDebugLocSim(cap$inputs, cap$experiment)
     ),
     class = c("simDebugLoc", "list")
   )
+}
+
+#' Simulated expression and labels of the target tubes
+#'
+#' These are the values the comparison methods receive in Analyses 7 and 8
+#' (before StimGate's single-precision storage).
+#'
+#' @param inputs list Captured `.getCpUnsLocCondition()` inputs.
+#' @param experiment list or NULL `simcyto::simCytExperiment()` output.
+#' @return list (`stim`, `uns`, `labelsStim`, `labelsUns`) or NULL.
+.simDebugLocSim <- function(inputs, experiment) {
+  if (is.null(inputs) || is.null(experiment)) {
+    return(NULL)
+  }
+  chnl <- attr(inputs$exTblStimOrig, "chnlCut")
+  get <- function(ex) {
+    i <- as.integer(attr(ex, "ind"))
+    fr <- experiment$flowFrameList[[i]]
+    if (is.null(fr) || !chnl %in% colnames(flowCore::exprs(fr))) {
+      return(NULL)
+    }
+    list(x = as.numeric(flowCore::exprs(fr)[, chnl]), labels = experiment$labelsList[[i]])
+  }
+  stim <- get(inputs$exTblStimOrig)
+  uns <- get(inputs$exTblUnsOrig)
+  if (is.null(stim) || is.null(uns)) {
+    return(NULL)
+  }
+  list(
+    stim = stim$x, uns = uns$x,
+    labelsStim = stim$labels, labelsUns = uns$labels
+  )
+}
+
+# Format one value for the text blocks.
+.simDebugFmt <- function(x) {
+  if (is.null(x) || length(x) == 0L) {
+    return(NA_character_)
+  }
+  x <- x[[1L]]
+  if (is.numeric(x)) format(signif(x, 4L)) else as.character(x)
+}
+
+# Format one proportion as a percentage for the text blocks.
+.simDebugPct <- function(x) {
+  if (length(x) == 1L && is.finite(x)) {
+    paste0(format(signif(100 * x, 3L)), "%")
+  } else {
+    "NA"
+  }
 }
 
 #' True population labels of the target stimulated and unstimulated tubes
@@ -373,12 +424,14 @@
 #' @param dbg simDebugLoc Output of `.simDebugLoc()`.
 #' @param xlim numeric or NULL Common x-axis limits, e.g. to zoom in on the
 #'   threshold. Default: the widest range of the plotted data.
+#' @param extraLines tibble or NULL Further gates to draw (`line`, `x`,
+#'   `colour`, `linetype`, `linewidth`), e.g. other methods' thresholds.
 #' @return named list of ggplot objects (NULL where data are unavailable):
 #'   `density` (raw stim/unstim densities), `prob` (raw and smoothed response
 #'   probability), `deriv` (probability derivative), `taut` (taut-string
 #'   antimode density), `respCells` (expected responding cells per bin) and
 #'   `truth` (stimulated expression by true label).
-.simDebugLocPlots <- function(dbg, xlim = NULL) {
+.simDebugLocPlots <- function(dbg, xlim = NULL, extraLines = NULL) {
   if (!isTRUE(dbg$found)) {
     stop("The target sample was not gated; nothing to plot.")
   }
@@ -390,6 +443,14 @@
       ),
       by = "line"
     )
+  if (is.data.frame(extraLines) && nrow(extraLines) > 0L) {
+    lines <- dplyr::bind_rows(
+      dplyr::mutate(lines, line = as.character(.data$line)),
+      dplyr::mutate(extraLines, line = as.character(.data$line))
+    ) |>
+      dplyr::filter(is.finite(.data$x)) |>
+      dplyr::mutate(line = factor(.data$line, levels = unique(.data$line)))
+  }
   # Colours and widths are set per line, leaving the colour scale for the
   # plotted data; `.simDebugLocPlotGrid()` draws one key for all plots.
   vlines <- function() {
@@ -569,16 +630,8 @@
   row = NULL,
   tuningCols = c("bw", "bias_uns", "bias_uns_setting")
 ) {
-  fmt <- function(x) {
-    if (is.null(x) || length(x) == 0L) {
-      return(NA_character_)
-    }
-    x <- x[[1L]]
-    if (is.numeric(x)) format(signif(x, 4L)) else as.character(x)
-  }
-  pct <- function(x) {
-    if (is.finite(x)) paste0(format(signif(100 * x, 3L)), "%") else "NA"
-  }
+  fmt <- .simDebugFmt
+  pct <- .simDebugPct
   row <- if (is.null(row)) list() else as.list(row)
   cs <- dbg$inputs$chnlSettings %||% list()
   bwUsed <- attr(dbg$dataMod, "locDensityBw") %||%
