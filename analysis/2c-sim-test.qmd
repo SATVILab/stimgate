@@ -14,7 +14,7 @@ params:
 
 This document runs one simulated dataset, or a few, for settings you choose, and shows how StimGate gated chosen samples. It uses the same simulation and gating code as Analysis 2a, so a row here behaves exactly like a 2a grid row with the same settings and seed.
 
-For each sample it shows the raw stimulated and unstimulated densities, the raw and smoothed response probability, its derivative, the expected responding cells per bin, the taut-string density and the true labels. The filtering boundaries and final threshold are marked on each plot. Text blocks list the gating settings used, the simulation settings, and the estimated against the true response frequency.
+For each sample the figure starts with the simulation settings. The StimGate section shows the raw stimulated and unstimulated densities, the raw and smoothed response probability, its derivative, the expected responding cells per bin, the taut-string density and the true labels, with the filtering boundaries and final threshold marked. F-beta and Tailgate are run on the same sample, as in Analyses 7 and 8: their gates are added to StimGate's plots, and their own sections show F-beta's smoothed histograms and scores, and Tailgate's density and slope rule. Each method's plots are followed by its settings and its estimated against true response frequency.
 
 Nothing is cached: each run simulates afresh. To look at a row of the stored 2a run instead, use the `debug-one-sample` chunk in `2a-sim-bw-freq_bs-global.qmd`.
 
@@ -56,7 +56,8 @@ for (fn in c(
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-run.R",
   "sim-compare-freq_bs.R",
-  "sim-debug-loc.R"
+  "sim-debug-loc.R",
+  "sim-debug-compare.R"
 )) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -144,6 +145,14 @@ test_subsequent <- FALSE
 test_browse <- character(0L)
 # Common x-axis limits for the plots, e.g. c(3, 8); NULL shows all the data.
 test_xlim <- NULL
+
+# Comparison methods. Settings default to those of Analyses 7 and 8; list
+# only the ones to change, e.g. list(beta = 1) or list(autoTol = FALSE).
+test_compare <- TRUE
+test_fbeta <- list() # beta = 0.8, theta = 2, width = 10, numBins = NULL
+# x = "stim", adjust = 1, bandwidth = NULL, numPeaks = 1, refPeak = 1,
+# tol = 0.01, autoTol = TRUE (tolerance = 1% of the largest |slope|)
+test_tailgate <- list()
 ```
 
 ```{r}
@@ -244,7 +253,7 @@ the settings of each row.
 #| label: test-figures
 #| echo: false
 #| fig-width: 11.8
-#| fig-height: 16.5
+#| fig-height: 33
 if (isTRUE(run_plots) && length(test_results) > 0L) {
   for (x in test_results) {
     row_label <- x$row |>
@@ -256,9 +265,13 @@ if (isTRUE(run_plots) && length(test_results) > 0L) {
       as.list() |>
       purrr::imap_chr(function(value, name) paste0(name, "-", value)) |>
       paste(collapse = "_")
-    p_test <- .simDebugLocPlotGrid(
-      .simDebugLocPlots(x$dbg, xlim = test_xlim),
-      info = .simDebugLocInfo(x$dbg, x$row)
+    p_test <- .simDebugFigure(
+      x$dbg,
+      x$row,
+      compare = if (test_compare) {
+        .simDebugCompare(x$dbg, fbeta = test_fbeta, tailgate = test_tailgate)
+      },
+      xlim = test_xlim
     )
     dir_test <- .analysis_fig_dir(c(fig_key, row_label), path_root = root_dir)
     ggsave(
@@ -267,7 +280,8 @@ if (isTRUE(run_plots) && length(test_results) > 0L) {
         paste0("sample-", x$dbg$sample, "_ind-", x$dbg$ind, ".png")
       ),
       p_test,
-      width = 30, height = 42, units = "cm", dpi = 300, bg = "white"
+      width = 30, height = attr(p_test, "height_cm"), units = "cm",
+      dpi = 300, bg = "white", limitsize = FALSE
     )
     print(p_test)
   }

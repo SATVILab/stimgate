@@ -124,7 +124,9 @@ for (fn in c(
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-run.R",
   "sim-bandwidth-analysis-plot.R",
-  "sim-debug-loc.R"
+  "sim-compare-freq_bs.R",
+  "sim-debug-loc.R",
+  "sim-debug-compare.R"
 )) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -452,9 +454,13 @@ of the stored run. Every earlier sample is gated as usual first.
 figure. It shows the raw stimulated and unstimulated densities, the raw and
 smoothed response probability, its derivative, the expected responding cells
 per bin, the taut-string density and the true labels, with the filtering
-boundaries and final threshold marked. Text blocks below the plots list the
-gating settings used, the simulation settings, and the estimated against the
-true response frequency. List package functions in
+boundaries and final threshold marked. The simulation settings come first;
+each method's plots are followed by its settings and its estimated against
+true response frequency. With `debug_compare <- TRUE`, F-beta and Tailgate
+are run on the same sample with the Analysis 7/8 settings: their gates are
+added to StimGate's plots, and their own sections show F-beta's smoothed
+histograms and scores, and Tailgate's density and slope rule. List package
+functions in
 `debug_browse` to step through them for that sample only (`n` steps, `c`
 continues, `Q` quits). Set `debug_subsequent <- TRUE` to continue through
 every later sample.
@@ -468,6 +474,7 @@ debug_sample <- 1L # sample within the simulated dataset
 debug_subsequent <- FALSE
 debug_browse <- character(0L) # e.g. ".getCpUnsLocFilterAfterSmoothing"
 debug_xlim <- NULL # e.g. c(3, 8) to zoom every plot in on the threshold
+debug_compare <- TRUE # also run F-beta and Tailgate on the sample
 
 # To pick a case from the results instead, e.g. a low skew threshold:
 # case <- bw_tbl_results_raw |>
@@ -500,18 +507,21 @@ purrr::map(dbg_list, .simDebugLocSummary) |>
   print(width = Inf)
 
 dir_debug <- .analysis_fig_dir(
-  c(fig_key, "debug", paste0("sim-", sim_id_target)),
+  c(fig_key, "debug", paste0("sim-", row_target$sim_id[[1]])),
   path_root = root_dir
 )
 for (nm in names(dbg_list)) {
-  p_debug <- .simDebugLocPlotGrid(
-    .simDebugLocPlots(dbg_list[[nm]], xlim = debug_xlim),
-    info = .simDebugLocInfo(dbg_list[[nm]], row_target)
+  p_debug <- .simDebugFigure(
+    dbg_list[[nm]],
+    row_target,
+    compare = if (debug_compare) .simDebugCompare(dbg_list[[nm]]),
+    xlim = debug_xlim
   )
   ggsave(
     file.path(dir_debug, paste0(nm, ".png")),
     p_debug,
-    width = 30, height = 42, units = "cm", dpi = 300, bg = "white"
+    width = 30, height = attr(p_debug, "height_cm"), units = "cm",
+    dpi = 300, bg = "white", limitsize = FALSE
   )
 }
 dir_debug
