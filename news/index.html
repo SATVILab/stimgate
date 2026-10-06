@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.22</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.23</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,14 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.23" id="stimgate-09923">stimgate 0.99.23<a class="anchor" aria-label="anchor" href="#stimgate-09923"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-0-99-23">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-99-23"></a></h3>
+<ul><li>
+<code><a href="../reference/gateStim.html">gateStim()</a></code> now places each local-FDR gate just below the cell value it selects, rather than on it. Gates count cells strictly above them, so the selected cell and any ties were previously left out in both tubes; with very rare responses this could reduce the estimate to zero. The gate now sits in the empty gap below that cell, at most twice the density bandwidth at that cell below it (including adaptive bandwidths), so it counts exactly the cells the threshold was selected for.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.21" id="stimgate-09921">stimgate 0.99.21<a class="anchor" aria-label="anchor" href="#stimgate-09921"></a></h2>
 <div class="section level3">

@@ -103,7 +103,7 @@ head(gates)
 #> # A tibble: 4 × 12
 #>   pop   gateName  chnl  marker ind   batch  gate locGenerated locGeneratedDirect
 #>   <chr> <chr>     <chr> <I<ch> <chr> <chr> <dbl> <lgl>        <lgl>             
-#> 1 root  locminCl… BC1(… Marke… 2     batc…  4.42 TRUE         TRUE              
+#> 1 root  locminCl… BC1(… Marke… 2     batc…  4.41 TRUE         TRUE              
 #> 2 root  locminCl… BC1(… Marke… 4     batc…  3.79 TRUE         TRUE              
 #> 3 root  locminCl… BC2(… Marke… 2     batc…  3.40 TRUE         TRUE              
 #> 4 root  locminCl… BC2(… Marke… 4     batc…  2.91 TRUE         TRUE              
@@ -124,12 +124,12 @@ head(stats[, c("ind", "cytCombn", "countStim", "freqStim", "freqUns", "freqBs")]
 #> # A tibble: 6 × 6
 #>   ind   cytCombn                       countStim freqStim freqUns freqBs
 #>   <chr> <chr>                              <int>    <dbl>   <dbl>  <dbl>
-#> 1 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        50     0.5     0.06   0.44
-#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       427     4.27    1.54   2.73
+#> 1 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        51     0.51    0.06   0.45
+#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       428     4.28    1.54   2.74
 #> 3 2     BC1(La139)Dd~+~BC2(Pr141)Dd~+~        47     0.47    0.02   0.45
-#> 4 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      9476    94.8    98.4   -3.62
-#> 5 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        99     0.99    0.27   0.72
-#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       509     5.09    1.18   3.91
+#> 4 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      9474    94.7    98.4   -3.64
+#> 5 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~       100     1       0.27   0.73
+#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       510     5.1     1.18   3.92
 ```
 
 ## 4. Plot the results
@@ -181,7 +181,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] stimgate_0.99.22
+#> [1] stimgate_0.99.23
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] gtable_0.3.6         xfun_0.61            bslib_0.12.0        

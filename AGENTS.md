@@ -338,6 +338,12 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   still exist in the current package API.
 - Checks that removed arguments (e.g. `calcSinglePosGates`) are not
   reintroduced.
+- Source API audits include tracked and new nonignored source files,
+  rather than stale ignored render intermediates. Preserve those
+  generated artifacts.
+- Analysis 2c tests validate the chosen settings and their parity with
+  the 2a runner; do not hardcode its editable example scenario or sample
+  count.
 - Smoke calls for representative `.simBandwidth*()` / comparison-wrapper
   functions.
 - Numerical agreement between `.simBandwidthBwOne()` and
@@ -535,6 +541,10 @@ the `flowWorkspace` stack from source.
 - `analysis-integration.yaml` installs Python, `numpy` and `reticulate`
   and sets `RETICULATE_PYTHON`, because the F-beta comparator tests call
   `scripts/python/fbeta.py`.
+- ACS combination tests require optional `UtilsCytoRSV` and
+  `UtilsCompassSV` utilities and skip when unavailable. Inspect CI skip
+  summaries before attributing a local-versus-CI discrepancy to
+  dependency version differences.
 - In CI, `.Rprofile` must keep preferring the `RSPM` repository URL
   exported by `r-lib/actions/setup-r`. pak resolves packages in a
   subprocess that skips the site profile but sources `.Rprofile`;
@@ -1066,22 +1076,31 @@ deduplicates identical rows before drawing reference lines.
     its single debugging scenario and takes precedence when both
     profiles are active. Results for dev and quick runs are kept under
     `<analysis-key>/dev/` and `<analysis-key>/quick/`; full runs keep
-    the existing analysis key. Full-grid runs take `sim_size` (QMD
-    param, `SIM_SIZE` env, read by `.analysis_sim_size()`): `"draft"`
-    (the current default, by operator request, until the analyses
-    settle) or `"final"`; draft uses about a quarter of the samples
-    (datasets in 7/8) on the same grid, stored under
-    `<analysis-key>/draft/` and recorded as `sim_size` in required run
-    settings; draft is for iterating, not reporting, and dev/quick take
-    precedence. Set `SIM_SIZE=final` explicitly for reported results.
-    Draft 7/8 retain all 20 jointly gated samples per dataset and reduce
-    only replicate datasets; missing `sim_size` in legacy manifests
-    still means final. Workers and interactive single-row reruns use the
-    same explicitly seeded row runner; resume retries failed rows by
-    default. Comparison scenarios in QMDs 7/8 use explicit RNG kinds and
-    restore the caller’s RNG state; do not reintroduce `gateCombn`
-    plumbing in the comparison layer. Analysis 1 seeds each row and
-    saves and validates its scientific settings with the cache.
+    the existing analysis key. Full-grid runs take `parameters.sim_size`
+    from `_projr.yml` through `projr::projr_par_get()` and
+    `.analysis_sim_size()`, with an explicit `SIM_SIZE` environment
+    override. QMD frontmatter and Slurm launchers must not supply
+    competing defaults: `"draft"` (the current default, by operator
+    request, until the analyses settle) or `"final"`; draft uses about a
+    quarter of the samples (datasets in 7/8) on the same grid, stored
+    under `<analysis-key>/draft/` and recorded as `sim_size` in required
+    run settings; draft is for iterating, not reporting, and dev/quick
+    take precedence. Set `SIM_SIZE=final` explicitly for reported
+    results. Draft 7/8 retain all 20 jointly gated samples per dataset
+    and reduce only replicate datasets; missing `sim_size` in legacy
+    manifests still means final. Empirical local-FDR selection counts
+    cells at or above the selected cell value. Since gates use strict
+    `x > gate`, place the applied gate below that value by the smaller
+    of twice the density bandwidth and half the gap to the highest
+    excluded value in either tube. For adaptive densities, use the
+    shared bandwidth at the selected value. Retain the selected cell
+    value separately for threshold diagnostics. Workers and interactive
+    single-row reruns use the same explicitly seeded row runner; resume
+    retries failed rows by default. Comparison scenarios in QMDs 7/8 use
+    explicit RNG kinds and restore the caller’s RNG state; do not
+    reintroduce `gateCombn` plumbing in the comparison layer. Analysis 1
+    seeds each row and saves and validates its scientific settings with
+    the cache.
 
 10. **Exact reruns of one simulation row**: Fixed-seed simulation parity
     fixtures must mirror the replicate-seed draw before direct simulator

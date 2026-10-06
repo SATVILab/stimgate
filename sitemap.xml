@@ -38,6 +38,8 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocFilterMarginal.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocFilterMarginalBins.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocFiniteMin.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGateBelowCell.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetCpActual.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetCpDataThresholdExcludeMargin.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbFit.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbSmoothFit.html</loc></url>
