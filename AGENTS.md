@@ -647,6 +647,10 @@ the `flowWorkspace` stack from source.
     record, or browse, the local-FDR gating of one sample (optionally
     every later one too); `.simDebugLocPlots()` /
     `.simDebugLocSummary()` plot and summarise it.
+  - `sim-debug-compare.R`: `.simDebugCompare()` runs F-beta and Tailgate
+    on a `.simDebugLoc()` sample as Analyses 7/8 do; `.simDebugFigure()`
+    combines simulation settings with each method’s plots, settings and
+    result on one x range.
   - `sim-misc.R`: Miscellaneous simulation utilities.
   - `sim-trans.R`: Simulation transformation utilities.
 - `src/`: C++ source code compiled into the package via `cpp11`
