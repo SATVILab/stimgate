@@ -3540,38 +3540,68 @@
 }
 
 # Histograms of finite thresholds by method; `data` has `approach`.
-.simComparePlotThresholdDensity <- function(data, densities = NULL, reference_scale = 1) {
-  if (length(reference_scale) != 1L || !is.finite(reference_scale) || reference_scale <= 0) {
-    stop("reference_scale must be one finite positive value.")
-  }
+# Reference expression densities are rescaled within each panel so their peak
+# matches the tallest threshold-histogram bar: they show shape only, not
+# density values. A dotted line marks the stimulated positive-component mean,
+# which is often too rare to see in the density.
+.simComparePlotThresholdDensity <- function(data, densities = NULL) {
   data$transformation <- .analysis_trans_factor(data$transformation)
-  p <- ggplot2::ggplot(data,
-    ggplot2::aes(x = threshold, y = ggplot2::after_stat(density),
-      fill = approach, colour = approach))
-  if (!is.null(densities)) {
-    keys <- intersect(c("transformation", "prob_response", "mean_pos",
-      "sample_perturbation_sd", "condition_perturbation_sd",
-      "cluster_perturbation_sd", "background_relative_to_response"), names(data))
-    densities$transformation <- .analysis_trans_factor(densities$transformation)
-    densities <- dplyr::semi_join(densities, dplyr::distinct(data, dplyr::across(dplyr::all_of(keys))), by = keys)
-    p <- p + ggplot2::geom_line(data = densities,
-      ggplot2::aes(x = expression, y = sqrt(pmax(density, 0)) * reference_scale,
-        linetype = condition, group = condition), inherit.aes = FALSE,
-      colour = "gray25", linewidth = 0.5) +
-      ggplot2::scale_linetype_manual(values = c(unstimulated = "dashed", stimulated = "solid"),
-        labels = c(unstimulated = "Unstimulated (all cells)", stimulated = "Stimulated (all cells)"))
+  facet_vars <- c("prob_response", "transformation")
+  build_plot <- function(densities) {
+    p <- ggplot2::ggplot(data,
+      ggplot2::aes(x = threshold, y = ggplot2::after_stat(density),
+        fill = approach, colour = approach))
+    if (!is.null(densities)) {
+      p <- p + ggplot2::geom_line(data = densities,
+        ggplot2::aes(x = expression, y = reference_y,
+          linetype = condition, group = condition), inherit.aes = FALSE,
+        colour = "gray25", linewidth = 0.5) +
+        ggplot2::scale_linetype_manual(values = c(unstimulated = "dashed", stimulated = "solid"),
+          labels = c(unstimulated = "Unstimulated (all cells)", stimulated = "Stimulated (all cells)"))
+      if ("positive_mean" %in% names(densities)) {
+        positive_means <- dplyr::distinct(densities,
+          dplyr::across(dplyr::all_of(facet_vars)), .data$positive_mean)
+        p <- p + ggplot2::geom_vline(data = positive_means,
+          ggplot2::aes(xintercept = positive_mean), inherit.aes = FALSE,
+          colour = "gray10", linetype = "dotted", linewidth = 0.6) +
+          ggplot2::labs(caption = paste("Dotted line: mean of the stimulated reference",
+            "tube's positive-component (responding) cells."))
+      }
+    }
+    p + ggplot2::geom_histogram(alpha = 0.2, position = "identity", bins = 30) +
+      ggplot2::facet_wrap(~ prob_response + transformation, scales = "free", ncol = 3,
+        labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent())) +
+      ggplot2::scale_x_continuous(labels = .analysis_label_number) +
+      ggplot2::scale_y_continuous(labels = .analysis_label_number) +
+      .analysis_scale_method(aesthetics = c("colour", "fill")) +
+      ggplot2::labs(x = "Threshold / marker expression", y = "Threshold density",
+        colour = "Method", fill = "Method", linetype = "Reference tube (density shape, peak matched)") +
+      .analysis_theme()
   }
-  p + ggplot2::geom_histogram(alpha = 0.2, position = "identity", bins = 30) +
-    ggplot2::facet_wrap(~ prob_response + transformation, scales = "free", ncol = 3,
-      labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent())) +
-    ggplot2::scale_x_continuous(labels = .analysis_label_number) +
-    ggplot2::scale_y_continuous(labels = .analysis_label_number,
-      sec.axis = if (is.null(densities)) ggplot2::waiver() else ggplot2::sec_axis(
-        ~ . / reference_scale, name = "Square root of expression density")) +
-    .analysis_scale_method(aesthetics = c("colour", "fill")) +
-    ggplot2::labs(x = "Threshold / marker expression", y = "Threshold density",
-      colour = "Method", fill = "Method", linetype = "Reference tube") +
-    .analysis_theme()
+  if (is.null(densities)) {
+    return(build_plot(NULL))
+  }
+  keys <- intersect(c("transformation", "prob_response", "mean_pos",
+    "sample_perturbation_sd", "condition_perturbation_sd",
+    "cluster_perturbation_sd", "background_relative_to_response"), names(data))
+  densities$transformation <- .analysis_trans_factor(densities$transformation)
+  densities <- dplyr::semi_join(densities, dplyr::distinct(data, dplyr::across(dplyr::all_of(keys))), by = keys)
+  densities$reference_y <- pmax(densities$density, 0)
+  # Histogram bins depend only on each panel's x range, which the reference
+  # lines also train, so one build gives the bar heights of the final plot.
+  plot <- build_plot(densities)
+  built <- ggplot2::ggplot_build(plot)
+  hist_data <- built$data[[length(plot$layers)]]
+  panel_key <- function(x) do.call(paste, c(lapply(x[facet_vars], as.character), sep = "\r"))
+  layout <- built$layout$layout
+  hist_max <- tapply(hist_data$y, hist_data$PANEL, max, na.rm = TRUE)
+  layout$hist_max <- as.numeric(hist_max[as.character(layout$PANEL)])
+  ref_max <- tapply(densities$reference_y, panel_key(densities), max, na.rm = TRUE)
+  key <- panel_key(densities)
+  scale <- layout$hist_max[match(key, panel_key(layout))] / as.numeric(ref_max[key])
+  scale[!is.finite(scale) | scale <= 0] <- 1
+  densities$reference_y <- densities$reference_y * scale
+  build_plot(densities)
 }
 
 # Shared pieces of the analysis 8 mismatch plots.

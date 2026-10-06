@@ -811,6 +811,7 @@ add_bw_labs <- function(.data) {
 # of this reference: these are not densities of the gated simulation samples.
 # By default the unstimulated reference is its negative component (bandwidth
 # analyses); use FALSE for whole-tube comparison references such as QMD 7.
+# `positive_mean` is the mean of the stimulated tube's positive-component cells.
 .simBandwidthThresholdDensities <- function(
     panels, settings, n_cell = 1e5, seed = 271L, density_n = 2048L,
     unstimulated_negative_only = TRUE) {
@@ -847,6 +848,9 @@ add_bw_labs <- function(.data) {
       x_uns <- x_uns[out$labelsList[[1]] == "gn"]
     }
     x_stim <- flowCore::exprs(out$flowFrameList[[2]])[, 1]
+    # Realised mean of the stimulated tube's positive-component cells, so
+    # plots can mark responses too rare to see in the density.
+    positive_mean <- mean(x_stim[out$labelsList[[2]] == "gp"])
     bw <- if (row$transformation == "gamma") 0.025 else 0.15
     limits <- range(c(x_uns, x_stim), finite = TRUE) + c(-3, 3) * bw
     purrr::map_dfr(c("unstimulated", "stimulated"), function(condition) {
@@ -856,7 +860,8 @@ add_bw_labs <- function(.data) {
       )
       dplyr::bind_cols(
         row[rep(1L, length(dens$x)), ],
-        tibble::tibble(condition = condition, expression = dens$x, density = dens$y)
+        tibble::tibble(condition = condition, expression = dens$x, density = dens$y,
+          positive_mean = positive_mean)
       )
     })
   }) |>

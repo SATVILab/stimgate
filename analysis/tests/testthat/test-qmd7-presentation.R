@@ -97,7 +97,7 @@ test_that("provenance table counts errors in the all-sample denominator", {
   expect_equal(table$n_no_cutpoint[[2]], table$n_threshold_fallback[[2]])
 })
 
-test_that("threshold panels retain linear histograms and square root only references", {
+test_that("threshold panels retain linear histograms and peak-matched reference shapes", {
   env <- .qmd7_presentation_env()
   data <- tidyr::expand_grid(transformation = c("gaussian", "gamma"),
     prob_response = c(0.01, 0.2), approach = c("stimgate", "fbeta"), sample = 1:5) |>
@@ -106,17 +106,31 @@ test_that("threshold panels retain linear histograms and square root only refere
   densities <- tidyr::expand_grid(transformation = c("gaussian", "gamma"),
     prob_response = c(0.01, 0.2), condition = c("stimulated", "unstimulated"),
     expression = c(0, 1, 2)) |>
-    dplyr::mutate(mean_pos = 5, density = (.data$expression + 1)^2 / 100)
-  plot <- env$.simComparePlotThresholdDensity(data, densities, reference_scale = 2)
+    dplyr::mutate(mean_pos = 5, density = (.data$expression + 1)^2 / 100,
+      positive_mean = ifelse(.data$prob_response > 0.1, 1.5, 0.5))
+  plot <- env$.simComparePlotThresholdDensity(data, densities)
   built <- ggplot2::ggplot_build(plot)
-  expect_equal(built$data[[1]]$y, sqrt(plot$layers[[1]]$data$density) * 2)
-  expect_equal(built$data[[2]]$y, built$data[[2]]$density)
+  lines <- built$data[[1]]
+  hist <- built$data[[3]]
+  expect_equal(hist$y, hist$density)
+  for (panel in unique(lines$PANEL)) {
+    line_y <- lines$y[lines$PANEL == panel]
+    # Untransformed shape is kept; the peak matches the tallest histogram bar.
+    expect_equal(max(line_y), max(hist$y[hist$PANEL == panel]))
+    expect_equal(line_y / max(line_y), rep((0:2 + 1)^2 / 9, 2))
+  }
   expect_equal(length(unique(built$layout$layout$SCALE_X)), 4L)
   expect_equal(length(unique(built$layout$layout$SCALE_Y)), 4L)
-  expect_equal(built$data[[1]]$colour, rep("gray25", nrow(densities)))
+  expect_equal(lines$colour, rep("gray25", nrow(densities)))
   expect_match(plot$labels$y, "Threshold density", fixed = TRUE)
+  # One positive-component mean line per panel, at that panel's mean.
+  vlines <- built$data[[2]]
+  expect_equal(nrow(vlines), 4L)
+  panel_prob <- built$layout$layout$prob_response[match(vlines$PANEL, built$layout$layout$PANEL)]
+  expect_equal(vlines$xintercept, ifelse(panel_prob > 0.1, 1.5, 0.5))
+  expect_match(plot$labels$caption, "positive-component", fixed = TRUE)
   expect_no_error(ggplot2::ggplotGrob(plot))
-  expect_error(env$.simComparePlotThresholdDensity(data, densities, reference_scale = 0), "positive")
+  expect_no_error(ggplot2::ggplotGrob(env$.simComparePlotThresholdDensity(data)))
 })
 
 test_that("QMD 7 reference tubes retain unstimulated positive cells and preserve RNG", {
@@ -133,6 +147,7 @@ test_that("QMD 7 reference tubes retain unstimulated positive cells and preserve
     settings, n_cell = 1000, density_n = 256, unstimulated_negative_only = FALSE)
   expect_identical(.Random.seed, before)
   expect_equal(nrow(densities), 512L)
+  expect_equal(unique(densities$positive_mean), 8, tolerance = 0.2)
   uns <- dplyr::filter(densities, .data$condition == "unstimulated")
   mass <- sum(uns$density[uns$expression > 4]) * diff(uns$expression)[[1]]
   expect_gt(mass, 0.04)

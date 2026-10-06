@@ -1137,10 +1137,12 @@ if (isTRUE(run_plots)) {
 ### Threshold distributions
 
 Light histograms show finite threshold densities in method colours, including
-finite fallbacks, on the ordinary left density axis. Grey/black lines show
-unstimulated/stimulated sampled expression densities on the square-root right
-axis, making rare response components visible without transforming threshold
-histograms. These seeded reference simulations use the same biological settings
+finite fallbacks, on the ordinary density axis. Grey/black lines show the
+shape of the unstimulated/stimulated sampled expression densities, scaled so
+the highest reference peak in each panel matches the tallest histogram bar. Their
+heights therefore show shape only, not density values. Because the responding
+cells are often too rare to see in these densities, a dotted vertical line marks
+the mean of the stimulated reference tube's positive-component cells. These seeded reference simulations use the same biological settings
 (`probExact = TRUE`, covariance eigenvalues 1.5), with 100,000 cells per tube;
 they are render-local references, rather than the cells from the gated datasets.
 Both tubes include all sampled components. Each biological reference is computed
