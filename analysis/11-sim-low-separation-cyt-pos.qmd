@@ -95,10 +95,6 @@ if (analysis_dev) {
   sim_grid <- dplyr::filter(sim_grid, .data$response_level == "higher", .data$n_cell == 5e3)
   n_sample <- 2L
 }
-
-sim_grid |>
-  dplyr::mutate(n_sample = n_sample) |>
-  knitr::kable()
 ```
 
 Each scenario is one dataset of `r n_sample` samples, each with an unstimulated and a stimulated tube, gated together by `gateStim()` with its default settings (threshold clustering and cytokine-positive gates on). The samples of a dataset share gating settings and clustered gates, so they are not independent: the figures show every sample, without intervals.
@@ -203,20 +199,25 @@ if (isTRUE(run_plots)) {
 ```
 
 ```{r}
-#| label: tbl-gate-shift
+#| label: gate-shift-summary
 #| echo: false
-results$gates |>
-  dplyr::group_by(.data$separation, .data$response_level, .data$n_cell, .data$marker) |>
-  dplyr::summarise(
-    samples_moved = paste0(sum(.data$gate_cyt < .data$gate), " of ", dplyr::n()),
-    median_shift_when_moved = if (any(.data$gate_cyt < .data$gate)) {
-      stats::median((.data$gate - .data$gate_cyt)[.data$gate_cyt < .data$gate])
-    } else {
-      NA_real_
-    },
-    .groups = "drop"
-  ) |>
-  knitr::kable(digits = 2)
+#| results: asis
+if (isTRUE(run_plots)) {
+  gate_shift <- results$gates |>
+    dplyr::group_by(.data$separation, .data$response_level, .data$n_cell, .data$marker) |>
+    dplyr::summarise(
+      samples_moved = paste0(sum(.data$gate_cyt < .data$gate), " of ", dplyr::n()),
+      median_shift_when_moved = if (any(.data$gate_cyt < .data$gate)) {
+        stats::median((.data$gate - .data$gate_cyt)[.data$gate_cyt < .data$gate])
+      } else {
+        NA_real_
+      },
+      .groups = "drop"
+    )
+  .analysis_report_table(gate_shift, c(fig_key, "gate_shift_summary.csv"),
+    "Samples whose cytokine-positive gate moved below the ordinary gate, and the median shift, by scenario and marker.",
+    root_dir)
+}
 ```
 
 ### Joint TNF and IFNγ expression
@@ -319,22 +320,27 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-The table gives, for each scenario and quantity, the mean true and estimated frequencies (percent) over the dataset's samples, and how many samples the cytokine-positive gates moved closer to or further from the truth. The full table is in `combination_frequency_summary.csv`.
+The summary saved below gives, for each scenario and quantity, the mean true and estimated frequencies (percent) over the dataset's samples, and how many samples the cytokine-positive gates moved closer to or further from the truth. The unrounded table is in `combination_frequency_summary.csv`.
 
 ```{r}
-#| label: tbl-frequency-summary
+#| label: frequency-summary
 #| echo: false
-freq_summary |>
-  dplyr::mutate(
-    scenario = paste0(.data$separation, " sep., ", .data$response_level, " resp., ", .simLowSepCellLab(.data$n_cell)),
-    dplyr::across(dplyr::starts_with("mean_prop"), ~ 100 * .x)
-  ) |>
-  dplyr::select(
-    "scenario", "quantity",
-    truth = "mean_prop_bs_truth",
-    ordinary = "mean_prop_bs_est_ordinary",
-    cytokine_positive = "mean_prop_bs_est_cytpos",
-    closer = "n_closer", further = "n_further", unchanged = "n_unchanged"
-  ) |>
-  knitr::kable(digits = 2)
+#| results: asis
+if (isTRUE(run_plots)) {
+  freq_summary_display <- freq_summary |>
+    dplyr::mutate(
+      scenario = paste0(.data$separation, " sep., ", .data$response_level, " resp., ", .simLowSepCellLab(.data$n_cell)),
+      dplyr::across(dplyr::starts_with("mean_prop"), ~ 100 * .x)
+    ) |>
+    dplyr::select(
+      "scenario", "quantity",
+      truth = "mean_prop_bs_truth",
+      ordinary = "mean_prop_bs_est_ordinary",
+      cytokine_positive = "mean_prop_bs_est_cytpos",
+      closer = "n_closer", further = "n_further", unchanged = "n_unchanged"
+    )
+  .analysis_report_table(freq_summary_display, c(fig_key, "frequency_summary.csv"),
+    "Mean true and estimated frequencies (percent) and samples moved closer or further, by scenario and quantity.",
+    root_dir)
+}
 ```

@@ -150,11 +150,9 @@ if (isTRUE(run_plots)) {
   .analysis_report_table(lab_result$allocations,
     c(fig_key, "lab", "sample-lab-cluster.csv"),
     "Sample, lab and assigned cluster.", root_dir)
-  print(knitr::kable(lab_result$allocations, digits = 3))
   .analysis_report_table(lab_result$summary,
     c(fig_key, "lab", "cluster-separation-summary.csv"),
     "Cluster separation summary.", root_dir)
-  print(knitr::kable(lab_result$summary))
   if (isTRUE(lab_result$summary$labs_separated)) {
     cat("\n\nAll samples were allocated, and no cluster contains samples from both labs. ",
       "The observed allocation separates the labs in this seeded example.\n\n", sep = "")
@@ -288,7 +286,6 @@ if (isTRUE(run_plots)) {
     dplyr::left_join(weak_result$settings_table, by = "ind")
   .analysis_report_table(weak_allocations, c(fig_key, "weak", "cluster-allocations.csv"), "Table `cluster-allocations`.", root_dir)
   .analysis_report_table(weak_result$changes, c(fig_key, "weak", "paired-changes.csv"), "Table `paired-changes`.", root_dir)
-  print(knitr::kable(weak_result$changes, digits = 3))
   .analysis_report_table(weak_result$scores, c(fig_key, "weak", "truth-and-contamination.csv"), "Table `truth-and-contamination`.", root_dir)
 }
 ```
