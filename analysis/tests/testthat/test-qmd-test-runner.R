@@ -13,6 +13,7 @@ test_that("QMD registry covers all top-level documents with real test files", {
     file.path(loaded$root_dir, "analysis"), pattern = "[.]qmd$"
   ))
   expect_identical(targets[[10]], c(
+    "test-signed-percentile-plots.R",
     "test-acs-cytof-gate.R", "test-acs-cytof-methods.R", "test-ratio-companion-plots.R",
     "test-acs-cytof-paths.R"
   ))

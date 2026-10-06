@@ -3475,7 +3475,7 @@
 }
 
 # Estimated against true background-subtracted frequency.
-.simComparePlotEstVsTruth <- function(data, maxwidth = 0.12, lower_limit = NULL) {
+.simComparePlotEstVsTruth <- function(data, maxwidth = 0.2, lower_limit = NULL) {
   data$transformation <- .analysis_trans_factor(data$transformation)
   response_levels <- sort(unique(data$prob_response))
   methods <- .simCompareMethodSets()$all_methods$methods
@@ -3500,15 +3500,21 @@
   ggplot2::ggplot(data,
     ggplot2::aes(x = method_position, y = estimate_shown, colour = method,
       group = interaction(prob_response, method))) +
+    ggforce::geom_sina(maxwidth = maxwidth, scale = "width", orientation = "x",
+      position = "identity", seed = 271L, jitter_y = FALSE, alpha = 0.35, size = 1) +
+    # Truth segments go on top so dense groups cannot hide them.
     ggplot2::geom_segment(data = truth,
       ggplot2::aes(x = response_position - 0.4, xend = response_position + 0.4,
         y = prob_response, yend = prob_response), inherit.aes = FALSE,
-      colour = "gray25", linetype = "dashed") +
-    ggforce::geom_sina(maxwidth = maxwidth, orientation = "x", position = "identity",
-      seed = 271L, jitter_y = FALSE, alpha = 0.35, size = 1) +
+      colour = "black", linetype = "dashed", linewidth = 0.6) +
     ggplot2::scale_x_continuous(breaks = seq_along(response_levels),
       labels = .analysis_label_percent(response_levels)) +
-    ggplot2::scale_y_log10(labels = .analysis_label_percent,
+    ggplot2::scale_y_log10(labels = function(x) {
+        lab <- .analysis_label_percent(x)
+        floor_at <- !is.na(x) & abs(x / lower_limit - 1) < 1e-8
+        lab[floor_at] <- paste0("\u2264 ", lab[floor_at])
+        lab
+      },
       breaks = function(limits) sort(unique(c(lower_limit, scales::log_breaks()(limits)))),
       limits = c(lower_limit, NA), oob = scales::squish) +
     .analysis_scale_method() +
