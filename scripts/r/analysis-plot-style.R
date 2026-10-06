@@ -164,14 +164,23 @@
 .analysis_method_labels <- c(
   stimgate = "StimGate", tailgate = "Tailgate", fbeta = "F-beta"
 )
+.analysis_method_shapes <- c(stimgate = 16, tailgate = 17, fbeta = 15)
+.analysis_method_linetypes <- c(stimgate = "solid", tailgate = "22", fbeta = "42")
 .analysis_stat_colours <- c(median = "#0072B2", upper = "#56B4E9", max = "#8C8DBA")
 
-# Colour scale for methods; `aesthetics = "fill"` for fills.
+# Shared method encodings; matching names and labels merge their legends.
 .analysis_scale_method <- function(aesthetics = "colour", ...) {
-  ggplot2::scale_colour_manual(
-    values = .analysis_method_colours,
-    labels = .analysis_method_labels,
-    aesthetics = aesthetics,
-    ...
-  )
+  colour_aesthetics <- intersect(aesthetics, c("colour", "color", "fill"))
+  scales <- list()
+  if (length(colour_aesthetics)) scales <- c(scales, list(ggplot2::scale_colour_manual(
+    values = .analysis_method_colours, labels = .analysis_method_labels,
+    name = "Method", aesthetics = colour_aesthetics, ...
+  )))
+  if ("shape" %in% aesthetics) scales <- c(scales, list(ggplot2::scale_shape_manual(
+    values = .analysis_method_shapes, labels = .analysis_method_labels, name = "Method", ...
+  )))
+  if ("linetype" %in% aesthetics) scales <- c(scales, list(ggplot2::scale_linetype_manual(
+    values = .analysis_method_linetypes, labels = .analysis_method_labels, name = "Method", ...
+  )))
+  if (length(scales) == 1L) scales[[1]] else scales
 }
