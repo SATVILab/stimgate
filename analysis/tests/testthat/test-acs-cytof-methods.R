@@ -808,13 +808,3 @@ test_that("analysis 9 scatter chunk prints and saves each method set and populat
   capture.output(eval(code, env))
   expect_length(plots, 0L)
 })
-
-test_that("ACS finds StimGate's clustered gate under either spelling", {
-  env <- .load_acs_method_env()
-  source(script_manual, local = env)
-  names <- c("loc_min", "locminClust", "loc_minClust", "locmin")
-  expect_identical(
-    env$.acsCytofGateNameMatch(names, "loc_minClust"),
-    c(FALSE, TRUE, TRUE, FALSE)
-  )
-})

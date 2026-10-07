@@ -18,7 +18,7 @@ test_that("cluster adjustment preserves order without statistics", {
   expected <- dplyr::bind_rows(
     dplyr::select(gate_tbl, -gateUse),
     tibble::tibble(
-      gateName = "baseeachClust", gateType = "base", gateCombn = "eachClust",
+      gateName = "base_eachClust", gateType = "base", gateCombn = "eachClust",
       batch = "batch1", ind = c("4", "2"), gate = c(3, 4)
     )
   )

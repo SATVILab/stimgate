@@ -1,6 +1,6 @@
 test_that("final clustered gates preserve donor, transferred and failed provenance", {
   gates <- tibble::tibble(
-    gateUse = "gate", gateName = "loc_min", gateType = "loc_",
+    gateUse = "gate", gateName = "loc_min", gateType = "loc",
     gateCombn = "min", batch = "a", ind = c("2", "3", "4"),
     gate = c(1, 100, 100), locGenerated = c(TRUE, FALSE, FALSE),
     locGeneratedDirect = c(TRUE, FALSE, FALSE),
@@ -67,4 +67,19 @@ test_that("cytokine refinement retains provenance through final gate persistence
   expect_identical(final$locSource, initial$locSource)
   expect_identical(final$locReason, initial$locReason)
   expect_equal(final$gateCyt, c(1, 1))
+})
+
+test_that("clustered and unclustered gates share the <type>_<combination> name form", {
+  exampleData <- getExampleData()
+  pathProject <- withr::local_tempdir()
+  suppressMessages(gateStim(
+    .data = flowWorkspace::load_gs(exampleData$pathGs),
+    pathProject = pathProject,
+    batchList = exampleData$batchList,
+    marker = exampleData$marker,
+    control = stimControl(clusterGates = TRUE)
+  ))
+  gateNames <- unique(getStimGates(pathProject)$gateName)
+  expect_true("loc_minClust" %in% gateNames)
+  expect_true(all(grepl("^loc_", gateNames)))
 })
