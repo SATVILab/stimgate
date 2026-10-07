@@ -1,5 +1,15 @@
 # Changelog
 
+## stimgate 0.99.25
+
+### Bug fixes
+
+- [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md)
+  and
+  [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
+  name clustered gates `loc_minClust`, matching the `loc_min` form of
+  unclustered gates (was `locminClust`).
+
 ## stimgate 0.99.24
 
 ### Breaking changes

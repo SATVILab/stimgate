@@ -67,9 +67,9 @@ getStimGates(pathProject)
 #> # A tibble: 4 × 12
 #>   pop   gateName  chnl  marker ind   batch  gate locGenerated locGeneratedDirect
 #>   <chr> <chr>     <chr> <I<ch> <chr> <chr> <dbl> <lgl>        <lgl>             
-#> 1 root  locminCl… BC1(… Marke… 2     batc…  4.43 TRUE         TRUE              
-#> 2 root  locminCl… BC1(… Marke… 4     batc…  3.91 TRUE         TRUE              
-#> 3 root  locminCl… BC2(… Marke… 2     batc…  4.11 TRUE         TRUE              
-#> 4 root  locminCl… BC2(… Marke… 4     batc…  3.00 TRUE         TRUE              
+#> 1 root  loc_minC… BC1(… Marke… 2     batc…  4.43 TRUE         TRUE              
+#> 2 root  loc_minC… BC1(… Marke… 4     batc…  3.91 TRUE         TRUE              
+#> 3 root  loc_minC… BC2(… Marke… 2     batc…  4.11 TRUE         TRUE              
+#> 4 root  loc_minC… BC2(… Marke… 4     batc…  3.00 TRUE         TRUE              
 #> # ℹ 3 more variables: locSource <chr>, locReason <chr>, gateCyt <dbl>
 ```

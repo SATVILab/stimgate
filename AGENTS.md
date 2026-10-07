@@ -330,7 +330,7 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   refinement disabled, compare `cpOrigQuantMin` against `cpJoinTgOrig`
   from the initial `locClusterQuantileTbl` returned by
   [`getStimGatesDetailed()`](https://satvilab.github.io/stimgate/reference/getStimGatesDetailed.md).
-  Check the latter against the applied `locminClust` gate from
+  Check the latter against the applied `loc_minClust` gate from
   [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md)
   and both truth-based positive counts against package statistics; do
   not infer benefit from lower gates alone.

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.24</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.25</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -212,7 +212,7 @@
 <li>When an estimator can legitimately fail to return a finite scientific estimate, retain that failure as analysis data (for example with <code>n_*_finite</code> / <code>prop_*_finite</code>) rather than hiding it behind a magic numeric fallback or averaging only successful estimates without reporting coverage. Distinguish estimator failure from infrastructure/runtime errors.</li>
 <li>Simulation wrappers that claim to mirror a current package calculation must use the same preprocessing as the package implementation. If a wrapper keeps a legacy preprocessing option for other analyses, set the current behaviour explicitly in the QMD rather than relying on the wrapper default.</li>
 <li>For end-to-end background-subtracted-frequency performance, score the final sample-level <code>loc_sample</code> <code>propRespEst</code> against <code>propRespTruth</code>. <code>propBsEst</code> is an internal local-FDR diagnostic used during threshold selection and must not silently replace the final frequency estimand.</li>
-<li>For a same-run threshold-sharing demonstration with cytokine-positive refinement disabled, compare <code>cpOrigQuantMin</code> against <code>cpJoinTgOrig</code> from the initial <code>locClusterQuantileTbl</code> returned by <code><a href="reference/getStimGatesDetailed.html">getStimGatesDetailed()</a></code>. Check the latter against the applied <code>locminClust</code> gate from <code><a href="reference/getStimGates.html">getStimGates()</a></code> and both truth-based positive counts against package statistics; do not infer benefit from lower gates alone.</li>
+<li>For a same-run threshold-sharing demonstration with cytokine-positive refinement disabled, compare <code>cpOrigQuantMin</code> against <code>cpJoinTgOrig</code> from the initial <code>locClusterQuantileTbl</code> returned by <code><a href="reference/getStimGatesDetailed.html">getStimGatesDetailed()</a></code>. Check the latter against the applied <code>loc_minClust</code> gate from <code><a href="reference/getStimGates.html">getStimGates()</a></code> and both truth-based positive counts against package statistics; do not infer benefit from lower gates alone.</li>
 <li>Preserve StimGate threshold provenance in method-comparison outputs. A finite high-value fallback is still a fallback: use <code>locGenerated</code>, <code>locGeneratedDirect</code>, <code>locSource</code> and <code>locReason</code> from the final gate table rather than inferring success solely from <code>is.finite(threshold)</code>.</li>
 <li>Checks that analysis wrapper parameters forwarded to <code><a href="reference/gateStim.html">gateStim()</a></code> or <code><a href="reference/stimControl.html">stimControl()</a></code> still exist in the current package API.</li>
 <li>Checks that removed arguments (e.g. <code>calcSinglePosGates</code>) are not reintroduced.</li>
