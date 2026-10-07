@@ -99,7 +99,8 @@
           dplyr::relocate(gateName, gateType, gateCombn, batch) |> # nolint
           dplyr::mutate(
             gateCombn = paste0(gateCombn, "Clust"),
-            gateName = paste0(gateType, gateCombn)
+            # Same "<type>_<combination>" form as the unclustered gates
+            gateName = paste0(gateType, "_", gateCombn)
           )
       }
     )

@@ -1,3 +1,10 @@
+# stimgate 0.99.25
+
+## Bug fixes
+
+- `getStimGates()` and `getStimStats()` name clustered gates `loc_minClust`,
+  matching the `loc_min` form of unclustered gates (was `locminClust`).
+
 # stimgate 0.99.24
 
 ## Breaking changes

@@ -130,9 +130,9 @@
       stop("Expected one initial cluster diagnostic row for every stimulated sample.")
     }
     applied <- stimgate::getStimGates(path, chnl = "F1")
-    # getStimGates() names the clustered gate "locminClust" and the original "loc_min".
+    # getStimGates() names the clustered gate "loc_minClust" and the original "loc_min".
     final <- applied |>
-      dplyr::filter(.data$gateName == "locminClust")
+      dplyr::filter(.data$gateName == "loc_minClust")
     original <- applied |>
       dplyr::filter(.data$gateName == "loc_min")
     check <- dplyr::left_join(

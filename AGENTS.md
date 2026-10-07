@@ -287,7 +287,7 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
 - For a same-run threshold-sharing demonstration with cytokine-positive refinement
   disabled, compare `cpOrigQuantMin` against `cpJoinTgOrig` from the initial
   `locClusterQuantileTbl` returned by `getStimGatesDetailed()`. Check the
-  latter against the applied `locminClust` gate from `getStimGates()` and
+  latter against the applied `loc_minClust` gate from `getStimGates()` and
   both truth-based positive counts against package statistics; do not infer benefit from lower gates alone.
 - Preserve StimGate threshold provenance in method-comparison outputs. A finite
   high-value fallback is still a fallback: use `locGenerated`,

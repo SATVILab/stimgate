@@ -224,7 +224,7 @@ weak_cache_file <- file.path(
 **Before** is the pre-cluster sample threshold (`cpOrigQuantMin`) reported by
 `getStimGatesDetailed()` during the same run. **After** is its cluster-adjusted
 threshold (`cpJoinTgOrig`), checked against the final applied local-FDR
-gate with `locminClust`. This isolates the adjustment without rerunning simulation or bandwidth
+gate with `loc_minClust`. This isolates the adjustment without rerunning simulation or bandwidth
 selection. With one stimulated tube per sample and cytokine-positive refinement
 disabled, the pre-cluster value is also the applied local-FDR gate with
 `loc_min`. Counts for
