@@ -387,7 +387,9 @@ as `1 + relative error` (estimate/reference). Keep originals and save companions
 in sibling ratio folders without printing them into HTML. Absolute relative
 errors lose direction and cannot be relabelled as estimate/reference ratios.
 Unconditional signed-error percentile figures calculate quantiles on raw errors,
-including zeros, and show all seven percentiles in each panel. Choose the outer
+including zeros, and show all seven percentiles in each panel: single-method
+figures as nested one-hue bands (darker towards the median) with a median line,
+comparison figures as per-method lines. Choose the outer
 2.5th/97.5th pair per complete figure; if either interval is unavailable at any
 finite plotted point, use 5th/95th throughout that figure and label the fallback.
 Keep uncertainty eligibility independent of interval display, and never clip
@@ -649,7 +651,8 @@ via `.analysis_report_table()` / `.analysis_table_dir()`, guarded by the same
 `run_plots` and result-availability conditions as figures. HTML names the relative
 CSV path and retains compact method-specific coverage/fallback counts beside
 figures. Only small tables (roughly ten rows and a handful of columns) stay
-inline. Loop filenames must distinguish every displayed cohort; bootstrap
+inline. Analysis 2b prints no coverage tables: it passes `quiet = TRUE` to
+`.simBandwidthPrintCoverage()`, which still saves each CSV. Loop filenames must distinguish every displayed cohort; bootstrap
 coverage exports in comparisons 7/8 use sibling `mcse_off/` and `mcse_on/` folders.
 
 Source analysis helper files explicitly in dependency order. Do not move analysis-only

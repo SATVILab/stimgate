@@ -561,7 +561,9 @@
 # Save the full table and name its output-relative path in the report. Coverage
 # ranges keep failures, denominators and suppressed intervals visible without
 # printing a scenario grid. They describe rows, not a pooled scientific estimate.
-.analysis_report_table <- function(tbl, path_parts, description, path_root = NULL) {
+# `quiet = TRUE` only saves the CSV, for reports that show no tables.
+.analysis_report_table <- function(tbl, path_parts, description, path_root = NULL,
+                                   quiet = FALSE) {
   path <- .analysis_project_dir("output", c("table", path_parts), path_root,
     dir = FALSE)
   csv_tbl <- tbl
@@ -574,6 +576,7 @@
     })
   }
   readr::write_csv(csv_tbl, path)
+  if (isTRUE(quiet)) return(invisible(tbl))
   relative <- paste(c("output", "table", path_parts), collapse = "/")
   cat("\n\n", description, " Full table (", nrow(tbl), " rows) saved to `",
     relative, "`.\n\n", sep = "")

@@ -647,11 +647,12 @@ add_bw_labs <- function(.data) {
 # `cap`: errors drawn at this value may be larger, so its label gets a ">=" sign.
 .simBandwidthSignedErrorLabel <- function(x, cap = Inf) {
   lab <- ifelse(x > 0, sprintf("+%g%%", 100 * x), sprintf("%g%%", 100 * x))
-  # An estimate of zero (-100%, 0x) and each doubling (+100% 2x, +300% 4x, ...)
-  # also show the multiple of the true response.
+  # An estimate of zero (-100%, 0x), exact agreement (0%, 1x) and each doubling
+  # (+100% 2x, +300% 4x, ...) also show the multiple of the true response.
   doublings <- log2(1 + pmax(x, 0))
   fold <- is.finite(x) &
-    (abs(x + 1) < 1e-8 | (x > 0 & abs(doublings - round(doublings)) < 1e-8))
+    (abs(x + 1) < 1e-8 | abs(x) < 1e-8 |
+      (x > 0 & abs(doublings - round(doublings)) < 1e-8))
   lab[fold] <- paste0(lab[fold], " (", sprintf("%g", 1 + x[fold]), "x)")
   at_cap <- is.finite(x) & is.finite(cap) & x >= cap - 1e-8
   lab[at_cap] <- paste0("\u2265 ", lab[at_cap])
@@ -977,8 +978,16 @@ add_bw_labs <- function(.data) {
 }
 
 # Compact coverage beside a figure, with the full per-setting CSV companion.
-.simBandwidthPrintCoverage <- function(plot, summary, table_parts = NULL, path_root = NULL) {
+# `quiet = TRUE` saves the coverage CSV without printing anything into the report.
+.simBandwidthPrintCoverage <- function(plot, summary, table_parts = NULL, path_root = NULL,
+                                       quiet = FALSE) {
   tbl <- .simBandwidthCoverageForPlot(plot, summary)
+  if (isTRUE(quiet)) {
+    if (!is.null(table_parts)) {
+      .analysis_report_table(tbl, table_parts, NULL, path_root = path_root, quiet = TRUE)
+    }
+    return(invisible(tbl))
+  }
   pct <- function(n, d) if (d > 0) paste0(" (", .analysis_label_percent(n / d), ")") else ""
   n_sample <- sum(tbl$n_sample)
   n_provenance <- sum(tbl$n_provenance)
@@ -1075,8 +1084,38 @@ add_bw_labs <- function(.data) {
   if (all(available)) c("q025", "q975") else c("q05", "q95")
 }
 
-# All seven percentiles share a panel. Symmetric pairs share alpha/line width.
-# Facets retain scenario dimensions; no direction/share conditioning is applied.
+# Bias-tuning panels: bandwidth and mismatch on separate strip lines, so labels
+# stay readable in narrow panels. The bias rule is shown only when it varies.
+# Returns the facet and its strip theme; add both after the base theme.
+.simBandwidthBiasFacet <- function(tbl, extra = NULL, ncol = NULL) {
+  facet_vars <- c(extra, "bw",
+    if (dplyr::n_distinct(tbl$bias_uns_basis) > 1L) "bias_uns_basis", "mismatch_label")
+  if (is.null(ncol)) ncol <- dplyr::n_distinct(tbl$mismatch_label)
+  list(ggplot2::facet_wrap(ggplot2::vars(!!!rlang::syms(facet_vars)), ncol = ncol,
+    scales = "free_y", labeller = ggplot2::labeller(
+      n_cell = function(x) paste0("Cells: ", .analysis_label_number(as.numeric(x))),
+      bw = function(x) paste0("Bandwidth: ", x),
+      bias_uns_basis = function(x) paste0("Bias rule: ", gsub("_", " ", x)),
+      mismatch_label = function(x) paste0(toupper(substr(x, 1, 1)), substring(x, 2)))),
+    ggplot2::theme(strip.text = ggplot2::element_text(size = 8,
+      margin = ggplot2::margin(2, 2, 2, 2))))
+}
+
+.simBandwidthSignedPercentileLong <- function(tbl, x, stats, labels) {
+  long <- .simBandwidthStatLongBounds(tbl, stats, "percentile", "value")
+  long$percentile <- factor(long$percentile, levels = stats, labels = labels)
+  if ("transformation" %in% names(long)) long$transformation <- .analysis_trans_factor(long$transformation)
+  long$value_shown <- .simBandwidthSignedErrorSquish(long$value)
+  # Bandwidth is an ordered discrete grid, as in the sibling 2a view.
+  if (x == "bw") long$bw <- factor(.analysis_label_number(long$bw),
+    levels = .analysis_label_number(sort(unique(tbl$bw))))
+  long
+}
+
+# Single-method figures show nested percentile bands in one colour, darker
+# towards the median; comparison figures (with a `method` column) draw each
+# method's seven percentiles as lines. Percentiles are calculated before the
+# signed display scale is applied. Facets retain scenario dimensions.
 .simBandwidthSignedPercentilePlot <- function(
     tbl, x = "bw", x_label = "Bandwidth", x_log = FALSE,
     by_prob = FALSE, facet = NULL, mcse = FALSE,
@@ -1088,22 +1127,15 @@ add_bw_labs <- function(.data) {
   stats <- c(outer[1], "q10", "q25", "median", "q75", "q90", outer[2])
   labels <- c(if (fallback) "5th" else "2.5th", "10th", "25th", "50th (median)",
     "75th", "90th", if (fallback) "95th" else "97.5th")
-  long <- .simBandwidthStatLongBounds(tbl, stats, "percentile", "value")
-  long$percentile <- factor(long$percentile, levels = stats, labels = labels)
+  long <- .simBandwidthSignedPercentileLong(tbl, x, stats, labels)
   multi <- "method" %in% names(long)
-  if ("transformation" %in% names(long)) long$transformation <- .analysis_trans_factor(long$transformation)
-  long$value_shown <- .simBandwidthSignedErrorSquish(long$value)
-  # Bandwidth is an ordered discrete grid, as in the sibling 2a view.
-  if (x == "bw") long$bw <- factor(.analysis_label_number(long$bw),
-    levels = .analysis_label_number(sort(unique(tbl$bw))))
   line_cols <- intersect(c("method", "percentile", "transformation", "prob_response",
     "n_cell", "mismatch_label", "bw", "bias_uns_basis", "pop"), names(long))
   line_cols <- setdiff(line_cols, x)
   long$series <- interaction(long[line_cols], drop = TRUE)
   if (is.null(facet)) {
     facet <- if (x == "bias_uns_multiplier") {
-      ggplot2::facet_wrap(ggplot2::vars(bw, bias_uns_basis, mismatch_label),
-        ncol = dplyr::n_distinct(long$mismatch_label), scales = "free_y", labeller = ggplot2::labeller(.multi_line = FALSE))
+      .simBandwidthBiasFacet(long)
     } else if (by_prob) {
       ggplot2::facet_wrap(ggplot2::vars(prob_response, transformation),
         ncol = dplyr::n_distinct(long$transformation), scales = "free",
@@ -1111,49 +1143,85 @@ add_bw_labs <- function(.data) {
     } else ggplot2::facet_wrap(~transformation, scales = "free")
   }
   scenario_counts <- grep("^n_scenario_", names(tbl), value = TRUE)
-  counts <- if (length(scenario_counts)) .simBandwidthScenarioCountText(tbl,
+  caption <- if (length(scenario_counts)) .simBandwidthScenarioCountText(tbl,
     sub("^n_scenario_", "", scenario_counts), "Finite contributing scenarios") else NULL
-  caption <- paste(counts,
-    if (fallback) "5th/95th (too few samples for 2.5th/97.5th intervals)." else "Outer pair: 2.5th/97.5th.",
-    "Unavailable intervals are omitted; points remain.")
   caption <- .simBandwidthDisplayCaption(long$value, caption)
-  caption <- paste(strwrap(caption, width = 110), collapse = "\n")
-  if (is.null(y_label)) y_label <- if ("n_scenario" %in% names(tbl)) {
-    "Mean of scenario percentiles (signed relative error)"
-  } else "Signed relative error"
-  # Alpha, line width and line type all map to the percentile under one legend
-  # title, so ggplot2 merges them. Single-method figures also colour by
-  # percentile: teal above the median and brown below, matching over/under views.
-  tiers <- c("outer", "tail", "quartile", "median", "quartile", "tail", "outer")
-  linetypes <- stats::setNames(c(rep("dotted", 3), "solid", rep("dashed", 3)), labels)
+  caption <- if (nzchar(caption)) paste(strwrap(caption, width = 110), collapse = "\n")
+  averaged <- "n_scenario" %in% names(tbl)
+  if (is.null(y_label)) y_label <- if (multi) {
+    if (averaged) "Mean of scenario percentiles (signed relative error)" else "Signed relative error"
+  } else if (averaged) {
+    "Percentage deviation from true response\n(mean of scenario percentiles)"
+  } else "Percentage deviation from true response"
   bars <- if (isTRUE(mcse)) .simBandwidthSignedErrorBars(long) else NULL
   # Intervals are solid regardless of their percentile's line type.
   if (!is.null(bars)) bars$aes_params$linetype <- "solid"
+  y_scale <- ggplot2::scale_y_continuous(transform = .simBandwidthSignedErrorTrans(),
+    labels = function(v) .simBandwidthSignedErrorLabel(v,
+      cap = if (.simBandwidthSignedErrorIsCapped(long$value)) .simBandwidthSignedErrorCap else Inf))
+  x_scale <- if (x_log) {
+    ggplot2::scale_x_log10(breaks = sort(unique(tbl[[x]])), labels = .analysis_label_number)
+  } else if (is.numeric(long[[x]])) ggplot2::scale_x_continuous(labels = .analysis_label_number)
+  finish <- function(p) {
+    # The facet may carry its own strip theme, so it follows the base theme.
+    p + .simBandwidthCapPoints() + y_scale + .analysis_y_floor(c(-1, 1)) + x_scale +
+      .analysis_theme() +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+      facet +
+      ggplot2::labs(x = x_label, y = y_label, caption = caption)
+  }
+  if (!multi) {
+    band_labels <- paste0(labels[1:3], "–", rev(labels[5:7]))
+    # One band per curve: pair each lower percentile with its upper partner.
+    curve_cols <- setdiff(line_cols, "percentile")
+    long$curve <- if (length(curve_cols)) interaction(long[curve_cols], drop = TRUE) else factor(1)
+    keys <- setdiff(names(long),
+      c("percentile", "series", "value", "value_shown", "lower", "upper", "mcse"))
+    wide <- function(i) {
+      lo <- long[long$percentile == labels[i], , drop = FALSE]
+      hi <- long[long$percentile == labels[8L - i], c(keys, "value_shown"), drop = FALSE]
+      names(hi)[names(hi) == "value_shown"] <- "upper_shown"
+      out <- dplyr::left_join(lo[c(keys, "value_shown")], hi, by = keys)
+      out$band <- factor(band_labels[i], levels = band_labels)
+      out
+    }
+    bands <- dplyr::bind_rows(lapply(1:3, wide))
+    bands$band_group <- interaction(bands$curve, bands$band, drop = TRUE)
+    median_tbl <- long[long$percentile == labels[4], , drop = FALSE]
+    fills <- stats::setNames(c("#C7EAE5", "#80CDC1", "#35978F"), band_labels)
+    p <- ggplot2::ggplot(long, ggplot2::aes(x = .data[[x]], y = .data$value_shown)) +
+      ggplot2::geom_ribbon(data = bands, ggplot2::aes(x = .data[[x]],
+        ymin = .data$value_shown, ymax = .data$upper_shown, fill = .data$band,
+        group = .data$band_group), inherit.aes = FALSE) +
+      ggplot2::geom_hline(yintercept = 0, colour = "grey40", linetype = "dashed")
+    if (!is.null(bars)) {
+      bars$aes_params$colour <- "grey20"
+      p <- p + bars
+    }
+    p <- p +
+      ggplot2::geom_line(data = median_tbl, ggplot2::aes(group = .data$series,
+        colour = .data$percentile), linewidth = 0.9) +
+      ggplot2::geom_point(data = median_tbl, ggplot2::aes(colour = .data$percentile), size = 1) +
+      ggplot2::scale_fill_manual(values = fills, name = "Percentile range", drop = FALSE) +
+      ggplot2::scale_colour_manual(values = stats::setNames("#01665E", labels[4]), name = NULL)
+    return(finish(p))
+  }
+  # Alpha, line width and line type all map to the percentile under one legend
+  # title, so ggplot2 merges them.
+  tiers <- c("outer", "tail", "quartile", "median", "quartile", "tail", "outer")
+  linetypes <- stats::setNames(c(rep("dotted", 3), "solid", rep("dashed", 3)), labels)
   p <- ggplot2::ggplot(long, ggplot2::aes(
     x = .data[[x]], y = .data$value_shown, group = .data$series,
-    colour = .data[[if (multi) "method" else "percentile"]],
+    colour = .data$method,
     alpha = .data$percentile, linewidth = .data$percentile,
     linetype = .data$percentile)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey40", linetype = "dashed") +
     bars + ggplot2::geom_line() + ggplot2::geom_point(size = 1) +
-    .simBandwidthCapPoints() + facet +
-    ggplot2::scale_y_continuous(transform = .simBandwidthSignedErrorTrans(),
-      labels = function(v) .simBandwidthSignedErrorLabel(v,
-        cap = if (.simBandwidthSignedErrorIsCapped(long$value)) .simBandwidthSignedErrorCap else Inf)) +
-    .analysis_y_floor(c(-1, 1)) +
     ggplot2::scale_alpha_manual(values = stats::setNames(unname(alphas[tiers]), labels),
       name = "Percentile", drop = FALSE) +
     ggplot2::scale_linewidth_manual(values = stats::setNames(unname(linewidths[tiers]), labels),
       name = "Percentile", drop = FALSE) +
     ggplot2::scale_linetype_manual(values = linetypes, name = "Percentile", drop = FALSE) +
-    (if (multi) .analysis_scale_method() else ggplot2::scale_colour_manual(
-      values = stats::setNames(c(rep(.simBandwidthSignedErrorColours[["under_q95"]], 3), "#333333",
-        rep(.simBandwidthSignedErrorColours[["over_q95"]], 3)), labels),
-      name = "Percentile", drop = FALSE)) +
-    (if (x_log) ggplot2::scale_x_log10(breaks = sort(unique(tbl[[x]])), labels = .analysis_label_number)
-      else if (is.numeric(long[[x]])) ggplot2::scale_x_continuous(labels = .analysis_label_number)) +
-    .analysis_theme() +
-    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-    ggplot2::labs(x = x_label, y = y_label, caption = caption)
-  p
+    .analysis_scale_method()
+  finish(p)
 }

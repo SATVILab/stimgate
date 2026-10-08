@@ -159,4 +159,11 @@ test_that("coverage notes stay compact and export every plotted setting", {
   clean <- summary; clean$n_failed <- 0L; clean$n_fallback <- 0L
   out <- paste(utils::capture.output(env$.simBandwidthPrintCoverage(plot, clean)), collapse = "\n")
   expect_false(grepl("Settings with failures", out, fixed = TRUE))
+  # Quiet reports (2b) still save every setting's CSV but print nothing.
+  quiet <- utils::capture.output(quiet_tbl <- env$.simBandwidthPrintCoverage(plot, summary,
+    table_parts = c("analysis-name", "quiet.csv"), path_root = root, quiet = TRUE))
+  expect_length(quiet, 0L)
+  expect_equal(quiet_tbl, tbl)
+  expect_equal(nrow(readr::read_csv(.projr_output_path(root, "table", "analysis-name", "quiet.csv"),
+    show_col_types = FALSE)), nrow(tbl))
 })
