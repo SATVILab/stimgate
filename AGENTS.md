@@ -1000,7 +1000,11 @@ rows before drawing reference lines.
      top under its new version.
 
 16. **Local-FDR threshold method (`locThresholdMethod`)**:
-   `stimControl(locThresholdMethod = "region")` (default) sets the
+   `stimControl(locThresholdMethod = "cap")` (default) uses the `"region"`
+   gate unless the frequency above it exceeds `locThresholdCap` (1.3) times
+   the probability-sum estimate, then moves up to the lowest candidate
+   within that limit (`.getCpUnsLocGetCpCap()`); analyses set it
+   explicitly. `"region"` sets the
    condition-level gate at the lower boundary of the region kept by
    post-smoothing filtering (`xSum`). For the shape-enforced route this is the
    largest applied pre-fit, global or marginal cut

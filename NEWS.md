@@ -1,3 +1,14 @@
+# stimgate 0.99.29
+
+## Breaking changes
+
+- `stimControl(locThresholdMethod)` now defaults to `"cap"`: each local-FDR
+  gate starts at the lower edge of the filtered region, as under `"region"`,
+  and moves up only where the background-subtracted frequency above it is
+  more than `locThresholdCap` (1.3) times the sum of fitted response
+  probabilities. Use `locThresholdMethod = "region"` for the previous
+  default.
+
 # stimgate 0.99.28
 
 ## Breaking changes

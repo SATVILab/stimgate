@@ -93,7 +93,7 @@
 #'   response probabilities by more than the factor `locThresholdCap`, in
 #'   which case the gate moves to the lowest value at or above the boundary
 #'   where it no longer does. Cells count as positive when strictly above the
-#'   gate. Default: "region".
+#'   gate. Default: "cap".
 #' @param locThresholdCap numeric Largest allowed ratio of the
 #'   background-subtracted frequency to the sum of fitted response
 #'   probabilities under `locThresholdMethod = "cap"`; at least 1. Default:
@@ -218,7 +218,7 @@ stimControl <- function(
   locProbCol = "pred",
   locMinPeakProb = 0.25,
   locMinRiseProb = 1 / 3,
-  locThresholdMethod = "region",
+  locThresholdMethod = "cap",
   locThresholdCap = 1.3,
   locShareCap = 1.5,
   locShareCellCap = 0.5,

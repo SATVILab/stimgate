@@ -15,7 +15,7 @@ root_dir <- normalizePath(
   env
 }
 
-test_that("bandwidth QMDs set the region threshold method explicitly", {
+test_that("bandwidth QMDs set the threshold method explicitly", {
   for (qmd in c(
     "2a-sim-bw-freq_bs-global.qmd", "2b-sim-bias_uns-freq_bs.qmd",
     "6-sim-bw-freq_bs-adaptive.qmd"
@@ -24,7 +24,7 @@ test_that("bandwidth QMDs set the region threshold method explicitly", {
       readLines(file.path(root_dir, "analysis", qmd)),
       collapse = "\n"
     )
-    expect_match(txt, 'loc_threshold_method <- "region"', fixed = TRUE)
+    expect_match(txt, 'loc_threshold_method <- "cap"', fixed = TRUE)
     # scenario_settings is recorded in the manifest's required parameters.
     expect_match(
       txt, "locThresholdMethod = loc_threshold_method\n)",

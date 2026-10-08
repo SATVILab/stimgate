@@ -82,7 +82,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v20"
+comparison_semantics_version <- "batch-mismatch-comparison-v21"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -201,9 +201,9 @@ stimgate_bw_max <- "none"
 # Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
 cluster_gates <- TRUE
 loc_enforce_shape_threshold <- FALSE
-# Condition-level local-FDR gate: the lower boundary of the region kept by
-# filtering ("region"), rather than probability-sum matching ("match").
-stimgate_loc_threshold_method <- "region"
+# Condition-level local-FDR gate: the region boundary, moved up only where
+# its frequency exceeds 1.3 times the probability-sum estimate ("cap").
+stimgate_loc_threshold_method <- "cap"
 calc_cyt_pos_gates <- FALSE
 # Each dataset of `n_sample_sim` samples is gated together (shared settings
 # and cluster gates), so the dataset is the unit for uncertainty. Draft keeps

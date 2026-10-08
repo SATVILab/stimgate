@@ -32,7 +32,7 @@ test_that("stimControl returns a documented stimControl object", {
   expect_identical(control$locProbCol, "pred")
   expect_identical(control$locMinPeakProb, 0.25)
   expect_false(control$locEnforceShapeThreshold)
-  expect_identical(control$locThresholdMethod, "region")
+  expect_identical(control$locThresholdMethod, "cap")
   expect_false(control$bwAdaptive)
   expect_identical(control$normMtd, "moments")
 
@@ -143,7 +143,7 @@ test_that("markerControl accepts marker and channel names", {
     settings[[exampleData$marker[[1]]]]$locThresholdMethod, "match"
   )
   expect_identical(
-    settings[[exampleData$marker[[2]]]]$locThresholdMethod, "region"
+    settings[[exampleData$marker[[2]]]]$locThresholdMethod, "cap"
   )
 })
 

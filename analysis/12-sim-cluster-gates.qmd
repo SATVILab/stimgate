@@ -63,7 +63,8 @@ sample pairs so each has its own control; lab labels are used only for reporting
 The density bandwidth, clustering bandwidth and unstimulated bias are each 0.3.
 Threshold sharing is enabled and cytokine-positive refinement is disabled.
 Each local-FDR threshold is the lower boundary of the region kept after
-filtering the smoothed response probabilities (`locThresholdMethod = "region"`).
+filtering the smoothed response probabilities and moved up only where its frequency exceeds 1.3 times the probability-sum
+estimate (`locThresholdMethod = "cap"`).
 The seed is fixed at 558. Quick and development renders use three samples per
 lab and 500 cells per tube; they are smoke checks rather than the full example.
 
@@ -84,11 +85,11 @@ lab_settings <- list(
   n_sample_lab = if (analysis_quick || analysis_dev) 3L else 6L,
   n_cell = if (analysis_quick || analysis_dev) 500L else 2000L,
   lab_shift = 4,
-  loc_threshold_method = "region"
+  loc_threshold_method = "cap"
 )
 # v2: the threshold method is a recorded setting and output column; v1 caches
 # used probability-sum matching without recording it.
-lab_semantics <- "cluster-lab-v4"
+lab_semantics <- "cluster-lab-v5"
 lab_cache_file <- file.path(
   .analysis_cache_dir(c(analysis_key, "lab"), root_dir, create = FALSE),
   "result.rds"
@@ -203,7 +204,8 @@ response-shape changes or negative-variance changes between samples or tubes.
 The fixed bandwidth is 0.25, with an unstimulated bias of 0.25, and
 cytokine-positive refinement is disabled for this one-marker example. Each
 local-FDR threshold is the lower boundary of the region kept after filtering
-(`locThresholdMethod = "region"`). These
+and moved up only where its frequency exceeds 1.3 times the probability-sum
+estimate (`locThresholdMethod = "cap"`). These
 settings isolate threshold sharing from additional refinements. They are not
 selected by inspecting the results. Quick and development renders reduce the
 cell count to 2,000 but keep both sample groups; they check execution and are
@@ -222,7 +224,7 @@ weak_settings <- list(
   variance = 1.5,
   bw = 0.25,
   bias_uns = 0.25,
-  loc_threshold_method = "region"
+  loc_threshold_method = "cap"
 )
 weak_cache_key <- .analysis_mode_key(c("sim", "cluster-gates", "weak"), sized = FALSE)
 weak_cache_file <- file.path(
