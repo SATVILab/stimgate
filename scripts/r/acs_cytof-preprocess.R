@@ -1,3 +1,42 @@
+# Channels asinh-transformed during preprocessing; all others are stored raw.
+.acsCytofAsinhChannels <- c(
+  "Dy161Di",
+  "Dy162Di",
+  "Dy163Di",
+  "Dy164Di",
+  "Er166Di",
+  "Er167Di",
+  "Er168Di",
+  "Er170Di",
+  "Eu151Di",
+  "Eu153Di",
+  "Gd155Di",
+  "Gd156Di",
+  "Gd158Di",
+  "Gd160Di",
+  "Ho165Di",
+  "Lu175Di",
+  "Lu176Di",
+  "Nd142Di",
+  "Nd143Di",
+  "Nd144Di",
+  "Nd145Di",
+  "Nd146Di",
+  "Nd148Di",
+  "Nd150Di",
+  "Pr141Di",
+  "Sm147Di",
+  "Sm149Di",
+  "Sm152Di",
+  "Sm154Di",
+  "Tb159Di",
+  "Tm169Di",
+  "Yb171Di",
+  "Yb172Di",
+  "Yb173Di",
+  "Yb174Di"
+)
+
 create_gatingset <- function(
   path_fcs,
   path_gs,
@@ -60,46 +99,7 @@ create_gatingset <- function(
     trans.fun = forwardTransform,
     inverse.fun = backTransform
   )
-  trans <- flowWorkspace::transformerList(
-    c(
-      "Dy161Di",
-      "Dy162Di",
-      "Dy163Di",
-      "Dy164Di",
-      "Er166Di",
-      "Er167Di",
-      "Er168Di",
-      "Er170Di",
-      "Eu151Di",
-      "Eu153Di",
-      "Gd155Di",
-      "Gd156Di",
-      "Gd158Di",
-      "Gd160Di",
-      "Ho165Di",
-      "Lu175Di",
-      "Lu176Di",
-      "Nd142Di",
-      "Nd143Di",
-      "Nd144Di",
-      "Nd145Di",
-      "Nd146Di",
-      "Nd148Di",
-      "Nd150Di",
-      "Pr141Di",
-      "Sm147Di",
-      "Sm149Di",
-      "Sm152Di",
-      "Sm154Di",
-      "Tb159Di",
-      "Tm169Di",
-      "Yb171Di",
-      "Yb172Di",
-      "Yb173Di",
-      "Yb174Di"
-    ),
-    trans.obj
-  )
+  trans <- flowWorkspace::transformerList(.acsCytofAsinhChannels, trans.obj)
   gs_trans <- flowWorkspace::transform(gs, trans)
   # Remove the old manifest before the swap, so an interrupted run leaves it
   # missing rather than paired with the new GatingSet.
@@ -143,11 +143,13 @@ create_gatingset <- function(
     dplyr::bind_rows(
       expr_tbl_long |>
         dplyr::mutate(trans = "none") |>
-        dplyr::mutate(expr = backTransform(expr))
+        dplyr::mutate(expr = dplyr::if_else(
+          .data$chnl %in% .acsCytofAsinhChannels, backTransform(.data$expr), .data$expr
+        ))
     )
   plots <- lapply(unique(expr_tbl_long$trans), function(x) {
-    # Channels that were never asinh-transformed (e.g. Time) overflow to Inf
-    # when back-transformed; geom_histogram() cannot bin infinite values.
+    # Only transformed channels are back-transformed; sinh() of a raw channel
+    # (e.g. Time, DNA) overflows. Drop any remaining non-finite values too.
     plot_tbl <- expr_tbl_long |> dplyr::filter(trans == x, is.finite(expr))
     ggplot2::ggplot(plot_tbl, ggplot2::aes(x = expr, fill = marker)) +
       .analysis_theme(grid = "x") +
