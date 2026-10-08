@@ -266,41 +266,17 @@
   batchList <- .acsCytofBatchList(preprocessing$sampleMap)
 
   if (isTRUE(runMethods)) {
-    restoreDebug <- .acsCytofSetDebug()
-    on.exit(restoreDebug(), add = TRUE)
-
     # Gate into a temporary sibling so a failed run keeps the last good output.
     .acsCytofReplaceDir(paths$stimgate, function(pathTmp) {
-      stimgate::gateStim(
+      .acsCytofGateStim(
+        gs = gs,
         pathProject = pathTmp,
-        .data = gs,
-        popGate = "root",
         batchList = batchList,
-        chnl = c(
-          "Ho165Di",
-          "Gd158Di",
-          "Nd146Di",
-          "Dy164Di",
-          "Gd156Di",
-          "Nd150Di"
-        ),
-        # NULL or NA biasUns: StimGate sets it to biasUnsFactor times the
-        # shared bandwidth, i.e. the bandwidth itself with factor 1.
-        biasUns = if (length(biasUns) == 1L && is.na(biasUns)) NULL else biasUns,
-        control = stimgate::stimControl(
-          biasUnsFactor = biasUnsFactor,
-          bwMtd = bwMtd,
-          bwScope = bwScope,
-          bwNcellMax = 1e4,
-          bwFallback = "auto",
-          bwMin = "none",
-          bwMax = "none",
-          gateCombn = "min",
-          clusterGates = TRUE,
-          calcCytPosGates = TRUE,
-          minCell = 100,
-          locThresholdMethod = locThresholdMethod
-        )
+        biasUns = biasUns,
+        biasUnsFactor = biasUnsFactor,
+        bwMtd = bwMtd,
+        bwScope = bwScope,
+        locThresholdMethod = locThresholdMethod
       )
       manifest <- list(
         context = .acsCytofManifest(preprocessing),
@@ -347,6 +323,54 @@
     batchList = batchList,
     paths = paths
   ))
+}
+
+# The ACS StimGate call shared by Analysis 9 and its per-sample diagnostics
+# (Analysis 13), so both gate with exactly the same settings. Debug mode is on
+# while gating, as in Analysis 9's saved runs.
+.acsCytofGateStim <- function(
+  gs,
+  pathProject,
+  batchList,
+  biasUns = NULL,
+  biasUnsFactor = 1,
+  bwMtd = "nrd0",
+  bwScope = "cytokine",
+  locThresholdMethod = "region"
+) {
+  restoreDebug <- .acsCytofSetDebug()
+  on.exit(restoreDebug(), add = TRUE)
+  stimgate::gateStim(
+    pathProject = pathProject,
+    .data = gs,
+    popGate = "root",
+    batchList = batchList,
+    chnl = c(
+      "Ho165Di",
+      "Gd158Di",
+      "Nd146Di",
+      "Dy164Di",
+      "Gd156Di",
+      "Nd150Di"
+    ),
+    # NULL or NA biasUns: StimGate sets it to biasUnsFactor times the
+    # shared bandwidth, i.e. the bandwidth itself with factor 1.
+    biasUns = if (length(biasUns) == 1L && is.na(biasUns)) NULL else biasUns,
+    control = stimgate::stimControl(
+      biasUnsFactor = biasUnsFactor,
+      bwMtd = bwMtd,
+      bwScope = bwScope,
+      bwNcellMax = 1e4,
+      bwFallback = "auto",
+      bwMin = "none",
+      bwMax = "none",
+      gateCombn = "min",
+      clusterGates = TRUE,
+      calcCytPosGates = TRUE,
+      minCell = 100,
+      locThresholdMethod = locThresholdMethod
+    )
+  )
 }
 
 # Remove package diagnostic panel labels before assembling the analysis figure.

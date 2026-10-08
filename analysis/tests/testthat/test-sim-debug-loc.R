@@ -91,7 +91,11 @@ test_that(".simDebugLoc records one sample without changing the rerun", {
 
   later <- quiet(env$.simDebugLoc(rerun(), sample = 2, subsequent = TRUE))
   expect_s3_class(later, "simDebugLocList")
-  expect_identical(names(later), c("dataset1_ind4", "dataset1_ind6"))
+  chnl <- attr(dbg$inputs$exTblStimOrig, "chnlCut")
+  expect_identical(dbg$chnl, chnl)
+  expect_identical(
+    names(later), paste0("dataset1_ind", c(4, 6), "_", chnl)
+  )
   expect_equal(
     unname(vapply(later, function(x) x$cp$cp, numeric(1L))),
     ref$threshold[ref$method == "loc_sample" & ref$ind %in% c("4", "6")]

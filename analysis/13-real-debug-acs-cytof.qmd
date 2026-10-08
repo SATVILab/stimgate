@@ -1,0 +1,483 @@
+---
+title: Where StimGate gates each ACS CyTOF sample (13)
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: true
+  run_plots: false
+  pops: all
+  stims: all
+  cyts: all
+  samples: none
+  html_pops: all
+  html_stims: all
+  html_cyts: all
+  html_samples: none
+  html_by_group: false
+  html_n_largest: 20
+  html_n_random: 5
+  html_n_closest: 5
+  html_seed: 20261008
+  n_workers: 2
+---
+
+This document shows, for real data, what Analysis 2c shows for simulated
+samples: where StimGate's gate falls on each stimulated tube of the ACS CyTOF
+dataset, and why. There is one page for every sample (stimulated tube),
+cytokine, population and stimulation.
+
+Each population is gated again exactly as in Analysis 9 (same settings,
+same data and the same random-number stream), while the local-FDR steps of
+every tube are recorded. Each page shows the raw stimulated and unstimulated
+densities, the raw and smoothed response probability, its derivative, the
+expected responding cells per bin and the taut-string density, with the
+filtering boundaries and the initial local-FDR gate. It adds the final gate
+StimGate applied after threshold sharing and cytokine-positive refinement
+(`loc_minClust`, the gate Analysis 9 scores), Analysis 9's Tailgate and
+F-beta gates, and a purple dashed line at the stimulated-tube value where
+stimulated minus unstimulated frequency equals the manual frequency. That line
+is derived from the manual frequency only; it is not a manual gate. The text
+below the plots gives the settings, the bandwidth and `biasUns` actually used,
+the gates with their source and reason, and StimGate's and the manual
+background-subtracted frequencies.
+
+## Set-up
+
+`RUN_SIMULATIONS=true` re-gates the chosen populations and draws every page
+into this analysis's cache; `RUN_PLOTS=true` copies the pages to the output
+folder and writes this report. Both read Analysis 9's cached GatingSets, its
+StimGate gates, its Tailgate and F-beta results and its manual comparison,
+and never change them.
+
+Parameters (or environment variables) choose what is drawn. Lists are comma
+separated; `all` selects everything.
+
+- `html_pops`, `html_stims`, `html_cyts` (`ACS_DEBUG_HTML_POPS`,
+  `ACS_DEBUG_HTML_STIMS`, `ACS_DEBUG_HTML_CYTS`, default all): the
+  combinations considered for this report. Across all of them together
+  (`html_by_group = false`, the default; `true` chooses within each
+  population, stimulation and cytokine), it shows the `html_n_largest` (20)
+  samples where StimGate's Analysis 9 frequency differs most from the manual
+  one, the `html_n_closest` (5) that agree best among samples with a manual
+  response, and `html_n_random` (5) of the others (seed `html_seed`); without
+  Analysis 9's manual comparison, all are chosen at random. `html_samples`
+  (`ACS_DEBUG_HTML_SAMPLES`) shows chosen SampleIDs instead. The report
+  samples are chosen when re-gating, so change these with
+  `RUN_SIMULATIONS=true`.
+- `pops` (`ACS_DEBUG_POPS`), `stims` (`ACS_DEBUG_STIMS`), `cyts`
+  (`ACS_DEBUG_CYTS`), `samples` (`ACS_DEBUG_SAMPLES`): further pages saved to
+  files. `samples` defaults to `none`, so only the report's samples are drawn;
+  `manual` adds every donor with manual gating and `all` every donor. Every
+  tube of a chosen population is still gated, so the gates match Analysis 9.
+- `n_workers` (`ACS_N_WORKERS`): populations gated at once.
+
+Quick and dev renders gate only the Analysis 9 TCRgd tester GatingSet and draw
+its IL-2 pages.
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+analysis_qmd <- "analysis/13-real-debug-acs-cytof.qmd"
+fig_key <- .analysis_mode_key("13-real-debug-acs-cytof", sized = FALSE)
+analysis_quick <- .analysis_is_quick() || .analysis_is_dev()
+for (fn in c(
+  "acs_cytof-helper.R",
+  "acs_cytof-gate.R",
+  "acs_cytof-methods.R",
+  "sim-debug-loc.R",
+  "acs_cytof-debug.R"
+)) {
+  source(file.path(scripts_r_dir, fn))
+}
+
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations", "RUN_SIMULATIONS", FALSE
+))
+run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
+param_list <- function(param, env, default = "all") {
+  .acsCytofDebugList(.get_qmd_param_env(param, env, default))
+}
+param_int <- function(param, env, default) {
+  int <- as.integer(.get_qmd_param_env(param, env, default))
+  if (length(int) != 1L || is.na(int) || int < 0L) {
+    stop(param, " must be a non-negative integer.")
+  }
+  int
+}
+sel_pops <- param_list("pops", "ACS_DEBUG_POPS")
+sel_stims <- param_list("stims", "ACS_DEBUG_STIMS")
+sel_cyts <- param_list("cyts", "ACS_DEBUG_CYTS")
+sel_samples <- param_list("samples", "ACS_DEBUG_SAMPLES", "none")
+html_pops <- param_list("html_pops", "ACS_DEBUG_HTML_POPS")
+html_stims <- param_list("html_stims", "ACS_DEBUG_HTML_STIMS")
+html_cyts <- param_list("html_cyts", "ACS_DEBUG_HTML_CYTS")
+html_samples <- param_list("html_samples", "ACS_DEBUG_HTML_SAMPLES", "none")
+if (!length(html_samples)) html_samples <- NULL
+html_by_group <- .as_flag(.get_qmd_param_env(
+  "html_by_group", "ACS_DEBUG_HTML_BY_GROUP", FALSE
+))
+html_n_largest <- param_int("html_n_largest", "ACS_DEBUG_HTML_N_LARGEST", 20L)
+html_n_random <- param_int("html_n_random", "ACS_DEBUG_HTML_N_RANDOM", 5L)
+html_n_closest <- param_int("html_n_closest", "ACS_DEBUG_HTML_N_CLOSEST", 5L)
+html_seed <- param_int("html_seed", "ACS_DEBUG_HTML_SEED", 20261008L)
+n_workers <- param_int("n_workers", "ACS_N_WORKERS", 2L)
+if (n_workers < 1L) stop("n_workers must be at least one.")
+
+.acsCytofEnsureCurrentCheckout(root_dir)
+```
+
+## Settings
+
+The populations, StimGate settings and seed are read from Analysis 9's
+`scientific-settings` chunk, so the two analyses cannot drift apart.
+
+```{r}
+#| label: scientific-settings
+settings <- .acsCytofDebugSettings(
+  file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
+)
+output_group <- NULL
+if (analysis_quick) {
+  # Analysis 9's tester: its first complete TCRgd batches, gated on their own.
+  output_group <- "tester"
+  sel_pops <- "tcrgd"
+  if (is.null(sel_cyts)) sel_cyts <- "IL2"
+  html_pops <- "tcrgd"
+  html_cyts <- intersect(html_cyts %||% sel_cyts, sel_cyts)
+}
+run_pops <- intersect(settings$popVec, sel_pops %||% settings$popVec)
+unknown_pops <- setdiff(c(sel_pops, html_pops), settings$popVec)
+if (length(unknown_pops)) {
+  stop("Unknown populations: ", paste(unknown_pops, collapse = ", "))
+}
+unknown_cyts <- setdiff(c(sel_cyts, html_cyts), .acsCytofChannelMap())
+if (length(unknown_cyts)) {
+  stop("Unknown cytokines: ", paste(unknown_cyts, collapse = ", "))
+}
+str(settings)
+```
+
+```{r}
+#| label: paths
+#| include: false
+# Analysis 9's caches are only read: never create or change them here.
+path_gs_base <- projr::projr_path_get(
+  "cache", "acs_cytof", "gs",
+  create = FALSE, format = "absolute"
+)
+path_scratch_base <- projr::projr_path_get(
+  "cache", "acs_cytof", "scratch",
+  create = FALSE, format = "absolute"
+)
+path_comparison <- projr::projr_path_get(
+  "cache", "acs_cytof", "manual-comparison", "manual-comparison.rds",
+  create = FALSE, format = "absolute"
+)
+# This analysis's own cache.
+path_debug_base <- .analysis_cache_dir(
+  c("acs_cytof_debug", fig_key[-1L]), root_dir
+)
+paths9 <- lapply(stats::setNames(nm = settings$popVec), function(pop) {
+  .acsCytofPopulationPaths(
+    pop, "unused", path_gs_base, path_scratch_base,
+    outputGroup = output_group
+  )
+})
+paths_debug <- lapply(stats::setNames(nm = settings$popVec), function(pop) {
+  .acsCytofDebugPaths(pop, path_debug_base, outputGroup = output_group)
+})
+```
+
+## Re-gating
+
+Every tube of each chosen population is gated, as in Analysis 9, with one
+worker per population (`n_workers` at once) and the population's own
+random-number stream. Each recorded tube is saved as soon as it is gated;
+once the final gates are known, its page is drawn and the record deleted. The
+pages are built in a temporary folder that replaces the previous one only
+once the population has finished.
+
+```{r}
+#| label: run-regating
+#| include: false
+if (isTRUE(run_simulations)) {
+  comparison <- tryCatch(
+    .acsCytofDebugReadComparison(path_comparison, settings$locThresholdMethod),
+    error = function(e) {
+      message("Analysis 9's manual comparison is unusable: ", conditionMessage(e))
+      NULL
+    }
+  )
+  if (analysis_quick && !is.null(comparison)) {
+    # The tester's gates differ from the full run that Analysis 9 scored.
+    comparison[c("freqBsAnalysis9", "diffAnalysis9", "absDiffAnalysis9")] <- NA_real_
+  }
+  candidates <- dplyr::bind_rows(lapply(intersect(html_pops, run_pops), function(pop) {
+    .acsCytofReadPreprocessing(paths9[[pop]]$gs)$sampleMap |>
+      dplyr::filter(.data$stim != "uns") |>
+      tidyr::expand_grid(cyt = unname(.acsCytofChannelMap())) |>
+      dplyr::transmute(pop = .env$pop, .data$stim, .data$cyt, .data$SampleID)
+  }))
+  if (nrow(candidates)) {
+    candidates <- candidates |>
+      dplyr::filter(
+        is.null(html_stims) | .data$stim %in% html_stims,
+        is.null(html_cyts) | .data$cyt %in% html_cyts
+      )
+  }
+  html_keys <- .acsCytofDebugSelectHtml(
+    candidates, comparison,
+    nLargest = html_n_largest, nRandom = html_n_random,
+    nClosest = html_n_closest, seed = html_seed, samples = html_samples,
+    byGroup = html_by_group
+  )
+  sel_samples <- .acsCytofDebugResolveSamples(sel_samples, comparison)
+  # Pages for the report's samples are drawn even if not selected here.
+  select <- list(stim = sel_stims, cyt = sel_cyts, sample = sel_samples)
+  manifest <- list(
+    analysis_semantics_version = "acs-cytof-debug-v1",
+    run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = "")),
+    settings = settings,
+    select = select,
+    output_group = output_group
+  )
+  run_population <- function(pop) {
+    if (!pop %in% run_pops) {
+      return(list(pop = pop, success = TRUE, error = NULL))
+    }
+    tryCatch(
+      .acsCytofDebugRunPopulation(
+        pop = pop,
+        paths9 = paths9[[pop]],
+        pathsDebug = paths_debug[[pop]],
+        settings = settings,
+        select = select,
+        comparison = comparison,
+        htmlKeys = html_keys[html_keys$pop == pop, ],
+        manifest = manifest,
+        rootDir = root_dir
+      ),
+      error = function(e) {
+        list(pop = pop, success = FALSE, error = conditionMessage(e))
+      }
+    )
+  }
+  if (!is.null(output_group)) {
+    # Analysis 9 gates its tester in the main session after this seed.
+    set.seed(settings$seed)
+    tester_run <- run_population("tcrgd")
+    if (!isTRUE(tester_run$success)) {
+      stop("TCRgd tester re-gating failed: ", tester_run$error)
+    }
+  } else {
+    # Same populations, order and seed as Analysis 9, so each population
+    # gets the random-number stream it had there. Unchosen ones return at once.
+    .acsCytofMapPopulations(
+      settings$popVec,
+      run_population,
+      nWorkers = n_workers,
+      seed = settings$seed,
+      label = "ACS per-sample re-gating"
+    )
+  }
+}
+```
+
+## Results
+
+```{r}
+#| label: read-summaries
+#| include: false
+summaries <- list()
+if (isTRUE(run_plots)) {
+  for (pop in run_pops) {
+    path <- paths_debug[[pop]]$summary
+    if (!file.exists(path)) {
+      message("No re-gated pages for ", pop, "; run with RUN_SIMULATIONS=true.")
+      next
+    }
+    obj <- .analysis_read_rds(path, "acs_cytof_debug", analysis_qmd)
+    .analysis_check_expected_run(
+      obj$manifest, "acs_cytof_debug", analysis_qmd,
+      semantics_version = "acs-cytof-debug-v1"
+    )
+    summaries[[pop]] <- obj$table
+  }
+}
+summary_tbl <- dplyr::bind_rows(summaries)
+```
+
+### Gates and pages per population
+
+`same gates as Analysis 9` counts tubes and cytokines whose final gates
+(ordinary and cytokine-positive) equal the gates Analysis 9 saved. Any
+difference means the re-gating did not reproduce Analysis 9 and the pages
+must not be read as Analysis 9's gating. `local FDR ran` counts tubes that
+reached local-FDR gating; the others had too few cells.
+
+```{r}
+#| label: population-summary
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && nrow(summary_tbl)) {
+  pop_tbl <- summary_tbl |>
+    dplyr::group_by(.data$pop) |>
+    dplyr::summarise(
+      n = dplyr::n(),
+      local_fdr = sum(.data$recorded),
+      fallback = sum(!(.data$locGenerated %in% TRUE)),
+      same = sum(.data$matchesAnalysis9 %in% TRUE),
+      different = sum(.data$matchesAnalysis9 %in% FALSE),
+      pages = sum(!is.na(.data$page)),
+      failed = sum(!is.na(.data$pageError)),
+      .groups = "drop"
+    )
+  for (i in seq_len(nrow(pop_tbl))) {
+    with(pop_tbl[i, ], cat(
+      "- **", pop, "**: ", n, " tubes x cytokines; local FDR ran for ",
+      local_fdr, "; final gate fallback for ", fallback, "; same gates as ",
+      "Analysis 9 for ", same, ", different for ", different, "; ", pages,
+      " pages saved (", failed, " failed).\n", sep = ""
+    ))
+  }
+  if (any(summary_tbl$matchesAnalysis9 %in% FALSE)) {
+    cat("\n\n**Warning: some re-gated gates differ from Analysis 9's saved gates.**\n\n")
+  }
+}
+```
+
+### Combinations
+
+```{r}
+#| label: combination-summary
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && nrow(summary_tbl)) {
+  summary_tbl |>
+    dplyr::group_by(.data$pop, .data$stim, .data$cyt) |>
+    dplyr::summarise(
+      n = dplyr::n(),
+      n_local_fdr = sum(.data$recorded),
+      n_fallback = sum(!(.data$locGenerated %in% TRUE)),
+      n_same_as_analysis_9 = sum(.data$matchesAnalysis9 %in% TRUE),
+      n_manual = sum(is.finite(.data$freqBsManual)),
+      median_abs_diff_analysis_9 = stats::median(.data$absDiffAnalysis9, na.rm = TRUE),
+      max_abs_diff_analysis_9 = suppressWarnings(max(.data$absDiffAnalysis9, na.rm = TRUE)),
+      pdf = paste(unique(stats::na.omit(.data$pdf)), collapse = ";"),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(max_abs_diff_analysis_9 = dplyr::if_else(
+      is.finite(.data$max_abs_diff_analysis_9), .data$max_abs_diff_analysis_9, NA_real_
+    )) |>
+    .analysis_report_table(
+      c(fig_key, "combination-summary.csv"),
+      paste(
+        "Tubes, local-FDR and fallback counts, agreement with Analysis 9's gates",
+        "and absolute StimGate - manual difference (percentage points) per",
+        "population, stimulation and cytokine."
+      ),
+      path_root = root_dir
+    )
+  summary_tbl |>
+    dplyr::arrange(.data$pop, .data$stim, .data$cyt, .data$SampleID) |>
+    .analysis_report_table(
+      c(fig_key, "per-sample-summary.csv"),
+      paste(
+        "One row per tube and cytokine: gates, provenance, frequencies and the",
+        "page (`pdf`, `page`) showing it."
+      ),
+      path_root = root_dir
+    )
+}
+```
+
+### Saved pages
+
+Pages are saved under `output/fig/13-real-debug-acs-cytof/per_sample/`, one
+PDF per population, stimulation and cytokine
+(`<population>/<stimulation>/<cytokine>.pdf`), one page per sample in
+SampleID order. `page` and `pdf` in the per-sample table give each sample's
+page.
+
+```{r}
+#| label: publish-pages
+#| include: false
+if (isTRUE(run_plots)) {
+  path_pages_out <- .analysis_fig_dir(c(fig_key, "per_sample"), root_dir)
+  for (pop in names(summaries)) {
+    .acsCytofReplaceDir(file.path(path_pages_out, pop), function(path_tmp) {
+      from <- list.files(paths_debug[[pop]]$pages, full.names = TRUE)
+      if (length(from) && !all(file.copy(from, path_tmp, recursive = TRUE))) {
+        stop("Could not copy the pages of ", pop, ".")
+      }
+    })
+  }
+}
+```
+
+### Chosen samples
+
+Each figure is one saved page. Its heading gives why it was chosen and
+StimGate's frequency scored in Analysis 9 (after cytokine-positive
+refinement) against the manual frequency, both background subtracted and
+clipped at zero, in percent of the population.
+
+```{r}
+#| label: html-figures
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && nrow(summary_tbl)) {
+  shown <- summary_tbl |>
+    dplyr::filter(!is.na(.data$htmlReason), !is.na(.data$page)) |>
+    dplyr::mutate(htmlReason = factor(.data$htmlReason, levels = c(
+      "largest error", "random", "close agreement",
+      "random (no manual comparison)", "requested"
+    ))) |>
+    dplyr::arrange(.data$pop, .data$stim, .data$cyt, .data$htmlReason)
+  pct <- function(x) if (is.finite(x)) sprintf("%.2f%%", x) else "not available"
+  for (pop in unique(shown$pop)) {
+    .analysis_heading(paste("Population:", pop), 4)
+    rows_pop <- shown[shown$pop == pop, ]
+    for (combo in unique(paste(rows_pop$stim, rows_pop$cyt))) {
+      rows <- rows_pop[paste(rows_pop$stim, rows_pop$cyt) == combo, ]
+      .analysis_heading(paste0(
+        "Stimulation ", rows$stim[[1L]], ", ", rows$cyt[[1L]]
+      ), 5)
+      for (i in seq_len(nrow(rows))) {
+        row <- rows[i, ]
+        cat(
+          "\n\n**", row$SampleID, "** (", as.character(row$htmlReason),
+          "): StimGate ", pct(row$freqBsAnalysis9), ", manual ",
+          pct(row$freqBsManual), ". Page ", row$page, " of `",
+          paste("per_sample", pop, row$pdf, sep = "/"), "`.\n\n",
+          sep = ""
+        )
+        x <- readRDS(file.path(
+          paths_debug[[pop]]$html, paste0(row$ind, "_", row$chnl, ".rds")
+        ))
+        .analysis_print_fig(
+          .acsCytofDebugFigure(x$rec, x$row),
+          width = 36, height = 48
+        )
+      }
+    }
+  }
+}
+```

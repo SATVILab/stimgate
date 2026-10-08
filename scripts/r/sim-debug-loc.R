@@ -44,9 +44,22 @@
 #' @param stopAfter logical Stop the rerun once the last recorded tube is
 #'   gated (ignored when `subsequent = TRUE`). Set FALSE to also return the
 #'   rerun output (`$result`). Default: TRUE.
-#' @return `simDebugLoc` list for one tube, or, when `subsequent = TRUE`, a
-#'   `simDebugLocList` named `dataset<k>_ind<i>`, in gating order, with the
-#'   rerun output as attribute `"result"`.
+#' @param tubeInfo function or NULL Maps a GatingSet index (character) to a
+#'   named list describing the tube, stored as the record's `tube` field; its
+#'   `sample` element, if any, replaces the simulated-layout sample number
+#'   (e.g. a real donor ID). Default: NULL (simulated layout).
+#' @param onRecord function or NULL Called with each assembled record as soon
+#'   as its tube is gated; its return value is kept instead of the record, so
+#'   large runs can save or plot each tube and keep only a small summary.
+#'   Default: NULL (keep the records).
+#' @details A tube is gated once per channel, so records are counted and
+#'   named per tube and channel. With `sample = NULL` and `ind = NULL`, every
+#'   tube and channel gated by local FDR is recorded (as with
+#'   `subsequent = TRUE` from the first one).
+#' @return `simDebugLoc` list for one tube and channel, or, when
+#'   `subsequent = TRUE`, a `simDebugLocList` named
+#'   `dataset<k>_ind<i>_<channel>`, in gating order, with the rerun output as
+#'   attribute `"result"`.
 .simDebugLoc <- function(
   code,
   sample = 1L,
@@ -55,10 +68,17 @@
   subsequent = FALSE,
   nCondition = 2L,
   browse = character(0L),
-  stopAfter = TRUE
+  stopAfter = TRUE,
+  tubeInfo = NULL,
+  onRecord = NULL
 ) {
   ns <- asNamespace("stimgate")
-  ind <- as.character(ind %||% ((as.integer(sample) - 1L) * nCondition + 2L))
+  everyTube <- is.null(sample) && is.null(ind)
+  if (everyTube) {
+    subsequent <- TRUE
+  } else {
+    ind <- as.character(ind %||% ((as.integer(sample) - 1L) * nCondition + 2L))
+  }
   missingFns <- browse[!vapply(
     browse, exists, logical(1L),
     envir = ns, inherits = FALSE
@@ -83,9 +103,14 @@
         return(invisible())
       }
       indCurr <- attr(frame$exTblStimNoMin, "ind")
-      prev <- if (indCurr %in% names(state$seen)) state$seen[[indCurr]] else 0L
-      state$seen[[indCurr]] <- prev + 1L
-      isTarget <- identical(indCurr, ind) && state$seen[[indCurr]] == dataset
+      chnlCurr <- attr(frame$exTblStimNoMin, "chnlCut") %||%
+        frame$chnlSettings$chnlCut
+      # Each tube is gated once per channel: count gatings per tube and channel.
+      key <- paste(indCurr, chnlCurr, sep = "\r")
+      prev <- if (key %in% names(state$seen)) state$seen[[key]] else 0L
+      state$seen[[key]] <- prev + 1L
+      isTarget <- everyTube ||
+        (identical(indCurr, ind) && state$seen[[key]] == dataset)
       if (state$started && !isTRUE(subsequent)) {
         # A plain condition, not an error, so analysis tryCatch(error = )
         # handlers do not turn the early stop into an error row.
@@ -97,10 +122,14 @@
       }
       state$started <- TRUE
       state$active <- TRUE
+      tube <- if (is.null(tubeInfo)) NULL else tubeInfo(indCurr)
       state$capture <- list(
         ind = indCurr,
-        sample = (as.integer(indCurr) - 2L) %/% nCondition + 1L,
-        dataset = state$seen[[indCurr]],
+        chnl = chnlCurr,
+        tube = tube,
+        sample = tube$sample %||%
+          ((as.integer(indCurr) - 2L) %/% nCondition + 1L),
+        dataset = state$seen[[key]],
         inputs = mget(
           c(
             "exTblStimNoMin", "exTblUnsBias", "exTblStimOrig", "exTblUnsOrig",
@@ -121,8 +150,9 @@
         state$capture$cp <- value
         state$active <- FALSE
         cap <- state$capture
-        nm <- paste0("dataset", cap$dataset, "_ind", cap$ind)
-        state$tubes[[nm]] <- .simDebugLocAssemble(cap)
+        nm <- paste0("dataset", cap$dataset, "_ind", cap$ind, "_", cap$chnl)
+        rec <- .simDebugLocAssemble(cap)
+        state$tubes[[nm]] <- if (is.null(onRecord)) rec else onRecord(rec)
       }
     },
     .getCpUnsLocGetDensRaw = function(value) {
@@ -169,7 +199,8 @@
     traced <- c(traced, fn)
   }
   # Keep the latest simulated experiment for the true population labels.
-  if (requireNamespace("simcyto", quietly = TRUE)) {
+  # Real data (`tubeInfo` given) have none: do not even load simcyto.
+  if (is.null(tubeInfo) && requireNamespace("simcyto", quietly = TRUE)) {
     simNs <- asNamespace("simcyto")
     suppressMessages(trace(
       "simCytExperiment",
@@ -190,7 +221,8 @@
 
   if (length(state$tubes) == 0L) {
     warning(
-      "Tube ", ind, " was not gated by local FDR in dataset ", dataset,
+      if (everyTube) "No tube" else paste0("Tube ", ind),
+      " was gated by local FDR in dataset ", dataset,
       "; it may have had too few cells, or the call gates fewer datasets."
     )
   }
@@ -218,6 +250,8 @@
   structure(
     list(
       ind = cap$ind,
+      chnl = cap$chnl,
+      tube = cap$tube,
       sample = cap$sample,
       dataset = cap$dataset,
       found = !is.null(cap$cp),
@@ -677,7 +711,7 @@
   )
   gating <- tibble::tibble(
     name = c(
-      paste0(intersect(tuningCols, names(row)), " (grid)"),
+      sprintf("%s (grid)", intersect(tuningCols, names(row))),
       "bandwidth used", "biasUns used", gatingNames
     ),
     value = c(
@@ -699,7 +733,8 @@
     )
   )
 
-  sm <- .simDebugLocSummary(dbg)
+  # A list, so truth columns absent for real data read as NULL.
+  sm <- as.list(.simDebugLocSummary(dbg))
   relErr <- if (!is.null(sm$propRespTruth) && is.finite(sm$propRespTruth) &&
     sm$propRespTruth > 0) {
     (sm$propRespEst - sm$propRespTruth) / sm$propRespTruth
@@ -765,8 +800,11 @@
 #' @param plots list Output of `.simDebugLocPlots()`.
 #' @param info list or NULL Output of `.simDebugLocInfo()`, shown as text
 #'   blocks below the plots.
+#' @param headings character or NULL Named block headings, in display
+#'   order, replacing or adding to the defaults (e.g. for real data,
+#'   `c(simulation = "Sample")`). Default: NULL.
 #' @return ggplot object.
-.simDebugLocPlotGrid <- function(plots, info = NULL) {
+.simDebugLocPlotGrid <- function(plots, info = NULL, headings = NULL) {
   lines <- attr(plots, "lines")
   plots <- Filter(Negate(is.null), plots)
   grid <- cowplot::plot_grid(
@@ -785,11 +823,12 @@
   if (is.null(info)) {
     return(grid)
   }
-  headings <- c(
+  defaults <- c(
     gating = "Gating settings",
     simulation = "Simulation settings",
     estimate = "Threshold and response frequency"
   )
+  headings <- c(headings, defaults[setdiff(names(defaults), names(headings))])
   info <- info[intersect(names(headings), names(info))]
   nLines <- vapply(info, function(tbl) {
     sum(vapply(

@@ -18,6 +18,7 @@ scripts=(
   "dev-7-sim-compare-freq_bs.sh"
   "dev-8-sim-compare-freq_bs-batch.sh"
   "dev-9-real-compare-acs-cytof.sh"
+  "dev-13-real-debug-acs-cytof.sh"
 )
 
 # With arguments, submit only those analysis IDs or launcher filenames.
@@ -62,6 +63,19 @@ if (( $# > 0 )); then
       scripts+=("$matched_script")
     fi
   done
+fi
+
+# Analysis 13 reads Analysis 9's results, so submit 9 first when both run.
+idx_9=-1
+idx_13=-1
+for i in "${!scripts[@]}"; do
+  [[ "${scripts[$i]}" == dev-9-* ]] && idx_9=$i
+  [[ "${scripts[$i]}" == dev-13-* ]] && idx_13=$i
+done
+if (( idx_9 >= 0 && idx_13 >= 0 && idx_13 < idx_9 )); then
+  script_13="${scripts[$idx_13]}"
+  unset 'scripts[idx_13]'
+  scripts=("${scripts[@]}" "$script_13")
 fi
 
 poll_seconds="${POLL_SECONDS:-5}"
@@ -120,12 +134,27 @@ plot_qmds_for_script() {
     dev-9-real-compare-acs-cytof.sh)
       echo "analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd"
       ;;
+    dev-13-real-debug-acs-cytof.sh)
+      echo "analysis/13-real-debug-acs-cytof.qmd"
+      ;;
     *)
       qmd_stem="$(chunked_qmd_stem_for_script "$1")"
       if [[ -n "$qmd_stem" ]]; then
         echo "analysis/${qmd_stem}.qmd"
       fi
       ;;
+  esac
+}
+
+# Simulation jobs that must wait for another launcher's jobs to succeed, as
+# ':'-prefixed job IDs (empty when that launcher is not in this submission).
+# Analysis 13 re-gates from Analysis 9's caches and reads its results.
+sim_dependency_for_script() {
+  case "$1" in
+    dev-13-real-debug-acs-cytof.sh)
+      echo "${script_job_ids[dev-9-real-compare-acs-cytof.sh]:-}"
+      ;;
+    *) echo "" ;;
   esac
 }
 
@@ -260,7 +289,13 @@ for script in "${scripts[@]}"; do
     done
   else
     echo "Submitting $script"
+    dependency_args=()
+    dependency_ids="$(sim_dependency_for_script "$script")"
+    if [[ -n "$dependency_ids" ]]; then
+      dependency_args=(--dependency="afterok${dependency_ids}")
+    fi
     submit_job "$script_dir/$script" -- \
+      ${dependency_args[@]+"${dependency_args[@]}"} \
       --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",RUN_SIMULATIONS=true,RUN_PLOTS=false"$sim_size_export"
     script_job_ids["$script"]=":$submitted_job_id"
     all_sim_job_ids+=("$submitted_job_id")

@@ -136,6 +136,27 @@ unset SIM_SIZE
 run_selection 9
 grep -Fq -- 'PLOT_QMD_FILES=analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd,' "$SLURM_TEST_LOG"
 
+# Analysis 13 runs alone without a dependency, and after 9 succeeds when both
+# are submitted, whatever the order requested.
+run_selection 13
+[[ $(wc -l < "$SLURM_TEST_LOG") -eq 2 ]]
+sim_13=$(grep -F 'dev-13-real-debug-acs-cytof.sh' "$SLURM_TEST_LOG")
+[[ "$sim_13" != *"--dependency"* ]]
+[[ "$sim_13" == *"RUN_SIMULATIONS=true,RUN_PLOTS=false|"* ]]
+grep -Fq -- 'PLOT_QMD_FILES=analysis/13-real-debug-acs-cytof.qmd,' "$SLURM_TEST_LOG"
+for selection in "9 13" "13 9"; do
+  # shellcheck disable=SC2086
+  run_selection $selection
+  sim_9=$(grep -F 'dev-9-real-compare-acs-cytof.sh' "$SLURM_TEST_LOG")
+  sim_13=$(grep -F 'dev-13-real-debug-acs-cytof.sh' "$SLURM_TEST_LOG")
+  [[ "$sim_9" != *"--dependency"* ]]
+  [[ "$sim_13" == *"|--dependency=afterok:101|"* ]]
+  plot_13=$(grep -F 'plots-13-' "$SLURM_TEST_LOG")
+  [[ "$plot_13" == *"--dependency=afterok:102,afterany:101|"* ]]
+done
+run_selection
+grep -Fq -- 'dev-13-real-debug-acs-cytof.sh' "$SLURM_TEST_LOG"
+
 # Non-chunked simulation jobs share the plot job's submission run ID.
 run_selection 1 9
 [[ $(grep -c 'ANALYSIS_RUN_ID=slurm-test-run' "$SLURM_TEST_LOG") -eq 4 ]]
@@ -204,7 +225,7 @@ for launcher_path in "$project_root"/scripts/slurm/dev-*.sh; do
   else
     [[ $? -eq 23 ]]
   fi
-  grep -Fq -- 'SIM_SIZE:' "$test_dir/output" || [[ "$launcher_path" == *dev-9-* ]]
+  grep -Fq -- 'SIM_SIZE:' "$test_dir/output" || [[ "$launcher_path" == *dev-9-* || "$launcher_path" == *dev-13-* ]]
 done
 if PLOT_QMD_FILES="analysis/1-sim-trans.qmd" bash "$project_root/scripts/slurm/render-plots.sh" > "$test_dir/output" 2>&1; then
   echo 'Renderer failure must fail the plot launcher.' >&2
