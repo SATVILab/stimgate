@@ -24,6 +24,7 @@ stimControl(
   locProbCol = "pred",
   locMinPeakProb = 0.25,
   locThresholdMethod = "region",
+  locThresholdCap = 1.3,
   locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1/6,
@@ -62,7 +63,9 @@ that gate; keep the gate if none exists. Default: TRUE.}
 count are skipped. Default: 100.}
 
 \item{biasUnsFactor}{numeric Automatic \code{biasUns} (when \code{biasUns} is NULL)
-equals this factor times the fallback bandwidth \code{bwFallback}. Default: 1.}
+equals this factor times the bandwidth every sample of the marker uses
+(a fixed \code{bw}, or the shared bandwidth with \code{bwScope = "cytokine"}), and
+otherwise times the fallback bandwidth \code{bwFallback}. Default: 1.}
 
 \item{excMin}{logical Exclude cells with minimum expression during gating.
 Default: TRUE.}
@@ -142,8 +145,17 @@ from the local-FDR filtering: "region" uses the lower boundary of the
 region kept by filtering (\code{xSum} in diagnostics) as the gate; "match"
 moves the gate to where the background-subtracted frequency equals the
 sum of fitted response probabilities, which was the only method before
-stimgate 0.99.26. Cells count as positive when strictly above the gate.
-Default: "region".}
+stimgate 0.99.26; "cap" keeps the region boundary unless the
+background-subtracted frequency above it exceeds the sum of fitted
+response probabilities by more than the factor \code{locThresholdCap}, in
+which case the gate moves to the lowest value at or above the boundary
+where it no longer does. Cells count as positive when strictly above the
+gate. Default: "region".}
+
+\item{locThresholdCap}{numeric Largest allowed ratio of the
+background-subtracted frequency to the sum of fitted response
+probabilities under \code{locThresholdMethod = "cap"}; at least 1. Default:
+1.3.}
 
 \item{locEnforceShapeThreshold}{logical Refit densities and probabilities
 above the lower of the first stimulated-density antimode right of the main

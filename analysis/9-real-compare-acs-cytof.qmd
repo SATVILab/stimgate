@@ -152,7 +152,7 @@ stimgate_bw_mtd <- "nrd0"
 stimgate_bw_scope <- "cytokine"
 # Gate at the lower boundary of the filtered local-FDR region.
 stimgate_loc_threshold_method <- "region"
-# NA: StimGate's unstimulated-sample bias equals its initial bandwidth estimate.
+# NA: StimGate's unstimulated-sample bias equals its shared bandwidth.
 bias_uns <- NA_real_
 bias_uns_vec_by_pop <- .by_pop(bias_uns)
 analysis_seed <- 20260823L
@@ -176,8 +176,8 @@ boundary of the region kept by local-FDR filtering
 recorded with the saved run, and a saved StimGate result made with another
 threshold method is rejected.
 Its unstimulated-sample bias
-is not fixed: it equals the bandwidth StimGate estimates at the start
-(`biasUns = NULL` with `biasUnsFactor = 1`). F-beta uses its standard
+is not fixed: it equals the shared bandwidth StimGate estimates for each
+marker (`biasUns = NULL` with `biasUnsFactor = 1`). F-beta uses its standard
 parameters (`beta = 0.8`, `theta = 2`, `width = 10` and automatic bin count).
 The F-beta implementation is adapted from Richards et al. (2014) only in the
 histogram support: common bin edges span the matched stimulated and unstimulated
@@ -343,7 +343,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .write_rds_atomic(
     list(
-      analysis_semantics_version = "acs-cytof-v5",
+      analysis_semantics_version = "acs-cytof-v6",
       stimgate_loc_threshold_method = stimgate_loc_threshold_method,
       run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))
     ),
@@ -355,7 +355,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .analysis_check_expected_run(
     manual_run_manifest,
-    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v5"
+    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v6"
   )
   .acsCytofCheckRunManifestMethod(
     manual_run_manifest, stimgate_loc_threshold_method, analysis_qmd

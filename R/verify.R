@@ -345,11 +345,19 @@
     !.verifyIsNullOrNa(settings[["locThresholdMethod"]]) &&
       (!is.character(settings[["locThresholdMethod"]]) ||
         length(settings[["locThresholdMethod"]]) != 1L ||
-        !settings[["locThresholdMethod"]] %in% c("region", "match"))
+        !settings[["locThresholdMethod"]] %in% c("region", "match", "cap"))
   ) {
     stop(paste0(
-      prefix, "`locThresholdMethod` must be either 'region' or 'match'."
+      prefix, "`locThresholdMethod` must be one of 'region', 'match' or 'cap'."
     ))
+  }
+
+  cap <- settings[["locThresholdCap"]]
+  if (
+    !.verifyIsNullOrNa(cap) &&
+      (!is.numeric(cap) || length(cap) != 1L || is.na(cap) || cap < 1)
+  ) {
+    stop(paste0(prefix, "`locThresholdCap` must be a single number of at least 1."))
   }
 
   probSettings <- c(

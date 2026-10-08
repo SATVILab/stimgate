@@ -107,8 +107,8 @@ The figures and summary table show the method used.
 Set `bw = NA` to have StimGate choose the bandwidth with the method in
 `bwMtd` (`"nrd0"` unless changed below, or per row with a `bwMtd` column),
 as `gateStim()` does by default. Set `bias_uns = NA` to use StimGate's
-automatic `biasUns` (`biasUnsFactor`, default 1, times the fallback
-bandwidth). The figures show
+automatic `biasUns` (`biasUnsFactor`, default 1, times the bandwidth
+every sample uses: the fixed `bw`, or the shared bandwidth). The figures show
 the bandwidth and `biasUns` actually used.
 
 ```{r}

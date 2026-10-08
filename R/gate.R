@@ -19,7 +19,9 @@
 #' @param popGate character Population(s) already present in `.data`; only
 #'   GatingSets have populations other than "root". Default: "root" (all cells).
 #' @param biasUns numeric or NULL Upward shift of unstimulated expression.
-#'   NULL uses `bwFallback` times `biasUnsFactor` (see [stimControl()]).
+#'   NULL uses `biasUnsFactor` times the marker's common bandwidth (fixed `bw`
+#'   or shared with `bwScope = "cytokine"`), else times `bwFallback` (see
+#'   [stimControl()]).
 #'   Positive shifts make gating more conservative. Default: NULL.
 #' @param bw numeric or NULL Fixed density bandwidth; NULL estimates it
 #'   automatically. Per-marker values go in `markerControl`. Default: NULL.

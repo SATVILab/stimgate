@@ -8,7 +8,9 @@
 #' @param minCell numeric Minimum cells required for gating; samples below this
 #'   count are skipped. Default: 100.
 #' @param biasUnsFactor numeric Automatic `biasUns` (when `biasUns` is NULL)
-#'   equals this factor times the fallback bandwidth `bwFallback`. Default: 1.
+#'   equals this factor times the bandwidth every sample of the marker uses
+#'   (a fixed `bw`, or the shared bandwidth with `bwScope = "cytokine"`), and
+#'   otherwise times the fallback bandwidth `bwFallback`. Default: 1.
 #' @param excMin logical Exclude cells with minimum expression during gating.
 #'   Default: TRUE.
 #' @param cpMin numeric or NULL Minimum cutpoint. NULL estimates a 10% trimmed
@@ -72,8 +74,16 @@
 #'   region kept by filtering (`xSum` in diagnostics) as the gate; "match"
 #'   moves the gate to where the background-subtracted frequency equals the
 #'   sum of fitted response probabilities, which was the only method before
-#'   stimgate 0.99.26. Cells count as positive when strictly above the gate.
-#'   Default: "region".
+#'   stimgate 0.99.26; "cap" keeps the region boundary unless the
+#'   background-subtracted frequency above it exceeds the sum of fitted
+#'   response probabilities by more than the factor `locThresholdCap`, in
+#'   which case the gate moves to the lowest value at or above the boundary
+#'   where it no longer does. Cells count as positive when strictly above the
+#'   gate. Default: "region".
+#' @param locThresholdCap numeric Largest allowed ratio of the
+#'   background-subtracted frequency to the sum of fitted response
+#'   probabilities under `locThresholdMethod = "cap"`; at least 1. Default:
+#'   1.3.
 #' @param locEnforceShapeThreshold logical Refit densities and probabilities
 #'   above the lower of the first stimulated-density antimode right of the main
 #'   negative peak and the adjusted stimulated-density tailgate. Restrict later
@@ -169,6 +179,7 @@ stimControl <- function(
   locProbCol = "pred",
   locMinPeakProb = 0.25,
   locThresholdMethod = "region",
+  locThresholdCap = 1.3,
   locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1 / 6,

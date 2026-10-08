@@ -1,3 +1,23 @@
+# stimgate 0.99.28
+
+## Breaking changes
+
+- When `biasUns` is not supplied, `gateStim()` now sets it to `biasUnsFactor`
+  times the bandwidth every sample of the marker uses: a fixed `bw`, or the
+  shared bandwidth with `stimControl(bwScope = "cytokine")` (the default).
+  Previously it used the fallback bandwidth, a separate estimate that could
+  differ noticeably from the bandwidth actually used. Per-sample and
+  per-cluster bandwidths still use the fallback.
+
+## New features
+
+- `stimControl(locThresholdMethod = "cap")` keeps the filtered-region gate
+  unless the background-subtracted frequency above it is more than
+  `locThresholdCap` (default 1.3) times the sum of fitted response
+  probabilities. The gate then moves up to the lowest value where it is
+  within that limit. This limits the large over-estimates the `"region"`
+  method can give, while keeping its lower gates elsewhere.
+
 # stimgate 0.99.27
 
 ## Bug fixes

@@ -101,7 +101,9 @@
   method <- attr(cpObj, "locThresholdMethod") %||% NA_character_
   # The gate sits below the selected cell; look up the selected cell itself.
   # A region gate selects no cell, so its frequencies are counted at the gate.
-  selectedRow <- if (identical(method, "region")) {
+  regionGate <- identical(method, "region") ||
+    (identical(method, "cap") && is.null(attr(cpObj, "cpSelected")))
+  selectedRow <- if (regionGate) {
     NULL
   } else {
     .getCpUnsLocSelectedThresholdRow(
@@ -157,7 +159,7 @@
         propBsDiff
     }
   }
-  if (identical(method, "region")) {
+  if (regionGate) {
     # Probability-sum estimate, kept as a diagnostic only: it is not the
     # frequency at the region gate. propBsDiff records the difference.
     propBsEst <- .getCpUnsLocProbBsEst(dataThreshold)
@@ -182,6 +184,11 @@
   row$locRegionX <- suppressWarnings(
     as.numeric(attr(cpObj, "locRegionX") %||% NA_real_)[1L]
   )
+  if (identical(method, "cap")) {
+    row$locCapExceededAbove <- as.logical(
+      attr(cpObj, "locCapExceededAbove") %||% NA
+    )[1L]
+  }
   row
 }
 

@@ -1,5 +1,6 @@
 # locThresholdMethod: "region" gates at the lower boundary of the filtered
-# region (xSum); "match" keeps the probability-sum matching method.
+# region (xSum); "match" keeps the probability-sum matching method; "cap" keeps
+# the boundary unless its frequency exceeds the estimate by more than a factor.
 
 pkg_ns <- asNamespace("stimgate")
 
@@ -51,7 +52,7 @@ test_that("stimControl defaults to the region method and validates it", {
   expect_identical(
     stimControl(locThresholdMethod = "match")$locThresholdMethod, "match"
   )
-  expect_error(stimControl(locThresholdMethod = "sum"), "region' or 'match")
+  expect_error(stimControl(locThresholdMethod = "sum"), "'region', 'match' or 'cap'")
   expect_error(stimControl(locThresholdMethod = c("region", "match")))
   expect_error(stimControl(locThresholdMethod = TRUE))
   expect_error(stimControl(locThresholdMethod = NULL), "locThresholdMethod")
@@ -59,7 +60,7 @@ test_that("stimControl defaults to the region method and validates it", {
   # Per-marker overrides use the same validation.
   expect_error(
     pkg_ns$.verifyChnlSettingsChnl("IFNg", list(locThresholdMethod = "x")),
-    "region' or 'match"
+    "'region', 'match' or 'cap'"
   )
 })
 
@@ -322,4 +323,105 @@ test_that("gateStim applies the region gate on both filtering routes", {
       expect_identical(row$countUns, sum(expr(indUns) > gate))
     }
   }
+})
+
+# The fixture's probability-sum estimate is 0.28 and the frequency above the
+# region boundary (2.2) is 0.7. Candidate cells from 2.3 to 4.6 have
+# frequencies (cells at or above them) of 0.7, 0.6, ..., 0.1.
+test_that("cap keeps the region boundary when its frequency is within the cap", {
+  fx <- .locMethodFixture()
+  pathProject <- withr::local_tempdir()
+  for (cap in c(3, Inf)) {
+    cpObj <- .locMethodGetCp(
+      fx, list(locThresholdMethod = "cap", locThresholdCap = cap),
+      pathProject = pathProject
+    )
+    expect_identical(cpObj$cp, 2.2)
+    expect_null(attr(cpObj, "cpSelected"))
+    expect_identical(cpObj$locReason, "local_fdr_cap_region_boundary_selected")
+    expect_identical(attr(cpObj, "locThresholdMethod"), "cap")
+    expect_false(attr(cpObj, "locCapExceededAbove"))
+  }
+})
+
+test_that("cap moves to the lowest candidate within the cap", {
+  fx <- .locMethodFixture()
+  pathProject <- withr::local_tempdir()
+  # Limit 0.56: the first candidate at or below it is the cell at 3.0, and the
+  # gate is placed halfway to the cell below it (2.6).
+  cpObj <- .locMethodGetCp(
+    fx, list(locThresholdMethod = "cap", locThresholdCap = 2),
+    pathProject = pathProject
+  )
+  expect_equal(attr(cpObj, "cpSelected"), 3.0)
+  expect_equal(cpObj$cp, 2.8)
+  expect_identical(cpObj$locReason, "local_fdr_cap_threshold_selected")
+  expect_true(cpObj$locGenerated)
+  expect_false(attr(cpObj, "locCapExceededAbove"))
+
+  # The default cap (1.3, limit 0.364) reaches the cell matching selects.
+  cpDefault <- .locMethodGetCp(
+    fx, list(locThresholdMethod = "cap"),
+    pathProject = pathProject
+  )
+  match <- .locMethodGetCp(
+    fx, list(locThresholdMethod = "match"),
+    pathProject = pathProject
+  )
+  expect_equal(attr(cpDefault, "cpSelected"), attr(match, "cpSelected"))
+  expect_equal(cpDefault$cp, match$cp)
+})
+
+test_that("cap falls back to matching when no candidate is within the cap", {
+  fx <- .locMethodFixture()
+  pathProject <- withr::local_tempdir()
+  dataThreshold <- pkg_ns$.getCpUnsLocGetCpDataThreshold(
+    dataMod = fx$dataMod,
+    exTblStimOrig = fx$stim,
+    exTblStimNoMin = fx$stim,
+    exTblUnsOrig = fx$uns,
+    pathProject = pathProject,
+    stage = "init"
+  )
+  # An estimate of 0.05 gives a limit (0.065) below every candidate.
+  dataThreshold$propBsDiff <- dataThreshold$propBs - 0.05
+  cpObj <- pkg_ns$.getCpUnsLocGetCpCap(
+    dataThreshold = dataThreshold, regionX = 2.2, cap = 1.3,
+    exTblStimNoMin = fx$stim, exTblUnsBias = fx$uns, cpMin = 0,
+    stage = "init", exTblStimOrig = fx$stim, exTblUnsOrig = fx$uns
+  )
+  expect_equal(attr(cpObj, "cpSelected"), 4.6)
+  expect_equal(cpObj$cp, 4.4)
+  expect_identical(cpObj$locReason, "local_fdr_cap_match_fallback")
+})
+
+test_that("cap diagnostics count at the applied gate", {
+  fx <- .locMethodFixture()
+  withr::local_envvar(STIMGATE_INTERMEDIATE = "all")
+  pathProject <- withr::local_tempdir()
+  for (cap in c(2, 3)) {
+    cpObj <- .locMethodGetCp(
+      fx, list(locThresholdMethod = "cap", locThresholdCap = cap),
+      pathProject = pathProject
+    )
+    detail <- readRDS(file.path(
+      pathProject, "intermediateData", "init", "IFNg", "ind", "2",
+      "locDetailCondition.rds"
+    ))
+    gate <- cpObj$cp
+    expect_identical(detail$locThresholdMethod, "cap")
+    expect_identical(detail$threshold, gate)
+    expect_equal(detail$propBs, mean(fx$stim$IFNg > gate) - mean(fx$uns$IFNg > gate))
+    expect_equal(detail$propBsEst, 0.28)
+    expect_false(detail$locCapExceededAbove)
+  }
+})
+
+test_that("stimControl validates locThresholdCap", {
+  expect_identical(stimControl()$locThresholdCap, 1.3)
+  expect_identical(stimControl(locThresholdMethod = "cap")$locThresholdMethod, "cap")
+  expect_no_error(stimControl(locThresholdCap = Inf))
+  expect_error(stimControl(locThresholdCap = 0.9), "at least 1")
+  expect_error(stimControl(locThresholdCap = "1.3"), "at least 1")
+  expect_error(stimControl(locThresholdCap = c(1.2, 1.5)), "at least 1")
 })
