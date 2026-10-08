@@ -1,8 +1,9 @@
 # Local-FDR response estimate and final threshold
 #
-# Runs post-smoothing filtering, estimates the background-subtracted response
-# proportion, and selects the empirical expression threshold that reproduces
-# that estimate.
+# Runs post-smoothing filtering, then sets the condition-level gate either at
+# the lower boundary of the filtered region (locThresholdMethod = "region") or
+# at the empirical expression threshold whose background-subtracted frequency
+# matches the sum of fitted response probabilities ("match").
 
 .getCpUnsLocGetCp <- function(
     dataMod,
@@ -20,6 +21,8 @@
   stageChnl <- file.path(stage, chnl)
   dataThreshold <- NULL
   densityBw <- attr(dataMod, "locDensityBw")
+  method <- .getCpUnsLocThresholdMethod(chnlSettings)
+  regionX <- NA_real_
 
   if (!is.data.frame(dataMod)) {
     .intSaveNm("noDataModDf", NULL, ind, stageChnl, pathProject)
@@ -93,22 +96,38 @@
           pathProject = pathProject
         )
         .intSave(ind, stageChnl, pathProject, dataThreshold)
-        cpObj <- .getCpUnsLocGetCpActual(
-          dataThreshold = dataThreshold,
-          exTblStimNoMin = exTblStimNoMin,
-          exTblUnsBias = exTblUnsBias,
-          cpMin = cpMin,
-          stage = stage,
-          exTblStimOrig = exTblStimOrig,
-          exTblUnsOrig = exTblUnsOrig,
-          densityBw = densityBw
+        regionX <- suppressWarnings(
+          as.numeric(trimObj$info$final$xSum %||% NA_real_)[1L]
         )
+        cpObj <- if (identical(method, "match")) {
+          .getCpUnsLocGetCpActual(
+            dataThreshold = dataThreshold,
+            exTblStimNoMin = exTblStimNoMin,
+            exTblUnsBias = exTblUnsBias,
+            cpMin = cpMin,
+            stage = stage,
+            exTblStimOrig = exTblStimOrig,
+            exTblUnsOrig = exTblUnsOrig,
+            densityBw = densityBw
+          )
+        } else {
+          .getCpUnsLocGetCpRegion(
+            dataThreshold = dataThreshold,
+            regionX = regionX,
+            exTblStimNoMin = exTblStimNoMin,
+            exTblUnsBias = exTblUnsBias,
+            cpMin = cpMin,
+            stage = stage
+          )
+        }
         .intSave(ind, stageChnl, pathProject, cpObj$cp)
         .debug("Completed loc gate for single sample") # nolint
       }
     }
   }
 
+  attr(cpObj, "locThresholdMethod") <- method
+  attr(cpObj, "locRegionX") <- regionX
   locDetailCondition <- .getCpUnsLocConditionDetailRow(
     cpObj = cpObj,
     dataThreshold = dataThreshold,
@@ -325,6 +344,60 @@
   )
   attr(cpObj, "cpSelected") <- cpVal
   cpObj
+}
+
+#' Resolve the local-FDR threshold method from channel settings
+#'
+#' Settings completed before the option existed have no value and use
+#' "region", the default.
+#' @keywords internal
+.getCpUnsLocThresholdMethod <- function(chnlSettings) {
+  method <- chnlSettings[["locThresholdMethod"]]
+  if (.verifyIsNullOrNa(method)) "region" else method
+}
+
+#' Use the lower boundary of the filtered region as the gate
+#'
+#' The gate is the filtering boundary itself (`xSum`); cells strictly above it
+#' are positive. The probability-sum frequency estimate is not matched, no
+#' empirical cell value is selected and the gate is not moved below a cell.
+#' The no-response and non-finite cases fall back exactly as in matching.
+#'
+#' @param regionX numeric Lower boundary of the filtered region.
+#' @return list from `.getCpUnsLocConditionOut()`.
+#' @keywords internal
+.getCpUnsLocGetCpRegion <- function(
+    dataThreshold,
+    regionX,
+    exTblStimNoMin,
+    exTblUnsBias,
+    cpMin,
+    stage) {
+  if (nrow(dataThreshold) == 0L) {
+    return(.getCpUnsLocConditionCheckOut(
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias,
+      stage = stage,
+      msg = "Too few responding cells"
+    ))
+  }
+  if (!is.finite(regionX)) {
+    return(.getCpUnsLocConditionCheckOut(
+      cpMin = cpMin,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias,
+      stage = stage,
+      msg = "No finite local-FDR region boundary"
+    ))
+  }
+  .getCpUnsLocConditionOut(
+    cp = regionX,
+    locGenerated = TRUE,
+    locGeneratedDirect = TRUE,
+    locSource = "direct",
+    locReason = "local_fdr_region_boundary_selected"
+  )
 }
 
 #' Place a gate in the gap below a selected cell value

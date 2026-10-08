@@ -72,11 +72,11 @@ source(file.path(scripts_r_dir, "sim-low-separation.R"))
 
 ## Scientific settings
 
-Both cytokines are simulated on the Gaussian transformation, with negative cells centred at zero and positive cells centred at `mean_pos` for that cytokine, with variance 1.5. The "low" separation (`mean_pos` 4.5) is the low setting used in Analyses 7 and 8; the "lower" separation (`mean_pos` 3.5) is harder still. Of the responding cells, 60% are TNF+ IFNγ+, 25% TNF+ IFNγ- only and 15% TNF- IFNγ+ only. The unstimulated tube has background responders at 0.2 times the response probability, in the same proportions. Each parent population has either 100,000 or 5,000 cells in each tube.
+Both cytokines are simulated on the Gaussian transformation, with negative cells centred at zero and positive cells centred at `mean_pos` for that cytokine, with variance 1.5. The "low" separation (`mean_pos` 4.5) is the low setting used in Analyses 7 and 8; the "lower" separation (`mean_pos` 3.5) is harder still. Of the responding cells, 60% are TNF+ IFNγ+, 25% TNF+ IFNγ- only and 15% TNF- IFNγ+ only. The unstimulated tube has background responders at 0.2 times the response probability, in the same proportions. Each parent population has either 100,000 or 5,000 cells in each tube. Each local-FDR gate is the lower boundary of the region kept after filtering the smoothed response probabilities (`locThresholdMethod = "region"`), set explicitly here.
 
 ```{r}
 #| label: main-settings
-main_settings <- .simLowSepMainSettings()
+main_settings <- .simLowSepMainSettings(loc_threshold_method = "region")
 sim_grid_full <- .simLowSepGrid(simulation_seed)
 
 # Samples per dataset: draft runs use about a quarter of the final count.
@@ -97,7 +97,7 @@ if (analysis_dev) {
 }
 ```
 
-Each scenario is one dataset of `r n_sample` samples, each with an unstimulated and a stimulated tube, gated together by `gateStim()` with its default settings (threshold clustering and cytokine-positive gates on). The samples of a dataset share gating settings and clustered gates, so they are not independent: the figures show every sample, without intervals.
+Each scenario is one dataset of `r n_sample` samples, each with an unstimulated and a stimulated tube, gated together by `gateStim()` with its default settings (threshold clustering and cytokine-positive gates on, and the region local-FDR threshold method). The samples of a dataset share gating settings and clustered gates, so they are not independent: the figures show every sample, without intervals.
 
 ## Simulation
 
@@ -161,7 +161,8 @@ if (isTRUE(run_plots)) {
       dplyr::mutate(sim_grid, n_sample = n_sample,
         response_split = paste(names(main_settings$response_split), main_settings$response_split, sep = "=", collapse = "; "),
         background_relative_to_response = main_settings$background_relative_to_response,
-        cov_ev = main_settings$cov_ev, transformation = main_settings$transformation),
+        cov_ev = main_settings$cov_ev, transformation = main_settings$transformation,
+        loc_threshold_method = main_settings$loc_threshold_method),
       "scenario_settings", fig_key, root_dir
     ),
     gates = .simLowSepWriteTable(results$gates, "gates", fig_key, root_dir),
@@ -177,7 +178,7 @@ if (isTRUE(run_plots)) {
 The tables are saved as CSV files under `output/table/<fig_key>/` (relative to the repository root):
 
 - `scenario_settings.csv`: the scenario grid and fixed simulation settings.
-- `gates.csv`: each stimulated sample's ordinary and cytokine-positive gate for each cytokine.
+- `gates.csv`: each stimulated sample's ordinary and cytokine-positive gate for each cytokine, with the local-FDR threshold method StimGate used (`locThresholdMethod`).
 - `cell_counts.csv`: for each stimulated tube, cytokine and gate type, the true positive cells, the cells called positive, the true positives recovered and the negative cells called positive.
 - `combination_frequencies.csv`: for each sample and gate type, the true and estimated background-subtracted frequencies (stimulated minus unstimulated), marginal and exclusive.
 - `combination_frequency_summary.csv`: means over each dataset's samples, with how many samples moved closer to or further from the truth.

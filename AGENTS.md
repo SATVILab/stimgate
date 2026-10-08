@@ -979,6 +979,22 @@ rows before drawing reference lines.
    - On rebase, keep `master`'s entries and move this PR's section to the
      top under its new version.
 
+16. **Local-FDR threshold method (`locThresholdMethod`)**:
+   `stimControl(locThresholdMethod = "region")` (default) sets the
+   condition-level gate at the lower boundary of the region kept by
+   post-smoothing filtering (`xSum`). For the shape-enforced route this is the
+   largest applied pre-fit, global or marginal cut
+   (`.getCpUnsLocShapeRegionBoundary()`). `"match"` keeps the previous
+   probability-sum matching, including the gate below the selected cell, and
+   must reproduce previous gates exactly. Keep the reasons distinct
+   (`local_fdr_region_boundary_selected` versus `local_fdr_threshold_selected`)
+   and keep no-response/non-finite cases labelled as fallbacks. Under
+   `"region"`, condition diagnostics count frequencies at the applied gate;
+   `propBsEst` stays a probability-sum diagnostic and is never forced to agree.
+   Analyses set the method explicitly and record it in manifests; changing it
+   requires a new semantics version so cached results from the other method
+   are rejected.
+
 ---
 
 ## 8. Testing Best Practices & Guidelines

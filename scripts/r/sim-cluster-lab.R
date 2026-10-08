@@ -98,8 +98,28 @@
   )
 }
 
+# The local-FDR threshold method StimGate resolved and saved for every channel.
+# It must equal the requested method, so output rows record what was used.
+.simClusterThresholdMethod <- function(path_project, requested) {
+  saved <- stimgate::stimgateMetaReadSettingsChnls(path_project)
+  method <- unique(vapply(saved, function(x) {
+    as.character(x$locThresholdMethod %||% NA_character_)
+  }, character(1L)))
+  if (!identical(method, requested)) {
+    stop("StimGate saved locThresholdMethod '",
+      paste(method, collapse = "', '"), "' but '", requested,
+      "' was requested.")
+  }
+  method
+}
+
+# `loc_threshold_method` is passed to stimControl(locThresholdMethod = ).
 .simClusterLabRun <- function(seed = 558L, n_sample_lab = 6L,
-    n_cell = 2000L, lab_shift = 4) {
+    n_cell = 2000L, lab_shift = 4, loc_threshold_method = "region") {
+  if (!is.character(loc_threshold_method) ||
+      length(loc_threshold_method) != 1L) {
+    stop("loc_threshold_method must be one character value.")
+  }
   path_project <- tempfile("stimgate-cluster-lab-")
   on.exit(unlink(path_project, recursive = TRUE), add = TRUE)
   old_intermediate <- Sys.getenv("STIMGATE_INTERMEDIATE", unset = NA_character_)
@@ -115,14 +135,19 @@
       batchList = data$batch_list, chnl = "Marker", bw = 0.3, biasUns = 0.3,
       control = stimgate::stimControl(
         clusterGates = TRUE, calcCytPosGates = FALSE, bwCluster = 0.3,
-        bwMin = "none", bwMax = "none"
+        bwMin = "none", bwMax = "none",
+        locThresholdMethod = loc_threshold_method
       )
     )
+    method <- .simClusterThresholdMethod(path_project, loc_threshold_method)
     details <- stimgate::getStimGatesDetailed(path_project, chnl = "Marker")
-    allocations <- .simClusterLabAllocations(data$samples, details)
+    allocations <- .simClusterLabAllocations(data$samples, details) |>
+      dplyr::mutate(locThresholdMethod = .env$method)
+    final_gates <- stimgate::getStimGates(path_project, chnl = "Marker") |>
+      dplyr::mutate(locThresholdMethod = .env$method)
     list(expression = data$expression, allocations = allocations,
       summary = .simClusterLabSummary(allocations), details = details,
-      final_gates = stimgate::getStimGates(path_project, chnl = "Marker"))
+      final_gates = final_gates)
   })
 }
 

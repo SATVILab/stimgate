@@ -96,6 +96,14 @@ Differences between tubes and samples:
 To change any other `.simBandwidthBsFreq()` setting for some rows only, add a
 column with that argument's name (e.g. `locMinPeakProb = c(0.1, 0.25)`).
 
+`locThresholdMethod` chooses how the gate is set once filtering has found the
+responding region: `"region"` (the package default) gates at the region's
+lower boundary (`xSum`); `"match"` raises the gate until the
+background-subtracted frequency matches the sum of the fitted response
+probabilities (the method before stimgate 0.99.26). Add the column
+`locThresholdMethod = c("region", "match")` to compare both on the same cells.
+The figures and summary table show the method used.
+
 Set `bw = NA` to have StimGate choose the bandwidth with the method in
 `bwMtd` (`"nrd0"` unless changed below, or per row with a `bwMtd` column),
 as `gateStim()` does by default. Set `bias_uns = NA` to use StimGate's
@@ -144,7 +152,8 @@ test_settings <- list(
   covEvMax = 1.5,
   clusterGates = FALSE,
   locEnforceShapeThreshold = FALSE,
-  calcCytPosGates = FALSE
+  calcCytPosGates = FALSE,
+  locThresholdMethod = "region"
 )
 
 # Samples to show: the first sample by default. `test_subsequent = TRUE`
@@ -270,10 +279,14 @@ the settings of each row.
 if (isTRUE(run_plots) && length(test_results) > 0L) {
   for (x in test_results) {
     row_label <- x$row |>
+      dplyr::mutate(
+        locThresholdMethod = .simDebugLocMethod(x$dbg)
+      ) |>
       dplyr::select(
         "transformation", "prob_response", "n_cell", "mean_pos_setting",
         "sample_perturbation_sd", "condition_perturbation_sd",
-        "stim_mean_shift", "stim_sd_multiplier", "bw", "bias_uns", "sim_seed"
+        "stim_mean_shift", "stim_sd_multiplier", "bw", "bias_uns", "sim_seed",
+        "locThresholdMethod"
       ) |>
       as.list() |>
       purrr::imap_chr(function(value, name) paste0(name, "-", value)) |>

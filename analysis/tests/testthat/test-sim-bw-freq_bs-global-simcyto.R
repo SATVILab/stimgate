@@ -323,7 +323,9 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
         covEvMax = 1.5,
         clusterGates = FALSE,
         locEnforceShapeThreshold = FALSE,
-        calcCytPosGates = FALSE
+        calcCytPosGates = FALSE,
+        # Fixed errors and the gap rule below are those of matching.
+        locThresholdMethod = "match"
       )
     )
 

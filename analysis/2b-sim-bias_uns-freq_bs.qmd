@@ -98,7 +98,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bias_uns", "freq_bs")
-analysis_semantics_version <- "bias-uns-freq-v8"
+analysis_semantics_version <- "bias-uns-freq-v9"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -233,6 +233,9 @@ n_cell_uns_relative_to_stim <- 1
 cluster_gates <- FALSE
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
+# Gate at the lower boundary of the filtered local-FDR region (the package
+# default), not at the probability-sum match.
+loc_threshold_method <- "region"
 ```
 
 For the negative-width rules, the width is calculated from the pooled
@@ -428,7 +431,8 @@ scenario_settings <- list(
   covEvMax = 1.5,
   clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
-  calcCytPosGates = calc_cyt_pos_gates
+  calcCytPosGates = calc_cyt_pos_gates,
+  locThresholdMethod = loc_threshold_method
 )
 
 analysis_required_params <- list(

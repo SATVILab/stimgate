@@ -198,6 +198,8 @@
       locGeneratedDirect = NA,
       locSource = NA_character_,
       locReason = NA_character_,
+      locThresholdMethod = NA_character_,
+      locRegionX = NA_real_,
       bias = NA_real_,
       propBsEst = NA_real_,
       propBsDiff = NA_real_,
@@ -300,6 +302,8 @@
       propBs,
       propBsEst,
       propBsDiff,
+      locThresholdMethod,
+      locRegionX,
       bias
     )
 }
@@ -402,6 +406,7 @@
   locProbCol = "pred",
   locMinPeakProb = 0.25,
   locEnforceShapeThreshold = FALSE,
+  locThresholdMethod = "region",
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1 / 6,
   locAntimodeLowRel = 0.25,
@@ -584,6 +589,7 @@
         locProbCol = locProbCol,
         locMinPeakProb = locMinPeakProb,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
+        locThresholdMethod = locThresholdMethod,
         locDipAlpha = locDipAlpha,
         locAntimodeHeightFrac = locAntimodeHeightFrac,
         locAntimodeLowRel = locAntimodeLowRel,
@@ -782,6 +788,8 @@
         bwCluster = if (is.null(bwCluster)) NA_real_ else bwCluster,
         clusterGates = clusterGates,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
+        # The diagnostic rows carry this column too; take the argument.
+        locThresholdMethod = .env$locThresholdMethod,
         calcCytPosGates = calcCytPosGates,
         samplePerturbationSd = samplePerturbationSd,
         conditionPerturbationSd = conditionPerturbationSd,

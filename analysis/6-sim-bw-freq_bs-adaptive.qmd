@@ -78,7 +78,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "adaptive")
-analysis_semantics_version <- "adaptive-bw-freq-v7"
+analysis_semantics_version <- "adaptive-bw-freq-v8"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -181,6 +181,9 @@ bw_transition_width_vec <- c(0, 0.25)[[1]]
 cluster_gates <- FALSE
 loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
+# Gate at the lower boundary of the filtered local-FDR region (the package
+# default), not at the probability-sum match.
+loc_threshold_method <- "region"
 
 bias_uns_settings_tbl <- tibble::tribble(
   ~bias_uns_setting, ~transformation, ~bias_uns,
@@ -378,7 +381,8 @@ scenario_settings <- list(
   covEvMax = 1.5,
   clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
-  calcCytPosGates = calc_cyt_pos_gates
+  calcCytPosGates = calc_cyt_pos_gates,
+  locThresholdMethod = loc_threshold_method
 )
 analysis_required_params <- list(
   analysis_semantics_version = analysis_semantics_version,

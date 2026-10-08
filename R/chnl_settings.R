@@ -64,6 +64,10 @@
     chnlSettingsCommon = chnlSettingsCommon,
     chnlSettings = chnlSettingsSpec
   )
+  chnlSettings$locThresholdMethod <- .completeChnlSettingsLocThresholdMethod(
+    chnlSettings$locThresholdMethod,
+    chnlSettingsCommon$locThresholdMethod
+  )
   if (
     !is.logical(chnlSettings$locEnforceShapeThreshold) ||
       length(chnlSettings$locEnforceShapeThreshold) != 1L ||
@@ -198,6 +202,18 @@
     append(chnlSettingsCommon[
       setdiff(names(chnlSettingsCommon), names(chnlSettings))
     ])
+}
+
+#' Resolve the local-FDR threshold method
+#'
+#' A missing (NULL or NA) per-marker value inherits the global value; a control
+#' object saved before the option existed has no global value and uses
+#' "region".
+#' @keywords internal
+.completeChnlSettingsLocThresholdMethod <- function(method, methodCommon) {
+  if (.verifyIsNullOrNa(method)) method <- methodCommon
+  if (.verifyIsNullOrNa(method)) method <- "region"
+  method
 }
 
 #' @keywords internal

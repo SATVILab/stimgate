@@ -462,22 +462,47 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   env$run_preprocessing <- FALSE
   env$run_stimgate <- FALSE
   env$run_comparators <- FALSE
+  env$stimgate_loc_threshold_method <- "region"
   env$comp_against_manual_cyt <- function(...) stop("Raw-data rebuild was called")
   env$.acsCytofManualSave <- function(...) stop("Cache write was called")
   env$.acsCytofManualSummaryTable <- function(x) x
-  cached <- tibble::tibble(method = "stimgate", freq_bs_auto = 0.1, thresholdFailed = FALSE)
+  cached <- tibble::tibble(
+    method = "stimgate", freq_bs_auto = 0.1, thresholdFailed = FALSE,
+    locThresholdMethod = "region"
+  )
   attr(cached, "manifest") <- list(
-    methods = list(cd4 = list(stimgate = list(context = list(gitSha = "abc")))),
-    comparisonSettings = list(methods = "stimgate"), manualInputHash = "abc"
+    methods = list(cd4 = list(stimgate = list(
+      context = list(gitSha = "abc"),
+      settings = list(locThresholdMethod = "region"),
+      channelSettings = list(IFNg = list(locThresholdMethod = "region"))
+    ))),
+    comparisonSettings = list(methods = "stimgate", locThresholdMethod = "region"),
+    manualInputHash = "abc"
   )
   path <- file.path(env$path_manual_output, "manual-comparison.rds")
   saveRDS(cached, path)
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v3"),
-    file.path(env$path_manual_output, "manifest.rds"))
+  path_run_manifest <- file.path(env$path_manual_output, "manifest.rds")
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v4",
+    stimgate_loc_threshold_method = "region"), path_run_manifest)
   withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA_character_)
   for (expr in as.list(code)[-1L]) eval(expr, env)
   expect_identical(env$manual_comparison_tbl, cached)
   expect_identical(env$manual_summary_tbl, cached)
+
+  # Caches from before the threshold method was recorded are rejected.
+  for (old in list(
+    list(analysis_semantics_version = "acs-cytof-v3",
+      stimgate_loc_threshold_method = "region"),
+    list(analysis_semantics_version = "acs-cytof-v4")
+  )) {
+    saveRDS(old, path_run_manifest)
+    expect_error(
+      for (expr in as.list(code)[-1L]) eval(expr, env),
+      "RUN_SIMULATIONS=true"
+    )
+  }
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v4",
+    stimgate_loc_threshold_method = "region"), path_run_manifest)
 
   unlink(path)
   expect_error(
@@ -652,7 +677,8 @@ test_that("ACS cached comparisons reject legacy and mixed method manifests", {
   attr(table, "manifest") <- list(
     methods = list(cd4 = list(stimgate = list(context = list(gitSha = "a")),
                              fbeta = list(context = list(gitSha = "b", preprocessing = list(inputFileListHash = "other"))))),
-    comparisonSettings = list(methods = c("stimgate", "fbeta")), manualInputHash = "abc"
+    comparisonSettings = list(methods = c("stimgate", "fbeta"), locThresholdMethod = "region"),
+    manualInputHash = "abc"
   )
   expect_error(env$.acsCytofValidateComparisonManifest(table), "Mismatched ACS")
 })

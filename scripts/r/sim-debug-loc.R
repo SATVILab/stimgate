@@ -329,10 +329,29 @@
   dplyr::bind_rows(stim, uns)
 }
 
-#' Named threshold positions for one debugged sample
+#' Threshold method that selected one debugged sample's gate
+#'
+#' Read from the gate itself, else the channel settings; settings without the
+#' option use the package default, "region".
 #'
 #' @param dbg simDebugLoc Output of `.simDebugLoc()`.
-#' @return tibble (`line`, `x`) of finite positions.
+#' @return character "region" or "match".
+.simDebugLocMethod <- function(dbg) {
+  method <- attr(dbg$cp, "locThresholdMethod") %||%
+    dbg$inputs$chnlSettings$locThresholdMethod
+  method <- as.character(method %||% NA_character_)[1L]
+  if (is.na(method)) "region" else method
+}
+
+#' Named threshold positions for one debugged sample
+#'
+#' `xSum` is the lower boundary of the region kept by filtering; the
+#' "region" threshold method uses it as the gate, so the two then coincide.
+#' The gate is drawn before `xSum`, so the dashed boundary stays visible.
+#'
+#' @param dbg simDebugLoc Output of `.simDebugLoc()`.
+#' @return tibble (`line`, `x`, `label`) of finite positions; `label` names
+#'   the region boundary and the threshold method in the line key.
 .simDebugLocLines <- function(dbg) {
   final <- dbg$filter$info$final %||% list()
   x <- c(
@@ -341,13 +360,19 @@
     xDom = final$xDom %||% NA_real_,
     xQual = final$xQual %||% NA_real_,
     xAntimode = final$xAntimode %||% NA_real_,
-    xSum = final$xSum %||% NA_real_,
-    threshold = dbg$cp$cp %||% NA_real_
+    threshold = dbg$cp$cp %||% NA_real_,
+    xSum = final$xSum %||% NA_real_
   )
   x <- suppressWarnings(as.numeric(x)) |> stats::setNames(names(x))
+  label <- names(x)
+  label[label == "xSum"] <- "xSum: region boundary"
+  label[label == "threshold"] <- paste0(
+    "gate (", .simDebugLocMethod(dbg), " method)"
+  )
   tibble::tibble(
     line = factor(names(x), levels = names(x)),
-    x = unname(x)
+    x = unname(x),
+    label = label
   ) |>
     dplyr::filter(is.finite(.data$x))
 }
@@ -370,6 +395,10 @@
     locGenerated = dbg$cp$locGenerated %||% NA,
     locSource = dbg$cp$locSource %||% NA_character_,
     locReason = dbg$cp$locReason %||% NA_character_,
+    locThresholdMethod = .simDebugLocMethod(dbg),
+    locRegionX = suppressWarnings(as.numeric(
+      dbg$filter$info$final$xSum %||% NA_real_
+    )[1L]),
     filterReason = dbg$filter$info$reason %||% NA_character_,
     nStim = length(xStim),
     nUns = length(xUns),
@@ -403,17 +432,17 @@
 )
 .simDebugLocLineStyle <- tibble::tibble(
   line = c(
-    "minProbXPos", "xClearInit", "xDom", "xQual", "xAntimode", "xSum",
-    "threshold"
+    "minProbXPos", "xClearInit", "xDom", "xQual", "xAntimode", "threshold",
+    "xSum"
   ),
   colour = c(
-    "#8C8C8C", "#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#0072B2",
-    "#000000"
+    "#8C8C8C", "#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#000000",
+    "#0072B2"
   ),
   linetype = c(
-    "dotted", "dotdash", "dashed", "longdash", "twodash", "solid", "solid"
+    "dotted", "dotdash", "dashed", "longdash", "twodash", "solid", "44"
   ),
-  linewidth = c(0.6, 0.7, 0.7, 0.7, 0.7, 0.7, 1.1)
+  linewidth = c(0.6, 0.7, 0.7, 0.7, 0.7, 1.1, 0.9)
 )
 
 #' Diagnostic plots for one debugged sample
@@ -586,9 +615,14 @@
 #'   `.simDebugLocPlots()`.
 #' @return ggplot object.
 .simDebugLocLineKey <- function(lines) {
+  name <- if ("label" %in% names(lines)) {
+    dplyr::coalesce(lines$label, as.character(lines$line))
+  } else {
+    as.character(lines$line)
+  }
   key <- tibble::tibble(
     label = paste0(
-      as.character(lines$line), " (",
+      name, " (",
       vapply(lines$x, function(x) format(signif(x, 4L)), character(1L)), ")"
     ),
     colour = lines$colour,
@@ -639,7 +673,7 @@
   gatingNames <- c(
     "bwScope", "bwMtd", "excMin", "cpMin", "minCell", "gateCombn",
     "clusterGates", "calcCytPosGates", "locProbCol", "locMinPeakProb",
-    "locEnforceShapeThreshold"
+    "locEnforceShapeThreshold", "locThresholdMethod"
   )
   gating <- tibble::tibble(
     name = c(
@@ -674,7 +708,8 @@
   }
   estimate <- tibble::tibble(
     name = c(
-      "threshold", "threshold source", "threshold reason", "filter reason",
+      "threshold", "threshold method", "region boundary (xSum)",
+      "threshold source", "threshold reason", "filter reason",
       "stim cells", "unstim cells", "stim above threshold",
       "unstim above threshold", "response frequency (estimated)",
       "response frequency (true)", "relative error", "true positives",
@@ -682,7 +717,8 @@
       "sensitivity"
     ),
     value = c(
-      fmt(sm$threshold), fmt(sm$locSource), fmt(sm$locReason),
+      fmt(sm$threshold), fmt(sm$locThresholdMethod), fmt(sm$locRegionX),
+      fmt(sm$locSource), fmt(sm$locReason),
       fmt(sm$filterReason), fmt(sm$nStim), fmt(sm$nUns),
       pct(sm$propStimEst), pct(sm$propUnsEst), pct(sm$propRespEst),
       pct(sm$propRespTruth %||% NA_real_),

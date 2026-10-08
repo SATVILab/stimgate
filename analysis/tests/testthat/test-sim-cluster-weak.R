@@ -42,7 +42,8 @@ test_that("weak-response simulation preserves labels, seed and applied counts", 
   env <- .weak_test_env()
   settings <- list(seed = 559L, n_strong = 3L, n_weak = 1L,
     strong_prob = 0.01, weak_prob = 0.002, n_cell = 500L,
-    mean_pos = 4.5, variance = 1.5, bw = 0.25, bias_uns = 0.25)
+    mean_pos = 4.5, variance = 1.5, bw = 0.25, bias_uns = 0.25,
+    loc_threshold_method = "region")
   withr::local_seed(31)
   rng <- .Random.seed
   data <- env$.analysis_with_seed(settings$seed, env$.simClusterWeakCells(settings))
@@ -65,6 +66,7 @@ test_that("weak-response simulation preserves labels, seed and applied counts", 
   expect_equal(nrow(result$allocations), 4L)
   expect_equal(nrow(result$scores), 8L)
   expect_equal(result$scores$nPosStim, result$scores$package_nPosStim)
+  expect_true(all(result$scores$locThresholdMethod == "region"))
   expect_equal(result$scores$nTruePos + result$scores$nFalsePos, result$scores$nPosStim)
   expect_identical(result$cells, data$cells)
   expect_silent(env$.simClusterWeakValidate(result, settings))

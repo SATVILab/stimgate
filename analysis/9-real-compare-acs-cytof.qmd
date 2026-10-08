@@ -150,6 +150,8 @@ run_stimgate_plots_vec_by_pop <- .by_pop(FALSE)
 run_preprocessing_plots_vec_by_pop <- .by_pop(FALSE)
 stimgate_bw_mtd <- "nrd0"
 stimgate_bw_scope <- "cytokine"
+# Gate at the lower boundary of the filtered local-FDR region.
+stimgate_loc_threshold_method <- "region"
 # NA: StimGate's unstimulated-sample bias equals its initial bandwidth estimate.
 bias_uns <- NA_real_
 bias_uns_vec_by_pop <- .by_pop(bias_uns)
@@ -167,9 +169,12 @@ StimGate uses `bwMtd = "nrd0"` (with `bwNcellMax = 1e4`, `bwFallback = "auto"`
 and no bandwidth bounds); bandwidths are shared per marker
 (`bwScope = "cytokine"`). StimGate uses `gateCombn = "min"`, `minCell = 100`,
 threshold clustering on (`clusterGates = TRUE`) and cytokine-positive refinement
-on (`calcCytPosGates = TRUE`). The comparison scores the final clustered
-`loc_minClust` gates after cytokine-positive refinement. Both settings are
-recorded with the saved run.
+on (`calcCytPosGates = TRUE`). Each condition-level gate is the lower
+boundary of the region kept by local-FDR filtering
+(`locThresholdMethod = "region"`). The comparison scores the final clustered
+`loc_minClust` gates after cytokine-positive refinement. These settings are
+recorded with the saved run, and a saved StimGate result made with another
+threshold method is rejected.
 Its unstimulated-sample bias
 is not fixed: it equals the bandwidth StimGate estimates at the start
 (`biasUns = NULL` with `biasUnsFactor = 1`). F-beta uses its standard
@@ -207,6 +212,7 @@ tcrgd_tester <- .acsCytofRunPopulation(
   biasUns = bias_uns_vec_by_pop[["tcrgd"]],
   bwMtd = stimgate_bw_mtd,
   bwScope = stimgate_bw_scope,
+  locThresholdMethod = stimgate_loc_threshold_method,
   outputGroup = "tester"
 )
 
@@ -248,6 +254,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate)) {
         runPreprocessingPlots = run_preprocessing_plots_vec_by_pop[[pop]],
         bwMtd = stimgate_bw_mtd,
         bwScope = stimgate_bw_scope,
+        locThresholdMethod = stimgate_loc_threshold_method,
         biasUns = bias_uns_vec_by_pop[[pop]]
       )
     },
@@ -325,7 +332,8 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
     methods = c("stimgate", "tailgate", "fbeta"),
     path_dir_save = NULL,
     save_plots = FALSE,
-    sample_map = fn_to_sampleid_map
+    sample_map = fn_to_sampleid_map,
+    loc_threshold_method = stimgate_loc_threshold_method
   )
   # Save the complete table without generating figures in this plumbing chunk.
   .acsCytofManualSave(
@@ -335,23 +343,31 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .write_rds_atomic(
     list(
-      analysis_semantics_version = "acs-cytof-v3",
+      analysis_semantics_version = "acs-cytof-v4",
+      stimgate_loc_threshold_method = stimgate_loc_threshold_method,
       run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))
     ),
     file.path(path_manual_output, "manifest.rds")
   )
 } else {
+  manual_run_manifest <- .analysis_read_rds(
+    file.path(path_manual_output, "manifest.rds"), "acs_cytof", analysis_qmd
+  )
   .analysis_check_expected_run(
-    .analysis_read_rds(
-      file.path(path_manual_output, "manifest.rds"), "acs_cytof", analysis_qmd
-    ),
-    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v3"
+    manual_run_manifest,
+    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v4"
+  )
+  .acsCytofCheckRunManifestMethod(
+    manual_run_manifest, stimgate_loc_threshold_method, analysis_qmd
   )
   manual_comparison_tbl <- .analysis_read_rds(
     path_comparison, "acs_cytof", analysis_qmd
   )
 }
-.acsCytofValidateComparisonManifest(manual_comparison_tbl)
+.acsCytofValidateComparisonManifest(
+  manual_comparison_tbl,
+  locThresholdMethod = stimgate_loc_threshold_method
+)
 manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 ```
 
@@ -706,6 +722,10 @@ if (isTRUE(run_plots)) {
       next
     }
     .analysis_heading(paste0("Population: ", pop), 4)
+    # Refuse to plot gates saved with another (or no recorded) method.
+    .acsCytofReadStimGateManifest(
+      paths$stimgate, stimgate_loc_threshold_method
+    )
     gs <- flowWorkspace::load_gs(paths$gs)
     p <- .acsCytofPlotGateCheck(gs, paths$stimgate)
     path_check <- file.path(

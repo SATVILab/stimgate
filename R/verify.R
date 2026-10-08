@@ -341,6 +341,17 @@
     stop(paste0(prefix, "`locProbCol` must be either 'pred' or 'probSmooth'."))
   }
 
+  if (
+    !.verifyIsNullOrNa(settings[["locThresholdMethod"]]) &&
+      (!is.character(settings[["locThresholdMethod"]]) ||
+        length(settings[["locThresholdMethod"]]) != 1L ||
+        !settings[["locThresholdMethod"]] %in% c("region", "match"))
+  ) {
+    stop(paste0(
+      prefix, "`locThresholdMethod` must be either 'region' or 'match'."
+    ))
+  }
+
   probSettings <- c(
     "locMinPeakProb",
     "locDipAlpha",
