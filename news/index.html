@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.28</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.29</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,15 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.29" id="stimgate-09929">stimgate 0.99.29<a class="anchor" aria-label="anchor" href="#stimgate-09929"></a></h2>
+<div class="section level3">
+<h3 id="breaking-changes-0-99-29">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-99-29"></a></h3>
+<ul><li>
+<code>stimControl(locThresholdMethod)</code> now defaults to <code>"cap"</code>: each local-FDR gate starts at the lower edge of the filtered region, as under <code>"region"</code>, and moves up only where the background-subtracted frequency above it is more than <code>locThresholdCap</code> (1.3) times the sum of fitted response probabilities. Use <code>locThresholdMethod = "region"</code> for the previous default.</li>
+<li>An automatic <code>biasUns</code> now scales with each sample’s bandwidth: samples whose smaller tube has fewer than <code>bwNcellMax</code> cells widen both the shared bandwidth and the bias by the same factor. A <code>biasUns</code> you supply is not scaled.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.28" id="stimgate-09928">stimgate 0.99.28<a class="anchor" aria-label="anchor" href="#stimgate-09928"></a></h2>
 <div class="section level3">

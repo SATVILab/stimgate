@@ -1305,10 +1305,15 @@ final package gate rows.
   top under its new version.
 
 16. **Local-FDR threshold method (`locThresholdMethod`)**:
-    `stimControl(locThresholdMethod = "region")` (default) sets the
-    condition-level gate at the lower boundary of the region kept by
-    post-smoothing filtering (`xSum`). For the shape-enforced route this
-    is the largest applied pre-fit, global or marginal cut
+    `stimControl(locThresholdMethod = "cap")` (default) uses the
+    `"region"` gate unless the frequency above it exceeds
+    `locThresholdCap` (1.3) times the probability-sum estimate, then
+    moves up to the lowest candidate within that limit
+    ([`.getCpUnsLocGetCpCap()`](https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetCpCap.md));
+    analyses set it explicitly. `"region"` sets the condition-level gate
+    at the lower boundary of the region kept by post-smoothing filtering
+    (`xSum`). For the shape-enforced route this is the largest applied
+    pre-fit, global or marginal cut
     ([`.getCpUnsLocShapeRegionBoundary()`](https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocShapeRegionBoundary.md)).
     `"match"` keeps the previous probability-sum matching, including the
     gate below the selected cell, and must reproduce previous gates

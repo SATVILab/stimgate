@@ -28,7 +28,7 @@ stimControl(
   locProbCol = "pred",
   locMinPeakProb = 0.25,
   locMinRiseProb = 1/3,
-  locThresholdMethod = "region",
+  locThresholdMethod = "cap",
   locThresholdCap = 1.3,
   locShareCap = 1.5,
   locShareCellCap = 0.5,
@@ -214,7 +214,7 @@ stimControl(
   response probabilities by more than the factor `locThresholdCap`, in
   which case the gate moves to the lowest value at or above the boundary
   where it no longer does. Cells count as positive when strictly above
-  the gate. Default: "region".
+  the gate. Default: "cap".
 
 - locThresholdCap:
 
@@ -470,7 +470,7 @@ stimControl()
 #> [1] 0.3333333
 #> 
 #> $locThresholdMethod
-#> [1] "region"
+#> [1] "cap"
 #> 
 #> $locThresholdCap
 #> [1] 1.3
@@ -629,7 +629,7 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> [1] 0.3333333
 #> 
 #> $locThresholdMethod
-#> [1] "region"
+#> [1] "cap"
 #> 
 #> $locThresholdCap
 #> [1] 1.3

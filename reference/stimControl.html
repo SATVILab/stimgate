@@ -9,7 +9,7 @@ set only the options you need to change."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.28</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.29</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,7 @@ set only the options you need to change.</p>
 <span>  locProbCol <span class="op">=</span> <span class="st">"pred"</span>,</span>
 <span>  locMinPeakProb <span class="op">=</span> <span class="fl">0.25</span>,</span>
 <span>  locMinRiseProb <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">3</span>,</span>
-<span>  locThresholdMethod <span class="op">=</span> <span class="st">"region"</span>,</span>
+<span>  locThresholdMethod <span class="op">=</span> <span class="st">"cap"</span>,</span>
 <span>  locThresholdCap <span class="op">=</span> <span class="fl">1.3</span>,</span>
 <span>  locShareCap <span class="op">=</span> <span class="fl">1.5</span>,</span>
 <span>  locShareCellCap <span class="op">=</span> <span class="fl">0.5</span>,</span>
@@ -254,7 +254,7 @@ background-subtracted frequency above it exceeds the sum of fitted
 response probabilities by more than the factor <code>locThresholdCap</code>, in
 which case the gate moves to the lowest value at or above the boundary
 where it no longer does. Cells count as positive when strictly above the
-gate. Default: "region".</p></dd>
+gate. Default: "cap".</p></dd>
 
 
 <dt id="arg-locthresholdcap">locThresholdCap<a class="anchor" aria-label="anchor" href="#arg-locthresholdcap"></a></dt>
@@ -512,7 +512,7 @@ limits to Inf shares responders' thresholds without limits.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.3333333</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $locThresholdMethod</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "region"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "cap"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $locThresholdCap</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.3</span>
@@ -671,7 +671,7 @@ limits to Inf shares responders' thresholds without limits.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.3333333</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $locThresholdMethod</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "region"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "cap"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $locThresholdCap</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.3</span>
