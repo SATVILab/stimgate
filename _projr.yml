@@ -12,7 +12,6 @@ directories:
     path: ../stimgate-store/_tmp_analysis/cache
   docs:
     path: docs
-
-# One setting for every full-grid simulation analysis.
 parameters:
-  sim_size: final
+  sim_size: draft
+
