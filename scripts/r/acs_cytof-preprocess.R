@@ -146,7 +146,9 @@ create_gatingset <- function(
         dplyr::mutate(expr = backTransform(expr))
     )
   plots <- lapply(unique(expr_tbl_long$trans), function(x) {
-    plot_tbl <- expr_tbl_long |> dplyr::filter(trans == x)
+    # Channels that were never asinh-transformed (e.g. Time) overflow to Inf
+    # when back-transformed; geom_histogram() cannot bin infinite values.
+    plot_tbl <- expr_tbl_long |> dplyr::filter(trans == x, is.finite(expr))
     ggplot2::ggplot(plot_tbl, ggplot2::aes(x = expr, fill = marker)) +
       .analysis_theme(grid = "x") +
       ggplot2::geom_histogram(bins = 30) +
