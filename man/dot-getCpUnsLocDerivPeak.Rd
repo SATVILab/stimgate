@@ -4,9 +4,20 @@
 \alias{.getCpUnsLocDerivPeak}
 \title{Select the left-most derivative peak meeting alpha}
 \usage{
-.getCpUnsLocDerivPeak(x, prob, deriv, alpha = 0.75, leftRiseFrac = 0.15)
+.getCpUnsLocDerivPeak(
+  x,
+  prob,
+  deriv,
+  alpha = 0.75,
+  leftRiseFrac = 0.15,
+  minRiseProb = NA_real_,
+  riseFrac = 0.2
+)
 }
 \description{
 Flat-topped peaks are represented by the left-most point of the plateau.
+With \code{minRiseProb}, a peak counts only if its own rise lifts the
+probability to at least \code{minRiseProb}: the probability where the derivative
+first falls back to \code{riseFrac} times the peak height (the top of that rise).
 }
 \keyword{internal}

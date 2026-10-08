@@ -4,10 +4,11 @@
 # provenance, combines sample thresholds, and assembles the final output.
 
 .getCpUnsLocThresholdOrigin <- function(
-    locGenerated,
-    locGeneratedDirect,
-    locSource,
-    locReason = NA_character_) {
+  locGenerated,
+  locGeneratedDirect,
+  locSource,
+  locReason = NA_character_
+) {
   locGenerated <- locGenerated %in% TRUE
   locGeneratedDirect <- locGeneratedDirect %in% TRUE
   locSource <- as.character(locSource %||% NA_character_)
@@ -89,19 +90,22 @@
 
 #' @keywords internal
 .getCpUnsLocConditionDetailRow <- function(
-    cpObj,
-    dataThreshold,
-    exTblStimOrig,
-    exTblUnsOrig,
-    exTblStimNoMin,
-    bias,
-    stage,
-    chnl) {
+  cpObj,
+  dataThreshold,
+  exTblStimOrig,
+  exTblUnsOrig,
+  exTblStimNoMin,
+  bias,
+  stage,
+  chnl
+) {
   cp <- suppressWarnings(as.numeric(cpObj$cp))[1]
   method <- attr(cpObj, "locThresholdMethod") %||% NA_character_
   # The gate sits below the selected cell; look up the selected cell itself.
   # A region gate selects no cell, so its frequencies are counted at the gate.
-  selectedRow <- if (identical(method, "region")) {
+  regionGate <- identical(method, "region") ||
+    (identical(method, "cap") && is.null(attr(cpObj, "cpSelected")))
+  selectedRow <- if (regionGate) {
     NULL
   } else {
     .getCpUnsLocSelectedThresholdRow(
@@ -157,7 +161,7 @@
         propBsDiff
     }
   }
-  if (identical(method, "region")) {
+  if (regionGate) {
     # Probability-sum estimate, kept as a diagnostic only: it is not the
     # frequency at the region gate. propBsDiff records the difference.
     propBsEst <- .getCpUnsLocProbBsEst(dataThreshold)
@@ -182,6 +186,11 @@
   row$locRegionX <- suppressWarnings(
     as.numeric(attr(cpObj, "locRegionX") %||% NA_real_)[1L]
   )
+  if (identical(method, "cap")) {
+    row$locCapExceededAbove <- as.logical(
+      attr(cpObj, "locCapExceededAbove") %||% NA
+    )[1L]
+  }
   row
 }
 
@@ -200,19 +209,20 @@
 }
 
 .getCpUnsLocDiagnosticRow <- function(
-    detailLevel,
-    stage,
-    chnl,
-    ind,
-    threshold,
-    locGenerated,
-    locGeneratedDirect,
-    locSource,
-    locReason,
-    bias,
-    propBsEst = NA_real_,
-    propBsDiff = NA_real_,
-    freqTbl) {
+  detailLevel,
+  stage,
+  chnl,
+  ind,
+  threshold,
+  locGenerated,
+  locGeneratedDirect,
+  locSource,
+  locReason,
+  bias,
+  propBsEst = NA_real_,
+  propBsDiff = NA_real_,
+  freqTbl
+) {
   row <- tibble::tibble(
     detailLevel = detailLevel,
     stage = stage,
@@ -240,12 +250,13 @@
 
 #' @keywords internal
 .getCpUnsLocSampleDetailTbl <- function(
-    cpVec,
-    exListOrig,
-    indUns,
-    indStim,
-    stage,
-    chnl) {
+  cpVec,
+  exListOrig,
+  indUns,
+  indStim,
+  stage,
+  chnl
+) {
   meta <- .getCpUnsLocMetaFromCp(cpVec)
   exTblUns <- exListOrig[[as.character(indUns)]] %||%
     (if (length(exListOrig) >= 1L) exListOrig[[1L]])
@@ -280,10 +291,25 @@
       locGeneratedDirect = metaRow$locGeneratedDirect[1],
       locSource = metaRow$locSource[1],
       locReason = metaRow$locReason[1],
-      propBsEst = NA_real_,
+      propBsEst = metaRow[["propBsEst"]][1] %||% NA_real_,
       propBsDiff = NA_real_,
       freqTbl = freqTbl
     )
+  })
+}
+
+# One row per tube and batch combination: the gate after sharing within the
+# batch, the shared gate proposed and which limit, if any, kept it higher.
+#' @keywords internal
+.getCpUnsLocShareDetailTbl <- function(cpList) {
+  purrr::imap_dfr(cpList, function(cp, gateCombn) {
+    .getCpUnsLocMetaFromCp(cp) |>
+      dplyr::mutate(
+        detailLevel = "batch_share",
+        gateCombn = gateCombn,
+        threshold = suppressWarnings(as.numeric(cp)),
+        .after = "ind"
+      )
   })
 }
 
@@ -300,14 +326,15 @@
 
 #' @keywords internal
 .getCpUnsLocOutput <- function(
-    cpUnsLocObjList,
-    indUns,
-    indStim,
-    stage,
-    pathProject,
-    chnl,
-    exListOrig,
-    prejoin = FALSE) {
+  cpUnsLocObjList,
+  indUns,
+  indStim,
+  stage,
+  pathProject,
+  chnl,
+  exListOrig,
+  prejoin = FALSE
+) {
   stageChnl <- file.path(stage, chnl)
   cpVec <- .getCpUnsLocSampleCpRep(
     stage = stage,
@@ -349,13 +376,14 @@
 
 #' @keywords internal
 .getCpUnsLocSampleCpRep <- function(
-    stage,
-    cpUnsLocObjList,
-    indUns,
-    indStim,
-    pathProject,
-    chnl,
-    prejoin = FALSE) {
+  stage,
+  cpUnsLocObjList,
+  indUns,
+  indStim,
+  pathProject,
+  chnl,
+  prejoin = FALSE
+) {
   .debug("Possibly re-using calculated cutpoints") # nolint
   indCombined <- .createCombinedIdentifier(indStim)
   stageChnl <- file.path(stage, chnl)
@@ -378,6 +406,10 @@
     locReason = purrr::map_chr(
       cpUnsLocObjList,
       ~ .x[["locReason"]] %||% NA_character_
+    ),
+    propBsEst = purrr::map_dbl(
+      cpUnsLocObjList,
+      ~ .x[["propBsEst"]] %||% NA_real_
     )
   )
   .intSaveNm(

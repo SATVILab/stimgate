@@ -1054,7 +1054,7 @@
   method <- entry[["locThresholdMethod"]]
   if (
     !is.character(method) || length(method) != 1L || is.na(method) ||
-      !method %in% c("region", "match")
+      !method %in% c("region", "match", "cap")
   ) {
     stop(
       "StimGate saved no valid locThresholdMethod for marker ", marker, "."
@@ -1732,7 +1732,7 @@
         iter = iterNum,
         nCellStimSim = nCellStim,
         nCellUnsSim = nCellUns,
-        # NULL biasUns: StimGate sets it from the initial bandwidth estimate.
+        # NULL biasUns: StimGate sets it from the shared bandwidth.
         biasUns = biasUns %||% NA_real_,
         biasUnsFactor = biasUnsFactor,
         bw = bw,

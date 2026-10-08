@@ -202,15 +202,38 @@ test_that("completeChnlSettingsBiasUns defaults to bwFallback", {
   )
 })
 
-test_that("gateStim defaults biasUns to bwFallback in metadata", {
+test_that("completeChnlSettingsBiasUns prefers the common bandwidth", {
+  biasUns <- function(...) {
+    stimgate:::.completeChnlSettingsBiasUns(
+      biasUns = NULL, bwMin = 0.1, bwMax = 1, bwFallback = 0.4, ...
+    )
+  }
+  expect_equal(biasUns(biasUnsFactor = 1, bwCommon = 0.25), 0.25)
+  expect_equal(biasUns(biasUnsFactor = 2, bwCommon = 0.25), 0.5)
+  expect_equal(biasUns(biasUnsFactor = 1, bwCommon = NULL), 0.4)
+
+  common <- stimgate:::.completeChnlSettingsBwCommon
+  # A fixed bandwidth, or a bandwidth shared by the whole channel.
+  expect_equal(common(list(bw = 0.3, bwShared = 0.2)), 0.3)
+  expect_equal(common(list(bwShared = 0.2)), 0.2)
+  # Per-cluster, per-sample and missing bandwidths have no common value.
+  expect_null(common(list(
+    bwShared = 0.2,
+    bwSharedTbl = data.frame(ind = c("1", "2"), bw = c(0.1, 0.3))
+  )))
+  expect_null(common(list()))
+  expect_null(common(list(bwShared = NA_real_)))
+})
+
+test_that("gateStim defaults biasUns to the shared bandwidth in metadata", {
   skip_if_not_installed("flowWorkspace")
   skip_if_not_installed("flowCore")
 
   exampleData <- getExampleData()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
-  pathProject <- file.path(tempdir(), "testBiasUnsDefault")
+  pathProject <- withr::local_tempdir("testBiasUnsDefault")
 
-  result <- gateStim(
+  gateStim(
     .data = gs,
     pathProject = pathProject,
     popGate = "root",
@@ -220,11 +243,25 @@ test_that("gateStim defaults biasUns to bwFallback in metadata", {
 
   chnlSettings <- stimgateMetaReadSettingsChnls(pathProject)
   for (chnlName in names(chnlSettings)) {
-    bwFallback <- chnlSettings[[chnlName]]$bwFallback
-    biasUns <- chnlSettings[[chnlName]]$biasUns
-    expect_true(is.numeric(bwFallback) && bwFallback > 0)
-    expect_equal(biasUns, bwFallback)
+    bwShared <- chnlSettings[[chnlName]]$bwShared
+    expect_true(is.numeric(bwShared) && bwShared > 0)
+    expect_equal(chnlSettings[[chnlName]]$biasUns, bwShared)
   }
 
-  unlink(pathProject, recursive = TRUE)
+  # Per-sample bandwidths have no common value: the fallback is used.
+  pathSample <- withr::local_tempdir("testBiasUnsSample")
+  gateStim(
+    .data = gs,
+    pathProject = pathSample,
+    popGate = "root",
+    batchList = exampleData$batchList,
+    marker = exampleData$marker,
+    control = stimControl(bwScope = "sample")
+  )
+  chnlSettings <- stimgateMetaReadSettingsChnls(pathSample)
+  for (chnlName in names(chnlSettings)) {
+    bwFallback <- chnlSettings[[chnlName]]$bwFallback
+    expect_true(is.numeric(bwFallback) && bwFallback > 0)
+    expect_equal(chnlSettings[[chnlName]]$biasUns, bwFallback)
+  }
 })

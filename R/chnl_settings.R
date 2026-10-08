@@ -165,19 +165,21 @@
     xList = xList
   )
 
-  chnlSettings$biasUns <- .completeChnlSettingsBiasUns(
-    biasUns = chnlSettings$biasUns,
-    biasUnsFactor = chnlSettings$biasUnsFactor,
-    bwMin = chnlSettings$bwMin,
-    bwMax = chnlSettings$bwMax,
-    bwFallback = chnlSettings$bwFallback
-  )
-
   chnlSettings <- .completeChnlSettingsBwShared(
     chnlSettings = chnlSettings,
     indBatchList = indBatchList,
     .data = .data,
     pathProject = pathProject
+  )
+
+  # After the shared bandwidth, so an automatic bias can be relative to it.
+  chnlSettings$biasUns <- .completeChnlSettingsBiasUns(
+    biasUns = chnlSettings$biasUns,
+    biasUnsFactor = chnlSettings$biasUnsFactor,
+    bwMin = chnlSettings$bwMin,
+    bwMax = chnlSettings$bwMax,
+    bwFallback = chnlSettings$bwFallback,
+    bwCommon = .completeChnlSettingsBwCommon(chnlSettings)
   )
 
   chnlSettings$cpMin <- .completeChnlSettingsCpMin(
@@ -216,16 +218,36 @@
   method
 }
 
+# The scalar local-FDR bandwidth every sample of the channel uses: a fixed
+# `bw`, or the per-channel shared bandwidth (`bwScope = "cytokine"`). NULL when
+# samples use different bandwidths (per-sample, per-cluster or adaptive).
+#' @keywords internal
+.completeChnlSettingsBwCommon <- function(chnlSettings) {
+  bw <- if (!is.null(chnlSettings$bw)) {
+    chnlSettings$bw
+  } else if (is.null(chnlSettings$bwSharedTbl)) {
+    chnlSettings$bwShared
+  }
+  bw <- suppressWarnings(as.numeric(bw))
+  if (length(bw) == 1L && is.finite(bw) && bw > 0) bw else NULL
+}
+
+# An automatic `biasUns` is `biasUnsFactor` times the bandwidth every sample
+# uses (`bwCommon`), when there is one, and otherwise times `bwFallback`.
 #' @keywords internal
 .completeChnlSettingsBiasUns <- function(
   biasUns,
   biasUnsFactor,
   bwMin,
   bwMax,
-  bwFallback
+  bwFallback,
+  bwCommon = NULL
 ) {
   if (!is.null(biasUns)) {
     return(biasUns)
+  }
+  if (!is.null(bwCommon)) {
+    return(bwCommon * biasUnsFactor)
   }
   if (!is.null(bwFallback)) {
     return(bwFallback * biasUnsFactor)

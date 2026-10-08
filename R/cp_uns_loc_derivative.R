@@ -198,13 +198,18 @@
 #' Select the left-most derivative peak meeting alpha
 #'
 #' Flat-topped peaks are represented by the left-most point of the plateau.
+#' With `minRiseProb`, a peak counts only if its own rise lifts the
+#' probability to at least `minRiseProb`: the probability where the derivative
+#' first falls back to `riseFrac` times the peak height (the top of that rise).
 #' @keywords internal
 .getCpUnsLocDerivPeak <- function(
   x,
   prob,
   deriv,
   alpha = 0.75,
-  leftRiseFrac = 0.15
+  leftRiseFrac = 0.15,
+  minRiseProb = NA_real_,
+  riseFrac = 0.2
 ) {
   info <- list(reason = "no_valid_derivative_peak")
   x <- suppressWarnings(as.numeric(x))
@@ -308,6 +313,24 @@
     return(list(index = NA_integer_, data = peakData, info = info))
   }
 
+  minRiseProb <- suppressWarnings(as.numeric(minRiseProb)[1L])
+  if (is.finite(minRiseProb) && minRiseProb > 0) {
+    riseTop <- vapply(eligible, function(i) {
+      after <- seq.int(i, nPeakData)
+      end <- after[peakData$deriv[after] <= riseFrac * peakData$deriv[[i]]]
+      peakData$prob[[if (length(end) > 0L) min(end) else nPeakData]]
+    }, numeric(1))
+    info$minRiseProb <- minRiseProb
+    info$peakSummary$riseTopProb <- NA_real_
+    info$peakSummary$riseTopProb[match(eligible, info$peakSummary$index)] <-
+      riseTop
+    eligible <- eligible[riseTop >= minRiseProb]
+    if (length(eligible) == 0L) {
+      info$reason <- "no_derivative_peak_rise_reached_min_probability"
+      return(list(index = NA_integer_, data = peakData, info = info))
+    }
+  }
+
   selected <- min(eligible)
   info$reason <- "identified_leftmost_valid_derivative_peak"
   info$peakIdx <- selected
@@ -329,14 +352,17 @@
   psi,
   capRightWidth = FALSE,
   leftRiseFrac = 0.15,
-  stage
+  stage,
+  minRiseProb = NA_real_
 ) {
   peak <- .getCpUnsLocDerivPeak(
     x = x,
     prob = prob,
     deriv = deriv,
     alpha = alpha,
-    leftRiseFrac = leftRiseFrac
+    leftRiseFrac = leftRiseFrac,
+    minRiseProb = minRiseProb,
+    riseFrac = abs(psi)
   )
   info <- peak$info
   if (is.na(peak$index)) {
@@ -528,7 +554,14 @@
     } else {
       0.15
     },
-    stage = stage
+    stage = stage,
+    # Only the marginal stage (x_clear_init and marginal filtering) requires
+    # each accepted rise to reach a minimum probability.
+    minRiseProb = if (identical(stage, "marginal")) {
+      .getCpUnsLocSetting(chnlSettings, "locMinRiseProb", 1 / 3)
+    } else {
+      NA_real_
+    }
   )
   out$info$stage <- stage
   out$info$params <- params

@@ -104,7 +104,7 @@
 # Cached-result semantics. v2: `settings$loc_threshold_method` is passed to
 # stimControl(locThresholdMethod = ) and recorded in the gate rows; v1 caches
 # used probability-sum matching without recording it.
-.simClusterWeakSemantics <- "cluster-weak-v3"
+.simClusterWeakSemantics <- "cluster-weak-v4"
 
 # The local-FDR threshold method StimGate resolved and saved for every channel.
 .simClusterWeakThresholdMethod <- function(path_project, requested) {

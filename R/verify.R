@@ -345,15 +345,38 @@
     !.verifyIsNullOrNa(settings[["locThresholdMethod"]]) &&
       (!is.character(settings[["locThresholdMethod"]]) ||
         length(settings[["locThresholdMethod"]]) != 1L ||
-        !settings[["locThresholdMethod"]] %in% c("region", "match"))
+        !settings[["locThresholdMethod"]] %in% c("region", "match", "cap"))
   ) {
     stop(paste0(
-      prefix, "`locThresholdMethod` must be either 'region' or 'match'."
+      prefix, "`locThresholdMethod` must be one of 'region', 'match' or 'cap'."
     ))
+  }
+
+  cap <- settings[["locThresholdCap"]]
+  if (
+    !.verifyIsNullOrNa(cap) &&
+      (!is.numeric(cap) || length(cap) != 1L || is.na(cap) || cap < 1)
+  ) {
+    stop(paste0(prefix, "`locThresholdCap` must be a single number of at least 1."))
+  }
+
+  # Sharing limits; Inf switches a limit off.
+  for (nm in c("locShareCap", "locShareCellCap")) {
+    val <- settings[[nm]]
+    lower <- if (nm == "locShareCap") 1 else 0
+    if (
+      !.verifyIsNullOrNa(val) &&
+        (!is.numeric(val) || length(val) != 1L || is.na(val) || val < lower)
+    ) {
+      stop(paste0(
+        prefix, "`", nm, "` must be a single number of at least ", lower, "."
+      ))
+    }
   }
 
   probSettings <- c(
     "locMinPeakProb",
+    "locMinRiseProb",
     "locDipAlpha",
     "locAntimodeHeightFrac",
     "locAntimodeLowRel",

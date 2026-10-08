@@ -208,10 +208,12 @@ test_that("the gate sits below the selected cell and counts what was matched", {
 
 test_that("selected-cell ties and diagnostics agree with the applied gate", {
   df_stim <- structure(
-    data.frame(IFNg = c(1, 2, 3, 3, 4)), chnlCut = "IFNg", ind = "stim1"
+    data.frame(IFNg = c(1, 2, 3, 3, 4)),
+    chnlCut = "IFNg", ind = "stim1"
   )
   df_uns <- structure(
-    data.frame(IFNg = c(0.5, 2.5, 3, 3)), chnlCut = "IFNg"
+    data.frame(IFNg = c(0.5, 2.5, 3, 3)),
+    chnlCut = "IFNg"
   )
   data_thresh <- .getCpUnsLocGetCpDataThresholdActual(
     dataCount = structure(data.frame(IFNg = c(2.5, 3, 4)), chnlCut = "IFNg"),
@@ -441,6 +443,15 @@ test_that(".getCpUnsLocSampleCpRep errors informatively on length mismatch when 
   expect_equal(as.numeric(rep_single["uns"]), 4.0)
 })
 
+# Expression list for batch-sharing tests: unstim first, then stim samples
+.share_ex_list <- function(...) {
+  lapply(list(...), function(x) {
+    df <- data.frame(CD4 = x)
+    attr(df, "chnlCut") <- "CD4"
+    df
+  })
+}
+
 test_that(".getCpUnsLocCombineCpWithMeta propagates combined metadata", {
   cp_vec <- c("stim1" = 4.0, "stim2" = 1.0, "uns" = 4.0)
   attr(cp_vec, "locGenerated") <- c(TRUE, FALSE, TRUE)
@@ -448,7 +459,14 @@ test_that(".getCpUnsLocCombineCpWithMeta propagates combined metadata", {
   attr(cp_vec, "locSource") <- c("direct", "not_calculated", "unstim_summary")
   attr(cp_vec, "locReason") <- c("selected", "fallback", "mean")
 
-  combined_out <- .getCpUnsLocCombineCpWithMeta(cp_vec, gateCombn = "mean")
+  # stim1 has cells above its gate (a responder); stim2 has none above 4
+  ex_list <- .share_ex_list(
+    uns = c(1, 2, 3), stim1 = c(1, 2, 5, 6), stim2 = c(1, 2, 3)
+  )
+  combined_out <- .getCpUnsLocCombineCpWithMeta(
+    cp_vec,
+    gateCombn = "mean", exListOrig = ex_list
+  )
   cp_mean <- combined_out[["mean"]]
 
   # Both stim conditions now have threshold 4.0
@@ -481,7 +499,14 @@ test_that(".getCpUnsLocCombineCpWithMeta uses min of generated thresholds and ig
   attr(cp_vec, "locSource") <- c("direct", "direct", "not_calculated", "unstim_summary")
   attr(cp_vec, "locReason") <- c("detected", "detected", "fallback_above_range", "mean")
 
-  combined_out <- .getCpUnsLocCombineCpWithMeta(cp_vec, gateCombn = "min")
+  # Both generated tubes are responders; no sharing limits
+  ex_list <- .share_ex_list(
+    uns = c(1, 2), stim1 = c(1, 4, 5), stim2 = c(1, 3, 4), stim3 = c(1, 2)
+  )
+  combined_out <- .getCpUnsLocCombineCpWithMeta(
+    cp_vec,
+    gateCombn = "min", exListOrig = ex_list, shareCap = Inf, cellCap = Inf
+  )
   cp_min <- combined_out[["min"]]
 
   # All conditions receive min of generated thresholds (2.8), ignoring fallback (0.5)
@@ -525,19 +550,24 @@ test_that(".getCpUnsLocCombineCpWithMeta uses min of generated thresholds and ig
   )
 })
 
-test_that(".getCpUnsLocCombineCpWithMeta handles all-fallback conditions cleanly under min", {
+test_that(".getCpUnsLocCombineCpWithMeta keeps each fallback gate when none is generated", {
   cp_vec <- c("stim1" = 5.0, "stim2" = 6.0, "uns" = NA_real_)
   attr(cp_vec, "locGenerated") <- c(FALSE, FALSE, FALSE)
   attr(cp_vec, "locGeneratedDirect") <- c(FALSE, FALSE, FALSE)
   attr(cp_vec, "locSource") <- c("not_calculated", "not_calculated", "unstim_summary")
   attr(cp_vec, "locReason") <- c("fallback", "fallback", "no_generated_local_fdr_thresholds")
 
-  combined_out <- .getCpUnsLocCombineCpWithMeta(cp_vec, gateCombn = "min")
+  ex_list <- .share_ex_list(uns = c(1, 2), stim1 = c(1, 2), stim2 = c(1, 2))
+  combined_out <- .getCpUnsLocCombineCpWithMeta(
+    cp_vec,
+    gateCombn = "min", exListOrig = ex_list
+  )
   cp_min <- combined_out[["min"]]
 
+  # A lower fallback from another tube could fall below this tube's cells.
   expect_equal(as.numeric(cp_min["stim1"]), 5.0)
-  expect_equal(as.numeric(cp_min["stim2"]), 5.0)
-  expect_equal(as.numeric(cp_min["uns"]), 5.0)
+  expect_equal(as.numeric(cp_min["stim2"]), 6.0)
+  expect_true(is.na(cp_min["uns"]))
 
   meta_comb <- .getCpUnsLocMetaFromCp(cp_min)
   expect_false(any(meta_comb$locGenerated))

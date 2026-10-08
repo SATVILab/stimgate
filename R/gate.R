@@ -19,7 +19,9 @@
 #' @param popGate character Population(s) already present in `.data`; only
 #'   GatingSets have populations other than "root". Default: "root" (all cells).
 #' @param biasUns numeric or NULL Upward shift of unstimulated expression.
-#'   NULL uses `bwFallback` times `biasUnsFactor` (see [stimControl()]).
+#'   NULL uses `biasUnsFactor` times the marker's common bandwidth (fixed `bw`
+#'   or shared with `bwScope = "cytokine"`), else times `bwFallback` (see
+#'   [stimControl()]).
 #'   Positive shifts make gating more conservative. Default: NULL.
 #' @param bw numeric or NULL Fixed density bandwidth; NULL estimates it
 #'   automatically. Per-marker values go in `markerControl`. Default: NULL.
@@ -34,7 +36,9 @@
 #'   gating. Default: FALSE.
 #' @details
 #' Thresholds can be shared across similar distributions, then refined using
-#' cells positive for another cytokine. Read results with [getStimGates()],
+#' cells positive for another cytokine. Only tubes that show a response at
+#' their own threshold share it, and lower shared thresholds are accepted only
+#' within limits (see Details in [stimControl()]). Read results with [getStimGates()],
 #' [getStimStats()] and [getStimExpr()]; inspect them with [plotStim()].
 #'
 #' **Input data.** Non-GatingSet inputs are converted to a GatingSet with only

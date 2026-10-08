@@ -928,9 +928,14 @@
     return(chnlSettings$bw)
   }
   if (!is.null(chnlSettings$bwShared)) {
-    return(min(
+    bw <- min(
       .bwSharedGet(chnlSettings, .getInd(exTblStimThreshold)),
       .bwSharedGet(chnlSettings, .getInd(exTblUnsThreshold))
+    )
+    return(.getCpUnsLocBwSharedScale(
+      bw = bw,
+      nCell = min(nrow(exTblStimThreshold), nrow(exTblUnsThreshold)),
+      chnlSettings = chnlSettings
     ))
   }
   bwStim <- .getCpUnsLocGetDensRawDensitiesBwInit(
@@ -1372,4 +1377,20 @@
   attr(dataMod, "idxMod") <- sort(unname(idxMod))
 
   dataMod
+}
+
+
+# The shared bandwidth is estimated on tubes resampled to `bwNcellMax` cells.
+# A sample whose smaller tube has fewer cells widens it as a normal-reference
+# bandwidth would, by (bwNcellMax / nCell)^(1/5); larger samples keep it.
+#' @keywords internal
+.getCpUnsLocBwSharedScale <- function(bw, nCell, chnlSettings) {
+  nRef <- suppressWarnings(as.numeric(chnlSettings$bwNcellMax)[1L])
+  if (
+    isFALSE(chnlSettings$bwScaleNcell) || length(nRef) == 0L ||
+      !is.finite(nRef) || !is.finite(nCell) || nCell < 1 || nCell >= nRef
+  ) {
+    return(bw)
+  }
+  bw * (nRef / nCell)^(1 / 5)
 }

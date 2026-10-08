@@ -1,21 +1,23 @@
 # Local-FDR response estimate and final threshold
 #
-# Runs post-smoothing filtering, then sets the condition-level gate either at
-# the lower boundary of the filtered region (locThresholdMethod = "region") or
-# at the empirical expression threshold whose background-subtracted frequency
-# matches the sum of fitted response probabilities ("match").
+# Runs post-smoothing filtering, then sets the condition-level gate at the
+# lower boundary of the filtered region (locThresholdMethod = "region"), at the
+# empirical expression threshold whose background-subtracted frequency matches
+# the sum of fitted response probabilities ("match"), or at the region boundary
+# unless its frequency exceeds that sum by more than a factor ("cap").
 
 .getCpUnsLocGetCp <- function(
-    dataMod,
-    exTblStimOrig,
-    exTblStimNoMin,
-    exTblUnsOrig,
-    exTblUnsBias,
-    bias,
-    cpMin,
-    stage,
-    pathProject,
-    chnlSettings = list()) {
+  dataMod,
+  exTblStimOrig,
+  exTblStimNoMin,
+  exTblUnsOrig,
+  exTblUnsBias,
+  bias,
+  cpMin,
+  stage,
+  pathProject,
+  chnlSettings = list()
+) {
   ind <- .getInd(exTblStimNoMin)
   chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
   stageChnl <- file.path(stage, chnl)
@@ -99,7 +101,20 @@
         regionX <- suppressWarnings(
           as.numeric(trimObj$info$final$xSum %||% NA_real_)[1L]
         )
-        cpObj <- if (identical(method, "match")) {
+        cpObj <- if (identical(method, "cap")) {
+          .getCpUnsLocGetCpCap(
+            dataThreshold = dataThreshold,
+            regionX = regionX,
+            cap = chnlSettings$locThresholdCap %||% 1.3,
+            exTblStimNoMin = exTblStimNoMin,
+            exTblUnsBias = exTblUnsBias,
+            cpMin = cpMin,
+            stage = stage,
+            exTblStimOrig = exTblStimOrig,
+            exTblUnsOrig = exTblUnsOrig,
+            densityBw = densityBw
+          )
+        } else if (identical(method, "match")) {
           .getCpUnsLocGetCpActual(
             dataThreshold = dataThreshold,
             exTblStimNoMin = exTblStimNoMin,
@@ -128,6 +143,8 @@
 
   attr(cpObj, "locThresholdMethod") <- method
   attr(cpObj, "locRegionX") <- regionX
+  # Carried with the gate to limit how far shared gates may lower it.
+  cpObj$propBsEst <- .getCpUnsLocProbBsEst(dataThreshold)
   locDetailCondition <- .getCpUnsLocConditionDetailRow(
     cpObj = cpObj,
     dataThreshold = dataThreshold,
@@ -151,12 +168,13 @@
 
 #' @keywords internal
 .getCpUnsLocGetCpDataThreshold <- function(
-    dataMod,
-    exTblStimOrig,
-    exTblStimNoMin,
-    exTblUnsOrig,
-    pathProject,
-    stage) {
+  dataMod,
+  exTblStimOrig,
+  exTblStimNoMin,
+  exTblUnsOrig,
+  pathProject,
+  stage
+) {
   # Remove the lower-margin values retained only to anchor the smoother at the
   # point where the final response proportion is calculated, not while the
   # filtering thresholds are identified.
@@ -255,10 +273,11 @@
 
 
 .getCpUnsLocGetCpDataThresholdActual <- function(
-    dataCount,
-    propBsEst,
-    exTblStimOrig,
-    exTblUnsOrig) {
+  dataCount,
+  propBsEst,
+  exTblStimOrig,
+  exTblUnsOrig
+) {
   thresholds <- .getCut(dataCount)
 
   propStimVec <- .getCpUnsLocTailPropAtThresholds(
@@ -301,14 +320,15 @@
 #'   as attribute `cpSelected`.
 #' @keywords internal
 .getCpUnsLocGetCpActual <- function(
-    dataThreshold,
-    exTblStimNoMin,
-    exTblUnsBias,
-    cpMin,
-    stage,
-    exTblStimOrig = NULL,
-    exTblUnsOrig = NULL,
-    densityBw = NULL) {
+  dataThreshold,
+  exTblStimNoMin,
+  exTblUnsBias,
+  cpMin,
+  stage,
+  exTblStimOrig = NULL,
+  exTblUnsOrig = NULL,
+  densityBw = NULL
+) {
   if (nrow(dataThreshold) == 0L) {
     return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,
@@ -367,12 +387,13 @@
 #' @return list from `.getCpUnsLocConditionOut()`.
 #' @keywords internal
 .getCpUnsLocGetCpRegion <- function(
-    dataThreshold,
-    regionX,
-    exTblStimNoMin,
-    exTblUnsBias,
-    cpMin,
-    stage) {
+  dataThreshold,
+  regionX,
+  exTblStimNoMin,
+  exTblUnsBias,
+  cpMin,
+  stage
+) {
   if (nrow(dataThreshold) == 0L) {
     return(.getCpUnsLocConditionCheckOut(
       cpMin = cpMin,
@@ -437,4 +458,93 @@
     step <- sqrt(.Machine$double.eps) * max(1, abs(cp))
   }
   cp - step
+}
+
+#' Use the region boundary unless its frequency exceeds the capped estimate
+#'
+#' Keeps the region boundary (`regionX`, as under "region") when the
+#' background-subtracted frequency strictly above it is at most `cap` times the
+#' probability-sum estimate. Otherwise the gate is placed below the lowest
+#' candidate cell value at or above the boundary whose frequency (cells at or
+#' above it) is within the cap, as matching places its gate below the selected
+#' cell. When no candidate is within the cap, the matching choice is used.
+#'
+#' @param cap numeric Largest allowed ratio of frequency to estimate.
+#' @return list from `.getCpUnsLocConditionOut()`. A selected cell is attribute
+#'   `cpSelected`; `locCapExceededAbove` records whether any higher candidate's
+#'   frequency exceeds the cap again.
+#' @keywords internal
+.getCpUnsLocGetCpCap <- function(
+  dataThreshold,
+  regionX,
+  cap,
+  exTblStimNoMin,
+  exTblUnsBias,
+  cpMin,
+  stage,
+  exTblStimOrig,
+  exTblUnsOrig,
+  densityBw = NULL
+) {
+  cpRegion <- .getCpUnsLocGetCpRegion(
+    dataThreshold = dataThreshold,
+    regionX = regionX,
+    exTblStimNoMin = exTblStimNoMin,
+    exTblUnsBias = exTblUnsBias,
+    cpMin = cpMin,
+    stage = stage
+  )
+  if (!isTRUE(cpRegion$locGenerated)) {
+    return(cpRegion)
+  }
+
+  limit <- cap * .getCpUnsLocProbBsEst(dataThreshold)
+  xStim <- .getCut(exTblStimOrig)
+  xUns <- .getCut(exTblUnsOrig)
+  propBsRegion <- mean(xStim > regionX) - mean(xUns > regionX)
+  x <- .getCut(dataThreshold)
+  propBs <- dataThreshold$propBs
+  if (is.finite(propBsRegion) && propBsRegion <= limit) {
+    cpRegion$locReason <- "local_fdr_cap_region_boundary_selected"
+    attr(cpRegion, "locCapExceededAbove") <- any(
+      propBs[x > regionX] > limit,
+      na.rm = TRUE
+    )
+    return(cpRegion)
+  }
+
+  within <- which(is.finite(x) & x >= regionX & propBs <= limit)
+  if (length(within) == 0L) {
+    cpObj <- .getCpUnsLocGetCpActual(
+      dataThreshold = dataThreshold,
+      exTblStimNoMin = exTblStimNoMin,
+      exTblUnsBias = exTblUnsBias,
+      cpMin = cpMin,
+      stage = stage,
+      exTblStimOrig = exTblStimOrig,
+      exTblUnsOrig = exTblUnsOrig,
+      densityBw = densityBw
+    )
+    if (isTRUE(cpObj$locGenerated)) {
+      cpObj$locReason <- "local_fdr_cap_match_fallback"
+    }
+    attr(cpObj, "locCapExceededAbove") <- NA
+    return(cpObj)
+  }
+  cpVal <- min(x[within])
+
+  cpObj <- .getCpUnsLocConditionOut(
+    cp = .getCpUnsLocGateBelowCell(
+      cp = cpVal,
+      x = c(xStim, xUns),
+      densityBw = densityBw
+    ),
+    locGenerated = TRUE,
+    locGeneratedDirect = TRUE,
+    locSource = "direct",
+    locReason = "local_fdr_cap_threshold_selected"
+  )
+  attr(cpObj, "cpSelected") <- cpVal
+  attr(cpObj, "locCapExceededAbove") <- any(propBs[x > cpVal] > limit, na.rm = TRUE)
+  cpObj
 }
