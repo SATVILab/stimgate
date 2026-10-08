@@ -32,6 +32,7 @@ test_that("stimControl returns a documented stimControl object", {
   expect_identical(control$locProbCol, "pred")
   expect_identical(control$locMinPeakProb, 0.25)
   expect_false(control$locEnforceShapeThreshold)
+  expect_identical(control$locThresholdMethod, "region")
   expect_false(control$bwAdaptive)
   expect_identical(control$normMtd, "moments")
 
@@ -119,7 +120,7 @@ test_that("markerControl accepts marker and channel names", {
   # One key is a marker label, the other the channel name of another channel.
   # `bw` is a per-marker fixed-bandwidth override.
   markerControl <- stats::setNames(
-    list(list(bw = 0.1), list(bwAdj = 2)),
+    list(list(bw = 0.1, locThresholdMethod = "match"), list(bwAdj = 2)),
     c(exampleData$marker[[1]], exampleData$chnl[[2]])
   )
   gateStim(
@@ -137,6 +138,13 @@ test_that("markerControl accepts marker and channel names", {
   # The per-marker fixed bandwidth reaches the saved channel settings.
   settings <- stimgateMetaReadSettingsChnls(pathProject)
   expect_identical(settings[[exampleData$marker[[1]]]]$bw, 0.1)
+  # The per-marker threshold method overrides the global default.
+  expect_identical(
+    settings[[exampleData$marker[[1]]]]$locThresholdMethod, "match"
+  )
+  expect_identical(
+    settings[[exampleData$marker[[2]]]]$locThresholdMethod, "region"
+  )
 })
 
 test_that("markerControl rejects unknown names and settings", {

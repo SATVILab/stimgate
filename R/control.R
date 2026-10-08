@@ -67,6 +67,13 @@
 #'   probability). Default: "pred".
 #' @param locMinPeakProb numeric Minimum peak response probability for a
 #'   directly generated local-FDR threshold. Default: 0.25.
+#' @param locThresholdMethod character How the condition-level gate is chosen
+#'   from the local-FDR filtering: "region" uses the lower boundary of the
+#'   region kept by filtering (`xSum` in diagnostics) as the gate; "match"
+#'   moves the gate to where the background-subtracted frequency equals the
+#'   sum of fitted response probabilities, which was the only method before
+#'   stimgate 0.99.26. Cells count as positive when strictly above the gate.
+#'   Default: "region".
 #' @param locEnforceShapeThreshold logical Refit densities and probabilities
 #'   above the lower of the first stimulated-density antimode right of the main
 #'   negative peak and the adjusted stimulated-density tailgate. Restrict later
@@ -161,6 +168,7 @@ stimControl <- function(
   gateCombn = "min",
   locProbCol = "pred",
   locMinPeakProb = 0.25,
+  locThresholdMethod = "region",
   locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1 / 6,
@@ -218,7 +226,7 @@ stimControl <- function(
   # overrides inherit these values.
   required <- c(
     "excMin", "biasUnsFactor", "bwAdj", "gateCombn", "bwFallback",
-    "bwMtd", "bwScope"
+    "bwMtd", "bwScope", "locThresholdMethod"
   )
   isMissing <- vapply(ctrl[required], .verifyIsNullOrNa, logical(1))
   if (any(isMissing)) {

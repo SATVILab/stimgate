@@ -234,7 +234,61 @@
     ))
   }
 
+  # Lower boundary of the region kept by the shape-enforced filters, used as
+  # the gate by locThresholdMethod = "region". Recorded as xSum to match the
+  # ordinary route.
+  final <- .getCpUnsLocShapeRegionBoundary(
+    dataMod = dataMod,
+    shapeLowerBoundX = if (shapeApplied) shapeLowerBoundX else NA_real_,
+    globalInfo = global$info,
+    marginalInfo = marginal$info
+  )
+  info$final <- final
+  attr(dataMod, "locFinalFilterX") <- final$xSum
+
   list(dataMod = dataMod, cp = NULL, info = info)
+}
+
+#' Lower boundary of the region kept by the shape-enforced filters
+#'
+#' The shape route filters in turn at the pre-fit shape threshold, the global
+#' derivative threshold and the final marginal cut, each keeping `x >= cut`.
+#' The kept region therefore starts at the largest of the cuts that were
+#' applied. If none was applied, it starts at the lowest kept value.
+#' @return list with `xSum` (the boundary), `source` and the candidate cuts.
+#' @keywords internal
+.getCpUnsLocShapeRegionBoundary <- function(
+  dataMod,
+  shapeLowerBoundX,
+  globalInfo,
+  marginalInfo
+) {
+  num <- function(x) suppressWarnings(as.numeric(x %||% NA_real_)[1L])
+  xGlobal <- if (isTRUE(globalInfo$applied)) num(globalInfo$thresholdX) else NA_real_
+  xMarginal <- num(marginalInfo$finalStartX)
+  candidates <- c(
+    shape = num(shapeLowerBoundX),
+    global = xGlobal,
+    marginal = xMarginal
+  )
+  finite <- candidates[is.finite(candidates)]
+  if (length(finite) > 0L) {
+    xSum <- max(finite)
+    source <- names(finite)[which.max(finite)]
+  } else {
+    x <- suppressWarnings(as.numeric(.getCut(dataMod)))
+    x <- x[is.finite(x)]
+    xSum <- if (length(x) > 0L) min(x) else NA_real_
+    source <- "lowest_kept_value"
+  }
+  list(
+    route = "shape",
+    xShape = candidates[["shape"]],
+    xGlobal = candidates[["global"]],
+    xMarginal = candidates[["marginal"]],
+    xSum = xSum,
+    xSumSource = source
+  )
 }
 
 #' Return the standard non-local result after a filter removes every cell
@@ -1410,8 +1464,11 @@
   xAntimode <- suppressWarnings(as.numeric(antimode$thresholdX)[1L])
   info$antimode <- antimode$info
 
+  # xSum is the lower boundary of the region kept by filtering; it is the gate
+  # under locThresholdMethod = "region".
   xSum <- .getCpUnsLocFiniteMin(c(xClear, xQual, xAntimode))
   info$final <- list(
+    route = "ordinary",
     xClearInit = xClearInit,
     xDom = xDom,
     xClear = xClear,

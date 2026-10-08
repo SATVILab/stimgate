@@ -98,11 +98,17 @@
     stage,
     chnl) {
   cp <- suppressWarnings(as.numeric(cpObj$cp))[1]
+  method <- attr(cpObj, "locThresholdMethod") %||% NA_character_
   # The gate sits below the selected cell; look up the selected cell itself.
-  selectedRow <- .getCpUnsLocSelectedThresholdRow(
-    dataThreshold,
-    attr(cpObj, "cpSelected") %||% cp
-  )
+  # A region gate selects no cell, so its frequencies are counted at the gate.
+  selectedRow <- if (identical(method, "region")) {
+    NULL
+  } else {
+    .getCpUnsLocSelectedThresholdRow(
+      dataThreshold,
+      attr(cpObj, "cpSelected") %||% cp
+    )
+  }
 
   if (
     !is.null(selectedRow) &&
@@ -151,7 +157,13 @@
         propBsDiff
     }
   }
-  .getCpUnsLocDiagnosticRow(
+  if (identical(method, "region")) {
+    # Probability-sum estimate, kept as a diagnostic only: it is not the
+    # frequency at the region gate, and propBsDiff records how far apart they are.
+    propBsEst <- .getCpUnsLocProbBsEst(dataThreshold)
+    propBsDiff <- freqTbl$propBs[[1L]] - propBsEst
+  }
+  row <- .getCpUnsLocDiagnosticRow(
     detailLevel = "condition",
     stage = stage,
     chnl = chnl,
@@ -166,6 +178,25 @@
     propBsDiff = propBsDiff,
     freqTbl = freqTbl
   )
+  row$locThresholdMethod <- as.character(method)
+  row$locRegionX <- suppressWarnings(
+    as.numeric(attr(cpObj, "locRegionX") %||% NA_real_)[1L]
+  )
+  row
+}
+
+#' Probability-sum response estimate stored in a threshold table
+#' @keywords internal
+.getCpUnsLocProbBsEst <- function(dataThreshold) {
+  if (
+    !is.data.frame(dataThreshold) || nrow(dataThreshold) == 0L ||
+      !all(c("propBs", "propBsDiff") %in% names(dataThreshold))
+  ) {
+    return(NA_real_)
+  }
+  est <- dataThreshold$propBs - dataThreshold$propBsDiff
+  est <- est[is.finite(est)]
+  if (length(est) == 0L) NA_real_ else est[[1L]]
 }
 
 .getCpUnsLocDiagnosticRow <- function(
