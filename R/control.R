@@ -78,6 +78,11 @@
 #'   probability). Default: "pred".
 #' @param locMinPeakProb numeric Minimum peak response probability for a
 #'   directly generated local-FDR threshold. Default: 0.25.
+#' @param locMinRiseProb numeric Minimum response probability that a rise in
+#'   the fitted probability must reach, where it levels off, before the next
+#'   rise, for its steepest point to start the response region. Rises that
+#'   level off lower are skipped in favour of the next one to the right. 0
+#'   turns the check off. Default: 1/3.
 #' @param locThresholdMethod character How the condition-level gate is chosen
 #'   from the local-FDR filtering: "region" uses the lower boundary of the
 #'   region kept by filtering (`xSum` in diagnostics) as the gate; "match"
@@ -212,6 +217,7 @@ stimControl <- function(
   gateCombn = "min",
   locProbCol = "pred",
   locMinPeakProb = 0.25,
+  locMinRiseProb = 1 / 3,
   locThresholdMethod = "region",
   locThresholdCap = 1.3,
   locShareCap = 1.5,

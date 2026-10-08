@@ -13,7 +13,8 @@
   psi,
   capRightWidth = FALSE,
   leftRiseFrac = 0.15,
-  stage
+  stage,
+  minRiseProb = NA_real_
 )
 }
 \description{

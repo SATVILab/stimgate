@@ -2,6 +2,12 @@
 
 ## Breaking changes
 
+- `gateStim()` starts the local-FDR response region only at a rise in the
+  fitted response probability that itself reaches
+  `stimControl(locMinRiseProb)` (default 1/3) before levelling off. A small
+  early rise, often noise in small samples, could previously start the
+  region far into the negative cells when a later rise passed the overall
+  check. Set `locMinRiseProb = 0` for the previous behaviour.
 - `gateStim()` widens the shared bandwidth for samples with fewer than
   `bwNcellMax` cells (10,000 by default), by `(bwNcellMax / n)^(1/5)`, so
   small samples are not gated on densities made bumpy by the shared

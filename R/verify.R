@@ -376,6 +376,7 @@
 
   probSettings <- c(
     "locMinPeakProb",
+    "locMinRiseProb",
     "locDipAlpha",
     "locAntimodeHeightFrac",
     "locAntimodeLowRel",
