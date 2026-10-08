@@ -369,8 +369,8 @@ settings list for manifest recording and canonical reads.
 Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`;
 validate all target arguments before submitting jobs. After the simulation jobs,
 `dev.sh` submits one `scripts/slurm/render-plots.sh` job per analysis that
-renders the real QMD twice, `SHOW_MCSE=off` then `on`, with simulations off
-and plots on and distinct `<stem>-mcse_off.html` / `<stem>-mcse_on.html` outputs
+renders the real QMD once with `SHOW_MCSE=on`, with simulations off and plots
+on, to `<stem>-mcse_on.html` (render `off` manually when needed)
 (`plot_qmds_for_script()`;
 9 also renders 10). It depends `afterok` on its own simulation jobs and
 `afterany` on the submission's other simulation jobs, because projr builds

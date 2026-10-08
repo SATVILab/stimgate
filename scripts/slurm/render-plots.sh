@@ -46,8 +46,10 @@ for qmd_file in "${qmd_file_vec[@]}"; do
   # helper (which deletes its HTML on exit). All reports embed resources;
   # each HTML is self-contained even if Quarto reuses input-stem _files.
   qmd_stem=$(basename -- "$qmd_file" .qmd)
-  # QMDs without Monte Carlo intervals render once, under their usual name.
-  if grep -q "show_mcse" "$qmd_file"; then mcse_modes=(off on); else mcse_modes=(none); fi
+  # QMDs with Monte Carlo intervals render with them on only; set SHOW_MCSE=off
+  # in a manual render for the version without them. QMDs without intervals
+  # render under their usual name.
+  if grep -q "show_mcse" "$qmd_file"; then mcse_modes=(on); else mcse_modes=(none); fi
   for mcse_mode in "${mcse_modes[@]}"; do
     if [[ "$mcse_mode" == "none" ]]; then
       unset SHOW_MCSE
