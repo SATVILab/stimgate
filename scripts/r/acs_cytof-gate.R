@@ -215,6 +215,7 @@
   biasUnsFactor = 1,
   bwMtd = "nrd0",
   bwScope = "cytokine",
+  locThresholdMethod = "region",
   outputGroup = NULL,
   runPreprocessingPlots = FALSE
 ) {
@@ -297,16 +298,20 @@
           gateCombn = "min",
           clusterGates = TRUE,
           calcCytPosGates = TRUE,
-          minCell = 100
+          minCell = 100,
+          locThresholdMethod = locThresholdMethod
         )
       )
-      saveRDS(
-        list(context = .acsCytofManifest(preprocessing),
-             settings = list(biasUns = biasUns, biasUnsFactor = biasUnsFactor,
-                             clusterGates = TRUE, calcCytPosGates = TRUE),
-             channelSettings = stimgate::stimgateMetaReadSettingsChnls(pathTmp)),
-        file.path(pathTmp, "acs-manifest.rds")
+      manifest <- list(
+        context = .acsCytofManifest(preprocessing),
+        settings = list(biasUns = biasUns, biasUnsFactor = biasUnsFactor,
+                        clusterGates = TRUE, calcCytPosGates = TRUE,
+                        locThresholdMethod = locThresholdMethod),
+        channelSettings = stimgate::stimgateMetaReadSettingsChnls(pathTmp)
       )
+      # Fail before the swap if any channel resolved to another method.
+      .acsCytofValidateStimGateMethod(manifest, locThresholdMethod)
+      saveRDS(manifest, file.path(pathTmp, "acs-manifest.rds"))
     })
   }
 

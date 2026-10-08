@@ -69,18 +69,28 @@ path_comparison <- file.path(
   path_manual_output,
   "manual-comparison.rds"
 )
+# Must match the StimGate threshold method set in analysis 9.
+stimgate_loc_threshold_method <- "region"
+manual_run_manifest <- .analysis_read_rds(
+  file.path(path_manual_output, "manifest.rds"), "acs_cytof",
+  "analysis/9-real-compare-acs-cytof.qmd"
+)
 .analysis_check_expected_run(
-  .analysis_read_rds(
-    file.path(path_manual_output, "manifest.rds"), "acs_cytof",
-    "analysis/9-real-compare-acs-cytof.qmd"
-  ),
+  manual_run_manifest,
   "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd",
-  semantics_version = "acs-cytof-v3"
+  semantics_version = "acs-cytof-v4"
+)
+.acsCytofCheckRunManifestMethod(
+  manual_run_manifest, stimgate_loc_threshold_method,
+  "analysis/9-real-compare-acs-cytof.qmd"
 )
 manual_comparison_tbl <- .analysis_read_rds(
   path_comparison, "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd"
 )
-.acsCytofValidateComparisonManifest(manual_comparison_tbl)
+.acsCytofValidateComparisonManifest(
+  manual_comparison_tbl,
+  locThresholdMethod = stimgate_loc_threshold_method
+)
 validation_methods <- .acsCytofValidationMethods()
 .acsCytofValidationValidateComparisonTable(
   manual_comparison_tbl,

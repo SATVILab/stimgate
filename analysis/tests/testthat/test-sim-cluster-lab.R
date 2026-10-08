@@ -76,6 +76,8 @@ test_that("lab runner reads current package details and restores temporary state
   expect_identical(.Random.seed, before_seed)
   expect_equal(nrow(result$allocations), 4L)
   expect_setequal(result$allocations$ind, c("2", "4", "6", "8"))
+  expect_true(all(result$allocations$locThresholdMethod == "region"))
+  expect_true(all(result$final_gates$locThresholdMethod == "region"))
   expect_equal(result$summary$n_assigned + result$summary$n_unassigned, 4L)
   # getStimGates() returns the original ("min") and clustered ("minClust") rows.
   expect_equal(dplyr::n_distinct(result$final_gates$ind), 4L)

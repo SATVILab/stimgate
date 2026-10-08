@@ -99,14 +99,15 @@ test_that("Analysis 8 uses one complete settings list and pre-promotion mismatch
   expect_equal(sum(grepl("^analysis_result_params <- list", lines)), 1L)
   expect_true(grepl("required_params = analysis_result_params", content, fixed = TRUE))
   expect_true(grepl("validate_full = .simCompareValidateMismatch", content, fixed = TRUE))
-  expect_true(grepl("batch-mismatch-comparison-v17", content, fixed = TRUE))
+  expect_true(grepl("batch-mismatch-comparison-v18", content, fixed = TRUE))
   start <- which(grepl("^analysis_result_params <- list", lines))
   end <- start + which(lines[(start + 1L):length(lines)] == ")")[[1L]]
   expr <- parse(text = lines[start:end])[[1L]][[3L]]
   expected <- c(
     "analysis_grid_spec", "gate_diagnostic_spec", "cluster_gates", "stimgate_bw_mtd",
     "stimgate_bw_scope", "stimgate_bw_ncell_max", "stimgate_bw_fallback", "stimgate_bw_min", "stimgate_bw_max",
-    "loc_enforce_shape_threshold", "calc_cyt_pos_gates", "stimgate_bias_uns_factor",
+    "loc_enforce_shape_threshold", "stimgate_loc_threshold_method",
+    "calc_cyt_pos_gates", "stimgate_bias_uns_factor",
     "fbeta_beta", "fbeta_theta", "fbeta_width", "tailgate_adjust", "tailgate_method",
     "tailgate_tol", "tailgate_auto_tol", "tailgate_x"
   )
@@ -173,6 +174,6 @@ test_that("new unchunked cache schemas require their semantics identifier", {
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   for (file in c("9-real-compare-acs-cytof.qmd", "10-real-compare-acs-cytof-validation.qmd")) {
     text <- paste(readLines(file.path(root, "analysis", file)), collapse = "\n")
-    expect_match(text, 'semantics_version = "acs-cytof-v3"', fixed = TRUE)
+    expect_match(text, 'semantics_version = "acs-cytof-v4"', fixed = TRUE)
   }
 })

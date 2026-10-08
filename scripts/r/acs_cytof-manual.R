@@ -380,7 +380,8 @@
   methods = c("stimgate", "tailgate", "fbeta"),
   outputGroup = NULL,
   gateName = "loc_minClust",
-  sampleMap = NULL
+  sampleMap = NULL,
+  locThresholdMethod = "region"
 ) {
   methods <- match.arg(
     methods,
@@ -426,13 +427,7 @@
     names(paths) <- methods
     saved <- lapply(methods, function(method) {
       if (method == "stimgate") {
-        pathManifest <- file.path(paths[[method]], "acs-manifest.rds")
-        if (!file.exists(pathManifest)) stop("ACS StimGate manifest missing; re-run all methods.")
-        manifest <- readRDS(pathManifest)
-        if (!identical(manifest$channelSettings, stimgate::stimgateMetaReadSettingsChnls(paths[[method]]))) {
-          stop("Mismatched ACS StimGate settings manifest; re-run all methods.")
-        }
-        manifest
+        .acsCytofReadStimGateManifest(paths[[method]], locThresholdMethod)
       } else {
         object <- .acsCytofReadComparatorCache(paths[[method]], method)
         if (!identical(object$manifest$settings, object$settings)) {
@@ -459,7 +454,8 @@
             threshold = .data$gate,
             thresholdOrigin = .data$locSource,
             thresholdFallbackUsed = !(.data$locGenerated %in% TRUE),
-            cyt = unname(.acsCytofChannelMap()[.data$chnl])
+            cyt = unname(.acsCytofChannelMap()[.data$chnl]),
+            locThresholdMethod = .env$locThresholdMethod
           )
       } else {
         .acsCytofReadComparatorCache(paths[[method]], method)$thresholds
@@ -482,7 +478,8 @@
   methods = c("stimgate", "tailgate", "fbeta"),
   outputGroup = NULL,
   gateName = "loc_minClust",
-  sampleMap = NULL
+  sampleMap = NULL,
+  locThresholdMethod = "region"
 ) {
   autoTbl <- .acsCytofManualAutoTable(
     pathScratchBase = pathScratchBase,
@@ -492,7 +489,8 @@
     methods = methods,
     outputGroup = outputGroup,
     gateName = gateName,
-    sampleMap = sampleMap
+    sampleMap = sampleMap,
+    locThresholdMethod = locThresholdMethod
   )
   manualTbl <- .comp_against_manual_cyt_format_manual(
     fn = fn,
@@ -539,7 +537,10 @@
     )
   attr(result, "manifest") <- list(
     methods = attr(autoTbl, "manifest"),
-    comparisonSettings = list(gateName = gateName, pop = pop, cyt = cyt, methods = methods),
+    comparisonSettings = list(
+      gateName = gateName, pop = pop, cyt = cyt, methods = methods,
+      locThresholdMethod = locThresholdMethod
+    ),
     manualInputHash = .acsCytofHash(manualTbl)
   )
   attr(result, "exclusions") <- dplyr::bind_rows(
@@ -883,7 +884,8 @@ comp_against_manual_cyt <- function(
   gate_name = "loc_minClust",
   sample_map = NULL,
   path_dir_save = NULL,
-  save_plots = TRUE
+  save_plots = TRUE,
+  loc_threshold_method = "region"
 ) {
   comparisonTbl <- .acsCytofManualComparisonTable(
     fn = fn,
@@ -894,7 +896,8 @@ comp_against_manual_cyt <- function(
     methods = methods,
     outputGroup = output_group,
     gateName = gate_name,
-    sampleMap = sample_map
+    sampleMap = sample_map,
+    locThresholdMethod = loc_threshold_method
   )
   attr(comparisonTbl, "summary") <- .acsCytofManualSummaryTable(comparisonTbl)
 
@@ -914,7 +917,8 @@ comp_against_manual_cyt <- function(
   provenance <- thresholds |>
     dplyr::mutate(ind = as.character(.data$ind)) |>
     dplyr::select(dplyr::all_of(required), dplyr::any_of(c(
-      "thresholdRaw", "gateCyt", "locGenerated", "locGeneratedDirect", "locSource", "locReason"
+      "thresholdRaw", "gateCyt", "locGenerated", "locGeneratedDirect",
+      "locSource", "locReason", "locThresholdMethod"
     )))
   keys <- c("ind", "cyt")
   if (anyDuplicated(provenance[keys]) ||

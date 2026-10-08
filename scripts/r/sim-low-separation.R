@@ -23,8 +23,9 @@
   "TNF-IFNg+", "exclusive", "TNF- IFN\u03b3+ only"
 )
 
-# Fixed scientific settings shared by every scenario.
-.simLowSepMainSettings <- function() {
+# Fixed scientific settings shared by every scenario. `loc_threshold_method`
+# is passed to stimControl(locThresholdMethod = ).
+.simLowSepMainSettings <- function(loc_threshold_method = "region") {
   list(
     transformation = "gaussian",
     cov_ev = 1.5,
@@ -34,8 +35,25 @@
     response_split = c("TNF+IFNg-" = 0.25, "TNF-IFNg+" = 0.15, "TNF+IFNg+" = 0.6),
     prob_exact = TRUE,
     calc_cyt_pos_gates = TRUE,
-    cluster_gates = TRUE
+    cluster_gates = TRUE,
+    loc_threshold_method = loc_threshold_method
   )
+}
+
+# The local-FDR threshold method StimGate resolved and saved for every marker.
+# It must equal the requested method, so output rows record what was used.
+.simLowSepThresholdMethod <- function(path_project, requested) {
+  saved <- stimgateMetaReadSettingsChnls(path_project)
+  method <- unique(vapply(saved, function(x) {
+    as.character(x$locThresholdMethod %||% NA_character_)
+  }, character(1L)))
+  if (!identical(method, requested)) {
+    stop(
+      "StimGate saved locThresholdMethod '", paste(method, collapse = "', '"),
+      "' but '", requested, "' was requested."
+    )
+  }
+  method
 }
 
 # Full scenario grid. IDs and seeds are assigned here, before any dev/quick
@@ -219,6 +237,10 @@
 .simLowSepRunScenario <- function(row, n_sample, settings = .simLowSepMainSettings(),
                                   path_project = NULL) {
   if (nrow(row) != 1L) stop("row must have exactly one scenario.")
+  loc_threshold_method <- settings$loc_threshold_method
+  if (!is.character(loc_threshold_method) || length(loc_threshold_method) != 1L) {
+    stop("settings$loc_threshold_method must be set explicitly.")
+  }
   .analysis_with_seed(row$sim_seed, {
     sim <- .simLowSepSimulate(row, n_sample, settings)
     gs <- flowWorkspace::GatingSet(methods::as(sim$flowFrameList, "flowSet"))
@@ -230,9 +252,11 @@
       marker = unname(.simLowSepMarkers),
       control = stimControl(
         calcCytPosGates = settings$calc_cyt_pos_gates,
-        clusterGates = settings$cluster_gates
+        clusterGates = settings$cluster_gates,
+        locThresholdMethod = loc_threshold_method
       )
     ))
+    method <- .simLowSepThresholdMethod(path_project, loc_threshold_method)
     gate_tbl <- getStimGates(path_project)
     # Classify the single-precision expression that StimGate gated.
     expr_list <- lapply(seq_along(gs), function(i) {
@@ -249,7 +273,8 @@
         gate = unname(g[c("tnf", "ifng")]),
         gate_cyt = unname(g[c("tnf_cyt", "ifng_cyt")]),
         gate_name = rows$gateName[match(.simLowSepChnl, rows$chnl)],
-        loc_source = if ("locSource" %in% names(rows)) rows$locSource[match(.simLowSepChnl, rows$chnl)] else NA_character_
+        loc_source = if ("locSource" %in% names(rows)) rows$locSource[match(.simLowSepChnl, rows$chnl)] else NA_character_,
+        locThresholdMethod = method
       )
     })
     cells <- tibble::tibble(
@@ -284,7 +309,9 @@
 
 .simLowSepCacheSettings <- function(grid, n_sample, settings, simulation_seed, profile) {
   list(
-    analysis_semantics_version = "sim-low-separation-v1",
+    # v2: locThresholdMethod is recorded in the settings and gate rows; v1
+    # caches used probability-sum matching without recording it.
+    analysis_semantics_version = "sim-low-separation-v2",
     grid = as.data.frame(grid),
     n_sample = as.integer(n_sample),
     settings = settings,
@@ -311,6 +338,14 @@
     .analysis_cache_error(analysis_key, paste0(
       "Cached results at ", path, " were made with different settings ",
       "(scenario grid, sample count, simulation settings or seed)."
+    ), qmd)
+  }
+  gates <- cached$results$gates
+  if (!"locThresholdMethod" %in% names(gates) ||
+      !identical(unique(gates$locThresholdMethod), settings$settings$loc_threshold_method)) {
+    .analysis_cache_error(analysis_key, paste0(
+      "Cached gates at ", path, " do not record the requested ",
+      "local-FDR threshold method (locThresholdMethod)."
     ), qmd)
   }
   cached$results

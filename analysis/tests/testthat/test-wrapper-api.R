@@ -280,3 +280,35 @@ test_that("analysis code no longer uses the retired clustering tolerance names",
     }, logical(1))), info = file)
   }
 })
+
+test_that("every analysis stimControl() call forwards locThresholdMethod", {
+  expect_true("locThresholdMethod" %in% names(formals(stimgate::stimControl)))
+  n_calls <- 0L
+  check_method <- function(node) {
+    if (!is.call(node) && !is.expression(node)) return(invisible(NULL))
+    if (is.call(node)) {
+      target <- paste(deparse(node[[1L]]), collapse = "")
+      if (target %in% c("stimControl", "stimgate::stimControl")) {
+        n_calls <<- n_calls + 1L
+        expect_true(
+          "locThresholdMethod" %in% names(as.list(node)[-1L]),
+          info = paste(deparse(node), collapse = "\n")
+        )
+      }
+    }
+    for (i in seq_along(node)) {
+      if (identical(node[[i]], quote(expr = ))) next
+      if (is.call(node[[i]]) || is.expression(node[[i]])) {
+        check_method(node[[i]])
+      }
+    }
+    invisible(NULL)
+  }
+  scripts <- list.files(
+    file.path(root_dir, "scripts", "r"),
+    pattern = "\\.R$",
+    full.names = TRUE
+  )
+  for (script in scripts) check_method(parse(script))
+  expect_gt(n_calls, 0L)
+})

@@ -924,7 +924,11 @@
 }
 
 #' @keywords internal
-.simCompareStimgateFailureRows <- function(truthTbl, errorMessage) {
+.simCompareStimgateFailureRows <- function(
+  truthTbl,
+  errorMessage,
+  locThresholdMethod = NA_character_
+) {
   truthTbl |>
     dplyr::mutate(
       approach = "stimgate",
@@ -950,6 +954,7 @@
       locGeneratedDirect = NA,
       locSource = NA_character_,
       locReason = NA_character_,
+      locThresholdMethod = as.character(.env$locThresholdMethod),
       error = errorMessage
     )
 }
@@ -1029,6 +1034,35 @@
   )
 }
 
+#' Read the local-FDR threshold method StimGate saved for one marker
+#'
+#' Errors when the saved channel settings lack a valid method, so output rows
+#' are never labelled with a method StimGate did not record.
+#'
+#' @keywords internal
+.simCompareStimgateLocThresholdMethod <- function(
+  pathProject,
+  marker,
+  chnl = "F1"
+) {
+  # Saved settings are keyed by marker label; fall back to the channel.
+  settings <- stimgate::stimgateMetaReadSettingsChnls(pathProject)
+  entry <- settings[[marker]] %||% purrr::detect(
+    settings,
+    function(x) identical(x[["chnlCut"]], chnl)
+  )
+  method <- entry[["locThresholdMethod"]]
+  if (
+    !is.character(method) || length(method) != 1L || is.na(method) ||
+      !method %in% c("region", "match")
+  ) {
+    stop(
+      "StimGate saved no valid locThresholdMethod for marker ", marker, "."
+    )
+  }
+  method
+}
+
 #' @keywords internal
 .simCompareStimgateRows <- function(
   gs,
@@ -1066,6 +1100,7 @@
   locMarginalRefQuantile = 0.75,
   clusterGates = FALSE,
   locEnforceShapeThreshold = FALSE,
+  locThresholdMethod = "region",
   calcCytPosGates = FALSE,
   includeLocCondition = FALSE,
   includeLocDetails = includeLocCondition
@@ -1123,6 +1158,7 @@
           locProbCol = locProbCol,
           locMinPeakProb = locMinPeakProb,
           locEnforceShapeThreshold = locEnforceShapeThreshold,
+          locThresholdMethod = locThresholdMethod,
           locDipAlpha = locDipAlpha,
           locAntimodeHeightFrac = locAntimodeHeightFrac,
           locAntimodeLowRel = locAntimodeLowRel,
@@ -1136,6 +1172,13 @@
           minCell = minCell
         )
       ))
+
+      # Record the threshold method StimGate saved for the marker, so output
+      # rows show the method actually used rather than only the request.
+      locThresholdMethodUsed <- .simCompareStimgateLocThresholdMethod(
+        pathProject = pathProject,
+        marker = "MarkerF1"
+      )
 
       # Extract final cluster-refined StimGate gates and statistics
       gateTblFinal <- tryCatch(
@@ -1292,6 +1335,7 @@
               locGeneratedDirect = provenance$locGeneratedDirect,
               locSource = provenance$locSource,
               locReason = provenance$locReason,
+              locThresholdMethod = locThresholdMethodUsed,
               error = NA_character_
             )
           })
@@ -1342,13 +1386,18 @@
             locGenerated = NA,
             locGeneratedDirect = NA,
             locSource = NA_character_,
-            locReason = NA_character_
+            locReason = NA_character_,
+            locThresholdMethod = NA_character_
           )
         )
 
         detailTbl <- detailTbl |>
           dplyr::mutate(
             approach = "stimgate",
+            locThresholdMethod = dplyr::coalesce(
+              as.character(.data$locThresholdMethod),
+              locThresholdMethodUsed
+            ),
             method = paste0("stimgate_", .data$method),
             propRespEst = dplyr::coalesce(
               suppressWarnings(as.numeric(.data$propRespEst)),
@@ -1395,6 +1444,7 @@
           locGeneratedDirect,
           locSource,
           locReason,
+          locThresholdMethod,
           error,
           dplyr::everything()
         )
@@ -1402,7 +1452,8 @@
     error = function(e) {
       .simCompareStimgateFailureRows(
         truthTbl = truthTbl,
-        errorMessage = e$message
+        errorMessage = e$message,
+        locThresholdMethod = locThresholdMethod
       )
     }
   )
@@ -1445,6 +1496,7 @@
   covEvMax = 2,
   clusterGates = FALSE,
   locEnforceShapeThreshold = FALSE,
+  locThresholdMethod = "region",
   minCell = 1e2,
   # Retained for callers/manifests; gateStim no longer uses these settings.
   maxPosProbX = Inf,
@@ -1641,6 +1693,7 @@
       locMarginalRefQuantile = locMarginalRefQuantile,
       clusterGates = clusterGates,
       locEnforceShapeThreshold = locEnforceShapeThreshold,
+      locThresholdMethod = locThresholdMethod,
       calcCytPosGates = calcCytPosGates,
       includeLocCondition = includeLocCondition,
       includeLocDetails = includeLocDetails
@@ -1911,6 +1964,20 @@
     isTRUE(all(rowSums(counts) == .data$nCellStim))
 }
 
+# TRUE when every StimGate row records `locThresholdMethod` equal to the
+# requested method.
+.simCompareCacheLocThresholdMethodOk <- function(cached, locThresholdMethod) {
+  if (!all(c("approach", "locThresholdMethod") %in% names(cached))) {
+    return(FALSE)
+  }
+  isStimgate <- cached$approach %in% "stimgate"
+  if (!any(isStimgate)) {
+    return(FALSE)
+  }
+  used <- as.character(cached$locThresholdMethod[isStimgate])
+  !anyNA(used) && all(used == locThresholdMethod)
+}
+
 #' Validate scenario cached output against grid row settings
 #'
 #' @keywords internal
@@ -1919,9 +1986,18 @@
   row,
   nSample = NULL,
   nIter = NULL,
-  retryErrors = FALSE
+  retryErrors = FALSE,
+  locThresholdMethod = NULL
 ) {
   if (!is.data.frame(cached) || nrow(cached) == 0L) {
+    return(FALSE)
+  }
+
+  # Outputs from before the threshold method was recorded, or made with
+  # another method, are not reused.
+  if (!is.null(locThresholdMethod) && !.simCompareCacheLocThresholdMethodOk(
+    cached, locThresholdMethod
+  )) {
     return(FALSE)
   }
 
@@ -2210,6 +2286,7 @@
   covEvMax = 2,
   clusterGates = FALSE,
   locEnforceShapeThreshold = FALSE,
+  locThresholdMethod = "region",
   calcCytPosGates = FALSE,
   includeLocCondition = FALSE,
   includeLocDetails = includeLocCondition,
@@ -2285,7 +2362,8 @@
         row = row,
         nSample = nSample,
         nIter = nIter,
-        retryErrors = retryErrors
+        retryErrors = retryErrors,
+        locThresholdMethod = locThresholdMethod
       )
     ) {
       if (!is.null(p)) {
@@ -2485,6 +2563,7 @@
         covEvMax = covEvMax,
         clusterGates = clusterGates,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
+        locThresholdMethod = locThresholdMethod,
         calcCytPosGates = calcCytPosGates,
         includeLocCondition = includeLocCondition,
         includeLocDetails = includeLocDetails,
@@ -2567,6 +2646,7 @@
           locGeneratedDirect = NA,
           locSource = NA_character_,
           locReason = NA_character_,
+          locThresholdMethod = NA_character_,
           error = e$message
         )
       )
@@ -2606,6 +2686,7 @@
   covEvMax = 2,
   clusterGates = FALSE,
   locEnforceShapeThreshold = FALSE,
+  locThresholdMethod = "region",
   calcCytPosGates = FALSE,
   includeLocCondition = FALSE,
   includeLocDetails = includeLocCondition,
@@ -2656,6 +2737,7 @@
       covEvMax = covEvMax,
       clusterGates = clusterGates,
       locEnforceShapeThreshold = locEnforceShapeThreshold,
+      locThresholdMethod = locThresholdMethod,
       calcCytPosGates = calcCytPosGates,
       includeLocCondition = includeLocCondition,
       includeLocDetails = includeLocDetails,

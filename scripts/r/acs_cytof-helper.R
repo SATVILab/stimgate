@@ -138,13 +138,97 @@
   invisible(TRUE)
 }
 
-.acsCytofValidateComparisonManifest <- function(table) {
+# A saved StimGate result must record the requested local-FDR threshold
+# method, and every channel's saved settings must have resolved to it.
+# Results made before the method was recorded (matched gates) are rejected.
+.acsCytofValidateStimGateMethod <- function(manifest, locThresholdMethod) {
+  recorded <- manifest$settings$locThresholdMethod
+  resolved <- vapply(
+    manifest$channelSettings,
+    function(x) {
+      method <- if (is.list(x)) x[["locThresholdMethod"]] else NULL
+      if (length(method) == 1L) as.character(method) else NA_character_
+    },
+    character(1)
+  )
+  if (!identical(recorded, locThresholdMethod) || !length(resolved) ||
+      !all(resolved %in% locThresholdMethod)) {
+    stop(
+      "ACS StimGate result was not made with locThresholdMethod = '",
+      locThresholdMethod, "' (recorded: '",
+      paste(recorded, collapse = ", "), "'); re-run all methods."
+    )
+  }
+  invisible(TRUE)
+}
+
+# The analysis 9 run manifest records the StimGate threshold method used for
+# the saved comparison; a manifest without it (or with another) is rejected.
+.acsCytofCheckRunManifestMethod <- function(
+    manifest, locThresholdMethod, qmdPath) {
+  if (!identical(
+    manifest$stimgate_loc_threshold_method, locThresholdMethod
+  )) {
+    .analysis_cache_error(
+      "acs_cytof",
+      paste0(
+        "Cached stimgate_loc_threshold_method does not match '",
+        locThresholdMethod, "'."
+      ),
+      qmdPath
+    )
+  }
+  invisible(manifest)
+}
+
+# Read a saved StimGate project's ACS manifest, checking that it matches the
+# project's saved channel settings and the requested threshold method.
+.acsCytofReadStimGateManifest <- function(path, locThresholdMethod) {
+  pathManifest <- file.path(path, "acs-manifest.rds")
+  if (!file.exists(pathManifest)) {
+    stop("ACS StimGate manifest missing; re-run all methods.")
+  }
+  manifest <- readRDS(pathManifest)
+  if (!identical(
+    manifest$channelSettings, stimgate::stimgateMetaReadSettingsChnls(path)
+  )) {
+    stop("Mismatched ACS StimGate settings manifest; re-run all methods.")
+  }
+  .acsCytofValidateStimGateMethod(manifest, locThresholdMethod)
+  manifest
+}
+
+.acsCytofValidateComparisonManifest <- function(
+    table, locThresholdMethod = "region") {
   manifest <- attr(table, "manifest")
   if (is.null(manifest$methods) || !length(manifest$methods) ||
       is.null(manifest$comparisonSettings) || is.null(manifest$manualInputHash) ||
       !"thresholdFailed" %in% names(table)) {
     stop("Legacy or incomplete ACS comparison manifest; re-run analysis 9 with RUN_SIMULATIONS=true RUN_PLOTS=false.")
   }
-  for (population in manifest$methods) .acsCytofValidateManifests(population)
+  if (!identical(
+    manifest$comparisonSettings$locThresholdMethod, locThresholdMethod
+  )) {
+    stop(
+      "ACS comparison does not record StimGate locThresholdMethod = '",
+      locThresholdMethod, "'; re-run analysis 9 with ",
+      "RUN_SIMULATIONS=true RUN_PLOTS=false."
+    )
+  }
+  for (population in manifest$methods) {
+    .acsCytofValidateManifests(population)
+    if (!is.null(population$stimgate)) {
+      .acsCytofValidateStimGateMethod(population$stimgate, locThresholdMethod)
+    }
+  }
+  isStimGate <- as.character(table$method) %in% "stimgate"
+  if (any(isStimGate) && (!"locThresholdMethod" %in% names(table) ||
+    !all(table$locThresholdMethod[isStimGate] %in% locThresholdMethod))) {
+    stop(
+      "ACS StimGate rows do not record locThresholdMethod = '",
+      locThresholdMethod, "'; re-run analysis 9 with ",
+      "RUN_SIMULATIONS=true RUN_PLOTS=false."
+    )
+  }
   invisible(TRUE)
 }

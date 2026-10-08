@@ -133,9 +133,10 @@ test_that("cache reads reject results made with other settings", {
   path <- withr::local_tempfile(fileext = ".rds")
   grid <- env$.simLowSepGrid(1L)
   settings <- env$.simLowSepCacheSettings(grid, 2L, env$.simLowSepMainSettings(), 1L, list(sim_size = "final"))
-  env$.simLowSepWriteCache(list(x = 1), settings, path)
+  results <- list(gates = tibble::tibble(gate = 1, locThresholdMethod = "region"))
+  env$.simLowSepWriteCache(results, settings, path)
   withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA)
-  expect_equal(env$.simLowSepReadCache(path, settings, c("sim", "test")), list(x = 1))
+  expect_equal(env$.simLowSepReadCache(path, settings, c("sim", "test")), results)
   other <- env$.simLowSepCacheSettings(grid, 3L, env$.simLowSepMainSettings(), 1L, list(sim_size = "final"))
   expect_error(env$.simLowSepReadCache(path, other, c("sim", "test")), "different settings")
 })
@@ -150,6 +151,7 @@ test_that("one small scenario gates, validates against the package and plots", {
   expect_named(res, c("gates", "counts", "cells"))
   expect_equal(nrow(res$gates), 4L)
   expect_true(all(res$gates$gate_cyt <= res$gates$gate))
+  expect_true(all(res$gates$locThresholdMethod == "region"))
   # Every cell of every tube is counted once per gate type.
   tube_n <- res$counts |>
     dplyr::group_by(.data$sample, .data$tube, .data$gate_type) |>

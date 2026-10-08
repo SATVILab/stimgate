@@ -82,7 +82,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v17"
+comparison_semantics_version <- "batch-mismatch-comparison-v18"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -201,6 +201,9 @@ stimgate_bw_max <- "none"
 # Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
 cluster_gates <- TRUE
 loc_enforce_shape_threshold <- FALSE
+# Condition-level local-FDR gate: the lower boundary of the region kept by
+# filtering ("region"), rather than probability-sum matching ("match").
+stimgate_loc_threshold_method <- "region"
 calc_cyt_pos_gates <- FALSE
 # Each dataset of `n_sample_sim` samples is gated together (shared settings
 # and cluster gates), so the dataset is the unit for uncertainty. Draft keeps
@@ -462,6 +465,7 @@ analysis_result_params <- list(
   stimgate_bw_max = stimgate_bw_max,
   cluster_gates = cluster_gates,
   loc_enforce_shape_threshold = loc_enforce_shape_threshold,
+  stimgate_loc_threshold_method = stimgate_loc_threshold_method,
   calc_cyt_pos_gates = calc_cyt_pos_gates,
   fbeta_beta = fbeta_beta,
   fbeta_theta = fbeta_theta,
@@ -532,6 +536,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     covEvMax = 1.5,
     clusterGates = cluster_gates,
     locEnforceShapeThreshold = loc_enforce_shape_threshold,
+    locThresholdMethod = stimgate_loc_threshold_method,
     calcCytPosGates = calc_cyt_pos_gates,
     pathFbeta = path_fbeta,
     fbetaBeta = fbeta_beta,
@@ -591,6 +596,7 @@ if (isTRUE(run_simulations) && sim_grid_chunk_index == 1L) {
       covEvMax = 1.5,
       clusterGates = cluster_gates,
       locEnforceShapeThreshold = loc_enforce_shape_threshold,
+      locThresholdMethod = stimgate_loc_threshold_method,
       calcCytPosGates = calc_cyt_pos_gates,
       pathFbeta = path_fbeta,
       fbetaBeta = fbeta_beta,
@@ -1690,6 +1696,7 @@ compare_one <- .simCompareRunScenario(
   covEvMax = 1.5,
   clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
+  locThresholdMethod = stimgate_loc_threshold_method,
   calcCytPosGates = calc_cyt_pos_gates,
   pathFbeta = path_fbeta,
   fbetaBeta = fbeta_beta,

@@ -90,6 +90,12 @@ test_that("the reusable population runner preserves the ACS StimGate contract", 
   expect_identical(formals(env$.acsCytofRunPopulation)$biasUnsFactor, 1)
   expect_true(grepl("calcCytPosGates = TRUE", runner_body, fixed = TRUE))
   expect_true(grepl("clusterGates = TRUE", runner_body, fixed = TRUE))
+  expect_identical(
+    formals(env$.acsCytofRunPopulation)$locThresholdMethod, "region"
+  )
+  expect_true(grepl(
+    "locThresholdMethod = locThresholdMethod", runner_body, fixed = TRUE
+  ))
 })
 
 test_that("analysis 9 uses one runner for the tester and configured populations", {

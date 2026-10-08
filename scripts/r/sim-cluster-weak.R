@@ -101,8 +101,32 @@
     )
 }
 
+# Cached-result semantics. v2: `settings$loc_threshold_method` is passed to
+# stimControl(locThresholdMethod = ) and recorded in the gate rows; v1 caches
+# used probability-sum matching without recording it.
+.simClusterWeakSemantics <- "cluster-weak-v2"
+
+# The local-FDR threshold method StimGate resolved and saved for every channel.
+.simClusterWeakThresholdMethod <- function(path_project, requested) {
+  saved <- stimgate::stimgateMetaReadSettingsChnls(path_project)
+  method <- unique(vapply(saved, function(x) {
+    as.character(x$locThresholdMethod %||% NA_character_)
+  }, character(1L)))
+  if (!identical(method, requested)) {
+    stop("StimGate saved locThresholdMethod '",
+      paste(method, collapse = "', '"), "' but '", requested,
+      "' was requested.")
+  }
+  method
+}
+
 .simClusterWeakRun <- function(settings) {
   .analysis_require_packages(c("simcyto", "flowCore", "flowWorkspace"))
+  loc_threshold_method <- settings$loc_threshold_method
+  if (!is.character(loc_threshold_method) ||
+      length(loc_threshold_method) != 1L) {
+    stop("settings$loc_threshold_method must be set explicitly.")
+  }
   .analysis_with_seed(settings$seed, {
     data <- .simClusterWeakCells(settings)
     path <- tempfile("cluster-weak-")
@@ -119,9 +143,11 @@
       biasUns = settings$bias_uns,
       control = stimgate::stimControl(
         clusterGates = TRUE, calcCytPosGates = FALSE,
-        bwCluster = settings$bw, locEnforceShapeThreshold = FALSE
+        bwCluster = settings$bw, locEnforceShapeThreshold = FALSE,
+        locThresholdMethod = loc_threshold_method
       )
     )
+    method <- .simClusterWeakThresholdMethod(path, loc_threshold_method)
     details <- stimgate::getStimGatesDetailed(path, chnl = "F1")
     allocations <- details |>
       dplyr::filter(.data$detailObject == "locClusterQuantileTbl", .data$detailPathStage == "init")
@@ -152,7 +178,8 @@
     gates <- dplyr::bind_rows(
       allocations |> dplyr::transmute(ind = as.character(.data$ind), stage = "Before", threshold = .data$cpOrigQuantMin),
       allocations |> dplyr::transmute(ind = as.character(.data$ind), stage = "After", threshold = .data$cpJoinTgOrig)
-    ) |> dplyr::left_join(data$settings_table, by = "ind")
+    ) |> dplyr::left_join(data$settings_table, by = "ind") |>
+      dplyr::mutate(locThresholdMethod = .env$method)
     scores <- .simClusterWeakScore(data$cells, gates)
     # Both gate versions are applied by the package and appear in its statistics.
     stats <- stimgate::getStimStats(path) |>
@@ -165,7 +192,7 @@
         !isTRUE(all.equal(as.numeric(scored$nPosStim), as.numeric(scored$package_nPosStim)))) {
       stop("Truth-based positive counts disagree with package statistics.")
     }
-    list(semantics = "cluster-weak-v1", settings = settings,
+    list(semantics = .simClusterWeakSemantics, settings = settings,
          settings_table = data$settings_table, cells = data$cells,
          allocations = allocations, scores = scored,
          changes = .simClusterWeakChanges(scored))
@@ -173,8 +200,12 @@
 }
 
 .simClusterWeakValidate <- function(result, settings) {
-  if (!identical(result$semantics, "cluster-weak-v1") || !identical(result$settings, settings)) {
+  if (!identical(result$semantics, .simClusterWeakSemantics) || !identical(result$settings, settings)) {
     stop("Weak-response cache settings changed; rerun simulations with the same profile.")
+  }
+  if (!"locThresholdMethod" %in% names(result$scores) ||
+      !identical(unique(result$scores$locThresholdMethod), settings$loc_threshold_method)) {
+    stop("Weak-response cache does not record the requested locThresholdMethod.")
   }
   expected <- 2L * (settings$n_strong + settings$n_weak)
   if (nrow(result$scores) != expected || anyDuplicated(result$scores[, c("ind", "stage")]) ||
