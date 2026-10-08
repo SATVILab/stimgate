@@ -181,7 +181,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] stimgate_0.99.26
+#> [1] stimgate_0.99.27
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] utf8_1.2.6           tidyr_1.3.2          sass_0.4.10         

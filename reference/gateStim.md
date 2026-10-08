@@ -189,7 +189,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpXUL5YM/custom_gating_1aea2124133e"
+#> [1] "/tmp/Rtmp1UDodt/custom_gating_1a9835947dee"
 
 # Gate in-memory matrices; column names act as channels and markers
 matrices <- lapply(seq_along(gs), function(i) {
@@ -200,7 +200,7 @@ gateStim(
   chnl = exampleData$chnl, control = stimControl(calcCytPosGates = FALSE)
 )
 #> shared bandwidth for BC1(La139)Dd: 0.186
-#> shared bandwidth for BC2(Pr141)Dd: 0.188
+#> shared bandwidth for BC2(Pr141)Dd: 0.187
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -212,5 +212,5 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpXUL5YM/matrix_gating_1aea5dbb1a72"
+#> [1] "/tmp/Rtmp1UDodt/matrix_gating_1a985079acf7"
 ```
