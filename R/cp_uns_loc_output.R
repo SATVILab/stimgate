@@ -159,7 +159,7 @@
   }
   if (identical(method, "region")) {
     # Probability-sum estimate, kept as a diagnostic only: it is not the
-    # frequency at the region gate, and propBsDiff records how far apart they are.
+    # frequency at the region gate. propBsDiff records the difference.
     propBsEst <- .getCpUnsLocProbBsEst(dataThreshold)
     propBsDiff <- freqTbl$propBs[[1L]] - propBsEst
   }

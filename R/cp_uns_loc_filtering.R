@@ -264,7 +264,11 @@
   marginalInfo
 ) {
   num <- function(x) suppressWarnings(as.numeric(x %||% NA_real_)[1L])
-  xGlobal <- if (isTRUE(globalInfo$applied)) num(globalInfo$thresholdX) else NA_real_
+  xGlobal <- if (isTRUE(globalInfo$applied)) {
+    num(globalInfo$thresholdX)
+  } else {
+    NA_real_
+  }
   xMarginal <- num(marginalInfo$finalStartX)
   candidates <- c(
     shape = num(shapeLowerBoundX),

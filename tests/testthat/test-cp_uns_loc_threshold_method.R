@@ -78,7 +78,7 @@ test_that("missing per-marker and old control values resolve by inheritance", {
   expect_identical(getMethod(list(locThresholdMethod = "match")), "match")
 })
 
-test_that("region returns the boundary where matching moves the gate above it", {
+test_that("region returns the boundary when matching moves the gate up", {
   fx <- .locMethodFixture()
   pathProject <- withr::local_tempdir()
 
@@ -175,7 +175,8 @@ test_that("region keeps the no-response and failure fallbacks", {
 
   # A non-finite boundary falls back rather than gating at NA.
   noBoundary <- .locMethodGetCp(
-    fx, list(), xSum = NA_real_, pathProject = pathProject
+    fx, list(),
+    xSum = NA_real_, pathProject = pathProject
   )
   expect_false(noBoundary$locGenerated)
   expect_false(noBoundary$locGeneratedDirect)
@@ -251,7 +252,9 @@ test_that("gateStim applies the region gate on both filtering routes", {
   chnl <- exampleData$chnl[[1]]
 
   gateWith <- function(shape, method = NULL) {
-    pathProject <- file.path(withr::local_tempdir(.local_envir = parent.frame(2)), "p")
+    pathProject <- file.path(
+      withr::local_tempdir(.local_envir = parent.frame(2)), "p"
+    )
     control <- if (is.null(method)) {
       stimControl(
         clusterGates = FALSE, calcCytPosGates = FALSE,
@@ -314,8 +317,9 @@ test_that("gateStim applies the region gate on both filtering routes", {
         flowCore::exprs(flowWorkspace::gh_pop_get_data(gs[[j]], "root"))[, chnl]
       }
       row <- stats[stats$ind == ind, ]
-      expect_identical(row$countStim, sum(expr(as.integer(ind)) > gates$gate[[i]]))
-      expect_identical(row$countUns, sum(expr(indUns) > gates$gate[[i]]))
+      gate <- gates$gate[[i]]
+      expect_identical(row$countStim, sum(expr(as.integer(ind)) > gate))
+      expect_identical(row$countUns, sum(expr(indUns) > gate))
     }
   }
 })

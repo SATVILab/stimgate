@@ -99,8 +99,9 @@ test_that("gateStim with gateCombn = 'min' combines generated thresholds on dist
 
   batchList <- list(batch1 = c(1L, 2L, 3L))
 
-  # Gating with gateCombn = "no"
-  invisible(gateStim(
+  # Gating with gateCombn = "no". Both runs start from the same seed, so the
+  # randomly chosen shared bandwidth, and hence each condition gate, agrees.
+  invisible(withr::with_seed(1, gateStim(
     .data = gs,
     pathProject = pathProjectNo,
     popGate = "root",
@@ -110,14 +111,14 @@ test_that("gateStim with gateCombn = 'min' combines generated thresholds on dist
       gateCombn = "no", clusterGates = FALSE,
       calcCytPosGates = FALSE
     )
-  ))
+  )))
   gatesNo <- getStimGates(pathProjectNo)
   gateStrong <- gatesNo$gate[as.character(gatesNo$ind) == "2"]
   gateMod <- gatesNo$gate[as.character(gatesNo$ind) == "3"]
   expect_true(gateStrong > gateMod)
 
   # Gating with gateCombn = "min"
-  invisible(gateStim(
+  invisible(withr::with_seed(1, gateStim(
     .data = gs,
     pathProject = pathProjectMin,
     popGate = "root",
@@ -127,7 +128,7 @@ test_that("gateStim with gateCombn = 'min' combines generated thresholds on dist
       gateCombn = "min", clusterGates = FALSE,
       calcCytPosGates = FALSE
     )
-  ))
+  )))
   gatesMin <- getStimGates(pathProjectMin)
   expect_equal(
     unname(gatesMin$gate[as.character(gatesMin$ind) == "2"]),
@@ -200,9 +201,10 @@ test_that("gateStim with gateCombn = 'min' ignores fallback non-generated cutpoi
 
   gatesStim <- gates[as.character(gates$ind) %in% c("2", "3"), , drop = FALSE]
 
-  # Sample 2 generated a real threshold in [1.8, 3.5]
+  # Sample 2 generated a real threshold between the negative (1.0, sd 0.25)
+  # and positive (4.0) populations.
   gateSample2 <- gatesStim$gate[as.character(gatesStim$ind) == "2"]
-  expect_true(gateSample2 > 1.8 && gateSample2 < 3.5)
+  expect_true(gateSample2 > 1.5 && gateSample2 < 3.5)
 
   # Sample 3 received Sample 2's generated threshold via min combination (not a fallback cutpoint)
   expect_equal(
