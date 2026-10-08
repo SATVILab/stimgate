@@ -74,7 +74,17 @@ test_that("the TCRgd tester and full population use separate output paths", {
 test_that("the reusable population runner preserves the ACS StimGate contract", {
   env <- .load_acs_gate_env()
   runner_formals <- names(formals(env$.acsCytofRunPopulation))
-  runner_body <- paste(deparse(body(env$.acsCytofRunPopulation)), collapse = "\n")
+  # The gateStim() call itself is shared with Analysis 13.
+  runner_body <- paste(
+    c(
+      deparse(body(env$.acsCytofRunPopulation)),
+      deparse(body(env$.acsCytofGateStim))
+    ),
+    collapse = "\n"
+  )
+  expect_true(grepl(".acsCytofGateStim(", paste(
+    deparse(body(env$.acsCytofRunPopulation)), collapse = "\n"
+  ), fixed = TRUE))
 
   expect_true(all(c(
     "pop", "runPreprocessing", "runMethods", "runPlots",

@@ -341,7 +341,21 @@ Rscript analysis/tests/run_analysis_tests.R
 Each top-level analysis QMD also has an independently runnable target in
 `analysis/tests/run_qmd_tests.R`. Use `--list` to inspect the QMD-to-test mapping,
 one target number/path to run it, a comma/space-separated set, or `all`.
-Maintain the registry when adding or renaming top-level QMDs. Analysis 11 applies the ordinary and cytokine-positive gates from one
+Maintain the registry when adding or renaming top-level QMDs. Analysis 13 re-gates every ACS population with Analysis 9's settings, read
+from Analysis 9's `scientific-settings` chunk (`.acsCytofDebugSettings()`), and
+with the same population order and seed in `.acsCytofMapPopulations()` (quick
+mode: the tester, in the main session after `set.seed()`), so each population
+gets Analysis 9's random-number stream; its summary records whether every final
+gate equals Analysis 9's saved gate. It only reads Analysis 9's caches (resolve
+them with `create = FALSE`; load GatingSets with `backend_readonly = TRUE`) and
+writes to its own `cache/acs_cytof_debug/`. Each population is built in a
+temporary sibling (`.acsCytofReplaceDir()`); records are saved as tubes are
+gated, drawn once the final gates are known (one PDF per
+population/stimulation/cytokine, a page per sample) and deleted. The run
+stage draws the pages into the cache; the plot stage copies them to
+`output/fig/13-real-debug-acs-cytof/per_sample/` and shows a subset chosen at
+re-gating time (largest, closest and random StimGate-manual differences).
+Analysis 11 applies the ordinary and cytokine-positive gates from one
 `gateStim()` run to the same cells and requires its recomputed cytokine-positive
 combination counts to equal `getStimStats()`; keep that check when changing
 the positivity rule. Analysis 2 is
@@ -356,7 +370,9 @@ the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-onl
 the QMDs end to end in quick mode instead (simulate, then plot; one job per QMD). See
 `analysis/tests/README.md` for commands and coverage limits.
 
-The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked runs. Keep enabled
+The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked runs, and Analysis 13
+after Analysis 9: `sim_dependency_for_script()` makes 13's job wait `afterok` on 9's
+when both are submitted, and `dev.sh` submits 9 first whatever the order requested. Keep enabled
 chunked analyses in the `scripts` list and `chunked_qmd_stem_for_script()`
 mapping, sharing run ID, chunk count and shuffle seed across each run.
 Every simulation launcher must propagate render failures. Plot jobs receive the
@@ -554,9 +570,13 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `sim-bandwidth.R`: Simulation bandwidth utilities.
   - `sim-bandwidth-analysis-io.R` / `sim-bandwidth-analysis-plot.R`: Output-file lookup and plotting helpers for the bandwidth QMDs.
   - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2-6, followed by one delimited section of scenario/validation/collation callbacks per analysis.
-  - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating, comparator, manual-comparison and plotting helpers for analyses 9 and 10.
+  - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating, comparator, manual-comparison and plotting helpers for analyses 9 and 10. `.acsCytofGateStim()` (in `acs_cytof-gate.R`) is the one `gateStim()` call shared by Analyses 9 and 13.
+  - `acs_cytof-debug.R`: Analysis 13 (`13-real-debug-acs-cytof.qmd`): re-gates
+    each ACS population inside `.simDebugLoc()` and draws one 2c-style page per
+    stimulated tube and cytokine, adding the final `loc_minClust` gate,
+    Analysis 9's Tailgate/F-beta gates and manual frequencies.
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
-  - `sim-debug-loc.R`: `.simDebugLoc()` wraps a QMD's rerun call unchanged and uses `trace()` to record, or browse, the local-FDR gating of one sample (optionally every later one too); `.simDebugLocPlots()` / `.simDebugLocSummary()` plot and summarise it.
+  - `sim-debug-loc.R`: `.simDebugLoc()` wraps a QMD's rerun call unchanged and uses `trace()` to record, or browse, the local-FDR gating of one sample (optionally every later one too); `.simDebugLocPlots()` / `.simDebugLocSummary()` plot and summarise it. Records are counted and named per tube and channel (`dataset<k>_ind<i>_<channel>`); `sample = NULL, ind = NULL` records every tube, `tubeInfo` maps a GatingSet index to real donor/stimulus labels, and `onRecord` handles each record as soon as it is gated (e.g. saves it) so large real-data runs keep only small summaries. Plot and info helpers must work with `truth`/`sim` NULL.
   - `sim-debug-compare.R`: `.simDebugCompare()` runs F-beta and Tailgate on a `.simDebugLoc()` sample as Analyses 7/8 do; `.simDebugFigure()` combines simulation settings with each method's plots, settings and result on one x range.
   - `sim-low-separation.R`: Analysis 11 (`11-sim-low-separation-cyt-pos.qmd`): two-marker
     low-separation simulations gated once per dataset, comparing ordinary and
