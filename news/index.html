@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.27</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.28</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,25 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.28" id="stimgate-09928">stimgate 0.99.28<a class="anchor" aria-label="anchor" href="#stimgate-09928"></a></h2>
+<div class="section level3">
+<h3 id="breaking-changes-0-99-28">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-99-28"></a></h3>
+<ul><li>
+<code><a href="../reference/gateStim.html">gateStim()</a></code> starts the local-FDR response region only at a rise in the fitted response probability that itself reaches <code>stimControl(locMinRiseProb)</code> (default 1/3) before levelling off. A small early rise, often noise in small samples, could previously start the region far into the negative cells when a later rise passed the overall check. Set <code>locMinRiseProb = 0</code> for the previous behaviour.</li>
+<li>
+<code><a href="../reference/gateStim.html">gateStim()</a></code> widens the shared bandwidth for samples with fewer than <code>bwNcellMax</code> cells (10,000 by default), by <code>(bwNcellMax / n)^(1/5)</code>, so small samples are not gated on densities made bumpy by the shared bandwidth estimated on 10,000 cells. Larger samples are unchanged. Turn this off with <code>stimControl(bwScaleNcell = FALSE)</code>.</li>
+<li>When <code>biasUns</code> is not supplied, <code><a href="../reference/gateStim.html">gateStim()</a></code> now sets it to <code>biasUnsFactor</code> times the bandwidth every sample of the marker uses: a fixed <code>bw</code>, or the shared bandwidth with <code>stimControl(bwScope = "cytokine")</code> (the default). Previously it used the fallback bandwidth, a separate estimate that could differ noticeably from the bandwidth actually used. Per-sample and per-cluster bandwidths still use the fallback.</li>
+<li>
+<code><a href="../reference/gateStim.html">gateStim()</a></code> now shares gates, within a batch and within clusters, only from responders: tubes whose own gate was found by local FDR and that have more stimulated than unstimulated cells above it. Previously a tube whose model called a response could donate a low gate even when it had fewer stimulated than unstimulated cells above it, and tubes whose gate was replaced in the batch step could no longer donate in the cluster step. When no tube in a batch has a gate found by local FDR, each now keeps its own fallback gate instead of the lowest fallback in the batch.</li>
+<li>A lower shared gate is now accepted only within limits: down to where a responder’s background-subtracted frequency is <code>stimControl(locShareCap)</code> (default 1.5) times its sum of fitted response probabilities, and for other tubes down to where it is half a cell (<code>locShareCellCap</code>, default 0.5, divided by the number of stimulated cells) and no more than the median frequency of the responders. Setting both to <code>Inf</code> removes the limits. Gate tables record the limit used (<code>locShareLimit</code>) and the shared gate proposed (<code>locShareProposed</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="new-features-0-99-28">New features<a class="anchor" aria-label="anchor" href="#new-features-0-99-28"></a></h3>
+<ul><li>
+<code>stimControl(locThresholdMethod = "cap")</code> keeps the filtered-region gate unless the background-subtracted frequency above it is more than <code>locThresholdCap</code> (default 1.3) times the sum of fitted response probabilities. The gate then moves up to the lowest value where it is within that limit. This limits the large over-estimates the <code>"region"</code> method can give, while keeping its lower gates elsewhere.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.27" id="stimgate-09927">stimgate 0.99.27<a class="anchor" aria-label="anchor" href="#stimgate-09927"></a></h2>
 <div class="section level3">

@@ -9,7 +9,7 @@ set only the options you need to change."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.27</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.28</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,11 +58,16 @@ set only the options you need to change.</p>
 <span>  bwNcellMin <span class="op">=</span> <span class="va">bwNcellMax</span>,</span>
 <span>  bwNcellMax <span class="op">=</span> <span class="fl">10000</span>,</span>
 <span>  bwCluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  bwScaleNcell <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  clusterGates <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  gateCombn <span class="op">=</span> <span class="st">"min"</span>,</span>
 <span>  locProbCol <span class="op">=</span> <span class="st">"pred"</span>,</span>
 <span>  locMinPeakProb <span class="op">=</span> <span class="fl">0.25</span>,</span>
+<span>  locMinRiseProb <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">3</span>,</span>
 <span>  locThresholdMethod <span class="op">=</span> <span class="st">"region"</span>,</span>
+<span>  locThresholdCap <span class="op">=</span> <span class="fl">1.3</span>,</span>
+<span>  locShareCap <span class="op">=</span> <span class="fl">1.5</span>,</span>
+<span>  locShareCellCap <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  locEnforceShapeThreshold <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  locDipAlpha <span class="op">=</span> <span class="fl">0.2</span>,</span>
 <span>  locAntimodeHeightFrac <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">6</span>,</span>
@@ -110,7 +115,9 @@ count are skipped. Default: 100.</p></dd>
 
 <dt id="arg-biasunsfactor">biasUnsFactor<a class="anchor" aria-label="anchor" href="#arg-biasunsfactor"></a></dt>
 <dd><p>numeric Automatic <code>biasUns</code> (when <code>biasUns</code> is NULL)
-equals this factor times the fallback bandwidth <code>bwFallback</code>. Default: 1.</p></dd>
+equals this factor times the bandwidth every sample of the marker uses
+(a fixed <code>bw</code>, or the shared bandwidth with <code>bwScope = "cytokine"</code>), and
+otherwise times the fallback bandwidth <code>bwFallback</code>. Default: 1.</p></dd>
 
 
 <dt id="arg-excmin">excMin<a class="anchor" aria-label="anchor" href="#arg-excmin"></a></dt>
@@ -190,19 +197,31 @@ NULL uses the shared local-FDR bandwidth, or with <code>bwScope = "sample"</code
 the median bandwidth of samples with direct thresholds. Default: NULL.</p></dd>
 
 
+<dt id="arg-bwscalencell">bwScaleNcell<a class="anchor" aria-label="anchor" href="#arg-bwscalencell"></a></dt>
+<dd><p>logical Widen a shared bandwidth (<code>bwScope</code>
+"cytokine" or "cluster") for samples whose smaller tube has fewer than
+<code>bwNcellMax</code> cells, by <code>(bwNcellMax / n)^(1/5)</code>, the rate at which a
+normal-reference bandwidth grows as cells decrease. The shared bandwidth
+is estimated on <code>bwNcellMax</code> cells; larger samples keep it. Default:
+TRUE.</p></dd>
+
+
 <dt id="arg-clustergates">clusterGates<a class="anchor" aria-label="anchor" href="#arg-clustergates"></a></dt>
 <dd><p>logical Share thresholds across clusters of paired
-stimulated/control densities on a common expression grid. With at least
-three direct thresholds, clip them to the cluster's 15th and 85th
-percentiles. Replace non-direct thresholds by the 60th percentile of
-available direct thresholds; retain high thresholds when none are
-available. Default: TRUE.</p></dd>
+stimulated/control densities on a common expression grid. Only
+responders (see Details) share their thresholds. With at least three
+responders in a cluster, clip their thresholds to the cluster's 15th and
+85th percentiles. Give other tubes the 60th percentile of the responders'
+thresholds; retain high thresholds when a cluster has no responder.
+Lowered thresholds are limited by <code>locShareCap</code> and <code>locShareCellCap</code>.
+Default: TRUE.</p></dd>
 
 
 <dt id="arg-gatecombn">gateCombn<a class="anchor" aria-label="anchor" href="#arg-gatecombn"></a></dt>
-<dd><p>character vector Combine direct condition-level thresholds
-within a batch: "no", "min", "median", "max", or "prejoin". Excludes
-fallback above-range cutpoints. Default: "min".</p></dd>
+<dd><p>character vector Combine the thresholds of responders (see
+Details) within a batch: "no", "min", "median", "max", or "prejoin".
+Lowered thresholds are limited by <code>locShareCap</code> and <code>locShareCellCap</code>.
+Default: "min".</p></dd>
 
 
 <dt id="arg-locprobcol">locProbCol<a class="anchor" aria-label="anchor" href="#arg-locprobcol"></a></dt>
@@ -216,14 +235,49 @@ probability). Default: "pred".</p></dd>
 directly generated local-FDR threshold. Default: 0.25.</p></dd>
 
 
+<dt id="arg-locminriseprob">locMinRiseProb<a class="anchor" aria-label="anchor" href="#arg-locminriseprob"></a></dt>
+<dd><p>numeric Minimum response probability that a rise in
+the fitted probability must reach, where it levels off, before the next
+rise, for its steepest point to start the response region. Rises that
+level off lower are skipped in favour of the next one to the right. 0
+turns the check off. Default: 1/3.</p></dd>
+
+
 <dt id="arg-locthresholdmethod">locThresholdMethod<a class="anchor" aria-label="anchor" href="#arg-locthresholdmethod"></a></dt>
 <dd><p>character How the condition-level gate is chosen
 from the local-FDR filtering: "region" uses the lower boundary of the
 region kept by filtering (<code>xSum</code> in diagnostics) as the gate; "match"
 moves the gate to where the background-subtracted frequency equals the
 sum of fitted response probabilities, which was the only method before
-stimgate 0.99.26. Cells count as positive when strictly above the gate.
-Default: "region".</p></dd>
+stimgate 0.99.26; "cap" keeps the region boundary unless the
+background-subtracted frequency above it exceeds the sum of fitted
+response probabilities by more than the factor <code>locThresholdCap</code>, in
+which case the gate moves to the lowest value at or above the boundary
+where it no longer does. Cells count as positive when strictly above the
+gate. Default: "region".</p></dd>
+
+
+<dt id="arg-locthresholdcap">locThresholdCap<a class="anchor" aria-label="anchor" href="#arg-locthresholdcap"></a></dt>
+<dd><p>numeric Largest allowed ratio of the
+background-subtracted frequency to the sum of fitted response
+probabilities under <code>locThresholdMethod = "cap"</code>; at least 1. Default:
+1.3.</p></dd>
+
+
+<dt id="arg-locsharecap">locShareCap<a class="anchor" aria-label="anchor" href="#arg-locsharecap"></a></dt>
+<dd><p>numeric How far a shared gate may lower a responder's
+gate: only while the background-subtracted frequency stays at most this
+multiple of the tube's sum of fitted response probabilities. At least 1;
+Inf accepts any lower shared gate. See Details. Default: 1.5.</p></dd>
+
+
+<dt id="arg-locsharecellcap">locShareCellCap<a class="anchor" aria-label="anchor" href="#arg-locsharecellcap"></a></dt>
+<dd><p>numeric How far a shared gate may lower the gate of
+a tube that is not a responder: only while its background-subtracted
+frequency stays at most this many cells divided by its number of
+stimulated cells, and at most the median frequency of the responders
+sharing their gates. At least 0; Inf switches this limit off. See
+Details. Default: 0.5.</p></dd>
 
 
 <dt id="arg-locenforceshapethreshold">locEnforceShapeThreshold<a class="anchor" aria-label="anchor" href="#arg-locenforceshapethreshold"></a></dt>
@@ -379,6 +433,19 @@ Box-Cox transformations for scalar bandwidths only. Default: "moments".</p></dd>
 selection and sharing, threshold sharing, local-FDR filtering, then adaptive
 and normalised bandwidths. A fixed <code>bw</code> on <code><a href="gateStim.html">gateStim()</a></code> overrides automatic
 bandwidth selection. Use its <code>markerControl</code> for per-marker settings.</p>
+<p>Thresholds are shared within a batch (<code>gateCombn</code>) and then within
+clusters (<code>clusterGates</code>). Only responders share their thresholds: tubes
+whose own threshold was found by local FDR and that have more stimulated
+than unstimulated cells above it (counting unshifted unstimulated
+expression, as <code><a href="getStimStats.html">getStimStats()</a></code> does). When a shared threshold is lower than
+a responder's threshold, the responder accepts it only down to the lowest
+value where its background-subtracted frequency is at most <code>locShareCap</code>
+times its sum of fitted response probabilities. Any other tube accepts a
+shared threshold only down to the lowest value where its frequency is at
+most <code>locShareCellCap</code> cells divided by its number of stimulated cells, and
+at most the median frequency of the responders sharing their thresholds.
+Higher shared thresholds are accepted unchanged by responders. Setting both
+limits to Inf shares responders' thresholds without limits.</p>
     </div>
 
     <div class="section level2">
@@ -426,6 +493,9 @@ bandwidth selection. Use its <code>markerControl</code> for per-marker settings.
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwCluster</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $bwScaleNcell</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $clusterGates</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -438,8 +508,20 @@ bandwidth selection. Use its <code>markerControl</code> for per-marker settings.
 <span class="r-out co"><span class="r-pr">#&gt;</span> $locMinPeakProb</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.25</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $locMinRiseProb</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.3333333</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $locThresholdMethod</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "region"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $locThresholdCap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $locShareCap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $locShareCellCap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $locEnforceShapeThreshold</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
@@ -570,6 +652,9 @@ bandwidth selection. Use its <code>markerControl</code> for per-marker settings.
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bwCluster</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $bwScaleNcell</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $clusterGates</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -582,8 +667,20 @@ bandwidth selection. Use its <code>markerControl</code> for per-marker settings.
 <span class="r-out co"><span class="r-pr">#&gt;</span> $locMinPeakProb</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.25</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $locMinRiseProb</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.3333333</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $locThresholdMethod</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "region"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $locThresholdCap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $locShareCap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $locShareCellCap</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $locEnforceShapeThreshold</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>

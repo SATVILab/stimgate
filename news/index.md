@@ -1,5 +1,59 @@
 # Changelog
 
+## stimgate 0.99.28
+
+### Breaking changes
+
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  starts the local-FDR response region only at a rise in the fitted
+  response probability that itself reaches `stimControl(locMinRiseProb)`
+  (default 1/3) before levelling off. A small early rise, often noise in
+  small samples, could previously start the region far into the negative
+  cells when a later rise passed the overall check. Set
+  `locMinRiseProb = 0` for the previous behaviour.
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  widens the shared bandwidth for samples with fewer than `bwNcellMax`
+  cells (10,000 by default), by `(bwNcellMax / n)^(1/5)`, so small
+  samples are not gated on densities made bumpy by the shared bandwidth
+  estimated on 10,000 cells. Larger samples are unchanged. Turn this off
+  with `stimControl(bwScaleNcell = FALSE)`.
+- When `biasUns` is not supplied,
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  now sets it to `biasUnsFactor` times the bandwidth every sample of the
+  marker uses: a fixed `bw`, or the shared bandwidth with
+  `stimControl(bwScope = "cytokine")` (the default). Previously it used
+  the fallback bandwidth, a separate estimate that could differ
+  noticeably from the bandwidth actually used. Per-sample and
+  per-cluster bandwidths still use the fallback.
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  now shares gates, within a batch and within clusters, only from
+  responders: tubes whose own gate was found by local FDR and that have
+  more stimulated than unstimulated cells above it. Previously a tube
+  whose model called a response could donate a low gate even when it had
+  fewer stimulated than unstimulated cells above it, and tubes whose
+  gate was replaced in the batch step could no longer donate in the
+  cluster step. When no tube in a batch has a gate found by local FDR,
+  each now keeps its own fallback gate instead of the lowest fallback in
+  the batch.
+- A lower shared gate is now accepted only within limits: down to where
+  a responder’s background-subtracted frequency is
+  `stimControl(locShareCap)` (default 1.5) times its sum of fitted
+  response probabilities, and for other tubes down to where it is half a
+  cell (`locShareCellCap`, default 0.5, divided by the number of
+  stimulated cells) and no more than the median frequency of the
+  responders. Setting both to `Inf` removes the limits. Gate tables
+  record the limit used (`locShareLimit`) and the shared gate proposed
+  (`locShareProposed`).
+
+### New features
+
+- `stimControl(locThresholdMethod = "cap")` keeps the filtered-region
+  gate unless the background-subtracted frequency above it is more than
+  `locThresholdCap` (default 1.3) times the sum of fitted response
+  probabilities. The gate then moves up to the lowest value where it is
+  within that limit. This limits the large over-estimates the `"region"`
+  method can give, while keeping its lower gates elsewhere.
+
 ## stimgate 0.99.27
 
 ### Bug fixes

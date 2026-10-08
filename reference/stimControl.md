@@ -22,11 +22,16 @@ stimControl(
   bwNcellMin = bwNcellMax,
   bwNcellMax = 10000,
   bwCluster = NULL,
+  bwScaleNcell = TRUE,
   clusterGates = TRUE,
   gateCombn = "min",
   locProbCol = "pred",
   locMinPeakProb = 0.25,
+  locMinRiseProb = 1/3,
   locThresholdMethod = "region",
+  locThresholdCap = 1.3,
+  locShareCap = 1.5,
+  locShareCellCap = 0.5,
   locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1/6,
@@ -73,7 +78,9 @@ stimControl(
 - biasUnsFactor:
 
   numeric Automatic `biasUns` (when `biasUns` is NULL) equals this
-  factor times the fallback bandwidth `bwFallback`. Default: 1.
+  factor times the bandwidth every sample of the marker uses (a fixed
+  `bw`, or the shared bandwidth with `bwScope = "cytokine"`), and
+  otherwise times the fallback bandwidth `bwFallback`. Default: 1.
 
 - excMin:
 
@@ -151,20 +158,30 @@ stimControl(
   the shared local-FDR bandwidth, or with `bwScope = "sample"`, the
   median bandwidth of samples with direct thresholds. Default: NULL.
 
+- bwScaleNcell:
+
+  logical Widen a shared bandwidth (`bwScope` "cytokine" or "cluster")
+  for samples whose smaller tube has fewer than `bwNcellMax` cells, by
+  `(bwNcellMax / n)^(1/5)`, the rate at which a normal-reference
+  bandwidth grows as cells decrease. The shared bandwidth is estimated
+  on `bwNcellMax` cells; larger samples keep it. Default: TRUE.
+
 - clusterGates:
 
   logical Share thresholds across clusters of paired stimulated/control
-  densities on a common expression grid. With at least three direct
-  thresholds, clip them to the cluster's 15th and 85th percentiles.
-  Replace non-direct thresholds by the 60th percentile of available
-  direct thresholds; retain high thresholds when none are available.
-  Default: TRUE.
+  densities on a common expression grid. Only responders (see Details)
+  share their thresholds. With at least three responders in a cluster,
+  clip their thresholds to the cluster's 15th and 85th percentiles. Give
+  other tubes the 60th percentile of the responders' thresholds; retain
+  high thresholds when a cluster has no responder. Lowered thresholds
+  are limited by `locShareCap` and `locShareCellCap`. Default: TRUE.
 
 - gateCombn:
 
-  character vector Combine direct condition-level thresholds within a
-  batch: "no", "min", "median", "max", or "prejoin". Excludes fallback
-  above-range cutpoints. Default: "min".
+  character vector Combine the thresholds of responders (see Details)
+  within a batch: "no", "min", "median", "max", or "prejoin". Lowered
+  thresholds are limited by `locShareCap` and `locShareCellCap`.
+  Default: "min".
 
 - locProbCol:
 
@@ -177,6 +194,14 @@ stimControl(
   numeric Minimum peak response probability for a directly generated
   local-FDR threshold. Default: 0.25.
 
+- locMinRiseProb:
+
+  numeric Minimum response probability that a rise in the fitted
+  probability must reach, where it levels off, before the next rise, for
+  its steepest point to start the response region. Rises that level off
+  lower are skipped in favour of the next one to the right. 0 turns the
+  check off. Default: 1/3.
+
 - locThresholdMethod:
 
   character How the condition-level gate is chosen from the local-FDR
@@ -184,8 +209,33 @@ stimControl(
   filtering (`xSum` in diagnostics) as the gate; "match" moves the gate
   to where the background-subtracted frequency equals the sum of fitted
   response probabilities, which was the only method before stimgate
-  0.99.26. Cells count as positive when strictly above the gate.
-  Default: "region".
+  0.99.26; "cap" keeps the region boundary unless the
+  background-subtracted frequency above it exceeds the sum of fitted
+  response probabilities by more than the factor `locThresholdCap`, in
+  which case the gate moves to the lowest value at or above the boundary
+  where it no longer does. Cells count as positive when strictly above
+  the gate. Default: "region".
+
+- locThresholdCap:
+
+  numeric Largest allowed ratio of the background-subtracted frequency
+  to the sum of fitted response probabilities under
+  `locThresholdMethod = "cap"`; at least 1. Default: 1.3.
+
+- locShareCap:
+
+  numeric How far a shared gate may lower a responder's gate: only while
+  the background-subtracted frequency stays at most this multiple of the
+  tube's sum of fitted response probabilities. At least 1; Inf accepts
+  any lower shared gate. See Details. Default: 1.5.
+
+- locShareCellCap:
+
+  numeric How far a shared gate may lower the gate of a tube that is not
+  a responder: only while its background-subtracted frequency stays at
+  most this many cells divided by its number of stimulated cells, and at
+  most the median frequency of the responders sharing their gates. At
+  least 0; Inf switches this limit off. See Details. Default: 0.5.
 
 - locEnforceShapeThreshold:
 
@@ -339,6 +389,22 @@ then adaptive and normalised bandwidths. A fixed `bw` on
 overrides automatic bandwidth selection. Use its `markerControl` for
 per-marker settings.
 
+Thresholds are shared within a batch (`gateCombn`) and then within
+clusters (`clusterGates`). Only responders share their thresholds: tubes
+whose own threshold was found by local FDR and that have more stimulated
+than unstimulated cells above it (counting unshifted unstimulated
+expression, as
+[`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
+does). When a shared threshold is lower than a responder's threshold,
+the responder accepts it only down to the lowest value where its
+background-subtracted frequency is at most `locShareCap` times its sum
+of fitted response probabilities. Any other tube accepts a shared
+threshold only down to the lowest value where its frequency is at most
+`locShareCellCap` cells divided by its number of stimulated cells, and
+at most the median frequency of the responders sharing their thresholds.
+Higher shared thresholds are accepted unchanged by responders. Setting
+both limits to Inf shares responders' thresholds without limits.
+
 ## Examples
 
 ``` r
@@ -385,6 +451,9 @@ stimControl()
 #> $bwCluster
 #> NULL
 #> 
+#> $bwScaleNcell
+#> [1] TRUE
+#> 
 #> $clusterGates
 #> [1] TRUE
 #> 
@@ -397,8 +466,20 @@ stimControl()
 #> $locMinPeakProb
 #> [1] 0.25
 #> 
+#> $locMinRiseProb
+#> [1] 0.3333333
+#> 
 #> $locThresholdMethod
 #> [1] "region"
+#> 
+#> $locThresholdCap
+#> [1] 1.3
+#> 
+#> $locShareCap
+#> [1] 1.5
+#> 
+#> $locShareCellCap
+#> [1] 0.5
 #> 
 #> $locEnforceShapeThreshold
 #> [1] FALSE
@@ -529,6 +610,9 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> $bwCluster
 #> NULL
 #> 
+#> $bwScaleNcell
+#> [1] TRUE
+#> 
 #> $clusterGates
 #> [1] FALSE
 #> 
@@ -541,8 +625,20 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> $locMinPeakProb
 #> [1] 0.25
 #> 
+#> $locMinRiseProb
+#> [1] 0.3333333
+#> 
 #> $locThresholdMethod
 #> [1] "region"
+#> 
+#> $locThresholdCap
+#> [1] 1.3
+#> 
+#> $locShareCap
+#> [1] 1.5
+#> 
+#> $locShareCellCap
+#> [1] 0.5
 #> 
 #> $locEnforceShapeThreshold
 #> [1] FALSE

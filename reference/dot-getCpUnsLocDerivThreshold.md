@@ -14,6 +14,7 @@ Locate x_deriv(alpha, omega, psi)
   psi,
   capRightWidth = FALSE,
   leftRiseFrac = 0.15,
-  stage
+  stage,
+  minRiseProb = NA_real_
 )
 ```

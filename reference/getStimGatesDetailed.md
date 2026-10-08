@@ -85,26 +85,34 @@ pathProject <- gateStim(
 #> batch 2 of 2
 Sys.unsetenv("STIMGATE_INTERMEDIATE")
 getStimGatesDetailed(pathProject)
-#> # A tibble: 12 × 60
-#>    pop   marker   chnl         detailLevel stage ind   threshold thresholdOrigin
-#>    <chr> <I<chr>> <chr>        <chr>       <chr> <chr>     <dbl> <chr>          
-#>  1 root  MarkerF1 BC1(La139)Dd condition   init  2          4.24 condition_dete…
-#>  2 root  MarkerF1 BC1(La139)Dd sample      init  2          4.24 condition_dete…
-#>  3 root  MarkerF1 BC1(La139)Dd condition   init  4          3.68 condition_dete…
-#>  4 root  MarkerF1 BC1(La139)Dd sample      init  4          3.68 condition_dete…
-#>  5 root  MarkerF1 BC1(La139)Dd cluster_fi… NA    2          4.24 NA             
-#>  6 root  MarkerF1 BC1(La139)Dd cluster_fi… NA    4          3.68 NA             
-#>  7 root  MarkerF2 BC2(Pr141)Dd condition   init  2          3.99 condition_dete…
-#>  8 root  MarkerF2 BC2(Pr141)Dd sample      init  2          3.99 condition_dete…
-#>  9 root  MarkerF2 BC2(Pr141)Dd condition   init  4          2.78 condition_dete…
-#> 10 root  MarkerF2 BC2(Pr141)Dd sample      init  4          2.78 condition_dete…
-#> 11 root  MarkerF2 BC2(Pr141)Dd cluster_fi… NA    2          3.99 NA             
-#> 12 root  MarkerF2 BC2(Pr141)Dd cluster_fi… NA    4          2.78 NA             
-#> # ℹ 52 more variables: locGenerated <lgl>, locGeneratedDirect <lgl>,
-#> #   locSource <chr>, locReason <chr>, bias <dbl>, propBsEst <dbl>,
-#> #   propBsDiff <dbl>, nCellStim <int>, nCellUns <int>, propStim <dbl>,
-#> #   propUns <dbl>, propBs <dbl>, locThresholdMethod <chr>, locRegionX <dbl>,
-#> #   detailObject <chr>, detailPathStage <chr>, detailPathChnl <chr>,
-#> #   detailPathInd <chr>, detailPathPop <chr>, detailSourceFile <chr>,
-#> #   grp <chr>, grpUns <chr>, grpStim <chr>, cpOrigQuantMin <dbl>, …
+#> # A tibble: 20 × 65
+#>    pop   marker   chnl        ind   detailLevel gateCombn threshold locGenerated
+#>    <chr> <I<chr>> <chr>       <chr> <chr>       <chr>         <dbl> <lgl>       
+#>  1 root  MarkerF1 BC1(La139)… 2     batch_share min            4.46 TRUE        
+#>  2 root  MarkerF1 BC1(La139)… 1     batch_share min            4.46 TRUE        
+#>  3 root  MarkerF1 BC1(La139)… 2     condition   NA             4.46 TRUE        
+#>  4 root  MarkerF1 BC1(La139)… 2     sample      NA             4.46 TRUE        
+#>  5 root  MarkerF1 BC1(La139)… 4     batch_share min            3.67 TRUE        
+#>  6 root  MarkerF1 BC1(La139)… 3     batch_share min            3.67 TRUE        
+#>  7 root  MarkerF1 BC1(La139)… 4     condition   NA             3.67 TRUE        
+#>  8 root  MarkerF1 BC1(La139)… 4     sample      NA             3.67 TRUE        
+#>  9 root  MarkerF1 BC1(La139)… 2     cluster_fi… NA             4.46 TRUE        
+#> 10 root  MarkerF1 BC1(La139)… 4     cluster_fi… NA             3.67 TRUE        
+#> 11 root  MarkerF2 BC2(Pr141)… 2     batch_share min            3.99 TRUE        
+#> 12 root  MarkerF2 BC2(Pr141)… 1     batch_share min            3.99 TRUE        
+#> 13 root  MarkerF2 BC2(Pr141)… 2     condition   NA             3.99 TRUE        
+#> 14 root  MarkerF2 BC2(Pr141)… 2     sample      NA             3.99 TRUE        
+#> 15 root  MarkerF2 BC2(Pr141)… 4     batch_share min            2.77 TRUE        
+#> 16 root  MarkerF2 BC2(Pr141)… 3     batch_share min            2.77 TRUE        
+#> 17 root  MarkerF2 BC2(Pr141)… 4     condition   NA             2.77 TRUE        
+#> 18 root  MarkerF2 BC2(Pr141)… 4     sample      NA             2.77 TRUE        
+#> 19 root  MarkerF2 BC2(Pr141)… 2     cluster_fi… NA             3.99 TRUE        
+#> 20 root  MarkerF2 BC2(Pr141)… 4     cluster_fi… NA             2.77 TRUE        
+#> # ℹ 57 more variables: locGeneratedDirect <lgl>, locSource <chr>,
+#> #   locReason <chr>, locResponder <lgl>, propBsEst <dbl>, locOwnFreq <dbl>,
+#> #   locShareLimit <chr>, locShareProposed <dbl>, detailObject <chr>,
+#> #   detailPathStage <chr>, detailPathChnl <chr>, detailPathInd <chr>,
+#> #   detailPathPop <chr>, detailSourceFile <chr>, stage <chr>,
+#> #   thresholdOrigin <chr>, bias <dbl>, propBsDiff <dbl>, nCellStim <int>,
+#> #   nCellUns <int>, propStim <dbl>, propUns <dbl>, propBs <dbl>, …
 ```

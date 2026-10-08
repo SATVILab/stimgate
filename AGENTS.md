@@ -1290,6 +1290,19 @@ final package gate rows.
     requires a new semantics version so cached results from the other
     method are rejected.
 
+17. **Gate sharing (`gateCombn`, `clusterGates`)**: Only responders
+    donate gates: tubes whose own per-sample gate was generated directly
+    by local FDR, is finite and has a positive raw background-subtracted
+    frequency (`locResponder`, fixed in
+    `.getCpUnsLocCombineCpWithMeta()` and carried through both sharing
+    steps). Both steps limit lowered gates with `.getCpShareApply()`
+    (`locShareCap` for responders, `locShareCellCap` and the donors’
+    median frequency for other tubes), counting raw stimulated and
+    unstimulated cells as
+    [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
+    does. `Inf`/`Inf` must reproduce unlimited responder-only sharing.
+    Record `locShareLimit` and `locShareProposed`.
+
 ------------------------------------------------------------------------
 
 ## 8. Testing Best Practices & Guidelines

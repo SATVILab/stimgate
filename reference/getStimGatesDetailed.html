@@ -11,7 +11,7 @@ with background-subtracted frequencies. Use getStimGates() for final gates."></h
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.27</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.28</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -122,28 +122,36 @@ before <code><a href="gateStim.html">gateStim()</a></code>. If nothing was saved
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.unsetenv</a></span><span class="op">(</span><span class="st">"STIMGATE_INTERMEDIATE"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">getStimGatesDetailed</span><span class="op">(</span><span class="va">pathProject</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 12 × 60</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    pop   marker   chnl         detailLevel stage ind   threshold thresholdOrigin</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;I&lt;chr&gt;&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> root  MarkerF1 BC1(La139)Dd condition   init  2          4.24 condition_dete…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> root  MarkerF1 BC1(La139)Dd sample      init  2          4.24 condition_dete…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> root  MarkerF1 BC1(La139)Dd condition   init  4          3.68 condition_dete…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> root  MarkerF1 BC1(La139)Dd sample      init  4          3.68 condition_dete…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> root  MarkerF1 BC1(La139)Dd cluster_fi… <span style="color: #BB0000;">NA</span>    2          4.24 <span style="color: #BB0000;">NA</span>             </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> root  MarkerF1 BC1(La139)Dd cluster_fi… <span style="color: #BB0000;">NA</span>    4          3.68 <span style="color: #BB0000;">NA</span>             </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> root  MarkerF2 BC2(Pr141)Dd condition   init  2          3.99 condition_dete…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> root  MarkerF2 BC2(Pr141)Dd sample      init  2          3.99 condition_dete…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> root  MarkerF2 BC2(Pr141)Dd condition   init  4          2.78 condition_dete…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> root  MarkerF2 BC2(Pr141)Dd sample      init  4          2.78 condition_dete…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span> root  MarkerF2 BC2(Pr141)Dd cluster_fi… <span style="color: #BB0000;">NA</span>    2          3.99 <span style="color: #BB0000;">NA</span>             </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span> root  MarkerF2 BC2(Pr141)Dd cluster_fi… <span style="color: #BB0000;">NA</span>    4          2.78 <span style="color: #BB0000;">NA</span>             </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 52 more variables: locGenerated &lt;lgl&gt;, locGeneratedDirect &lt;lgl&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   locSource &lt;chr&gt;, locReason &lt;chr&gt;, bias &lt;dbl&gt;, propBsEst &lt;dbl&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   propBsDiff &lt;dbl&gt;, nCellStim &lt;int&gt;, nCellUns &lt;int&gt;, propStim &lt;dbl&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   propUns &lt;dbl&gt;, propBs &lt;dbl&gt;, locThresholdMethod &lt;chr&gt;, locRegionX &lt;dbl&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   detailObject &lt;chr&gt;, detailPathStage &lt;chr&gt;, detailPathChnl &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   detailPathInd &lt;chr&gt;, detailPathPop &lt;chr&gt;, detailSourceFile &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   grp &lt;chr&gt;, grpUns &lt;chr&gt;, grpStim &lt;chr&gt;, cpOrigQuantMin &lt;dbl&gt;, …</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 20 × 65</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    pop   marker   chnl        ind   detailLevel gateCombn threshold locGenerated</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;I&lt;chr&gt;&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> root  MarkerF1 BC1(La139)… 2     batch_share min            4.46 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> root  MarkerF1 BC1(La139)… 1     batch_share min            4.46 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> root  MarkerF1 BC1(La139)… 2     condition   <span style="color: #BB0000;">NA</span>             4.46 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> root  MarkerF1 BC1(La139)… 2     sample      <span style="color: #BB0000;">NA</span>             4.46 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> root  MarkerF1 BC1(La139)… 4     batch_share min            3.67 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> root  MarkerF1 BC1(La139)… 3     batch_share min            3.67 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> root  MarkerF1 BC1(La139)… 4     condition   <span style="color: #BB0000;">NA</span>             3.67 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> root  MarkerF1 BC1(La139)… 4     sample      <span style="color: #BB0000;">NA</span>             3.67 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> root  MarkerF1 BC1(La139)… 2     cluster_fi… <span style="color: #BB0000;">NA</span>             4.46 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> root  MarkerF1 BC1(La139)… 4     cluster_fi… <span style="color: #BB0000;">NA</span>             3.67 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span> root  MarkerF2 BC2(Pr141)… 2     batch_share min            3.99 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span> root  MarkerF2 BC2(Pr141)… 1     batch_share min            3.99 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">13</span> root  MarkerF2 BC2(Pr141)… 2     condition   <span style="color: #BB0000;">NA</span>             3.99 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">14</span> root  MarkerF2 BC2(Pr141)… 2     sample      <span style="color: #BB0000;">NA</span>             3.99 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">15</span> root  MarkerF2 BC2(Pr141)… 4     batch_share min            2.77 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">16</span> root  MarkerF2 BC2(Pr141)… 3     batch_share min            2.77 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">17</span> root  MarkerF2 BC2(Pr141)… 4     condition   <span style="color: #BB0000;">NA</span>             2.77 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">18</span> root  MarkerF2 BC2(Pr141)… 4     sample      <span style="color: #BB0000;">NA</span>             2.77 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">19</span> root  MarkerF2 BC2(Pr141)… 2     cluster_fi… <span style="color: #BB0000;">NA</span>             3.99 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">20</span> root  MarkerF2 BC2(Pr141)… 4     cluster_fi… <span style="color: #BB0000;">NA</span>             2.77 TRUE        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 57 more variables: locGeneratedDirect &lt;lgl&gt;, locSource &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   locReason &lt;chr&gt;, locResponder &lt;lgl&gt;, propBsEst &lt;dbl&gt;, locOwnFreq &lt;dbl&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   locShareLimit &lt;chr&gt;, locShareProposed &lt;dbl&gt;, detailObject &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   detailPathStage &lt;chr&gt;, detailPathChnl &lt;chr&gt;, detailPathInd &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   detailPathPop &lt;chr&gt;, detailSourceFile &lt;chr&gt;, stage &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   thresholdOrigin &lt;chr&gt;, bias &lt;dbl&gt;, propBsDiff &lt;dbl&gt;, nCellStim &lt;int&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   nCellUns &lt;int&gt;, propStim &lt;dbl&gt;, propUns &lt;dbl&gt;, propBs &lt;dbl&gt;, …</span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

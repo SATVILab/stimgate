@@ -51,7 +51,7 @@ pathProject <- gateStim(
   marker = exampleData$marker
 )
 #> shared bandwidth for MarkerF1: 0.189
-#> shared bandwidth for MarkerF2: 0.191
+#> shared bandwidth for MarkerF2: 0.19
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates
@@ -64,12 +64,14 @@ pathProject <- gateStim(
 #> getting cyt combn frequencies
 #> batch 2 of 2
 getStimGates(pathProject)
-#> # A tibble: 4 × 12
+#> # A tibble: 4 × 17
 #>   pop   gateName  chnl  marker ind   batch  gate locGenerated locGeneratedDirect
 #>   <chr> <chr>     <chr> <I<ch> <chr> <chr> <dbl> <lgl>        <lgl>             
 #> 1 root  loc_minC… BC1(… Marke… 2     batc…  4.24 TRUE         TRUE              
-#> 2 root  loc_minC… BC1(… Marke… 4     batc…  3.68 TRUE         TRUE              
+#> 2 root  loc_minC… BC1(… Marke… 4     batc…  3.67 TRUE         TRUE              
 #> 3 root  loc_minC… BC2(… Marke… 2     batc…  3.99 TRUE         TRUE              
-#> 4 root  loc_minC… BC2(… Marke… 4     batc…  2.78 TRUE         TRUE              
-#> # ℹ 3 more variables: locSource <chr>, locReason <chr>, gateCyt <dbl>
+#> 4 root  loc_minC… BC2(… Marke… 4     batc…  2.77 TRUE         TRUE              
+#> # ℹ 8 more variables: locSource <chr>, locReason <chr>, locResponder <lgl>,
+#> #   propBsEst <dbl>, locOwnFreq <dbl>, locShareLimit <chr>,
+#> #   locShareProposed <dbl>, gateCyt <dbl>
 ```

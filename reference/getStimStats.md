@@ -52,13 +52,13 @@ getStimStats(pathProject)
 #> # A tibble: 8 × 13
 #>   gateName ind   cytCombn countStim nCellStim countUns nCellUns propStim propUns
 #>   <chr>    <chr> <chr>        <int>     <int>    <int>    <int>    <dbl>   <dbl>
-#> 1 loc_min… 2     BC1(La1…        44     10000        4    10000   0.0044  0.0004
-#> 2 loc_min… 2     BC1(La1…       287     10000       72    10000   0.0287  0.0072
-#> 3 loc_min… 2     BC1(La1…        42     10000        2    10000   0.0042  0.0002
-#> 4 loc_min… 2     BC1(La1…      9627     10000     9922    10000   0.963   0.992 
-#> 5 loc_min… 4     BC1(La1…       107     10000       33    10000   0.0107  0.0033
-#> 6 loc_min… 4     BC1(La1…       559     10000      136    10000   0.0559  0.0136
+#> 1 loc_min… 2     BC1(La1…        45     10000        5    10000   0.0045  0.0005
+#> 2 loc_min… 2     BC1(La1…         6     10000        0    10000   0.0006  0     
+#> 3 loc_min… 2     BC1(La1…        45     10000        2    10000   0.0045  0.0002
+#> 4 loc_min… 2     BC1(La1…      9904     10000     9993    10000   0.990   0.999 
+#> 5 loc_min… 4     BC1(La1…       109     10000       33    10000   0.0109  0.0033
+#> 6 loc_min… 4     BC1(La1…       560     10000      136    10000   0.056   0.0136
 #> 7 loc_min… 4     BC1(La1…        59     10000        9    10000   0.0059  0.0009
-#> 8 loc_min… 4     BC1(La1…      9275     10000     9822    10000   0.928   0.982 
+#> 8 loc_min… 4     BC1(La1…      9272     10000     9822    10000   0.927   0.982 
 #> # ℹ 4 more variables: propBs <dbl>, freqStim <dbl>, freqUns <dbl>, freqBs <dbl>
 ```
