@@ -181,7 +181,7 @@ test_that("the analysis 9 run manifest must record the threshold method", {
     list(stimgate_loc_threshold_method = "region"), "region", qmd
   ))
   expect_error(
-    check(list(analysis_semantics_version = "acs-cytof-v6"), "region", qmd),
+    check(list(analysis_semantics_version = "acs-cytof-v7"), "region", qmd),
     "stimgate_loc_threshold_method"
   )
   expect_error(
@@ -213,10 +213,10 @@ test_that("ACS StimGate output rows carry the threshold method", {
   expect_identical(out$locThresholdMethod, "region")
 })
 
-test_that("analyses 9 and 10 set and record the region threshold method", {
+test_that("analyses 9 and 10 set and record the threshold method", {
   qmd9 <- paste(readLines(qmd9_path, warn = FALSE), collapse = "\n")
   qmd10 <- paste(readLines(qmd10_path, warn = FALSE), collapse = "\n")
-  setting <- 'stimgate_loc_threshold_method <- "region"'
+  setting <- 'stimgate_loc_threshold_method <- "cap"'
   expect_true(grepl(setting, qmd9, fixed = TRUE))
   expect_true(grepl(setting, qmd10, fixed = TRUE))
   forwarded <- "locThresholdMethod = stimgate_loc_threshold_method"
@@ -234,7 +234,7 @@ test_that("analyses 9 and 10 set and record the region threshold method", {
   for (qmd in list(qmd9, qmd10)) {
     expect_true(grepl(".acsCytofCheckRunManifestMethod(", qmd, fixed = TRUE))
     expect_true(grepl(forwarded, qmd, fixed = TRUE))
-    expect_true(grepl('"acs-cytof-v6"', qmd, fixed = TRUE))
+    expect_true(grepl('"acs-cytof-v7"', qmd, fixed = TRUE))
     expect_false(grepl('"acs-cytof-v3"', qmd, fixed = TRUE))
   }
 })

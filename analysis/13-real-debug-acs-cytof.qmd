@@ -252,7 +252,7 @@ if (isTRUE(run_simulations)) {
   # Pages for the report's samples are drawn even if not selected here.
   select <- list(stim = sel_stims, cyt = sel_cyts, sample = sel_samples)
   manifest <- list(
-    analysis_semantics_version = "acs-cytof-debug-v1",
+    analysis_semantics_version = "acs-cytof-debug-v2",
     run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = "")),
     settings = settings,
     select = select,
@@ -316,7 +316,7 @@ if (isTRUE(run_plots)) {
     obj <- .analysis_read_rds(path, "acs_cytof_debug", analysis_qmd)
     .analysis_check_expected_run(
       obj$manifest, "acs_cytof_debug", analysis_qmd,
-      semantics_version = "acs-cytof-debug-v1"
+      semantics_version = "acs-cytof-debug-v2"
     )
     summaries[[pop]] <- obj$table
   }

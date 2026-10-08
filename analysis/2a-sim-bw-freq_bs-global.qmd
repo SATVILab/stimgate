@@ -95,7 +95,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "global")
-analysis_semantics_version <- "global-bw-freq-v14"
+analysis_semantics_version <- "global-bw-freq-v15"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -205,7 +205,7 @@ loc_enforce_shape_threshold <- FALSE
 calc_cyt_pos_gates <- FALSE
 # Gate at the lower boundary of the filtered local-FDR region (the package
 # default), not at the probability-sum match.
-loc_threshold_method <- "region"
+loc_threshold_method <- "cap"
 
 # can vary these later
 bandwidth_ncell_upper_vec <- c(2.5e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, Inf)

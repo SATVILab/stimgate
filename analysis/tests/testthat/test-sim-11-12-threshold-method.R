@@ -83,7 +83,7 @@ test_that("Analysis 11 rejects caches without the threshold method", {
   settings <- env$.simLowSepCacheSettings(grid, 2L, main, 1L,
     list(sim_size = "final"))
   expect_identical(settings$analysis_semantics_version,
-    "sim-low-separation-v4")
+    "sim-low-separation-v5")
   expect_identical(settings$settings$loc_threshold_method, "region")
 
   # A cache made before the change: v1, no method in settings or gates.
@@ -108,12 +108,12 @@ test_that("Analysis 11 rejects caches without the threshold method", {
     "locThresholdMethod")
 })
 
-test_that("QMD 11 sets the threshold method explicitly to region", {
+test_that("QMD 11 sets the threshold method explicitly to cap", {
   qmd <- .threshold_method_read_qmd("11-sim-low-separation-cyt-pos.qmd")
   code <- paste(.threshold_method_qmd_chunk(qmd, "main-settings"),
     collapse = "\n")
   expect_match(code,
-    '.simLowSepMainSettings(loc_threshold_method = "region")', fixed = TRUE)
+    '.simLowSepMainSettings(loc_threshold_method = "cap")', fixed = TRUE)
   cache <- paste(.threshold_method_qmd_chunk(qmd, "simulate"), collapse = "\n")
   expect_match(cache, "settings = main_settings", fixed = TRUE)
 })
@@ -157,22 +157,22 @@ test_that("Analysis 12 weak-response validation rejects old caches", {
     loc_threshold_method = "region")
   old_settings <- settings[setdiff(names(settings), "loc_threshold_method")]
   scores <- tibble::tibble(ind = "2", stage = c("Before", "After"))
-  expect_identical(env$.simClusterWeakSemantics, "cluster-weak-v4")
+  expect_identical(env$.simClusterWeakSemantics, "cluster-weak-v5")
   expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v1",
     settings = old_settings, scores = scores), settings), "settings changed")
-  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v4",
+  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v5",
     settings = settings, scores = scores), settings), "locThresholdMethod")
   scores$locThresholdMethod <- "match"
-  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v4",
+  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v5",
     settings = settings, scores = scores), settings), "locThresholdMethod")
 })
 
-test_that("QMD 12 sets the method to region and rejects old lab caches", {
+test_that("QMD 12 sets the method to cap and rejects old lab caches", {
   env <- .threshold_method_env("sim-cluster-lab.R")
   qmd <- .threshold_method_read_qmd("12-sim-cluster-gates.qmd")
   weak_code <- paste(.threshold_method_qmd_chunk(qmd, "weak-settings"),
     collapse = "\n")
-  expect_match(weak_code, 'loc_threshold_method = "region"', fixed = TRUE)
+  expect_match(weak_code, 'loc_threshold_method = "cap"', fixed = TRUE)
 
   dir_cache <- withr::local_tempdir()
   env$analysis_quick <- FALSE
@@ -182,8 +182,8 @@ test_that("QMD 12 sets the method to region and rejects old lab caches", {
   env$.analysis_cache_dir <- function(...) dir_cache
   eval(parse(text = .threshold_method_qmd_chunk(qmd, "lab-settings")),
     envir = env)
-  expect_identical(env$lab_settings$loc_threshold_method, "region")
-  expect_identical(env$lab_semantics, "cluster-lab-v4")
+  expect_identical(env$lab_settings$loc_threshold_method, "cap")
+  expect_identical(env$lab_semantics, "cluster-lab-v5")
   # The lab settings are passed to .simClusterLabRun() through do.call().
   expect_true(all(names(env$lab_settings) %in%
     names(formals(env$.simClusterLabRun))))
@@ -197,12 +197,12 @@ test_that("QMD 12 sets the method to region and rejects old lab caches", {
     result = result), env$lab_cache_file)
   expect_error(eval(read_code, envir = env), "different scientific settings")
 
-  saveRDS(list(semantics = "cluster-lab-v4", settings = env$lab_settings,
+  saveRDS(list(semantics = "cluster-lab-v5", settings = env$lab_settings,
     result = result), env$lab_cache_file)
   expect_error(eval(read_code, envir = env), "different scientific settings")
 
-  result$allocations$locThresholdMethod <- "region"
-  saveRDS(list(semantics = "cluster-lab-v4", settings = env$lab_settings,
+  result$allocations$locThresholdMethod <- "cap"
+  saveRDS(list(semantics = "cluster-lab-v5", settings = env$lab_settings,
     result = result), env$lab_cache_file)
   expect_no_error(eval(read_code, envir = env))
   expect_identical(env$lab_result, result)

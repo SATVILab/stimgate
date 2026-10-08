@@ -173,6 +173,8 @@
   )
 
   # After the shared bandwidth, so an automatic bias can be relative to it.
+  # An automatic bias scales with each sample's bandwidth when gating.
+  chnlSettings$biasUnsAuto <- is.null(chnlSettings$biasUns)
   chnlSettings$biasUns <- .completeChnlSettingsBiasUns(
     biasUns = chnlSettings$biasUns,
     biasUnsFactor = chnlSettings$biasUnsFactor,

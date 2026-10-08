@@ -932,6 +932,11 @@
       .bwSharedGet(chnlSettings, .getInd(exTblStimThreshold)),
       .bwSharedGet(chnlSettings, .getInd(exTblUnsThreshold))
     )
+    # The per-sample factor is set once per sample, so the bandwidth and an
+    # automatic biasUns scale together.
+    if (!is.null(chnlSettings$sampleScale)) {
+      return(bw * chnlSettings$sampleScale)
+    }
     return(.getCpUnsLocBwSharedScale(
       bw = bw,
       nCell = min(nrow(exTblStimThreshold), nrow(exTblUnsThreshold)),
@@ -1385,12 +1390,33 @@
 # bandwidth would, by (bwNcellMax / nCell)^(1/5); larger samples keep it.
 #' @keywords internal
 .getCpUnsLocBwSharedScale <- function(bw, nCell, chnlSettings) {
+  bw * .getCpUnsLocNcellScale(nCell, chnlSettings)
+}
+
+# Factor by which a sample widens the shared bandwidth, and scales an automatic
+# biasUns, given the smaller of its stimulated and unstimulated cell counts:
+# (bwNcellMax / nCell)^(1/5) below bwNcellMax, otherwise 1. Only a shared
+# bandwidth is scaled; fixed, per-sample and adaptive bandwidths use 1.
+#' @keywords internal
+.getCpUnsLocNcellScale <- function(nCell, chnlSettings) {
   nRef <- suppressWarnings(as.numeric(chnlSettings$bwNcellMax)[1L])
   if (
     isFALSE(chnlSettings$bwScaleNcell) || length(nRef) == 0L ||
       !is.finite(nRef) || !is.finite(nCell) || nCell < 1 || nCell >= nRef
   ) {
-    return(bw)
+    return(1)
   }
-  bw * (nRef / nCell)^(1 / 5)
+  (nRef / nCell)^(1 / 5)
+}
+
+# Scale factor for one sample: 1 unless the channel uses a shared bandwidth.
+#' @keywords internal
+.getCpUnsLocSampleScale <- function(nCell, chnlSettings) {
+  if (
+    !is.null(chnlSettings$bw) || is.null(chnlSettings$bwShared) ||
+      isTRUE(.getCpUnsLocUseAdaptiveBw(chnlSettings))
+  ) {
+    return(1)
+  }
+  .getCpUnsLocNcellScale(nCell, chnlSettings)
 }

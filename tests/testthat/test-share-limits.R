@@ -266,3 +266,44 @@ test_that("shared bandwidths widen only for samples below bwNcellMax", {
   expect_true(stimControl()$bwScaleNcell)
   expect_error(stimControl(bwScaleNcell = NA), "bwScaleNcell")
 })
+
+test_that("the per-sample factor applies only to shared bandwidths", {
+  shared <- list(bwShared = 0.03, bwNcellMax = 1e4)
+  expect_equal(.getCpUnsLocSampleScale(1e3, shared), 10^(1 / 5))
+  expect_equal(.getCpUnsLocSampleScale(2e4, shared), 1)
+  expect_equal(.getCpUnsLocSampleScale(1e3, c(shared, bw = 0.1)), 1)
+  expect_equal(.getCpUnsLocSampleScale(1e3, list(bwNcellMax = 1e4)), 1)
+  expect_equal(
+    .getCpUnsLocSampleScale(1e3, c(shared, bwScaleNcell = FALSE)), 1
+  )
+})
+
+test_that("an automatic biasUns scales with the sample's bandwidth", {
+  skip_if_not_installed("flowWorkspace")
+  exampleData <- getExampleData()
+  gs <- flowWorkspace::load_gs(exampleData$pathGs)
+  gateDetail <- function(biasUns) {
+    pathProject <- withr::local_tempdir(.local_envir = parent.frame())
+    withr::local_envvar(STIMGATE_INTERMEDIATE = "all")
+    withr::with_seed(1, gateStim(
+      pathProject, gs, exampleData$batchList,
+      marker = exampleData$marker[[1]], biasUns = biasUns,
+      control = stimControl(
+        clusterGates = FALSE, calcCytPosGates = FALSE, bwNcellMax = 1e5
+      )
+    ))
+    settings <- stimgateMetaReadSettingsChnls(pathProject)[[1]]
+    detail <- getStimGatesDetailed(pathProject)
+    list(
+      settings = settings,
+      bias = unique(detail$bias[detail$detailLevel == "condition"])
+    )
+  }
+  auto <- gateDetail(NULL)
+  expect_true(auto$settings$biasUnsAuto)
+  # About 10,000 cells per tube, so with bwNcellMax = 1e5 the factor is ~1.58.
+  expect_true(all(auto$bias > auto$settings$biasUns * 1.4))
+  fixed <- gateDetail(0.05)
+  expect_false(fixed$settings$biasUnsAuto)
+  expect_true(all(abs(fixed$bias - 0.05) < 1e-12))
+})

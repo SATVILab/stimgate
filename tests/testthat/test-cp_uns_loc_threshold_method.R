@@ -47,8 +47,8 @@ pkg_ns <- asNamespace("stimgate")
   )
 }
 
-test_that("stimControl defaults to the region method and validates it", {
-  expect_identical(stimControl()$locThresholdMethod, "region")
+test_that("stimControl defaults to the cap method and validates it", {
+  expect_identical(stimControl()$locThresholdMethod, "cap")
   expect_identical(
     stimControl(locThresholdMethod = "match")$locThresholdMethod, "match"
   )
@@ -274,7 +274,7 @@ test_that("gateStim applies the region gate on both filtering routes", {
   }
 
   for (shape in c(FALSE, TRUE)) {
-    pathRegion <- gateWith(shape)
+    pathRegion <- gateWith(shape, "region")
     pathMatch <- gateWith(shape, "match")
 
     expect_identical(
