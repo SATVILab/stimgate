@@ -56,14 +56,17 @@
 #'   NULL uses the shared local-FDR bandwidth, or with `bwScope = "sample"`,
 #'   the median bandwidth of samples with direct thresholds. Default: NULL.
 #' @param clusterGates logical Share thresholds across clusters of paired
-#'   stimulated/control densities on a common expression grid. With at least
-#'   three direct thresholds, clip them to the cluster's 15th and 85th
-#'   percentiles. Replace non-direct thresholds by the 60th percentile of
-#'   available direct thresholds; retain high thresholds when none are
-#'   available. Default: TRUE.
-#' @param gateCombn character vector Combine direct condition-level thresholds
-#'   within a batch: "no", "min", "median", "max", or "prejoin". Excludes
-#'   fallback above-range cutpoints. Default: "min".
+#'   stimulated/control densities on a common expression grid. Only
+#'   responders (see Details) share their thresholds. With at least three
+#'   responders in a cluster, clip their thresholds to the cluster's 15th and
+#'   85th percentiles. Give other tubes the 60th percentile of the responders'
+#'   thresholds; retain high thresholds when a cluster has no responder.
+#'   Lowered thresholds are limited by `locShareCap` and `locShareCellCap`.
+#'   Default: TRUE.
+#' @param gateCombn character vector Combine the thresholds of responders (see
+#'   Details) within a batch: "no", "min", "median", "max", or "prejoin".
+#'   Lowered thresholds are limited by `locShareCap` and `locShareCellCap`.
+#'   Default: "min".
 #' @param locProbCol character Probability used for trimming: "pred" (monotone
 #'   smoothed response probability) or "probSmooth" (raw/interpolated
 #'   probability). Default: "pred".
@@ -84,6 +87,16 @@
 #'   background-subtracted frequency to the sum of fitted response
 #'   probabilities under `locThresholdMethod = "cap"`; at least 1. Default:
 #'   1.3.
+#' @param locShareCap numeric How far a shared gate may lower a responder's
+#'   gate: only while the background-subtracted frequency stays at most this
+#'   multiple of the tube's sum of fitted response probabilities. At least 1;
+#'   Inf accepts any lower shared gate. See Details. Default: 1.5.
+#' @param locShareCellCap numeric How far a shared gate may lower the gate of
+#'   a tube that is not a responder: only while its background-subtracted
+#'   frequency stays at most this many cells divided by its number of
+#'   stimulated cells, and at most the median frequency of the responders
+#'   sharing their gates. At least 0; Inf switches this limit off. See
+#'   Details. Default: 0.5.
 #' @param locEnforceShapeThreshold logical Refit densities and probabilities
 #'   above the lower of the first stimulated-density antimode right of the main
 #'   negative peak and the adjusted stimulated-density tailgate. Restrict later
@@ -154,6 +167,20 @@
 #' selection and sharing, threshold sharing, local-FDR filtering, then adaptive
 #' and normalised bandwidths. A fixed `bw` on [gateStim()] overrides automatic
 #' bandwidth selection. Use its `markerControl` for per-marker settings.
+#'
+#' Thresholds are shared within a batch (`gateCombn`) and then within
+#' clusters (`clusterGates`). Only responders share their thresholds: tubes
+#' whose own threshold was found by local FDR and that have more stimulated
+#' than unstimulated cells above it (counting unshifted unstimulated
+#' expression, as [getStimStats()] does). When a shared threshold is lower than
+#' a responder's threshold, the responder accepts it only down to the lowest
+#' value where its background-subtracted frequency is at most `locShareCap`
+#' times its sum of fitted response probabilities. Any other tube accepts a
+#' shared threshold only down to the lowest value where its frequency is at
+#' most `locShareCellCap` cells divided by its number of stimulated cells, and
+#' at most the median frequency of the responders sharing their thresholds.
+#' Higher shared thresholds are accepted unchanged by responders. Setting both
+#' limits to Inf shares responders' thresholds without limits.
 #' @return A named list of class `stimControl`, with one element per setting.
 #' @examples
 #' stimControl()
@@ -180,6 +207,8 @@ stimControl <- function(
   locMinPeakProb = 0.25,
   locThresholdMethod = "region",
   locThresholdCap = 1.3,
+  locShareCap = 1.5,
+  locShareCellCap = 0.5,
   locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1 / 6,

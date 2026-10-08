@@ -15,12 +15,7 @@
       .debug("gate list sub-index", j) # nolint
       gateCombn <- names(cpList)[[j]]
       gateVec <- cpList[[j]]
-      n <- length(gateVec)
-      locGenerated <- attr(gateVec, "locGenerated") %||% rep(FALSE, n)
-      locGeneratedDirect <- attr(gateVec, "locGeneratedDirect") %||%
-        rep(FALSE, n)
-      locSource <- attr(gateVec, "locSource") %||% rep(NA_character_, n)
-      locReason <- attr(gateVec, "locReason") %||% rep(NA_character_, n)
+      meta <- .getCpUnsLocMetaFromCp(gateVec)
       gateUse <- if (length(gateType) > 0 && any(grepl("tgCtrl_", gateType))) {
         "ctrl"
       } else {
@@ -34,12 +29,9 @@
         batch = batch,
         ind = as.character(names(gateVec)),
         gate = gateVec,
-        gateUse = gateUse,
-        locGenerated = locGenerated %in% TRUE,
-        locGeneratedDirect = locGeneratedDirect %in% TRUE,
-        locSource = as.character(locSource),
-        locReason = as.character(locReason)
-      )
+        gateUse = gateUse
+      ) |>
+        dplyr::bind_cols(dplyr::select(meta, -"ind"))
     }
   }
 

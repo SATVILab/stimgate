@@ -8,6 +8,20 @@
   Previously it used the fallback bandwidth, a separate estimate that could
   differ noticeably from the bandwidth actually used. Per-sample and
   per-cluster bandwidths still use the fallback.
+- `gateStim()` now shares gates, within a batch and within clusters, only
+  from responders: tubes whose own gate was found by local FDR and that have
+  more stimulated than unstimulated cells above it. Previously a tube whose
+  model called a response could donate a low gate even when it had fewer
+  stimulated than unstimulated cells above it, and tubes whose gate was
+  replaced in the batch step could no longer donate in the cluster step.
+- A lower shared gate is now accepted only within limits: down to where a
+  responder's background-subtracted frequency is `stimControl(locShareCap)`
+  (default 1.5) times its sum of fitted response probabilities, and for
+  other tubes down to where it is half a cell (`locShareCellCap`, default
+  0.5, divided by the number of stimulated cells) and no more than the
+  median frequency of the responders. Setting both to `Inf` removes the
+  limits. Gate tables record the limit used (`locShareLimit`) and the shared
+  gate proposed (`locShareProposed`).
 
 ## New features
 

@@ -36,7 +36,9 @@
 #'   gating. Default: FALSE.
 #' @details
 #' Thresholds can be shared across similar distributions, then refined using
-#' cells positive for another cytokine. Read results with [getStimGates()],
+#' cells positive for another cytokine. Only tubes that show a response at
+#' their own threshold share it, and lower shared thresholds are accepted only
+#' within limits (see Details in [stimControl()]). Read results with [getStimGates()],
 #' [getStimStats()] and [getStimExpr()]; inspect them with [plotStim()].
 #'
 #' **Input data.** Non-GatingSet inputs are converted to a GatingSet with only

@@ -74,7 +74,9 @@ background-subtracted statistics to a project directory.
 }
 \details{
 Thresholds can be shared across similar distributions, then refined using
-cells positive for another cytokine. Read results with \code{\link[=getStimGates]{getStimGates()}},
+cells positive for another cytokine. Only tubes that show a response at
+their own threshold share it, and lower shared thresholds are accepted only
+within limits (see Details in \code{\link[=stimControl]{stimControl()}}). Read results with \code{\link[=getStimGates]{getStimGates()}},
 \code{\link[=getStimStats]{getStimStats()}} and \code{\link[=getStimExpr]{getStimExpr()}}; inspect them with \code{\link[=plotStim]{plotStim()}}.
 
 \strong{Input data.} Non-GatingSet inputs are converted to a GatingSet with only

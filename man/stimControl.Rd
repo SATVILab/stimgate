@@ -25,6 +25,8 @@ stimControl(
   locMinPeakProb = 0.25,
   locThresholdMethod = "region",
   locThresholdCap = 1.3,
+  locShareCap = 1.5,
+  locShareCellCap = 0.5,
   locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1/6,
@@ -123,15 +125,18 @@ NULL uses the shared local-FDR bandwidth, or with \code{bwScope = "sample"},
 the median bandwidth of samples with direct thresholds. Default: NULL.}
 
 \item{clusterGates}{logical Share thresholds across clusters of paired
-stimulated/control densities on a common expression grid. With at least
-three direct thresholds, clip them to the cluster's 15th and 85th
-percentiles. Replace non-direct thresholds by the 60th percentile of
-available direct thresholds; retain high thresholds when none are
-available. Default: TRUE.}
+stimulated/control densities on a common expression grid. Only
+responders (see Details) share their thresholds. With at least three
+responders in a cluster, clip their thresholds to the cluster's 15th and
+85th percentiles. Give other tubes the 60th percentile of the responders'
+thresholds; retain high thresholds when a cluster has no responder.
+Lowered thresholds are limited by \code{locShareCap} and \code{locShareCellCap}.
+Default: TRUE.}
 
-\item{gateCombn}{character vector Combine direct condition-level thresholds
-within a batch: "no", "min", "median", "max", or "prejoin". Excludes
-fallback above-range cutpoints. Default: "min".}
+\item{gateCombn}{character vector Combine the thresholds of responders (see
+Details) within a batch: "no", "min", "median", "max", or "prejoin".
+Lowered thresholds are limited by \code{locShareCap} and \code{locShareCellCap}.
+Default: "min".}
 
 \item{locProbCol}{character Probability used for trimming: "pred" (monotone
 smoothed response probability) or "probSmooth" (raw/interpolated
@@ -156,6 +161,18 @@ gate. Default: "region".}
 background-subtracted frequency to the sum of fitted response
 probabilities under \code{locThresholdMethod = "cap"}; at least 1. Default:
 1.3.}
+
+\item{locShareCap}{numeric How far a shared gate may lower a responder's
+gate: only while the background-subtracted frequency stays at most this
+multiple of the tube's sum of fitted response probabilities. At least 1;
+Inf accepts any lower shared gate. See Details. Default: 1.5.}
+
+\item{locShareCellCap}{numeric How far a shared gate may lower the gate of
+a tube that is not a responder: only while its background-subtracted
+frequency stays at most this many cells divided by its number of
+stimulated cells, and at most the median frequency of the responders
+sharing their gates. At least 0; Inf switches this limit off. See
+Details. Default: 0.5.}
 
 \item{locEnforceShapeThreshold}{logical Refit densities and probabilities
 above the lower of the first stimulated-density antimode right of the main
@@ -260,6 +277,20 @@ Settings follow the gating workflow: cell and expression limits, bandwidth
 selection and sharing, threshold sharing, local-FDR filtering, then adaptive
 and normalised bandwidths. A fixed \code{bw} on \code{\link[=gateStim]{gateStim()}} overrides automatic
 bandwidth selection. Use its \code{markerControl} for per-marker settings.
+
+Thresholds are shared within a batch (\code{gateCombn}) and then within
+clusters (\code{clusterGates}). Only responders share their thresholds: tubes
+whose own threshold was found by local FDR and that have more stimulated
+than unstimulated cells above it (counting unshifted unstimulated
+expression, as \code{\link[=getStimStats]{getStimStats()}} does). When a shared threshold is lower than
+a responder's threshold, the responder accepts it only down to the lowest
+value where its background-subtracted frequency is at most \code{locShareCap}
+times its sum of fitted response probabilities. Any other tube accepts a
+shared threshold only down to the lowest value where its frequency is at
+most \code{locShareCellCap} cells divided by its number of stimulated cells, and
+at most the median frequency of the responders sharing their thresholds.
+Higher shared thresholds are accepted unchanged by responders. Setting both
+limits to Inf shares responders' thresholds without limits.
 }
 \examples{
 stimControl()

@@ -360,6 +360,20 @@
     stop(paste0(prefix, "`locThresholdCap` must be a single number of at least 1."))
   }
 
+  # Sharing limits; Inf switches a limit off.
+  for (nm in c("locShareCap", "locShareCellCap")) {
+    val <- settings[[nm]]
+    lower <- if (nm == "locShareCap") 1 else 0
+    if (
+      !.verifyIsNullOrNa(val) &&
+        (!is.numeric(val) || length(val) != 1L || is.na(val) || val < lower)
+    ) {
+      stop(paste0(
+        prefix, "`", nm, "` must be a single number of at least ", lower, "."
+      ))
+    }
+  }
+
   probSettings <- c(
     "locMinPeakProb",
     "locDipAlpha",

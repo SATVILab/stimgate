@@ -2,12 +2,13 @@
 #
 # Samples are clustered from their paired unstimulated and stimulated densities
 # on one common absolute-expression grid over the left-hand region. Only
-# thresholds generated directly by the local-FDR procedure are donors. Within
-# each cluster, direct thresholds are winsorised to the 15th and 85th
-# percentiles when at least three direct thresholds are available. Every
-# non-direct threshold is replaced by the 60th percentile whenever its cluster
-# has at least one direct threshold. Clusters without a direct threshold retain
-# their original high thresholds.
+# responders (.getCpShareResponder(), fixed at the per-sample step) are donors,
+# using their gates after the batch step. Within each cluster, donor
+# thresholds are winsorised to the 15th and 85th percentiles when at least
+# three donors are available. Every other threshold is replaced by the 60th
+# percentile whenever its cluster has at least one donor. Clusters without a
+# donor retain their original thresholds. Lowered thresholds are then limited
+# as in the batch step (.getCpClusterLocLimit()).
 #' @keywords internal
 .getCpCluster <- function(
   .data,
@@ -48,7 +49,7 @@
     return(cpTbl)
   }
 
-  direct <- gateTblStim$locGeneratedDirect %in% TRUE &
+  direct <- gateTblStim$locResponder %in% TRUE &
     is.finite(suppressWarnings(as.numeric(gateTblStim$gate)))
   if (!any(direct)) {
     cpTbl <- .getCpClusterLocSkipOut(
@@ -133,6 +134,11 @@
     control = control,
     nInitialClusters = clusterObj$nInitialClusters
   ) |>
+    .getCpClusterLocLimit(
+      exLookup = exLookup,
+      shareCap = chnlSettings$locShareCap %||% 1.5,
+      cellCap = chnlSettings$locShareCellCap %||% 0.5
+    ) |>
     dplyr::arrange(.data$ind)
 
   .intSaveNm("locClusterQuantileTbl", cpTbl, "all", stageChnl, pathProject)
@@ -154,11 +160,19 @@
   if (!"locReason" %in% names(gateTbl)) {
     gateTbl$locReason <- NA_character_
   }
+  if (!"locResponder" %in% names(gateTbl)) {
+    gateTbl$locResponder <- gateTbl$locGeneratedDirect
+  }
+  if (!"propBsEst" %in% names(gateTbl)) {
+    gateTbl$propBsEst <- NA_real_
+  }
   gateTbl |>
     dplyr::mutate(
       ind = as.character(.data$ind),
       locGenerated = .data$locGenerated %in% TRUE,
-      locGeneratedDirect = .data$locGeneratedDirect %in% TRUE
+      locGeneratedDirect = .data$locGeneratedDirect %in% TRUE,
+      locResponder = .data$locResponder %in% TRUE,
+      propBsEst = suppressWarnings(as.numeric(.data$propBsEst))
     )
 }
 
@@ -220,7 +234,7 @@
     ) |>
     dplyr::filter(
       !is.na(.data$grp),
-      .data$locGeneratedDirect %in% TRUE,
+      .data$locResponder %in% TRUE,
       is.finite(.data$gateNumeric)
     ) |>
     dplyr::group_by(.data$grp) |>
@@ -250,7 +264,7 @@
     dplyr::left_join(clusterSummary, by = "grp") |>
     dplyr::mutate(
       cpOrig = suppressWarnings(as.numeric(.data$gate)),
-      isDirectDonor = .data$locGeneratedDirect %in% TRUE &
+      isDirectDonor = .data$locResponder %in% TRUE &
         is.finite(.data$cpOrig),
       clusterHasDirect = !is.na(.data$grp) &
         .data$locClusterNDirect >= 1L &
@@ -325,7 +339,12 @@
       cpMedianUns = .data$locClusterQ60,
       cpMedianStim = .data$locClusterQ60,
       locGenerated = .data$locGenerated %in% TRUE,
-      locGeneratedDirect = .data$isDirectDonor,
+      locGeneratedDirect = .data$isDirectDonor &
+        .data$locGeneratedDirect %in% TRUE,
+      locResponder = .data$locResponder %in% TRUE,
+      propBsEst = .data$propBsEst,
+      locShareLimit = "none",
+      locShareProposed = .data$cpFinal,
       locSource = as.character(.data$locSource),
       locReason = as.character(.data$locReason),
       locClusterReason = dplyr::if_else(
@@ -381,6 +400,12 @@
     locGeneratedDirect = suppressWarnings(
       gateTblStim$locGeneratedDirect %in% TRUE
     ),
+    locResponder = gateTblStim$locResponder %in% TRUE,
+    propBsEst = suppressWarnings(as.numeric(
+      gateTblStim$propBsEst %||% rep(NA_real_, nrow(gateTblStim))
+    )),
+    locShareLimit = "none",
+    locShareProposed = cp,
     locSource = as.character(
       gateTblStim$locSource %||% rep(NA_character_, nrow(gateTblStim))
     ),
@@ -405,4 +430,71 @@
     propBsCpDiffSd = NA_real_,
     propBsCp = NA_real_
   )
+}
+
+# Limit lowered cluster gates as in the batch step (.getCpShareApply()):
+# donors use the rule for responders, other tubes in clusters with a donor the
+# rule for non-responders, with the median frequency of the cluster's donors
+# at their current gates. Frequencies use the stimulated and unstimulated
+# expression in `exLookup`.
+#' @keywords internal
+.getCpClusterLocLimit <- function(cpTbl, exLookup, shareCap, cellCap) {
+  if (nrow(cpTbl) == 0L) {
+    return(cpTbl)
+  }
+  getX <- function(ind, type) .getCut(exLookup[[ind]][[type]])
+  donor <- cpTbl$locResponder %in% TRUE & is.finite(cpTbl$cpOrigQuantMin)
+  hasDonor <- cpTbl$locClusterReason %in%
+    "cluster_direct_threshold_quantile_transfer"
+  freqCurr <- vapply(seq_len(nrow(cpTbl)), function(i) {
+    if (!donor[[i]]) {
+      return(NA_real_)
+    }
+    .getCpShareFreq(
+      cpTbl$cpOrigQuantMin[[i]],
+      getX(cpTbl$ind[[i]], "stim"),
+      getX(cpTbl$ind[[i]], "uns")
+    )
+  }, numeric(1))
+  freqDonor <- stats::ave(
+    freqCurr,
+    dplyr::coalesce(cpTbl$grp, ""),
+    FUN = function(x) stats::median(x, na.rm = TRUE)
+  )
+
+  gate <- cpTbl$cpJoinTgOrig
+  limit <- cpTbl$locShareLimit
+  for (i in which(hasDonor)) {
+    res <- .getCpShareApply(
+      gs = cpTbl$cpJoinTgOrig[[i]],
+      gc = cpTbl$cpOrigQuantMin[[i]],
+      responder = donor[[i]],
+      propBsEst = cpTbl$propBsEst[[i]],
+      freqDonor = freqDonor[[i]],
+      xStim = getX(cpTbl$ind[[i]], "stim"),
+      xUns = getX(cpTbl$ind[[i]], "uns"),
+      shareCap = shareCap,
+      cellCap = cellCap
+    )
+    gate[[i]] <- res$gate
+    limit[[i]] <- res$limit
+  }
+
+  limited <- !(limit %in% "none")
+  cpTbl$locShareLimit <- limit
+  cpTbl$locReason[limited] <- paste0(
+    cpTbl$locReason[limited], "_limited_by_", limit[limited]
+  )
+  cpTbl$locClusterAction[limited] <- paste0(
+    cpTbl$locClusterAction[limited], "_limited_by_", limit[limited]
+  )
+  cpTbl$locClusterAdjusted <- hasDonor &
+    (!donor | !is.finite(cpTbl$cpOrigQuantMin) | gate != cpTbl$cpOrigQuantMin)
+  for (col in c(
+    "cpJoinLse", "cpJoinLseOrig", "cpJoinLseOrigMean", "cpJoinTgOrig",
+    "cpJoinTgOrigMean", "cpJoinLseOrigMeanTg"
+  )) {
+    cpTbl[[col]] <- gate
+  }
+  cpTbl
 }

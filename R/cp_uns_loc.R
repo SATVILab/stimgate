@@ -126,10 +126,21 @@
       pathProject = pathProject
     )
     .debug("Combining cutpoints") # nolint
-    cp <- c(cp, .getCpUnsLocCombineCpWithMeta(
+    cpCombn <- .getCpUnsLocCombineCpWithMeta(
       cp = cpUnsListNonjoin[["loc"]],
-      gateCombn = nonPrejoinCombn
-    ))
+      gateCombn = nonPrejoinCombn,
+      exListOrig = exListOrig,
+      shareCap = chnlSettings$locShareCap %||% 1.5,
+      cellCap = chnlSettings$locShareCellCap %||% 0.5
+    )
+    .intSaveNm(
+      "locDetailBatchShare",
+      .getCpUnsLocShareDetailTbl(cpCombn),
+      .createCombinedIdentifier(names(exListNoMin)[-1]),
+      file.path(stage, .getCpUnsLocGetChnl(exListOrig[[1L]])),
+      pathProject
+    )
+    cp <- c(cp, cpCombn)
   }
 
   .debug("done getting gateCombn") # nolint
@@ -164,57 +175,183 @@
   })
 }
 
+# Share gates within a batch. Only responders (see .getCpShareResponder())
+# donate: their gates are combined, and each tube accepts the combined gate
+# within the limits of .getCpShareApply().
 #' @keywords internal
-.getCpUnsLocCombineCpWithMeta <- function(cp, gateCombn) {
+.getCpUnsLocCombineCpWithMeta <- function(
+  cp,
+  gateCombn,
+  exListOrig,
+  shareCap = 1.5,
+  cellCap = 0.5
+) {
   meta <- .getCpUnsLocMetaFromCp(cp)
-  locGenerated <- meta$locGenerated %in% TRUE
-  stimGenerated <- locGenerated & !(meta$locSource %in% "unstim_summary")
-  cpReal <- cp
-  cpReal[!stimGenerated] <- NA_real_
+  cpNum <- suppressWarnings(as.numeric(cp))
+  stimRow <- !(meta$locSource %in% "unstim_summary")
+  xUns <- .getCut(exListOrig[[1L]])
+  xStimList <- lapply(meta$ind, function(i) {
+    if (i %in% names(exListOrig)[-1L]) .getCut(exListOrig[[i]])
+  })
+  freqOwn <- vapply(seq_along(cpNum), function(i) {
+    if (is.null(xStimList[[i]])) {
+      return(NA_real_)
+    }
+    .getCpShareFreq(cpNum[[i]], xStimList[[i]], xUns)
+  }, numeric(1))
+  meta$locResponder <- stimRow & .getCpShareResponder(
+    locGeneratedDirect = meta$locGeneratedDirect,
+    cp = cpNum,
+    freq = freqOwn
+  )
+  stimGenerated <- meta$locGenerated & stimRow
 
   purrr::map(gateCombn, function(gateCombnCurr) {
     if (is.null(gateCombnCurr) || gateCombnCurr %in% c("no", "prejoin")) {
       return(.getCpUnsLocCpAttachMeta(cp, meta))
     }
 
-    if (any(stimGenerated, na.rm = TRUE)) {
+    if (!any(stimGenerated)) {
       cpCombined <- .combineCp(
-        cp = cpReal,
+        cp = cp,
         gateCombn = gateCombnCurr
       )[[1]]
       metaOut <- meta
-      stimRow <- !(metaOut$locSource %in% "unstim_summary")
-      metaOut$locGenerated[stimRow] <- TRUE
-      stimDirectMatches <- (meta$locGeneratedDirect %in% TRUE) &
-        (abs(
-          suppressWarnings(as.numeric(cp)) -
-            suppressWarnings(as.numeric(cpCombined))
-        ) < 1e-7)
-      metaOut$locGeneratedDirect[stimRow] <- stimDirectMatches[stimRow]
-      metaOut$locSource[stimRow & !(metaOut$locGeneratedDirect %in% TRUE)] <-
-        "combined"
-      metaOut$locReason[stimRow & !(metaOut$locGeneratedDirect %in% TRUE)] <-
-        "combined_from_generated_local_fdr_thresholds"
-      metaOut$locGenerated[!stimRow] <- any(stimGenerated, na.rm = TRUE)
-      metaOut$locGeneratedDirect[!stimRow] <- FALSE
-      metaOut$locSource[!stimRow] <- "unstim_summary"
-      metaOut$locReason[!stimRow] <-
-        "summary_of_combined_generated_local_fdr_thresholds"
+      metaOut$locGenerated[] <- FALSE
+      metaOut$locGeneratedDirect[] <- FALSE
+      metaOut$locSource[] <- "not_calculated"
+      metaOut$locReason[] <- "no_generated_local_fdr_threshold_to_combine"
       return(.getCpUnsLocCpAttachMeta(cpCombined, metaOut))
     }
 
-    cpCombined <- .combineCp(
-      cp = cp,
+    # Generated gates, but none from a responder: nothing to share.
+    if (!any(meta$locResponder)) {
+      return(.getCpUnsLocCpAttachMeta(cp, meta))
+    }
+
+    cpShared <- .combineCp(
+      cp = cpNum[meta$locResponder],
       gateCombn = gateCombnCurr
-    )[[1]]
+    )[[1]][[1]]
+    freqDonor <- stats::median(freqOwn[meta$locResponder])
+    cpOut <- stats::setNames(rep(cpShared, length(cpNum)), meta$ind)
     metaOut <- meta
-    metaOut$locGenerated[] <- FALSE
-    metaOut$locGeneratedDirect[] <- FALSE
-    metaOut$locSource[] <- "not_calculated"
-    metaOut$locReason[] <- "no_generated_local_fdr_threshold_to_combine"
-    .getCpUnsLocCpAttachMeta(cpCombined, metaOut)
+    metaOut$locShareProposed[stimRow] <- cpShared
+    for (i in which(stimRow & !vapply(xStimList, is.null, logical(1)))) {
+      res <- .getCpShareApply(
+        gs = cpShared,
+        gc = cpNum[[i]],
+        responder = meta$locResponder[[i]],
+        propBsEst = meta$propBsEst[[i]],
+        freqDonor = freqDonor,
+        xStim = xStimList[[i]],
+        xUns = xUns,
+        shareCap = shareCap,
+        cellCap = cellCap
+      )
+      cpOut[[i]] <- res$gate
+      metaOut$locShareLimit[[i]] <- res$limit
+    }
+
+    metaOut$locGenerated[stimRow] <- TRUE
+    metaOut$locGeneratedDirect[stimRow] <- (meta$locGeneratedDirect &
+      abs(cpNum - cpOut) < 1e-7)[stimRow] %in% TRUE
+    shared <- stimRow & !metaOut$locGeneratedDirect
+    limited <- shared & !(metaOut$locShareLimit %in% "none")
+    metaOut$locSource[shared] <- "combined"
+    metaOut$locReason[shared] <- "combined_from_generated_local_fdr_thresholds"
+    metaOut$locReason[limited] <- paste0(
+      "combined_limited_by_", metaOut$locShareLimit[limited]
+    )
+    metaOut$locGenerated[!stimRow] <- TRUE
+    metaOut$locGeneratedDirect[!stimRow] <- FALSE
+    metaOut$locSource[!stimRow] <- "unstim_summary"
+    metaOut$locReason[!stimRow] <-
+      "summary_of_combined_generated_local_fdr_thresholds"
+    .getCpUnsLocCpAttachMeta(cpOut, metaOut)
   }) |>
     stats::setNames(gateCombn)
+}
+
+# Background-subtracted frequency: proportion of stimulated cells strictly
+# above each gate minus that of unstimulated cells.
+#' @keywords internal
+.getCpShareFreq <- function(gate, xStim, xUns) {
+  vapply(gate, function(g) mean(xStim > g) - mean(xUns > g), numeric(1))
+}
+
+# A responder's own gate was generated directly by local FDR, is finite and
+# has a positive background-subtracted frequency.
+#' @keywords internal
+.getCpShareResponder <- function(locGeneratedDirect, cp, freq) {
+  (locGeneratedDirect %in% TRUE) & is.finite(cp) & ((freq > 0) %in% TRUE)
+}
+
+# Lowest gate at or above `gs` whose background-subtracted frequency is at
+# most `limit`. Candidates are stimulated cell values above `gs`; the gate is
+# placed below the selected cell (.getCpUnsLocGateBelowCell(), without a
+# bandwidth) so that strict `x > gate` counts it. Above every stimulated cell
+# the frequency is at most zero.
+#' @keywords internal
+.getCpShareLimitGate <- function(gs, limit, xStim, xUns) {
+  if (!is.finite(gs) || isTRUE(.getCpShareFreq(gs, xStim, xUns) <= limit)) {
+    return(gs)
+  }
+  cand <- sort(unique(xStim[xStim > gs]))
+  freq <- .getCpUnsLocTailPropAtThresholds(xStim, cand, length(xStim)) -
+    .getCpUnsLocTailPropAtThresholds(xUns, cand, length(xUns))
+  ok <- which(freq <= limit)
+  if (length(ok) == 0L) {
+    return(max(xStim))
+  }
+  max(gs, .getCpUnsLocGateBelowCell(cand[[ok[[1L]]]], c(xStim, xUns)))
+}
+
+# Gate a tube accepts from a shared gate `gs`, given its current gate `gc`.
+# Responders accept a higher gate, and a lower one only while their frequency
+# is at most `shareCap * propBsEst` (never above `gc`; `gc` is kept when
+# `propBsEst` is unavailable). Other tubes accept it only while their
+# frequency is at most `cellCap / nStim` and the donors' median frequency
+# `freqDonor`. Inf limits switch the rule off.
+#' @keywords internal
+.getCpShareApply <- function(
+  gs,
+  gc,
+  responder,
+  propBsEst,
+  freqDonor,
+  xStim,
+  xUns,
+  shareCap,
+  cellCap
+) {
+  out <- function(gate, limit) {
+    list(gate = gate, limit = if (isTRUE(gate == gs)) "none" else limit)
+  }
+  if (isTRUE(responder)) {
+    if (!isTRUE(gs < gc) || is.infinite(shareCap)) {
+      return(out(gs, "none"))
+    }
+    if (!is.finite(propBsEst) || propBsEst <= 0) {
+      return(out(gc, "responder_no_estimate"))
+    }
+    gate <- .getCpShareLimitGate(gs, shareCap * propBsEst, xStim, xUns)
+    return(out(min(gc, gate), "responder_cap"))
+  }
+  if (is.infinite(cellCap)) {
+    return(out(gs, "none"))
+  }
+  limitCell <- cellCap / length(xStim)
+  limitDonor <- if (is.finite(freqDonor)) max(0, freqDonor) else Inf
+  gate <- .getCpShareLimitGate(gs, min(limitCell, limitDonor), xStim, xUns)
+  out(
+    gate,
+    if (limitCell <= limitDonor) {
+      "nonresponder_cell_cap"
+    } else {
+      "nonresponder_donor_cap"
+    }
+  )
 }
 
 #' @keywords internal
@@ -229,23 +366,38 @@
     locGenerated = attr(cp, "locGenerated") %||% rep(FALSE, n),
     locGeneratedDirect = attr(cp, "locGeneratedDirect") %||% rep(FALSE, n),
     locSource = attr(cp, "locSource") %||% rep("not_calculated", n),
-    locReason = attr(cp, "locReason") %||% rep(NA_character_, n)
+    locReason = attr(cp, "locReason") %||% rep(NA_character_, n),
+    locResponder = attr(cp, "locResponder") %||% rep(FALSE, n),
+    propBsEst = attr(cp, "propBsEst") %||% rep(NA_real_, n),
+    locShareLimit = attr(cp, "locShareLimit") %||% rep("none", n),
+    locShareProposed = attr(cp, "locShareProposed") %||% rep(NA_real_, n)
   ) |>
     dplyr::mutate(
       locGenerated = .data$locGenerated %in% TRUE,
-      locGeneratedDirect = .data$locGeneratedDirect %in% TRUE
+      locGeneratedDirect = .data$locGeneratedDirect %in% TRUE,
+      locResponder = .data$locResponder %in% TRUE
     )
 }
 
 #' @keywords internal
 .getCpUnsLocCpAttachMeta <- function(cp, meta) {
-  if (nrow(meta) != length(cp)) {
+  n <- length(cp)
+  if (nrow(meta) != n) {
     stop("Local-FDR metadata length does not match cutpoint vector length")
   }
   attr(cp, "locGenerated") <- meta$locGenerated %in% TRUE
   attr(cp, "locGeneratedDirect") <- meta$locGeneratedDirect %in% TRUE
   attr(cp, "locSource") <- as.character(meta$locSource)
   attr(cp, "locReason") <- as.character(meta$locReason)
+  attr(cp, "locResponder") <-
+    (meta[["locResponder"]] %||% rep(FALSE, n)) %in% TRUE
+  attr(cp, "propBsEst") <- as.numeric(meta[["propBsEst"]] %||% rep(NA_real_, n))
+  attr(cp, "locShareLimit") <- as.character(
+    meta[["locShareLimit"]] %||% rep("none", n)
+  )
+  attr(cp, "locShareProposed") <- as.numeric(
+    meta[["locShareProposed"]] %||% rep(NA_real_, n)
+  )
   cp
 }
 

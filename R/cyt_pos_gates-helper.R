@@ -275,7 +275,8 @@
       dplyr::select(
         chnl, marker, gateName, batch, ind, gate,
         dplyr::any_of(c(
-          "locGenerated", "locGeneratedDirect", "locSource", "locReason"
+          "locGenerated", "locGeneratedDirect", "locSource", "locReason",
+          "locResponder", "propBsEst", "locShareLimit", "locShareProposed"
         ))
       ) # nolint
   })
