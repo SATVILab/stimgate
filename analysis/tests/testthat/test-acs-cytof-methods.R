@@ -834,3 +834,20 @@ test_that("analysis 9 scatter chunk prints and saves each method set and populat
   capture.output(eval(code, env))
   expect_length(plots, 0L)
 })
+
+test_that("ACS expression diagnostics drop values that overflow when back-transformed", {
+  skip_if_not_installed("UtilsCytoRSV")
+  env <- .load_acs_method_env()
+  source(file.path(dirname(script_helper), "acs_cytof-preprocess.R"), local = env)
+  path <- tempfile("acs-gs-check-")
+  withr::defer(unlink(path, recursive = TRUE))
+  # Time is stored untransformed, so 5 * sinh(Time) is infinite.
+  m <- cbind(A = c(0, 1, 2, 3), Time = c(1e3, 2e3, 3e3, 4e3))
+  fs <- flowCore::flowSet(list(s1 = flowCore::flowFrame(m)))
+  flowWorkspace::save_gs(flowWorkspace::GatingSet(flowWorkspace::flowSet_to_cytoset(fs)), path)
+  plots <- env$.acsCytofPlotGatingSetCheck(path)
+  expect_setequal(names(plots), c("asinh", "none"))
+  expect_false(any(!is.finite(plots$none$data$expr)))
+  expect_equal(nrow(plots$asinh$data), 8L)
+  for (p in plots) expect_no_error(ggplot2::ggplot_build(p))
+})
