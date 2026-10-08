@@ -88,7 +88,7 @@ lab_settings <- list(
 )
 # v2: the threshold method is a recorded setting and output column; v1 caches
 # used probability-sum matching without recording it.
-lab_semantics <- "cluster-lab-v2"
+lab_semantics <- "cluster-lab-v3"
 lab_cache_file <- file.path(
   .analysis_cache_dir(c(analysis_key, "lab"), root_dir, create = FALSE),
   "result.rds"

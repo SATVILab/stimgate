@@ -181,7 +181,7 @@ test_that("the analysis 9 run manifest must record the threshold method", {
     list(stimgate_loc_threshold_method = "region"), "region", qmd
   ))
   expect_error(
-    check(list(analysis_semantics_version = "acs-cytof-v4"), "region", qmd),
+    check(list(analysis_semantics_version = "acs-cytof-v5"), "region", qmd),
     "stimgate_loc_threshold_method"
   )
   expect_error(
@@ -234,7 +234,7 @@ test_that("analyses 9 and 10 set and record the region threshold method", {
   for (qmd in list(qmd9, qmd10)) {
     expect_true(grepl(".acsCytofCheckRunManifestMethod(", qmd, fixed = TRUE))
     expect_true(grepl(forwarded, qmd, fixed = TRUE))
-    expect_true(grepl('"acs-cytof-v4"', qmd, fixed = TRUE))
+    expect_true(grepl('"acs-cytof-v5"', qmd, fixed = TRUE))
     expect_false(grepl('"acs-cytof-v3"', qmd, fixed = TRUE))
   }
 })

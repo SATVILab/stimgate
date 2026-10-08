@@ -83,7 +83,7 @@ test_that("Analysis 11 rejects caches without the threshold method", {
   settings <- env$.simLowSepCacheSettings(grid, 2L, main, 1L,
     list(sim_size = "final"))
   expect_identical(settings$analysis_semantics_version,
-    "sim-low-separation-v2")
+    "sim-low-separation-v3")
   expect_identical(settings$settings$loc_threshold_method, "region")
 
   # A cache made before the change: v1, no method in settings or gates.
@@ -157,13 +157,13 @@ test_that("Analysis 12 weak-response validation rejects old caches", {
     loc_threshold_method = "region")
   old_settings <- settings[setdiff(names(settings), "loc_threshold_method")]
   scores <- tibble::tibble(ind = "2", stage = c("Before", "After"))
-  expect_identical(env$.simClusterWeakSemantics, "cluster-weak-v2")
+  expect_identical(env$.simClusterWeakSemantics, "cluster-weak-v3")
   expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v1",
     settings = old_settings, scores = scores), settings), "settings changed")
-  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v2",
+  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v3",
     settings = settings, scores = scores), settings), "locThresholdMethod")
   scores$locThresholdMethod <- "match"
-  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v2",
+  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v3",
     settings = settings, scores = scores), settings), "locThresholdMethod")
 })
 
@@ -183,7 +183,7 @@ test_that("QMD 12 sets the method to region and rejects old lab caches", {
   eval(parse(text = .threshold_method_qmd_chunk(qmd, "lab-settings")),
     envir = env)
   expect_identical(env$lab_settings$loc_threshold_method, "region")
-  expect_identical(env$lab_semantics, "cluster-lab-v2")
+  expect_identical(env$lab_semantics, "cluster-lab-v3")
   # The lab settings are passed to .simClusterLabRun() through do.call().
   expect_true(all(names(env$lab_settings) %in%
     names(formals(env$.simClusterLabRun))))
@@ -197,12 +197,12 @@ test_that("QMD 12 sets the method to region and rejects old lab caches", {
     result = result), env$lab_cache_file)
   expect_error(eval(read_code, envir = env), "different scientific settings")
 
-  saveRDS(list(semantics = "cluster-lab-v2", settings = env$lab_settings,
+  saveRDS(list(semantics = "cluster-lab-v3", settings = env$lab_settings,
     result = result), env$lab_cache_file)
   expect_error(eval(read_code, envir = env), "different scientific settings")
 
   result$allocations$locThresholdMethod <- "region"
-  saveRDS(list(semantics = "cluster-lab-v2", settings = env$lab_settings,
+  saveRDS(list(semantics = "cluster-lab-v3", settings = env$lab_settings,
     result = result), env$lab_cache_file)
   expect_no_error(eval(read_code, envir = env))
   expect_identical(env$lab_result, result)

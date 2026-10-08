@@ -78,7 +78,7 @@ manual_run_manifest <- .analysis_read_rds(
 .analysis_check_expected_run(
   manual_run_manifest,
   "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd",
-  semantics_version = "acs-cytof-v4"
+  semantics_version = "acs-cytof-v5"
 )
 .acsCytofCheckRunManifestMethod(
   manual_run_manifest, stimgate_loc_threshold_method,
