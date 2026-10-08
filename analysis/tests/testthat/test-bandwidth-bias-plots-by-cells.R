@@ -416,7 +416,7 @@ test_that("signed error scale puts a zero estimate and two-fold equally far from
   expect_identical(
     env$.simBandwidthSignedErrorLabel(c(-1, -0.5, 0, 0.5, 1, 3, 7)),
     c(
-      "-100% (0x)", "-50%", "0%", "+50%", "+100% (2x)", "+300% (4x)",
+      "-100% (0x)", "-50%", "0% (1x)", "+50%", "+100% (2x)", "+300% (4x)",
       "+700% (8x)"
     )
   )

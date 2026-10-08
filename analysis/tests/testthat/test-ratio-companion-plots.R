@@ -24,7 +24,7 @@ test_that("ratio twins preserve signed geometry, intervals and original scales",
   expect_identical(labels, c("-1x", "0x", "1x (exact)", "2x", "\u2265 16x"))
   expect_identical(original$labels$y, "Relative error")
   expect_identical(original$scales$get_scales("y")$labels(c(-1, 0, 1, 15)),
-    c("-100% (0x)", "0%", "+100% (2x)", "\u2265 +1500% (16x)"))
+    c("-100% (0x)", "0% (1x)", "+100% (2x)", "\u2265 +1500% (16x)"))
   expect_equal(ggplot2::ggplot_build(original)$data, before$data)
   uncapped <- ggplot2::ggplot(data, ggplot2::aes(x, y)) +
     ggplot2::geom_point() + env$.simBandwidthSignedErrorLayers()

@@ -64,7 +64,10 @@ test_that("outer-pair fallback is a whole-figure decision independent of display
   expect_equal(off$data$value, on$data$value)
   expect_null(on$labels$title)
   expect_null(on$labels$subtitle)
-  expect_match(on$labels$caption, "5th/95th", fixed = TRUE)
+  # The fallback pair is named in the band legend rather than the caption.
+  expect_identical(levels(on$layers[[1]]$data$band),
+    c("5th\u201395th", "10th\u201390th", "25th\u201375th"))
+  expect_false(grepl("Outer pair|Unavailable intervals", paste(on$labels$caption, "")))
   expect_setequal(as.character(on$data$percentile),
     c("5th", "10th", "25th", "50th (median)", "75th", "90th", "95th"))
   unavailable <- env$.simBandwidthSignedErrorPercentiles(c(-1, 0, 1))
@@ -111,14 +114,18 @@ test_that("percentile plots build with single-method and method-colour encodings
   single <- env$.simBandwidthSignedPercentilePlot(tbl, mcse = TRUE)
   expect_no_error(ggplot2::ggplot_build(single))
   expect_equal(length(unique(single$data$percentile)), 7L)
-  # Brown below and teal above the median, as in the over/under views.
-  colours <- unname(single$scales$get_scales("colour")$palette(7))
-  expect_equal(colours, c(rep(env$.simBandwidthSignedErrorColours[["under_q95"]], 3), "#333333",
-    rep(env$.simBandwidthSignedErrorColours[["over_q95"]], 3)))
-  # Percentile aesthetics share one legend title, so ggplot2 merges them.
-  titles <- vapply(c("colour", "alpha", "linewidth", "linetype"),
-    function(a) single$scales$get_scales(a)$name, character(1))
-  expect_true(all(titles == "Percentile"))
+  # Nested bands share one hue, darker towards the median; the median is a line.
+  built_single <- ggplot2::ggplot_build(single)
+  ribbon <- built_single$data[[1]]
+  expect_setequal(ribbon$fill, c("#C7EAE5", "#80CDC1", "#35978F"))
+  band_q <- list(c("q025", "q975"), c("q10", "q90"), c("q25", "q75"))
+  for (i in seq_along(band_q)) {
+    rows <- ribbon[ribbon$fill == c("#C7EAE5", "#80CDC1", "#35978F")[[i]], ]
+    expect_equal(sort(rows$ymin), sort(env$.simBandwidthSignedErrorTrans()$transform(pmin(tbl[[band_q[[i]][1]]], env$.simBandwidthSignedErrorCap))))
+    expect_equal(sort(rows$ymax), sort(env$.simBandwidthSignedErrorTrans()$transform(pmin(tbl[[band_q[[i]][2]]], env$.simBandwidthSignedErrorCap))))
+  }
+  expect_identical(single$scales$get_scales("fill")$name, "Percentile range")
+  expect_identical(single$labels$y, "Percentage deviation from true response")
   multi_tbl <- dplyr::bind_rows(dplyr::mutate(tbl, method = "stimgate"),
     dplyr::mutate(tbl, method = "fbeta"))
   multi <- env$.simBandwidthSignedPercentilePlot(multi_tbl,

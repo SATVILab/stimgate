@@ -557,10 +557,10 @@ Frequency and error summaries use valid estimates only; settings with no valid
 estimates remain in the summary with missing frequency/error values.
 
 The negative-width bias rule is still simulated but is left out of every
-figure and table below. Its multipliers give far larger biases than the
+figure and saved table below. Its multipliers give far larger biases than the
 bandwidth rule, so the two are not comparable until it is rescaled
 (issue #500). Bias multiplier 0 (no bias) is also left out of every figure
-and table below. With only the bandwidth rule shown, colour (bandwidth) is
+and saved table below. With only the bandwidth rule shown, colour (bandwidth) is
 the only legend for the curves.
 
 **Monte Carlo error bars.** Set `show_mcse` or `SHOW_MCSE` to `off` or `on` (the default).
@@ -646,10 +646,12 @@ The averaged and separate cell-count views below are the primary report views; e
 
 ## Relative error averaged over cell counts
 
-Only valid estimates contribute to error statistics. Coverage tables beside each
-figure report all expected samples and the failure fraction; the fallback
-fraction uses all samples with known gate provenance, including failures.
-`n_scenario_valid` gives the number of contributing scenarios. Averaged panels
+Only valid estimates contribute to error statistics. To keep this report
+readable, coverage tables are not shown here: each figure's table is saved as
+a CSV under `output/table/2b-sim-bias_uns-freq_bs/coverage/`, named after the
+figure. Those tables report all expected samples and the failure fraction; the
+fallback fraction uses all samples with known gate provenance, including
+failures. `n_scenario_valid` gives the number of contributing scenarios. Averaged panels
 show **Mean of scenario medians**, **Mean of scenario 90th percentiles** and
 **Mean of scenario maxima**; signed-direction contributions exclude scenarios
 with no estimates in that direction (the counts are shown separately).
@@ -740,7 +742,7 @@ if (isTRUE(run_plots)) {
             ),
             table_parts = c(fig_key, "coverage", "relative-error-averaged-n-cell",
               paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
-            path_root = root_dir)
+            path_root = root_dir, quiet = TRUE)
         }
       }
     }
@@ -820,7 +822,7 @@ if (isTRUE(run_plots)) {
               ),
               table_parts = c(fig_key, "coverage", "relative-error-by-n-cell",
                 paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
-              path_root = root_dir)
+              path_root = root_dir, quiet = TRUE)
           }
         }
       }
@@ -842,7 +844,7 @@ Signed relative error is (estimate - truth) / truth. The main plots include all 
 
 These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
 
-The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+The bands summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. The darkest band runs from the 25th to the 75th percentile, the middle band from the 10th to the 90th and the lightest from the 2.5th to the 97.5th; the line is the median. If either outer percentile lacks a Monte Carlo interval at any finite point, the whole figure uses the 5th/95th pair instead, as its legend shows; unavailable intervals are omitted without dropping points. Percentiles are calculated before applying the signed display scale.
 
 Independent-sample intervals use order statistics within scenarios; equal-weight scenario averages combine their standard errors as sqrt(sum(se^2))/k. These views retain the fixed bandwidth/bias subset and its scientific exclusions.
 
@@ -882,13 +884,7 @@ if (isTRUE(run_plots)) {
           p <- .simBandwidthSignedPercentilePlot(
             plot_tbl,
             x = "bias_uns_multiplier", x_label = "Bias multiplier",
-            facet = ggplot2::facet_wrap(
-              ggplot2::vars(n_cell, bw, bias_uns_basis, mismatch_label),
-              ncol = dplyr::n_distinct(plot_tbl$mismatch_label), scales = "free_y",
-              labeller = ggplot2::labeller(n_cell = function(x) {
-                paste0("Cells: ", .analysis_label_number(as.numeric(x)))
-              })
-            ),
+            facet = .simBandwidthBiasFacet(plot_tbl, extra = "n_cell"),
             mcse = show_mcse
           )
 
@@ -918,7 +914,7 @@ if (isTRUE(run_plots)) {
             ),
             table_parts = c(fig_key, "coverage", "signed-percentiles",
               paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
-            path_root = root_dir)
+            path_root = root_dir, quiet = TRUE)
         }
       }
     }
@@ -930,7 +926,7 @@ if (isTRUE(run_plots)) {
 
 These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
 
-The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+The bands summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. The darkest band runs from the 25th to the 75th percentile, the middle band from the 10th to the 90th and the lightest from the 2.5th to the 97.5th; the line is the median. If either outer percentile lacks a Monte Carlo interval at any finite point, the whole figure uses the 5th/95th pair instead, as its legend shows; unavailable intervals are omitted without dropping points. Percentiles are calculated before applying the signed display scale.
 
 Independent-sample intervals use order statistics within scenarios; equal-weight scenario averages combine their standard errors as sqrt(sum(se^2))/k. These views retain the fixed bandwidth/bias subset and its scientific exclusions.
 
@@ -978,7 +974,6 @@ if (isTRUE(run_plots)) {
           p <- .simBandwidthSignedPercentilePlot(
             plot_tbl,
             x = "bias_uns_multiplier", x_label = "Bias multiplier",
-            y_label = "Mean of scenario statistics (relative error)",
             mcse = show_mcse
           )
 
@@ -1008,7 +1003,7 @@ if (isTRUE(run_plots)) {
             ),
             table_parts = c(fig_key, "coverage", "signed-percentiles-averaged-n-cell",
               paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
-            path_root = root_dir)
+            path_root = root_dir, quiet = TRUE)
         }
       }
     }
@@ -1095,7 +1090,7 @@ if (isTRUE(run_plots)) {
             ),
             table_parts = c(fig_key, "coverage", "signed-error-averaged-n-cell",
               paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
-            path_root = root_dir)
+            path_root = root_dir, quiet = TRUE)
         }
       }
     }
@@ -1108,7 +1103,7 @@ if (isTRUE(run_plots)) {
 
 These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
 
-The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+The bands summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. The darkest band runs from the 25th to the 75th percentile, the middle band from the 10th to the 90th and the lightest from the 2.5th to the 97.5th; the line is the median. If either outer percentile lacks a Monte Carlo interval at any finite point, the whole figure uses the 5th/95th pair instead, as its legend shows; unavailable intervals are omitted without dropping points. Percentiles are calculated before applying the signed display scale.
 
 Independent-sample intervals use order statistics within scenarios; equal-weight scenario averages combine their standard errors as sqrt(sum(se^2))/k. These views retain the fixed bandwidth/bias subset and its scientific exclusions.
 
@@ -1182,7 +1177,7 @@ if (isTRUE(run_plots)) {
               ),
               table_parts = c(fig_key, "coverage", "signed-percentiles-by-n-cell",
                 paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
-              path_root = root_dir)
+              path_root = root_dir, quiet = TRUE)
           }
         }
       }
@@ -1266,7 +1261,7 @@ if (isTRUE(run_plots)) {
               ),
               table_parts = c(fig_key, "coverage", "signed-error-by-n-cell",
                 paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
-              path_root = root_dir)
+              path_root = root_dir, quiet = TRUE)
           }
         }
       }
@@ -1396,7 +1391,7 @@ if (isTRUE(run_plots)) {
             ),
             table_parts = c(fig_key, "coverage", "estimated-frequency",
               paste0(tools::file_path_sans_ext(basename(path_p)), ".csv")),
-            path_root = root_dir)
+            path_root = root_dir, quiet = TRUE)
         }
       }
     }
