@@ -13,5 +13,5 @@ directories:
   docs:
     path: docs
 parameters:
-  sim_size: draft
+  sim_size: final
 
