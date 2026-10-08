@@ -1,3 +1,14 @@
+# stimgate 0.99.27
+
+## Bug fixes
+
+- `gateStim()` now finds the unstimulated sample's main peak even when it lies
+  below every stimulated cell, for example when the stimulated negatives are
+  shifted upwards by more than `biasUns`. Previously a small bump among the
+  responding cells could be taken as the peak, which excluded most genuine
+  responders and set the gate far too high. Gates change only for samples
+  whose unstimulated cells extend beyond the stimulated cells' range.
+
 # stimgate 0.99.26
 
 ## Breaking changes

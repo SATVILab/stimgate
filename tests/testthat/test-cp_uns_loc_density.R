@@ -142,3 +142,75 @@ test_that("ordinary fixed-bandwidth fit preserves the density metadata and smoot
   expect_true(is.finite(probTblList[["peakX"]]))
   expect_true(is.finite(probTblList[["windowWidth"]]) && probTblList[["windowWidth"]] > 0)
 })
+
+# A narrow negative peak with a small bandwidth: when the stimulated negatives
+# are shifted above every unstimulated cell, the unstimulated peak lies below
+# the stimulated density's range. It must still be found, rather than a small
+# bump among the positives, or the response region starts inside the positives.
+test_that("the unstimulated peak is found when it lies below every stimulated cell", {
+  withr::local_preserve_seed()
+  set.seed(404L)
+  exStim <- c(
+    stats::rnorm(800, mean = 1.05, sd = 0.02),
+    stats::rnorm(200, mean = 2, sd = 0.3)
+  )
+  exUnsNeg <- stats::rnorm(960, mean = 0.95, sd = 0.02)
+  exUns <- c(exUnsNeg, stats::rnorm(40, mean = 2, sd = 0.3))
+  exStim <- exStim[exStim > max(exUnsNeg)]
+  exTblStim <- data.frame(val = exStim)
+  attr(exTblStim, "chnlCut") <- "val"
+  exTblUns <- data.frame(val = exUns)
+  attr(exTblUns, "chnlCut") <- "val"
+  chnlSettings <- .makeCpUnsLocDensityChnlSettings(bw = 0.01)
+
+  densRaw <- stimgate:::.getCpUnsLocGetDensRaw(
+    exTblStimThreshold = exTblStim,
+    exTblUnsThreshold = exTblUns,
+    stage = "test",
+    pathProject = tempdir(),
+    chnlSettings = chnlSettings
+  )
+  expect_gt(min(densRaw$xStim), stats::median(exUns))
+
+  peakX <- stimgate:::.getCpUnsLocGetPeakX(densRaw, exStim, exUns)
+  expect_equal(peakX[["uns"]], 0.95, tolerance = 0.03)
+  expect_equal(peakX[["stim"]], 1.05, tolerance = 0.03)
+
+  probTbl <- stimgate:::.getCpUnsLocGetProbTbl(
+    densTblRaw = densRaw,
+    stage = "test",
+    cpMin = -Inf,
+    exVecStimThreshold = exStim,
+    exVecUnsThreshold = exUns
+  )
+  expect_lt(min(probTbl$pos$xStim), 1.5)
+})
+
+# When the unstimulated cells lie within the stimulated range, the joint range
+# is the existing grid, so the peaks come from the raw densities unchanged.
+test_that("peaks come from the raw densities when the unstimulated cells lie inside", {
+  withr::local_preserve_seed()
+  fixture <- .makeCpUnsLocDensityFixture(seed = 505L)
+  exUns <- fixture$unsVec
+  exUns <- exUns[exUns >= min(fixture$stimVec) & exUns <= max(fixture$stimVec)]
+  exTblUns <- data.frame(val = exUns)
+  attr(exTblUns, "chnlCut") <- "val"
+
+  densRaw <- stimgate:::.getCpUnsLocGetDensRaw(
+    exTblStimThreshold = fixture$stim,
+    exTblUnsThreshold = exTblUns,
+    stage = "test",
+    pathProject = tempdir(),
+    chnlSettings = .makeCpUnsLocDensityChnlSettings(bw = 0.5)
+  )
+  rawPeak <- function(level) {
+    d <- densRaw[densRaw$stim == level, ]
+    d <- d[order(d$xStim), ]
+    d$xStim[stimgate:::.getPeakMainLeftIdx(d$dens)]
+  }
+
+  expect_identical(
+    stimgate:::.getCpUnsLocGetPeakX(densRaw, fixture$stimVec, exUns),
+    c(stim = rawPeak("yes"), uns = rawPeak("no"))
+  )
+})

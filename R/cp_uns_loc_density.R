@@ -1035,21 +1035,19 @@
   densTblStim <- densTblRaw |>
     dplyr::filter(.data$stim == "yes") |>
     dplyr::arrange(.data$xStim)
-  densTblUns <- densTblRaw |>
-    dplyr::filter(.data$stim == "no") |>
-    dplyr::arrange(.data$xStim)
-  peakStimIdx <- .getPeakMainLeftIdx(densTblStim$dens)
-  peakUnsIdx <- .getPeakMainLeftIdx(densTblUns$dens)
-  peakStimX <- densTblStim$xStim[peakStimIdx]
-  peakUnsX <- densTblUns$xStim[peakUnsIdx]
+  peakX <- .getCpUnsLocGetPeakX(
+    densTblRaw = densTblRaw,
+    exVecStim = exVecStimThreshold,
+    exVecUns = exVecUnsThreshold
+  )
 
   probTblPosList <- .getCpUnsLocProbTblFilter(
     probTbl = probTbl,
     exVecStim = exVecStimThreshold,
     exVecUns = exVecUnsThreshold,
     stage = stage,
-    peakStimX = peakStimX,
-    peakUnsX = peakUnsX
+    peakStimX = peakX[["stim"]],
+    peakUnsX = peakX[["uns"]]
   )
 
   list(
@@ -1070,6 +1068,40 @@
     peakX = probTblPosList[["peakX"]],
     windowWidth = probTblPosList[["windowWidth"]]
   )
+}
+
+# Main left peak of each tube, searched over both tubes' range. The fixed-
+# bandwidth densities are evaluated only over the stimulated cells' range, so
+# an unstimulated peak below (or above) every stimulated cell would be cut off
+# and a small bump elsewhere taken as the peak. When the unstimulated cells
+# extend beyond that range, both densities are recomputed with the same
+# bandwidth over the joint range, for the peak search only.
+#' @keywords internal
+.getCpUnsLocGetPeakX <- function(densTblRaw, exVecStim, exVecUns) {
+  bw <- attr(densTblRaw, "locDensityBw")
+  exVecStim <- exVecStim[is.finite(exVecStim)]
+  exVecUns <- exVecUns[is.finite(exVecUns)]
+  bwOk <- is.numeric(bw) && length(bw) == 1L && is.finite(bw) && bw > 0
+  if (bwOk && length(exVecStim) > 1L && length(exVecUns) > 1L) {
+    # Same arithmetic as density()'s default range (cut = 3), so the bounds
+    # equal the existing grid exactly when the unstimulated cells lie inside.
+    from <- min(exVecStim, exVecUns) - 3 * bw
+    to <- max(exVecStim, exVecUns) + 3 * bw
+    if (from < min(densTblRaw$xStim) || to > max(densTblRaw$xStim)) {
+      peakOne <- function(x) {
+        dens <- stats::density(x, bw = bw, from = from, to = to)
+        dens$x[.getPeakMainLeftIdx(dens$y)]
+      }
+      return(c(stim = peakOne(exVecStim), uns = peakOne(exVecUns)))
+    }
+  }
+  peakOne <- function(stimLevel) {
+    dens <- densTblRaw |>
+      dplyr::filter(.data$stim == stimLevel) |>
+      dplyr::arrange(.data$xStim)
+    dens$xStim[.getPeakMainLeftIdx(dens$dens)]
+  }
+  c(stim = peakOne("yes"), uns = peakOne("no"))
 }
 
 #' @keywords internal

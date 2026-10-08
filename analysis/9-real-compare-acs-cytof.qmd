@@ -343,7 +343,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .write_rds_atomic(
     list(
-      analysis_semantics_version = "acs-cytof-v4",
+      analysis_semantics_version = "acs-cytof-v5",
       stimgate_loc_threshold_method = stimgate_loc_threshold_method,
       run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))
     ),
@@ -355,7 +355,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .analysis_check_expected_run(
     manual_run_manifest,
-    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v4"
+    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v5"
   )
   .acsCytofCheckRunManifestMethod(
     manual_run_manifest, stimgate_loc_threshold_method, analysis_qmd

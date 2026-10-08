@@ -311,7 +311,7 @@
   list(
     # v2: locThresholdMethod is recorded in the settings and gate rows; v1
     # caches used probability-sum matching without recording it.
-    analysis_semantics_version = "sim-low-separation-v2",
+    analysis_semantics_version = "sim-low-separation-v3",
     grid = as.data.frame(grid),
     n_sample = as.integer(n_sample),
     settings = settings,
