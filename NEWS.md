@@ -2,6 +2,11 @@
 
 ## Breaking changes
 
+- `gateStim()` widens the shared bandwidth for samples with fewer than
+  `bwNcellMax` cells (10,000 by default), by `(bwNcellMax / n)^(1/5)`, so
+  small samples are not gated on densities made bumpy by the shared
+  bandwidth estimated on 10,000 cells. Larger samples are unchanged. Turn
+  this off with `stimControl(bwScaleNcell = FALSE)`.
 - When `biasUns` is not supplied, `gateStim()` now sets it to `biasUnsFactor`
   times the bandwidth every sample of the marker uses: a fixed `bw`, or the
   shared bandwidth with `stimControl(bwScope = "cytokine")` (the default).
@@ -14,6 +19,8 @@
   model called a response could donate a low gate even when it had fewer
   stimulated than unstimulated cells above it, and tubes whose gate was
   replaced in the batch step could no longer donate in the cluster step.
+  When no tube in a batch has a gate found by local FDR, each now keeps its
+  own fallback gate instead of the lowest fallback in the batch.
 - A lower shared gate is now accepted only within limits: down to where a
   responder's background-subtracted frequency is `stimControl(locShareCap)`
   (default 1.5) times its sum of fitted response probabilities, and for

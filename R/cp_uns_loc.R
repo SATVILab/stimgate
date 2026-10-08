@@ -199,6 +199,9 @@
     }
     .getCpShareFreq(cpNum[[i]], xStimList[[i]], xUns)
   }, numeric(1))
+  # Frequency at each tube's own gate before sharing; the cluster step uses
+  # it for its donors' median frequency.
+  meta$locOwnFreq <- ifelse(stimRow, freqOwn, NA_real_)
   meta$locResponder <- stimRow & .getCpShareResponder(
     locGeneratedDirect = meta$locGeneratedDirect,
     cp = cpNum,
@@ -211,17 +214,15 @@
       return(.getCpUnsLocCpAttachMeta(cp, meta))
     }
 
+    # No generated gate: each tube keeps its own fallback. Combining them
+    # could give a tube another tube's lower fallback, below its own cells.
     if (!any(stimGenerated)) {
-      cpCombined <- .combineCp(
-        cp = cp,
-        gateCombn = gateCombnCurr
-      )[[1]]
       metaOut <- meta
       metaOut$locGenerated[] <- FALSE
       metaOut$locGeneratedDirect[] <- FALSE
       metaOut$locSource[] <- "not_calculated"
       metaOut$locReason[] <- "no_generated_local_fdr_threshold_to_combine"
-      return(.getCpUnsLocCpAttachMeta(cpCombined, metaOut))
+      return(.getCpUnsLocCpAttachMeta(cp, metaOut))
     }
 
     # Generated gates, but none from a responder: nothing to share.
@@ -369,6 +370,7 @@
     locReason = attr(cp, "locReason") %||% rep(NA_character_, n),
     locResponder = attr(cp, "locResponder") %||% rep(FALSE, n),
     propBsEst = attr(cp, "propBsEst") %||% rep(NA_real_, n),
+    locOwnFreq = attr(cp, "locOwnFreq") %||% rep(NA_real_, n),
     locShareLimit = attr(cp, "locShareLimit") %||% rep("none", n),
     locShareProposed = attr(cp, "locShareProposed") %||% rep(NA_real_, n)
   ) |>
@@ -392,6 +394,9 @@
   attr(cp, "locResponder") <-
     (meta[["locResponder"]] %||% rep(FALSE, n)) %in% TRUE
   attr(cp, "propBsEst") <- as.numeric(meta[["propBsEst"]] %||% rep(NA_real_, n))
+  attr(cp, "locOwnFreq") <- as.numeric(
+    meta[["locOwnFreq"]] %||% rep(NA_real_, n)
+  )
   attr(cp, "locShareLimit") <- as.character(
     meta[["locShareLimit"]] %||% rep("none", n)
   )

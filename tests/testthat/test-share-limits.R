@@ -209,6 +209,18 @@ test_that("cluster donors are responders and lowered gates are limited", {
   expect_identical(out$cpJoinLse, out$cpJoinTgOrig)
   expect_match(out$locReason[8:9], "_limited_by_nonresponder_cell_cap$")
   expect_match(out$locClusterAction[[7]], "_limited_by_responder_cap$")
+
+  # The donor-median cap uses donors' frequencies at their own gates before
+  # sharing (locOwnFreq), not at their current gates. With a loose cell cap,
+  # non-donors at q60 = 5 (frequency 0.1) pass when the donors' own median
+  # is 0.1 and are limited when it is 0.01.
+  loose <- .getCpClusterLocLimit(proposed, ex_lookup, 1.5, 1e6)
+  expect_identical(loose$cpJoinTgOrig[8:9], c(5, 5))
+  low <- proposed
+  low$locOwnFreq <- ifelse(low$locResponder, 0.01, NA_real_)
+  lowOut <- .getCpClusterLocLimit(low, ex_lookup, 1.5, 1e6)
+  expect_identical(lowOut$cpJoinTgOrig[8:9], c(5.2, 5.2))
+  expect_identical(lowOut$locShareLimit[8:9], rep("nonresponder_donor_cap", 2))
 })
 
 test_that("stimControl validates the sharing limits", {
@@ -238,4 +250,19 @@ test_that("gateStim runs with the default sharing limits", {
     "none", "responder_cap", "responder_no_estimate",
     "nonresponder_cell_cap", "nonresponder_donor_cap"
   )))
+})
+
+
+test_that("shared bandwidths widen only for samples below bwNcellMax", {
+  settings <- list(bwNcellMax = 1e4)
+  expect_equal(.getCpUnsLocBwSharedScale(0.03, 1e4, settings), 0.03)
+  expect_equal(.getCpUnsLocBwSharedScale(0.03, 5e4, settings), 0.03)
+  expect_equal(
+    .getCpUnsLocBwSharedScale(0.03, 1e3, settings),
+    0.03 * 10^(1 / 5)
+  )
+  settings$bwScaleNcell <- FALSE
+  expect_equal(.getCpUnsLocBwSharedScale(0.03, 1e3, settings), 0.03)
+  expect_true(stimControl()$bwScaleNcell)
+  expect_error(stimControl(bwScaleNcell = NA), "bwScaleNcell")
 })

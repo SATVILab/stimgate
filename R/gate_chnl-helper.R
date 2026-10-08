@@ -83,7 +83,8 @@
             gate = cpJoinTgOrig,
             dplyr::any_of(c(
               "locGenerated", "locGeneratedDirect", "locSource", "locReason",
-              "locResponder", "propBsEst", "locShareLimit", "locShareProposed"
+              "locResponder", "propBsEst", "locOwnFreq", "locShareLimit",
+              "locShareProposed"
             ))
           ) |> # nolint
           dplyr::left_join(

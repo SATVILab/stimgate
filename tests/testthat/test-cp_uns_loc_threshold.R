@@ -550,7 +550,7 @@ test_that(".getCpUnsLocCombineCpWithMeta uses min of generated thresholds and ig
   )
 })
 
-test_that(".getCpUnsLocCombineCpWithMeta handles all-fallback conditions cleanly under min", {
+test_that(".getCpUnsLocCombineCpWithMeta keeps each fallback gate when none is generated", {
   cp_vec <- c("stim1" = 5.0, "stim2" = 6.0, "uns" = NA_real_)
   attr(cp_vec, "locGenerated") <- c(FALSE, FALSE, FALSE)
   attr(cp_vec, "locGeneratedDirect") <- c(FALSE, FALSE, FALSE)
@@ -564,9 +564,10 @@ test_that(".getCpUnsLocCombineCpWithMeta handles all-fallback conditions cleanly
   )
   cp_min <- combined_out[["min"]]
 
+  # A lower fallback from another tube could fall below this tube's cells.
   expect_equal(as.numeric(cp_min["stim1"]), 5.0)
-  expect_equal(as.numeric(cp_min["stim2"]), 5.0)
-  expect_equal(as.numeric(cp_min["uns"]), 5.0)
+  expect_equal(as.numeric(cp_min["stim2"]), 6.0)
+  expect_true(is.na(cp_min["uns"]))
 
   meta_comb <- .getCpUnsLocMetaFromCp(cp_min)
   expect_false(any(meta_comb$locGenerated))

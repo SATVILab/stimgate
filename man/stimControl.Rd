@@ -19,6 +19,7 @@ stimControl(
   bwNcellMin = bwNcellMax,
   bwNcellMax = 10000,
   bwCluster = NULL,
+  bwScaleNcell = TRUE,
   clusterGates = TRUE,
   gateCombn = "min",
   locProbCol = "pred",
@@ -123,6 +124,13 @@ Default: 10000.}
 \item{bwCluster}{numeric or NULL Density bandwidth for threshold clustering.
 NULL uses the shared local-FDR bandwidth, or with \code{bwScope = "sample"},
 the median bandwidth of samples with direct thresholds. Default: NULL.}
+
+\item{bwScaleNcell}{logical Widen a shared bandwidth (\code{bwScope}
+"cytokine" or "cluster") for samples whose smaller tube has fewer than
+\code{bwNcellMax} cells, by \code{(bwNcellMax / n)^(1/5)}, the rate at which a
+normal-reference bandwidth grows as cells decrease. The shared bandwidth
+is estimated on \code{bwNcellMax} cells; larger samples keep it. Default:
+TRUE.}
 
 \item{clusterGates}{logical Share thresholds across clusters of paired
 stimulated/control densities on a common expression grid. Only

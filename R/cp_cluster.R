@@ -166,13 +166,17 @@
   if (!"propBsEst" %in% names(gateTbl)) {
     gateTbl$propBsEst <- NA_real_
   }
+  if (!"locOwnFreq" %in% names(gateTbl)) {
+    gateTbl$locOwnFreq <- NA_real_
+  }
   gateTbl |>
     dplyr::mutate(
       ind = as.character(.data$ind),
       locGenerated = .data$locGenerated %in% TRUE,
       locGeneratedDirect = .data$locGeneratedDirect %in% TRUE,
       locResponder = .data$locResponder %in% TRUE,
-      propBsEst = suppressWarnings(as.numeric(.data$propBsEst))
+      propBsEst = suppressWarnings(as.numeric(.data$propBsEst)),
+      locOwnFreq = suppressWarnings(as.numeric(.data$locOwnFreq))
     )
 }
 
@@ -343,6 +347,7 @@
         .data$locGeneratedDirect %in% TRUE,
       locResponder = .data$locResponder %in% TRUE,
       propBsEst = .data$propBsEst,
+      locOwnFreq = .data$locOwnFreq,
       locShareLimit = "none",
       locShareProposed = .data$cpFinal,
       locSource = as.character(.data$locSource),
@@ -404,6 +409,9 @@
     propBsEst = suppressWarnings(as.numeric(
       gateTblStim$propBsEst %||% rep(NA_real_, nrow(gateTblStim))
     )),
+    locOwnFreq = suppressWarnings(as.numeric(
+      gateTblStim$locOwnFreq %||% rep(NA_real_, nrow(gateTblStim))
+    )),
     locShareLimit = "none",
     locShareProposed = cp,
     locSource = as.character(
@@ -435,7 +443,8 @@
 # Limit lowered cluster gates as in the batch step (.getCpShareApply()):
 # donors use the rule for responders, other tubes in clusters with a donor the
 # rule for non-responders, with the median frequency of the cluster's donors
-# at their current gates. Frequencies use the stimulated and unstimulated
+# at their own gates before sharing (`locOwnFreq`; at their current gates
+# when that is unavailable). Frequencies use the stimulated and unstimulated
 # expression in `exLookup`.
 #' @keywords internal
 .getCpClusterLocLimit <- function(cpTbl, exLookup, shareCap, cellCap) {
@@ -449,6 +458,10 @@
   freqCurr <- vapply(seq_len(nrow(cpTbl)), function(i) {
     if (!donor[[i]]) {
       return(NA_real_)
+    }
+    own <- suppressWarnings(as.numeric(cpTbl$locOwnFreq[[i]]))
+    if (length(own) == 1L && is.finite(own)) {
+      return(own)
     }
     .getCpShareFreq(
       cpTbl$cpOrigQuantMin[[i]],

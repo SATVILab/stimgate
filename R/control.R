@@ -52,6 +52,12 @@
 #'   down to half of it, and estimate each selected tube's bandwidth on exactly
 #'   this many cells, upsampling smaller tubes. Ignored with fixed `bw`.
 #'   Default: 10000.
+#' @param bwScaleNcell logical Widen a shared bandwidth (`bwScope`
+#'   "cytokine" or "cluster") for samples whose smaller tube has fewer than
+#'   `bwNcellMax` cells, by `(bwNcellMax / n)^(1/5)`, the rate at which a
+#'   normal-reference bandwidth grows as cells decrease. The shared bandwidth
+#'   is estimated on `bwNcellMax` cells; larger samples keep it. Default:
+#'   TRUE.
 #' @param bwCluster numeric or NULL Density bandwidth for threshold clustering.
 #'   NULL uses the shared local-FDR bandwidth, or with `bwScope = "sample"`,
 #'   the median bandwidth of samples with direct thresholds. Default: NULL.
@@ -201,6 +207,7 @@ stimControl <- function(
   bwNcellMin = bwNcellMax,
   bwNcellMax = 1e4,
   bwCluster = NULL,
+  bwScaleNcell = TRUE,
   clusterGates = TRUE,
   gateCombn = "min",
   locProbCol = "pred",
@@ -260,6 +267,12 @@ stimControl <- function(
       is.na(clusterGates)
   ) {
     stop("`clusterGates` must be TRUE or FALSE")
+  }
+  if (
+    !is.logical(bwScaleNcell) || length(bwScaleNcell) != 1L ||
+      is.na(bwScaleNcell)
+  ) {
+    stop("`bwScaleNcell` must be TRUE or FALSE")
   }
 
   # Required global settings must be supplied explicitly; per-channel NULL/NA

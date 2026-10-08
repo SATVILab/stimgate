@@ -276,7 +276,8 @@
         chnl, marker, gateName, batch, ind, gate,
         dplyr::any_of(c(
           "locGenerated", "locGeneratedDirect", "locSource", "locReason",
-          "locResponder", "propBsEst", "locShareLimit", "locShareProposed"
+          "locResponder", "propBsEst", "locOwnFreq", "locShareLimit",
+              "locShareProposed"
         ))
       ) # nolint
   })
