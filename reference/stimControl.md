@@ -26,6 +26,7 @@ stimControl(
   gateCombn = "min",
   locProbCol = "pred",
   locMinPeakProb = 0.25,
+  locThresholdMethod = "region",
   locEnforceShapeThreshold = FALSE,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1/6,
@@ -175,6 +176,16 @@ stimControl(
 
   numeric Minimum peak response probability for a directly generated
   local-FDR threshold. Default: 0.25.
+
+- locThresholdMethod:
+
+  character How the condition-level gate is chosen from the local-FDR
+  filtering: "region" uses the lower boundary of the region kept by
+  filtering (`xSum` in diagnostics) as the gate; "match" moves the gate
+  to where the background-subtracted frequency equals the sum of fitted
+  response probabilities, which was the only method before stimgate
+  0.99.26. Cells count as positive when strictly above the gate.
+  Default: "region".
 
 - locEnforceShapeThreshold:
 
@@ -386,6 +397,9 @@ stimControl()
 #> $locMinPeakProb
 #> [1] 0.25
 #> 
+#> $locThresholdMethod
+#> [1] "region"
+#> 
 #> $locEnforceShapeThreshold
 #> [1] FALSE
 #> 
@@ -526,6 +540,9 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> 
 #> $locMinPeakProb
 #> [1] 0.25
+#> 
+#> $locThresholdMethod
+#> [1] "region"
 #> 
 #> $locEnforceShapeThreshold
 #> [1] FALSE

@@ -103,10 +103,10 @@ head(gates)
 #> # A tibble: 4 × 12
 #>   pop   gateName  chnl  marker ind   batch  gate locGenerated locGeneratedDirect
 #>   <chr> <chr>     <chr> <I<ch> <chr> <chr> <dbl> <lgl>        <lgl>             
-#> 1 root  loc_minC… BC1(… Marke… 2     batc…  4.65 TRUE         TRUE              
-#> 2 root  loc_minC… BC1(… Marke… 4     batc…  3.91 TRUE         TRUE              
-#> 3 root  loc_minC… BC2(… Marke… 2     batc…  4.11 TRUE         TRUE              
-#> 4 root  loc_minC… BC2(… Marke… 4     batc…  3.00 TRUE         TRUE              
+#> 1 root  loc_minC… BC1(… Marke… 2     batc…  4.51 TRUE         TRUE              
+#> 2 root  loc_minC… BC1(… Marke… 4     batc…  3.68 TRUE         TRUE              
+#> 3 root  loc_minC… BC2(… Marke… 2     batc…  3.99 TRUE         TRUE              
+#> 4 root  loc_minC… BC2(… Marke… 4     batc…  2.78 TRUE         TRUE              
 #> # ℹ 3 more variables: locSource <chr>, locReason <chr>, gateCyt <dbl>
 ```
 
@@ -124,12 +124,12 @@ head(stats[, c("ind", "cytCombn", "countStim", "freqStim", "freqUns", "freqBs")]
 #> # A tibble: 6 × 6
 #>   ind   cytCombn                       countStim freqStim freqUns freqBs
 #>   <chr> <chr>                              <int>    <dbl>   <dbl>  <dbl>
-#> 1 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        39     0.39    0.03   0.36
-#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       262     2.62    0.62   2   
-#> 3 2     BC1(La139)Dd~+~BC2(Pr141)Dd~+~        40     0.4     0.01   0.39
-#> 4 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      9659    96.6    99.3   -2.75
-#> 5 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        92     0.92    0.23   0.69
-#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       483     4.83    1.12   3.71
+#> 1 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        44     0.44    0.04   0.4 
+#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       287     2.87    0.72   2.15
+#> 3 2     BC1(La139)Dd~+~BC2(Pr141)Dd~+~        42     0.42    0.02   0.4 
+#> 4 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      9627    96.3    99.2   -2.95
+#> 5 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~       107     1.07    0.33   0.74
+#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       559     5.59    1.36   4.23
 ```
 
 ## 4. Plot the results
@@ -181,7 +181,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] stimgate_0.99.25
+#> [1] stimgate_0.99.26
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] utf8_1.2.6           tidyr_1.3.2          sass_0.4.10         

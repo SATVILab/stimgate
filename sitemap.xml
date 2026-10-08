@@ -15,6 +15,7 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-assertString.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-assertStringVector.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-bwCalcOne.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-completeChnlSettingsLocThresholdMethod.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-debug.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-debugInit.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-debugStateReset.html</loc></url>
@@ -41,6 +42,7 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGateBelowCell.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetCpActual.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetCpDataThresholdExcludeMargin.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetCpRegion.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbFit.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbSmoothFit.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocGetProbSmoothFitEval.html</loc></url>
@@ -53,14 +55,17 @@
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocMarginalDominanceStart.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocMarginalReferenceX.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocPiecewiseConstantAntimodes.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocProbBsEst.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocProbability.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocProbabilityColumn.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocQualityBoundaryCurrent.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocSetting.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocShapeRegionBoundary.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocStageThreshold.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocSubsetExpressionTable.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocSubsetRows.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocTautStringExtremaCurrent.html</loc></url>
+<url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocThresholdMethod.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocUnitValue.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCytPosBasePos.html</loc></url>
 <url><loc>https://satvilab.github.io/stimgate/reference/dot-getCytPosMarginalReference.html</loc></url>

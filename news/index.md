@@ -1,5 +1,34 @@
 # Changelog
 
+## stimgate 0.99.26
+
+### Breaking changes
+
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  now sets each local-FDR gate at the lower edge of the region kept by
+  its filtering steps (`stimControl(locThresholdMethod = "region")`, the
+  new default). Previously the gate was raised further, until the
+  background-subtracted frequency above it matched the sum of the fitted
+  response probabilities. Because those probabilities are deliberately
+  conservative, that extra step could exclude genuine responders, so
+  gates are now generally lower and frequencies higher. Use
+  `stimControl(locThresholdMethod = "match")` to reproduce the previous
+  gates. Threshold sharing (`clusterGates`), combining gates within a
+  batch and cytokine-positive refinement still apply afterwards, and
+  [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md)
+  counts cells above the gate actually applied.
+
+### New features
+
+- [`getStimGatesDetailed()`](https://satvilab.github.io/stimgate/reference/getStimGatesDetailed.md)
+  reports the threshold method (`locThresholdMethod`) and the
+  filtered-region boundary (`locRegionX`) for each condition-level gate,
+  and
+  [`stimgateMetaReadSettingsChnls()`](https://satvilab.github.io/stimgate/reference/stimgateMetaReadSettingsChnls.md)
+  records the method used for each marker. The probability-sum estimate
+  stays in `propBsEst` as a diagnostic; under `"region"` it is not the
+  frequency above the gate.
+
 ## stimgate 0.99.25
 
 ### Bug fixes

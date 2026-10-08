@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.25</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.26</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -572,7 +572,9 @@
 </ol><ul><li>Group entries under <code>## Breaking changes</code>, <code>## New features</code>, <code>## Bug fixes</code> or <code>## Performance</code>, omitting empty groups.</li>
 <li>Write short user-facing bullets that name exported functions in backticks (e.g. <code><a href="reference/gateStim.html">gateStim()</a></code>). Describe changed results or behaviour, not internal refactors or tests.</li>
 <li>On rebase, keep <code>master</code>’s entries and move this PR’s section to the top under its new version.</li>
-</ul><hr></div>
+</ul><ol start="16" style="list-style-type: decimal"><li>
+<strong>Local-FDR threshold method (<code>locThresholdMethod</code>)</strong>: <code>stimControl(locThresholdMethod = "region")</code> (default) sets the condition-level gate at the lower boundary of the region kept by post-smoothing filtering (<code>xSum</code>). For the shape-enforced route this is the largest applied pre-fit, global or marginal cut (<code><a href="reference/dot-getCpUnsLocShapeRegionBoundary.html">.getCpUnsLocShapeRegionBoundary()</a></code>). <code>"match"</code> keeps the previous probability-sum matching, including the gate below the selected cell, and must reproduce previous gates exactly. Keep the reasons distinct (<code>local_fdr_region_boundary_selected</code> versus <code>local_fdr_threshold_selected</code>) and keep no-response/non-finite cases labelled as fallbacks. Under <code>"region"</code>, condition diagnostics count frequencies at the applied gate; <code>propBsEst</code> stays a probability-sum diagnostic and is never forced to agree. Analyses set the method explicitly and record it in manifests; changing it requires a new semantics version so cached results from the other method are rejected.</li>
+</ol><hr></div>
 <div class="section level2">
 <h2 id="id_8-testing-best-practices--guidelines">8. Testing Best Practices &amp; Guidelines<a class="anchor" aria-label="anchor" href="#id_8-testing-best-practices--guidelines"></a></h2>
 <p>Package unit/integration tests belong in <code>tests/testthat/</code>. Tests whose subject is analysis code, <code>scripts/r/</code> helpers or QMD/package-API drift belong in <code>analysis/tests/testthat/</code>. Use <code>test-&lt;topic&gt;.R</code> filenames in both suites.</p>

@@ -163,10 +163,10 @@ getStimGates(pathProject)
 #> # A tibble: 4 × 12
 #>   pop   gateName  chnl  marker ind   batch  gate locGenerated locGeneratedDirect
 #>   <chr> <chr>     <chr> <I<ch> <chr> <chr> <dbl> <lgl>        <lgl>             
-#> 1 root  loc_minC… BC1(… Marke… 2     batc…  4.65 TRUE         TRUE              
-#> 2 root  loc_minC… BC1(… Marke… 4     batc…  3.91 TRUE         TRUE              
-#> 3 root  loc_minC… BC2(… Marke… 2     batc…  4.11 TRUE         TRUE              
-#> 4 root  loc_minC… BC2(… Marke… 4     batc…  3.00 TRUE         TRUE              
+#> 1 root  loc_minC… BC1(… Marke… 2     batc…  4.51 TRUE         TRUE              
+#> 2 root  loc_minC… BC1(… Marke… 4     batc…  3.68 TRUE         TRUE              
+#> 3 root  loc_minC… BC2(… Marke… 2     batc…  3.99 TRUE         TRUE              
+#> 4 root  loc_minC… BC2(… Marke… 4     batc…  2.78 TRUE         TRUE              
 #> # ℹ 3 more variables: locSource <chr>, locReason <chr>, gateCyt <dbl>
 
 # Disable gate sharing and fix the first marker's bandwidth
@@ -189,7 +189,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp1WOWNX/custom_gating_1ad128f19e2c"
+#> [1] "/tmp/RtmpHYLwiN/custom_gating_1ad93890086c"
 
 # Gate in-memory matrices; column names act as channels and markers
 matrices <- lapply(seq_along(gs), function(i) {
@@ -212,5 +212,5 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp1WOWNX/matrix_gating_1ad112dabc5e"
+#> [1] "/tmp/RtmpHYLwiN/matrix_gating_1ad9660a649d"
 ```

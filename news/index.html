@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.25</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.26</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,19 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.26" id="stimgate-09926">stimgate 0.99.26<a class="anchor" aria-label="anchor" href="#stimgate-09926"></a></h2>
+<div class="section level3">
+<h3 id="breaking-changes-0-99-26">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-99-26"></a></h3>
+<ul><li>
+<code><a href="../reference/gateStim.html">gateStim()</a></code> now sets each local-FDR gate at the lower edge of the region kept by its filtering steps (<code>stimControl(locThresholdMethod = "region")</code>, the new default). Previously the gate was raised further, until the background-subtracted frequency above it matched the sum of the fitted response probabilities. Because those probabilities are deliberately conservative, that extra step could exclude genuine responders, so gates are now generally lower and frequencies higher. Use <code>stimControl(locThresholdMethod = "match")</code> to reproduce the previous gates. Threshold sharing (<code>clusterGates</code>), combining gates within a batch and cytokine-positive refinement still apply afterwards, and <code><a href="../reference/getStimStats.html">getStimStats()</a></code> counts cells above the gate actually applied.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="new-features-0-99-26">New features<a class="anchor" aria-label="anchor" href="#new-features-0-99-26"></a></h3>
+<ul><li>
+<code><a href="../reference/getStimGatesDetailed.html">getStimGatesDetailed()</a></code> reports the threshold method (<code>locThresholdMethod</code>) and the filtered-region boundary (<code>locRegionX</code>) for each condition-level gate, and <code><a href="../reference/stimgateMetaReadSettingsChnls.html">stimgateMetaReadSettingsChnls()</a></code> records the method used for each marker. The probability-sum estimate stays in <code>propBsEst</code> as a diagnostic; under <code>"region"</code> it is not the frequency above the gate.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.25" id="stimgate-09925">stimgate 0.99.25<a class="anchor" aria-label="anchor" href="#stimgate-09925"></a></h2>
 <div class="section level3">
