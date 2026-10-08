@@ -16,14 +16,15 @@ params:
   pops: all
   stims: all
   cyts: all
-  samples: all
-  html_pops: "tcrgd,b"
+  samples: none
+  html_pops: all
   html_stims: all
-  html_cyts: "IL2,TNF"
+  html_cyts: all
   html_samples: none
-  html_n_largest: 2
-  html_n_random: 1
-  html_n_closest: 1
+  html_by_group: false
+  html_n_largest: 20
+  html_n_random: 5
+  html_n_closest: 5
   html_seed: 20261008
   n_workers: 2
 ---
@@ -59,19 +60,23 @@ and never change them.
 Parameters (or environment variables) choose what is drawn. Lists are comma
 separated; `all` selects everything.
 
-- `pops` (`ACS_DEBUG_POPS`), `stims` (`ACS_DEBUG_STIMS`), `cyts`
-  (`ACS_DEBUG_CYTS`), `samples` (`ACS_DEBUG_SAMPLES`): the pages saved to
-  files. Every tube of a chosen population is still gated, so the gates match
-  Analysis 9.
 - `html_pops`, `html_stims`, `html_cyts` (`ACS_DEBUG_HTML_POPS`,
-  `ACS_DEBUG_HTML_STIMS`, `ACS_DEBUG_HTML_CYTS`): the combinations shown in
-  this report. In each, it shows the `html_n_largest` samples where
-  StimGate's Analysis 9 frequency differs most from the manual one, the
-  `html_n_closest` that agree best and `html_n_random` of the others (seed
-  `html_seed`); without Analysis 9's manual comparison, all are chosen at
-  random. `html_samples` (`ACS_DEBUG_HTML_SAMPLES`) shows chosen SampleIDs
-  instead. The report samples are chosen when re-gating, so change these with
+  `ACS_DEBUG_HTML_STIMS`, `ACS_DEBUG_HTML_CYTS`, default all): the
+  combinations considered for this report. Across all of them together
+  (`html_by_group = false`, the default; `true` chooses within each
+  population, stimulation and cytokine), it shows the `html_n_largest` (20)
+  samples where StimGate's Analysis 9 frequency differs most from the manual
+  one, the `html_n_closest` (5) that agree best among samples with a manual
+  response, and `html_n_random` (5) of the others (seed `html_seed`); without
+  Analysis 9's manual comparison, all are chosen at random. `html_samples`
+  (`ACS_DEBUG_HTML_SAMPLES`) shows chosen SampleIDs instead. The report
+  samples are chosen when re-gating, so change these with
   `RUN_SIMULATIONS=true`.
+- `pops` (`ACS_DEBUG_POPS`), `stims` (`ACS_DEBUG_STIMS`), `cyts`
+  (`ACS_DEBUG_CYTS`), `samples` (`ACS_DEBUG_SAMPLES`): further pages saved to
+  files. `samples` defaults to `none`, so only the report's samples are drawn;
+  `manual` adds every donor with manual gating and `all` every donor. Every
+  tube of a chosen population is still gated, so the gates match Analysis 9.
 - `n_workers` (`ACS_N_WORKERS`): populations gated at once.
 
 Quick and dev renders gate only the Analysis 9 TCRgd tester GatingSet and draw
@@ -119,15 +124,18 @@ param_int <- function(param, env, default) {
 sel_pops <- param_list("pops", "ACS_DEBUG_POPS")
 sel_stims <- param_list("stims", "ACS_DEBUG_STIMS")
 sel_cyts <- param_list("cyts", "ACS_DEBUG_CYTS")
-sel_samples <- param_list("samples", "ACS_DEBUG_SAMPLES")
-html_pops <- param_list("html_pops", "ACS_DEBUG_HTML_POPS", "tcrgd,b")
+sel_samples <- param_list("samples", "ACS_DEBUG_SAMPLES", "none")
+html_pops <- param_list("html_pops", "ACS_DEBUG_HTML_POPS")
 html_stims <- param_list("html_stims", "ACS_DEBUG_HTML_STIMS")
-html_cyts <- param_list("html_cyts", "ACS_DEBUG_HTML_CYTS", "IL2,TNF")
+html_cyts <- param_list("html_cyts", "ACS_DEBUG_HTML_CYTS")
 html_samples <- param_list("html_samples", "ACS_DEBUG_HTML_SAMPLES", "none")
 if (!length(html_samples)) html_samples <- NULL
-html_n_largest <- param_int("html_n_largest", "ACS_DEBUG_HTML_N_LARGEST", 2L)
-html_n_random <- param_int("html_n_random", "ACS_DEBUG_HTML_N_RANDOM", 1L)
-html_n_closest <- param_int("html_n_closest", "ACS_DEBUG_HTML_N_CLOSEST", 1L)
+html_by_group <- .as_flag(.get_qmd_param_env(
+  "html_by_group", "ACS_DEBUG_HTML_BY_GROUP", FALSE
+))
+html_n_largest <- param_int("html_n_largest", "ACS_DEBUG_HTML_N_LARGEST", 20L)
+html_n_random <- param_int("html_n_random", "ACS_DEBUG_HTML_N_RANDOM", 5L)
+html_n_closest <- param_int("html_n_closest", "ACS_DEBUG_HTML_N_CLOSEST", 5L)
 html_seed <- param_int("html_seed", "ACS_DEBUG_HTML_SEED", 20261008L)
 n_workers <- param_int("n_workers", "ACS_N_WORKERS", 2L)
 if (n_workers < 1L) stop("n_workers must be at least one.")
@@ -237,8 +245,10 @@ if (isTRUE(run_simulations)) {
   html_keys <- .acsCytofDebugSelectHtml(
     candidates, comparison,
     nLargest = html_n_largest, nRandom = html_n_random,
-    nClosest = html_n_closest, seed = html_seed, samples = html_samples
+    nClosest = html_n_closest, seed = html_seed, samples = html_samples,
+    byGroup = html_by_group
   )
+  sel_samples <- .acsCytofDebugResolveSamples(sel_samples, comparison)
   # Pages for the report's samples are drawn even if not selected here.
   select <- list(stim = sel_stims, cyt = sel_cyts, sample = sel_samples)
   manifest <- list(

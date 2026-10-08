@@ -305,6 +305,7 @@ test_that("Analysis 13 chunks re-gate, publish pages and print chosen figures", 
   env$html_pops <- "tcrgd"
   env$html_cyts <- ex$marker[[1]]
   env$html_n_largest <- 1L
+  env$html_by_group <- TRUE
   env$html_n_random <- 0L
   env$html_n_closest <- 0L
   env$html_seed <- 1L
@@ -342,4 +343,42 @@ test_that("Analysis 13 chunks re-gate, publish pages and print chosen figures", 
   env$summary_tbl <- NULL
   .quiet(eval(chunk("read-summaries"), envir = env))
   expect_equal(nrow(env$summary_tbl), 0L)
+})
+
+test_that("saved pages default to the donors with manual gating", {
+  env <- .load_acs_debug_env()
+  comparison <- data.frame(SampleID = c("s2", "s1", "s2"))
+  expect_identical(env$.acsCytofDebugResolveSamples("manual", comparison), c("s1", "s2"))
+  expect_message(
+    expect_null(env$.acsCytofDebugResolveSamples("manual", NULL)),
+    "every sample"
+  )
+  expect_null(env$.acsCytofDebugResolveSamples(NULL, comparison))
+  expect_identical(env$.acsCytofDebugResolveSamples("s3", comparison), "s3")
+})
+
+test_that("HTML samples can be chosen across all combinations", {
+  env <- .load_acs_debug_env()
+  cand <- tidyr::expand_grid(
+    pop = c("b", "tcrgd"), stim = "p1", cyt = c("IL2", "TNF"),
+    SampleID = paste0("s", 1:5)
+  )
+  comparison <- dplyr::mutate(cand,
+    absDiffAnalysis9 = seq_len(nrow(cand)) / 10,
+    freqBsManual = ifelse(seq_len(nrow(cand)) <= 2L, 0, 0.5)
+  )
+  sel <- env$.acsCytofDebugSelectHtml(cand, comparison, 3L, 2L, 1L,
+    seed = 9L, byGroup = FALSE
+  )
+  # The three largest errors overall, wherever they are.
+  largest <- sel[sel$htmlReason == "largest error", ]
+  expect_identical(largest$SampleID, c("s5", "s4", "s3"))
+  expect_true(all(largest$pop == "tcrgd" & largest$cyt == "TNF"))
+  # Close agreement skips samples whose manual frequency is zero (rows 1-2).
+  close <- sel[sel$htmlReason == "close agreement", ]
+  expect_identical(
+    paste(close$pop, close$cyt, close$SampleID), "b IL2 s3"
+  )
+  expect_equal(sum(sel$htmlReason == "random"), 2L)
+  expect_equal(nrow(sel), 6L)
 })

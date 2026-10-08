@@ -45,6 +45,19 @@
   if (identical(tolower(x), "none")) character(0L) else x
 }
 
+# SampleIDs whose pages are saved. "manual" keeps the donors with manual gating
+# in Analysis 9's comparison; without that comparison every donor is kept.
+.acsCytofDebugResolveSamples <- function(samples, comparison) {
+  if (!identical(samples, "manual")) {
+    return(samples)
+  }
+  if (is.null(comparison) || nrow(comparison) == 0L) {
+    message("No manual comparison is available: saving pages for every sample.")
+    return(NULL)
+  }
+  sort(unique(as.character(comparison$SampleID)))
+}
+
 # This analysis's own folders for one population: never inside Analysis 9's.
 .acsCytofDebugPaths <- function(pop, pathDebugBase, outputGroup = NULL) {
   dir <- do.call(file.path, as.list(c(pathDebugBase, outputGroup, pop)))
@@ -138,16 +151,20 @@
 
 #' Choose the samples shown in the HTML report
 #'
-#' Within each population, stimulus and cytokine: the `nLargest` samples
-#' where StimGate's Analysis 9 frequency differs most from the manual one,
-#' the `nClosest` that agree best, and `nRandom` of the rest. Without a
-#' manual comparison, all are drawn at random.
+#' Within each population, stimulus and cytokine (or, with `byGroup = FALSE`,
+#' across all of them together): the `nLargest` samples where StimGate's
+#' Analysis 9 frequency differs most from the manual one, the `nClosest` that
+#' agree best (among samples with a positive manual frequency when the
+#' comparison has one), and `nRandom` of the rest. Without a manual
+#' comparison, all are drawn at random.
 #'
 #' @param candidates data.frame `pop`, `stim`, `cyt`, `SampleID`.
 #' @param comparison data.frame or NULL `.acsCytofDebugReadComparison()`.
 #' @param nLargest,nRandom,nClosest integer Samples per group.
 #' @param seed integer Seed for the random choices (RNG state is restored).
 #' @param samples character or NULL Show these SampleIDs instead.
+#' @param byGroup logical Choose within each population, stimulus and
+#'   cytokine (TRUE) or across all candidates (FALSE).
 #' @return tibble of `candidates` columns plus `htmlReason`.
 .acsCytofDebugSelectHtml <- function(
   candidates,
@@ -156,7 +173,8 @@
   nRandom = 1L,
   nClosest = 1L,
   seed = 20261008L,
-  samples = NULL
+  samples = NULL,
+  byGroup = TRUE
 ) {
   keys <- c("pop", "stim", "cyt", "SampleID")
   candidates <- dplyr::distinct(tibble::as_tibble(candidates[keys]))
@@ -168,18 +186,30 @@
       dplyr::filter(.data$SampleID %in% samples) |>
       dplyr::mutate(htmlReason = "requested"))
   }
-  absDiff <- if (is.null(comparison)) {
-    rep(NA_real_, nrow(candidates))
+  joined <- if (is.null(comparison)) {
+    NULL
   } else {
     dplyr::left_join(
-      candidates, comparison[c(keys, "absDiffAnalysis9")],
+      candidates,
+      comparison[intersect(c(keys, "absDiffAnalysis9", "freqBsManual"), names(comparison))],
       by = keys
-    )$absDiffAnalysis9
+    )
+  }
+  absDiff <- joined$absDiffAnalysis9 %||% rep(NA_real_, nrow(candidates))
+  # Close agreement where both are zero says little about the gate.
+  closeOk <- if (is.null(joined$freqBsManual)) {
+    rep(TRUE, nrow(candidates))
+  } else {
+    joined$freqBsManual %in% NA | joined$freqBsManual > 0
   }
   pick <- function(x, n) x[sample.int(length(x), min(n, length(x)))]
-  groups <- split(seq_len(nrow(candidates)), candidates[c("pop", "stim", "cyt")],
-    drop = TRUE
-  )
+  groups <- if (isTRUE(byGroup)) {
+    split(seq_len(nrow(candidates)), candidates[c("pop", "stim", "cyt")],
+      drop = TRUE
+    )
+  } else {
+    list(seq_len(nrow(candidates)))
+  }
   out <- .analysis_with_seed(seed, lapply(groups, function(i) {
     ok <- i[is.finite(absDiff[i])]
     if (!length(ok)) {
@@ -191,6 +221,7 @@
     }
     largest <- utils::head(ok[order(-absDiff[ok])], nLargest)
     rest <- setdiff(ok, largest)
+    rest <- rest[closeOk[rest]]
     closest <- utils::head(rest[order(absDiff[rest])], nClosest)
     random <- pick(setdiff(i, c(largest, closest)), nRandom)
     dplyr::bind_rows(
