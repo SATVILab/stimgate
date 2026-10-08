@@ -159,14 +159,15 @@ grep -Fq -- 'expected_run=slurm-test-run|preprocessing=false|stimgate=false|comp
 
 unset RUN_PREPROCESSING RUN_STIMGATE RUN_COMPARATORS
 
-# Persistent output names survive the second render (the isolated chunk helper
+# Persistent output names survive renaming (the isolated chunk helper
 # must not be used for reports, since its exit trap removes HTML outputs).
 mkdir "$test_dir/reports"
 printf '%s\n' '---' 'format: html' 'params:' '  show_mcse: on' '---' > "$test_dir/reports/fixture.qmd"
 printf '%s\n' '---' 'format: html' '---' > "$test_dir/reports/plain.qmd"
 MOCK_RENDER_ARTIFACTS=true PLOT_QMD_FILES="$test_dir/reports/fixture.qmd:$test_dir/reports/plain.qmd" \
   bash "$project_root/scripts/slurm/render-plots.sh" > "$test_dir/output" 2>&1
-[[ $(cat "$test_dir/reports/fixture-mcse_off.html") == off ]]
+# Submitted reports render with Monte Carlo intervals on only.
+[[ ! -e "$test_dir/reports/fixture-mcse_off.html" ]]
 [[ $(cat "$test_dir/reports/fixture-mcse_on.html") == on ]]
 [[ $(cat "$test_dir/reports/plain.html") == none ]]
 [[ ! -e "$test_dir/reports/plain-mcse_off.html" ]]
