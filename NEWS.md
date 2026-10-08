@@ -8,6 +8,10 @@
   more than `locThresholdCap` (1.3) times the sum of fitted response
   probabilities. Use `locThresholdMethod = "region"` for the previous
   default.
+- An automatic `biasUns` now scales with each sample's bandwidth: samples
+  whose smaller tube has fewer than `bwNcellMax` cells widen both the shared
+  bandwidth and the bias by the same factor. A `biasUns` you supply is not
+  scaled.
 
 # stimgate 0.99.28
 

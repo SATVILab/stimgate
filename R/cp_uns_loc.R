@@ -470,6 +470,20 @@
         return(objOut)
       }
 
+      # Small samples widen a shared bandwidth; an automatic biasUns scales
+      # with it, using the smaller of the stimulated and unstimulated tubes.
+      sampleScale <- .getCpUnsLocSampleScale(
+        nCell = min(nrow(exTblNoMinStim), nrow(exTblUnsBias)),
+        chnlSettings = chnlSettings
+      )
+      chnlSettings$sampleScale <- sampleScale
+      if (isTRUE(chnlSettings$biasUnsAuto) && sampleScale != 1) {
+        biasSample <- bias * sampleScale
+        chnlUns <- attr(exTblUnsBias, "chnlCut")
+        exTblUnsBias[[chnlUns]] <- .getCut(exTblUnsBias) + (biasSample - bias)
+        bias <- biasSample
+      }
+
       # remove any cytokine-positive cells from unstim using gates from
       # sample for which gates are required
       exTblUnsBiasRm <- .getCpUnsLocSampleUnsRmCytPos(
