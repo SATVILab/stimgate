@@ -533,7 +533,7 @@
         (is.null(select$cyt) || cyt %in% select$cyt) &&
         (is.null(select$sample) || tube$sample %in% select$sample))
   }
-  indUns <- unlist(lapply(batchList, function(b) {
+  indUns <- unlist(lapply(unname(batchList), function(b) {
     stats::setNames(rep(as.character(b[[1L]]), length(b) - 1L), b[-1L])
   }))
 
