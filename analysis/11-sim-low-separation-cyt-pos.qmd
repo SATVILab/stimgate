@@ -97,7 +97,7 @@ if (analysis_dev) {
 }
 ```
 
-Each scenario is one dataset of `r n_sample` samples, each with an unstimulated and a stimulated tube, gated together by `gateStim()` with its default settings (threshold clustering and cytokine-positive gates on, and the region local-FDR threshold method). The samples of a dataset share gating settings and clustered gates, so they are not independent: the figures show every sample, without intervals.
+Each scenario is one dataset of `r n_sample` samples, each with an unstimulated and a stimulated tube, gated together by `gateStim()` with its default settings (threshold clustering and cytokine-positive gates on, and the capped local-FDR threshold method, `cap`). The samples of a dataset share gating settings and clustered gates, so they are not independent: the figures show every sample, without intervals.
 
 ## Simulation
 
