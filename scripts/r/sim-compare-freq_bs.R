@@ -222,6 +222,11 @@
 
 #' Call the fbeta Python implementation via reticulate
 #'
+#' With `removeZero = TRUE`, cells with an expression of exactly zero are
+#' dropped from both tubes before the histograms are built (in CyTOF data they
+#' are clearly negative), and each pdf is scaled by its tube's retained
+#' fraction so that it integrates to that fraction rather than to one.
+#'
 #' @keywords internal
 .simCompareFbetaThreshold <- function(
   xUns,
@@ -232,7 +237,8 @@
   beta = 0.8,
   theta = 2,
   width = 10,
-  numBins = NULL
+  numBins = NULL,
+  removeZero = FALSE
 ) {
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     stop("reticulate is required to call fbeta.py.")
@@ -242,6 +248,17 @@
   xStim <- as.numeric(xStim)
   xUns <- xUns[is.finite(xUns)]
   xStim <- xStim[is.finite(xStim)]
+
+  negScale <- 1
+  posScale <- 1
+  if (isTRUE(removeZero)) {
+    nUns <- length(xUns)
+    nStim <- length(xStim)
+    xUns <- xUns[xUns != 0]
+    xStim <- xStim[xStim != 0]
+    negScale <- length(xUns) / nUns
+    posScale <- length(xStim) / nStim
+  }
 
   if (length(xUns) < 2L || length(xStim) < 2L) {
     stop("F-beta estimation requires at least two finite cells per tube.")
@@ -264,7 +281,9 @@
     beta = beta,
     theta = theta,
     width = as.integer(width),
-    numBins = if (is.null(numBins)) NULL else as.integer(numBins)
+    numBins = if (is.null(numBins)) NULL else as.integer(numBins),
+    negScale = negScale,
+    posScale = posScale
   )
 
   threshold <- suppressWarnings(as.numeric(out[["threshold"]]))[1]
@@ -293,6 +312,12 @@
 #' cytoUtils:::.deriv_density(), whose default behaviour is to estimate the
 #' bandwidth with ks::hpi().
 #'
+#' `tol` is an absolute bound on the first derivative of the density, so it
+#' depends on the scale of `x`; `autoTol = TRUE` replaces it with 1% of the
+#' largest absolute derivative. A finite cutpoint is moved up by `bias`, as
+#' StimGate's gates are. With `removeZero = TRUE`, cells with an expression of
+#' exactly zero are dropped before the density is estimated.
+#'
 #' @keywords internal
 .simCompareTailgateThreshold <- function(
   x,
@@ -305,11 +330,19 @@
   tol = 1e-2,
   side = "right",
   strict = FALSE,
-  autoTol = FALSE
+  autoTol = FALSE,
+  bias = 0,
+  removeZero = FALSE
 ) {
   method <- match.arg(method)
+  if (length(bias) != 1L || !is.finite(bias)) {
+    stop("Tailgate bias must be a finite scalar.")
+  }
   x <- as.numeric(x)
   x <- x[is.finite(x)]
+  if (isTRUE(removeZero)) {
+    x <- x[x != 0]
+  }
 
   if (length(x) < 2L || length(unique(x)) < 2L) {
     stop("Tailgate estimation requires at least two distinct finite cells.")
@@ -350,7 +383,7 @@
     bandwidth = bandwidthUse
   )
 
-  threshold <- as.numeric(threshold)[1]
+  threshold <- as.numeric(threshold)[1] + bias
   list(
     threshold = threshold,
     thresholdMetric = NA_real_,
@@ -759,6 +792,7 @@
   tailgateTol = 1e-2,
   tailgateSide = "right",
   tailgateAutoTol = TRUE,
+  tailgateBias = 0,
   fallbackHighValue = TRUE,
   fallbackMargin = 0.05
 ) {
@@ -842,7 +876,8 @@
           tol = tailgateTol,
           side = tailgateSide,
           strict = FALSE,
-          autoTol = tailgateAutoTol
+          autoTol = tailgateAutoTol,
+          bias = tailgateBias
         ),
         error = function(e) {
           tailgateError <<- conditionMessage(e)
@@ -1531,6 +1566,7 @@
   tailgateTol = 1e-2,
   tailgateSide = "right",
   tailgateAutoTol = FALSE,
+  tailgateBias = 0,
   fallbackHighValue = TRUE,
   fallbackMargin = 0.05,
   stimMeanShift = 0,
@@ -1722,6 +1758,7 @@
       tailgateTol = tailgateTol,
       tailgateSide = tailgateSide,
       tailgateAutoTol = tailgateAutoTol,
+      tailgateBias = tailgateBias,
       fallbackHighValue = fallbackHighValue,
       fallbackMargin = fallbackMargin
     )
@@ -1768,6 +1805,7 @@
         tailgateTol = tailgateTol,
         tailgateSide = tailgateSide,
         tailgateAutoTol = tailgateAutoTol,
+        tailgateBias = tailgateBias,
         stimMeanShift = stimMeanShift,
         stimSdMultiplier = stimSdMultiplier,
         stimMeanShiftClusters = if (is.null(stimMeanShiftClusters)) {

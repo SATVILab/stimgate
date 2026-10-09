@@ -78,7 +78,7 @@ manual_run_manifest <- .analysis_read_rds(
 .analysis_check_expected_run(
   manual_run_manifest,
   "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd",
-  semantics_version = "acs-cytof-v7"
+  semantics_version = "acs-cytof-v8"
 )
 .acsCytofCheckRunManifestMethod(
   manual_run_manifest, stimgate_loc_threshold_method,
@@ -92,10 +92,15 @@ manual_comparison_tbl <- .analysis_read_rds(
   locThresholdMethod = stimgate_loc_threshold_method
 )
 validation_methods <- .acsCytofValidationMethods()
+appendix_methods <- .acsCytofValidationAppendixMethods()
 .acsCytofValidationValidateComparisonTable(
   manual_comparison_tbl,
-  requiredMethods = validation_methods
+  requiredMethods = c(validation_methods, appendix_methods)
 )
+# The saved table also holds Tailgate and F-beta at their published defaults,
+# reported in the appendix; the main results use the tuned comparators.
+manual_comparison_all_tbl <- manual_comparison_tbl
+manual_comparison_tbl <- .acsCytofMainComparisonTable(manual_comparison_all_tbl)
 ```
 
 ## Scientific inclusion rules
@@ -226,13 +231,13 @@ if (isTRUE(run_plots)) {
     create = FALSE
   )
   .acsCytofValidationSavePlots(
-    comparisonTbl = manual_comparison_tbl,
+    comparisonTbl = manual_comparison_all_tbl,
     pathDirSave = path_dir_save
   )
 }
 ```
 
-Each figure shows one method. Scatterplots also have a separate figure for each population.
+Each figure shows one method. Scatterplots also have a separate figure for each population. The saved figures also cover Tailgate and F-beta at their default settings (see the appendix).
 
 ### Raw background-subtracted frequencies
 
@@ -309,6 +314,86 @@ if (isTRUE(run_plots)) {
       )
       .analysis_print_fig(.acsCytofValidationPlotCorrelation(
         correlationTbl = correlation_tbl,
+        method = method,
+        metric = metric,
+        realPopulationsOnly = FALSE
+      ))
+    }
+  }
+}
+```
+
+## Appendix: Tailgate and F-beta at default settings
+
+The main results use Tailgate and F-beta as tuned for the CyTOF data in
+Analysis 9: cells with an expression of exactly zero are removed before the
+gate is estimated, and Tailgate uses a fixed tolerance and a bias of 0.2. Here
+both methods use their published defaults on every cell instead: F-beta with
+`beta = 0.8`, `theta = 2`, `width = 10` and pdfs that integrate to one, and
+Tailgate with its automatic tolerance and no bias. The eligibility rules and
+heatmap layout match the main results.
+
+```{r}
+#| label: appendix-correlation-table
+#| echo: false
+#| results: asis
+appendix_correlation_tbl <- .acsCytofValidationCorrelationTable(
+  manual_comparison_all_tbl |>
+    dplyr::filter(.data$method %in% appendix_methods)
+)
+if (isTRUE(run_plots)) {
+  .analysis_report_table(appendix_correlation_tbl,
+    c(fig_key, "validation-correlations-default-settings.csv"),
+    "Eligible-stratum PCC and CCC for Tailgate and F-beta at default settings.",
+    path_root = root_dir)
+}
+```
+
+### Correlation heatmaps for CD4, CD8 and TCRgd T cells
+
+```{r}
+#| label: appendix-t-cell-correlations
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  for (method in appendix_methods) {
+    .analysis_heading(
+      paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 4
+    )
+    for (metric in c("pcc", "ccc")) {
+      .analysis_heading(
+        if (metric == "pcc") "Pearson correlation" else "Concordance correlation",
+        5
+      )
+      .analysis_print_fig(.acsCytofValidationPlotCorrelation(
+        correlationTbl = appendix_correlation_tbl,
+        method = method,
+        metric = metric,
+        realPopulationsOnly = TRUE
+      ))
+    }
+  }
+}
+```
+
+### Correlation heatmaps for all matched populations
+
+```{r}
+#| label: appendix-all-correlations
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  for (method in appendix_methods) {
+    .analysis_heading(
+      paste0("Method: ", .acsCytofValidationMethodLabels()[[method]]), 4
+    )
+    for (metric in c("pcc", "ccc")) {
+      .analysis_heading(
+        if (metric == "pcc") "Pearson correlation" else "Concordance correlation",
+        5
+      )
+      .analysis_print_fig(.acsCytofValidationPlotCorrelation(
+        correlationTbl = appendix_correlation_tbl,
         method = method,
         metric = metric,
         realPopulationsOnly = FALSE

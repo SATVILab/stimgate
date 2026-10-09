@@ -15,8 +15,8 @@ root_dir <- normalizePath(
 }
 
 .compare_method_qmds <- c(
-  "7-sim-compare-freq_bs.qmd" = "corrected-comparison-v21",
-  "8-sim-compare-freq_bs-batch.qmd" = "batch-mismatch-comparison-v21"
+  "7-sim-compare-freq_bs.qmd" = "corrected-comparison-v22",
+  "8-sim-compare-freq_bs-batch.qmd" = "batch-mismatch-comparison-v22"
 )
 
 test_that("comparison QMDs set and record the threshold method", {
@@ -83,7 +83,7 @@ test_that("canonical comparison results without the method are rejected", {
     file.path(current, "manifest.rds")
   )
   required <- list(
-    comparison_semantics_version = "corrected-comparison-v21",
+    comparison_semantics_version = "corrected-comparison-v22",
     cluster_gates = TRUE,
     stimgate_loc_threshold_method = "region"
   )
@@ -93,7 +93,7 @@ test_that("canonical comparison results without the method are rejected", {
     fixed = TRUE
   )
   # Only the version bump: the missing method alone still rejects the cache.
-  old$comparison_semantics_version <- "corrected-comparison-v21"
+  old$comparison_semantics_version <- "corrected-comparison-v22"
   saveRDS(
     list(analysis_key = ctx$analysis_key, params = old),
     file.path(current, "manifest.rds")

@@ -24,22 +24,102 @@ qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
   env
 }
 
-test_that("ACS comparator settings pin F-beta defaults and Tailgate auto tuning", {
+test_that("ACS comparator settings pin the tuned and default comparators", {
   env <- .load_acs_method_env()
+  expect_setequal(
+    env$.acsCytofComparatorMethods(),
+    c("fbeta", "tailgate", "fbeta_default", "tailgate_default")
+  )
 
-  fbeta <- env$.acsCytofComparatorSettings("fbeta")
-  expect_equal(fbeta$params$beta, 0.8)
-  expect_equal(fbeta$params$theta, 2)
-  expect_equal(fbeta$params$width, 10L)
-  expect_null(fbeta$params$numBins)
-  expect_equal(fbeta$cacheVersion, 2L)
+  for (method in c("fbeta", "fbeta_default")) {
+    fbeta <- env$.acsCytofComparatorSettings(method)
+    expect_identical(fbeta$family, "fbeta")
+    expect_equal(fbeta$params$beta, 0.8)
+    expect_equal(fbeta$params$theta, 2)
+    expect_equal(fbeta$params$width, 10L)
+    expect_null(fbeta$params$numBins)
+  }
+  expect_true(env$.acsCytofComparatorSettings("fbeta")$params$removeZero)
+  expect_false(env$.acsCytofComparatorSettings("fbeta_default")$params$removeZero)
+  expect_equal(env$.acsCytofComparatorSettings("fbeta")$cacheVersion, 3L)
+  expect_equal(env$.acsCytofComparatorSettings("fbeta_default")$cacheVersion, 2L)
 
-  tailgate <- env$.acsCytofComparatorSettings("tailgate")
-  expect_identical(tailgate$params$tailgateX, "stim")
-  expect_null(tailgate$params$bandwidth)
-  expect_true(tailgate$params$autoTol)
-  expect_identical(tailgate$params$derivativeMethod, "firstDeriv")
-  expect_equal(tailgate$cacheVersion, 1L)
+  for (method in c("tailgate", "tailgate_default")) {
+    tailgate <- env$.acsCytofComparatorSettings(method)
+    expect_identical(tailgate$family, "tailgate")
+    expect_identical(tailgate$params$tailgateX, "stim")
+    expect_null(tailgate$params$bandwidth)
+    expect_identical(tailgate$params$derivativeMethod, "firstDeriv")
+  }
+  tuned <- env$.acsCytofComparatorSettings("tailgate")$params
+  expect_false(tuned$autoTol)
+  expect_equal(tuned$tol, 2e-5)
+  expect_equal(tuned$bias, 0.2)
+  expect_true(tuned$removeZero)
+  expect_equal(env$.acsCytofComparatorSettings("tailgate")$cacheVersion, 2L)
+
+  default <- env$.acsCytofComparatorSettings("tailgate_default")$params
+  expect_true(default$autoTol)
+  expect_equal(default$bias, 0)
+  expect_false(default$removeZero)
+  expect_equal(env$.acsCytofComparatorSettings("tailgate_default")$cacheVersion, 1L)
+})
+
+test_that("Tailgate moves its cutpoint up by the bias and can drop exact zeros", {
+  skip_if_not_installed("cytoUtils")
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_compare, local = env)
+  set.seed(1)
+  x <- c(rep(0, 3000), stats::rnorm(2000, 1), stats::rnorm(40, 5))
+
+  base <- env$.simCompareTailgateThreshold(x, tol = 1e-3)
+  shifted <- env$.simCompareTailgateThreshold(x, tol = 1e-3, bias = 0.2)
+  expect_equal(shifted$threshold, base$threshold + 0.2)
+
+  no_zero <- env$.simCompareTailgateThreshold(x, tol = 1e-3, removeZero = TRUE)
+  expect_equal(
+    no_zero$threshold,
+    env$.simCompareTailgateThreshold(x[x != 0], tol = 1e-3)$threshold
+  )
+  expect_error(env$.simCompareTailgateThreshold(x, bias = NA), "bias")
+})
+
+test_that("F-beta without zeros scales each pdf to its retained fraction", {
+  skip_if_not_installed("reticulate")
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_compare, local = env)
+  fbeta_env <- env$.simCompareFbetaEnvironment(pathFbeta = script_fbeta)
+  set.seed(2)
+  x_uns <- c(rep(0, 600), stats::rnorm(400, 1))
+  x_stim <- c(rep(0, 300), stats::rnorm(650, 1), stats::rnorm(50, 4))
+
+  out <- env$.simCompareFbetaThreshold(
+    xUns = x_uns, xStim = x_stim, fbetaEnv = fbeta_env, removeZero = TRUE
+  )
+  direct <- fbeta_env$get_positivity_threshold(
+    neg = matrix(x_uns[x_uns != 0], ncol = 1L),
+    pos = matrix(x_stim[x_stim != 0], ncol = 1L),
+    channelIndex = 0L, beta = 0.8, theta = 2, width = 10L, numBins = NULL,
+    negScale = 0.4, posScale = 0.7
+  )
+  expect_equal(out$threshold, as.numeric(direct$threshold))
+  # The retained pdfs integrate to the retained fractions, not to one.
+  unscaled <- fbeta_env$get_positivity_threshold(
+    neg = matrix(x_uns[x_uns != 0], ncol = 1L),
+    pos = matrix(x_stim[x_stim != 0], ncol = 1L),
+    channelIndex = 0L, beta = 0.8, theta = 2, width = 10L, numBins = NULL
+  )
+  expect_equal(as.numeric(out$fbeta$pdfneg), 0.4 * as.numeric(unscaled$pdfneg))
+  expect_equal(as.numeric(out$fbeta$pdfpos), 0.7 * as.numeric(unscaled$pdfpos))
+
+  # Without zeros, dropping them changes nothing.
+  x_uns_pos <- x_uns[x_uns != 0]
+  x_stim_pos <- x_stim[x_stim != 0]
+  expect_equal(
+    env$.simCompareFbetaThreshold(x_uns_pos, x_stim_pos, fbetaEnv = fbeta_env,
+      removeZero = TRUE)$threshold,
+    env$.simCompareFbetaThreshold(x_uns_pos, x_stim_pos, fbetaEnv = fbeta_env)$threshold
+  )
 })
 
 test_that("F-beta histogram support includes the stimulated response tail", {
@@ -235,9 +315,13 @@ test_that("a failed comparator rerun keeps the previous results", {
   expect_identical(readRDS(paths$fbeta), "old fbeta")
   expect_identical(readRDS(paths$tailgate), "old tailgate")
 
+  expect_false(file.exists(paths$fbeta_default))
+  expect_false(file.exists(paths$tailgate_default))
+
   expect_no_error(run_with("none"))
-  expect_true(readRDS(paths$fbeta)$new)
-  expect_true(readRDS(paths$tailgate)$new)
+  for (method in env$.acsCytofComparatorMethods()) {
+    expect_true(readRDS(paths[[method]])$new)
+  }
 })
 
 test_that("ACS methods stay sequential and always replace previous results", {
@@ -482,7 +566,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   path <- file.path(env$path_manual_output, "manual-comparison.rds")
   saveRDS(cached, path)
   path_run_manifest <- file.path(env$path_manual_output, "manifest.rds")
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v7",
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v8",
     stimgate_loc_threshold_method = "region"), path_run_manifest)
   withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA_character_)
   for (expr in as.list(code)[-1L]) eval(expr, env)
@@ -493,7 +577,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   for (old in list(
     list(analysis_semantics_version = "acs-cytof-v3",
       stimgate_loc_threshold_method = "region"),
-    list(analysis_semantics_version = "acs-cytof-v7")
+    list(analysis_semantics_version = "acs-cytof-v8")
   )) {
     saveRDS(old, path_run_manifest)
     expect_error(
@@ -501,7 +585,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
       "RUN_SIMULATIONS=true"
     )
   }
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v7",
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v8",
     stimgate_loc_threshold_method = "region"), path_run_manifest)
 
   unlink(path)

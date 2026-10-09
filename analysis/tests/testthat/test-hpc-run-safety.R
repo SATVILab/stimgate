@@ -99,7 +99,7 @@ test_that("Analysis 8 uses one complete settings list and pre-promotion mismatch
   expect_equal(sum(grepl("^analysis_result_params <- list", lines)), 1L)
   expect_true(grepl("required_params = analysis_result_params", content, fixed = TRUE))
   expect_true(grepl("validate_full = .simCompareValidateMismatch", content, fixed = TRUE))
-  expect_true(grepl("batch-mismatch-comparison-v21", content, fixed = TRUE))
+  expect_true(grepl("batch-mismatch-comparison-v22", content, fixed = TRUE))
   start <- which(grepl("^analysis_result_params <- list", lines))
   end <- start + which(lines[(start + 1L):length(lines)] == ")")[[1L]]
   expr <- parse(text = lines[start:end])[[1L]][[3L]]
@@ -109,7 +109,7 @@ test_that("Analysis 8 uses one complete settings list and pre-promotion mismatch
     "loc_enforce_shape_threshold", "stimgate_loc_threshold_method",
     "calc_cyt_pos_gates", "stimgate_bias_uns_factor",
     "fbeta_beta", "fbeta_theta", "fbeta_width", "tailgate_adjust", "tailgate_method",
-    "tailgate_tol", "tailgate_auto_tol", "tailgate_x"
+    "tailgate_tol", "tailgate_auto_tol", "tailgate_bias", "tailgate_x"
   )
   expect_true(all(expected %in% names(as.list(expr))))
   # Every required setting is enforced by canonical reads, including settings
@@ -174,6 +174,6 @@ test_that("new unchunked cache schemas require their semantics identifier", {
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   for (file in c("9-real-compare-acs-cytof.qmd", "10-real-compare-acs-cytof-validation.qmd")) {
     text <- paste(readLines(file.path(root, "analysis", file)), collapse = "\n")
-    expect_match(text, 'semantics_version = "acs-cytof-v7"', fixed = TRUE)
+    expect_match(text, 'semantics_version = "acs-cytof-v8"', fixed = TRUE)
   }
 })

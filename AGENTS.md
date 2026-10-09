@@ -259,6 +259,16 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   exactly once. If upstream supports the feature, pass it through without also
   applying a local fallback; otherwise neutralise the upstream global effect
   before applying the local selective fallback.
+- ACS comparators come in two versions, set in
+  `.acsCytofComparatorSettings()`. `tailgate` and `fbeta` (the main results)
+  drop exact-zero cells before estimating the gate, while frequencies stay over
+  every cell. F-beta scales each pdf to its tube's retained fraction. Tailgate
+  uses a fixed `tol` and a bias, because its automatic tolerance is set by the
+  zero spike. `tailgate_default` and `fbeta_default` keep the published
+  defaults and appear only in Analysis 10's appendix; filter them out of
+  main-result tables with `.acsCytofMainComparisonTable()`. Tailgate's `tol`
+  is an absolute derivative bound, so it depends on the data's scale. Simulations
+  keep `autoTol = TRUE` and set `tailgate_bias` in the QMD.
 - Comparator exceptions in benchmarking analyses must remain explicit runtime
   errors. A numerical fallback may be retained for diagnostics, but the
   exception must not be silently promoted or scored as a valid prediction.
