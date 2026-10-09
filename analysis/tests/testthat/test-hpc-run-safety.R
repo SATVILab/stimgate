@@ -99,7 +99,7 @@ test_that("Analysis 8 uses one complete settings list and pre-promotion mismatch
   expect_equal(sum(grepl("^analysis_result_params <- list", lines)), 1L)
   expect_true(grepl("required_params = analysis_result_params", content, fixed = TRUE))
   expect_true(grepl("validate_full = .simCompareValidateMismatch", content, fixed = TRUE))
-  expect_true(grepl("batch-mismatch-comparison-v22", content, fixed = TRUE))
+  expect_true(grepl("batch-mismatch-comparison-v23", content, fixed = TRUE))
   start <- which(grepl("^analysis_result_params <- list", lines))
   end <- start + which(lines[(start + 1L):length(lines)] == ")")[[1L]]
   expr <- parse(text = lines[start:end])[[1L]][[3L]]

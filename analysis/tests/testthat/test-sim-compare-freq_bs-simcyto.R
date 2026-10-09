@@ -75,7 +75,8 @@ test_that(".simCompareFreqBs calls simcyto::simCytExperiment and preserves compa
         clusterPerturbationSd = 0,
         backgroundRelativeToResponse = 0.1,
         ncellUnsRelativeToStim = 1,
-        tailgateAutoTol = TRUE
+        tailgateAutoTol = TRUE,
+        tailgateBias = 0.1
       )
 
       expect_true(called_simcyto)
@@ -83,7 +84,21 @@ test_that(".simCompareFreqBs calls simcyto::simCytExperiment and preserves compa
       expect_true(nrow(res_gauss) > 0)
 
       # Check approaches present
-      expect_true(all(c("stimgate", "fbeta", "tailgate") %in% res_gauss$approach))
+      expect_true(all(c("stimgate", "fbeta", "tailgate", "tailgate_default") %in% res_gauss$approach))
+
+      # Tailgate at default settings is the tuned cutpoint without the bias.
+      tg <- res_gauss[res_gauss$method == "tailgate", , drop = FALSE]
+      tg_default <- res_gauss[res_gauss$method == "tailgate_default", , drop = FALSE]
+      tg_default <- tg_default[match(tg$ind, tg_default$ind), , drop = FALSE]
+      calculated <- tg$gateReturnPoint == "tailgate_calculated"
+      expect_true(any(calculated))
+      expect_equal(
+        tg$threshold[calculated],
+        tg_default$threshold[calculated] + 0.1
+      )
+      expect_true(all(
+        tg_default$gateReturnPoint[calculated] == "tailgate_default_calculated"
+      ))
 
       # Check StimGate results
       stimgate_res <- res_gauss[res_gauss$approach == "stimgate", , drop = FALSE]
@@ -312,11 +327,11 @@ test_that("primary StimGate comparator scores full cluster-refined procedure (#3
   expect_equal(nrow(stimgate_loc_sample), 3L)
   expect_true(all(stimgate_loc_sample$detailLevel == "sample"))
 
-  # Summaries default to keeping c("stimgate", "fbeta", "tailgate")
+  # Summaries keep every method, including Tailgate at default settings
   source(file.path(root_dir, "scripts/r/analysis-runtime.R"), local = env)
   source(file.path(root_dir, "scripts/r/analysis-mcse.R"), local = env)
   summ <- env$.simCompareSummariseFreqBs(res)
-  expect_setequal(unique(summ$method), c("stimgate", "fbeta", "tailgate"))
+  expect_setequal(unique(summ$method), c("stimgate", "fbeta", "tailgate", "tailgate_default"))
 
   # Default run (without includeLocDetails) returns only single 'stimgate' method
   set.seed(42)

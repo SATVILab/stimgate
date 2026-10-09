@@ -1395,6 +1395,13 @@ test_that("alternative comparator exceptions remain explicit run errors", {
   expect_false(tailgate_row$thresholdFallbackUsed[[1]])
   expect_true(is.na(tailgate_row$propRespEst[[1]]))
   expect_true(all(is.na(tailgate_row[env$.simCompareCountCols])))
+  # Tailgate at default settings comes from the same run, so it fails with it.
+  tailgate_default_row <- res[res$method == "tailgate_default", , drop = FALSE]
+  expect_equal(tailgate_default_row$error[[1]], "bandwidth boom")
+  expect_equal(tailgate_default_row$gateReturnPoint[[1]], "tailgate_default_error")
+  expect_true(all(env$.simCompareRecordedComparatorErrors(
+    res[res$method != "fbeta", , drop = FALSE]
+  )))
 
   res$iter <- 1L
   res$unsExprSum <- 0
@@ -1436,7 +1443,7 @@ test_that("alternative comparator exceptions remain explicit run errors", {
   expect_true(all(is.na(res$error)))
   expect_true(all(res$thresholdFallbackUsed))
   expect_true(all(res$thresholdOrigin == "failed_no_cutpoint"))
-  expect_equal(res$propRespEst, c(0, 0))
+  expect_equal(res$propRespEst, c(0, 0, 0))
 })
 
 test_that("Tailgate bandwidth exceptions propagate instead of becoming cutpoint failures", {

@@ -197,19 +197,24 @@
 
 # Colour roles, kept distinct so a colour means one thing across the analyses:
 # - methods (QMDs 7-10): Okabe-Ito orange StimGate, bluish-green Tailgate,
-#   blue F-beta, for colour-blind accessibility;
+#   blue F-beta, reddish-purple Tailgate at default settings, for colour-blind
+#   accessibility;
 # - over/under direction: ColorBrewer BrBG teal and brown (see
 #   `.simBandwidthSignedErrorColours`);
 # - error statistic (median, upper percentile, maximum): blues and lavender;
 # - bandwidth: a sequential purple ramp (`make_bw_colour_values()`).
 .analysis_method_colours <- c(
-  stimgate = "#E69F00", tailgate = "#009E73", fbeta = "#0072B2"
+  stimgate = "#E69F00", tailgate = "#009E73", fbeta = "#0072B2",
+  tailgate_default = "#CC79A7"
 )
 .analysis_method_labels <- c(
-  stimgate = "StimGate", tailgate = "Tailgate", fbeta = "F-beta"
+  stimgate = "StimGate", tailgate = "Tailgate", fbeta = "F-beta",
+  tailgate_default = "Tailgate (default settings)"
 )
-.analysis_method_shapes <- c(stimgate = 16, tailgate = 17, fbeta = 15)
-.analysis_method_linetypes <- c(stimgate = "solid", tailgate = "22", fbeta = "42")
+.analysis_method_shapes <- c(stimgate = 16, tailgate = 17, fbeta = 15, tailgate_default = 2)
+.analysis_method_linetypes <- c(
+  stimgate = "solid", tailgate = "22", fbeta = "42", tailgate_default = "13"
+)
 .analysis_stat_colours <- c(median = "#0072B2", upper = "#56B4E9", max = "#8C8DBA")
 
 # Shared method encodings; matching names and labels merge their legends.
