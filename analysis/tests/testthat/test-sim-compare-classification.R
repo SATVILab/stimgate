@@ -126,6 +126,25 @@ test_that("classification metrics handle empty, perfect and failed gates", {
   expect_true(all(props >= 0 & props <= 1))
 })
 
+test_that("F1 combines precision and sensitivity and is undefined only without any positives", {
+  env <- .classification_env()
+  out <- env$.simCompareClassificationMetrics(tibble::tibble(
+    method = "stimgate",
+    nTruePos = c(6L, 0L, 0L, 0L),
+    nFalsePos = c(2L, 0L, 3L, 0L),
+    nFalseNeg = c(4L, 5L, 0L, 0L),
+    nTrueNeg = c(88L, 95L, 97L, 100L),
+    error = NA_character_
+  ))
+  # Precision 0.75 and sensitivity 0.6 give 2 * 0.75 * 0.6 / 1.35.
+  expect_equal(out$f1[[1]], 2 * 0.75 * 0.6 / 1.35)
+  expect_equal(out$f1[[1]], 12 / 18)
+  # An empty gate on a tube with positives, and false positives only, give zero.
+  expect_equal(out$f1[2:3], c(0, 0))
+  # No genuine positives and an empty gate: undefined.
+  expect_true(is.na(out$f1[[4]]))
+})
+
 test_that("classification summary uses tube values and excludes undefined FDP", {
   env <- .classification_env()
   raw <- tibble::tibble(
@@ -350,7 +369,7 @@ test_that("analysis 8 leads with FDP and sensitivity and keeps error results", {
   expect_false(grepl(".simCompareGateDiagnosticRun", diag_chunk, fixed = TRUE))
 })
 
-test_that("analysis 7 reports FDP and sensitivity by cell count for every method", {
+test_that("analysis 7 reports FDP, sensitivity and F1 by cell count for every method", {
   env <- .classification_env()
   source(file.path(root_dir, "scripts", "r", "sim-compare-performance-plot.R"), local = env)
   lines <- readLines(file.path(root_dir, "analysis", "7-sim-compare-freq_bs.qmd"), warn = FALSE)
@@ -393,6 +412,9 @@ test_that("analysis 7 reports FDP and sensitivity by cell count for every method
   expect_equal(unique(stimgate$sensitivity_median), 0.8)
   expect_equal(unique(fbeta$fdp_median), 0.6)
   expect_equal(unique(fbeta$sensitivity_median), 1)
+  # F1 = 2TP / (2TP + FP + FN): 16 / 18 for StimGate, 16 / 28 for F-beta.
+  expect_equal(unique(stimgate$f1_median), 16 / 18)
+  expect_equal(unique(fbeta$f1_median), 16 / 28)
 
   plots <- list()
   env$.analysis_print_save_fig <- function(p, path, ...) {
@@ -402,8 +424,9 @@ test_that("analysis 7 reports FDP and sensitivity by cell count for every method
   out <- capture.output(eval(chunk_code("classification-cell-count"), envir = env))
   expect_true(any(grepl("Median false discovery proportion", out, fixed = TRUE)))
   expect_true(any(grepl("10th percentile sensitivity", out, fixed = TRUE)))
-  # Four statistics, each for all methods and without Tailgate.
-  expect_length(plots, 8L)
+  expect_true(any(grepl("Median F1 score", out, fixed = TRUE)))
+  # Six statistics, each for all methods and without Tailgate.
+  expect_length(plots, 12L)
   expect_setequal(as.character(unique(plots[[1]]$data$method)), c("stimgate", "fbeta", "tailgate"))
 
   env$run_plots <- FALSE

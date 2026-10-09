@@ -688,7 +688,8 @@
 # Proportions with a zero denominator are NA, not zero: FDP is undefined when
 # the gate selects no stimulated cells, sensitivity when the tube has no
 # genuine positives and the false-positive rate when it has no genuine
-# negatives. `gate_status` separates failed runs, fallback gates and
+# negatives. The F1 score, 2TP / (2TP + FP + FN), is undefined only when the
+# tube has no genuine positives and the gate selects no cells. `gate_status` separates failed runs, fallback gates and
 # calculated gates, each split by whether any stimulated cell was selected.
 # Runtime failures belong to the primary method's failure cohort. Keep their
 # error/provenance fields while recognizing the historical diagnostic label.
@@ -727,6 +728,7 @@
       fdp = ratio(.data$nFalsePos, .data$n_selected),
       sensitivity = ratio(.data$nTruePos, .data$n_genuine_pos),
       false_positive_rate = ratio(.data$nFalsePos, .data$n_genuine_neg),
+      f1 = ratio(2 * .data$nTruePos, 2 * .data$nTruePos + .data$nFalsePos + .data$nFalseNeg),
       selected_fraction = ratio(.data$n_selected, .data$n_classified),
       gate_empty = .data$n_selected == 0L,
       gate_status = dplyr::case_when(
@@ -3276,7 +3278,7 @@
   scenarioCols <- setdiff(
     scenarioCols, c("method", "approach", "sim_id", "sim_seed", "iter", "sample", "ind")
   )
-  allowed <- c("abs_error", "abs_rel_error", "fdp", "sensitivity")
+  allowed <- c("abs_error", "abs_rel_error", "fdp", "sensitivity", "f1")
   if (!length(outcomes) || any(!outcomes %in% allowed)) {
     stop("Unknown dataset comparison outcome")
   }
@@ -3289,7 +3291,7 @@
   if (anyDuplicated(primary[keys])) {
     stop("Dataset comparisons require one primary row per tube and method")
   }
-  if (any(outcomes %in% c("fdp", "sensitivity"))) {
+  if (any(outcomes %in% c("fdp", "sensitivity", "f1"))) {
     primary <- .simCompareClassificationMetrics(primary)
   }
   if (any(outcomes %in% c("abs_error", "abs_rel_error"))) {
@@ -4141,6 +4143,8 @@
       fdp_q90 = q(.data$fdp, 0.9),
       sensitivity_median = q(.data$sensitivity, 0.5),
       sensitivity_q10 = q(.data$sensitivity, 0.1),
+      f1_median = q(.data$f1, 0.5),
+      f1_q10 = q(.data$f1, 0.1),
       fpr_median = q(.data$false_positive_rate, 0.5),
       fpr_q90 = q(.data$false_positive_rate, 0.9),
       selected_fraction_median = q(.data$selected_fraction, 0.5),
@@ -4154,6 +4158,7 @@
   spec <- list(
     fdp_median = item("fdp", 0.5), fdp_q90 = item("fdp", 0.9),
     sensitivity_median = item("sensitivity", 0.5), sensitivity_q10 = item("sensitivity", 0.1),
+    f1_median = item("f1", 0.5), f1_q10 = item("f1", 0.1),
     fpr_median = item("false_positive_rate", 0.5), fpr_q90 = item("false_positive_rate", 0.9)
   )
   out <- dplyr::select(out, -dplyr::any_of(names(spec)))
@@ -4251,6 +4256,10 @@
     label = "Sensitivity",
     median = "sensitivity_median", tail = "sensitivity_q10"
   ),
+  f1 = c(
+    label = "F1 score",
+    median = "f1_median", tail = "f1_q10"
+  ),
   fpr = c(
     label = "False-positive rate",
     median = "fpr_median", tail = "fpr_q90"
@@ -4261,7 +4270,7 @@
 # `.simCompareClassificationSummary()`. Each scenario has adjacent outcome
 # panels, each with its own horizontal range; colour and shape identify the
 # method and line type the statistic (median, or the worse tail: 90th
-# percentile for FDP and false-positive rate, 10th for sensitivity). With
+# percentile for FDP and false-positive rate, 10th for sensitivity and F1). With
 # `unit_scale`, every vertical scale is fixed at 0-100%.
 .simComparePlotClassification <- function(
     tbl,
@@ -4271,9 +4280,9 @@
     mcse = FALSE) {
   spec <- .simCompareClassificationOutcomes[outcomes]
   tail_label <- if (length(outcomes) == 1L) {
-    if (outcomes == "sensitivity") "10th percentile" else "90th percentile"
+    if (outcomes %in% c("sensitivity", "f1")) "10th percentile" else "90th percentile"
   } else {
-    paste(c(fdp = "90th FDP", sensitivity = "10th sensitivity", fpr = "90th FPR")[outcomes],
+    paste(c(fdp = "90th FDP", sensitivity = "10th sensitivity", f1 = "10th F1", fpr = "90th FPR")[outcomes],
       collapse = " / ")
   }
   # One statistic's rows, with its Monte Carlo bounds when present.
